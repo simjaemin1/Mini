@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
-// @nightly B   ← 야간 두 밤 분할(T220 · 소요로 균등) · `run-regress.sh --list "nightly B"`
+// @nightly A   ← 야간 **세 밤** 분할(T238 · 소요로 균등) · `run-regress.sh --list "nightly A"`
 // === scripts/e2e-onboarding.js — 온보딩 v2 **실클라** 30분 대본 ================
 //
 // ★왜 이 하네스가 이 배치의 **심장**인가

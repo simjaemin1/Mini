@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
-// @nightly A   ← 야간 두 밤 분할(T220 · 소요로 균등) · `run-regress.sh --list "nightly A"`
+// @nightly A   ← 야간 **세 밤** 분할(T238 · 소요로 균등) · `run-regress.sh --list "nightly A"`
 // === scripts/e2e-guild.js — 길드 초대 · 승인제 · 마을 소개문 (T128) =============
 //
 // ★[재민 확정 2026-09-05 · T128] 대상: central `tribe_invites` 표 · `tribes.join_mode`·`intro` ·

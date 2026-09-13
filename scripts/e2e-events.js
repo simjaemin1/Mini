@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
-// @nightly B   ← 야간 두 밤 분할(T220 · 소요로 균등) · `run-regress.sh --list "nightly B"`
+// @nightly C   ← 야간 **세 밤** 분할(T238 · 소요로 균등) · `run-regress.sh --list "nightly C"`
 // === scripts/e2e-events.js — 촌장 브리핑 · 게시판 납품 **실클라** E2E ===========
 //
 // ★왜 [2026-08-25 사건 레이어 배치]

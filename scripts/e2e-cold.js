@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
-// @nightly A   ← 야간 두 밤 분할(T220 · 소요로 균등) · `run-regress.sh --list "nightly A"`
+// @nightly C   ← 야간 **세 밤** 분할(T238 · 소요로 균등) · `run-regress.sh --list "nightly C"`
 // === scripts/e2e-cold.js — 겨울 야생 밤 → 마을 → 모닥불 실클라 E2E ==============
 //
 // ★왜 [온도 소배치 2026-08-31 재민 확정]

@@ -409,7 +409,7 @@ console.log('\n⑧ 판정 자리에 벽시계 0 [T185]');
   console.log('    접점: fixture-clock · __e2e_clock · __evGameDay · __getSrvAbs · /perf loop · ok()');
 }
 
-// ── ⑨ 야간 두 밤 — **무거운 하네스는 묶음을 하나 단다** [T220 2026-09-13] ────────
+// ── ⑨ 야간 여러 밤 — **무거운 하네스는 묶음을 하나 단다** [T220 · 셋으로 T238] ──────
 //
 //   왜: 이 상자에서 e2e 48종만 **4시간 4분**이다(T220 실측 · 종별 표는 보고에). 야간 창은
 //   3h39m~3h43m 이라 09-12 는 108종 · 09-13 은 112종까지밖에 못 닿았다(미측정 35 → 31 · 전부 e2e).
@@ -419,31 +419,38 @@ console.log('\n⑧ 판정 자리에 벽시계 0 [T185]');
 //   이 검사가 지키는 것: **새 e2e 가 표식 없이 들어오면 여기서 빨개진다.** 표식이 없으면
 //   `nightly-split.sh` 가 그것을 "단위"로 보고 **매일** 돌린다 — 무거운 것이 매일 돌면 창이 다시 넘친다.
 //   그건 조용히 넘어가는 종류의 잘못이라(아무도 안 죽는다) 자가 검사로 잡는다.
-console.log('\n⑨ 야간 두 밤 — e2e 는 묶음을 하나 단다 [T220]');
+console.log('\n⑨ 야간 여러 밤 — e2e 는 묶음을 하나 단다 [T220 · 셋 T238]');
 {
+  // ★[T238 2026-09-13] 묶음이 **둘일 필요가 없다** — 이 자는 글자를 안 박고 **몇 개를 달았나**만 센다.
+  //   (T220 은 A·B 만 봤다. #25 가 세 묶음으로 갈리면서 그 자가 낡았다 — 넷이 돼도 여기는 안 고친다.)
   const RE_REG = /^\/\/ @regress([\s]|$)/m;
-  const reNight = (g) => new RegExp('^\\/\\/ @nightly ' + g + '([\\s]|$)', 'm');
+  const RE_NIGHT = /^\/\/ @nightly ([A-Z])([\s]|$)/gm;
+  const tagsOf = (src) => { const out = []; let m; RE_NIGHT.lastIndex = 0;
+    while ((m = RE_NIGHT.exec(src))) out.push(m[1]); return out; };
   const e2e = fs.readdirSync(SCRIPTS).filter((x) => /^e2e-.*\.js$/.test(x))
     .map((f) => ({ f, src: fs.readFileSync(path.join(SCRIPTS, f), 'utf8') }))
     .filter((x) => RE_REG.test(x.src));
-  const none = [], both = [];
+  const none = [], many = [], seen = {};
   for (const x of e2e) {
-    const a = reNight('A').test(x.src), b = reNight('B').test(x.src);
-    if (a && b) both.push(x.f);
-    else if (!a && !b) none.push(x.f);
+    const g = tagsOf(x.src);
+    if (g.length === 0) none.push(x.f);
+    else if (g.length > 1) many.push(`${x.f}(${g.join('')})`);
+    else seen[g[0]] = (seen[g[0]] | 0) + 1;
   }
+  const gk = Object.keys(seen).sort();
   ok(e2e.length >= 40, '⑨ [전제] `@regress` 를 단 e2e 가 실제로 여럿이다(0 이면 아래가 자명 통과다)', `${e2e.length}개`);
-  ok(none.length === 0, '★★⑨a **`@regress` e2e 는 전부 `@nightly A` 또는 `B` 를 단다**(안 달면 매일 돌아 창이 넘친다)',
-     none.length ? none.slice(0, 5).join(' ') : `${e2e.length}개 훑음 · 표식 없는 것 0`);
-  ok(both.length === 0, '★⑨b A 와 B 를 **둘 다** 단 하네스 0 (그러면 이틀에 두 번 돈다)',
-     both.length ? both.join(' ') : '0건');
-  // 자명 통과 금지 — 같은 자로 표식 없는 소스를 재면 잡는다(조각을 이어 만든다 · 제 소스 자기 일치 금지)
+  ok(none.length === 0, '★★⑨a **`@regress` e2e 는 전부 `@nightly <글자>` 를 단다**(안 달면 매일 돌아 창이 넘친다)',
+     none.length ? none.slice(0, 5).join(' ') : `${e2e.length}개 훑음 · 표식 없는 것 0 · 묶음 ${gk.map((k) => k + ':' + seen[k]).join(' ')}`);
+  ok(many.length === 0, '★⑨b **둘 이상**을 단 하네스 0 (그러면 한 바퀴에 두 번 돈다)',
+     many.length ? many.join(' ') : '0건');
+  ok(gk.length >= 2, '⑨c 묶음이 실제로 둘 이상이다(하나면 나눈 것이 아니다)', `${gk.length}개 ${gk.join('')}`);
+  // 자명 통과 금지 — 같은 자로 표식 없는 소스·둘 단 소스를 재면 각각 답한다(조각을 이어 만든다)
   const baitNone = ['// @reg', 'ress\n'].join('') + 'const x = 1;\n';
-  const baitBoth = ['// @reg', 'ress\n'].join('') + ['// @night', 'ly A\n'].join('') + ['// @night', 'ly B\n'].join('');
-  ok(RE_REG.test(baitNone) && !reNight('A').test(baitNone) && !reNight('B').test(baitNone),
+  const baitTwo = ['// @reg', 'ress\n'].join('') + ['// @night', 'ly A\n'].join('') + ['// @night', 'ly C\n'].join('');
+  ok(RE_REG.test(baitNone) && tagsOf(baitNone).length === 0,
      '★⑨ 자명 통과 금지 — 표식 없는 소스를 같은 자로 재면 **없다고 답한다**');
-  ok(reNight('A').test(baitBoth) && reNight('B').test(baitBoth),
-     '★⑨ 자명 통과 금지 — 둘 다 단 소스를 같은 자로 재면 **둘 다 잡는다**');
+  ok(tagsOf(baitTwo).join('') === 'AC',
+     '★⑨ 자명 통과 금지 — 둘 단 소스를 같은 자로 재면 **둘 다 잡는다**', tagsOf(baitTwo).join(''));
   console.log('    접점: run-regress.sh --list · nightly-split.sh · @nightly');
 }
 

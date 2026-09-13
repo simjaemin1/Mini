@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
-// @nightly A   ← 야간 두 밤 분할(T220 · 소요로 균등) · `run-regress.sh --list "nightly A"`
+// @nightly B   ← 야간 **세 밤** 분할(T238 · 소요로 균등) · `run-regress.sh --list "nightly B"`
 // === scripts/e2e-forage-village.js — 옛 채집 사막 마을에서 **걸어서** 첫 도끼까지 ============
 //
 // ★[재민 확정 2026-08-29] 감사 표가 51/51 이 됐다고 끝이 아니다 — 이 레포가 배치마다 배운 것은

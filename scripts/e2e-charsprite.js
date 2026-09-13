@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
-// @nightly A   ← 야간 두 밤 분할(T220 · 소요로 균등) · `run-regress.sh --list "nightly A"`
+// @nightly A   ← 야간 **세 밤** 분할(T238 · 소요로 균등) · `run-regress.sh --list "nightly A"`
 // @pixel    ← ★[T104] **프레임을 화소로 잰다**(`page.screenshot` → `PNG.sync.read`).
 //              렌더 층(`3x-r*`·`34-m-renderloop`·`37-r1-*`)을 만지는 카드는 이 표를 전수로 돌려라 —
 //              `bash scripts/run-regress.sh --list pixel`. 이름으로는 못 찾는다(T98: `e2e-nature` 는
@@ -131,9 +131,16 @@ function openSpot() {
   // ── ① 정지 = idle ─────────────────────────────────────────────────────
   console.log('\n=== ① 정지 → idle · 걷기 → walk · 달리기 → run ===');
   let d = await dbgOf(A);
-  ok(!!d && d.on === true, '★스프라이트 경로로 그려진다 (도형 폴백이 아니다)', d ? `clip=${d.clip}` : 'null');
+  // ★★[T238 2026-09-13] **`on:false` 일 때 훅에는 `layers` 가 없다** — `42-r2-char.js:260` 의 실패
+  //   갈래는 `{on, why, clip, isMe, t}` 만 싣고, 성공 갈래(`:296`)만 `layers` 를 싣는다.
+  //   그래서 아래 `d.layers.join(',')` 가 **하네스 전체를 TypeError 로 끊었다**(러너 청크 판 실측:
+  //   결과줄 7개 · 단독은 95/1). T90 규약대로 한 절의 흔들림이 전수를 못 죽이게 방어만 건다.
+  //   ★그리고 `why` 를 찍는다 — 그게 **어느 시트가 아직 안 왔는지**를 말한다(훅이 이미 들고 있었다).
+  ok(!!d && d.on === true, '★스프라이트 경로로 그려진다 (도형 폴백이 아니다)',
+     d ? `clip=${d.clip}${d.on === true ? '' : ` · why=${d.why}`}` : 'null');
   ok(d && d.clip === 'idle', `정지 = idle`, d ? `speed=${d.speed}` : '');
-  ok(d && d.layers.join(',') === 'body,clothes_hemp', `맨손 레이어 = 몸+베옷`, d ? d.layers.join(',') : '');
+  ok(d && Array.isArray(d.layers) && d.layers.join(',') === 'body,clothes_hemp', `맨손 레이어 = 몸+베옷`,
+     d ? (Array.isArray(d.layers) ? d.layers.join(',') : `layers 없음 — on=${d.on} why=${d.why}`) : '');
 
   // ── 걷기 ──────────────────────────────────────────────────────────────
   await A.keyboard.down('KeyD'); await sleep(700);

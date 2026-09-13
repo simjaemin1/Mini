@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // @regress
-// @nightly B   ← 야간 두 밤 분할(T220 · 소요로 균등) · `run-regress.sh --list "nightly B"`
+// @nightly C   ← 야간 **세 밤** 분할(T238 · 소요로 균등) · `run-regress.sh --list "nightly C"`
 // =============================================================================
 // e2e — NPC 소체 시트 [재민 확정 2026-09-02 · T13]
 //
