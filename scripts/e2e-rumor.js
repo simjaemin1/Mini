@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// @nightly A   ← 야간 두 밤 분할(T220 · 소요로 균등) · `run-regress.sh --list "nightly A"`
 // === scripts/e2e-rumor.js — 소문 물리 전파 · 복귀 브리핑 **실클라** E2E ========
 //
 // ★왜 [T7 2026-09-01]

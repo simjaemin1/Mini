@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// @nightly B   ← 야간 두 밤 분할(T220 · 소요로 균등) · `run-regress.sh --list "nightly B"`
 // === scripts/e2e-verbs.js — 동사는 대상 위에 뜬다 (실클라 셋) ====================
 //
 // ★★[재민 확정 2026-09-03 · 캐논 §2] *"누군가 와서 죽은 사람한테 우클릭 누르면 메뉴가

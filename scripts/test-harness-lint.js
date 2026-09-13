@@ -409,5 +409,43 @@ console.log('\n⑧ 판정 자리에 벽시계 0 [T185]');
   console.log('    접점: fixture-clock · __e2e_clock · __evGameDay · __getSrvAbs · /perf loop · ok()');
 }
 
+// ── ⑨ 야간 두 밤 — **무거운 하네스는 묶음을 하나 단다** [T220 2026-09-13] ────────
+//
+//   왜: 이 상자에서 e2e 48종만 **4시간 4분**이다(T220 실측 · 종별 표는 보고에). 야간 창은
+//   3h39m~3h43m 이라 09-12 는 108종 · 09-13 은 112종까지밖에 못 닿았다(미측정 35 → 31 · 전부 e2e).
+//   ⇒ e2e 를 소요로 **균등 두 묶음**(`// @nightly A` · `// @nightly B`)으로 갈라 이틀에 나눠 돈다.
+//   ★러너는 한 글자도 안 고쳤다 — `--list` 가 이미 태그를 인자로 받는다(T104 의 `@pixel` 문법 그대로).
+//
+//   이 검사가 지키는 것: **새 e2e 가 표식 없이 들어오면 여기서 빨개진다.** 표식이 없으면
+//   `nightly-split.sh` 가 그것을 "단위"로 보고 **매일** 돌린다 — 무거운 것이 매일 돌면 창이 다시 넘친다.
+//   그건 조용히 넘어가는 종류의 잘못이라(아무도 안 죽는다) 자가 검사로 잡는다.
+console.log('\n⑨ 야간 두 밤 — e2e 는 묶음을 하나 단다 [T220]');
+{
+  const RE_REG = /^\/\/ @regress([\s]|$)/m;
+  const reNight = (g) => new RegExp('^\\/\\/ @nightly ' + g + '([\\s]|$)', 'm');
+  const e2e = fs.readdirSync(SCRIPTS).filter((x) => /^e2e-.*\.js$/.test(x))
+    .map((f) => ({ f, src: fs.readFileSync(path.join(SCRIPTS, f), 'utf8') }))
+    .filter((x) => RE_REG.test(x.src));
+  const none = [], both = [];
+  for (const x of e2e) {
+    const a = reNight('A').test(x.src), b = reNight('B').test(x.src);
+    if (a && b) both.push(x.f);
+    else if (!a && !b) none.push(x.f);
+  }
+  ok(e2e.length >= 40, '⑨ [전제] `@regress` 를 단 e2e 가 실제로 여럿이다(0 이면 아래가 자명 통과다)', `${e2e.length}개`);
+  ok(none.length === 0, '★★⑨a **`@regress` e2e 는 전부 `@nightly A` 또는 `B` 를 단다**(안 달면 매일 돌아 창이 넘친다)',
+     none.length ? none.slice(0, 5).join(' ') : `${e2e.length}개 훑음 · 표식 없는 것 0`);
+  ok(both.length === 0, '★⑨b A 와 B 를 **둘 다** 단 하네스 0 (그러면 이틀에 두 번 돈다)',
+     both.length ? both.join(' ') : '0건');
+  // 자명 통과 금지 — 같은 자로 표식 없는 소스를 재면 잡는다(조각을 이어 만든다 · 제 소스 자기 일치 금지)
+  const baitNone = ['// @reg', 'ress\n'].join('') + 'const x = 1;\n';
+  const baitBoth = ['// @reg', 'ress\n'].join('') + ['// @night', 'ly A\n'].join('') + ['// @night', 'ly B\n'].join('');
+  ok(RE_REG.test(baitNone) && !reNight('A').test(baitNone) && !reNight('B').test(baitNone),
+     '★⑨ 자명 통과 금지 — 표식 없는 소스를 같은 자로 재면 **없다고 답한다**');
+  ok(reNight('A').test(baitBoth) && reNight('B').test(baitBoth),
+     '★⑨ 자명 통과 금지 — 둘 다 단 소스를 같은 자로 재면 **둘 다 잡는다**');
+  console.log('    접점: run-regress.sh --list · nightly-split.sh · @nightly');
+}
+
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
 process.exit(fail ? 1 : 0);

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// @nightly B   ← 야간 두 밤 분할(T220 · 소요로 균등) · `run-regress.sh --list "nightly B"`
 // === scripts/e2e-thirst.js — 물 안 마시면 죽는다 (실클라 E2E) ====================
 //
 // ★★[캐논 변경 2026-09-01 재민 확정 · T44 · §12]
