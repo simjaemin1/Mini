@@ -345,24 +345,63 @@ async function waitHttp(url, tries = 900) {
     const dayNow = await gameDay();
     await page.evaluate((vid) => window.__sendPrimary({ type: '__e2e_village_deed', vid, kind: '가뭄' }), B.id);
     await sleep(1500);
-    let deedRow = null, tries = 0;
+    let deedRow = null, tries = 0, wxRows = [];
     for (; tries < 60 && !deedRow; tries++) {
       const c = await askChron(B.id, null);
       const all = [].concat(...((c && c.seasons) || []).map((b) => b.items));
-      deedRow = all.find((x) => x.type === 'WEATHER' && x.from == null && x.day >= dayNow);
+      wxRows = all.filter((x) => x.type === 'WEATHER' && x.from == null && x.day >= dayNow);
+      deedRow = wxRows[0] || null;
       if (!deedRow) await sleep(500);
     }
     ok(!!deedRow, '⑪ 세계에 가뭄이 들면 **연표에 저절로 적힌다**(유형만 늘렸지 연표는 안 고쳤다)',
       deedRow ? `day${deedRow.day} · ${deedRow.line}` : `(${tries}회 폴링 뒤에도 없음)`);
+    // ★★★[T268 2026-09-13] **고정 문장을 기다리지 않는다 — 정본 표가 낼 수 있는 문장인지 본다.**
+    //   종전 ⑪b 는 `/비가 통 안 오는군/`(가뭄 문장) 하나를 기다렸다. 그런데 여기서 집는 줄은
+    //   **내가 심은 줄이 아닐 수 있다**: 이 창에는 econ 이 스스로 낸 날씨 줄이 같이 있다
+    //   (실측: 같은 창에 우리 마을 날씨 줄이 3~12개까지 나온다).
+    //   러너 청크에서 빨갰던 문장은 `요즘은 들에 나가면 손이 바쁘이`(**풍요**)였는데 픽스처
+    //   (`villages.js:__e2eForceDeed`)는 **가뭄·폭풍 둘만** 만든다 ⇒ 내가 안 심은 줄이었고,
+    //   그 문장은 **풍요에 맞는 옳은 문장**이다(`events.js:1277`) — 제품이 아니라 **자가 틀렸다**.
+    //   재현: 단독 0/3 · 청크 1/3.
+    //   ⚠종류(`item`)로 집을 수는 없다 — 서버가 화면에 줄 때 **`item` 을 안 싣는다**
+    //     (`villages.js:5995` — `{line, day, heard, type, deed, sev, from}`). 실측으로 확인했다.
+    //   ⇒ 이 절의 제 계약("촌장 말투 · 수치를 읊지 않는다")을 그대로 검사한다. 문장 표를 베끼지 않고
+    //     **정본 `events.js` 에서 유도**한다: WEATHER 갈래의 종류 낱말을 소스에서 읽어
+    //     `briefLine` 을 그대로 불러 **낼 수 있는 문장 집합**을 만든다(사본 0).
+    const EvCanon = require(path.join(ROOT, 'server', 'events.js'));
+    const _evSrc = require('fs').readFileSync(path.join(ROOT, 'server', 'events.js'), 'utf8');
+    const _wxBlk = (_evSrc.split('WEATHER: (ev) =>')[1] || '').split('\n  },')[0];
+    const _kinds = [...(_wxBlk.matchAll(/indexOf\('([^']+)'\)/g))].map((m) => m[1]);
+    const WX_LINES = new Set(_kinds.map((k) => EvCanon.briefLine({ type: 'WEATHER', item: k }))
+      .concat([EvCanon.briefLine({ type: 'WEATHER', item: '__없는종류__' })]));   // 폴백도 정본이 낸다
     if (deedRow) {
-      ok(/비가 통 안 오는군/.test(deedRow.line), '⑪b 촌장 말투로 적힌다(수치를 읊지 않는다)', JSON.stringify(deedRow.line));
+      ok(_kinds.length >= 3 && WX_LINES.size >= 4,
+        '⑪b0 [전제] 정본에서 날씨 문장 집합을 실제로 읽었다(못 읽으면 아래가 자명 통과다)',
+        `종류 ${_kinds.length}개 {${_kinds.join(',')}} · 문장 ${WX_LINES.size}개`);
+      ok(wxRows.length >= 1, '⑪b0 [전제] 우리 마을 날씨 줄이 실제로 있다', `${wxRows.length}개`);
+      const noNum = wxRows.filter((r) => /\d/.test(String(r.line)));
+      ok(noNum.length === 0, '⑪b 촌장 말투로 적힌다 — **수치를 읊지 않는다**(§3.2 대시보드 톤 금지)',
+        noNum.length ? JSON.stringify(noNum[0].line) : `${wxRows.length}줄 전부 숫자 0`);
+      const offTable = wxRows.filter((r) => !WX_LINES.has(String(r.line)));
+      ok(offTable.length === 0, '★★⑪b 그 줄들은 **정본 표가 낼 수 있는 문장**이다(하네스가 표를 안 베낀다)',
+        offTable.length ? JSON.stringify(offTable[0].line)
+                        : `${wxRows.length}줄 · 본 문장 {${[...new Set(wxRows.map((r) => r.line))].map((x) => JSON.stringify(x)).join(' ')}}`);
+      // 자명 통과 금지 ① — 수치를 읊는 줄은 같은 자가 잡는다
+      ok(/\d/.test('비옥도 0.7배로 떨어졌다'), '★⑪b 자명 통과 금지 — 수치를 읊는 줄은 같은 자가 잡는다');
+      // 자명 통과 금지 ② — 표 밖 문장은 같은 자가 잡는다(한 글자만 바꿔도)
+      ok(!WX_LINES.has(String(deedRow.line) + '.'), '★⑪b 자명 통과 금지 — 문장을 한 글자 바꾸면 표 밖이다');
+      // 자명 통과 금지 ③ — 표가 상수가 아니다(종류마다 다른 문장)
+      ok(WX_LINES.size >= _kinds.length, '★⑪b 자명 통과 금지 — 정본 표는 **종류마다 다른 문장**을 낸다',
+        `종류 ${_kinds.length} → 문장 ${WX_LINES.size}`);
       ok(deedRow.deed === true, '⑪c 서버가 그 줄을 **"일"로 표시해** 보낸다(무게 축이 화면까지 온다)');
       ok(deedRow.heard === deedRow.day, '⑪d 우리 마을 일이라 도달 지연이 0이다');
       // ★이 줄은 **기본 문턱이었으면 안 실렸다** — 그래서 일 유형은 sev 문턱을 면제받는다.
       ok(deedRow.sev < 2.2, '⑪e ★이 줄의 sev 는 값 문턱(2.2)에 한참 못 미친다 — 문턱 면제가 없으면 연표에 못 온다',
         `sev=${deedRow.sev}`);
       const p4 = await openChron();
-      ok(/비가 통 안 오는군/.test(p4.body), '⑪f 실화면에 그 문장이 실제로 그려진다', JSON.stringify(p4.body.slice(0, 60)));
+      // ★[T268] 고정 문장이 아니라 **그 줄이 실제로 들고 있는 문장**이 화면에 있는지 본다.
+      ok(p4.body.indexOf(String(deedRow.line)) >= 0, '⑪f 실화면에 **그 줄의 문장**이 실제로 그려진다',
+        `${JSON.stringify(deedRow.line)} · 화면 ${JSON.stringify(p4.body.slice(0, 60))}`);
       await snap('ch-05-deed');
     }
   }
