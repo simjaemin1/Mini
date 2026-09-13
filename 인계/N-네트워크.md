@@ -607,3 +607,70 @@ T242 의 전수표가 ⚠ **25** 를 말했다(쓰기 17 · 읽힘 6 · 회부 #
 
 `test-guest-identity` §⑨ 19건(§⑧ 표도 갱신) — **98/0 → 116/0**.
 파수꾼이 이제 **`라우트 62 · 공개 16 · 안문 40 · 본인 3 · 투영 3 · 남음 2`** 를 찍는다(남은 둘은 회부된 #2·#9 뿐).
+
+## N-비밀. ★[T270 2026-09-13] `CENTRAL_SECRET` — **언제 필요하고, 없으면 어떻게 도나**
+
+T245 가 문을 닫을 때 남긴 한 줄의 전문이다. **지금 배포에는 필요 없다** — 필요해지는 날이 정해져 있다.
+
+### 언제 필요한가 — **호스트가 갈릴 때 하나**
+
+`internal-door.isInternal(req)` 의 판정은 둘이고 **순서가 있다**:
+1. `CENTRAL_SECRET` 이 잡혀 있으면 → `x-zone-secret` 헤더를 상수시간 비교. 맞으면 안, 아니면 **바깥**.
+2. 안 잡혀 있으면 → **사설 주소 폴백**(RFC1918 + 루프백). `x-forwarded-for` 가 있으면 판정을 **취소**한다.
+
+지금 배포는 **한 호스트의 컨테이너 둘**(central + 존 하나)이다. 컨테이너끼리는 도커 브리지의 사설 주소로
+만나므로 ②가 맞고, **설정 0 으로 돈다**. 필요해지는 것은 다음 셋 중 하나가 생길 때다:
+
+| 언제 | 왜 |
+|---|---|
+| **존이 둘 이상이고 호스트가 갈린다** | `postJSON` 이 공인 주소로 나간다 ⇒ 받는 쪽이 바깥으로 본다 ⇒ **핸드오프·유령·크로스 피해가 전부 404** |
+| **앞에 리버스 프록시를 둔다** | 프록시가 `x-forwarded-for` 를 붙이면 ②가 **취소**된다 ⇒ 사설 주소로 와도 바깥 |
+| **central 과 존이 다른 네트워크** | 위와 같은 이유 |
+
+### 어디에 어떻게 — **두 컨테이너에 한 번씩, 손으로**
+
+⚠`scripts/redeploy-hanbando.sh` 는 컨테이너를 다시 만들 때 **있던 env 를 그대로 물려받는다**:
+
+```sh
+docker inspect "$NAME" --format '{{range .Config.Env}}{{println .}}{{end}}' … > "/tmp/${NAME}.env"
+docker rm -f "$NAME"; docker run -d --name "$NAME" … --env-file "/tmp/${NAME}.env" "$IMAGE"
+```
+
+⇒ **한 번 넣으면 재배포가 지켜 준다.** 그런데 그 말은 **처음 한 번은 스크립트가 안 넣어 준다**는 뜻이기도 하다:
+
+```sh
+# 서버에서 — 값 하나를 두 컨테이너에 **똑같이**
+SECRET=$(openssl rand -hex 32)
+for N in durango-central durango-zone-hanbando; do
+  docker inspect "$N" --format '{{range .Config.Env}}{{println .}}{{end}}' \
+    | grep -v -E '^(PATH|NODE_VERSION|YARN_VERSION|NODE_ENV|HOME|HOSTNAME|CENTRAL_SECRET)=' > "/tmp/$N.env"
+  echo "CENTRAL_SECRET=$SECRET" >> "/tmp/$N.env"
+done
+# 그 뒤 평소대로 재배포하면 위 env 를 물고 뜬다
+bash scripts/redeploy-hanbando.sh --all
+```
+
+★**값은 둘이 같아야 한다.** 다르면 헤더 비교가 어긋나 ①에서 바깥 판정이 나고, ②는 이미 꺼져 있다
+(비밀이 잡히면 폴백을 안 탄다) ⇒ **존↔존과 존→central 이 전부 404** 가 된다. 한쪽에만 넣는 것이 제일 위험하다.
+⚠토큰은 로그·응답·레포 어디에도 안 남는다(T217 규약). 위 명령의 `$SECRET` 도 화면에 찍지 마라.
+
+### 안 넣었을 때의 동작 — **지금 그대로**
+
+바깥 문은 여전히 404 이고(브라우저는 공인 주소로 오므로 ②가 바깥으로 본다), 안 문은 컨테이너 사설 주소로
+열린다. **T217 이 정한 조건이 그대로다.** 즉 *"안 넣어서 뚫리는"* 것이 아니라 *"호스트가 갈리는 날 막힌다"* 다.
+
+### 확인 줄 — 배포 뒤 한 번
+
+```sh
+# ① 바깥에서 두드린다 — 404 여야 한다(문이 있는지도 안 알린다)
+curl -s -o /dev/null -w '%{http_code}\n' -X POST -H 'Content-Type: application/json' \
+  -d '{"player_id":"nobody"}' https://<존 공개주소>/kick_player        # → 404
+
+# ② 안에서 두드린다 — 200 이어야 한다(존↔존 길이 살아 있다)
+docker exec durango-zone-hanbando sh -c \
+  'curl -s -o /dev/null -w "%{http_code}\n" -X POST -H "Content-Type: application/json" \
+   ${CENTRAL_SECRET:+-H "x-zone-secret: $CENTRAL_SECRET"} \
+   -d "{\"player_id\":\"nobody\"}" http://localhost:3020/kick_player'   # → 200
+```
+
+②가 404 면 그날의 원인은 셋 중 하나다: 비밀이 **한쪽에만** 있다 · 값이 **다르다** · 프록시가 `x-forwarded-for` 를 붙인다.
