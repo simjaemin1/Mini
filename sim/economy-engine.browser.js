@@ -1848,6 +1848,13 @@ function consumeFood(v, need) {
   // ★flow-EMA 제외(설계 판단·A/B 실측): 식단은 *가용성 기반 대체 소비*(cooked>어육>곡>채집 사다리 — 있는 걸 먹음)라
   //   flowT에 폴드하면 우연히 먹은 믹스가 30일 보유 수요로 고착 → 빈곤 마을이 제 채집물·생선 잉여를 못 팔게 됨(수출 억압).
   //   실측: 식단 폴드 포함 시 s101 245→27 붕괴(2026-07-12). 식량 수요는 기존 기구(subs×30·VARIETY·surplusEMA)가 전담.
+  // ★★[T263 2026-09-13] **되돌림 손잡이 하나** — 위 제외는 **구멍이 아니라 판정**이다(근거가 바로 위 줄이다).
+  //   그런데 그 판정은 2026-07-12 의 엔진에서 선 것이고, 그 뒤로 T73(생곡)·T86(가격 가중 식단)·T17(보존식)·
+  //   T164/T184(실현 배분)가 전부 이 사다리를 지나갔다. **오늘도 서는지**를 재려면 되돌릴 수 있어야 한다.
+  //   ⇒ 훅은 **한 자리**다: 사다리 여섯 가지가 이미 `eaten`(=`_foodEaten`)에 제 몫을 적어 뒀으므로
+  //     그걸 그대로 접는다(가지마다 훅을 달면 그게 사본이고, 새 가지가 생기면 조용히 빠진다).
+  //   ★새 수 0(소비량은 사다리가 적은 값 그대로) · 정본 재구현 0 · **기본 끔**(미설정 = 위 판정 그대로 = 비트 동일).
+  if (foodConsOn()) for (const r in eaten) _cons(v, r, eaten[r]);
   return remaining;
 }
 
@@ -4883,6 +4890,8 @@ function allocRealOn() { const x = _allocKnob('L_ALLOC_REAL'); return x !== null
 // ★[T258] 부재료 소비를 흐름-EMA 에 실을지 — **기본 끔**(미설정 = 끔 = 서버 기본 · 끔이면 비트 동일).
 //   회계의 구멍을 메우는 한 줄이지만 **세계를 움직인다**(부패 보호·가격·교역 신호) ⇒ 손잡이 뒤에 둔다.
 function sideConsOn() { const x = _allocKnob('T258_SIDE_CONS'); return x !== null && x !== '0'; }
+// ★[T263] 식사를 흐름-EMA 에 실을지 — **기본 끔**. 끔이 곧 2026-07-12 판정(수출 억압 회피)이고 비트 동일이다.
+function foodConsOn() { const x = _allocKnob('T263_FOOD_CONS'); return x !== null && x !== '0'; }
 function allocRealWin() { const x = _allocKnob('L_ALLOC_WIN'); const n = (x === null) ? 1 : parseFloat(x); return Number.isFinite(n) ? n : 1; }
 // ★[T184] 되돌림 — `L_ALLOC_BASKET=1` 이면 1판(바구니 전체 소득)으로 돌아간다. 기본은 2판(주산물 항).
 function allocBasketMode() { const x = _allocKnob('L_ALLOC_BASKET'); return x !== null && x !== '0'; }
