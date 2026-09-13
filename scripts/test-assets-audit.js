@@ -9,8 +9,9 @@
 //   ② **잠금 불일치 0** — `icons.lock.json`·`char/char_sheets.lock.json` 의 값과 파일의 해시가 같다.
 //      ★★**자가 표마다 다르다. 베끼지 말고 그 표의 정본에서 읽어라** — 이 하네스의 1차 판이 여기서 없는 결함을 봤다:
 //      `icons.lock` 의 자(IDAT sha1)를 char 시트에 들이대고 **192장 전부 불일치**를 봤는데, 틀린 건 시트가 아니라 자였다.
-//        · `icons.lock.json`        = PNG 는 **IDAT sha1 앞 16자**(블렌더가 `Date`·`RenderTime` tEXt 를 써서
-//                                     파일 전체는 못 쓴다 — 표 자신의 `_규약` 이 그렇게 적어 뒀다) · webp 는 파일 전체 sha1[:16]
+//        · `icons.lock.json`        = **화소 해시**[:16] — sha1("<w>x<h>|" + 디코드한 RGBA). 자는
+//                                     `scripts/asset-lock.js` **하나**이고 여기선 부르기만 한다 [T257].
+//                                     (⚠webp 산 88장만 아직 파일 sha1[:16] — 디코더가 없다 · 회부)
 //        · `char_sheets.lock.json`  = **파일 전체 sha256 앞 16자**(`test-charsheet.js` ⑤ 가 굽는 자 · 키는
 //                                     `char_meta.json` 의 `sheets` 에서 `probeall*` 를 뺀 것)
 //   ③ **고아 표는 빨강이 아니다** — 사용처 0 인 파일은 세어서 **표로만** 낸다. 지우는 것은 사람이다.
@@ -18,13 +19,13 @@
 //   ④ **닿음은 전이적이다** — 표 안의 이름이 참조가 되려면 **그 표 자신이 닿아야** 한다.
 //      제 폴더 안에서 저희끼리만 가리키는 파일 무더기는 참조가 아니다(T243 §0-ⓑ 가 그걸로 45.7MB 를 찾았다).
 //
-//   ⑤ **잠금이 무엇을 잡는 자인지** — `icons.lock.json` 의 `_` 는 "다음 재굽기가 이 표와 대조한다"고 적는데,
-//      T243 §0-ⓑ 가 재 보니 **재굽기로는 절대 못 맞춘다**: 표본 넷(bush01·acorn·lettuce_2·lettuce_3)이
-//      IDAT 재현 **0/4** 였다. 그런데 같은 코드로 연달아 두 번 구우면 IDAT 가 **같다**(대조군) —
-//      즉 굽기는 결정적이고, 어긋나는 건 **배포판을 구운 판이 지금 판이 아니기 때문**이다(드리프트).
-//      그림은 넷 다 같다(|Δ|>24 가 0.01~0.49% · T205 잡음 바닥 5.3% 의 1/10 아래).
-//      ⇒ 이 잠금은 "다시 구우면 같은가" 가 아니라 **"파일이 몰래 바뀌었는가"** 를 잡는 자다.
-//        그 뜻으로 읽으면 ②는 지금 초록이고, 실제로 초록이다.
+//   ⑤ **잠금이 무엇을 잡는 자인지** — T243 표본 넷(bush01·acorn·lettuce_2·lettuce_3)은 재굽기가
+//      배포판과 안 맞는다. 같은 코드로 연달아 두 번 구우면 바이트가 **같으므로**(대조군) 굽기는 결정적이고,
+//      어긋나는 건 **배포판을 구운 판이 지금 판이 아니기 때문**이다(렌더 드리프트 · 그림 차이는
+//      |Δ|>24 0.01~0.49% 로 T205 잡음 바닥 5.3% 의 1/10 아래 — 눈엔 같다).
+//      ★[T257] 자를 화소 해시로 바꿔도 그 넷은 **여전히 어긋난다** — 화소가 실제로 다르기 때문이다.
+//        자 바꾸기가 고친 것은 **압축기 탓의 거짓 빨강**이고, 드리프트는 재굽기 카드 몫이다(별 카드).
+//        잠금표는 지금 배포판 값으로 재생성했으므로 ②는 초록이고, 넷은 "알려진 드리프트"로 보고에 적혀 있다.
 //
 // 자명 통과 금지(--selftest): 없는 참조 하나와 잠금 어긋남 하나를 **주입**해서 ①②가 무는지 본다.
 //
@@ -56,9 +57,10 @@ function idatSha1(buf) {                       // PNG 의 화소 페이로드만
 }
 const sha256 = (b) => crypto.createHash('sha256').update(b).digest('hex');
 // 잠금표가 쓰는 자 — **표마다 다르다**(위 계약 ②). 자를 표에서 받아 온다.
+//   ★[T257] `icons` 쪽 자는 이제 `scripts/asset-lock.js` 하나다(화소 해시 · PNG 는 압축기에 안 흔들린다).
+//     여기선 **부르기만** 한다 — 자를 두 벌 적으면 그 순간 실패다.
 const RULER = {
-  icons: (p) => { const b = fs.readFileSync(p);          // PNG=IDAT sha1 · webp=파일 sha1
-    return (path.extname(p).toLowerCase() === '.png' ? idatSha1(b) : sha1(b)); },
+  icons: (p) => require('./asset-lock.js').lockValue(p).hash,
   char:  (p) => sha256(fs.readFileSync(p)),              // 파일 전체 sha256
 };
 
@@ -97,13 +99,48 @@ const ROOT_SRC = [
   ...srcFiles('scripts', ['py', 'js', 'sh']),
 ];
 const TOKENS = /[A-Za-z0-9_ㄱ-힝][A-Za-z0-9_.\-ㄱ-힝]*/g;
+// ★★[T257] **어간 대조는 키로 불리는 자산에만 쓴다.**
+//   클라가 `/assets/icons/<key>.png` 를 키 목록에서 조립하므로 그림·소리는 어간이 곧 참조다
+//   (그렇게 걸린 103장 전부 정당하다). 그런데 키로 안 불리는 **소스 파일**은 어간이 흔한 영단어라
+//   남의 지역 변수에 걸린다 — T246 실측: `compose.py` 가 `mock-fogband.js:71 function compose(...)` 와
+//   `mt3d-scenes.js:304 composeInto` 에 걸려 "쓰임 있음"이 됐다(그 둘은 `assets/audio` 를 0번 부른다).
+//   그래서 고아가 56 인데 55 로 보였다. 오차는 **한 방향**이다 — 거짓 양성은 고아를 숨긴다.
+//   ⇒ 아래 확장자는 **이름·URL 로만** 찾는다(어간 금지). 이름을 대면 여전히 걸린다.
+const NO_STEM_EXT = new Set(['py', 'zip', 'md', 'txt', 'json', '']);   // '' = `.gitignore` 꼴
+const NO_STEM = process.env.T257_NOSTEM === '0' ? new Set() : NO_STEM_EXT;   // 자명 통과 금지용 되돌림
+// ★★[T257] **주석은 쓰임이 아니다.** 이 집이 세 번째로 밟은 지뢰다 — "검사 범위를 넓히면 검사가 거짓말한다"
+//   (T182 `test-itemlabel` ⑩ · T205 `test-crops-world` · 그리고 여기). 위 주석에 `compose.py` 라고 적었더니
+//   **이 하네스가 제 주석을 보고 그 파일을 "쓰임 있음"이라고 답했다.** 파일 이름을 설명하는 줄은 부르는 자리가 아니다.
+//   ⇒ 토큰을 뽑기 전에 주석을 걷어낸다. 문자열 안의 `://` 는 지킨다(따옴표가 짝이 안 맞으면 자르지 않는다).
+function stripComments(t, ext) {
+  const evenQuotes = (x) => [...'\'"`'].every((q) => (x.split(q).length - 1) % 2 === 0);
+  if (ext === 'js') {
+    t = t.replace(/\/\*[\s\S]*?\*\//g, ' ');
+    return t.split('\n').map((ln) => {
+      for (let i = ln.indexOf('//'); i >= 0; i = ln.indexOf('//', i + 1)) {
+        if (i > 0 && ln[i - 1] === ':') continue;              // https:// 따위
+        if (evenQuotes(ln.slice(0, i))) return ln.slice(0, i); // 문자열 밖의 // 부터가 주석
+      }
+      return ln;
+    }).join('\n');
+  }
+  if (ext === 'py' || ext === 'sh') {
+    return t.split('\n').map((ln) => {
+      for (let i = ln.indexOf('#'); i >= 0; i = ln.indexOf('#', i + 1)) {
+        if (evenQuotes(ln.slice(0, i))) return ln.slice(0, i);
+      }
+      return ln;
+    }).join('\n');
+  }
+  return t;
+}
 function readSrc(p) {
-  const t = fs.readFileSync(p, 'utf8');
+  const t = stripComments(fs.readFileSync(p, 'utf8'), path.extname(p).slice(1).toLowerCase());
   return { rel: path.relative(ROOT, p).split(path.sep).join('/'), text: t, toks: new Set(t.match(TOKENS) || []) };
 }
 const SRC = ROOT_SRC.map(readSrc);
 const names = (a) => [a.stem, a.name, a.url];
-const mentions = (s, a) => (s.toks.has(a.stem) || s.toks.has(a.name) || s.text.includes(a.url));
+const mentions = (s, a) => ((!NO_STEM.has(a.ext) && s.toks.has(a.stem)) || s.toks.has(a.name) || s.text.includes(a.url));
 
 // ── 닿음 — 전이 폐포(계약 ④) ────────────────────────────────────────────
 //   표(자산 안의 JSON)는 **제가 닿아야** 참조 원천이 된다.
@@ -195,7 +232,7 @@ for (const [key, want] of Object.entries(CHLOCK)) {
   if (!got || got.slice(0, want.length) !== want) bad.push({ grp: 'char', key, want, got: got && got.slice(0, 16) });
 }
 ok(bad.length === 0, `② 잠금 불일치 0 — 잠긴 ${locked}장의 해시가 표와 같다`,
-   bad.length ? JSON.stringify(bad.slice(0, 6)) : 'icons=IDAT sha1[:16]/webp 파일 sha1[:16] · char=파일 sha256[:16]');
+   bad.length ? JSON.stringify(bad.slice(0, 6)) : 'icons=화소 해시[:16](webp 88장만 파일 sha1) · char=파일 sha256[:16]');
 
 // ②b 잠기지 않은 장이 있으면 **이름을 대야 한다** — "몇 장이 안 잠겼다"는 답이 아니다.
 {

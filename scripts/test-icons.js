@@ -419,17 +419,13 @@ console.log('\n[⑧ 굽는 기계 정본 — icons.lock.json 이 지금 자산�
   if (fs.existsSync(LOCK)) {
     const lock = JSON.parse(fs.readFileSync(LOCK, 'utf8'));
     ok(/^pip bpy /.test(lock._기계 || ''), `굽는 기계가 적혀 있다: ${lock._기계}`);
-    // ★값은 **IDAT(화소 페이로드)** 해시다 — 파일 전체가 아니다.
-    //   블렌더 원본 PNG 는 `Date`·`RenderTime` tEXt 를 박아 두 번 구우면 바이트가 늘 다르다(T79 실측).
-    const idatSha = (p) => {
-      const b = fs.readFileSync(p); let i = 8; const parts = [];
-      while (i < b.length) {
-        const ln = b.readUInt32BE(i), t = b.toString('ascii', i + 4, i + 8);
-        if (t === 'IDAT') parts.push(b.subarray(i + 8, i + 8 + ln));
-        i += 12 + ln;
-      }
-      return require('crypto').createHash('sha1').update(Buffer.concat(parts)).digest('hex').slice(0, 16);
-    };
+    // ★★[T257] 값은 **화소 해시**다 — 자는 `scripts/asset-lock.js` **하나**이고 여기선 부르기만 한다.
+    //   종전 자는 sha1(IDAT) 였는데, IDAT 는 그림이 아니라 **압축기**를 잰다: 같은 화소를 lvl 1/6/9 로
+    //   다시 인코딩하면 IDAT 해시가 셋 나오고(f2887774 / 6f841957 / 1dfe38bd) 화소 해시는 하나다(b31f29eb).
+    //   ⇒ zlib 판이 바뀌면 364장이 그림 그대로인 채 통째로 빨개졌을 자리다. 자를 베끼지 마라 —
+    //     T243 1차 판이 자를 두 벌 들고 char 시트 192장 거짓 빨강을 봤다.
+    const ASSETLOCK = require('./asset-lock.js');
+    const idatSha = (p) => ASSETLOCK.lockValue(p).hash;
     // ★[T97] 자연물·나무도 든다 — 이 저장소가 배포하는 스프라이트는 전부 잠금표 안에 있어야 한다.
     //   `nature` 44 중 18장(바위·이끼바위·광맥)은 **다른 기계**가 구운 것이라 `_기계_예외` 가 이름을 적는다.
     for (const [grp, dir] of [['icons', ICON_DIR], ['props', path.join(ROOT, 'public', 'assets', 'props')],
@@ -465,6 +461,8 @@ console.log('\n[⑧ 굽는 기계 정본 — icons.lock.json 이 지금 자산�
                            (notLocked.length ? ` — 밖: ${notLocked.slice(0, 4).join(', ')}` : ''));
     }
     // ★[T106] 산 45 는 **webp** 다 — IDAT 이 없으니 파일 전체 sha1 로 잠근다(위 무리 순회는 PNG 전용).
+    //   ⚠[T257] 그래서 산 88장만 아직 **화소 해시가 아니다** — 이 저장소에 webp 디코더가 없고
+    //     이 하네스는 CI 단위 23종이라 `npm ci` 만으로 돌아야 한다. 자는 같은 모듈이 확장자로 고른다(회부).
     {
       const MTD = path.join(ROOT, 'public', 'assets', 'mountains');
       const tbl = lock.mountains || {};
@@ -475,7 +473,7 @@ console.log('\n[⑧ 굽는 기계 정본 — icons.lock.json 이 지금 자산�
          `mountains: 잠금표 ${Object.keys(tbl).length} ↔ 파일 ${files.length} 전수 일치` +
          (miss.length ? ` — 표에 없음: ${miss.slice(0, 4).join(', ')}` : '') +
          (orph.length ? ` — 파일 없음: ${orph.slice(0, 4).join(', ')}` : ''));
-      const sha = (p) => require('crypto').createHash('sha1').update(fs.readFileSync(p)).digest('hex').slice(0, 16);
+      const sha = (p) => require('./asset-lock.js').lockValue(p).hash;   // ★[T257] 자는 한 곳
       const drift = files.filter(k => tbl[k] && tbl[k] !== sha(path.join(MTD, k + '.webp')));
       ok(drift.length === 0,
          `mountains: 파일 해시가 잠금표와 같다 (어긋남 ${drift.length}${drift.length ? ' — ' + drift.slice(0, 4).join(', ') : ''})`);

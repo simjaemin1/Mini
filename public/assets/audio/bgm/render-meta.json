@@ -72,6 +72,12 @@
    "seconds": 89.28,
    "rms_db": -14.93,
    "peak_db": -1.94
+  },
+  "village_day_jeongak": {
+   "seconds": null,
+   "rms_db": null,
+   "peak_db": null
   }
- }
+ },
+ "_T257": "village_day_jeongak 은 커밋 f75e8158(\"정악대금 도입\")이 곡은 넣고 이 표는 안 고쳐 12곡으로 남아 있었다 [T246 발견 · T257 더함]. 세 칸은 **비워 둔다 — 지어내지 않는다**: 이 표의 수는 compose.py:676 이 합성한 float 배열에서 재는 값이고 배포된 .ogg 에서 잰 값이 아니다(실측 대조 — village_day_trad 는 이 표가 109.02/-14.98/-1.29 인데 ogg 를 ffmpeg 로 재면 108.28/-17.20/-0.09 다 · 12곡 전부 안 맞는다). 그 음원 조각은 저장소에 없다(.gitignore 가 bk_*.zip 을 빼고 samples/ 엔 \"여기에 음원을 넣으세요\" 한 장뿐이다). 채우려면 render_jeongak.py 를 음원 조각과 함께 돌려야 한다."
 }

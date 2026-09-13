@@ -30,7 +30,7 @@
 | **CMU Graphics Lab Motion Capture Database** | 모션 캡처 다섯 클립(07_01 walk · 09_01 run · 80_71 chopping wood · 113_24 Throw · 77_02 standing) | `assets-src/mocap/*.bvh` → 리타깃 포즈표 → `public/assets/char/` 시트 192장 | 연구 자유 · **상업 제품에 포함 가능** · **데이터 자체의 재판매 금지**(변환본도) | **문구**(§1 첫 줄) | T96 · T155 |
 | **cgspeed BVH 변환본** (Bruce Hahne, 2010 "Motionbuilder-friendly BVH conversion release") | 위 CMU 원본(ASF/AMC)을 BVH 로 옮긴 판 | 같은 파일 | 변환자가 **추가 제한을 두지 않는다**("I (Bruce) place no additional restrictions on the use of this particular BVH conversion") | 없음 — CMU 문구로 충분 | T96 |
 | **una-dinosauria/cmu-mocap** (미러) | 위 변환본을 담은 GitHub 사본 — 이 저장소가 실제로 받은 자리(커밋 `09a07f54`) | 같은 파일 | 미러 · 위 둘을 따른다 | 없음 | T96 |
-| **국립국악원 국악기 디지털 음원 — 「단음 다운로드」** | 실제 악기 녹음: 산조가야금(원본 21파일 → 조각 262) · 정악가야금 · 정악대금(5파일 → 조각 113) | `public/assets/audio/bgm/*.ogg`·`*.m4a` 12곡(가야금 음 1574개 · 합성 대체 0) | **공공누리 제1유형(출처표시)** — 상업 이용 가능 · 변형 가능 | **문구**(§1 둘째 줄) | 배치 시절(2026-07-29~31) |
+| **국립국악원 국악기 디지털 음원 — 「단음 다운로드」** | 실제 악기 녹음: 산조가야금(원본 21파일 → 조각 262) · 정악가야금 · 정악대금(5파일 → 조각 113) | `public/assets/audio/bgm/*.ogg`·`*.m4a` **13곡**(가야금 음 1574개 · 합성 대체 0) — 12곡이라 적혀 있던 것을 T257 이 고쳤다(`village_day_jeongak` 누락 · T246 발견) | **공공누리 제1유형(출처표시)** — 상업 이용 가능 · 변형 가능 | **문구**(§1 둘째 줄) | 배치 시절(2026-07-29~31) |
 | **npm 실행 의존성 다섯** | `express` 4 · `ws` 8 · `better-sqlite3` 12 · `pngjs` 7 · `acorn` 8 | 서버(`server/`) · 하네스 | 전부 **MIT** (각 패키지 `LICENSE` 실측) | 배포 시 라이선스 전문 동봉 | — |
 | **SQLite** | `better-sqlite3` 가 품고 있는 엔진 | 서버 DB | **퍼블릭 도메인** | 없음 | — |
 | **폰트** | `Noto Sans KR`·`IBM Plex Mono` 를 **이름으로만** 부른다 | `public/style.css` `--font`/`--mono` | — | **없음 — 파일을 배포하지 않는다** (`@font-face` 0 · 웹폰트 로드 0 · 없으면 시스템 글꼴로 떨어진다) | — |
