@@ -527,8 +527,8 @@ function itemKo(k) {
     if (myTribeId) {
       // 내 길드 정보
       try {
-        const r = await fetch(`/tribe/${myTribeId}`);
-        const data = await r.json();
+        //   ★[T245] 존 경유 — 이 문은 멤버 전원의 id 를 준다. **내 길드**는 존이 안다(id 를 안 보낸다).
+        const data = await window.__centralCall('tribe/info', {});
         const members = (data.members || []).map(m =>
           `<div class="craft-row"><span style="background:${m.color};display:inline-block;width:10px;height:10px;border-radius: 0;margin-right:6px"></span>${m.name}${m.player_id === data.tribe.leader_id ? ' ' : ''}</div>`
         ).join('');
@@ -557,6 +557,8 @@ function itemKo(k) {
             }).join('');
           }
           // 선포 대상 — NPC 길드 우선 (플레이어 길드끼리도 가능)
+          //   ★[T245] `/tribes` 는 **투영**이라 그대로 둔다(공개가 뜻 — 가입하려면 명부가 보여야 한다).
+          //     바깥으로 나가던 `leader_id`·`treasury_json` 만 central 이 걷어냈다(칸은 아래가 쓰는 그것뿐).
           const allR = await fetch('/tribes');
           const allD = await allR.json();
           const candidates = (allD.tribes || []).filter(t => t.id !== myTribeId &&
@@ -648,15 +650,15 @@ function itemKo(k) {
         document.getElementById('tribeCreateBtn').onclick = async () => {
           const name = document.getElementById('tribeNameInput').value.trim();
           if (!name) return;
-          const r = await fetch('/tribe/create', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ player_id: myUsername, name }) });
-          const d = await r.json();
+          //   ★[T245] 존 경유 — `player_id` 를 클라가 안 고른다(바깥에서 남을 길드장으로 만들 수 있었다).
+          const d = await window.__centralCall('tribe/create', { name });
           if (d.ok) { myTribeId = d.tribe_id; myTribeName = d.name; sendPrimary({ type: 'tribe_set', tribeId: d.tribe_id, tribeName: d.name }); renderTribePanel(); }
           else alert(d.error || '생성 실패');
         };
         body.querySelectorAll('[data-join]').forEach(b => b.onclick = async () => {
           const tid = parseInt(b.dataset.join, 10);
-          const r = await fetch('/tribe/join', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ player_id: myUsername, tribe_id: tid }) });
-          const d = await r.json();
+          //   ★[T245] 존 경유 — 고르는 것은 **가입할 길드 id** 뿐이다(누가 드는지는 ws 가 안다).
+          const d = await window.__centralCall('tribe/join', { tribe_id: tid });
           if (d.ok) {
             myTribeId = d.tribe_id; myTribeName = d.name;
             sendPrimary({ type: 'tribe_set', tribeId: d.tribe_id, tribeName: d.name });

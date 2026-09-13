@@ -25,6 +25,8 @@
   //   ★새 인증을 만들지 않는다 — **ws 접속이 본인이다.** 존이 제가 아는 신원을 붙여 안 문을 부른다.
   //   ★다섯이 **한 문법**이다: `central_call` 한 종류로 보내고 `central_result` 한 종류로 받는다.
   //     (새 화면 0 · 새 표 0 — 부르는 자리만 바뀐다.)
+  //   ★[T245 2026-09-13] 같은 길로 **넷이 더 왔다**(`market/orders`·`tribe/info`·`tribe/create`·`tribe/join`).
+  //     문만 늘고 문법은 그대로다 — 새 전역 0 · 새 규약 0(T235 §1 이 정한 그것).
   const _centralWait = new Map();   // door → resolve
   function centralCall(door, extra, timeoutMs) {
     return new Promise((resolve) => {

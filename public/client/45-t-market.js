@@ -12,12 +12,12 @@
   }
   async function refreshMarket() {
     try {
-      const r = await fetch('/market/orders');
-      const data = await r.json();
+      //   ★[T245] 존 경유 — 호가창은 주문마다 **남의 id** 를 싣는다(바깥 문이 아니다 · `market/cancel` 과 같은 길).
+      const data = await window.__centralCall('market/orders', {});
       const list = document.getElementById('marketOrders');
       if (!list) return;
       list.innerHTML = '';
-      for (const o of data.orders.slice(-20).reverse()) {
+      for (const o of ((data && data.orders) || []).slice(-20).reverse()) {
         const li = document.createElement('div');
         li.className = 'market-order';
         const isMine = o.player_id === myUsername;

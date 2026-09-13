@@ -532,6 +532,12 @@ function _graceGet(tok) {
 //     같은 규칙을 써야 하는데(T225), 규칙을 두 파일에 적으면 그게 사본이고 한쪽이 느슨해지는 날
 //     그게 다음 구멍이다. 규칙의 본문·근거는 그 파일 머리에 있다.
 const { isInternal, denyOutside, SECRET_SET } = require('./internal-door');
+// ★[T245] 길드 명부의 **바깥 투영** — `projectPublic`(사람)의 길드판이다. 투영 정본은 이 파일 안에 모은다.
+//   ⚠칸을 늘리려면 `public/client/50-i-panel.js` 가 실제로 그리는지 먼저 보라 — 안 그리면 안 준다.
+const projectTribe = (t) => ({
+  id: t.id, name: t.name, member_count: t.member_count,
+  vp: t.vp, is_npc: t.is_npc, behavior_tier: t.behavior_tier,
+});
 //   ★CORS — 로비는 central 이 **직접 서빙한다**(아래 정적 파일 분기) ⇒ 같은 오리진이라 `*` 가 필요 없다.
 //     존의 문(`/startinfo` 등)은 다른 호스트라 CORS 가 필요하지만 그건 **존이 제 응답에** 붙인다.
 //     ⇒ 기본은 **헤더 없음**. 페이지를 다른 오리진에서 서빙하는 판만 `CENTRAL_CORS` 로 연다.
@@ -967,6 +973,9 @@ const server = http.createServer(async (req, res) => {
     //   ★★[T208] 여기 셋(`/friend/req`·`/friend/del`·`/friends/?by=name`)은 **지목**이라 `findPerson` 이다.
     //     `findAccount`(예약 술어)를 쓰던 동안 게스트는 이름으로도 id 로도 찾히지 않았다 — 실측.
     if (req.url === '/friend/req' && req.method === 'POST') {
+      //   ★★[T245] 안 문 — **부르는 쪽은 존뿐**이다(클라 0). 본문의 `player_id` 를 그대로 믿어서,
+      //     바깥에서 **남의 이름으로 벗을 청할 수 있었다**(실측 200 · 보고 §0-ⓐ). 문법은 T235 의 다섯과 같다.
+      if (!isInternal(req)) return denyOutside(res);
       const { player_id: pid, name } = await readBody(req);
       const me = stmtGetPlayer.get(String(pid || ''));
       if (!me) return jsonResp(res, 404, { ok: false, reason: 'no_self' });
@@ -977,6 +986,8 @@ const server = http.createServer(async (req, res) => {
       return jsonResp(res, 200, { ...r, name: other.name, player_id: other.player_id });
     }
     if (req.url === '/friend/del' && req.method === 'POST') {
+      //   ★[T245] 안 문 — 위와 한 짝이다. 바깥에서 **남의 벗을 끊을 수 있었다**(실측 200 `had:true`).
+      if (!isInternal(req)) return denyOutside(res);
       const { player_id: pid, name } = await readBody(req);
       const other = findPerson(String(name || '').trim());   // ★[T208] 지목 — 게스트도 끊을 수 있어야 한다
       if (!other) return jsonResp(res, 200, { ok: false, reason: 'no_such_name' });
@@ -1065,6 +1076,9 @@ const server = http.createServer(async (req, res) => {
 
     // === 거래소 ===
     if (req.url === '/market/orders' && req.method === 'GET') {
+      //   ★★[T245] 안 문 — 호가창은 **주문마다 `player_id` 를 싣는다**(패널이 '누구'를 그린다).
+      //     남의 id 를 바깥에 뿌리지 않으려고 **존 경유**로 옮겼다(`market/cancel` 과 같은 문법 · T235).
+      if (!isInternal(req)) return denyOutside(res);
       return jsonResp(res, 200, { orders: Array.from(orders.values()) });
     }
     if (req.url === '/market/order' && req.method === 'POST') {
@@ -1142,9 +1156,16 @@ const server = http.createServer(async (req, res) => {
       // lazy vp decay 적용 (조회 시점에 계산)
       const now = Date.now();
       for (const r of rows) r.vp = computeGuildVp(r.vp, r.vp_updated_at, now);
+      //   ★★[T245] **투영**(T217 문법) — 길드 명부는 공개가 뜻이다(가입하려면 보여야 한다).
+      //     그런데 종전엔 `leader_id`(= 남의 playerId)와 `treasury_json`(= 남의 금고)까지 딸려 나갔다.
+      //     ⇒ 바깥엔 **패널이 실제로 그리는 칸만** 준다(id·이름·인원·명성·NPC 여부 · `50-i-panel.js`).
+      if (!isInternal(req)) return jsonResp(res, 200, { tribes: rows.map(projectTribe) });
       return jsonResp(res, 200, { tribes: rows });
     }
     if (req.url.startsWith('/tribe/') && req.method === 'GET') {
+      //   ★★[T245] 안 문 — 이 문은 **멤버 전원의 `player_id`·이름**과 금고를 준다(이름 열거 창이었다).
+      //     클라는 늘 **제 길드**만 본다 ⇒ 존이 제가 아는 `player.tribeId` 로 부른다(id 를 클라가 안 고른다).
+      if (!isInternal(req)) return denyOutside(res);
       const id = parseInt(req.url.slice('/tribe/'.length), 10);
       const t = db.prepare('SELECT * FROM tribes WHERE id = ?').get(id);
       if (!t) return jsonResp(res, 404, { error: 'not found' });
@@ -1156,6 +1177,8 @@ const server = http.createServer(async (req, res) => {
     }
     // Phase 14.2 — 길드 vp 부과 (zone에서 호출): 멤버 악행 시 길드도 가산
     if (req.url === '/tribe/add_vp' && req.method === 'POST') {
+      //   ★[T245] 안 문 — 부르는 쪽은 존뿐. 바깥에서 **아무 길드의 명성을 올릴 수 있었다**(실측 vp 0→77).
+      if (!isInternal(req)) return denyOutside(res);
       const data = await readBody(req);
       const tribeId = parseInt(data.tribe_id, 10);
       const amount = parseFloat(data.amount) || 0;
@@ -1172,6 +1195,8 @@ const server = http.createServer(async (req, res) => {
     }
     // Phase 14.2 — 길드 금고 입출금 (zone에서 호출)
     if (req.url === '/tribe/treasury' && req.method === 'POST') {
+      //   ★[T245] 안 문 — 부르는 쪽은 존뿐. 바깥에서 **아무 길드의 금고를 채울 수 있었다**(실측 wood 999).
+      if (!isInternal(req)) return denyOutside(res);
       const data = await readBody(req);
       const tribeId = parseInt(data.tribe_id, 10);
       const delta = data.delta || {}; // { wood: 5, stone: -2 } 등
@@ -1254,6 +1279,8 @@ const server = http.createServer(async (req, res) => {
 
     // Phase 14.4 — NPC 길드 upsert (zone 부팅 시 마을을 1급 길드로 등록)
     if (req.url === '/tribe/npc_upsert' && req.method === 'POST') {
+      //   ★[T245] 안 문 — 부르는 쪽은 존의 NPC 길드 시딩뿐. 바깥에서 **길드를 만들 수 있었다**(실측 200).
+      if (!isInternal(req)) return denyOutside(res);
       const data = await readBody(req);
       const name = (data.name || '').trim().slice(0, 30);
       const tier = ['passive', 'scripted', 'strategic'].includes(data.tier) ? data.tier : 'passive';
@@ -1276,6 +1303,8 @@ const server = http.createServer(async (req, res) => {
     //     ⚠수락 쪽(`/tribe/invite_accept`·`/tribe/invites`)은 처음부터 `player_id` 로 물어서 멀쩡했다 —
     //       막혀 있던 것은 **이름으로 지목하는 그 한 줄**뿐이다(§0-ⓐ 표).
     if (req.url === '/tribe/invite' && req.method === 'POST') {
+      //   ★[T245] 안 문 — 부르는 쪽은 존뿐. 바깥에서 **남의 이름으로 남을 부를 수 있었다**(실측 200).
+      if (!isInternal(req)) return denyOutside(res);
       const { player_id: pid, name } = await readBody(req);
       const me = stmtGetPlayer.get(String(pid || ''));
       if (!me) return jsonResp(res, 404, { ok: false, reason: 'no_self' });
@@ -1297,6 +1326,8 @@ const server = http.createServer(async (req, res) => {
       return jsonResp(res, 200, { ok: true, invites: invitesOf(pid) });
     }
     if (req.url === '/tribe/invite_accept' && req.method === 'POST') {
+      //   ★[T245] 안 문 — 부르는 쪽은 존뿐. 바깥에서 **남을 길드에 넣을 수 있었다**(실측 `member_count` 2).
+      if (!isInternal(req)) return denyOutside(res);
       const { player_id: pid, tribe_id } = await readBody(req);
       const me = stmtGetPlayer.get(String(pid || ''));
       if (!me) return jsonResp(res, 404, { ok: false, reason: 'no_self' });
@@ -1315,12 +1346,16 @@ const server = http.createServer(async (req, res) => {
     }
     // ★[T159] 곳간 문 — 읽기(존이 캐시로 쓴다) · 쓰기(길드장만). T128 `/tribe/mode` 와 같은 판정.
     if (req.url === '/tribe/granary' && req.method === 'POST') {
+      //   ★[T245] 안 문 — 부르는 쪽은 존뿐. 바깥에서 **남의 길드 곳간 상태를 읽을 수 있었다**.
+      if (!isInternal(req)) return denyOutside(res);
       const { tribe_id } = await readBody(req);
       const t = stmtTribeGet.get(tribe_id | 0);
       if (!t) return jsonResp(res, 200, { ok: false, reason: 'no_tribe' });
       return jsonResp(res, 200, { ok: true, tribe_id: t.id, name: t.name, open: (t.granary_open == null) ? true : !!t.granary_open });
     }
     if (req.url === '/tribe/granary_set' && req.method === 'POST') {
+      //   ★[T245] 안 문 — 리더 판정이 **본문의 `player_id`** 라, 바깥에서 리더인 척하면 통과했다(실측 곳간 닫힘).
+      if (!isInternal(req)) return denyOutside(res);
       const { player_id: pid, open } = await readBody(req);
       const me = stmtGetPlayer.get(String(pid || ''));
       if (!me || !me.tribe_id) return jsonResp(res, 200, { ok: false, reason: 'not_in_tribe' });
@@ -1331,6 +1366,8 @@ const server = http.createServer(async (req, res) => {
       return jsonResp(res, 200, { ok: true, tribe_id: t.id, name: t.name, open: !!open });
     }
     if (req.url === '/tribe/mode' && req.method === 'POST') {
+      //   ★[T245] 안 문 — 위와 같은 자리(리더 판정이 본문 `player_id`). 실측: 가입 모드가 바뀌었다.
+      if (!isInternal(req)) return denyOutside(res);
       const { player_id: pid, mode } = await readBody(req);
       const me = stmtGetPlayer.get(String(pid || ''));
       if (!me || !me.tribe_id) return jsonResp(res, 200, { ok: false, reason: 'not_in_tribe' });
@@ -1342,6 +1379,8 @@ const server = http.createServer(async (req, res) => {
       return jsonResp(res, 200, { ok: true, tribe_id: t.id, name: t.name, mode: m });
     }
     if (req.url === '/tribe/intro' && req.method === 'POST') {
+      //   ★[T245] 안 문 — 위와 같은 자리. 실측: 소개문이 바깥 글로 바뀌었다.
+      if (!isInternal(req)) return denyOutside(res);
       const { player_id: pid, intro } = await readBody(req);
       const me = stmtGetPlayer.get(String(pid || ''));
       if (!me || !me.tribe_id) return jsonResp(res, 200, { ok: false, reason: 'not_in_tribe' });
@@ -1362,6 +1401,9 @@ const server = http.createServer(async (req, res) => {
       return jsonResp(res, 200, { ok: true, intros: rows });
     }
     if (req.url === '/tribe/create' && req.method === 'POST') {
+      //   ★★[T245] 안 문 — 바깥에서 **남을 길드장으로 만들 수 있었다**(실측 200 · `leader_id` = 피해자).
+      //     클라가 직접 부르던 둘 중 하나다 ⇒ **존 경유**(ws 접속이 본인 · T235 문법 · 새 인증 0).
+      if (!isInternal(req)) return denyOutside(res);
       const data = await readBody(req);
       const playerId = data.player_id;
       const name = (data.name || '').trim().slice(0, 20);
@@ -1381,6 +1423,8 @@ const server = http.createServer(async (req, res) => {
       }
     }
     if (req.url === '/tribe/join' && req.method === 'POST') {
+      //   ★★[T245] 안 문 — 바깥에서 **남을 길드에 넣을 수 있었다**(실측 200). 위와 한 짝이다.
+      if (!isInternal(req)) return denyOutside(res);
       const data = await readBody(req);
       const playerId = data.player_id;
       const tribeId = parseInt(data.tribe_id, 10);

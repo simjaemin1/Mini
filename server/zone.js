@@ -3081,6 +3081,8 @@ const server = http.createServer((req, res) => {
   //   추정으로 고치지 않는다 — 무거운 작업이 **언제 얼마나** 걸렸는지 남기고,
   //   클라가 잰 RTT 와 **시간 상관**을 본다(`scripts/rtt-metrics.js`).
   if (req.url && req.url.startsWith('/perf') && req.method === 'GET') {
+    //   ★[T245] 안 문 — 존 내부 상태(`econTick`·`siteLog`)를 그대로 준다. 부르는 쪽은 하네스뿐이다.
+    if (!InternalDoor.isInternal(req)) return InternalDoor.denyOutside(res);   // ★[T245] 안 문
     res.writeHead(200, { 'Content-Type': 'application/json' });
     // ★[T1 §0·§2-④ 2026-09-01] 일틱 **단계별·조각별** 소요와 **이벤트 루프 지연**을 같이 낸다 —
     //   `econ_day 480ms` 한 수만으론 어느 단계가 살찐 놈인지도, 루프가 얼마나 막혔는지도 알 수 없다.
@@ -3276,6 +3278,8 @@ const server = http.createServer((req, res) => {
     return;
   }
   if (req.url === '/metrics' && req.method === 'GET') {
+    //   ★[T245] 안 문 — 접속자·관측자·건물 수를 준다. 프로메테우스는 **사설 주소**라 그대로 긁는다(T217 폴백).
+    if (!InternalDoor.isInternal(req)) return InternalDoor.denyOutside(res);   // ★[T245] 안 문
     // Prometheus exposition format (간단 버전)
     res.writeHead(200, { 'Content-Type': 'text/plain' });
     const lines = [
@@ -3303,6 +3307,9 @@ const server = http.createServer((req, res) => {
   }
   // === Phase 5-I: 경계 전투 — 이웃 zone이 보낸 ghost 스냅샷 수신 ===
   if (req.url === '/ghost_sync' && req.method === 'POST') {
+    //   ★★[T245] 안 문 — **존↔존** 문이다(클라 0). 바깥에서 없는 존 이름으로 **유령과 건물을 주입**할 수 있었다.
+    //     부르는 쪽은 `postJSON` 하나뿐이고, 거기에 `x-zone-secret` 을 붙였다(사본 0 · T217 문법).
+    if (!InternalDoor.isInternal(req)) return InternalDoor.denyOutside(res);   // ★[T245] 안 문
     let body = ''; req.on('data', c => body += c);
     req.on('end', () => {
       try {
@@ -3322,6 +3329,8 @@ const server = http.createServer((req, res) => {
   }
   // === Phase 5-I: 발사자 zone이 위임한 cross-zone 데미지 (내 플레이어가 경계 너머에서 맞음) ===
   if (req.url === '/cross_damage' && req.method === 'POST') {
+    //   ★★[T245] 안 문 — 존↔존. 실측: 바깥에서 **접속 중인 사람의 hp 를 100 → 45 로 깎았다**.
+    if (!InternalDoor.isInternal(req)) return InternalDoor.denyOutside(res);   // ★[T245] 안 문
     let body = ''; req.on('data', c => body += c);
     req.on('end', () => {
       try {
@@ -3338,6 +3347,8 @@ const server = http.createServer((req, res) => {
   // POST /handoff_prepare { token, name, x, y, vx, vy, inventory }
   // target 서버는 토큰을 받아두고, 클라가 그 토큰으로 접속하면 그 상태로 플레이어 생성.
   if (req.url === '/handoff_prepare' && req.method === 'POST') {
+    //   ★★[T245] 안 문 — 존↔존. 바깥에서 **입장 토큰을 위조**할 수 있었다(그 토큰으로 붙으면 그 사람이 된다).
+    if (!InternalDoor.isInternal(req)) return InternalDoor.denyOutside(res);   // ★[T245] 안 문
     let body = '';
     req.on('data', (chunk) => body += chunk);
     req.on('end', () => {
@@ -3381,6 +3392,8 @@ const server = http.createServer((req, res) => {
   // === 크로스존 kick — 다른 zone에서 같은 player가 들어왔다는 알림 ===
   // POST /kick_player { player_id }
   if (req.url === '/kick_player' && req.method === 'POST') {
+    //   ★★[T245] 안 문 — 존↔존. 실측: 바깥에서 **접속 중인 사람을 끊었다**(`kicked` 수신 · 소켓 CLOSED).
+    if (!InternalDoor.isInternal(req)) return InternalDoor.denyOutside(res);   // ★[T245] 안 문
     let body = '';
     req.on('data', (chunk) => body += chunk);
     req.on('end', () => {
@@ -3410,6 +3423,8 @@ const server = http.createServer((req, res) => {
   // === 핸드오프 ACK — target이 토큰 사용해서 player 생성했다는 알림 ===
   // POST /handoff_ack { token }
   if (req.url === '/handoff_ack' && req.method === 'POST') {
+    //   ★★[T245] 안 문 — 존↔존. 바깥에서 **진행 중인 인계를 취소**할 수 있었다.
+    if (!InternalDoor.isInternal(req)) return InternalDoor.denyOutside(res);   // ★[T245] 안 문
     let body = '';
     req.on('data', (chunk) => body += chunk);
     req.on('end', () => {
@@ -4646,6 +4661,13 @@ function handlePlayerInput(player, raw) {
     else if (door === 'war/declare') reply(central.warDeclare(player.playerId, player.tribeId, msg.defender_guild_id | 0));
     else if (door === 'war/end') reply(central.warEnd(msg.war_id));
     else if (door === 'tribe/leave') reply(central.tribeLeave(player.playerId));
+    //   ★★[T245] 클라가 직접 부르던 넷이 여기로 왔다 — **문만 늘고 문법은 그대로다**(T235 §1).
+    //     ⚠`player_id`·`tribe_id` 를 클라가 안 고른다: 주문 목록은 신원이 없고, 길드 상세는 **내 길드**뿐이고,
+    //       길드 생성·가입은 **내 이름**으로만 된다. 클라가 고르는 것은 `가입할 길드 id`·`이름` 뿐이다.
+    else if (door === 'market/orders') reply(central.marketOrders());
+    else if (door === 'tribe/info') reply(central.getTribe(player.tribeId | 0).then((d) => d || { ok: false, reason: 'no_tribe' }));
+    else if (door === 'tribe/create') reply(central.tribeCreate(player.playerId, String(msg.name || '')));
+    else if (door === 'tribe/join') reply(central.tribeJoin(player.playerId, msg.tribe_id | 0));
     else send(player.ws, { type: 'central_result', door, ok: false, data: { error: '모르는 문' } });
   }
   else if (msg.type === 'pvp_set') {
@@ -12073,7 +12095,11 @@ function postJSON(host, port, path, data) {
                      useHttps ? 443 : port;
     const req = proto.request({
       hostname: host, port: useHttps ? 443 : port, path, method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+      //   ★★[T245] 존↔존도 **안 문**을 두드린다 — 열쇠는 여기 한 자리에서 붙인다(사본 0 · `central-client` 와 같은 문법).
+      //     ⚠비밀이 안 잡혀 있으면 헤더가 안 붙고, 받는 쪽은 **사설 주소 폴백**으로 판정한다(T217 조건 그대로).
+      //       같은 호스트의 컨테이너끼리면 그대로 돌고, **호스트가 갈리면 `CENTRAL_SECRET` 이 양쪽에 있어야 한다**(회부).
+      headers: Object.assign({ 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+        InternalDoor.SECRET_SET ? { [InternalDoor.HEADER]: process.env.CENTRAL_SECRET } : {}),
     }, (res) => {
       let buf = '';
       res.on('data', (chunk) => buf += chunk);

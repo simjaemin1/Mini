@@ -157,10 +157,16 @@ async function getTribe(id) {
   const r = await request('GET', `/tribe/${id}`);
   return r.status === 200 ? r.data : null;
 }
+// ★★[T245] 클라가 직접 부르던 넷 — 존이 대신 부른다(T235 의 그 문법 · 새 규약 0).
+//   ⚠`player_id` 는 **존이 붙인다**. 여기 인자로 받는 것은 존이 ws 로 이미 아는 그 값이다.
+const marketOrders = () => _softDoor('GET', '/market/orders')(undefined);
+const tribeCreate = (playerId, name) => _softDoor('POST', '/tribe/create')({ player_id: playerId, name });
+const tribeJoin = (playerId, tribeId) => _softDoor('POST', '/tribe/join')({ player_id: playerId, tribe_id: tribeId | 0 });
 
 module.exports = { authenticate, checkUsernameTaken, getPlayer, updatePlayer, request,
   guestIdentity, promoteGuest,   // ★[배치 13] 게스트 영속 신원 · ★[배치 14] 승계
   marketOrder, marketCancel, warDeclare, warEnd, tribeLeave,   // ★[T235] 존이 대신 부르는 다섯
   friendRequest, friendRemove, friendsOf, friendsOfName, friendPending,   // ★[T139] 밀린 요청 문 하나
   tribeInvite, tribeInvites, tribeInviteAccept, tribeMode, tribeIntro, tribeIntros, tribeGranary, tribeGranarySet,   // ★[T128] 길드 문 여섯   // ★[T115] 친구 — 문 셋(실패는 빈 답)
-  tribeAddVp, tribeTreasury, tribeNpcUpsert, getTribe };
+  tribeAddVp, tribeTreasury, tribeNpcUpsert, getTribe,
+  marketOrders, tribeCreate, tribeJoin };   // ★[T245] 존이 대신 부르는 넷

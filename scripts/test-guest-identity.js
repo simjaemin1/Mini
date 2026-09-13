@@ -467,7 +467,8 @@ const closeWs = (st) => new Promise((r) => { st.ws.on('close', r); try { st.ws.c
       outs.map(([n, r]) => `${n}:${r.s}`).join(' '));
     // ⓑ ★자명 통과 금지 — 그 다섯이 **실제로 아무것도 안 바꿨다**
     const vAfter = await gj('/player/t235vic', IN3);
-    const ordsAfter = await gj('/market/orders', OUT3);
+    //   ⚠[T245] `/market/orders` 는 이제 **안 문**이다(호가창이 남의 id 를 싣는다) — 안에서 읽는다.
+    const ordsAfter = await gj('/market/orders', IN3);
     const mine = ((ordsAfter.d && ordsAfter.d.orders) || []).filter((o) => o.player_id === 't235vic');
     ok(!!(vAfter.d && vAfter.d.player && vAfter.d.player.tribe_id === (tv.d && tv.d.tribe_id)),
       '⑦b ★피해자가 **길드에 그대로 있다**(고치기 전엔 `tribe_id` 가 null 이 됐다)', `tribe_id ${vAfter.d && vAfter.d.player && vAfter.d.player.tribe_id}`);
@@ -476,7 +477,7 @@ const closeWs = (st) => new Promise((r) => { st.ws.on('close', r); try { st.ws.c
     ok(((warsAfter.d && warsAfter.d.wars) || []).length === 0, '⑦b3 ★전쟁이 **안 났다**(남의 길드로 선포되지 않았다)', JSON.stringify((warsAfter.d && warsAfter.d.wars) || []).slice(0, 60));
     // ⓒ 안 문(=존이 대신 부르는 그 길)은 **산다**
     const inCancel = await pj('/market/cancel', { player_id: 't235vic', order_id: oid }, IN3);
-    const ordsIn = await gj('/market/orders', OUT3);
+    const ordsIn = await gj('/market/orders', IN3);   // ★[T245] 안 문
     ok(inCancel.s === 200 && ((ordsIn.d && ordsIn.d.orders) || []).filter((o) => o.player_id === 't235vic').length === 0,
       '⑦c ★안 문에서는 **그대로 산다** — 존이 제 신원을 붙여 부르는 길이 이것이다', `status ${inCancel.s}`);
     const inLeave = await pj('/tribe/leave', { player_id: 't235vic' }, IN3);
@@ -509,37 +510,37 @@ const closeWs = (st) => new Promise((r) => { st.ws.on('close', r); try { st.ws.c
       'central POST =/guest':                    ['본인', '공개뜻'],
       'central POST =/promote':                  ['본인', '공개뜻'],
       'central POST =/check_username':           ['공개', '회부2'],
-      'central POST =/friend/req':               ['공개', '쓰기남음'],
-      'central POST =/friend/del':               ['공개', '쓰기남음'],
+      'central POST =/friend/req': ['안문', '닫힘'],
+      'central POST =/friend/del': ['안문', '닫힘'],
       'central POST =/friend/pending':           ['안문', '닫힘'],
       'central GET ^/friends/':                  ['투영', '닫힘'],
       'central GET ^/player/':                   ['투영', '닫힘'],
       'central POST ^/player/':                  ['안문', '닫힘'],
-      'central GET =/market/orders':             ['공개', '읽힘남음'],
+      'central GET =/market/orders': ['안문', '닫힘'],
       'central POST =/market/order':             ['안문', '닫힘'],
       'central POST =/market/cancel':            ['안문', '닫힘'],
-      'central GET =/tribes':                    ['공개', '읽힘남음'],
-      'central GET ^/tribe/':                    ['공개', '읽힘남음'],
-      'central POST =/tribe/add_vp':             ['공개', '쓰기남음'],
-      'central POST =/tribe/treasury':           ['공개', '쓰기남음'],
+      'central GET =/tribes': ['투영', '닫힘'],
+      'central GET ^/tribe/': ['안문', '닫힘'],
+      'central POST =/tribe/add_vp': ['안문', '닫힘'],
+      'central POST =/tribe/treasury': ['안문', '닫힘'],
       'central GET =/wars/active':               ['공개', '공개뜻'],
       'central POST =/war/declare':              ['안문', '닫힘'],
       'central POST =/war/end':                  ['안문', '닫힘'],
-      'central POST =/tribe/npc_upsert':         ['공개', '쓰기남음'],
-      'central POST =/tribe/invite':             ['공개', '쓰기남음'],
+      'central POST =/tribe/npc_upsert': ['안문', '닫힘'],
+      'central POST =/tribe/invite': ['안문', '닫힘'],
       'central POST =/tribe/invites':            ['안문', '닫힘'],
-      'central POST =/tribe/invite_accept':      ['공개', '쓰기남음'],
-      'central POST =/tribe/granary':            ['공개', '읽힘남음'],
-      'central POST =/tribe/granary_set':        ['공개', '쓰기남음'],
-      'central POST =/tribe/mode':               ['공개', '쓰기남음'],
-      'central POST =/tribe/intro':              ['공개', '쓰기남음'],
+      'central POST =/tribe/invite_accept': ['안문', '닫힘'],
+      'central POST =/tribe/granary': ['안문', '닫힘'],
+      'central POST =/tribe/granary_set': ['안문', '닫힘'],
+      'central POST =/tribe/mode': ['안문', '닫힘'],
+      'central POST =/tribe/intro': ['안문', '닫힘'],
       'central GET =/tribe_intros':              ['공개', '공개뜻'],
-      'central POST =/tribe/create':             ['공개', '쓰기남음'],
-      'central POST =/tribe/join':               ['공개', '쓰기남음'],
+      'central POST =/tribe/create': ['안문', '닫힘'],
+      'central POST =/tribe/join': ['안문', '닫힘'],
       'central POST =/tribe/leave':              ['안문', '닫힘'],
       'central GET =/terrain.json':              ['공개', '공개뜻'],
       // ── zone ─────────────────────────────────────────────────────────────
-      'zone GET ^/perf':                         ['공개', '읽힘남음'],
+      'zone GET ^/perf': ['안문', '닫힘'],
       'zone GET =/health':                       ['공개', '공개뜻'],
       'zone GET ^/routedbg':                     ['안문', '닫힘'],
       'zone GET ^/bodydbg':                      ['안문', '닫힘'],
@@ -552,12 +553,12 @@ const closeWs = (st) => new Promise((r) => { st.ws.on('close', r); try { st.ws.c
       'zone GET ^/startinfo':                    ['공개', '회부9'],
       'zone GET ^/lifedbg':                      ['안문', '닫힘'],
       'zone GET ^/roomdbg':                      ['안문', '닫힘'],
-      'zone GET =/metrics':                      ['공개', '읽힘남음'],
-      'zone POST =/ghost_sync':                  ['공개', '쓰기남음'],
-      'zone POST =/cross_damage':                ['공개', '쓰기남음'],
-      'zone POST =/handoff_prepare':             ['공개', '쓰기남음'],
-      'zone POST =/kick_player':                 ['공개', '쓰기남음'],
-      'zone POST =/handoff_ack':                 ['공개', '쓰기남음'],
+      'zone GET =/metrics': ['안문', '닫힘'],
+      'zone POST =/ghost_sync': ['안문', '닫힘'],
+      'zone POST =/cross_damage': ['안문', '닫힘'],
+      'zone POST =/handoff_prepare': ['안문', '닫힘'],
+      'zone POST =/kick_player': ['안문', '닫힘'],
+      'zone POST =/handoff_ack': ['안문', '닫힘'],
       // ── dispatcher ───────────────────────────────────────────────────────
       'dispatcher GET =/health/zones':           ['공개', '공개뜻'],
     };
@@ -640,6 +641,122 @@ const closeWs = (st) => new Promise((r) => { st.ws.on('close', r); try { st.ws.c
       + ` · 남음 ${cnt((k) => ROUTES[k][1].endsWith('남음') || ROUTES[k][1].startsWith('회부'))}`
       + ` (쓰기 ${cnt((k) => ROUTES[k][1] === '쓰기남음')} · 읽힘 ${cnt((k) => ROUTES[k][1] === '읽힘남음')}`
       + ` · 회부됨 ${cnt((k) => ROUTES[k][1].startsWith('회부'))})`);
+  }
+
+  // ══ ⑨ ★★[T245] **남은 스물셋** — 두 문법으로 닫았다(안 문 · 존 경유 · 투영) ══════
+  //   T242 §0-ⓐ 가 센 ⚠ 25 중 #2·#9 를 뺀 23 이다. 고치기 전 실측(보고 T245 §0-ⓐ):
+  //   남의 이름으로 벗을 청하고 끊고 · 남을 길드장으로 만들고 · 남의 금고를 채우고 · 남의 명성을 올리고 ·
+  //   남을 길드에 넣고 · **접속 중인 사람을 끊고 때렸다** — 전부 `200`.
+  //   ★새 인증 0 — 존만 부르던 것은 안 문, 클라가 부르던 넷은 존 경유(ws 접속이 본인 · 족보 179).
+  say('\n[⑨ 남은 스물셋 — T245]');
+  {
+    const OUT9 = {}, IN9 = { 'x-zone-secret': SECRET };
+    const pj = async (port, path2, body, hdr) => {
+      try {
+        const r = await fetch(`http://localhost:${port}${path2}`, { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, hdr || {}), body: JSON.stringify(body) });
+        let d; try { d = await r.json(); } catch (e) { d = null; } return { s: r.status, d };
+      } catch (e) { return { s: 0, d: null }; }
+    };
+    const gj = async (port, path2, hdr) => {
+      try { const r = await fetch(`http://localhost:${port}${path2}`, { headers: hdr || {} }); let d; try { d = await r.json(); } catch (e) { d = null; } return { s: r.status, d }; }
+      catch (e) { return { s: 0, d: null }; }
+    };
+    // ── 전제 — 피해자를 **안 문으로** 세운다(그 길이 곧 존이 쓰는 길이다) ──
+    await pj(CPORT, '/auth', { username: 't245vic', password: 'pw', color: '#5a9ae0', home_zone: 'hanbando', home_x: 1, home_y: 2 }, IN9);
+    await pj(CPORT, '/auth', { username: 't245oth', password: 'pw', color: '#5a9ae0', home_zone: 'hanbando', home_x: 1, home_y: 2 }, IN9);
+    const tv9 = await pj(CPORT, '/tribe/create', { player_id: 't245vic', name: 'T245피해길드' }, IN9);
+    const TID9 = tv9.d && tv9.d.tribe_id;
+    await pj(CPORT, '/tribe/intro', { player_id: 't245vic', intro: '원래 소개문' }, IN9);
+    await pj(CPORT, '/tribe/treasury', { tribe_id: TID9, delta: { wood: 7 } }, IN9);
+    ok(!!TID9, '⑨ 전제: 피해자의 길드가 **안 문으로** 실제로 섰다(아래가 자명 통과가 아니다) · tribe_id ' + TID9);
+
+    // ── ⓐ 바깥에서 스물셋을 남의 이름으로 두드린다 ──────────────────────────
+    const 바깥 = [];
+    const P = async (n, port, path2, body) => 바깥.push([n, (await pj(port, path2, body, OUT9)).s]);
+    const G = async (n, port, path2) => 바깥.push([n, (await gj(port, path2, OUT9)).s]);
+    await P('friend/req', CPORT, '/friend/req', { player_id: 't245vic', name: 't245oth' });
+    await P('friend/del', CPORT, '/friend/del', { player_id: 't245vic', name: 't245oth' });
+    await P('tribe/add_vp', CPORT, '/tribe/add_vp', { tribe_id: TID9, amount: 99, reason: '바깥' });
+    await P('tribe/treasury', CPORT, '/tribe/treasury', { tribe_id: TID9, delta: { wood: 999 } });
+    await P('tribe/npc_upsert', CPORT, '/tribe/npc_upsert', { name: '바깥이만든NPC', tier: 'strategic' });
+    await P('tribe/invite', CPORT, '/tribe/invite', { player_id: 't245vic', name: 't245oth' });
+    await P('tribe/invite_accept', CPORT, '/tribe/invite_accept', { player_id: 't245oth', tribe_id: TID9 });
+    await P('tribe/granary', CPORT, '/tribe/granary', { tribe_id: TID9 });
+    await P('tribe/granary_set', CPORT, '/tribe/granary_set', { player_id: 't245vic', open: false });
+    await P('tribe/mode', CPORT, '/tribe/mode', { player_id: 't245vic', mode: 'invite' });
+    await P('tribe/intro', CPORT, '/tribe/intro', { player_id: 't245vic', intro: '바깥이 쓴 소개문' });
+    await P('tribe/create', CPORT, '/tribe/create', { player_id: 't245oth', name: '바깥이만든길드' });
+    await P('tribe/join', CPORT, '/tribe/join', { player_id: 't245oth', tribe_id: TID9 });
+    await G('market/orders', CPORT, '/market/orders');
+    await G('tribe/<id>', CPORT, '/tribe/' + TID9);
+    await G('perf', ZPORT, '/perf');
+    await G('metrics', ZPORT, '/metrics');
+    ok(바깥.length === 17 && 바깥.every(([, st]) => st === 404),
+      '⑨ⓐ ★★열일곱이 **바깥에서 404**(문이 있는지도 안 알린다) · ' + 바깥.map(([n, st]) => n + ':' + st).join(' '));
+
+    // ── ⓑ ★자명 통과 금지 — **아무것도 안 바뀌었다** ─────────────────────────
+    const tAfter = await gj(CPORT, '/tribe/' + TID9, IN9);
+    const t9 = tAfter.d && tAfter.d.tribe;
+    ok(!!t9 && String(t9.intro || '') === '원래 소개문',
+      '⑨ⓑ ★소개문이 **그대로**다(고치기 전엔 바깥 글로 바뀌었다) · ' + JSON.stringify(t9 && t9.intro));
+    ok(!!tAfter.d && JSON.stringify(tAfter.d.treasury || {}) === '{"wood":7}',
+      '⑨ⓑ2 ★금고가 **그대로**다(고치기 전엔 wood 999 가 들어갔다) · ' + JSON.stringify(tAfter.d && tAfter.d.treasury));
+    ok(!!t9 && (t9.vp | 0) === 0, '⑨ⓑ3 ★명성이 **그대로 0**이다(고치기 전엔 77 이 올랐다) · vp ' + (t9 && t9.vp));
+    ok(!!t9 && (t9.granary_open == null || !!t9.granary_open) && String(t9.join_mode || 'open') === 'open',
+      '⑨ⓑ4 ★곳간·가입 모드가 **그대로**다 · 곳간 ' + (t9 && t9.granary_open) + ' · 모드 ' + (t9 && t9.join_mode));
+    const mem9 = (tAfter.d && tAfter.d.members) || [];
+    ok(mem9.length === 1 && mem9[0].player_id === 't245vic',
+      '⑨ⓑ5 ★길드원이 **한 사람 그대로**다(고치기 전엔 남이 들어왔다) · ' + mem9.map((m) => m.player_id).join(','));
+    const pend9 = await pj(CPORT, '/friend/pending', { player_id: 't245oth' }, IN9);
+    ok(!!(pend9.d && Array.isArray(pend9.d.requests) && pend9.d.requests.length === 0),
+      '⑨ⓑ6 ★밀린 벗 요청이 **0**이다(고치기 전엔 피해자 이름으로 꽂혔다) · ' + JSON.stringify(pend9.d && pend9.d.requests));
+    const allT9 = await gj(CPORT, '/tribes', IN9);
+    ok(!((allT9.d && allT9.d.tribes) || []).some((t) => /바깥이만든/.test(String(t.name))),
+      '⑨ⓑ7 ★바깥이 만든 길드가 **없다**(`/tribe/create`·`/tribe/npc_upsert` 둘 다) · 길드 ' + ((allT9.d && allT9.d.tribes) || []).length + '개');
+
+    // ── ⓒ `/tribes` 는 **투영**이다 — 공개가 뜻이되 남의 열쇠는 안 준다 ──────
+    const pubT = await gj(CPORT, '/tribes', OUT9);
+    const pubRow = ((pubT.d && pubT.d.tribes) || [])[0];
+    ok(pubT.s === 200 && !!pubRow, '⑨ⓒ `/tribes` 는 **바깥에서도 산다**(가입하려면 명부가 보여야 한다) · ' + ((pubT.d && pubT.d.tribes) || []).length + '개');
+    ok(!!pubRow && pubRow.leader_id === undefined && pubRow.treasury_json === undefined && pubRow.vp_updated_at === undefined,
+      '⑨ⓒ2 ★★그런데 `leader_id`·`treasury_json` 은 **없다**(투영 · T217 문법) · 칸 ' + (pubRow ? Object.keys(pubRow).join(',') : ''));
+    ok(!!pubRow && pubRow.name !== undefined && pubRow.member_count !== undefined && pubRow.vp !== undefined,
+      '⑨ⓒ3 패널이 그리는 칸(이름·인원·명성)은 **그대로 있다** — 투영이 화면을 깨지 않는다');
+    const inRow = ((allT9.d && allT9.d.tribes) || [])[0];
+    ok(!!inRow && inRow.leader_id !== undefined && inRow.treasury_json !== undefined,
+      '⑨ⓒ4 ★안 문에서는 **전부 준다**(자명 통과 금지 — 투영이 늘 비어 있는 게 아니다)');
+
+    // ── ⓓ 존↔존 다섯 — 바깥에서 못 두드린다 · **접속자가 멀쩡하다** ─────────
+    const B = await connectWs('name=%ED%94%BC%ED%95%B4%EC%9E%90T245');
+    ok(!!B.welcome, '⑨ⓓ 전제: 사람 하나가 실제로 존에 붙어 있다(아래가 자명 통과가 아니다)');
+    const bpid = B.welcome.playerId;
+    await sleep(800);
+    B.msgs.length = 0;
+    const zOut = [];
+    zOut.push(['ghost_sync', (await pj(ZPORT, '/ghost_sync', { srcZone: '가짜존', players: [{ playerId: '유령', ax: 0, ay: 0, name: '유령' }], buildings: [] }, OUT9)).s]);
+    zOut.push(['cross_damage', (await pj(ZPORT, '/cross_damage', { targetId: bpid, dmg: 55, attackerId: '아무도아님' }, OUT9)).s]);
+    zOut.push(['handoff_prepare', (await pj(ZPORT, '/handoff_prepare', { token: 'a'.repeat(32), name: '위조', x: 0, y: 0 }, OUT9)).s]);
+    zOut.push(['kick_player', (await pj(ZPORT, '/kick_player', { player_id: bpid }, OUT9)).s]);
+    zOut.push(['handoff_ack', (await pj(ZPORT, '/handoff_ack', { token: 'b'.repeat(32) }, OUT9)).s]);
+    await sleep(1200);
+    ok(zOut.every(([, st]) => st === 404), '⑨ⓓ2 ★★존↔존 다섯이 **바깥에서 404** · ' + zOut.map(([n, st]) => n + ':' + st).join(' '));
+    const hit = B.msgs.filter((m) => m.type === 'hp_changed' || m.type === 'kicked');
+    ok(hit.length === 0 && B.ws.readyState === 1,
+      '⑨ⓓ3 ★★그리고 **그 사람이 멀쩡하다** — 안 맞았고 안 끊겼다(고치기 전엔 hp 100→45 · 소켓 CLOSED) · 피격·강퇴 ' + hit.length + '건 · 소켓 ' + B.ws.readyState);
+    await closeWs(B);
+
+    // ── ⓔ 안 문(= 존이 대신 부르는 그 길)은 **산다** ────────────────────────
+    const inLive = [];
+    inLive.push(['tribe/intro', (await pj(CPORT, '/tribe/intro', { player_id: 't245vic', intro: '존이 쓴 소개문' }, IN9))]);
+    inLive.push(['tribe/join', (await pj(CPORT, '/tribe/join', { player_id: 't245oth', tribe_id: TID9 }, IN9))]);
+    inLive.push(['market/orders', (await gj(CPORT, '/market/orders', IN9))]);
+    inLive.push(['tribe/<id>', (await gj(CPORT, '/tribe/' + TID9, IN9))]);
+    ok(inLive.every(([, r]) => r.s === 200), '⑨ⓔ ★안 문에서는 **넷 다 산다** — 존이 제 신원을 붙여 부르는 길이 이것이다 · '
+      + inLive.map(([n, r]) => n + ':' + r.s).join(' '));
+    const t9b = await gj(CPORT, '/tribe/' + TID9, IN9);
+    ok(String(((t9b.d && t9b.d.tribe) || {}).intro || '') === '존이 쓴 소개문' && ((t9b.d && t9b.d.members) || []).length === 2,
+      '⑨ⓔ2 ★자명 통과 금지 — 안 문으로 부른 것은 **실제로 바뀌었다**(소개문·길드원 2) · '
+      + JSON.stringify(((t9b.d && t9b.d.tribe) || {}).intro) + ' · 길드원 ' + ((t9b.d && t9b.d.members) || []).length);
   }
 
   shutdown();
