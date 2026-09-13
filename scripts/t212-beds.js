@@ -39,11 +39,17 @@ const SNAP_F = process.env.T212_SNAP || '/tmp/t212-snap.json';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const procs = [];
+// ★[T254] 서버가 **이미 찍는 로그**를 버리지 않고 파일로 받는다(새 계측 0 — `T212_LOG` 를 줄 때만).
+//   `_terrGrow` 의 "영토 +N셀(…) · 개간 N그루 · 비옥 x" 한 줄이 항 분해의 재료다.
+const LOG_F = process.env.T212_LOG || '';
+const _logFd = LOG_F ? fs.openSync(LOG_F, 'w') : 0;
 function boot(file, env) {
   const p = spawn(process.execPath, [path.join(ROOT, 'server', file)], {
     cwd: ROOT, env: Object.assign({}, process.env, env), stdio: ['ignore', 'pipe', 'pipe'],
   });
-  p.stdout.on('data', () => {}); p.stderr.on('data', () => {});
+  if (_logFd) { p.stdout.on('data', (b) => { try { fs.writeSync(_logFd, b); } catch (e) {} }); }
+  else p.stdout.on('data', () => {});
+  p.stderr.on('data', () => {});
   procs.push(p); return p;
 }
 function killAll() { for (const p of procs) { try { p.kill('SIGKILL'); } catch (e) {} } procs.length = 0; }
