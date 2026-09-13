@@ -44,6 +44,23 @@
 
 ---
 
+## 2-b. 효과음 (`public/assets/sfx/`) [T262 조사 · T266 확보 · 2026-09-13]
+
+**출처 없는 소리는 한 장도 없다.** 라이선스는 **파일마다 그 파일의 Commons 페이지에서 읽었다**(검색어의
+"CC0" 는 안 믿는다 — T262 가 그렇게 검색된 늑대가 CC-BY 인 것을 잡았다).
+
+| 키 | 출처(파일 페이지) | 작성자 | 라이선스 | 녹음/게시 | 받은 날 | 자른 구간 |
+|---|---|---|---|---|---|---|
+| `wind` | [Commons: Gentle breeze and birds singing.ogg](https://commons.wikimedia.org/wiki/File:Gentle_breeze_and_birds_singing.ogg) (원천 pdsounds.org #1) | ezwa | **Public domain** | 2007-04-18 | 2026-09-13 | 원본 32.55s 중 **11.0~22.0s** → 10.0s 반복 |
+| `fire` | [Commons: Dry grass burning in open fireplace.ogg](https://commons.wikimedia.org/wiki/File:Dry_grass_burning_in_open_fireplace.ogg) (원천 pdsounds.org #3) | ezwa | **Public domain** | 2007-06-17 | 2026-09-13 | 원본 25.50s 중 **3.0~14.0s** → 10.0s 반복 |
+
+* **요구 문구 없음** — 둘 다 퍼블릭 도메인이라 표시 의무가 없다(그래서 §1 에 안 들어간다). 예의로 여기 적는다.
+* 가공: 단일 채널 유지 · 끝 1초를 머리에 `acrossfade`(삼각창)로 겹쳐 10.0초 반복 · 피크를 재고
+  −1 dBFS 로 맞춘 뒤 `.ogg`(Vorbis q4) + `.m4a`(AAC 96k). 명령은 `보고/T266_2026-09-13.md` §0-ⓒ.
+* ⚠`wind` 원본에는 **새소리(Blackcap·Chaffinch)가 있다.** 그래서 자를 자리를 귀가 아니라 **자로** 골랐다 —
+  2kHz 이상 대역 에너지 비율이 가장 낮은 10초 창(**0.02%** · 파일 평균 0.07% · 최악 창 0.40%).
+  그래도 새가 아주 없다고는 못 한다 — **실기(듣기)는 재민**이다.
+
 ## 3. 출처 미상 — 회부(재민 판정)
 
 지어내지 않는다. 아래 둘은 저장소에 있지만 **어디서 왔는지 기록이 없다.**
@@ -84,6 +101,7 @@ Blender / `bpy` 5.0.1(굽기) · numpy · scipy(BGM 합성) · Pillow(광맥 파
 | 국립국악원 | 공공누리 1유형 = 출처표시 | 같은 자리 | ✅ 상업·변형 모두 허용 |
 | npm 다섯 | MIT = 라이선스·저작권 표시 동봉 | 지금은 `node_modules` 안에만 있다 | ⚠ 바이너리로 묶어 팔면 **전문 동봉**이 필요하다(소스 배포면 그대로 따라간다) |
 | 폰트 | — | 파일을 안 배포한다 | ✅ 의무 없음 |
+| 효과음 둘(§2-b) | 퍼블릭 도메인 = 조건 없음 | `public/assets/sfx/` 에 배포한다 | ✅ 상업·변형 모두 허용 · 표시 의무 없음 |
 | 출처 미상 둘(§3) | 알 수 없다 | 배포 이미지에는 안 들어간다 | ⚠ 저장소 공개 전 정리 — 재민 |
 
 ---
