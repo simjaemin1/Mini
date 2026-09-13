@@ -57,6 +57,13 @@
 | `step_grass` | [Kenney "RPG Audio"](https://kenney.nl/assets/rpg-audio) · `footstep07.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2023(팩) | 2026-09-13 | 통째(0.13s) · ⚠같음 |
 | `axe` | [Kenney "RPG Audio"](https://kenney.nl/assets/rpg-audio) · `chop.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2023(팩) | 2026-09-13 | 통째(0.21s) |
 | `eat` | [OpenGameArt: 80 CC0 creature SFX](https://opengameart.org/content/80-cc0-creature-sfx) · `eat_02.ogg` | rubberduck | **CC0** (페이지 License 칸) | — | 2026-09-13 | 통째(0.24s) |
+| `water` | [Commons: Water flowing pouring trickling.ogg](https://commons.wikimedia.org/wiki/File:Water_flowing_pouring_trickling.ogg) (pdsounds #2) | stephan | **Public domain** | 2007-04-30 | 2026-09-13 | 96.29s 중 **40.0~52.0s** → 10.0s 반복(페이드 2s) |
+| `rain` | [Commons: Rain (1).ogg](https://commons.wikimedia.org/wiki/File:Rain_(1).ogg) (pdsounds #6) | ezwa | **Public domain** | 2008-11-13 | 2026-09-13 | 44.96s 중 **30.0~41.0s** → 10.0s 반복 |
+| `bird` | [Commons: Birds singing in garden.ogg](https://commons.wikimedia.org/wiki/File:Birds_singing_in_garden.ogg) (pdsounds #1) | ezwa | **Public domain** | 2007-04-18 | 2026-09-13 | 49.48s 중 **1.0~12.0s** → 10.0s 반복 |
+| `bronze_hit` | [Commons: Dull thud.ogg](https://commons.wikimedia.org/wiki/File:Dull_thud.ogg) (pdsounds #7) | gregoryweir | **Public domain** | 2009-07-04 | 2026-09-13 | 통째(0.32s) · ⚠재료는 출처가 안 말한다(아래) |
+| `cast` | [Commons: Bathtub water splashes.ogg](https://commons.wikimedia.org/wiki/File:Bathtub_water_splashes.ogg) (pdsounds #7) | gradha | **Public domain** | 2009-07-23 | 2026-09-13 | 48.12s 중 **7.0~8.2s** |
+| `bite` | 〃 (같은 원본의 다른 사건) | gradha | **Public domain** | 2009-07-23 | 2026-09-13 | 48.12s 중 **37.9~38.9s** |
+| `hook` | 〃 (같은 원본의 다른 사건) | gradha | **Public domain** | 2009-07-23 | 2026-09-13 | 48.12s 중 **24.8~26.2s** |
 
 * **요구 문구 없음** — 둘 다 퍼블릭 도메인이라 표시 의무가 없다(그래서 §1 에 안 들어간다). 예의로 여기 적는다.
 * 가공: 단일 채널 유지 · 끝 1초를 머리에 `acrossfade`(삼각창)로 겹쳐 10.0초 반복 · 피크를 재고
@@ -64,6 +71,11 @@
 * ⚠**`step_dirt`/`step_grass` 의 지면은 가설이다.** Kenney 팩의 `footstep00~09` 에는 **무슨 바닥인지 적혀 있지 않다.**
   스펙트럴 중심(밝기)이 가장 낮은 `04`(1,007 Hz)를 흙, 가장 높은 `07`(2,189 Hz)을 풀로 잡았다 —
   둔한 소리가 흙, 서걱이는 소리가 풀이라는 **음향적 가정**이지 출처가 그렇게 말한 것이 아니다. **판정은 재민 귀.**
+* ⚠**`bronze_hit` 의 재료도 가설이다.** 출처 제목은 *"Dull thud"* 이고 **무엇을 친 것인지 안 적혀 있다.**
+  쇠의 긴 울림인지만 잤다 — 4kHz 이상이 정점에서 −20 dB 까지 **139 ms**(진짜 울리는 `metalPot1` 302 ms 의 절반 ·
+  `axe` 58 ms 보다는 길다). "긴 울림"은 아니지만 청동이냐 돌이냐는 **자로 못 가른다. 판정은 재민 귀.**
+* ⚠**낚시 셋(`cast`·`bite`·`hook`)은 한 원본의 서로 다른 물튀김 셋**이다. 어느 것이 던짐/입질/걸림인지
+  **출처가 말하지 않는다** — 크기로 갈랐다(큰 것=걸림 −3.63 dB · 중간=던짐 −3.82 · 작은 것=입질 −7.53). 재민 귀.
 * `axe` 의 고증은 **쟀다** — 4kHz 이상 대역이 정점에서 −20 dB 로 떨어지는 데 **58 ms**(같은 팩의 `metalPot1` 은 **302 ms**).
   쇠처럼 울리지 않는다. 돌·청동 도끼인지까지는 자로 못 가른다.
 * ⚠`wind` 원본에는 **새소리(Blackcap·Chaffinch)가 있다.** 그래서 자를 자리를 귀가 아니라 **자로** 골랐다 —
