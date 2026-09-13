@@ -2299,6 +2299,31 @@ const T193_LEDGER = process.env.T193_LEDGER === '1';   // 되돌림: 끄면 T186
 //   상한 `N × FIREWOOD_PC` 는 그날 취사·난방 수요라 **짚은 저장이 안 된다** — 몰려 오면 그날로 사라진다.
 //   ⚠`T100_FIELD_YIELD` 켠 팔 **안에서만** 산다(끈 팔엔 밭 유입 자체가 없다).
 const T227_EVEN = process.env.T227_EVEN === '1';   // 되돌림: 끄면 T193 켠 팔과 **비트 동일**
+// ★★[T240 2026-09-13] **곡식은 즉시 · 짚만 이월** — 손잡이 하나(기본 **끔**).
+//   T227 이 기각한 것: 곡식을 늦추면(`T227_EVEN`) 창설 곳간이 마르는 60일부터 골짜기가 다시 열려
+//   세계가 −22.7~−34.8% 가난해진다. **문제는 곡식이 몰려 오는 게 아니라 짚이 그날 안 타면 사라지는 것**이다.
+//   ⇒ 곡식 경로는 **한 톨도 안 건드린다**(`_t100Credit` 무변 · 곳간 즉시 · T227 골짜기 0).
+//     짚만 대기량 하나(`v._strawPend`)에 쌓고 **매일 상한만큼** 태운다 — 상한은 종전 그대로
+//     `N × FIREWOOD_PC`(그날 취사·난방 수요)다. **새 수 0 · 새 재화 0**(곳간 품목이 아니다 —
+//     교역·가격·저장효용·부패 루프 어디에도 안 들어간다. `storage` 키가 늘지 않는다).
+//   ⚠**무한 이월이다.** 짚의 부패·보관 정본이 이 저장소에 **없기 때문**이다(§0-ⓐ 표):
+//     짚은 품목이 아니고(`storage.straw` 전수 0), `DECAY_RATES`(v1 식품 7종)에도
+//     `DECAY_V2` 에도 없다. 가장 가까운 수는 잔가지 `DECAY_V2.twig = 0.001` 인데 **그건 잔가지다.**
+//     ⇒ 이월 상한·감쇠는 **이 카드가 정하지 않는다 → 재민**(회부 #28). 대신 이 팔은
+//       `_strawPend` 끝 대기·최대를 계측기에 내주어, 상한이 실제로 물릴 자리인지 표가 말하게 한다.
+const T240_STRAW_CARRY = process.env.T240_STRAW_CARRY === '1';   // 되돌림: 끄면 종전과 **비트 동일**
+// ★[T240] **짚 이월 산수는 이 함수 하나다.** 단위는 짚 kg 이 아니라 **목재 열량 당량**(wood-eq)이다 —
+//   `STRAW_FUEL_PER_FOOD` 정본 주석이 그렇게 유도했고(`0.085 × 0.2 ≈ 0.018 wood-eq`),
+//   상한 `N × FIREWOOD_PC` 도 `fuelNeed`·`fuelFromWood` 와 같은 축이라 **셋이 같은 단위**다.
+//   ⚠그 정본 주석은 같은 줄에서 *"저장 없이 당일 소진(flow)"* 이라고도 적었다. 이 손잡이는
+//     **그 전제를 뒤집는 설계 변경**이지 버그 수정이 아니다 — 그래서 기본 끔이고, 표로만 말한다.
+//   ⚠총량 무변: 태운 것 아니면 전부 `_strawPend` 에 남는다(질량 누수 0 — 하네스가 항등식으로 문다).
+function strawCarryBurn(v, raw, cap) {
+  const avail = (raw > 0 ? raw : 0) + (v._strawPend || 0);
+  const burn = avail < cap ? avail : cap;
+  v._strawPend = avail - burn;
+  return burn;
+}
 const T100_GARDEN_FLOOR = T100_GARDEN_CELLS * T100_K / SEED_FOOD_DAYS_D0;   // 농부 1인 하루 식량등가 바닥(유도값)
 // 하루 한 번 — econ 틱이 부른다. 오늘 들어온 수확이 바닥보다 적으면 그 차이만 메운다.
 function gardenFloorTopUp(v) {
@@ -4330,7 +4355,12 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
   if (_maintS > 0) { v.storage.stone -= _maintS; _cons(v, 'stone', _maintS); }   // ★flow-EMA
   const fuelNeed = N * FIREWOOD_PC * (1 + FUEL_COLD_W * (v._coldStress || 0)) + smelters * SMELT_FUEL_PER;   // ★한랭 난방 가중(2026-07-12) — 겨울 연료 수요 실물화
   // ★볏짚 먼저(공짜 부산물, 당일 소진 — 취사·난방용. 제련은 고온이라 목재만) → 부족분만 목재.
-  const strawFuel = Math.min(N * FIREWOOD_PC, (v._grainToday || 0) * STRAW_FUEL_PER_FOOD);
+  // ★[T240] 종전(끔)은 `Math.min(상한, 원량)` 그대로 — 넘친 짚은 그날로 사라진다(비트 동일).
+  //   켜면 넘친 몫이 `_strawPend` 로 이월되고 다음 날부터 **상한만큼** 탄다(상한은 안 건드린다).
+  const _strawCap = N * FIREWOOD_PC;
+  const _strawRaw = (v._grainToday || 0) * STRAW_FUEL_PER_FOOD;
+  const strawFuel = T240_STRAW_CARRY ? strawCarryBurn(v, _strawRaw, _strawCap)
+                                     : Math.min(_strawCap, _strawRaw);
   v._grainToday = 0;
   // ★유령 박멸(§9): 하급 연료 — 잔가지(twig)·껍질(bark)을 장작보다 먼저 땜(LOW_FUEL_EQ eq). 취사·난방분만(제련 제외 = straw와 동일).
   //   채집 잔가지·벌목 껍질의 자연 소비처(연료 등가 편입) — 목재 소비 실절감.
@@ -5935,7 +5965,8 @@ module.exports = {
   DAILY_FOOD_CONSUMPTION,   // ★[T100 4판] 하루 1인 식량 정본 — `k` 유도의 한 항(하네스가 1.0 을 옮겨 적지 않는다)
   seedFoodDays, SEED_FOOD_DAYS_D0, SEED_FOOD_DAYS_LEGACY,   // ★[T100 5판] 창설 곳간의 밑변 — 하네스가 `crops.js` 에서 다시 유도해 대조한다
   HEALTH_PROD_W, happyWorkMul,   // ★[T157] 건강→작업량 계수 — 하네스가 "행복은 건강과 같은 문법" 을 대조한다(사본 0)
-  gardenFloorTopUp, T100_GARDEN, T100_GARDEN_CELLS, T100_GARDEN_FLOOR, T193_LEDGER, T227_EVEN, t100EvenRelease,   // ★[T227] 고르게 — 손잡이·푸는 자리를 하네스가 옮겨 적지 않는다   // ★[T193] 장부 손잡이 — 하네스가 옮겨 적지 않는다   // ★[T100 5판 ⓒ] 텃밭 하한 — 값·손잡이·유도식을 하네스가 다시 계산한다
+  gardenFloorTopUp, T100_GARDEN, T100_GARDEN_CELLS, T100_GARDEN_FLOOR, T193_LEDGER, T227_EVEN, t100EvenRelease,
+  T240_STRAW_CARRY, strawCarryBurn,   // ★[T240] 짚 이월 — 손잡이·산수 한 자리를 하네스가 옮겨 적지 않는다   // ★[T227] 고르게 — 손잡이·푸는 자리를 하네스가 옮겨 적지 않는다   // ★[T193] 장부 손잡이 — 하네스가 옮겨 적지 않는다   // ★[T100 5판 ⓒ] 텃밭 하한 — 값·손잡이·유도식을 하네스가 다시 계산한다
   FARMER_BASE: JOBS.farmer.base,   // ★[T100] 농부 1인 기준 산출(옛 밑변 `1.5 × 지력`의 1.5) — 계측기·하네스가 이 수를 옮겨 적지 않게
   // ★[T125] 옷감 보온 가중 — `server/villages.js` 가 주민 착장 재질을 고를 때 **읽는다**.
   //   같은 이유(사본 금지)로 이름만 낸다. 값·틱 로직 무접촉 — 이 줄은 시뮬을 한 톨도 안 바꾼다.
