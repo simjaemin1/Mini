@@ -260,7 +260,9 @@ console.log('\n[H] 랩 부팅 기본 = 서버 기본(주입 없음)');
   // 각 줄: [이름, 기본값을 읽는 정규식, 서버와 같은 값(=문을 안 여는 값), 왜]
   const LABKNOBS = [
     ['L_HAPPYWORK',  /let\s+L_HAPPYWORK\s*=\s*\(typeof window[^;]*?:\s*([0-9.]+)\s*;/,        '0',        'T157 행복→작업량 — 서버는 happyWorkW 를 안 심는다'],
-    ['L_ALLOC_REAL', /window\.L_ALLOC_REAL\s*===\s*undefined\)\s*window\.L_ALLOC_REAL\s*=\s*([0-9.]+)/, '0', 'T161/T164 실현 배분 — 서버는 allocFn 을 안 심는다'],
+    // ★[T184 착지 뒤] 랩엔 `window.L_ALLOC_REAL` 기본줄이 없다 — econ 정본이 `_allocKnob` 으로 직접 읽고, 없거나 '0' 이면 문을 안 연다(= 서버 기본).
+    //   그래서 정본의 그 줄(인라인 사본)을 읽어 "'0' 이면 끔"을 확인한다. 랩이 `window.L_ALLOC_REAL = 1` 을 심으면 아래 별도 검사가 문다.
+    ['L_ALLOC_REAL', /function allocRealOn\(\) \{ const x = _allocKnob\('L_ALLOC_REAL'\); return x !== null && x !== '([0-9])'; \}/, '0', 'T161/T164/T184 실현 배분 — 손잡이 미설정 = 끔 · 서버는 allocFn 을 안 심는다'],
     ['L_STONEREAL',  /window\.L_STONEREAL\s*===\s*undefined\)\s*window\.L_STONEREAL\s*=\s*([0-9.]+)/,   '0', 'T163 석재 실물 — 서버는 stoneBudgetFn 을 안 심는다'],
     ['L_STONE_TRADE',/window\.L_STONE_TRADE\s*===\s*undefined\)\s*window\.L_STONE_TRADE\s*=\s*([0-9.]+)/,'0', 'T173 귀환 화물 — 서버는 returnPullFn 을 안 심는다'],
     ['L_TOOL_WEAR',  /window\.L_TOOL_WEAR\s*===\s*undefined\)\s*window\.L_TOOL_WEAR\s*=\s*([0-9.]+)/,   '1', 'T180 도구 마모 — 배수 1 이면 문을 안 연다(서버도 toolWearMul 없음)'],
@@ -286,6 +288,12 @@ console.log('\n[H] 랩 부팅 기본 = 서버 기본(주입 없음)');
     else bad(`랩 ${name} 기본 ${got} ≠ 서버 기본 ${want} — 랩이 켠 채 뜬다(${why})`);
   }
   if (!bad0.length) ok(`랩 부팅 기본이 서버 기본과 같다 — 손잡이 ${LABKNOBS.length + MODES.length}개 전수(${LABKNOBS.concat(MODES).map((k) => k[0]).join(' · ')})`);
+  // ★[T184 착지 뒤] 랩이 실현 배분을 켠 채 뜨는 유일한 길은 `window.L_ALLOC_REAL = 1` 을 심는 것 — 주석 밖에 그 줄이 있으면 빨강
+  {
+    const lines = warLab.split('\n').filter((l) => /window\.L_ALLOC_REAL\s*=\s*[1-9]/.test(l) && !/^\s*\/\//.test(l) && !/\/\/.*window\.L_ALLOC_REAL\s*=\s*[1-9]/.test(l.replace(/^[^/]*window\.L_ALLOC_REAL\s*=\s*[1-9]/, '')));
+    if (lines.length) bad(`랩이 L_ALLOC_REAL 을 켠 채 뜬다 — ${lines.length}줄`);
+    else ok('랩은 L_ALLOC_REAL 을 심지 않는다(미설정 = 끔 = 서버 기본)');
+  }
   // ★자명 통과 금지 — 켠 채 뜨는 판을 만들면 이 검사가 실제로 문다
   const mut = warLab.replace(/(let\s+L_HAPPYWORK\s*=\s*\(typeof window[^;]*?:\s*)0(\s*;)/, '$1' + '0.24' + '$2');
   if (mut === warLab) bad('[자명 통과 금지] 변조판을 못 만들었다 — 검사기가 읽는 자리가 그 자리가 아니다');
