@@ -305,6 +305,7 @@ const M = vils.map(() => ({ harvestN: 0, units: 0, foodEq: 0, sow: 0, fDays: 0, 
   rBins: [0, 0, 0, 0, 0, 0], rRaw: [0, 0, 0, 0, 0, 0], rMax: 0,
   // ★[T240] 짚 이월 — 실제로 탄 양(역산) · 종전 산수라면 탔을 양(비교 밑변) · 대기량
   strawOldSum: 0, strawPendSum: 0, strawPendMax: 0, _pendPrev: 0,
+  builtMax: 0,        // ★[T264 ⓐ] 그 마을의 **실측 최대 일일 건축**(끔 팔이 캡 값을 준다 · 새 수 0)
   watch: [],          // ★[T249] 날마다 한 줄(지켜보는 마을만)
   covLtDays: 0, covMin: 9,                     // 충당률이 1 미만인 날 · 최저
   dHealthSum: 0, dHpmSum: 0, dHealthTermSum: 0,   // `_fuelCov=1` 로 떼면 돌아오는 몫(닫힌 꼴 · 첫째 차수)
@@ -346,7 +347,7 @@ for (let day = 0; day < DAYS; day++) {
       const _b = _h - m._hPrev * (1 - HOUSE_DECAY);
       m._builtToday = _b > 1e-12 ? _b : 0;
       if (_b > 1e-12) { m.builtSum += _b; if (HOUSE_WOOD != null) m.woodBuilt += _b * HOUSE_WOOD; }
-      if (_b > m.builtMax) m.builtMax = _b;   // ★[T300] 관측 전용
+      if (_b > m.builtMax) m.builtMax = _b;   // ★[T264 ⓐ · 같은 줄을 T300 이 main 에 먼저 이식했다] 관측 전용
     }
     if (_h != null) m._hPrev = _h;
     m.woodProd += +((ev.dailyProductionBuf && ev.dailyProductionBuf.wood) || 0);
@@ -389,6 +390,7 @@ for (let day = 0; day < DAYS; day++) {
       // ★하급 연료 — 나머지(충당률 × 수요 − 목재 − 볏짚). 잔차가 아니라 **정본 항등식**의 남은 한 자리다.
       const _low = Math.max(0, _cov * (_heat + _smN) - _wf - _straw);
       m.lowSum += _low;
+      const _tp = ev._t264pot || null;   // ★[T264 ⓓ] 사본 팔이 담아 준 오늘 잠재(없으면 null)
       let _pxD = null;
       if (WATCH.has(v.name) && typeof world.priceFn === 'function') { try { _pxD = world.priceFn(ev); } catch (e) { _pxD = null; } }
       // ★[T249] 지켜보는 마을 — 날마다 한 줄(연료 항 · 곡식 항 · 일자리 · 재고 · 대기량)
@@ -414,6 +416,14 @@ for (let day = 0; day < DAYS; day++) {
         //   재고가 0 인데 사용이 줄었으면 답은 둘뿐이다: 안 모으거나, 다른 데로 갔거나.
         twigP: +((ev.dailyProductionBuf && ev.dailyProductionBuf.twig) || 0).toFixed(3),
         barkP: +((ev.dailyProductionBuf && ev.dailyProductionBuf.bark) || 0).toFixed(3),
+        // ★[T264 ⓓ] **감산 칸** — 잠재 대비 실현. 정본 `addProduce` 는 잠재를 감산 **전**에,
+        //   실현을 감산 **후**에 적는다(`:2349` vs `:2353`). 그 둘의 비가 그날 그 품목이 깎인 정도다.
+        //   ⚠`satMul` 단독이 아니라 `_hpm·_hwm·_prodMul·satMul·_laborMul·포위·포로` **전부의 곱**이다 —
+        //     그래서 기준 품목(`wood`)의 같은 비를 나란히 둔다(공통 배수는 두 열에 같이 들어 있다).
+        //   잠재는 틱 지역 변수라 밖에서 못 읽는다 ⇒ 사본 팔이 `v._t264pot` 에 담아 줄 때만 채워진다.
+        twigTaper: _tp && _tp.twig > 0 ? +(1 - ((ev.dailyProductionBuf && ev.dailyProductionBuf.twig) || 0) / _tp.twig).toFixed(4) : null,
+        barkTaper: _tp && _tp.bark > 0 ? +(1 - ((ev.dailyProductionBuf && ev.dailyProductionBuf.bark) || 0) / _tp.bark).toFixed(4) : null,
+        woodTaper: _tp && _tp.wood > 0 ? +(1 - ((ev.dailyProductionBuf && ev.dailyProductionBuf.wood) || 0) / _tp.wood).toFixed(4) : null,
         ckd: +((ev.storage.cooked_food || 0)).toFixed(2),
         // ★그림자가격 — 배분식이 읽는 그 자리(`world.priceFn`) 그대로. 식단 사다리가 이 값으로 고른다(`:509~535`).
         pF: _pxD && _pxD.food > 0 ? +_pxD.food.toFixed(4) : null,
@@ -540,6 +550,7 @@ for (let i = 0; i < world.villages.length; i++) {
     strawCapDays: m.strawCapDays, strawDays: m.strawDays,
     rBins: m.rBins.slice(), rRaw: m.rRaw.map((x) => +x.toFixed(1)), rMax: +m.rMax.toFixed(3),
     strawOld: +m.strawOldSum.toFixed(1), strawPendMean: +(m.strawPendSum / DAYS).toFixed(3),
+    builtMax: +m.builtMax.toFixed(6),   // ★[T264 ⓐ] 캡 값의 밑변
     strawPendMax: +m.strawPendMax.toFixed(2), strawPendEnd: +((v._strawPend || 0)).toFixed(4),
     watch: m.watch.length ? m.watch : undefined,   // ★[T249] 지켜보는 마을만 채워진다
     healthMean: m.statDays ? +(m.healthSum / m.statDays).toFixed(4) : null,
@@ -645,6 +656,7 @@ const out = {
   strawPendEndTot: +per.reduce((a, p) => a + p.strawPendEnd, 0).toFixed(2),
   strawPendMaxTot: +per.reduce((a, p) => Math.max(a, p.strawPendMax), 0).toFixed(2),
   strawPendMeanTot: +per.reduce((a, p) => a + p.strawPendMean, 0).toFixed(3),
+  builtMaxTot: +per.reduce((a, p) => Math.max(a, p.builtMax), 0).toFixed(6),
   carry: CARRY,
   supLowTot: +per.reduce((a, p) => a + p.supLow, 0).toFixed(1),
   supWoodTot: +per.reduce((a, p) => a + p.supWood, 0).toFixed(1),
