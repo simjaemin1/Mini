@@ -85,6 +85,7 @@
     // ★지붕 아래선 안 그린다 — 실내 술어는 **방 정본**을 그대로 부른다(사본 금지).
     //   `playerIsIndoors` 는 서버가 보낸 방을 꺼내 볼 뿐이다(`20-r2-visibility.js`).
     const indoor = (typeof playerIsIndoors === 'function') ? !!playerIsIndoors() : false;
+    window.__sfx && window.__sfx.ambient('wind', w.wind, { indoor });   // ★[T261] 소리 훅 한 줄(세기→볼륨은 48-a-audio 가 표로 한다)
     if (!(precip > 0) || indoor) {
       _wxLast = { on: false, kind: null, n: 0, tilt: 0, indoor, precip };
       return 0;

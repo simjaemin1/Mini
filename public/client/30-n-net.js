@@ -2,6 +2,7 @@
 
   function sendPrimary(obj) {
     const c = conns.get(primaryZoneId);
+    window.__sfx && window.__sfx.verb(obj && obj.type);   // ★[T261] 소리 훅 한 줄(로직 0 — 키는 48-a-audio 가 고른다)
     if (c && c.ws.readyState === 1) c.ws.send(JSON.stringify(obj));
   }
   // ★★[11차 T4에서 드러난 좌표계 결함] 커서 배치 좌표(atX/atY)는 **존 로컬**로 보내야 한다.

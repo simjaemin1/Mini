@@ -39,10 +39,11 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - name: 러너 자가 검사 (크래시를 실패로 잡는가)
         run: bash scripts/run-regress.sh --selftest
-      - name: 단위 하네스 23종
+      - name: 단위 하네스 24종
         run: |
           bash scripts/run-regress.sh \
             test-harness-lint.js test-client-globals.js test-calendar.js \
+            test-audio.js \
             test-kcal.js test-crops.js test-crops-world.js test-farm-life.js \
             test-econ-diet.js test-econ-rawgrain.js test-winter.js \
             test-carrier.js test-weight.js test-spoil2.js test-preserve.js test-salt.js \

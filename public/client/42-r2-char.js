@@ -250,6 +250,7 @@
     }
     if (!force && opts.carrying) force = 'carry';
     const stt = charState(opts.pid, opts.speed || 0, !!opts.aiming, opts.attackAt || 0, dtSec, force);
+    if (isMe) window.__sfx && window.__sfx.step(stt.clip, stt.frame);   // ★[T261] 소리 훅 한 줄(발 딛는 판은 48-a-audio 가 안다)
     _charAnim.get(opts.pid).lastT = now;
     const imgs = [];
     for (const L of layers) {

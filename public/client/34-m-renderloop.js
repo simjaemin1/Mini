@@ -1010,6 +1010,7 @@
     }
 
     renderables.sort((a, b) => a.z - b.z);
+    window.__sfx && window.__sfx.scan(renderables, worldCx, worldCy);   // ★[T261] 소리 훅 한 줄(무엇이 우는지는 48-a-audio 가 고른다)
 
     // ★[재민 2026-08-07] 산 가림 뚫기 기준점 — 내 화면 좌표와 내 z 를 프레임당 1회만 잡는다.
     //   z 는 플레이어 renderable 과 **같은 식**을 써야 한다(사본 금지 — 여기서 어긋나면

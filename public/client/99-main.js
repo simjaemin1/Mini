@@ -198,6 +198,7 @@
   //   (T68 이 새로고침에서 `onbLobbyInit is not defined` 로 잡았다). 여기는 마지막 조각이라 경주가 없다.
   //   ⚠새 동작 0 — 부르는 자리만 옮겼다.
   boot();
+  initAudio();   // ★[T261] 소리 층 — 리스너만 건다. AudioContext 는 첫 사용자 제스처에서 난다.
   // ★[T66] 개발용 좌표·속도 줄 — 기본 숨김. 값은 계속 갱신된다(`updateHud` 무변) · 새 단축키 0.
   window.__devRow = (on) => {
     const r = document.getElementById('devRow');
