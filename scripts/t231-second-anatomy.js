@@ -102,7 +102,7 @@ for (const s of seeds) {
   ev._world = world; ev.coord = { x: s.ccx * 2.5, y: s.ccy * 2.5 };
   world.villages.push(ev);
 }
-world.villages.forEach((v, i) => { v._t231i = i; });
+world.villages.forEach((v, i) => { v._t223i = i; v._t231i = i; });
 world.day = 0;
 
 const FL = LV.FLOOR.stone;
@@ -117,6 +117,10 @@ const rows = world.villages.map((v, i) => ({
   g1Fail: 0, g1FailUnits: 0, g2Fail: 0, g2FailUnits: 0, gateBlocked: 0, p2PU: 0,
   //   ★[T239] 선택 갈림 자 — 정본이 같은 판에서 낸 두 값(고른 것 / 최대였을 것)을 그대로 비교한다.
   selDiff: 0, selGain: 0, selChosen: 0, selBest: 0, diffTo: {},
+  //   ★[T248] leg 감소의 자리 — **문 추가 0**. `spareCapFn`(T223 · 기록만 · null 반환)은 그 마을이
+  //     그날 교역을 **시도한** village-day 마다 불리고, `onTradeLeg` 는 **실제로 선** 캐러밴마다 불린다.
+  //     둘의 차가 "설 수 있었는데 안 선 자리" 다. 어느 쪽이 줄었나로 문턱/`spareCap` 이 갈린다.
+  vDays: 0, capSum: 0, capMax: 0, candSum: 0, candN: 0, candMin: 1e9,
   //   ⓑ 흐름 품목
   flowUnits: { '부재료': 0, '연료': 0, '도구재료': 0 }, flowN: { '부재료': 0, '연료': 0, '도구재료': 0 },
   //   ⓐ 실린 뒤 며칠 만에 keep 아래로
@@ -132,6 +136,8 @@ const watch = [];
 world.onTradeLeg = (o) => {
   const r = rows[o.vid]; if (!r) return;
   r.legs++;
+  //   ★[T248] 이 leg 이 섰을 때 후보가 몇 개였나 — 문턱 쪽이 좁아졌는지 본다.
+  if (o.cands) { r.candSum += o.cands.length; r.candN++; if (o.cands.length < r.candMin) r.candMin = o.cands.length; }
   const f = byRes(r.first, o.res); f.n++; f.units += o.units; f.gross += o.units * (o.pFrom || 0);
   r.p1Gain += (o.profit || 0);
   if (o.second && o.secondUnits > 0) {
@@ -159,6 +165,16 @@ world.onTradeLeg = (o) => {
     for (const c of CLASSOF(o.second)) { r.flowUnits[c] += o.secondUnits; r.flowN[c]++; }
     watch.push({ vid: o.vid, res: o.second, day: o.day });
   }
+};
+
+//   ★[T248] `spareCap` 창구 — **기록만** 한다(`null` 반환 = 세계 무변 · T223 하네스 ㉓ 가 증명).
+//     이 훅은 그 마을이 그날 교역을 **시도한** village-day 마다 불리고, `onTradeLeg` 는 **실제로 선**
+//     캐러밴마다 불린다. `capSum`(설 수 있던 자리) 과 `legs`(실제로 선 것)의 차가 "안 선 자리" 다.
+//     `capSum` 이 줄면 `spareCap`(인구 함수) 탓이고, `capSum` 은 그대론데 `legs` 만 줄면 문턱 탓이다.
+world.spareCapFn = (v, day, cur) => {
+  const r = rows[v._t231i];
+  if (r) { r.vDays++; r.capSum += cur; if (cur > r.capMax) r.capMax = cur; }
+  return null;
 };
 
 //   부족 사건 자 — T200 이 쓴 그 신호(곳간 문턱 아래 일수). **새 판정식 0**.
