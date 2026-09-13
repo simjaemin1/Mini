@@ -6485,6 +6485,9 @@ module.exports = {
     // ★[T213] 사냥 소득 문 **그 함수 자체** — 하네스가 나눗셈을 다시 적으면 그게 사본이다.
     _huntIncomeProbe: (v, npc, baseAmt, mul) => _huntIncomeServer(v, npc, baseAmt, mul),
     _t213HuntReal: () => T213_HUNT_REAL,
+    // ★[T228 · **읽기 전용 한 줄**] 사건 장부 통계를 자가 읽게 한다(여덟 수의 게시·㉮㉯).
+    //   제품 동작 0 · 세계 산수 0 — `state.ledger.stats` 를 **그대로** 돌려준다(사본 0).
+    _ledgerStats: () => (state.ledger && state.ledger.stats) || null,
     get VILLAGE_MAX() { return VILLAGE_MAX; },
     get INITIAL_POP() { return INITIAL_POP; },
     get SZ() { return SZ; },

@@ -63,28 +63,31 @@ ZONE.villageSeed = SEED;
 //   ★관측자는 없다(`anyViewerNear → false`) ⇒ 제품이 스스로 헤드리스 갈래를 고른다.
 const players = new Map(), npcs = new Map();
 let _pid = 0;
+// ★[T228 ⓐ] 자가 비워 둔 deps 를 **누가 몇 번 부르고 무엇을 돌려받았나** — 인공물 후보를 이름으로 찾는다.
+const DEPCALL = {};
+const _cnt = (n, f) => (...a) => { DEPCALL[n] = (DEPCALL[n] || 0) + 1; return f(...a); };
 const deps = {
   players, npcs,
-  spawnNpc: (o) => { const p = Object.assign({ pid: 'n' + (++_pid) }, o); players.set(p.pid, p); npcs.set(p.pid, p); return p; },
-  broadcast: () => {},
-  anyViewerNear: () => false,                       // ★관측자 0 — 헤드리스 결산 갈래
-  isPositionActive: () => false,
-  qtResources: () => null,
+  spawnNpc: _cnt('spawnNpc', (o) => { const p = Object.assign({ pid: 'n' + (++_pid) }, o); players.set(p.pid, p); npcs.set(p.pid, p); return p; }),
+  broadcast: _cnt('broadcast', () => {}),
+  anyViewerNear: _cnt('anyViewerNear', () => false),                       // ★관측자 0 — 헤드리스 결산 갈래
+  isPositionActive: _cnt('isPositionActive', () => false),
+  qtResources: _cnt('qtResources', () => null),
   chunkManager: null,
-  clearTreesInCells: () => 0,
-  liveBuildRow: () => null,
-  onVillageAdded: () => {},
-  isTerrainBlockedLocal: () => false,
-  isWaterTileLocal: () => false,
-  isBlockedByWall: () => false,
-  oreProbAt: () => 0,
-  worldPhase: () => 0.5,                           // 0..1 하루 위상(제품이 숫자로 쓴다)
-  dayPhaseRatio: () => 0.5,
+  clearTreesInCells: _cnt('clearTreesInCells', () => 0),
+  liveBuildRow: _cnt('liveBuildRow', () => null),
+  onVillageAdded: _cnt('onVillageAdded', () => {}),
+  isTerrainBlockedLocal: _cnt('isTerrainBlockedLocal', () => false),
+  isWaterTileLocal: _cnt('isWaterTileLocal', () => false),
+  isBlockedByWall: _cnt('isBlockedByWall', () => false),
+  oreProbAt: _cnt('oreProbAt', () => 0),
+  worldPhase: _cnt('worldPhase', () => 0.5),                           // 0..1 하루 위상(제품이 숫자로 쓴다)
+  dayPhaseRatio: _cnt('dayPhaseRatio', () => 0.5),
   mobs: new Map(),
   zoneWidth: ZONE.zoneWidth,
-  perfMark: () => {},
-  ioBusy: () => false,
-  ioQuietMs: () => 1e9,
+  perfMark: _cnt('perfMark', () => {}),
+  ioBusy: _cnt('ioBusy', () => false),
+  ioQuietMs: _cnt('ioQuietMs', () => 1e9),
 };
 
 const V = R('server/villages');
@@ -114,6 +117,12 @@ for (let d = 1; d <= DAYS; d++) {
     if (!row.econ_state) continue;
     let m = M.get(row.name); if (!m) M.set(row.name, m = { hkillDays: 0, hkillSum: 0, popMax: 0, everPop: false, huntMax: 0 });
     const hk = grab(row.econ_state, '_hkillDay');
+    // ★[T228 ⓐ] `land.game` 궤적 — 첫날 값이 곧 **창설값**이다(14일 갱신 전). 0.45 가 바닥인지 창설값인지 여기서 갈린다.
+    const gm = grab(row.econ_state, 'game');
+    if (m.game0 === undefined) { m.game0 = gm; m.gameMin = gm; m.gameChanged = 0; }
+    if (gm < m.gameMin) m.gameMin = gm;
+    if (m.gameLast !== undefined && gm !== m.gameLast) m.gameChanged++;
+    m.gameLast = gm;
     if (hk > 0) { m.hkillDays++; m.hkillSum += hk; }
     const pop = row.population || 0;
     if (pop > m.popMax) m.popMax = pop;
@@ -127,6 +136,7 @@ const tRun = Date.now() - t1;
 Math.random = _rnd0;
 
 const st = V.lifeDebug ? V.lifeDebug() : null;
+const LS = (V.__labProbe && V.__labProbe._ledgerStats) ? V.__labProbe._ledgerStats() : null;
 // ── 여덟 수 — **제품이 DB 에 적어 둔 econ 을 읽어** `t176-ab.js:427~436` 과 **같은 식**으로 센다.
 //   ⚠식이 그쪽과 같아야 두 자를 나란히 놓을 수 있다. 다른 식을 쓰면 그게 사본이다.
 //   ⚠사건 장부에서 오는 열(`reqOpened`·`emitted`·㉮㉯)은 서버 state 안에 있어 여기선 못 읽는다 → `null`.
@@ -149,11 +159,18 @@ for (const row of db.getVillagesByZone('hanbando')) {
   for (const r of RAWGRAIN) rawGrain += (v.storage || {})[r] || 0;
   const hn = (v.counts || {}).hunter || 0; hunterN += hn;
   const m = M.get(row.name) || {}; const L = lifeBy.get(row.name) || {};
+  const G = M.get(row.name) || {};
   per.push({ name: row.name, N: n, everPop: !!v._everPop, popMax: m.popMax || 0,
     hunter: hn, lumberjack: (v.counts || {}).lumberjack || 0,
     hkillDays: m.hkillDays || 0, hkillSum: +(m.hkillSum || 0).toFixed(3),
     hkillDay: v._hkillDay != null ? +(+v._hkillDay).toFixed(3) : null,
     game: +((v.land || {}).game || 0).toFixed(2),
+    // ★[T228 ⓐ] `land.game` 이 **다시 쓰인 적이 있나**(0.45 는 바닥이 아니라 **창설값**일 수 있다 —
+    //   `land.game = _baseGame × clamp(gsum/gameTot0, 0.05, 1)` 이 유일한 쓰는 자리다 · `villages.js:5337`).
+    game0: G.game0 != null ? +G.game0.toFixed(2) : null,
+    gameMin: G.gameMin != null ? +G.gameMin.toFixed(2) : null,
+    gameChanged: G.gameChanged || 0,
+    gameRatio: (G.game0 > 0) ? +(((v.land || {}).game || 0) / G.game0).toFixed(3) : null,
     meat: +(((v.storage || {}).meat || 0)).toFixed(1),
     farm: L.farm || 0, pot: L.pot || 0, houses: (L.gran || 0), npcVis: L.pop || 0,
     wcut: v._wcutDay != null ? v._wcutDay : null });   // ★벌목 실체는 서버에 없다 — 늘 null(T213 §0ⓐ)
@@ -164,7 +181,10 @@ const out = {
   villages: per.length,
   pop, dead, ever, weapQ: +weapQ.toFixed(1), expand, toolQ: +toolQ.toFixed(1),
   preserved: +preserved.toFixed(1), rawGrain: +rawGrain.toFixed(1),
-  reqOpened: null, emitted: null, densAll: null, densVal: null,   // 서버 사건 장부 — 이 자에선 못 읽는다
+  // ★[T228 ④] 사건 장부 — `__labProbe._ledgerStats` **읽기 전용 한 줄**로 자가 읽는다(여덟 수 8/8).
+  reqOpened: (LS && LS.reqOpened) || 0, emitted: (LS && LS.emitted) || 0,
+  reqClosed: (LS && LS.reqClosed) || 0, reqShrunk: (LS && LS.reqShrunk) || 0,
+  depCalls: DEPCALL,
   hunterN, hkillDaysTot: per.reduce((a, p) => a + p.hkillDays, 0),
   hkillSumTot: +per.reduce((a, p) => a + p.hkillSum, 0).toFixed(3),
   farmTot: per.reduce((a, p) => a + p.farm, 0), meatTot: +per.reduce((a, p) => a + p.meat, 0).toFixed(1),
