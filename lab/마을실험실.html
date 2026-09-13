@@ -6997,24 +6997,39 @@ function tickTradeV2(world, day) {
       //     **셋째 이상은 안 싣는다**. 값·차감·정산은 품목마다 있는 문법을 그대로 한 번 더 쓴다.
       //   ⚠주입이 없으면(`world.cargoTwo` 미설정) 이 블록은 통째로 건너뛴다 = **비트 동일**.
       let _res2 = null, _n2 = 0, _p2 = 0, _pp2 = 0, _gateBlocked = 0;
+      let _bRes = null, _bN = 0, _bP = 0, _bPP = 0, _bTot = -Infinity;   // ★[T239] 수익이 최대였을 후보(계측 + 손잡이)
       if (world.cargoTwo) {
         const _room = CARGO_PER_TRIP - N_units;
         if (_room >= 1) {
+          //   ★[T239] 후보를 **끝까지 훑는다** — 훑기는 읽기뿐이라 세계를 안 바꾼다.
+          //     `cargoTwoBest` 가 꺼져 있으면 **고르는 값은 종전 그대로**(선언 순서 첫 개)이므로 비트 동일이고,
+          //     그러면서 "수익이 최대였을 후보"(`_bRes`)를 같이 들고 나와 계측기가 **갈림을 잴 수 있다**
+          //     (T239 §ⓐ — 팔을 켜지 않고도 갈리는 leg 을 세려면 두 값이 같은 판에 있어야 한다).
+          let _picked = false;
           for (const c2 of candidates) {
             if (c2.res === cand.res) continue;
             const _q = Math.min(c2.surplus, _room, a.v.storage[c2.res] || 0);
             if (!(_q >= 1)) continue;
             //   ★★★[T233] **관문 문** — 첫째가 지나는 그 관문(`_legProfitPerUnit`)을 둘째도 지나게 한다.
             //     목적지·거리·운반비·손실률은 **첫째가 정한 그대로**(같은 수레다) — 새 수 0 · 사본 0.
-            //     문이 닫히면(`world.cargoTwoGate` 미설정) 이 블록을 안 탄다 = T206/T231 비트 동일.
             //     왜: T231 §ⓐ — 첫째는 `totalProfit<=0` 관문을 지나는데 둘째는 관문이 **아예 없어서**
             //     `TRADABLE` 선언 순서상 첫 품목을 적자로도 싣는다(단위의 62~74%가 단위당 적자).
             const _pu2 = _legProfitPerUnit(a.prices[c2.res] || 0, (b.prices && b.prices[c2.res]) || 0,
                                            best.transportCostPerUnit, best.expectedLossRatio);
-            if (world.cargoTwoGate && !(_pu2 * _q > 0)) { _gateBlocked++; continue; }   // ★걸리면 **다음 후보**로(둘째를 아예 안 싣는 게 아니라)
-            _res2 = c2.res; _n2 = _q; _p2 = a.prices[c2.res] || 0; _pp2 = _pu2;
-            break;                                    // ★첫 번째로 실리는 둘째 하나뿐 — 셋째 이상 0
+            if (world.cargoTwoGate && !(_pu2 * _q > 0)) { if (!_picked) _gateBlocked++; continue; }   // ★걸리면 **다음 후보**로
+            if (!_picked) {                           // ★선언 순서상 첫 개 — T206~T233 이 싣던 그것
+              _res2 = c2.res; _n2 = _q; _p2 = a.prices[c2.res] || 0; _pp2 = _pu2; _picked = true;
+            }
+            const _tot = _pu2 * _q;                   // ★[T239] 첫째와 같은 자 — `_legProfitPerUnit × 수량`
+            if (_tot > _bTot) { _bTot = _tot; _bRes = c2.res; _bN = _q; _bP = a.prices[c2.res] || 0; _bPP = _pu2; }
+            //   ⚠**여기서 멈추지 않는다.** 멈추면 `_bTot` 이 첫 개만 보게 되어 갈림이 늘 0 으로 나온다
+            //     (첫 판이 그렇게 0 을 냈다). 훑기는 읽기뿐이라 고르는 값이 안 바뀌므로 비트는 그대로다 —
+            //     `_res2`·`_n2`·`_p2`·`_pp2`·`_gateBlocked` 는 전부 `_picked` 로 잠겨 한 번만 쓰인다.
           }
+          //   ★★★[T239] **수익 최대 문** — 첫째는 목적지 20곳 × `best.profit` 최대로 고르는데
+          //     둘째는 선언 순서였다(T231 §ⓐ 의 마지막 비대칭). 같은 자로 고르게 한다 — 새 수 0.
+          //     셋째는 여전히 0(고르는 건 하나뿐이다).
+          if (world.cargoTwoBest && _bRes) { _res2 = _bRes; _n2 = _bN; _p2 = _bP; _pp2 = _bPP; }
         }
       }
       if (_res2 && _n2 >= 1) {
@@ -7113,6 +7128,9 @@ function tickTradeV2(world, day) {
             //   ★[T233 관측 항] 둘째의 단위당 기대이익(첫째와 **같은 함수**가 낸 수) · 관문에 걸려 건너뛴 후보 수 ·
             //     기회비용 관문의 두 입력(밖에서 다시 계산하면 정본 재구현이다).
             p2ProfitPerUnit: _pp2 || 0, gateBlocked: _gateBlocked,
+            //   ★[T239 관측 항] 수익이 최대였을 후보 — 손잡이를 켜지 않고도 갈림을 센다.
+            p2Best: _bRes, p2BestUnits: _bN, p2BestTotal: (_bTot === -Infinity ? 0 : _bTot),
+            p2Total: (_pp2 || 0) * (_n2 || 0),
             lossRatio: best.expectedLossRatio, mv: lp.mv, slack });
         } catch (e) {}
       }
