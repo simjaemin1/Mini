@@ -3,7 +3,13 @@
 #   붙이면 풀이 옆으로 뭉개진다(재민 "풀 얼룩"). 갈래는 `angled` 하나다.
 #   결과: scripts/terrain_tex/{grass,dry,mud}_angled.png → public/assets/terrain/
 # 실행: blender -b -P scripts/bake-terrain-tex.py
-import bpy, math, os, random
+import bpy, math, os, random, sys
+# ★[T272] 굽는 **상자** 한 줄 — 이 판은 `blender -b -P` 로 도는 독립 판이라 `render_common.build_scene()`
+#   을 안 지난다(T260 이 진입점 13 중 유일하게 못 찍는 자리로 회부했다). 같은 함수를 부른다 — 꼴을 베끼지 않는다.
+#   같은 커밋인데 그림이 다르면 먼저 이 줄을 견준다(`인계/ART-자산.md` §1-c).
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import render_common as _rc
+print(_rc.bake_box_line())
 
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'terrain_tex')

@@ -485,11 +485,25 @@ console.log('\n[⑧ 굽는 기계 정본 — icons.lock.json 이 지금 자산�
       //     **이 검사가 그게 실제로 지켜졌는지 보는 자다**. 알파 지도도 같은 파일에서 같이 잘린다.
       const AN = JSON.parse(fs.readFileSync(path.join(MTD, 'mountain_anchors.json'), 'utf8'));
       const AL = JSON.parse(fs.readFileSync(path.join(MTD, 'mountain_alpha.json'), 'utf8'));
-      const anK = Object.keys(AN).sort(), alK = Object.keys(AL.a || {}).sort();
+      // ★[T272] `_` 로 시작하는 키는 **메타**다(이 집의 모든 표가 그 문법을 쓴다) — 전수 대조에서 거른다.
+      //   T260 이 `bakeBox` 를 앵커에 못 실은 이유가 여기였다: 키 하나 더하면 89↔88 로 어긋났다.
+      //   거르는 것은 `_` 뿐이다 — 그림 키가 하나라도 남거나 빠지면 **여전히 문다**(아래 자명 통과 금지).
+      const META = (k) => String(k).startsWith('_');
+      const anK = Object.keys(AN).filter((k) => !META(k)).sort(),
+            alK = Object.keys(AL.a || {}).filter((k) => !META(k)).sort();
       ok(anK.length === files.length && anK.every((k, i) => k === files[i]),
          `mountains: 앵커 ${anK.length} ↔ 파일 ${files.length} 전수 일치` +
          (anK.length === files.length ? '' : ` — 앵커에만: ${anK.filter(k => !files.includes(k)).slice(0, 4).join(', ')} · 파일에만: ${files.filter(k => !anK.includes(k)).slice(0, 4).join(', ')}`));
       ok(alK.length === files.length, `mountains: 알파 지도 ${alK.length}키 = 파일 ${files.length}장 (클라·하네스 공용 정본)`);
+      {   // ★자명 통과 금지 — `_` 를 거르는 줄이 **다른 여분 키까지** 눈감지 않는가
+        const withMeta = { ...AN, _상자: { note: 'meta' } };
+        //   ⚠주입할 여분 키는 `_` 로 시작하면 안 된다 — 그러면 거르는 줄이 그것도 먹어
+        //     시험이 자기를 못 문다(첫 판이 `__selftest_ghost__` 로 적었다가 88≠88 을 봤다).
+        const withJunk = { ...AN, zzselftestghost: { ppu: 98 } };
+        const cnt = (o) => Object.keys(o).filter((k) => !META(k)).length;
+        ok(cnt(withMeta) === files.length && cnt(withJunk) !== files.length,
+           `mountains: \`_\` 키는 거르고(${cnt(withMeta)}=${files.length}) **그 밖의 여분 키는 문다**(${cnt(withJunk)}≠${files.length})`);
+      }
       // ★자는 하나다 — 새로 온 판도 종전 45장과 **같은 규격**을 지켜야 클라 셈이 성립한다.
       //   `sc = (64/√2)/ppu` 라 ppu 가 자다. 팩은 **확대를 안 한다**(없는 정보는 못 만든다) ⇒ ppu ≤ 98.
       const NEED = ['ox', 'oy', 'ppu', 'w_units', 'h_units', 'w', 'h', 'ext'];
