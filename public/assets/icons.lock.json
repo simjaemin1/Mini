@@ -433,6 +433,12 @@
   "wall_n": "22f968716656e3ce",
   "workbench": "ee450ad8bf8dbe7f"
  },
+ "sfx": {
+  "fire.m4a": "2277c30821028691",
+  "fire.ogg": "0a2d1e9ac767ffe3",
+  "wind.m4a": "0c2cadc797f95ff5",
+  "wind.ogg": "874df25c224b5b56"
+ },
  "terrain": {
   "dry_angled": "1e5ebd9b35da2d46",
   "grass_angled": "5a25ceda9f6b0948",
@@ -480,7 +486,7 @@
   "threads": 2,
   "simd": "fma avx avx2 avx512f avx512dq avx512bw avx512vl avx512_vnni",
   "node": "v22.22.2",
-  "commit": "15de6885",
+  "commit": "c16fc300",
   "당시": "2026-09-13"
  }
 }

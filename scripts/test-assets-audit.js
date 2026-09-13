@@ -106,7 +106,12 @@ const TOKENS = /[A-Za-z0-9_ㄱ-힝][A-Za-z0-9_.\-ㄱ-힝]*/g;
 //   `mt3d-scenes.js:304 composeInto` 에 걸려 "쓰임 있음"이 됐다(그 둘은 `assets/audio` 를 0번 부른다).
 //   그래서 고아가 56 인데 55 로 보였다. 오차는 **한 방향**이다 — 거짓 양성은 고아를 숨긴다.
 //   ⇒ 아래 확장자는 **이름·URL 로만** 찾는다(어간 금지). 이름을 대면 여전히 걸린다.
-const NO_STEM_EXT = new Set(['py', 'zip', 'md', 'txt', 'json', '']);   // '' = `.gitignore` 꼴
+const NO_STEM_EXT = new Set(['py', 'zip', 'md', 'txt', 'json', '',
+  // ★[T266] 소리도 어간을 못 쓴다 — 키가 `wind`·`fire`·`eat`·`axe` 같은 **짧은 영단어**라
+  //   코드 아무 데나 걸린다(실측: 갓 넣은 `sfx/fire.ogg` 가 `building_render.py`·`test-craft.js` 에,
+  //   `sfx/wind.ogg` 가 `zone.js`·`e2e-weather.js` 에 걸려 **쓰는 데가 없는데 '쓰임 있음'** 이 됐다).
+  //   ⇒ 이름(`wind.ogg`)이나 URL(`/assets/sfx/wind.ogg`)로만 찾는다. 세션9 매니페스트가 그렇게 부를 것이다.
+  'ogg', 'm4a']);                        // '' = `.gitignore` 꼴
 const NO_STEM = process.env.T257_NOSTEM === '0' ? new Set() : NO_STEM_EXT;   // 자명 통과 금지용 되돌림
 // ★★[T257] **주석은 쓰임이 아니다.** 이 집이 세 번째로 밟은 지뢰다 — "검사 범위를 넓히면 검사가 거짓말한다"
 //   (T182 `test-itemlabel` ⑩ · T205 `test-crops-world` · 그리고 여기). 위 주석에 `compose.py` 라고 적었더니
@@ -144,7 +149,13 @@ const mentions = (s, a) => ((!NO_STEM.has(a.ext) && s.toks.has(a.stem)) || s.tok
 
 // ── 닿음 — 전이 폐포(계약 ④) ────────────────────────────────────────────
 //   표(자산 안의 JSON)는 **제가 닿아야** 참조 원천이 된다.
-const JSONS = ASSETS.filter((a) => a.ext === 'json');
+// ★★[T266] **잠금표는 쓰임이 아니다.** 잠금은 파일에서 **유도된** 검사값이지 파일을 부르는 자리가 아니다.
+//   그림에선 우연히 겹쳐서(잠긴 것은 다 쓰인다) 티가 안 났는데, 소리가 들어오자 드러났다:
+//   `sfx/*.ogg` 를 잠그자마자 감사기가 **그 잠금표를 보고 '쓰임 있음'** 이라 답했다.
+//   그러면 '잠갔으니 쓰는 것'이 되어, 아직 아무도 안 부르는 자산이 영원히 안 보인다.
+//   ⇒ `*.lock.json` 은 참조 원천에서 뺀다. 실측: 빼도 그림은 하나도 안 흔들리고(고아 56 → 60)
+//     늘어난 넷이 정확히 갓 넣은 `sfx/` 다 — 매니페스트가 부르면 그때 사라진다.
+const JSONS = ASSETS.filter((a) => a.ext === 'json' && !/\.lock\.json$/.test(a.rel));
 const reached = new Map();                       // rel → [닿게 한 원천들]
 for (const a of ASSETS) {
   const hit = SRC.filter((s) => mentions(s, a)).map((s) => s.rel);
@@ -172,6 +183,8 @@ for (const a of ASSETS) { a.refs = reached.get(a.rel) || []; a.orphan = a.refs.l
 // ── ① 없는 참조 — 닿는 잠금·앵커 표가 가리키는데 파일이 없는 것 ──────────
 const have = new Set(ASSETS.map((a) => a.rel));
 function resolve(dir, key) {                     // 확장자는 디렉터리가 정한다(.png · .webp)
+  // ★[T266] 소리 키는 **파일 이름 그대로**다(한 소리에 `.ogg`+`.m4a` 두 장 — `asset-lock.keyOf`).
+  if (have.has(`public/assets/${dir}/${key}`)) return `public/assets/${dir}/${key}`;
   for (const e of ['png', 'webp']) {
     const r = `public/assets/${dir}/${key}.${e}`;
     if (have.has(r)) return r;

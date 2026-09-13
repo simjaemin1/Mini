@@ -89,12 +89,20 @@ function groups(lock) {
     const dir = path.join(AST, k);
     if (!fs.existsSync(dir)) continue;
     const exts = [...new Set(fs.readdirSync(dir)
-      .filter((f) => /\.(png|webp)$/i.test(f)).map((f) => path.extname(f).toLowerCase()))];
+      .filter((f) => ASSET_EXT.test(f)).map((f) => path.extname(f).toLowerCase()))];
     out[k] = { dir, ext: exts.length === 1 ? exts[0] : exts };
   }
   return out;
 }
-const filesOf = (g) => fs.readdirSync(g.dir).filter((f) => /\.(png|webp)$/i.test(f)).sort();
+// ★[T266] 소리가 들어왔다 — 잠그는 확장자를 한 곳에 둔다(무리는 디렉터리에서 오고, 자는 `rulerOf` 가 고른다:
+//   PNG 만 화소 해시이고 webp·ogg·m4a 는 파일 해시다. 오디오는 그게 맞다 — 고칠 자가 없다).
+const ASSET_EXT = /\.(png|webp|ogg|m4a)$/i;
+const filesOf = (g) => fs.readdirSync(g.dir).filter((f) => ASSET_EXT.test(f)).sort();
+// ★[T266] 키는 **한 파일 하나**여야 한다. 그림은 무리마다 확장자가 하나라 어간이 곧 키다.
+//   소리는 **한 소리에 두 파일**(`.ogg`+`.m4a`)이라 어간을 키로 쓰면 둘이 한 칸을 다툰다
+//   (실측: 그렇게 두니 기록기는 `.ogg` 를 적고 검사기는 `.m4a` 를 재서 2장이 거짓 빨강이었다).
+//   ⇒ 소리만 **파일 이름 그대로** 키로 쓴다.
+const keyOf = (f) => (/\.(ogg|m4a)$/i.test(f) ? f : f.replace(ASSET_EXT, ''));
 
 const RULE_LINE =
   '값 = **화소 해시**: PNG 는 sha1("<w>x<h>|" + 디코드한 RGBA) 앞 16자 — 파일도 IDAT 도 아니다. ' +
@@ -108,7 +116,7 @@ function check(lock) {
   let n = 0;
   for (const [grp, g] of Object.entries(gs)) {
     for (const f of filesOf(g)) {
-      const key = f.replace(/\.(png|webp)$/i, '');
+      const key = keyOf(f);
       const want = lock[grp][key];
       if (want === undefined) continue;
       n++;
@@ -127,7 +135,7 @@ if (require.main === module) {
     for (const [grp, g] of Object.entries(gs)) {
       const tbl = {};
       for (const f of filesOf(g)) {
-        const key = f.replace(/\.(png|webp)$/i, '');
+        const key = keyOf(f);
         if (!(key in lock[grp])) continue;                 // ★있던 키만 — 새 키를 몰래 더하지 않는다
         tbl[key] = lockValue(path.join(g.dir, f)).hash; n++;
       }
@@ -150,4 +158,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { pixelHash, fileHash, lockValue, rulerOf, groups, filesOf, check, bakeBox, bakeBoxLine, LOCK, AST, RULE_LINE, CUT };
+module.exports = { pixelHash, fileHash, lockValue, rulerOf, groups, filesOf, keyOf, check, bakeBox, bakeBoxLine, LOCK, AST, RULE_LINE, CUT };
