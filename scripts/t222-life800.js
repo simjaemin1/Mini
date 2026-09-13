@@ -1,0 +1,179 @@
+#!/usr/bin/env node
+// === scripts/t222-life800.js — 생활층이 **실제로 도는** 800일 자 (헤드리스 `Villages.init` 판) ===
+//
+// ⚠**표 짜는 기계다. 하네스가 아니다** — 러너에 넣지 않는다(`// @regress` 를 안 붙인다).
+//
+// ★왜 [지시 T222 · T213 §2 회부 1]
+//   여덟 수 자(`t17-metrics`·`t165-ab`·`t176-ab`)는 econ 만 돌린다 — `Villages.init()` 을 **안 부른다**.
+//   그래서 생활층이 내는 것(T146 사냥 장부 · 개간 · 건축 · T213 사냥 소득 문)을 **한 번도 못 봤다**:
+//     · T190 `_farmMul` 은 계측기 마을에 `npcPids` 가 없어 헤드리스 라운드로빈으로 우회했고,
+//     · T213 은 4팔이 전부 비트 동일이었다(사냥 장부 0 마을·일 — 문을 심는 줄이 `init()` 안이라 안 탄다).
+//   ⇒ 이 자는 **`Villages.init()` 을 부른다**. 그 한 가지가 다르고, 나머지는 아무것도 새로 만들지 않는다.
+//
+// ★이 파일에 세계 산수는 **없다**. 전부 제품 함수를 그대로 부른다:
+//     기동      : `Villages.init(deps)`   ← zone.js 가 주는 것과 **같은 모양**의 stub deps
+//     하루      : `Villages.onGameTick(now)` ← 제품의 그 진입점(마감 조각까지 같은 길)
+//     읽는 값   : `vil.econ` · `vil._farmSet` · `econ._hkillDay` … **정본이 써 둔 칸만 옮겨 적는다**
+//   계측 항 이름은 `t176-ab.js` 와 같은 것을 쓴다(두 자를 나란히 놓으려면 같은 이름이어야 한다).
+//
+// ★결정성: 제품 `spawnOneNpc` 가 `Math.random` 으로 집 앞 자리를 흩는다. 자는 그것을 **씨 있는 난수**로
+//   고정한다(랩 계측기 넷이 이미 쓰는 그 mulberry32 — `lab-hunt.js:32` 등). 고정하지 않으면 두 판이 갈린다.
+//
+// 실행:
+//   node scripts/t222-life800.js [일수=800] [시드=1020]
+//     T213_HUNT_REAL=1  ← 사냥 소득 실체 팔
+//     T222_JSON=/tmp/t222/off_1020.json
+'use strict';
+const path = require('path');
+const fs = require('fs');
+
+const DAYS = parseInt(process.argv[2], 10) || 800;
+const SEED = parseInt(process.argv[3], 10) || 1020;
+const OUT = process.env.T222_JSON || '';
+
+// ── 결정성 — 씨 있는 난수(랩 계측기 넷과 같은 mulberry32) ────────────────────
+const _rnd0 = Math.random;
+{ let s = SEED >>> 0;
+  Math.random = function () { s = (s + 0x6D2B79F5) | 0; let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+
+// ── 제품이 기대하는 환경 — 하루를 1ms 로, 조각내기 없이 ──────────────────────
+process.env.ZONE_ID = 'hanbando';
+process.env.ENABLE_VILLAGES = '1';
+// ★하루 길이는 **제품 값 그대로**(24분)다. 자는 벽시계를 기다리지 않고 `now` 를 직접 밀기 때문에
+//   줄일 이유가 없고, 줄이면 캐러밴 실체(`tickCaravanBodies(now)`)가 하루에 1ms 만 걷는다 —
+//   실측으로 잡았다: `VILLAGE_DAY_MS=1` 로 800일을 돌리니 교역이 서지 않아 **51곳 중 47곳이 소멸**했다.
+if (process.env.VILLAGE_DAY_MS) delete process.env.VILLAGE_DAY_MS;
+process.env.VILLAGE_TICK_SLICE_MS = '0';                            // 양보 끈을 뽑는다 — 하루가 한 프레임
+// ★[결정성] T146 밴드 구축은 **벽시계 예산**(`T146_BUILD_MS` 기본 20ms/마을·일)이라 기계 속도에 따라
+//   완성 날이 갈린다 — 같은 씨로 두 판을 돌렸더니 `hkillDaysTot` 이 1,138 vs 1,149 로 벌어졌다(실측).
+//   자에서는 예산을 크게 줘 **첫날에 다 짓게** 한다(제품이 이미 가진 손잡이 · 값만 바꾼다 · 세계 규칙 무변).
+process.env.T146_BUILD_MS = process.env.T146_BUILD_MS || '100000';
+process.env.DB_PATH = process.env.DB_PATH || `/tmp/t222-${SEED}-${process.pid}.db`;
+
+const ROOT = path.join(__dirname, '..');
+const R = (p) => require(path.join(ROOT, p));
+const { ZONES, WORLD } = R('server/zone-config');
+const ZONE = ZONES.hanbando;
+// ★시드 — econ 세계의 씨는 존 설정에서 온다(`createWorldV2({ seed: ZONE.villageSeed })`).
+//   자는 그 칸 하나만 바꾼다(env 손잡이가 없어서다 — 값을 지어내지 않고 **정본 칸을 그대로** 쓴다).
+ZONE.villageSeed = SEED;
+
+// ── stub deps — zone.js 가 주는 것과 **같은 모양**(없는 것은 무해한 빈 값) ────
+//   ★관측자는 없다(`anyViewerNear → false`) ⇒ 제품이 스스로 헤드리스 갈래를 고른다.
+const players = new Map(), npcs = new Map();
+let _pid = 0;
+const deps = {
+  players, npcs,
+  spawnNpc: (o) => { const p = Object.assign({ pid: 'n' + (++_pid) }, o); players.set(p.pid, p); npcs.set(p.pid, p); return p; },
+  broadcast: () => {},
+  anyViewerNear: () => false,                       // ★관측자 0 — 헤드리스 결산 갈래
+  isPositionActive: () => false,
+  qtResources: () => null,
+  chunkManager: null,
+  clearTreesInCells: () => 0,
+  liveBuildRow: () => null,
+  onVillageAdded: () => {},
+  isTerrainBlockedLocal: () => false,
+  isWaterTileLocal: () => false,
+  isBlockedByWall: () => false,
+  oreProbAt: () => 0,
+  worldPhase: () => 0.5,                           // 0..1 하루 위상(제품이 숫자로 쓴다)
+  dayPhaseRatio: () => 0.5,
+  mobs: new Map(),
+  zoneWidth: ZONE.zoneWidth,
+  perfMark: () => {},
+  ioBusy: () => false,
+  ioQuietMs: () => 1e9,
+};
+
+const V = R('server/villages');
+const t0 = Date.now();
+const _log = console.log; console.log = () => {};
+V.init(deps);
+console.log = _log;
+const tInit = Date.now() - t0;
+
+// ── 하루 루프 — 제품 진입점 그대로 ───────────────────────────────────────────
+const dayMs = WORLD.dayLengthMs;
+// ★제품은 기동 끝에서 `state.lastGameDay = gameDayOf(Date.now())` 로 **실시계에 앵커**한다(`villages.js:2756`).
+//   그래서 자의 첫 날은 기동이 끝난 **그 순간**부터 세야 한다(0 에서 세면 새 날이 안 열린다 — 실측으로 잡았다).
+const base = Date.now();
+// ★econ 칸은 **제품이 스스로 DB 에 적어 둔 것**을 읽는다(`serializeEcon` — 계측기가 econ 을 다시 안 만든다).
+//   하루 한 번 저장 큐를 비우고(제품은 틱당 한 마을씩 배수한다) 그 줄에서 값을 꺼낸다.
+const db = R('server/zone-local-db');
+const M = new Map();   // 마을별 누계(계측 전용)
+const grab = (js, key) => { const m = js.match(new RegExp('"' + key + '":(-?[0-9.eE+]+)')); return m ? +m[1] : 0; };
+const t1 = Date.now();
+const _l2 = console.log; console.log = () => {};
+for (let d = 1; d <= DAYS; d++) {
+  const now = base + d * dayMs;
+  V.onGameTick(now);
+  for (let f = 0; f < 60; f++) V.onGameTick(now);          // 저장 큐 배수(같은 날 — 제품이 새 날을 안 연다)
+  for (const row of db.getVillagesByZone('hanbando')) {
+    if (!row.econ_state) continue;
+    let m = M.get(row.name); if (!m) M.set(row.name, m = { hkillDays: 0, hkillSum: 0, popMax: 0, everPop: false, huntMax: 0 });
+    const hk = grab(row.econ_state, '_hkillDay');
+    if (hk > 0) { m.hkillDays++; m.hkillSum += hk; }
+    const pop = row.population || 0;
+    if (pop > m.popMax) m.popMax = pop;
+    if (pop > 0) m.everPop = true;
+    const hn = grab(row.econ_state, '"hunter"'.replace(/"/g, '')) || 0;
+    if (hn > m.huntMax) m.huntMax = hn;
+  }
+}
+console.log = _l2;
+const tRun = Date.now() - t1;
+Math.random = _rnd0;
+
+const st = V.lifeDebug ? V.lifeDebug() : null;
+// ── 여덟 수 — **제품이 DB 에 적어 둔 econ 을 읽어** `t176-ab.js:427~436` 과 **같은 식**으로 센다.
+//   ⚠식이 그쪽과 같아야 두 자를 나란히 놓을 수 있다. 다른 식을 쓰면 그게 사본이다.
+//   ⚠사건 장부에서 오는 열(`reqOpened`·`emitted`·㉮㉯)은 서버 state 안에 있어 여기선 못 읽는다 → `null`.
+const PRESERVED = ['dried_fish', 'dried_fruit', 'smoked_meat', 'pickled_veg'];
+const RAWGRAIN = ['wheat', 'rice', 'barley', 'millet'];
+let pop = 0, dead = 0, ever = 0, weapQ = 0, expand = 0, toolQ = 0, preserved = 0, rawGrain = 0, hunterN = 0;
+const per = [];
+const lifeBy = new Map();
+for (const row of (Array.isArray(st) ? st : (st && st.villages) || [])) lifeBy.set(row.name, row);
+for (const row of db.getVillagesByZone('hanbando')) {
+  if (!row.econ_state) continue;
+  let v; try { v = JSON.parse(row.econ_state); } catch (e) { continue; }
+  const n = (v.npcs || []).length; pop += n;
+  if (v._everPop) ever++;
+  if (v._everPop && n <= 0) dead++;
+  weapQ += ((v.storage || {}).weapon || 0) * (v._weapQ != null ? v._weapQ : 1);
+  expand += v.expansions || 0;
+  toolQ += ((v.storage || {}).tool || 0) * (v._toolQ != null ? v._toolQ : 1);
+  for (const r of PRESERVED) preserved += (v.storage || {})[r] || 0;
+  for (const r of RAWGRAIN) rawGrain += (v.storage || {})[r] || 0;
+  const hn = (v.counts || {}).hunter || 0; hunterN += hn;
+  const m = M.get(row.name) || {}; const L = lifeBy.get(row.name) || {};
+  per.push({ name: row.name, N: n, everPop: !!v._everPop, popMax: m.popMax || 0,
+    hunter: hn, lumberjack: (v.counts || {}).lumberjack || 0,
+    hkillDays: m.hkillDays || 0, hkillSum: +(m.hkillSum || 0).toFixed(3),
+    hkillDay: v._hkillDay != null ? +(+v._hkillDay).toFixed(3) : null,
+    game: +((v.land || {}).game || 0).toFixed(2),
+    meat: +(((v.storage || {}).meat || 0)).toFixed(1),
+    farm: L.farm || 0, pot: L.pot || 0, houses: (L.gran || 0), npcVis: L.pop || 0,
+    wcut: v._wcutDay != null ? v._wcutDay : null });   // ★벌목 실체는 서버에 없다 — 늘 null(T213 §0ⓐ)
+}
+const out = {
+  arm: process.env.T213_HUNT_REAL === '1' ? 'hunt' : 'off',
+  seed: SEED, days: DAYS, initMs: tInit, runMs: tRun, msPerDay: +(tRun / DAYS).toFixed(2),
+  villages: per.length,
+  pop, dead, ever, weapQ: +weapQ.toFixed(1), expand, toolQ: +toolQ.toFixed(1),
+  preserved: +preserved.toFixed(1), rawGrain: +rawGrain.toFixed(1),
+  reqOpened: null, emitted: null, densAll: null, densVal: null,   // 서버 사건 장부 — 이 자에선 못 읽는다
+  hunterN, hkillDaysTot: per.reduce((a, p) => a + p.hkillDays, 0),
+  hkillSumTot: +per.reduce((a, p) => a + p.hkillSum, 0).toFixed(3),
+  farmTot: per.reduce((a, p) => a + p.farm, 0), meatTot: +per.reduce((a, p) => a + p.meat, 0).toFixed(1),
+  per,
+};
+
+console.log(`\n=== T222 생활층 자 — ${out.arm} 팔 · 시드 ${SEED} · ${DAYS}일 · 마을 ${out.villages}곳 ===`);
+console.log(`  기동 ${(tInit / 1000).toFixed(1)}s · 하루 ${out.msPerDay}ms · 800일 환산 ${(tRun / DAYS * 800 / 60000).toFixed(1)}분`);
+console.log(`  인구 ${out.pop} · 소멸 ${out.dead}/${out.ever} · 무기Q ${out.weapQ} · 확장 ${out.expand} · 도구Q ${out.toolQ} · 보존식 ${out.preserved} · 생곡 ${out.rawGrain}`);
+console.log(`  사냥꾼 ${out.hunterN} · 장부 선 마을·일 ${out.hkillDaysTot} · 마릿수 합 ${out.hkillSumTot} · 고기 ${out.meatTot} · 개간 ${out.farmTot}`);
+if (OUT) { fs.mkdirSync(path.dirname(OUT), { recursive: true }); fs.writeFileSync(OUT, JSON.stringify(out)); console.log(`  → ${OUT}`); }
+process.exit(0);
