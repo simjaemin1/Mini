@@ -82,9 +82,14 @@ const closeWs = (st) => new Promise((r) => { st.ws.on('close', r); try { st.ws.c
 
 (async () => {
   say('\n=== 게스트 영속 신원 + 소유 판정 전수 ===');
-  boot('central', 'central.js', { PORT: String(CPORT), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });
+  //   ★★[T217] **비밀을 잡고 띄운다.** 안 그러면 하네스도 되돌이라 `isInternal` 이 참이 되고,
+  //     "바깥에서 보면 무엇이 보이나"를 **잴 수가 없다**(폴백이 검사를 자명 통과시킨다).
+  //     비밀을 잡으면 헤더 없는 요청이 곧 바깥이다 — 브라우저가 보는 그것.
+  const SECRET = 't217-harness-secret-' + Math.random().toString(36).slice(2);
+  boot('central', 'central.js', { PORT: String(CPORT), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando', CENTRAL_SECRET: SECRET });
   boot('zone', 'zone.js', {
     PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
+    CENTRAL_SECRET: SECRET,
     ENABLE_VILLAGES: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0',   // 마을 층은 이 검사의 대상이 아니다(e2e-village 가 잰다)
     E2E_GIVE: '1',
   });
@@ -309,6 +314,73 @@ const closeWs = (st) => new Promise((r) => { st.ws.on('close', r); try { st.ws.c
     ok(!/cl\.ownerPid !== myUsername/.test(cl), '★클라 사유지 목록이 `myUsername` 대조를 안 쓴다(게스트는 그게 빈 문자열이라 제 사유지가 남의 것으로 보였다)');
     ok(/msg\.playerId/.test(cl) && /myPlayerId/.test(cl), '클라가 welcome 의 playerId 를 받아 소유 대조에 쓴다');
     ok(!/showNotice\([^)]*[gG]uestToken|myGuestToken[^;]*innerHTML|innerHTML[^;]*myGuestToken/.test(cl), '★클라가 토큰을 화면·알림에 그리지 않는다');
+  }
+
+  // ══ ⑤ ★★[T217 · P0] **열쇠는 HTTP 로 안 나간다** ══════════════════════════
+  //   T216 이 잰 사슬: 벗 이름 → id → `guest_token` → `/guest` → ws 접속. 네 걸음 전부 200 이었다.
+  //   여기서 재는 것은 **그 사슬이 ②에서 끊기는가**, 그리고 **저장 경로는 사는가**.
+  say('\n[⑤ 투영 · 안 문 · 사슬 — T217]');
+  {
+    const OUT = {};                                   // 바깥(브라우저) — 헤더 없음
+    const IN = { 'x-zone-secret': SECRET };           // 안 문(존)
+    const getRaw = async (path2, hdr) => {
+      try { const r = await fetch(`http://localhost:${CPORT}${path2}`, { headers: hdr || {} }); return { s: r.status, d: await r.json(), cors: r.headers.get('access-control-allow-origin') }; }
+      catch (e) { return { s: 0, d: { err: e.message } }; }
+    };
+    const postRaw = async (path2, body, hdr) => {
+      try { const r = await fetch(`http://localhost:${CPORT}${path2}`, { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, hdr || {}), body: JSON.stringify(body) }); return { s: r.status, d: await r.json() }; }
+      catch (e) { return { s: 0, d: { err: e.message } }; }
+    };
+    const gv = await postJ(CPORT, '/guest', {});
+    await postJ(CPORT, '/auth', { username: 't217acct', password: 'pw-t217', color: '#5a9ae0', home_zone: 'hanbando', home_x: 111, home_y: 222 });
+
+    // ⓐ 바깥에서 본 `/player/<id>` — 열쇠·좌표·소지품이 **한 칸도 없어야** 한다
+    const outRow = await getRaw(`/player/${encodeURIComponent(gv.player_id)}`, OUT);
+    const KEYS = ['password_hash', 'password_salt', 'guest_token', 'home_x', 'home_y', 'last_x', 'last_y', 'inventory_json', 'tools_json'];
+    const leaked = KEYS.filter((k) => outRow.d && outRow.d.player && outRow.d.player[k] !== undefined);
+    ok(leaked.length === 0, '⑤a ★★바깥의 `GET /player/<id>` 에 **열쇠·좌표·소지품이 0칸**', leaked.length ? leaked.join(',') : `칸: ${Object.keys((outRow.d && outRow.d.player) || {}).join(',')}`);
+    ok(!!(outRow.d && outRow.d.player && outRow.d.player.last_zone !== undefined && outRow.d.player.name !== undefined),
+      '⑤a2 ★그런데 **로비가 쓰는 칸은 그대로 있다**(`name`·`last_zone`·`home_zone` — 클라 0)');
+    // ⓑ 안 문에서는 행 전체가 온다 — 존이 `last_seen`·`tribe_id`·`tools_json` 을 읽어야 한다
+    const inRow = await getRaw(`/player/${encodeURIComponent(gv.player_id)}`, IN);
+    ok(!!(inRow.d && inRow.d.player && inRow.d.player.guest_token), '⑤b ★안 문(존)에서는 **행 전체가 온다**(저장·복원이 산다)');
+    // ⓒ 쓰기 — 바깥은 거절, 안 문은 통과
+    const wOut = await postRaw(`/player/${encodeURIComponent(gv.player_id)}`, { wood: 99999 }, OUT);
+    ok(wOut.s === 401, '⑤c ★★바깥의 `POST /player/<id>` 는 **거절**된다(T217 §0-ⓑ: 여태 누구나 남의 몸을 덮어썼다)', `status ${wOut.s} · ${JSON.stringify(wOut.d).slice(0, 60)}`);
+    const wIn = await postRaw(`/player/${encodeURIComponent(gv.player_id)}`, { wood: 42 }, IN);
+    const chk = await getRaw(`/player/${encodeURIComponent(gv.player_id)}`, IN);
+    ok(wIn.s === 200 && chk.d.player.wood === 42, '⑤c2 ★안 문의 쓰기는 **산다**(저장 경로 무변)', `wood ${chk.d.player.wood}`);
+    // ⓓ T216 사슬이 **②에서 끊긴다**
+    const byName = await getRaw(`/friends/${encodeURIComponent('t217acct')}?by=name`, OUT);
+    ok(byName.d && byName.d.friends === undefined && typeof byName.d.n === 'number',
+      '⑤d ★`?by=name` 은 바깥에 **수만** 준다(id 가 사슬의 첫 걸음이었다)', JSON.stringify(byName.d));
+    const byNameIn = await getRaw(`/friends/${encodeURIComponent('t217acct')}?by=name`, IN);
+    ok(!!(byNameIn.d && Array.isArray(byNameIn.d.friends)), '⑤d2 ★안 문에는 id 가 온다 — `friendsHere` 가 그걸로 센다(기능 무변)');
+    ok(!(outRow.d && outRow.d.player && outRow.d.player.guest_token),
+      '⑤ ★★**T216 네 걸음 사슬이 ②에서 끊긴다** — id 를 알아도 토큰이 안 나온다');
+    // ⓔ CORS — 기본은 헤더가 없다(로비는 central 과 같은 오리진이다)
+    ok(outRow.cors === null, '⑤e ★CORS `*` 가 **기본으로 안 붙는다**(필요한 판만 `CENTRAL_CORS`)', String(outRow.cors));
+    // ⓕ ★토큰 회전 — 이미 샜을 수 있는 열쇠가 제 주인의 다음 접속에 죽는다
+    const again = await postJ(CPORT, '/guest', { token: gv.token });
+    ok(again.ok && again.player_id === gv.player_id, '⑤f 전제: 같은 토큰이면 **같은 사람**이다(배치 13 계약 무변)', again.player_id);
+    ok(again.token && again.token !== gv.token, '⑤ ★★열쇠가 **회전한다** — 쓸 때마다 새 토큰(#27 판정)', `${String(again.token).slice(0, 8)}… ≠ ${String(gv.token).slice(0, 8)}…`);
+    //   ★유예 — 옛 열쇠는 **곧바로 죽지 않는다**. 존이 `/guest` 를 부른 뒤 welcome 이 닿기 전에
+    //     접속이 깨지면 클라는 새 토큰을 못 받은 채 옛것으로 다시 붙는다. 그때 신원을 잃으면
+    //     그 사람은 제 마을을 잃는다 ⇒ 몇 분만 살려 둔다(메모리 · 새 컬럼 0).
+    const grace = await postJ(CPORT, '/guest', { token: gv.token });
+    ok(grace.ok && grace.player_id === gv.player_id, '⑤f2 ★유예 — 옛 열쇠로 곧바로 다시 붙으면 **같은 사람**이다(접속이 깨진 판을 살린다)', grace.player_id);
+    const live = await postJ(CPORT, '/guest', { token: again.token });
+    ok(live.ok && live.player_id === gv.player_id, '⑤f3 ★주인은 **새 토큰으로 그대로** 들어온다(신원 안 잃는다)', live.player_id);
+    //   ★그리고 유예가 끝나면 옛 열쇠는 **죽는다** — 유예를 0 으로 띄운 판으로 잰다(자명 통과 금지).
+    const CP2 = CPORT + 7, CDB2 = `/tmp/t217-grace0-${process.pid}.db`;
+    boot('central0', 'central.js', { PORT: String(CP2), DB_PATH: CDB2, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando', CENTRAL_SECRET: SECRET, GUEST_TOKEN_GRACE_MS: '0' });
+    await waitHttp(`http://localhost:${CP2}/zones`);
+    const z1 = await postJ(CP2, '/guest', {});
+    const z2 = await postJ(CP2, '/guest', { token: z1.token });          // 회전
+    const z3 = await postJ(CP2, '/guest', { token: z1.token });          // 옛것 — 유예 0 이면 죽는다
+    ok(z2.token !== z1.token && z3.isNew === true && z3.player_id !== z1.player_id,
+      '⑤ ★★유예가 끝난 옛 열쇠는 **더는 그 사람이 아니다**(훔친 열쇠가 죽는 자리)', `${z3.player_id} · isNew=${z3.isNew}`);
+    for (const f of [CDB2, CDB2 + '-wal', CDB2 + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
   }
 
   shutdown();

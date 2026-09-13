@@ -4,6 +4,9 @@
 const http = require('http');
 const https = require('https');
 const { CENTRAL } = require('./zone-config');
+// ★★[T217 2026-09-13] **안 문 열쇠.** central 은 행 전체와 쓰기를 이 헤더를 아는 쪽에만 연다
+//   (없으면 되돌이에서 온 요청만 · `central.js isInternal`). 값은 로그·응답 어디에도 안 찍는다.
+const ZONE_SECRET = String(process.env.CENTRAL_SECRET || '').trim();
 
 function request(method, path, body) {
   return new Promise((resolve, reject) => {
@@ -13,7 +16,8 @@ function request(method, path, body) {
       port: CENTRAL.port,
       path,
       method,
-      headers: { 'Content-Type': 'application/json' },
+      headers: Object.assign({ 'Content-Type': 'application/json' },
+        ZONE_SECRET ? { 'x-zone-secret': ZONE_SECRET } : {}),
       timeout: 5000,
     };
     const req = proto.request(opts, (res) => {

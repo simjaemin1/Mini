@@ -494,15 +494,81 @@ function newGuestToken() { return crypto.randomBytes(32).toString('hex'); }
 // 판정하고 있고(길드 생성·거래소 등), 이 배치는 그 정책을 바꾸지 않는다. 바뀌는 건 **접미사가
 // 접속을 넘어 같아진다**는 것 하나뿐이다.
 function newGuestPlayerId() { return 'anon_' + crypto.randomBytes(9).toString('base64url'); }
+// ★[T217] 회전한 **옛 열쇠의 유예** — 표가 아니라 메모리다(새 컬럼 0 · 재시작하면 비는 것이 맞다).
+const GUEST_GRACE_MS = Math.max(0, parseInt(process.env.GUEST_TOKEN_GRACE_MS || '600000', 10));   // 10분
+const _grace = new Map();   // 옛 토큰 → { pid, at }
+function _graceSet(tok, pid) {
+  if (!GUEST_GRACE_MS || !tok) return;
+  _grace.set(tok, { pid, at: Date.now() });
+  if (_grace.size > 5000) { for (const [k, v] of _grace) if (Date.now() - v.at >= GUEST_GRACE_MS) _grace.delete(k); }
+}
+function _graceGet(tok) {
+  const h = _grace.get(tok);
+  if (!h) return null;
+  if (Date.now() - h.at >= GUEST_GRACE_MS) { _grace.delete(tok); return null; }
+  return h.pid;
+}
+
+// ═══ ★★[T217 2026-09-13 · P0] 열쇠는 HTTP 로 안 나간다 ══════════════════════
+//
+// T216 이 실측한 것: `GET /player/<id>` 가 인증 0 으로 `SELECT *` 를 그대로 줬다 —
+//   `password_hash` · `password_salt` · **`guest_token`** · `home_x/y` · `last_x/y` · 소지품.
+//   그리고 네 걸음(벗 이름 → id → 토큰 → `/guest` → ws)이 **전부 200** 으로 게스트 신원 탈취가 됐다.
+//   배치 13 이 *"게스트 토큰은 열쇠라 CORS 열린 곳으로 절대 보내지 않는다"* 고 못박은 그 값이다.
+//
+// ★규약 — **문이 둘이다.**
+//   · 바깥 문(브라우저)  : `projectPublic()` 만 나간다. 열쇠·좌표·소지품은 **어떤 응답에도 안 실린다.**
+//   · 안 문(존 ↔ central): 행 전체와 쓰기. `CENTRAL_SECRET` 을 아는 쪽만 지난다.
+//
+// ⚠**비밀이 없으면 어떻게 하나** — 쓰기를 통째로 막으면 **저장이 끊긴다**(그게 더 큰 사고다).
+//   그래서 비밀이 안 잡혀 있으면 **사설/되돌이 주소에서 온 요청만** 안 문으로 본다.
+//   ⚠되돌이만으로는 **안 된다**(실측 근거): 배포는 docker 두 통이고(`redeploy-hanbando.sh` — central
+//     `-p 3010:3010`, 존은 `CENTRAL_HOST` 로 호스트를 친다) ⇒ 존→central 의 출발지는 **브리지 사설 IP**
+//     (172.17.x)다. 되돌이만 열면 **라이브의 저장 경로가 그 자리에서 끊긴다.**
+//   ⚠`x-forwarded-for` 가 붙어 있으면 판단을 **취소**한다 — 리버스 프록시 뒤에서는 바깥이 사설로 보인다.
+//   ⇒ 지금 배포는 **설정 없이 그대로 돈다**(존은 사설, 브라우저는 공인 주소).
+//     한 기계 안에 남이 같이 사는 판이면 `CENTRAL_SECRET` 을 양쪽에 넣어라(부팅 때 경고를 찍는다).
+const CENTRAL_SECRET = String(process.env.CENTRAL_SECRET || '').trim();
+//   ★CORS — 로비는 central 이 **직접 서빙한다**(아래 정적 파일 분기) ⇒ 같은 오리진이라 `*` 가 필요 없다.
+//     존의 문(`/startinfo` 등)은 다른 호스트라 CORS 가 필요하지만 그건 **존이 제 응답에** 붙인다.
+//     ⇒ 기본은 **헤더 없음**. 페이지를 다른 오리진에서 서빙하는 판만 `CENTRAL_CORS` 로 연다.
+const CENTRAL_CORS = String(process.env.CENTRAL_CORS || '').trim();
+//   사설·되돌이 판정 — RFC1918 + 127/8 + ::1 + IPv4-mapped. 공인 주소는 전부 바깥이다.
+function _isPrivateAddr(req) {
+  let a = String((req.socket && req.socket.remoteAddress) || '');
+  if (a.startsWith('::ffff:')) a = a.slice(7);
+  if (a === '::1' || a.startsWith('127.')) return true;
+  if (a.startsWith('10.') || a.startsWith('192.168.')) return true;
+  const m = /^172\.(\d+)\./.exec(a);
+  if (m) { const n = +m[1]; if (n >= 16 && n <= 31) return true; }   // docker 브리지가 여기 산다
+  if (/^f[cd]/i.test(a)) return true;                                // IPv6 ULA
+  return false;
+}
+/** 이 요청이 **안 문**을 지날 자격이 있나. 로그에 비밀을 안 찍는다. */
+function isInternal(req) {
+  const given = String((req.headers && req.headers['x-zone-secret']) || '');
+  if (CENTRAL_SECRET) {
+    if (given.length !== CENTRAL_SECRET.length) return false;
+    try { return crypto.timingSafeEqual(Buffer.from(given), Buffer.from(CENTRAL_SECRET)); } catch (e) { return false; }
+  }
+  if (req.headers && req.headers['x-forwarded-for']) return false;   // 프록시 뒤 — 출발지를 못 믿는다
+  return _isPrivateAddr(req);
+}
+/** 바깥 문이 볼 수 있는 칸 — **로비가 실제로 읽는 것만**(§0-ⓐ: `last_zone`·`home_zone` 둘뿐이다). */
+function projectPublic(p) {
+  if (!p) return null;
+  return { player_id: p.player_id, name: p.name, color: p.color, last_zone: p.last_zone, home_zone: p.home_zone };
+}
 
 // === HTTP 유틸 ===
 function jsonResp(res, status, obj) {
-  res.writeHead(status, {
-    'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  });
+  const h = { 'Content-Type': 'application/json' };
+  if (CENTRAL_CORS) {
+    h['Access-Control-Allow-Origin'] = CENTRAL_CORS;
+    h['Access-Control-Allow-Headers'] = 'Content-Type';
+    h['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS';
+  }
+  res.writeHead(status, h);
   res.end(JSON.stringify(obj));
 }
 function readBody(req) {
@@ -595,10 +661,11 @@ function settle(newOrder, counter, amount) {
 
 // === HTTP 핸들러 ===
 const server = http.createServer(async (req, res) => {
-  // CORS preflight
+  // CORS preflight — ★[T217] 근거는 `CENTRAL_CORS` 하나(기본 닫힘 · 위 주석)
   if (req.method === 'OPTIONS') {
+    if (!CENTRAL_CORS) { res.writeHead(204); return res.end(); }
     res.writeHead(204, {
-      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Origin': CENTRAL_CORS,
       'Access-Control-Allow-Headers': 'Content-Type',
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     });
@@ -795,14 +862,47 @@ const server = http.createServer(async (req, res) => {
       const tok = (typeof data.token === 'string' && /^[0-9a-f]{64}$/.test(data.token)) ? data.token : null;
       const now = Date.now();
       if (tok) {
-        const row = stmtGetByGuestToken.get(tok);
+        //   ★[T217] 행에 없으면 **유예 중인 옛 열쇠**인지 본다(위 회전 주석).
+        let row = stmtGetByGuestToken.get(tok);
+        if (!row) { const gid = _graceGet(tok); if (gid) row = stmtGetPlayer.get(gid); }
         //   ★등록 계정으로 승격된 행(비밀번호가 생긴 행)은 이 경로로 되돌려주지 않는다 —
         //     게스트 토큰이 등록 계정의 열쇠가 되면 그게 곧 계정 탈취다.
         if (row && !row.password_hash) {
+          //   ★★[T217 2026-09-13 · #27 판정] **열쇠를 쓸 때마다 갈아 끼운다(회전).**
+          //     T216 이 잰 사슬로 이미 새어 나갔을 수 있는 토큰이 지금도 유효하다 — 문을 닫는 것만으로는
+          //     **이미 나간 열쇠**가 안 죽는다. 그래서 제 주인이 다음에 들어올 때 새 토큰을 주고 옛것을 버린다.
+          //     ⇒ 훔친 쪽이 먼저 쓰지 않는 한, 주인의 다음 접속 한 번으로 그 열쇠가 죽는다.
+          //   ⚠값: **한 신원을 두 브라우저에서 쓰던 사람은 한쪽을 잃는다**(옛 토큰이 죽으므로 새 게스트가 된다).
+          //     게스트를 두 창에서 쓰는 것은 원래 규약에 없고(신원 하나 = 브라우저 하나 · localStorage),
+          //     열쇠가 이미 샜을 수 있는 지금은 **죽이는 쪽이 맞다**. 되돌리려면 `GUEST_TOKEN_ROTATE=0`.
+          //   ⚠새 토큰은 **응답으로만** 나간다(zone → welcome → 클라 localStorage) — 로그에 안 찍는다.
+          let _tok = tok;
+          if (String(process.env.GUEST_TOKEN_ROTATE || '1') !== '0') {
+            for (let k = 0; k < 4; k++) {
+              const nt = newGuestToken();
+              try {
+                db.prepare('UPDATE players SET guest_token = ? WHERE player_id = ?').run(nt, row.player_id);
+                //   ★★옛 열쇠를 **바로 죽이지 않는다** — `GUEST_TOKEN_GRACE_MS` 동안만 메모리에 들고 있는다.
+                //     이유(실측 근거): 존은 접속 경로 **앞쪽**에서 `/guest` 를 부르고 새 토큰은 **welcome** 으로
+                //     클라에 간다. 그 사이에 접속이 깨지면(`_connFailPoint` 가 재는 그 자리들) 클라는 새 토큰을
+                //     **못 받은 채** 옛것으로 다시 붙는다 ⇒ 유예가 없으면 그 사람은 **제 마을을 잃는다.**
+                //     유예가 있으면 재접속이 같은 신원으로 붙고, 훔친 열쇠는 **몇 분 뒤 죽는다.**
+                //   ⚠표가 아니라 **메모리**다(새 컬럼 0). central 이 재시작하면 유예는 사라진다 —
+                //     그때 살아 있는 열쇠는 행에 있는 새것 하나뿐이고, 그게 안전한 쪽이다.
+                //   ⚠유예는 **둘 다** 건다: 이번에 제시된 열쇠와, 행에 들어 있던 **직전 열쇠**.
+                //     둘이 다를 수 있다(유예로 들어온 판) — 행의 것을 안 걸면 그걸 들고 있던
+                //     **멀쩡한 클라**가 조용히 신원을 잃는다(하네스 ⑤f3 이 이 자리를 잡았다).
+                _graceSet(tok, row.player_id);
+                _graceSet(row.guest_token, row.player_id);
+                _tok = nt; break;
+              }
+              catch (e) { /* 유니크 충돌 — 다시 뽑는다 */ }
+            }
+          }
           try { stmtTouchGuest.run(now, row.player_id); } catch (e) {}
           // ★[2026-08-03g 배치 14 ②] **행 전체**를 준다 — zone 이 등록 계정과 같은 경로로 몸(인벤·좌표·
           //   도구·숙련)을 복원한다. 게스트 전용 저장 경로를 새로 만들지 않기 위한 최소 변경.
-          return jsonResp(res, 200, { ok: true, player_id: row.player_id, token: tok, isNew: false, player: row });
+          return jsonResp(res, 200, { ok: true, player_id: row.player_id, token: _tok, isNew: false, player: { ...row, guest_token: _tok } });
         }
       }
       // 새 게스트 — playerId 와 토큰을 함께 만든다. 충돌은 사실상 없지만 유니크 제약이 있으니 재시도한다.
@@ -843,7 +943,10 @@ const server = http.createServer(async (req, res) => {
       const username = (data.username || '').trim().slice(0, 16);
       const password = data.password || '';
       if (!tok || !username || !password) return jsonResp(res, 200, { ok: false, reason: 'not_promotable' });
-      const row = stmtGetByGuestToken.get(tok);
+      //   ★[T217] 회전한 **옛 열쇠도 유예 안이면 받는다** — `/guest` 와 같은 이유이고, 여기서 안 받으면
+      //     회전 직후 승계하려던 사람이 `not_promotable` 을 맞는다(`e2e-friends ⑧i` 가 이 자리를 잡았다).
+      let row = stmtGetByGuestToken.get(tok);
+      if (!row) { const gid = _graceGet(tok); if (gid) row = stmtGetPlayer.get(gid); }
       if (!row || row.password_hash) return jsonResp(res, 200, { ok: false, reason: 'not_promotable' });
       const acct = findAccount(username);
       if (acct) {
@@ -918,9 +1021,16 @@ const server = http.createServer(async (req, res) => {
       //     시작 화면이 인증된 뒤에 물어야 하고 그건 로비의 순서를 바꾸는 일이라 **회부**다.
       if (qs && /(^|&)by=name(&|$)/.test(qs)) {
         const other = findPerson(key);   // ★[T208] 지목 — 시작 화면 "함께 도착"이 게스트 벗도 센다
-        if (!other) return jsonResp(res, 200, { ok: true, friends: [] });
-        return jsonResp(res, 200, { ok: true, friends: friendsOf(other.player_id).map((f) => ({ id: f.id })) });
+        if (!other) return jsonResp(res, isInternal(req) ? 200 : 200, isInternal(req) ? { ok: true, friends: [] } : { ok: true, n: 0 });
+        const list = friendsOf(other.player_id).map((f) => ({ id: f.id }));
+        //   ★★[T217] **바깥에는 수(數)만.** 이 갈래를 쓰는 것은 존뿐이고(클라에 호출 0곳 — 로비는
+        //     존의 `/startinfo?as=` 를 부른다), 존은 그 id 로 각자의 `start_vid` 를 찾아 `friendsHere` 를 센다.
+        //     id 가 밖으로 나가면 그게 T216 사슬의 **첫 걸음**이다(이름 → id → 토큰). 그래서 안 문에서만 준다.
+        if (!isInternal(req)) return jsonResp(res, 200, { ok: true, n: list.length });
+        return jsonResp(res, 200, { ok: true, friends: list });
       }
+      //   ★[T217] id 갈래도 같다 — 바깥에는 **수만**(이름·id 를 주면 T216 사슬의 재료가 된다).
+      if (!isInternal(req)) return jsonResp(res, 200, { ok: true, n: friendsOf(key).length });
       return jsonResp(res, 200, { ok: true, friends: friendsOf(key) });
     }
     // === 프로필 조회 ===
@@ -928,11 +1038,16 @@ const server = http.createServer(async (req, res) => {
       const id = decodeURIComponent(req.url.slice('/player/'.length));
       const p = stmtGetPlayer.get(id);
       if (!p) return jsonResp(res, 404, { error: 'not found' });
-      return jsonResp(res, 200, { player: p });
+      //   ★★[T217] 바깥에는 **투영만**. 안 문(존)만 행 전체를 본다(`last_seen`·`tribe_id`·`tools_json` 을 읽는다).
+      return jsonResp(res, 200, { player: isInternal(req) ? p : projectPublic(p) });
     }
     // === 프로필 업데이트 (zone 서버가 호출) ===
     // POST /player/:id  body: { wood, stone, tools_json, equipped, last_zone, last_x, last_y, color }
     if (req.url.startsWith('/player/') && req.method === 'POST') {
+      //   ★★[T217 · P0] 이 문은 **저장 경로**다(`zone.js:493 central.updatePlayer`). 여태 인증이 0 이라
+      //     아무나 남의 소지품·좌표·길드를 덮어썼다(T217 §0-ⓑ 실측: `wood 7 → 99999`, `status 200`).
+      //     부르는 쪽은 존 하나뿐이다(클라에 `/player/` POST 가 0곳) ⇒ **안 문으로 옮긴다.**
+      if (!isInternal(req)) return jsonResp(res, 401, { ok: false, reason: 'internal_only' });
       const id = decodeURIComponent(req.url.slice('/player/'.length));
       const p = stmtGetPlayer.get(id);
       if (!p) return jsonResp(res, 404, { error: 'not found' });
@@ -1406,6 +1521,12 @@ function strategicTick() {
   } catch (e) { console.error('[central] strategic tick error:', e); }
 }
 setInterval(strategicTick, STRATEGIC_TICK_MS);
+//   ★[T217] 안 문의 상태를 부팅 때 한 줄로 말한다 — 조용히 약한 쪽으로 돌면 그게 다음 사고다.
+//   ⚠비밀 값은 절대 안 찍는다(길이도 안 찍는다).
+if (CENTRAL_SECRET) console.log('[central] 🔒 안 문: CENTRAL_SECRET 로 잠갔다 (열쇠·행 전체는 그 헤더를 아는 쪽만)');
+else console.warn('[central] ⚠ 안 문: CENTRAL_SECRET 이 없다 — **사설/되돌이 주소만** 안 문으로 본다. '
+  + '한 기계에 남이 같이 사는 판이면 존과 central 양쪽에 CENTRAL_SECRET 을 넣어라.');
+if (CENTRAL_CORS) console.log(`[central] 🌐 CORS 열림: ${CENTRAL_CORS}`);
 if (STRATEGIC_AI_ENABLED) console.log('[central] 🤖 strategic NPC AI ON (30분 tick)');
 else console.log('[central] 🤖 strategic NPC AI OFF (STRATEGIC_AI=1로 enable)');
 
