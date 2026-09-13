@@ -244,6 +244,47 @@ console.log('\n[⑨ ★실행 — 실서버에서 자리 확정이 실패하면 
       chk(snap(c) === c0, `★★그때도 재료가 **그대로다** — ${c0} → ${snap(c)}`);
     }
   }
+  console.log('\n[⑪ ★T237 비옥도 — 영토가 자라도 창설 값을 지킨다]');
+  {
+    const FERT = require(path.join(__dirname, '..', 'server', 'fertility.js'));
+    const { ZONES } = require(path.join(__dirname, '..', 'server', 'zone-config.js'));
+    const TR = require(path.join(__dirname, '..', 'server', 'terrain.js'));
+    if (TR.setZonesMeta) TR.setZonesMeta(ZONES);
+    const P = V.__labProbe;
+    // ★지형 자는 **본 게임 어댑터 그대로**(사본 0) — deps 둘은 실서버의 그 함수다.
+    const ta2 = P.makeTerrainAdapter(TR, ZONES.hanbando,
+      { isTerrainBlockedLocal: H.isTerrainBlockedLocal, isWaterTileLocal: H.isWaterTileLocal });
+    // 서로 62셀 상자가 안 겹치는 두 자리(존 안 · 물 아님)를 고른다
+    const pick = (x0, y0) => { for (let r = 0; r < 400; r += 3) for (const [dx, dy] of [[r, 0], [0, r], [-r, 0], [0, -r], [r, r], [-r, -r]]) {
+      const x = x0 + dx, y = y0 + dy; if (!ta2.isBlocked(x, y)) return { x, y }; } return null; };
+    const A = pick(900, 1800), B = pick(1400, 2300);
+    chk(!!A && !!B && Math.hypot(A.x - B.x, A.y - B.y) > 200,
+      `⑪ⓐ (전제) 상자가 안 겹치는 두 자리를 잡았다 — A(${A && A.x},${A && A.y}) · B(${B && B.x},${B && B.y})`);
+    if (A && B) {
+      ta2.prepareFert(A.x, A.y, 62);
+      const fA1 = ta2.fert(A.x, A.y);
+      chk(fA1 !== FERT.NEUTRAL, `⑪ⓑ (전제) 제 상자를 깔면 A 는 중립이 **아니다** — fert(A) ${fA1.toFixed(3)} ≠ 중립 ${FERT.NEUTRAL}`);
+      ta2.prepareFert(B.x, B.y, 62);            // ★시딩 루프가 마을마다 하는 그 호출
+      const fA2 = ta2.fert(A.x, A.y);
+      chk(fA2 === FERT.NEUTRAL,
+        `⑪ⓒ ★★**장은 하나다** — B 상자를 깔면 A 는 중립으로 떨어진다(${fA1.toFixed(3)} → ${fA2}) ⇒ 부팅 뒤 대부분의 마을이 중립을 읽는다`);
+      const wouldBe = +(FERT.NEUTRAL * 1.4).toFixed(2);
+      chk(wouldBe === 0.7, `⑪ⓓ 그래서 종전 덮기의 답은 늘 **${wouldBe}** 였다(중립 ${FERT.NEUTRAL} × 1.4 — 실서버 세 판에서 어촌2·임업6·농촌2 가 정확히 그 값)`);
+    }
+    // ★규약 — `_terrGrow` 가 비옥도를 **안 덮는다**(그 함수 본문만 잘라서 본다)
+    const cut = (src) => { const i = src.indexOf('function _terrGrow(vil) {'); const j = src.indexOf('\nfunction ', i + 10); return i < 0 ? '' : src.slice(i, j < 0 ? src.length : j); };
+    const body = cut(VIL).replace(/\/\/[^\n]*/g, '');   // 주석 제거 — 주석 안의 옛 식에 속지 않게
+    chk(body.length > 200, '⑪ⓔ (전제) `_terrGrow` 본문을 잘라 냈다');
+    chk(!/land\.fertility\s*=/.test(body), '⑪ ★영토가 자라도 `land.fertility` 를 **안 덮는다** — 창설 값(`prepareFert` 가 제 상자로 잰 값)이 그대로 산다');
+    chk(/land\.arable\s*=/.test(body), '⑪ⓕ 그러면서 `land.arable` 은 **그대로 갱신한다**(`isWater` 로만 세므로 장과 무관 · 통째 삭제가 아니다)');
+    // ★자명 통과 금지 — 덮기를 되돌린 판을 만들면 위 검사가 문다
+    {
+      const reverted = body.replace(/const n = own\.size;/, 'const n = own.size;\n  land.fertility = Math.max(0.1, Math.min(2.0, +((fs / n) * 1.4).toFixed(2)));');
+      if (reverted === body) chk(false, '[⑪ 자명 통과 금지] 변조판을 못 만들었다 — 검사기가 읽는 자리가 그 자리가 아니다');
+      else chk(/land\.fertility\s*=/.test(reverted), '⑪ⓖ [자명 통과 금지] 덮기를 되돌린 판을 만들면 이 검사가 **문다**');
+    }
+  }
+
   // ★구조 — 이 클래스가 다시는 못 나게: 생활층에 lazy 모듈의 **맨 이름이 없다**
   const VILSRC = R('server/villages.js');
   const iAcc = VILSRC.indexOf("const _lifeVL = () =>");

@@ -2452,17 +2452,29 @@ function _terrGrow(vil) {
   // ★새 셀 개간 — 나무 제거(마을 안엔 숲이 없다)
   let cut = 0;
   try { if (state.deps.clearTreesInCells) cut = state.deps.clearTreesInCells(added) || 0; } catch (e) {}
-  // ★지형 재측정 → econ 반영(비옥도는 영토 실측 평균 × 1.4 — 씨딩과 같은 환산)
-  let fs = 0, tw = 0;
+  // ★★[T237 2026-09-13 재민 확정] **비옥도는 안 덮는다.**
+  //   종전엔 여기서 `land.fertility = (Σ fert / n) × 1.4` 로 다시 적었다(`6412516a` 2026-07-30 ·
+  //   "영토 확장 실동" · 뜻은 리카도였다 — 한계지를 삼키면 평균 지력이 내려간다).
+  //   그런데 그 평균의 재료인 비옥도 장 `_FF` 는 **마을마다 갈아 끼우는 하나**다(`:193`·`:194`).
+  //   시딩 루프가 마을마다 `prepareFert` 를 부르므로 부팅 뒤엔 **마지막 마을 상자 하나**만 남고,
+  //   나머지 마을에선 `fert()` 가 중립 0.5 를 돌려준다(`:202`) ⇒ 덮는 값이 늘 `0.5 × 1.4 = 0.70`.
+  //   실측(T230·T219·T212 세 판 · 실서버 200일 50마을): 영토가 자란 **세 마을이 정확히 0.70**
+  //   (어촌2·임업6·농촌2 — 세 판 모두 같은 셋 · 세계에서 가장 큰 마을들이다).
+  //   ★랩 정본 문법이 그대로 답이다 — 랩 `growTerritory` 주석: *"land.size는 lifeInit서 1회 고정
+  //     → **경제 영향 0**(렌더/정착 경계만)"*. **랩 영토는 경제에 안 닿는다.**
+  //   ⇒ 창설 때 `prepareFert` 가 제 상자를 들고 잰 값(`extractLandParamsApprox`)이 그대로 산다.
+  //   ⚠`arable` 은 그대로 갱신한다 — `isWater` 로만 세므로 `_FF` 와 무관하고, 늘 옳았다.
+  //   (후보 점수의 `fertOf` 도 같은 이유로 중립 0.5 를 읽는다 — 그건 "어느 셀을 삼키나"만 바꾸고
+  //    econ 엔 안 닿는다. 고치려면 마을별 장이 필요하다 ⇒ 회부 · 캐논은 재민.)
+  let tw = 0;
   for (const k of own) {
     const ci = k.indexOf(','), x = +k.slice(0, ci), y = +k.slice(ci + 1);
-    fs += fertOf(x, y); if (ta.isWater(x, y)) tw++;
+    if (ta.isWater(x, y)) tw++;
   }
   const n = own.size;
-  land.fertility = Math.max(0.1, Math.min(2.0, +((fs / n) * 1.4).toFixed(2)));
   land.arable = +((n - tw) / n).toFixed(2);
   vil._jobSites = null;              // 현장 후보 재계산(새 땅의 자원 반영)
-  if (cut) console.log(`[${state.zoneId}] 🏘️ ${vil.name} 영토 +${added.size}셀(${n}/${target}) · 개간 ${cut}그루 · 비옥 ${land.fertility}`);
+  if (cut) console.log(`[${state.zoneId}] 🏘️ ${vil.name} 영토 +${added.size}셀(${n}/${target}) · 개간 ${cut}그루 · 비옥 ${land.fertility}(창설 값 유지)`);
   return added.size;
 }
 
