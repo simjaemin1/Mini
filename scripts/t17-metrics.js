@@ -96,6 +96,11 @@ require('../server/trees').attachToWorld(world);
 // ★[T206 · 계측 전용] 남는 용량에 둘째 후보 — `T206_CARGO_TWO=1` 일 때만 문을 연다(없으면 무변).
 //   랩은 `window.L_CARGO_TWO` 로 **같은 문**을 연다(문은 하나 — 하네스가 지문으로 대조한다).
 if (process.env.T206_CARGO_TWO === '1') world.cargoTwo = true;
+// ★[T233·T239 · 계측 전용] 둘째 화물의 관문과 선택 — 같은 자리·같은 문법(없으면 무변).
+//   랩은 `window.L_CARGO_TWO_GATE` / `L_CARGO_TWO_BEST` 로 **같은 문**을 연다.
+//   ⚠여기 두는 이유는 T191 줄과 같다 — **여덟 수를 다시 구현하지 않기 위해서**다(정본 재구현 0).
+if (process.env.T233_CARGO_GATE === '1') world.cargoTwoGate = true;
+if (process.env.T239_CARGO_BEST === '1') world.cargoTwoBest = true;
 for (const s of seeds) {
   const ev = econ.createVillage({ ...s.lp, initialPop: P.INITIAL_POP, name: s.name });
   ev._world = world; ev.coord = { x: s.ccx * 2.5, y: s.ccy * 2.5 };
