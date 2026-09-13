@@ -127,6 +127,12 @@ if (LABMODE) {
     if (process.env.T196_NOPRNG !== '1') await p.addInitScript(PRNG(SEED));   // ★랩 하네스 문법(고정 PRNG) · 끄면 랩 제 씨앗만
     // ★★랩의 기본은 **T165 켬**이다(`L_HAPPYWORK_BASE=0.24`) — 끈 팔을 보려면 **0 을 명시로 넣어야 한다**.
     if (process.env.T196_HW !== undefined) await p.addInitScript(`window.L_HAPPYWORK=${HW};`);
+    // ★[T226] 랩 손잡이 일반 주입 — `T196_WIN='T123_FRUIT=0;L_STONEREAL=1'` 처럼 적재 전에 심는다(랩 로직 무접촉)
+    if (process.env.T196_WIN) {
+      const js = process.env.T196_WIN.split(';').filter(Boolean)
+        .map((kv) => { const i = kv.indexOf('='); return `window.${kv.slice(0, i).trim()}=${kv.slice(i + 1).trim()};`; }).join('');
+      await p.addInitScript(js);
+    }
     const errs = []; p.on('pageerror', (e) => errs.push(String(e.message).slice(0, 200)));
     await p.goto('file://' + LAB, { waitUntil: 'load', timeout: 300000 });
     await p.waitForTimeout(1200);
@@ -310,7 +316,7 @@ function med(a) { if (!a.length) return null; const s = a.slice().sort((x, y) =>
 function pct(x) { return (100 * x).toFixed(0) + '%'; }
 
 function report(tag, rows, eight) {
-  const armTxt = HW > 0 ? `T165 **켠** 팔(H=${HW})` : '**끈** 팔(손잡이 전부 미설정)';
+  const armTxt = (HW > 0 ? `T165 **켠** 팔(H=${HW})` : '**끈** 팔(손잡이 미설정)') + (process.env.T196_WIN ? ` + 랩 손잡이[${process.env.T196_WIN}]` : '') + (process.env.T135_TREES === '0' ? ' + **나무 층 끔**(T135_TREES=0)' : '');
   console.log(`\n=== T196 행복 항별 귀속 — ${tag} · 시드 ${SEED} · ${DAYS}일 · ${armTxt} · 표본 ${SAMPLE}일 ===`);
   if (eight) {
     console.log(`  여덟 수   인구 ${eight.pop} · 소멸 ${eight.dead}/${eight.ever} · 무기Q ${eight.weapQ.toFixed(0)} · 확장셀 ${eight.expand}`);

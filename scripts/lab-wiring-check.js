@@ -291,6 +291,29 @@ console.log('\n[H] 랩 부팅 기본 = 서버 기본(주입 없음)');
   if (mut === warLab) bad('[자명 통과 금지] 변조판을 못 만들었다 — 검사기가 읽는 자리가 그 자리가 아니다');
   else if (scan(mut).length > 0) ok('[자명 통과 금지] 켠 채 뜨는 판(L_HAPPYWORK=0.24)을 만들면 이 검사가 **문다**');
   else bad('[자명 통과 금지] 켠 채 뜨는 판을 만들어도 검사가 통과한다 — 검사기가 죽었다');
+  // ★★[T226] **나무 층은 랩에 얹지 않는다 — 얹으면 죽은 층이 된다.**
+  //   `server/trees.js attachToWorld` 는 econ 문 둘(`forageRealItems`·`forageTakeFn`)을 심지만 그 값은
+  //   `treeCountOf(v)` → `livelihood`·`chunk`·`villages`·`zone-config` 에 묶여 있고, 브라우저엔 그 넷이 없어
+  //   `treeCountOf` 첫 줄이 **0** 을 낸다. 그런데 econ 은 `forageRealItems` 에 든 품목의 **추상 산출을 걷어내고**
+  //   그 자리를 `forageTakeFn` 이 채우게 한다(`sim/economy-sim.js` T135 접점) ⇒ 걷어내기만 하고 아무도 안 채운다.
+  //   랩은 **제 실물 나무**(칸별 `forestRich`·`fruitRich`·`fruitSettle`)로 같은 품목 넷을 곳간에 직접 넣는다 —
+  //   그게 서버 표의 **원천**이다(`scripts/build-trees.js`). 그래서 랩은 그 문을 **안 연다**. 전문 `보고/T226_*.md`.
+  {
+    const labSrc = warLab.split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n');
+    const opens = /ECON_WORLD\.forage(TakeFn|RealItems)\s*=/.test(labSrc);
+    if (opens) bad('랩이 `ECON_WORLD.forageTakeFn/RealItems` 를 연다 — 브라우저엔 나무 층 의존(chunk·livelihood·villages)이 없어 **죽은 층**이 된다(T226)');
+    else ok('랩은 나무 층 문(`forageTakeFn`·`forageRealItems`)을 **안 연다** — 랩은 제 실물 나무로 같은 품목 넷을 곳간에 직접 넣는다(T226)');
+    const mut2 = labSrc + '\nECON_WORLD.forageTakeFn = 1;\n';
+    if (/ECON_WORLD\.forage(TakeFn|RealItems)\s*=/.test(mut2)) ok('[자명 통과 금지] 그 문을 여는 판을 만들면 이 검사가 **문다**');
+    else bad('[자명 통과 금지] 문을 여는 판을 만들어도 안 문다 — 검사기가 죽었다');
+    // 랩의 실물 열매 품목 넷 ↔ 서버 표의 열매 품목 넷이 같은가(정본 하나)
+    const TR = require(path.join(root, 'server', 'trees.js'));
+    const srvItems = TR.fruitItems().slice().sort();
+    const labItems = Array.from(new Set((warLab.match(/fruit:'([a-z_]+)'/g) || []).map((x) => x.replace(/^fruit:'|'$/g, '')))).sort();
+    if (srvItems.join('|') === labItems.join('|')) ok(`랩 표와 서버 표의 열매 품목이 같다(${srvItems.join(' · ')}) — 서버 표는 랩에서 굽는다`);
+    else bad(`랩 열매 품목 [${labItems.join(' · ')}] ≠ 서버 [${srvItems.join(' · ')}] — 굽기가 낡았거나 표가 갈렸다`);
+  }
+
   // 서버가 심는 것은 나무 층 둘뿐 — 그 목록이 늘면 이 절도 늘어야 한다
   const V2 = fs.readFileSync(path.join(root, 'server', 'villages.js'), 'utf8');
   const inj = (V2.match(/world\.[A-Za-z_]+\s*=/g) || []).map((x) => x.replace(/\s*=$/, ''));
