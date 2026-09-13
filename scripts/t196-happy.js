@@ -58,7 +58,9 @@ const _addend = '\nmodule.exports.__t196_stats = _computeVillageStats;\n';
 const _av = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 const DAYS = parseInt(_av[0], 10) || 800;
 const SEED = parseInt(_av[1], 10) || 1020;
-const HW = parseFloat(process.env.T196_HW || '0') || 0;
+// ★★[T244] `null` = **안 줬다**(랩 기본 = 서버 기본 = 켬). 수면 그 수를 명시 주입한다(0 = 끈 팔 · 되돌림).
+//   종전엔 미설정이 곧 0 이었다 — 그때는 그게 서버 기본이었기 때문이고, 이제는 아니다.
+const HW = (process.env.T196_HW === undefined) ? null : (parseFloat(process.env.T196_HW) || 0);
 const TRACE = (process.env.T196_TRACE || '').split(',').map((s) => s.trim()).filter(Boolean);
 const LABIN = process.env.T196_LAB || '';
 
@@ -84,7 +86,10 @@ function decompose(v, N) {
   return t;
 }
 
-function mulOf(hp) { return HW > 0 ? econ.happyWorkMul(hp, HW) : (1 + (hp - 0.5) * 0.24); }   // ★끈 팔에선 '켜면 될 배수'(가정 H=0.24)
+// ★★[T244] 배수는 **정본 함수**가 낸다(사본 0 — 종전 줄은 끈 팔에서 식을 베껴 적었고, 하한 1 도 못 봤다).
+//   계수: 명시 주입이 있으면 그 수, 없으면 **정본 상수**(= 이 판의 기본). 하한은 정본이 제 손잡이로 본다.
+const _MULW = (HW !== null) ? HW : econ.T157_HAPPYWORK_H;
+function mulOf(hp) { return econ.happyWorkMul(hp, _MULW); }
 
 // ── ★표본 후크 — 정본이 `v.lastStats = stats` 하는 그 자리(코드 0 · 접근자만) ─
 const SAMPLE = parseInt(process.env.T196_SAMPLE || '10', 10) || 10;
@@ -125,7 +130,9 @@ if (LABMODE) {
     const b = await chromium.launch();
     const p = await b.newPage();
     if (process.env.T196_NOPRNG !== '1') await p.addInitScript(PRNG(SEED));   // ★랩 하네스 문법(고정 PRNG) · 끄면 랩 제 씨앗만
-    // ★★랩의 기본은 **T165 켬**이다(`L_HAPPYWORK_BASE=0.24`) — 끈 팔을 보려면 **0 을 명시로 넣어야 한다**.
+    // ★★[T221] 랩 팔은 **설정 여부**로 주입한다(값이 0 이어도 넣는다) — `HW > 0` 으로 걸면 "끈 팔"이 몰래 랩 기본이 된다.
+    // ★★★[T244] 이제 랩 기본 = 서버 기본 = **켬(H=0.24 · 정본 상수)** 이다 ⇒ `T196_HW` 를 안 주면 **켠 팔**을 잰다.
+    //   끈 팔(되돌림)을 보려면 `T196_HW=0` 을 **명시로** 준다.
     if (process.env.T196_HW !== undefined) await p.addInitScript(`window.L_HAPPYWORK=${HW};`);
     // ★[T226] 랩 손잡이 일반 주입 — `T196_WIN='T123_FRUIT=0;L_STONEREAL=1'` 처럼 적재 전에 심는다(랩 로직 무접촉)
     if (process.env.T196_WIN) {
@@ -133,7 +140,9 @@ if (LABMODE) {
         .map((kv) => { const i = kv.indexOf('='); return `window.${kv.slice(0, i).trim()}=${kv.slice(i + 1).trim()};`; }).join('');
       await p.addInitScript(js);
     }
-    if (process.env.L_HAPPY_FLOOR1 && process.env.L_HAPPY_FLOOR1 !== '0') await p.addInitScript('window.L_HAPPY_FLOOR1=1;');   // ★[T209] 하한 1 — 랩은 손잡이만 켠다(수는 정본)
+    // ★[T209] 하한 1 — 랩은 손잡이만 켠다(수는 정본). ★★[T244] 기본이 켬이 됐다 ⇒ **끄는 값 `0` 도 그대로 넘긴다**
+    //   (종전엔 `!== '0'` 으로 걸러 0 이 안 넘어갔다 — 그때는 안 넘겨도 끔이었지만 이제는 안 넘기면 **켬**이다).
+    if (process.env.L_HAPPY_FLOOR1 !== undefined) await p.addInitScript(`window.L_HAPPY_FLOOR1=${JSON.stringify(String(process.env.L_HAPPY_FLOOR1))};`);
     const errs = []; p.on('pageerror', (e) => errs.push(String(e.message).slice(0, 200)));
     await p.goto('file://' + LAB, { waitUntil: 'load', timeout: 300000 });
     await p.waitForTimeout(1200);
@@ -141,7 +150,9 @@ if (LABMODE) {
       document.getElementById('seed').value = String(SEED);
       const nv = document.getElementById('nvil'); if (nv) nv.value = String(NVIL);
       reseed(); lifeInit();
-      if (HW > 0 && ECON_WORLD) ECON_WORLD.happyWorkW = HW;
+      // ★[T244] 랩 훅(`hwInstallHook`)이 `lifeInit` 에서 이미 `ECON_WORLD.happyWorkW = L_HAPPYWORK` 를 심는다.
+      //   여기서 덮어쓰는 것은 **명시 주입이 있을 때만**이고, 0 도 명시면 덮어쓴다(끈 팔 · 주입 0 = 끔).
+      if (HW !== null && ECON_WORLD) ECON_WORLD.happyWorkW = HW;
       const rec = {}, land = {};
       const hook = () => VILS.forEach((V, i) => {
         const v = V.econ; if (!v || v.__t196) return; v.__t196 = true;
@@ -232,7 +243,8 @@ for (const hv of picked) {
 const world = econV2.createWorldV2({ seed: SEED, villageCount: seeds.length, picker: 'rational', infoRange: 5000, raidPer100: 0.005 });
 world.villages = []; world.events = [];
 R('server/trees').attachToWorld(world);        // ★족보 130 — 서버가 여는 그 문을 계측기도 연다
-if (HW > 0) world.happyWorkW = HW;             // ★T165 켠 팔 — 코드 무접촉(주입이 없으면 비트 동일)
+// ★★[T244] 주입은 **명시가 있을 때만**(0 도 명시면 주입 — 끈 팔). 안 주면 정본 기본(켬)이 그대로 돈다.
+if (HW !== null) world.happyWorkW = HW;
 for (const s of seeds) {
   const ev = econ.createVillage({ ...s.lp, initialPop: P.INITIAL_POP, name: s.name });
   ev._world = world; ev.coord = { x: s.ccx * 2.5, y: s.ccy * 2.5 };
@@ -317,8 +329,9 @@ function med(a) { if (!a.length) return null; const s = a.slice().sort((x, y) =>
 function pct(x) { return (100 * x).toFixed(0) + '%'; }
 
 function report(tag, rows, eight) {
-  const _fl = !!(process.env.L_HAPPY_FLOOR1 && process.env.L_HAPPY_FLOOR1 !== '0');
-  const armTxt = (HW > 0 ? `T165 **켠** 팔(H=${HW})` : '**끈** 팔(손잡이 미설정)') + (_fl ? ' + **하한 1**(T209)' : '') + (process.env.T196_WIN ? ` + 랩 손잡이[${process.env.T196_WIN}]` : '') + (process.env.T135_TREES === '0' ? ' + **나무 층 끔**(T135_TREES=0)' : '');
+  // ★★[T244] 하한은 **정본에게 묻는다**(사본 0) — 기본이 켬이라 env 유무로 세면 거짓을 적는다.
+  const _fl = econ.happyFloor1On();
+  const armTxt = (HW === null ? `**기본** 팔(미설정 = 켬 · H=${econ.T157_HAPPYWORK_H} · T244)` : (HW > 0 ? `**켠** 팔(명시 H=${HW})` : '**끈** 팔(명시 `0` · 되돌림)')) + (_fl ? ' + **하한 1**(T209)' : '') + (process.env.T196_WIN ? ` + 랩 손잡이[${process.env.T196_WIN}]` : '') + (process.env.T135_TREES === '0' ? ' + **나무 층 끔**(T135_TREES=0)' : '');
   console.log(`\n=== T196 행복 항별 귀속 — ${tag} · 시드 ${SEED} · ${DAYS}일 · ${armTxt} · 표본 ${SAMPLE}일 ===`);
   if (eight) {
     console.log(`  여덟 수   인구 ${eight.pop} · 소멸 ${eight.dead}/${eight.ever} · 무기Q ${eight.weapQ.toFixed(0)} · 확장셀 ${eight.expand}`);
@@ -346,7 +359,11 @@ function report(tag, rows, eight) {
   const endBelow = endAlive.filter((r) => r.happy < 0.5);
   const poolBelow = pool.filter((x) => x.happy < 0.5).length;
   const medBelow = V.filter((v) => v.hMed < 0.5);
-  console.log(`  행복 최종일  중앙 ${med(endH).toFixed(3)} · **최저 ${Math.min.apply(null, endH).toFixed(2)}** · 최고 ${Math.max.apply(null, endH).toFixed(2)} · **배수 1 미만 ${endBelow.length}/${endAlive.length}곳**`);
+  // ★★[T244] 이름을 고쳤다 — 하한 1 이 켜져 있으면 행복<0.5 는 **배수 1 미만이 아니라** 하한이 **무는** 자리다.
+  //   종전 이름("배수 1 미만")을 그대로 두면 켠 판의 표가 거짓을 적는다(족보 180 — 낡은 이름이 남은 층).
+  const _belowTxt = _fl ? `**하한이 무는 곳**(행복<0.5 · 배수 1 로 올려 받음) ${endBelow.length}/${endAlive.length}곳`
+                        : `**배수 1 미만 ${endBelow.length}/${endAlive.length}곳**`;
+  console.log(`  행복 최종일  중앙 ${med(endH).toFixed(3)} · **최저 ${Math.min.apply(null, endH).toFixed(2)}** · 최고 ${Math.max.apply(null, endH).toFixed(2)} · ${_belowTxt}`);
   console.log(`  행복 마을·일 중앙 ${med(pool.map((x) => x.happy)).toFixed(3)} · 최저 ${Math.min.apply(null, pool.map((x) => x.happy)).toFixed(3)} · 0.5 미만 ${pct(poolBelow / pool.length)} · 시간중앙<0.5 인 마을 ${medBelow.length}/${V.length}곳`);
 
   // ── 항 표 ─────────────────────────────────────────────────────────────────

@@ -2085,13 +2085,30 @@ const TIGERHIDE_PRESTIGE_CAP = 0.1;      // 상한(PRESTIGE_MOD_CAP 0.25 스케�
 //   T165 를 켜면 그 마을들이 배수 <1 을 맞고 얇은 둘이 넘어갔다(소멸 1·1·0) — 벌점이 **회복 창을 닫았다**(T196 §3).
 //   ⇒ 이 손잡이는 **아래쪽만 잘라낸다**: 배수 = `max(1, 종전 식)`. 위쪽(보너스·상한 `1 + H/2`)은 한 톨도 안 바뀐다.
 //   ⚠**새 수 0** — 1 은 이 함수가 이미 쓰는 중립값이다(주입이 없을 때 `return 1`). 계수 `H` 도 부르는 쪽 그대로.
-//   ⚠**기본 끔** — 손잡이가 없으면 아래 줄은 종전 `return` 한 줄뿐이라 **비트 동일**이다(T100·T193 env 관습 + 랩 `window` 관습).
+//   ⚠~~**기본 끔**~~ → **[T244 2026-09-13 · 재민 확정] 기본 켬.** T209 때는 손잡이가 없으면 종전 `return` 한 줄뿐이라
+//     **비트 동일**이었다. #13 ② 판정으로 이제 기본이 켬이고, **되돌림은 명시 `0` 하나**다(`L_HAPPY_FLOOR1=0` env · `window.L_HAPPY_FLOOR1=0` 랩).
+//     그 되돌림 팔이 셋째 판 여덟 수와 **비트 동일**임을 T244 ⓑ 가 3시드로 실측했다(보고/T244_2026-09-13.md).
 function happyFloor1On() {
-  const on = (x) => x !== undefined && x !== null && String(x) !== '' && String(x) !== '0';   // 빈 값은 **끔**(내보내기만 하고 안 채운 판을 켜면 안 된다)
-  const g = (typeof window !== 'undefined') ? window : null;                       // 랩은 `window.L_HAPPY_FLOOR1` (lifeInit 전에 켠다 — 호출 때 읽는다)
-  if (g && on(g.L_HAPPY_FLOOR1)) return true;
-  if (typeof process !== 'undefined' && process.env && on(process.env.L_HAPPY_FLOOR1)) return true;
-  return false;
+  // ★★★[T244 2026-09-13 · 재민 확정 — #13 ② 켜기] **기본 켬.** 끄는 것은 **명시 `0`** 하나뿐이다.
+  const off = (x) => x !== undefined && x !== null && String(x) === '0';
+  const g = (typeof window !== 'undefined') ? window : null;                       // 랩은 `window.L_HAPPY_FLOOR1`(lifeInit 전 · 호출 때 읽는다)
+  if (g && off(g.L_HAPPY_FLOOR1)) return false;
+  if (typeof process !== 'undefined' && process.env && off(process.env.L_HAPPY_FLOOR1)) return false;
+  return true;
+}
+// ★★★[T244 2026-09-13 · 재민 확정 — #13 ② 켜기] **계수가 정본 상수가 됐다.**
+//   T157 은 랩만 켜려고 계수를 밖(`world.happyWorkW`)에서 받았다. 이제 서버 기본이 켬이므로
+//   그 수의 자리가 이 파일에 하나 있어야 한다 — **랩에도 수가 없다**(랩은 `EconEngine.T157_HAPPYWORK_H` 를 읽는다 · 사본 0).
+//   ⚠**새 수 0** — 출처가 잰 것(Oswald·Proto·Sgroi 2015 JOLE 33(4): 중립→행복 생산성 **+12%**)을
+//     우리 축(0.5 → 1.0 = 반쪽 폭)으로 옮기면 `0.5 × H = 0.12` ⇒ **H = 0.24**. `test-lab-happywork` ②가 그 유도를 다시 대조한다.
+//   되돌림: `L_HAPPYWORK=0`(env) · `window.L_HAPPYWORK=0`(랩) · `world.happyWorkW` 주입은 **덮어쓰기**로 남는다(A/B·계측기).
+const T157_HAPPYWORK_H = 0.24;
+function happyWorkWOf(v) {
+  const w = v && v._world && v._world.happyWorkW;
+  if (typeof w === 'number') return w > 0 ? w : 0;                                 // 명시 주입이 가장 세다(A/B·랩 토글·계측기)
+  const x = _allocKnob('L_HAPPYWORK');                                             // 손잡이 문법은 하나다(랩 window → env)
+  if (x !== null) { const n = parseFloat(x); return Number.isFinite(n) ? Math.max(0, n) : 0; }
+  return T157_HAPPYWORK_H;                                                          // 미설정 = 켬(기본)
 }
 function happyWorkMul(happiness, W) {
   if (!(W > 0) || typeof happiness !== 'number' || !isFinite(happiness)) return 1;
@@ -3497,7 +3514,7 @@ function tickVillage(v, day) {
 //     구간의 생산성 차이다 ⇒ 우리 축으로 0.5 → 1.0 의 반쪽 폭. 그래서 배수를 `1 ± H×0.5` 로 자른다.
 //     행복은 이 세계에서 **1 을 넘는다**(실측 중앙 0.845 · 최고 2.07) — 자르지 않으면 출처가 재지 않은
 //     구간까지 외삽하게 된다. 자르는 값을 따로 짓지 않는 것이 요점이다.
-const _hwW = (v._world && typeof v._world.happyWorkW === 'number' && v._world.happyWorkW > 0) ? v._world.happyWorkW : 0;
+const _hwW = happyWorkWOf(v);   // ★[T244] 기본 켬(정본 H) · 주입이 있으면 그것 · `L_HAPPYWORK=0` 이면 0(종전 비트)
 let _hwm = 1;
 if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
   _hwm = happyWorkMul(v.lastStats.happiness, _hwW);
@@ -4943,7 +4960,10 @@ function _allocKnob(name) {
   if (typeof process !== 'undefined' && process.env && process.env[name] !== undefined) return String(process.env[name]);
   return null;
 }
-function allocRealOn() { const x = _allocKnob('L_ALLOC_REAL'); return x !== null && x !== '0'; }
+// ★★★[T244 2026-09-13 · 재민 확정 — #13 ① 켜기] **기본 켬.** 미설정이면 2판(실현 배분)으로 돈다.
+//   되돌림은 **명시 `0`**(`L_ALLOC_REAL=0`) — 그때 이 파일은 셋째 판과 **비트 동일**이다(보고/T244 §2).
+//   값은 T184 표의 그 값(주산물 항 · 새 수 0) · 1판 되돌림은 `L_ALLOC_BASKET=1` 그대로.
+function allocRealOn() { const x = _allocKnob('L_ALLOC_REAL'); return x === null ? true : x !== '0'; }
 function allocRealWin() { const x = _allocKnob('L_ALLOC_WIN'); const n = (x === null) ? 1 : parseFloat(x); return Number.isFinite(n) ? n : 1; }
 // ★[T184] 되돌림 — `L_ALLOC_BASKET=1` 이면 1판(바구니 전체 소득)으로 돌아간다. 기본은 2판(주산물 항).
 function allocBasketMode() { const x = _allocKnob('L_ALLOC_BASKET'); return x !== null && x !== '0'; }
@@ -6069,7 +6089,7 @@ module.exports = {
   T100_ANCHOR_N, T100_HARVEST_PER_FARMER_YEAR, T100_K, T100_FIELD_YIELD,   // ★[T100 4판] 앵커 하나 · 실측 하나 · 유도값 하나 · 손잡이 — 생활층(`villages.js`)과 하네스가 **여기서만** 읽는다(사본 0)
   DAILY_FOOD_CONSUMPTION,   // ★[T100 4판] 하루 1인 식량 정본 — `k` 유도의 한 항(하네스가 1.0 을 옮겨 적지 않는다)
   seedFoodDays, SEED_FOOD_DAYS_D0, SEED_FOOD_DAYS_LEGACY,   // ★[T100 5판] 창설 곳간의 밑변 — 하네스가 `crops.js` 에서 다시 유도해 대조한다
-  HEALTH_PROD_W, happyWorkMul, happyFloor1On,   // ★[T157] 건강→작업량 계수 — 하네스가 "행복은 건강과 같은 문법" 을 대조한다(사본 0) · ★[T209] 하한 손잡이(하네스가 되돌림을 건다)
+  HEALTH_PROD_W, happyWorkMul, happyFloor1On, happyWorkWOf, T157_HAPPYWORK_H,   // ★[T157] 건강→작업량 계수 — 하네스가 "행복은 건강과 같은 문법" 을 대조한다(사본 0) · ★[T209] 하한 손잡이(하네스가 되돌림을 건다)
   gardenFloorTopUp, T100_GARDEN, T100_GARDEN_CELLS, T100_GARDEN_FLOOR, T193_LEDGER,   // ★[T193] 장부 손잡이 — 하네스가 옮겨 적지 않는다   // ★[T100 5판 ⓒ] 텃밭 하한 — 값·손잡이·유도식을 하네스가 다시 계산한다
   FARMER_BASE: JOBS.farmer.base,   // ★[T100] 농부 1인 기준 산출(옛 밑변 `1.5 × 지력`의 1.5) — 계측기·하네스가 이 수를 옮겨 적지 않게
   // ★[T125] 옷감 보온 가중 — `server/villages.js` 가 주민 착장 재질을 고를 때 **읽는다**.

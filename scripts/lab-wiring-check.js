@@ -249,20 +249,22 @@ console.log('\n[T100] 인당 기준 경작칸 — 정본 하나인가');
   else ok('villages.js 에 사본이 없다 — `_lifeVL().LAND_NEED` 로 읽는다');
 }
 
-// ── H: 랩 부팅 기본 = 서버 기본 (T221) ───────────────────────────────────────
-//   ★왜 [T209 → T221] 랩이 손잡이를 **켠 채** 뜨면 "랩 끈 팔"이 서버 끈 팔이 아니다.
+// ── H: 랩 부팅 기본 = 서버 기본 (T221 · ★T244 갱신) ──────────────────────────
+//   ★왜 [T209 → T221] 랩이 손잡이를 서버와 **다른 자리**에서 뜨면 "랩 팔"이 서버 팔이 아니다.
 //     실제로 그랬다: `L_HAPPYWORK` 가 0.24 로 떠서 T196 의 랩 표가 켠 판이었다(랩 기준선 인구 +17.6%).
-//     서버(`server/villages.js` 세계 생성 + `trees.attachToWorld`)가 심는 것은 **나무 층 둘뿐**이고
-//     `happyWorkW`·`allocFn`·`stoneBudgetFn`·`returnPullFn`·`toolWearMul`·`huntIncomeFn`·`woodIncomeFn` 은
-//     **안 심는다** ⇒ 랩도 그 자리에서 **안 심은 채로** 떠야 한다. 켜는 것은 실험자의 명시(`window.L_*`·토글)다.
+//   ★★[T244 2026-09-13] **불변식은 그대로, 값이 옮겨갔다.** 재민 확정으로 손잡이 셋
+//     (`L_ALLOC_REAL` 실현 배분 · `L_HAPPY_FLOOR1` 행복 배수 하한 1 · `L_HAPPYWORK` 행복→작업량 H=0.24)의
+//     **서버 기본이 켬**이 되었다 ⇒ 랩도 그 셋을 **켠 채** 떠야 같은 기계다. 검사는 "0 이냐"가 아니라
+//     **"랩 기본 = 서버 기본이냐"** 를 묻는다. 그래서 아래는 두 갈래다:
+//       ⓐ 아직 서버가 안 심는 손잡이들(석재·귀환화물·마모·경작칸·사냥/목재 소득) → 종전대로 "문 안 여는 값"
+//       ⓑ T244 로 켜진 셋 → **엔진 기본을 자식 프로세스에서 실측**하고(족보 128 · env 청소) 랩이 그것과 같은지
+//     그리고 ⓑ 의 값은 랩에 **적지 않는다** — 랩은 `EconEngine.T157_HAPPYWORK_H` 를 읽는다(사본 0).
 console.log('\n[H] 랩 부팅 기본 = 서버 기본(주입 없음)');
 {
   // 각 줄: [이름, 기본값을 읽는 정규식, 서버와 같은 값(=문을 안 여는 값), 왜]
   const LABKNOBS = [
-    ['L_HAPPYWORK',  /let\s+L_HAPPYWORK\s*=\s*\(typeof window[^;]*?:\s*([0-9.]+)\s*;/,        '0',        'T157 행복→작업량 — 서버는 happyWorkW 를 안 심는다'],
-    // ★[T184 착지 뒤] 랩엔 `window.L_ALLOC_REAL` 기본줄이 없다 — econ 정본이 `_allocKnob` 으로 직접 읽고, 없거나 '0' 이면 문을 안 연다(= 서버 기본).
-    //   그래서 정본의 그 줄(인라인 사본)을 읽어 "'0' 이면 끔"을 확인한다. 랩이 `window.L_ALLOC_REAL = 1` 을 심으면 아래 별도 검사가 문다.
-    ['L_ALLOC_REAL', /function allocRealOn\(\) \{ const x = _allocKnob\('L_ALLOC_REAL'\); return x !== null && x !== '([0-9])'; \}/, '0', 'T161/T164/T184 실현 배분 — 손잡이 미설정 = 끔 · 서버는 allocFn 을 안 심는다'],
+    // ★[T244] `L_HAPPYWORK`·`L_ALLOC_REAL` 은 이 표에서 **뺐다** — 서버 기본이 켬이 되어 "0 이어야 한다"가 거짓이 됐다.
+    //   둘(과 `L_HAPPY_FLOOR1`)은 아래 ⓑ 절에서 **엔진 실측값과 대조**한다. 여기 ⓐ 는 아직 서버가 안 심는 것들뿐이다.
     ['L_STONEREAL',  /window\.L_STONEREAL\s*===\s*undefined\)\s*window\.L_STONEREAL\s*=\s*([0-9.]+)/,   '0', 'T163 석재 실물 — 서버는 stoneBudgetFn 을 안 심는다'],
     ['L_STONE_TRADE',/window\.L_STONE_TRADE\s*===\s*undefined\)\s*window\.L_STONE_TRADE\s*=\s*([0-9.]+)/,'0', 'T173 귀환 화물 — 서버는 returnPullFn 을 안 심는다'],
     ['L_TOOL_WEAR',  /window\.L_TOOL_WEAR\s*===\s*undefined\)\s*window\.L_TOOL_WEAR\s*=\s*([0-9.]+)/,   '1', 'T180 도구 마모 — 배수 1 이면 문을 안 연다(서버도 toolWearMul 없음)'],
@@ -288,17 +290,61 @@ console.log('\n[H] 랩 부팅 기본 = 서버 기본(주입 없음)');
     else bad(`랩 ${name} 기본 ${got} ≠ 서버 기본 ${want} — 랩이 켠 채 뜬다(${why})`);
   }
   if (!bad0.length) ok(`랩 부팅 기본이 서버 기본과 같다 — 손잡이 ${LABKNOBS.length + MODES.length}개 전수(${LABKNOBS.concat(MODES).map((k) => k[0]).join(' · ')})`);
-  // ★[T184 착지 뒤] 랩이 실현 배분을 켠 채 뜨는 유일한 길은 `window.L_ALLOC_REAL = 1` 을 심는 것 — 주석 밖에 그 줄이 있으면 빨강
-  {
-    const lines = warLab.split('\n').filter((l) => /window\.L_ALLOC_REAL\s*=\s*[1-9]/.test(l) && !/^\s*\/\//.test(l) && !/\/\/.*window\.L_ALLOC_REAL\s*=\s*[1-9]/.test(l.replace(/^[^/]*window\.L_ALLOC_REAL\s*=\s*[1-9]/, '')));
-    if (lines.length) bad(`랩이 L_ALLOC_REAL 을 켠 채 뜬다 — ${lines.length}줄`);
-    else ok('랩은 L_ALLOC_REAL 을 심지 않는다(미설정 = 끔 = 서버 기본)');
-  }
-  // ★자명 통과 금지 — 켠 채 뜨는 판을 만들면 이 검사가 실제로 문다
-  const mut = warLab.replace(/(let\s+L_HAPPYWORK\s*=\s*\(typeof window[^;]*?:\s*)0(\s*;)/, '$1' + '0.24' + '$2');
+  // ★자명 통과 금지 — ⓐ 표의 손잡이 하나를 켠 채 뜨게 만들면 이 검사가 실제로 문다
+  const mut = warLab.replace(/(window\.L_STONEREAL\s*===\s*undefined\)\s*window\.L_STONEREAL\s*=\s*)0/, '$1' + '1');
   if (mut === warLab) bad('[자명 통과 금지] 변조판을 못 만들었다 — 검사기가 읽는 자리가 그 자리가 아니다');
-  else if (scan(mut).length > 0) ok('[자명 통과 금지] 켠 채 뜨는 판(L_HAPPYWORK=0.24)을 만들면 이 검사가 **문다**');
+  else if (scan(mut).length > 0) ok('[자명 통과 금지] 켠 채 뜨는 판(L_STONEREAL=1)을 만들면 이 검사가 **문다**');
   else bad('[자명 통과 금지] 켠 채 뜨는 판을 만들어도 검사가 통과한다 — 검사기가 죽었다');
+
+  // ── ⓑ [T244] 서버 기본이 **켬**이 된 손잡이 셋 — 엔진 실측 ↔ 랩 부팅 ─────────
+  //   ★왜 자식 프로세스인가: 이 검사기를 부른 셸에 `L_*` 가 남아 있으면(A/B 하다 만 자리) 엔진 기본이
+  //     그 값으로 보인다. 족보 128 — 변조·측정은 자식으로, env 는 손으로 지운다.
+  {
+    const { execFileSync } = require('child_process');
+    const env = Object.assign({}, process.env);
+    for (const k of ['L_ALLOC_REAL', 'L_HAPPY_FLOOR1', 'L_HAPPYWORK']) delete env[k];
+    const probe = `const E=require(${JSON.stringify(path.join(root, 'sim', 'economy-sim.js'))});` +
+      `console.log(JSON.stringify({alloc:E.allocRealOn?E.allocRealOn():null,floor:E.happyFloor1On(),H:E.happyWorkWOf({}),CONST:E.T157_HAPPYWORK_H}));`;
+    let srv = null;
+    try { srv = JSON.parse(String(execFileSync(process.execPath, ['-e', probe], { env, encoding: 'utf8' })).trim()); }
+    catch (e) { bad(`엔진 기본 실측 실패 — ${String(e.message || e).split('\n')[0]}`); }
+    if (srv) {
+      // ⓑ-1 엔진 기본 셋이 **켬**인가(재민 확정 T244)
+      if (srv.floor === true) ok('서버 기본 `L_HAPPY_FLOOR1` = 켬(하한 1) — T209 길 ⓐ · T244 확정');
+      else bad(`서버 기본 L_HAPPY_FLOOR1 이 ${srv.floor} 다 — T244 확정은 켬`);
+      if (srv.alloc === true) ok('서버 기본 `L_ALLOC_REAL` = 켬(실현 배분) — T161/T164/T184 · T244 확정');
+      else if (srv.alloc === null) bad('`allocRealOn` 이 export 안 됐다 — 검사기가 엔진 기본을 못 본다');
+      else bad(`서버 기본 L_ALLOC_REAL 이 ${srv.alloc} 다 — T244 확정은 켬`);
+      if (srv.H > 0 && Math.abs(srv.H - srv.CONST) < 1e-12) ok(`서버 기본 \`L_HAPPYWORK\` = 켬 H=${srv.H} = 정본 상수 T157_HAPPYWORK_H — T157 · T244 확정`);
+      else bad(`서버 기본 happyWorkWOf({}) ${srv.H} ≠ 정본 상수 ${srv.CONST}(또는 0) — T244 확정은 켬`);
+
+      // ⓑ-2 랩 부팅이 그 셋과 **같은 자리**에서 뜨는가
+      //   `L_HAPPYWORK`: 랩은 수를 적지 않고 `EconEngine.T157_HAPPYWORK_H` 를 읽는다(사본 0).
+      const boot = warLab.match(/let\s+L_HAPPYWORK\s*=\s*\(typeof window[^;]*?\)\s*\?\s*\+window\.L_HAPPYWORK\s*:\s*([^;]+);/);
+      if (!boot) bad('랩 L_HAPPYWORK 부팅 줄을 못 찾았다 — 검사기가 낡았거나 손잡이가 사라졌다');
+      else {
+        const fb = boot[1];
+        if (!/EconEngine\s*(\.|&&\s*EconEngine\.)?\s*T157_HAPPYWORK_H/.test(fb))
+          bad(`랩 L_HAPPYWORK 기본이 정본 상수를 안 읽는다 — \`${fb.trim()}\`(사본이 생겼다)`);
+        else if (/:\s*[0-9.]+\s*$/.test(fb) && !/\|\|\s*0\s*\)?\s*$/.test(fb))
+          bad(`랩 L_HAPPYWORK 기본에 수가 박혔다 — \`${fb.trim()}\``);
+        else ok(`랩 L_HAPPYWORK 기본 = 정본 상수 \`EconEngine.T157_HAPPYWORK_H\`(=${srv.CONST}) — 사본 0 · 서버 기본과 같은 자리`);
+      }
+      //   `L_ALLOC_REAL`·`L_HAPPY_FLOOR1`: 엔진이 `_allocKnob`/env·window 로 **직접** 읽는다 ⇒ 랩이 **안 심으면** 켬(= 서버 기본).
+      //   ★T244 로 뒤집혔다: 종전엔 "1 을 심으면 빨강"이었고 이제는 **"0 을 심으면 빨강"**(랩만 끈 채 뜬다).
+      for (const k of ['L_ALLOC_REAL', 'L_HAPPY_FLOOR1']) {
+        const re = new RegExp('window\\.' + k + "\\s*=\\s*['\"]?0['\"]?");
+        const lines = warLab.split('\n').map((l) => l.replace(/\/\/.*$/, '')).filter((l) => re.test(l));
+        if (lines.length) bad(`랩이 ${k} 을(를) **끈 채** 뜬다 — ${lines.length}줄(서버 기본은 켬)`);
+        else ok(`랩은 ${k} 을(를) 심지 않는다(미설정 = **켬** = 서버 기본 · T244)`);
+      }
+      // ★자명 통과 금지 — 랩이 끈 채 뜨는 판을 만들면 이 검사가 실제로 문다
+      const mut3 = warLab + '\nwindow.L_HAPPY_FLOOR1 = 0;\n';
+      const re3 = /window\.L_HAPPY_FLOOR1\s*=\s*['"]?0['"]?/;
+      if (re3.test(mut3.split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n'))) ok('[자명 통과 금지] 랩이 끈 채 뜨는 판을 만들면 이 검사가 **문다**');
+      else bad('[자명 통과 금지] 끈 채 뜨는 판을 만들어도 안 문다 — 검사기가 죽었다');
+    }
+  }
   // ★★[T226] **나무 층은 랩에 얹지 않는다 — 얹으면 죽은 층이 된다.**
   //   `server/trees.js attachToWorld` 는 econ 문 둘(`forageRealItems`·`forageTakeFn`)을 심지만 그 값은
   //   `treeCountOf(v)` → `livelihood`·`chunk`·`villages`·`zone-config` 에 묶여 있고, 브라우저엔 그 넷이 없어
