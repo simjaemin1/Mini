@@ -167,7 +167,7 @@ for (let d = 1; d <= DAYS; d++) {
   _oreNow = now;                                          // ★[T232] 광맥 재생 적분의 시각(zone.js `_simNow()` 자리)
   V.onGameTick(now);
   for (let f = 0; f < 60; f++) V.onGameTick(now);          // 저장 큐 배수(같은 날 — 제품이 새 날을 안 연다)
-  const TR = (d === 1 || d % 20 === 0) ? { pop: 0, food: 0, stone: 0, metal: 0, wood: 0, toolQ: 0, weapQ: 0, hungry: 0, game: [], wd: [], fert: [], hk: 0 } : null;
+  const TR = (d === 1 || (d <= 40 && d % 5 === 0) || d % 20 === 0) ? { pop: 0, food: 0, stone: 0, metal: 0, wood: 0, toolQ: 0, weapQ: 0, hungry: 0, game: [], wd: [], fert: [], hk: 0, wProd: 0, wCons: 0, lumber: 0, wSust: 0, fuelCov: 0 } : null;
   for (const row of db.getVillagesByZone('hanbando')) {
     if (!row.econ_state) continue;
     let m = M.get(row.name); if (!m) M.set(row.name, m = { hkillDays: 0, hkillSum: 0, popMax: 0, everPop: false, huntMax: 0 });
@@ -196,6 +196,14 @@ for (let d = 1; d <= DAYS; d++) {
         TR.weapQ += (S.weapon || 0) * (v._weapQ != null ? v._weapQ : 1);
         if ((S.food || 0) <= 0) TR.hungry++;
         TR.game.push(L.game || 0); TR.wd.push(L.wood || 0); TR.fert.push(L.fertility || 0);
+        // ★★[T247] 목재 수지 — `t176-ab.js:338~339`(T207)와 **같은 식**으로 같은 정본 칸을 읽는다.
+        //   `dailyProductionBuf.wood` = 그날 벌목 실현 산출 · `_consDay.wood` = `_cons` 로 잡히는 유출
+        //   (연료 `economy-sim:3028` + 건축 `:3047` 둘뿐 — T207 이 그렇게 못 박았다).
+        TR.wProd += +((v.dailyProductionBuf && v.dailyProductionBuf.wood) || 0);
+        TR.wCons += +((v._consDay && v._consDay.wood) || 0);
+        TR.lumber += (v.counts || {}).lumberjack || 0;
+        TR.wSust += (L.woodSustain != null ? L.woodSustain : 0);
+        TR.fuelCov += (v._fuelCov != null ? +v._fuelCov : 1);
         if ((v._hkillDay || 0) > 0) TR.hk++;
       }
     }
@@ -203,7 +211,9 @@ for (let d = 1; d <= DAYS; d++) {
   if (TR) { const md = (a) => { a.sort((x, y) => x - y); return a.length ? +a[a.length >> 1].toFixed(3) : null; };
     TRAJ.push({ day: d, pop: TR.pop, food: +TR.food.toFixed(1), stone: +TR.stone.toFixed(1),
       metal: +TR.metal.toFixed(1), wood: +TR.wood.toFixed(1), toolQ: +TR.toolQ.toFixed(1), weapQ: +TR.weapQ.toFixed(1),
-      hungry: TR.hungry, game: md(TR.game), woodL: md(TR.wd), fert: md(TR.fert), hkVil: TR.hk }); }
+      hungry: TR.hungry, game: md(TR.game), woodL: md(TR.wd), fert: md(TR.fert), hkVil: TR.hk,
+      wProd: +TR.wProd.toFixed(2), wCons: +TR.wCons.toFixed(2), lumber: TR.lumber,
+      wSust: +TR.wSust.toFixed(2), fuelCov: +(TR.fuelCov / 51).toFixed(3) }); }
 }
 console.log = _l2;
 Date.now = _now0;                                          // ★[T241] 시계를 돌려준다
