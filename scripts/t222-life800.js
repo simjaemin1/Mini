@@ -179,6 +179,11 @@ const t1 = Date.now();
 //   그 사이에 흐른 **실시간**이 캐러밴 실체·광맥 적분에 들어가 같은 씨 두 판의 `emitted` 를 갈랐다
 //   (11,105 vs 11,071 — T232 §1). 세계는 자가 미는 `now` 만 보면 된다 ⇒ 루프 동안 `Date.now` 를 그 값으로 둔다.
 //   (랩 계측기가 `Math.random` 을 씨로 고정하는 것과 같은 자리 — 자 코드만 · 제품 무변.)
+// ★[T259 ⓒ] 목재 항등식 누계 — 자가 짓는 수는 0(정본 칸을 더하기만 한다).
+const CUM = { prod: 0, cons: 0, imp: 0, exp: 0, stock: 0, impNow: 0, expNow: 0, stockNow: 0, stock0: 0 };
+{ let s0 = 0; for (const row of db.getVillagesByZone('hanbando')) { const lv = V.villageByDbId ? V.villageByDbId(row.id) : null;
+    if (lv && lv.econ && lv.econ.storage) s0 += +(lv.econ.storage.wood || 0); }
+  CUM.stock0 = s0; }   // ★창설 부존(하루 1 **전**)
 const _now0 = Date.now;
 let _simClock = base;
 Date.now = () => _simClock;
@@ -189,7 +194,23 @@ for (let d = 1; d <= DAYS; d++) {
   _oreNow = now;                                          // ★[T232] 광맥 재생 적분의 시각(zone.js `_simNow()` 자리)
   V.onGameTick(now);
   for (let f = 0; f < 60; f++) V.onGameTick(now);          // 저장 큐 배수(같은 날 — 제품이 새 날을 안 연다)
-  const TR = (d === 1 || (d <= 40 && d % 5 === 0) || d % 20 === 0) ? { pop: 0, food: 0, stone: 0, metal: 0, wood: 0, toolQ: 0, weapQ: 0, hungry: 0, game: [], wd: [], fert: [], hk: 0, wProd: 0, wCons: 0, lumber: 0, wSust: 0, fuelCov: 0 } : null;
+  const TR = (d === 1 || (d <= 40 && d % 5 === 0) || d % 20 === 0) ? { pop: 0, food: 0, stone: 0, metal: 0, wood: 0, toolQ: 0, weapQ: 0, hungry: 0, game: [], wd: [], fert: [], hk: 0, wProd: 0, wProdVil: 0, wCons: 0, wImpCum: 0, wExpCum: 0, lumber: 0, wSust: 0, fuelCov: 0 } : null;
+  // ★★[T259 ⓒ] **하루도 빠짐없이** 목재 네 항을 더한다 — 궤적은 표본 날만 찍으므로 항등식이 안 닫힌다.
+  //   산 마을(`villages.js:4654 villageByDbId` — 제품이 이미 내주는 읽기 전용 문)에서 정본 칸만 읽는다.
+  //   `dailyProductionBuf.wood`(오늘 벌목) · `_consDay.wood`(오늘 연료+건축) ·
+  //   `tradeStats.woodImported` / `tradeStats.exportBy.wood`(둘 다 **누계**).
+  for (const row of db.getVillagesByZone('hanbando')) {
+    const live = V.villageByDbId ? V.villageByDbId(row.id) : null;
+    const e = live && live.econ; if (!e) continue;
+    CUM.prod += +((e.dailyProductionBuf && e.dailyProductionBuf.wood) || 0);
+    CUM.cons += +((e._consDay && e._consDay.wood) || 0);
+    const TS = e.tradeStats || {};
+    CUM.impNow += +(TS.woodImported || 0);
+    CUM.expNow += +((TS.exportBy && TS.exportBy.wood) || 0);
+    CUM.stockNow += +((e.storage && e.storage.wood) || 0);
+  }
+  CUM.imp = CUM.impNow; CUM.exp = CUM.expNow; CUM.stock = CUM.stockNow;
+  CUM.impNow = 0; CUM.expNow = 0; CUM.stockNow = 0;
   for (const row of db.getVillagesByZone('hanbando')) {
     if (!row.econ_state) continue;
     let m = M.get(row.name); if (!m) M.set(row.name, m = { hkillDays: 0, hkillSum: 0, popMax: 0, everPop: false, huntMax: 0 });
@@ -221,8 +242,26 @@ for (let d = 1; d <= DAYS; d++) {
         // ★★[T247] 목재 수지 — `t176-ab.js:338~339`(T207)와 **같은 식**으로 같은 정본 칸을 읽는다.
         //   `dailyProductionBuf.wood` = 그날 벌목 실현 산출 · `_consDay.wood` = `_cons` 로 잡히는 유출
         //   (연료 `economy-sim:3028` + 건축 `:3047` 둘뿐 — T207 이 그렇게 못 박았다).
-        TR.wProd += +((v.dailyProductionBuf && v.dailyProductionBuf.wood) || 0);
+        // ★★[T259 ⓒ] **유입 열은 DB 행에서 못 읽는다.** `dailyProductionBuf` 는 `SERIALIZE_SKIP`
+        //   (`villages.js:645~651` — "매 틱 리셋 버퍼라 복원 시 재생성")이라 `econ_state` 에 **아예 없다**.
+        //   그래서 T247 §0ⓐ 의 "유입 0" 은 세계가 아니라 **이 칸의 결함**이었다(T251 회부 3).
+        //   고침: 제품이 이미 내주는 **읽기 전용 문**(`villages.js:4654 villageByDbId`)으로 **산 마을**을 받아
+        //   그 안의 살아 있는 버퍼를 읽는다. 제품 코드 0 · 새 문 0 · 자가 짓는 값 0.
+        {
+          const live = (V.villageByDbId ? V.villageByDbId(row.id) : null);
+          const dpb = live && live.econ && live.econ.dailyProductionBuf;
+          TR.wProd += +((dpb && dpb.wood) || 0);
+          if (dpb) TR.wProdVil++;
+        }
         TR.wCons += +((v._consDay && v._consDay.wood) || 0);
+        // ★[T259 ⓒ] 교역 항 — 유입−유출로 재고가 안 닫히면 남는 건 캐러밴이다.
+        //   `tradeStats.woodImported`(들어온 누계 · `economy-sim-v2:1164`) · `tradeStats.exportBy.wood`(나간 누계).
+        //   둘 다 **누계**라 궤적 칸에는 누계를 그대로 싣는다(차분은 읽는 쪽에서 — 자가 짓는 수 0).
+        {
+          const TS = v.tradeStats || {};
+          TR.wImpCum += +(TS.woodImported || 0);
+          TR.wExpCum += +((TS.exportBy && TS.exportBy.wood) || 0);
+        }
         TR.lumber += (v.counts || {}).lumberjack || 0;
         TR.wSust += (L.woodSustain != null ? L.woodSustain : 0);
         TR.fuelCov += (v._fuelCov != null ? +v._fuelCov : 1);
@@ -234,7 +273,8 @@ for (let d = 1; d <= DAYS; d++) {
     TRAJ.push({ day: d, pop: TR.pop, food: +TR.food.toFixed(1), stone: +TR.stone.toFixed(1),
       metal: +TR.metal.toFixed(1), wood: +TR.wood.toFixed(1), toolQ: +TR.toolQ.toFixed(1), weapQ: +TR.weapQ.toFixed(1),
       hungry: TR.hungry, game: md(TR.game), woodL: md(TR.wd), fert: md(TR.fert), hkVil: TR.hk,
-      wProd: +TR.wProd.toFixed(2), wCons: +TR.wCons.toFixed(2), lumber: TR.lumber,
+      wProd: +TR.wProd.toFixed(2), wProdVil: TR.wProdVil, wCons: +TR.wCons.toFixed(2),
+      wImpCum: +TR.wImpCum.toFixed(2), wExpCum: +TR.wExpCum.toFixed(2), lumber: TR.lumber,
       wSust: +TR.wSust.toFixed(2), fuelCov: +(TR.fuelCov / 51).toFixed(3) }); }
 }
 console.log = _l2;
@@ -291,6 +331,10 @@ const out = {
   // ★[T228 ④] 사건 장부 — `__labProbe._ledgerStats` **읽기 전용 한 줄**로 자가 읽는다(여덟 수 8/8).
   reqOpened: (LS && LS.reqOpened) || 0, emitted: (LS && LS.emitted) || 0,
   reqClosed: (LS && LS.reqClosed) || 0, reqShrunk: (LS && LS.reqShrunk) || 0,
+  // ★[T259 ⓒ] 목재 수지 항등식 — 창설부존 + Σ유입 − Σ유출 + 수입 − 수출 = 끝 재고 ?
+  woodBal: { stock0: +CUM.stock0.toFixed(2), prodSum: +CUM.prod.toFixed(2), consSum: +CUM.cons.toFixed(2),
+    imported: +CUM.imp.toFixed(2), exported: +CUM.exp.toFixed(2), stockEnd: +CUM.stock.toFixed(2),
+    residual: +(CUM.stock0 + CUM.prod - CUM.cons + CUM.imp - CUM.exp - CUM.stock).toFixed(2) },
   depCalls: DEPCALL, traj: TRAJ,
   hunterN, hkillDaysTot: per.reduce((a, p) => a + p.hkillDays, 0),
   hkillSumTot: +per.reduce((a, p) => a + p.hkillSum, 0).toFixed(3),
