@@ -53,10 +53,19 @@
 |---|---|---|---|---|---|---|
 | `wind` | [Commons: Gentle breeze and birds singing.ogg](https://commons.wikimedia.org/wiki/File:Gentle_breeze_and_birds_singing.ogg) (원천 pdsounds.org #1) | ezwa | **Public domain** | 2007-04-18 | 2026-09-13 | 원본 32.55s 중 **11.0~22.0s** → 10.0s 반복 |
 | `fire` | [Commons: Dry grass burning in open fireplace.ogg](https://commons.wikimedia.org/wiki/File:Dry_grass_burning_in_open_fireplace.ogg) (원천 pdsounds.org #3) | ezwa | **Public domain** | 2007-06-17 | 2026-09-13 | 원본 25.50s 중 **3.0~14.0s** → 10.0s 반복 |
+| `step_dirt` | [Kenney "RPG Audio"](https://kenney.nl/assets/rpg-audio) · `footstep04.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2023(팩) | 2026-09-13 | 통째(0.22s) · ⚠지면 표시는 팩에 **없다**(아래) |
+| `step_grass` | [Kenney "RPG Audio"](https://kenney.nl/assets/rpg-audio) · `footstep07.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2023(팩) | 2026-09-13 | 통째(0.13s) · ⚠같음 |
+| `axe` | [Kenney "RPG Audio"](https://kenney.nl/assets/rpg-audio) · `chop.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2023(팩) | 2026-09-13 | 통째(0.21s) |
+| `eat` | [OpenGameArt: 80 CC0 creature SFX](https://opengameart.org/content/80-cc0-creature-sfx) · `eat_02.ogg` | rubberduck | **CC0** (페이지 License 칸) | — | 2026-09-13 | 통째(0.24s) |
 
 * **요구 문구 없음** — 둘 다 퍼블릭 도메인이라 표시 의무가 없다(그래서 §1 에 안 들어간다). 예의로 여기 적는다.
 * 가공: 단일 채널 유지 · 끝 1초를 머리에 `acrossfade`(삼각창)로 겹쳐 10.0초 반복 · 피크를 재고
   −1 dBFS 로 맞춘 뒤 `.ogg`(Vorbis q4) + `.m4a`(AAC 96k). 명령은 `보고/T266_2026-09-13.md` §0-ⓒ.
+* ⚠**`step_dirt`/`step_grass` 의 지면은 가설이다.** Kenney 팩의 `footstep00~09` 에는 **무슨 바닥인지 적혀 있지 않다.**
+  스펙트럴 중심(밝기)이 가장 낮은 `04`(1,007 Hz)를 흙, 가장 높은 `07`(2,189 Hz)을 풀로 잡았다 —
+  둔한 소리가 흙, 서걱이는 소리가 풀이라는 **음향적 가정**이지 출처가 그렇게 말한 것이 아니다. **판정은 재민 귀.**
+* `axe` 의 고증은 **쟀다** — 4kHz 이상 대역이 정점에서 −20 dB 로 떨어지는 데 **58 ms**(같은 팩의 `metalPot1` 은 **302 ms**).
+  쇠처럼 울리지 않는다. 돌·청동 도끼인지까지는 자로 못 가른다.
 * ⚠`wind` 원본에는 **새소리(Blackcap·Chaffinch)가 있다.** 그래서 자를 자리를 귀가 아니라 **자로** 골랐다 —
   2kHz 이상 대역 에너지 비율이 가장 낮은 10초 창(**0.02%** · 파일 평균 0.07% · 최악 창 0.40%).
   그래도 새가 아주 없다고는 못 한다 — **실기(듣기)는 재민**이다.
