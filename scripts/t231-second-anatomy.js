@@ -70,11 +70,13 @@ if (!seeds) {
 
 const ARM = process.env.T231_ARM || 'two';
 //   ★[T233] 팔 하나 추가 — `twogate` = 둘째 화물 + 첫째와 같은 관문(`world.cargoTwoGate`).
-if (!['off', 'two', 'twofix', 'twogate'].includes(ARM)) { console.error(`알 수 없는 팔: ${ARM}`); process.exit(2); }
+//   ★[T239] 팔 하나 더 — `twobest` = 둘째 + 관문 + **수익 최대 선택**.
+if (!['off', 'two', 'twofix', 'twogate', 'twobest'].includes(ARM)) { console.error(`알 수 없는 팔: ${ARM}`); process.exit(2); }
 const TRACE = process.env.T231_TRACE || `/tmp/t231-sc-${SEED}.json`;
-const TWO = (ARM === 'two' || ARM === 'twofix' || ARM === 'twogate');
+const TWO = (ARM === 'two' || ARM === 'twofix' || ARM === 'twogate' || ARM === 'twobest');
 const FIX = (ARM === 'twofix');
-const GATE = (ARM === 'twogate');
+const GATE = (ARM === 'twogate' || ARM === 'twobest');
+const BEST = (ARM === 'twobest');
 
 //   ★흐름 품목 정본 — **재구현 0**. 이름만 정본에서 그대로 옮겨 적는다(값 계산은 안 한다).
 //     `sim/economy-sim.js:181` COOK_SIDE_INGREDIENTS · `:3026` fuelFromWood(연료 목재) · `:2398` _stCost(석기 재료 돌)
@@ -94,6 +96,7 @@ world.villages = []; world.events = [];
 R('server/trees').attachToWorld(world);
 if (TWO) world.cargoTwo = true;
 if (GATE) world.cargoTwoGate = true;
+if (BEST) world.cargoTwoBest = true;
 for (const s of seeds) {
   const ev = econ.createVillage({ ...s.lp, initialPop: P.INITIAL_POP, name: s.name });
   ev._world = world; ev.coord = { x: s.ccx * 2.5, y: s.ccy * 2.5 };
@@ -112,6 +115,8 @@ const rows = world.villages.map((v, i) => ({
   p1Gain: 0, p2Gain: 0, p2Loss: 0, p2LossUnits: 0, p2N: 0,
   //   ★[T233] 사후 관문 자 — 정본이 낸 `p2ProfitPerUnit`(첫째와 같은 함수)을 그대로 쓴다(사본 0).
   g1Fail: 0, g1FailUnits: 0, g2Fail: 0, g2FailUnits: 0, gateBlocked: 0, p2PU: 0,
+  //   ★[T239] 선택 갈림 자 — 정본이 같은 판에서 낸 두 값(고른 것 / 최대였을 것)을 그대로 비교한다.
+  selDiff: 0, selGain: 0, selChosen: 0, selBest: 0, diffTo: {},
   //   ⓑ 흐름 품목
   flowUnits: { '부재료': 0, '연료': 0, '도구재료': 0 }, flowN: { '부재료': 0, '연료': 0, '도구재료': 0 },
   //   ⓐ 실린 뒤 며칠 만에 keep 아래로
@@ -139,6 +144,11 @@ world.onTradeLeg = (o) => {
     const pu2 = o.p2ProfitPerUnit || 0;
     r.p2PU += pu2 * o.secondUnits;
     r.gateBlocked += (o.gateBlocked || 0);
+    r.selChosen += (o.p2Total || 0); r.selBest += (o.p2BestTotal || 0);
+    if (o.p2Best && o.p2Best !== o.second) {
+      r.selDiff++; r.selGain += (o.p2BestTotal || 0) - (o.p2Total || 0);
+      r.diffTo[o.p2Best] = (r.diffTo[o.p2Best] || 0) + 1;
+    }
     //   관문 ①(수익성): 첫째의 `if (totalProfit <= 0) continue;` 와 같은 판정
     if (!(pu2 * o.secondUnits > 0)) { r.g1Fail++; r.g1FailUnits += o.secondUnits; }
     //   관문 ②(기회비용): 첫째의 `if (best.profit <= lp.mv * tripDays * (1 - 0.5*slack)) break;`

@@ -399,8 +399,16 @@ console.log('\n㉑ 둘째 화물(T206) — 문 두 자리 · 용량·후보 규�
   ok(/const N_units = Math\.min\(cand\.surplus, CARGO_PER_TRIP\);/.test(V2C),
     '㉑ ★첫 품목의 적재식은 **한 줄 그대로**다');
   ok(/const _room = CARGO_PER_TRIP - N_units;/.test(V2C), '㉑ 빈자리를 용량 정본에서 뺀다(새 수 0)');
-  ok(/break;\s*$/m.test(V2C.slice(V2C.indexOf('for (const c2 of candidates)'), V2C.indexOf('for (const c2 of candidates)') + 700)),
-    '㉑ ★★★**셋째 이상 0** — 후보 순회가 첫 성공에서 `break` 한다');
+  //   ⚠[T239 정정] 예전엔 이 자리를 `break` **라는 기전**으로 잠갔다. T239 가 후보를 끝까지 훑게
+  //     바꾸면서(수익 최대 후보를 같이 들고 나오려고) `break` 가 사라졌지만 **불변식은 그대로다** —
+  //     `_res2` 는 `_picked` 로 잠겨 한 번만 쓰이고, 적재 자리도 `_res2` 하나뿐이다.
+  //     기전이 아니라 **불변식**을 잠근다(런타임 `third` 검사는 ㉒·㉕ 에 있다).
+  {
+    const seg = V2C.slice(V2C.indexOf('for (const c2 of candidates)'), V2C.indexOf('for (const c2 of candidates)') + 1400);
+    ok(/if \(!_picked\) \{/.test(seg) && (seg.match(/_res2 = c2\.res/g) || []).length === 1,
+      '㉑ ★★★**셋째 이상 0** — 둘째 지정이 `_picked` 로 잠긴 **한 자리**뿐이다');
+    ok(!/_res3|giveRes3|_n3\b/.test(V2C), '㉑ ★셋째 화물 변수 자체가 **코드에 없다**');
+  }
   ok(/if \(world\.cargoTwo\) \{/.test(V2C), '㉑ 출발 쪽 문이 `world.cargoTwo` 하나다');
   ok(/if \(c\.giveRes2 && c\.giveAmt2 > 0\) \{/.test(V2C), '㉑ 도착 쪽도 둘째를 **같은 문법**으로 정산한다');
   ok(/_gross2 = _impactSellV2\(c\.to, c\.giveRes2, _delivered2\);/.test(V2C),
@@ -557,6 +565,61 @@ console.log('\n㉒ 둘째 화물 — 끔 비트 동일 · 켬 실림 · 용량 �
   ok(two.neg === 0 && twoG.neg === 0, '㉔ ★★곳간 음수 0(두 팔 다)');
 }
 
-console.log(`\n=== T233 둘째 관문 포함: 통과 ${pass} · 실패 ${fail} ===`);
-console.log('접점 심볼: L_CARGO_TWO|L_CARGO_TWO_GATE|candidates|totalProfit|best.profit|lp.mv|tripDays|tcPerUnit|_impactSellV2|giveRes|giveAmt|N_units|CARGO_PER_TRIP|onTradeLeg|spareCap|_legProfitPerUnit|cargoTwoGate');
+// ════════════════════════════════════════════════════════════════════════════════════════
+// ㉕ [T239] 둘째 후보를 첫째와 같은 규칙으로(`world.cargoTwoBest` — 수익 최대)
+//   T231 §ⓐ 의 마지막 비대칭: 첫째는 `best.profit` 최대로 고르는데 둘째는 `TRADABLE` 선언 순서였다.
+//   끔이면 `twogate` 비트 동일 · 켬이면 **수익 최대 후보**가 실린다 · 셋째는 여전히 0.
+{
+  const mkBest = (gate, bestOn) => {
+    const w = econV2.createWorldV2({ seed: 606, villageCount: 0, picker: 'rational', infoRange: 5000 });
+    w.villages = []; w.cargoTwo = true;
+    if (gate) w.cargoTwoGate = true;
+    if (bestOn) w.cargoTwoBest = true;
+    let twoLegs = 0, diff = 0, worse = 0, third = 0, gain = 0, chosenTot = 0, bestTot = 0;
+    w.onTradeLeg = (o) => {
+      if (o.third) third++;
+      if (!o.second || !(o.secondUnits > 0)) return;
+      twoLegs++;
+      chosenTot += (o.p2Total || 0); bestTot += (o.p2BestTotal || 0);
+      if (o.p2Best && o.p2Best !== o.second) { diff++; gain += (o.p2BestTotal || 0) - (o.p2Total || 0); }
+      if ((o.p2Total || 0) > (o.p2BestTotal || 0) + 1e-9) worse++;   // 있을 수 없다 — 최대보다 큰 선택
+    };
+    for (let i = 0; i < 6; i++) {
+      const v = econ.createVillage({ fertility: 1.2, water: 0.9, stone: (i % 2 ? 2.5 : LV.FLOOR.stone), ore: 0.2,
+                                     wood: 1.2, game: 0.7, arable: 1, size: 70, initialPop: 40, name: (i % 2 ? '산촌' : '바닥') + i });
+      v._world = w; v.coord = { x: (i % 3) * 120, y: Math.floor(i / 3) * 120 };
+      w.villages.push(v);
+    }
+    w.day = 0;
+    let neg = 0;
+    for (let d = 0; d < 300; d++) {
+      econV2.tickWorldV2(w, d);
+      for (const v of w.villages) for (const r in v.storage) if (v.storage[r] < -1e-9) neg++;
+    }
+    return { twoLegs, diff, worse, third, gain, chosenTot, bestTot, neg,
+             dig: JSON.stringify(w.villages.map((v) => ({ n: v.npcs.length, s: +(v.storage.stone || 0).toFixed(9), f: +(v.storage.food || 0).toFixed(9) }))) };
+  };
+  const g = mkBest(true, false), g2 = mkBest(true, false), gb = mkBest(true, true);
+  const ng = mkBest(false, false), ngb = mkBest(false, true);
+  ok(g.dig === g2.dig, '㉕ ★★끈 두 판이 **비트 동일**(결정론)');
+  pre(g.twoLegs > 0, '이 세계에서 둘째가 실린다', `${g.twoLegs}건`);
+  //   ★★자명 통과 금지 — 선택이 **실제로 갈리는** leg 이 있어야 이 절이 의미가 있다.
+  pre(g.diff > 0, '★끔 팔에서 선언 순서 선택이 수익 최대와 **실제로 갈린다**',
+    `${g.diff}건 / ${g.twoLegs}건 · 놓친 이익 ${g.gain.toFixed(0)}`);
+  ok(g.worse === 0, '㉕ ★★고른 것이 최대보다 큰 적은 없다(계측 정합)');
+  ok(g.dig !== gb.dig, '㉕ ★켜면 다른 세계다(문이 죽어 있지 않다)');
+  ok(gb.diff === 0, '㉕ ★★★켜면 **고른 것이 곧 최대**다(갈림 0)', `끔 ${g.diff}건 → 켬 ${gb.diff}건`);
+  //   ⚠두 팔은 **다른 세계**라 총액을 가로로 비교하면 안 된다(팔이 갈리면 leg 수부터 달라진다).
+  //     같은 팔 안에서 "고른 것 vs 최대였을 것" 을 비교한다 — 그게 놓친 이익이다.
+  ok(g.chosenTot < g.bestTot - 1e-6, '㉕ ★★끔 팔은 **돈을 남기고 간다**(고른 것 < 최대였을 것)',
+    `${g.chosenTot.toFixed(0)} < ${g.bestTot.toFixed(0)} · 차 ${(g.bestTot - g.chosenTot).toFixed(0)}`);
+  ok(Math.abs(gb.chosenTot - gb.bestTot) < 1e-6, '㉕ ★★켬 팔은 **남기지 않는다**(고른 것 = 최대)',
+    `${gb.chosenTot.toFixed(0)} = ${gb.bestTot.toFixed(0)}`);
+  ok(gb.third === 0 && g.third === 0, '㉕ ★셋째 화물 칸은 **여전히 없다**');
+  ok(ng.dig !== ngb.dig, '㉕ ★관문 없이도 선택 문은 동작한다(두 손잡이가 독립)');
+  ok(g.neg === 0 && gb.neg === 0, '㉕ ★★곳간 음수 0(두 팔 다)');
+}
+
+console.log(`\n=== T239 둘째 수익 최대 포함: 통과 ${pass} · 실패 ${fail} ===`);
+console.log('접점 심볼: L_CARGO_TWO|L_CARGO_TWO_GATE|L_CARGO_TWO_BEST|_legProfitPerUnit|candidates|cand.res|surplus|best.profit|TRADABLE|N_units|CARGO_PER_TRIP|onTradeLeg|_gateBlocked|cargoTwoGate|cargoTwoBest');
 process.exit(fail ? 1 : 0);
