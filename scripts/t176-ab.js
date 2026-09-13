@@ -292,6 +292,7 @@ const M = vils.map(() => ({ harvestN: 0, units: 0, foodEq: 0, sow: 0, fDays: 0, 
   // ★[T210] 연료 수요·공급 분해 + `_fuelCov` 가 건강에 하는 일(전부 정본 값·정본 식 · 새 수 0)
   fuelNeedSum: 0, fuelNeedHeat: 0, fuelNeedSmelt: 0, fuelColdSum: 0,
   strawSum: 0, lowSum: 0, woodFuelSum: 0,     // 공급 세 갈래(볏짚 · 하급 · 목재)
+  strawCapSum: 0, strawRawSum: 0, strawCapDays: 0, strawDays: 0,   // ★[T218] 볏짚의 두 조각(상한 · 원량)
   covLtDays: 0, covMin: 9,                     // 충당률이 1 미만인 날 · 최저
   dHealthSum: 0, dHpmSum: 0, dHealthTermSum: 0,   // `_fuelCov=1` 로 떼면 돌아오는 몫(닫힌 꼴 · 첫째 차수)
   healthSum: 0, hpmSum: 0, dpHealthSum: 0, dpSum: 0, statDays: 0,
@@ -353,8 +354,12 @@ for (let day = 0; day < DAYS; day++) {
       m.woodFuelSum += _wf;
       // ★볏짚 — 정본 `:3011` 그대로. `_grainToday` 는 틱 안에서 비워지지만 그 값은 `dailyProductionBuf.food`
       //   와 **같다**(끈 팔은 `addProduce` 가 둘 다에 같은 `amt` 를 적고, 켠 팔+장부는 T193 줄이 그렇게 맞춘다).
-      const _straw = Math.min(n * FIREWOOD_PC, _led * STRAW_FUEL_PER_FOOD);
-      m.strawSum += _straw;
+      // ★[T218] 볏짚을 **두 조각으로** 갈라 둔다 — `min(상한, 원량)` 중 어느 쪽이 무는지 세려면
+      //   둘을 따로 더해야 한다. 상한 `N × FIREWOOD_PC` 는 취사·난방 기본 수요 그 자체다.
+      const _strawCap = n * FIREWOOD_PC, _strawRaw = _led * STRAW_FUEL_PER_FOOD;
+      const _straw = Math.min(_strawCap, _strawRaw);
+      m.strawSum += _straw; m.strawCapSum += _strawCap; m.strawRawSum += _strawRaw;
+      if (_strawRaw > 0) { m.strawDays++; if (_strawCap <= _strawRaw) m.strawCapDays++; }
       // ★하급 연료 — 나머지(충당률 × 수요 − 목재 − 볏짚). 잔차가 아니라 **정본 항등식**의 남은 한 자리다.
       m.lowSum += Math.max(0, _cov * (_heat + _smN) - _wf - _straw);
     }
@@ -467,6 +472,8 @@ for (let i = 0; i < world.villages.length; i++) {
     fuelNeed: +m.fuelNeedSum.toFixed(1), fuelHeat: +m.fuelNeedHeat.toFixed(1), fuelSmelt: +m.fuelNeedSmelt.toFixed(1),
     coldMean: +(m.fuelColdSum / DAYS).toFixed(4),
     supStraw: +m.strawSum.toFixed(1), supLow: +m.lowSum.toFixed(1), supWood: +m.woodFuelSum.toFixed(1),
+    strawCap: +m.strawCapSum.toFixed(1), strawRaw: +m.strawRawSum.toFixed(1),
+    strawCapDays: m.strawCapDays, strawDays: m.strawDays,
     healthMean: m.statDays ? +(m.healthSum / m.statDays).toFixed(4) : null,
     hpmMean: m.statDays ? +(m.hpmSum / m.statDays).toFixed(5) : null,
     dHealthMean: m.statDays ? +(m.dHealthSum / m.statDays).toFixed(5) : null,
@@ -557,6 +564,10 @@ const out = {
   fuelHeatTot: +per.reduce((a, p) => a + p.fuelHeat, 0).toFixed(1),
   fuelSmeltTot: +per.reduce((a, p) => a + p.fuelSmelt, 0).toFixed(1),
   supStrawTot: +per.reduce((a, p) => a + p.supStraw, 0).toFixed(1),
+  strawCapTot: +per.reduce((a, p) => a + p.strawCap, 0).toFixed(1),
+  strawRawTot: +per.reduce((a, p) => a + p.strawRaw, 0).toFixed(1),
+  strawCapDaysTot: per.reduce((a, p) => a + p.strawCapDays, 0),
+  strawDaysTot: per.reduce((a, p) => a + p.strawDays, 0),
   supLowTot: +per.reduce((a, p) => a + p.supLow, 0).toFixed(1),
   supWoodTot: +per.reduce((a, p) => a + p.supWood, 0).toFixed(1),
   covLtDaysTot: per.reduce((a, p) => a + p.covLtDays, 0),

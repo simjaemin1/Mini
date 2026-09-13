@@ -502,6 +502,48 @@ console.log('\n⑮ 장부 — 밭이 곳간에 넣은 그 양이 **실현 흐름
     '⑮ 장부를 읽는 자는 `food` 말고 **생곡도 본다**(T73) — 켠 팔이 통째로 눈먼 건 아니었다(부산물은 두 팔이 같은 길)');
 }
 
+// ── ⑱ 볏짚 — 밭 수확이 `_grainToday` 에 닿는다 (T218) ──────────────────────
+console.log('\n⑱ 볏짚 — 밭 수확이 **아궁이 밑변**(`_grainToday`)에 닿나(T218 · 이미 닿는다 · 이중 0 의 파수꾼)');
+{
+  const C = codeOf(SRC);
+  const lines = C.split('\n').map((l, i) => [i + 1, l]).filter(([, l]) => /_grainToday/.test(l));
+  const writes = lines.filter(([, l]) => /_grainToday = \(v\._grainToday \|\| 0\) \+/.test(l));
+  const resets = lines.filter(([, l]) => /_grainToday = 0;/.test(l));
+  const reads = lines.filter(([, l]) => /strawFuel = Math\.min/.test(l));
+  ok(writes.length === 3, '⑱ ★쓰는 곳 **셋** — `addProduce`(끈 팔 농부) · `harvestToGranary`(켠 팔 밭) · `gardenFloorTopUp`(텃밭)', `실제 ${writes.length}`);
+  ok(reads.length === 1 && resets.length === 1, '⑱ 읽는 곳 하나(볏짚) · 비우는 곳 하나', `읽기 ${reads.length} · 리셋 ${resets.length}`);
+  ok(reads[0] && resets[0] && reads[0][0] < resets[0][0],
+    '⑱ ★★★비우는 줄이 **읽는 줄 뒤**에 있다 — 그래서 생활층(틱 **뒤**)이 적은 값이 다음 틱까지 **산다**',
+    reads[0] && resets[0] ? `읽기 :${reads[0][0]} < 리셋 :${resets[0][0]}` : '—');
+  ok(/const strawFuel = Math\.min\(N \* FIREWOOD_PC, \(v\._grainToday \|\| 0\) \* STRAW_FUEL_PER_FOOD\);/.test(C),
+    '⑱ 볏짚 식이 그대로다 — `min(N × FIREWOOD_PC, 오늘 곡식 × STRAW_FUEL_PER_FOOD)`');
+  // ★T193 의 `dailyProduction` 과 **정확히 갈리는 지점**: 그쪽은 리셋이 틱 **머리**라 생활층 쓰기가 죽는다.
+  const dpReset = C.split('\n').findIndex((l) => /for \(const r in dailyProduction\) dailyProduction\[r\] = 0;/.test(l)) + 1;
+  const dpRead = C.split('\n').findIndex((l) => /const dailyFoodProd = totalFoodProductionEquivalent\(dailyProduction\);/.test(l)) + 1;
+  ok(dpReset > 0 && dpRead > 0 && dpReset < dpRead,
+    '⑱ ★대조 — `dailyProduction` 은 리셋이 **읽는 줄 앞**이라 생활층 쓰기가 죽는다(그래서 T193 은 줄이 필요했다)',
+    `리셋 :${dpReset} < 읽기 :${dpRead}`);
+
+  // 기능 — 켜면 수확이 그 칸에 그대로 들어온다 · 끄면 한 톨도 안 들어온다
+  const v = econ.createVillage({ initialPop: 0, name: '픽스처', fertility: 1.0 });
+  const g0 = v._grainToday || 0;
+  const put = econ.harvestToGranary(v, 100);
+  const dg = (v._grainToday || 0) - g0;
+  if (ON) {
+    ok(Math.abs(dg - put) < 1e-9 && put > 0,
+      '⑱ ★★★[켬] 수확이 곳간에 넣은 **그 양 그대로** 아궁이 밑변에도 든다(0 이면 빨강 — 자명 통과 금지)',
+      `곳간 ${put.toFixed(2)} = 밑변 ${dg.toFixed(2)}`);
+    const g1 = v._grainToday;
+    econ.gardenFloorTopUp(v);
+    ok((v._grainToday || 0) >= g1, '⑱ 텃밭 하한도 같은 칸에 든다(수확이 넉넉하면 0 을 더한다 — max 규약)');
+  } else {
+    ok(dg === 0 && put === 0, '⑱ [끔] 밭 입구가 안 열리므로 밑변도 한 톨도 안 는다');
+  }
+  ok(writes.length === 3,
+    '⑱ ★이중 0 — T218 은 **넷째 쓰기를 안 만들었다**(이미 닿는 칸에 한 줄 더 놓으면 볏짚이 두 배가 된다)',
+    `쓰는 곳 ${writes.length} (셋이 정본)`);
+}
+
 // ── ⑨ 3사본 ────────────────────────────────────────────────────────────────
 console.log('\n⑨ 3사본 · 소스 계약');
 {
