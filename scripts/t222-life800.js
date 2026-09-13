@@ -53,7 +53,8 @@ process.env.DB_PATH = process.env.DB_PATH || `/tmp/t222-${SEED}-${process.pid}.d
 
 const ROOT = path.join(__dirname, '..');
 const R = (p) => require(path.join(ROOT, p));
-const { ZONES, WORLD } = R('server/zone-config');
+const ZC = R('server/zone-config');
+const { ZONES, WORLD } = ZC;
 const ZONE = ZONES.hanbando;
 // ★시드 — econ 세계의 씨는 존 설정에서 온다(`createWorldV2({ seed: ZONE.villageSeed })`).
 //   자는 그 칸 하나만 바꾼다(env 손잡이가 없어서다 — 값을 지어내지 않고 **정본 칸을 그대로** 쓴다).
@@ -61,6 +62,21 @@ ZONE.villageSeed = SEED;
 
 // ── stub deps — zone.js 가 주는 것과 **같은 모양**(없는 것은 무해한 빈 값) ────
 //   ★관측자는 없다(`anyViewerNear → false`) ⇒ 제품이 스스로 헤드리스 갈래를 고른다.
+// ★[T232] `T232_RAW=1` 이면 **잇기 전**(T228 판)으로 돌아간다 — 그 팔을 다시 돌려 비트 동일을 확인하려고 둔다.
+const RAW = process.env.T232_RAW === '1';
+// ★[T232] 정본 모듈 — 제품 존이 쓰는 것과 **같은 것**을 부른다(재구현 0).
+const _terrain = R('server/terrain');
+const SP = R('server/specialty');
+const _mined = new Map();                        // zone.js `minedCells` 와 같은 자리(자 안에서만 · 비어서 시작)
+let _oreNow = 0;                                 // 자의 게임 시각(하루 루프가 민다 — zone.js `_simNow()` 자리)
+const _ORE_DAY_MS = WORLD.dayLengthMs;
+function _oreRec(key) {                          // zone.js `_oreRec` 원문과 같은 꼴(값은 전부 정본)
+  let rec = _mined.get(key);
+  if (!rec) return { s: SP.ORE_K, t: _oreNow, w: 0, fresh: true };
+  const days = (_oreNow - rec.t) / _ORE_DAY_MS;
+  if (days > 0) { rec.s = SP.oreRegen(rec.s, days); rec.t = _oreNow; }
+  return rec;
+}
 const players = new Map(), npcs = new Map();
 let _pid = 0;
 // ★[T228 ⓐ] 자가 비워 둔 deps 를 **누가 몇 번 부르고 무엇을 돌려받았나** — 인공물 후보를 이름으로 찾는다.
@@ -78,11 +94,30 @@ const deps = {
   liveBuildRow: _cnt('liveBuildRow', () => null),
   onVillageAdded: _cnt('onVillageAdded', () => {}),
   isTerrainBlockedLocal: _cnt('isTerrainBlockedLocal', () => false),
-  isWaterTileLocal: _cnt('isWaterTileLocal', () => false),
+  // zone.js 원문은 청크 물타일 표를 본다 — 자는 **셀 정본**(`terrain.isWaterCellLocal`)을 부른다(같은 지형 · 해상도만 셀).
+  isWaterTileLocal: _cnt('isWaterTileLocal', (x, y) => !!_terrain.isWaterCellLocal('hanbando', Math.floor(x / 32), Math.floor(y / 32))),
   isBlockedByWall: _cnt('isBlockedByWall', () => false),
-  oreProbAt: _cnt('oreProbAt', () => 0),
-  worldPhase: _cnt('worldPhase', () => 0.5),                           // 0..1 하루 위상(제품이 숫자로 쓴다)
-  dayPhaseRatio: _cnt('dayPhaseRatio', () => 0.5),
+  // ★★[T232] 아래 넷은 **제품 존이 넘기는 그 줄**을 인용한 것이다(`server/zone.js:2651~2683`).
+  //   T228 이 `oreProbAt → 0` 에 이름을 붙였는데, 실은 더 깊었다: `_oreMineDaily` 는 첫 줄에서
+  //   `if (!dep.oreConsumeAt || !dep.oreStockAt) return null;` 이라 **광맥 장부 문 둘이 없으면 아예 안 돈다**.
+  //   자는 그 둘을 **zone.js 와 같은 꼴**로 세운다 — 값은 전부 정본(`specialty.ORE_K`·`oreRegen`)이고,
+  //   판 자리 장부(`minedCells`)는 **비어서 시작한다**(갓 시딩한 세계의 참값 — 지어낸 수 0).
+  //   zone.js 원문: `oreProbAt: (px, py) => (_terrain.oreProbMajorAt ? _terrain.oreProbMajorAt(ZONE_ID, px, py) : 0.3)`
+  oreProbAt: _cnt('oreProbAt', (px, py) => (_terrain.oreProbMajorAt ? _terrain.oreProbMajorAt('hanbando', px, py) : 0.3)),
+  //   zone.js 원문: `oreStockAt/oreConsumeAt` — `_oreRec` 가 없으면 `{ s: Specialty.ORE_K, fresh:true }`, 있으면 `oreRegen`
+  oreStockAt: _cnt('oreStockAt', (cx, cy) => _oreRec(cx + '_' + cy).s),
+  oreConsumeAt: _cnt('oreConsumeAt', (cx, cy, amount) => {
+    if (!(amount > 0)) return 0;
+    const rec = _oreRec(cx + '_' + cy);
+    const got = Math.min(amount, Math.max(0, rec.s));
+    if (got <= 0) return 0;
+    rec.s -= got; _mined.set(cx + '_' + cy, rec); return got;
+  }),
+  ORE_K: SP.ORE_K, NPC_MINE_PER_DAY: SP.NPC_MINE_PER_DAY,
+  mineDepthCost: (f) => SP.mineDepthCost(f), mineDepthP: (f) => SP.mineDepthP(f),
+  mineChunkKg: (lvl) => SP.mineChunkKg(lvl),
+  worldPhase: _cnt('worldPhase', (n) => ZC.worldPhase(n)),            // 정본(`zone-config.worldPhase`) — zone.js 가 넘기는 그것
+  dayPhaseRatio: WORLD.dayPhaseRatio,                                 // 정본 상수(zone.js 원문과 같은 줄)
   mobs: new Map(),
   zoneWidth: ZONE.zoneWidth,
   perfMark: _cnt('perfMark', () => {}),
@@ -90,6 +125,14 @@ const deps = {
   ioQuietMs: _cnt('ioQuietMs', () => 1e9),
 };
 
+if (RAW) {   // ★잇기 전 판 — T228 이 잰 그 빈 값들(비트 동일 재현용)
+  deps.oreProbAt = _cnt('oreProbAt', () => 0);
+  delete deps.oreStockAt; delete deps.oreConsumeAt; delete deps.ORE_K; delete deps.NPC_MINE_PER_DAY;
+  delete deps.mineDepthCost; delete deps.mineDepthP; delete deps.mineChunkKg;
+  deps.isWaterTileLocal = _cnt('isWaterTileLocal', () => false);
+  deps.worldPhase = _cnt('worldPhase', () => 0.5);
+  deps.dayPhaseRatio = () => 0.5;
+}
 const V = R('server/villages');
 const t0 = Date.now();
 const _log = console.log; console.log = () => {};
@@ -111,6 +154,7 @@ const t1 = Date.now();
 const _l2 = console.log; console.log = () => {};
 for (let d = 1; d <= DAYS; d++) {
   const now = base + d * dayMs;
+  _oreNow = now;                                          // ★[T232] 광맥 재생 적분의 시각(zone.js `_simNow()` 자리)
   V.onGameTick(now);
   for (let f = 0; f < 60; f++) V.onGameTick(now);          // 저장 큐 배수(같은 날 — 제품이 새 날을 안 연다)
   for (const row of db.getVillagesByZone('hanbando')) {
@@ -176,7 +220,7 @@ for (const row of db.getVillagesByZone('hanbando')) {
     wcut: v._wcutDay != null ? v._wcutDay : null });   // ★벌목 실체는 서버에 없다 — 늘 null(T213 §0ⓐ)
 }
 const out = {
-  arm: process.env.T213_HUNT_REAL === '1' ? 'hunt' : 'off',
+  arm: (RAW ? 'raw-' : '') + (process.env.T213_HUNT_REAL === '1' ? 'hunt' : 'off'),
   seed: SEED, days: DAYS, initMs: tInit, runMs: tRun, msPerDay: +(tRun / DAYS).toFixed(2),
   villages: per.length,
   pop, dead, ever, weapQ: +weapQ.toFixed(1), expand, toolQ: +toolQ.toFixed(1),
