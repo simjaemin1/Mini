@@ -67,6 +67,21 @@ const RAW = process.env.T232_RAW === '1';
 // ★[T232] 정본 모듈 — 제품 존이 쓰는 것과 **같은 것**을 부른다(재구현 0).
 const _terrain = R('server/terrain');
 const SP = R('server/specialty');
+// ★★[T251] **땅을 세우는 술어 셋** — `server/zone.js:570~650` 을 **그 구조 그대로** 세운다.
+//   왜 여기서 다시 세우나: `zone.js` 는 모듈 하나가 곧 서버 기동이라 자가 require 할 수 없다.
+//   그래서 zone.js 가 술어를 **짓는 데 쓴 정본 조각들**(`chunk.generateCoastlineWaterTiles` ·
+//   `zone-config.findZoneAt` · `ZONE.bridges` · `terrain.isWater/isRockCellLocal`)을 그대로 불러
+//   **같은 값**을 만든다 — 이 자가 지어낸 수도 표도 0 이다.
+//   ⚠ T232 는 이 자리를 "이을 정본이 없다"로 두고 `isTerrainBlockedLocal: () => false` 를 줬다.
+//     그 한 줄이 `makeTerrainAdapter` 의 `isBlocked` 를 통째로 눕혀, `village-layout.generate`(영토) ·
+//     `prepareFert`(비옥도 장) · `extractLandParamsApprox`(부존 스캔) **전부**가 물도 바위도 없는
+//     땅 위에서 돌았다 — `land.fertility` 중앙 0.99 → **0.42**(T251 §0ⓑ).
+//   ★술어 셋 자체는 `scripts/zone-preds.js` **한 벌**에만 있다(이 자가 다시 적으면 그게 사본이다).
+const _ZP = R('scripts/zone-preds').makeZonePreds('hanbando');
+const _isWaterTileLocal = _ZP.isWaterTileLocal;
+const _isRockTileLocal = _ZP.isRockTileLocal;
+const _isTerrainBlockedLocal = _ZP.isTerrainBlockedLocal;
+const _isBridgeTileLocal = _ZP.isBridgeTileLocal;
 const _mined = new Map();                        // zone.js `minedCells` 와 같은 자리(자 안에서만 · 비어서 시작)
 let _oreNow = 0;                                 // 자의 게임 시각(하루 루프가 민다 — zone.js `_simNow()` 자리)
 const _ORE_DAY_MS = WORLD.dayLengthMs;
@@ -93,9 +108,14 @@ const deps = {
   clearTreesInCells: _cnt('clearTreesInCells', () => 0),
   liveBuildRow: _cnt('liveBuildRow', () => null),
   onVillageAdded: _cnt('onVillageAdded', () => {}),
-  isTerrainBlockedLocal: _cnt('isTerrainBlockedLocal', () => false),
-  // zone.js 원문은 청크 물타일 표를 본다 — 자는 **셀 정본**(`terrain.isWaterCellLocal`)을 부른다(같은 지형 · 해상도만 셀).
-  isWaterTileLocal: _cnt('isWaterTileLocal', (x, y) => !!_terrain.isWaterCellLocal('hanbando', Math.floor(x / 32), Math.floor(y / 32))),
+  // ★★[T251] **이 셋이 땅을 세운다** — `zone.js:2651` 이 `SimVillages.init` 에 넘기는 그 세 칸이다.
+  //   `makeTerrainAdapter(terrain, ZONE, deps)` 의 `isBlocked`/`isWater` 가 `village-layout.generate`(영토) ·
+  //   `prepareFert`(비옥도 장) · `extractLandParamsApprox`(부존 스캔) **전부의 입력**이고,
+  //   그 위에 교역로 A*(`isBlocked`)까지 같은 술어를 쓴다.
+  //   ⚠`isRockTileLocal` 은 제품이 `SimVillages.init` 에 **안 넘긴다**(villages.js 도 안 읽는다) — 그래서 안 넘긴다.
+  isTerrainBlockedLocal: _cnt('isTerrainBlockedLocal', _isTerrainBlockedLocal),
+  isWaterTileLocal: _cnt('isWaterTileLocal', _isWaterTileLocal),
+  isBridgeLocal: _cnt('isBridgeLocal', _isBridgeTileLocal),   // ★zone.js:2661 — 물 위 다리 836칸이 통행이다
   isBlockedByWall: _cnt('isBlockedByWall', () => false),
   // ★★[T232] 아래 넷은 **제품 존이 넘기는 그 줄**을 인용한 것이다(`server/zone.js:2651~2683`).
   //   T228 이 `oreProbAt → 0` 에 이름을 붙였는데, 실은 더 깊었다: `_oreMineDaily` 는 첫 줄에서
@@ -130,6 +150,8 @@ if (RAW) {   // ★잇기 전 판 — T228 이 잰 그 빈 값들(비트 동일 
   delete deps.oreStockAt; delete deps.oreConsumeAt; delete deps.ORE_K; delete deps.NPC_MINE_PER_DAY;
   delete deps.mineDepthCost; delete deps.mineDepthP; delete deps.mineChunkKg;
   deps.isWaterTileLocal = _cnt('isWaterTileLocal', () => false);
+  deps.isTerrainBlockedLocal = _cnt('isTerrainBlockedLocal', () => false);
+  delete deps.isBridgeLocal;
   deps.worldPhase = _cnt('worldPhase', () => 0.5);
   deps.dayPhaseRatio = () => 0.5;
 }
