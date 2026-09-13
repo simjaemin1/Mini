@@ -120,9 +120,29 @@
 |---|---|---|---|---|---|
 | `wind` | `public/assets/sfx/wind.{ogg,m4a}` | 반복 | 10.00s | 93,551 / 123,449 B | ⚠원본에 새소리가 있다 — 자로 가장 조용한 창을 골랐다(아래) |
 | `fire` | `public/assets/sfx/fire.{ogg,m4a}` | 반복 | 10.00s | 104,607 / 123,531 B | 마른 풀이 화덕에서 타는 소리 |
+| `step_dirt` | `public/assets/sfx/step_dirt.{ogg,m4a}` | 단발 | 0.22s | 6,262 / 3,895 B | ⚠지면은 **가설**(팩에 표시 없음 · 아래) |
+| `step_grass` | `public/assets/sfx/step_grass.{ogg,m4a}` | 단발 | 0.13s | 5,134 / 2,681 B | ⚠같음 |
+| `axe` | `public/assets/sfx/axe.{ogg,m4a}` | 단발 | 0.21s | 5,726 / 3,552 B | 쇠처럼 안 울린다(쟀다 · 아래) |
+| `eat` | `public/assets/sfx/eat.{ogg,m4a}` | 단발 | 0.24s | 6,473 / 3,883 B | — |
 
-**미확보 여섯**(`step_dirt`·`step_grass`·`wolf_growl`·`harvest`·`eat`·`axe`) — 이번엔 "못 받아서"가 아니라
-**로그인 없는 출처에 없어서**다. Commons 는 SFX 가 얇다(발자국을 찾으면 Lingua Libre 가 "footsteps"를
+**미확보 둘**(`wolf_growl`·`harvest`) [T269 뒤]. 넷은 T269 가 **Kenney CC0**(RPG Audio — 팩 안 `License.txt`)와
+**OpenGameArt CC0**(80 CC0 creature SFX · rubberduck)에서 받아 닫았다. 남은 둘의 이유:
+
+* `wolf_growl` — **CC0 늑대라는 것들이 늑대가 아니다.** OGA "Wolf Monster Sound"(CC0)는 제 설명이
+  *"말이 콧김 뿜는 소리를 Audacity 로 늑대처럼 고친 것"* 이라 적고, freesound 338674 는 CC-BY + subbass 보강(T262).
+  creature 팩엔 `howl`·`barking`·`monster`·`roar` 는 있어도 늑대 으르렁은 없다.
+  **`monster_*` 를 늑대라 부르는 것은 종을 지어내는 것**이라 안 했다.
+* `harvest` — 세 출처에 작물 뜯기/풀 뜯기로 적힌 것이 없다. `cloth` 를 수확이라 부르지 않는다.
+
+★**두 자를 새로 썼다**(둘 다 귀 대신 쓰는 자다):
+1. **지면 가설** — Kenney `footstep00~09` 에는 **무슨 바닥인지 안 적혀 있다.** 스펙트럴 중심이 가장 낮은
+   `04`(1,007 Hz)를 흙, 가장 높은 `07`(2,189 Hz)을 풀로 잡았다. 둔한 소리가 흙, 서걱이는 소리가 풀이라는
+   **음향적 가정**이지 출처가 그렇게 말한 게 아니다 — **판정은 재민 귀.**
+2. **금속성 자** — 4kHz 이상 대역이 정점에서 −20 dB 로 떨어지는 데 걸리는 시간. 쇠는 울려서 길고 나무·돌은 짧다.
+   실측: `chop` **58 ms** ↔ 같은 팩 `metalPot1` **302 ms** ⇒ `axe` 는 쇠처럼 안 울린다.
+   (돌이냐 청동이냐까지는 자로 못 가른다.)
+
+옛 판 기록: T266 시점의 미확보는 여섯이었고 그 이유는 "로그인 없는 출처에 없어서"였다. Commons 는 SFX 가 얇다(발자국을 찾으면 Lingua Libre 가 "footsteps"를
 **발음한** 녹음이 나온다). freesound CC0 후보 둘(T262 §0-ⓐ)은 로그인이 필요해 재민이 `~/Mini/_sfx_in/` 에
 넣어 주면 잇는다.
 
