@@ -130,7 +130,26 @@ function openSpot() {
 
   // ── ① 정지 = idle ─────────────────────────────────────────────────────
   console.log('\n=== ① 정지 → idle · 걷기 → walk · 달리기 → run ===');
-  let d = await dbgOf(A);
+  // ★★[T250 2026-09-13] **시트가 올 때까지 기다린다** — 정해진 초를 자고 한 번 보지 않는다(T214 문법).
+  //   T238 이 잰 자리다: `on:false` 는 `charSheet(...)` 가 아직 없다는 뜻이고(시트 192장 · T162),
+  //   러너 청크에서는 정적 배급이 위 `sleep(800)` 보다 늦다. 그래서 단독은 초록인데 청크에서만
+  //   `clip=idle` 로 빨갛고, 그 다음 줄이 하네스를 끊었다(T238 이 방어는 걸었다 — 이제 뿌리를 닫는다).
+  //   판정은 그대로: 끝내 안 오면 아래 `ok` 가 빨갛고, **어느 시트가 없는지**(`why`)와 기다린 시간을 적는다.
+  //   상한은 판정이 아니라 안전망이다.
+  const waitDrawn = async (pg, capMs) => {
+    const t0 = Date.now(), cap = capMs || 90000;
+    let v = await dbgOf(pg);
+    while (Date.now() - t0 < cap) {
+      if (v && v.on === true) break;
+      await sleep(250);
+      v = await dbgOf(pg);
+    }
+    return { d: v, waited: Date.now() - t0 };
+  };
+  const _w1 = await waitDrawn(A);
+  let d = _w1.d;
+  console.log(`  · [상황] 스프라이트가 그려질 때까지 ${_w1.waited}ms 기다렸다`
+    + (d && d.on === true ? '' : ` — 끝내 안 왔다(why=${d ? d.why : 'null'})`));
   // ★★[T238 2026-09-13] **`on:false` 일 때 훅에는 `layers` 가 없다** — `42-r2-char.js:260` 의 실패
   //   갈래는 `{on, why, clip, isMe, t}` 만 싣고, 성공 갈래(`:296`)만 `layers` 를 싣는다.
   //   그래서 아래 `d.layers.join(',')` 가 **하네스 전체를 TypeError 로 끊었다**(러너 청크 판 실측:

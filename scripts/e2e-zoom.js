@@ -115,7 +115,10 @@ function pxdiff(a, b) {
   //   그려지므로, 두 프레임 동일·안개 위 밝은 픽셀 같은 판정이 하늘 때문에 빨개진다.
   //   이 하네스가 재는 건 하늘이 아니다 ⇒ 끄는 문은 T93 이 남긴 진단 훅 하나(안 켜져 있으면 무해).
   await page.evaluate(() => { if (typeof window.__rainForce === 'function') window.__rainForce({ precip: 0 }); });
-  // ★★[T214 2026-09-12] **날도 얼린다** — 바람·하늘을 끈 것과 같은 자리다(새 손잡이 0 · `__e2e_day_freeze`).
+  // ★★[T214 2026-09-12 · ⚠T250 정정] **날도 얼린다** — 바람·하늘을 끈 것과 같은 자리다.
+  //   ⚠T214 는 이것이 ⑤ 의 화소 차를 닫는다고 적었는데 **틀렸다**: 이 손잡이는 econ·존의 **게임일**을
+  //     얼리고, 화면을 어둡게 하는 **밤 오버레이**는 클라가 제 `Date.now()` 로 센다(T238 실측).
+  //     남겨 두는 이유는 econ 쪽 흔들림을 줄이기 때문이지 ⑤ 때문이 아니다 — ⑤ 는 아래에서 닫는다.
   //   §0-ⓐ 실측이 가리킨 자리다: ⑤ 가 러너에서 빨갛던 두 장(`01-z1` vs `03-back-to-1`)을 뜯어 보니
   //   **평균 RGB 가 통째로 (−4.67, −4.65, −1.75) 움직였고**, 20 넘게 다른 화소는 **0.12%** 뿐이었다 —
   //   무언가 **움직인** 게 아니라 **빛이 바뀐** 것이다. 이 존은 하루가 0.5초(`VILLAGE_DAY_MS=500`)라
@@ -227,14 +230,42 @@ function pxdiff(a, b) {
 
   // ── ⑤ 1 로 돌아오면 처음 화면 그대로 (되돌림 실증) ─────────────────────
   console.log('\n=== ⑤ 배율 1 복귀 = 종전 화면 그대로 ===');
+  // ★★★[T250 2026-09-13] **두 장을 붙여 찍는다 — 돌기를 ⑤ 가 직접 돈다.**
+  //   T238 이 잰 것: 화면을 어둡게 하는 밤 오버레이는 클라가 **제 `Date.now()`** 로 센다
+  //   (`20-r2-visibility.js` worldPhase→darknessLevel · 하루 24분 · 황혼·새벽 경사 각 72초 ·
+  //    카메라 경도 `_lonView` 가 최대 +0.045 더해진다). 그래서 `__e2e_day_freeze`(econ·존의 **게임일**)
+  //   로는 안 멎는다 — T214 가 얼린 건 다른 시계였다(그 주석은 아래에서 고쳐 적었다).
+  //   종전 ⑤ 는 ①에서 찍은 장과 **25~26초 뒤** 장을 견줬다. 그 사이에 경사가 끼면 화면은 배율과
+  //   **무관하게** 밝아진다 — 실측: 경사를 겨냥한 세 판이 9.19 · 9.26 · 9.45 로 **3/3 빨강**이었다.
+  //   ⇒ 계약("1→1.5→2→1 을 돌고 와도 처음과 같다")은 그대로 두고, **그 돌기를 여기서 돈다.**
+  //     두 장 사이가 25초에서 **몇 초**로 줄면 경사 한가운데서도 시계가 움직이는 양이 바 아래다.
+  //     ①②③④ 가 이미 중간 배율을 각각 검사했으므로 계약은 안 약해진다 — 오히려 돌기만 따로 격리된다.
   await setZ(1);
-  const _bk = await shotSettled('03-back-to-1');            // ★[T214] 멎을 때까지 — 판정은 그대로
+  const _r0 = await shotSettled('03-pre-round');          // ⑤ 의 제 기준 — **바로 앞에서** 찍는다
+  ok(_r0.settled, '★★⑤ [전제] 돌기 직전 화면이 멎었다', `${_r0.tries}번 만에 멎음`);
+  const _t0 = Date.now();
+  await setZ(1.5); await setZ(2); await setZ(1);          // ★계약 그대로 1 → 1.5 → 2 → 1
+  const _bk = await shotSettled('03-back-to-1');
   const back = _bk.png;
-  const dBack = pxdiff(base, back);
+  const dBack = pxdiff(_r0.png, back);
+  const elapsed = Date.now() - _t0;
   const zBack = await zdbg();
   ok(zBack.off === null, '★배율 1 로 돌아오면 오프스크린이 사라진다');
   ok(_bk.settled, '★★⑤ [전제] 화면이 **멎었다**(안 멎었으면 아래는 덜 그린 프레임을 재는 것이다)', `${_bk.tries}번 만에 멎음`);
-  ok(dBack < settleBar, '★★1 → 1.5 → 2 → 1 을 돌고 와도 화면이 처음과 같다 (바람 격리)', `평균 화소 차 ${dBack.toFixed(3)} (확대 때는 ${dUp.toFixed(2)} 였다)`);
+
+  // ★바도 세계가 정한다 — **같은 시간 동안 배율을 안 건드렸을 때** 화면이 흐르는 양(= 시계 몫).
+  //   문턱을 지어내지 않는다(T185 ⑦d 가 "같은 창에서 서버가 기록한 가장 무거운 작업"을 바로 쓴 그 문법).
+  const _c0 = (await shotSettled('04-drift-a')).png;
+  await sleep(elapsed);
+  const _c1 = (await shotSettled('04-drift-b')).png;
+  const clockDrift = pxdiff(_c0, _c1);
+  const bar = clockDrift + settleBar;
+  console.log(`  · [상황] 돌기 두 장 사이 ${(elapsed / 1000).toFixed(1)}초 · 같은 시간 배율 무접촉 흐름 ${clockDrift.toFixed(3)}`);
+  // 자명 통과 금지 — 바가 커져 판정을 삼키면 그건 통과가 아니다. 확대 신호가 바를 넘어야 한다.
+  ok(dUp > bar, '★★⑤ [전제] 바가 판정을 **안 삼켰다** — 확대 때 차이가 바보다 크다',
+     `확대 ${dUp.toFixed(2)} > 바 ${bar.toFixed(3)}(흐름 ${clockDrift.toFixed(3)} + ${settleBar})`);
+  ok(dBack <= bar, '★★1 → 1.5 → 2 → 1 을 돌고 와도 화면이 처음과 같다 (배율 말고 흐른 것 빼고)',
+     `평균 화소 차 ${dBack.toFixed(3)} ≤ ${bar.toFixed(3)} (같은 시간 흐름 ${clockDrift.toFixed(3)} · 확대 때는 ${dUp.toFixed(2)} 였다)`);
   await wind(false);
 
   // ── ⑥ 성능 — 축소는 세계 화소가 1/z² 로 는다 ───────────────────────────
