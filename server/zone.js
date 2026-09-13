@@ -58,6 +58,11 @@ const Salt = require('./salt');            // ★[자염 배치 2026-09-01] 염�
 const ItemLabel = require('./itemlabel');  // ★[T61] 이름표 정본이 사는 곳(품목 합치기 · econ 자원 종류 이름)
 const Trees = require('./trees');         // ★[T135] 나무 정본 — 종 축·열매 규약·벌목 부등식(표는 trees.json)
 const Onboarding = require('./onboarding');   // ★[온보딩 v2 2026-09-01] 도착 지점·30분 대본·빈터 권리 정본(§9). init 전엔 완전 no-op
+// ★★[T225 2026-09-13] **관측창도 바깥 문이 아니다.** 열 개의 `*dbg` 가 인증 0 으로 세계·사람의
+//   내부 상태를 줬다 — 그중 `/followdbg` 는 **접속자 전원의 `playerId`·이름·정확한 좌표**다(실측).
+//   판정은 `internal-door.js` **정본 하나**를 쓴다(central 과 같은 규칙 · 사본 0).
+//   ⚠하네스는 되돌이/사설 주소라 **그대로 산다**(§0 전수: 아홉 하네스가 이 문들을 쓴다).
+const InternalDoor = require('./internal-door');
 const Notice = require('./notice');           // ★[T78 2026-09-03] 알림 경계 — 접두 이모지 → `kind` · 글자 제거
 const Membership = require('./membership');   // ★[T11 2026-09-02] 마을 소속·곳간 인출. 기여 계량기는 온보딩 정본 **하나**를 읽는다
 const Claims = require('./claims');           // ★[T45 2026-09-02] 사유지 v2 — 종류 영속·인접·연결성·부재 상태기(정본 하나)
@@ -3115,6 +3120,7 @@ const server = http.createServer((req, res) => {
   //   `?audit=N` — 캐시에 든 N 쌍을 **실제로 다시 계산해** 비교(영속이 답을 안 바꾼다는 증명).
   //   `?invalidate=1` — **진짜** `invalidateTradeDistances` 를 부른다(하네스가 사본을 만들지 않게).
   if (req.url && req.url.startsWith('/routedbg') && req.method === 'GET' && process.env.E2E_GIVE === '1') {
+    if (!InternalDoor.isInternal(req)) return InternalDoor.denyOutside(res);   // ★[T225] 관측창은 안 문
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
     try {
       const u = new URL(req.url, 'http://x');
@@ -3128,6 +3134,7 @@ const server = http.createServer((req, res) => {
     return;
   }
   if (req.url && req.url.startsWith('/bodydbg') && req.method === 'GET' && process.env.E2E_GIVE === '1') {
+    if (!InternalDoor.isInternal(req)) return InternalDoor.denyOutside(res);   // ★[T225] 관측창은 안 문
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
     try {
       const u = new URL(req.url, 'http://x');
@@ -3142,6 +3149,7 @@ const server = http.createServer((req, res) => {
   //   ★내주는 것은 **정본 그 자체**(`Claims.debug()`)다 — 하네스가 산출을 다시 짜면 그게 사본이다.
   //   `?scan=1` 은 부재 배치를 **지금 한 번** 돌린다(30분을 기다리지 않고 상태기를 밟게 한다).
   if (req.url && req.url.startsWith('/claimdbg') && req.method === 'GET') {
+    if (!InternalDoor.isInternal(req)) return InternalDoor.denyOutside(res);   // ★[T225] 관측창은 안 문
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
     const _done = (extra) => {
       try {
@@ -3162,6 +3170,7 @@ const server = http.createServer((req, res) => {
   // ★[T147 2026-09-07] 따라가기 관측창 — `/friendsdbg`·`/guilddbg` 와 같은 규약(읽기 전용 · 제품 무접촉).
   //   하네스가 **좌표를 알아야** 텔레포트로 판을 짤 수 있다(막힌 땅을 피해 가며).
   if (req.url && req.url.startsWith('/followdbg') && req.method === 'GET') {
+    if (!InternalDoor.isInternal(req)) return InternalDoor.denyOutside(res);   // ★[T225] 관측창은 안 문
     const rows = [];
     for (const p of players.values()) {
       if (p.isNpc) continue;
@@ -3175,6 +3184,7 @@ const server = http.createServer((req, res) => {
     return;
   }
   if (req.url && req.url.startsWith('/friendsdbg') && req.method === 'GET') {
+    if (!InternalDoor.isInternal(req)) return InternalDoor.denyOutside(res);   // ★[T225] 관측창은 안 문
     const q = (req.url.split('?')[1] || '');
     const m = /(?:^|&)pid=([^&]*)/.exec(q);
     const pid = m ? decodeURIComponent(m[1]) : '';
@@ -3191,6 +3201,7 @@ const server = http.createServer((req, res) => {
   }
   // ★[T128] 길드 관측창 — 읽기 전용. 소개문 캐시가 무엇을 아는지 그대로 낸다(사람 이름 0).
   if (req.url && req.url.startsWith('/guilddbg') && req.method === 'GET') {
+    if (!InternalDoor.isInternal(req)) return InternalDoor.denyOutside(res);   // ★[T225] 관측창은 안 문
     //   ⚠`?warm=1` 이면 **캐시를 한 번 건드린다**(값을 바꾸는 게 아니라 낡았으면 뒤에서 다시 묻게 한다).
     //     소개문 캐시는 게을러서(요청 경로에서 안 기다린다) 아무도 안 부르면 영영 비어 있다 —
     //     관측창이 "없다"와 "아무도 안 물었다"를 못 가르면 그 창은 거짓말을 한다.
@@ -3203,6 +3214,7 @@ const server = http.createServer((req, res) => {
   //   내주는 것은 **정본 그 자체**(`Newcomers.debug()`). `?scan=1` 이면 central 질의를 지금 한 번 돈다.
   // ★[T62] 쉼터 실측 창구 — 51마을 전수(자리·이송 좌표). 읽기 전용.
   if (req.url && req.url.startsWith('/shelterdbg') && req.method === 'GET') {
+    if (!InternalDoor.isInternal(req)) return InternalDoor.denyOutside(res);   // ★[T225] 관측창은 안 문
     const rows = [];
     try {
       for (const v of (SimVillages.clientVillages() || [])) {
@@ -3227,6 +3239,7 @@ const server = http.createServer((req, res) => {
     return;
   }
   if (req.url && req.url.startsWith('/welcomedbg') && req.method === 'GET') {
+    if (!InternalDoor.isInternal(req)) return InternalDoor.denyOutside(res);   // ★[T225] 관측창은 안 문
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
     const _out = (extra) => { try { res.end(JSON.stringify(Object.assign({ zone: ZONE_ID }, Newcomers.debug(), extra || {}))); }
                               catch (e) { res.end(JSON.stringify({ err: e.message })); } };
@@ -3237,6 +3250,7 @@ const server = http.createServer((req, res) => {
   // ★[온보딩 v2] 시작 화면이 읽는 마을 목록 — CORS 개방(`/lifedbg` 와 같은 규약: 민감 정보 없음)
   if (req.url && req.url.startsWith('/startinfo') && req.method === 'GET') return Onboarding.httpStartInfo(req, res);
   if (req.url && req.url.startsWith('/lifedbg') && req.method === 'GET') {
+    if (!InternalDoor.isInternal(req)) return InternalDoor.denyOutside(res);   // ★[T225] 관측창은 안 문
     // ★[직접 서버 디버깅 — 사용자 "네가 직접 서버에서 디버깅하는 방법은 없어?"] 생활 층 내부 상태 읽기 전용 JSON.
     //   CORS *: 게임 페이지·외부 도구에서 크로스오리진 fetch 허용(민감정보 없음 — NPC 시뮬 상태만).
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
@@ -3247,6 +3261,7 @@ const server = http.createServer((req, res) => {
   // ★[2026-08-04d 배치 18 ①] 방 판정 상태 읽기 전용 JSON — 하네스 정본 관측창.
   //   `?cx=&cy=&floor=` 를 주면 그 칸의 방을 함께 답한다(실내 판정을 서버 값으로 직접 확인).
   if (req.url && req.url.startsWith('/roomdbg') && req.method === 'GET') {
+    if (!InternalDoor.isInternal(req)) return InternalDoor.denyOutside(res);   // ★[T225] 관측창은 안 문
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
     try {
       const u = new URL(req.url, 'http://x');

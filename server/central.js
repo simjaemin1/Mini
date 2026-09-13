@@ -528,32 +528,14 @@ function _graceGet(tok) {
 //   ⚠`x-forwarded-for` 가 붙어 있으면 판단을 **취소**한다 — 리버스 프록시 뒤에서는 바깥이 사설로 보인다.
 //   ⇒ 지금 배포는 **설정 없이 그대로 돈다**(존은 사설, 브라우저는 공인 주소).
 //     한 기계 안에 남이 같이 사는 판이면 `CENTRAL_SECRET` 을 양쪽에 넣어라(부팅 때 경고를 찍는다).
-const CENTRAL_SECRET = String(process.env.CENTRAL_SECRET || '').trim();
+//   ★★[T225 2026-09-13] 판정은 **`server/internal-door.js` 하나**로 옮겼다 — 존의 관측창 여덟도
+//     같은 규칙을 써야 하는데(T225), 규칙을 두 파일에 적으면 그게 사본이고 한쪽이 느슨해지는 날
+//     그게 다음 구멍이다. 규칙의 본문·근거는 그 파일 머리에 있다.
+const { isInternal, denyOutside, SECRET_SET } = require('./internal-door');
 //   ★CORS — 로비는 central 이 **직접 서빙한다**(아래 정적 파일 분기) ⇒ 같은 오리진이라 `*` 가 필요 없다.
 //     존의 문(`/startinfo` 등)은 다른 호스트라 CORS 가 필요하지만 그건 **존이 제 응답에** 붙인다.
 //     ⇒ 기본은 **헤더 없음**. 페이지를 다른 오리진에서 서빙하는 판만 `CENTRAL_CORS` 로 연다.
 const CENTRAL_CORS = String(process.env.CENTRAL_CORS || '').trim();
-//   사설·되돌이 판정 — RFC1918 + 127/8 + ::1 + IPv4-mapped. 공인 주소는 전부 바깥이다.
-function _isPrivateAddr(req) {
-  let a = String((req.socket && req.socket.remoteAddress) || '');
-  if (a.startsWith('::ffff:')) a = a.slice(7);
-  if (a === '::1' || a.startsWith('127.')) return true;
-  if (a.startsWith('10.') || a.startsWith('192.168.')) return true;
-  const m = /^172\.(\d+)\./.exec(a);
-  if (m) { const n = +m[1]; if (n >= 16 && n <= 31) return true; }   // docker 브리지가 여기 산다
-  if (/^f[cd]/i.test(a)) return true;                                // IPv6 ULA
-  return false;
-}
-/** 이 요청이 **안 문**을 지날 자격이 있나. 로그에 비밀을 안 찍는다. */
-function isInternal(req) {
-  const given = String((req.headers && req.headers['x-zone-secret']) || '');
-  if (CENTRAL_SECRET) {
-    if (given.length !== CENTRAL_SECRET.length) return false;
-    try { return crypto.timingSafeEqual(Buffer.from(given), Buffer.from(CENTRAL_SECRET)); } catch (e) { return false; }
-  }
-  if (req.headers && req.headers['x-forwarded-for']) return false;   // 프록시 뒤 — 출발지를 못 믿는다
-  return _isPrivateAddr(req);
-}
 /** 바깥 문이 볼 수 있는 칸 — **로비가 실제로 읽는 것만**(§0-ⓐ: `last_zone`·`home_zone` 둘뿐이다). */
 function projectPublic(p) {
   if (!p) return null;
@@ -1007,6 +989,11 @@ const server = http.createServer(async (req, res) => {
     //   ⚠`player_id` 로 묻는다(이름 갈래 아님) — 이건 **로그인 뒤** 존이 묻는 문이라
     //     "그 이름의 사람에게 요청이 있나"가 새지 않는다(T115 가 남긴 그 누수와 다른 자리다).
     if (req.url === '/friend/pending' && req.method === 'POST') {
+      //   ★★[T225] 이 문은 **밀린 요청을 보낸 사람들의 이름**을 준다 — `player_id` 만 알면 누구 것이든.
+      //     부르는 쪽은 존 하나다(`central-client.friendPending` · 클라에 0곳) ⇒ 안 문으로 옮긴다.
+      //     본인 확인의 있는 문법이 없어서다(§0-ⓑ: HTTP 쪽엔 세션·베어러가 없고, 게스트 토큰은 **열쇠**라
+      //     그걸 신분증으로 쓰면 T216 이 잡은 그 사고를 되풀이한다). 존은 ws 로 이미 본인을 안다.
+      if (!isInternal(req)) return jsonResp(res, 401, { ok: false, reason: 'internal_only' });
       const { player_id: pid } = await readBody(req);
       return jsonResp(res, 200, { ok: true, requests: friendPending(pid) });
     }
@@ -1292,6 +1279,8 @@ const server = http.createServer(async (req, res) => {
       return jsonResp(res, 200, { ok: true, tribe_id: t.id, tribe: t.name, name: other.name, player_id: other.player_id });
     }
     if (req.url === '/tribe/invites' && req.method === 'POST') {
+      //   ★[T225] 받은 부름의 **길드 이름**을 준다 — 위와 같은 이유로 안 문(부르는 쪽은 존뿐).
+      if (!isInternal(req)) return jsonResp(res, 401, { ok: false, reason: 'internal_only' });
       const { player_id: pid } = await readBody(req);
       return jsonResp(res, 200, { ok: true, invites: invitesOf(pid) });
     }
@@ -1523,7 +1512,7 @@ function strategicTick() {
 setInterval(strategicTick, STRATEGIC_TICK_MS);
 //   ★[T217] 안 문의 상태를 부팅 때 한 줄로 말한다 — 조용히 약한 쪽으로 돌면 그게 다음 사고다.
 //   ⚠비밀 값은 절대 안 찍는다(길이도 안 찍는다).
-if (CENTRAL_SECRET) console.log('[central] 🔒 안 문: CENTRAL_SECRET 로 잠갔다 (열쇠·행 전체는 그 헤더를 아는 쪽만)');
+if (SECRET_SET) console.log('[central] 🔒 안 문: CENTRAL_SECRET 로 잠갔다 (열쇠·행 전체는 그 헤더를 아는 쪽만)');
 else console.warn('[central] ⚠ 안 문: CENTRAL_SECRET 이 없다 — **사설/되돌이 주소만** 안 문으로 본다. '
   + '한 기계에 남이 같이 사는 판이면 존과 central 양쪽에 CENTRAL_SECRET 을 넣어라.');
 if (CENTRAL_CORS) console.log(`[central] 🌐 CORS 열림: ${CENTRAL_CORS}`);

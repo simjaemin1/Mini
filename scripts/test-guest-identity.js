@@ -383,6 +383,57 @@ const closeWs = (st) => new Promise((r) => { st.ws.on('close', r); try { st.ws.c
     for (const f of [CDB2, CDB2 + '-wal', CDB2 + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
   }
 
+  // ══ ⑥ ★★[T225] **T216 열셋을 같은 순서로 다시 두드린다** ═══════════════════
+  //   자명 통과 금지: 고치기 전 표(T216 §0-ⓐ)의 "남의 이름/ID 하나로 나오나" 열을 **다시 잰다**.
+  //   ⚠하네스가 비밀을 잡고 띄웠으므로 **헤더 없는 요청이 곧 바깥**이다(브라우저가 보는 그것).
+  say('\n[⑥ T216 열셋 재실측 — T225]');
+  {
+    const OUT2 = {}, IN2 = { 'x-zone-secret': SECRET };
+    const g = async (base, path2, hdr) => {
+      try { const r = await fetch(`http://localhost:${base}${path2}`, { headers: hdr || {} }); const t = await r.text(); let d; try { d = JSON.parse(t); } catch (e) { d = t; } return { s: r.status, d }; }
+      catch (e) { return { s: 0, d: String(e.message) }; }
+    };
+    const pst = async (base, path2, body, hdr) => {
+      try { const r = await fetch(`http://localhost:${base}${path2}`, { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, hdr || {}), body: JSON.stringify(body) }); return { s: r.status, d: await r.json() }; }
+      catch (e) { return { s: 0, d: String(e.message) }; }
+    };
+    await pst(CPORT, '/auth', { username: 't225v', password: 'pw', color: '#5a9ae0', home_zone: 'hanbando', home_x: 1, home_y: 2 }, IN2);
+    await pst(CPORT, '/auth', { username: 't225p', password: 'pw', color: '#5a9ae0', home_zone: 'hanbando', home_x: 3, home_y: 4 }, IN2);
+    await pst(CPORT, '/friend/req', { player_id: 't225v', name: 't225p' }, IN2);
+    await pst(CPORT, '/friend/req', { player_id: 't225p', name: 't225v' }, IN2);
+
+    // #3 · #4 · #5 — T217 이 닫은 셋이 **여전히** 닫혀 있나(되돌아오지 않았나)
+    const p3 = await g(CPORT, '/player/t225v', OUT2);
+    ok(!(p3.d && p3.d.player && (p3.d.player.password_hash || p3.d.player.guest_token || p3.d.player.home_x !== undefined)),
+      '⑥#3 `GET /player/<id>` — 열쇠·좌표 **없음**(T217 무변)', JSON.stringify(p3.d).slice(0, 90));
+    const p4 = await g(CPORT, '/friends/t225v?by=name', OUT2);
+    const p5 = await g(CPORT, '/friends/t225v', OUT2);
+    ok(p4.d && p4.d.friends === undefined && typeof p4.d.n === 'number', '⑥#4 `?by=name` — **수만**', JSON.stringify(p4.d));
+    ok(p5.d && p5.d.friends === undefined && typeof p5.d.n === 'number', '⑥#5 `GET /friends/<id>` — **수만**(이름·id 안 준다)', JSON.stringify(p5.d));
+    // #6 · #7 — 이름을 주던 둘이 안 문으로 갔나
+    const p6 = await pst(CPORT, '/friend/pending', { player_id: 't225v' }, OUT2);
+    const p7 = await pst(CPORT, '/tribe/invites', { player_id: 't225v' }, OUT2);
+    ok(p6.s === 401 && p7.s === 401, '⑥#6#7 밀린 요청·부름은 **바깥에서 401**(이름을 주던 갈래)', `${p6.s}/${p7.s}`);
+    const p6in = await pst(CPORT, '/friend/pending', { player_id: 't225v' }, IN2);
+    ok(p6in.s === 200 && Array.isArray(p6in.d.requests), '⑥#6b ★안 문에서는 **산다** — 존이 `pendingLines` 로 그렇게 쓴다', JSON.stringify(p6in.d).slice(0, 60));
+    // #11~#13 + 관측창 다섯 — 열 개 전부
+    const DBG = ['/welcomedbg', '/guilddbg', '/lifedbg', '/followdbg', '/friendsdbg?pid=t225v', '/claimdbg', '/shelterdbg', '/roomdbg'];
+    const outs = [];
+    for (const d of DBG) outs.push([d, (await g(ZPORT, d, OUT2)).s]);
+    ok(outs.every(([, st]) => st === 404), '⑥#11~13+ ★★관측창 여덟이 **바깥에서 404**(`/followdbg` 는 접속자 전원의 자리였다)',
+      outs.map(([d, st]) => `${d.split('?')[0]}:${st}`).join(' '));
+    const ins = [];
+    for (const d of DBG) ins.push([d, (await g(ZPORT, d, IN2)).s]);
+    ok(ins.every(([, st]) => st === 200), '⑥ ★안 문에서는 관측창이 **그대로 산다**(하네스는 사설 주소라 무변)',
+      ins.map(([d, st]) => `${d.split('?')[0]}:${st}`).join(' '));
+    // #2 · #8 · #9 — **일부러 안 닫은 셋**. 무엇이 남았는지 하네스가 말한다(조용히 두지 않는다).
+    const p2 = await pst(CPORT, '/check_username', { username: 't225v' }, OUT2);
+    ok(p2.s === 200 && p2.d.taken === true, '⑥#2 `/check_username` 은 **연 채로 둔다**(로그인 UX · 계정 존재만 · 보고 §0-ⓒ)', JSON.stringify(p2.d));
+    const p9 = await g(ZPORT, '/startinfo?as=t225v', OUT2);
+    //   ⚠이 하네스는 `ENABLE_VILLAGES=0` 이라 마을 목록이 비어 있다 — 재는 것은 **문이 여전히 바깥에 열려 있다**는 것뿐이다.
+    ok(p9.s === 200 && !!p9.d, '⑥#9 `?as=` 는 **이 카드가 안 건드린다**(#27 로비 순서 · 여전히 열려 있다)', `status ${p9.s} · ${JSON.stringify(p9.d).slice(0, 60)}`);
+  }
+
   shutdown();
   say(`\n=== 게스트 영속 신원 하네스: ${pass} 통과 / ${fail} 실패 ${fail ? '❌' : '✅'} ===`);
   for (const f of [CDB, ZDB, CDB + '-wal', ZDB + '-wal', CDB + '-shm', ZDB + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
