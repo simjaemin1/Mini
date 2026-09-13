@@ -473,5 +473,14 @@
   "tree14_s": "0cea9fbafba5b652",
   "tree15": "1a6024140b8a3912",
   "tree15_a": "59562669882478ad"
+ },
+ "_상자": {
+  "_": "이 잠금표를 마지막으로 다시 쓴 상자. 그림을 구운 상자가 아니다 [T260]. 같은 커밋인데 그림이 다르면 굽기 로그의 [box] 줄과 이 칸을 먼저 견준다.",
+  "cpu": "Intel(R) Xeon(R) Processor @ 2.80GHz",
+  "threads": 2,
+  "simd": "fma avx avx2 avx512f avx512dq avx512bw avx512vl avx512_vnni",
+  "node": "v22.22.2",
+  "commit": "15de6885",
+  "당시": "2026-09-13"
  }
 }

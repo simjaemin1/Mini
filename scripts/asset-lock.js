@@ -38,6 +38,33 @@ const CUT = 16;                                   // 잠금표에 적는 앞자�
 
 const sha1 = (b) => crypto.createHash('sha1').update(b).digest('hex');
 
+// ★★[T260] **굽는 상자 표식** — `render_common.bake_box()` 와 **같은 꼴**이다(자가 하나이듯 표식도 하나).
+//   왜: 같은 커밋·같은 스크립트·같은 bpy 인데 그림이 달랐다(T243 `b8a8e18f` ↔ T257 `0eba77eb`).
+//   판 안에서는 결정적이고 스레드 탓도 아니다 — 갈리는 건 상자와 상자 사이인데, T243 때 상자를
+//   **안 남겨서** 이제 와선 못 가른다. 그래서 다음부터는 남긴다.
+//   ⚠여기 적히는 상자는 **이 표를 다시 쓴 상자**이지 그림을 구운 상자가 아니다. 이름을 그렇게 붙였다.
+function bakeBox() {
+  const os = require('os');
+  let cpu = '', simd = [];
+  try {
+    const info = fs.readFileSync('/proc/cpuinfo', 'utf8');
+    cpu = (info.match(/^model name\s*:\s*(.+)$/m) || [, ''])[1].trim();
+    const flags = new Set(((info.match(/^flags\s*:\s*(.+)$/m) || [, ''])[1] || '').split(/\s+/));
+    simd = ['fma', 'avx', 'avx2', 'avx512f', 'avx512dq', 'avx512bw', 'avx512vl', 'avx512_vnni']
+      .filter((f) => flags.has(f));
+  } catch (e) { /* /proc 없는 상자 — 아래로 떨어진다 */ }
+  if (!cpu) { try { cpu = (os.cpus()[0] || {}).model || os.arch(); } catch (e) { cpu = '?'; } }
+  let commit = '?';
+  try {
+    commit = require('child_process').execFileSync('git', ['-C', ROOT, 'rev-parse', '--short', 'HEAD'],
+      { encoding: 'utf8', timeout: 5000 }).trim() || '?';
+  } catch (e) { /* git 없는 자리 */ }
+  return { cpu, threads: os.cpus().length, simd: simd.join(' ') || '?',
+           node: process.version, commit };
+}
+const bakeBoxLine = (b) => { b = b || bakeBox();
+  return `[box] cpu=${b.cpu} · threads=${b.threads} · simd=${b.simd} · node=${b.node} · commit=${b.commit}`; };
+
 // ★화소 해시 — 디코드한 RGBA + 크기. 크기를 같이 넣는 이유: 같은 화소열이라도
 //   68×38 과 38×68 은 **다른 그림**이다(전치는 바이트만으로는 안 걸린다).
 function pixelHash(p) {
@@ -108,8 +135,13 @@ if (require.main === module) {
       lock[grp] = tbl;
     }
     lock._규약 = RULE_LINE;
+    // ★[T260] 이 표를 **다시 쓴 상자**를 같이 남긴다(그림을 구운 상자가 아니다 — 위 주석).
+    lock._상자 = { _: '이 잠금표를 마지막으로 다시 쓴 상자. 그림을 구운 상자가 아니다 [T260]. '
+                      + '같은 커밋인데 그림이 다르면 굽기 로그의 [box] 줄과 이 칸을 먼저 견준다.',
+                   ...bakeBox(), 당시: new Date().toISOString().slice(0, 10) };
     fs.writeFileSync(LOCK, JSON.stringify(lock, null, 1) + '\n');
     console.log(`잠금표 재생성 ${n}장 → ${path.relative(ROOT, LOCK)}`);
+    console.log(bakeBoxLine());
   } else {
     const { n, bad } = check(lock);
     console.log(`대조 ${n}장 · 어긋남 ${bad.length}`);
@@ -118,4 +150,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { pixelHash, fileHash, lockValue, rulerOf, groups, filesOf, check, LOCK, AST, RULE_LINE, CUT };
+module.exports = { pixelHash, fileHash, lockValue, rulerOf, groups, filesOf, check, bakeBox, bakeBoxLine, LOCK, AST, RULE_LINE, CUT };

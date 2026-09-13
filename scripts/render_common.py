@@ -234,8 +234,58 @@ def build_scene(tag="render"):
     SCENE, CAM, CAM_D, SUN, TGT = scene, cam, cam_d, sun, tgt
     print(f"[{tag}] bpy {bpy.app.version_string} denoise = {scene.cycles.use_denoising}"
           f" samples = {SAMPLES} ppu = {round(PPU, 3)} zsq = {round(ZSQ, 4)}")
+    print(bake_box_line())          # ★[T260] 굽는 **상자**를 같이 찍는다 — 아래 `bake_box` 주석이 이유다
     return scene, cam, cam_d, sun, tgt
 
+
+# ═══════════════ 굽는 상자 — 표식 [T260 2026-09-13] ═══════════════
+# ★★왜 있나: **같은 커밋·같은 스크립트·같은 `bpy` 인데 그림이 달랐다.**
+#   T243 이 `bush01` 을 구운 화소 해시는 `b8a8e18f`, T257 이 같은 커밋에서 구운 것은 `0eba77eb` 다
+#   (`git diff` 로 굽기 코드 0줄 · 자산 0줄 확인). 판 **안**에서는 결정적이고(T243 두 번 · T257 세 번 동일)
+#   스레드 수 탓도 아니다(`taskset -c 0` 1코어 = 2코어 같은 값). 갈리는 것은 **상자와 상자 사이**다.
+#   원인은 아직 못 잡았다 — T243 때 상자 정보를 **안 남겼기 때문에** 이제 와서는 못 잡는다.
+#   ⇒ 원인을 좇는 대신 **다음엔 가를 수 있게** 한다: 굽는 판마다 상자를 한 줄 찍는다. 값이 싸다.
+#   ⚠이 줄은 **그림을 안 건드린다** — 찍기만 한다(T260 이 표식 전/후 미디어 sha1 동일로 확인).
+def bake_box():
+    """굽는 상자의 신원. 같은 커밋인데 그림이 다르면 **여기부터 비교한다**."""
+    import platform, subprocess, json as _json
+    cpu, simd = "", []
+    try:
+        for ln in open("/proc/cpuinfo", encoding="utf-8", errors="replace"):
+            if not cpu and ln.startswith("model name"):
+                cpu = ln.split(":", 1)[1].strip()
+            if not simd and ln.startswith("flags"):
+                have = set(ln.split(":", 1)[1].split())
+                # SIMD 계열만 — 전체 플래그는 길고, 그림을 가르는 것은 이 갈래다
+                simd = [f for f in ("fma", "avx", "avx2", "avx512f", "avx512dq", "avx512bw",
+                                    "avx512vl", "avx512_vnni") if f in have]
+            if cpu and simd:
+                break
+    except Exception:
+        pass
+    if not cpu:
+        cpu = platform.processor() or platform.machine() or "?"
+    try:
+        commit = subprocess.run(["git", "-C", os.path.dirname(os.path.abspath(__file__)),
+                                 "rev-parse", "--short", "HEAD"],
+                                capture_output=True, text=True, timeout=5).stdout.strip() or "?"
+    except Exception:
+        commit = "?"
+    return {
+        "cpu": cpu,
+        "threads": os.cpu_count() or 0,
+        "simd": " ".join(simd) or "?",
+        "bpy": bpy.app.version_string,
+        "python": platform.python_version(),
+        "commit": commit,
+    }
+
+
+def bake_box_line(b=None):
+    """`bake_box()` 를 한 줄로. 보고 머리에 그대로 붙이는 꼴이다(규약: 인계/ART-자산 §상자)."""
+    b = b or bake_box()
+    return (f"[box] cpu={b['cpu']} · threads={b['threads']} · simd={b['simd']}"
+            f" · bpy={b['bpy']} · py={b['python']} · commit={b['commit']}")
 
 # ═══════════════ 기하 헬퍼 ═══════════════
 OBJS = []
