@@ -191,6 +191,7 @@ const { ZONES } = R('server/zone-config');
 const T = R('server/terrain'); if (T.setZonesMeta) T.setZonesMeta(ZONES);
 const econ = R('sim/economy-sim');
 const econV2 = R('sim/economy-sim-v2');
+const CARRY = econ.T240_STRAW_CARRY === true;   // ★[T240] 짚 이월 팔 — 실제로 탄 양을 정본 상태에서 역산한다(손잡이는 엔진에서 읽는다 · 사본 0)
 const VillageLayout = R('server/village-layout');
 const Villages = R('server/villages');
 const Events = R('server/events');
@@ -297,6 +298,8 @@ const M = vils.map(() => ({ harvestN: 0, units: 0, foodEq: 0, sow: 0, fDays: 0, 
   // ★[T227 §0-ⓐ] **덩어리 분포** — 그날 곳간에 들어온 곡식이 볏짚 상한의 몇 배인가(r = 원량/상한).
   //   r ≤ 1 이면 그날 짚은 다 쓰인다 · r > 1 이면 (r−1)/r 이 **버려진다**. 칸은 관측 전용(회계 0).
   rBins: [0, 0, 0, 0, 0, 0], rRaw: [0, 0, 0, 0, 0, 0], rMax: 0,
+  // ★[T240] 짚 이월 — 실제로 탄 양(역산) · 종전 산수라면 탔을 양(비교 밑변) · 대기량
+  strawOldSum: 0, strawPendSum: 0, strawPendMax: 0, _pendPrev: 0,
   covLtDays: 0, covMin: 9,                     // 충당률이 1 미만인 날 · 최저
   dHealthSum: 0, dHpmSum: 0, dHealthTermSum: 0,   // `_fuelCov=1` 로 떼면 돌아오는 몫(닫힌 꼴 · 첫째 차수)
   healthSum: 0, hpmSum: 0, dpHealthSum: 0, dpSum: 0, statDays: 0,
@@ -362,7 +365,14 @@ for (let day = 0; day < DAYS; day++) {
       // ★[T218] 볏짚을 **두 조각으로** 갈라 둔다 — `min(상한, 원량)` 중 어느 쪽이 무는지 세려면
       //   둘을 따로 더해야 한다. 상한 `N × FIREWOOD_PC` 는 취사·난방 기본 수요 그 자체다.
       const _strawCap = n * FIREWOOD_PC, _strawRaw = _led * STRAW_FUEL_PER_FOOD;
-      const _straw = Math.min(_strawCap, _strawRaw);
+      // ★[T240] **실제로 탄 양은 정본 상태에서 역산한다**(T207 의 `built` 역산과 같은 문법 · 규칙 사본 0):
+      //   이월 팔에서는 `탄 양 = 원량 + 어제 대기 − 오늘 대기` 가 **항등식**이다(엔진이 그 둘만 움직인다).
+      //   끈 팔·이월 끔 팔에서는 `_strawPend` 가 아예 없으므로 종전 식 `min(상한, 원량)` 그대로다.
+      const _pendNow = +((ev._strawPend || 0));
+      const _straw = CARRY ? Math.max(0, _strawRaw + m._pendPrev - _pendNow) : Math.min(_strawCap, _strawRaw);
+      m._pendPrev = _pendNow;
+      m.strawPendSum += _pendNow; if (_pendNow > m.strawPendMax) m.strawPendMax = _pendNow;
+      m.strawOldSum += Math.min(_strawCap, _strawRaw);   // 종전 산수라면 탔을 양 — 버림 비교의 밑변
       m.strawSum += _straw; m.strawCapSum += _strawCap; m.strawRawSum += _strawRaw;
       if (_strawRaw > 0) { m.strawDays++; if (_strawCap <= _strawRaw) m.strawCapDays++; }
       if (_strawRaw > 0 && _strawCap > 0) {   // ★[T227 §0-ⓐ] 같은 두 수로 배수만 센다(새 수 0)
@@ -487,6 +497,8 @@ for (let i = 0; i < world.villages.length; i++) {
     strawCap: +m.strawCapSum.toFixed(1), strawRaw: +m.strawRawSum.toFixed(1),
     strawCapDays: m.strawCapDays, strawDays: m.strawDays,
     rBins: m.rBins.slice(), rRaw: m.rRaw.map((x) => +x.toFixed(1)), rMax: +m.rMax.toFixed(3),
+    strawOld: +m.strawOldSum.toFixed(1), strawPendMean: +(m.strawPendSum / DAYS).toFixed(3),
+    strawPendMax: +m.strawPendMax.toFixed(2), strawPendEnd: +((v._strawPend || 0)).toFixed(4),
     healthMean: m.statDays ? +(m.healthSum / m.statDays).toFixed(4) : null,
     hpmMean: m.statDays ? +(m.hpmSum / m.statDays).toFixed(5) : null,
     dHealthMean: m.statDays ? +(m.dHealthSum / m.statDays).toFixed(5) : null,
@@ -586,6 +598,11 @@ const out = {
   rBinsTot: [0, 1, 2, 3, 4, 5].map((i) => per.reduce((a, p) => a + p.rBins[i], 0)),
   rRawTot: [0, 1, 2, 3, 4, 5].map((i) => +per.reduce((a, p) => a + p.rRaw[i], 0).toFixed(1)),
   rMaxTot: +per.reduce((a, p) => Math.max(a, p.rMax), 0).toFixed(3),
+  strawOldTot: +per.reduce((a, p) => a + p.strawOld, 0).toFixed(1),
+  strawPendEndTot: +per.reduce((a, p) => a + p.strawPendEnd, 0).toFixed(2),
+  strawPendMaxTot: +per.reduce((a, p) => Math.max(a, p.strawPendMax), 0).toFixed(2),
+  strawPendMeanTot: +per.reduce((a, p) => a + p.strawPendMean, 0).toFixed(3),
+  carry: CARRY,
   supLowTot: +per.reduce((a, p) => a + p.supLow, 0).toFixed(1),
   supWoodTot: +per.reduce((a, p) => a + p.supWood, 0).toFixed(1),
   covLtDaysTot: per.reduce((a, p) => a + p.covLtDays, 0),
