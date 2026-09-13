@@ -44,7 +44,7 @@
 
 ---
 
-## 2-b. 효과음 (`public/assets/sfx/`) [T262 조사 · T266 확보 · 2026-09-13]
+## 2-b. 효과음 (`public/assets/sfx/`) [T262 조사 · T266·T269·T272·T282 확보 · 2026-09-13]
 
 **출처 없는 소리는 한 장도 없다.** 라이선스는 **파일마다 그 파일의 Commons 페이지에서 읽었다**(검색어의
 "CC0" 는 안 믿는다 — T262 가 그렇게 검색된 늑대가 CC-BY 인 것을 잡았다).
@@ -64,6 +64,10 @@
 | `cast` | [Commons: Bathtub water splashes.ogg](https://commons.wikimedia.org/wiki/File:Bathtub_water_splashes.ogg) (pdsounds #7) | gradha | **Public domain** | 2009-07-23 | 2026-09-13 | 48.12s 중 **7.0~8.2s** |
 | `bite` | 〃 (같은 원본의 다른 사건) | gradha | **Public domain** | 2009-07-23 | 2026-09-13 | 48.12s 중 **37.9~38.9s** |
 | `hook` | 〃 (같은 원본의 다른 사건) | gradha | **Public domain** | 2009-07-23 | 2026-09-13 | 48.12s 중 **24.8~26.2s** |
+| `deer_call` | [Commons: American Elk Bugling.ogg](https://commons.wikimedia.org/wiki/File:American_Elk_Bugling.ogg) (미 국립공원청 wica) | Jim Pisarowicz | **Public domain** (PD US NPS) | 날짜 미상(페이지가 안 적는다) | 2026-09-13 | 5.13s 중 **0.50~2.50s** · ⚠종은 **와피티**(아래) |
+| `tiger_growl` | [Commons: 439280 schots angry-tiger.wav](https://commons.wikimedia.org/wiki/File:439280_schots_angry-tiger.wav) (원천 freesound 439280) | schots | **CC0** | 2018-08-31 | 2026-09-13 | 65.64s 중 **11.00~13.00s** · 출처가 `Panthera tigris` 라 적는다 |
+| `wolf_growl` | [Commons: Rallying.ogg](https://commons.wikimedia.org/wiki/File:Rallying.ogg) (영문 위키 늑대 문서) | Retron at English Wikipedia | **Public domain** (PD-user) | 2005-07 녹음 · 2007-07-06 게시 | 2026-09-13 | 18.12s 중 **6.50~9.00s** · ⚠**울부짖음**이지 으르렁이 아니다(아래) |
+| `ui_click` | [Kenney "RPG Audio"](https://kenney.nl/assets/rpg-audio) · `bookPlace1.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2023(팩) | 2026-09-13 | 0.30s 중 **0.020~0.280s**(선행 무음 잘라 냄) · **후보**(훅 없음) |
 
 * **요구 문구 없음** — 둘 다 퍼블릭 도메인이라 표시 의무가 없다(그래서 §1 에 안 들어간다). 예의로 여기 적는다.
 * 가공: 단일 채널 유지 · 끝 1초를 머리에 `acrossfade`(삼각창)로 겹쳐 10.0초 반복 · 피크를 재고
@@ -76,6 +80,26 @@
   `axe` 58 ms 보다는 길다). "긴 울림"은 아니지만 청동이냐 돌이냐는 **자로 못 가른다. 판정은 재민 귀.**
 * ⚠**낚시 셋(`cast`·`bite`·`hook`)은 한 원본의 서로 다른 물튀김 셋**이다. 어느 것이 던짐/입질/걸림인지
   **출처가 말하지 않는다** — 크기로 갈랐다(큰 것=걸림 −3.63 dB · 중간=던짐 −3.82 · 작은 것=입질 −7.53). 재민 귀.
+* ⚠**`deer_call` 의 종은 와피티(엘크 · _Cervus canadensis_)다 — 바꿔 부르지 않는다.** 한반도 사슴은
+  _Cervus nippon_(대륙사슴)·노루인데 Commons 의 그 둘은 PD/CC0 가 아니다(`Sika Deer (Cervus nippon) …` 는
+  CC BY-SA 4.0). 사슴과(Cervidae)의 실제 울음이고 출처가 종을 적어 뒀다 — **울음이 이것으로 맞는지는 재민 귀.**
+  ⚠원본이 이미 0 dBFS 에 붙어 있었고(0dB 표본 194개) 표본율이 11,025 Hz 다 — **깎아서** −1 로 맞췄고 올려 굽지 않았다.
+* ⚠**`wolf_growl` 은 울부짖음(howl)이지 으르렁(growl)이 아니다 — 자로 갈랐다.** 같은 자를 둘에 댔다:
+
+  | | 중심주파수 | 평탄도(1=잡음·0=순음) | 500Hz 아래 |
+  |---|---:|---:|---:|
+  | `wolf_growl`(이 파일) | 1,100~1,240 Hz | 0.0002 | **0.4%** |
+  | `tiger_growl`(이 파일) | **226~426 Hz** | 0.0020~0.016 | **71~97%** |
+
+  종은 맞다(_Canis lupus_ · 유럽 늑대 · 녹음자 이름·날짜 있음) — **이름만 어긋난다.** 키를 `wolf_howl` 로
+  바꿀지는 회부. T262/T269 가 물린 것들과는 다르다: OGA "Wolf Monster Sound"(제 설명이 *말 콧김 가공*)와
+  이 프로젝트가 쓰는 rubberduck 팩의 `howl.ogg`(페이지가 *"i created"* 라 적는 창작 괴물 소리)는 **늑대가 아니다.**
+* ⚠**`tiger_growl` 의 잔향은 원본의 것이다.** 출처가 스스로 *"Tiger in a cage, ... Lots of reverb"* 라 적는다.
+  빼지 않았다 — 잔향을 지우면 원본을 고치는 것이다.
+* `ui_click` 은 **후보**다(훅 없음 · "있어야 하나"는 재민). 후보 셋을 **같은 자**로 재서 골랐다:
+  `bookPlace1` 선행 6.0ms·SNR **38.8 dB** ← 골랐다 · `bookClose` 선행 72.9ms·SNR 29.6 · [`Woodpecker tapping`
+  (USFWS · PD)](https://commons.wikimedia.org/wiki/File:Woodpecker_tapping.ogg) 선행 14.5ms·SNR **10.1 dB**.
+  딱따구리가 "진짜 나무 두드림"이라 먼저 골랐다가 **자가 뒤집었다** — 숲 바닥이 같이 오고 정점이 116ms 뒤에 온다.
 * `axe` 의 고증은 **쟀다** — 4kHz 이상 대역이 정점에서 −20 dB 로 떨어지는 데 **58 ms**(같은 팩의 `metalPot1` 은 **302 ms**).
   쇠처럼 울리지 않는다. 돌·청동 도끼인지까지는 자로 못 가른다.
 * ⚠`wind` 원본에는 **새소리(Blackcap·Chaffinch)가 있다.** 그래서 자를 자리를 귀가 아니라 **자로** 골랐다 —
