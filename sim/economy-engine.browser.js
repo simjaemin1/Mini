@@ -7195,10 +7195,19 @@ function tickTradeV2(world, day) {
       //   ⇒ **읽기만 하는 훅 하나**(`onRequest`·`onEvent` 문법). 서버·CLI·랩은 안 준다 = 비트 동일.
       if (world.onTradeLeg) {
         try {
+          //   ★[T231] **관측 항만 더했다** — 세계가 쓰는 값이 아니라, 이미 계산돼 있는 값을 내보낼 뿐이다.
+          //     문이 닫히면 이 블록 전체를 안 탄다 = 비트 동일(T206 이 세운 자리 그대로).
+          //     왜 필요한가: 첫째 화물은 `:736 if (totalProfit <= 0) continue;` 관문을 통과하지만
+          //     **둘째 화물은 그 관문이 없다**(`:775` 후보를 `TRADABLE` 선언 순서로 첫 개를 집는다).
+          //     그 차이를 밖에서 재려면 값·거리·운반비가 필요하고, 그걸 밖에서 다시 계산하면 정본 재구현이다.
           world.onTradeLeg({ day, vid: a.i, from: a.v.name, to: b.v.name,
             res: cand.res, units: N_units, cap: CARGO_PER_TRIP,
             cands: candidates.map((c) => ({ res: c.res, surplus: c.surplus })),
-            ret: bestReturnRes || null, second: _res2 || null, secondUnits: _n2 || 0 });
+            ret: bestReturnRes || null, second: _res2 || null, secondUnits: _n2 || 0,
+            dist: best.dist, tripDays,
+            pFrom: best.pFrom, pTo: best.pTo, tcPerUnit: best.transportCostPerUnit,
+            profitPerUnit: best.profitPerUnit, profit: best.profit,
+            p2From: _p2 || 0, p2To: (b.prices && b.prices[_res2]) || 0 });
         } catch (e) {}
       }
       if (a.v.tradeStats) {
