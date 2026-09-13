@@ -6751,6 +6751,16 @@ function tickTradeV2(world, day) {
     if (a.v.surplusEMA && a.v.surplusEMA.food < 0) {
       spareCap = Math.max(spareCap, Math.ceil(N * CRISIS_TRADE_PC));
     }
+    // ★★★[T223 2026-09-13 · 계측 전용] `spareCap` 고정 문 — **세계는 이 문을 모른다.**
+    //   T215 가 자인한 구멍을 가르는 자다. 위 `:611` 이 `N`(인구)의 **곱**이라
+    //   "leg 이 줄어 인구가 줄었다" 와 "인구가 줄어 `spareCap` 이 줄어 leg 이 줄었다" 가 같은 표를 낸다.
+    //   호스트(계측기)가 **끔 팔의 그 마을·그 날 궤적**을 주입해 되먹임 고리를 끊는다 — 지어낸 수 0.
+    //   미설치(undefined)면 위 두 줄 그대로다(3시드 800일 여덟 수 비트 동일 — 보고/T223 §0-ⓑ).
+    //   반환이 유한한 수(≥1)가 아니면 무시한다 — 계측기 결함이 세계를 흔들지 않게.
+    if (world.spareCapFn) {
+      const _sc = world.spareCapFn(a.v, day, spareCap);
+      if (typeof _sc === 'number' && Number.isFinite(_sc) && _sc >= 1) spareCap = Math.floor(_sc);
+    }
     // ★top-20 최근접 목적지만(마을 정적이라 캐시, 마을수 변할 때만 재계산). 먼 마을은 운반·약탈로 손해라 무해.
     //   ★BFS화(2026-07): 거리 = villageDist(호스트가 _distMatrix 주입 시 지형 최단거리, 아니면 유클리드) 기준 정렬
     //   + 절대 상한 = 행렬 최대 유한거리(≈존 최원격 쌍=대각선 상당)의 절반 — 존 반대편·강 대우회 원정을 후보에서 제외(스케일 프리).
