@@ -1,6 +1,6 @@
 # 듀랑고 미니 (durango-mini)
 
-[![regress-unit](https://github.com/simjaemin1/Mini/actions/workflows/regress-unit.yml/badge.svg)](https://github.com/simjaemin1/Mini/actions/workflows/regress-unit.yml) — push 마다 단위 회귀 23종(약 3분) · 전수 120종은 야간 1회
+[![regress-unit](https://github.com/simjaemin1/Mini/actions/workflows/regress-unit.yml/badge.svg)](https://github.com/simjaemin1/Mini/actions/workflows/regress-unit.yml) — push 마다 단위 회귀 23종(약 3분) · 전수 143종은 야간 1회(창이 모자라 다 못 돈다)
 
 **청동기 후기의 세계에, NPC 마을들이 스스로 살아가는 땅에 이방인으로 도착하는 오픈월드 생활·경제 시뮬레이션.**
 그리고 그 세계를 **구역(존)마다 다른 서버 프로세스가 돌리는** 분산 존 서버 프로토타입.
@@ -59,12 +59,12 @@ NPC 마을이 받는 기근 보호막이 **없다** — 세운 만큼 위험하�
 * **정본은 하나** — 가격 사본을 만들면 그 순간 실패다. 이동 모델은 서버와 클라가 같은 파일을 읽는다. 사건을 보는 문은
   하나(`events.visibleEvents`), 무게 비교자도 하나(`heavier`), 시계도 하나(econ 게임일).
 
-## 지금 있는 것 (2026-09-02 기준)
+## 지금 있는 것 (2026-09-13 기준)
 
 | 층 | 무엇 | 정본 |
 |---|---|---|
 | NPC 마을 경제 | 51마을 · 생산·소비·시세·캐러밴 교역·인구·풍흉·날씨 · 800일 3시드 기준선(소멸 0/51) | `sim/economy-sim-v2.js` · `server/villages.js` |
-| 사건 장부 | 유형 열셋(값 6 + "일" 7) · 에지 트리거+히스테리시스 · 게시판 의뢰(`Shift+G`)·납품(`Shift+N`) · 촌장 브리핑 | `server/events.js` |
+| 사건 장부 | 유형 열일곱(값 6 + "일" 11) · 에지 트리거+히스테리시스 · 게시판 의뢰(`Shift+G`)·납품(`Shift+N`) · 촌장 브리핑 | `server/events.js` |
 | 소문 전파 · 연대기 | 도달 시각표(거리의 함수, Dijkstra) · 복귀 브리핑 · 마을 연표(`Shift+J`) | `server/rumor.js` · `village_chronicle` |
 | 온보딩 v2 | 지도에서 마을 선택(근황 한 줄 = 사건 장부) · 나루터 도착 · 촌장 첫 의뢰 · 빈터 권리 · 기여 카운터 | `server/onboarding.js` · `public/client/70-lobby.js` |
 | 소속 · 곳간 인출 | 이방인 → 마을 사람 · 신용 한도 = f(기여) · 소속은 몸에 실린다 | `server/membership.js` |
@@ -133,7 +133,7 @@ TERRAIN_TILE_CACHE=1    # 타일 단위 메모(4비트/타일) — "다시 묻�
 
 ```bash
 bash scripts/run-regress.sh --selftest    # 러너 자신부터
-bash scripts/run-regress.sh               # 하네스 전원 — 파일 머리에 `// @regress` 가 있으면 자동 발견(140종+ · ~3시간 · 야간 1회)
+bash scripts/run-regress.sh               # 하네스 전원 — 파일 머리에 `// @regress` 가 있으면 자동 발견(143종 · 야간 1회 — 09-13 야간 창 3시간 43분에 112종 · 31종 미측정)
 node scripts/t17-metrics.js 800 1020      # 3시드 800일 기준선 계측기(시드 1020/7/42 · 여덟 수 + 생곡 + 사건 밀도)
 ```
 
@@ -167,7 +167,7 @@ durango-mini/
 ├── sim/                     # econ 정본(economy-sim-v2.js) — 랩(마을실험실)과 서버가 같은 파일을 읽는다
 ├── public/
 │   ├── index.html style.css move-model.js
-│   └── client/              # 클라이언트 20조각 (00-const … 99-main) — 고전 스크립트, 번들러 없음
+│   └── client/              # 클라이언트 28조각 (00-const … 99-main) — 고전 스크립트, 번들러 없음
 ├── scripts/                 # 하네스(`// @regress` 자동 발견) · 계측기 · 빌드(지형·작물) · 배포
 ├── 인계/                     # ★현재 상태 정본 — 영역별 인계 · 공통 캐논 · 회부 누적
 ├── 보고/  회부/  설계/  문서/   # 완료 보고 · 다음 층 백로그 · 설계안 · 운영 절차   → 색인은 문서/README.md
@@ -210,7 +210,7 @@ durango-mini/
   NPC 있음·플래그 켬       15 ~  28 ms        34 ms      10명에서도 p50 62ms
 ```
 
-사람이 0명인 존은 tick 본문을 통째로 건너뛴다(idle skip) — 빈 존의 CPU 는 3.9%다. 세계 시뮬 비용은 **누군가 접속하는
+사람이 0명인 존은 tick 본문을 통째로 건너뛴다(idle skip) — 빈 존의 CPU 는 2.92%다. 세계 시뮬 비용은 **누군가 접속하는
 순간** 청구된다. econ 일틱은 마을 단위로 여러 프레임에 쪼개져 돈다(일틱 슬라이서 · `scripts/test-tick-slicer.js` 가 검사).
 
 ## 개발 방식
