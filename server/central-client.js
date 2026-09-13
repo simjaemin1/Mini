@@ -112,6 +112,14 @@ const tribeMode = (playerId, mode) => _softDoor('POST', '/tribe/mode')({ player_
 const tribeIntro = (playerId, intro) => _softDoor('POST', '/tribe/intro')({ player_id: playerId, intro });
 // ★[T139] 밀린 친구 요청 — 문 하나. 실패는 빈 답(`ok:false`)이라 로그인이 안 막힌다.
 const friendPending = (playerId) => _softDoor('POST', '/friend/pending')({ player_id: playerId });
+// ★★[T235 2026-09-13] 클라가 central 을 직접 부르던 다섯 — 이제 **존이 대신 부른다**.
+//   신원은 인자로 받지 않는다: 부르는 쪽(`zone.js`)이 **ws 로 아는 `player.playerId`** 를 넣는다.
+//   있는 `_softDoor` 문법 그대로다(새 규약 0) — central 쪽은 `isInternal` 뒤에 있다.
+const marketOrder = (playerId, o) => _softDoor('POST', '/market/order')({ player_id: playerId, side: o.side, item: o.item, amount: o.amount, price_item: o.price_item, price_amount: o.price_amount });
+const marketCancel = (playerId, orderId) => _softDoor('POST', '/market/cancel')({ player_id: playerId, order_id: orderId | 0 });
+const warDeclare = (playerId, attackerGuildId, defenderGuildId) => _softDoor('POST', '/war/declare')({ attacker_guild_id: attackerGuildId, defender_guild_id: defenderGuildId, declared_by: playerId });
+const warEnd = (warId) => _softDoor('POST', '/war/end')({ war_id: warId | 0 });
+const tribeLeave = (playerId) => _softDoor('POST', '/tribe/leave')({ player_id: playerId });
 // ★[T159] 길드 곳간 문 — 읽기 하나 · 쓰기 하나. 실패는 빈 답(막지 않는다).
 const tribeGranary = (tribeId) => _softDoor('POST', '/tribe/granary')({ tribe_id: tribeId | 0 });
 const tribeGranarySet = (playerId, open) => _softDoor('POST', '/tribe/granary_set')({ player_id: playerId, open: !!open });
@@ -152,6 +160,7 @@ async function getTribe(id) {
 
 module.exports = { authenticate, checkUsernameTaken, getPlayer, updatePlayer, request,
   guestIdentity, promoteGuest,   // ★[배치 13] 게스트 영속 신원 · ★[배치 14] 승계
+  marketOrder, marketCancel, warDeclare, warEnd, tribeLeave,   // ★[T235] 존이 대신 부르는 다섯
   friendRequest, friendRemove, friendsOf, friendsOfName, friendPending,   // ★[T139] 밀린 요청 문 하나
   tribeInvite, tribeInvites, tribeInviteAccept, tribeMode, tribeIntro, tribeIntros, tribeGranary, tribeGranarySet,   // ★[T128] 길드 문 여섯   // ★[T115] 친구 — 문 셋(실패는 빈 답)
   tribeAddVp, tribeTreasury, tribeNpcUpsert, getTribe };

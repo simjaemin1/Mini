@@ -29,10 +29,7 @@
       }
       list.querySelectorAll('[data-cancel]').forEach(btn => {
         btn.onclick = async () => {
-          await fetch('/market/cancel', {
-            method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ player_id: myUsername, order_id: +btn.dataset.cancel }),
-          });
+          await window.__centralCall('market/cancel', { order_id: +btn.dataset.cancel });   // ★[T235] 존 경유 — 신원은 ws 가 안다
           refreshMarket();
         };
       });
@@ -45,11 +42,8 @@
     const priceItem = item === 'wood' ? 'stone' : 'wood';
     const priceAmount = +document.getElementById('marketPrice').value || 1;
     try {
-      const r = await fetch('/market/order', {
-        method: 'POST', headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ player_id: myUsername, side, item, amount, price_item: priceItem, price_amount: priceAmount }),
-      });
-      const data = await r.json();
+      //   ★[T235] 존 경유 — `player_id` 를 클라가 안 고른다(ws 접속이 본인이다).
+      const data = await window.__centralCall('market/order', { order: { side, item, amount, price_item: priceItem, price_amount: priceAmount } });
       if (data.error) showNotice(`거래소: ${data.error}`);
       else showNotice(`주문 등록: ${data.matched === 'full' ? '즉시 체결!' : data.matched === 'partial' ? '부분 체결' : '대기 중'}`);
       refreshMarket();

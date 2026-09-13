@@ -4624,6 +4624,30 @@ function handlePlayerInput(player, raw) {
     savePlayer(player);
     send(player.ws, { type: 'notice', text: player.tribeId ? `길드 [${player.tribeName}] 적용` : '길드 탈퇴됨' });
   }
+  // ═══ ★★[T235 2026-09-13] **클라가 central 을 직접 부르던 다섯 — 존이 대신 부른다** ═══
+  //   여태 그 다섯(`/market/order`·`/market/cancel`·`/war/declare`·`/war/end`·`/tribe/leave`)은
+  //   본문의 `player_id`·길드 id 를 **그대로 믿었다**. 그래서 바깥에서 남의 주문을 물리고, 남의 이름으로
+  //   주문을 내고, 남의 길드로 전쟁을 선포하고, 아무 전쟁이나 끝내고, **남을 길드에서 빼낼 수 있었다**
+  //   (다섯 전부 실측 · 보고 T235 §0-ⓐ).
+  //   ★본인 확인을 **새로 만들지 않는다** — **ws 접속이 본인이다**(T225 §0-ⓑ · 족보 179).
+  //     여기서는 `player.playerId`·`player.tribeId` 가 이미 서버가 아는 값이고, 클라는 그것을 못 고른다.
+  //   ★다섯이 **한 문법**이다(문마다 다른 길이면 그게 다음 구멍 — T225 §1):
+  //     클라가 `{type:'central_call', door, …}` 을 보내면 → 존이 제가 아는 신원을 붙여 안 문을 부르고
+  //     → `{type:'central_result', door, ok, data}` 한 종류로 답한다(새 화면 0 · 새 컬럼 0).
+  else if (msg.type === 'central_call') {
+    const door = String(msg.door || '');
+    const reply = (p2) => p2
+      .then((d) => send(player.ws, { type: 'central_result', door, ok: !!(d && (d.ok || d.order_id !== undefined)), data: d || null }))
+      .catch(() => send(player.ws, { type: 'central_result', door, ok: false, data: { error: '지금은 못 물어봤다 — 잠시 뒤 다시' } }));
+    //   ⚠게스트는 거래소·길드를 못 쓴다(central 이 `anon_` 을 막는 그 규약 그대로 · 여기서 다시 안 정한다).
+    if (door === 'market/order') reply(central.marketOrder(player.playerId, msg.order || {}));
+    else if (door === 'market/cancel') reply(central.marketCancel(player.playerId, msg.order_id));
+    //   ★전쟁은 **내 길드**로만 건다 — 공격자 길드를 클라가 고르지 못한다(그게 ③ 의 구멍이었다).
+    else if (door === 'war/declare') reply(central.warDeclare(player.playerId, player.tribeId, msg.defender_guild_id | 0));
+    else if (door === 'war/end') reply(central.warEnd(msg.war_id));
+    else if (door === 'tribe/leave') reply(central.tribeLeave(player.playerId));
+    else send(player.ws, { type: 'central_result', door, ok: false, data: { error: '모르는 문' } });
+  }
   else if (msg.type === 'pvp_set') {
     player.pvpEnabled = !!msg.enabled;
     send(player.ws, { type: 'pvp_state', enabled: player.pvpEnabled });

@@ -18,6 +18,25 @@
     return obj;
   }
   function sendPrimaryAt(obj) { return sendPrimary(absToLocalAt(obj)); }
+  // ★★[T235 2026-09-13] **central 을 직접 안 부른다 — 존에게 말한다.**
+  //   여태 다섯 문(`/market/order`·`/market/cancel`·`/war/declare`·`/war/end`·`/tribe/leave`)을
+  //   클라가 `fetch` 로 직접 불렀고, 본문의 `player_id`·길드 id 를 central 이 **그대로 믿었다**.
+  //   ⇒ 바깥에서 남의 이름으로 부를 수 있었다(다섯 전부 실측 · 보고 T235 §0-ⓐ).
+  //   ★새 인증을 만들지 않는다 — **ws 접속이 본인이다.** 존이 제가 아는 신원을 붙여 안 문을 부른다.
+  //   ★다섯이 **한 문법**이다: `central_call` 한 종류로 보내고 `central_result` 한 종류로 받는다.
+  //     (새 화면 0 · 새 표 0 — 부르는 자리만 바뀐다.)
+  const _centralWait = new Map();   // door → resolve
+  function centralCall(door, extra, timeoutMs) {
+    return new Promise((resolve) => {
+      const prev = _centralWait.get(door);
+      if (prev) { try { prev({ error: '앞의 요청이 취소됐다' }); } catch (e) {} }
+      _centralWait.set(door, resolve);
+      const t = setTimeout(() => { if (_centralWait.get(door) === resolve) { _centralWait.delete(door); resolve({ error: '응답이 없다 — 잠시 뒤 다시' }); } }, timeoutMs || 8000);
+      _centralWait.set(door, (d) => { clearTimeout(t); resolve(d); });
+      sendPrimary(Object.assign({ type: 'central_call', door }, extra || {}));
+    });
+  }
+  window.__centralCall = centralCall;
   // 미니맵 등 외부에서 호출 가능하게 노출
   window.__sendPrimary = sendPrimary;
   window.__sendPrimaryAt = sendPrimaryAt;
@@ -1583,6 +1602,10 @@
       if (chatLog.length > 20) chatLog.shift();
       speechBubbles.set(msg.pid, { text: (msg.tribe ? '[길드] ' : '') + msg.text, until: performance.now() + 4000 });
       renderChatLog();
+    } else if (msg.type === 'central_result') {
+      //   ★[T235] 다섯 문의 답 — 한 종류다. 기다리던 자리에 그대로 건네고 끝(새 화면 0).
+      const r = _centralWait.get(msg.door);
+      if (r) { _centralWait.delete(msg.door); r(msg.data || (msg.ok ? { ok: true } : { error: '실패' })); }
     } else if (msg.type === 'notice') {
       // ★★[T110 2026-09-05] 외침 하나만 **자리**를 나른다 — 그 자리가 안개 위 방향 화살이 된다.
       //   새 메시지도 새 패널도 없다: `notice` 의 `kind` 와 `downed` 칸이 전부다(`server/rescue.js`).

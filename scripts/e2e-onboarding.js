@@ -977,10 +977,14 @@ async function waitHttp(url, tries = 900) {
         await warp(E.C, HX2 + 40, HY2 + 40);
         E.C.notices.length = 0; chat(E.C, '/곳간'); await sleep(1300);
         const mateLine = E.C.notices.slice(-2).join(' | ');
+        //   ★★[T235] **기근은 잠금이 아니다** — T202 가 ⑩ 에서 배운 그 한 줄을 여기도 건다.
+        //     재는 것은 **소속**이다(`/곳간` 이 곳간 이름을 부르는가 · `아직 마을 사람이 아니다` 가 없는가).
+        //     밥이 실제로 나오느냐는 **마을의 형편**(T159 기근 문)이 따로 정하고, 갓 선 마을은 굶는 날이 있다 —
+        //     그걸 소속의 실패로 세면 거짓 빨강이다(실측: `식량 재고 0 · 마을이 굶는 중이다` 로 ● 였다).
         const w5 = await withdrawUntil(E.C, HALL, 'give');
         step('⑪ ★길드원은 **도착만으로** 제 길드 마을 곳간을 연다(픽스처 0)',
-          !/아직 마을 사람이 아니다/.test(mateLine) && w5.gave,
-          `/곳간 → ${mateLine} · 등짐 밥 ${w5.p0} → ${w5.p1} · ${w5.n}판`);
+          !/아직 마을 사람이 아니다/.test(mateLine) && (w5.gave || w5.famine),
+          `/곳간 → ${mateLine} · ${w5.gave ? `등짐 밥 ${w5.p0} → ${w5.p1} · ${w5.n}판` : '기근(소속은 섰다 · 곳간 문 아님)'}`);
         //   ⑪b 대조 — 비길드원은 **기여 문** 그대로다(자명 통과 금지)
         const F = await wsConnect('arcstranger', 'arcpw', NEWVID | 0); await sleep(1500);
         await warp(F, HX2 + 40, HY2 + 40);

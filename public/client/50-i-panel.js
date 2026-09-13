@@ -589,16 +589,14 @@ function itemKo(k) {
         body.querySelectorAll('[data-declare]').forEach(b => b.onclick = async () => {
           const did = parseInt(b.dataset.declare, 10);
           if (!confirm('선전포고하면 침략자 적대감이 부과될 수 있어요. 진행할까요?')) return;
-          const r = await fetch('/war/declare', { method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ attacker_guild_id: myTribeId, defender_guild_id: did, declared_by: myUsername }) });
-          const d = await r.json();
+          //   ★[T235] 존 경유 — 공격자 길드도 클라가 안 고른다(존이 내 `tribeId` 를 쓴다).
+          const d = await window.__centralCall('war/declare', { defender_guild_id: did });
           if (d.ok) { showNotice(`전쟁 선포! tier=${d.tier} loot=${(d.loot_rate*100).toFixed(0)}%`); renderTribePanel(); }
           else alert(d.error || '선포 실패');
         });
         body.querySelectorAll('[data-end-war]').forEach(b => b.onclick = async () => {
           const wid = parseInt(b.dataset.endWar, 10);
-          const r = await fetch('/war/end', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ war_id: wid }) });
-          const d = await r.json();
+          const d = await window.__centralCall('war/end', { war_id: wid });   // ★[T235] 존 경유
           if (d.ok) { showNotice('전쟁 종료'); renderTribePanel(); }
           else alert(d.error || '종전 실패');
         });
@@ -606,8 +604,7 @@ function itemKo(k) {
         if (grBtn) grBtn.onclick = () => { buildMode = true; placementMode = { special: 'guild_granary' }; toggleTribePanel(); showNotice('길드 곳간 배치 모드 — 길드영토 안 클릭 (5×3 밀폐 · 밖에서 지으세요 · B=취소)'); };
         document.getElementById('tribeLeaveBtn').onclick = async () => {
           if (!confirm('정말 탈퇴하시겠습니까?')) return;
-          const r = await fetch('/tribe/leave', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ player_id: myUsername }) });
-          const d = await r.json();
+          const d = await window.__centralCall('tribe/leave', {});   // ★[T235] 존 경유 — 남을 못 뺀다
           if (d.ok) { myTribeId = null; myTribeName = null; sendPrimary({ type: 'tribe_set', tribeId: null, tribeName: null }); renderTribePanel(); }
           else alert(d.error || '탈퇴 실패');
         };

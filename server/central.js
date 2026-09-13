@@ -1068,6 +1068,12 @@ const server = http.createServer(async (req, res) => {
       return jsonResp(res, 200, { orders: Array.from(orders.values()) });
     }
     if (req.url === '/market/order' && req.method === 'POST') {
+      //   ★★[T235 2026-09-13] **이 다섯은 바깥에서 부를 수 없다.** 여태 본문의 `player_id`(또는 길드 id)를
+      //     그대로 믿어서, 남의 주문을 물리고 남의 이름으로 주문을 내고 남의 길드로 전쟁을 선포하고
+      //     아무 전쟁이나 끝내고 **남을 길드에서 빼낼 수 있었다**(다섯 전부 실측 · 보고 §0-ⓐ).
+      //     본인 확인은 **새로 만들지 않는다** — ws 접속이 본인이다(T225 §0-ⓑ · 족보 179).
+      //     ⇒ 클라는 존에게 말하고, 존이 제가 아는 `playerId` 를 붙여 이 안 문을 부른다.
+      if (!isInternal(req)) return denyOutside(res);
       const data = await readBody(req);
       const playerId = data.player_id;
       if (!playerId || playerId.startsWith('anon_')) return jsonResp(res, 400, { error: '로그인 필요' });
@@ -1106,6 +1112,8 @@ const server = http.createServer(async (req, res) => {
       return jsonResp(res, 200, { ok: true, order_id: id, matched: result.matched, remaining: result.remaining });
     }
     if (req.url === '/market/cancel' && req.method === 'POST') {
+      //   ★[T235] 안 문 — 주문을 물린다(위 첫 문의 주석이 근거 · 다섯이 한 문법이다).
+      if (!isInternal(req)) return denyOutside(res);
       const data = await readBody(req);
       const playerId = data.player_id;
       const orderId = +data.order_id | 0;
@@ -1192,6 +1200,8 @@ const server = http.createServer(async (req, res) => {
     }
     // 선전포고 — 명분(상대 vp) 스냅샷 + 다이얼 적용
     if (req.url === '/war/declare' && req.method === 'POST') {
+      //   ★[T235] 안 문 — 전쟁을 선포한다(위 첫 문의 주석이 근거 · 다섯이 한 문법이다).
+      if (!isInternal(req)) return denyOutside(res);
       const data = await readBody(req);
       const attackerId = parseInt(data.attacker_guild_id, 10);
       const defenderId = parseInt(data.defender_guild_id, 10);
@@ -1230,6 +1240,8 @@ const server = http.createServer(async (req, res) => {
     }
     // 종전
     if (req.url === '/war/end' && req.method === 'POST') {
+      //   ★[T235] 안 문 — 전쟁을 끝낸다(위 첫 문의 주석이 근거 · 다섯이 한 문법이다).
+      if (!isInternal(req)) return denyOutside(res);
       const data = await readBody(req);
       const warId = parseInt(data.war_id, 10);
       if (!warId) return jsonResp(res, 400, { error: 'war_id required' });
@@ -1399,6 +1411,8 @@ const server = http.createServer(async (req, res) => {
       return jsonResp(res, 200, { ok: true, tribe_id: tribeId, name: t.name, promoted });
     }
     if (req.url === '/tribe/leave' && req.method === 'POST') {
+      //   ★[T235] 안 문 — 길드를 나간다(위 첫 문의 주석이 근거 · 다섯이 한 문법이다).
+      if (!isInternal(req)) return denyOutside(res);
       const data = await readBody(req);
       const playerId = data.player_id;
       if (!playerId || playerId.startsWith('anon_')) return jsonResp(res, 400, { error: '로그인 필요' });

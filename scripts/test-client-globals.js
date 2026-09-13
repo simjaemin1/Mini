@@ -95,9 +95,13 @@ console.log('\n③ 최상위 실행문이 99-main.js 밖에 **새로** 생기지
 //   `window.__mt3SetRound(r)`(3D 둥글기 축 · 기본 0) · `window.__mt3Round()`(읽기).
 //   바로 위 열두 `__mt3*` 손잡이와 **같은 자리·같은 문법**이고, 그 열둘이 이미 41 안에 들어 있다.
 //   ⇒ 표를 늘리는 것이 이 검사의 쓰임이다(주석이 요구하는 '같이 갱신하라' — 그 자체가 리뷰 지점).
+// ★[T235 2026-09-13] `30-n-net.js` 13 → **14**. `window.__centralCall(door, extra)` 하나가 늘었다:
+//   클라가 central 을 직접 부르던 다섯 문을 **존 경유**로 옮기면서 생긴 **유일한** 새 전역이고,
+//   위 `__sendPrimary`·`__sendPrimaryAt` 과 **같은 자리·같은 문법**이다(그 둘이 이미 13 안에 있다).
+//   ⇒ 표를 늘리는 것이 이 검사의 쓰임이다(위 주석의 '같이 갱신하라' — 그 자체가 리뷰 지점).
 const BASELINE = {
   'client/00-const.js': 15, 'client/11-r1-mountain.js': 43, 'client/20-r2-visibility.js': 5,
-  'client/30-n-net.js': 13, 'client/40-r2-sprites.js': 2,
+  'client/30-n-net.js': 14, 'client/40-r2-sprites.js': 2,
   // ★★[T53 2026-09-02] `41-h-char.js`(18) 를 2차 분할했다. **실행문이 늘지 않았다 — 나뉘었다.**
   //   17 은 조각 ①(진단 훅), 1 은 조각 ④(`setInterval(updateHud,100)`). 합은 그대로 18.
   //   그래서 표를 옮겨 적었다(위 주석이 요구하는 "같이 갱신하라"). 진짜 불변식은 **총계**이고,

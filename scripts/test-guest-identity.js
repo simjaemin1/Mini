@@ -434,6 +434,55 @@ const closeWs = (st) => new Promise((r) => { st.ws.on('close', r); try { st.ws.c
     ok(p9.s === 200 && !!p9.d, '⑥#9 `?as=` 는 **이 카드가 안 건드린다**(#27 로비 순서 · 여전히 열려 있다)', `status ${p9.s} · ${JSON.stringify(p9.d).slice(0, 60)}`);
   }
 
+  // ══ ⑦ ★★[T235] **남은 무인증 POST 다섯** — 바깥 404 · 안 문은 산다 ═════════
+  //   고치기 전 실측(보고 §0-ⓐ): 남의 주문 취소 200 · 남의 이름으로 주문 200 ·
+  //   남의 길드로 전쟁 선포 200 · 아무 전쟁이나 종료 200 · **남을 길드에서 빼기 200**.
+  say('\n[⑦ 무인증 POST 다섯 — T235]');
+  {
+    const OUT3 = {}, IN3 = { 'x-zone-secret': SECRET };
+    const pj = async (path2, body, hdr) => {
+      try { const r = await fetch(`http://localhost:${CPORT}${path2}`, { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, hdr || {}), body: JSON.stringify(body) }); let d; try { d = await r.json(); } catch (e) { d = null; } return { s: r.status, d }; }
+      catch (e) { return { s: 0, d: String(e.message) }; }
+    };
+    const gj = async (path2, hdr) => { try { const r = await fetch(`http://localhost:${CPORT}${path2}`, { headers: hdr || {} }); return { s: r.status, d: await r.json() }; } catch (e) { return { s: 0, d: null }; } };
+    // 전제 — 피해자와 남을 세운다(전부 안 문으로 · 이게 곧 "존이 대신 부른다"의 그 길이다)
+    await pj('/auth', { username: 't235vic', password: 'pw', color: '#5a9ae0', home_zone: 'hanbando', home_x: 1, home_y: 2 }, IN3);
+    await pj('/auth', { username: 't235atk', password: 'pw', color: '#5a9ae0', home_zone: 'hanbando', home_x: 1, home_y: 2 }, IN3);
+    await pj('/player/t235vic', { wood: 500, stone: 500 }, IN3);
+    const tv = await pj('/tribe/create', { player_id: 't235vic', name: 'T235피해' }, IN3);
+    const ta = await pj('/tribe/create', { player_id: 't235atk', name: 'T235남' }, IN3);
+    const ord = await pj('/market/order', { player_id: 't235vic', side: 'sell', item: 'wood', amount: 5, price_item: 'stone', price_amount: 2 }, IN3);
+    ok(!!(tv.d && tv.d.tribe_id) && !!(ord.d && ord.d.ok), '⑦ 전제: 피해자의 길드와 주문이 실제로 섰다(아래가 자명 통과가 아니다)', `길드 ${tv.d && tv.d.tribe_id} · 주문 ${ord.d && ord.d.order_id}`);
+    const oid = ord.d && ord.d.order_id;
+
+    // ⓐ 바깥에서 다섯을 두드린다 — 전부 404(문이 있는지도 안 알린다)
+    const outs = [
+      ['market/order', await pj('/market/order', { player_id: 't235vic', side: 'sell', item: 'stone', amount: 99, price_item: 'wood', price_amount: 1 }, OUT3)],
+      ['market/cancel', await pj('/market/cancel', { player_id: 't235vic', order_id: oid }, OUT3)],
+      ['war/declare', await pj('/war/declare', { attacker_guild_id: tv.d && tv.d.tribe_id, defender_guild_id: ta.d && ta.d.tribe_id, declared_by: 't235vic' }, OUT3)],
+      ['war/end', await pj('/war/end', { war_id: 1 }, OUT3)],
+      ['tribe/leave', await pj('/tribe/leave', { player_id: 't235vic' }, OUT3)],
+    ];
+    ok(outs.every(([, r]) => r.s === 404), '⑦ ★★다섯 문이 **바깥에서 404**(남의 이름을 실어도 문이 안 열린다)',
+      outs.map(([n, r]) => `${n}:${r.s}`).join(' '));
+    // ⓑ ★자명 통과 금지 — 그 다섯이 **실제로 아무것도 안 바꿨다**
+    const vAfter = await gj('/player/t235vic', IN3);
+    const ordsAfter = await gj('/market/orders', OUT3);
+    const mine = ((ordsAfter.d && ordsAfter.d.orders) || []).filter((o) => o.player_id === 't235vic');
+    ok(!!(vAfter.d && vAfter.d.player && vAfter.d.player.tribe_id === (tv.d && tv.d.tribe_id)),
+      '⑦b ★피해자가 **길드에 그대로 있다**(고치기 전엔 `tribe_id` 가 null 이 됐다)', `tribe_id ${vAfter.d && vAfter.d.player && vAfter.d.player.tribe_id}`);
+    ok(mine.length === 1 && mine[0].id === oid, '⑦b2 ★주문이 **그대로 하나**다(물리지도, 남의 이름으로 늘지도 않았다)', `주문 ${mine.length}개`);
+    const warsAfter = await gj('/wars/active', OUT3);
+    ok(((warsAfter.d && warsAfter.d.wars) || []).length === 0, '⑦b3 ★전쟁이 **안 났다**(남의 길드로 선포되지 않았다)', JSON.stringify((warsAfter.d && warsAfter.d.wars) || []).slice(0, 60));
+    // ⓒ 안 문(=존이 대신 부르는 그 길)은 **산다**
+    const inCancel = await pj('/market/cancel', { player_id: 't235vic', order_id: oid }, IN3);
+    const ordsIn = await gj('/market/orders', OUT3);
+    ok(inCancel.s === 200 && ((ordsIn.d && ordsIn.d.orders) || []).filter((o) => o.player_id === 't235vic').length === 0,
+      '⑦c ★안 문에서는 **그대로 산다** — 존이 제 신원을 붙여 부르는 길이 이것이다', `status ${inCancel.s}`);
+    const inLeave = await pj('/tribe/leave', { player_id: 't235vic' }, IN3);
+    ok(inLeave.s === 200 && !!(inLeave.d && inLeave.d.ok), '⑦c2 ★길드 탈퇴도 안 문에서는 산다', JSON.stringify(inLeave.d));
+  }
+
   shutdown();
   say(`\n=== 게스트 영속 신원 하네스: ${pass} 통과 / ${fail} 실패 ${fail ? '❌' : '✅'} ===`);
   for (const f of [CDB, ZDB, CDB + '-wal', ZDB + '-wal', CDB + '-shm', ZDB + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
