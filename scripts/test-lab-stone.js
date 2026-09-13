@@ -454,6 +454,58 @@ console.log('\n㉒ 둘째 화물 — 끔 비트 동일 · 켬 실림 · 용량 �
   ok(a.neg === 0 && c.neg === 0, '㉒ ★★**곳간 음수 0**(두 팔 다)', `끔 ${a.neg} · 켬 ${c.neg}`);
 }
 
-console.log(`\n=== T206 둘째 화물 포함: 통과 ${pass} · 실패 ${fail} ===`);
-console.log('접점 심볼: CARGO_PER_TRIP|N_units|candidates|cand.res|surplus|keep|thresh|eb[|giveRes|giveAmt|giveRes2|giveAmt2|cargoTwo|L_CARGO_TWO|onTradeLeg');
+// ════════════════════════════════════════════════════════════════════════════════════════
+// ㉓ [T223] `spareCap` 고정 문 — 계측 손잡이다(세계 무변)
+//   T215 자인: 엔진 `spareCap` 은 `N`(인구)의 **곱**이라 leg↔인구 인과가 안 갈린다.
+//   문(`world.spareCapFn`)이 닫히면 비트 동일 · 열리면 **주입값이 그대로 상한이 된다** ·
+//   표에 없는 칸(`null`)이면 엔진 제 값으로 **되돌아온다**(부분 주입 금지).
+{
+  const mkSC = (mode) => {
+    const w = econV2.createWorldV2({ seed: 606, villageCount: 0, picker: 'rational', infoRange: 5000 });
+    w.villages = [];
+    const seenCap = [];
+    //   ⚠**주입값을 밖에서 지어내지 않는다** — 엔진이 계산한 값(`cur`)을 받아 그 위에서만 정한다.
+    if (mode === 'fix1')  w.spareCapFn = (v, day, cur) => { seenCap.push(cur); return 1; };
+    if (mode === 'echo')  w.spareCapFn = (v, day, cur) => { seenCap.push(cur); return cur; };
+    if (mode === 'null')  w.spareCapFn = (v, day, cur) => { seenCap.push(cur); return null; };
+    if (mode === 'junk')  w.spareCapFn = (v, day, cur) => { seenCap.push(cur); return 'NaN아님'; };
+    if (mode === 'zero')  w.spareCapFn = (v, day, cur) => { seenCap.push(cur); return 0; };
+    let legs = 0;
+    w.onTradeLeg = () => { legs++; };
+    for (let i = 0; i < 6; i++) {
+      const v = econ.createVillage({ fertility: 1.2, water: 0.9, stone: (i % 2 ? 2.5 : LV.FLOOR.stone), ore: 0.2,
+                                     wood: 1.2, game: 0.7, arable: 1, size: 70, initialPop: 40, name: (i % 2 ? '산촌' : '바닥') + i });
+      v._world = w; v.coord = { x: (i % 3) * 120, y: Math.floor(i / 3) * 120 };
+      w.villages.push(v);
+    }
+    w.day = 0;
+    for (let d = 0; d < 300; d++) econV2.tickWorldV2(w, d);
+    return { legs, seenCap,
+             dig: JSON.stringify(w.villages.map((v) => ({ n: v.npcs.length, s: +(v.storage.stone || 0).toFixed(9), f: +(v.storage.food || 0).toFixed(9) }))) };
+  };
+  const off = mkSC('off'), off2 = mkSC('off');
+  ok(off.dig === off2.dig, '㉓ ★★끈 두 판이 **비트 동일**(결정론)');
+  pre(off.legs > 0, '이 세계에서 캐러밴이 실제로 출발한다', `${off.legs}건`);
+
+  const echo = mkSC('echo');
+  ok(echo.dig === off.dig, '㉓ ★★★**되돌림** — 엔진 제 값을 그대로 돌려주면 끔과 비트 동일',
+    `주입 호출 ${echo.seenCap.length}회`);
+  pre(echo.seenCap.length > 0, '문이 실제로 호출된다(자명 통과 금지)', `${echo.seenCap.length}회`);
+
+  const nul = mkSC('null'), junk = mkSC('junk'), zero = mkSC('zero');
+  ok(nul.dig === off.dig,  '㉓ ★`null` 이면 엔진 제 값으로 되돌아온다');
+  ok(junk.dig === off.dig, '㉓ ★수가 아닌 반환은 **무시**한다(계측기 결함이 세계를 못 흔든다)');
+  ok(zero.dig === off.dig, '㉓ ★`<1` 반환도 무시한다(`spareCap` 하한 1 을 문이 못 뚫는다)');
+
+  const fix1 = mkSC('fix1');
+  ok(fix1.dig !== off.dig, '㉓ ★켜면 다른 세계다(문이 죽어 있지 않다)');
+  ok(fix1.legs < off.legs, '㉓ ★★★주입값이 **그대로 상한**이 된다 — 1 로 묶으면 leg 이 준다',
+    `끔 ${off.legs}건 → 고정1 ${fix1.legs}건`);
+  ok(off.seenCap.length === 0, '㉓ ★미설치면 문이 **한 번도** 안 불린다');
+  ok(Math.max(...echo.seenCap) > 1, '㉓ ★엔진이 실제로 1 보다 큰 `spareCap` 을 내놓는다(고정이 의미 있다)',
+    `최대 ${Math.max(...echo.seenCap)}`);
+}
+
+console.log(`\n=== T223 spareCap 고정 포함: 통과 ${pass} · 실패 ${fail} ===`);
+console.log('접점 심볼: spareCap|caravansLaunched|currentlyTrading|candidates|L_CARGO_TWO|L_SPARECAP_FIX|spareCapFn|onTradeLeg');
 process.exit(fail ? 1 : 0);
