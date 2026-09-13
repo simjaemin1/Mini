@@ -483,6 +483,165 @@ const closeWs = (st) => new Promise((r) => { st.ws.on('close', r); try { st.ws.c
     ok(inLeave.s === 200 && !!(inLeave.d && inLeave.d.ok), '⑦c2 ★길드 탈퇴도 안 문에서는 산다', JSON.stringify(inLeave.d));
   }
 
+  // ══ ⑧ ★★[T242] **라우트 전수표 파수꾼** — 손 목록 0 · 새 문이 생기면 빨강 ════════
+  //   T216 이 13 을 셌고 T225 가 관측창 열을 옮겼고 T235 가 다섯을 닫았다. 하나씩 닫아 왔으니
+  //   이제 **전수표**가 있어야 한다 — 그리고 그 표는 **사람이 세는 순간 낡는다**.
+  //   ⇒ 라우트 목록을 **코드에서 정규식으로 뽑아** 아래 표와 대조한다. 새 라우트가 생기면
+  //     표에 없어서 빨강이고, 지워진 라우트가 있으면 표에 남아서 빨강이다.
+  //   ⚠표의 값은 **판정**이다(갈래 · 남의 것이 읽히나/바뀌나). 판정의 근거는 `보고/T242_*.md` §0-ⓐ.
+  //   ⚠`갈래` 넷: 공개 · 안문(`internal-door`) · 본인(자격증명을 들고 온다) · 투영(바깥엔 줄여서 준다).
+  //     `판정` 넷: `공개뜻` · `닫힘` · `쓰기남음`/`읽힘남음`(바깥에서 남의 것이 바뀌거나 읽힌다) · `회부2`/`회부9`.
+  //     ⚠판정 값에 이모지를 쓰지 않는다 — `test-harness-lint` ②(판정 자리에 이모지 0).
+  say('\n[⑧ 라우트 전수표 파수꾼 — T242]');
+  {
+    const ROUTES = {
+      // ── central ──────────────────────────────────────────────────────────
+      'central GET =/health':                    ['공개', '공개뜻'],
+      'central GET =/economy/villages':          ['공개', '공개뜻'],
+      'central GET ^/economy/prices/':           ['공개', '공개뜻'],
+      'central GET =/economy/canadia/villages':  ['공개', '공개뜻'],
+      'central GET =/economy/canadia/prices':    ['공개', '공개뜻'],
+      'central GET =/economy/canadia/tradelog':  ['공개', '공개뜻'],
+      'central GET =/economy/canadia/caravans':  ['공개', '공개뜻'],
+      'central GET =/economy/prices':            ['공개', '공개뜻'],
+      'central GET =/zones':                     ['공개', '공개뜻'],
+      'central POST =/auth':                     ['본인', '공개뜻'],
+      'central POST =/guest':                    ['본인', '공개뜻'],
+      'central POST =/promote':                  ['본인', '공개뜻'],
+      'central POST =/check_username':           ['공개', '회부2'],
+      'central POST =/friend/req':               ['공개', '쓰기남음'],
+      'central POST =/friend/del':               ['공개', '쓰기남음'],
+      'central POST =/friend/pending':           ['안문', '닫힘'],
+      'central GET ^/friends/':                  ['투영', '닫힘'],
+      'central GET ^/player/':                   ['투영', '닫힘'],
+      'central POST ^/player/':                  ['안문', '닫힘'],
+      'central GET =/market/orders':             ['공개', '읽힘남음'],
+      'central POST =/market/order':             ['안문', '닫힘'],
+      'central POST =/market/cancel':            ['안문', '닫힘'],
+      'central GET =/tribes':                    ['공개', '읽힘남음'],
+      'central GET ^/tribe/':                    ['공개', '읽힘남음'],
+      'central POST =/tribe/add_vp':             ['공개', '쓰기남음'],
+      'central POST =/tribe/treasury':           ['공개', '쓰기남음'],
+      'central GET =/wars/active':               ['공개', '공개뜻'],
+      'central POST =/war/declare':              ['안문', '닫힘'],
+      'central POST =/war/end':                  ['안문', '닫힘'],
+      'central POST =/tribe/npc_upsert':         ['공개', '쓰기남음'],
+      'central POST =/tribe/invite':             ['공개', '쓰기남음'],
+      'central POST =/tribe/invites':            ['안문', '닫힘'],
+      'central POST =/tribe/invite_accept':      ['공개', '쓰기남음'],
+      'central POST =/tribe/granary':            ['공개', '읽힘남음'],
+      'central POST =/tribe/granary_set':        ['공개', '쓰기남음'],
+      'central POST =/tribe/mode':               ['공개', '쓰기남음'],
+      'central POST =/tribe/intro':              ['공개', '쓰기남음'],
+      'central GET =/tribe_intros':              ['공개', '공개뜻'],
+      'central POST =/tribe/create':             ['공개', '쓰기남음'],
+      'central POST =/tribe/join':               ['공개', '쓰기남음'],
+      'central POST =/tribe/leave':              ['안문', '닫힘'],
+      'central GET =/terrain.json':              ['공개', '공개뜻'],
+      // ── zone ─────────────────────────────────────────────────────────────
+      'zone GET ^/perf':                         ['공개', '읽힘남음'],
+      'zone GET =/health':                       ['공개', '공개뜻'],
+      'zone GET ^/routedbg':                     ['안문', '닫힘'],
+      'zone GET ^/bodydbg':                      ['안문', '닫힘'],
+      'zone GET ^/claimdbg':                     ['안문', '닫힘'],
+      'zone GET ^/followdbg':                    ['안문', '닫힘'],
+      'zone GET ^/friendsdbg':                   ['안문', '닫힘'],
+      'zone GET ^/guilddbg':                     ['안문', '닫힘'],
+      'zone GET ^/shelterdbg':                   ['안문', '닫힘'],
+      'zone GET ^/welcomedbg':                   ['안문', '닫힘'],
+      'zone GET ^/startinfo':                    ['공개', '회부9'],
+      'zone GET ^/lifedbg':                      ['안문', '닫힘'],
+      'zone GET ^/roomdbg':                      ['안문', '닫힘'],
+      'zone GET =/metrics':                      ['공개', '읽힘남음'],
+      'zone POST =/ghost_sync':                  ['공개', '쓰기남음'],
+      'zone POST =/cross_damage':                ['공개', '쓰기남음'],
+      'zone POST =/handoff_prepare':             ['공개', '쓰기남음'],
+      'zone POST =/kick_player':                 ['공개', '쓰기남음'],
+      'zone POST =/handoff_ack':                 ['공개', '쓰기남음'],
+      // ── dispatcher ───────────────────────────────────────────────────────
+      'dispatcher GET =/health/zones':           ['공개', '공개뜻'],
+    };
+
+    // ── 기계로 뽑는다(손 목록 0) ───────────────────────────────────────────
+    //   central·zone 은 `http.createServer` 한 덩이라 `if (req.url … && req.method …)` 가 곧 라우트다.
+    //   dispatcher 는 express 라 `app.get/post/…` 다. 두 문법 **둘뿐**이고, 셋째가 생기면 아래가 못 본다
+    //   — 그래서 `줄수 하한` 을 같이 건다(뽑기가 조용히 0 이 되면 이 절 전체가 자명 통과한다).
+    const extractRoutes = () => {
+      const found = [];
+      const rd = (f) => fs.readFileSync(path.join(ROOT, 'server', f), 'utf8').split('\n');
+      for (const [svc, file] of [['central', 'central.js'], ['zone', 'zone.js']]) {
+        const lines = rd(file);
+        for (let i = 0; i < lines.length; i++) {
+          const L = lines[i];
+          if (!/req\.url/.test(L) || !/^\s*(if|\} else if|else if)\s*\(/.test(L)) continue;
+          const methods = [...L.matchAll(/req\.method\s*===\s*'([A-Z]+)'/g)].map((m) => m[1]);
+          if (!methods.length) continue;
+          const ps = [...L.matchAll(/req\.url(?:\s*\.\s*split\([^)]*\)\[0\])?\s*(===|\.startsWith\()\s*'([^']+)'/g)]
+            .map((m) => (m[1] === '===' ? '=' : '^') + m[2]);
+          for (const p of ps) found.push({ key: `${svc} ${methods.join('|')} ${p}`, file, line: i + 1, src: L });
+        }
+      }
+      const dl = rd('dispatcher.js');
+      for (let i = 0; i < dl.length; i++) {
+        const m = dl[i].match(/app\.(get|post|put|delete|patch)\(\s*'([^']+)'/);
+        if (m) found.push({ key: `dispatcher ${m[1].toUpperCase()} =${m[2]}`, file: 'dispatcher.js', line: i + 1, src: dl[i] });
+      }
+      return found;
+    };
+    const found = extractRoutes();
+    ok(found.length >= 55, `⑧ ★전제 — 코드에서 라우트를 실제로 뽑았다(${found.length}개). 0·소수면 아래가 전부 자명 통과다`);
+
+    const tableKeys = Object.keys(ROUTES);
+    const foundKeys = found.map((r) => r.key);
+    const 표에없음 = foundKeys.filter((k) => !ROUTES[k]);
+    const 코드에없음 = tableKeys.filter((k) => !foundKeys.includes(k));
+    ok(표에없음.length === 0, '⑧ ★★코드에 있는데 **표에 없는** 라우트 0 — 새 문이 생기면 여기가 빨강이다 · ' + (표에없음.join(' · ') || '없음'));
+    ok(코드에없음.length === 0, '⑧ 표에 있는데 **코드에 없는** 라우트 0(지워진 문이 표에 남아 있지 않다) · ' + (코드에없음.join(' · ') || '없음'));
+
+    // ★자명 통과 금지 — 없는 라우트를 하나 끼워 넣어 **대조가 실제로 문는지** 본다.
+    const 가짜 = 'central POST =/__t242_없는_문__';
+    const 물었나 = [...foundKeys, 가짜].filter((k) => !ROUTES[k]);
+    ok(물었나.length === 1 && 물었나[0] === 가짜,
+      '⑧ ★자명 통과 금지 — 없는 라우트를 끼우면 대조가 **문다**(대조가 늘 통과하는 코드가 아니다) · ' + 물었나.join(' · '));
+
+    // 표의 `안문` 판정이 **코드에 실재하나** — 그 줄 뒤 3줄 안에 `isInternal` 이 있어야 한다.
+    const 안문틀림 = [];
+    for (const r of found) {
+      const 갈래 = (ROUTES[r.key] || [])[0];
+      if (갈래 !== '안문') continue;
+      const lines = fs.readFileSync(path.join(ROOT, 'server', r.file), 'utf8').split('\n');
+      const 창 = lines.slice(r.line - 1, r.line + 8).join('\n');
+      if (!/isInternal/.test(창)) 안문틀림.push(r.key);
+    }
+    ok(안문틀림.length === 0, '⑧ ★표가 `안문` 이라 적은 라우트는 **코드에도 `isInternal` 이 붙어 있다**(표만 고치고 문을 안 닫는 일이 없다) · ' + (안문틀림.join(' · ') || '없음'));
+
+    // 표의 `안문` 이 **바깥에서 실제로 안 열린다** — 표가 아니라 서버에 묻는다.
+    const 안문실측 = [];
+    for (const r of found) {
+      if (((ROUTES[r.key] || [])[0]) !== '안문') continue;
+      const port = r.key.startsWith('zone') ? ZPORT : CPORT;
+      const p = r.key.split(' ')[2].slice(1);
+      const meth = r.key.split(' ')[1].split('|')[0];
+      let st = 0;
+      try {
+        const res = await fetch(`http://localhost:${port}${p}`, meth === 'GET'
+          ? {} : { method: meth, headers: { 'Content-Type': 'application/json' }, body: '{}' });
+        st = res.status;
+      } catch (e) { st = 0; }
+      안문실측.push([p, st]);
+    }
+    ok(안문실측.length >= 15 && 안문실측.every(([, st]) => st === 404 || st === 401),
+      '⑧ ★★표가 `안문` 이라 적은 ' + 안문실측.length + ' 문이 **바깥에서 전부 404·401**(표의 ✗ 가 참인지 서버에 물었다) · ' + 안문실측.map(([p, st]) => p + ':' + st).join(' '));
+
+    // 셈 — 답 한 줄의 근거(사람이 세지 않는다)
+    const cnt = (f) => tableKeys.filter(f).length;
+    say(`  · 라우트 ${found.length} · 공개 ${cnt((k) => ROUTES[k][0] === '공개')} · 안문 ${cnt((k) => ROUTES[k][0] === '안문')}`
+      + ` · 본인 ${cnt((k) => ROUTES[k][0] === '본인')} · 투영 ${cnt((k) => ROUTES[k][0] === '투영')}`
+      + ` · 남음 ${cnt((k) => ROUTES[k][1].endsWith('남음') || ROUTES[k][1].startsWith('회부'))}`
+      + ` (쓰기 ${cnt((k) => ROUTES[k][1] === '쓰기남음')} · 읽힘 ${cnt((k) => ROUTES[k][1] === '읽힘남음')}`
+      + ` · 회부됨 ${cnt((k) => ROUTES[k][1].startsWith('회부'))})`);
+  }
+
   shutdown();
   say(`\n=== 게스트 영속 신원 하네스: ${pass} 통과 / ${fail} 실패 ${fail ? '❌' : '✅'} ===`);
   for (const f of [CDB, ZDB, CDB + '-wal', ZDB + '-wal', CDB + '-shm', ZDB + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }

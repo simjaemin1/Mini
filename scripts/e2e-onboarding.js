@@ -512,9 +512,13 @@ async function waitHttp(url, tries = 900) {
     //   ★문턱은 `body.js` 정본에서 읽는다(하네스가 상수를 박으면 곡선이 바뀌는 날 조용히 틀린다).
     const Body = require(path.join(ROOT, 'server', 'body'));
     const thr = Body.STAGE_AT.hunger[0] + Body.CFG.STAGE_HYST;      // 심각도 문턱
-    const gaugeNow = await page.evaluate(() => window.__getGauges());
-    const sev0 = 1 - gaugeNow.hunger / 100;
-    ok(sev0 < thr, `[${label}] 시작은 문턱 **아래**다 — 도착하자마자 배고픈 게 아니다`, `심각도 ${sev0.toFixed(3)} < ${thr.toFixed(3)}`);
+    //   ★★[T242 2026-09-13] **도착 게이지로 잰다**(여기서 다시 읽지 않는다) — T202 ⑩ 문법: 재려는 순간을 제대로 잡는다.
+    //     이 줄이 말하는 것은 *"**도착하자마자** 배고픈 게 아니다"* 인데, 종전엔 납품 루프·쉼터·하루 정산을
+    //     **다 지난 뒤** 다시 읽었다. 실측: 도착 허기 56.0(T203 이 정한 시작값 · 판 불변) → ⑧ 시점 52.0,
+    //     문턱은 51.0 — 여유가 **1.0** 뿐이라 앞 절이 조금만 길어지면 넘었다(T235 2판 `0.500 < 0.490`).
+    //     도착값으로 재면 여유가 **5.0** 이고 시작값이 고정이라 판 흔들림이 0 이다.
+    const sev0 = 1 - gauges.hunger / 100;
+    ok(sev0 < thr, `[${label}] 시작은 문턱 **아래**다 — 도착하자마자 배고픈 게 아니다(도착 게이지)`, `심각도 ${sev0.toFixed(3)} < ${thr.toFixed(3)} · 도착 허기 ${gauges.hunger.toFixed(1)}`);
     //   ★남은 시간을 **계산하지 않는다**(감쇠는 구간별이라 손으로 옮겨 적으면 그게 사본이다) —
     //     실제로 뜰 때까지 **재고**, 그 시간이 §9.4 의 "첫 몇 분" 안인지를 본다.
     let hungerStage = 0, md = [];
