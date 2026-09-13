@@ -69,10 +69,12 @@ if (!seeds) {
 }
 
 const ARM = process.env.T231_ARM || 'two';
-if (!['off', 'two', 'twofix'].includes(ARM)) { console.error(`알 수 없는 팔: ${ARM}`); process.exit(2); }
+//   ★[T233] 팔 하나 추가 — `twogate` = 둘째 화물 + 첫째와 같은 관문(`world.cargoTwoGate`).
+if (!['off', 'two', 'twofix', 'twogate'].includes(ARM)) { console.error(`알 수 없는 팔: ${ARM}`); process.exit(2); }
 const TRACE = process.env.T231_TRACE || `/tmp/t231-sc-${SEED}.json`;
-const TWO = (ARM === 'two' || ARM === 'twofix');
+const TWO = (ARM === 'two' || ARM === 'twofix' || ARM === 'twogate');
 const FIX = (ARM === 'twofix');
+const GATE = (ARM === 'twogate');
 
 //   ★흐름 품목 정본 — **재구현 0**. 이름만 정본에서 그대로 옮겨 적는다(값 계산은 안 한다).
 //     `sim/economy-sim.js:181` COOK_SIDE_INGREDIENTS · `:3026` fuelFromWood(연료 목재) · `:2398` _stCost(석기 재료 돌)
@@ -91,6 +93,7 @@ const world = econV2.createWorldV2({ seed: SEED, villageCount: seeds.length, pic
 world.villages = []; world.events = [];
 R('server/trees').attachToWorld(world);
 if (TWO) world.cargoTwo = true;
+if (GATE) world.cargoTwoGate = true;
 for (const s of seeds) {
   const ev = econ.createVillage({ ...s.lp, initialPop: P.INITIAL_POP, name: s.name });
   ev._world = world; ev.coord = { x: s.ccx * 2.5, y: s.ccy * 2.5 };
@@ -107,6 +110,8 @@ const rows = world.villages.map((v, i) => ({
   first: {}, second: {},                       // 품목 → {n, units, gross}
   //   ⓒ 교환비 감사 — 첫째는 `:736` 관문을 통과한 값, 둘째는 관문이 **없다**.
   p1Gain: 0, p2Gain: 0, p2Loss: 0, p2LossUnits: 0, p2N: 0,
+  //   ★[T233] 사후 관문 자 — 정본이 낸 `p2ProfitPerUnit`(첫째와 같은 함수)을 그대로 쓴다(사본 0).
+  g1Fail: 0, g1FailUnits: 0, g2Fail: 0, g2FailUnits: 0, gateBlocked: 0, p2PU: 0,
   //   ⓑ 흐름 품목
   flowUnits: { '부재료': 0, '연료': 0, '도구재료': 0 }, flowN: { '부재료': 0, '연료': 0, '도구재료': 0 },
   //   ⓐ 실린 뒤 며칠 만에 keep 아래로
@@ -129,9 +134,16 @@ world.onTradeLeg = (o) => {
     const s = byRes(r.second, o.second); s.n++; s.units += o.secondUnits; s.gross += o.secondUnits * (o.p2From || 0);
     //   ⓒ **둘째의 관문 없는 이익** — 첫째와 같은 식(`:733-735`)을 **밖에서 재계산하지 않고**,
     //     훅이 내보낸 그 leg 의 값·운반비를 그대로 써서 단위당을 본다.
-    const rev2 = (o.p2To || 0) * 0.95;                       // FORWARD_PRICE_MARGIN — 훅이 첫째에 쓴 그 마진
-    const cost2 = (o.p2From || 0) + (o.tcPerUnit || 0);
-    const pu2 = rev2 - cost2;
+    //   ★[T233] **정본이 낸 수를 그대로 쓴다** — `p2ProfitPerUnit` 은 첫째가 부르는 `_legProfitPerUnit`
+    //     이 낸 값이다(운반비·TAU·약탈 기대손실 전부 반영). 밖에서 다시 계산하지 않는다.
+    const pu2 = o.p2ProfitPerUnit || 0;
+    r.p2PU += pu2 * o.secondUnits;
+    r.gateBlocked += (o.gateBlocked || 0);
+    //   관문 ①(수익성): 첫째의 `if (totalProfit <= 0) continue;` 와 같은 판정
+    if (!(pu2 * o.secondUnits > 0)) { r.g1Fail++; r.g1FailUnits += o.secondUnits; }
+    //   관문 ②(기회비용): 첫째의 `if (best.profit <= lp.mv * tripDays * (1 - 0.5*slack)) break;`
+    //     ⚠둘째에 이걸 그대로 적용하는 건 **논리가 다르다**(노동은 첫째가 이미 치렀다) — 크기만 잰다.
+    if (!(pu2 * o.secondUnits > (o.mv || 0) * (o.tripDays || 0) * (1 - 0.5 * (o.slack || 0)))) { r.g2Fail++; r.g2FailUnits += o.secondUnits; }
     if (pu2 >= 0) r.p2Gain += pu2 * o.secondUnits;
     else { r.p2Loss += -pu2 * o.secondUnits; r.p2LossUnits += o.secondUnits; }
     for (const c of CLASSOF(o.second)) { r.flowUnits[c] += o.secondUnits; r.flowN[c]++; }
