@@ -323,6 +323,14 @@ if os.environ.get('CROP_SIAN') == 'all':
     SIAN_PAIRS = _sian_all_pairs()
     os.environ['CROP_SIAN'] = '1'
 
+# ★★[T224] **싹(1) 갈래** — `CROP_SIAN_SPROUT=1` 이면 종마다 **싹 크기의 종 모델**을 심는다.
+#   왜 이렇게 재나: 지금 싹은 `_sprouts(x, y, i)` 가 그리는데 그 함수엔 **종 인자가 없다** —
+#   34종을 그대로 구우면 34장이 **글자 그대로 같은 그림**이고 거리는 0 이다(자명 통과).
+#   그래서 "종별 싹을 만든다면 **가장 다를 수 있는 경우**"를 잰다: 그 종의 모델을 싹 크기(`SPROUT_S`)로.
+#   이 값이 문턱을 못 넘으면 **어떤 종별 싹도 안 갈린다**(상한이 문턱 아래라는 뜻) — 그것이 닫는 답이다.
+#   ⚠이건 시안용 상한 측정이고 배포 후보가 아니다(진짜 싹은 떡잎이라 다 닮았다는 것이 굽기 주석의 주장).
+SPROUT_S = 0.17 / 0.42      # 어린싹 높이(`_sprouts` h=0.17) ÷ 여덟 군 자람 크기 중앙값(0.42 · T120)
+
 if os.environ.get('CROP_SIAN') == '1':
     SOUT = os.path.join(OUT, '_sian')
     os.makedirs(SOUT, exist_ok=True)
@@ -333,7 +341,12 @@ if os.environ.get('CROP_SIAN') == '1':
         fn = getattr(MC, 'm_' + cid, None)
         if fn is None:
             print('  ! 종 모델 없음:', cid); continue
-        _stages = ((3, fn, s3),) if os.environ.get('CROP_SIAN_RIPE') == '1' else ((2, b2, s2), (3, fn, s3))
+        if os.environ.get('CROP_SIAN_SPROUT') == '1':
+            _stages = ((1, fn, s3 * SPROUT_S),)      # ★싹 크기의 종 모델 — 상한 측정
+        elif os.environ.get('CROP_SIAN_RIPE') == '1':
+            _stages = ((3, fn, s3),)
+        else:
+            _stages = ((2, b2, s2), (3, fn, s3))
         for st, builder, sz in _stages:
             OBJS.clear()
             soil_bed(furrows=furrows)
@@ -353,7 +366,7 @@ if os.environ.get('CROP_SIAN') == '1':
             rc.cleanup()
     # ★★잡음 바닥 — **같은 종을 심는 자리만 바꿔** 한 장 더 굽는다.
     #   화소 |Δ| 로 "종이 갈리나"를 재면 거짓말이 된다(잎 자리가 난수다). 그 거짓말의 크기를 잰다.
-    if 'perilla_3' in recs and os.environ.get('CROP_SIAN_RIPE') != '1':
+    if 'perilla_3' in recs and os.environ.get('CROP_SIAN_RIPE') != '1' and os.environ.get('CROP_SIAN_SPROUT') != '1':
         g = next(x for x in GROUPS if x[0] == 'oil')
         _, _, (per, nrow), furrows, sd, _, _, _, s3 = g
         OBJS.clear(); soil_bed(furrows=furrows)
