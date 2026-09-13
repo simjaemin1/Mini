@@ -121,6 +121,9 @@ const rows = world.villages.map((v, i) => ({
   //     그날 교역을 **시도한** village-day 마다 불리고, `onTradeLeg` 는 **실제로 선** 캐러밴마다 불린다.
   //     둘의 차가 "설 수 있었는데 안 선 자리" 다. 어느 쪽이 줄었나로 문턱/`spareCap` 이 갈린다.
   vDays: 0, capSum: 0, capMax: 0, candSum: 0, candN: 0, candMin: 1e9,
+  //   ★[T271 관측 항] "떼이는 쪽인가 안 오는 쪽인가" 를 가르려면 **들어오는 것**도 세야 한다.
+  //     T265 광산1 이 보인 것: 나간 게 없어도 **오는 캐러밴이 줄어** 죽을 수 있다.
+  inLegs: 0, inRes: {}, inUnits: 0,
   //   ⓑ 흐름 품목
   flowUnits: { '부재료': 0, '연료': 0, '도구재료': 0 }, flowN: { '부재료': 0, '연료': 0, '도구재료': 0 },
   //   ⓐ 실린 뒤 며칠 만에 keep 아래로
@@ -133,7 +136,17 @@ const byRes = (o, r) => (o[r] || (o[r] = { n: 0, units: 0, gross: 0 }));
 
 //   실린 뒤 추적 — {vid, res, keep, day} 를 큐에 넣고 매일 곳간을 본다.
 const watch = [];
+//   ★[T271] 이름→행 지도 — 도착지(`to`)는 이름으로 오므로 한 번 만들어 둔다.
+//     ⚠첫 판은 이 선언을 쓰는 줄보다 **아래**에 두어 `ReferenceError` 로 45판이 통째로 죽었다.
+const _byName = new Map(rows.map((r) => [r.name, r]));
 world.onTradeLeg = (o) => {
+  //   ★[T271] 도착지 쪽도 적는다 — `to` 는 마을 이름이라 이름→행 지도를 한 번 만든다.
+  const rin = _byName.get(o.to);
+  if (rin) {
+    rin.inLegs++; rin.inUnits += (o.units || 0) + (o.secondUnits || 0);
+    rin.inRes[o.res] = (rin.inRes[o.res] || 0) + o.units;
+    if (o.second) rin.inRes[o.second] = (rin.inRes[o.second] || 0) + o.secondUnits;
+  }
   const r = rows[o.vid]; if (!r) return;
   r.legs++;
   //   ★[T248] 이 leg 이 섰을 때 후보가 몇 개였나 — 문턱 쪽이 좁아졌는지 본다.
@@ -235,7 +248,19 @@ for (let d = 0; d < DAYS; d++) {
     else if (d - w.day >= 60) { r.noDropN++; watch.splice(k, 1); }   // 60일 안 안 내려가면 "안 내려갔다"
   }
 }
-for (let i = 0; i < world.villages.length; i++) rows[i].popEnd = world.villages[i].npcs.length;
+for (let i = 0; i < world.villages.length; i++) {
+  const v = world.villages[i], r = rows[i];
+  r.popEnd = v.npcs.length;
+  //   ★[T271 관측 항] 생선 — 어촌이 지는 기전을 보려면 재고와 **그림자가격**이 필요하다.
+  //     가격은 정본 함수를 그대로 부른다(사본 0 — `computeShadowPrices` 는 v2 가 내보낸다).
+  const st = v.storage || {};
+  r.fishStock = +(st.fish || 0).toFixed(1);
+  r.salmonStock = +(st.salmon || 0).toFixed(1);
+  r.foodStock2 = +(st.food || 0).toFixed(1);
+  r.foodEq2 = +((econ.totalFoodEquivalent ? econ.totalFoodEquivalent(v) : 0) || 0).toFixed(1);
+  try { const _p = econV2.computeShadowPrices(v); r.fishPrice = +(_p.fish || 0).toFixed(3); r.foodPrice = +(_p.food || 0).toFixed(3); }
+  catch (e) { r.fishPrice = null; r.foodPrice = null; }
+}
 
 const totalPop = rows.reduce((a, r) => a + r.popEnd, 0);
 console.log(`\n=== T231 [${ARM}] — 시드 ${SEED} · ${DAYS}일 · 마을 ${rows.length} ===`);
