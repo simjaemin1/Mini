@@ -607,3 +607,81 @@ T242 의 전수표가 ⚠ **25** 를 말했다(쓰기 17 · 읽힘 6 · 회부 #
 
 `test-guest-identity` §⑨ 19건(§⑧ 표도 갱신) — **98/0 → 116/0**.
 파수꾼이 이제 **`라우트 62 · 공개 16 · 안문 40 · 본인 3 · 투영 3 · 남음 2`** 를 찍는다(남은 둘은 회부된 #2·#9 뿐).
+
+## N-배포뒤. ★★[T281 2026-09-13] **배포 뒤 한 번 — 닫은 문이 정말 닫혔나** (#27 절차 한 쪽)
+
+T217·T225·T235·T245 가 넉 장에 걸쳐 문을 닫았고, 넷 다 **아직 배포 전**이다.
+`bash /opt/Mini/scripts/redeploy-hanbando.sh --all` 로 올린 **뒤에 이 쪽을 한 번** 돌린다.
+⚠전부 **바깥에서** 돌린다(집 노트북 등 — 서버 안에서 `localhost` 로 두드리면 사설 주소라 **안 문이 열린다**. 그건 다른 검사다).
+
+### ① 바깥 문 — 전부 **404** 여야 한다
+
+```sh
+C=https://<central 공개주소>          # 예: 브라우저가 로비를 받는 그 주소
+Z=https://<존 공개주소>                # 클라가 ws 로 붙는 그 호스트의 HTTP
+
+# ── T235·T245 가 닫은 central 쓰기 문 (남의 이름을 실어도 열리면 안 된다)
+for P in /market/order /market/cancel /war/declare /war/end /tribe/leave \
+         /friend/req /friend/del /tribe/add_vp /tribe/treasury /tribe/npc_upsert \
+         /tribe/invite /tribe/invite_accept /tribe/granary /tribe/granary_set \
+         /tribe/mode /tribe/intro /tribe/create /tribe/join; do
+  printf '%-24s %s\n' "$P" "$(curl -s -o /dev/null -w '%{http_code}' -X POST \
+    -H 'Content-Type: application/json' -d '{"player_id":"아무개","tribe_id":1}' "$C$P")"
+done            # → 전부 404
+
+# ── T245 가 닫은 central 읽기 문
+for P in /market/orders /tribe/1; do
+  printf '%-24s %s\n' "$P" "$(curl -s -o /dev/null -w '%{http_code}' "$C$P")"
+done            # → 전부 404
+
+# ── T225·T245 가 닫은 존 문(관측창 열 + 존↔존 다섯 + perf·metrics)
+for P in /welcomedbg /guilddbg /lifedbg /followdbg /friendsdbg /claimdbg /shelterdbg /roomdbg /routedbg /bodydbg /perf /metrics; do
+  printf '%-24s %s\n' "$P" "$(curl -s -o /dev/null -w '%{http_code}' "$Z$P")"
+done            # → 전부 404
+for P in /ghost_sync /cross_damage /handoff_prepare /handoff_ack /kick_player; do
+  printf '%-24s %s\n' "$P" "$(curl -s -o /dev/null -w '%{http_code}' -X POST \
+    -H 'Content-Type: application/json' -d '{"player_id":"아무개"}' "$Z$P")"
+done            # → 전부 404
+```
+
+### ② 살아 있어야 하는 문 — **200**
+
+```sh
+curl -s -o /dev/null -w '%{http_code}\n' "$C/zones"        # → 200 (로비가 읽는다)
+curl -s -o /dev/null -w '%{http_code}\n' "$C/health"       # → 200
+curl -s -o /dev/null -w '%{http_code}\n' "$C/tribes"       # → 200 ★T245 **투영**
+curl -s -o /dev/null -w '%{http_code}\n' "$C/wars/active"  # → 200
+curl -s -o /dev/null -w '%{http_code}\n' "$Z/health"       # → 200
+
+# ★투영이 실제로 걷어내는지 — 이 둘이 **비어 있어야** 한다(T245)
+curl -s "$C/tribes" | grep -c 'leader_id'      # → 0
+curl -s "$C/tribes" | grep -c 'treasury_json'  # → 0
+# ★사람 투영(T217) — 열쇠·좌표가 없어야 한다
+curl -s "$C/player/<아무 계정 이름>" | grep -cE 'guest_token|password_hash|home_x'   # → 0
+```
+
+### ③ 게임 안 실기 — 넷
+
+| # | 무엇 | 기대 |
+|---|---|---|
+| 1 | 로그인하고 **길드 만들기** | 된다(존 경유 · T245) |
+| 2 | 다른 길드에 **가입** | 된다 |
+| 3 | **거래소** 열어 호가창이 보이고 주문·취소 | 된다(존 경유 · T235/T245) |
+| 4 | 길드 패널의 **멤버 목록·금고**가 보인다 | 보인다(`tribe/info` 존 경유) |
+
+⚠하나라도 안 되면 **되돌리지 말고** 무엇이 404 인지부터 본다 — ①에서 404 여야 할 문이 200 이거나
+②에서 200 이어야 할 문이 404 면 원인이 다르다(전자는 배포가 안 됐다, 후자는 안 문 판정이 바깥으로 샌 것).
+
+### ④ 파수꾼 재집계 — 레포에서
+
+```sh
+node scripts/test-guest-identity.js | tail -3
+#   → "라우트 62 · 공개 16 · 안문 40 · 본인 3 · 투영 3 · 남음 2 (쓰기 0 · 읽힘 0 · 회부됨 2)"
+#   → "116 통과 / 0 실패"
+```
+
+수가 다르면 **표가 낡은 것이다** — 새 라우트가 생겼으면 §⑧ 이 빨강으로 문다(그게 그 절의 일이다 · N-전수표).
+
+### ⑤ `CENTRAL_SECRET`
+
+**지금은 넣지 않아도 된다.** 필요해지는 날과 넣는 법은 위 **N-비밀** 절에 있다.
