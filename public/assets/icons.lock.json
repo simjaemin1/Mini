@@ -444,6 +444,8 @@
   "bronze_hit.ogg": "5e0b170805495641",
   "cast.m4a": "116bb03bc548c8b6",
   "cast.ogg": "93cccb71de406f68",
+  "deer_call.m4a": "3c8dcb80a8d94ab1",
+  "deer_call.ogg": "858c2a8515fd96c8",
   "eat.m4a": "85b81d43ea4cc7c4",
   "eat.ogg": "2ec036ab4168e6c2",
   "fire.m4a": "2277c30821028691",
@@ -456,10 +458,16 @@
   "step_dirt.ogg": "9fb6008d739cf948",
   "step_grass.m4a": "8851be9d1804fe3a",
   "step_grass.ogg": "ce38aa5888aa3c81",
+  "tiger_growl.m4a": "b01231043d63b366",
+  "tiger_growl.ogg": "9c0924a86812caf0",
+  "ui_click.m4a": "ea5a35267e84cdf9",
+  "ui_click.ogg": "80e2f0f4d970472b",
   "water.m4a": "b1beacea34b745b8",
   "water.ogg": "20afd52e1909f24a",
   "wind.m4a": "0c2cadc797f95ff5",
-  "wind.ogg": "874df25c224b5b56"
+  "wind.ogg": "874df25c224b5b56",
+  "wolf_growl.m4a": "bede1a0fd717ed8e",
+  "wolf_growl.ogg": "d9176d7001d68f01"
  },
  "terrain": {
   "dry_angled": "1e5ebd9b35da2d46",
@@ -508,7 +516,7 @@
   "threads": 2,
   "simd": "fma avx avx2 avx512f avx512dq avx512bw avx512vl avx512_vnni",
   "node": "v22.22.2",
-  "commit": "974255bb",
+  "commit": "492eb490",
   "당시": "2026-09-13"
  }
 }

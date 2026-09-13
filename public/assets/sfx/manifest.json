@@ -4,19 +4,24 @@
   "_감쇠": "linear — g = volume * max(0, 1 - d/radius). 역제곱이 아니라 선형을 골랐다: 반경 밖이 정확히 0 이라 '멀리서 웅웅대는 꼬리'가 안 남고, 반경 하나로 '어디까지 들리나'가 표에서 읽힌다. 역제곱은 0 에 점근할 뿐이라 컷오프를 또 정해야 한다(값이 둘이 된다).",
   "_파일없음": "file: null = 음원 미확보. 그 키는 **무음**이고 하네스는 '미확보'로 센다 — 빨강이 아니다. 2026-09-13 현재 미확보는 둘(`wolf_growl`·`harvest`) — T269 가 '출처 셋에 없어서' 못 닫았다(CC0 늑대라는 것들이 늑대가 아니고, 수확으로 적힌 소리가 없다). 파일이 들어오면 코드 수정 0 으로 그대로 난다.",
   "_포맷": ".ogg + .m4a 쌍(bgm 과 같은 규약) · 단발 ≤ 3초 · 반복 ≤ 10초(이음새) · 파일당 ≤ 150KB · 자리는 public/assets/sfx/<key>.{ogg,m4a}. ★표는 **파일 이름을 그대로** 적는다(어간 아님) — `asset-lock.keyOf` 가 소리만 파일 이름을 키로 쓰고(한 소리에 두 파일), `test-assets-audit` 이 `ogg`·`m4a` 를 **어간 대조에서 뺐기** 때문이다(짧은 영단어가 코드 아무 데나 걸린다 — T266). 이름이나 URL 로 불러야 고아가 풀린다. 그래서 `.m4a` 도 `fileAlt` 로 적는다 — 사파리가 Ogg Vorbis 를 못 튼다는 실제 이유도 같이 있다.",
-
   "version": 1,
   "attenuation": "linear",
-
   "_헤드룸": "효과음 버스 기본값 0.7 은 눈대중이 아니라 이 표에서 나온 수다 [T261 · T269 회부 4 에 대한 답]. 한 순간에 동시에 날 수 있는 최악의 조합은 wind(0.5) + fire(0.75) + 발자국(0.42) = 1.67 이다(반경 감쇠를 0 으로 본 상한 · 같은 키 동시 상한은 maxSame 이 따로 막는다). 0.8(전체) × 0.7(효과음) × 1.67 = 0.94 < 1.0 ⇒ 슬라이더를 다 올려도 목적지에서 안 잘린다. ⇒ 음원 정규화 목표는 **−1.0 dBFS 그대로 둔다**(다시 굽지 않는다 · axe 의 −0.35dB 도 이 헤드룸 안이다). 키를 더할 때는 이 곱을 다시 세라.",
-
   "bus": {
-    "master": { "default": 0.8, "label": "전체" },
-    "sfx":    { "default": 0.7, "label": "효과음" },
-    "music":  { "default": 0.45, "label": "음악" }
+    "master": {
+      "default": 0.8,
+      "label": "전체"
+    },
+    "sfx": {
+      "default": 0.7,
+      "label": "효과음"
+    },
+    "music": {
+      "default": 0.45,
+      "label": "음악"
+    }
   },
   "storageKey": "durango.audio",
-
   "bgm": {
     "engine": "DurangoBGM",
     "source": "public/assets/audio/bgm/bgm.js",
@@ -26,67 +31,113 @@
     "_곡사이무음": "카드가 요구한 '곡 사이 무음 2~3초'는 **이 엔진에 자리가 없다**(§0-ⓑ 실측). bgm.js 는 파일을 한 장도 안 받는 **절차적 연속 엔진**이고(`create/start/setScene/setMood/setIntensity/setDayPhase`), 곡이 끝나는 순간이 없다. 장면이 바뀔 때 `setScene(s, fade)` 로 겹쳐 넘어갈 뿐이라 그 페이드 초가 여기 대응값이다. 무음을 넣으려면 엔진을 고쳐야 하는데 이 카드는 '재생기 수정 0' 이다 ⇒ 회부.",
     "_13곡": "디스크의 .ogg/.m4a 13곡은 이 엔진을 **오프라인으로 뽑아 둔 것**(compose.py 산물)이고 런타임이 읽지 않는다. 그래도 표(render-meta.json tracks)와 디스크가 어긋나면 크레딧·잠금이 같이 썩으므로 하네스가 센다.",
     "scenes": {
-      "village_day":   "마을 안(`window.__evNearVid != null`) · 낮(`isNight()` false)",
+      "village_day": "마을 안(`window.__evNearVid != null`) · 낮(`isNight()` false)",
       "village_night": "마을 안 · 밤",
-      "journey":       "마을 밖",
-      "battle":        "미배선 — 클라에 '전쟁 중' 술어가 없다(§0-ⓑ 실측: `warActive`·`inWar` 0곳). 세계가 그 값을 보내는 날 저절로 켜진다 ⇒ 회부."
+      "journey": "마을 밖",
+      "battle": "미배선 — 클라에 '전쟁 중' 술어가 없다(§0-ⓑ 실측: `warActive`·`inWar` 0곳). 세계가 그 값을 보내는 날 저절로 켜진다 ⇒ 회부."
     },
     "mood": {
       "value": null,
       "_왜": "고르지 않는다 — `render-meta.json` 에 **태그 칸이 없다**(seconds·rms_db·peak_db 뿐). 카드가 '표에 이미 있는 태그로(없으면 낮/밤만 · 지어내지 않는다)' 라고 못 박았으므로 엔진 기본값(trad)을 그대로 쓴다. 곡 이름의 `_trad`·`_amb`·`_ari` 는 표의 칸이 아니라 파일 이름이다."
     }
   },
-
   "keys": {
     "step_dirt": {
-      "file": "step_dirt.ogg", "fileAlt": "step_dirt.m4a", "volume": 0.42, "radius": 0, "loop": false,
-      "maxSame": 2, "cooldownMs": 0, "source": "kenney_rpg_audio",
+      "file": "step_dirt.ogg",
+      "fileAlt": "step_dirt.m4a",
+      "volume": 0.42,
+      "radius": 0,
+      "loop": false,
+      "maxSame": 2,
+      "cooldownMs": 0,
+      "source": "kenney_rpg_audio",
       "훅": "42-r2-char.js drawCharSprite — 내 캐릭터의 걷기/뛰기 클립 **발 딛는 판**. 새 타이머 0 — 간격은 애니 fps 가 정한다.",
       "땅": "발밑 정본 `window.__tileStateAt(lcx,lcy)` 의 kind='rock' 또는 geo(산터) · 또는 풀 알파 < 0.5"
     },
     "step_grass": {
-      "file": "step_grass.ogg", "fileAlt": "step_grass.m4a", "volume": 0.42, "radius": 0, "loop": false,
-      "maxSame": 2, "cooldownMs": 0, "source": "kenney_rpg_audio",
+      "file": "step_grass.ogg",
+      "fileAlt": "step_grass.m4a",
+      "volume": 0.42,
+      "radius": 0,
+      "loop": false,
+      "maxSame": 2,
+      "cooldownMs": 0,
+      "source": "kenney_rpg_audio",
       "훅": "step_dirt 와 **같은 한 줄**(발밑 지형이 가른다 — 훅이 둘이 아니다)",
       "땅": "kind='land' 이고 풀 알파 ≥ 0.5 (알파는 `SoilBase.biomeOf(존 바이옴).grass` 램프 — 클라가 땅을 그릴 때 쓰는 그 자)"
     },
     "wolf_growl": {
-      "file": null, "volume": 0.9, "radius": 480, "loop": false,
-      "maxSame": 1, "cooldownMs": 4200, "source": null,
+      "file": "wolf_growl.ogg",
+      "fileAlt": "wolf_growl.m4a",
+      "volume": 0.9,
+      "radius": 480,
+      "loop": false,
+      "maxSame": 1,
+      "cooldownMs": 4200,
+      "source": "commons_pd_wolf",
       "훅": "34-m-renderloop.js `__sfx.scan` — 이번 프레임 renderables 의 kind='mob' · m.type='wolf'",
-      "_반경": "480 월드px = 15셀. 자는 눈대중이 아니라 이 레포의 것이다: `41-h-bubble.js` 의 '목소리가 닿는' 반경 EV_BRIEF_PX(260px)보다 멀고, 렌더 컬링 반경 VIEW_RADIUS 보다 가깝다 — 화면에 보이는 늑대만 운다."
+      "_반경": "480 월드px = 15셀. 자는 눈대중이 아니라 이 레포의 것이다: `41-h-bubble.js` 의 '목소리가 닿는' 반경 EV_BRIEF_PX(260px)보다 멀고, 렌더 컬링 반경 VIEW_RADIUS 보다 가깝다 — 화면에 보이는 늑대만 운다.",
+      "_이름": "⚠파일은 **울부짖음(howl)** 이지 으르렁(growl)이 아니다 [T282 실측]. 같은 자를 둘에 댔다: 이 파일 중심 1,100~1,240Hz · 평탄도 0.0002 · 500Hz 아래 0.4%(순음=울부짖음) ↔ tiger_growl 226~426Hz · 평탄도 0.002~0.016 · 500Hz 아래 71~97%(저역+잡음=으르렁). 종은 맞다(Canis lupus · 유럽 늑대 · 녹음자·날짜 있음) — 이름만 어긋난다. `wolf_howl` 로 바꿀지는 세션9/재민."
     },
     "fire": {
-      "file": "fire.ogg", "fileAlt": "fire.m4a", "volume": 0.75, "radius": 320, "loop": true,
-      "maxSame": 3, "cooldownMs": 0, "source": "commons_fire_drygrass",
+      "file": "fire.ogg",
+      "fileAlt": "fire.m4a",
+      "volume": 0.75,
+      "radius": 320,
+      "loop": true,
+      "maxSame": 3,
+      "cooldownMs": 0,
+      "source": "commons_fire_drygrass",
       "훅": "34-m-renderloop.js `__sfx.scan` — kind='building' · b.type='campfire' (반복 · 개체마다 하나 · 화면 밖이면 멎는다)",
       "_반경": "320 월드px = 10셀. 모닥불은 요리 사거리 안에서 들려야 한다."
     },
     "wind": {
-      "file": "wind.ogg", "fileAlt": "wind.m4a", "volume": 0.5, "radius": 0, "loop": true,
-      "maxSame": 1, "cooldownMs": 0, "source": "commons_wind_breeze", "gainK": 1.4,
+      "file": "wind.ogg",
+      "fileAlt": "wind.m4a",
+      "volume": 0.5,
+      "radius": 0,
+      "loop": true,
+      "maxSame": 1,
+      "cooldownMs": 0,
+      "source": "commons_wind_breeze",
+      "gainK": 1.4,
       "훅": "37-r1-weather.js drawWeather — `wxState().wind`(server/wind.js seasonWind · 부호 있는 계절풍)의 |세기|. 실내면 0.",
       "_세기": "볼륨 = volume * min(1, |wind| * 1.4). 1.4 는 빗줄기 기울기가 이미 쓰는 WX_TILT_K 와 **같은 수**다 — 같은 바람을 두 자로 재지 않는다."
     },
     "harvest": {
-      "file": null, "volume": 0.7, "radius": 0, "loop": false,
-      "maxSame": 1, "cooldownMs": 120, "source": null,
+      "file": null,
+      "volume": 0.7,
+      "radius": 0,
+      "loop": false,
+      "maxSame": 1,
+      "cooldownMs": 120,
+      "source": null,
       "훅": "30-n-net.js sendPrimary — `type` 이 'harvest' 또는 'gather'(맨손). ⚠**발신**이지 성사가 아니다 — 아래 _성사 참조."
     },
     "eat": {
-      "file": "eat.ogg", "fileAlt": "eat.m4a", "volume": 0.7, "radius": 0, "loop": false,
-      "maxSame": 1, "cooldownMs": 120, "source": "oga_creature_sfx",
+      "file": "eat.ogg",
+      "fileAlt": "eat.m4a",
+      "volume": 0.7,
+      "radius": 0,
+      "loop": false,
+      "maxSame": 1,
+      "cooldownMs": 120,
+      "source": "oga_creature_sfx",
       "훅": "30-n-net.js sendPrimary — `type` 이 'eat' 또는 'eat_dish'. ⚠발신."
     },
     "axe": {
-      "file": "axe.ogg", "fileAlt": "axe.m4a", "volume": 0.8, "radius": 0, "loop": false,
-      "maxSame": 2, "cooldownMs": 0, "source": "kenney_rpg_audio",
+      "file": "axe.ogg",
+      "fileAlt": "axe.m4a",
+      "volume": 0.8,
+      "radius": 0,
+      "loop": false,
+      "maxSame": 2,
+      "cooldownMs": 0,
+      "source": "kenney_rpg_audio",
       "훅": "30-n-net.js sendPrimary — `type='gather'` 이고 장착 도구가 도끼(전역 `equipped` 에 'axe' 가 들어감 — 'axe'·'crude_axe' 둘 다). 채집 반복 타이머(46-h-verbs startGatherLoop)가 1초/타로 보내므로 **한 번의 send = 한 번의 도끼질**이다."
     }
   },
-
   "_성사": "카드는 수확·먹기·도끼질 훅을 '서버 동사 결과가 오는 30-n-net.js 핸들러'에 붙이라고 했다. §0-ⓒ 실측: **그런 메시지가 없다.** 서버는 먹기·수확에 전용 결과 타입을 안 보내고 `notice`·`gauges`·`inventory`·`resource_removed` 같은 **공용 메시지**만 보낸다(`doEat`·`tryHarvest`·`gatherResource` 전수). 공용 메시지에 붙이면 남이 한 일에도 소리가 난다. 그래서 **발신 정본 한 자리**(`sendPrimary`)에 붙였다 — 거절당한 동사도 소리가 난다는 맞바꿈이고, 그 대신 훅이 파일 하나·줄 하나다. 성사로 옮기려면 서버가 동사별 결과를 보내야 한다 ⇒ 회부.",
-
   "sources": {
     "_꼴": "출처 id → { license, url, author, received } — 값은 `CREDITS.md` §2-b 와 **같은 값**이다(사본이 아니라 같은 표를 두 자리에 적은 것 · 어긋나면 사람이 본다). 칸이 비면 하네스 ①이 문다. 출처 없는 소리는 0 이다.",
     "commons_wind_breeze": {
@@ -109,8 +160,9 @@
       "url": "https://kenney.nl/assets/rpg-audio",
       "author": "Kenney Vleugels (Kenney.nl)",
       "received": "2026-09-13",
-      "_원본": "step_dirt = footstep04.ogg · step_grass = footstep07.ogg · axe = chop.ogg (전부 통째) [T269]",
-      "_주의": "★지면은 **가설**이다 — 팩에 무슨 바닥인지 안 적혀 있다. 스펙트럴 중심이 가장 낮은 04(1,007Hz)를 흙, 가장 높은 07(2,189Hz)을 풀로 잡았다. **판정은 재민 귀.**"
+      "_원본": "step_dirt = footstep04.ogg · step_grass = footstep07.ogg · axe = chop.ogg (전부 통째) · ui_click = bookPlace1.ogg (0.30s 중 0.020~0.280s · 선행 무음 잘라 냄) [T269·T282]",
+      "_주의": "★지면은 **가설**이다 — 팩에 무슨 바닥인지 안 적혀 있다. 스펙트럴 중심이 가장 낮은 04(1,007Hz)를 흙, 가장 높은 07(2,189Hz)을 풀로 잡았다. **판정은 재민 귀.**",
+      "_후보": "`ui_click` 은 **후보**다 — 훅 0 · 키 0 (\"있어야 하나\"는 재민 · T282). 후보 셋을 같은 자로 쟀다: bookPlace1 선행 6.0ms·SNR 38.8dB ← 골랐다 · bookClose 선행 72.9ms·SNR 29.6 · Woodpecker tapping(USFWS·PD · https://commons.wikimedia.org/wiki/File:Woodpecker_tapping.ogg) 선행 14.5ms·SNR 10.1. 딱따구리가 \"진짜 나무 두드림\"이라 먼저 골랐다가 자가 뒤집었다 — 숲 바닥이 같이 오고 정점이 116ms 뒤에 온다."
     },
     "oga_creature_sfx": {
       "license": "CC0",
@@ -118,6 +170,73 @@
       "author": "rubberduck",
       "received": "2026-09-13",
       "_원본": "eat = eat_02.ogg (통째) [T269]"
+    },
+    "commons_pd_water": {
+      "license": "Public domain",
+      "url": "https://commons.wikimedia.org/wiki/File:Water_flowing_pouring_trickling.ogg",
+      "author": "stephan",
+      "received": "2026-09-13",
+      "_잘라낸구간": "원본 96.29s 중 40.0~52.0s → 10.0s 반복 · 페이드 **2초** [T272]",
+      "_주의": "세기가 10초 안에서 크게 변해 1초 페이드로는 이음새가 5.59dB 였다. 2초로 0.64dB."
+    },
+    "commons_pd_rain": {
+      "license": "Public domain",
+      "url": "https://commons.wikimedia.org/wiki/File:Rain_(1).ogg",
+      "author": "ezwa",
+      "received": "2026-09-13",
+      "_잘라낸구간": "원본 44.96s 중 30.0~41.0s → 10.0s 반복 [T272]"
+    },
+    "commons_pd_bird": {
+      "license": "Public domain",
+      "url": "https://commons.wikimedia.org/wiki/File:Birds_singing_in_garden.ogg",
+      "author": "ezwa",
+      "received": "2026-09-13",
+      "_잘라낸구간": "원본 49.48s 중 1.0~12.0s → 10.0s 반복 [T272]",
+      "_주의": "`wind` 원본에서 새를 되살리는 길을 재 보고 안 썼다 — 그 파일의 새는 얇다(>2kHz 최고 창 0.40%)."
+    },
+    "commons_pd_dullthud": {
+      "license": "Public domain",
+      "url": "https://commons.wikimedia.org/wiki/File:Dull_thud.ogg",
+      "author": "gregoryweir",
+      "received": "2026-09-13",
+      "_잘라낸구간": "통째 0.32s [T272]",
+      "_주의": "⚠재료는 **가설**이다 — 제목이 \"Dull thud\" 이고 무엇을 친 것인지 안 적는다. 쇠의 긴 울림만 쟀다(139ms · metalPot1 302ms 의 절반). 청동이냐 돌이냐는 자로 못 가른다 · 재민 귀."
+    },
+    "commons_pd_splashes": {
+      "license": "Public domain",
+      "url": "https://commons.wikimedia.org/wiki/File:Bathtub_water_splashes.ogg",
+      "author": "gradha",
+      "received": "2026-09-13",
+      "_원본": "cast = 7.0~8.2s · bite = 37.9~38.9s · hook = 24.8~26.2s — **한 원본의 서로 다른 사건 셋** [T272]",
+      "_주의": "⚠배역은 **가설**이다 — 출처가 던짐/입질/걸림을 안 말한다. 크기로 갈랐다(큰 것=hook −3.63dB · 중간=cast −3.82 · 작은 것=bite −7.53). 재민 귀."
+    },
+    "commons_pd_wolf": {
+      "license": "Public domain",
+      "url": "https://commons.wikimedia.org/wiki/File:Rallying.ogg",
+      "author": "Retron at English Wikipedia",
+      "received": "2026-09-13",
+      "_잘라낸구간": "원본 18.12s 중 6.50~9.00s → 2.50s 단발 [T282]",
+      "_원문": "A recording of European wolves \"rallying\", recorded by myself in July 2005. (녹음 2005-07 · 게시 2007-07-06 · PD-user)",
+      "_주의": "⚠울부짖음이지 으르렁이 아니다 — 키의 `_이름` 칸 참조."
+    },
+    "commons_pd_elk": {
+      "license": "Public domain",
+      "url": "https://commons.wikimedia.org/wiki/File:American_Elk_Bugling.ogg",
+      "author": "Jim Pisarowicz",
+      "received": "2026-09-13",
+      "_잘라낸구간": "원본 5.13s 중 0.50~2.50s → 2.00s 단발 [T282]",
+      "_주의": "⚠종은 **와피티**(Cervus canadensis)다. 한반도 사슴(Cervus nippon·노루)의 PD/CC0 녹음이 Commons 에 없다(Sika Deer 는 CC BY-SA 4.0). 종을 바꿔 부르지 않았다 — 울음 판정은 재민 귀. 원본이 이미 0dBFS 에 붙어 있어(0dB 표본 194개) 깎아서 −1 로 맞췄고, 표본율 11,025Hz 를 올려 굽지 않았다.",
+      "_키": "아직 없다 — 훅과 함께 T283(세션9). 정본 종 목록은 `server/wildlife.js MAIN_TYPE` 의 `deer`."
+    },
+    "commons_cc0_tiger": {
+      "license": "CC0",
+      "url": "https://commons.wikimedia.org/wiki/File:439280_schots_angry-tiger.wav",
+      "author": "schots",
+      "received": "2026-09-13",
+      "_잘라낸구간": "원본 65.64s 중 11.00~13.00s → 2.00s 단발 [T282]",
+      "_원문": "Tiger in a cage, growling and snarling. Lots of reverb (freesound 439280 · 2018-08-31 · Category:Panthera tigris)",
+      "_주의": "⚠잔향은 **원본의 것**이다(출처가 스스로 적는다). 빼지 않았다 — 잔향을 지우면 원본을 고치는 것이다.",
+      "_키": "아직 없다 — 훅과 함께 T283(세션9)."
     }
   }
 }

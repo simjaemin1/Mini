@@ -107,14 +107,14 @@
   `acrossfade` 이음새·`.ogg` q4 + `.m4a` 96k). 반복 10초는 **스테레오 q4 가 150KB 를 거의 채운다**
   (140KB) — 모노 q4 면 101KB. 손실 부호화가 피크를 ±0.25 dB 흔든다.
 
-## 1-b-3. 소리 자산 — 들어왔다 [T266 · T269 · T272 2026-09-13] · 매니페스트 표(세션9 가 붙인다)
+## 1-b-3. 소리 자산 — 들어왔다 [T266 · T269 · T272 · T282 2026-09-13] · 매니페스트는 T261 이 세웠다
 
 **이진 파일은 맥 VM 이 받는다.** 컨테이너는 못 받는다(T262 실측) — 푸시가 PAT 를 맥에서만 읽는 것과 같은 문법이다.
 맥 VM 에 `curl`·`ffmpeg`·`ffprobe`·`python3`·`node` 가 다 있고 `commons.wikimedia.org` API 와
 `upload.wikimedia.org` 에 닿는다. 원본은 `~/Mini/_sfx_in/<key>/`(레포 밖 · `SOURCE.txt` 동봉), 가공도 맥,
 **자산 커밋도 맥 트리에서** — 컨테이너 트리와 두 벌이 되지 않게.
 
-### 세션9 가 붙일 매니페스트 표 — **13키 · 26파일** (T272 까지)
+### 소리 표 — **17키 · 34파일** (T282 까지)
 
 | 키 | 파일 | 종류 | 길이 | ogg / m4a | 비고 |
 |---|---|---|---|---|---|
@@ -131,8 +131,12 @@
 | `cast` | `public/assets/sfx/cast.{ogg,m4a}` | 단발 | 0.92s | 12,703 / 12,388 B | ⚠배역은 **가설**(한 원본의 물튀김 셋을 크기로 갈랐다) |
 | `bite` | `public/assets/sfx/bite.{ogg,m4a}` | 단발 | 0.88s | 12,456 / 11,821 B | ⚠같음 |
 | `hook` | `public/assets/sfx/hook.{ogg,m4a}` | 단발 | 1.10s | 14,733 / 14,352 B | ⚠같음 |
+| `deer_call` | `public/assets/sfx/deer_call.{ogg,m4a}` | 단발 | 2.00s | 14,399 / 25,723 B | ⚠종은 **와피티**(Cervus canadensis) · 원본 11,025Hz · 이미 0dBFS 였다 |
+| `tiger_growl` | `public/assets/sfx/tiger_growl.{ogg,m4a}` | 단발 | 2.00s | 21,133 / 25,609 B | 진짜 호랑이(출처가 `Panthera tigris`) · ⚠잔향은 원본의 것 |
+| `wolf_growl` | `public/assets/sfx/wolf_growl.{ogg,m4a}` | 단발 | 2.50s | 24,746 / 31,708 B | ⚠**울부짖음**이지 으르렁이 아니다(자로 갈랐다 · 아래) · **#34 닫힘** |
+| `ui_click` | `public/assets/sfx/ui_click.{ogg,m4a}` | 단발 | 0.26s | 6,110 / 4,164 B | **후보**(키 0 · 훅 0) — 있어야 하나는 재민 |
 
-**미확보 둘**(`wolf_growl`·`harvest`) [T269 뒤 · T272 에서도 그대로 — 찾지 않았다(카드 밖)].
+**미확보는 이제 셋이다**(`harvest` · `boar_grunt` · `hare`) — `wolf_growl` 은 **T282 가 닫았다**(#34 절반).
 T272 의 일곱(`water`·`rain`·`bird`·`bronze_hit`·`cast`·`bite`·`hook`)은 **전부 Commons 퍼블릭 도메인**
 (pdsounds.org 미러 175장). 넷은 T269 가 **Kenney CC0**(RPG Audio — 팩 안 `License.txt`)와
 **OpenGameArt CC0**(80 CC0 creature SFX · rubberduck)에서 받아 닫았다. 남은 둘의 이유:
@@ -171,8 +175,8 @@ T272 의 일곱(`water`·`rain`·`bird`·`bronze_hit`·`cast`·`bite`·`hook`)�
    자산이 영영 안 보인다. ⇒ `*.lock.json` 을 참조 원천에서 뺐다. 실측: 빼도 **그림은 하나도 안 흔들리고**
    고아가 56 → **60**(늘어난 넷이 정확히 `sfx/`). 매니페스트가 부르면 사라진다.
 
-⚠**지금 `sfx` 26장(13키)은 전부 고아로 센다 — 맞는 답이다**(아무도 안 부른다).
-세션9 훅·매니페스트 뒤에 사라진다. 전수 고아는 68 → **82**(늘어난 14가 정확히 T272 의 새 `sfx/`).
+⚠**`sfx` 고아는 T261 이 매니페스트를 세우자 26 → 14 로 줄었고, T282 뒤 20장이다**(34 − 이름이 불리는 14).
+이름이나 URL 로 불려야 풀린다 — 키가 서면 사라진다. 전수 고아 82 → **72**.
 
 ### 반복 굽는 법 — 자를 두 번 고쳤다 [T272]
 
@@ -189,6 +193,54 @@ T272 에서 그 자를 둘 고쳤다.
 3. ⚠**길이는 뜬 뒤에 잰다 — 이 함정을 두 번 밟았다.** `rain` 을 34s 에서 11초 뜨니 **9초**가 나왔다
    (원본 44.96s). T266 의 `fire`(5s → 10.99s)와 **똑같은 자리**다. 30s 로 옮겨 11초를 확보했다.
    `ffmpeg -ss` 는 남은 길이가 모자라면 **조용히 짧게 준다.**
+
+### 야생 소리 — 없다는 것도 재야 한다 [T282]
+
+정본 종 목록은 `server/wildlife.js` 의 `MAIN_TYPE`(`deer`·`arctic_hare`·`wild_boar`·`wolf`·`tiger`)이다.
+다섯 중 **셋을 확보하고 둘을 미확보로 닫았다** — 둘은 "못 찾았다"가 아니라 **없다는 것을 전수로 쟀다**.
+
+| 종 | 결과 | 근거(실측) |
+|---|---|---|
+| `deer` | ○ `deer_call` | American Elk Bugling (Jim Pisarowicz · **PD US NPS**) — ⚠**와피티**다(아래) |
+| `tiger` | ○ `tiger_growl` | 439280 schots angry-tiger (**CC0** · 출처가 `Panthera tigris` · *"growling and snarling"*) |
+| `wolf` | ○ `wolf_growl` | Rallying (Retron · **PD-user** · 유럽 늑대 · 2005-07 녹음) — ⚠울부짖음이다(아래) |
+| `wild_boar` | ✗ 미확보 | `Category:Sus scrofa` **전수 60건** — 소리 파일 다섯이 **전부 발음 녹음**이다(`De-Wildschwein` 설명이 *"Pronunciation recording of German term"*). `Category:Audio files of Sus scrofa` **0건**. 진짜 돼지(Mudchute pig)는 CC BY-SA 3.0 = 규약 밖 |
+| `arctic_hare` | ✗ 미확보 | `Category:Audio files of Lepus` **0건**. 대안(눈 위 발 소리)도 PD/CC0 에 없다 — **눈토끼는 거의 소리가 없다** |
+
+★**출처가 "무엇을 녹음했는지" 말하지 않으면 쓰지 않는다 — 세 번째로 같은 줄에 섰다.**
+T262(freesound 늑대가 CC-BY) · T269(OGA "Wolf Monster Sound" 가 제 설명에 *말 콧김 가공*이라 적음) 에 이어
+T282 에서는 OGA `grunt_01~05` 였다 — 그 페이지가 *"**i created** 80 creature sound effects"* 라고 적는다.
+창작 괴물 소리를 멧돼지라 부르는 것은 **종을 지어내는 것**이다. 안 썼다.
+
+★**이름과 파일이 어긋나면 자로 갈라 적는다.** `wolf_growl` 의 파일은 **울부짖음**이다:
+
+| | 중심주파수 | 평탄도(1=잡음·0=순음) | 500Hz 아래 |
+|---|---:|---:|---:|
+| `wolf_growl` | 1,100~1,240 Hz | 0.0002 | **0.4%** |
+| `tiger_growl` | **226~426 Hz** | 0.002~0.016 | **71~97%** |
+
+**같은 자를 둘에 대야 말이 된다** — 한쪽만 재면 "낮다/높다"가 무엇에 비해 낮은지 모른다. 종은 맞고 이름만 어긋난다 ⇒ 회부.
+
+★**`deer_call` 의 종을 바꿔 부르지 않았다.** 한반도 사슴은 _Cervus nippon_·노루인데 Commons 의 그 둘은
+PD/CC0 가 아니다(`Sika Deer (Cervus nippon)…` 는 CC BY-SA 4.0). 받은 것은 **와피티**(_Cervus canadensis_)라
+표에 그렇게 적었다. 사슴과의 실제 울음이고 출처가 종을 적어 뒀다 — **울음 판정은 재민 귀.**
+
+★**자가 권고를 뒤집은 자리 하나** — `ui_click` 을 "진짜 나무 두드림"인 딱따구리(USFWS · PD)로 가려다 바꿨다.
+같은 자로 재니 딱따구리는 SNR **10.1 dB**(숲 바닥이 같이 온다)에 정점이 **116 ms** 뒤였고,
+Kenney `bookPlace1`(CC0)은 SNR **38.8 dB** · 선행 **6.0 ms** 였다. **딸깍은 바로 나야 한다.**
+
+### 움집 안 — 별 소리는 필요 없다 [T282 판정]
+
+> **한 줄: 소리가 모자란 게 아니라 실내 항이 모자라다. `fire` 원본이 이미 실내 화덕 녹음이다.**
+
+| 물음 | 실측 |
+|---|---|
+| 실내용 불 소리를 따로 받아야 하나 | **아니다.** 지금 `fire` 의 출처 제목이 *"Dry grass burning in **open fireplace**"* 다 — 이미 화덕 안이다 |
+| 실내 술어를 새로 지어야 하나 | **아니다.** `playerIsIndoors()`(`20-r2-visibility.js:516` · `window` 에 걸려 있다)가 정본이고 방·층까지 본다 |
+| 지금 실내가 반영되나 | **바람만.** `37-r1-weather.js:87` 이 `{indoor}` 를 넘기고 층이 세기를 0 으로 죽인다(`48-a-audio.js:349`). **`fire` 의 `scan()` 에는 실내 항이 없다** — 움집 안 모닥불이 바깥 것과 똑같이 난다 |
+| "실내 감쇠"를 음색으로 할 수 있나 | **지금은 못 한다.** 층의 Web Audio 마디 전수가 `createGain` 5 · `createBufferSource` 2 — **필터·압축기 0**. 감쇠는 **이득뿐**이고 먹먹함(저역 통과)은 마디를 하나 더 걸어야 한다 |
+
+⇒ **이 카드는 음원 0장.** 남은 것은 전부 세션9 칸이다(`scan()` 의 실내 항 · 필터 마디를 걸지 말지) ⇒ T283.
 
 ## 1-c. 굽는 상자 — 표식 규약 [T260 2026-09-13]
 
