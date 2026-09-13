@@ -94,6 +94,10 @@
 'use strict';
 
 const path = require('path');
+// ★★[T274 2026-09-13] 좁은 팔 — **게시판만 식사를 본다**(기본 끔 · 끔이면 비트 동일).
+//   왜 여기냐: 엔진의 `_cons` 에 식사를 실으면 가격·부패까지 한꺼번에 눈을 뜬다(T263 넓은 팔 · PM 권고 "안 켠다").
+//   부족/글럿 판정은 `_consEMA` 하나만 보므로, **그 판정이 읽는 자리에서만** 식사 EMA 를 더한다.
+const BoardFood = require(path.join(__dirname, 'board-food-ema'));
 
 // 한글 이름 — **표시 전용**이다(경제 로직 아님). specialty 정본에 있으면 그것을 쓰고,
 // 없는 기초 재화만 여기서 채운다(specialty.js 는 특산물 표라 food/wood/stone 이 없다).
@@ -447,7 +451,7 @@ function createLedger(opts) {
   //   ★매일 Set 을 새로 짓지 않는다 — 재화 목록은 거의 안 바뀌는데 51마을×800일이면 4만 번이다.
   //     키 개수가 바뀐 날에만 다시 짓는다(재화가 늘거나 곳간이 비어 키가 지워진 날).
   function itemsOf(s, v) {
-    const e = v._consEMA || {}, sto = v.storage || {};
+    const e = BoardFood.view(s, v), sto = v.storage || {};   // ★[T274] 끔이면 `v._consEMA` 그 객체 그대로
     let ne = 0; for (const _k in e) ne++;
     let ns = 0; for (const _k in sto) ns++;
     if (s.itemList && s.itemNE === ne && s.itemNS === ns) return s.itemList;
@@ -592,7 +596,8 @@ function createLedger(opts) {
       if (vid == null) return;
       const s = st(vid);
       const prices = priceView(v, day);      // ★[T133] 래치의 기준선도 관측과 **같은 자로** 잰다
-      const e = v._consEMA || {}, sto = v.storage || {};
+      BoardFood.foldDay(s, v);                 // ★[T274] 프라이밍에도 하루치를 접는다(끔이면 no-op)
+      const e = BoardFood.view(s, v), sto = v.storage || {};
       for (const r of itemsOf(s, v)) {
         const d = det(s, r);
         const ema = +e[r] || 0, stock = +sto[r] || 0;
@@ -647,7 +652,8 @@ function createLedger(opts) {
       const s = st(vid);
       const mine = [];
       const prices = priceView(v, day);      // ★★[T133] 하역 뒤의 값 — 위 주석
-      const e = v._consEMA || {}, sto = v.storage || {};
+      BoardFood.foldDay(s, v);                 // ★[T274] 하루 한 번 — 그날 먹은 몫을 장부 안 EMA 로(끔이면 no-op)
+      const e = BoardFood.view(s, v), sto = v.storage || {};
 
       for (const r of itemsOf(s, v)) {
         const ema = +e[r] || 0, stock = +sto[r] || 0;

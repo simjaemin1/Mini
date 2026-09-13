@@ -310,6 +310,20 @@ console.log('\n[H] 랩 부팅 기본 = 서버 기본(주입 없음)');
     if (lines.length) bad(`랩이 T263_FOOD_CONS 를 켠 채 뜬다 — ${lines.length}줄`);
     else ok('랩은 T263_FOOD_CONS 를 심지 않는다(미설정 = 끔 = 서버 기본)');
   }
+  // ★★[T274] **서버 전용 손잡이**는 [H] 표(랩 HTML 스캔)로 못 본다 — 랩은 `server/events.js` 를 안 싣는다.
+  //   그래서 그 기본값은 **서버 소스에서** 읽는다(같은 규약: 미설정 또는 '0' 이면 끔).
+  {
+    const bf = rd('server/board-food-ema.js');
+    const m = bf.match(/return x !== undefined && x !== null && String\(x\) !== '([0-9])';/);
+    if (!m) bad('T274_BOARD_FOOD 기본값을 못 찾았다 — 검사기가 낡았거나 손잡이가 사라졌다');
+    else if (m[1] !== '0') bad(`서버 T274_BOARD_FOOD 기본 ${m[1]} ≠ 끔 — 게시판이 켠 채 뜬다`);
+    else ok('서버 T274_BOARD_FOOD 기본이 끔이다(미설정 = 끔 · 랩은 이 손잡이를 아예 안 싣는다)');
+    //   ★자명 통과 금지 — 켠 채 뜨는 판을 만들면 이 검사가 실제로 문다
+    const mutB = bf.replace(/String\(x\) !== '0';/, "String(x) !== '1';");
+    const m2 = mutB.match(/return x !== undefined && x !== null && String\(x\) !== '([0-9])';/);
+    if (m2 && m2[1] === '1') ok('[자명 통과 금지] 서버 손잡이를 켠 판을 만들면 이 검사가 **문다**');
+    else bad('[자명 통과 금지] 서버 손잡이 변조판을 못 만들었다 — 검사기가 읽는 자리가 그 자리가 아니다');
+  }
   // ★자명 통과 금지 — 켠 채 뜨는 판을 만들면 이 검사가 실제로 문다
   const mut = warLab.replace(/(let\s+L_HAPPYWORK\s*=\s*\(typeof window[^;]*?:\s*)0(\s*;)/, '$1' + '0.24' + '$2');
   if (mut === warLab) bad('[자명 통과 금지] 변조판을 못 만들었다 — 검사기가 읽는 자리가 그 자리가 아니다');
