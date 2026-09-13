@@ -2411,10 +2411,17 @@ function _oreFeedback(vil, oFrac) {
 }
 
 const TERR_GROW_MAX_PER_DAY = 60;   // 마을당 하루 최대 확장 셀 — econ 구매 속도보다 넉넉하되 폭주는 막는다
+// ★★[T230 2026-09-13 재민 확정] **영토 목표에 주택 압력을 더하는 손잡이 — 기본 끔.**
+//   끔: 종전 그대로 `round(land.size × 25)`(= `territoryTarget().econ` · 한 수도 안 다르다).
+//   켬: 랩 `growTerritory` 가 이미 갖고 서버엔 없던 **주택 압력**까지 본다(`territoryTarget().target`).
+//   T219 §0: 영토가 50마을 전부 `land.size × 25` 에 붙어 200일에 63셀만 자랐고, 그래서 집터가 78%를
+//   `집 간격 18` 로 거부당했다. 규칙·수는 `village-layout.territoryTarget` 하나가 갖는다(사본 0 · 새 수 0).
+const T230_TERR_HOUSING = process.env.T230_TERR_HOUSING === '1';
 function _terrGrow(vil) {
   if (!state.ta || !vil || !vil._terrSet || !vil._terrSet.size) return 0;
   const land = vil.econ && vil.econ.land; if (!land || !land.size) return 0;
-  const target = Math.round(land.size * 25);
+  const _tt = _lifeVL().territoryTarget(land.size, (vil.econ && vil.econ.housing) || 0);
+  const target = T230_TERR_HOUSING ? _tt.target : _tt.econ;
   if (vil._terrSet.size >= target) return 0;
   const ta = state.ta, own = vil._terrSet, ccx = vil.ccx, ccy = vil.ccy;
   const fertW = 3.5, compactW = 0, distW = 0.1;

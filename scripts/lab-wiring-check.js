@@ -322,5 +322,83 @@ console.log('\n[H] 랩 부팅 기본 = 서버 기본(주입 없음)');
   else wrn(`서버가 세계에 다는 것이 늘었다: ${extra.join(' · ')} — [H] 표를 갱신해라`);
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// [I] ★★[T230] 집터 방아쇠 — 랩과 서버가 **같은 함수**를 부르나 (사본 0)
+// ══════════════════════════════════════════════════════════════════════════════
+//   T219 가 규칙을 `server/village-layout.js houseSiteWant` 하나에 세웠고, T230 이 랩 세 줄을
+//   그 함수 호출로 바꿨다. 랩은 village-layout 을 **손 사본**으로 인라인하므로(그 파일 `LAND_NEED`
+//   주석의 규약) 기계가 대조해야 한다 — 안 그러면 조용히 갈라진다.
+console.log('\n[I] 집터 방아쇠 — 정본 하나(T230)');
+{
+  const VL = require(path.join(root, 'server', 'village-layout.js'));
+  const canonSrc = rd('server/village-layout.js');
+  // 정본 함수의 **본문**(공백 제거)을 뽑는다 — 이 문자열이 랩 인라인 사본과 같아야 한다.
+  const grab = (src) => {
+    const i = src.indexOf('const houseSiteWant');
+    if (i < 0) return null;
+    const j = src.indexOf('};', i);
+    return j < 0 ? null : src.slice(i, j + 2).replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '').replace(/\s+/g, '');
+  };
+  const canonFn = grab(canonSrc);
+  if (!canonFn) bad('village-layout.js 에 houseSiteWant 가 없다 — 정본이 사라졌다');
+  if (typeof VL.houseSiteWant !== 'function') bad('village-layout.js 가 houseSiteWant 를 안 내준다');
+  for (const f of ['lab/마을실험실.html', 'lab/전쟁실험실.html']) {
+    const H = rd(f);
+    const labFn = grab(H);
+    if (!labFn) { bad(`랩 ${f} 인라인 layout 에 houseSiteWant 가 없다 — 손 동기가 안 됐다`); continue; }
+    if (labFn !== canonFn) bad(`랩 ${f} 인라인 houseSiteWant 본문이 정본과 다르다 — 손으로 맞춰라`);
+    else ok(`랩 ${f} 인라인 houseSiteWant 본문 = 정본 village-layout.js 와 한 글자도 안 다르다`);
+    // 방아쇠가 **그 함수를 부르나** · 규칙을 다시 적지 않나
+    const callN = (H.match(/VillageLayout\.houseSiteWant\(/g) || []).length;
+    if (callN < 1) bad(`랩 ${f} 생활층 방아쇠가 houseSiteWant 를 안 부른다`);
+    else ok(`랩 ${f} 방아쇠가 정본 함수를 부른다(${callN}곳)`);
+    if (/builtFl\s*\+\s*sites\s*<\s*targetFloors/.test(H)) bad(`랩 ${f} 에 옛 방아쇠 수식이 남아 있다 — 사본 둘`);
+    else ok(`랩 ${f} 에 옛 방아쇠 수식이 없다(사본 0)`);
+    // 층 상한 — 랩 L_MAXFL 과 모듈 HOUSE_MAX_FLOORS
+    const mf = H.match(/L_MAXFL\s*=\s*([0-9]+)/);
+    if (!mf) wrn(`랩 ${f} L_MAXFL 을 못 찾았다`);
+    else if (+mf[1] !== VL.HOUSE_MAX_FLOORS) bad(`랩 ${f} L_MAXFL ${mf[1]} ≠ 정본 HOUSE_MAX_FLOORS ${VL.HOUSE_MAX_FLOORS}`);
+    else ok(`랩 ${f} L_MAXFL ${mf[1]} = 정본 HOUSE_MAX_FLOORS ${VL.HOUSE_MAX_FLOORS}`);
+    // 집 간격 — 랩 L_HGAP 과 서버 `HG`
+    const hg = H.match(/L_HGAP\s*=\s*([0-9]+)/), sg = LIVE.match(/HG\s*=\s*([0-9]+)/);
+    if (!hg || !sg) wrn(`집 간격 상수를 한쪽에서 못 찾았다(랩 ${!!hg} · 서버 ${!!sg})`);
+    else if (hg[1] !== sg[1]) bad(`랩 ${f} L_HGAP ${hg[1]} ≠ 서버 HG ${sg[1]} — 기하가 갈렸다`);
+    else ok(`랩 ${f} L_HGAP ${hg[1]} = 서버 집 간격 HG ${sg[1]}`);
+    // 영토 목표 — 랩이 쓰는 세 수가 정본과 같나(T230 손잡이가 켜질 때 이 셋이 그 값이어야 한다)
+    const pl = H.match(/\)\s*\)\s*\*\s*(\d+)\s*\+\s*(\d+)/);
+    const hl = H.match(/_hLots\s*=[^;]*?\*\s*(\d+)\s*\+\s*(\d+)/);
+    if (!hl) wrn(`랩 ${f} growTerritory 의 주택 압력 두 수를 못 찾았다`);
+    else if (+hl[1] !== VL.TERR_PER_LOT || +hl[2] !== VL.TERR_CORE)
+      bad(`랩 ${f} 주택 압력 ${hl[1]}·${hl[2]} ≠ 정본 TERR_PER_LOT ${VL.TERR_PER_LOT}·TERR_CORE ${VL.TERR_CORE}`);
+    else ok(`랩 ${f} 주택 압력 ${hl[1]}·${hl[2]} = 정본 territoryTarget 의 그 수`);
+  }
+  // ★판정 동등 — 옛 랩 수식과 정본 함수가 **모든 점에서 같은 답**인가(호출로 바꾼 것이 행동을 안 바꿨다)
+  const oldRule = (pop, housing, builtFl, sites) => {
+    const targetFloors = Math.ceil(Math.max(pop, housing || 0) / VL.HOUSE_CAP_PER_FLOOR);
+    return builtFl + sites < targetFloors && sites < Math.max(2, Math.round(pop / 25));
+  };
+  let n = 0, diff = 0, trueN = 0;
+  for (let pop = 0; pop <= 300; pop += 1) for (const housing of [0, 1, 7, pop, pop * 1.15, pop * 3])
+    for (const builtFl of [0, 1, 2, 4, 9, 40]) for (const sites of [0, 1, 2, 5]) {
+      n++; const a = oldRule(pop, housing, builtFl, sites), b = VL.houseSiteWant(pop, housing, builtFl, sites);
+      if (a) trueN++; if (a !== b) diff++;
+    }
+  ok(`판정 동등 — 옛 랩 수식 vs 정본 함수: ${n.toLocaleString()}점 전수 비교 · 다른 점 **${diff}** (참 ${trueN.toLocaleString()}점 — 자명 통과 아님)`);
+  if (diff !== 0) bad(`판정이 갈린다 — 다른 점 ${diff}`);
+  // ★자명 통과 금지 — 정본을 비틀면 이 비교가 문다
+  {
+    const mutated = (pop, housing, builtFl, sites) => {
+      const t = Math.ceil(Math.min(pop, housing || 0) / VL.HOUSE_CAP_PER_FLOOR);   // max → min
+      return builtFl + sites < t && sites < Math.max(2, Math.round(pop / 25));
+    };
+    let d2 = 0;
+    for (let pop = 0; pop <= 300; pop += 1) for (const housing of [0, 1, 7, pop, pop * 1.15, pop * 3])
+      for (const builtFl of [0, 1, 2, 4, 9, 40]) for (const sites of [0, 1, 2, 5])
+        if (oldRule(pop, housing, builtFl, sites) !== mutated(pop, housing, builtFl, sites)) d2++;
+    if (d2 > 0) ok(`[자명 통과 금지] 정본을 \`max\`→\`min\` 으로 비틀면 ${d2.toLocaleString()}점이 갈린다 — 비교가 실제로 문다`);
+    else bad('[자명 통과 금지] 비틀어도 같은 답이 나온다 — 비교가 죽었다');
+  }
+}
+
 console.log(`\n=== 배선 검사: 실패 ${fail} · 경고 ${warn} ===`);
 process.exit(fail ? 1 : 0);

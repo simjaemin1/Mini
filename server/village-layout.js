@@ -30,6 +30,25 @@
   //     `villages.js` 는 이제 `_lifeVL().LAND_NEED` 로 읽는다(사본 삭제). 랩은 자동 인라인 대상이
   //     아니라(`inline-engine`·`inline-path`·`inline-battle` 셋뿐 — village-layout 인라인 스크립트가 없다)
   //     손으로 맞추고 `scripts/lab-wiring-check.js` 가 두 값을 대조한다(어긋나면 빨강).
+  // ★★[T230 2026-09-13 재민 확정] **층 상한 — 모듈 정본 하나.**
+  //   랩 `L_MAXFL` 과 같은 수다(`lab-wiring-check` 가 대조한다). 종전엔 `generate()` 안 지역 상수였다.
+  const HOUSE_MAX_FLOORS = 1;      // 단층 움집(densify 사실상 봉인 — 수용 압력은 집터 확산·영토 확장으로)
+  // ★★[T230 2026-09-13 재민 확정] **영토 목표 — 두 압력 중 큰 쪽.**
+  //   랩(`growTerritory`)이 이미 갖고 서버(`_terrGrow`)엔 없던 항이 **주택 압력**이다. 랩 주석 그대로:
+  //   *"경작 수요(MB/MC)만 듣던 확장이 '집 지을 땅'엔 무반응이라, 완공 계약 도입 후 인구가
+  //     소수 부지에 영구 결박되던 병목"*. T219 가 서버에서 잰 벽이 바로 그것이다
+  //   (영토 50마을 전부 `land.size × 25` 에 붙어 있어 200일에 63셀만 자랐다).
+  //     · econ 압력   = round(landSize × TERR_PER_SIZE)        ← 서버·랩이 쓰던 그 식
+  //     · 주택 압력   = ceil(housing / (채당 정원 × 층 상한)) × TERR_PER_LOT + TERR_CORE
+  //     · 목표        = 둘 중 **큰 쪽**
+  //   ⚠수를 새로 만들지 않는다: 25 는 양쪽이 쓰던 수, 600·1500 은 **랩 정본의 그 수**다.
+  const TERR_PER_SIZE = 25, TERR_PER_LOT = 600, TERR_CORE = 1500;
+  const territoryTarget = (landSize, housing) => {
+    const econ = Math.round(Math.max(0, landSize || 0) * TERR_PER_SIZE);
+    const lots = Math.ceil(Math.max(0, housing || 0) / (HOUSE_CAP_PER_FLOOR * HOUSE_MAX_FLOORS));
+    const house = lots * TERR_PER_LOT + TERR_CORE;
+    return { econ, house, target: Math.max(econ, house) };
+  };
   const LAND_NEED = 12;            // 인당 기준 경작칸(비옥 0.55 기준 — landNeedPer가 비옥도로 조정)
   const HALL_YARD = 10, LOT_R = 6.5, FARM_GAP = 2, ALLEY_R = 12.5, HALL_CLEAR = HALL_YARD + LOT_R;   // ★구역 기하 정본[사용자 확정 "전부 원으로 통일"]: 마당 원 r10·부지 원 r6.5·완충=부지 기준 정확 2타일 등방·골목 r12.5·HALL_CLEAR=마당 원과 부지 원이 셀 하나도 안 겹치는 최소 중심거리[사용자 지시 "초기 두 채 침범 금지"]
   const inDisc = (cx, cy, R, x, y) => { const ax = x + 0.5 - cx, ay = y + 0.5 - cy; return ax * ax + ay * ay < R * R; };   // 셀 중심(x+.5,y+.5)이 격자점(cx,cy) 반경 R 안(엄격<) — 전 구역 판정의 단일 원식(렌더도 같은 셀 집합=판정과 픽셀 일치)
@@ -159,7 +178,7 @@
     const dwC = dwOf(ccx, ccy), dMax = hasWater ? Math.max(8, dwC - 10) : 999;
     const dNong = hasWater ? Math.min(dMax, 8) : 999, dBat = dNong + 7;   // ★두께 고정 7줄[사용자 확정]: 논=물가 7줄(물거리 2~8)·밭 1순위=바로 뒤 7줄(9~15 밀착)·2순위=행 단위 증층(16줄~)
 
-    const CAP = HOUSE_CAP_PER_FLOOR, MAX_FLOORS = 1, SPACE_MIN = 20;   // 단층 6명 — 수용 압력은 전부 집터 확산·영토 확장으로
+    const CAP = HOUSE_CAP_PER_FLOOR, MAX_FLOORS = HOUSE_MAX_FLOORS, SPACE_MIN = 20;   // 단층 6명 — 수용 압력은 전부 집터 확산·영토 확장으로 (★[T230] 층 상한은 모듈 정본 `HOUSE_MAX_FLOORS`)
     const fpInTerr = (cx, cy) => { for (const [dx, dy] of LOT_CELLS) if (t.isBlocked(cx + dx, cy + dy) || !own.has(key(cx + dx, cy + dy))) return false; return true; };
     const farFromWater = (cx, cy) => { for (const [dx, dy] of LOT_GUARD) if (t.isWater && t.isWater(cx + dx, cy + dy)) return false; return true; };   // ★부지 원+2 완충 원 물 X(침수 회피, 자연제방 고증)
     const W_PEN_K = 2000;   // 물가 페널티 강도(랩 verbatim)
@@ -378,7 +397,7 @@
     return { ok: diagOnly === 0, comps, diagOnly };
   }
 
-  const API = { LAND_NEED, houseSiteWant,   // ★[T100 4판] 정본 — 밖(villages.js·계측기·하네스)이 이 값을 읽는다
+  const API = { LAND_NEED, houseSiteWant, territoryTarget, HOUSE_MAX_FLOORS, TERR_PER_SIZE, TERR_PER_LOT, TERR_CORE,   // ★[T100 4판] 정본 — 밖(villages.js·계측기·하네스)이 이 값을 읽는다
     generate, footprintLand, axisAt, nearestBank, waterEDT, maskEDT, HOUSE_HALF, HOUSE_CAP: HOUSE_CAP_PER_FLOOR, HOUSE_CAP_PER_FLOOR, LAND_PER_HOUSE, landNeedPer, HALL_YARD, LOT_R, FARM_GAP, ALLEY_R, HALL_CLEAR, inDisc, LOT_CELLS, LOT_GUARD, YARD_CELLS, houseFarmBlock, hallFarmBlock,
     ditchRing, ditchConnectivity, DITCH_W, DITCH_AXIS_RATIO, DITCH_GATE_HALF, DITCH_MARGIN };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;

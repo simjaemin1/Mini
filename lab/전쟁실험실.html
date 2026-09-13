@@ -8192,6 +8192,7 @@ const VillageLayout=(function(){
    for(let x=0;x<W;x++){for(let y=0;y<Hh;y++)f[y]=g[y*W+x];_dt1d(f,Hh,d,v,z);for(let y=0;y<Hh;y++)g[y*W+x]=d[y];}
    for(let y=0;y<Hh;y++){for(let x=0;x<W;x++)f[x]=g[y*W+x];_dt1d(f,W,d,v,z);for(let x=0;x<W;x++)g[y*W+x]=d[x];}
    return{at:(x,y)=>{const ix=x-x0,iy=y-y0;if(ix<0||iy<0||ix>=W||iy>=Hh)return 999;const s=g[iy*W+ix];return s>=1e19?999:Math.sqrt(s);}};};
+  const houseSiteWant=(pop,housing,builtFloors,sites)=>{const P=pop>0?pop:0,H=housing>0?housing:0,B=builtFloors>0?builtFloors:0,S=sites>0?sites:0;const target=Math.ceil(Math.max(P,H)/HOUSE_CAP_PER_FLOOR);return (B+S)<target&&S<Math.max(2,Math.round(P/25));};   // ★★[T230] 집터를 원하는가 — 규칙 정본은 server/village-layout.js 의 그 함수다(여기는 손 동기 인라인 사본 · lab-wiring-check 가 대조한다). 목표=ceil(max(pop,housing)/채당정원) · 원하는가=부족분 · 동시상한 max(2,pop/25)
   const landNeedPer=(fv,base)=>base*Math.max(0.6,Math.min(2.5,0.55/Math.max(0.05,(fv!=null?fv:0.55))));   // ★보즈럽 조방화[사용자 확정 — "저비옥인데 쉬면서 굶는" 구멍 해소]: 인당 경작칸 = 기준×(기준비옥 0.55/마을 비옥도), ×0.6~×2.5 클램프 — 저비옥=남는 노동으로 넓게 갈아 만회(조방), 고비옥=좁게(집약). 기준 0.55에선 현행 8칸 그대로. 수확 비옥²·노동과 한 몸(유일 정본 — 랩 개간목표·_needArea가 전부 여기서 파생)   // ★실축(§3b)+[사용자 확정 움집·고증 v2]: 집 부지=원판 r6.5·적도폭 12(구 12×12 등적) — 집채 6×4+마당, 단층 6명(송국리 장방형 24~28㎡ 발굴 추정 5~6명의 상단 — 침대 6개 1인 1침대). LAND_PER_HOUSE=채당 영토 배분 400셀(부지 144+농지·공유지 몫 — 구 '인당 50셀'은 8명/채 시절의 400/채와 동치): 영토 공식의 유일 정본 — 채당 수용이 바뀌면 영토가 자동 연동돼 취락:영토 비율 불변(사용자 '비슷한 비율' 지시). 물가 페널티는 전역 W_PEN_K(아래 최상위) 참조
   function footprintLand(t,cx,cy){for(const[dx,dy]of LOT_CELLS)if(t.isBlocked(cx+dx,cy+dy))return false;return true;}   // 부지=원판
   function axisAt(t,cx,cy){const gx=t.elev(cx+1,cy)-t.elev(cx-1,cy),gy=t.elev(cx,cy+1)-t.elev(cx,cy-1),gl=Math.hypot(gx,gy)||1;return{toWater:{x:-gx/gl,y:-gy/gl},toHill:{x:gx/gl,y:gy/gl}};}
@@ -8318,7 +8319,7 @@ const VillageLayout=(function(){
     return{center:{cx:ccx,cy:ccy},hall:{cx:ccx,cy:ccy},axis,type:typeLabel,fert:+fert.toFixed(2),water:+water.toFixed(2),farmers,fishers,fShare:+fShare.toFixed(2),hShare:+hShare.toFixed(2),fertScore:+fertScore.toFixed(2),houses,floors,farmland,dryfield,nongZone,territory,core:coreCells,dock,bank};
   }
   function nearestBank(t,cx,cy,maxR){let best=null,bd=Infinity,R=maxR||24;for(let dy=-R;dy<=R;dy++)for(let dx=-R;dx<=R;dx++){const x=cx+dx,y=cy+dy;if(t.isBlocked(x,y))continue;let aw=false;for(const[ax,ay]of[[1,0],[-1,0],[0,1],[0,-1]])if(t.isWater(x+ax,y+ay)){aw=true;break;}if(!aw)continue;const d=dx*dx+dy*dy;if(d<bd){bd=d;best={cx:x,cy:y};}}return best;}
-  return{generate,footprintLand,axisAt,nearestBank,waterEDT,HOUSE_CAP:HOUSE_CAP_PER_FLOOR,LAND_PER_HOUSE,landNeedPer,HALL_YARD,LOT_R,FARM_GAP,ALLEY_R,HALL_CLEAR,inDisc,LOT_CELLS,LOT_GUARD,YARD_CELLS,houseFarmBlock,hallFarmBlock};   // ★채당 수용·채당 영토·인당 경작칸(보즈럽) = 전 파일 유일 정본(밖의 L_FLOORCAP·영토·개간 공식이 전부 여기서 파생)
+  return{generate,footprintLand,axisAt,nearestBank,waterEDT,HOUSE_CAP:HOUSE_CAP_PER_FLOOR,houseSiteWant,LAND_PER_HOUSE,landNeedPer,HALL_YARD,LOT_R,FARM_GAP,ALLEY_R,HALL_CLEAR,inDisc,LOT_CELLS,LOT_GUARD,YARD_CELLS,houseFarmBlock,hallFarmBlock};   // ★채당 수용·채당 영토·인당 경작칸(보즈럽) = 전 파일 유일 정본(밖의 L_FLOORCAP·영토·개간 공식이 전부 여기서 파생)
 })();
 // ===================== 실험실 =====================
 function hash2(ix,iy,s){let h=ix*374761393+iy*668265263+s*1274126177;h=(h^(h>>>13))*1274126177;return((h^(h>>>16))>>>0)/4294967295;}
@@ -11616,9 +11617,9 @@ function lifeDay(doBulk){const s=life;if(!s)return;s.day++;const day=s.day;
   // ★집 건설: (빨리감기만) 완공 층 부족하면 근사 집터 추가. 관찰 모드는 relayout이 집 배치까지 처리.
   if(s.center&&s.houses){
     {/*★상시화(구 doBulk 전용): 집터 추가가 빨리감기에서만 돌아 관찰·하네스·본체에선 건설 파이프라인 정지 → 완공 계약 도입 후 인구가 초기 침대에 영구 결박되던 것*/
-      const targetFloors=Math.ceil(Math.max(s.pop,(s.econ&&s.econ.housing)||0)/L_FLOORCAP);/*★econ 수용력(목재 선지불, pop×1.15 버퍼) 추적 — pop 기준이면 '침대가 차야 인구↑, 인구가 늘어야 집터↑'의 데드락*/
+      /*★[T230] 목표 층수 계산은 VillageLayout.houseSiteWant 안으로 들어갔다 — 랩 주석의 데드락 설명도 그 함수가 갖는다(사본 0).*/
       let builtFl=0,sites=0;for(const h of s.houses){if(h.player)continue;/*★[10차 T3] 플레이어 의뢰 집은 마을 주택 수급 회계에 안 들어간다 — 들어가면 마을이 제 집 짓기를 멈춘다(마을 굶김 금지)*/builtFl+=(h.builtFloors||0);if((h.builtFloors||0)<(h.floors||1))sites++;}
-      if(builtFl+sites<targetFloors&&sites<Math.max(2,Math.round(s.pop/25)))addHouseSite(s);
+      if(VillageLayout.houseSiteWant(s.pop,(s.econ&&s.econ.housing)||0,builtFl,sites))addHouseSite(s);   // ★★[T230] 규칙은 village-layout 정본 하나 — 랩도 서버도 **같은 함수**를 부른다(사본 0 · 값·판정 불변)
     }
     const fe=s.econ?((s.econ.storage.food||0)+(s.econ.storage.fish||0)+(s.econ.storage.meat||0)):s.pop*30;
     const slack=fe>s.pop*40?1:(fe>s.pop*25?0.5:0.2);   // 식량안보일수록 여유노동↑ → 건설 빠름
