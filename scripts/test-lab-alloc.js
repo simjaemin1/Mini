@@ -8,7 +8,8 @@
 //   ⓛ 랩 경로   — 인라인 번들이 **같은 함수**를 태우는지(손잡이 하나로 켜지는지)
 //
 // 무엇을 거나:
-//   ① 되돌림 = 기본 — 손잡이가 없으면 `allocRealOn()` 이 거짓이고 마을에 EMA 가 안 선다
+//   ① ★[T244] **기본 = 켬** — 손잡이가 없으면 `allocRealOn()` 이 참이고 마을에 EMA 가 선다.
+//      되돌림은 이제 **명시 `0`**(`window.L_ALLOC_REAL=0` · env `L_ALLOC_REAL=0`) 하나다 — 두 팔 다 건다.
 //   ② 손잡이를 켜면 후보 목록이 실제로 다시 쓰인다
 //   ③ 첫 정산 전 폴백 = **종전 값 그대로**(첫 호출은 null)
 //   ④ ★양 자리 — 실현 산출을 반으로 줄이면 한계가치도 반
@@ -77,11 +78,14 @@ async function open(env) {
     const E = require(path.resolve(__dirname, '..', 'sim', 'economy-sim.js'));
     process.env.L_ALLOC_BASKET = '1';   // ★[T184] 아래 ④⑤ 는 바구니 소득(1판)의 성질이다
     delete process.env.L_ALLOC_REAL;
-    ok(E.allocRealOn() === false, '손잡이가 없으면 **꺼짐**이 기본이다');
+    // ★★[T244 2026-09-13 · 재민 확정] 기본이 **켬**으로 뒤집혔다 — 끄는 것은 명시 `0` 하나다.
+    ok(E.allocRealOn() === true, '★[T244] 손잡이가 없으면 **켬**이 기본이다');
     process.env.L_ALLOC_REAL = '1';
-    ok(E.allocRealOn() === true, '`L_ALLOC_REAL=1` 이면 켜진다');
+    ok(E.allocRealOn() === true, '`L_ALLOC_REAL=1` 이면 켜진다(명시해도 같다)');
     process.env.L_ALLOC_REAL = '0';
-    ok(E.allocRealOn() === false, '`L_ALLOC_REAL=0` 이면 꺼진다(되돌림)');
+    ok(E.allocRealOn() === false, '★★`L_ALLOC_REAL=0` 이면 꺼진다(**되돌림은 이 한 자리**)');
+    process.env.L_ALLOC_REAL = '';
+    ok(E.allocRealOn() === true, '★빈 값은 **켬**이다(미설정과 같다 — 끄는 것은 `0` 하나)');
     delete process.env.L_ALLOC_REAL;
     const JOBS = { farmer: { output: 'food', byproduct: { wheat: 0.25 } }, merchant: {} };
     const ctx = (counts, wf) => ({ period: 100, counts, w: wf || (() => 1), JOBS, forageYields: () => ({}) });
@@ -210,17 +214,33 @@ async function open(env) {
       `2판 ×${spread.toFixed(2)} → 1판 ×${spread1.toFixed(2)}`);
   }
 
-  // ── ① 되돌림 ───────────────────────────────────────────────────────────────
-  console.log('\n① 되돌림 = **기본** — 문을 안 연다(다른 세션의 랩 기준선을 안 건드린다)');
-  {
-    const { b, p, errs } = await open(null);   // ★기본이 곧 되돌림이다(손잡이가 없다)
+  // ── ① ★[T244] 기본 = 켬 · 되돌림은 명시 `0` ────────────────────────────────
+  console.log('\n① ★[T244] 기본 = **켬** · 되돌림은 명시 `0` — 랩 두 팔');
+  const probeLab = async (inject) => {
+    const { b, p, errs } = await open(inject);
+    // ★[T244] 140일 — 정산 주기(100일)를 **두 번** 넘겨야 처방이 후보를 실제로 다시 쓴다(첫 호출은 폴백).
+    //   40일이면 두 팔이 같은 수를 낸다(실측 91 = 91) — 그건 "안 다르다"가 아니라 **아직 안 물었다**는 뜻이다.
     const r = await p.evaluate(() => { document.getElementById('seed').value = '7'; document.getElementById('nvil').value = '4'; reseed(); lifeInit();
-      for (let d = 0; d < 40; d++) lifeDayAll(true);
-      return { on: !!(EconEngine.allocRealOn && EconEngine.allocRealOn()), ema: !!(VILS[0].econ._allocEma), pop: VILS.reduce((a, v) => a + v.econ.npcs.length, 0) }; });
-    ok(!r.on, '랩에서도 `allocRealOn()` 이 **거짓**이다(손잡이 없음 = 기본)');
-    ok(!r.ema, '마을에 EMA 가 안 선다(처방이 한 번도 안 돌았다)');
-    ok(errs.length === 0, '페이지 오류 0', errs.join(' | '));
+      for (let d = 0; d < 140; d++) lifeDayAll(true);
+      return { on: !!(EconEngine.allocRealOn && EconEngine.allocRealOn()), ema: !!(VILS[0].econ._allocEma), pop: VILS.reduce((a, v) => a + v.econ.npcs.length, 0),
+        fp: VILS.map((v) => `${v.econ.name}:${v.econ.npcs.length}/f${(v.econ.storage.food || 0).toFixed(6)}`).join(' ') }; });
     await b.close();
+    return { r, errs };
+  };
+  {
+    // ⓐ 기본 팔 — 랩은 손잡이를 **안 심는다** ⇒ 정본 기본(켬)이 그대로 온다(= 서버와 같은 기계 · T221)
+    const A = await probeLab(null);
+    ok(A.r.on, '★★[T244] 랩에서도 `allocRealOn()` 이 **참**이다(손잡이 없음 = 켬 = 서버 기본)');
+    ok(A.r.ema, '★마을에 EMA 가 **선다**(처방이 돈다)');
+    ok(A.errs.length === 0, '페이지 오류 0', A.errs.join(' | '));
+    // ⓑ 되돌림 팔 — 명시 `0` 하나로 종전 랩이 돌아온다(다른 세션의 랩 기준선을 안 건드린다)
+    const B = await probeLab('window.L_ALLOC_REAL=0;');
+    ok(!B.r.on, '★★되돌림 — `window.L_ALLOC_REAL=0` 이면 `allocRealOn()` 이 **거짓**이다');
+    ok(!B.r.ema, '★그 팔은 마을에 EMA 가 **안 선다**(처방이 한 번도 안 돌았다)');
+    ok(B.errs.length === 0, '페이지 오류 0', B.errs.join(' | '));
+    // ★자명 통과 금지 — 두 팔이 실제로 다른 세계다
+    // ★인구만 보면 두 팔이 같은 수로 겹칠 수 있다(작은 랩·짧은 창) ⇒ **곳간까지** 찍어 비교한다.
+    ok(A.r.fp !== B.r.fp, '★★[자명 통과 금지] 두 팔이 **실제로 다른 세계**다', `켬 ${A.r.pop}명 · 끔 ${B.r.pop}명`);
   }
 
   // ── ②③ 문이 열린다 · 첫 호출은 폴백 ────────────────────────────────────────
