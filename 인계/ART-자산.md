@@ -23,6 +23,28 @@
 | `scripts/bridge_render.py` | 다리 | `public/assets/bridge/` | — |
 | `scripts/bake-mountain.py` · `pack-mountain.py` | 산 | `public/assets/mountains/` | `mountain_anchors.json` |
 
+## 1-b. 전수표 — 배포 자산 711장 [T243 2026-09-13]
+
+`public/assets/**` **711장 · 78.1 MB** 의 파일 × 사용처 × 잠금 × sha1 전수표:
+**`보고/T243_자산전수_2026-09-13.json`**(행마다 `rel · dir · ext · bytes · sha1 · refs[] · orphan`).
+다시 만드는 명령은 `node scripts/test-assets-audit.js --json <경로>` 다(사본을 손으로 안 적는다).
+
+* **잠금 644장 · 불일치 0 · 없는 참조 0.** ★**자는 표마다 다르다** — `icons.lock.json` 은 PNG=IDAT sha1[:16]
+  (webp=파일 sha1[:16]), `char/char_sheets.lock.json` 은 **파일 sha256[:16]** 이다(`test-charsheet.js` ⑤ 가 굽는 자).
+  섞어 쓰면 char 192장이 통째로 거짓 빨강이 된다 — T243 1차 판이 그 함정을 밟았다.
+* **고아(사용처 0) 55장 · 45.7 MB — 전부 `public/assets/audio/`.** 클라·서버·스크립트 어디도 소리를 안 부르는데
+  `public/**` 는 배포에 실린다(`redeploy-hanbando.sh:65`) ⇒ 배포 자산의 58.6% 가 안 쓰는 것. **처분은 재민**(회부).
+  · 판정이 전이적이어야 이게 보인다: 표(앵커·잠금 JSON)는 **제가 뿌리에 닿아야** 참조 원천이다.
+    제 폴더 안에서 저희끼리 가리키는 것은 참조가 아니다(이 한 줄이 고아를 31장 4.7MB → 55장 45.7MB 로 바꿨다).
+* **재현성**: 굽기는 **결정적**이다(같은 코드로 연달아 두 번 → IDAT 동일). 그런데 표본 넷이 배포판과
+  IDAT 가 다르다(0/4) — **배포판을 구운 판이 지금 판이 아니다**(드리프트). 그림은 넷 다 같다
+  (`|Δ|>24` 0.01~0.49% = T205 잡음 바닥 5.3% 의 1/10 아래 · 평균RGB 거리 0.005~0.018 = T201 문턱 10 의 1/500 아래).
+  ⇒ `icons.lock.json` 의 `_` 가 적은 *"다음 재굽기가 이 표와 대조한다"* 는 **성립하지 않는다**. 이 잠금이 잡는 것은
+  **"파일이 몰래 바뀌었는가"** 이고 그 뜻으론 초록이다. 문구는 PM 판정 대기.
+* 하네스 `scripts/test-assets-audit.js` — **`// @regress` 없다**(야간 창이 모자라는 판 · 공통 §2 ⑥).
+  자산을 만지는 카드가 **손으로 부른다**: `node scripts/test-assets-audit.js [--selftest]`.
+  고아는 **빨강이 아니다** — 지우기를 하네스에 맡기면 "아직 안 배선한 새 자산"이 빨개진다(결함이 아니라 순서다).
+
 ## 2. 씬 값 — **무변**이다(그림이 한 몸이어야 한다)
 
 전 스크립트 공통: Cycles · `film_transparent` · ORTHO · `SAMPLES 64` · `view_transform Standard` ·
