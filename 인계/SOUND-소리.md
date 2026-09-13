@@ -3,7 +3,7 @@
 > 영역: `public/client/48-a-audio.js` · `public/assets/sfx/**` · `public/assets/audio/bgm/`(잇기만 · 음원 무변)
 > · `CREDITS.md` 소리 절 · `scripts/test-audio.js` · 이 파일.
 > 다른 영역에 쓸 말은 `인계/회부.md` 에 한 줄. `공통.md`·`README.md` 는 PM 만.
-> 세운 카드: **T261**(2026-09-13 · 층 하나 · BGM · 첫 8종의 자리).
+> 세운 카드: **T261**(2026-09-13 · 층 하나 · BGM · 첫 8종의 자리 · main `c90930f`).
 
 ---
 
