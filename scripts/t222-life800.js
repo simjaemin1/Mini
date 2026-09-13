@@ -149,14 +149,25 @@ const base = Date.now();
 //   하루 한 번 저장 큐를 비우고(제품은 틱당 한 마을씩 배수한다) 그 줄에서 값을 꺼낸다.
 const db = R('server/zone-local-db');
 const M = new Map();   // 마을별 누계(계측 전용)
+const TRAJ = [];       // ★[T241] 20일 궤적(열 × 날)
 const grab = (js, key) => { const m = js.match(new RegExp('"' + key + '":(-?[0-9.eE+]+)')); return m ? +m[1] : 0; };
 const t1 = Date.now();
+// ★★[T241 ③] **자의 시계를 고정한다.** 제품 `_dayNow()` 는 마감 밖이면 `Date.now()` 로 떨어진다
+//   (`villages.js:3405`). 자는 저장 큐를 비우려고 같은 날에 `onGameTick` 을 60번 더 부르는데,
+//   그 사이에 흐른 **실시간**이 캐러밴 실체·광맥 적분에 들어가 같은 씨 두 판의 `emitted` 를 갈랐다
+//   (11,105 vs 11,071 — T232 §1). 세계는 자가 미는 `now` 만 보면 된다 ⇒ 루프 동안 `Date.now` 를 그 값으로 둔다.
+//   (랩 계측기가 `Math.random` 을 씨로 고정하는 것과 같은 자리 — 자 코드만 · 제품 무변.)
+const _now0 = Date.now;
+let _simClock = base;
+Date.now = () => _simClock;
 const _l2 = console.log; console.log = () => {};
 for (let d = 1; d <= DAYS; d++) {
   const now = base + d * dayMs;
+  _simClock = now;
   _oreNow = now;                                          // ★[T232] 광맥 재생 적분의 시각(zone.js `_simNow()` 자리)
   V.onGameTick(now);
   for (let f = 0; f < 60; f++) V.onGameTick(now);          // 저장 큐 배수(같은 날 — 제품이 새 날을 안 연다)
+  const TR = (d === 1 || d % 20 === 0) ? { pop: 0, food: 0, stone: 0, metal: 0, wood: 0, toolQ: 0, weapQ: 0, hungry: 0, game: [], wd: [], fert: [], hk: 0 } : null;
   for (const row of db.getVillagesByZone('hanbando')) {
     if (!row.econ_state) continue;
     let m = M.get(row.name); if (!m) M.set(row.name, m = { hkillDays: 0, hkillSum: 0, popMax: 0, everPop: false, huntMax: 0 });
@@ -173,9 +184,29 @@ for (let d = 1; d <= DAYS; d++) {
     if (pop > 0) m.everPop = true;
     const hn = grab(row.econ_state, '"hunter"'.replace(/"/g, '')) || 0;
     if (hn > m.huntMax) m.huntMax = hn;
+    // ★[T241] 20일 궤적 — **정본이 써 둔 칸을 옮겨 적기만** 한다(합·중앙 외 산수 0).
+    if (TR) {
+      let v; try { v = JSON.parse(row.econ_state); } catch (e) { v = null; }
+      if (v) {
+        const S = v.storage || {}, L = v.land || {};
+        TR.pop += (v.npcs || []).length;
+        TR.food += S.food || 0; TR.stone += S.stone || 0; TR.wood += S.wood || 0;
+        TR.metal += (S.copper || 0) + (S.tin || 0) + (S.bronze || 0);
+        TR.toolQ += (S.tool || 0) * (v._toolQ != null ? v._toolQ : 1);
+        TR.weapQ += (S.weapon || 0) * (v._weapQ != null ? v._weapQ : 1);
+        if ((S.food || 0) <= 0) TR.hungry++;
+        TR.game.push(L.game || 0); TR.wd.push(L.wood || 0); TR.fert.push(L.fertility || 0);
+        if ((v._hkillDay || 0) > 0) TR.hk++;
+      }
+    }
   }
+  if (TR) { const md = (a) => { a.sort((x, y) => x - y); return a.length ? +a[a.length >> 1].toFixed(3) : null; };
+    TRAJ.push({ day: d, pop: TR.pop, food: +TR.food.toFixed(1), stone: +TR.stone.toFixed(1),
+      metal: +TR.metal.toFixed(1), wood: +TR.wood.toFixed(1), toolQ: +TR.toolQ.toFixed(1), weapQ: +TR.weapQ.toFixed(1),
+      hungry: TR.hungry, game: md(TR.game), woodL: md(TR.wd), fert: md(TR.fert), hkVil: TR.hk }); }
 }
 console.log = _l2;
+Date.now = _now0;                                          // ★[T241] 시계를 돌려준다
 const tRun = Date.now() - t1;
 Math.random = _rnd0;
 
@@ -228,7 +259,7 @@ const out = {
   // ★[T228 ④] 사건 장부 — `__labProbe._ledgerStats` **읽기 전용 한 줄**로 자가 읽는다(여덟 수 8/8).
   reqOpened: (LS && LS.reqOpened) || 0, emitted: (LS && LS.emitted) || 0,
   reqClosed: (LS && LS.reqClosed) || 0, reqShrunk: (LS && LS.reqShrunk) || 0,
-  depCalls: DEPCALL,
+  depCalls: DEPCALL, traj: TRAJ,
   hunterN, hkillDaysTot: per.reduce((a, p) => a + p.hkillDays, 0),
   hkillSumTot: +per.reduce((a, p) => a + p.hkillSum, 0).toFixed(3),
   farmTot: per.reduce((a, p) => a + p.farm, 0), meatTot: +per.reduce((a, p) => a + p.meat, 0).toFixed(1),
