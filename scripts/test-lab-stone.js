@@ -506,6 +506,57 @@ console.log('\n㉒ 둘째 화물 — 끔 비트 동일 · 켬 실림 · 용량 �
     `최대 ${Math.max(...echo.seenCap)}`);
 }
 
-console.log(`\n=== T223 spareCap 고정 포함: 통과 ${pass} · 실패 ${fail} ===`);
-console.log('접점 심볼: spareCap|caravansLaunched|currentlyTrading|candidates|L_CARGO_TWO|L_SPARECAP_FIX|spareCapFn|onTradeLeg');
+// ════════════════════════════════════════════════════════════════════════════════════════
+// ㉔ [T233] 둘째 화물에 첫째와 같은 관문(`world.cargoTwoGate`)
+//   T231 §ⓐ: 첫째는 `totalProfit<=0` 관문을 지나고 둘째는 관문이 **아예 없다**(단위의 62~74%가 적자).
+//   문이 닫히면 T206/T231 비트 동일 · 열리면 **적자 둘째가 안 실린다** · 흑자 둘째는 그대로.
+{
+  const mkGate = (two, gate) => {
+    const w = econV2.createWorldV2({ seed: 606, villageCount: 0, picker: 'rational', infoRange: 5000 });
+    w.villages = [];
+    if (two) w.cargoTwo = true;
+    if (gate) w.cargoTwoGate = true;
+    let legs = 0, twoLegs = 0, secondSum = 0, negPU = 0, negUnits = 0, blocked = 0, posPU = 0;
+    w.onTradeLeg = (o) => {
+      legs++;
+      blocked += (o.gateBlocked || 0);
+      if (o.second && o.secondUnits > 0) {
+        twoLegs++; secondSum += o.secondUnits;
+        if ((o.p2ProfitPerUnit || 0) <= 0) { negPU++; negUnits += o.secondUnits; } else posPU++;
+      }
+    };
+    for (let i = 0; i < 6; i++) {
+      const v = econ.createVillage({ fertility: 1.2, water: 0.9, stone: (i % 2 ? 2.5 : LV.FLOOR.stone), ore: 0.2,
+                                     wood: 1.2, game: 0.7, arable: 1, size: 70, initialPop: 40, name: (i % 2 ? '산촌' : '바닥') + i });
+      v._world = w; v.coord = { x: (i % 3) * 120, y: Math.floor(i / 3) * 120 };
+      w.villages.push(v);
+    }
+    w.day = 0;
+    let neg = 0;
+    for (let d = 0; d < 300; d++) {
+      econV2.tickWorldV2(w, d);
+      for (const v of w.villages) for (const r in v.storage) if (v.storage[r] < -1e-9) neg++;
+    }
+    return { legs, twoLegs, secondSum, negPU, negUnits, posPU, blocked, neg,
+             dig: JSON.stringify(w.villages.map((v) => ({ n: v.npcs.length, s: +(v.storage.stone || 0).toFixed(9), f: +(v.storage.food || 0).toFixed(9) }))) };
+  };
+  const base = mkGate(false, false), baseG = mkGate(false, true);
+  const two = mkGate(true, false), twoG = mkGate(true, true);
+  ok(base.dig === baseG.dig, '㉔ ★★둘째가 꺼져 있으면 관문 손잡이는 **아무 일도 안 한다**(비트 동일)');
+  ok(two.dig !== twoG.dig, '㉔ ★켜면 다른 세계다(문이 죽어 있지 않다)');
+  pre(two.twoLegs > 0, '이 세계에서 둘째가 실제로 실린다', `${two.twoLegs}건`);
+  //   ★★자명 통과 금지 — 관문에 **실제로 걸리는** 둘째가 있어야 이 절이 의미가 있다.
+  pre(two.negPU > 0, '★관문 없는 팔에 **적자 둘째가 실제로 있다**', `${two.negPU}건 / ${two.twoLegs}건 · ${two.negUnits.toFixed(0)} 단위`);
+  ok(twoG.negPU === 0, '㉔ ★★★관문을 켜면 **단위당 적자 둘째가 한 건도 안 실린다**',
+    `끔 ${two.negPU}건(${two.negUnits.toFixed(0)} 단위) → 켬 ${twoG.negPU}건`);
+  ok(twoG.blocked > 0, '㉔ ★관문이 실제로 후보를 거른다(세어 본다)', `${twoG.blocked}회 · 끔 ${two.blocked}회`);
+  ok(two.blocked === 0, '㉔ ★문이 닫혀 있으면 거르지 않는다');
+  ok(twoG.posPU > 0, '㉔ ★★흑자 둘째는 **그대로 실린다**(관문이 둘째를 없애 버리는 게 아니다)', `${twoG.posPU}건`);
+  ok(twoG.secondSum > 0 && twoG.secondSum < two.secondSum, '㉔ ★적재량은 줄되 0 이 되지는 않는다',
+    `${two.secondSum.toFixed(0)} → ${twoG.secondSum.toFixed(0)} 단위`);
+  ok(two.neg === 0 && twoG.neg === 0, '㉔ ★★곳간 음수 0(두 팔 다)');
+}
+
+console.log(`\n=== T233 둘째 관문 포함: 통과 ${pass} · 실패 ${fail} ===`);
+console.log('접점 심볼: L_CARGO_TWO|L_CARGO_TWO_GATE|candidates|totalProfit|best.profit|lp.mv|tripDays|tcPerUnit|_impactSellV2|giveRes|giveAmt|N_units|CARGO_PER_TRIP|onTradeLeg|spareCap|_legProfitPerUnit|cargoTwoGate');
 process.exit(fail ? 1 : 0);

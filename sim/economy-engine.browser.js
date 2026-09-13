@@ -6387,6 +6387,15 @@ const TRADE_INTERVAL = 3;   // (구 3일 게이트용. 연속교역 전환 후�
 //   spareCap = N × 포만스로틀 × UTIL. 광석 등 SAT_ALWAYS는 늘 포만 신호 → 식량난 광산촌도 교역 가능.
 //   포만스로틀(v._idleFrac) = 1 − 실제생산/잠재생산 (tickVillage에서 누적). UTIL로 안정본 강도(~4%)에 맞춤.
 const TRADE_SPARE_UTIL = 0.11;
+// ★[T233 2026-09-13] 원정 한 단위의 기대 순이익 — **첫째 화물의 세 줄을 이름만 올린 것**이다(값·순서 무변).
+//   `revenuePerUnit = pTo*(1-TAU)` · `costPerUnit = pFrom*(1+TAU) + tc` · `(rev*(1-loss)) - cost`.
+//   T231 이 코드로 보인 비대칭 — 첫째는 이 관문을 지나고 둘째는 **관문이 아예 없어** 단위의 62~74%가
+//   단위당 적자로 실려 나갔다 — 을 고치려면 둘이 **같은 것**을 불러야 한다. 사본을 만들면 그 순간 갈린다.
+function _legProfitPerUnit(pFrom, pTo, transportCostPerUnit, expectedLossRatio) {
+  const revenuePerUnit = pTo * (1 - TAU);
+  const costPerUnit = pFrom * (1 + TAU) + transportCostPerUnit;
+  return revenuePerUnit * (1 - expectedLossRatio) - costPerUnit;
+}
 // ★위기 교역 동원(2026-07-13 실험 K): 식량 적자 마을(surplusEMA.food<0)은 포만 유휴노동(_idleFrac)이
 //   ~0이라 spareCap=1로 묶여, 글럿된 자산(가죽 등)을 식량과 바꿀 캐러밴을 못 냄(묶인 재산=Sen 자격 붕괴의 기계적 원인).
 //   적자 마을에 한해 유휴노동 밖 노동을 소폭 교역에 동원 — 하단 기회비용 게이트가 각 원정 순이익성을 여전히
@@ -6865,9 +6874,9 @@ function tickTradeV2(world, day) {
           //   원인 — EV는 출발 leg만 계산하고 귀환 leg 차익(도착지 저가 매입)은 미계상인데, flat의 낙관
           //   편향이 그 미계상 가치의 대리물이었음. 편향만 제거하면 순이익 원정이 게이트에서 탈락.
           //   진짜 정합은 '귀환 leg 기대가치 모델링'과 세트(후속 설계 후보) — 그 전까지 기대는 근사, 정산은 진실.
-          const revenuePerUnit = pTo * (1 - TAU);
-          const costPerUnit = pFrom * (1 + TAU) + transportCostPerUnit;
-          const profitPerUnit = revenuePerUnit * (1 - expectedLossRatio) - costPerUnit;
+          //   ★[T233] 세 줄을 `_legProfitPerUnit` 으로 **이름만 올렸다** — 곱·뺄셈 순서 그대로라 비트 동일.
+          //     첫째와 둘째가 **같은 함수**를 부르게 하려면 식이 이름을 가져야 한다(사본 금지 · T200 문법).
+          const profitPerUnit = _legProfitPerUnit(pFrom, pTo, transportCostPerUnit, expectedLossRatio);
           const totalProfit = profitPerUnit * N_units;
           if (totalProfit <= 0) continue;
           if (!best || totalProfit > best.profit) {
@@ -6875,12 +6884,13 @@ function tickTradeV2(world, day) {
               profit: totalProfit, profitPerUnit,
               cand, b, dist, N_units, pFrom, pTo,
               transportCostPerUnit,
+              expectedLossRatio,                 // ★[T233] 둘째 관문이 **같은 손실률**을 쓰게 옮긴다(속성 추가만 · 산술 무관)
               key,
             };
           }
           // ★식량 pull(P2): 식량 잉여 목적지 중 최고 이익 병행 추적(위기 마을 한정)
           if (_crisisA && _destHasFood(b) && (!bestF || totalProfit > bestF.profit)) {
-            bestF = { profit: totalProfit, profitPerUnit, cand, b, dist, N_units, pFrom, pTo, transportCostPerUnit, key };
+            bestF = { profit: totalProfit, profitPerUnit, cand, b, dist, N_units, pFrom, pTo, transportCostPerUnit, expectedLossRatio, key };
           }
         }
       }
@@ -6915,7 +6925,7 @@ function tickTradeV2(world, day) {
       //   ⚠**용량·후보 규칙 무변**: 용량은 `CARGO_PER_TRIP` 그대로, 순서는 위 `candidates` 정렬 그대로,
       //     **셋째 이상은 안 싣는다**. 값·차감·정산은 품목마다 있는 문법을 그대로 한 번 더 쓴다.
       //   ⚠주입이 없으면(`world.cargoTwo` 미설정) 이 블록은 통째로 건너뛴다 = **비트 동일**.
-      let _res2 = null, _n2 = 0, _p2 = 0;
+      let _res2 = null, _n2 = 0, _p2 = 0, _pp2 = 0, _gateBlocked = 0;
       if (world.cargoTwo) {
         const _room = CARGO_PER_TRIP - N_units;
         if (_room >= 1) {
@@ -6923,7 +6933,15 @@ function tickTradeV2(world, day) {
             if (c2.res === cand.res) continue;
             const _q = Math.min(c2.surplus, _room, a.v.storage[c2.res] || 0);
             if (!(_q >= 1)) continue;
-            _res2 = c2.res; _n2 = _q; _p2 = a.prices[c2.res] || 0;
+            //   ★★★[T233] **관문 문** — 첫째가 지나는 그 관문(`_legProfitPerUnit`)을 둘째도 지나게 한다.
+            //     목적지·거리·운반비·손실률은 **첫째가 정한 그대로**(같은 수레다) — 새 수 0 · 사본 0.
+            //     문이 닫히면(`world.cargoTwoGate` 미설정) 이 블록을 안 탄다 = T206/T231 비트 동일.
+            //     왜: T231 §ⓐ — 첫째는 `totalProfit<=0` 관문을 지나는데 둘째는 관문이 **아예 없어서**
+            //     `TRADABLE` 선언 순서상 첫 품목을 적자로도 싣는다(단위의 62~74%가 단위당 적자).
+            const _pu2 = _legProfitPerUnit(a.prices[c2.res] || 0, (b.prices && b.prices[c2.res]) || 0,
+                                           best.transportCostPerUnit, best.expectedLossRatio);
+            if (world.cargoTwoGate && !(_pu2 * _q > 0)) { _gateBlocked++; continue; }   // ★걸리면 **다음 후보**로(둘째를 아예 안 싣는 게 아니라)
+            _res2 = c2.res; _n2 = _q; _p2 = a.prices[c2.res] || 0; _pp2 = _pu2;
             break;                                    // ★첫 번째로 실리는 둘째 하나뿐 — 셋째 이상 0
           }
         }
@@ -7020,7 +7038,11 @@ function tickTradeV2(world, day) {
             dist: best.dist, tripDays,
             pFrom: best.pFrom, pTo: best.pTo, tcPerUnit: best.transportCostPerUnit,
             profitPerUnit: best.profitPerUnit, profit: best.profit,
-            p2From: _p2 || 0, p2To: (b.prices && b.prices[_res2]) || 0 });
+            p2From: _p2 || 0, p2To: (b.prices && b.prices[_res2]) || 0,
+            //   ★[T233 관측 항] 둘째의 단위당 기대이익(첫째와 **같은 함수**가 낸 수) · 관문에 걸려 건너뛴 후보 수 ·
+            //     기회비용 관문의 두 입력(밖에서 다시 계산하면 정본 재구현이다).
+            p2ProfitPerUnit: _pp2 || 0, gateBlocked: _gateBlocked,
+            lossRatio: best.expectedLossRatio, mv: lp.mv, slack });
         } catch (e) {}
       }
       if (a.v.tradeStats) {
