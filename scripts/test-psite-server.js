@@ -162,7 +162,46 @@ console.log('\n[⑧ 관측 — /lifedbg가 의뢰 상태를 노출]');
     catch (e) { threw = e; }
     return threw; };
 
-  console.log('\n[⑨ ★실행 — 실서버에서 자리 확정이 실패하면 무엇이 사라지나]');
+  console.log('\n[⑩ ★T219 집터 방아쇠 — 규칙은 한 곳(랩과 같은 것) · 손잡이 기본 끔]');
+{
+  const VL = require('../server/village-layout.js');
+  const CAP = VL.HOUSE_CAP_PER_FLOOR;   // ★6 을 하네스에 적지 않는다 — 모듈이 정본
+  const W = VL.houseSiteWant;
+  // ── 정본 하나 ──────────────────────────────────────────────────────────────
+  chk(typeof W === 'function', '`village-layout.houseSiteWant` 실재 — 규칙의 정본이 레이아웃 모듈에 하나');
+  const trig = VIL.slice(VIL.indexOf('const cap = vil._houseCells.length'), VIL.indexOf('_sub(\'site\')'));
+  chk(/houseSiteWant\(/.test(trig), '생활층 방아쇠가 **그 함수를 부른다**(규칙을 다시 적지 않는다)');
+  chk(!/Math\.ceil[^\n]*HOUSE_CAP/.test(trig), '  방아쇠 자리에 목표 층수 **수식이 없다**(사본 0)');
+  chk(/T219_HOUSE_TRIGGER/.test(trig), '  켬/끔은 손잡이 하나가 가른다');
+  chk(/const T219_HOUSE_TRIGGER = process\.env\.T219_HOUSE_TRIGGER === '1'/.test(VIL),
+    "  손잡이 기본값 **끔** — `=== '1'` (미설정이면 종전 경로)");
+  chk(/vil\.econ\.npcs\.length > cap \* 0\.92/.test(trig),
+    '  끔 경로가 종전 식 그대로 — `인구 > 침상 × 0.92`(서버 고유 수 · 랩엔 없다)');
+  // ── ★규칙을 **실제로 불러** 잰다(소스 문자열이 아니라 답을 본다 · 족보 (84)) ─────────
+  const OLD = (pop, built) => pop > built * CAP * 0.92;   // 종전 비율식(대조군 — 하네스가 쥔다)
+  // ⓐ ★데드락 픽스처 — econ 은 목재를 선지불해 수용력을 키웠는데 실체는 4채에 멈춘 마을.
+  //    종전 비율식은 "인구가 침대를 안 넘었다"며 집터를 **안 연다** → 침상은 영원히 24.
+  //    `_mapBeds` 를 살리는 날(#22) 그 마을은 24에서 얼어붙는다. 그게 랩이 피한 데드락이다.
+  chk(OLD(20, 4) === false, '  (전제) 종전 비율식은 인구 20·4채에서 집터를 **안 연다**');
+  chk(W(20, 40, 4, 0) === true,
+    `ⓐ ★랩 규칙은 **연다** — 인구 20·\`housing\` 40·4채(목표 ${Math.ceil(40 / CAP)}층) ⇒ 데드락이 서지 않는다`);
+  // ⓑ ★자명 통과 방지 — `housing` 을 안 보면 그 픽스처는 **거짓**이다(여는 건 `max` 다).
+  chk(W(20, 0, 4, 0) === false, 'ⓑ ★`housing` 을 0 으로 주면 같은 마을에서 **거짓** — 여는 것은 `max(pop, housing)` 이다');
+  // ⓒ 포화에서 멈춘다(무한 증축 금지)
+  chk(W(CAP * 4, CAP * 4, 4, 0) === false, `ⓒ 목표를 채우면 **멈춘다** — 인구 ${CAP * 4}·${4}채(목표 4층)`);
+  chk(W(CAP * 4 + 1, 0, 4, 0) === true, `  한 사람만 넘으면 다시 **연다** — 인구 ${CAP * 4 + 1}`);
+  // ⓓ 경계가 층당 정원에서 꺾인다(새 수 0 — 모듈 값으로 검산)
+  chk([1, 2, 3, 5, 9].every((k) => W(0, CAP * k, k, 0) === false && W(0, CAP * k + 1, k, 0) === true),
+    `ⓓ 목표 경계가 정확히 \`HOUSE_CAP_PER_FLOOR\`(=${CAP})마다 꺾인다 — 수를 새로 만들지 않았다`);
+  // ⓔ 동시 상한 — 호출자가 슬롯 하나면 언제나 참 ⇒ 서버는 랩보다 이미 엄격(그 수를 서버에 안 옮겼다)
+  chk([1, 25, 26, 50, 200, 5000].every((pop) => W(pop, pop * 10, 0, 1) === true),
+    'ⓔ 집터 하나를 쥔 채로도 랩의 동시 상한은 **언제나 참** — 서버 슬롯 하나가 이미 더 엄격하다');
+  chk(W(200, 2000, 0, 8) === false, '  (전제) 상한 자체는 살아 있다 — 집터 8개면 인구 200에서 **거짓**');
+  // ⓕ 되돌림 — 끔이면 두 식이 갈리는 그 픽스처에서 종전 답이 나온다(env 한 줄로)
+  chk(process.env.T219_HOUSE_TRIGGER !== '1', 'ⓕ 이 판은 손잡이 **끔**으로 돌았다(러너 기본 = 종전 경로)');
+}
+
+console.log('\n[⑨ ★실행 — 실서버에서 자리 확정이 실패하면 무엇이 사라지나]');
   let vil = null;
   for (let i = 0; i < 120 && !vil; i++) {
     const d = V.lifeDebug && V.lifeDebug();

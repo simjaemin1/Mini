@@ -52,6 +52,7 @@ const SNAP = () => {
     vHouses: vh.length,
     mapBeds: (v.econ && v.econ._mapBeds) || 0,
     bedsExpect: vh.filter((h) => (h.builtFloors || 0) >= 1).length * L_FLOORCAP,
+    floorCap: L_FLOORCAP,   // ★[T219] 층당 정원을 **랩이 쥔 그 값으로** 내보낸다(하네스가 6 을 적지 않게)
     plog: (v._psiteLog || []).slice(),
     homesInPlayer: v.agents.filter((a) => a.home && ph.some((h) => a.home.cx >= h.cx - 5 && a.home.cx <= h.cx && a.home.cy >= h.cy - 5 && a.home.cy <= h.cy - 2)).length,
     onPlayer: v.agents.filter((a) => a._site && a._site.player).length,
@@ -161,7 +162,25 @@ async function runOnce(withPlayerSite, prng) {
   chk(B.doneDay !== null, '④ 완공 도달 — 지정 day ' + B.placed.day + ' → 완공 day ' + B.doneDay + ' (' + (B.doneDay - B.placed.day) + '일)');
   chk(B.last.pCrew > 0 && B.last.pCrew >= 4600 * 0.9, `⑤ 진척 동력 = 크루 현장 체류분뿐 — 누적 ${B.last.pCrew} 인·분 (L_BUILDSEC=4600, 공동 노역 바닥 0)`);
   chk(B.last.homesInPlayer === 0, '⑥ 마을 주민 입주 0명(침대 명부 제외) — 실측 ' + B.last.homesInPlayer);
-  chk(B.last.mapBeds === B.last.bedsExpect, `⑦ econ 침대 명부에 플레이어 집 미포함 — _mapBeds ${B.last.mapBeds} = 마을 완공집 기준 ${B.last.bedsExpect}`);
+  // ★★[T212 회부 → T219 정정] ⑦ 은 **자명 통과가 될 수 있었다.**
+  //   두 수를 같은 배열에서 뽑는데(`v.houses`), 완공 집이 0 채면 `0 === 0` 으로 초록이 된다 —
+  //   그러면 "플레이어 집이 명부에서 빠졌다"를 **한 번도 안 재고** 통과한다.
+  //   ⇒ 전제를 앞에 세운다: ⓐ 명부가 비어 있지 않다 · ⓑ 완공된 **의뢰 집이 실제로 있다**
+  //     (그게 없으면 제외할 것이 없다) · ⓒ 그 의뢰 집을 세면 값이 **달라진다**(자가 반증).
+  //   ⚠ `MAX_FLOORS=1` 이라 `Σ builtFloors ≡ |{builtFloors≥1}|` 다 — 층이 둘 서는 날이 오면
+  //     두 식은 셈 방식으로 갈라진다. ⓓ 가 그날을 잡아 준다(가짜 실패를 미리 이름 붙인다).
+  {
+    const L7 = B.last;
+    chk(L7.mapBeds > 0 && L7.bedsExpect > 0,
+      `⑦ⓐ (전제) 침대 명부가 비어 있지 않다 — _mapBeds ${L7.mapBeds} · 기준 ${L7.bedsExpect} (양쪽 0 이면 자명 통과다)`);
+    chk(L7.pDone === true, '⑦ⓑ (전제) 완공된 **의뢰 집이 실제로 있다** — 제외할 것이 있는 판이다');
+    chk(L7.mapBeds === L7.bedsExpect,
+      `⑦ econ 침대 명부에 플레이어 집 미포함 — _mapBeds ${L7.mapBeds} = 마을 완공집 기준 ${L7.bedsExpect}`);
+    chk(L7.mapBeds !== L7.bedsExpect + L7.floorCap,
+      `⑦ⓒ ★자가 반증 — 의뢰 집을 셌다면 ${L7.bedsExpect + L7.floorCap} 이 나왔을 자리다(실측 ${L7.mapBeds})`);
+    chk(L7.vFloors === L7.vHouses - L7.vSites,
+      `⑦ⓓ 마을 집은 전부 단층이다 — 층합 ${L7.vFloors} = 완공 ${L7.vHouses - L7.vSites}채 (층이 둘 서면 ⑦ 의 두 식이 갈라진다)`);
+  }
   chk(B.errs.length === 0, 'pageerror ' + B.errs.length + '건' + (B.errs.length ? ': ' + B.errs.slice(0, 3).join(' | ') : ''));
   chk(B.cerrs.length === 0, 'console error ' + B.cerrs.length + '건' + (B.cerrs.length ? ': ' + B.cerrs.slice(0, 2).join(' | ') : ''));
 

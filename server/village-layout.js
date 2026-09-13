@@ -36,6 +36,24 @@
   const discCells = (R) => { const o = [], B = Math.ceil(R); for (let dx = -B; dx < B; dx++) for (let dy = -B; dy < B; dy++) if ((dx + 0.5) * (dx + 0.5) + (dy + 0.5) * (dy + 0.5) < R * R) o.push([dx, dy]); return o; };
   const LOT_CELLS = discCells(LOT_R), LOT_GUARD = discCells(LOT_R + FARM_GAP), YARD_CELLS = discCells(HALL_YARD);   // 부지 원판(124셀 — 구 12×12 등적·적도폭 12), 부지+2 침수·완충 원판, 큰집 마당 원판(316셀)
   const houseFarmBlock = (hx, hy, x, y) => inDisc(hx, hy, LOT_R + FARM_GAP, x, y), hallFarmBlock = (hx, hy, x, y) => inDisc(hx, hy, HALL_YARD + FARM_GAP, x, y);   // 농지 완충: 부지/마당 밖 정확 2타일(원이라 비대칭 구조적 불가)
+  // ★★[T219 2026-09-12 재민 확정] **집터를 원하는가 — 규칙 하나.**
+  //   랩(마을실험실·전쟁실험실)의 생활층과 서버 생활층이 **같은 규칙**을 물어야 하는 자리다.
+  //   랩이 값비싸게 배운 것(랩 주석 그대로): 목표 층수를 **인구만** 보고 세면 데드락이 선다 —
+  //   *"침대가 차야 인구↑, 인구가 늘어야 집터↑"*. 그래서 econ 수용력(`housing` — 목재를 선지불해
+  //   pop×HOUSE_BUFFER 를 좇는 수)과 **큰 쪽**을 본다.
+  //     · 목표     = ceil(max(pop, housing) / HOUSE_CAP_PER_FLOOR)   ← 층당 정원은 이 모듈이 정본
+  //     · 원하는가 = (완공 층 + 공사 중 집터) < 목표                  ← 비율이 아니라 **부족분**
+  //     · 동시 상한 = sites < max(2, round(pop/25))                  ← 랩 정본의 수(신설 아님)
+  //   ⚠수를 새로 만들지 않는다: 6 은 위 `HOUSE_CAP_PER_FLOOR`, 2·25 는 랩의 그 수다.
+  //   ⚠호출자가 집터 슬롯을 **하나만** 쥐면(서버 `vil._site`) 셋째 줄은 언제나 참이다(1 < max(2,·)) —
+  //     즉 서버는 랩의 동시 상한보다 **이미 더 엄격**하다. 그래서 그 수를 서버 쪽에 옮겨 적지 않는다.
+  //   ★랩 HTML 의 인라인 사본은 이 모듈의 손 동기 대상이다(위 LAND_NEED 주석의 규약) —
+  //     다음 동기에서 랩의 방아쇠 세 줄이 이 함수 하나를 부르면 사본이 0 이 된다(T219 회부).
+  const houseSiteWant = (pop, housing, builtFloors, sites) => {
+    const P = pop > 0 ? pop : 0, H = housing > 0 ? housing : 0, B = builtFloors > 0 ? builtFloors : 0, S = sites > 0 ? sites : 0;
+    const target = Math.ceil(Math.max(P, H) / HOUSE_CAP_PER_FLOOR);
+    return (B + S) < target && S < Math.max(2, Math.round(P / 25));
+  };
   const landNeedPer = (fv, base) => base * Math.max(0.6, Math.min(2.5, 0.55 / Math.max(0.05, (fv != null ? fv : 0.55))));   // ★보즈럽 조방화: 인당 경작칸=기준×(0.55/비옥), 0.6~2.5 클램프 — 저비옥=조방·고비옥=집약(랩 정본 동식)
   const _dt1d = (f, n, d, v, z) => { let k = 0; v[0] = 0; z[0] = -1e20; z[1] = 1e20; for (let q = 1; q < n; q++) { let s = ((f[q] + q * q) - (f[v[k]] + v[k] * v[k])) / (2 * q - 2 * v[k]); while (s <= z[k]) { k--; s = ((f[q] + q * q) - (f[v[k]] + v[k] * v[k])) / (2 * q - 2 * v[k]); } k++; v[k] = q; z[k] = s; z[k + 1] = 1e20; } k = 0; for (let q = 0; q < n; q++) { while (z[k + 1] < q) k++; const p = v[k]; d[q] = (q - p) * (q - p) + f[p]; } };   // Felzenszwalb 1D 제곱거리 변환
   // ★[11차] 임의 술어에 대한 정확 EDT — 물뿐 아니라 **바위 거리**도 필요해졌다(셀 비옥도).
@@ -360,7 +378,7 @@
     return { ok: diagOnly === 0, comps, diagOnly };
   }
 
-  const API = { LAND_NEED,   // ★[T100 4판] 정본 — 밖(villages.js·계측기·하네스)이 이 값을 읽는다
+  const API = { LAND_NEED, houseSiteWant,   // ★[T100 4판] 정본 — 밖(villages.js·계측기·하네스)이 이 값을 읽는다
     generate, footprintLand, axisAt, nearestBank, waterEDT, maskEDT, HOUSE_HALF, HOUSE_CAP: HOUSE_CAP_PER_FLOOR, HOUSE_CAP_PER_FLOOR, LAND_PER_HOUSE, landNeedPer, HALL_YARD, LOT_R, FARM_GAP, ALLEY_R, HALL_CLEAR, inDisc, LOT_CELLS, LOT_GUARD, YARD_CELLS, houseFarmBlock, hallFarmBlock,
     ditchRing, ditchConnectivity, DITCH_W, DITCH_AXIS_RATIO, DITCH_GATE_HALF, DITCH_MARGIN };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;

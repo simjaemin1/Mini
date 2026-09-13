@@ -32,6 +32,8 @@ const DAYS = parseInt(process.env.T212_DAYS || '', 10) || 200;
 const DAY_MS = parseInt(process.env.T212_DAY_MS || '', 10) || 4000;
 const CDB = process.env.T212_CDB || '/tmp/t212-c.db';
 const ZDB = process.env.T212_DB || '/tmp/t212-z.db';
+// ★[T219] 존에 그대로 넘길 여분 env — 끔/켬 두 팔을 **같은 계측기**로 잰다(팔마다 사본 만들지 않게).
+const EXTRA = (() => { const o = {}; for (const kv of (process.env.T212_ENV || '').split(',')) { const i = kv.indexOf('='); if (i > 0) o[kv.slice(0, i)] = kv.slice(i + 1); } return o; })();
 const SKIP = process.env.T212_SKIP_RUN === '1';
 const SNAP_F = process.env.T212_SNAP || '/tmp/t212-snap.json';
 
@@ -75,12 +77,13 @@ const CAP = VL.HOUSE_CAP_PER_FLOOR;
     console.log(`  판: 중앙 :${CPORT} · 존 hanbando :${ZPORT} · 게임일 ${DAY_MS}ms × ${DAYS}일 ≈ ${Math.round(DAYS * DAY_MS / 1000)}초`);
     boot('central.js', { PORT: String(CPORT), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });
     if (!await waitHttp(`http://localhost:${CPORT}/zones`, 180)) { console.log('  ✗ 중앙 부팅 실패'); process.exit(1); }
-    boot('zone.js', {
+    boot('zone.js', Object.assign({
       PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB,
       CENTRAL_PORT: String(CPORT), CENTRAL_HOST: 'localhost', CENTRAL_URL: `http://localhost:${CPORT}`,
       VILLAGE_DAY_MS: String(DAY_MS),
       ENABLE_BANDITS: '0', ENABLE_ROADS: '0', ENABLE_WILDLIFE: '0',
-    });
+    }, EXTRA));
+    if (Object.keys(EXTRA).length) console.log(`  존 여분 env: ${JSON.stringify(EXTRA)}`);
     if (!await waitHttp(`http://localhost:${ZPORT}/health`, 900)) { console.log('  ✗ 존 부팅 실패'); process.exit(1); }
     const t0 = Date.now();
     let last = -1;

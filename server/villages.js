@@ -4722,6 +4722,10 @@ const LIFE_SITE_RESCAN_DAYS = (() => { const v = parseInt(process.env.LIFE_SITE_
 const LIFE_SITE_MEMO = process.env.LIFE_SITE_MEMO !== '0';        // 0 = 종전 동작(매일 전수) — 두 하네스의 대조군
 const LIFE_SITE_AUDIT = process.env.LIFE_SITE_AUDIT === '1';      // 1 = 캐시로 건너뛴 셀을 **실제로 다시 판정**해 단조성을 런타임 증명
 const LIFE_SITE_NODIRTY = process.env.LIFE_SITE_NODIRTY === '1';  // 1 = 표지를 일부러 안 세운다(안전망이 잡는지 보는 픽스처)
+// ★★[T219 2026-09-12 재민 확정] **집터 방아쇠 이식 손잡이 — 기본 끔(끄면 종전 비트 동일).**
+//   끔: 서버 고유 비율(`인구 > 침상 × 0.92`). `0.92` 는 랩에 없는 **서버 고유 수**다.
+//   켬: 랩 정본 규칙 하나(`village-layout.houseSiteWant` — 부족분 · `max(pop, housing)` · 사본 0).
+const T219_HOUSE_TRIGGER = process.env.T219_HOUSE_TRIGGER === '1';
 // 표지 — "다시 훑어라". 거부 캐시는 **유지**한다(영토 확장은 새 셀만 더하지 옛 거부를 뒤집지 않는다).
 function lifeSiteDirty(vil) { if (vil && !LIFE_SITE_NODIRTY) vil._siteDirty = true; }
 // 리셋 — "다시 훑고 **거부 캐시도 버려라**". 옛 거부가 뒤집힐 수 있는 사건에서만.
@@ -5357,7 +5361,13 @@ function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(�
     }
   }
   const cap = vil._houseCells.length * (_lifeVL().HOUSE_CAP || 6);
-  if (!vil._site && vil.econ.npcs.length > cap * 0.92) { try { _lifeAddHouseSite(vil); } catch (e) { console.error(`[${state.zoneId}] 생활층 신축 실패(${vil.name}):`, e.message); } }
+  // ★★[T219] 방아쇠 **한 자리**. 규칙은 이 파일이 안 갖는다 — `village-layout.houseSiteWant` 하나가 정본이다
+  //   (랩 세 줄과 같은 규칙 · 사본 0). 서버 움집은 단층이라 완공 층수 = `_houseCells.length`
+  //   (레이아웃 MAX_FLOORS=1 · T212 실측 50마을 전부 층합=채수). 집터 슬롯은 하나(`vil._site`).
+  const _wantSite = T219_HOUSE_TRIGGER
+    ? _lifeVL().houseSiteWant(vil.econ.npcs.length, vil.econ.housing, vil._houseCells.length, vil._site ? 1 : 0)
+    : (vil.econ.npcs.length > cap * 0.92);
+  if (!vil._site && _wantSite) { try { _lifeAddHouseSite(vil); } catch (e) { console.error(`[${state.zoneId}] 생활층 신축 실패(${vil.name}):`, e.message); } }
   _sub('site');
   // ★[헤드리스 결산] 관측자 없는 마을 = 랩 빨리감기 — 하루치 물리 결과 일괄 적산(관측 마을은 실걸음 크루 소유)
   const anyNear = state.deps.anyViewerNear;
