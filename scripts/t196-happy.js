@@ -125,7 +125,8 @@ if (LABMODE) {
     const b = await chromium.launch();
     const p = await b.newPage();
     if (process.env.T196_NOPRNG !== '1') await p.addInitScript(PRNG(SEED));   // ★랩 하네스 문법(고정 PRNG) · 끄면 랩 제 씨앗만
-    if (HW > 0) await p.addInitScript(`window.L_HAPPYWORK=${HW};`);   // ★랩의 T165 손잡이(있으면)
+    // ★★랩의 기본은 **T165 켬**이다(`L_HAPPYWORK_BASE=0.24`) — 끈 팔을 보려면 **0 을 명시로 넣어야 한다**.
+    if (process.env.T196_HW !== undefined) await p.addInitScript(`window.L_HAPPYWORK=${HW};`);
     const errs = []; p.on('pageerror', (e) => errs.push(String(e.message).slice(0, 200)));
     await p.goto('file://' + LAB, { waitUntil: 'load', timeout: 300000 });
     await p.waitForTimeout(1200);

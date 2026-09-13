@@ -249,5 +249,55 @@ console.log('\n[T100] 인당 기준 경작칸 — 정본 하나인가');
   else ok('villages.js 에 사본이 없다 — `_lifeVL().LAND_NEED` 로 읽는다');
 }
 
+// ── H: 랩 부팅 기본 = 서버 기본 (T221) ───────────────────────────────────────
+//   ★왜 [T209 → T221] 랩이 손잡이를 **켠 채** 뜨면 "랩 끈 팔"이 서버 끈 팔이 아니다.
+//     실제로 그랬다: `L_HAPPYWORK` 가 0.24 로 떠서 T196 의 랩 표가 켠 판이었다(랩 기준선 인구 +17.6%).
+//     서버(`server/villages.js` 세계 생성 + `trees.attachToWorld`)가 심는 것은 **나무 층 둘뿐**이고
+//     `happyWorkW`·`allocFn`·`stoneBudgetFn`·`returnPullFn`·`toolWearMul`·`huntIncomeFn`·`woodIncomeFn` 은
+//     **안 심는다** ⇒ 랩도 그 자리에서 **안 심은 채로** 떠야 한다. 켜는 것은 실험자의 명시(`window.L_*`·토글)다.
+console.log('\n[H] 랩 부팅 기본 = 서버 기본(주입 없음)');
+{
+  // 각 줄: [이름, 기본값을 읽는 정규식, 서버와 같은 값(=문을 안 여는 값), 왜]
+  const LABKNOBS = [
+    ['L_HAPPYWORK',  /let\s+L_HAPPYWORK\s*=\s*\(typeof window[^;]*?:\s*([0-9.]+)\s*;/,        '0',        'T157 행복→작업량 — 서버는 happyWorkW 를 안 심는다'],
+    ['L_ALLOC_REAL', /window\.L_ALLOC_REAL\s*===\s*undefined\)\s*window\.L_ALLOC_REAL\s*=\s*([0-9.]+)/, '0', 'T161/T164 실현 배분 — 서버는 allocFn 을 안 심는다'],
+    ['L_STONEREAL',  /window\.L_STONEREAL\s*===\s*undefined\)\s*window\.L_STONEREAL\s*=\s*([0-9.]+)/,   '0', 'T163 석재 실물 — 서버는 stoneBudgetFn 을 안 심는다'],
+    ['L_STONE_TRADE',/window\.L_STONE_TRADE\s*===\s*undefined\)\s*window\.L_STONE_TRADE\s*=\s*([0-9.]+)/,'0', 'T173 귀환 화물 — 서버는 returnPullFn 을 안 심는다'],
+    ['L_TOOL_WEAR',  /window\.L_TOOL_WEAR\s*===\s*undefined\)\s*window\.L_TOOL_WEAR\s*=\s*([0-9.]+)/,   '1', 'T180 도구 마모 — 배수 1 이면 문을 안 연다(서버도 toolWearMul 없음)'],
+    ['L_LANDMUL',    /let\s+L_LANDMUL\s*=\s*\(typeof window[^;]*?:\s*([0-9.]+)\s*;/,           '1',        'T138 경작칸 배수 — 1 이면 정본 LAND_NEED 그대로'],
+  ];
+  const MODES = [
+    ['L_HUNTINCOME', /function _huntIncomeMode\(\)\{return \(typeof window[^;]*?:\s*'([a-z]+)'/, 'abstract', 'T154 사냥 소득 — 서버는 huntIncomeFn 을 안 심는다'],
+    ['L_WOODINCOME', /function _woodIncomeMode\(\)\{return \(typeof window[^;]*?:\s*'([a-z]+)'/, 'abstract', 'T166 목재 소득 — 서버는 woodIncomeFn 을 안 심는다'],
+  ];
+  const scan = (src) => {
+    const out = [];
+    for (const [name, re, want, why] of LABKNOBS.concat(MODES)) {
+      const m = src.match(re);
+      if (!m) { out.push([name, null, want, why]); continue; }
+      if (String(m[1]) !== want) out.push([name, m[1], want, why]);
+    }
+    return out;
+  };
+  const warLab = fs.readFileSync(path.join(root, 'lab', '전쟁실험실.html'), 'utf8');
+  const bad0 = scan(warLab);
+  for (const [name, got, want, why] of bad0) {
+    if (got === null) bad(`랩 손잡이 ${name} 기본값을 못 찾았다 — 검사기가 낡았거나 손잡이가 사라졌다`);
+    else bad(`랩 ${name} 기본 ${got} ≠ 서버 기본 ${want} — 랩이 켠 채 뜬다(${why})`);
+  }
+  if (!bad0.length) ok(`랩 부팅 기본이 서버 기본과 같다 — 손잡이 ${LABKNOBS.length + MODES.length}개 전수(${LABKNOBS.concat(MODES).map((k) => k[0]).join(' · ')})`);
+  // ★자명 통과 금지 — 켠 채 뜨는 판을 만들면 이 검사가 실제로 문다
+  const mut = warLab.replace(/(let\s+L_HAPPYWORK\s*=\s*\(typeof window[^;]*?:\s*)0(\s*;)/, '$1' + '0.24' + '$2');
+  if (mut === warLab) bad('[자명 통과 금지] 변조판을 못 만들었다 — 검사기가 읽는 자리가 그 자리가 아니다');
+  else if (scan(mut).length > 0) ok('[자명 통과 금지] 켠 채 뜨는 판(L_HAPPYWORK=0.24)을 만들면 이 검사가 **문다**');
+  else bad('[자명 통과 금지] 켠 채 뜨는 판을 만들어도 검사가 통과한다 — 검사기가 죽었다');
+  // 서버가 심는 것은 나무 층 둘뿐 — 그 목록이 늘면 이 절도 늘어야 한다
+  const V2 = fs.readFileSync(path.join(root, 'server', 'villages.js'), 'utf8');
+  const inj = (V2.match(/world\.[A-Za-z_]+\s*=/g) || []).map((x) => x.replace(/\s*=$/, ''));
+  const extra = inj.filter((x) => !['world.villages', 'world.events', 'world.day'].includes(x));   // 상태(목록·장부·날짜)는 주입이 아니다
+  if (!extra.length) ok('서버가 세계에 직접 다는 주입 함수 0개(나무 층은 `trees.attachToWorld` 한 곳) — 랩이 맞출 대상이 그대로다');
+  else wrn(`서버가 세계에 다는 것이 늘었다: ${extra.join(' · ')} — [H] 표를 갱신해라`);
+}
+
 console.log(`\n=== 배선 검사: 실패 ${fail} · 경고 ${warn} ===`);
 process.exit(fail ? 1 : 0);
