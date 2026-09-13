@@ -167,6 +167,22 @@ world.onTradeLeg = (o) => {
   }
 };
 
+//   ★[T265 관측 항] 마을 하나를 **날마다** 본다 — `T265_WATCH=<마을이름>`.
+//     T256 이 낸 유일한 유의 악화(시드 2 광산1 이 끔 71명 → twobest 0)의 경로를 보려는 자리다.
+//     env 가 없으면 한 줄도 안 돈다(무변). 값 판정은 안 한다 — 날짜별 한 줄씩 적기만 한다.
+const WATCH = process.env.T265_WATCH || '';
+const watchLog = [];
+const watchLeg = [];
+if (WATCH) {
+  const _prev = world.onTradeLeg;
+  world.onTradeLeg = (o) => {
+    if (_prev) _prev(o);
+    //   이 마을에서 **나간** leg 과 이 마을로 **들어온** leg 을 둘 다 적는다(방향이 물음이다).
+    if (o.from === WATCH) watchLeg.push({ d: o.day, dir: 'out', to: o.to, r1: o.res, n1: +o.units.toFixed(1), r2: o.second, n2: +(o.secondUnits || 0).toFixed(1) });
+    else if (o.to === WATCH) watchLeg.push({ d: o.day, dir: 'in', from: o.from, r1: o.res, n1: +o.units.toFixed(1), r2: o.second, n2: +(o.secondUnits || 0).toFixed(1) });
+  };
+}
+
 //   ★[T248] `spareCap` 창구 — **기록만** 한다(`null` 반환 = 세계 무변 · T223 하네스 ㉓ 가 증명).
 //     이 훅은 그 마을이 그날 교역을 **시도한** village-day 마다 불리고, `onTradeLeg` 는 **실제로 선**
 //     캐러밴마다 불린다. `capSum`(설 수 있던 자리) 과 `legs`(실제로 선 것)의 차가 "안 선 자리" 다.
@@ -181,6 +197,20 @@ world.spareCapFn = (v, day, cur) => {
 const SHORT = { fruit: 0.5, tool: 0.05 };
 for (let d = 0; d < DAYS; d++) {
   econV2.tickWorldV2(world, d);
+  if (WATCH) {
+    const v = world.villages.find((x) => x.name === WATCH);
+    if (v) {
+      const st = v.storage || {};
+      watchLog.push({ d, pop: v.npcs.length,
+        food: +(st.food || 0).toFixed(1), fish: +(st.fish || 0).toFixed(1), meat: +(st.meat || 0).toFixed(1),
+        foodEq: +((econ.totalFoodEquivalent ? econ.totalFoodEquivalent(v) : 0) || 0).toFixed(1),
+        tool: +(st.tool || 0).toFixed(2), wood: +(st.wood || 0).toFixed(1), stone: +(st.stone || 0).toFixed(1),
+        ore: +(st.ore || 0).toFixed(1),
+        ema: +(((v.surplusEMA || {}).food) || 0).toFixed(2),
+        fuel: v._fuelCov != null ? +v._fuelCov.toFixed(2) : null,
+        house: v.houses != null ? v.houses : null });
+    }
+  }
   for (let i = 0; i < world.villages.length; i++) {
     const v = world.villages[i], r = rows[i], st = v.storage || {};
     if ((st.fruit || 0) < SHORT.fruit) r.shortFruit++;
@@ -210,6 +240,10 @@ for (let i = 0; i < world.villages.length; i++) rows[i].popEnd = world.villages[
 const totalPop = rows.reduce((a, r) => a + r.popEnd, 0);
 console.log(`\n=== T231 [${ARM}] — 시드 ${SEED} · ${DAYS}일 · 마을 ${rows.length} ===`);
 console.log(`  인구 합 **${totalPop}** · leg ${rows.reduce((a, r) => a + r.legs, 0)} · 둘째 적재 ${rows.reduce((a, r) => a + r.secondUnits, 0).toFixed(0)} 단위`);
+if (WATCH && process.env.T265_WATCH_JSON) {
+  fs.writeFileSync(process.env.T265_WATCH_JSON, JSON.stringify({ seed: SEED, arm: ARM, village: WATCH, log: watchLog, legs: watchLeg }));
+  console.log(`  WATCH JSON: ${process.env.T265_WATCH_JSON} (${watchLog.length}일 · leg ${watchLeg.length}건)`);
+}
 if (process.env.T231_JSON) {
   fs.writeFileSync(process.env.T231_JSON, JSON.stringify({ seed: SEED, arm: ARM, totalPop, rows }, null, 1));
   console.log(`  JSON: ${process.env.T231_JSON}`);
