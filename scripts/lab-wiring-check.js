@@ -263,6 +263,9 @@ console.log('\n[H] 랩 부팅 기본 = 서버 기본(주입 없음)');
     // ★[T184 착지 뒤] 랩엔 `window.L_ALLOC_REAL` 기본줄이 없다 — econ 정본이 `_allocKnob` 으로 직접 읽고, 없거나 '0' 이면 문을 안 연다(= 서버 기본).
     //   그래서 정본의 그 줄(인라인 사본)을 읽어 "'0' 이면 끔"을 확인한다. 랩이 `window.L_ALLOC_REAL = 1` 을 심으면 아래 별도 검사가 문다.
     ['L_ALLOC_REAL', /function allocRealOn\(\) \{ const x = _allocKnob\('L_ALLOC_REAL'\); return x !== null && x !== '([0-9])'; \}/, '0', 'T161/T164/T184 실현 배분 — 손잡이 미설정 = 끔 · 서버는 allocFn 을 안 심는다'],
+    // ★[T258] `L_ALLOC_REAL` 과 같은 꼴 — 랩에 `window.…` 기본줄이 없고 econ 정본이 `_allocKnob` 으로 직접 읽는다.
+    //   그래서 인라인 사본의 **그 함수 줄**을 읽어 "'0' 이면 끔"을 확인한다(랩이 `=1` 을 심으면 아래 별도 검사가 문다).
+    ['T258_SIDE_CONS', /function sideConsOn\(\) \{ const x = _allocKnob\('T258_SIDE_CONS'\); return x !== null && x !== '([0-9])'; \}/, '0', 'T258 부재료 흐름-EMA — 손잡이 미설정 = 끔 · 서버 기본도 끔'],
     ['L_STONEREAL',  /window\.L_STONEREAL\s*===\s*undefined\)\s*window\.L_STONEREAL\s*=\s*([0-9.]+)/,   '0', 'T163 석재 실물 — 서버는 stoneBudgetFn 을 안 심는다'],
     ['L_STONE_TRADE',/window\.L_STONE_TRADE\s*===\s*undefined\)\s*window\.L_STONE_TRADE\s*=\s*([0-9.]+)/,'0', 'T173 귀환 화물 — 서버는 returnPullFn 을 안 심는다'],
     ['L_TOOL_WEAR',  /window\.L_TOOL_WEAR\s*===\s*undefined\)\s*window\.L_TOOL_WEAR\s*=\s*([0-9.]+)/,   '1', 'T180 도구 마모 — 배수 1 이면 문을 안 연다(서버도 toolWearMul 없음)'],
@@ -293,6 +296,12 @@ console.log('\n[H] 랩 부팅 기본 = 서버 기본(주입 없음)');
     const lines = warLab.split('\n').filter((l) => /window\.L_ALLOC_REAL\s*=\s*[1-9]/.test(l) && !/^\s*\/\//.test(l) && !/\/\/.*window\.L_ALLOC_REAL\s*=\s*[1-9]/.test(l.replace(/^[^/]*window\.L_ALLOC_REAL\s*=\s*[1-9]/, '')));
     if (lines.length) bad(`랩이 L_ALLOC_REAL 을 켠 채 뜬다 — ${lines.length}줄`);
     else ok('랩은 L_ALLOC_REAL 을 심지 않는다(미설정 = 끔 = 서버 기본)');
+  }
+  // ★[T258] 같은 자리 — 랩이 부재료 흐름-EMA 를 켠 채 뜨는 유일한 길도 `window.T258_SIDE_CONS = 1` 이다.
+  {
+    const lines = warLab.split('\n').filter((l) => /window\.T258_SIDE_CONS\s*=\s*[1-9]/.test(l) && !/^\s*\/\//.test(l));
+    if (lines.length) bad(`랩이 T258_SIDE_CONS 를 켠 채 뜬다 — ${lines.length}줄`);
+    else ok('랩은 T258_SIDE_CONS 를 심지 않는다(미설정 = 끔 = 서버 기본)');
   }
   // ★자명 통과 금지 — 켠 채 뜨는 판을 만들면 이 검사가 실제로 문다
   const mut = warLab.replace(/(let\s+L_HAPPYWORK\s*=\s*\(typeof window[^;]*?:\s*)0(\s*;)/, '$1' + '0.24' + '$2');

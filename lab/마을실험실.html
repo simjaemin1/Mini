@@ -3659,7 +3659,14 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
         const efficiency = 1.0 + 0.04 * variety;
         const cooked = jdef.base * skillMul * toolBoost * efficiency;
         v.storage.food -= 1;
-        for (const r of usedSides) v.storage[r] -= 0.5;
+        // ★★[T258 2026-09-13] **부재료도 수요다** — 차감에 `_cons` 를 건다(바로 아래 보존식 가지가 쓰는 그 문법).
+        //   T253 §0-ⓐ-2 실측: 이 줄엔 `_cons` 가 없어서 부재료 소비가 흐름-EMA(`_consEMA`)에 안 떴다.
+        //   결과 셋 — v2 `tickDecay` 의 과잉부패 보호(`flowT = _consEMA × 30`)가 그 수요를 못 보고,
+        //   가격 target 이 그 수요를 못 보고, 교역이 그 수요를 못 본다(`_consEMA.copper = 0` 이 만든
+        //   "구리 써 본 적 없는 마을" 함정과 **같은 병**이다 · `:3489` 주석).
+        //   ★새 수 0 — 소비량은 이미 있는 `0.5` 그대로다. ★기본 끔 — 켜면 세계가 움직인다(보고 T258 §0-ⓒ).
+        const _sideCons = sideConsOn();
+        for (const r of usedSides) { v.storage[r] -= 0.5; if (_sideCons) _cons(v, r, 0.5); }
         addProduce('cooked_food', cooked);
         workNPC(npc);
       }
@@ -4944,6 +4951,9 @@ function _allocKnob(name) {
   return null;
 }
 function allocRealOn() { const x = _allocKnob('L_ALLOC_REAL'); return x !== null && x !== '0'; }
+// ★[T258] 부재료 소비를 흐름-EMA 에 실을지 — **기본 끔**(미설정 = 끔 = 서버 기본 · 끔이면 비트 동일).
+//   회계의 구멍을 메우는 한 줄이지만 **세계를 움직인다**(부패 보호·가격·교역 신호) ⇒ 손잡이 뒤에 둔다.
+function sideConsOn() { const x = _allocKnob('T258_SIDE_CONS'); return x !== null && x !== '0'; }
 function allocRealWin() { const x = _allocKnob('L_ALLOC_WIN'); const n = (x === null) ? 1 : parseFloat(x); return Number.isFinite(n) ? n : 1; }
 // ★[T184] 되돌림 — `L_ALLOC_BASKET=1` 이면 1판(바구니 전체 소득)으로 돌아간다. 기본은 2판(주산물 항).
 function allocBasketMode() { const x = _allocKnob('L_ALLOC_BASKET'); return x !== null && x !== '0'; }
