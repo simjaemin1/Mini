@@ -421,6 +421,10 @@ for (let day = 0; day < DAYS; day++) {
         //   ⚠`satMul` 단독이 아니라 `_hpm·_hwm·_prodMul·satMul·_laborMul·포위·포로` **전부의 곱**이다 —
         //     그래서 기준 품목(`wood`)의 같은 비를 나란히 둔다(공통 배수는 두 열에 같이 들어 있다).
         //   잠재는 틱 지역 변수라 밖에서 못 읽는다 ⇒ 사본 팔이 `v._t264pot` 에 담아 줄 때만 채워진다.
+        // ★[T285 ⓒ] picker 누계 — 일별 차분은 표가 낸다(엔진에 하루 상태를 안 만든다)
+        rpTryC: ev._rpTry != null ? ev._rpTry : null, rpHitC: ev._rpHit != null ? ev._rpHit : null,
+        rpBlkC: ev._rpBlock != null ? ev._rpBlock : null,
+        ljCap: ev._ljCap != null ? ev._ljCap : null, ljCnt: ev._ljCnt != null ? ev._ljCnt : null,
         twigTaper: _tp && _tp.twig > 0 ? +(1 - ((ev.dailyProductionBuf && ev.dailyProductionBuf.twig) || 0) / _tp.twig).toFixed(4) : null,
         barkTaper: _tp && _tp.bark > 0 ? +(1 - ((ev.dailyProductionBuf && ev.dailyProductionBuf.bark) || 0) / _tp.bark).toFixed(4) : null,
         woodTaper: _tp && _tp.wood > 0 ? +(1 - ((ev.dailyProductionBuf && ev.dailyProductionBuf.wood) || 0) / _tp.wood).toFixed(4) : null,
@@ -558,6 +562,11 @@ for (let i = 0; i < world.villages.length; i++) {
     rpTry: v._rpTry != null ? v._rpTry : null,
     rpHit: v._rpHit != null ? v._rpHit : null,
     rpBlock: v._rpBlock != null ? v._rpBlock : null,
+    // ★[T285] 두 picker 의 진입 횟수 · 막힌 순간의 자리 상한·현원(관측 전용)
+    legacyPick: v._legacyPick != null ? v._legacyPick : null,
+    ratPick: v._ratPick != null ? v._ratPick : null,
+    ljCap: v._ljCap != null ? v._ljCap : null,
+    ljCnt: v._ljCnt != null ? v._ljCnt : null,
     strawPendMax: +m.strawPendMax.toFixed(2), strawPendEnd: +((v._strawPend || 0)).toFixed(4),
     watch: m.watch.length ? m.watch : undefined,   // ★[T249] 지켜보는 마을만 채워진다
     healthMean: m.statDays ? +(m.healthSum / m.statDays).toFixed(4) : null,
@@ -670,6 +679,8 @@ const out = {
   rpTryTot: per.reduce((a, p) => a + (p.rpTry || 0), 0),
   rpHitTot: per.reduce((a, p) => a + (p.rpHit || 0), 0),
   rpBlockTot: per.reduce((a, p) => a + (p.rpBlock || 0), 0),
+  legacyPickTot: per.reduce((a, p) => a + (p.legacyPick || 0), 0),
+  ratPickTot: per.reduce((a, p) => a + (p.ratPick || 0), 0),
   carry: CARRY,
   supLowTot: +per.reduce((a, p) => a + p.supLow, 0).toFixed(1),
   supWoodTot: +per.reduce((a, p) => a + p.supWood, 0).toFixed(1),
