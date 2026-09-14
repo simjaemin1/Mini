@@ -179,11 +179,38 @@ const t1 = Date.now();
 //   그 사이에 흐른 **실시간**이 캐러밴 실체·광맥 적분에 들어가 같은 씨 두 판의 `emitted` 를 갈랐다
 //   (11,105 vs 11,071 — T232 §1). 세계는 자가 미는 `now` 만 보면 된다 ⇒ 루프 동안 `Date.now` 를 그 값으로 둔다.
 //   (랩 계측기가 `Math.random` 을 씨로 고정하는 것과 같은 자리 — 자 코드만 · 제품 무변.)
-// ★[T259 ⓒ] 목재 항등식 누계 — 자가 짓는 수는 0(정본 칸을 더하기만 한다).
-const CUM = { prod: 0, cons: 0, imp: 0, exp: 0, stock: 0, impNow: 0, expNow: 0, stockNow: 0, stock0: 0 };
+// ★[T259 ⓒ · T279 ⓑ] 목재 항등식 누계 — 자가 짓는 수는 0(정본 칸을 더하기만 한다).
+// ★[T279] 활대 몫을 자리로 세운다. 상수는 **정본 소스에서 읽는다**(`t176-ab.js:202~205` 와 같은 규약 —
+//   `SELF_BOW_WOOD` 는 내보내기가 없어서, 값을 이 파일에 적으면 정본이 바뀔 때 조용히 어긋난다).
+const _ECONSRC = fs.readFileSync(path.join(ROOT, 'sim', 'economy-sim.js'), 'utf8');
+const SELF_BOW_WOOD = (() => { const m = _ECONSRC.match(/const\s+SELF_BOW_WOOD\s*=\s*([0-9.]+)\s*;/); return m ? +m[1] : null; })();
+// ★[T279] 부패는 제품이 이미 가진 손잡이로 끈다(`economy-sim-v2.js:1329` `world._dbg?.decay !== false`).
+//   자는 그 칸에 `false` 를 놓기만 한다 — 제품 코드 0 · 새 손잡이 0.
+const NODECAY = process.env.T279_NODECAY === '1';
+// ★★[T279 ⓑ] **세계 합으로 본다.** 마을끼리 오간 목재는 세계 합에서 **정확히 상쇄**되므로
+//   `exportBy`/`woodImported` 두 칸은 애초에 항등식의 항이 아니다(그 둘만 세면 다리 절반을 센 셈 —
+//   `economy-sim-v2.js:1024` 도착 인도와 `:1103` 귀환 화물 매입이 그 두 칸에 **안 실린다**).
+//   세계 합에서 남는 교역 항은 셋뿐이다: **국고**(`:1156` 3% 교역세) · **길 위**(아직 안 닿은 화물) ·
+//   **약탈 손실**(`cargoLost` — 재화별이 아니라 총량이라 이름으로만 남긴다).
+const DAY = { rows: [], residSum: 0, bowPrev: 0 };
+const CUM = { prod: 0, cons: 0, imp: 0, exp: 0, stock: 0, bow: 0, treas: 0, road: 0,
+  impNow: 0, expNow: 0, stockNow: 0, bowNow: 0, treasNow: 0, stock0: 0, treas0: 0 };
 { let s0 = 0; for (const row of db.getVillagesByZone('hanbando')) { const lv = V.villageByDbId ? V.villageByDbId(row.id) : null;
     if (lv && lv.econ && lv.econ.storage) s0 += +(lv.econ.storage.wood || 0); }
   CUM.stock0 = s0; }   // ★창설 부존(하루 1 **전**)
+{ let t0 = 0; for (const row of db.getVillagesByZone('hanbando')) { const lv = V.villageByDbId ? V.villageByDbId(row.id) : null;
+    if (lv && lv.econ && lv.econ.treasury) t0 += +(lv.econ.treasury.wood || 0); }
+  CUM.treas0 = t0; }
+// ★[T279 ⓑ] 부패 A/B — 제품이 가진 `world._dbg.decay` 를 끈다(자 코드만 · 세계 규칙 무변 · 기본 켬).
+if (NODECAY) {
+  let hit = 0;
+  for (const row of db.getVillagesByZone('hanbando')) {
+    const lv = V.villageByDbId ? V.villageByDbId(row.id) : null;
+    const w = lv && lv.econ && lv.econ._world; if (!w) continue;
+    (w._dbg || (w._dbg = {})).decay = false; hit++;
+  }
+  console.error(`[T279] 부패 끔 — world._dbg.decay=false (마을 ${hit}곳에서 잡은 world)`);
+}
 const _now0 = Date.now;
 let _simClock = base;
 Date.now = () => _simClock;
@@ -192,6 +219,13 @@ for (let d = 1; d <= DAYS; d++) {
   const now = base + d * dayMs;
   _simClock = now;
   _oreNow = now;                                          // ★[T232] 광맥 재생 적분의 시각(zone.js `_simNow()` 자리)
+  // ★[T279 ⓑ] 하루 **앞** 총 목재(재고+국고) — 하루 잔차를 날짜별로 보려면 틱 전 값이 있어야 한다.
+  let _w0 = 0;
+  for (const row of db.getVillagesByZone('hanbando')) {
+    const lv = V.villageByDbId ? V.villageByDbId(row.id) : null; const e = lv && lv.econ; if (!e) continue;
+    _w0 += +((e.storage && e.storage.wood) || 0) + +((e.treasury && e.treasury.wood) || 0);
+  }
+  const _road0 = CUM.road;
   V.onGameTick(now);
   for (let f = 0; f < 60; f++) V.onGameTick(now);          // 저장 큐 배수(같은 날 — 제품이 새 날을 안 연다)
   const TR = (d === 1 || (d <= 40 && d % 5 === 0) || d % 20 === 0) ? { pop: 0, food: 0, stone: 0, metal: 0, wood: 0, toolQ: 0, weapQ: 0, hungry: 0, game: [], wd: [], fert: [], hk: 0, wProd: 0, wProdVil: 0, wCons: 0, wImpCum: 0, wExpCum: 0, lumber: 0, wSust: 0, fuelCov: 0 } : null;
@@ -208,9 +242,42 @@ for (let d = 1; d <= DAYS; d++) {
     CUM.impNow += +(TS.woodImported || 0);
     CUM.expNow += +((TS.exportBy && TS.exportBy.wood) || 0);
     CUM.stockNow += +((e.storage && e.storage.wood) || 0);
+    // ★[T279 ⓑ] 활대 — `_bowMade` 는 **누계**다(`_bowMadeToday` 는 같은 틱 안 `:2924` 에서 0 으로 접힌다).
+    CUM.bowNow += +(e._bowMade || 0);
+    CUM.treasNow += +((e.treasury && e.treasury.wood) || 0);   // ★국고로 빠진 목재(`:1156` 교역세)
   }
-  CUM.imp = CUM.impNow; CUM.exp = CUM.expNow; CUM.stock = CUM.stockNow;
-  CUM.impNow = 0; CUM.expNow = 0; CUM.stockNow = 0;
+  CUM.imp = CUM.impNow; CUM.exp = CUM.expNow; CUM.stock = CUM.stockNow; CUM.bow = CUM.bowNow;
+  CUM.treas = CUM.treasNow;
+  CUM.impNow = 0; CUM.expNow = 0; CUM.stockNow = 0; CUM.bowNow = 0; CUM.treasNow = 0;
+  // ★길 위의 목재 — 세계 캐러밴 목록(정본 `world.caravans`)에서 그대로 센다.
+  {
+    let road = 0;
+    const any = (() => { for (const row of db.getVillagesByZone('hanbando')) {
+      const lv = V.villageByDbId ? V.villageByDbId(row.id) : null;
+      if (lv && lv.econ && lv.econ._world) return lv.econ._world; } return null; })();
+    for (const c of ((any && any.caravans) || [])) {
+      if (c.giveRes === 'wood' && c.state === 'outbound') road += +(c.giveAmt || 0);
+      if (c._returningRes === 'wood') road += +(c._returningAmt || 0);
+    }
+    CUM.road = road;
+  }
+  // ★[T279 ⓑ] 하루 잔차 — (틱 전 총량 + 오늘 벌목) − (틱 뒤 총량 + 오늘 연료건축 + 오늘 활대 + 길위 증가)
+  {
+    let _w1 = 0, _bowC = 0, _consC = 0, _prodC = 0;
+    for (const row of db.getVillagesByZone('hanbando')) {
+      const lv = V.villageByDbId ? V.villageByDbId(row.id) : null; const e = lv && lv.econ; if (!e) continue;
+      _w1 += +((e.storage && e.storage.wood) || 0) + +((e.treasury && e.treasury.wood) || 0);
+      _bowC += +(e._bowMade || 0);
+      _consC += +((e._consDay && e._consDay.wood) || 0);
+      _prodC += +((e.dailyProductionBuf && e.dailyProductionBuf.wood) || 0);
+    }
+    const dBow = (_bowC - (DAY.bowPrev || 0)) * (SELF_BOW_WOOD || 0);
+    DAY.bowPrev = _bowC;
+    const r = (_w0 + _prodC) - (_w1 + _consC + dBow + (CUM.road - _road0));
+    DAY.rows.push({ day: d, w0: +_w0.toFixed(2), w1: +_w1.toFixed(2), prod: +_prodC.toFixed(2),
+      cons: +_consC.toFixed(2), bow: +dBow.toFixed(2), dRoad: +(CUM.road - _road0).toFixed(2), resid: +r.toFixed(2) });
+    DAY.residSum += r;
+  }
   for (const row of db.getVillagesByZone('hanbando')) {
     if (!row.econ_state) continue;
     let m = M.get(row.name); if (!m) M.set(row.name, m = { hkillDays: 0, hkillSum: 0, popMax: 0, everPop: false, huntMax: 0 });
@@ -332,9 +399,23 @@ const out = {
   reqOpened: (LS && LS.reqOpened) || 0, emitted: (LS && LS.emitted) || 0,
   reqClosed: (LS && LS.reqClosed) || 0, reqShrunk: (LS && LS.reqShrunk) || 0,
   // ★[T259 ⓒ] 목재 수지 항등식 — 창설부존 + Σ유입 − Σ유출 + 수입 − 수출 = 끝 재고 ?
-  woodBal: { stock0: +CUM.stock0.toFixed(2), prodSum: +CUM.prod.toFixed(2), consSum: +CUM.cons.toFixed(2),
-    imported: +CUM.imp.toFixed(2), exported: +CUM.exp.toFixed(2), stockEnd: +CUM.stock.toFixed(2),
-    residual: +(CUM.stock0 + CUM.prod - CUM.cons + CUM.imp - CUM.exp - CUM.stock).toFixed(2) },
+  woodBal: (() => {
+    const bowWood = CUM.bow * (SELF_BOW_WOOD || 0);
+    const treasDelta = CUM.treas - CUM.treas0;
+    // ★세계 합 항등식: 창설부존 + 벌목 = 끝재고 + 연료건축 + 활대 + 국고 + 길위 + **이름 없는 나머지**
+    //   (마을끼리 오간 것은 상쇄된다 — `exported`/`imported` 는 참고로만 싣는다)
+    const named = CUM.cons + bowWood + treasDelta + CUM.road;
+    const resid = CUM.stock0 + CUM.prod - named - CUM.stock;
+    return { nodecay: NODECAY, selfBowWood: SELF_BOW_WOOD,
+      stock0: +CUM.stock0.toFixed(2), prodSum: +CUM.prod.toFixed(2),
+      consSum: +CUM.cons.toFixed(2), bowMade: +CUM.bow.toFixed(3), bowWood: +bowWood.toFixed(2),
+      treasury: +treasDelta.toFixed(2), onRoad: +CUM.road.toFixed(2),
+      stockEnd: +CUM.stock.toFixed(2), residual: +resid.toFixed(2),
+      // 참고(세계 합에서 상쇄되는 항 — 다리 절반씩만 세는 칸이라 항등식에 안 넣는다)
+      refExported: +CUM.exp.toFixed(2), refImported: +CUM.imp.toFixed(2),
+      dayResidSum: +DAY.residSum.toFixed(2) };
+  })(),
+  woodDaily: DAY.rows,
   depCalls: DEPCALL, traj: TRAJ,
   hunterN, hkillDaysTot: per.reduce((a, p) => a + p.hkillDays, 0),
   hkillSumTot: +per.reduce((a, p) => a + p.hkillSum, 0).toFixed(3),
