@@ -49,15 +49,30 @@ const isRockTileLocal = (x, y) => { if (!_inZone(x, y)) return false; try { retu
 const isTerrainBlockedLocal = (x, y) => (!_inZone(x, y)) ? true : (isRockTileLocal(x, y) || isWaterTileLocal(x, y));
 const ta = P.makeTerrainAdapter(T, ZONE, { isTerrainBlockedLocal, isWaterTileLocal });
 
-const hard = T.getZoneVillages(Z) || [];
-const picked = P.pickSeedVillages(hard, ta, { seedAll: !!ZONE.seedAllVillages, max: ZONE.villageMax || 0 });
-const seeds = [];
-for (const hv of picked) {
-  const c = P.findOpenCenter(ta, Math.round(hv.x / SZ), Math.round(hv.y / SZ));
-  if (!c) continue;
-  let layout;
-  try { if (ta.prepareFert) ta.prepareFert(c.ccx, c.ccy, 62); layout = VillageLayout.generate(ta, c.ccx, c.ccy, P.INITIAL_POP, {}); } catch (e) { continue; }
-  seeds.push({ name: hv.name, ccx: c.ccx, ccy: c.ccy, lp: P.extractLandParamsApprox(ta, c.ccx, c.ccy, layout) });
+// ★★[T286 2026-09-14 · 순전한 계측 편의 · 값 무변] 51곳 `VillageLayout.generate` 는 전수 ~7분이고
+//   이 자는 그것 때문에 판당 ~8분이었다(`t17-metrics` 는 ~1분 — 거긴 T100 이 캐시를 달았다).
+//   **손잡이가 없으면 종전 루프 그대로**다. 문법·파일·꼴 전부 `t17-metrics.js` 의 그것과 **같다**:
+//     · 같은 env 이름 `LAB_SEEDCACHE` · 같은 파일 하나를 두 자가 **함께 읽고 함께 쓴다**
+//     · 그래서 **`layout` 도 같이 적는다** — 이 자는 안 쓰지만 `t17-metrics` 가 쓴다.
+//       (안 적으면 이 자가 구운 캐시를 그 자가 읽었을 때 `layout` 이 없어 딴 세계가 된다 — 사본이 아니라 **반쪽 캐시**가 더 위험하다.)
+//   ⚠캐시는 **값에 투명**하다 — 캐시 유/무 한 판씩 JSON 을 비교해 **한 바이트 동일**임을 T286 §1 이 실측했다.
+const _SEEDCACHE = process.env.LAB_SEEDCACHE || '';
+let seeds = null;
+if (_SEEDCACHE && fs.existsSync(_SEEDCACHE)) { try { seeds = JSON.parse(fs.readFileSync(_SEEDCACHE, 'utf8')); } catch (e) { seeds = null; } }
+if (!seeds) {
+  const hard = T.getZoneVillages(Z) || [];
+  const picked = P.pickSeedVillages(hard, ta, { seedAll: !!ZONE.seedAllVillages, max: ZONE.villageMax || 0 });
+  seeds = [];
+  for (const hv of picked) {
+    const c = P.findOpenCenter(ta, Math.round(hv.x / SZ), Math.round(hv.y / SZ));
+    if (!c) continue;
+    let layout;
+    try { if (ta.prepareFert) ta.prepareFert(c.ccx, c.ccy, 62); layout = VillageLayout.generate(ta, c.ccx, c.ccy, P.INITIAL_POP, {}); } catch (e) { continue; }
+    seeds.push({ name: hv.name, ccx: c.ccx, ccy: c.ccy, lp: P.extractLandParamsApprox(ta, c.ccx, c.ccy, layout),
+      layout: { farmland: layout.farmland, dryfield: layout.dryfield, nongZone: layout.nongZone, territory: layout.territory,
+                houses: (layout.houses || []).map((h) => ({ cx: h.cx, cy: h.cy })) } });
+  }
+  if (_SEEDCACHE) { try { fs.mkdirSync(path.dirname(_SEEDCACHE), { recursive: true }); fs.writeFileSync(_SEEDCACHE, JSON.stringify(seeds)); } catch (e) {} }
 }
 const TRACE = process.env.T177_TRACE === '1';
 const TARM = process.env.T177_ARM || 'old';

@@ -181,6 +181,16 @@ const METRICS = [
   ['㉯ 일/건', (j) => (j.eight ? j.eight.densValue : null)],
 ];
 const med = (v) => { const w = v.slice().sort((a, b) => a - b); const n = w.length; return n % 2 ? w[n >> 1] : (w[(n >> 1) - 1] + w[n >> 1]) / 2; };
+// ★[T286] 지니 — 마을 **크기의 고름**. 0 이 완전 평등, 1 이 한 곳이 다 가진 것.
+//   족보 204 가 요구하는 "꼬리와 머리를 따로" 중 **한 수로 요약하는 쪽**이다(작은/큰 17곳이 나누는 쪽).
+//   ⚠이건 세계가 좋아졌다는 수가 아니다 — **고르냐**는 수다. 내려가면 고루 퍼진 것뿐이다.
+const gini = (v) => {
+  const n = v.length; if (!n) return null;
+  const mu = v.reduce((a, b) => a + b, 0) / n; if (!(mu > 0)) return null;
+  let sum = 0;
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) sum += Math.abs(v[i] - v[j]);
+  return sum / (2 * n * n * mu);
+};
 const pctD = (a, b) => (a === 0 ? null : (b - a) / a * 100);
 
 console.log(`\n=== t17-seeds — ${SEEDS.length}시드 ${SPREAD ? '· 퍼짐 대역(게이트 4)' : '× 2팔(짝 Δ)'} × ${DAYS}일 51마을 ===`);
@@ -301,6 +311,18 @@ if (!haveV) {
   const minA = SEEDS.map((s) => Math.min.apply(null, R.A[s].vpop.map((v) => v.pop)));
   const minB = SEEDS.map((s) => Math.min.apply(null, R.B[s].vpop.map((v) => v.pop)));
   say(`**최소 마을 인구** — A 중앙 ${med(minA)}명(최저 ${Math.min.apply(null, minA)}) · B 중앙 ${med(minB)}명(최저 ${Math.min.apply(null, minB)})`);
+  // ★[T286] 지니 — 낮을수록 고르다. 판정은 **차(포인트)** 로 읽는다(비율이 아니다 — 0~1 짜리 수라 % 가 뜻이 없다).
+  const gA = SEEDS.map((s) => gini(R.A[s].vpop.map((v) => v.pop)));
+  const gB = SEEDS.map((s) => gini(R.B[s].vpop.map((v) => v.pop)));
+  if (gA.every((x) => x != null) && gB.every((x) => x != null)) {
+    const dg = SEEDS.map((_, i) => (gB[i] - gA[i]) * 100);           // 포인트
+    const down = dg.filter((x) => x < 0).length;
+    const r = mainRule(dg);
+    say(`**지니(마을 크기의 고름)** — A 중앙 ${med(gA).toFixed(3)} · B 중앙 ${med(gB).toFixed(3)}`
+      + ` · 차 평균 ${(dg.reduce((a, b) => a + b, 0) / dg.length >= 0 ? '+' : '')}${(dg.reduce((a, b) => a + b, 0) / dg.length).toFixed(2)}p`
+      + ` · 중앙 ${(med(dg) >= 0 ? '+' : '')}${med(dg).toFixed(2)}p · 폭 ${(Math.max.apply(null, dg) - Math.min.apply(null, dg)).toFixed(2)}p`
+      + ` · **내려간(고루 퍼진) 시드 ${down}/${SEEDS.length}** · 판정 **${r.verdict}**`);
+  }
   // 자기검사 — vpop 합이 여덟 수의 인구와 같아야 한다(열이 딴 세계를 세지 않는다)
   const bad = SEEDS.filter((s) => ARMS.some((arm) => R[arm.key][s].vpop.reduce((a, v) => a + v.pop, 0) !== R[arm.key][s].base.pop));
   say(`\n**자기검사** — \`vpop\` 합 = 여덟 수 인구: ${bad.length ? `✗ 어긋난 시드 ${bad.join(' · ')}` : `○ ${SEEDS.length}시드 × 2팔 전부 일치`}`);
