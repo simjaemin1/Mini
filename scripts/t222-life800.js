@@ -192,9 +192,9 @@ const NODECAY = process.env.T279_NODECAY === '1';
 //   `economy-sim-v2.js:1024` 도착 인도와 `:1103` 귀환 화물 매입이 그 두 칸에 **안 실린다**).
 //   세계 합에서 남는 교역 항은 셋뿐이다: **국고**(`:1156` 3% 교역세) · **길 위**(아직 안 닿은 화물) ·
 //   **약탈 손실**(`cargoLost` — 재화별이 아니라 총량이라 이름으로만 남긴다).
-const DAY = { rows: [], residSum: 0, bowPrev: 0 };
-const CUM = { prod: 0, cons: 0, imp: 0, exp: 0, stock: 0, bow: 0, treas: 0, road: 0,
-  impNow: 0, expNow: 0, stockNow: 0, bowNow: 0, treasNow: 0, stock0: 0, treas0: 0 };
+const DAY = { rows: [], residSum: 0, bowPrev: 0, subsPrev: 0, decPrev: 0 };
+const CUM = { prod: 0, cons: 0, imp: 0, exp: 0, stock: 0, bow: 0, treas: 0, road: 0, subs: 0, decay: 0,
+  impNow: 0, expNow: 0, stockNow: 0, bowNow: 0, treasNow: 0, subsNow: 0, decayNow: 0, stock0: 0, treas0: 0 };
 { let s0 = 0; for (const row of db.getVillagesByZone('hanbando')) { const lv = V.villageByDbId ? V.villageByDbId(row.id) : null;
     if (lv && lv.econ && lv.econ.storage) s0 += +(lv.econ.storage.wood || 0); }
   CUM.stock0 = s0; }   // ★창설 부존(하루 1 **전**)
@@ -245,10 +245,16 @@ for (let d = 1; d <= DAYS; d++) {
     // ★[T279 ⓑ] 활대 — `_bowMade` 는 **누계**다(`_bowMadeToday` 는 같은 틱 안 `:2924` 에서 0 으로 접힌다).
     CUM.bowNow += +(e._bowMade || 0);
     CUM.treasNow += +((e.treasury && e.treasury.wood) || 0);   // ★국고로 빠진 목재(`:1156` 교역세)
+    // ★★[T288] **정본이 이제 적어 준다.** T279 가 이름만 붙였던 두 자리가 누계 칸이 됐다 —
+    //   `_subsUsed.wood`(`economy-sim-v2.js:525` 주거 인출) · `_decayed.wood`(`:1329` 부패).
+    //   자는 그 칸을 **옮겨 적기만** 한다(산수 0 · 재구현 0).
+    CUM.subsNow += +((e._subsUsed && e._subsUsed.wood) || 0);
+    CUM.decayNow += +((e._decayed && e._decayed.wood) || 0);
   }
   CUM.imp = CUM.impNow; CUM.exp = CUM.expNow; CUM.stock = CUM.stockNow; CUM.bow = CUM.bowNow;
-  CUM.treas = CUM.treasNow;
+  CUM.treas = CUM.treasNow; CUM.subs = CUM.subsNow; CUM.decay = CUM.decayNow;
   CUM.impNow = 0; CUM.expNow = 0; CUM.stockNow = 0; CUM.bowNow = 0; CUM.treasNow = 0;
+  CUM.subsNow = 0; CUM.decayNow = 0;
   // ★길 위의 목재 — 세계 캐러밴 목록(정본 `world.caravans`)에서 그대로 센다.
   {
     let road = 0;
@@ -263,19 +269,23 @@ for (let d = 1; d <= DAYS; d++) {
   }
   // ★[T279 ⓑ] 하루 잔차 — (틱 전 총량 + 오늘 벌목) − (틱 뒤 총량 + 오늘 연료건축 + 오늘 활대 + 길위 증가)
   {
-    let _w1 = 0, _bowC = 0, _consC = 0, _prodC = 0;
+    let _w1 = 0, _bowC = 0, _consC = 0, _prodC = 0, _subsC = 0, _decC = 0;
     for (const row of db.getVillagesByZone('hanbando')) {
       const lv = V.villageByDbId ? V.villageByDbId(row.id) : null; const e = lv && lv.econ; if (!e) continue;
       _w1 += +((e.storage && e.storage.wood) || 0) + +((e.treasury && e.treasury.wood) || 0);
       _bowC += +(e._bowMade || 0);
       _consC += +((e._consDay && e._consDay.wood) || 0);
       _prodC += +((e.dailyProductionBuf && e.dailyProductionBuf.wood) || 0);
+      _subsC += +((e._subsUsed && e._subsUsed.wood) || 0);
+      _decC += +((e._decayed && e._decayed.wood) || 0);
     }
     const dBow = (_bowC - (DAY.bowPrev || 0)) * (SELF_BOW_WOOD || 0);
-    DAY.bowPrev = _bowC;
-    const r = (_w0 + _prodC) - (_w1 + _consC + dBow + (CUM.road - _road0));
+    const dSubs = _subsC - (DAY.subsPrev || 0), dDec = _decC - (DAY.decPrev || 0);
+    DAY.bowPrev = _bowC; DAY.subsPrev = _subsC; DAY.decPrev = _decC;
+    const r = (_w0 + _prodC) - (_w1 + _consC + dBow + dSubs + dDec + (CUM.road - _road0));
     DAY.rows.push({ day: d, w0: +_w0.toFixed(2), w1: +_w1.toFixed(2), prod: +_prodC.toFixed(2),
-      cons: +_consC.toFixed(2), bow: +dBow.toFixed(2), dRoad: +(CUM.road - _road0).toFixed(2), resid: +r.toFixed(2) });
+      cons: +_consC.toFixed(2), bow: +dBow.toFixed(2), subs: +dSubs.toFixed(2), dec: +dDec.toFixed(2),
+      dRoad: +(CUM.road - _road0).toFixed(2), resid: +r.toFixed(2) });
     DAY.residSum += r;
   }
   for (const row of db.getVillagesByZone('hanbando')) {
@@ -404,13 +414,16 @@ const out = {
     const treasDelta = CUM.treas - CUM.treas0;
     // ★세계 합 항등식: 창설부존 + 벌목 = 끝재고 + 연료건축 + 활대 + 국고 + 길위 + **이름 없는 나머지**
     //   (마을끼리 오간 것은 상쇄된다 — `exported`/`imported` 는 참고로만 싣는다)
-    const named = CUM.cons + bowWood + treasDelta + CUM.road;
+    // ★[T288] 자리 둘이 이름과 **수**를 얻었다 — 이제 항등식에 그대로 들어간다.
+    const named = CUM.cons + bowWood + treasDelta + CUM.road + CUM.subs + CUM.decay;
     const resid = CUM.stock0 + CUM.prod - named - CUM.stock;
     return { nodecay: NODECAY, selfBowWood: SELF_BOW_WOOD,
       stock0: +CUM.stock0.toFixed(2), prodSum: +CUM.prod.toFixed(2),
       consSum: +CUM.cons.toFixed(2), bowMade: +CUM.bow.toFixed(3), bowWood: +bowWood.toFixed(2),
       treasury: +treasDelta.toFixed(2), onRoad: +CUM.road.toFixed(2),
+      subsUsed: +CUM.subs.toFixed(2), decayed: +CUM.decay.toFixed(2),
       stockEnd: +CUM.stock.toFixed(2), residual: +resid.toFixed(2),
+      residPct: +(resid / Math.max(1, CUM.stock0 + CUM.prod) * 100).toFixed(2),
       // 참고(세계 합에서 상쇄되는 항 — 다리 절반씩만 세는 칸이라 항등식에 안 넣는다)
       refExported: +CUM.exp.toFixed(2), refImported: +CUM.imp.toFixed(2),
       dayResidSum: +DAY.residSum.toFixed(2) };
