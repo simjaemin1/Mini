@@ -36,6 +36,12 @@ let _sfxScanAt = 0;
 let _sfxGroundCell = null;          // { k, kind } 발밑 지형 캐시(셀 하나)
 let _sfxWaterCell = null;           // ★[T283] { k, d } 가장 가까운 물 셀까지의 거리(내 셀이 바뀔 때만 다시 잰다)
 let _sfxWx = { precip: 0, indoor: false };   // ★[T283] 날씨 훅이 넣어 둔 마지막 값 — 새(bird) 게이트가 읽는다
+// ★★[T292-b 2026-09-14 · 실제 증상에서] 직전에 본 허기. `null` = 아직 기준이 없다(첫 통은 절대 안 운다).
+//   왜 칸이 필요한가: 서버에 "먹었다"는 **전용 통지가 없다**(§T261 ⓑ 실측 — 동사별 결과 메시지 0).
+//   T283 은 그래서 `gauges` 의 `carry` **존재**로 갈랐는데, 그건 먹기의 성질이 아니라 그 한 통의 모양이었다.
+//   같은 모양이 **초당 한 번 도는 게이지 틱**(`server/zone.js:11573`)에도 있어서 1초마다 씹는 소리가 났다.
+//   ⇒ 모양이 아니라 **값의 변화**로 가른다. 허기는 자연히 **줄기만 한다**(회복 경로 0) — 오르면 먹은 것이다.
+let _sfxHunger = null;
 // ★`missing`(표에 파일이 없다 = 영영 무음) 과 `pending`(받는 중 = 곧 난다) 을 **갈라 센다** —
 //   한 칸에 뭉치면 진단이 "음원이 없다"와 "아직 안 왔다"를 구분 못 한다(실측에서 실제로 헷갈렸다).
 let _sfxStat = { played: 0, missing: 0, pending: 0, blocked: 0, loops: 0 };
@@ -403,8 +409,21 @@ function initAudio() {
         sfxPlay(key, { x: r.x + ox, y: r.y + oy });
         return;
       }
-      // 먹기 — `gauges` 아홉 자리 중 `carry` 를 싣는 것이 `doEat` 하나다(`test-audio ⑦` 이 그 수를 지킨다).
-      if (t === 'gauges') { if (msg.carry) sfxPlay('eat'); return; }
+      // ★★[T292-b] 먹기 — **허기가 오르면** 먹은 것이다. 서버에 먹기 전용 통지가 없어서 값으로 가른다.
+      //   T283 의 판별(`msg.carry` 가 있으면 먹기)은 **틀렸다**: `carry` 는 `doEat` 만의 표식이 아니라
+      //   초당 한 번 도는 게이지 틱(`server/zone.js:11573`)에도 실린 칸이었다 ⇒ 1초마다 씹는 소리.
+      //   ⚠남은 구멍 하나: **배가 꽉 찬 채로 먹으면** 허기가 안 올라 소리가 안 난다(회부).
+      if (t === 'gauges') {
+        const h = +msg.hunger;
+        if (!isFinite(h)) return;
+        const prev = _sfxHunger;
+        _sfxHunger = h;
+        if (prev !== null && h > prev) sfxPlay('eat');   // 올랐다 = 먹었다
+        return;
+      }
+      // 기준을 지운다 — 새 몸/새 접속의 첫 `gauges` 를 '먹었다'로 읽지 않기 위해서다
+      //   (부활은 허기를 가득으로 되돌린다 ⇒ 기준을 안 지우면 살아나며 한 입 씹는다).
+      if (t === 'welcome' || t === 'player_respawn') { _sfxHunger = null; return; }
       // 낚시 셋 — 서버가 상태를 그대로 말한다. 좌표는 **존 로컬**이라 절대로 접어야 한다(찌 그리기와 같은 함정).
       if (t === 'fish_state') {
         const key = (_sfxMan.fishState || {})[msg.state];

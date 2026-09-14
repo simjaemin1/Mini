@@ -386,20 +386,74 @@ console.log('\n⑦ ★[T283] 표 셋 · 발신 훅 0 · 서버가 기대는 성�
      '⑦d ★수신 훅이 `c.resources.delete(...)` **위**에 있다(아래면 자원 자리를 못 찾아 위치 없는 소리가 된다)',
      `훅 ${recvHits[0]} < 지움 ${delLine}`);
 
-  // ⑦e ★★서버가 기대는 성질 — `gauges` 아홉 중 `carry` 를 싣는 자리가 **정확히 하나**(= `doEat`).
-  //    클라가 서버의 성질에 기대고 있으면, 그 성질이 깨지는 날 **소리가 조용히 틀려진다**.
-  //    조용한 것은 하네스가 막는다. (이 하네스가 서버 소스를 읽는 유일한 자리다 — 서버는 안 만진다.)
+  // ⑦e~⑦g ★★[T292-b 2026-09-14] **먹기 판별이 기대는 성질** — 이 칸이 이 집의 다섯 번째 지뢰다.
+  //    T283 판: "`gauges` 아홉 중 `carry` 를 싣는 자리가 **정확히 하나**(=`doEat`)" 를 지킨다고 했고
+  //    초록이었다. **거짓 초록이었다.** 자가 `type: 'gauges'` 와 `carry:` 가 **같은 줄**에 있는 것만 셌는데,
+  //    `zone.js:11573`(초당 한 번 도는 게이지 틱)은 18줄짜리 객체 리터럴이라 `carry:` 가 11591 에 있다
+  //    ⇒ 영영 안 세어졌다. 실제 값은 2인데 하네스는 1이라고 답했고, 게임에서는 **1초마다 씹는 소리**가 났다.
+  //    ⑦g 의 돌연변이 픽스처마저 **한 줄짜리**를 더해 봐서, 망가진 자를 망가진 채로 확인해 줬다.
+  //    ⇒ ① 자를 **중괄호 맞춤**으로 바꾼다(전송 하나 = 객체 하나, 줄 수와 무관).
+  //      ② 그 자를 **먼저 검증한다** — 알려진 두 자리를 못 찾으면 자가 고장 난 것이다.
+  //      ③ 픽스처는 **여러 줄짜리**로 넣는다 — 옛 자로는 절대 안 잡히는 모양이어야 뜻이 있다.
+  //    그리고 클라는 이제 이 성질에 **안 기댄다**(판별이 `carry` 존재 → 허기 상승으로 바뀌었다).
+  //    그래도 세는 이유: 이 수가 조용히 변하는 것이 T283 을 무너뜨린 사건이므로 **기록을 남긴다**.
+  //    (이 하네스가 서버 소스를 읽는 유일한 자리다 — 서버는 안 만진다.)
   const srv = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
-  const gaugeLines = srv.split('\n').map((l, i) => ({ l, n: i + 1 })).filter((x) => /type:\s*'gauges'/.test(x.l));
-  const withCarry = gaugeLines.filter((x) => /\bcarry:/.test(x.l));
-  ok(gaugeLines.length >= 5, `⑦e 전제: 서버에 \`gauges\` 를 보내는 자리가 여럿이다`, `${gaugeLines.length}곳`);
-  ok(withCarry.length === 1, `⑦f ★★그중 \`carry\` 를 싣는 자리가 **정확히 하나**(= \`doEat\` · 먹기 소리가 그것으로 갈린다)`,
-     withCarry.map((x) => 'zone.js:' + x.n).join(' ') || '없다 — 먹기 소리가 영영 안 난다');
-  // ⑦g 자명 통과 금지 — 같은 자로 한 줄을 더한 셈 치면 잡는가
+  /** `type: 'gauges'` 가 든 **객체 하나**를 중괄호로 닫아 잡아낸다. 반환 {n, text}. */
+  const gaugeSends = (() => {
+    const L = srv.split('\n'), out = [];
+    for (let i = 0; i < L.length; i++) {
+      if (!/type:\s*'gauges'/.test(L[i])) continue;
+      let d = 0, started = false, text = '';
+      for (let n = i; n < L.length && n < i + 80; n++) {
+        for (const ch of L[n]) { if (ch === '{') { d++; started = true; } else if (ch === '}') d--; }
+        text += L[n] + '\n';
+        if (started && d <= 0) break;
+      }
+      out.push({ n: i + 1, text });
+    }
+    return out;
+  })();
+  const withCarry = gaugeSends.filter((x) => /\bcarry:/.test(x.text));
+  ok(gaugeSends.length >= 5, '⑦e 전제: 서버에 `gauges` 를 보내는 자리가 여럿이다', `${gaugeSends.length}곳`);
+
+  // ⑦f ★★**자를 먼저 검증한다.** 줄 하나만 보던 옛 자는 여러 줄 전송을 못 봤다.
+  //     알려진 두 자리(한 줄짜리 `doEat` · 여러 줄짜리 게이지 틱)를 **둘 다** 집어내야 자가 성한 것이다.
+  const oneLine  = withCarry.filter((x) => /type:\s*'gauges'/.test(x.text.split('\n')[0]) && /\bcarry:/.test(x.text.split('\n')[0]));
+  const multiLine = withCarry.filter((x) => !/\bcarry:/.test(x.text.split('\n')[0]));
+  ok(oneLine.length >= 1 && multiLine.length >= 1,
+     '⑦f ★★자 검증 — `carry` 실은 전송을 **한 줄짜리·여러 줄짜리 둘 다** 집어낸다(옛 자는 여러 줄을 못 봤다)',
+     `한 줄 ${oneLine.map((x) => x.n).join(',') || '0'} · 여러 줄 ${multiLine.map((x) => x.n).join(',') || '0(자가 아직 짧다)'}`);
+
+  // ⑦g 지금 수를 적어 둔다 — 바뀌면 문다(클라가 안 기대게 됐어도 **조용한 변화**는 막는다)
+  ok(withCarry.length === 2,
+     '⑦g ★`gauges` 중 `carry` 를 싣는 자리는 **둘**이다(`doEat` · 초당 게이지 틱). 이 수가 변하면 먹기 판별을 다시 본다',
+     withCarry.map((x) => 'zone.js:' + x.n).join(' '));
+
+  // ⑦g2 자명 통과 금지 — **여러 줄짜리**를 하나 더한 셈 치면 잡는가(옛 자로는 절대 안 잡히는 모양이다)
   {
-    const faked = gaugeLines.concat([{ l: "send(x, { type: 'gauges', carry: 1 })", n: -1 }]).filter((x) => /\bcarry:/.test(x.l));
-    ok(faked.length === 2, '⑦g 자명 통과 금지 — `carry` 실은 줄이 하나 더 생기면 ⑦f 가 문다');
+    const fakeMulti = "      send(p.ws, {\n        type: 'gauges',\n        hunger: 1,\n        carry: { w: 0 },\n      });\n";
+    const faked = gaugeSends.concat([{ n: -1, text: fakeMulti }]).filter((x) => /\bcarry:/.test(x.text));
+    ok(faked.length === 3, '⑦g2 자명 통과 금지 — **여러 줄짜리** `carry` 전송이 하나 더 생기면 ⑦g 가 문다');
+    const oldRuler = fakeMulti.split('\n').filter((l) => /type:\s*'gauges'/.test(l) && /\bcarry:/.test(l));
+    ok(oldRuler.length === 0, '⑦g3 ★그 모양은 **옛 자(줄 하나)로는 0개**다 — 이 픽스처가 진짜로 옛 구멍을 겨눈다');
   }
+
+  // ⑦g4 ★★그리고 **클라가 이제 `carry` 에 안 기댄다** — 판별이 허기 상승이어야 한다.
+  //     이게 실제 고침이다. 위 셋은 기록이고, 이 한 줄이 소리를 멎게 한 자리다.
+  {
+    const gaugeBlk = (() => {
+      const i = modCode.indexOf("t === 'gauges'");
+      return i < 0 ? '' : modCode.slice(i, i + 420);
+    })();
+    ok(gaugeBlk && !/msg\.carry/.test(gaugeBlk),
+       '⑦g4 ★★먹기 판별이 `msg.carry` **존재**에 안 기댄다(그 칸은 초당 틱에도 실린다 — 1초마다 씹었다)',
+       gaugeBlk ? '기대지 않는다' : '`gauges` 갈래를 못 찾았다');
+    ok(/msg\.hunger/.test(gaugeBlk) && />\s*prev/.test(gaugeBlk),
+       '⑦g5 ★★대신 **허기가 올랐을 때만** 운다(허기는 자연히 줄기만 한다)',
+       '허기 상승 판별');
+  }
+
   // ⑦h ★실내 배율이 반복 키마다 있다(없으면 실내에서 빗소리가 그대로 난다)
   const loops = keyNames.filter((k) => KEYS[k].loop);
   const noIndoor = loops.filter((k) => typeof KEYS[k].indoorMul !== 'number');
