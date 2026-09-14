@@ -131,7 +131,7 @@
 | `cast` | `public/assets/sfx/cast.{ogg,m4a}` | 단발 | 0.92s | 12,703 / 12,388 B | ⚠배역은 **가설**(한 원본의 물튀김 셋을 크기로 갈랐다) |
 | `bite` | `public/assets/sfx/bite.{ogg,m4a}` | 단발 | 0.88s | 12,456 / 11,821 B | ⚠같음 |
 | `hook` | `public/assets/sfx/hook.{ogg,m4a}` | 단발 | 1.10s | 14,733 / 14,352 B | ⚠같음 |
-| `deer_call` | `public/assets/sfx/deer_call.{ogg,m4a}` | 단발 | 2.00s | 14,399 / 25,723 B | ⚠종은 **와피티**(Cervus canadensis) · 원본 11,025Hz · 이미 0dBFS 였다 |
+| `deer_call` | `public/assets/sfx/deer_call.{ogg,m4a}` | 단발 | 2.00s | 14,399 / 25,723 B | ⚠종은 **와피티**(Cervus canadensis) — T291 이 다시 찾았고 **PD/CC0 대륙사슴은 없다**(아래) |
 | `tiger_growl` | `public/assets/sfx/tiger_growl.{ogg,m4a}` | 단발 | 2.00s | 21,133 / 25,609 B | 진짜 호랑이(출처가 `Panthera tigris`) · ⚠잔향은 원본의 것 |
 | `wolf_growl` | `public/assets/sfx/wolf_growl.{ogg,m4a}` | 단발 | 2.50s | 24,746 / 31,708 B | ⚠**울부짖음**이지 으르렁이 아니다(자로 갈랐다 · 아래) · **#34 닫힘** |
 | `ui_click` | `public/assets/sfx/ui_click.{ogg,m4a}` | 단발 | 0.26s | 6,110 / 4,164 B | **후보**(키 0 · 훅 0) — 있어야 하나는 재민 |
@@ -241,6 +241,57 @@ Kenney `bookPlace1`(CC0)은 SNR **38.8 dB** · 선행 **6.0 ms** 였다. **딸�
 | "실내 감쇠"를 음색으로 할 수 있나 | **지금은 못 한다.** 층의 Web Audio 마디 전수가 `createGain` 5 · `createBufferSource` 2 — **필터·압축기 0**. 감쇠는 **이득뿐**이고 먹먹함(저역 통과)은 마디를 하나 더 걸어야 한다 |
 
 ⇒ **이 카드는 음원 0장.** 남은 것은 전부 세션9 칸이다(`scan()` 의 실내 항 · 필터 마디를 걸지 말지) ⇒ T283.
+
+### 진짜 사슴을 다시 찾았다 — 없다 · 하나 있는데 라이선스가 밖이다 [T291]
+
+T282 가 `deer_call` 을 **와피티**(_Cervus canadensis_)로 넣으며 "한반도 사슴은 못 찾았다"고 적었다.
+T291 이 **카테고리로 전수**를 다시 훑었다(검색어가 아니라 카테고리다 — 검색은 놓치고 카테고리는 안 놓친다):
+
+| 찾은 자리 | 결과 |
+|---|---|
+| Commons `Category:Audio files of Cervus nippon`(대륙사슴) | **0건** |
+| Commons `Category:Audio files of Cervus elaphus`(붉은사슴) | **0건** |
+| Commons `Category:Audio files of Cervus`(속 전체) | **0건** |
+| Commons `Category:Audio files of Hydropotes inermis`(고라니) | **0건** (사진은 23장 · 소리 0) |
+| Commons `Category:Audio files of Cervidae`(사슴과 전체) | 12건 — 라이선스를 파일마다 읽었다(아래) |
+| data.go.kr "사슴 소리"·"야생동물 음원"·"고라니" | 소리 데이터셋 **0** (이미지·서식지도·포획 격자뿐) |
+| species.nibr.go.kr · kogl.or.kr | **JS 로 그리는 화면**이라 기계가 읽을 목록이 없다 — 거기까지가 이 카드의 손이다 |
+
+★**진짜 대륙사슴 울음은 딱 한 건 있다 — 그런데 CC BY-SA 4.0 이다.**
+`File:Sika Deer (Cervus nippon) (W1CDR0001426 BD2).ogg` · 영국국립도서관 · 설명이
+*"A male Sika Deer calling, recorded at Wareham, Dorset, England"* 다. **종이 정확히 맞는다.**
+이 집 규약은 **PD/CC0** 이고(효과음 17장이 전부 그렇다 · `CREDITS.md` §7 이 "표시 의무 없음"이라 적는다)
+CC BY-SA 는 **표시 + 동일조건변경허락**이 붙는다. ⇒ **안 바꿨다. 쓸지 말지는 재민** — 회부.
+받으면 `CREDITS.md` §1 에 요구 문구가 서고 §7 충돌표에 행이 하나 는다(파일·잠금·매니페스트 `file` 은 한 줄씩).
+
+★사슴과 12건 중 나머지도 다 규약 밖이다: `Red Deer (Cervus elaphus) W1CDR…`·`Hirsch roehrt`·`Jeleni rut`·
+`Fallow Deer (Dama dama) W1CDR…` 는 CC BY-SA, BMC Biology 논문 부속 셋은 **CC BY 2.0 이고 종이 Dama dama**(다마사슴)다.
+PD 는 와피티 둘(`American Elk Bugling`·`Elkbellow`)뿐 — 지금 쓰는 그것이다.
+
+### 표 셋이 같은 말을 하나 — 삼자 대조 [T291]
+
+소리 자산은 **표 셋**이 따로 적는다. 셋이 어긋나면 **아무도 안 물었다**:
+
+| 표 | 무엇을 적나 | 지키던 자 |
+|---|---|---|
+| `public/assets/sfx/manifest.json` | 키·파일·출처 id·볼륨·반경… | `test-audio`(세션9) |
+| `public/assets/icons.lock.json.sfx` | 파일마다 해시 | `test-assets-audit ②` |
+| `CREDITS.md` §2-b | 파일마다 출처 URL·라이선스 | **아무도 없었다** |
+
+★**실측으로 구멍을 봤다**: `public/assets/sfx/` 에 `.ogg` 한 장을 더 놓으면
+`test-assets-audit` 도 `test-audio` 도 **둘 다 초록**이었다(고아 표의 수가 하나 늘 뿐이고 그 표는 빨강이 아니다).
+⇒ **잠기지도 크레딧에 적히지도 않은 소리가 그대로 배포된다.**
+
+⇒ `test-assets-audit` 에 **⑤ 절**을 세웠다(세션9 `test-audio` 무접촉 · 겹치는 검사 0):
+`⑤a` 디스크 ↔ 잠금표 양방향 · `⑤b` 디스크 ↔ CREDITS §2-b 양방향 · `⑤c` 매니페스트 `sources` 의 URL·라이선스 =
+CREDITS 같은 키 줄의 값. 절 끝에 **"어느 하네스가 무엇을 지키나"** 표를 찍는다 — 다음 사람이 또 겹쳐 만들지 않게.
+
+★**자명 통과 금지가 절 안에 상주한다**(매 판 돌연변이 넷). 그리고 **수를 절대값이 아니라 늘어난 만큼으로 본다** —
+처음엔 `=== 1` 로 적었더니 진짜 결함이 하나 있는 판에서 **시험 자신이 같이 빨개졌다**(T272 의 `__selftest_ghost__` 와 같은 줄).
+`r.a.length + 1` 로 고치니 결함 있는 판에서도 시험 넷이 선다 — **시험은 제가 시험하는 것에 걸려 넘어지면 안 된다.**
+
+⚠**후보와 미확보는 빨강이 아니다** — 절이 둘을 표로만 낸다:
+파일은 있는데 키가 없다(`ui_click` · 후보) · 키는 있는데 파일이 없다(`harvest`·`boar_grunt` · 미확보).
 
 ## 1-c. 굽는 상자 — 표식 규약 [T260 2026-09-13]
 

@@ -19,6 +19,13 @@
 //   ④ **닿음은 전이적이다** — 표 안의 이름이 참조가 되려면 **그 표 자신이 닿아야** 한다.
 //      제 폴더 안에서 저희끼리만 가리키는 파일 무더기는 참조가 아니다(T243 §0-ⓑ 가 그걸로 45.7MB 를 찾았다).
 //
+//   ⑥ **삼자 대조 [T291]** — 소리 자산은 표 **셋**이 따로 적는다(매니페스트 · 잠금표 · `CREDITS.md` §2-b).
+//      셋이 **같은 파일 집합**을 말하고 출처 값이 같아야 한다. 그 자리가 비어 있었다 — 실측: `sfx/` 에
+//      `.ogg` 한 장을 더 놓으면 `test-assets-audit` 도 `test-audio` 도 **둘 다 초록**이었다(고아 표에 숫자가
+//      하나 늘 뿐이고 그 표는 빨강이 아니다). 즉 **잠기지도 크레딧에 적히지도 않은 소리가 배포된다.**
+//      겹치는 검사는 안 만든다 — 절 끝에 "어느 하네스가 무엇을 지키나" 표를 찍는다.
+//      자명 통과 금지는 절 안에 상주한다(매 판 돌연변이 셋 · **늘어난 수**로 본다 — 절대값이면 진짜 결함이 있을 때 같이 넘어진다).
+//
 //   ⑤ **잠금이 무엇을 잡는 자인지** — T243 표본 넷(bush01·acorn·lettuce_2·lettuce_3)은 재굽기가
 //      배포판과 안 맞는다. 같은 코드로 연달아 두 번 구우면 바이트가 **같으므로**(대조군) 굽기는 결정적이고,
 //      어긋나는 건 **배포판을 구운 판이 지금 판이 아니기 때문**이다(렌더 드리프트 · 그림 차이는
@@ -256,6 +263,126 @@ ok(bad.length === 0, `② 잠금 불일치 0 — 잠긴 ${locked}장의 해시�
   ok(unlockedChar.every((k) => !sheetKeys.has(k)),
      `②b 안 잠긴 char 시트 ${unlockedChar.length}장은 전부 \`probeall*\`(잠금 대상 밖) — 설명 없는 자산 0`,
      unlockedChar.join(',') || '없다');
+}
+
+// ── ⑤ 삼자 대조 — 매니페스트 ↔ 잠금표 ↔ `CREDITS.md` [T291] ──────────────
+//
+// 왜 여기 있나: 소리 자산은 **표 셋**이 따로 적는다.
+//   `public/assets/sfx/manifest.json`   — 키·파일·출처 id  (지키는 자: `test-audio` · 세션9)
+//   `public/assets/icons.lock.json.sfx` — 파일마다 해시     (지키는 자: 이 하네스 ②)
+//   `CREDITS.md` §2-b                   — 파일마다 출처 URL·라이선스 (지키는 자: **아무도 없었다**)
+// 셋 다 사람이 손으로 적고, **셋이 같은 파일 집합을 말해야** 한다. 그 자리가 비어 있었다 —
+// 실측: `public/assets/sfx/` 에 `.ogg` 한 장을 더 놓으면 `test-assets-audit` 도 `test-audio` 도
+// **둘 다 초록**이었다(고아 표에 숫자 하나가 늘 뿐이고 그 표는 빨강이 아니다).
+// 즉 **잠기지도 크레딧에 적히지도 않은 소리가 배포된다.** 그래서 이 절이 있다.
+//
+// ★겹치는 검사는 안 만든다 — 누가 무엇을 지키는지 아래 표로 찍는다.
+//   `test-audio ①` 이 이미 보는 것(매니페스트가 가리키는 파일이 디스크에 있나 · `.m4a` 짝 ·
+//   크기·길이 상한 · `sources` 칸이 비었나)은 여기서 **다시 안 본다**.
+function creditRows() {
+  const md = fs.readFileSync(path.join(ROOT, 'CREDITS.md'), 'utf8');
+  const i = md.indexOf('## 2-b.');
+  if (i < 0) return null;                                   // 절이 사라지면 ⑤a 가 문다(수를 지어내지 않는다)
+  const sec = md.slice(i).split(/\n## /)[0];
+  const out = {}; let last = null;
+  for (const line of sec.split('\n')) {
+    const s = line.trim();
+    if (!s.startsWith('|')) continue;
+    const c = s.replace(/^\||\|$/g, '').split('|').map((x) => x.trim());
+    const m = /^`([a-z0-9_]+)`$/.exec(c[0] || '');          // 첫 칸이 **오직** 백틱 키인 줄만 = 크레딧 행
+    if (!m) continue;                                       // (§2-b 안의 설명용 표는 이 자로 걸러진다)
+    const key = m[1];
+    let url = mdLink(c[1] || '');
+    if (/^〃/.test(c[1] || '') && last) url = out[last].url; // 〃 = 윗줄과 같은 출처
+    out[key] = { url, license: c[3] || '', row: s }; last = key;
+  }
+  return out;
+}
+/** 마크다운 링크의 URL — 괄호를 센다(`File:Rain_(1).ogg` 처럼 URL 안에 괄호가 있다). */
+function mdLink(cell) {
+  const i = cell.indexOf('](');
+  if (i < 0) { const m = /(https?:\/\/\S+)/.exec(cell); return m ? m[1].replace(/[).,]+$/, '') : null; }
+  let j = i + 2, d = 1, out = '';
+  while (j < cell.length && d) {
+    const ch = cell[j];
+    if (ch === '(') d++;
+    else if (ch === ')') { if (!--d) break; }
+    out += ch; j++;
+  }
+  return out.trim();
+}
+/** 라이선스 이름을 견줄 수 있게 — 굵게·괄호주석을 떼고 같은 것을 같은 말로. */
+const normLic = (s) => {
+  const v = String(s).replace(/\*\*/g, '').replace(/\([^)]*\)/g, '').replace(/`/g, '').trim().toLowerCase().replace(/\s+/g, ' ');
+  return ({ 'cc0 1.0': 'cc0', 'cc0': 'cc0', 'public domain': 'pd' })[v] || v;
+};
+
+/** 삼자 대조의 알맹이 — 순수 함수라 **돌연변이를 먹여 무는지 볼 수 있다**(자명 통과 금지). */
+function triCheck(x) {
+  const only = (a, b) => a.filter((v) => !b.includes(v));
+  const credFiles = x.cred ? Object.keys(x.cred).flatMap((k) => [k + '.ogg', k + '.m4a']).sort() : [];
+  const a = [...only(x.disk, x.lock).map((f) => '잠금없음:' + f), ...only(x.lock, x.disk).map((f) => '파일없음:' + f)];
+  const b = x.cred === null ? ['§2-b절없음']
+    : [...only(x.disk, credFiles).map((f) => '크레딧없음:' + f), ...only(credFiles, x.disk).map((f) => '파일없음:' + f)];
+  const c = [];
+  for (const [k, v] of Object.entries(x.keys)) {
+    if (!v.file) continue;                                   // 미확보 키는 출처가 없는 게 맞다(빨강 아님)
+    const s = x.sources[v.source] || {};
+    const cr = x.cred && x.cred[k];
+    if (!cr) { c.push(`${k}:크레딧줄없음`); continue; }
+    if (s.url !== cr.url) c.push(`${k}:url`);
+    if (normLic(s.license) !== normLic(cr.license)) c.push(`${k}:라이선스(${normLic(s.license)}↔${normLic(cr.license)})`);
+  }
+  return { a, b, c };
+}
+
+console.log('\n⑤ 삼자 대조 — 소리 파일 하나를 표 셋이 똑같이 말하나 [T291]');
+{
+  const SFX = path.join(AST, 'sfx');
+  const disk = fs.existsSync(SFX) ? fs.readdirSync(SFX).filter((f) => /\.(ogg|m4a)$/i.test(f)).sort() : [];
+  const lock = Object.keys(JSON.parse(fs.readFileSync(path.join(AST, 'icons.lock.json'), 'utf8')).sfx || {}).sort();
+  const man = JSON.parse(fs.readFileSync(path.join(SFX, 'manifest.json'), 'utf8'));
+  const cred = creditRows();
+  const base = { disk, lock, cred, keys: man.keys || {}, sources: man.sources || {} };
+  const r = triCheck(base);
+
+  ok(r.a.length === 0, `⑤a 디스크 ↔ 잠금표 — 한쪽에만 있는 파일 ${r.a.length}개 (잠기지 않은 소리가 배포되지 않는다)`,
+     r.a.join(' ') || `${disk.length}장 양방향 일치`);
+  ok(r.b.length === 0, `⑤b 디스크 ↔ CREDITS §2-b — 한쪽에만 있는 파일 ${r.b.length}개 (출처 없는 소리 0)`,
+     r.b.join(' ') || `크레딧 ${cred ? Object.keys(cred).length : 0}줄`);
+  ok(r.c.length === 0, `⑤c 매니페스트 출처 ↔ CREDITS 줄 — 어긋난 칸 ${r.c.length}개`,
+     r.c.join(' ') || `${Object.values(base.keys).filter((v) => v.file).length}키 · URL·라이선스 양쪽 같다`);
+
+  // ★자명 통과 금지 — 셋을 각각 한 군데씩 깨서 **그 절만** 무는지 본다(다른 절까지 물면 자가 뭉툭한 것이다).
+  const cp = (o) => JSON.parse(JSON.stringify(o));
+  const k0 = Object.keys(base.cred || {})[0];
+  const mGhost = triCheck({ ...base, disk: [...disk, 'zzghost.ogg'] });
+  const mCred = triCheck({ ...base, cred: (() => { const d = cp(base.cred); delete d[k0]; return d; })() });
+  const mUrl = triCheck({ ...base, cred: (() => { const d = cp(base.cred); d[k0].url += '#zz'; return d; })() });
+  // ★수를 **절대값이 아니라 늘어난 만큼**으로 본다 — 진짜 결함이 하나 있는 판에서도 이 시험이 제 몫을 해야 한다
+  //   (T272 에서 배운 것과 같은 줄: 시험이 제가 시험하는 것에 걸려 넘어지면 안 된다).
+  ok(mGhost.a.length === r.a.length + 1 && mGhost.b.length === r.b.length + 1,
+     'ⓐ 잠금에도 크레딧에도 없는 `.ogg` 한 장을 놓으면 ⑤a·⑤b 가 **하나씩 더** 문다',
+     `a ${r.a.length}→${mGhost.a.length} · b ${r.b.length}→${mGhost.b.length}`);
+  ok(mCred.b.length === r.b.length + 2 && mCred.a.length === r.a.length,
+     `ⓑ 크레딧 한 줄(\`${k0}\`)을 지우면 ⑤b 만 **둘 더** 문다(.ogg+.m4a) — ⑤a 는 그대로`,
+     `b ${r.b.length}→${mCred.b.length} · a ${r.a.length}→${mCred.a.length}`);
+  ok(mUrl.c.length === r.c.length + 1 && mUrl.b.length === r.b.length,
+     'ⓒ 크레딧 URL 을 한 글자 바꾸면 ⑤c 만 **하나 더** 문다',
+     `c ${r.c.length}→${mUrl.c.length} · b ${r.b.length}→${mUrl.b.length}`);
+  ok(triCheck({ ...base, keys: cp(base.keys) }).c.length === r.c.length,
+     'ⓓ ★대조 — 안 건드린 표를 다시 재면 수가 그대로다(자가 아무거나 물지 않는다)', `c=${r.c.length}`);
+
+  const manFiles = Object.values(base.keys).flatMap((v) => [v.file, v.fileAlt]).filter(Boolean);
+  const noKey = [...new Set(disk.filter((f) => !manFiles.includes(f)).map((f) => f.replace(/\.(ogg|m4a)$/i, '')))];
+  const noFile = Object.entries(base.keys).filter(([, v]) => !v.file).map(([k]) => k);
+  console.log(`     · 파일은 있는데 **키가 없다**(후보): ${noKey.join(' ') || '없음'}`);
+  console.log(`     · 키는 있는데 **파일이 없다**(미확보): ${noFile.join(' ') || '없음'}`);
+  console.log('     ┌ 어느 하네스가 무엇을 지키나 (겹치는 검사는 안 만든다) ─────────────');
+  console.log('     │ `test-audio`(세션9)   매니페스트 **안쪽** — 값·상한·`.m4a` 짝·훅·BGM·리미터·페이드');
+  console.log('     │ 이 하네스 ①②         잠금 해시 · 닿는 표가 가리키는 파일이 있나');
+  console.log('     │ 이 하네스 ⑤ [T291]    디스크 ↔ 잠금 ↔ CREDITS 의 **파일 집합**과 **출처 값**');
+  console.log('     └ 겹침 0: 매니페스트가 가리키는 파일의 존재·크기·길이는 `test-audio ①` 이 본다 — 여기선 안 본다');
 }
 
 // ── ③ 고아 — 표만(빨강 아님) ────────────────────────────────────────────
