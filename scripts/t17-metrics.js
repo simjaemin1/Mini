@@ -108,6 +108,15 @@ const _clearVils = [];
 if (_CLEAR) {
   let _rowid = 0;
   P._clearProbe.setup(ta, world, { insertVillageBuilding: () => ++_rowid });
+  // ★★[T286 2026-09-14 실측 · 경고만 · 값 무변] **반쪽 캐시 함정.**
+  //   `LAB_SEEDCACHE` 가 가리키는 파일이 옛 판(`layout` 칸이 없는 판)이면 아래 `if (!s2.layout) return;`
+  //   가 51곳을 **조용히 전부 건너뛴다** — 실측: 그 캐시로 `T100_CLEAR=1` 을 켜면 "마을 **0**곳 · 초기 밭 **0**칸",
+  //   `layout` 이 든 캐시면 "마을 **51**곳 · 초기 밭 **5,050**칸". 끈 것과 켠 것이 같은 수를 내니 아무도 안 본다.
+  //   ⇒ 여기서 **소리를 낸다**(동작은 그대로 — 이 카드는 계측기만이고 판정을 안 바꾼다 · 고치는 것은 회부).
+  if (_SEEDCACHE && seeds.some((s2) => s2 && !s2.layout)) {
+    console.log(`  ⚠[T286] 캐시(${_SEEDCACHE})에 \`layout\` 칸이 없다 — T100_CLEAR 관측이 **조용히 0곳**이 된다.`
+      + ' 캐시를 지우고 다시 구워라(`rm` 뒤 한 판) — 보고/T286_2026-09-14.md §1.');
+  }
   world.villages.forEach((ev, i) => {
     const s2 = seeds[i]; if (!s2 || !s2.layout) return;
     _clearVils.push(P._clearProbe.attach({ dbId: i + 1, name: s2.name, ccx: s2.ccx, ccy: s2.ccy, econ: ev, layout: s2.layout }));
