@@ -2451,6 +2451,22 @@ function _terrGrow(vil) {
   if (!picked.length) return 0;
   const added = new Set();
   for (const k of picked) { own.add(k); added.add(k); }
+  // ★★[T278 2026-09-13 재민 확정] **늘린 땅을 남긴다.**
+  //   종전엔 이 함수에 DB 쓰기가 **한 줄도 없었다** — 영토는 메모리에서만 자라고 재부팅하면 사라졌다.
+  //   실측(T267 · 실서버 200일 50마을 · 세 짝): `village_buildings` 의 `terr` 행이 끔·켬 **둘 다 172,500** ·
+  //   살아 있는 세계는 영토 중앙 5,100까지 자라는데 다시 세우면 3,450 으로 되돌아가고,
+  //   그때 **제 영토 밖에 서는 집**이 끔 0채 · 영토만 49.3 · 둘 다 101.3채(집 행은 남으니까).
+  //   ⇒ 집·곳간·환호가 이미 쓰는 **그 길** 그대로 남긴다(새 문법 0 · 새 수 0). 읽는 자리는 이미 있다
+  //     (`:2584` — 부팅이 `terr` 행을 그대로 `_terrSet` 에 넣는다. 그래서 읽기는 손댈 게 없다).
+  //   ⚠쓰기가 실패해도 하루 틱을 죽이지 않는다(이 파일의 다른 영속 자리와 같은 규약).
+  try {
+    if (state.db && state.db.insertVillageBuilding && vil.dbId != null) {
+      for (const k of added) {
+        const ci2 = k.indexOf(','), ax = +k.slice(0, ci2), ay = +k.slice(ci2 + 1);
+        state.db.insertVillageBuilding({ village_id: vil.dbId, type: 'terr', cx: ax, cy: ay, floors: 0, data: null });
+      }
+    }
+  } catch (e) { console.error(`[${state.zoneId}] 🏘️ 영토 영속 실패(${vil.name}):`, e.message); }
   _probe.terrGrowDays++; _probe.terrGrowCells += added.size;   // ★[T41 §0] 영토가 **매일** 바뀌는가 — 표지(dirty) 접근의 성패가 여기 달렸다
   lifeSiteDirty(vil);   // ★[T41 ①] 새 셀 = 새 집터 후보. 표지가 서는 세 자리 중 첫째.
   // ★새 셀 개간 — 나무 제거(마을 안엔 숲이 없다)
