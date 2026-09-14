@@ -1,83 +1,84 @@
 {
- "source": {
-  "gayageum": "샘플",
-  "geomungo": "합성",
-  "daegeum": "합성",
-  "danso": "합성",
-  "piri": "합성",
-  "janggu_gung": "합성",
-  "janggu_chae": "합성",
-  "buk": "합성",
-  "jing": "합성",
-  "kkwaenggwari": "합성",
-  "bak": "합성"
- },
- "tracks": {
-  "village_day_trad": {
-   "seconds": 109.02,
-   "rms_db": -14.98,
-   "peak_db": -1.29
+  "source": {
+    "gayageum": "샘플 — 국립국악원 산조가야금(12곡) · 정악가야금(village_day_jeongak)",
+    "geomungo": "합성",
+    "daegeum": "샘플 — 국립국악원 정악대금(village_day_jeongak 만) · 12곡에서는 합성",
+    "danso": "합성",
+    "piri": "합성",
+    "janggu_gung": "합성",
+    "janggu_chae": "합성",
+    "buk": "합성",
+    "jing": "합성",
+    "kkwaenggwari": "합성",
+    "bak": "합성"
   },
-  "village_day_amb": {
-   "seconds": 112.0,
-   "rms_db": -17.23,
-   "peak_db": -2.12
+  "tracks": {
+    "village_day_trad": {
+      "seconds": 109.02,
+      "rms_db": -14.98,
+      "peak_db": -1.29
+    },
+    "village_day_amb": {
+      "seconds": 112.0,
+      "rms_db": -17.23,
+      "peak_db": -2.12
+    },
+    "village_night_trad": {
+      "seconds": 115.2,
+      "rms_db": -18.32,
+      "peak_db": -2.02
+    },
+    "village_night_amb": {
+      "seconds": 118.0,
+      "rms_db": -19.67,
+      "peak_db": -4.01
+    },
+    "battle_trad": {
+      "seconds": 108.31,
+      "rms_db": -13.42,
+      "peak_db": -1.2
+    },
+    "battle_amb": {
+      "seconds": 104.0,
+      "rms_db": -16.17,
+      "peak_db": -1.2
+    },
+    "journey_trad": {
+      "seconds": 105.75,
+      "rms_db": -14.87,
+      "peak_db": -1.76
+    },
+    "journey_amb": {
+      "seconds": 116.0,
+      "rms_db": -16.87,
+      "peak_db": -1.5
+    },
+    "village_day_ari": {
+      "seconds": 103.68,
+      "rms_db": -15.11,
+      "peak_db": -2.47
+    },
+    "village_night_ari": {
+      "seconds": 120.96,
+      "rms_db": -18.54,
+      "peak_db": -4.55
+    },
+    "battle_ari": {
+      "seconds": 106.56,
+      "rms_db": -13.47,
+      "peak_db": -1.2
+    },
+    "journey_ari": {
+      "seconds": 89.28,
+      "rms_db": -14.93,
+      "peak_db": -1.94
+    },
+    "village_day_jeongak": {
+      "seconds": null,
+      "rms_db": null,
+      "peak_db": null
+    }
   },
-  "village_night_trad": {
-   "seconds": 115.2,
-   "rms_db": -18.32,
-   "peak_db": -2.02
-  },
-  "village_night_amb": {
-   "seconds": 118.0,
-   "rms_db": -19.67,
-   "peak_db": -4.01
-  },
-  "battle_trad": {
-   "seconds": 108.31,
-   "rms_db": -13.42,
-   "peak_db": -1.2
-  },
-  "battle_amb": {
-   "seconds": 104.0,
-   "rms_db": -16.17,
-   "peak_db": -1.2
-  },
-  "journey_trad": {
-   "seconds": 105.75,
-   "rms_db": -14.87,
-   "peak_db": -1.76
-  },
-  "journey_amb": {
-   "seconds": 116.0,
-   "rms_db": -16.87,
-   "peak_db": -1.5
-  },
-  "village_day_ari": {
-   "seconds": 103.68,
-   "rms_db": -15.11,
-   "peak_db": -2.47
-  },
-  "village_night_ari": {
-   "seconds": 120.96,
-   "rms_db": -18.54,
-   "peak_db": -4.55
-  },
-  "battle_ari": {
-   "seconds": 106.56,
-   "rms_db": -13.47,
-   "peak_db": -1.2
-  },
-  "journey_ari": {
-   "seconds": 89.28,
-   "rms_db": -14.93,
-   "peak_db": -1.94
-  },
-  "village_day_jeongak": {
-   "seconds": null,
-   "rms_db": null,
-   "peak_db": null
-  }
- },
- "_T257": "village_day_jeongak 은 커밋 f75e8158(\"정악대금 도입\")이 곡은 넣고 이 표는 안 고쳐 12곡으로 남아 있었다 [T246 발견 · T257 더함]. 세 칸은 **비워 둔다 — 지어내지 않는다**: 이 표의 수는 compose.py:676 이 합성한 float 배열에서 재는 값이고 배포된 .ogg 에서 잰 값이 아니다(실측 대조 — village_day_trad 는 이 표가 109.02/-14.98/-1.29 인데 ogg 를 ffmpeg 로 재면 108.28/-17.20/-0.09 다 · 12곡 전부 안 맞는다). 그 음원 조각은 저장소에 없다(.gitignore 가 bk_*.zip 을 빼고 samples/ 엔 \"여기에 음원을 넣으세요\" 한 장뿐이다). 채우려면 render_jeongak.py 를 음원 조각과 함께 돌려야 한다."
+  "_T257": "village_day_jeongak 은 커밋 f75e8158(\"정악대금 도입\")이 곡은 넣고 이 표는 안 고쳐 12곡으로 남아 있었다 [T246 발견 · T257 더함]. 세 칸은 **비워 둔다 — 지어내지 않는다**: 이 표의 수는 compose.py:676 이 합성한 float 배열에서 재는 값이고 배포된 .ogg 에서 잰 값이 아니다(실측 대조 — village_day_trad 는 이 표가 109.02/-14.98/-1.29 인데 ogg 를 ffmpeg 로 재면 108.28/-17.20/-0.09 다 · 12곡 전부 안 맞는다). 그 음원 조각은 저장소에 없다(.gitignore 가 bk_*.zip 을 빼고 samples/ 엔 \"여기에 음원을 넣으세요\" 한 장뿐이다). 채우려면 render_jeongak.py 를 음원 조각과 함께 돌려야 한다.",
+  "_T292": "★`source` 의 `daegeum` 이 **'합성'이라 적혀 있었는데 틀렸다** [T292 2026-09-14]. 정악대금은 국립국악원 「단음 다운로드」 실제 녹음이다(5파일 → 조각 113 · `render_jeongak.py` 가 *\"대금·가야금 모두 진짜 정악 악기 녹음이다\"* 라고 적어 뒀고 `CREDITS.md` §2 도 그렇게 적는다). 이 표만 안 고쳐져 있었다 — 커밋 f75e8158(\"정악대금 도입\")이 **곡은 넣고 표는 안 고친** 그 결함의 **세 번째** 흔적이다(T246 이 곡 수 12→13 을, T257 이 seconds 세 칸을, T292 가 악기 출처를 잡았다). 라이선스는 셋 다 공공누리 제1유형이라 표기 의무는 `CREDITS.md` §1 그대로 달라지는 게 없다 — 다만 '출처 없는 소리 0' 을 기계로 세는 날 이 표를 믿으면 **틀린 답**이 나온다. ⚠나머지 여덟(거문고·단소·피리·장구 둘·북·징·꽹과리·박)은 여전히 합성이다 — `README-BGM.md` 의 \"아직 합성음인 악기\" 절이 정본이고, 이 표는 그 절과 같은 말을 해야 한다."
 }

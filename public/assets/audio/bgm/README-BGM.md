@@ -1,14 +1,18 @@
 # 두랑고 BGM — 실제 산조가야금 판
 
 ## 무엇이 들어 있나
-12곡 × (.ogg + .m4a). 사파리는 ogg 를 못 열기 때문에 m4a 가 반드시 함께 있어야 한다.
+**13곡** × (.ogg + .m4a). 사파리는 ogg 를 못 열기 때문에 m4a 가 반드시 함께 있어야 한다.
 
-    village_day_trad / village_day_amb / village_day_ari
+    village_day_trad / village_day_amb / village_day_ari / village_day_jeongak
     village_night_trad / village_night_amb / village_night_ari
     battle_trad / battle_amb / battle_ari
     journey_trad / journey_amb / journey_ari
 
-`_ari` 는 아리랑 선율이 들어간 판이다.
+`_ari` 는 아리랑 선율이 들어간 판이고, `_jeongak` 은 **정악풍** 판이다(아래).
+
+⚠이 문서가 오래 **12곡**이라 적고 있었다 — 커밋 `f75e8158`("정악대금 도입")이 곡은 넣고 문서·표를 안 고쳤다.
+같은 결함의 흔적이 셋이다: 곡 수(T246 발견 · T257 수습) · `render-meta.json` 의 `seconds` 세 칸(T257) ·
+악기 출처 칸(T292). ⇒ **`scripts/test-audio ⑨l` 이 이제 이 문서와 `render-meta.json` 을 맞대 놓는다.**
 
 ## 가야금 소리의 출처
 국립국악원 **산조가야금** 실제 녹음(공공누리 제1유형).
@@ -28,9 +32,20 @@
 그래서 평조 곡은 으뜸음 G, 계면조 곡은 으뜸음 A 로 옮겼다(그때 12현과 정확히 일치한다).
 결과: 음정 이동 최대 2.32반음 → 0.52반음(평균율 보정분뿐).
 
+## 정악판 — `village_day_jeongak`
+같은 악보를 정악풍으로 옮긴 한 곡. **대금·가야금 둘 다 진짜 정악 악기 녹음이다**(국립국악원 「단음 다운로드」).
+정악대금 5파일 → 조각 113 · 정악가야금 7파일 → 조각 100. 음색 보정(EQ)은 안 걸었다 — 진짜 악기라 기울일 이유가 없다.
+바꾼 것: 소박 0.395→0.50초 · 깊은 농현 대신 요성(±8센트) · 맺음은 퇴성 · 여운 2.0초 · 장단에서 굴림 제거.
+자세한 것은 `render_jeongak.py` 머리말.
+
 ## 아직 합성음인 악기
-거문고 · 대금 · 단소 · 피리 · 장구 · 징 · 꽹과리 · 박.
+거문고 · 단소 · 피리 · 장구 · **북** · 징 · 꽹과리 · 박.
 전투 계열 두 곡(battle_trad, battle_amb)은 가야금 편성이 아니라 전부 합성음이다.
+
+⚠**대금은 절반만 합성이다** — 12곡에서는 합성이고 `village_day_jeongak` 에서만 실제 정악대금 녹음이다.
+이 문서가 오래 "대금"을 이 목록에 넣어 두고 있었는데, 정악판이 들어온 뒤로는 **반만 맞는 말**이 됐다.
+그리고 **북이 이 목록에서 빠져 있었다**(`compose.py` 세 자리에서 실제로 쓰이고 합성이다) — T292 가 채웠다.
+⇒ `render-meta.json` 의 `source` 표가 이 절과 **같은 말을 해야 한다**(`test-audio ⑨l` 이 지킨다).
 
 ## 다시 만들려면
     python3 sampler.py scan samples_gaya   # 음원 색인

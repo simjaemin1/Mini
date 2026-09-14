@@ -71,20 +71,29 @@ function sfxSaveVol() {
 //   master ← sfx  (효과음)
 //   master ← music(BGM — bgm.js 는 제 그래프를 destination 에 직접 물리므로 여기 안 지나간다.
 //                  음악 볼륨은 `_sfxBgm.setVolume()` 으로 준다. 칸은 셋이되 경로는 둘이다.)
-//   ★★[T283] **효과음 버스에 리미터를 단다.** T261 이 세운 헤드룸(최악 동시 합 1.67 × 0.8 × 0.7 = 0.94)은
-//     키가 여덟일 때의 수였다. T283 이 반복 셋(비·물·새)을 더하면서 최악 합이 **3.2** 가 됐고
-//     (`wind .5 + rain .6 + water .55 + fire .75 + 단발 .8` — 새는 비 게이트에 막혀 빠진다)
-//     ×0.8×0.7 = 1.79 ⇒ **목적지에서 잘린다.** 버스 기본값을 0.34 로 내리면 소리 하나가 반토막이 되므로
-//     대신 **마지막에 소프트 리미터**를 둔다 — 같은 문제를 이 집이 이미 푼 자리가 있고(`bgm.js buildGraph`
-//     의 "마지막 안전장치 — tanh 소프트 리미터"), **그 곡선을 그대로** 쓴다(자를 두 벌 만들지 않는다).
-//   ⚠BGM 은 이 버스를 안 지난다 — `bgm.js` 가 제 그래프를 `ctx.destination` 에 직접 물리고
-//     제 리미터를 이미 갖고 있다(재생기 수정 0 이므로 돌릴 길이 없다). 남는 합은 보고 ⓒ 에 적었다.
+// ══ 리미터 ═══════════════════════════════════════════════════════════════════
+//   ★★★[T292] **T283 의 곡선은 리미터가 아니었다 — 실측이 잡았다.**
+//     T283 은 `bgm.js buildGraph` 의 tanh 곡선을 그대로 가져왔다(`tanh(1.35x)/tanh(1.35)*0.93`).
+//     그 곡선의 **원점 기울기가 1.4364(= +3.15 dB)** 다 — 작은 신호를 **키운다.**
+//     실측(오프라인 렌더 · `__sfx.probe`): 모닥불 **하나만** 울렸는데 피크가 −15.88 → **−12.90 dBFS**
+//     (+2.98 dB). 넘침을 막는 장치가 **평소에 전체를 3dB 키우고 있었다.**
+//   ★그리고 T283 의 셈 자체가 과했다: 합(3.2)은 **상한**이지 피크가 아니다 — 파형이 같은 순간에
+//     같은 부호로 겹치지 않는다. 카드가 지목한 최악 조합(합 4.37)을 실제로 동시에 울려도
+//     리미터 **없이** 피크 −3.40 dBFS · 클리핑 **0** 이었다. 넘치는 것은 소리 나는 16종을 **전부**
+//     동시에 울렸을 때뿐이고(피크 +1.10 dBFS · 클리핑 8/352,800), 그건 게임에서 날 수 없는 조합이다.
+//   ⇒ **자를 고친다**: 문턱 아래는 **손대지 않고**(기울기 정확히 1) 그 위만 1.0 으로 부드럽게 수렴시킨다.
+//     문턱은 표(`bus.limiter.knee`)이고, **실측 최악 피크보다 위**여야 한다 — 그래야 평소엔 리미터가
+//     아무 일도 안 한다(`test-audio ⑧` 이 그 부등식을 지킨다). 안전장치는 보이지 않아야 안전장치다.
+//   ⚠`bgm.js` 의 곡선은 **안 고친다**(재생기 수정 0). 음악도 같은 이유로 +3.15dB 를 먹고 있다 ⇒ 회부.
 function sfxSoftLimiter(ctx) {
+  const K = (_sfxMan && _sfxMan.bus && _sfxMan.bus.limiter && _sfxMan.bus.limiter.knee);
+  const T = typeof K === 'number' ? K : 0.7;
   const lim = ctx.createWaveShaper();
   const CN = 2048, curve = new Float32Array(CN);
   for (let i = 0; i < CN; i++) {
-    const x = (i / (CN - 1)) * 2 - 1;
-    curve[i] = Math.tanh(x * 1.35) / Math.tanh(1.35) * 0.93;   // ← bgm.js 와 같은 곡선·같은 상수
+    const x = (i / (CN - 1)) * 2 - 1, a = Math.abs(x);
+    // 문턱 아래 = 그대로(투명) · 위 = T + (1−T)·tanh((|x|−T)/(1−T)) ⇒ 1.0 에 점근하되 절대 안 넘는다
+    curve[i] = a <= T ? x : Math.sign(x) * (T + (1 - T) * Math.tanh((a - T) / (1 - T)));
   }
   lim.curve = curve; lim.oversample = '2x';
   return lim;
@@ -275,13 +284,15 @@ function sfxBgmStart() {
     sfxBgmScene(true);
   } catch (e) { _sfxBgm = null; }
 }
-// 장면은 **두 축**이다: 마을 안/밖(`__evNearVid`) × 낮/밤(`isNight`). 표에 없는 축은 안 짓는다.
+// 장면은 **두 축**이다: 마을 안/밖(`__evNearVid`) × 낮/밤(`isNight`).
+// ★[T292] 고르는 것은 **표**(`bgm.scenePick`)다 — 장면 이름이 코드에 없다. 1차 판엔 세 낱말이 여기 있었다.
+//   표에 없는 칸은 **안 짓는다**(밤의 들판에 쓸 곡이 엔진에 없다 — 그 칸도 표가 말한다).
 function sfxBgmScene(force) {
-  if (!_sfxBgm) return;
+  if (!_sfxBgm || !_sfxMan) return;
   const inVillage = (typeof window.__evNearVid !== 'undefined' && window.__evNearVid != null);
   const night = (typeof isNight === 'function') ? !!isNight() : false;
-  const s = inVillage ? (night ? 'village_night' : 'village_day') : 'journey';
-  if (!force && s === _sfxBgmScene) return;
+  const s = ((_sfxMan.bgm && _sfxMan.bgm.scenePick) || {})[(inVillage ? 'village' : 'field') + ':' + (night ? 'night' : 'day')];
+  if (!s || (!force && s === _sfxBgmScene)) return;
   _sfxBgmScene = s;
   const fade = (_sfxMan && _sfxMan.bgm && _sfxMan.bgm.sceneFadeSec) || 4.0;
   _sfxBgm.setScene(s, fade);
@@ -475,6 +486,85 @@ function initAudio() {
         sfxLoop('amb:water', 'water', g);
       }
       sfxBgmScene(false);
+    },
+    /** ★[T292] **넘침을 재는 자**(진단 — 제품 경로 아님 · 새 전역 0).
+     *  T283 이 리미터를 단 근거는 **셈**이었다(최악 합 3.2 × 0.56 = 1.79). 셈은 상한이지 실측이 아니다 —
+     *  여러 소리가 동시에 나도 파형이 같은 순간에 같은 부호로 겹치지는 않으므로 **실제 피크는 합보다 낮다**.
+     *  그래서 진짜 버퍼를 **오프라인으로 렌더**해서 표본을 직접 센다.
+     *  ★왜 `AnalyserNode` 가 아니라 오프라인인가: Analyser 는 창(2048표본)의 **근사**를 주고 프레임에 묶인다.
+     *    넘침은 **표본 하나**의 문제라 근사로는 "안 넘쳤다"를 증명할 수 없다. 오프라인은 전 표본을 준다.
+     *  `keys` 를 동시에(같은 순간에) 울려 리미터 **있는 판/없는 판**을 따로 렌더하고 둘을 나란히 낸다.
+     *  이득 감소(펌핑)는 두 판의 포락선 비로 잰다 — 리미터가 무는 깊이와 길이가 그 수다. */
+    probe: async (keys, o) => {
+      o = o || {};
+      if (!_sfxMan || !_sfxCtx) return { err: 'not-ready' };
+      const list = (keys && keys.length ? keys : Object.keys(_sfxMan.keys).filter((k) => !k.startsWith('_')))
+        .filter((k) => sfxKey(k) && sfxKey(k).file);
+      for (const k of list) sfxBuffer(k);                       // 버퍼를 데운다(받는 중이면 아래가 기다린다)
+      for (let i = 0; i < 60 && list.some((k) => !_sfxBuf.get(k)); i++) await new Promise((r) => setTimeout(r, 100));
+      const bufs = list.map((k) => ({ k, b: _sfxBuf.get(k), m: sfxKey(k) })).filter((e) => e.b);
+      if (!bufs.length) return { err: 'no-buffers' };
+      const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+      if (!OAC) return { err: 'no-offline' };
+      const sr = _sfxCtx.sampleRate;
+      const secs = o.seconds || 4;
+      // ★값은 전부 표에서 온다 — 여기서 짓는 수는 없다(반경 감쇠만 0 으로 본다 = 최악).
+      const render = async (withLim) => {
+        const ctx = new OAC(2, Math.ceil(sr * secs), sr);
+        const master = ctx.createGain(); master.gain.value = _sfxVol.master;
+        const bus = ctx.createGain(); bus.gain.value = _sfxVol.sfx;
+        if (withLim) { const lim = sfxSoftLimiter(ctx); bus.connect(lim); lim.connect(master); }
+        else bus.connect(master);
+        master.connect(ctx.destination);
+        for (const e of bufs) {
+          const src = ctx.createBufferSource(); src.buffer = e.b; src.loop = !!e.m.loop;
+          const g = ctx.createGain(); g.gain.value = e.m.volume;
+          src.connect(g); g.connect(bus); src.start(0);
+        }
+        return await ctx.startRendering();
+      };
+      const scan = (ab) => {
+        let peak = 0, clipped = 0, sum = 0, n = 0;
+        for (let c = 0; c < ab.numberOfChannels; c++) {
+          const d = ab.getChannelData(c);
+          for (let i = 0; i < d.length; i++) {
+            const a = Math.abs(d[i]);
+            if (a > peak) peak = a;
+            if (a > 1) clipped++;
+            sum += d[i] * d[i]; n++;
+          }
+        }
+        const db = (x) => (x > 0 ? +(20 * Math.log10(x)).toFixed(2) : -Infinity);
+        return { peak: +peak.toFixed(4), peakDb: db(peak), clipped, rmsDb: db(Math.sqrt(sum / n)), samples: n };
+      };
+      const [off, on] = [await render(false), await render(true)];
+      // 이득 감소(펌핑) — 10ms 창의 최대 |x| 로 포락선을 잡아 두 판을 나눈다.
+      // ★★자를 먼저 좁힌다 [T292 실측]: 1차 판은 `pa > 0.02` 인 창을 전부 봤는데, 그러면
+      //   **문턱 아래의 창**까지 센다. 거기서 두 판은 원리상 같아야 하지만 `oversample:'2x'` 의
+      //   재표본 필터가 표본을 조금 흔들고, 그 절대 차이가 작은 pa 로 나뉘며 −10dB 짜리 허깨비를 낸다
+      //   (모닥불 하나 · 피크는 한 톨도 안 변했는데 "최악 −10.92dB" 가 나왔다). **비율이 뜻을 갖는 창은
+      //   리미터가 실제로 물 수 있는 창, 곧 `pa > knee` 뿐이다.** 그 밖은 자의 잡음이지 펌핑이 아니다.
+      const w = Math.round(sr * 0.01);
+      const a = off.getChannelData(0), b = on.getChannelData(0);
+      const knee = (_sfxMan.bus && _sfxMan.bus.limiter && _sfxMan.bus.limiter.knee) || 1;
+      let worstDb = 0, bitingMs = 0, windows = 0, overKnee = 0;
+      for (let i = 0; i + w <= a.length; i += w) {
+        let pa = 0, pb = 0;
+        for (let j = i; j < i + w; j++) { const x = Math.abs(a[j]); if (x > pa) pa = x; const y = Math.abs(b[j]); if (y > pb) pb = y; }
+        windows++;
+        if (pa <= knee) continue;                                // 리미터가 닿지 않는 창 — 재지 않는다
+        overKnee++;
+        const d = 20 * Math.log10(pb / pa);
+        if (d < worstDb) worstDb = d;
+        if (d < -0.5) bitingMs += 10;                            // 0.5dB 넘게 물면 "무는 중"으로 센다
+      }
+      return {
+        keys: bufs.map((e) => e.k), seconds: secs, sampleRate: sr,
+        vol: { master: _sfxVol.master, sfx: _sfxVol.sfx },
+        sum: +bufs.reduce((t, e) => t + e.m.volume, 0).toFixed(3),
+        withoutLimiter: scan(off), withLimiter: scan(on),
+        gainReduction: { worstDb: +worstDb.toFixed(2), bitingMs, windows, overKnee, knee },
+      };
     },
     /** 진단 — 하네스·실기가 읽는다(읽기 전용). */
     dbg: () => ({

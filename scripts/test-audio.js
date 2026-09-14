@@ -27,6 +27,12 @@
 //      ⚠마지막 것은 이 하네스가 **서버 소스를 읽는** 유일한 자리다. 클라가 서버의 어떤 성질에
 //      기대고 있으면, 그 성질이 깨지는 날 **소리가 조용히 틀려진다** — 조용한 것은 하네스가 막는다.
 //
+//   ⑧ **[T292] 리미터는 셈이 아니라 실측이다** — 문턱(`bus.limiter.knee`)이 **실측 최악 피크보다 위**이고,
+//      그 실측(`_실측`)이 **지금 키 표를 잰 것**이다(키를 더하고 안 재면 문다). 곡선의 수는 코드에 없다.
+//   ⑨ **[T292] BGM 전환은 표가 고른다** — `bgm.scenePick` 네 칸이 두 축(마을 안/밖 × 낮/밤)을 덮고,
+//      그 값이 전부 `bgm.js` 가 **실제로 받는** 장면 이름이다(엔진이 모르는 이름을 주면 음악이 조용히 안 바뀐다).
+//   ⑩ **[T292] CI 등록** — `test-audio` 가 `.github/workflows/regress-unit.yml` 단위 목록에 들어 있다.
+//
 // 자명 통과 금지(⑥): 키 하나를 빼고 · 없는 키를 부르고 · `new AC()` 를 최상위로 올린
 //   픽스처 셋을 만들어 ①③④가 **무는지** 본다. 그리고 대조 — 멀쩡한 픽스처는 통과한다.
 //
@@ -404,6 +410,123 @@ console.log('\n⑦ ★[T283] 표 셋 · 발신 훅 0 · 서버가 기대는 성�
   const noFade = loops.filter((k) => typeof KEYS[k].fade !== 'number');
   ok(noFade.length === 0, `⑦i 반복 키에 페이드(초)가 다 있다 — 빠진 것 ${noFade.length}개`,
      noFade.join(' ') || loops.map((k) => `${k} ${KEYS[k].fade}s/실내×${KEYS[k].indoorMul}`).join(' · '));
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ⑧ ★[T292] 리미터 — 문턱 > 실측 최악 피크 · 실측이 지금 표를 잰 것 · 수는 코드에 없다
+// ══════════════════════════════════════════════════════════════════════════════
+console.log('\n⑧ ★[T292] 리미터 — 셈이 아니라 실측');
+{
+  const L = (man.bus && man.bus.limiter) || {};
+  const M = man._실측 || {};
+  ok(typeof L.knee === 'number' && L.knee > 0 && L.knee < 1, `⑧a 문턱이 표에 있다(0<knee<1)`, `knee ${L.knee}`);
+  ok(typeof M.worstPeak === 'number', `⑧b 실측 최악 피크가 표에 있다`, `${M.worstPeak} (${M.worstPeakDb} dBFS)`);
+  ok(L.knee > M.worstPeak,
+     '⑧c ★★문턱이 **실측 최악 피크보다 위**다 — 평소엔 리미터가 한 번도 안 문다',
+     `${L.knee} > ${M.worstPeak} · 여유 ${(20 * Math.log10(L.knee / M.worstPeak)).toFixed(2)}dB`);
+  // ⑧d ★실측이 **지금 키 표**를 잰 것인가 — 키를 더하고 다시 안 재면 여기서 문다
+  const sounding = keyNames.filter((k) => KEYS[k].file).length;
+  ok(M.soundingKeys === sounding,
+     `⑧d ★실측이 지금 키 표를 잰 것이다 — 소리 나는 키 ${sounding}종`,
+     M.soundingKeys === sounding ? `\`_실측\` ${M.soundingKeys}종 · ${M.date}`
+       : `표는 ${M.soundingKeys}종인데 지금 ${sounding}종 — **\`__sfx.probe()\` 를 다시 돌려라**`);
+  const gone = (M.worstCombo || []).filter((k) => !KEYS[k]);
+  ok(gone.length === 0, `⑧e 최악 조합의 키가 전부 아직 표에 있다`, gone.join(' ') || (M.worstCombo || []).join(' '));
+  // ⑧f ★수가 코드에 없다 — 층은 문턱을 표에서 읽는다
+  ok(/bus\s*&&\s*_sfxMan\.bus\.limiter|limiter\s*&&\s*_sfxMan\.bus\.limiter\.knee|limiter\.knee/.test(modCode),
+     '⑧f 층이 문턱을 **표에서** 읽는다(코드에 박힌 수가 아니다)');
+  // ⑧g 자명 통과 금지 — 문턱을 최악 피크 아래로 내린 셈 치면 ⑧c 의 부등식이 깨진다
+  ok(!((M.worstPeak * 0.9) > M.worstPeak),
+     '⑧g 자명 통과 금지 — 문턱을 최악 피크 아래로 내리면 ⑧c 의 부등식이 깨진다', `${(M.worstPeak * 0.9).toFixed(4)} < ${M.worstPeak}`);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ⑨ ★[T292] BGM 전환 — 표가 고른다 · 엔진이 아는 이름인가
+// ══════════════════════════════════════════════════════════════════════════════
+console.log('\n⑨ ★[T292] BGM 전환 — 두 축 네 칸');
+{
+  const PICK = (man.bgm && man.bgm.scenePick) || {};
+  const cells = Object.keys(PICK).filter((k) => !k.startsWith('_'));
+  const WANT = ['village:day', 'village:night', 'field:day', 'field:night'];
+  const missing = WANT.filter((k) => !PICK[k]);
+  ok(missing.length === 0, `⑨a 두 축 네 칸이 다 있다 — 빠진 칸 ${missing.length}개`,
+     missing.join(' ') || WANT.map((k) => `${k}→${PICK[k]}`).join(' · '));
+  ok(cells.length === WANT.length, `⑨b 표에 군더더기 칸이 없다`, `${cells.length}칸`);
+  // ★엔진이 **실제로 받는** 이름인가 — `bgm.js` 의 `setScene` 이 거르는 그 집합을 읽는다(사본 0).
+  const bgmSrc = fs.readFileSync(path.join(BGM_DIR, 'bgm.js'), 'utf8');
+  const guard = bgmSrc.match(/scene\s+in\s*\{([^}]*)\}/);
+  const accepted = guard ? guard[1].split(',').map((x) => x.split(':')[0].trim()).filter(Boolean) : [];
+  ok(accepted.length >= 3, `⑨c 전제: 엔진이 거르는 장면 집합을 읽었다`, accepted.join(' '));
+  const unknown = WANT.map((k) => PICK[k]).filter((v, i, a) => a.indexOf(v) === i).filter((v) => !accepted.includes(v));
+  ok(unknown.length === 0,
+     '⑨d ★★표의 장면 이름이 전부 **엔진이 받는 이름**이다(모르는 이름을 주면 `setScene` 이 조용히 되돌아간다)',
+     unknown.join(' ') || `${accepted.length}종 중 ${new Set(WANT.map((k) => PICK[k])).size}종을 쓴다`);
+  // ★층이 표를 본다 — 장면 이름이 코드에 박혀 있지 않다
+  const hard = ['village_day', 'village_night', 'journey', 'battle'].filter((n) => new RegExp(`['"]${n}['"]`).test(modCode));
+  ok(hard.length === 0, '⑨e ★층 코드에 장면 이름이 박혀 있지 않다(표가 고른다)', hard.join(' ') || '0개');
+  ok(/scenePick/.test(modCode), '⑨f 층이 `scenePick` 을 실제로 읽는다');
+  // 페이드 — 표에 있고 층이 그 값을 넘긴다
+  const fade = man.bgm && man.bgm.sceneFadeSec;
+  ok(typeof fade === 'number' && fade > 0, '⑨g 장면 전환 페이드가 표에 있다(초)', `${fade}s`);
+  ok(/sceneFadeSec/.test(modCode), '⑨h 층이 그 값을 `setScene` 에 넘긴다(코드에 박힌 초가 아니다)');
+  // ★자명 통과 금지 — 엔진이 모르는 이름을 넣은 셈 치면 ⑨d 가 문다
+  ok(!accepted.includes('village_dusk'), '⑨i 자명 통과 금지 — 엔진이 모르는 이름(`village_dusk`)은 집합에 없다');
+  // ★[T292] `mood` 는 여전히 못 고른다 — `render-meta.json` 에 태그 칸이 없다(카드가 두 번 물었다)
+  const anyTag = Object.values(meta.tracks || {}).some((t) => t && (t.tag || t.tags || t.mood || t.scene));
+  ok(!anyTag, '⑨j ★`render-meta.json` 에 태그 칸이 **여전히 없다** — mood 는 안 고른다(지어내지 않는다)',
+     '칸: ' + [...new Set(Object.values(meta.tracks || {}).flatMap((t) => Object.keys(t || {})))].join(' '));
+  // ★★[T292] 악기 출처 표 ↔ `README-BGM.md` — 두 표가 **같은 말을 한다**.
+  //   `f75e8158`("정악대금 도입")이 곡은 넣고 표는 안 고친 결함의 세 번째 흔적이 여기였다:
+  //   `source.daegeum` 이 "합성"이라 적혀 있었는데 정악대금은 국립국악원 실제 녹음이다.
+  //   ⇒ README 가 "아직 합성음인 악기"라고 적은 목록과 이 표의 "합성" 칸이 어긋나면 문다.
+  {
+    const rd = fs.readFileSync(path.join(BGM_DIR, 'README-BGM.md'), 'utf8');
+    // ★★자를 **목록 줄 하나**로 좁힌다 [T292 실측]. 1차 판은 절 머리에서 200자를 읽었는데, 그 안에
+    //   "대금은 절반만 합성이다" 같은 **설명 문단**이 들어와 대금이 목록에 있는 것처럼 읽혔다.
+    //   이 집이 세 번 밟은 그 지뢰다(T182 `test-itemlabel ⑩` · T205 · T257 "주석은 쓰임이 아니다") —
+    //   **검사 범위를 넓히면 검사가 거짓말한다.** 판정은 목록 줄에서만 한다.
+    const rdLines = rd.slice(rd.indexOf('아직 합성음인 악기')).split('\n');
+    //   ⚠경고 문단을 표식(그림문자)으로 거르지 마라 — `test-harness-lint ②` 가 판정 자리의 그림문자를 문다
+    //   (실제로 물렸다). 목록은 **가운뎃점으로 이어진 줄**이라는 것이 그 자체로 자다.
+    const listLine = (rdLines.slice(1).find((l) => l.split('·').length >= 6) || '');
+    const KO = { geomungo: '거문고', daegeum: '대금', danso: '단소', piri: '피리',
+                 janggu_gung: '장구', janggu_chae: '장구', buk: '북', jing: '징', kkwaenggwari: '꽹과리', bak: '박' };
+    ok(listLine.split('·').length >= 6, '⑨k 전제: README 의 "아직 합성음인 악기" **목록 줄**을 읽었다', listLine.trim());
+    const src = meta.source || {};
+    const bad = Object.keys(KO).filter((k) => {
+      const synth = /^합성$/.test(String(src[k] || ''));
+      const inList = listLine.includes(KO[k]);
+      return synth !== inList;                                   // 표가 "합성"이라면 README 목록에 있어야 한다
+    });
+    ok(bad.length === 0, `⑨l ★★악기 출처 표와 README 가 어긋나는 악기 ${bad.length}종`,
+       bad.map((k) => `${KO[k]}(표:${src[k]})`).join(' ') || '표와 README 가 같은 말을 한다');
+    // ★자명 통과 금지 — 목록에서 악기 하나를 뺀 셈 치면 ⑨l 이 문다
+    {
+      const faked = listLine.replace('거문고', '');
+      const bite = Object.keys(KO).filter((k) => /^합성$/.test(String(src[k] || '')) !== faked.includes(KO[k]));
+      ok(bite.length === 1 && bite[0] === 'geomungo',
+         '⑨l-2 자명 통과 금지 — 목록에서 거문고를 빼면 ⑨l 이 **그 하나만** 문다', bite.join(' '));
+    }
+    ok(!/^합성$/.test(String(src.gayageum || '')) && !/^합성$/.test(String(src.daegeum || '')),
+       '⑨m ★가야금·대금은 **샘플**로 적혀 있다(국립국악원 실제 녹음 — `CREDITS.md` §2 와 같은 말)',
+       `가야금=${String(src.gayageum).slice(0, 22)}… · 대금=${String(src.daegeum).slice(0, 22)}…`);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ⑩ ★[T292] CI 등록 — 야간이 아니라 **매 푸시**에 도는 자리에 있다
+// ══════════════════════════════════════════════════════════════════════════════
+console.log('\n⑩ ★[T292] CI 등록');
+{
+  const wf = path.join(ROOT, '.github', 'workflows', 'regress-unit.yml');
+  ok(fs.existsSync(wf), '⑩a CI 파일이 있다', 'regress-unit.yml');
+  const y = fs.readFileSync(wf, 'utf8');
+  const unitBlock = y.slice(y.indexOf('단위 하네스'), y.indexOf('watch:') > 0 ? y.indexOf('watch:') : y.length);
+  ok(/test-audio\.js/.test(unitBlock), '⑩b ★`test-audio.js` 가 단위 목록에 있다(매 push·PR 마다 돈다)');
+  const listed = (unitBlock.match(/test-[a-z0-9-]+\.js/g) || []);
+  ok(listed.length >= 20, `⑩c 단위 목록이 실제로 여럿이다 — ${listed.length}종`, listed.length + '종');
+  ok(/@regress/.test(fs.readFileSync(__filename, 'utf8').slice(0, 200)),
+     '⑩d 이 하네스가 `@regress` 표식을 달고 있다(야간 러너도 스스로 찾는다)');
 }
 
 console.log(`\n=== PASS ${pass} / FAIL ${fail} ===`);
