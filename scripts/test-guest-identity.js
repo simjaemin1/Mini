@@ -495,100 +495,16 @@ const closeWs = (st) => new Promise((r) => { st.ws.on('close', r); try { st.ws.c
   //     ⚠판정 값에 이모지를 쓰지 않는다 — `test-harness-lint` ②(판정 자리에 이모지 0).
   say('\n[⑧ 라우트 전수표 파수꾼 — T242]');
   {
-    const ROUTES = {
-      // ── central ──────────────────────────────────────────────────────────
-      'central GET =/health':                    ['공개', '공개뜻'],
-      'central GET =/economy/villages':          ['공개', '공개뜻'],
-      'central GET ^/economy/prices/':           ['공개', '공개뜻'],
-      'central GET =/economy/canadia/villages':  ['공개', '공개뜻'],
-      'central GET =/economy/canadia/prices':    ['공개', '공개뜻'],
-      'central GET =/economy/canadia/tradelog':  ['공개', '공개뜻'],
-      'central GET =/economy/canadia/caravans':  ['공개', '공개뜻'],
-      'central GET =/economy/prices':            ['공개', '공개뜻'],
-      'central GET =/zones':                     ['공개', '공개뜻'],
-      'central POST =/auth':                     ['본인', '공개뜻'],
-      'central POST =/guest':                    ['본인', '공개뜻'],
-      'central POST =/promote':                  ['본인', '공개뜻'],
-      'central POST =/check_username':           ['공개', '회부2'],
-      'central POST =/friend/req': ['안문', '닫힘'],
-      'central POST =/friend/del': ['안문', '닫힘'],
-      'central POST =/friend/pending':           ['안문', '닫힘'],
-      'central GET ^/friends/':                  ['투영', '닫힘'],
-      'central GET ^/player/':                   ['투영', '닫힘'],
-      'central POST ^/player/':                  ['안문', '닫힘'],
-      'central GET =/market/orders': ['안문', '닫힘'],
-      'central POST =/market/order':             ['안문', '닫힘'],
-      'central POST =/market/cancel':            ['안문', '닫힘'],
-      'central GET =/tribes': ['투영', '닫힘'],
-      'central GET ^/tribe/': ['안문', '닫힘'],
-      'central POST =/tribe/add_vp': ['안문', '닫힘'],
-      'central POST =/tribe/treasury': ['안문', '닫힘'],
-      'central GET =/wars/active':               ['공개', '공개뜻'],
-      'central POST =/war/declare':              ['안문', '닫힘'],
-      'central POST =/war/end':                  ['안문', '닫힘'],
-      'central POST =/tribe/npc_upsert': ['안문', '닫힘'],
-      'central POST =/tribe/invite': ['안문', '닫힘'],
-      'central POST =/tribe/invites':            ['안문', '닫힘'],
-      'central POST =/tribe/invite_accept': ['안문', '닫힘'],
-      'central POST =/tribe/granary': ['안문', '닫힘'],
-      'central POST =/tribe/granary_set': ['안문', '닫힘'],
-      'central POST =/tribe/mode': ['안문', '닫힘'],
-      'central POST =/tribe/intro': ['안문', '닫힘'],
-      'central GET =/tribe_intros':              ['공개', '공개뜻'],
-      'central POST =/tribe/create': ['안문', '닫힘'],
-      'central POST =/tribe/join': ['안문', '닫힘'],
-      'central POST =/tribe/leave':              ['안문', '닫힘'],
-      'central GET =/terrain.json':              ['공개', '공개뜻'],
-      // ── zone ─────────────────────────────────────────────────────────────
-      'zone GET ^/perf': ['안문', '닫힘'],
-      'zone GET =/health':                       ['공개', '공개뜻'],
-      'zone GET ^/routedbg':                     ['안문', '닫힘'],
-      'zone GET ^/bodydbg':                      ['안문', '닫힘'],
-      'zone GET ^/claimdbg':                     ['안문', '닫힘'],
-      'zone GET ^/followdbg':                    ['안문', '닫힘'],
-      'zone GET ^/friendsdbg':                   ['안문', '닫힘'],
-      'zone GET ^/guilddbg':                     ['안문', '닫힘'],
-      'zone GET ^/shelterdbg':                   ['안문', '닫힘'],
-      'zone GET ^/welcomedbg':                   ['안문', '닫힘'],
-      'zone GET ^/startinfo':                    ['공개', '회부9'],
-      'zone GET ^/lifedbg':                      ['안문', '닫힘'],
-      'zone GET ^/roomdbg':                      ['안문', '닫힘'],
-      'zone GET =/metrics': ['안문', '닫힘'],
-      'zone POST =/ghost_sync': ['안문', '닫힘'],
-      'zone POST =/cross_damage': ['안문', '닫힘'],
-      'zone POST =/handoff_prepare': ['안문', '닫힘'],
-      'zone POST =/kick_player': ['안문', '닫힘'],
-      'zone POST =/handoff_ack': ['안문', '닫힘'],
-      // ── dispatcher ───────────────────────────────────────────────────────
-      'dispatcher GET =/health/zones':           ['공개', '공개뜻'],
-    };
+    //   ★★[T290] 표와 뽑기는 **정본 한 벌**(`scripts/lib-routes.js`)에서 읽는다 — `test-doors` 가 같은 표를 쓴다.
+    //     표를 두 벌 두면 문이 하나 늘 때 한 벌만 고쳐져 조용히 갈린다(사본 0).
+    const LR = require(path.join(ROOT, 'scripts', 'lib-routes'));
+    const ROUTES = LR.ROUTES;
 
     // ── 기계로 뽑는다(손 목록 0) ───────────────────────────────────────────
     //   central·zone 은 `http.createServer` 한 덩이라 `if (req.url … && req.method …)` 가 곧 라우트다.
     //   dispatcher 는 express 라 `app.get/post/…` 다. 두 문법 **둘뿐**이고, 셋째가 생기면 아래가 못 본다
     //   — 그래서 `줄수 하한` 을 같이 건다(뽑기가 조용히 0 이 되면 이 절 전체가 자명 통과한다).
-    const extractRoutes = () => {
-      const found = [];
-      const rd = (f) => fs.readFileSync(path.join(ROOT, 'server', f), 'utf8').split('\n');
-      for (const [svc, file] of [['central', 'central.js'], ['zone', 'zone.js']]) {
-        const lines = rd(file);
-        for (let i = 0; i < lines.length; i++) {
-          const L = lines[i];
-          if (!/req\.url/.test(L) || !/^\s*(if|\} else if|else if)\s*\(/.test(L)) continue;
-          const methods = [...L.matchAll(/req\.method\s*===\s*'([A-Z]+)'/g)].map((m) => m[1]);
-          if (!methods.length) continue;
-          const ps = [...L.matchAll(/req\.url(?:\s*\.\s*split\([^)]*\)\[0\])?\s*(===|\.startsWith\()\s*'([^']+)'/g)]
-            .map((m) => (m[1] === '===' ? '=' : '^') + m[2]);
-          for (const p of ps) found.push({ key: `${svc} ${methods.join('|')} ${p}`, file, line: i + 1, src: L });
-        }
-      }
-      const dl = rd('dispatcher.js');
-      for (let i = 0; i < dl.length; i++) {
-        const m = dl[i].match(/app\.(get|post|put|delete|patch)\(\s*'([^']+)'/);
-        if (m) found.push({ key: `dispatcher ${m[1].toUpperCase()} =${m[2]}`, file: 'dispatcher.js', line: i + 1, src: dl[i] });
-      }
-      return found;
-    };
+    const extractRoutes = LR.extractRoutes;
     const found = extractRoutes();
     ok(found.length >= 55, `⑧ ★전제 — 코드에서 라우트를 실제로 뽑았다(${found.length}개). 0·소수면 아래가 전부 자명 통과다`);
 
