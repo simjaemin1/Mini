@@ -3,6 +3,7 @@
 # ★무엇을 돌리나: 회귀 하네스(143종 · 야간 창 3h43m 에 112종까지)는 CI 에 못 올린다 — 실클라(Playwright)·존 서버를
 #   띄우고 2코어 부하가 거짓 빨강을 만든다는 걸 실측했다(공통.md §2 · 족보 111). 여기는 그중
 #   **서버·브라우저를 안 띄우고 60초 안에 끝나는 단위 계층**만 push 마다 돈다(약 3분).
+#   ★[T293 2026-09-14] 여기에 **게이트 셋**이 붙었다(번들 `--check` · 랩 인라인 `--check` · 랩 배선) — 셋 다 서버 0.
 #   전수는 여전히 야간(망고링고 04:00 KST)이 main 에서 한다.
 # ★러너는 레포의 것 하나(`scripts/run-regress.sh` — 파이프 종료코드·결과줄 0 = 크래시 판정). 여기서 사본 안 만든다.
 # ★두 잡: core = 반드시 초록 · watch = 지금 main 에서 빨간 둘(귀속 카드 있음) — 고쳐지면 core 로 옮긴다.
@@ -39,11 +40,18 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - name: 러너 자가 검사 (크래시를 실패로 잡는가)
         run: bash scripts/run-regress.sh --selftest
-      - name: 단위 하네스 24종
+      # ★[T293 2026-09-14] 게이트 셋 — 지금까지 **카드마다 세션이 손으로 돌리고 출력을 대화에 쌓던** 셋이다.
+      #   셋 다 서버·브라우저를 안 띄운다. 여기서 빨개지면 `core` 가 빨개진다(야간 표식엔 안 얹는다).
+      #   · build-econ-bundle --check : 엔진 번들이 소스와 어긋났나(회귀검증 8종)
+      #   · inline-engine --check     : 랩 HTML 의 인라인 블록이 낡았나
+      #   · lab-wiring-check          : 랩이 정본 함수를 무는가(자명 통과 금지 줄 포함)
+      - name: 게이트 셋 (번들 · 랩 인라인 · 랩 배선 — 서버 0)
+        run: node sim/build-econ-bundle.js --check && node sim/inline-engine.js --check && node scripts/lab-wiring-check.js
+      - name: 단위 하네스 25종
         run: |
           bash scripts/run-regress.sh \
             test-harness-lint.js test-client-globals.js test-calendar.js \
-            test-audio.js \
+            test-audio.js test-nightly.js \
             test-kcal.js test-crops.js test-crops-world.js test-farm-life.js \
             test-econ-diet.js test-econ-rawgrain.js test-winter.js \
             test-carrier.js test-weight.js test-spoil2.js test-preserve.js test-salt.js \
