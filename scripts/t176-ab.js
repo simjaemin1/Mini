@@ -551,6 +551,13 @@ for (let i = 0; i < world.villages.length; i++) {
     rBins: m.rBins.slice(), rRaw: m.rRaw.map((x) => +x.toFixed(1)), rMax: +m.rMax.toFixed(3),
     strawOld: +m.strawOldSum.toFixed(1), strawPendMean: +(m.strawPendSum / DAYS).toFixed(3),
     builtMax: +m.builtMax.toFixed(6),   // ★[T264 ⓐ] 캡 값의 밑변
+    // ★[T275 ②] picker 위기 충원 — 사본이 센 세 칸(조건 참 · 실제 충원 · hasSlot 이 막음). 없으면 null
+    pkTry: v._pkTry != null ? v._pkTry : null,
+    pkHit: v._pkHit != null ? v._pkHit : null,
+    pkBlock: v._pkBlock != null ? v._pkBlock : null,
+    rpTry: v._rpTry != null ? v._rpTry : null,
+    rpHit: v._rpHit != null ? v._rpHit : null,
+    rpBlock: v._rpBlock != null ? v._rpBlock : null,
     strawPendMax: +m.strawPendMax.toFixed(2), strawPendEnd: +((v._strawPend || 0)).toFixed(4),
     watch: m.watch.length ? m.watch : undefined,   // ★[T249] 지켜보는 마을만 채워진다
     healthMean: m.statDays ? +(m.healthSum / m.statDays).toFixed(4) : null,
@@ -657,6 +664,12 @@ const out = {
   strawPendMaxTot: +per.reduce((a, p) => Math.max(a, p.strawPendMax), 0).toFixed(2),
   strawPendMeanTot: +per.reduce((a, p) => a + p.strawPendMean, 0).toFixed(3),
   builtMaxTot: +per.reduce((a, p) => Math.max(a, p.builtMax), 0).toFixed(6),
+  pkTryTot: per.reduce((a, p) => a + (p.pkTry || 0), 0),
+  pkHitTot: per.reduce((a, p) => a + (p.pkHit || 0), 0),
+  pkBlockTot: per.reduce((a, p) => a + (p.pkBlock || 0), 0),
+  rpTryTot: per.reduce((a, p) => a + (p.rpTry || 0), 0),
+  rpHitTot: per.reduce((a, p) => a + (p.rpHit || 0), 0),
+  rpBlockTot: per.reduce((a, p) => a + (p.rpBlock || 0), 0),
   carry: CARRY,
   supLowTot: +per.reduce((a, p) => a + p.supLow, 0).toFixed(1),
   supWoodTot: +per.reduce((a, p) => a + p.supWood, 0).toFixed(1),
