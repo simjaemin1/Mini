@@ -19,7 +19,7 @@
 //               처방 없이도 30일에 내보내던 그 품목의 최대치 이상은 둘째로 더 못 보낸다.
 //
 // 실행: node scripts/t280-fish-gate.js [일수=800] [시드=1020]
-//   T280_GATE=none|stock|foodeq|origin   T280_THRESH=/tmp/t280-thresh.json
+//   T280_GATE=none|stock|foodeq|origin|originmed|originavg   T280_THRESH=/tmp/t280-thresh.json
 //   T280_MEASURE=1  (끔 팔에서 문턱·상한을 재기만 한다 · 관문 미설치)
 //   T280_JSON=/tmp/x.json   T280_LOG=/tmp/y.json (둘째 결정 로그 — 어촌 8곳)
 'use strict';
@@ -33,7 +33,7 @@ const DAYS = parseInt(process.argv[2], 10) || 800;
 const SEED = parseInt(process.argv[3], 10) || 1020;
 const GATE = process.env.T280_GATE || 'none';
 const MEASURE = process.env.T280_MEASURE === '1';
-if (!['none', 'stock', 'foodeq', 'origin'].includes(GATE)) { console.error(`알 수 없는 관문: ${GATE}`); process.exit(2); }
+if (!['none', 'stock', 'foodeq', 'origin', 'originmed', 'originavg'].includes(GATE)) { console.error(`알 수 없는 관문: ${GATE}`); process.exit(2); }
 
 // ── 사본 ────────────────────────────────────────────────────────────────────────────────
 //   ⚠**여기가 이 카드의 전부다.** 정본을 읽어 한 자리만 갈고, 컴파일해서 캐시에 꽂는다.
@@ -106,11 +106,13 @@ const rows = world.villages.map((v, i) => ({
 }));
 const samples = MEASURE ? world.villages.map(() => ({})) : null;   // {품목: [재고/N 표본]}
 const originMax = MEASURE ? world.villages.map(() => ({})) : null; // {품목: 30일 이동합 최대}
+//   ★[T289] 상한의 **읽기**가 맞는지 가르려면 최대 말고 다른 통계도 있어야 한다(사본 대안 둘).
+const originAll = MEASURE ? world.villages.map(() => ({})) : null; // {품목: [30일 이동합 표본]}
 const roll = world.villages.map(() => ({}));                       // {품목: [{d, n}]}
 
 // ── 관문 ────────────────────────────────────────────────────────────────────────────────
 let TH = null;
-if (!MEASURE && (GATE === 'stock' || GATE === 'origin')) {
+if (!MEASURE && (GATE === 'stock' || GATE.startsWith('origin'))) {
   const p = process.env.T280_THRESH || '/tmp/t280-thresh.json';
   if (!fs.existsSync(p)) { console.error(`문턱 파일이 없다: ${p} — 먼저 T280_MEASURE=1 로 재라`); process.exit(5); }
   TH = JSON.parse(fs.readFileSync(p, 'utf8'));
@@ -132,9 +134,11 @@ if (!MEASURE && GATE !== 'none') {
       const N = Math.max(1, v.npcs.length);
       const th = ((TH.stock[v.name] || {})[res]);
       if (th != null) pass = (((v.storage[res] || 0) - q) / N) >= th;
-    } else if (GATE === 'origin') {
-      //   ⓒ 한 마을·한 품목 30일 이동합 상한(끔 팔 실측 최대)
-      const cap = ((TH.origin[v.name] || {})[res]);
+    } else if (GATE.startsWith('origin')) {
+      //   ⓒ 한 마을·한 품목 30일 이동합 상한 — **읽기 셋**(전부 끔 팔 첫째 화물 실측 · 새 수 0):
+      //     origin = 최대 · originmed = 중앙값 · originavg = 평균.
+      const tbl = GATE === 'origin' ? TH.origin : (GATE === 'originmed' ? TH.originMed : TH.originAvg);
+      const cap = ((tbl[v.name] || {})[res]);
       if (cap != null) pass = (rollSum(i, res, day) + q) <= cap;
     }
     if (!pass && r) r.blocked++;
@@ -154,6 +158,7 @@ world.onTradeLeg = (o) => {
     while (a1.length && a1[0].d < o.day - 30) a1.shift();
     const s1 = a1.reduce((x, y) => x + y.n, 0);
     if (s1 > (originMax[o.vid][o.res] || 0)) originMax[o.vid][o.res] = s1;
+    (originAll[o.vid][o.res] || (originAll[o.vid][o.res] = [])).push(s1);
   }
   if (o.second && o.secondUnits > 0) {
     r.secondUnits += o.secondUnits;
@@ -191,12 +196,17 @@ console.log(`  인구 합 **${totalPop}** · leg ${rows.reduce((a, r) => a + r.l
 
 if (MEASURE) {
   const med = (a) => { const b = a.slice().sort((x, y) => x - y); return b.length ? b[Math.floor(b.length / 2)] : 0; };
-  const out = { stock: {}, origin: {} };
+  const out = { stock: {}, origin: {}, originMed: {}, originAvg: {} };
   for (let i = 0; i < world.villages.length; i++) {
     const n = rows[i].name;
-    out.stock[n] = {}; out.origin[n] = {};
+    out.stock[n] = {}; out.origin[n] = {}; out.originMed[n] = {}; out.originAvg[n] = {};
     for (const res of SAMPLE) out.stock[n][res] = +med(samples[i][res] || []).toFixed(4);
     for (const res in originMax[i]) out.origin[n][res] = +originMax[i][res].toFixed(1);
+    for (const res in originAll[i]) {
+      const a = originAll[i][res];
+      out.originMed[n][res] = +med(a).toFixed(1);                                   // 30일 이동합 **중앙값**
+      out.originAvg[n][res] = +(a.reduce((x, y) => x + y, 0) / a.length).toFixed(1); // **평균**
+    }
   }
   const p = process.env.T280_THRESH_OUT || '/tmp/t280-thresh-' + SEED + '.json';
   fs.writeFileSync(p, JSON.stringify(out));
