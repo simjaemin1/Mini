@@ -93,6 +93,16 @@ function openSpot() {
     const errs = [];
     page.on('pageerror', (e) => errs.push(String(e.message).slice(0, 160)));
     page.on('console', (m) => { if (m.type() === 'error') errs.push('console: ' + m.text().slice(0, 160)); });
+    // ★★[T276 2026-09-14] **시트 그물** — 이 하네스가 상시로 빨개지는 첫째 이유는 애니가 아니라
+    //   `why=sheet:body_idle`(시트가 끝내 안 온다)다. 그때 네트워크에서 무슨 일이 있었는지를
+    //   **판정이 아니라 상황으로** 남긴다(판정 수 무변 · 제품 무접촉 · 클라 훅 0).
+    //   ⚠`response` 는 **머리글**이 왔을 때 운다 — 몸이 끊기거나 멈춘 경우도 `=200` 으로 보인다.
+    //     그래서 `requestfinished` 도 따로 센다: `200` 은 왔는데 `끝`이 없으면 **몸이 안 끝난 것**이다.
+    page._net = [];
+    const _isChar = (u) => u.indexOf('/assets/char/') !== -1;
+    page.on('response', (r) => { if (_isChar(r.url())) page._net.push(`${r.url().split('/').pop()}=${r.status()}`); });
+    page.on('requestfinished', (r) => { if (_isChar(r.url())) page._net.push(`${r.url().split('/').pop()}:끝`); });
+    page.on('requestfailed', (r) => { if (_isChar(r.url())) page._net.push(`${r.url().split('/').pop()}✗${((r.failure() || {}).errorText || '?')}`); });
     await page.goto(`http://localhost:${CPORT}/`, { waitUntil: 'domcontentloaded' });
     await sleep(2500);
     // ★[T84] 로비 버튼은 글자가 아니라 **id**(`#enter`) 로 집는다 — 라벨이 바뀌어도 안 죽는다.
@@ -148,8 +158,25 @@ function openSpot() {
   };
   const _w1 = await waitDrawn(A);
   let d = _w1.d;
+  // ★★[T276] 시트가 끝내 안 온 판에서는 **같은 그림을 이 쪽에서 새로 한 장 청해 본다**.
+  //   새 것이 곧바로 오면 그물도 서버도 멀쩡하다는 뜻이고, 죽은 것은 **클라가 캐시에 남긴 그 한 장**이다
+  //   (`42-r2-char.js charSheet` 는 키마다 `Image` 를 한 번만 만들고 실패를 캐시에 남긴다 · 재시도 0).
+  //   판정이 아니라 **상황**이다 — 제품은 안 만지고, 회부에 실을 증인만 남긴다.
+  let _fresh = null;
+  if (!(d && d.on === true)) {
+    const _key = String((d && d.why) || '').replace(/^sheet:/, '') || 'body_idle';
+    _fresh = await A.evaluate((k) => new Promise((res) => {
+      const t0 = performance.now(); const im = new Image();
+      im.onload = () => res(`${k} 새로 청하니 ${Math.round(performance.now() - t0)}ms 만에 왔다(${im.naturalWidth}px)`);
+      im.onerror = () => res(`${k} 새로 청해도 **오류**(${Math.round(performance.now() - t0)}ms)`);
+      setTimeout(() => res(`${k} 새로 청해도 20초 안에 **안 왔다**`), 20000);
+      im.src = '/assets/char/' + k + '.png?t276=' + Date.now();
+    }), _key);
+  }
   console.log(`  · [상황] 스프라이트가 그려질 때까지 ${_w1.waited}ms 기다렸다`
-    + (d && d.on === true ? '' : ` — 끝내 안 왔다(why=${d ? d.why : 'null'})`));
+    + (d && d.on === true ? '' : ` — 끝내 안 왔다(why=${d ? d.why : 'null'})`)
+    + (_fresh ? `\n  · [상황] 다시 청하기: ${_fresh}` : '')
+    + `\n  · [상황] 시트 그물: ${(A._net || []).join(' ') || '(청한 적 없다)'}`);
   // ★★[T238 2026-09-13] **`on:false` 일 때 훅에는 `layers` 가 없다** — `42-r2-char.js:260` 의 실패
   //   갈래는 `{on, why, clip, isMe, t}` 만 싣고, 성공 갈래(`:296`)만 `layers` 를 싣는다.
   //   그래서 아래 `d.layers.join(',')` 가 **하네스 전체를 TypeError 로 끊었다**(러너 청크 판 실측:
@@ -344,41 +371,115 @@ function openSpot() {
   //   지난 뒤)에서만 "[A] 화면에 남이 0명" 으로 두 판정이 빨개졌다. 회귀가 아니라 **시간**이다 —
   //   B 의 텔레포트가 A 의 시야·틱·rAF 를 타고 오는 데 걸리는 시간이 부하에 따라 다르다.
   //   ⇒ 최대 8초까지 **남이 보일 때까지** 폴링한다. 안 보이면 그때 실패로 센다(감추지 않는다).
-  let seen = [];
+  // ★★[T276 2026-09-14] **첫 항목을 집던 자를 B 의 pid 로 고른다.**
+  //   상시 흔들림 실측(단독 5판): 판1 은 `남 1명` 초록, 판5 는 `남 2명` 에서
+  //   `clip=idle speed=0` 빨강 — **빨간 판이 정확히 남이 둘인 판**이었다.
+  //   기전: `__charDbg` 는 **안 지운다**(아래 §⑦ 주석이 명시한다 — 시야에서 사라져도 옛 항목이
+  //   남는다). 그런데 이 절은 `filter(v => !v.isMe)[0]` 로 **아무 남이나 첫째**를 집었다.
+  //   ⇒ B 말고 다른 항목(옛 것이든 NPC 든)이 먼저 꽂히면, B 가 멀쩡히 걷는 동안에도
+  //     그 항목의 `idle/0` 을 읽고 "애니가 안 온다"로 빨개진다. **자의 결함이다**(제품 0).
+  //   고침: B 의 pid 를 B 자기 화면에서 받아(자기 것은 `isMe`) A 화면의 **그 pid** 만 본다.
+  //   ⚠ 남의 수는 그대로 센다 — 그 수가 이 결함의 증인이었다(상황으로 찍는다).
+  //   ⚠**`find` 로 집으면 또 첫 항목이다.** 실측(고친 판 2판): `A 화면의 남: 1명 (p4) — 이 중 B 는 p3`
+  //     — B 쪽 `__charDbg` 에 **`isMe` 가 둘**이었다(재접속 전 pid 가 안 지워진 채 남는다 · §⑦ 주석
+  //     *"`__charDbg` 는 지우지 않는다"*). ⇒ **가장 최근에 그린 것**(훅 시각 `t` 가 큰 것)을 고른다.
+  const livePid = (pg) => pg.evaluate(() => { const d = window.__charDbg || {};
+    return Object.keys(d).filter((k) => d[k].isMe).sort((x, y) => (d[y].t || 0) - (d[x].t || 0))[0] || null; });
+  const bPid = await livePid(B);
+  const aPidNow = await livePid(A);
+  ok(!!bPid && bPid !== aPidNow, '★★⑤ [전제] **B 의 pid 를 알아냈다** — 아니면 아래는 아무 남이나 잰다', `B=${bPid} A=${aPidNow}`);
+  const bOf = () => A.evaluate((p) => ((window.__charDbg || {})[p] || null), bPid);
+  const roster = () => A.evaluate(() => Object.entries(window.__charDbg || {}).filter(([, v]) => !v.isMe).map(([k2, v]) => `${k2}:${v.clip}`));
+  let seen = null;
   for (let k = 0; k < 40; k++) {
-    seen = await A.evaluate(() => Object.entries(window.__charDbg || {}).filter(([, v]) => !v.isMe).map(([k2, v]) => ({ pid: k2, clip: v.clip, row: v.row, layers: v.layers })));
-    if (seen.length >= 1 && seen[0].clip === 'idle') break;
+    seen = await bOf();
+    if (seen && seen.clip === 'idle') break;
     await sleep(200);
   }
-  ok(seen.length >= 1, `[A] 화면에 남이 스프라이트로 보인다 ${seen.length}명`, seen.map((x) => x.clip).join(','));
-  ok(seen.length >= 1 && seen[0].clip === 'idle', '남도 정지 = idle');
+  const _ros0 = await roster();
+  console.log(`    [상황] A 화면의 남: ${_ros0.length}명 (${_ros0.join(' · ') || '없음'}) — 이 중 B 는 ${bPid}`);
+  ok(!!seen, `[A] 화면에 B 가 스프라이트로 보인다`, seen ? `clip=${seen.clip}` : '안 보인다');
+  ok(!!seen && seen.clip === 'idle', 'B 도 정지 = idle');
   // B 가 걸으면 A 화면에서도 walk
-  // ★★[T134 2026-09-06] **한 판만 읽던 것을 폴링으로 바꾼다** — `인계/회부.md` 가 적어 둔 그 수리다:
-  //   *"부하가 걸리면 `clip=idle speed=0` 으로 빨개진다(T106 실측). 앞의 폴링과 같은 꼴로
-  //     `clip` 이 walk 가 될 때까지 폴링하면 끝난다. char 영역(T96) 손이라 세션이 안 만졌다."*
-  //   ⇒ char 영역 카드에서 손댄다. **최대 5초**까지 기다리고, 안 되면 그때 실패로 센다(감추지 않는다).
-  //   ⚠키는 폴링이 끝난 **뒤에** 뗀다 — 중간에 떼면 감속이 시작돼 무엇을 재는지가 흐려진다.
-  await B.keyboard.down('KeyS');
-  let seenW = [];
-  for (let k = 0; k < 25; k++) {
-    await sleep(200);
-    seenW = await A.evaluate(() => Object.values(window.__charDbg || {}).filter((v) => !v.isMe).map((v) => ({ clip: v.clip, speed: v.speed, row: v.row })));
-    if (seenW.length >= 1 && (seenW[0].clip === 'walk' || seenW[0].clip === 'run')) break;
+  // ★★[T134 2026-09-06] **한 판만 읽던 것을 폴링으로 바꿨다** — `인계/회부.md` 가 적어 둔 그 수리다:
+  //   *"부하가 걸리면 `clip=idle speed=0` 으로 빨개진다(T106 실측). `clip` 이 walk 가 될 때까지
+  //     폴링하면 끝난다."* — 그런데 **그것만으로는 안 끝났다**. 아래가 그 나머지다.
+  // ★★★[T276 2026-09-14] **B 를 무조건 보이는 반경 안에 두고 잰다.** 실측이 말한 것:
+  //     `[상황] B 자기=idle · A 가 본 B=idle/0 · A 훅 시각 Δ=**0ms** · A↔B **290px**`
+  //   ⇒ 5초를 내리 걸리면 B 는 47px 에서 **290px** 까지 간다. 80px 밖은 `coneMultEntity` 의
+  //     시야 뿔이 걸려 **A 가 B 를 안 그린다**(이 게임의 규약 — 위 ⑤ 배치 주석이 이미 적어 둔 것).
+  //     안 그리면 `__charDbg[B]` 는 **옛 값에 멈춘다**(훅 시각 Δ=0 이 그 증인이다). 그 멈춘
+  //     `idle` 을 이 자는 "애니가 안 온다"로 읽었다 — **자의 결함이다**(제품 0).
+  //   ⇒ ⓐ 한 번에 **1.6초**(≈50px)만 걷게 하고, ⓑ 반경(70px)을 벗어나기 전에 멈춰 **되돌리고**,
+  //     ⓒ 판정은 **훅 시각이 나아간 값**으로만 한다(멈춘 값은 아예 안 받는다 · ⑦ 의 문법 그대로).
+  //   ⚠키는 한 번에 뗀다 — 중간에 떼면 감속이 시작돼 무엇을 재는지가 흐려진다(T134 주의 그대로).
+  const _selfB = () => B.evaluate((p) => ((window.__charDbg || {})[p] || null), bPid);
+  const _t0hook = ((await bOf()) || {}).t || 0;
+  const _gap = async () => { const a2 = await meAbs(A), b2 = await meAbs(B); return Math.hypot(a2.x - b2.x, a2.y - b2.y); };
+  let seenW = null, _bursts = 0, _gapEnd = await _gap(), _down = false;
+  for (_bursts = 1; _bursts <= 6 && !seenW; _bursts++) {
+    await B.keyboard.down('KeyS'); _down = true;
+    for (let k = 0; k < 8; k++) {
+      await sleep(200);
+      const w = await bOf();
+      _gapEnd = await _gap();
+      // ★훅 시각이 **나아간** 값만 받는다 — 안 그러면 "안 그리는 중"의 옛 값을 읽는다.
+      if (w && (w.t || 0) > _t0hook && (w.clip === 'walk' || w.clip === 'run')) { seenW = w; break; }
+      if (_gapEnd > 70) break;   // 반경을 벗어나기 전에 멈춘다
+    }
+    if (seenW) break;
+    await B.keyboard.up('KeyS'); _down = false; await sleep(500);
+    // 자리만 되돌린다 — 재는 것은 **걷기**지 텔레포트가 아니다(되돌린 뒤 다시 걷게 한다).
+    const a3 = await meAbs(A);
+    await B.evaluate(([x, y]) => window.__sendPrimary({ type: 'teleport_debug', x, y }),
+                     [Math.round(a3.x - SPOT.WOX) + 40, Math.round(a3.y - SPOT.WOY)]);
+    await sleep(800);
   }
-  await B.keyboard.up('KeyS'); await sleep(900);
-  ok(seenW.length >= 1 && (seenW[0].clip === 'walk' || seenW[0].clip === 'run'),
+  // ★★자명 통과 금지 — **미끼**를 하나 꽂아 놓고 같은 셈을 다시 돌린다(키는 아직 누른 채다).
+  //   `__charDbg` 에 `idle/0` 인 가짜 남을 하나 더 넣으면 옛 셈(`!isMe` 첫째)은 그걸 집을 수 있다.
+  //   새 셈은 pid 로 고르므로 **미끼가 있어도 B 를 읽는다** — 그리고 미끼 자체는 idle 로 읽혀야
+  //   한다(안 그러면 미끼가 안 꽂힌 것이고, 위 초록은 아무것도 증명하지 않는다).
+  const _decoy = await A.evaluate(() => {
+    const d = window.__charDbg || (window.__charDbg = {});
+    d.__t276_decoy__ = { on: true, clip: 'idle', frame: 0, row: 0, speed: 0, layers: ['body'], isMe: false, t: performance.now() };
+    return Object.keys(d).filter((k) => !d[k].isMe).length;
+  });
+  const seenWd = await bOf();
+  const _decoySeen = await A.evaluate(() => ((window.__charDbg || {}).__t276_decoy__ || {}).clip || null);
+  const _sb = await _selfB();
+  if (_down) await B.keyboard.up('KeyS');
+  await sleep(900);
+  console.log(`    [상황] 묶음 ${_bursts - (seenW ? 0 : 1)}판 · B 자기=${_sb ? _sb.clip : 'null'}`
+    + ` · A 가 본 B=${seenW ? seenW.clip + '/' + seenW.speed : 'null'}`
+    + ` · A 훅 시각 Δ=${seenW ? ((seenW.t || 0) - _t0hook).toFixed(0) : '?'}ms · A↔B ${_gapEnd.toFixed(0)}px`);
+  ok(!!seenW && (seenW.clip === 'walk' || seenW.clip === 'run'),
      `★남이 걸으면 A 화면에서도 walk — **애니용 새 네트워크 필드 0**(tick 의 vx/vy 로 유도)`,
-     seenW[0] ? `clip=${seenW[0].clip} speed=${seenW[0].speed}` : '');
+     seenW ? `clip=${seenW.clip} speed=${seenW.speed}` : `안 보인다(A↔B ${_gapEnd.toFixed(0)}px)`);
+  ok(_decoySeen === 'idle' && _decoy >= 2 && !!seenWd && (seenWd.clip === 'walk' || seenWd.clip === 'run'),
+     '★⑤ 자명 통과 금지 — `idle` 인 **가짜 남**을 끼워 넣어도 셈이 B 를 읽는다(첫 항목을 집지 않는다)',
+     `남 ${_decoy}명 · 미끼=${_decoySeen} · B=${seenWd ? seenWd.clip : 'null'}`);
+  await A.evaluate(() => { if (window.__charDbg) delete window.__charDbg.__t276_decoy__; });
   // ★남의 속도는 **서버 권위 vx/vy** 라 틱(30Hz)+지연을 타고 온다 — 여기서도 곡선을 잰다.
+  // ★★[T276] 여기도 **반경 안에서** 잰다 — 걷고 난 B 는 80px 밖일 수 있고, 밖이면 A 가 안 그려서
+  //   훅이 `walk` 에 멈춘 채 영영 안 바뀐다(그 멈춤을 "안 멈춘다"로 읽으면 또 자의 결함이다).
+  //   ⇒ 밖이면 자리를 되돌리고(멈춘 몸을 옮기는 것뿐이다) **훅 시각이 나아간 값**으로만 판정한다.
+  if ((await _gap()) > 70) {
+    const a4 = await meAbs(A);
+    await B.evaluate(([x, y]) => window.__sendPrimary({ type: 'teleport_debug', x, y }),
+                     [Math.round(a4.x - SPOT.WOX) + 40, Math.round(a4.y - SPOT.WOY)]);
+    await sleep(900);
+  }
+  const _t1hook = ((await bOf()) || {}).t || 0;
   const oth = [];
   let seenI = null;
-  for (let k = 0; k < 14; k++) {
-    seenI = await A.evaluate(() => Object.values(window.__charDbg || {}).filter((v) => !v.isMe).map((v) => ({ clip: v.clip, speed: v.speed }))[0] || null);
-    oth.push(seenI ? `${seenI.clip}/${seenI.speed}` : '?');
+  for (let k = 0; k < 30; k++) {
+    const v = await bOf();
+    seenI = (v && (v.t || 0) > _t1hook) ? v : seenI;   // 멈춘 값은 안 받는다
+    oth.push(v ? `${v.clip}/${v.speed}` : '?');
     if (seenI && seenI.clip === 'idle') break;
     await sleep(200);
   }
-  console.log('    남의 감속: ' + oth.join(' → '));
+  console.log(`    남의 감속: ${oth.join(' → ')} · A↔B ${(await _gap()).toFixed(0)}px`);
   ok(seenI && seenI.clip === 'idle', '남이 멈추면 다시 idle', `${oth.length * 200}ms 안에`);
   await A.screenshot({ path: path.join(SHOTS, 'cs-03-two.png') });
 

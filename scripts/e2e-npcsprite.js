@@ -235,12 +235,41 @@ const ZENV = {
        dressed.slice(0, 4).map((s) => `${s.job}=${s.clothes}`).join(' · ') || '이 판엔 옷 입은 주민 0(곳간이 비었다)');
     // ★★안 깜빡인다 — 자리가 아니라 신원으로 고르므로 걸어 다녀도 옷이 안 바뀐다.
     //   (자리 해시였다면 매틱 바뀌고, `makeEntry` 의 1.2초 창이 그 깜빡임을 네트워크로 실어 나른다.)
-    const before = new Map(seen.map((s) => [s.pid, s.layers.filter((L) => /^clothes_/.test(L)).join(',')]));
+    // ★★★[T276 2026-09-14] **재는 동안 날을 얼린다** — 이 존은 하루가 0.5초다(`VILLAGE_DAY_MS=500`).
+    //   아래 창이 4초니 그 사이 **게임일이 여덟 번 지난다**. 옷은 T125 규약대로 **곳간이 정하므로**
+    //   여드레 동안 곳간이 움직이면 옷이 바뀌는 게 **옳은 동작**이다 — 그런데 이 자는 그걸
+    //   "깜빡였다"로 읽는다. 실측(단독 5판): 3판이 `8~10명 중 1~2명 바뀜` 으로 빨갰다.
+    //   이 절이 막으려는 것은 **자리로 고르는 깜빡임**이지 곳간의 변화가 아니다(위 주석 그대로).
+    //   ⇒ 곳간을 세우고 잰다. 손잡이는 이미 있다(`__e2e_day_freeze` · E2E_GIVE 게이트 · 새 손잡이 0).
+    //   그리고 **얼었다는 말을 세계에서 듣고** 창을 연다(정해진 초를 안 잔다 · T214 문법).
+    const _froze = await (async () => {
+      for (let i = 0; i < 40; i++) {
+        await page.evaluate(() => window.__sendPrimary({ type: '__e2e_day_freeze', on: true }));
+        for (let k = 0; k < 5; k++) {
+          await sleep(250);
+          const t = await page.evaluate(() => (window.__notices || []).filter((x) => /게임일 정지/.test(x)).slice(-1)[0] || '');
+          if (t) return t;
+        }
+      }
+      return '';
+    })();
+    ok(!!_froze, '②′ [전제] **날이 얼었다** — 아니면 아래는 깜빡임이 아니라 곳간의 변화를 잰다', _froze || '(서버가 답을 안 했다)');
+    //   ⚠창의 시작점도 **언 뒤**로 옮긴다 — 위 폴링이 길어질 수 있어서, 얼기 전에 뜬 `seen` 을
+    //     기준으로 삼으면 그 사이 곳간이 움직인 것이 다시 "깜빡임"으로 잡힌다.
+    const before = new Map((await dbgNpc()).map((s) => [s.pid, s.layers.filter((L) => /^clothes_/.test(L)).join(',')]));
     for (let k = 0; k < 10; k++) { for (const s2 of await dbgNpc()) acc.set(s2.pid, s2); await sleep(400); }
     let flick = 0, checked = 0;
     for (const s2 of acc.values()) { if (!before.has(s2.pid)) continue; checked++;
       if (s2.layers.filter((L) => /^clothes_/.test(L)).join(',') !== before.get(s2.pid)) flick++; }
     ok(flick === 0, `★★4초 동안 **안 깜빡인다** — ${checked}명 중 바뀐 주민 ${flick}명 (신원으로 고르기 때문)`);
+    // ★자명 통과 금지 — 자가 살아 있다: 한 사람의 옷 층을 바꿔 끼우면 같은 셈이 **센다**.
+    { const fake = new Map(before); const k0 = [...fake.keys()][0];
+      if (k0 != null) { fake.set(k0, String(fake.get(k0)) + '_x');
+        let f2 = 0; for (const s2 of acc.values()) { if (!fake.has(s2.pid)) continue;
+          if (s2.layers.filter((L) => /^clothes_/.test(L)).join(',') !== fake.get(s2.pid)) f2++; }
+        ok(f2 === 1, '★②′ 자명 통과 금지 — 한 사람의 옷을 바꿔 끼우면 같은 셈이 **한 명으로 센다**', `${f2}명`); }
+      else ok(false, '★②′ 자명 통과 금지 — 잴 주민이 0명이다(위가 자명 통과다)'); }
+    await page.evaluate(() => window.__sendPrimary({ type: '__e2e_day_freeze', on: false }));   // 다시 흐르게 둔다
     seen = [...acc.values()];
   }
 
