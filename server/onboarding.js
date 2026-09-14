@@ -372,7 +372,9 @@ function _arrivalFor(v, list, ta0) {
     // ⓒⓓⓕ 어귀 바깥 → 통행 가능 · 중심 도달 가능
     //   ★도달 가능 집합을 **한 번** 만든다(위 `_reachSetFrom` 주석 참조).
     const _gd = Math.hypot(gate[0], gate[1]);
-    const reach = _reachSetFrom(ta, ccx, ccy, Math.round(Math.max(_gd, Rcell)) + CFG.ARRIVE_SEARCH + CFG.ARRIVE_OUT + 6);
+    //   ★[T287] 그 반경을 이름 붙여 둔다 — 아래 나루터 폴백이 **같은 값**을 쓴다(사본 0 · 새 수 0).
+    const _reachR = Math.round(Math.max(_gd, Rcell)) + CFG.ARRIVE_SEARCH + CFG.ARRIVE_OUT + 6;
+    const reach = _reachSetFrom(ta, ccx, ccy, _reachR);
     const okAt = (x, y) => !ta.isBlocked(x, y) && reach.has(x + ',' + y);
     const seed = [gcx + Math.round(dirX * CFG.ARRIVE_OUT), gcy + Math.round(dirY * CFG.ARRIVE_OUT)];
     let picked = null;
@@ -393,9 +395,23 @@ function _arrivalFor(v, list, ta0) {
     }
     if (!picked) picked = [ccx, ccy];
     // ⓔ 물가 마을이면 물가에 붙인다(나루터) — 붙일 곳이 도달 가능할 때만
+    //   ★★[T287 2026-09-14 재민 확정] **못 붙이면 조용히 남지 않는다.**
+    //     종전엔 `if (b2 && okAt(...))` 하나뿐이라, 실패하면 `kind` 가 `dock` 인 채 물에서 멀리 떨어진
+    //     도착 지점이 남았다(폴백도 경고도 없이). 제품 술어(C · `zone.js:570~650`)로 전수해 보면
+    //     **27곳 중 7곳**이 그 상태였다(A 땅 계측기 술어에선 0/26 이라 여태 안 보였다 — T279).
+    //   ★실측이 카드의 전제를 좁힌다: 일곱 곳 모두 `okAt` 이 아니라 **`b2` 자체가 null** 이었다 —
+    //     물이 18~30셀 밖인데 반경이 6 이었다. 그리고 넓혀서 찾은 물가는 **일곱 곳 다 통행 가능**이다.
+    //   ⇒ ⓐ 같은 술어(`nearestBank`)를 **도달 집합을 만든 그 반경**까지 넓혀 다시 찾는다
+    //        (새 수 0 — `_reachR` 은 위에서 이미 쓰던 값이고, 그 밖은 `okAt` 이 어차피 거짓이다).
+    //      ⓑ 그래도 못 찾으면 이름을 낮춘다(`road`) + 사유 한 줄. "나루터인데 물이 없다"보다 낫다.
     if (kind === 'dock') {
-      const b2 = VillageLayout.nearestBank(ta, picked[0], picked[1], 6);
+      let b2 = VillageLayout.nearestBank(ta, picked[0], picked[1], 6);
+      if (!(b2 && okAt(b2.cx, b2.cy))) b2 = VillageLayout.nearestBank(ta, picked[0], picked[1], _reachR);   // ⓐ
       if (b2 && okAt(b2.cx, b2.cy)) picked = [b2.cx, b2.cy];
+      else {                                                                                                // ⓑ
+        kind = 'road';
+        console.log(`[onboarding] ⚓ ${v.name}: 도달 가능한 물가를 못 찾았다(반경 ${_reachR}) — 나루터 대신 길목으로 내린다`);
+      }
     }
     const fx = (ccx - picked[0]), fy = (ccy - picked[1]), fl = Math.hypot(fx, fy) || 1;
     return {

@@ -56,7 +56,20 @@ const isWaterTileLocal = (x, y) => {
 };
 const isRockTileLocal = (x, y) => { if (!_inZone(x, y)) return false; try { return !!T.isRockCellLocal(Z, x, y); } catch { return false; } };
 const isTerrainBlockedLocal = (x, y) => (!_inZone(x, y)) ? true : (isRockTileLocal(x, y) || isWaterTileLocal(x, y));
-const ta = P.makeTerrainAdapter(T, ZONE, { isTerrainBlockedLocal, isWaterTileLocal });
+// ★★[T287 2026-09-14 재민 확정] **땅을 고를 수 있게 한다 — A(이 파일의 술어) vs C(제품 술어).**
+//   제품 정본은 C 다(`zone.js:570~650` 이 짓고 `:2651` 이 넘긴다). A 는 이 하네스가 손으로 지은 근사인데,
+//   해안선 물 띠가 없어서 **결함을 가려 왔다**: 나루터가 물에서 먼 곳에 서는 일이 A 에선 0/26,
+//   C 에선 **7/27** 이었다(T279 가 잡고 T287 이 고쳤다).
+//   ⇒ `ONB_PREDS=c` 면 정본 술어 한 벌(`scripts/zone-preds.js`)을 쓴다.
+//   ⚠그 한 벌은 지금 세션5 가지(T279)에 있다. main 에 없으면 **조용히 A 로 돌지 않는다** —
+//     "C 팔을 못 돌렸다"고 적고 넘어간다(자명 통과 금지: 초록으로 세지 않는다).
+const _WANT_C = (process.env.ONB_PREDS || 'a').toLowerCase() === 'c';
+let _predsMode = 'A(하네스 근사)', _cMissing = false, _deps = { isTerrainBlockedLocal, isWaterTileLocal };
+if (_WANT_C) {
+  try { _deps = R('scripts/zone-preds').makeZonePreds(Z); _predsMode = 'C(제품 정본 — zone.js 조각)'; }
+  catch (e) { _cMissing = true; _predsMode = 'A(하네스 근사) — ★C 를 못 세웠다'; }
+}
+const ta = P.makeTerrainAdapter(T, ZONE, _deps);
 
 console.log('\n=== 온보딩 v2 서버 계약 ===');
 const t0 = Date.now();
@@ -136,7 +149,10 @@ console.log('\n③ 물가 마을은 물가로, 내륙은 길목으로');
     for (let dy = -2; dy <= 2 && !near; dy++) for (let dx = -2; dx <= 2; dx++) if (ta.isWater(a.cx + dx, a.cy + dy)) { near = true; break; }
     if (!near) far++;
   }
-  ok(dockN > 0 && far === 0, `나루터는 실제로 물가에 있다 (물에서 2셀 넘게 떨어진 곳 ${far}/${dockN})`);
+  ok(dockN > 0 && far === 0, `나루터는 실제로 물가에 있다 (물에서 2셀 넘게 떨어진 곳 ${far}/${dockN}) · 술어 ${_predsMode}`);
+  // ★[T287] C 팔을 못 세웠으면 **조용히 넘어가지 않는다** — 초록으로도 세지 않는다.
+  if (_cMissing) console.log('  ⚠ ONB_PREDS=c 를 받았지만 `scripts/zone-preds.js` 가 없다 — C 팔을 **안 돌렸다**'
+    + '(세션5 T279 가지에 있다 · main 에 올라오면 자동으로 켜진다). 위 줄은 A 땅 값이다.');
 }
 
 // ── ④ 마을 성격 — 입지계수 ──────────────────────────────────────────────────
