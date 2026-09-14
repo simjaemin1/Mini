@@ -1852,19 +1852,28 @@
       function w2sy(wx, wy) { return (wx + wy) * 0.5 - (px + py) * 0.5 - _aoY + H/2; }
       // 1) 벽 수집
       const segs = [];
-      for (const key of clWallCellMap.keys()) {
-        const [cxs, cys, side, fs] = key.split('_');
-        const cx = +cxs, cy = +cys, f = +fs;
-        if (f !== myFloor) continue;
-        if (Math.abs(cx - myCx) > SHADOW_RANGE_CELLS) continue;
-        if (Math.abs(cy - myCy) > SHADOW_RANGE_CELLS) continue;
-        if (side === 'N') {
-          segs.push({ ax: cx * CL_BUILDING_SIZE, ay: cy * CL_BUILDING_SIZE,
-                      bx: (cx + 1) * CL_BUILDING_SIZE, by: cy * CL_BUILDING_SIZE });
-        } else {
-          segs.push({ ax: (cx + 1) * CL_BUILDING_SIZE, ay: cy * CL_BUILDING_SIZE,
-                      bx: (cx + 1) * CL_BUILDING_SIZE, by: (cy + 1) * CL_BUILDING_SIZE });
+      // ★★[2026-09-14 · 재민 실기 "화면이 60 이 아니다" — 실측 20fps · render 46ms 중 캔버스 5ms · 시계 넷 6ms · 나머지가 이 절]
+      //   종전엔 **매 프레임** 존의 벽 키 전부(`clWallCellMap` · 존 전체)를 `split` 해 16셀 반경을 골랐다.
+      //   ⇒ 내 셀·층·벽지도 판(`clWallMapBuiltAt` · 5초마다 다시 굽는다)이 같으면 **캐시**한다(바위 `_rockOccCache` 문법).
+      //   선분 집합은 종전과 같다(같은 필터) — 순서만 다르고, 아래 광선은 최소 t 만 쓰므로 순서와 무관하다.
+      //   (같은 줄의 벽을 한 선분으로 잇는 "런 병합"도 재 봤다 — 선분 84→21 이지만 끝점 정확히에서 쏘는 광선의
+      //    `u<=1` 부동소수 경계가 달라져 그림자 가장자리가 ≤0.2px 움직인다(1,160px · 최대 Δ34). 안 쓴다 — 아래 각도 통이 픽셀 동일로 충분하다.)
+      {
+        let wc = window._wallOccCache;
+        if (!wc || wc.cx !== myCx || wc.cy !== myCy || wc.f !== myFloor || wc.built !== clWallMapBuiltAt) {
+          const R = SHADOW_RANGE_CELLS, CL = CL_BUILDING_SIZE, out = [];
+          for (const key of clWallCellMap.keys()) {
+            const [cxs, cys, side, fs] = key.split('_');
+            const cx = +cxs, cy = +cys, f = +fs;
+            if (f !== myFloor) continue;
+            if (Math.abs(cx - myCx) > R || Math.abs(cy - myCy) > R) continue;
+            if (side === 'N') out.push({ ax: cx * CL, ay: cy * CL, bx: (cx + 1) * CL, by: cy * CL });
+            else out.push({ ax: (cx + 1) * CL, ay: cy * CL, bx: (cx + 1) * CL, by: (cy + 1) * CL });
+          }
+          wc = window._wallOccCache = { cx: myCx, cy: myCy, f: myFloor, built: clWallMapBuiltAt, segs: out };
         }
+        for (const s of wc.segs) segs.push(s);
+        window.__fogSegDbg = { wallSegs: wc.segs.length };   // ★진단 훅(하네스가 읽는다)
       }
       // Phase 5-8: 나무도 시야 차단 — 6각형으로 근사.
       // 시야 알고리즘이 O(6 × 선분²)라, 밀집 숲(나무 수백)에선 선분 수천 개 → 프레임당 수백만~천만 교차 검사로
@@ -2006,14 +2015,41 @@
         if (angleInCone(a)) filteredAngles.push(a);
       }
       // 3) 각 각도마다 closest hit
+      // ★★[2026-09-14] 광선 하나가 **모든** 선분을 재던 것을 **각도 통**으로 줄인다(같은 최소 t · 픽셀 동일).
+      //   선분은 원점(px,py)에서 보면 각도 구간 하나를 차지한다 — 그 구간 밖의 광선은 절대 못 맞힌다(기하).
+      //   B 개 통에 선분 번호를 넣고(양쪽 한 통씩 여유 — ±ε 광선·부동소수 경계), 광선은 제 통만 본다.
+      //   원점을 지나는 선분(구간이 π)은 모든 통에 넣는다. 통을 끄면(`window.__fogNoBucket`) 종전 전수와 같다.
+      const _FB = 72, _fbTwoPi = Math.PI * 2;
+      const _fbOn = !window.__fogNoBucket;
+      const _fbBuckets = _fbOn ? Array.from({ length: _FB }, () => []) : null;
+      if (_fbOn) {
+        for (let si = 0; si < segs.length; si++) {
+          const s = segs[si];
+          const a1 = Math.atan2(s.ay - py, s.ax - px), a2 = Math.atan2(s.by - py, s.bx - px);
+          let d = a2 - a1; while (d > Math.PI) d -= _fbTwoPi; while (d < -Math.PI) d += _fbTwoPi;
+          if (Math.abs(d) >= Math.PI - 1e-9) { for (let b = 0; b < _FB; b++) _fbBuckets[b].push(s); continue; }
+          const lo = d >= 0 ? a1 : a2, span = Math.abs(d);
+          let b0 = Math.floor(((lo + Math.PI) / _fbTwoPi) * _FB) - 1;
+          const nB = Math.ceil((span / _fbTwoPi) * _FB) + 3;
+          for (let i = 0; i < nB && i < _FB; i++) { let b = (b0 + i) % _FB; if (b < 0) b += _FB; _fbBuckets[b].push(s); }
+        }
+      }
+      let _rsiCalls = 0;
+      const _castRay = (a, dx, dy, limit) => {
+        let best = limit;
+        let list = segs;
+        if (_fbOn) { let an = a; while (an >= Math.PI) an -= _fbTwoPi; while (an < -Math.PI) an += _fbTwoPi;
+          let b = Math.floor(((an + Math.PI) / _fbTwoPi) * _FB); if (b >= _FB) b = _FB - 1; if (b < 0) b = 0; list = _fbBuckets[b]; }
+        for (let i = 0; i < list.length; i++) {
+          const t = rsi(dx, dy, list[i]); _rsiCalls++;
+          if (t !== null && t < best) best = t;
+        }
+        return best;
+      };
       const hits = [];
       for (const a of filteredAngles) {
         const dx = Math.cos(a), dy = Math.sin(a);
-        let best = MAX_RANGE;
-        for (const s of segs) {
-          const t = rsi(dx, dy, s);
-          if (t !== null && t < best) best = t;
-        }
+        const best = _castRay(a, dx, dy, MAX_RANGE);
         hits.push({ a, x: px + dx * best, y: py + dy * best });
       }
       // 4) facing 기준 normalized angle로 정렬 (cone이 atan2 wrap 가로지를 때 sort 잘못 방지)
@@ -2077,13 +2113,10 @@
       for (let i = 0; i < CLOSE_RAYS; i++) {
         const a = (i / CLOSE_RAYS) * Math.PI * 2;
         const dx = Math.cos(a), dy = Math.sin(a);
-        let best = CLOSE_RADIUS;
-        for (const s of segs) {
-          const t = rsi(dx, dy, s);
-          if (t !== null && t < best) best = t;
-        }
+        const best = _castRay(a, dx, dy, CLOSE_RADIUS);
         closeHits.push({ x: px + dx * best, y: py + dy * best });
       }
+      if (window.__fogSegDbg) { window.__fogSegDbg.segs = segs.length; window.__fogSegDbg.rays = filteredAngles.length + CLOSE_RAYS; window.__fogSegDbg.rsi = _rsiCalls; window.__fogSegDbg.bucket = _fbOn; }
       visibleWorldPath.moveTo(closeHits[0].x, closeHits[0].y);
       for (let i = 1; i < closeHits.length; i++) {
         visibleWorldPath.lineTo(closeHits[i].x, closeHits[i].y);
