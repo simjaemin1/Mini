@@ -21,6 +21,12 @@
 //      단 하나의 값(`village_day_trad 108.28s`)을 맞혀야 한다. ⚠`render-meta.json` 의 `seconds` 에는 대지 마라 —
 //      그 표는 배포 ogg 가 아니라 합성기의 float 배열을 잰 값이고, 1차 판이 거기에 대고 없는 결함 9건을 봤다.
 //
+//   ⑦ **[T283] 표 셋이 정본이다** — `resourceHit`·`mobs`·`buildings` 의 값이 전부 매니페스트 키이고,
+//      **발신 자리에 소리 훅이 0** 이며(`sendPrimary` 안에 `__sfx` 가 없다 — 정적),
+//      `eat` 이 기대는 서버의 성질(`gauges` 중 `carry` 를 싣는 자리가 **정확히 하나**)이 아직 참이다.
+//      ⚠마지막 것은 이 하네스가 **서버 소스를 읽는** 유일한 자리다. 클라가 서버의 어떤 성질에
+//      기대고 있으면, 그 성질이 깨지는 날 **소리가 조용히 틀려진다** — 조용한 것은 하네스가 막는다.
+//
 // 자명 통과 금지(⑥): 키 하나를 빼고 · 없는 키를 부르고 · `new AC()` 를 최상위로 올린
 //   픽스처 셋을 만들어 ①③④가 **무는지** 본다. 그리고 대조 — 멀쩡한 픽스처는 통과한다.
 //
@@ -122,13 +128,15 @@ console.log('\n=== 소리 층 계약 (T261) ===');
 
 const man = JSON.parse(fs.readFileSync(MAN_PATH, 'utf8'));
 const KEYS = man.keys || {};
-const keyNames = Object.keys(KEYS);
+// ★[T283] `_` 로 시작하는 것은 **키가 아니라 주석**이다 — 표 안에 규약을 적는 이 집의 문법이고,
+//   T272 가 잠금표에서 같은 것을 배웠다("잠금표 `_` 키는 자산이 아니다"). 같은 줄을 여기도 긋는다.
+const keyNames = Object.keys(KEYS).filter((k) => !k.startsWith('_'));
 const html = fs.readFileSync(path.join(PUB, 'index.html'), 'utf8');
 const scripts = registeredScripts(html);
 const modCode = fs.readFileSync(path.join(PUB, MOD_REL), 'utf8');
 
 console.log('\n⓪ 검사 상황 — 무엇을 재고 있나(0 이면 아래가 자명 통과다)');
-ok(keyNames.length >= 8, `키 표에 키 ${keyNames.length}개`, keyNames.join(' '));
+ok(keyNames.length >= 18, `키 표에 키 ${keyNames.length}개 (밑줄 주석 항목은 뺐다)`, keyNames.join(' '));
 ok(scripts.includes(MOD_REL), `index.html 이 소리 층을 싣는다`, MOD_REL);
 ok(scripts.some((s) => /bgm\.js$/.test(s)), 'index.html 이 BGM 엔진을 싣는다(재구현 0 — 있는 것을 부른다)',
    scripts.filter((s) => /bgm\.js$/.test(s)).join(' '));
@@ -202,7 +210,20 @@ ok(extra.length === 0, `디스크에만 있고 표에 없는 곡 ${extra.length}
 
 // ── ③ 훅 전수 ─────────────────────────────────────────────────────────────────
 console.log('\n③ 훅 — 부르는 키가 전부 표에 있고, 표의 키가 전부 불린다 · 훅은 파일당 한 줄');
+// ★[T283] 키가 불리는 길이 **둘**이 됐다: 코드가 이름을 적는 자리와, **표 셋이 이름을 보내는** 자리.
+//   둘 다 세지 않으면 "아무도 안 부르는 키"가 거짓 빨강이 된다(1차 판이 실제로 12개를 그렇게 봤다).
+const TABLES = ['resourceHit', 'mobs', 'buildings', 'fishState'];
+function tableKeys() {
+  const out = new Set();
+  for (const t of TABLES) for (const [k, v] of Object.entries(man[t] || {})) {
+    if (k.startsWith('_')) continue;
+    if (typeof v === 'string') out.add(v);
+  }
+  return out;
+}
 const used = keysUsedInModule(modCode);
+for (const k of hooksInFile(modCode).keys) used.add(k);   // 층 자신이 `__sfx.ambient('rain'…)` 로 부르는 자리
+for (const k of tableKeys()) used.add(k);
 const hookFiles = [];
 for (const s of scripts) {
   if (s === MOD_REL) continue;
@@ -284,6 +305,15 @@ console.log('\n⑥ ★이 하네스가 실패할 줄 아는가 — 픽스처로 
   // ⓐ 키 하나를 빼면 ③의 "표에 없는 키" 가 문다
   const K2 = Object.assign({}, KEYS); delete K2.wind;
   ok([...used].filter((k) => !K2[k]).length === 1, 'ⓐ 키 하나(wind)를 표에서 빼면 ③이 문다');
+  // ⓐ-2 ★[T283] **표 셋이 키를 보낸다는 것**도 자명 통과 금지: `mobs` 를 비우면 야생 넷이 고아가 된다
+  {
+    const savedMobs = man.mobs; man.mobs = {};
+    const u2 = new Set([...keysUsedInModule(modCode), ...hooksInFile(modCode).keys, ...tableKeys()]);
+    man.mobs = savedMobs;
+    const orphan2 = keyNames.filter((k) => !u2.has(k));
+    ok(orphan2.length === 4 && orphan2.every((k) => /_(growl|grunt|call)$/.test(k)),
+       'ⓐ-2 ★`mobs` 표를 비우면 야생 넷이 **고아로 잡힌다**(표가 곧 배선이라는 증거)', orphan2.join(' '));
+  }
   // ⓑ 없는 키를 부르면 문다
   const u2 = hooksInFile("window.__sfx && window.__sfx.play('없는키');");
   ok([...u2.keys].filter((k) => !KEYS[k]).length === 1, 'ⓑ 표에 없는 키를 부르는 자리를 ③이 잡는다');
@@ -298,6 +328,82 @@ console.log('\n⑥ ★이 하네스가 실패할 줄 아는가 — 픽스처로 
   // ⓕ 대조 — 길이 자가 ogg 가 아닌 바이트엔 null 을 낸다(아무 수나 짓지 않는다)
   ok(oggSeconds(Buffer.from('this is not an ogg file at all, not even close!!')) === null,
      'ⓕ ★대조 — ogg 가 아니면 길이 자가 `null` 이다(수를 지어내지 않는다)');
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ⑦ ★[T283] 표가 정본인가 · 발신 자리에 소리가 없는가 · 서버의 그 성질이 아직 참인가
+// ══════════════════════════════════════════════════════════════════════════════
+console.log('\n⑦ ★[T283] 표 셋 · 발신 훅 0 · 서버가 기대는 성질');
+{
+  // ⑦a 표의 값이 전부 실제 키다(오타 한 글자면 그 소리가 영영 안 난다 — 조용한 결함)
+  const badTbl = [];
+  for (const t of TABLES) for (const [k, v] of Object.entries(man[t] || {})) {
+    if (k.startsWith('_')) continue;
+    if (typeof v !== 'string' || !KEYS[v]) badTbl.push(`${t}.${k}→${v}`);
+  }
+  ok(badTbl.length === 0, `⑦a 표 셋의 값이 전부 매니페스트 키다 — 어긋난 줄 ${badTbl.length}개`,
+     badTbl.join(' ') || TABLES.map((t) => `${t} ${Object.keys(man[t] || {}).filter((k) => !k.startsWith('_')).length}줄`).join(' · '));
+
+  // ⑦b ★발신 자리에 소리가 0 — T261 의 회부 ①을 되돌아오지 못하게 막는다.
+  //    `sendPrimary` 는 **보내는** 함수다. 거기서 소리를 내면 거절당한 동사도 울린다.
+  const netCode = fs.readFileSync(path.join(PUB, 'client', '30-n-net.js'), 'utf8');
+  //   ★줄 단위로 센다 — `window.__sfx && window.__sfx.recv(…)` 는 한 줄에 `__sfx` 가 둘이다.
+  //     개수를 그대로 세면 "훅 하나"가 2 로 읽힌다(1차 판이 그렇게 빨갰다).
+  function sfxInsideFn(code, fnName) {
+    const ast = parse(code); const hits = new Set();
+    walk(ast, (n, inFn) => {
+      if (inFn !== fnName) return;
+      if (n.type !== 'MemberExpression' || !n.property || n.property.name !== '__sfx') return;
+      if (n.loc) hits.add(n.loc.start.line);
+    });
+    return [...hits].sort((a, b) => a - b);
+  }
+  const sendHits = sfxInsideFn(netCode, 'sendPrimary');
+  ok(sendHits.length === 0, `⑦b ★**발신**(\`sendPrimary\`) 안에 소리 훅 ${sendHits.length}개 — 소리는 수신에서만 난다`,
+     sendHits.join(',') || 'T261 회부 ① 닫힘');
+  const recvHits = sfxInsideFn(netCode, 'handleMessage');
+  ok(recvHits.length === 1, `⑦c ★**수신**(\`handleMessage\`) 안에 소리 훅이 정확히 하나`, recvHits.join(','));
+  // ⑦d ★그리고 그 한 줄이 **머리**에 있어야 한다 — `resource_removed` 가 자원을 지우기 전.
+  const delLine = (() => {
+    const ast = parse(netCode); let line = 0;
+    walk(ast, (n) => {
+      if (n.type !== 'CallExpression' || !n.callee || n.callee.type !== 'MemberExpression') return;
+      if (n.callee.property && n.callee.property.name === 'delete'
+          && n.callee.object && n.callee.object.type === 'MemberExpression'
+          && n.callee.object.property && n.callee.object.property.name === 'resources') {
+        if (!line && n.loc) line = n.loc.start.line;
+      }
+    });
+    return line;
+  })();
+  ok(delLine > 0 && recvHits.length === 1 && recvHits[0] < delLine,
+     '⑦d ★수신 훅이 `c.resources.delete(...)` **위**에 있다(아래면 자원 자리를 못 찾아 위치 없는 소리가 된다)',
+     `훅 ${recvHits[0]} < 지움 ${delLine}`);
+
+  // ⑦e ★★서버가 기대는 성질 — `gauges` 아홉 중 `carry` 를 싣는 자리가 **정확히 하나**(= `doEat`).
+  //    클라가 서버의 성질에 기대고 있으면, 그 성질이 깨지는 날 **소리가 조용히 틀려진다**.
+  //    조용한 것은 하네스가 막는다. (이 하네스가 서버 소스를 읽는 유일한 자리다 — 서버는 안 만진다.)
+  const srv = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
+  const gaugeLines = srv.split('\n').map((l, i) => ({ l, n: i + 1 })).filter((x) => /type:\s*'gauges'/.test(x.l));
+  const withCarry = gaugeLines.filter((x) => /\bcarry:/.test(x.l));
+  ok(gaugeLines.length >= 5, `⑦e 전제: 서버에 \`gauges\` 를 보내는 자리가 여럿이다`, `${gaugeLines.length}곳`);
+  ok(withCarry.length === 1, `⑦f ★★그중 \`carry\` 를 싣는 자리가 **정확히 하나**(= \`doEat\` · 먹기 소리가 그것으로 갈린다)`,
+     withCarry.map((x) => 'zone.js:' + x.n).join(' ') || '없다 — 먹기 소리가 영영 안 난다');
+  // ⑦g 자명 통과 금지 — 같은 자로 한 줄을 더한 셈 치면 잡는가
+  {
+    const faked = gaugeLines.concat([{ l: "send(x, { type: 'gauges', carry: 1 })", n: -1 }]).filter((x) => /\bcarry:/.test(x.l));
+    ok(faked.length === 2, '⑦g 자명 통과 금지 — `carry` 실은 줄이 하나 더 생기면 ⑦f 가 문다');
+  }
+  // ⑦h ★실내 배율이 반복 키마다 있다(없으면 실내에서 빗소리가 그대로 난다)
+  const loops = keyNames.filter((k) => KEYS[k].loop);
+  const noIndoor = loops.filter((k) => typeof KEYS[k].indoorMul !== 'number');
+  ok(noIndoor.length === 0, `⑦h 반복 키 ${loops.length}종에 실내 배율이 다 있다 — 빠진 것 ${noIndoor.length}개`, noIndoor.join(' '));
+  // ⑦j ★리미터 — 헤드룸 계산이 리미터를 전제한다(T283). 있는지 정적으로 본다.
+  ok(/createWaveShaper/.test(modCode) && /oversample/.test(modCode),
+     '⑦j ★효과음 버스 끝에 소프트 리미터가 있다(최악 동시 합 3.2 × 0.56 = 1.79 를 0.93 으로 뭉갠다)');
+  const noFade = loops.filter((k) => typeof KEYS[k].fade !== 'number');
+  ok(noFade.length === 0, `⑦i 반복 키에 페이드(초)가 다 있다 — 빠진 것 ${noFade.length}개`,
+     noFade.join(' ') || loops.map((k) => `${k} ${KEYS[k].fade}s/실내×${KEYS[k].indoorMul}`).join(' · '));
 }
 
 console.log(`\n=== PASS ${pass} / FAIL ${fail} ===`);

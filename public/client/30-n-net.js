@@ -2,7 +2,6 @@
 
   function sendPrimary(obj) {
     const c = conns.get(primaryZoneId);
-    window.__sfx && window.__sfx.verb(obj && obj.type);   // ★[T261] 소리 훅 한 줄(로직 0 — 키는 48-a-audio 가 고른다)
     if (c && c.ws.readyState === 1) c.ws.send(JSON.stringify(obj));
   }
   // ★★[11차 T4에서 드러난 좌표계 결함] 커서 배치 좌표(atX/atY)는 **존 로컬**로 보내야 한다.
@@ -765,6 +764,7 @@
     // ★유령 클라 fix: 이미 교체된(superseded) 소켓의 메시지는 전부 폐기.
     //   재연결 레이스에서 옛 ws의 버퍼된 tick/kicked/welcome이 새 conn 상태를 덮어쓰던 것을 막는다.
     if (srcConn && srcConn !== c) return;
+    window.__sfx && window.__sfx.recv(msg, c);   // ★[T283] 소리 훅 한 줄 — **수신**(자원을 지우기 전이어야 한다 · 로직 0)
 
     if (msg.type === 'welcome') {
       // 끊김 측정: promote 보낸 뒤 welcome 도착까지 걸린 시간 + welcome 처리 시간

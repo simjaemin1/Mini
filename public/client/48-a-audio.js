@@ -34,6 +34,8 @@ let _sfxStepPrev = null;            // 발자국 에지 검출용 {clip, frame}
 let _sfxPanel = null;
 let _sfxScanAt = 0;
 let _sfxGroundCell = null;          // { k, kind } 발밑 지형 캐시(셀 하나)
+let _sfxWaterCell = null;           // ★[T283] { k, d } 가장 가까운 물 셀까지의 거리(내 셀이 바뀔 때만 다시 잰다)
+let _sfxWx = { precip: 0, indoor: false };   // ★[T283] 날씨 훅이 넣어 둔 마지막 값 — 새(bird) 게이트가 읽는다
 // ★`missing`(표에 파일이 없다 = 영영 무음) 과 `pending`(받는 중 = 곧 난다) 을 **갈라 센다** —
 //   한 칸에 뭉치면 진단이 "음원이 없다"와 "아직 안 왔다"를 구분 못 한다(실측에서 실제로 헷갈렸다).
 let _sfxStat = { played: 0, missing: 0, pending: 0, blocked: 0, loops: 0 };
@@ -69,13 +71,32 @@ function sfxSaveVol() {
 //   master ← sfx  (효과음)
 //   master ← music(BGM — bgm.js 는 제 그래프를 destination 에 직접 물리므로 여기 안 지나간다.
 //                  음악 볼륨은 `_sfxBgm.setVolume()` 으로 준다. 칸은 셋이되 경로는 둘이다.)
+//   ★★[T283] **효과음 버스에 리미터를 단다.** T261 이 세운 헤드룸(최악 동시 합 1.67 × 0.8 × 0.7 = 0.94)은
+//     키가 여덟일 때의 수였다. T283 이 반복 셋(비·물·새)을 더하면서 최악 합이 **3.2** 가 됐고
+//     (`wind .5 + rain .6 + water .55 + fire .75 + 단발 .8` — 새는 비 게이트에 막혀 빠진다)
+//     ×0.8×0.7 = 1.79 ⇒ **목적지에서 잘린다.** 버스 기본값을 0.34 로 내리면 소리 하나가 반토막이 되므로
+//     대신 **마지막에 소프트 리미터**를 둔다 — 같은 문제를 이 집이 이미 푼 자리가 있고(`bgm.js buildGraph`
+//     의 "마지막 안전장치 — tanh 소프트 리미터"), **그 곡선을 그대로** 쓴다(자를 두 벌 만들지 않는다).
+//   ⚠BGM 은 이 버스를 안 지난다 — `bgm.js` 가 제 그래프를 `ctx.destination` 에 직접 물리고
+//     제 리미터를 이미 갖고 있다(재생기 수정 0 이므로 돌릴 길이 없다). 남는 합은 보고 ⓒ 에 적었다.
+function sfxSoftLimiter(ctx) {
+  const lim = ctx.createWaveShaper();
+  const CN = 2048, curve = new Float32Array(CN);
+  for (let i = 0; i < CN; i++) {
+    const x = (i / (CN - 1)) * 2 - 1;
+    curve[i] = Math.tanh(x * 1.35) / Math.tanh(1.35) * 0.93;   // ← bgm.js 와 같은 곡선·같은 상수
+  }
+  lim.curve = curve; lim.oversample = '2x';
+  return lim;
+}
 function sfxBuildGraph() {
   const ctx = _sfxCtx;
   const master = ctx.createGain();
   const sfx = ctx.createGain();
   const music = ctx.createGain();
-  sfx.connect(master); music.connect(master); master.connect(ctx.destination);
-  _sfxBus = { master, sfx, music };
+  const lim = sfxSoftLimiter(ctx);
+  sfx.connect(lim); lim.connect(master); music.connect(master); master.connect(ctx.destination);
+  _sfxBus = { master, sfx, music, lim };
   sfxApplyVol();
 }
 function sfxApplyVol() {
@@ -152,18 +173,22 @@ function sfxPlay(key, o) {
 
 // ── 반복(환경음) ───────────────────────────────────────────────────────────────
 //   id 로 구분한다(모닥불은 개체마다 하나). 볼륨 0 이면 멎고, 다시 0 보다 커지면 다시 난다.
+//   ★[T283] 페이드는 **표 값**이다(`fade` 초 · T272 회부 ④). 1차 판은 0.12/0.2 를 코드에 박아 뒀는데
+//     그건 눈대중이었다. 세기가 크게 흔들리는 소리(바람·비)는 2초, 켜고 끄기만 하는 소리는 1초다.
+//     `setTargetAtTime` 의 셋째 인자는 **시상수**라 값의 63%까지 걸리는 시간이다 — 표의 초를 그대로 준다.
 function sfxLoop(id, key, gain) {
   const m = sfxKey(key);
   if (!m || !m.loop || !_sfxCtx) return;
+  const fade = typeof m.fade === 'number' ? m.fade : 1.0;
   let e = _sfxLoops.get(id);
   if (gain <= 0.001 || !_sfxVol.on) { if (e) { try { e.src.stop(); } catch (err) {} _sfxLoops.delete(id); } return; }
-  if (e) { e.gain.gain.setTargetAtTime(gain, _sfxCtx.currentTime, 0.12); e.seen = _sfxScanAt; return; }
+  if (e) { e.gain.gain.setTargetAtTime(gain, _sfxCtx.currentTime, fade); e.seen = _sfxScanAt; return; }
   const buf = sfxBuffer(key);
   if (!buf) { m.file ? _sfxStat.pending++ : _sfxStat.missing++; return; }
   const src = _sfxCtx.createBufferSource(); src.buffer = buf; src.loop = true;
   const gn = _sfxCtx.createGain(); gn.gain.value = 0;
   src.connect(gn); gn.connect(_sfxBus.sfx); src.start();
-  gn.gain.setTargetAtTime(gain, _sfxCtx.currentTime, 0.2);
+  gn.gain.setTargetAtTime(gain, _sfxCtx.currentTime, fade);
   _sfxLoops.set(id, { src, gain: gn, key, seen: _sfxScanAt });
   _sfxStat.loops++;
 }
@@ -200,6 +225,36 @@ function sfxGroundKey() {
   } catch (e) { /* 지형이 아직 안 왔다 — 흙으로 둔다 */ }
   _sfxGroundCell = { k: ck, v };
   return v;
+}
+
+// ── 물가까지의 거리 [T283] ─────────────────────────────────────────────────────
+//   ★사본 금지: 물 판정은 `isWaterAtAbs`(00-const) 하나다. 그 함수는 **셀 단위 캐시를 이미 갖고 있다**
+//     — 프레임마다 9천 타일을 돌다 fps 10 까지 떨어지던 것을 그 캐시로 고친 자리다(주석이 적어 뒀다).
+//   ★예산: 훑기는 **내 셀이 바뀔 때만** 한다. 반경은 표(`water.radius`), 건너뛰는 칸도 표(`sampleStride`).
+//     안쪽 고리부터 나가며 처음 만나는 물에서 멈춘다 — 물가에 서 있으면 몇 칸 만에 끝난다.
+function sfxWaterDist() {
+  const m = sfxKey('water');
+  if (!m || !m.radius || typeof isWaterAtAbs !== 'function') return Infinity;
+  const me = (typeof myAbsPredicted !== 'undefined' && myAbsPredicted) ? myAbsPredicted : null;
+  if (!me) return Infinity;
+  const cx = Math.floor(me.x / 32), cy = Math.floor(me.y / 32);
+  const ck = cx + ',' + cy;
+  if (_sfxWaterCell && _sfxWaterCell.k === ck) return _sfxWaterCell.d;
+  const R = Math.ceil(m.radius / 32), st = Math.max(1, m.sampleStride || 1);
+  let best = Infinity;
+  for (let ring = 0; ring <= R && best === Infinity; ring += st) {
+    for (let dy = -ring; dy <= ring; dy += st) {
+      for (let dx = -ring; dx <= ring; dx += st) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== ring) continue;   // 고리의 테두리만
+        const wx = (cx + dx) * 32 + 16, wy = (cy + dy) * 32 + 16;
+        if (!isWaterAtAbs(wx, wy)) continue;
+        const d = Math.hypot(wx - me.x, wy - me.y);
+        if (d < best) best = d;
+      }
+    }
+  }
+  _sfxWaterCell = { k: ck, d: best };
+  return best;
 }
 
 // ── 첫 제스처 · 컨텍스트 ───────────────────────────────────────────────────────
@@ -319,15 +374,35 @@ function initAudio() {
   window.__sfx = {
     /** 위치 있는(또는 없는) 단발. o = {x, y} 는 **월드** 좌표. */
     play: (key, o) => sfxPlay(key, o),
-    /** 동사 발신 훅 — `30-n-net.js sendPrimary` 한 줄이 부른다. 표가 키를 고른다(로직은 여기). */
-    verb: (t) => {
-      if (!t) return;
-      if (t === 'eat' || t === 'eat_dish') sfxPlay('eat');
-      else if (t === 'harvest') sfxPlay('harvest');
-      else if (t === 'gather') {
-        const eq = (typeof equipped !== 'undefined' && equipped) ? String(equipped) : '';
-        if (eq.indexOf('axe') >= 0) sfxPlay('axe'); else sfxPlay('harvest');
+    /** ★[T283] **수신** 훅 — `30-n-net.js handleMessage` **머리**에서 한 줄이 부른다.
+     *  T261 은 이것을 `sendPrimary`(**발신**)에 붙였었다. 그래서 마을 밖에서 수확을 눌러도,
+     *  거절당한 동사도 소리가 났다(회부 ①). 이제는 **세계가 그 일이 일어났다고 말할 때만** 난다.
+     *  ⚠머리에서 불러야 한다 — `resource_removed` 는 아래에서 자원을 지우므로, 그 뒤에 부르면
+     *    자리를 못 찾는다(위치 없는 소리가 된다). 훅이 첫 줄인 것은 장식이 아니라 계약이다.
+     *  키를 고르는 것은 **표**다(`resourceHit`) — 여기 로직은 "표를 보고 자리를 붙인다"뿐이다. */
+    recv: (msg, c) => {
+      if (!_sfxCtx || !_sfxMan || !msg) return;
+      const t = msg.type;
+      if (t === 'resource_update' || t === 'resource_removed') {
+        const r = c && c.resources && c.resources.get(msg.id);
+        if (!r) return;
+        const key = (_sfxMan.resourceHit || {})[r.type];
+        if (!key) return;                                   // 표에 없는 자원은 안 운다(지어내지 않는다)
+        const ox = (c.meta && c.meta.worldOffsetX) || 0, oy = (c.meta && c.meta.worldOffsetY) || 0;
+        sfxPlay(key, { x: r.x + ox, y: r.y + oy });
+        return;
       }
+      // 먹기 — `gauges` 아홉 자리 중 `carry` 를 싣는 것이 `doEat` 하나다(`test-audio ⑦` 이 그 수를 지킨다).
+      if (t === 'gauges') { if (msg.carry) sfxPlay('eat'); return; }
+      // 낚시 셋 — 서버가 상태를 그대로 말한다. 좌표는 **존 로컬**이라 절대로 접어야 한다(찌 그리기와 같은 함정).
+      if (t === 'fish_state') {
+        const key = (_sfxMan.fishState || {})[msg.state];
+        if (!key) return;
+        const ox = (c && c.meta && c.meta.worldOffsetX) || 0, oy = (c && c.meta && c.meta.worldOffsetY) || 0;
+        if (msg.x != null) sfxPlay(key, { x: msg.x + ox, y: msg.y + oy }); else sfxPlay(key);
+        return;
+      }
+      if (t === 'fish_catch') { sfxPlay('hook'); return; }
     },
     /** 발자국 훅 — `42-r2-char.js drawCharSprite` 한 줄이 내 캐릭터의 (클립, 판)을 준다.
      *  새 타이머 0 — 걷기/뛰기 간격은 애니 fps 가 정한다. 판이 **바뀌는 에지**에서만 센다. */
@@ -342,41 +417,77 @@ function initAudio() {
       if (frame !== 0 && frame !== (n >> 1)) return;
       sfxPlay(sfxGroundKey());
     },
-    /** 환경 훅 — `37-r1-weather.js drawWeather` 한 줄이 바람 세기와 실내 여부를 준다. */
+    /** 환경 한 갈래 — 세기(0..1)와 실내를 받아 반복 하나를 켠다. 실내 배율은 **표**(`indoorMul`). */
     ambient: (key, strength, o) => {
       if (!_sfxCtx) return;
       const m = sfxKey(key); if (!m) return;
-      const s = (o && o.indoor) ? 0 : Math.min(1, Math.abs(strength || 0) * (m.gainK || 1));
+      const inMul = (o && o.indoor) ? (typeof m.indoorMul === 'number' ? m.indoorMul : 0) : 1;
+      const s = Math.min(1, Math.abs(strength || 0) * (m.gainK || 1)) * inMul;
       sfxLoop('amb:' + key, key, (m.volume || 0) * s);
     },
-    /** 개체 훑기 — `34-m-renderloop.js` 한 줄이 이번 프레임의 renderables 와 카메라 중심을 준다.
-     *  늑대(단발·쿨다운)와 모닥불(반복·개체마다 하나)을 여기서 가른다. 호출자는 로직 0. */
+    /** ★[T283] 날씨 훅 — `37-r1-weather.js drawWeather` 의 **같은 한 줄**이 이제 날씨 통째를 준다.
+     *  바람과 비가 한 자리에서 나온다(훅 줄이 늘지 않았다). 값은 그 층이 이미 읽어 둔 정본:
+     *  `wind` = `server/wind.js seasonWind` 의 부호 있는 계절풍 · `precip` = 0..1.
+     *  ⚠`precip` 은 세계가 아직 안 보낸다(T93). 보내는 날 저절로 난다 — 여기서 짐작하지 않는다. */
+    weather: (w, indoor) => {
+      if (!_sfxCtx || !w) return;
+      _sfxWx = { precip: +w.precip || 0, indoor: !!indoor };
+      window.__sfx.ambient('wind', w.wind, { indoor });
+      window.__sfx.ambient('rain', _sfxWx.precip, { indoor });
+    },
+    /** 개체·지형 훑기 — `34-m-renderloop.js` 한 줄이 이번 프레임의 renderables 와 카메라 중심을 준다.
+     *  ★[T283] 무엇이 우는지는 **표 셋**(`mobs`·`buildings`·`bird.trees`)이 정한다 — 종 이름이
+     *    코드에 박히지 않는다(1차 판은 `'wolf'`·`'campfire'` 두 낱말이 여기 있었다).
+     *  호출자는 여전히 로직 0 · 줄 하나. */
     scan: (list, cx, cy) => {
       if (!_sfxCtx || !_sfxMan || !list) return;
       const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
       if (now - _sfxScanAt < SFX_SCAN_MS) return;
       _sfxScanAt = now;
-      const fire = sfxKey('fire');
+      const MOB = _sfxMan.mobs || {}, BLD = _sfxMan.buildings || {};
+      const bird = sfxKey('bird');
+      const treeR2 = bird ? (bird.treeRadius || 0) * (bird.treeRadius || 0) : 0;
+      let trees = 0;
       for (const r of list) {
         if (!r) continue;
-        if (r.kind === 'mob' && r.m && r.m.type === 'wolf') sfxPlay('wolf_growl', { x: r.ax, y: r.ay });
-        else if (fire && r.kind === 'building' && r.b && r.b.type === 'campfire') {
-          sfxLoop('fire:' + r.b.id, 'fire', sfxGain(fire, r.ax, r.ay));
+        if (r.kind === 'mob' && r.m) { const k = MOB[r.m.type]; if (k) sfxPlay(k, { x: r.ax, y: r.ay }); }
+        else if (r.kind === 'building' && r.b) {
+          const k = BLD[r.b.type], m = k && sfxKey(k);
+          if (m) sfxLoop(k + ':' + r.b.id, k, sfxGain(m, r.ax, r.ay) * (_sfxWx.indoor ? (m.indoorMul || 0) : 1));
+        } else if (bird && r.kind === 'resource' && r.r && r.r.type === 'tree') {
+          const dx = r.ax - cx, dy = r.ay - cy;
+          if (dx * dx + dy * dy <= treeR2) trees++;
         }
       }
-      sfxLoopSweep('fire:');
+      for (const k of Object.keys(BLD)) sfxLoopSweep(BLD[k] + ':');
+      // 새 — 낮 · 숲 · 비 아님. 셋 다여야 난다(값은 전부 표).
+      if (bird) {
+        const night = (typeof isNight === 'function') ? !!isNight() : false;
+        const ok = !night && trees >= (bird.trees || 0) && !(_sfxWx.precip > 0);
+        window.__sfx.ambient('bird', ok ? 1 : 0, { indoor: _sfxWx.indoor });
+      }
+      // 물 — 개체가 아니라 지형이다. 내 셀이 바뀔 때만 다시 잰다.
+      const water = sfxKey('water');
+      if (water) {
+        const d = sfxWaterDist();
+        const g = (d >= water.radius) ? 0 : (water.volume || 0) * (1 - d / water.radius)
+          * (_sfxWx.indoor ? (typeof water.indoorMul === 'number' ? water.indoorMul : 1) : 1);
+        sfxLoop('amb:water', 'water', g);
+      }
       sfxBgmScene(false);
     },
     /** 진단 — 하네스·실기가 읽는다(읽기 전용). */
     dbg: () => ({
       ctx: _sfxCtx ? _sfxCtx.state : null,
-      manifest: _sfxMan ? Object.keys(_sfxMan.keys || {}).length : 0,
+      manifest: _sfxMan ? Object.keys(_sfxMan.keys || {}).filter((k) => !k.startsWith('_')).length : 0,
       manifestErr: _sfxManErr,
       vol: _sfxVol ? Object.assign({}, _sfxVol) : null,
       bgm: _sfxBgm ? { running: _sfxBgm.running, scene: _sfxBgm.scene, mood: _sfxBgm.mood } : null,
       loops: [..._sfxLoops.keys()],
       stat: Object.assign({}, _sfxStat),
-      missingFiles: _sfxMan ? Object.keys(_sfxMan.keys || {}).filter((k) => !_sfxMan.keys[k].file) : [],
+      missingFiles: _sfxMan ? Object.keys(_sfxMan.keys || {}).filter((k) => !k.startsWith('_') && !_sfxMan.keys[k].file) : [],
+      wx: Object.assign({}, _sfxWx),
+      waterDist: _sfxWaterCell ? (_sfxWaterCell.d === Infinity ? null : Math.round(_sfxWaterCell.d)) : undefined,
     }),
   };
 }

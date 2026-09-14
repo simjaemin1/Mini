@@ -2,11 +2,41 @@
   "_규약": "소리 키 표 — 정본 하나 [T261 2026-09-13]. 클라 `public/client/48-a-audio.js` 가 이 표만 읽는다. 표에 없는 키는 안 난다. 값은 전부 여기 있고 코드엔 하나도 없다(눈대중 금지 — 족보 74). 꼴·규약은 `인계/SOUND-소리.md`.",
   "_단위": "radius = 월드 px (32px = 1셀 · 0 = 위치 없는 소리 = 항상 제 볼륨). volume = 0..1 (효과음 버스 앞단). cooldownMs = 같은 키의 최소 간격. maxSame = 동시에 겹칠 수 있는 같은 키의 수.",
   "_감쇠": "linear — g = volume * max(0, 1 - d/radius). 역제곱이 아니라 선형을 골랐다: 반경 밖이 정확히 0 이라 '멀리서 웅웅대는 꼬리'가 안 남고, 반경 하나로 '어디까지 들리나'가 표에서 읽힌다. 역제곱은 0 에 점근할 뿐이라 컷오프를 또 정해야 한다(값이 둘이 된다).",
-  "_파일없음": "file: null = 음원 미확보. 그 키는 **무음**이고 하네스는 '미확보'로 센다 — 빨강이 아니다. 2026-09-13 현재 미확보는 둘(`wolf_growl`·`harvest`) — T269 가 '출처 셋에 없어서' 못 닫았다(CC0 늑대라는 것들이 늑대가 아니고, 수확으로 적힌 소리가 없다). 파일이 들어오면 코드 수정 0 으로 그대로 난다.",
+  "_파일없음": "file: null = 음원 미확보. 그 키는 **무음**이고 하네스는 '미확보'로 센다 — 빨강이 아니다. 2026-09-14 현재 미확보는 둘: `harvest`(세 출처에 작물 뜯기로 적힌 소리가 없다 — T269) · `boar_grunt`(T282 가 야생 셋을 닫으며 멧돼지만 못 찾았다). 파일이 들어오면 **코드 수정 0** 으로 그대로 난다 — T261 의 여섯과 T283 의 아홉이 실제로 그렇게 이어졌다.",
   "_포맷": ".ogg + .m4a 쌍(bgm 과 같은 규약) · 단발 ≤ 3초 · 반복 ≤ 10초(이음새) · 파일당 ≤ 150KB · 자리는 public/assets/sfx/<key>.{ogg,m4a}. ★표는 **파일 이름을 그대로** 적는다(어간 아님) — `asset-lock.keyOf` 가 소리만 파일 이름을 키로 쓰고(한 소리에 두 파일), `test-assets-audit` 이 `ogg`·`m4a` 를 **어간 대조에서 뺐기** 때문이다(짧은 영단어가 코드 아무 데나 걸린다 — T266). 이름이나 URL 로 불러야 고아가 풀린다. 그래서 `.m4a` 도 `fileAlt` 로 적는다 — 사파리가 Ogg Vorbis 를 못 튼다는 실제 이유도 같이 있다.",
   "version": 1,
   "attenuation": "linear",
-  "_헤드룸": "효과음 버스 기본값 0.7 은 눈대중이 아니라 이 표에서 나온 수다 [T261 · T269 회부 4 에 대한 답]. 한 순간에 동시에 날 수 있는 최악의 조합은 wind(0.5) + fire(0.75) + 발자국(0.42) = 1.67 이다(반경 감쇠를 0 으로 본 상한 · 같은 키 동시 상한은 maxSame 이 따로 막는다). 0.8(전체) × 0.7(효과음) × 1.67 = 0.94 < 1.0 ⇒ 슬라이더를 다 올려도 목적지에서 안 잘린다. ⇒ 음원 정규화 목표는 **−1.0 dBFS 그대로 둔다**(다시 굽지 않는다 · axe 의 −0.35dB 도 이 헤드룸 안이다). 키를 더할 때는 이 곱을 다시 세라.",
+  "_헤드룸": "효과음 버스 기본값 0.7 은 눈대중이 아니라 이 표에서 나온 수다 [T261 · T269 회부 4 에 대한 답]. T261 때(키 여덟) 최악 동시 합은 wind .5 + fire .75 + 발자국 .42 = 1.67 이었고 0.8 × 0.7 × 1.67 = 0.94 < 1.0 이라 슬라이더를 다 올려도 안 잘렸다. ⇒ 음원 정규화 목표 −1.0 dBFS 그대로(다시 굽지 않는다). ★[T283] 반복 셋(rain·water·bird)이 들어오며 최악 합이 **3.2** 가 됐다(wind .5 + rain .6 + water .55 + fire .75 + 단발 .8 — 새는 비 게이트에 막혀 이 합에 안 낀다). ×0.8×0.7 = 1.79 ⇒ 잘린다. 버스를 0.34 로 내리면 소리 하나가 반토막이 되므로 대신 **효과음 버스 끝에 소프트 리미터**를 뒀다(`bgm.js buildGraph` 가 같은 문제에 쓴 tanh 곡선 그대로 · 상한 0.93). ⇒ 효과음은 0.93 × 0.8 = **0.74** 를 안 넘는다. BGM 은 이 버스를 안 지나고(제 리미터로 0.93 × 0.45 × 0.8 = 0.33) 둘을 다 올린 최악이 **1.07** 이다 — 비 오는 날 강가 모닥불 옆에서 도끼질하며 슬라이더를 전부 최대로 둔 경우이고, 거기선 브라우저 목적지가 스스로 뭉갠다. 더 낮추려면 전체 슬라이더다(값은 재민 귀). 키를 더하는 카드는 **이 곱을 다시 세라** — T283 이 세어 보니 T261 의 수가 이미 틀려 있었다.",
+  "_표셋": "무엇이 어떤 키를 내는가는 **코드가 아니라 이 표 셋**이다 [T283]. 훅은 `msg`·개체를 넘기기만 하고(로직 0), 층은 이 표를 본다. 새 소리를 더할 때 고칠 자리가 표 한 줄이 되게 하려는 것이다.",
+  "resourceHit": {
+    "_뜻": "서버가 `resource_update`(때렸다 · hp 준다) / `resource_removed`(없어졌다) 를 **브로드캐스트**할 때 나는 소리. 자원의 자리가 있으므로 **거리 감쇠가 걸린다** — 남이 옆에서 나무를 베도 들린다(그게 맞다). 자원 종류는 클라 렌더가 이미 가르는 그 이름이다(`34-m-renderloop` 1515~1524).",
+    "tree": "axe",
+    "rock": "bronze_hit",
+    "ore": "bronze_hit",
+    "meteorite": "bronze_hit",
+    "berry_bush": "harvest",
+    "herb": "harvest",
+    "sapling": "harvest",
+    "_뺀것": "`stump`(벤 자리 · 때릴 것이 아니다) · `water_pool`(마시기 — 키 없음)"
+  },
+  "mobs": {
+    "_뜻": "이번 프레임 화면에 있는 개체(`renderables` kind='mob')의 `type` → 키. 반경·쿨다운은 그 키의 칸이 정한다. 파일이 없으면 무음(빨강 아님).",
+    "wolf": "wolf_growl",
+    "tiger": "tiger_growl",
+    "wild_boar": "boar_grunt",
+    "deer": "deer_call",
+    "_이름주의": "멧돼지의 개체 이름은 `wild_boar` 다(`public/animals.js`) — 키 이름 `boar_grunt` 와 다르다. 키를 개체 이름으로 쓰지 않는 이유가 이것이다."
+  },
+  "fishState": {
+    "_뜻": "서버 `fish_state` 의 `state` → 키. 서버가 보내는 이름 그대로다(`zone.js` 6493 'wait' · 11937 'bite' · 나머지는 'idle'). 좌표를 같이 보내므로 **찌 자리에서** 난다(존 로컬 → 절대로 접는다 — 찌 그리기가 1차에 빠뜨렸던 그 변환).",
+    "wait": "cast",
+    "bite": "bite",
+    "_idle": "소리 없음 — 줄을 거두는 것은 사건이 아니다."
+  },
+  "buildings": {
+    "_뜻": "개체와 같은 문법 — 건물 `type` → 반복 키. 개체마다 하나씩 나고 화면 밖이면 멎는다.",
+    "campfire": "fire"
+  },
   "bus": {
     "master": {
       "default": 0.8,
@@ -41,6 +71,7 @@
       "_왜": "고르지 않는다 — `render-meta.json` 에 **태그 칸이 없다**(seconds·rms_db·peak_db 뿐). 카드가 '표에 이미 있는 태그로(없으면 낮/밤만 · 지어내지 않는다)' 라고 못 박았으므로 엔진 기본값(trad)을 그대로 쓴다. 곡 이름의 `_trad`·`_amb`·`_ari` 는 표의 칸이 아니라 파일 이름이다."
     }
   },
+  "_T283키": "아래 열하나가 T283 이 더한 것이다. 음원은 **T272(일곱)가 이미 올렸고** 야생 넷은 T282(세션8) 몫이다 — `file`·`fileAlt`·`source` 세 칸은 **세션8 자리**이고 T283 은 그 줄을 안 만진다(영역 규약).",
   "keys": {
     "step_dirt": {
       "file": "step_dirt.ogg",
@@ -68,7 +99,6 @@
     },
     "wolf_growl": {
       "file": "wolf_growl.ogg",
-      "fileAlt": "wolf_growl.m4a",
       "volume": 0.9,
       "radius": 480,
       "loop": false,
@@ -77,6 +107,7 @@
       "source": "commons_pd_wolf",
       "훅": "34-m-renderloop.js `__sfx.scan` — 이번 프레임 renderables 의 kind='mob' · m.type='wolf'",
       "_반경": "480 월드px = 15셀. 자는 눈대중이 아니라 이 레포의 것이다: `41-h-bubble.js` 의 '목소리가 닿는' 반경 EV_BRIEF_PX(260px)보다 멀고, 렌더 컬링 반경 VIEW_RADIUS 보다 가깝다 — 화면에 보이는 늑대만 운다.",
+      "fileAlt": "wolf_growl.m4a",
       "_이름": "⚠파일은 **울부짖음(howl)** 이지 으르렁(growl)이 아니다 [T282 실측]. 같은 자를 둘에 댔다: 이 파일 중심 1,100~1,240Hz · 평탄도 0.0002 · 500Hz 아래 0.4%(순음=울부짖음) ↔ tiger_growl 226~426Hz · 평탄도 0.002~0.016 · 500Hz 아래 71~97%(저역+잡음=으르렁). 종은 맞다(Canis lupus · 유럽 늑대 · 녹음자·날짜 있음) — 이름만 어긋난다. `wolf_howl` 로 바꿀지는 세션9/재민."
     },
     "fire": {
@@ -88,6 +119,8 @@
       "maxSame": 3,
       "cooldownMs": 0,
       "source": "commons_fire_drygrass",
+      "fade": 1.0,
+      "indoorMul": 0.35,
       "훅": "34-m-renderloop.js `__sfx.scan` — kind='building' · b.type='campfire' (반복 · 개체마다 하나 · 화면 밖이면 멎는다)",
       "_반경": "320 월드px = 10셀. 모닥불은 요리 사거리 안에서 들려야 한다."
     },
@@ -101,6 +134,8 @@
       "cooldownMs": 0,
       "source": "commons_wind_breeze",
       "gainK": 1.4,
+      "fade": 2.0,
+      "indoorMul": 0,
       "훅": "37-r1-weather.js drawWeather — `wxState().wind`(server/wind.js seasonWind · 부호 있는 계절풍)의 |세기|. 실내면 0.",
       "_세기": "볼륨 = volume * min(1, |wind| * 1.4). 1.4 는 빗줄기 기울기가 이미 쓰는 WX_TILT_K 와 **같은 수**다 — 같은 바람을 두 자로 재지 않는다."
     },
@@ -112,7 +147,7 @@
       "maxSame": 1,
       "cooldownMs": 120,
       "source": null,
-      "훅": "30-n-net.js sendPrimary — `type` 이 'harvest' 또는 'gather'(맨손). ⚠**발신**이지 성사가 아니다 — 아래 _성사 참조."
+      "훅": "30-n-net.js handleMessage — **수신**. `resourceHit` 표가 `berry_bush`·`herb`·`sapling` 을 이 키로 보낸다(자원 자리에서 나므로 거리 감쇠). [T283 이 발신에서 옮겼다]"
     },
     "eat": {
       "file": "eat.ogg",
@@ -123,7 +158,7 @@
       "maxSame": 1,
       "cooldownMs": 120,
       "source": "oga_creature_sfx",
-      "훅": "30-n-net.js sendPrimary — `type` 이 'eat' 또는 'eat_dish'. ⚠발신."
+      "훅": "30-n-net.js handleMessage — **수신**. `gauges` 중 `carry` 를 실은 것 하나가 `doEat` 다(`zone.js:5114` — 서버 전수에서 `gauges` 아홉 중 `carry` 를 싣는 자리가 **정확히 하나**다. `test-audio ⑦` 이 그 수를 지킨다). [T283 이 발신에서 옮겼다]"
     },
     "axe": {
       "file": "axe.ogg",
@@ -134,7 +169,138 @@
       "maxSame": 2,
       "cooldownMs": 0,
       "source": "kenney_rpg_audio",
-      "훅": "30-n-net.js sendPrimary — `type='gather'` 이고 장착 도구가 도끼(전역 `equipped` 에 'axe' 가 들어감 — 'axe'·'crude_axe' 둘 다). 채집 반복 타이머(46-h-verbs startGatherLoop)가 1초/타로 보내므로 **한 번의 send = 한 번의 도끼질**이다."
+      "훅": "30-n-net.js handleMessage — **수신**. `resourceHit` 표가 `tree` 를 이 키로 보낸다. 서버가 1초/타를 강제하므로 `resource_update` 한 통 = 도끼질 한 번이고, **자원 자리에서 나므로 남이 베는 나무도 들린다**(발신 판에는 없던 것). [T283 이 발신에서 옮겼다]"
+    },
+    "water": {
+      "file": "water.ogg",
+      "fileAlt": "water.m4a",
+      "volume": 0.55,
+      "radius": 288,
+      "loop": true,
+      "maxSame": 1,
+      "cooldownMs": 0,
+      "source": "commons_pd_water",
+      "fade": 1.0,
+      "indoorMul": 0.25,
+      "sampleStride": 2,
+      "훅": "34-m-renderloop.js `__sfx.scan` — 개체가 아니라 **지형**이다. 층이 내 셀 둘레를 훑어 가장 가까운 물 셀까지의 거리를 재고 그 거리로 감쇠한다.",
+      "_자": "물 판정은 `isWaterAtAbs`(00-const · **셀 단위 캐시가 이미 있다** — 프레임마다 9천 타일을 돌던 것을 캐시로 고친 그 함수다). 새 판정을 안 짓는다.",
+      "_예산": "훑기는 **내 셀이 바뀔 때만** 하고 `sampleStride` 칸 간격으로 건너뛴다(288px = 9셀 ⇒ 19×19 를 2칸씩 = 100셀). 차가운 지역에서 한 번 100회 × ~75µs, 그 뒤로는 Map 조회다. 반경을 늘리면 제곱으로 는다 — 늘릴 때 이 줄을 다시 읽어라.",
+      "_반경": "288px = 9셀. 320(모닥불)보다 **한 칸 좁게** 잡았다 — 강가에 서면 들리고 강이 화면에 보이기만 해서는 안 들리게."
+    },
+    "rain": {
+      "file": "rain.ogg",
+      "fileAlt": "rain.m4a",
+      "volume": 0.6,
+      "radius": 0,
+      "loop": true,
+      "maxSame": 1,
+      "cooldownMs": 0,
+      "source": "commons_pd_rain",
+      "fade": 2.0,
+      "indoorMul": 0,
+      "gainK": 1.0,
+      "훅": "37-r1-weather.js `__sfx.weather(w, indoor)` — 바람과 **같은 한 줄**이다(훅이 늘지 않았다). 세기는 `wxState().precip`(0..1) 그대로.",
+      "_주의": "세계가 아직 `precip` 을 안 보낸다(T93 이 적어 둔 그대로 — `server/weather.js` 에 강수 정본이 없다). 진단 훅 `__rainForce({precip:1})` 로만 켜진다. **세계가 그 값을 보내는 날 저절로 난다** — 지어내지 않는다.",
+      "_실내": "0 — 지붕 아래선 비가 안 그려지고(그 층의 규약) 소리도 같이 멎는다. 처마 소리는 다음 묶음."
+    },
+    "bird": {
+      "file": "bird.ogg",
+      "fileAlt": "bird.m4a",
+      "volume": 0.4,
+      "radius": 0,
+      "loop": true,
+      "maxSame": 1,
+      "cooldownMs": 0,
+      "source": "commons_pd_bird",
+      "fade": 1.0,
+      "indoorMul": 0,
+      "trees": 6,
+      "treeRadius": 480,
+      "훅": "34-m-renderloop.js `__sfx.scan` — 이번 프레임 개체 목록의 `tree` 를 센다.",
+      "_조건": "낮(`!isNight()`) **그리고** 반경 `treeRadius` 안 나무 ≥ `trees` **그리고** 비 아님(`precip` 0) — 셋 다여야 난다. 볼륨은 나무 수로 안 키운다(숲이면 숲이다).",
+      "_반복인이유": "카드는 '간헐 · 쿨다운'이라 했는데 **음원이 10초 환경 녹음**이다(T272: Commons 의 Birds singing in garden 49.48s 중 11초를 10초 반복으로 구운 것). 10초짜리를 단발로 쏘면 단발 상한 3초도 넘고 겹쳐서 뭉갠다 ⇒ **반복 + 세 조건 게이트**로 이었다. 새가 울다 그치는 결은 원본이 이미 갖고 있다. 실기는 재민."
+    },
+    "bronze_hit": {
+      "file": "bronze_hit.ogg",
+      "fileAlt": "bronze_hit.m4a",
+      "volume": 0.8,
+      "radius": 320,
+      "loop": false,
+      "maxSame": 2,
+      "cooldownMs": 0,
+      "source": "commons_pd_dullthud",
+      "훅": "30-n-net.js handleMessage — **수신**. `resourceHit` 표가 `rock`·`ore`·`meteorite` 를 이 키로 보낸다(곡괭이질).",
+      "_주의": "출처가 **무엇을 친 소리인지 안 적어 뒀다**(제목이 Dull thud 다). T272 가 쇠의 울림만 쟀다(4kHz −20dB 까지 139ms — 진짜 울리는 그릇 302ms 의 절반). 청동이냐 돌이냐는 자로 못 가른다 — **판정은 재민 귀.**"
+    },
+    "cast": {
+      "file": "cast.ogg",
+      "fileAlt": "cast.m4a",
+      "volume": 0.7,
+      "radius": 0,
+      "loop": false,
+      "maxSame": 1,
+      "cooldownMs": 200,
+      "source": "commons_pd_splashes",
+      "훅": "30-n-net.js handleMessage — **수신** `fish_state` 의 `state:'wait'`(`zone.js:6493` · 던진 직후 · 좌표를 같이 보낸다 ⇒ 찌 자리에서 난다). `회부_낚시_다음층 A-6` 의 '던짐'."
+    },
+    "bite": {
+      "file": "bite.ogg",
+      "fileAlt": "bite.m4a",
+      "volume": 0.75,
+      "radius": 0,
+      "loop": false,
+      "maxSame": 1,
+      "cooldownMs": 200,
+      "source": "commons_pd_splashes",
+      "훅": "30-n-net.js handleMessage — **수신** `fish_state` 의 `state:'bite'`(`zone.js:11937`). A-6 의 '입질' — 30-n-net 주석이 적어 둔 그대로 '`bite` 로 바뀌는 그 순간이 이 동사의 전부'다. 소리가 붙을 자리가 있다면 여기다."
+    },
+    "hook": {
+      "file": "hook.ogg",
+      "fileAlt": "hook.m4a",
+      "volume": 0.8,
+      "radius": 0,
+      "loop": false,
+      "maxSame": 1,
+      "cooldownMs": 200,
+      "source": "commons_pd_splashes",
+      "훅": "30-n-net.js handleMessage — **수신** `fish_catch`(`zone.js:6560` · 나에게만 온다 ⇒ 위치 없음). A-6 의 '걸림'."
+    },
+    "tiger_growl": {
+      "file": "tiger_growl.ogg",
+      "fileAlt": "tiger_growl.m4a",
+      "volume": 0.95,
+      "radius": 480,
+      "loop": false,
+      "maxSame": 1,
+      "cooldownMs": 4200,
+      "source": "commons_cc0_tiger",
+      "훅": "`wolf_growl` 과 **같은 한 줄**(`mobs` 표가 `tiger` 를 여기로 보낸다). 파일은 T282(세션8).",
+      "_값": "볼륨만 늑대보다 0.05 높다 — 큰 짐승이다. 반경·쿨다운은 늑대와 같은 수를 쓴다(근거가 같으므로 값도 같다)."
+    },
+    "boar_grunt": {
+      "file": null,
+      "fileAlt": null,
+      "volume": 0.8,
+      "radius": 384,
+      "loop": false,
+      "maxSame": 1,
+      "cooldownMs": 5000,
+      "source": null,
+      "훅": "`mobs` 표가 `wild_boar` 를 여기로 보낸다. 파일은 T282(세션8).",
+      "_값": "반경 384px = 12셀 — 늑대(15셀)보다 가깝다(으르렁이 아니라 꿀꿀거림이다). 쿨다운은 더 길게."
+    },
+    "deer_call": {
+      "file": "deer_call.ogg",
+      "fileAlt": "deer_call.m4a",
+      "volume": 0.6,
+      "radius": 384,
+      "loop": false,
+      "maxSame": 1,
+      "cooldownMs": 8000,
+      "source": "commons_pd_elk",
+      "훅": "`mobs` 표가 `deer` 를 여기로 보낸다. 파일은 T282(세션8).",
+      "_값": "가장 조용하고 가장 드물다 — 사슴은 위협이 아니라 기척이다. 늑대와 같은 빈도로 울면 화면이 시끄러워진다."
     }
   },
   "_성사": "카드는 수확·먹기·도끼질 훅을 '서버 동사 결과가 오는 30-n-net.js 핸들러'에 붙이라고 했다. §0-ⓒ 실측: **그런 메시지가 없다.** 서버는 먹기·수확에 전용 결과 타입을 안 보내고 `notice`·`gauges`·`inventory`·`resource_removed` 같은 **공용 메시지**만 보낸다(`doEat`·`tryHarvest`·`gatherResource` 전수). 공용 메시지에 붙이면 남이 한 일에도 소리가 난다. 그래서 **발신 정본 한 자리**(`sendPrimary`)에 붙였다 — 거절당한 동사도 소리가 난다는 맞바꿈이고, 그 대신 훅이 파일 하나·줄 하나다. 성사로 옮기려면 서버가 동사별 결과를 보내야 한다 ⇒ 회부.",
