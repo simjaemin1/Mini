@@ -302,6 +302,8 @@ const SUS = R('server/sustain');
   console.log(`           켜지면 물릴 대상 — 벌목꾼 ${lumber}명 · 채집꾼 ${forager}명 (어부 ${world.villages.reduce((a, v) => a + ((v.counts && v.counts.fisher) || 0), 0)}명과 같은 자리)`);
 }
 
+// ★[T277] ⓚ 블록이 찍는 수 중 JSON 에 없던 셋(생곡 · ㉮ · ㉯)을 담아 내보내는 상자 — 값은 그 블록이 만든다.
+let _eightOut = null;
 // ── ⓚ ★★[T152 2026-09-07] **기준선 한 줄** — 카드들이 각자 다른 문법으로 내던 열을 한 자리에 ──────
 //   ㉮/㉯ 밀도(T133 문법) · 게시·깨진 약속(T142 문법) · `land.game` 최저·중앙(T146 문법 자리) ·
 //   그리고 위 ⓐ 여덟 수. 이 한 줄이 다음 카드들이 견줄 기준선이다.
@@ -314,6 +316,11 @@ const SUS = R('server/sustain');
   // 생곡 — 밀·쌀·보리·기장 곳간 합(T73 이 만든 열 · 공통.md 기준선 표의 그 이름).
   const RAWGRAIN = ['wheat', 'rice', 'barley', 'millet'];
   const rawGrainStock = RAWGRAIN.reduce((a, r) => a + stockOf(r), 0);
+  // ★[T277] 아래 JSON 이 **같은 값을 다시 계산하지 않게** 밖으로 내보낸다(사본 0 · 값 무변).
+  //   `_eightOut` 은 읽기 전용 전달 상자다 — 이 블록이 이미 찍은 그 수 그대로를 담는다.
+  _eightOut = { grain: +rawGrainStock.toFixed(1),
+                densAll: +dens(S.emitted).toFixed(2), densValue: +dens(vN).toFixed(2),
+                eventsValue: vN, eventsDeed: dN, eventsAll: S.emitted };
   const games = world.villages.filter((v) => (v.npcs || []).length > 0)
     .map((v) => +((v.land && v.land.game) || 0)).sort((a, b) => a - b);
   const gMin = games.length ? games[0] : null;
@@ -372,6 +379,13 @@ if (process.env.T17_JSON) {
     seed: SEED, days: DAYS, villages: seeds.length, live,
     axes: { tool: process.env.T17_TOOL !== '0', preserve: process.env.T17_PRESERVE !== '0', salt: process.env.T17_SALT !== '0' },
     base: { pop, dead, ever, weapQ: +weapQ.toFixed(0), expand, trades: world.tradeLog.length },
+    //   ★[T256 관측 항 · T277 에서 정식화] 마을별 끝 인구 — 짝 Δ 의 부분집합(작은/큰 17곳 · `<20명` 꼬리)과
+    //     홀드아웃을 **같은 판에서** 읽으려고 더한다. 계측기를 두 벌 돌리면 기계 시간이 두 배다(30판 → 60판).
+    //     ⚠관측만이다 — 세계에 아무것도 안 넣는다(여덟 수 비트 동일 · 보고/T277 §1).
+    //     ⚠꼬리 집합은 **기준 팔(A)로 뽑아야 한다**(족보 204) — 뽑는 쪽에서 지킨다(`scripts/t17-seeds.js`).
+    vpop: world.villages.map((v) => ({ name: v.name, pop: v.npcs.length })),
+    //   ★[T277] 여덟 수 중 JSON 에 없던 셋 — 생곡 · 밀도 ㉮㉯. ⓚ 블록이 **이미 만든 값**을 그대로 담는다(사본 0).
+    eight: _eightOut,
     board: { reqOpened: S.reqOpened, reqClosed: S.reqClosed, emitted: S.emitted, daysPer: +daysPer.toFixed(2) },
     short: Object.fromEntries(topOf(shortByItem, 30)), glut: Object.fromEntries(topOf(glutByItem, 30)),
     tool: { stock: +toolStock.toFixed(1), q: +toolQ.toFixed(1), short: shortByItem.get('tool') || 0 },
