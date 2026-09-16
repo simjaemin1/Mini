@@ -73,7 +73,9 @@ console.log('\n[④ 회계·명부 무접촉 — 의뢰 집은 마을 침대가 
   chk(/b\.type === 'phouse'/.test(VIL) && /pHouseRows\.push/.test(VIL), '부팅 복원도 phouse를 house와 분리해 읽는다');
   const boot = VIL.slice(VIL.indexOf("if (b.type === 'house') { housesPx.push"), VIL.indexOf("for (const k of farmSet) potSet.delete"));
   chk(!/phouse[\s\S]{0,60}housesPx\.push/.test(boot), '  복원 시에도 phouse는 housesPx에 안 들어감');
-  chk(/rows \+= buildStructureRect\(db, vil\.dbId, b\.cx - 5, b\.cy - 5, b\.cx \+ 0, b\.cy - 2, ow, '의뢰 움집'/.test(VIL),
+  // ★[T284] 발자국이 `_vbFootprint` 한 곳으로 모였다(전쟁 콜라이더와 공유 · 사본 0) — 같은 식의 두 자리를 같이 본다
+  chk(/const R = _vbFootprint\(b\.type, b\.cx, b\.cy\); rows \+= buildStructureRect\(db, vil\.dbId, R\[0\], R\[1\], R\[2\], R\[3\], ow, '의뢰 움집'/.test(VIL)
+      && /if \(type === 'house' \|\| type === 'phouse' \|\| type === 'shelter'\) return \[cx - 5, cy - 5, cx \+ 0, cy - 2\];/.test(VIL),
     '  그래도 집채 실체는 마을 움집과 **완전히 동일한 6×4**로 되살아난다');
 }
 

@@ -8,7 +8,11 @@
 ;(function(root){
 'use strict';
 
-const WORLD_W=130, WORLD_H=130;          // 전장 130×130 m (전투실험실과 동일)
+// ★[T284 2026-09-14 · 좌표계 하나] 이 파일엔 **전장 상자가 없다.** 아래 DEPLOY_W/H 는 독립 실행(전투실험실·
+//   war-core runBattleHeadless·랩) 이 buildArmies 표준 배치를 펼 때 쓰는 **배치 폭**일 뿐 좌표계가 아니다.
+//   존(server/villages.js)은 buildArmies 를 부르지 않는다 — 병사 위치는 존 좌표(셀 = m) 그대로이고,
+//   장애물·시야·궤주 방향은 ctx.world 어댑터(존의 술어)가 답한다. 어댑터 없음 = 빈 들판(독립 실행 종전 동작).
+const DEPLOY_W=130, DEPLOY_H=130;        // 표준 배치 폭(전투실험실과 동일 — 독립 실행 전용)
 
 // ═══════════ 병종 정의 (전투실험실 UNITS 복사) ═══════════
 const UNITS={
@@ -47,7 +51,7 @@ function createContext(){
     units:[], arrows:[], corpses:[],
     sides:{A:{start:0,dead:0,rout:false}, B:{start:0,dead:0,rout:false}},
     tick:0, result:null,
-    trees:[], buildings:[], terrain:'plain',
+    world:null, terrain:'plain',   // ★[T284] 장애물은 ctx 가 갖지 않는다 — world 어댑터(존)가 답한다(null=빈 들판)
     playerMode:false, keys:{}, commander:null, cmdHeading:0,
     _grid:new Map(),
     _cen:{A:{x:0,y:0,n:0,march:2.2},B:{x:0,y:0,n:0,march:2.2}},
@@ -56,30 +60,12 @@ function createContext(){
   };
 }
 
-// ═══════════ 지형 — genForest / concealed / treeBlocks (전투실험실 복사) ═══════════
-function genForest(ctx,mode){ ctx.trees=[]; ctx.buildings=[]; ctx.terrain=mode;
-  if(mode==='village'){
-    const cx=WORLD_W/2, cy=WORLD_H/2; ctx.buildings.push({x:cx,y:cy,w:8,h:8}); const placed=[[cx,cy]];
-    let tr=0; while(ctx.buildings.length<22 && tr++<900){ const a=ctx.rng()*6.283, r=13+ctx.rng()*40, hx=cx+Math.cos(a)*r, hy=cy+Math.sin(a)*r;
-      if(hx<10||hx>WORLD_W-10||hy<10||hy>WORLD_H-10)continue; let ok=true;
-      for(const p of placed)if(Math.hypot(hx-p[0],hy-p[1])<12){ok=false;break;} if(!ok)continue;
-      const vert=ctx.rng()<0.5; ctx.buildings.push({x:hx,y:hy,w:vert?4:6,h:vert?6:4}); placed.push([hx,hy]); }
-    return; }
-  if(mode!=='forest'&&mode!=='edge')return;
-  const g=8.5, x0= mode==='edge'?WORLD_W*0.42:6, x1=WORLD_W-6;
-  for(let x=x0;x<x1;x+=g)for(let y=6;y<WORLD_H-6;y+=g){ if(ctx.rng()<0.72){
-    const tx=x+(ctx.rng()-0.5)*g*0.85, ty=y+(ctx.rng()-0.5)*g*0.85;
-    if(tx>3&&tx<WORLD_W-3&&ty>3&&ty<WORLD_H-3)ctx.trees.push({x:tx,y:ty,r:0.75+ctx.rng()*0.65});}}
-}
-function concealed(ctx,u){ for(const t of ctx.trees){const dx=u.x-t.x,dy=u.y-t.y;if(dx*dx+dy*dy<(t.r+1.4)*(t.r+1.4))return true;}
-  for(const b of ctx.buildings){if(Math.abs(u.x-b.x)<b.w/2+1.8&&Math.abs(u.y-b.y)<b.h/2+1.8)return true;} return false; }
-function treeBlocks(ctx,x1,y1,x2,y2){ if(!ctx.trees.length&&!ctx.buildings.length)return false;
-  for(const t of ctx.trees){ const dx=x2-x1,dy=y2-y1,L2=dx*dx+dy*dy; if(L2<1e-6)continue;
-    let s=((t.x-x1)*dx+(t.y-y1)*dy)/L2; if(s<0.06||s>1)continue;
-    const px=x1+dx*s,py=y1+dy*s, pd=Math.hypot(t.x-px,t.y-py); if(pd<t.r+1.6)return true; }
-  if(ctx.buildings.length){ const dx=x2-x1,dy=y2-y1,d=Math.hypot(dx,dy),n=Math.ceil(d/1.5);
-    for(let i=1;i<n;i++){const s=i/n,px=x1+dx*s,py=y1+dy*s; for(const b of ctx.buildings)if(Math.abs(px-b.x)<b.w/2&&Math.abs(py-b.y)<b.h/2)return true;} }
-  return false; }
+// ═══════════ 지형 — concealed / treeBlocks (★[T284] 존 어댑터 위임) ═══════════
+// ★[T284] 전투실험실의 genForest(무작위 나무·가짜 건물 22채)는 **제거**했다 — 장애물은 존의 것이다.
+//   ctx.world = { blocked(x,y), losBlocked(x1,y1,x2,y2), coverAt(x,y,pad), advance(ctx,u), flee(ctx,u) } (좌표 = 존 셀 = m).
+//   아래 여유(1.4·1.8)는 전투실험실 concealed 의 수 그대로다(나무 1.4 · 건물 1.8 → 어댑터가 둘 중 가까운 쪽 규칙으로 쓴다).
+function concealed(ctx,u){ return !!(ctx.world&&ctx.world.coverAt(u.x,u.y,1.8)); }
+function treeBlocks(ctx,x1,y1,x2,y2){ return !!(ctx.world&&ctx.world.losBlocked(x1,y1,x2,y2)); }
 
 // ═══════════ spawn (전투실험실 복사 + 선택적 quality 인자) ═══════════
 // ★ quality 미지정 → 배수 1.0 = 전투실험실과 완전 동일(atk 손 안 댐, RNG 소비 순서 동일).
@@ -99,33 +85,24 @@ function spawn(ctx,side,type,x,y,form,quality){const D=UNITS[type];
 function buildArmies(ctx,spec){
   spec=spec||{};
   ctx.units=[]; ctx.arrows=[]; ctx.corpses=[]; ctx.tick=0; ctx.result=null;
-  const _t=(spec.terrain!=null)?spec.terrain:'plain';
-  genForest(ctx,_t);   // ★ 전투실험실은 지형변경 시만 재생성하나, 데이터주입형은 매 호출 지정 지형으로 생성(하네스 결정론). 평지=nop.
+  ctx.terrain=(spec.terrain!=null)?spec.terrain:'plain';   // ★[T284] 지형 이름만 기록(가짜 지형 생성 제거 — 장애물은 ctx.world)
   ctx.sides={A:{start:0,dead:0,rout:false}, B:{start:0,dead:0,rout:false}};
   ctx.playerMode=!!spec.playerCmd;
   const sideSpec=s=>spec[s]||{};
   const rd=(side,sfx)=>{const v=sideSpec(side)[BC_KEY[sfx]]; return +(v||0);};   // rd('a_champ') → spec.A.champion 치환
   const gf=side=>{const f=sideSpec(side).form; return f||'line';};
   const qOf=side=>spec.quality?spec.quality[side]:null;   // 품질 배수(선택)
-  const cyc=WORLD_H/2;
+  const cyc=DEPLOY_H/2;
   const place=(side)=>{
     const dir = side==='A' ? 1 : -1;
     const form = gf(side); ctx.sides[side].form=form;
-    const frontX = side==='A' ? 40 : WORLD_W-40;
-    const backX  = side==='A' ? 22 : WORLD_W-22;
+    const frontX = side==='A' ? 40 : DEPLOY_W-40;
+    const backX  = side==='A' ? 22 : DEPLOY_W-22;
     const front=[], back=[];
     const add=(sfx,key,arr)=>{const n=rd(side,sfx);for(let i=0;i<n;i++)arr.push(key);};
     add('champ','champion',front); add('axe','greataxe',front); add('spear','spear',front); add('pike','pike',front); add('dagger','dagger',front); add('militia','militia',front);
     add('archer','archer',back); add('slinger','slinger',back);
     const q=qOf(side);   // 이 진영 품질(spawn에 전달)
-    if(ctx.terrain==='village'){
-      const all=[...front,...back]; const xLo=side==='A'?16:WORLD_W*0.40, xHi=side==='A'?WORLD_W*0.60:WORLD_W-16;
-      for(const type of all){ let x,y,tr=0;
-        do{ x=xLo+ctx.rng()*(xHi-xLo); y=12+ctx.rng()*(WORLD_H-24); tr++; }
-        while(tr<50 && ctx.buildings.some(b=>Math.abs(x-b.x)<b.w/2+1.6&&Math.abs(y-b.y)<b.h/2+1.6));
-        spawn(ctx,side,type,x,y,'open',q); }
-      return;
-    }
     if(form==='circle'){
       const outer=[],inner=[];
       for(const u of front)(u==='dagger'?inner:outer).push(u);
@@ -141,7 +118,7 @@ function buildArmies(ctx,spec){
     else if(form==='column'){sp=2.8;per=5;dep=2.8;}
     else {sp=4.5;per=10;dep=3;}
     const lay=(arr,x0,s2,base,d2,zz)=>{const n=arr.length;if(!n)return;
-      const p2=form==='column'?base:Math.min(Math.max(base,Math.floor(WORLD_H*0.9/s2)),Math.max(base,Math.ceil(n/2)));
+      const p2=form==='column'?base:Math.min(Math.max(base,Math.floor(DEPLOY_H*0.9/s2)),Math.max(base,Math.ceil(n/2)));
       for(let i=0;i<n;i++){const c=(i/p2)|0, r=i%p2, colN=Math.min(p2,n-c*p2);
         const zig=(form==='open'||zz)?(c%2)*s2*0.55:0;
         spawn(ctx,side,arr[i], x0 - dir*c*d2, cyc+(r-(colN-1)/2)*s2+zig, form,q);}};
@@ -154,9 +131,9 @@ function buildArmies(ctx,spec){
       if(!fl.length){fl.push(...fk);fk.length=0;}
       lay(fl,frontX,sp,per,dep);
       if(sl.length)lay(sl,frontX-dir*(dep+2),sp,per,dep);
-      {const aw=back.length, pr=Math.max(1,Math.floor(WORLD_H*0.84/5.0));
+      {const aw=back.length, pr=Math.max(1,Math.floor(DEPLOY_H*0.84/5.0));
         for(let i=0;i<aw;i++){const c=(i/pr)|0,r=i%pr,rn=Math.min(pr,aw-c*pr); spawn(ctx,side,back[i], backX-dir*c*5, cyc+(r-(rn-1)/2)*5.0+(c%2)*2.5, form,q);}}
-      if(fk.length){const half=Math.ceil(fk.length/2),fy=WORLD_H*0.30;
+      if(fk.length){const half=Math.ceil(fk.length/2),fy=DEPLOY_H*0.30;
         for(let i=0;i<fk.length;i++){const top=i<half,idx=top?i:i-half,cnt=top?half:fk.length-half;
           spawn(ctx,side,fk[i], frontX-dir*3, (top?cyc-fy:cyc+fy)+(idx-(cnt-1)/2)*2.6, form,q);}}
     }
@@ -167,7 +144,7 @@ function buildArmies(ctx,spec){
   //   ★결정론: 주입 경로는 RNG 무소비(위치 확정). 표준 place() 경로는 손대지 않음 → 시드-오프셋 불변(골든마스터 비트동일).
   const placeInjected=(side,list)=>{
     const form=gf(side); ctx.sides[side].form=form; const q=qOf(side);
-    const CL=(v)=>v<0.5?0.5:(v>WORLD_W-0.5?WORLD_W-0.5:v);   // 로컬 WORLD(0~130) 범위 클램프(가장자리)
+    const CL=(v)=>v<0.5?0.5:(v>DEPLOY_W-0.5?DEPLOY_W-0.5:v);   // 로컬 WORLD(0~130) 범위 클램프(가장자리)
     let cmdU=null;
     for(const it of list){ if(!it||!UNITS[it.type])continue;
       const x=CL(+it.x), y=CL(+it.y);
@@ -219,7 +196,7 @@ function nearestEnemy(ctx,u,maxR,los){const bx=Math.floor(u.x/BK),by=Math.floor(
     for(let ix=bx-r;ix<=bx+r;ix++)for(let iy=by-r;iy<=by+r;iy++){
       if(r>0&&ix>bx-r&&ix<bx+r&&iy>by-r&&iy<by+r)continue;
       const c=ctx._grid.get(((ix+256)*8192)+(iy+256)); if(!c)continue;
-      for(const e of c){if(e.side===u.side||e.hp<=0)continue; const dx=u.x-e.x,dy=u.y-e.y,d=dx*dx+dy*dy; if(d<bd&&!(los&&ctx.trees.length&&treeBlocks(ctx,u.x,u.y,e.x,e.y))){bd=d;best=e;}}}
+      for(const e of c){if(e.side===u.side||e.hp<=0)continue; const dx=u.x-e.x,dy=u.y-e.y,d=dx*dx+dy*dy; if(d<bd&&!(los&&ctx.world&&treeBlocks(ctx,u.x,u.y,e.x,e.y))){bd=d;best=e;}}}
     if(best){const rm=r*BK; if(bd<=rm*rm)break;}
   }
   return best?{e:best,d:Math.sqrt(bd)}:null;}
@@ -265,7 +242,8 @@ function stepBattle(ctx,dt){
   updateMorale(ctx,dt);
   const order=ctx.units.slice(); for(let i=order.length-1;i>0;i--){const j=(ctx.rng()*(i+1))|0;const t=order[i];order[i]=order[j];order[j]=t;}
   for(const u of order){
-    if(u.hp<=0)continue;
+    if(u.hp<=0||u.ctl)continue;   // ★[T284] ctl=대형이 모는 병사(대치·후퇴 중) — 전투 스텝이 움직이지 않는다(격자·사기·피격 대상엔 그대로 있다)
+    u._ox=u.x; u._oy=u.y;         // ★[T284] 몸 클램프 기준(이 스텝 시작 위치)
     const D=UNITS[u.type]; u.cd-=dt;
     const uAtk=u.atk!=null?u.atk:D.atk, uMAtk=u.atk!=null?(D.mAtk*(u.atk/D.atk)):D.mAtk;   // ★품질 배수: u.atk 설정 시 근접·백병에 반영. 미설정(전투실험실)이면 D.atk/D.mAtk 그대로.
     // ── 지휘 모드: 지휘관 WASD 직접 조작 ──
@@ -274,11 +252,13 @@ function stepBattle(ctx,dt){
       if(m>0){mx/=m;my/=m; u.x+=mx*D.spd*dt; u.y+=my*D.spd*dt; u.face=Math.atan2(my,mx); ctx.cmdHeading=u.face;}
       const ce=(nearestEnemy(ctx,u,Math.ceil((D.ranged>0?D.ranged+2:13)/BK)+1,true)||{}).e;
       if(ce){const cd=Math.sqrt(dist2(u,ce)); if(m===0)u.face=Math.atan2(ce.y-u.y,ce.x-u.x);
-        if(D.ranged>0){ if(cd<=D.ranged&&u.cd<=0){const los=ctx.trees.length?!treeBlocks(ctx,u.x,u.y,ce.x,ce.y):true; if(los){u.st='shoot';u.cd=D.cd;shoot(ctx,u,ce);}} }
+        if(D.ranged>0){ if(cd<=D.ranged&&u.cd<=0){const los=ctx.world?!treeBlocks(ctx,u.x,u.y,ce.x,ce.y):true; if(los){u.st='shoot';u.cd=D.cd;shoot(ctx,u,ce);}} }
         else if(cd<=D.reach&&u.cd<=0){u.cd=D.cd;u.st='melee';hurt(ctx,ce,uAtk,u.x,u.y,'melee',D.shBrk);} }
       sep(ctx,u,dt); continue; }
     // ── 궤주(개별) ──
-    if(u.routing){u.st='rout'; const gx=u.side==='A'?-40:WORLD_W+40; const dx=gx-u.x,dy=0, dd=Math.hypot(dx,dy)||1; u.face=Math.atan2(dy,dx);
+    if(u.routing){u.st='rout';
+      if(ctx.world){ const f=ctx.world.flee(ctx,u); u.face=Math.atan2(f.dy,f.dx); u.x+=f.dx*D.spd*1.25*dt; u.y+=f.dy*D.spd*1.25*dt; sep(ctx,u,dt); continue; }   // ★[T284] 존: 방향만 어댑터(속도식 그대로)
+      const gx=u.side==='A'?-40:DEPLOY_W+40; const dx=gx-u.x,dy=0, dd=Math.hypot(dx,dy)||1; u.face=Math.atan2(dy,dx);
       u.x+=dx/dd*D.spd*1.25*dt; sep(ctx,u,dt); continue;}
     const engR=D.ranged>0?D.ranged+2:13;
     const mf=u.mrl>=0.5?1:Math.max(0.35,(u.mrl-0.15)/0.35);
@@ -286,7 +266,7 @@ function stepBattle(ctx,dt){
     const isMain=(u.type==='spear'||u.type==='pike'||u.type==='greataxe'||u.type==='champion');
     const mSpd=isMain?ctx._cen[u.side].march:D.spd;
     u._detCd=(u._detCd||0)-dt;
-    const tgtOk = u.tgt && u.tgt.hp>0 && dist2(u,u.tgt)<25*25 && !(ctx.trees.length&&treeBlocks(ctx,u.x,u.y,u.tgt.x,u.tgt.y));
+    const tgtOk = u.tgt && u.tgt.hp>0 && dist2(u,u.tgt)<25*25 && !(ctx.world&&treeBlocks(ctx,u.x,u.y,u.tgt.x,u.tgt.y));
     let e;
     if(tgtOk && u._detCd>0) e=u.tgt;
     else { u._detCd=0.35+ctx.rng()*0.12; e=(nearestEnemy(ctx,u,Math.ceil(engR/BK)+1,true)||{}).e; }
@@ -298,6 +278,7 @@ function stepBattle(ctx,dt){
         if(dd>0.25){const st=Math.min(D.spd*dt,dd); u.x+=dx/dd*st; u.y+=dy/dd*st;} u.face=ctx.cmdHeading; sep(ctx,u,dt); continue;
       }
       u.st='adv'; const c=ctx._cen[u.side==='A'?'B':'A'];
+      if(ctx.world){ const a=ctx.world.advance(ctx,u); if(a){u.face=Math.atan2(a.dy,a.dx); u.x+=a.dx*mSpd*fSpd*dt; u.y+=a.dy*mSpd*fSpd*dt;} sep(ctx,u,dt); continue; }   // ★[T284] 존: 방향만 어댑터(속도식 그대로 · null=제자리 · 적 본대가 없으면 목표로)
       if(c.n){const s=c.x>u.x?1:-1; u.face=s>0?0:Math.PI; u.x+=s*mSpd*fSpd*dt; sep(ctx,u,dt);} continue; }
     u.tgt=e; const d=Math.sqrt(dist2(u,e));
     if(u.form==='wall'){const c=ctx._cen[u.side==='A'?'B':'A']; u.face=c.n?Math.atan2(c.y-u.y,c.x-u.x):Math.atan2(e.y-u.y,e.x-u.x);}
@@ -313,17 +294,21 @@ function stepBattle(ctx,dt){
       }
       if(ammo){
         if(d<=D.ranged){
-          if(u.cd<=0){ const los=ctx.trees.length?!treeBlocks(ctx,u.x,u.y,e.x,e.y):true;
+          if(u.cd<=0){ const los=ctx.world?!treeBlocks(ctx,u.x,u.y,e.x,e.y):true;
             if(los){u.st='shoot'; u.cd=D.cd; if(ctx.rng()<mf){shoot(ctx,u,e); ctx.sides[u.side][ak]--;}} else {u.st='block'; u.cd=1;} }
-        } else { u.st='adv'; const dd=d||1,ms=D.spd*(0.55+0.45*mf)*fSpd; u.x+=(e.x-u.x)/dd*ms*dt; u.y+=(e.y-u.y)/dd*ms*dt; }
+        } else if(ctx.world&&ctx.world.hold(ctx,u,e)){ u.st='hold'; }   // ★[T284] 지키는 쪽은 물러나는 적을 쫓지 않는다
+        else { u.st='adv'; const dd=d||1,ms=D.spd*(0.55+0.45*mf)*fSpd; u.x+=(e.x-u.x)/dd*ms*dt; u.y+=(e.y-u.y)/dd*ms*dt; }
       } else {
-        if(d<15){ u.st='melee'; const dd=d||1,ms=(D.chg||D.spd)*(0.55+0.45*mf)*fSpd; if(d>D.reach){u.x+=(e.x-u.x)/dd*ms*dt; u.y+=(e.y-u.y)/dd*ms*dt;} else if(u.cd<=0){u.cd=D.cd; if(ctx.rng()<mf)hurt(ctx,e,uMAtk,u.x,u.y,'melee',D.shBrk);} }
-        else { u.st='adv'; const gx=u.side==='A'?-40:WORLD_W+40,dd=Math.abs(gx-u.x)||1; u.x+=(gx-u.x)/dd*D.spd*fSpd*dt; }
+        if(d<15&&ctx.world&&d>D.reach&&ctx.world.hold(ctx,u,e)){ u.st='hold'; }   // ★[T284] 추격 없음
+        else if(d<15){ u.st='melee'; const dd=d||1,ms=(D.chg||D.spd)*(0.55+0.45*mf)*fSpd; if(d>D.reach){u.x+=(e.x-u.x)/dd*ms*dt; u.y+=(e.y-u.y)/dd*ms*dt;} else if(u.cd<=0){u.cd=D.cd; if(ctx.rng()<mf)hurt(ctx,e,uMAtk,u.x,u.y,'melee',D.shBrk);} }
+        else if(ctx.world){ u.st='adv'; const f=ctx.world.flee(ctx,u); u.x+=f.dx*D.spd*fSpd*dt; u.y+=f.dy*D.spd*fSpd*dt; }   // ★[T284] 탄 떨어진 사수 이탈 — 방향만 어댑터
+        else { u.st='adv'; const gx=u.side==='A'?-40:DEPLOY_W+40,dd=Math.abs(gx-u.x)||1; u.x+=(gx-u.x)/dd*D.spd*fSpd*dt; }
       }
       sep(ctx,u,dt); continue;
     }
     // ── 근접 ──
-    if(d>D.reach){ u.st='adv'; let gx=e.x,gy=e.y;
+    if(d>D.reach&&ctx.world&&ctx.world.hold(ctx,u,e)){ u.st='hold'; }   // ★[T284] 지키는 쪽(holder)은 물러나는 적(대형으로 돌아간 병사)을 쫓지 않는다
+    else if(d>D.reach){ u.st='adv'; let gx=e.x,gy=e.y;
       if(u.form!=='wall'&&u.form!=='circle'&&UNITS[e.type].ranged===0&&e.form!=='wall'&&e.form!=='circle'&&frontBlocked(ctx,u,e)){
         const efx=Math.cos(e.face),efy=Math.sin(e.face),rx=u.x-e.x,ry=u.y-e.y,sd=(rx*(-efy)+ry*efx)>0?1:-1;
         gx=e.x+(-efy*sd)*2.4-efx*0.9; gy=e.y+(efx*sd)*2.4-efy*0.9;
@@ -337,7 +322,7 @@ function stepBattle(ctx,dt){
   }
   // ── 화살 ──
   for(let i=ctx.arrows.length-1;i>=0;i--){const ar=ctx.arrows[i]; ar.px=ar.x; ar.py=ar.y; const mx=ar.vx*dt,my=ar.vy*dt; ar.x+=mx; ar.y+=my; ar.trav+=Math.hypot(mx,my); let done=false;
-    if((ctx.trees.length||ctx.buildings.length)&&treeBlocks(ctx,ar.px,ar.py,ar.x,ar.y))done=true;
+    if(ctx.world&&treeBlocks(ctx,ar.px,ar.py,ar.x,ar.y))done=true;
     if(!done){const dx=ar.x-ar.px,dy=ar.y-ar.py,L=Math.hypot(dx,dy)||1,ux=dx/L,uy=dy/L; const bx=Math.floor(ar.x/BK),by=Math.floor(ar.y/BK); let hu=null,hd=1e9;
       for(let ix=bx-1;ix<=bx+1;ix++)for(let iy=by-1;iy<=by+1;iy++){const c=ctx._grid.get(((ix+256)*8192)+(iy+256));if(!c)continue;
         for(const o of c){if(o.hp<=0||o===ar.sh)continue; const ox=o.x-ar.px,oy=o.y-ar.py,t=ox*ux+oy*uy; if(t<-0.25||t>L+0.35)continue; const perp=Math.abs(ox*uy-oy*ux); const rr=UNITS[o.type].r+0.22; if(perp<rr&&t<hd&&(o.side!==ar.side||ar.trav>6.0)){hd=t;hu=o;}}}
@@ -351,7 +336,7 @@ function stepBattle(ctx,dt){
   // ── 종료 판정 ──
   const la=ctx.units.filter(u=>u.side==='A'&&u.hp>0).length, lb=ctx.units.filter(u=>u.side==='B'&&u.hp>0).length;
   const fa=ctx.units.filter(u=>u.side==='A'&&u.hp>0&&!u.routing).length, fb=ctx.units.filter(u=>u.side==='B'&&u.hp>0&&!u.routing).length;
-  if(!ctx.result){
+  if(!ctx.result && !ctx.world){   // ★[T284] 존(연속 전투)엔 판 결과가 없다 — 정산 계기는 호스트가 행위(궤주·항복·철수)로 본다
     if(fa===0&&fb>0)ctx.result={win:'B'};
     else if(fb===0&&fa>0)ctx.result={win:'A'};
     else if(fa===0&&fb===0)ctx.result={win:la>lb?'A':lb>la?'B':'무'};
@@ -372,11 +357,13 @@ function sep(ctx,u,dt){let sx=0,sy=0,n=0,hxx=0,hyy=0,hn=0; const bx=Math.floor(u
       if(d<SEP_CORE){hxx+=dx/d*(SEP_CORE-d)*0.5;hyy+=dy/d*(SEP_CORE-d)*0.5;hn++;}}}}   // ★[몸 하한] 지름 0.5m 침범 위치보정 누적(1.0m 소프트 간격과 별개 층)
   if(n){u.x+=sx/n*1.0*dt; u.y+=sy/n*1.0*dt;}
   if(hn){const hl=Math.hypot(hxx,hyy); if(hl>1e-9){const hk=Math.min(1,Math.max(1.0*dt,0.08)/hl); u.x+=hxx*hk; u.y+=hyy*hk;}}   // 몸 겹침 해소 — dt 무관 최소 0.08m/스텝(압착에도 관통 불가), 나무·건물 클램프가 뒤에서 지형 보정
-  if(ctx.trees.length)for(const t of ctx.trees){const dx=u.x-t.x,dy=u.y-t.y,d2=dx*dx+dy*dy,rr=t.r+0.5; if(d2<rr*rr&&d2>1e-4){const d=Math.sqrt(d2);u.x=t.x+dx/d*rr;u.y=t.y+dy/d*rr;}}
-  if(ctx.buildings.length)for(const b of ctx.buildings){const dx=u.x-b.x,dy=u.y-b.y,hx=b.w/2+0.45,hy=b.h/2+0.45; if(Math.abs(dx)<hx&&Math.abs(dy)<hy){const ox=hx-Math.abs(dx),oy=hy-Math.abs(dy);
-    const gx=(u.tgt&&u.tgt.hp>0)?u.tgt.x:u.x, gy=(u.tgt&&u.tgt.hp>0)?u.tgt.y:u.y;
-    if(ox<oy){u.x=b.x+(dx<0?-hx:hx); u.y+=Math.sign(gy-u.y||1)*Math.min(2.6*dt,hy+0.2);}
-    else {u.y=b.y+(dy<0?-hy:hy); u.x+=Math.sign(gx-u.x||1)*Math.min(2.6*dt,hx+0.2);}}}}
+  if(ctx.world&&u._ox!=null&&ctx.world.blocked(u.x,u.y)){   // ★[T284] 몸 클램프 — 존의 장애물(지형·건물 행). 축별로 미끄러지고, 둘 다 막히면 제자리
+    const nx=u.x, ny=u.y;
+    if(!ctx.world.blocked(nx,u._oy)){u.y=u._oy;}
+    else if(!ctx.world.blocked(u._ox,ny)){u.x=u._ox;}
+    else {u.x=u._ox; u.y=u._oy;}
+  }
+}
 function updateMorale(ctx,dt){
   for(const u of ctx.units)u._rPrev=u.routing;
   const relA=ctx.sides.A.start?ctx.sides.A.dead/ctx.sides.A.start:0, relB=ctx.sides.B.start?ctx.sides.B.dead/ctx.sides.B.start:0;
@@ -409,7 +396,7 @@ function _makeHandle(ctx){
     step(dt){ trackVel(ctx,dt); stepBattle(ctx,dt); },
     // getter
     get units(){return ctx.units;}, get arrows(){return ctx.arrows;}, get corpses(){return ctx.corpses;},
-    get sides(){return ctx.sides;}, get trees(){return ctx.trees;}, get buildings(){return ctx.buildings;},
+    get sides(){return ctx.sides;}, get world(){return ctx.world;},
     get result(){return ctx.result;}, get tick(){return ctx.tick;},
     get commander(){return ctx.commander;}, get cmdHeading(){return ctx.cmdHeading;},
     get terrain(){return ctx.terrain;}, get playerMode(){return ctx.playerMode;}, get keys(){return ctx.keys;},
@@ -422,7 +409,7 @@ function _makeHandle(ctx){
     //   중립이 A를 공격하면 B측으로 투입(그 역도 동일) — 3진영 FFA는 battle-core 구조 확장(별도 설계).
     addUnits(side, list, quality){
       if((side!=='A'&&side!=='B')||!Array.isArray(list)||!list.length||ctx.result)return 0;
-      const CL=v=>v<0.5?0.5:(v>WORLD_W-0.5?WORLD_W-0.5:v);
+      const CL=v=>ctx.world?v:(v<0.5?0.5:(v>DEPLOY_W-0.5?DEPLOY_W-0.5:v));   // ★[T284] 존 좌표는 자르지 않는다
       const form=(ctx.sides[side]&&ctx.sides[side].form)||'line';
       let n=0;
       for(const it of list){ if(!it||!UNITS[it.type])continue;
@@ -468,18 +455,17 @@ const BattleCore={
   UNITS, ARROWS_PER, STONES_PER, BREAK_P, MRL0, SIDE_COL, BK,
   M_BREAK, M_RALLY, M_RATE, M_KODDS, M_KCONTAG, M_KCHAMP, M_KRELCAS, M_KABS,
   M_KCOMMIT, M_KWOUND, M_KDESP, COMMIT_D, M_BREAKRATE,
-  SUP_ARROW, SUP_DEATH, SUP_R, FORM_SPD, FORM_KO, WORLD_W, WORLD_H,
+  SUP_ARROW, SUP_DEATH, SUP_R, FORM_SPD, FORM_KO, DEPLOY_W, DEPLOY_H,
   // ── 다중 인스턴스 API ──
   createContext, createBattle,
   get _defaultCtx(){return _defaultCtx;},
   // raw(ctx 인자) 함수 — 인스턴스 직접 구동/디버깅용
   _buildArmies:buildArmies, _stepBattle:stepBattle, _trackVel:trackVel, _updateMorale:updateMorale,
   _hurt:hurt, _shoot:shoot, _buildGrid:buildGrid, _nearestEnemy:nearestEnemy, _sep:sep,
-  _spawn:spawn, _genForest:genForest, _concealed:concealed, _treeBlocks:treeBlocks,
+  _spawn:spawn, _concealed:concealed, _treeBlocks:treeBlocks,
   _screened:screened, _frontBlocked:frontBlocked, _makeHandle,
   // ── 전역 API: 단일 _defaultCtx 위임(시그니처 불변) ──
   // 지형
-  genForest(mode){return genForest(_defaultCtx,mode);},
   concealed(u){return concealed(_defaultCtx,u);},
   treeBlocks(x1,y1,x2,y2){return treeBlocks(_defaultCtx,x1,y1,x2,y2);},
   // 시뮬
@@ -499,7 +485,7 @@ const BattleCore={
   buildArmies(spec){return buildArmies(_defaultCtx,spec);},
   // 상태 컨테이너 접근 (_defaultCtx 위임)
   get units(){return _defaultCtx.units;}, get arrows(){return _defaultCtx.arrows;}, get corpses(){return _defaultCtx.corpses;},
-  get sides(){return _defaultCtx.sides;}, get trees(){return _defaultCtx.trees;}, get buildings(){return _defaultCtx.buildings;},
+  get sides(){return _defaultCtx.sides;},
   get _grid(){return _defaultCtx._grid;}, get _cen(){return _defaultCtx._cen;}, get tick(){return _defaultCtx.tick;},
   get result(){return _defaultCtx.result;}, get commander(){return _defaultCtx.commander;}, get cmdHeading(){return _defaultCtx.cmdHeading;},
   get keys(){return _defaultCtx.keys;}, get playerMode(){return _defaultCtx.playerMode;}, get terrain(){return _defaultCtx.terrain;},

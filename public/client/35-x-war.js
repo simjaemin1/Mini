@@ -94,7 +94,7 @@
       row.appendChild(title);
       const stat = document.createElement('div');
       stat.style.cssText = 'color:var(--dim);font-size:11px;';
-      stat.textContent = `A ${b.aliveA} · B ${b.aliveB} · ${b.casus || ''} · ${b.phase === 'resolved' ? '종료' : '교전'}`;
+      stat.textContent = `A ${b.aliveA} · B ${b.aliveB} · ${b.casus || ''} · ${b.phase === 'resolved' ? '종료' : (b.phase === 'standoff' ? '대치' : '교전')}`;   // ★[T284] 연속 전투 — 대치 상태
       row.appendChild(stat);
       if (b.phase !== 'resolved') {
         const btns = document.createElement('div');
