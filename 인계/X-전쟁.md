@@ -60,6 +60,10 @@
 4. `_warBlockedCell` 대조 팔(`state._warNoCollide`)은 하네스 전용이다. 운영 코드엔 그 값을 세우는 줄이 없다.
 5. `sim/_*-probe.js` 여럿(`_battle-core-verify`·`_war-probe`·`_captive`·`_return`·`_s1-mirror`·`_scramble`·`_siege`)은 **main 에서 이미 exit 1** 이었다(09-16 실측). `_p3-war-probe`·`_livebattle-probe` 는 옛 API 전용이라 지웠다(test-war-world 가 대체).
 
+### 회부 — 동원의 대가(재민 09-17 · `인계/회부.md` WAR 절 ①~⑦)
+
+징발자가 경제에선 계속 일함(pid↔econ npc 끈 없음) · `_laborMul` 서버 엔진 미소비 · 행군 군량 미환급·궤주 시 팩 소멸·부족↔사기 무관 · 군량이 `food` 한 칸만 봄(품목 무시) · 창·장창·도끼·화살 재고 없이 생김 + 소집 반출/복귀 반납 없음 · 아무 때나 소집(기습). → P4-3 한 카드로. 부하는 게임일 1회 장부 연산(추정 수 ms 이하).
+
 ### 남은 P4 순서(설계 §7)
 
 1. ~~T284 전투 실체화~~ (이 절)
