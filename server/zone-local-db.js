@@ -317,6 +317,8 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_village_buildings_vid ON village_buildings(village_id);
   -- §4-4 Stage 4A: 청크 materialize가 셀 범위로 농지 타일을 직접 조회(비영속 실물화 — buildings 행 폭발 방지)
   CREATE INDEX IF NOT EXISTS idx_village_buildings_cell ON village_buildings(cx, cy);
+  -- ★[T284] 전쟁 콜라이더 색인이 마을별 발자국 행(집·곳간)만 읽는다 — (마을, 종류) 색인이 없으면 마을당 전 행을 훑는다
+  CREATE INDEX IF NOT EXISTS idx_village_buildings_vtype ON village_buildings(village_id, type);
 `);
 const stmtGetVillagesByZone = db.prepare('SELECT * FROM villages WHERE zone = ? ORDER BY id');
 const stmtInsertVillage = db.prepare(
@@ -327,6 +329,9 @@ const stmtInsertVillageBuilding = db.prepare(
   'INSERT INTO village_buildings (village_id, type, cx, cy, floors, data, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
 );
 const stmtGetVillageBuildings = db.prepare('SELECT * FROM village_buildings WHERE village_id = ?');
+// ★[T284] 발자국이 있는 행만(집·의뢰집·쉼터·곳간) — 전쟁 콜라이더 색인용. 마을 한 곳 전체 행(농지 포함 ~5천)을 읽으면
+//   51마을에 ~300ms 라 교전마다 틱이 멎는다(실측 · 보고/T284 §0-ⓓ). village_id 색인을 탄다.
+const stmtGetVillageStructRows = db.prepare("SELECT type, cx, cy FROM village_buildings WHERE village_id = ? AND type IN ('house','phouse','shelter','granary')");
 // §4-4 Stage 4A: 농지 셀 범위 조회 — 청크 활성화 시 lazy 실물화용. half-open(cx0≤cx<cx1)이라
 //   buildings 렉트 조회와 같은 규약(청크 경계 중복/누락 없음). idx_village_buildings_cell 사용.
 const stmtGetVillageFarmInCellRect = db.prepare(
@@ -547,6 +552,7 @@ function insertVillageBuilding(b) {
   return r.lastInsertRowid;
 }
 function getVillageBuildings(villageId) { return stmtGetVillageBuildings.all(villageId); }
+function getVillageStructRows(villageId) { return stmtGetVillageStructRows.all(villageId); }
 function getVillageFarmInCellRect(cx0, cx1, cy0, cy1) { return stmtGetVillageFarmInCellRect.all(cx0, cx1, cy0, cy1); }
 
 console.log(`[${ZONE_ID}/db] 로컬 zone DB 준비됨: ${DB_PATH}`);
@@ -562,7 +568,7 @@ module.exports = {
   upsertFishCell, getAllFishCells, deleteFishCell,
   // §4-4 마을 시뮬 (villages.js)
   getVillagesByZone, insertVillage, updateVillageState, insertVillageBuilding, getVillageBuildings,
-  getVillageFarmInCellRect,
+  getVillageFarmInCellRect, getVillageStructRows,
   // [2026-08-25 사건 레이어] 사건 장부·게시판 (events.js / villages.js)
   insertVillageEvent, getVillageEventsSince, pruneVillageEvents,
   insertVillageChronicle, getVillageChronicle, countVillageChronicle,   // ★[T18] 연대기(prune 없음)

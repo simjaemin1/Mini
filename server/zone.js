@@ -2654,6 +2654,7 @@ function clearTreesInCells(cellKeys) {
 }
 const _simNow = () => { try { return (SimVillages.dayNow && SimVillages.dayNow()) || Date.now(); } catch (e) { return Date.now(); } };
 SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, isWaterTileLocal, isPositionActive, isBlockedByWall, anyViewerNear, perfMark,
+  tickHz: TICK_HZ,   // ★[T284] 실체 전쟁 교전 스텝 = 존 틱 한 번(dt = 1/TICK_HZ)
   ioBusy, ioQuietMs,   // ★[T42-b] 배경 작업이 '한가한가'를 판단할 때 **날아가는 쓰기**도 본다
   clearTreesInCells,   // ★영토 개간 — 마을 안엔 숲이 없다
   // ★[T19 2026-09-02] 마을이 **하나 늘었다**는 통지. 온보딩이 그 마을의 도착 지점을 그때 굽는다
@@ -3093,7 +3094,8 @@ const server = http.createServer((req, res) => {
       events: _perfRing.slice(), econTick: _econ, loop: loopDelayStats(_rst),
       // ★[T153] 틱 시계 — 벽시계(`wall`)와 **세계가 실제로 적분한 시간**(`sim`)을 나란히 낸다.
       //   `lagPct` 가 곧 "세계가 얼마나 뒤졌나"다(종전 5.3% · 빚을 이월하면 0 근처).
-      tick: Object.assign({}, _tick, { on: TICK_DEBT_ON, dtMax: DT_MAX, debtMax: TICK_DEBT_MAX,
+      war: (SimVillages.warPerf ? (() => { const w = SimVillages.warPerf(); if (_rst && SimVillages.warPerfReset) SimVillages.warPerfReset(); return w; })() : null),   // ★[T284 ④]
+      tick: Object.assign({}, _tick, { ms: _tickMsStats(_rst), on: TICK_DEBT_ON, dtMax: DT_MAX, debtMax: TICK_DEBT_MAX,
         lagPct: _tick.wall > 0 ? +(100 * (_tick.wall - _tick.sim) / _tick.wall).toFixed(3) : null }) }));
     return;
   }
@@ -10941,9 +10943,19 @@ const TICK_DEBT_ON = process.env.T153_DEBT !== '0';
 let _tickDebt = 0;
 // ★계측(관측자) — `/perf` 가 그대로 내준다. 하네스가 "빚이 몇 %냐"를 **소스가 아니라 세계에** 묻는다.
 const _tick = { n: 0, wall: 0, sim: 0, clip: 0, clipped: 0, maxGap: 0, debt: 0, dropN: 0, dropped: 0 };
+// ★[T284 ④ · 관측자] 틱 본문 소요(ms) 고리 — `/perf` 의 tick.ms(p50/p95/max). idle 존 조기 반환 틱은 안 든다(본문이 없다).
+const _tickMs = { ring: new Float64Array(3000), i: 0, n: 0 };
+function _tickMsStats(reset) {
+  const k = Math.min(_tickMs.n, _tickMs.ring.length), a = Array.from(_tickMs.ring.subarray(0, k)).sort((x, y) => x - y);
+  const q = (p) => k ? +a[Math.min(k - 1, Math.floor(k * p))].toFixed(3) : 0;
+  const o = { n: _tickMs.n, p50: q(0.5), p95: q(0.95), max: k ? +a[k - 1].toFixed(3) : 0 };
+  if (reset) { _tickMs.i = 0; _tickMs.n = 0; }
+  return o;
+}
 
 setInterval(() => {
   const now = Date.now();
+  const _tickHr0 = process.hrtime();   // ★[T284 ④] 틱 본문 소요 계측(관측자)
   // ★★[T153 2026-09-07 재민 확정] **틱 빚 — 잘라 낸 몫을 버리지 않고 다음 틱에 얹는다.**
   //   종전: `dt = Math.min(0.2, elapsed)`. 상한은 옳다(죽음의 나선을 막는다) — 그런데 **잘린 몫을 버렸다.**
   //   그래서 세계의 적분 시계(`Body.tick` · 물리 · 타이머)가 벽시계보다 **영구히** 뒤졌다:
@@ -11921,6 +11933,7 @@ setInterval(() => {
   tickDowned(now);
   { const _tot = Date.now() - now; if (_tot >= 33) perfMark('tick', _tot); }
   { const _td = Date.now() - now; global._tt = (global._tt||0)+_td; global._tn = (global._tn||0)+1; if (_td > (global._tmx||0)) global._tmx = _td; }
+  { const _h = process.hrtime(_tickHr0); _tickMs.ring[_tickMs.i++ % _tickMs.ring.length] = _h[0] * 1e3 + _h[1] / 1e6; _tickMs.n++; }   // ★[T284 ④]
 }, TICK_MS);
 
 // ★[낚시 v2] 입질·만료 폴링 — 찌가 흔들리는 순간과, 창을 그냥 지나친 순간을 서버가 알린다.
