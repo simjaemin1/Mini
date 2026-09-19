@@ -409,7 +409,19 @@ const terrain = require('./terrain');
  * @param harvestedSet  `Set<key>`(옛 계약) 또는 `Map<key, 벤 게임일>`(T122). Map 이면 재생이 산다.
  * @param gameDay       지금 게임일. 없으면 재생 판정을 안 한다(= 종전 그대로 빠진다).
  */
-function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet, gameDay) {
+// ★★[T301 2026-09-19] **관측자 무관 자원 색인의 뿌리.**
+//   이 함수가 자원을 놓는 **유일한 자리**다. 그래서 "청크 없이 셀을 물으면 무엇이 있나"도
+//   여기서 답해야 한다 — 다른 데 한 벌을 더 적으면 그게 사본이고, 두 세계가 갈린다(T251 의 교훈).
+//   ⇒ 인자 하나(`onlyCell`)만 받는다. `null`(기본)이면 **종전과 한 바이트도 다르지 않다**:
+//     거르개는 `result.push` 앞에서만 걸리고, 값을 만드는 줄은 하나도 안 바뀐다.
+//     `{ cx, cy }`(셀 좌표 · 32px)면 **그 셀에 떨어지는 개체만** 낸다 — 같은 시드·같은 셀 = 같은 답.
+//   ⚠`onlyCell` 은 **빠른 길**도 연다(숲 그리드의 `gi` 를 산술로 건너뛴다 — 아래 T301 주석).
+//     그 산술이 틀리면 색인이 청크와 갈리므로, `scripts/test-resource-index.js` ⓐ 가
+//     **활성 청크 100개를 전수로** 맞대 본다(바이트 대조).
+function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet, gameDay, onlyCell) {
+  // ★[T301] 셀 거르개 — 개체 하나가 그 셀에 떨어지나(32px 셀 · 바닥 나눗셈은 좌표계 정본과 같다)
+  const _OC = onlyCell || null;
+  const _inCell = _OC ? ((x, y) => Math.floor(x / 32) === _OC.cx && Math.floor(y / 32) === _OC.cy) : null;
   // ★[T122] 벤 날 조회 — `Set` 이 오면 `get` 이 없다(옛 호출부·구 하네스 계약을 그대로 살린다).
   const _cutDay = (k) => (harvestedSet && typeof harvestedSet.get === 'function') ? harvestedSet.get(k) : undefined;
   const _stage = (k, type, sp) => {
@@ -440,6 +452,7 @@ function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet, 
     const r3 = seedRand(zoneId, cx, cy, n * 3 + 2);
     const x = cx * chunkSize + 16 + r1 * (chunkSize - 32);
     const y = cy * chunkSize + 16 + r2 * (chunkSize - 32);
+    if (_inCell && !_inCell(x, y)) continue;   // ★[T301 빠른 길] 셀 밖이면 지형 질의도 안 한다(결과 동일)
     // water/rock cell에는 spawn 차단 (Phase 5-H: 산맥 바위)
     if (terrain.isWaterCellLocal(zoneId, x, y)) continue;
     if (typeof terrain.isRockCellLocal === 'function' && terrain.isRockCellLocal(zoneId, x, y)) continue;
@@ -486,6 +499,7 @@ function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet, 
       if (_s1 && outType !== 'stump') entity.sp = _s1;
       if (_s1 && outType === 'tree') entity.szf = +r3.toFixed(3);   // 크기 0..1 — 숲 그리드와 같은 이름
     }
+    if (_inCell && !_inCell(entity.x, entity.y)) continue;   // ★[T301] 셀 질의 — 그 셀 밖은 안 낸다
     result.push(entity);
   }
 
@@ -500,7 +514,8 @@ function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet, 
       const wet = terrain.isWaterCellLocal(zoneId, mx, my);
       const rock = typeof terrain.isRockCellLocal === 'function' && terrain.isRockCellLocal(zoneId, mx, my);
       // ★[T122] 운철은 **재생하지 않는다**(`regrowStageOf` 가 null 을 낸다) — 종전 그대로 빠진다.
-      if (!wet && !rock && !(harvestedSet && harvestedSet.has(seedKey))) {
+      if (!wet && !rock && !(harvestedSet && harvestedSet.has(seedKey))
+          && !(_inCell && !_inCell(mx, my))) {                 // ★[T301] 셀 질의
         result.push({ id: `s_${cx}_${cy}_met`, seedKey, isSeed: true, x: mx, y: my,
                       type: 'meteorite', hp: RESOURCE_HP_TABLE.meteorite, maxHp: RESOURCE_HP_TABLE.meteorite });
       }
@@ -537,6 +552,7 @@ function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet, 
         const x = g.center[0] + Math.cos(a) * rr;
         const y = g.center[1] + Math.sin(a) * rr;
         if (Math.floor(x / cs) !== cx || Math.floor(y / cs) !== cy) continue;   // 제 청크에서만 낳는다(중복 금지)
+        if (_inCell && !_inCell(x, y)) continue;   // ★[T301 빠른 길]
         if (terrain.isWaterCellLocal(zoneId, x, y)) continue;
         if (typeof terrain.isRockCellLocal === 'function' && terrain.isRockCellLocal(zoneId, x, y)) continue;
         const seedKey = `gv${gi}_${i}`;
@@ -546,6 +562,7 @@ function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet, 
           const st = _stage(seedKey, type, null);
           if (st !== 'mature') continue;
         }
+        if (_inCell && !_inCell(x, y)) continue;              // ★[T301] 셀 질의
         const maxHp = RESOURCE_HP_TABLE[type] || 3;
         result.push({ id: `s_${seedKey}`, seedKey, isSeed: true, x, y, type, hp: maxHp, maxHp });
       }
@@ -567,9 +584,19 @@ function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet, 
     //   작게=더 빽빽(부하↑), 크게=듬성. 92 → 큰숲 ~51px·청크당 ~340그루.
     const SP = forestSpacing(fCov);
     const cs = chunkSize;
+    // ★★[T301 빠른 길] 셀 질의면 **닿을 수 있는 격자점만** 본다.
+    //   격자점 `gx` 가 내는 x 는 `cx*cs + gx + j1*SP`(j1 ∈ [0,1)) 이므로 구간 `[gx, gx+SP)` 다.
+    //   목표 셀의 지역 구간 `[_oxLo, _oxHi]` 과 안 겹치면 그 격자점은 **절대** 그 셀에 못 떨어진다.
+    //   `gi` 는 전 격자의 순번이므로 건너뛸 때 **행 폭(_cols)만큼 더해** 순번을 정확히 맞춘다
+    //   (틀리면 씨가 어긋나 색인이 청크와 갈린다 — `test-resource-index ⓐ` 가 전수로 잡는다).
+    const _cols = Math.ceil(cs / SP);
+    const _oxLo = _OC ? (_OC.cx * 32 - cx * cs) : 0, _oxHi = _oxLo + 31;
+    const _oyLo = _OC ? (_OC.cy * 32 - cy * cs) : 0, _oyHi = _oyLo + 31;
     let gi = 0;
     for (let gy = 0; gy < cs; gy += SP) {
+      if (_OC && (gy > _oyHi || gy + SP <= _oyLo)) { gi += _cols; continue; }
       for (let gx = 0; gx < cs; gx += SP, gi++) {
+        if (_OC && (gx > _oxHi || gx + SP <= _oxLo)) continue;
         const j1 = seedRand(zoneId, cx, cy, 90000 + gi * 2);
         const j2 = seedRand(zoneId, cx, cy, 90000 + gi * 2 + 1);
         if (j2 > 0.9) continue;                 // 10% 빈자리 — 자연스러움
@@ -601,11 +628,93 @@ function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet, 
         if (fstage) fe.regrown = fstage;
         if (fsp && ftype !== 'stump') fe.sp = fsp;      // ★[T135] 종 — 위 갈래와 같은 자리에 같은 이름
         if (fsp && ftype === 'tree') fe.szf = +sz.toFixed(3);   // 크기 0..1 — 열매 재고가 이걸 읽는다(사본 0)
+        if (_inCell && !_inCell(fe.x, fe.y)) continue;          // ★[T301] 셀 질의
         result.push(fe);
       }
     }
   }
   return result;
+}
+
+// ══ ★★[T301 2026-09-19] 관측자 무관 자원 색인 — `resourceAt` ═════════════════
+//
+// ★왜 [지시 T301 · `설계/설계_생산_실체.md` §2-ⓗ · T284 회부 ①]
+//   존의 나무·바위·광맥은 **청크가 켜질 때** 생긴다. 그래서 관측자에 따라 있다 없다 하고,
+//   전투가 그걸 읽으면 결정성이 깨진다(T284 ①). 관측자 없는 마을의 나무꾼·광부도
+//   **실제 나무·광맥**에 가야 한다(새 캐논 "생산은 행위다"). 둘 다 같은 것을 요구한다 —
+//   **청크 없이 셀을 물으면 그 자리에 무엇이 있는지 답하는 함수.**
+//
+// ★사본 0. 이 함수는 자원을 **하나도 안 놓는다** — 위 `generateChunkResources` 를
+//   `onlyCell` 로 부를 뿐이다. 그래서 색인과 청크는 **같은 코드**이고, 갈릴 수가 없다.
+//   (T251 이 가르쳐 준 것: 같은 것을 두 벌 적으면 언젠가 두 세계가 된다.)
+//
+// ★변경분은 **안 본다.** 베인 나무·캔 광맥 같은 변경분의 정본은 따로 있다:
+//     · 살아 있는 개체 : `zone.js` 의 `qtResources`(활성 청크)
+//     · 벤 자리·그루터기 : `harvestedSeeds`(그 존의 수확 장부) — 넘겨 주면 재생 단계까지 반영한다
+//     · 플레이어가 심은 것 : DB 행
+//   이 함수는 **"원래 무엇이었나"** 를 답한다. 부르는 쪽이 변경분을 덮어쓴다(보고 §0ⓐ 규칙 표).
+//
+// @param zoneId  존 id
+// @param cellX   셀 x (32px 격자 — `isTerrainBlockedLocal` 등과 같은 좌표계)
+// @param cellY   셀 y
+// @param opts    { biome, chunkSize, harvestedSet, gameDay } — 전부 선택.
+//                `harvestedSet` 을 주면 벤 자리·재생 단계가 청크와 **같은 답**으로 난다.
+// @returns       그 셀의 개체 배열(생성 순서 그대로 · 없으면 빈 배열)
+function resourcesAtCell(zoneId, cellX, cellY, opts) {
+  const o = opts || {};
+  const cs = o.chunkSize || CHUNK_SIZE;
+  const biome = o.biome || _zoneBiome(zoneId);
+  const px = (cellX | 0) * 32, py = (cellY | 0) * 32;
+  const ccx = Math.floor(px / cs), ccy = Math.floor(py / cs);
+  // ★★[T301 · 하네스가 잡은 것] 청크는 **자기 밖에도 낳는다.** 숲 그리드의 마지막 격자점이
+  //   지터(`j1 * SP`)로 청크 경계를 넘는다 — 실측: 청크 (0,0) 이 `ft1020_0` 을 x=1032.5 에 낳는다
+  //   (그 자리는 청크 (1,0) 의 셀 32 다). 그래서 목표 셀의 청크만 물으면 **그 나무를 놓친다**
+  //   (`test-resource-index ⓐ` 가 숲 청크 100개에서 1,328셀을 잡았다 — 논증이 아니라 전수가 잡았다).
+  //   ⇒ 넘어올 수 있는 이웃 청크까지 묻는다. 넘침의 상한은 격자 간격의 최댓값 `FOREST_SP_MAX` 다
+  //     (값은 이 파일의 정본 상수 — 자가 새로 적는 수 0).
+  const OV = FOREST_SP_MAX;
+  const out = [];
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      const qx = ccx + dx, qy = ccy + dy;
+      if (qx < 0 || qy < 0) continue;
+      // 그 청크가 이 셀에 닿을 수 있나 — 청크 상자를 넘침만큼 부풀려 셀과 겹치는지 본다
+      const bx0 = qx * cs, by0 = qy * cs;
+      if (px + 31 < bx0 - OV || px > bx0 + cs - 1 + OV) continue;
+      if (py + 31 < by0 - OV || py > by0 + cs - 1 + OV) continue;
+      const got = generateChunkResources(zoneId, biome, qx, qy, cs, o.harvestedSet, o.gameDay,
+        { cx: cellX | 0, cy: cellY | 0 });
+      for (const e of got) out.push(e);
+    }
+  }
+  return out;
+}
+
+// 한 칸에 여럿이 설 수 있다(숲 그리드는 간격이 셀보다 작을 수 있다). 하나만 묻는 쪽을 위한 얇은 껍데기 —
+// **생성 순서의 첫 개체**를 돌려준다(결정적). 여럿이 필요하면 `resourcesAtCell` 을 써라.
+function resourceAt(zoneId, cellX, cellY, opts) {
+  const a = resourcesAtCell(zoneId, cellX, cellY, opts);
+  return a.length ? a[0] : null;
+}
+
+// ★★[T301 ②] 전쟁이 쓸 **나무 차단 술어** — `_warWorld.blocked/losBlocked/coverAt` 의 나무 몫.
+//   전쟁은 셀로 묻는다(`villages.js` 어댑터 좌표 = 존 셀). 그래서 셀 하나에 "서 있는 나무"가 있나만 답한다.
+//   ⚠**그루터기·묘목은 안 막는다** — 벤 자리는 지나갈 수 있다(`RESOURCE_HP_TABLE` 이 그렇게 갈라 둔다).
+//   ⚠변경분 규칙(§0ⓐ)은 부르는 쪽 몫이다: 활성 청크가 있으면 `qtResources` 가 정본이고,
+//     `harvestedSet` 을 넘기면 벤 자리·재생 단계까지 이 함수가 청크와 같은 답을 낸다.
+//   ★값은 하나도 안 짓는다 — `resourcesAtCell` 이 낸 개체의 `type` 을 볼 뿐이다.
+function treeBlockerAt(zoneId, cellX, cellY, opts) {
+  const a = resourcesAtCell(zoneId, cellX, cellY, opts);
+  for (let i = 0; i < a.length; i++) if (a[i].type === 'tree') return a[i];
+  return null;
+}
+
+// 존의 biome — `zone-config` 정본에서 읽는다(값을 이 파일에 안 적는다).
+let _ZC = null;
+function _zoneBiome(zoneId) {
+  if (!_ZC) { try { _ZC = require('./zone-config'); } catch (e) { _ZC = { ZONES: {} }; } }
+  const z = (_ZC.ZONES || {})[zoneId];
+  return (z && z.biome) || 'forest';
 }
 
 // === Phase 14.46-a: 마을 자동 생성 ===
@@ -792,4 +901,4 @@ function generateCoastlineWaterTiles(zone, tileSize, findZoneAtFn, oceanRects) {
 
 // ★[T108 2026-09-05] `RESOURCE_HP_TABLE` 을 **내준다** — `zone.js` 가 같은 표를 한 벌 더
 //   들고 있었고(운석이 빠져 3대에 깨졌다 · T90 회부), 그걸 지우려면 정본이 나가야 한다.
-module.exports = { Chunk, ChunkManager, CHUNK_SIZE, generateChunkResources, regrowStageOf, REGROW, seedRand, forestSpacing, forestTreesPerCell, forestTreesPerCellMean, scatterTreesPerCell, treeShareOf, scatterRocksPerCell, rockShareOf, FOREST_MIN_COV, RESOURCES_PER_CHUNK, generateVillagesForZone, makeVillageName, generateCoastlineWaterTiles, RESOURCE_HP_TABLE };
+module.exports = { Chunk, ChunkManager, CHUNK_SIZE, generateChunkResources, resourceAt, resourcesAtCell, treeBlockerAt, regrowStageOf, REGROW, seedRand, forestSpacing, forestTreesPerCell, forestTreesPerCellMean, scatterTreesPerCell, treeShareOf, scatterRocksPerCell, rockShareOf, FOREST_MIN_COV, RESOURCES_PER_CHUNK, generateVillagesForZone, makeVillageName, generateCoastlineWaterTiles, RESOURCE_HP_TABLE };
