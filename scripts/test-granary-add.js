@@ -65,7 +65,8 @@ const _stubs = {
   noteVillageBuilt() {},           // T50 사건 장부 접점 — 여기선 무시한다
 };
 const ctx = vm.createContext(Object.assign({ state, SZ, console, Math, Set, Map, Array, Object, JSON, Number }, _stubs));
-vm.runInContext(constLine + '\n' + cut('pickGranarySpot') + '\n' + cut('_lifeCompleteGranary') + '\n' + cut('_lifeGranAdd')
+// ★[PM 2026-09-19 · 야간 09-19 빨강] T284 가 `_lifeCompleteGranary` 안에서 `_vbFootprint`(같은 파일 top-level)를 부른다 — 원문 그대로 같이 잘라 넣는다(사본 0 · 하네스 계약 그대로).
+vm.runInContext(constLine + '\n' + cut('_vbFootprint') + '\n' + cut('pickGranarySpot') + '\n' + cut('_lifeCompleteGranary') + '\n' + cut('_lifeGranAdd')
   + '\nglobalThis.__api = { pickGranarySpot, _lifeGranAdd, _lifeCompleteGranary, G_CAP, G_MAX, G_BUILDD };', ctx);
 const API = ctx.__api;
 
