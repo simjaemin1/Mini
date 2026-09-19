@@ -821,5 +821,72 @@ console.log('\n⑫ ★★[T321] 어부의 소리 — 결말 셋에 키 셋');
   }
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// ⑬ ★★★[T323] 소리판 — **손으로 적은 목록이 0** 이어야 한다
+//
+//   페이지(`public/sfx-board.html`)의 값은 전부 정본에서 온다. 그 성질이 깨지는 모양은 하나다:
+//   누가 "빨리" 표를 고치려고 키 이름을 페이지에 박는 것. 그러면 키가 늘어도 행이 안 늘고,
+//   **페이지가 조용히 낡는다**(이 집이 여러 번 밟은 사본의 값).
+//   ⇒ 이 절은 페이지 **소스에 키 이름이 없다**를 정적으로 지킨다. 행 수가 키 수와 같은지는
+//     브라우저가 있어야 세므로 `e2e-audio-probe` 가 잇는다(⑲~㉒ · 자명 통과 금지 포함).
+// ══════════════════════════════════════════════════════════════════════════════
+console.log('\n⑬ ★★[T323] 소리판 — 손 목록 0');
+{
+  const BOARD = path.join(PUB, 'sfx-board.html');
+  ok(fs.existsSync(BOARD), '⑬a 페이지가 있다', 'public/sfx-board.html');
+  const B = fs.existsSync(BOARD) ? fs.readFileSync(BOARD, 'utf8') : '';
+
+  // ⑬b ★★키 이름이 **소스에 박혀 있지 않다**. 주석은 뺀다(주석은 경위를 적는 자리다).
+  const strip = B.replace(/<!--[\s\S]*?-->/g, '').replace(/\/\*[\s\S]*?\*\//g, '')
+                 .split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n');
+  const hard = keyNames.filter((k) => new RegExp("['\"]" + k + "['\"]").test(strip));
+  ok(hard.length === 0, '⑬b ★★페이지 코드에 키 이름이 **한 개도** 박혀 있지 않다(표가 정본이다)',
+     hard.length ? '박힌 키: ' + hard.join(' ') : `키 ${keyNames.length}종 중 0`);
+
+  // ⑬c ★정본 셋을 실제로 읽는다
+  for (const [u, why] of [['assets/sfx/manifest.json', '키 표'],
+                          ['assets/audio/bgm/render-meta.json', 'BGM 13곡'],
+                          ['실기_소리', '실기표']]) {
+    ok(B.indexOf(u) > 0, `⑬c 페이지가 \`${u}\` 를 읽는다 — ${why}`);
+  }
+
+  // ⑬d ★★제품을 **그대로 싣는다**(사본 0) — 그리고 `bgm.js` 가 앞이다(곡선 정본이 먼저 있어야 한다)
+  const iB = B.indexOf('bgm/bgm.js'), iA = B.indexOf('client/48-a-audio.js');
+  ok(iB > 0 && iA > 0 && iB < iA,
+     '⑬d ★★제품 두 파일을 그대로 싣고 순서도 `index.html` 과 같다(사본 0)', `bgm ${iB} < 층 ${iA}`);
+
+  // ⑬e ★제품 파일을 **안 고쳤다** — 이 카드의 diff 에 그 둘이 없어야 한다
+  //    (하네스가 git 을 안 부른다 — 대신 층이 이 페이지를 아는 낌새가 없는지만 본다.)
+  ok(!/sfx-board/.test(modCode), '⑬e ★소리 층이 이 페이지를 **모른다**(제품이 판을 향해 굽지 않았다)');
+
+  // ⑬f ★서버 0 — 정적 갈래가 `public/` 아래를 그대로 내주므로 새 라우트가 필요 없다
+  {
+    const cj = fs.readFileSync(path.join(ROOT, 'server', 'central.js'), 'utf8');
+    ok(/path\.join\(__dirname, '\.\.', 'public', urlPath\)/.test(cj),
+       '⑬f ★서버에 새 라우트 0 — 정적 갈래가 이미 `public/` 아래를 내준다', '`central.js` 정적 갈래');
+  }
+
+  // ⑬g ★★실기표가 **배포에 실리는 자리**에 있다. 여기가 T323 의 함정이었다:
+  //    `Dockerfile.central` 이 이미지로 담는 것은 `server`·`public`·`sim` 셋뿐이라
+  //    `문서/` 에 둔 표는 배포된 호스트에서 **영영 404** 다(페이지의 그 칸이 빈다).
+  {
+    const df = fs.readFileSync(path.join(ROOT, 'Dockerfile.central'), 'utf8');
+    const copies = (df.match(/^COPY\s+(\S+)/gm) || []).map((x) => x.split(/\s+/)[1]);
+    ok(copies.includes('public'), '⑬g 전제: 배포 이미지가 `public` 을 담는다', copies.join(' '));
+    ok(!copies.includes('문서'), '⑬h 전제: 배포 이미지가 `문서/` 를 **안 담는다**(그래서 옮겼다)', copies.join(' '));
+    const pr = (B.match(/PRAC_URL\s*=\s*'([^']+)'/) || [])[1] || '';
+    ok(pr && fs.existsSync(path.join(PUB, pr)),
+       '⑬i ★★페이지가 읽는 실기표가 **`public/` 아래에** 실제로 있다(배포에 실린다)', pr || '주소를 못 찾았다');
+    ok(!/\.\.\//.test(pr), '⑬j ★그 주소가 `public/` 밖으로 안 나간다(정적 갈래가 막는다)', pr);
+  }
+
+  // ⑬k 자명 통과 금지 — 키 하나를 박은 셈 치면 ⑬b 가 문다
+  {
+    const faked = strip + "\n  var k = '" + keyNames[0] + "';\n";
+    const bad = keyNames.filter((k) => new RegExp("['\"]" + k + "['\"]").test(faked));
+    ok(bad.length === 1, '⑬k 자명 통과 금지 — 키 이름을 한 개 박으면 ⑬b 가 잡는다', bad.join(' '));
+  }
+}
+
 console.log(`\n=== PASS ${pass} / FAIL ${fail} ===`);
 process.exit(fail ? 1 : 0);

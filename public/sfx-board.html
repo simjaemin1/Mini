@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>소리판 — 듀랑고 미니</title>
+<!--
+  ★★★ 소리판 [T323 2026-09-19 · 세션9/SOUND]
+  재민 09-19: "게임 내에 존재하는 모든 효과음을 표로 정리해서 클릭하면 들어볼 수 있는 시스템."
+
+  ★이 파일에는 **키 이름도 값도 한 줄 안 적혀 있다.** 표는 전부 정본에서 만든다:
+      · public/assets/sfx/manifest.json          — 키·파일·볼륨·반경·출처·배선 표들
+      · public/assets/audio/bgm/render-meta.json — BGM 13곡 · measured 초/RMS/피크
+      · 문서/실기_소리_2026-09-14.md              — 재민 귀 판정 항목("어디서 나야 하나")
+    키가 늘면 행이 늘고, 키를 지우면 행이 준다. `test-audio ⑬` 이 그 성질을 지킨다(자명 통과 금지 포함).
+
+  ★제품 무접촉: `48-a-audio.js`·`bgm.js` 를 **그대로 싣기만** 한다(사본 0).
+    「층」 단추가 내는 소리는 게임에서 나는 그 소리다 — 같은 곡선·같은 버스·같은 볼륨 표를 지난다.
+
+  ★서버 0: 새 라우트를 안 만든다. `server/central.js` 의 정적 갈래가 `public/` 아래를 그대로 내주므로
+    배포하면 `<호스트>/sfx-board.html` 로 열린다(`test-doors` 62 표 무접촉).
+
+  ⚠「파일」 단추가 `new Audio(url)` 을 안 쓰는 이유: 그 정적 갈래의 MIME 표에 `.ogg`·`.m4a` 가 없어
+    `application/octet-stream` 으로 나간다. 게임은 바이트를 받아 `decodeAudioData` 하므로 상관없지만
+    `new Audio(src)` 는 브라우저에 따라 거부한다. ⇒ 바이트를 받아 **Blob 으로 형식을 붙여** 튼다.
+    (서버를 안 고치는 대신 이쪽이 맞춘 것이다 — 이 카드는 서버 0 이다.)
+-->
+<style>
+  :root{
+    --bg:#f6f4ef; --panel:#fffdf8; --line:#ddd6c8; --ink:#2b2822; --dim:#6f685c;
+    --ok:#2e7d52; --no:#b4453a; --accent:#7a5c2e; --warn:#8a6d1f; --soft:#efeae0;
+  }
+  @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+    --bg:#16150f; --panel:#1e1c16; --line:#3a352a; --ink:#ece7dc; --dim:#a29a8a;
+    --ok:#6cc294; --no:#e08a7e; --accent:#d8b877; --warn:#d8c07a; --soft:#252219;
+  }}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:14px/1.6 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif}
+  .wrap{max-width:1180px;margin:0 auto;padding:20px 16px 80px}
+  h1{font-size:20px;margin:0 0 4px}
+  .sub{color:var(--dim);font-size:13px;margin:0 0 18px}
+  h2{font-size:16px;margin:30px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+  .note{background:var(--soft);border-left:3px solid var(--accent);padding:10px 12px;
+        border-radius:0 6px 6px 0;font-size:13px;color:var(--dim);margin:10px 0}
+  .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0}
+  button{font:inherit;background:var(--panel);color:var(--ink);border:1px solid var(--line);
+         border-radius:6px;padding:5px 10px;cursor:pointer}
+  button:hover{border-color:var(--accent)}
+  button:disabled{opacity:.4;cursor:default}
+  button.on{background:var(--accent);color:var(--panel);border-color:var(--accent)}
+  .play{min-width:44px}
+  .j{width:32px;font-weight:700}
+  td:nth-last-child(2){white-space:nowrap}
+  .j.ok.on{background:var(--ok);border-color:var(--ok);color:#fff}
+  .j.no.on{background:var(--no);border-color:var(--no);color:#fff}
+  .tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse;width:100%;min-width:900px;font-size:13px}
+  th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+  th{background:var(--soft);font-weight:600;position:sticky;top:0;z-index:1}
+  td.k{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:600;white-space:nowrap}
+  tr.playing td{background:color-mix(in srgb,var(--accent) 12%,transparent)}
+  .tag{display:inline-block;font-size:11px;padding:1px 6px;border-radius:99px;border:1px solid var(--line);
+       background:var(--panel);color:var(--dim);margin:1px 3px 1px 0;white-space:nowrap}
+  .tag.bad{color:var(--no);border-color:var(--no)}
+  .tag.warn{color:var(--warn);border-color:var(--warn)}
+  .tag.good{color:var(--ok);border-color:var(--ok)}
+  .memo{width:100%;min-width:120px;font:inherit;background:transparent;color:var(--ink);
+        border:1px solid var(--line);border-radius:4px;padding:3px 5px}
+  .where{font-size:12px;color:var(--dim);display:block;margin-top:3px}
+  .where b{color:var(--ink);font-weight:600}
+  .src{font-size:12px;color:var(--dim);max-width:230px}
+  .src a{color:var(--accent)}
+  #out{width:100%;height:190px;font:12px/1.5 ui-monospace,Menlo,monospace;margin-top:10px;
+       background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:8px}
+  .err{color:var(--no);font-weight:600}
+  .stat{font-size:12px;color:var(--dim)}
+  @media (max-width:640px){ .wrap{padding:14px 12px 70px} table{min-width:760px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>소리판</h1>
+  <p class="sub">게임에 있는 모든 소리를 한 장에. <b>「파일」</b>은 원본 그대로, <b>「층」</b>은 게임이 내는 그대로(곡선·버스·볼륨 표를 지난 소리).
+     표는 <code>manifest.json</code>·<code>render-meta.json</code>·실기표에서 <b>그때그때 만든다</b> — 이 페이지에 적힌 키는 0개다.</p>
+
+  <div class="note" id="boot">정본을 읽는 중…</div>
+
+  <div class="bar">
+    <button id="wake">소리 깨우기</button>
+    <button id="stop">멈춤</button>
+    <span class="stat" id="ctxstat"></span>
+  </div>
+
+  <h2>효과음 <span class="stat" id="sfxcount"></span></h2>
+  <div class="tablewrap"><table id="sfx"><thead><tr>
+    <th>키</th><th>듣기</th><th>파일</th><th>쓰이는 자리</th><th>반경</th><th>출처 · 라이선스</th><th>상태</th><th>○/✗</th><th>메모</th>
+  </tr></thead><tbody></tbody></table></div>
+
+  <h2>배경음악 <span class="stat" id="bgmcount"></span></h2>
+  <div class="note">엔진은 <b>절차적</b>이다(<code>bgm.js</code> — 파일을 한 장도 안 받는다). 디스크의 13곡은 그 엔진을 오프라인으로 뽑아 둔 것이고 런타임이 안 읽는다.
+    그래서 <b>「파일」</b>은 뽑아 둔 곡을, <b>「층」</b>은 엔진이 지금 만들어 내는 그 장면을 튼다 — <b>둘이 다를 수 있고, 다르면 그게 판정거리다.</b></div>
+  <div class="tablewrap"><table id="bgm"><thead><tr>
+    <th>곡</th><th>듣기</th><th>장면</th><th>길이</th><th>RMS</th><th>피크</th><th>○/✗</th><th>메모</th>
+  </tr></thead><tbody></tbody></table></div>
+
+  <h2>실기표 — 키에 안 붙는 항목 <span class="stat" id="orphcount"></span></h2>
+  <div class="note" id="orphnote"></div>
+  <div class="tablewrap"><table id="orph"><thead><tr>
+    <th>#</th><th>듣는 것</th><th>어디서</th><th>○ 이면</th><th>✗ 면 고칠 자리</th><th>○/✗</th><th>메모</th>
+  </tr></thead><tbody></tbody></table></div>
+
+  <h2>표 복사</h2>
+  <div class="bar">
+    <button id="copy">표 복사(markdown)</button>
+    <button id="clear">판정 지우기</button>
+    <span class="stat" id="saved"></span>
+  </div>
+  <textarea id="out" readonly placeholder="「표 복사」를 누르면 여기에도 나온다 — 클립보드가 막힌 곳에서는 여기서 골라 복사해라."></textarea>
+</div>
+
+<!-- ★제품 파일을 **그대로** 싣는다(사본 0). 순서도 index.html 과 같다 — bgm.js 가 곡선 정본이라 앞이어야 한다. -->
+<script src="assets/audio/bgm/bgm.js"></script>
+<script src="client/48-a-audio.js"></script>
+<script>
+(function () {
+  'use strict';
+  // ── 정본 주소(이 파일이 아는 유일한 상수 셋 — 값이 아니라 **자리**다) ──────────────
+  var MAN_URL  = 'assets/sfx/manifest.json';
+  var META_URL = 'assets/audio/bgm/render-meta.json';
+  var PRAC_URL = '문서/실기_소리_2026-09-14.md';
+  var SFX_DIR  = 'assets/sfx/';
+  var BGM_DIR  = 'assets/audio/bgm/';
+  var STORE    = 'durango.sfxboard.v1';
+
+  var $ = function (s) { return document.querySelector(s); };
+  var el = function (t, c, x) { var n = document.createElement(t); if (c) n.className = c; if (x != null) n.textContent = x; return n; };
+  var MAN = null, META = null, PRAC = { byKey: {}, rows: [] };
+  var judge = {};
+  try { judge = JSON.parse(localStorage.getItem(STORE) || '{}') || {}; } catch (e) { judge = {}; }
+  var save = function () { try { localStorage.setItem(STORE, JSON.stringify(judge)); $('#saved').textContent = '저장됨(이 브라우저에만 · 정본은 「표 복사」다)'; } catch (e) {} };
+
+  // ── 소리 하나만 — 누르면 앞 것이 멎는다 ────────────────────────────────────────
+  var cur = null;
+  function stopAll() {
+    if (cur && cur.stop) { try { cur.stop(); } catch (e) {} }
+    cur = null;
+    var r = document.querySelector('tr.playing'); if (r) r.classList.remove('playing');
+    Array.prototype.forEach.call(document.querySelectorAll('button.play.on'), function (b) { b.classList.remove('on'); });
+  }
+  function mark(btn) {
+    stopAll();
+    btn.classList.add('on');
+    var tr = btn.closest('tr'); if (tr) tr.classList.add('playing');
+  }
+
+  // 「파일」 — 바이트를 받아 Blob 으로 형식을 붙여 튼다(위 주석의 MIME 사정).
+  function playFile(btn, url, mime) {
+    mark(btn);
+    fetch(url).then(function (r) { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
+      .then(function (buf) {
+        var a = new Audio(URL.createObjectURL(new Blob([buf], { type: mime })));
+        var tok = { stop: function () { a.pause(); } };
+        cur = tok;
+        a.onended = function () { if (cur === tok) stopAll(); };
+        return a.play();
+      })
+      .catch(function (e) { btn.textContent = '✗'; btn.title = String(e); stopAll(); });
+  }
+
+  // 「층」 — 진짜 `window.__sfx` 다. 자리를 안 주면 반경 감쇠가 0 거리로 걸린다(= 최대).
+  function playLayer(btn, key) {
+    mark(btn);
+    if (!window.__sfx) { btn.textContent = '✗'; btn.title = '층이 아직 안 깨어났다 — 「소리 깨우기」를 먼저'; return; }
+    window.__sfx.play(key);
+    cur = { stop: function () {} };
+    setTimeout(function () { if (btn.classList.contains('on')) stopAll(); }, 1400);
+  }
+  // ★★BGM 「층」 — 제품에 **줄 하나 안 더하고** 층이 제 손으로 장면을 바꾸게 한다.
+  //   층은 장면을 두 축에서 고른다(`sfxBgmScene`): 마을 안/밖 = `window.__evNearVid` · 낮/밤 = `isNight()`.
+  //   둘 다 `typeof` 로 넘겨보는 **바깥 전역**이고, 장면을 다시 고르는 것은 공개 API `__sfx.scan()` 의 끝줄이다.
+  //   ⇒ 두 전역을 세우고 `scan([],0,0)` 을 부르면 **층이 제 코드로** 장면을 바꾼다(같은 표 · 같은 페이드).
+  //   ⚠`__sfx` 에 장면 세터를 새로 다는 길도 있었지만 그건 **제품 수정**이라 이 카드가 금한다.
+  //   ⚠편성(trad/amb/ari/정악)은 **못 고른다** — 엔진 기본이 `trad` 이고 매니페스트가 "안 고른다"고 적어 둔다(#45).
+  //     그래서 이 단추는 **장면만** 켠다. `_amb`·`_ari`·`_jeongak` 줄에서 눌러도 나는 것은 그 장면의 trad 다.
+  function playScene(btn, scene) {
+    mark(btn);
+    if (!window.__sfx) { btn.textContent = '✗'; btn.title = '「소리 깨우기」를 먼저'; return; }
+    var pick = (MAN.bgm && MAN.bgm.scenePick) || {};
+    var want = null;
+    Object.keys(pick).forEach(function (axis) {
+      if (axis.charAt(0) === '_' || pick[axis] !== scene) return;
+      if (!want) want = axis;                       // 예: 'village:night'
+    });
+    if (!want) { btn.textContent = '✗'; btn.title = '이 장면은 층이 고를 수 없다(표에 칸이 없다)'; stopAll(); return; }
+    var parts = want.split(':');
+    window.__evNearVid = (parts[0] === 'village') ? 1 : null;     // 마을 안/밖
+    window.isNight = function () { return parts[1] === 'night'; }; // 낮/밤
+    window.__sfx.scan([], 0, 0);                                   // ← 층이 여기서 장면을 다시 고른다
+    cur = { stop: function () {} };
+    setTimeout(function () {
+      var d = window.__sfx.dbg();
+      btn.title = '층의 장면: ' + (d.bgm ? d.bgm.scene : '?') + ' (편성은 ' + (d.bgm ? d.bgm.mood : '?') + ' 고정)';
+    }, 200);
+  }
+
+  // ── 배선 역인덱스 — 매니페스트의 표들에서 "이 키를 누가 부르나" 를 거꾸로 찾는다 ──
+  //    손으로 적은 목록이 아니라 **표를 훑어서** 만든다. 표가 늘면 여기도 는다.
+  function wiringOf(man) {
+    var rev = {};
+    var add = function (key, label) { if (!key) return; (rev[key] = rev[key] || []).push(label); };
+    Object.keys(man).forEach(function (tname) {
+      var t = man[tname];
+      if (!t || typeof t !== 'object' || tname === 'keys' || tname === 'sources' || tname === 'bus' || tname.charAt(0) === '_') return;
+      Object.keys(t).forEach(function (w) {
+        if (w.charAt(0) === '_') return;
+        var v = t[w];
+        if (typeof v === 'string' && man.keys[v]) add(v, tname + ' · ' + w);
+      });
+    });
+    return rev;
+  }
+
+  // ── 실기표 — md 를 받아 **행 글자 안에 키 이름이 있으면** 그 키에 붙인다.
+  //    ⚠절 주석까지 훑으면 엉뚱한 행에 엉뚱한 키가 붙는다(실측: 4 → 17 인데 대부분 거짓).
+  //      "물" 줄에 `eat` 이 붙는 식이다. ⇒ **행 글자만** 본다. 못 붙는 줄은 아래 표에 그대로 낸다.
+  function parsePractice(md, keys) {
+    var out = { byKey: {}, rows: [] };
+    var lines = md.split('\n');
+    for (var i = 0; i < lines.length; i++) {
+      var L = lines[i];
+      if (!/^\|\s*[A-Z]\d+\s*\|/.test(L)) continue;
+      var c = L.split('|').map(function (s) { return s.trim(); });
+      var row = { id: c[1], what: c[2] || '', where: c[3] || '', ok: c[4] || '', fix: c[5] || '', keys: [] };
+      for (var j = 0; j < keys.length; j++) {
+        var k = keys[j];
+        if (new RegExp('(^|[^A-Za-z0-9_])' + k + '([^A-Za-z0-9_]|$)').test(L)) row.keys.push(k);
+      }
+      row.keys.forEach(function (k) { (out.byKey[k] = out.byKey[k] || []).push(row); });
+      out.rows.push(row);
+    }
+    return out;
+  }
+
+  function judgeCells(id, tr) {
+    var td = el('td');
+    ['○', '✗'].forEach(function (sym, n) {
+      var b = el('button', 'j ' + (n ? 'no' : 'ok'), sym);
+      if (judge[id] && judge[id].v === sym) b.classList.add('on');
+      b.onclick = function () {
+        judge[id] = judge[id] || {};
+        judge[id].v = (judge[id].v === sym) ? '' : sym;
+        Array.prototype.forEach.call(td.querySelectorAll('button'), function (x) { x.classList.remove('on'); });
+        if (judge[id].v) b.classList.add('on');
+        save();
+      };
+      td.appendChild(b);
+    });
+    tr.appendChild(td);
+    var tdm = el('td');
+    var inp = el('input', 'memo');
+    inp.value = (judge[id] && judge[id].m) || '';
+    inp.placeholder = '메모';
+    inp.oninput = function () { judge[id] = judge[id] || {}; judge[id].m = inp.value; save(); };
+    tdm.appendChild(inp); tr.appendChild(tdm);
+  }
+
+  // ── 그린다 ────────────────────────────────────────────────────────────────────
+  function render() {
+    var keys = Object.keys(MAN.keys).filter(function (k) { return k.charAt(0) !== '_'; }).sort();
+    var rev = wiringOf(MAN);
+    var tb = $('#sfx tbody');
+    var nMissing = 0, nOrphan = 0;
+
+    keys.forEach(function (k) {
+      var m = MAN.keys[k], tr = el('tr');
+      tr.appendChild(el('td', 'k', k));
+
+      var tdp = el('td');
+      var bF = el('button', 'play', '파일');
+      var bL = el('button', 'play', '층');
+      if (m.file) {
+        bF.onclick = function () { playFile(bF, SFX_DIR + m.file, 'audio/ogg'); };
+      } else { bF.disabled = true; bF.title = '파일 없음'; }
+      bL.onclick = function () { playLayer(bL, k); };
+      if (!m.file) { bL.disabled = true; bL.title = '파일이 없으면 층도 무음이다'; }
+      tdp.appendChild(bF); tdp.appendChild(document.createTextNode(' ')); tdp.appendChild(bL);
+      tr.appendChild(tdp);
+
+      var tdf = el('td');
+      tdf.appendChild(el('span', '', m.file || '—'));
+      if (m.fileAlt) tdf.appendChild(el('span', 'where', m.fileAlt));
+      tr.appendChild(tdf);
+
+      var tdw = el('td');
+      var w = rev[k] || [];
+      w.forEach(function (x) { tdw.appendChild(el('span', 'tag', x)); });
+      // ★표로 안 걸리는 키가 있다 — `bird`·`wind`·`water`·`rain` 은 `ambient()` 가, 발자국은
+      //   `sfxGroundKey()` 가, 먹기는 `gauges.ate` 가 **코드에서** 부른다. 그것도 배선이다.
+      //   매니페스트가 그 자리를 `훅` 칸에 이미 적어 두었으므로 **그 칸이 증거**다.
+      //   ⚠이걸 안 보면 멀쩡히 우는 키 일곱이 "배선 없음" 으로 뜬다(실측 — 첫 판이 그랬다).
+      var hook = m['훅'] || m._훅 || '';
+      if (hook) {
+        var hs = el('span', 'where');
+        hs.appendChild(el('b', '', '훅 — '));
+        hs.appendChild(document.createTextNode(hook.replace(/\*\*/g, '').replace(/`/g, '').split('. ')[0].slice(0, 96)));
+        tdw.appendChild(hs);
+      }
+      if (!w.length && !hook) { tdw.appendChild(el('span', 'tag warn', '배선 없음')); nOrphan++; }
+      var pr = PRAC.byKey[k] || [];
+      pr.forEach(function (r) {
+        var s = el('span', 'where');
+        s.appendChild(el('b', '', r.id + ' ' + r.what.replace(/\*\*/g, '') + ' — '));
+        s.appendChild(document.createTextNode(r.where.replace(/`/g, '')));
+        tdw.appendChild(s);
+      });
+      tr.appendChild(tdw);
+
+      tr.appendChild(el('td', '', m.radius ? (m.radius + 'px (' + Math.round(m.radius / 32) + '셀)') : '감쇠 없음'));
+
+      var tds = el('td', 'src');
+      var s = m.source && MAN.sources ? MAN.sources[m.source] : null;
+      if (s) {
+        tds.appendChild(el('span', '', (s.license || '?')));
+        var a = el('span', 'where', m.source + (s.author ? ' · ' + s.author : ''));
+        tds.appendChild(a);
+      } else tds.appendChild(el('span', 'tag warn', '출처 없음'));
+      tr.appendChild(tds);
+
+      var tdst = el('td');
+      if (!m.file) {
+        nMissing++;
+        tdst.appendChild(el('span', 'tag bad', m.state === 'missing' ? '확정 비움' : '무음'));
+      } else if (!w.length && !hook) tdst.appendChild(el('span', 'tag warn', '파일 있음 · 배선 없음'));
+      else tdst.appendChild(el('span', 'tag good', '파일 있음'));
+      tr.appendChild(tdst);
+
+      judgeCells('key:' + k, tr);
+      tb.appendChild(tr);
+    });
+
+    $('#sfxcount').textContent = '— 행 ' + keys.length + ' (무음 ' + nMissing + ' · 배선 없음 ' + nOrphan + ')';
+
+    // BGM
+    var tracks = (META && META.tracks) || {};
+    var names = Object.keys(tracks).sort();
+    var tb2 = $('#bgm tbody');
+    var scenes = (MAN.bgm && MAN.bgm.scenes) || {};
+    var pickTbl = (MAN.bgm && MAN.bgm.scenePick) || {};
+    names.forEach(function (n) {
+      var t = tracks[n], tr = el('tr');
+      tr.appendChild(el('td', 'k', n));
+      var tdp = el('td');
+      var bF = el('button', 'play', '파일');
+      bF.onclick = function () { playFile(bF, BGM_DIR + n + '.ogg', 'audio/ogg'); };
+      tdp.appendChild(bF);
+      var sc = n.replace(/_(trad|amb|ari|jeongak)$/, '');
+      var mood = (n.match(/_(trad|amb|ari|jeongak)$/) || [, 'trad'])[1];
+      // 층이 **실제로 고를 수 있는** 장면은 `scenePick` 의 값들뿐이다(battle 은 칸이 없다 — 미배선).
+      var pickable = Object.keys(pickTbl).filter(function (a) { return a.charAt(0) !== '_'; })
+                       .map(function (a) { return pickTbl[a]; }).indexOf(sc) >= 0;
+      if (pickable) {
+        var bL = el('button', 'play', '층');
+        bL.onclick = function () { playScene(bL, sc); };
+        tdp.appendChild(document.createTextNode(' ')); tdp.appendChild(bL);
+      }
+      tr.appendChild(tdp);
+      var tdsc = el('td');
+      tdsc.appendChild(el('span', pickable ? 'tag good' : 'tag warn', sc));
+      if (mood !== 'trad') tdsc.appendChild(el('span', 'tag warn', '편성 ' + mood + ' — 층은 못 고른다'));
+      if (pickable) tdsc.appendChild(el('span', 'where', scenes[sc] || ''));
+      else tdsc.appendChild(el('span', 'where', (scenes[sc] || '') + ' ⇒ 「층」으로는 못 튼다(표에 칸이 없다)'));
+      tr.appendChild(tdsc);
+      var mm = t && (t.measured || t);
+      tr.appendChild(el('td', '', mm && mm.seconds != null ? (+mm.seconds).toFixed(1) + 's' : '—'));
+      tr.appendChild(el('td', '', mm && mm.rms_db != null ? mm.rms_db + ' dB' : '—'));
+      tr.appendChild(el('td', '', mm && mm.peak_db != null ? mm.peak_db + ' dB' : '—'));
+      judgeCells('bgm:' + n, tr);
+      tb2.appendChild(tr);
+    });
+    $('#bgmcount').textContent = '— 곡 ' + names.length;
+
+    // 실기표 — 못 붙은 줄
+    var orph = PRAC.rows.filter(function (r) { return !r.keys.length; });
+    var tb3 = $('#orph tbody');
+    orph.forEach(function (r) {
+      var tr = el('tr');
+      tr.appendChild(el('td', 'k', r.id));
+      [r.what, r.where, r.ok, r.fix].forEach(function (x) {
+        tr.appendChild(el('td', '', x.replace(/\*\*/g, '').replace(/`/g, '')));
+      });
+      judgeCells('prac:' + r.id, tr);
+      tb3.appendChild(tr);
+    });
+    var attached = PRAC.rows.length - orph.length;
+    $('#orphcount').textContent = '— ' + orph.length + ' / ' + PRAC.rows.length;
+    $('#orphnote').innerHTML = '실기표 <b>' + PRAC.rows.length + '항</b> 중 <b>' + attached +
+      '항</b>만 글자 안에 키 이름이 있어 위 표의 그 키 행에 붙었다. 나머지 <b>' + orph.length +
+      '</b>항은 여기 그대로 낸다 — <b>키와 항목을 잇는 정본 고리가 아직 없기 때문이다</b>(짐작으로 붙이면 엉뚱한 행에 엉뚱한 안내가 간다). ' +
+      '실기표 각 줄에 키 이름 한 낱말을 적어 두면 저절로 위로 올라간다(코드 0).';
+
+    $('#boot').style.display = 'none';
+  }
+
+  // ── 단추들 ────────────────────────────────────────────────────────────────────
+  // ★★버퍼 데우기 — 층은 버퍼를 **처음 쓸 때** 받아 온다(`sfxBuffer` 가 첫 번은 null 을 주고
+  //   받아 두기만 한다 · `stat.pending`). 그래서 **아무 「층」 단추든 첫 클릭은 무음**이다.
+  //   실기에서 이건 결함처럼 보인다("눌렀는데 안 난다") — 판정을 망친다.
+  //   ⇒ 깨울 때 `__sfx.probe(전체 키)` 를 한 번 돌린다. probe 는 **오프라인 렌더**라 소리가 안 나고,
+  //     버퍼가 다 올 때까지 기다렸다가 재는 함수다 ⇒ 데우기와 뜻이 정확히 같다(제품 수정 0 · 공개 API).
+  var warmed = false;
+  function warm() {
+    if (warmed || !window.__sfx || !MAN) return Promise.resolve();
+    warmed = true;
+    var ks = Object.keys(MAN.keys).filter(function (k) { return k.charAt(0) !== '_' && MAN.keys[k].file; });
+    $('#ctxstat').textContent = '소리 ' + ks.length + '개를 데우는 중…';
+    return window.__sfx.probe(ks, { seconds: 0.1 }).catch(function () {});
+  }
+  function status() {
+    var d = window.__sfx && window.__sfx.dbg();
+    $('#ctxstat').textContent = d
+      ? ('층 ' + (d.ctx || '아직') + ' · 키 ' + d.manifest + ' · 장면 ' + (d.bgm ? d.bgm.scene : '—')
+         + (d.stat.pending ? ' · 데우는 중 ' + d.stat.pending : ' · 준비됨'))
+      : '층 없음';
+  }
+  $('#wake').onclick = function () {
+    warm().then(function () { setTimeout(status, 200); });
+    setTimeout(status, 300);
+  };
+  // 첫 동작이 무엇이든(단추를 눌렀든 표를 눌렀든) 한 번은 데운다 — 「깨우기」를 안 눌러도 된다.
+  window.addEventListener('pointerdown', function () { setTimeout(function () { warm().then(status); }, 60); }, { once: true });
+  $('#stop').onclick = stopAll;
+  $('#clear').onclick = function () {
+    if (!confirm('판정을 모두 지운다. 복사해 뒀나?')) return;
+    judge = {}; save(); location.reload();
+  };
+  $('#copy').onclick = function () {
+    var L = [];
+    L.push('# 소리판 판정 — ' + new Date().toISOString().slice(0, 10));
+    L.push('');
+    L.push('| 대상 | ○/✗ | 메모 |');
+    L.push('|---|---|---|');
+    Object.keys(judge).sort().forEach(function (id) {
+      var j = judge[id];
+      if (!j || (!j.v && !j.m)) return;
+      L.push('| `' + id + '` | ' + (j.v || '') + ' | ' + (j.m || '').replace(/\|/g, '\\|') + ' |');
+    });
+    if (L.length === 4) L.push('| _(아직 적은 것이 없다)_ |  |  |');
+    var txt = L.join('\n');
+    $('#out').value = txt;
+    if (navigator.clipboard) navigator.clipboard.writeText(txt).then(function () {
+      $('#saved').textContent = '클립보드에 복사했다';
+    }, function () { $('#saved').textContent = '클립보드가 막혔다 — 아래 칸에서 골라 복사해라'; });
+  };
+
+  // ── 정본 셋을 받는다 ──────────────────────────────────────────────────────────
+  Promise.all([
+    fetch(MAN_URL).then(function (r) { return r.json(); }),
+    fetch(META_URL).then(function (r) { return r.json(); }).catch(function () { return null; }),
+    fetch(PRAC_URL).then(function (r) { return r.ok ? r.text() : ''; }).catch(function () { return ''; })
+  ]).then(function (a) {
+    MAN = a[0]; META = a[1];
+    var keys = Object.keys(MAN.keys).filter(function (k) { return k.charAt(0) !== '_'; });
+    PRAC = a[2] ? parsePractice(a[2], keys) : { byKey: {}, rows: [] };
+    if (typeof initAudio === 'function') { try { initAudio(); } catch (e) {} }
+    render();
+  }).catch(function (e) {
+    $('#boot').className = 'note err';
+    $('#boot').textContent = '정본을 못 읽었다: ' + e + ' — 배포된 호스트에서 열어라(file:// 로는 fetch 가 막힌다).';
+  });
+})();
+</script>
+</body>
+</html>
