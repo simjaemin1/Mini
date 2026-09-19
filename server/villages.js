@@ -2677,6 +2677,10 @@ function init(deps) {
       centerOf: v => ({ cx: v.ccx, cy: v.ccy }),
       territoryOf: v => (v.econ.land && v.econ.land.size ? v.econ.land.size * 25 : 2800),
       log: null,   // 조용(warStats().log 에 500줄 순환 버퍼로 적재 — 요약만 일 1회)
+      // ★★[T295 ③] **군량의 품목은 마을이 먹는 그 함수가 고른다** — econ 정본(`economy-sim.consumeFood`)을
+      //   그대로 넘긴다(사본 0 · 순서표를 베끼지 않는다). 곳간 `food` 가 0 이어도 쌀·생선이 있으면 팩이 찬다.
+      //   미주입(랩·v1 CLI)이면 war-core 는 종전대로 `storage.food` 한 칸만 본다 = 비트 동일.
+      food: { consumeFood: econ.consumeFood, totalFoodEquivalent: econ.totalFoodEquivalent },
       // ★[2파 작전층] 실체 개전 훅 — assault/sortie '결단' 시점에만 호출(자동 개전 없음).
       //   ★[T284] 관측자 조건 폐지 — 전쟁은 항상 실체다. true = 전진 명령(w.phase='battle' = 교전 중 표식).
       onEngage: (w, day, why) => {
@@ -2835,7 +2839,7 @@ function _warSampleComp(comp, cap) {
   return o;
 }
 // ★[징발=상태전환] 마을 pid 에서 병종 선호로 선발 → _muster/_muType/simWar/npcs.delete(AI 정지). units[{type,pid}] — x/y 는 player 에 묶인다.
-function _warDraftPids(vil, comp, seed) {
+function _warDraftPids(vil, comp, seed, warId) {
   const { players, npcs } = state.deps;
   const WL = state.warLive;
   const pool = [];
@@ -2851,6 +2855,9 @@ function _warDraftPids(vil, comp, seed) {
       const i = cand[s][0]; taken.add(i); const p = pool[i];
       p._muster = true; p._muType = type; p.simWar = true; npcs.delete(p.pid);   // ★AI 정지 + 이동 제외
       const gu = { type, pid: p.pid }; WL.bindGroupUnit(gu, p);                  // ★[T284] 좌표 = player 하나
+      // ★★[T295 ①] **결속** — 이 pid 가 징발자다. war-core 가 그 사람(econ npc) 하나를 골라 자리를 비운다
+      //   (같은 직업 우선 · 동원이 이미 세어 둔 징발자부터). 정본은 pid 다 — 반대 방향은 없다.
+      try { if (state.war && state.war.warDraftBind) state.war.warDraftBind(vil, p.pid, p.simJob, warId); } catch (_) { }
       units.push(gu); pids.push(p.pid);
     }
   }
@@ -3069,6 +3076,10 @@ function _warEnsureFight(body) {
   const PXM = state.warLive.PX_PER_M;
   f.route = (body.pts || []).map(p => ({ x: p.x / PXM, y: p.y / PXM }));   // 행군로(공격→방어) — 측 경로가 없을 때의 우회
   w._heading = body.heading;
+  // ★[T295 ②] 군량 충족도 — battle-core 사기 항이 켜졌을 때만 읽는다(기본 끔 = 무해). 공격만 싣고 다닌다:
+  //   방어는 제 마을 곳간 위에 서 있으므로 1(넉넉).
+  f.ctx.sides.A.ration = Math.max(0, Math.min(1, (w._packRem != null ? w._packRem : 1)));
+  f.ctx.sides.B.ration = 1;
   body.fight = f;
   if (!state._warRectCells) _warBuildRectIndex();
   return f;
@@ -3085,7 +3096,7 @@ function _warInstantiateAttackers(body) {
   const w = body.w, WL = state.warLive;
   const comp = _warSampleComp(w.composition || { dagger: Math.max(1, (w.force || 2)) }, WL.MU.NPC_SAMPLE);
   const seed = (((w.id || 1) * 911 + ((w.born || 0) | 0) * 17 + 3) >>> 0);
-  const d = _warDraftPids(w.atk, comp, seed); if (!d) return;
+  const d = _warDraftPids(w.atk, comp, seed, w.id); if (!d) return;
   const g = WL.buildGroup(d.units, WL._muCompForm(w.composition), { cx: body.cmd.cx, cy: body.cmd.cy }, body.heading, seed);
   if (!g) return; g.cmd = { cx: body.cmd.cx, cy: body.cmd.cy }; g.heading = body.heading; g.detour = _warDetourFor(body);
   body.atkGroup = g; body.pids = d.pids; _warSnapToSlots(g);
@@ -3114,7 +3125,7 @@ function _warEnsureDefense(body, sortie) {   // sortie=true — 출격 결단: �
   if (!dcomp) return;
   const comp = _warSampleComp(dcomp, WL.MU.NPC_SAMPLE); comp.form = comp.form || WL.MU.DEF_FORM;
   const seed = (((w.id || 1) * 911 + ((w.born || 0) | 0) * 17 + 29) >>> 0);
-  const d = _warDraftPids(w.def, comp, seed); if (!d) return;   // 주민 0 → 무저항(돌격이 목표에 닿으면 war-core walkover)
+  const d = _warDraftPids(w.def, comp, seed, w.id); if (!d) return;   // 주민 0 → 무저항(돌격이 목표에 닿으면 war-core walkover)
   const th = Math.atan2(ac.cy - dc.cy, ac.cx - dc.cx), so = scram ? WAR_SCRAM_STANDOFF : WL.WAR_DEF_STANDOFF;
   const rally = { cx: dc.cx + Math.cos(th) * so, cy: dc.cy + Math.sin(th) * so };
   const g = WL.buildGroup(d.units, comp.form, rally, th, seed); if (!g) return;
@@ -3157,8 +3168,8 @@ function _warEngage(w, day, why) {
 //   war-core 의 내보낸 함수로만 만든다 — _opPackRefund · 상태 이름).
 function _warNoArmy(body, day) {
   const w = body.w;
-  try { state.war._opPackRefund(w.atk, w.force || 0, w._packRem); } catch (_) { }
-  w._packRem = 0; w.op = 'withdraw'; w._sortie = false; w.phase = 'return'; w.eta = day + (w.marchDays || 1);
+  // ★[T295 ②] 환급은 여기서 안 한다 — 귀환(해제) 한 곳이 넷을 다 지난다(war-core daily).
+  w.op = 'withdraw'; w._sortie = false; w.phase = 'return'; w.eta = day + (w.marchDays || 1);
   body.ended = { why: 'noArmy' };
   _warCleanupBody(body, true);
 }
@@ -3286,6 +3297,8 @@ function _warPaceReturn(body, now, dtMs) {
 // 사상 pid despawn(샘플 타겟) — players/npcs delete + npcPids 제거 + player_left(canadia 패턴).
 function _warDespawnPid(pid) {
   const { players, npcs, broadcast } = state.deps; const p = players.get(pid);
+  // ★[T295 ①] 전사 표본 — 결속만 푼다. econ 사망은 `war-core.warKill`(정산) 하나가 정본이다(사본 0 · 이중 사망 금지).
+  try { const vil = (p && p.simVillageId != null) ? state.byDbId.get(p.simVillageId) : null; if (vil && state.war && state.war.warDraftReleasePid) state.war.warDraftReleasePid(vil, pid); } catch (_) { }
   players.delete(pid); npcs.delete(pid);
   if (p && p.simVillageId != null) { const vil = state.byDbId.get(p.simVillageId); if (vil) { const k = vil.npcPids.indexOf(pid); if (k >= 0) vil.npcPids.splice(k, 1); } }
   broadcast({ type: 'player_left', pid });
@@ -3293,6 +3306,8 @@ function _warDespawnPid(pid) {
 // 출정 해제 — _muster/simWar 해제 + npcs.add(AI 복귀) + hp 회복. pid 는 npcPids 유지(syncVillagePop 재수렴).
 function _warReleasePid(pid) {
   const { players, npcs } = state.deps; const p = players.get(pid); if (!p) return;
+  // ★[T295 ①] 복귀 — 결속을 풀면 그 사람은 제 직업 자리로 돌아간다(생산 재개).
+  try { const vil = (p.simVillageId != null) ? state.byDbId.get(p.simVillageId) : null; if (vil && state.war && state.war.warDraftReleasePid) state.war.warDraftReleasePid(vil, pid); } catch (_) { }
   p._muster = false; p._muType = null; p.simWar = false; p._brout = false; p._bcmd = false; p._bt = undefined; p._bside = undefined;
   p._wpx = undefined; p._wpy = undefined;
   p.hp = p.maxHp || 100; p.vx = 0; p.vy = 0; npcs.add(pid);
@@ -5985,9 +6000,10 @@ function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(�
         if (a.hp > 0 && a.hp < mx) { a.hp = Math.min(mx, a.hp + (a._rest ? 18 * _herbMul : 6) * regenMul); if (a.hp >= mx) a._rest = 0; }   // 만피 회복 시 요양 해제(히스테리시스) — 요양만 약재 가속
         labSum += a._rest ? 0 : (0.6 + 0.4 * Math.max(0, a.hp || 0) / mx);   // 노동력: 요양=0, 부상=0.6~1.0(hp율)
       }
-      const _day = state.dayMs ? gameDayOf(_dayNow()) : 0;
-      const _mobF = (econ._warMobUntil && _day < econ._warMobUntil) ? Math.max(0.2, 1 - (econ._warMobFrac || 0)) : 1;   // 전쟁 동원: 차출자 생산 정지
-      if (_as.length) econ._laborMul = (labSum / _as.length) * _mobF;   // 엔진 v2 미소비(재인라인 시 자동 활성) — 랩 s.econ._laborMul 동형
+      // ★★[T295 ①] **동원 항(_mobF)을 걷어냈다.** 징발자는 이제 econ 에서 자리를 비우고 생산 루프가 그 사람을
+      //   통째로 건너뛴다(`_warDraft`) — 여기서 또 곱하면 같은 대가를 두 번 문다.
+      //   `_laborMul` 은 **부상 노동력**의 것으로 남는다(요양=0 · 부상=hp율) — 엔진 생산 줄이 이 값을 읽는다.
+      if (_as.length) econ._laborMul = (labSum / _as.length);   // 랩 s.econ._laborMul 동형(부상만)
       const _hn = _as.reduce((k2, a) => k2 + (a.simJob === 'hunter' ? 1 : 0), 0);
       const _hev = vil._hEvD || 0; vil._hEvD = 0;   // 사냥 위험 학습(EMA α.05 ~20일 기억): 평온=0.03 수렴 — wildlife hurtNPC가 가중일 기록 시 자동 반영
       if (_hn > 0) econ._huntRisk = Math.min(0.6, (econ._huntRisk === undefined ? 0.08 : econ._huntRisk) * 0.95 + Math.max(0.03, Math.min(0.6, _hev / _hn * 0.5)) * 0.05);

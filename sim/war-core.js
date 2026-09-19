@@ -2,7 +2,7 @@
 // war-core.js — 전쟁실험실.html 의 NPC 마을 전쟁 "경제 층"만 순수 추출(P1).
 //   ★[P1 범위] 경제 층만: 명분(casus·J)·원한 EMA·트라우마·개인편성(conscript)·동원(warMobilize)·
 //     headless 전투 판정(battle-core createBattle)·결과 되먹임(약탈·조공·warKill·노획·품질 가중평균)·
-//     동원 생산정지(_laborMul)·봉쇄(_siegeBlock)·원한 교역제재(_grudgeBlock).
+//     ★[T295] 동원의 대가(징발 결속 — 생산에서 빠진다)·군량 적재/환급·봉쇄(_siegeBlock)·원한 교역제재(_grudgeBlock).
 //   ★[P1 제외] 전투 실체·개별 병사·행군·맵 좌표·broadcast·렌더·포로 이송 — 전부 P2~P4(호스트).
 //   ★[2파 재동기 2026-07-12] 공성 결단·siege 상태머신은 이제 이 모듈이 소유(§15 작전층 — 랩 블록B 7890~8140의
 //     일 단위 어댑터): march→camp→{assault|siege|withdraw}, 자동 개전 폐지(eta=도착·결단), 공성팩, 방어 3택+sortie,
@@ -437,6 +437,91 @@ function _opDefOdds(defVil, atkForce) {
 function _opDefEstPack(force) { return Math.max(8, Math.min(14, WAR_SIEGE_PACK * (1 - 0.004 * ((force || 20) - 20)))); }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// ★★[T295 2026-09-19] 동원의 대가 — ① 징발자는 생산에서 빠진다 · ② 군량은 한 번 싣고 한 곳에서 돌려준다
+//   재민 캐논(09-17): *"일을 안 하니 자연히 동결"* · *"규모 비례 적재 → 부족하면 사기↓ → 복귀 시 잔량 곳간 복귀
+//   (끝난 방식과 무관)"*.
+//
+// ⓐ **결속의 정본은 존 pid 다**(PM 판정). 호스트(`server/villages.js _warDraftPids`)가 걷는 병사를 뽑을 때마다
+//    `warDraftBind(vil, pid, simJob)` 을 부른다 — 여기서 econ npc 하나를 골라 마크(`_warDraft`)를 붙이고
+//    `counts` 에서 뺀다(**직업 자리 비움** · 복귀하면 그 자리로 돌아온다). 반대 방향은 없다:
+//    econ 이 먼저 사람을 고르고 pid 를 찾는 길은 안 만들었다.
+// ⓑ **물리 병사는 표본이고 econ 되먹임은 전량이다**(종전 규약 · `_warSampleComp` 머리 주석). 그래서 pid 가 붙지
+//    않은 나머지 병력은 `warDraftFill(vil, n)` 이 같은 마크로 채운다 — 화면 표본이 경제의 대가를 깎지 않는다.
+// ⓒ **생산 제외는 econ 엔진 한 줄**(`economy-sim.js` 생산 루프 `if (npc._warDraft) continue`) — 교역 원정
+//    (`_tradingUntil`)과 **같은 자리·같은 문법**이다. 이 감산이 옛 `_laborMul` 동원 항을 **대체**한다.
+// ⓓ **사망은 econ 정본 경로 하나**(`_warRemoveNpc` — `warKill` 이 부르는 그 함수). 자리를 이미 비운 징발자면
+//    `counts` 를 두 번 빼지 않는다.
+// ⚠전쟁이 없는 세계(랩·3시드 판)엔 마크가 하나도 없다 ⇒ 이 절 전체가 **종전 비트**다.
+// ═══════════════════════════════════════════════════════════════════════════
+// 한 사람을 econ 에서 빼는 자리(사망) — 사본 0.
+function _warRemoveNpc(e, npc) {
+  if (!e || !e.npcs || !npc) return false;
+  const j = e.npcs.indexOf(npc); if (j < 0) return false;
+  e.npcs.splice(j, 1);
+  if (e.counts && npc.currentJob && !npc._warDraft) e.counts[npc.currentJob] = Math.max(0, (e.counts[npc.currentJob] || 0) - 1);
+  if (npc._warDraft) { delete npc._warDraft; if (npc._warPid != null) delete npc._warPid; }   // 비워 둔 자리는 안 돌려준다(전사)
+  return true;
+}
+// 징발 마크 — 자리 비움(counts--). 이미 징발/포로면 건너뛴다.
+function _warDraftMark(e, npc, pid) {
+  if (!e || !npc || npc._warDraft) return false;
+  npc._warDraft = 1;
+  if (pid != null) npc._warPid = pid;
+  if (e.counts && npc.currentJob) e.counts[npc.currentJob] = Math.max(0, (e.counts[npc.currentJob] || 0) - 1);
+  return true;
+}
+// 복귀 — 같은 직업 자리로 되돌린다(직업은 애초에 안 바꿨다).
+function _warDraftUnmark(e, npc) {
+  if (!e || !npc || !npc._warDraft) return false;
+  delete npc._warDraft; if (npc._warPid != null) delete npc._warPid;
+  if (e.counts && npc.currentJob) e.counts[npc.currentJob] = (e.counts[npc.currentJob] || 0) + 1;
+  return true;
+}
+// 징발 후보 — 같은 직업 자유민 우선(pid 의 simJob = econ counts 비례 배정이라 대개 맞는다) → 없으면 아무 자유민.
+//   ⚠마을을 비우지 않는다: 남는 비징발 주민이 1명 미만이 되면 안 뽑는다(전멸 방지 — warKill 의 ≥1 과 같은 꼴).
+function _warDraftPick(e, job) {
+  if (!e || !e.npcs || e.npcs.length < 2) return null;
+  let free = 0, first = null, same = null;
+  for (const n of e.npcs) {
+    if (n._warDraft || n.captive) continue;
+    free++;
+    if (!first) first = n;
+    if (!same && n.currentJob === job) same = n;
+  }
+  if (free <= 1) return null;
+  return same || first;
+}
+// ═══════════ ★[T295 ②③] 군량 — 적재·환급 한 곳 · 곳간 품목은 섭식 정본 함수가 고른다 ═══════════
+//   ⓐ **한 적재**: 행군분(marchDays×2)과 공성분(WAR_SIEGE_PACK)을 **한 번에** 싣는다 — 병력 × 일수 × WAR_RATION
+//     (전부 기존 상수 · 새 수 0). 종전엔 `warMobilize` 가 행군분을 곳간에서 빼고 `_opPackLoad` 가 공성분을 또 뺐다.
+//   ⓑ **품목**: `storage.food` 한 칸이 아니라 마을이 실제로 먹는 순서(`economy-sim.consumeFood`)로 뗀다.
+//     호스트가 그 함수를 주입했을 때만(사본 0) — 미주입(랩·v1 CLI)이면 `food` 한 칸 = **종전 비트**.
+//     뗀 품목은 팩에 그대로 적어 두고(`w._packItems`) 환급도 그 품목 그대로 돌려준다.
+//   ⓒ **환급 한 곳**: 궤주·항복·철수·무저항 **어느 길이든** `warRationRefund(w, ...)` 하나를 지난다.
+//     죽은 병사 몫은 안 돌아온다(들고 있던 것) — 생존 비율만큼만 곳간으로.
+function _warFoodTake(e, need, foodFns) {
+  // → { got, items } · items = 품목별 실제로 뗀 양(환급이 그대로 돌려준다)
+  if (!e || !e.storage || !(need > 0)) return { got: 0, items: null };
+  if (foodFns && typeof foodFns.consumeFood === 'function') {
+    const keep = e._foodEaten; e._foodEaten = {};                 // ★오늘의 식단 장부를 안 건드린다(잠시 빌려 쓰고 되돌린다)
+    let left = need;
+    try { left = foodFns.consumeFood(e, need); } catch (_) { left = need; }
+    const items = e._foodEaten || {}; e._foodEaten = keep;
+    let any = false; for (const k in items) if (items[k] > 0) { any = true; break; }
+    return { got: Math.max(0, need - Math.max(0, left || 0)), items: any ? items : null };
+  }
+  const got = Math.max(0, Math.min(need, e.storage.food || 0));   // 폴백 — 종전 경로(곡물 한 칸)
+  e.storage.food = (e.storage.food || 0) - got;
+  return { got, items: got > 0 ? { food: got } : null };
+}
+function _warFoodGive(e, items, frac) {
+  if (!e || !e.storage || !items || !(frac > 0)) return 0;
+  let sum = 0;
+  for (const k in items) { const q = (items[k] || 0) * frac; if (q > 0) { e.storage[k] = (e.storage[k] || 0) + q; sum += q; } }
+  return sum;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // createWar({villages, world, ...}) — 일일 econ 전쟁 구동 팩토리(headless).
 //   villages: 마을 래퍼 배열 [{econ, name, ...}] (전쟁 상태는 .econ 에 저장 — serializeEcon 영속)
 //   world: econ world (world._warStats/_warWars/_warTributes/_warSeq 부착)
@@ -451,6 +536,11 @@ function createWar(opts) {
   const infoRange = opts.infoRange != null ? opts.infoRange : (world && world.infoRange) || 5000;
   const baseSeed = (opts.seed >>> 0) || (world && world.seed >>> 0) || 1;
   const userLog = typeof opts.log === 'function' ? opts.log : null;
+  // ★[T295 ③] 섭식 정본 함수 주입(사본 0) — 호스트가 `{ consumeFood }`(economy-sim 의 그 함수)를 넘긴다.
+  //   미주입이면 군량은 종전대로 `storage.food` 한 칸만 본다(랩·v1 CLI = 비트 동일).
+  const FOOD = opts.food || (typeof window !== 'undefined' && window.EconomySim) || null;
+  // 곳간 식량등가 — 주입돼 있으면 econ 정본(`totalFoodEquivalent`), 아니면 종전 근사(`warFE` 5품목).
+  const _feOf = (e) => (FOOD && typeof FOOD.totalFoodEquivalent === 'function') ? FOOD.totalFoodEquivalent(e) : warFE(e);
 
   world._warWars = world._warWars || [];
   world._warTributes = world._warTributes || [];
@@ -463,7 +553,9 @@ function createWar(opts) {
   function _battleRng(day, id) { return makeRng(hash2(baseSeed ^ 0x5ca1ab1e, hash2(day | 0, id | 0))); }
 
   // 영구 인구손실(도적 killTrader 동형·rng 주입) — ≥1 유지(전멸 방지)
-  function warKill(e, k, rng) { let r = 0; for (let i = 0; i < k && e.npcs.length > 1; i++) { const j = (rng() * e.npcs.length) | 0, npc = e.npcs.splice(j, 1)[0]; if (e.counts && npc && npc.currentJob) e.counts[npc.currentJob] = Math.max(0, (e.counts[npc.currentJob] || 0) - 1); r++; } return r; }
+  //   ★[T295] 한 사람을 빼는 자리는 `_warRemoveNpc` 하나다(사본 0) — 징발자(자리를 이미 비운 사람)면
+  //     `counts` 를 또 빼지 않는다. 징발이 없는 세계(랩·3시드 판)에선 종전과 한 글자도 다르지 않다.
+  function warKill(e, k, rng) { let r = 0; for (let i = 0; i < k && e.npcs.length > 1; i++) { const j = (rng() * e.npcs.length) | 0; if (_warRemoveNpc(e, e.npcs[j])) r++; } return r; }
 
   // 제3자 평판 전파 — J<0.5 불의 침공 관전 마을이 침략자 원한 학습(→_grudgeBlock 창발)
   function warThirdPartyRep(atkVil, defVil, J, day) {
@@ -500,7 +592,7 @@ function createWar(opts) {
     const keepAdults = Math.round((NV - 1) * WAR_HOME_KEEP_FRAC);
     const keepWar = Math.round(warriors * WAR_HOME_KEEP_WAR);
     const maxByHome = Math.max(0, (NV - 1) - Math.max(keepAdults, keepWar));
-    const foodStore = e.storage.food || 0;
+    const foodStore = _feOf(e);   // ★[T295 ③] 적재 상한도 곳간 품목 전체(식량등가) — `food` 한 칸이 아니다
     const maxByFood = Math.floor(foodStore / Math.max(1e-6, marchDays * 2 * WAR_RATION));
     const maxBySupplyDist = Math.floor((NV - 1) / (1 + WAR_SUPPLY_DIST_K * marchDays));
     const maxByEngage = WAR_ENGAGE_MAX;
@@ -529,8 +621,8 @@ function createWar(opts) {
     const plan = _warNpcMobPlan(V, U, casus, dist, day);
     if (!plan.viable) return false;
     const force = plan.forceCount, marchDays = plan.marchDays, rations = plan.rations, mode = plan.mode;
-    if ((e.storage.food || 0) < rations) return false;
-    e.storage.food -= rations; e._warMobUntil = day + marchDays * 2 + 1; e._warMobFrac = Math.min(0.8, force / NV); e._warCd = day + WAR_CD;
+    if (_feOf(e) < rations) return false;   // ★[T295 ③] 곳간 품목 전체로 본다(`food` 0 이어도 쌀·생선이 있으면 싣는다)
+    e._warMobUntil = day + marchDays * 2 + 1; e._warMobFrac = Math.min(0.8, force / NV); e._warCd = day + WAR_CD;
     const wep = Math.min(1, (e.storage.weapon || 0) / force), arm = Math.min(1, (e.storage.armor || 0) / force);
     const _mob = conscript(V, mode, { forceCount: force });
     const composition = _mob ? _mob.composition : { champion: 0, dagger: Math.max(1, force - warriors), spear: 0, pike: 0, archer: 0 };
@@ -538,8 +630,17 @@ function createWar(opts) {
     const _vetRoster = (_mob && _mob.veteranRoster) ? _mob.veteranRoster : null, stones = (_mob && _mob.stones) || 0;
     const _actualForce = _mob ? _mob.force : force;
     const _war = { id: world._warSeq++, atk: V, def: U, casus, force: _actualForce, warriors, wep, arm, composition, arrows, stones, weapQ, phase: 'march', eta: day + marchDays, marchDays, born: day, _vetRoster };
-    // ★[2파 작전층] 공성 군량 팩 적재(곳간 선차감·있는 만큼) + op 초기화 — 랩 _opInitWar의 동원 시점 전진(서버 추상층은 _mg 빌드가 없음)
-    if (WAR_OPS_ON) { _war.op = 'march'; _war._packDays = _war._packRem = _opPackLoad(V, _actualForce); }
+    // ★★[T295 ②] **한 적재** — 행군분(marchDays×2)과 공성분(WAR_SIEGE_PACK)을 한 번에 싣는다(규모 비례:
+    //   병력 × 일수 × WAR_RATION · 전부 기존 상수). 종전엔 여기 위에서 행군분을 곳간에서 먼저 빼고
+    //   `_opPackLoad` 가 공성분을 또 뺐다 — 두 장부가 갈려 행군분은 환급도 없었다(회부 ②).
+    //   WAR_OPS=0 폴백은 공성분이 없다(행군분만) — 그 팔의 결단 시계는 P1 원형 그대로다.
+    const _packDays = marchDays * 2 + (WAR_OPS_ON ? WAR_SIEGE_PACK : 0);
+    _war._packDays = _war._packRem = _opPackLoad(V, _actualForce, _packDays, _war);
+    _war._packMarch = marchDays * 2;   // 행군에 쓰는 몫(귀환까지) — 주둔 소모는 이 위에서부터 깎인다
+    if (WAR_OPS_ON) _war.op = 'march';
+    // ★★[T295 ①] 징발 — 동원한 병력만큼 econ 에서 자리를 비운다(전량 · pid 는 호스트가 나중에 붙인다).
+    //   이것이 옛 `_laborMul` 동원 항의 자리다: 생산은 이제 "사람이 없어서" 준다(엔진 한 줄).
+    _war._draftN = warDraftFill(V, _actualForce, _war.id);
     WARS.push(_war);
     st.decl++; st.byCasus[casus] = (st.byCasus[casus] || 0) + 1;
     log(day, V.name + '→' + U.name + ' 선전포고[' + casus + '·' + mode + '] 병력' + _actualForce + '(전사' + warriors + '·승산' + (plan.pWin * 100 | 0) + '%·' + plan.capReason + ')·행군' + marchDays + '일' + (WAR_OPS_ON && _war._packDays > 0 ? '·공성팩 ' + _war._packDays.toFixed(1) + '일분' : ''));
@@ -567,18 +668,81 @@ function createWar(opts) {
     }
   }
   // 군량 팩 — 적재=곳간 선차감(부족하면 있는 만큼), 잔량 '일수' 단위. 철수·항복 잔량은 환급.
-  function _opPackLoad(atkVil, force) {
+  //   ★[T295 ②] 한 적재 — `w` 를 받으면 뗀 품목을 그 전쟁에 적어 둔다(환급이 같은 품목을 돌려준다).
+  function _opPackLoad(atkVil, force, days, w) {
     const A = atkVil && atkVil.econ; const per = (force || 0) * WAR_RATION;
-    if (!A || per <= 0) return 0;
-    const got = Math.max(0, Math.min(per * WAR_SIEGE_PACK, A.storage.food || 0)); A.storage.food = (A.storage.food || 0) - got;
-    return got / per;
+    const D = (days != null) ? days : WAR_SIEGE_PACK;
+    if (!A || per <= 0 || !(D > 0)) return 0;
+    const take = _warFoodTake(A, per * D, FOOD);
+    if (w) { w._packItems = take.items; w._packLoad = take.got; w._packForce = force || 0; }
+    return take.got / per;
   }
-  function _opPackRefund(atkVil, force, remDays) { const A = atkVil && atkVil.econ; if (!A) return; const rem = Math.max(0, remDays || 0); if (rem > 0) A.storage.food = (A.storage.food || 0) + rem * (force || 0) * WAR_RATION; }
+  // 환급 한 곳 — 궤주·항복·철수·무저항 넷이 전부 이 함수를 지난다. 잔량 비율 × 생존 비율(전사자 몫은 안 돌아온다).
+  function _opPackRefund(atkVil, force, remDays, w) {
+    const A = atkVil && atkVil.econ; if (!A) return 0;
+    const rem = Math.max(0, remDays || 0); if (!(rem > 0)) return 0;
+    const per = (force || 0) * WAR_RATION; if (!(per > 0)) return 0;
+    const items = w && w._packItems, load = (w && w._packLoad) || 0;
+    const surv = (w && w._packForce > 0 && w._packSurv != null) ? Math.max(0, Math.min(1, w._packSurv / w._packForce)) : 1;   // 전사자 몫 제외
+    if (items && load > 0) return _warFoodGive(A, items, Math.min(1, (rem * per) / load) * surv);
+    A.storage.food = (A.storage.food || 0) + rem * per * surv;   // 폴백(품목 기록 없음 — 구 객체·재부팅)
+    return rem * per * surv;
+  }
+  // ═══════════ ★[T295 ①] 결속 — 호스트(존 pid)가 부르는 문 넷 ═══════════
+  //   ⚠정본은 pid 다: 아래 bind 는 **pid 가 뽑힌 뒤에만** 불린다. econ 이 먼저 고르고 pid 를 찾는 길은 없다.
+  function warDraftBind(vil, pid, job, warId) {
+    const e = vil && vil.econ; if (!e || !e.npcs) return null;
+    const id = (warId | 0) || 1;
+    // ① 동원이 이미 세어 둔 징발자(전량 fill) 중 pid 가 안 붙은 사람부터 — 같은 직업 우선.
+    let free = null;
+    for (const n of e.npcs) { if (n._warDraft !== id || n._warPid != null) continue; if (n.currentJob === job) { free = n; break; } if (!free) free = n; }
+    if (free) { free._warPid = pid; return free; }
+    // ② 없으면(방어 소집 등 동원을 안 거친 길) 새로 마크한다.
+    const npc = _warDraftPick(e, job); if (!npc) return null;
+    if (!_warDraftMark(e, npc, pid)) return null;
+    npc._warDraft = id;
+    return npc;
+  }
+  // 표본 밖 병력(pid 없는 나머지) — econ 되먹임은 전량이다.
+  function warDraftFill(vil, n, warId) {
+    const e = vil && vil.econ; let k = 0;
+    for (let i = 0; i < (n | 0); i++) { const npc = _warDraftPick(e, null); if (!npc) break; _warDraftMark(e, npc, null); npc._warDraft = (warId | 0) || 1; k++; }
+    return k;
+  }
+  function warDraftReleasePid(vil, pid) {
+    const e = vil && vil.econ; if (!e || !e.npcs || pid == null) return false;
+    for (const n of e.npcs) if (n._warPid === pid) return _warDraftUnmark(e, n);
+    return false;
+  }
+  // 전쟁 하나가 끝났다 — 그 전쟁 표식이 붙은 마크를 양쪽에서 거둔다(남은 것 청소 · 두 번 풀어도 무해).
+  function warDraftReleaseWar(w) {
+    if (!w) return 0; const id = (w.id | 0) || 1; let k = 0;
+    for (const vil of [w.atk, w.def]) { const e = vil && vil.econ; if (!e || !e.npcs) continue; for (const n of e.npcs) if (n._warDraft === id) { if (_warDraftUnmark(e, n)) k++; } }
+    return k;
+  }
+  function warDraftCount(vil) { const e = vil && vil.econ; if (!e || !e.npcs) return 0; let k = 0; for (const n of e.npcs) if (n._warDraft) k++; return k; }
+
+  // ★[T295 ③] 곳간→곳간 식량 이동(약탈·공납·조공) — 뗄 때는 섭식 정본 순서, 줄 때는 **뗀 품목 그대로**.
+  //   미주입이면 `food` 한 칸(종전 비트). 양(amount)은 **식량등가**다.
+  function _warFoodMove(fromE, toE, amount) {
+    if (!(amount > 0)) return 0;
+    const t = _warFoodTake(fromE, amount, FOOD);
+    if (t.got > 0 && toE) _warFoodGive(toE, t.items, 1);
+    return t.got;
+  }
+
+  // 정산 넷이 부르는 문 하나 — 군량을 돌려주고 팩을 비운다(두 번 돌려주지 않는다).
+  function warRationRefund(w, why, survivors) {
+    if (!w || w._packRem == null) return 0;
+    if (survivors != null) w._packSurv = Math.max(0, survivors);
+    const back = _opPackRefund(w.atk, w.force || 0, w._packRem, w);
+    w._packRem = 0; w._packItems = null; w._packLoad = 0;
+    return back;
+  }
   // 무혈 항복 공통 효과 — 조공 계약+곳간 공납(WAR_LOOT 절반·★음수 하한 0 — 빈 곳간 항복=공납 0+조공 계약만, 랩 최신 수리)·사상 0·방화 없음·원한/피로 소폭
   function _opDoSurrender(atkVil, defVil, day) {
     const A = atkVil && atkVil.econ, D = defVil && defVil.econ; if (!A || !D) return 0;
-    const take = Math.max(0, D.storage.food || 0) * WAR_LOOT * 0.5;
-    D.storage.food = (D.storage.food || 0) - take; A.storage.food = (A.storage.food || 0) + take;
+    const take = _warFoodMove(D, A, Math.max(0, _feOf(D)) * WAR_LOOT * 0.5);   // ★[T295 ③] 곳간 품목대로(식량등가)
     if (D.npcs.length > 4) _addTribute(defVil, atkVil, day);
     warAddGrudge(D, atkVil.name, WAR_GRUDGE_UP * 0.5);
     A._warFatigue = (A._warFatigue || 0) + 0.10; D._warFatigue = (D._warFatigue || 0) + 0.25;
@@ -591,7 +755,7 @@ function createWar(opts) {
   function _warWalkoverOutcome(atkVil, defVil, day, casus) {
     const A = atkVil && atkVil.econ, D = defVil && defVil.econ; if (!A || !D) return;
     const J = warJustice(A, defVil.name, casus);
-    const loot = (D.storage.food || 0) * (WAR_J_LOOT0 + WAR_J_LOOT1 * J); D.storage.food = (D.storage.food || 0) - loot; A.storage.food = (A.storage.food || 0) + loot;
+    const loot = _warFoodMove(D, A, Math.max(0, _feOf(D)) * (WAR_J_LOOT0 + WAR_J_LOOT1 * J));   // ★[T295 ③]
     for (const pg of ['tigerhide', 'hide', 'bronze', 'jade']) { if (D.storage[pg] > 0) { const q = D.storage[pg] * WAR_LOOT_PREST * (WAR_J_PREST0 + WAR_J_PREST1 * J); D.storage[pg] -= q; A.storage[pg] = (A.storage[pg] || 0) + q; } }
     if (D.npcs.length > 4) _addTribute(defVil, atkVil, day);
     warAddGrudge(D, atkVil.name, WAR_GRUDGE_UP * 0.5);
@@ -611,7 +775,8 @@ function createWar(opts) {
     else if (to === 'withdraw') {
       st.withdraw = (st.withdraw || 0) + 1;
       log(day, w.atk.name + ' → ' + w.def.name + ' 철수(' + (why || '') + ') — 도보 귀환');
-      _opPackRefund(w.atk, w.force || 0, w._packRem); w._packRem = 0;
+      // ★[T295 ②] 환급은 여기가 아니다 — **복귀(해제) 한 곳**이다(재민 캐논 *"복귀 시 잔량 곳간 복귀"*).
+      //   귀환 행군에도 먹으므로 남는 몫은 집에 닿을 때 정해진다.
       w._sortie = false; w.phase = 'return'; w.eta = day + (w.marchDays || 1);
     }
   }
@@ -623,7 +788,9 @@ function createWar(opts) {
     const rng = makeRng((((w.id || 1) * 7919 + (day | 0) * 131 + 17) >>> 0));
     const D = w.def && w.def.econ;
     const defFoodEst = (D ? warFE(D) / Math.max(1, D.npcs.length) : 99) * (0.75 + 0.5 * rng());   // 정찰 추정(±25% 결정론 노이즈 — 정보 비대칭)
-    const pack = (w._packRem != null) ? w._packRem : 0;
+    // ★[T295 ②] 결단이 보는 군량 = 팩 잔량 − **귀환 행군 몫**(marchDays). 한 적재로 바뀌어도 문턱(WAR_PACK_CRIT
+    //   ·소모전 비교)이 보던 수는 그대로다: 도착일 잔량 = marchDays+공성분 − 귀환 몫 = 공성분(종전 값).
+    const pack = Math.max(0, ((w._packRem != null) ? w._packRem : 0) - (w.marchDays || 0));
     // ★[포로 EU] 돌격만 포로를 낳는다 — 기대 포로 가치만큼 돌격 문턱 소폭 완화(상한 0.05). WAR_CAP_EU=0(3파 전)이면 0.
     const _capB = Math.min(0.05, (D && D.npcs ? D.npcs.length : 0) * WAR_CAS_BASE * WAR_CAP_FRAC * WAR_CAP_EU / 800);
     if (w._opPolicy === 'siege') { if (pack < WAR_PACK_CRIT) _opTransNPC(w, 'withdraw', day, '군량 소진(봉쇄 전용 정책)'); else _opTransNPC(w, 'siege', day, '정책'); return; }
@@ -644,8 +811,7 @@ function createWar(opts) {
     if (_opDefOdds(w.def, w.force || 0) >= _oddsTh) return false;
     _opDoSurrender(w.atk, w.def, day);
     _opSetSiege(w, false, day);
-    _opPackRefund(w.atk, w.force || 0, w._packRem); w._packRem = 0;
-    w.op = 'withdraw'; w._sortie = false; w.phase = 'return'; w.eta = day + (w.marchDays || 1);
+    w.op = 'withdraw'; w._sortie = false; w.phase = 'return'; w.eta = day + (w.marchDays || 1);   // ★[T295] 환급은 복귀 한 곳
     return true;
   }
   // 방어 태세 결정(3택 중 ①②) — respond(응전)/hold(버티기). ③위협 소멸 해산 = phase 전환이 소유.
@@ -772,6 +938,8 @@ function createWar(opts) {
     warCaptiveIntake(_capWinnerVil, _cap.take);
     { const _aSet = new Set(A.npcs); if (w._vetRoster) warVeteranGrowth(A, w._vetRoster.filter(it => _aSet.has(it.npc))); const _dSet = new Set(D.npcs), _dvet = (_spec._defComp && _spec._defComp.veteranRoster) || null; if (_dvet) warVeteranGrowth(D, _dvet.filter(it => _dSet.has(it.npc))); }
     w.atk.pop = A.npcs.length; w.def.pop = D.npcs.length;
+    w._packSurv = Math.max(0, _res.atkSurv || 0);   // ★[T295 ②] 전사자 몫은 안 돌아온다(들고 있던 것) — 환급은 생존 비율만큼
+
     const lc = atkWin ? defCas : atkCas, wc = atkWin ? atkCas : defCas;
     A._warFatigue = (A._warFatigue || 0) + atkCas * WAR_FAT_CAS; D._warFatigue = (D._warFatigue || 0) + defCas * WAR_FAT_CAS;
     warAddGrudge(D, w.atk.name, WAR_GRUDGE_UP + defCas * WAR_GRUDGE_CAS);
@@ -779,7 +947,7 @@ function createWar(opts) {
     let outcome = '격퇴';
     if (atkWin) {
       st.atkWin++; warAddTrauma(A, w.def.name, -0.4);
-      const loot = (D.storage.food || 0) * (WAR_J_LOOT0 + WAR_J_LOOT1 * J); D.storage.food = (D.storage.food || 0) - loot; A.storage.food = (A.storage.food || 0) + loot; st.loot++; outcome = '약탈곡물' + loot.toFixed(0) + '(J ' + J.toFixed(2) + ')';
+      const loot = _warFoodMove(D, A, Math.max(0, _feOf(D)) * (WAR_J_LOOT0 + WAR_J_LOOT1 * J)); st.loot++;   // ★[T295 ③] outcome = '약탈곡물' + loot.toFixed(0) + '(J ' + J.toFixed(2) + ')';
       for (const pg of ['tigerhide', 'hide', 'bronze', 'jade']) { if (D.storage[pg] > 0) { const t = D.storage[pg] * WAR_LOOT_PREST * (WAR_J_PREST0 + WAR_J_PREST1 * J); D.storage[pg] -= t; A.storage[pg] = (A.storage[pg] || 0) + t; } }
       if (w.casus === 'feud') { warAddGrudge(A, w.def.name, -1); outcome += ' +원한해소'; }
       else if (w.casus === 'territory') { A._terrSat = day + 720; outcome += ' +경계양보(2년)'; }
@@ -805,10 +973,6 @@ function createWar(opts) {
     else { for (const w of WARS) if (w.phase === 'march' && w.def && w.def.econ) under.add(w.def.econ); }
     for (const vil of villages) { const e = vil.econ; if (!e) continue; if (under.has(e)) { e._siegeBlock = true; e._siegeOutMul = WAR_SIEGE_OUTMUL; } else { if (e._siegeBlock) delete e._siegeBlock; if (e._siegeOutMul != null) delete e._siegeOutMul; } }
   }
-  // 동원 생산정지(_laborMul) 재계산 — 동원 창 내 = max(0.2, 1−mobFrac), 아니면 1(무해)
-  function _recomputeLabor(day) {
-    for (const vil of villages) { const e = vil.econ; if (!e) continue; e._laborMul = (e._warMobUntil && day < e._warMobUntil) ? Math.max(0.2, 1 - (e._warMobFrac || 0)) : 1; }
-  }
 
   // ═══════════ 일일 driver (전쟁실험실 warDaily 의 econ·headless 경로) ═══════════
   function daily(day) {
@@ -828,7 +992,7 @@ function createWar(opts) {
     // 2) 조공 징수(90일마다 곳간 8%)
     for (let i = TRIBUTES.length - 1; i >= 0; i--) {
       const t = TRIBUTES[i]; if (day >= t.until) { TRIBUTES.splice(i, 1); _syncTribToEcon(t.payer); continue; }
-      if (day >= t.next) { const P = t.payer.econ, Q = t.payee.econ; if (P && Q) { const take = Math.min((P.storage.food || 0) * WAR_TRIB_RATE, P.storage.food || 0); if (take > 1) { P.storage.food -= take; Q.storage.food = (Q.storage.food || 0) + take; t.next = day + WAR_TRIB_INT; st.tribute++; if (warFE(P) / Math.max(1, P.npcs.length) > WAR_FOOD_RICH * 0.7) { warAddGrudge(Q, t.payer.name, WAR_GRUDGE_UP); TRIBUTES.splice(i, 1); _syncTribToEcon(t.payer); log(day, t.payer.name + ' 조공 거부(회복) → ' + t.payee.name + ' 원한'); } else { _syncTribToEcon(t.payer); log(day, '조공 ' + t.payer.name + '→' + t.payee.name + ' 곡물' + take.toFixed(0)); } } } }
+      if (day >= t.next) { const P = t.payer.econ, Q = t.payee.econ; if (P && Q) { const _want = Math.max(0, _feOf(P)) * WAR_TRIB_RATE; if (_want > 1) { const take = _warFoodMove(P, Q, _want);   /* ★[T295 ③] */ t.next = day + WAR_TRIB_INT; st.tribute++; if (warFE(P) / Math.max(1, P.npcs.length) > WAR_FOOD_RICH * 0.7) { warAddGrudge(Q, t.payer.name, WAR_GRUDGE_UP); TRIBUTES.splice(i, 1); _syncTribToEcon(t.payer); log(day, t.payer.name + ' 조공 거부(회복) → ' + t.payee.name + ' 원한'); } else { _syncTribToEcon(t.payer); log(day, '조공 ' + t.payer.name + '→' + t.payee.name + ' 곡물' + take.toFixed(0)); } } } }
     }
     // 2.5) ★[3파 포로] 일일 처리(동화·탈출·몸값·이송 — 포로 0이면 사실상 no-op·랩 warDaily 위치 정합)
     warCaptiveDaily(day);
@@ -840,6 +1004,7 @@ function createWar(opts) {
         if (!WAR_OPS_ON) { if (day < w.eta) continue; warResolveBattle(w, day); w.phase = 'return'; w.eta = day + w.marchDays; continue; }   // P1 폴백(구 궤적 그대로)
         if (w.op == null) w.op = 'march';   // 방어적(훅 경로·구 객체)
         if (w.op === 'march') {
+          w._packRem = Math.max(0, (w._packRem || 0) - 1);   // ★[T295 ②] 행군에도 먹는다(한 적재 — 행군분이 팩 안에 있다)
           if (day < w.eta) continue;   // 행군 중
           w.op = 'camp'; w._arriveDay = day;
           log(day, w.atk.name + ' → ' + w.def.name + ' 앞 도착(포위 결정 링) — 주둔·결단');
@@ -854,7 +1019,16 @@ function createWar(opts) {
         if (w.op === 'assault' && w.phase === 'march') _opResolveEngage(w, day, 'assault');
       }
       else if (w.phase === 'battle') { /* ★[P2 LOD] 실체 전투(server/war-live) 진행 중 — 상태머신이 판정·되먹임(warResolveBattle 3인자)·귀환 전환 담당. daily 관여 안 함(랩 warDaily 정합). */ }
-      else { if (day < w.eta) continue; const e = w.atk.econ; if (e) { e._warMobUntil = 0; e._warMobFrac = 0; } WARS.splice(i, 1); }
+      else {
+        // 귀환 중 — 도착까지도 먹는다. 닿으면 ★[T295 ②] **환급 한 곳**(넷 다 이 문을 지난다) + 징발 해제.
+        if (day < w.eta) { w._packRem = Math.max(0, (w._packRem || 0) - 1); continue; }
+        const e = w.atk.econ;
+        const _back = warRationRefund(w, 'return');
+        const _rel = warDraftReleaseWar(w);
+        if (e) { e._warMobUntil = 0; e._warMobFrac = 0; }
+        if (_back > 0 || _rel > 0) log(day, w.atk.name + ' 귀환 — 군량 잔량 ' + _back.toFixed(0) + ' 곳간 복귀 · 징발 해제 ' + _rel + '명');
+        WARS.splice(i, 1);
+      }
     }
     // 4) 원한 교역제재 발행(원한>문턱 상대 교역 기피)
     grudgeBlockSweep(day);
@@ -889,10 +1063,11 @@ function createWar(opts) {
       if (best && bestU > WAR_UTIL_TH && rng() < 0.05 * seasonMul) warMobilize(V, best.U, best.casus, best.d, day);
     }
     }
-    // 6) 봉쇄(_siegeBlock)·동원 생산정지(_laborMul) 재계산 — 이번 tick 신규 선포까지 반영(다음 econ 틱 적용).
-    //   march 중 방어=봉쇄, 동원창(_warMobUntil) 내 공격=생산정지. 비활성 econ은 _laborMul=1(무해 복귀).
+    // 6) 봉쇄(_siegeBlock) 재계산 — 이번 tick 신규 선포까지 반영(다음 econ 틱 적용). march 중 방어=봉쇄.
+    //   ★[T295 ①] **동원 생산정지(`_laborMul`) 재계산은 없앴다** — 생산은 이제 징발된 사람이 빠져서 준다
+    //     (`economy-sim` 생산 루프 `_warDraft` 한 줄). 두 기구가 겹치면 같은 대가를 두 번 물린다.
+    //     `_laborMul` 자체는 **부상 노동력**(생활층 `villages.js` 가 쓴다)의 것으로 남는다 — 이 파일은 안 쓴다.
     _recomputeSiege();
-    _recomputeLabor(day);
     st.active = WARS.length; st.tributes = TRIBUTES.length;
   }
 
@@ -909,6 +1084,8 @@ function createWar(opts) {
     grudgeBlockSweep, rebuildFromEcon, warTickWeaponSkills: (e) => warTickWeaponSkills(e),
     // ★[2파 작전층] 게이트·프로브 접점(호스트 villages.js가 OPS_ON으로 P3 게이팅)
     OPS_ON: WAR_OPS_ON, _opNpcDecide, _opCheckSurrender, _opDefenseDaily, _warWalkoverOutcome, _opDoSurrender, _opSetSiege, _opPackLoad, _opPackRefund,
+    // ★[T295] 동원의 대가 — 결속(pid 정본) · 군량 환급 한 곳. 호스트(server/villages.js)와 하네스가 이 문만 쓴다.
+    warDraftBind, warDraftFill, warDraftReleasePid, warDraftReleaseWar, warDraftCount, warRationRefund,
     // ★[3파 포로] 접점
     CAP_ON: WAR_CAP_ON, warCaptiveDaily,
     get WARS() { return WARS; }, get TRIBUTES() { return TRIBUTES; },

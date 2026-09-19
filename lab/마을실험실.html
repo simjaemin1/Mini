@@ -2964,6 +2964,10 @@ function workNPC(npc) {
 
 // 직업 전환 — currentJob만 바뀜. skill/trait/xp 모두 보존 (NPC는 영구 학습).
 function switchNPCJob(npc, newJob, day, v) {
+  // ★[T295 ①] 징발자는 마을에 없다 — 아무도 그 사람의 일을 바꿀 수 없다(자리는 이미 비어 있다).
+  //   ⚠이 한 줄이 없으면 비운 자리를 전환이 또 세어 `counts` 합이 인구를 넘는다(실측 30명 마을에 31).
+  //   전쟁이 없으면 마크가 없다 = 종전 비트.
+  if (npc._warDraft) return;
   const oldJob = npc.currentJob;
   if (v) {
     v.counts[oldJob] = (v.counts[oldJob] || 0) - 1;
@@ -3647,6 +3651,12 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
   v._forageScale = _forageScale;   // ★저장(§9): 채집 한계가치(픽커·기회비용)가 임연부 MSY 포화를 보게 — 포화 임연부에 herb 가격이 채집꾼을 무한 유인(공유지 비극)하는 것 차단
   for (const npc of v.npcs) {
     if (npc._tradingUntil && npc._tradingUntil > day) continue;   // ★교역 원정 중 → 생산 안 함(기회비용 실현). 저숙련자라 손실 작음.
+    // ★★[T295 2026-09-19] **징발자는 생산에서 빠진다** — 걷는 병사(존 pid)와 1:1 로 묶인 이 NPC 는
+    //   지금 마을에 없다(행군·주둔·교전 중). 재민 캐논 *"일을 안 하니 자연히 동결"* 이 이 한 줄이다.
+    //   ⚠**교역 원정과 같은 자리·같은 문법**이다(위 줄) — 새 기구 0. 마크는 호스트(전쟁 층)가 붙이고 떼며,
+    //     `counts` 는 마크 붙일 때 이미 비웠다(직업 자리 비움 — 복귀 때 되돌린다).
+    //   ⚠전쟁이 없는 세계(랩·3시드 판)엔 마크가 없다 ⇒ 이 줄은 안 돈다 = **종전 비트 동일**.
+    if (npc._warDraft) continue;
     const jdef = JOBS[npc.currentJob];
     const f = jdef.field;
     const skillLvl = npc.skills[f] || 0;   // ★신설 필드(tailoring) 구세계 NPC 호환 — undefined면 0(NaN 전염 방지)
@@ -4610,10 +4620,13 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
   }
   while (v._dPAccum <= -1 && v.npcs.length > POP_MIN) {
     v._deathsToday++; v._deadTot = (v._deadTot || 0) + 1;
-    let oldestIdx = 0;
-    for (let i = 1; i < v.npcs.length; i++) {
-      if (v.npcs[i].age > v.npcs[oldestIdx].age) oldestIdx = i;
+    // ★[T295 ①] 원정 나간 사람은 마을 기근으로 죽지 않는다(그 사람의 죽음은 전쟁 정산이 소유한다 — 사본 0).
+    let oldestIdx = -1;
+    for (let i = 0; i < v.npcs.length; i++) {
+      if (v.npcs[i]._warDraft) continue;
+      if (oldestIdx < 0 || v.npcs[i].age > v.npcs[oldestIdx].age) oldestIdx = i;
     }
+    if (oldestIdx < 0) break;   // 전부 징발 중(있을 수 없다 — 동원 상한이 N−2) — 그래도 장부는 안 건드린다
     const dead = v.npcs.splice(oldestIdx, 1)[0];
     v.counts[dead.currentJob] = (v.counts[dead.currentJob] || 0) - 1;
     v._dPAccum += 1;
@@ -5742,10 +5755,12 @@ function tickMigration(world, day) {
     }
     if (!best) continue;
     // 가장 젊은 NPC 1명 이주
-    let youngestIdx = 0;
-    for (let i = 1; i < src.npcs.length; i++) {
-      if (src.npcs[i].age < src.npcs[youngestIdx].age) youngestIdx = i;
+    let youngestIdx = -1;
+    for (let i = 0; i < src.npcs.length; i++) {
+      if (src.npcs[i]._warDraft) continue;   // ★[T295 ①] 원정 중인 사람은 이주하지 않는다(마을에 없다)
+      if (youngestIdx < 0 || src.npcs[i].age < src.npcs[youngestIdx].age) youngestIdx = i;
     }
+    if (youngestIdx < 0) continue;
     const npc = src.npcs.splice(youngestIdx, 1)[0];
     src.counts[npc.currentJob] = (src.counts[npc.currentJob] || 0) - 1;
     // 도착 마을에서 새 직업 (pickInitialJob)
