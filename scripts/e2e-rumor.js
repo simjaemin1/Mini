@@ -342,6 +342,110 @@ async function waitHttp(url, tries = 900) {
   ok(!!(brief3 && brief3.returned === false), '⑧ 같은 접속에서 두 번째부터는 부재 요약을 반복하지 않는다',
     brief3 ? `returned=${brief3.returned}` : 'X');
 
+
+  // ── ★★[T327 2026-09-19] ⑦d2 **순서 무관** — 같은 입력 집합을 **두 순서**로 ───────────
+  //   위 ⑦d2 는 "부재가 지워지지 않았다"를 **한 순서로만** 잰다. 그런데 T304 §0-ⓑ-3 이 잡은 것은
+  //   값이 아니라 **경주**다: 클라는 입장 직후 소켓을 한 번 갈아 끼우는데(`ensurePrimaryConnection`
+  //   의 close→connect), 서버가 그 둘을 어느 순서로 처리하느냐에 따라 답이 갈렸다.
+  //     · connect 가 먼저 → 살아 있는 몸을 승계(`_takeover`)하며 옛 기준일이 따라온다
+  //     · close 가 먼저  → 승계할 몸이 없고 **저장본이 유일한 진실**인데, 그 저장본이 오늘로 덮였다
+  //   ⇒ 그래서 **느린 밤에만** 빨갰다(09-18). 한 순서만 재는 자는 이 결함을 영원히 못 본다(족보 130).
+  //
+  // ★왜 여기만 원시 WebSocket 인가 — 브라우저로는 그 순서를 **만들 수도 확인할 수도 없다**
+  //   (워치독이 제 마음대로 끊고, 어느 쪽이 먼저 처리됐는지 클라는 모른다). `ws` 로 붙으면
+  //   "닫지 않고 두 번째를 연다"(겹침)와 "close 의 저장이 **착지한 것을 보고** 두 번째를 연다"를
+  //   내가 직접 만든다. `test-guest-rejoin` 이 B-6 을 자를 때 쓴 그 칼이다.
+  // ★★고정 대기 0 — 두 순서 모두 **관측으로** 확정한다:
+  //     · 겹침 = 옛 세션이 `kicked: duplicate_login` 을 실제로 받았다
+  //     · 닫힘 = central 행의 `last_x` 가 표식 좌표로 바뀌었다. `teleport_debug` 는 저장을 안 부르므로
+  //       (zone.js 그 분기에 `savePlayer` 없음) 그 좌표가 행에 뜨면 **close 의 저장이 착지한 것**이다.
+  //       ⚠`lastSeenDay` 로는 못 센다 — 고친 뒤엔 값이 안 바뀌어 영원히 기다리게 된다(자가 제품을 가정하면 안 된다).
+  {
+    await freeze(false);
+    const WSK = require(path.join(ROOT, 'node_modules', 'ws'));
+    const cdb = new DatabaseSync(CDB);
+    // central 행의 정본을 **그대로** 읽는다(사본 0). 기준일은 `tools_json` 안이다(`serializeBody`).
+    const savedOf = (pid) => {
+      try {
+        const r = cdb.prepare('SELECT tools_json, last_x FROM players WHERE player_id = ?').get(pid);
+        if (!r) return null;
+        const t = JSON.parse(r.tools_json || '{}');
+        return { day: Number.isFinite(t.lastSeenDay) ? (t.lastSeenDay | 0) : null, x: r.last_x };
+      } catch (e) { return null; }
+    };
+    const rawOpen = (token) => {
+      const url = `ws://localhost:${ZPORT}` + (token ? `?guest_token=${encodeURIComponent(token)}` : '');
+      const s = { ws: new WSK(url), pid: null, playerId: null, guestToken: null, pos: null, kicked: null, welcomed: false, brief: undefined };
+      s.ws.on('message', (d) => {
+        let m; try { m = JSON.parse(d.toString()); } catch (e) { return; }
+        if (m.type === 'welcome') { s.welcomed = true; s.pid = m.pid; s.playerId = m.playerId || null; s.guestToken = m.guestToken || null; }
+        else if (m.type === 'tick' && s.pid) { const me = (m.players || []).find((p) => p.pid === s.pid); if (me) s.pos = { x: me.x, y: me.y }; }
+        else if (m.type === 'kicked') { s.kicked = m.reason || 'kicked'; }
+        else if (m.type === 'village_brief') { s.brief = m.brief; }
+      });
+      s.send = (o) => { try { if (s.ws.readyState === 1) s.ws.send(JSON.stringify(o)); } catch (e) {} };
+      s.close = () => { try { s.ws.close(); } catch (e) {} };
+      s.ready = new Promise((res, rej) => { s.ws.on('open', res); s.ws.on('error', rej); });
+      return s;
+    };
+    const rawWel = async (s, ms = 20000) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (s.welcomed && s.pos) return true; await sleep(100); } return false; };
+    const until = async (f, ms = 30000) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { const v = await f(); if (v) return v; await sleep(150); } return null; };
+    const [bpx, bpy] = px(B);
+    const MARK0 = 500, MARK1 = 777;            // 좌표 표식 둘 — 어느 저장이 착지했는지 가른다
+
+    async function orderArm(closeFirst) {
+      const tag = closeFirst ? 'close먼저' : 'conn먼저';
+      const s0 = rawOpen(null); await s0.ready; await rawWel(s0);
+      const token = s0.guestToken, pid = s0.playerId;
+      // ★마을에서 멀리 — 재접속 스폰이 게이트 밖이어야 브리핑이 내가 청할 때 난다(위 ⑦0 과 같은 이유)
+      s0.send({ type: 'teleport_debug', x: MARK0, y: MARK0 }); await sleep(800);
+      s0.close();
+      const landed0 = await until(async () => { const v = savedOf(pid); return (v && Math.abs((v.x || 0) - MARK0) < 2) ? v : null; });
+      const d0 = landed0 ? landed0.day : null;
+      // ★게임일을 흘린다 — 이게 "자리를 비웠다"의 정의다(0.5초/일)
+      await sleep(5000);
+      // 갈아 끼우기 — 여기서만 두 팔이 갈린다
+      const s1 = rawOpen(token); await s1.ready; await rawWel(s1);
+      s1.send({ type: 'teleport_debug', x: MARK1, y: MARK1 }); await sleep(700);
+      let s2, branch = null;
+      if (closeFirst) {
+        s1.close();
+        const l1 = await until(async () => { const v = savedOf(pid); return (v && Math.abs((v.x || 0) - MARK1) < 2) ? v : null; });
+        branch = l1 ? `close 저장 착지(기준일 ${l1.day})` : null;
+        s2 = rawOpen(token); await s2.ready; await rawWel(s2);
+      } else {
+        s2 = rawOpen(token); await s2.ready; await rawWel(s2);   // ★닫지 않고 둘째를 연다 = connect 먼저
+        branch = await until(async () => s1.kicked, 15000);
+        s1.close(); await sleep(600);
+      }
+      s2.send({ type: 'teleport_debug', x: bpx, y: bpy }); await sleep(900);
+      s2.brief = undefined; s2.send({ type: 'village_brief', vid: B.id });
+      await until(async () => s2.brief !== undefined, 20000);
+      const br = s2.brief || null;
+      s2.close();
+      const day = br ? (br.day | 0) : null;
+      return { tag, branch, d0, day, elapsed: (day != null && d0 != null) ? day - d0 : null,
+               absent: br && br.returned ? (br.absentDays | 0) : null, returned: !!(br && br.returned) };
+    }
+
+    const armC = await orderArm(false);     // connect 먼저(겹침)
+    const armX = await orderArm(true);      // close 먼저
+    const show = (r) => `기준일 ${r.d0} → 오늘 ${r.day}(실제 ${r.elapsed}일) · 보고 ${r.absent}일 · ${r.branch || '갈래 미확인'}`;
+    ok(armC.branch === 'duplicate_login', '⑦d2-a 전제: connect 먼저 팔이 **겹침 갈래를 실제로 밟았다**(옛 세션이 중복으로 끊겼다)', String(armC.branch));
+    ok(!!armX.branch, '⑦d2-b 전제: close 먼저 팔에서 **close 의 저장이 실제로 착지했다**(그 뒤에 둘째 소켓을 열었다)', String(armX.branch));
+    ok(armC.elapsed >= 4 && armX.elapsed >= 4, '⑦d2-c 전제: 두 팔 다 **게임일이 실제로 흘렀다**(자명 통과 방지)',
+      `conn ${armC.elapsed}일 · close ${armX.elapsed}일`);
+    ok(armC.returned && armX.returned, '⑦d2-d 전제: 두 팔 다 복귀 브리핑이 났다', `conn ${armC.returned} · close ${armX.returned}`);
+    const defC = (armC.elapsed != null && armC.absent != null) ? armC.elapsed - armC.absent : null;
+    const defX = (armX.elapsed != null && armX.absent != null) ? armX.elapsed - armX.absent : null;
+    ok(defC != null && defC <= 1, '⑦d2-① connect 먼저(겹침) — 부재가 실제만큼 남는다', show(armC));
+    ok(defX != null && defX <= 1, '⑦d2-② close 먼저 — 부재가 실제만큼 남는다(고치기 전엔 여기가 0일이었다)', show(armX));
+    ok(defC != null && defX != null && Math.abs(defC - defX) <= 1,
+      '⑦d2 ★★**순서가 답을 안 바꾼다** — 같은 입력 집합을 두 순서로 돌려 같은 답(승계가 도착 순에 안 기댄다)',
+      `누락 conn ${defC}일 vs close ${defX}일`);
+    try { cdb.close(); } catch (e) {}
+  }
+
   // ── ★[T50 2026-09-02] ⑨ 세계의 "일"도 **같은 길로** 걸어온다 ────────────────────────
   //   유형만 더했지 소문 층은 한 줄도 안 고쳤다 — 그 주장을 새 유형 하나로 확인한다.
   //   ⚠사건을 심지 않는다. A 마을에 **가뭄을 부르고**(econ `_weather`), 사건은 장부가 스스로 낸다.

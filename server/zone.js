@@ -508,8 +508,10 @@ function parseBody(raw, opts) {
 //   승계가 안 걸린다 — 그러면 저장본이 유일한 진실이고, 그 저장본이 이미 거짓이 되어 있다.
 //   (`e2e-rumor` 가 러너 연속 실행에서만 그 갈래를 밟았다 — 족보 ㊾ 의 "부하 의존" 이 아니라 **경합**이었다.)
 //   ⇒ 브리핑으로 **전해질 때까지** 기준일을 붙잡아 둔다. 전한 뒤에는 평소대로 오늘을 찍는다.
-//   ⇒ 접속을 끊을 때는 close 핸들러가 `player.lastSeenDay` 를 **그날로 먼저 찍으므로**,
-//     "마을에 한 번도 안 들른 채 로그아웃" 해도 다음 부재는 로그아웃 시점부터 센다.
+//   ⇒ 접속을 끊을 때도 close 핸들러가 **이 함수를 쓴다**(★[T327] — 종전엔 거기서 무조건 오늘을
+//     찍었고, 그것이 승계를 순서에 기대게 만든 자리였다). 즉 "마을에 한 번도 안 들른 채 로그아웃"
+//     하면 **못 전한 부재가 그대로 남는다** — 빚은 전할 때까지 갚히지 않는다.
+//     브리핑을 받은 세션(`_returnBriefDone`)만 로그아웃 시점을 새 기준일로 찍는다.
 function _lastSeenDayToSave(player) {
   if (!player._returnBriefDone && Number.isFinite(player.lastSeenDay)) return player.lastSeenDay;
   return gameDayNow();
@@ -5563,7 +5565,19 @@ function attachPlayerHandlers(ws, player) {
     //   이 몸이 잠깐 더 서 있다가 다음 세션에 승계될 수 있고(위 `_takeover`), 그때 이 값이
     //   따라가야 부재가 옳게 잡힌다. 밀려난 세션(`_supersededBy`)은 위에서 이미 빠져나갔다:
     //   그건 **사람이 나간 게 아니라 소켓이 바뀐 것**이라 부재가 아니다.
-    player.lastSeenDay = gameDayNow();
+    // ★★[T327 2026-09-19] **기준일을 정하는 것은 도착 순이 아니라 `_returnBriefDone` 이다.**
+    //   종전엔 여기서 무조건 오늘을 찍었다. 그래서 같은 소켓 갈아끼우기(`ensurePrimaryConnection`)가
+    //   **두 순서로 다른 답**을 냈다 — connect 가 먼저면 승계(`_takeover`)가 옛 기준일을 옮겨 부재가
+    //   남고, close 가 먼저면 저장본이 오늘로 덮여 **부재가 통째로 사라진다**(T304 §0-ⓑ-3 · `e2e-rumor ⑦d2`).
+    //   실측(T327 §0): conn 먼저 8일 vs close 먼저 2일 — 같은 입력, 다른 답.
+    //   ⇒ 이 줄을 **저장이 이미 쓰던 그 규칙**(`_lastSeenDayToSave` — 위 T7 ★★)으로 맞춘다:
+    //     *아직 전하지 못한 부재는 앞당기지 않는다.* 그러면 close 가 먼저 와도 저장본에 남는 값이
+    //     승계가 옮겼을 값과 **같아져** 순서가 답을 안 바꾼다(새 수 0 · 새 칸 0 · 정렬 키는 이미 있는 값).
+    //   ⚠종전 주석이 "마을에 한 번도 안 들른 채 로그아웃해도 다음 부재는 로그아웃 시점부터 센다"고
+    //     적었는데, 그 문장과 T7 의 본 규칙(:487)은 **같은 갈래에서 서로 어긋난다** — close 는
+    //     소켓 교체와 진짜 로그아웃을 구분할 수 없기 때문이다. 둘 중 본 규칙을 택했다:
+    //     **못 전한 소식은 전할 때까지 빚으로 남는다.** (브리핑을 받은 세션은 그대로 오늘을 찍는다.)
+    player.lastSeenDay = _lastSeenDayToSave(player);
     player._returnBriefDone = false;   // 다음 세션은 다시 받을 자격이 있다(승계되면 그대로 따라간다)
     savePlayer(player, { last_zone: ZONE_ID, last_x: player.x, last_y: player.y });
     players.delete(player.pid);
