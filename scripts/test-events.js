@@ -2065,6 +2065,96 @@ const mkLedgerGeo = (world, geo, cfg) => {
   }
 }
 
+// ═════════════════════════════════════════════════════════════════════════════
+// ㊽ [T302 2026-09-18] **낼 수 없는 의뢰는 의뢰가 아니라 벽이다** — `fromEcon` 벽 15 → 10
+//
+//   `인계/E-사건장부.md` 15-벽 이 잰 어긋남: 식사 사다리 24종 중 **15종**은 부족 사건은 나는데
+//   플레이어가 낼 길이 없었다. 그중 다섯(`salmon`·`shrimp`·`crab`·`oyster`·`seaweed`)은
+//   **이미 손에 들어오는 것**이라(낚시 `SPECIES_BY_BIOME` · 갯벌 T54) 표 다섯 줄로 닫혔다.
+//   남은 열은 **동사가 없다**(채집 정본이 안 내준다) — 표로는 안 닫힌다.
+//   ★이 절은 **정적**이다: 서버를 안 띄우고 세계를 안 돌린다. 두 정본만 읽는다 —
+//     ① 사다리: `sim/economy-sim.js` `consumeFood`(소스에서 읽는다 · 여기 옮겨 적지 않는다)
+//     ② 벽: `villages.playerVillageDepositMap()` → `events.buildDeliverable().fromEcon`
+//   ★자명 통과 금지 **양방향**:
+//     ⓐ **여섯째 이름을 넣으면 문다** — 다섯 목록에 표에 없는 이름을 끼우면 ㊽b 가 빨개진다.
+//     ⓑ **돌연변이** — 다섯 중 하나를 표에서 빼면 벽이 10 → 11 로 돌아오고 그 이름이 다시 벽에 선다.
+// ═════════════════════════════════════════════════════════════════════════════
+{
+  const FIVE = ['salmon', 'shrimp', 'crab', 'oyster', 'seaweed'];
+  const TEN  = ['wheat', 'rice', 'barley', 'vegetable', 'mushroom',
+                'chestnut', 'walnut', 'acorn', 'grape', 'mulberry_fruit'];
+
+  // ── ㊽a 사다리 정본 — `consumeFood` **소스**에서 읽는다(사본 0)
+  const ladder = (() => {
+    const src = require('fs').readFileSync(path.join(__dirname, '..', 'sim', 'economy-sim.js'), 'utf8');
+    const body = (src.match(/function consumeFood\([\s\S]*?\n\}/) || [''])[0];
+    const arr = (name) => {
+      const m = src.match(new RegExp('const ' + name + ' = \\[([^\\]]*)\\]'));
+      return m ? m[1].split(',').map((x) => x.trim().replace(/^'|'$/g, '')).filter(Boolean) : [];
+    };
+    // 머리 넷은 사다리에 **글자 그대로** 박혀 있다 — 그 사실 자체를 아래 ㊽a2 가 지킨다.
+    const head = ['cooked_food', 'fish', 'meat', 'food'];
+    const headLit = /v\.storage\.cooked_food/.test(body) && /\['fish', 'meat'\]/.test(body)
+                 && /v\.storage\.food/.test(body);
+    const list = [...head, ...arr('RAW_GRAINS'),
+                  ...Object.keys(econ.FORAGE_FOOD_FACTOR), ...arr('PRESERVED_FOODS')];
+    return { list: [...new Set(list)], headLit, bodyLen: body.length };
+  })();
+  ok(ladder.bodyLen > 500 && ladder.headLit,
+    '㊽a 전제: `consumeFood` 소스를 실제로 읽었고 머리 넷이 그 안에 글자로 있다(못 읽으면 아래가 자명 통과다)',
+    `본문 ${ladder.bodyLen}자`);
+  ok(ladder.list.length === 24,
+    '㊽a2 **식사 사다리는 24종**이다 — 머리 4 + 생곡 3 + 채집 13 + 보존식 4 (정본에서 유도)',
+    `${ladder.list.length}종`);
+
+  // ── ㊽b 다섯이 사다리에도 있고 **표에도 있다**(항등 대응)
+  const depMap = Villages.playerVillageDepositMap();
+  const DEL = Events.buildDeliverable(depMap);
+  const 사다리에 = FIVE.filter((r) => ladder.list.includes(r));
+  const 표에 = FIVE.filter((r) => depMap[r] === r);
+  const 낼수있다 = FIVE.filter((r) => DEL.fromEcon.has(r));
+  ok(사다리에.length === 5 && 표에.length === 5 && 낼수있다.length === 5,
+    '㊽b ★★다섯은 **사다리에 있고 이제 표에도 있다** — 항등 대응(`salmon: \'salmon\'`)이라 `fromEcon` 에 제 이름으로 든다',
+    `사다리 ${사다리에.length}/5 · 표 ${표에.length}/5 · fromEcon ${낼수있다.length}/5`);
+  ok(FIVE.every((r) => DEL.toEcon.get(r) === r),
+    '㊽b2 보상 역방향도 항등이다 — `toEcon.get(\'salmon\') === \'salmon\'`(대표 아이템이 곧 제 이름 · 유령 품목 0)');
+
+  // ── ㊽c ★벽 — 사다리인데 못 내는 것: **15 → 10**
+  const wall = ladder.list.filter((r) => !DEL.fromEcon.has(r));
+  ok(wall.length === 10 && TEN.every((r) => wall.includes(r)),
+    '㊽c ★★**벽 15 → 10** — 남은 열은 전부 "얻을 동사가 없는 것"이다(표로는 안 닫힌다)',
+    `${wall.length}종: ${wall.join('·')}`);
+  ok(FIVE.every((r) => !wall.includes(r)),
+    '㊽c2 다섯은 **벽에서 빠졌다** — 잡을 수 있는데 낼 수 없던 어긋남이 닫혔다');
+
+  // ── ㊽d ★자명 통과 금지 ⓐ — **여섯째 이름을 넣으면 문다**
+  //   `mushroom` 은 사다리에 있지만 표엔 없다(동사가 없는 열 중 하나). 다섯에 끼우면 ㊽b 의 셋이 다 어긋난다.
+  {
+    const SIX = [...FIVE, 'mushroom'];
+    const 표에6 = SIX.filter((r) => depMap[r] === r).length;
+    const fromEcon6 = SIX.filter((r) => DEL.fromEcon.has(r)).length;
+    ok(표에6 === 5 && fromEcon6 === 5 && ladder.list.includes('mushroom'),
+      '㊽d ★자명 통과 금지ⓐ — **여섯째 이름을 넣으면 문다**: `mushroom` 은 사다리엔 있고 표엔 없다(6/6 이 되면 이 절이 거짓말이다)',
+      `표 ${표에6}/6 · fromEcon ${fromEcon6}/6`);
+  }
+
+  // ── ㊽e ★자명 통과 금지 ⓑ — **돌연변이**: 한 줄을 빼면 벽이 돌아온다
+  {
+    const 뺀표 = Object.assign({}, depMap); delete 뺀표.seaweed;
+    const D2 = Events.buildDeliverable(뺀표);
+    const wall2 = ladder.list.filter((r) => !D2.fromEcon.has(r));
+    ok(wall2.length === wall.length + 1 && wall2.includes('seaweed'),
+      '㊽e ★돌연변이 — `seaweed` 한 줄을 빼면 벽이 **10 → 11** 로 돌아오고 미역이 다시 벽에 선다(다섯 줄이 실제로 여는 문이다)',
+      `${wall.length} → ${wall2.length}`);
+    const 다섯뺀표 = Object.assign({}, depMap);
+    for (const r of FIVE) delete 다섯뺀표[r];
+    const wall3 = ladder.list.filter((r) => !Events.buildDeliverable(다섯뺀표).fromEcon.has(r));
+    ok(wall3.length === 15,
+      '㊽e2 다섯을 다 빼면 **T281 이 잰 그 15** 다 — 이 카드 이전의 벽과 정확히 같다(회귀 기준선)',
+      `${wall3.length}종`);
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
 try { require('fs').unlinkSync(process.env.DB_PATH); } catch (e) {}

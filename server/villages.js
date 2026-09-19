@@ -4758,6 +4758,24 @@ const PV_DEPOSIT_MAP = {
   //     ⇒ 판단거리로 보고에 A/B 표로 올렸다(지시 §1 "판단거리는 A/B 표로").
   dried_fish: 'dried_fish', dried_fruit: 'dried_fruit', smoked_meat: 'smoked_meat', pickled_veg: 'pickled_veg',
   salt: 'salt',
+  // ★★[T302 2026-09-18 · 재민 캐논 #38 — PM 넣는다] **잡을 수는 있는데 낼 수가 없던 다섯.**
+  //   `인계/E-사건장부.md` 15-벽 이 잰 어긋남이다: 촌장이 *"미역이 없다"* 고 말하는데(부족 사건은 난다)
+  //   플레이어에겐 **미역을 낼 길이 없었다.** 말은 늘고 할 일은 안 늘었다.
+  //   ★다섯은 **이미 손에 들어온다** — `server/fishing.js` `SPECIES_BY_BIOME`(연어·새우·게)과
+  //     T54 갯벌(`server/tidal.js` 굴·해조)이 내주는 그 이름 그대로다. **품목 지어내기 0.**
+  //   ★줄의 꼴은 **같은 사다리의 `fish` 줄과 같다**(항등 대응 · `PV_DEPOSIT_RATE` 그대로) —
+  //     소금·보존식이 선 규약과 동형이다: *"이 표는 대응을 새로 만들지 않고 이름이 같다는 사실을 적을 뿐이다."*
+  //   ⚠**`fish` 로 접지 않는다.** 접으면 `fromEcon` 에 `salmon` 이 안 들어와 벽이 그대로다
+  //     (벽의 이름은 `DEL.fromEcon` 이고, 부족은 **재화 id 로** 난다).
+  //   ⚠**값은 한 개도 새로 짓지 않았다**(유도 목록 · 보고 §0-ⓐ):
+  //     무게 `server/weights.js`←`specialty.weight`(1.5·0.1·1.0·0.2·0.3) · 열량 `server/kcal.js` ·
+  //     시세 `specialty.baseValue` · 보존 `spoil.PRESERVE`(`dry_fish` 는 `_fishItems()`, 굴·해조는 T54 제 레시피) ·
+  //     구하는 양 `소비EMA × REQ_DAYS` · 보상 `toEcon`(항등이라 대표 아이템이 곧 제 이름).
+  //   ⚠`oyster`·`seaweed` 는 `fishing._NOT_FISH` 다(건어물 입력이 아니다) — 그건 **말리기 갈래**의 구분이고
+  //     **곳간이 받느냐**와는 다른 질문이다. 곳간은 받는다.
+  //   ⇒ 남은 열(`wheat`·`rice`·`barley`·`vegetable`·`mushroom`·`chestnut`·`walnut`·`acorn`·`grape`·`mulberry_fruit`)은
+  //     **표가 아니라 동사**가 없다(채집 정본 `forage.KO` 는 넷뿐) — 이 줄로 닫히지 않는다. 회부 그대로.
+  salmon: 'salmon', shrimp: 'shrimp', crab: 'crab', oyster: 'oyster', seaweed: 'seaweed',
 };
 const PV_DEPOSIT_RATE = (() => { const x = parseFloat(process.env.VILLAGE_DEPOSIT_RATE || '1'); return (isFinite(x) && x > 0) ? x : 1; })();
 // ★[T59] 열량 정본 — 늦게 부른다(맞물림 금지 · `forage`·`spoil` 과 같은 규약).
