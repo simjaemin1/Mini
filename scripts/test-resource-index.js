@@ -164,7 +164,9 @@ console.log('\nⓓ 부하 — 셀 질의 1회 · 마을 반경 16셀 전수');
   const ms = Date.now() - t0;
   console.log(`    마을 반경 16셀(${(33 * 33).toLocaleString()}칸) 전수 ${ms}ms (개체 ${got.toLocaleString()})`);
   ok(per < 2000, '셀 질의 1회가 2ms 미만이다', `${per.toFixed(1)}µs`);
-  ok(ms < 5000, '마을 반경 전수가 5초 미만이다', `${ms}ms`);
+  // ★[PM 2026-09-19 · T304 회부 ④] 총 시간 vs 상수 단정은 러너에서만 빨개지는 병(족보 ⑩ · 기계 의존) — 수만 적고 단정하지 않는다.
+  //   단가(`per`)는 자로 남긴다(칸 수로 나눈 값이라 부하에 덜 흔들린다).
+  console.log(`    (ⓘ 전수 벽시계 ${ms}ms — 표에만 · 단정 없음)`);
 }
 
 console.log(`\n=== 자원 색인 하네스: ${pass} 통과 / ${fail} 실패 ${fail ? '❌' : '✅'} ===`);
