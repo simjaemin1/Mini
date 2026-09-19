@@ -9039,9 +9039,25 @@ const MOB_CATCH_R=2, MOB_HUNT_R=22, MOB_SNEAK_IN=55, MOB_STILL=3, MOB_ARROW_V=50
 const MOB_WOLF_P=0.0012, MOB_TIG_P=0.00018;   // 포식자 출현율/게임분(부재 시) — 늑대팩 ~1.2일, 호랑이 ~7일 간격(이벤트성)
 function _mobView(){const v=(typeof view!=='undefined')?view:{z:1,ox:0,oy:0},c=(typeof CELL!=='undefined')?CELL:1.9;   // 현재 카메라 가시 셀범위(+여백) = 몹 존재 구간(LOD)
   return {x0:Math.max(0,Math.floor(-v.ox/v.z/c)-2),x1:Math.min(N,Math.ceil((760-v.ox)/v.z/c)+2),y0:Math.max(0,Math.floor(-v.oy/v.z/c)-2),y1:Math.min(N,Math.ceil((760-v.oy)/v.z/c)+2)};}
+/* ★★★[T311 2026-09-19] **증분 캐시는 줍는 자리마다 같이 줄어야 한다.**
+     `econ.counts` 는 직업별 인구의 **증분 캐시**다(`economy-sim.js:1965` "직업별 인구 (incremental)" ·
+     `jobCounts(v)` 는 `return v.counts` 한 줄이라 어디서도 다시 세지 않는다).
+     그래서 `econ.npcs` 에서 한 명을 덜어내는 자리는 전부 그 카운트를 같이 덜어야 한다 —
+     랩은 다른 자리 전부에서 이미 그러고 있었다(전쟁실험실 여섯 · 마을실험실 넷).
+     **이 함수 하나만 예외여서** 관찰 모드에서만 카운트가 사람보다 많아진다(맹수는 관찰 모드에만 산다).
+     T297 이 잰 둘은 그 한 줄의 **같은** 그림자였다(보고/T311 §1):
+       ① 고기 — `huntIncomeReal` 은 `kills / v.counts.hunter` 를 돌리고 엔진은 그걸
+          **사냥꾼 한 명마다 한 번** 부른다 ⇒ 하루 고기 = `kills × (부른 사냥꾼 / counts.hunter)`.
+          분모가 부풀면 **잡은 마릿수가 같은데도 곳간에는 그 비만큼만** 든다.
+       ② 미선발 — `hasSlot(v,job,cap,counts) = cap[job] > counts[job]`(`economy-sim.js:2086`)도
+          **같은 캐시**를 읽는다 ⇒ 자리가 다 찬 것으로 보여 채집꾼·어부가 다시 안 뽑힌다.
+     ⚠**새 규약을 만들지 않았다** — 랩이 여섯 자리에서 쓰는 밑짝 그대로다(새 수 0 · 사본 0).
+     ⚠제품(`sim/`·`server/`)은 한 글자도 안 만졌다 — 맹수는 랩에만 있으니 이 결함도 랩에만 있다.
+       (다만 `tickForceEvacuation` 의 "counts 재계산은 다음 tick에서 jobCounts가 알아서 함" 주석은
+        제품 쪽에도 있고 **사실이 아니다** — `jobCounts` 는 `return v.counts` 뿐이다. 회부 §4.) */
 function reapDead(s){if(!s._anyDead)return;s._anyDead=0;   // ★사망 처리: agent 제거 + econ.npcs 하나 제거(진짜 인구감소 — 리싱크 부활 방지). 인구 0 마을은 lifeDayAll이 소멸시킴.
   for(let i=s.agents.length-1;i>=0;i--){const a=s.agents[i];if(!a._dead)continue;s.agents.splice(i,1);
-    if(s.econ&&s.econ.npcs&&s.econ.npcs.length){let k=-1;for(let j=0;j<s.econ.npcs.length;j++)if(s.econ.npcs[j].currentJob===a.job){k=j;break;}if(k<0)k=(Math.random()*s.econ.npcs.length)|0;s.econ.npcs.splice(k,1);}   // 같은 직업 우선 제거(직업분포 유지)
+    if(s.econ&&s.econ.npcs&&s.econ.npcs.length){let k=-1;for(let j=0;j<s.econ.npcs.length;j++)if(s.econ.npcs[j].currentJob===a.job){k=j;break;}if(k<0)k=(Math.random()*s.econ.npcs.length)|0;const _rd=s.econ.npcs.splice(k,1)[0];if(s.econ.counts&&_rd&&_rd.currentJob)s.econ.counts[_rd.currentJob]=Math.max(0,(s.econ.counts[_rd.currentJob]||0)-1);}   // 같은 직업 우선 제거(직업분포 유지) · ★★[T311] counts 증분 캐시 동기 — 같은 랩의 다른 자리 전부(전쟁실험실 여섯 · 마을실험실 넷 — killTrader·도적 둘·원정·향리·이주·warKill)가 이미 쓰는 그 밑짝(사본 0). 이 한 조각만 빠지자 숫자가 사람보다 많아졌다
     s._deaths=(s._deaths||0)+1;}
   if(s.econ)s.pop=s.econ.npcs.length;}
 const HSK_W=a=>{const n=a._esk||a;return Math.min(10,n.skills?(n.skills.archery||0):(a._hsk||0));};   /* ★활 숙련(사격): 명중·시위. 마을=연결된 econ NPC(_esk), 랩=_hsk */
