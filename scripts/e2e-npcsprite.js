@@ -327,11 +327,18 @@ const ZENV = {
       ok(/const back = isMe \? [^:]+: !!\(o && o\.carrier\);/.test(cs),
          '★★[T134] 주민과 사람이 지게를 **같은 한 줄**로 고른다 (갈래 0)', backLines.map((L) => L.trim()).join(' | ').slice(0, 160));
       const zs = codeOnly(fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8'));
-      ok(/e\.carrier = o\.isNpc \? \(\(\(o\._carry \|\| 0\) > 0\) \? 1 : 0\)/.test(zs),
-         '★★[T134] 서버가 주민의 **진 짐**(`_carry`)으로 그 비트를 놓는다');
+      // ★★[T316 2026-09-19] 주민의 손이 `inventory.grain_sheaf` 로 흡수되면서 이 비트의 출처가 한 자리로 모였다.
+      //   전: `zone.js` 가 손(`_carry`)을 **다시 읽었다** — 비트와 `_wornAt` 도장이 두 파일에 나뉘어 있었다.
+      //   후: `villages.js` 가 손을 보고 `_carryOn` 을 뒤집으며 **같은 줄에서** 도장을 찍고, zone 은 그 깃발만 탄다.
+      //   ⇒ 전송 값은 동일하고(창이 열리는 순간 둘은 늘 같은 값) 읽는 자리가 하나 줄었다(사본 0).
+      ok(/e\.carrier = o\.isNpc \? \(o\._carryOn \? 1 : 0\)/.test(zs),
+         '★★[T134·T316] 서버가 주민의 **진 짐 깃발**(`_carryOn`)로 그 비트를 놓는다(손을 다시 읽지 않는다)');
+      ok(!/o\._carry\b(?!On)/.test(zs), '★[T316] zone 에 주민 손(`_carry`)을 직접 읽는 자리가 **없다**');
       const vs = codeOnly(fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8'));
       ok(/npc\._carryOn = on; npc\._wornAt = Date\.now\(\);/.test(vs),
          '★[T134] 0↔1 이 뒤집힌 순간에만 전송 창을 연다 (매 틱 도장 금지)');
+      ok(/const on = _handOf\(npc\) > 0;/.test(vs),
+         '★★[T316] 그 깃발의 근거가 **손 술어 정본**(`_handOf`)이다 — 품목 칸을 센다');
     }
     // 사람 쪽 계약은 그대로다 — 주민이 지게를 지든 말든 층 순서는 몸 → 옷 → 지게 → 손
     const wrongOrder = [...acc2.values()].filter((r) => {

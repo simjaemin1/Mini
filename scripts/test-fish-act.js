@@ -126,5 +126,64 @@ console.log('\n⑥ 끄면 비트 동일 — 새 줄이 전부 손잡이 뒤에 �
     '⑥ ⚠셀 수만 손잡이 밖에서 센다 — **읽는 쪽이 손잡이 뒤**라 끈 팔은 그 수를 안 본다(관측 항 하나)');
 }
 
+// ── ⑦ [T316 ①] 관측자 없는 마을도 걷는다 — 손잡이 하나 안에서 ────────────────────
+//   캐논 ⓑ("관측자 없어도 실걸음")의 빚이었다. T312 는 켠 마을이라도 사람이 없으면
+//   `_lifeHeadlessDay` 의 수식 칸으로 빠졌다 ⇒ 같은 씨인데 **관측자 유무로 어획이 갈렸다**.
+//   고치는 자리는 **존 NPC 루프의 활성 셀 게이트 한 줄**이다(생활층에 어부 전용 분기 0).
+console.log('\n⑦ [T316] 관측자 없는 마을도 걷는다');
+{
+  const Z = codeOf(ZSRC), V = codeOf(VSRC);
+  ok(/function _t316WalkAlways\(npc\)/.test(Z), '⑦ 걷기 술어가 존에 **하나** 있다(`_t316WalkAlways`)');
+  ok(/return !!\(_t316Econ && _t316Econ\.T312_FISH_ACT\)/.test(Z),
+     '⑦ ★★그 술어의 첫 항이자 유일한 항이 **`T312_FISH_ACT`** 다 — 둘째 손잡이를 안 만들었다');
+  ok(!/T316_[A-Z_]+/.test(Z + V + SRC), '⑦ ★레포 어디에도 `T316_*` 라는 **새 손잡이가 없다**');
+  ok(/if \(!npc\.canadiaVillage && !_t316WalkAlways\(npc\) && !isPositionActive\(npc\.x, npc\.y\)\)/.test(Z),
+     '⑦ ★★결정 게이트 **그 한 줄**에 끼워 넣었다(루프 사본 0 · 새 루프 0)');
+  // ★★실측이 가르친 것 — 문이 **둘**이다. 결정만 열면 목표와 라벨은 찍히는데 몸이 안 간다
+  //   (켠 팔 7 게임일: 걷는 어부 0 · 입고 0 · 틱만 8배). 이동 문까지 같은 술어로 열어야 한다.
+  ok(/if \(!p\.canadiaVillage && !_t316WalkAlways\(p\) && !isPositionActive\(p\.x, p\.y\)\) continue; \/\/ dormant NPC skip/.test(ZSRC),
+     '⑦ ★★**이동 문**(`movePlayerStep` 앞)도 같은 술어로 연다 — 결정만 열면 한 픽셀도 안 간다');
+  ok((Z.match(/_t316WalkAlways\(/g) || []).length === 3,
+     '⑦ 그 술어를 부르는 자리가 **둘**이다(정의 1 + 호출 2) — 셋째 문은 안 열었다',
+     String((Z.match(/_t316WalkAlways\(/g) || []).length));
+  ok(/if \(!npc \|\| !npc\.simVillageId\) return false;/.test(Z),
+     '⑦ 마을 소속 NPC 만 해당된다(야생·도적 NPC 는 종전 그대로 — 범위가 마을이다)');
+  ok(!/fish/i.test((V.match(/function _lifeHeadlessDay\(vil\)[\s\S]*?\n\}/) || [''])[0]),
+     '⑦ ★★`_lifeHeadlessDay` 에 **어부 칸이 없다** — 걷는 몸 하나만 남았다(갈래 0)');
+  // 끈 팔에서는 술어가 거짓이다 ⇒ 게이트가 종전과 **글자 그대로** 같은 판정을 한다
+  const off = probe({}, `const E=require(${EP});process.stdout.write(JSON.stringify({knob:E.T312_FISH_ACT}));`);
+  ok(off.knob === false, '⑦ ★끈 팔은 술어가 거짓 ⇒ 활성 셀 밖 마을은 **안 걷는다**(종전 비트 동일)');
+}
+
+// ── ⑧ [T316 ②] `_carry` 흡수 — 손은 하나다 ─────────────────────────────────────
+//   `npc._carry` 는 품목 없는 칸 수였다 ⇒ 플레이어 낙하도 무게도 그 짐을 **못 봤다**.
+//   같은 수를 `inventory.grain_sheaf` 로 옮기면 어부의 손과 농부의 손이 **한 꼴**이 된다.
+//   ★행동 무변의 단위 증명은 `test-granary-haul ⑨`(칸 문턱 3 < kg 문턱 7)가 갖는다.
+console.log('\n⑧ [T316] `_carry` 흡수 — 손은 하나다');
+{
+  const V = codeOf(VSRC), Z = codeOf(ZSRC);
+  const W = require(path.join(ROOT, 'server', 'weights.js'));
+  const K = require(path.join(ROOT, 'sim', 'economy-sim.js'));
+  ok(/const GRAIN_ITEM = 'grain_sheaf';/.test(V), '⑧ 볏단 품목 이름이 정본 한 자리다(`GRAIN_ITEM`)');
+  ok(!/npc\._carry\b(?!On)/.test(V) && !/o\._carry\b(?!On)/.test(Z),
+     '⑧ ★★생활층·존 어디에도 `_carry` **칸 필드를 읽는 자리가 없다**(흡수 완료 · 잔재 0)');
+  ok(/function _handOf\(npc\) \{ return \(npc && npc\.inventory && npc\.inventory\[GRAIN_ITEM\]\) \|\| 0; \}/.test(V),
+     '⑧ ★손을 읽는 함수가 하나다(`_handOf` — 수확·곳간·지게가 전부 이걸 부른다)');
+  ok(/const cap = \(cc && cc\.CFG && cc\.CFG\.CAP_KG\) \|\| 0;/.test(V),
+     '⑧ ★kg 상한을 **`carry.js` 정본**에서 읽는다(25 를 옮겨 적지 않았다 — 어부와 같은 문법)');
+  // ★새 수 0 — 볏단 kg 을 **하네스가 다시 곱해** 표와 대조한다(표에 손으로 적은 수면 빨개진다)
+  const kg = W.kgOfOrDefault('grain_sheaf');
+  const derived = K.T100_K * W.kgOf('food');
+  ok(Math.abs(kg - derived) < 1e-15,
+     `⑧ ★★볏단 무게가 **유도값**이다 — T100_K × food = ${derived}`, `표 ${kg}`);
+  ok(kg * 3 < (require(path.join(ROOT, 'server', 'carry.js')).CFG.CAP_KG),
+     '⑧ ★수확 3칸(11.2kg)이 짐 상한 25kg 안이다 ⇒ **문턱이 안 바뀐다**(행동 무변의 근거)');
+  // ⓑ 낙하 — 이제 볏단도 플레이어 낙하 정본이 **본다**(그게 흡수의 이유다)
+  ok(/for \(const \[item, cnt0\] of Object\.entries\(p\.inventory \|\| \{\}\)\)/.test(Z),
+     '⑧ ★★낙하 정본이 `inventory` 를 통째로 돈다 ⇒ 볏단도 **죽으면 그 자리에 떨어진다**(캐논 ⓐ 회수)');
+  ok(/e\.carrier = o\.isNpc \? \(o\._carryOn \? 1 : 0\)/.test(Z) && /const on = _handOf\(npc\) > 0;/.test(V),
+     '⑧ 지게 한 비트의 출처가 한 자리로 모였다(생활층이 깃발을 찍고 존은 타기만 한다)');
+}
+
 console.log(`\n=== 결과: ${pass} PASS / ${fail} FAIL ===\n`);
 process.exit(fail ? 1 : 0);
