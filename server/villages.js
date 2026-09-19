@@ -5221,6 +5221,7 @@ function foragePerf() {
            delivered: +deliv.toFixed(4), formulaPerDay: +formula.toFixed(4),
            formulaActPerDay: +formulaAct.toFixed(4),   // ★[T347 등가의 분모] 믹스 전체가 아니라 **걷은 몫**
            formulaAll: +formulaAll.toFixed(4), rows };
+}
 //   ★★[T329 ②] **대비는 반경이다** — 위협 T 가 붙은 마을은 **밖으로 덜 나간다**: R_out = 생활권 반경 × (1−T).
 //     봉쇄 상태(`_siegeBlock`)와 야외 배수(`_siegeOutMul`)가 하던 일을 이 한 줄이 대신한다 — 상태도 배수도 없고,
 //     **연속**이다(T 가 조금 오르면 반경이 조금 준다). 못 나가는 사람의 몫은 그림자가격이 옮긴다(배수 0).
