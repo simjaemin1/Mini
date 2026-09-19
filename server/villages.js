@@ -2855,6 +2855,80 @@ function _warWalkCap(g) {
   return m * WL.STEP_DT / WL.M_PER_CELL;
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// ★★[T329 2026-09-19 · 재민 캐논 "봉쇄 상태 없음 · 배수 없음"] **위협 함수 T**
+//
+// 봉쇄는 **상태**였다(`_siegeBlock` 켜짐/꺼짐 · 야외 노동 ×0.15). 그 자리에 **연속 값** 하나가 들어온다:
+//   T(마을, 지금) ∈ [0,1] — "지금 이 마을이 얼마나 위험한가". 대비는 상태 전환이 아니라 **반경**이다
+//   (R_out = 영토 × (1−T) — 아래 `_warOutMul`). 칼로 나뉘는 값이 없다.
+//
+// ★새 수 0 — 세 항은 전부 **이미 있는 수**에서 유도한다:
+//   ⓐ 거리   `prox  = 1 − d / WAR_ALERT_R`      (방어 경보 거리 — war-live 상수 · 밖이면 0)
+//   ⓑ 접근   `close = ḋ_접근 / v_행군`           (본대 행군 속도 — battle-core spd · 멀어지면 0)
+//   ⓒ 병력비 `odds  = 1 − pDef`                  (war-core `_opDefOdds` — 방어 승산이 높으면 0)
+//   T_군대 = prox × (w₁ + w₂·close + w₃·odds) / (w₁+w₂+w₃)   ·   T_마을 = max(T_군대)
+//   ⇒ 경보 밖 = 0 · 성문 앞에서 압도적 전력이 달려오면 1. 세 항 다 연속이고 max 도 연속이다.
+// ★w 셋은 **손잡이 값**이다(`T329_THREAT_W="w1,w2,w3"` · 기본 `1,1,1` = 고름). 값 판정은 재민(랩 A/B 표 — 보고 §0-ⓑ).
+// ★부하: 게임일 경계 한 번 + 군대가 움직일 때(전쟁 수만큼) — 마을 수와 무관하다.
+const _THREAT_W = (() => {
+  const raw = String(process.env.T329_THREAT_W || '').split(',').map(x => parseFloat(x)).filter(x => Number.isFinite(x) && x >= 0);
+  return (raw.length === 3 && raw[0] + raw[1] + raw[2] > 0) ? raw : [1, 1, 1];
+})();
+const _clamp01v = (x) => (x < 0 ? 0 : (x > 1 ? 1 : x));
+// 한 군대가 한 마을에 거는 위협. body 가 있으면 그 지휘관 자리·접근 속도를 쓴다(없으면 행군 eta 전 = 0).
+function _threatOfArmy(w, vil, now) {
+  const WL = state.warLive; if (!WL || !w) return 0;
+  const body = state.warBodies && state.warBodies.get(w.id); if (!body || !body.cmd) return 0;
+  const d = Math.hypot(body.cmd.cx - vil.ccx, body.cmd.cy - vil.ccy);
+  const prox = _clamp01v(1 - d / WL.WAR_ALERT_R); if (prox <= 0) { body._thD = d; body._thAt = now; return 0; }
+  // 접근 속도 — 지난 표본과의 차(셀/초)를 본대 행군 속도(셀/초)로 잰다. 첫 표본은 0(모른다).
+  let close = 0;
+  if (body._thD != null && body._thAt != null && now > body._thAt) {
+    const vCell = (body.atkGroup ? _warWalkCap(body.atkGroup) : (require('../sim/battle-core').UNITS.spear.spd * WL.STEP_DT / WL.M_PER_CELL)) * WL.TICK_HZ;   // 셀/초
+    const dd = (body._thD - d) / ((now - body._thAt) / 1000);   // 다가오면 +
+    if (vCell > 0) close = _clamp01v(dd / vCell);
+  }
+  body._thD = d; body._thAt = now;
+  let odds = 0;
+  try { odds = _clamp01v(1 - (state.warCore || require('../sim/war-core.js'))._opDefOdds(vil, w.force || 0)); } catch (_) { odds = 0; }
+  const [w1, w2, w3] = _THREAT_W, ws = w1 + w2 + w3;
+  return prox * (w1 + w2 * close + w3 * odds) / ws;
+}
+// 마을 하나의 T — 지금 이 마을을 향해 와 있는 군대들 중 가장 센 것. 전쟁이 없으면 0(= 종전 세계).
+function threatOf(vil, now) {
+  if (!state.war || !vil) return 0;
+  let T = 0;
+  for (const w of state.war.WARS) {
+    if (w.def !== vil) continue;                       // 지금은 '이 전쟁의 방어 마을'만 본다(지나가는 군대는 회부)
+    if (w.phase !== 'march' && w.phase !== 'battle') continue;
+    const t = _threatOfArmy(w, vil, now); if (t > T) T = t;
+  }
+  return T;
+}
+// 세계에 한 번 적는다 — econ(캐러밴 위험)과 생활층(현장 반경)이 **같은 값**을 읽는다(사본 0).
+function _warWriteThreats(now) {
+  if (!state.war || !state.villages) return 0;
+  const WARS = state.war.WARS;
+  const prev = state._warThreatOn;                     // 지난번에 값이 붙어 있던 마을들(대개 0~2개)
+  if (!WARS.length && !(prev && prev.length)) return 0;   // 전쟁도 없고 지운 자국도 없다 — 한 걸음도 안 돈다(평시 O(1))
+  if (prev) for (const e of prev) { if (e) delete e._warThreat; }
+  const on = [];
+  let n = 0;
+  for (const w of WARS) {
+    if (w.phase !== 'march' && w.phase !== 'battle') continue;
+    const vil = w.def, e = vil && vil.econ; if (!e) continue;
+    const t = _threatOfArmy(w, vil, now);
+    if (t > 0 && t > (e._warThreat || 0)) { e._warThreat = t; if (on.indexOf(e) < 0) on.push(e); n++; }
+  }
+  state._warThreatOn = on.length ? on : null;
+  return n;
+}
+// 마을 밖 생산 반경 배수 — R_out = 영토 × (1−T). T=0 이면 **1**(곱이 항등 — 종전 비트 동일).
+function _warOutMul(vil) {
+  const e = vil && vil.econ; const T = (e && e._warThreat) || 0;
+  return T > 0 ? Math.max(0, 1 - T) : 1;
+}
+
 // 병종 선발 선호도(랩 _muDraftResidents pref — simJob 도구→병종 매핑 정합).
 function _warPref(job, type) {
   if (type === 'archer') return (job === 'hunter' ? 100 : 0) + (job === 'warrior' ? 30 : 0) + (job === 'forager' ? 8 : 0) + 3;
@@ -3391,6 +3465,7 @@ function warThreats() {
 //   항복/철수 구별 = 그날 war-core 통계 surrender 증분(내보낸 stats() · 읽기만) — 같은 날 둘이 겹치면 곳간이 더 빈 쪽이 항복.
 function _warAfterDaily(surrBefore) {
   if (!state.war || !state.warBodies) return;
+  _warWriteThreats(_dayNow());   // ★[T329 ①] 게임일 경계에도 한 번 — 그날 선포·해제가 바로 반영된다
   const day = state.world.day;
   const ended = [];
   for (const body of state.warBodies.values()) { if (body.phase !== 'return' && !body.ended && body.w.phase === 'return') ended.push(body); }
@@ -3420,6 +3495,7 @@ function tickWarBodies(now) {
   if (!WARS.length && !state.warBodies.size) return;
   const WL = state.warLive, liveWid = new Set();
   let soldiers = 0, fighting = 0;
+  _warWriteThreats(now);   // ★[T329 ①] 위협 T — 군대가 움직였으니 다시 쓴다(O(전쟁 수) · 마을 수 무관)
   for (const w of WARS) {
     if (w.id != null) liveWid.add(w.id);
     if (w.phase !== 'march' && w.phase !== 'battle') continue;
@@ -3937,6 +4013,7 @@ function __p3Bind(mock) {
     state, tickWarBodies, warThreats, syncVillagePop, removeOneNpc, spawnOneNpc,
     _warEngage, _warAfterDaily, _warEndFight, _warBuildRectIndex, _warBlockedCell, _warWorld, warPerf, _warOrderFallback, _warToStandoff,
     _warDraftPids, _warReleasePid, econDayToMs, _warEnsureBody, _warSampleComp, _vbFootprint,
+    threatOf, _warWriteThreats, _warOutMul, _lifeJobSites, _lifeJobSiteOK,   // ★[T329] 위협 T·현장 반경 — 하네스가 **이 함수들**을 그대로 부른다(사본 0)
   };
 }
 
@@ -5144,10 +5221,21 @@ function foragePerf() {
            delivered: +deliv.toFixed(4), formulaPerDay: +formula.toFixed(4),
            formulaActPerDay: +formulaAct.toFixed(4),   // ★[T347 등가의 분모] 믹스 전체가 아니라 **걷은 몫**
            formulaAll: +formulaAll.toFixed(4), rows };
+//   ★★[T329 ②] **대비는 반경이다** — 위협 T 가 붙은 마을은 **밖으로 덜 나간다**: R_out = 생활권 반경 × (1−T).
+//     봉쇄 상태(`_siegeBlock`)와 야외 배수(`_siegeOutMul`)가 하던 일을 이 한 줄이 대신한다 — 상태도 배수도 없고,
+//     **연속**이다(T 가 조금 오르면 반경이 조금 준다). 못 나가는 사람의 몫은 그림자가격이 옮긴다(배수 0).
+//     ⚠밑변은 **이 함수가 이미 쓰던 반경**이다(영토에서 나온 값 · `_maxRPx`). 그래서 T=0 이면 곱이 1 —
+//       한 글자도 안 바뀐다(랩·평시 비트 동일). 거르개는 **이 함수 하나**다(어부·나무꾼도 이걸 부른다 · 사본 0).
+function _lifeJobSiteOK(vil, px, py, R_out) {   // 현장 하나가 R_out 안인가(거르개 정본)
+  if (R_out == null || !isFinite(R_out)) return true;
+  const cx = vil.ccx * SZ + SZ / 2, cy = vil.ccy * SZ + SZ / 2;
+  return Math.hypot(px - cx, py - cy) <= R_out;
 }
 function _lifeJobSites(vil, day) {   // 마을 생활권의 직업별 현장 후보 — 자원 밀집 버킷(벌목·채광·채집), 물가(어부), 초식 사냥감(사냥꾼)
-  if (vil._jobSites && vil._jobSites.day === day) return vil._jobSites;
+  const _tmul = _warOutMul(vil);
+  if (vil._jobSites && vil._jobSites.day === day && vil._jobSites.tmul === _tmul) return vil._jobSites;   // T 가 바뀌면 그날도 다시 고른다
   const cx = vil.ccx * SZ + SZ / 2, cy = vil.ccy * SZ + SZ / 2, R = Math.max(vil._maxRPx || 800, 800) + 400;
+  const R_out = _tmul >= 1 ? null : R * _tmul;   // null = 거르개 꺼짐(평시 — 종전 비트)
   const qt = state.deps.qtResources && state.deps.qtResources();
   const res = qt ? qt.queryCircle(cx, cy, R) : [];
   const B = SZ * 4, bk = {}; for (const j of Object.keys(JOB_RES)) bk[j] = new Map();
@@ -5157,24 +5245,24 @@ function _lifeJobSites(vil, day) {   // 마을 생활권의 직업별 현장 후
       e.x += r.x; e.y += r.y; e.n++; m.set(k, e);
     }
   }
-  const top = (m) => [...m.values()].sort((a, b) => b.n - a.n).slice(0, 6).map((e) => ({ x: e.x / e.n, y: e.y / e.n }));
+  const top = (m) => [...m.values()].sort((a, b) => b.n - a.n).filter((e) => R_out == null || _lifeJobSiteOK(vil, e.x / e.n, e.y / e.n, R_out)).slice(0, 6).map((e) => ({ x: e.x / e.n, y: e.y / e.n }));
   const hunt = [];   // 사냥터=초식 사냥감(🦌🐇🐗 — 늑대·호랑이 제외) 실위치(일 캐시 — 서식 밴드 근사)
   if (state.deps.mobs) for (const mo of state.deps.mobs.values()) {
     if (mo.hp <= 0 || mo.type === 'wolf' || mo.type === 'tiger') continue;
-    const d = Math.hypot(mo.x - cx, mo.y - cy); if (d < R + 600) { hunt.push({ x: mo.x, y: mo.y }); if (hunt.length >= 24) break; }
+    const d = Math.hypot(mo.x - cx, mo.y - cy); if (d < R + 600 && _lifeJobSiteOK(vil, mo.x, mo.y, R_out)) { hunt.push({ x: mo.x, y: mo.y }); if (hunt.length >= 24) break; }
   }
   const bank = [];   // 물가 현장(어부) — 영토 셀 중 4방에 물(랩 V.bank 동형)
   if (state.deps.isWaterTileLocal) {
-    for (const k of vil._terrSet) {
+    for (const k of (vil._terrSet || [])) {
       const ci = k.indexOf(','), x = +k.slice(0, ci), y = +k.slice(ci + 1);
       const px = x * SZ + SZ / 2, py = y * SZ + SZ / 2;
-      if (state.deps.isWaterTileLocal(px + SZ, py) || state.deps.isWaterTileLocal(px - SZ, py) || state.deps.isWaterTileLocal(px, py + SZ) || state.deps.isWaterTileLocal(px, py - SZ)) { bank.push({ x: px, y: py }); if (bank.length >= 200) break; }
+      if ((state.deps.isWaterTileLocal(px + SZ, py) || state.deps.isWaterTileLocal(px - SZ, py) || state.deps.isWaterTileLocal(px, py + SZ) || state.deps.isWaterTileLocal(px, py - SZ)) && _lifeJobSiteOK(vil, px, py, R_out)) { bank.push({ x: px, y: py }); if (bank.length >= 200) break; }
     }
   }
   // ★[T312] 강가 셀 수 = 셀당 하루 예산의 **분모**다(설계_민물고기 §2). econ 이 그 식을 갖고 있고
   //   이 파일은 **세어서 넘기기만** 한다(사본 0 · 손잡이가 꺼져 있으면 econ 이 그 수를 안 본다).
   if (vil.econ) vil.econ._t312Cells = bank.length;
-  return (vil._jobSites = { day, lumberjack: top(bk.lumberjack), miner: top(bk.miner), forager: top(bk.forager), hunter: hunt, fisher: bank, t325Trees: _t325Scan(vil, day) });
+  return (vil._jobSites = { day, tmul: _tmul, lumberjack: top(bk.lumberjack), miner: top(bk.miner), forager: top(bk.forager), hunter: hunt, fisher: bank, t325Trees: _t325Scan(vil, day) });
 }
 
 // ★[T135] 이 마을의 그림자가격 조회 함수 — econ 정본(`world.priceFn`)을 **부르기만** 한다.

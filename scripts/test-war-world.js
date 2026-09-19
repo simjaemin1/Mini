@@ -78,6 +78,18 @@ function _run(opts) {
   // ★[T295 후속] 나무 술어 — 존이 주입하는 그 자리(`deps.treeCellBlocked` · 셀 단위 · 관측자 무관).
   //   미주입 팔(opts.trees 없음)은 **빈 들판**이다 = 이 카드 전 동작(대조군).
   if (opts.trees) deps.treeCellBlocked = (cx, cy) => TREES.has(Math.floor(cx) * 65536 + Math.floor(cy));
+  // ★[T329 ⓝ] 현장 후보를 만들 자원·짐승·물가 — 운영과 같은 모양(쿼드트리 질의·mobs·_terrSet)만 갖춘다.
+  if (opts.probeRout) {
+    const RES = [];
+    for (let i = 0; i < 400; i++) {   // 마을 B 둘레에 고르게(반경 0~1,400px) 나무·바위·열매
+      const ang = i * 0.61803398875 * Math.PI * 2, rad = 60 + (i / 400) * 1340;
+      RES.push({ x: B_C.cx * SZ + Math.cos(ang) * rad, y: B_C.cy * SZ + Math.sin(ang) * rad, type: ['tree', 'rock', 'ore', 'berry_bush', 'herb'][i % 5] });
+    }
+    deps.qtResources = () => ({ queryCircle: (x, y, r) => RES.filter(q => Math.hypot(q.x - x, q.y - y) <= r) });
+    const MOBS = new Map();
+    for (let i = 0; i < 40; i++) { const ang = i * 0.7, rad = 80 + i * 35; MOBS.set('m' + i, { x: B_C.cx * SZ + Math.cos(ang) * rad, y: B_C.cy * SZ + Math.sin(ang) * rad, hp: 10, type: 'deer' }); }
+    deps.mobs = MOBS;
+  }
   const mkVil = (name, c, dbId, pop) => {
     const e = econ.createVillage({ fertility: 1, water: 1, stone: 1.2, ore: 1, wood: 1, game: 1, size: 60, arable: 1, initialPop: pop, name });
     e.storage.weapon = 20; e.storage.stone = 200;
@@ -87,6 +99,7 @@ function _run(opts) {
     return { dbId, name, ccx: c.cx, ccy: c.cy, econ: e, npcPids: [], housesPx };
   };
   const atk = mkVil('공격A', A_C, 1, 22), def = mkVil('방어B', B_C, 2, 18);
+  if (opts.probeRout) { def._maxRPx = 1200; def._terrSet = new Set(); for (let i = 0; i < 60; i++) def._terrSet.add((B_C.cx + (i % 10) - 5) + ',' + (B_C.cy + ((i / 10) | 0) - 3)); }
   const villages = [atk, def];
   const world = { day: 400, seed: 7, _warWars: [], _warTributes: [], _warSeq: 1 };
   const db = { getVillageStructRows: (id) => (id === 2 ? HOUSES_B : []) };
@@ -181,6 +194,56 @@ function _run(opts) {
   let hsh = 0; for (const p of players.values()) { hsh = (hsh * 31 + Math.round(p.x * 16) * 7 + Math.round(p.y * 16) + (p.hp | 0)) >>> 0; }
   tr.posHash = hsh; tr.players = players.size;
   tr.bcast = { war: bcast.filter(m => m.type === 'war_battle').length, phases: [...new Set(bcast.filter(m => m.type === 'war_battle').map(m => m.phase))] };
+
+  // ── ★[T329] 위협 T 프로브 — **운영 함수 그대로**(H.threatOf · H._warOutMul · H._lifeJobSites) ──
+  if (opts.probeThreat) {
+    const WLc = H.state.warLive, R = WLc.WAR_ALERT_R;
+    const body = H.state.warBodies.get(w.id) || { cmd: { cx: def.ccx - R, cy: def.ccy } };
+    H.state.warBodies.set(w.id, body); w.phase = 'march';
+    const at = (dCell, dtMs) => { body.cmd = { cx: def.ccx - dCell, cy: def.ccy }; return H.threatOf(def, (body._thAt || 0) + (dtMs || 1000)); };
+    const rows = [];
+    // 멀리 → 가까이(같은 간격으로 다가온다)
+    body._thD = null; body._thAt = 0;
+    for (let d = R * 1.4; d >= 2; d -= R * 0.1) rows.push({ d: +d.toFixed(1), T: +at(d, 1000).toFixed(4) });
+    const zeroFar = rows.filter(r => r.d > R).reduce((m, r) => Math.max(m, r.T), 0);
+    let monoUp = true; for (let i = 2; i < rows.length; i++) if (rows[i].T < rows[i - 1].T - 1e-9) monoUp = false;
+    // 가까이 → 멀리(물러난다)
+    const back = [];
+    for (let d = 4; d <= R * 1.2; d += R * 0.1) back.push({ d: +d.toFixed(1), T: +at(d, 1000).toFixed(4) });
+    let monoDown = true; for (let i = 2; i < back.length; i++) if (back[i].T > back[i - 1].T + 1e-9) monoDown = false;
+    // 병력비 — 같은 자리·같은 속도에서 병력만 바꾼다
+    const force0 = w.force;
+    body._thD = null; body._thAt = 0; w.force = 2; const lo = at(R * 0.3, 1000);
+    body._thD = null; body._thAt = 0; w.force = 200; const hi = at(R * 0.3, 1000);
+    w.force = force0;
+    const all = rows.concat(back).map(r => r.T);
+    tr.threat = { rows, zeroFar: +zeroFar.toFixed(6), monoUp, monoDown,
+      upTrace: rows.slice(0, 4).map(r => `d${r.d}→T${r.T}`).join(' '), downTrace: back.slice(0, 4).map(r => `d${r.d}→T${r.T}`).join(' '),
+      oddsLo: lo, oddsUp: hi, minT: Math.min(...all), maxT: Math.max(...all) };
+  }
+  // ── ★[T329] R_out 프로브 — T 열한 칸 훑기(현장 목록은 _lifeJobSites 그대로) ──
+  if (opts.probeRout) {
+    const e = def.econ;
+    const sites = (T) => { if (T > 0) e._warThreat = T; else delete e._warThreat; def._jobSites = null; const js = H._lifeJobSites(def, H.state.world.day); return js; };
+    const cnt = (js) => (js.lumberjack.length + js.miner.length + js.forager.length + js.hunter.length + js.fisher.length);
+    const base = sites(0), baseN = cnt(base), baseJSON = JSON.stringify(base.fisher.length) + '|' + JSON.stringify(base.hunter.length);
+    const mulRows = [];
+    for (let i = 0; i <= 10; i++) { const T = i / 10; const mul = (T > 0 ? (delete e._warThreat, e._warThreat = T, H._warOutMul(def)) : (delete e._warThreat, H._warOutMul(def))); mulRows.push({ T, mul: +mul.toFixed(6), want: +(1 - T).toFixed(6) }); }
+    const mulOk = mulRows.every(r => Math.abs(r.mul - r.want) < 1e-9);
+    const ns = []; for (let i = 0; i <= 10; i++) { const T = i / 10; ns.push({ T, n: cnt(sites(T)) }); }
+    // 연속 — 이웃 칸 사이 현장 수 차이가 전체의 절반을 넘지 않는다(칼로 나뉘는 값 0)
+    let worst = 0, worstAt = null;
+    for (let i = 1; i < ns.length; i++) { const dd = Math.abs(ns[i].n - ns[i - 1].n); if (dd > worst) { worst = dd; worstAt = ns[i].T; } }
+    const contOk = baseN === 0 ? true : worst <= Math.max(1, baseN * 0.5);
+    const zeroJS = sites(0);
+    const zeroSame = cnt(zeroJS) === baseN && (JSON.stringify(zeroJS.fisher.length) + '|' + JSON.stringify(zeroJS.hunter.length)) === baseJSON;
+    const oneN = cnt(sites(1));
+    delete e._warThreat; def._jobSites = null;
+    tr.rout = { mulRows, mulOk, mulTrace: mulRows.map(r => `${r.T}→${r.mul}`).join(' '),
+      contOk, contTrace: `평시 현장 ${baseN} · 이웃 칸 최대 차 ${worst}${worstAt != null ? `(T=${worstAt})` : ''} · 칸별 ${ns.map(x => x.n).join(',')}`,
+      zeroSame, zeroTrace: `T=0 현장 ${cnt(zeroJS)} = 평시 ${baseN}`,
+      oneEmpty: oneN === 0, oneTrace: `T=1 현장 ${oneN}` };
+  }
   return tr;
 }
 
@@ -317,6 +380,9 @@ function _run(opts) {
       ok(diff === 0 && hits > 0, 'ⓛ ★대조 — 청크 색인 = 칸마다 묻는 길(전수 1,000칸 · 나무 있는 칸 > 0)', `다른 칸 ${diff}/${n} · 나무 칸 ${hits}`);
     }
   }
+
+  // ── ⓜ~ⓟ 위협 함수 T(T329) ────────────────────────────────────────────────
+  threatPart();
 
   // ── ⓖ 서버 ───────────────────────────────────────────────────────────────
   if (process.env.WAR_WORLD_NO_SERVER === '1') { say('\n[ⓖ] 서버 절 건너뜀(WAR_WORLD_NO_SERVER=1)'); }
@@ -542,5 +608,68 @@ function costPart() {
     const esSrc = fs.readFileSync(path.join(ROOT, 'sim/economy-sim.js'), 'utf8');
     ok(/\(v\._laborMul \|\| 1\)/.test(esSrc), 'ⓚ ★대조 — 생산 식이 `_laborMul` 을 읽는다(미소비가 아니었다 · T284 회부 정정)');
     ok(/if \(npc\._warDraft\) continue;/.test(esSrc), 'ⓚ 생산 제외는 엔진 한 줄(`_warDraft`)이다');
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ★★[T329] ⓜ~ⓟ — 위협 함수 T 가 봉쇄를 대신한다
+//   재는 것: T 단조(가까워지면 오른다 · 멀어지면 내린다 · 병력비) · R_out 연속(칼로 나뉘는 값 0) ·
+//            `_siege*` 심볼 0(정적) · 몸값 품목 = 섭식 정본 순서.
+// ══════════════════════════════════════════════════════════════════════════════
+function threatPart() {
+  say('\n[ⓜ] 위협 T — 거리·접근·병력비 · 연속');
+  // 하네스는 **운영 함수 그대로**를 부른다: _run 이 만든 목 존의 H(=__p3Bind)와 war-live.
+  const S = runScenario({ seed: 61, viewer: true, scenario: 'assault', warId: 61, probeThreat: true });
+  const th = S.threat || {};
+  ok(th.rows && th.rows.length >= 3, 'ⓜ 전제 — 군대가 다가오는 동안 T 를 여러 번 쟀다', `표본 ${th.rows ? th.rows.length : 0}`);
+  ok(th.zeroFar === 0, 'ⓜ 경보 거리 밖에서는 T = 0', `먼 자리 T ${th.zeroFar}`);
+  ok(th.monoUp, 'ⓜ 가까워지면 T 가 오른다(단조)', th.upTrace || '');
+  ok(th.monoDown, 'ⓜ 멀어지면 T 가 내린다', th.downTrace || '');
+  ok(th.oddsUp > th.oddsLo, 'ⓜ 병력비 — 병력이 많을수록 T 가 크다(같은 자리·같은 속도)', `약군 ${th.oddsLo.toFixed(3)} < 대군 ${th.oddsUp.toFixed(3)}`);
+  ok(th.maxT <= 1 && th.minT >= 0, 'ⓜ T ∈ [0,1]', `min ${th.minT.toFixed(3)} · max ${th.maxT.toFixed(3)}`);
+
+  say('\n[ⓝ] R_out = 영토 × (1−T) — 연속(칼로 나뉘는 값 0)');
+  {
+    // T 를 0 → 1 로 훑으며 R_out 배수와 현장 수를 잰다. 같은 함수(_warOutMul·_lifeJobSites)를 그대로 부른다.
+    const S2 = runScenario({ seed: 62, viewer: true, scenario: 'assault', warId: 62, probeRout: true });
+    const r = S2.rout || {};
+    ok(r.mulRows && r.mulRows.length === 11, 'ⓝ 전제 — T 열한 칸(0.0~1.0)을 훑었다', `${r.mulRows ? r.mulRows.length : 0}칸`);
+    ok(r.mulOk, 'ⓝ R_out 배수 = 1−T (정확)', r.mulTrace || '');
+    ok(r.contOk, 'ⓝ 연속 — 이웃한 두 T 사이 현장 수 차이가 그 T 차이에 비례(칼로 나뉘는 값 0)', r.contTrace || '');
+    ok(r.zeroSame, 'ⓝ T=0 이면 현장 목록이 **평시와 한 글자도 안 다르다**(곱이 항등)', r.zeroTrace || '');
+    ok(r.oneEmpty, 'ⓝ T=1 이면 마을 밖 현장이 0(마을 안에서만 — 상태가 아니라 반경이 0)', r.oneTrace || '');
+  }
+
+  say('\n[ⓞ] 봉쇄 상태·배수 — 심볼 0(정적)');
+  {
+    const wcSrc = fs.readFileSync(path.join(ROOT, 'sim/war-core.js'), 'utf8');
+    const esSrc = fs.readFileSync(path.join(ROOT, 'sim/economy-sim.js'), 'utf8');
+    const v2Src = fs.readFileSync(path.join(ROOT, 'sim/economy-sim-v2.js'), 'utf8');
+    const code = (t) => t.split('\n').filter(l => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');   // 주석 줄은 뺀다(역사 주석은 남긴다)
+    for (const [nm, src] of [['war-core', wcSrc], ['economy-sim', esSrc], ['economy-sim-v2', v2Src]]) {
+      const c = code(src);
+      const hits = (c.match(/_siegeBlock|_siegeOutMul|_siegeM\b|_recomputeSiege|SIEGE_OUTDOOR_JOBS|WAR_SIEGE_OUTMUL/g) || []).length;
+      ok(hits === 0, `ⓞ ${nm} 에 봉쇄 상태·배수 심볼 0`, `${hits}`);
+    }
+    ok(!/WAR_OPS/.test(code(wcSrc)), 'ⓞ `WAR_OPS` 손잡이 0(폴백 세계가 없다)');
+    ok(/_warThreat/.test(code(v2Src)), 'ⓞ 캐러밴이 **같은 T** 를 읽는다(econ v2 기대손실)');
+  }
+
+  say('\n[ⓟ] 포로 몸값 — 곳간 품목(섭식 정본 순서)');
+  {
+    const wcSrc = fs.readFileSync(path.join(ROOT, 'sim/war-core.js'), 'utf8');
+    ok(/_warFoodMove\(he, e, m \* WAR_CAP_RANSOM_FOOD\)/.test(wcSrc), 'ⓟ 몸값이 `storage.food` 한 칸이 아니라 품목 이동 함수를 쓴다');
+    ok(!/he\.storage\.food -= m \* WAR_CAP_RANSOM_FOOD/.test(wcSrc), 'ⓟ 옛 한 칸 차감 줄 0');
+    // 몸값·약탈·공납·조공·군량이 **같은 이동 함수 하나**를 지난다(정적 — 사본 0)
+    const movers = (wcSrc.match(/_warFoodMove\(/g) || []).length;
+    ok(movers >= 4, 'ⓟ 곳간→곳간 식량 이동이 한 함수(`_warFoodMove`)로 모였다', `호출 ${movers}곳(약탈·공납·조공·몸값)`);
+    // 동적 — `food` 0 · 생선만 있는 마을이 공납을 내면 **생선으로** 간다(같은 이동 함수)
+    const W = _mkCostWorld({});
+    const D = W.def.econ.storage, A = W.atk.econ.storage;
+    for (const k of ['food', 'fish', 'meat', 'cooked_food', 'vegetable']) { D[k] = 0; A[k] = 0; }
+    D.fish = 500;
+    const aFish0 = A.fish;
+    W.war._opDoSurrender(W.atk, W.def, W.world.day);
+    ok(A.fish > aFish0 && A.food === 0 && D.fish < 500, 'ⓟ `food` 0 마을의 공납이 생선으로 건너간다(곡물로 둔갑 0)', `공격 생선 ${aFish0} → ${A.fish.toFixed(0)} · 방어 ${D.fish.toFixed(0)}`);
   }
 }

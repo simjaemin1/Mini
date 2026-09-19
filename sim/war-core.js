@@ -2,12 +2,12 @@
 // war-core.js — 전쟁실험실.html 의 NPC 마을 전쟁 "경제 층"만 순수 추출(P1).
 //   ★[P1 범위] 경제 층만: 명분(casus·J)·원한 EMA·트라우마·개인편성(conscript)·동원(warMobilize)·
 //     headless 전투 판정(battle-core createBattle)·결과 되먹임(약탈·조공·warKill·노획·품질 가중평균)·
-//     ★[T295] 동원의 대가(징발 결속 — 생산에서 빠진다)·군량 적재/환급·봉쇄(_siegeBlock)·원한 교역제재(_grudgeBlock).
+//     ★[T295] 동원의 대가(징발 결속)·군량 적재/환급 · ★[T329] 봉쇄 훅 제거(마을은 위협 T 로 겪는다) · 원한 교역제재(_grudgeBlock).
 //   ★[P1 제외] 전투 실체·개별 병사·행군·맵 좌표·broadcast·렌더·포로 이송 — 전부 P2~P4(호스트).
 //   ★[2파 재동기 2026-07-12] 공성 결단·siege 상태머신은 이제 이 모듈이 소유(§15 작전층 — 랩 블록B 7890~8140의
 //     일 단위 어댑터): march→camp→{assault|siege|withdraw}, 자동 개전 폐지(eta=도착·결단), 공성팩, 방어 3택+sortie,
-//     무혈 항복(절박 완화·공납 음수 하한 — 랩 최신), 무저항 함락(walkover — 유령 유닛 0). _siegeBlock 설치가
-//     'march 창'(P1 단순화)에서 'siege 상태'로 이동. WAR_OPS=0 → 전부 봉인(P1 궤적 폴백). 실체 개전은
+//     무혈 항복(절박 완화·공납 음수 하한 — 랩 최신), 무저항 함락(walkover — 유령 유닛 0). ★[T329] 옛 _siegeBlock 설치가
+//     'march 창'(P1 단순화)에서 'siege 상태'로 이동. ★[T329] 봉인 손잡이(WAR_OPS)는 제거. 실체 개전은
 //     opts.onEngage(w,day,why) 훅으로 호스트(villages.js P3)에 위임 — true 반환(phase='battle') 시 되먹임은 실체 경로.
 //   ★ battle-core.js 무수정 재사용(createBattle 인스턴스 경로 = 결정론 rng 주입). economy-sim 무수정
 //     (무기 숙련 _ws*는 econ.npcs 에 lazy 부착 — 엔진이 안 건드리는 키, serializeEcon 자동 포섭).
@@ -63,8 +63,6 @@ const WAR_BATTLE_DT = 0.05, WAR_BATTLE_MAXTICK = 4000;
 // NPC 동원 알고리즘
 const WAR_CASUS_MOB = { feud: 1.1, prestige: 1.1, trade: 1.3, territory: 1.3, existential: 1.6 };
 const WAR_HOME_KEEP_FRAC = 0.25, WAR_HOME_KEEP_WAR = 0.5, WAR_SUPPLY_DIST_K = 0.06, WAR_MOB_ODDS_MIN = 0.42;
-// 봉쇄(econ 훅) — ★[2파 작전층] 설치 주체가 'march 창'(P1 단순화)에서 'siege 상태'로 이동(WAR_OPS=0 폴백만 구 방식)
-const WAR_SIEGE_OUTMUL = 0.15;
 // ═══════════ ★[3파 포로 §18] 상수 (전쟁실험실.html 6213~6218 verbatim) — "포로는 잡히는 게 아니라 끌려간다" ═══════════
 //   결판(전투·전장 장악) 시 패자 사상 판정자의 35%는 사망 대신 기절→포로. 상한 = round(J×후보)(불의전은 포로 권리도 작음)
 //   && 승자 병력×0.5(호송 능력). 초과분 방면(귀향). 항복 협상·무저항 함락 = 사상 0 → 후보 0(자연 무포로).
@@ -92,8 +90,9 @@ const WAR_DEF_RESPOND_ODDS = 0.52; // 방어 응전 소집 문턱(전력비 유�
 const WAR_SURR_FOODD = 5;          // 무혈 항복: 방어 곳간 일수 임계
 const WAR_SURR_ODDS = 0.25;        // 무혈 항복: 응전 승산 절망 문턱(곳간<2일이면 ×2.2 절박 완화 — 랩 최신 수리)
 const WAR_DEF_HYST = 2;            // 방어 태세(응전↔버티기) 전환 최소 간격(일)
-// ENABLE 게이트 관례: WAR_OPS=0 → 작전층 완전 봉인(P1 폴백: eta 즉시 headless + march 창 봉쇄 — 기존 궤적 그대로).
-const WAR_OPS_ON = !(typeof process !== 'undefined' && process.env && process.env.WAR_OPS === '0');
+// ★★[T329 2026-09-19 · PM] **`WAR_OPS=0` 손잡이는 없앴다.** 작전층이 정본이 된 지 오래고(2파부터),
+//   그 폴백(도착 즉시 headless 결판)은 T284 가 걷어낸 "판" 그 자체였다 — 켜는 자리가 남아 있으면
+//   실체 전쟁과 다른 세계가 하나 더 존재한다. 되돌림이 필요하면 커밋을 되돌리는 게 맞다.
 
 const _clamp01 = v => v < 0 ? 0 : (v > 1 ? 1 : v);
 
@@ -633,17 +632,16 @@ function createWar(opts) {
     // ★★[T295 ②] **한 적재** — 행군분(marchDays×2)과 공성분(WAR_SIEGE_PACK)을 한 번에 싣는다(규모 비례:
     //   병력 × 일수 × WAR_RATION · 전부 기존 상수). 종전엔 여기 위에서 행군분을 곳간에서 먼저 빼고
     //   `_opPackLoad` 가 공성분을 또 뺐다 — 두 장부가 갈려 행군분은 환급도 없었다(회부 ②).
-    //   WAR_OPS=0 폴백은 공성분이 없다(행군분만) — 그 팔의 결단 시계는 P1 원형 그대로다.
-    const _packDays = marchDays * 2 + (WAR_OPS_ON ? WAR_SIEGE_PACK : 0);
+    const _packDays = marchDays * 2 + WAR_SIEGE_PACK;
     _war._packDays = _war._packRem = _opPackLoad(V, _actualForce, _packDays, _war);
     _war._packMarch = marchDays * 2;   // 행군에 쓰는 몫(귀환까지) — 주둔 소모는 이 위에서부터 깎인다
-    if (WAR_OPS_ON) _war.op = 'march';
+    _war.op = 'march';
     // ★★[T295 ①] 징발 — 동원한 병력만큼 econ 에서 자리를 비운다(전량 · pid 는 호스트가 나중에 붙인다).
     //   이것이 옛 `_laborMul` 동원 항의 자리다: 생산은 이제 "사람이 없어서" 준다(엔진 한 줄).
     _war._draftN = warDraftFill(V, _actualForce, _war.id);
     WARS.push(_war);
     st.decl++; st.byCasus[casus] = (st.byCasus[casus] || 0) + 1;
-    log(day, V.name + '→' + U.name + ' 선전포고[' + casus + '·' + mode + '] 병력' + _actualForce + '(전사' + warriors + '·승산' + (plan.pWin * 100 | 0) + '%·' + plan.capReason + ')·행군' + marchDays + '일' + (WAR_OPS_ON && _war._packDays > 0 ? '·공성팩 ' + _war._packDays.toFixed(1) + '일분' : ''));
+    log(day, V.name + '→' + U.name + ' 선전포고[' + casus + '·' + mode + '] 병력' + _actualForce + '(전사' + warriors + '·승산' + (plan.pWin * 100 | 0) + '%·' + plan.capReason + ')·행군' + marchDays + '일' + (_war._packDays > 0 ? '·군량 ' + _war._packDays.toFixed(1) + '일분' : ''));
     return true;
   }
 
@@ -652,19 +650,18 @@ function createWar(opts) {
   function _syncTribToEcon(payerVil) { const e = payerVil.econ; if (!e) return; const out = []; for (const t of TRIBUTES) if (t.payer === payerVil) out.push({ payee: t.payee.name, until: t.until, next: t.next }); if (out.length) e._warTribOut = out; else if (e._warTribOut) delete e._warTribOut; }
 
   // ═══════════ ★[2파 작전층 · §15] camp/siege/assault/withdraw 상태기계 (랩 7939~8140 일 단위 어댑터) ═══════════
-  // 봉쇄 설치/해제 — econ 훅(_siegeBlock·_siegeOutMul)은 'siege 상태'만 소유. 다중 포위 refcount(같은 방어를 딴 군대가 포위 중이면 유지).
+  // ★★[T329 2026-09-19 · 재민 "봉쇄 상태 없음 · 배수 없음"] 포위는 **군대의 태세**로만 남는다 —
+  //   econ 훅(`_siegeBlock`·`_siegeOutMul`)은 걷어냈다. 마을이 겪는 것은 상태가 아니라 **위협 T**(호스트가 쓴다)이고,
+  //   그 T 가 마을 밖 생산 반경(R_out)과 캐러밴 위험에 연속으로 들어간다. 여기 남는 것은 결단·통계·로그뿐이다.
   function _opSetSiege(w, on, day) {
-    if (!w || !w.def) return; const D = w.def.econ;
+    if (!w || !w.def) return;
     if (on) {
       if (w._siegeOn) return; w._siegeOn = true;
-      if (D) { D._siegeBlock = true; D._siegeOutMul = WAR_SIEGE_OUTMUL; }
       const st = stats(); st.siege = (st.siege || 0) + 1;
-      log(day, w.atk.name + ' → ' + w.def.name + ' 포위 개시 — 봉쇄(교역 발/착 차단·야외 노동 ' + (WAR_SIEGE_OUTMUL * 100 | 0) + '%)');
+      log(day, w.atk.name + ' → ' + w.def.name + ' 포위 개시(주둔 태세 — 마을은 위협 T 로 겪는다)');
     } else {
       if (!w._siegeOn) return; w._siegeOn = false;
-      let other = false; for (const o of WARS) { if (o !== w && o._siegeOn && o.def === w.def) { other = true; break; } }
-      if (!other && D) { delete D._siegeBlock; delete D._siegeOutMul; }
-      log(day, w.def.name + ' 포위 해제' + (other ? '(타군 포위 지속)' : ''));
+      log(day, w.def.name + ' 포위 해제');
     }
   }
   // 군량 팩 — 적재=곳간 선차감(부족하면 있는 만큼), 잔량 '일수' 단위. 철수·항복 잔량은 환급.
@@ -885,8 +882,9 @@ function createWar(opts) {
           if (warFE(he) / HN <= WAR_CAP_RANSOM_FD) continue;               // 고향 식량 여유(>60일치)만 지불
           if (warGrudge(he, hv.name) >= WAR_CAP_RANSOM_GR) continue;       // 원한 깊으면 지불 거부
           if (rng() >= WAR_CAP_RANSOM_P) continue;
-          const m = Math.min(list.length, Math.floor((he.storage.food || 0) / WAR_CAP_RANSOM_FOOD)); if (m < 1) continue;
-          he.storage.food -= m * WAR_CAP_RANSOM_FOOD; e.storage.food = (e.storage.food || 0) + m * WAR_CAP_RANSOM_FOOD;
+          // ★[T329 ③] 몸값도 **곳간 품목**이다 — `storage.food` 한 칸이 아니라 섭식 정본 순서로 떼고 그 품목 그대로 준다(T295 ③ 문법).
+          const m = Math.min(list.length, Math.floor(_feOf(he) / WAR_CAP_RANSOM_FOOD)); if (m < 1) continue;
+          _warFoodMove(he, e, m * WAR_CAP_RANSOM_FOOD);
           const hc = centerOf(hv), oc = centerOf(home);
           const dist = Math.hypot(hc.cx - oc.cx, hc.cy - oc.cy);
           for (let k = 0; k < m; k++) { const npc = list[k]; npc.captive.esc = day; st.ransomed = (st.ransomed || 0) + 1; TQ.push({ npc, from: hv, to: home, eta: day + Math.max(1, Math.ceil(dist / WAR_MARCH)) }); }
@@ -965,14 +963,6 @@ function createWar(opts) {
     log(day, '전투 ' + w.atk.name + ' vs ' + w.def.name + '[' + w.casus + '] → ' + (atkWin ? '공격승' : '방어승') + ' 사상 공' + atkCas + '·방' + defCas + ' [전술 공' + _res.atkStart + '→' + _res.atkSurv + ' 방' + _res.defStart + '→' + _res.defSurv + ' ' + _res.ticks + '틱] · ' + outcome);
   }
 
-  // 봉쇄(econ 훅) 재계산 — ★[2파 작전층] 'siege 상태'의 방어 마을만(_opSetSiege 즉시 설치의 일일 조정자 겸 잔존 훅 안전망).
-  //   WAR_OPS=0 폴백 = P1 단순화(march 창 전체 봉쇄) 그대로.
-  function _recomputeSiege() {
-    const under = new Set();
-    if (WAR_OPS_ON) { for (const w of WARS) if (w.phase === 'march' && w.op === 'siege' && w.def && w.def.econ) under.add(w.def.econ); }
-    else { for (const w of WARS) if (w.phase === 'march' && w.def && w.def.econ) under.add(w.def.econ); }
-    for (const vil of villages) { const e = vil.econ; if (!e) continue; if (under.has(e)) { e._siegeBlock = true; e._siegeOutMul = WAR_SIEGE_OUTMUL; } else { if (e._siegeBlock) delete e._siegeBlock; if (e._siegeOutMul != null) delete e._siegeOutMul; } }
-  }
 
   // ═══════════ 일일 driver (전쟁실험실 warDaily 의 econ·headless 경로) ═══════════
   function daily(day) {
@@ -997,11 +987,10 @@ function createWar(opts) {
     // 2.5) ★[3파 포로] 일일 처리(동화·탈출·몸값·이송 — 포로 0이면 사실상 no-op·랩 warDaily 위치 정합)
     warCaptiveDaily(day);
     // 3) 행군→(eta 도달=링 도착)→★[2파 작전층] camp 결단 상태기계→귀환→동원 해제.
-    //    WAR_OPS=0 폴백 = P1 원형(eta 즉시 headless — 자동 개전). ★자동 개전 폐지: ops 모드에선 도착≠개전.
+    //    ★자동 개전 폐지: 도착 ≠ 개전(결단이 연다). ★[T329] 옛 `WAR_OPS=0` 폴백(도착 즉시 headless)은 제거.
     for (let i = WARS.length - 1; i >= 0; i--) {
       const w = WARS[i];
       if (w.phase === 'march') {
-        if (!WAR_OPS_ON) { if (day < w.eta) continue; warResolveBattle(w, day); w.phase = 'return'; w.eta = day + w.marchDays; continue; }   // P1 폴백(구 궤적 그대로)
         if (w.op == null) w.op = 'march';   // 방어적(훅 경로·구 객체)
         if (w.op === 'march') {
           w._packRem = Math.max(0, (w._packRem || 0) - 1);   // ★[T295 ②] 행군에도 먹는다(한 적재 — 행군분이 팩 안에 있다)
@@ -1063,11 +1052,8 @@ function createWar(opts) {
       if (best && bestU > WAR_UTIL_TH && rng() < 0.05 * seasonMul) warMobilize(V, best.U, best.casus, best.d, day);
     }
     }
-    // 6) 봉쇄(_siegeBlock) 재계산 — 이번 tick 신규 선포까지 반영(다음 econ 틱 적용). march 중 방어=봉쇄.
-    //   ★[T295 ①] **동원 생산정지(`_laborMul`) 재계산은 없앴다** — 생산은 이제 징발된 사람이 빠져서 준다
-    //     (`economy-sim` 생산 루프 `_warDraft` 한 줄). 두 기구가 겹치면 같은 대가를 두 번 물린다.
-    //     `_laborMul` 자체는 **부상 노동력**(생활층 `villages.js` 가 쓴다)의 것으로 남는다 — 이 파일은 안 쓴다.
-    _recomputeSiege();
+    // 6) ★[T295 ①] 동원 생산정지(`_laborMul`) 재계산 없음 — 생산은 징발된 사람이 빠져서 준다(`_warDraft` 한 줄).
+    //    ★[T329] 봉쇄(`_siegeBlock`) 재계산도 없앴다 — 마을이 겪는 것은 **위협 T**(호스트가 매일·군대 이동마다 쓴다)다.
     st.active = WARS.length; st.tributes = TRIBUTES.length;
   }
 
@@ -1083,7 +1069,7 @@ function createWar(opts) {
     daily, stats, conscript, warMobilize, _warNpcMobPlan, warResolveBattle, toBattleSpec,
     grudgeBlockSweep, rebuildFromEcon, warTickWeaponSkills: (e) => warTickWeaponSkills(e),
     // ★[2파 작전층] 게이트·프로브 접점(호스트 villages.js가 OPS_ON으로 P3 게이팅)
-    OPS_ON: WAR_OPS_ON, _opNpcDecide, _opCheckSurrender, _opDefenseDaily, _warWalkoverOutcome, _opDoSurrender, _opSetSiege, _opPackLoad, _opPackRefund,
+    OPS_ON: true, _opNpcDecide, _opCheckSurrender, _opDefenseDaily, _warWalkoverOutcome, _opDoSurrender, _opSetSiege, _opPackLoad, _opPackRefund,
     // ★[T295] 동원의 대가 — 결속(pid 정본) · 군량 환급 한 곳. 호스트(server/villages.js)와 하네스가 이 문만 쓴다.
     warDraftBind, warDraftFill, warDraftReleasePid, warDraftReleaseWar, warDraftCount, warRationRefund,
     // ★[3파 포로] 접점
@@ -1102,11 +1088,11 @@ const WarCore = {
   WAR_REP_TH, WAR_REP_K, WAR_GRUDGE_BLOCK_TH, WAR_SALV_DEAD, WAR_SALV_DESERT, WAR_DESERT_P0, WAR_DESERT_PM,
   WAR_BRONZE_WEAPQ_TH, WAR_BRONZE_WEAPQ_CAP, LEVY_SPEAR_FRAC, LEVY_PIKE_FRAC, WAR_MAX_ARMY, WAR_ENGAGE_MAX,
   WAR_DEF_ENGAGE_RATIO, WAR_DEF_ENGAGE_MIN, WAR_BATTLE_DT, WAR_BATTLE_MAXTICK, WAR_CASUS_MOB, WAR_HOME_KEEP_FRAC,
-  WAR_HOME_KEEP_WAR, WAR_SUPPLY_DIST_K, WAR_MOB_ODDS_MIN, WAR_SIEGE_OUTMUL, WAR_CAP_EU, WAR_CAP_FRAC,
+  WAR_HOME_KEEP_WAR, WAR_SUPPLY_DIST_K, WAR_MOB_ODDS_MIN, WAR_CAP_EU, WAR_CAP_FRAC,
   WAR_WSKILL_MAX, WAR_WS_INIT, WAR_WS_INIT_DEF, WAR_WS_TRAIN, WAR_WS_VET_GAIN,
   // ★[2파 작전층 §15] 상수·정찰 근사(pure)
   WAR_SIEGE_PACK, WAR_PACK_CRIT, WAR_ASSAULT_ODDS, WAR_GAMBLE_ODDS, WAR_HOLD_GAMBLE, WAR_SORTIE_ODDS,
-  WAR_DEF_RESPOND_ODDS, WAR_SURR_FOODD, WAR_SURR_ODDS, WAR_DEF_HYST, WAR_OPS_ON,
+  WAR_DEF_RESPOND_ODDS, WAR_SURR_FOODD, WAR_SURR_ODDS, WAR_DEF_HYST,
   _opDefEff, _opAtkOdds, _opDefOdds, _opDefEstPack,
   // ★[3파 포로 §18] 상수·pure
   WAR_CAP_ESCORT, WAR_CAP_ASSIM, WAR_CAP_ESC0, WAR_CAP_ESC1, WAR_CAP_ESC_D,
