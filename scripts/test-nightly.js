@@ -174,5 +174,73 @@ console.log('\n=== ⑥ nightly-run.sh — 두 개가 뜨면 둘째가 죽는다 
   ok(fs.readFileSync(LOGP + '.state', 'utf8').trim() === 'done', '`$LOG.state` 가 **done** 으로 끝난다', fs.readFileSync(LOGP + '.state', 'utf8').trim());
 }
 
+console.log('\n=== ⑧ 연속 빨강 칸 — 직전 밤 보고 한 장을 읽어 **세기만** 한다 ===');
+{
+  // ★왜: T304 규약이 "단독 초록이어도 **두 밤째** 빨강이면 nightly-known 에 올린다" 인데 그 수를
+  //   사람이 손으로 셌다. 기계가 센다 — **판정은 안 한다**(올리고 내리는 것은 PM).
+  const dir = path.join(TMP, 'nights');
+  fs.mkdirSync(dir, { recursive: true });
+  // 직전 밤(09-13) 보고 픽스처: 새 꼴 한 줄(연속 1밤) + 옛 꼴 한 줄(연속 칸 없음 = 1밤으로 읽는다)
+  fs.writeFileSync(path.join(dir, '야간러너_2026-09-13.md'), [
+    '| 하네스 | 연속 | 첫 판 | 소요 | 단독 재실행 | 귀속 |',
+    '|---|---|---|---|---|---|',
+    '| `e2e-cold` | 연속 **1밤** | RC=1 | 3분 | ★**단독 초록** (RC=0) | **상시(부하 거짓 빨강)** |',
+    '| `test-imaginary` | 연속 **1밤** | RC=1 | 1분 | 여전히 빨강 | **귀속: 모델 몫** |',
+    '| **`test-tick-slicer.js`** | **22 / 2** | 창 안에 못 끝냈다 | **상시(기계 의존)** |',   // ★사람이 쓴 꼴(이름 굵게 · .js)
+  ].join('\n') + '\n');
+  const withPrev = run(['--log', f1, '--base', 'x', '--known', known, '--prev-dir', dir]);
+  ok(/\| `e2e-cold` \| 연속 \*\*2밤\*\*/.test(withPrev), '★직전 밤에도 빨갰으면 **2밤**으로 센다', '1밤 → 2밤');
+  ok(/\| `test-imaginary` \| 연속 \*\*2밤\*\* \(상시 밖\)/.test(withPrev), '★상시 목록에 **없는** 2밤짜리엔 (상시 밖) 표가 붙는다');
+  ok(/\| `test-tick-slicer` \| 연속 \*\*2밤\*\*/.test(withPrev), '옛 꼴(연속 칸 없는 표)도 **한 밤**으로 읽어 잇는다');
+  // ⚠줄은 **상시 목록에 없는** 2밤짜리만 부른다 — 상시로 올라간 것을 다시 부르지 않는다.
+  const warn = (withPrev.split('\n').find((l) => l.indexOf('연속 2밤 이상인데') >= 0) || '');
+  ok(/`test-imaginary`\(2밤\)/.test(warn) && !/e2e-cold/.test(warn) && !/tick-slicer/.test(warn),
+     '★⚠줄은 **상시 밖** 2밤짜리만 부른다(상시로 올라간 것은 다시 안 부른다)', warn.slice(0, 80));
+  // ★자명 통과 금지 — 직전 밤이 없으면 **못 읽었다고 말한다**(조용히 1 로 되돌리지 않는다).
+  const noPrev = run(['--log', f1, '--base', 'x', '--known', known, '--prev-dir', path.join(TMP, '없는칸')]);
+  ok(/연속 수를 못 믿는다/.test(noPrev) && /`test-imaginary` \| 연속 \*\*1밤\*\*/.test(noPrev),
+     '★자명 통과 금지 — 직전 밤이 없으면 **못 읽었다**고 말하고 전부 1밤이다(그러니 위 2밤은 진짜로 읽은 것)');
+  ok(withPrev !== noPrev, '자명 통과 금지 — 직전 밤 유무로 **바이트가 갈린다**',
+     `${Buffer.byteLength(withPrev)}B vs ${Buffer.byteLength(noPrev)}B`);
+  ok(run(['--log', f1, '--base', 'x', '--known', known, '--prev-dir', dir]) === withPrev,
+     '★그래도 결정적이다 — 같은 입력이면 바이트가 같다');
+}
+
+console.log('\n=== ⑦ 묶음 기계 마른 판 — 세 밤이면 e2e 가 **한 번씩 다 든다** ===');
+{
+  // ★왜: 09-19 야간이 e2e 46종을 못 쟀다. 그 밤은 **묶음 기계를 안 썼다**(전수 149종을 손 청크로).
+  //   기계가 옳은지는 3시간을 걸어 보지 않고도 잴 수 있다 — `NIGHT_DATE` 로 **마른 판**을 찍으면 된다.
+  //   여기서 재는 것: ⓐ 사흘이면 묶음 셋이 다 돈다 ⓑ 그 사흘의 합이 e2e 전수와 **정확히 같다**(빠짐 0 · 중복 0).
+  const sh = (env, args) => execFileSync('bash', [path.join(ROOT, 'scripts', 'nightly-split.sh'), ...args],
+    { cwd: ROOT, encoding: 'utf8', env: Object.assign({}, process.env, env) });
+  const dry = (date) => {
+    const out = sh(date ? { NIGHT_DATE: date } : {}, ['auto', '--list-only']);
+    const g = (/→ \*\*([A-D])\*\*/.exec(out) || [])[1] || null;
+    return { g, list: out.split('\n').filter((l) => /^[A-Za-z0-9_.-]+\.js$/.test(l.trim())).map((l) => l.trim()) };
+  };
+  const all = execFileSync('bash', [path.join(ROOT, 'scripts', 'run-regress.sh'), '--list'],
+    { cwd: ROOT, encoding: 'utf8' }).split('\n').map((x) => x.trim()).filter(Boolean);
+  const e2eAll = new Set(all.filter((x) => x.startsWith('e2e-')));
+  const D = ['2026-09-20', '2026-09-21', '2026-09-22', '2026-09-23'];
+  const runs = D.map(dry);
+  const three = runs.slice(0, 3);
+  ok(three.every((r) => r.g) && new Set(three.map((r) => r.g)).size === 3,
+     '★사흘이면 묶음 **셋이 다** 돈다', three.map((r, i) => `${D[i].slice(5)}→${r.g}`).join(' · '));
+  // 사흘 치 목록에서 e2e 만 모은다 — 단위는 매일 도니 셈에서 뺀다(이름 규칙이 아니라 전수 목록으로 가른다).
+  const seen = [];
+  for (const r of three) for (const f of r.list) if (e2eAll.has(f)) seen.push(f);
+  const uniq = new Set(seen);
+  ok(uniq.size === e2eAll.size && seen.length === uniq.size,
+     `★사흘의 합 = e2e 전수 (빠짐 0 · 중복 0)`, `${uniq.size}/${e2eAll.size}종 · 중복 ${seen.length - uniq.size}`);
+  const missing = [...e2eAll].filter((f) => !uniq.has(f));
+  ok(missing.length === 0, '★빠지는 종이 0 이다', missing.join(' ') || '없음');
+  // ★자명 통과 금지 ①: 넷째 날은 **첫날 묶음으로 되돌아온다**(주기가 3 이라는 증거 — "늘 다르다"가 아니다).
+  ok(runs[3].g === runs[0].g, '★자명 통과 금지 — 나흘째는 첫날 묶음으로 **되돌아온다**(주기 3)',
+     `${D[0].slice(5)}→${runs[0].g} · ${D[3].slice(5)}→${runs[3].g}`);
+  // ★자명 통과 금지 ②: `NIGHT_DATE` 를 안 주면 **오늘**을 쓴다(마른 판 손잡이가 기본 동작을 안 바꿨다).
+  const today = dry(null);
+  ok(!!today.g, '★자명 통과 금지 — `NIGHT_DATE` 없이도 묶음이 선다(기본 동작 무변)', `오늘→${today.g}`);
+}
+
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===`);
 process.exit(fail === 0 ? 0 : 1);

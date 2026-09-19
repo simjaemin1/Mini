@@ -39,8 +39,13 @@ done
 WHICH="${1:-}"
 if [ "$WHICH" = "auto" ]; then
   # 날짜로 돌린다 — 묶음이 둘이면 이틀에 한 번, 셋이면 사흘에 한 번 같은 묶음이 돈다.
-  WHICH="${NIGHTS[$(( 10#$(date +%j) % ${#NIGHTS[@]} ))]}"
-  echo "  [auto] $(date +%F) · 묶음 ${#NIGHTS[@]}개 → **$WHICH**"
+  # ★[T314 2026-09-19] **마른 판을 위해 날짜를 밖에서 줄 수 있다**(`NIGHT_DATE=2026-09-20`).
+  #   3시간을 걸기 전에 "그 밤은 어느 묶음인가 · 무엇이 드는가"를 눈으로 보려면 이 한 줄이 필요하다.
+  #   ⚠안 주면 **종전과 한 글자도 안 다르다**(아래 두 갈래가 같은 `date` 를 부른다).
+  if [ -n "${NIGHT_DATE:-}" ]; then _DOY="$(date -d "$NIGHT_DATE" +%j)"; _DAY="$(date -d "$NIGHT_DATE" +%F)";
+  else _DOY="$(date +%j)"; _DAY="$(date +%F)"; fi
+  WHICH="${NIGHTS[$(( 10#$_DOY % ${#NIGHTS[@]} ))]}"
+  echo "  [auto] $_DAY · 묶음 ${#NIGHTS[@]}개 → **$WHICH**"
 fi
 case " ${NIGHTS[*]} " in *" $WHICH "*) ;; *) echo "쓰는 법: bash scripts/nightly-split.sh $(IFS='|'; echo "${NIGHTS[*]}")|auto [--list-only]" >&2; exit 2;; esac
 
