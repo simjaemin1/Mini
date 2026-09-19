@@ -3958,6 +3958,33 @@ const _lifeEcon = () => _econMod || (_econMod = require('../sim/economy-sim'));
 //     · 곳간 입구      `sim/economy-sim.js fishToGranary`(T179 `harvestToGranary` 와 같은 꼴)
 //     · 셀당 예산      `sim/economy-sim.js fishBudgetPerCell`(= 그 마을 하루 수식 ÷ 강가 셀 수 · 새 수 0)
 function _ignoreTerrainFlow() { /* no-op */ }   // 지형 정본이 흐름을 안 낼 때의 빈 자리(폴백은 위 `w` 기본값)
+// ★★★[T316 2026-09-19 · 설계_생산_실체 캐논 ⓘ] **`_carry` 흡수 — 손은 하나다.**
+//   `npc._carry` 는 품목 없는 **칸 수**였다. 플레이어 낙하(`_deathDrop`)도 무게(`carry.js`)도
+//   그 칸을 **못 본다** — 죽으면 그 짐은 조용히 사라졌다(캐논 ⓐ "죽으면 그 자리에 낙하" 위반).
+//   ⇒ 같은 수를 **품목**(`grain_sheaf` · 볏단 · 무게는 `weights.js` 유도값)으로 옮긴다.
+//   ★행동 무변 — 세는 수는 **그대로 칸 수**다. 문턱(`G_CARRY` 3)·인출량(`G_DRAW` 2)·곳간 수용(60)이
+//     전부 칸 단위 그대로라 비교가 한 자도 안 바뀐다. 바뀐 것은 **어디에 들고 있나** 하나다.
+//   ⚠kg 상한도 **같이 건다**(둘 중 먼저 걸리는 쪽). 지금은 3칸 = 11.2kg 이라 `CAP_KG` 25 가 안 문다 —
+//     상한으로 문턱을 유도하면 6칸이 되어 **행동이 바뀐다**. 그래서 3 을 그대로 두고 그 차이를 보고에 적었다.
+const GRAIN_ITEM = 'grain_sheaf';
+function _handOf(npc) { return (npc && npc.inventory && npc.inventory[GRAIN_ITEM]) || 0; }
+function _handSet(npc, n) {
+  if (!npc) return;
+  if (!npc.inventory) npc.inventory = {};
+  npc.inventory[GRAIN_ITEM] = Math.max(0, n || 0);
+}
+function _handAdd(npc, d) { _handSet(npc, _handOf(npc) + (d || 0)); }
+// 손이 찼나 — 칸 문턱(종전 그대로) **또는** 무게 상한(`carry.js` 정본) 중 먼저 걸리는 쪽.
+function _handFull(npc) {
+  const n = _handOf(npc);
+  if (n >= G_CARRY) return true;
+  const cc = _carryCfg(), W = _weights();
+  const cap = (cc && cc.CFG && cc.CFG.CAP_KG) || 0;
+  const kg = W ? W.kgOfOrDefault(GRAIN_ITEM) : 0;
+  return (cap > 0 && kg > 0 && n * kg >= cap);
+}
+let _wMod = null;
+const _weights = () => { if (_wMod === null) { try { _wMod = require('./weights'); } catch (e) { _wMod = false; } } return _wMod || null; };
 let _ffMod = null, _carryMod = null;
 const _fresh = () => _ffMod || (_ffMod = require('./freshfish'));
 const _carryCfg = () => { if (_carryMod === null) { try { _carryMod = require('./carry'); } catch (e) { _carryMod = false; } } return _carryMod || null; };
@@ -4005,6 +4032,53 @@ function _t312Deliver(vil, npc) {
   npc._t312U = 0; npc._t312Kg = 0;
   vil._t312Deliv = +((vil._t312Deliv || 0) + got).toFixed(6);
   return got;
+}
+// ★★[T316] **관측 창구** — `/perf` 가 그대로 내준다(회계 아님 · 손잡이가 꺼져 있으면 null).
+//   이 자가 없으면 §3(세계 위 자)이 "걷는 어부가 몇이냐 · 첫날 합이 수식과 같으냐"를 **소스에만** 물을 수 있다.
+//   T284 문법 그대로 — 하네스는 세계에 묻는다.
+function fishPerf() {
+  if (!_lifeEcon().T312_FISH_ACT) return null;
+  const pl = state.deps.players;
+  let walkers = 0, hands = 0, handKg = 0, handU = 0, cells = 0, deliv = 0, formula = 0, formulaAll = 0, act = 0;
+  const thin = [];   // `land.water < 1/JOBS.fisher.base` 인 마을 — 어부가 제 입을 못 채우는 자리(T297 §2)
+  const rows = [];   // 켠(행위) 마을만 — 등가 자의 **짝**(마을 하나가 한 쌍: 수식 ↔ 실제 입고)
+  const _base = 1 / 1.2;   // ★유도 — `JOBS.fisher.base` 의 역수(T297 이 낸 그 문턱 · 새 수 0)
+  for (const vil of state.villages || []) {
+    const e = vil.econ; if (!e) continue;
+    const f = (typeof e._fishOutLast === 'number' ? e._fishOutLast : 0);
+    formulaAll += f;
+    // ★★[T316 실측 교훈] **분모는 행위 마을만이다.** 첫 판에서 `formulaPerDay` 를 50마을 전부로 더하고
+    //   `delivered` 는 행위 마을 셋에서만 받아 견줬다 — 0.9% 라는 수가 나왔고 그건 자의 잘못이었다.
+    //   행위가 안 서는 마을(강가 셀 0)은 종전 수식이 그대로 장부에 적으므로 등가 자의 짝이 아니다.
+    if (!_lifeEcon().fishActOn(e)) continue;
+    act++;
+    cells += (e._t312Cells | 0);
+    const d = (vil._t312Deliv || 0);
+    deliv += d;
+    formula += f;
+    let vu = 0, vh = 0;
+    for (const pid of (vil.npcPids || [])) {
+      const p = pl && pl.get(pid); if (!p) continue;
+      if ((p._t312U || 0) > 0) { hands++; vh++; handKg += (p._t312Kg || 0); handU += (p._t312U || 0); vu += (p._t312U || 0); }
+      if (p._lifeAct === '낚시' || p._lifeAct === '낚음') walkers++;
+    }
+    rows.push({ n: vil.name, cells: (e._t312Cells | 0), per: +(_lifeEcon().fishBudgetPerCell(e) || 0).toFixed(6),
+                f: +f.toFixed(4), d: +d.toFixed(4), hU: +vu.toFixed(4), hN: vh,
+                fi: (e.counts && e.counts.fisher) || 0 });
+    if ((e.land && e.land.water != null ? e.land.water : 0) < _base) {
+      thin.push({ n: vil.name, w: +(e.land.water || 0).toFixed(3), fisher: (e.counts && e.counts.fisher) || 0, pop: (e.npcs || []).length });
+    }
+  }
+  // 얇은 물 마을은 **행위 여부와 무관하게** 전수로 센다(족보 204 — 집합은 한 자로 뽑고 양쪽에 같이 댄다)
+  for (const vil of state.villages || []) {
+    const e = vil.econ; if (!e || _lifeEcon().fishActOn(e)) continue;
+    if ((e.land && e.land.water != null ? e.land.water : 0) < _base) {
+      thin.push({ n: vil.name, w: +((e.land && e.land.water) || 0).toFixed(3), fisher: (e.counts && e.counts.fisher) || 0, pop: (e.npcs || []).length });
+    }
+  }
+  return { villages: (state.villages || []).length, actVillages: act, cells, walkers, hands, handKg: +handKg.toFixed(2), handU: +handU.toFixed(4),
+           delivered: +deliv.toFixed(4), formulaPerDay: +formula.toFixed(4), formulaAll: +formulaAll.toFixed(4),
+           thinN: thin.length, thin: thin.sort((a, b) => a.w - b.w).slice(0, 20), rows };
 }
 function _t312Take(vil, day, key, want) {
   const B = _t312Day(vil, day);
@@ -4077,7 +4151,7 @@ function _lifeGoHome(npc, act) {   // 자택 대기(취침·요양·휴식·대�
   const bed = (act === '취침' || act === '요양') && npc.npcBedX != null;
   const tx = bed ? npc.npcBedX : npc.npcHomeX, ty = bed ? npc.npcBedY : npc.npcHomeY;
   // ★[곳간②] 집 도착 = 들고 온 것을 집에서 소비(회계는 econ이 이미 반영 — 짐만 비운다)
-  if (npc._carry > 0 && tx != null && Math.hypot(npc.x - tx, npc.y - ty) <= 44) npc._carry = 0;
+  if (_handOf(npc) > 0 && tx != null && Math.hypot(npc.x - tx, npc.y - ty) <= 44) _handSet(npc, 0);
   if (tx != null) {
     npc.targetX = tx; npc.targetY = ty;
     if (act) _lifeAct(npc, Math.hypot(npc.x - tx, npc.y - ty) > 44 ? '귀가' : act);
@@ -4334,7 +4408,7 @@ function lifeDebug() {   // ★[직접 서버 디버깅 — 사용자 요청] zo
       //   LIFE_CLEAR_PDAY(3)·LIFE_STAGE_PDAY(1)의 **실효 속도**를 관측으로 재는 축(상수 변경은 사용자 소관).
       mCl: vil._mCl || 0, mSt: vil._mSt || 0, mTk: vil._mTk || 0,
       dCl: vil._dCl || 0, dSt: vil._dSt || 0, dTk: vil._dTk || 0,
-      carrying: (() => { let n = 0; for (const pid of vil.npcPids) { const p = state.deps.players.get(pid); if (p && p._carry > 0) n++; } return n; })(),
+      carrying: (() => { let n = 0; for (const pid of vil.npcPids) { const p = state.deps.players.get(pid); if (p && _handOf(p) > 0) n++; } return n; })(),
       jobs, econCounts: ec, actN, actPct: vil.npcPids.length ? +(actN / vil.npcPids.length * 100).toFixed(1) : 0,
       site: vil._site ? vil._site.stage : null, clearCrew: vil._clearCrew || 0, buildCrew: vil._buildCrew || 0, hl: vil._hlDay || null,
       ditch: (vil._ditch ? vil._ditch.length : 0),   // ★[11차 T3] 환호 도랑 셀 수(0=시범 마을 아님) — 라이브 확인용
@@ -4507,7 +4581,7 @@ function _lifeDoTask0(vil, npc, k, day) {
   //   **걷어냈고**(`economy-sim.js` `addProduce(jdef.output, …)` 한 줄), 그 자리를 여기가 채운다.
   //   수확 한 번 = `T100_K` 식량등가. 산수·세금·볏짚은 전부 econ 쪽 `harvestToGranary` 안에 있다
   //   (여기엔 숫자가 없다 — 사본 0). 끄면 안 부른 것과 같다(비트 동일).
-  if (did === 'harvest') { if (!cropAfterHarvest(e, day)) vil._crop.delete(k); if (npc) { npc._carry = (npc._carry || 0) + 1; _lifeAct(npc, '수확'); } if (vil.econ) _lifeEcon().harvestToGranary(vil.econ, 1, _farmMul(vil, npc)); return true; }   // ★곳간② 물리 짐 1칸분 적재(회계 아님) · ★[T91] 다년생은 그루터기로 남는다 · ★[T190] 셋째 인수 = 그 농부의 배율(없으면 econ 이 1 로 받는다 — 사본 0)
+  if (did === 'harvest') { if (!cropAfterHarvest(e, day)) vil._crop.delete(k); if (npc) { _handAdd(npc, 1); _lifeAct(npc, '수확'); } if (vil.econ) _lifeEcon().harvestToGranary(vil.econ, 1, _farmMul(vil, npc)); return true; }   // ★곳간② 물리 짐 1칸분 적재(회계 아님) · ★[T91] 다년생은 그루터기로 남는다 · ★[T190] 셋째 인수 = 그 농부의 배율(없으면 econ 이 1 로 받는다 — 사본 0)
   if (npc) _lifeAct(npc, did === 'pest' ? '방제' : did === 'water' ? '물대기' : (nong ? '논매기' : '김매기'));
   return true;
 }
@@ -5383,8 +5457,8 @@ function _lifeGranStep(vil, npc, now) {
   //   랩은 인출 직후 state='toHome'으로 상태를 떠나 그날 다시 work 탈출 검사에 걸리지 않는다(8010행).
   //   서버는 상태가 없고 스케줄 게이트를 매 틱 재평가하므로, 도장이 없으면
   //   퇴근 훅이 저장(짐>0)↔인출(빈손)을 무한 왕복시킨다 — 집에 못 간다.
-  if (t.draw) { const q = Math.min(G_DRAW, _granStockOf(vil, g)); _granStockAdd(vil, g, -q); npc._carry = (npc._carry || 0) + q; npc._granD = state.dayMs ? gameDayOf(now) : 0; }
-  else { _granStockAdd(vil, g, npc._carry || 0); npc._carry = 0; }   // ③ 정산(물리 장부만 — econ 무접촉)
+  if (t.draw) { const q = Math.min(G_DRAW, _granStockOf(vil, g)); _granStockAdd(vil, g, -q); _handAdd(npc, q); npc._granD = state.dayMs ? gameDayOf(now) : 0; }
+  else { _granStockAdd(vil, g, _handOf(npc)); _handSet(npc, 0); }   // ③ 정산(물리 장부만 — econ 무접촉 · ★[T316] 손은 `inventory`)
   npc._granTask = null;
   return false;                                                      // 소유권 반납 → 이번 틱부터 평소 일과
 }
@@ -5805,31 +5879,14 @@ function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(�
   //   ⚠그리고 **관측자 없는 마을**(몸이 안 걷는 마을)의 어부도 여기서 **같은 함수**로 하루를 푼다 —
   //     `_t312Take`(같은 셀 예산) → `fishToGranary`(같은 곳간 입구) → 장부 한 줄. 걸음만 없다.
   //     ⚠**걸음이 없는 것은 이 카드가 남긴 빚이다**(캐논 ⓑ는 "관측자 없어도 실걸음") — 보고 §회부.
+  // ★★[T312→T316] **낮이 끝나면 들고 있던 것을 곳간에 넣는다**(캐논 ⓐ — 귀환 시 입고).
+  //   ★★[T316] T312 는 여기에 "안 걷는 마을의 하루를 대신 푸는" 갈래를 갖고 있었다 — **지웠다.**
+  //     이제 마을 NPC 는 관측자와 무관하게 걷는다(`zone.js` `_t316WalkAlways`) ⇒ 몸이 낚고 몸이 나른다.
+  //     그 갈래를 남겨 두면 걷는 마을에서 **두 번** 잡힌다(공존 = 이중 생산 · T135 규약).
+  //   ⚠짐이 차서 이미 돌아간 사람은 손이 비어 있어 이 줄이 무해하다.
   if (vil.econ && _lifeEcon().fishActOn(vil.econ)) {
-    const _d = state.dayMs ? gameDayOf(_dayNow()) : 0;
     const _pl = state.deps.players;
-    let _walked = 0;
-    for (const pid of (vil.npcPids || [])) { const p = _pl && _pl.get(pid); if (p && (p._t312U || 0) > 0) { _t312Deliver(vil, p); _walked++; } }
-    // 안 걸은 마을 — 어부 수만큼 그날의 기회를 같은 자로 푼다(셀은 돌아가며 · 결정론)
-    const _sites = (vil._jobSites && vil._jobSites.fisher) || [];
-    const _fn = (vil.econ.counts && vil.econ.counts.fisher) || 0;
-    if (_walked === 0 && _fn > 0 && _sites.length) {
-      const _B = _t312Day(vil, _d);
-      const _K = _kcal();
-      for (let i = 0; i < _fn; i++) {
-        const st = _sites[i % _sites.length];
-        const cx = Math.floor(st.x / SZ), cy = Math.floor(st.y / SZ), key = cx + ',' + cy;
-        for (let k = 0; k < 64; k++) {   // 한 사람의 하루 기회 — 셀 예산이 먼저 바닥나면 거기서 끝난다
-          const sp = _fresh().pick(_t312Water(vil), _d, (i * 131 + k) ^ cx ^ Math.imul(cy, 0x85ebca6b));
-          if (!sp) break;
-          const u = _K ? (+_K.econUnitsOf('fish', 1, sp.kg) || 0) : 0;
-          if (!(u > 0) || _t312Take(vil, _d, key, u) <= 0) break;
-          _lifeEcon().fishToGranary(vil.econ, u);
-          vil._t312Deliv = +((vil._t312Deliv || 0) + u).toFixed(6);
-        }
-      }
-      void _B;
-    }
+    for (const pid of (vil.npcPids || [])) { const p = _pl && _pl.get(pid); if (p && (p._t312U || 0) > 0) _t312Deliver(vil, p); }
     vil._t312 = null;   // ★이월 없음 — 날이 바뀌면 예산 장부를 버린다(설계_민물고기 §2)
     vil._t312W = null;  // 물 갈래는 계절이 바뀌면 다시 읽는다(논이 생기기도 한다)
   }
@@ -5917,7 +5974,7 @@ function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(�
 }
 function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도주 뒤·야간 귀가 게이트 앞) — true=일과 소유(레거시 차단)
   if (!LIFE_ON) return false;
-  // ★★[T134 2026-09-06] **짐을 진 주민에게 지게를 입힌다.** 정본은 `npc._carry`(곳간② 물리 짐 칸수)다 —
+  // ★★[T134 2026-09-06] **짐을 진 주민에게 지게를 입힌다.** 정본은 손의 볏단 수다(★[T316] `npc._carry` → `inventory.grain_sheaf`) —
   //   수확이 +1, 곳간 인출이 +q, 저장·귀가가 0 으로 만든다. 여기서는 **읽기만** 한다(회계 무접촉).
   //   ⚠`_lifeAct` 라벨('운반'·'저장')은 **못 쓴다**: 그 라벨은 곳간 과업 창 안에서만 찍히는데,
   //     수확한 짐을 지고 밭에서 걸어 나오는 주민은 그 창 밖이면서 **짐은 지고 있다**. 상태가 곧 진실이다.
@@ -5925,7 +5982,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
   //     그 비트는 무상태 델타(최초 가시 + `_wornAt` 뒤 1.2초)라, **0↔1 이 뒤집힌 순간에만** 도장을 찍는다.
   //     매 틱 찍으면 창이 영영 안 닫혀 문자열·비트가 계속 나간다(옷이 그래서 이 규약을 쓴다).
   {
-    const on = (npc._carry || 0) > 0;
+    const on = _handOf(npc) > 0;
     if (on !== !!npc._carryOn) { npc._carryOn = on; npc._wornAt = Date.now(); }
   }
   const vil = state.byDbId && state.byDbId.get(npc.simVillageId);
@@ -5964,8 +6021,8 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
       else {
         // ★[곳간②] 퇴근길: 든 짐은 곳간에 넣고, 빈손이면 재고에서 하루치를 꺼내 집으로 나른다
         if (npc._granD !== day) {   // ★오늘 인출을 마쳤으면 곳간 용무 종료 — 저장↔인출 왕복 금지(랩 toHome 이탈 대응)
-          if ((npc._carry || 0) > 0 && _granGo(vil, npc, false)) return true;
-          if (!(npc._carry > 0) && _granGo(vil, npc, true)) return true;
+          if (_handOf(npc) > 0 && _granGo(vil, npc, false)) return true;
+          if (!(_handOf(npc) > 0) && _granGo(vil, npc, true)) return true;
         }
         _lifeGoHome(npc, '휴식'); return true;
       }
@@ -6029,7 +6086,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
         vil._cropClaim.delete(k); npc._farmK = null;
         npc._jobT = now + 9000 + (_pidHash(npc.pid) % 7) * 1500;
         // ★[곳간②] 짐이 상한에 닿으면 곳간으로 운반(자리 없으면 false → 기존 흐름 그대로)
-        if ((npc._carry || 0) >= G_CARRY && _granGo(vil, npc, false)) { npc._jobT = 0; return true; }
+        if (_handFull(npc) && _granGo(vil, npc, false)) { npc._jobT = 0; return true; }   // ★[T316] 칸 문턱 ∨ kg 상한(먼저 걸리는 쪽)
       }
       return true;
     }
@@ -6916,7 +6973,8 @@ function __rumorProbe() {
     rumor: Object.assign({}, L.rumorStats) };
 }
 
-module.exports = {
+module.exports = { fishPerf,   // ★[T316] `/perf` 가 내주는 어부 관측(손잡이 끔이면 null)
+ 
   init, onGameTick, invalidateTradeDistances, npcLifeTick, lifeDebug, econDay,
   tickPerf,   // ★[T1 §0] 일틱 단계별 소요 — zone.js `/perf` 가 소비(계측 전용)
   villagesBusy, villageWait,   // ★[T1 §2-②] "장부 마감 중" 큐 — zone.js 가 마을 요청만 이 문으로 보낸다

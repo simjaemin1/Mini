@@ -2384,6 +2384,15 @@ function sepNpcs(dt) {
   }
 }
 
+// ★[T316] 이 NPC 가 **관측자와 무관하게** 걸어야 하나 — 마을 주민이고 손잡이가 켜져 있을 때.
+//   손잡이는 econ 정본이 쥔다(사본 0). 모듈이 아직 없으면 거짓(부팅 중 · 무해).
+let _t316Econ = null;
+function _t316WalkAlways(npc) {
+  if (!npc || !npc.simVillageId) return false;
+  if (_t316Econ === null) { try { _t316Econ = require('../sim/economy-sim'); } catch (e) { _t316Econ = false; } }
+  return !!(_t316Econ && _t316Econ.T312_FISH_ACT);
+}
+
 function npcStep(npc, dt, now) {
   decideNpcBehavior(npc, now);
 
@@ -3095,6 +3104,8 @@ const server = http.createServer((req, res) => {
       // ★[T153] 틱 시계 — 벽시계(`wall`)와 **세계가 실제로 적분한 시간**(`sim`)을 나란히 낸다.
       //   `lagPct` 가 곧 "세계가 얼마나 뒤졌나"다(종전 5.3% · 빚을 이월하면 0 근처).
       war: (SimVillages.warPerf ? (() => { const w = SimVillages.warPerf(); if (_rst && SimVillages.warPerfReset) SimVillages.warPerfReset(); return w; })() : null),   // ★[T284 ④]
+      // ★[T316] 어부 관측 — 손잡이가 꺼져 있으면 `null`(끈 팔 페이로드 무변).
+      fish: (() => { try { return SimVillages.fishPerf ? SimVillages.fishPerf() : null; } catch (e) { return null; } })(),
       tick: Object.assign({}, _tick, { ms: _tickMsStats(_rst), on: TICK_DEBT_ON, dtMax: DT_MAX, debtMax: TICK_DEBT_MAX,
         lagPct: _tick.wall > 0 ? +(100 * (_tick.wall - _tick.sim) / _tick.wall).toFixed(3) : null }) }));
     return;
@@ -11038,7 +11049,15 @@ setInterval(() => {
     const npc = players.get(pid);
     if (!npc || npc.hp <= 0) continue;
     // Phase 4d-9 fix: canadia NPC는 active chunk 체크 우회 (모든 마을 동시 시뮬)
-    if (!npc.canadiaVillage && !isPositionActive(npc.x, npc.y)) { npc.vx = 0; npc.vy = 0; continue; }
+    // ★★★[T316 2026-09-19 · 설계_생산_실체 캐논 ⓑ — 재민 09-18 "관측자 없어도 실걸음"]
+    //   여기가 **빚의 자리**였다. 비활성 청크의 마을 NPC 는 멈춰 있었고, 그래서 T312 의 어부는
+    //   관측자가 있는 마을에서만 물가로 걸었다(없는 마을은 하루를 수식처럼 풀었다 — 몸이 없었다).
+    //   ⇒ 손잡이(`T312_FISH_ACT`)가 켜져 있으면 **마을 NPC 는 관측자와 무관하게 걷는다**.
+    //   ⚠둘째 손잡이를 안 만든다(카드 ①) — 같은 손잡이 안이다. 끄면 이 줄은 종전 그대로다.
+    //   ⚠결정은 이 아래 15ms 예산이 문다(`if (Date.now() - now > 15) break`). 그런데 **이동 문엔 예산이 없다**
+    //     (:11255 `movePlayerStep` 루프) — 실측에서 틱의 대부분은 거기서 났다(p50 2.47 → 374.6ms · 152배).
+    //     예산을 늘리지도, 새로 걸지도 않는다: 놓는 수가 곧 설계 판정이라 PM 몫이다(T316 §3 회부).
+    if (!npc.canadiaVillage && !_t316WalkAlways(npc) && !isPositionActive(npc.x, npc.y)) { npc.vx = 0; npc.vy = 0; continue; }
     if ((Date.now() - now) > 15) break;
     npcStep(npc, dt, now);
   }
@@ -11237,7 +11256,13 @@ setInterval(() => {
     if (p.isNpc) {
       if (p.simCaravan) continue; // §4-4 Stage 4B: 캐러밴 실체 NPC — 이동은 villages.js 페이싱(경로 보간+벽 판정)이 전담(이중 이동 방지)
       if (p.simWar) continue;     // §4-4 P3: 출정(징발) 병사 — 이동은 villages.js 실체 전쟁(행군 대형 페이싱·전투유닛 미러)이 전담(이중 이동 방지)
-      if (!p.canadiaVillage && !isPositionActive(p.x, p.y)) continue; // dormant NPC skip
+      // ★★★[T316 2026-09-19 · 캐논 ⓑ] **결정과 이동은 문이 둘이다.** 위 `npcStep` 게이트만 열면
+      //   주민은 목표를 정하고 라벨('출근')까지 찍지만 **한 픽셀도 안 간다** — 실측이 그랬다:
+      //   손잡이를 켜고 7 게임일을 돌렸는데 걷는 어부 0 · 입고 0 이었다(틱은 8배 무거워졌는데).
+      //   ⇒ 같은 술어를 **이동 문에도** 건다. 둘이 한 손잡이 안에서 같이 열려야 몸이 실제로 간다.
+      //   ⚠비활성 청크라 `qtPlayers`(:333)·`sepNpcs`(:2348) 는 그대로 건너뛴다 — 지형은 절차적이라
+      //     물·바위는 정상 판정되고, 건물 충돌과 서로 비키기만 없다(관측자 없는 마을의 값싼 몸).
+      if (!p.canadiaVillage && !_t316WalkAlways(p) && !isPositionActive(p.x, p.y)) continue; // dormant NPC skip
       movePlayerStep(p);
     } else {
       let consumed = 0;
@@ -11852,9 +11877,12 @@ setInterval(() => {
       //   `carrier` 는 1비트(지게를 졌나). 옷이 열어 둔 그 자리에 두 줄이면 축이 셋이 된다.
       if (isNew || now - (o._wornAt || 0) < 1200) e.tool = (getEquippedTool(o) || {}).type || null;
       //   ★[T134 2026-09-06] 주민도 이 한 비트를 탄다 — 출처만 갈린다(사람=장비 슬롯 · 주민=진 짐).
-      //     `_carry` 는 곳간② 물리 장부(수확 +1 · 인출 +q · 저장 0)이고 회계가 아니다.
+      //     그 짐은 곳간② 물리 장부(수확 +1 · 인출 +q · 저장 0)이고 회계가 아니다.
+      //   ★★[T316 2026-09-19] 주민의 손이 `inventory.grain_sheaf` 로 흡수됐다 ⇒ 여기서 손을 **다시 읽지 않는다**.
+      //     `villages.npcLifeTick` 이 손을 보고 `_carryOn` 을 뒤집으며 **같은 줄에서** `_wornAt` 을 찍는다
+      //     (villages.js:5966) — 비트와 도장이 한 자리에서 나오므로 창과 값이 어긋날 수 없다(사본 0).
       if (isNew || now - (o._wornAt || 0) < 1200)
-        e.carrier = o.isNpc ? (((o._carry || 0) > 0) ? 1 : 0) : (Carry.carrierOf(o) ? 1 : 0);
+        e.carrier = o.isNpc ? (o._carryOn ? 1 : 0) : (Carry.carrierOf(o) ? 1 : 0);
       return e;
     }
     // Phase 14.38: mob facing — vx/vy 포함. 14.49-d: floor + z
