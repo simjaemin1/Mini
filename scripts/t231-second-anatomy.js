@@ -94,7 +94,7 @@ const CLASSOF = (r) => {
 const world = econV2.createWorldV2({ seed: SEED, villageCount: seeds.length, picker: 'rational', infoRange: 5000, raidPer100: 0.005 });
 world.villages = []; world.events = [];
 R('server/trees').attachToWorld(world);
-world.cargoTwo = !!TWO;   // ★[T299] 기본이 켬이 됐다 — 팔은 **명시**로 잡는다(안 잡으면 끔 팔이 켠 판이 된다)
+world.cargoTwo = !!TWO;   // ★[T299] 팔은 **명시**로 잡는다 — 기본이 하루 켬이었다가 끔으로 되돌았다(재민 09-19). 명시면 어느 쪽이든 안 흔들린다
 world.cargoTwoGate = !!GATE;
 world.cargoTwoBest = !!BEST;
 for (const s of seeds) {

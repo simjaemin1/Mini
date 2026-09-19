@@ -415,13 +415,14 @@ console.log('\n㉑ 둘째 화물(T206) — 문 두 자리 · 용량·후보 규�
     '㉑ ★둘째 매도도 **충격 정산**을 지난다(첫 품목과 같은 함수)');
   ok(/c\._returningRes2 = c\.giveRes2;/.test(V2C),
     '㉑ ★★빈손 귀환에서 둘째도 **집으로 돌아온다**(질량 누수 0)');
-  //   ★★[T299 정정] 종전엔 여기서 "랩 기본이 **0**" 을 잠갔다. 재민 위임 판정으로 **서버 기본이 켬**이 되었고,
-  //     T244 문법대로 랩은 그 손잡이를 **안 심는다**(미설정 = 켬 = 서버 기본) ⇒ 잠글 것이 뒤집혔다:
-  //     이제 랩이 `L_CARGO_TWO`·`L_CARGO_TWO_GATE` 에 **0 을 심으면 빨강**이다(랩만 끈 채 뜬다).
+  //   ★★[T299 · 재민 09-19] 잠그는 것은 **값이 아니라 자리**다. 서버 기본이 **끔**(T299 정정)이고
+  //     랩은 그 손잡이를 **안 심는다** ⇒ 미설정 = 끔 = 서버 기본. 랩이 `0` 을 심으면 사본이고(같은 값이라 안 들킨다)
+  //     `1` 을 심으면 랩만 켠 채 뜬다 — **둘 다 빨강**이다. 하루 동안 기본이 켬이었다가 되돌아온 자리라
+  //     "0 이어야 한다"·"0 이면 빨강" 어느 쪽으로도 값을 안 적는다.
   for (const k of ['L_CARGO_TWO', 'L_CARGO_TWO_GATE']) {
-    const re = new RegExp('window\\.' + k + "\\s*=\\s*['\"]?0['\"]?");
+    const re = new RegExp('window\\.' + k + "\\s*=\\s*['\"]?[0-9]");
     const planted = LCODE.split('\n').filter((l) => re.test(l));
-    ok(planted.length === 0, `㉑ ★★랩은 \`${k}\` 을(를) **안 심는다**(미설정 = 켬 = 서버 기본 · T299)`,
+    ok(planted.length === 0, `㉑ ★★랩은 \`${k}\` 에 **아무 값도 안 심는다**(미설정 = 끔 = 서버 기본 · T299 정정)`,
       planted.length ? `${planted.length}줄` : '0줄');
   }
   ok(!/cargoTwoInstallHook\(\)/.test(LCODE) && !/cargoTwoGateInstallHook\(\)/.test(LCODE),
@@ -628,17 +629,18 @@ console.log('\n㉒ 둘째 화물 — 끔 비트 동일 · 켬 실림 · 용량 �
 }
 
 // ════════════════════════════════════════════════════════════════════════════════════════
-// ㉖ [T299] **기본 켬** — 켠 판은 끈 판과 어떤 관계인가
-//   재민 09-18 위임 · PM 판정 #26 ⓐ: `twogate`(둘째 화물 + 첫째와 같은 관문)를 **서버 기본 켬**으로.
-//   기본이 뒤집히면 픽스처가 거짓말을 한다(T244 가 배운 것) — 그래서 이 절은 값이 아니라 **관계**를 잠근다:
-//     ⓐ 아무것도 안 준 판(기본) = 명시로 `two+gate` 를 켠 판과 **비트 동일**
-//     ⓑ `L_CARGO_TWO=0 L_CARGO_TWO_GATE=0` = 둘 다 끈 판과 **비트 동일**(= 넷째 판)
-//     ⓒ `L_CARGO_TWO_GATE=0` 하나 = 관문 없는 `two` 판과 **비트 동일**
-//     ⓓ 명시 주입이 손잡이를 **이긴다**(A/B·계측기가 팔을 손으로 잡는다 · `false` 주입도 존중)
-//     ⓔ `cargoTwoBest` 는 **안 켜졌다** — 기본 판에서 선택이 여전히 최대와 갈린다
+// ㉖ [T299 · ★재민 판정 2026-09-19] **기본 끔** — 그리고 켠 판이 끈 판과 어떤 관계인가
+//   T299 가 하루 "기본 켬"으로 앉혔고 같은 날 재민이 **끔으로 되돌렸다**(근거: 켠 근거가 넷째 판에서
+//   사라졌고 15/15 로 남은 ㉯ 가 밀도 캐논 띠 밖 · 보고/T299 §4·§7). 자리는 남고 값만 뒤집혔다.
+//   기본이 두 번 뒤집힌 자리라 이 절은 **값을 잠그지 않고 관계를 잠근다**:
+//     ⓐ 아무것도 안 준 판(기본) = 명시로 **끈** 판과 **비트 동일**(= 다섯째 판)
+//     ⓑ `L_CARGO_TWO=1 L_CARGO_TWO_GATE=1` = 명시로 켠 `twogate` 와 **비트 동일**
+//     ⓒ `L_CARGO_TWO=1` 하나 = 관문 없는 `two` 판(켜는 손잡이가 **독립**이다)
+//     ⓓ 명시 주입이 손잡이를 **이긴다**(`true`·`false` 둘 다 · A/B·계측기가 팔을 손으로 잡는다)
+//     ⓔ `cargoTwoBest` 는 여전히 **끔**이고, 켠 판에서도 선택이 최대와 갈린다
 //   ⚠env 는 자식 프로세스가 아니라 **이 프로세스에서** 넣었다 뺀다 — 손잡이를 **호출 때** 읽기 때문이다.
 //     (족보 128 의 거울: 셸에 남은 `L_*` 가 기본을 가린다 ⇒ 각 판 앞뒤로 반드시 지운다.)
-console.log('\n㉖ 둘째 화물 기본 켬(T299) — 켠 판 = 끈 판과의 관계');
+console.log('\n㉖ 둘째 화물 기본 끔(T299 정정) — 켠 판 = 끈 판과의 관계');
 {
   const KEYS = ['L_CARGO_TWO', 'L_CARGO_TWO_GATE', 'L_CARGO_TWO_BEST'];
   const clean = () => { for (const k of KEYS) delete process.env[k]; };
@@ -673,43 +675,44 @@ console.log('\n㉖ 둘째 화물 기본 켬(T299) — 켠 판 = 끈 판과의 �
   };
 
   clean();
-  ok(econV2.cargoTwoOn({}) === true && econV2.cargoTwoGateOn({}) === true,
-    '㉖ ★★★엔진 기본이 **켬**이다 — 둘째 화물과 그 관문(재민 위임 · PM #26 ⓐ)');
-  ok(econV2.cargoTwoOn({ cargoTwo: false }) === false && econV2.cargoTwoGateOn({ cargoTwoGate: false }) === false,
-    '㉖ ★★`false` 주입을 **존중**한다(진리값 검사가 아니라 `undefined` 검사다 — 끔 팔이 여기서 산다)');
-  { process.env.L_CARGO_TWO = '0';
-    ok(econV2.cargoTwoOn({}) === false, '㉖ ★손잡이 명시 `0` 이 기본을 끈다'); clean(); }
-  { process.env.L_CARGO_TWO = '0';
-    ok(econV2.cargoTwoOn({ cargoTwo: true }) === true, '㉖ ★★주입이 손잡이보다 **세다**'); clean(); }
+  ok(econV2.cargoTwoOn({}) === false && econV2.cargoTwoGateOn({}) === false,
+    '㉖ ★★★엔진 기본이 **끔**이다(★재민 판정 09-19 — T299 가 켰다가 되돌렸다)');
+  { process.env.L_CARGO_TWO = '1'; process.env.L_CARGO_TWO_GATE = '1';
+    ok(econV2.cargoTwoOn({}) === true && econV2.cargoTwoGateOn({}) === true,
+      '㉖ ★★켜는 것은 **명시 `1`** 하나다(손잡이가 죽어 있지 않다)'); clean(); }
+  ok(econV2.cargoTwoOn({ cargoTwo: true }) === true && econV2.cargoTwoOn({ cargoTwo: false }) === false,
+    '㉖ ★★주입은 `true`·`false` **둘 다** 존중한다(`undefined` 검사지 진리값 검사가 아니다)');
+  { process.env.L_CARGO_TWO = '1';
+    ok(econV2.cargoTwoOn({ cargoTwo: false }) === false, '㉖ ★★주입이 손잡이보다 **세다**'); clean(); }
 
-  const dflt   = mk(null, null);                                              // 아무것도 안 준 판
+  const dflt   = mk(null, null);                                              // 아무것도 안 준 판 = 끔
   const dflt2  = mk(null, null);
-  const twoGat = mk(null, { cargoTwo: true, cargoTwoGate: true });            // 명시로 켠 twogate
-  const offOff = mk({ L_CARGO_TWO: '0', L_CARGO_TWO_GATE: '0' }, null);       // 되돌림 — 넷째 판
   const offInj = mk(null, { cargoTwo: false, cargoTwoGate: false });          // 주입으로 끈 판
-  const noGate = mk({ L_CARGO_TWO_GATE: '0' }, null);                         // 관문만 끈 판 = `two`
-  const twoOnly= mk(null, { cargoTwo: true, cargoTwoGate: false });           // 명시로 켠 `two`
+  const onEnv  = mk({ L_CARGO_TWO: '1', L_CARGO_TWO_GATE: '1' }, null);       // 손잡이로 켠 twogate
+  const onInj  = mk(null, { cargoTwo: true, cargoTwoGate: true });            // 주입으로 켠 twogate
+  const twoEnv = mk({ L_CARGO_TWO: '1' }, null);                              // 관문 없이 켠 two
+  const twoInj = mk(null, { cargoTwo: true, cargoTwoGate: false });
 
   ok(dflt.dig === dflt2.dig, '㉖ ★★기본 두 판이 **비트 동일**(결정론)');
-  pre(dflt.twoLegs > 0, '기본 판에서 둘째가 실제로 실린다(자명 통과 금지)', `${dflt.twoLegs}건`);
-  ok(dflt.dig === twoGat.dig, '㉖ ★★★**기본 = `twogate`** — 아무것도 안 준 판이 명시로 켠 판과 비트 동일',
-    `둘째 ${dflt.twoLegs}건 · 관문 ${dflt.blocked}회`);
-  ok(offOff.dig === offInj.dig, '㉖ ★★**되돌림 두 길이 같다** — 손잡이 `0` 과 `false` 주입이 같은 세계');
-  ok(offOff.twoLegs === 0 && offOff.blocked === 0, '㉖ ★★되돌림 팔은 둘째가 **한 건도** 안 실린다');
-  ok(offOff.dig !== dflt.dig, '㉖ ★★끈 판과 켠 판은 **다른 세계**다(문이 죽어 있지 않다 · 자명 통과 금지)');
-  ok(noGate.dig === twoOnly.dig, '㉖ ★★`L_CARGO_TWO_GATE=0` 하나면 **관문 없는 `two`** 판이다(비트 동일)');
-  ok(noGate.dig !== dflt.dig, '㉖ ★관문이 실제로 세계를 가른다(`two` ≠ `twogate`)');
-  ok(dflt.blocked > 0 && noGate.blocked === 0, '㉖ ★기본 판에서 관문이 실제로 후보를 거른다',
-    `기본 ${dflt.blocked}회 · 관문 끔 ${noGate.blocked}회`);
-  //   ★★[T265 정정] `twobest` 는 `twogate` 와 못 가름이라 **안 켠다** — 기본 판에서 선택이 여전히 갈려야 한다.
-  ok(dflt.diff > 0, '㉖ ★★★`cargoTwoBest` 는 **안 켜졌다** — 기본 판의 선택이 최대와 여전히 갈린다',
-    `갈림 ${dflt.diff}건 / ${dflt.twoLegs}건`);
-  ok(dflt.neg === 0 && offOff.neg === 0, '㉖ ★★곳간 음수 0(기본·되돌림 둘 다)');
-  //   ★자명 통과 금지 — 되돌림이 **정말** 끄는지: 끈 판에 둘째가 하나라도 있으면 위 비교가 거짓말이다
-  pre(dflt.secondSum > 0 && offOff.secondSum === 0, '★기본은 싣고 되돌림은 안 싣는다',
-    `기본 ${dflt.secondSum.toFixed(0)} 단위 → 되돌림 ${offOff.secondSum.toFixed(0)} 단위`);
+  ok(dflt.dig === offInj.dig, '㉖ ★★★**기본 = 끈 판** — 아무것도 안 준 판이 명시로 끈 판과 비트 동일(= 다섯째 판)');
+  ok(dflt.twoLegs === 0 && dflt.blocked === 0 && dflt.secondSum === 0,
+    '㉖ ★★기본 판은 둘째가 **한 건도** 안 실린다(관문도 0회)');
+  pre(onEnv.twoLegs > 0, '켠 판에서 둘째가 실제로 실린다(자명 통과 금지)', `${onEnv.twoLegs}건 · ${onEnv.secondSum.toFixed(0)} 단위`);
+  ok(onEnv.dig === onInj.dig, '㉖ ★★**켜는 두 길이 같다** — 손잡이 `1` 과 `true` 주입이 같은 세계');
+  ok(onEnv.dig !== dflt.dig, '㉖ ★★끈 판과 켠 판은 **다른 세계**다(문이 죽어 있지 않다 · 자명 통과 금지)');
+  ok(twoEnv.dig === twoInj.dig, '㉖ ★★`L_CARGO_TWO=1` 하나면 **관문 없는 `two`** 다(두 손잡이가 독립)');
+  ok(twoEnv.dig !== onEnv.dig, '㉖ ★관문이 실제로 세계를 가른다(`two` ≠ `twogate`)');
+  ok(onEnv.blocked > 0 && twoEnv.blocked === 0, '㉖ ★켠 판에서 관문이 실제로 후보를 거른다',
+    `twogate ${onEnv.blocked}회 · two ${twoEnv.blocked}회`);
+  //   ★★[T265 정정] `twobest` 는 `twogate` 와 못 가름이라 **안 켠다** — 켠 판에서도 선택이 갈려야 한다.
+  ok(onEnv.diff > 0, '㉖ ★★★`cargoTwoBest` 는 **안 켜졌다** — 켠 판의 선택이 최대와 여전히 갈린다',
+    `갈림 ${onEnv.diff}건 / ${onEnv.twoLegs}건`);
+  ok(dflt.neg === 0 && onEnv.neg === 0, '㉖ ★★곳간 음수 0(기본·켠 판 둘 다)');
+  //   ★자명 통과 금지 — 기본이 **정말** 끈 판인지: 기본에 둘째가 하나라도 있으면 위 비교가 거짓말이다
+  pre(onEnv.secondSum > 0 && dflt.secondSum === 0, '★켠 판은 싣고 기본은 안 싣는다',
+    `켬 ${onEnv.secondSum.toFixed(0)} 단위 → 기본 ${dflt.secondSum.toFixed(0)} 단위`);
 }
 
-console.log(`\n=== T299 둘째 화물 기본 켬 포함: 통과 ${pass} · 실패 ${fail} ===`);
+console.log(`\n=== T299 둘째 화물 기본 끔(정정) 포함: 통과 ${pass} · 실패 ${fail} ===`);
 console.log('접점 심볼: cargoTwoOn|cargoTwoGateOn|L_CARGO_TWO|L_CARGO_TWO_GATE|L_CARGO_TWO_BEST|_legProfitPerUnit|candidates|cand.res|surplus|best.profit|TRADABLE|N_units|CARGO_PER_TRIP|onTradeLeg|_gateBlocked|cargoTwoGate|cargoTwoBest');
 process.exit(fail ? 1 : 0);

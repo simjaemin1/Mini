@@ -64,7 +64,7 @@ if (!seeds) {
 const world = econV2.createWorldV2({ seed: SEED, villageCount: seeds.length, picker: 'rational', infoRange: 5000, raidPer100: 0.005 });
 world.villages = []; world.events = [];
 R('server/trees').attachToWorld(world);
-world.cargoTwo = process.env.T206_CARGO_TWO === '1';    // ★[T206 ②] 계측 전용 · ★[T299] 기본 켬이라 **명시**로 잡는다
+world.cargoTwo = process.env.T206_CARGO_TWO === '1';    // ★[T206 ②] 계측 전용 · ★[T299] 팔을 **명시**로 잡는다(기본이 뒤집혀도 안 흔들린다)
 for (const s of seeds) {
   const ev = econ.createVillage({ ...s.lp, initialPop: P.INITIAL_POP, name: s.name });
   ev._world = world; ev.coord = { x: s.ccx * 2.5, y: s.ccy * 2.5 };

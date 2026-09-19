@@ -93,11 +93,11 @@ require('../server/trees').attachToWorld(world);
 //   ⚠이 줄을 여기 둔 이유: ⓚ 여덟 수를 **다시 구현하지 않기 위해서**다(계측기 정본 재구현 0 · T163 규약).
 //     `T191_TOOLWEAR` 를 안 주면 `world.toolWearMul` 이 없고 엔진 배수는 1 이다 — 기준선 계측기 무변.
 { const _tw = parseFloat(process.env.T191_TOOLWEAR || ''); if (Number.isFinite(_tw) && _tw > 0 && _tw !== 1) world.toolWearMul = _tw; }
-// ★[T206·T233 · ★★T299 로 기본이 뒤집혔다] 둘째 화물과 그 관문.
-//   ⚠**여기서 문을 열지 않는다** — 정본(`sim/economy-sim-v2.js` `cargoTwoOn`/`cargoTwoGateOn`)이 기본 켬이다.
-//     이 계측기는 `L_CARGO_TWO=0`/`L_CARGO_TWO_GATE=0`(env)만 주면 되돌림 팔을 잰다(손잡이 문법이 하나다).
+// ★[T206·T233 · T299 가 자리를 정본으로 옮겼다 · ★재민 09-19 로 기본은 **끔**] 둘째 화물과 그 관문.
+//   ⚠**여기서 문을 열지 않는다** — 읽는 자리는 정본 하나다(`sim/economy-sim-v2.js` `cargoTwoOn`/`cargoTwoGateOn`).
+//     이 계측기는 손잡이만 준다: 기본(끔) 팔은 아무것도 안 주고, 켠 팔은 `L_CARGO_TWO=1 L_CARGO_TWO_GATE=1`.
 //   ⚠옛 이름(`T206_CARGO_TWO`·`T233_CARGO_GATE`)은 **덮어쓰기**로 남긴다 — 지난 표를 다시 낼 수 있어야 하고
-//     `0` 을 줄 수도 있어야 한다(`=1` 만 보던 종전 문법이면 끔 팔이 켠 판이 된다 · 족보 128 의 거울).
+//     `0` 을 줄 수도 있어야 한다(`=1` 만 보던 종전 문법이면 팔이 기본에 끌려간다 · 족보 128 의 거울).
 if (process.env.T206_CARGO_TWO !== undefined) world.cargoTwo = process.env.T206_CARGO_TWO === '1';
 if (process.env.T233_CARGO_GATE !== undefined) world.cargoTwoGate = process.env.T233_CARGO_GATE === '1';
 // ★[T239 · 계측 전용] 수익 최대 선택은 **끔 그대로**다(T265 정정 — `twogate` 와 못 가름). 주입으로만 켠다.

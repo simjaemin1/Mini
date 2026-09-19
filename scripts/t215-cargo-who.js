@@ -62,7 +62,7 @@ const world = econV2.createWorldV2({ seed: SEED, villageCount: seeds.length, pic
 world.villages = []; world.events = [];
 R('server/trees').attachToWorld(world);
 const TWO = process.env.T206_CARGO_TWO === '1';
-world.cargoTwo = !!TWO;   // ★[T299] 기본이 켬이 됐다 — 팔은 **명시**로 잡는다(안 잡으면 끔 팔이 켠 판이 된다)
+world.cargoTwo = !!TWO;   // ★[T299] 팔은 **명시**로 잡는다 — 기본이 하루 켬이었다가 끔으로 되돌았다(재민 09-19). 명시면 어느 쪽이든 안 흔들린다
 for (const s of seeds) {
   const ev = econ.createVillage({ ...s.lp, initialPop: P.INITIAL_POP, name: s.name });
   ev._world = world; ev.coord = { x: s.ccx * 2.5, y: s.ccy * 2.5 };
