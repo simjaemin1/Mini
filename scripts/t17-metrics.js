@@ -93,13 +93,14 @@ require('../server/trees').attachToWorld(world);
 //   ⚠이 줄을 여기 둔 이유: ⓚ 여덟 수를 **다시 구현하지 않기 위해서**다(계측기 정본 재구현 0 · T163 규약).
 //     `T191_TOOLWEAR` 를 안 주면 `world.toolWearMul` 이 없고 엔진 배수는 1 이다 — 기준선 계측기 무변.
 { const _tw = parseFloat(process.env.T191_TOOLWEAR || ''); if (Number.isFinite(_tw) && _tw > 0 && _tw !== 1) world.toolWearMul = _tw; }
-// ★[T206 · 계측 전용] 남는 용량에 둘째 후보 — `T206_CARGO_TWO=1` 일 때만 문을 연다(없으면 무변).
-//   랩은 `window.L_CARGO_TWO` 로 **같은 문**을 연다(문은 하나 — 하네스가 지문으로 대조한다).
-if (process.env.T206_CARGO_TWO === '1') world.cargoTwo = true;
-// ★[T233·T239 · 계측 전용] 둘째 화물의 관문과 선택 — 같은 자리·같은 문법(없으면 무변).
-//   랩은 `window.L_CARGO_TWO_GATE` / `L_CARGO_TWO_BEST` 로 **같은 문**을 연다.
-//   ⚠여기 두는 이유는 T191 줄과 같다 — **여덟 수를 다시 구현하지 않기 위해서**다(정본 재구현 0).
-if (process.env.T233_CARGO_GATE === '1') world.cargoTwoGate = true;
+// ★[T206·T233 · ★★T299 로 기본이 뒤집혔다] 둘째 화물과 그 관문.
+//   ⚠**여기서 문을 열지 않는다** — 정본(`sim/economy-sim-v2.js` `cargoTwoOn`/`cargoTwoGateOn`)이 기본 켬이다.
+//     이 계측기는 `L_CARGO_TWO=0`/`L_CARGO_TWO_GATE=0`(env)만 주면 되돌림 팔을 잰다(손잡이 문법이 하나다).
+//   ⚠옛 이름(`T206_CARGO_TWO`·`T233_CARGO_GATE`)은 **덮어쓰기**로 남긴다 — 지난 표를 다시 낼 수 있어야 하고
+//     `0` 을 줄 수도 있어야 한다(`=1` 만 보던 종전 문법이면 끔 팔이 켠 판이 된다 · 족보 128 의 거울).
+if (process.env.T206_CARGO_TWO !== undefined) world.cargoTwo = process.env.T206_CARGO_TWO === '1';
+if (process.env.T233_CARGO_GATE !== undefined) world.cargoTwoGate = process.env.T233_CARGO_GATE === '1';
+// ★[T239 · 계측 전용] 수익 최대 선택은 **끔 그대로**다(T265 정정 — `twogate` 와 못 가름). 주입으로만 켠다.
 if (process.env.T239_CARGO_BEST === '1') world.cargoTwoBest = true;
 for (const s of seeds) {
   const ev = econ.createVillage({ ...s.lp, initialPop: P.INITIAL_POP, name: s.name });

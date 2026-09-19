@@ -94,9 +94,9 @@ const CLASSOF = (r) => {
 const world = econV2.createWorldV2({ seed: SEED, villageCount: seeds.length, picker: 'rational', infoRange: 5000, raidPer100: 0.005 });
 world.villages = []; world.events = [];
 R('server/trees').attachToWorld(world);
-if (TWO) world.cargoTwo = true;
-if (GATE) world.cargoTwoGate = true;
-if (BEST) world.cargoTwoBest = true;
+world.cargoTwo = !!TWO;   // ★[T299] 기본이 켬이 됐다 — 팔은 **명시**로 잡는다(안 잡으면 끔 팔이 켠 판이 된다)
+world.cargoTwoGate = !!GATE;
+world.cargoTwoBest = !!BEST;
 for (const s of seeds) {
   const ev = econ.createVillage({ ...s.lp, initialPop: P.INITIAL_POP, name: s.name });
   ev._world = world; ev.coord = { x: s.ccx * 2.5, y: s.ccy * 2.5 };

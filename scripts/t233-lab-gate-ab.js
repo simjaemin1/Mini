@@ -40,8 +40,9 @@ async function arm(seed, armName) {
       document.getElementById('seed').value = String(seed);
       document.getElementById('nvil').value = String(nvil);
       reseed(); lifeInit();
-      o.gateAttached = (ECON_WORLD || {}).cargoTwoGate === true;
-      o.twoAttached = (ECON_WORLD || {}).cargoTwo === true;
+      // ★[T299] 기본 컰 — 주입 여부가 아니라 **엔진 기본**을 엔진에게 물어야 한다.
+      o.gateAttached = (typeof EconEngine !== 'undefined' && EconEngine.cargoTwoGateOn) ? EconEngine.cargoTwoGateOn(ECON_WORLD || {}) : ((ECON_WORLD || {}).cargoTwoGate === true);
+      o.twoAttached = (typeof EconEngine !== 'undefined' && EconEngine.cargoTwoOn) ? EconEngine.cargoTwoOn(ECON_WORLD || {}) : ((ECON_WORLD || {}).cargoTwo === true);
       const rows = VILS.map((v, i) => ({ i, name: v.name,
         base: (v.econ && v.econ._baseStone != null) ? v.econ._baseStone : null,
         pop0: (v.econ && v.econ.npcs) ? v.econ.npcs.length : 0,

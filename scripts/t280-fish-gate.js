@@ -40,7 +40,8 @@ if (!['none', 'stock', 'foodeq', 'origin', 'originmed', 'originavg'].includes(GA
 const V2PATH = path.join(__dirname, '..', 'sim', 'economy-sim-v2.js');
 {
   const src = fs.readFileSync(V2PATH, 'utf8');
-  const ANCHOR = 'if (world.cargoTwoGate && !(_pu2 * _q > 0)) { if (!_picked) _gateBlocked++; continue; }';
+  // ★[T299] 관문 문이 `world.cargoTwoGate` 에서 `_c2gate`(leg 당 한 번 읽는 기본 켬 문)로 바뀌었다 — 닻도 같이 옮긴다.
+  const ANCHOR = 'if (_c2gate && !(_pu2 * _q > 0)) { if (!_picked) _gateBlocked++; continue; }';
   const n = src.split(ANCHOR).length - 1;
   if (n !== 1) { console.error(`★치환 자리가 ${n}개다(1이어야 한다) — 사본을 안 만든다`); process.exit(3); }
   const patched = src.replace(ANCHOR, ANCHOR +
@@ -85,7 +86,7 @@ const world = econV2.createWorldV2({ seed: SEED, villageCount: seeds.length, pic
 world.villages = []; world.events = [];
 R('server/trees').attachToWorld(world);
 //   끔 팔(`MEASURE`)이 아니면 `twogate` 위에 얹는다 — 카드 ② 가 시킨 자리.
-if (!MEASURE) { world.cargoTwo = true; world.cargoTwoGate = true; }
+world.cargoTwo = !MEASURE; world.cargoTwoGate = !MEASURE;   // ★[T299] 기본 켬 — 끔 팔(MEASURE)을 **명시**로 끈다
 for (const s of seeds) {
   const ev = econ.createVillage({ ...s.lp, initialPop: P.INITIAL_POP, name: s.name });
   ev._world = world; ev.coord = { x: s.ccx * 2.5, y: s.ccy * 2.5 };
