@@ -1000,17 +1000,34 @@ function openSpot() {
     //   **다른 프레임**이다. ⇒ 찍을 때 **같은 애니 프레임**을 기다린다(찍고 나서도 그 프레임인지 되본다).
     //   이러면 "장착 안 하면 diff 0"이 참말이 되고, 효과도 프레임이 아니라 착장으로만 갈린다.
     const frameOfA = () => B.evaluate((p2) => { const d = (window.__charDbg || {})[p2]; return d && d.on ? d.frame : -1; }, aPid2);
-    const shotB = async (n, want) => {
+    // ★★★[T304 2026-09-19] **못 지킨 전제를 말없이 넘기지 않는다.**
+    //   종전 판은 `want` 판이 올 때까지 60번(7.2초) 보다가, **안 오면 그냥 찍었다** — 폴백에
+    //   아무 표시가 없어서 "같은 애니 프레임"이라는 이 절의 전제가 **조용히 거짓**이 됐다.
+    //   09-18 야간이 그 값을 보여 줬다: 무장착 대조군이 1857~2030px(상자의 69~75%).
+    //   이 카드가 굶긴 상자에서 재현했다: `판 3→3(바라던 판 0) · 사이 57,408ms · 164px · 최대 |Δ| 381`
+    //   — **자리는 안 움직였고**(544,480 그대로) 바뀐 화소는 몸에 몰렸다 ⇒ 카메라도 덮개도 아니고
+    //   **두 장이 다른 애니 순간**이었다. 한가한 상자에선 같은 자가 A/A 두 판 **0px · 최대 0** 이다.
+    //   ⇒ ⓐ 고정 판(0번)을 기다리지 않는다 — **첫 장이 잡은 판**을 기준으로 둘째를 맞춘다.
+    //     ⓑ 찍는 동안 판이 안 넘어갔는지 확인하고, 못 지켰으면 `ok:false` 로 **말한다**.
+    const shotRaw = async (n) => {
       const f = path.join(SHOTS, `t87-${n}.png`);
-      for (let k = 0; k < 60; k++) {
-        if ((await frameOfA()) !== want) { await sleep(120); continue; }
-        await B.screenshot({ path: f });
-        if ((await frameOfA()) === want) return P.sync.read(fs.readFileSync(f));   // 찍는 사이에 안 넘어갔다
-      }
+      const f0 = await frameOfA();
       await B.screenshot({ path: f });
-      return P.sync.read(fs.readFileSync(f));
+      const f1 = await frameOfA();
+      return { png: P.sync.read(fs.readFileSync(f)), frame: f0, ok: f0 === f1 && f0 >= 0 };
     };
-    const SHOT_FRAME = 0;   // idle 0번 프레임에서만 찍는다
+    // 바라는 판이 있으면 그 판이 올 때까지 기다렸다 찍는다. 끝내 못 잡으면 **못 잡았다고 말한다**.
+    const shotAt = async (n, want, tries) => {
+      let last = null;
+      for (let k = 0; k < (tries || 60); k++) {
+        if (want != null && (await frameOfA()) !== want) { await sleep(120); continue; }
+        last = await shotRaw(n);
+        if (last.ok && (want == null || last.frame === want)) return last;
+      }
+      if (!last) last = await shotRaw(n);
+      last.ok = false;
+      return last;
+    };
     // ★★바람을 끈다 — 지면 풀 카펫이 프레임마다 흔들린다(`e2e-nature` 실측 52만 화소). 상자 안엔
     //   A 말고 **땅**도 들어 있어서, 안 끄면 그게 대조군을 47화소로 들어 올린다(실측). 재는 층을 격리한다.
     await B.evaluate(() => { if (window.__terrain19) window.__terrain19.windOff = true; });
@@ -1027,23 +1044,54 @@ function openSpot() {
     //   올려야 한다(키 54.4px — 메타의 수다. 눈대중 아님).
     const PR = 26;
     const CX0 = spot[0], CY0 = spot[1] - 27;
-    const patch = (u, v) => { let c = 0, tot = 0;
+    const patch = (u, v) => { let c = 0, tot = 0, sum = 0, mx = 0;
       for (let y = Math.max(0, CY0 - PR); y < Math.min(u.height, CY0 + PR); y++)
         for (let x = Math.max(0, CX0 - PR); x < Math.min(u.width, CX0 + PR); x++) {
           const i = (y * u.width + x) * 4; tot++;
-          if (Math.abs(u.data[i] - v.data[i]) + Math.abs(u.data[i + 1] - v.data[i + 1]) + Math.abs(u.data[i + 2] - v.data[i + 2]) > 24) c++;
+          const d = Math.abs(u.data[i] - v.data[i]) + Math.abs(u.data[i + 1] - v.data[i + 1]) + Math.abs(u.data[i + 2] - v.data[i + 2]);
+          sum += d; if (d > mx) mx = d;
+          if (d > 24) c++;
         }
-      return { c, tot }; };
+      return { c, tot, mean: tot ? sum / tot : 0, max: mx }; };
 
     // ── ⓙ 도구 ─────────────────────────────────────────────────────────────
     const before = await layersOf(B);
     ok(!!before && !before.some((l) => l.indexOf('tool_') === 0),
       '★★자명 통과 금지 — 맨손일 땐 남에게 **도구 층이 없다**', JSON.stringify(before));
     // ★잡음 바닥 먼저(족보 80): 아무것도 안 바꾸고 두 장. 장착 안 하면 diff 0 이어야 한다.
-    const n1 = await shotB('n1', SHOT_FRAME); await sleep(1400);
-    const n2 = await shotB('n2', SHOT_FRAME);
-    const noise = patch(n1, n2).c;
-    ok(noise <= 8, '★★대조군 — **장착 안 하면 그 자리 화소가 안 바뀐다**(같은 애니 프레임 · 무풍)', `${noise}px ≤ 8`);
+    // ★★[T304 2026-09-19] 대조군이 깨진 밤을 위해 **무엇이 움직였는지**를 같이 남긴다(판정 아님 · 상황).
+    //   09-18 야간에 이 줄이 1857~2030px(상자의 69~75%)로 빨갰는데 한가한 상자에선 **0px** 이다.
+    //   상자 전체가 바뀌면 그건 "잡음"이 아니라 **재는 자리가 옮겨간 것**이거나 **덮개가 바뀐 것**이다.
+    //   ⇒ 찍을 때마다 ⓐ 실제로 찍힌 애니 판 ⓑ A 가 B 화면의 어디로 보이는지(`__w2s` 다시) 를 적고,
+    //     셈에는 ⓒ 화소당 평균·최대 |Δ| 를 붙인다. 고르게 조금씩 = 덮개 · 한쪽에 몰림 = 몸이 옮겨감.
+    const spotNow = async () => B.evaluate(([x, y]) => { const s2 = window.__w2s(x, y); return s2 ? [Math.round(s2.px), Math.round(s2.py)] : null; }, [aAbs.x, aAbs.y]);
+    const _t0n = Date.now();
+    const s1 = await shotAt('n1', null);          // 첫 장은 **지금 판**을 잡는다(고정 판을 안 기다린다)
+    await sleep(1400);
+    const s2 = await shotAt('n2', s1.frame);      // 둘째는 **그 판이 다시 올 때까지** 기다린다
+    const _s1 = await spotNow(), _s2 = await spotNow();
+    const n1 = s1.png, n2 = s2.png;
+    const _np = patch(n1, n2);
+    const noise = _np.c;
+    const sameFrame = s1.ok && s2.ok && s1.frame === s2.frame && s1.frame >= 0;
+    console.log(`    [상황] 대조군 두 장: 판 ${s1.frame}→${s2.frame} (같은 판 ${sameFrame ? 'O' : '✗'})`
+      + ` · 자리 ${JSON.stringify(_s1)}→${JSON.stringify(_s2)} (상자 중심 [${CX0},${CY0}] 반경 ${PR})`
+      + ` · 사이 ${Date.now() - _t0n}ms · 상자 ${_np.tot}화소 중 ${_np.c} 바뀜`
+      + ` · 화소당 평균 |Δ| ${_np.mean.toFixed(1)} · 최대 ${_np.max}`);
+    // ★★전제가 먼저다 — **같은 애니 판에서 찍었나.** 못 지켰으면 아래 화소 수는 착장의 효과가
+    //   아니라 **다른 순간**을 재고 있다(09-18 야간이 그 수를 냈다). 전제가 깨지면 그렇게 말한다.
+    //   ⚠전제가 깨지면 **화소 판정을 안 돈다** — 돌리면 증상 셋이 빨개지고(09-18 야간이 그랬다)
+    //     읽는 사람이 "제품이 틀렸다"로 읽는다. 하나만 빨갛게 하고 그 하나가 **원인**을 말한다
+    //     (`e2e-weather ⓕ` 의 '유보' 와 같은 문법: "안 비쌌다"와 "못 쟀다"는 다른 말이다).
+    ok(sameFrame, sameFrame
+        ? '★★대조군 전제 — 두 장을 **같은 애니 판**에서 찍었다'
+        : '★★유보 — 두 장을 같은 애니 판에서 못 찍었다(굶은 상자). 아래 화소 판정은 **안 돈다** — 못 쟀다',
+      `판 ${s1.frame}→${s2.frame} · 잡음 ${noise}px`);
+    // ★★[T304] 잡음 바닥은 **고정 수와 겨루지 않는다** — 아래 효과 판정의 **바**로 쓴다(비율).
+    //   종전엔 `noise <= 8` 이라는 고정 문턱이었고, 그 8 은 어디서 유도된 수가 아니었다(족보 74).
+    //   한가한 상자의 실측은 A/A 두 판 **0px** 이고, 굶은 상자에선 164~2030px 이다 — 즉 이 수는
+    //   제품이 아니라 **상자**를 잰다. ⇒ 효과는 `효과 / max(잡음,1) ≥ 3` 로 읽는다(아래 ⓙ·ⓚ).
+    console.log(`    [상황] 잡음 바닥 ${noise}px (상자의 ${(noise / _np.tot * 100).toFixed(1)}%) — 아래 효과의 바는 ${Math.max(noise * 3, 10)}px`);
     // 도끼 지급 → 장착(제품 경로: 도구 인스턴스 + equip)
     await A.evaluate(() => window.__sendPrimary({ type: '__e2e_give', tools: ['axe'] }));
     let axeId = null;
@@ -1055,14 +1103,28 @@ function openSpot() {
     ok(!!axeId, '검사 전제 — A 가 도끼 인스턴스를 받았다', axeId || '실패');
     await A.evaluate((id) => window.__sendPrimary({ type: 'equip', toolItemId: id }), axeId);
     const mineTool = await waitL(A, 'tool_axe');
+    // ★★[T304] 층이 안 뜨면 **어느 쪽이 굶었는지**를 남긴다(판정 아님 · 상황).
+    //   09-18 야간과 이 카드의 굶긴 상자에서 이 줄이 `["body","clothes_hemp"]` 로 빨갰다 —
+    //   그때 서버가 장착을 **접수했는지**(`__getEquipped` 가 그 인스턴스를 들고 있는지)가
+    //   "서버가 못 받았다"와 "그림만 늦다"를 가른다. 다음 카드가 그 한 줄부터 읽게 둔다.
+    if (!mineTool || mineTool.indexOf('tool_axe') < 0) {
+      const _eq = await A.evaluate(() => (window.__getEquipped ? window.__getEquipped() : '훅없음'));
+      const _hook = await A.evaluate((p2) => ((window.__charDbg || {})[p2] || null), aPid2);
+      console.log(`    [상황] 도끼 층이 안 떴다 — 서버가 본 장착 = ${JSON.stringify(_eq)} (보낸 인스턴스 ${axeId})`
+        + ` · 훅 = ${_hook ? `on=${_hook.on} why=${_hook.why || '-'} t=${Math.round(_hook.t || 0)}` : 'null'}`
+        + ` · ⇒ 장착이 접수됐는데 층만 없으면 **그림이 늦은 것**, 장착이 null 이면 **서버가 못 받은 것**`);
+    }
     ok(!!mineTool && mineTool.indexOf('tool_axe') >= 0, '★A 자기 화면에서 도끼 층을 쓴다', JSON.stringify(mineTool));
     const hisTool = await waitL(B, 'tool_axe');
     ok(!!hisTool && hisTool.indexOf('tool_axe') >= 0,
       '★★★ⓙ **둘째 클라가 첫째의 도끼를 본다** — 손에 든 것이 네트워크를 탄다', JSON.stringify(hisTool));
-    const afterTool = await shotB('tool', SHOT_FRAME);
-    const effTool = patch(n2, afterTool).c;
-    ok(effTool > Math.max(noise * 3, 10),
-      `★★★ⓙ 그 자리 **화면이 실제로 바뀐다** — 도끼를 쥐기 전/후 (${effTool}px > ${Math.max(noise * 3, 10)} · 잡음 ${noise})`);
+    let afterTool = null;
+    if (sameFrame) {
+      afterTool = (await shotAt('tool', s1.frame)).png;
+      const effTool = patch(n2, afterTool).c;
+      ok(effTool > Math.max(noise * 3, 10),
+        `★★★ⓙ 그 자리 **화면이 실제로 바뀐다** — 도끼를 쥐기 전/후 (${effTool}px > ${Math.max(noise * 3, 10)} · 잡음 ${noise} · 비율 ${(effTool / Math.max(noise, 1)).toFixed(1)}배)`);
+    } else console.log('    [유보] ⓙ 화소 판정 건너뜀 — 전제(같은 애니 판)가 안 섰다');
 
     // ── ⓚ 등짐 ─────────────────────────────────────────────────────────────
     const beforeBack = await layersOf(B);
@@ -1074,10 +1136,12 @@ function openSpot() {
     const hisBack = await waitL(B, 'back_carrier');
     ok(!!hisBack && hisBack.indexOf('back_carrier') >= 0,
       '★★★ⓚ **둘째 클라가 첫째의 지게를 본다** — 등에 진 것이 네트워크를 탄다', JSON.stringify(hisBack));
-    const afterBack = await shotB('back', SHOT_FRAME);
-    const effBack = patch(afterTool, afterBack).c;
-    ok(effBack > Math.max(noise * 3, 10),
-      `★★ⓚ 그 자리 **화면이 실제로 바뀐다** — 지게를 지기 전/후 (${effBack}px > ${Math.max(noise * 3, 10)})`);
+    if (sameFrame && afterTool) {
+      const afterBack = (await shotAt('back', s1.frame)).png;
+      const effBack = patch(afterTool, afterBack).c;
+      ok(effBack > Math.max(noise * 3, 10),
+        `★★ⓚ 그 자리 **화면이 실제로 바뀐다** — 지게를 지기 전/후 (${effBack}px > ${Math.max(noise * 3, 10)} · 비율 ${(effBack / Math.max(noise, 1)).toFixed(1)}배)`);
+    } else console.log('    [유보] ⓚ 화소 판정 건너뜀 — 전제(같은 애니 판)가 안 섰다');
     ok(hisBack.join(',') === ['body', hisBack[1], 'back_carrier', 'tool_axe'].join(','),
       '★그리는 순서 = 몸 → 옷 → 등짐 → 손 (자기 판정과 같은 함수가 낸다)', JSON.stringify(hisBack));
 
