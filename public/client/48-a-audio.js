@@ -36,15 +36,9 @@ let _sfxScanAt = 0;
 let _sfxGroundCell = null;          // { k, kind } 발밑 지형 캐시(셀 하나)
 let _sfxWaterCell = null;           // ★[T283] { k, d } 가장 가까운 물 셀까지의 거리(내 셀이 바뀔 때만 다시 잰다)
 let _sfxWx = { precip: 0, indoor: false };   // ★[T283] 날씨 훅이 넣어 둔 마지막 값 — 새(bird) 게이트가 읽는다
-// ★★[T292-b 2026-09-14 · 실제 증상에서] 직전에 본 허기. `null` = 아직 기준이 없다(첫 통은 절대 안 운다).
-//   왜 칸이 필요한가: 서버에 "먹었다"는 **전용 통지가 없다**(§T261 ⓑ 실측 — 동사별 결과 메시지 0).
-//   T283 은 그래서 `gauges` 의 `carry` **존재**로 갈랐는데, 그건 먹기의 성질이 아니라 그 한 통의 모양이었다.
-//   같은 모양이 **초당 한 번 도는 게이지 틱**(`server/zone.js:11573`)에도 있어서 1초마다 씹는 소리가 났다.
-//   ⇒ 모양이 아니라 **값의 변화**로 가른다. 허기는 자연히 **줄기만 한다**(회복 경로 0) — 오르면 먹은 것이다.
-let _sfxHunger = null;
 // ★`missing`(표에 파일이 없다 = 영영 무음) 과 `pending`(받는 중 = 곧 난다) 을 **갈라 센다** —
 //   한 칸에 뭉치면 진단이 "음원이 없다"와 "아직 안 왔다"를 구분 못 한다(실측에서 실제로 헷갈렸다).
-let _sfxStat = { played: 0, missing: 0, pending: 0, blocked: 0, loops: 0 };
+let _sfxStat = { played: 0, missing: 0, pending: 0, blocked: 0, loops: 0, noLimiter: 0 };
 
 const SFX_MANIFEST_URL = '/assets/sfx/manifest.json';
 const SFX_SCAN_MS = 250;            // 개체 훑기 주기 — 프레임마다 훑지 않는다(렌더 예산)
@@ -91,17 +85,23 @@ function sfxSaveVol() {
 //     문턱은 표(`bus.limiter.knee`)이고, **실측 최악 피크보다 위**여야 한다 — 그래야 평소엔 리미터가
 //     아무 일도 안 한다(`test-audio ⑧` 이 그 부등식을 지킨다). 안전장치는 보이지 않아야 안전장치다.
 //   ⚠`bgm.js` 의 곡선은 **안 고친다**(재생기 수정 0). 음악도 같은 이유로 +3.15dB 를 먹고 있다 ⇒ 회부.
+// ★★[T305 2026-09-19] **곡선은 여기서 만들지 않는다 — `bgm.js` 의 정본을 부른다(사본 0).**
+//   T283 이 `bgm.js` 의 곡선을 **베껴** 여기 달았고, T292 가 그 사본을 실측해 +3.15 dB 증폭기임을 찾아
+//   여기만 고쳤다. 음악 쪽 원본은 그대로라 **5일 더 3 dB 크게 울었다** — 두 벌이면 한 벌만 고쳐진다.
+//   ⇒ 한 벌로 합쳤다. 문턱은 **이 층의 표**(`manifest.json bus.limiter.knee`)가 주고,
+//     곡선의 모양은 `bgm.js` 가 준다. 값과 모양의 임자가 갈려 있는 것이 이 구조의 요점이다.
+//   ⚠`bgm.js` 가 없으면 리미터를 **안 단다**(사본을 두느니 없는 편이 낫다 — T292 실측으로
+//     최악 조합 피크가 0.6763 < 문턱 0.8 이라 평소엔 한 번도 안 무는 장치다).
+//     제품에서는 일어나지 않는다: `index.html` 이 `bgm.js` 를 이 파일 **앞에** 싣고
+//     `test-audio ⑪d` 가 그 순서를 지킨다.
 function sfxSoftLimiter(ctx) {
   const K = (_sfxMan && _sfxMan.bus && _sfxMan.bus.limiter && _sfxMan.bus.limiter.knee);
   const T = typeof K === 'number' ? K : 0.7;
+  const mk = (typeof window !== 'undefined' && window.DurangoBGM && window.DurangoBGM.softLimiterCurve);
+  if (!mk) { _sfxStat.noLimiter++; return null; }
   const lim = ctx.createWaveShaper();
-  const CN = 2048, curve = new Float32Array(CN);
-  for (let i = 0; i < CN; i++) {
-    const x = (i / (CN - 1)) * 2 - 1, a = Math.abs(x);
-    // 문턱 아래 = 그대로(투명) · 위 = T + (1−T)·tanh((|x|−T)/(1−T)) ⇒ 1.0 에 점근하되 절대 안 넘는다
-    curve[i] = a <= T ? x : Math.sign(x) * (T + (1 - T) * Math.tanh((a - T) / (1 - T)));
-  }
-  lim.curve = curve; lim.oversample = '2x';
+  lim.curve = mk(T);
+  lim.oversample = '2x';
   return lim;
 }
 function sfxBuildGraph() {
@@ -110,7 +110,8 @@ function sfxBuildGraph() {
   const sfx = ctx.createGain();
   const music = ctx.createGain();
   const lim = sfxSoftLimiter(ctx);
-  sfx.connect(lim); lim.connect(master); music.connect(master); master.connect(ctx.destination);
+  if (lim) { sfx.connect(lim); lim.connect(master); } else { sfx.connect(master); }
+  music.connect(master); master.connect(ctx.destination);
   _sfxBus = { master, sfx, music, lim };
   sfxApplyVol();
 }
@@ -409,21 +410,21 @@ function initAudio() {
         sfxPlay(key, { x: r.x + ox, y: r.y + oy });
         return;
       }
-      // ★★[T292-b] 먹기 — **허기가 오르면** 먹은 것이다. 서버에 먹기 전용 통지가 없어서 값으로 가른다.
-      //   T283 의 판별(`msg.carry` 가 있으면 먹기)은 **틀렸다**: `carry` 는 `doEat` 만의 표식이 아니라
-      //   초당 한 번 도는 게이지 틱(`server/zone.js:11573`)에도 실린 칸이었다 ⇒ 1초마다 씹는 소리.
-      //   ⚠남은 구멍 하나: **배가 꽉 찬 채로 먹으면** 허기가 안 올라 소리가 안 난다(회부).
-      if (t === 'gauges') {
-        const h = +msg.hunger;
-        if (!isFinite(h)) return;
-        const prev = _sfxHunger;
-        _sfxHunger = h;
-        if (prev !== null && h > prev) sfxPlay('eat');   // 올랐다 = 먹었다
+      // ★★[T305] 먹기 — **서버가 동사를 말한다**. `gauges.ate` = `'self'`(내가 먹었다) · `'fed'`(남을 먹였다).
+      //   짐작을 두 판 거쳐 여기 왔다: T283 은 메시지의 **모양**(`carry` 칸 존재)으로 갈랐고 — 그 칸이
+      //   초당 게이지 틱에도 있어 **1초마다 씹었다**. T292-b 는 **값**(허기 상승)으로 갈랐고 — 모양에
+      //   안 기대니 옳았지만 **배가 꽉 차면 허기가 안 올라** 무음이었다. T305 가 서버 두 자리를
+      //   허락받아 `doEat` 이 `ate` 한 낱말을 대게 했다. 이제 층은 짐작하지 않는다.
+      if (t === 'gauges') { if (msg.ate) sfxPlay('eat'); return; }
+      // ★★[T305] 밭 수확 — `inventory` 전문의 `where` 낱말을 **표**가 키로 옮긴다(`inventoryWhere`).
+      //   `sendInventory(player, where)` 는 T292 이전부터 이 값을 받고 있었는데 `Carry.assertInvariant`
+      //   의 이름표로만 쓰고 **전문에 안 실었다**(T292 ⓑ 가 찾은 자리). T305 가 그 칸을 실었다.
+      //   ⚠68자리 중 이름을 댄 곳만 운다 — 표에 없는 낱말은 안 운다(지어내지 않는다).
+      if (t === 'inventory') {
+        const key = msg.where && (_sfxMan.inventoryWhere || {})[msg.where];
+        if (key) sfxPlay(key);
         return;
       }
-      // 기준을 지운다 — 새 몸/새 접속의 첫 `gauges` 를 '먹었다'로 읽지 않기 위해서다
-      //   (부활은 허기를 가득으로 되돌린다 ⇒ 기준을 안 지우면 살아나며 한 입 씹는다).
-      if (t === 'welcome' || t === 'player_respawn') { _sfxHunger = null; return; }
       // 낚시 셋 — 서버가 상태를 그대로 말한다. 좌표는 **존 로컬**이라 절대로 접어야 한다(찌 그리기와 같은 함정).
       if (t === 'fish_state') {
         const key = (_sfxMan.fishState || {})[msg.state];
