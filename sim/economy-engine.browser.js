@@ -2267,7 +2267,11 @@ const EXPAND_CHECK_INTERVAL = 1;          // ★셀 단위 확장(사용자 승�
 const EXPAND_CELLS_PER_SLOT = 25;         // land.size 1.0 = 25셀 — 맵층 목표(size×25)와 단일 진실. 셀당 비용 = 슬롯 공식/25
 const EXPAND_CELLS_PER_DAY = 4;           // 일일 최대 구매 셀 — 맵 크립 6시간/1셀=4셀/일과 정합(≈구 25셀/주 페이스)
 // ★주거(집): 인구 성장은 집 수용력에 막힘. 집은 목재(필수)·석재(있으면)로 짓고 노후화.
-//   집 부족하면 성장만 멈춤(감소 아님). picker가 "집 지을 목재 부족 → 나무꾼" 안전망으로 고리 닫음.
+//   집 부족하면 성장만 멈춤(감소 아님). picker가 "집이 거의 찼는데 목재가 모자라면 → 나무꾼" 안전망으로 고리 닫음.
+//   ★[T285 정정] 그 안전망은 **`pickDeficitJob_rational`** 의 한 줄이고 조건이 둘이다 —
+//     `N ≥ housing × 0.95` **그리고** `wood < N × 2`. 집에 여유가 있는 마을은 이 줄을 못 받는다
+//     (그때 나무꾼은 한계가치 후보줄에서 그림자가격으로 이겨야 나온다). 옛 `pickDeficitJob` 의
+//     `wood < N × 5` 줄은 `picker:'rational'` 세계에서 **호출 0**이다(3시드 800일 실측).
 const HOUSE_WOOD = 1.5;        // 수용력 1인당 목재(한옥=목조)
 const HOUSE_STONE = 2.5;       // 수용력 1인당 석재(주춧돌·구들·담장). 준-필수(없으면 건축 30%) → 강한 석재 수요 → 광산 교역·광부 매력↑
 const HOUSE_DECAY = 0.0015;    // 일일 노후화(완만 — 나무꾼 1명이면 유지 가능)
@@ -4243,7 +4247,10 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
 
   // ★땔감 소비 — (1)요리·난방=인구비례 (2)제련=야금공 비례(청동 제련은 고온·대량 연료). 생산 반영된 재고에서 차감.
   //   충당률 fuelCov를 저장 → _computeVillageStats가 건강에 비례 페널티로 반영(부족→건강↓→인구·생산성↓).
-  //   재고를 실제로 축내므로 subsistence picker(wood<N×5)가 벌목꾼을 더 배치 → 숲 압박. 야금촌은 제련연료로 숲을 더 빨리 소진(고증: 제련=삼림파괴 동인).
+  //   재고를 실제로 축내므로 picker 가 벌목꾼을 더 배치 → 숲 압박. 야금촌은 제련연료로 숲을 더 빨리 소진(고증: 제련=삼림파괴 동인).
+  //   ★[T285 정정] 그 배치를 하는 줄은 **rational picker 의 주거 목재 안전망**(`N ≥ housing×0.95 && wood < N×2`)이다.
+  //     예전 이 주석이 이름을 댔던 `subsistence picker(wood<N×5)` 는 옛 `pickDeficitJob` 안에 있고
+  //     이 세계에서 **한 번도 안 돈다**(함수 진입 0/0/0 · rational 은 16,963/17,267/21,952 — 보고/T285).
   // ★S2 야금공(제련 고온·대량 연료) = 대장장이(청동·철 무기) + 갑옷장이. 석공(mason)은 석기·목공(간돌·활)이라 제련 연료 0(고온 화로 없음).
   const smelters = (v.counts.smith || 0) + (v.counts.weaponsmith || 0) + (v.counts.armorsmith || 0);
   // ★의복 마모(2026-07-12) — 입던 옷이 해짐: 기본 + 한랭 가중(겨울 험한 사용·겹쳐 입음). 커버리지는 스탯 항이 소비.
@@ -4291,6 +4298,9 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
       const stoneNeed = built * HOUSE_STONE;
       const stoneFrac = stoneNeed > 0 ? Math.min(1, (v.storage.stone || 0) / stoneNeed) : 1;
       built *= 0.3 + 0.7 * stoneFrac;   // 석재 0 → 30% 속도, 충분 → 100%
+      // ★[T300] 하루 건축 상한 — **이 한 자리**다(기본 끔 · 값은 손잡이가 바깥에서 준다 · 위 `buildCapOf`).
+      //   석재 배수 뒤에 거는 이유: 끔 팔이 실측한 "하루 지은 양"과 **같은 축**이어야 값이 그 값이다.
+      { const _cap = buildCapOf(v); if (_cap !== null && built > _cap) built = _cap; }
       v.storage.wood -= built * HOUSE_WOOD;
       _cons(v, 'wood', built * HOUSE_WOOD);   // ★flow-EMA(주거 목재)
       // ★유령 박멸(§9): 자갈 기초 — 기초·구들 채움(석재 수요의 ≤절반)은 채집 자갈이 하급 대체(PEBBLE_STONE_EQ). 석재 실절약.
@@ -4900,6 +4910,52 @@ function allocBasketMode() { const x = _allocKnob('L_ALLOC_BASKET'); return x !=
 //   (같은 호출에서 실제로 다시 쓰인 직업들의 실현÷종전 **중앙값**)을 곱한다. 기본 꺼짐.
 //   새 수 0 — 배율은 그 호출 안에서 계산된 값들의 중앙값이고, 바깥에서 아무 상수도 안 가져온다.
 function allocFbMode() { const x = _allocKnob('L_ALLOC_FB'); return x !== null && x !== '0'; }
+
+// ★★★[T300 2026-09-19 · 주거 처방 — PM #28 "꼴 = 캡 · 값 = 마을별 최대"] **하루 건축 상한.**
+//
+// 왜 이 자리인가 — T264 가 목재 재고를 읽는 넷(`built` · picker `:3298` · 주거 방아쇠 `:3770` · `fuelK`)을
+// 하나씩 고정해 가른 결과, **넷 중 `built` 하나만** 죽음을 만든다(소멸 1·1·2 → 0·2·0 · 지켜본 넷이 넷 다 산다).
+// T275 가 꼴 셋(절대 캡 · `slack` 재정의 · 재고 완화)을 재서 **캡만이 지금 세계에 소멸을 안 보탠다**를 잡았고,
+// 값은 하나의 중앙값이 아니라 **마을별**이어야 한다는 것도 갈랐다(켠 세계 소멸 4→2 · 인구 +1.8~+4.9%).
+//
+// ⚠**엔진 안에 캡 상수를 두지 않는다 — 새 수 0.**
+//   T300 이 실측으로 확인한 것: "마을별 최대"는 **상태식으로 안 나온다**(끔 팔 실측 최대 대
+//   `N_peak × HOUSE_BUILD_MAX` 의 비가 0.28~0.93 · ±15% 안에 드는 마을이 51곳 중 2~4곳).
+//   그 값은 그 마을이 **그 세계에서 실제로 지은 역사**지 땅·인구의 함수가 아니다.
+//   ⇒ 값은 손잡이가 **바깥에서** 받는다(`_allocKnob` 문법 그대로 · 랩 `window` · 서버 `env`):
+//       `T300_BUILD_CAP=4.4`                  → 절대 캡(마을 무관 · T275 ⓐ 꼴)
+//       `T300_BUILD_CAP=농촌1:2.1,임업2:14.27` → **마을별** 캡(T264 꼴 · PM 이 고른 꼴)
+//       `T300_BUILD_CAP=@/경로/caps.json`      → 같은 표를 파일로(`{"마을이름": 수}`)
+//     이름이 표에 없는 마을은 **상한 없음**(종전 그대로) — 약한 마을을 덤으로 조이지 않는다.
+//   ⚠**미설정이면 끔** — 이 파일은 넷째 판과 **비트 동일**이다(`buildCapOf` 가 항상 null 을 돌려준다).
+let _t300Caps;   // null = 끔 · number = 절대 캡 · Map = 마을별
+function _t300Parse() {
+  const x = _allocKnob('T300_BUILD_CAP');
+  if (x === null || x === '' || x === '0') return null;
+  if (x[0] === '@') {
+    try {
+      const j = JSON.parse(require('fs').readFileSync(x.slice(1), 'utf8'));
+      const m = new Map(); for (const k in j) { const n = +j[k]; if (Number.isFinite(n) && n >= 0) m.set(k, n); }
+      return m.size ? m : null;
+    } catch (e) { return null; }
+  }
+  if (x.indexOf(':') < 0) { const n = parseFloat(x); return Number.isFinite(n) && n >= 0 ? n : null; }
+  const m = new Map();
+  for (const pair of x.split(',')) {
+    const i = pair.lastIndexOf(':'); if (i < 0) continue;
+    const n = parseFloat(pair.slice(i + 1)); if (!Number.isFinite(n) || n < 0) continue;
+    m.set(pair.slice(0, i).trim(), n);
+  }
+  return m.size ? m : null;
+}
+// 그 마을의 하루 건축 상한 — 끔이거나 표에 없으면 `null`(상한 없음).
+function buildCapOf(v) {
+  if (_t300Caps === undefined) _t300Caps = _t300Parse();
+  if (_t300Caps === null) return null;
+  if (typeof _t300Caps === 'number') return _t300Caps;
+  const c = _t300Caps.get(v && v.name);
+  return c === undefined ? null : c;
+}
 
 // ★★★[T184 2026-09-12 · 2판] 직업의 **주산물 항** — 종전식이 보던 그 품목과 그 값식 그대로.
 //
@@ -6020,6 +6076,7 @@ module.exports = {
   seedFoodDays, SEED_FOOD_DAYS_D0, SEED_FOOD_DAYS_LEGACY,   // ★[T100 5판] 창설 곳간의 밑변 — 하네스가 `crops.js` 에서 다시 유도해 대조한다
   HEALTH_PROD_W, happyWorkMul, happyFloor1On, happyWorkWOf, T157_HAPPYWORK_H,   // ★[T157] 건강→작업량 계수 — 하네스가 "행복은 건강과 같은 문법" 을 대조한다(사본 0) · ★[T209] 하한 손잡이(하네스가 되돌림을 건다)
   gardenFloorTopUp, T100_GARDEN, T100_GARDEN_CELLS, T100_GARDEN_FLOOR, T193_LEDGER,   // ★[T193] 장부 손잡이 — 하네스가 옮겨 적지 않는다   // ★[T100 5판 ⓒ] 텃밭 하한 — 값·손잡이·유도식을 하네스가 다시 계산한다
+  buildCapOf, HOUSE_BUILD_MAX, HOUSE_WOOD, HOUSE_BUFFER,   // ★[T300] 건축 상한 손잡이 — 하네스·계측기가 값·꼴을 옮겨 적지 않는다
   FARMER_BASE: JOBS.farmer.base,   // ★[T100] 농부 1인 기준 산출(옛 밑변 `1.5 × 지력`의 1.5) — 계측기·하네스가 이 수를 옮겨 적지 않게
   // ★[T125] 옷감 보온 가중 — `server/villages.js` 가 주민 착장 재질을 고를 때 **읽는다**.
   //   같은 이유(사본 금지)로 이름만 낸다. 값·틱 로직 무접촉 — 이 줄은 시뮬을 한 톨도 안 바꾼다.
