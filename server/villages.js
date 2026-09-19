@@ -6100,6 +6100,17 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
         const _key = _cx + ',' + _cy;
         //   ⓑ 무엇이 물리나 — 그 물·그 계절에 사는 종에서 결정론으로 하나(주사위 0 · `freshfish.pick`).
         const _sp = _fresh().pick(_t312Water(vil), day, h ^ _cx ^ Math.imul(_cy, 0x85ebca6b));
+        // ★★★[T321 2026-09-19 · 소리] **한 번의 드리움이 어디까지 갔는지**를 낱말로 남긴다.
+        //   여기 말고 다른 자리가 없다 — 어부의 한 시도는 **한 순간**이다(아래 셋이 같은 틱이다).
+        //   그래서 소리는 '던짐 뒤 입질 뒤 걸림' 셋이 **차례로** 나는 것이 아니라,
+        //   그 시도의 **결말 하나**가 난다. 결말은 원래 셋이었다(코드가 이미 갈라 놓았다):
+        //     · 아무것도 안 물었다(`!_sp`)            → 드리움
+        //     · 물었는데 못 건졌다(`_sp` · 예산 0)     → 놓침
+        //     · 건졌다(`_got > 0`)                    → 낚음   ← 종전부터 있던 낱말
+        //   ⚠라벨은 **덮어쓰는 칸 하나**(`_lifeAct`)라 한 틱에 셋을 부르면 마지막만 남는다.
+        //     셋이 서로 배타이므로 그 성질이 여기서는 해가 아니다(`test-audio ⑫b` 가 배타를 지킨다).
+        //   ⚠새 메시지·새 칸 0: 라벨은 `zone.js makeEntry` 의 `e.act` 를 **그대로** 탄다(무상태 델타).
+        if (!_sp) _lifeAct(npc, '드리움');
         if (_sp) {
           //   ⓒ 그 한 마리가 장부로 얼마인가 — **정본이 답한다**(`kcal.econUnitsOf`: 종 kg × fish kcal/kg ÷ DAY_KCAL).
           //      그 어부의 배율(숙련·도구)은 econ 이 제 자리에서 남겨 둔 `_t172mul` 을 **그대로** 쓴다(T172 규약 · 사본 0).
@@ -6114,7 +6125,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
             npc._t312U = +((npc._t312U || 0) + _got).toFixed(6);                            // 손에 든 것의 장부값(귀환 때 곳간으로)
             npc._t312Kg = +((npc._t312Kg || 0) + _sp.kg).toFixed(3);
             _lifeAct(npc, '낚음');
-          }
+          } else _lifeAct(npc, '놓침');   // ★[T321] 물었는데 셀 예산이 비었다 — 놓친 것이다(소리는 `bite`)
         }
         //   ⓔ **짐이 차면 돌아간다** — 상한은 `carry.js` 의 그 수다(사본 0). 낮 끝 귀환은 아래 일과가 이미 한다.
         const _cc = _carryCfg();
