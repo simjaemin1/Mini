@@ -22,6 +22,10 @@ const { chromium } = require('playwright');
 
 const ROOT = path.resolve(__dirname, '..');
 const MAN = JSON.parse(fs.readFileSync(path.join(ROOT, 'public/assets/sfx/manifest.json'), 'utf8'));
+const META_TRACKS = (() => {                         // ★[T323] BGM 곡 수 — 소리판 행 수와 맞댄다
+  try { return JSON.parse(fs.readFileSync(path.join(ROOT, 'public/assets/audio/bgm/render-meta.json'), 'utf8')).tracks || {}; }
+  catch (e) { return {}; }
+})();
 const PORT = +(process.env.PORT || 0) || (3800 + (process.pid % 120));
 
 let pass = 0, fail = 0;
@@ -235,6 +239,71 @@ const db = (x) => (x > 0 ? +(20 * Math.log10(x)).toFixed(2) : -Infinity);
     //   응답 없음은 여기서 정상이다. 그것까지 빨갛게 세면 이 자는 "세계가 꺼져 있다"를 **소리 결함으로**
     //   보고하게 된다. ⇒ **소리 층에서 난 오류만** 센다(검사 범위를 넓히면 검사가 거짓말한다 · 족보).
     const sfxErrs = errs.filter((e) => /sfx|audio|bgm|DurangoBGM|limiter/i.test(e));
+    // ⑲~㉒ ★★★[T323] 소리판 — **행 수가 키 수이고, 단추가 진짜 층을 부른다**
+    //   `test-audio ⑬` 은 페이지 **소스**에 키가 안 박혔다를 정적으로 지킨다. 여기서는 그 페이지를
+    //   실제로 열어 **몇 행이 나오나**를 세고(정본이 정말 표를 만드는가), 「층」 단추가
+    //   **제품의 `__sfx`** 를 부르는가를 `stat.played` 증분으로 잰다(족보 226 — 수신에서 센다).
+    {
+      const bp = await browser.newPage();
+      const berrs = [];
+      bp.on('pageerror', (e) => berrs.push(String(e).slice(0, 140)));
+      await bp.goto(`http://127.0.0.1:${PORT}/sfx-board.html`, { waitUntil: 'networkidle', timeout: 30000 });
+      await bp.waitForFunction(() => document.querySelectorAll('#sfx tbody tr').length > 0, null, { timeout: 20000 });
+
+      const keysWithFile = Object.keys(MAN.keys).filter((k) => !k.startsWith('_'));
+      const rows = await bp.evaluate(() => document.querySelectorAll('#sfx tbody tr').length);
+      ok(rows === keysWithFile.length,
+         '⑲ ★★행 수 = 키 수(페이지가 매니페스트에서 표를 만든다 — 손 목록 0)',
+         `행 ${rows} · 키 ${keysWithFile.length}`);
+
+      const bgmRows = await bp.evaluate(() => document.querySelectorAll('#bgm tbody tr').length);
+      const trackN = Object.keys((META_TRACKS || {})).length;
+      ok(bgmRows === trackN, '⑳ ★BGM 행 수 = `render-meta.json` 의 곡 수', `행 ${bgmRows} · 곡 ${trackN}`);
+
+      // ㉒ ★★「층」 단추가 **제품의 `__sfx`** 를 부른다 — 호출 수로 잰다
+      await bp.mouse.click(5, 5);                       // 제스처(층은 첫 동작에서 깨어난다)
+      await bp.waitForFunction(() => window.__sfx && window.__sfx.dbg().ctx, null, { timeout: 20000 });
+      await bp.evaluate(() => document.querySelector('#wake').click());   // 데우기(페이지가 probe 로 돈다)
+      await bp.waitForFunction(() => {
+        const d = window.__sfx && window.__sfx.dbg(); return d && d.stat && d.stat.pending === 0;
+      }, null, { timeout: 30000 }).catch(() => {});
+      await bp.waitForTimeout(400);
+      const before = await bp.evaluate(() => window.__sfx.dbg().stat.played);
+      await bp.evaluate(() => {
+        // 파일 있는 첫 행의 「층」 단추를 누른다(자리를 안 주므로 반경 감쇠는 0 거리 = 최대)
+        const rows = document.querySelectorAll('#sfx tbody tr');
+        for (const tr of rows) {
+          const bs = tr.querySelectorAll('button.play');
+          if (bs.length > 1 && !bs[1].disabled) { bs[1].click(); return; }
+        }
+      });
+      await bp.waitForTimeout(400);
+      const after = await bp.evaluate(() => window.__sfx.dbg().stat.played);
+      ok(after - before === 1,
+         '㉒ ★★「층」 단추가 제품 `__sfx` 를 **실제로** 부른다(발신이 아니라 울린 수로 잰다)',
+         `울린 횟수 ${after - before}`);
+
+      // ㉓ ★BGM 「층」 — 층이 **제 코드로** 장면을 바꾼다(페이지가 세터를 새로 안 달았다)
+      const sc0 = await bp.evaluate(() => (window.__sfx.dbg().bgm || {}).scene);
+      await bp.evaluate(() => {
+        const rows = document.querySelectorAll('#bgm tbody tr');
+        for (const tr of rows) {
+          const bs = tr.querySelectorAll('button.play');
+          if (bs.length > 1 && /village_night/.test(tr.textContent)) { bs[1].click(); return; }
+        }
+      });
+      await bp.waitForTimeout(500);
+      const sc1 = await bp.evaluate(() => (window.__sfx.dbg().bgm || {}).scene);
+      ok(sc1 && sc1 !== sc0, '㉓ ★★BGM 「층」 단추가 층의 장면을 바꾼다(제품 수정 0 — 공개 API 로만)',
+         `${sc0} → ${sc1}`);
+
+      const bBad = berrs.filter((e) => !/json|zones|fetch/i.test(e));
+      ok(bBad.length === 0, '㉔ 소리판에서 난 페이지 오류 0', bBad.slice(0, 2).join(' | ') || '없다');
+
+      await bp.screenshot({ path: '/tmp/sfx-board.png', fullPage: false });
+      await bp.close();
+    }
+
     ok(sfxErrs.length === 0, '⑬ ★소리 층에서 난 페이지 오류 0', sfxErrs.slice(0, 2).join(' | ') || '없다');
     if (errs.length !== sfxErrs.length) {
       console.log(`    (참고 — 소리 밖 오류 ${errs.length - sfxErrs.length}건: 존 서버를 안 띄운 탓이다 · ${errs.filter((e) => !/sfx|audio|bgm/i.test(e))[0] || ''})`);
