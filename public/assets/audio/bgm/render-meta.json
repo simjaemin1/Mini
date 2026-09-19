@@ -14,9 +14,9 @@
   },
   "tracks": {
     "village_day_trad": {
-      "seconds": 109.02,
-      "rms_db": -14.98,
-      "peak_db": -1.29,
+      "seconds_synth": 109.02,
+      "rms_db_synth": -14.98,
+      "peak_db_synth": -1.29,
       "measured": {
         "seconds": 108.28,
         "rms_db": -17.2,
@@ -24,9 +24,9 @@
       }
     },
     "village_day_amb": {
-      "seconds": 112.0,
-      "rms_db": -17.23,
-      "peak_db": -2.12,
+      "seconds_synth": 112.0,
+      "rms_db_synth": -17.23,
+      "peak_db_synth": -2.12,
       "measured": {
         "seconds": 114.02,
         "rms_db": -19.85,
@@ -34,9 +34,9 @@
       }
     },
     "village_night_trad": {
-      "seconds": 115.2,
-      "rms_db": -18.32,
-      "peak_db": -2.02,
+      "seconds_synth": 115.2,
+      "rms_db_synth": -18.32,
+      "peak_db_synth": -2.02,
       "measured": {
         "seconds": 113.0,
         "rms_db": -17.63,
@@ -44,9 +44,9 @@
       }
     },
     "village_night_amb": {
-      "seconds": 118.0,
-      "rms_db": -19.67,
-      "peak_db": -4.01,
+      "seconds_synth": 118.0,
+      "rms_db_synth": -19.67,
+      "peak_db_synth": -4.01,
       "measured": {
         "seconds": 113.0,
         "rms_db": -18.84,
@@ -54,9 +54,9 @@
       }
     },
     "battle_trad": {
-      "seconds": 108.31,
-      "rms_db": -13.42,
-      "peak_db": -1.2,
+      "seconds_synth": 108.31,
+      "rms_db_synth": -13.42,
+      "peak_db_synth": -1.2,
       "measured": {
         "seconds": 112.88,
         "rms_db": -16.66,
@@ -64,9 +64,9 @@
       }
     },
     "battle_amb": {
-      "seconds": 104.0,
-      "rms_db": -16.17,
-      "peak_db": -1.2,
+      "seconds_synth": 104.0,
+      "rms_db_synth": -16.17,
+      "peak_db_synth": -1.2,
       "measured": {
         "seconds": 112.88,
         "rms_db": -18.87,
@@ -74,9 +74,9 @@
       }
     },
     "journey_trad": {
-      "seconds": 105.75,
-      "rms_db": -14.87,
-      "peak_db": -1.76,
+      "seconds_synth": 105.75,
+      "rms_db_synth": -14.87,
+      "peak_db_synth": -1.76,
       "measured": {
         "seconds": 112.86,
         "rms_db": -17.22,
@@ -84,9 +84,9 @@
       }
     },
     "journey_amb": {
-      "seconds": 116.0,
-      "rms_db": -16.87,
-      "peak_db": -1.5,
+      "seconds_synth": 116.0,
+      "rms_db_synth": -16.87,
+      "peak_db_synth": -1.5,
       "measured": {
         "seconds": 112.86,
         "rms_db": -19.21,
@@ -94,9 +94,9 @@
       }
     },
     "village_day_ari": {
-      "seconds": 103.68,
-      "rms_db": -15.11,
-      "peak_db": -2.47,
+      "seconds_synth": 103.68,
+      "rms_db_synth": -15.11,
+      "peak_db_synth": -2.47,
       "measured": {
         "seconds": 114.02,
         "rms_db": -17.57,
@@ -104,9 +104,9 @@
       }
     },
     "village_night_ari": {
-      "seconds": 120.96,
-      "rms_db": -18.54,
-      "peak_db": -4.55,
+      "seconds_synth": 120.96,
+      "rms_db_synth": -18.54,
+      "peak_db_synth": -4.55,
       "measured": {
         "seconds": 113.0,
         "rms_db": -17.97,
@@ -114,9 +114,9 @@
       }
     },
     "battle_ari": {
-      "seconds": 106.56,
-      "rms_db": -13.47,
-      "peak_db": -1.2,
+      "seconds_synth": 106.56,
+      "rms_db_synth": -13.47,
+      "peak_db_synth": -1.2,
       "measured": {
         "seconds": 112.88,
         "rms_db": -17.22,
@@ -124,9 +124,9 @@
       }
     },
     "journey_ari": {
-      "seconds": 89.28,
-      "rms_db": -14.93,
-      "peak_db": -1.94,
+      "seconds_synth": 89.28,
+      "rms_db_synth": -14.93,
+      "peak_db_synth": -1.94,
       "measured": {
         "seconds": 112.86,
         "rms_db": -17.43,
@@ -134,9 +134,9 @@
       }
     },
     "village_day_jeongak": {
-      "seconds": null,
-      "rms_db": null,
-      "peak_db": null,
+      "seconds_synth": null,
+      "rms_db_synth": null,
+      "peak_db_synth": null,
       "measured": {
         "seconds": 137.0,
         "rms_db": -16.75,
@@ -145,5 +145,6 @@
     }
   },
   "_T257": "village_day_jeongak 은 커밋 f75e8158(\"정악대금 도입\")이 곡은 넣고 이 표는 안 고쳐 12곡으로 남아 있었다 [T246 발견 · T257 더함]. 세 칸은 **비워 둔다 — 지어내지 않는다**: 이 표의 수는 compose.py:676 이 합성한 float 배열에서 재는 값이고 배포된 .ogg 에서 잰 값이 아니다(실측 대조 — village_day_trad 는 이 표가 109.02/-14.98/-1.29 인데 ogg 를 ffmpeg 로 재면 108.28/-17.20/-0.09 다 · 12곡 전부 안 맞는다). 그 음원 조각은 저장소에 없다(.gitignore 가 bk_*.zip 을 빼고 samples/ 엔 \"여기에 음원을 넣으세요\" 한 장뿐이다). 채우려면 render_jeongak.py 를 음원 조각과 함께 돌려야 한다.",
-  "_T292": "★`source` 의 `daegeum` 이 **'합성'이라 적혀 있었는데 틀렸다** [T292 2026-09-14]. 정악대금은 국립국악원 「단음 다운로드」 실제 녹음이다(5파일 → 조각 113 · `render_jeongak.py` 가 *\"대금·가야금 모두 진짜 정악 악기 녹음이다\"* 라고 적어 뒀고 `CREDITS.md` §2 도 그렇게 적는다). 이 표만 안 고쳐져 있었다 — 커밋 f75e8158(\"정악대금 도입\")이 **곡은 넣고 표는 안 고친** 그 결함의 **세 번째** 흔적이다(T246 이 곡 수 12→13 을, T257 이 seconds 세 칸을, T292 가 악기 출처를 잡았다). 라이선스는 셋 다 공공누리 제1유형이라 표기 의무는 `CREDITS.md` §1 그대로 달라지는 게 없다 — 다만 '출처 없는 소리 0' 을 기계로 세는 날 이 표를 믿으면 **틀린 답**이 나온다. ⚠나머지 여덟(거문고·단소·피리·장구 둘·북·징·꽹과리·박)은 여전히 합성이다 — `README-BGM.md` 의 \"아직 합성음인 악기\" 절이 정본이고, 이 표는 그 절과 같은 말을 해야 한다."
+  "_T292": "★`source` 의 `daegeum` 이 **'합성'이라 적혀 있었는데 틀렸다** [T292 2026-09-14]. 정악대금은 국립국악원 「단음 다운로드」 실제 녹음이다(5파일 → 조각 113 · `render_jeongak.py` 가 *\"대금·가야금 모두 진짜 정악 악기 녹음이다\"* 라고 적어 뒀고 `CREDITS.md` §2 도 그렇게 적는다). 이 표만 안 고쳐져 있었다 — 커밋 f75e8158(\"정악대금 도입\")이 **곡은 넣고 표는 안 고친** 그 결함의 **세 번째** 흔적이다(T246 이 곡 수 12→13 을, T257 이 seconds 세 칸을, T292 가 악기 출처를 잡았다). 라이선스는 셋 다 공공누리 제1유형이라 표기 의무는 `CREDITS.md` §1 그대로 달라지는 게 없다 — 다만 '출처 없는 소리 0' 을 기계로 세는 날 이 표를 믿으면 **틀린 답**이 나온다. ⚠나머지 여덟(거문고·단소·피리·장구 둘·북·징·꽹과리·박)은 여전히 합성이다 — `README-BGM.md` 의 \"아직 합성음인 악기\" 절이 정본이고, 이 표는 그 절과 같은 말을 해야 한다.",
+  "_T313": "정본 = measured · PM 09-19(T313 카드 · T306 이 잰 ogg 실측을 PM 이 정본으로 확정). 이 세 열(`seconds_synth`·`rms_db_synth`·`peak_db_synth`)은 옛 이름 `seconds`·`rms_db`·`peak_db` 를 그대로 옮긴 것 — 값 무변(T257 이 이미 지적한 합성기 값). 지우지 않는다 — 자가 둘임을 계속 보이게."
 }
