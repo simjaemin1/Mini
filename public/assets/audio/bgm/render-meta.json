@@ -16,67 +16,132 @@
     "village_day_trad": {
       "seconds": 109.02,
       "rms_db": -14.98,
-      "peak_db": -1.29
+      "peak_db": -1.29,
+      "measured": {
+        "seconds": 108.28,
+        "rms_db": -17.2,
+        "peak_db": -0.09
+      }
     },
     "village_day_amb": {
       "seconds": 112.0,
       "rms_db": -17.23,
-      "peak_db": -2.12
+      "peak_db": -2.12,
+      "measured": {
+        "seconds": 114.02,
+        "rms_db": -19.85,
+        "peak_db": -0.96
+      }
     },
     "village_night_trad": {
       "seconds": 115.2,
       "rms_db": -18.32,
-      "peak_db": -2.02
+      "peak_db": -2.02,
+      "measured": {
+        "seconds": 113.0,
+        "rms_db": -17.63,
+        "peak_db": 0.89
+      }
     },
     "village_night_amb": {
       "seconds": 118.0,
       "rms_db": -19.67,
-      "peak_db": -4.01
+      "peak_db": -4.01,
+      "measured": {
+        "seconds": 113.0,
+        "rms_db": -18.84,
+        "peak_db": -4.21
+      }
     },
     "battle_trad": {
       "seconds": 108.31,
       "rms_db": -13.42,
-      "peak_db": -1.2
+      "peak_db": -1.2,
+      "measured": {
+        "seconds": 112.88,
+        "rms_db": -16.66,
+        "peak_db": -1.38
+      }
     },
     "battle_amb": {
       "seconds": 104.0,
       "rms_db": -16.17,
-      "peak_db": -1.2
+      "peak_db": -1.2,
+      "measured": {
+        "seconds": 112.88,
+        "rms_db": -18.87,
+        "peak_db": -1.9
+      }
     },
     "journey_trad": {
       "seconds": 105.75,
       "rms_db": -14.87,
-      "peak_db": -1.76
+      "peak_db": -1.76,
+      "measured": {
+        "seconds": 112.86,
+        "rms_db": -17.22,
+        "peak_db": -0.3
+      }
     },
     "journey_amb": {
       "seconds": 116.0,
       "rms_db": -16.87,
-      "peak_db": -1.5
+      "peak_db": -1.5,
+      "measured": {
+        "seconds": 112.86,
+        "rms_db": -19.21,
+        "peak_db": -1.4
+      }
     },
     "village_day_ari": {
       "seconds": 103.68,
       "rms_db": -15.11,
-      "peak_db": -2.47
+      "peak_db": -2.47,
+      "measured": {
+        "seconds": 114.02,
+        "rms_db": -17.57,
+        "peak_db": -0.48
+      }
     },
     "village_night_ari": {
       "seconds": 120.96,
       "rms_db": -18.54,
-      "peak_db": -4.55
+      "peak_db": -4.55,
+      "measured": {
+        "seconds": 113.0,
+        "rms_db": -17.97,
+        "peak_db": -0.53
+      }
     },
     "battle_ari": {
       "seconds": 106.56,
       "rms_db": -13.47,
-      "peak_db": -1.2
+      "peak_db": -1.2,
+      "measured": {
+        "seconds": 112.88,
+        "rms_db": -17.22,
+        "peak_db": -1.6
+      }
     },
     "journey_ari": {
       "seconds": 89.28,
       "rms_db": -14.93,
-      "peak_db": -1.94
+      "peak_db": -1.94,
+      "measured": {
+        "seconds": 112.86,
+        "rms_db": -17.43,
+        "peak_db": -0.17
+      }
     },
     "village_day_jeongak": {
       "seconds": null,
       "rms_db": null,
-      "peak_db": null
+      "peak_db": null,
+      "measured": {
+        "seconds": 137.0,
+        "rms_db": -16.75,
+        "peak_db": -0.84
+      }
     }
   },
   "_T257": "village_day_jeongak 은 커밋 f75e8158(\"정악대금 도입\")이 곡은 넣고 이 표는 안 고쳐 12곡으로 남아 있었다 [T246 발견 · T257 더함]. 세 칸은 **비워 둔다 — 지어내지 않는다**: 이 표의 수는 compose.py:676 이 합성한 float 배열에서 재는 값이고 배포된 .ogg 에서 잰 값이 아니다(실측 대조 — village_day_trad 는 이 표가 109.02/-14.98/-1.29 인데 ogg 를 ffmpeg 로 재면 108.28/-17.20/-0.09 다 · 12곡 전부 안 맞는다). 그 음원 조각은 저장소에 없다(.gitignore 가 bk_*.zip 을 빼고 samples/ 엔 \"여기에 음원을 넣으세요\" 한 장뿐이다). 채우려면 render_jeongak.py 를 음원 조각과 함께 돌려야 한다.",
