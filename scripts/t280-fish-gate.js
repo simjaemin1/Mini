@@ -86,7 +86,7 @@ const world = econV2.createWorldV2({ seed: SEED, villageCount: seeds.length, pic
 world.villages = []; world.events = [];
 R('server/trees').attachToWorld(world);
 //   끔 팔(`MEASURE`)이 아니면 `twogate` 위에 얹는다 — 카드 ② 가 시킨 자리.
-world.cargoTwo = !MEASURE; world.cargoTwoGate = !MEASURE;   // ★[T299] 기본 켬 — 끔 팔(MEASURE)을 **명시**로 끈다
+world.cargoTwo = !MEASURE; world.cargoTwoGate = !MEASURE;   // ★[T299] 두 팔을 **명시**로 잡는다(기본은 끔 · 재민 09-19)
 for (const s of seeds) {
   const ev = econ.createVillage({ ...s.lp, initialPop: P.INITIAL_POP, name: s.name });
   ev._world = world; ev.coord = { x: s.ccx * 2.5, y: s.ccy * 2.5 };

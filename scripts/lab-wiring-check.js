@@ -308,7 +308,9 @@ console.log('\n[H] 랩 부팅 기본 = 서버 기본(주입 없음)');
       `const E2=require(${JSON.stringify(path.join(root, 'sim', 'economy-sim-v2.js'))});` +
       `console.log(JSON.stringify({alloc:E.allocRealOn?E.allocRealOn():null,floor:E.happyFloor1On(),H:E.happyWorkWOf({}),CONST:E.T157_HAPPYWORK_H,` +
       `cargo2:E2.cargoTwoOn?E2.cargoTwoOn({}):null,cargo2g:E2.cargoTwoGateOn?E2.cargoTwoGateOn({}):null,` +
-      `cargo2off:E2.cargoTwoOn?E2.cargoTwoOn({cargoTwo:false}):null}));`;
+      `cargo2off:E2.cargoTwoOn?E2.cargoTwoOn({cargoTwo:false}):null,` +
+      // ★[T299 정정] 기본이 끔이면 "끔이다" 만으로는 자명 통과다 — **켤 길이 있는지도** 같은 자식에서 잰다.
+      `cargo2on:(function(){process.env.L_CARGO_TWO='1';const r=E2.cargoTwoOn?E2.cargoTwoOn({}):null;delete process.env.L_CARGO_TWO;return r;})()}));`;
     let srv = null;
     //   ⚠`economy-sim-v2` 는 적재할 때 머리글을 찍는다 — **마지막 줄**만 JSON 이다(전문을 파싱하면 빨강).
     try { const _o = String(execFileSync(process.execPath, ['-e', probe], { env, encoding: 'utf8' })).trim().split('\n');
@@ -324,15 +326,19 @@ console.log('\n[H] 랩 부팅 기본 = 서버 기본(주입 없음)');
       if (srv.H > 0 && Math.abs(srv.H - srv.CONST) < 1e-12) ok(`서버 기본 \`L_HAPPYWORK\` = 켬 H=${srv.H} = 정본 상수 T157_HAPPYWORK_H — T157 · T244 확정`);
       else bad(`서버 기본 happyWorkWOf({}) ${srv.H} ≠ 정본 상수 ${srv.CONST}(또는 0) — T244 확정은 켬`);
 
-      // ⓑ-1b ★★[T299 2026-09-18 · 재민 위임 · #26 ⓐ] 둘째 화물(`L_CARGO_TWO`)과 그 관문(`L_CARGO_TWO_GATE`)도 **켬**이다.
-      //   `L_CARGO_TWO_BEST`(수익 최대 선택)는 **안 켠다** — T265 가 15시드에서 `twogate` 와 못 가름이라 냈다.
-      if (srv.cargo2 === true) ok('서버 기본 `L_CARGO_TWO` = 켬(둘째 화물) — T206/T256 · T299 확정');
+      // ⓑ-1b ★★[T299 · ★재민 판정 2026-09-19] 둘째 화물(`L_CARGO_TWO`)과 그 관문(`L_CARGO_TWO_GATE`)은 **끔**이다.
+      //   T299 가 하루 켬으로 앉혔고 같은 날 재민이 되돌렸다(보고/T299 §7). 이 절이 그 값을 지킨다 —
+      //   **자리는 ⓑ 에 남긴다**(ⓐ 의 정규식 표는 "랩이 심는 값"을 읽는데 이 둘은 랩이 **안 심는다**).
+      //   `L_CARGO_TWO_BEST`(수익 최대 선택)도 **끔** — T265 가 15시드에서 `twogate` 와 못 가름이라 냈다.
+      if (srv.cargo2 === false) ok('서버 기본 `L_CARGO_TWO` = **끔** — T299 정정(재민 09-19) · 켜는 것은 명시 `1`');
       else if (srv.cargo2 === null) bad('`cargoTwoOn` 이 export 안 됐다 — 검사기가 엔진 기본을 못 본다');
-      else bad(`서버 기본 L_CARGO_TWO 가 ${srv.cargo2} 다 — T299 확정은 켬`);
-      if (srv.cargo2g === true) ok('서버 기본 `L_CARGO_TWO_GATE` = 켬(첫째와 같은 관문) — T233/T271 · T299 확정');
+      else bad(`서버 기본 L_CARGO_TWO 가 ${srv.cargo2} 다 — 재민 09-19 판정은 끔`);
+      if (srv.cargo2g === false) ok('서버 기본 `L_CARGO_TWO_GATE` = **끔** — 둘째 화물과 한 처방이라 같이 끈다');
       else if (srv.cargo2g === null) bad('`cargoTwoGateOn` 이 export 안 됐다 — 검사기가 엔진 기본을 못 본다');
-      else bad(`서버 기본 L_CARGO_TWO_GATE 가 ${srv.cargo2g} 다 — T299 확정은 켬(관문 없는 \`two\` 는 소멸 3/15 였다)`);
-      if (srv.cargo2off === false) ok('명시 주입 `cargoTwo:false` 가 기본 켬을 **이긴다**(A/B·계측기의 끔 팔이 거기 산다)');
+      else bad(`서버 기본 L_CARGO_TWO_GATE 가 ${srv.cargo2g} 다 — 재민 09-19 판정은 끔`);
+      if (srv.cargo2on === true) ok('손잡이 `L_CARGO_TWO=1` 이 **실제로 켠다**(문이 죽어 있지 않다 · 자명 통과 금지)');
+      else bad(`\`L_CARGO_TWO=1\` 인데 ${srv.cargo2on} 다 — 켤 길이 없으면 손잡이가 아니다`);
+      if (srv.cargo2off === false) ok('명시 주입 `cargoTwo:false` 도 존중한다(A/B·계측기의 끔 팔이 거기 산다)');
       else bad(`\`cargoTwo:false\` 주입이 ${srv.cargo2off} 다 — 끔 팔이 켠 판이 된다`);
 
       // ⓑ-2 랩 부팅이 그 셋과 **같은 자리**에서 뜨는가
@@ -349,11 +355,26 @@ console.log('\n[H] 랩 부팅 기본 = 서버 기본(주입 없음)');
       }
       //   `L_ALLOC_REAL`·`L_HAPPY_FLOOR1`: 엔진이 `_allocKnob`/env·window 로 **직접** 읽는다 ⇒ 랩이 **안 심으면** 켬(= 서버 기본).
       //   ★T244 로 뒤집혔다: 종전엔 "1 을 심으면 빨강"이었고 이제는 **"0 을 심으면 빨강"**(랩만 끈 채 뜬다).
-      for (const k of ['L_ALLOC_REAL', 'L_HAPPY_FLOOR1', 'L_CARGO_TWO', 'L_CARGO_TWO_GATE']) {   // ★[T299] 둘 더
+      for (const k of ['L_ALLOC_REAL', 'L_HAPPY_FLOOR1']) {
         const re = new RegExp('window\\.' + k + "\\s*=\\s*['\"]?0['\"]?");
         const lines = warLab.split('\n').map((l) => l.replace(/\/\/.*$/, '')).filter((l) => re.test(l));
         if (lines.length) bad(`랩이 ${k} 을(를) **끈 채** 뜬다 — ${lines.length}줄(서버 기본은 켬)`);
         else ok(`랩은 ${k} 을(를) 심지 않는다(미설정 = **켬** = 서버 기본 · T244 · T299)`);
+      }
+      // ★★[T299 정정] 둘째 화물 손잡이 둘은 **값이 아니라 자리**를 문다. 서버 기본이 끔이고 랩이 안 심으면
+      //   미설정 = 끔 = 서버 기본이다. 랩이 `0` 을 심으면 사본(같은 값이라 안 들킨다)이고 `1` 이면 랩만 켠 채 뜬다 —
+      //   **어느 쪽이든 빨강.** 기본이 하루 만에 두 번 뒤집힌 자리라 검사기에 값을 안 적는다.
+      for (const k of ['L_CARGO_TWO', 'L_CARGO_TWO_GATE']) {
+        const re = new RegExp('window\\.' + k + "\\s*=\\s*['\"]?[0-9]");
+        const lines = warLab.split('\n').map((l) => l.replace(/\/\/.*$/, '')).filter((l) => re.test(l));
+        if (lines.length) bad(`랩이 ${k} 에 값을 **심는다** — ${lines.length}줄(엔진이 window 를 직접 읽으므로 사본이다)`);
+        else ok(`랩은 ${k} 에 **아무 값도 안 심는다**(미설정 = 끔 = 서버 기본 · T299 정정)`);
+      }
+      { // ★자명 통과 금지 — 값을 심은 판을 만들면 위 검사가 실제로 문다(0 이든 1 이든)
+        const reC = /window\.L_CARGO_TWO\s*=\s*['"]?[0-9]/;
+        const mutC = warLab.split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n') + '\nwindow.L_CARGO_TWO = 0;\n';
+        if (reC.test(mutC)) ok('[자명 통과 금지] 랩이 `L_CARGO_TWO=0` 을 심은 판을 만들면 이 검사가 **문다**');
+        else bad('[자명 통과 금지] 값을 심은 판을 만들어도 안 문다 — 검사기가 죽었다');
       }
       // ★자명 통과 금지 — 랩이 끈 채 뜨는 판을 만들면 이 검사가 실제로 문다
       const mut3 = warLab + '\nwindow.L_HAPPY_FLOOR1 = 0;\n';
