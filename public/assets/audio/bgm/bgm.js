@@ -38,6 +38,34 @@
   }
   const dg = (root, mode, deg) => mtof(degMidi(root, mode, deg));
 
+  // ------------------------------------------------- 소프트 리미터 곡선 (★정본은 여기다)
+  // ★★[T305 2026-09-19] **이 곡선이 정본이고, 효과음 층(`48-a-audio.js sfxSoftLimiter`)이 이것을 부른다.**
+  //   사본을 두지 않는 이유가 실측으로 증명됐다: T283 이 이 파일의 곡선을 **베껴** 효과음 버스에 달았고,
+  //   T292 가 그 사본을 오프라인 전 표본으로 재서 **원점 기울기 1.4364 = +3.15 dB** 임을 찾아냈다.
+  //   즉 "안전장치"라고 달아 둔 것이 실제로는 **증폭기**였다. T292 는 효과음 쪽만 고칠 수 있었고
+  //   (카드가 "재생기 수정 0"), 그래서 **음악은 5일 더 3 dB 크게 울었다**. 두 벌이면 한 벌만 고쳐진다.
+  //   ⇒ 한 벌로 합친다. 정본이 여기인 이유: 이 파일은 의존성이 없고(오프라인 렌더도 이 파일만 쓴다)
+  //     `index.html` 이 `48-a-audio.js` **앞에** 싣는다. 반대 방향은 성립하지 않는다.
+  //
+  //   곡선: 문턱(knee) 아래는 **손대지 않는다**(출력 = 입력, 기울기 정확히 1 — 비트 동일).
+  //         위는 T + (1−T)·tanh((|x|−T)/(1−T)) ⇒ 1.0 에 점근하되 **절대 안 넘는다**.
+  //   ⚠옛 곡선 `tanh(x*1.35)/tanh(1.35)*0.93` 은 문턱이 없어 **모든 표본**을 건드렸다 —
+  //     조용한 소리까지 1.4364 배로 키우고 큰 소리만 눌렀다. 그게 리미터가 아니라 컴프레서 흉내다.
+  const LIMITER_KNEE = 0.8;   // ★`public/assets/sfx/manifest.json` 의 `bus.limiter.knee` 와 **같은 수**여야 한다
+                              //   (`test-audio ⑪c` 가 두 표를 맞대 놓는다 — 여기 상수와 저 표가 갈리면 빨개진다).
+                              //   이 파일이 매니페스트를 **안 읽는 이유**: 오프라인 렌더에는 매니페스트가 없다.
+  const LIMITER_CURVE_N = 2048;
+  /** 소프트 리미터 곡선 한 벌(WaveShaper `curve`). `knee` 를 안 주면 이 파일의 상수를 쓴다. */
+  function softLimiterCurve(knee) {
+    const T = (typeof knee === 'number' && knee > 0 && knee < 1) ? knee : LIMITER_KNEE;
+    const curve = new Float32Array(LIMITER_CURVE_N);
+    for (let i = 0; i < LIMITER_CURVE_N; i++) {
+      const x = (i / (LIMITER_CURVE_N - 1)) * 2 - 1, a = Math.abs(x);
+      curve[i] = a <= T ? x : Math.sign(x) * (T + (1 - T) * Math.tanh((a - T) / (1 - T)));
+    }
+    return curve;
+  }
+
   // 장단 — [소박수, [[위치, 종류, 세기], ...]]  종류 G=덩 g=궁편 c=채편
   const JANGDAN = {
     gutgeori: [12, [[0, 'G', 1.0], [2, 'c', .42], [2.5, 'c', .34], [3, 'g', .72],
@@ -173,14 +201,12 @@
       comp.threshold.value = -16; comp.knee.value = 14; comp.ratio.value = 4;
       comp.attack.value = 0.015; comp.release.value = 0.25;
 
-      // 마지막 안전장치 — tanh 소프트 리미터 (절대 0dBFS 를 넘기지 않게)
+      // 마지막 안전장치 — 소프트 리미터. ★곡선은 **정본 하나**를 부른다(위 `softLimiterCurve` · 사본 0).
+      //   [T305] 종전의 `tanh(x*1.35)/tanh(1.35)*0.93` 은 원점 기울기 1.4364(=+3.15 dB)라
+      //   안전장치가 아니라 증폭기였다. 문턱 아래를 건드리지 않는 곡선으로 바꾼다.
       const lim = ctx.createWaveShaper();
-      const CN = 2048, curve = new Float32Array(CN);
-      for (let i = 0; i < CN; i++) {
-        const x = (i / (CN - 1)) * 2 - 1;
-        curve[i] = Math.tanh(x * 1.35) / Math.tanh(1.35) * 0.93;   // 2배 오버샘플 오버슈트 여유
-      }
-      lim.curve = curve; lim.oversample = '2x';
+      lim.curve = softLimiterCurve(LIMITER_KNEE);
+      lim.oversample = '2x';
 
       const dry = ctx.createGain(); dry.gain.value = 1;
       const wet = ctx.createGain(); wet.gain.value = 0.9;
@@ -1125,6 +1151,8 @@
 
   global.DurangoBGM = {
     create: create, renderOffline: renderOffline,
-    PYEONGJO: PYEONGJO, GYEMYEONJO: GYEMYEONJO, JANGDAN: JANGDAN
+    PYEONGJO: PYEONGJO, GYEMYEONJO: GYEMYEONJO, JANGDAN: JANGDAN,
+    // ★[T305] 리미터 곡선 **정본**. `48-a-audio.js` 가 이것을 부른다(사본 0).
+    softLimiterCurve: softLimiterCurve, LIMITER_KNEE: LIMITER_KNEE
   };
 })(typeof window !== 'undefined' ? window : globalThis);

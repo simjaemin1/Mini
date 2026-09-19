@@ -5015,7 +5015,7 @@ function tryHarvest(player) {
     } else best.data = { crop: null, ready: false, farmStage: 0, supply: _supply, emptiedDay: today };
     if (best.dbId) { try { db.updateBuildingData(best.dbId, JSON.stringify(best.data)); } catch (e) {} }
     broadcast({ type: 'building_updated', building: { id: best.id, data: best.data } });   // ★클라가 이미 아는 메시지(새 타입 0)
-    sendInventory(player);
+    sendInventory(player, 'harvest');   // ★[T305] 수확은 이름을 댄다 — 소리 층이 `where` 로 가른다(낱말 하나)
     send(player.ws, { type: 'notice',
       text: (units > 0
         ? `${_crop.ko} ${units}단위 수확${_stump ? '' : ' + 씨앗 1'} (품질 ${Math.round(_q * 100)}%${_q < 1 ? ` · 온전했다면 ${_base}단위` : ''} · 보관 ${Crops.keepDaysOf(_cid)}일)`
@@ -5113,7 +5113,7 @@ function doEat(player, item, amount, who) {
   if (item === 'medicinal_herb' || item === 'herb') Body.onHerb(target, Date.now());
   sendInventory(player);
   // ★몸의 값은 **받는 사람** 화면으로 간다(자기 자신을 먹였으면 종전과 같은 한 통이다).
-  send(player.ws, { type: 'gauges', hunger: Math.round(player.hunger), thirst: Math.round(player.thirst), body: Body.selfPayload(player), carry: Object.assign(Carry.payload(player), { combined: moveMultOf(player) }) });
+  send(player.ws, { type: 'gauges', hunger: Math.round(player.hunger), thirst: Math.round(player.thirst), body: Body.selfPayload(player), carry: Object.assign(Carry.payload(player), { combined: moveMultOf(player) }), ate: (target === player ? 'self' : 'fed') });   // ★[T305] `ate` 한 낱말 — **먹었다는 사실 자체**를 말한다. 종전엔 소리 층이 허기 상승으로 짐작했고(T292-b) 배가 꽉 차면 안 올라 무음이었다
   if (target !== player) send(target.ws, { type: 'gauges', hunger: Math.round(target.hunger), thirst: Math.round(target.thirst), body: Body.selfPayload(target) });
   // ★[부패] 화면이 **왜 덜 찼는지**를 말한다 — 안 말하면 "회복량이 이상하다"로만 보인다
   //   (거래소 배치의 교훈: 계측기가 속은 자리에서 플레이어도 똑같이 속는다).
@@ -7616,7 +7616,7 @@ function sendInventory(player, where) {
     for (const it of Object.keys(inv)) if (Lots.isLot(it)) Lots.reconcile(player, it, inv, today);
     lots = Lots.viewAll(player, inv, today);
   } catch (e) { console.warn('[inv] 원장 조립 실패:', e && e.message); }
-  send(player.ws, { type: 'inventory', inventory: invPayload(inv), ledger: led, lots });
+  send(player.ws, { type: 'inventory', inventory: invPayload(inv), ledger: led, lots, where: where || null });   // ★[T305] `where` 한 칸 — 이미 받던 값을 전문에 싣는다(새 타입 0 · 소리·알림·연대기가 동사를 안다)
 }
 
 // === Phase 14.23: 바닥 아이템 (좀보이드 world item) ===

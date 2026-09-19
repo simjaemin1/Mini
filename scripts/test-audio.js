@@ -445,19 +445,46 @@ console.log('\n⑦ ★[T283] 표 셋 · 발신 훅 0 · 서버가 기대는 성�
     ok(oldRuler.length === 0, '⑦g3 ★그 모양은 **옛 자(줄 하나)로는 0개**다 — 이 픽스처가 진짜로 옛 구멍을 겨눈다');
   }
 
-  // ⑦g4 ★★그리고 **클라가 이제 `carry` 에 안 기댄다** — 판별이 허기 상승이어야 한다.
-  //     이게 실제 고침이다. 위 셋은 기록이고, 이 한 줄이 소리를 멎게 한 자리다.
+  // ⑦g4~⑦g8 ★★★[T305] **서버가 동사를 말한다 — 층은 더 이상 짐작하지 않는다.**
+  //     먹기 판별의 역사가 이 집의 교훈 하나를 통째로 담고 있다:
+  //       T283 — 메시지의 **모양**(`carry` 칸이 있나)으로 갈랐다 ⇒ 그 칸이 초당 게이지 틱에도 있어 **1초마다 씹었다**.
+  //       T292-b — 메시지의 **값**(허기가 올랐나)으로 갈랐다 ⇒ 모양에 안 기대니 옳았지만
+  //                **배가 꽉 차면** 허기가 안 올라 무음이었다(짐작의 한계가 남았다).
+  //       T305 — 서버 두 자리를 허락받아 `doEat` 이 **`ate` 한 낱말**을 댄다 ⇒ 짐작이 0 이 됐다.
+  //     ⇒ 자가 지키는 것: 층이 **모양에도 값에도 안 기대고 동사를 읽는가**.
   {
     const gaugeBlk = (() => {
       const i = modCode.indexOf("t === 'gauges'");
-      return i < 0 ? '' : modCode.slice(i, i + 420);
+      return i < 0 ? '' : modCode.slice(i, i + 200);
     })();
     ok(gaugeBlk && !/msg\.carry/.test(gaugeBlk),
-       '⑦g4 ★★먹기 판별이 `msg.carry` **존재**에 안 기댄다(그 칸은 초당 틱에도 실린다 — 1초마다 씹었다)',
-       gaugeBlk ? '기대지 않는다' : '`gauges` 갈래를 못 찾았다');
-    ok(/msg\.hunger/.test(gaugeBlk) && />\s*prev/.test(gaugeBlk),
-       '⑦g5 ★★대신 **허기가 올랐을 때만** 운다(허기는 자연히 줄기만 한다)',
-       '허기 상승 판별');
+       '⑦g4 ★먹기 판별이 `msg.carry` **모양**에 안 기댄다(그 칸은 초당 틱에도 실린다 — T283 이 1초마다 씹었다)',
+       gaugeBlk ? '안 기댄다' : '`gauges` 갈래를 못 찾았다');
+    ok(gaugeBlk && !/hunger/.test(gaugeBlk),
+       '⑦g5 ★먹기 판별이 허기 **값**에도 안 기댄다(배가 꽉 차면 안 올라 무음이었다 — T292-b 의 남은 구멍)',
+       '값 추측 0');
+    ok(/msg\.ate/.test(gaugeBlk),
+       '⑦g6 ★★대신 **서버의 동사**(`gauges.ate`)를 읽는다 — 먹었다는 사실 자체다',
+       '동사로 가른다');
+
+    // ⑦g7 ★서버가 실제로 그 낱말을 대고 있나 — 층이 기대는 자리를 서버 소스에서 확인한다
+    ok(/\bate:\s*\(/.test(srv) || /\bate:\s*'/.test(srv),
+       '⑦g7 ★★서버 `doEat` 이 `ate` 낱말을 **실제로 싣는다**(층의 기대가 허공이 아니다)',
+       (srv.match(/ate:\s*\([^)]*\)/) || srv.match(/ate:\s*'[a-z]*'/) || ['못 찾음'])[0].slice(0, 46));
+
+    // ⑦g8 ★밭 수확 — `inventory` 의 `where` 낱말이 **표**로 키가 된다(코드에 낱말이 안 박힌다)
+    const invBlk = (() => { const i = modCode.indexOf("t === 'inventory'"); return i < 0 ? '' : modCode.slice(i, i + 260); })();
+    ok(invBlk && /inventoryWhere/.test(invBlk) && !/'harvest'/.test(invBlk),
+       '⑦g8 ★수확 소리도 **표**가 고른다(`inventoryWhere`) — 층 코드에 낱말이 박혀 있지 않다',
+       invBlk ? '표가 고른다' : '`inventory` 갈래를 못 찾았다');
+    ok(/sendInventory\(player, 'harvest'\)/.test(srv) && /where:\s*where/.test(srv),
+       '⑦g9 ★★서버가 `where` 를 **전문에 싣고** 밭 수확이 이름을 댄다(T292 ⓑ 가 적은 그 한 칸)',
+       '`where` 한 칸 + `harvest` 낱말');
+    const whereTbl = man.inventoryWhere || {};
+    const whereKeys = Object.keys(whereTbl).filter((k) => !k.startsWith('_'));
+    ok(whereKeys.length > 0 && whereKeys.every((w) => KEYS[whereTbl[w]]),
+       '⑦g10 `inventoryWhere` 가 가리키는 키가 전부 표에 있다(없는 키를 가리키면 조용한 무음이다)',
+       whereKeys.map((w) => `${w}→${whereTbl[w]}`).join(' '));
   }
 
   // ⑦h ★실내 배율이 반복 키마다 있다(없으면 실내에서 빗소리가 그대로 난다)
@@ -587,6 +614,117 @@ console.log('\n⑩ ★[T292] CI 등록');
   ok(listed.length >= 20, `⑩c 단위 목록이 실제로 여럿이다 — ${listed.length}종`, listed.length + '종');
   ok(/@regress/.test(fs.readFileSync(__filename, 'utf8').slice(0, 200)),
      '⑩d 이 하네스가 `@regress` 표식을 달고 있다(야간 러너도 스스로 찾는다)');
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ⑪ ★★★[T305] 리미터 곡선 — **정본 하나**이고, 넘침은 **증명**이지 짐작이 아니다
+//
+//   T283 이 `bgm.js` 의 곡선을 **베껴** 효과음 버스에 달았다. T292 가 그 사본을 실측해
+//   **원점 기울기 1.4364 = +3.15 dB** 임을 찾았지만, 카드가 "재생기 수정 0" 이라 효과음 쪽만 고쳤다.
+//   ⇒ 음악은 **5일 더 3 dB 크게 울었다**. 두 벌이면 한 벌만 고쳐진다 — 그게 사본의 값이다.
+//   T305 가 한 벌로 합쳤다: 곡선의 **모양**은 `bgm.js` 가, **문턱 값**은 이 층의 표가 준다.
+//
+//   ★여기서 자는 **`__sfx.probe()` 가 재던 그 성질**을 잰다. 다만 재는 방식이 다르다:
+//     probe 는 진짜 버퍼를 오프라인 렌더해 표본을 **세고**(브라우저가 있어야 한다 — 야간
+//     `e2e-audio-probe.js` 가 그 일을 이어받는다), 이 절은 곡선 자체에서 넘침을 **증명한다**.
+//     WaveShaper 의 입력은 규격상 [−1,1] 로 잘리므로 **곡선의 최대 절댓값이 곧 출력의 상한**이다.
+//     그 값이 1 보다 작으면 "어떤 소리를 몇 개 겹쳐도 안 넘친다"가 표본을 세지 않고 참이 된다.
+//     ⇒ 셈이 상한이라 못 믿겠던 T292 의 처지와 **반대**다. 그때는 상한이 1.79 라 실측이 필요했고,
+//       지금은 상한이 1 아래라 실측이 필요 없다. 실측은 그래도 야간에 계속 돈다(믿음 아닌 확인).
+// ══════════════════════════════════════════════════════════════════════════════
+console.log('\n⑪ ★★[T305] 리미터 곡선 — 정본 하나 · 넘침은 증명');
+{
+  const bgmSrcC = fs.readFileSync(path.join(BGM_DIR, 'bgm.js'), 'utf8');
+  let BGM = null;
+  try { (0, eval)(bgmSrcC); BGM = globalThis.DurangoBGM; } catch (e) { BGM = null; }
+  ok(BGM && typeof BGM.softLimiterCurve === 'function',
+     '⑪a ★곡선 **정본**이 `bgm.js` 에 있고 이름으로 나와 있다(`DurangoBGM.softLimiterCurve`)',
+     BGM ? '있다' : '`bgm.js` 를 노드에서 못 읽었다');
+
+  // ⑪b 사본 0 — 효과음 층이 곡선을 **자기 손으로 만들지 않는다**
+  const madeHere = /curve\[i\]\s*=/.test(modCode);
+  ok(!madeHere && /DurangoBGM\.softLimiterCurve/.test(modCode),
+     '⑪b ★★효과음 층은 곡선을 **안 만들고 정본을 부른다**(사본 0 — 한 벌만 고쳐지는 일이 다시 없게)',
+     madeHere ? '아직 자기가 만든다' : '정본을 부른다');
+
+  // ⑪c 문턱 값은 **두 표**에 있다 — 갈리면 문다(`bgm.js` 는 매니페스트를 못 읽는다: 오프라인 렌더엔 없다)
+  const kneeTbl = (man.bus && man.bus.limiter && man.bus.limiter.knee);
+  ok(BGM && BGM.LIMITER_KNEE === kneeTbl,
+     '⑪c ★★`bgm.js` 의 문턱 상수와 매니페스트 `bus.limiter.knee` 가 **같은 수**다',
+     `bgm.js ${BGM && BGM.LIMITER_KNEE} · 표 ${kneeTbl}`);
+
+  // ⑪d ★싣는 순서 — `bgm.js` 가 앞이어야 효과음 층이 정본을 부를 수 있다(제품에서 리미터가 빠지지 않는다)
+  {
+    const ih = fs.readFileSync(path.join(PUB, 'index.html'), 'utf8');
+    const iB = ih.indexOf('bgm/bgm.js'), iA = ih.indexOf(MOD_REL);
+    ok(iB > 0 && iA > 0 && iB < iA,
+       '⑪d ★`index.html` 이 `bgm.js` 를 소리 층 **앞에** 싣는다(정본이 먼저 있어야 한다)',
+       `bgm ${iB} < 소리층 ${iA}`);
+  }
+
+  if (BGM && typeof BGM.softLimiterCurve === 'function') {
+    const T = kneeTbl, C = BGM.softLimiterCurve(T), N = C.length;
+    const xOf = (i) => (i / (N - 1)) * 2 - 1;
+
+    // ⑪e ★★문턱 아래는 **비트 동일**이어야 한다 — 기울기 1(투명). 1.4364 배가 다시 들어오면 여기가 문다.
+    let offBelow = 0, worstBelow = 0;
+    for (let i = 0; i < N; i++) {
+      const x = xOf(i); if (Math.abs(x) > T) continue;
+      if (C[i] !== Math.fround(x)) { offBelow++; worstBelow = Math.max(worstBelow, Math.abs(C[i] - x)); }
+    }
+    ok(offBelow === 0, '⑪e ★★문턱 아래는 **입력 그대로**다(기울기 정확히 1 · 비트 동일 — 증폭 0)',
+       offBelow ? `어긋난 표본 ${offBelow} · 최대 차 ${worstBelow}` : `${T} 아래 전 표본 동일`);
+
+    // ⑪f ★위는 단조이고 1.0 을 안 넘는다 ⇒ **출력 상한이 1 아래** = 어떤 조합도 클리핑 0
+    let mono = true, maxAbs = 0, prev = -Infinity;
+    for (let i = 0; i < N; i++) { if (C[i] < prev) mono = false; prev = C[i]; if (Math.abs(C[i]) > maxAbs) maxAbs = Math.abs(C[i]); }
+    ok(mono, '⑪f 곡선이 단조 증가다(순서가 뒤집히면 파형이 찢어진다)');
+    ok(maxAbs < 1, '⑪g ★★★출력 **상한**이 1 아래다 ⇒ 키를 몇 개 겹쳐도 **클리핑이 원리상 0**이다(표본을 안 세고 참)',
+       `최대 |출력| ${maxAbs.toFixed(6)} (${(20 * Math.log10(maxAbs)).toFixed(2)} dBFS)`);
+
+    // ⑪h ★18키 전부 + T292 최악 조합 — **표** 한 장(매 판 낸다 · 기계 의존 ms 0)
+    const soundKeys = keyNames.filter((k) => KEYS[k].file);
+    const volSum = soundKeys.reduce((t, k) => t + (KEYS[k].volume || 0), 0);
+    const busSfx = (man.bus && man.bus.sfx && man.bus.sfx.default) || 0;
+    const busMst = (man.bus && man.bus.master && man.bus.master.default) || 0;
+    const thru = (v) => { const a = Math.min(Math.abs(v), 1); const y = a <= T ? a : T + (1 - T) * Math.tanh((a - T) / (1 - T)); return y * Math.sign(v || 1); };
+    const worstCombo = (man._실측 && man._실측.worstCombo) || [];
+    const rows = [
+      ['소리 나는 키 전부', soundKeys.length, volSum],
+      ['T292 최악 조합', worstCombo.length, worstCombo.reduce((t, k) => t + ((KEYS[k] && KEYS[k].volume) || 0), 0)],
+    ];
+    console.log('    ── 최악 정렬(모든 파형이 같은 순간 같은 부호) 상한표 ──');
+    let anyClip = 0;
+    for (const [name, n, sum] of rows) {
+      const inBus = sum * busSfx;                 // 버스 입력(최악 정렬)
+      const out = thru(inBus) * busMst;           // 리미터 → 마스터
+      if (out >= 1) anyClip++;
+      console.log(`      ${name.padEnd(18)} 키 ${String(n).padStart(2)} · 합 ${sum.toFixed(2).padStart(5)}`
+        + ` · 버스입력 ${inBus.toFixed(4)} · 출력 ${out.toFixed(4)} (${(20 * Math.log10(Math.max(out, 1e-9))).toFixed(2)} dBFS) · 클리핑 ${out >= 1 ? '있다' : '0'}`);
+    }
+    ok(anyClip === 0, '⑪h ★★18키 전부·최악 조합 **둘 다 클리핑 0**(위 표 — 최악 정렬 기준이라 실제는 이보다 낮다)',
+       `줄 ${rows.length} · 넘친 줄 ${anyClip}`);
+
+    // ⑪i 자명 통과 금지 — 옛 곡선(기울기 1.4364)을 같은 자로 재면 ⑪e 가 **문다**
+    {
+      const old = new Float32Array(N);
+      for (let i = 0; i < N; i++) { const x = xOf(i); old[i] = Math.tanh(x * 1.35) / Math.tanh(1.35) * 0.93; }
+      let bad = 0;
+      for (let i = 0; i < N; i++) { const x = xOf(i); if (Math.abs(x) <= T && old[i] !== Math.fround(x)) bad++; }
+      ok(bad > 0, '⑪i 자명 통과 금지 — **옛 곡선**을 같은 자로 재면 문턱 아래가 어긋난다(자가 살아 있다)',
+         `옛 곡선의 어긋난 표본 ${bad} · 원점 기울기 ${(1.35 / Math.tanh(1.35) * 0.93).toFixed(4)}`);
+    }
+
+    // ⑪j 야간 실측 하네스가 있고 표식을 달고 있다 — 증명과 **별도로** 진짜 버퍼를 계속 센다
+    {
+      const pb = path.join(ROOT, 'scripts', 'e2e-audio-probe.js');
+      const has = fs.existsSync(pb);
+      const head = has ? fs.readFileSync(pb, 'utf8').slice(0, 400) : '';
+      ok(has && /@regress/.test(head) && /@nightly\s+[A-Z]/.test(head),
+         '⑪j ★야간 실측 하네스(`e2e-audio-probe.js`)가 있고 `@regress`·`@nightly` 를 달고 있다',
+         has ? (head.match(/@nightly\s+[A-Z]/) || ['표식 없다'])[0] : '없다');
+    }
+  }
 }
 
 console.log(`\n=== PASS ${pass} / FAIL ${fail} ===`);
