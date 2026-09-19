@@ -42,7 +42,7 @@ const Rooms = require('./rooms'); // ★[배치 18 ①] 방 판정 정본(벽·�
 const SIM_LON_ON = process.env.VILLAGE_LON !== '0'; // §19 경도 로컬 태양시(마을 NPC 야간 귀가) 게이트 — 기본 켜짐
 const central = require('./central-client'); // central HTTP 클라이언트
 const { Quadtree } = require('./quadtree'); // spatial index — O(N²) 검색 회피
-const { ChunkManager, CHUNK_SIZE, generateChunkResources, regrowStageOf, REGROW, generateVillagesForZone, generateCoastlineWaterTiles, RESOURCE_HP_TABLE } = require('./chunk'); // ★[T124] 재생 정산은 T122 정본을 그대로 받는다(사본 0) // 청크 단위 entity 분류 + procedural + 해안선 + ★[T108] 자연물 hp 정본
+const { ChunkManager, CHUNK_SIZE, generateChunkResources, overflowInto, seedGenChunkOf, regrowStageOf, REGROW, generateVillagesForZone, generateCoastlineWaterTiles, RESOURCE_HP_TABLE } = require('./chunk'); // ★[T124] 재생 정산은 T122 정본을 그대로 받는다(사본 0) // 청크 단위 entity 분류 + procedural + 해안선 + ★[T108] 자연물 hp 정본
 const { findPath: pfFindPath } = require('./pathfind'); // Phase 14.49-b: NPC A* pathfinding
 const PathCore = require('../sim/path-core.js'); // ★[생활 층 100% ①] 랩·서버 공용 경로 정본 — smoothPath(스트링 풀링)를 주민 이동에 직결
 const { ANIMALS } = require('./animals');  // Phase 5-6: 동물 mob 36종 catalog
@@ -159,7 +159,9 @@ function updateActiveChunks() {
   for (const k of prevActiveChunkKeys) {
     if (!newActive.has(k)) {
       const [cx, cy] = k.split('_').map(Number);
-      deactivateChunk(cx, cy);
+      // ★[T317] **꺼진 뒤의 집합**을 넘긴다. `activeChunkKeys` 는 아직 옛 집합이라
+      //   같은 판에 같이 꺼지는 이웃이 "켜져 있다"로 보이고, 그러면 넘친 나무가 아무도 안 지워 **샌다**.
+      deactivateChunk(cx, cy, newActive);
     }
   }
   prevActiveChunkKeys = newActive;
@@ -271,8 +273,15 @@ function activateChunk(cx, cy) {
   // ★[T122] 게임일을 넘긴다 — 벤 자리가 **빠지는** 대신 **단계**(그루터기·묘목·성목)로 난다.
   //   정산은 **볼 때 한 번**이다(청크 활성화 · 타이머 0 · 틱 0 · 멱등).
   const seedResources = generateChunkResources(ZONE_ID, ZONE.biome, cx, cy, chunkManager.chunkSize, harvestedSeeds, gameDayNow());
+  // ★★[T317] **이웃이 이 청크에 낳은 것도 같이 놓는다.** 청크는 자기 밖에도 낳는다(숲 그리드 지터 —
+  //   T309 실측 7.49% · 전부 나무). 종전엔 그 나무가 **낳은 청크가 켜져 있을 때만** 있었다 ⇒ 세계가
+  //   관측자에 따라 달라졌다(캐논 위반 · T284 ①). 넘침은 서·북에서만 오므로 이웃 셋만 묻는다
+  //   (`chunk.js overflowInto` — 자원은 여전히 `generateChunkResources` 만 낳는다 · 사본 0 · 씨·순번 무변).
+  //   중복은 아래 `resources.has(r.id)` 가 막는다(같은 개체가 두 번 안 선다).
+  const _overflow = overflowInto(ZONE_ID, ZONE.biome, cx, cy, chunkManager.chunkSize, harvestedSeeds, gameDayNow());
   const spawned = [];
-  for (const r of seedResources) {
+  for (const r of seedResources.concat(_overflow)) {
+    if (resources.has(r.id)) continue;             // ★[T317] 이미 선 개체(이웃이 먼저 켜졌다) — 두 번 안 놓는다
     if (isTerrainBlockedLocal(r.x, r.y)) continue; // 바다 위 자원 차단
     _fruitStamp(r);                 // ★[T170] 스폰 방송에 `fruitNow` 한 비트가 실린다(볼 때 정산 — 여기가 "볼 때")
     resources.set(r.id, r);
@@ -289,7 +298,7 @@ function activateChunk(cx, cy) {
 }
 
 // 비활성화 — 그 청크의 시드 자원만 제거 (수동 자원은 안 건드림)
-function deactivateChunk(cx, cy) {
+function deactivateChunk(cx, cy, liveKeys) {
   const c = chunkManager.chunks.get(chunkManager.keyOf(cx, cy));
   if (!c) return;
   // AOI 건물: 비활성화 시 클라에서 제거 + 서버 메모리에서도 해제 (GC 폭주 수정).
@@ -310,8 +319,30 @@ function deactivateChunk(cx, cy) {
     }
     if (stairRemoved) stairCellDirty = true; // stair cache 무효화 (active 건물만 인덱싱)
   }
+  // ★★[T317 ②] **제거는 낳은 청크 기준**이다. 종전엔 **바구니 기준**(= 개체가 든 청크)이라,
+  //   청크 (1,0) 이 꺼질 때 청크 (0,0) 이 낳은 나무까지 지웠다 — (0,0) 은 아직 켜져 있는데(T309 §0ⓐ 자리 2).
+  //   규칙: 개체는 **낳은 청크**와 **든 청크** 둘 중 **하나라도 켜져 있으면 남는다.** 둘 다 꺼지면 사라진다.
+  //   ⇒ 이 청크가 꺼질 때 지울 것은 두 무리다:
+  //     ⓐ 이 청크 바구니에 든 것 중 **낳은 청크가 꺼진** 것
+  //     ⓑ 이 청크가 **낳았는데 이웃 바구니에 든** 것 중 그 이웃이 꺼진 것(넘침은 동·남·동남으로만 간다)
+  const _genOf = (r) => seedGenChunkOf(r.seedKey, r.x, r.y, chunkManager.chunkSize);
+  const _live = (kx, ky) => { const k = chunkManager.keyOf(kx, ky); return liveKeys ? liveKeys.has(k) : isChunkActiveKey(k); };
   const toRemove = [];
-  for (const r of c.resources.values()) if (r.isSeed) toRemove.push(r);
+  for (const r of c.resources.values()) {
+    if (!r.isSeed) continue;
+    const g = _genOf(r);
+    if ((g.cx !== cx || g.cy !== cy) && _live(g.cx, g.cy)) continue;   // ⓐ 낳은 청크가 살아 있다 — 남긴다
+    toRemove.push(r);
+  }
+  for (const [dx, dy] of [[1, 0], [0, 1], [1, 1]]) {                            // ⓑ 내가 낳아 이웃에 든 것
+    const nb = chunkManager.chunks.get(chunkManager.keyOf(cx + dx, cy + dy));
+    if (!nb || _live(cx + dx, cy + dy)) continue;                               // 그 이웃이 켜져 있으면 남긴다
+    for (const r of nb.resources.values()) {
+      if (!r.isSeed) continue;
+      const g = _genOf(r);
+      if (g.cx === cx && g.cy === cy) toRemove.push(r);
+    }
+  }
   if (!toRemove.length) return;
   const ids = [];
   for (const r of toRemove) {

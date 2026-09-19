@@ -169,5 +169,88 @@ console.log('\nⓓ 부하 — 셀 질의 1회 · 마을 반경 16셀 전수');
   console.log(`    (ⓘ 전수 벽시계 ${ms}ms — 표에만 · 단정 없음)`);
 }
 
+// ── ⓕⓖⓗ 넘친 개체가 **세계의 것**인가 [T317] ─────────────────────────────────
+//   ★제품의 두 규칙을 **그대로** 쓴다(사본 0):
+//     · 켤 때  : `chunk.overflowInto` (zone.js activateChunk 가 부르는 그것)
+//     · 지울 때: `chunk.seedGenChunkOf` (zone.js deactivateChunk 가 부르는 그것)
+//   자는 청크 살림(활성 집합 · 바구니)만 흉내 낸다 — 세계 규칙은 하나도 다시 안 적는다.
+console.log('\nⓕⓖⓗ 넘친 개체 — 이웃이 켜져도 있나 · 둘 다 꺼지면 사라지나 · 중복 0 (T317)');
+{
+  const CS2 = CS, opt2 = { biome: ZONE.biome, chunkSize: CS2 };
+  const gen = (qx, qy) => CH.generateChunkResources(Z, ZONE.biome, qx, qy, CS2, null, undefined);
+  const bucketOf = (e) => Math.floor(e.x / CS2) + '_' + Math.floor(e.y / CS2);
+  const genOf = (e) => { const g = CH.seedGenChunkOf(e.seedKey, e.x, e.y, CS2); return g.cx + '_' + g.cy; };
+
+  // 작은 세계: 숲 청크 하나와 그 동·남·동남 이웃
+  const [bx, by] = FOREST_CHUNKS[0];
+  const world = new Map();                 // id → 개체 (zone.js `resources`)
+  const live = new Set();                  // 활성 청크 키
+  const activate = (qx, qy) => {           // zone.js activateChunk 의 자원 갈래만
+    const list = gen(qx, qy).concat(CH.overflowInto(Z, ZONE.biome, qx, qy, CS2, null, undefined));
+    let dup = 0;
+    for (const e of list) { if (world.has(e.id)) { dup++; continue; } world.set(e.id, e); }
+    live.add(qx + '_' + qy);
+    return dup;
+  };
+  const deactivate = (qx, qy) => {         // zone.js deactivateChunk 의 제거 규칙만
+    live.delete(qx + '_' + qy);
+    const me = qx + '_' + qy, gone = [];
+    for (const e of world.values()) {
+      const b = bucketOf(e), g = genOf(e);
+      if (b !== me && g !== me) continue;               // 이 청크와 무관
+      if (b !== me && live.has(b)) continue;            // 든 청크가 살아 있다
+      if (g !== me && live.has(g)) continue;            // 낳은 청크가 살아 있다
+      if (b === me && g !== me && live.has(g)) continue;
+      gone.push(e.id);
+    }
+    for (const id of gone) world.delete(id);
+    return gone.length;
+  };
+
+  // 넘친 개체 목록 — 기준 청크가 동/남/동남으로 흘려보낸 것
+  const mine = gen(bx, by);
+  const spill = mine.filter((e) => bucketOf(e) !== bx + '_' + by);
+  ok(spill.length > 0, '기준 청크가 실제로 넘친다(검사가 무는 표본이 있다)', `넘친 개체 ${spill.length}`);
+
+  // ⓕ 이웃만 켠 판 — 넘친 개체가 **있나**
+  world.clear(); live.clear();
+  const nb = new Set(spill.map(bucketOf));
+  for (const k of nb) { const [qx, qy] = k.split('_').map(Number); activate(qx, qy); }
+  const haveNb = spill.filter((e) => world.has(e.id)).length;
+  ok(haveNb === spill.length, '★ⓕ 낳은 청크는 끄고 **이웃만 켠 판** — 넘친 개체가 전부 있다', `${haveNb}/${spill.length}`);
+
+  // ⓖ 낳은 청크를 켰다 끄면 — 이웃이 켜져 있으니 **남는다**
+  const dup1 = activate(bx, by);
+  const dup2 = spill.filter((e) => world.has(e.id)).length;
+  deactivate(bx, by);
+  const stay = spill.filter((e) => world.has(e.id)).length;
+  ok(dup1 > 0, 'ⓖ 낳은 청크를 켤 때 이미 선 개체를 다시 안 놓는다(중복 걸러짐)', `걸러낸 중복 ${dup1}`);
+  ok(dup2 === spill.length, 'ⓖ 둘 다 켠 판에도 전부 있다', `${dup2}/${spill.length}`);
+  ok(stay === spill.length, '★ⓖ **낳은 청크를 꺼도 이웃이 켜져 있으면 남는다**', `${stay}/${spill.length}`);
+
+  // 둘 다 끄면 사라진다
+  for (const k of Array.from(nb)) { const [qx, qy] = k.split('_').map(Number); deactivate(qx, qy); }
+  const left = spill.filter((e) => world.has(e.id)).length;
+  ok(left === 0, '★ⓖ **둘 다 꺼지면 사라진다**(샘 0)', `남은 것 ${left}`);
+
+  // ⓗ 중복 0 — 어떤 순서로 켜도 개체는 한 번만 선다
+  for (const order of [[[bx, by], ...Array.from(nb).map((k) => k.split('_').map(Number))],
+                       [...Array.from(nb).map((k) => k.split('_').map(Number)), [bx, by]]]) {
+    world.clear(); live.clear();
+    for (const [qx, qy] of order) activate(qx, qy);
+    const ids = new Set();
+    let twice = 0;
+    for (const e of world.values()) { if (ids.has(e.id)) twice++; ids.add(e.id); }
+    ok(twice === 0, `ⓗ 켜는 순서를 바꿔도 중복 0 (${order.map((o) => o.join(',')).join(' → ')})`, `개체 ${world.size}`);
+  }
+
+  // ⓗ 어떤 순서로 다 켜도 **같은 세계**
+  const snap = (order) => { world.clear(); live.clear(); for (const [qx, qy] of order) activate(qx, qy);
+    return Array.from(world.keys()).sort().join('|'); };
+  const all = [[bx, by], ...Array.from(nb).map((k) => k.split('_').map(Number))];
+  const a1 = snap(all), a2 = snap(all.slice().reverse());
+  ok(a1 === a2, '★ⓗ 켜는 순서가 달라도 **세계가 같다**(관측자 무관)', `개체 ${a1.split('|').length}`);
+}
+
 console.log(`\n=== 자원 색인 하네스: ${pass} 통과 / ${fail} 실패 ${fail ? '❌' : '✅'} ===`);
 process.exit(fail ? 1 : 0);
