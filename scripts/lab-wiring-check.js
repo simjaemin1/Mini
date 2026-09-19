@@ -457,16 +457,24 @@ console.log('\n[I] 집터 방아쇠 — 정본 하나(T230)');
     if (!mf) wrn(`랩 ${f} L_MAXFL 을 못 찾았다`);
     else if (+mf[1] !== VL.HOUSE_MAX_FLOORS) bad(`랩 ${f} L_MAXFL ${mf[1]} ≠ 정본 HOUSE_MAX_FLOORS ${VL.HOUSE_MAX_FLOORS}`);
     else ok(`랩 ${f} L_MAXFL ${mf[1]} = 정본 HOUSE_MAX_FLOORS ${VL.HOUSE_MAX_FLOORS}`);
-    // 집 간격 — 랩 `L_HGAP` · 서버 `HG` 끔값 · 정본 유도값 **셋이 같은 수**인가(T315)
-    //   ★T315 전엔 "랩 리터럴 = 서버 리터럴" 만 봤다. 이제 셋째 자리가 생겼다(`HOUSE_GAP_DERIVED`) —
-    //     그리고 그 셋째가 **왜 그 수인지 아는** 유일한 자리다. 둘만 비교하면 같이 틀릴 수 있다.
-    const hg = H.match(/L_HGAP\s*=\s*([0-9]+)/);
-    const sg = LIVE.match(/HG\s*=\s*T315_HOUSE_GAP\s*===\s*'0'\s*\?\s*([0-9]+)\s*:/);
-    if (!hg || !sg) wrn(`집 간격 상수를 한쪽에서 못 찾았다(랩 ${!!hg} · 서버 ${!!sg})`);
-    else if (hg[1] !== sg[1]) bad(`랩 ${f} L_HGAP ${hg[1]} ≠ 서버 HG 끔값 ${sg[1]} — 기하가 갈렸다`);
-    else if (+hg[1] !== VL.HOUSE_GAP_DERIVED)
-      bad(`랩·서버 집 간격 ${hg[1]} ≠ 정본 유도값 HOUSE_GAP_DERIVED ${VL.HOUSE_GAP_DERIVED} — 리터럴이 유도와 갈렸다(T315)`);
-    else ok(`랩 ${f} L_HGAP ${hg[1]} = 서버 HG 끔값 ${sg[1]} = 정본 유도값 \`HOUSE_GAP_DERIVED\` ${VL.HOUSE_GAP_DERIVED} — **셋이 같다**(T315)`);
+    // 집 간격 — ★[T326] **양쪽 다 리터럴이 없다.** 랩은 `VillageLayout.LIFE_HOUSE_GAP` 을 읽고, 서버 `HG` 는
+    //   `_lifeVL().LIFE_HOUSE_GAP`(기본) / `LIFE_HOUSE_GAP_AISLE`(되돌림)을 읽는다. 그래서 묻는 것이 셋으로 바뀐다:
+    //     ⓘ-1 랩에 간격 **리터럴이 없다**(정본 심볼을 읽는다)
+    //     ⓘ-2 서버 `HG` 의 **기본 분기가 `LIFE_HOUSE_GAP`**(= 통로 항 버린 값 · PM #52)이고 되돌림이 `LIFE_HOUSE_GAP_AISLE`
+    //     ⓘ-3 랩 인라인 사본의 `LIFE_HOUSE_GAP` **식 본문**이 정본과 한 글자도 안 다르다(손 동기 규약 · 값이 아니라 식을 본다)
+    if (/L_HGAP\s*=\s*[0-9]/.test(H)) bad(`랩 ${f} L_HGAP 에 수가 박혔다 — 정본 \`VillageLayout.LIFE_HOUSE_GAP\` 을 읽어야 한다(T326)`);
+    else if (!/L_HGAP\s*=\s*VillageLayout\.LIFE_HOUSE_GAP\b/.test(H)) bad(`랩 ${f} L_HGAP 이 정본 심볼을 안 읽는다 — 검사기가 낡았거나 손잡이가 사라졌다`);
+    else ok(`랩 ${f} L_HGAP = \`VillageLayout.LIFE_HOUSE_GAP\` — 리터럴 0(T326 · 기본 ${VL.LIFE_HOUSE_GAP})`);
+    const sg = /HG\s*=\s*T315_HOUSE_GAP\s*===\s*'0'\s*\?\s*_lifeVL\(\)\.LIFE_HOUSE_GAP_AISLE\s*:\s*_lifeVL\(\)\.LIFE_HOUSE_GAP\b/.test(LIVE);
+    if (!sg) bad('서버 `HG` 가 기본=`LIFE_HOUSE_GAP` · 되돌림=`LIFE_HOUSE_GAP_AISLE` 꼴이 아니다 — 기본이 뒤집혔거나 검사기가 낡았다(T326)');
+    else ok(`서버 \`HG\` 기본 = 정본 \`LIFE_HOUSE_GAP\`(${VL.LIFE_HOUSE_GAP}) · 되돌림 \`=0\` = \`LIFE_HOUSE_GAP_AISLE\`(${VL.LIFE_HOUSE_GAP_AISLE}) — 문 하나(T326 PM #52)`);
+    {
+      const pick = (src) => { const m = src.match(/LIFE_HOUSE_GAP\s*=\s*LOT_R\s*\+\s*\(\s*LOT_R\s*\+\s*FARM_GAP\s*\)/); return m ? m[0].replace(/\s+/g, '') : null; };
+      const a = pick(canonSrc), b = pick(H);
+      if (!a || !b) bad(`집 간격 유도식을 한쪽에서 못 찾았다(정본 ${!!a} · 랩 ${!!b}) — 손 동기가 안 됐다`);
+      else if (a !== b) bad(`랩 ${f} LIFE_HOUSE_GAP 식이 정본과 다르다 — 손으로 맞춰라`);
+      else ok(`랩 ${f} 인라인 \`LIFE_HOUSE_GAP\` 식이 정본과 한 글자도 안 다르다(\`${a}\` = ${VL.LIFE_HOUSE_GAP})`);
+    }
     // 영토 목표 — 랩이 쓰는 세 수가 정본과 같나(T230 손잡이가 켜질 때 이 셋이 그 값이어야 한다)
     const pl = H.match(/\)\s*\)\s*\*\s*(\d+)\s*\+\s*(\d+)/);
     const hl = H.match(/_hLots\s*=[^;]*?\*\s*(\d+)\s*\+\s*(\d+)/);
@@ -516,36 +524,70 @@ console.log('\n[I] 집터 방아쇠 — 정본 하나(T230)');
 console.log('\n[J] 집 간격 유도 — 값이 아니라 식(T315)');
 {
   const VLj = require(path.join(root, 'server', 'village-layout.js'));
-  // ⓐ 닫힌식
-  const closed = 2 * (VLj.LOT_R + VLj.FARM_GAP) + VLj.AISLE;
-  if (closed === VLj.HOUSE_GAP_DERIVED)
-    ok(`ⓐ 닫힌식 = 2 × (LOT_R ${VLj.LOT_R} + FARM_GAP ${VLj.FARM_GAP}) + AISLE ${VLj.AISLE} = **${closed}** = \`HOUSE_GAP_DERIVED\` — 세 항 전부 정본(새 수 0)`);
-  else bad(`ⓐ 닫힌식 ${closed} ≠ HOUSE_GAP_DERIVED ${VLj.HOUSE_GAP_DERIVED} — 유도가 값과 갈렸다`);
+  // ⓐ 닫힌식 둘 — 종전(통로 포함)과 ★기본(통로 버림 · PM #52)
+  const closedA = 2 * (VLj.LOT_R + VLj.FARM_GAP) + VLj.AISLE;
+  const closedD = VLj.LOT_R + (VLj.LOT_R + VLj.FARM_GAP);
+  if (closedA === VLj.LIFE_HOUSE_GAP_AISLE)
+    ok(`ⓐ-1 종전 닫힌식 = 2 × (LOT_R ${VLj.LOT_R} + FARM_GAP ${VLj.FARM_GAP}) + AISLE ${VLj.AISLE} = **${closedA}** = \`LIFE_HOUSE_GAP_AISLE\`(되돌림 값)`);
+  else bad(`ⓐ-1 닫힌식 ${closedA} ≠ LIFE_HOUSE_GAP_AISLE ${VLj.LIFE_HOUSE_GAP_AISLE} — 유도가 값과 갈렸다`);
+  if (closedD === VLj.LIFE_HOUSE_GAP)
+    ok(`ⓐ-2 ★**기본** 닫힌식 = LOT_R ${VLj.LOT_R} + (LOT_R + FARM_GAP ${VLj.LOT_R + VLj.FARM_GAP}) = **${closedD}** = \`LIFE_HOUSE_GAP\` — 통로 항을 뺀 것(PM #52 · 새 수 0)`);
+  else bad(`ⓐ-2 닫힌식 ${closedD} ≠ LIFE_HOUSE_GAP ${VLj.LIFE_HOUSE_GAP} — 기본 유도가 값과 갈렸다`);
+  if (VLj.LIFE_HOUSE_GAP < VLj.LIFE_HOUSE_GAP_AISLE)
+    ok(`  기본이 종전보다 **좁다** — ${VLj.LIFE_HOUSE_GAP} < ${VLj.LIFE_HOUSE_GAP_AISLE}(통로 한 칸 + 완충 한쪽만큼)`);
+  else bad(`  기본 ${VLj.LIFE_HOUSE_GAP} 이 종전 ${VLj.LIFE_HOUSE_GAP_AISLE} 보다 안 좁다 — PM #52 와 다르다`);
   // ⓑ 셀 집합 — 정본 원판을 그대로 쥐고 센다(수를 다시 적지 않는다)
-  const cellGap = (guard) => {
-    const setOf = (ox, oy) => { const S = new Set(); for (const [dx, dy] of guard) S.add((ox + dx) + ',' + (oy + dy)); return S; };
-    const dil = (A) => { const o = new Set(); for (const k of A) { const i = k.indexOf(','), x = +k.slice(0, i), y = +k.slice(i + 1);
+  //   ★[T326] 일반화: 한쪽 집합 `A`(원점) ↔ 다른쪽 집합 `B`(오프셋) 이 안 닿는 최소 중심거리.
+  //     `aisle=true` 면 A 를 8방 한 칸 팽창시켜(= 사이에 통로 한 칸을 요구) 잰다. 둘 다 정본 셀집합을 그대로 쥔다.
+  const cellGap = (A0, B0, aisle) => {
+    const guardB = B0 || A0, wantAisle = aisle === undefined ? true : !!aisle;
+    const setOf = (cells, ox, oy) => { const S = new Set(); for (const [dx, dy] of cells) S.add((ox + dx) + ',' + (oy + dy)); return S; };
+    const dil = (S) => { const o = new Set(); for (const k of S) { const i = k.indexOf(','), x = +k.slice(0, i), y = +k.slice(i + 1);
       for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) o.add((x + a) + ',' + (y + b)); } return o; };
-    const hit = (A, B) => { for (const k of A) if (B.has(k)) return true; return false; };
-    const d0 = dil(setOf(0, 0));
-    let maxFail = 0, B = Math.ceil(2 * Math.max(...guard.map(([a, b]) => Math.hypot(a, b)))) + 4;
-    for (let dx = -B; dx <= B; dx += 2) for (let dy = -B; dy <= B; dy += 2) {   // ★짝수 격자 — 집터 규약(villages.js:4981·5173 · 랩 동일)
+    const hit = (S, T) => { for (const k of S) if (T.has(k)) return true; return false; };
+    const base = setOf(A0, 0, 0), d0 = wantAisle ? dil(base) : base;
+    let maxFail = 0;
+    const R = Math.ceil(Math.max(...A0.concat(guardB).map(([a, b]) => Math.hypot(a, b))));
+    const B = 2 * R + 6;
+    for (let dx = -B; dx <= B; dx += 2) for (let dy = -B; dy <= B; dy += 2) {   // ★짝수 격자 — 집터 규약(villages.js · 랩 동일)
       if (!dx && !dy) continue;
-      if (hit(d0, setOf(dx, dy))) { const h = Math.hypot(dx, dy); if (h > maxFail) maxFail = h; }
+      if (hit(d0, setOf(guardB, dx, dy))) { const h = Math.hypot(dx, dy); if (h > maxFail) maxFail = h; }
     }
     return { need: Math.floor(maxFail) + 1, maxFail };   // 통과 조건은 `hypot ≥ HG` ⇒ 깨지는 최대 hypot 을 넘는 최소 정수
   };
   const cg = cellGap(VLj.LOT_GUARD);
-  if (cg.need === VLj.HOUSE_GAP_DERIVED)
-    ok(`ⓑ 셀 집합으로도 **${cg.need}** — \`LOT_GUARD\`(${VLj.LOT_GUARD.length}셀) 원판 둘이 겹치거나 한 칸 팽창으로 닿는 최대 hypot ${cg.maxFail.toFixed(3)} ⇒ 최소 정수 = 닫힌식과 같다(독립 경로)`);
-  else bad(`ⓑ 셀 집합 ${cg.need} ≠ 닫힌식 ${VLj.HOUSE_GAP_DERIVED} — 두 경로가 갈린다(유도 해석이 틀렸다)`);
-  // ⓒ 켬 = 끔
-  const offLit = fs.readFileSync(path.join(root, 'server', 'villages.js'), 'utf8')
-    .match(/HG\s*=\s*T315_HOUSE_GAP\s*===\s*'0'\s*\?\s*([0-9]+)\s*:/);
-  if (!offLit) bad('ⓒ `villages.js` 에서 HG 끔값 리터럴을 못 찾았다 — 검사기가 낡았다');
-  else if (+offLit[1] === VLj.houseGap('1'))
-    ok(`ⓒ 켠 판 \`houseGap(1)\` = ${VLj.houseGap('1')} = 끔값 리터럴 ${offLit[1]} ⇒ **리터럴이 유도값이었다**(켬/끔 같은 세계 · T315 §0ⓐ 의 답)`);
-  else bad(`ⓒ houseGap(1) ${VLj.houseGap('1')} ≠ 끔값 ${offLit[1]} — 켜면 세계가 달라진다(카드 전제와 다르다)`);
+  if (cg.need === VLj.LIFE_HOUSE_GAP_AISLE)
+    ok(`ⓑ-1 셀 집합으로도 **${cg.need}** — \`LOT_GUARD\`(${VLj.LOT_GUARD.length}셀) 원판 둘이 겹치거나 한 칸 팽창으로 닿는 최대 hypot ${cg.maxFail.toFixed(3)} ⇒ 종전 닫힌식과 같다(독립 경로)`);
+  else bad(`ⓑ-1 셀 집합 ${cg.need} ≠ 닫힌식 ${VLj.LIFE_HOUSE_GAP_AISLE} — 두 경로가 갈린다(유도 해석이 틀렸다)`);
+  // ★[T326] **기본값도 셀 집합으로 확인한다** — 한 집의 완충 원판이 다른 집의 **부지 원판**을 먹지 않는 최소 중심거리(팽창 없음)
+  const cgD = cellGap(VLj.LOT_GUARD, VLj.LOT_CELLS, false);
+  if (cgD.need === VLj.LIFE_HOUSE_GAP)
+    ok(`ⓑ-2 ★기본도 셀 집합으로 **${cgD.need}** — 완충 원판(${VLj.LOT_GUARD.length}셀) ↔ 부지 원판(${VLj.LOT_CELLS.length}셀) 침범의 최대 hypot ${cgD.maxFail.toFixed(3)} ⇒ 닫힌식 ${VLj.LIFE_HOUSE_GAP} 과 같다`);
+  else bad(`ⓑ-2 기본 셀 집합 ${cgD.need} ≠ 닫힌식 ${VLj.LIFE_HOUSE_GAP} — HALL_CLEAR 문법 해석이 틀렸다`);
+  // ⓒ ★[T326] 기본 극성 — **실측문**에 물어본다(정규식으로 극성을 읽지 않는다 · T298 ⓞ 문법 · 족보 128)
+  {
+    const { execFileSync } = require('child_process');
+    const door = `console.log(JSON.stringify(require(${JSON.stringify(path.join(root, 'server', 'villages.js'))}).__probe.handles()));`;
+    const ask = (over) => {
+      const env = Object.assign({}, process.env);
+      for (const k of ['T315_HOUSE_GAP', 'T315_MAPBEDS']) delete env[k];
+      Object.assign(env, over || {});
+      return JSON.parse(String(execFileSync(process.execPath, ['-e', door], { env, encoding: 'utf8' })).trim());
+    };
+    let d0 = null, d1 = null;
+    try { d0 = ask(null); d1 = ask({ T315_HOUSE_GAP: '0', T315_MAPBEDS: '0' }); }
+    catch (e) { bad(`ⓒ 손잡이 실측 실패 — ${String(e.message || e).split('\n')[0]}`); }
+    if (d0 && d1) {
+      if (d0.T315_HOUSE_GAP !== '0' && d0.T315_MAPBEDS === true)
+        ok(`ⓒ-1 서버 기본 — 간격 **켬**(미설정 ⇒ \`LIFE_HOUSE_GAP\` ${VLj.LIFE_HOUSE_GAP}) · \`_mapBeds\` 살리기 **켬** (자식 프로세스 실측 · PM #52)`);
+      else bad(`ⓒ-1 서버 기본이 켬이 아니다 — 간격 ${d0.T315_HOUSE_GAP} · 살리기 ${d0.T315_MAPBEDS}`);
+      if (d1.T315_HOUSE_GAP === '0' && d1.T315_MAPBEDS === false)
+        ok('ⓒ-2 되돌림은 명시 `=0` 둘 — 그 판만 종전(간격 `LIFE_HOUSE_GAP_AISLE` 18 · 살리기 안 적음)');
+      else bad(`ⓒ-2 =0 판이 종전으로 안 간다 — ${JSON.stringify(d1)}`);
+      if (d1.T315_MAPBEDS !== true) ok('[자명 통과 금지] ⓒ-1 의 주장을 **끈 판**에 대면 거짓이다 — 실측문이 손잡이를 실제로 읽는다');
+      else bad('[자명 통과 금지] 끈 판에서도 ⓒ-1 이 참이다 — 실측문이 손잡이를 안 읽는다');
+    }
+  }
   // ⓓ 자명 통과 금지 — 상수를 비틀면 두 경로가 같이 움직여야 한다
   {
     const src = fs.readFileSync(path.join(root, 'server', 'village-layout.js'), 'utf8');
@@ -560,11 +602,11 @@ console.log('\n[J] 집 간격 유도 — 값이 아니라 식(T315)');
         // ★두 경로가 **같이 움직이나** 를 본다. 같은 수까지는 요구하지 않는다 —
         //   닫힌식은 연속 원 기준 **하한**이고 셀 집합은 반 칸 어긋난 이산 원판이라 상수에 따라 1 이 붙는다.
         //   (실측: FARM_GAP 0·1·2·4 에서 차 0 · 3·5 에서 차 1 — 정본 2 에서는 **정확히 같다**, 위 ⓑ.)
-        const moved = M.HOUSE_GAP_DERIVED !== VLj.HOUSE_GAP_DERIVED && cg2.need !== cg.need;
-        const bound = M.HOUSE_GAP_DERIVED <= cg2.need;
+        const moved = M.LIFE_HOUSE_GAP_AISLE !== VLj.LIFE_HOUSE_GAP_AISLE && M.LIFE_HOUSE_GAP !== VLj.LIFE_HOUSE_GAP && cg2.need !== cg.need;
+        const bound = M.LIFE_HOUSE_GAP_AISLE <= cg2.need;
         if (moved && bound)
-          ok(`ⓓ [자명 통과 금지] \`FARM_GAP\` 2→3 으로 비틀면 닫힌식 ${VLj.HOUSE_GAP_DERIVED}→${M.HOUSE_GAP_DERIVED} · 셀 집합 ${cg.need}→${cg2.need} — **둘 다 움직인다**(둘 다 상수를 실제로 읽는다 · 닫힌식 ≤ 셀 하한 관계 유지)`);
-        else bad(`ⓓ [자명 통과 금지] 비틀어도 안 움직이거나 하한 관계가 깨진다(닫힌식 ${M.HOUSE_GAP_DERIVED} · 셀 ${cg2.need}) — 유도가 죽었다`);
+          ok(`ⓓ [자명 통과 금지] \`FARM_GAP\` 2→3 으로 비틀면 기본 ${VLj.LIFE_HOUSE_GAP}→${M.LIFE_HOUSE_GAP} · 종전 ${VLj.LIFE_HOUSE_GAP_AISLE}→${M.LIFE_HOUSE_GAP_AISLE} · 셀 집합 ${cg.need}→${cg2.need} — **전부 움직인다**(셋 다 상수를 실제로 읽는다)`);
+        else bad(`ⓓ [자명 통과 금지] 비틀어도 안 움직이거나 하한 관계가 깨진다(기본 ${M.LIFE_HOUSE_GAP} · 종전 ${M.LIFE_HOUSE_GAP_AISLE} · 셀 ${cg2.need}) — 유도가 죽었다`);
       }
       try { fs.unlinkSync(tmp); } catch (e) {}
     }

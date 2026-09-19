@@ -68,14 +68,20 @@
   //     8방 한 칸 팽창으로 닿는 오프셋의 최대 `hypot` 이 17.889 ⇒ 통과 조건 `hypot ≥ HG` 의 최소 정수 HG = 18.
   //     ⚠둘이 **항상** 같지는 않다: 닫힌식은 연속 원 기준 **하한**이고 셀 원판은 반 칸 어긋난 이산 집합이라
   //     상수에 따라 1 이 붙는다(FARM_GAP 3·5 에서 차 1). **정본 상수(6.5·2)에서는 정확히 같다** — 그게 이 수다.
-  //   ⇒ **`18` 은 튜닝값이 아니라 유도값이었다.** 그래서 T315 는 값을 안 바꾼다 — 리터럴을 **식으로** 바꾼다.
-  //   `HOUSE_GAP_LOT` 는 같은 문법에서 ⓒ 를 빼고 한쪽을 부지 원으로 낮춘 **`HALL_CLEAR` 문법**
-  //   (= 한 집의 완충 원이 다른 집의 **부지 원**을 침범하지 않는 최소 중심거리 = 15) — 값을 내리려면
-  //   세 항 중 무엇을 버리는지 고르는 일이고 그건 **재민 몫**이다. 그래서 제품 기본이 아니라 **진단 팔**이다.
+  //   ⇒ **`18` 은 튜닝값이 아니라 유도값이었다.** T315 는 값을 안 바꿨다 — 리터럴을 식으로 바꿨을 뿐이다.
+  //
+  // ★★[T326 2026-09-19 · **PM 결정 #52**] **통로 항을 버린다 ⇒ 기본은 `LIFE_HOUSE_GAP` = 15.**
+  //   결정 이유(PM): 통로는 집과 집 사이를 걷는 칸인데 **부지 원(6.5) 안에 이미 마당이 있어** 통로가
+  //   두 번 세어진다. 그래서 요구를 한 단계 낮춘다 — 한 집의 **완충 원**(8.5)이 다른 집의 **부지 원**(6.5)을
+  //   침범하지 않으면 된다(= `HALL_CLEAR` 가 마당 원 ↔ 부지 원으로 쓰는 **같은 문법**):
+  //      `LIFE_HOUSE_GAP` = LOT_R + (LOT_R + FARM_GAP) = 6.5 + 8.5 = **15**.
+  //   ⚠**새 수 0** — 항 하나를 뺐을 뿐이고 두 항 다 위에 있는 정본이다. 셀 집합으로 재도 15 다(독립 경로).
+  //   ⚠통로 항**만** 빼면 2 × (LOT_R + FARM_GAP) = 17 이다. PM 이 고른 수는 **15**(T315 가 실측을 붙여 낸
+  //     그 값 · 실서버 200일: 집 384→458채 · 침상/인구 78→101% · 인구 대가 0 · 소멸 0). **17 은 안 쟀다.**
+  //   `LIFE_HOUSE_GAP_AISLE`(=18)은 이제 **되돌림 값**이다 — `T315_HOUSE_GAP=0` 한 문으로 종전 판이 된다.
   const AISLE = 1;
-  const HOUSE_GAP_DERIVED = 2 * (LOT_R + FARM_GAP) + AISLE;   // 18 — 완충 원판 둘 비침범 + 통로 한 칸
-  const HOUSE_GAP_LOT = LOT_R + (LOT_R + FARM_GAP);           // 15 — HALL_CLEAR 문법(완충 원 ↔ 부지 원) · 회부 자료
-  const houseGap = (mode) => (+mode === 2 ? HOUSE_GAP_LOT : HOUSE_GAP_DERIVED);   // 농지 완충: 부지/마당 밖 정확 2타일(원이라 비대칭 구조적 불가)
+  const LIFE_HOUSE_GAP_AISLE = 2 * (LOT_R + FARM_GAP) + AISLE;   // 18 — 완충 원판 둘 비침범 + 통로 한 칸(종전 · 되돌림 `=0`)
+  const LIFE_HOUSE_GAP = LOT_R + (LOT_R + FARM_GAP);            // 15 — ★기본(PM #52): 완충 원 ↔ 부지 원 비침범(HALL_CLEAR 문법)
   // ★★[T219 2026-09-12 재민 확정] **집터를 원하는가 — 규칙 하나.**
   //   랩(마을실험실·전쟁실험실)의 생활층과 서버 생활층이 **같은 규칙**을 물어야 하는 자리다.
   //   랩이 값비싸게 배운 것(랩 주석 그대로): 목표 층수를 **인구만** 보고 세면 데드락이 선다 —
@@ -164,6 +170,9 @@
     const layout = (hShare > 0.55) ? 'shore' : 'cluster';
     const settlement = opts.settlement === 'dispersed' ? 'dispersed' : 'nucleated';
     const HOUSE_GAP = opts.houseGap != null ? opts.houseGap : (layout === 'shore' ? 18 : 22);   // ★부지 원(r6.5) 비겹침: d≥13이면 충분 — 18/22는 집 사이 골목 여유 포함(랩 동기)
+    // ⚠[T326] **이 `HOUSE_GAP` 은 시딩 배치의 간격(18/22)이고 생활층 간격(`LIFE_HOUSE_GAP` 15)과 다른 수다.**
+    //   위 모듈 상수를 `LIFE_*` 로 부르는 이유가 이것이다 — 이름이 겹치면 여기서 조용히 가려진다(셰도잉).
+    //   18/22 의 출처는 아직 주석 하나뿐이다("골목 여유") — 유도는 안 했다. **회부**(T326 §회부).
 
     // ── 영토 = base 1500 + 필요 채수×LAND_PER_HOUSE (유일 정본 공식)
     const target = Math.round(Math.min((1500 + Math.ceil(pop / HOUSE_CAP_PER_FLOOR) * LAND_PER_HOUSE) * sizeMul, opts.maxCells || 1e9));
@@ -420,7 +429,7 @@
 
   const API = { LAND_NEED, houseSiteWant, territoryTarget, HOUSE_MAX_FLOORS, TERR_PER_SIZE, TERR_PER_LOT, TERR_CORE,   // ★[T100 4판] 정본 — 밖(villages.js·계측기·하네스)이 이 값을 읽는다
     generate, footprintLand, axisAt, nearestBank, waterEDT, maskEDT, HOUSE_HALF, HOUSE_CAP: HOUSE_CAP_PER_FLOOR, HOUSE_CAP_PER_FLOOR, LAND_PER_HOUSE, landNeedPer, HALL_YARD, LOT_R, FARM_GAP, ALLEY_R, HALL_CLEAR, inDisc, LOT_CELLS, LOT_GUARD, YARD_CELLS, houseFarmBlock, hallFarmBlock,
-    AISLE, HOUSE_GAP_DERIVED, HOUSE_GAP_LOT, houseGap,   // ★[T315] 집 간격 유도 — 값이 아니라 식(사본 0)
+    AISLE, LIFE_HOUSE_GAP, LIFE_HOUSE_GAP_AISLE,   // ★[T315] 집 간격 유도 — 값이 아니라 식(사본 0) · ★[T326] 기본 = `LIFE_HOUSE_GAP`(15 · PM #52) · 되돌림 = `LIFE_HOUSE_GAP_AISLE`(18)
     ditchRing, ditchConnectivity, DITCH_W, DITCH_AXIS_RATIO, DITCH_GATE_HALF, DITCH_MARGIN };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   if (typeof window !== 'undefined') window.VillageLayout = API;

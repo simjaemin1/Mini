@@ -8037,7 +8037,11 @@ const VillageLayout=(function(){
   const inDisc=(cx,cy,R,x,y)=>{const ax=x+0.5-cx,ay=y+0.5-cy;return ax*ax+ay*ay<R*R;};   // 셀(x,y)의 중심(x+.5,y+.5)이 격자점(cx,cy) 반경 R 안(엄격<) — 전 구역 판정의 단일 원식. 렌더=같은 셀 집합 계단(판정=렌더 완전 일치)
   const discCells=(R)=>{const o=[],B=Math.ceil(R);for(let dx=-B;dx<B;dx++)for(let dy=-B;dy<B;dy++)if((dx+0.5)*(dx+0.5)+(dy+0.5)*(dy+0.5)<R*R)o.push([dx,dy]);return o;};
   const LOT_CELLS=discCells(LOT_R), LOT_GUARD=discCells(LOT_R+FARM_GAP), YARD_CELLS=discCells(HALL_YARD);   // 부지 원판(구 12×12 등적 대체 — 적도폭 12 동일·모서리만 둥긂), 부지+2 침수·완충 원판, 큰집 마당 원판(~314셀)
-  const houseFarmBlock=(hx,hy,x,y)=>inDisc(hx,hy,LOT_R+FARM_GAP,x,y), hallFarmBlock=(hx,hy,x,y)=>inDisc(hx,hy,HALL_YARD+FARM_GAP,x,y);   // ★농지 완충=부지 기준 정확 2타일 등방[사용자 지적 "완충 비대칭" 정당 — 구 중심 체비셰프 ±8은 부지 [-6..+5]의 반 칸 오프셋 탓에 좌상 2/우하 3이었음]. 큰집도 동형: 마당 밖 2타일 — 원은 비대칭이 구조적으로 불가
+  const houseFarmBlock=(hx,hy,x,y)=>inDisc(hx,hy,LOT_R+FARM_GAP,x,y), hallFarmBlock=(hx,hy,x,y)=>inDisc(hx,hy,HALL_YARD+FARM_GAP,x,y);
+  // ★★[T315→T326 PM #52] 집 간격은 **값이 아니라 유도**다(서버 village-layout.js 와 같은 이름·같은 식 · 손 동기 · lab-wiring-check [I][J] 가 대조).
+  //   기본 `LIFE_HOUSE_GAP`=15: 한 집의 완충 원(LOT_R+FARM_GAP)이 다른 집의 부지 원(LOT_R)을 침범하지 않는 최소 중심거리(HALL_CLEAR 문법).
+  //   `LIFE_HOUSE_GAP_AISLE`=18: 완충 원 둘 비침범 + 통로 한 칸(종전 · 서버 되돌림 `T315_HOUSE_GAP=0`).
+  const AISLE=1, LIFE_HOUSE_GAP_AISLE=2*(LOT_R+FARM_GAP)+AISLE, LIFE_HOUSE_GAP=LOT_R+(LOT_R+FARM_GAP);   // ★농지 완충=부지 기준 정확 2타일 등방[사용자 지적 "완충 비대칭" 정당 — 구 중심 체비셰프 ±8은 부지 [-6..+5]의 반 칸 오프셋 탓에 좌상 2/우하 3이었음]. 큰집도 동형: 마당 밖 2타일 — 원은 비대칭이 구조적으로 불가
   const _dt1d=(f,n,d,v,z)=>{let k=0;v[0]=0;z[0]=-1e20;z[1]=1e20;for(let q=1;q<n;q++){let s=((f[q]+q*q)-(f[v[k]]+v[k]*v[k]))/(2*q-2*v[k]);while(s<=z[k]){k--;s=((f[q]+q*q)-(f[v[k]]+v[k]*v[k]))/(2*q-2*v[k]);}k++;v[k]=q;z[k]=s;z[k+1]=1e20;}k=0;for(let q=0;q<n;q++){while(z[k+1]<q)k++;const p=v[k];d[q]=(q-p)*(q-p)+f[p];}};   // Felzenszwalb 1D 제곱거리 변환
   const waterEDT=(t,x0,y0,x1,y1)=>{const W=x1-x0+1,Hh=y1-y0+1,g=new Float64Array(W*Hh);   // ★정확 유클리드 물거리장(2패스 EDT, O(n)) — 물가세·침수 계열의 거리 정본[사용자 #15 사례]: 구 ±14 박스=무과세 문턱, BFS 대체=대각 √2 저과세 — 둘 다 실측 탈락. 존닝 dwOf(BFS)="걸어서 물까지"라 별개 정본
    for(let y=0;y<Hh;y++)for(let x=0;x<W;x++)g[y*W+x]=(t.isWater&&t.isWater(x0+x,y0+y))?0:1e20;
@@ -8173,7 +8177,7 @@ const VillageLayout=(function(){
     return{center:{cx:ccx,cy:ccy},hall:{cx:ccx,cy:ccy},axis,type:typeLabel,fert:+fert.toFixed(2),water:+water.toFixed(2),farmers,fishers,fShare:+fShare.toFixed(2),hShare:+hShare.toFixed(2),fertScore:+fertScore.toFixed(2),houses,floors,farmland,dryfield,nongZone,territory,core:coreCells,dock,bank};
   }
   function nearestBank(t,cx,cy,maxR){let best=null,bd=Infinity,R=maxR||24;for(let dy=-R;dy<=R;dy++)for(let dx=-R;dx<=R;dx++){const x=cx+dx,y=cy+dy;if(t.isBlocked(x,y))continue;let aw=false;for(const[ax,ay]of[[1,0],[-1,0],[0,1],[0,-1]])if(t.isWater(x+ax,y+ay)){aw=true;break;}if(!aw)continue;const d=dx*dx+dy*dy;if(d<bd){bd=d;best={cx:x,cy:y};}}return best;}
-  return{generate,footprintLand,axisAt,nearestBank,waterEDT,HOUSE_CAP:HOUSE_CAP_PER_FLOOR,houseSiteWant,LAND_PER_HOUSE,landNeedPer,HALL_YARD,LOT_R,FARM_GAP,ALLEY_R,HALL_CLEAR,inDisc,LOT_CELLS,LOT_GUARD,YARD_CELLS,houseFarmBlock,hallFarmBlock};   // ★채당 수용·채당 영토·인당 경작칸(보즈럽) = 전 파일 유일 정본(밖의 L_FLOORCAP·영토·개간 공식이 전부 여기서 파생)
+  return{generate,footprintLand,axisAt,nearestBank,waterEDT,HOUSE_CAP:HOUSE_CAP_PER_FLOOR,houseSiteWant,LAND_PER_HOUSE,landNeedPer,HALL_YARD,LOT_R,FARM_GAP,ALLEY_R,HALL_CLEAR,inDisc,LOT_CELLS,LOT_GUARD,YARD_CELLS,houseFarmBlock,hallFarmBlock,AISLE,LIFE_HOUSE_GAP,LIFE_HOUSE_GAP_AISLE};   // ★채당 수용·채당 영토·인당 경작칸(보즈럽) = 전 파일 유일 정본(밖의 L_FLOORCAP·영토·개간 공식이 전부 여기서 파생)
 })();
 // ===================== 실험실 =====================
 function hash2(ix,iy,s){let h=ix*374761393+iy*668265263+s*1274126177;h=(h^(h>>>13))*1274126177;return((h^(h>>>16))>>>0)/4294967295;}
@@ -8972,7 +8976,7 @@ const NPC_MAXHP=100, NPC_REST_IN=60, NPC_REGEN_REST=18, NPC_REGEN_WORK=6, NPC_DM
 const L_DAWN=0.25, L_DUSK=0.833;   // ★하루=24시간. 낮(06~20시)=노동, 밤(20~06시)=취침. f(0~1)=00~24시
 // ★노동기반 집 건설(라이프): 인구 늘면 집터 추가 → 유휴 NPC가 진행도 채워 완공. 발자국 없으면 2층 증축.
 const W_PEN_K=2000;   // ★[사용자 설계 — 전쟁랩 동기] 물가 페널티 계수: K/거리²(부지 원 가장자리~물, 연속식 — 2셀 500·5셀 80·10셀 20점). ※K 4000 상향 실험: 200명 혼잡 균형에선 순서만 재배열·물가 근접 집이 오히려 늘기도(패킹 카오스) — 원복. 집촌·어촌·신축 공용
-const L_FLOORCAP=VillageLayout.HOUSE_CAP, L_HGAP=18, L_MAXFL=1, L_BUILDRATE=0.12;   // ★[canon] 움집 단층 6명 — 채당 수용의 유일 정본=VillageLayout.HOUSE_CAP 파생(중복 상수라 어긋나던 관행 근절, NPC_BODY와 같은 원칙). 집간격 18·일일 진행률
+const L_FLOORCAP=VillageLayout.HOUSE_CAP, L_HGAP=VillageLayout.LIFE_HOUSE_GAP,   /*★[T326] 리터럴 18 폐지 — 정본 유도값(기본 15 · PM #52)을 읽는다(사본 0)*/ L_MAXFL=1, L_BUILDRATE=0.12;   // ★[canon] 움집 단층 6명 — 채당 수용의 유일 정본=VillageLayout.HOUSE_CAP 파생(중복 상수라 어긋나던 관행 근절, NPC_BODY와 같은 원칙). 집간격 18·일일 진행률
 const G_W=5,G_H=3,G_CAP=2500,G_MAX=8,G_BUILDD=6;   // ★고증② 고상곳간 별동[사용자 확정 — 송국리 소형 굴립주 5.3×3.2m 실측]: 5×3셀·문 없는 밀폐(고상=사다리 출입 고증, 인접 상호작용)·1동=식량 2500인일·재고 따라 증설(집 성장 패턴)·완공 6일
 const L_BUILDSEC=4600, L_BUILDCAP=0.35;   // ★징발 실효화: 층당 필요 현장 노동(인·초 — 2인×반나절≈800/일이면 ~5.8일/층)·일일 진척 상한(인해전술 체감)
 // ★고상곳간 배치: 큰집 곁 r11~15 링(마당 원 r10 가장자리~완충대 — 고상창고가 큰집 마당가에 서는 건 의도. 남쪽 집결부 회피=동·북 선호), 농지·길·물·집채/텃밭 회피. 결정론 순서.

@@ -4805,9 +4805,9 @@ function _lifeSiteFilters(vil) {
     for (const k of vil._terrSet) { const ci = k.indexOf(','), x = +k.slice(0, ci), y = +k.slice(ci + 1); if (x < bx0) bx0 = x; if (x > bx1) bx1 = x; if (y < by0) by0 = y; if (y > by1) by1 = y; }
     vil._wf = _lifeVL().waterEDT(state.ta, bx0 - 32, by0 - 32, bx1 + 32, by1 + 32);
   }
-  // ★★[T315] `HG` 는 이제 **식**이다(끔이면 종전 리터럴 18 — 비트 동일 · 값은 안 바뀐다).
-  //   유도는 `village-layout` 하나가 갖는다(부지 원판 + 농지 완충 + 통로 한 칸 · 사본 0 · 새 수 0).
-  const W_PEN_K = 2000, HG = T315_HOUSE_GAP === '0' ? 18 : _lifeVL().houseGap(T315_HOUSE_GAP);
+  // ★★[T315→T326] `HG` 는 **식**이고, 그 식의 기본은 이제 통로 항을 뺀 `LIFE_HOUSE_GAP`(15 · PM #52)다.
+  //   되돌림은 문 하나(`T315_HOUSE_GAP=0`) → `LIFE_HOUSE_GAP_AISLE`(18) = 종전 판. 값은 둘 다 레이아웃 정본이 갖는다.
+  const W_PEN_K = 2000, HG = T315_HOUSE_GAP === '0' ? _lifeVL().LIFE_HOUSE_GAP_AISLE : _lifeVL().LIFE_HOUSE_GAP;
   const wnd = (x, y) => { const v = vil._wf.at(x, y); return v >= 999 ? 99 : Math.max(1, v - _lifeVL().LOT_R); };
   const farmAt = (x, y, strict) => (strict && vil._potSet.has(x + ',' + y)) || vil._farmSet.has(x + ',' + y);
   // reject(x,y,strict) → 사유 문자열(불가) 또는 null(가능). 자동 배치는 사유를 버리고 continue만 한다.
@@ -5282,17 +5282,20 @@ const LIFE_SITE_NODIRTY = process.env.LIFE_SITE_NODIRTY === '1';  // 1 = 표지�
 //   T267 실측: 방아쇠는 **땅 위에서만 값을 낸다**(단독 집 −3.7채 = 잡음 안 · 영토와 같이 켜면 집 +130채).
 //   그래서 둘을 **같이** 켠다.
 const T219_HOUSE_TRIGGER = process.env.T219_HOUSE_TRIGGER !== '0';
-// ★★[T315 2026-09-19 재민 #22] **집 간격 손잡이 — 기본 끔.** 끔 = 지금 리터럴 `18` 그대로(비트 동일).
-//   `1` = 유도식(`village-layout.houseGap(1)` = 2×(LOT_R+FARM_GAP)+AISLE) — **그 값이 18 이라서 끔과 같은 세계다.**
-//        그게 T315 §0ⓐ 의 답이다: 리터럴이 유도값이었다. 켬/끔 비트 동일이 그 증명이다.
-//   `2` = 진단 팔(`HOUSE_GAP_LOT` = 15 · HALL_CLEAR 문법) — **제품 아님.** 값을 내리려면 유도 세 항 중
-//        무엇을 버리는지 고르는 일이고 그건 재민 몫이라, 재려고만 만든 팔이다(§0ⓑ 반례 쌍이 이걸 쓴다).
-const T315_HOUSE_GAP = String(process.env.T315_HOUSE_GAP || '0');
+// ★★[T315 2026-09-19 재민 #22 → **T326 PM 결정 #52 로 기본 켬**] **집 간격 손잡이.**
+//   T315: `18` 은 리터럴이 아니라 유도값이었다(2×(LOT_R+FARM_GAP)+AISLE) — 켜도 세계가 안 바뀌었다.
+//   T326: **통로 항을 버린다** ⇒ 미설정 = **켬 = `village-layout.LIFE_HOUSE_GAP`(= 15)** · 끄는 것은 명시 `=0`
+//        (`LIFE_HOUSE_GAP_AISLE` = 18 = 종전 판). 유도 자리는 레이아웃 모듈 하나다(사본 0 · 새 수 0).
+//   ★T315 가 만든 진단 팔 `=2` 는 **지웠다** — 그 팔이 가리켰던 값이 이제 기본이라 죽은 칸이다(카드 ① 지시).
+const T315_HOUSE_GAP = String(process.env.T315_HOUSE_GAP || '1');
 // ★★[T315] **`_mapBeds` 살리기 손잡이 — 기본 끔.** 켬이면 생활층이 매일 econ 에 완공 침상을 **적어 준다**
 //   (`_hcap = min(housing, _mapBeds)` 의 그 인자 — `economy-sim.js:3140` 은 이미 읽고 있었고 서버엔 쓰는 이가 없었다).
 //   수는 새로 만들지 않는다: 완공 층수 × `village-layout.HOUSE_CAP_PER_FLOOR` — 랩 `_bf * L_FLOORCAP` 과
 //   **같은 정본 상수**다(`L_FLOORCAP = VillageLayout.HOUSE_CAP`). 사본 0.
-const T315_MAPBEDS = process.env.T315_MAPBEDS === '1';
+// ★★[T326 PM 결정 #52] **기본 켬으로 뒤집었다** — 미설정 = 켬 · 끄는 것은 명시 `=0`.
+//   T315 실측: 간격 18 에서 켜면 인구 −30%(대역 밖)·정지 7곳이었지만 **간격 15 위에서는** 인구 대역 안 ·
+//   정지 **1곳**(어촌2 — 물에 낀 마을은 간격으로 안 풀린다)·소멸 0·침상≥인구 50/50. 그래서 **둘을 같이 켠다.**
+const T315_MAPBEDS = process.env.T315_MAPBEDS !== '0';
 // 표지 — "다시 훑어라". 거부 캐시는 **유지**한다(영토 확장은 새 셀만 더하지 옛 거부를 뒤집지 않는다).
 function lifeSiteDirty(vil) { if (vil && !LIFE_SITE_NODIRTY) vil._siteDirty = true; }
 // 리셋 — "다시 훑고 **거부 캐시도 버려라**". 옛 거부가 뒤집힐 수 있는 사건에서만.
