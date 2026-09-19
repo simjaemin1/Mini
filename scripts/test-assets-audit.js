@@ -372,12 +372,23 @@ console.log('\n⑤ 삼자 대조 — 소리 파일 하나를 표 셋이 똑같�
      `c ${r.c.length}→${mUrl.c.length} · b ${r.b.length}→${mUrl.b.length}`);
   ok(triCheck({ ...base, keys: cp(base.keys) }).c.length === r.c.length,
      'ⓓ ★대조 — 안 건드린 표를 다시 재면 수가 그대로다(자가 아무거나 물지 않는다)', `c=${r.c.length}`);
+  // ⓔ ★[T303] **개명은 셋이 같이 움직여야 한다** — 한 표에만 옛 이름이 남으면 문다.
+  //   실제 개명(`wolf_growl` → `wolf_howl`) 때 이 절이 도중 상태를 잡았다(⑤b 4개 · ⑤c 1개). 그것을 시험으로 남긴다.
+  const renamed = Object.keys(base.cred || {}).find((k) => disk.includes(k + '.ogg')) || Object.keys(base.cred || {})[0];
+  const mStale = triCheck({ ...base, cred: (() => {
+    const d = cp(base.cred); d[renamed + '_stale'] = d[renamed]; delete d[renamed]; return d; })() });
+  ok(mStale.b.length === r.b.length + 4 && mStale.c.length === r.c.length + 1,
+     `ⓔ ★크레딧에만 옛 이름이 남으면(\`${renamed}\` → \`${renamed}_stale\`) ⑤b 가 **넷 더**(없는 파일 둘 + 크레딧 없는 파일 둘) · ⑤c 가 **하나 더** 문다`,
+     `b ${r.b.length}→${mStale.b.length} · c ${r.c.length}→${mStale.c.length}`);
 
   const manFiles = Object.values(base.keys).flatMap((v) => [v.file, v.fileAlt]).filter(Boolean);
   const noKey = [...new Set(disk.filter((f) => !manFiles.includes(f)).map((f) => f.replace(/\.(ogg|m4a)$/i, '')))];
   const noFile = Object.entries(base.keys).filter(([, v]) => !v.file).map(([k]) => k);
-  console.log(`     · 파일은 있는데 **키가 없다**(후보): ${noKey.join(' ') || '없음'}`);
-  console.log(`     · 키는 있는데 **파일이 없다**(미확보): ${noFile.join(' ') || '없음'}`);
+  // ★[T303] "후보"라고 부르지 않는다 — 비어 있는 것이 **대기인지 결정인지**는 매니페스트가 적는다(`_파일없음`).
+  //   하네스가 키 이름을 손으로 들고 있으면 결정이 바뀔 때마다 여기도 고쳐야 한다 ⇒ 라벨은 중립으로.
+  const st = (k) => (base.keys[k] && base.keys[k].state) ? `(${base.keys[k].state})` : '';
+  console.log(`     · 파일은 있는데 **키가 없다**: ${noKey.join(' ') || '없음'}  — 왜인지는 매니페스트 \`_파일없음\``);
+  console.log(`     · 키는 있는데 **파일이 없다**: ${noFile.map((k) => k + st(k)).join(' ') || '없음'}  — \`state\` 가 적혀 있으면 **결정**이고 비어 있으면 대기다`);
   console.log('     ┌ 어느 하네스가 무엇을 지키나 (겹치는 검사는 안 만든다) ─────────────');
   console.log('     │ `test-audio`(세션9)   매니페스트 **안쪽** — 값·상한·`.m4a` 짝·훅·BGM·리미터·페이드');
   console.log('     │ 이 하네스 ①②         잠금 해시 · 닿는 표가 가리키는 파일이 있나');

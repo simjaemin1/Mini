@@ -17,3 +17,10 @@ KNOWN_ISSUES.md
 설계/
 인계/
 ecosystem.config.js
+
+# ── 배포물에서 빼는 것 — **지우지 않는다**(레포엔 남고 이미지에만 안 들어간다) [T303 · #30 ⓒ]
+#    실측: 22장 0.55MB (배포물 199.39MB → 198.84MB · 0.28%). bgm 45.73MB 의 대부분은
+#    **배포되는 13곡**이라 여기선 안 줄어든다 — 수를 크게 적지 않는다.
+public/assets/audio/bgm/*.py
+*.zip
+samples/

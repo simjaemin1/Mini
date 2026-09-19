@@ -66,7 +66,7 @@
 | `hook` | 〃 (같은 원본의 다른 사건) | gradha | **Public domain** | 2009-07-23 | 2026-09-13 | 48.12s 중 **24.8~26.2s** |
 | `deer_call` | [Commons: American Elk Bugling.ogg](https://commons.wikimedia.org/wiki/File:American_Elk_Bugling.ogg) (미 국립공원청 wica) | Jim Pisarowicz | **Public domain** (PD US NPS) | 날짜 미상(페이지가 안 적는다) | 2026-09-13 | 5.13s 중 **0.50~2.50s** · ⚠종은 **와피티**(아래) |
 | `tiger_growl` | [Commons: 439280 schots angry-tiger.wav](https://commons.wikimedia.org/wiki/File:439280_schots_angry-tiger.wav) (원천 freesound 439280) | schots | **CC0** | 2018-08-31 | 2026-09-13 | 65.64s 중 **11.00~13.00s** · 출처가 `Panthera tigris` 라 적는다 |
-| `wolf_growl` | [Commons: Rallying.ogg](https://commons.wikimedia.org/wiki/File:Rallying.ogg) (영문 위키 늑대 문서) | Retron at English Wikipedia | **Public domain** (PD-user) | 2005-07 녹음 · 2007-07-06 게시 | 2026-09-13 | 18.12s 중 **6.50~9.00s** · ⚠**울부짖음**이지 으르렁이 아니다(아래) |
+| `wolf_howl` | [Commons: Rallying.ogg](https://commons.wikimedia.org/wiki/File:Rallying.ogg) (영문 위키 늑대 문서) | Retron at English Wikipedia | **Public domain** (PD-user) | 2005-07 녹음 · 2007-07-06 게시 | 2026-09-13 | 18.12s 중 **6.50~9.00s** · **울부짖음** — T303 이 키를 파일에 맞췄다(아래) |
 | `ui_click` | [Kenney "RPG Audio"](https://kenney.nl/assets/rpg-audio) · `bookPlace1.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2023(팩) | 2026-09-13 | 0.30s 중 **0.020~0.280s**(선행 무음 잘라 냄) · **후보**(훅 없음) |
 
 * **요구 문구 없음** — 둘 다 퍼블릭 도메인이라 표시 의무가 없다(그래서 §1 에 안 들어간다). 예의로 여기 적는다.
@@ -84,15 +84,15 @@
   _Cervus nippon_(대륙사슴)·노루인데 Commons 의 그 둘은 PD/CC0 가 아니다(`Sika Deer (Cervus nippon) …` 는
   CC BY-SA 4.0). 사슴과(Cervidae)의 실제 울음이고 출처가 종을 적어 뒀다 — **울음이 이것으로 맞는지는 재민 귀.**
   ⚠원본이 이미 0 dBFS 에 붙어 있었고(0dB 표본 194개) 표본율이 11,025 Hz 다 — **깎아서** −1 로 맞췄고 올려 굽지 않았다.
-* ⚠**`wolf_growl` 은 울부짖음(howl)이지 으르렁(growl)이 아니다 — 자로 갈랐다.** 같은 자를 둘에 댔다:
+* **`wolf_howl` 은 울부짖음(howl)이다 — 자로 갈랐고 [T303] 키 이름을 파일에 맞췄다.** 같은 자를 둘에 댔다:
 
   | | 중심주파수 | 평탄도(1=잡음·0=순음) | 500Hz 아래 |
   |---|---:|---:|---:|
-  | `wolf_growl`(이 파일) | 1,100~1,240 Hz | 0.0002 | **0.4%** |
+  | `wolf_howl`(이 파일) | 1,100~1,240 Hz | 0.0002 | **0.4%** |
   | `tiger_growl`(이 파일) | **226~426 Hz** | 0.0020~0.016 | **71~97%** |
 
-  종은 맞다(_Canis lupus_ · 유럽 늑대 · 녹음자 이름·날짜 있음) — **이름만 어긋난다.** 키를 `wolf_howl` 로
-  바꿀지는 회부. T262/T269 가 물린 것들과는 다르다: OGA "Wolf Monster Sound"(제 설명이 *말 콧김 가공*)와
+  종은 맞다(_Canis lupus_ · 유럽 늑대 · 녹음자 이름·날짜 있음) — **이름만 어긋났고 [T303 · 재민 위임 → PM 2026-09-18]
+  키를 `wolf_howl` 로 바꿨다** — 파일 바이트는 **0 변경**이다(sha1 `d9176d70…`/`bede1a0f…` 그대로 · 잠금 값도 그대로). T262/T269 가 물린 것들과는 다르다: OGA "Wolf Monster Sound"(제 설명이 *말 콧김 가공*)와
   이 프로젝트가 쓰는 rubberduck 팩의 `howl.ogg`(페이지가 *"i created"* 라 적는 창작 괴물 소리)는 **늑대가 아니다.**
 * ⚠**`tiger_growl` 의 잔향은 원본의 것이다.** 출처가 스스로 *"Tiger in a cage, ... Lots of reverb"* 라 적는다.
   빼지 않았다 — 잔향을 지우면 원본을 고치는 것이다.

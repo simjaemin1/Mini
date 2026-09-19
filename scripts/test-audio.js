@@ -317,8 +317,14 @@ console.log('\n⑥ ★이 하네스가 실패할 줄 아는가 — 픽스처로 
     const u2 = new Set([...keysUsedInModule(modCode), ...hooksInFile(modCode).keys, ...tableKeys()]);
     man.mobs = savedMobs;
     const orphan2 = keyNames.filter((k) => !u2.has(k));
-    ok(orphan2.length === 4 && orphan2.every((k) => /_(growl|grunt|call)$/.test(k)),
-       'ⓐ-2 ★`mobs` 표를 비우면 야생 넷이 **고아로 잡힌다**(표가 곧 배선이라는 증거)', orphan2.join(' '));
+    // ★[T303] 기대값을 **이름 꼴로 짐작하지 않고 `mobs` 표에서 읽는다.** 1차 판은 `/_(growl|grunt|call)$/` 였는데
+    //   `wolf_growl` → `wolf_howl` 개명 한 번에 빨개졌다 — 자가 배선을 잰 게 아니라 **이름 철자를 재고 있었다.**
+    //   표가 보내는 키가 곧 기대값이다(손 목록 0 · 다음 개명에도 안 흔들린다).
+    const wiredByMobs = [...new Set(Object.entries(savedMobs)
+      .filter(([k]) => !k.startsWith('_')).map(([, v]) => v))].filter((v) => KEYS[v]);
+    ok(orphan2.length === wiredByMobs.length && orphan2.every((k) => wiredByMobs.includes(k)),
+       `ⓐ-2 ★\`mobs\` 표를 비우면 그 표가 잇던 ${wiredByMobs.length}종이 **고아로 잡힌다**(표가 곧 배선이라는 증거)`,
+       orphan2.join(' '));
   }
   // ⓑ 없는 키를 부르면 문다
   const u2 = hooksInFile("window.__sfx && window.__sfx.play('없는키');");
