@@ -302,11 +302,17 @@ console.log('\n[H] 랩 부팅 기본 = 서버 기본(주입 없음)');
   {
     const { execFileSync } = require('child_process');
     const env = Object.assign({}, process.env);
-    for (const k of ['L_ALLOC_REAL', 'L_HAPPY_FLOOR1', 'L_HAPPYWORK']) delete env[k];
+    for (const k of ['L_ALLOC_REAL', 'L_HAPPY_FLOOR1', 'L_HAPPYWORK', 'L_CARGO_TWO', 'L_CARGO_TWO_GATE', 'L_CARGO_TWO_BEST']) delete env[k];
+    // ★[T299] 둘째 화물·관문은 `sim/economy-sim-v2.js` 가 읽는다 — 같은 자식 프로세스에서 같이 실측한다.
     const probe = `const E=require(${JSON.stringify(path.join(root, 'sim', 'economy-sim.js'))});` +
-      `console.log(JSON.stringify({alloc:E.allocRealOn?E.allocRealOn():null,floor:E.happyFloor1On(),H:E.happyWorkWOf({}),CONST:E.T157_HAPPYWORK_H}));`;
+      `const E2=require(${JSON.stringify(path.join(root, 'sim', 'economy-sim-v2.js'))});` +
+      `console.log(JSON.stringify({alloc:E.allocRealOn?E.allocRealOn():null,floor:E.happyFloor1On(),H:E.happyWorkWOf({}),CONST:E.T157_HAPPYWORK_H,` +
+      `cargo2:E2.cargoTwoOn?E2.cargoTwoOn({}):null,cargo2g:E2.cargoTwoGateOn?E2.cargoTwoGateOn({}):null,` +
+      `cargo2off:E2.cargoTwoOn?E2.cargoTwoOn({cargoTwo:false}):null}));`;
     let srv = null;
-    try { srv = JSON.parse(String(execFileSync(process.execPath, ['-e', probe], { env, encoding: 'utf8' })).trim()); }
+    //   ⚠`economy-sim-v2` 는 적재할 때 머리글을 찍는다 — **마지막 줄**만 JSON 이다(전문을 파싱하면 빨강).
+    try { const _o = String(execFileSync(process.execPath, ['-e', probe], { env, encoding: 'utf8' })).trim().split('\n');
+          srv = JSON.parse(_o[_o.length - 1]); }
     catch (e) { bad(`엔진 기본 실측 실패 — ${String(e.message || e).split('\n')[0]}`); }
     if (srv) {
       // ⓑ-1 엔진 기본 셋이 **켬**인가(재민 확정 T244)
@@ -317,6 +323,17 @@ console.log('\n[H] 랩 부팅 기본 = 서버 기본(주입 없음)');
       else bad(`서버 기본 L_ALLOC_REAL 이 ${srv.alloc} 다 — T244 확정은 켬`);
       if (srv.H > 0 && Math.abs(srv.H - srv.CONST) < 1e-12) ok(`서버 기본 \`L_HAPPYWORK\` = 켬 H=${srv.H} = 정본 상수 T157_HAPPYWORK_H — T157 · T244 확정`);
       else bad(`서버 기본 happyWorkWOf({}) ${srv.H} ≠ 정본 상수 ${srv.CONST}(또는 0) — T244 확정은 켬`);
+
+      // ⓑ-1b ★★[T299 2026-09-18 · 재민 위임 · #26 ⓐ] 둘째 화물(`L_CARGO_TWO`)과 그 관문(`L_CARGO_TWO_GATE`)도 **켬**이다.
+      //   `L_CARGO_TWO_BEST`(수익 최대 선택)는 **안 켠다** — T265 가 15시드에서 `twogate` 와 못 가름이라 냈다.
+      if (srv.cargo2 === true) ok('서버 기본 `L_CARGO_TWO` = 켬(둘째 화물) — T206/T256 · T299 확정');
+      else if (srv.cargo2 === null) bad('`cargoTwoOn` 이 export 안 됐다 — 검사기가 엔진 기본을 못 본다');
+      else bad(`서버 기본 L_CARGO_TWO 가 ${srv.cargo2} 다 — T299 확정은 켬`);
+      if (srv.cargo2g === true) ok('서버 기본 `L_CARGO_TWO_GATE` = 켬(첫째와 같은 관문) — T233/T271 · T299 확정');
+      else if (srv.cargo2g === null) bad('`cargoTwoGateOn` 이 export 안 됐다 — 검사기가 엔진 기본을 못 본다');
+      else bad(`서버 기본 L_CARGO_TWO_GATE 가 ${srv.cargo2g} 다 — T299 확정은 켬(관문 없는 \`two\` 는 소멸 3/15 였다)`);
+      if (srv.cargo2off === false) ok('명시 주입 `cargoTwo:false` 가 기본 켬을 **이긴다**(A/B·계측기의 끔 팔이 거기 산다)');
+      else bad(`\`cargoTwo:false\` 주입이 ${srv.cargo2off} 다 — 끔 팔이 켠 판이 된다`);
 
       // ⓑ-2 랩 부팅이 그 셋과 **같은 자리**에서 뜨는가
       //   `L_HAPPYWORK`: 랩은 수를 적지 않고 `EconEngine.T157_HAPPYWORK_H` 를 읽는다(사본 0).
@@ -332,11 +349,11 @@ console.log('\n[H] 랩 부팅 기본 = 서버 기본(주입 없음)');
       }
       //   `L_ALLOC_REAL`·`L_HAPPY_FLOOR1`: 엔진이 `_allocKnob`/env·window 로 **직접** 읽는다 ⇒ 랩이 **안 심으면** 켬(= 서버 기본).
       //   ★T244 로 뒤집혔다: 종전엔 "1 을 심으면 빨강"이었고 이제는 **"0 을 심으면 빨강"**(랩만 끈 채 뜬다).
-      for (const k of ['L_ALLOC_REAL', 'L_HAPPY_FLOOR1']) {
+      for (const k of ['L_ALLOC_REAL', 'L_HAPPY_FLOOR1', 'L_CARGO_TWO', 'L_CARGO_TWO_GATE']) {   // ★[T299] 둘 더
         const re = new RegExp('window\\.' + k + "\\s*=\\s*['\"]?0['\"]?");
         const lines = warLab.split('\n').map((l) => l.replace(/\/\/.*$/, '')).filter((l) => re.test(l));
         if (lines.length) bad(`랩이 ${k} 을(를) **끈 채** 뜬다 — ${lines.length}줄(서버 기본은 켬)`);
-        else ok(`랩은 ${k} 을(를) 심지 않는다(미설정 = **켬** = 서버 기본 · T244)`);
+        else ok(`랩은 ${k} 을(를) 심지 않는다(미설정 = **켬** = 서버 기본 · T244 · T299)`);
       }
       // ★자명 통과 금지 — 랩이 끈 채 뜨는 판을 만들면 이 검사가 실제로 문다
       const mut3 = warLab + '\nwindow.L_HAPPY_FLOOR1 = 0;\n';

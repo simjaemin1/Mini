@@ -37,7 +37,7 @@ async function arm(seed, on) {
       document.getElementById('seed').value = String(seed);
       document.getElementById('nvil').value = String(nvil);
       reseed(); lifeInit();
-      o.attached = (ECON_WORLD || {}).cargoTwo === true;
+      o.attached = (typeof EconEngine !== 'undefined' && EconEngine.cargoTwoOn) ? EconEngine.cargoTwoOn(ECON_WORLD || {}) : ((ECON_WORLD || {}).cargoTwo === true);   // ★[T299] 기본 컰 — 정본 함수에게 믇는다(주입 여부로 못 읽는다)
       const rows = VILS.map((v, i) => ({ i, name: v.name,
         base: (v.econ && v.econ._baseStone != null) ? v.econ._baseStone : null,
         pop0: (v.econ && v.econ.npcs) ? v.econ.npcs.length : 0,

@@ -41,7 +41,9 @@ async function arm(seed, on) {
       document.getElementById('nvil').value = String(nvil);
       reseed(); lifeInit();
       o.vil0 = VILS.length;
-      o.attached = (typeof (ECON_WORLD || {}).returnPullFn === 'function') || (ECON_WORLD || {}).cargoTwo === true;
+      // ★[T299] 둘째 화물은 기본 컰이다 — 주입이 없어도 벙은 팜이다.
+      o.attached = (typeof (ECON_WORLD || {}).returnPullFn === 'function') ||
+        ((typeof EconEngine !== 'undefined' && EconEngine.cargoTwoOn) ? EconEngine.cargoTwoOn(ECON_WORLD || {}) : ((ECON_WORLD || {}).cargoTwo === true));
       o.thresh = (typeof L_STONE_NET_THRESH !== 'undefined') ? L_STONE_NET_THRESH : null;
       o.floorConst = (typeof L_STONE_FLOOR !== 'undefined') ? L_STONE_FLOOR : null;
       const tr = VILS.map((v) => ({ name: v.name,

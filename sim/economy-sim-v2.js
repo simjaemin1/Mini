@@ -259,6 +259,39 @@ function _legProfitPerUnit(pFrom, pTo, transportCostPerUnit, expectedLossRatio) 
   const costPerUnit = pFrom * (1 + TAU) + transportCostPerUnit;
   return revenuePerUnit * (1 - expectedLossRatio) - costPerUnit;
 }
+// ═══ ★★★[T299 2026-09-18 · 재민 09-18 위임 · PM 판정 #26 ⓐ] 둘째 화물과 그 관문 — **기본 켬** ═══
+//
+// 무엇을 켜나: `twogate` = 둘째 화물(T206) **+** 첫째와 같은 관문(T233). 둘은 한 처방이다.
+//   · 원안 `two`(관문 없음)는 15시드에서 **소멸 3/15** 였다(T271) — 관문 없이는 안 켠다.
+//   · `twogate` 는 15시드 소멸 **0/15** · 지니 최저 · `<20명` 꼬리가 가장 얇았다(T256·T265).
+//   · `twobest`(수익 최대 선택 · T239)는 `twogate` 와 **못 가름**이고 부호는 오히려 `twogate` 쪽
+//     11/15 였다(T265 정정) ⇒ **켜지 않는다**. `world.cargoTwoBest` 는 주입 전용으로 남는다.
+//   · 관문 셋(T280 ⓐ재고·ⓑ식용등가·ⓒ원산지상한)도 **안 얹는다** — 어촌이 떼이는 자리는 둘째가 아니라
+//     **첫째 화물**이었다(첫째가 이미 생선의 29~39% 를 내보낸다 · T289 ㉡). 그것은 다른 카드다.
+//
+// 읽는 자리는 이 파일에 **하나**다. `server/villages.js` 에는 안 심는다 — T244 가 남긴 그 이유 그대로:
+//   기준선의 자(`scripts/t17-metrics.js`)와 랩은 그 파일을 안 지나므로, 거기 심으면 **서버만** 켜지고
+//   표와 랩은 끈 세계를 잰다(T221 의 거울상).
+//
+// ⚠되돌림은 **명시 `0`** 하나다 — `L_CARGO_TWO=0 L_CARGO_TWO_GATE=0`(env) · `window.L_CARGO_TWO=0`(랩).
+//   그때 이 파일은 **넷째 판과 비트 동일**이다(보고/T299 §2 · 3시드 열 열 `cmp`).
+// ⚠명시 주입(`world.cargoTwo` · `world.cargoTwoGate`)이 **가장 세다** — A/B·계측기가 팔을 손으로 잡는다.
+//   `false` 주입도 존중한다(끔 팔) — 그래서 `undefined` 검사지 진리값 검사가 아니다.
+// ⚠**새 수 0** — 이 절은 문의 기본값만 뒤집는다. 용량·후보·관문식은 한 글자도 안 건드렸다.
+function _cargoKnob(name) {                       // 손잡이 문법은 하나다(랩 `window` → node `env`) — `_allocKnob` 과 같은 꼴
+  const g = (typeof window !== 'undefined') ? window : null;
+  if (g && g[name] !== undefined && g[name] !== null) return String(g[name]);
+  if (typeof process !== 'undefined' && process.env && process.env[name] !== undefined) return String(process.env[name]);
+  return null;
+}
+function cargoTwoOn(world) {
+  if (world && world.cargoTwo !== undefined && world.cargoTwo !== null) return !!world.cargoTwo;
+  const x = _cargoKnob('L_CARGO_TWO'); return x === null ? true : x !== '0';            // 미설정 = 켬(기본)
+}
+function cargoTwoGateOn(world) {
+  if (world && world.cargoTwoGate !== undefined && world.cargoTwoGate !== null) return !!world.cargoTwoGate;
+  const x = _cargoKnob('L_CARGO_TWO_GATE'); return x === null ? true : x !== '0';       // 미설정 = 켬(기본)
+}
 // ★위기 교역 동원(2026-07-13 실험 K): 식량 적자 마을(surplusEMA.food<0)은 포만 유휴노동(_idleFrac)이
 //   ~0이라 spareCap=1로 묶여, 글럿된 자산(가죽 등)을 식량과 바꿀 캐러밴을 못 냄(묶인 재산=Sen 자격 붕괴의 기계적 원인).
 //   적자 마을에 한해 유휴노동 밖 노동을 소폭 교역에 동원 — 하단 기회비용 게이트가 각 원정 순이익성을 여전히
@@ -790,13 +823,14 @@ function tickTradeV2(world, day) {
       //   ⚠주입이 없으면(`world.cargoTwo` 미설정) 이 블록은 통째로 건너뛴다 = **비트 동일**.
       let _res2 = null, _n2 = 0, _p2 = 0, _pp2 = 0, _gateBlocked = 0;
       let _bRes = null, _bN = 0, _bP = 0, _bPP = 0, _bTot = -Infinity;   // ★[T239] 수익이 최대였을 후보(계측 + 손잡이)
-      if (world.cargoTwo) {
+      if (cargoTwoOn(world)) {        // ★[T299] 기본 켬 — 되돌림은 `L_CARGO_TWO=0` 하나(주입이 가장 세다)
         const _room = CARGO_PER_TRIP - N_units;
         if (_room >= 1) {
           //   ★[T239] 후보를 **끝까지 훑는다** — 훑기는 읽기뿐이라 세계를 안 바꾼다.
           //     `cargoTwoBest` 가 꺼져 있으면 **고르는 값은 종전 그대로**(선언 순서 첫 개)이므로 비트 동일이고,
           //     그러면서 "수익이 최대였을 후보"(`_bRes`)를 같이 들고 나와 계측기가 **갈림을 잴 수 있다**
           //     (T239 §ⓐ — 팔을 켜지 않고도 갈리는 leg 을 세려면 두 값이 같은 판에 있어야 한다).
+          const _c2gate = cargoTwoGateOn(world);   // ★[T299] 한 leg 에 한 번만 읽는다(루프 안에서 읽지 않는다 · 값은 같다)
           let _picked = false;
           for (const c2 of candidates) {
             if (c2.res === cand.res) continue;
@@ -808,7 +842,7 @@ function tickTradeV2(world, day) {
             //     `TRADABLE` 선언 순서상 첫 품목을 적자로도 싣는다(단위의 62~74%가 단위당 적자).
             const _pu2 = _legProfitPerUnit(a.prices[c2.res] || 0, (b.prices && b.prices[c2.res]) || 0,
                                            best.transportCostPerUnit, best.expectedLossRatio);
-            if (world.cargoTwoGate && !(_pu2 * _q > 0)) { if (!_picked) _gateBlocked++; continue; }   // ★걸리면 **다음 후보**로
+            if (_c2gate && !(_pu2 * _q > 0)) { if (!_picked) _gateBlocked++; continue; }   // ★걸리면 **다음 후보**로 · ★[T299] 기본 켬
             if (!_picked) {                           // ★선언 순서상 첫 개 — T206~T233 이 싣던 그것
               _res2 = c2.res; _n2 = _q; _p2 = a.prices[c2.res] || 0; _pp2 = _pu2; _picked = true;
             }
@@ -1805,4 +1839,6 @@ module.exports = {
   temperatureAt, CLIMATE,
   // ★[2026-08-03e 배치 12 ②] 인구 유입 문턱 — 하네스·길드 재고 UI 가 **같은 함수**를 부른다(사본 금지)
   tickRecovery, recoveryFoodThreshold, recoveryFoodHave,
+  // ★[T299] 둘째 화물·관문의 **기본 켬** 문 — 하네스와 `lab-wiring-check [H]` 가 엔진 기본을 **실측**한다(사본 0)
+  cargoTwoOn, cargoTwoGateOn, _legProfitPerUnit,
 };

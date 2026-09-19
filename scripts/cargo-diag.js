@@ -64,7 +64,7 @@ if (!seeds) {
 const world = econV2.createWorldV2({ seed: SEED, villageCount: seeds.length, picker: 'rational', infoRange: 5000, raidPer100: 0.005 });
 world.villages = []; world.events = [];
 R('server/trees').attachToWorld(world);
-if (process.env.T206_CARGO_TWO === '1') world.cargoTwo = true;    // ★[T206 ②] 계측 전용 — 랩은 `L_CARGO_TWO` 로 같은 문
+world.cargoTwo = process.env.T206_CARGO_TWO === '1';    // ★[T206 ②] 계측 전용 · ★[T299] 기본 켬이라 **명시**로 잡는다
 for (const s of seeds) {
   const ev = econ.createVillage({ ...s.lp, initialPop: P.INITIAL_POP, name: s.name });
   ev._world = world; ev.coord = { x: s.ccx * 2.5, y: s.ccy * 2.5 };

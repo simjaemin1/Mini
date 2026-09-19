@@ -409,15 +409,23 @@ console.log('\n㉑ 둘째 화물(T206) — 문 두 자리 · 용량·후보 규�
       '㉑ ★★★**셋째 이상 0** — 둘째 지정이 `_picked` 로 잠긴 **한 자리**뿐이다');
     ok(!/_res3|giveRes3|_n3\b/.test(V2C), '㉑ ★셋째 화물 변수 자체가 **코드에 없다**');
   }
-  ok(/if \(world\.cargoTwo\) \{/.test(V2C), '㉑ 출발 쪽 문이 `world.cargoTwo` 하나다');
+  ok(/if \(cargoTwoOn\(world\)\) \{/.test(V2C), '㉑ 출발 쪽 문이 **한 자리**다(★T299 로 `world.cargoTwo` → `cargoTwoOn(world)`)');
   ok(/if \(c\.giveRes2 && c\.giveAmt2 > 0\) \{/.test(V2C), '㉑ 도착 쪽도 둘째를 **같은 문법**으로 정산한다');
   ok(/_gross2 = _impactSellV2\(c\.to, c\.giveRes2, _delivered2\);/.test(V2C),
     '㉑ ★둘째 매도도 **충격 정산**을 지난다(첫 품목과 같은 함수)');
   ok(/c\._returningRes2 = c\.giveRes2;/.test(V2C),
     '㉑ ★★빈손 귀환에서 둘째도 **집으로 돌아온다**(질량 누수 0)');
-  ok(/if \(window\.L_CARGO_TWO === undefined\) window\.L_CARGO_TWO = 0;/.test(LCODE),
-    '㉑ ★★랩 손잡이 기본 **0**(끔 = 종전 비트)');
-  ok(/if\(\+window\.L_CARGO_TWO!==0\) ECON_WORLD\.cargoTwo = true;/.test(LCODE), '㉑ 훅이 한 자리에서 걸린다');
+  //   ★★[T299 정정] 종전엔 여기서 "랩 기본이 **0**" 을 잠갔다. 재민 위임 판정으로 **서버 기본이 켬**이 되었고,
+  //     T244 문법대로 랩은 그 손잡이를 **안 심는다**(미설정 = 켬 = 서버 기본) ⇒ 잠글 것이 뒤집혔다:
+  //     이제 랩이 `L_CARGO_TWO`·`L_CARGO_TWO_GATE` 에 **0 을 심으면 빨강**이다(랩만 끈 채 뜬다).
+  for (const k of ['L_CARGO_TWO', 'L_CARGO_TWO_GATE']) {
+    const re = new RegExp('window\\.' + k + "\\s*=\\s*['\"]?0['\"]?");
+    const planted = LCODE.split('\n').filter((l) => re.test(l));
+    ok(planted.length === 0, `㉑ ★★랩은 \`${k}\` 을(를) **안 심는다**(미설정 = 켬 = 서버 기본 · T299)`,
+      planted.length ? `${planted.length}줄` : '0줄');
+  }
+  ok(!/cargoTwoInstallHook\(\)/.test(LCODE) && !/cargoTwoGateInstallHook\(\)/.test(LCODE),
+    '㉑ ★랩 주입 훅 둘이 **사라졌다**(엔진이 `window` 를 직접 읽는다 — 자리가 하나다)');
 }
 
 console.log('\n㉒ 둘째 화물 — 끔 비트 동일 · 켬 실림 · 용량 초과 0 · 곳간 음수 0');
@@ -425,7 +433,8 @@ console.log('\n㉒ 둘째 화물 — 끔 비트 동일 · 켬 실림 · 용량 �
   const mkCargo = (on) => {
     const w = econV2.createWorldV2({ seed: 828, villageCount: 0, picker: 'rational', infoRange: 5000, raidPer100: 0.005 });
     w.villages = []; w.events = []; w.caravans = [];
-    if (on) w.cargoTwo = true;
+    //   ★[T299] 기본이 켬이 됐다 — 이 절은 **T206 의 물음**(둘째만 · 관문 없음)이라 두 문을 **명시**로 잡는다.
+    w.cargoTwo = !!on; w.cargoTwoGate = false;
     let legs = 0, twoLegs = 0, over = 0, maxUnits = 0, secondSum = 0, thirdSeen = 0;
     w.onTradeLeg = (o) => {
       legs++;
@@ -522,8 +531,7 @@ console.log('\n㉒ 둘째 화물 — 끔 비트 동일 · 켬 실림 · 용량 �
   const mkGate = (two, gate) => {
     const w = econV2.createWorldV2({ seed: 606, villageCount: 0, picker: 'rational', infoRange: 5000 });
     w.villages = [];
-    if (two) w.cargoTwo = true;
-    if (gate) w.cargoTwoGate = true;
+    w.cargoTwo = !!two; w.cargoTwoGate = !!gate;   // ★[T299] 명시 주입이 손잡이를 이긴다(기본 켬이라 이 줄이 필요하다)
     let legs = 0, twoLegs = 0, secondSum = 0, negPU = 0, negUnits = 0, blocked = 0, posPU = 0;
     w.onTradeLeg = (o) => {
       legs++;
@@ -573,8 +581,7 @@ console.log('\n㉒ 둘째 화물 — 끔 비트 동일 · 켬 실림 · 용량 �
   const mkBest = (gate, bestOn) => {
     const w = econV2.createWorldV2({ seed: 606, villageCount: 0, picker: 'rational', infoRange: 5000 });
     w.villages = []; w.cargoTwo = true;
-    if (gate) w.cargoTwoGate = true;
-    if (bestOn) w.cargoTwoBest = true;
+    w.cargoTwoGate = !!gate; w.cargoTwoBest = !!bestOn;   // ★[T299] 명시 주입(기본 켬이라 `gate` 끔 팔도 손으로 잡는다)
     let twoLegs = 0, diff = 0, worse = 0, third = 0, gain = 0, chosenTot = 0, bestTot = 0;
     w.onTradeLeg = (o) => {
       if (o.third) third++;
@@ -620,6 +627,89 @@ console.log('\n㉒ 둘째 화물 — 끔 비트 동일 · 켬 실림 · 용량 �
   ok(g.neg === 0 && gb.neg === 0, '㉕ ★★곳간 음수 0(두 팔 다)');
 }
 
-console.log(`\n=== T239 둘째 수익 최대 포함: 통과 ${pass} · 실패 ${fail} ===`);
-console.log('접점 심볼: L_CARGO_TWO|L_CARGO_TWO_GATE|L_CARGO_TWO_BEST|_legProfitPerUnit|candidates|cand.res|surplus|best.profit|TRADABLE|N_units|CARGO_PER_TRIP|onTradeLeg|_gateBlocked|cargoTwoGate|cargoTwoBest');
+// ════════════════════════════════════════════════════════════════════════════════════════
+// ㉖ [T299] **기본 켬** — 켠 판은 끈 판과 어떤 관계인가
+//   재민 09-18 위임 · PM 판정 #26 ⓐ: `twogate`(둘째 화물 + 첫째와 같은 관문)를 **서버 기본 켬**으로.
+//   기본이 뒤집히면 픽스처가 거짓말을 한다(T244 가 배운 것) — 그래서 이 절은 값이 아니라 **관계**를 잠근다:
+//     ⓐ 아무것도 안 준 판(기본) = 명시로 `two+gate` 를 켠 판과 **비트 동일**
+//     ⓑ `L_CARGO_TWO=0 L_CARGO_TWO_GATE=0` = 둘 다 끈 판과 **비트 동일**(= 넷째 판)
+//     ⓒ `L_CARGO_TWO_GATE=0` 하나 = 관문 없는 `two` 판과 **비트 동일**
+//     ⓓ 명시 주입이 손잡이를 **이긴다**(A/B·계측기가 팔을 손으로 잡는다 · `false` 주입도 존중)
+//     ⓔ `cargoTwoBest` 는 **안 켜졌다** — 기본 판에서 선택이 여전히 최대와 갈린다
+//   ⚠env 는 자식 프로세스가 아니라 **이 프로세스에서** 넣었다 뺀다 — 손잡이를 **호출 때** 읽기 때문이다.
+//     (족보 128 의 거울: 셸에 남은 `L_*` 가 기본을 가린다 ⇒ 각 판 앞뒤로 반드시 지운다.)
+console.log('\n㉖ 둘째 화물 기본 켬(T299) — 켠 판 = 끈 판과의 관계');
+{
+  const KEYS = ['L_CARGO_TWO', 'L_CARGO_TWO_GATE', 'L_CARGO_TWO_BEST'];
+  const clean = () => { for (const k of KEYS) delete process.env[k]; };
+  const mk = (env, inject) => {
+    clean();
+    for (const k in (env || {})) process.env[k] = env[k];
+    const w = econV2.createWorldV2({ seed: 606, villageCount: 0, picker: 'rational', infoRange: 5000 });
+    w.villages = [];
+    for (const k in (inject || {})) w[k] = inject[k];
+    let twoLegs = 0, blocked = 0, diff = 0, secondSum = 0;
+    w.onTradeLeg = (o) => {
+      blocked += (o.gateBlocked || 0);
+      if (!o.second || !(o.secondUnits > 0)) return;
+      twoLegs++; secondSum += o.secondUnits;
+      if (o.p2Best && o.p2Best !== o.second) diff++;
+    };
+    for (let i = 0; i < 6; i++) {
+      const v = econ.createVillage({ fertility: 1.2, water: 0.9, stone: (i % 2 ? 2.5 : LV.FLOOR.stone), ore: 0.2,
+                                     wood: 1.2, game: 0.7, arable: 1, size: 70, initialPop: 40, name: (i % 2 ? '산촌' : '바닥') + i });
+      v._world = w; v.coord = { x: (i % 3) * 120, y: Math.floor(i / 3) * 120 };
+      w.villages.push(v);
+    }
+    w.day = 0;
+    let neg = 0;
+    for (let d = 0; d < 300; d++) {
+      econV2.tickWorldV2(w, d);
+      for (const v of w.villages) for (const r in v.storage) if (v.storage[r] < -1e-9) neg++;
+    }
+    clean();
+    return { twoLegs, blocked, diff, secondSum, neg,
+             dig: JSON.stringify(w.villages.map((v) => ({ n: v.npcs.length, s: +(v.storage.stone || 0).toFixed(9), f: +(v.storage.food || 0).toFixed(9) }))) };
+  };
+
+  clean();
+  ok(econV2.cargoTwoOn({}) === true && econV2.cargoTwoGateOn({}) === true,
+    '㉖ ★★★엔진 기본이 **켬**이다 — 둘째 화물과 그 관문(재민 위임 · PM #26 ⓐ)');
+  ok(econV2.cargoTwoOn({ cargoTwo: false }) === false && econV2.cargoTwoGateOn({ cargoTwoGate: false }) === false,
+    '㉖ ★★`false` 주입을 **존중**한다(진리값 검사가 아니라 `undefined` 검사다 — 끔 팔이 여기서 산다)');
+  { process.env.L_CARGO_TWO = '0';
+    ok(econV2.cargoTwoOn({}) === false, '㉖ ★손잡이 명시 `0` 이 기본을 끈다'); clean(); }
+  { process.env.L_CARGO_TWO = '0';
+    ok(econV2.cargoTwoOn({ cargoTwo: true }) === true, '㉖ ★★주입이 손잡이보다 **세다**'); clean(); }
+
+  const dflt   = mk(null, null);                                              // 아무것도 안 준 판
+  const dflt2  = mk(null, null);
+  const twoGat = mk(null, { cargoTwo: true, cargoTwoGate: true });            // 명시로 켠 twogate
+  const offOff = mk({ L_CARGO_TWO: '0', L_CARGO_TWO_GATE: '0' }, null);       // 되돌림 — 넷째 판
+  const offInj = mk(null, { cargoTwo: false, cargoTwoGate: false });          // 주입으로 끈 판
+  const noGate = mk({ L_CARGO_TWO_GATE: '0' }, null);                         // 관문만 끈 판 = `two`
+  const twoOnly= mk(null, { cargoTwo: true, cargoTwoGate: false });           // 명시로 켠 `two`
+
+  ok(dflt.dig === dflt2.dig, '㉖ ★★기본 두 판이 **비트 동일**(결정론)');
+  pre(dflt.twoLegs > 0, '기본 판에서 둘째가 실제로 실린다(자명 통과 금지)', `${dflt.twoLegs}건`);
+  ok(dflt.dig === twoGat.dig, '㉖ ★★★**기본 = `twogate`** — 아무것도 안 준 판이 명시로 켠 판과 비트 동일',
+    `둘째 ${dflt.twoLegs}건 · 관문 ${dflt.blocked}회`);
+  ok(offOff.dig === offInj.dig, '㉖ ★★**되돌림 두 길이 같다** — 손잡이 `0` 과 `false` 주입이 같은 세계');
+  ok(offOff.twoLegs === 0 && offOff.blocked === 0, '㉖ ★★되돌림 팔은 둘째가 **한 건도** 안 실린다');
+  ok(offOff.dig !== dflt.dig, '㉖ ★★끈 판과 켠 판은 **다른 세계**다(문이 죽어 있지 않다 · 자명 통과 금지)');
+  ok(noGate.dig === twoOnly.dig, '㉖ ★★`L_CARGO_TWO_GATE=0` 하나면 **관문 없는 `two`** 판이다(비트 동일)');
+  ok(noGate.dig !== dflt.dig, '㉖ ★관문이 실제로 세계를 가른다(`two` ≠ `twogate`)');
+  ok(dflt.blocked > 0 && noGate.blocked === 0, '㉖ ★기본 판에서 관문이 실제로 후보를 거른다',
+    `기본 ${dflt.blocked}회 · 관문 끔 ${noGate.blocked}회`);
+  //   ★★[T265 정정] `twobest` 는 `twogate` 와 못 가름이라 **안 켠다** — 기본 판에서 선택이 여전히 갈려야 한다.
+  ok(dflt.diff > 0, '㉖ ★★★`cargoTwoBest` 는 **안 켜졌다** — 기본 판의 선택이 최대와 여전히 갈린다',
+    `갈림 ${dflt.diff}건 / ${dflt.twoLegs}건`);
+  ok(dflt.neg === 0 && offOff.neg === 0, '㉖ ★★곳간 음수 0(기본·되돌림 둘 다)');
+  //   ★자명 통과 금지 — 되돌림이 **정말** 끄는지: 끈 판에 둘째가 하나라도 있으면 위 비교가 거짓말이다
+  pre(dflt.secondSum > 0 && offOff.secondSum === 0, '★기본은 싣고 되돌림은 안 싣는다',
+    `기본 ${dflt.secondSum.toFixed(0)} 단위 → 되돌림 ${offOff.secondSum.toFixed(0)} 단위`);
+}
+
+console.log(`\n=== T299 둘째 화물 기본 켬 포함: 통과 ${pass} · 실패 ${fail} ===`);
+console.log('접점 심볼: cargoTwoOn|cargoTwoGateOn|L_CARGO_TWO|L_CARGO_TWO_GATE|L_CARGO_TWO_BEST|_legProfitPerUnit|candidates|cand.res|surplus|best.profit|TRADABLE|N_units|CARGO_PER_TRIP|onTradeLeg|_gateBlocked|cargoTwoGate|cargoTwoBest');
 process.exit(fail ? 1 : 0);
