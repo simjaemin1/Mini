@@ -151,13 +151,60 @@ async function waitHttp(url, tries = 900) {
   }
 
   // ── 마을로 워프 — 수렴할 때까지 되풀이한다(게스트 세션 1회 재접속이 첫 워프를 씻는다) ──
+  //   ★★[T322 2026-09-19] **예산을 다 쓴 판이 무엇을 겪었는지 남긴다**(판정 아님 · 상황).
+  //     T314 실측: 판1 은 3회에 붙고(minD 0) 판2 는 25회를 다 쓰고도 minD 24,749 였다 — 같은 상자·
+  //     같은 씨앗(`농촌1(438,2438)` 둘 다)인데 갈렸다. 서버는 워프를 받으면 **말을 한다**
+  //     (`🌀 텔레포트 → (x,y)` · 막히면 `🌊 강·바다 위로는 텔레포트 불가`) ⇒ 그 말과 내 자리를
+  //     회마다 적으면 "안 보냈나 · 거절당했나 · 받고도 안 움직였나" 가 한 줄로 갈린다.
+  //   ★★[T322] **씻는 자를 먼저 기다린다.** 이 절의 주석이 이미 이름을 불러 두었다 —
+  //     *"게스트 세션 1회 재접속이 첫 워프를 씻는다"*. 그런데 코드는 그 재접속을 **기다리지 않고**
+  //     25번 던져 보는 것으로 대신했다(= 예산형). 그러면 붙는 데 3회·7회·11회·25회 넘게가 갈린다
+  //     (T314·T322 실측 · 같은 씨앗 `농촌1(438,2438)`). ⇒ **접속이 가라앉을 때까지** 먼저 기다린다:
+  //     상태가 `ready` 이고 **내 pid 가 두 번 연속 같다**(소켓이 또 안 갈렸다).
+  {
+    let last = null, same = 0;
+    for (let i = 0; i < 60 && same < 2; i++) {
+      const st = await page.evaluate(() => ({
+        phase: (window.__connState ? window.__connState().phase : 'ready'),
+        pid: (window.__evDbg && window.__evDbg.pid) || null,
+      }));
+      if (st.phase === 'ready' && st.pid && st.pid === last) same++; else same = 0;
+      last = st.pid;
+      if (same < 2) await sleep(500);
+    }
+    console.log(`    [상황] 워프 전 접속이 가라앉았다 — pid ${last} (연속 ${same}판 같음)`);
+  }
+  //   ★★[T322] **횟수 예산이 아니라 조건 대기**다(족보 ⑩ · T314 ⓒ-3 이 든 "예산형"의 자리).
+  //     종전 `for (i < 25)` 는 25×1.2초 = 30초짜리 **숨은 마감액**이었고, 붙는 데 3·7·11·12·22회가
+  //     갈렸다(같은 씨앗 · 같은 상자). 25를 늘리는 건 같은 병을 키우는 것이다 ⇒ **붙을 때까지** 던지고,
+  //     상한(표의 수)에 걸리면 **무슨 일이 있었는지를 말하고** 죽는다. pid 를 같이 적는다 —
+  //     이 판의 뿌리가 거기 있다(아래 흔적: 서버는 받았다고 하는데 자리는 그대로, 그리고 pid 가 는다).
+  const TP_CAP = 90000;   // 표의 수 — 판정에 안 든다
   let tpTries = 0, tpOk = false;
-  for (; tpTries < 25 && !tpOk; tpTries++) {
+  const tpTrace = [];
+  const tpT0 = Date.now();
+  const pid0 = await page.evaluate(() => (window.__evDbg && window.__evDbg.pid) || null);
+  let pidLast = pid0, pidChanges = 0;
+  while (!tpOk && Date.now() - tpT0 < TP_CAP) {
+    tpTries++;
+    const n0 = (await notices()).length;
     await page.evaluate(([x, y]) => window.__sendPrimary({ type: 'teleport_debug', x, y }), [ax, ay]);
     await sleep(1200);
     const d = await page.evaluate(() => window.__evDbg || null);
+    const pidNow = (d && d.pid) || null;
+    if (pidNow && pidNow !== pidLast) { pidChanges++; pidLast = pidNow; }
+    if (tpTries <= 4) {
+      const said = (await notices()).slice(n0).filter((t) => /텔레포트|강·바다/.test(String(t)));
+      const me = d && d.me ? `(${Math.round(d.me.x)},${Math.round(d.me.y)})` : '?';
+      tpTrace.push(`${tpTries}회: ${said.length ? String(said[said.length - 1]).slice(0, 34) : '**서버 말 없음**'} · 내 자리 ${me} · minD ${d ? d.minD : '?'} · pid ${pidNow}`);
+    }
     if (d && d.seen > 0 && d.minD <= d.gate) tpOk = true;
   }
+  console.log(`    [상황] 워프 ${tpTries}회 · ${((Date.now() - tpT0) / 1000).toFixed(0)}초 만에 ${tpOk ? '붙었다' : `**못 붙었다(상한 ${(TP_CAP / 1000) | 0}초)**`}`
+    + ` · pid ${pid0} → ${pidLast} (바뀐 횟수 ${pidChanges}) — 회마다:`);
+  for (const t of tpTrace) console.log(`      ${t}`);
+  ok(tpOk, '★전제 — 워프가 붙었다(안 붙으면 아래 모든 절은 "마을 밖"을 잰다)',
+     tpOk ? `${tpTries}회 · pid 바뀜 ${pidChanges}` : `상한 ${(TP_CAP / 1000) | 0}초 · pid 바뀜 ${pidChanges} — 재접속 쏠림이면 제품 몫이다(보고 §0-ⓒ)`);
   let near = null;
   for (let i = 0; i < 45; i++) {
     near = await page.evaluate(() => ({ vid: window.__evNearVid, dbg: window.__evDbg || null, err: window.__evTickErr || null }));

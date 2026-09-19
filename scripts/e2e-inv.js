@@ -316,19 +316,38 @@ async function waitHttp(url, tries = 900) {
 
   // ★★스톨 **동안** 을 본다. 재연결이 (로컬호스트라) 1초 안에 끝나므로 나중에 보면
   //   이미 회복해 있어 "감지 못 했다"로 오독한다 — 이 함정에 한 번 빠졌다.
-  let sawStall = false, sawBadge = false, stallAtMs = 0;
+  // ★★★[T322 2026-09-19] **하네스 초시계로 판정하지 않는다**(족보 ⑩ · T314 ⓒ 표의 첫 자리).
+  //   종전: `stallAtMs >= 2500 && stallAtMs <= 12000` — 하네스가 잰 시간 vs 상수 둘.
+  //   그 수(2500·12000)는 어디서 유도된 것이 아니고, 굶은 상자에서 폴링 한 번이 수백 ms 라
+  //   위 한계를 넘는다(= 러너에서만 빨개지는 병). **증인을 바꾼다**:
+  //   클라가 "끊겼다"고 말한 **그 순간 제가 들고 있던 틈**(`__tickGap()`)을 클라 제 문턱과 견준다.
+  //   둘 다 **제품의 수**다 — 손잡이는 `uiCfg.ghostStallMs`, 틈은 클라가 잰 것. 하네스 수 0.
+  const showAt = await page.evaluate(() => Math.max(1000, (window.__uiCfg().ghostStallMs | 0)));
+  let sawStall = false, sawBadge = false, stallAtMs = 0, gapAtStall = -1, gapBefore = -1, badObs = 0, obs = 0;
   const t0 = Date.now();
   for (let i = 0; i < 200; i++) {
     const r = await page.evaluate(() => ({ stalled: window.__netStalled(), badge: !!(document.getElementById('netLost') || {}).classList?.contains('on'), gap: window.__tickGap() }));
-    if (r.stalled && !sawStall) { sawStall = true; stallAtMs = Date.now() - t0; await snap('inv-08-netlost'); }
+    obs++;
+    if (!r.stalled) gapBefore = r.gap;                       // 딱지 서기 직전에 본 틈(상황)
+    if (r.stalled && r.gap >= 0 && r.gap < showAt) badObs++;  // 문턱 아래인데 "끊겼다"고 한 판(있으면 안 된다)
+    if (r.stalled && !sawStall) { sawStall = true; stallAtMs = Date.now() - t0; gapAtStall = r.gap; await snap('inv-08-netlost'); }
     if (r.stalled) sawBadge = sawBadge || r.badge;
     if (sawStall && r.badge) break;
     if (!sawStall && Date.now() - t0 > 15000) break;
     await sleep(120);
   }
-  ok(sawStall, '★★⑧ 클라가 **스스로** 틱 미수신을 알아챘다(옛 감시는 못 잡던 사각지대)', sawStall ? `${(stallAtMs / 1000).toFixed(1)}초 만에` : '15초 동안 못 잡음');
+  console.log(`    [상황] 딱지가 선 순간: 틈 ${gapAtStall}ms · 문턱 ${showAt}ms · 직전 틈 ${gapBefore}ms`
+    + ` · (참고 · 판정 아님) 하네스 벽시계로 ${(stallAtMs / 1000).toFixed(1)}초`);
+  ok(sawStall, '★★⑧ 클라가 **스스로** 틱 미수신을 알아챘다(옛 감시는 못 잡던 사각지대)', sawStall ? `틈 ${gapAtStall}ms` : '15초 동안 못 잡음');
   ok(sawBadge, '★★⑧ 화면에 **"연결 끊김"** 이 떠 있었다 — 판정이 오염되지 않는다');
-  ok(sawStall && stallAtMs >= 2500 && stallAtMs <= 12000, '★⑧ 손잡이(`GHOST_STALL_MS=3000`)를 지킨 시점에 잡았다', `${(stallAtMs / 1000).toFixed(1)}초`);
+  ok(sawStall && gapAtStall >= showAt, '★⑧ 손잡이를 **지킨 뒤에** 말했다 — 딱지가 선 순간의 틈 ≥ 클라 제 문턱',
+     `틈 ${gapAtStall}ms ≥ 문턱 ${showAt}ms (둘 다 제품의 수)`);
+  // ★자명 통과 금지 — **문턱 아래에서 "끊겼다"고 한 판이 하나도 없다.**
+  //   ⚠첫 판은 "딱지 서기 직전 틈 < 문턱" 으로 썼는데 그건 **하네스가 보장 못 하는 것**이었다:
+  //     폴링이 120ms + evaluate 라 직전 관측이 이미 문턱을 넘어 있을 수 있다(실측 3710ms > 3000ms).
+  //     재려는 건 "내가 언제 봤나"가 아니라 **"클라가 제 문턱을 지키나"** 다 ⇒ 본 판 전수로 센다.
+  ok(badObs === 0, '★⑧ 자명 통과 금지 — 문턱 **아래**인데 "끊겼다"고 한 판이 0이다(늘 참인 부등식이 아니다)',
+     `${obs}판 중 어긴 판 ${badObs} · 딱지 직전에 본 틈 ${gapBefore}ms`);
   const blocked = await page.evaluate(() => window.__blocked | 0);
   ok(blocked > 20, '(상황) 틱이 실제로 막혀 있었다 — 안 막혔으면 위 판정이 거짓 통과다', `${blocked}개 차단`);
   // 차단 해제 → 기존 재연결 경로가 새 소켓을 열고 틱이 돌아온다(같은 토큰 = 같은 몸).

@@ -81,6 +81,16 @@ const ZENV = (extra) => Object.assign({
   //   (기존 하네스 다수가 이 자명 통과를 쓰고 있다 — 회부에 적었다).
   //   `__inWorld()` 는 welcome 을 받았는지를 그대로 답한다.
   const inWorld = (page) => page.evaluate(() => (window.__inWorld ? window.__inWorld() : false));
+  // ★★[T322 2026-09-19] **조건 대기 하나**(사본 0) — 예산형(시도 횟수 × 잠)을 대신한다.
+  //   예산형은 판정문에 상수가 없어 어떤 자에도 안 걸리는데, 예산이 다 되면 **그 다음 `ok` 가**
+  //   빨개진다(09-18 야간 "24초 경과" 가 그 수다 · T314 ⓒ-3). 여기선 **세계가 말할 때까지** 기다리고,
+  //   상한에 걸리면 **그 사실에 이름을 붙여** 돌려준다(조용한 빨강 0).
+  const CAP = 120000;   // 표의 수 — 판정에 안 든다(걸리면 부르는 쪽이 사유를 말한다)
+  const waitFor = async (fn) => {
+    const t = Date.now(); let v = null;
+    while (Date.now() - t < CAP) { v = await fn(); if (v) return { v, ms: Date.now() - t }; await sleep(200); }
+    return { v: null, ms: Date.now() - t, timedOut: true };
+  };
 
   // ── ① 정상 접속 — 배너가 안 뜬다, 그러나 hello 는 왔다 ────────────────────
   console.log('\n① 정상 — 조용해야 정상이다(다만 서버는 "받았다"를 말했다)');
@@ -108,9 +118,20 @@ const ZENV = (extra) => Object.assign({
     ok(await waitHttp(`http://localhost:${ZPORT}/health`), '(상황) 던지는 zone 기동');
     const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
     await enter(page);
+    // ★★★[T322 2026-09-19] **예산형을 조건 대기로 바꾼다**(족보 ⑩ · T314 ⓒ-3 이 든 실례가 이 줄이다).
+    //   종전: `for (i<60) { … sleep(400) }` = **24초 예산**. 판정문엔 상수가 없어 어떤 자에도 안 걸리는데,
+    //   예산이 다 되면 그 다음 `ok` 가 빨개진다 — 09-18 야간 보고의 "24초 경과" 가 그 수다.
+    //   ⇒ **세계가 말할 때까지** 기다린다. 순서가 둘이고, 어디서 멈췄는지가 곧 결함의 이름이다:
+    //     ⓐ 서버가 실제로 던졌나(`접속 처리 실패` 가 서버 로그에 뜬다) ⓑ 그 뒤 클라가 확정 오류를 받았나.
+    //   상한은 **판정이 아니라 그물**이다 — 걸리면 "못 봤다"고 이름을 대고 죽는다(조용한 빨강 0).
+    const thrown = await waitFor(async () => zoneLog.join('').includes('접속 처리 실패') || null);
+    ok(!thrown.timedOut, '★★② [순서 ⓐ] **서버가 실제로 던졌다**(서버 로그가 증인)',
+       thrown.timedOut ? `${(CAP / 1000) | 0}초 동안 서버 로그에 "접속 처리 실패" 가 안 떴다 — 클라 문제가 아니다` : `${thrown.ms}ms 만에`);
     let c = null;
-    for (let i = 0; i < 60; i++) { c = await conn(page); if (c.phase === 'error') break; await sleep(400); }
-    ok(c && c.phase === 'error', '★★② 클라가 **확정 오류**를 받았다(침묵이 아니다)', c && c.phase);
+    const got = await waitFor(async () => { c = await conn(page); return c.phase === 'error' ? c : null; });
+    console.log(`    [상황] 서버가 던지기까지 ${thrown.ms}ms · 그 뒤 클라가 알기까지 ${got.ms}ms (상한 ${(CAP / 1000) | 0}초 · 판정 아님)`);
+    ok(c && c.phase === 'error', '★★② [순서 ⓑ] 클라가 **확정 오류**를 받았다(침묵이 아니다)',
+       c && c.phase ? c.phase : (got.timedOut ? '상한까지 안 왔다' : ''));
     ok(!!(c && /일부러 던진다/.test(c.reason)), '★★② 사유가 그대로 전달된다', c && c.reason);
     ok(c && c.stage === 'welcome', '★② **어느 단계**에서 깨졌는지 화면이 안다', c && c.stage);
     ok(!!(c && c.ref), '★② 서버 로그와 맞출 ref 가 있다', c && c.ref);
@@ -221,8 +242,12 @@ const ZENV = (extra) => Object.assign({
     let back = false;
     for (let i = 0; i < 70; i++) { if (await inWorld(page)) { back = true; break; } await sleep(1000); }
     ok(back, '★★⑥ 서버가 고쳐지자 **새로고침 없이** 스스로 들어갔다');
-    const c6 = await conn(page);
-    ok(c6.phase === 'ready', '★⑥ 상태가 ready 로 돌아온다', c6.phase);
+    // ★[T322] **한 번 읽고 판정하지 않는다.** `inWorld` 와 `phase` 는 서로 다른 신호라 순서가 갈린다 —
+    //   실측으로 `inWorld=true` 인데 `phase=connecting` 인 찰나를 물어 빨개졌다(이 카드가 봤다).
+    //   재려는 것은 "언제 왔나"가 아니라 **"오기는 오나"** 다 ⇒ 올 때까지 기다린다(상한은 표에만).
+    let c6 = await conn(page);
+    const r6 = await waitFor(async () => { c6 = await conn(page); return c6.phase === 'ready' ? c6 : null; });
+    ok(c6.phase === 'ready', '★⑥ 상태가 ready 로 돌아온다', `${c6.phase}${r6.timedOut ? ' — 상한까지 안 왔다' : ` (${r6.ms}ms 만에)`}`);
     const shown6 = await page.evaluate(() => !!document.getElementById('netLost').classList.contains('on'));
     ok(!shown6, '★⑥ 배너가 걷혔다');
     await snapOf(page, 'conn-06-recovered');
