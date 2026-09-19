@@ -4941,6 +4941,26 @@ const PV_DEPOSIT_MAP = {
   //   ⇒ 남은 열(`wheat`·`rice`·`barley`·`vegetable`·`mushroom`·`chestnut`·`walnut`·`acorn`·`grape`·`mulberry_fruit`)은
   //     **표가 아니라 동사**가 없다(채집 정본 `forage.KO` 는 넷뿐) — 이 줄로 닫히지 않는다. 회부 그대로.
   salmon: 'salmon', shrimp: 'shrimp', crab: 'crab', oyster: 'oyster', seaweed: 'seaweed',
+  // ★★[T328 2026-09-19 · T310 회부 ⑤] **나머지 일곱 — 이것도 이미 손에 온다.**
+  //   T281 은 15-벽에 *"남은 열은 얻을 길 자체가 없다 — 표가 아니라 동사가 필요하다"* 고 적었다.
+  //   T310 이 그 줄을 재 보고 틀렸음을 찾았다: 플레이어 인벤에 물건을 넣는 자리는 **일곱**이고
+  //   (`tryHarvest` 작물 34 · `tryPickFruit` 열매 4 · `lootOfResource` 11 · `forage.KO` 4 · 낚시 · 갯벌 · 보존),
+  //   열 중 **일곱은 그 일곱 동사 안에 이미 있었다.** 못 낸 이유는 동사가 아니라 **이 표의 줄**이었다.
+  //   ★어디서 오나(동사는 다 있는 것이고, 새 동사 0):
+  //     · `wheat`·`rice`·`barley` — **농사**(`zone.js` `tryHarvest`). 씨앗 고리까지 닫혀 있다:
+  //       덤불 E → `Crops.wildSeedAt` 야생 채종(표본 97,620건에 34종 전부) → 심기 → 수확.
+  //     · `chestnut`·`grape`·`mulberry_fruit` — **나무 열매 따기**(`zone.js` `tryPickFruit` · `trees.fruitIds`).
+  //     · `acorn` — 나무 열매 **그리고** 벌목 부산물(T124 · `lootOfResource` · econ 의 그 비율 0.06).
+  //   ★T302 다섯 줄과 **같은 꼴**이다(항등 대응 · 품목 지어내기 0 · 새 수 0):
+  //     무게 `weights.kgOf`(0.70·0.75·0.65·0.30·0.60·0.25·0.30) · 식량 계수 `economy-sim` 정본
+  //     (생곡 셋은 `RAW_GRAIN_FOOD_FACTOR` · 넷은 `FORAGE_FOOD_FACTOR` 0.5·0.3·0.3·0.25) ·
+  //     보상 `toEcon` 은 항등이라 대표 아이템이 곧 제 이름.
+  //   ⚠`acorn`·`grape`·`mulberry_fruit` 은 **씨앗이기도 하다**(`zone.PLANT_SEEDS` — 딴 열매를 그대로 묻는다).
+  //     곳간에 넣으면 그만큼 심을 것이 준다 — 그건 **플레이어의 선택**이지 결함이 아니다(꺼낼 수도 있다: T11 역연산).
+  //   ⇒ 이 일곱 줄로 벽이 **10 → 3** 이 된다. 남은 셋은 값이 서로 다르다:
+  //     `vegetable`(이름 · 접기 판단) · `mushroom`·`walnut`(진짜 없는 동사) — 보고 §2·§3.
+  wheat: 'wheat', rice: 'rice', barley: 'barley',
+  chestnut: 'chestnut', grape: 'grape', mulberry_fruit: 'mulberry_fruit', acorn: 'acorn',
 };
 const PV_DEPOSIT_RATE = (() => { const x = parseFloat(process.env.VILLAGE_DEPOSIT_RATE || '1'); return (isFinite(x) && x > 0) ? x : 1; })();
 // ★[T59] 열량 정본 — 늦게 부른다(맞물림 금지 · `forage`·`spoil` 과 같은 규약).

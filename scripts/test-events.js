@@ -2070,19 +2070,22 @@ const mkLedgerGeo = (world, geo, cfg) => {
 //
 //   `인계/E-사건장부.md` 15-벽 이 잰 어긋남: 식사 사다리 24종 중 **15종**은 부족 사건은 나는데
 //   플레이어가 낼 길이 없었다. 그중 다섯(`salmon`·`shrimp`·`crab`·`oyster`·`seaweed`)은
-//   **이미 손에 들어오는 것**이라(낚시 `SPECIES_BY_BIOME` · 갯벌 T54) 표 다섯 줄로 닫혔다.
-//   남은 열은 **동사가 없다**(채집 정본이 안 내준다) — 표로는 안 닫힌다.
+//   **이미 손에 들어오는 것**이라(낚시 `SPECIES_BY_BIOME` · 갯벌 T54) 표 다섯 줄로 닫혔다(T302 · 15 → 10).
+//   ★★[T328] 그리고 **남은 열도 "동사가 없다"가 아니었다** — T310 이 일곱 동사를 전수로 세어
+//   일곱이 이미 손에 옴을 찾았다(농사 셋 · 나무 열매 셋 · 벌목 부산물 하나). 표 일곱 줄로 **10 → 3**.
+//   진짜로 없는 것은 셋이고 값이 서로 다르다: `vegetable`(이름) · `mushroom`·`walnut`(동사).
 //   ★이 절은 **정적**이다: 서버를 안 띄우고 세계를 안 돌린다. 두 정본만 읽는다 —
 //     ① 사다리: `sim/economy-sim.js` `consumeFood`(소스에서 읽는다 · 여기 옮겨 적지 않는다)
 //     ② 벽: `villages.playerVillageDepositMap()` → `events.buildDeliverable().fromEcon`
 //   ★자명 통과 금지 **양방향**:
-//     ⓐ **여섯째 이름을 넣으면 문다** — 다섯 목록에 표에 없는 이름을 끼우면 ㊽b 가 빨개진다.
-//     ⓑ **돌연변이** — 다섯 중 하나를 표에서 빼면 벽이 10 → 11 로 돌아오고 그 이름이 다시 벽에 선다.
+//     ⓐ **없는 이름을 넣으면 문다** — 열린 목록에 표에 없는 이름을 끼우면 ㊽b·㊽d 가 빨개진다.
+//     ⓑ **돌연변이** — 하나를 표에서 빼면 벽이 3 → 4 로 돌아오고 그 이름이 다시 벽에 선다.
 // ═════════════════════════════════════════════════════════════════════════════
 {
-  const FIVE = ['salmon', 'shrimp', 'crab', 'oyster', 'seaweed'];
-  const TEN  = ['wheat', 'rice', 'barley', 'vegetable', 'mushroom',
-                'chestnut', 'walnut', 'acorn', 'grape', 'mulberry_fruit'];
+  const FIVE  = ['salmon', 'shrimp', 'crab', 'oyster', 'seaweed'];                           // T302
+  const SEVEN = ['wheat', 'rice', 'barley', 'chestnut', 'grape', 'mulberry_fruit', 'acorn'];  // T328
+  const OPEN  = [...FIVE, ...SEVEN];        // 표 줄 하나로 열린 것 전부(열둘)
+  const THREE = ['vegetable', 'mushroom', 'walnut'];                                          // 남은 벽
 
   // ── ㊽a 사다리 정본 — `consumeFood` **소스**에서 읽는다(사본 0)
   const ladder = (() => {
@@ -2110,48 +2113,57 @@ const mkLedgerGeo = (world, geo, cfg) => {
   // ── ㊽b 다섯이 사다리에도 있고 **표에도 있다**(항등 대응)
   const depMap = Villages.playerVillageDepositMap();
   const DEL = Events.buildDeliverable(depMap);
-  const 사다리에 = FIVE.filter((r) => ladder.list.includes(r));
-  const 표에 = FIVE.filter((r) => depMap[r] === r);
-  const 낼수있다 = FIVE.filter((r) => DEL.fromEcon.has(r));
-  ok(사다리에.length === 5 && 표에.length === 5 && 낼수있다.length === 5,
-    '㊽b ★★다섯은 **사다리에 있고 이제 표에도 있다** — 항등 대응(`salmon: \'salmon\'`)이라 `fromEcon` 에 제 이름으로 든다',
-    `사다리 ${사다리에.length}/5 · 표 ${표에.length}/5 · fromEcon ${낼수있다.length}/5`);
-  ok(FIVE.every((r) => DEL.toEcon.get(r) === r),
-    '㊽b2 보상 역방향도 항등이다 — `toEcon.get(\'salmon\') === \'salmon\'`(대표 아이템이 곧 제 이름 · 유령 품목 0)');
+  const 사다리에 = OPEN.filter((r) => ladder.list.includes(r));
+  const 표에 = OPEN.filter((r) => depMap[r] === r);
+  const 낼수있다 = OPEN.filter((r) => DEL.fromEcon.has(r));
+  ok(사다리에.length === 12 && 표에.length === 12 && 낼수있다.length === 12,
+    '㊽b ★★열둘은 **사다리에 있고 이제 표에도 있다** — 항등 대응(`salmon: \'salmon\'` · `wheat: \'wheat\'`)이라 `fromEcon` 에 제 이름으로 든다',
+    `사다리 ${사다리에.length}/12 · 표 ${표에.length}/12 · fromEcon ${낼수있다.length}/12`);
+  ok(OPEN.every((r) => DEL.toEcon.get(r) === r),
+    '㊽b2 보상 역방향도 항등이다 — `toEcon.get(\'wheat\') === \'wheat\'`(대표 아이템이 곧 제 이름 · 유령 품목 0)');
 
   // ── ㊽c ★벽 — 사다리인데 못 내는 것: **15 → 10**
   const wall = ladder.list.filter((r) => !DEL.fromEcon.has(r));
-  ok(wall.length === 10 && TEN.every((r) => wall.includes(r)),
-    '㊽c ★★**벽 15 → 10** — 남은 열은 전부 "얻을 동사가 없는 것"이다(표로는 안 닫힌다)',
+  ok(wall.length === 3 && THREE.every((r) => wall.includes(r)),
+    '㊽c ★★**벽 15 → 10 → 3** — 남은 셋은 값이 다르다: `vegetable`(이름) · `mushroom`·`walnut`(동사)',
     `${wall.length}종: ${wall.join('·')}`);
-  ok(FIVE.every((r) => !wall.includes(r)),
-    '㊽c2 다섯은 **벽에서 빠졌다** — 잡을 수 있는데 낼 수 없던 어긋남이 닫혔다');
+  ok(OPEN.every((r) => !wall.includes(r)),
+    '㊽c2 열둘은 **벽에서 빠졌다** — 손에 오는데 낼 수 없던 어긋남이 닫혔다');
 
-  // ── ㊽d ★자명 통과 금지 ⓐ — **여섯째 이름을 넣으면 문다**
-  //   `mushroom` 은 사다리에 있지만 표엔 없다(동사가 없는 열 중 하나). 다섯에 끼우면 ㊽b 의 셋이 다 어긋난다.
+  // ── ㊽d ★자명 통과 금지 ⓐ — **없는 이름을 넣으면 문다**
+  //   `mushroom` 은 사다리에 있지만 표엔 없다(진짜로 동사가 없는 셋 중 하나). 열둘에 끼우면 ㊽b 의 셋이 다 어긋난다.
   {
-    const SIX = [...FIVE, 'mushroom'];
-    const 표에6 = SIX.filter((r) => depMap[r] === r).length;
-    const fromEcon6 = SIX.filter((r) => DEL.fromEcon.has(r)).length;
-    ok(표에6 === 5 && fromEcon6 === 5 && ladder.list.includes('mushroom'),
-      '㊽d ★자명 통과 금지ⓐ — **여섯째 이름을 넣으면 문다**: `mushroom` 은 사다리엔 있고 표엔 없다(6/6 이 되면 이 절이 거짓말이다)',
-      `표 ${표에6}/6 · fromEcon ${fromEcon6}/6`);
+    const PLUS = [...OPEN, 'mushroom'];
+    const 표에P = PLUS.filter((r) => depMap[r] === r).length;
+    const fromEconP = PLUS.filter((r) => DEL.fromEcon.has(r)).length;
+    ok(표에P === 12 && fromEconP === 12 && ladder.list.includes('mushroom'),
+      '㊽d ★자명 통과 금지ⓐ — **열셋째 이름을 넣으면 문다**: `mushroom` 은 사다리엔 있고 표엔 없다(13/13 이 되면 이 절이 거짓말이다)',
+      `표 ${표에P}/13 · fromEcon ${fromEconP}/13`);
+    // ★[T328] 남은 셋은 **전부** 표 밖이다 — 하나라도 들어오면 벽 셈이 거짓말이 된다
+    ok(THREE.every((r) => !(r in depMap)) && THREE.every((r) => ladder.list.includes(r)),
+      '㊽d2 ★남은 셋(`vegetable`·`mushroom`·`walnut`)은 사다리엔 있고 표엔 **하나도** 없다');
   }
 
   // ── ㊽e ★자명 통과 금지 ⓑ — **돌연변이**: 한 줄을 빼면 벽이 돌아온다
   {
-    const 뺀표 = Object.assign({}, depMap); delete 뺀표.seaweed;
+    const 뺀표 = Object.assign({}, depMap); delete 뺀표.wheat;
     const D2 = Events.buildDeliverable(뺀표);
     const wall2 = ladder.list.filter((r) => !D2.fromEcon.has(r));
-    ok(wall2.length === wall.length + 1 && wall2.includes('seaweed'),
-      '㊽e ★돌연변이 — `seaweed` 한 줄을 빼면 벽이 **10 → 11** 로 돌아오고 미역이 다시 벽에 선다(다섯 줄이 실제로 여는 문이다)',
+    ok(wall2.length === wall.length + 1 && wall2.includes('wheat'),
+      '㊽e ★돌연변이 — `wheat` 한 줄을 빼면 벽이 **3 → 4** 로 돌아오고 밀이 다시 벽에 선다(줄 하나가 실제로 여는 문이다)',
       `${wall.length} → ${wall2.length}`);
-    const 다섯뺀표 = Object.assign({}, depMap);
-    for (const r of FIVE) delete 다섯뺀표[r];
-    const wall3 = ladder.list.filter((r) => !Events.buildDeliverable(다섯뺀표).fromEcon.has(r));
-    ok(wall3.length === 15,
-      '㊽e2 다섯을 다 빼면 **T281 이 잰 그 15** 다 — 이 카드 이전의 벽과 정확히 같다(회귀 기준선)',
+    const 일곱뺀표 = Object.assign({}, depMap);
+    for (const r of SEVEN) delete 일곱뺀표[r];
+    const wall3 = ladder.list.filter((r) => !Events.buildDeliverable(일곱뺀표).fromEcon.has(r));
+    ok(wall3.length === 10,
+      '㊽e2 일곱을 다 빼면 **T302 뒤의 그 10** 이다 — 이 카드 이전의 벽과 정확히 같다(회귀 기준선)',
       `${wall3.length}종`);
+    const 열둘뺀표 = Object.assign({}, depMap);
+    for (const r of OPEN) delete 열둘뺀표[r];
+    const wall4 = ladder.list.filter((r) => !Events.buildDeliverable(열둘뺀표).fromEcon.has(r));
+    ok(wall4.length === 15,
+      '㊽e3 열둘을 다 빼면 **T281 이 잰 그 15** 다 — 두 카드가 연 문을 다 닫으면 처음으로 돌아간다',
+      `${wall4.length}종`);
   }
 }
 
