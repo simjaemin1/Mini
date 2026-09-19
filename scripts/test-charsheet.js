@@ -301,11 +301,16 @@ console.log('\n=== ⑤ 결정론 — 같은 .py = 같은 시트 ===');
 {
   // ★재렌더 diff 0 은 **해시 기록**으로 지킨다. 렌더는 사람이 돌리고(2코어 캐논), 여기선 대조만.
   //   시트가 바뀌면 이 파일도 같이 갱신돼야 한다 — 안 그러면 회귀가 빨개져서 "몰래 바뀜"을 잡는다.
+  // ★[T320] 자를 **정본에서 부른다**(사본 0). 종전엔 여기서 파일 전체 sha256 을 쟀는데,
+  //   그건 "**보이는 그림**이 바뀌었나"가 아니라 **파일이 바뀌었나**를 재는 자다 — 다시 압축만 해도 빨개진다.
+  //   T308 이 `asset-lock.js` 에 세운 **정규화 화소 해시**(완전투명 아래 RGB 를 0 으로)를 그대로 쓴다.
+  //   시트는 특히 그 자가 맞다: 실측 **화소의 97.1% 가 완전투명**이고 191/192장이 그 아래에 값을 갖고 있다.
+  const ASSETLOCK = require('./asset-lock.js');
   const lockP = path.join(DIR, 'char_sheets.lock.json');
   const cur = {};
   for (const key of Object.keys(META.sheets)) {
     if (key.startsWith('probeall')) continue;
-    cur[key] = crypto.createHash('sha256').update(fs.readFileSync(path.join(DIR, key + '.png'))).digest('hex').slice(0, 16);
+    cur[key] = ASSETLOCK.pixelHash(path.join(DIR, key + '.png'));
   }
   if (!fs.existsSync(lockP)) {
     fs.writeFileSync(lockP, JSON.stringify(cur, null, 1));

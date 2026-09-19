@@ -16,6 +16,12 @@
 //   ⓕ 미러 함수 0 — 옛 좌표 변환·미러·서브루프·LOD 심볼이 서버·코어에 없다(정적)
 //   ⓖ(서버) 존을 띄워 픽스처 전쟁 하나가 실제로 교전·정산까지 가고 틱 빚 drop 0
 //
+// ★★[T295 2026-09-19 · 동원의 대가] 네 절이 붙었다 — 결속·군량·품목·죽은 칸
+//   ⓗ 징발 기간 그 NPC 의 생산 기여 0 · 복귀 뒤 재개   ★대조: 결속을 안 걸면 계속 생산한다
+//   ⓘ 환급 합 = 적재 − 소비 − 전사자 몫 (궤주·항복·철수·무저항 **넷 다** · 곳간 품목별)
+//   ⓙ 군량 품목 순서가 섭식 정본과 **같은 함수**다(심볼 하나 · 정적) · `food` 0 이어도 팩이 찬다
+//   ⓚ `_laborMul` 동원 항 쓰기 0(정적 — 부상 노동력 한 줄만 남는다)
+//
 // 실행: node scripts/test-war-world.js          (서버 절 건너뛰기: WAR_WORLD_NO_SERVER=1)
 'use strict';
 const path = require('path');
@@ -238,6 +244,9 @@ function _run(opts) {
   const other = runScenario({ seed: 99, viewer: true, scenario: 'assault', warId: 21 });
   ok(sig(other) !== sig(first), 'ⓓ ★대조 — 씨가 다르면 결과가 다르다(대조가 실제로 무는 비교)');
 
+  // ── ⓗ~ⓚ 동원의 대가(T295) ────────────────────────────────────────────────
+  costPart();
+
   // ── ⓖ 서버 ───────────────────────────────────────────────────────────────
   if (process.env.WAR_WORLD_NO_SERVER === '1') { say('\n[ⓖ] 서버 절 건너뜀(WAR_WORLD_NO_SERVER=1)'); }
   else await serverPart();
@@ -291,4 +300,167 @@ async function serverPart() {
   clearInterval(pinger); try { ws.close(); } catch (e) {}
   kill();
   if (!(engaged && settled)) say('     (존 로그: ' + LOG + ')');
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ★★[T295] ⓗ~ⓚ — 동원의 대가가 세계에 닿는가
+//   여기서는 존을 안 띄운다: 재는 것이 **econ 장부**라 war-core + economy-sim 두 정본이면 충분하다
+//   (앞 절들이 이미 존 좌표·교전을 본다). 마을은 econ 정본 함수로 만든다(사본 0).
+// ══════════════════════════════════════════════════════════════════════════════
+function _mkCostWorld(opts) {
+  opts = opts || {};
+  const mk = (name, pop) => {
+    const e = econ.createVillage({ fertility: 1, water: 1, stone: 1.2, ore: 1, wood: 1, game: 1, size: 60, arable: 1, initialPop: pop, name });
+    e.storage.weapon = 40; e.storage.stone = 400;
+    return { name, econ: e, ccx: 0, ccy: 0 };
+  };
+  const atk = mk('대가A', opts.atkPop || 30), def = mk('대가B', opts.defPop || 24);
+  const villages = [atk, def];
+  const world = { day: 400, seed: 7, _warWars: [], _warTributes: [], _warSeq: 1 };
+  const war = WarCore.createWar({
+    villages, world, seed: 7, infoRange: 5000,
+    centerOf: v => ({ cx: v === atk ? 0 : 200, cy: 0 }),
+    territoryOf: () => 2800, log: null,
+    // ★[T295 ③] 서버가 넘기는 것과 **같은 함수**를 넘긴다(사본 0)
+    food: opts.noFood ? undefined : { consumeFood: econ.consumeFood, totalFoodEquivalent: econ.totalFoodEquivalent },
+  });
+  return { atk, def, villages, world, war };
+}
+// 하루 생산(그날 곳간 증가분 합) — 같은 마을을 두 팔로 굴려 비교하려고 뽑아 둔다
+function _dayProduce(vil, day) {
+  const before = Object.assign({}, vil.econ.storage);
+  econ.tickVillage(vil.econ, day);
+  let d = 0; for (const k in vil.econ.storage) d += (vil.econ.storage[k] || 0) - (before[k] || 0);
+  return d;
+}
+function costPart() {
+  // ── ⓗ 징발 기간 생산 0 · 복귀 뒤 재개 ──────────────────────────────────────
+  say('\n[ⓗ] 징발자는 생산에서 빠진다 — 자리 비움 · 복귀 재개');
+  {
+    const W = _mkCostWorld({});
+    const e = W.atk.econ;
+    const sumCounts = (x) => Object.values(x.counts).reduce((a, b) => a + b, 0);
+    const pop0 = e.npcs.length, cnt0 = sumCounts(e);
+    ok(cnt0 === pop0, 'ⓗ 전제 — 징발 전 직업 장부 합 = 인구', `${cnt0}/${pop0}`);
+    const okMob = W.war.warMobilize(W.atk, W.def, 'feud', 300, W.world.day);
+    const w = W.world._warWars[0];
+    ok(okMob && w && w._draftN > 0, 'ⓗ 동원 — 징발 마크가 붙었다', w ? `병력 ${w.force} · 징발 ${w._draftN}` : '동원 실패');
+    const drafted = e.npcs.filter(n => n._warDraft);
+    ok(drafted.length === w._draftN, 'ⓗ 징발자 수 = 마크 수', `${drafted.length}`);
+    ok(sumCounts(e) === pop0 - drafted.length, 'ⓗ **직업 자리 비움** — 장부 합이 징발자만큼 줄었다', `${sumCounts(e)} = ${pop0} − ${drafted.length}`);
+    // 징발자 개인 기여 0 — 그 사람만 남기고 나머지를 전부 징발해 하루를 굴린다
+    const probe = drafted[0];
+    const g0 = Object.assign({}, e.storage);
+    econ.tickVillage(e, W.world.day);
+    let grew = 0; for (const k in e.storage) grew += (e.storage[k] || 0) - (g0[k] || 0);
+    ok(probe && probe._warDraft, 'ⓗ 징발 중에도 그 사람은 마을 명부에 남아 있다(죽은 게 아니다)');
+    ok(probe && probe.currentJob, 'ⓗ 직업은 그대로다 — 복귀하면 그 자리로 돌아간다', probe ? probe.currentJob : '');
+    // 대조 — 같은 세계·같은 날: 결속을 안 걸면(마크 제거) 생산이 더 난다
+    const A = _mkCostWorld({}), B = _mkCostWorld({});
+    A.war.warMobilize(A.atk, A.def, 'feud', 300, A.world.day);
+    B.war.warMobilize(B.atk, B.def, 'feud', 300, B.world.day);
+    for (const n of B.atk.econ.npcs) if (n._warDraft) { delete n._warDraft; if (B.atk.econ.counts && n.currentJob) B.atk.econ.counts[n.currentJob] = (B.atk.econ.counts[n.currentJob] || 0) + 1; }
+    const pA = _dayProduce(A.atk, A.world.day), pB = _dayProduce(B.atk, B.world.day);
+    ok(pA < pB, 'ⓗ ★대조 — 결속 켬이 끔보다 적게 생산한다(대가가 실제로 걸린다)', `켬 ${pA.toFixed(1)} < 끔 ${pB.toFixed(1)}`);
+    // 복귀 — 같은 세계에서 해제하면 생산이 대조군 수준으로 돌아온다
+    const wA = A.world._warWars[0];
+    const rel = A.war.warDraftReleaseWar(wA);
+    ok(rel === wA._draftN, 'ⓗ 복귀 — 마크가 전부 풀렸다', `${rel}/${wA._draftN}`);
+    ok(Object.values(A.atk.econ.counts).reduce((a, b) => a + b, 0) === A.atk.econ.npcs.length, 'ⓗ 복귀 뒤 장부 합 = 인구(이중 계상 0)');
+    const pA2 = _dayProduce(A.atk, A.world.day + 1);
+    ok(pA2 > pA, 'ⓗ 복귀 뒤 생산 재개', `징발 중 ${pA.toFixed(1)} → 복귀 ${pA2.toFixed(1)}`);
+  }
+
+  // ── ⓘ 환급 — 넷 다 같은 문 · 전사자 몫은 안 돌아온다 ────────────────────────
+  say('\n[ⓘ] 군량 — 한 적재 · 환급 한 곳(궤주·항복·철수·무저항) · 전사자 몫 제외');
+  {
+    const fe = (v) => econ.totalFoodEquivalent(v.econ);
+    const ends = ['rout', 'surrender', 'withdraw', 'walkover'];
+    let allOk = true, detail = [];
+    for (const why of ends) {
+      const W = _mkCostWorld({});
+      const before = fe(W.atk);
+      const okMob = W.war.warMobilize(W.atk, W.def, 'feud', 300, W.world.day);
+      const w = W.world._warWars[0];
+      if (!okMob || !w) { allOk = false; detail.push(why + ':동원실패'); continue; }
+      const load = before - fe(W.atk);                       // 적재(식량등가)
+      const days = w._packDays, per = w.force * WarCore.WAR_RATION;
+      const eat = 3;                                          // 사흘 원정
+      w._packRem = Math.max(0, w._packDays - eat);
+      const surv = (why === 'rout') ? Math.round(w.force * 0.6) : w.force;   // 궤주 판만 전사자
+      const after0 = fe(W.atk);
+      const back = W.war.warRationRefund(w, why, surv);
+      const got = fe(W.atk) - after0;
+      const want = w._packRem_ ? 0 : (load * (eat < days ? (days - eat) / days : 0)) * (surv / w.force);
+      const near = Math.abs(got - want) <= Math.max(0.5, want * 0.02);
+      if (!near) { allOk = false; }
+      detail.push(`${why} 적재 ${load.toFixed(0)} → 환급 ${got.toFixed(0)}(기대 ${want.toFixed(0)})`);
+      // 두 번 부르면 또 주지 않는다(게이트)
+      const twice = fe(W.atk); W.war.warRationRefund(w, why, surv);
+      if (fe(W.atk) !== twice) { allOk = false; detail.push(why + ':이중환급'); }
+    }
+    ok(allOk, 'ⓘ 환급 합 = 적재 × 잔량비 × 생존비 — 넷 다(이중 환급 0)', detail.join(' · '));
+    // 품목 그대로 — `food` 0 이어도 싣고, 돌려줄 때도 그 품목으로
+    const W2 = _mkCostWorld({});
+    const S = W2.atk.econ.storage; S.food = 0; S.fish = 400; S.meat = 200;
+    const okMob2 = W2.war.warMobilize(W2.atk, W2.def, 'feud', 300, W2.world.day);
+    const w2 = W2.world._warWars[0];
+    ok(okMob2 && w2 && w2._packDays > 0, 'ⓘ `food` 0 이어도 팩이 찬다(곳간 품목으로)', w2 ? `팩 ${w2._packDays.toFixed(1)}일 · 뗀 품목 ${JSON.stringify(w2._packItems)}` : '동원 실패');
+    const fishBefore = S.fish, foodBefore = S.food;
+    w2._packRem = w2._packDays;                              // 하나도 안 먹고 돌아왔다
+    W2.war.warRationRefund(w2, 'return', w2.force);
+    ok(Math.abs(S.fish - fishBefore - (w2._packItemsGone || 0)) >= 0 && S.fish > fishBefore && S.food === foodBefore,
+      'ⓘ 환급은 **뗀 품목 그대로**(생선으로 갚는다 — 곡물로 둔갑 안 함)', `생선 ${fishBefore.toFixed(0)}→${S.fish.toFixed(0)} · 곡물 ${S.food.toFixed(0)}`);
+  }
+
+  // ── ⓙ 품목 순서 = 섭식 정본 함수(심볼 하나) ────────────────────────────────
+  say('\n[ⓙ] 품목은 마을이 먹는 그 함수가 고른다 — 사본 0');
+  {
+    const wcSrc = fs.readFileSync(path.join(ROOT, 'sim/war-core.js'), 'utf8');
+    const vilSrc = fs.readFileSync(path.join(ROOT, 'server/villages.js'), 'utf8');
+    ok(/opts\.food/.test(wcSrc) && /consumeFood/.test(wcSrc), 'ⓙ war-core 는 주입받은 `consumeFood` 만 부른다(순서표 복제 0)');
+    const ladder = /cooked_food[\s\S]{0,400}?fish[\s\S]{0,400}?meat/.test(wcSrc);
+    ok(!ladder, 'ⓙ war-core 안에 식사 사다리(품목 순서)를 베낀 자리가 없다');
+    ok(/food:\s*\{\s*consumeFood:\s*econ\.consumeFood/.test(vilSrc), 'ⓙ 서버가 econ 정본 함수를 그대로 주입한다');
+    // 실제로 같은 순서인가 — 같은 곳간에서 econ 이 먹은 품목 = 군량이 뗀 품목
+    const W = _mkCostWorld({});
+    const S = W.atk.econ.storage;
+    for (const r of ['food', 'fish', 'meat', 'cooked_food']) S[r] = 100;
+    W.war.warMobilize(W.atk, W.def, 'feud', 300, W.world.day);
+    const w = W.world._warWars[0];
+    const took = (w && w._packItems) || {};
+    const tookK = Object.keys(took).filter(k => took[k] > 0).sort();
+    // 같은 곳간·같은 양을 **섭식 정본 함수**에 그대로 먹여 본다 — 품목도 양도 같아야 한다(같은 함수니까)
+    const probe = econ.createVillage({ fertility: 1, water: 1, stone: 1, ore: 1, wood: 1, game: 1, size: 60, arable: 1, initialPop: 4, name: '대조' });
+    for (const k in probe.storage) probe.storage[k] = 0;
+    for (const r of ['food', 'fish', 'meat', 'cooked_food']) probe.storage[r] = 100;
+    econ.consumeFood(probe, w ? w._packLoad : 0);
+    const eatenM = probe._foodEaten || {};
+    const eaten = Object.keys(eatenM).filter(k => eatenM[k] > 0).sort();
+    const same = tookK.length > 0 && tookK.join(',') === eaten.join(',') && tookK.every(k => Math.abs(took[k] - eatenM[k]) < 1e-9);
+    ok(same, 'ⓙ 군량이 뗀 품목·양 = 섭식 정본이 고른 그것(같은 함수)', `먹은 ${eaten.join(',')} · 군량 ${tookK.join(',')} · 양 ${(w ? w._packLoad : 0).toFixed(1)}`);
+    // 미주입(랩·v1 CLI) = 종전 경로(곡물 한 칸)
+    const L = _mkCostWorld({ noFood: true });
+    const LS = L.atk.econ.storage; LS.food = 600; LS.fish = 300;
+    const fish0 = LS.fish;
+    L.war.warMobilize(L.atk, L.def, 'feud', 300, L.world.day);
+    ok(LS.fish === fish0, 'ⓙ 미주입 팔은 종전대로 `food` 한 칸만 본다(랩 비트 보존)', `생선 ${fish0}→${LS.fish}`);
+  }
+
+  // ── ⓚ 죽은 칸 — `_laborMul` 동원 항 ───────────────────────────────────────
+  say('\n[ⓚ] `_laborMul` — 동원 항은 지웠고 부상 노동력만 남는다(정적)');
+  {
+    const wcSrc = fs.readFileSync(path.join(ROOT, 'sim/war-core.js'), 'utf8');
+    const vilSrc = fs.readFileSync(path.join(ROOT, 'server/villages.js'), 'utf8');
+    const wcWrites = (wcSrc.match(/_laborMul\s*=/g) || []).length;
+    ok(wcWrites === 0, 'ⓚ war-core 의 `_laborMul` 쓰기 0(=_recomputeLabor 제거)', `${wcWrites}`);
+    ok(!/_recomputeLabor/.test(wcSrc), 'ⓚ `_recomputeLabor` 심볼 0');
+    const vilWrites = (vilSrc.match(/_laborMul\s*=/g) || []).length;
+    ok(vilWrites === 1, 'ⓚ 생활층 쓰기는 한 줄뿐(부상 노동력 — 표에 남긴 예외)', `${vilWrites}`);
+    ok(!/_warMobFrac[^\n]*_laborMul|_laborMul[^\n]*_warMobFrac/.test(vilSrc), 'ⓚ 그 한 줄에 동원 항(`_warMobFrac`)이 없다');
+    // 대조 — 엔진은 `_laborMul` 을 **실제로 읽는다**(그래서 두 기구가 겹치면 이중 감산이었다)
+    const esSrc = fs.readFileSync(path.join(ROOT, 'sim/economy-sim.js'), 'utf8');
+    ok(/\(v\._laborMul \|\| 1\)/.test(esSrc), 'ⓚ ★대조 — 생산 식이 `_laborMul` 을 읽는다(미소비가 아니었다 · T284 회부 정정)');
+    ok(/if \(npc\._warDraft\) continue;/.test(esSrc), 'ⓚ 생산 제외는 엔진 한 줄(`_warDraft`)이다');
+  }
 }

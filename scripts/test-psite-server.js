@@ -322,6 +322,69 @@ console.log('\n[⑨ ★실행 — 실서버에서 자리 확정이 실패하면 
   chk(iAcc > 0 && !/\bVillageLayout\s*\./.test(after),
     '★★생활층에 lazy 모듈의 **맨 이름이 남아 있지 않다**(읽는 길이 접근자 하나뿐 — 가드를 잊을 자리가 없다)');
 
+  console.log('\n[⑫ ★T315 집 간격 유도 + `_mapBeds` 살리기 — 손잡이 둘 기본 끔]');
+{
+  const VL = require('../server/village-layout.js');
+  // ── ⓐ 유도 — 카드가 부른 세 항이 **정본 심볼에서** 읽히나(수를 하네스에 적지 않는다) ──────────
+  chk(VL.HOUSE_GAP_DERIVED === 2 * (VL.LOT_R + VL.FARM_GAP) + VL.AISLE,
+    `ⓐ-1 유도값 = 2 × (부지 원 \`LOT_R\` ${VL.LOT_R} + 농지 완충 \`FARM_GAP\` ${VL.FARM_GAP}) + 통로 \`AISLE\` ${VL.AISLE} = **${VL.HOUSE_GAP_DERIVED}**`);
+  // ★카드가 말한 "발자국" 이 정말 그 원판 안에 드나 — `_vbFootprint('house')` 정본을 **불러서** 본다
+  const FP = V.__probe && V.__probe.vbFootprint ? V.__probe.vbFootprint('house', 0, 0) : (V._vbFootprint ? V._vbFootprint('house', 0, 0) : null);
+  if (!FP) chk(false, 'ⓐ-2 `_vbFootprint(\'house\')` 를 못 불렀다 — 발자국 정본이 하네스에 안 열려 있다');
+  else {
+    const lot = new Set(VL.LOT_CELLS.map(([dx, dy]) => dx + ',' + dy));
+    let out = 0, n = 0;
+    for (let x = FP[0]; x <= FP[2]; x++) for (let y = FP[1]; y <= FP[3]; y++) { n++; if (!lot.has(x + ',' + y)) out++; }
+    chk(n === 6 * 4 && out === 0,
+      `ⓐ-2 움집 발자국 ${FP[2] - FP[0] + 1}×${FP[3] - FP[1] + 1}=${n}셀이 **부지 원판 안에 전부 든다**(밖 ${out}셀) — 유도 ⓐ항이 발자국을 덮는다`);
+  }
+  chk(VL.houseGap('1') === VL.HOUSE_GAP_DERIVED && VL.houseGap('2') === VL.HOUSE_GAP_LOT && VL.HOUSE_GAP_LOT < VL.HOUSE_GAP_DERIVED,
+    `ⓐ-3 손잡이 팔 둘 — 켬(1) ${VL.houseGap('1')} = 유도값 · 진단(2) ${VL.houseGap('2')} = \`HOUSE_GAP_LOT\`(HALL_CLEAR 문법 · 더 좁다)`);
+  const VILSRC2 = R('server/villages.js');
+  const mOff = VILSRC2.match(/HG\s*=\s*T315_HOUSE_GAP\s*===\s*'0'\s*\?\s*([0-9]+)\s*:/);
+  chk(!!mOff && +mOff[1] === VL.HOUSE_GAP_DERIVED,
+    `ⓐ-4 ★**끔값 리터럴 ${mOff ? mOff[1] : '?'} = 유도값 ${VL.HOUSE_GAP_DERIVED}** ⇒ 18 은 튜닝값이 아니라 **유도값이었다**(켜도 세계가 안 바뀐다)`);
+  // ── ⓒ `_mapBeds` = 완공층 × 정본 상수 — **한 마을 손셈**(규칙은 정본 함수를 부른다 · 사본 0) ──
+  chk(typeof (V.__probe && V.__probe.mapBedsOf) === 'function',
+    'ⓒ-0 침상 명부 정본 `__probe.mapBedsOf` 가 산다 — 하네스가 식을 다시 적지 않는다');
+  if (V.__probe && V.__probe.mapBedsOf) {
+    const d2 = V.lifeDebug && V.lifeDebug();
+    const vv = ((d2 && d2.villages) || []).find((z) => z.terr > 0);
+    const real = vv && V.villageOfCell ? V.villageOfCell(vv.ccx, vv.ccy) : null;
+    chk(!!real, `ⓒ-1 (상황) 살아 있는 마을 하나를 잡았다 — ${vv ? vv.name : '없음'}`);
+    if (real) {
+      const built = (real._houseCells || []).length;
+      chk(built > 0, `ⓒ-2 (전제) 그 마을에 **완공집이 있다** — ${built}채(0채면 아래가 0 === 0 자명 통과다)`);
+      chk(V.__probe.mapBedsOf(real) === built * VL.HOUSE_CAP_PER_FLOOR,
+        `ⓒ-3 ★침상 명부 = 완공층 ${built} × 정본 \`HOUSE_CAP_PER_FLOOR\` ${VL.HOUSE_CAP_PER_FLOOR} = **${built * VL.HOUSE_CAP_PER_FLOOR}** (손셈과 같다)`);
+      chk(VL.HOUSE_CAP === VL.HOUSE_CAP_PER_FLOOR,
+        `  그 상수는 랩이 \`L_FLOORCAP = VillageLayout.HOUSE_CAP\` 으로 읽는 **바로 그 수**다(사본 0)`);
+      chk(real.econ && real.econ._mapBeds === undefined,
+        'ⓒ-4 ★되돌림 — 손잡이 **끔**인 이 판에서는 econ 에 `_mapBeds` 가 **안 적힌다**(종전대로 `_hcap = housing`)');
+      // ★자명 통과 금지 — 명부가 완공집을 실제로 읽나(집 하나를 더한 사본 객체로 물어본다)
+      const fake = { _houseCells: (real._houseCells || []).concat([{ cx: 0, cy: 0 }]) };
+      chk(V.__probe.mapBedsOf(fake) === (built + 1) * VL.HOUSE_CAP_PER_FLOOR,
+        '  [자명 통과 금지] 완공집을 한 채 더하면 명부가 정확히 정원만큼 늘어난다 — 상수를 실제로 곱한다');
+    }
+  }
+  // ── 손잡이 극성(T298 ⓞ 문법 · 자식 프로세스 실측 · 정규식 0) ───────────────────────────────
+  {
+    const { execFileSync } = require('child_process');
+    const door = `console.log(JSON.stringify(require(${JSON.stringify(require('path').join(__dirname, '..', 'server', 'villages.js'))}).__probe.handles()));`;
+    const ask = (over) => {
+      const env = Object.assign({}, process.env);
+      for (const k of ['T315_HOUSE_GAP', 'T315_MAPBEDS']) delete env[k];
+      Object.assign(env, over || {});
+      return JSON.parse(String(execFileSync(process.execPath, ['-e', door], { env, encoding: 'utf8' })).trim());
+    };
+    let d0 = null, d1 = null; try { d0 = ask(null); d1 = ask({ T315_HOUSE_GAP: '2', T315_MAPBEDS: '1' }); } catch (e) {}
+    chk(!!d0 && d0.T315_HOUSE_GAP === '0' && d0.T315_MAPBEDS === false,
+      'ⓐ-5 서버 기본 — `T315_HOUSE_GAP` 끔(종전 리터럴) · `T315_MAPBEDS` 끔(안 적는다) · 자식 프로세스 실측');
+    chk(!!d1 && d1.T315_HOUSE_GAP === '2' && d1.T315_MAPBEDS === true,
+      '  [자명 통과 금지] 켠 판에 그 주장을 대면 거짓이다 — 실측문이 손잡이를 실제로 읽는다');
+  }
+}
+
   console.log('\n' + (fail === 0 ? '결과: PASS' : `결과: FAIL (${fail}건)`));
   for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fsx.unlinkSync(f); } catch (e) {} }
   process.exit(fail === 0 ? 0 : 1);

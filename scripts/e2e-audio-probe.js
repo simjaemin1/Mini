@@ -73,9 +73,13 @@ const db = (x) => (x > 0 ? +(20 * Math.log10(x)).toFixed(2) : -Infinity);
     ok(worst.length > 0, '⑤ 전제: T292 최악 조합이 표에 있다', worst.join(' '));
 
     // ② ★층의 probe 를 **그대로** 부른다(사본 0)
+    // ★[T321] 어부 다섯이 동시에 낚는 마을 — `cast`×5 는 `maxSame` 이 잘라 내므로 **표대로** 잘린 뒤의 수를 본다.
+    //   (표를 무시하고 다섯을 억지로 울리면 제품에서 날 수 없는 소리를 재게 된다 — 자가 거짓말한다.)
+    const fiveFishers = ['cast', 'cast', 'cast', 'cast', 'cast', 'fire', 'wind', 'bird'];
     const runs = [
       ['소리 나는 키 전부', soundKeys],
       ['T292 최악 조합', worst],
+      ['어부 다섯 + 마을 배경', fiveFishers],
     ];
     console.log('\n    ── 오프라인 렌더 실측 (리미터 있는 판) ──');
     console.log('      조합                키  합    피크 dBFS   RMS dBFS  클리핑  이득감소(최악)');
@@ -88,7 +92,7 @@ const db = (x) => (x > 0 ? +(20 * Math.log10(x)).toFixed(2) : -Infinity);
         + `  ${String(r.withLimiter.peakDb).padStart(8)}  ${String(r.withLimiter.rmsDb).padStart(9)}`
         + `  ${String(r.withLimiter.clipped).padStart(6)}  ${String(r.gainReduction.worstDb).padStart(7)} dB`);
     }
-    ok(rows.length === runs.length, '⑥ 두 조합 다 렌더됐다', `${rows.length}/${runs.length}`);
+    ok(rows.length === runs.length, '⑥ 조합이 다 렌더됐다', `${rows.length}/${runs.length}`);
 
     for (const [name, r] of rows) {
       ok(r.withLimiter.clipped === 0, `⑦ ★★${name} — **클리핑 0**(표본 하나까지 센 값이다)`,
@@ -113,6 +117,100 @@ const db = (x) => (x > 0 ? +(20 * Math.log10(x)).toFixed(2) : -Infinity);
         ok(r.withoutLimiter.clipped >= r.withLimiter.clipped,
            `⑩b ★${name} — 리미터가 넘침을 **줄인다**(늘리지 않는다)`,
            `없이 ${r.withoutLimiter.clipped} → 끼고 ${r.withLimiter.clipped}`);
+      }
+    }
+
+    // ⑭~⑰ ★★★[T321] **수신에서 센다** — 족보 226: 발신 훅은 거짓 소리다.
+    //   어부 소리가 제대로 걸렸는지는 "서버가 몇 번 불렀나"가 아니라 **"층이 몇 번 울렸나"** 로 잰다.
+    //   여기서는 진짜 `window.__sfx.recv` 에 진짜 모양의 `tick` 을 먹이고 `stat.played` 의 증분을 센다
+    //   (사본 0 — 제품이 쓰는 그 함수다). 세계를 안 띄우고도 **층의 계약**을 그대로 잰다.
+    //   ★이 자가 겨누는 진짜 위험: 라벨은 **1.2초 창** 동안 같은 값이 최대 25틱 온다(무상태 델타).
+    //     모서리로 안 잡으면 한 번의 낚음이 **스물다섯 번** 난다 — 그게 T292-b 와 똑같은 모양의 사고다.
+    {
+      const played = () => page.evaluate(() => window.__sfx.dbg().stat.played);
+      const feed = (frames) => page.evaluate((fr) => {
+        // 층이 보는 그대로의 `c` — `recv` 는 `handleMessage` 머리에서 불리므로 `others` 는 **직전** 값이다.
+        const c = { others: new Map(), meta: { worldOffsetX: 0, worldOffsetY: 0 } };
+        for (const f of fr) {
+          window.__sfx.recv({ type: 'tick', players: f }, c);
+          for (const pp of f) {                       // 합치기 — 아래 30-n-net.js 가 하는 그 일
+            const prev = c.others.get(pp.pid) || {};
+            c.others.set(pp.pid, Object.assign({}, prev, pp,
+              { act: pp.act !== undefined ? pp.act : prev.act }));
+          }
+        }
+      }, frames);
+      const npc = (pid, act, x) => ({ pid, x: x || 0, y: 0, act });
+      // ★칸막이 — 앞 토막이 울린 소리가 **아직 울리는 동안**은 뒤 토막이 막힌다.
+      //   ⚠여기서 두 번 헛짚었다. 처음엔 쿨다운(200ms) 탓인 줄 알고 450ms 쉬었는데 그대로 빨갰다.
+      //     진짜 범인은 **`maxSame` + 표본 길이**다: `hook` 은 `maxSame 1` 인데 `hook.ogg` 가 **1.099초**라,
+      //     450ms 뒤엔 앞 토막의 그 소리가 여전히 `live` 에 있어 다음 한 번이 `blocked` 로 떨어졌다.
+      //   ⇒ 쉬는 시간을 **표본 길이**에서 뽑는다(짐작한 수가 아니라 잰 수). 그리고 측정 토막 안에서
+      //     `blocked` 가 움직였는지 함께 본다 — 움직였으면 칸막이가 샌 것이고, 그럼 이 자는 거짓말한다.
+      const LONGEST_MS = 1100;   // `hook.ogg` 1.099초 — 이 셋 중 가장 긴 표본
+      const settle = () => page.waitForTimeout(LONGEST_MS + 400);
+      const blocked = () => page.evaluate(() => window.__sfx.dbg().stat.blocked);
+
+      // ⑭ ★★**첫 가시에는 안 운다** — 라벨이 붙은 채로 시야에 들어온 어부는 **이미 지난 일**이다.
+      //    서버는 `act` 를 '바뀐 뒤 1.2초 창'과 **최초 가시**에 보낸다(`zone.js makeEntry`). 그런데
+      //    `_lifeAct` 는 바뀔 때만 갱신되는 **머무는 칸**이라, 10초 전에 낚은 어부도 여전히 '낚음' 이다.
+      //    그가 시야에 들어왔다고 낚는 소리가 나면 **일어나지 않은 일이 들린다**(족보 226 의 거짓 소리).
+      //    ⇒ 직전 값이 없으면 울리지 않는다. 이 자가 그 계약을 못 박는다.
+      {
+        const before = await played();
+        await feed([[npc('n0', '낚음')]]);
+        const n = (await played()) - before;
+        ok(n === 0, '⑭ ★★라벨을 단 채 **처음 보이는** 어부는 안 운다(이미 지난 일이다)', `울린 횟수 ${n}`);
+      }
+
+      await settle();
+      // ⑮ 한 번의 낚음이 1.2초 창 동안 25틱 같은 값으로 와도 — **한 번만** 나야 한다
+      {
+        const before = await played();
+        await feed([[npc('f1', '출근')],                                  // ① 먼저 보인다(첫 가시 — 안 운다)
+                    ...Array.from({ length: 25 }, () => [npc('f1', '낚음')])]);  // ② 낚음이 25틱 온다
+        const n = (await played()) - before;
+        ok(n === 1, '⑮ ★★같은 낱말이 25틱 와도 **한 번만** 운다(모서리 검출 — 안 그러면 한 번 낚고 25번 난다)',
+           `울린 횟수 ${n}`);
+      }
+
+      await settle();
+      // ⑯ 자명 통과 금지 — 낱말이 **바뀌면** 그때마다 나야 한다(자가 그냥 막고만 있는 게 아니다)
+      {
+        const before = await played(), bb = await blocked();
+        await feed([[npc('f2', '출근')], [npc('f2', '드리움')], [npc('f2', '놓침')], [npc('f2', '낚음')]]);
+        const n = (await played()) - before, nb = (await blocked()) - bb;
+        ok(nb === 0, '⑯a ★칸막이 검증 — 이 토막에서 막힌 소리 0(앞 토막이 안 샜다 · 새면 아래가 거짓말한다)', `막힘 ${nb}`);
+        ok(n === 3, '⑯ 자명 통과 금지 — 낱말이 바뀔 때마다 운다(막기만 하는 자가 아니다)', `울린 횟수 ${n} / 바뀜 3`);
+      }
+
+      await settle();
+      // ⑰ ★표에 없는 낱말은 안 운다(지어내지 않는다)
+      {
+        const before = await played();
+        await feed([[npc('f3', '')], [npc('f3', '출근')], [npc('f3', '취침')], [npc('f3', '개간')]]);
+        const n = (await played()) - before;
+        ok(n === 0, '⑰ ★표에 없는 생활 낱말(`출근`·`취침`·`개간`)은 **안 운다**', `울린 횟수 ${n}`);
+      }
+
+      await settle();
+      // ⑱ ★★어부 다섯이 같은 틱에 낚는다 — **표가 정한 수**만큼만 난다(`maxSame`·`cooldownMs`)
+      //    ⚠기대값을 5 로 박지 않는다. 5 를 기대하면 표를 무시하는 자가 된다 —
+      //      `hook` 은 `maxSame 1`·`cooldown 200ms` 라 같은 순간에 다섯이 나는 것이 **오히려 결함**이다.
+      //      자는 "표대로인가" 를 재지 "다섯인가" 를 재지 않는다. (T305 에서 줄을 이름으로 고르다 헛디뎠다.)
+      {
+        // ⚠`feed` 는 부를 때마다 **새 `c`** 를 만든다(층이 보는 접속 하나를 흉내 낸다).
+        //   그래서 '먼저 보인다' 와 '낚는다' 를 **두 번에 나눠 부르면** 둘째 부름에서 다섯이 다시
+        //   첫 가시가 되어 아무 소리도 안 난다 — 실제로 그래서 0 이 나왔다. 한 번에 먹인다.
+        const five = ['f4', 'f5', 'f6', 'f7', 'f8'];
+        const before = await played();
+        await feed([five.map((p, k) => npc(p, '출근', k * 40)),           // ① 먼저 보인다(첫 가시 — 무음)
+                    five.map((p, k) => npc(p, '낚음', k * 40))]);         // ② 다섯이 같은 틱에 낚는다
+        const n = (await played()) - before;
+        const cap = (MAN.keys.hook.maxSame || 3);
+        ok(n >= 1 && n <= cap,
+           '⑱ ★★어부 다섯이 같은 틱에 낚아도 **표가 정한 겹침 상한 안**이다(연사가 안 난다)',
+           `울린 횟수 ${n} · 표의 상한 ${cap} · 쿨다운 ${MAN.keys.hook.cooldownMs}ms`);
       }
     }
 

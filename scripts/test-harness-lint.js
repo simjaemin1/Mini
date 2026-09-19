@@ -328,17 +328,50 @@ console.log('\n⑦ 주석 제거기 정본 하나 [T171]');
 //   막는 것은 **잰 시간을 판정의 근거로 삼는 것**이다.
 console.log('\n⑧ 판정 자리에 벽시계 0 [T185]');
 {
-  // 판정 안에서 `Date.now()` 로 잰 값을 상수와 견주는 모양을 찾는다(AST — 낱말 grep 아님).
+  // ★★★[T322 2026-09-19] **이름 그물 → 선언 추적.** 종전 그물은 이름 일곱 개였다
+  //   (`hcMax|elapsed|took|dur|durMs|waitMs|ms`) — 의미가 아니라 **철자**를 알던 자다. 그래서
+  //   T314 가 손으로 다시 세니 155개에 넷이 있었고 **그 자는 하나도 못 봤다**(`stallAtMs` 같은 이름).
+  //   ⇒ 값이 **시간에서 나왔는지**를 선언까지 따라간다: `Date.now()`/`performance.now()` 가 든
+  //     선언·대입의 이름을 모으고(그 이름으로 다시 대입되면 그것도), 그 이름이나 시간 식 자체가
+  //     `ok(...)` 조건에서 **상수(≥100)** 와 견주어지면 잡는다.
+  //   ★**단가는 봐준다 — 이름이 아니라 모양으로.** 시간 식이 **센 수로 나뉘어** 있으면(`/ N` ·
+  //     N 이 상수가 아님) 그건 "한 번에 얼마"라 부하에 덜 흔들린다(PM 이 `test-resource-index`
+  //     의 `per < 2000` 을 일부러 남긴 그 이유다). 봐주되 **표에 적는다** — 숨기지 않는다.
   const acornL = require(path.join(ROOT, 'node_modules', 'acorn'));
-  const CLOCKY = /^(hcMax|elapsed|took|dur|durMs|waitMs|ms)$/;
-  const hits = [];
+  const isTimeCall = (n) => !!(n && n.type === 'CallExpression' && n.callee && n.callee.type === 'MemberExpression'
+    && n.callee.object && n.callee.property
+    && ((n.callee.object.name === 'Date' && n.callee.property.name === 'now')
+     || (n.callee.object.name === 'performance' && n.callee.property.name === 'now')));
+  const anyIn = (n, pred) => { let f = false; (function w(x) { if (f || !x || typeof x !== 'object') return;
+    if (Array.isArray(x)) { for (const y of x) w(y); return; }
+    if (pred(x)) { f = true; return; }
+    for (const k of Object.keys(x)) { if (k === 'type' || k === 'start' || k === 'end') continue; w(x[k]); } })(n); return f; };
+  // 센 수로 나뉘었나 — `(…) / N` 에서 N 이 상수가 아니면 단가다(상수로 나눈 건 단위 환산일 뿐이다).
+  const perUnit = (n) => anyIn(n, (x) => x.type === 'BinaryExpression' && x.operator === '/'
+    && x.right && !(x.right.type === 'Literal' && typeof x.right.value === 'number'));
+  const hits = [], rates = [];
   for (const f of fs.readdirSync(SCRIPTS).filter((x) => /^(test|e2e)-.*\.js$/.test(x))) {
     const src = fs.readFileSync(path.join(SCRIPTS, f), 'utf8');
     let ast; try { ast = acornL.parse(src, { ecmaVersion: 2022, allowHashBang: true }); } catch (e) { continue; }
-    const walk = (n, inOk) => {
+    // ① 시간에서 나온 이름 모으기 — **직접 판만** 잇는다(`… Date.now() …` 이 그 선언 안에 있다).
+    //   ⚠한 다리 건너("시간 이름을 쓴 식")까지 이으면 **이름이 겹쳐서** 엉뚱한 걸 문다:
+    //     첫 판이 그렇게 돌았다가 `bDist vs 140`(거리) · `t vs 100`(온도) 같은 거짓 넷을 물었다 —
+    //     이 자는 스코프를 모르고 파일 전체의 이름을 한 통에 담기 때문이다(`t` 가 한 파일에 둘이면 끝).
+    //   ⇒ 직접 판만 잇는다. T314 가 손으로 센 넷은 전부 직접 판이라 **잡는 집합은 그대로**고,
+    //     거짓은 0 이 된다. 못 보는 것: `const secs = ms / 1000` 처럼 **한 다리 건넌 이름**(표에 적었다).
+    const timeName = new Map();   // 이름 → 단가인가
+    (function w(n) { if (!n || typeof n !== 'object') return;
+      if (Array.isArray(n)) { for (const x of n) w(x); return; }
+      let id = null, init = null;
+      if (n.type === 'VariableDeclarator' && n.id && n.id.type === 'Identifier') { id = n.id.name; init = n.init; }
+      if (n.type === 'AssignmentExpression' && n.left && n.left.type === 'Identifier') { id = n.left.name; init = n.right; }
+      if (id && init && anyIn(init, isTimeCall) && !timeName.has(id)) timeName.set(id, perUnit(init));
+      for (const k of Object.keys(n)) { if (k === 'type' || k === 'start' || k === 'end') continue; w(n[k]); } })(ast);
+    // ② `ok(...)` 첫 인자 안에서 "시간값 vs 상수(≥100)"
+    const line = (pos) => src.slice(0, pos).split('\n').length;
+    (function walk(n, inOk) {
       if (!n || typeof n !== 'object') return;
       if (Array.isArray(n)) { for (const x of n) walk(x, inOk); return; }
-      let nowOk = inOk;
       if (n.type === 'CallExpression' && n.callee && n.callee.name === 'ok') {
         // 첫 인자(판정 조건)만 본다 — 셋째 인자(설명)에는 시간이 있어도 된다
         walk(n.arguments[0], true);
@@ -347,32 +380,78 @@ console.log('\n⑧ 판정 자리에 벽시계 0 [T185]');
       }
       if (inOk && n.type === 'BinaryExpression' && ['<', '<=', '>', '>='].indexOf(n.operator) >= 0) {
         const side = [n.left, n.right];
-        const clocky = side.some((x) => x && x.type === 'Identifier' && CLOCKY.test(x.name));
-        const lit = side.some((x) => x && x.type === 'Literal' && typeof x.value === 'number' && x.value >= 100);
-        if (clocky && lit) hits.push(`${f}:${src.slice(0, n.start).split('\n').length}`);
+        const t = side.find((x) => x && ((x.type === 'Identifier' && timeName.has(x.name)) || anyIn(x, isTimeCall)));
+        const lit = side.find((x) => x && x.type === 'Literal' && typeof x.value === 'number' && x.value >= 100);
+        if (t && lit) {
+          const nm = t.type === 'Identifier' ? t.name : '<식>';
+          const rate = t.type === 'Identifier' ? timeName.get(t.name) : perUnit(t);
+          (rate ? rates : hits).push(`${f}:${line(n.start)} ${nm}vs${lit.value}`);
+        }
       }
-      for (const k of Object.keys(n)) { if (k === 'type' || k === 'start' || k === 'end') continue; walk(n[k], nowOk); }
-    };
-    walk(ast, false);
+      for (const k of Object.keys(n)) { if (k === 'type' || k === 'start' || k === 'end') continue; walk(n[k], inOk); }
+    })(ast, false);
   }
   ok(hits.length === 0, '★★⑧a **판정 조건에 "하네스가 잰 시간 vs 상수" 가 없다**(족보 ⑩ — 러너에서만 빨개지는 병)',
      hits.length ? hits.slice(0, 4).join(' · ') : `${fs.readdirSync(SCRIPTS).filter((x) => /^(test|e2e)-.*\.js$/.test(x)).length}개 훑음 · 0건`);
-  // 자명 통과 금지 — 같은 자로 그 모양을 넣으면 잡는다
-  const canarySrc = 'const hcMax = 1; ok(hcMax <= 1500, "x");';
-  let cHit = 0;
-  { const ast = acornL.parse(canarySrc, { ecmaVersion: 2022 });
-    const walk = (n, inOk) => { if (!n || typeof n !== 'object') return;
+  // ★자명 통과 금지 — **같은 자**(위 함수가 아니라 같은 규칙)로 미끼 셋을 재서 셋이 갈리는지 본다.
+  //   ⓐ 총 시간 vs 상수 → 잡아야 한다 · ⓑ 단가(센 수로 나눔) vs 상수 → 봐줘야 한다 ·
+  //   ⓒ 시간 vs 시간(상수 없음) → 안 잡아야 한다. 셋이 안 갈리면 위 0건은 아무것도 안 증명한다.
+  const bait = (src) => {
+    const ast = acornL.parse(src, { ecmaVersion: 2022 });
+    const tn = new Map();
+    (function w(n) { if (!n || typeof n !== 'object') return;
+      if (Array.isArray(n)) { for (const x of n) w(x); return; }
+      let id = null, init = null;
+      if (n.type === 'VariableDeclarator' && n.id && n.id.type === 'Identifier') { id = n.id.name; init = n.init; }
+      if (id && init && anyIn(init, isTimeCall) && !tn.has(id)) tn.set(id, perUnit(init));
+      for (const k of Object.keys(n)) { if (k === 'type' || k === 'start' || k === 'end') continue; w(n[k]); } })(ast);
+    let hit = 0, rate = 0;
+    (function walk(n, inOk) { if (!n || typeof n !== 'object') return;
       if (Array.isArray(n)) { for (const x of n) walk(x, inOk); return; }
       if (n.type === 'CallExpression' && n.callee && n.callee.name === 'ok') { walk(n.arguments[0], true); return; }
       if (inOk && n.type === 'BinaryExpression' && ['<', '<=', '>', '>='].indexOf(n.operator) >= 0) {
         const side = [n.left, n.right];
-        if (side.some((x) => x && x.type === 'Identifier' && CLOCKY.test(x.name))
-         && side.some((x) => x && x.type === 'Literal' && typeof x.value === 'number' && x.value >= 100)) cHit++;
+        const t = side.find((x) => x && ((x.type === 'Identifier' && tn.has(x.name)) || anyIn(x, isTimeCall)));
+        const lit = side.find((x) => x && x.type === 'Literal' && typeof x.value === 'number' && x.value >= 100);
+        if (t && lit) { if (t.type === 'Identifier' ? tn.get(t.name) : perUnit(t)) rate++; else hit++; }
       }
-      for (const k of Object.keys(n)) { if (k === 'type' || k === 'start' || k === 'end') continue; walk(n[k], inOk); }
-    };
-    walk(ast, false); }
-  ok(cHit === 1, '★⑧b 자명 통과 금지 — 같은 자로 **잠 한 줄을 판정에 넣으면 잡는다**', `미끼 ${cHit}건`);
+      for (const k of Object.keys(n)) { if (k === 'type' || k === 'start' || k === 'end') continue; walk(n[k], inOk); } })(ast, false);
+    return { hit, rate };
+  };
+  const bTotal = bait('const t0 = Date.now(); const spent = Date.now() - t0; ok(spent <= 1500, "x");');
+  const bRate  = bait('const t0 = Date.now(); const each = (Date.now() - t0) / n; ok(each < 2000, "x");');
+  const bPair  = bait('const t0 = Date.now(); const a = Date.now() - t0; const b = Date.now(); ok(a <= b, "x");');
+  ok(bTotal.hit === 1 && bTotal.rate === 0, '★⑧b 자명 통과 금지 ⓐ — **총 시간 vs 상수**를 넣으면 잡는다(이름은 아무거나)', `잡음 ${bTotal.hit}`);
+  ok(bRate.hit === 0 && bRate.rate === 1, '★⑧b 자명 통과 금지 ⓑ — **단가**(센 수로 나눔)는 봐주고 표로만 센다', `단가 ${bRate.rate}`);
+  ok(bPair.hit === 0 && bPair.rate === 0, '★⑧b 자명 통과 금지 ⓒ — **시간 vs 시간**(상수 없음)은 안 문다', `잡음 ${bPair.hit}`);
+  console.log(`    [표] 단가로 봐준 단정 ${rates.length}건${rates.length ? ' — ' + rates.join(' · ') : ''}`);
+  // ── [T322] **둘째 모양 — 예산형**(시도 횟수 × 잠). 판정문에 상수가 없어 위 자는 못 본다 ──────
+  //   `for (i < N) { … sleep(M) }` 의 `N×M` 이 사실상 마감액이고, 다 돌면 **그 다음 `ok` 가 빨개진다**.
+  //   09-18 야간의 `e2e-conn ②` 가 `60×400ms = 24초` 였고 보고에 적힌 수가 "24초 경과" 다.
+  //   ⚠**판정하지 않는다 — 경고다.** 이 모양은 하네스의 표준 관용구라(재시도도 같은 꼴) 전수를 막으면
+  //     쓸 수 있는 자가 없다. 큰 것만 이름을 불러 다음 카드가 고르게 둔다.
+  {
+    const BIG = 10000;   // 표의 수 — 판정에 안 든다
+    const budgets = [];
+    for (const f of fs.readdirSync(SCRIPTS).filter((x) => /^(test|e2e)-.*\.js$/.test(x))) {
+      const src = fs.readFileSync(path.join(SCRIPTS, f), 'utf8');
+      let ast; try { ast = acornL.parse(src, { ecmaVersion: 2022, allowHashBang: true }); } catch (e) { continue; }
+      (function w(n) { if (!n || typeof n !== 'object') return;
+        if (Array.isArray(n)) { for (const x of n) w(x); return; }
+        if (n.type === 'ForStatement' && n.test && n.test.type === 'BinaryExpression'
+            && n.test.right && n.test.right.type === 'Literal' && typeof n.test.right.value === 'number') {
+          let ms = 0;
+          anyIn(n.body, (x) => { if (x.type === 'CallExpression' && x.callee && x.callee.name === 'sleep'
+              && x.arguments[0] && x.arguments[0].type === 'Literal' && typeof x.arguments[0].value === 'number') ms = Math.max(ms, x.arguments[0].value); return false; });
+          const total = n.test.right.value * ms;
+          if (total >= BIG) budgets.push({ s: `${f}:${src.slice(0, n.start).split('\n').length}`, t: total });
+        }
+        for (const k of Object.keys(n)) { if (k === 'type' || k === 'start' || k === 'end') continue; w(n[k]); } })(ast);
+    }
+    budgets.sort((a, b) => b.t - a.t);
+    console.log(`    [표·경고] 예산형(시도×잠) ${(BIG / 1000) | 0}초 이상 ${budgets.length}자리 — 판정 아님`
+      + (budgets.length ? '\n      ' + budgets.slice(0, 8).map((b) => `${b.s} ${(b.t / 1000).toFixed(0)}초`).join(' · ') : ''));
+  }
 
   // ── ⑧c **입장 기다리기는 정본 하나다** [T214 2026-09-12] ─────────────────────
   //   T140 이 `fixture-clock.waitInWorld` 를 세우며 적었다: *"두 하네스 모두 `for (i<60) sleep(500)`

@@ -364,7 +364,18 @@ function sep(ctx,u,dt){let sx=0,sy=0,n=0,hxx=0,hyy=0,hn=0; const bx=Math.floor(u
     else {u.x=u._ox; u.y=u._oy;}
   }
 }
+// ★★[T295 ② 2026-09-19] **군량이 모자라면 사기가 떨어진다** — 손잡이 `T295_RATION_MRL` (기본 **끔**).
+//   ⓐ **값이 곧 손잡이다**(새 수 0): 손잡이에 적힌 수가 사기 항의 가중치다 — 값은 재민(랩 A/B 표 뒤).
+//     미설정·0 이면 아래 항 자체가 안 돌아 사기 식은 **한 글자도 안 바뀐다**(비트 동일).
+//   ⓑ **부족분은 호스트가 준다**: `ctx.sides[side].ration` = 그 편의 군량 충족도(1 = 넉넉 · 0 = 바닥).
+//     미주입이면 1(무해) — 독립 실행(전투실험실·runBattleHeadless)은 종전 그대로다.
+function _bcKnob(name){ const g=(typeof window!=='undefined')?window:null;
+  if(g&&g[name]!==undefined&&g[name]!==null)return String(g[name]);
+  if(typeof process!=='undefined'&&process.env&&process.env[name]!==undefined)return String(process.env[name]);
+  return null; }
+function rationMrlW(){ const x=_bcKnob('T295_RATION_MRL'); if(x===null)return 0; const n=parseFloat(x); return Number.isFinite(n)&&n>0?n:0; }
 function updateMorale(ctx,dt){
+  const _ratW=rationMrlW();
   for(const u of ctx.units)u._rPrev=u.routing;
   const relA=ctx.sides.A.start?ctx.sides.A.dead/ctx.sides.A.start:0, relB=ctx.sides.B.start?ctx.sides.B.dead/ctx.sides.B.start:0;
   const ord=ctx.units.slice(); for(let i=ord.length-1;i>0;i--){const j=(ctx.rng()*(i+1))|0;const t=ord[i];ord[i]=ord[j];ord[j]=t;}
@@ -378,6 +389,7 @@ function updateMorale(ctx,dt){
     let tgt=(MRL0[u.type]||0.8)+M_KODDS*(fN-eN)/(fN+eN+1)-M_KCONTAG*rN+M_KCHAMP*champ+M_KRELCAS*(enRel-myRel)-M_KABS*myRel
       +M_KCOMMIT*commit-M_KWOUND*wound*(1-commit)+M_KDESP*wound*commit
       +(u.form==='wall'?0.30:u.form==='circle'?0.15:u.form==='open'?-0.08:0) - (u.broken?0.18:0);
+    if(_ratW>0){ const _r=ctx.sides[u.side].ration; if(_r!=null&&_r<1) tgt-=_ratW*(1-Math.max(0,_r)); }   // ★[T295 ②] 굶은 편은 먼저 흔들린다(손잡이 켤 때만)
     if(tgt<0)tgt=0;else if(tgt>1)tgt=1;
     u.mrl+=(tgt-u.mrl)*Math.min(1,M_RATE*dt);
     if(u.mrl<0)u.mrl=0;else if(u.mrl>1)u.mrl=1;

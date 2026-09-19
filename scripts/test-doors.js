@@ -211,8 +211,102 @@ const call = async (port, meth, p, hdr, body) => {
   say('\n[ⓓ 재집계]');
   {
     const c = LR.counts();
-    ok(c.n === 62 && c.공개 === 16 && c.안문 === 40 && c.본인 === 3 && c.투영 === 3 && c.남음 === 2,
-      `ⓓ ★T245 의 그 줄과 같다 — 라우트 ${c.n} · 공개 ${c.공개} · 안문 ${c.안문} · 본인 ${c.본인} · 투영 ${c.투영} · 남음 ${c.남음}(쓰기 ${c.쓰기남음} · 읽힘 ${c.읽힘남음} · 회부됨 ${c.회부됨})`);
+    // ★[T319] 남음이 **2 → 1** 이다 — `?as=`(#9)를 `DEV_AS` 뒤로 닫았다. 남은 하나는 `/check_username`(#48 · 재민)뿐.
+    ok(c.n === 62 && c.공개 === 16 && c.안문 === 40 && c.본인 === 3 && c.투영 === 3 && c.남음 === 1 && c.회부됨 === 1,
+      `ⓓ ★T245 의 그 줄 · T319 가 하나 닫았다 — 라우트 ${c.n} · 공개 ${c.공개} · 안문 ${c.안문} · 본인 ${c.본인} · 투영 ${c.투영} · 남음 ${c.남음}(쓰기 ${c.쓰기남음} · 읽힘 ${c.읽힘남음} · 회부됨 ${c.회부됨})`);
+    ok(LR.ROUTES['zone GET ^/startinfo'][1] === '닫힘DEV_AS',
+      'ⓓ2 그 하나가 `/startinfo` 가 아니다 — 표가 `닫힘DEV_AS` 라고 적고 있다(아래 ⓔ 가 그 말이 참인지 본다)');
+  }
+
+  // ── ⓔ [T319] `?as=` 는 **손잡이 뒤**다 — 두 팔(env 유/무) ────────────────
+  //   묻는 것 하나: **열쇠 없이 이름만으로 남의 벗·소속이 나오나.**
+  //   ⚠이 판의 존은 `ENABLE_VILLAGES=0` 이라 온보딩이 안 선다 — 그러면 `?as=` 를 줘도 응답이 같아
+  //     **자명 통과**가 된다. 그래서 여기서는 `httpStartInfo` 가 실제로 그 칸을 보는지를
+  //     **소스 계약 + 문 앞의 겹**으로 나눠 본다(세계를 안 띄우고도 무는 검사).
+  say('\n[ⓔ ?as= — DEV_AS 뒤]');
+  {
+    const zsrc = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
+    const osrc = fs.readFileSync(path.join(ROOT, 'server', 'onboarding.js'), 'utf8');
+    // ⓔ1 전제 — 온보딩은 **여전히** 그 칸을 읽는다(안 읽으면 아래가 자명 통과다)
+    ok(/as=\(\[\^&\]\*\)/.test(osrc) && /friendVidsByName/.test(osrc) && /memberVidByName/.test(osrc),
+      'ⓔ1 전제: `onboarding.httpStartInfo` 는 **그대로** `?as=` 로 벗·소속을 태운다(막은 것은 문이지 온보딩이 아니다)');
+    // ⓔ2 문 앞에 겹이 서 있다 — 라우트가 `_devAsGate` 를 지난다(사본 0: 정책은 문에서 정한다)
+    ok(/startsWith\('\/startinfo'\)[\s\S]{0,120}?_devAsGate\(req\)/.test(zsrc),
+      'ⓔ2 라우트가 `_devAsGate(req)` 를 지난다 — `onboarding.js` 는 한 줄도 안 달라졌다');
+    // ⓔ3 ★그 겹이 실제로 그 칸을 지운다 — **소스의 그 함수를 그대로** 떠서 두 팔로 부른다(사본 0).
+    //   ⚠`process` 를 인자로 넘겨 env 를 이 하네스가 쥔다 — 손잡이가 **부를 때** 읽히는지까지 같이 본다
+    //     (모듈 상수면 팔 하나가 안 움직인다 = 아래 ⓔ4·ⓔ5 가 같은 값을 내고 빨개진다).
+    const src = (zsrc.match(/function _devAsOn\(\)[\s\S]*?\nfunction _devAsGate\(req\) \{[\s\S]*?\n\}/) || [null])[0];
+    ok(!!src && src.length > 200, 'ⓔ3 전제: `_devAsGate` 를 소스에서 그대로 떠 왔다(못 뜨면 아래가 자명 통과다)');
+    if (src) {
+      const env = {};
+      const gate = new Function('process', src + '\nreturn _devAsGate;')({ env });
+      const g = (u) => gate({ url: u, method: 'GET' }).url;
+      env.DEV_AS = '1';
+      const 켬 = [g('/startinfo?as=%EC%9E%AC%EB%AF%BC'), g('/startinfo?as=x&z=1')];
+      delete env.DEV_AS;
+      const 끔 = [g('/startinfo?as=%EC%9E%AC%EB%AF%BC'), g('/startinfo?as=x&z=1'), g('/startinfo'), g('/startinfo?z=1')];
+      ok(켬[0] === '/startinfo?as=%EC%9E%AC%EB%AF%BC' && 켬[1] === '/startinfo?as=x&z=1',
+        'ⓔ4 ★`DEV_AS=1` 이면 그 칸이 **그대로** 간다(개발자는 여전히 쓴다) · ' + 켬.join(' '));
+      ok(끔[0] === '/startinfo' && 끔[1] === '/startinfo?z=1',
+        'ⓔ5 ★★손잡이가 없으면 `as` **한 칸만** 지워진다 — 다른 칸(`z=1`)은 남는다 · ' + 끔.slice(0, 2).join(' '));
+      ok(끔[2] === '/startinfo' && 끔[3] === '/startinfo?z=1',
+        'ⓔ6 그 칸이 없던 요청은 **한 글자도 안 달라진다**(과잉 수리 방지) · ' + 끔.slice(2).join(' '));
+      ok(켬[0] !== 끔[0],
+        'ⓔ6b ★자명 통과 금지 — 두 팔이 **실제로 다른 값**을 낸다(손잡이가 부를 때 읽힌다) · ' + 켬[0] + ' vs ' + 끔[0]);
+    }
+    // ⓔ7 ★문 자체는 **여전히 200** 이다 — 닫은 것은 칸이지 문이 아니다(시작 화면은 그대로 뜬다)
+    const si = await call(ZPORT, 'GET', '/startinfo', OUT);
+    const siAs = await call(ZPORT, 'GET', '/startinfo?as=doorsv', OUT);
+    ok(si.s === 200 && siAs.s === 200,
+      'ⓔ7 ★`/startinfo` 는 두 판 다 **200** — 공개 문 그대로다(막은 것은 한 칸) · ' + si.s + '/' + siAs.s);
+  }
+
+  // ── ⓕ [T319] `/health` 칸 둘 — 모양과 규약 ──────────────────────────────
+  say('\n[ⓕ /health 칸 둘]');
+  {
+    const h = (await call(ZPORT, 'GET', '/health', OUT)).d || {};
+    ok('villages' in h && 'tickP50Ms' in h,
+      'ⓕ1 ★칸 둘이 바깥 판에 있다 — `/perf` 는 안 문이라 이 둘만 여기로 낸다 · villages=' + JSON.stringify(h.villages) + ' tickP50Ms=' + JSON.stringify(h.tickP50Ms));
+    ok(h.villages === null || (Number.isInteger(h.villages) && h.villages >= 0),
+      'ⓕ2 `villages` 는 정수이거나 `null` 이다 — 마을 층이 안 서면 **0 이 아니라 null**(0 은 "다 죽었다"는 거짓말이다) · ' + JSON.stringify(h.villages));
+    ok(h.tickP50Ms === null || (typeof h.tickP50Ms === 'number' && h.tickP50Ms >= 0),
+      'ⓕ3 `tickP50Ms` 는 수이거나 `null` · ' + JSON.stringify(h.tickP50Ms));
+    // ⓕ4 ★T225 투영 규약 — **수만** 나간다. 이름·좌표·id·열쇠 0.
+    const flat = JSON.stringify(h);
+    ok(!/"(name|cx|cy|id|x|y|b|lon|guest_token|password_hash|salt|token|secret)"/.test(flat),
+      'ⓕ4 ★★수만 나간다 — 마을 이름·좌표·id·열쇠 칸이 **한 개도** 없다(T225 투영 규약) · ' + flat.slice(0, 120));
+    // ⓕ5 ★사본 0 — `/perf` 의 그 값과 **같은 함수**다(소스 계약)
+    const zsrc = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
+    const perfUses = /tick: Object\.assign\(\{\}, _tick, \{ ms: _tickMsStats\(_rst\)/.test(zsrc);
+    const healthUses = /tickP50Ms: _p50/.test(zsrc) && /_ms = _tickMsStats\(false\)/.test(zsrc);
+    ok(perfUses && healthUses,
+      'ⓕ5 ★★`/perf` 와 `/health` 가 **같은 함수**(`_tickMsStats`)를 부른다 — p50 을 두 벌로 짜지 않았다');
+    ok(/_tickMsStats\(false\)/.test(zsrc),
+      'ⓕ6 ★`/health` 는 **영점 조정을 안 한다**(`false`) — 안부를 묻는 일이 계측 창을 지우면 안 된다');
+    // ⓕ6b ★표본 0 이면 `null` — `p50: 0` 은 "틱이 0ms"라는 **없는 말**이다(`/perf` 는 `n` 을 같이 주지만 여기엔 그 칸이 없다)
+    ok(/_ms\.n > 0\) \? _ms\.p50 : null/.test(zsrc),
+      'ⓕ6b ★표본이 0 이면 `tickP50Ms` 는 `null` 이다 — 없는 수를 말하지 않는다(`villages` 의 null 과 같은 뜻)');
+    ok(/clientVillages/.test(zsrc) && /\(v\.pop \| 0\) > 0/.test(zsrc),
+      'ⓕ7 ★마을 수도 정본 목록(`SimVillages.clientVillages`)에서 **센다** — 여기서 목록을 다시 만들지 않는다');
+    // ⓕ9 ★★값이 **같은 수**다 — 소스 계약만이 아니라 두 문이 같은 순간에 같은 답을 낸다.
+    //   `/perf` 는 안 문이라 비밀 헤더로 묻는다(그 문의 규약 그대로).
+    {
+      const pf = (await call(ZPORT, 'GET', '/perf', IN)).d;
+      const h2 = (await call(ZPORT, 'GET', '/health', OUT)).d || {};
+      const p50 = pf && pf.tick && pf.tick.ms ? pf.tick.ms.p50 : undefined;
+      const n = pf && pf.tick && pf.tick.ms ? (pf.tick.ms.n | 0) : -1;
+      ok(n === 0 ? h2.tickP50Ms === null : (p50 !== undefined && p50 === h2.tickP50Ms),
+        'ⓕ9 ★★`/perf` tick.ms.p50 과 `/health` tickP50Ms 이 **같은 답**이다(표본 0 이면 둘 다 "없다") · n=' + n + ' · ' + JSON.stringify(p50) + ' vs ' + JSON.stringify(h2.tickP50Ms));
+      // 그리고 안부를 물은 뒤에도 계측 창이 살아 있다(영점 조정 안 함 — ⓕ6 의 값 판)
+      const pf2 = (await call(ZPORT, 'GET', '/perf', IN)).d;
+      ok(pf2 && pf2.tick && pf2.tick.ms && pf2.tick.ms.n >= (pf.tick.ms.n | 0),
+        'ⓕ9b ★`/health` 를 부른 뒤에도 틱 히스토그램이 **안 지워진다** · n ' + (pf.tick.ms.n | 0) + ' → ' + (pf2 && pf2.tick ? pf2.tick.ms.n : '?'));
+    }
+    // ⓕ8 ★자명 통과 금지 — 옛 칸들이 그대로 있다(칸을 더한 것이지 갈아치운 게 아니다)
+    ok(['zone', 'players', 'humans', 'cap', 'observers', 'resources', 'buildings', 'mobs', 'claims', 'latency_ms', 'uptime']
+        .every((k) => k in h),
+      'ⓕ8 ★옛 칸 열하나가 **그대로** 있다 — 더한 것이지 갈아치운 게 아니다');
   }
 
   shutdown();

@@ -1873,7 +1873,9 @@
           wc = window._wallOccCache = { cx: myCx, cy: myCy, f: myFloor, built: clWallMapBuiltAt, segs: out };
         }
         for (const s of wc.segs) segs.push(s);
-        window.__fogSegDbg = { wallSegs: wc.segs.length };   // ★진단 훅(하네스가 읽는다)
+        // ★[T322] 이 줄이 훅 객체를 **갈아 끼운다** — `n`(아래 줄이 세는 수)을 이고 간다.
+        //   안 이고 가면 매 프레임 0 으로 되돌아가 "언제 다시 쓰였나"를 못 센다(첫 판이 그래서 못 셌다).
+        window.__fogSegDbg = { wallSegs: wc.segs.length, n: (window.__fogSegDbg && window.__fogSegDbg.n) | 0 };   // ★진단 훅(하네스가 읽는다)
       }
       // Phase 5-8: 나무도 시야 차단 — 6각형으로 근사.
       // 시야 알고리즘이 O(6 × 선분²)라, 밀집 숲(나무 수백)에선 선분 수천 개 → 프레임당 수백만~천만 교차 검사로
@@ -2116,7 +2118,12 @@
         const best = _castRay(a, dx, dy, CLOSE_RADIUS);
         closeHits.push({ x: px + dx * best, y: py + dy * best });
       }
-      if (window.__fogSegDbg) { window.__fogSegDbg.segs = segs.length; window.__fogSegDbg.rays = filteredAngles.length + CLOSE_RAYS; window.__fogSegDbg.rsi = _rsiCalls; window.__fogSegDbg.bucket = _fbOn; }
+      // ★[T322 2026-09-19] `n` 한 칸 — **이 훅이 언제 다시 쓰였는지**를 세는 수(진단 객체 안에서만 산다).
+      //   왜: 하네스가 손잡이를 바꾸고 rAF 를 두 번 기다린 뒤 이 훅을 읽는데, 그 두 판이 **이 줄을
+      //   지나기 전**일 수 있다 — 그러면 **낡은 판**을 읽고 "손잡이가 안 갈렸다"고 말한다
+      //   (`e2e-fogray` R1 실측: A rsi 4877 = B rsi 4877). 정해진 프레임 수로 기다릴 게 아니라
+      //   **이 수가 바뀔 때까지** 기다리면 된다. 그리는 것에는 하나도 안 쓴다(화소 무변).
+      if (window.__fogSegDbg) { window.__fogSegDbg.segs = segs.length; window.__fogSegDbg.rays = filteredAngles.length + CLOSE_RAYS; window.__fogSegDbg.rsi = _rsiCalls; window.__fogSegDbg.bucket = _fbOn; window.__fogSegDbg.n = (window.__fogSegDbg.n | 0) + 1; }
       visibleWorldPath.moveTo(closeHits[0].x, closeHits[0].y);
       for (let i = 1; i < closeHits.length; i++) {
         visibleWorldPath.lineTo(closeHits[i].x, closeHits[i].y);

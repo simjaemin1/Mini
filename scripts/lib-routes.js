@@ -71,7 +71,10 @@ const ROUTES = {
   'zone GET ^/guilddbg':                     ['안문', '닫힘'],
   'zone GET ^/shelterdbg':                   ['안문', '닫힘'],
   'zone GET ^/welcomedbg':                   ['안문', '닫힘'],
-  'zone GET ^/startinfo':                    ['공개', '회부9'],
+  // ★★[T319 2026-09-19 · 회부 #9 닫음] 문은 **공개 그대로**고, 닫힌 것은 `?as=<이름>` **한 칸**이다
+  //   (`zone.js` `_devAsGate` · `DEV_AS=1` 일 때만 온보딩에 닿는다 · 실서버엔 env 가 없다).
+  //   ⇒ 판정이 `회부9` → `닫힘DEV_AS` 로 간다. **갈래는 안 바뀐다**(62·공개 16 그대로).
+  'zone GET ^/startinfo':                    ['공개', '닫힘DEV_AS'],
   'zone GET ^/lifedbg':                      ['안문', '닫힘'],
   'zone GET ^/roomdbg':                      ['안문', '닫힘'],
   'zone GET =/metrics': ['안문', '닫힘'],

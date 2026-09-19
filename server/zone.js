@@ -42,7 +42,7 @@ const Rooms = require('./rooms'); // ★[배치 18 ①] 방 판정 정본(벽·�
 const SIM_LON_ON = process.env.VILLAGE_LON !== '0'; // §19 경도 로컬 태양시(마을 NPC 야간 귀가) 게이트 — 기본 켜짐
 const central = require('./central-client'); // central HTTP 클라이언트
 const { Quadtree } = require('./quadtree'); // spatial index — O(N²) 검색 회피
-const { ChunkManager, CHUNK_SIZE, generateChunkResources, regrowStageOf, REGROW, generateVillagesForZone, generateCoastlineWaterTiles, RESOURCE_HP_TABLE } = require('./chunk'); // ★[T124] 재생 정산은 T122 정본을 그대로 받는다(사본 0) // 청크 단위 entity 분류 + procedural + 해안선 + ★[T108] 자연물 hp 정본
+const { ChunkManager, CHUNK_SIZE, generateChunkResources, overflowInto, seedGenChunkOf, regrowStageOf, REGROW, generateVillagesForZone, generateCoastlineWaterTiles, RESOURCE_HP_TABLE } = require('./chunk'); // ★[T124] 재생 정산은 T122 정본을 그대로 받는다(사본 0) // 청크 단위 entity 분류 + procedural + 해안선 + ★[T108] 자연물 hp 정본
 const { findPath: pfFindPath } = require('./pathfind'); // Phase 14.49-b: NPC A* pathfinding
 const PathCore = require('../sim/path-core.js'); // ★[생활 층 100% ①] 랩·서버 공용 경로 정본 — smoothPath(스트링 풀링)를 주민 이동에 직결
 const { ANIMALS } = require('./animals');  // Phase 5-6: 동물 mob 36종 catalog
@@ -63,6 +63,23 @@ const Onboarding = require('./onboarding');   // ★[온보딩 v2 2026-09-01] �
 //   판정은 `internal-door.js` **정본 하나**를 쓴다(central 과 같은 규칙 · 사본 0).
 //   ⚠하네스는 되돌이/사설 주소라 **그대로 산다**(§0 전수: 아홉 하네스가 이 문들을 쓴다).
 const InternalDoor = require('./internal-door');
+// ★★[T319 2026-09-19 · 회부 #9 닫음] **`/startinfo?as=<이름>` 은 개발 손잡이 뒤에 둔다.**
+//   `DEV_AS=1` 일 때만 그 칸이 온보딩에 닿는다. 실서버엔 env 가 없으니 **닫힌다**.
+//   ★막는 것은 **한 칸**이다 — 문(`/startinfo`)은 공개 그대로고, 그 문의 다른 칸도 그대로 간다.
+//     (여기서 `as` 만 지운 `url` 을 가진 얇은 겹을 넘긴다 — `httpStartInfo` 는 `req.url` 만 읽는다.
+//      `onboarding.js` 는 한 줄도 안 달라진다 · 사본 0.)
+//   ⚠**부를 때 읽는다** — 모듈 상수로 잡으면 손잡이 하나 보려고 존을 한 판 더 띄워야 한다(T88·T121).
+function _devAsOn() { return process.env.DEV_AS === '1'; }
+function _devAsGate(req) {
+  if (_devAsOn()) return req;
+  const u = String(req.url || '');
+  const q = u.indexOf('?');
+  if (q < 0 || !/(?:^|[?&])as=/.test(u)) return req;             // 그 칸이 없으면 그대로 — 새 객체도 안 만든다
+  const kept = u.slice(q + 1).split('&').filter((kv) => !/^as(=|$)/.test(kv)).join('&');
+  const shim = Object.create(req);                                // 겹 하나 — 원본은 안 바꾼다
+  shim.url = u.slice(0, q) + (kept ? '?' + kept : '');
+  return shim;
+}
 const Notice = require('./notice');           // ★[T78 2026-09-03] 알림 경계 — 접두 이모지 → `kind` · 글자 제거
 const Membership = require('./membership');   // ★[T11 2026-09-02] 마을 소속·곳간 인출. 기여 계량기는 온보딩 정본 **하나**를 읽는다
 const Claims = require('./claims');           // ★[T45 2026-09-02] 사유지 v2 — 종류 영속·인접·연결성·부재 상태기(정본 하나)
@@ -142,7 +159,9 @@ function updateActiveChunks() {
   for (const k of prevActiveChunkKeys) {
     if (!newActive.has(k)) {
       const [cx, cy] = k.split('_').map(Number);
-      deactivateChunk(cx, cy);
+      // ★[T317] **꺼진 뒤의 집합**을 넘긴다. `activeChunkKeys` 는 아직 옛 집합이라
+      //   같은 판에 같이 꺼지는 이웃이 "켜져 있다"로 보이고, 그러면 넘친 나무가 아무도 안 지워 **샌다**.
+      deactivateChunk(cx, cy, newActive);
     }
   }
   prevActiveChunkKeys = newActive;
@@ -254,8 +273,15 @@ function activateChunk(cx, cy) {
   // ★[T122] 게임일을 넘긴다 — 벤 자리가 **빠지는** 대신 **단계**(그루터기·묘목·성목)로 난다.
   //   정산은 **볼 때 한 번**이다(청크 활성화 · 타이머 0 · 틱 0 · 멱등).
   const seedResources = generateChunkResources(ZONE_ID, ZONE.biome, cx, cy, chunkManager.chunkSize, harvestedSeeds, gameDayNow());
+  // ★★[T317] **이웃이 이 청크에 낳은 것도 같이 놓는다.** 청크는 자기 밖에도 낳는다(숲 그리드 지터 —
+  //   T309 실측 7.49% · 전부 나무). 종전엔 그 나무가 **낳은 청크가 켜져 있을 때만** 있었다 ⇒ 세계가
+  //   관측자에 따라 달라졌다(캐논 위반 · T284 ①). 넘침은 서·북에서만 오므로 이웃 셋만 묻는다
+  //   (`chunk.js overflowInto` — 자원은 여전히 `generateChunkResources` 만 낳는다 · 사본 0 · 씨·순번 무변).
+  //   중복은 아래 `resources.has(r.id)` 가 막는다(같은 개체가 두 번 안 선다).
+  const _overflow = overflowInto(ZONE_ID, ZONE.biome, cx, cy, chunkManager.chunkSize, harvestedSeeds, gameDayNow());
   const spawned = [];
-  for (const r of seedResources) {
+  for (const r of seedResources.concat(_overflow)) {
+    if (resources.has(r.id)) continue;             // ★[T317] 이미 선 개체(이웃이 먼저 켜졌다) — 두 번 안 놓는다
     if (isTerrainBlockedLocal(r.x, r.y)) continue; // 바다 위 자원 차단
     _fruitStamp(r);                 // ★[T170] 스폰 방송에 `fruitNow` 한 비트가 실린다(볼 때 정산 — 여기가 "볼 때")
     resources.set(r.id, r);
@@ -272,7 +298,7 @@ function activateChunk(cx, cy) {
 }
 
 // 비활성화 — 그 청크의 시드 자원만 제거 (수동 자원은 안 건드림)
-function deactivateChunk(cx, cy) {
+function deactivateChunk(cx, cy, liveKeys) {
   const c = chunkManager.chunks.get(chunkManager.keyOf(cx, cy));
   if (!c) return;
   // AOI 건물: 비활성화 시 클라에서 제거 + 서버 메모리에서도 해제 (GC 폭주 수정).
@@ -293,8 +319,30 @@ function deactivateChunk(cx, cy) {
     }
     if (stairRemoved) stairCellDirty = true; // stair cache 무효화 (active 건물만 인덱싱)
   }
+  // ★★[T317 ②] **제거는 낳은 청크 기준**이다. 종전엔 **바구니 기준**(= 개체가 든 청크)이라,
+  //   청크 (1,0) 이 꺼질 때 청크 (0,0) 이 낳은 나무까지 지웠다 — (0,0) 은 아직 켜져 있는데(T309 §0ⓐ 자리 2).
+  //   규칙: 개체는 **낳은 청크**와 **든 청크** 둘 중 **하나라도 켜져 있으면 남는다.** 둘 다 꺼지면 사라진다.
+  //   ⇒ 이 청크가 꺼질 때 지울 것은 두 무리다:
+  //     ⓐ 이 청크 바구니에 든 것 중 **낳은 청크가 꺼진** 것
+  //     ⓑ 이 청크가 **낳았는데 이웃 바구니에 든** 것 중 그 이웃이 꺼진 것(넘침은 동·남·동남으로만 간다)
+  const _genOf = (r) => seedGenChunkOf(r.seedKey, r.x, r.y, chunkManager.chunkSize);
+  const _live = (kx, ky) => { const k = chunkManager.keyOf(kx, ky); return liveKeys ? liveKeys.has(k) : isChunkActiveKey(k); };
   const toRemove = [];
-  for (const r of c.resources.values()) if (r.isSeed) toRemove.push(r);
+  for (const r of c.resources.values()) {
+    if (!r.isSeed) continue;
+    const g = _genOf(r);
+    if ((g.cx !== cx || g.cy !== cy) && _live(g.cx, g.cy)) continue;   // ⓐ 낳은 청크가 살아 있다 — 남긴다
+    toRemove.push(r);
+  }
+  for (const [dx, dy] of [[1, 0], [0, 1], [1, 1]]) {                            // ⓑ 내가 낳아 이웃에 든 것
+    const nb = chunkManager.chunks.get(chunkManager.keyOf(cx + dx, cy + dy));
+    if (!nb || _live(cx + dx, cy + dy)) continue;                               // 그 이웃이 켜져 있으면 남긴다
+    for (const r of nb.resources.values()) {
+      if (!r.isSeed) continue;
+      const g = _genOf(r);
+      if (g.cx === cx && g.cy === cy) toRemove.push(r);
+    }
+  }
   if (!toRemove.length) return;
   const ids = [];
   for (const r of toRemove) {
@@ -2384,6 +2432,15 @@ function sepNpcs(dt) {
   }
 }
 
+// ★[T316] 이 NPC 가 **관측자와 무관하게** 걸어야 하나 — 마을 주민이고 손잡이가 켜져 있을 때.
+//   손잡이는 econ 정본이 쥔다(사본 0). 모듈이 아직 없으면 거짓(부팅 중 · 무해).
+let _t316Econ = null;
+function _t316WalkAlways(npc) {
+  if (!npc || !npc.simVillageId) return false;
+  if (_t316Econ === null) { try { _t316Econ = require('../sim/economy-sim'); } catch (e) { _t316Econ = false; } }
+  return !!(_t316Econ && _t316Econ.T312_FISH_ACT);
+}
+
 function npcStep(npc, dt, now) {
   decideNpcBehavior(npc, now);
 
@@ -3095,6 +3152,8 @@ const server = http.createServer((req, res) => {
       // ★[T153] 틱 시계 — 벽시계(`wall`)와 **세계가 실제로 적분한 시간**(`sim`)을 나란히 낸다.
       //   `lagPct` 가 곧 "세계가 얼마나 뒤졌나"다(종전 5.3% · 빚을 이월하면 0 근처).
       war: (SimVillages.warPerf ? (() => { const w = SimVillages.warPerf(); if (_rst && SimVillages.warPerfReset) SimVillages.warPerfReset(); return w; })() : null),   // ★[T284 ④]
+      // ★[T316] 어부 관측 — 손잡이가 꺼져 있으면 `null`(끈 팔 페이로드 무변).
+      fish: (() => { try { return SimVillages.fishPerf ? SimVillages.fishPerf() : null; } catch (e) { return null; } })(),
       tick: Object.assign({}, _tick, { ms: _tickMsStats(_rst), on: TICK_DEBT_ON, dtMax: DT_MAX, debtMax: TICK_DEBT_MAX,
         lagPct: _tick.wall > 0 ? +(100 * (_tick.wall - _tick.sim) / _tick.wall).toFixed(3) : null }) }));
     return;
@@ -3103,6 +3162,26 @@ const server = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     let humans = 0;
     for (const p of players.values()) if (!p.isNpc) humans++;
+    // ★★[T319 2026-09-19] **바깥에서 존의 안부를 보려면 칸 둘이 더 있어야 한다.**
+    //   T310 이 잰 것: `/perf` 는 **안 문**(T225)이라 바깥에서 못 읽는다 — 그건 옳다(존 내부 상태를 통째로 준다).
+    //   그런데 그 때문에 *"마을이 몇 곳 살아 있나 · 틱이 얼마나 걸리나"* 도 **같이** 안 보였다.
+    //   ⇒ 그 둘만 여기로 낸다. 나머지 `/perf` 는 안 문 그대로다.
+    //   ★**새 수 0 · 사본 0** — 둘 다 정본에게 묻는다:
+    //     · `villages` = `SimVillages.clientVillages()`(존이 이미 클라에 보내는 그 목록 · 인구는 하루 틱이 갱신한다)
+    //       에서 **사람이 사는 곳**을 센다. 마을 목록을 여기서 다시 만들지 않는다.
+    //     · `tickP50Ms` = `/perf` 의 `tick.ms.p50` 과 **같은 함수**(`_tickMsStats`)다.
+    //   ⚠**영점 조정을 안 한다**(`_tickMsStats(false)`) — 안부를 묻는 일이 계측 창을 지우면 안 된다.
+    //   ⚠T225 투영 규약 그대로: **수만** 낸다. 마을 이름·좌표·id 는 한 칸도 안 나간다.
+    //   ⚠마을 층이 안 서 있으면(`ENABLE_VILLAGES=0`) `null` 이다 — 0 이 아니다(0 은 "다 죽었다"는 뜻이라 거짓말이다).
+    let _vilN = null;
+    try { const _cv = SimVillages.clientVillages ? SimVillages.clientVillages() : null;
+          if (Array.isArray(_cv)) _vilN = _cv.filter((v) => (v.pop | 0) > 0).length; } catch (e) { _vilN = null; }
+    //   ⚠**표본이 0 이면 `null` 이다.** `_tickMsStats` 는 빈 창에서 `p50: 0` 을 낸다 — `/perf` 는 `n` 을 같이
+    //     실어 주니 읽는 쪽이 구분하지만, 여기엔 `n` 칸이 없다. 그대로 `0` 을 내보내면 *"틱이 0ms"* 라는
+    //     **없는 말**이 된다(한가한 존은 본문 없이 조기 반환해서 표본이 안 쌓인다 — 실측 `n:0`).
+    //     ⇒ 수를 새로 짓는 게 아니라 **없는 수를 말하지 않는다**. `villages` 의 `null` 과 같은 뜻이다.
+    let _p50 = null;
+    try { const _ms = _tickMsStats(false); _p50 = (_ms && _ms.n > 0) ? _ms.p50 : null; } catch (e) { _p50 = null; }
     res.end(JSON.stringify({
       zone: ZONE_ID,
       players: players.size,
@@ -3112,6 +3191,8 @@ const server = http.createServer((req, res) => {
       buildings: buildings.size,
       mobs: mobs.size,
       claims: claims.size,
+      villages: _vilN,          // ★[T319] 사람이 사는 마을 수(정본 목록에서 센다 · 수만)
+      tickP50Ms: _p50,          // ★[T319] 존 틱 p50 — `/perf` tick.ms.p50 과 같은 함수
       latency_ms: LATENCY_MS,
       uptime: process.uptime(),
     }));
@@ -3252,7 +3333,18 @@ const server = http.createServer((req, res) => {
     return;
   }
   // ★[온보딩 v2] 시작 화면이 읽는 마을 목록 — CORS 개방(`/lifedbg` 와 같은 규약: 민감 정보 없음)
-  if (req.url && req.url.startsWith('/startinfo') && req.method === 'GET') return Onboarding.httpStartInfo(req, res);
+  // ★★[T319 2026-09-19 · 재민 결정 · 회부 #9 닫음] **`?as=<이름>` 은 기본 닫힘이다.**
+  //   T310 이 잰 것: 이 문은 T245 가 닫은 적이 없다(라우트 정본이 `공개·회부9` 였다). 그리고
+  //   `onboarding.httpStartInfo` 는 그 이름으로 `friendVidsByName`·`memberVidByName` 을 태워 준다 —
+  //   **열쇠 없이 이름만으로** 남의 벗 마을과 소속 마을이 읽혔다. 그 주석이 이미 알고 있었다:
+  //   *"게스트 토큰으로 물으면 안 된다(그건 열쇠다) ⇒ 이름으로 묻는다."* — 열쇠를 피하려다 **이름이 열쇠**가 됐다.
+  //   ⇒ 이름 조회는 **개발 손잡이 뒤**로 넣는다. 실서버엔 env 가 없으니 닫힌다.
+  //   ★**문은 그대로 공개다** — 막는 것은 `?as=` **한 칸**뿐이다. 시작 화면은 종전대로 뜬다
+  //     (`httpStartInfo` 주석: *"못 물어봐도 막지 않는다 — 친구 칸이 0 일 뿐"*). 62 라우트도 그대로다.
+  //   ★**`onboarding.js` 는 한 줄도 안 건드린다.** 여기서 `req.url` 의 그 칸만 지워 넘긴다 —
+  //     문의 정책은 문에서 정하고, 온보딩은 제 일(시작 화면 조립)만 한다.
+  //   ⚠부를 때 읽는다(T88·T121 자리) — 모듈 상수면 손잡이 하나에 존을 한 판 더 띄워야 한다.
+  if (req.url && req.url.startsWith('/startinfo') && req.method === 'GET') return Onboarding.httpStartInfo(_devAsGate(req), res);
   if (req.url && req.url.startsWith('/lifedbg') && req.method === 'GET') {
     if (!InternalDoor.isInternal(req)) return InternalDoor.denyOutside(res);   // ★[T225] 관측창은 안 문
     // ★[직접 서버 디버깅 — 사용자 "네가 직접 서버에서 디버깅하는 방법은 없어?"] 생활 층 내부 상태 읽기 전용 JSON.
@@ -11038,7 +11130,15 @@ setInterval(() => {
     const npc = players.get(pid);
     if (!npc || npc.hp <= 0) continue;
     // Phase 4d-9 fix: canadia NPC는 active chunk 체크 우회 (모든 마을 동시 시뮬)
-    if (!npc.canadiaVillage && !isPositionActive(npc.x, npc.y)) { npc.vx = 0; npc.vy = 0; continue; }
+    // ★★★[T316 2026-09-19 · 설계_생산_실체 캐논 ⓑ — 재민 09-18 "관측자 없어도 실걸음"]
+    //   여기가 **빚의 자리**였다. 비활성 청크의 마을 NPC 는 멈춰 있었고, 그래서 T312 의 어부는
+    //   관측자가 있는 마을에서만 물가로 걸었다(없는 마을은 하루를 수식처럼 풀었다 — 몸이 없었다).
+    //   ⇒ 손잡이(`T312_FISH_ACT`)가 켜져 있으면 **마을 NPC 는 관측자와 무관하게 걷는다**.
+    //   ⚠둘째 손잡이를 안 만든다(카드 ①) — 같은 손잡이 안이다. 끄면 이 줄은 종전 그대로다.
+    //   ⚠결정은 이 아래 15ms 예산이 문다(`if (Date.now() - now > 15) break`). 그런데 **이동 문엔 예산이 없다**
+    //     (:11255 `movePlayerStep` 루프) — 실측에서 틱의 대부분은 거기서 났다(p50 2.47 → 374.6ms · 152배).
+    //     예산을 늘리지도, 새로 걸지도 않는다: 놓는 수가 곧 설계 판정이라 PM 몫이다(T316 §3 회부).
+    if (!npc.canadiaVillage && !_t316WalkAlways(npc) && !isPositionActive(npc.x, npc.y)) { npc.vx = 0; npc.vy = 0; continue; }
     if ((Date.now() - now) > 15) break;
     npcStep(npc, dt, now);
   }
@@ -11237,7 +11337,13 @@ setInterval(() => {
     if (p.isNpc) {
       if (p.simCaravan) continue; // §4-4 Stage 4B: 캐러밴 실체 NPC — 이동은 villages.js 페이싱(경로 보간+벽 판정)이 전담(이중 이동 방지)
       if (p.simWar) continue;     // §4-4 P3: 출정(징발) 병사 — 이동은 villages.js 실체 전쟁(행군 대형 페이싱·전투유닛 미러)이 전담(이중 이동 방지)
-      if (!p.canadiaVillage && !isPositionActive(p.x, p.y)) continue; // dormant NPC skip
+      // ★★★[T316 2026-09-19 · 캐논 ⓑ] **결정과 이동은 문이 둘이다.** 위 `npcStep` 게이트만 열면
+      //   주민은 목표를 정하고 라벨('출근')까지 찍지만 **한 픽셀도 안 간다** — 실측이 그랬다:
+      //   손잡이를 켜고 7 게임일을 돌렸는데 걷는 어부 0 · 입고 0 이었다(틱은 8배 무거워졌는데).
+      //   ⇒ 같은 술어를 **이동 문에도** 건다. 둘이 한 손잡이 안에서 같이 열려야 몸이 실제로 간다.
+      //   ⚠비활성 청크라 `qtPlayers`(:333)·`sepNpcs`(:2348) 는 그대로 건너뛴다 — 지형은 절차적이라
+      //     물·바위는 정상 판정되고, 건물 충돌과 서로 비키기만 없다(관측자 없는 마을의 값싼 몸).
+      if (!p.canadiaVillage && !_t316WalkAlways(p) && !isPositionActive(p.x, p.y)) continue; // dormant NPC skip
       movePlayerStep(p);
     } else {
       let consumed = 0;
@@ -11852,9 +11958,12 @@ setInterval(() => {
       //   `carrier` 는 1비트(지게를 졌나). 옷이 열어 둔 그 자리에 두 줄이면 축이 셋이 된다.
       if (isNew || now - (o._wornAt || 0) < 1200) e.tool = (getEquippedTool(o) || {}).type || null;
       //   ★[T134 2026-09-06] 주민도 이 한 비트를 탄다 — 출처만 갈린다(사람=장비 슬롯 · 주민=진 짐).
-      //     `_carry` 는 곳간② 물리 장부(수확 +1 · 인출 +q · 저장 0)이고 회계가 아니다.
+      //     그 짐은 곳간② 물리 장부(수확 +1 · 인출 +q · 저장 0)이고 회계가 아니다.
+      //   ★★[T316 2026-09-19] 주민의 손이 `inventory.grain_sheaf` 로 흡수됐다 ⇒ 여기서 손을 **다시 읽지 않는다**.
+      //     `villages.npcLifeTick` 이 손을 보고 `_carryOn` 을 뒤집으며 **같은 줄에서** `_wornAt` 을 찍는다
+      //     (villages.js:5966) — 비트와 도장이 한 자리에서 나오므로 창과 값이 어긋날 수 없다(사본 0).
       if (isNew || now - (o._wornAt || 0) < 1200)
-        e.carrier = o.isNpc ? (((o._carry || 0) > 0) ? 1 : 0) : (Carry.carrierOf(o) ? 1 : 0);
+        e.carrier = o.isNpc ? (o._carryOn ? 1 : 0) : (Carry.carrierOf(o) ? 1 : 0);
       return e;
     }
     // Phase 14.38: mob facing — vx/vy 포함. 14.49-d: floor + z

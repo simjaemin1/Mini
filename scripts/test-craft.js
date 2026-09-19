@@ -187,14 +187,29 @@ function bench(id, x, y, owner, type) {
   console.log('\n⑦ 화덕 = 요리 창 (같은 시설·대기열 문법)');
   const e = mkPlayer('e', { meat_raw: 4 });
   const fire = bench('cf1', 5020, 5000, e.playerId, 'campfire');
-  e._msgs.length = 0; H.doCook(e, 'meat_cooked');
+  e._msgs.length = 0;
+  const tPut = Date.now();                       // 불에 올린 때(하네스가 **본 사건**이지 문턱이 아니다)
+  H.doCook(e, 'meat_cooked');
   ok(Facility.pending(fire) === 1 && e.dishes.length === 0,
     '★★⑦ 요리도 **불에 올려 두는 것**이다(즉석 아님)', `대기 ${Facility.pending(fire)} · 요리 ${e.dishes.length}`);
   await sleep(Facility.CRAFT_MS.cook + 250);
+  // ★★[T322 2026-09-19] **상수와 견주지 않는다**(족보 ⑩ · T314 ⓒ 표의 둘째 자리).
+  //   종전: `Date.now() - craftedAtMs < 500` — 500 은 유도된 수가 아니고, 굶은 상자에서 이 사이에
+  //   0.5초가 지나면 **없는 결함**을 보고한다. 재려던 것은 "얼마나 빨랐나"가 아니라
+  //   **"언제 찍혔나"** 다 ⇒ 하네스가 본 **두 사건 사이에 들었는지**로 묻는다(상수 0).
+  //     올린 때 ─── 굽는 동안 ─── [꺼내기 직전] 꺼내기 [꺼내기 직후]
+  //   `craftedAtMs` 가 그 **꺼내기 창** 안이면 꺼낸 때다. 올린 때 근처면 불 위에서 나이를 먹은 것이다.
+  const tBeforeCollect = Date.now();
   H.doCraftCollect(e, 'cf1');
+  const tAfterCollect = Date.now();
   ok(e.dishes.length === 1, '★★⑦ 다 되면 받는다', `${e.dishes.length}개`);
-  ok(e.dishes[0] && e.dishes[0].craftedAtMs && Date.now() - e.dishes[0].craftedAtMs < 500,
-    '★⑦ **신선도는 꺼낸 때부터** — 불 위에서 식지 않는다');
+  const stamp = e.dishes[0] && e.dishes[0].craftedAtMs;
+  ok(!!stamp && stamp >= tBeforeCollect && stamp <= tAfterCollect,
+    '★⑦ **신선도는 꺼낸 때부터** — 불 위에서 식지 않는다(꺼내기 창 안에 찍혔다)',
+    stamp ? `올린 뒤 ${stamp - tPut}ms · 꺼내기 창 [${tBeforeCollect - tPut}, ${tAfterCollect - tPut}]ms` : '도장 없음');
+  ok(!!stamp && stamp - tPut >= Facility.CRAFT_MS.cook,
+    '★⑦ 자명 통과 금지 — 그 도장은 **올린 때가 아니다**(적어도 굽는 시간만큼 뒤다 · 문턱은 조리법의 수)',
+    stamp ? `${stamp - tPut}ms ≥ 조리 ${Facility.CRAFT_MS.cook}ms` : '');
   const noFire = mkPlayer('nf', { meat_raw: 2 });
   noFire.x = 9000; noFire.y = 9000;
   noFire._msgs.length = 0; H.doCook(noFire, 'meat_cooked');

@@ -191,6 +191,12 @@ const { ZONES } = R('server/zone-config');
 const T = R('server/terrain'); if (T.setZonesMeta) T.setZonesMeta(ZONES);
 const econ = R('sim/economy-sim');
 const econV2 = R('sim/economy-sim-v2');
+const CARRY = econ.T240_STRAW_CARRY === true;   // ★[T240] 짚 이월 팔 — 실제로 탄 양을 정본 상태에서 역산한다(손잡이는 엔진에서 읽는다 · 사본 0)
+// ★★[T249] **지켜보는 마을** — 이름을 `T176_WATCH` 로 주면 그 마을만 **날마다** 한 줄씩 적는다.
+//   왜: T240 에서 짚 이월 팔이 죽인 넷(농촌12·농촌9·광산3·농촌10)은 **한계 마을이 아니었다**
+//   (장부 팔 N=31/125/72/5). 20일 궤적으로는 어느 열이 **먼저** 갈렸는지 안 보인다.
+//   ⚠관측 전용 — 세계를 한 톨도 안 바꾼다(읽기만 · 새 상태 0). 비어 있으면 아무것도 안 적는다.
+const WATCH = new Set((process.env.T176_WATCH || '').split(',').map((x) => x.trim()).filter(Boolean));
 const VillageLayout = R('server/village-layout');
 const Villages = R('server/villages');
 const Events = R('server/events');
@@ -294,6 +300,13 @@ const M = vils.map(() => ({ harvestN: 0, units: 0, foodEq: 0, sow: 0, fDays: 0, 
   fuelNeedSum: 0, fuelNeedHeat: 0, fuelNeedSmelt: 0, fuelColdSum: 0,
   strawSum: 0, lowSum: 0, woodFuelSum: 0,     // 공급 세 갈래(볏짚 · 하급 · 목재)
   strawCapSum: 0, strawRawSum: 0, strawCapDays: 0, strawDays: 0,   // ★[T218] 볏짚의 두 조각(상한 · 원량)
+  // ★[T227 §0-ⓐ] **덩어리 분포** — 그날 곳간에 들어온 곡식이 볏짚 상한의 몇 배인가(r = 원량/상한).
+  //   r ≤ 1 이면 그날 짚은 다 쓰인다 · r > 1 이면 (r−1)/r 이 **버려진다**. 칸은 관측 전용(회계 0).
+  rBins: [0, 0, 0, 0, 0, 0], rRaw: [0, 0, 0, 0, 0, 0], rMax: 0,
+  // ★[T240] 짚 이월 — 실제로 탄 양(역산) · 종전 산수라면 탔을 양(비교 밑변) · 대기량
+  strawOldSum: 0, strawPendSum: 0, strawPendMax: 0, _pendPrev: 0,
+  builtMax: 0,        // ★[T264 ⓐ] 그 마을의 **실측 최대 일일 건축**(끔 팔이 캡 값을 준다 · 새 수 0)
+  watch: [],          // ★[T249] 날마다 한 줄(지켜보는 마을만)
   covLtDays: 0, covMin: 9,                     // 충당률이 1 미만인 날 · 최저
   dHealthSum: 0, dHpmSum: 0, dHealthTermSum: 0,   // `_fuelCov=1` 로 떼면 돌아오는 몫(닫힌 꼴 · 첫째 차수)
   healthSum: 0, hpmSum: 0, dpHealthSum: 0, dpSum: 0, statDays: 0,
@@ -334,7 +347,7 @@ for (let day = 0; day < DAYS; day++) {
       const _b = _h - m._hPrev * (1 - HOUSE_DECAY);
       m._builtToday = _b > 1e-12 ? _b : 0;
       if (_b > 1e-12) { m.builtSum += _b; if (HOUSE_WOOD != null) m.woodBuilt += _b * HOUSE_WOOD; }
-      if (_b > m.builtMax) m.builtMax = _b;   // ★[T300] 관측 전용
+      if (_b > m.builtMax) m.builtMax = _b;   // ★[T264 ⓐ · 같은 줄을 T300 이 main 에 먼저 이식했다] 관측 전용
     }
     if (_h != null) m._hPrev = _h;
     m.woodProd += +((ev.dailyProductionBuf && ev.dailyProductionBuf.wood) || 0);
@@ -359,11 +372,67 @@ for (let day = 0; day < DAYS; day++) {
       // ★[T218] 볏짚을 **두 조각으로** 갈라 둔다 — `min(상한, 원량)` 중 어느 쪽이 무는지 세려면
       //   둘을 따로 더해야 한다. 상한 `N × FIREWOOD_PC` 는 취사·난방 기본 수요 그 자체다.
       const _strawCap = n * FIREWOOD_PC, _strawRaw = _led * STRAW_FUEL_PER_FOOD;
-      const _straw = Math.min(_strawCap, _strawRaw);
+      // ★[T240] **실제로 탄 양은 정본 상태에서 역산한다**(T207 의 `built` 역산과 같은 문법 · 규칙 사본 0):
+      //   이월 팔에서는 `탄 양 = 원량 + 어제 대기 − 오늘 대기` 가 **항등식**이다(엔진이 그 둘만 움직인다).
+      //   끈 팔·이월 끔 팔에서는 `_strawPend` 가 아예 없으므로 종전 식 `min(상한, 원량)` 그대로다.
+      const _pendNow = +((ev._strawPend || 0));
+      const _straw = CARRY ? Math.max(0, _strawRaw + m._pendPrev - _pendNow) : Math.min(_strawCap, _strawRaw);
+      m._pendPrev = _pendNow;
+      m.strawPendSum += _pendNow; if (_pendNow > m.strawPendMax) m.strawPendMax = _pendNow;
+      m.strawOldSum += Math.min(_strawCap, _strawRaw);   // 종전 산수라면 탔을 양 — 버림 비교의 밑변
       m.strawSum += _straw; m.strawCapSum += _strawCap; m.strawRawSum += _strawRaw;
       if (_strawRaw > 0) { m.strawDays++; if (_strawCap <= _strawRaw) m.strawCapDays++; }
+      if (_strawRaw > 0 && _strawCap > 0) {   // ★[T227 §0-ⓐ] 같은 두 수로 배수만 센다(새 수 0)
+        const _r = _strawRaw / _strawCap;
+        const _i = _r < 0.25 ? 0 : _r < 0.5 ? 1 : _r < 1 ? 2 : _r < 2 ? 3 : _r < 5 ? 4 : 5;
+        m.rBins[_i]++; m.rRaw[_i] += _strawRaw; if (_r > m.rMax) m.rMax = _r;
+      }
       // ★하급 연료 — 나머지(충당률 × 수요 − 목재 − 볏짚). 잔차가 아니라 **정본 항등식**의 남은 한 자리다.
-      m.lowSum += Math.max(0, _cov * (_heat + _smN) - _wf - _straw);
+      const _low = Math.max(0, _cov * (_heat + _smN) - _wf - _straw);
+      m.lowSum += _low;
+      const _tp = ev._t264pot || null;   // ★[T264 ⓓ] 사본 팔이 담아 준 오늘 잠재(없으면 null)
+      let _pxD = null;
+      if (WATCH.has(v.name) && typeof world.priceFn === 'function') { try { _pxD = world.priceFn(ev); } catch (e) { _pxD = null; } }
+      // ★[T249] 지켜보는 마을 — 날마다 한 줄(연료 항 · 곡식 항 · 일자리 · 재고 · 대기량)
+      if (WATCH.has(v.name)) m.watch.push({
+        d: day, N: n,
+        food: +((ev.storage.food || 0)).toFixed(2),
+        grain: +_led.toFixed(3),                       // 오늘 곡식 유입(장부) — ⓒ 곡식 무변의 자
+        gated: (ev._dpDebug && ev._dpDebug.gated) ? 1 : 0,
+        cov: +_cov.toFixed(4), need: +(_heat + _smN).toFixed(3),
+        straw: +_straw.toFixed(3), strawRaw: +_strawRaw.toFixed(3), pend: +((ev._strawPend || 0)).toFixed(3),
+        low: +_low.toFixed(3), twig: +((ev.storage.twig || 0)).toFixed(2), bark: +((ev.storage.bark || 0)).toFixed(2),
+        woodFuel: +_wf.toFixed(3), wood: +((ev.storage.wood || 0)).toFixed(2),
+        lj: (ev.counts && ev.counts.lumberjack) || 0, fm: (ev.counts && ev.counts.farmer) || 0,
+        fg: (ev.counts && ev.counts.forager) || 0,
+        house: ev.housing != null ? +(+ev.housing).toFixed(2) : null,
+        hp: (ev.lastStats && typeof ev.lastStats.health === 'number') ? +ev.lastStats.health.toFixed(4) : null,
+        // ★[T249 ⓒ] **오늘 무엇을 먹었나** — 정본 `v._foodEaten`(`:506` 에서 매일 0 으로 비우고 다시 채운다)
+        //   그대로 읽는다(사본 0). 곡식 **유입**이 같은데 곳간 식량이 갈리면, 갈린 것은 **식단**이다.
+        eat: ev._foodEaten ? Object.fromEntries(Object.entries(ev._foodEaten)
+          .filter(([, x]) => x > 0).map(([k2, x]) => [k2, +x.toFixed(3)])) : null,
+        fish: +((ev.storage.fish || 0)).toFixed(2), meat: +((ev.storage.meat || 0)).toFixed(2),
+        // ★[T249 ⓑ] 하급 연료가 **어디로 갔나** — 재고는 위(twig·bark), 여기는 **오늘 모은 양**(장부).
+        //   재고가 0 인데 사용이 줄었으면 답은 둘뿐이다: 안 모으거나, 다른 데로 갔거나.
+        twigP: +((ev.dailyProductionBuf && ev.dailyProductionBuf.twig) || 0).toFixed(3),
+        barkP: +((ev.dailyProductionBuf && ev.dailyProductionBuf.bark) || 0).toFixed(3),
+        // ★[T264 ⓓ] **감산 칸** — 잠재 대비 실현. 정본 `addProduce` 는 잠재를 감산 **전**에,
+        //   실현을 감산 **후**에 적는다(`:2349` vs `:2353`). 그 둘의 비가 그날 그 품목이 깎인 정도다.
+        //   ⚠`satMul` 단독이 아니라 `_hpm·_hwm·_prodMul·satMul·_laborMul·포위·포로` **전부의 곱**이다 —
+        //     그래서 기준 품목(`wood`)의 같은 비를 나란히 둔다(공통 배수는 두 열에 같이 들어 있다).
+        //   잠재는 틱 지역 변수라 밖에서 못 읽는다 ⇒ 사본 팔이 `v._t264pot` 에 담아 줄 때만 채워진다.
+        // ★[T285 ⓒ] picker 누계 — 일별 차분은 표가 낸다(엔진에 하루 상태를 안 만든다)
+        rpTryC: ev._rpTry != null ? ev._rpTry : null, rpHitC: ev._rpHit != null ? ev._rpHit : null,
+        rpBlkC: ev._rpBlock != null ? ev._rpBlock : null,
+        ljCap: ev._ljCap != null ? ev._ljCap : null, ljCnt: ev._ljCnt != null ? ev._ljCnt : null,
+        twigTaper: _tp && _tp.twig > 0 ? +(1 - ((ev.dailyProductionBuf && ev.dailyProductionBuf.twig) || 0) / _tp.twig).toFixed(4) : null,
+        barkTaper: _tp && _tp.bark > 0 ? +(1 - ((ev.dailyProductionBuf && ev.dailyProductionBuf.bark) || 0) / _tp.bark).toFixed(4) : null,
+        woodTaper: _tp && _tp.wood > 0 ? +(1 - ((ev.dailyProductionBuf && ev.dailyProductionBuf.wood) || 0) / _tp.wood).toFixed(4) : null,
+        ckd: +((ev.storage.cooked_food || 0)).toFixed(2),
+        // ★그림자가격 — 배분식이 읽는 그 자리(`world.priceFn`) 그대로. 식단 사다리가 이 값으로 고른다(`:509~535`).
+        pF: _pxD && _pxD.food > 0 ? +_pxD.food.toFixed(4) : null,
+        pW: _pxD && _pxD.wood > 0 ? +_pxD.wood.toFixed(4) : null,
+      });
     }
     // ★[T210] `_fuelCov = 1` 로 떼면 — 그 항은 `:118` 한 줄의 **닫힌 꼴**이라 정확히 떼어진다(첫째 차수).
     if (ev.lastStats && typeof ev.lastStats.health === 'number' && FUEL_HEALTH_W != null) {
@@ -395,6 +464,11 @@ for (let day = 0; day < DAYS; day++) {
     if (day % 10 === 0 && typeof world.priceFn === 'function') {
       try { const _pt = world.priceFn(ev); if (_pt && _pt.food > 0) { m.priceSum += _pt.food; m.priceN++; } } catch (e) {}
     }
+    if (WATCH.has(v.name) && !(n > 0 && FIREWOOD_PC != null)) m.watch.push({
+      d: day, N: n, food: +((ev.storage.food || 0)).toFixed(2), grain: +_led.toFixed(3),
+      gated: (ev._dpDebug && ev._dpDebug.gated) ? 1 : 0, dead: 1,
+      wood: +((ev.storage.wood || 0)).toFixed(2), pend: +((ev._strawPend || 0)).toFixed(3),
+    });
     if (day % 20 === 0) m.traj.push({ d: day, N: n,
       fN: (ev.counts && ev.counts.farmer) || 0, cells: v._farmSet.size,
       food: +((ev.storage.food || 0)).toFixed(1), foodEq: +econ.totalFoodEquivalent(ev).toFixed(1),
@@ -469,6 +543,7 @@ for (let i = 0; i < world.villages.length; i++) {
     builtMax: +m.builtMax.toFixed(6),   // ★[T300] 캡 값의 밑변(관측 전용)
     woodStockMean: +(m.woodStockSum / DAYS).toFixed(2), woodZeroDays: m.woodZeroDays,
     woodStockEnd: +((v.storage.wood || 0)).toFixed(1),
+    t100Pend: +((v._t100Pend || 0)).toFixed(4),   // ★[T227] 끝에 남은 대기분 — 총량 무변의 세계 규모 증거
     woodImported: +((v.tradeStats && v.tradeStats.woodImported) || 0).toFixed(1),
     priceWood: m.priceWoodN ? +(m.priceWoodSum / m.priceWoodN).toFixed(4) : null,
     fuelCovMean: +(m.fuelCovSum / DAYS).toFixed(4), covLtDays: m.covLtDays, covMin: +m.covMin.toFixed(4),
@@ -477,6 +552,23 @@ for (let i = 0; i < world.villages.length; i++) {
     supStraw: +m.strawSum.toFixed(1), supLow: +m.lowSum.toFixed(1), supWood: +m.woodFuelSum.toFixed(1),
     strawCap: +m.strawCapSum.toFixed(1), strawRaw: +m.strawRawSum.toFixed(1),
     strawCapDays: m.strawCapDays, strawDays: m.strawDays,
+    rBins: m.rBins.slice(), rRaw: m.rRaw.map((x) => +x.toFixed(1)), rMax: +m.rMax.toFixed(3),
+    strawOld: +m.strawOldSum.toFixed(1), strawPendMean: +(m.strawPendSum / DAYS).toFixed(3),
+    builtMax: +m.builtMax.toFixed(6),   // ★[T264 ⓐ] 캡 값의 밑변
+    // ★[T275 ②] picker 위기 충원 — 사본이 센 세 칸(조건 참 · 실제 충원 · hasSlot 이 막음). 없으면 null
+    pkTry: v._pkTry != null ? v._pkTry : null,
+    pkHit: v._pkHit != null ? v._pkHit : null,
+    pkBlock: v._pkBlock != null ? v._pkBlock : null,
+    rpTry: v._rpTry != null ? v._rpTry : null,
+    rpHit: v._rpHit != null ? v._rpHit : null,
+    rpBlock: v._rpBlock != null ? v._rpBlock : null,
+    // ★[T285] 두 picker 의 진입 횟수 · 막힌 순간의 자리 상한·현원(관측 전용)
+    legacyPick: v._legacyPick != null ? v._legacyPick : null,
+    ratPick: v._ratPick != null ? v._ratPick : null,
+    ljCap: v._ljCap != null ? v._ljCap : null,
+    ljCnt: v._ljCnt != null ? v._ljCnt : null,
+    strawPendMax: +m.strawPendMax.toFixed(2), strawPendEnd: +((v._strawPend || 0)).toFixed(4),
+    watch: m.watch.length ? m.watch : undefined,   // ★[T249] 지켜보는 마을만 채워진다
     healthMean: m.statDays ? +(m.healthSum / m.statDays).toFixed(4) : null,
     hpmMean: m.statDays ? +(m.hpmSum / m.statDays).toFixed(5) : null,
     dHealthMean: m.statDays ? +(m.dHealthSum / m.statDays).toFixed(5) : null,
@@ -558,6 +650,8 @@ const out = {
   woodImportedTot: +per.reduce((a, p) => a + p.woodImported, 0).toFixed(1),
   woodStockEndTot: +per.reduce((a, p) => a + p.woodStockEnd, 0).toFixed(1),
   woodZeroDaysTot: per.reduce((a, p) => a + p.woodZeroDays, 0),
+  t100PendTot: +per.reduce((a, p) => a + p.t100Pend, 0).toFixed(2),
+  even: econ.T227_EVEN === true,
   priceWoodMean: +(per.filter((p) => p.priceWood != null).reduce((a, p) => a + p.priceWood, 0)
                    / Math.max(1, per.filter((p) => p.priceWood != null).length)).toFixed(4),
   fuelCovMean: +(per.reduce((a, p) => a + p.fuelCovMean, 0) / Math.max(1, per.length)).toFixed(4),
@@ -571,6 +665,23 @@ const out = {
   strawRawTot: +per.reduce((a, p) => a + p.strawRaw, 0).toFixed(1),
   strawCapDaysTot: per.reduce((a, p) => a + p.strawCapDays, 0),
   strawDaysTot: per.reduce((a, p) => a + p.strawDays, 0),
+  rBinsTot: [0, 1, 2, 3, 4, 5].map((i) => per.reduce((a, p) => a + p.rBins[i], 0)),
+  rRawTot: [0, 1, 2, 3, 4, 5].map((i) => +per.reduce((a, p) => a + p.rRaw[i], 0).toFixed(1)),
+  rMaxTot: +per.reduce((a, p) => Math.max(a, p.rMax), 0).toFixed(3),
+  strawOldTot: +per.reduce((a, p) => a + p.strawOld, 0).toFixed(1),
+  strawPendEndTot: +per.reduce((a, p) => a + p.strawPendEnd, 0).toFixed(2),
+  strawPendMaxTot: +per.reduce((a, p) => Math.max(a, p.strawPendMax), 0).toFixed(2),
+  strawPendMeanTot: +per.reduce((a, p) => a + p.strawPendMean, 0).toFixed(3),
+  builtMaxTot: +per.reduce((a, p) => Math.max(a, p.builtMax), 0).toFixed(6),
+  pkTryTot: per.reduce((a, p) => a + (p.pkTry || 0), 0),
+  pkHitTot: per.reduce((a, p) => a + (p.pkHit || 0), 0),
+  pkBlockTot: per.reduce((a, p) => a + (p.pkBlock || 0), 0),
+  rpTryTot: per.reduce((a, p) => a + (p.rpTry || 0), 0),
+  rpHitTot: per.reduce((a, p) => a + (p.rpHit || 0), 0),
+  rpBlockTot: per.reduce((a, p) => a + (p.rpBlock || 0), 0),
+  legacyPickTot: per.reduce((a, p) => a + (p.legacyPick || 0), 0),
+  ratPickTot: per.reduce((a, p) => a + (p.ratPick || 0), 0),
+  carry: CARRY,
   supLowTot: +per.reduce((a, p) => a + p.supLow, 0).toFixed(1),
   supWoodTot: +per.reduce((a, p) => a + p.supWood, 0).toFixed(1),
   covLtDaysTot: per.reduce((a, p) => a + p.covLtDays, 0),

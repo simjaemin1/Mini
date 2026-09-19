@@ -419,9 +419,18 @@ const terrain = require('./terrain');
 //     그 산술이 틀리면 색인이 청크와 갈리므로, `scripts/test-resource-index.js` ⓐ 가
 //     **활성 청크 100개를 전수로** 맞대 본다(바이트 대조).
 function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet, gameDay, onlyCell) {
-  // ★[T301] 셀 거르개 — 개체 하나가 그 셀에 떨어지나(32px 셀 · 바닥 나눗셈은 좌표계 정본과 같다)
-  const _OC = onlyCell || null;
-  const _inCell = _OC ? ((x, y) => Math.floor(x / 32) === _OC.cx && Math.floor(y / 32) === _OC.cy) : null;
+  // ★[T301] 거르개 — 개체 하나가 그 **구간** 안에 떨어지나.
+  // ★[T317] 구간은 두 꼴을 받는다: `{cx,cy}`(셀 · 32px · T301 문법 그대로) · `{x0,y0,x1,y1}`(픽셀 상자).
+  //   상자 꼴은 `overflowInto` 가 **청크 하나**를 통째로 묻는 데 쓴다 — 셀로 1,024번 묻는 것보다 싸고,
+  //   같은 코드라 답이 갈릴 수 없다(사본 0).
+  //   ⚠**반열린 구간 `[x0, x1)` 이다.** 좌표는 소수라(격자 지터) 닫힌 구간으로 두면 `x = 1023.5` 처럼
+  //     `floor(x/cs)` 로는 이 청크인데 상자에서 빠지는 개체가 생긴다 — 하네스 ⓕ 가 21 중 1 을 그렇게 놓쳤다.
+  const _OC = onlyCell
+    ? (onlyCell.x0 !== undefined
+        ? onlyCell
+        : { x0: onlyCell.cx * 32, y0: onlyCell.cy * 32, x1: onlyCell.cx * 32 + 32, y1: onlyCell.cy * 32 + 32 })
+    : null;
+  const _inCell = _OC ? ((x, y) => x >= _OC.x0 && x < _OC.x1 && y >= _OC.y0 && y < _OC.y1) : null;
   // ★[T122] 벤 날 조회 — `Set` 이 오면 `get` 이 없다(옛 호출부·구 하네스 계약을 그대로 살린다).
   const _cutDay = (k) => (harvestedSet && typeof harvestedSet.get === 'function') ? harvestedSet.get(k) : undefined;
   const _stage = (k, type, sp) => {
@@ -590,8 +599,8 @@ function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet, 
     //   `gi` 는 전 격자의 순번이므로 건너뛸 때 **행 폭(_cols)만큼 더해** 순번을 정확히 맞춘다
     //   (틀리면 씨가 어긋나 색인이 청크와 갈린다 — `test-resource-index ⓐ` 가 전수로 잡는다).
     const _cols = Math.ceil(cs / SP);
-    const _oxLo = _OC ? (_OC.cx * 32 - cx * cs) : 0, _oxHi = _oxLo + 31;
-    const _oyLo = _OC ? (_OC.cy * 32 - cy * cs) : 0, _oyHi = _oyLo + 31;
+    const _oxLo = _OC ? (_OC.x0 - cx * cs) : 0, _oxHi = _OC ? (_OC.x1 - 1 - cx * cs) : 0;
+    const _oyLo = _OC ? (_OC.y0 - cy * cs) : 0, _oyHi = _OC ? (_OC.y1 - 1 - cy * cs) : 0;
     let gi = 0;
     for (let gy = 0; gy < cs; gy += SP) {
       if (_OC && (gy > _oyHi || gy + SP <= _oyLo)) { gi += _cols; continue; }
@@ -695,6 +704,48 @@ function resourcesAtCell(zoneId, cellX, cellY, opts) {
 function resourceAt(zoneId, cellX, cellY, opts) {
   const a = resourcesAtCell(zoneId, cellX, cellY, opts);
   return a.length ? a[0] : null;
+}
+
+// ══ ★★[T317 2026-09-19] 넘친 개체를 **세계의 것**으로 ═════════════════════════
+//
+// ★왜 [지시 T317 · T309 §0ⓐ]
+//   청크는 자기 밖에도 낳는다 — 숲 그리드의 마지막 격자점이 지터(`j1 × SP`)로 경계를 넘는다.
+//   실측(T309): 청크 400개 · 개체 12,461 중 **933개(7.49%)가 제 청크 밖**이고 **전부 나무**다.
+//   그런데 이웃 청크는 그 나무를 **스스로 안 낳는다(162/162)** — 그래서 낳은 청크가 꺼지면 사라지고,
+//   이웃만 켜져 있으면 처음부터 없다. **세계가 관측자에 따라 달라진다**(캐논 위반 · T284 ①).
+//
+// ★넘침은 **동·남·동남쪽으로만** 간다. 격자점 x 는 `cx*cs + gx + j1*SP`(gx ≥ 0 · j1 ≥ 0)라
+//   **절대 `cx*cs` 보다 작아질 수 없다** — 서·북으로는 못 넘는다(T309 실측도 서 0 · 북 0).
+//   ⇒ 청크 C 로 넘쳐 들어올 수 있는 이웃은 **서·북·서북 셋뿐**이다.
+//
+// ★사본 0 — 자원은 여전히 `generateChunkResources` 만 낳는다. 이 함수는 **거르기만** 한다.
+function overflowInto(zoneId, biome, cx, cy, chunkSize, harvestedSet, gameDay) {
+  const out = [];
+  for (const [dx, dy] of [[-1, 0], [0, -1], [-1, -1]]) {
+    const qx = cx + dx, qy = cy + dy;
+    if (qx < 0 || qy < 0) continue;
+    // ★[T317] 이웃을 통째로 낳지 않는다 — **이 청크 상자**만 묻는다(`onlyCell` 의 상자 꼴).
+    //   숲 그리드의 격자점 창이 그만큼 좁아져 숲 청크에서 특히 싸다(보고 §부하).
+    const box = { x0: cx * chunkSize, y0: cy * chunkSize, x1: (cx + 1) * chunkSize, y1: (cy + 1) * chunkSize };
+    const list = generateChunkResources(zoneId, biome, qx, qy, chunkSize, harvestedSet, gameDay, box);
+    for (let i = 0; i < list.length; i++) out.push(list[i]);
+  }
+  return out;
+}
+
+// ★[T317 ②] 그 개체를 **낳은 청크** — 제거 기준이다(`zone.js deactivateChunk`).
+//   씨앗 키의 꼴은 이 파일이 정한다(`${cx}_${cy}_${n}` · `_met` · `_ft<gx>_<gy>` · 군락 `gv<gi>_<i>`).
+//   그래서 **푸는 것도 이 파일이 한다** — 부르는 쪽이 문자열을 쪼개면 그게 사본이고, 꼴이 바뀌면 조용히 어긋난다.
+//   ⚠군락(`gv…`)은 `chunk.js:554` 가드가 **제 청크에서만** 낳게 하므로 낳은 청크 = 든 청크다.
+function seedGenChunkOf(seedKey, x, y, chunkSize) {
+  const cs = chunkSize || CHUNK_SIZE;
+  const fallback = { cx: Math.floor(x / cs), cy: Math.floor(y / cs) };
+  if (typeof seedKey !== 'string' || seedKey.charCodeAt(0) === 103 /* 'g' — 군락 */) return fallback;
+  const i = seedKey.indexOf('_'); if (i <= 0) return fallback;
+  const j = seedKey.indexOf('_', i + 1); if (j <= i) return fallback;
+  const a = +seedKey.slice(0, i), b = +seedKey.slice(i + 1, j);
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return fallback;
+  return { cx: a, cy: b };
 }
 
 // ★★[T301 ②] 전쟁이 쓸 **나무 차단 술어** — `_warWorld.blocked/losBlocked/coverAt` 의 나무 몫.
@@ -901,4 +952,4 @@ function generateCoastlineWaterTiles(zone, tileSize, findZoneAtFn, oceanRects) {
 
 // ★[T108 2026-09-05] `RESOURCE_HP_TABLE` 을 **내준다** — `zone.js` 가 같은 표를 한 벌 더
 //   들고 있었고(운석이 빠져 3대에 깨졌다 · T90 회부), 그걸 지우려면 정본이 나가야 한다.
-module.exports = { Chunk, ChunkManager, CHUNK_SIZE, generateChunkResources, resourceAt, resourcesAtCell, treeBlockerAt, regrowStageOf, REGROW, seedRand, forestSpacing, forestTreesPerCell, forestTreesPerCellMean, scatterTreesPerCell, treeShareOf, scatterRocksPerCell, rockShareOf, FOREST_MIN_COV, RESOURCES_PER_CHUNK, generateVillagesForZone, makeVillageName, generateCoastlineWaterTiles, RESOURCE_HP_TABLE };
+module.exports = { Chunk, ChunkManager, CHUNK_SIZE, generateChunkResources, resourceAt, resourcesAtCell, treeBlockerAt, overflowInto, seedGenChunkOf, regrowStageOf, REGROW, seedRand, forestSpacing, forestTreesPerCell, forestTreesPerCellMean, scatterTreesPerCell, treeShareOf, scatterRocksPerCell, rockShareOf, FOREST_MIN_COV, RESOURCES_PER_CHUNK, generateVillagesForZone, makeVillageName, generateCoastlineWaterTiles, RESOURCE_HP_TABLE };

@@ -266,5 +266,53 @@ sec('⑫ [T172] 배율 자리 — 사냥 문도 양과 배율을 따로 넘긴�
     '★★⑫ 나무꾼도 `_esk` 로 이어진다(사냥꾼과 **같은 문법** — 새 규약 0)');
 }
 
+// ═══ ⑬ [T311] 증분 캐시 — 줍는 자리마다 같이 줄어야 한다 ═══════════════════
+sec('⑬ [T311] `econ.counts` 는 증분 캐시다 — `econ.npcs` 를 덜어내는 자리가 **전부** 같이 덜어내나');
+{
+  //   ★왜 이 하네스인가 — 고기 소득(⑪)의 **분모**가 `v.counts.hunter` 다. 캐시가 부풀면
+  //     잡은 마릿수가 같아도 곳간 고기가 그 비만큼만 든다(T297 §1 읽기 3 · T311 §1 표).
+  //     같은 캐시를 `hasSlot` 도 읽으므로 미선발(T297 읽기 2)까지 한 줄이 설명한다.
+  const ENG = fs.readFileSync(path.join(ROOT, 'sim', 'economy-sim.js'), 'utf8');
+  ok(/counts: Object\.fromEntries\(JOB_NAMES\.map\(j => \[j, 0\]\)\),\s*\/\/ 직업별 인구 \(incremental\)/.test(ENG),
+    '★⑬ 정본이 **증분 캐시**라고 스스로 적는다(이 하네스의 근거 — 값 판정 아님)');
+  ok(/function jobCounts\(v\) \{\s*return v\.counts;\s*\}/.test(ENG),
+    '★★⑬ 그리고 `jobCounts` 는 **다시 세지 않는다**(`return v.counts` — 누가 안 줄이면 아무도 안 줄인다)');
+  ok(/function hasSlot\(v, job, cap, counts\) \{\s*return \(cap\[job\] \|\| 0\) > \(counts\[job\] \|\| 0\);/.test(ENG),
+    '★★⑬ 자리 판정(`hasSlot`)이 **그 캐시**를 읽는다(고기와 미선발의 공통 분모)');
+
+  //   ★★랩 두 벌 전수 — `econ.npcs`(또는 `e.npcs`/`le.npcs`…) 를 splice 하는 **모든** 줄이
+  //     같은 줄에서 `counts` 를 내린다. 자리 수를 박지 않는다(자리가 늘면 하네스가 따라 늘 필요 없게).
+  for (const f of ['전쟁실험실.html', '마을실험실.html']) {
+    const H = fs.readFileSync(path.join(ROOT, 'lab', f), 'utf8');
+    const lines = H.split('\n');
+    const bad = [];
+    let nSplice = 0;
+    for (let i = 0; i < lines.length; i++) {
+      const L = lines[i];
+      if (!/\bnpcs\.splice\(/.test(L)) continue;
+      if (/^\s*\/\//.test(L)) continue;
+      //   엔진 인라인 블록(자동 생성물)은 제 하네스가 따로 잠근다 — 여기서는 랩 네이티브만 본다.
+      //   구분은 위치가 아니라 **글자**다: 엔진 쪽은 `v.npcs.splice` / `src.npcs.splice` 꼴이고
+      //   랩 네이티브가 econ 을 덜어내는 자리는 반드시 `econ` 또는 `e.`/`le.`/`fe.`/`we.`/`_ev.` 를 탄다.
+      if (!/(econ|\be\.npcs|\ble\.npcs|\bfe\.npcs|\bwe\.npcs|\b_ev\.npcs)/.test(L)) continue;
+      nSplice++;
+      if (!/counts\[/.test(L)) bad.push(i + 1);
+    }
+    ok(nSplice >= 1, `★⑬ ${f} — econ 인구를 덜어내는 랩 자리를 전수로 잡는다(비어 있으면 자명 통과다)`, `${nSplice}자리`);
+    ok(bad.length === 0,
+      `★★★⑬ ${f} — 그 **전부**가 같은 줄에서 \`counts\` 를 내린다(T311 이 고친 그 한 자리 포함)`,
+      bad.length ? `안 내리는 줄 ${bad.join(',')}` : '0');
+  }
+
+  //   ★그리고 그 자리는 `reapDead`(맹수 사망) 다 — 관찰 모드에만 사는 길이라 여기서만 새던 것
+  const rd = bodyOf('reapDead').replace(/\s/g, '');
+  ok(/const_rd=s\.econ\.npcs\.splice\(k,1\)\[0\];/.test(rd),
+    '★★⑬ `reapDead` 가 **덜어낸 사람을 잡는다**(누구를 뺐는지 모르면 어느 칸을 줄일지 모른다)');
+  ok(/s\.econ\.counts\[_rd\.currentJob\]=Math\.max\(0,\(s\.econ\.counts\[_rd\.currentJob\]\|\|0\)-1\)/.test(rd),
+    '★★⑬ 그리고 **그 직업 칸**을 내린다 — 같은 랩의 다른 자리들이 쓰는 `Math.max(0, …-1)` 밑짝 그대로(새 규약 0)');
+  ok(strip(bodyOf('huntIncomeReal')).indexOf('_rd') < 0,
+    '★⑬ ★소득 함수(`huntIncomeReal`)는 **한 글자도 안 변했다** — 고친 것은 분모를 적는 자리다');
+}
+
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
 process.exit(fail ? 1 : 0);

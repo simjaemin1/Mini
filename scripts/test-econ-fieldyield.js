@@ -44,6 +44,16 @@ const SRC = fs.readFileSync(path.join(ROOT, 'sim', MUT || 'economy-sim.js'), 'ut
 const VSRC = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8');
 const LSRC = fs.readFileSync(path.join(ROOT, 'server', 'village-layout.js'), 'utf8');
 const ON = process.env.T100_FIELD_YIELD === '1';
+// ★★[T227] 고르게 켠 판에서는 수확이 **대기열**로 가고 하루치씩 풀린다. 픽스처는 세계를 흉내 내지 않고
+//   **정본 `t100EvenRelease` 를 그대로 불러** 다 푼 뒤에 본다 — 그러면 아래 절들이 두 팔에서 같은 말을 한다.
+//   (총량 항등식은 ⑲ 가 따로 문다. 4,000번이면 남은 대기가 1e-13 아래다 — 아래 비교 허용오차 1e-9 밖.)
+const EVEN = process.env.T227_EVEN === '1';
+const CARRY = process.env.T240_STRAW_CARRY === '1';   // ★[T240] 짚 이월 팔 — 곡식 경로는 무변이라 아래 절들은 안 갈린다
+const putHarvest = (v, n, mul) => {
+  const a = econ.harvestToGranary(v, n, mul);
+  if (EVEN) for (let i = 0; i < 4000; i++) econ.t100EvenRelease(v);
+  return a;
+};
 
 // ★★[T100 5판 · main 병합 뒤 수리] **줄 주석을 먼저 지우고 블록 주석을 지운다.**
 //   종전엔 순서가 반대였는데, `villages.js:20` 의 줄 주석 안에 있는 `sim/*` 가 **블록 주석을 여는
@@ -118,7 +128,7 @@ console.log('\n③ 대체 — 얹지 않는다(둘 다 넣으면 곡물가가 �
   // 곳간 입구 — 실제로 넣는다(켬) · 한 톨도 안 넣는다(끔)
   const v = econ.createVillage({ initialPop: 0, name: '픽스처', fertility: 1.0 });
   const f0 = v.storage.food || 0, g0 = v._grainToday || 0;
-  const put = econ.harvestToGranary(v, 10);
+  const put = putHarvest(v, 10);
   if (ON) {
     ok(Math.abs(put - 10 * econ.T100_K) < 1e-9, '③ ★★수확 10건 = `10 × k` 식량등가', put.toFixed(4));
     ok((v.storage.food || 0) > f0 && Math.abs((v.storage.food - f0) - put * 0.97) < 1e-9,
@@ -144,7 +154,7 @@ console.log('\n④ 무접촉 — 어부·사냥꾼·채집 산출은 안 건드�
   ok(/landBoost: \(v\) => v\.land\.game/.test(SRC), '④ 사냥꾼 `landBoost` 가 `v.land.game` 그대로다(소스)');
   const CODE = codeOf(SRC);
   const hits = CODE.split('\n').filter(l => l.indexOf('T100_FIELD_YIELD') >= 0).length;
-  ok(hits === 9, '④ ★손잡이를 무는 줄이 **아홉뿐**이다(선언 1 + `farmFlowPerDay` 1 + `harvestToGranary` 1 + `seedFoodDays` 1 + `gardenFloorTopUp` 1 + 대체 1 + **잠재(T183) 1** + **배율 심기(T179) 1** + 내보내기 1 — 주석 제외)', `${hits}줄`);
+  ok(hits === 10, '④ ★손잡이를 무는 줄이 **열뿐**이다(선언 1 + `farmFlowPerDay` 1 + `harvestToGranary` 1 + `seedFoodDays` 1 + `gardenFloorTopUp` 1 + 대체 1 + **잠재(T183) 1** + **배율 심기(T179) 1** + **고르게 푸는 자리(T227) 1** + 내보내기 1 — 주석 제외)', `${hits}줄`);
   ok(/farmFlowPerDay\(v, _cf\.farmer \|\| 0\)/.test(SRC), '④ 부양력(prodK)도 **같은 함수**를 본다(K 만 옛 밑변이면 인구가 밭 없이 분다)');
   // 부양력은 켜면 앵커 그 자체다 — 용량과 산출이 같은 앵커를 본다.
   const v = econ.createVillage({ initialPop: 0, name: '픽스처', fertility: 0.8 });
@@ -303,6 +313,24 @@ if (!process.env.T100_CHILD) {
     ok(run({ T100_FIELD_YIELD: '1', T193_LEDGER: '1', T100_MUT_MOD: MUTNAME }) !== 0,
       '⑦ ★★★장부에 **×2** 를 끼우면 빨개진다(⑮ 꼴·양 검사 — 새 수 0 의 파수꾼)');
   } finally { if (made9) { try { fs.unlinkSync(MUTPATH); } catch (e) { console.log('  ⚠변조 사본 정리 실패: ' + MUTPATH); } } }
+  // ★변조 [T227] — 주기를 **손수치 7** 로 바꾼 사본(정본 `seedFoodDays` 를 안 쓰는 판)
+  let madeE = false;
+  try {
+    const mutSrcE = SRC.replace('  const d = seedFoodDays(0);', '  const d = 7;   // 하네스 변조본 — 주기를 손수치로');
+    ok(mutSrcE !== SRC, '⑦ [T227] 주기의 변조 지점이 소스에 **실재한다**');
+    fs.writeFileSync(MUTPATH, mutSrcE); madeE = true;
+    ok(run({ T100_FIELD_YIELD: '1', T193_LEDGER: '1', T227_EVEN: '1', T100_MUT_MOD: MUTNAME }) !== 0,
+      '⑦ ★★★주기를 **손수치로 적으면 ⑲ 가 빨개진다**(정본 `seedFoodDays` 의 파수꾼)');
+  } finally { if (madeE) { try { fs.unlinkSync(MUTPATH); } catch (e) { console.log('  ⚠변조 사본 정리 실패: ' + MUTPATH); } } }
+  // ★변조 [T240] — 이월 나머지를 **버리는** 판(`v._strawPend = 0`). ⑳ 의 질량 항등식이 물어야 한다.
+  let madeF = false;
+  try {
+    const mutSrcF = SRC.replace('  v._strawPend = avail - burn;', '  v._strawPend = 0;   // 하네스 변조본 — 나머지를 버린다');
+    ok(mutSrcF !== SRC, '⑦ [T240] 이월 나머지의 변조 지점이 소스에 **실재한다**');
+    fs.writeFileSync(MUTPATH, mutSrcF); madeF = true;
+    ok(run({ T100_FIELD_YIELD: '1', T193_LEDGER: '1', T240_STRAW_CARRY: '1', T100_MUT_MOD: MUTNAME }) !== 0,
+      '⑦ ★★★이월 나머지를 **버리면 ⑳ 이 빨개진다**(질량 항등식의 파수꾼 — 종전 버림으로 되돌아가는 판)');
+  } finally { if (madeF) { try { fs.unlinkSync(MUTPATH); } catch (e) { console.log('  ⚠변조 사본 정리 실패: ' + MUTPATH); } } }
   const mutated = VSRC.replace('  _fieldBridge(vil);\n  const bo = {',
     '  _fieldBridge(vil); vil.econ.storage.food += 1;\n  const bo = {');
   ok(mutated !== VSRC && bites(mutated),
@@ -381,7 +409,7 @@ console.log('\n⑪ 텃밭 하한 — 수확 없는 날의 바닥(T100 5판 ⓒ �
   if (ON && econ.T100_GARDEN) {
     ok(Math.abs(put - 10 * econ.T100_GARDEN_FLOOR) < 1e-9, '⑪ ★수확이 0 인 날엔 농부수 × 바닥을 댄다', put.toFixed(4));
     ok(Math.abs((v.storage.food - f0) - put * 0.97) < 1e-9, '⑪ 곳간에 실제로 들어간다(세금 3% 는 금고로 — 같은 꼴)');
-    econ.harvestToGranary(v, 100);
+    putHarvest(v, 100);
     ok(econ.gardenFloorTopUp(v) === 0, '⑪ ★★수확이 바닥보다 많은 날엔 **한 톨도 안 댄다**(max — 얹기 0)');
   } else {
     ok(put === 0 && (v.storage.food || 0) === f0, '⑪ [끔/손잡이 0] 바닥이 **한 톨도 안 댄다**');
@@ -500,8 +528,12 @@ console.log('\n⑮ 장부 — 밭이 곳간에 넣은 그 양이 **실현 흐름
   const p = probe();
   if (ON && LED) {
     ok(p.led > 0, '⑮ ★★★[켬] 수확 100건이 장부에 **오른다**(0 이면 빨강 — 자명 통과 금지)', `장부 ${p.led.toFixed(2)}`);
-    ok(Math.abs(p.led - 100 * econ.T100_K) < 1e-6,
-      '⑮ ★오른 양이 곳간에 넣은 그 양과 **같다**(`100 × k` · 세전 · 배수 0)', `${p.led.toFixed(4)} = 100×${econ.T100_K.toFixed(4)}`);
+    // ★[T227] 고르게 켠 판에선 그 덩어리가 **하루치**로 들어온다 — 주기는 정본(`seedFoodDays(0)`)이다.
+    const _expect = EVEN ? (100 * econ.T100_K) / econ.seedFoodDays(0) : 100 * econ.T100_K;
+    ok(Math.abs(p.led - _expect) < 1e-6,
+      EVEN ? '⑮ ★오른 양이 **덩어리 ÷ 주기**다(고르게 · 주기는 정본 `seedFoodDays`)'
+           : '⑮ ★오른 양이 곳간에 넣은 그 양과 **같다**(`100 × k` · 세전 · 배수 0)',
+      `${p.led.toFixed(4)} = ${_expect.toFixed(4)}${EVEN ? ` (= 100×${econ.T100_K.toFixed(4)} ÷ ${econ.seedFoodDays(0)})` : ''}`);
     ok(p.sp > 0, '⑮ ★그래서 `surplusEMA.food` 가 **양수로 선다**(마을이 자기를 적자로 안 읽는다)', p.sp.toFixed(3));
   } else if (ON) {
     ok(p.led === 0, '⑮ ★★[켠 팔 · 손잡이 끔] 장부는 여전히 **0** 이다(T186 팔 그대로 — 비트 동일의 뿌리)');
@@ -523,14 +555,19 @@ console.log('\n⑱ 볏짚 — 밭 수확이 **아궁이 밑변**(`_grainToday`)�
   const lines = C.split('\n').map((l, i) => [i + 1, l]).filter(([, l]) => /_grainToday/.test(l));
   const writes = lines.filter(([, l]) => /_grainToday = \(v\._grainToday \|\| 0\) \+/.test(l));
   const resets = lines.filter(([, l]) => /_grainToday = 0;/.test(l));
-  const reads = lines.filter(([, l]) => /strawFuel = Math\.min/.test(l));
+  // ★[T240] 읽는 줄이 `strawFuel = Math.min(...)` 한 줄에서 **이름 붙은 두 줄**로 갈렸다
+  //   (`_strawCap` · `_strawRaw`). 밑변을 **읽는** 줄은 여전히 하나다 — `_strawRaw` 쪽이다.
+  const reads = lines.filter(([, l]) => /_strawRaw = \(v\._grainToday \|\| 0\) \* STRAW_FUEL_PER_FOOD;/.test(l));
   ok(writes.length === 3, '⑱ ★쓰는 곳 **셋** — `addProduce`(끈 팔 농부) · `harvestToGranary`(켠 팔 밭) · `gardenFloorTopUp`(텃밭)', `실제 ${writes.length}`);
   ok(reads.length === 1 && resets.length === 1, '⑱ 읽는 곳 하나(볏짚) · 비우는 곳 하나', `읽기 ${reads.length} · 리셋 ${resets.length}`);
   ok(reads[0] && resets[0] && reads[0][0] < resets[0][0],
     '⑱ ★★★비우는 줄이 **읽는 줄 뒤**에 있다 — 그래서 생활층(틱 **뒤**)이 적은 값이 다음 틱까지 **산다**',
     reads[0] && resets[0] ? `읽기 :${reads[0][0]} < 리셋 :${resets[0][0]}` : '—');
-  ok(/const strawFuel = Math\.min\(N \* FIREWOOD_PC, \(v\._grainToday \|\| 0\) \* STRAW_FUEL_PER_FOOD\);/.test(C),
-    '⑱ 볏짚 식이 그대로다 — `min(N × FIREWOOD_PC, 오늘 곡식 × STRAW_FUEL_PER_FOOD)`');
+  // ★[T240] 식의 **두 항이 그대로**고, 이월을 끈 가지는 종전 `min` 그대로다(비트 동일의 뿌리).
+  ok(/const _strawCap = N \* FIREWOOD_PC;/.test(C) && /const _strawRaw = \(v\._grainToday \|\| 0\) \* STRAW_FUEL_PER_FOOD;/.test(C),
+    '⑱ 볏짚 두 항이 그대로다 — 상한 `N × FIREWOOD_PC` · 원량 `오늘 곡식 × STRAW_FUEL_PER_FOOD`');
+  ok(/: Math\.min\(_strawCap, _strawRaw\);/.test(C),
+    '⑱ ★이월을 끈 가지는 **종전 식 그대로** `min(상한, 원량)` 이다(T240 비트 동일의 뿌리)');
   // ★T193 의 `dailyProduction` 과 **정확히 갈리는 지점**: 그쪽은 리셋이 틱 **머리**라 생활층 쓰기가 죽는다.
   const dpReset = C.split('\n').findIndex((l) => /for \(const r in dailyProduction\) dailyProduction\[r\] = 0;/.test(l)) + 1;
   const dpRead = C.split('\n').findIndex((l) => /const dailyFoodProd = totalFoodProductionEquivalent\(dailyProduction\);/.test(l)) + 1;
@@ -541,7 +578,7 @@ console.log('\n⑱ 볏짚 — 밭 수확이 **아궁이 밑변**(`_grainToday`)�
   // 기능 — 켜면 수확이 그 칸에 그대로 들어온다 · 끄면 한 톨도 안 들어온다
   const v = econ.createVillage({ initialPop: 0, name: '픽스처', fertility: 1.0 });
   const g0 = v._grainToday || 0;
-  const put = econ.harvestToGranary(v, 100);
+  const put = putHarvest(v, 100);
   const dg = (v._grainToday || 0) - g0;
   if (ON) {
     ok(Math.abs(dg - put) < 1e-9 && put > 0,
@@ -604,6 +641,127 @@ console.log('\n⑲ 건축 상한 — 하루 지을 양의 상한이 **한 자리
   }
 }
 
+// ── ⑳ 고르게 — 덩어리를 주기로 나눠 흘린다 (T227) ──────────────────────────
+console.log('\n⑳ 고르게 — 수확 덩어리를 **그 주기**로 나눠 흘리나(T227 · 손잡이 기본 끔 · 총량 무변)');
+{
+  const C = codeOf(SRC);
+  ok(/function _t100Credit\(v, amt\) \{/.test(C), '⑳ 크레딧 몸통이 **따로 있다**(`_t100Credit`) — 덩어리든 하루치든 같은 줄을 탄다');
+  // ★밭이 적는 넷이 **그 몸통 안에만** 있고 `harvestToGranary` 는 한 줄도 안 적는다(그래야 한 자리다)
+  const _body = (name) => { const st = C.indexOf('function ' + name + '('); if (st < 0) return ''; let d = 0;
+    for (let j = C.indexOf('{', st); j < C.length; j++) { if (C[j] === '{') d++; else if (C[j] === '}') { d--; if (!d) return C.slice(st, j + 1); } } return ''; };
+  const cred = _body('_t100Credit'), harv = _body('harvestToGranary');
+  const FOUR = ['v._grainToday =', 'v.storage.food =', 'v.treasury.food =', 'v._t100InflowToday ='];
+  ok(FOUR.every((f) => cred.indexOf(f) >= 0), '⑳ ★★크레딧 몸통이 **넷을 다 적는다**(곳간 · 금고 · 볏짚 밑변 · 오늘치 유입)');
+  ok(FOUR.every((f) => harv.indexOf(f) < 0),
+    '⑳ ★★★`harvestToGranary` 는 **한 줄도 직접 안 적는다** — 덩어리든 하루치든 같은 몸통을 탄다(세 곳에 나누면 사본)');
+  ok(_body('t100EvenRelease').indexOf('_t100Credit(') >= 0, '⑳ 푸는 자리도 **그 몸통**을 부른다');
+  ok(/const T227_EVEN = process\.env\.T227_EVEN === '1';/.test(C), '⑳ 손잡이는 **기본 끔**이다');
+  ok(/if \(T227_EVEN\) \{ v\._t100Pend = \(v\._t100Pend \|\| 0\) \+ amt; return amt; \}/.test(C),
+    '⑳ ★켜면 수확이 **대기열로** 간다(곳간엔 그날 안 든다)');
+  ok(/const d = seedFoodDays\(0\);/.test(C),
+    '⑳ ★★★주기는 **정본**이다 — `seedFoodDays`(= `crops.daysToFirstHarvest` 유도 · T100 5판이 창설 곳간에 쓴 그 칸). 지어낸 날수 0');
+
+  const v = econ.createVillage({ initialPop: 0, name: '픽스처', fertility: 1.0 });
+  const f0 = (v.storage.food || 0) + ((v.treasury && v.treasury.food) || 0);
+  const dep = econ.harvestToGranary(v, 100);
+  if (ON && EVEN) {
+    ok(((v.storage.food || 0) + ((v.treasury && v.treasury.food) || 0)) - f0 === 0,
+      '⑳ ★[켬] 수확한 날엔 곳간이 **한 톨도 안 는다**(덩어리가 대기열로 갔다)');
+    ok(Math.abs((v._t100Pend || 0) - dep) < 1e-9, '⑳ 대기열에 **덩어리 전부**가 들어 있다', (v._t100Pend || 0).toFixed(4));
+    const g1 = econ.t100EvenRelease(v);
+    ok(Math.abs(g1 - dep / econ.seedFoodDays(0)) < 1e-9,
+      '⑳ ★★첫날 푸는 양 = **덩어리 ÷ 주기**', `${g1.toFixed(4)} = ${dep.toFixed(4)} ÷ ${econ.seedFoodDays(0)}`);
+    let given = g1;
+    for (let i = 0; i < 4000; i++) given += econ.t100EvenRelease(v) || 0;
+    const cred = ((v.storage.food || 0) + ((v.treasury && v.treasury.food) || 0)) - f0;
+    ok(Math.abs(given - cred) < 1e-9, '⑳ 푼 양이 그대로 곳간+금고에 든다(세금은 같은 꼴로 떨어진다)', cred.toFixed(6));
+    ok(Math.abs((given + (v._t100Pend || 0)) - dep) < 1e-9,
+      '⑳ ★★★**질량 누수 0** — 푼 합 + 남은 대기 = 예치한 덩어리(항등식)',
+      `${(given + (v._t100Pend || 0)).toFixed(6)} = ${dep.toFixed(6)}`);
+    ok((v._t100Pend || 0) < 1e-9, '⑳ ★넉넉히 돌리면 대기가 **사실상 0** 이다(잔여가 어디 안 샌다)', (v._t100Pend || 0).toExponential(2));
+  } else if (ON) {
+    ok(Math.abs(((v.storage.food || 0) + ((v.treasury && v.treasury.food) || 0)) - f0 - dep) < 1e-9,
+      '⑳ ★[켠 팔 · 고르게 끔] 수확이 **그날 통째로** 곳간에 든다(T193 팔 그대로 — 비트 동일의 뿌리)');
+    ok((v._t100Pend || 0) === 0 && econ.t100EvenRelease(v) === 0, '⑳ 대기열이 **아예 안 생긴다**(끄면 그 길이 죽는다)');
+  } else {
+    ok(dep === 0 && econ.t100EvenRelease(v) === 0, '⑳ [끔] 밭 입구가 안 열리므로 대기열도 0 이다');
+  }
+  ok(/t100EvenRelease\(v\);/.test(C), '⑳ 푸는 자리가 **틱 안 · 읽는 줄 앞**이다(잠재·장부·텃밭 하한이 같은 수를 본다)');
+}
+
+// ── ㉑ 짚만 이월 — 곡식은 즉시 (T240) ───────────────────────────────────────
+console.log('\n㉑ 짚만 이월 — 곡식 경로 무접촉 · 상한 그대로 · 총량 무변(T240 · 손잡이 기본 끔)');
+{
+  const C = codeOf(SRC);
+  const _body = (name) => { const st = C.indexOf('function ' + name + '('); if (st < 0) return ''; let d = 0;
+    for (let j = C.indexOf('{', st); j < C.length; j++) { if (C[j] === '{') d++; else if (C[j] === '}') { d--; if (!d) return C.slice(st, j + 1); } } return ''; };
+
+  ok(/const T240_STRAW_CARRY = process\.env\.T240_STRAW_CARRY === '1';/.test(C), '㉑ 손잡이는 **기본 끔**이다');
+  ok(/function strawCarryBurn\(v, raw, cap\) \{/.test(C), '㉑ 이월 산수가 **따로 한 자리**에 있다(`strawCarryBurn`)');
+
+  // ★이월 대기량을 쓰는 줄이 **그 함수 몸통 안에만** 있다 — 두 곳에 나누면 그게 사본이다
+  const carry = _body('strawCarryBurn');
+  const pendW = C.split('\n').filter((L) => /v\._strawPend\s*=/.test(L) && !/^\s*\/\//.test(L));
+  ok(pendW.length === 1 && carry.indexOf('v._strawPend =') >= 0,
+    '㉑ ★★★대기량을 적는 줄이 **하나**고 그게 `strawCarryBurn` 안이다', `쓰는 곳 ${pendW.length}`);
+
+  // ★★곡식 경로 무접촉 파수꾼 — 이월 함수는 곡식 칸을 **하나도** 안 건드린다
+  const GRAIN = ['v.storage.food', 'v.treasury.food', 'v._t100InflowToday', 'v._grainToday'];
+  ok(GRAIN.every((g) => carry.indexOf(g) < 0),
+    '㉑ ★★★**곡식 경로 무접촉** — 이월 함수가 곳간·금고·오늘치 유입·곡식 밑변을 한 칸도 안 적는다');
+  const cred = _body('_t100Credit');
+  ok(['v._grainToday =', 'v.storage.food =', 'v.treasury.food =', 'v._t100InflowToday ='].every((f) => cred.indexOf(f) >= 0)
+     && cred.indexOf('_strawPend') < 0,
+    '㉑ ★★`_t100Credit`(T227 의 그 몸통)이 **한 줄도 안 바뀌었다** — 곡식은 여전히 즉시다');
+
+  // ★상한은 종전 그대로 · 새 수 0 · 끄면 종전 가지가 남아 있다
+  ok(/const _strawCap = N \* FIREWOOD_PC;/.test(C), '㉑ 상한은 **종전 그대로** `N × FIREWOOD_PC`(새 수 0)');
+  ok(/const _strawRaw = \(v\._grainToday \|\| 0\) \* STRAW_FUEL_PER_FOOD;/.test(C),
+    '㉑ 원량도 **종전 그대로** `_grainToday × STRAW_FUEL_PER_FOOD`(같은 축 — 목재 열량 당량)');
+  ok(/: Math\.min\(_strawCap, _strawRaw\);/.test(C), '㉑ ★끄면 **종전 산수**(`min(상한, 원량)`) 그대로다 — 비트 동일의 뿌리');
+
+  // ★새 재화 0 — 곳간 품목이 아니다(레포 전수에 `storage.straw` 가 없다)
+  ok(C.indexOf('storage.straw') < 0 && C.indexOf("'straw'") < 0,
+    '㉑ ★**새 재화 0** — 짚은 곳간 품목이 아니다(교역·가격·부패 루프 밖 · `storage` 키 무변)');
+
+  // ★수치 — 태운 합 + 남은 대기 = 원량 합 (항등식) · 상한을 절대 안 넘는다
+  {
+    const v = econ.createVillage({ initialPop: 0, name: '짚픽스처', fertility: 1.0 });
+    const cap = 10;
+    const raws = [0, 45, 3, 0, 0, 120, 1, 0, 0, 0, 0, 0, 7, 0, 0];
+    let burnt = 0, rawSum = 0, over = 0;
+    for (const r of raws) { const b = econ.strawCarryBurn(v, r, cap); burnt += b; rawSum += r; if (b > cap + 1e-12) over++; }
+    ok(over === 0, '㉑ 하루에 **상한보다 많이** 태우는 날이 없다(상한은 안 건드렸다)');
+    ok(Math.abs((burnt + (v._strawPend || 0)) - rawSum) < 1e-9,
+      '㉑ ★★★**질량 누수 0** — 태운 합 + 남은 대기 = 원량 합(항등식)',
+      `${(burnt + (v._strawPend || 0)).toFixed(6)} = ${rawSum.toFixed(6)}`);
+    // ★종전(끔)이라면 같은 입력에서 얼마가 사라졌을까 — 이월은 **버림을 되살린다**(자명 통과 금지)
+    const wasted = raws.reduce((x, r) => x + Math.max(0, r - cap), 0);
+    const oldBurn = rawSum - wasted;
+    ok(wasted > 0, '㉑ [자명 통과 금지] 이 입력은 종전이라면 **실제로 버렸을** 입력이다', `버림 ${wasted.toFixed(1)}`);
+    ok(Math.abs(burnt - (rawSum - (v._strawPend || 0))) < 1e-9,
+      '㉑ 태운 양 = 원량 − 남은 대기(사라진 몫 **0**)', `${burnt.toFixed(3)} = ${(rawSum - (v._strawPend || 0)).toFixed(3)}`);
+    ok(burnt > oldBurn + 1e-9,
+      '㉑ ★★이월 팔이 태운 양이 종전보다 **실제로 많다**', `${burnt.toFixed(3)} > 종전 ${oldBurn.toFixed(3)}`);
+    let guard = 0;
+    while ((v._strawPend || 0) > 1e-9 && guard++ < 10000) econ.strawCarryBurn(v, 0, cap);
+    ok((v._strawPend || 0) < 1e-9, '㉑ ★수확이 멎어도 대기분은 **끝내 다 탄다**(잔여가 어디 안 샌다)', String(guard) + '일');
+  }
+
+  // ★팔별 — 끄면 대기량이 아예 안 생긴다(세계 판)
+  if (CARRY) {
+    ok(/T240_STRAW_CARRY \? strawCarryBurn\(v, _strawRaw, _strawCap\)/.test(C),
+      '㉑ ★[켬] 연료 블록이 **그 함수 하나**를 탄다(짚 경로 한 자리)');
+  } else {
+    const v2 = econ.createVillage({ initialPop: 8, name: '끔픽스처', fertility: 1.0 });
+    v2._grainToday = 9999;                       // 상한을 한참 넘는 곡식(종전이라면 그날로 버려질 양)
+    for (let i = 0; i < 3; i++) econ.tickVillage(v2, i + 1, []);
+    ok(v2._strawPend === undefined,
+      '㉑ ★★[끔] 상한을 넘겨도 대기량이 **아예 안 생긴다**(끄면 그 길이 죽는다 — 넘친 짚은 종전대로 사라진다)',
+      `_strawPend = ${String(v2._strawPend)}`);
+  }
+}
+
 // ── ⑨ 3사본 ────────────────────────────────────────────────────────────────
 console.log('\n⑨ 3사본 · 소스 계약');
 {
@@ -650,10 +808,10 @@ console.log('\n⑬ 배율 자리 [T179] — 대체가 삼킨 배율 셋을 문�
   // ⓓ 실측 — 숙련 10(×1.5) 이 실체에서 갈린다 · `inputMult=0` → 실체 0 · 미전달 비트 동일
   const mk = () => econ.createVillage({ initialPop: 0, name: 'T179', fertility: 1.0 });
   const v0 = mk(), v1 = mk(), v2 = mk(), v3 = mk();
-  const a0 = econ.harvestToGranary(v0, 1);          // 미전달
-  const a1 = econ.harvestToGranary(v1, 1, 1);       // 초보(숙련 0 · 맨손 · 투입 충족)
-  const aS = econ.harvestToGranary(v2, 1, 1.5);     // 숙련 10 = 1 + 10×0.05
-  const aZ = econ.harvestToGranary(v3, 1, 0);       // inputMult = 0
+  const a0 = putHarvest(v0, 1);          // 미전달
+  const a1 = putHarvest(v1, 1, 1);       // 초보(숙련 0 · 맨손 · 투입 충족)
+  const aS = putHarvest(v2, 1, 1.5);     // 숙련 10 = 1 + 10×0.05
+  const aZ = putHarvest(v3, 1, 0);       // inputMult = 0
   if (ON) {
     ok(a0 === a1 && a0 > 0, '⑬ ★★미전달 = `mul 1` **비트 동일**(서버가 안 줘도 종전 그대로)', a0.toFixed(6));
     ok(Math.abs(aS - a0 * 1.5) < 1e-12 && aS > a0,

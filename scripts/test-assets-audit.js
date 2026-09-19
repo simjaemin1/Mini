@@ -12,8 +12,8 @@
 //        · `icons.lock.json`        = **화소 해시**[:16] — sha1("<w>x<h>|" + 디코드한 RGBA). 자는
 //                                     `scripts/asset-lock.js` **하나**이고 여기선 부르기만 한다 [T257].
 //                                     (⚠webp 산 88장만 아직 파일 sha1[:16] — 디코더가 없다 · 회부)
-//        · `char_sheets.lock.json`  = **파일 전체 sha256 앞 16자**(`test-charsheet.js` ⑤ 가 굽는 자 · 키는
-//                                     `char_meta.json` 의 `sheets` 에서 `probeall*` 를 뺀 것)
+//        · `char_sheets.lock.json`  = ★[T320] **같은 정규화 화소 해시**(자가 하나가 됐다 · 키는
+//                                     `char_meta.json` 의 `sheets` 에서 `probeall*` 를 뺀 것 · 굽는 자리는 `test-charsheet.js` ⑤)
 //   ③ **고아 표는 빨강이 아니다** — 사용처 0 인 파일은 세어서 **표로만** 낸다. 지우는 것은 사람이다.
 //      (지우기를 하네스에 맡기면 "아직 안 배선한 새 자산"이 빨개진다 — 그건 결함이 아니라 순서다.)
 //   ④ **닿음은 전이적이다** — 표 안의 이름이 참조가 되려면 **그 표 자신이 닿아야** 한다.
@@ -66,9 +66,11 @@ const sha256 = (b) => crypto.createHash('sha256').update(b).digest('hex');
 // 잠금표가 쓰는 자 — **표마다 다르다**(위 계약 ②). 자를 표에서 받아 온다.
 //   ★[T257] `icons` 쪽 자는 이제 `scripts/asset-lock.js` 하나다(화소 해시 · PNG 는 압축기에 안 흔들린다).
 //     여기선 **부르기만** 한다 — 자를 두 벌 적으면 그 순간 실패다.
+//     ★[T320] `char` 도 같은 자가 됐다 — 이제 **표마다 다르지 않다**(위 계약 ② 의 그 문장은 옛말이 됐고, 그 이력은 남겨 둔다).
+const ASSETLOCK = require('./asset-lock.js');
 const RULER = {
-  icons: (p) => require('./asset-lock.js').lockValue(p).hash,
-  char:  (p) => sha256(fs.readFileSync(p)),              // 파일 전체 sha256
+  icons: (p) => ASSETLOCK.lockValue(p).hash,
+  char:  (p) => ASSETLOCK.pixelHash(p),                   // ★[T320] 시트도 **정규화 화소 해시**(정본 하나 · 사본 0)
 };
 
 // ── 자산 전수 ────────────────────────────────────────────────────────────
@@ -252,7 +254,7 @@ for (const [key, want] of Object.entries(CHLOCK)) {
   if (!got || got.slice(0, want.length) !== want) bad.push({ grp: 'char', key, want, got: got && got.slice(0, 16) });
 }
 ok(bad.length === 0, `② 잠금 불일치 0 — 잠긴 ${locked}장의 해시가 표와 같다`,
-   bad.length ? JSON.stringify(bad.slice(0, 6)) : 'icons=화소 해시[:16](webp 88장만 파일 sha1) · char=파일 sha256[:16]');
+   bad.length ? JSON.stringify(bad.slice(0, 6)) : '★[T320] 자가 **하나**다 — icons·mountains(webp)·char 전부 정규화 화소 해시[:16]');
 
 // ②b 잠기지 않은 장이 있으면 **이름을 대야 한다** — "몇 장이 안 잠겼다"는 답이 아니다.
 {
@@ -426,6 +428,54 @@ console.log('\n결과: ' + (fail ? `FAIL(${fail})` : 'PASS'));
 process.exit(fail ? 1 : 0);
 }
 
+// ── ⑦ 배선은 있는데 파일이 없는 키 — **고아의 반대** [T320] ──────────────────
+//
+// ③ 고아는 "파일은 있는데 아무도 안 부른다" 를 센다. 그 반대가 여기 있다:
+// **표가 부르는데 소리가 없다.** 둘 다 빨강이 아니지만 **다른 뜻**이다 —
+// 고아는 "아직 안 이었다", 이쪽은 "이었는데 **무음으로 난다**"(누르면 아무 일도 안 일어난 것처럼 보인다).
+// ⇒ 세는 것이 값이다. 그리고 계약 하나만 건다: **무음이면 그 사실이 표에 적혀 있어야 한다**(`state`).
+//   말없이 무음인 키가 하나라도 있으면 문다 — "음원이 오다 말았나 / 원래 없는 건가" 를 사람이 못 가른다.
+//   ⚠음원을 **만들지 않는다**(녹음은 재민 · #34). 이 절은 세고 적을 뿐이다.
+console.log('\n⑦ 배선은 있는데 파일이 없는 키 — 고아의 반대 [T320]');
+{
+  const MP = path.join(AST, 'sfx', 'manifest.json');
+  const man = JSON.parse(fs.readFileSync(MP, 'utf8'));
+  const KEYS = man.keys || {};
+  // 배선 = 표가 키를 보내는 자리. 표 이름을 손으로 안 적는다 — 값이 키 이름인 표를 전부 찾는다.
+  const wiredBy = {};
+  for (const [tbl, body] of Object.entries(man)) {
+    if (tbl.startsWith('_') || tbl === 'keys' || tbl === 'sources' || typeof body !== 'object') continue;
+    for (const [slot, v] of Object.entries(body)) {
+      if (slot.startsWith('_') || typeof v !== 'string' || !KEYS[v]) continue;
+      (wiredBy[v] = wiredBy[v] || []).push(`${tbl}.${slot}`);
+    }
+  }
+  const silent = Object.keys(KEYS).filter((k) => !KEYS[k].file).sort();
+  const wiredSilent = silent.filter((k) => wiredBy[k]);
+  const loneSilent = silent.filter((k) => !wiredBy[k]);
+  const undeclared = wiredSilent.filter((k) => !KEYS[k].state);
+
+  ok(Object.keys(wiredBy).length > 0, `⓪ [전제] 표가 실제로 키를 보내고 있다 — 배선된 키 ${Object.keys(wiredBy).length}종`,
+     `표 ${[...new Set(Object.values(wiredBy).flat().map((s) => s.split('.')[0]))].join(' ')}`);
+  ok(undeclared.length === 0,
+     `⑦a ★**말없이 무음인 키 ${undeclared.length}개** — 배선됐는데 파일도 없고 \`state\` 도 없다`,
+     undeclared.join(' ') || `무음 ${wiredSilent.length}종이 전부 \`state\` 를 달고 있다(결정이지 사고가 아니다)`);
+  console.log(`     · 배선 있고 **무음**: ${wiredSilent.length}개`);
+  for (const k of wiredSilent) {
+    console.log(`       ${k.padEnd(12)} state=${String(KEYS[k].state || '없음').padEnd(8)} ← ${wiredBy[k].join(' · ')}`);
+  }
+  console.log(`     · 배선도 파일도 없음(키만 있다): ${loneSilent.join(' ') || '없음'}`);
+  console.log('     ⚠빨강이 아니다 — 음원이 오면 **코드 0** 으로 난다. 만드는 것은 사람이다(녹음은 재민 · #34).');
+
+  // ★자명 통과 금지 — `state` 를 떼면 ⑦a 가 문다(계약이 실제로 물 줄 아는가).
+  const probe = JSON.parse(JSON.stringify(KEYS));
+  const first = wiredSilent[0];
+  if (first) { delete probe[first].state; }
+  const wouldBite = wiredSilent.filter((k) => !probe[k].state);
+  ok(!first || wouldBite.length === 1,
+     `⑦b 자명 통과 금지 — \`${first || '-'}\` 의 \`state\` 를 떼면 ⑦a 가 문다`, `문 키 ${wouldBite.length}개`);
+}
+
 // ── ⑥ 반례 — 화소 자가 **무엇에 둔하고 무엇에 예민한지** [T308] ──────────────
 //
 // T303 이 자를 webp 까지 넓히며 **그 자가 둔하지 않다는 것도 쟀다**: 같은 RGBA 를 무손실
@@ -458,10 +508,28 @@ console.log('\n⑥ 반례 — 화소 자는 **안 보이는 데만** 둔하다 [
     }
     return out;
   };
-  const samples = [...pick('.png', 2), ...pick('.webp', 2)];
-  ok(samples.length === 4 && samples.every((x) => x.s.clear > 0),
-     `⓪ 표본 넷이 서 있다(PNG 둘 · webp 둘 · **투명이 실제로 있는 것**)`,
-     samples.map((x) => `${x.rel} 투명 ${(x.s.clear / x.s.n * 100).toFixed(0)}%`).join(' · '));
+  // ★[T320] `char/` 시트도 같은 자를 쓰게 됐으니 **같은 반례를 시트로도** 재현한다.
+  //   시트는 격자라 투명 비중이 전혀 다르다(실측 97.1% — 산 51% · 다리 90%). 자가 거기서도 서는지 본다.
+  const pickChar = (n) => {
+    const D = path.join(AST, 'char'), out = [];
+    const META = JSON.parse(fs.readFileSync(path.join(D, 'char_meta.json'), 'utf8'));
+    for (const k of Object.keys(META.sheets)) {
+      if (out.length >= n || k.startsWith('probeall')) continue;
+      const p = path.join(D, k + '.png');
+      if (!fs.existsSync(p)) continue;
+      const im = A.decodeImage(p), s = A.alphaStats(im.data);
+      if (s.clear > 0 && s.clear < s.n) out.push({ p, rel: `char/${k}.png`, im, s });
+    }
+    return out;
+  };
+  const samples = [...pick('.png', 2), ...pick('.webp', 2), ...pickChar(4)];
+  const chars = samples.filter((x) => x.rel.startsWith('char/'));
+  ok(samples.length === 8 && chars.length === 4 && samples.every((x) => x.s.clear > 0),
+     `⓪ 표본 여덟이 서 있다(자산 PNG 둘 · webp 둘 · **시트 넷** · 전부 투명이 실제로 있다)`,
+     samples.map((x) => `${x.rel.replace(/\.(png|webp)$/, '')} ${(x.s.clear / x.s.n * 100).toFixed(0)}%`).join(' · '));
+  ok(chars.every((x) => x.s.clear / x.s.n > 0.9),
+     `⓪b ★시트는 투명 비중이 **자산과 다르다** — 넷 다 90% 넘는다(자가 거기서도 서는지가 이 절의 값이다)`,
+     chars.map((x) => `${(x.s.clear / x.s.n * 100).toFixed(1)}%`).join(' · '));
 
   // ⓑ 보이는 화소 하나를 1 바꾸면 다른 해시 ─ 자가 둔해진 게 아니다
   const bBad = [];
@@ -499,8 +567,9 @@ console.log('\n⑥ 반례 — 화소 자는 **안 보이는 데만** 둔하다 [
   } else {
     const rows = [];
     (async () => {
-      for (const x of samples.filter((s) => s.p.endsWith('.webp'))) {
-        const news = new Set(), olds = new Set();
+      // webp 자산 둘 + 시트 둘 — 시트는 그 RGBA 를 무손실 webp 로 구워 **같은 alpha cleaning** 에 태운다.
+      for (const x of [...samples.filter((s) => s.p.endsWith('.webp')), ...chars.slice(0, 2)]) {
+        const news = new Set(), olds = new Set(), dirties = [];
         for (const eff of [0, 4, 6]) {
           const buf = await sharp(Buffer.from(x.im.data),
             { raw: { width: x.im.width, height: x.im.height, channels: 4 } })
@@ -508,13 +577,21 @@ console.log('\n⑥ 반례 — 화소 자는 **안 보이는 데만** 둔하다 [
           const im = require('@cwasm/webp').decode(buf);
           news.add(A.pixelHashOf(im.width, im.height, im.data));
           olds.add(rawHash(im));
+          dirties.push(A.alphaStats(im.data).dirty);          // 인코더가 투명 아래를 얼마나 채웠나
         }
-        rows.push({ rel: x.rel, news: news.size, olds: olds.size });
+        rows.push({ rel: x.rel, news: news.size, olds: olds.size, dirty: dirties });
       }
-      const bad = rows.filter((r) => r.news !== 1 || r.olds !== 3);
-      ok(bad.length === 0,
-         `ⓐ ★무손실 재압축 effort 0/4/6 — **새 자는 해시 하나** · 옛 자는 셋(그게 T303 이 본 거짓 빨강이다)`,
-         rows.map((r) => `${r.rel} 새 ${r.news}종 / 옛 ${r.olds}종`).join(' · '));
+      // ★계약은 **새 자가 하나**인 것이다. 옛 자가 몇 종인지는 **그림마다 다르다** — 그것을 수로 적는다.
+      ok(rows.every((r) => r.news === 1),
+         `ⓐ ★무손실 재압축 effort 0/4/6 — **새 자는 어느 표본에서도 해시 하나**`,
+         rows.map((r) => `${r.rel} 새 ${r.news}종`).join(' · '));
+      // ★자명 통과 금지 — 옛 자가 **어디선가는 갈라져야** 이 절이 무언가를 재고 있는 것이다.
+      ok(rows.some((r) => r.olds > 1),
+         `ⓐ-2 ★대조 — 옛 자는 **적어도 한 표본에서 갈라진다**(안 갈라지면 이 절은 자명 통과다)`,
+         rows.map((r) => `${r.rel} 옛 ${r.olds}종 · 투명아래 채운 화소 [${r.dirty.join(' ')}]`).join(' · '));
+      // ★그리고 **왜 그림마다 다른지**를 수로 남긴다: effort 0 은 투명 아래를 비우고, 4·6 은 **압축에 이롭게 채운다**.
+      console.log('     · 읽히는 것 — 옛 자가 무는 것은 **인코더가 채울 게 있을 때**다:');
+      for (const r of rows) console.log(`       ${r.rel.padEnd(34)} effort 0/4/6 이 투명 아래에 채운 화소 ${r.dirty.join(' / ')}`);
       finish();
     })();
   }

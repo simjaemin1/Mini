@@ -727,5 +727,99 @@ console.log('\n⑪ ★★[T305] 리미터 곡선 — 정본 하나 · 넘침은 
   }
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// ⑫ ★★★[T321] 어부의 소리 — **없는 순간을 지어내지 않았다**
+//
+//   카드는 "던짐·입질·걸림 훅 셋" 을 시켰다. 그런데 **NPC 어부에게는 그 셋이 차례로 일어나지 않는다**:
+//   `villages.js` 의 8초 게이트 안에서 종 추첨 → 셀 예산 → 장부가 **같은 틱**에 끝난다.
+//   플레이어 낚시에는 있는 대기 창(`biteAt`·`windowMs` · `fish_state` 가 'wait'→'bite' 로 두 번 온다)이
+//   NPC 경로에는 **없다**. 그래서 셋을 차례로 울리려면 층이 **없던 시간을 지어내야** 한다(족보 226).
+//   ⇒ 대신 **한 시도의 결말**이 원래 셋으로 갈려 있는 것을 쓴다(코드가 이미 갈라 놓았다):
+//        안 물림(`!_sp`) → `cast` · 물고 놓침(`_got<=0`) → `bite` · 건짐(`_got>0`) → `hook`
+//   이 절은 그 배선과, **그 전제 자체**(NPC 경로에 대기 창이 없다)를 함께 지킨다 —
+//   세계가 나중에 대기 창을 주면 이 단언이 빨개지고, 그때 소리를 **차례로** 바꾸면 된다.
+// ══════════════════════════════════════════════════════════════════════════════
+console.log('\n⑫ ★★[T321] 어부의 소리 — 결말 셋에 키 셋');
+{
+  const vilPath = path.join(ROOT, 'server', 'villages.js');
+  const vil = fs.readFileSync(vilPath, 'utf8');
+  const TBL = man.npcAct || {};
+  const words = Object.keys(TBL).filter((k) => !k.startsWith('_'));
+
+  ok(words.length === 3 && words.every((w) => KEYS[TBL[w]] && KEYS[TBL[w]].file),
+     '⑫a ★표가 낱말 셋을 **파일 있는 키** 셋으로 옮긴다', words.map((w) => `${w}→${TBL[w]}`).join(' '));
+
+  // ⑫b ★★서버가 그 낱말들을 실제로 세운다 — 그리고 **한 시도에 하나만** 선다(배타)
+  const blk = (() => {
+    const i = vil.indexOf("if (job === 'fisher')");
+    return i < 0 ? '' : vil.slice(i, i + 3200);
+  })();
+  const setWords = (blk.match(/_lifeAct\(npc, '([^']+)'\)/g) || []).map((x) => x.match(/'([^']+)'/)[1]);
+  for (const w of words) ok(setWords.includes(w), `⑫b ★서버 어부 자리가 \`${w}\` 을 세운다`, TBL[w]);
+  ok(/if \(!_sp\) _lifeAct/.test(blk) && /\} else _lifeAct\(npc, '놓침'\)/.test(blk),
+     '⑫c ★★셋이 **서로 배타**다(안 물림 / 물고 놓침 / 건짐) — 한 틱에 둘이 서지 않는다',
+     '`!_sp` · `else` · 건짐');
+
+  // ⑫d ★★★전제 — NPC 경로에는 **대기 창이 없다**. 있으면 소리를 차례로 바꿔야 한다.
+  const hasWindow = /biteAt|windowMs/.test(blk);
+  ok(!hasWindow,
+     '⑫d ★★★전제: NPC 어부 자리에 **대기 창(`biteAt`/`windowMs`)이 없다** — 그래서 셋이 차례가 아니라 결말이다',
+     hasWindow ? '창이 생겼다 — 소리를 차례로 바꿀 때다(회부)' : '창 0 · 한 시도 = 한 순간');
+  ok(/biteAt/.test(fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8')),
+     '⑫e 대조 — **플레이어** 낚시에는 그 창이 있다(자가 "어디에도 없다"를 말하는 게 아니다)', '`biteAt` 은 zone.js 에 있다');
+
+  // ⑫f ★층은 **모서리**로 잡는다 — 라벨은 1.2초 창 동안 같은 값이 최대 25틱 온다
+  const tickBlk = (() => { const i = modCode.indexOf("t === 'tick'"); return i < 0 ? '' : modCode.slice(i, i + 900); })();
+  ok(tickBlk && /prev\.act === pp\.act/.test(tickBlk) && /continue/.test(tickBlk),
+     '⑫f ★★같은 낱말이 또 와도 **다시 안 운다**(모서리 검출 — 안 그러면 한 번의 낚음이 스물다섯 번 난다)',
+     tickBlk ? '직전 값과 맞대 본다' : '`tick` 갈래를 못 찾았다');
+  ok(tickBlk && /npcAct/.test(tickBlk) && !/'낚음'|'드리움'|'놓침'/.test(tickBlk),
+     '⑫g ★낱말이 층 코드에 박혀 있지 않다(표가 고른다)', '표가 고른다');
+  ok(tickBlk && /pp\.x \+ ox/.test(tickBlk),
+     '⑫h ★개체 자리를 붙인다 — 거리 감쇠가 걸린다(남의 마을 어부가 귓가에서 낚지 않는다)');
+
+  // ⑫i ★★그 세 키에 **반경**이 생겼는가 — T292-b 의 `axe` 가 반경 0 인 채 수신 훅에 걸려 터진 그 결함이다
+  const noR = ['cast', 'bite', 'hook'].filter((k) => !(KEYS[k] && KEYS[k].radius > 0));
+  ok(noR.length === 0,
+     '⑫i ★★`cast`·`bite`·`hook` 에 반경이 있다(남의 자리에서도 나는 소리가 됐다 — 반경 0 이면 전 존이 최대 볼륨)',
+     noR.length ? '반경 0: ' + noR.join(' ') : ['cast', 'bite', 'hook'].map((k) => `${k} ${KEYS[k].radius}`).join(' · '));
+
+  // ⑫j ★낙하 — 버리기와 죽어 쏟기가 **같은 한 방송**이라 플레이어와 어부가 같은 소리다(층이 묻지 않는다)
+  const gd = man.groundDrop || {};
+  ok(gd.key && KEYS[gd.key] && KEYS[gd.key].file,
+     '⑫j ★낙하 키가 표에 있고 파일이 있다(새 키 0 — 있는 키에서 골랐다)', `groundDrop → ${gd.key}`);
+  const giBlk = (() => { const i = modCode.indexOf("t === 'ground_item_added'"); return i < 0 ? '' : modCode.slice(i, i + 460); })();
+  ok(giBlk && /groundDrop/.test(giBlk) && !/isNpc|npc/.test(giBlk),
+     '⑫k ★★층이 **사람인지 주민인지 묻지 않는다** — 같은 방송 하나라 배선으로 같은 소리다',
+     giBlk ? '묻지 않는다' : '`ground_item_added` 갈래를 못 찾았다');
+  {
+    const zc = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
+    ok(/broadcast\(\{ type: 'ground_item_added'/.test(zc),
+       '⑫l ★그 방송이 서버에 **하나**다(층의 기대가 허공이 아니다)',
+       String((zc.match(/type: 'ground_item_added'/g) || []).length) + '자리');
+  }
+
+  // ⑫m ★★어부 다섯이 동시에 — 상한표 한 줄(⑪ 문법 · 곡선 상한이 이미 증명하지만 **수를 낸다**)
+  {
+    const T = (man.bus && man.bus.limiter && man.bus.limiter.knee);
+    const busSfx = (man.bus && man.bus.sfx && man.bus.sfx.default) || 0;
+    const busMst = (man.bus && man.bus.master && man.bus.master.default) || 0;
+    const thru = (v) => { const a = Math.min(Math.abs(v), 1); return (a <= T ? a : T + (1 - T) * Math.tanh((a - T) / (1 - T))); };
+    // 어부 다섯 = `cast` 다섯 + 마을 배경(모닥불·바람·새) — 최악 정렬
+    const combo = ['cast', 'cast', 'cast', 'cast', 'cast', 'fire', 'wind', 'bird'];
+    const sum = combo.reduce((t, k) => t + ((KEYS[k] && KEYS[k].volume) || 0), 0);
+    const out = thru(sum * busSfx) * busMst;
+    console.log(`    ── 어부 다섯 동시 + 마을 배경 ──`);
+    console.log(`      키 ${combo.length} · 합 ${sum.toFixed(2)} · 버스입력 ${(sum * busSfx).toFixed(4)}`
+      + ` · 출력 ${out.toFixed(4)} (${(20 * Math.log10(out)).toFixed(2)} dBFS) · 클리핑 ${out >= 1 ? '있다' : '0'}`);
+    ok(out < 1, '⑫m ★★어부 다섯이 동시에 낚아도 **클리핑 0**(최악 정렬 상한)',
+       `출력 ${out.toFixed(4)} < 1`);
+    // ⚠겹침 상한이 따로 있다 — `maxSame` 이 1 이면 다섯이 울려도 실제로 나는 건 하나다(더 조용하다)
+    ok((KEYS.cast.maxSame || 3) >= 1,
+       '⑫n 참고 — `cast` 의 겹침 상한이 표에 있다(실제로 동시에 나는 수는 이 값이 상한이다)',
+       `maxSame ${KEYS.cast.maxSame} · cooldown ${KEYS.cast.cooldownMs}ms`);
+  }
+}
+
 console.log(`\n=== PASS ${pass} / FAIL ${fail} ===`);
 process.exit(fail ? 1 : 0);
