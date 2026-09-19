@@ -2180,17 +2180,43 @@ function farmLandBoost(v) {
 //   ⚠**안 주면 1** — 지금 부르는 자리(`server/villages.js _lifeDoTask0`)는 아직 안 준다 ⇒ **종전 비트**.
 //     그쪽이 주려면 생활층 농부 ↔ econ 농부 링크(`_esk`)가 먼저 필요하다(사냥꾼엔 있고 농부엔 없다) —
 //     그건 **서버 자리**라 이 카드 밖이다(회부: 켜기 판정 #11 과 함께).
-function harvestToGranary(v, n, mul) {
-  if (!T100_FIELD_YIELD || !v || !v.storage) return 0;
-  const _m = (typeof mul === 'number' && mul >= 0) ? mul : 1;   // ★[T179] 미전달 = 1(종전 비트) · 음수·NaN 도 1
-  const amt = ((n > 0 ? n : 1)) * T100_K * _m;
+// ★★[T227] **밭이 곳간에 적는 자리는 이 함수 하나다** — 곳간 · 금고(세금) · 볏짚 밑변(`_grainToday`) ·
+//   오늘치 유입(`_t100InflowToday` → T183 잠재 · T193 장부의 `_t100Pot`) **넷을 여기서만 적는다.**
+//   그래서 여기서 양을 고르게 하면 **넷이 같이** 고르게 된다(세 곳에 따로 나누면 그게 사본이다).
+//   아래 몸통을 따로 뺀 이유가 그것이다 — 덩어리로 넣든 하루치로 흘리든 **적는 줄은 이 하나**다.
+function _t100Credit(v, amt) {
+  if (!(amt > 0)) return 0;
   v._grainToday = (v._grainToday || 0) + amt;
   const tax = amt * TAX_RATE;
   v.storage.food = (v.storage.food || 0) + (amt - tax);
   if (v.treasury) v.treasury.food = (v.treasury.food || 0) + tax;
   v._t100InflowToday = (v._t100InflowToday || 0) + amt;         // 오늘치 — ⓒ 텃밭 하한이 이걸 보고 모자란 만큼만 댄다
-  v._t100HarvestN = (v._t100HarvestN || 0) + (n > 0 ? n : 1);   // 계측 전용 누계(회계 아님 · 표가 스스로 말하게) · ★[T179] **건수는 배율에 안 물린다**(수확 횟수지 양이 아니다)
   return amt;
+}
+function harvestToGranary(v, n, mul) {
+  if (!T100_FIELD_YIELD || !v || !v.storage) return 0;
+  const _m = (typeof mul === 'number' && mul >= 0) ? mul : 1;   // ★[T179] 미전달 = 1(종전 비트) · 음수·NaN 도 1
+  const amt = ((n > 0 ? n : 1)) * T100_K * _m;
+  v._t100HarvestN = (v._t100HarvestN || 0) + (n > 0 ? n : 1);   // 계측 전용 누계(회계 아님 · 표가 스스로 말하게) · ★[T179] **건수는 배율에 안 물린다**(수확 횟수지 양이 아니다)
+  // ★[T227] 고르게 — 덩어리를 **대기 두지**(`_t100Pend`) 하루치씩 위 크레딧으로 흘린다(아래 `t100EvenRelease`).
+  //   T218 이 잰 것: 켠 팔의 볏짚은 원량의 29~33% 가 **그날 상한을 넘어 버려진다**(끈 팔은 버림 0 —
+  //   추상 농부는 매일 조금씩 내기 때문이다). 총량은 같은데 **몰려 오는 것**이 값을 깎고 있었다.
+  //   ⚠총량 무변: 여기서 안 적은 것은 전부 `_t100Pend` 에 남아 있다(질량 누수 0 — 하네스가 항등식으로 문다).
+  if (T227_EVEN) { v._t100Pend = (v._t100Pend || 0) + amt; return amt; }
+  return _t100Credit(v, amt);
+}
+// ★[T227] 하루 한 번 — 대기분의 `1/주기` 를 푼다. **주기는 정본이다**(`seedFoodDays` = `crops.daysToFirstHarvest`
+//   에서 유도된 그 수 · T100 5판이 창설 곳간에 쓴 것과 **같은 칸** · 새 수 0).
+//   ⚠지어낸 날수를 안 쓰는 이유: 이 자리엔 **어떤 작물이었는지가 안 온다**(호출부는 건수와 배율만 준다).
+//     작물별 `crops.growDaysOf` 는 생활층에만 있다 — 그래서 정본 중 **이 자리에서 읽을 수 있는 주기**를 쓴다.
+function t100EvenRelease(v) {
+  if (!T227_EVEN || !T100_FIELD_YIELD || !v || !v.storage) return 0;
+  const p = v._t100Pend || 0;
+  if (!(p > 0)) return 0;
+  const d = seedFoodDays(0);
+  const give = (d > 1) ? p / d : p;
+  v._t100Pend = p - give;
+  return _t100Credit(v, give);
 }
 // ★★★[T312 2026-09-19 · 설계_생산_실체 §1·§2 — 재민 09-18/19 확정] **어부의 곳간 입구.**
 //   캐논: *"낚는 순간 손에, 귀환하면 곳간에."* 그 **귀환**이 부르는 자리가 여기다.
@@ -2264,6 +2290,36 @@ const T100_GARDEN = process.env.T100_GARDEN !== '0';   // 되돌림: ⓑ 만 보
 //   쌀을 쌓아 두고 자기를 적자로 읽는다**(음수 마을·일 30%→65% · 식량 그림자가격 +53~+227%).
 //   ⚠`T100_FIELD_YIELD` 켠 팔 **안에서만** 산다 — 끈 팔엔 밭 유입 자체가 0 이라 이 손잡이가 무의미하다.
 const T193_LEDGER = process.env.T193_LEDGER === '1';   // 되돌림: 끄면 T186 켠 팔과 **비트 동일**
+// ★★[T227 2026-09-13] **밭 산출을 고르게** — 손잡이 하나(기본 **끔**).
+//   T218 §0-ⓑ 실측: 켠 팔 볏짚 손실의 55~75% 가 **상한이 버린 몫**이다(원량의 29~33% · 연료 목재의 3.7~4.8%).
+//   상한 `N × FIREWOOD_PC` 는 그날 취사·난방 수요라 **짚은 저장이 안 된다** — 몰려 오면 그날로 사라진다.
+//   ⚠`T100_FIELD_YIELD` 켠 팔 **안에서만** 산다(끈 팔엔 밭 유입 자체가 없다).
+const T227_EVEN = process.env.T227_EVEN === '1';   // 되돌림: 끄면 T193 켠 팔과 **비트 동일**
+// ★★[T240 2026-09-13] **곡식은 즉시 · 짚만 이월** — 손잡이 하나(기본 **끔**).
+//   T227 이 기각한 것: 곡식을 늦추면(`T227_EVEN`) 창설 곳간이 마르는 60일부터 골짜기가 다시 열려
+//   세계가 −22.7~−34.8% 가난해진다. **문제는 곡식이 몰려 오는 게 아니라 짚이 그날 안 타면 사라지는 것**이다.
+//   ⇒ 곡식 경로는 **한 톨도 안 건드린다**(`_t100Credit` 무변 · 곳간 즉시 · T227 골짜기 0).
+//     짚만 대기량 하나(`v._strawPend`)에 쌓고 **매일 상한만큼** 태운다 — 상한은 종전 그대로
+//     `N × FIREWOOD_PC`(그날 취사·난방 수요)다. **새 수 0 · 새 재화 0**(곳간 품목이 아니다 —
+//     교역·가격·저장효용·부패 루프 어디에도 안 들어간다. `storage` 키가 늘지 않는다).
+//   ⚠**무한 이월이다.** 짚의 부패·보관 정본이 이 저장소에 **없기 때문**이다(§0-ⓐ 표):
+//     짚은 품목이 아니고(`storage.straw` 전수 0), `DECAY_RATES`(v1 식품 7종)에도
+//     `DECAY_V2` 에도 없다. 가장 가까운 수는 잔가지 `DECAY_V2.twig = 0.001` 인데 **그건 잔가지다.**
+//     ⇒ 이월 상한·감쇠는 **이 카드가 정하지 않는다 → 재민**(회부 #28). 대신 이 팔은
+//       `_strawPend` 끝 대기·최대를 계측기에 내주어, 상한이 실제로 물릴 자리인지 표가 말하게 한다.
+const T240_STRAW_CARRY = process.env.T240_STRAW_CARRY === '1';   // 되돌림: 끄면 종전과 **비트 동일**
+// ★[T240] **짚 이월 산수는 이 함수 하나다.** 단위는 짚 kg 이 아니라 **목재 열량 당량**(wood-eq)이다 —
+//   `STRAW_FUEL_PER_FOOD` 정본 주석이 그렇게 유도했고(`0.085 × 0.2 ≈ 0.018 wood-eq`),
+//   상한 `N × FIREWOOD_PC` 도 `fuelNeed`·`fuelFromWood` 와 같은 축이라 **셋이 같은 단위**다.
+//   ⚠그 정본 주석은 같은 줄에서 *"저장 없이 당일 소진(flow)"* 이라고도 적었다. 이 손잡이는
+//     **그 전제를 뒤집는 설계 변경**이지 버그 수정이 아니다 — 그래서 기본 끔이고, 표로만 말한다.
+//   ⚠총량 무변: 태운 것 아니면 전부 `_strawPend` 에 남는다(질량 누수 0 — 하네스가 항등식으로 문다).
+function strawCarryBurn(v, raw, cap) {
+  const avail = (raw > 0 ? raw : 0) + (v._strawPend || 0);
+  const burn = avail < cap ? avail : cap;
+  v._strawPend = avail - burn;
+  return burn;
+}
 const T100_GARDEN_FLOOR = T100_GARDEN_CELLS * T100_K / SEED_FOOD_DAYS_D0;   // 농부 1인 하루 식량등가 바닥(유도값)
 // 하루 한 번 — econ 틱이 부른다. 오늘 들어온 수확이 바닥보다 적으면 그 차이만 메운다.
 function gardenFloorTopUp(v) {
@@ -3971,6 +4027,7 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
   //   ⚠하루 시차: 생활층 수확은 econ 틱 **다음**에 돌므로 이 수는 어제치다 — 텃밭 하한(5판)이 이미 그 규약이다.
   //   ★손잡이 밖: `T100_FIELD_YIELD` 를 **이 줄에서도** 본다. 실지에선 끈 팔에 `_t100InflowToday` 가
   //     아예 안 생기지만(두 입구가 이미 손잡이를 본다), 밖에서 누가 그 필드를 심어도 끈 팔은 안 움직인다.
+  t100EvenRelease(v);   // ★[T227] 대기분 하루치를 **읽기 전에** 푼다 — 그래야 잠재·장부·텃밭 하한이 같은 수를 본다(손잡이 끔이면 0)
   const _t100In = T100_FIELD_YIELD ? (v._t100InflowToday || 0) : 0;   // 오늘 수확이 곳간에 넣은 양(아래가 비우기 전에 읽는다)
   const _t100Pot = _t100In + gardenFloorTopUp(v);   // + 텃밭 하한이 채운 양 — 둘 다 **밭이 낸 식량**이다
   if (_t100Pot > 0) {
@@ -4317,7 +4374,12 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
   if (_maintS > 0) { v.storage.stone -= _maintS; _cons(v, 'stone', _maintS); }   // ★flow-EMA
   const fuelNeed = N * FIREWOOD_PC * (1 + FUEL_COLD_W * (v._coldStress || 0)) + smelters * SMELT_FUEL_PER;   // ★한랭 난방 가중(2026-07-12) — 겨울 연료 수요 실물화
   // ★볏짚 먼저(공짜 부산물, 당일 소진 — 취사·난방용. 제련은 고온이라 목재만) → 부족분만 목재.
-  const strawFuel = Math.min(N * FIREWOOD_PC, (v._grainToday || 0) * STRAW_FUEL_PER_FOOD);
+  // ★[T240] 종전(끔)은 `Math.min(상한, 원량)` 그대로 — 넘친 짚은 그날로 사라진다(비트 동일).
+  //   켜면 넘친 몫이 `_strawPend` 로 이월되고 다음 날부터 **상한만큼** 탄다(상한은 안 건드린다).
+  const _strawCap = N * FIREWOOD_PC;
+  const _strawRaw = (v._grainToday || 0) * STRAW_FUEL_PER_FOOD;
+  const strawFuel = T240_STRAW_CARRY ? strawCarryBurn(v, _strawRaw, _strawCap)
+                                     : Math.min(_strawCap, _strawRaw);
   v._grainToday = 0;
   // ★유령 박멸(§9): 하급 연료 — 잔가지(twig)·껍질(bark)을 장작보다 먼저 땜(LOW_FUEL_EQ eq). 취사·난방분만(제련 제외 = straw와 동일).
   //   채집 잔가지·벌목 껍질의 자연 소비처(연료 등가 편입) — 목재 소비 실절감.
@@ -6127,7 +6189,8 @@ module.exports = {
   DAILY_FOOD_CONSUMPTION,   // ★[T100 4판] 하루 1인 식량 정본 — `k` 유도의 한 항(하네스가 1.0 을 옮겨 적지 않는다)
   seedFoodDays, SEED_FOOD_DAYS_D0, SEED_FOOD_DAYS_LEGACY,   // ★[T100 5판] 창설 곳간의 밑변 — 하네스가 `crops.js` 에서 다시 유도해 대조한다
   HEALTH_PROD_W, happyWorkMul, happyFloor1On, happyWorkWOf, T157_HAPPYWORK_H,   // ★[T157] 건강→작업량 계수 — 하네스가 "행복은 건강과 같은 문법" 을 대조한다(사본 0) · ★[T209] 하한 손잡이(하네스가 되돌림을 건다)
-  gardenFloorTopUp, T100_GARDEN, T100_GARDEN_CELLS, T100_GARDEN_FLOOR, T193_LEDGER,   // ★[T193] 장부 손잡이 — 하네스가 옮겨 적지 않는다   // ★[T100 5판 ⓒ] 텃밭 하한 — 값·손잡이·유도식을 하네스가 다시 계산한다
+  gardenFloorTopUp, T100_GARDEN, T100_GARDEN_CELLS, T100_GARDEN_FLOOR, T193_LEDGER, T227_EVEN, t100EvenRelease,   // ★[T227] 고르게 — 손잡이·푸는 자리를 하네스가 옮겨 적지 않는다   // ★[T193] 장부 손잡이 — 하네스가 옮겨 적지 않는다   // ★[T100 5판 ⓒ] 텃밭 하한 — 값·손잡이·유도식을 하네스가 다시 계산한다
+  T240_STRAW_CARRY, strawCarryBurn,   // ★[T240] 짚 이월 — 손잡이·산수 한 자리를 하네스가 옮겨 적지 않는다
   buildCapOf, HOUSE_BUILD_MAX, HOUSE_WOOD, HOUSE_BUFFER,   // ★[T300] 건축 상한 손잡이 — 하네스·계측기가 값·꼴을 옮겨 적지 않는다
   FARMER_BASE: JOBS.farmer.base,   // ★[T100] 농부 1인 기준 산출(옛 밑변 `1.5 × 지력`의 1.5) — 계측기·하네스가 이 수를 옮겨 적지 않게
   // ★[T125] 옷감 보온 가중 — `server/villages.js` 가 주민 착장 재질을 고를 때 **읽는다**.
