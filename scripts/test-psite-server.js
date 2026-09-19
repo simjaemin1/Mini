@@ -322,12 +322,14 @@ console.log('\n[⑨ ★실행 — 실서버에서 자리 확정이 실패하면 
   chk(iAcc > 0 && !/\bVillageLayout\s*\./.test(after),
     '★★생활층에 lazy 모듈의 **맨 이름이 남아 있지 않다**(읽는 길이 접근자 하나뿐 — 가드를 잊을 자리가 없다)');
 
-  console.log('\n[⑫ ★T315 집 간격 유도 + `_mapBeds` 살리기 — 손잡이 둘 기본 끔]');
+  console.log('\n[⑫ ★T315 집 간격 유도 + `_mapBeds` 살리기 — ★T326 손잡이 둘 **기본 켬**(PM #52)]');
 {
   const VL = require('../server/village-layout.js');
   // ── ⓐ 유도 — 카드가 부른 세 항이 **정본 심볼에서** 읽히나(수를 하네스에 적지 않는다) ──────────
-  chk(VL.HOUSE_GAP_DERIVED === 2 * (VL.LOT_R + VL.FARM_GAP) + VL.AISLE,
-    `ⓐ-1 유도값 = 2 × (부지 원 \`LOT_R\` ${VL.LOT_R} + 농지 완충 \`FARM_GAP\` ${VL.FARM_GAP}) + 통로 \`AISLE\` ${VL.AISLE} = **${VL.HOUSE_GAP_DERIVED}**`);
+  chk(VL.LIFE_HOUSE_GAP_AISLE === 2 * (VL.LOT_R + VL.FARM_GAP) + VL.AISLE,
+    `ⓐ-1 종전 유도값 = 2 × (부지 원 \`LOT_R\` ${VL.LOT_R} + 농지 완충 \`FARM_GAP\` ${VL.FARM_GAP}) + 통로 \`AISLE\` ${VL.AISLE} = **${VL.LIFE_HOUSE_GAP_AISLE}** (되돌림 값)`);
+  chk(VL.LIFE_HOUSE_GAP === VL.LOT_R + (VL.LOT_R + VL.FARM_GAP) && VL.LIFE_HOUSE_GAP < VL.LIFE_HOUSE_GAP_AISLE,
+    `ⓐ-1ⓑ ★**기본** 유도값 = \`LOT_R\` ${VL.LOT_R} + (\`LOT_R\`+\`FARM_GAP\` ${VL.LOT_R + VL.FARM_GAP}) = **${VL.LIFE_HOUSE_GAP}** — 통로 항을 뺀 것(PM #52 · 새 수 0 · 종전보다 좁다)`);
   // ★카드가 말한 "발자국" 이 정말 그 원판 안에 드나 — `_vbFootprint('house')` 정본을 **불러서** 본다
   const FP = V.__probe && V.__probe.vbFootprint ? V.__probe.vbFootprint('house', 0, 0) : (V._vbFootprint ? V._vbFootprint('house', 0, 0) : null);
   if (!FP) chk(false, 'ⓐ-2 `_vbFootprint(\'house\')` 를 못 불렀다 — 발자국 정본이 하네스에 안 열려 있다');
@@ -338,12 +340,13 @@ console.log('\n[⑨ ★실행 — 실서버에서 자리 확정이 실패하면 
     chk(n === 6 * 4 && out === 0,
       `ⓐ-2 움집 발자국 ${FP[2] - FP[0] + 1}×${FP[3] - FP[1] + 1}=${n}셀이 **부지 원판 안에 전부 든다**(밖 ${out}셀) — 유도 ⓐ항이 발자국을 덮는다`);
   }
-  chk(VL.houseGap('1') === VL.HOUSE_GAP_DERIVED && VL.houseGap('2') === VL.HOUSE_GAP_LOT && VL.HOUSE_GAP_LOT < VL.HOUSE_GAP_DERIVED,
-    `ⓐ-3 손잡이 팔 둘 — 켬(1) ${VL.houseGap('1')} = 유도값 · 진단(2) ${VL.houseGap('2')} = \`HOUSE_GAP_LOT\`(HALL_CLEAR 문법 · 더 좁다)`);
   const VILSRC2 = R('server/villages.js');
-  const mOff = VILSRC2.match(/HG\s*=\s*T315_HOUSE_GAP\s*===\s*'0'\s*\?\s*([0-9]+)\s*:/);
-  chk(!!mOff && +mOff[1] === VL.HOUSE_GAP_DERIVED,
-    `ⓐ-4 ★**끔값 리터럴 ${mOff ? mOff[1] : '?'} = 유도값 ${VL.HOUSE_GAP_DERIVED}** ⇒ 18 은 튜닝값이 아니라 **유도값이었다**(켜도 세계가 안 바뀐다)`);
+  chk(typeof VL.houseGap === 'undefined' && !/houseGap/.test(VILSRC2),
+    'ⓐ-3 ★[T326] T315 의 진단 팔(`houseGap(mode)` · `=2`)이 **지워졌다** — 그 팔이 가리킨 값이 기본이 되어 죽은 칸이다');
+  chk(/HG\s*=\s*T315_HOUSE_GAP\s*===\s*'0'\s*\?\s*_lifeVL\(\)\.LIFE_HOUSE_GAP_AISLE\s*:\s*_lifeVL\(\)\.LIFE_HOUSE_GAP\b/.test(VILSRC2),
+    `ⓐ-4 ★\`HG\` 의 **기본 분기가 \`LIFE_HOUSE_GAP\`**(${VL.LIFE_HOUSE_GAP}) · 되돌림이 \`LIFE_HOUSE_GAP_AISLE\`(${VL.LIFE_HOUSE_GAP_AISLE}) — 양쪽 다 리터럴 0`);
+  chk(!/HG\s*=\s*[^\n]*\b1[58]\b/.test(VILSRC2.split('\n').filter((l) => /W_PEN_K = 2000/.test(l)).join('\n')),
+    '  그 줄에 간격 **수가 안 박혀 있다**(사본 0)');
   // ── ⓒ `_mapBeds` = 완공층 × 정본 상수 — **한 마을 손셈**(규칙은 정본 함수를 부른다 · 사본 0) ──
   chk(typeof (V.__probe && V.__probe.mapBedsOf) === 'function',
     'ⓒ-0 침상 명부 정본 `__probe.mapBedsOf` 가 산다 — 하네스가 식을 다시 적지 않는다');
@@ -359,8 +362,15 @@ console.log('\n[⑨ ★실행 — 실서버에서 자리 확정이 실패하면 
         `ⓒ-3 ★침상 명부 = 완공층 ${built} × 정본 \`HOUSE_CAP_PER_FLOOR\` ${VL.HOUSE_CAP_PER_FLOOR} = **${built * VL.HOUSE_CAP_PER_FLOOR}** (손셈과 같다)`);
       chk(VL.HOUSE_CAP === VL.HOUSE_CAP_PER_FLOOR,
         `  그 상수는 랩이 \`L_FLOORCAP = VillageLayout.HOUSE_CAP\` 으로 읽는 **바로 그 수**다(사본 0)`);
+        // ★[T326] 적히는 **자리**를 본다 — 이 하네스 세계에서는 하루 경계가 **한 번도 안 온다**
+      //   (`state.dayMs` 기본 = `WORLD.dayLengthMs` = 게임일 24분 · 이 하네스는 초 단위로 끝난다)
+      //   ⇒ `_lifeDaily` 가 안 돌았으므로 `_mapBeds` 가 **아직 없는 게 맞다**. 그것을 "안 적힌다" 로 읽으면 거짓이다.
+      //   그래서 여기서는 ① 쓰는 자리가 손잡이 뒤에 있고 ② 정본 함수를 부른다는 것까지만 본다.
+      //   **실제로 적히나**는 200일 실서버 판이 답한다 — `scripts/t315-gate.js` ⓒ(실측 50/50 마을 · 보고 §ⓑ).
+      chk(/if \(T315_MAPBEDS\) vil\.econ\._mapBeds = _mapBedsOf\(vil\);/.test(VILSRC2),
+        'ⓒ-4 ★쓰는 자리는 **한 줄**이고 손잡이 뒤에서 정본 함수를 부른다 — `if (T315_MAPBEDS) vil.econ._mapBeds = _mapBedsOf(vil);`(식 사본 0)');
       chk(real.econ && real.econ._mapBeds === undefined,
-        'ⓒ-4 ★되돌림 — 손잡이 **끔**인 이 판에서는 econ 에 `_mapBeds` 가 **안 적힌다**(종전대로 `_hcap = housing`)');
+        '  그리고 이 판에서는 아직 **안 적혀 있다** — 하루 경계가 안 왔다(게임일 24분 · 전제를 적어 둔다 · 실제 기록은 t315-gate 가 잰다)');
       // ★자명 통과 금지 — 명부가 완공집을 실제로 읽나(집 하나를 더한 사본 객체로 물어본다)
       const fake = { _houseCells: (real._houseCells || []).concat([{ cx: 0, cy: 0 }]) };
       chk(V.__probe.mapBedsOf(fake) === (built + 1) * VL.HOUSE_CAP_PER_FLOOR,
@@ -377,11 +387,11 @@ console.log('\n[⑨ ★실행 — 실서버에서 자리 확정이 실패하면 
       Object.assign(env, over || {});
       return JSON.parse(String(execFileSync(process.execPath, ['-e', door], { env, encoding: 'utf8' })).trim());
     };
-    let d0 = null, d1 = null; try { d0 = ask(null); d1 = ask({ T315_HOUSE_GAP: '2', T315_MAPBEDS: '1' }); } catch (e) {}
-    chk(!!d0 && d0.T315_HOUSE_GAP === '0' && d0.T315_MAPBEDS === false,
-      'ⓐ-5 서버 기본 — `T315_HOUSE_GAP` 끔(종전 리터럴) · `T315_MAPBEDS` 끔(안 적는다) · 자식 프로세스 실측');
-    chk(!!d1 && d1.T315_HOUSE_GAP === '2' && d1.T315_MAPBEDS === true,
-      '  [자명 통과 금지] 켠 판에 그 주장을 대면 거짓이다 — 실측문이 손잡이를 실제로 읽는다');
+    let d0 = null, d1 = null; try { d0 = ask(null); d1 = ask({ T315_HOUSE_GAP: '0', T315_MAPBEDS: '0' }); } catch (e) {}
+    chk(!!d0 && d0.T315_HOUSE_GAP !== '0' && d0.T315_MAPBEDS === true,
+      'ⓐ-5 ★서버 기본 — 간격 **켬**(미설정 = `LIFE_HOUSE_GAP` 15) · `_mapBeds` 살리기 **켬** · 자식 프로세스 실측(T326)');
+    chk(!!d1 && d1.T315_HOUSE_GAP === '0' && d1.T315_MAPBEDS === false,
+      '  되돌림은 명시 `=0` 둘 — [자명 통과 금지] 그 판에 위 주장을 대면 거짓이다');
   }
 }
 

@@ -70,7 +70,7 @@ const arms = args.map((a) => { const i = a.indexOf('='); return readArm(a.slice(
 
 console.log('\n=== T315 살리기 게이트 · 반례 쌍 (끝난 판의 DB 만 읽는다) ===');
 console.log(`  침상 정본: VillageLayout.HOUSE_CAP_PER_FLOOR = ${CAP} (모듈에서 읽음 — 사본 아님)`);
-console.log(`  집 간격 정본: HOUSE_GAP_DERIVED = ${VL.HOUSE_GAP_DERIVED} · HOUSE_GAP_LOT = ${VL.HOUSE_GAP_LOT}\n`);
+console.log(`  집 간격 정본: LIFE_HOUSE_GAP = ${VL.LIFE_HOUSE_GAP}(기본 · T326 PM #52) · LIFE_HOUSE_GAP_AISLE = ${VL.LIFE_HOUSE_GAP_AISLE}(되돌림)\n`);
 console.log('  팔            일수 마을  인구  완공층 침상 침상/인구 적힌마을 hcap작아짐 **즉시정지** 새로막힘 침상≥인구 소멸');
 for (const a of arms) {
   console.log(`  ${a.label.padEnd(12)} ${String(a.day).padStart(4)} ${String(a.n).padStart(4)} ${String(a.pop).padStart(5)} ${String(a.floors).padStart(6)} ${String(a.beds).padStart(4)} ${(a.pop ? (100 * a.beds / a.pop).toFixed(0) : '-').padStart(8)}% ${String(a.planted).padStart(8)} ${String(a.narrows).padStart(9)} ${String(a.stopped).padStart(11)} ${String(a.newly).padStart(8)} ${String(a.bedsOk).padStart(9)} ${String(a.dead).padStart(4)}`);
@@ -81,9 +81,14 @@ console.log('\nⓒ `_mapBeds` = 완공층 × 정본 상수 (전수 대조)');
 for (const a of arms) {
   const on = a.V.filter((x) => x.mapBeds !== undefined);
   if (!on.length) { chk(true, `${a.label}: 적힌 마을 **0** — 손잡이 끔 판(되돌림: econ 은 \`housing\` 만 본다)`); continue; }
-  const bad = on.filter((x) => x.mapBeds !== x.floors * CAP);
-  chk(bad.length === 0, `${a.label}: 적힌 ${on.length}마을 전부 \`_mapBeds\` = 완공층 × ${CAP}`,
-    bad.length ? `어긋남 ${bad.length}곳 · 예: ${bad[0].name} ${bad[0].mapBeds} ≠ ${bad[0].floors * CAP}` : `예: ${on[0].name} ${on[0].floors}층 × ${CAP} = ${on[0].mapBeds}`);
+  // ★[T326] **스냅샷 편차를 허용한다 — 그게 규약이다.** `village_buildings` 행은 완공 즉시 쓰이는데
+  //   `econ_state` 는 저장 큐가 **1마을/틱**으로 내보낸다(`villages.js` ⑨). 그래서 끝난 판의 DB 에서
+  //   `_mapBeds` 는 집 행보다 **최대 한 채** 뒤질 수 있다(실측: 임업4 114 = 19층 × 6, 집 행은 20층).
+  //   그래서 묻는 것은 "같다" 가 아니라 **"정원의 배수이고, 집 행보다 한 채 이상 앞서지 않으며, 한 채 이상 뒤지지 않는다"** 다.
+  const bad = on.filter((x) => (x.mapBeds % CAP) !== 0 || x.mapBeds > x.floors * CAP || x.mapBeds < (x.floors - 1) * CAP);
+  const exact = on.filter((x) => x.mapBeds === x.floors * CAP).length;
+  chk(bad.length === 0, `${a.label}: 적힌 ${on.length}마을 전부 \`_mapBeds\` = 완공층 × ${CAP}(정확 ${exact} · 저장 큐 편차 한 채 이내 ${on.length - exact})`,
+    bad.length ? `규약 밖 ${bad.length}곳 · 예: ${bad[0].name} ${bad[0].mapBeds} vs 집행 ${bad[0].floors * CAP}` : `예: ${on[0].name} ${on[0].floors}층 × ${CAP} = ${on[0].mapBeds}`);
   const nz = on.filter((x) => x.floors > 0);
   chk(nz.length > 0, `  (자명 통과 금지) 완공집이 0채가 아닌 마을이 있다 — ${nz.length}/${on.length}곳`);
 }
