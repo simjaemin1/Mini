@@ -924,6 +924,10 @@ const T100_HARVEST_PER_FARMER_YEAR = 90.88;
 //      뜻: 수확 한 번이 곳간에 넣는 식량등가. `k` 를 손으로 적으면 하네스가 빨개진다.
 const T100_K = T100_ANCHOR_N * DAILY_FOOD_CONSUMPTION * 365 / T100_HARVEST_PER_FARMER_YEAR;
 const T100_FIELD_YIELD = process.env.T100_FIELD_YIELD === '1';   // 되돌림: 끄면 T86 세계 **비트 동일**
+// ★★★[T312 2026-09-19] **어부 행위 이식 — 기본 끔.** 끄면 이 파일은 **넷째 판과 비트 동일**이다
+//   (아래 세 자리가 전부 이 상수 뒤에 있다: 곳간 입구 · `addProduce('fish')` 게이트 · 장부 다리).
+//   켜기는 재민 — 이 카드는 값을 안 정한다.
+const T312_FISH_ACT = process.env.T312_FISH_ACT === '1';
 
 // 마을 하루 농사 **용량**(부양력 prodK 가 읽는 밑변) — 두 세계가 이 함수 하나로 갈린다.
 //   켜면 **앵커 그 자체**다: 농부 1인은 하루에 `N` 사람 몫을 낸다(= N × 하루 1인 식량).
@@ -971,6 +975,37 @@ function harvestToGranary(v, n, mul) {
   v._t100InflowToday = (v._t100InflowToday || 0) + amt;         // 오늘치 — ⓒ 텃밭 하한이 이걸 보고 모자란 만큼만 댄다
   v._t100HarvestN = (v._t100HarvestN || 0) + (n > 0 ? n : 1);   // 계측 전용 누계(회계 아님 · 표가 스스로 말하게) · ★[T179] **건수는 배율에 안 물린다**(수확 횟수지 양이 아니다)
   return amt;
+}
+// ★★★[T312 2026-09-19 · 설계_생산_실체 §1·§2 — 재민 09-18/19 확정] **어부의 곳간 입구.**
+//   캐논: *"낚는 순간 손에, 귀환하면 곳간에."* 그 **귀환**이 부르는 자리가 여기다.
+//   ⚠문법은 위 `harvestToGranary`(T179) **그대로**다 — 새 회계 0:
+//     · 손잡이가 꺼져 있으면 **한 톨도 안 넣는다**(끈 팔 비트 동일)
+//     · 세금은 같은 `TAX_RATE` · 곳간·국고에 같은 순서로
+//     · 오늘치(`_t312InflowToday`)를 남겨 **틱 안에서** 실현 장부에 한 번 적는다(T193 이 낸 그 자리 · 아래)
+//   ⚠**단위는 econ 단위**다(마리가 아니다). 부르는 쪽(`server/villages.js`)이 마리→단위를 `kcal.js` 정본으로 바꾼다.
+//   ★새 수 0 — 이 함수엔 수가 하나도 없다.
+function fishToGranary(v, units) {
+  if (!T312_FISH_ACT || !v || !v.storage) return 0;
+  const amt = (typeof units === 'number' && units > 0) ? units : 0;
+  if (!(amt > 0)) return 0;
+  const tax = amt * TAX_RATE;
+  v.storage.fish = (v.storage.fish || 0) + (amt - tax);
+  if (v.treasury) v.treasury.fish = (v.treasury.fish || 0) + tax;
+  v._t312InflowToday = (v._t312InflowToday || 0) + amt;   // 오늘치 — 아래 틱이 실현 장부에 옮긴다
+  v._t312CatchN = (v._t312CatchN || 0) + 1;               // 계측 전용 누계(회계 아님)
+  return amt;
+}
+// ★[T312] 이 마을이 **행위 어업**으로 도는가 — 손잡이 ∧ 강가 셀이 있다(생활층이 세어 심는다).
+//   ⚠둘 다여야 한다. 내륙 마을(강가 셀 0)은 켜도 종전 수식 그대로다 — 몸이 갈 자리가 없다.
+function fishActOn(v) { return !!(T312_FISH_ACT && v && (v._t312Cells | 0) > 0); }
+// ★[T312] 셀당 하루 예산 — **값이 아니라 식이다**(설계_민물고기 §2 · 새 수 0).
+//   그 마을이 지금 수식으로 하루에 내는 양(`_fishOutLast` — T60 ②가 이미 남겨 둔 그 수) ÷ 강가 셀 수.
+//   ⇒ 첫날 합은 정의상 수식과 같다(캐논 ⓓ①). 강이 길면 셀당 적고 셀은 많다.
+function fishBudgetPerCell(v) {
+  const cells = (v && v._t312Cells | 0) || 0;
+  if (!(cells > 0)) return 0;
+  const day = (v && typeof v._fishOutLast === 'number' && v._fishOutLast > 0) ? v._fishOutLast : 0;
+  return day / cells;
 }
 // ★★[T100 5판 · 재민/PM 판정 2026-09-07] **창설 곳간은 첫 수확까지다.**
 //   4판이 드러낸 골짜기: 산출이 밭에 물리는 순간 곡물은 **첫 수확이 날 때까지 0** 인데
@@ -2663,7 +2698,11 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
       //   ⚠**얹지 않고 걷어낸다** — 둘 다 넣으면 식량이 배로 들어와 곡물가가 붕괴한다(T123 마을5).
       //   ⚠막는 것은 이 **한 줄**뿐이다: 아래 부산물 루프(밀·쌀·보리·삼·모시)는 `baseAmt` 를 그대로
       //     타고 나가 T86 그대로다(섬유·곡물 사슬 무변 — 4판이 건드리는 것은 `food` 하나).
-      if (!(T100_FIELD_YIELD && npc.currentJob === 'farmer')) addProduce(jdef.output, baseAmt);
+      // ★★[T312] 어부의 **추상 생선 산출도 여기서 나오지 않는다**(켠 마을에서). T100 4판의 그 문법 그대로 —
+      //   **얹지 않고 걷어낸다**(공존 = 이중 생산 · T135 `repl` 규약). 막는 것은 이 한 줄뿐이고
+      //   아래 부산물 루프(연어·새우·게·굴·미역·소금)는 `baseAmt` 를 그대로 타고 나간다(바다 계열 무변).
+      if (!(T100_FIELD_YIELD && npc.currentJob === 'farmer')
+       && !(npc.currentJob === 'fisher' && fishActOn(v))) addProduce(jdef.output, baseAmt);
       // ★★[T179 2026-09-12] **걷어낸 자리에 배율만 남겨 둔다.** 위 한 줄이 농부의 추상 산출을 막는 순간
       //   `baseAmt` 안의 `skillMul·toolBoost·inputMult` 도 같이 사라진다 — T154·T166 의 문이 `baseAmt` 를
       //   통째로 덮어써서 저지른 것과 **같은 결함**이다(족보 145). 여기선 덮을 문이 없으니 **심어 둔다**:
@@ -2674,6 +2713,8 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
       //   ⚠`else` 가 아니라 **독립한 `if`** 다: 위 대체 게이트를 건드리는 돌연변이(T183 ⑦ 셋째)가
       //     매달린 `else` 를 문법 오류로 만들어 **엉뚱한 이유로 빨개지는** 것을 막는다.
       if (T100_FIELD_YIELD && npc.currentJob === 'farmer') npc._t172mul = skillMul * toolBoost * inputMult;
+      // ★[T312] 어부도 같은 자리에서 제 배율을 남긴다 — 실체 쪽(생활층 낚시)이 이걸 읽는다(T172 규약 · 사본 0).
+      if (npc.currentJob === 'fisher' && fishActOn(v)) npc._t172mul = skillMul * toolBoost * inputMult;
       if (jdef.byproduct) {
         for (const [r, rate] of Object.entries(jdef.byproduct)) {
           // ★모시(ramie) 수요-캡 공급(2026-07-13, 사용자 결정 — 교역 무교란): 재고가 수요(flowT=소비EMA×30, +부트스트랩 floor N×RAMIE_BOOT_PC) 이상이면 산출 스킵.
@@ -2729,6 +2770,16 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
     //   ⚠`addProduce` 를 부를 수는 없다 — 그건 NPC 루프 안의 클로저다(`npc`·`sm`·`_hpm` 에 묶여 있다).
     //     그 함수가 장부에 하는 일은 `dailyProduction[r] += amt` 한 줄이고, 아래가 그 한 줄이다.
     if (T193_LEDGER) dailyProduction.food = (dailyProduction.food || 0) + _t100Pot;
+  }
+  // ★★[T312] 어제 손으로 들여온 생선을 **같은 자리에서** 장부에 적는다 — 이유도 T193 과 같다:
+  //   생활층은 틱 **뒤**에 돌아서 거기서 적으면 다음 틱 머리의 리셋이 지운다. 살아남는 자리는 여기뿐이다.
+  //   ★새 수 0 · 이중 0 — 켠 마을에서 `fish` 는 `addProduce` 를 안 탄다(위 게이트) ⇒ 들어오는 길은 이 줄 하나다.
+  //   ⚠하루 시차: T100 4판·텃밭 하한이 이미 그 규약이다(어제치를 오늘 장부에).
+  const _t312In = T312_FISH_ACT ? (v._t312InflowToday || 0) : 0;
+  if (_t312In > 0) {
+    v._t312InflowToday = 0;
+    dailyProductionPotential.fish = (dailyProductionPotential.fish || 0) + _t312In;
+    dailyProduction.fish = (dailyProduction.fish || 0) + _t312In;
   }
 
   // ★S3 막석기 자급 안전망 — 도구(석기)가 치명적으로 부족(커버리지<SELF_TOOL_COV)하면 도구의존 노동자가 급할 때 막석기를 손수 자급.
@@ -4855,6 +4906,7 @@ module.exports = {
   consumeFood,           // ★[T73] 식단 사다리의 **순서**를 하네스가 직접 증명하려면 필요(같은 이유)
   RAW_GRAINS, RAW_GRAIN_FOOD_FACTOR,   // ★[T73] 계수를 하네스·계측기가 옮겨 적지 않게(사본 금지)
   farmFlowPerDay, farmLandBoost, harvestToGranary,   // ★[T100] 같은 이유 — 하네스·계측기가 앵커를 옮겨 적지 않는다
+  fishToGranary, fishActOn, fishBudgetPerCell, T312_FISH_ACT,   // ★[T312] 어부 행위 — 생활층이 부르는 문 셋 + 손잡이(하네스가 옮겨 적지 않는다)
   T100_ANCHOR_N, T100_HARVEST_PER_FARMER_YEAR, T100_K, T100_FIELD_YIELD,   // ★[T100 4판] 앵커 하나 · 실측 하나 · 유도값 하나 · 손잡이 — 생활층(`villages.js`)과 하네스가 **여기서만** 읽는다(사본 0)
   DAILY_FOOD_CONSUMPTION,   // ★[T100 4판] 하루 1인 식량 정본 — `k` 유도의 한 항(하네스가 1.0 을 옮겨 적지 않는다)
   seedFoodDays, SEED_FOOD_DAYS_D0, SEED_FOOD_DAYS_LEGACY,   // ★[T100 5판] 창설 곳간의 밑변 — 하네스가 `crops.js` 에서 다시 유도해 대조한다

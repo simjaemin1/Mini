@@ -3950,6 +3950,70 @@ const _landNeed = () => _lifeVL().LAND_NEED;
 //   앵커(`T100_ANCHOR_N`)·유도값(`T100_K`)·손잡이(`T100_FIELD_YIELD`)는 전부 econ 정본이 답한다.
 let _econMod = null;
 const _lifeEcon = () => _econMod || (_econMod = require('../sim/economy-sim'));
+// ★★★[T312 2026-09-19 · 설계_생산_실체 §1] **어부는 강가 셀에 가서 낚고, 손에 들고 돌아와 곳간에 넣는다.**
+//   정본은 남의 파일에 있다 — 이 절은 그것들을 **부르기만** 한다(사본 0):
+//     · 종·무게·계절  `server/freshfish.js`(설계_민물고기 §1 을 코드로)
+//     · 마리 → econ 단위  `server/kcal.js econUnitsOf`(식량 1단위 = DAY_KCAL 그 정본)
+//     · 짐 상한        `server/carry.js CFG.CAP_KG`
+//     · 곳간 입구      `sim/economy-sim.js fishToGranary`(T179 `harvestToGranary` 와 같은 꼴)
+//     · 셀당 예산      `sim/economy-sim.js fishBudgetPerCell`(= 그 마을 하루 수식 ÷ 강가 셀 수 · 새 수 0)
+function _ignoreTerrainFlow() { /* no-op */ }   // 지형 정본이 흐름을 안 낼 때의 빈 자리(폴백은 위 `w` 기본값)
+let _ffMod = null, _carryMod = null;
+const _fresh = () => _ffMod || (_ffMod = require('./freshfish'));
+const _carryCfg = () => { if (_carryMod === null) { try { _carryMod = require('./carry'); } catch (e) { _carryMod = false; } } return _carryMod || null; };
+// 마을이 붙은 물의 갈래 — **지형 정본에서 읽는다**(새 표 0). 흐름이 있으면 강(상/중/하류는 흐름 세기로),
+//   없으면 호소. 논 갈래는 그 마을에 논이 있을 때. 모르면 중류(가장 넓은 갈래 · 폴백 하나).
+function _t312Water(vil) {
+  if (vil._t312W) return vil._t312W;
+  let w = 'mid';
+  try {
+    const f = state.deps._flowAtCell;
+    if (typeof f === 'function') {
+      const fl = +f(vil.ccx, vil.ccy) || 0;
+      w = fl <= 0 ? 'lake' : (fl >= 0.66 ? 'upper' : (fl >= 0.33 ? 'mid' : 'lower'));
+    }
+    // ⚠블록 주석(`/* */`)을 안 쓴다 — 이 파일엔 `// … sim/* …` 줄이 넷 있어서 블록을 열고 닫는 순간
+    //   "블록 먼저" 로 긁는 옛 자가 삼키는 범위가 바뀐다(`test-harness-lint` ⑦i 대조군이 그것을 잰다 · 실측 0.462 → 0.608).
+  } catch (e) { _ignoreTerrainFlow(); }   // 지형이 안 말해 주면 폴백(중류)
+  if (w === 'mid' && vil._potSet && vil._potSet.size > 0) w = 'paddy';   // 논이 있으면 논 갈래(미꾸라지·붕어)
+  return (vil._t312W = w);
+}
+// 하루 예산 — **이월 없음**(설계_민물고기 §2 · 날이 바뀌면 새 장부다).
+function _t312Day(vil, day) {
+  if (!vil._t312 || vil._t312.day !== day) {
+    vil._t312 = { day, cell: new Map(), per: _lifeEcon().fishBudgetPerCell(vil.econ) || 0, took: 0, n: 0 };
+  }
+  return vil._t312;
+}
+// 그 셀에서 `want` 단위를 꺼낸다 — **통째로 들어가야 꺼낸다**(반 마리는 없다).
+//   그날 다 잡으면 그 셀은 빈다(재고 0) — 다음 날 `_t312Day` 가 새 장부를 연다.
+// 그 걷는 npc 에 짝지어진 econ npc — 배율(`_t172mul`)이 거기 있다. 못 찾으면 배율 1(무해).
+function _t312EconNpc(vil, npc) {
+  const e = vil.econ; if (!e || !e.npcs) return null;
+  if (npc._t312Ei != null && e.npcs[npc._t312Ei]) return e.npcs[npc._t312Ei];
+  for (let i = 0; i < e.npcs.length; i++) if (e.npcs[i].currentJob === 'fisher') { npc._t312Ei = i; return e.npcs[i]; }
+  return null;
+}
+const _lifeEconNpc = _t312EconNpc;
+// ★★[T312] **귀환하면 곳간에.** 회계는 econ 정본 한 함수(`fishToGranary`)가 한다 — 이 파일은 넘기기만.
+//   손에 든 것은 그때 비운다(이중 0 — 손과 곳간에 같이 있을 수 없다).
+function _t312Deliver(vil, npc) {
+  const u = npc._t312U || 0;
+  if (!(u > 0)) { npc._t312U = 0; npc._t312Kg = 0; return 0; }
+  const got = _lifeEcon().fishToGranary(vil.econ, u) || 0;
+  if (npc.inventory) for (const id of _fresh().ids()) if (npc.inventory[id]) npc.inventory[id] = 0;
+  npc._t312U = 0; npc._t312Kg = 0;
+  vil._t312Deliv = +((vil._t312Deliv || 0) + got).toFixed(6);
+  return got;
+}
+function _t312Take(vil, day, key, want) {
+  const B = _t312Day(vil, day);
+  if (!(B.per > 0) || !(want > 0)) return 0;
+  const left = B.cell.has(key) ? B.cell.get(key) : B.per;
+  if (left < want) { B.cell.set(key, left); return 0; }
+  B.cell.set(key, left - want); B.took += want; B.n++;
+  return want;
+}
 // ★랩 JOBACT 대상 직업 = 현장(논밭·물·숲·산) 직업. 이 집합 밖은 랩 'villager' 버킷(회관 내부 앵커 + 역할 라벨).
 const LIFE_FIELD_JOBS = new Set(['farmer', 'fisher', 'hunter', 'lumberjack', 'miner', 'forager']);
 let _vgStuckN = 0;           // ★기타직 정체 가드 발동 누계(부팅 이후) — lifedbg가 노출
@@ -4571,6 +4635,9 @@ function _lifeJobSites(vil, day) {   // 마을 생활권의 직업별 현장 후
       if (state.deps.isWaterTileLocal(px + SZ, py) || state.deps.isWaterTileLocal(px - SZ, py) || state.deps.isWaterTileLocal(px, py + SZ) || state.deps.isWaterTileLocal(px, py - SZ)) { bank.push({ x: px, y: py }); if (bank.length >= 200) break; }
     }
   }
+  // ★[T312] 강가 셀 수 = 셀당 하루 예산의 **분모**다(설계_민물고기 §2). econ 이 그 식을 갖고 있고
+  //   이 파일은 **세어서 넘기기만** 한다(사본 0 · 손잡이가 꺼져 있으면 econ 이 그 수를 안 본다).
+  if (vil.econ) vil.econ._t312Cells = bank.length;
   return (vil._jobSites = { day, lumberjack: top(bk.lumberjack), miner: top(bk.miner), forager: top(bk.forager), hunter: hunt, fisher: bank });
 }
 
@@ -5733,6 +5800,39 @@ function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(�
   vil._dCl = vil._mCl || 0; vil._dSt = vil._mSt || 0; vil._dTk = vil._mTk || 0;
   vil._mCl = 0; vil._mSt = 0; vil._mTk = 0;
   vil._clearCrew = 0; vil._buildCrew = 0; vil._claim = new Set(); vil._frontDay = -1;
+  // ★★[T312] **낮이 끝나면 들고 있던 것을 곳간에 넣는다**(캐논 ⓐ — 귀환 시 입고).
+  //   ⚠여기가 하루의 경계다. 짐이 차서 이미 돌아간 사람은 손이 비어 있어 이 줄이 무해하다.
+  //   ⚠그리고 **관측자 없는 마을**(몸이 안 걷는 마을)의 어부도 여기서 **같은 함수**로 하루를 푼다 —
+  //     `_t312Take`(같은 셀 예산) → `fishToGranary`(같은 곳간 입구) → 장부 한 줄. 걸음만 없다.
+  //     ⚠**걸음이 없는 것은 이 카드가 남긴 빚이다**(캐논 ⓑ는 "관측자 없어도 실걸음") — 보고 §회부.
+  if (vil.econ && _lifeEcon().fishActOn(vil.econ)) {
+    const _d = state.dayMs ? gameDayOf(_dayNow()) : 0;
+    const _pl = state.deps.players;
+    let _walked = 0;
+    for (const pid of (vil.npcPids || [])) { const p = _pl && _pl.get(pid); if (p && (p._t312U || 0) > 0) { _t312Deliver(vil, p); _walked++; } }
+    // 안 걸은 마을 — 어부 수만큼 그날의 기회를 같은 자로 푼다(셀은 돌아가며 · 결정론)
+    const _sites = (vil._jobSites && vil._jobSites.fisher) || [];
+    const _fn = (vil.econ.counts && vil.econ.counts.fisher) || 0;
+    if (_walked === 0 && _fn > 0 && _sites.length) {
+      const _B = _t312Day(vil, _d);
+      const _K = _kcal();
+      for (let i = 0; i < _fn; i++) {
+        const st = _sites[i % _sites.length];
+        const cx = Math.floor(st.x / SZ), cy = Math.floor(st.y / SZ), key = cx + ',' + cy;
+        for (let k = 0; k < 64; k++) {   // 한 사람의 하루 기회 — 셀 예산이 먼저 바닥나면 거기서 끝난다
+          const sp = _fresh().pick(_t312Water(vil), _d, (i * 131 + k) ^ cx ^ Math.imul(cy, 0x85ebca6b));
+          if (!sp) break;
+          const u = _K ? (+_K.econUnitsOf('fish', 1, sp.kg) || 0) : 0;
+          if (!(u > 0) || _t312Take(vil, _d, key, u) <= 0) break;
+          _lifeEcon().fishToGranary(vil.econ, u);
+          vil._t312Deliv = +((vil._t312Deliv || 0) + u).toFixed(6);
+        }
+      }
+      void _B;
+    }
+    vil._t312 = null;   // ★이월 없음 — 날이 바뀌면 예산 장부를 버린다(설계_민물고기 §2)
+    vil._t312W = null;  // 물 갈래는 계절이 바뀌면 다시 읽는다(논이 생기기도 한다)
+  }
   vil._cropClaim = new Set(); vil._jobSites = null;   // ★[생활 층 100% ③] 작물 셀 클레임·직업 현장 캐시 일일 리셋(자가치유·현장 재평가)
   _sub('crop');
   _lifeHunterEconLink(vil);   // ★[HSK↔econ] 시각 사냥꾼 ↔ econ 사냥꾼 NPC 연결(랩 배치 루틴 verbatim — 일일 재대사)
@@ -5990,7 +6090,38 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
     if (!npc._workSite || npc._workSite.day !== day) npc._workSite = { x: sites[h % sites.length].x, y: sites[h % sites.length].y, day };
     const ws = npc._workSite;
     if (Math.hypot(npc.x - ws.x, npc.y - ws.y) > 130) { npc.behavior = 'wander'; npc.targetX = ws.x; npc.targetY = ws.y; npc.gatherTarget = null; _lifeAct(npc, '출근'); return true; }
-    if (!npc._lastFishAt || now - npc._lastFishAt > 8000) { npc._lastFishAt = now; if (npc.inventory) npc.inventory.fish = (npc.inventory.fish || 0) + 1; }   // 8초 1마리(구 ③-b 이관 — simJob 기준)
+    if (!npc._lastFishAt || now - npc._lastFishAt > 8000) {
+      npc._lastFishAt = now;
+      // ★★★[T312] **낚는 순간 손에.** 손잡이가 꺼져 있으면 아래 `else` 한 줄이 종전 그대로 돈다(비트 동일).
+      if (_lifeEcon().fishActOn(vil.econ)) {
+        //   ⓐ 어느 셀인가 — 지금 드리우고 있는 그 자리(셀 키는 좌표를 셀로 내린 것 · 새 수 0).
+        const _cx = Math.floor((npc._fishSpotX != null ? npc._fishSpotX : ws.x) / SZ);
+        const _cy = Math.floor((npc._fishSpotY != null ? npc._fishSpotY : ws.y) / SZ);
+        const _key = _cx + ',' + _cy;
+        //   ⓑ 무엇이 물리나 — 그 물·그 계절에 사는 종에서 결정론으로 하나(주사위 0 · `freshfish.pick`).
+        const _sp = _fresh().pick(_t312Water(vil), day, h ^ _cx ^ Math.imul(_cy, 0x85ebca6b));
+        if (_sp) {
+          //   ⓒ 그 한 마리가 장부로 얼마인가 — **정본이 답한다**(`kcal.econUnitsOf`: 종 kg × fish kcal/kg ÷ DAY_KCAL).
+          //      그 어부의 배율(숙련·도구)은 econ 이 제 자리에서 남겨 둔 `_t172mul` 을 **그대로** 쓴다(T172 규약 · 사본 0).
+          const _K = _kcal();
+          const _ec = _lifeEconNpc(vil, npc);
+          const _mul = (_ec && typeof _ec._t172mul === 'number' && _ec._t172mul > 0) ? _ec._t172mul : 1;
+          const _units = _K ? (+_K.econUnitsOf('fish', 1, _sp.kg) || 0) * _mul : 0;
+          //   ⓓ 셀 예산에서 **통째로** 꺼낸다 — 안 되면 그 셀은 오늘 비었다(이월 0).
+          const _got = _t312Take(vil, day, _key, _units);
+          if (_got > 0) {
+            if (npc.inventory) npc.inventory[_sp.id] = (npc.inventory[_sp.id] || 0) + 1;   // ★손에 — 플레이어와 **같은 칸**(`inventory`)
+            npc._t312U = +((npc._t312U || 0) + _got).toFixed(6);                            // 손에 든 것의 장부값(귀환 때 곳간으로)
+            npc._t312Kg = +((npc._t312Kg || 0) + _sp.kg).toFixed(3);
+            _lifeAct(npc, '낚음');
+          }
+        }
+        //   ⓔ **짐이 차면 돌아간다** — 상한은 `carry.js` 의 그 수다(사본 0). 낮 끝 귀환은 아래 일과가 이미 한다.
+        const _cc = _carryCfg();
+        const _cap = (_cc && _cc.CFG && _cc.CFG.CAP_KG) || 0;
+        if (_cap > 0 && (npc._t312Kg || 0) >= _cap) _t312Deliver(vil, npc);
+      } else if (npc.inventory) npc.inventory.fish = (npc.inventory.fish || 0) + 1;   // 8초 1마리(구 ③-b 이관 — simJob 기준)
+    }
     // ★★[2026-08-04c 배치 17 ②] **낚시터 미세 방황 수리** — 재민 관측 "낚시터에서 미세하게 자꾸 방황한다".
     //   원인: 이 줄이 **결정 틱마다**(0.5~1.5초) 목표를 ±20px 로 새로 뽑고 있었다. 20px 는 한 셀(32px)도 안 되는
     //   거리라 NPC 는 도착하기 전에 목표가 또 바뀐다 — 영원히 제자리에서 달달거린다.
