@@ -611,16 +611,48 @@ const WATER_TILES = generateCoastlineWaterTiles(
 );
 console.log(`[${ZONE_ID}] 🌊 해안선: ${WATER_TILES.size} water tiles (ocean=${ZONE.isOcean?'전체':'edge only'})`);
 // Phase 5-1-fix: inland water (강·호수)는 zone start pre-compute 안 함 (수 분 timeout).
+// ⚠[T324] 이 블록은 **파일 위쪽**에 있어야 한다 — `isTerrainBlockedLocal` 이 모듈 적재 중에도
+//   불린다(`spawnMob` → zone.js:1672 초기 스폰). 아래쪽에 `const` 로 두면 그 한 번이 TDZ 에 걸려
+//   **존이 기동조차 못 한다**(`test-war-world ⓖ` 가 그걸 잡았다 — 실측 없이 소스만 봤으면 못 봤다).
+// ★★★[T324 2026-09-19] **걷는 몸의 값 — 관측 창구 하나.** 회계 아님 · 손잡이 없음 · 세계 무변.
+//   T316 이 냈다: 51마을 1,476명 전원 걷기 = 존 틱 p50 374.6ms ⇒ **걸음 하나 250µs**.
+//   10,000명 × 30Hz 예산은 **사람당 3.3µs**(추신 1) — 75배다. 그 250µs 의 주인을 카드 T324 가 묻는다.
+//   ⚠추측을 세지 않는다. 여기서 세는 것은 **호출 수**뿐이고(정수 증가), **자리별 µs 는 `--cpu-prof`** 가
+//     제품을 한 글자도 안 만지고 낸다. 둘을 곱하면 "한 번에 몇 µs" 가 나온다(족보 223 — 걸음당 µs 와 호출 수).
+//   ⚠두 팔이 같은 창으로 보여야 하므로 **손잡이 뒤에 두지 않는다**(끈 팔도 이 수를 낸다).
+//     비용은 뜨거운 자리에서 `++` 셋 — 틱 374ms 대비 잴 수 없는 크기다(끈 팔 p50 2.466ms 가 증인).
+const _walk = { steps: 0, ej: 0, ejQ: 0, ejFail: 0, terrQ: 0, waterQ: 0, wallQ: 0, cut: 0, ejPids: new Set() };
+let _npcCursor = null;   // ★[T324 ⓒ] 결정 문 예산이 지난 틱에 멈춘 자리(pid) — null 이면 처음부터
+function walkPerf(reset) {
+  const o = { steps: _walk.steps, eject: _walk.ej, ejectQ: _walk.ejQ, ejectFail: _walk.ejFail,
+              ejectPids: _walk.ejPids.size, terrQ: _walk.terrQ, waterQ: _walk.waterQ, wallQ: _walk.wallQ,
+              cutTicks: _walk.cut, cursor: _npcCursor !== null ? 1 : 0,
+              ejPerStep: _walk.steps ? +(_walk.ej / _walk.steps).toFixed(4) : 0,
+              terrPerStep: _walk.steps ? +(_walk.terrQ / _walk.steps).toFixed(2) : 0,
+              wallPerStep: _walk.steps ? +(_walk.wallQ / _walk.steps).toFixed(2) : 0 };
+  if (reset) { _walk.steps = 0; _walk.ej = 0; _walk.ejQ = 0; _walk.ejFail = 0; _walk.terrQ = 0; _walk.waterQ = 0; _walk.wallQ = 0; _walk.cut = 0; _walk.ejPids.clear(); }
+  return o;
+}
 // 콜라이더 호출 시 terrain.isWaterCellLocal로 동적 검사 — cell center 기준 (시각과 일치).
 const _terrain = require('./terrain');
-// ★[멎음 수리 2026-08-31 · 기본 꺼짐] 타일 지형 판정 메모 — 근거·등가성은 terrain-tilecache.js 머리말.
+// ★[멎음 수리 2026-08-31] 타일 지형 판정 메모 — 근거·등가성은 terrain-tilecache.js 머리말.
 //   요지: 아래 두 술어는 입력을 타일로 양자화한 뒤 그 타일 **중심 한 점**만 묻는다 = (tx,ty)의 순수 함수.
 //   지형 원천은 기동 1회 적재 후 불변이라 무효화가 없다. 끄면 배열조차 안 만들고 종전 경로 그대로.
-const _TERR_CACHE = (process.env.TERRAIN_TILE_CACHE === '1' && !ZONE.isOcean)
+// ★★★[T324 2026-09-19] **기본을 켬으로 돌린다 — 되돌림 `TERRAIN_TILE_CACHE=0`.**
+//   2026-08-31 은 18마을·607명에서 원인만 확정하고 "운영 켜기는 사용자 판단 몫"으로 껐다. T324 가
+//   51마을·1,476명 **전원 걷기** 위에서 그 판단의 값을 냈다(제품 무접촉 `--cpu-prof` · 같은 세계 두 팔):
+//     끔  존 틱 p50 **261.062ms** · drop 511 · lag 40.8%  — 틱의 **89%가 지형 판정**
+//         (`_pointToSegmentDist` 40.4% + `_isPointInRiver` 35.5% + rock 7.8% + water 5.1%)
+//     켬  존 틱 p50 **8.035ms** · drop 0 · lag 0%  — **32.5배** · 예산(33.3ms)의 24% · 유휴 49%
+//   ⚠세계 무변이다(값 투명 — 같은 (tx,ty)에 같은 답). `test-terrain-memo` 가 켬/끔 두 판을
+//     **전수 대조**한다(무작위 20,000 셀 + 강·산 경계 띠). 되돌리면 비트 동일이다.
+//   ⚠값이 8.5MB(2,188×4,063 타일 × 1바이트)다 — 존 하나당. 그게 이 수의 대가 전부다.
+const _TERR_CACHE = (process.env.TERRAIN_TILE_CACHE !== '0' && !ZONE.isOcean)
   ? require('./terrain-tilecache').makeTileCache(Math.ceil(ZONE.zoneWidth / 32), Math.ceil(ZONE.zoneHeight / 32))
   : null;
 if (_TERR_CACHE) console.log(`[${ZONE_ID}] 🗺️ 타일 지형 메모 ON — ${_TERR_CACHE.tilesW}×${_TERR_CACHE.tilesH} 타일 · ${(_TERR_CACHE.bytes / 1048576).toFixed(1)}MB`);
 function isWaterTileLocal(localX, localY) {
+  _walk.waterQ++;   // ★[T324] 관측 전용 — 문자열 키 해시가 몇 번 도는지(추신 3 후보 2)
   if (ZONE.isOcean) return true;
   if (localX < 0 || localY < 0 || localX >= ZONE.zoneWidth || localY >= ZONE.zoneHeight) return false;
   const tx = Math.floor(localX / 32);
@@ -694,6 +726,7 @@ function ditchPayload() {                 // welcome 페이로드(flat [cx,cy,�
   try { return SimVillages.ditchCells ? SimVillages.ditchCells() : []; } catch (e) { return []; }
 }
 function isTerrainBlockedLocal(x, y) {
+  _walk.terrQ++;   // ★[T324] 관측 전용 — 걸음당 지형 질의 수(추신 3 후보 2 의 분모)
   // 다리는 물 위에만 놓인다 — 바위(산맥)는 다리로 뚫지 않는다(고증·지형 무결).
   if (isRockTileLocal(x, y)) return true;
   if (isDitchTileLocal(x, y)) return true;      // ★환호 = 이동 불가. 출입구는 '도랑을 파지 않은 셀'이라 자동으로 열려 있다.
@@ -3154,6 +3187,8 @@ const server = http.createServer((req, res) => {
       war: (SimVillages.warPerf ? (() => { const w = SimVillages.warPerf(); if (_rst && SimVillages.warPerfReset) SimVillages.warPerfReset(); return w; })() : null),   // ★[T284 ④]
       // ★[T316] 어부 관측 — 손잡이가 꺼져 있으면 `null`(끈 팔 페이로드 무변).
       fish: (() => { try { return SimVillages.fishPerf ? SimVillages.fishPerf() : null; } catch (e) { return null; } })(),
+      // ★[T324] 걷는 몸 관측 — 두 팔이 같은 창으로 보인다(손잡이 뒤가 아니다 · `?reset=1` 이 영점 조정).
+      walk: walkPerf(_rst),
       tick: Object.assign({}, _tick, { ms: _tickMsStats(_rst), on: TICK_DEBT_ON, dtMax: DT_MAX, debtMax: TICK_DEBT_MAX,
         lagPct: _tick.wall > 0 ? +(100 * (_tick.wall - _tick.sim) / _tick.wall).toFixed(3) : null }) }));
     return;
@@ -10833,6 +10868,7 @@ function edgeBlockedStep(cx, cy, sx, sy, floor) {
 // - 대각 한 칸: 두 L-경로(x먼저/y먼저)가 모두 막혀 있으면 차단 (코너 컷 방지).
 // - 멀티셀: 목적지까지 셀씩 걸으며 매 crossing·진입 cell 검사.
 function isBlockedByWall(newX, newY, oldX, oldY, playerFloor = 0, traceName = null) {
+  _walk.wallQ++;   // ★[T324] 관측 전용 — 걸음당 건물·벽 충돌 질의 수
   // 같은 cell 안 이동 — wall 가로지르지 않음
   const oc = cellOf(oldX, oldY);
   const nc = cellOf(newX, newY);
@@ -11126,7 +11162,16 @@ setInterval(() => {
 
   // === NPC 행동 결정 (사람 player는 input으로 vx/vy 받지만 NPC는 직접 결정) ===
   // 비활성 청크 NPC는 멈춤 (CPU 절약). 가까이 player 오면 자동 재개.
+  //   ★★★[T324 ⓒ 2026-09-19] **예산은 두되 이어 돌기로.** T316 §3-ⓑ 가 잰 결함: 이 루프는 `break` 이고
+  //     매 틱 `npcs` 의 **맨 앞에서** 다시 센다 ⇒ 예산에 닿는 순간 잘린 뒤쪽은 **영영** 결정을 못 받았다
+  //     (실측 아침 비취침 256/1,464 = 17.5% · 뒤 15마을은 하루 종일 '취침' 라벨에 굳었다).
+  //     ⇒ 멈춘 자리를 기억했다가 **다음 틱에 거기서부터** 센다. 예산(15ms)은 한 자도 안 건드린다.
+  //     ⚠세계 무변이 아니다(카드가 허용한 유일한 항) — 결정 **시점**이 미뤄진다. 그래서 보고 표에
+  //       켠 팔 어획 합을 전/후로 나란히 적는다.
+  //     ⚠커서가 가리키던 주민이 사라지면(사망·핸드오프) 한 바퀴를 헛돌 수 있다 ⇒ 못 찾으면 그 틱 끝에 영점.
+  let _curHit = (_npcCursor === null), _stopAt = null;
   for (const pid of npcs) {
+    if (!_curHit) { if (pid !== _npcCursor) continue; _curHit = true; }   // 지난 틱에 **못 한** 그 사람부터 한다
     const npc = players.get(pid);
     if (!npc || npc.hp <= 0) continue;
     // Phase 4d-9 fix: canadia NPC는 active chunk 체크 우회 (모든 마을 동시 시뮬)
@@ -11139,9 +11184,11 @@ setInterval(() => {
     //     (:11255 `movePlayerStep` 루프) — 실측에서 틱의 대부분은 거기서 났다(p50 2.47 → 374.6ms · 152배).
     //     예산을 늘리지도, 새로 걸지도 않는다: 놓는 수가 곧 설계 판정이라 PM 몫이다(T316 §3 회부).
     if (!npc.canadiaVillage && !_t316WalkAlways(npc) && !isPositionActive(npc.x, npc.y)) { npc.vx = 0; npc.vy = 0; continue; }
-    if ((Date.now() - now) > 15) break;
+    if ((Date.now() - now) > 15) { _stopAt = pid; break; }   // ★[T324 ⓒ] 이 사람은 **아직 안 했다** — 다음 틱이 여기서 시작한다
     npcStep(npc, dt, now);
   }
+  _npcCursor = _curHit ? _stopAt : null;   // 한 바퀴를 다 돌았거나(=null) 커서가 사라졌으면 처음부터
+  if (_stopAt !== null) _walk.cut++;       // ★[T324] 예산에 닿은 틱 수(관측 전용)
   // ★★[T108 2026-09-05] **벽시계 ready 마크 틱을 지우고, 게임일 경계 한 번으로 바꿨다.**
   //   여기가 **매 틱** 전 활성 청크의 밭을 훑어 `now >= readyAt` 으로 `ready` 를 켜던 자리다.
   //   ★밭의 시계는 이제 게임일 하나다 ⇒ 밭 그림이 바뀔 수 있는 순간도 **하루 경계 하나**뿐이다.
@@ -11178,13 +11225,20 @@ setInterval(() => {
   function movePlayerStep(p, inp) {   // ★[T194] `inp` 는 **그 틱의 입력**(플레이어만) — NPC 는 안 넘긴다(종전 비트)
     // === auto-eject: 어떤 이유로든(핸드오프 착지·지형변경·관통) 중심이 물/바위에 빠졌으면,
     //   "자유이동(escape valve)" 대신 가장 가까운 통행가능 셀로 밀어낸다 → 강 안에서 헤엄치는 버그 차단.
+    _walk.steps++;   // ★[T324] 걸음 수 — 아래 모든 비율의 분모(관측 전용)
     if (isTerrainBlockedLocal(p.x, p.y)) {
-      let ejX = 0, ejY = 0, found = false;
+      // ★★[T324] **탈출 루프에 든 걸음**을 센다(추신 3 후보 1). 최대 16단 × 8방 = 128 지형 질의 · **매 틱**.
+      //   밀어내는 양은 `MOVE_SPEED × moveDt × 1.8` = 3.84px/틱 뿐이라, 한 번 빠진 주민은 여러 틱 동안
+      //   이 루프를 다시 돈다. 관측자 없는 마을은 청크가 안 켜져 있어도 지형은 절차적이라 판정은 돈다.
+      _walk.ej++; if (p.pid) _walk.ejPids.add(p.pid);
+      let ejX = 0, ejY = 0, found = false, _q = 0;
       for (let r = 32; r <= 32 * 16 && !found; r += 32) {
         for (const d of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,1],[1,-1],[-1,-1]]) {
+          _q++;
           if (!isTerrainBlockedLocal(p.x + d[0] * r, p.y + d[1] * r)) { ejX = d[0]; ejY = d[1]; found = true; break; }
         }
       }
+      _walk.ejQ += _q; if (!found) _walk.ejFail++;
       if (found) {
         const len = Math.hypot(ejX, ejY) || 1;
         const push = MOVE_SPEED * moveDt * 1.8;
