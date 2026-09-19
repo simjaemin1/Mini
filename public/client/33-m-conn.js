@@ -105,6 +105,18 @@
   function checkOrphan() {
     if (!primaryZoneId || lastTickWithMyPidAt === 0) return;
     if (performance.now() - lastTickWithMyPidAt > 2000) {
+      // ★★★[T331 2026-09-19 · 재민 확정] **틱이 아예 안 오는 것은 "고아"가 아니다.**
+      //   이 자는 "서버가 내 몸을 지웠다"를 잡으려고 있다 — 그 모습은 **틱은 오는데 그 안에 내가 없다**
+      //   이다. 그런데 `lastTickWithMyPidAt` 은 **틱이 통째로 안 와도** 안 나아가므로, 느린 판에서는
+      //   그냥 느린 것을 고아로 오진하고 **소켓을 끊는다**. 그게 재접속 폭풍이 된다.
+      //   실측(T322·T331 · `e2e-trade` 두 판): 한 판에 재접속 **6회·2회**, 그 사유가 **전부 이 줄**이고
+      //   `player_left`(서버가 지움) 0회 · 유령 감시(틱 없음) 0회였다. 워프가 그때마다 씻겨
+      //   "마을에 못 붙는" 빨강이 됐다(T322 ③).
+      //   ⇒ **틱 자체가 없으면 여기서 끊지 않는다.** 그건 이 파일의 몫이 아니라 유령 감시의 몫이고,
+      //     그쪽은 이미 문턱이 둘로 갈려 있다(`ghostStallMs` = 말한다 · `ghostReconnectMs` = 끊는다 ·
+      //     `30-n-net.js` 주석: *"하나로 두면 … 부하가 걸린 판에서는 그게 재연결 폭풍이 된다"*).
+      //   ⚠**새 수 0** — 같은 2초 창을 그대로 쓴다. 고아의 정의를 좁혔을 뿐이다.
+      if (!lastTickAt || performance.now() - lastTickAt > 2000) return;
       console.warn('[recover] 내 pid가 2초간 tick에 없음 - primary 재연결');
       // ★유령 클라 fix: 서버에 내 실체가 없다고 판정된 순간부터 예측 정지 + pid 폐기.
       //   (옛 코드는 재연결 동안에도 옛 좌표로 계속 전진해서 welcome 앵커와 실좌표 괴리가 커졌다.)

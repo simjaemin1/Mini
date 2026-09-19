@@ -90,6 +90,16 @@ async function waitHttp(url, tries = 900) {
   const errs = [];
   page.on('pageerror', (e) => errs.push(String(e.message).slice(0, 160)));
   page.on('console', (m) => { if (m.type() === 'error') errs.push('console: ' + m.text().slice(0, 160)); });
+  // ★★[T331 2026-09-19] **재접속이 왜 나는지 클라가 이미 말하고 있다** — 그 말을 줍는다(판정 아님 · 상황).
+  //   T322 가 "pid 가 한 판에 2~10회 바뀐다"까지 봤고, 그 까닭은 클라 콘솔에 이름표가 붙어 나온다:
+  //     `[recover] ★서버 틱 N초 — 소켓 강제 close · 재연결`  ← ⓐ 유령 감시(`ghostReconnectMs` 10초)
+  //     `[recover] 서버가 내 플레이어를 제거함(player_left) …`  ← ⓑ 서버가 날 지웠다(승계·좀비 청소)
+  //     `[recover] visibilitychange visible …`                  ← ⓒ 탭 복귀
+  //   어느 쪽이 우는지가 곧 고칠 자리다.
+  const recov = [];
+  const _t0r = Date.now();
+  page.on('console', (m) => { const t = m.text();
+    if (/\[recover\]|kicked|duplicate_login/.test(t)) recov.push(`+${((Date.now() - _t0r) / 1000).toFixed(1)}초 ${t.slice(0, 120)}`); });
   const snap = async (n) => { const f = path.join(SHOTS, n + '.png'); await page.screenshot({ path: f }); shots.push(f); return f; };
   const notices = () => page.evaluate(() => (window.__notices || []).slice());
   // ★[T78 2026-09-03] 알림 경계(`server/notice.js`)가 접두 이모지를 걷고 `kind` 필드로 옮겼다 —
@@ -200,6 +210,8 @@ async function waitHttp(url, tries = 900) {
     }
     if (d && d.seen > 0 && d.minD <= d.gate) tpOk = true;
   }
+  console.log(`    [상황] 클라가 말한 재접속 사유 ${recov.length}건:`);
+  for (const r of recov.slice(0, 12)) console.log(`      ${r}`);
   console.log(`    [상황] 워프 ${tpTries}회 · ${((Date.now() - tpT0) / 1000).toFixed(0)}초 만에 ${tpOk ? '붙었다' : `**못 붙었다(상한 ${(TP_CAP / 1000) | 0}초)**`}`
     + ` · pid ${pid0} → ${pidLast} (바뀐 횟수 ${pidChanges}) — 회마다:`);
   for (const t of tpTrace) console.log(`      ${t}`);
@@ -560,6 +572,47 @@ async function waitHttp(url, tries = 900) {
         `${wq.giveNeeded} vs ${Math.abs(dG)}`);
       await snap('tr-07-after');
     }
+  }
+
+  // ── ⑧ 끊김을 일부러 넣어도 **폭풍이 안 난다** [T331 2026-09-19] ──────────────────
+  //   ★왜 이 절이 여기 있나: 이 하네스가 빨개지던 진짜 이유는 거래가 아니라 **재접속**이었다.
+  //     T322 가 "한 판에 pid 가 2~10회 바뀐다"를 봤고, T331 이 클라가 스스로 적어 두는 사유를 주워
+  //     세니 **전부 한 줄**이었다: `내 pid가 2초간 tick에 없음 - primary 재연결`(6회·2회) ·
+  //     `player_left`(서버가 지움) 0 · 유령 감시(틱 없음) 0. 고아 감시가 **느린 것**을 고아로 오진했다.
+  //   ★무엇을 재나: 끊김을 **일부러 셋** 넣고(망을 내렸다 올린다) ⓐ 그 뒤에도 마을에 다시 붙는지
+  //     ⓑ 재접속이 **넣은 수보다 늘지 않는지**(늘면 그게 폭풍이다).
+  console.log('\n⑧ 끊김 셋을 일부러 넣는다 — 폭풍이 나나 [T331]');
+  {
+    const before = recov.length;
+    const ctx = page.context();
+    for (let k = 0; k < 3; k++) {
+      await ctx.setOffline(true);
+      await sleep(1500);
+      await ctx.setOffline(false);
+      // ★조건 대기 — 돌아올 때까지(정해진 초를 안 잰다). 상한은 표에만.
+      const t = Date.now();
+      while (Date.now() - t < 30000) {
+        const ph = await page.evaluate(() => (window.__connState ? window.__connState().phase : 'ready'));
+        if (ph === 'ready') break;
+        await sleep(250);
+      }
+    }
+    const added = recov.length - before;
+    console.log(`    [상황] 끊김 3회를 넣었다 — 클라가 말한 재접속 사유 ${added}건`);
+    for (const r of recov.slice(before, before + 8)) console.log(`      ${r}`);
+    ok(added <= 3, '★★⑧ 끊김 셋에 재접속도 **셋 이하** — 폭풍이 안 난다(고아 감시가 느린 것을 안 문다)',
+       `넣은 끊김 3 · 재접속 사유 ${added}`);
+    // ⓐ 다시 붙나 — 워프를 한 번 더 던져 마을 반경 안으로(붙는 데 쓰는 자는 위와 같은 조건 대기다).
+    let backOk = false;
+    const t2 = Date.now();
+    while (!backOk && Date.now() - t2 < TP_CAP) {
+      await page.evaluate(([x, y]) => window.__sendPrimary({ type: 'teleport_debug', x, y }), [ax, ay]);
+      await sleep(1200);
+      const d = await page.evaluate(() => window.__evDbg || null);
+      if (d && d.seen > 0 && d.minD <= d.gate) backOk = true;
+    }
+    ok(backOk, '★⑧ 끊겼다 붙은 뒤에도 **마을 반경 안으로 돌아온다**(워프가 씻기지 않는다)',
+       backOk ? `${((Date.now() - t2) / 1000).toFixed(0)}초` : `상한 ${(TP_CAP / 1000) | 0}초`);
   }
 
   await page.evaluate(() => window.__sendPrimary({ type: '__e2e_day_freeze', on: false }));
