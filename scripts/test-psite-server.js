@@ -164,7 +164,7 @@ console.log('\n[⑧ 관측 — /lifedbg가 의뢰 상태를 노출]');
     catch (e) { threw = e; }
     return threw; };
 
-  console.log('\n[⑩ ★T219 집터 방아쇠 — 규칙은 한 곳(랩과 같은 것) · 손잡이 기본 끔]');
+  console.log('\n[⑩ ★T219 집터 방아쇠 — 규칙은 한 곳(랩과 같은 것) · 손잡이 기본 **켬**(T298))]');
 {
   const VL = require('../server/village-layout.js');
   const CAP = VL.HOUSE_CAP_PER_FLOOR;   // ★6 을 하네스에 적지 않는다 — 모듈이 정본
@@ -175,8 +175,9 @@ console.log('\n[⑧ 관측 — /lifedbg가 의뢰 상태를 노출]');
   chk(/houseSiteWant\(/.test(trig), '생활층 방아쇠가 **그 함수를 부른다**(규칙을 다시 적지 않는다)');
   chk(!/Math\.ceil[^\n]*HOUSE_CAP/.test(trig), '  방아쇠 자리에 목표 층수 **수식이 없다**(사본 0)');
   chk(/T219_HOUSE_TRIGGER/.test(trig), '  켬/끔은 손잡이 하나가 가른다');
-  chk(/const T219_HOUSE_TRIGGER = process\.env\.T219_HOUSE_TRIGGER === '1'/.test(VIL),
-    "  손잡이 기본값 **끔** — `=== '1'` (미설정이면 종전 경로)");
+  // ★★[T298] 극성을 **정규식으로 읽지 않는다.** 여기 `=== '1'` 을 박아 뒀더니 T298 이 기본을 뒤집는
+  //   순간 **하네스만 빨강**이 됐다(그리고 정규식이 낡으면 조용히 초록이 될 수도 있다).
+  //   이제는 실측문(`__probe.handles()`)에 **물어본다** — 아래 ⓕ 절이 자식 프로세스로 잰다.
   chk(/vil\.econ\.npcs\.length > cap \* 0\.92/.test(trig),
     '  끔 경로가 종전 식 그대로 — `인구 > 침상 × 0.92`(서버 고유 수 · 랩엔 없다)');
   // ── ★규칙을 **실제로 불러** 잰다(소스 문자열이 아니라 답을 본다 · 족보 (84)) ─────────
@@ -199,8 +200,35 @@ console.log('\n[⑧ 관측 — /lifedbg가 의뢰 상태를 노출]');
   chk([1, 25, 26, 50, 200, 5000].every((pop) => W(pop, pop * 10, 0, 1) === true),
     'ⓔ 집터 하나를 쥔 채로도 랩의 동시 상한은 **언제나 참** — 서버 슬롯 하나가 이미 더 엄격하다');
   chk(W(200, 2000, 0, 8) === false, '  (전제) 상한 자체는 살아 있다 — 집터 8개면 인구 200에서 **거짓**');
-  // ⓕ 되돌림 — 끔이면 두 식이 갈리는 그 픽스처에서 종전 답이 나온다(env 한 줄로)
-  chk(process.env.T219_HOUSE_TRIGGER !== '1', 'ⓕ 이 판은 손잡이 **끔**으로 돌았다(러너 기본 = 종전 경로)');
+  // ── ⓕ ★★[T298] 손잡이 극성 — **켠 판을 끈 판과의 관계로** 말한다(T244 ⑧ 문법 · 상수·식 베끼기 0) ──
+  //   왜 관계로 말하나: 기본값을 하네스에 숫자·문자열로 적으면 규약이 뒤집힐 때마다 하네스가 거짓말한다.
+  //   그래서 ① 서버 기본을 **실측문에 물어보고**(env 를 지운 자식 프로세스 · 족보 128)
+  //          ② 끄는 문은 명시 `=0` 하나임을 같은 문으로 보이고
+  //          ③ 두 판이 **실제로 갈리는 픽스처**가 있음을 규칙 함수 둘로 보인다(없으면 이 절 전부가 자명 통과).
+  {
+    const { execFileSync } = require('child_process');
+    const door = `console.log(JSON.stringify(require(${JSON.stringify(require('path').join(__dirname, '..', 'server', 'villages.js'))}).__probe.handles()));`;
+    const ask = (over) => {
+      const env = Object.assign({}, process.env);
+      for (const k of ['T230_TERR_HOUSING', 'T219_HOUSE_TRIGGER']) delete env[k];
+      Object.assign(env, over || {});
+      return JSON.parse(String(execFileSync(process.execPath, ['-e', door], { env, encoding: 'utf8' })).trim());
+    };
+    let dflt = null, offArm = null, e0 = null;
+    try { dflt = ask(null); offArm = ask({ T219_HOUSE_TRIGGER: '0', T230_TERR_HOUSING: '0' }); } catch (e) { e0 = e; }
+    chk(!!dflt && !!offArm, `ⓕ-0 실측문 \`__probe.handles()\` 가 산다 — 극성을 소스 문자열로 짐작하지 않는다${e0 ? ' · ' + String(e0.message).split('\n')[0] : ''}`);
+    if (dflt && offArm) {
+      chk(dflt.T219_HOUSE_TRIGGER === true, 'ⓕ-1 서버 기본 `T219_HOUSE_TRIGGER` = **켬**(미설정 · 자식 프로세스 실측) — T298 재민 #22');
+      chk(dflt.T230_TERR_HOUSING === true, '  서버 기본 `T230_TERR_HOUSING` = **켬**(같은 문으로 · 둘은 같이 켠다 — T267 은 땅 없이는 방아쇠가 값을 못 낸다고 쟀다)');
+      chk(offArm.T219_HOUSE_TRIGGER === false && offArm.T230_TERR_HOUSING === false,
+        'ⓕ-2 되돌림은 명시 `=0` 둘 — 그 판만 종전 경로(문 하나 · 그 판이 넷째 판과 비트 동일해야 한다)');
+      chk(offArm.T219_HOUSE_TRIGGER !== true, '[자명 통과 금지] ⓕ-1 의 주장을 **끈 판**에 대면 거짓이다 — 이 검사는 실제로 문다');
+    }
+    chk(W(20, 40, 4, 0) !== OLD(20, 4),
+      'ⓕ-3 켠 규칙과 끈 규칙이 **실제로 갈리는** 픽스처가 있다(인구 20·`housing` 40·4채) — 없으면 ⑩ 전체가 자명 통과다');
+    chk(/T219_HOUSE_TRIGGER[\s\S]{0,40}\?[\s\S]{0,200}:/.test(trig),
+      '  그리고 그 갈림을 가르는 것은 방아쇠 자리의 **삼항 하나**다(분기 둘 · 식 사본 0)');
+  }
 }
 
 console.log('\n[⑨ ★실행 — 실서버에서 자리 확정이 실패하면 무엇이 사라지나]');

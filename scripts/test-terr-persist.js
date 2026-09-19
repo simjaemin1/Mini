@@ -100,8 +100,33 @@ async function run(label, extraEnv, fresh) {
   console.log('\n=== 영토가 재부팅을 넘기나 (T278) ===');
   console.log(`  판: 게임일 ${DAY_MS}ms × ${DAYS}일 · 1차(새 DB) → 2차(같은 DB 다시 열기)\n`);
 
-  // ① 한 판 — 영토가 자라는 세계를 만든다(영토 손잡이 켬: 자라는 마을을 많이 만들어 ②③이 자명 통과가 안 되게)
-  const A = await run('1차', { T230_TERR_HOUSING: '1' }, true);
+  // ── ⓞ ★★[T298] 이 하네스는 이제 **손잡이를 제 손으로 켜지 않는다.**
+  //   T278 판은 `T230_TERR_HOUSING: '1'` 을 스스로 넣고 돌았다. 그러면 기본이 다시 **끔**으로 뒤집혀도
+  //   이 하네스는 초록이고, 정작 제품이 도는 세계(기본값 세계)는 안 재는 셈이 된다.
+  //   그래서 ⓞ 가 **기본값을 실측문에 물어** 켬임을 먼저 못 박고, 아래 판은 **아무것도 안 주고** 돈다
+  //   (= 제품이 도는 그 세계). 끄는 판은 명시 `=0` 하나뿐임도 같은 문으로 본다 — 극성 정규식 0 · 상수 베끼기 0.
+  {
+    const { execFileSync } = require('child_process');
+    const door = `console.log(JSON.stringify(require(${JSON.stringify(path.join(ROOT, 'server', 'villages.js'))}).__probe.handles()));`;
+    const ask = (over) => {
+      const env = Object.assign({}, process.env);
+      for (const k of ['T230_TERR_HOUSING', 'T219_HOUSE_TRIGGER']) delete env[k];
+      Object.assign(env, over || {});
+      return JSON.parse(String(execFileSync(process.execPath, ['-e', door], { env, encoding: 'utf8' })).trim());
+    };
+    let dflt = null, offArm = null, e0 = null;
+    try { dflt = ask(null); offArm = ask({ T230_TERR_HOUSING: '0' }); } catch (e) { e0 = e; }
+    chk(!!dflt, 'ⓞ 실측문 `__probe.handles()` 가 산다', e0 ? String(e0.message).split('\n')[0] : '');
+    if (dflt) chk(dflt.T230_TERR_HOUSING === true,
+      'ⓞ 서버 **기본이 켬**이다 — 그래서 아래 판은 손잡이를 안 주고 돈다(제품이 도는 그 세계를 잰다)',
+      `기본 ${dflt.T230_TERR_HOUSING}`);
+    if (offArm) chk(offArm.T230_TERR_HOUSING === false,
+      'ⓞ 끄는 문은 명시 `T230_TERR_HOUSING=0` 하나 — [자명 통과 금지] 그 판에 위 주장을 대면 거짓이다',
+      `=0 판 ${offArm.T230_TERR_HOUSING}`);
+  }
+
+  // ① 한 판 — 영토가 자라는 세계를 만든다(손잡이 **미설정 = 켬**: 자라는 마을이 많아 ②③이 자명 통과가 아니다)
+  const A = await run('1차', {}, true);
   if (!A) { console.log('  ✗ 부팅/수확 실패'); process.exit(1); }
   const d1 = fromDb();
   const grown = [...A.live.entries()].filter(([, t]) => t > 3450);
@@ -110,7 +135,7 @@ async function run(label, extraEnv, fresh) {
   chk(A.days >= DAYS, `① 판이 ${DAYS}일을 돌았다`, `${A.days}일`);
 
   // ② 다시 연다 — 같은 DB, 새 프로세스
-  const B = await run('2차', { T230_TERR_HOUSING: '1' }, false);
+  const B = await run('2차', {}, false);
   if (!B) { console.log('  ✗ 2차 부팅 실패'); process.exit(1); }
   let shrunk = 0, worst = null;
   for (const [n, t1] of A.live) {

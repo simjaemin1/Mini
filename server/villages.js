@@ -2420,7 +2420,14 @@ const TERR_GROW_MAX_PER_DAY = 60;   // 마을당 하루 최대 확장 셀 — ec
 //   켬: 랩 `growTerritory` 가 이미 갖고 서버엔 없던 **주택 압력**까지 본다(`territoryTarget().target`).
 //   T219 §0: 영토가 50마을 전부 `land.size × 25` 에 붙어 200일에 63셀만 자랐고, 그래서 집터가 78%를
 //   `집 간격 18` 로 거부당했다. 규칙·수는 `village-layout.territoryTarget` 하나가 갖는다(사본 0 · 새 수 0).
-const T230_TERR_HOUSING = process.env.T230_TERR_HOUSING === '1';
+// ★★[T298 2026-09-19 재민 #22 "켜"] **기본 켬으로 뒤집었다** — 미설정 = 켬 · 끄는 것은 명시 `=0`.
+//   왜 여기가 정본 읽는 자리인가(T244 가 `villages.js` 를 피한 그 판단과 **다른 자리**다):
+//   이 손잡이가 무는 것은 **생활층**(`_terrGrow`)이고, 생활층은 `server/villages.js` **밖에 없다**.
+//   기준선 자(`scripts/t17-metrics.js:84`)는 `createWorldV2`+`tickWorldV2` 를 제 손으로 부르고
+//   `Villages.init` 을 안 부른다 ⇒ `_terrGrow` 를 **한 번도 안 탄다**. 랩(브라우저)엔 `villages.js` 가 없고
+//   제 `growTerritory` 를 따로 갖는다. ⇒ **T221 의 함정(자·랩이 끈 세계를 잰다)이 여기엔 없다**:
+//   자·랩은 이 코드를 아예 안 돌리므로 뒤집어도 그쪽 표가 한 수도 안 움직인다(§0ⓐ 가 `cmp` 로 증명한다).
+const T230_TERR_HOUSING = process.env.T230_TERR_HOUSING !== '0';
 function _terrGrow(vil) {
   if (!state.ta || !vil || !vil._terrSet || !vil._terrSet.size) return 0;
   const land = vil.econ && vil.econ.land; if (!land || !land.size) return 0;
@@ -5113,7 +5120,10 @@ const LIFE_SITE_NODIRTY = process.env.LIFE_SITE_NODIRTY === '1';  // 1 = 표지�
 // ★★[T219 2026-09-12 재민 확정] **집터 방아쇠 이식 손잡이 — 기본 끔(끄면 종전 비트 동일).**
 //   끔: 서버 고유 비율(`인구 > 침상 × 0.92`). `0.92` 는 랩에 없는 **서버 고유 수**다.
 //   켬: 랩 정본 규칙 하나(`village-layout.houseSiteWant` — 부족분 · `max(pop, housing)` · 사본 0).
-const T219_HOUSE_TRIGGER = process.env.T219_HOUSE_TRIGGER === '1';
+// ★★[T298 2026-09-19 재민 #22 "켜"] **기본 켬** — 미설정 = 켬 · 끄는 것은 명시 `=0`(위 T230 과 같은 규약).
+//   T267 실측: 방아쇠는 **땅 위에서만 값을 낸다**(단독 집 −3.7채 = 잡음 안 · 영토와 같이 켜면 집 +130채).
+//   그래서 둘을 **같이** 켠다.
+const T219_HOUSE_TRIGGER = process.env.T219_HOUSE_TRIGGER !== '0';
 // 표지 — "다시 훑어라". 거부 캐시는 **유지**한다(영토 확장은 새 셀만 더하지 옛 거부를 뒤집지 않는다).
 function lifeSiteDirty(vil) { if (vil && !LIFE_SITE_NODIRTY) vil._siteDirty = true; }
 // 리셋 — "다시 훑고 **거부 캐시도 버려라**". 옛 거부가 뒤집힐 수 있는 사건에서만.
@@ -6843,7 +6853,13 @@ module.exports = {
   //   시딩 선별(pickSeedVillages·VILLAGE_MAX)까지 함께 내준다 — 랩이 51곳을 돌리는 동안
   //   본 게임은 20곳이었다.
   // ★[T62] 하네스가 **집터 필터 정본을 그대로 쥔다**(규칙을 다시 적으면 그게 사본이다).
-  __probe: { lifeSiteFilters: (vil) => _lifeSiteFilters(vil), liveHut6x4: (v, x, y, o, n, m) => _liveHut6x4(v, x, y, o, n, m) },
+  // ★★[T298 2026-09-19] 손잡이 **실측문** — 하네스가 기본값을 소스 문자열로 짐작하지 않게 한다.
+  //   왜 문이 필요한가: T298 이 두 손잡이를 기본 켬으로 뒤집었다. 하네스가 `=== '1'` 같은 정규식으로
+  //   극성을 읽으면, 규약이 또 뒤집힐 때 **하네스만 빨강**이 되고(T298 §0ⓒ 가 실제로 밟았다)
+  //   더 나쁘게는 정규식이 낡아도 초록이 될 수 있다. 그래서 값을 **그대로 내준다**(사본 0 · T244 ⑧ 문법).
+  //   env 를 지운 자식 프로세스에서 이 문을 부르면 그것이 **서버 기본**이다(족보 128).
+  __probe: { lifeSiteFilters: (vil) => _lifeSiteFilters(vil), liveHut6x4: (v, x, y, o, n, m) => _liveHut6x4(v, x, y, o, n, m),
+    handles: () => ({ T230_TERR_HOUSING, T219_HOUSE_TRIGGER }) },
   LAND_SCAN_R,   // ★[T135] 부존 스캔 반경 — 나무 층이 생활권 숲 셀 수를 유도할 때 읽는다(사본 0)
   __labProbe: {
     makeTerrainAdapter, extractLandParamsApprox, findOpenCenter, pickSeedVillages,
