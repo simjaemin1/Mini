@@ -1,0 +1,316 @@
+{
+ "at": "2026-09-19T16:24:45.665Z",
+ "host": {
+  "cpus": 2,
+  "node": "v22.22.2"
+ },
+ "WARM_DAYS": 150,
+ "DAY_MS": 20000,
+ "WINDOW_S": 420,
+ "arms": {
+  "W0": {
+   "def": {
+    "wars": 0
+   },
+   "day": 175,
+   "tick": {
+    "ms": {
+     "n": 11343,
+     "p50": 2.64,
+     "p95": 28.978,
+     "max": 566.152
+    },
+    "dropN": 0,
+    "lagPct": 0,
+    "maxGap": 1.867
+   },
+   "war": {
+    "n": 0,
+    "p50": 0,
+    "p95": 0,
+    "max": 0,
+    "engN": 0,
+    "engP50": 0,
+    "engP95": 0,
+    "engMax": 0,
+    "soldiers": 0,
+    "soldiersMax": 0,
+    "fighting": 0,
+    "bodies": 0,
+    "fights": 0,
+    "engaged": 0,
+    "wars": 0,
+    "stat": {
+     "engage": 0,
+     "standoff": 0,
+     "rout": 0,
+     "withdraw": 0,
+     "withdrawQuiet": 0,
+     "surrender": 0,
+     "walkover": 0,
+     "noArmy": 0,
+     "engageErr": 0
+    }
+   },
+   "loop": {
+    "p50": 10.13,
+    "p95": 12.83,
+    "p99": 63.96,
+    "max": 1874.85,
+    "n": 34672
+   },
+   "samples": [
+    {
+     "t": 30,
+     "soldiers": 0,
+     "fighting": 0,
+     "engaged": 0,
+     "bodies": 0
+    },
+    {
+     "t": 60,
+     "soldiers": 0,
+     "fighting": 0,
+     "engaged": 0,
+     "bodies": 0
+    },
+    {
+     "t": 90,
+     "soldiers": 0,
+     "fighting": 0,
+     "engaged": 0,
+     "bodies": 0
+    },
+    {
+     "t": 120,
+     "soldiers": 0,
+     "fighting": 0,
+     "engaged": 0,
+     "bodies": 0
+    },
+    {
+     "t": 150,
+     "soldiers": 0,
+     "fighting": 0,
+     "engaged": 0,
+     "bodies": 0
+    },
+    {
+     "t": 180,
+     "soldiers": 0,
+     "fighting": 0,
+     "engaged": 0,
+     "bodies": 0
+    },
+    {
+     "t": 210,
+     "soldiers": 0,
+     "fighting": 0,
+     "engaged": 0,
+     "bodies": 0
+    },
+    {
+     "t": 240,
+     "soldiers": 0,
+     "fighting": 0,
+     "engaged": 0,
+     "bodies": 0
+    },
+    {
+     "t": 270,
+     "soldiers": 0,
+     "fighting": 0,
+     "engaged": 0,
+     "bodies": 0
+    },
+    {
+     "t": 300,
+     "soldiers": 0,
+     "fighting": 0,
+     "engaged": 0,
+     "bodies": 0
+    },
+    {
+     "t": 330,
+     "soldiers": 0,
+     "fighting": 0,
+     "engaged": 0,
+     "bodies": 0
+    },
+    {
+     "t": 360,
+     "soldiers": 0,
+     "fighting": 0,
+     "engaged": 0,
+     "bodies": 0
+    },
+    {
+     "t": 390,
+     "soldiers": 0,
+     "fighting": 0,
+     "engaged": 0,
+     "bodies": 0
+    },
+    {
+     "t": 420,
+     "soldiers": 0,
+     "fighting": 0,
+     "engaged": 0,
+     "bodies": 0
+    }
+   ]
+  },
+  "W6": {
+   "def": {
+    "wars": 6
+   },
+   "day": 175,
+   "tick": {
+    "ms": {
+     "n": 11368,
+     "p50": 3.799,
+     "p95": 29.768,
+     "max": 575.546
+    },
+    "dropN": 0,
+    "lagPct": 0,
+    "maxGap": 1.916
+   },
+   "war": {
+    "n": 10445,
+    "p50": 1.095,
+    "p95": 1.782,
+    "max": 73.233,
+    "engN": 10300,
+    "engP50": 1.096,
+    "engP95": 1.811,
+    "engMax": 12.153,
+    "soldiers": 162,
+    "soldiersMax": 271,
+    "fighting": 2,
+    "bodies": 4,
+    "fights": 4,
+    "engaged": 0,
+    "wars": 4,
+    "stat": {
+     "engage": 62,
+     "standoff": 29,
+     "rout": 29,
+     "withdraw": 0,
+     "withdrawQuiet": 0,
+     "surrender": 0,
+     "walkover": 0,
+     "noArmy": 0,
+     "engageErr": 0
+    }
+   },
+   "loop": {
+    "p50": 10.14,
+    "p95": 13.95,
+    "p99": 68.49,
+    "max": 1924.14,
+    "n": 33248
+   },
+   "samples": [
+    {
+     "t": 30,
+     "soldiers": 235,
+     "fighting": 5,
+     "engaged": 1,
+     "bodies": 6
+    },
+    {
+     "t": 60,
+     "soldiers": 209,
+     "fighting": 3,
+     "engaged": 3,
+     "bodies": 6
+    },
+    {
+     "t": 90,
+     "soldiers": 133,
+     "fighting": 4,
+     "engaged": 3,
+     "bodies": 5
+    },
+    {
+     "t": 120,
+     "soldiers": 75,
+     "fighting": 1,
+     "engaged": 1,
+     "bodies": 4
+    },
+    {
+     "t": 150,
+     "soldiers": 158,
+     "fighting": 4,
+     "engaged": 1,
+     "bodies": 6
+    },
+    {
+     "t": 181,
+     "soldiers": 35,
+     "fighting": 0,
+     "engaged": 0,
+     "bodies": 3
+    },
+    {
+     "t": 211,
+     "soldiers": 121,
+     "fighting": 4,
+     "engaged": 1,
+     "bodies": 5
+    },
+    {
+     "t": 241,
+     "soldiers": 75,
+     "fighting": 1,
+     "engaged": 1,
+     "bodies": 4
+    },
+    {
+     "t": 271,
+     "soldiers": 118,
+     "fighting": 4,
+     "engaged": 1,
+     "bodies": 5
+    },
+    {
+     "t": 301,
+     "soldiers": 91,
+     "fighting": 1,
+     "engaged": 0,
+     "bodies": 5
+    },
+    {
+     "t": 331,
+     "soldiers": 84,
+     "fighting": 3,
+     "engaged": 0,
+     "bodies": 4
+    },
+    {
+     "t": 361,
+     "soldiers": 84,
+     "fighting": 1,
+     "engaged": 1,
+     "bodies": 4
+    },
+    {
+     "t": 391,
+     "soldiers": 101,
+     "fighting": 4,
+     "engaged": 1,
+     "bodies": 4
+    },
+    {
+     "t": 421,
+     "soldiers": 162,
+     "fighting": 2,
+     "engaged": 0,
+     "bodies": 4
+    }
+   ]
+  }
+ }
+}

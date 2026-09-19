@@ -1,0 +1,552 @@
+{
+ "at": "2026-09-19T16:43:08.748Z",
+ "host": {
+  "cpus": 2,
+  "node": "v22.22.2"
+ },
+ "WARM_DAYS": 60,
+ "DAY_MS": 20000,
+ "WINDOW_S": 300,
+ "arms": {
+  "off": {
+   "day": 79,
+   "tick": {
+    "ms": {
+     "n": 8181,
+     "p50": 2.458,
+     "p95": 35.536,
+     "max": 472.326
+    },
+    "dropN": 0,
+    "lagPct": 0,
+    "maxGap": 0.691,
+    "wall": 311.91199999998287,
+    "sim": 311.91199999998264
+   },
+   "loop": {
+    "p50": 10.13,
+    "p95": 12.66,
+    "p99": 65.27,
+    "max": 473.17,
+    "n": 24735
+   },
+   "fish": null,
+   "first": [],
+   "samples": [
+    {
+     "t": 20,
+     "day": 65,
+     "walkers": null,
+     "hands": null,
+     "delivered": null
+    },
+    {
+     "t": 40,
+     "day": 66,
+     "walkers": null,
+     "hands": null,
+     "delivered": null
+    },
+    {
+     "t": 60,
+     "day": 67,
+     "walkers": null,
+     "hands": null,
+     "delivered": null
+    },
+    {
+     "t": 80,
+     "day": 68,
+     "walkers": null,
+     "hands": null,
+     "delivered": null
+    },
+    {
+     "t": 100,
+     "day": 69,
+     "walkers": null,
+     "hands": null,
+     "delivered": null
+    },
+    {
+     "t": 120,
+     "day": 70,
+     "walkers": null,
+     "hands": null,
+     "delivered": null
+    },
+    {
+     "t": 140,
+     "day": 71,
+     "walkers": null,
+     "hands": null,
+     "delivered": null
+    },
+    {
+     "t": 160,
+     "day": 72,
+     "walkers": null,
+     "hands": null,
+     "delivered": null
+    },
+    {
+     "t": 180,
+     "day": 73,
+     "walkers": null,
+     "hands": null,
+     "delivered": null
+    },
+    {
+     "t": 200,
+     "day": 74,
+     "walkers": null,
+     "hands": null,
+     "delivered": null
+    },
+    {
+     "t": 220,
+     "day": 75,
+     "walkers": null,
+     "hands": null,
+     "delivered": null
+    },
+    {
+     "t": 240,
+     "day": 76,
+     "walkers": null,
+     "hands": null,
+     "delivered": null
+    },
+    {
+     "t": 260,
+     "day": 77,
+     "walkers": null,
+     "hands": null,
+     "delivered": null
+    },
+    {
+     "t": 280,
+     "day": 78,
+     "walkers": null,
+     "hands": null,
+     "delivered": null
+    },
+    {
+     "t": 300,
+     "day": 79,
+     "walkers": null,
+     "hands": null,
+     "delivered": null
+    }
+   ]
+  },
+  "on": {
+   "day": 80,
+   "tick": {
+    "ms": {
+     "n": 1146,
+     "p50": 237.419,
+     "p95": 406.445,
+     "max": 1272.877
+    },
+    "dropN": 843,
+    "lagPct": 24.987,
+    "maxGap": 1.274,
+    "wall": 333.48299999999995,
+    "sim": 250.15599999999435
+   },
+   "loop": {
+    "p50": 238.29,
+    "p95": 411.83,
+    "p99": 674.76,
+    "max": 1275.07,
+    "n": 1142
+   },
+   "fish": {
+    "villages": 50,
+    "actVillages": 7,
+    "cells": 859,
+    "walkers": 0,
+    "hands": 0,
+    "handKg": 0,
+    "handU": 0,
+    "delivered": 0.2392,
+    "formulaPerDay": 107.6845,
+    "formulaAll": 335.7961,
+    "thinN": 15,
+    "thin": [
+     {
+      "n": "광산1",
+      "w": 0.08,
+      "fisher": 0,
+      "pop": 20
+     },
+     {
+      "n": "광산3",
+      "w": 0.08,
+      "fisher": 0,
+      "pop": 22
+     },
+     {
+      "n": "임업1",
+      "w": 0.08,
+      "fisher": 0,
+      "pop": 29
+     },
+     {
+      "n": "임업4",
+      "w": 0.08,
+      "fisher": 0,
+      "pop": 25
+     },
+     {
+      "n": "농촌9",
+      "w": 0.08,
+      "fisher": 0,
+      "pop": 22
+     },
+     {
+      "n": "농촌10",
+      "w": 0.08,
+      "fisher": 0,
+      "pop": 20
+     },
+     {
+      "n": "농촌15",
+      "w": 0.08,
+      "fisher": 0,
+      "pop": 23
+     },
+     {
+      "n": "농촌18",
+      "w": 0.25,
+      "fisher": 0,
+      "pop": 24
+     },
+     {
+      "n": "농촌20",
+      "w": 0.35,
+      "fisher": 0,
+      "pop": 21
+     },
+     {
+      "n": "농촌14",
+      "w": 0.56,
+      "fisher": 1,
+      "pop": 21
+     },
+     {
+      "n": "광산7",
+      "w": 0.58,
+      "fisher": 13,
+      "pop": 20
+     },
+     {
+      "n": "광산5",
+      "w": 0.62,
+      "fisher": 0,
+      "pop": 25
+     },
+     {
+      "n": "농촌1",
+      "w": 0.69,
+      "fisher": 0,
+      "pop": 31
+     },
+     {
+      "n": "농촌16",
+      "w": 0.73,
+      "fisher": 0,
+      "pop": 34
+     },
+     {
+      "n": "농촌13",
+      "w": 0.83,
+      "fisher": 0,
+      "pop": 25
+     }
+    ],
+    "rows": [
+     {
+      "n": "광산2",
+      "cells": 61,
+      "per": 0.124081,
+      "f": 7.5689,
+      "d": 0.2392,
+      "hU": 0,
+      "hN": 0,
+      "fi": 4
+     },
+     {
+      "n": "광산4",
+      "cells": 85,
+      "per": 0.246235,
+      "f": 20.93,
+      "d": 0,
+      "hU": 0,
+      "hN": 0,
+      "fi": 16
+     },
+     {
+      "n": "어촌1",
+      "cells": 157,
+      "per": 0.185096,
+      "f": 29.06,
+      "d": 0,
+      "hU": 0,
+      "hN": 0,
+      "fi": 26
+     },
+     {
+      "n": "광산6",
+      "cells": 20,
+      "per": 0.078,
+      "f": 1.56,
+      "d": 0,
+      "hU": 0,
+      "hN": 0,
+      "fi": 1
+     },
+     {
+      "n": "농촌4",
+      "cells": 145,
+      "per": 0.221816,
+      "f": 32.1633,
+      "d": 0,
+      "hU": 0,
+      "hN": 0,
+      "fi": 17
+     },
+     {
+      "n": "어촌5",
+      "cells": 196,
+      "per": 0.035471,
+      "f": 6.9523,
+      "d": 0,
+      "hU": 0,
+      "hN": 0,
+      "fi": 4
+     },
+     {
+      "n": "어촌8",
+      "cells": 195,
+      "per": 0.048462,
+      "f": 9.45,
+      "d": 0,
+      "hU": 0,
+      "hN": 0,
+      "fi": 5
+     }
+    ]
+   },
+   "first": [
+    {
+     "d": 0,
+     "delivered": 0,
+     "formulaPerDay": 0,
+     "cells": 0,
+     "act": 0
+    },
+    {
+     "d": 0,
+     "delivered": 0,
+     "formulaPerDay": 0,
+     "cells": 0,
+     "act": 0
+    },
+    {
+     "d": 0,
+     "delivered": 0,
+     "formulaPerDay": 0,
+     "cells": 0,
+     "act": 0
+    },
+    {
+     "d": 0,
+     "delivered": 0,
+     "formulaPerDay": 0,
+     "cells": 0,
+     "act": 0
+    },
+    {
+     "d": 0,
+     "delivered": 0,
+     "formulaPerDay": 0,
+     "cells": 0,
+     "act": 0
+    },
+    {
+     "d": 0,
+     "delivered": 0,
+     "formulaPerDay": 0,
+     "cells": 0,
+     "act": 0
+    },
+    {
+     "d": 0,
+     "delivered": 0,
+     "formulaPerDay": 0,
+     "cells": 0,
+     "act": 0
+    },
+    {
+     "d": 0,
+     "delivered": 0,
+     "formulaPerDay": 0,
+     "cells": 0,
+     "act": 0
+    },
+    {
+     "d": 0,
+     "delivered": 0,
+     "formulaPerDay": 0,
+     "cells": 0,
+     "act": 0
+    },
+    {
+     "d": 0,
+     "delivered": 0,
+     "formulaPerDay": 0,
+     "cells": 0,
+     "act": 0
+    },
+    {
+     "d": 0,
+     "delivered": 0,
+     "formulaPerDay": 0,
+     "cells": 0,
+     "act": 0
+    },
+    {
+     "d": 0,
+     "delivered": 0,
+     "formulaPerDay": 0,
+     "cells": 0,
+     "act": 0
+    },
+    {
+     "d": 0,
+     "delivered": 0,
+     "formulaPerDay": 0,
+     "cells": 0,
+     "act": 0
+    },
+    {
+     "d": 64,
+     "delivered": 0,
+     "formulaPerDay": 7.584,
+     "cells": 61,
+     "act": 1
+    }
+   ],
+   "samples": [
+    {
+     "t": 20,
+     "day": 65,
+     "walkers": 0,
+     "hands": 0,
+     "delivered": 0
+    },
+    {
+     "t": 40,
+     "day": 66,
+     "walkers": 0,
+     "hands": 0,
+     "delivered": 0
+    },
+    {
+     "t": 60,
+     "day": 67,
+     "walkers": 0,
+     "hands": 0,
+     "delivered": 0
+    },
+    {
+     "t": 80,
+     "day": 68,
+     "walkers": 0,
+     "hands": 0,
+     "delivered": 0
+    },
+    {
+     "t": 100,
+     "day": 69,
+     "walkers": 1,
+     "hands": 0,
+     "delivered": 0.076
+    },
+    {
+     "t": 120,
+     "day": 71,
+     "walkers": 1,
+     "hands": 1,
+     "delivered": 0.1519
+    },
+    {
+     "t": 141,
+     "day": 72,
+     "walkers": 1,
+     "hands": 1,
+     "delivered": 0.2278
+    },
+    {
+     "t": 161,
+     "day": 73,
+     "walkers": 1,
+     "hands": 1,
+     "delivered": 0.2316
+    },
+    {
+     "t": 181,
+     "day": 74,
+     "walkers": 1,
+     "hands": 1,
+     "delivered": 0.2354
+    },
+    {
+     "t": 201,
+     "day": 75,
+     "walkers": 0,
+     "hands": 0,
+     "delivered": 0.2392
+    },
+    {
+     "t": 221,
+     "day": 76,
+     "walkers": 0,
+     "hands": 0,
+     "delivered": 0.2392
+    },
+    {
+     "t": 241,
+     "day": 77,
+     "walkers": 0,
+     "hands": 0,
+     "delivered": 0.2392
+    },
+    {
+     "t": 261,
+     "day": 78,
+     "walkers": 0,
+     "hands": 0,
+     "delivered": 0.2392
+    },
+    {
+     "t": 281,
+     "day": 79,
+     "walkers": 0,
+     "hands": 0,
+     "delivered": 0.2392
+    },
+    {
+     "t": 302,
+     "day": 80,
+     "walkers": 0,
+     "hands": 0,
+     "delivered": 0.2392
+    }
+   ]
+  }
+ },
+ "warmDay": 60
+}

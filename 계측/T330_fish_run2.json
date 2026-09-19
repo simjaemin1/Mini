@@ -1,0 +1,511 @@
+{
+ "at": "2026-09-19T17:06:47.925Z",
+ "host": {
+  "cpus": 2,
+  "node": "v22.22.2"
+ },
+ "WARM_DAYS": 60,
+ "DAY_MS": 20000,
+ "WINDOW_S": 300,
+ "arms": {
+  "off": {
+   "day": 79,
+   "tick": {
+    "ms": {
+     "n": 8173,
+     "p50": 2.514,
+     "p95": 37.187,
+     "max": 491.629
+    },
+    "dropN": 0,
+    "lagPct": 0,
+    "maxGap": 0.71,
+    "wall": 311.47099999998267,
+    "sim": 311.4709999999823
+   },
+   "loop": {
+    "p50": 10.13,
+    "p95": 12.71,
+    "p99": 66.91,
+    "max": 492.57,
+    "n": 24687
+   },
+   "fish": null,
+   "first": [],
+   "samples": [
+    {
+     "t": 20,
+     "day": 65,
+     "walkers": null,
+     "hands": null,
+     "delivered": null
+    },
+    {
+     "t": 40,
+     "day": 66,
+     "walkers": null,
+     "hands": null,
+     "delivered": null
+    },
+    {
+     "t": 60,
+     "day": 67,
+     "walkers": null,
+     "hands": null,
+     "delivered": null
+    },
+    {
+     "t": 80,
+     "day": 68,
+     "walkers": null,
+     "hands": null,
+     "delivered": null
+    },
+    {
+     "t": 100,
+     "day": 69,
+     "walkers": null,
+     "hands": null,
+     "delivered": null
+    },
+    {
+     "t": 120,
+     "day": 70,
+     "walkers": null,
+     "hands": null,
+     "delivered": null
+    },
+    {
+     "t": 140,
+     "day": 71,
+     "walkers": null,
+     "hands": null,
+     "delivered": null
+    },
+    {
+     "t": 160,
+     "day": 72,
+     "walkers": null,
+     "hands": null,
+     "delivered": null
+    },
+    {
+     "t": 180,
+     "day": 73,
+     "walkers": null,
+     "hands": null,
+     "delivered": null
+    },
+    {
+     "t": 200,
+     "day": 74,
+     "walkers": null,
+     "hands": null,
+     "delivered": null
+    },
+    {
+     "t": 220,
+     "day": 75,
+     "walkers": null,
+     "hands": null,
+     "delivered": null
+    },
+    {
+     "t": 240,
+     "day": 76,
+     "walkers": null,
+     "hands": null,
+     "delivered": null
+    },
+    {
+     "t": 260,
+     "day": 77,
+     "walkers": null,
+     "hands": null,
+     "delivered": null
+    },
+    {
+     "t": 280,
+     "day": 78,
+     "walkers": null,
+     "hands": null,
+     "delivered": null
+    },
+    {
+     "t": 300,
+     "day": 79,
+     "walkers": null,
+     "hands": null,
+     "delivered": null
+    }
+   ]
+  },
+  "on": {
+   "day": 79,
+   "tick": {
+    "ms": {
+     "n": 1077,
+     "p50": 238.986,
+     "p95": 499.208,
+     "max": 1423.951
+    },
+    "dropN": 789,
+    "lagPct": 29.461,
+    "maxGap": 1.425,
+    "wall": 334.8860000000002,
+    "sim": 236.22599999999514
+   },
+   "loop": {
+    "p50": 239.86,
+    "p95": 500.17,
+    "p99": 934.28,
+    "max": 1426.06,
+    "n": 1073
+   },
+   "fish": {
+    "villages": 50,
+    "actVillages": 3,
+    "cells": 303,
+    "walkers": 8,
+    "hands": 0,
+    "handKg": 0,
+    "handU": 0,
+    "delivered": 1.3429,
+    "formulaPerDay": 57.5595,
+    "formulaAll": 341.7837,
+    "thinN": 15,
+    "thin": [
+     {
+      "n": "광산1",
+      "w": 0.08,
+      "fisher": 0,
+      "pop": 20
+     },
+     {
+      "n": "광산3",
+      "w": 0.08,
+      "fisher": 0,
+      "pop": 22
+     },
+     {
+      "n": "임업1",
+      "w": 0.08,
+      "fisher": 0,
+      "pop": 29
+     },
+     {
+      "n": "임업4",
+      "w": 0.08,
+      "fisher": 0,
+      "pop": 25
+     },
+     {
+      "n": "농촌9",
+      "w": 0.08,
+      "fisher": 0,
+      "pop": 22
+     },
+     {
+      "n": "농촌10",
+      "w": 0.08,
+      "fisher": 0,
+      "pop": 20
+     },
+     {
+      "n": "농촌15",
+      "w": 0.08,
+      "fisher": 0,
+      "pop": 23
+     },
+     {
+      "n": "농촌18",
+      "w": 0.25,
+      "fisher": 0,
+      "pop": 24
+     },
+     {
+      "n": "농촌20",
+      "w": 0.35,
+      "fisher": 0,
+      "pop": 21
+     },
+     {
+      "n": "농촌14",
+      "w": 0.56,
+      "fisher": 1,
+      "pop": 21
+     },
+     {
+      "n": "광산7",
+      "w": 0.58,
+      "fisher": 13,
+      "pop": 20
+     },
+     {
+      "n": "광산5",
+      "w": 0.62,
+      "fisher": 0,
+      "pop": 25
+     },
+     {
+      "n": "농촌1",
+      "w": 0.69,
+      "fisher": 0,
+      "pop": 31
+     },
+     {
+      "n": "농촌16",
+      "w": 0.73,
+      "fisher": 0,
+      "pop": 34
+     },
+     {
+      "n": "농촌13",
+      "w": 0.83,
+      "fisher": 0,
+      "pop": 25
+     }
+    ],
+    "rows": [
+     {
+      "n": "광산2",
+      "cells": 61,
+      "per": 0.12409,
+      "f": 7.5695,
+      "d": 0.258,
+      "hU": 0,
+      "hN": 0,
+      "fi": 4
+     },
+     {
+      "n": "광산4",
+      "cells": 85,
+      "per": 0.246235,
+      "f": 20.93,
+      "d": 1.0014,
+      "hU": 0,
+      "hN": 0,
+      "fi": 16
+     },
+     {
+      "n": "어촌1",
+      "cells": 157,
+      "per": 0.185096,
+      "f": 29.06,
+      "d": 0.0834,
+      "hU": 0,
+      "hN": 0,
+      "fi": 26
+     }
+    ]
+   },
+   "first": [
+    {
+     "d": 0,
+     "delivered": 0,
+     "formulaPerDay": 0,
+     "cells": 0,
+     "act": 0
+    },
+    {
+     "d": 0,
+     "delivered": 0,
+     "formulaPerDay": 0,
+     "cells": 0,
+     "act": 0
+    },
+    {
+     "d": 0,
+     "delivered": 0,
+     "formulaPerDay": 0,
+     "cells": 0,
+     "act": 0
+    },
+    {
+     "d": 0,
+     "delivered": 0,
+     "formulaPerDay": 0,
+     "cells": 0,
+     "act": 0
+    },
+    {
+     "d": 0,
+     "delivered": 0,
+     "formulaPerDay": 0,
+     "cells": 0,
+     "act": 0
+    },
+    {
+     "d": 0,
+     "delivered": 0,
+     "formulaPerDay": 0,
+     "cells": 0,
+     "act": 0
+    },
+    {
+     "d": 0,
+     "delivered": 0,
+     "formulaPerDay": 0,
+     "cells": 0,
+     "act": 0
+    },
+    {
+     "d": 0,
+     "delivered": 0,
+     "formulaPerDay": 0,
+     "cells": 0,
+     "act": 0
+    },
+    {
+     "d": 0,
+     "delivered": 0,
+     "formulaPerDay": 0,
+     "cells": 0,
+     "act": 0
+    },
+    {
+     "d": 0,
+     "delivered": 0,
+     "formulaPerDay": 0,
+     "cells": 0,
+     "act": 0
+    },
+    {
+     "d": 0,
+     "delivered": 0,
+     "formulaPerDay": 0,
+     "cells": 0,
+     "act": 0
+    },
+    {
+     "d": 0,
+     "delivered": 0,
+     "formulaPerDay": 0,
+     "cells": 0,
+     "act": 0
+    },
+    {
+     "d": 0,
+     "delivered": 0,
+     "formulaPerDay": 0,
+     "cells": 0,
+     "act": 0
+    },
+    {
+     "d": 64,
+     "delivered": 0,
+     "formulaPerDay": 7.584,
+     "cells": 61,
+     "act": 1
+    }
+   ],
+   "samples": [
+    {
+     "t": 20,
+     "day": 65,
+     "walkers": 0,
+     "hands": 0,
+     "delivered": 0
+    },
+    {
+     "t": 40,
+     "day": 66,
+     "walkers": 0,
+     "hands": 0,
+     "delivered": 0
+    },
+    {
+     "t": 61,
+     "day": 67,
+     "walkers": 0,
+     "hands": 0,
+     "delivered": 0
+    },
+    {
+     "t": 81,
+     "day": 68,
+     "walkers": 0,
+     "hands": 0,
+     "delivered": 0
+    },
+    {
+     "t": 101,
+     "day": 69,
+     "walkers": 1,
+     "hands": 1,
+     "delivered": 0
+    },
+    {
+     "t": 121,
+     "day": 70,
+     "walkers": 1,
+     "hands": 1,
+     "delivered": 0.0038
+    },
+    {
+     "t": 141,
+     "day": 71,
+     "walkers": 1,
+     "hands": 1,
+     "delivered": 0.0797
+    },
+    {
+     "t": 162,
+     "day": 72,
+     "walkers": 1,
+     "hands": 1,
+     "delivered": 0.0835
+    },
+    {
+     "t": 182,
+     "day": 73,
+     "walkers": 1,
+     "hands": 1,
+     "delivered": 0.0873
+    },
+    {
+     "t": 202,
+     "day": 74,
+     "walkers": 1,
+     "hands": 1,
+     "delivered": 0.0911
+    },
+    {
+     "t": 222,
+     "day": 75,
+     "walkers": 2,
+     "hands": 2,
+     "delivered": 0.0949
+    },
+    {
+     "t": 242,
+     "day": 76,
+     "walkers": 3,
+     "hands": 3,
+     "delivered": 0.1746
+    },
+    {
+     "t": 262,
+     "day": 77,
+     "walkers": 5,
+     "hands": 0,
+     "delivered": 0.7095
+    },
+    {
+     "t": 283,
+     "day": 78,
+     "walkers": 6,
+     "hands": 0,
+     "delivered": 0.9522
+    },
+    {
+     "t": 303,
+     "day": 79,
+     "walkers": 8,
+     "hands": 0,
+     "delivered": 1.3429
+    }
+   ]
+  }
+ }
+}
