@@ -58,7 +58,7 @@ const Rooms = require('./rooms'); // ★[배치 18 ①] 방 판정 정본(벽·�
 const SIM_LON_ON = process.env.VILLAGE_LON !== '0'; // §19 경도 로컬 태양시(마을 NPC 야간 귀가) 게이트 — 기본 켜짐
 const central = require('./central-client'); // central HTTP 클라이언트
 const { Quadtree } = require('./quadtree'); // spatial index — O(N²) 검색 회피
-const { ChunkManager, CHUNK_SIZE, generateChunkResources, resourcesAtCell, overflowInto, seedGenChunkOf, regrowStageOf, REGROW, generateVillagesForZone, generateCoastlineWaterTiles, RESOURCE_HP_TABLE } = require('./chunk');   // ★[T325] `resourcesAtCell` — 관측자 무관 색인(T301) 그대로. 나무꾼이 청크 없이 나무를 묻는다 // ★[T124] 재생 정산은 T122 정본을 그대로 받는다(사본 0) // 청크 단위 entity 분류 + procedural + 해안선 + ★[T108] 자연물 hp 정본
+const { ChunkManager, CHUNK_SIZE, generateChunkResources, resourcesAtCell, overflowInto, seedGenChunkOf, regrowStageOf, REGROW, generateVillagesForZone, generateCoastlineWaterTiles, RESOURCE_HP_TABLE, forestSpacing: chunkForestSpacing, FOREST_MIN_COV: chunkForestMinCov } = require('./chunk');   // ★[T325] `resourcesAtCell` — 관측자 무관 색인(T301) 그대로. 나무꾼이 청크 없이 나무를 묻는다 // ★[T124] 재생 정산은 T122 정본을 그대로 받는다(사본 0) // 청크 단위 entity 분류 + procedural + 해안선 + ★[T108] 자연물 hp 정본
 const { findPath: pfFindPath } = require('./pathfind'); // Phase 14.49-b: NPC A* pathfinding
 const PathCore = require('../sim/path-core.js'); // ★[생활 층 100% ①] 랩·서버 공용 경로 정본 — smoothPath(스트링 풀링)를 주민 이동에 직결
 const { ANIMALS } = require('./animals');  // Phase 5-6: 동물 mob 36종 catalog
@@ -2899,11 +2899,54 @@ function clearTreesInCells(cellKeys) {
   return cleared;
 }
 const _simNow = () => { try { return (SimVillages.dayNow && SimVillages.dayNow()) || Date.now(); } catch (e) { return Date.now(); } };
+// ★★[T295 후속] 전쟁이 쓰는 나무 술어 — **청크 한 판을 통째로 캐시**한다.
+//   칸마다 묻는 길(`treeBlockerAt`)은 한 칸에 이웃 9청크를 다시 낳아 **27.5µs/칸**이다(실측).
+//   전장 한 판이 1,500~3,600칸을 물으면 교전 틱에 그대로 얹힌다(실측: 존 틱 p95 8.5 → 54.5ms).
+//   ⇒ 같은 함수(`generateChunkResources` — 청크가 켜질 때 부르는 그 함수 · 같은 인자)로 **청크 한 판**을
+//     낳아 나무 칸만 모아 둔다: 청크 한 판 1.68ms · 1,024칸 ⇒ **1.6µs/칸**. 답은 칸마다 묻는 길과 같다
+//     (하네스 ⓛ 가 1,000칸 전수로 대조한다 — 사본이 아니라 **같은 생성물의 색인**이다).
+//   ⚠비우는 계기는 **게임일 하나**다(재생 단계가 바뀌는 그 경계). 그날 벤 나무는 **다음 날 교전부터** 반영된다 —
+//     건물 발자국 색인("그날 지은 집은 다음 날 교전부터")·지형 메모와 **같은 규약**이다.
+//     ⚠벨 때마다 통째로 비우면(첫 판) 벌목꾼이 있는 세계에서 캐시가 끊임없이 날아가 청크를 다시 낳는다
+//       — 실측으로 존 틱 p50 이 4.1 → 7.2ms 였다(보고 §0-ⓑ).
+const _warTreeCells = new Set();      // 나무가 선 셀(키 = cx*65536+cy)
+const _warTreeChunks = new Set();     // 이미 낳아 본 청크
+let _warTreeDay = -1;
+function warTreeCellBlocked(cellX, cellY) {
+  const day = gameDayNow();
+  if (day !== _warTreeDay) { _warTreeCells.clear(); _warTreeChunks.clear(); _warTreeDay = day; }
+  const cs = chunkManager.chunkSize;
+  const px = cellX * 32, py = cellY * 32;
+  const ccx = Math.floor(px / cs), ccy = Math.floor(py / cs);
+  // 이웃까지 보는 이유는 하나다 — **청크는 제 밖에도 낳는다**(T301·T309 실측 7.49%). 다만 넘침의 상한은
+  //   숲 격자 간격의 최댓값이므로(`forestSpacing` 의 상한 · 값은 chunk.js 정본에서 유도 — 새 수 0),
+  //   경계에서 그만큼 안쪽인 칸은 **제 청크만** 낳으면 된다(청크 아홉 판 15ms → 한 판 1.7ms).
+  const OV = chunkForestSpacing(chunkForestMinCov);
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+    const qx = ccx + dx, qy = ccy + dy; if (qx < 0 || qy < 0) continue;
+    if (dx || dy) {   // chunk.js `resourcesAtCell` 의 겹침 판정과 같은 꼴
+      const bx0 = qx * cs, by0 = qy * cs;
+      if (px + 31 < bx0 - OV || px > bx0 + cs - 1 + OV) continue;
+      if (py + 31 < by0 - OV || py > by0 + cs - 1 + OV) continue;
+    }
+    const k = qx * 100000 + qy; if (_warTreeChunks.has(k)) continue; _warTreeChunks.add(k);
+    let got = null; try { got = generateChunkResources(ZONE_ID, ZONE.biome, qx, qy, cs, harvestedSeeds, day); } catch (e) { got = null; }
+    if (got) for (const r of got) if (r.type === 'tree') _warTreeCells.add(Math.floor(r.x / 32) * 65536 + Math.floor(r.y / 32));
+  }
+  return _warTreeCells.has(cellX * 65536 + cellY);
+}
+
 SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, isWaterTileLocal, isPositionActive, isBlockedByWall, anyViewerNear, perfMark,
   // ★★[T333] 바위 술어도 넘긴다 — 생활층 지형 어댑터(`villages.js isRock`)가 여태 `terrain.isRockCellLocal` 을
   //   **직접** 불러 메모를 지나쳤다(T324 프로파일: 남은 지형 시간의 9.6%). 같은 양자화(셀 중심)라 답은 같다.
   isRockTileLocal,
   tickHz: TICK_HZ,   // ★[T284] 실체 전쟁 교전 스텝 = 존 틱 한 번(dt = 1/TICK_HZ)
+  // ★★[T295 후속 · T284 회부 "나무는 아직 안 본다" 닫기] 전쟁이 쓰는 **나무 술어**(셀 → 서 있는 나무 있나).
+  //   ⚠**청크 색인**(T301 `treeBlockerAt`)이다 — 청크 활성·관측자와 무관하게 같은 씨에서 같은 답을 낸다.
+  //     존 이동이 쓰는 `isBlockedByTree`(활성 청크 쿼드트리)와는 자리가 다르다: 전쟁은 관측자가 없는 구역에서도 돈다.
+  //   ⚠벤 나무 장부(`harvestedSeeds`)와 게임일을 **청크가 켜질 때 쓰는 그 인자 그대로** 넘긴다(사본 0) —
+  //     벤 자리·묘목은 안 막고, 재생하면 다시 막는다.
+  treeCellBlocked: warTreeCellBlocked,
   ioBusy, ioQuietMs,   // ★[T42-b] 배경 작업이 '한가한가'를 판단할 때 **날아가는 쓰기**도 본다
   clearTreesInCells,   // ★영토 개간 — 마을 안엔 숲이 없다
   // ★[T19 2026-09-02] 마을이 **하나 늘었다**는 통지. 온보딩이 그 마을의 도착 지점을 그때 굽는다

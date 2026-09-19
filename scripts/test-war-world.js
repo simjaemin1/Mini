@@ -50,6 +50,10 @@ const A_C = { cx: 100, cy: 100 }, B_C = { cx: 260, cy: 100 };
 const HOUSES_B = [{ type: 'house', cx: 200, cy: 101 }, { type: 'house', cx: 200, cy: 111 }, { type: 'house', cx: 208, cy: 96 }, { type: 'granary', cx: 190, cy: 106 }, { type: 'house', cx: 272, cy: 112 }];
 const ROCK = new Set(); for (let x = 186; x <= 188; x++) for (let y = 88; y <= 98; y++) ROCK.add(x * 65536 + y);
 const WATER = new Set(); for (let x = 176; x <= 178; x++) for (let y = 110; y <= 118; y++) WATER.add(x * 65536 + y);
+// ★[T295 후속] 돌격로 위의 숲 띠(셀) — 나무 술어(존이 주입하는 청크 색인)의 하네스 자리.
+// ★[T295 후속] 숲 띠 — **존 숲의 꼴 그대로**: 격자 간격 2셀(존 `forestSpacing` 60~96px = 2~3셀)이라 사이에 길이 남는다.
+//   ⚠빽빽한 벽(모든 칸)으로 깔면 두 군대가 서로 못 닿아 판이 안 끝난다(실측 — 보고 §0-ⓒ 함정).
+const TREES = new Set(); for (let x = 195; x <= 215; x++) for (let y = 90; y <= 115; y++) if (x % 2 === 1 && y % 2 === 1) TREES.add(x * 65536 + y);
 const cellKey = (px, py) => Math.floor(px / SZ) * 65536 + Math.floor(py / SZ);
 
 // 한 판 — 새 목 존 · 새 war-core · 새 war-live. opts: { seed, viewer, noCollide, scenario, maxTicks, warId }
@@ -71,6 +75,9 @@ function _run(opts) {
     isWaterTileLocal: (px, py) => WATER.has(cellKey(px, py)),
     tickHz: 30,
   };
+  // ★[T295 후속] 나무 술어 — 존이 주입하는 그 자리(`deps.treeCellBlocked` · 셀 단위 · 관측자 무관).
+  //   미주입 팔(opts.trees 없음)은 **빈 들판**이다 = 이 카드 전 동작(대조군).
+  if (opts.trees) deps.treeCellBlocked = (cx, cy) => TREES.has(Math.floor(cx) * 65536 + Math.floor(cy));
   const mkVil = (name, c, dbId, pop) => {
     const e = econ.createVillage({ fertility: 1, water: 1, stone: 1.2, ore: 1, wood: 1, game: 1, size: 60, arable: 1, initialPop: pop, name });
     e.storage.weapon = 20; e.storage.stone = 200;
@@ -122,7 +129,7 @@ function _run(opts) {
   if (sc === 'sortie') { w._opPolicy = 'siege'; def._defPolicy = 'respond'; w._forceSortie = true; }
   war.WARS.push(w);
 
-  const tr = { badSpawn, blockedTicks: 0, fightTicks: 0, engagedAt: -1, standoffAt: -1, reengagedAt: -1, resolveAtStandoff: -1,
+  const tr = { badSpawn, blockedTicks: 0, treeTicks: 0, fightTicks: 0, engagedAt: -1, standoffAt: -1, reengagedAt: -1, resolveAtStandoff: -1,
     defHomeGap: null, settles: [], hitrun: sc === 'hitrun' ? 'wait' : null, pos: null };
   let now = world.day * dayMs + 1, dayAt = now;
   const stepMs = 1000 / 30;
@@ -145,6 +152,10 @@ function _run(opts) {
       let bad = false;
       for (const u of f.ctx.units) { if (u.hp <= 0) continue; if (H._warBlockedCell(u.x, u.y) || (opts.noCollide && (ROCK.has(Math.floor(u.x) * 65536 + Math.floor(u.y)) || H.state._warRectCells && H.state._warRectCells.has(Math.floor(u.x) * 65536 + Math.floor(u.y))))) { bad = true; break; } }
       if (bad) tr.blockedTicks++;
+      // 나무 셀 안에 선 **전투 병사**가 있는 틱 — 대형이 모는 병사(`u.ctl`)는 세지 않는다:
+      //   그 걸음은 대형 슬롯(`_warBlockedCell`)의 몫이고, 나무는 **전투 스텝의 장애물**이다(어댑터 `blocked`).
+      if (process.env.WW_BOX) { for (const u of f.ctx.units) { if (u.hp <= 0) continue; tr._bx0 = Math.min(tr._bx0 == null ? 1e9 : tr._bx0, u.x); tr._bx1 = Math.max(tr._bx1 || 0, u.x); tr._by0 = Math.min(tr._by0 == null ? 1e9 : tr._by0, u.y); tr._by1 = Math.max(tr._by1 || 0, u.y); } }
+      { let inTree = false; for (const u of f.ctx.units) { if (u.hp <= 0 || u.ctl) continue; if (TREES.has(Math.floor(u.x) * 65536 + Math.floor(u.y))) { inTree = true; break; } } if (inTree) tr.treeTicks++; }
       if (f.state === 'engaged' && tr.engagedAt < 0) tr.engagedAt = t;
     }
     // ⓒ 치고 빠지기 — 첫 접촉 1.5초 뒤 후퇴 명령 · 대치 확인 · 다음 결단(돌격 정책)에서 재교전
@@ -174,7 +185,7 @@ function _run(opts) {
 }
 
 (async () => {
-  if (process.env.WW_ONLY) { const r = runScenario({ seed: 31, viewer: false, scenario: process.env.WW_ONLY, maxTicks: 30 * 60 * 20 }); say(JSON.stringify({ ended: r.ended, counts: r.counts, stat: r.stat, fight: r.fightTicks, blocked: r.blockedTicks })); process.exit(0); }
+  if (process.env.WW_ONLY) { const r = runScenario({ seed: parseInt(process.env.WW_SEED || '31', 10), viewer: false, scenario: process.env.WW_ONLY, trees: process.env.WW_TREES === '1', maxTicks: parseInt(process.env.WW_TICKS || '', 10) || 30 * 60 * 20 }); say(JSON.stringify({ ended: r.ended, counts: r.counts, stat: r.stat, fight: r.fightTicks, blocked: r.blockedTicks, box: [r._bx0, r._bx1, r._by0, r._by1] })); process.exit(0); }
   say('\n=== T284 실체 전쟁 — 좌표계 하나 · 장애물은 존의 것 · 연속 전투 ===');
 
   // ── ⓑ·ⓕ 정적 ─────────────────────────────────────────────────────────────
@@ -253,6 +264,59 @@ function _run(opts) {
 
   // ── ⓗ~ⓚ 동원의 대가(T295) ────────────────────────────────────────────────
   costPart();
+  // ── ⓛ 나무 — 존의 것이 되었다(T284 회부 닫기) ─────────────────────────────
+  say('\n[ⓛ] 나무 — 전쟁이 존 나무를 본다(관측자 무관 색인 · 메모는 지형과 같은 자리)');
+  {
+    const on = runScenario({ seed: 41, viewer: true, scenario: 'assault', warId: 41, trees: true, maxTicks: 30 * 60 * 30 });
+    const off = runScenario({ seed: 41, viewer: true, scenario: 'assault', warId: 41 });   // 대조 — 술어 미주입(= 이 카드 전)
+    ok(on.fightTicks > 0 && off.fightTicks > 0, 'ⓛ 전제 — 두 팔 다 교전이 있었다', `켬 ${on.fightTicks}틱 · 끔 ${off.fightTicks}틱`);
+    ok(on.ended && on.ended.why === 'rout', 'ⓛ 숲에서도 판이 끝난다(행위 정산 — 숲은 판을 늘릴 뿐)', `끝 ${JSON.stringify(on.ended)} · 교전 ${on.fightTicks}틱(빈 들판 ${off.fightTicks})`);
+    ok(on.treeTicks === 0, 'ⓛ 나무 술어 켬: 병사가 나무 셀 안에 선 틱 0', `${on.treeTicks}/${on.fightTicks}`);
+    ok(off.treeTicks > 0, 'ⓛ ★대조 — 술어 끔(미주입): 나무 셀 안 틱 > 0 (숲 띠가 실제로 돌격로 위에 있다)', `${off.treeTicks}/${off.fightTicks}`);
+    // 관측자 켬/끔 — 나무를 보면서도 한 글자 동일(T284 ⓓ 를 나무 위에서 다시)
+    const sigT = (r) => JSON.stringify({ e: r.ended, c: r.counts, s: r.stat, econ: r.econ, ph: r.phase, h: r.posHash, n: r.players, ft: r.fightTicks, tt: r.treeTicks });
+    let same = 0; const rows = [];
+    for (const sd of [51, 52, 53]) {
+      const a = runScenario({ seed: sd, viewer: true, scenario: 'assault', warId: 100 + sd, trees: true, maxTicks: 30 * 60 * 30 });
+      const b = runScenario({ seed: sd, viewer: false, scenario: 'assault', warId: 100 + sd, trees: true, maxTicks: 30 * 60 * 30 });
+      if (sigT(a) === sigT(b)) same++;
+      rows.push(`seed ${sd}: ${a.ended ? a.ended.why + '/' + a.ended.winner : '-'} · hash ${a.posHash}/${b.posHash} · 나무틱 ${a.treeTicks}/${b.treeTicks}`);
+    }
+    for (const r of rows) say('     ' + r);
+    ok(same === 3, 'ⓛ 나무를 보면서도 관측자 켬/끔 세 시드 한 글자 동일', `${same}/3`);
+    // 메모 — 비우는 자리가 건물 색인과 **같은 한 군데**(정적) · 술어는 주입받은 것만 부른다(사본 0)
+    const vilSrc = fs.readFileSync(path.join(ROOT, 'server/villages.js'), 'utf8');
+    ok(/state\._warTreeMemo = new Map\(\);/.test(vilSrc) && (vilSrc.match(/_warTreeMemo = new Map\(\);\s*\/\//g) || []).length >= 1, 'ⓛ 나무 메모를 비우는 줄이 지형 메모 옆에 있다(한 군데)');
+    ok(!/require\(['"]\.\/chunk['"]\)[^\n]*treeBlockerAt/.test(vilSrc), 'ⓛ 생활층이 청크를 직접 안 부른다 — 술어는 존이 주입(deps.treeCellBlocked)');
+    const zoneSrc = fs.readFileSync(path.join(ROOT, 'server/zone.js'), 'utf8');
+    ok(/function warTreeCellBlocked[\s\S]{0,1200}generateChunkResources\(ZONE_ID, ZONE\.biome, qx, qy, cs, harvestedSeeds, day\)/.test(zoneSrc), 'ⓛ 존 술어가 **청크가 켜질 때 쓰는 그 함수·그 인자**로 낳는다(벤 나무 장부 포함)');
+    // ★자명 통과 금지 — 청크 통째 색인이 칸마다 묻는 길(`chunk.treeBlockerAt`)과 **같은 답**인지 전수로 대조한다.
+    {
+      const chunk = R('server/chunk.js');
+      const ZID = 'hanbando', BIOME = 'forest', CS = chunk.CHUNK_SIZE, DAY = 400, harvested = new Map();
+      const cells = new Set(), loaded = new Set();
+      const OV = chunk.forestSpacing(chunk.FOREST_MIN_COV);   // 넘침 상한 — zone 술어가 이웃 청크를 건너뛰는 그 규칙(같은 꼴)
+      const cached = (cx, cy) => {
+        const px = cx * 32, py = cy * 32;
+        const ccx = Math.floor(px / CS), ccy = Math.floor(py / CS);
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+          const qx = ccx + dx, qy = ccy + dy; if (qx < 0 || qy < 0) continue;
+          if (dx || dy) { const bx0 = qx * CS, by0 = qy * CS;
+            if (px + 31 < bx0 - OV || px > bx0 + CS - 1 + OV) continue;
+            if (py + 31 < by0 - OV || py > by0 + CS - 1 + OV) continue; }
+          const k = qx * 100000 + qy; if (loaded.has(k)) continue; loaded.add(k);
+          for (const r of (chunk.generateChunkResources(ZID, BIOME, qx, qy, CS, harvested, DAY) || [])) if (r.type === 'tree') cells.add(Math.floor(r.x / 32) * 65536 + Math.floor(r.y / 32));
+        }
+        return cells.has(cx * 65536 + cy);
+      };
+      let diff = 0, hits = 0, n = 0;
+      for (let cx = 1000; cx < 1040; cx++) for (let cy = 1000; cy < 1025; cy++) {   // 숲이 실제로 선 자리(실측 400칸 중 57칸이 나무)
+        const a = cached(cx, cy), b = !!chunk.treeBlockerAt(ZID, cx, cy, { biome: BIOME, harvestedSet: harvested, gameDay: DAY });
+        if (a !== b) diff++; if (b) hits++; n++;
+      }
+      ok(diff === 0 && hits > 0, 'ⓛ ★대조 — 청크 색인 = 칸마다 묻는 길(전수 1,000칸 · 나무 있는 칸 > 0)', `다른 칸 ${diff}/${n} · 나무 칸 ${hits}`);
+    }
+  }
 
   // ── ⓖ 서버 ───────────────────────────────────────────────────────────────
   if (process.env.WAR_WORLD_NO_SERVER === '1') { say('\n[ⓖ] 서버 절 건너뜀(WAR_WORLD_NO_SERVER=1)'); }
