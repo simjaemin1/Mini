@@ -290,9 +290,10 @@ const JOBS = {
   },
 };
 
-// ★[포위 봉쇄 훅] 야외 직업 집합 — 호스트(전쟁 레이어)가 v._siegeOutMul을 세우면 이들 생산만 감산(성 밖 노동 차단).
-//   실내(mason·smith·weaponsmith·armorsmith·cook·warrior·merchant)=불변. 훅 미설치=경로 무변(마을실험실 궤적 보존 계약).
-const SIEGE_OUTDOOR_JOBS = { farmer: 1, fisher: 1, hunter: 1, lumberjack: 1, miner: 1, forager: 1 };
+// ★★[T329 2026-09-19] **포위 봉쇄 훅(`_siegeOutMul`·`SIEGE_OUTDOOR_JOBS`)은 걷어냈다.**
+//   재민 캐논(09-18): *"봉쇄 상태 없음 · 배수 없음"*. 야외 노동이 끊기는 것은 배수가 아니라 **반경**이다 —
+//   위협 T 가 오르면 마을 밖 현장이 가까워진다(`villages._lifeJobSites` R_out = 생활권 × (1−T)).
+//   생산 식엔 그 자리에 아무 것도 안 남는다(곱 하나가 통째로 빠졌다 — 훅이 미설치였던 세계와 **비트 동일**).
 
 // ★[포로 노동 훅] 호스트(전쟁 레이어)가 npc.captive={home,since}를 부착하면 그 NPC의 생산 기여만 ×0.6(저효율 강제노동).
 //   전사·사냥꾼 배정 금지 게이트(autoSwitchJob)와 세트. 훅 미설치(captive 없음)=곱 1·게이트 항상 통과 → 경로 무변(마을실험실 궤적 보존 계약).
@@ -2417,9 +2418,6 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
       const _wi = v._world.woodIncomeFn(v, npc, baseAmt, _mul);
       if (typeof _wi === 'number' && _wi >= 0) baseAmt = _wi;
     }
-    // ★[포위 봉쇄 훅] 야외 직업(농부·어부·사냥·벌목·광부·채집)만 v._siegeOutMul(호스트 설치 시)로 감산 — 성 밖 노동이 끊김(잠행 노동 잔존).
-    //   실내 직업(석공·대장장이·요리사 등)=불변. 잠재(dailyProductionPotential)엔 미적용(_laborMul과 동형 — K 오염·아사 스파이럴 방지). 미설치(undefined)=1(무해).
-    const _siegeM = (v._siegeOutMul != null && SIEGE_OUTDOOR_JOBS[npc.currentJob]) ? v._siegeOutMul : 1;
     // ★[포로 노동 훅] 포로(npc.captive — 전쟁 레이어 부착)는 생산 기여 ×0.6. 미설치=×1(IEEE x*1===x — 궤적 바이트 보존).
     const _capM = npc.captive ? CAPTIVE_WORK_MUL : 1;
 
@@ -2428,7 +2426,7 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
       const sm = satMul(r);
       _potA += amt; _actA += amt * sm;   // 여유노동 측정: 잠재(감산 전) vs 실제(감산 후)
       dailyProductionPotential[r] = (dailyProductionPotential[r] || 0) + amt;   // 잠재 생산(건강·포만 적용 전) — prodK용
-      amt *= _hpm * _hwm * _prodMul * sm * (v._laborMul || 1) * _siegeM * _capM;   // ★건강→작업량(±10%) × **행복→작업량(T157 · 주입 없으면 1)** × production stat × 포만 × 부상노동력(요양=일손 X·부상=효율↓ — 생활층서 계산) × 포위 봉쇄(야외 직업만, 미설치=1) × 포로 노동(captive만 0.6, 미설치=1)
+      amt *= _hpm * _hwm * _prodMul * sm * (v._laborMul || 1) * _capM;   // ★건강→작업량(±10%) × **행복→작업량(T157 · 주입 없으면 1)** × production stat × 포만 × 부상노동력(요양=일손 X·부상=효율↓ — 생활층서 계산) × 포로 노동(captive만 0.6, 미설치=1) ★[T329] 포위 배수 제거(반경으로 간다)
       if (amt <= 0) return;
       if (r === 'food') v._grainToday = (v._grainToday || 0) + amt;   // ★오늘 곡물 실생산 → 볏짚 연료(아래 연료 블록)
       const tax = amt * TAX_RATE;

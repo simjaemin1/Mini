@@ -599,7 +599,8 @@ function tickTradeV2(world, day) {
     // ★3일 게이트·동시8%·가치상한 전부 폐지 — 매일 검사, 조건 되면 연속 교역.
     //   실질 제한은 아래 spareCap(여유노동)뿐 — 마을 글럿도에서 창발(하드 %캡 아님).
     if (a.v.isolated && day < a.v.isolatedUntilDay) continue;
-    if (a.v._siegeBlock) continue;   // ★[포위 봉쇄 훅] 호스트(전쟁 레이어)가 세우면 이 마을 발 캐러밴 파견 금지 — 미설치(undefined)=무해(기존 경로 그대로)
+    // ★★[T329] 포위 봉쇄 훅(`_siegeBlock`)은 걷어냈다 — 상태도 금지도 없다. 대신 **같은 위협 T** 가
+    //   아래 기대손실(`expectedLossRatio`)에 연속으로 들어간다(전쟁이 없으면 T 미설치 = 종전 비트).
     if (a.v.npcs.length < 2) continue;
     a.prices = computeShadowPrices(a.v);   // 매일 fresh 시세로 결정(출발-도착 불일치↓)
     a.v._priceCache = a.prices; a.v._priceCacheDay = day;
@@ -684,7 +685,6 @@ function tickTradeV2(world, day) {
           //   ⚠NPC 세계 영향 0: 소멸 0 이라 인구 0 마을이 애초에 없다(3시드 800일 비트 동일로 실측).
           if (b.v.npcs.length === 0) continue;
           if (b.v.isolated && day < b.v.isolatedUntilDay) continue;
-          if (b.v._siegeBlock) continue;   // ★[포위 봉쇄 훅] 포위된 마을은 목적지로도 제외(성문 봉쇄 — 들어가는 길이 없음). 미설치=무해
           if ((a.v._grudgeBlock && a.v._grudgeBlock[b.v.name]) || (b.v._grudgeBlock && b.v._grudgeBlock[a.v.name])) continue;   // ★[원한 제재 훅] 불의전 평판 — 원한(>문턱) 상대와 상호 교역 기피(발주·수주 대칭 차단). 호스트(전쟁 레이어)가 일일 발행, 미설치(undefined)=무해
           const key = `${cand.res}->${b.v.name}`;
           if (alreadySent.has(key)) continue;
@@ -700,6 +700,11 @@ function tickTradeV2(world, day) {
           const banditX0 = world.banditRouteRisk ? (world.banditRouteRisk(a.v, b.v) || 0) : 0;
           const raidProb = Math.min(RAID_MAX, RAID_BASE + banditX0 + (dist / 100) * (world.raidPer100 || RAID_PER_100));
           let expectedLossRatio = raidProb * 0.5;   // 기존 baseline(경로 위험) — 갱 미상시 유지(회귀 무영향)
+          // ★★[T329] **전쟁 위협도 길의 위험이다** — 출발·도착 마을의 T(호스트가 쓰는 연속 값)를
+          //   독립 위험으로 합친다: 1 − (1−손실)(1−T_a)(1−T_b). 포위 '상태' 로 길을 막던 자리가 여기다.
+          //   미설치(평시·랩)면 T=0 이라 곱이 1 — **종전 비트 동일**.
+          { const _ta = a.v._warThreat || 0, _tb = b.v._warThreat || 0;
+            if (_ta > 0 || _tb > 0) expectedLossRatio = 1 - (1 - expectedLossRatio) * (1 - _ta) * (1 - _tb); }
           // ★[위험 인지 방어 피드백 — 통합 발주] 경로에 실제 갱이 있으면 손실을 '호위 충분성'으로 재추정.
           //   호위≥격퇴규모(1.5×갱)→repelP≈1(손실↓·교역 유지) · 호위≤갱→repelP≈0(손실↑ → 음수 EV → 자동 포기/기피).
           //   전사의 한계가치=교역손실 감소분이 profitPerUnit에 창발 반영(총비용 항 없이 한계 프레임 유지). 정산(_raidScrum)과 정합.
@@ -941,7 +946,7 @@ function tickCaravansV2(world, day) {
         for (const b of world.villages) {
           if (b === c.to || b === c.from) continue;
           if (b.isolated && day < b.isolatedUntilDay) continue;
-          if (b._siegeBlock) continue;   // ★[포위 봉쇄 훅] 재routing 목적지에서도 포위 마을 제외. 미설치=무해
+          // ★[T329] 포위 '상태' 로 거르던 자리 — 이제 위험은 연속이다(위 기대손실의 T). 여기선 안 거른다.
           if ((c.from && c.from._grudgeBlock && c.from._grudgeBlock[b.name]) || (b._grudgeBlock && c.from && b._grudgeBlock[c.from.name])) continue;   // ★[원한 제재 훅] 재routing 목적지도 원한쌍 회피(발주 마을 기준 대칭). 미설치=무해
           const distFromHere = v1.villageDist(c.to, b);
           const infoR = world.infoRange || 400;
@@ -1443,7 +1448,7 @@ function netExportValue(world, from, res) {
   for (const b of near) {
     if (!b || b === from || !b.npcs || b.npcs.length < 2) continue;   // 인구 2 미만은 교역 발주·수주 대상이 아니다(tickTradeV2 동일 게이트)
     if (b.isolated && day < b.isolatedUntilDay) continue;
-    if (b._siegeBlock) continue;
+    // ★[T329] 포위 '상태' 로 거르던 자리 — 위험은 이제 연속(위 기대손실의 위협 T)이라 여기선 안 거른다.
     if ((from._grudgeBlock && from._grudgeBlock[b.name]) || (b._grudgeBlock && b._grudgeBlock[from.name])) continue;
     const dist = v1.villageDist(from, b);
     if (dist > infoR) continue;
