@@ -102,8 +102,12 @@ console.log('\n② 정본 하나 — 인당 기준 경작칸 12 가 한 곳에�
 // ── ③ 대체 — 농부의 추상 산출을 걷어내고 그 자리를 수확이 채운다 ───────────
 console.log('\n③ 대체 — 얹지 않는다(둘 다 넣으면 곡물가가 붕괴한다 · T123 마을5)');
 {
-  ok(/if \(!\(T100_FIELD_YIELD && npc\.currentJob === 'farmer'\)\) addProduce\(jdef\.output, baseAmt\);/.test(SRC),
-    '③ ★★★켜면 농부의 추상 식량 산출 한 줄이 **막힌다**(대체 · 얹기 0)');
+  // ★[T312 2026-09-19] 그 한 줄에 **어부 절이 하나 더 붙었다**(같은 문법 · 같은 이유 — 공존 = 이중 생산).
+  //   이 하네스가 지키는 것은 "농부의 `food` 가 막힌다"이고 그건 그대로다 — 절이 는 것은 **다른 직업**이다.
+  //   ⚠느슨하게 풀지 않는다: 농부 절을 그대로 요구하고, 어부 절이 **정확히 그 꼴**임도 같이 문다.
+  ok(/if \(!\(T100_FIELD_YIELD && npc\.currentJob === 'farmer'\)/.test(SRC)
+     && /&& !\(npc\.currentJob === 'fisher' && fishActOn\(v\)\)\) addProduce\(jdef\.output, baseAmt\);/.test(SRC),
+    '③ ★★★켜면 농부의 추상 식량 산출 한 줄이 **막힌다**(대체 · 얹기 0) · ★[T312] 어부 절도 같은 자리다');
   ok(/addProduce\(r, baseAmt \* rate\);/.test(SRC) && !/T100_FIELD_YIELD[^\n]*addProduce\(r,/.test(SRC),
     '③ ★★부산물(밀·쌀·보리·삼·모시)은 **안 막는다** — 곡물·섬유 사슬은 T86 그대로다');
   ok(/function farmLandBoost\(v\) \{\s*\n\s*return \(v\.land && v\.land\.fertility\) \|\| 0;\s*\n\}/.test(SRC),
@@ -229,9 +233,11 @@ if (!process.env.T100_CHILD) {
   //   같은 밭 식량이 두 번 든다. 그 판이 초록이면 "이중 0" 은 빈말이다.
   let made3 = false;
   try {
-    const mutSrc3 = SRC.replace(
-      "if (!(T100_FIELD_YIELD && npc.currentJob === 'farmer')) addProduce(jdef.output, baseAmt);",
-      'addProduce(jdef.output, baseAmt);   // 하네스 변조본 — 대체를 걷어내 **두 번** 넣는다');
+    // ★[T312] 게이트가 **두 줄**이 됐다 — 변조는 그 두 줄을 통째로 갈아 끼운다(대체를 걷어낸 판).
+    const _GATE2 = "      if (!(T100_FIELD_YIELD && npc.currentJob === 'farmer')\n"
+                 + "       && !(npc.currentJob === 'fisher' && fishActOn(v))) addProduce(jdef.output, baseAmt);";
+    const mutSrc3 = SRC.replace(_GATE2,
+      '      addProduce(jdef.output, baseAmt);   // 하네스 변조본 — 대체를 걷어내 **두 번** 넣는다');
     ok(mutSrc3 !== SRC, '⑦ [T183] 두 번 넣기의 변조 지점(대체 게이트)이 소스에 **실재한다**');
     fs.writeFileSync(MUTPATH, mutSrc3); made3 = true;
     ok(run({ T100_FIELD_YIELD: '1', T100_MUT_MOD: MUTNAME }) !== 0,
@@ -389,10 +395,17 @@ console.log('\n⑫ 켠 팔의 잠재 — 밭이 낸 식량이 **잠재에도** �
   // ⓐ 잠재를 건드리는 자리 전수 — 주석을 뺀 코드에서 센다(자리가 늘면 여기가 빨개진다)
   const C = codeOf(SRC);
   const hits = C.split('\n').map((l, i) => [i + 1, l]).filter(([, l]) => /dailyProductionPotential/.test(l));
-  const writes = hits.filter(([, l]) => /dailyProductionPotential(\[[^\]]+\]|\.food)\s*=/.test(l));
-  const reads = hits.filter(([, l]) => !/dailyProductionPotential(\[[^\]]+\]|\.food)\s*=/.test(l) && !/const dailyProductionPotential = \{\}/.test(l));
-  ok(hits.length === 5, '⑫ 잠재를 건드리는 자리는 **다섯**이다(선언 1 · 쓰기 2 · 읽기 2)', `실제 ${hits.length}`);
-  ok(writes.length === 2, '⑫ ★쓰는 곳 **둘** — `addProduce`(끈 팔의 길) · T183(켠 팔의 길)', `실제 ${writes.length}`);
+  // ★[T312] 분류기는 **칸 이름을 열거한다**(`.food` · `[r]`). 어부 다리가 `.fish` 를 쓰므로 여기 더한다 —
+  //   열거식이라 새 칸이 생기면 사람이 한 번 보고 더해야 하고, 그게 이 검사가 지키려는 바로 그 일이다.
+  const _W = /dailyProductionPotential(\[[^\]]+\]|\.food|\.fish)\s*=/;
+  const writes = hits.filter(([, l]) => _W.test(l));
+  const reads = hits.filter(([, l]) => !_W.test(l) && !/const dailyProductionPotential = \{\}/.test(l));
+  // ★[T312] 어부 장부 다리가 **쓰는 자리 하나**를 더한다(선언 1 · 쓰기 3 · 읽기 2 = 여섯).
+  //   ⚠수를 올리기만 하지 않는다 — 그 새 자리가 **어부 다리**임을 아래에서 이름으로 못 박는다.
+  ok(hits.length === 6, '⑫ 잠재를 건드리는 자리는 **여섯**이다(선언 1 · 쓰기 3 · 읽기 2 · ★T312 어부 +1)', `실제 ${hits.length}`);
+  ok(writes.length === 3, '⑫ ★쓰는 곳 **셋** — `addProduce`(끈 팔) · T183(밭) · ★T312(어부)', `실제 ${writes.length}`);
+  ok(/dailyProductionPotential\.fish = \(dailyProductionPotential\.fish \|\| 0\) \+ _t312In;/.test(C),
+    '⑫ ★[T312] 그 셋째 자리가 **어부 다리**다(이름으로 못 박는다 — 수만 올린 게 아니다)');
   ok(reads.length === 2, '⑫ 읽는 곳 **둘** — `totalFoodProductionEquivalent`(prodK) · 볏짚(fuelK)', `실제 ${reads.length}`);
   ok(/const dailyFoodProdPotential = totalFoodProductionEquivalent\(dailyProductionPotential\);/.test(C)
      && /\(dailyProductionPotential\.food \|\| 0\) \* STRAW_FUEL_PER_FOOD/.test(C),
@@ -495,7 +508,8 @@ console.log('\n⑮ 장부 — 밭이 곳간에 넣은 그 양이 **실현 흐름
   } else {
     ok(p.led === 0, '⑮ [끔] 밭 입구가 아예 안 열리므로 장부도 0 이다');
   }
-  ok(/if \(!\(T100_FIELD_YIELD && npc\.currentJob === 'farmer'\)\) addProduce\(jdef\.output, baseAmt\);/.test(C),
+  ok(/if \(!\(T100_FIELD_YIELD && npc\.currentJob === 'farmer'\)/.test(C)
+     && /\) addProduce\(jdef\.output, baseAmt\);/.test(C),
     '⑮ ★이중 0 — 켠 팔에서 농부의 `food` 는 `addProduce` 를 **안 탄다**(들어오는 길이 하나뿐이다)');
   // ⓓ `totalFoodProductionEquivalent` 이 보는 것 — `food` 만이 아니다(§0-ⓐ 의 셋째 물음)
   ok(/if \(T73_RAWGRAIN\) for \(const r of RAW_GRAINS\) total \+= \(prod\[r\] \|\| 0\) \* RAW_GRAIN_FOOD_FACTOR;/.test(C),
@@ -624,10 +638,13 @@ console.log('\n⑬ 배율 자리 [T179] — 대체가 삼킨 배율 셋을 문�
     '⑬ ★★대체가 막는 그 자리에서 배율 셋을 **심어 둔다**(`_t172mul` — 사냥·벌목 문과 같은 필드)');
   const setLines = CODE.split('\n').filter((l) => /_t172mul\s*=/.test(l));
   const mulDefs = CODE.split('\n').filter((l) => /const _mul = /.test(l));
-  ok(setLines.length === 3 && setLines.every((l) => /_t172mul = (_mul|skillMul \* toolBoost \* inputMult);/.test(l))
+  // ★[T312] 어부가 **넷째 자리**다 — 같은 셋 곱이라는 규약은 그대로고, 자리 수만 하나 는다.
+  ok(setLines.length === 4 && setLines.every((l) => /_t172mul = (_mul|skillMul \* toolBoost \* inputMult);/.test(l))
      && mulDefs.length === 2 && mulDefs.every((l) => /skillMul \* toolBoost \* inputMult/.test(l)),
-    '⑬ ★`_t172mul` 을 심는 자리가 **셋**(사냥·벌목·밭)이고 전부 **같은 셋 곱**이다',
+    '⑬ ★`_t172mul` 을 심는 자리가 **넷**(사냥·벌목·밭·★어부)이고 전부 **같은 셋 곱**이다',
     `${setLines.length}자리 · _mul 정의 ${mulDefs.length}`);
+  ok(/if \(npc\.currentJob === 'fisher' && fishActOn\(v\)\) npc\._t172mul = skillMul \* toolBoost \* inputMult;/.test(CODE),
+    '⑬ ★[T312] 그 넷째 자리가 **어부**다(이름으로 못 박는다)');
   ok(!/npc\._t172mul[^\n]*addProduce/.test(CODE) && /\) addProduce\(jdef\.output, baseAmt\);\n[\s\S]{0,900}?\n\s*if \(T100_FIELD_YIELD && npc\.currentJob === 'farmer'\) npc\._t172mul/.test(SRC),
     '⑬ ★심기만 하고 **여기서 곱하지 않는다**(배율은 실체가 나는 곳에 한 번 · 대체 게이트 **바로 뒤**)');
   // ⓓ 실측 — 숙련 10(×1.5) 이 실체에서 갈린다 · `inputMult=0` → 실체 0 · 미전달 비트 동일
