@@ -42,7 +42,7 @@ const Rooms = require('./rooms'); // ★[배치 18 ①] 방 판정 정본(벽·�
 const SIM_LON_ON = process.env.VILLAGE_LON !== '0'; // §19 경도 로컬 태양시(마을 NPC 야간 귀가) 게이트 — 기본 켜짐
 const central = require('./central-client'); // central HTTP 클라이언트
 const { Quadtree } = require('./quadtree'); // spatial index — O(N²) 검색 회피
-const { ChunkManager, CHUNK_SIZE, generateChunkResources, overflowInto, seedGenChunkOf, regrowStageOf, REGROW, generateVillagesForZone, generateCoastlineWaterTiles, RESOURCE_HP_TABLE } = require('./chunk'); // ★[T124] 재생 정산은 T122 정본을 그대로 받는다(사본 0) // 청크 단위 entity 분류 + procedural + 해안선 + ★[T108] 자연물 hp 정본
+const { ChunkManager, CHUNK_SIZE, generateChunkResources, resourcesAtCell, overflowInto, seedGenChunkOf, regrowStageOf, REGROW, generateVillagesForZone, generateCoastlineWaterTiles, RESOURCE_HP_TABLE } = require('./chunk');   // ★[T325] `resourcesAtCell` — 관측자 무관 색인(T301) 그대로. 나무꾼이 청크 없이 나무를 묻는다 // ★[T124] 재생 정산은 T122 정본을 그대로 받는다(사본 0) // 청크 단위 entity 분류 + procedural + 해안선 + ★[T108] 자연물 hp 정본
 const { findPath: pfFindPath } = require('./pathfind'); // Phase 14.49-b: NPC A* pathfinding
 const PathCore = require('../sim/path-core.js'); // ★[생활 층 100% ①] 랩·서버 공용 경로 정본 — smoothPath(스트링 풀링)를 주민 이동에 직결
 const { ANIMALS } = require('./animals');  // Phase 5-6: 동물 mob 36종 catalog
@@ -112,6 +112,56 @@ function _markHarvested(seedKey) {
   const d = gameDayNow();
   harvestedSeeds.set(seedKey, Number.isFinite(d) ? Math.floor(d) : -1);
   try { db.insertHarvestedSeed(seedKey, d); } catch (e) {}
+}
+// ★★[T325 2026-09-19] **개체를 세계에서 빼는 문 하나.** 여섯 줄(색인·청크·장부·DB·방송)을 모았다 —
+//   NPC 채집 갈래(`behavior === 'gather'`)와 나무꾼 행위(`_t325CutTreeAt`)가 **같은 줄**을 쓴다.
+//   두 벌 적으면 `harvestedSeeds` 를 한 쪽만 적는 날이 온다(그러면 벤 나무가 되살아난다).
+//   ⚠`notify` — T324 ⓐ 규약: **관측자가 있을 때만** 방송한다. 아무도 안 보는 마을에서
+//     `resource_removed` 를 쏘는 것은 대역폭이 아니라 **없는 관측자를 가정하는 것**이라 안 한다.
+//   ★행동 무변: 채집 갈래는 `notify=true` 로 부르므로 종전과 **글자 그대로** 같은 일을 한다.
+function _takeResourceEntity(r, notify) {
+  if (!r) return;
+  resources.delete(r.id);
+  chunkManager.removeResource(r);
+  resourcesDirty = true;
+  if (r.isSeed && r.seedKey) _markHarvested(r.seedKey);   // ★[T122] 벤 게임일까지 적는다 — 재생의 입력
+  else if (r.dbId) { try { db.deleteResource(r.dbId); } catch (e) {} }
+  if (notify) broadcast({ type: 'resource_removed', id: r.id });
+}
+// ★[T325] 그 셀에 **서 있는 나무**(그루터기·묘목 제외는 안 한다 — 묘목도 목재를 낸다)를 색인으로 묻는다.
+//   규칙 표(T301 §0ⓐ)를 그대로 지킨다: 활성 청크가 있으면 `qtResources` 가 정본이고,
+//   없으면 색인(`resourcesAtCell`)에 **수확 장부와 게임일을 넘겨** 청크와 같은 답을 받는다.
+function _t325TreesAtCell(cellX, cellY) {
+  const px = (cellX | 0) * 32 + 16, py = (cellY | 0) * 32 + 16;
+  const out = [];
+  const near = qtResources ? qtResources.queryCircle(px, py, 24) : [];
+  for (const r of near) {
+    if (r.type !== 'tree' && r.type !== 'sapling') continue;
+    if (Math.floor(r.x / 32) !== (cellX | 0) || Math.floor(r.y / 32) !== (cellY | 0)) continue;
+    out.push(r);
+  }
+  if (out.length) return out;
+  let a = [];
+  try {
+    a = resourcesAtCell(ZONE_ID, cellX | 0, cellY | 0,
+      { biome: ZONE.biome, chunkSize: chunkManager.chunkSize, harvestedSet: harvestedSeeds, gameDay: gameDayNow() });
+  } catch (e) { a = []; }
+  for (const e of a) if (e.type === 'tree' || e.type === 'sapling') out.push(e);
+  return out;
+}
+// ★★[T325] **베는 순간.** 그 셀의 나무 하나를 빼고 **플레이어와 같은 전리품 표**를 돌려준다.
+//   ⚠수를 하나도 안 짓는다 — 얼마가 나오는지는 `lootOfResource` 가 답한다(크기 비례 · T124 도토리 포함).
+//   ⚠hp 를 깎지 않는다: 나무꾼의 하루는 **그루 단위**다(예산이 그루를 통째로 대야 벤다 — 반 그루 없음).
+//     사람이 도끼질하는 연출은 채집 갈래가 여전히 hp 로 한다(그 길은 손 안 댔다).
+function _t325CutTreeAt(cellX, cellY) {
+  const list = _t325TreesAtCell(cellX, cellY);
+  if (!list.length) return null;
+  const r = list[0];                                     // 색인·쿼드트리 모두 **생성 순서 첫 개체**(결정론)
+  const loot = lootOfResource(r);
+  const px = (cellX | 0) * 32 + 16, py = (cellY | 0) * 32 + 16;
+  if (resources.has(r.id)) _takeResourceEntity(r, anyViewerNear({ x: px, y: py }, AOI_RADIUS));
+  else if (r.isSeed && r.seedKey) _markHarvested(r.seedKey);   // 청크가 꺼져 있다 — 지울 개체가 없고 **장부만** 적는다
+  return loot;
 }
 
 // === 활성 청크 (12.2.b) — 사람 player + observer 위치 주변 청크만 시뮬레이션 ===
@@ -2579,15 +2629,7 @@ function npcStep(npc, dt, now) {
         if (r.hp <= 0) {
           const loot = lootOfResource(r);   // ★정본 하나 — 플레이어와 같은 표를 쓴다(사본 금지)
           for (const [k, v] of Object.entries(loot)) npc.inventory[k] = (npc.inventory[k] || 0) + v;
-          resources.delete(r.id);
-          chunkManager.removeResource(r);
-          resourcesDirty = true;
-          if (r.isSeed && r.seedKey) {
-            _markHarvested(r.seedKey);          // ★[T122] 벤 게임일까지 적는다
-          } else if (r.dbId) {
-            db.deleteResource(r.dbId);
-          }
-          broadcast({ type: 'resource_removed', id: r.id });
+          _takeResourceEntity(r, true);     // ★[T325] 빼는 여섯 줄을 **문 하나**로 모았다(아래 정의 · 행동 무변)
         } else {
           if (r.dbId) db.updateResourceHp(r.dbId, r.hp);
           broadcast({ type: 'resource_update', id: r.id, hp: r.hp });
@@ -2778,7 +2820,12 @@ SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, is
   mineDepthP: (f) => require('./specialty').mineDepthP(f),   // ★NPC도 같은 깊이 보정을 받는다(축이 하나다)
   mineChunkKg: (lvl) => require('./specialty').mineChunkKg(lvl),   // ★const Specialty 선언(3400+)보다 앞이라 TDZ — require 캐시로 우회
   liveBuildRow: _liveBuildRow, buildings, chunkManager,   // ★[생활 층 ③] 신축 크루의 라이브 실체화 경로(플레이어 완공과 동일 헬퍼 — 발명 금지)
-  worldPhase, dayPhaseRatio: WORLD.dayPhaseRatio, mobs, qtResources: () => qtResources });   // ★[생활 층 100% ②③] 일과 스케줄(하루 위상)·직업 실작업(자원·사냥감 현장) 소스
+  worldPhase, dayPhaseRatio: WORLD.dayPhaseRatio, mobs, qtResources: () => qtResources,
+  // ★[T325] 나무꾼 행위 — 문 둘만 넘긴다(색인은 존이 쥐고, 생활층은 묻고 벤다 · 사본 0)
+  t325TreesAtCell: (cx, cy) => _t325TreesAtCell(cx, cy),
+  t325CutTreeAt: (cx, cy) => _t325CutTreeAt(cx, cy),
+  // ★[T325] 전리품 표는 존이 쥔다 — 생활층은 "이 그루가 목재 몇 낱개냐"만 묻는다(사본 0)
+  t325LootOf: (r) => lootOfResource(r) });   // ★[생활 층 100% ②③] 일과 스케줄(하루 위상)·직업 실작업(자원·사냥감 현장) 소스
 // ★[11차 T3 환호] 도랑 콜라이더 적재 — SimVillages.init이 시범 마을 도랑을 실체화한 **직후**여야 한다.
 //   (이 줄이 없으면 도랑 행은 DB에 있는데 통행 판정은 열려 있는 '유령 도랑'이 된다.)
 console.log(`[${ZONE_ID}] 🏰 환호 콜라이더: ${refreshDitchCells()}셀 적재`);
@@ -3191,6 +3238,7 @@ const server = http.createServer((req, res) => {
       fish: (() => { try { return SimVillages.fishPerf ? SimVillages.fishPerf() : null; } catch (e) { return null; } })(),
       // ★[T324] 걷는 몸 관측 — 두 팔이 같은 창으로 보인다(손잡이 뒤가 아니다 · `?reset=1` 이 영점 조정).
       walk: walkPerf(_rst),
+      wood: (() => { try { return SimVillages.woodPerf ? SimVillages.woodPerf() : null; } catch (e) { return null; } })(),   // ★[T325] 나무꾼 관측(끔이면 null)
       tick: Object.assign({}, _tick, { ms: _tickMsStats(_rst), on: TICK_DEBT_ON, dtMax: DT_MAX, debtMax: TICK_DEBT_MAX,
         lagPct: _tick.wall > 0 ? +(100 * (_tick.wall - _tick.sim) / _tick.wall).toFixed(3) : null }) }));
     return;
