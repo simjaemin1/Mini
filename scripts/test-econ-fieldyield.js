@@ -544,6 +544,52 @@ console.log('\n⑱ 볏짚 — 밭 수확이 **아궁이 밑변**(`_grainToday`)�
     `쓰는 곳 ${writes.length} (셋이 정본)`);
 }
 
+// ── ⑲ 건축 상한 손잡이 — 정본 자리 하나 · 기본 끔 · 엔진 안 새 수 0 (T300) ──────
+console.log('\n⑲ 건축 상한 — 하루 지을 양의 상한이 **한 자리**에서만 걸리나(T300 · 손잡이 기본 끔)');
+{
+  const C = codeOf(SRC);
+  const _body = (name) => { const st = C.indexOf('function ' + name + '('); if (st < 0) return ''; let d = 0;
+    for (let j = C.indexOf('{', st); j < C.length; j++) { if (C[j] === '{') d++; else if (C[j] === '}') { d--; if (!d) return C.slice(st, j + 1); } } return ''; };
+
+  ok(/function buildCapOf\(v\) \{/.test(C), '⑲ 상한을 답하는 자리가 **하나**다(`buildCapOf`)');
+  ok(/_allocKnob\('T300_BUILD_CAP'\)/.test(C), '⑲ 손잡이 문법이 **정본 하나**다(`_allocKnob` — 랩 window · 서버 env)');
+
+  // ★걸리는 자리가 하나 — `built` 를 상한으로 깎는 줄이 레포 전수 하나여야 한다
+  const capLines = C.split('\n').filter((L) => /built = _cap|built > _cap/.test(L) && !/^\s*\/\//.test(L));
+  ok(capLines.length === 1, '⑲ ★★★`built` 를 상한으로 깎는 줄이 **하나**다(두 곳에 걸면 그게 사본)', `${capLines.length}줄`);
+  ok(/built \*= 0\.3 \+ 0\.7 \* stoneFrac;[\s\S]{0,400}?buildCapOf\(v\)/.test(C),
+    '⑲ ★상한은 **석재 배수 뒤**에 걸린다(끔 팔이 실측한 "하루 지은 양"과 같은 축)');
+
+  // ★★엔진 안에 캡 상수가 없다 — 값은 바깥에서 온다(새 수 0)
+  const capBody = _body('_t300Parse') + _body('buildCapOf');
+  ok(capBody && !/=\s*\d+\.\d+/.test(capBody.replace(/T300_BUILD_CAP/g, '')),
+    '⑲ ★★엔진 안에 **캡 상수가 없다** — 값은 손잡이가 바깥에서 준다(새 수 0)');
+
+  // ★기본 끔 · 네 꼴 · 표에 없는 마을
+  const save = process.env.T300_BUILD_CAP;
+  const reload = () => { delete require.cache[require.resolve(path.join(ROOT, 'sim', MUT || 'economy-sim.js'))];
+    return require(path.join(ROOT, 'sim', MUT || 'economy-sim.js')); };
+  try {
+    delete process.env.T300_BUILD_CAP;
+    ok(reload().buildCapOf({ name: '농촌1' }) === null, '⑲ ★미설정이면 **끔**(상한 없음 — 넷째 판 비트 동일의 뿌리)');
+    process.env.T300_BUILD_CAP = '0';
+    ok(reload().buildCapOf({ name: '농촌1' }) === null, '⑲ `=0` 되돌림도 끔이다');
+    process.env.T300_BUILD_CAP = '4.4';
+    const e1 = reload();
+    ok(e1.buildCapOf({ name: '농촌1' }) === 4.4 && e1.buildCapOf({ name: '임업2' }) === 4.4,
+      '⑲ 수 하나면 **절대 캡**(마을 무관 · T275 ⓐ 꼴)');
+    process.env.T300_BUILD_CAP = '농촌1:2.1,임업2:14.27';
+    const e2 = reload();
+    ok(e2.buildCapOf({ name: '농촌1' }) === 2.1 && e2.buildCapOf({ name: '임업2' }) === 14.27,
+      '⑲ ★`마을:값` 표면 **마을별 캡**(T264 꼴 · PM 이 고른 꼴)');
+    ok(e2.buildCapOf({ name: '어촌9' }) === null,
+      '⑲ ★★표에 **없는 마을은 상한 없음** — 약한 마을을 덤으로 조이지 않는다');
+  } finally {
+    if (save === undefined) delete process.env.T300_BUILD_CAP; else process.env.T300_BUILD_CAP = save;
+    reload();
+  }
+}
+
 // ── ⑨ 3사본 ────────────────────────────────────────────────────────────────
 console.log('\n⑨ 3사본 · 소스 계약');
 {

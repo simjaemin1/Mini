@@ -286,6 +286,7 @@ const M = vils.map(() => ({ harvestN: 0, units: 0, foodEq: 0, sow: 0, fDays: 0, 
   woodCons: 0,        // Σ `_consDay.wood` — `_cons` 로 잡히는 유출 **둘뿐**(연료 `:3028` + 건축 `:3047`)
   woodBuilt: 0,       // Σ 건축이 먹은 목재 = Σ(그날 지은 양) × HOUSE_WOOD(정본에서 읽은 값)
   builtSum: 0,        // Σ 그날 지은 수용력(= housing_t − housing_{t−1}×(1−HOUSE_DECAY))
+  builtMax: 0,        // ★[T300] 그 마을의 **실측 최대 일일 건축** — 캡 값의 밑변(관측 전용)
   woodStockSum: 0, woodZeroDays: 0,   // 재고 평균 · **한 채도 못 지을 만큼 모자란 날**(재고 < HOUSE_WOOD)
   priceWoodSum: 0, priceWoodN: 0,     // 목재 그림자가격 표본(식량과 같은 자리·같은 문법)
   fuelCovSum: 0,
@@ -333,6 +334,7 @@ for (let day = 0; day < DAYS; day++) {
       const _b = _h - m._hPrev * (1 - HOUSE_DECAY);
       m._builtToday = _b > 1e-12 ? _b : 0;
       if (_b > 1e-12) { m.builtSum += _b; if (HOUSE_WOOD != null) m.woodBuilt += _b * HOUSE_WOOD; }
+      if (_b > m.builtMax) m.builtMax = _b;   // ★[T300] 관측 전용
     }
     if (_h != null) m._hPrev = _h;
     m.woodProd += +((ev.dailyProductionBuf && ev.dailyProductionBuf.wood) || 0);
@@ -464,6 +466,7 @@ for (let i = 0; i < world.villages.length; i++) {
     ledgerDays: m.ledgerDays, houseUp: m.houseUp, houseDown: m.houseDown, houseDelta: +m.houseDelta.toFixed(2),
     woodProd: +m.woodProd.toFixed(1), woodCons: +m.woodCons.toFixed(1), woodBuilt: +m.woodBuilt.toFixed(1),
     woodFuel: +(m.woodCons - m.woodBuilt).toFixed(1), builtSum: +m.builtSum.toFixed(2),
+    builtMax: +m.builtMax.toFixed(6),   // ★[T300] 캡 값의 밑변(관측 전용)
     woodStockMean: +(m.woodStockSum / DAYS).toFixed(2), woodZeroDays: m.woodZeroDays,
     woodStockEnd: +((v.storage.wood || 0)).toFixed(1),
     woodImported: +((v.tradeStats && v.tradeStats.woodImported) || 0).toFixed(1),
