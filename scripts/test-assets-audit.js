@@ -407,6 +407,9 @@ for (const [d, xs] of Object.entries(byDir).sort((A, B) => sum(B[1]) - sum(A[1])
 }
 console.log(`  · 자산 전수 ${ASSETS.length}장 · ${(sum(ASSETS) / 1e6).toFixed(1)} MB · 잠긴 것 ${locked}`);
 
+// ★[T308] 꼬리를 함수로 — ⑥ 의 재압축 대조가 **비동기**(sharp)라 그 절이 끝난 뒤에 마무리해야 한다.
+//   sharp 가 없으면 ⑥ 가 동기로 끝나고 바로 `finish()` 가 불린다(길이 둘이 아니라 **한 자리**다).
+function finish() {
 if (JSONI >= 0 && process.argv[JSONI + 1]) {
   fs.writeFileSync(process.argv[JSONI + 1], JSON.stringify(ASSETS.map((a) => ({
     rel: a.rel, dir: a.dir, ext: a.ext, bytes: a.bytes, sha1: a.sha1, refs: a.refs, orphan: a.orphan,
@@ -421,3 +424,98 @@ if (SELFTEST) {
 }
 console.log('\n결과: ' + (fail ? `FAIL(${fail})` : 'PASS'));
 process.exit(fail ? 1 : 0);
+}
+
+// ── ⑥ 반례 — 화소 자가 **무엇에 둔하고 무엇에 예민한지** [T308] ──────────────
+//
+// T303 이 자를 webp 까지 넓히며 **그 자가 둔하지 않다는 것도 쟀다**: 같은 RGBA 를 무손실
+// `effort` 0/4/6 으로 다시 구우면 화소 해시가 셋 다 달랐고, **완전투명 화소를 빼고 견주면 다른 화소 0** 이었다.
+// 범인은 안 보이는 값(투명 아래 RGB)을 인코더가 고쳐 쓰는 것(alpha cleaning)이었다.
+// T308 이 자를 고쳤다 — `a === 0` 이면 RGB 를 0 으로 놓고 잰다. 이 절은 그 고침을 **양쪽으로** 못 박는다:
+//   ⓐ 압축기를 갈아도 **같은 해시**(옛 자로는 달랐다 — 같은 판에서 둘 다 찍는다)
+//   ⓑ **보이는** 화소 하나를 1 바꾸면 **다른 해시** — 둔해진 게 아니라 **안 보이는 데만** 둔하다
+//   ⓒ 투명 아래 RGB 만 바꾸면 **같은 해시**
+// ⚠반투명(`0 < a < 255`)은 안 만진다 — 그건 보인다. ⓑ 가 그 자리를 지킨다.
+console.log('\n⑥ 반례 — 화소 자는 **안 보이는 데만** 둔하다 [T308]');
+{
+  const A = require('./asset-lock.js');
+  const LK = JSON.parse(fs.readFileSync(A.LOCK, 'utf8'));
+  // ★옛 자(대조용) — 정규화 없이 재는 것. 이 줄이 있어야 "고쳤다"가 수로 보인다.
+  const rawHash = (im) => sha1(Buffer.concat([Buffer.from(`${im.width}x${im.height}|`), Buffer.from(im.data)])).slice(0, 16);
+
+  // 표본은 손으로 안 적는다 — 잠금표에서 **투명이 실제로 있는** 것을 확장자별로 둘씩 고른다.
+  const pick = (ext, n) => {
+    const out = [];
+    for (const [g, gg] of Object.entries(A.groups(LK))) {
+      for (const f of A.filesOf(gg)) {
+        if (out.length >= n || !f.toLowerCase().endsWith(ext) || A.rulerOf(f) !== 'pixel') continue;
+        const p = path.join(gg.dir, f);
+        const im = A.decodeImage(p);
+        const s = A.alphaStats(im.data);
+        if (s.clear > 0 && s.clear < s.n) out.push({ p, rel: `${g}/${f}`, im, s });   // 투명도 있고 보이는 것도 있다
+      }
+      if (out.length >= n) break;
+    }
+    return out;
+  };
+  const samples = [...pick('.png', 2), ...pick('.webp', 2)];
+  ok(samples.length === 4 && samples.every((x) => x.s.clear > 0),
+     `⓪ 표본 넷이 서 있다(PNG 둘 · webp 둘 · **투명이 실제로 있는 것**)`,
+     samples.map((x) => `${x.rel} 투명 ${(x.s.clear / x.s.n * 100).toFixed(0)}%`).join(' · '));
+
+  // ⓑ 보이는 화소 하나를 1 바꾸면 다른 해시 ─ 자가 둔해진 게 아니다
+  const bBad = [];
+  for (const x of samples) {
+    const d = Buffer.from(x.im.data);
+    let i = -1;
+    for (let j = 0; j < d.length; j += 4) if (d[j + 3] > 0) { i = j; break; }   // 첫 **보이는** 화소
+    if (i < 0) { bBad.push(`${x.rel}:보이는화소0`); continue; }
+    d[i] = (d[i] + 1) & 0xff;                                                   // R 을 딱 1
+    if (A.pixelHashOf(x.im.width, x.im.height, d) === A.pixelHashOf(x.im.width, x.im.height, x.im.data)) bBad.push(x.rel);
+  }
+  ok(bBad.length === 0, `ⓑ ★**보이는** 화소 하나의 R 을 1 바꾸면 **다른 해시** — 어긋난 표본 ${bBad.length}개`,
+     bBad.join(' ') || `${samples.length}/4 전부 문다(둔해진 게 아니라 **안 보이는 데만** 둔하다)`);
+
+  // ⓒ 투명 아래 RGB 만 바꾸면 같은 해시 ─ 인코더가 고쳐 쓰는 그 자리
+  const cBad = [], cNote = [];
+  for (const x of samples) {
+    const d = Buffer.from(x.im.data);
+    let n = 0;
+    for (let j = 0; j < d.length; j += 4) if (d[j + 3] === 0) { d[j] = 0xff; d[j + 1] = 0x7f; d[j + 2] = 0x01; n++; }
+    cNote.push(`${x.rel} ${n}화소`);
+    if (A.pixelHashOf(x.im.width, x.im.height, d) !== A.pixelHashOf(x.im.width, x.im.height, x.im.data)) cBad.push(x.rel);
+    if (rawHash({ width: x.im.width, height: x.im.height, data: d }) === rawHash(x.im)) cBad.push(`${x.rel}:대조실패`);
+  }
+  ok(cBad.length === 0, `ⓒ ★투명 아래 RGB 를 전부 뒤엎어도 **같은 해시**(그리고 옛 자로는 **달랐다**) — 어긋난 표본 ${cBad.length}개`,
+     cBad.join(' ') || cNote.join(' · '));
+
+  // ⓐ 무손실 재압축 ─ 진짜 인코더가 있어야 한다. 픽스처를 저장소에 굽어 넣지 않고 **런타임에** 굽는다.
+  let sharp = null;
+  try { sharp = require('sharp'); } catch (e) { /* CI 엔 없다 */ }
+  if (!sharp) {
+    console.log('     · ⓐ 무손실 재압축 대조: **sharp 없음 · 건너뜀**(저장소 의존성 0 — 픽스처를 구워 넣지 않는다).');
+    console.log('       ⓒ 가 같은 것을 **인코더 없이** 이미 재 놨다(투명 아래 RGB 를 뒤엎어도 같은 해시).');
+    finish();
+  } else {
+    const rows = [];
+    (async () => {
+      for (const x of samples.filter((s) => s.p.endsWith('.webp'))) {
+        const news = new Set(), olds = new Set();
+        for (const eff of [0, 4, 6]) {
+          const buf = await sharp(Buffer.from(x.im.data),
+            { raw: { width: x.im.width, height: x.im.height, channels: 4 } })
+            .webp({ lossless: true, effort: eff }).toBuffer();
+          const im = require('@cwasm/webp').decode(buf);
+          news.add(A.pixelHashOf(im.width, im.height, im.data));
+          olds.add(rawHash(im));
+        }
+        rows.push({ rel: x.rel, news: news.size, olds: olds.size });
+      }
+      const bad = rows.filter((r) => r.news !== 1 || r.olds !== 3);
+      ok(bad.length === 0,
+         `ⓐ ★무손실 재압축 effort 0/4/6 — **새 자는 해시 하나** · 옛 자는 셋(그게 T303 이 본 거짓 빨강이다)`,
+         rows.map((r) => `${r.rel} 새 ${r.news}종 / 옛 ${r.olds}종`).join(' · '));
+      finish();
+    })();
+  }
+}

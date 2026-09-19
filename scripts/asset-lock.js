@@ -66,11 +66,40 @@ const bakeBoxLine = (b) => { b = b || bakeBox();
 
 // ★화소 해시 — 디코드한 RGBA + 크기. 크기를 같이 넣는 이유: 같은 화소열이라도
 //   68×38 과 38×68 은 **다른 그림**이다(전치는 바이트만으로는 안 걸린다).
-function pixelHash(p) {
+/** ★[T308] 화소 해시의 알맹이 — **경로가 아니라 화소**를 받는다(하네스가 파일 없이 반례를 먹일 수 있게).
+ *  자는 여기 **한 자리**뿐이고 PNG·webp 가 같은 함수를 쓴다(사본 0).
+ *
+ *  ★**완전투명 아래 RGB 는 0 으로 놓고 잰다.** 잠금의 뜻은 "**보이는 그림**이 바뀌었나"인데,
+ *  `a === 0` 인 화소의 RGB 는 화면에 한 점도 기여하지 않고 **인코더가 제 맘대로 고쳐 쓴다**
+ *  (webp 의 alpha cleaning). T303 실측: 같은 RGBA 를 무손실 `effort` 0/4/6 으로 다시 구우면
+ *  화소 해시가 셋 다 달랐고(전체 기준 85,602~93,237화소 차이), **투명을 빼고 견주면 다른 화소 0** 이었다.
+ *  ⇒ 그 자리에 반응하면 재압축마다 **거짓 빨강**이 난다. T246 의 "IDAT 는 압축기를 잰다"와 같은 줄이다.
+ *  ⚠**반투명(`0 < a < 255`)은 안 만진다** — 그건 보인다. 건드리는 것은 `a === 0` 하나뿐이다. */
+function pixelHashOf(width, height, data) {
+  const px = Buffer.from(data);                      // 원본 버퍼를 안 고친다(부르는 쪽이 다시 쓴다)
+  for (let i = 0; i < px.length; i += 4) {
+    if (px[i + 3] === 0) { px[i] = 0; px[i + 1] = 0; px[i + 2] = 0; }
+  }
+  return sha1(Buffer.concat([Buffer.from(`${width}x${height}|`), px])).slice(0, CUT);
+}
+/** 화소 수를 세어 준다 — 반례 하네스가 "이 표본에 투명이 실제로 있나"를 먼저 보고 자명 통과를 막는다. */
+function alphaStats(data) {
+  let clear = 0, semi = 0, dirty = 0, n = 0;
+  for (let i = 0; i < data.length; i += 4) {
+    n++; const a = data[i + 3];
+    if (a === 0) { clear++; if (data[i] || data[i + 1] || data[i + 2]) dirty++; }
+    else if (a < 255) semi++;
+  }
+  return { n, clear, semi, dirty };
+}
+function decodeImage(p) {
   const buf = fs.readFileSync(p);
-  const im = /\.webp$/i.test(p) ? require('@cwasm/webp').decode(buf)   // [T303 · #32 ⓐ]
-                                 : require('pngjs').PNG.sync.read(buf);
-  return sha1(Buffer.concat([Buffer.from(`${im.width}x${im.height}|`), Buffer.from(im.data)])).slice(0, CUT);
+  return /\.webp$/i.test(p) ? require('@cwasm/webp').decode(buf)   // [T303 · #32 ⓐ]
+                             : require('pngjs').PNG.sync.read(buf);
+}
+function pixelHash(p) {
+  const im = decodeImage(p);
+  return pixelHashOf(im.width, im.height, im.data);
 }
 const fileHash = (p) => sha1(fs.readFileSync(p)).slice(0, CUT);
 
@@ -174,4 +203,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { pixelHash, fileHash, lockValue, rulerOf, groups, filesOf, keyOf, check, bakeBox, bakeBoxLine, LOCK, AST, RULE_LINE, CUT };
+module.exports = { pixelHash, pixelHashOf, alphaStats, decodeImage, fileHash, lockValue, rulerOf, groups, filesOf, keyOf, check, bakeBox, bakeBoxLine, LOCK, AST, RULE_LINE, CUT };
