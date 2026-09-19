@@ -67,22 +67,33 @@
 | **게시판만**(`T274_BOARD_FOOD`) | 장부만 눈을 뜬다 · 세계 무변 · `일/건` 반토막 | 게시 총수는 안 는다 — **구성**만 바뀐다 · ⚠낼 수 없는 부족이 15→29종(아래 N-벽) |
 | **여섯 같이**(`T263_FOOD_CONS`) | 가격·부패까지 | 인구 −9.3%(방향만) · 소멸 0 · 폭 11.8 |
 
-## 15-벽. ★★[T281 2026-09-13] **낼 수 없는 의뢰는 의뢰가 아니라 벽이다** — `fromEcon` 전수 (문서 · 코드 0)
+## 15-벽. ★★[T281 2026-09-13 · **T310 2026-09-19 정정**] **낼 수 없는 의뢰는 의뢰가 아니라 벽이다** — `fromEcon` 전수 (문서 · 코드 0)
 
 > 게시판이 부족을 **알아도** 의뢰가 안 서는 자리가 있다. 그 벽의 이름은 `DEL.fromEcon` 이고,
 > 정본은 `villages.playerVillageDepositMap()` **하나**다(장부는 그 표를 주입받는다 · 사본 금지).
+>
+> ★**정정 둘**(T310 · 실측으로 고친다):
+> ⓐ **벽은 15 가 아니라 10 이다** — T302(`38b075b7` → main `21168081` 착지)가 `salmon`·`shrimp`·`crab`·`oyster`·`seaweed`
+>   다섯 줄을 표에 넣었다. 아래 표의 15 는 **그 착지 전의 수**다.
+> ⓑ ★★**남은 열이 "동사가 없다"는 것은 틀렸다** — 열 중 **일곱은 이미 플레이어 손에 온다**(농사·나무 열매).
+>   T281 이 채집 정본(`forage.KO`) 하나만 보고 "얻을 길 자체가 없다"고 적은 것인데, 동사는 거기 말고도 있었다.
+>   진짜로 없는 것은 **셋**이고, 그중 하나(`vegetable`)는 동사가 아니라 **이름** 문제다. 아래 새 표가 그 자리다.
 
-### 세 집합 — 식사 사다리 24종 · 낼 수 있는 재화 16종 · 게시되는 것
+### 세 집합 — 식사 사다리 24종 · 낼 수 있는 재화 **21종**(T302 뒤) · 게시되는 것
 
 | 집합 | 수 | 목록 |
 |---|---|---|
-| **낼 수 있다**(`fromEcon` · 정본 19쌍 → 재화 16) | **16** | `food` · `fish` · `meat` · `fruit` · `cooked_food` · `dried_fish` · `dried_fruit` · `smoked_meat` · `pickled_veg` · `herb` · `hide` · `wood` · `stone` · `ore` · `iron` · `salt` |
+| **낼 수 있다**(`fromEcon` · 정본 **24쌍 → 재화 21**) | **21** | `food` · `fish` · `meat` · `fruit` · `cooked_food` · `dried_fish` · `dried_fruit` · `smoked_meat` · `pickled_veg` · `herb` · `hide` · `wood` · `stone` · `ore` · `iron` · `salt` **+ T302 다섯**(`salmon` · `shrimp` · `crab` · `oyster` · `seaweed`) |
 | **식사 사다리**(`consumeFood` 가 빼는 것) | **24** | 위 넷(`food`·`fish`·`meat`·`cooked_food`) + 생곡 셋 + 채집·특산 열둘 + 보존식 넷 |
-| **둘 다**(= 게시될 수 있는 식량) | **9** | `food` · `fish` · `meat` · `fruit` · `cooked_food` + 보존식 넷 |
-| **사다리인데 못 낸다** | **15** | `wheat` · `rice` · `barley` · `vegetable` · `mushroom` · `chestnut` · `walnut` · `acorn` · `seaweed` · `grape` · `salmon` · `shrimp` · `crab` · `oyster` · `mulberry_fruit` |
+| **둘 다**(= 게시될 수 있는 식량) | **14** | `food` · `fish` · `meat` · `fruit` · `cooked_food` + 보존식 넷 **+ T302 다섯** |
+| **사다리인데 못 낸다** | ~~15~~ → **10** | `wheat` · `rice` · `barley` · `vegetable` · `mushroom` · `chestnut` · `walnut` · `acorn` · `grape` · `mulberry_fruit` |
 | 낼 수 있는데 사다리 밖 | 7 | `hide` · `herb` · `wood` · `stone` · `ore` · `iron` · `salt`(먹는 것이 아니다 — 정상) |
 
-### ★벽에 부딪히는 품목 수 — 캐논을 켜면 **15 → 29종**
+★**다섯 줄이 벽을 15 → 10 으로 닫았다.** 그런데 T302 실측은 그 다섯의 **의뢰가 0/0/0** 이라고 답했다 —
+**벽(`fromEcon`)과 게시(`_consEMA > 0`)는 다른 문**이기 때문이다(14-흐름눈 규약 1·2).
+①낼 수 있나는 열렸고(곳간 납품·거래소는 **오늘부터**), ②부족이 나나는 **#33 이 여는 문**이다.
+
+### ★벽에 부딪히는 품목 수 — 캐논을 켜면 **15 → 29종** (⚠T302 **이전**의 수 — 아래 표는 그대로 둔다)
 
 "부족 에지는 서는데 의뢰가 0"인 품목(3시드 800일 51마을 실측):
 
@@ -97,14 +108,35 @@
 
 ### 플레이어가 그 품목을 **얻을 수는 있나** (있는 동사만)
 
-| 품목 | 플레이어가 얻나 | 곳간에 낼 수 있나 | 어긋남 |
-|---|---|---|---|
-| `salmon`·`shrimp`·`crab`·`oyster`·`seaweed` | ✅ **낚시·갯벌**(`server/fishing.js` `SPECIES_BY_BIOME` · 품목 id 가 econ 재화 그대로) | **✗** | ★**잡을 수는 있는데 낼 수가 없다** — 표 한 줄이면 닫힌다 |
-| `mushroom`·`vegetable`·`wheat`·`rice`·`barley`·`chestnut`·`acorn`·`walnut`·`grape`·`mulberry_fruit` | **✗**(채집 정본 `forage.KO` 는 `twig`·`pebble`·`fiber`·`brine` 넷뿐) | ✗ | 얻을 길 자체가 없다 — 표가 아니라 **동사**가 필요하다 |
+★★[T310 정정판] 동사는 **일곱 개**다 — `forage.KO` 만 보면 안 된다:
 
-★**둘은 값이 다르다.** 앞의 다섯은 **`playerVillageDepositMap` 에 줄 다섯**을 더하면 닫힌다(새 동사 0).
-뒤의 열은 **새 동사**가 필요하다(채집·농사 품목을 플레이어가 손에 넣는 길) — 그건 이 영역이 아니다.
-⇒ 회부: **`fromEcon` 품목 추가는 재민 캐논**(#33 아래 한 줄) · 앞의 다섯만 먼저 여는 것도 한 갈래다.
+| 동사 | 파일·자리 | 무엇이 플레이어 손에 오나 |
+|---|---|---|
+| 농사(심기→수확) | `server/zone.js` `tryHarvest` | **작물 34종**(`server/crops.js` `IDS`) — 씨앗은 덤불의 야생 채종(`lootOfResource` → `Crops.wildSeedAt`) |
+| 나무 열매 따기 | `server/zone.js` `tryPickFruit` | `acorn`·`chestnut`·`mulberry_fruit`·`grape`(`server/trees.js` `fruitIds`) |
+| 자연물 채취 | `server/zone.js` `lootOfResource` | `wood`·`twig`·`stone`·`pebble`·`berry`·`fiber`·`herb`·`ore`·`meteoric_iron`·`seed_berry`·**`acorn`**(T124 벌목 부산물 0.06) |
+| 채집 표 | `server/forage.js` `KO` | `twig`·`pebble`·`fiber`·`brine` 넷 |
+| 낚시 | `server/fishing.js` `SPECIES_BY_BIOME` | 어종 14종 |
+| 갯벌 | `server/tidal.js` `CATCH` | `seaweed`·`oyster`·`abalone` |
+| 보존 가공 | `server/spoil.js` `PRESERVE` | 보존식 6종 |
+
+### 남은 열 — **어느 문이 막혔나** (T310 실측 · 코드 0)
+
+| 품목 | 플레이어 손에 오는 동사 | 곳간에 낼 수 있나 | 막힌 문 |
+|---|---|---|---|
+| `wheat`·`rice`·`barley` | ✅ 농사(`tryHarvest` · 야생 채종으로 씨앗까지 닫혀 있다) | ✗ | ★**표다** — `PV_DEPOSIT_MAP` 세 줄 |
+| `chestnut`·`grape`·`mulberry_fruit` | ✅ 나무 열매(`tryPickFruit`) | ✗ | ★**표다** — 세 줄 |
+| `acorn` | ✅ 나무 열매 **+** 벌목 부산물(둘) | ✗ | ★**표다** — 한 줄 |
+| `vegetable` | △ 채소 작물 **9종**은 온다(`cabbage`·`radish`·`turnip`…) — 그런데 `vegetable` 이라는 **품목은 없다** | ✗ | ★**이름이다** — econ 집계 재화라 작물 9종을 접는 줄이 필요하다 |
+| `mushroom` | ✗ **어느 동사에도 없다** | ✗ | ★**동사다** — 숲에서 버섯을 따는 동사가 없다 |
+| `walnut` | ✗ **어느 동사에도 없다**(`trees` 표에 호두나무 종이 없다 · econ 은 `wood × 0.15` 로 낸다) | ✗ | ★**동사다** — 종 하나 |
+
+★**T281 의 "열 개 전부 동사가 필요하다"는 틀렸다.** 실제로는 **표 일곱 · 이름 하나 · 동사 둘**이다.
+⇒ 회부 셋으로 갈린다: ⓐ **표 일곱 줄**(T302 와 같은 값의 카드 — 새 동사 0) ·
+ⓑ **`vegetable` 접기**(집계 재화에 작물 9종을 대응 — 판단이 하나 든다: 무게·열량이 작물마다 다르다) ·
+ⓒ **동사 둘**(버섯 채집 · 호두나무 종) — 생산 캐논(`설계/설계_생산_실체.md`)의 자리다.
+⚠ⓐ 를 켜도 **의뢰가 바로 서지는 않는다** — T302 가 다섯으로 이미 보였다(`_consEMA` 가 0 이면 부족이 안 난다).
+   벽을 다 닫는 일과 게시판이 말을 거는 일은 **끝까지 다른 문**이다.
 
 ## 13-약속. ★★2026-09-06 [T142] — **약속의 값도 하역 뒤를 본다** (완료 · 푸시 `edeb8d35` · 재민 승인 2026-09-07)
 
