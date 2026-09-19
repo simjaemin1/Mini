@@ -2900,6 +2900,7 @@ function _warBuildRectIndex(force) {
   for (const r of rects) for (let x = r[0]; x <= r[2]; x++) for (let y = r[1]; y <= r[3]; y++) cells.add(x * 65536 + y);
   state._warRects = rects; state._warRectCells = cells; state._warRectAt = state.world ? state.world.day : 0;
   state._warTerrMemo = new Map();   // 지형 메모도 같이 비운다(위 _warTerrBlocked 주석)
+  state._warTreeMemo = new Map();   // ★[T295 후속] 나무 메모도 같은 자리에서 — 그 사이 **벤 나무**가 다음 교전에 반영된다
   return rects.length;
 }
 function _warRectHas(cx, cy) { const c = state._warRectCells; return !!(c && c.has(cx * 65536 + cy)); }
@@ -2911,11 +2912,30 @@ function _warTerrBlocked(ix, iy) {
   if (v === undefined) { try { v = state.deps.isTerrainBlockedLocal(ix * SZ + SZ / 2, iy * SZ + SZ / 2) ? 1 : 0; } catch (_) { v = 0; } M.set(k, v); }
   return v === 1;
 }
+// ★★[T295 후속 2026-09-19 · T284 회부 "나무는 아직 안 본다" 를 닫는다] **나무 술어 — 지형 메모와 같은 자리·같은 규약.**
+//   T284 가 나무를 뺀 이유는 하나였다: 존 나무는 **청크가 켜질 때만** 생기는 시드 자원이라 관측자에 따라 답이 갈렸다
+//   (하네스 ⓓ 결정성과 충돌). T301 이 그 구멍을 메웠다 — `chunk.resourceAt/treeBlockerAt` 은 **청크 활성과 무관**하게
+//   같은 씨에서 같은 답을 낸다. 그래서 이제 붙일 수 있다(자리·키·비우는 곳은 T309 §0ⓑ 표 그대로).
+//   ⚠술어는 **호스트(zone)가 주입**한다(`deps.treeCellBlocked`) — 벤 나무 장부(`harvestedSeeds`)와 재생 단계를
+//     쥔 쪽이 존이기 때문이다(사본 0 · 청크가 켜질 때 쓰는 그 인자 그대로). 미주입(랩·하네스 기본)이면 **빈 들판**.
+//   ⚠`_warNoCollide`(하네스 대조 팔)는 여기도 문다 — 콜라이더를 끈 팔은 나무도 안 막아야 대조가 성립한다.
+function _warTreeCell(ix, iy) {
+  if (state._warNoCollide) return false;
+  const fn = state.deps && state.deps.treeCellBlocked; if (!fn) return false;
+  const M = state._warTreeMemo || (state._warTreeMemo = new Map()); const k = ix * 65536 + iy;
+  let v = M.get(k);
+  if (v === undefined) { try { v = fn(ix, iy) ? 1 : 0; } catch (_) { v = 0; } M.set(k, v); }
+  return v === 1;
+}
 function _warBlockedCell(cx, cy) {
   if (state._warNoCollide) return false;   // ★하네스 대조 팔 전용(T284 ⓐ 자명 통과 금지) — 운영 경로엔 이 값을 세우는 코드가 없다
   const ix = Math.floor(cx), iy = Math.floor(cy);
   if (_warRectHas(ix, iy)) return true;
-  return _warTerrBlocked(ix, iy);
+  if (_warTerrBlocked(ix, iy)) return true;
+  // ★[T295 후속] 나무도 **여기** 있어야 한다. 어댑터에만 넣으면 대형이 병사를 숲 안에 세워 두고 풀어 주고,
+  //   battle-core 몸 클램프는 "이전 자리도 막힘" 이라 그 병사가 그 칸에 **갇힌다**(실측 518/980틱).
+  //   장애물은 한 곳에서 답한다 — 대형 걸음·슬롯·우회와 전투 스텝이 같은 답을 본다.
+  return _warTreeCell(ix, iy);
 }
 function _warRockCell(ix, iy) {   // 화살을 막는 지형 = 막힌 칸 중 물이 아닌 것(바위·도랑)
   if (!_warTerrBlocked(ix, iy)) return false;
@@ -2996,19 +3016,20 @@ function _warPolyWaypoint(poly, u, dirSign, key) {
 function _warWorld(fight) {
   const WL = state.warLive, MPC = WL.M_PER_CELL;
   const toCell = (m) => Math.floor(m / MPC);
+  const ix0 = toCell;
   const dirTo = (ux, uy, tx, ty) => { const dx = tx - ux, dy = ty - uy, d = Math.hypot(dx, dy); return d > 1e-6 ? { dx: dx / d, dy: dy / d, d } : null; };
   return {
-    blocked(x, y) { return _warBlockedCell(toCell(x), toCell(y)); },
+    blocked(x, y) { return _warBlockedCell(ix0(x), ix0(y)); },   // ★[T295 후속] 나무는 `_warBlockedCell` 안에 있다(한 곳)
     losBlocked(x1, y1, x2, y2) {   // 1.5m 간격 표본(battle-core 옛 건물 차단 간격 그대로)
       const dx = x2 - x1, dy = y2 - y1, d = Math.hypot(dx, dy), n = Math.ceil(d / 1.5);
-      for (let i = 1; i < n; i++) { const s = i / n, cx = toCell(x1 + dx * s), cy = toCell(y1 + dy * s); if (_warRectHas(cx, cy) || _warRockCell(cx, cy)) return true; }
+      for (let i = 1; i < n; i++) { const s = i / n, cx = toCell(x1 + dx * s), cy = toCell(y1 + dy * s); if (_warRectHas(cx, cy) || _warRockCell(cx, cy) || _warTreeCell(cx, cy)) return true; }   // ★나무가 화살을 막는다
       return false;
     },
     coverAt(x, y, pad) {
-      const rs = state._warRects; if (!rs) return false;
+      const rs = state._warRects;
       const cx = x / MPC, cy = y / MPC, p = pad / MPC;
-      for (const r of rs) if (cx >= r[0] - p && cx <= r[2] + 1 + p && cy >= r[1] - p && cy <= r[3] + 1 + p) return true;
-      return false;
+      if (rs) for (const r of rs) if (cx >= r[0] - p && cx <= r[2] + 1 + p && cy >= r[1] - p && cy <= r[3] + 1 + p) return true;
+      return _warTreeCell(Math.floor(cx), Math.floor(cy));   // ★나무 뒤도 엄폐다(건물 상자와 같은 답 · 나무는 칸 하나)
     },
     advance(ctx, u) {   // 적 본대(무게중심) → 없으면 목표(방어 마을 중심 · m). 지키는 쪽(holder)은 사거리 밖 적을 쫓지 않는다(추격 없음).
       if (fight.holder === u.side) return null;
