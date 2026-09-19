@@ -54,7 +54,28 @@
   const inDisc = (cx, cy, R, x, y) => { const ax = x + 0.5 - cx, ay = y + 0.5 - cy; return ax * ax + ay * ay < R * R; };   // 셀 중심(x+.5,y+.5)이 격자점(cx,cy) 반경 R 안(엄격<) — 전 구역 판정의 단일 원식(렌더도 같은 셀 집합=판정과 픽셀 일치)
   const discCells = (R) => { const o = [], B = Math.ceil(R); for (let dx = -B; dx < B; dx++) for (let dy = -B; dy < B; dy++) if ((dx + 0.5) * (dx + 0.5) + (dy + 0.5) * (dy + 0.5) < R * R) o.push([dx, dy]); return o; };
   const LOT_CELLS = discCells(LOT_R), LOT_GUARD = discCells(LOT_R + FARM_GAP), YARD_CELLS = discCells(HALL_YARD);   // 부지 원판(124셀 — 구 12×12 등적·적도폭 12), 부지+2 침수·완충 원판, 큰집 마당 원판(316셀)
-  const houseFarmBlock = (hx, hy, x, y) => inDisc(hx, hy, LOT_R + FARM_GAP, x, y), hallFarmBlock = (hx, hy, x, y) => inDisc(hx, hy, HALL_YARD + FARM_GAP, x, y);   // 농지 완충: 부지/마당 밖 정확 2타일(원이라 비대칭 구조적 불가)
+  const houseFarmBlock = (hx, hy, x, y) => inDisc(hx, hy, LOT_R + FARM_GAP, x, y), hallFarmBlock = (hx, hy, x, y) => inDisc(hx, hy, HALL_YARD + FARM_GAP, x, y);
+  // ★★[T315 2026-09-19 재민 #22] **집 간격은 값이 아니라 유도다** — 새 수 0 · 배수 0.
+  //   T298 이 켠 세계에서 집터 거부 사유의 65.8~66.2% 가 `집 간격 18` 이었다. 그 `18` 은 `villages.js` `HG` 와
+  //   랩 `L_HGAP` 에 **리터럴로** 박혀 있었고 어느 주석도 출처를 안 적었다. 그래서 유도했다 —
+  //   세 항 전부 **이 모듈의 정본**이고, 어느 것도 새로 만들지 않았다:
+  //     ⓐ 부지 원판  r = `LOT_R`(6.5)        — 집채(발자국 6×4)가 앉는 원판 `LOT_CELLS`(124셀)
+  //     ⓑ 농지 완충  + `FARM_GAP`(2)         — `houseFarmBlock` 이 밭을 막는 바로 그 칸(부지 밖 정확 2타일)
+  //     ⓒ 통로 한 칸 + `AISLE`(1)            — 수가 아니라 **격자 단위 하나**(두 완충 원판 사이로 걸어갈 칸)
+  //   ⇒ 두 집이 서로의 완충 원판을 침범하지 않고 사이에 통로 한 칸이 남는 **최소 중심거리**
+  //      = 2 × (LOT_R + FARM_GAP) + AISLE = **18**.  ← 지금 박혀 있는 그 수와 **같다**.
+  //   ★셀 집합으로 재도 **같은 답**이다(닫힌식과 독립 경로): 짝수 격자에서 `LOT_GUARD` 원판 둘이 겹치거나
+  //     8방 한 칸 팽창으로 닿는 오프셋의 최대 `hypot` 이 17.889 ⇒ 통과 조건 `hypot ≥ HG` 의 최소 정수 HG = 18.
+  //     ⚠둘이 **항상** 같지는 않다: 닫힌식은 연속 원 기준 **하한**이고 셀 원판은 반 칸 어긋난 이산 집합이라
+  //     상수에 따라 1 이 붙는다(FARM_GAP 3·5 에서 차 1). **정본 상수(6.5·2)에서는 정확히 같다** — 그게 이 수다.
+  //   ⇒ **`18` 은 튜닝값이 아니라 유도값이었다.** 그래서 T315 는 값을 안 바꾼다 — 리터럴을 **식으로** 바꾼다.
+  //   `HOUSE_GAP_LOT` 는 같은 문법에서 ⓒ 를 빼고 한쪽을 부지 원으로 낮춘 **`HALL_CLEAR` 문법**
+  //   (= 한 집의 완충 원이 다른 집의 **부지 원**을 침범하지 않는 최소 중심거리 = 15) — 값을 내리려면
+  //   세 항 중 무엇을 버리는지 고르는 일이고 그건 **재민 몫**이다. 그래서 제품 기본이 아니라 **진단 팔**이다.
+  const AISLE = 1;
+  const HOUSE_GAP_DERIVED = 2 * (LOT_R + FARM_GAP) + AISLE;   // 18 — 완충 원판 둘 비침범 + 통로 한 칸
+  const HOUSE_GAP_LOT = LOT_R + (LOT_R + FARM_GAP);           // 15 — HALL_CLEAR 문법(완충 원 ↔ 부지 원) · 회부 자료
+  const houseGap = (mode) => (+mode === 2 ? HOUSE_GAP_LOT : HOUSE_GAP_DERIVED);   // 농지 완충: 부지/마당 밖 정확 2타일(원이라 비대칭 구조적 불가)
   // ★★[T219 2026-09-12 재민 확정] **집터를 원하는가 — 규칙 하나.**
   //   랩(마을실험실·전쟁실험실)의 생활층과 서버 생활층이 **같은 규칙**을 물어야 하는 자리다.
   //   랩이 값비싸게 배운 것(랩 주석 그대로): 목표 층수를 **인구만** 보고 세면 데드락이 선다 —
@@ -399,6 +420,7 @@
 
   const API = { LAND_NEED, houseSiteWant, territoryTarget, HOUSE_MAX_FLOORS, TERR_PER_SIZE, TERR_PER_LOT, TERR_CORE,   // ★[T100 4판] 정본 — 밖(villages.js·계측기·하네스)이 이 값을 읽는다
     generate, footprintLand, axisAt, nearestBank, waterEDT, maskEDT, HOUSE_HALF, HOUSE_CAP: HOUSE_CAP_PER_FLOOR, HOUSE_CAP_PER_FLOOR, LAND_PER_HOUSE, landNeedPer, HALL_YARD, LOT_R, FARM_GAP, ALLEY_R, HALL_CLEAR, inDisc, LOT_CELLS, LOT_GUARD, YARD_CELLS, houseFarmBlock, hallFarmBlock,
+    AISLE, HOUSE_GAP_DERIVED, HOUSE_GAP_LOT, houseGap,   // ★[T315] 집 간격 유도 — 값이 아니라 식(사본 0)
     ditchRing, ditchConnectivity, DITCH_W, DITCH_AXIS_RATIO, DITCH_GATE_HALF, DITCH_MARGIN };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   if (typeof window !== 'undefined') window.VillageLayout = API;

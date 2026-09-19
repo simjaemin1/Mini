@@ -457,11 +457,16 @@ console.log('\n[I] 집터 방아쇠 — 정본 하나(T230)');
     if (!mf) wrn(`랩 ${f} L_MAXFL 을 못 찾았다`);
     else if (+mf[1] !== VL.HOUSE_MAX_FLOORS) bad(`랩 ${f} L_MAXFL ${mf[1]} ≠ 정본 HOUSE_MAX_FLOORS ${VL.HOUSE_MAX_FLOORS}`);
     else ok(`랩 ${f} L_MAXFL ${mf[1]} = 정본 HOUSE_MAX_FLOORS ${VL.HOUSE_MAX_FLOORS}`);
-    // 집 간격 — 랩 L_HGAP 과 서버 `HG`
-    const hg = H.match(/L_HGAP\s*=\s*([0-9]+)/), sg = LIVE.match(/HG\s*=\s*([0-9]+)/);
+    // 집 간격 — 랩 `L_HGAP` · 서버 `HG` 끔값 · 정본 유도값 **셋이 같은 수**인가(T315)
+    //   ★T315 전엔 "랩 리터럴 = 서버 리터럴" 만 봤다. 이제 셋째 자리가 생겼다(`HOUSE_GAP_DERIVED`) —
+    //     그리고 그 셋째가 **왜 그 수인지 아는** 유일한 자리다. 둘만 비교하면 같이 틀릴 수 있다.
+    const hg = H.match(/L_HGAP\s*=\s*([0-9]+)/);
+    const sg = LIVE.match(/HG\s*=\s*T315_HOUSE_GAP\s*===\s*'0'\s*\?\s*([0-9]+)\s*:/);
     if (!hg || !sg) wrn(`집 간격 상수를 한쪽에서 못 찾았다(랩 ${!!hg} · 서버 ${!!sg})`);
-    else if (hg[1] !== sg[1]) bad(`랩 ${f} L_HGAP ${hg[1]} ≠ 서버 HG ${sg[1]} — 기하가 갈렸다`);
-    else ok(`랩 ${f} L_HGAP ${hg[1]} = 서버 집 간격 HG ${sg[1]}`);
+    else if (hg[1] !== sg[1]) bad(`랩 ${f} L_HGAP ${hg[1]} ≠ 서버 HG 끔값 ${sg[1]} — 기하가 갈렸다`);
+    else if (+hg[1] !== VL.HOUSE_GAP_DERIVED)
+      bad(`랩·서버 집 간격 ${hg[1]} ≠ 정본 유도값 HOUSE_GAP_DERIVED ${VL.HOUSE_GAP_DERIVED} — 리터럴이 유도와 갈렸다(T315)`);
+    else ok(`랩 ${f} L_HGAP ${hg[1]} = 서버 HG 끔값 ${sg[1]} = 정본 유도값 \`HOUSE_GAP_DERIVED\` ${VL.HOUSE_GAP_DERIVED} — **셋이 같다**(T315)`);
     // 영토 목표 — 랩이 쓰는 세 수가 정본과 같나(T230 손잡이가 켜질 때 이 셋이 그 값이어야 한다)
     const pl = H.match(/\)\s*\)\s*\*\s*(\d+)\s*\+\s*(\d+)/);
     const hl = H.match(/_hLots\s*=[^;]*?\*\s*(\d+)\s*\+\s*(\d+)/);
@@ -495,6 +500,74 @@ console.log('\n[I] 집터 방아쇠 — 정본 하나(T230)');
         if (oldRule(pop, housing, builtFl, sites) !== mutated(pop, housing, builtFl, sites)) d2++;
     if (d2 > 0) ok(`[자명 통과 금지] 정본을 \`max\`→\`min\` 으로 비틀면 ${d2.toLocaleString()}점이 갈린다 — 비교가 실제로 문다`);
     else bad('[자명 통과 금지] 비틀어도 같은 답이 나온다 — 비교가 죽었다');
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// [J] ★★[T315] 집 간격 18 — **값이 아니라 유도인가** (두 경로가 같은 답을 내나 · 사본 0)
+// ══════════════════════════════════════════════════════════════════════════════
+//   T298 이 켠 세계에서 집터 거부의 66% 가 이 수였다. 그 수는 리터럴이었고 출처 주석이 없었다.
+//   T315 가 유도를 심었다 — 이 절은 그 유도가 **살아 있나**(상수를 비틀면 답이 따라 움직이나) 를 본다.
+//   묻는 것 넷:
+//     ⓐ 닫힌식이 정본 세 항으로만 서 있나 — `2 × (LOT_R + FARM_GAP) + AISLE`
+//     ⓑ **셀 집합**으로 재도 같은 수인가(독립 경로: `LOT_GUARD` 원판 둘 · 짝수 격자 · 8방 한 칸 팽창)
+//     ⓒ 켠 판(`houseGap(1)`)이 끔값과 같은가 ⇒ "리터럴이 유도값이었다" 의 기계 증명
+//     ⓓ [자명 통과 금지] `FARM_GAP` 을 비틀면 두 경로가 **같이** 움직이나(둘 다 상수를 실제로 읽는다)
+console.log('\n[J] 집 간격 유도 — 값이 아니라 식(T315)');
+{
+  const VLj = require(path.join(root, 'server', 'village-layout.js'));
+  // ⓐ 닫힌식
+  const closed = 2 * (VLj.LOT_R + VLj.FARM_GAP) + VLj.AISLE;
+  if (closed === VLj.HOUSE_GAP_DERIVED)
+    ok(`ⓐ 닫힌식 = 2 × (LOT_R ${VLj.LOT_R} + FARM_GAP ${VLj.FARM_GAP}) + AISLE ${VLj.AISLE} = **${closed}** = \`HOUSE_GAP_DERIVED\` — 세 항 전부 정본(새 수 0)`);
+  else bad(`ⓐ 닫힌식 ${closed} ≠ HOUSE_GAP_DERIVED ${VLj.HOUSE_GAP_DERIVED} — 유도가 값과 갈렸다`);
+  // ⓑ 셀 집합 — 정본 원판을 그대로 쥐고 센다(수를 다시 적지 않는다)
+  const cellGap = (guard) => {
+    const setOf = (ox, oy) => { const S = new Set(); for (const [dx, dy] of guard) S.add((ox + dx) + ',' + (oy + dy)); return S; };
+    const dil = (A) => { const o = new Set(); for (const k of A) { const i = k.indexOf(','), x = +k.slice(0, i), y = +k.slice(i + 1);
+      for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) o.add((x + a) + ',' + (y + b)); } return o; };
+    const hit = (A, B) => { for (const k of A) if (B.has(k)) return true; return false; };
+    const d0 = dil(setOf(0, 0));
+    let maxFail = 0, B = Math.ceil(2 * Math.max(...guard.map(([a, b]) => Math.hypot(a, b)))) + 4;
+    for (let dx = -B; dx <= B; dx += 2) for (let dy = -B; dy <= B; dy += 2) {   // ★짝수 격자 — 집터 규약(villages.js:4981·5173 · 랩 동일)
+      if (!dx && !dy) continue;
+      if (hit(d0, setOf(dx, dy))) { const h = Math.hypot(dx, dy); if (h > maxFail) maxFail = h; }
+    }
+    return { need: Math.floor(maxFail) + 1, maxFail };   // 통과 조건은 `hypot ≥ HG` ⇒ 깨지는 최대 hypot 을 넘는 최소 정수
+  };
+  const cg = cellGap(VLj.LOT_GUARD);
+  if (cg.need === VLj.HOUSE_GAP_DERIVED)
+    ok(`ⓑ 셀 집합으로도 **${cg.need}** — \`LOT_GUARD\`(${VLj.LOT_GUARD.length}셀) 원판 둘이 겹치거나 한 칸 팽창으로 닿는 최대 hypot ${cg.maxFail.toFixed(3)} ⇒ 최소 정수 = 닫힌식과 같다(독립 경로)`);
+  else bad(`ⓑ 셀 집합 ${cg.need} ≠ 닫힌식 ${VLj.HOUSE_GAP_DERIVED} — 두 경로가 갈린다(유도 해석이 틀렸다)`);
+  // ⓒ 켬 = 끔
+  const offLit = fs.readFileSync(path.join(root, 'server', 'villages.js'), 'utf8')
+    .match(/HG\s*=\s*T315_HOUSE_GAP\s*===\s*'0'\s*\?\s*([0-9]+)\s*:/);
+  if (!offLit) bad('ⓒ `villages.js` 에서 HG 끔값 리터럴을 못 찾았다 — 검사기가 낡았다');
+  else if (+offLit[1] === VLj.houseGap('1'))
+    ok(`ⓒ 켠 판 \`houseGap(1)\` = ${VLj.houseGap('1')} = 끔값 리터럴 ${offLit[1]} ⇒ **리터럴이 유도값이었다**(켬/끔 같은 세계 · T315 §0ⓐ 의 답)`);
+  else bad(`ⓒ houseGap(1) ${VLj.houseGap('1')} ≠ 끔값 ${offLit[1]} — 켜면 세계가 달라진다(카드 전제와 다르다)`);
+  // ⓓ 자명 통과 금지 — 상수를 비틀면 두 경로가 같이 움직여야 한다
+  {
+    const src = fs.readFileSync(path.join(root, 'server', 'village-layout.js'), 'utf8');
+    const mut = src.replace(/const HALL_YARD = 10, LOT_R = 6\.5, FARM_GAP = 2,/, 'const HALL_YARD = 10, LOT_R = 6.5, FARM_GAP = 3,');
+    if (mut === src) bad('ⓓ [자명 통과 금지] 변조판을 못 만들었다 — 검사기가 읽는 자리가 그 자리가 아니다');
+    else {
+      const tmp = path.join(require('os').tmpdir(), `t315-vl-${process.pid}.js`);
+      fs.writeFileSync(tmp, mut);
+      let M = null; try { M = require(tmp); } catch (e) { bad(`ⓓ 변조판 적재 실패 — ${String(e.message).split('\n')[0]}`); }
+      if (M) {
+        const cg2 = cellGap(M.LOT_GUARD);
+        // ★두 경로가 **같이 움직이나** 를 본다. 같은 수까지는 요구하지 않는다 —
+        //   닫힌식은 연속 원 기준 **하한**이고 셀 집합은 반 칸 어긋난 이산 원판이라 상수에 따라 1 이 붙는다.
+        //   (실측: FARM_GAP 0·1·2·4 에서 차 0 · 3·5 에서 차 1 — 정본 2 에서는 **정확히 같다**, 위 ⓑ.)
+        const moved = M.HOUSE_GAP_DERIVED !== VLj.HOUSE_GAP_DERIVED && cg2.need !== cg.need;
+        const bound = M.HOUSE_GAP_DERIVED <= cg2.need;
+        if (moved && bound)
+          ok(`ⓓ [자명 통과 금지] \`FARM_GAP\` 2→3 으로 비틀면 닫힌식 ${VLj.HOUSE_GAP_DERIVED}→${M.HOUSE_GAP_DERIVED} · 셀 집합 ${cg.need}→${cg2.need} — **둘 다 움직인다**(둘 다 상수를 실제로 읽는다 · 닫힌식 ≤ 셀 하한 관계 유지)`);
+        else bad(`ⓓ [자명 통과 금지] 비틀어도 안 움직이거나 하한 관계가 깨진다(닫힌식 ${M.HOUSE_GAP_DERIVED} · 셀 ${cg2.need}) — 유도가 죽었다`);
+      }
+      try { fs.unlinkSync(tmp); } catch (e) {}
+    }
   }
 }
 
