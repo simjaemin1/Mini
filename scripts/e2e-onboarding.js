@@ -86,6 +86,10 @@ async function waitHttp(url, tries = 900) {
   boot('central', 'central.js', { PORT: String(CPORT), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });
   boot('zone', 'zone.js', {
     PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB,
+    // ★[T319 2026-09-19] `?as=<이름>` 은 이제 **개발 손잡이 뒤**다(`zone.js` `_devAsGate` · 실서버엔 없다).
+    //   이 하네스는 그 칸을 **쓰는 쪽**이라 손잡이를 켜고 띄운다 — 켜야 검사가 성립하고,
+    //   안 켜지면 그 절이 조용히 자명 통과가 아니라 **빨개진다**(그게 맞는 신호다).
+    DEV_AS: '1',
     CENTRAL_URL: `http://localhost:${CPORT}`,
     // 마을 4곳 — 성격이 갈리는 최소 수(대본은 마을 **수**가 아니라 **경로**를 잰다). 하루 0.5초 = 데우기.
     VILLAGE_MAX: '4', VILLAGE_DAY_MS: '500',

@@ -63,6 +63,23 @@ const Onboarding = require('./onboarding');   // ★[온보딩 v2 2026-09-01] �
 //   판정은 `internal-door.js` **정본 하나**를 쓴다(central 과 같은 규칙 · 사본 0).
 //   ⚠하네스는 되돌이/사설 주소라 **그대로 산다**(§0 전수: 아홉 하네스가 이 문들을 쓴다).
 const InternalDoor = require('./internal-door');
+// ★★[T319 2026-09-19 · 회부 #9 닫음] **`/startinfo?as=<이름>` 은 개발 손잡이 뒤에 둔다.**
+//   `DEV_AS=1` 일 때만 그 칸이 온보딩에 닿는다. 실서버엔 env 가 없으니 **닫힌다**.
+//   ★막는 것은 **한 칸**이다 — 문(`/startinfo`)은 공개 그대로고, 그 문의 다른 칸도 그대로 간다.
+//     (여기서 `as` 만 지운 `url` 을 가진 얇은 겹을 넘긴다 — `httpStartInfo` 는 `req.url` 만 읽는다.
+//      `onboarding.js` 는 한 줄도 안 달라진다 · 사본 0.)
+//   ⚠**부를 때 읽는다** — 모듈 상수로 잡으면 손잡이 하나 보려고 존을 한 판 더 띄워야 한다(T88·T121).
+function _devAsOn() { return process.env.DEV_AS === '1'; }
+function _devAsGate(req) {
+  if (_devAsOn()) return req;
+  const u = String(req.url || '');
+  const q = u.indexOf('?');
+  if (q < 0 || !/(?:^|[?&])as=/.test(u)) return req;             // 그 칸이 없으면 그대로 — 새 객체도 안 만든다
+  const kept = u.slice(q + 1).split('&').filter((kv) => !/^as(=|$)/.test(kv)).join('&');
+  const shim = Object.create(req);                                // 겹 하나 — 원본은 안 바꾼다
+  shim.url = u.slice(0, q) + (kept ? '?' + kept : '');
+  return shim;
+}
 const Notice = require('./notice');           // ★[T78 2026-09-03] 알림 경계 — 접두 이모지 → `kind` · 글자 제거
 const Membership = require('./membership');   // ★[T11 2026-09-02] 마을 소속·곳간 인출. 기여 계량기는 온보딩 정본 **하나**를 읽는다
 const Claims = require('./claims');           // ★[T45 2026-09-02] 사유지 v2 — 종류 영속·인접·연결성·부재 상태기(정본 하나)
@@ -3103,6 +3120,26 @@ const server = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     let humans = 0;
     for (const p of players.values()) if (!p.isNpc) humans++;
+    // ★★[T319 2026-09-19] **바깥에서 존의 안부를 보려면 칸 둘이 더 있어야 한다.**
+    //   T310 이 잰 것: `/perf` 는 **안 문**(T225)이라 바깥에서 못 읽는다 — 그건 옳다(존 내부 상태를 통째로 준다).
+    //   그런데 그 때문에 *"마을이 몇 곳 살아 있나 · 틱이 얼마나 걸리나"* 도 **같이** 안 보였다.
+    //   ⇒ 그 둘만 여기로 낸다. 나머지 `/perf` 는 안 문 그대로다.
+    //   ★**새 수 0 · 사본 0** — 둘 다 정본에게 묻는다:
+    //     · `villages` = `SimVillages.clientVillages()`(존이 이미 클라에 보내는 그 목록 · 인구는 하루 틱이 갱신한다)
+    //       에서 **사람이 사는 곳**을 센다. 마을 목록을 여기서 다시 만들지 않는다.
+    //     · `tickP50Ms` = `/perf` 의 `tick.ms.p50` 과 **같은 함수**(`_tickMsStats`)다.
+    //   ⚠**영점 조정을 안 한다**(`_tickMsStats(false)`) — 안부를 묻는 일이 계측 창을 지우면 안 된다.
+    //   ⚠T225 투영 규약 그대로: **수만** 낸다. 마을 이름·좌표·id 는 한 칸도 안 나간다.
+    //   ⚠마을 층이 안 서 있으면(`ENABLE_VILLAGES=0`) `null` 이다 — 0 이 아니다(0 은 "다 죽었다"는 뜻이라 거짓말이다).
+    let _vilN = null;
+    try { const _cv = SimVillages.clientVillages ? SimVillages.clientVillages() : null;
+          if (Array.isArray(_cv)) _vilN = _cv.filter((v) => (v.pop | 0) > 0).length; } catch (e) { _vilN = null; }
+    //   ⚠**표본이 0 이면 `null` 이다.** `_tickMsStats` 는 빈 창에서 `p50: 0` 을 낸다 — `/perf` 는 `n` 을 같이
+    //     실어 주니 읽는 쪽이 구분하지만, 여기엔 `n` 칸이 없다. 그대로 `0` 을 내보내면 *"틱이 0ms"* 라는
+    //     **없는 말**이 된다(한가한 존은 본문 없이 조기 반환해서 표본이 안 쌓인다 — 실측 `n:0`).
+    //     ⇒ 수를 새로 짓는 게 아니라 **없는 수를 말하지 않는다**. `villages` 의 `null` 과 같은 뜻이다.
+    let _p50 = null;
+    try { const _ms = _tickMsStats(false); _p50 = (_ms && _ms.n > 0) ? _ms.p50 : null; } catch (e) { _p50 = null; }
     res.end(JSON.stringify({
       zone: ZONE_ID,
       players: players.size,
@@ -3112,6 +3149,8 @@ const server = http.createServer((req, res) => {
       buildings: buildings.size,
       mobs: mobs.size,
       claims: claims.size,
+      villages: _vilN,          // ★[T319] 사람이 사는 마을 수(정본 목록에서 센다 · 수만)
+      tickP50Ms: _p50,          // ★[T319] 존 틱 p50 — `/perf` tick.ms.p50 과 같은 함수
       latency_ms: LATENCY_MS,
       uptime: process.uptime(),
     }));
@@ -3252,7 +3291,18 @@ const server = http.createServer((req, res) => {
     return;
   }
   // ★[온보딩 v2] 시작 화면이 읽는 마을 목록 — CORS 개방(`/lifedbg` 와 같은 규약: 민감 정보 없음)
-  if (req.url && req.url.startsWith('/startinfo') && req.method === 'GET') return Onboarding.httpStartInfo(req, res);
+  // ★★[T319 2026-09-19 · 재민 결정 · 회부 #9 닫음] **`?as=<이름>` 은 기본 닫힘이다.**
+  //   T310 이 잰 것: 이 문은 T245 가 닫은 적이 없다(라우트 정본이 `공개·회부9` 였다). 그리고
+  //   `onboarding.httpStartInfo` 는 그 이름으로 `friendVidsByName`·`memberVidByName` 을 태워 준다 —
+  //   **열쇠 없이 이름만으로** 남의 벗 마을과 소속 마을이 읽혔다. 그 주석이 이미 알고 있었다:
+  //   *"게스트 토큰으로 물으면 안 된다(그건 열쇠다) ⇒ 이름으로 묻는다."* — 열쇠를 피하려다 **이름이 열쇠**가 됐다.
+  //   ⇒ 이름 조회는 **개발 손잡이 뒤**로 넣는다. 실서버엔 env 가 없으니 닫힌다.
+  //   ★**문은 그대로 공개다** — 막는 것은 `?as=` **한 칸**뿐이다. 시작 화면은 종전대로 뜬다
+  //     (`httpStartInfo` 주석: *"못 물어봐도 막지 않는다 — 친구 칸이 0 일 뿐"*). 62 라우트도 그대로다.
+  //   ★**`onboarding.js` 는 한 줄도 안 건드린다.** 여기서 `req.url` 의 그 칸만 지워 넘긴다 —
+  //     문의 정책은 문에서 정하고, 온보딩은 제 일(시작 화면 조립)만 한다.
+  //   ⚠부를 때 읽는다(T88·T121 자리) — 모듈 상수면 손잡이 하나에 존을 한 판 더 띄워야 한다.
+  if (req.url && req.url.startsWith('/startinfo') && req.method === 'GET') return Onboarding.httpStartInfo(_devAsGate(req), res);
   if (req.url && req.url.startsWith('/lifedbg') && req.method === 'GET') {
     if (!InternalDoor.isInternal(req)) return InternalDoor.denyOutside(res);   // ★[T225] 관측창은 안 문
     // ★[직접 서버 디버깅 — 사용자 "네가 직접 서버에서 디버깅하는 방법은 없어?"] 생활 층 내부 상태 읽기 전용 JSON.
