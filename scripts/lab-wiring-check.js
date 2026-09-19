@@ -345,6 +345,50 @@ console.log('\n[H] 랩 부팅 기본 = 서버 기본(주입 없음)');
       else bad('[자명 통과 금지] 끈 채 뜨는 판을 만들어도 안 문다 — 검사기가 죽었다');
     }
   }
+  // ── ⓒ [T298] 서버 기본이 **켬**이 된 손잡이 둘 — 랩엔 대응이 아예 없다(생활층이 랩에 없다) ──────
+  //   ★왜 ⓐ·ⓑ 어느 표에도 안 들어가나:
+  //     `T230_TERR_HOUSING`(영토 주택 압력)·`T219_HOUSE_TRIGGER`(집터 방아쇠)는 **생활층 손잡이**다.
+  //     생활층(`_terrGrow`·`_lifeAddHouseSite`)은 `server/villages.js` **밖에 없다** — 랩(브라우저)엔
+  //     그 파일이 없고 제 `growTerritory`·인라인 방아쇠를 따로 갖는다. 그래서 "랩이 0 을 심었나"를
+  //     물을 수 없다. 대신 두 갈래로 묻는다:
+  //       ⓒ-1 서버 기본이 **켬**이냐 — 소스 정규식이 아니라 **실측문**(`__probe.handles()`)으로,
+  //            env 를 지운 자식 프로세스에서(족보 128). 극성을 정규식으로 읽으면 규약이 또 뒤집힐 때
+  //            하네스만 빨강이 된다(T298 §0ⓒ 가 실제로 밟았다).
+  //       ⓒ-2 랩엔 **끄는 문이 없다** ⇒ 랩은 늘 켠 쪽 = 서버 기본과 같은 기계다.
+  //            (값이 같으냐는 [I] 절이 42,000점 전수로 이미 본다 — 여기서 다시 적지 않는다.)
+  {
+    const { execFileSync } = require('child_process');
+    const doorSrc = `console.log(JSON.stringify(require(${JSON.stringify(path.join(root, 'server', 'villages.js'))}).__probe.handles()));`;
+    const askDoor = (over) => {
+      const env = Object.assign({}, process.env);
+      for (const k of ['T230_TERR_HOUSING', 'T219_HOUSE_TRIGGER']) delete env[k];
+      Object.assign(env, over || {});
+      return JSON.parse(String(execFileSync(process.execPath, ['-e', doorSrc], { env, encoding: 'utf8' })).trim());
+    };
+    let dflt = null, off = null;
+    try { dflt = askDoor(null); off = askDoor({ T230_TERR_HOUSING: '0', T219_HOUSE_TRIGGER: '0' }); }
+    catch (e) { bad(`생활층 손잡이 실측 실패 — ${String(e.message || e).split('\n')[0]} (실측문 \`__probe.handles\` 가 사라졌나)`); }
+    if (dflt && off) {
+      for (const k of ['T230_TERR_HOUSING', 'T219_HOUSE_TRIGGER']) {
+        if (dflt[k] === true) ok(`서버 기본 \`${k}\` = **켬**(미설정 · 자식 프로세스 실측 · 정규식 0) — T298 재민 #22`);
+        else bad(`서버 기본 ${k} 이 ${dflt[k]} 다 — T298 확정은 켬`);
+        if (off[k] === false) ok(`  끄는 문은 명시 \`${k}=0\` 하나 — 그 판만 종전 경로(되돌림 자리 하나)`);
+        else bad(`  ${k}=0 인데 ${off[k]} 다 — 되돌림 문이 막혔다`);
+      }
+      // ★자명 통과 금지 — 같은 주장을 **끈 판**에 대고 물으면 거짓이어야 한다(검사가 실제로 문다)
+      if (off.T230_TERR_HOUSING !== true && off.T219_HOUSE_TRIGGER !== true)
+        ok('[자명 통과 금지] 끈 판(`=0` 둘)에 ⓒ-1 의 주장을 대면 **거짓**이다 — 이 검사는 문다');
+      else bad('[자명 통과 금지] 끈 판에서도 ⓒ-1 이 참이다 — 실측문이 손잡이를 안 읽는다');
+    }
+    // ⓒ-2 랩엔 이 둘을 끄는 문이 없다(랩은 늘 켠 쪽)
+    for (const f of ['lab/마을실험실.html', 'lab/전쟁실험실.html']) {
+      const H = rd(f).split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n');
+      const knob = H.match(/window\.(L_(?:TERR|HOUSESITE|HOUSE_TRIGGER)[A-Z_]*)\s*=/g);
+      if (knob) bad(`랩 ${f} 에 생활층 손잡이 흉내가 생겼다(${Array.from(new Set(knob)).join(' · ')}) — 끌 수 있으면 서버 기본과 갈린다`);
+      else ok(`랩 ${f} 엔 영토·집터를 **끄는 문이 없다** — 랩은 늘 켠 쪽 = 서버 기본(T298)`);
+    }
+  }
+
   // ★★[T226] **나무 층은 랩에 얹지 않는다 — 얹으면 죽은 층이 된다.**
   //   `server/trees.js attachToWorld` 는 econ 문 둘(`forageRealItems`·`forageTakeFn`)을 심지만 그 값은
   //   `treeCountOf(v)` → `livelihood`·`chunk`·`villages`·`zone-config` 에 묶여 있고, 브라우저엔 그 넷이 없어
