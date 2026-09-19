@@ -72,8 +72,11 @@ console.log("\n③ ⓒ 이중 0 — 켠 마을에서 `addProduce('fish')` 가 �
   const C = codeOf(SRC);
   const gate = C.split('\n').filter((l) => l.indexOf('addProduce(jdef.output, baseAmt)') >= 0);
   ok(gate.length === 1, '③ 산출 한 줄이 그 자리 하나다', `${gate.length}줄`);
-  ok(/fishActOn\(v\)\)\) addProduce\(jdef\.output, baseAmt\)/.test(C.replace(/\s+/g, ' ')),
-    '③ ★★★그 한 줄이 **어부를 걷어낸다**(T100 4판이 농부에게 한 그 문법)');
+  // ★[T325 2026-09-19] 그 한 줄에 **나무꾼 절이 셋째로 붙었다.** 어부 절을 느슨하게 풀지 않는다 —
+  //   절 하나를 그대로 요구하고(`fisher && fishActOn(v)`), 산출 호출이 그 절들 **뒤에** 있음도 같이 문다.
+  ok(/&& !\(npc\.currentJob === 'fisher' && fishActOn\(v\)\)/.test(C.replace(/\s+/g, ' '))
+     && /woodActOn\(v\)\)\) addProduce\(jdef\.output, baseAmt\)/.test(C.replace(/\s+/g, ' ')),
+    '③ ★★★그 한 줄이 **어부를 걷어낸다**(T100 4판이 농부에게 한 그 문법) · ★[T325] 나무꾼 절이 그 뒤에 붙었다');
   ok(!/addProduce\('fish'/.test(C), "③ ★`addProduce('fish')` 를 **직접 부르는 자리가 없다**(산출은 위 한 줄뿐)");
   ok(/byproduct/.test(SRC) && /salmon: 0\.15/.test(SRC), '③ ★부산물(연어·새우·게·굴·미역·소금)은 **손 안 댔다** — 바다 계열 무변');
 }
@@ -82,8 +85,16 @@ console.log("\n③ ⓒ 이중 0 — 켠 마을에서 `addProduce('fish')` 가 �
 console.log('\n④ ⓓ 장부 = 손 · ⓔ 예산 소진 · 이월 0');
 {
   const VC = codeOf(VSRC);
-  ok(/if \(left < want\) \{ B\.cell\.set\(key, left\); return 0; \}/.test(VC),
+  // ★[T325 2026-09-19] 예산 장부의 몸통이 **하나로 합쳐졌다**(`_actDay`/`_actTake` — 어부·나무꾼 공용).
+  //   규칙은 한 글자도 안 변했고 자리만 하나가 됐다 ⇒ 합친 몸통에서 그 규칙을 묻고,
+  //   **두 직업이 그 몸통을 부른다**는 것까지 같이 문다(느슨하게 안 풀었다 · `actToGranary` 와 같은 결).
+  ok(/if \(left < want\) \{ B\.cell\.set\(cellKey, left\); return 0; \}/.test(VC),
     '④ ★★예산이 모자라면 **한 마리도 안 잡힌다**(반 마리 금지 — 손과 장부가 갈리지 않는다)');
+  ok(/function _t312Take\(vil, day, key, want\) \{ return _actTake\(_t312Day\(vil, day\), key, want\); \}/.test(VC)
+     && /function _t325Take\(vil, day, key, want\) \{ return _actTake\(_t325Day\(vil, day\), key, want\); \}/.test(VC),
+    '④ ★[T325] 어부와 나무꾼이 **같은 몸통**을 부른다(사본 0 — 규칙이 한쪽만 고쳐질 수 없다)');
+  ok(/function _t312Day\(vil, day\) \{ return _actDay\(vil, '_t312', day, _lifeEcon\(\)\.fishBudgetPerCell\(vil\.econ\)\); \}/.test(VC),
+    '④ ★그리고 어부의 **분모는 그대로** 강가 셀 예산식이다(합치면서 값이 안 바뀌었다)');
   ok(/vil\._t312 = null;/.test(VC), '④ ★★하루가 끝나면 예산 장부를 **버린다**(이월 0 · 설계_민물고기 §2)');
   ok(/npc\._t312U = 0; npc\._t312Kg = 0;/.test(VC), '④ ★★곳간에 넣으면 **손을 비운다**(이중 0)');
   ok(/for \(const id of _fresh\(\)\.ids\(\)\) if \(npc\.inventory\[id\]\) npc\.inventory\[id\] = 0;/.test(VC),

@@ -928,6 +928,11 @@ const T100_FIELD_YIELD = process.env.T100_FIELD_YIELD === '1';   // 되돌림: �
 //   (아래 세 자리가 전부 이 상수 뒤에 있다: 곳간 입구 · `addProduce('fish')` 게이트 · 장부 다리).
 //   켜기는 재민 — 이 카드는 값을 안 정한다.
 const T312_FISH_ACT = process.env.T312_FISH_ACT === '1';
+// ★★★[T325 2026-09-19] **나무꾼 행위 이식 — 기본 끔.** 끄면 이 파일은 **넷째 판과 비트 동일**이다
+//   (아래 네 자리가 전부 이 상수 뒤에 있다: 곳간 입구 · `addProduce('wood')` 게이트 · 배율 자리 · 장부 다리).
+//   ⚠어부(T312)와 **같은 문법**이다 — 새 규약 0. 다른 것은 품목 하나와 분모 하나뿐이다.
+//   켜기는 재민 — 이 카드는 값을 안 정한다.
+const T325_WOOD_ACT = process.env.T325_WOOD_ACT === '1';
 
 // 마을 하루 농사 **용량**(부양력 prodK 가 읽는 밑변) — 두 세계가 이 함수 하나로 갈린다.
 //   켜면 **앵커 그 자체**다: 농부 1인은 하루에 `N` 사람 몫을 낸다(= N × 하루 1인 식량).
@@ -1010,16 +1015,48 @@ function t100EvenRelease(v) {
 //     · 오늘치(`_t312InflowToday`)를 남겨 **틱 안에서** 실현 장부에 한 번 적는다(T193 이 낸 그 자리 · 아래)
 //   ⚠**단위는 econ 단위**다(마리가 아니다). 부르는 쪽(`server/villages.js`)이 마리→단위를 `kcal.js` 정본으로 바꾼다.
 //   ★새 수 0 — 이 함수엔 수가 하나도 없다.
-function fishToGranary(v, units) {
-  if (!T312_FISH_ACT || !v || !v.storage) return 0;
+// ★★★[T325 2026-09-19] **셋째 자리라서 몸통을 합쳤다** — `actToGranary(v, item, units)`.
+//   T100(`harvestToGranary`)·T312(`fishToGranary`)·T325(`woodToGranary`) 셋이 같은 네 줄을 쓴다:
+//     세금을 떼어 금고로 · 나머지를 곳간으로 · 오늘치를 남기고 · 건수를 센다.
+//   같은 네 줄을 세 벌 적으면 그게 사본이고, `TAX_RATE` 가 바뀌는 날 **두 품목만** 따라간다.
+//   ⇒ 몸통은 하나다. 품목마다 다른 것은 **오늘치 칸의 이름**뿐이라 그것만 인수로 받는다.
+//   ⚠`harvestToGranary` 는 이 몸통을 **안 쓴다** — 그쪽은 볏짚 밑변(`_grainToday`)까지 적고
+//     T227 대기열이 그 앞에 붙는다(자기 몸통 `_t100Credit` 이 이미 있다 · 합치면 그게 억지다).
+//   ★새 수 0 — 이 함수엔 수가 하나도 없다.
+function actToGranary(v, item, units, todayKey, countKey) {
+  if (!v || !v.storage) return 0;
   const amt = (typeof units === 'number' && units > 0) ? units : 0;
   if (!(amt > 0)) return 0;
   const tax = amt * TAX_RATE;
-  v.storage.fish = (v.storage.fish || 0) + (amt - tax);
-  if (v.treasury) v.treasury.fish = (v.treasury.fish || 0) + tax;
-  v._t312InflowToday = (v._t312InflowToday || 0) + amt;   // 오늘치 — 아래 틱이 실현 장부에 옮긴다
-  v._t312CatchN = (v._t312CatchN || 0) + 1;               // 계측 전용 누계(회계 아님)
+  v.storage[item] = (v.storage[item] || 0) + (amt - tax);
+  if (v.treasury) v.treasury[item] = (v.treasury[item] || 0) + tax;
+  if (todayKey) v[todayKey] = (v[todayKey] || 0) + amt;   // 오늘치 — 아래 틱이 실현 장부에 옮긴다
+  if (countKey) v[countKey] = (v[countKey] || 0) + 1;     // 계측 전용 누계(회계 아님)
   return amt;
+}
+function fishToGranary(v, units) {
+  if (!T312_FISH_ACT || !v || !v.storage) return 0;
+  return actToGranary(v, 'fish', units, '_t312InflowToday', '_t312CatchN');
+}
+// ★★[T325 · 설계_생산_실체 §1·§2] **나무꾼의 곳간 입구.** 캐논: *"베는 순간 손에, 귀환하면 곳간에."*
+//   ⚠어부와 **같은 몸통 · 같은 세금 · 같은 장부 다리**다(위 `actToGranary`) — 새 회계 0.
+//   ⚠단위는 econ 단위다(그루가 아니다). 부르는 쪽(`server/villages.js`)이 손에 든 낱개를 단위로 바꾼다 —
+//     목재는 **낱개 = 단위**다(`weights.js wood 3.00kg` 이 "장작·목재 단(段)" 하나의 무게다 · 환산식 0).
+function woodToGranary(v, units) {
+  if (!T325_WOOD_ACT || !v || !v.storage) return 0;
+  return actToGranary(v, 'wood', units, '_t325InflowToday', '_t325CutN');
+}
+// ★[T325] 이 마을이 **행위 벌목**으로 도는가 — 손잡이 ∧ 나무 셀이 있다(생활층이 `resourceAt` 로 세어 심는다).
+//   ⚠둘 다여야 한다. 나무 없는 마을(T309 ⓒ: 반경 16셀에서 3/51)은 켜도 종전 수식 그대로다 — 몸이 갈 자리가 없다.
+function woodActOn(v) { return !!(T325_WOOD_ACT && v && (v._t325Cells | 0) > 0); }
+// ★[T325] 셀당 하루 예산 — **값이 아니라 식이다**(설계_민물고기 §2 와 같은 꼴 · 새 수 0 · T312 문법 그대로).
+//   그 마을이 지금 수식으로 하루에 내는 목재(`_woodOutLast` — 아래 틱이 남긴다) ÷ 나무 셀 수.
+//   ⇒ 첫날 합은 정의상 수식과 같다(캐논 ⓓ①). 숲이 넓으면 셀당 적고 셀은 많다.
+function woodBudgetPerCell(v) {
+  const cells = (v && v._t325Cells | 0) || 0;
+  if (!(cells > 0)) return 0;
+  const day = (v && typeof v._woodOutLast === 'number' && v._woodOutLast > 0) ? v._woodOutLast : 0;
+  return day / cells;
 }
 // ★[T312] 이 마을이 **행위 어업**으로 도는가 — 손잡이 ∧ 강가 셀이 있다(생활층이 세어 심는다).
 //   ⚠둘 다여야 한다. 내륙 마을(강가 셀 0)은 켜도 종전 수식 그대로다 — 몸이 갈 자리가 없다.
@@ -2359,6 +2396,11 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
   // ★[T60 ② 배선] 오늘 실제로 잡힌 몫(감산 뒤) — `server/villages.js` 가 이 값만큼 **낚시 v2 재고를 깎는다**.
   //   econ 은 여전히 아무 것도 안 판단한다: 여기서는 숫자를 **남기기만** 한다(행동 무변).
   v._fishOutLast = _fishRaw * _fishScale;
+  // ★[T325 · 계측 전용 · 행동 무관] 그 마을이 **지금 수식으로** 하루에 내는 목재 — 셀당 예산식의 분자다.
+  //   T60 이 어부에 남긴 `_fishRawLast`/`_fishOutLast` 와 **같은 꼴**이고 같은 항들이다
+  //   (자리 수 × `JOBS` base × `land` × 공유 도구 배수 · 벌목은 `jobScale === 1` 이라 스케일 항이 없다).
+  //   ⚠읽는 쪽이 손잡이 뒤(`woodBudgetPerCell`)라 끈 팔은 이 수를 **안 본다** — 쓰기만 하는 관측 칸이다.
+  v._woodOutLast = (v.counts.lumberjack || 0) * JOBS.lumberjack.base * (v.land.wood || 0) * toolBoostShared;
   const _forageRaw = (v.counts.forager || 0) * JOBS.forager.base * JOBS.forager.landBoost(v);
   const _forageScale = (v.land.forageSustain != null && _forageRaw > 0) ? Math.min(1, v.land.forageSustain / _forageRaw) : 1;
   v._forageScale = _forageScale;   // ★저장(§9): 채집 한계가치(픽커·기회비용)가 임연부 MSY 포화를 보게 — 포화 임연부에 herb 가격이 채집꾼을 무한 유인(공유지 비극)하는 것 차단
@@ -2767,8 +2809,11 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
       // ★★[T312] 어부의 **추상 생선 산출도 여기서 나오지 않는다**(켠 마을에서). T100 4판의 그 문법 그대로 —
       //   **얹지 않고 걷어낸다**(공존 = 이중 생산 · T135 `repl` 규약). 막는 것은 이 한 줄뿐이고
       //   아래 부산물 루프(연어·새우·게·굴·미역·소금)는 `baseAmt` 를 그대로 타고 나간다(바다 계열 무변).
+      // ★★[T325] 나무꾼의 **추상 목재 산출도 여기서 나오지 않는다**(켠 마을에서) — 같은 문법 · 같은 한 줄.
+      //   아래 부산물 루프(수지·껍질·도토리)는 `baseAmt` 를 그대로 타고 나간다(T135 `repl` 이 이미 거른다).
       if (!(T100_FIELD_YIELD && npc.currentJob === 'farmer')
-       && !(npc.currentJob === 'fisher' && fishActOn(v))) addProduce(jdef.output, baseAmt);
+       && !(npc.currentJob === 'fisher' && fishActOn(v))
+       && !(npc.currentJob === 'lumberjack' && woodActOn(v))) addProduce(jdef.output, baseAmt);
       // ★★[T179 2026-09-12] **걷어낸 자리에 배율만 남겨 둔다.** 위 한 줄이 농부의 추상 산출을 막는 순간
       //   `baseAmt` 안의 `skillMul·toolBoost·inputMult` 도 같이 사라진다 — T154·T166 의 문이 `baseAmt` 를
       //   통째로 덮어써서 저지른 것과 **같은 결함**이다(족보 145). 여기선 덮을 문이 없으니 **심어 둔다**:
@@ -2781,6 +2826,9 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
       if (T100_FIELD_YIELD && npc.currentJob === 'farmer') npc._t172mul = skillMul * toolBoost * inputMult;
       // ★[T312] 어부도 같은 자리에서 제 배율을 남긴다 — 실체 쪽(생활층 낚시)이 이걸 읽는다(T172 규약 · 사본 0).
       if (npc.currentJob === 'fisher' && fishActOn(v)) npc._t172mul = skillMul * toolBoost * inputMult;
+      // ★[T325] 나무꾼도 같은 자리에서 제 배율을 남긴다 — 실체 쪽(생활층 벌목)이 이걸 읽는다(T172 규약 · 사본 0).
+      //   ⚠T166 `woodIncomeFn` 문이 심는 자리와 **같은 필드**다(정본 하나). 서버는 그 문을 안 주므로 겹치지 않는다.
+      if (npc.currentJob === 'lumberjack' && woodActOn(v)) npc._t172mul = skillMul * toolBoost * inputMult;
       if (jdef.byproduct) {
         for (const [r, rate] of Object.entries(jdef.byproduct)) {
           // ★모시(ramie) 수요-캡 공급(2026-07-13, 사용자 결정 — 교역 무교란): 재고가 수요(flowT=소비EMA×30, +부트스트랩 floor N×RAMIE_BOOT_PC) 이상이면 산출 스킵.
@@ -2847,6 +2895,14 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
     v._t312InflowToday = 0;
     dailyProductionPotential.fish = (dailyProductionPotential.fish || 0) + _t312In;
     dailyProduction.fish = (dailyProduction.fish || 0) + _t312In;
+  }
+  // ★★[T325] 어제 손으로 들여온 목재도 **같은 자리에서** 장부에 적는다 — 이유도 T193·T312 와 같다.
+  //   ★새 수 0 · 이중 0 — 켠 마을에서 `wood` 는 `addProduce` 를 안 탄다(위 게이트) ⇒ 들어오는 길은 이 줄 하나다.
+  const _t325In = T325_WOOD_ACT ? (v._t325InflowToday || 0) : 0;
+  if (_t325In > 0) {
+    v._t325InflowToday = 0;
+    dailyProductionPotential.wood = (dailyProductionPotential.wood || 0) + _t325In;
+    dailyProduction.wood = (dailyProduction.wood || 0) + _t325In;
   }
 
   // ★S3 막석기 자급 안전망 — 도구(석기)가 치명적으로 부족(커버리지<SELF_TOOL_COV)하면 도구의존 노동자가 급할 때 막석기를 손수 자급.
@@ -4984,6 +5040,7 @@ module.exports = {
   RAW_GRAINS, RAW_GRAIN_FOOD_FACTOR,   // ★[T73] 계수를 하네스·계측기가 옮겨 적지 않게(사본 금지)
   farmFlowPerDay, farmLandBoost, harvestToGranary,   // ★[T100] 같은 이유 — 하네스·계측기가 앵커를 옮겨 적지 않는다
   fishToGranary, fishActOn, fishBudgetPerCell, T312_FISH_ACT,   // ★[T312] 어부 행위 — 생활층이 부르는 문 셋 + 손잡이(하네스가 옮겨 적지 않는다)
+  actToGranary, woodToGranary, woodActOn, woodBudgetPerCell, T325_WOOD_ACT,   // ★[T325] 나무꾼 행위 — 합친 몸통 하나 + 문 셋 + 손잡이(하네스가 옮겨 적지 않는다)
   T100_ANCHOR_N, T100_HARVEST_PER_FARMER_YEAR, T100_K, T100_FIELD_YIELD,   // ★[T100 4판] 앵커 하나 · 실측 하나 · 유도값 하나 · 손잡이 — 생활층(`villages.js`)과 하네스가 **여기서만** 읽는다(사본 0)
   DAILY_FOOD_CONSUMPTION,   // ★[T100 4판] 하루 1인 식량 정본 — `k` 유도의 한 항(하네스가 1.0 을 옮겨 적지 않는다)
   seedFoodDays, SEED_FOOD_DAYS_D0, SEED_FOOD_DAYS_LEGACY,   // ★[T100 5판] 창설 곳간의 밑변 — 하네스가 `crops.js` 에서 다시 유도해 대조한다
