@@ -434,6 +434,37 @@ function initAudio() {
         return;
       }
       if (t === 'fish_catch') { sfxPlay('hook'); return; }
+      // ★★★[T321] **마을 어부의 소리** — `tick` 의 `players[].act` 낱말을 표가 키로 옮긴다(`npcAct`).
+      //   ⚠새 훅 줄 0: `recv` 는 `handleMessage` **머리**에서 불리므로, 이 순간 `c.others` 에는 아직
+      //     **직전** 값이 들어 있다(합치기는 아래에서 일어난다). 그래서 여기서 바로 **모서리**를 잡는다 —
+      //     `30-n-net.js` 에 줄을 더하지 않아도 되고, `test-audio ⑦c`(파일당 훅 하나)도 그대로다.
+      //   ⚠모서리로 잡아야 하는 이유: 라벨은 **1.2초 창** 동안 같은 값이 계속 온다(최대 25틱 · 무상태
+      //     델타라 서버가 뷰어별로 안 센다). 값이 왔다고 울리면 한 번의 낚음이 스물다섯 번 난다.
+      //   ⚠내가 아닌 개체만 본다 — 내 낚시는 `fish_state`·`fish_catch` 가 이미 말한다(두 번 울리지 않는다).
+      if (t === 'tick' && msg.players && c && c.others) {
+        const TBL = _sfxMan.npcAct || {};
+        const ox = (c.meta && c.meta.worldOffsetX) || 0, oy = (c.meta && c.meta.worldOffsetY) || 0;
+        for (const pp of msg.players) {
+          if (pp.act === undefined) continue;                 // 안 왔다 = 안 바뀌었다(델타 규약)
+          const prev = c.others.get(pp.pid);
+          if (!prev || prev.act === pp.act) continue;         // 같은 값이 또 온 것 — 모서리가 아니다
+          const key = TBL[pp.act];
+          if (!key) continue;                                 // 표에 없는 낱말은 안 운다(지어내지 않는다)
+          sfxPlay(key, { x: pp.x + ox, y: pp.y + oy });
+        }
+        return;
+      }
+      // ★★[T321] **바닥에 떨어졌다** — 버리기도 죽어 쏟기도 이 한 방송으로 나온다(`zone.js:7728`).
+      //   그래서 죽은 어부의 고기는 **플레이어가 떨어뜨리는 그 소리**로 난다 — 층이 묻지 않아도 그렇다.
+      //   키는 표가 준다(`groundDrop.key` · 새 키 0).
+      if (t === 'ground_item_added') {
+        const key = _sfxMan.groundDrop && _sfxMan.groundDrop.key;
+        const gi = msg.gi;
+        if (!key || !gi) return;
+        sfxPlay(key, { x: gi.x + ((c && c.meta && c.meta.worldOffsetX) || 0),
+                       y: gi.y + ((c && c.meta && c.meta.worldOffsetY) || 0) });
+        return;
+      }
     },
     /** 발자국 훅 — `42-r2-char.js drawCharSprite` 한 줄이 내 캐릭터의 (클립, 판)을 준다.
      *  새 타이머 0 — 걷기/뛰기 간격은 애니 fps 가 정한다. 판이 **바뀌는 에지**에서만 센다. */
