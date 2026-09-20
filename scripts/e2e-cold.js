@@ -84,6 +84,12 @@ async function waitHttp(url, tries = 600) {
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
   const errs = [];
   page.on('pageerror', (e) => errs.push(String(e.message).slice(0, 160)));
+  // ★★[T338 2026-09-20] 클라가 **스스로 적는** 재접속 사유를 줍는다(T331 이 `e2e-trade` 에 단 그 상황줄).
+  //   아래 "존 입장" 절이 왜 빨개졌는지는 하네스가 추측할 일이 아니다 — 클라가 이미 말하고 있다.
+  const T0 = Date.now(), recov = [];
+  page.on('console', (m) => { const t = m.text();
+    if (/재연결|player_left|소켓 강제 close|kicked|duplicate_login|\[recover\]/.test(t)) {
+      recov.push(`+${((Date.now() - T0) / 1000).toFixed(1)}초 ${t.slice(0, 110)}`); } });
   const snap = async (n) => { const f = path.join(SHOTS, n + '.png'); await page.screenshot({ path: f }); return f; };
 
   await page.goto(`http://localhost:${CPORT}/`, { waitUntil: 'domcontentloaded' });
@@ -94,9 +100,36 @@ async function waitHttp(url, tries = 600) {
   // ★입장 판정은 `__inWorld()` — `__getMyAbs` 는 초기값이 있어 **언제나 truthy** 라 자명 통과였다(족보).
   // ★[T140] 30초로 자르지 않는다 — 부하가 있으면 그 안에 못 들어온다(픽스처 정본 · 판정은 그대로).
   const enter = await FX.waitInWorld(page);
-  await sleep(1800);
-  ok(enter.ok && await page.evaluate(() => !!(window.__inWorld && window.__inWorld())),
-     '존 입장 — 월드 안이다', `${enter.waited}ms 기다림`);
+  // ★★[T338 2026-09-20] 종전: `waitInWorld` 뒤 **맹목 1800ms** 를 자고 `__inWorld()` 를 **한 번** 읽었다.
+  //   야간 `e2e-cold` 빨강은 09-13·09-14·09-15·09-20 **네 밤 모두 이 한 줄**이었고 전부 **단독 초록**이었다.
+  //   기다림이 제각각이다 — **129ms**(09-15) · 2277ms(09-20) · 5625ms(09-14). 129ms 에 들어온 판도
+  //   빨갰다는 것은 **"늦게 들어와서"가 아니라는 뜻**이다. 모양은 하나다: **들어왔다가 1.8초 안에 다시 나갔다.**
+  //   (T331 이 닫은 자리와 같은 모양 — 고아 감시가 느린 틱을 고아로 오진해 primary 를 다시 물었다.
+  //    ⚠그 밤들의 베이스에는 T331 이 없었다: `8f12f6e1` 의 `33-m-conn.js` 에 T331 0건.)
+  //   ⇒ 한 번 읽지 않는다. **자리 잡을 때까지** 기다리고(조건 대기 · 상한은 표에만),
+  //     연속 확인으로 "잠깐 들어왔다 나간 것"은 여전히 못 통과하게 둔다(판정 완화 아님).
+  const inW = () => page.evaluate(() => !!(window.__inWorld && window.__inWorld()));
+  const STAY_CAP = 60000;   // 표의 수 — 판정에 안 든다(걸리면 아래가 사유를 말한다)
+  const tStay = Date.now();
+  let hold = 0, holdMs = 0, leftAfterEnter = 0, tHold = 0;
+  while (Date.now() - tStay < STAY_CAP) {
+    if (await inW()) { if (!hold) tHold = Date.now(); hold++; holdMs = Date.now() - tHold; }
+    else { if (hold) leftAfterEnter++; hold = 0; holdMs = 0; }
+    if (hold >= 4 && holdMs >= 1800) break;      // 종전 1800ms 창을 **연속으로** 안에 있었다
+    await sleep(300);
+  }
+  const stayed = hold >= 4 && holdMs >= 1800;
+  console.log(`  [상황] 입장까지 ${enter.waited}ms · 자리 잡기까지 ${Date.now() - tStay}ms`
+    + ` · 입장 뒤 월드 밖으로 **나간 횟수 ${leftAfterEnter}회**`
+    + (recov.length ? ` · 클라가 말한 재접속 사유 ${recov.length}건 → ${recov.slice(0, 3).join(' | ')}` : ' · 재접속 사유 0건')
+    + ` (상한 ${(STAY_CAP / 1000) | 0}초 · 판정 아님)`);
+  ok(enter.ok && stayed, '존 입장 — 월드 안이다',
+     `${enter.waited}ms 기다림 · 1.8초 연속 체류 ${stayed ? '확인' : '★실패'}`
+     + (leftAfterEnter ? ` · 나갔다 온 횟수 ${leftAfterEnter}` : ''));
+  // ★[T338] 자명 통과 금지 — "나갔다 오는 일이 아예 없었다"를 따로 센다. 위 판정이 재접속을
+  //   기다려서 통과하는 것과, 애초에 안 튕기는 것은 **다른 사실**이다. 둘을 한 줄로 뭉개지 않는다.
+  ok(leftAfterEnter === 0, '★[T338] 입장 뒤 **월드 밖으로 튕긴 적이 0회**다(T331 이 닫은 자리)',
+     `${leftAfterEnter}회 · 클라가 말한 재접속 사유 ${recov.length}건`);
 
   // ── ① 배지가 실제로 뜬다 — 서버가 준 값으로 ────────────────────────────────
   // ★★[T140] `sleep(2500)` 이 여기 있었다 — 그게 ①("혹한급")을 부하마다 다른 수로 빨갛게 만든 자리다.

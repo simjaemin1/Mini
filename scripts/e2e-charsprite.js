@@ -1214,11 +1214,17 @@ function openSpot() {
       if (m) { got.add(m[1]); tAt[m[1]] = Date.now() - t0; }
     });
     await C.goto(`http://localhost:${CPORT}/`, { waitUntil: 'domcontentloaded' });
-    for (let i = 0; i < 200; i++) {
-      if (await C.evaluate(() => { const e = document.querySelector('#enter'); return !!(e && !e.disabled); })) break;
+    // ★[T338 2026-09-20] 예산형(200×250ms = 50초). 조건으로 도는 것은 맞지만 **상한에 걸려도 말이 없었다** —
+    //   그러면 그 다음 `ok` 가 이유 없이 빨개진다(예산형이 다음 ok 를 물들이는 그 모양 · T314 ⓒ-3).
+    //   ⇒ 상한은 표에만 두고, 걸리면 **이름을 붙여** 적는다(조용한 빨강 0).
+    const BTN_CAP = 60000;
+    let btnOk = false;
+    for (const tB = Date.now(); Date.now() - tB < BTN_CAP; ) {
+      if (await C.evaluate(() => { const e = document.querySelector('#enter'); return !!(e && !e.disabled); })) { btnOk = true; break; }
       await sleep(250);
     }
     const tBtn = Date.now() - t0;
+    if (!btnOk) console.log(`    [상황] ★입장 단추가 ${(BTN_CAP / 1000) | 0}초 안에 안 살아났다 — 아래가 조용히 빨개지지 않게 이름을 붙인다`);
     await C.click('#enter');
 
     // ── 감시자를 **페이지 안에** 심는다(왕복 1회) ────────────────────────────
@@ -1246,11 +1252,16 @@ function openSpot() {
     }, [CUTW, CUTH]);
 
     // 시트가 다 올 때까지 **evaluate 없이** 기다린다(네트워크 이벤트만 센다).
-    for (let i = 0; i < 180 && got.size < want.size; i++) await sleep(1000);
+    // ★[T338] 예산형 둘(180×1000ms · 60×2000ms). 위와 같은 수리 — 상한은 표에만 · 걸리면 이름을 붙인다.
+    const SHEET_CAP = 180000, CUT_CAP = 120000;
+    for (const tS = Date.now(); Date.now() - tS < SHEET_CAP && got.size < want.size; ) await sleep(1000);
     const tAll = got.size >= want.size ? Date.now() - t0 : -1;
     // 전환은 디코드까지 끝나야 뜬다 — 도착 뒤 넉넉히, 그러나 **드물게** 확인한다.
-    let S = null;
-    for (let i = 0; i < 60; i++) { S = await C.evaluate(() => window.__t162); if (S && S.cutSheet) break; await sleep(2000); }
+    let S = null; const tC0 = Date.now();
+    for (; Date.now() - tC0 < CUT_CAP; ) { S = await C.evaluate(() => window.__t162); if (S && S.cutSheet) break; await sleep(2000); }
+    console.log(`    [상황] 시트 ${got.size}/${want.size}장 도착 ${tAll < 0 ? `★${(SHEET_CAP / 1000) | 0}초 상한까지 다 안 왔다` : tAll + 'ms'}`
+      + ` · 시트 전환 잘라내기 ${S && S.cutSheet ? `${Date.now() - tC0}ms` : `★${(CUT_CAP / 1000) | 0}초 상한까지 안 잡혔다`}`
+      + ` (상한은 표에만 · 판정 아님)`);
 
     // ⓐ 선적재 목록
     const missing = [...want].filter((k) => !got.has(k));

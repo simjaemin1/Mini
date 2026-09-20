@@ -37,6 +37,7 @@
 const path = require('path'), fs = require('fs');
 const { spawn } = require('child_process');
 const { PNG } = require('pngjs');
+const FC = require('./fixture-clock');   // ★⑧c 입장 기다리기 정본(사본 0)
 const ROOT = path.join(__dirname, '..');
 const CPORT = 3010, ZPORT = 3020;
 const SITE = { cx: +(process.env.CX || 1750), cy: +(process.env.CY || 74) };
@@ -86,7 +87,12 @@ function diff(a, b, box) {
   //     (`onclick` 은 `30-n-net.js` 의 `boot()` 이 건다 — 그 전에 누르면 아무 일도 안 난다).
   await pg.waitForFunction(() => { const b = document.getElementById('enter'); return !!(b && b.onclick && !b.disabled); }, { timeout: 45000 }).catch(() => {});
   try { const b = await pg.$('#enter'); if (b) await b.click(); } catch (e) {}
-  await sleep(24000);
+  // ★★[T338 2026-09-20] 맹목 **24초 잠**을 **조건 대기**로 — 정본 `fixture-clock.waitInWorld` 하나(사본 0).
+  //   24초는 판정문에 안 들어가는 **예산**이라 ⑧a 어떤 자에도 안 걸리는데, 한가한 상자에서 맞춰 둔 수라
+  //   2코어 야간에선 모자라고(그 뒤 `__terrain19` 가 아직 없어 "낡은 코드다"로 죽거나 P4 가 빨개진다),
+  //   반대로 한가할 땐 **20초 넘게 그냥 논다**(실측 입장 ~2초). ⇒ 세계가 "들어왔다"고 말할 때까지 기다린다.
+  const inw = await FC.waitInWorld(pg, { timeoutMs: 120000, stepMs: 200 });   // 상한은 표에만 · 판정 아님
+  console.log(`  [상황] 월드 입장까지 ${inw.waited}ms${inw.ok ? '' : ' — ★상한까지 안 들어왔다(아래가 조용히 빨개지지 않게 이름을 붙인다)'} (옛 예산 24000ms · 판정 아님)`);
 
   // ★[환경 방어] 롤백된 옛 코드로 재고 통과시키면 안 된다
   const fresh = await pg.evaluate(() => ({ fit: window.__terrain19 && window.__terrain19.fitOff !== undefined, spill: typeof window.__mtSpillAt === 'function' }));
@@ -106,6 +112,36 @@ function diff(a, b, box) {
   const shot = async () => { const p2 = '/tmp/fz.png'; await pg.screenshot({ path: p2 }); return PNG.sync.read(fs.readFileSync(p2)); };
   const cam = await pg.evaluate(() => window.__camCellLocal());
   const dead = new Set();
+
+  // ★★[T338 2026-09-20] **가라앉기 조건 대기 하나**(사본 0) — 단계 루프와 P6 이 같은 자를 쓴다.
+  //   굽기 예산은 프레임당 1장(MT3_BUDGET=1)이라 **부순 양이 많을수록 오래** 걸린다.
+  //   종전 단계 루프는 `sleep(1700)` 한 수로 그 자리를 때웠다 — 판정문에 상수가 없어 ⑧a 어떤 자에도
+  //   안 걸리는 **예산형**이고, 예산이 모자라면 그 다음 `ok`(P4 덮개·P3 국소)가 대신 빨개진다.
+  //   09-18 야간 `e2e-mtfuzz` 빨강이 그 모양이었다(`P4 ① 2% 초과 1회` · 단독 초록 · T314 부하 ○).
+  //   ⇒ 제품이 스스로 세는 수(`__mtDbg.mt3bakeN`·`mt3chunks`)가 **멈출 때까지** 기다린다.
+  //   ⚠두 단계로 기다린다: ⓐ 움직이기 **시작**할 때까지(부수기가 큐에 들어가기 전에 "멈춰 있다"고
+  //     속지 않게) · ⓑ 그 뒤 **연속 3회 그대로**일 때까지. 상한은 표에만 — 걸리면 이름을 붙여 돌려준다.
+  const mtdbg = () => pg.evaluate(() => ({ bn: window.__mtDbg.mt3bakeN, ch: window.__mtDbg.mt3chunks }));
+  const settle = async (capMs = 90000, startCapMs = 2500) => {
+    const t0 = Date.now();
+    let prev = await mtdbg(); const base = prev;
+    let moved = false;
+    while (Date.now() - t0 < startCapMs) {                      // ⓐ 시작을 기다린다
+      const cur = await mtdbg();
+      if (cur.bn !== base.bn || cur.ch !== base.ch) { moved = true; prev = cur; break; }
+      await sleep(50);
+    }
+    let same = 0, baked = 0;
+    while (Date.now() - t0 < capMs) {                           // ⓑ 멈출 때까지 기다린다
+      await sleep(70);
+      const cur = await mtdbg();
+      baked += cur.bn - prev.bn;
+      same = (cur.bn === prev.bn && cur.ch === prev.ch) ? same + 1 : 0;
+      prev = cur;
+      if (same >= 3) break;
+    }
+    return { ms: Date.now() - t0, baked, moved, capped: Date.now() - t0 >= capMs };
+  };
 
   // 화면 안 그림 상태 — 봉우리 배율 · 세그먼트 · 두 수치
   const snap = async () => pg.evaluate((o) => {
@@ -225,6 +261,7 @@ function diff(a, b, box) {
   const shapes = [];
   let popN = 0, growN = 0, farN = 0, bareN = 0, spillN = 0, farMax = 0, narrowN = 0, spillMax = 0;
   let dugBadN = 0, dugTot = 0, mode3N = 0, skipMax = 0;
+  const stW = [], stB = []; let stCap = 0;   // 단계별 가라앉기 실측(표 · 판정 아님)
   for (let st = 1; st <= STEPS; st++) {
     const mode = st <= SCRIPT.length ? SCRIPT[st - 1] : RANDOM[Math.floor(rnd() * RANDOM.length)];
     const arg = mode === 'bite' ? 2 + Math.floor(rnd() * 4) : 3 + Math.floor(rnd() * 12);
@@ -232,7 +269,8 @@ function diff(a, b, box) {
     if (!cells.length) { console.log(`   ${st}  ${mode} — 겉면 없음, 종료`); break; }
     await pg.evaluate((cs) => window.__mtDestroy(cs), cells);
     for (const [a, b] of cells) dead.add(a + '_' + b);
-    await sleep(1700);
+    const w = await settle();
+    stW.push(w.ms); stB.push(w.baked); if (w.capped) stCap++;
     const cur = await snap(), curImg = await shot();
 
     // ★P3 국소성은 **화소가 아니라 세그먼트**로 잰다.
@@ -289,27 +327,13 @@ function diff(a, b, box) {
   //     그리고 아래 P6b·P6c 로 "가라앉히기가 실제로 일을 했다"와
   //     "가라앉기 전에 재면 정말 다르다"를 **수로** 남긴다(자명 통과 금지).
   const BOX = [0, 260, 1400, 860];
-  const mtdbg = () => pg.evaluate(() => ({ bn: window.__mtDbg.mt3bakeN, ch: window.__mtDbg.mt3chunks }));
-  // 굽기 잔량이 **연속 3회 그대로**일 때까지 기다린다. 기다린 동안 구운 장수를 돌려준다.
-  const settle = async (capMs = 6000) => {
-    let prev = await mtdbg(); const t0 = Date.now(); let same = 0, baked = 0;
-    while (Date.now() - t0 < capMs) {
-      await sleep(70);
-      const cur = await mtdbg();
-      baked += cur.bn - prev.bn;
-      same = (cur.bn === prev.bn && cur.ch === prev.ch) ? same + 1 : 0;
-      prev = cur;
-      if (same >= 3) break;
-    }
-    return baked;
-  };
-  const baked1 = await settle();
+  const baked1 = (await settle()).baked;
   const d1 = await shot(); await sleep(900); const d2 = await shot();
   const det = diff(d1, d2, BOX);
   // 반례 — 청크 캐시만 비워 **같은 잔량 상태**를 일부러 다시 만든다(설정값은 그대로 넣는다).
   await pg.evaluate(() => window.__mt3pad(window.__mtDbg.mt3pad));
   const u1 = await shot();
-  const baked2 = await settle();
+  const baked2 = (await settle()).baked;
   const u2 = await shot();
   const unset = diff(u1, u2, BOX);
 
@@ -326,10 +350,34 @@ function diff(a, b, box) {
   ok('P5 ★정합 — 부순 자리에 산이 안 남는다', spillN === 0,
     `② 최대 ${spillMax}% (한계 16% · 고치기 전 18.1%) · 10% 넘은 단계 ${narrowN}회는 좁은 통로`);
   ok('P6 ★결정론 — 가라앉은 뒤 두 프레임이 같다', det < 0.05, `|Δ| ${det.toFixed(3)} (가라앉히며 구운 청크 ${baked1}장)`);
-  ok('P6b ★가라앉히기가 실제로 일을 했다(옛 P6 이 경주였다는 증거)', baked1 > 0,
-    `부수기 직후 남은 굽기 ${baked1}장 — 0 이면 이 수리가 무의미해진 것이니 다시 봐야 한다`);
+  // ★★[T338 2026-09-20] **이 자리의 수가 0 으로 바뀌었다 — 그리고 그게 맞다.**
+  //   종전 단계 루프는 `sleep(1700)` 로 때우고 **덜 구운 채** 여기까지 왔다. 그 잔량이 곧 `baked1` 이었다.
+  //   ⚠실측(이 카드 · 한가한 상자 한 판): 한 단계가 가라앉는 데 **6375~17740ms**(중앙 9571ms)가 걸린다 —
+  //     1700ms 는 **10단계 전부** 모자랐다. 즉 옛 판은 P1~P5 를 **반쯤 구운 그림** 위에서 재고 있었고,
+  //     야간 09-18 `P4 ① 2% 초과 1회`(단독 초록)가 그 자국이다.
+  //   ⇒ 이제 단계마다 가라앉히므로 P6 이 받을 잔량은 **0 이 정상**이다. "가라앉히기가 일을 한다"의
+  //     증거 자리는 아래 **P6c**(반례 · 되구운 장수)와 **P7**(단계 합)로 옮겼다. 여기서는 그 대신
+  //     **P6 이 잔량 0 인 그림에서 쟀다**(=경주가 아니다)를 곧바로 단정한다.
+  ok('P6b ★P6 은 **잔량 0** 인 그림에서 쟀다 — 경주가 아니다(T338 로 증거 자리를 옮겼다)',
+    baked1 === 0 && stB.reduce((a, b) => a + b, 0) > 0,
+    `P6 직전 잔량 ${baked1}장 · 단계 루프가 미리 구운 합 ${stB.reduce((a, b) => a + b, 0)}장`);
   ok('P6c ★★반례 — 가라앉기 **전에** 재면 정말 다르다(계측기가 여전히 날카롭다)',
     unset > 0.05 && baked2 > 0, `|Δ| ${unset.toFixed(3)} · 되구운 청크 ${baked2}장`);
+  // ★★[T338] 조건 대기가 **자명 통과가 아니다** — 기다리는 동안 실제로 구웠고, 상한에 안 걸렸다.
+  //   (0장이면 기다림이 무의미해진 것이고, 상한에 걸렸으면 아래 P 들이 **덜 구운 그림** 위에서 돈 것이다.)
+  {
+    const sumB = stB.reduce((a, b) => a + b, 0);
+    const srt = stW.slice().sort((a, b) => a - b);
+    const med = srt.length ? srt[srt.length >> 1] : 0;
+    const over = stW.filter((v) => v > 1700).length;
+    // ⚠여기 상한(90초)은 **시간을 재는 판정이 아니라 멈춤 감지**다 — 실측 최대 17.7초의 다섯 배다.
+    //   걸리면 아래 P 들이 이유 없이 빨개지는 대신 **이 줄이 이름을 붙인다**(조용한 빨강 0).
+    ok('P7 ★★단계마다 굽기가 **가라앉은 뒤에** 쟀다 — 조건 대기가 자명 통과가 아니다',
+      stW.length > 0 && sumB > 0 && stCap === 0,
+      `${stW.length}단계 · 구운 청크 합 ${sumB}장 · 상한(90초) 걸림 ${stCap}회`);
+    console.log(`  [표] 단계별 가라앉기 실측 ${srt[0]}~${srt[srt.length - 1]}ms (중앙 ${med}ms)`
+      + ` · 옛 예산 1700ms 를 **넘긴 단계 ${over}회** — 판정 아님(족보 ⑩ · 여기 수를 판정에 안 쓴다)`);
+  }
   // ★다양성을 **수로** 남긴다 — "다양하게 했다"는 주장은 검증이 아니다
   const sz = shapes.map((v) => v.n).sort((a, b) => a - b);
   const multi = shapes.filter((v) => v.cc > 1).length;

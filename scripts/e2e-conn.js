@@ -97,9 +97,9 @@ const ZENV = (extra) => Object.assign({
   {
     const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
     await enter(page);
-    let entered = false;
-    for (let i = 0; i < 60; i++) { if (await inWorld(page)) { entered = true; break; } await sleep(500); }
-    ok(entered, '★① 정상 접속');
+    // ★[T338] 예산형(60×500ms = 30초) → 조건 대기. 상한은 표에만.
+    const r1 = await waitFor(async () => (await inWorld(page)) || null);
+    ok(!!r1.v, '★① 정상 접속', r1.timedOut ? `${(CAP / 1000) | 0}초 동안 안 들어갔다` : `${r1.ms}ms 만에`);
     const c = await conn(page);
     ok(c.phase === 'ready', '★① 상태가 ready', c.phase);
     ok(c.everReady === true && c.hello === false, '★① welcome 뒤엔 대기 표식이 정리된다', JSON.stringify({ everReady: c.everReady }));
@@ -155,15 +155,29 @@ const ZENV = (extra) => Object.assign({
     const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
     await enter(page);
     // 마감액 전: pong 은 오는데(=서버는 살아 있다) welcome 이 없다 → "입장 처리 중"
-    await sleep(3000);
-    let c = await conn(page);
+    // ★★[T338 2026-09-20] 맹목 **3초 잠**을 조건 대기로. 마감액이 6000ms 인데 3000ms 를 자고 읽었으니
+    //   여유가 3초뿐이었다 — 2코어 야간에선 잠+왕복이 6초를 넘어 `phase` 가 이미 `error` 가 되고,
+    //   그러면 아래 ★★②-b 가 **제품과 무관하게** 빨개진다(예산형이 그 다음 ok 를 물들이는 그 모양).
+    //   재려는 것은 "3초 뒤의 모습"이 아니라 **"마감액 전엔 처리 중으로 보인다"** 다
+    //   ⇒ 서버가 첫 pong 을 보낼 때까지만 기다리고(수백 ms) 그 자리에서 읽는다 — 여유가 넓어진다.
+    const DL = 6000;   // ZENV 에 넣은 CONN_DEADLINE_MS 와 같은 수(표·상황줄용 · 판정에 안 든다)
+    //   ⚠기다릴 것은 "첫 pong" 이 아니라 **재려는 그 상태**다 — pong 이 `stage` 를 싣고 오는데,
+    //     첫 pong 은 아직 `accepted` 라 그 다음 ★②-b(막힌 단계)가 빨개진다(이 카드가 한 번 물었다).
+    //     ⇒ 조건은 **`hello` 가 왔고 `stage` 가 막힌 단계(welcome)** 다. 그게 이 절이 재려는 상태다.
+    const rh = await waitFor(async () => { const x = await conn(page); return (x.hello === true && x.stage === 'welcome') ? x : null; });
+    let c = rh.v || await conn(page);
+    console.log(`    [상황] pong 이 막힌 단계(welcome)를 싣고 오기까지 ${rh.ms}ms · 마감액 ${DL}ms — 여유 ${DL - rh.ms}ms`
+      + ` (종전 맹목 3000ms 잠이었을 때의 여유 ${DL - 3000}ms · 상한 ${(CAP / 1000) | 0}초 · 판정 아님)`);
     ok(c.phase === 'entering' && c.hello === true,
-      '★★②-b 마감액 전엔 **"받았고 처리 중"** 으로 보인다 — 죽은 것과 구분된다', `${c.phase}/hello=${c.hello}`);
+      '★★②-b 마감액 전엔 **"받았고 처리 중"** 으로 보인다 — 죽은 것과 구분된다',
+      `${c.phase}/hello=${c.hello}${rh.ms >= DL ? ` — ⚠hello 가 ${rh.ms}ms 로 마감액을 넘겼다(자가 늦은 것이다)` : ''}`);
     ok(c.stage === 'welcome', '★②-b pong 이 **막힌 단계**를 싣고 온다', c.stage);
     ok(c.hard === false, '★②-b 아직은 노랑(기다릴 만하다)', `${c.state}/hard=${c.hard}`);
     // 마감액 후: 서버가 스스로 끊고 이름을 붙인다
-    for (let i = 0; i < 40; i++) { c = await conn(page); if (c.phase === 'error') break; await sleep(400); }
-    ok(c.phase === 'error', '★★②-b 마감액이 **안 끝나는 실패**를 끊었다(try/catch 로는 못 잡는 갈래)', c.phase);
+    // ★[T338] 예산형(40×400ms = 16초) → 조건 대기.
+    const rErr = await waitFor(async () => { c = await conn(page); return c.phase === 'error' ? c : null; });
+    ok(c.phase === 'error', '★★②-b 마감액이 **안 끝나는 실패**를 끊었다(try/catch 로는 못 잡는 갈래)',
+      `${c.phase}${rErr.timedOut ? ` — ${(CAP / 1000) | 0}초 동안 안 끊었다` : ` (${rErr.ms}ms 만에 · 마감액 ${DL}ms)`}`);
     ok(/시간 초과/.test(c.reason || ''), '★★②-b 사유가 "시간 초과"라고 말한다', c.reason);
     ok(/welcome/.test(c.reason || '') || c.stage === 'welcome', '★②-b 멈춘 단계가 사유에 있다', c.reason);
     ok(zoneLog.join('').includes('시간 초과'), '★②-b 서버 로그에도 남았다');
@@ -193,8 +207,10 @@ const ZENV = (extra) => Object.assign({
     await enter(page);
     // ★유예(2초)가 지나야 배너가 뜬다 — 정상 접속에서 번쩍이지 않게 한 장치다.
     //   그래서 "떴는가"는 폴링으로 본다(고정 대기는 유예 값이 바뀌면 깨진다).
+    // ★[T338] 예산형(60×300ms = 18초) → 조건 대기.
     let c = null;
-    for (let i = 0; i < 60; i++) { c = await conn(page); if (c.state === 'waiting') break; await sleep(300); }
+    const rW = await waitFor(async () => { c = await conn(page); return c.state === 'waiting' ? c : null; });
+    console.log(`    [상황] 배너가 노랑이 되기까지 ${rW.ms}ms${rW.timedOut ? ' — ★상한까지 안 떴다' : ''} (상한 ${(CAP / 1000) | 0}초 · 판정 아님)`);
     const sw = await page.evaluate(() => window.__swallowed | 0);
     ok(sw > 0, '(상황) 서버 메시지가 실제로 삼켜지고 있다', `${sw}건`);
     ok(c.phase === 'connecting' && c.hello === false, '★③ hello 도 못 받은 상태로 잡힌다', `${c.phase}/hello=${c.hello}`);
@@ -207,8 +223,10 @@ const ZENV = (extra) => Object.assign({
     // ── ④ 오래 기다려도 안 되면 노랑 → 빨강 ─────────────────────────────────
     console.log('\n④ 오래 기다려도 안 되면 — 말이 바뀐다(노랑 → 빨강)');
     const a0 = (await conn(page)).attempts;
-    for (let i = 0; i < 80; i++) { c = await conn(page); if (c.hard) break; await sleep(1000); }
-    ok(c.hard === true, '★★④ 오래되면 **빨강으로 바뀐다** — 기다림이 무한정 정당화되지 않는다', `${c.state}/hard=${c.hard}`);
+    // ★[T338] 예산형(80×1000ms = 80초) → 조건 대기.
+    const rH = await waitFor(async () => { c = await conn(page); return c.hard ? c : null; });
+    ok(c.hard === true, '★★④ 오래되면 **빨강으로 바뀐다** — 기다림이 무한정 정당화되지 않는다',
+      `${c.state}/hard=${c.hard}${rH.timedOut ? ` — ${(CAP / 1000) | 0}초 동안 안 굳었다` : ` (${rH.ms}ms 만에)`}`);
     const txt4 = await page.evaluate(() => (document.getElementById('netLost') || {}).innerText || '');
     ok(/오류일 수 있다|응답하지 않는다/.test(txt4), '★④ 문구가 오류 가능성을 말한다', txt4.replace(/\n/g, ' / ').slice(0, 110));
     await snapOf(page, 'conn-04-hardened');
@@ -216,6 +234,9 @@ const ZENV = (extra) => Object.assign({
     // ── ⑤ 백오프 — 재시도가 무한 폭주하지 않는다 ────────────────────────────
     console.log('\n⑤ 백오프 — 시도 간격이 늘어난다(옛 코드는 15초마다 영원히 두드렸다)');
     const t0 = Date.now(), a1 = (await conn(page)).attempts;
+    // ⚠[T338] **이 30초는 예산이 아니라 재는 창 자체다** — 조건 대기로 바꾸면 안 된다.
+    //   여기서 재는 것은 "얼마 만에 되나"가 아니라 **"정해진 창 안에 몇 번 두드리나"**(백오프)이고,
+    //   창을 조건으로 바꾸면 세는 대상이 사라진다. 아래 판정도 시간이 아니라 **횟수**를 문다.
     await sleep(30000);
     const a2 = (await conn(page)).attempts, dt = (Date.now() - t0) / 1000;
     const added = a2 - a1;
@@ -233,15 +254,18 @@ const ZENV = (extra) => Object.assign({
     await waitHttp(`http://localhost:${ZPORT}/health`);
     const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
     await enter(page);
+    // ★[T338] 예산형(60×400ms = 24초) → 조건 대기.
     let c = null;
-    for (let i = 0; i < 60; i++) { c = await conn(page); if (c.phase === 'error') break; await sleep(400); }
-    ok(c && c.phase === 'error', '(상황) 먼저 확정 오류에 빠뜨렸다', c && c.phase);
+    const rE = await waitFor(async () => { c = await conn(page); return c.phase === 'error' ? c : null; });
+    ok(c && c.phase === 'error', '(상황) 먼저 확정 오류에 빠뜨렸다',
+      `${c && c.phase}${rE.timedOut ? ` — ${(CAP / 1000) | 0}초 동안 안 빠졌다` : ` (${rE.ms}ms 만에)`}`);
     zone.kill('SIGKILL'); await sleep(2500);
     zone = boot('zone', 'zone.js', ZENV());          // 고친 서버로 교체
     await waitHttp(`http://localhost:${ZPORT}/health`);
-    let back = false;
-    for (let i = 0; i < 70; i++) { if (await inWorld(page)) { back = true; break; } await sleep(1000); }
-    ok(back, '★★⑥ 서버가 고쳐지자 **새로고침 없이** 스스로 들어갔다');
+    // ★[T338] 예산형(70×1000ms = 70초) → 조건 대기.
+    const rB = await waitFor(async () => (await inWorld(page)) || null);
+    ok(!!rB.v, '★★⑥ 서버가 고쳐지자 **새로고침 없이** 스스로 들어갔다',
+      rB.timedOut ? `${(CAP / 1000) | 0}초 동안 안 들어갔다` : `${rB.ms}ms 만에`);
     // ★[T322] **한 번 읽고 판정하지 않는다.** `inWorld` 와 `phase` 는 서로 다른 신호라 순서가 갈린다 —
     //   실측으로 `inWorld=true` 인데 `phase=connecting` 인 찰나를 물어 빨개졌다(이 카드가 봤다).
     //   재려는 것은 "언제 왔나"가 아니라 **"오기는 오나"** 다 ⇒ 올 때까지 기다린다(상한은 표에만).

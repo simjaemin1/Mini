@@ -71,11 +71,19 @@ async function waitHttp(url, tries = 900) {
   });
   ok(await waitHttp(`http://localhost:${CPORT}/zones`), 'central 기동');
   ok(await waitHttp(`http://localhost:${ZPORT}/health`), 'zone 기동');
-  for (let i = 0; i < 90; i++) {
-    const zmap = await (await fetch(`http://localhost:${CPORT}/zones`)).json();
-    const z = zmap.zones && zmap.zones.hanbando;
-    if (z && z.population != null && z.cap) break;
-    await sleep(1000);
+  // ★[T338 2026-09-20] 예산형(90×1000ms = 90초). 조건으로 돌지만 **상한에 걸려도 말이 없었다** —
+  //   그러면 그 다음 절이 이유 없이 빨개진다. 상한은 표에만 두고, 걸리면 **이름을 붙여** 적는다.
+  {
+    const POP_CAP = 90000, tP = Date.now(); let popOk = false;
+    while (Date.now() - tP < POP_CAP) {
+      const zmap = await (await fetch(`http://localhost:${CPORT}/zones`)).json();
+      const z = zmap.zones && zmap.zones.hanbando;
+      if (z && z.population != null && z.cap) { popOk = true; break; }
+      await sleep(1000);
+    }
+    console.log(`  [상황] 존 인구/정원 보고까지 ${Date.now() - tP}ms`
+      + (popOk ? '' : ` — ★${(POP_CAP / 1000) | 0}초 상한까지 안 왔다(아래가 조용히 빨개지지 않게 이름을 붙인다)`)
+      + ' (상한은 표에만 · 판정 아님)');
   }
 
   const { chromium } = require('playwright');
