@@ -157,6 +157,11 @@ function makeTerrainAdapter(terrain, ZONE, deps) {
     return deps.isWaterTileLocal(x, y);
   };
   const isRock = (cx, cy) => {
+    // ★★[T333] **메모를 지나가게 한다.** 여태 여기서 `terrain.isRockCellLocal` 을 직접 불러
+    //   zone.js 의 타일 메모를 통째로 지나쳤다(T324 프로파일: 남은 지형 시간의 9.6%가 이 한 줄).
+    //   `isRockTileLocal` 은 같은 셀 중심을 묻는 **같은 술어**라 답이 같다(사본 0 · 세계 무변).
+    //   ⚠술어가 안 넘어온 옛 배선에서도 돌아야 한다 — 그 땐 종전 경로 그대로.
+    if (deps.isRockTileLocal) { try { return deps.isRockTileLocal(px(cx), px(cy)); } catch { return false; } }
     try { return terrain.isRockCellLocal(zoneId, px(cx), px(cy)); } catch { return false; }
   };
   const forestMult = (cx, cy) => {

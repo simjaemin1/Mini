@@ -662,6 +662,27 @@ const WATER_TILES = generateCoastlineWaterTiles(
   OCEAN_RECTS
 );
 console.log(`[${ZONE_ID}] 🌊 해안선: ${WATER_TILES.size} water tiles (ocean=${ZONE.isOcean?'전체':'edge only'})`);
+// ★★★[T333 2026-09-20 · 문자열 키 → 정수 키] **같은 답 · 같은 자료 · 다른 색인.**
+//   T324 프로파일: `isWaterTileLocal` 자기시간 4.7% · `isDitchTileLocal` 1.7% · GC 3.6%.
+//   그 자기시간의 정체는 판정이 아니라 **키**다 — 질의마다 `` `${tx}_${ty}` `` 문자열을 새로 만들어
+//   해시한다. 걸음당 5~7회 × 초당 4만 걸음이면 **초당 20만 개의 임시 문자열**이고, 그게 GC 의 밥이다.
+//   ⇒ 같은 집합을 **비트 한 장**으로 색인한다(타일당 1비트 · 2,188×4,063 = 1.1MB).
+//     `WATER_TILES`(문자열 Set)는 **원천 그대로 둔다**(export 계약 · 하네스가 둘의 일치를 전수로 건다).
+//     새 자료도 새 수도 아니다 — 같은 집합의 두 번째 색인이고, 답은 정의상 같다.
+const _WT_W = Math.ceil(ZONE.zoneWidth / 32), _WT_H = Math.ceil(ZONE.zoneHeight / 32);
+const _WATER_BITS = (() => {
+  const a = new Uint8Array(((_WT_W * _WT_H) >> 3) + 1);
+  for (const k of WATER_TILES) {
+    const u = k.indexOf('_'); if (u < 0) continue;
+    const tx = +k.slice(0, u), ty = +k.slice(u + 1);
+    if (!(tx >= 0 && ty >= 0 && tx < _WT_W && ty < _WT_H)) continue;
+    const b = ty * _WT_W + tx; a[b >> 3] |= (1 << (b & 7));
+  }
+  return a;
+})();
+//   ⚠경계 가드는 **부르는 쪽이 이미 한다**(존 밖은 위에서 걸러진다) — 여기서 또 재면 그게 사본이다.
+const _waterBit = (tx, ty) => { const b = ty * _WT_W + tx; return ((_WATER_BITS[b >> 3] >> (b & 7)) & 1) === 1; };
+if (WATER_TILES.size) console.log(`[${ZONE_ID}] 🧮 해안선 비트 색인 — ${(_WATER_BITS.length / 1048576).toFixed(2)}MB (${_WT_W}×${_WT_H})`);
 // Phase 5-1-fix: inland water (강·호수)는 zone start pre-compute 안 함 (수 분 timeout).
 // ⚠[T324] 이 블록은 **파일 위쪽**에 있어야 한다 — `isTerrainBlockedLocal` 이 모듈 적재 중에도
 //   불린다(`spawnMob` → zone.js:1672 초기 스폰). 아래쪽에 `const` 로 두면 그 한 번이 TDZ 에 걸려
@@ -709,7 +730,7 @@ function isWaterTileLocal(localX, localY) {
   if (localX < 0 || localY < 0 || localX >= ZONE.zoneWidth || localY >= ZONE.zoneHeight) return false;
   const tx = Math.floor(localX / 32);
   const ty = Math.floor(localY / 32);
-  if (WATER_TILES.has(`${tx}_${ty}`)) return true;
+  if (_waterBit(tx, ty)) return true;   // ★[T333] 문자열 키 → 비트 색인(같은 집합 · 같은 답)
   // Phase 5-1-fix2: cell center로 검사 — 시각(cell-grid raster)과 일치.
   // sub-pixel 좌표 그대로 쓰면 콜라이더는 sub-pixel, 시각은 cell-grid → mismatch.
   const cellCx = tx * 32 + 16;
@@ -728,7 +749,7 @@ function isSeaTileLocal(localX, localY) {
   if (ZONE.isOcean) return true;
   if (localX < 0 || localY < 0 || localX >= ZONE.zoneWidth || localY >= ZONE.zoneHeight) return false;
   const tx = Math.floor(localX / 32), ty = Math.floor(localY / 32);
-  if (!WATER_TILES.has(`${tx}_${ty}`)) return false;
+  if (!_waterBit(tx, ty)) return false;   // ★[T333] 같은 색인(바다 술어도 같은 집합을 본다)
   // 해안선 띠 안이라도 강·호수가 겹친 칸은 민물이다(강어귀) — 거기선 짠물이 안 나온다.
   return !_terrain.isWaterCellLocal(ZONE_ID, tx * 32 + 16, ty * 32 + 16);
 }
@@ -748,14 +769,16 @@ function isRockTileLocal(localX, localY) {
 //   물/다리 판정은 전부 호출측 blocked 콜백 소관." → 그 '호출측'이 바로 이 단일 술어다.
 //   isTerrainBlockedLocal은 플레이어 이동·NPC 이동·A*·wildlife·전쟁 콜라이더가 전부 공유하는
 //   유일한 통행 판정이라, 여기 한 곳만 열면 모든 이동층에 다리가 동시에 열린다(규약 신설 없음).
+// ★[T333] 키가 정수다 — `cx * _WT_H + cy`(같은 격자 · 같은 집합 · 문자열 0). 다리 칸은 수백 개라 Set 이면 족하다.
+const _cellKey = (cx, cy) => cx * _WT_H + cy;
 const BRIDGE_CELLS = new Set();
 {
   const bl = (ZONE && ZONE.bridges) || null;
-  if (bl && bl.length) { for (let i = 0; i + 1 < bl.length; i += 2) BRIDGE_CELLS.add(bl[i] + '_' + bl[i + 1]); }
+  if (bl && bl.length) { for (let i = 0; i + 1 < bl.length; i += 2) BRIDGE_CELLS.add(_cellKey(bl[i], bl[i + 1])); }
 }
 function isBridgeTileLocal(localX, localY) {
   if (!BRIDGE_CELLS.size) return false;
-  return BRIDGE_CELLS.has(Math.floor(localX / 32) + '_' + Math.floor(localY / 32));
+  return BRIDGE_CELLS.has(_cellKey(Math.floor(localX / 32), Math.floor(localY / 32)));
 }
 // ★★[11차 T3 환호] 도랑 셀 — **마을이 소유한 사물**(village_buildings 'ditch')이라 정적 ZONE 설정이 아니라
 //   SimVillages.init 직후 런타임으로 채운다(아래 refreshDitchCells). 다리와 같은 규약: 서버 단일 술어 한 곳만 고치면
@@ -764,13 +787,13 @@ function isBridgeTileLocal(localX, localY) {
 const DITCH_CELLS = new Set();
 function isDitchTileLocal(localX, localY) {
   if (!DITCH_CELLS.size) return false;
-  return DITCH_CELLS.has(Math.floor(localX / 32) + '_' + Math.floor(localY / 32));
+  return DITCH_CELLS.has(_cellKey(Math.floor(localX / 32), Math.floor(localY / 32)));   // ★[T333] 정수 키
 }
 function refreshDitchCells() {
   DITCH_CELLS.clear();
   try {
     const flat = SimVillages.ditchCells ? SimVillages.ditchCells() : [];
-    for (let i = 0; i + 1 < flat.length; i += 2) DITCH_CELLS.add(flat[i] + '_' + flat[i + 1]);
+    for (let i = 0; i + 1 < flat.length; i += 2) DITCH_CELLS.add(_cellKey(flat[i], flat[i + 1]));   // ★[T333] 정수 키
   } catch (e) { console.error(`[${ZONE_ID}] 🏰 도랑 콜라이더 적재 실패:`, e.message); }
   return DITCH_CELLS.size;
 }
@@ -2788,6 +2811,9 @@ function clearTreesInCells(cellKeys) {
 }
 const _simNow = () => { try { return (SimVillages.dayNow && SimVillages.dayNow()) || Date.now(); } catch (e) { return Date.now(); } };
 SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, isWaterTileLocal, isPositionActive, isBlockedByWall, anyViewerNear, perfMark,
+  // ★★[T333] 바위 술어도 넘긴다 — 생활층 지형 어댑터(`villages.js isRock`)가 여태 `terrain.isRockCellLocal` 을
+  //   **직접** 불러 메모를 지나쳤다(T324 프로파일: 남은 지형 시간의 9.6%). 같은 양자화(셀 중심)라 답은 같다.
+  isRockTileLocal,
   tickHz: TICK_HZ,   // ★[T284] 실체 전쟁 교전 스텝 = 존 틱 한 번(dt = 1/TICK_HZ)
   ioBusy, ioQuietMs,   // ★[T42-b] 배경 작업이 '한가한가'를 판단할 때 **날아가는 쓰기**도 본다
   clearTreesInCells,   // ★영토 개간 — 마을 안엔 숲이 없다
@@ -2829,6 +2855,43 @@ SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, is
 // ★[11차 T3 환호] 도랑 콜라이더 적재 — SimVillages.init이 시범 마을 도랑을 실체화한 **직후**여야 한다.
 //   (이 줄이 없으면 도랑 행은 DB에 있는데 통행 판정은 열려 있는 '유령 도랑'이 된다.)
 console.log(`[${ZONE_ID}] 🏰 환호 콜라이더: ${refreshDitchCells()}셀 적재`);
+// ★★★[T333 2026-09-20] **걷기 전에 굽는다 — "처음 밟는 셀" 0.**
+//   T324: 메모를 켠 뒤에도 틱의 17.9%가 지형이었고 그 90%가 **적중 실패**였다(주민이 영토를 새로 밟는다).
+//   ⇒ 각 마을의 **생활권 상자**를 통째로 굽는다. 계산 함수는 그대로이므로 값은 정의상 같다 —
+//     달라지는 것은 **언제 내느냐**뿐이다(런타임 산발 → 부팅 직후 한 번).
+//   ⚠전 존(2,188×4,063 = 8.9M셀)을 굽지 않는다 — 셀당 약 43µs 라 6분이 넘는다. 걷는 자리만 굽는다.
+//   ⚠★**한 덩어리로 굽지 않는다.** 첫 판은 여기서 통째로 돌려 `server.listen` 전에 **61초를 멎었다** —
+//     그 동안 `/health` 가 죽어 있다. 존이 기동도 안 한 채 1분을 먹는 건 기능이 아니라 사고다.
+//     ⇒ 마을 하나씩, **이벤트 루프에 자리를 내주며** 굽는다(`setTimeout 0`). 기동은 종전대로 빠르고,
+//       첫 1분 안에 다 구워진다. 그 1분의 적중 실패는 종전과 같은 값이다(값은 안 바뀐다).
+//   ⚠상자 반경 = `_maxRPx + 1600` — `anyViewerNear` 가 쓰는 그 수다(새 수 0).
+function _t333Prebake() {
+  if (!_TERR_CACHE) return;
+  let vs = [];
+  try { vs = SimVillages.clientVillages ? (SimVillages.clientVillages() || []) : []; } catch (e) { return; }
+  const cw = (tx, ty) => _terrain.isWaterCellLocal(ZONE_ID, tx * 32 + 16, ty * 32 + 16);
+  const cr = (tx, ty) => (typeof _terrain.isRockCellLocal === 'function') && _terrain.isRockCellLocal(ZONE_ID, tx * 32 + 16, ty * 32 + 16);
+  // ★★한 번에 **한 줄씩**. 마을 상자(약 73,000칸)를 통째로 구우면 그 한 번이 1.2초라 틱 하나를 통째로 먹는다
+  //   (실측: 상자 단위로 쪼갰더니 굽는 1분 동안 lag 18% · drop 252). 상자의 **가로 한 줄**(약 270칸 ≈ 4.5ms)이면
+  //   30Hz 틱 예산(33.3ms) 안에 얹힌다. 굽는 총 시간은 같고, 그 동안 세계가 안 밀린다.
+  const boxes = vs.map((v) => {
+    const ccx = v.cx | 0, ccy = v.cy | 0, r = Math.ceil((((v.r || 800) | 0) + 1600) / 32);
+    return { x0: ccx - r, x1: ccx + r, y: ccy - r, y1: ccy + r };
+  });
+  const t0 = Date.now();
+  let bi = 0, baked = 0, rows = 0;
+  const step = () => {
+    if (bi >= boxes.length) {
+      console.log(`[${ZONE_ID}] 🗺️ 지형 미리 굽기 — 마을 ${boxes.length}곳 · ${baked}칸 · ${rows}줄 · ${Date.now() - t0}ms(기동 뒤 배경 · 한 번에 한 줄)`);
+      return;
+    }
+    const b = boxes[bi];
+    try { baked += _TERR_CACHE.prebake(b.x0, b.y, b.x1, b.y, cw, cr); rows++; } catch (e) { /* 한 줄 실패해도 계속 */ }
+    if (++b.y > b.y1) bi++;
+    setTimeout(step, 0);
+  };
+  setTimeout(step, 0);
+}
 // §11 도적 1파 — SimVillages.init 직후(banditHost 준비 시점): 소굴 스캔/복원 + econ 훅(banditRouteRisk/onBanditLoot) 배선.
 Bandits.init();
 // §16 답압 길 4파 — 존 셀 치수·게임일 시계로 독립 부팅(villages와 무관 — 스탬프는 이동 루프 편승).
@@ -12404,6 +12467,7 @@ function zonePublicMeta() {
 }
 
 server.listen(PORT, () => {
+  _t333Prebake();   // ★[T333] 기동을 막지 않고 배경으로 굽는다(위 주석)
   console.log(`[${ZONE_ID}] 🌏 zone server up on :${PORT}  latency=${LATENCY_MS}ms (RTT≈${LATENCY_MS*2}ms)  [netcode=K19 입력1개=1스텝]`);
   console.log(`        biome=${ZONE.biome}  rect=(${ZONE.worldOffsetX},${ZONE.worldOffsetY},${ZONE.zoneWidth}x${ZONE.zoneHeight})  neighbors=W:${NEIGHBOR.hasWest?'✓':'∅'} E:${NEIGHBOR.hasEast?'✓':'∅'} N:${NEIGHBOR.hasNorth?'✓':'∅'} S:${NEIGHBOR.hasSouth?'✓':'∅'}`);
 });
