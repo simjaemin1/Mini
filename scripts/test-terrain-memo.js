@@ -117,6 +117,97 @@ console.log('\n③-b 적재 순서 — 관측 창이 술어보다 **앞**에 있
   ok(Z.indexOf('let _npcCursor') < iTerr, '③-b 커서 선언도 같은 자리에 있다');
 }
 
+console.log('\n⑤ [T333] 미리 굽기 — 상자를 통째로 채워도 답이 같다');
+{
+  // ★굽는 것은 **언제 내느냐**만 바꾼다. 값을 바꾸면 이 절이 문다.
+  const A = makeTileCache(TW, TH), B = makeTileCache(TW, TH);
+  const cw = (tx, ty) => terrain.isWaterCellLocal(ZONE_ID, tx * 32 + 16, ty * 32 + 16);
+  const cr = (tx, ty) => terrain.isRockCellLocal(ZONE_ID, tx * 32 + 16, ty * 32 + 16);
+  // 상자 하나 — 실제 마을 생활권과 같은 크기대(반경 약 75셀)
+  const bx = 900, by = 1500, R = 40;   // 이 상자엔 강이 지난다(아래 [상황] 이 그걸 센다)
+  const baked = A.prebake(bx - R, by - R, bx + R, by + R, cw, cr);
+  ok(baked === (2 * R + 1) * (2 * R + 1) * 2, '⑤ [상황] 상자 전부를 한 번씩 구웠다(물+바위 두 칸)', `${baked}칸`);
+  // ⚠`water/rock` 의 계약은 **인수 없는** `compute()` 다(부르는 쪽이 좌표를 가둔다). `prebake` 만 (tx,ty) 를 넘긴다.
+  //   첫 판에서 이걸 헷갈려 `cw` 를 그대로 넘겼다가 B 가 NaN 좌표를 물어 501칸이 갈렸다 — 자가 아니라 자를 든 손이 틀렸다.
+  let diff = 0, n = 0, trueW = 0, trueR = 0;
+  for (let ty = by - R; ty <= by + R; ty++) for (let tx = bx - R; tx <= bx + R; tx++) {
+    const a1 = A.water(tx, ty, () => { throw new Error('미리 구웠는데 다시 계산했다'); });
+    const b1 = B.water(tx, ty, () => cw(tx, ty));
+    const a2 = A.rock(tx, ty, () => { throw new Error('미리 구웠는데 다시 계산했다'); });
+    const b2 = B.rock(tx, ty, () => cr(tx, ty));
+    n += 2; if (a1 !== b1) diff++; if (a2 !== b2) diff++;
+    if (b1) trueW++; if (b2) trueR++;
+  }
+  ok(trueW + trueR > 100, '⑤ [상황] 그 상자에 물·바위가 **넉넉히** 있다(빈 들판이면 자명 통과다)', `물 ${trueW} · 바위 ${trueR}`);
+  ok(diff === 0, '⑤ ★★미리 구운 판 ↔ 그때그때 구운 판이 **한 칸도 안 다르다**', `${n}칸 중 ${diff}`);
+  ok(A.prebake(bx - R, by - R, bx + R, by + R, () => { throw new Error('두 번 굽는다'); }, () => { throw new Error('두 번 굽는다'); }) === 0,
+     '⑤ ★이미 구운 칸은 **다시 안 굽는다**(두 번째 호출이 0칸)');
+  ok(A.prebake(-50, -50, -10, -10, cw, cr) === 0, '⑤ 격자 밖 상자는 0칸(경계 가드)');
+}
+
+console.log('\n⑥ [T333] 정수 키 — 문자열 키와 **같은 집합**');
+{
+  // ★★T324 프로파일: `isWaterTileLocal` 자기시간 4.7%·`isDitchTileLocal` 1.7%·GC 3.6% 의 정체는
+  //   판정이 아니라 **키**였다(질의마다 `` `${tx}_${ty}` `` 새 문자열). 비트/정수 색인으로 바꾼다.
+  //   바꾼 것은 **색인**뿐이고 집합은 그대로다 — 그 동치를 여기서 **전수로** 건다.
+  const Z = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
+  ok(!/WATER_TILES\.has\(/.test(Z), '⑥ ★★뜨거운 자리에 `WATER_TILES.has(문자열)` 이 **없다**');
+  ok(/const _waterBit = \(tx, ty\) =>/.test(Z), '⑥ 비트 색인 술어가 하나다(`_waterBit`)');
+  ok(/const _cellKey = \(cx, cy\) => cx \* _WT_H \+ cy;/.test(Z), '⑥ 다리·도랑 키도 정수 하나다(`_cellKey`)');
+  ok(!/BRIDGE_CELLS\.has\([^)]*'_'/.test(Z) && !/DITCH_CELLS\.has\([^)]*'_'/.test(Z),
+     '⑥ ★다리·도랑도 문자열 키를 안 쓴다');
+  ok(/for \(const k of WATER_TILES\)/.test(Z), '⑥ ★비트 색인이 **그 Set 에서** 유도된다(두 원천 0 · 사본 0)');
+  // 동치 — 같은 유도를 여기서 다시 해 보고 개수·구성원을 맞춘다(집합이 곧 답이다)
+  const { ZONES } = require(path.join(ROOT, 'server', 'zone-config'));
+  const Zn = ZONES[ZONE_ID];
+  const W = Math.ceil(Zn.zoneWidth / 32), H = Math.ceil(Zn.zoneHeight / 32);
+  const chunk = require(path.join(ROOT, 'server', 'chunk'));
+  const oceanRects = Object.values(ZONES).filter((z) => z.isOcean)
+    .map((z) => ({ x0: z.worldOffsetX, y0: z.worldOffsetY, x1: z.worldOffsetX + z.zoneWidth, y1: z.worldOffsetY + z.zoneHeight }));
+  const findZoneAt = (x, y) => Object.entries(ZONES).map(([id, z]) => ({ id, ...z }))
+    .find((z) => x >= z.worldOffsetX && x < z.worldOffsetX + z.zoneWidth && y >= z.worldOffsetY && y < z.worldOffsetY + z.zoneHeight) || null;
+  const WT = chunk.generateCoastlineWaterTiles({ ...Zn, id: ZONE_ID }, 32, findZoneAt, oceanRects);
+  const bits = new Uint8Array(((W * H) >> 3) + 1);
+  let bad = 0;
+  for (const k of WT) { const u = k.indexOf('_'); const tx = +k.slice(0, u), ty = +k.slice(u + 1);
+    if (!(tx >= 0 && ty >= 0 && tx < W && ty < H)) { bad++; continue; }
+    const b = ty * W + tx; bits[b >> 3] |= (1 << (b & 7)); }
+  let pop = 0; for (let i = 0; i < bits.length; i++) { let v = bits[i]; while (v) { pop += v & 1; v >>= 1; } }
+  ok(WT.size > 0, '⑥ [상황] 해안선 타일이 실제로 있다', `${WT.size}개`);
+  ok(bad === 0, '⑥ 격자 밖 키가 하나도 없다(색인이 집합을 통째로 담는다)');
+  ok(pop === WT.size, '⑥ ★★비트 색인의 켜진 비트 수 = 집합 크기(**전수 일치** · 빠짐도 덤도 없다)', `${pop} = ${WT.size}`);
+  let miss = 0;
+  for (const k of WT) { const u = k.indexOf('_'); const tx = +k.slice(0, u), ty = +k.slice(u + 1);
+    const b = ty * W + tx; if (!((bits[b >> 3] >> (b & 7)) & 1)) miss++; }
+  ok(miss === 0, '⑥ ★★집합의 **모든** 원소가 색인에 켜져 있다', `빠진 원소 ${miss}/${WT.size}`);
+  ok((bits.length / 1048576) < 2, '⑥ 색인 값이 2MB 미만이다(타일당 1비트)', `${(bits.length / 1048576).toFixed(2)}MB`);
+  // 자명 통과 금지 — 비트 하나를 끄면 위 둘이 문다
+  const b0 = (() => { for (const k of WT) { const u = k.indexOf('_'); return (+k.slice(u + 1)) * W + (+k.slice(0, u)); } return 0; })();
+  bits[b0 >> 3] &= ~(1 << (b0 & 7));
+  let pop2 = 0; for (let i = 0; i < bits.length; i++) { let v = bits[i]; while (v) { pop2 += v & 1; v >>= 1; } }
+  ok(pop2 === WT.size - 1, '⑥ ★비트 하나를 끄면 개수가 갈린다(자가 실제로 문다)');
+}
+
+console.log('\n⑦ [T333] 생활층 지형 어댑터가 메모를 지나간다');
+{
+  const V = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8');
+  const Z = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
+  ok(/if \(deps\.isRockTileLocal\) \{ try \{ return deps\.isRockTileLocal\(px\(cx\), px\(cy\)\); \}/.test(V),
+     '⑦ ★★`isRock` 이 **존의 술어**를 부른다(메모 통과 — 옛 직통은 폴백으로만 남았다)');
+  ok(/isRockTileLocal,\n/.test(Z) || /\n  isRockTileLocal,/.test(Z),
+     '⑦ 존이 그 술어를 `SimVillages.init` 에 실제로 넘긴다');
+  ok(Z.indexOf('r = Math.ceil((((v.r || 800) | 0) + 1600) / 32)') > 0,
+     '⑦ ★마을 생활권 상자를 미리 굽는다 — 반경은 `anyViewerNear` 가 쓰는 그 수다(새 수 0)');
+  // ★★기동을 막으면 안 된다 — 첫 판은 통째로 굽다가 `server.listen` 전에 **61초를 멎었다**(/health 사망).
+  ok(/server\.listen\(PORT, \(\) => \{\n  _t333Prebake\(\);/.test(Z),
+     '⑦ ★★굽기는 **기동 뒤**에 시작한다(`server.listen` 콜백) — 기동을 61초 막지 않는다');
+  ok(/setTimeout\(step, 0\);\n  \};\n  setTimeout\(step, 0\);/.test(Z),
+     '⑦ ★★**이벤트 루프에 자리를 내주며** 굽는다(한 덩어리 금지)');
+  // ★상자 단위로 쪼개도 한 번이 1.2초라 틱 하나를 통째로 먹는다(실측 lag 18% · drop 252) ⇒ **한 줄씩**.
+  ok(/_TERR_CACHE\.prebake\(b\.x0, b\.y, b\.x1, b\.y, cw, cr\)/.test(Z),
+     '⑦ ★★한 번에 굽는 단위가 **상자의 가로 한 줄**이다(30Hz 틱 예산 안에 얹힌다)');
+}
+
 console.log('\n④ 자명 통과 금지 — 메모를 거짓말하게 비틀면 ①이 문다');
 {
   // 참을 안 기억하는 판(= 늘 다시 계산)은 통과해야 하고, **답을 뒤집는 판**은 걸려야 한다

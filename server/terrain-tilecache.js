@@ -49,6 +49,26 @@ function makeTileCache(tilesW, tilesH) {
       memo[i] = m | 4 | (v ? 8 : 0);
       return v;
     },
+    // ★★★[T333 2026-09-20] **상자 하나를 통째로 굽는다** — "처음 밟는 셀" 을 없앤다.
+    //   T324 실측: 메모를 켠 뒤에도 틱의 17.9%가 지형에 남았고, 그 90%가 **적중 실패**였다
+    //   (주민이 영토를 계속 새로 밟는다 — 마을당 영토 약 5,000셀 × 51마을).
+    //   ⇒ 걷기 전에 그 상자를 미리 채운다. 계산하는 함수는 **그대로**이므로 값은 정의상 같다 —
+    //     달라지는 것은 **언제 내느냐**뿐이다(런타임 산발 → 부팅 한 번).
+    //   ⚠이미 계산된 칸은 건너뛴다(두 번 안 센다) · 격자 밖은 무시한다.
+    prebake(tx0, ty0, tx1, ty1, computeWater, computeRock) {
+      const x0 = Math.max(0, tx0 | 0), y0 = Math.max(0, ty0 | 0);
+      const x1 = Math.min(tilesW - 1, tx1 | 0), y1 = Math.min(tilesH - 1, ty1 | 0);
+      let baked = 0;
+      for (let ty = y0; ty <= y1; ty++) {
+        const row = ty * tilesW;
+        for (let tx = x0; tx <= x1; tx++) {
+          const i = row + tx, m = memo[i];
+          if (!(m & 1)) { missW++; const v = computeWater(tx, ty); memo[i] |= 1 | (v ? 2 : 0); baked++; }
+          if (!(memo[i] & 4)) { missR++; const v = computeRock(tx, ty); memo[i] |= 4 | (v ? 8 : 0); baked++; }
+        }
+      }
+      return baked;
+    },
     stats() {
       let filled = 0;
       for (let i = 0; i < memo.length; i++) if (memo[i]) filled++;
