@@ -104,7 +104,7 @@ let made = 0, withShelter = 0;
   }
   const ms = Date.now() - t0;
   pre(made > 0, '백필이 실제로 무언가를 세웠다(0채면 아래가 자명 통과다)', `${made}채 · ${ms}ms`);
-  let inTerr = 0, dry = 0, offYard = 0, noOverlapHouse = 0, doorsOut = 0;
+  let inTerr = 0, dry = 0, offYard = 0, noOverlapHouse = 0, noFootOverlap = 0, doorsOut = 0;
   const bad = [];
   for (const vid of vids) {
     const sh = SimVillages.shelterOf(vid);
@@ -120,9 +120,27 @@ let made = 0, withShelter = 0;
     if (allIn) inTerr++; else bad.push(`${vid}:영토밖`);
     if (allDry) dry++; else bad.push(`${vid}:물바위`);
     if (Math.hypot(sh.cx - vil.ccx, sh.cy - vil.ccy) >= VL.HALL_CLEAR) offYard++; else bad.push(`${vid}:마당침범`);
+    // ★★[T342] 여기 **`18` 이 박혀 있었다** — 그게 이 절이 42/50 으로 빨개진 이유다(제품이 아니라 하네스의 사본).
+    //   T326 이 생활층 집 간격 정본을 15 로 내렸고(PM #52) 쉼터 자리도 그 정본 필터(`_lifeSiteFilters.reject`)를
+    //   그대로 쓴다 — ③ 절이 그 필터가 `기존 집과 너무 가까움(<15)` 으로 거절하는 것까지 찍는다.
+    //   그러니 **제품은 규약을 지켰고 하네스만 옛 수를 들고 있었다.** 두 갈래로 고친다:
+    //     ⓐ 간격은 **정본 수**(`VL.LIFE_HOUSE_GAP`)로 묻는다 — 수를 하네스에 적지 않는다.
+    //     ⓑ 이 줄의 이름이 주장하던 **"안 겹친다"** 는 간격이 아니라 발자국 이야기다 — 그래서 **따로** 잰다
+    //        (`_vbFootprint` 정본 렉트 둘이 한 셀도 안 겹치나). 15 에서 둘은 구조적으로 안 겹친다
+    //        (같은 6×4 는 |Δx|<6 · |Δy|<4 에서만 겹치고 그 최대 hypot 은 √52 ≈ 7.21 < 15).
     let far = true;
-    for (const h of vil._houseCells) if (Math.hypot(h.cx - sh.cx, h.cy - sh.cy) < 18) far = false;
-    if (far) noOverlapHouse++; else bad.push(`${vid}:집겹침`);
+    for (const h of vil._houseCells) if (Math.hypot(h.cx - sh.cx, h.cy - sh.cy) < VL.LIFE_HOUSE_GAP) far = false;
+    if (far) noOverlapHouse++; else bad.push(`${vid}:간격<${VL.LIFE_HOUSE_GAP}`);
+    // ⓑ 발자국 겹침 — 정본 렉트로
+    let noOv = true;
+    {
+      const S = SimVillages.__probe && SimVillages.__probe.vbFootprint ? SimVillages.__probe.vbFootprint('shelter', sh.cx, sh.cy) : null;
+      if (S) for (const h of vil._houseCells) {
+        const Hr = SimVillages.__probe.vbFootprint('house', h.cx, h.cy);
+        if (Hr && S[0] <= Hr[2] && Hr[0] <= S[2] && S[1] <= Hr[3] && Hr[1] <= S[3]) { noOv = false; break; }
+      }
+    }
+    if (noOv) noFootOverlap++; else bad.push(`${vid}:발자국겹침`);
     // ★설 자리는 **집 밖**이어야 한다 — 문 앞 한 칸(남벽 아래)
     if (sh.y > (sh.cy - 2) * SZ + SZ) doorsOut++; else bad.push(`${vid}:집안`);
   }
@@ -130,7 +148,8 @@ let made = 0, withShelter = 0;
   ok(inTerr === withShelter, '② 집채 6×4 가 **전부 마을 영토 안**이다', `${inTerr}/${withShelter}`);
   ok(dry === withShelter, '② 물·바위 위가 아니다', `${dry}/${withShelter}`);
   ok(offYard === withShelter, `② 큰집 마당(HALL_CLEAR=${VL.HALL_CLEAR})을 안 밟는다`, `${offYard}/${withShelter}`);
-  ok(noOverlapHouse === withShelter, '② 기존 집과 안 겹친다', `${noOverlapHouse}/${withShelter}`);
+  ok(noOverlapHouse === withShelter, `② 기존 집과 **정본 간격**(\`LIFE_HOUSE_GAP\`=${VL.LIFE_HOUSE_GAP}) 이상 떨어져 있다 — 수는 모듈이 갖는다(T342)`, `${noOverlapHouse}/${withShelter}`);
+  ok(noFootOverlap === withShelter, '② ★그리고 집채 발자국이 **한 셀도 안 겹친다**(`_vbFootprint` 정본 렉트로 — 이 절 이름이 주장하던 것)', `${noFootOverlap}/${withShelter}`);
   ok(doorsOut === withShelter, '② ★깨어날 자리는 **집 밖(문 앞)**이다 — 벽 안에 서지 않는다', `${doorsOut}/${withShelter}`);
   if (bad.length) console.log('    ⚠어긋난 것: ' + bad.slice(0, 8).join(' · '));
   // 멱등 — 다시 불러도 두 채가 서지 않는다

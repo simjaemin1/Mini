@@ -81,6 +81,17 @@ async function arm(label, extraEnv) {
   boot('zone.js', Object.assign({
     PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
     VILLAGE_DAY_MS: String(DAY_MS), ENABLE_BANDITS: '0', ENABLE_ROADS: '0', ENABLE_WILDLIFE: '0',
+    // ★★[T342] **영토가 자라지 않는 세계에서 잰다 — 그게 기억의 계약이기 때문이다.**
+    //   T342 전까지 `_terrGrow` 는 영토를 넓힌 뒤 표지만 세우고 거부 캐시를 남겼다. 그 단조성 논증이
+    //   `마을 영토 밖` 에서 깨진다는 것을 T335 가 감사문으로 쟀고(캐시된 거부의 10%가 오늘은 통과),
+    //   T342 가 `lifeSiteReset` 으로 고쳤다 ⇒ **영토가 자라는 날에는 기억이 (옳게) 아무것도 안 아낀다.**
+    //   그래서 성장 중인 세계에서 이 하네스를 돌리면 ①③ 이 재는 "싸짐" 이 **구조적으로 0** 이고,
+    //   그건 결함이 아니라 계약이다. 기억이 실제로 일하는 구간은 **영토가 다 자란 뒤**다.
+    //   그 구간을 결정적으로 만들려면 영토 목표를 종전(`land.size × 25`)으로 되돌리면 된다 —
+    //   T219 §0 실측에서 그 목표는 이미 붙어 있어 200일에 50마을 합쳐 63셀만 자랐다(= 사실상 정지).
+    //   ⇒ 손잡이 하나(`T230_TERR_HOUSING=0`)로 **기억이 적용되는 세계**를 고정한다. 제품 기본값은 안 건드린다.
+    //   (T342 의 계약 자체는 아래 ⑤ 절이 소스로 건다 — 세계를 안 돌리고도 되돌림을 잡는다.)
+    T230_TERR_HOUSING: '0',
   }, extraEnv || {}));
   if (!await waitHttp(`http://localhost:${ZPORT}/health`, 600)) { killAll(); return null; }
   let j = null;
@@ -125,7 +136,15 @@ const st = (E, k) => (E && E.stages && E.stages[k]) ? E.stages[k] : { p50: 0, p9
   ok(pa.siteCall >= A.days * 5, '① [상황] 종전 판이 하루 5회 이상 집터를 훑는다', `${pa.siteCall}회 / ${A.days}일`);
   ok(pa.siteSkip === 0, '① [상황] 종전 판은 한 번도 안 건너뛴다(대조군이 맞다)', `스킵 ${pa.siteSkip}`);
   ok(pa.siteHit === 0 || pa.siteCall > pa.siteHit, '① [상황] 헛수고(빈손)가 실제로 있다', `빈손 ${pa.siteCall - pa.siteHit}`);
-  ok(st(A, 'life:site').p50 >= 100, '① [상황] 그 헛수고가 잴 만큼 무겁다(중앙 ≥100ms/일)', `${st(A, 'life:site').p50}ms`);
+  // ★★[T342] **절대 문턱 `100ms` 를 뺐다 — 죽은 세계의 수였다.**
+  //   이 수는 T41(2026-09-01) 이 잰 세계의 것이다: 그때 집터 단계는 **하루 1,170ms** 였고 거부의 92%가
+  //   `기존 집과 너무 가까움(<18)` 이었다. 그 뒤 T298(영토·방아쇠 켬) · T326(간격 15 · `_mapBeds`)이
+  //   집터를 **성사시키는** 세계로 바꿨고, 같은 단계가 지금 **55ms** 다(21배 싸졌다).
+  //   ⇒ 일이 늘어난 게 아니라 **줄었다**. 그런데 문턱만 옛 세계에 묶여 있어 빨강이 됐다.
+  //   이 절이 정말 물어야 하는 것은 "아낄 것이 있나" 다 ⇒ **대조군이 채택본보다 무거운가**로 묻는다(수 0).
+  ok(st(A, 'life:site').p50 > st(B, 'life:site').p50,
+    '① [상황] 그 헛수고가 **잴 만큼 있다** — 대조군 집터 단계가 채택본보다 무겁다(T342: 절대 문턱 폐지)',
+    `종전 ${st(A, 'life:site').p50}ms > 채택 ${st(B, 'life:site').p50}ms`);
 
   // ② ★★같은 답인가 — 단조성 감사(이 하네스의 심장)
   ok(pd.auditN >= 1000, '② [전제] 감사가 실제로 돌았다 — 건너뛴 셀을 다시 판정한 횟수', `${pd.auditN}회`);
@@ -146,11 +165,33 @@ const st = (E, k) => (E && E.stages && E.stages[k]) ? E.stages[k] : { p50: 0, p9
 
   // ③ 싸졌는가
   ok(pb.siteSkip > 0, '③ [전제] 실제로 건너뛰었다', `스킵 ${pb.siteSkip}`);
-  ok(pb.siteScan <= pa.siteScan / 2, '③ ★훑은 셀이 종전의 절반 이하', `${pb.siteScan} ≤ ${Math.round(pa.siteScan / 2)}`);
-  ok(st(B, 'life:site').p50 <= Math.max(20, st(A, 'life:site').p50 / 5), '③ ★★집터 단계 중앙값이 종전의 1/5 이하',
-    `${st(B, 'life:site').p50}ms ≤ ${Math.max(20, Math.round(st(A, 'life:site').p50 / 5))}ms`);
+  // ★★[T342] **비율 문턱(½ · ⅕)도 옛 세계의 수였다.** 그 둘은 T41 이 실제로 본 이득이고,
+  //   그때는 건너뛰는 비율이 압도적이었다(하루 20곳 훑고 성공 0). 지금은 성사가 흔해 건너뛸 일 자체가 줄었다
+  //   (이 판: 46회 중 21회 스킵 = 46%). 이득이 스킵 비율을 따라가는 것은 **옳은 동작**이지 회귀가 아니다.
+  //   ⇒ 기억의 계약을 **수 없이** 그대로 쓴다: "**한 번의 훑기 값은 그대로 두고, 훑기 자체를 줄인다**".
+  //     ⓐ 총량은 확실히 줄었다  ⓑ **훑기 한 번당 셀 수는 안 늘었다**(= 아낀 것은 건너뛴 호출뿐 · 새 수 0)
+  ok(pb.siteScan < pa.siteScan, '③ ★훑은 셀이 종전보다 **줄었다**', `${pb.siteScan} < ${pa.siteScan}`);
+  ok(pb.siteCall > 0 && pa.siteCall > 0 && (pb.siteScan / pb.siteCall) <= (pa.siteScan / pa.siteCall),
+    '③ ★★그리고 **훑기 한 번당 셀 수는 안 늘었다** — 아낀 것은 건너뛴 호출이다(같은 답을 더 싸게)',
+    `채택 ${Math.round(pb.siteScan / pb.siteCall)}셀/회 ≤ 종전 ${Math.round(pa.siteScan / pa.siteCall)}셀/회`);
+  ok(st(B, 'life:site').p50 < st(A, 'life:site').p50, '③ 집터 단계 중앙값도 종전보다 낮다',
+    `${st(B, 'life:site').p50}ms < ${st(A, 'life:site').p50}ms`);
   ok(st(B, '1마을:site').p50 <= Math.max(20, st(A, '1마을:site').p50 / 5), '③ 마을 한 곳의 집터 조각 중앙값도 1/5 이하',
     `${st(B, '1마을:site').p50}ms ≤ ${Math.max(20, Math.round(st(A, '1마을:site').p50 / 5))}ms`);
+
+  // ⑤ ★★[T342] **영토가 자라면 거부 캐시를 버린다** — 이 계약이 이 하네스의 전제다(세계를 안 돌리고 건다).
+  //   이게 깨지면 ②의 감사가 다시 위반을 내기 시작한다(T335 실측: 캐시된 거부의 10%가 거짓).
+  {
+    const VS = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8');
+    const i0 = VS.indexOf('function _terrGrow');
+    const body = i0 < 0 ? '' : VS.slice(i0, VS.indexOf('\nfunction ', i0 + 10));
+    ok(i0 > 0 && /lifeSiteReset\(vil\)/.test(body),
+      '⑤ ★`_terrGrow` 가 영토를 넓힌 뒤 **`lifeSiteReset`**(표지 + 거부 캐시 파기)을 부른다 — T342 의 계약');
+    ok(!/lifeSiteDirty\(vil\)/.test(body),
+      '⑤ 그 자리에 표지만 세우는 옛 호출(`lifeSiteDirty`)이 **없다** — 있으면 캐시가 영토 성장을 못 본다');
+    ok(/function lifeSiteReset\(vil\) \{ if \(vil\) \{ lifeSiteDirty\(vil\);/.test(VS),
+      '⑤ `lifeSiteReset` 의 표지는 **`lifeSiteDirty` 를 통해** 선다 — 픽스처 손잡이(`LIFE_SITE_NODIRTY`)를 안 몰래 무시한다(사본 0)');
+  }
 
   // ④ 표지를 놓쳐도 회복하는가 — 안전망 픽스처
   ok(pc.siteCall > 0, '④ [픽스처] 표지를 통째로 껐는데도 안전망이 탐색을 일으킨다', `${pc.siteCall}회 / ${C.days}일`);

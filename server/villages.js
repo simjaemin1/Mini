@@ -2480,7 +2480,17 @@ function _terrGrow(vil) {
     }
   } catch (e) { console.error(`[${state.zoneId}] 🏘️ 영토 영속 실패(${vil.name}):`, e.message); }
   _probe.terrGrowDays++; _probe.terrGrowCells += added.size;   // ★[T41 §0] 영토가 **매일** 바뀌는가 — 표지(dirty) 접근의 성패가 여기 달렸다
-  lifeSiteDirty(vil);   // ★[T41 ①] 새 셀 = 새 집터 후보. 표지가 서는 세 자리 중 첫째.
+  // ★★[T342 2026-09-21] **표지만으로는 모자란다 — 거부 캐시도 버린다.**
+  //   T41 이 여기 `lifeSiteDirty`(표지만)를 둔 근거는 *"영토 확장은 새 셀만 더하지 옛 거부를 뒤집지 않는다"* 였다.
+  //   **그 단조성 논증이 `마을 영토 밖` 에서는 성립하지 않는다**(T335 §③ 실측):
+  //     `reject` 는 앵커의 **부지 원판 124셀 전부**가 영토 안이어야 통과시킨다 ⇒ 경계에서 폭 ~7셀 띠의 앵커는
+  //     **셀 자신은 영토 안**이라 후보로 올라가 `영토 밖` 으로 거부되고 캐시에 박힌다. 나중에 영토가 그 너머로
+  //     자라면 그 앵커는 **유효해지는데** 캐시가 영원히 가린다. T298 이 영토 성장을 켠 뒤로 이게 매일 쌓였다.
+  //   실측(T335 · 제품 감사문 `LIFE_SITE_AUDIT=1`): 캐시가 건너뛴 판정 1,018,430 중 **101,836(10.0%)이
+  //   오늘 기준으로 통과**였다. 캐시를 통째로 끈 판은 집 438~464 → **510채** · 인구 → **2,844** 로 올랐다.
+  //   ⇒ 영토 성장은 **옛 거부를 뒤집는 사건**이다. 그래서 다른 세 자리(지형 변화 `lifeSiteResetAll` ·
+  //     `_potSet` 감소 · 쉼터 신설)와 **같은 함수**를 부른다 — 사본 0 · 새 수 0 · 새 손잡이 0.
+  lifeSiteReset(vil);   // ★[T41 ① → T342] 표지 + **거부 캐시 파기**. 새 셀 = 새 집터 후보이고, 옛 거부도 뒤집힌다.
   // ★새 셀 개간 — 나무 제거(마을 안엔 숲이 없다)
   let cut = 0;
   try { if (state.deps.clearTreesInCells) cut = state.deps.clearTreesInCells(added) || 0; } catch (e) {}
@@ -5507,7 +5517,11 @@ const T315_MAPBEDS = process.env.T315_MAPBEDS !== '0';
 // 표지 — "다시 훑어라". 거부 캐시는 **유지**한다(영토 확장은 새 셀만 더하지 옛 거부를 뒤집지 않는다).
 function lifeSiteDirty(vil) { if (vil && !LIFE_SITE_NODIRTY) vil._siteDirty = true; }
 // 리셋 — "다시 훑고 **거부 캐시도 버려라**". 옛 거부가 뒤집힐 수 있는 사건에서만.
-function lifeSiteReset(vil) { if (vil) { vil._siteDirty = true; vil._siteRejS = null; vil._siteRejL = null; } }
+// ★★[T342] 표지는 **`lifeSiteDirty` 를 통해** 세운다 — 여기서 `_siteDirty = true` 를 직접 쓰면
+//   그게 `lifeSiteDirty` 의 사본이고, 무엇보다 **픽스처 손잡이(`LIFE_SITE_NODIRTY`)를 몰래 무시한다**
+//   (종전에도 그랬다 — 이 함수를 부르는 세 자리에서 `test-site-memo ④` 의 "표지 고장" 픽스처가 새고 있었다).
+//   T342 가 `_terrGrow` 를 이 함수로 옮기면서 그 새는 자리가 하루 수천 번이 되므로 여기서 함께 닫는다.
+function lifeSiteReset(vil) { if (vil) { lifeSiteDirty(vil); vil._siteRejS = null; vil._siteRejL = null; } }
 function lifeSiteResetAll() { for (const v of (state.villages || [])) lifeSiteReset(v); }
 function _lifeAddHouseSite(vil) {   // 랩 addHouseSite 동형(서버판): 2패스(잠재농지 회피→잠식 비용) + 전 하드 필터
   if (vil._site || !state.ta) return;
