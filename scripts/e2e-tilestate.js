@@ -28,6 +28,7 @@
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
+const FB = require('./fixture-boot');   // ★T344 기동 기다리기 정본(사본 0)
 const { PNG } = require('pngjs');
 const ROOT = path.join(__dirname, '..');
 const SHOTS = process.env.SHOTS || '/tmp/e2e-tilestate';
@@ -85,8 +86,17 @@ function meanLum(p, box) {
 
 (async () => {
   say('=== 타일 상태계 실클라 E2E (배치 20 B) ===');
-  boot('central', path.join(ROOT, 'server', 'central.js'), { PORT: String(CPORT), PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });
-  await sleep(2500);
+  const _central = boot('central', path.join(ROOT, 'server', 'central.js'), { PORT: String(CPORT), PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });
+  // ★★[T344 2026-09-21] **"central 이 떴다"를 정해진 초로도, 포트 응답으로도 확인하지 않는다.**
+  //   종전은 `sleep(2500)` — 판정문에 상수가 없어 ⑧a 어떤 자에도 안 걸리는 **예산형**이고,
+  //   모자라면 그 다음 줄(`page.goto`)이 대신 죽는다. 09-20 밤 산 계열 빨강의 모양이 그것이다.
+  //   ⚠`waitHttp(/zones)` 로 바꾸는 것은 **더 깊은 자명 통과**다 — 이 카드가 쟀다:
+  //     앞 판 central 이 포트를 쥔 채면 새 central 은 `EADDRINUSE` 로 즉시 죽는데(종료코드 1),
+  //     `waitHttp` 는 **앞 판의 central** 에게 200 을 받아 "떴다"고 답한다. 앞 판이 내려가면
+  //     `page.goto` → `net::ERR_CONNECTION_REFUSED`(이 카드가 한가한 상자에서 두 번 재현).
+  //   ⇒ 증인은 **내가 띄운 아이의 입**이다(정본 `fixture-boot.waitUp` · 사본 0).
+  const _up = await FB.waitUp(_central, /central server up on/, { name: 'central' });
+  if (!_up.ok) { console.log(_up.why); process.exit(1); }
   const z = boot('zone', '/tmp/zone-wrap-ts.js', {
     PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
     ENABLE_VILLAGES: '1', ENABLE_BANDITS: '0',

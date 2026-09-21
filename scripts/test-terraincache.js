@@ -106,10 +106,19 @@ ok(gain > ctrl * 2.5, `이득이 대조군의 2.5배 넘는다 — 빨라진 건
 // ── ④ zone.js 배선 — 켠 가지와 끈 가지에 같은 식이 들어갔나 ─────────────────
 console.log('\n④ zone.js 배선');
 const zsrc = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
-ok(/process\.env\.TERRAIN_TILE_CACHE === '1'/.test(zsrc),
-   `기본 꺼짐 — env TERRAIN_TILE_CACHE='1' 일 때만 켜진다`);
-ok(/_TERR_CACHE\s*=\s*\(process\.env\.TERRAIN_TILE_CACHE === '1' && !ZONE\.isOcean\)/.test(zsrc),
+// ★★[T344 2026-09-21] **이 두 줄이 옛 계약을 물고 있었다 — 자 결함이다(제품 회귀 아님).**
+//   `9b61d49f`[T324 · 09-19]가 **기본을 켬으로 돌렸다**(`!== '0'` · 되돌림은 `TERRAIN_TILE_CACHE=0`).
+//   근거는 그 커밋이 실측으로 냈다: 51마을·1,476명 전원 걷기에서 존 틱 p50 **261.062ms → 8.035ms**(32.5배),
+//   틱의 89%가 지형 판정이었다. 세계는 무변(값 투명)이고 `test-terrain-memo` 가 켬/끔을 전수 대조한다.
+//   그런데 이 하네스는 `=== '1'` 이라는 **글자**를 계속 물어서 09-21 야간에 빨개졌다(3초 · 부하 무관 · 결정적).
+//   ⇒ 계약을 새 것으로 옮긴다. 재는 성질은 바뀌지 않았다 — **끌 문이 하나 있다**와 **해양 존은 안 만든다**.
+ok(/process\.env\.TERRAIN_TILE_CACHE !== '0'/.test(zsrc),
+   `기본 켜짐 — 끄는 문은 env TERRAIN_TILE_CACHE='0' 하나다 [T324]`);
+ok(/_TERR_CACHE\s*=\s*\(process\.env\.TERRAIN_TILE_CACHE !== '0' && !ZONE\.isOcean\)/.test(zsrc),
    `해양 존은 캐시를 아예 안 만든다(isWaterTileLocal 이 상수 true 라 무의미)`);
+// ★자명 통과 금지 — 옛 글자(`=== '1'`)가 **남아 있지 않다**. 둘 다 통과하는 소스는 없다(배타).
+ok(!/process\.env\.TERRAIN_TILE_CACHE === '1'/.test(zsrc),
+   `★자명 통과 금지 — 옛 계약 글자 \`=== '1'\` 가 zone.js 에 없다(있으면 위 둘 중 하나가 거짓말이다)`);
 
 function bodyOf(name) {
   const i = zsrc.indexOf(`function ${name}(localX, localY) {`);

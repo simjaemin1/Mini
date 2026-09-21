@@ -20,6 +20,7 @@
 'use strict';
 const path = require('path'), fs = require('fs');
 const { spawn } = require('child_process');
+const FB = require('./fixture-boot');   // ★T344 기동 기다리기 정본(사본 0)
 const ROOT = path.join(__dirname, '..'), CPORT = 3010, ZPORT = 3020;
 const SHOTS = process.env.SHOTS || '/tmp/e2e-mtcorridor';
 fs.mkdirSync(SHOTS, { recursive: true });
@@ -73,8 +74,17 @@ const cfg=require(path.join(ROOT,'server','zone-config'));const ZID='hanbando';
 cfg.WORLD.dayLengthMs=86400000; cfg.WORLD.worldEpoch=Date.now()-21600000;
 Object.assign(cfg.ZONES[ZID],JSON.parse(process.env.WRAP_ZONE_PATCH||'{}'));
 require(path.join(ROOT,'server','zone.js'));`);
-  boot(path.join(ROOT, 'server', 'central.js'), { PORT: '' + CPORT, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });
-  await sleep(2000);
+  const _central = boot(path.join(ROOT, 'server', 'central.js'), { PORT: '' + CPORT, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });
+  // ★★[T344 2026-09-21] **"central 이 떴다"를 정해진 초로도, 포트 응답으로도 확인하지 않는다.**
+  //   종전은 `sleep(2500)` — 판정문에 상수가 없어 ⑧a 어떤 자에도 안 걸리는 **예산형**이고,
+  //   모자라면 그 다음 줄(`page.goto`)이 대신 죽는다. 09-20 밤 산 계열 빨강의 모양이 그것이다.
+  //   ⚠`waitHttp(/zones)` 로 바꾸는 것은 **더 깊은 자명 통과**다 — 이 카드가 쟀다:
+  //     앞 판 central 이 포트를 쥔 채면 새 central 은 `EADDRINUSE` 로 즉시 죽는데(종료코드 1),
+  //     `waitHttp` 는 **앞 판의 central** 에게 200 을 받아 "떴다"고 답한다. 앞 판이 내려가면
+  //     `page.goto` → `net::ERR_CONNECTION_REFUSED`(이 카드가 한가한 상자에서 두 번 재현).
+  //   ⇒ 증인은 **내가 띄운 아이의 입**이다(정본 `fixture-boot.waitUp` · 사본 0).
+  const _up = await FB.waitUp(_central, /central server up on/, { name: 'central' });
+  if (!_up.ok) { console.log(_up.why); process.exit(1); }
   boot('/tmp/zw-corr-e2e.js', { PORT: '' + ZPORT, ZONE_ID: 'hanbando', DB_PATH: '/tmp/corr-e2e.db',
     CENTRAL_URL: `http://localhost:${CPORT}`, ENABLE_VILLAGES: '0', ENABLE_BANDITS: '0',
     WRAP_ZONE_PATCH: JSON.stringify({ mainSquare: { x: site.i * 32 + 16, y: site.j * 32 + 16, name: '통로입구' } }) });

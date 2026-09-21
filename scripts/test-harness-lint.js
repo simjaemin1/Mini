@@ -533,5 +533,41 @@ console.log('\n⑨ 야간 여러 밤 — e2e 는 묶음을 하나 단다 [T220 �
   console.log('    접점: run-regress.sh --list · nightly-split.sh · @nightly');
 }
 
+// ── ⑩ **서버 기동 증인은 "내가 띄운 아이의 입"이다** [T344 2026-09-21] ──────────
+//   ★왜. 하네스가 central 을 띄운 뒤 "떴나"를 확인하는 법이 셋 있었다:
+//     ⓐ `sleep(2500)` — 예산형. 모자라면 그 다음 줄(`page.goto`)이 대신 죽는다. (T344 가 열셋 고쳤다)
+//     ⓑ `waitHttp(/zones)` — **더 깊은 자명 통과**다. T344 실측:
+//        앞 판 central 이 포트를 쥔 채면 새 central 은 `EADDRINUSE` 로 즉시 죽는데(종료코드 1 · `boot()`은
+//        stderr 를 안 본다), `waitHttp` 는 **앞 판의 central** 에게 200 을 받고 "기동" 이라 답한다.
+//        앞 판이 내려가면 `page.goto` → `net::ERR_CONNECTION_REFUSED`(한가한 상자에서 두 번 재현).
+//        즉 **포트가 답하는 것은 내 서버가 떴다는 증인이 아니다.**
+//     ⓒ 아이가 제 `listen` 콜백에서 찍는 줄(`central server up on`) — 남의 서버로는 만들 수 없는 증거.
+//   ⚠**판정하지 않는다 — 표다.** e2e 대부분이 ⓑ 를 쓰고 하네스 서른여덟이 포트 3010 하나를 나눠 쓴다.
+//     전수를 막으면 쓸 수 있는 자가 없다. 수를 세어 다음 카드가 고르게 둔다(예산형 표와 같은 자리).
+{
+  const GATE = { own: [], port: [], blind: [] };
+  for (const f of fs.readdirSync(SCRIPTS).filter((x) => /^(test|e2e)-.*\.js$/.test(x))) {
+    const src = fs.readFileSync(path.join(SCRIPTS, f), 'utf8');
+    if (!/boot\((?:'central'|path\.join\(ROOT, 'server', 'central)/.test(src)) continue;
+    if (/FB\.waitUp\(/.test(src)) GATE.own.push(f);
+    else if (/waitHttp\(`http:\/\/localhost:\$\{CPORT\}\/zones`\)/.test(src)) GATE.port.push(f);
+    else GATE.blind.push(f);
+  }
+  ok(GATE.own.length > 0, '⑩ [전제] 기동 정본(`fixture-boot.waitUp`)을 쓰는 하네스가 실제로 있다(0 이면 아래가 자명 통과다)',
+     `${GATE.own.length}개`);
+  ok(fs.existsSync(path.join(SCRIPTS, 'fixture-boot.js')), '⑩ [전제] 정본 파일이 있다');
+  // ★자명 통과 금지 — 같은 자로 세 모양을 각각 세는지 미끼로 확인한다(글자를 조각내 자기 자신을 안 문다)
+  const baitOwn = "boot('cent" + "ral', x); await FB.wait" + "Up(c, /up/);";
+  const baitPort = "boot('cent" + "ral', x); await waitHttp(`http://localhost:${CPORT}/zones`);";
+  const seenOwn = /FB\.waitUp\(/.test(baitOwn) && /boot\('central'/.test(baitOwn);
+  const seenPort = !/FB\.waitUp\(/.test(baitPort) && /waitHttp\(`http:\/\/localhost:\$\{CPORT\}\/zones`\)/.test(baitPort);
+  ok(seenOwn && seenPort, '★⑩ 자명 통과 금지 — 정본 판과 포트 판 미끼를 같은 자로 재면 **서로 다르게** 답한다',
+     `정본 ${seenOwn} · 포트 ${seenPort}`);
+  console.log(`    [표] central 기동 증인 — **아이의 입 ${GATE.own.length}** · 포트 응답 ${GATE.port.length} · 맹목 잠 ${GATE.blind.length}`
+    + (GATE.blind.length ? `\n      ★맹목: ${GATE.blind.join(' · ')}` : '')
+    + (GATE.port.length ? `\n      포트 응답(자명 통과 위험 · 다음 카드): ${GATE.port.slice(0, 6).join(' · ')}${GATE.port.length > 6 ? ` 외 ${GATE.port.length - 6}` : ''}` : ''));
+  console.log('    접점: fixture-boot.waitUp · EADDRINUSE · central server up on · CPORT 3010');
+}
+
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
 process.exit(fail ? 1 : 0);
