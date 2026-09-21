@@ -132,8 +132,11 @@ console.log('\n⑥ 끄면 비트 동일 — 새 줄이 전부 손잡이 뒤에 �
   ok(/const _t312In = T312_FISH_ACT \? \(v\._t312InflowToday \|\| 0\) : 0;/.test(C),
     '⑥ ★장부 다리도 손잡이 뒤다(끄면 `_t312InflowToday` 가 아예 안 생긴다)');
   ok(/function fishActOn\(v\) \{ return !!\(T312_FISH_ACT/.test(C), '⑥ ★게이트도 손잡이가 첫 항이다');
-  ok(/if \(_lifeEcon\(\)\.fishActOn\(vil\.econ\)\) \{/.test(VC) && /\} else if \(npc\.inventory\) npc\.inventory\.fish/.test(VC),
-    '⑥ ★★생활층도 `else` 한 줄로 **종전 연출 그대로** 돌아간다');
+  // ★[T340] 끈 팔의 종전 연출은 **8초 박자 + 한 줄** 그대로다(켠 팔만 대본으로 갔다).
+  ok(/if \(_lifeEcon\(\)\.fishActOn\(vil\.econ\)\) \{/.test(VC)
+     && /\} else if \(!npc\._lastFishAt \|\| now - npc\._lastFishAt > 8000\) \{/.test(VC)
+     && /npc\.inventory\.fish = \(npc\.inventory\.fish \|\| 0\) \+ 1;/.test(VC),
+    '⑥ ★★생활층 끈 팔은 **8초 박자 그대로**다(종전 연출 · 비트 동일)');
   ok(/if \(vil\.econ && _lifeEcon\(\)\.fishActOn\(vil\.econ\)\) \{/.test(VC), '⑥ ★하루 경계 절도 손잡이 뒤다');
   ok(/if \(vil\.econ\) vil\.econ\._t312Cells = bank\.length;/.test(VC),
     '⑥ ⚠셀 수만 손잡이 밖에서 센다 — **읽는 쪽이 손잡이 뒤**라 끈 팔은 그 수를 안 본다(관측 항 하나)');
@@ -196,6 +199,59 @@ console.log('\n⑧ [T316] `_carry` 흡수 — 손은 하나다');
      '⑧ ★★낙하 정본이 `inventory` 를 통째로 돈다 ⇒ 볏단도 **죽으면 그 자리에 떨어진다**(캐논 ⓐ 회수)');
   ok(/e\.carrier = o\.isNpc \? \(o\._carryOn \? 1 : 0\)/.test(Z) && /const on = _handOf\(npc\) > 0;/.test(V),
      '⑧ 지게 한 비트의 출처가 한 자리로 모였다(생활층이 깃발을 찍고 존은 타기만 한다)');
+}
+
+// ── ⑨ [T340] 낚시 창 — 한 시도가 플레이어와 **같은 대본**이다 ────────────────────
+//   T316 추신: "NPC 어부 시도에 플레이어 `biteAt`·`windowMs` 같은 함수".
+//   여기서 거는 것은 셋이다: ⓐ **같은 함수**를 부르는가(사본 0) ⓑ **새 수 0**(시간이 전부 정본에서 온다)
+//   ⓒ **창이 실제로 시간을 먹는가**(8초 박자보다 시도가 드물어야 한다 — 아니면 이름만 바꾼 것이다).
+console.log('\n⑨ [T340] 낚시 창 — 던짐 → 기다림 → 걸림/놓침');
+{
+  const V = codeOf(VSRC);
+  const F = require(path.join(ROOT, 'server', 'fishing.js'));
+  ok(/const pl = F\.plan\(sp, stock01, now, _t340Rng\(/.test(V),
+     '⑨ ★★기다림을 **플레이어와 같은 함수**가 정한다(`fishing.plan`)');
+  ok(/windowMs: F\.windowMsFor\(_sp\.kg\)/.test(V),
+     '⑨ ★★창도 **같은 함수**가 정한다(`fishing.windowMsFor`) — 그 종의 kg 이 창을 정한다');
+  ok(/const lat = \(F\.CFG && F\.CFG\.WIN_LAT_MS\) \|\| 0;/.test(V),
+     '⑨ ★여유도 정본의 그 수다(`CFG.WIN_LAT_MS`) — 옮겨 적지 않았다');
+  ok(/F\.spotAt\(_terrainMod\(\), state\.zoneId/.test(V) && /F\.stockRatioAt\(cx, cy, now\)/.test(V),
+     '⑨ ★자리·재고도 플레이어가 묻는 그 술어로 묻는다(`spotAt`·`stockRatioAt`)');
+  const blk = (V.match(/function _t340Try\(vil, npc, now, day, h, ws\)[\s\S]*?\n\}/) || [''])[0];
+  ok(blk.length > 300, '⑨ [상황] 시도 함수 본문을 통째로 잡았다', `${blk.length}자`);
+  const nums = (blk.match(/(?<!0x)\b\d{3,}\b/g) || []);
+  ok(nums.length === 0, '⑨ ★★시도 본문에 **세 자리 이상 상수가 하나도 없다**(시간은 전부 정본에서 온다)',
+     nums.join(' ') || '없다');
+  ok(/0x85ebca6b/.test(blk) && /0x9e3779b9/.test(V),
+     '⑨ 섞는 상수 둘은 레포가 이미 쓰는 것이다(T312 · T297) — 지어낸 수 0');
+  ok(!/Math\.random/.test(blk), '⑨ ★★주사위 0 — `Math.random` 이 없다(같은 씨 같은 어획 · T284 ⓓ)');
+  {
+    // ★자리는 **정본이 만든 것**을 쓴다(손으로 지은 객체는 `spotScore` 가 NaN 을 낸다 — 첫 판이 그랬다).
+    const T = require(path.join(ROOT, 'server', 'terrain.js'));
+    let sp = null;
+    for (let ty = 1460; ty <= 1540 && !sp; ty++) for (let tx = 860; tx <= 940; tx++) {
+      if (T.isWaterCellLocal('hanbando', tx * 32 + 16, ty * 32 + 16)) { sp = F.spotAt(T, 'hanbando', tx * 32 + 16, ty * 32 + 16); break; }
+    }
+    ok(!!sp, '⑨ [상황] 정본이 만든 낚시 자리를 하나 잡았다', sp ? sp.kind : '못 잡았다');
+    if (!sp) sp = F.spotAt(T, 'hanbando', 900 * 32 + 16, 1500 * 32 + 16);
+    let sum = 0, n = 0, s0 = 12345;
+    const rng = () => { s0 = (Math.imul(s0 ^ (s0 >>> 15), 0x85ebca6b) + 0x9e3779b9) >>> 0; return ((s0 >>> 8) / 16777216) || 1e-9; };
+    for (let i = 0; i < 4000; i++) { const pl = F.plan(sp, 1, 0, rng); sum += pl.waitMs; n++; }
+    const avg = sum / n;
+    ok(avg > 0, '⑨ [상황] 정본 분포로 기다림을 실제로 뽑았다', `${n}회 평균 ${Math.round(avg)}ms`);
+    ok(avg > 2000, '⑨ ★★한 시도의 기다림이 **초 단위**다 — 창이 진짜로 시간을 먹는다', `평균 ${Math.round(avg)}ms`);
+    ok(F.windowMsFor(0.3) > F.windowMsFor(2.5),
+       '⑨ ★월척일수록 창이 짧다(놓칠 수 있다 — 플레이어와 같은 맞바꿈)',
+       `붕어 ${F.windowMsFor(0.3)}ms > 잉어 ${F.windowMsFor(2.5)}ms`);
+  }
+  ok(/const _got = _t312Take\(vil, day, _key, _units\);/.test(V),
+     '⑨ ★★걸린 뒤에도 **셀 예산을 통과해야** 곳간에 든다(창이 예산을 못 늘린다)');
+  ok(/const t340 = \{ cast, hook, miss, abort/.test(V),
+     '⑨ 관측 창이 시도의 결말 넷을 센다(던짐·걸림·놓침·자리 옮김)');
+  ok(/budgetLeftVillages: thinBudget/.test(V),
+     '⑨ ★창 때문에 **예산을 다 못 쓴 마을 수**를 센다(카드 ③ 표의 그 칸)');
+  ok(/_lifeAct\(npc, '드리움'\)/.test(V) && /_lifeAct\(npc, '놓침'\)/.test(V) && /_lifeAct\(npc, '낚음'\)/.test(V),
+     '⑨ ★★[T321] 결말 낱말 셋이 **그대로** 있다(소리 층 무접촉 — 나는 시점만 흐름을 탄다)');
 }
 
 console.log(`\n=== 결과: ${pass} PASS / ${fail} FAIL ===\n`);

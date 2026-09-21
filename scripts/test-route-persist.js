@@ -363,7 +363,33 @@ async function runDays(n) {
   })();
   const tWarm = Date.now();
   let W1 = W0;
-  for (let i = 0; i < 150 && W1.warmLeft > 0; i++) { await sleep(2000); W1 = await jget(`http://localhost:${ZPORT}/routedbg`); }
+  // ★★[T340 2026-09-21 · T322 문법] **예산이 아니라 조건으로 기다린다.**
+  //   종전은 `for (i<150) sleep(2000)` = 300초 예산이었다. 09-20 야간 러너에서 ⑥이 빨갰고
+  //   (남은 562/579 — 선계산이 **거의 안 돈** 모양), 단독 재현은 초록이었다(완주 66초).
+  //   ⇒ 예산을 늘리는 건 같은 병을 키우는 것이다. **진전이 있는 한 기다리고, 멈추면 그 이유를 말한다.**
+  //   멈추는 이유는 코드가 이미 갖고 있다 — `_routeWarmStep` 의 문 셋:
+  //     ⓐ `ioBusy` 가 참이면 손을 뗀다(러너 부하에서 날아가는 central 쓰기가 몰리면 여기서 굶는다)
+  //     ⓑ 부팅 유예가 안 지났다   ⓒ 걸음 사이 쉼이 안 지났다
+  //   어디서 멈췄는지가 곧 결함의 이름이다(T322 e2e-conn ② 와 같은 꼴 · 상한 600초는 **표에만**).
+  {
+    const STALL_MS = 60000;                  // 이만큼 **한 쌍도 안 줄면** 멈춘 것으로 본다
+    const CEIL_MS = 600000;                  // 상한 — 판정문이 아니라 사유를 말하고 죽는 자리
+    let lastLeft = W0.warmLeft, lastMove = Date.now(), busyN = 0, pollN = 0;
+    while (Date.now() - tWarm < CEIL_MS) {
+      await sleep(2000);
+      W1 = await jget(`http://localhost:${ZPORT}/routedbg`);
+      pollN++;
+      if (W1.ioBusy) busyN++;
+      if (W1.warmLeft < lastLeft) { lastLeft = W1.warmLeft; lastMove = Date.now(); }
+      if (W1.warmLeft <= 0) break;
+      if (Date.now() - lastMove > STALL_MS) {
+        console.log(`    ↳ ⚠선계산이 ${Math.round((Date.now() - lastMove) / 1000)}초째 **한 쌍도 안 줄었다** — 남은 ${W1.warmLeft}/${W0.warmTotal}`);
+        console.log(`      ↳ 멈춘 자리: ioBusy ${W1.ioBusy} (폴링 ${busyN}/${pollN} 회에서 참) · ioQuietMs ${W1.ioQuietMs} · 유예 ${W1.warmIdleMs}ms · 간격 ${W1.warmGapMs}ms`);
+        break;
+      }
+    }
+    console.log(`    ↳ 조건 대기 — 폴링 ${pollN}회 · 그중 ioBusy 참 ${busyN}회(${pollN ? Math.round(100 * busyN / pollN) : 0}%) · 상한 ${CEIL_MS / 1000}초는 표에만`);
+  }
   const warmMs = Date.now() - tWarm;
   hStop = true; await hPing;
   // ★선계산의 **대가**도 같이 적는다 — A* 한 번이 100~2,400ms 라 그 걸음 동안은 루프가 막힌다.
