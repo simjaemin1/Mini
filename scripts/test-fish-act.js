@@ -90,11 +90,13 @@ console.log('\n④ ⓓ 장부 = 손 · ⓔ 예산 소진 · 이월 0');
   //   **두 직업이 그 몸통을 부른다**는 것까지 같이 문다(느슨하게 안 풀었다 · `actToGranary` 와 같은 결).
   ok(/if \(left < want\) \{ B\.cell\.set\(cellKey, left\); return 0; \}/.test(VC),
     '④ ★★예산이 모자라면 **한 마리도 안 잡힌다**(반 마리 금지 — 손과 장부가 갈리지 않는다)');
-  //   ★[T334 2026-09-20] 나무꾼의 **분모가 마을로** 바뀌어 껍데기의 인수가 하나 줄었다(셀 키가 없다).
-  //     ⚠어부 쪽 단정은 한 글자도 안 바뀐다 — 바뀐 것은 이 **대조 줄의 글자**뿐이다(몸통은 여전히 하나다).
-  ok(/function _t312Take\(vil, day, key, want\) \{ return _actTake\(_t312Day\(vil, day\), key, want\); \}/.test(VC)
-     && /function _t325Take\(vil, day, want\) \{ return _actTake\(_t325Day\(vil, day\), T325_KEY, want\); \}/.test(VC),
-    '④ ★[T325·T334] 어부와 나무꾼이 **같은 몸통**을 부른다(사본 0 — 규칙이 한쪽만 고쳐질 수 없다)');
+  //   ★[T341 2026-09-21] 나무꾼이 **예산이라는 꼴 자체를 떠났다**(PM 결정 — 나무는 개체다).
+  //     ⇒ 이 몸통은 이제 **어부 것 하나**다. 어부 쪽 단정은 한 글자도 안 바뀌었고, 바뀐 것은
+  //       "둘이 같이 쓴다" 는 대조 줄이 "나무꾼은 이제 안 쓴다" 로 뒤집힌 것뿐이다(그것도 글자로 못 박는다).
+  ok(/function _t312Take\(vil, day, key, want\) \{ return _actTake\(_t312Day\(vil, day\), key, want\); \}/.test(VC),
+    '④ ★어부가 그 몸통을 부른다(껍데기 한 줄 · 규칙은 몸통 하나에만 있다)');
+  ok(!/_t325Take|T325_KEY|woodBudgetDay|woodBudgetPerCell/.test(VC),
+    '④ ★★[T341] 나무꾼의 **예산 흔적이 하나도 없다** — 예산은 잘게 나뉘는 자원(물고기)의 규약이었다');
   ok(/function _t312Day\(vil, day\) \{ return _actDay\(vil, '_t312', day, _lifeEcon\(\)\.fishBudgetPerCell\(vil\.econ\)\); \}/.test(VC),
     '④ ★그리고 어부의 **분모는 그대로** 강가 셀 예산식이다(합치면서 값이 안 바뀌었다)');
   ok(/vil\._t312 = null;/.test(VC), '④ ★★하루가 끝나면 예산 장부를 **버린다**(이월 0 · 설계_민물고기 §2)');

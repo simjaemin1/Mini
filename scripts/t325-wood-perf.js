@@ -90,7 +90,9 @@ const rmdb = (f) => { for (const s of ['', '-wal', '-shm']) { try { fs.unlinkSyn
       loop: p && p.loop, wood: p && p.wood, first, samples };
     const t = p && p.tick && p.tick.ms;
     say(`  ${arm}: 틱 p50 ${t ? t.p50 : '?'} p95 ${t ? t.p95 : '?'} max ${t ? t.max : '?'} · drop ${p && p.tick ? p.tick.dropN : '?'} · lag ${p && p.tick ? p.tick.lagPct : '?'}%`
-      + (p && p.wood ? ` · 걷는 나무꾼 ${p.wood.walkers} · 손 ${p.wood.hands}(${p.wood.handKg}kg) · 입고 ${p.wood.delivered} · 수식/일 ${p.wood.formulaPerDay} · 얇은 마을 ${p.wood.thinN}` : ''));
+      + (p && p.wood ? ` · 걷는 나무꾼 ${p.wood.walkers} · 손 ${p.wood.hands}(${p.wood.handKg}kg) · 입고 ${p.wood.delivered} · 수식/일 ${p.wood.formulaPerDay}`
+        + ` · 행위 ${p.wood.actVillages} · 나무0 ${p.wood.noTreeVillages} · 나무 ${p.wood.trees}(K ${p.wood.K}) · 되살 ${p.wood.back} · 한도 ${p.wood.cap} · 벤 ${p.wood.cutDay}`
+        + ` · 인구 ${p.wood.popAll} · 사람당 ${p.wood.popAll > 0 && t ? (t.p50 * 1000 / p.wood.popAll).toFixed(3) : '?'}µs` : ''));
     b.closeWs(); await b.kill(); rmdb(db);
     fs.writeFileSync(OUT, JSON.stringify(res, null, 1));
   }

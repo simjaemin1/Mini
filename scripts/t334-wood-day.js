@@ -75,11 +75,11 @@ const popOf = (p) => (p && p.wood && p.wood.popAll) || null;
       if (dd === last || !p || !p.wood) continue;
       last = dd;
       const w = p.wood, t = p.tick && p.tick.ms;
-      curve.push({ day: dd, act: w.actVillages, noTree: w.noTreeVillages, cells: w.cells, trees: w.trees,
+      curve.push({ day: dd, act: w.actVillages, noTree: w.noTreeVillages, cells: w.cells, trees: w.trees, K: w.K, back: w.back, cap: w.cap, cutDay: w.cutDay,
         delivered: w.delivered, formula: w.formulaPerDay, hands: w.hands, walkers: w.walkers,
         p50: t ? t.p50 : null, p95: t ? t.p95 : null, players: popOf(p) });
       if (!first) first = { day: dd, rows: w.rows, delivered: w.delivered, formula: w.formulaPerDay, trees: w.trees, cells: w.cells, act: w.actVillages, noTree: w.noTreeVillages };
-      say(`  day ${dd} · 입고 ${w.delivered} / 수식 ${w.formulaPerDay} · 나무 ${w.trees}(셀 ${w.cells}) · 손 ${w.hands} · p50 ${t ? t.p50 : '?'}`);
+      say(`  day ${dd} · 입고 ${w.delivered} / 수식 ${w.formulaPerDay} · 나무 ${w.trees}/${w.K} · 벤 ${w.cutDay} · 되살아난 ${w.back} · 한도 ${w.cap} · p50 ${t ? t.p50 : '?'}`);
     }
     const p = await b.perf(false);
     res.runs[tag] = { warm, day0: d0, first, curve,

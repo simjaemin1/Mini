@@ -131,27 +131,42 @@ function _takeResourceEntity(r, notify) {
 // ★[T325] 그 셀에 **서 있는 나무**(그루터기·묘목 제외는 안 한다 — 묘목도 목재를 낸다)를 색인으로 묻는다.
 //   규칙 표(T301 §0ⓐ)를 그대로 지킨다: 활성 청크가 있으면 `qtResources` 가 정본이고,
 //   없으면 색인(`resourcesAtCell`)에 **수확 장부와 게임일을 넘겨** 청크와 같은 답을 받는다.
-function _t325TreesAtCell(cellX, cellY) {
+//   ★[T341] `raw` 를 주면 **벤 장부를 안 넘긴다** — *"교란 전 그 셀에 무엇이 있었나"* 를 묻는 것이고
+//     그 수가 로지스틱의 `K`(부양력)다(`woodRegrowR` 의 유도 항 ⓑ · 새 수 0).
+function _t325TreesAtCell(cellX, cellY, raw) {
   const px = (cellX | 0) * 32 + 16, py = (cellY | 0) * 32 + 16;
   const out = [];
-  const near = qtResources ? qtResources.queryCircle(px, py, 24) : [];
-  for (const r of near) {
-    if (r.type !== 'tree' && r.type !== 'sapling') continue;
-    if (Math.floor(r.x / 32) !== (cellX | 0) || Math.floor(r.y / 32) !== (cellY | 0)) continue;
-    out.push(r);
+  if (!raw) {
+    const near = qtResources ? qtResources.queryCircle(px, py, 24) : [];
+    for (const r of near) {
+      if (r.type !== 'tree' && r.type !== 'sapling') continue;
+      if (Math.floor(r.x / 32) !== (cellX | 0) || Math.floor(r.y / 32) !== (cellY | 0)) continue;
+      out.push(r);
+    }
+    if (out.length) return out;
   }
-  if (out.length) return out;
   let a = [];
   try {
     a = resourcesAtCell(ZONE_ID, cellX | 0, cellY | 0,
-      { biome: ZONE.biome, chunkSize: chunkManager.chunkSize, harvestedSet: harvestedSeeds, gameDay: gameDayNow() });
+      raw ? { biome: ZONE.biome, chunkSize: chunkManager.chunkSize }
+          : { biome: ZONE.biome, chunkSize: chunkManager.chunkSize, harvestedSet: harvestedSeeds, gameDay: gameDayNow() });
   } catch (e) { a = []; }
   for (const e of a) if (e.type === 'tree' || e.type === 'sapling') out.push(e);
   return out;
 }
+// ★★[T341] **그 그루가 다시 자랐다** — 벤 기록을 지운다(메모리 + DB). 문 하나 · 사본 0.
+//   ⚠활성 청크에 이미 없어진 개체를 **되살려 넣지는 않는다**: 다음 활성화 때 색인이 다시 낳는다
+//     (개체를 손으로 만들면 그게 색인과 청크 두 벌이 된다 — T301 이 금한 그것).
+//   ⚠방송도 안 한다(T324 ⓐ — 관측자가 보고 있으면 다음 활성화에서 보인다 · 회부).
+function _t341Unharvest(seedKey) {
+  if (!seedKey || !harvestedSeeds.has(seedKey)) return 0;
+  harvestedSeeds.delete(seedKey);
+  try { db.deleteHarvestedSeed(seedKey); } catch (e) {}
+  return 1;
+}
 // ★★[T325] **베는 순간.** 그 셀의 나무 하나를 빼고 **플레이어와 같은 전리품 표**를 돌려준다.
 //   ⚠수를 하나도 안 짓는다 — 얼마가 나오는지는 `lootOfResource` 가 답한다(크기 비례 · T124 도토리 포함).
-//   ⚠hp 를 깎지 않는다: 나무꾼의 하루는 **그루 단위**다(예산이 그루를 통째로 대야 벤다 — 반 그루 없음).
+//   ⚠hp 를 깎지 않는다: 나무꾼의 하루는 **그루 단위**다(반 그루가 없다 — T341 뒤로도 그대로다).
 //     사람이 도끼질하는 연출은 채집 갈래가 여전히 hp 로 한다(그 길은 손 안 댔다).
 function _t325CutTreeAt(cellX, cellY) {
   const list = _t325TreesAtCell(cellX, cellY);
@@ -2848,7 +2863,10 @@ SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, is
   liveBuildRow: _liveBuildRow, buildings, chunkManager,   // ★[생활 층 ③] 신축 크루의 라이브 실체화 경로(플레이어 완공과 동일 헬퍼 — 발명 금지)
   worldPhase, dayPhaseRatio: WORLD.dayPhaseRatio, mobs, qtResources: () => qtResources,
   // ★[T325] 나무꾼 행위 — 문 둘만 넘긴다(색인은 존이 쥐고, 생활층은 묻고 벤다 · 사본 0)
-  t325TreesAtCell: (cx, cy) => _t325TreesAtCell(cx, cy),
+  t325TreesAtCell: (cx, cy, raw) => _t325TreesAtCell(cx, cy, raw),
+  // ★[T341] 재생 문 하나 + 걸음 속도 정본(하루 왕복 수를 생활층이 **유도**한다 · 64 를 옮겨 적지 않는다)
+  t341Unharvest: (k) => _t341Unharvest(k),
+  moveSpeed: MOVE_SPEED,
   t325CutTreeAt: (cx, cy) => _t325CutTreeAt(cx, cy),
   // ★[T325] 전리품 표는 존이 쥔다 — 생활층은 "이 그루가 목재 몇 낱개냐"만 묻는다(사본 0)
   t325LootOf: (r) => lootOfResource(r) });   // ★[생활 층 100% ②③] 일과 스케줄(하루 위상)·직업 실작업(자원·사냥감 현장) 소스

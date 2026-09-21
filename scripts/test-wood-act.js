@@ -8,7 +8,7 @@
 //     ⓑ 낙하       — 죽은 나무꾼 손의 통나무는 **플레이어 낙하 함수 그 자리**로 간다(경로 0)
 //     ⓒ 이중 0     — 켠 마을에서 `addProduce('wood')` 호출이 **0**(공존 = 이중 생산 · T135 규약)
 //     ⓓ 장부 = 손  — 곳간에 든 합 = 손에서 넣은 합(넣으면 손을 비운다)
-//     ⓔ 예산       — 셀 하루 예산을 다 쓰면 그 셀 벌목 0 · **이월 0**
+//     ⓔ 한도       — [T341] 예산이 **없다**. 하루에 베는 수는 **걸음**이 정한다(왕복 × 짐 × 나무꾼)
 //     ⓕ 유한       — 벤 그루는 **세계에서 없어지고** 벤 날이 장부에 남는다(T122 재생의 입력)
 //   그리고 **끄면 비트 동일**(손잡이 규약)을 일곱째로 지킨다.
 //
@@ -42,12 +42,14 @@ console.log('\n① 손잡이 — 기본 끔');
   ok(econ.woodActOn({ _t325Cells: 9 }) === false, '① 끈 판은 나무 셀이 있어도 **안 연다**');
   ok(econ.woodToGranary({ storage: {}, treasury: {} }, 5) === 0, '① ★끈 판은 곳간에 **한 톨도 안 넣는다**');
   ok(econ.woodActOn({ _t325Cells: 0, _woodOutLast: 9 }) === false, '① 나무 셀 0 이면 **안 연다**(숲 없는 마을은 켜도 종전 수식 — T309 ⓒ 3/51)');
-  ok(econ.woodBudgetDay === undefined || typeof econ.woodBudgetDay === 'function', '① 예산식 이름이 하나다');
+  ok(econ.woodBudgetDay === undefined && econ.woodBudgetPerCell === undefined,
+    '① ★★[T341] 예산식이 **아예 없다** — 나무는 개체다(PM 결정 · 예산은 물고기의 꼴이었다)');
   const on = probe({ T325_WOOD_ACT: '1' },
     `const E=require(${EP});const v={storage:{},treasury:{},_t325Cells:4,_woodOutLast:4.5};` +
-    `const g=E.woodToGranary(v,6);process.stdout.write(JSON.stringify({knob:E.T325_WOOD_ACT,act:E.woodActOn(v),per:E.woodBudgetDay(v),g,st:v.storage.wood,tr:v.treasury.wood,today:v._t325InflowToday,n:v._t325CutN}));`);
+    `const g=E.woodToGranary(v,6);process.stdout.write(JSON.stringify({knob:E.T325_WOOD_ACT,act:E.woodActOn(v),r:E.woodRegrowR(v,190,6),g,st:v.storage.wood,tr:v.treasury.wood,today:v._t325InflowToday,n:v._t325CutN}));`);
   ok(on.knob === true && on.act === true, '① 켜면 열린다');
-  ok(Math.abs(on.per - 4.5) < 1e-12, '① ★★[T334] 마을 하루 예산 = **하루 수식 그 자체**(나누지 않는다)', String(on.per));
+  ok(Math.abs(on.r - 4 * (4.5 / 6) / 190) < 1e-12,
+    '① ★★[T341] 재생률이 **수식에서 유도된다** — `r = 4h/K`(MSY 역산 · h = 4.5÷6 그루/일 · K = 190)', String(on.r));
   ok(Math.abs(on.st + on.tr - on.g) < 1e-9 && on.tr > 0, '① ★세금이 어부·수확과 **같은 문법**이다(곳간+국고 = 넣은 양)');
   ok(on.today === on.g && on.n === 1, '① 오늘치·건수가 장부 다리 자리에 남는다');
 }
@@ -65,7 +67,9 @@ console.log('\n② 사본 0 — 몸통은 하나, 정본은 남의 것');
   const body = (C.match(/function actToGranary\([\s\S]*?\n\}/) || [''])[0];
   ok(/TAX_RATE/.test(body) && !/[0-9]\.[0-9]/.test(body), '② ★그 몸통에 **새 수가 없다**(세율은 `TAX_RATE` 정본)');
   ok(/_lifeEcon\(\)\.woodToGranary\(/.test(VC), '② ★곳간 회계는 **econ 정본 한 함수**가 한다(생활층에 산수 0)');
-  ok(/_lifeEcon\(\)\.woodBudgetDay\(vil\.econ\)/.test(VC), '② ★예산식도 econ 정본이 갖는다(마을 하루 예산 — T334)');
+  ok(/_lifeEcon\(\)\.woodRegrowR\(vil\.econ, _S\.K \| 0, _S\.wBar \|\| 0\)/.test(VC)
+     && /_lifeEcon\(\)\.woodRegrowPerDay\(_S\.N \| 0, _S\.K \| 0, _r\)/.test(VC),
+    '② ★재생식도 econ 정본이 갖는다(생활층은 `N·K·w̄` 를 세어 넘기기만 · T341)');
   ok(/function _woodKg\(\)/.test(VC) && /kgOf\('wood'\)/.test(VC) && !/3\.00/.test((VC.match(/function _woodKg\([\s\S]*?\n\}/) || [''])[0]),
     '② ★목재 한 단의 kg 을 **`weights.js` 정본**에서 읽는다(3.00 을 옮겨 적지 않았다)');
   ok(/_cc\.CFG && _cc\.CFG\.CAP_KG/.test(VC), '② ★짐 상한도 **`carry.js` 정본**이다(어부와 같은 줄)');
@@ -94,26 +98,31 @@ console.log("\n③ ⓒ 이중 0 — 켠 마을에서 `addProduce('wood')` 가 �
     '③ ★★장부 다리가 **틱 안 한 줄**이다(T193·T312 가 연 그 자리 — 생활층에서 적으면 리셋이 지운다)');
 }
 
-// ── ④ ⓓ 장부 = 손 · ⓔ 예산·이월 0 ────────────────────────────────────────────
-console.log('\n④ ⓓ 장부 = 손 · ⓔ 예산 소진 · 이월 0');
+// ── ④ ⓓ 장부 = 손 · ⓔ [T341] 한도는 걸음이 정한다(예산 0) ─────────────────────
+console.log('\n④ ⓓ 장부 = 손 · ⓔ [T341] 하루 한도 = 걸음');
 {
   const VC = codeOf(VSRC);
   ok(/function _actTake\(B, cellKey, want\)/.test(VC) && /if \(left < want\) \{ B\.cell\.set\(cellKey, left\); return 0; \}/.test(VC),
-    '④ ★★예산이 모자라면 **한 그루도 안 벤다**(반 그루 금지 — 세계와 장부가 갈리지 않는다)');
-  ok(/function _t325Take\(vil, day, want\) \{ return _actTake\(_t325Day\(vil, day\), T325_KEY, want\); \}/.test(VC)
-     && /const T325_KEY = '\*';/.test(VC),
-    '④ ★그 몸통을 어부와 **같이** 쓴다(사본 0) · ★[T334] 분모가 마을이라 **칸이 하나**다(셀 키 없음)');
-  ok(/vil\._t325 = null;   \/\/ ★이월 없음/.test(VSRC), '④ ★★하루가 끝나면 예산 장부를 **버린다**(이월 0)');
+    '④ ★★어부의 예산 몸통은 **그대로 있다**(반 마리 금지 — T341 이 뗀 것은 나무 갈래뿐이다)');
+  ok(!/_actTake\(_t325|_actDay\(vil, '_t325/.test(VC),
+    '④ ★★그 몸통을 **나무가 부르지 않는다**(부르는 이는 어부 하나 · 사본도 갈래도 0)');
+  ok(!/_t325Take|T325_KEY/.test(VC),
+    '④ ★★[T341] 나무꾼에 **예산 장부가 없다**(그 꼴을 떠났다 — 어부 몸통은 어부 것으로 남는다)');
   ok(/npc\.inventory\.wood = 0;/.test(VC), '④ ★★곳간에 넣으면 **손을 비운다**(이중 0)');
   ok(/const u = \(npc\.inventory && npc\.inventory\.wood\) \|\| 0;/.test(VC),
     '④ ★★곳간에 넣는 양이 **손에 든 낱개 그 수**다 — 목재는 낱개 = 단위라 환산식이 없다(장부 = 손)');
-  // ★[T334] 예산 자 — **숲 크기와 무관**하다(그게 분모를 마을로 옮긴 뜻이다)
-  const on = probe({ T325_WOOD_ACT: '1' },
-    `const E=require(${EP});process.stdout.write(JSON.stringify({a:E.woodBudgetDay({_t325Cells:2,_woodOutLast:1}),b:E.woodBudgetDay({_t325Cells:20,_woodOutLast:1})}));`);
-  ok(on.a === 1 && on.b === 1,
-    '④ ★★[T334] 예산이 **숲 크기와 무관**하다 — 셀이 2 든 20 든 그 마을의 하루 수식 그대로', `${on.a} / ${on.b}`);
-  ok(/예산이 그루를 못 대면/.test(VSRC) && /let _peek = null;/.test(VSRC),
-    '④ ★**먼저 묻고 나중에 벤다** — 예산이 안 서면 세계를 안 깎는다(순서가 계약이다)');
+  // ★[T341] 하루 한도 자 — **걸음**이 정한다(정본 셋을 다시 곱해 대조한다 · 하네스에 수 0)
+  const V = require(path.join(ROOT, 'server', 'villages.js'));
+  const CC = require(path.join(ROOT, 'server', 'carry.js'));
+  const W2 = require(path.join(ROOT, 'server', 'weights.js'));
+  ok(typeof V._t341TripsPerDay === 'function' && typeof V._t341TreesPerLoad === 'function',
+    '④ 걸음 한도를 정본이 내준다(하네스가 유도를 옮겨 적지 않는다)');
+  const perLoad = V._t341TreesPerLoad(6);
+  ok(perLoad === Math.max(1, Math.floor(CC.CFG.CAP_KG / (W2.kgOf('wood') * 6))),
+    '④ ★★짐당 그루 = `⌊CAP_KG ÷ (그루당 단 × kgOf(wood))⌋`(최소 1) — `carry.js`·`weights.js` 정본', String(perLoad));
+  ok(V._t341TreesPerLoad(999) === 1, '④ ★큰 그루 하나는 짐 상한을 넘어도 **지고 온다**(0 그루가 되지 않는다)');
+  ok(/하루 걸음 한도\*\*가 그 그루를 못 대면/.test(VSRC) && /let _peek = null;/.test(VSRC),
+    '④ ★**먼저 묻고 나중에 벤다** — 한도가 안 서면 세계를 안 깎는다(T334 의 단위 증발 버그가 그 순서였다)');
 }
 
 // ── ⑤ ⓑ 낙하 — 플레이어 함수 그 자리 ──────────────────────────────────────────
@@ -192,7 +201,7 @@ console.log('\n⑦ 끄면 비트 동일 — 새 줄이 전부 손잡이 뒤에 �
   ok(/v\._woodOutLast = \(v\.counts\.lumberjack \|\| 0\) \* JOBS\.lumberjack\.base \* \(v\.land\.wood \|\| 0\) \* toolBoostShared;/.test(C),
     '⑦ ⚠분자만 손잡이 밖에서 남긴다 — **읽는 쪽이 손잡이 뒤**라 끈 팔은 그 수를 안 본다(T60 문법의 관측 칸)');
   // ★끈 팔에서 econ 이 내는 목재 = 종전 그대로(게이트가 거짓이라 `addProduce` 를 탄다)
-  const off = probe({}, `const E=require(${EP});process.stdout.write(JSON.stringify({knob:E.T325_WOOD_ACT,act:E.woodActOn({_t325Cells:99,_woodOutLast:9}),per:E.woodBudgetDay({_woodOutLast:9})}));`);
+  const off = probe({}, `const E=require(${EP});process.stdout.write(JSON.stringify({knob:E.T325_WOOD_ACT,act:E.woodActOn({_t325Cells:99,_woodOutLast:9})}));`);
   ok(off.knob === false && off.act === false, '⑦ ★끈 팔은 게이트가 거짓 ⇒ 추상 목재 산출이 **그대로** 돈다');
 }
 
@@ -207,71 +216,124 @@ console.log('\n⑧ 안 만진 것 — T324 이동 문 · 어부 값');
     '⑧ ★길 캐시도 안 만졌다(T324 몫)');
 }
 
-// ── ⑨ [T334] 분모는 마을이다 — ⓖ 예산 < 그루면 0 · ⓗ 첫날 오차 ≤ 한 그루 · ⓘ 셀 예산 심볼 0 ──
-console.log('\n⑨ [T334] 나무의 분모는 마을이다 (PM 결정 · T325 회부 ①-ⓐ)');
+// ── ⑨ [T341] 나무에는 예산이 없다 — ⓙ 개체 수 항등식 · ⓚ 30일 합 등가 · ⓛ 재생 r 유도 ──
+console.log('\n⑨ [T341] 나무에는 예산이 없다 (PM 결정 · T334 뒤)');
 {
-  //   ⚠규칙을 **옮겨 적지 않는다** — `villages.js` 가 예산 장부 몸통을 내주므로 그것을 그대로 돌린다.
-  const V = require(path.join(ROOT, 'server', 'villages.js'));
   const E = require(path.join(ROOT, 'sim', 'economy-sim.js'));
-  ok(V.T325_KEY === '*' && typeof V._actTake === 'function' && typeof V._actDay === 'function',
-    '⑨ 예산 장부 몸통과 마을 칸 키를 **정본이 내준다**(하네스에 규칙 사본 0)');
+  const V = require(path.join(ROOT, 'server', 'villages.js'));
+  const C = codeOf(SRC), VC = codeOf(VSRC), ZC = codeOf(ZSRC);
 
-  // ⓖ 예산이 그루를 못 대면 **0** 이고, 그때 예산은 **한 톨도 안 준다**
+  // ⓛ 재생 r 은 **유도값**이다 — 정적(코드에 상수가 없다) + 기능(MSY 역산이 성립한다)
   {
-    const vil = {};
-    const B = V._actDay(vil, '_t325', 1, 4.5);
-    const got = V._actTake(B, V.T325_KEY, 6);
-    ok(got === 0, 'ⓖ ★★예산 4.5 단에 한 그루 6 단을 청구하면 **0**(반 그루 없다)', String(got));
-    ok(B.cell.get(V.T325_KEY) === 4.5 && B.took === 0 && B.n === 0,
-      'ⓖ ★그리고 예산이 **한 톨도 안 줄었다**(실패한 청구가 세계를 깎지 않는다)', String(B.cell.get(V.T325_KEY)));
-    ok(V._actTake(B, V.T325_KEY, 4) === 4 && Math.abs(B.cell.get(V.T325_KEY) - 0.5) < 1e-12,
-      'ⓖ 댈 수 있는 그루는 꺼내 준다(4 단 → 남은 0.5)');
-    ok(V._actTake(B, V.T325_KEY, 4) === 0, 'ⓖ ★남은 0.5 로는 다음 그루를 못 벤다 ⇒ **그날 끝**(이월 0)');
+    ok(/function woodRegrowR\(v, K, meanUnitsPerTree\)/.test(C) && /function woodRegrowPerDay\(N, K, r\)/.test(C),
+      'ⓛ 재생식이 econ 정본에 **둘**이다(`r` 유도 · 그날 돌아오는 그루)');
+    const body = (C.match(/function woodRegrowR\([\s\S]*?\n\}/) || [''])[0];
+    const lits = (body.match(/\b\d+(\.\d+)?\b/g) || []).filter((x) => x !== '0' && x !== '1' && x !== '4');
+    ok(lits.length === 0, 'ⓛ ★★그 식에 **지어낸 수가 없다** — 남은 `4` 는 로지스틱 MSY(`r·K/4`)의 계수다', lits.join(',') || '0개');
+    ok(/return 4 \* \(day \/ w\) \/ k;/.test(C), 'ⓛ ★`r = 4h/K` 그 한 줄이다(`h = _woodOutLast ÷ w̄`)');
+    ok(/const g = r \* n \* \(1 - n \/ k\);/.test(C), 'ⓛ ★그리고 그날 재생이 **로지스틱 그 식**이다(`r·N·(1−N/K)`)');
+    // ★기능 — MSY 역산이 정말 성립하나: N=K/2 에서 재생이 정확히 h 다
+    const v = { _woodOutLast: 16.0136 }, K = 190, w = 6, h = 16.0136 / 6;
+    const r = E.woodRegrowR(v, K, w);
+    ok(Math.abs(E.woodRegrowPerDay(K / 2, K, r) - h) < 1e-9,
+      'ⓛ ★★★N=K/2 에서 재생 = **수식 하루 합 그 자체**(MSY 역산이 선다)', `${E.woodRegrowPerDay(K / 2, K, r).toFixed(6)} = ${h.toFixed(6)}`);
+    ok(E.woodRegrowPerDay(K, K, r) === 0, 'ⓛ ★숲이 가득이면 재생 **0**(로지스틱)');
+    ok(E.woodRegrowPerDay(K - 1, K, r) + (K - 1) <= K + 1e-9, 'ⓛ ★교란 전 수(`K`)를 **안 넘는다**');
+    ok(E.woodRegrowR(v, 0, w) === 0 && E.woodRegrowR({ _woodOutLast: 0 }, K, w) === 0,
+      'ⓛ 숲이 없거나 수식이 0 이면 재생도 0(0 으로 안 나눈다)');
   }
 
-  // ⓗ 첫날 합의 오차가 **한 그루 미만**이다 — 실제 마을 수(T325 실측 `_woodOutLast`)로 재생한다
+  // ⓙ 숲 개체 수 항등식 — **초기 − 벤 수 + 재생**
   {
-    //   ★수는 내가 안 짓는다: 아래 넷은 T325 가 세계 위에서 잰 `_woodOutLast` 다(보고/T325 §3 표).
-    //     한 그루의 단은 존 정본 `lootOfResource`(`wood = 3 + ⌊r/3⌋`)의 치역 4~9 다.
-    const F = [16.0136, 11.2797, 9.6039, 9.2332];
-    const TREE = [4, 5, 6, 7, 8, 9];
-    let worst = 0, worstTree = 0;
-    for (const f of F) {
-      for (const t of TREE) {
-        const vil = {};
-        const B = V._actDay(vil, '_t325', 1, f);
-        let sum = 0;
-        for (let k = 0; k < 1000; k++) { const g = V._actTake(B, V.T325_KEY, t); if (g <= 0) break; sum += g; }
-        const left = f - sum;
-        if (left > worst) { worst = left; worstTree = t; }
-        ok(left >= -1e-9 && left < t, `ⓗ 예산 ${f} · 그루 ${t}단 → 벤 합 ${sum} · 남은 ${left.toFixed(4)} < ${t}`);
-      }
+    ok(/function _t341Unharvest\(seedKey\)/.test(ZC) && /harvestedSeeds\.delete\(seedKey\);/.test(ZC),
+      'ⓙ 되살리는 문이 **하나**다(`_t341Unharvest` — 벤 기록을 지운다 = 그 그루가 다시 자랐다)');
+    ok(/deleteHarvestedSeed/.test(fs.readFileSync(path.join(ROOT, 'server', 'zone-local-db.js'), 'utf8')),
+      'ⓙ DB 에도 같은 문이 있다(메모리만 지우면 재부팅에 되살아난 그루가 다시 사라진다)');
+    ok(/\(vil\._t341Cut \|\| \(vil\._t341Cut = \[\]\)\)\.push\(sk\);/.test(VC)
+       && /const key = vil\._t341Cut\.shift\(\);/.test(VC),
+      'ⓙ ★★벤 순서대로 적고 **가장 먼저 벴던 그루부터** 되살린다(오래 쉰 자리가 먼저 · 주사위 0)');
+    // ★기능 — 색인으로 항등식을 직접 잰다: 한 그루 베고(장부에 적고) 되살리면(지우면) 원래 수로 돌아온다
+    const CH = require(path.join(ROOT, 'server', 'chunk.js'));
+    const { ZONES } = require(path.join(ROOT, 'server', 'zone-config.js'));
+    const Z = 'hanbando', opt = { biome: ZONES[Z].biome, chunkSize: CH.CHUNK_SIZE };
+    let hit = null;
+    for (let cx = 2000; cx < 2200 && !hit; cx++) for (let cy = 2000; cy < 2200; cy++) {
+      const a = CH.resourcesAtCell(Z, cx, cy, opt);
+      for (const e of a) if (e.type === 'tree' && e.isSeed && e.seedKey) { hit = { cx, cy, e, n: a.filter((x) => x.type === 'tree').length }; break; }
+      if (hit) break;
     }
-    ok(worst < Math.max.apply(null, TREE),
-      'ⓗ ★★★**첫날 오차는 언제나 한 그루 미만**이다(최악 남은 예산 = ' + worst.toFixed(4) + ' < 그루 ' + worstTree + '단)');
+    ok(!!hit, 'ⓙ [상황] 색인이 나무 한 그루를 찾았다', hit ? `${hit.cx},${hit.cy}` : '못 찾았다');
+    if (hit) {
+      const ledger = new Map();
+      const count = () => CH.resourcesAtCell(Z, hit.cx, hit.cy, Object.assign({}, opt, { harvestedSet: ledger, gameDay: 1 })).filter((x) => x.type === 'tree').length;
+      const N0 = count();
+      ledger.set(hit.e.seedKey, 0);                      // 벴다
+      const N1 = count();
+      ledger.delete(hit.e.seedKey);                      // 되살아났다(`_t341Unharvest` 가 하는 일)
+      const N2 = count();
+      ok(N1 === N0 - 1 && N2 === N0,
+        'ⓙ ★★★**개체 수 = 초기 − 벤 수 + 재생**(색인이 그 항등식을 그대로 낸다)', `${N0} → ${N1} → ${N2}`);
+    }
   }
 
-  // ⓘ 셀 예산은 **코드에서 사라졌다**(정적 전수 — 이름이 남아 있으면 그게 사본이다)
+  // ⓚ 30일 합 등가 — 걸음이 정한 벌목과 로지스틱 재생을 30일 굴려 수식 30일 합과 견준다
+  {
+    ok(/function _t341TripsPerDay\(vil, distPx, unitsPerTree\)/.test(VC)
+       && /const sp = \(state\.deps && state\.deps\.moveSpeed\) \|\| 0;/.test(VC)
+       && /const dayR = \(state\.deps && state\.deps\.dayPhaseRatio\) \|\| 0;/.test(VC),
+      'ⓚ 하루 왕복 수가 **걸음 정본 셋**(속도 · 낮 비율 · 하루 길이)에서만 나온다');
+    ok(!/60 \* 60|840|1440/.test((VC.match(/function _t341TripsPerDay\([\s\S]*?\n\}/) || [''])[0]),
+      'ⓚ ★그 식에 지어낸 시간 상수가 없다');
+    //   ★모형 — 이 하네스가 **세계를 세우지 않고** 그 규칙만 굴려 본다(수는 전부 정본에서 온다).
+    //     T325·T334 가 세계 위에서 잰 값 하나를 밑변으로 쓴다: `_woodOutLast`(보고/T325 §3 표).
+    const F = 16.0136, K = 190, w = 6;
+    const vv = { _woodOutLast: F };
+    const r = E.woodRegrowR(vv, K, w);
+    for (const cap of [1, 2, 3, 5, 10]) {          // 걸음이 허락하는 하루 그루 수(왕복 × 짐당)
+      let N = K, cut = 0;
+      for (let d = 0; d < 30; d++) {
+        const c = Math.min(cap, N);
+        N -= c; cut += c;
+        N += E.woodRegrowPerDay(N, K, r);
+      }
+      const got = cut * w, want = 30 * F;
+      const ratio = got / want;
+      ok(ratio > 0, `ⓚ 하루 한도 ${cap}그루 → 30일 합 ${got.toFixed(0)}단 / 수식 ${want.toFixed(0)}단 = ${(100 * ratio).toFixed(0)}% · 남은 숲 ${N.toFixed(1)}/${K}`);
+    }
+    //   ★이 카드의 계약: **한도가 MSY 보다 크면 30일 합이 수식을 넘고 숲이 준다**(수렴하지 않는다).
+    const msy = F / w;                              // = r·K/4 — 그루/일
+    let Nb = K, cutB = 0;
+    for (let d = 0; d < 30; d++) { const c = Math.min(Math.ceil(msy), Nb); Nb -= c; cutB += c; Nb += E.woodRegrowPerDay(Nb, K, r); }
+    ok(cutB * w >= 30 * F * 0.5, 'ⓚ ★한도를 MSY 근처로 두면 30일 합이 수식의 절반을 넘는다(수렴 쪽)', `${(100 * cutB * w / (30 * F)).toFixed(0)}%`);
+    let Nc = K, cutC = 0;
+    for (let d = 0; d < 30; d++) { const c = Math.min(10, Nc); Nc -= c; cutC += c; Nc += E.woodRegrowPerDay(Nc, K, r); }
+    ok(Nc < K * 0.5, 'ⓚ ★★한도가 MSY 를 크게 넘으면 **숲이 준다**(30일 뒤 교란 전의 절반 아래)', `${Nc.toFixed(1)}/${K}`);
+  }
+
+  // ── ⓜ [T341] `K` 는 **한 번만** 묻는다 — 교란 전은 시간에 안 매인 수다(스캔을 두 배로 하지 않는다)
+  {
+    const VC = codeOf(VSRC);
+    const scan = (VC.match(/function _t325Scan\([\s\S]*?\n\}/) || [''])[0];
+    ok(/_needK/.test(scan) && /vil\._t341K/.test(scan),
+      'ⓜ ★교란 전 수(`K`)·`w̄` 를 마을마다 **한 번** 재고 캐시한다(날마다 다시 묻지 않는다)');
+    ok(/if \(_needK\) \{\s*\/\/ 교란 전\(raw\)/.test(scan) || /if \(_needK\) \{/.test(scan),
+      'ⓜ ★★raw 질의가 **그 캐시 뒤**에 있다 — 둘째 날부터 셀 스캔이 한 벌이다(실측 p95 5.0→30.0ms 가 그 값이었다)');
+    const rawCalls = (scan.match(/t325TreesAtCell\(tx, ty, true\)/g) || []).length;
+    ok(rawCalls === 1, 'ⓜ raw 질의 자리가 **하나**다(사본 0)', String(rawCalls));
+  }
+
+  // 예산의 흔적이 제품·랩에 하나도 없다(함수로서)
   {
     const FILES = ['sim/economy-sim.js', 'sim/economy-engine.browser.js', 'server/villages.js', 'server/zone.js',
       'lab/전쟁실험실.html', 'lab/마을실험실.html'];
     const hits = [];
-    for (const f of FILES) { const x = fs.readFileSync(path.join(ROOT, f), 'utf8'); if (x.indexOf('woodBudgetPerCell') >= 0) hits.push(f); }
-    ok(hits.length === 0, 'ⓘ ★★`woodBudgetPerCell` 이 제품·랩 전수에서 **사라졌다**', hits.join(',') || '0개');
-    const C = codeOf(SRC);
-    ok(/function woodBudgetDay\(v\) \{/.test(C) && !/_t325Cells/.test((C.match(/function woodBudgetDay\([\s\S]*?\n\}/) || [''])[0]),
-      'ⓘ ★★예산식이 **나무 셀 수를 안 본다**(분모가 마을이라는 뜻이 그 한 줄이다)');
-    ok(E.woodBudgetDay({ _woodOutLast: 16.0136, _t325Cells: 186 }) === 16.0136,
-      'ⓘ ★셀이 186 이어도 예산은 그 마을 하루 수식 그대로', String(E.woodBudgetDay({ _woodOutLast: 16.0136, _t325Cells: 186 })));
-    //   ★그리고 셀 수는 여전히 **게이트**에만 쓰인다(갈 자리가 있나) — 분모로는 안 쓴다
-    ok(E.woodActOn({ _t325Cells: 0, _woodOutLast: 9 }) === false, 'ⓘ 나무 0 마을은 여전히 **안 연다**(T309 ⓒ 3/51)');
-    const VC = codeOf(VSRC);
-    ok(/if \(_t325Take\(vil, _d, u\) <= 0\) \{ vil\._t325Dbg\.fail = u; break; \}/.test(VC),
-      'ⓘ ★★헤드리스 하루도 **예산이 멈춘다** — 셀이 비면 다음 셀로 넘어가고, 멈추는 것은 예산뿐이다');
-    ok(/if \(!peek \|\| !peek\.length\) \{ vil\._t325Dbg\.empty\+\+; ci\+\+; continue; \}/.test(VC),
-      'ⓘ ★셀이 비면 **다음 셀로 걸어 넘어간다**(셀에서 멈추면 그게 셀 분모의 잔재다)');
-    ok(/if \(!loot\) \{ vil\._t325Dbg\.noloot\+\+; break; \}/.test(VC),
-      'ⓘ ★★예산을 깎은 뒤 벌목이 실패하면 **그날을 끝낸다**(`continue` 면 그 단이 조용히 사라진다)');
+    for (const f of FILES) { const x = fs.readFileSync(path.join(ROOT, f), 'utf8');
+      if (/function woodBudget(PerCell|Day)\s*\(/.test(x) || /_t325Take\s*\(/.test(x) || /T325_KEY/.test(x)) hits.push(f); }
+    ok(hits.length === 0, '⑨ ★★예산 함수·장부가 제품·랩 전수에서 **사라졌다**(주석의 회고는 남는다)', hits.join(',') || '0개');
+    ok(typeof E.woodBudgetDay === 'undefined' && typeof E.woodBudgetPerCell === 'undefined',
+      '⑨ ★엔진이 예산식을 **안 내준다**');
+    ok(typeof V._actTake === 'function' && !/_t325Take/.test(VC),
+      '⑨ ★어부 몸통(`_actTake`)은 그대로 남고 나무꾼만 그 꼴을 떠났다');
   }
 }
 

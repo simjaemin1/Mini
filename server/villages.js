@@ -4025,9 +4025,12 @@ function _t312Water(vil) {
   if (w === 'mid' && vil._potSet && vil._potSet.size > 0) w = 'paddy';   // 논이 있으면 논 갈래(미꾸라지·붕어)
   return (vil._t312W = w);
 }
-// ★★[T325 2026-09-19] **하루 예산 장부의 몸통 하나** — 어부(T312)와 나무꾼(T325)이 같은 줄을 쓴다.
+// ★★[T312 2026-09-19 · T341 2026-09-21] **어부의 하루 예산 장부** — 쓰는 이는 이제 **어부 하나**다.
 //   ⚠**이월 없음**(설계_민물고기 §2 · 날이 바뀌면 새 장부다) · 셀별 잔량 · 꺼낸 합·건수는 계측용.
-//   두 벌 적으면 "반 마리 금지" 규칙이 한쪽만 고쳐지는 날이 온다 — 그래서 몸통은 하나다(`actToGranary` 와 같은 결).
+//   ★T325 는 이 몸통을 나무꾼에게도 썼고 T341 이 그 갈래를 뗐다 — **예산은 연속 자원(물고기)의 꼴**이기 때문이다.
+//     물고기는 셀보다 작아 "하루 몫"을 나눠 가질 수 있지만, 나무는 셀보다 커서 나눌 수 없다(족보 265).
+//     그래서 나무의 유한성은 예산이 아니라 **개체 수와 재생**이 쥔다(T341 ② · `woodRegrowR`).
+//   몸통을 그대로 둔 이유: 어부의 "반 마리 금지" 계약이 여기 한 줄로 남아야 두 벌로 갈리지 않는다.
 function _actDay(vil, key, day, per) {
   const B = vil[key];
   if (B && B.day === day) return B;
@@ -4043,14 +4046,6 @@ function _actTake(B, cellKey, want) {
   return want;
 }
 function _t312Day(vil, day) { return _actDay(vil, '_t312', day, _lifeEcon().fishBudgetPerCell(vil.econ)); }
-// ★[T325] 나무꾼의 같은 장부 — 분모만 다르다(나무 셀 수).
-// ★★[T334 2026-09-20 · PM 결정] **나무의 분모는 마을이다** — 그래서 예산 칸이 **하나**다(셀 키가 없다).
-//   몸통은 어부와 **같은 것 그대로**(`_actDay`/`_actTake` — "통째로 들어가야 꺼낸다"가 바로 이 카드의 규칙이다).
-//   다른 것은 둘: 분모가 셀이 아니라 마을이라는 것(`woodBudgetDay`)과, 칸 키가 하나라는 것.
-const T325_KEY = '*';   // 마을 예산은 칸이 하나다 — 셀 키를 쓰지 않는다(분모가 셀이 아니라서)
-function _t325Day(vil, day) { return _actDay(vil, '_t325', day, _lifeEcon().woodBudgetDay(vil.econ)); }
-// 그 셀에서 `want` 단위를 꺼낸다 — **통째로 들어가야 꺼낸다**(반 마리는 없다).
-//   그날 다 잡으면 그 셀은 빈다(재고 0) — 다음 날 `_t312Day` 가 새 장부를 연다.
 // 그 걷는 npc 에 짝지어진 econ npc — 배율(`_t172mul`)이 거기 있다. 못 찾으면 배율 1(무해).
 function _t312EconNpc(vil, npc) {
   const e = vil.econ; if (!e || !e.npcs) return null;
@@ -4126,6 +4121,7 @@ function woodPerf() {
   let walkers = 0, hands = 0, handKg = 0, handU = 0, cells = 0, deliv = 0, formula = 0, formulaAll = 0, act = 0, noTree = 0;
   let trees = 0;   // ★[T334] 나무 **개체 수**(셀 수가 아니다) — 30일 곡선이 이 수를 본다(T146 재생이 따라오나)
   let popAll = 0;  // ★[T334] 세계 인구 — **사람당 µs** 한 줄의 분모다(T333 표에 얹는다 · 계측 전용)
+  let backAll = 0, kAll = 0, capAll = 0, cutDay = 0;   // ★[T341] 되살아난 그루 누계 · 교란 전 K · 걸음 한도 · 그날 벤 수
   const rows = [];
   const wkg = _woodKg() || 0;
   for (const vil of state.villages || []) {
@@ -4147,12 +4143,17 @@ function woodPerf() {
       if (p._lifeAct === '벌목') walkers++;
     }
     let vt = 0; for (const t of ((vil._t325Trees && vil._t325Trees.list) || [])) vt += (t.n | 0);
-    rows.push({ n: vil.name, cells: (e._t325Cells | 0), trees: vt, per: +(_lifeEcon().woodBudgetDay(e) || 0).toFixed(6),
+    backAll += (vil._t341Back || 0); kAll += ((vil._t325Trees && vil._t325Trees.K) | 0);
+    capAll += ((vil._t325Dbg && vil._t325Dbg.cap) | 0); cutDay += ((vil._t325Dbg && vil._t325Dbg.cut) | 0);
+    const _S = vil._t325Trees || {};
+    rows.push({ n: vil.name, cells: (e._t325Cells | 0), trees: vt, N: _S.N | 0, K: _S.K | 0, wBar: +(_S.wBar || 0).toFixed(3),
+                r: vil._t341R || 0, back: vil._t341Back || 0, pend: +(vil._t341Grow || 0).toFixed(4),
                 f: +f.toFixed(4), d: +d.toFixed(4), hU: +vu.toFixed(4), hN: vh,
                 lj: (e.counts && e.counts.lumberjack) || 0, cut: +((e._t325CutN || 0)).toFixed(0),
                 pop: (e.npcs || []).length, dbg: vil._t325Dbg || null });
   }
   return { villages: (state.villages || []).length, actVillages: act, noTreeVillages: noTree, cells, trees, popAll,
+           K: kAll, back: backAll, cap: capAll, cutDay,
            walkers, hands, handKg: +handKg.toFixed(2), handU: +handU.toFixed(4),
            delivered: +deliv.toFixed(4), formulaPerDay: +formula.toFixed(4), formulaAll: +formulaAll.toFixed(4), rows };
 }
@@ -4170,7 +4171,8 @@ function _t325Deliver(vil, npc) {
   return got;
 }
 // ★[T325] 그 개체가 내는 **목재 낱개** — 표는 존이 쥔다(`lootOfResource`). 이 파일은 읽기만 한다(사본 0).
-//   ⚠묻는 것과 베는 것을 나눈 이유: 예산이 그루를 못 대면 **안 베야** 한다(세계를 먼저 깎으면 장부가 갈린다).
+//   ⚠묻는 것과 베는 것을 나눈 이유[T341]: **하루 걸음 한도**가 그 그루를 못 대면 **안 베야** 한다
+//     (세계를 먼저 깎으면 장부가 갈린다 — T334 에서 예산이 먼저 깎아 단위가 소리 없이 사라진 그 버그다).
 function _lifeLootWood(r) {
   if (!r) return 0;
   let l = null; try { l = state.deps.t325LootOf ? state.deps.t325LootOf(r) : null; } catch (e) { l = null; }
@@ -4189,8 +4191,6 @@ function _t325EconNpc(vil, npc) {
   for (let i = 0; i < e.npcs.length; i++) if (e.npcs[i].currentJob === 'lumberjack') { npc._t325Ei = i; return e.npcs[i]; }
   return null;
 }
-// ★[T334] 그 마을의 오늘 예산에서 `want` 단을 꺼낸다 — **못 대면 안 벤다**(그날 끝 · 남은 예산은 버린다).
-function _t325Take(vil, day, want) { return _actTake(_t325Day(vil, day), T325_KEY, want); }
 // ★랩 JOBACT 대상 직업 = 현장(논밭·물·숲·산) 직업. 이 집합 밖은 랩 'villager' 버킷(회관 내부 앵커 + 역할 라벨).
 const LIFE_FIELD_JOBS = new Set(['farmer', 'fisher', 'hunter', 'lumberjack', 'miner', 'forager']);
 let _vgStuckN = 0;           // ★기타직 정체 가드 발동 누계(부팅 이후) — lifedbg가 노출
@@ -4797,22 +4797,61 @@ const JOB_RES = { lumberjack: ['tree'], miner: ['rock', 'ore'], forager: ['berry
 //     ⚠지어낸 수가 아니라 **그 표의 반경**이다. 넓히면(48셀) 나무 0 마을이 0 이 되는데 스캔이 8배다 —
 //       그 판정은 재민·PM 칸이라 여기서 안 고른다(보고 §회부).
 const T325_R = 16;
+// ★★[T341] 스캔이 재생의 세 항을 같이 낸다 — **전부 남의 정본을 읽어서**(새 수 0):
+//     `N` 지금 서 있는 그루 · `K` 교란 전 그루(같은 색인에 벤 장부를 **안 넘기고** 물은 수) ·
+//     `w̄` 그 숲 그루당 평균 목재 단(`lootOfResource`).
+//   ⇒ `woodRegrowR(econ, K, w̄)` 가 `r` 을 내고 `woodRegrowPerDay(N, K, r)` 가 그날 돌아오는 그루를 낸다.
 function _t325Scan(vil, day) {
   if (vil._t325Trees && vil._t325Trees.day === day) return vil._t325Trees.list;
   const trees = [];
+  let N = 0;
+  //   ★★[T341] `K`·`w̄` 는 **한 번만** 잰다 — *"교란 전"* 은 시간에 안 매인 수다(씨는 세계 씨에서
+  //     결정론으로 난다 · T301). 날마다 다시 물으면 같은 답을 받으려고 셀 스캔을 **두 배**로 한다
+  //     (33×33 = 1,089셀 × 마을 × 하루 — 실측 p95 5.0 → 30.0ms 가 그 값이었다). 그래서 캐시한다.
+  //   ⚠`> 0` 이 아니라 `== null` 로 묻는다 — 나무 0 마을(K = 0)도 **한 번 재고 끝나야** 한다
+  //     (`> 0` 이면 그 마을만 영원히 두 벌로 스캔한다 · 나무 0 마을은 3~24곳이다).
+  const _needK = (vil._t341K == null) && _lifeEcon().T325_WOOD_ACT && state.deps.t325TreesAtCell;
   if (_lifeEcon().T325_WOOD_ACT && state.deps.t325TreesAtCell) {
+    let K = 0, wSum = 0, wN = 0;
     for (let dy = -T325_R; dy <= T325_R; dy++) {
       for (let dx = -T325_R; dx <= T325_R; dx++) {
         const tx = vil.ccx + dx, ty = vil.ccy + dy;
         if (tx < 0 || ty < 0) continue;
+        if (_needK) {   // 교란 전(raw) — 첫 하루에만 돈다
+          let b = null; try { b = state.deps.t325TreesAtCell(tx, ty, true); } catch (e) { b = null; }
+          if (b && b.length) { K += b.length; for (const r of b) { const w = _lifeLootWood(r); if (w > 0) { wSum += w; wN++; } } }
+        }
         let a = null; try { a = state.deps.t325TreesAtCell(tx, ty); } catch (e) { a = null; }
-        if (a && a.length) trees.push({ cx: tx, cy: ty, x: tx * SZ + SZ / 2, y: ty * SZ + SZ / 2, n: a.length });
+        if (a && a.length) { N += a.length; trees.push({ cx: tx, cy: ty, x: tx * SZ + SZ / 2, y: ty * SZ + SZ / 2, n: a.length }); }
       }
     }
+    if (_needK) { vil._t341K = K; vil._t341WBar = wN > 0 ? wSum / wN : 0; }
   }
-  vil._t325Trees = { day, list: trees };
-  if (vil.econ) vil.econ._t325Cells = trees.length;   // ★셀당 예산의 **분모**(econ 이 식을 갖고 이 파일은 세어 넘긴다)
+  vil._t325Trees = { day, list: trees, N, K: vil._t341K || 0, wBar: vil._t341WBar || 0 };
+  if (vil.econ) vil.econ._t325Cells = trees.length;   // ★게이트의 입력("갈 자리가 있나" — T341 이후 분모가 아니다)
   return trees;
+}
+// ★[T341] 하루에 몇 번 오가나 — **걸음이 정한다**(값을 짓지 않는다 · 전부 정본):
+//     낮 초 = `state.dayMs × dayPhaseRatio ÷ 1000` · 왕복 초 = `2 × 거리 ÷ moveSpeed` ·
+//     한 짐에 드는 그루 = `⌊CAP_KG ÷ (그루당 단 × kgOf('wood'))⌋`(최소 1그루 — 한 그루는 지고 온다)
+//   ⇒ 하루 벨 그루 = 왕복 수 × 짐당 그루 수. 숲에 있는 만큼만 벤다(그게 T341 의 유일한 상한이다).
+function _t341TripsPerDay(vil, distPx, unitsPerTree) {
+  const sp = (state.deps && state.deps.moveSpeed) || 0;              // px/초 — zone 정본
+  const dayR = (state.deps && state.deps.dayPhaseRatio) || 0;        // 낮 비율 — zone-config 정본
+  const dayS = (state.dayMs || 0) * dayR / 1000;                     // 낮의 실초
+  if (!(sp > 0) || !(dayS > 0) || !(distPx > 0)) return 0;
+  const round = 2 * distPx / sp;
+  if (!(round > 0)) return 0;
+  const trips = Math.floor(dayS / round);
+  return trips > 0 ? trips : 0;
+}
+function _t341TreesPerLoad(unitsPerTree) {
+  const cc = _carryCfg();
+  const cap = (cc && cc.CFG && cc.CFG.CAP_KG) || 0;
+  const kg = (_woodKg() || 0) * ((unitsPerTree > 0) ? unitsPerTree : 0);
+  if (!(cap > 0) || !(kg > 0)) return 1;
+  const n = Math.floor(cap / kg);
+  return n > 0 ? n : 1;                                              // 한 그루는 지고 온다(짐 상한을 넘어도)
 }
 function _lifeJobSites(vil, day) {   // 마을 생활권의 직업별 현장 후보 — 자원 밀집 버킷(벌목·채광·채집), 물가(어부), 초식 사냥감(사냥꾼)
   if (vil._jobSites && vil._jobSites.day === day) return vil._jobSites;
@@ -6064,11 +6103,11 @@ function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(�
   }
   // ★★[T325] **낮이 끝나면 들고 있던 통나무를 곳간에 넣는다**(캐논 ⓐ — 귀환 시 입고). 어부 절과 같은 꼴.
   //   ⚠그리고 **관측자 없는 마을**의 나무꾼도 여기서 **같은 함수**로 하루를 푼다 —
-  //     `_t325Take`(같은 마을 예산) → `t325CutTreeAt`(같은 벌목 문) → `woodToGranary`(같은 곳간 입구).
+  //     걸음이 정한 한도 → `t325CutTreeAt`(같은 벌목 문) → `woodToGranary`(같은 곳간 입구) → 재생.
   //     ⚠**걸음이 없는 것은 T325 가 남긴 빚이다**(캐논 ⓑ는 "관측자 없어도 실걸음"). 걷기 술어
   //       `_t316WalkAlways` 는 **T324(세션3)의 이동 문**이라 이 카드도 안 만진다 — 보고 §회부.
-  //   ★[T334] 분모가 마을이므로 **셀이 비면 다음 셀로 걸어 넘어간다** — 멈추는 것은 **예산**이어야 한다
-  //     (셀에서 멈추면 그게 셀 분모의 잔재다). 가까운 순서가 아니라 **색인 순서**인 것은 헤드리스라서다.
+  //   ★[T341] **예산이 없다** — 멈추는 것은 **걸음**(하루 왕복 수 · 짐 상한)과 **숲**(있는 그루)뿐이다.
+  //     가까운 순서가 아니라 색인 순서인 것은 헤드리스라서다. 그리고 하루가 끝나면 **재생**이 돈다.
   if (vil.econ && _lifeEcon().T325_WOOD_ACT) {
     const _d = state.dayMs ? gameDayOf(_dayNow()) : 0;
     // ★먼저 센다 — 이 줄이 `woodActOn` 의 입력을 만든다(닭과 달걀을 여기서 끊는다 · 위 `_t325Scan` 주석).
@@ -6080,31 +6119,54 @@ function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(�
     let _walked = 0;
     if (_on) for (const pid of (vil.npcPids || [])) { const p = _pl && _pl.get(pid); if (p && p.inventory && (p.inventory.wood || 0) > 0) { _t325Deliver(vil, p); _walked++; } }
     const _ln = (vil.econ.counts && vil.econ.counts.lumberjack) || 0;
-    // ★[T334 계측 전용] 이 절이 왜 못 베는지 밖에서 보이게 — 회계 아님(카운터만)
+    const _S = vil._t325Trees || {};
+    // ★[T341 계측 전용] 걸음이 정한 한도와 실제 벌목을 밖에서 보이게 — 회계 아님(카운터만)
     vil._t325Dbg = { on: _on ? 1 : 0, walked: _walked, ln: _ln, cells: _tr.length,
-      budget: +(_lifeEcon().woodBudgetDay(vil.econ) || 0).toFixed(4), try: 0, empty: 0, noloot: 0, fail: 0, cut: 0, left: null };
+      N: _S.N | 0, K: _S.K | 0, wBar: +(_S.wBar || 0).toFixed(3), cap: 0, trips: 0, perLoad: 0, cut: 0, noloot: 0, grow: 0, back: 0 };
     if (_on && _walked === 0 && _ln > 0 && _tr.length) {
-      let ci = 0;
-      for (let k = 0; k < _tr.length * 4 && ci < _tr.length; k++) {
+      //   ⓐ 하루 한도 — **걸음**이 정한다. 거리는 가장 가까운 나무 셀까지(색인 순서 첫 칸이 아니라 실제 최근접).
+      let _best = _tr[0], _bd = Infinity;
+      const _cx0 = vil.ccx * SZ + SZ / 2, _cy0 = vil.ccy * SZ + SZ / 2;
+      for (const t of _tr) { const dd = (t.x - _cx0) * (t.x - _cx0) + (t.y - _cy0) * (t.y - _cy0); if (dd < _bd) { _bd = dd; _best = t; } }
+      const _w = (_S.wBar > 0) ? _S.wBar : 1;
+      const _trips = _t341TripsPerDay(vil, Math.sqrt(_bd), _w);
+      const _perLoad = _t341TreesPerLoad(_w);
+      const _cap = _trips * _perLoad * _ln;                     // 그 마을 사람들이 하루에 낼 수 있는 그루 수
+      vil._t325Dbg.trips = _trips; vil._t325Dbg.perLoad = _perLoad; vil._t325Dbg.cap = _cap;
+      let ci = 0, made = 0;
+      for (let k = 0; k < _tr.length * 8 && ci < _tr.length && made < _cap; k++) {
         const t = _tr[ci];
-        vil._t325Dbg.try++;
         let peek = null; try { peek = state.deps.t325TreesAtCell ? state.deps.t325TreesAtCell(t.cx, t.cy) : null; } catch (e) { peek = null; }
-        if (!peek || !peek.length) { vil._t325Dbg.empty++; ci++; continue; }   // 이 셀은 다 벴다 — **다음 셀로**(예산이 멈춰야 한다)
+        if (!peek || !peek.length) { ci++; continue; }           // 이 셀은 다 벴다 — 다음 셀로
         const u = _lifeLootWood(peek[0]) || 0;
-        if (!(u > 0)) { vil._t325Dbg.empty++; ci++; continue; }
-        if (_t325Take(vil, _d, u) <= 0) { vil._t325Dbg.fail = u; break; }      // ★예산이 이 그루를 못 댄다 ⇒ **오늘은 끝**(이월 0)
+        if (!(u > 0)) { ci++; continue; }
+        const sk = peek[0].seedKey || null;
         let loot = null; try { loot = state.deps.t325CutTreeAt ? state.deps.t325CutTreeAt(t.cx, t.cy) : null; } catch (e) { loot = null; }
-        //   ⚠**`continue` 가 아니라 `break`** — 예산은 이미 이 그루 값으로 깎였다(위 `_t325Take`).
-        //     그냥 넘어가면 그 단이 **조용히 사라진다**(세계도 안 깎이고 곳간에도 안 든다).
-        //     같은 틱에서 방금 본 그루라 이 갈래는 실제로 안 돈다(`noloot` 카운터가 0 임을 표가 보인다).
         if (!loot) { vil._t325Dbg.noloot++; break; }
-        vil._t325Dbg.cut++;
+        if (sk) (vil._t341Cut || (vil._t341Cut = [])).push(sk);   // ★재생이 되돌릴 목록(벤 순서)
+        made++; vil._t325Dbg.cut++;
         _lifeEcon().woodToGranary(vil.econ, u);
         vil._t325Deliv = +((vil._t325Deliv || 0) + u).toFixed(6);
       }
     }
-    if (vil._t325 && vil._t325.cell) vil._t325Dbg.left = +((vil._t325.cell.has(T325_KEY) ? vil._t325.cell.get(T325_KEY) : vil._t325.per) || 0).toFixed(4);
-    vil._t325 = null;   // ★이월 없음 — 날이 바뀌면 예산 장부를 버린다
+    // ★★[T341] **재생** — T146 로지스틱. `r` 은 수식 하루 합에서 유도(econ 정본 `woodRegrowR`).
+    //   그날 돌아오는 그루가 1 을 넘을 때마다 **가장 먼저 벴던 그루**부터 되살린다(오래 쉰 자리가 먼저 — 주사위 0).
+    if (_on) {
+      const _r = _lifeEcon().woodRegrowR(vil.econ, _S.K | 0, _S.wBar || 0);
+      const _g = _lifeEcon().woodRegrowPerDay(_S.N | 0, _S.K | 0, _r);
+      vil._t325Dbg.grow = +(_g || 0).toFixed(4);
+      vil._t341R = +(_r || 0).toFixed(8);
+      vil._t341Grow = +((vil._t341Grow || 0) + (_g || 0)).toFixed(6);
+      let back = 0;
+      while (vil._t341Grow >= 1 && (vil._t341Cut || []).length && state.deps.t341Unharvest) {
+        const key = vil._t341Cut.shift();
+        let ok = 0; try { ok = state.deps.t341Unharvest(key) || 0; } catch (e) { ok = 0; }
+        vil._t341Grow = +(vil._t341Grow - 1).toFixed(6);
+        back += ok;
+      }
+      vil._t325Dbg.back = back;
+      vil._t341Back = (vil._t341Back || 0) + back;
+    }
   }
   vil._cropClaim = new Set(); vil._jobSites = null;   // ★[생활 층 100% ③] 작물 셀 클레임·직업 현장 캐시 일일 리셋(자가치유·현장 재평가)
   _sub('crop');
@@ -6350,18 +6412,18 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
     }
     if (npc._jobT && now < npc._jobT) return true;                   // 작업 스윙 페이싱(종전 수 그대로)
     npc._jobT = now + 6000 + (h % 5) * 1000;
-    //   ⓑ **그 마을의 오늘 예산**이 그루 하나를 통째로 대는가 — 못 대면 오늘은 안 벤다(반 그루 없음 · 이월 0).
-    //      한 그루가 내는 양은 `lootOfResource` 가 답한다(존이 쥔 정본 · 여기 수 0) ⇒ 먼저 묻고,
-    //      예산이 서면 그때 벤다(못 서면 안 벤다 — 세계를 먼저 깎고 장부를 못 적는 일이 없게).
+    //   ⓑ **나무가 있으면 벤다 — 예산이 없다**(T341 · PM 결정). 없으면 다음 셀로 간다.
+    //      한 그루가 내는 양은 `lootOfResource` 가 답한다(존이 쥔 정본 · 여기 수 0).
     let _peek = null; try { _peek = state.deps.t325TreesAtCell ? state.deps.t325TreesAtCell(ts.cx, ts.cy) : null; } catch (e) { _peek = null; }
     if (!_peek || !_peek.length) { npc._t325Site = null; return true; }   // 다 벴다 — 다음 결정 때 다른 셀로
     const _ec = _t325EconNpc(vil, npc);
     const _mul = (_ec && typeof _ec._t172mul === 'number' && _ec._t172mul > 0) ? _ec._t172mul : 1;
     //      한 그루의 목재 낱개 = 단위(환산식 0). 배율(숙련·도구)은 econ 이 남겨 둔 `_t172mul` 그대로(T172 규약).
     const _units = +(((_lifeLootWood(_peek[0]) || 0) * _mul).toFixed(6));
-    if (_units > 0 && _t325Take(vil, day, _units) > 0) {   // ★[T334] 마을 예산 — 못 대면 안 벤다(그날 끝)
+    if (_units > 0) {
       let _loot = null; try { _loot = state.deps.t325CutTreeAt ? state.deps.t325CutTreeAt(ts.cx, ts.cy) : null; } catch (e) { _loot = null; }
       if (_loot) {
+        if (_peek[0] && _peek[0].seedKey) (vil._t341Cut || (vil._t341Cut = [])).push(_peek[0].seedKey);   // ★[T341] 재생이 되돌릴 목록(벤 순서)
         //   ⓒ **손에** — 플레이어와 같은 칸(`inventory`). 부산물(잔가지·도토리)도 같은 표가 준 그대로 든다.
         if (npc.inventory) for (const k in _loot) npc.inventory[k] = (npc.inventory[k] || 0) + _loot[k];
         npc._t325U = +((npc._t325U || 0) + _units).toFixed(6);
@@ -7259,7 +7321,8 @@ function __rumorProbe() {
 }
 
 module.exports = { fishPerf, woodPerf,   // ★[T316] `/perf` 가 내주는 어부 관측(손잡이 끔이면 null) · ★[T325] 나무꾼도 같은 꼴
-  _actDay, _actTake, T325_KEY,   // ★[T334] 예산 장부 몸통 — **하네스가 규칙을 옮겨 적지 않게** 내준다(사본 금지 · 계약 노출뿐 · 세계 무접촉)
+  _actDay, _actTake,   // ★[T334] 예산 장부 몸통(어부 전용 — T341 이 나무에서 걷어냈다) — 하네스가 규칙을 옮겨 적지 않게 내준다
+  _t341TripsPerDay, _t341TreesPerLoad,   // ★[T341] 하루 왕복 수·짐당 그루 — **걸음이 정한다**(하네스가 유도를 다시 계산해 대조한다)
  
   init, onGameTick, invalidateTradeDistances, npcLifeTick, lifeDebug, econDay,
   tickPerf,   // ★[T1 §0] 일틱 단계별 소요 — zone.js `/perf` 가 소비(계측 전용)
