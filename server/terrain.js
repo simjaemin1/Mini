@@ -46,6 +46,33 @@ function getZoneVillages(zoneId) {
   return (hc[zoneId] && Array.isArray(hc[zoneId].villages) && hc[zoneId].villages.length) ? hc[zoneId].villages : null;
 }
 
+// ★★[T343 2026-09-21] **마을 후보 정본 — "이 존에 마을을 세울 만한 자리"를 묻는 문은 여기 하나다.**
+//
+//   왜 필요했나: 시딩(`villages.js seedVillages`)은 `getZoneVillages` 하나만 봤고, 그건
+//   **정본 json 에 사람이 찍어 둔 칸**만 읽는다. 한반도엔 그게 51곳 있고(에디터 v9 — 함수가
+//   뽑은 게 아니다 · 보고/T343 §0-ⓐ), 닛폰엔 **0곳**이라 시딩이 "후보 없음"으로 조용히 끝났다.
+//   그런데 세계엔 이미 **같은 꼴을 내는 둘째 길**이 있었다 — `chunk.generateVillagesForZone`.
+//   존 하나당 결정론(`villageSeed`)으로 [{name,x,y,type}] 을 뽑고, 타입도 같은 넷
+//   (plain·riverside·forest·mining)이다. `zone.js:645`(레거시 마을)가 이미 그 둘을
+//   "찍은 것이 있으면 그것, 없으면 절차" 로 쓰고 있었다.
+//   ⇒ **그 규칙을 이름 붙여 한 곳에 뒀다.** 새 표도 새 수도 만들지 않았다 — 있던 두 길에
+//     문 하나를 세웠을 뿐이다. 고르는 자(`pickSeedVillages`)와 세우는 자(`seedVillages`)는
+//     후보가 **어느 길로 왔는지 모른다**(그래서 한반도 판이 한 칸도 안 바뀐다).
+//   ⚠`getZoneVillages` 는 뜻을 안 바꿨다 — 여전히 "정본 json 이 가진 칸"이다.
+//     랩·계획기 20여 곳이 그 뜻으로 부르고 있어서(교역·다리·감사), 거기에 절차 마을이
+//     섞여 들어가면 **아무도 안 시킨 세계가 하나 생긴다**.
+function siteCandidates(zoneId) {
+  const hard = getZoneVillages(zoneId);
+  if (hard && hard.length) return hard;
+  const metas = _getZonesMeta();
+  const z = metas && metas[zoneId];
+  if (!z) return [];
+  try {
+    // `generateVillagesForZone` 은 `zone.id` 로 지형을 묻는다(존 설정엔 그 칸이 없다).
+    return require('./chunk').generateVillagesForZone(Object.assign({ id: zoneId }, z)) || [];
+  } catch (e) { return []; }
+}
+
 function _getZonesMeta() {
   if (_zonesMetaCache) return _zonesMetaCache;
   // 서버 측 — zone-config 자동 require (한 번 cache)
@@ -605,6 +632,7 @@ if (typeof module !== 'undefined' && module.exports) {
     setHardcoded,
     _getHardcoded,
     getZoneVillages,
+    siteCandidates,   // ★[T343] 마을 후보 정본(찍은 것 → 없으면 절차) — 시딩이 부르는 문 하나
     isWaterCellLocal,
     isRockCellLocal,
     getTerrainWaterTilesForChunk,
