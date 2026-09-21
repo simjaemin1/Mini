@@ -4070,6 +4070,60 @@ function _t312Deliver(vil, npc) {
   vil._t312Deliv = +((vil._t312Deliv || 0) + got).toFixed(6);
   return got;
 }
+// ★★★[T340 2026-09-21 · T316 추신 — 낚시 창] **NPC 어부의 한 시도도 플레이어와 같은 대본이다.**
+//   T312 는 "8초마다 한 마리"였다. 그건 박자이지 낚시가 아니다 — 플레이어는 **던지고 · 기다리고 ·
+//   창 안에 채고 · 놓친다**(`zone.js tryFishCast`/`tryFishStrike`). 같은 세계에서 주민만 다른 규칙으로
+//   물고기를 얻으면 그게 두 세계다.
+//   ⇒ 시간은 **`fishing.js` 정본 그대로** 쓴다(사본 0 · 새 수 0):
+//     · 기다림 `Fishing.plan(sp, stock01, now, rng).waitMs` — 지수분포(무기억). 자리·재고가 그 길이를 정한다.
+//     · 창    `Fishing.windowMsFor(kg)` — **그 종의 kg**(`freshfish` 정본)이 창을 정한다. 월척일수록 짧다.
+//     · 여유  `Fishing.CFG.WIN_LAT_MS` — 서버가 후하게 봐 주는 그 수 그대로.
+//   ★**주사위 0** — `plan` 의 `rng` 는 플레이어처럼 `Math.random` 이 아니라 (pid · 셀 · 날 · 시도 번호)의
+//     결정론 해시다. 같은 씨면 같은 어획(T284 ⓓ)이 T312 부터의 규약이고, 그걸 안 깬다.
+//     섞는 상수 둘은 이 레포가 이미 쓰는 것이다(`0x85ebca6b` T312 · `0x9e3779b9` T297) — 지어낸 수 0.
+//   ★**놓침은 반사신경이 아니라 시간이다.** 주민에게 '반응 속도' 라는 새 수를 주지 않는다 —
+//     창이 닫힐 때까지 그 자리에 **없으면**(자리를 옮겼다·낮이 끝났다·곳간에 갔다) 못 챈다. 그게 전부다.
+let _tMod = null;
+const _terrainMod = () => _tMod || (_tMod = require('./terrain'));   // ★[T340] 지형 정본 — `spotAt` 이 요구하는 그 모듈
+function _t340Rng(seed) {
+  let s = (seed >>> 0) || 1;
+  return () => { s = (Math.imul(s ^ (s >>> 15), 0x85ebca6b) + 0x9e3779b9) >>> 0; return ((s >>> 8) / 16777216) || 1e-9; };
+}
+// 한 시도 — 상태는 `npc._t340` 하나(던진 자리·입질 시각·창·그 종). 자리를 옮기면 버린다(안 물림).
+function _t340Try(vil, npc, now, day, h, ws) {
+  const F = _fishingMod(); if (!F) return false;
+  const cx = Math.floor((npc._fishSpotX != null ? npc._fishSpotX : ws.x) / SZ);
+  const cy = Math.floor((npc._fishSpotY != null ? npc._fishSpotY : ws.y) / SZ);
+  const key = cx + ',' + cy;
+  let c = npc._t340;
+  if (c && (c.key !== key || c.day !== day)) { c = null; npc._t340 = null; vil._t340Abort = (vil._t340Abort || 0) + 1; }   // 자리를 옮겼다 = 안 물림
+  if (!c) {
+    // 한 자리에 한 번만 던진다 — 던지고 나면 아래 `wait` 로 빠진다
+    // ── 던짐 ── 자리·재고는 플레이어가 쓰는 그 술어로 묻는다(사본 0)
+    let sp = null, stock01 = 1;
+    try { sp = F.spotAt(_terrainMod(), state.zoneId, cx * SZ + SZ / 2, cy * SZ + SZ / 2); } catch (e) { sp = null; }
+    try { stock01 = F.stockRatioAt(cx, cy, now); } catch (e) { stock01 = 1; }
+    if (!sp) return 'wait';
+    const _sp = _fresh().pick(_t312Water(vil), day, h ^ cx ^ Math.imul(cy, 0x85ebca6b));
+    if (!_sp) return 'none';   // 그 물·그 철엔 사는 종이 없다(종전 `!_sp` 자리 — 라벨 '드리움')
+    const n = (npc._t340N = (npc._t340N || 0) + 1);
+    const pl = F.plan(sp, stock01, now, _t340Rng(h ^ Math.imul(n, 0x9e3779b9) ^ Math.imul(day, 0x85ebca6b)));
+    npc._t340 = { key, day, biteAt: pl.biteAt, windowMs: F.windowMsFor(_sp.kg), sp: _sp.id, kg: _sp.kg, castAt: now };
+    vil._t340Cast = (vil._t340Cast || 0) + 1;
+    vil._t340WaitSum = (vil._t340WaitSum || 0) + (pl.biteAt - now);
+    vil._t340WinSum = (vil._t340WinSum || 0) + npc._t340.windowMs;
+    _lifeAct(npc, '낚시');
+    return 'wait';
+  }
+  if (now < c.biteAt) return 'wait';                    // ── 기다림(찌를 본다)
+  const lat = (F.CFG && F.CFG.WIN_LAT_MS) || 0;
+  if (now > c.biteAt + c.windowMs + lat) {              // ── 놓침(창이 닫혔다 — 그 자리에 없었거나 틱이 굶었다)
+    npc._t340 = null; vil._t340Miss = (vil._t340Miss || 0) + 1;
+    return 'miss';
+  }
+  npc._t340 = null; vil._t340Hook = (vil._t340Hook || 0) + 1;
+  return { id: c.sp, kg: c.kg };                        // ── 걸림 — 던질 때 정해진 그 종 그대로
+}
 // ★★[T316] **관측 창구** — `/perf` 가 그대로 내준다(회계 아님 · 손잡이가 꺼져 있으면 null).
 //   이 자가 없으면 §3(세계 위 자)이 "걷는 어부가 몇이냐 · 첫날 합이 수식과 같으냐"를 **소스에만** 물을 수 있다.
 //   T284 문법 그대로 — 하네스는 세계에 묻는다.
@@ -4113,7 +4167,25 @@ function fishPerf() {
       thin.push({ n: vil.name, w: +((e.land && e.land.water) || 0).toFixed(3), fisher: (e.counts && e.counts.fisher) || 0, pop: (e.npcs || []).length });
     }
   }
-  return { villages: (state.villages || []).length, actVillages: act, cells, walkers, hands, handKg: +handKg.toFixed(2), handU: +handU.toFixed(4),
+  // ★[T340] 낚시 창 관측 — 시도가 어디서 끝났나(던짐·걸림·놓침·자리 옮김)와 창·기다림의 평균.
+  //   회계 아님. 마을별 합을 여기서 모은다(마을 칸은 `rows` 가 같이 낸다).
+  let cast = 0, hook = 0, miss = 0, abort = 0, waitSum = 0, winSum = 0, thinBudget = 0;
+  for (const vil of state.villages || []) {
+    const e = vil.econ; if (!e || !_lifeEcon().fishActOn(e)) continue;
+    cast += (vil._t340Cast || 0); hook += (vil._t340Hook || 0);
+    miss += (vil._t340Miss || 0); abort += (vil._t340Abort || 0);
+    waitSum += (vil._t340WaitSum || 0); winSum += (vil._t340WinSum || 0);
+    // 그 마을이 **오늘 예산을 다 못 쓴** 자리인가 — 창이 시간을 먹어 남은 것(카드 ③ 표)
+    const bd = vil._t312;
+    if (bd && bd.day != null && bd.per > 0) {
+      const spent = bd.took || 0, cap = bd.per * ((e._t312Cells | 0) || 0);
+      if (cap > 0 && spent < cap * 0.999) thinBudget++;
+    }
+  }
+  const t340 = { cast, hook, miss, abort, hookPct: cast ? +(100 * hook / cast).toFixed(1) : null,
+                 waitAvgMs: cast ? Math.round(waitSum / cast) : null, winAvgMs: cast ? Math.round(winSum / cast) : null,
+                 budgetLeftVillages: thinBudget };
+  return { t340, villages: (state.villages || []).length, actVillages: act, cells, walkers, hands, handKg: +handKg.toFixed(2), handU: +handU.toFixed(4),
            delivered: +deliv.toFixed(4), formulaPerDay: +formula.toFixed(4), formulaAll: +formulaAll.toFixed(4),
            thinN: thin.length, thin: thin.sort((a, b) => a.w - b.w).slice(0, 20), rows };
 }
@@ -6421,16 +6493,24 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
     if (!npc._workSite || npc._workSite.day !== day) npc._workSite = { x: sites[h % sites.length].x, y: sites[h % sites.length].y, day };
     const ws = npc._workSite;
     if (Math.hypot(npc.x - ws.x, npc.y - ws.y) > 130) { npc.behavior = 'wander'; npc.targetX = ws.x; npc.targetY = ws.y; npc.gatherTarget = null; _lifeAct(npc, '출근'); return true; }
-    if (!npc._lastFishAt || now - npc._lastFishAt > 8000) {
-      npc._lastFishAt = now;
+    // ★★★[T340 2026-09-21] **박자가 아니라 대본이다.** 종전 이 자리는 `now - _lastFishAt > 8000` —
+    //   8초마다 한 마리였다. 이제 켠 팔은 `_t340Try` 가 **던짐 → 기다림 → 걸림/놓침**을 돌린다
+    //   (시간은 `fishing.js` 정본 · 주사위 0 · 새 수 0 — 그 함수 머리말 참조).
+    //   ⚠**끈 팔은 8초 그대로**다 — 아래 `else if` 한 줄이 종전 비트 그대로 돈다.
+    //   ⚠[T321 소리] 결말 낱말 셋('드리움'·'놓침'·'낚음')은 **그대로 남는다**. 달라진 것은 셋이
+    //     한 틱에 나던 것이 이제 **시도의 흐름을 따라** 난다는 것뿐이다(`test-audio ⑫` 무접촉 · 회부).
+    {
       // ★★★[T312] **낚는 순간 손에.** 손잡이가 꺼져 있으면 아래 `else` 한 줄이 종전 그대로 돈다(비트 동일).
       if (_lifeEcon().fishActOn(vil.econ)) {
+        const _hook = _t340Try(vil, npc, now, day, h, ws);   // 'wait' | 'none' | 'miss' | {id, kg}
         //   ⓐ 어느 셀인가 — 지금 드리우고 있는 그 자리(셀 키는 좌표를 셀로 내린 것 · 새 수 0).
         const _cx = Math.floor((npc._fishSpotX != null ? npc._fishSpotX : ws.x) / SZ);
         const _cy = Math.floor((npc._fishSpotY != null ? npc._fishSpotY : ws.y) / SZ);
         const _key = _cx + ',' + _cy;
-        //   ⓑ 무엇이 물리나 — 그 물·그 계절에 사는 종에서 결정론으로 하나(주사위 0 · `freshfish.pick`).
-        const _sp = _fresh().pick(_t312Water(vil), day, h ^ _cx ^ Math.imul(_cy, 0x85ebca6b));
+        //   ⓑ 무엇이 물리나 — 던질 때 정해진 그 종이다(주사위 0 · `freshfish.pick` · `_t340Try` 안).
+        if (_hook === 'none') _lifeAct(npc, '드리움');        // 그 물·그 철엔 사는 종이 없다
+        if (_hook === 'miss') _lifeAct(npc, '놓침');          // 창이 닫혔다 — 물었는데 못 챘다
+        const _sp = (_hook && typeof _hook === 'object') ? _hook : null;
         // ★★★[T321 2026-09-19 · 소리] **한 번의 드리움이 어디까지 갔는지**를 낱말로 남긴다.
         //   여기 말고 다른 자리가 없다 — 어부의 한 시도는 **한 순간**이다(아래 셋이 같은 틱이다).
         //   그래서 소리는 '던짐 뒤 입질 뒤 걸림' 셋이 **차례로** 나는 것이 아니라,
@@ -6441,7 +6521,6 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
         //   ⚠라벨은 **덮어쓰는 칸 하나**(`_lifeAct`)라 한 틱에 셋을 부르면 마지막만 남는다.
         //     셋이 서로 배타이므로 그 성질이 여기서는 해가 아니다(`test-audio ⑫b` 가 배타를 지킨다).
         //   ⚠새 메시지·새 칸 0: 라벨은 `zone.js makeEntry` 의 `e.act` 를 **그대로** 탄다(무상태 델타).
-        if (!_sp) _lifeAct(npc, '드리움');
         if (_sp) {
           //   ⓒ 그 한 마리가 장부로 얼마인가 — **정본이 답한다**(`kcal.econUnitsOf`: 종 kg × fish kcal/kg ÷ DAY_KCAL).
           //      그 어부의 배율(숙련·도구)은 econ 이 제 자리에서 남겨 둔 `_t172mul` 을 **그대로** 쓴다(T172 규약 · 사본 0).
@@ -6462,7 +6541,10 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
         const _cc = _carryCfg();
         const _cap = (_cc && _cc.CFG && _cc.CFG.CAP_KG) || 0;
         if (_cap > 0 && (npc._t312Kg || 0) >= _cap) _t312Deliver(vil, npc);
-      } else if (npc.inventory) npc.inventory.fish = (npc.inventory.fish || 0) + 1;   // 8초 1마리(구 ③-b 이관 — simJob 기준)
+      } else if (!npc._lastFishAt || now - npc._lastFishAt > 8000) {   // ★[T340] 끈 팔만 8초 박자(종전 비트)
+        npc._lastFishAt = now;
+        if (npc.inventory) npc.inventory.fish = (npc.inventory.fish || 0) + 1;   // 8초 1마리(구 ③-b 이관 — simJob 기준)
+      }
     }
     // ★★[2026-08-04c 배치 17 ②] **낚시터 미세 방황 수리** — 재민 관측 "낚시터에서 미세하게 자꾸 방황한다".
     //   원인: 이 줄이 **결정 틱마다**(0.5~1.5초) 목표를 ±20px 로 새로 뽑고 있었다. 20px 는 한 셀(32px)도 안 되는
