@@ -1135,8 +1135,11 @@ function territoryBoundary(territory, ccx, ccy) {
 // Stage 2 — 시딩 (villages 테이블 비었을 때 1회, 트랜잭션 원자성으로 idempotent)
 // =============================================================================
 function seedVillages(db, terrain, ta, ZONE) {
-  const hard = terrain.getZoneVillages(state.zoneId) || [];
-  if (!hard.length) { console.log(`[${state.zoneId}] 🏘️ 시딩 스킵 — 하드코딩 마을 없음`); return []; }
+  // ★[T343] 후보는 **정본 문 하나**에서 온다 — 찍어 둔 칸(한반도 51)이 있으면 그것,
+  //   없으면 같은 꼴을 내는 절차 배치기(존 하나당 결정론). 규칙은 `terrain.siteCandidates` 에 있다.
+  //   ⚠여기서 갈래를 다시 쓰지 않는다(사본 0) — 한반도는 첫 갈래라 한 칸도 안 바뀐다.
+  const hard = terrain.siteCandidates(state.zoneId) || [];
+  if (!hard.length) { console.log(`[${state.zoneId}] 🏘️ 시딩 스킵 — 마을 후보 0곳`); return []; }
   // ★[배치 16] 선별 정책을 **존 설정**에서 받는다(hanbando = 전수 50곳. 다른 존은 키가 없어 종전 그대로).
   const _seedOpts = { seedAll: !!(ZONE && ZONE.seedAllVillages), max: (ZONE && ZONE.villageMax) || 0 };
   const picked = pickSeedVillages(hard, ta, _seedOpts);   // ★땅 품질 시딩(재민 확정 — 위 함수 주석)
@@ -2545,7 +2548,14 @@ function init(deps) {
   if (!ENABLED) return; // 플래그 off — 완전 no-op (sim/* require도 안 함)
   try {
     const ZONE_ID = process.env.ZONE_ID || 'hanbando';
-    if (ZONE_ID !== 'hanbando') return; // §4-4: 1차 이식은 hanbando 존만 (일반화는 Stage 4+)
+    // ★★[T343 2026-09-21] **존 무관.** 종전엔 여기서 `ZONE_ID !== 'hanbando'` 면 조용히
+    //   돌아섰다(§4-4 "1차 이식은 hanbando 존만"). 그 한 줄이 생활층·장부·소문·교역을
+    //   통째로 막고 있었고, **오류를 안 내서** 다른 존은 "뜨긴 뜨는데 아무 일도 안 나는"
+    //   세계가 됐다(T336 실측: 닛폰 부팅 오류 0 · `/health villages:null`).
+    //   ⇒ 지운다. 이 아래 배선은 이미 전부 존 인자다 — 막던 것은 이 줄뿐이었다.
+    //   ★새 게이트를 안 놓는 이유: 바다 존은 **스스로 빠진다**. `siteCandidates` 가
+    //     `generateVillagesForZone` 을 부르고 그 함수 첫 줄이 `if (zone.isOcean) return []`
+    //     이라 후보 0 → 시딩 0 → 아래 `마을 0 — 시뮬 비활성`. 조건을 한 번 더 쓰면 사본이다.
     state.zoneId = ZONE_ID;
     state.deps = deps;
 

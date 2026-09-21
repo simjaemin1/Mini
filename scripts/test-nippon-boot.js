@@ -1,0 +1,189 @@
+#!/usr/bin/env node
+// @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// === scripts/test-nippon-boot.js — 둘째 존이 실제로 산다 (T343) ================
+//
+// ★왜 [T343 2026-09-21]
+//   T336 이 잰 것: `ZONE_ID=nippon` 은 **오류 0 으로 뜨는데 아무 일도 안 났다**
+//   (`/health` 가 `villages: null` · `[seed]` 줄조차 없다). 막던 것은 `villages.js` 의
+//   `if (ZONE_ID !== 'hanbando') return;` 한 줄이었다. **오류를 안 내는 결함**이라
+//   부팅 로그를 아무리 봐도 안 보인다 — 그래서 자가 필요하다(족보 130).
+//
+// ★이 자가 재는 것은 **둘**이고, 둘을 섞지 않는다:
+//   ⓐ~ⓓ **후보 정본** — 값싸다(부팅 0). "한반도가 한 칸도 안 바뀐다"를 **같은 배열 객체**로 증명한다.
+//   ⓔ    **실서버** — 비싸다(존 하나 부팅). 계약이 있는지가 아니라 **도는지**를 본다
+//         (`test-psite-server ⑨` 와 같은 문법: 소스 검사와 실행 검사는 다른 것을 잰다).
+//
+// ★★자명 통과 금지 — 이 자는 "마을이 0곳인데 오류도 0" 을 **초록으로 읽지 않는다.**
+//   전제를 먼저 건다: 시딩 줄이 실제로 찍혔나 · econ 인구가 0보다 큰가 · 후보가 실제로 있었나.
+//   그게 없으면 아래 판정은 아무것도 안 잰 것이다(T336 이 잡은 그 상태가 정확히 "조용한 0" 이었다).
+//
+// 실행: node scripts/test-nippon-boot.js
+'use strict';
+const path = require('path');
+const fs = require('fs');
+const net = require('net');
+const { spawn } = require('child_process');
+
+const ROOT = path.join(__dirname, '..');
+const ZID = 'nippon';
+
+let pass = 0, fail = 0;
+const ok = (c, m, extra) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (extra ? `  ${extra}` : '')); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// ★고정 포트를 안 쓴다 — 앞 하네스가 쥐고 있으면 자식이 조용히 죽고 **남의 서버**를 재게 된다
+//   (`test-guest-rejoin` 머리의 T10-① 가 그 병을 값비싸게 배웠다. 같은 처방을 그대로 쓴다.)
+function portFree(port) {
+  return new Promise((res) => {
+    const s = net.createServer();
+    s.once('error', () => res(false));
+    s.once('listening', () => s.close(() => res(true)));
+    s.listen(port, '127.0.0.1');
+  });
+}
+async function pickPorts() {
+  const base = 36000 + ((process.pid * 2) % 6000);
+  for (let i = 0; i < 500; i++) {
+    const c = base + i * 2, z = c + 1;
+    if (await portFree(c) && await portFree(z)) return [c, z];
+  }
+  throw new Error('빈 포트 쌍을 못 찾았다');
+}
+
+const procs = [];
+function boot(name, file, env) {
+  const p = spawn(process.execPath, [path.join(ROOT, 'server', file)], {
+    cwd: ROOT, env: Object.assign({}, process.env, env), stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  // ★로그를 **버리지 않고 모은다** — 이 자의 판정 절반이 로그에서 나온다(오류 0 · 시딩 줄).
+  p._name = name; p._out = ''; p._err = ''; p._died = null;
+  p.stdout.on('data', (b) => { p._out += String(b); });
+  p.stderr.on('data', (b) => { p._err += String(b); });
+  p.on('exit', (code, sig) => { p._died = `code=${code} sig=${sig}`; });
+  procs.push(p);
+  return p;
+}
+function shutdown() { for (const p of procs) { try { p.kill('SIGKILL'); } catch (e) {} } }
+process.on('exit', shutdown);
+
+async function waitUp(p, url, tries = 300) {
+  for (let i = 0; i < tries; i++) {
+    if (p._died) {
+      console.log(`      [${p._name}] 떠보지도 못하고 죽었다 (${p._died})`);
+      const tail = (p._err || '').trim().split('\n').filter(Boolean).slice(-4).join(' | ');
+      if (tail) console.log(`      stderr: ${tail.slice(0, 300)}`);
+      return false;
+    }
+    try { const r = await fetch(url); if (r.ok) return true; } catch (e) {}
+    await sleep(1000);
+  }
+  return false;
+}
+
+(async () => {
+  console.log('\n=== 둘째 존이 실제로 산다 — 닛폰 부팅 (T343) ===');
+
+  // ── ⓐ 후보 정본은 문 하나다 · 한반도는 한 칸도 안 바뀐다 ─────────────────────
+  console.log('\n[ⓐ 후보 정본 — terrain.siteCandidates]');
+  const T = require(path.join(ROOT, 'server', 'terrain'));
+  const hbHard = T.getZoneVillages('hanbando');
+  const hbCand = T.siteCandidates('hanbando');
+  ok(Array.isArray(hbHard) && hbHard.length > 0, 'ⓐ0 전제: 한반도는 정본 json 에 찍어 둔 마을 칸이 있다(자명 통과 방지)',
+    `${(hbHard || []).length}곳`);
+  // ★**같은 배열 객체**여야 한다. "길이가 같다"로는 부족하다 — 베껴서 같은 수를 내는 것도 통과한다(사본 0).
+  ok(hbCand === hbHard, 'ⓐ ★한반도 후보는 **그 칸 그대로**다 — 사본도 재계산도 아니다(같은 배열 객체)',
+    hbCand === hbHard ? `${hbCand.length}곳 · 동일 객체` : '다른 객체');
+
+  console.log('\n[ⓑ 정본 칸이 0곳인 존 — 절차 배치기가 후보를 낸다]');
+  const npHard = T.getZoneVillages(ZID);
+  const npCand = T.siteCandidates(ZID);
+  ok(!npHard || npHard.length === 0, 'ⓑ0 전제: 닛폰은 정본 json 에 마을 칸이 **0곳**이다(그래서 둘째 길이 필요했다)',
+    `${(npHard || []).length}곳`);
+  ok(Array.isArray(npCand) && npCand.length > 0, 'ⓑ 닛폰에도 후보가 선다', `${(npCand || []).length}곳`);
+  // ★꼴이 같아야 고르는 자(pickSeedVillages)·세우는 자(seedVillages)가 갈래를 모른다.
+  const TYPES = new Set(['plain', 'riverside', 'forest', 'mining']);
+  const shapeBad = (npCand || []).filter((v) => !(v && typeof v.name === 'string' && Number.isFinite(v.x) && Number.isFinite(v.y) && TYPES.has(v.type)));
+  ok(shapeBad.length === 0, 'ⓑ2 두 길의 **꼴이 같다** — {name,x,y,type} · 타입은 한반도가 쓰는 넷 안',
+    shapeBad.length ? JSON.stringify(shapeBad[0]) : `${npCand.length}곳 전부`);
+  // ★결정론 — 같은 존을 두 번 물으면 같은 답이다(존 하나당 villageSeed).
+  const npCand2 = T.siteCandidates(ZID);
+  ok(JSON.stringify(npCand) === JSON.stringify(npCand2), 'ⓑ3 두 번 물어도 같은 답이다(존 하나당 결정론 · 판마다 다른 세계 0)');
+
+  console.log('\n[ⓒ 바다 존은 스스로 빠진다 — 새 게이트 0]');
+  const { ZONES } = require(path.join(ROOT, 'server', 'zone-config'));
+  const oceans = Object.keys(ZONES).filter((z) => ZONES[z].isOcean);
+  ok(oceans.length > 0, 'ⓒ0 전제: 바다 존이 실제로 있다', `${oceans.length}개`);
+  const oceanNonZero = oceans.filter((z) => (T.siteCandidates(z) || []).length > 0);
+  ok(oceanNonZero.length === 0, 'ⓒ 바다 존 후보는 전부 0곳 — 존 이름 조건을 새로 안 써도 빠진다',
+    oceanNonZero.length ? oceanNonZero.join(',') : `${oceans.length}개 전부 0`);
+
+  console.log('\n[ⓓ 존 이름 게이트가 사라졌다]');
+  const VIL = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8');
+  // 주석이 아닌 줄에서만 찾는다 — 주석은 왜 지웠는지를 적어 두는 자리다(족보 207).
+  const codeLines = VIL.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l));
+  const gate = codeLines.filter((l) => /ZONE_ID\s*!==\s*['"]hanbando['"]/.test(l));
+  ok(gate.length === 0, 'ⓓ `ZONE_ID !== \'hanbando\'` 조기 반환이 코드에 없다', gate.length ? gate[0].trim().slice(0, 80) : '0건');
+  ok(/terrain\.siteCandidates\(/.test(VIL), 'ⓓ2 시딩이 후보를 **정본 문**으로 묻는다(사본 0)');
+
+  // ── ⓔ 실서버 — 계약이 아니라 **도는지** ─────────────────────────────────────
+  console.log('\n[ⓔ 실서버 — ZONE_ID=nippon 으로 실제로 띄운다]');
+  const [CPORT, ZPORT] = await pickPorts();
+  const CDB = `/tmp/nb-central-${process.pid}.db`, ZDB = `/tmp/nb-zone-${process.pid}.db`;
+  for (const f of [CDB, ZDB, CDB + '-wal', ZDB + '-wal', CDB + '-shm', ZDB + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
+
+  const cp = boot('central', 'central.js', { PORT: String(CPORT), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: ZID });
+  ok(await waitUp(cp, `http://localhost:${CPORT}/zones`), 'ⓔ0 central 기동');
+  const zp = boot('zone', 'zone.js', {
+    PORT: String(ZPORT), ZONE_ID: ZID, DB_PATH: ZDB,
+    CENTRAL_URL: `http://localhost:${CPORT}`,
+    ENABLE_BANDITS: '0', ENABLE_ROADS: '0',
+  });
+  ok(await waitUp(zp, `http://localhost:${ZPORT}/health`), 'ⓔ1 닛폰 존 기동');
+
+  // ★생활층은 기동 **뒤에** 선다(시딩 → 장부 → 거리행렬 → 시뮬 준비). 그 마지막 줄을 기다린다 —
+  //   고정 sleep 으로 읽으면 느린 상자에서 "안 섰다"는 **없는 결함**을 보고한다(족보 ㊽).
+  let ready = false;
+  for (let i = 0; i < 240 && !ready; i++) { ready = /마을 시뮬 준비/.test(zp._out) || /시뮬 비활성/.test(zp._out); await sleep(1000); }
+  const LOG = zp._out;
+
+  // 전제 셋 — 이게 거짓이면 아래는 아무것도 안 잰다
+  ok(/마을 시딩 시작 — 후보 (\d+)/.test(LOG), 'ⓔ2 전제: 시딩이 **실제로 돌았다**(종전엔 이 줄이 아예 없었다)',
+    (LOG.match(/마을 시딩 시작 — [^\n]*/) || [''])[0]);
+  const mSeeded = LOG.match(/마을 시딩 완료 — 후보 (\d+) → 선별 (\d+) → \*\*시딩 (\d+)\*\*/);
+  ok(!!mSeeded, 'ⓔ3 전제: 시딩 완료 줄이 찍혔다', mSeeded ? mSeeded[0] : '(없음)');
+  const mSim = LOG.match(/마을 시뮬 준비: 마을 (\d+), econ 인구 (\d+)/);
+  ok(!!mSim, 'ⓔ4 전제: 생활층이 깨어났다(마을 시뮬 준비)', mSim ? mSim[0] : '(없음 — 조용한 0)');
+
+  // 본 판정
+  const h = await (await fetch(`http://localhost:${ZPORT}/health`)).json();
+  ok(typeof h.villages === 'number' && h.villages >= 1,
+    'ⓔ ★★닛폰에 마을이 **선다** — `/health villages ≥ 1`(T336 엔 `null` 이었다)', `villages=${h.villages}`);
+  ok(!!mSim && (+mSim[2]) > 0, 'ⓔ5 econ 인구가 0보다 크다(마을이 이름만 있는 게 아니다)', mSim ? `${mSim[2]}명` : '-');
+  ok(/사건 장부/.test(LOG), 'ⓔ6 사건 장부가 섰다(소문·게시판이 먹고 사는 것)',
+    (LOG.match(/사건 장부[^\n]*/) || [''])[0].slice(0, 90));
+  ok(/교역 BFS 거리행렬/.test(LOG), 'ⓔ7 교역 거리행렬이 섰다',
+    (LOG.match(/교역 BFS 거리행렬[^\n]*/) || [''])[0].slice(0, 120));
+
+  // ★오류 0 — 부팅 전체를 본다. 이 자가 지키는 본선이다.
+  const errLines = LOG.split('\n').filter((l) => /(^|\s)(Error|TypeError|ReferenceError)\b|\bfatal\b|Cannot read|is not a function/.test(l));
+  ok(errLines.length === 0, 'ⓔ8 ★부팅 로그 오류 0', errLines.length ? errLines.slice(0, 2).join(' | ').slice(0, 200) : '');
+  // ★★[이 자의 1차 판이 스스로 틀렸다 — 적어 둔다] 종전엔 "stderr 가 비어 있다"를 걸었다.
+  //   그런데 stderr 는 예외만 오는 관이 아니다 — `console.warn` 이 거기로 간다. 그래서
+  //   **제품이 옳게 일한 줄**이 빨강이 됐다: `[이즈사키] 주변 24셀 내 뭍 없음 — 스킵`.
+  //   그건 품질 기준이 아니라 **물리**다(물 위엔 마을을 못 세운다 · 한반도도 어촌6 을 그렇게 건너뛴다).
+  //   ⇒ 재는 것을 바로 잡는다: stderr 에서 보는 것은 **예외의 자취**(스택 프레임·Error 꼴)뿐이다.
+  //   (족보 156/170 — 빨강을 보면 자를 먼저 의심하라.)
+  const errTail = (zp._err || '').split('\n');
+  const errReal = errTail.filter((l) => /^\s+at\s+\S/.test(l) || /(^|\s)(Error|TypeError|ReferenceError)\b|Cannot read|is not a function/.test(l));
+  ok(errReal.length === 0, 'ⓔ9 stderr 에 예외 자취(스택 프레임·Error)가 없다', errReal.slice(0, 2).join(' | ').slice(0, 200));
+  // ★물 위 스킵은 **결함이 아니라 물리**다 — 났다면 났다고 세고, 안 났어도 통과다(각본 0).
+  const skips = LOG.split('\n').concat(errTail).filter((l) => /주변 24셀 내 뭍 없음 — 스킵/.test(l));
+  ok(!mSeeded || (+mSeeded[2] - +mSeeded[3]) === skips.length,
+    'ⓔ10 선별−시딩 차이가 **물 위 스킵 수와 맞는다**(조용히 사라진 마을 0)',
+    mSeeded ? `선별 ${mSeeded[2]} − 시딩 ${mSeeded[3]} = ${+mSeeded[2] - +mSeeded[3]} · 스킵 줄 ${skips.length}` : '-');
+
+  shutdown();
+  for (const f of [CDB, ZDB, CDB + '-wal', ZDB + '-wal', CDB + '-shm', ZDB + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
+  console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
+  process.exit(fail ? 1 : 0);
+})().catch((e) => { console.error('하네스 실패:', e); shutdown(); process.exit(1); });
