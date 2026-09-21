@@ -245,6 +245,14 @@ function insertHarvestedSeed(key, gameDay) {
 }
 /** `[{ seed_key, harvested_day }]` — 옛 행은 `harvested_day = -1`(부팅 때 승격한다). */
 function getAllHarvestedSeeds() { return stmtGetAllHarvested.all(); }
+// ★★[T341 2026-09-21] **벤 기록을 지우는 문** — 그 그루가 다시 자랐다는 뜻이다(마을 숲 로지스틱 재생).
+//   ⚠T122 의 그루터기 시계(22 게임년)와 **다른 법**이다: 마을 반경 안의 숲은 그 마을이 관리하는 숲이라
+//     로지스틱으로 돌아오고, 그 바깥은 T122 그대로다. 어느 법이 어디까지인지는 회부(보고/T341 §회부).
+const stmtDelHarvested = db.prepare('DELETE FROM harvested_seeds WHERE seed_key = ?');
+function deleteHarvestedSeed(key) {
+  if (!key) return 0;
+  try { return stmtDelHarvested.run(key).changes || 0; } catch (e) { return 0; }
+}
 /** 옛 행 승격 — 벤 날을 **승격일**로 적는다. 바뀐 행 수를 돌려준다(로그 한 줄용). */
 function promoteHarvestedDays(gameDay) {
   if (!Number.isFinite(gameDay)) return 0;
@@ -563,7 +571,7 @@ module.exports = {
   getBuildings, getBuildingsInRect, insertBuilding, updateBuildingData, deleteBuilding,
   getMobs, insertMob, updateMobState, deleteMob,
   getClaims, insertClaim, updateClaimState, updateClaimOwner, deleteClaim,   // ★[T45] 사유지 v2 — 종류·상태기 영속
-  insertHarvestedSeed, getAllHarvestedSeeds, promoteHarvestedDays,
+  insertHarvestedSeed, getAllHarvestedSeeds, promoteHarvestedDays, deleteHarvestedSeed,   // ★[T341] 재생 — 벤 기록을 지우는 문
   upsertMinedCell, getAllMinedCells, deleteMinedCell,
   upsertFishCell, getAllFishCells, deleteFishCell,
   // §4-4 마을 시뮬 (villages.js)

@@ -1048,20 +1048,41 @@ function woodToGranary(v, units) {
 }
 // ★[T325] 이 마을이 **행위 벌목**으로 도는가 — 손잡이 ∧ 나무 셀이 있다(생활층이 `resourceAt` 로 세어 심는다).
 //   ⚠둘 다여야 한다. 나무 없는 마을(T309 ⓒ: 반경 16셀에서 3/51)은 켜도 종전 수식 그대로다 — 몸이 갈 자리가 없다.
-//   ★[T334] 셀 수는 이제 **분모가 아니다** — *"갈 자리가 있나"* 만 답한다(분모는 마을 · 위 `woodBudgetDay`).
+//   ★[T334] 셀 수는 이제 **분모가 아니다** — *"갈 자리가 있나"* 만 답한다.
+//   ★[T341] 예산이 아예 없어졌으므로 이 게이트가 **유일한 문**이다(숲이 있나 · 손잡이가 켜졌나).
 function woodActOn(v) { return !!(T325_WOOD_ACT && v && (v._t325Cells | 0) > 0); }
-// ★★★[T334 2026-09-20 · ★PM 결정 — T325 회부 ①-ⓐ] **나무의 분모는 마을이다.**
-//   T325 는 어부의 식(`수식 ÷ 셀 수`)을 나무에 그대로 옮겼고, 그러면 **한 그루도 안 벤다**:
-//   셀당 예산 0.0087~2.44단인데 한 그루가 최소 4단이라 "통째로 들어가야 꺼낸다"가 절대 안 선다
-//   (모자란 배수 최소 2 · 중앙 6 · 최대 460 · 21마을 전수 — 보고/T325 §3).
-//   ⇒ **셀 예산은 물고기(잘게 나뉘는 것)의 규약이었다.** 나무는 개체다 — 예산은
-//     *"오늘 이 마을이 벨 수 있는 단 수"* 이고, 어느 셀에서 베느냐는 **가장 가까운 나무**다.
-//   ★값은 여전히 식이다(새 수 0): 그 마을이 **지금 수식으로 하루에 내는 목재** 그 자체(`_woodOutLast`).
-//     나누지 않는다 — 그래서 첫날 합은 수식에서 **한 그루 미만**만 모자란다(마지막 그루가 예산을 넘으면
-//     안 베고 남은 예산은 버린다 · 이월 0). 그 오차가 이 카드가 표에 적는 수다.
-function woodBudgetDay(v) {
+// ★★★[T341 2026-09-21 · ★PM 결정 — T334 뒤] **나무에는 예산이 없다.**
+//   두 판을 거쳐 배운 것: 예산이라는 **꼴 자체가 물고기의 것**이었다.
+//     T325 셀 예산 — 한 그루도 못 벴다(셀당 0.0087~2.44단 대 한 그루 4~9단 · 배수 2~460).
+//     T334 마을 예산 — 베긴 베는데 수식의 30~34%(마을 하루 예산 중앙 2.7~4단 < 한 그루).
+//   ⇒ **나무는 개체다.** 있으면 베고 없으면 못 벤다. 하루에 몇 번 오가는지는 **걸음**이 정하고
+//     (짐 상한 `carry.js` · 낮 길이 · 걸음 속도 — 전부 정본), 유한성은 **숲 자체와 재생**이 지킨다.
+//   ★그래서 예산식(`woodBudgetPerCell`·`woodBudgetDay`)은 **지웠다** — 남은 것은 게이트 하나다.
+//
+// ★★재생 — T146 개체 장부 문법(로지스틱)이고 **값은 수식에서 유도한다**(새 수 0).
+//   유도 셋(전부 남의 정본):
+//     ⓐ `h`(그루/일) = `v._woodOutLast`(수식 하루 목재 단) ÷ `w̄`(그 숲 그루당 평균 단 · `lootOfResource`)
+//     ⓑ `K`(개체) = **교란 전** 그 마을 숲의 나무 수(색인이 답한다 — 벤 장부를 안 넘기고 물은 수)
+//     ⓒ `r` = **`4h/K`** — 로지스틱의 최대지속수확 `MSY = r·K/4` 를 `h` 로 놓고 뒤집은 것이다.
+//        ⇒ 숲이 가득(N=K)이면 재생 0 · N=K/2 에서 재생이 최대이고 그 값이 **정확히 수식 하루 합**이다.
+//        ⇒ 첫날은 수식보다 많이 베고(숲이 가득) 재생과 만나는 데서 수식으로 수렴한다 —
+//          그래서 **등가는 첫날이 아니라 30일 합**으로 건다(설계_생산_실체 ⓓ 한 줄 · T341).
+//   ⚠상수가 하나도 없다: `4` 는 로지스틱 MSY 의 계수이고(`r·K/4`) 지어낸 값이 아니다.
+function woodRegrowR(v, K, meanUnitsPerTree) {
+  const k = (K > 0) ? K : 0;
+  const w = (meanUnitsPerTree > 0) ? meanUnitsPerTree : 0;
+  if (!(k > 0) || !(w > 0)) return 0;
   const day = (v && typeof v._woodOutLast === 'number' && v._woodOutLast > 0) ? v._woodOutLast : 0;
-  return day;
+  if (!(day > 0)) return 0;
+  return 4 * (day / w) / k;            // ★MSY = r·K/4 = h 를 r 로 뒤집은 것(새 수 0)
+}
+// ★[T341] 그날 돌아오는 그루 — 로지스틱 그 식(`r·N·(1−N/K)`). 음수·초과는 잘라 준다.
+function woodRegrowPerDay(N, K, r) {
+  const k = (K > 0) ? K : 0, n = (N > 0) ? N : 0;
+  if (!(k > 0) || !(r > 0) || !(n > 0)) return 0;
+  const g = r * n * (1 - n / k);
+  if (!(g > 0)) return 0;
+  return (n + g > k) ? (k - n) : g;     // 교란 전 수를 넘지 않는다
 }
 // ★[T312] 이 마을이 **행위 어업**으로 도는가 — 손잡이 ∧ 강가 셀이 있다(생활층이 세어 심는다).
 //   ⚠둘 다여야 한다. 내륙 마을(강가 셀 0)은 켜도 종전 수식 그대로다 — 몸이 갈 자리가 없다.
@@ -2404,7 +2425,7 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
   // ★[T325 · 계측 전용 · 행동 무관] 그 마을이 **지금 수식으로** 하루에 내는 목재 — 셀당 예산식의 분자다.
   //   T60 이 어부에 남긴 `_fishRawLast`/`_fishOutLast` 와 **같은 꼴**이고 같은 항들이다
   //   (자리 수 × `JOBS` base × `land` × 공유 도구 배수 · 벌목은 `jobScale === 1` 이라 스케일 항이 없다).
-  //   ⚠읽는 쪽이 손잡이 뒤(`woodBudgetDay` — T334 가 분모를 마을로 옮겼다)라 끈 팔은 이 수를 **안 본다**(관측 칸).
+  //   ⚠읽는 쪽이 손잡이 뒤(`woodRegrowR` — T341 이 이 수를 **재생률의 분자**로 쓴다)라 끈 팔은 이 수를 안 본다(관측 칸).
   v._woodOutLast = (v.counts.lumberjack || 0) * JOBS.lumberjack.base * (v.land.wood || 0) * toolBoostShared;
   const _forageRaw = (v.counts.forager || 0) * JOBS.forager.base * JOBS.forager.landBoost(v);
   const _forageScale = (v.land.forageSustain != null && _forageRaw > 0) ? Math.min(1, v.land.forageSustain / _forageRaw) : 1;
@@ -5045,7 +5066,7 @@ module.exports = {
   RAW_GRAINS, RAW_GRAIN_FOOD_FACTOR,   // ★[T73] 계수를 하네스·계측기가 옮겨 적지 않게(사본 금지)
   farmFlowPerDay, farmLandBoost, harvestToGranary,   // ★[T100] 같은 이유 — 하네스·계측기가 앵커를 옮겨 적지 않는다
   fishToGranary, fishActOn, fishBudgetPerCell, T312_FISH_ACT,   // ★[T312] 어부 행위 — 생활층이 부르는 문 셋 + 손잡이(하네스가 옮겨 적지 않는다)
-  actToGranary, woodToGranary, woodActOn, woodBudgetDay, T325_WOOD_ACT,   // ★[T325] 나무꾼 행위 — 합친 몸통 하나 + 문 셋 + 손잡이 · ★[T334] 분모가 마을이라 `woodBudgetDay`(셀당 식은 지웠다)
+  actToGranary, woodToGranary, woodActOn, woodRegrowR, woodRegrowPerDay, T325_WOOD_ACT,   // ★[T325] 나무꾼 행위 · ★[T341] 예산식은 지웠다(나무는 개체다) — 남은 것은 게이트와 **재생 유도 둘**
   T100_ANCHOR_N, T100_HARVEST_PER_FARMER_YEAR, T100_K, T100_FIELD_YIELD,   // ★[T100 4판] 앵커 하나 · 실측 하나 · 유도값 하나 · 손잡이 — 생활층(`villages.js`)과 하네스가 **여기서만** 읽는다(사본 0)
   DAILY_FOOD_CONSUMPTION,   // ★[T100 4판] 하루 1인 식량 정본 — `k` 유도의 한 항(하네스가 1.0 을 옮겨 적지 않는다)
   seedFoodDays, SEED_FOOD_DAYS_D0, SEED_FOOD_DAYS_LEGACY,   // ★[T100 5판] 창설 곳간의 밑변 — 하네스가 `crops.js` 에서 다시 유도해 대조한다
