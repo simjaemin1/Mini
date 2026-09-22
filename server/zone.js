@@ -420,8 +420,12 @@ function deactivateChunk(cx, cy, liveKeys) {
 }
 function isChunkActiveKey(key) { return activeChunkKeys.has(key); }
 function isPositionActive(x, y) {
-  const { cx, cy } = chunkManager.chunkXY(x, y);
-  return activeChunkKeys.has(chunkManager.keyOf(cx, cy));
+  // ★[T345] `chunkXY` 가 만들던 `{cx,cy}` 객체를 없앴다 — 이 술어는 주민마다 틱마다 두 번 불린다
+  //   (결정 문 · 이동 문). 같은 나눗셈·같은 키라 답은 정의상 같다.
+  //   ⚠문자열 키(`${cx}_${cy}`)는 **남겨 둔다** — `activeChunkKeys` 가 그 꼴이라, 여기만 정수로 바꾸면
+  //     원천이 둘이 된다(T333 이 비트 색인을 그 Set **에서** 유도한 것과 같은 규율). 표에 적고 다음 카드로.
+  const cs = chunkManager.chunkSize;
+  return activeChunkKeys.has(chunkManager.keyOf(Math.floor(x / cs), Math.floor(y / cs)));
 }
 // AOI: 활성 청크 안 건물만 (welcome용). 전 존 건물을 한 번에 안 보냄 — NPC 집 수만개로 welcome 폭주 방지.
 //   나머지는 청크 활성/비활성 시 buildings_spawn / buildings_removed 로 점점 전송 (자원과 동일).
@@ -739,6 +743,9 @@ const _TERR_CACHE = (process.env.TERRAIN_TILE_CACHE !== '0' && !ZONE.isOcean)
   ? require('./terrain-tilecache').makeTileCache(Math.ceil(ZONE.zoneWidth / 32), Math.ceil(ZONE.zoneHeight / 32))
   : null;
 if (_TERR_CACHE) console.log(`[${ZONE_ID}] 🗺️ 타일 지형 메모 ON — ${_TERR_CACHE.tilesW}×${_TERR_CACHE.tilesH} 타일 · ${(_TERR_CACHE.bytes / 1048576).toFixed(1)}MB`);
+// ★[T345] 메모가 부를 계산 함수 둘 — **한 번만 만든다**(걸음마다 만들던 클로저를 이것으로 바꾸었다).
+const _computeWaterCell = (tx, ty) => _terrain.isWaterCellLocal(ZONE_ID, tx * 32 + 16, ty * 32 + 16);
+const _computeRockCell = (tx, ty) => (typeof _terrain.isRockCellLocal === 'function') && _terrain.isRockCellLocal(ZONE_ID, tx * 32 + 16, ty * 32 + 16);
 function isWaterTileLocal(localX, localY) {
   _walk.waterQ++;   // ★[T324] 관측 전용 — 문자열 키 해시가 몇 번 도는지(추신 3 후보 2)
   if (ZONE.isOcean) return true;
@@ -751,7 +758,9 @@ function isWaterTileLocal(localX, localY) {
   const cellCx = tx * 32 + 16;
   const cellCy = ty * 32 + 16;
   // ★메모는 위 가드 **뒤에만** 건다 — 경계·해양·해안선 판정은 매번 그대로 돈다(WATER_TILES 는 캐시 밖).
-  if (_TERR_CACHE) return _TERR_CACHE.water(tx, ty, () => _terrain.isWaterCellLocal(ZONE_ID, cellCx, cellCy));
+  // ★★[T345] 클로저를 매번 만들지 않는다 — 메모가 (tx,ty) 를 받아 **모듈 수준 함수**를 부른다.
+  //   종전엔 질의마다 `() => …` 하나씩 할당됐다(걸음당 5.3개). 답은 그대로다.
+  if (_TERR_CACHE) return _TERR_CACHE.water(tx, ty, _computeWaterCell);
   return _terrain.isWaterCellLocal(ZONE_ID, cellCx, cellCy);
 }
 // ★★[자염 배치 2026-09-01] **바다 술어** — 강·호수와 바다를 가른다.
@@ -775,7 +784,7 @@ function isRockTileLocal(localX, localY) {
   const tx = Math.floor(localX / 32);
   const ty = Math.floor(localY / 32);
   if (typeof _terrain.isRockCellLocal !== 'function') return false;
-  if (_TERR_CACHE) return _TERR_CACHE.rock(tx, ty, () => _terrain.isRockCellLocal(ZONE_ID, tx * 32 + 16, ty * 32 + 16));
+  if (_TERR_CACHE) return _TERR_CACHE.rock(tx, ty, _computeRockCell);   // ★[T345] 클로저 0
   return _terrain.isRockCellLocal(ZONE_ID, tx * 32 + 16, ty * 32 + 16);
 }
 // 지형 차단 통합 (물 + 바위) — 이동·스폰·경로·텔레포트 검증 공용
@@ -10980,12 +10989,25 @@ const ROCK_COLLIDER_R = 14;     // ★바위·광맥 차단 반경(대형 스프
 // ★[T194] **막은 원을 돌려준다.** 판정은 한 글자도 안 바뀐다 — `isBlockedByTree` 가 이 함수의
 //   불리언 껍데기가 됐을 뿐이다(사본 0). 접선을 그리려면 중심과 반지름이 필요하고, 그 둘은
 //   이미 이 루프가 쥐고 있었는데 버려지고 있었다.
+// ★★★[T345 2026-09-22 · 걸음당 할당 0] **여기가 두 번째로 큰 쓰레기 자리였다.**
+//   `queryCircle` 은 배열을 **둘** 만든다(후보 · 걸러낸 것). 이 함수는 걸음당 최대 5번 불리니
+//   **걸음 하나에 배열 10개** + 그 안의 항목들이다. T340 계수의 "객체 리터럴 33" 이 가리키던 자리 중 하나.
+//   ⇒ `queryRect` 가 이미 받는 `out` 인수에 **모듈 수준 버퍼 하나**를 재사용하고, 원 거리 필터는
+//     여기서 같은 식으로 건다. **순회 순서가 같으므로 첫 적중도 같다** — 답이 한 자도 안 바뀐다.
+//   ⚠재진입이 없다(이 함수 안에서 콜백을 안 부른다) ⇒ 버퍼 하나로 족하다.
+//   ⚠`Math.hypot` 은 **그대로 둔다** — `sqrt(dx*dx+dy*dy)` 로 바꾸면 마지막 비트가 달라질 수 있다(바이트 동일 규약).
+const _treeScratch = [];
 function treeBlockerAt(x, y) {
   if (!qtResources) return null;
   // 검색 반경 28 = 최대 충돌(max(TRUNK 9, ROCK 14) + PLAYER_BODY_R 6 = 20)보다 충분히 큼. 클라 스캔(40)과 함께 둘 다 모든 차단 개체 포함 → 일관.
-  const nearby = qtResources.queryCircle(x, y, 28);
-  for (const item of nearby) {
-    const r = item.ref || item;
+  const _R = 28, _R2 = _R * _R;
+  _treeScratch.length = 0;
+  qtResources.queryRect(x - _R, y - _R, _R * 2, _R * 2, _treeScratch);
+  for (let _i = 0; _i < _treeScratch.length; _i++) {
+    const item = _treeScratch[_i];
+    const _rf = item.ref || item;
+    { const _dx = _rf.x - x, _dy = _rf.y - y; if (_dx * _dx + _dy * _dy > _R2) continue; }   // `queryCircle` 의 그 거리 필터
+    const r = _rf;
     if (r.type === 'tree' && r.r) {
       const tr = Math.min(r.r, TRUNK_COLLIDER_MAX);   // 줄기 반경 (캐노피 r 아님)
       if (Math.hypot(r.x - x, r.y - y) < tr + PLAYER_BODY_R) return { x: r.x, y: r.y, R: tr + PLAYER_BODY_R };
@@ -11013,9 +11035,16 @@ function edgeBlockedStep(cx, cy, sx, sy, floor) {
 function isBlockedByWall(newX, newY, oldX, oldY, playerFloor = 0, traceName = null) {
   _walk.wallQ++;   // ★[T324] 관측 전용 — 걸음당 건물·벽 충돌 질의 수
   // 같은 cell 안 이동 — wall 가로지르지 않음
-  const oc = cellOf(oldX, oldY);
-  const nc = cellOf(newX, newY);
-  if (oc.cx === nc.cx && oc.cy === nc.cy) return false;
+  // ★★★[T345 2026-09-22 · 걸음당 할당 0] 여기가 **이 레포에서 쓰레기를 가장 많이 만들던 줄**이었다.
+  //   `cellOf(x,y)` 는 `{cx, cy}` **객체를 새로 만든다**. 이 함수는 걸음당 5회 불리고 그때마다 둘을 만드니
+  //   **걸음 하나에 객체 10개** — 초당 4.4만 걸음이면 **초당 44만 개**다. T333 프로파일의 GC 2.1% 가 그 값이다.
+  //   ⇒ 같은 수를 **정수 넷**으로 센다. 답은 정의상 같고(같은 `Math.floor(x/32)`), 할당만 사라진다.
+  //   ⚠30Hz 에서 한 걸음은 2.1px 이고 셀은 32px 이라 **열에 아홉은 같은 셀**이다 — 이 조기 반환이
+  //     이 함수의 본체다. 그 본체가 객체 둘을 만들고 있었다.
+  const _ocx = Math.floor(oldX / BUILDING_SIZE), _ocy = Math.floor(oldY / BUILDING_SIZE);
+  const _ncx = Math.floor(newX / BUILDING_SIZE), _ncy = Math.floor(newY / BUILDING_SIZE);
+  if (_ocx === _ncx && _ocy === _ncy) return false;
+  const oc = { cx: _ocx, cy: _ocy }, nc = { cx: _ncx, cy: _ncy };   // 셀을 넘는 걸음에서만 만든다(10% 미만)
   // 14.49-e2: 계단 측면 진입 차단 (먼저 검사 — 빠르고 우선순위 높음). 14.49-e7al: floor check 추가
   if (isBlockedByStairSide(newX, newY, oldX, oldY, playerFloor)) return true;
   let blocked = false;
