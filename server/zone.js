@@ -149,13 +149,16 @@ function _takeResourceEntity(r, notify) {
 //   없으면 색인(`resourcesAtCell`)에 **수확 장부와 게임일을 넘겨** 청크와 같은 답을 받는다.
 //   ★[T341] `raw` 를 주면 **벤 장부를 안 넘긴다** — *"교란 전 그 셀에 무엇이 있었나"* 를 묻는 것이고
 //     그 수가 로지스틱의 `K`(부양력)다(`woodRegrowR` 의 유도 항 ⓑ · 새 수 0).
-function _t325TreesAtCell(cellX, cellY, raw) {
+//   ★★[T347 2026-09-22] **몸통을 종 집합으로 갈랐다** — 채집(군락)이 **같은 규칙**을 쓴다(사본 0).
+//     갈린 것은 어떤 `type` 을 세나 하나뿐이다. 두 벌 적으면 T301 규칙 표(활성 청크 우선 · 없으면 색인에
+//     수확 장부와 게임일을 넘긴다)가 한쪽만 고쳐지는 날이 온다 — 그때 색인과 청크가 조용히 갈린다.
+function _actEntitiesAtCell(cellX, cellY, types, raw) {
   const px = (cellX | 0) * 32 + 16, py = (cellY | 0) * 32 + 16;
   const out = [];
   if (!raw) {
     const near = qtResources ? qtResources.queryCircle(px, py, 24) : [];
     for (const r of near) {
-      if (r.type !== 'tree' && r.type !== 'sapling') continue;
+      if (!types[r.type]) continue;
       if (Math.floor(r.x / 32) !== (cellX | 0) || Math.floor(r.y / 32) !== (cellY | 0)) continue;
       out.push(r);
     }
@@ -167,9 +170,16 @@ function _t325TreesAtCell(cellX, cellY, raw) {
       raw ? { biome: ZONE.biome, chunkSize: chunkManager.chunkSize }
           : { biome: ZONE.biome, chunkSize: chunkManager.chunkSize, harvestedSet: harvestedSeeds, gameDay: gameDayNow() });
   } catch (e) { a = []; }
-  for (const e of a) if (e.type === 'tree' || e.type === 'sapling') out.push(e);
+  for (const e of a) if (types[e.type]) out.push(e);
   return out;
 }
+const _T325_TYPES = { tree: 1, sapling: 1 };
+function _t325TreesAtCell(cellX, cellY, raw) { return _actEntitiesAtCell(cellX, cellY, _T325_TYPES, raw); }
+// ★★[T347] **군락 개체** — 채집꾼의 현장이다. 종 집합은 생활층의 `JOB_RES.forager` 그 둘이다
+//   (`berry_bush`·`herb` — 여기서 새 표를 만들지 않는다 · 군락은 `chunk.js` 가 `groves` 로 심는다).
+//   ⚠`raw` 면 **벤 장부를 안 넘긴다** — *"교란 전 그 셀에 무엇이 있었나"*(로지스틱 `K` · T341 규약 그대로).
+const _T347_TYPES = { berry_bush: 1, herb: 1 };
+function _t347GrovesAtCell(cellX, cellY, raw) { return _actEntitiesAtCell(cellX, cellY, _T347_TYPES, raw); }
 // ★★[T341] **그 그루가 다시 자랐다** — 벤 기록을 지운다(메모리 + DB). 문 하나 · 사본 0.
 //   ⚠활성 청크에 이미 없어진 개체를 **되살려 넣지는 않는다**: 다음 활성화 때 색인이 다시 낳는다
 //     (개체를 손으로 만들면 그게 색인과 청크 두 벌이 된다 — T301 이 금한 그것).
@@ -184,15 +194,29 @@ function _t341Unharvest(seedKey) {
 //   ⚠수를 하나도 안 짓는다 — 얼마가 나오는지는 `lootOfResource` 가 답한다(크기 비례 · T124 도토리 포함).
 //   ⚠hp 를 깎지 않는다: 나무꾼의 하루는 **그루 단위**다(반 그루가 없다 — T341 뒤로도 그대로다).
 //     사람이 도끼질하는 연출은 채집 갈래가 여전히 hp 로 한다(그 길은 손 안 댔다).
-function _t325CutTreeAt(cellX, cellY) {
-  const list = _t325TreesAtCell(cellX, cellY);
+//   ★[T347] 여기도 몸통 하나다 — 빼는 규칙(활성 개체면 개체를 빼고, 꺼져 있으면 장부만 적는다)이
+//     나무와 군락에 **같아야** 한다. 갈린 것은 무엇을 찾나(`find`)와 전리품 ctx 하나뿐이다.
+function _actTakeAtCell(cellX, cellY, find, ctx) {
+  const list = find(cellX, cellY);
   if (!list.length) return null;
   const r = list[0];                                     // 색인·쿼드트리 모두 **생성 순서 첫 개체**(결정론)
-  const loot = lootOfResource(r);
+  const loot = lootOfResource(r, ctx);
   const px = (cellX | 0) * 32 + 16, py = (cellY | 0) * 32 + 16;
   if (resources.has(r.id)) _takeResourceEntity(r, anyViewerNear({ x: px, y: py }, AOI_RADIUS));
   else if (r.isSeed && r.seedKey) _markHarvested(r.seedKey);   // 청크가 꺼져 있다 — 지울 개체가 없고 **장부만** 적는다
   return loot;
+}
+function _t325CutTreeAt(cellX, cellY) {
+  return _actTakeAtCell(cellX, cellY, (x, y) => _t325TreesAtCell(x, y), undefined);
+}
+// ★★[T347] **따는 순간.** 그 셀의 군락 개체 하나를 빼고 **플레이어와 같은 전리품 표**를 돌려준다.
+//   ⚠수를 하나도 안 짓는다 — 얼마가 나오는지는 `lootOfResource` 가 답한다(덤불 `berry 2·fiber 1·twig 1`).
+//   ⚠`{ day }` 를 넘긴다 — 야생 채종이 **계절 정본**(`Crops.wildSeedAt`)으로 결정되는 그 갈래다
+//     (플레이어 채집이 쓰는 그 ctx 그대로 · 주사위 0 · 사본 0).
+//   ⚠hp 를 깎지 않는다: 채집꾼의 하루는 **개체 단위**다(반 덤불이 없다 — 나무와 같은 규약).
+//     사람이 헤치는 연출은 종전 채집 갈래가 여전히 hp 로 한다(그 길은 손 안 댔다).
+function _t347PickAt(cellX, cellY) {
+  return _actTakeAtCell(cellX, cellY, (x, y) => _t347GrovesAtCell(x, y), { day: zoneGameDay() });
 }
 
 // === 활성 청크 (12.2.b) — 사람 player + observer 위치 주변 청크만 시뮬레이션 ===
@@ -1567,7 +1591,20 @@ function lootOfResource(r, ctx) {
       const cx = Math.floor((r.x || 0) / 32), cy = Math.floor((r.y || 0) / 32);
       const wild = Crops.wildSeedAt(cx, cy, ctx.day);
       if (wild) l[Crops.seedOf(wild)] = 1;
-    } else if (_dt() < 0.3) l.seed_berry = 1;
+    } else {
+      // ★★[T347 2026-09-22 · 결함 수정 — 재민 09-22 "그건 회부가 아니라 결함이다"] **주사위를 뺀다.**
+      //   여기가 `Math.random() < 0.3` 이었다. NPC 채집이 이 갈래로 오는데(ctx 없음 · `npcLifeTick` →
+      //   zone 채집 실행부), T347 이 그 전리품에 **회계를 걸면** 주사위가 곳간에 들어온다 —
+      //   캐논 "같은 씨로 같은 결과"(설계_생산_실체 §3 결정성)가 그 자리에서 깨진다.
+      //   ★[PM 착지 09-22] T350 이 같은 줄을 틱 흐름 `_dt()` 로 바꿨었다 — 덤불의 성질은 자리로 결정한다는 이 쪽(T347)을 남긴다.
+      //   ★고치는 문법은 **이미 있는 것**이다: 바로 위 도토리 줄이 T124 에서 한 그것 —
+      //     *"이 덤불에 씨앗이 들었나"는 그 덤불의 성질이지 뽑기가 아니다 ⇒ 자리로 결정한다"*
+      //     (`_gidHash` 는 T102 정본 · 사본 0). 같은 덤불은 몇 번을 물어도 같은 답이고 재부팅해도 같다.
+      //   ⚠**비율 0.3 은 종전 그 수 그대로다**(새 수 0) · **품목도 그대로 `seed_berry`** 다 —
+      //     여기서 계절 씨앗(`Crops.wildSeedAt`)으로 갈아타면 NPC 밭 짓기 게이트
+      //     (`npc.inventory.seed_berry >= 1`)가 철마다 닫힌다. 그 판단은 이 카드 밖이다(보고 §회부).
+      if ((_gidHash(`seedberry:${Math.round(r.x)}:${Math.round(r.y)}`) % 10000) / 10000 < 0.3) l.seed_berry = 1;
+    }
     return l;
   }
   if (t === 'herb')       return { herb: 2 };
@@ -2906,7 +2943,12 @@ SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, is
   moveSpeed: MOVE_SPEED,
   t325CutTreeAt: (cx, cy) => _t325CutTreeAt(cx, cy),
   // ★[T325] 전리품 표는 존이 쥔다 — 생활층은 "이 그루가 목재 몇 낱개냐"만 묻는다(사본 0)
-  t325LootOf: (r) => lootOfResource(r) });   // ★[생활 층 100% ②③] 일과 스케줄(하루 위상)·직업 실작업(자원·사냥감 현장) 소스
+  t325LootOf: (r) => lootOfResource(r),
+  // ★[T347] 채집 행위 — 문 둘 + 전리품 표 하나. 재생 문(`t341Unharvest`)은 **위 그것을 그대로 쓴다**(사본 0).
+  //   ⚠`t347LootOf` 는 `{ day }` 를 넘긴다 — 야생 채종이 계절 정본을 지나게(주사위 0 · `_t347PickAt` 과 같은 ctx).
+  t347GrovesAtCell: (cx, cy, raw) => _t347GrovesAtCell(cx, cy, raw),
+  t347PickAt: (cx, cy) => _t347PickAt(cx, cy),
+  t347LootOf: (r) => lootOfResource(r, { day: zoneGameDay() }) });   // ★[생활 층 100% ②③] 일과 스케줄(하루 위상)·직업 실작업(자원·사냥감 현장) 소스
 // ★[11차 T3 환호] 도랑 콜라이더 적재 — SimVillages.init이 시범 마을 도랑을 실체화한 **직후**여야 한다.
 //   (이 줄이 없으면 도랑 행은 DB에 있는데 통행 판정은 열려 있는 '유령 도랑'이 된다.)
 console.log(`[${ZONE_ID}] 🏰 환호 콜라이더: ${refreshDitchCells()}셀 적재`);

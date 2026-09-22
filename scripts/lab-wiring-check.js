@@ -453,7 +453,21 @@ console.log('\n[H] 랩 부팅 기본 = 서버 기본(주입 없음)');
   // 서버가 심는 것은 나무 층 둘뿐 — 그 목록이 늘면 이 절도 늘어야 한다
   const V2 = fs.readFileSync(path.join(root, 'server', 'villages.js'), 'utf8');
   const inj = (V2.match(/world\.[A-Za-z_]+\s*=/g) || []).map((x) => x.replace(/\s*=$/, ''));
-  const extra = inj.filter((x) => !['world.villages', 'world.events', 'world.day'].includes(x));   // 상태(목록·장부·날짜)는 주입이 아니다
+  //   ★★[T347 2026-09-22] **표를 갱신했다** — 서버가 세계에 다는 것이 **하나 늘었다**:
+  //     `_world.forageActItems`(채집 행위가 걷을 품목 목록 · `server/villages.js` `_t347ActItems`).
+  //     나무 층처럼 `attachToWorld` 에서 못 심는다: 목록이 `state.deps.t347LootOf`(존 전리품 표)를
+  //     지나야 나오고 그 deps 는 세계 생성 **뒤**에 선다 ⇒ 하루 경계에서 한 번 심는다(멱등).
+  //     ⚠**랩은 이 문도 안 연다**(T226 과 같은 이유 — 브라우저엔 군락·청크가 없다). 아래 절이 그것을 잰다.
+  //   ⚠이름은 위 정규식이 잡는 그 꼴이다(`world.` 부터 잡는다 — 코드에선 `vil.econ._world.forageActItems`).
+  const T347_INJ = 'world.forageActItems';
+  const extra = inj.filter((x) => !['world.villages', 'world.events', 'world.day', T347_INJ].includes(x));   // 상태(목록·장부·날짜)는 주입이 아니다
+  if (inj.includes(T347_INJ)) ok('서버가 채집 걷는 목록을 심는다(`' + T347_INJ + '` · T347) — [H] 표에 적혀 있다');
+  else wrn('`' + T347_INJ + '` 주입이 사라졌다 — T347 이 걷어졌으면 이 줄도 지워라');
+  {
+    const labSrc2 = warLab.split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n');
+    if (/forageActItems\s*=/.test(labSrc2)) bad('랩이 `forageActItems` 를 연다 — 브라우저엔 군락·청크가 없어 **걷어내기만 하고 아무도 안 채운다**(T226 과 같은 사고)');
+    else ok('랩은 채집 행위 문(`forageActItems`)을 **안 연다** — 걷어내기만 하는 판이 안 생긴다(T347)');
+  }
   if (!extra.length) ok('서버가 세계에 직접 다는 주입 함수 0개(나무 층은 `trees.attachToWorld` 한 곳) — 랩이 맞출 대상이 그대로다');
   else wrn(`서버가 세계에 다는 것이 늘었다: ${extra.join(' · ')} — [H] 표를 갱신해라`);
 }
