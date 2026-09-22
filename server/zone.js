@@ -9,6 +9,22 @@ const http = require('http');
 const { ZONES, WORLD, isNight, worldPhase, darknessLevel, findZoneAt, worldDistance, worldDeltaX } = require('./zone-config');
 const db = require('./zone-local-db'); // 로컬 zone DB — players 없음
 const SimVillages = require('./villages'); // §4-4 NPC 마을 시뮬 — top-level은 상수뿐(실작업은 아래 init 호출, ENABLE_VILLAGES=0이면 완전 no-op)
+// ★★★[T350 2026-09-22 · 주사위 0] 씨 해시 정본 — `server/seed-rand.js`(사본 0 · 새 수 0).
+//   이 게임의 첫 캐논은 **주사위 금지**(07-12 재민)인데, T340 이 세어 보니 `decideNpcBehavior` 가
+//   **걸음마다 `Math.random` 을 15번** 굴리고 있었다. 그래서 T345 의 게이트("같은 씨 같은 좌표")가
+//   성립하지 않았다 — 두 판이 같은 틱에 같은 결정을 안 하니 좌표 차를 재작성 탓으로 못 돌린다.
+//   ⇒ 세계를 움직이는 굴림을 **(신원 · 셀 · 게임일 · 틱)의 해시**로 바꾼다. 분포는 그대로다.
+//   ★흐름 객체는 **모듈 수준에 하나씩** 둔다 — 결정마다 클로저를 만들면 그게 T345 가 지운 그 쓰레기다.
+//   ★자리마다 흐름을 따로 두는 이유는 **재진입**이다: 주민 결정 중간에 `npcLifeTick`(villages) 이 끼어드는데,
+//     같은 흐름을 나눠 쓰면 그 사이에 씨가 갈려 뒤 굴림이 달라진다. villages 는 제 흐름을 쓴다.
+const _SEED = require('./seed-rand');
+const _diceNpc = _SEED.makeStream();     // 주민 결정(`decideNpcBehavior`)
+const _diceCan = _SEED.makeStream();     // 카나디아 마을 결정(`decideCanadiaBehavior`)
+const _diceTick = _SEED.makeStream();    // 틱마다 도는 나머지(몹 배회·탈출·산출)
+const _dn = _diceNpc.next, _dc = _diceCan.next, _dt = _diceTick.next;
+// 신원 해시는 **한 번만 굽는다**(문자열을 걸음마다 해시하면 그게 곧 쓰레기다 — T345 §1).
+const _shOf = (o) => (o._sh !== undefined ? o._sh : (o._sh = _SEED.pidHash(o.playerId || o.pid || o.mid || o.id || '')));
+const _ZONE_SH = _SEED.pidHash(process.env.ZONE_ID || 'hanbando');   // 존 신원 — 틱 흐름의 씨 앞자리(존마다 다른 수)
 // ★[2026-08-03e 배치 12 · 테스트 전용 손잡이] 기본 OFF. `E2E_GIVE=1` 일 때만 `__e2e_give` 분기가 산다(입력 핸들러 참조).
 const E2E_GIVE = (process.env.E2E_GIVE === '1');
 const Wildlife = require('./wildlife'); // §4-4 동물 AI 블록(마을실험실 이식) — 야생 5종 생태. ENABLE_WILDLIFE=0 → 완전 no-op
@@ -1473,7 +1489,7 @@ function generateToken() {
 // === 자원 스폰 ===
 // Phase 14.1+14.3: biome별 강한 편재 + herb/ore 추가 (chunk.js와 동기 유지)
 function biomeResourceType() {
-  const r = Math.random();
+  const r = _dt();
   if (ZONE.biome === 'plains') {
     if (r < 0.50) return 'berry_bush';
     if (r < 0.75) return 'herb';
@@ -1551,13 +1567,13 @@ function lootOfResource(r, ctx) {
       const cx = Math.floor((r.x || 0) / 32), cy = Math.floor((r.y || 0) / 32);
       const wild = Crops.wildSeedAt(cx, cy, ctx.day);
       if (wild) l[Crops.seedOf(wild)] = 1;
-    } else if (Math.random() < 0.3) l.seed_berry = 1;
+    } else if (_dt() < 0.3) l.seed_berry = 1;
     return l;
   }
   if (t === 'herb')       return { herb: 2 };
   if (t === 'ore')        return { ore: 1, stone: 1 };
   // ★운철 — **제련하지 않는다**. 이미 금속이라 그대로 단조 재료가 된다(era.js §METEORIC).
-  if (t === 'meteorite')  return { meteoric_iron: 2 + Math.floor(Math.random() * 2) };
+  if (t === 'meteorite')  return { meteoric_iron: 2 + Math.floor(_dt() * 2) };
   return {};
 }
 
@@ -1640,8 +1656,8 @@ const PLANT_R = 12, PLANT_H = 106;
 const resourcesByDbId = new Map();   // dbId → 자원(중복 적재 방지 · 부팅과 심기가 같은 행을 두 번 올리지 않게)
 
 function spawnOneResource() {
-  const x = 32 + Math.random() * (ZONE.zoneWidth - 64);
-  const y = 32 + Math.random() * (ZONE.zoneHeight - 64);
+  const x = 32 + _dt() * (ZONE.zoneWidth - 64);
+  const y = 32 + _dt() * (ZONE.zoneHeight - 64);
   const type = biomeResourceType();
   const maxHp = RESOURCE_HP_TABLE[type] || 3;   // ★[T108] 정본 하나(chunk.js)
   // DB에 영속화
@@ -1728,8 +1744,8 @@ function spawnMob(type, opts = {}) {
   } else {
     // 늑대는 마을 안전구역 밖에서만 spawn. 14.46-b-smooth-fix: 물 타일도 회피.
     for (let att = 0; att < 30; att++) {
-      x = 32 + Math.random() * (ZONE.zoneWidth - 64);
-      y = 32 + Math.random() * (ZONE.zoneHeight - 64);
+      x = 32 + _dt() * (ZONE.zoneWidth - 64);
+      y = 32 + _dt() * (ZONE.zoneHeight - 64);
       const inWater = typeof isTerrainBlockedLocal === 'function' && isTerrainBlockedLocal(x, y);
       if (inWater) continue;
       if (type !== 'wolf' || !(typeof isNearVillage === 'function' && isNearVillage(x, y))) break;
@@ -1801,20 +1817,20 @@ function spawnMob(type, opts = {}) {
     let spawned = 0, packNum = 0;
     if (!HOSTILES_ON && aggressive.length) console.log(`[${ZONE_ID}] 🐾 ENABLE_WILDLIFE=0 — 공격 개체 스폰 생략(${aggressive.length}종)`);
     while (HOSTILES_ON && aggressive.length > 0 && spawned < TOTAL_AGGRESSIVE) {
-      const id = aggressive[Math.floor(Math.random() * aggressive.length)];
+      const id = aggressive[Math.floor(_dt() * aggressive.length)];
       const def = ANIMALS[id];
       const targetSize = def.pack || 1;
       const packSize = Math.min(targetSize, TOTAL_AGGRESSIVE - spawned);
       const packId = `pack_${ZONE_ID}_${packNum++}_${Math.random().toString(36).slice(2,6)}`;
       let homeX, homeY;
       for (let att = 0; att < 20; att++) {
-        homeX = 200 + Math.random() * (ZONE.zoneWidth - 400);
-        homeY = 200 + Math.random() * (ZONE.zoneHeight - 400);
+        homeX = 200 + _dt() * (ZONE.zoneWidth - 400);
+        homeY = 200 + _dt() * (ZONE.zoneHeight - 400);
         if (!isNearVillage(homeX, homeY)) break;
       }
       for (let i = 0; i < packSize; i++) {
-        const ang = Math.random() * Math.PI * 2;
-        const r = Math.random() * 50;
+        const ang = _dt() * Math.PI * 2;
+        const r = _dt() * 50;
         spawnMob(id, {
           x: homeX + Math.cos(ang) * r,
           y: homeY + Math.sin(ang) * r,
@@ -1853,22 +1869,22 @@ function spawnNpc(opts = {}) {
       }
       if (!collide) break;
       // 마을 중심 주변에서 흔들기
-      const ang = Math.random() * Math.PI * 2;
-      const r = Math.random() * 200;
+      const ang = _dt() * Math.PI * 2;
+      const r = _dt() * 200;
       cx = opts.x + Math.cos(ang) * r;
       cy = opts.y + Math.sin(ang) * r;
     }
   } else {
-    cx = 200 + Math.random() * (ZONE.zoneWidth - 400);
-    cy = 200 + Math.random() * (ZONE.zoneHeight - 400);
+    cx = 200 + _dt() * (ZONE.zoneWidth - 400);
+    cy = 200 + _dt() * (ZONE.zoneHeight - 400);
     for (let attempt = 0; attempt < 8; attempt++) {
       let collide = false;
       for (const c of claims.values()) {
         if (rectsOverlap(cx - NPC_CLAIM_SIZE/2, cy - NPC_CLAIM_SIZE/2, NPC_CLAIM_SIZE, NPC_CLAIM_SIZE, c.x, c.y, c.w, c.h)) { collide = true; break; }
       }
       if (!collide) break;
-      cx = 200 + Math.random() * (ZONE.zoneWidth - 400);
-      cy = 200 + Math.random() * (ZONE.zoneHeight - 400);
+      cx = 200 + _dt() * (ZONE.zoneWidth - 400);
+      cy = 200 + _dt() * (ZONE.zoneHeight - 400);
     }
   }
   // 사이즈 안 벗어나게 clamp
@@ -1876,8 +1892,8 @@ function spawnNpc(opts = {}) {
   cy = clamp(cy, NPC_CLAIM_SIZE, ZONE.zoneHeight - NPC_CLAIM_SIZE);
   const pid = `p${nextPid++}`;
   const npcId = `npc_${ZONE_ID}_${nextNpcSerial++}_${Math.random().toString(36).slice(2,6)}`;
-  const name = (opts.name || NPC_NAMES[Math.floor(Math.random()*NPC_NAMES.length)]) + '🤖';
-  const color = opts.color || NPC_COLORS[Math.floor(Math.random()*NPC_COLORS.length)];
+  const name = (opts.name || NPC_NAMES[Math.floor(_dt()*NPC_NAMES.length)]) + '🤖';
+  const color = opts.color || NPC_COLORS[Math.floor(_dt()*NPC_COLORS.length)];
   const player = {
     pid, playerId: npcId, ws: null,
     name, color,
@@ -2088,7 +2104,7 @@ function _pickNpcJob(villageType) {
   else if (villageType === 'mountain') { probs.miner = 0.30; probs.hunter = 0.15; }
   // 정규화
   const sum = Object.values(probs).reduce((a, b) => a + b, 0);
-  let r = Math.random() * sum;
+  let r = _dt() * sum;
   for (const [job, p] of Object.entries(probs)) {
     if (r < p) return job;
     r -= p;
@@ -2105,7 +2121,7 @@ function _findNpcWorkSite(vx, vy, job) {
     return _findNearestTerrainCluster(ZONE_ID, vx, vy, 'water');
   } else if (job === 'hunter') {
     const t = _findNearestTerrainCluster(ZONE_ID, vx, vy, 'forest');
-    if (t) return { x: t.x + (Math.random() - 0.5) * 600, y: t.y + (Math.random() - 0.5) * 600 };
+    if (t) return { x: t.x + (_dt() - 0.5) * 600, y: t.y + (_dt() - 0.5) * 600 };
   }
   return null; // farmer/cook/smith/warrior — 마을 안에서 작업
 }
@@ -2135,8 +2151,8 @@ function villageHouseSlots(village, count) {
   const slots = [];
   for (let ring = 1; slots.length < count && ring <= 9; ring++) {
     for (let t = -ring; t <= ring && slots.length < count; t++) {
-      const hx = village.x + (ux * ring + px * t * 0.85) * SP * SZ + (Math.random() - 0.5) * SZ;
-      const hy = village.y + (uy * ring + py * t * 0.85) * SP * SZ + (Math.random() - 0.5) * SZ;
+      const hx = village.x + (ux * ring + px * t * 0.85) * SP * SZ + (_dt() - 0.5) * SZ;
+      const hy = village.y + (uy * ring + py * t * 0.85) * SP * SZ + (_dt() - 0.5) * SZ;
       if (!footprintIsLand(hx, hy)) continue;             // ★ LAND only — 물/바위 위 집 방지
       let tooClose = false;
       for (const s of slots) if (Math.hypot(s.x - hx, s.y - hy) < SP * SZ * 0.8) { tooClose = true; break; }
@@ -2213,7 +2229,7 @@ function spawnVillagers() {
     }
     for (let i = 0; i < NPC_PER_VILLAGE; i++) {
       const home = _houses[i % _houses.length] || { x: village.x, y: village.y };  // 집에 나눠 배정
-      const npcX = home.x + (Math.random() - 0.5) * 50, npcY = home.y + (Math.random() - 0.5) * 50;
+      const npcX = home.x + (_dt() - 0.5) * 50, npcY = home.y + (_dt() - 0.5) * 50;
       const job = _pickNpcJob(village.type);
       const ws = _findNpcWorkSite(village.x, village.y, job);
       spawnNpc({
@@ -2221,8 +2237,8 @@ function spawnVillagers() {
         villageId, villageName: village.name,
         npcJob: job,
         npcHomeX: home.x, npcHomeY: home.y,
-        npcWorkX: ws ? ws.x : village.x + (Math.random() - 0.5) * 200,
-        npcWorkY: ws ? ws.y : village.y + (Math.random() - 0.5) * 200,
+        npcWorkX: ws ? ws.x : village.x + (_dt() - 0.5) * 200,
+        npcWorkY: ws ? ws.y : village.y + (_dt() - 0.5) * 200,
         skipHouse: true,   // 집은 위에서 공유 한옥으로 따로 지음
       });
     }
@@ -2257,7 +2273,15 @@ function decideNpcBehavior(npc, now) {
     return;
   }
   if (now < npc.nextDecisionAt) return;
-  npc.nextDecisionAt = now + 500 + Math.random() * 1000;
+  // ★★★[T350 2026-09-22 · 주사위 0] 이 함수가 걸음마다 굴리던 **15개의 `Math.random`** 을 여기서 한 번
+  //   씨 뿌린 흐름으로 바꾼다. 씨 = `(신원 · 셀 · 게임일 · 틱)` — 카드가 정한 그 다섯이다.
+  //   ⚠**순수 함수다**: 같은 다섯이면 같은 열다섯 수가 나온다 ⇒ 주민을 **어떤 순서로 돌려도** 같은 세계다.
+  //     그게 이 카드의 진짜 값이다(SoA 가 열 순회로 바꿔도, 워커가 나눠 돌려도 결과가 같다).
+  //   ⚠분포는 안 바뀐다 — `out()` 은 24비트 균등이고 `test-move-soa ⑤` 가 10만 굴림을 T252 자로 견준다.
+  //   ⚠`nextDecisionAt` 의 **단위는 그대로 ms** 다(벽시계). 이 카드는 굴림만 결정적으로 만든다 —
+  //     박자를 틱 수로 바꾸는 것은 세계를 바꾸는 일이라 카드 밖이다(보고 §3 · 회부).
+  _diceNpc.seed(_SEED.seedOf(_shOf(npc), Math.floor(npc.x / BUILDING_SIZE), Math.floor(npc.y / BUILDING_SIZE), zoneGameDay(), _tick.n));
+  npc.nextDecisionAt = now + 500 + _dn() * 1000;
   // ① 늑대 시야 안이면 도망 — quadtree로 후보 추리고 종류 필터
   const nearbyMobs = qtMobs ? qtMobs.queryCircle(npc.x, npc.y, NPC_FLEE_RANGE) : Array.from(mobs.values());
   let nearestWolf = null, wolfDist = NPC_FLEE_RANGE;
@@ -2304,13 +2328,13 @@ function decideNpcBehavior(npc, now) {
     if (myFarmCount < 3) {
       npc.behavior = 'plant';
       if (cl) {                          // 개인 사유지 안 빈 자리
-        npc.targetX = cl.x + 40 + Math.random() * (cl.w - 80);
-        npc.targetY = cl.y + 40 + Math.random() * (cl.h - 80);
+        npc.targetX = cl.x + 40 + _dn() * (cl.w - 80);
+        npc.targetY = cl.y + 40 + _dn() * (cl.h - 80);
       } else {                           // 마을 농부 — 집 근처 텃밭
         const hx = npc.npcHomeX != null ? npc.npcHomeX : npc.x;
         const hy = npc.npcHomeY != null ? npc.npcHomeY : npc.y;
-        npc.targetX = hx + (Math.random() - 0.5) * 220;
-        npc.targetY = hy + (Math.random() - 0.5) * 220;
+        npc.targetX = hx + (_dn() - 0.5) * 220;
+        npc.targetY = hy + (_dn() - 0.5) * 220;
       }
       return;
     }
@@ -2324,8 +2348,8 @@ function decideNpcBehavior(npc, now) {
         npc.inventory.fish = (npc.inventory.fish || 0) + 1;
       }
       npc.behavior = 'wander';
-      npc.targetX = npc.npcWorkX + (Math.random() - 0.5) * 40;
-      npc.targetY = npc.npcWorkY + (Math.random() - 0.5) * 40;
+      npc.targetX = npc.npcWorkX + (_dn() - 0.5) * 40;
+      npc.targetY = npc.npcWorkY + (_dn() - 0.5) * 40;
       return;
     }
   }
@@ -2355,20 +2379,20 @@ function decideNpcBehavior(npc, now) {
     // 거리 멀 때만 workSite로 이동, 가까우면 주변 idle
     const distToWork = Math.hypot(npc.x - npc.npcWorkX, npc.y - npc.npcWorkY);
     if (distToWork > 200) {
-      npc.targetX = npc.npcWorkX + (Math.random() - 0.5) * 100;
-      npc.targetY = npc.npcWorkY + (Math.random() - 0.5) * 100;
+      npc.targetX = npc.npcWorkX + (_dn() - 0.5) * 100;
+      npc.targetY = npc.npcWorkY + (_dn() - 0.5) * 100;
     } else {
       // 작업장 근처 — 80px 내 idle wander
-      npc.targetX = npc.npcWorkX + (Math.random() - 0.5) * 160;
-      npc.targetY = npc.npcWorkY + (Math.random() - 0.5) * 160;
+      npc.targetX = npc.npcWorkX + (_dn() - 0.5) * 160;
+      npc.targetY = npc.npcWorkY + (_dn() - 0.5) * 160;
     }
   } else if (npc.myClaim) {
     const cl = npc.myClaim;
-    npc.targetX = cl.x + Math.random() * cl.w;
-    npc.targetY = cl.y + Math.random() * cl.h;
+    npc.targetX = cl.x + _dn() * cl.w;
+    npc.targetY = cl.y + _dn() * cl.h;
   } else {
-    npc.targetX = npc.x + (Math.random() - 0.5) * 200;
-    npc.targetY = npc.y + (Math.random() - 0.5) * 200;
+    npc.targetX = npc.x + (_dn() - 0.5) * 200;
+    npc.targetY = npc.y + (_dn() - 0.5) * 200;
   }
 }
 
@@ -2491,6 +2515,10 @@ function detectStuck(npc, now) {
 // ★[생활 층 100% ①] 주민은 목표 유지·즉시 재경로(랩엔 랜덤 회피가 없다 — 경로가 벽 변을 인지하니 재탐색이 정답).
 //   A* 쿨다운·경로 캐시를 무효화해 다음 틱에 새 경로(스무딩 포함). 3연속 stuck만 현행 랜덤 회피 폴백(만능 방어).
 function unstuckNpc(npc, now) {
+  // ★[T350 · 주사위 0] 막힘 회피 각도도 **순수 해시**다 — 같은 자리·같은 틱이면 같은 쪽으로 비킨다.
+  //   흐름은 주민 것을 쓴다: `npcStep` 이 결정(열다섯 굴림)을 **끝낸 뒤**에 이 함수가 불리므로 겹치지 않는다.
+  _diceNpc.seed(_SEED.seedOf(_shOf(npc), Math.floor(npc.x / BUILDING_SIZE), Math.floor(npc.y / BUILDING_SIZE), zoneGameDay(), _tick.n));
+
   npc.path = null;
   npc.pathIndex = 0;
   if (npc.simVillageId && typeof npc.targetX === 'number' && (npc._stuckN = (npc._stuckN || 0) + 1) < 3) {
@@ -2501,7 +2529,7 @@ function unstuckNpc(npc, now) {
   }
   npc._stuckN = 0;
   // 작은 회피 — 랜덤 방향으로 짧게 비킨다
-  const ang = Math.random() * Math.PI * 2;
+  const ang = _dn() * Math.PI * 2;
   npc.targetX = npc.x + Math.cos(ang) * 80;
   npc.targetY = npc.y + Math.sin(ang) * 80;
   npc.nextDecisionAt = now + 800; // 잠깐 wander 후 다시 결정
@@ -2930,6 +2958,7 @@ Roads.init({ zoneId: ZONE_ID, cellsW: Math.ceil(ZONE.zoneWidth / 32), cellsH: Ma
 //   agents=사람 플레이어+활성 NPC(지각·도주·맹수 위협 대상), 피해=damagePlayer 브리지.
 //   SimVillages.init 뒤: clientVillages(마을 중심)가 준비된 시점. ENABLE_WILDLIFE=0 → init 즉시 return.
 Wildlife.init({
+  rng: _dt,   // ★[T350 · 주사위 0] 존의 **씨 뿌린 틱 흐름**을 넣는다 — 야생 예순 굴림이 이 하나로 모인다
   ZONE_ID, ZONE, TICK_HZ, chunkManager, mobs, players,
   isTerrainBlockedLocal, isRockTileLocal, terrainMod: _terrain,
   getActiveChunkKeys: () => activeChunkKeys, isPositionActive,
@@ -4082,7 +4111,7 @@ async function _acceptConnection(ws, req, C) {
         } catch (e) { /* central 죽었으면 그냥 통과 — 1회용 폴백이라 영속화 안 됨 */ }
       }
       // ★★[2026-08-03f 배치 13] **게스트 영속 신원** — 소유가 접속을 넘어 살아남는다.
-      //   종전 한 줄: `playerId = \`anon_${Math.random()...}\`` — 접속마다 **다른 사람**이 됐다.
+      //   종전 한 줄: `playerId = \`anon_${_dt()...}\`` — 접속마다 **다른 사람**이 됐다.
       //   그런데 이 세계의 소유 판정은 전부 playerId 대조다(사유지 `ownerPid` · 건물 `ownerId` ·
       //   노·숯가마·회관 `data.owner` · 마을 `founder`). 그래서 게스트는 끊겼다 붙는 순간
       //   **제가 지은 것의 주인이 아니게 됐다** — 마을 건립이 들어온 지금은 마을을 통째로 잃는 구멍이다.
@@ -6447,7 +6476,11 @@ function doShopBuy(player, itemType, material) {
   const villageQ = (vq[qkey] != null ? vq[qkey] : 0.6);   // 마을 품질 EMA(없으면 기본)
   let inst;
   // ★[옷 티어] 가져간 재료를 넘긴다 — 장인이 모피로 지으면 갖옷이 나와야 한다(이름 = 성능).
-  try { inst = PlayerItems.materializeFromVillage(itemType, villageQ, Math.random, { [material]: recipe.qty }); }
+  // ★[T350 · 주사위 0] 장인의 손 — 씨 = (사람 · 선 자리 셀 · 게임일 · 이 사람의 제작 횟수).
+  //   같은 사람이 같은 날 같은 자리에서 n 번째로 만들면 늘 같은 물건이 나온다(되돌림이 곧 증명).
+  player._craftN = (player._craftN || 0) + 1;
+  const _craftRng = _SEED.seedRand(_SEED.seedOf(_shOf(player), Math.floor(player.x / BUILDING_SIZE), Math.floor(player.y / BUILDING_SIZE), zoneGameDay(), player._craftN));
+  try { inst = PlayerItems.materializeFromVillage(itemType, villageQ, _craftRng, { [material]: recipe.qty }); }
   catch (e) { send(player.ws, { type: 'notice', text: `구매 실패: ${e.message}` }); return; }
   inst.id = genEquipId(); inst.mat = material;
   player.inventory[material] = have - recipe.qty;
@@ -6765,7 +6798,10 @@ function tryFishCast(player) {
   if (!tgt) { send(player.ws, { type: 'notice', text: '🎣 여기선 물에 닿지 않는다 — 물가로 더 가까이' }); return; }
   const cx = Math.floor(tgt.x / 32), cy = Math.floor(tgt.y / 32);
   const stock01 = Fishing.stockRatioAt(cx, cy, now);
-  const pl = Fishing.plan(tgt.sp, stock01, now, Math.random);
+  // ★[T350 · 주사위 0] 플레이어 낚시도 주민과 **같은 문법**이다(T340: "어부 = 플레이어 낚시 대본 그대로").
+  //   씨 = (사람 · 던진 셀 · 게임일 · 이 사람의 던짐 횟수) — `_t340Try` 가 주민에게 쓴 그 다섯이다.
+  player._castN = (player._castN || 0) + 1;
+  const pl = Fishing.plan(tgt.sp, stock01, now, _SEED.seedRand(_SEED.seedOf(_shOf(player), cx, cy, zoneGameDay(), player._castN)));
   player._fish = {
     state: 'wait', x: tgt.x, y: tgt.y, cx, cy, sp: tgt.sp,
     biteAt: pl.biteAt, kg: pl.kg, windowMs: pl.windowMs, castAt: now, stock01,
@@ -6823,7 +6859,7 @@ function tryFishStrike(player) {
   //   이제 **개수는 1, 무게는 그 물고기의 실제 kg** 이고, 그 kg 가 인벤 무게·거래 환산에 그대로 쓰인다.
   const n = 1;
   const species = _fishSpeciesFor(ZONE.biome);
-  const sp = species[Math.floor(Math.random() * species.length)];
+  const sp = species[Math.floor(_dt() * species.length)];
   player.inventory[sp] = (player.inventory[sp] || 0) + n;
   Carry.noteInstance(player, sp, gotKg, zoneGameDay());        // ★개체 kg 원장 — 취득일도 같이(펼친 줄이 신선도를 말한다)
   Lots.note(player, sp, n, zoneGameDay());                     // 식품 로트(취득일)
@@ -6880,9 +6916,12 @@ function _mineIdentify(player, mineral, isOre, lvlF) {
   // ★[재민 확정 2026-08-01] ②층 — 종류 감정. 이름·가족은 전부 **추측 채널**(mineTypeGuess)에서 나온다.
   //   전에는 FP(맥석을 광석으로 오판) 문구가 광맥의 진짜 광물명을 말해 맥석이 광맥 정체를 누설했다.
   //   지금은 진짜 광석일 때만 typeAcc 확률로 정답이고, 오인은 겉모습 혼동 행렬(바보의 금 등)을 따른다.
-  const hit = Math.random() < (isOre ? Specialty.mineTPR(lvlF) : Specialty.mineTNR(lvlF));
+  const hit = _dt() < (isOre ? Specialty.mineTPR(lvlF) : Specialty.mineTNR(lvlF));
   const says = hit ? isOre : !isOre;                     // ★판단은 확률적 — 틀릴 수 있다
-  const guess = says ? Specialty.mineTypeGuess(mineral, isOre, lvlF, Math.random) : null;
+  // ★[T350 · 주사위 0] 종류 추측 — 씨 = (사람 · 선 자리 셀 · 게임일 · 이 사람의 감정 횟수).
+  player._mineN = (player._mineN || 0) + 1;
+  const guess = says ? Specialty.mineTypeGuess(mineral, isOre, lvlF,
+    _SEED.seedRand(_SEED.seedOf(_shOf(player), Math.floor(player.x / BUILDING_SIZE), Math.floor(player.y / BUILDING_SIZE), zoneGameDay(), player._mineN))) : null;
   const koOf = (m) => (Specialty.RESOURCES[m] || {}).ko || m;
   const phrase = Specialty.mineIdPhrase(lvlF, says, guess, koOf);
   // ★적중/오판 적산 — 선광 때 "눈대중 12/15 · 종류 7/9"로 돌려준다. 숫자 HUD 없이 자기 눈을
@@ -6948,7 +6987,9 @@ function mineOreCell(player) {
     //   추첨을 타격마다 하지 않는 이유: 60타 평균은 산포를 √60 배 줄여 사실상 고정값이 된다
     //   (CV 0.28 → 0.036). "가끔 큰 돌덩이"는 **덩이 단위**로 굴려야 체감된다.
     const mu = rec.kg / rec.w;                                       // ★가중평균 — 막타 기준이 아니다
-    const kg = +Math.max(0.05, Specialty.mineChunkRoll(mu)).toFixed(3);
+    // ★[T350 · 주사위 0] 덩이 크기·광물 추첨에 **틱 흐름**을 넘긴다. 종전엔 인수를 안 줘
+    //   `specialty.js`·`terrain.js` 의 **`Math.random` 기본 가지**로 떨어지고 있었다(주입 자리인데 아무도 안 넣었다).
+    const kg = +Math.max(0.05, Specialty.mineChunkRoll(mu, _dt)).toFixed(3);
     rec.kg -= mu * need;                                             // ★장부에서 빼는 건 **평균분**이다 —
     //   추첨 결과를 빼면 운 좋게 큰 덩이가 나온 다음 덩이가 굶는다(난수가 다음 덩이로 새면 안 된다).
     rec.w -= need; rec.s -= 1;                                       // ★재고 소모 1 고정(재민 지시)
@@ -6959,11 +7000,11 @@ function mineOreCell(player) {
     // 결국 얕은 데를 골고루 긁는 쪽이 미세하게 이득이다(재민 확정).
     const pRaw = _terrain.oreProbAt ? _terrain.oreProbAt(ZONE_ID, px, py) : 0;
     const p = Math.min(0.95, pRaw * Specialty.mineDepthP(f));
-    const isOre = Math.random() < p;
+    const isOre = _dt() < p;
     // ★광물도 자리에 걸친 광맥들 사이에서 **p 비례 추첨**한다 — 접촉대에선 구리도 옥도 나온다.
     //   (isOreClusterAt 은 p 최대인 하나만 준다. 그걸 쓰면 겹친 상대 광물이 영원히 안 나온다 —
     //    실측으로 자잘 33개가 그렇게 소유 셀 0 인 유령이 돼 있었다.)
-    const mineral = (_terrain.oreMineralAt ? _terrain.oreMineralAt(ZONE_ID, px, py) : null)
+    const mineral = (_terrain.oreMineralAt ? _terrain.oreMineralAt(ZONE_ID, px, py, _dt) : null)
       || (cluster ? (cluster.mineral || 'iron') : 'iron');
     if (!player.oreLedger || typeof player.oreLedger !== 'object') player.oreLedger = {};
     const lk = isOre ? mineral : 'stone';
@@ -7508,7 +7549,7 @@ function tryGather(player, resId) {
       player.thirst = Math.min(100, before + 30);
       let msg = `💧 물 마심 (+${Math.round(player.thirst - before)})`;
       // ★★[낚시 v2 · 재민 확정 2026-08-26] 여기 있던 **어업 동전 던지기를 걷어냈다.**
-      //   종전: 물 옆에서 E → `Math.random() < 0.5` 로 어종 하나. 자리도 시간도 기술도 고갈도 없었다.
+      //   종전: 물 옆에서 E → `_dt() < 0.5` 로 어종 하나. 자리도 시간도 기술도 고갈도 없었다.
       //   그게 정확히 §2 가 말한 "입력이 같고 결과가 확실한" 진행바다.
       //   ⇒ 낚시는 이제 **제 동사**(Shift+F)를 갖는다: 자리를 고르고, 기다리고, 챔질하고, 놓친다.
       //   E 는 목 축이는 것만 한다(그것도 세계의 일이다). 처음 오는 사람을 위해 한 줄로 알려 준다.
@@ -7987,7 +8028,7 @@ function _spawnGroundItems(player, item, parcels, lotRecs) {
   };
   for (const pc of parcels) {
     const gid = `g${nextGiId++}`;
-    // ★★[T102 ③] **주사위를 뺀다.** 캐논은 "낙하물 스캐터 금지 · 주사위 금지"인데 여기 `Math.random()`
+    // ★★[T102 ③] **주사위를 뺀다.** 캐논은 "낙하물 스캐터 금지 · 주사위 금지"인데 여기 `_dt()`
     //   둘이 있었다. 흩뿌림 **폭과 개수는 그대로** 두고(보기가 달라지면 그건 다른 카드다) 자리만
     //   `gid` 해시로 정한다 ⇒ 같은 입력이면 같은 자리다(재현 가능 · 하네스가 두 판을 맞댈 수 있다).
     const _h = _gidHash(gid);
@@ -11162,7 +11203,7 @@ function villageProduction(villageName, jobCounts) {
       const p = (vp && cl && _terrain.oreProbMajorAt) ? _terrain.oreProbMajorAt(ZONE_ID, vp.x, vp.y) : 0;
       const mineral = cl ? (cl.mineral || 'iron') : null;
       for (let i = 0; i < n; i++) {
-        if (mineral && Math.random() < p) add(mineral, 1);
+        if (mineral && _dt() < p) add(mineral, 1);
         else add('stone', 1);   // 맥석 — 광맥이 없거나 그 삽이 헛삽이면 돌
       }
       continue;
@@ -11278,6 +11319,13 @@ setInterval(() => {
   }
   // ★계측은 손잡이가 아니다 — 아무 동작도 안 바꾼다(관측자 규약 · `perfMark` 와 같은 자리).
   _tick.n++; _tick.wall += _elapsed; _tick.sim += dt; _tick.debt = _tickDebt;
+  // ★★[T350 · 주사위 0] 틱 흐름 영점 — 이 틱 안에서 도는 **세계 자리**(몹 배회·스폰·산출)의 굴림은
+  //   여기서 뿌린 씨에서 순서대로 난다. 주민 결정과 다른 점 하나를 표에 적는다:
+  //   · 주민 결정 = **순수 해시**(신원·셀·날·틱) ⇒ 도는 **순서와 무관**하다 — SoA·워커가 나눠 돌려도 같다.
+  //   · 여기 흐름 = **씨 뿌린 스트림** ⇒ 같은 틱·같은 호출 순서면 같다(순서를 바꾸면 달라진다).
+  //   그 둘을 가른 이유: 순수 해시는 자리마다 '무엇이 신원인가'를 정해야 하는데, 몹 스폰·드랍처럼
+  //   **신원이 아직 없는** 자리가 많다. 거기까지 순수 해시로 가는 건 다음 카드다(보고 §4).
+  _diceTick.seed(_SEED.seedOf(_ZONE_SH, 0, 0, zoneGameDay(), _tick.n));
   if (_elapsed > DT_MAX) { _tick.clip++; _tick.clipped += _elapsed - DT_MAX; }
   if (_elapsed > _tick.maxGap) _tick.maxGap = _elapsed;
   // 플레이어/NPC 이동은 클라 예측(고정 PRED_STEP=1/TICK_HZ)과 '동일한 고정 dt'로 — 리컨실리에이션 어긋남 0(떨림 제거).
@@ -12092,11 +12140,11 @@ setInterval(() => {
         m.vy = (dy / dd) * def.speed * WOLF_RETURN_SPEED_MULT;
         m.wanderUntil = now + 1500;
       } else if (now > m.wanderUntil) {
-        const angle = Math.random() * Math.PI * 2;
+        const angle = _dt() * Math.PI * 2;
         m.vx = Math.cos(angle) * def.speed * 0.3;
         m.vy = Math.sin(angle) * def.speed * 0.3;
-        m.wanderUntil = now + 2000 + Math.random() * 3000;
-        if (Math.random() < 0.4) { m.vx = 0; m.vy = 0; m.wanderUntil = now + 1500; }
+        m.wanderUntil = now + 2000 + _dt() * 3000;
+        if (_dt() < 0.4) { m.vx = 0; m.vy = 0; m.wanderUntil = now + 1500; }
       }
     }
     let nx = m.x + m.vx * dt;
@@ -12890,7 +12938,7 @@ function computeFacilityDistribution(jobCounts, totalSlots) {
   }
   // shuffle (마을마다 다양하게 보이도록)
   for (let i = facilities.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(_dt() * (i + 1));
     [facilities[i], facilities[j]] = [facilities[j], facilities[i]];
   }
   return facilities;
@@ -13024,8 +13072,8 @@ function syncCanadiaNpcs(village) {
     let need = target - cur;
     if (need <= 0) continue;
     for (let k = 0; k < need; k++) {
-      const ang = Math.random() * Math.PI * 2;
-      const r = 60 + Math.random() * 100;
+      const ang = _dt() * Math.PI * 2;
+      const r = 60 + _dt() * 100;
       const sx = chest.x + Math.cos(ang) * r;
       const sy = chest.y + Math.sin(ang) * r;
       const player = spawnNpc({
@@ -13179,8 +13227,8 @@ function assignCanadiaWorkArea(npc) {
     target = _findNearestTerrainCluster(ZONE_ID, villX, villY, 'forest');
     if (target) {
       // forest 바깥쪽 (사냥감 spawn 가능 지역)
-      target.x += (Math.random() - 0.5) * 600;
-      target.y += (Math.random() - 0.5) * 600;
+      target.x += (_dt() - 0.5) * 600;
+      target.y += (_dt() - 0.5) * 600;
     }
   }
   // 농부 — 자기 영토 farmland 셀을 고정 배정 → 거기서 씨뿌리고 수확 (econ-game-2)
@@ -13194,20 +13242,20 @@ function assignCanadiaWorkArea(npc) {
   }
   // cook/smith/warrior/merchant (또는 farmland 없는 농부) — 마을 안에서 작업 (집·광장)
   if (target) {
-    npc.canadiaWorkX = target.x + (Math.random() - 0.5) * 200;
-    npc.canadiaWorkY = target.y + (Math.random() - 0.5) * 200;
+    npc.canadiaWorkX = target.x + (_dt() - 0.5) * 200;
+    npc.canadiaWorkY = target.y + (_dt() - 0.5) * 200;
     return;
   }
   // 4d-16-b 옛 동작: home 있으면 집 옆
   if (npc.canadiaHomeX != null && npc.canadiaHomeY != null) {
-    npc.canadiaWorkX = npc.canadiaHomeX + (Math.random() - 0.5) * 80;
-    npc.canadiaWorkY = npc.canadiaHomeY + (Math.random() - 0.5) * 80;
+    npc.canadiaWorkX = npc.canadiaHomeX + (_dt() - 0.5) * 80;
+    npc.canadiaWorkY = npc.canadiaHomeY + (_dt() - 0.5) * 80;
     return;
   }
   // 마지막 fallback — 직업별 거래소 offset
   const off = JOB_WORK_OFFSET[npc.canadiaJob] || JOB_WORK_OFFSET.farmer;
-  const a = off.angle + (Math.random() - 0.5) * 0.4;
-  const d = off.dist + (Math.random() - 0.5) * 60;
+  const a = off.angle + (_dt() - 0.5) * 0.4;
+  const d = off.dist + (_dt() - 0.5) * 60;
   npc.canadiaWorkX = npc.canadiaChestX + Math.cos(a) * d;
   npc.canadiaWorkY = npc.canadiaChestY + Math.sin(a) * d;
 }
@@ -13243,6 +13291,10 @@ function canadiaWorkProduce(npc, now) {
 // 임시 진단 — 30초마다 한 번 NPC 1마리 상태 로그
 let _canadiaDiagAt = 0;
 function decideCanadiaBehavior(npc, now) {
+  // ★★[T350 · 주사위 0] 카나디아(데모) 마을 결정도 같은 문법이다 — 씨 = (신원 · 셀 · 게임일 · 틱).
+  //   흐름을 주민 것과 **따로** 두는 이유는 재진입이다(이 함수는 `decideNpcBehavior` 안에서 불린다).
+  _diceCan.seed(_SEED.seedOf(_shOf(npc), Math.floor(npc.x / BUILDING_SIZE), Math.floor(npc.y / BUILDING_SIZE), zoneGameDay(), _tick.n));
+
   if (!npc.canadiaTask) { npc.canadiaTask = 'going_to_work'; npc.canadiaTaskAt = now; }
   npc.behavior = 'wander';
   // Phase 4d-14b: traveling — caravan별 속도로 종점 직진. 시뮬과 정확히 동기화.
@@ -13275,14 +13327,14 @@ function decideCanadiaBehavior(npc, now) {
     if (d < 40) {
       npc.canadiaTask = 'working';
       npc.canadiaTaskAt = now;
-      npc.canadiaTaskEndAt = now + 6000 + Math.random() * 4000;  // 6~10초
+      npc.canadiaTaskEndAt = now + 6000 + _dc() * 4000;  // 6~10초
     }
   } else if (npc.canadiaTask === 'working') {
     // Phase 4d-10 fix: 매 tick 변경 X — 2~4초마다 서브 타겟 변경 (떨림 방지)
     if (!npc._canadiaSubAt || now > npc._canadiaSubAt) {
-      npc.targetX = npc.canadiaWorkX + (Math.random() - 0.5) * 30;
-      npc.targetY = npc.canadiaWorkY + (Math.random() - 0.5) * 30;
-      npc._canadiaSubAt = now + 2000 + Math.random() * 2000;
+      npc.targetX = npc.canadiaWorkX + (_dc() - 0.5) * 30;
+      npc.targetY = npc.canadiaWorkY + (_dc() - 0.5) * 30;
+      npc._canadiaSubAt = now + 2000 + _dc() * 2000;
     }
     if (now >= (npc.canadiaTaskEndAt || 0)) {
       canadiaWorkProduce(npc, now);   // 작업 1세션 완료 → 직업별 실제 산출 (어부=물고기 등)
@@ -13296,14 +13348,14 @@ function decideCanadiaBehavior(npc, now) {
     if (d < 40) {
       npc.canadiaTask = 'at_chest';
       npc.canadiaTaskAt = now;
-      npc.canadiaTaskEndAt = now + 2000 + Math.random() * 2000;
+      npc.canadiaTaskEndAt = now + 2000 + _dc() * 2000;
       npc._canadiaSubAt = 0;
     }
   } else if (npc.canadiaTask === 'at_chest') {
     if (!npc._canadiaSubAt || now > npc._canadiaSubAt) {
-      npc.targetX = npc.canadiaChestX + (Math.random() - 0.5) * 20;
-      npc.targetY = npc.canadiaChestY + (Math.random() - 0.5) * 20;
-      npc._canadiaSubAt = now + 1500 + Math.random() * 1500;
+      npc.targetX = npc.canadiaChestX + (_dc() - 0.5) * 20;
+      npc.targetY = npc.canadiaChestY + (_dc() - 0.5) * 20;
+      npc._canadiaSubAt = now + 1500 + _dc() * 1500;
     }
     if (now >= (npc.canadiaTaskEndAt || 0)) {
       assignCanadiaWorkArea(npc);
@@ -13312,7 +13364,7 @@ function decideCanadiaBehavior(npc, now) {
       npc._canadiaSubAt = 0;
     }
   }
-  npc.nextDecisionAt = now + 400 + Math.random() * 300;
+  npc.nextDecisionAt = now + 400 + _dc() * 300;
 }
 
 function setupCanadiaVillage(village) {

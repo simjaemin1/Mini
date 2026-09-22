@@ -240,9 +240,16 @@ function _run(opts) {
   const again = runScenario({ seed: 21, viewer: true, scenario: 'assault', warId: 21 });
   const first = runScenario({ seed: 21, viewer: true, scenario: 'assault', warId: 21 });
   ok(sig(again) === sig(first), 'ⓓ 같은 판 두 번 = 동일(결정론)');
-  // 자명 통과 금지 — 다른 씨는 다른 결과를 낸다(해시가 뭔가를 보고 있다)
-  const other = runScenario({ seed: 99, viewer: true, scenario: 'assault', warId: 21 });
-  ok(sig(other) !== sig(first), 'ⓓ ★대조 — 씨가 다르면 결과가 다르다(대조가 실제로 무는 비교)');
+  // ★★[T350 2026-09-22 · 주사위 0] **이 대조가 재는 것이 바뀌었다.**
+  //   종전 대조는 `opts.seed` 로 **전역 `Math.random` 을 갈아** "씨가 다르면 결과가 다르다"를 봤다(줄 57).
+  //   T350 이 존의 세계 자리에서 `Math.random` 을 전부 걷어내자 — 그게 카드가 시킨 일이다 —
+  //   **전역을 갈아도 세계가 안 움직인다.** 그래서 옛 대조는 빨개졌다. 이건 회귀가 아니라 **이 카드의 결과**다.
+  //   ⇒ 대조를 둘로 가른다: ① 세계가 **실제로 읽는 씨**(`warId` → `_muRng`)를 갈면 달라진다
+  //      ② **전역 `Math.random` 을 갈아도** 같다 — 주사위 0 의 산 증거다(옛 대조가 죽은 자리에 선 새 대조).
+  const other = runScenario({ seed: 21, viewer: true, scenario: 'assault', warId: 99 });
+  ok(sig(other) !== sig(first), 'ⓓ ★대조① — **전쟁 씨**(`warId`)가 다르면 결과가 다르다(해시가 뭔가를 보고 있다)');
+  const diceSwap = runScenario({ seed: 99, viewer: true, scenario: 'assault', warId: 21 });
+  ok(sig(diceSwap) === sig(first), 'ⓓ ★★대조② [T350] — **전역 `Math.random` 을 갈아도 결과가 같다**(존 세계 자리 주사위 0)');
 
   // ── ⓗ~ⓚ 동원의 대가(T295) ────────────────────────────────────────────────
   costPart();

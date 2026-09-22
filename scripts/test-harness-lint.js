@@ -569,5 +569,83 @@ console.log('\n⑨ 야간 여러 밤 — e2e 는 묶음을 하나 단다 [T220 �
   console.log('    접점: fixture-boot.waitUp · EADDRINUSE · central server up on · CPORT 3010');
 }
 
+
+// =============================================================================
+// ⑪ 세계 자리에 `Math.random` 0 [T350 2026-09-22 · 주사위 0]
+// =============================================================================
+// ★왜 — 이 게임의 첫 캐논은 **주사위 금지**(07-12 재민)인데, T340 이 걸음 하나를 세어 보니
+//   `decideNpcBehavior` 가 **걸음마다 15번** 굴리고 있었다. 한 번 지운다고 안 돌아오지 않는다 —
+//   `Math.random()` 은 타이핑 여섯 자다. ⇒ **정적으로** 건다.
+//
+// ★예외는 **표에서 유도한다**(T350 §2). 세계를 안 움직이는 자리 셋뿐이다:
+//   ⓐ **식별자** — `Math.random().toString(36)`(토큰·pack·npc·anon). 씨로 만들면 재시작마다 **같은 id** 가
+//      나서 충돌한다. 세계 상태가 아니다.
+//   ⓑ **I/O 지터** — `_nextSaveAt`(저장이 한 순간에 몰리지 않게 흩는다). 세계 상태가 아니다.
+//   ⓒ **주입 자리의 기본 가지** — `typeof rnd === 'function' ? rnd : Math.random` 꼴.
+//      부르는 자리가 전부 rng 를 넣으면 이 가지는 **죽은 가지**다. 그 '전부' 를 아래 ⑪-b 가 센다.
+console.log('\n⑪ 세계 자리에 `Math.random` 0 [T350]');
+{
+  const CO = require('./code-only.js');
+  const SRV = path.join(ROOT, 'server');
+  // 표 — 허용되는 꼴과 그 이유(세 줄이 전부다)
+  const ALLOW = [
+    { why: '식별자', re: /Math\.random\(\)\.toString\(36\)/ },
+    { why: 'I/O 지터', re: /_nextSaveAt\s*=/ },
+    { why: '주입 자리 기본 가지', re: /(typeof\s+[\w.]+\s*===\s*'function'\s*\)?\s*\?|\(host\s*&&\s*host\.rng\)\s*\|\|)/ },   // 넣은 rng 가 있으면 그걸, 없으면 이 가지
+  ];
+  const bad = [], seen = { '식별자': 0, 'I/O 지터': 0, '주입 자리 기본 가지': 0 };
+  for (const f of fs.readdirSync(SRV).filter((x) => x.endsWith('.js'))) {
+    if (f === 'seed-rand.js') continue;                       // 정본 자신 — `Math.random` 을 안 쓴다(아래가 확인)
+    const src = CO(fs.readFileSync(path.join(SRV, f), 'utf8'));
+    src.split('\n').forEach((L, i) => {
+      if (!/Math\.random/.test(L)) return;
+      const hit = ALLOW.find((a) => a.re.test(L));
+      if (hit) { seen[hit.why] += (L.match(/Math\.random/g) || []).length; return; }
+      bad.push(`${f}:${i + 1}`);
+    });
+  }
+  ok(bad.length === 0, '★★⑪-a **`server/` 세계 자리에 `Math.random` 이 없다**(예외 셋은 표에서 유도 — 식별자·I/O 지터·주입 기본 가지)',
+     bad.length ? bad.slice(0, 6).join(' · ') : `세계 굴림 0 · 예외 식별자 ${seen['식별자']} · 지터 ${seen['I/O 지터']} · 주입 ${seen['주입 자리 기본 가지']}`);
+  // ⓑ 주입 자리의 기본 가지가 **정말 죽었나** — 세계가 부르는 자리가 rng 를 빠뜨리면 여기서 문다
+  const zone = CO(fs.readFileSync(path.join(SRV, 'zone.js'), 'utf8'));
+  const INJ = [
+    { call: 'Specialty.mineChunkRoll(', argN: 2 },
+    { call: 'Specialty.mineTypeGuess(', argN: 4 },
+    { call: 'PlayerItems.materializeFromVillage(', argN: 3 },
+    { call: 'Fishing.plan(', argN: 4 },
+    { call: '.oreMineralAt(', argN: 4 },
+  ];
+  // 주입이 **인수**가 아니라 **초기화 옵션**인 자리 — 야생 생태는 `init({ rng })` 로 받는다
+  ok(/Wildlife\.init\(\{\s*\n?\s*rng:\s*_dt,/.test(zone), '⑪-b ★야생 생태에 흐름을 **넣어서** 기동한다(`Wildlife.init({ rng: _dt, … })`)');
+  const naked = [];
+  for (const it of INJ) {
+    let i = 0;
+    while ((i = zone.indexOf(it.call, i)) >= 0) {
+      const open = i + it.call.length;
+      let d = 1, j = open;
+      for (; j < zone.length && d > 0; j++) { if (zone[j] === '(') d++; else if (zone[j] === ')') d--; }
+      const args = zone.slice(open, j - 1);
+      let depth = 0, n = 1;
+      for (const ch of args) { if ('([{'.includes(ch)) depth++; else if (')]}'.includes(ch)) depth--; else if (ch === ',' && depth === 0) n++; }
+      if (n < it.argN) naked.push(`${it.call}…) 인수 ${n}/${it.argN}`);
+      i = open;
+    }
+  }
+  ok(naked.length === 0, '★⑪-b **주입 자리에 rng 를 안 넣고 부르는 자리가 0**(안 넣으면 그 모듈의 `Math.random` 기본 가지로 떨어진다 — T350 이 실제로 둘을 그렇게 찾았다)',
+     naked.length ? naked.join(' · ') : `${INJ.length}꼴 전부 채워 부른다`);
+  // ⓒ 정본은 `Math.random` 을 안 쓴다
+  const seedSrc = CO(fs.readFileSync(path.join(SRV, 'seed-rand.js'), 'utf8'));
+  ok(!/Math\.random/.test(seedSrc), '⑪-c 씨 해시 정본(`server/seed-rand.js`)에 `Math.random` 0');
+  // ★자명 통과 금지 — 세계 자리 한 줄을 미끼로 넣으면 ⑪-a 의 그 자가 문다(글자를 조각내 자기 자신을 안 문다)
+  const bait = '  npc.targetX = npc.x + (Math.' + 'random() - 0.5) * 200;';
+  const baitCaught = /Math\.random/.test(bait) && !ALLOW.some((a) => a.re.test(bait));
+  const baitOk = '  return Math.' + 'random().toString(36).slice(2, 12);';
+  const baitPassed = ALLOW.some((a) => a.re.test(baitOk));
+  ok(baitCaught && baitPassed, '★⑪ 자명 통과 금지 — 세계 자리 미끼는 **물고**(걸음 목표), 식별자 미끼는 **보낸다**',
+     `세계 미끼 잡힘 ${baitCaught} · 식별자 미끼 통과 ${baitPassed}`);
+  console.log(`    [표] server/ 세계 굴림 **0** · 예외 = 식별자 ${seen['식별자']} · I/O 지터 ${seen['I/O 지터']} · 주입 기본 가지 ${seen['주입 자리 기본 가지']}`);
+  console.log('    접점: decideNpcBehavior · seed-rand.js · seedOf · makeStream · _t340Rng · test-move-soa');
+}
+
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
 process.exit(fail ? 1 : 0);
