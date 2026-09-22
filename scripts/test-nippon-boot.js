@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
-// === scripts/test-nippon-boot.js — 둘째 존이 실제로 산다 (T343) ================
+// === scripts/test-nippon-boot.js — 둘째 존이 실제로 산다 (T343 · T348) =========
 //
 // ★왜 [T343 2026-09-21]
 //   T336 이 잰 것: `ZONE_ID=nippon` 은 **오류 0 으로 뜨는데 아무 일도 안 났다**
@@ -10,8 +10,13 @@
 //
 // ★이 자가 재는 것은 **둘**이고, 둘을 섞지 않는다:
 //   ⓐ~ⓓ **후보 정본** — 값싸다(부팅 0). "한반도가 한 칸도 안 바뀐다"를 **같은 배열 객체**로 증명한다.
-//   ⓔ    **실서버** — 비싸다(존 하나 부팅). 계약이 있는지가 아니라 **도는지**를 본다
+//   ⓔ~ⓗ **실서버** — 비싸다(존 하나 부팅). 계약이 있는지가 아니라 **도는지**를 본다
 //         (`test-psite-server ⑨` 와 같은 문법: 소스 검사와 실행 검사는 다른 것을 잰다).
+//
+// ★[T348 추가] ⓕ 다리 · ⓖ 광맥 — T343 이 "결손"으로 적은 둘.
+//   ⓕ 의 본선은 "다리를 놓았다"가 아니라 **"교역 격자가 그 다리를 본다"**(`다리구제 > 0`)다.
+//   T348 1차 판이 정확히 그 자리에서 틀렸다: 계획기가 서버와 다른 물을 보고 뽑은 다리를 놓았더니
+//   셀은 선언됐는데 `다리구제 0` 이고 도달 쌍이 **한 쌍도 안 늘었다**. 선언은 판정이 아니다.
 //
 // ★★자명 통과 금지 — 이 자는 "마을이 0곳인데 오류도 0" 을 **초록으로 읽지 않는다.**
 //   전제를 먼저 건다: 시딩 줄이 실제로 찍혔나 · econ 인구가 0보다 큰가 · 후보가 실제로 있었나.
@@ -181,6 +186,41 @@ async function waitUp(p, url, tries = 300) {
   ok(!mSeeded || (+mSeeded[2] - +mSeeded[3]) === skips.length,
     'ⓔ10 선별−시딩 차이가 **물 위 스킵 수와 맞는다**(조용히 사라진 마을 0)',
     mSeeded ? `선별 ${mSeeded[2]} − 시딩 ${mSeeded[3]} = ${+mSeeded[2] - +mSeeded[3]} · 스킵 줄 ${skips.length}` : '-');
+
+  // ── ★[T348] ⓕ 다리 · ⓖ 광맥 — T343 이 "결손"으로 적은 둘 ───────────────────
+  //   ★자명 통과 금지: 두 절 다 **전제를 먼저 건다**. 쌍이 0 이거나 마을이 0 이면
+  //     "도달불능 0" 도 "광맥 바닥 0곳" 도 초록이 되는데, 그건 아무것도 안 잰 것이다.
+  console.log('\n[ⓕ 다리 — 교역이 실제로 이어지나]');
+  const mDist = LOG.match(/교역 BFS 거리행렬: (\d+)마을 (\d+)쌍[^\n]*다리구제 (\d+)\)[^\n]*도달불능 (\d+)쌍/);
+  ok(!!mDist, 'ⓕ0 전제: 교역 거리행렬 줄이 찍혔다', mDist ? mDist[0].slice(0, 110) : '(없음)');
+  const pairs = mDist ? +mDist[2] : 0, unreach = mDist ? +mDist[4] : 0, saved = mDist ? +mDist[3] : 0;
+  ok(pairs > 0, 'ⓕ1 전제: 마을 쌍이 실제로 있다(1마을이면 아래가 자명 통과다)', `${pairs}쌍`);
+  // 닛폰에 다리가 선언돼 있다 — 없으면 아래 '구제'가 0 인 게 당연하다
+  const nb = ((ZONES[ZID] && ZONES[ZID].bridges) || []).length / 2;
+  ok(nb > 0, 'ⓕ2 전제: 존 설정에 다리 셀이 있다', `${nb}셀`);
+  // ★★**다리가 교역 격자에 실제로 보인다.** `다리구제 > 0` 이 그 증거다 —
+  //   T348 1차 판은 다리를 놓았는데 이 수가 0 이었고, 도달 쌍이 한 쌍도 안 늘었다.
+  ok(saved > 0, 'ⓕ ★다리가 교역 격자에 **보인다**(코스 셀 구제 > 0 — 놓았는데 안 보이면 교역은 안 열린다)', `다리구제 ${saved}칸`);
+  ok(pairs - unreach >= 1, 'ⓕ3 서로 갈 수 있는 마을 쌍이 하나 이상 있다(교역이 아예 없는 세계가 아니다)',
+    `도달 ${pairs - unreach}/${pairs}쌍 · 불능 ${unreach}`);
+
+  console.log('\n[ⓖ 광맥 — 바닥(0.1)이 아닌 마을이 있나]');
+  const lands = [...LOG.matchAll(/\[([^\]]+)\] 시딩: 중심[^\n]*land\(F([\d.]+)\/W([\d.]+)\/S([\d.]+)\/O([\d.]+)\//g)]
+    .map((m) => ({ name: m[1], ore: +m[5] }));
+  ok(lands.length > 0, 'ⓖ0 전제: 시딩 줄에서 땅 파라미터를 실제로 읽었다(0이면 아래가 자명 통과다)', `${lands.length}곳`);
+  const oreOk = lands.filter((v) => v.ore > 0.1);
+  ok(oreOk.length >= 1, 'ⓖ ★광맥이 바닥(0.1)을 넘는 마을이 **하나 이상** 있다(T343 엔 8/8 이 바닥이었다)',
+    `${oreOk.length}/${lands.length}곳 — ${oreOk.map((v) => `${v.name} O${v.ore}`).join(' · ') || '(없음)'}`);
+  // ★한반도도 같은 비율이다(T348 §0-ⓒ 실측 16%) — "전 마을에 광맥"은 이 세계의 규약이 아니다.
+  //   그래서 상한이 아니라 **하한 1곳**만 건다. 전부 바닥이면 그건 광맥 정본이 없다는 뜻이다.
+  ok(lands.every((v) => v.ore >= 0.1), 'ⓖ2 광맥 값이 바닥 아래로는 안 내려간다(0.1 = 바닥)',
+    lands.map((v) => v.ore).sort((a, b) => a - b)[0] + ' ~ ' + lands.map((v) => v.ore).sort((a, b) => b - a)[0]);
+
+  console.log('\n[ⓗ 한반도 무변 — 자료 쪽]');
+  const hbOres = ((require(path.join(ROOT, 'server', 'hanbando-terrain.json')).hanbando || {}).ores || []).length;
+  ok(hbOres === 787, 'ⓗ 한반도 정본 광맥 수가 그대로다', `${hbOres}개`);
+  const hbBr = ((ZONES.hanbando && ZONES.hanbando.bridges) || []).length / 2;
+  ok(hbBr === 836, 'ⓗ2 한반도 다리 셀 수가 그대로다', `${hbBr}셀`);
 
   shutdown();
   for (const f of [CDB, ZDB, CDB + '-wal', ZDB + '-wal', CDB + '-shm', ZDB + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }

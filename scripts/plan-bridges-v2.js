@@ -23,13 +23,28 @@ const MAX_SPAN = 200;      // 이 이상은 대양 — 다리로 놓지 않는�
 const BRIDGE = new Set();
 { const b = Z.bridges || []; for (let i = 0; i + 1 < b.length; i += 2) BRIDGE.add(b[i] + '_' + b[i + 1]); }
 
+// ★★[T348 2026-09-21] **물이 두 층이다 — 계획기가 한 층만 보고 있었다.**
+//   서버의 통행 정본(`zone.js:818 isTerrainBlockedLocal`)은 물을 **둘** 본다:
+//     ⓐ `WATER_TILES` — 해안선 띠(`chunk.generateCoastlineWaterTiles` · 부팅 로그의 "🌊 해안선")
+//     ⓑ `terrain.isWaterCellLocal` — 손그림 강·호수
+//   이 계획기는 ⓑ만 봤다. 한반도에선 띠가 존의 **4.4%**(폭 2188셀)라 가장자리에만 있어 티가 안 났는데,
+//   닛폰은 폭이 1562셀뿐이라 띠가 **16.0%** 로 안쪽까지 들어온다. 그래서 계획기가 "본토"라 부른 곳이
+//   서버에선 바다였고, **놓은 다리가 엉뚱한 덩어리에 착지했다**(T348 §0-ⓑ 실측: 다리를 놓아도 도달 쌍 무변).
+//   ⇒ 서버와 **같은 물**을 본다. 조합은 `zone.js:742~825` 그대로다(새 규칙 0).
+//   ⚠사본이다 — 이 사슬을 한 곳에 모으는 일은 회부(#31 "25벌 모으기" · T259).
+const _oceanRects = Object.values(ZONES).filter((z) => z.isOcean)
+  .map((z) => ({ x0: z.worldOffsetX, y0: z.worldOffsetY, x1: z.worldOffsetX + z.zoneWidth, y1: z.worldOffsetY + z.zoneHeight }));
+const WATER_TILES = require(path.join(__dirname, '..', 'server', 'chunk'))
+  .generateCoastlineWaterTiles(Object.assign({ id: ZID }, Z), SZ, require(path.join(__dirname, '..', 'server', 'zone-config')).findZoneAt, _oceanRects);
+console.log(`[계획기 v2] 해안선 띠 ${WATER_TILES.size.toLocaleString()}칸 (존의 ${(WATER_TILES.size / N * 100).toFixed(1)}%) — 서버와 같은 물을 본다`);
 const memo = new Uint8Array(N);
 function kind(cx, cy) {
   if (cx < 0 || cy < 0 || cx >= NX || cy >= NY) return 3;
   const i = cy * NX + cx; let v = memo[i];
   if (v) return v;
   const x = cx * SZ + SZ / 2, y = cy * SZ + SZ / 2;
-  v = terrain.isWaterCellLocal(ZID, x, y) ? 2 : (terrain.isRockCellLocal(ZID, x, y) ? 3 : 1);
+  const water = WATER_TILES.has(`${cx}_${cy}`) || terrain.isWaterCellLocal(ZID, x, y);
+  v = water ? 2 : (terrain.isRockCellLocal(ZID, x, y) ? 3 : 1);
   memo[i] = v; return v;
 }
 const blocked = (cx, cy) => { const k = kind(cx, cy); if (k === 3) return true; if (k === 2) return !BRIDGE.has(cx + '_' + cy); return false; };
@@ -64,7 +79,10 @@ const main = flood(sx, sy, 1, label);
 console.log(`[계획기 v2] ${ZID} · 다리 셀 ${BRIDGE.size}`);
 console.log(`본토(다리 ON) ${main.n.toLocaleString()}셀 · ${Date.now() - t0}ms`);
 
-const vs = terrain.getZoneVillages(ZID) || [];
+// ★[T348] 후보는 **정본 문**으로 묻는다(T343 `siteCandidates`) — 정본 json 에 찍어 둔 칸이 있으면
+//   그것(한반도 51 · 종전과 한 칸도 안 다르다), 없으면 절차 배치기. 안 그러면 닛폰처럼
+//   찍어 둔 칸이 0 인 존에서 "도달 불가 마을 0" 이라는 **거짓 초록**이 난다.
+const vs = (terrain.siteCandidates ? terrain.siteCandidates(ZID) : terrain.getZoneVillages(ZID)) || [];
 const near = (cx, cy, R) => { for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) { const x = cx + dx, y = cy + dy; if (x >= 0 && y >= 0 && x < NX && y < NY && label[y * NX + x] === 1) return true; } return false; };
 const cut = vs.filter(v => !near(Math.round(v.x / SZ), Math.round(v.y / SZ), 8));
 console.log(`도달 불가 마을 ${cut.length}: ${cut.map(v => v.name).join(', ')}`);

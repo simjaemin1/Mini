@@ -38,7 +38,9 @@ const { ZONES } = require(path.join(__dirname, '..', 'server', 'zone-config'));
 const terrain = require(path.join(__dirname, '..', 'server', 'terrain'));
 if (terrain.setZonesMeta) terrain.setZonesMeta(ZONES);
 const Specialty = require(path.join(__dirname, '..', 'server', 'specialty'));
-const GAME = path.join(__dirname, '..', 'server', ZID + '-terrain.json');
+// ★[T348] 정본 지형 파일은 **하나**다 — 안이 존 11개 맵이다(`hanbando` 는 파일 이름일 뿐).
+//   종전엔 `ZID + '-terrain.json'` 으로 찾아서 `--zone nippon` 이 **파일 없음으로 즉사**했다(T336 §0-ⓐ-12).
+const GAME = path.join(__dirname, '..', 'server', 'hanbando-terrain.json');
 const doc = require(GAME);
 const d = doc[ZID];
 const Z = ZONES[ZID];
@@ -132,9 +134,12 @@ const boxAvg = (A, x0, y0, x1, y1) => {
   const sm = A[(y1 + 1) * (gw + 1) + x1 + 1] - A[y0 * (gw + 1) + x1 + 1] - A[(y1 + 1) * (gw + 1) + x0] + A[y0 * (gw + 1) + x0];
   return sm / ((x1 - x0 + 1) * (y1 - y0 + 1));
 };
-// 한반도는 실제 산지 지도를 쓴다(다른 존은 biome 풀 유지)
+// ★[T348] 광종 풀은 **존 무관**이다 — `hanbando-minerals.js` 머리가 그렇게 적어 뒀다
+//   ("지역 무관 · 골고루" · 좌표는 아무 영향이 없고 전역 가중 추첨 하나다). 그런데 여기서
+//   `ZID === 'hanbando'` 로 막고 있어 다른 존은 그 풀을 못 썼다 — 이름만 한반도인 것을
+//   존 조건으로 읽은 자리다. 한반도는 종전에도 켜져 있었으므로 **한 칸도 안 바뀐다**.
 let HB_MIN = null;
-try { if (ZID === 'hanbando') HB_MIN = require(path.join(__dirname, '..', 'server', 'hanbando-minerals')); } catch (e) { }
+try { HB_MIN = require(path.join(__dirname, '..', 'server', 'hanbando-minerals')); } catch (e) { }
 const hash2 = (ix, iy, s) => { let h = (ix | 0) * 374761393 + (iy | 0) * 668265263 + (s | 0) * 1274126177; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967295; };
 
 // 기존 클러스터를 placed 로 선점 — 새 것이 위를 덮지 않게
@@ -402,6 +407,11 @@ console.log('기존 p_peak: 유지 ' + _pkKept + '개 · 새로 채움 ' + _pkFi
 
 if (!APPLY) { console.log('\n★계산만 — 쓰려면 --apply'); process.exit(0); }
 for (const o of added) { const e = { name: o.name, center: o.center, radius: o.radius, mineral: o.mineral, pk: o.pk }; if (o.minor) e.minor = 1; d.ores.push(e); }
-fs.writeFileSync(GAME, JSON.stringify(doc, null, 1));
+// ★[T348] **정본 파일의 꼴을 그대로 돌려준다.** 종전엔 무조건 `indent 1` 로 다시 썼는데,
+//   레포의 정본은 **한 줄(minify)** 이라 광맥 몇 개를 더한 판이 `127,281줄 삽입 / 1줄 삭제` 로 나왔다.
+//   diff 가 그 꼴이면 무엇이 바뀌었는지 아무도 못 본다 — 검토를 통과하는 것과 읽히는 것은 다르다.
+//   ⇒ 원본에 줄바꿈이 없으면 minify 로, 있으면 종전대로 쓴다(내용 판정은 한 글자도 안 바꿨다).
+const _wasMinified = !fs.readFileSync(GAME, 'utf8').includes('\n');
+fs.writeFileSync(GAME, _wasMinified ? JSON.stringify(doc) : JSON.stringify(doc, null, 1));
 console.log('★적용됨 → ' + GAME + ' (광맥 ' + d.ores.length + '개)');
 console.log('  다음: node scripts/audit-terrain-quality.js ' + ZID + ' · build-cell-map · export-editor-work');
