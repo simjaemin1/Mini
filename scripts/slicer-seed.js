@@ -78,7 +78,7 @@ async function ensureSeed(opts) {
         if (t) log(`      stderr: ${t.slice(0, 250)}`);
         return false;
       }
-      try { const r = await fetch(url); if (r.ok) return true; } catch (e) {}
+      try { const r = await fetch(url, { signal: AbortSignal.timeout(5000) }); if (r.ok) return true; } catch (e) {}
       await sleep(1000);
     }
     return false;

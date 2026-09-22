@@ -29,6 +29,7 @@
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
+const FB = require('./fixture-boot');   // ★T349 기동 기다리기 정본(사본 0)
 
 const ROOT = path.join(__dirname, '..');
 const SHOTS = '/tmp/e2e-shots';
@@ -57,14 +58,20 @@ function boot(name, file, env) {
 function shutdown() { for (const p of procs) { try { p.kill('SIGKILL'); } catch (e) {} } }
 process.on('exit', shutdown);
 async function waitHttp(url, tries = 900) {
-  for (let i = 0; i < tries; i++) { try { const r = await fetch(url); if (r.ok) return true; } catch (e) {} await sleep(1000); }
+  for (let i = 0; i < tries; i++) { try { const r = await fetch(url, { signal: AbortSignal.timeout(5000) }); if (r.ok) return true; } catch (e) {} await sleep(1000); }
   return false;
 }
 
 (async () => {
   console.log('\n=== 마을 소속 · 곳간 인출 실클라 E2E (Chromium) ===');
   console.log(`    ★문턱을 MEMBER_N=${MEMBER_N} 으로 낮춰 켠다 — 이 검사가 재는 것은 통로다(머리 주석).`);
-  boot('central', 'central.js', { PORT: String(CPORT), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });
+  const _central = boot('central', 'central.js', { PORT: String(CPORT), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });
+  // ★★[T349 2026-09-21] 기동 증인은 **아이의 입**이다(정본 `fixture-boot.waitUp` · T344).
+  //   포트 응답(`waitHttp(/zones)`)은 증인이 아니었다 — 앞 판 central 이 포트를 쥔 채면 새 central 은
+  //   `EADDRINUSE` 로 즉시 죽는데 `waitHttp` 는 **앞 판의 central** 에게 200 을 받아 "떴다"고 답한다.
+  //   ⚠**듣기는 여기서 시작한다**(`await` 는 아래 `ok` 자리에서) — 아이가 표식을 찍는 것은 ~120ms 뒤라
+  //     그 사이 다른 `await` 를 지나면 줄을 놓친다. 띄운 **그 틱에** 귀를 붙인다.
+  const _upP = FB.waitUp(_central, /central server up on/, { name: 'central' });
   boot('zone', 'zone.js', {
     PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB,
     CENTRAL_URL: `http://localhost:${CPORT}`,
@@ -73,7 +80,8 @@ async function waitHttp(url, tries = 900) {
     E2E_GIVE: '1', ONB_ENABLE: '1',
     MEMBER_N: String(MEMBER_N),
   });
-  ok(await waitHttp(`http://localhost:${CPORT}/zones`), 'central 기동');
+  const _up = await _upP;
+  ok(_up.ok, 'central 기동', _up.ok ? `${_up.ms}ms · 아이가 제 입으로 말했다` : _up.why);
   ok(await waitHttp(`http://localhost:${ZPORT}/health`), 'zone 기동');
   for (let i = 0; i < 90; i++) {
     const zmap = await (await fetch(`http://localhost:${CPORT}/zones`)).json();

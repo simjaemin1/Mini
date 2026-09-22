@@ -12,7 +12,7 @@ function boot(name, file, env) {
   p.stdout.on('data', (d) => { const s = d.toString(); if (/server up|Error/i.test(s)) process.stdout.write(`  [${name}] ` + s.slice(0, 110)); });
   procs.push(p); return p;
 }
-async function waitHttp(url, tries = 600) { for (let i = 0; i < tries; i++) { try { const r = await fetch(url); if (r.ok) return true; } catch (e) { } await sleep(1000); } return false; }
+async function waitHttp(url, tries = 600) { for (let i = 0; i < tries; i++) { try { const r = await fetch(url, { signal: AbortSignal.timeout(5000) }); if (r.ok) return true; } catch (e) { } await sleep(1000); } return false; }
 fs.writeFileSync('/tmp/zone-wrap-wc.js', `const path=require('path');const ROOT=${JSON.stringify(ROOT)};
 const cfg=require(path.join(ROOT,'server','zone-config'));const ZID='hanbando';
 const d=parseInt(process.env.WRAP_DAY_MS||'86400000',10);

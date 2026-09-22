@@ -26,6 +26,7 @@
 const path = require('path');
 const fs = require('fs');
 const { spawn, execSync } = require('child_process');
+const FB = require('./fixture-boot');   // ★T349 기동 기다리기 정본(사본 0)
 const { PNG } = require('pngjs');
 const ROOT = path.join(__dirname, '..');
 const CPORT = 3010, ZPORT = 3020;
@@ -50,7 +51,7 @@ function boot(name, file, env) {
 }
 process.on('exit', () => { for (const p of procs) { try { p.kill('SIGKILL'); } catch (e) {} } });
 async function waitHttp(url, tries = 600) {
-  for (let i = 0; i < tries; i++) { try { const r = await fetch(url); if (r.ok) return true; } catch (e) {} await sleep(1000); }
+  for (let i = 0; i < tries; i++) { try { const r = await fetch(url, { signal: AbortSignal.timeout(5000) }); if (r.ok) return true; } catch (e) {} await sleep(1000); }
   return false;
 }
 // ★하루를 **정오에 멈춘다**. 안 그러면 밤 오버레이가 켜졌다 꺼졌다 하면서 화면 짝 비교의
@@ -102,9 +103,16 @@ const diffPx = (a, b) => { let c = 0;
   say('=== 비·눈 화면 효과 실클라 E2E (T93) ===');
   const wrap = writeWrap();
   for (const s of ['', '-wal', '-shm']) { try { fs.unlinkSync(ZDB + s); } catch (e) {} }
-  boot('central', path.join(ROOT, 'server', 'central.js'),
+  const _central = boot('central', path.join(ROOT, 'server', 'central.js'),
        { PORT: String(CPORT), DB_PATH: `/tmp/e2e-weather-c-${process.pid}.db`, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });
-  ok(await waitHttp(`http://localhost:${CPORT}/zones`), 'central 기동');
+  // ★★[T349 2026-09-21] 기동 증인은 **아이의 입**이다(정본 `fixture-boot.waitUp` · T344).
+  //   포트 응답(`waitHttp(/zones)`)은 증인이 아니었다 — 앞 판 central 이 포트를 쥔 채면 새 central 은
+  //   `EADDRINUSE` 로 즉시 죽는데 `waitHttp` 는 **앞 판의 central** 에게 200 을 받아 "떴다"고 답한다.
+  //   ⚠**듣기는 여기서 시작한다**(`await` 는 아래 `ok` 자리에서) — 아이가 표식을 찍는 것은 ~120ms 뒤라
+  //     그 사이 다른 `await` 를 지나면 줄을 놓친다. 띄운 **그 틱에** 귀를 붙인다.
+  const _upP = FB.waitUp(_central, /central server up on/, { name: 'central' });
+  const _up = await _upP;
+  ok(_up.ok, 'central 기동', _up.ok ? `${_up.ms}ms · 아이가 제 입으로 말했다` : _up.why);
 
   // 스키마를 만들 1차 부팅 → 끄고 집을 심는다
   {

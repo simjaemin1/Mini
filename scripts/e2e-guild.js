@@ -14,6 +14,7 @@
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
+const FB = require('./fixture-boot');   // ★T349 기동 기다리기 정본(사본 0)
 const WebSocket = require('ws');
 
 const ROOT = path.join(__dirname, '..');
@@ -38,7 +39,7 @@ function boot(name, file, env) {
 function shutdown() { for (const x of procs) { try { x.p.kill('SIGKILL'); } catch (e) {} } }
 process.on('exit', shutdown);
 async function waitHttp(url, tries = 600) {
-  for (let i = 0; i < tries; i++) { try { const r = await fetch(url); if (r.ok) return true; } catch (e) {} await sleep(500); }
+  for (let i = 0; i < tries; i++) { try { const r = await fetch(url, { signal: AbortSignal.timeout(5000) }); if (r.ok) return true; } catch (e) {} await sleep(500); }
   return false;
 }
 const jget = async (u) => { try { const r = await fetch(u); return r.ok ? await r.json() : null; } catch (e) { return null; } };
@@ -92,7 +93,13 @@ const last = (C) => JSON.stringify(C.notices.slice(-1));
 
 (async () => {
   console.log('\n=== 길드 초대 · 승인제 · 마을 소개문 (T128) ===\n');
-  boot('central', 'central.js', { PORT: String(CPORT), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });
+  const _central = boot('central', 'central.js', { PORT: String(CPORT), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });
+  // ★★[T349 2026-09-21] 기동 증인은 **아이의 입**이다(정본 `fixture-boot.waitUp` · T344).
+  //   포트 응답(`waitHttp(/zones)`)은 증인이 아니었다 — 앞 판 central 이 포트를 쥔 채면 새 central 은
+  //   `EADDRINUSE` 로 즉시 죽는데 `waitHttp` 는 **앞 판의 central** 에게 200 을 받아 "떴다"고 답한다.
+  //   ⚠**듣기는 여기서 시작한다**(`await` 는 아래 `ok` 자리에서) — 아이가 표식을 찍는 것은 ~120ms 뒤라
+  //     그 사이 다른 `await` 를 지나면 줄을 놓친다. 띄운 **그 틱에** 귀를 붙인다.
+  const _upP = FB.waitUp(_central, /central server up on/, { name: 'central' });
   boot('zone', 'zone.js', {
     PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB,
     // ★[T319 2026-09-19] `?as=<이름>` 은 이제 **개발 손잡이 뒤**다(`zone.js` `_devAsGate` · 실서버엔 없다).
@@ -104,7 +111,8 @@ const last = (C) => JSON.stringify(C.notices.slice(-1));
     E2E_GIVE: '1',        // ★[T159] `__e2e_body` 로 소속을 앉힌다(T11 이 낸 검사 전용 손잡이)
     ENABLE_BANDITS: '0', ENABLE_ROADS: '0', ENABLE_WILDLIFE: '0',
   });
-  ok(await waitHttp(`http://localhost:${CPORT}/zones`), '⓪ central 기동');
+  const _up = await _upP;
+  ok(_up.ok, '⓪ central 기동', _up.ok ? `${_up.ms}ms · 아이가 제 입으로 말했다` : _up.why);
   ok(await waitHttp(`http://localhost:${ZPORT}/health`), '⓪ zone 기동');
   for (let i = 0; i < 60; i++) { const j = await jget(`http://localhost:${ZPORT}/startinfo`); if (j && j.ok && j.villages.length) break; await sleep(1000); }
 

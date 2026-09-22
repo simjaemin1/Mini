@@ -21,6 +21,7 @@
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
+const FB = require('./fixture-boot');   // ★T349 기동 기다리기 정본(사본 0)
 
 const ROOT = path.join(__dirname, '..');
 const SHOTS = '/tmp/e2e-village-shots';
@@ -60,7 +61,7 @@ process.on('exit', shutdown);
 //   존 설정 seedAllVillages 를 이기도록 되어 있다) — 다만 그러면 프로덕션과 다른 세계를 재는 것이다.
 async function waitHttp(url, tries = 900) {
   for (let i = 0; i < tries; i++) {
-    try { const r = await fetch(url); if (r.ok) return true; } catch (e) {}
+    try { const r = await fetch(url, { signal: AbortSignal.timeout(5000) }); if (r.ok) return true; } catch (e) {}
     await sleep(1000);
   }
   return false;
@@ -68,7 +69,13 @@ async function waitHttp(url, tries = 900) {
 
 (async () => {
   console.log('\n=== 마을 건립 실클라 E2E (Chromium) ===');
-  boot('central', 'central.js', { PORT: String(CPORT), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });
+  const _central = boot('central', 'central.js', { PORT: String(CPORT), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });
+  // ★★[T349 2026-09-21] 기동 증인은 **아이의 입**이다(정본 `fixture-boot.waitUp` · T344).
+  //   포트 응답(`waitHttp(/zones)`)은 증인이 아니었다 — 앞 판 central 이 포트를 쥔 채면 새 central 은
+  //   `EADDRINUSE` 로 즉시 죽는데 `waitHttp` 는 **앞 판의 central** 에게 200 을 받아 "떴다"고 답한다.
+  //   ⚠**듣기는 여기서 시작한다**(`await` 는 아래 `ok` 자리에서) — 아이가 표식을 찍는 것은 ~120ms 뒤라
+  //     그 사이 다른 `await` 를 지나면 줄을 놓친다. 띄운 **그 틱에** 귀를 붙인다.
+  const _upP = FB.waitUp(_central, /central server up on/, { name: 'central' });
   boot('zone', 'zone.js', {
     PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB,
     CENTRAL_URL: `http://localhost:${CPORT}`,
@@ -80,7 +87,8 @@ async function waitHttp(url, tries = 900) {
     E2E_GIVE: '1',
     ENABLE_BANDITS: '0', ENABLE_ROADS: '0',
   });
-  ok(await waitHttp(`http://localhost:${CPORT}/zones`), 'central 기동');
+  const _up = await _upP;
+  ok(_up.ok, 'central 기동', _up.ok ? `${_up.ms}ms · 아이가 제 입으로 말했다` : _up.why);
   ok(await waitHttp(`http://localhost:${ZPORT}/health`), 'zone 기동');
 
   // 로비 게이트 — central 이 존 인구를 받을 때까지(5초 폴링). 안 기다리면 "지역 없음"으로 막힌다.
@@ -510,8 +518,36 @@ async function waitHttp(url, tries = 900) {
       }
       ok(!!siteId, `★[T62] ⓖ 쉼터 터가 섰다 — 회관 둘레에서 자리를 찾았다(${tried}자리 시도)`);
       // ②③단계 — 터를 클릭해 올린다(움집·회관과 같은 문법)
-      for (let i = 0; i < 4 && siteId; i++) {
+      // ★★[T349 2026-09-21] **올리기 전에 "터 옆에 서 있다"를 조건으로 확인한다.**
+      //   이 카드가 기동 게이트를 정본으로 옮기자 이 절이 빨개졌다 — 화면이 이유를 말하고 있었다:
+      //   「공용 쉼터 터에서 **너무 멀리** 있습니다」. 원인은 게이트가 아니라 **옛 게이트가 우연히
+      //   벌어 주던 1초**다(옛 폴링 1초 간격 vs 정본 ~100ms). 그 1초 동안 워프가 자리를 잡고 있었다.
+      //   ⇒ 우연을 다른 우연으로 메우지 않는다. **매 회 터 옆으로 워프하고 실제로 닿을 때까지 기다린 뒤**
+      //     올린다(상한은 표에만 · 걸리면 이름을 붙인다 — 조용한 빨강 0).
+      const NEAR_CAP = 20000, NEAR_PX = 120;
+      let advN = 0, farN = 0, lastD = NaN;
+      for (let i = 0; i < 6 && siteId; i++) {
+        // ⚠`__getAllBuildings()` 가 내는 것은 **`wx`/`wy`(절대)** 다 — `b.x` 는 없다.
+        //   처음에 `b.x` 로 읽어 `undefined` 가 돼 거리가 NaN 이었고, NaN 비교는 늘 false 라
+        //   "못 닿은 회 0" 이라는 **거짓 안심**이 나왔다(이 카드가 한 번 물었다).
+        const sp = await page.evaluate((id) => {
+          const bs = (window.__getAllBuildings && window.__getAllBuildings()) || [];
+          const b = bs.find((x) => x.id === id); return b ? { wx: b.wx, wy: b.wy } : null;
+        }, siteId);
+        if (sp && Number.isFinite(sp.wx)) {
+          await send({ type: 'teleport_debug', x: sp.wx - OX, y: sp.wy - OY });
+          const tN = Date.now(); let d = Infinity;
+          while (Date.now() - tN < NEAR_CAP) {
+            const me = await page.evaluate(() => window.__getMyAbs());
+            d = Math.hypot(me.x - sp.wx, me.y - sp.wy);       // 둘 다 절대 좌표다
+            if (d <= NEAR_PX) break;
+            await sleep(250);
+          }
+          if (!(d <= NEAR_PX)) farN++;                        // NaN 이면 **못 닿은 것으로 센다**
+          lastD = d;
+        } else { farN++; }
         await send({ type: 'shelter_advance', buildingId: siteId });
+        advN++;
         await sleep(900);
         const done = await page.evaluate(() => {
           const bs = (window.__getAllBuildings && window.__getAllBuildings()) || [];
@@ -519,6 +555,8 @@ async function waitHttp(url, tries = 900) {
         });
         if (done) break;
       }
+      console.log(`    (쉼터 올리기 — ${advN}회 · 터에 못 닿은 회 ${farN} · 마지막 거리 ${Number.isFinite(lastD) ? lastD.toFixed(0) + 'px' : 'NaN'}`
+        + ` · 서버 한계 120px · 상한 ${(NEAR_CAP / 1000) | 0}초 · 판정 아님)`);
       const shdb = await (await fetch(`http://localhost:${ZPORT}/shelterdbg`)).json().catch(() => null);
       const shRow = shdb && shdb.rows ? shdb.rows.find((x) => x.player) : null;
       ok(!!(shRow && shRow.shelter), `★[T62] ⓗ ★**내 마을에 공용 쉼터가 섰다**`,

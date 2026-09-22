@@ -22,6 +22,7 @@
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
+const FB = require('./fixture-boot');   // ★T349 기동 기다리기 정본(사본 0)
 
 const ROOT = path.join(__dirname, '..');
 const SHOTS = '/tmp/e2e-guest-shots';
@@ -56,13 +57,19 @@ process.on('exit', shutdown);
 //   끊겨 **없는 결함**을 보고한다. 빨리 돌려야 하면 존 env 에 VILLAGE_MAX=1 을 주면 된다(그 env 가
 //   존 설정 seedAllVillages 를 이기도록 되어 있다) — 다만 그러면 프로덕션과 다른 세계를 재는 것이다.
 async function waitHttp(url, tries = 900) {
-  for (let i = 0; i < tries; i++) { try { const r = await fetch(url); if (r.ok) return true; } catch (e) {} await sleep(1000); }
+  for (let i = 0; i < tries; i++) { try { const r = await fetch(url, { signal: AbortSignal.timeout(5000) }); if (r.ok) return true; } catch (e) {} await sleep(1000); }
   return false;
 }
 
 (async () => {
   console.log('\n=== 게스트 재접속 소유 실클라 E2E (Chromium) ===');
-  boot('central', 'central.js', { PORT: String(CPORT), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });
+  const _central = boot('central', 'central.js', { PORT: String(CPORT), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });
+  // ★★[T349 2026-09-21] 기동 증인은 **아이의 입**이다(정본 `fixture-boot.waitUp` · T344).
+  //   포트 응답(`waitHttp(/zones)`)은 증인이 아니었다 — 앞 판 central 이 포트를 쥔 채면 새 central 은
+  //   `EADDRINUSE` 로 즉시 죽는데 `waitHttp` 는 **앞 판의 central** 에게 200 을 받아 "떴다"고 답한다.
+  //   ⚠**듣기는 여기서 시작한다**(`await` 는 아래 `ok` 자리에서) — 아이가 표식을 찍는 것은 ~120ms 뒤라
+  //     그 사이 다른 `await` 를 지나면 줄을 놓친다. 띄운 **그 틱에** 귀를 붙인다.
+  const _upP = FB.waitUp(_central, /central server up on/, { name: 'central' });
   boot('zone', 'zone.js', {
     PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
     ENABLE_VILLAGES: '1', VILLAGE_MAX: '1',       // 마을 1곳만 시딩(전 마을 실체화는 4~5분 — 대상 아님)
@@ -70,7 +77,8 @@ async function waitHttp(url, tries = 900) {
     VILLAGE_FOUND_COST: '0.1', PVILLAGE_GAP: '10', PVILLAGE_MAX: '3',
     E2E_GIVE: '1', ENABLE_BANDITS: '0', ENABLE_ROADS: '0',
   });
-  ok(await waitHttp(`http://localhost:${CPORT}/zones`), 'central 기동');
+  const _up = await _upP;
+  ok(_up.ok, 'central 기동', _up.ok ? `${_up.ms}ms · 아이가 제 입으로 말했다` : _up.why);
   ok(await waitHttp(`http://localhost:${ZPORT}/health`), 'zone 기동');
   let hz = {};
   for (let i = 0; i < 120; i++) {

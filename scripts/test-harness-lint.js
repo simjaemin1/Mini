@@ -542,31 +542,83 @@ console.log('\n⑨ 야간 여러 밤 — e2e 는 묶음을 하나 단다 [T220 �
 //        앞 판이 내려가면 `page.goto` → `net::ERR_CONNECTION_REFUSED`(한가한 상자에서 두 번 재현).
 //        즉 **포트가 답하는 것은 내 서버가 떴다는 증인이 아니다.**
 //     ⓒ 아이가 제 `listen` 콜백에서 찍는 줄(`central server up on`) — 남의 서버로는 만들 수 없는 증거.
-//   ⚠**판정하지 않는다 — 표다.** e2e 대부분이 ⓑ 를 쓰고 하네스 서른여덟이 포트 3010 하나를 나눠 쓴다.
-//     전수를 막으면 쓸 수 있는 자가 없다. 수를 세어 다음 카드가 고르게 둔다(예산형 표와 같은 자리).
+//     ⓓ **지역 사본** — `waitUp(child, url)` 이라는 같은 이름의 다른 함수 셋이 있었다(T344 표가 이것을
+//        "맹목 잠"으로 잘못 묶었다 · T349 가 정정). 아이의 죽음은 보지만 **성공 판정은 여전히 포트**라
+//        한 바퀴 안에서 `_died` 가 아직 안 찍힌 채 `fetch` 가 남의 200 을 받으면 그대로 통과한다.
+//   ★[T349 2026-09-21] 서른여덟을 정본으로 옮겨 **포트 0 · 사본 0 · 맹목 0** 이 됐다 ⇒ 표를 **판정으로** 굳힌다.
+//     (0 이 된 뒤에도 표를 계속 찍는다 — 수가 다시 오르면 눈에 보이게.)
 {
-  const GATE = { own: [], port: [], blind: [] };
+  const GATE = { own: [], port: [], copy: [], blind: [] };
   for (const f of fs.readdirSync(SCRIPTS).filter((x) => /^(test|e2e)-.*\.js$/.test(x))) {
     const src = fs.readFileSync(path.join(SCRIPTS, f), 'utf8');
-    if (!/boot\((?:'central'|path\.join\(ROOT, 'server', 'central)/.test(src)) continue;
+    if (!/boot\((?:'central'|'central\.js'|path\.join\(ROOT, 'server', 'central)/.test(src)) continue;
     if (/FB\.waitUp\(/.test(src)) GATE.own.push(f);
     else if (/waitHttp\(`http:\/\/localhost:\$\{CPORT\}\/zones`\)/.test(src)) GATE.port.push(f);
+    else if (/(?:async )?function waitUp\(|const waitUp = /.test(src)) GATE.copy.push(f);
     else GATE.blind.push(f);
   }
   ok(GATE.own.length > 0, '⑩ [전제] 기동 정본(`fixture-boot.waitUp`)을 쓰는 하네스가 실제로 있다(0 이면 아래가 자명 통과다)',
      `${GATE.own.length}개`);
   ok(fs.existsSync(path.join(SCRIPTS, 'fixture-boot.js')), '⑩ [전제] 정본 파일이 있다');
-  // ★자명 통과 금지 — 같은 자로 세 모양을 각각 세는지 미끼로 확인한다(글자를 조각내 자기 자신을 안 문다)
-  const baitOwn = "boot('cent" + "ral', x); await FB.wait" + "Up(c, /up/);";
-  const baitPort = "boot('cent" + "ral', x); await waitHttp(`http://localhost:${CPORT}/zones`);";
-  const seenOwn = /FB\.waitUp\(/.test(baitOwn) && /boot\('central'/.test(baitOwn);
-  const seenPort = !/FB\.waitUp\(/.test(baitPort) && /waitHttp\(`http:\/\/localhost:\$\{CPORT\}\/zones`\)/.test(baitPort);
-  ok(seenOwn && seenPort, '★⑩ 자명 통과 금지 — 정본 판과 포트 판 미끼를 같은 자로 재면 **서로 다르게** 답한다',
-     `정본 ${seenOwn} · 포트 ${seenPort}`);
-  console.log(`    [표] central 기동 증인 — **아이의 입 ${GATE.own.length}** · 포트 응답 ${GATE.port.length} · 맹목 잠 ${GATE.blind.length}`
-    + (GATE.blind.length ? `\n      ★맹목: ${GATE.blind.join(' · ')}` : '')
-    + (GATE.port.length ? `\n      포트 응답(자명 통과 위험 · 다음 카드): ${GATE.port.slice(0, 6).join(' · ')}${GATE.port.length > 6 ? ` 외 ${GATE.port.length - 6}` : ''}` : ''));
+  ok(GATE.port.length === 0 && GATE.copy.length === 0 && GATE.blind.length === 0,
+     '★★⑩ central 을 띄우는 하네스는 **전부 아이의 입**으로 기다린다 — 포트 응답·지역 사본·맹목 잠 0',
+     `정본 ${GATE.own.length} · 포트 ${GATE.port.length} · 사본 ${GATE.copy.length} · 맹목 ${GATE.blind.length}`
+     + (GATE.port.length ? ` · 포트: ${GATE.port.join(' ')}` : '')
+     + (GATE.copy.length ? ` · 사본: ${GATE.copy.join(' ')}` : '')
+     + (GATE.blind.length ? ` · 맹목: ${GATE.blind.join(' ')}` : ''));
+  // ★자명 통과 금지 — 같은 자로 네 모양 미끼를 재면 **각각 다르게** 답한다(글자를 조각내 자기 자신을 안 문다)
+  const B = (x) => "boot('cent" + "ral', x); " + x;
+  const bOwn  = B("await FB.wait" + "Up(c, /up/);");
+  const bPort = B("await waitHttp(`http://localhost:${CPORT}/zones`);");
+  const bCopy = B("async function wait" + "Up(p, url) { }");
+  const bBlind= B("await sleep(2500);");
+  const cls = (src) => /FB\.waitUp\(/.test(src) ? 'own'
+    : /waitHttp\(`http:\/\/localhost:\$\{CPORT\}\/zones`\)/.test(src) ? 'port'
+    : /(?:async )?function waitUp\(|const waitUp = /.test(src) ? 'copy' : 'blind';
+  const got = [cls(bOwn), cls(bPort), cls(bCopy), cls(bBlind)].join(',');
+  ok(got === 'own,port,copy,blind', '★⑩ 자명 통과 금지 — 네 모양 미끼를 같은 자로 재면 **각각 다르게** 답한다', got);
+  // ★★[T349] **입을 열어 줬나.** 증인이 아이가 찍는 줄이므로 `stdio` 가 통째로 'ignore' 면
+  //   정본이 들을 수가 없다 — 이 카드가 `test-doors` 에서 실제로 물었다(`✗ ⓪ central 기동` 인데
+  //   나머지 62문은 전부 통과 = 세계는 떠 있었다. 자가 눈이 먼 것이지 세계가 안 선 게 아니다).
+  {
+    const mute = GATE.own.filter((f) => {
+      const src = fs.readFileSync(path.join(SCRIPTS, f), 'utf8');
+      return /stdio:\s*\['ignore',\s*'ignore',\s*'ignore'\]/.test(src) && !/\['ignore',\s*'pipe',\s*'pipe'\]/.test(src);
+    });
+    ok(mute.length === 0, '★★⑩b 정본을 쓰는 하네스는 아이의 **입이 열려 있다** — `stdio` 가 통째로 ignore 면 못 듣는다',
+       `${GATE.own.length}개 훑음 · 입 막힌 것 ${mute.length}${mute.length ? ' — ' + mute.join(' ') : ''}`);
+  }
+  console.log(`    [표] central 기동 증인 — **아이의 입 ${GATE.own.length}** · 포트 응답 ${GATE.port.length} · 지역 사본 ${GATE.copy.length} · 맹목 잠 ${GATE.blind.length}`);
   console.log('    접점: fixture-boot.waitUp · EADDRINUSE · central server up on · CPORT 3010');
+}
+
+// ── ⑪ **기다림의 `fetch` 에는 마감이 있다** [T349 2026-09-21] ─────────────────
+//   ★왜. 09-20 밤 `e2e-events`·`e2e-winter` 가 **RC=124(2,400초)** 로 잘렸는데 단독은 76~82초다.
+//   예산을 다 더해도 318초·510초라 2,400 이 안 나온다 ⇒ **합이 아니라 한 곳이 안 돌아온 것**이다.
+//   이 카드가 쟀다: 접속은 받되 **아무 답도 안 하는** 서버에 `await fetch(url)` 을 걸면
+//   **120초가 지나도 안 돌아오고 안 던진다**(Node 의 fetch 에는 기본 마감이 없다).
+//   그러면 `waitHttp(url, tries)` 의 `tries` 는 **무의미하다** — 다음 바퀴로 못 간다.
+//   끊는 것은 오직 러너의 `timeout 2400` 이고, 그게 RC=124 다.
+//   ⇒ 기다림 루프의 `fetch` 에는 마감을 단다. 던지면 `catch` 가 받고 **다음 바퀴가 돈다**(재시도 정상 동작).
+//   ⚠이 자는 **기다림 루프**만 본다(`if (r.ok) return true`). 한 번 읽고 마는 `jget` 류는 아직 표다.
+{
+  let loops = 0, naked = 0; const bad = [];
+  const LOOP = /try \{ const r = await fetch\((u|url)([\s\S]*?)\); if \(r\.ok\) return true; \} catch/g;
+  for (const f of fs.readdirSync(SCRIPTS).filter((x) => /^(test|e2e)-.*\.js$/.test(x))) {
+    const src = fs.readFileSync(path.join(SCRIPTS, f), 'utf8');
+    let m; LOOP.lastIndex = 0;
+    while ((m = LOOP.exec(src))) { loops++; if (!/AbortSignal\.timeout\(/.test(m[2])) { naked++; if (bad.indexOf(f) < 0) bad.push(f); } }
+  }
+  ok(loops > 0, '⑪ [전제] 기다림 루프가 실제로 있다(0 이면 아래가 자명 통과다)', `${loops}자리`);
+  ok(naked === 0, '★★⑪ **기다림의 `fetch` 에 마감이 있다** — 없으면 한 번 걸릴 때 `tries` 가 무의미해진다',
+     `${loops}자리 훑음 · 마감 없는 것 ${naked}${bad.length ? ' — ' + bad.slice(0, 5).join(' ') : ''}`);
+  // ★자명 통과 금지 — 마감을 뗀 미끼를 같은 자로 재면 **잡는다**(글자를 조각내 자기 자신을 안 문다)
+  const bait = "try { const r = await " + "fetch(url); if (r.ok) return true; } catch";
+  const good = "try { const r = await " + "fetch(url, { signal: AbortSignal.timeout(5000) }); if (r.ok) return true; } catch";
+  const hit = (src) => { const R = new RegExp(LOOP.source); const m2 = R.exec(src); return m2 ? !/AbortSignal\.timeout\(/.test(m2[2]) : null; };
+  ok(hit(bait) === true && hit(good) === false,
+     '★⑪ 자명 통과 금지 — 마감 뗀 미끼는 **잡고**, 마감 단 미끼는 안 문다', `${hit(bait)} / ${hit(good)}`);
+  console.log('    접점: AbortSignal.timeout · waitHttp · run-regress.sh TIMEOUT_SEC=2400 · RC=124');
 }
 
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);

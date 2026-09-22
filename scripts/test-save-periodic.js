@@ -20,6 +20,7 @@
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
+const FB = require('./fixture-boot');   // ★T349 기동 기다리기 정본(사본 0)
 const WS = require(path.join(__dirname, '..', 'node_modules', 'ws'));
 
 const ROOT = path.join(__dirname, '..');
@@ -46,7 +47,7 @@ function boot(name, file, env) {
 function killAll() { for (const p of procs) { try { p.kill('SIGKILL'); } catch (e) {} } procs.length = 0; }
 process.on('exit', killAll);
 async function waitHttp(url, tries = 300) {
-  for (let i = 0; i < tries; i++) { try { const r = await fetch(url); if (r.ok) return true; } catch (e) {} await sleep(1000); }
+  for (let i = 0; i < tries; i++) { try { const r = await fetch(url, { signal: AbortSignal.timeout(5000) }); if (r.ok) return true; } catch (e) {} await sleep(1000); }
   return false;
 }
 function bootZone(extraEnv) {
@@ -93,8 +94,15 @@ async function walk(s, seconds, vx, vy) {
 
 (async () => {
   console.log('\n=== 주기 저장 — 걷기만 한 진행이 크래시를 넘기는가 ===');
-  boot('central', 'central.js', { PORT: String(CPORT), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });
-  ok(await waitHttp(`http://localhost:${CPORT}/zones`), 'central 기동');
+  const _central = boot('central', 'central.js', { PORT: String(CPORT), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });
+  // ★★[T349 2026-09-21] 기동 증인은 **아이의 입**이다(정본 `fixture-boot.waitUp` · T344).
+  //   포트 응답(`waitHttp(/zones)`)은 증인이 아니었다 — 앞 판 central 이 포트를 쥔 채면 새 central 은
+  //   `EADDRINUSE` 로 즉시 죽는데 `waitHttp` 는 **앞 판의 central** 에게 200 을 받아 "떴다"고 답한다.
+  //   ⚠**듣기는 여기서 시작한다**(`await` 는 아래 `ok` 자리에서) — 아이가 표식을 찍는 것은 ~120ms 뒤라
+  //     그 사이 다른 `await` 를 지나면 줄을 놓친다. 띄운 **그 틱에** 귀를 붙인다.
+  const _upP = FB.waitUp(_central, /central server up on/, { name: 'central' });
+  const _up = await _upP;
+  ok(_up.ok, 'central 기동', _up.ok ? `${_up.ms}ms · 아이가 제 입으로 말했다` : _up.why);
 
   // ── ⓐ 대조군: 주기 저장 **끔**(간격을 아주 크게) — 걷기는 저장을 부르지 않는다 ──
   //   이게 참이 아니면 아래 ⓑ 의 통과는 주기 저장 덕분이 아니라 픽스처 덕분이다.
@@ -125,8 +133,15 @@ async function walk(s, seconds, vx, vy) {
   clean();
 
   // ── ⓑ 본군: 주기 저장 **켬** — 같은 걷기가 central 에 따라온다 ────────────────
-  boot('central', 'central.js', { PORT: String(CPORT), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });
-  ok(await waitHttp(`http://localhost:${CPORT}/zones`), 'central 재기동');
+  const _central2 = boot('central', 'central.js', { PORT: String(CPORT), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });
+  // ★★[T349 2026-09-21] 기동 증인은 **아이의 입**이다(정본 `fixture-boot.waitUp` · T344).
+  //   포트 응답(`waitHttp(/zones)`)은 증인이 아니었다 — 앞 판 central 이 포트를 쥔 채면 새 central 은
+  //   `EADDRINUSE` 로 즉시 죽는데 `waitHttp` 는 **앞 판의 central** 에게 200 을 받아 "떴다"고 답한다.
+  //   ⚠**듣기는 여기서 시작한다**(`await` 는 아래 `ok` 자리에서) — 아이가 표식을 찍는 것은 ~120ms 뒤라
+  //     그 사이 다른 `await` 를 지나면 줄을 놓친다. 띄운 **그 틱에** 귀를 붙인다.
+  const _upP2 = FB.waitUp(_central2, /central server up on/, { name: 'central' });
+  const _up2 = await _upP2;
+  ok(_up2.ok, 'central 재기동', _up2.ok ? `${_up2.ms}ms · 아이가 제 입으로 말했다` : _up2.why);
   zone = bootZone({ SAVE_INTERVAL_MS: '4000' });
   ok(await waitHttp(`http://localhost:${ZPORT}/health`), 'zone 기동(본군 — 주기 저장 4초)');
   await sleep(2000);

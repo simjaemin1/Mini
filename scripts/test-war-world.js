@@ -259,6 +259,7 @@ function _run(opts) {
 async function serverPart() {
   say('\n[ⓖ] 서버 — 존 틱 위의 실체 전쟁(WAR_FIXTURE=assault · 관측자 하나)');
   const { spawn } = require('child_process');
+  const FB = require('./fixture-boot');   // ★T349 기동 기다리기 정본(사본 0)
   const CPORT = 3410, ZPORT = 3420;
   const CDB = `/tmp/warw-c-${process.pid}.db`, ZDB = `/tmp/warw-z-${process.pid}.db`;
   for (const f of [CDB, ZDB]) for (const sfx of ['', '-wal', '-shm']) { try { fs.unlinkSync(f + sfx); } catch (e) {} }
@@ -270,11 +271,19 @@ async function serverPart() {
   const kill = () => { for (const p of procs) { try { p.kill('SIGKILL'); } catch (e) {} } };
   process.on('exit', kill);
   const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-  const waitHttp = async (url, tries) => { for (let i = 0; i < tries; i++) { try { const r = await fetch(url); if (r.ok) return true; } catch (e) {} await sleep(500); } return false; };
-  boot('central.js', { PORT: String(CPORT), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando', CENTRAL_SECRET: SECRET });
+  const waitHttp = async (url, tries) => { for (let i = 0; i < tries; i++) { try { const r = await fetch(url, { signal: AbortSignal.timeout(5000) }); if (r.ok) return true; } catch (e) {} await sleep(500); } return false; };
+  // ★★[T349 2026-09-21] **central 기동을 아무도 안 보고 있었다** — 존 헬스만 기다렸다.
+  //   앞 판 central 이 포트를 쥔 채면 이 판의 central 은 `EADDRINUSE` 로 죽는데, 존은 그 남의
+  //   central 에 붙어 헬스가 떠 버린다(=세계가 바뀐 채로 잰다). 정본으로 아이의 입을 듣는다.
+  //   ⚠stdio 를 **열어 준다** — 기본이 'ignore' 라 표식이 이쪽에 안 온다.
+  const _central = boot('central.js', { PORT: String(CPORT), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando', CENTRAL_SECRET: SECRET }, ['ignore', 'pipe', 'pipe']);
+  const _upP = FB.waitUp(_central, /central server up on/, { name: 'central' });
   boot('zone.js', { PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_HOST: 'localhost', CENTRAL_PORT: String(CPORT), CENTRAL_SECRET: SECRET,
     ENABLE_VILLAGES: '1', VILLAGE_MAX: process.env.WAR_WORLD_VILLAGES || '8', VILLAGE_DAY_MS: '60000', ENABLE_BANDITS: '0',
     WAR_FIXTURE: 'assault', WAR_FIXTURE_DAY: '1', VILLAGE_WAR_LOG: '1' }, ['ignore', out, out]);
+  const _up = await _upP;
+  ok(_up.ok, 'ⓕ central 기동', _up.ok ? `${_up.ms}ms · 아이가 제 입으로 말했다` : _up.why);
+  if (!_up.ok) { kill(); return; }
   const up = await waitHttp(`http://localhost:${ZPORT}/health`, 400);
   ok(up, 'ⓖ 존 기동');
   if (!up) { kill(); return; }

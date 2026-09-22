@@ -8,7 +8,7 @@ const ROOT = path.join(__dirname, '..'), CPORT = 3010, ZPORT = 3020;
 const OUT = process.env.OUTDIR || '/tmp/fringe'; fs.mkdirSync(OUT, { recursive: true });
 const sleep = (m) => new Promise((r) => setTimeout(r, m)); const procs = [];
 function boot(f, env) { const p = spawn('node', [f], { env: { ...process.env, ...env }, stdio: ['ignore','pipe','pipe'], cwd: ROOT }); procs.push(p); return p; }
-async function waitHttp(u, n = 600) { for (let i = 0; i < n; i++) { try { const r = await fetch(u); if (r.ok) return true; } catch (e) {} await sleep(1000); } return false; }
+async function waitHttp(u, n = 600) { for (let i = 0; i < n; i++) { try { const r = await fetch(u, { signal: AbortSignal.timeout(5000) }); if (r.ok) return true; } catch (e) {} await sleep(1000); } return false; }
 const die = (c) => { for (const p of procs) { try { p.kill(); } catch (e) {} } process.exit(c); };
 const T = require(path.join(ROOT, 'server', 'terrain.js'));
 const rock = (i, j) => T.isRockCellLocal('hanbando', i * 32 + 16, j * 32 + 16);

@@ -29,6 +29,7 @@ const path = require('path');
 const fs = require('fs');
 const net = require('net');
 const { spawn } = require('child_process');
+const FB = require('./fixture-boot');   // ★T349 기동 기다리기 정본(사본 0)
 const { PNG } = require('pngjs');
 const HEADED = process.argv.includes('--headed');
 
@@ -81,7 +82,7 @@ async function waitUp(p, url, tries = 300) {
       if (t) console.log(`      stderr: ${t.slice(0, 250)}`);
       return false;
     }
-    try { const r = await fetch(url); if (r.ok) return true; } catch (e) {}
+    try { const r = await fetch(url, { signal: AbortSignal.timeout(5000) }); if (r.ok) return true; } catch (e) {}
     await sleep(1000);
   }
   return false;
@@ -110,12 +111,21 @@ function pxdiff(a, b) {
   if (busy.length) { console.log('\n  ★포트가 안 비어서 검사를 진행하지 않는다 — 아래 숫자는 "안 쟀다"는 뜻이다.');
     console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`); process.exit(1); }
   const cp = boot('central', 'central.js', { PORT: String(CPORT), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });
+  // ★★[T349 2026-09-21] **여기는 맹목 잠이 아니었다 — 지역 사본이었다**(T344 의 린트 표가 잘못 묶었다).
+  //   이 파일들엔 `waitUp(child, url)` 이라는 **같은 이름의 다른 함수**가 있었다. 아이의 죽음(`_died`)을
+  //   보는 점은 정본과 같지만 **성공 판정은 여전히 포트 응답**이라 경주가 남는다:
+  //   한 바퀴 안에서 `_died` 는 아직 안 찍혔는데(exit 이벤트가 다음 틱) `fetch` 가 **앞 판 central** 에게
+  //   200 을 받으면 "떴다"가 된다. ⇒ 정본 하나로 모은다(사본 0 · 증인은 아이가 제 입으로 찍는 줄).
+  //   ⚠듣기는 **띄운 그 틱에** 시작한다 — `await` 만 아래로 내린다.
+  const _upP = FB.waitUp(cp, /central server up on/, { name: 'central' });
   const zp = boot('zone', 'zone.js', {
     PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB,
     CENTRAL_HOST: 'localhost', CENTRAL_PORT: String(CPORT), CENTRAL_URL: `http://localhost:${CPORT}`,
     E2E_GIVE: '1', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', ENABLE_WILDLIFE: '0', ENABLE_VILLAGES: '0',
   });
-  const cUp = await waitUp(cp, `http://localhost:${CPORT}/zones`); ok(cUp, 'central 기동');
+  const _up = await _upP;
+  const cUp = _up.ok;
+  ok(cUp, 'central 기동', cUp ? `${_up.ms}ms · 아이가 제 입으로 말했다` : _up.why);
   const zUp = await waitUp(zp, `http://localhost:${ZPORT}/health`); ok(zUp, 'zone 기동');
   if (!cUp || !zUp) { console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`); process.exit(1); }
 
@@ -204,13 +214,30 @@ function pxdiff(a, b) {
   const p0 = await page.evaluate(() => window.__getMyAbs());
   //   ★한 번 **길게** 누른다. 처음엔 짧게 24번 눌렀는데 9px 밖에 안 갔다 —
   //     뗄 때마다 클라가 vx=0 을 보내서 사실상 제자리걸음이었다(측정이 아니라 입력 방식의 문제).
+  // ★★[T349 2026-09-21] **4초를 누르던 것을 "갈 때까지" 누르는 것으로 바꾼다.**
+  //   이 카드가 기동 게이트를 정본(`fixture-boot.waitUp`)으로 옮기자 이 줄이 빨개졌다(82px → 44px).
+  //   원인은 내 게이트가 아니라 **옛 게이트가 우연히 벌어 주던 1초**였다: 옛 지역 `waitUp` 은
+  //   `/zones` 를 1초 간격으로 폴링해 대개 **1초 이상** 뒤에 돌아왔고, 정본은 **~125ms** 에 돌아온다.
+  //   그 1초가 세계가 데워지는 시간을 대신 내고 있었고, 그게 사라지자 같은 4초에 44px 밖에 못 갔다.
+  //   ⇒ 우연을 다른 우연으로 메우지 않는다. **정해진 초를 재지 않고 "실제로 갔나"를 조건으로 기다린다**
+  //     (족보 ⑩). 상한은 표에만 — 걸리면 그 사실에 이름을 붙인다(조용한 빨강 0).
+  const WALK_CAP = 30000, WALK_MIN = 60;
   await page.keyboard.down('d');
-  await sleep(4000);
+  const tW = Date.now(); let moved = 0;
+  while (Date.now() - tW < WALK_CAP) {
+    const q = await page.evaluate(() => window.__getMyAbs());
+    moved = Math.hypot(q.x - p0.x, q.y - p0.y);
+    if (moved > WALK_MIN) break;
+    await sleep(250);
+  }
+  const walkMs = Date.now() - tW;
   await page.keyboard.up('d');
   await sleep(1500);
   const p1 = await page.evaluate(() => window.__getMyAbs());
-  const moved = Math.hypot((p1.x - p0.x), (p1.y - p0.y));
-  ok(moved > 60, '★⑤ 자명 통과 금지 — 실제로 걸었다(안 걸었으면 아래가 아무 뜻이 없다)', `${moved.toFixed(0)}px 이동`);
+  moved = Math.hypot((p1.x - p0.x), (p1.y - p0.y));
+  console.log(`    (걸음 — ${WALK_MIN}px 를 넘기까지 ${walkMs}ms · 뗀 뒤 최종 ${moved.toFixed(0)}px · 상한 ${(WALK_CAP / 1000) | 0}초 · 판정 아님)`);
+  ok(moved > WALK_MIN, '★⑤ 자명 통과 금지 — 실제로 걸었다(안 걸었으면 아래가 아무 뜻이 없다)',
+     `${moved.toFixed(0)}px 이동${walkMs >= WALK_CAP ? ` — ★상한 ${(WALK_CAP / 1000) | 0}초 동안 ${WALK_MIN}px 를 못 넘겼다` : ` (${walkMs}ms 만에)`}`);
 
   const B1 = await shotMap('04-after-walk');
   const dWalk = pxdiff(B0, B1);

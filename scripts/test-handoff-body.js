@@ -27,6 +27,7 @@
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
+const FB = require('./fixture-boot');   // ★T349 기동 기다리기 정본(사본 0)
 const WebSocket = require('ws');
 
 const ROOT = path.join(__dirname, '..');
@@ -50,7 +51,7 @@ function boot(file, env) {
 }
 function killAll() { for (const p of procs) { try { p.kill('SIGKILL'); } catch (e) {} } procs.length = 0; }
 process.on('exit', killAll);
-async function waitHttp(u, n = 300) { for (let i = 0; i < n; i++) { try { const r = await fetch(u); if (r.ok) return true; } catch (e) {} await sleep(1000); } return false; }
+async function waitHttp(u, n = 300) { for (let i = 0; i < n; i++) { try { const r = await fetch(u, { signal: AbortSignal.timeout(5000) }); if (r.ok) return true; } catch (e) {} await sleep(1000); } return false; }
 const jget = async (u) => (await (await fetch(u)).json());
 
 function open(url, onMsg) {
@@ -89,8 +90,14 @@ const softNear = (x, y, tol) => !!x && !!y && Math.abs(x.cold - y.cold) <= tol &
 async function startZones(extraH) {
   fs.mkdirSync(DDIR, { recursive: true });
   for (const f of fs.readdirSync(DDIR)) { try { fs.unlinkSync(path.join(DDIR, f)); } catch (e) {} }
-  boot('central.js', { PORT: String(CPORT), DB_PATH: `${DDIR}/central.db`, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando,nippon' });
-  if (!await waitHttp(`http://localhost:${CPORT}/zones`, 120)) return false;
+  const _central = boot('central.js', { PORT: String(CPORT), DB_PATH: `${DDIR}/central.db`, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando,nippon' });
+  // ★★[T349 2026-09-21] 기동 증인은 **아이의 입**이다(정본 `fixture-boot.waitUp` · T344).
+  //   포트 응답은 증인이 아니다 — 앞 판 central 이 포트를 쥔 채면 새 central 은 `EADDRINUSE` 로 즉시
+  //   죽는데 그 폴링은 **앞 판의 central** 에게 200 을 받아 "떴다"고 답한다(T344 가 두 번 재현).
+  //   ⚠듣기는 **띄운 그 틱에** 시작한다 — `await` 만 아래로 내린다(표식은 ~120ms 뒤에 찍힌다).
+  const _upP = FB.waitUp(_central, /central server up on/, { name: 'central' });
+  const _up = await _upP;
+  if (!_up.ok) { console.log(`  ★${_up.why}`); return false; }
   const common = { CENTRAL_URL: `http://localhost:${CPORT}`, ENABLE_VILLAGES: '0', ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0' };
   boot('zone.js', Object.assign({ PORT: String(HPORT), ZONE_ID: 'hanbando', DB_PATH: `${DDIR}/w-han.db`, E2E_GIVE: '1' }, common, extraH || {}));
   boot('zone.js', Object.assign({ PORT: String(NPORT), ZONE_ID: 'nippon', DB_PATH: `${DDIR}/w-nip.db`, E2E_GIVE: '1' }, common));

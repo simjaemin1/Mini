@@ -33,6 +33,7 @@
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
+const FB = require('./fixture-boot');   // ★T349 기동 기다리기 정본(사본 0)
 
 const ROOT = path.join(__dirname, '..');
 const CPORT = 3010, ZPORT = 3020;
@@ -59,7 +60,7 @@ function boot(file, env) {
 }
 function killAll() { for (const p of procs) { try { p.kill('SIGKILL'); } catch (e) {} } procs.length = 0; }
 process.on('exit', killAll);
-async function waitHttp(u, n = 300) { for (let i = 0; i < n; i++) { try { const r = await fetch(u); if (r.ok) return true; } catch (e) {} await sleep(1000); } return false; }
+async function waitHttp(u, n = 300) { for (let i = 0; i < n; i++) { try { const r = await fetch(u, { signal: AbortSignal.timeout(5000) }); if (r.ok) return true; } catch (e) {} await sleep(1000); } return false; }
 // ★★keep-alive 경합 때문에 러너 안에서 두 번 죽었다(`HeadersTimeoutError`).
 //   왜: 서버 루프가 A* 한 걸음(최대 2.6초) 동안 막히면 node 의 keep-alive 시계(기본 5초)가 늦게 울려
 //   **클라이언트가 막 쓴 소켓을 서버가 닫는다**. 그러면 그 요청은 답을 못 받고 undici 기본 300초를 기다린다.
@@ -105,8 +106,14 @@ const cp = (src, dst) => { for (const sfx of ['', '-wal', '-shm']) { try { fs.co
 // ★①~⑤ 는 **선계산을 끄고**(`VILLAGE_ROUTE_WARM=0`) 잰다. 안 끄면 무효화 직후 선계산이 곧바로
 //   다시 채워서 "비웠는가"를 못 잰다(첫 판이 그랬다: 81 → 1). 선계산 자체는 ⑥에서 켜고 잰다.
 async function up(warm, extra) {
-  boot('central.js', { PORT: String(CPORT), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });
-  if (!await waitHttp(`http://localhost:${CPORT}/zones`, 120)) return false;
+  const _central = boot('central.js', { PORT: String(CPORT), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });
+  // ★★[T349 2026-09-21] 기동 증인은 **아이의 입**이다(정본 `fixture-boot.waitUp` · T344).
+  //   포트 응답은 증인이 아니다 — 앞 판 central 이 포트를 쥔 채면 새 central 은 `EADDRINUSE` 로 즉시
+  //   죽는데 그 폴링은 **앞 판의 central** 에게 200 을 받아 "떴다"고 답한다(T344 가 두 번 재현).
+  //   ⚠듣기는 **띄운 그 틱에** 시작한다 — `await` 만 아래로 내린다(표식은 ~120ms 뒤에 찍힌다).
+  const _upP = FB.waitUp(_central, /central server up on/, { name: 'central' });
+  const _up = await _upP;
+  if (!_up.ok) { console.log(`  ★${_up.why}`); return false; }
   boot('zone.js', Object.assign({
     PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
     VILLAGE_DAY_MS: String(DAY_MS), ENABLE_BANDITS: '0', ENABLE_ROADS: '0', ENABLE_WILDLIFE: '0', E2E_GIVE: '1',

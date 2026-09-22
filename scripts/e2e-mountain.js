@@ -52,7 +52,7 @@ function boot(name, file, env) {
   procs.push(p); return p;
 }
 async function waitHttp(url, tries = 900) {
-  for (let i = 0; i < tries; i++) { try { const r = await fetch(url); if (r.ok) return true; } catch (e) { } await sleep(1000); }
+  for (let i = 0; i < tries; i++) { try { const r = await fetch(url, { signal: AbortSignal.timeout(5000) }); if (r.ok) return true; } catch (e) { } await sleep(1000); }
   return false;
 }
 fs.writeFileSync('/tmp/zone-wrap-mt.js', `const path=require('path');const ROOT=${JSON.stringify(ROOT)};

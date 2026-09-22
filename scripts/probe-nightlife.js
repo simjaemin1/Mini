@@ -41,7 +41,7 @@ function boot(name, file, env) {
   procs.push(p); return p;
 }
 async function waitHttp(url, tries = 900) {
-  for (let i = 0; i < tries; i++) { try { const r = await fetch(url); if (r.ok) return true; } catch (e) {} await sleep(1000); }
+  for (let i = 0; i < tries; i++) { try { const r = await fetch(url, { signal: AbortSignal.timeout(5000) }); if (r.ok) return true; } catch (e) {} await sleep(1000); }
   return false;
 }
 // 하루 길이까지 덮어쓰는 래퍼 — zone-config 의 WORLD 를 로드 직후 고친다

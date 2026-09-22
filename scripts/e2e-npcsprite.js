@@ -21,6 +21,7 @@
 'use strict';
 const path = require('path'), fs = require('fs');
 const { spawn } = require('child_process');
+const FB = require('./fixture-boot');   // ★T349 기동 기다리기 정본(사본 0)
 const ROOT = path.join(__dirname, '..');
 const CPORT = 3010, ZPORT = 3020;
 const HEADED = process.argv.includes('--headed');
@@ -44,7 +45,7 @@ function boot(tag, file, env) {
   procs.push(p); return p;
 }
 function killAll() { for (const p of procs) { try { p.kill('SIGKILL'); } catch (e) {} } procs.length = 0; }
-async function waitHttp(u, n = 600) { for (let i = 0; i < n; i++) { try { const r = await fetch(u); if (r.ok) return true; } catch (e) {} await sleep(1000); } return false; }
+async function waitHttp(u, n = 600) { for (let i = 0; i < n; i++) { try { const r = await fetch(u, { signal: AbortSignal.timeout(5000) }); if (r.ok) return true; } catch (e) {} await sleep(1000); } return false; }
 
 // 존을 감싸 mainSquare 를 갈아 끼운다(e2e-mtfoot 과 같은 문법 — 자산·서버 무접촉).
 const WRAP = '/tmp/zone-wrap-npcspr.js';
@@ -69,10 +70,17 @@ const ZENV = {
     for (const s of ['', '-journal', '-wal', '-shm']) { try { fs.unlinkSync(f + s); } catch (e) {} }
 
   // ── 1차 기동 — 심긴 마을과 그 주민 자리를 **서버에게 묻는다** ────────────────
-  boot('central', path.join(ROOT, 'server', 'central.js'),
+  const _central = boot('central', path.join(ROOT, 'server', 'central.js'),
        { PORT: String(CPORT), DB_PATH: '/tmp/npcspr-c.db', PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });
+  // ★★[T349 2026-09-21] 기동 증인은 **아이의 입**이다(정본 `fixture-boot.waitUp` · T344).
+  //   포트 응답(`waitHttp(/zones)`)은 증인이 아니었다 — 앞 판 central 이 포트를 쥔 채면 새 central 은
+  //   `EADDRINUSE` 로 즉시 죽는데 `waitHttp` 는 **앞 판의 central** 에게 200 을 받아 "떴다"고 답한다.
+  //   ⚠**듣기는 여기서 시작한다**(`await` 는 아래 `ok` 자리에서) — 아이가 표식을 찍는 것은 ~120ms 뒤라
+  //     그 사이 다른 `await` 를 지나면 줄을 놓친다. 띄운 **그 틱에** 귀를 붙인다.
+  const _upP = FB.waitUp(_central, /central server up on/, { name: 'central' });
   boot('zone0', path.join(ROOT, 'server', 'zone.js'), { ...ZENV, DB_PATH: '/tmp/npcspr-z.db' });
-  ok(await waitHttp(`http://localhost:${CPORT}/zones`), 'central 기동');
+  const _up = await _upP;
+  ok(_up.ok, 'central 기동', _up.ok ? `${_up.ms}ms · 아이가 제 입으로 말했다` : _up.why);
   ok(await waitHttp(`http://localhost:${ZPORT}/health`), 'zone 기동(1차 — 마을 묻기)');
 
   let vil = null;
@@ -100,11 +108,18 @@ const ZENV = {
   await sleep(3000);
 
   // ── 2차 기동 — 그 자리를 광장으로 삼는다 ────────────────────────────────────
-  boot('central', path.join(ROOT, 'server', 'central.js'),
+  const _central2 = boot('central', path.join(ROOT, 'server', 'central.js'),
        { PORT: String(CPORT), DB_PATH: '/tmp/npcspr-c2.db', PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });
+  // ★★[T349 2026-09-21] 기동 증인은 **아이의 입**이다(정본 `fixture-boot.waitUp` · T344).
+  //   포트 응답(`waitHttp(/zones)`)은 증인이 아니었다 — 앞 판 central 이 포트를 쥔 채면 새 central 은
+  //   `EADDRINUSE` 로 즉시 죽는데 `waitHttp` 는 **앞 판의 central** 에게 200 을 받아 "떴다"고 답한다.
+  //   ⚠**듣기는 여기서 시작한다**(`await` 는 아래 `ok` 자리에서) — 아이가 표식을 찍는 것은 ~120ms 뒤라
+  //     그 사이 다른 `await` 를 지나면 줄을 놓친다. 띄운 **그 틱에** 귀를 붙인다.
+  const _upP2 = FB.waitUp(_central2, /central server up on/, { name: 'central' });
   boot('zone', WRAP, { ...ZENV, DB_PATH: '/tmp/npcspr-z2.db',
     WRAP_ZONE_PATCH: JSON.stringify({ mainSquare: { x: vil.x, y: vil.y, name: vil.name } }) });
-  ok(await waitHttp(`http://localhost:${CPORT}/zones`), 'central 기동(2차)');
+  const _up2 = await _upP2;
+  ok(_up2.ok, 'central 기동(2차)', _up2.ok ? `${_up2.ms}ms · 아이가 제 입으로 말했다` : _up2.why);
   ok(await waitHttp(`http://localhost:${ZPORT}/health`), 'zone 기동(2차 — 마을 광장 스폰)');
   await sleep(6000);
 

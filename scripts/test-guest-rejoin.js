@@ -28,6 +28,7 @@
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
+const FB = require('./fixture-boot');   // ★T349 기동 기다리기 정본(사본 0)
 const WS = require(path.join(__dirname, '..', 'node_modules', 'ws'));
 
 const net = require('net');
@@ -94,7 +95,7 @@ async function waitUp(p, url, tries = 300) {
       if (tail) console.log(`      stderr: ${tail.slice(0, 300)}`);
       return false;
     }
-    try { const r = await fetch(url); if (r.ok) return true; } catch (e) {}
+    try { const r = await fetch(url, { signal: AbortSignal.timeout(5000) }); if (r.ok) return true; } catch (e) {}
     await sleep(1000);
   }
   console.log(`  ✗ ${p._name} 가 ${tries}초 안에 안 떴다 — ${url}`);
@@ -153,6 +154,13 @@ async function waitWelcome(s, ms = 15000) {
   [CPORT, ZPORT] = await pickPorts();
   console.log(`  [격리] central :${CPORT} · zone :${ZPORT} (부팅 직전에 빈 것으로 고름) · DB ${CDB}`);
   const cp = boot('central', 'central.js', { PORT: String(CPORT), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });
+  // ★★[T349 2026-09-21] **여기는 맹목 잠이 아니었다 — 지역 사본이었다**(T344 의 린트 표가 잘못 묶었다).
+  //   이 파일들엔 `waitUp(child, url)` 이라는 **같은 이름의 다른 함수**가 있었다. 아이의 죽음(`_died`)을
+  //   보는 점은 정본과 같지만 **성공 판정은 여전히 포트 응답**이라 경주가 남는다:
+  //   한 바퀴 안에서 `_died` 는 아직 안 찍혔는데(exit 이벤트가 다음 틱) `fetch` 가 **앞 판 central** 에게
+  //   200 을 받으면 "떴다"가 된다. ⇒ 정본 하나로 모은다(사본 0 · 증인은 아이가 제 입으로 찍는 줄).
+  //   ⚠듣기는 **띄운 그 틱에** 시작한다 — `await` 만 아래로 내린다.
+  const _upP = FB.waitUp(cp, /central server up on/, { name: 'central' });
   const zp = boot('zone', 'zone.js', {
     PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB,
     // ★★zone 은 `CENTRAL_URL` 을 **안 읽는다**(zone-config.js:423~424 는 CENTRAL_HOST/CENTRAL_PORT 다).
@@ -161,8 +169,9 @@ async function waitWelcome(s, ms = 15000) {
     CENTRAL_HOST: 'localhost', CENTRAL_PORT: String(CPORT), CENTRAL_URL: `http://localhost:${CPORT}`,
     ENABLE_VILLAGES: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', E2E_GIVE: '1',
   });
-  const cUp = await waitUp(cp, `http://localhost:${CPORT}/zones`);
-  ok(cUp, 'central 기동');
+  const _up = await _upP;
+  const cUp = _up.ok;
+  ok(cUp, 'central 기동', cUp ? `${_up.ms}ms · 아이가 제 입으로 말했다` : _up.why);
   const zUp = await waitUp(zp, `http://localhost:${ZPORT}/health`);
   ok(zUp, 'zone 기동');
   // ★기동에 실패하면 **여기서 끝낸다.** 종전엔 그대로 진행해 뒤 검사가 전부 엉뚱한 이유로 떨어졌고,

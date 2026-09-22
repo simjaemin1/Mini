@@ -54,6 +54,12 @@ function waitUp(child, re, opts) {
     };
     const timer = setTimeout(() => fin(false,
       `★${name} 이 ${(capMs / 1000) | 0}초 동안 기동 표식을 안 찍었다(상한은 표에만 · 아래가 조용히 빨개지지 않게 이름을 붙인다)`), capMs);
+    // ★[T349] **입이 막혀 있으면 상한까지 기다리지 않는다.** `spawn` 의 stdio 가 'ignore' 면
+    //   아이가 표식을 찍어도 이쪽엔 안 온다 — 그건 "안 떴다"가 아니라 **못 듣는 것**이고,
+    //   구분해서 말해야 부르는 쪽이 고칠 자리를 안다(120초를 조용히 버리는 대신).
+    if (!child.stdout && !child.stderr) {
+      return fin(false, `★${name} 의 입이 막혀 있다 — spawn 의 stdio 를 ['ignore','pipe','pipe'] 로 열어야 이 자가 듣는다`);
+    }
     if (child.stdout) child.stdout.on('data', onData);
     if (child.stderr) child.stderr.on('data', onData);
     child.on('exit', onExit);

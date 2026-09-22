@@ -22,6 +22,7 @@
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
+const FB = require('./fixture-boot');   // ★T349 기동 기다리기 정본(사본 0)
 
 const ROOT = path.join(__dirname, '..');
 const LR = require(path.join(ROOT, 'scripts', 'lib-routes'));
@@ -34,16 +35,20 @@ const ok = (c, m) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ '
 const say = console.log;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const procs = [];
-function boot(file, env) {
+function boot(file, env, io) {
+  // ★[T349 2026-09-21] **아이의 입을 연다.** 기동 증인이 포트가 아니라 아이가 제 `listen` 콜백에서
+  //   찍는 줄이라(정본 `fixture-boot.waitUp`), stdio 가 'ignore' 면 그 줄이 이쪽에 안 온다 —
+  //   이 카드가 그걸 실제로 물었다(`✗ ⓪ central 기동` 인데 나머지 62문은 전부 통과 = 세계는 떠 있었다).
+  //   기본은 그대로 두고 **부르는 쪽이 필요할 때만** 연다(출력은 아무도 안 읽으니 무해하다).
   const p = spawn(process.execPath, [path.join(ROOT, 'server', file)], {
-    cwd: ROOT, env: Object.assign({}, process.env, env), stdio: ['ignore', 'ignore', 'ignore'],
+    cwd: ROOT, env: Object.assign({}, process.env, env), stdio: io || ['ignore', 'ignore', 'ignore'],
   });
   procs.push(p); return p;
 }
 function shutdown() { for (const p of procs) { try { p.kill('SIGKILL'); } catch (e) {} } procs.length = 0; }
 process.on('exit', shutdown);
 async function waitHttp(url, tries = 120) {
-  for (let i = 0; i < tries; i++) { try { const r = await fetch(url); if (r.ok) return true; } catch (e) {} await sleep(400); }
+  for (let i = 0; i < tries; i++) { try { const r = await fetch(url, { signal: AbortSignal.timeout(5000) }); if (r.ok) return true; } catch (e) {} await sleep(400); }
   return false;
 }
 //   ★★**문을 숨기는 404 와 그냥 없는 404 는 다르다.** `internal-door.denyOutside` 는 몸을 정확히
@@ -62,12 +67,19 @@ const call = async (port, meth, p, hdr, body) => {
 (async () => {
   say('\n=== 문 62 전수 — 서버를 띄워 바깥에서 두드린다 (T290) ===');
   const SECRET = 't290-doors-' + Math.random().toString(36).slice(2);
-  boot('central.js', { PORT: String(CPORT), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando', CENTRAL_SECRET: SECRET });
+  const _central = boot('central.js', { PORT: String(CPORT), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando', CENTRAL_SECRET: SECRET }, ['ignore', 'pipe', 'pipe']);
+  // ★★[T349 2026-09-21] 기동 증인은 **아이의 입**이다(정본 `fixture-boot.waitUp` · T344).
+  //   포트 응답(`waitHttp(/zones)`)은 증인이 아니었다 — 앞 판 central 이 포트를 쥔 채면 새 central 은
+  //   `EADDRINUSE` 로 즉시 죽는데 `waitHttp` 는 **앞 판의 central** 에게 200 을 받아 "떴다"고 답한다.
+  //   ⚠**듣기는 여기서 시작한다**(`await` 는 아래 `ok` 자리에서) — 아이가 표식을 찍는 것은 ~120ms 뒤라
+  //     그 사이 다른 `await` 를 지나면 줄을 놓친다. 띄운 **그 틱에** 귀를 붙인다.
+  const _upP = FB.waitUp(_central, /central server up on/, { name: 'central' });
   boot('zone.js', {
     PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_HOST: 'localhost', CENTRAL_PORT: String(CPORT),
     CENTRAL_SECRET: SECRET, ENABLE_VILLAGES: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', E2E_GIVE: '1',
   });
-  ok(await waitHttp(`http://localhost:${CPORT}/zones`), '⓪ central 기동');
+  const _up = await _upP;
+  ok(_up.ok, '⓪ central 기동', _up.ok ? `${_up.ms}ms · 아이가 제 입으로 말했다` : _up.why);
   ok(await waitHttp(`http://localhost:${ZPORT}/health`), '⓪ zone 기동');
   const OUT = {}, IN = { 'x-zone-secret': SECRET };
 

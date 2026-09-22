@@ -22,7 +22,7 @@ const RAD = +(process.env.RAD || 8), BITE = +(process.env.BITE || 10), ROUNDS = 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const procs = [];
 function boot(f, env) { const p = spawn('node', [f], { env: { ...process.env, ...env }, stdio: ['ignore', 'pipe', 'pipe'], cwd: ROOT }); procs.push(p); return p; }
-async function waitHttp(u, n = 600) { for (let i = 0; i < n; i++) { try { const r = await fetch(u); if (r.ok) return true; } catch (e) { } await sleep(1000); } return false; }
+async function waitHttp(u, n = 600) { for (let i = 0; i < n; i++) { try { const r = await fetch(u, { signal: AbortSignal.timeout(5000) }); if (r.ok) return true; } catch (e) { } await sleep(1000); } return false; }
 fs.writeFileSync('/tmp/zw-qry.js', `const path=require('path');const ROOT=${JSON.stringify(ROOT)};
 const cfg=require(path.join(ROOT,'server','zone-config'));const ZID='hanbando';
 cfg.WORLD.dayLengthMs=86400000; cfg.WORLD.worldEpoch=Date.now()-21600000;

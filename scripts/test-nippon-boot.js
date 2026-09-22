@@ -33,6 +33,7 @@ const path = require('path');
 const fs = require('fs');
 const net = require('net');
 const { spawn } = require('child_process');
+const FB = require('./fixture-boot');   // ★T349 기동 기다리기 정본(사본 0)
 
 const ROOT = path.join(__dirname, '..');
 const ZID = 'nippon';
@@ -84,7 +85,7 @@ async function waitUp(p, url, tries = 300) {
       if (tail) console.log(`      stderr: ${tail.slice(0, 300)}`);
       return false;
     }
-    try { const r = await fetch(url); if (r.ok) return true; } catch (e) {}
+    try { const r = await fetch(url, { signal: AbortSignal.timeout(5000) }); if (r.ok) return true; } catch (e) {}
     await sleep(1000);
   }
   return false;
@@ -154,7 +155,16 @@ async function waitUp(p, url, tries = 300) {
   for (const f of [CDB, ZDB, CDB + '-wal', ZDB + '-wal', CDB + '-shm', ZDB + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
 
   const cp = boot('central', 'central.js', { PORT: String(CPORT), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: ZID });
-  ok(await waitUp(cp, `http://localhost:${CPORT}/zones`), 'ⓔ0 central 기동');
+  // ★★[T349 2026-09-21] **여기는 맹목 잠이 아니었다 — 지역 사본이었다**(T344 의 린트 표가 잘못 묶었다).
+  //   이 파일들엔 `waitUp(child, url)` 이라는 **같은 이름의 다른 함수**가 있었다. 아이의 죽음(`_died`)을
+  //   보는 점은 정본과 같지만 **성공 판정은 여전히 포트 응답**이라 경주가 남는다:
+  //   한 바퀴 안에서 `_died` 는 아직 안 찍혔는데(exit 이벤트가 다음 틱) `fetch` 가 **앞 판 central** 에게
+  //   200 을 받으면 "떴다"가 된다. ⇒ 정본 하나로 모은다(사본 0 · 증인은 아이가 제 입으로 찍는 줄).
+  //   ⚠듣기는 **띄운 그 틱에** 시작한다 — `await` 만 아래로 내린다.
+  const _upP = FB.waitUp(cp, /central server up on/, { name: 'central' });
+  const _up = await _upP;
+  const cUp = _up.ok;
+  ok(cUp, 'ⓔ0 central 기동', cUp ? `${_up.ms}ms · 아이가 제 입으로 말했다` : _up.why);
   const zp = boot('zone', 'zone.js', {
     PORT: String(ZPORT), ZONE_ID: ZID, DB_PATH: ZDB,
     CENTRAL_URL: `http://localhost:${CPORT}`,

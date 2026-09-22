@@ -63,7 +63,7 @@ function boot(name, file, env) {
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function waitHttp(url, tries = 400) {
-  for (let i = 0; i < tries; i++) { try { const r = await fetch(url); if (r.ok) return true; } catch (e) {} await sleep(1000); }
+  for (let i = 0; i < tries; i++) { try { const r = await fetch(url, { signal: AbortSignal.timeout(5000) }); if (r.ok) return true; } catch (e) {} await sleep(1000); }
   return false;
 }
 function writeWrap() {
