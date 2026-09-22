@@ -3400,6 +3400,7 @@ const server = http.createServer((req, res) => {
       // ★[T324] 걷는 몸 관측 — 두 팔이 같은 창으로 보인다(손잡이 뒤가 아니다 · `?reset=1` 이 영점 조정).
       walk: walkPerf(_rst),
       wood: (() => { try { return SimVillages.woodPerf ? SimVillages.woodPerf() : null; } catch (e) { return null; } })(),   // ★[T325] 나무꾼 관측(끔이면 null)
+      forage: (() => { try { return SimVillages.foragePerf ? SimVillages.foragePerf() : null; } catch (e) { return null; } })(),   // ★[T347] 채집 관측(끔이면 null)
       tick: Object.assign({}, _tick, { ms: _tickMsStats(_rst), on: TICK_DEBT_ON, dtMax: DT_MAX, debtMax: TICK_DEBT_MAX,
         lagPct: _tick.wall > 0 ? +(100 * (_tick.wall - _tick.sim) / _tick.wall).toFixed(3) : null }) }));
     return;

@@ -48,7 +48,8 @@ const IMSU = require(path.join(__dirname, 'imsu-core')).create({ ZID, ZONES, ter
 
 const CELL = F.CFG.CELL_PX;                 // 32
 const MOVE_SPEED = 64;                      // px/s — zone.js 정본과 같은 수(빈손이라 배수 1.0)
-const WALK_SEC = parseFloat(process.env.AUDIT_WALK_SEC || '15');
+//   ★[T347] 15 는 이제 `server/forage.js CFG.WALK_SEC` 정본이다(행위 층도 그 수를 본다 · 사본 0).
+const WALK_SEC = parseFloat(process.env.AUDIT_WALK_SEC || String(F.CFG.WALK_SEC));
 const R = Math.round(MOVE_SPEED * WALK_SEC);            // 960px
 const NEED_EACH = parseInt(process.env.AUDIT_NEED_EACH || '2', 10);
 const KINDS = ['twig', 'pebble', 'fiber'];
