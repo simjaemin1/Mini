@@ -27,6 +27,14 @@ const CFG = {
   COOLDOWN_MS: Math.max(0, Math.round(_num('FORAGE_COOLDOWN_MS', 900))),  // 한 번 훑는 데 드는 시간
   BUSH_PX: _num('FORAGE_BUSH_PX', 56),                          // 덤불로 손이 닿는 거리
   CELL_PX: 32,
+  // ★★[T347 2026-09-22] **"도보 15초" 를 여기로 옮겼다** — 이 수는 마을 채집 감사의 기준이고
+  //   군락을 심는 자리를 정한 수다(`scripts/audit-village-forage.js` R = MOVE_SPEED × 15 = 960px = 30셀 ·
+  //   `scripts/plan-village-forage.js` 가 링 700~840 + 군락 반경 110 = 950 < 960 으로 **그 안에** 심는다).
+  //   여태 그 15 는 **감사 스크립트 안에만** 있었다. 이제 행위 층(`villages.js _t347Scan`)도 같은 수를
+  //   봐야 하므로 정본을 하나로 둔다 — 두 벌이면 "감사는 통과인데 채집꾼은 못 간다"가 된다(실측으로 겪었다:
+  //   나무 반경 16셀로 스캔했더니 **51마을 전부 군락 0**이었다 · 최근접 군락 중앙 858px = 26.8셀).
+  //   ⚠새 수가 아니다 — 옮긴 것이다. 거리는 `MOVE_SPEED × WALK_SEC` 로 **부르는 쪽이** 유도한다.
+  WALK_SEC: _num('FORAGE_WALK_SEC', 15),
 };
 const KO = { twig: '잔가지', pebble: '자갈', fiber: '풀', brine: '짠물' };
 // ⚠갯벌 산출(굴·해조·전복)의 이름표는 여기 안 적는다 — `tidal.js` 가 정본이고 zone 의 표에 **주입**한다.

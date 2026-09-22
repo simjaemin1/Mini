@@ -5005,7 +5005,24 @@ function _t347Deliver(vil, npc) {
   if (got > 0) vil._t347Deliv = +((vil._t347Deliv || 0) + got).toFixed(6);
   return got;
 }
-// ★★[T347] 군락 스캔 — 나무(`_t325Scan`)와 **같은 규칙**이다(반경도 그 반경 `T325_R` 하나 · 새 수 0):
+// ★★[T347] 군락 반경은 **나무의 그 반경이 아니다** — 실측이 그것을 가르쳤다.
+//   `T325_R`(16셀 = 512px)로 스캔했더니 **51마을 전부 군락 0**이었다: 군락은 `plan-village-forage.js` 가
+//   **마을 어귀 바깥 링**(700~840px)에 심고, 마을 중심에서 최근접 군락이 **중앙 858px = 26.8셀**이다.
+//   ★그 자리를 정한 수가 곧 반경이다: 채집 감사의 **"도보 15초"**(`forage.js CFG.WALK_SEC`) —
+//     `걸음 속도 × 15초 ÷ 셀` = 64 × 15 ÷ 32 = **30셀**(960px). 링 840 + 군락 반경 110 = 950 < 960 이라
+//     심은 군락이 통째로 이 안에 든다(그게 `plan-village-forage.js` 가 링을 그렇게 고른 이유다).
+//   ⚠**새 수 0** — 걸음 속도는 존 정본(`state.deps.moveSpeed`), 15초는 채집 정본(`forage.js`),
+//     셀은 `forage.js CFG.CELL_PX`. 여기서 30 도 960 도 **안 적는다**(유도한다).
+let _fgMod = null;
+function _forageCfg() { if (_fgMod === null) { try { _fgMod = require('./forage'); } catch (e) { _fgMod = false; } } return _fgMod || null; }
+function _t347R() {
+  const F = _forageCfg(); if (!F || !F.CFG) return 0;
+  const sp = (state.deps && state.deps.moveSpeed) || 0;
+  const cell = F.CFG.CELL_PX || 0, sec = F.CFG.WALK_SEC || 0;
+  if (!(sp > 0) || !(cell > 0) || !(sec > 0)) return 0;
+  return Math.ceil(sp * sec / cell);
+}
+// ★★[T347] 군락 스캔 — 나무(`_t325Scan`)와 **같은 규칙**이다(반경만 채집 정본에서 유도 · 새 수 0):
 //   `N` 지금 서 있는 개체 · `K` 교란 전 개체(같은 색인에 벤 장부를 **안 넘기고** 물은 수 · 한 번만) ·
 //   `w̄` 개체 하나가 내는 평균 econ 단위(걷는 목록 기준).
 // ★[T347] 한 짐에 드는 군락 개체 수 — `carry.js CAP_KG` ÷ (개체 하나의 kg). 개체 하나의 kg 은
@@ -5033,10 +5050,11 @@ function _t347Scan(vil, day) {
   const cells = [];
   let N = 0;
   const _needK = (vil._t347K == null) && _lifeEcon().T347_FORAGE_ACT && state.deps.t347GrovesAtCell;
-  if (_lifeEcon().T347_FORAGE_ACT && state.deps.t347GrovesAtCell) {
+  const R = _t347R();
+  if (_lifeEcon().T347_FORAGE_ACT && state.deps.t347GrovesAtCell && R > 0) {
     let K = 0, wSum = 0, wN = 0;
-    for (let dy = -T325_R; dy <= T325_R; dy++) {
-      for (let dx = -T325_R; dx <= T325_R; dx++) {
+    for (let dy = -R; dy <= R; dy++) {
+      for (let dx = -R; dx <= R; dx++) {
         const tx = vil.ccx + dx, ty = vil.ccy + dy;
         if (tx < 0 || ty < 0) continue;
         if (_needK) {
@@ -5058,7 +5076,7 @@ function foragePerf() {
   if (!_lifeEcon().T347_FORAGE_ACT) return null;
   const pl = state.deps.players;
   let walkers = 0, hands = 0, handU = 0, cells = 0, deliv = 0, formula = 0, formulaAll = 0, act = 0, noGrove = 0;
-  let groves = 0, popAll = 0, backAll = 0, kAll = 0, capAll = 0, pickDay = 0;
+  let groves = 0, popAll = 0, backAll = 0, kAll = 0, capAll = 0, pickDay = 0, formulaAct = 0;
   const rows = [];
   const keep = _t347ActItems() || [];
   for (const vil of state.villages || []) {
@@ -5072,7 +5090,10 @@ function foragePerf() {
     const _S = vil._t347Groves || {};
     for (const c of (_S.list || [])) groves += (c.n | 0);
     const d = (vil._t347Deliv || 0);
-    deliv += d; formula += f;
+    //   ★★[T347 등가의 분모] 수식 합 전체가 아니라 **걷은 몫**과 견준다 — 행위 층이 대신하는 것은
+    //     믹스 전체가 아니라 실체가 대는 품목뿐이기 때문이다(결정 A). 그 몫은 econ 이 적어 둔다
+    //     (`_t347MixShare` = 걷는 품목 가중치 ÷ 믹스 가중치 합 · 계측 전용 · 이 파일에 표 0).
+    deliv += d; formula += f; formulaAct += f * (e._t347MixShare || 0);
     let vu = 0, vh = 0;
     for (const pid of (vil.npcPids || [])) {
       const p = pl && pl.get(pid); if (!p) continue;
@@ -5091,7 +5112,9 @@ function foragePerf() {
   return { villages: (state.villages || []).length, actVillages: act, noGroveVillages: noGrove,
            cells, groves, popAll, K: kAll, back: backAll, cap: capAll, pickDay, items: keep.slice(),
            walkers, hands, handU: +handU.toFixed(4),
-           delivered: +deliv.toFixed(4), formulaPerDay: +formula.toFixed(4), formulaAll: +formulaAll.toFixed(4), rows };
+           delivered: +deliv.toFixed(4), formulaPerDay: +formula.toFixed(4),
+           formulaActPerDay: +formulaAct.toFixed(4),   // ★[T347 등가의 분모] 믹스 전체가 아니라 **걷은 몫**
+           formulaAll: +formulaAll.toFixed(4), rows };
 }
 function _lifeJobSites(vil, day) {   // 마을 생활권의 직업별 현장 후보 — 자원 밀집 버킷(벌목·채광·채집), 물가(어부), 초식 사냥감(사냥꾼)
   if (vil._jobSites && vil._jobSites.day === day) return vil._jobSites;
