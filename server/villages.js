@@ -4945,6 +4945,154 @@ function _t341TreesPerLoad(unitsPerTree) {
   const n = Math.floor(cap / kg);
   return n > 0 ? n : 1;                                              // 한 그루는 지고 온다(짐 상한을 넘어도)
 }
+// ══ ★★[T347 2026-09-22] 채집 행위 — 군락은 개체다 ═════════════════════════════
+//
+// ★왜 이 자리인가: 나무꾼(T325·T341)이 세운 문법을 **그대로** 쓴다 — 색인으로 개체를 묻고(`resourceAt`),
+//   걸어가 따고(걸음이 하루 횟수를 정한다), 손에 들고(`inventory`), 귀환하면 곳간에(`actToGranary`),
+//   딴 만큼 세계가 줄고 T146 로지스틱으로 돌아온다. **새 규약 0.**
+//
+// ★어려운 것 하나 — **품목이 여럿이고, 실체와 수식이 서로 다른 품목을 말한다.**
+//   `lootOfResource`: 덤불 → `berry 2 · fiber 1 · twig 1` + 야생 씨앗 · 풀 → `herb 2`.
+//   `foragerYieldsFor`: `fruit·vegetable·mushroom·twig·pebble·chestnut·walnut·honey·herb·grape`(+`stone` 가산).
+//   ⇒ **걷는 것은 실체가 실제로 대는 품목뿐**(재민 09-22 결정 A · T135 규약 그대로).
+//     그 목록을 여기서 **세어서** econ 에 넘긴다(`world.forageActItems`) — econ 은 표를 안 갖는다(사본 0).
+//   ⚠대응은 **항등뿐**이다: 덤불의 `berry` 가 econ `fruit` 의 동의어라는 판단(`PV_DEPOSIT_MAP` 첫 줄이
+//     이미 그렇게 적어 뒀다)은 **PM 칸**이라 여기서 안 쓴다 — 보고 §표가 그 수만 적는다.
+//   ⚠`fiber` 는 econ 재화가 아예 아니다(`specialty` 224종에 없다 · 플레이어 제작재다) — 걷을 것이 없다.
+let _t347Items = null;   // 걷는 목록(econ 재화 id) — 한 번만 센다(종·표 둘 다 시간에 안 매인다)
+function _t347ActItems() {
+  if (_t347Items) return _t347Items;
+  const E = _lifeEcon();
+  if (!E || typeof E.foragerYieldsFor !== 'function' || !state.deps || !state.deps.t347LootOf) return null;
+  //   ⓐ 채집 믹스의 품목 이름 — econ 정본이 답한다(여기 표 0 · 땅값은 아무 값이나 넣어도 **키**는 같다).
+  let mix = null;
+  try { mix = E.foragerYieldsFor({ land: { fertility: 1, wood: 1, stone: 1 } }); } catch (e) { mix = null; }
+  if (!mix) return null;
+  //   ⓑ 군락 개체가 내는 품목 — 전리품 표가 답한다(종은 `JOB_RES.forager` 그 둘).
+  const ent = new Set();
+  for (const t of JOB_RES.forager) {
+    let l = null; try { l = state.deps.t347LootOf({ type: t, x: 0, y: 0 }); } catch (e) { l = null; }
+    if (l) for (const k in l) if (l[k] > 0) ent.add(k);
+  }
+  //   ⓒ 교집합 — 실체가 대고 수식도 내는 품목. 그것만 걷는다.
+  const out = [];
+  for (const k of Object.keys(mix)) if (ent.has(k)) out.push(k);
+  return (_t347Items = out);
+}
+// ★[T347] 그 개체가 내는 **걷는 목록의 econ 단위** — 표는 존이 쥔다(`lootOfResource`). 여긴 읽기만 한다.
+//   ⚠묻는 것과 따는 것을 나눈 이유는 나무와 같다: 하루 한도가 그 개체를 못 대면 **안 따야** 한다.
+function _lifeLootForage(r) {
+  if (!r) return 0;
+  let l = null; try { l = state.deps.t347LootOf ? state.deps.t347LootOf(r) : null; } catch (e) { l = null; }
+  if (!l) return 0;
+  const keep = _t347ActItems(); if (!keep || !keep.length) return 0;
+  let u = 0; for (const k of keep) { const a = l[k]; if (a > 0) u += a; }
+  return u;
+}
+// ★★[T347] **귀환하면 곳간에.** 회계는 econ 정본 한 함수(`forageToGranary` → `actToGranary`)가 한다.
+//   ⚠걷는 목록의 품목만 넣는다 — `fiber`·씨앗은 econ 재화가 아니라 **손에 남는다**(종전과 같다 · 보고 §회부).
+//   ⚠넣은 품목은 그때 손에서 비운다(이중 0 — 손과 곳간에 같이 있을 수 없다).
+function _t347Deliver(vil, npc) {
+  if (!npc || !npc.inventory) return 0;
+  const keep = _t347ActItems(); if (!keep || !keep.length) return 0;
+  let got = 0;
+  for (const k of keep) {
+    const u = npc.inventory[k] || 0;
+    if (!(u > 0)) continue;
+    got += _lifeEcon().forageToGranary(vil.econ, k, u) || 0;
+    npc.inventory[k] = 0;
+  }
+  if (got > 0) vil._t347Deliv = +((vil._t347Deliv || 0) + got).toFixed(6);
+  return got;
+}
+// ★★[T347] 군락 스캔 — 나무(`_t325Scan`)와 **같은 규칙**이다(반경도 그 반경 `T325_R` 하나 · 새 수 0):
+//   `N` 지금 서 있는 개체 · `K` 교란 전 개체(같은 색인에 벤 장부를 **안 넘기고** 물은 수 · 한 번만) ·
+//   `w̄` 개체 하나가 내는 평균 econ 단위(걷는 목록 기준).
+// ★[T347] 한 짐에 드는 군락 개체 수 — `carry.js CAP_KG` ÷ (개체 하나의 kg). 개체 하나의 kg 은
+//   걷는 목록의 품목 무게를 `weights.js` 에서 읽어 더한 것이다(표 0 · `kgOfOrDefault` — 빈칸은 그물).
+//   ⚠최소 1: 무거운 개체 하나는 짐 상한을 넘어도 **지고 온다**(0 개가 되지 않는다 · 나무와 같은 규약).
+//   ⚠무게 정본을 여는 문은 **이미 있다**(위 `_weights()` — 짐 계산이 쓰는 그것) · 두 벌 안 만든다.
+function _t347KgPerEntity(unitsPerEntity) {
+  const W = _weights(); const keep = _t347ActItems();
+  if (!W || !keep || !keep.length) return 0;
+  let kg = 0, n = 0;
+  for (const k of keep) { const x = W.kgOfOrDefault ? W.kgOfOrDefault(k) : 0; if (x > 0) { kg += x; n++; } }
+  const mean = n > 0 ? kg / n : 0;                       // 걷는 품목 평균 kg — 개체가 내는 낱개에 곱한다
+  return mean * ((unitsPerEntity > 0) ? unitsPerEntity : 0);
+}
+function _t347PerLoad(unitsPerEntity) {
+  const cc = _carryCfg();
+  const cap = (cc && cc.CFG && cc.CFG.CAP_KG) || 0;
+  const kg = _t347KgPerEntity(unitsPerEntity);
+  if (!(cap > 0) || !(kg > 0)) return 1;
+  const n = Math.floor(cap / kg);
+  return n > 0 ? n : 1;
+}
+function _t347Scan(vil, day) {
+  if (vil._t347Groves && vil._t347Groves.day === day) return vil._t347Groves.list;
+  const cells = [];
+  let N = 0;
+  const _needK = (vil._t347K == null) && _lifeEcon().T347_FORAGE_ACT && state.deps.t347GrovesAtCell;
+  if (_lifeEcon().T347_FORAGE_ACT && state.deps.t347GrovesAtCell) {
+    let K = 0, wSum = 0, wN = 0;
+    for (let dy = -T325_R; dy <= T325_R; dy++) {
+      for (let dx = -T325_R; dx <= T325_R; dx++) {
+        const tx = vil.ccx + dx, ty = vil.ccy + dy;
+        if (tx < 0 || ty < 0) continue;
+        if (_needK) {
+          let b = null; try { b = state.deps.t347GrovesAtCell(tx, ty, true); } catch (e) { b = null; }
+          if (b && b.length) { K += b.length; for (const r of b) { const w = _lifeLootForage(r); if (w > 0) { wSum += w; wN++; } } }
+        }
+        let a = null; try { a = state.deps.t347GrovesAtCell(tx, ty); } catch (e) { a = null; }
+        if (a && a.length) { N += a.length; cells.push({ cx: tx, cy: ty, x: tx * SZ + SZ / 2, y: ty * SZ + SZ / 2, n: a.length }); }
+      }
+    }
+    if (_needK) { vil._t347K = K; vil._t347WBar = wN > 0 ? wSum / wN : 0; }
+  }
+  vil._t347Groves = { day, list: cells, N, K: vil._t347K || 0, wBar: vil._t347WBar || 0 };
+  if (vil.econ) vil.econ._t347Cells = cells.length;   // ★게이트의 입력("갈 자리가 있나")
+  return cells;
+}
+// ★[T347] `/perf` 가 내주는 채집 관측 — 나무(`woodPerf`)와 같은 꼴(손잡이 끔이면 null · 계측 전용).
+function foragePerf() {
+  if (!_lifeEcon().T347_FORAGE_ACT) return null;
+  const pl = state.deps.players;
+  let walkers = 0, hands = 0, handU = 0, cells = 0, deliv = 0, formula = 0, formulaAll = 0, act = 0, noGrove = 0;
+  let groves = 0, popAll = 0, backAll = 0, kAll = 0, capAll = 0, pickDay = 0;
+  const rows = [];
+  const keep = _t347ActItems() || [];
+  for (const vil of state.villages || []) {
+    const e = vil.econ; if (!e) continue;
+    const f = (typeof e._forageOutLast === 'number' ? e._forageOutLast : 0);
+    formulaAll += f;
+    popAll += (e.npcs || []).length;
+    if (!_lifeEcon().forageActOn(e)) { if ((e._t347Cells | 0) === 0) noGrove++; continue; }
+    act++;
+    cells += (e._t347Cells | 0);
+    const _S = vil._t347Groves || {};
+    for (const c of (_S.list || [])) groves += (c.n | 0);
+    const d = (vil._t347Deliv || 0);
+    deliv += d; formula += f;
+    let vu = 0, vh = 0;
+    for (const pid of (vil.npcPids || [])) {
+      const p = pl && pl.get(pid); if (!p) continue;
+      let u = 0; for (const k of keep) u += (p.inventory && p.inventory[k]) || 0;
+      if (u > 0) { hands++; vh++; handU += u; vu += u; }
+      if (p._lifeAct === '채집') walkers++;
+    }
+    backAll += (vil._t347Back || 0); kAll += ((_S.K) | 0);
+    capAll += ((vil._t347Dbg && vil._t347Dbg.cap) | 0); pickDay += ((vil._t347Dbg && vil._t347Dbg.pick) | 0);
+    rows.push({ n: vil.name, cells: (e._t347Cells | 0), N: _S.N | 0, K: _S.K | 0, wBar: +(_S.wBar || 0).toFixed(3),
+                r: vil._t347R || 0, back: vil._t347Back || 0, pend: +(vil._t347Grow || 0).toFixed(4),
+                f: +f.toFixed(4), d: +d.toFixed(4), hU: +vu.toFixed(4), hN: vh,
+                fg: (e.counts && e.counts.forager) || 0, mix: e._t347MixShare || 0,
+                pop: (e.npcs || []).length, dbg: vil._t347Dbg || null });
+  }
+  return { villages: (state.villages || []).length, actVillages: act, noGroveVillages: noGrove,
+           cells, groves, popAll, K: kAll, back: backAll, cap: capAll, pickDay, items: keep.slice(),
+           walkers, hands, handU: +handU.toFixed(4),
+           delivered: +deliv.toFixed(4), formulaPerDay: +formula.toFixed(4), formulaAll: +formulaAll.toFixed(4), rows };
+}
 function _lifeJobSites(vil, day) {   // 마을 생활권의 직업별 현장 후보 — 자원 밀집 버킷(벌목·채광·채집), 물가(어부), 초식 사냥감(사냥꾼)
   if (vil._jobSites && vil._jobSites.day === day) return vil._jobSites;
   const cx = vil.ccx * SZ + SZ / 2, cy = vil.ccy * SZ + SZ / 2, R = Math.max(vil._maxRPx || 800, 800) + 400;
@@ -6264,6 +6412,80 @@ function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(�
       vil._t341Back = (vil._t341Back || 0) + back;
     }
   }
+  // ★★[T347 2026-09-22] **채집도 같은 하루다** — 나무꾼 절(위)과 **같은 순서**다:
+  //     세고 → 손을 비우고(곳간) → 걸음이 허락한 만큼 따고 → 재생이 돈다.
+  //   ⚠관측자 있는 갈래는 **이미 딴다**(zone 채집 실행부가 `lootOfResource` 를 손에 넣는다) —
+  //     T347 이 더한 것은 그 손을 **곳간으로 잇는 다리**와 **관측자 없는 마을의 하루**다.
+  //   ⚠수식은 **한 벌**이다: `r` 유도(`forageRegrowR`)와 로지스틱(`actRegrowPerDay`) 모두 econ 정본이고
+  //     나무와 **같은 몸통**(`_actRegrowR`)이다. 여기 갈린 것은 상태 칸 이름뿐이다(되돌릴 목록·누계).
+  if (vil.econ && _lifeEcon().T347_FORAGE_ACT) {
+    const _d = state.dayMs ? gameDayOf(_dayNow()) : 0;
+    const _gv = _t347Scan(vil, _d);                       // ★먼저 센다 — `forageActOn` 의 입력을 만든다
+    //   ★걷는 목록을 econ 세계에 심는다 — `trees.attachToWorld` 가 `forageRealItems` 를 심는 그 계약이다
+    //     (econ 은 지형·청크·전리품 표를 모른다 · 사본 0). 멱등이고 한 번만 센다.
+    //   ⚠하루 시차: econ 틱이 `_lifeDaily` **앞**이라 켠 첫날은 목록이 아직 비어 있다 —
+    //     나무꾼의 `_t325Cells` 가 이미 그 규약이다(T325 §닭과 달걀 · 첫날 한 번 · 보고 §표).
+    if (vil.econ._world && !vil.econ._world.forageActItems) {
+      const _it = _t347ActItems();
+      if (_it && _it.length) vil.econ._world.forageActItems = _it;   // ★심는 것은 이 한 줄(`lab-wiring-check` [H] 표에 적었다)
+    }
+    const _on = _lifeEcon().forageActOn(vil.econ);
+    const _pl = state.deps.players;
+    const _keep = _t347ActItems() || [];
+    let _walked = 0;
+    if (_on && _keep.length) for (const pid of (vil.npcPids || [])) {
+      const p = _pl && _pl.get(pid); if (!p || !p.inventory) continue;
+      let u = 0; for (const k of _keep) u += p.inventory[k] || 0;
+      if (u > 0) { _t347Deliver(vil, p); _walked++; }
+    }
+    const _fg = (vil.econ.counts && vil.econ.counts.forager) || 0;
+    const _S = vil._t347Groves || {};
+    vil._t347Dbg = { on: _on ? 1 : 0, walked: _walked, fg: _fg, cells: _gv.length,
+      N: _S.N | 0, K: _S.K | 0, wBar: +(_S.wBar || 0).toFixed(3), cap: 0, trips: 0, perLoad: 0,
+      pick: 0, noloot: 0, grow: 0, back: 0, items: _keep.length };
+    if (_on && _walked === 0 && _fg > 0 && _gv.length && _keep.length) {
+      //   ⓐ 하루 한도 — **걸음**이 정한다(T341 유도 그대로 · 사본 0). 거리는 가장 가까운 군락 셀까지.
+      let _bd = Infinity;
+      const _cx0 = vil.ccx * SZ + SZ / 2, _cy0 = vil.ccy * SZ + SZ / 2;
+      for (const c of _gv) { const dd = (c.x - _cx0) * (c.x - _cx0) + (c.y - _cy0) * (c.y - _cy0); if (dd < _bd) _bd = dd; }
+      const _w = (_S.wBar > 0) ? _S.wBar : 1;
+      const _trips = _t341TripsPerDay(vil, Math.sqrt(_bd), _w);
+      const _perLoad = _t347PerLoad(_w);
+      const _cap = _trips * _perLoad * _fg;
+      vil._t347Dbg.trips = _trips; vil._t347Dbg.perLoad = _perLoad; vil._t347Dbg.cap = _cap;
+      let ci = 0, made = 0;
+      for (let k = 0; k < _gv.length * 8 && ci < _gv.length && made < _cap; k++) {
+        const c = _gv[ci];
+        let peek = null; try { peek = state.deps.t347GrovesAtCell ? state.deps.t347GrovesAtCell(c.cx, c.cy) : null; } catch (e) { peek = null; }
+        if (!peek || !peek.length) { ci++; continue; }     // 이 셀은 다 땄다 — 다음 셀로
+        const u = _lifeLootForage(peek[0]) || 0;
+        if (!(u > 0)) { ci++; continue; }                  // 걷는 목록에 드는 것이 없는 개체(물둠벙 등)
+        const sk = peek[0].seedKey || null;
+        let loot = null; try { loot = state.deps.t347PickAt ? state.deps.t347PickAt(c.cx, c.cy) : null; } catch (e) { loot = null; }
+        if (!loot) { vil._t347Dbg.noloot++; break; }        // ★`continue` 가 아니라 `break`(T334 의 단위 증발 교훈)
+        if (sk) (vil._t347Cut || (vil._t347Cut = [])).push(sk);
+        made++; vil._t347Dbg.pick++;
+        for (const it of _keep) { const a = loot[it]; if (a > 0) _lifeEcon().forageToGranary(vil.econ, it, a); }
+        vil._t347Deliv = +((vil._t347Deliv || 0) + u).toFixed(6);
+      }
+    }
+    if (_on) {
+      const _r = _lifeEcon().forageRegrowR(vil.econ, _S.K | 0, _S.wBar || 0);
+      const _g = _lifeEcon().actRegrowPerDay(_S.N | 0, _S.K | 0, _r);
+      vil._t347Dbg.grow = +(_g || 0).toFixed(4);
+      vil._t347R = +(_r || 0).toFixed(8);
+      vil._t347Grow = +((vil._t347Grow || 0) + (_g || 0)).toFixed(6);
+      let back = 0;
+      while (vil._t347Grow >= 1 && (vil._t347Cut || []).length && state.deps.t341Unharvest) {
+        const key = vil._t347Cut.shift();
+        let ok = 0; try { ok = state.deps.t341Unharvest(key) || 0; } catch (e) { ok = 0; }
+        vil._t347Grow = +(vil._t347Grow - 1).toFixed(6);
+        back += ok;
+      }
+      vil._t347Dbg.back = back;
+      vil._t347Back = (vil._t347Back || 0) + back;
+    }
+  }
   vil._cropClaim = new Set(); vil._jobSites = null;   // ★[생활 층 100% ③] 작물 셀 클레임·직업 현장 캐시 일일 리셋(자가치유·현장 재평가)
   _sub('crop');
   _lifeHunterEconLink(vil);   // ★[HSK↔econ] 시각 사냥꾼 ↔ econ 사냥꾼 NPC 연결(랩 배치 루틴 verbatim — 일일 재대사)
@@ -7426,7 +7648,8 @@ function __rumorProbe() {
     rumor: Object.assign({}, L.rumorStats) };
 }
 
-module.exports = { fishPerf, woodPerf,   // ★[T316] `/perf` 가 내주는 어부 관측(손잡이 끔이면 null) · ★[T325] 나무꾼도 같은 꼴
+module.exports = { fishPerf, woodPerf, foragePerf,   // ★[T316] `/perf` 가 내주는 어부 관측(손잡이 끔이면 null) · ★[T325] 나무꾼 · ★[T347] 채집도 같은 꼴
+  _t347ActItems, _t347PerLoad,   // ★[T347] 걷는 목록·짐당 개체 — 하네스가 표·유도를 옮겨 적지 않게 내준다(사본 금지)
   _actDay, _actTake,   // ★[T334] 예산 장부 몸통(어부 전용 — T341 이 나무에서 걷어냈다) — 하네스가 규칙을 옮겨 적지 않게 내준다
   _t341TripsPerDay, _t341TreesPerLoad,   // ★[T341] 하루 왕복 수·짐당 그루 — **걸음이 정한다**(하네스가 유도를 다시 계산해 대조한다)
  
