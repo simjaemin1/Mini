@@ -33,11 +33,15 @@ function makeTileCache(tilesW, tilesH) {
   let hitW = 0, missW = 0, hitR = 0, missR = 0;
   return {
     tilesW, tilesH, bytes: memo.length,
+    // ★★[T345 2026-09-22] `compute` 에 **(tx, ty) 를 넘긴다**. 종전엔 인수 없는 호출이라
+    //   부르는 쪽이 좌표를 가둔 **클로저를 질의마다 새로 만들어야** 했다(걸음당 5.3개 · GC 의 밥).
+    //   인수를 받으면 모듈 수준 함수 하나를 넘길 수 있다 — 답은 그대로고 할당만 사라진다.
+    //   ⚠인수 없는 옛 호출자도 그대로 돌아간다(무시하는 인수는 해가 없다) — `prebake` 가 이미 그 꼴이었다.
     water(tx, ty, compute) {
       const i = ty * tilesW + tx, m = memo[i];
       if (m & 1) { hitW++; return (m & 2) !== 0; }
       missW++;
-      const v = compute();
+      const v = compute(tx, ty);
       memo[i] = m | 1 | (v ? 2 : 0);
       return v;
     },
@@ -45,7 +49,7 @@ function makeTileCache(tilesW, tilesH) {
       const i = ty * tilesW + tx, m = memo[i];
       if (m & 4) { hitR++; return (m & 8) !== 0; }
       missR++;
-      const v = compute();
+      const v = compute(tx, ty);
       memo[i] = m | 4 | (v ? 8 : 0);
       return v;
     },

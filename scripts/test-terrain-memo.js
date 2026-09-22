@@ -94,9 +94,13 @@ console.log('\n③ 되돌림 — `TERRAIN_TILE_CACHE=0` 이면 배열조차 안 
      "③ ★★기본이 **켬**이고 되돌림이 `=0` 하나다(T324 · 손잡이 새로 안 만들었다)");
   ok(/const _TERR_CACHE = \(process\.env\.TERRAIN_TILE_CACHE !== '0' && !ZONE\.isOcean\)\s*\n\s*\? require/.test(Z),
      '③ 끄면 `require` 자체를 안 한다 — 8.5MB 를 안 잡는다(종전 경로 그대로)');
-  ok(/if \(_TERR_CACHE\) return _TERR_CACHE\.water\(tx, ty, \(\) => _terrain\.isWaterCellLocal\(ZONE_ID, cellCx, cellCy\)\);/.test(Z)
-     && /if \(_TERR_CACHE\) return _TERR_CACHE\.rock\(tx, ty, \(\) => _terrain\.isRockCellLocal\(ZONE_ID, tx \* 32 \+ 16, ty \* 32 \+ 16\)\);/.test(Z),
+  ok(/if \(_TERR_CACHE\) return _TERR_CACHE\.water\(tx, ty, _computeWaterCell\);/.test(Z)
+     && /if \(_TERR_CACHE\) return _TERR_CACHE\.rock\(tx, ty, _computeRockCell\);/.test(Z),
      '③ ★메모는 **양자화된 두 술어에만** 걸린다(terrain 안쪽에 걸면 chunk·fishing 의 임의 점 답이 달라진다)');
+  // ★[T345] 계산 함수는 **모듈 수준 하나**다 — 질의마다 클로저를 만들지 않는다(걸음당 할당 0).
+  ok(/const _computeWaterCell = \(tx, ty\) =>/.test(Z) && /const _computeRockCell = \(tx, ty\) =>/.test(Z),
+     '③ ★★[T345] 메모가 부를 계산 함수가 **한 번만 만들어진다**(클로저 0)');
+  ok(!/_TERR_CACHE\.(water|rock)\([^)]*\(\) =>/.test(Z), '③ ★메모 호출에 화살표 함수가 없다');
   ok(!/_TERR_CACHE/.test(fs.readFileSync(path.join(ROOT, 'server', 'terrain.js'), 'utf8')),
      '③ ★`terrain.js` 는 메모를 **모른다**(사본 0 · 원천은 그대로다)');
 }
