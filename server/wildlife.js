@@ -26,6 +26,15 @@ const L_DAWN = 0.25, L_DUSK = 0.833;                  // 랩 4256: 낮 06~20시 
 const NPC_MAXHP = 100, NPC_REST_IN = 60, NPC_DMG_BOAR = 30, NPC_DMG_WOLF = 25, NPC_DMG_TIGER = 65, NPC_MELEE_HP = 75; // 랩 4255 — 본체 PLAYER_MAX_HP=100과 1:1 스케일
 const L_GAMEMAX = 100;                                // 랩 4358: 셀 서식한계 K (스폰 target 분모)
 const L_QMIN = 0.25;                                  // 랩 4248: 작물 품질 하한 (🐗 습격 — 1차는 s.crop 빈 Map이라 미도달)
+// ★★[T350 2026-09-22 · 주사위 0] 야생 생태의 굴림 **예순**을 **주입 자리 하나**로 모은다.
+//   이 블록은 몹의 위치·결정·전투를 매 틱 움직인다 ⇒ 세계 자리다. 그런데 자리마다 씨를 짓는 것은
+//   위험이 값보다 크다(한 줄짜리 밀집 코드 예순 자리). ⇒ `bandit-raid.js`·`predator-bandit.js` 가 쓰는
+//   **그 꼴 그대로**(`host.rng`) 호스트가 흐름을 넣는다 — 존은 씨 뿌린 흐름을 넣고(주사위 0),
+//   랩 하네스는 제가 갈아 끼운 `Math.random` 을 그대로 쓴다.
+//   ⚠★이 꼴이라야 `test-hunt-vis` 가 산다 — 그 하네스는 **전역 `Math.random` 을 갈아** 세 판을 같은
+//     난수열로 묶는다(줄 179). 여기서 제 흐름을 쥐면 그 조종간이 끊겨 픽스처가 다른 세계가 된다
+//     (실측: 사냥 2마리 → 0마리). 주입 자리면 안 끊긴다.
+let _rw = () => { throw new Error('wildlife: rng 미주입(init 전 호출)'); };
 const setPath = () => {};                             // 랩 NPC 귀가 경로 — 본체 프록시엔 무의미(피해 반영은 [C]의 damagePlayer 브리지가 담당)
 let lifeGM = 0;                                       // 게임분 — tick()이 본체 월드시계(worldPhase)에서 환산 주입(밤 경계 정렬 피스와이즈)
 let NX = 0, NY = 0, N = 0;                            // 존 셀 그리드(px/32). N=max(NX,NY) — 블록은 도주 목표점 클램프에만 사용
@@ -59,7 +68,7 @@ function _mobView(){const v=(typeof view!=='undefined')?view:{z:1,ox:0,oy:0},c=(
   return {x0:Math.max(0,Math.floor(-v.ox/v.z/c)-2),x1:Math.min(N,Math.ceil((760-v.ox)/v.z/c)+2),y0:Math.max(0,Math.floor(-v.oy/v.z/c)-2),y1:Math.min(N,Math.ceil((760-v.oy)/v.z/c)+2)};}
 function reapDead(s){if(!s._anyDead)return;s._anyDead=0;   // ★사망 처리: agent 제거 + econ.npcs 하나 제거(진짜 인구감소 — 리싱크 부활 방지). 인구 0 마을은 lifeDayAll이 소멸시킴.
   for(let i=s.agents.length-1;i>=0;i--){const a=s.agents[i];if(!a._dead)continue;s.agents.splice(i,1);
-    if(s.econ&&s.econ.npcs&&s.econ.npcs.length){let k=-1;for(let j=0;j<s.econ.npcs.length;j++)if(s.econ.npcs[j].currentJob===a.job){k=j;break;}if(k<0)k=(Math.random()*s.econ.npcs.length)|0;s.econ.npcs.splice(k,1);}   // 같은 직업 우선 제거(직업분포 유지)
+    if(s.econ&&s.econ.npcs&&s.econ.npcs.length){let k=-1;for(let j=0;j<s.econ.npcs.length;j++)if(s.econ.npcs[j].currentJob===a.job){k=j;break;}if(k<0)k=(_rw()*s.econ.npcs.length)|0;s.econ.npcs.splice(k,1);}   // 같은 직업 우선 제거(직업분포 유지)
     s._deaths=(s._deaths||0)+1;}
   if(s.econ)s.pop=s.econ.npcs.length;}
 const HSK_W=a=>{const n=a._esk||a;return Math.min(10,n.skills?(n.skills.archery||0):(a._hsk||0));};   /* ★활 숙련(사격): 명중·시위. 마을=연결된 econ NPC(_esk), 랩=_hsk */
@@ -89,7 +98,7 @@ function updateMobs(s,step){
   const target=Math.min(MOB_CAP,Math.max(visForest.length>0?5:0,Math.round(vg/L_GAMEMAX*MOB_DENS)));   // ★초식 마릿수 = 총 개체수 비례(밀도) + 서식지 있으면 최소 5(항상 보이게)
   const W=s.V&&s.V.walls,hall=s.V&&(s.V.hall||s.V.center);   // 건물벽 Set + 마을 중심(포식자 회피 기준)
   const canWalk=(x,y)=>inG(x,y)&&!(typeof TR!=='undefined'&&TR.terrain&&TR.terrain.isBlocked(x,y))&&!(W&&W.has(x+','+y));   // ★물(다리 제외)·바위 + 건물벽 통과 불가 — NPC 경로와 동일 판정(TR.terrain.isBlocked). 구 TR.isBlocked 오참조로 강을 헤엄치던 버그 수정
-  const kill=t=>{s._kAll=(s._kAll||0)+1;t.hp=0;t.st='dead';t.rot=52+Math.random()*36;t.tgt=null;t.raidK=null;};/*랩단독 계측*/   // 사체화 — 늑대 먹이·서서히 소멸
+  const kill=t=>{s._kAll=(s._kAll||0)+1;t.hp=0;t.st='dead';t.rot=52+_rw()*36;t.tgt=null;t.raidK=null;};/*랩단독 계측*/   // 사체화 — 늑대 먹이·서서히 소멸
   const hurtNPC=(a,dmg,tag)=>{if(!a||a.state==='trading'||!a.home)return;if(a.hp===undefined)a.hp=NPC_MAXHP;a.hp-=dmg*(1-0.35*Math.min(1,a._arm||0));a.action=tag;/*★가죽 갑옷=부상 경감(장비율×35%): 갑옷 재고→사냥꾼 보호→부상↓→huntRisk 학습이 자동으로 사냥 기회비용을 낮춤 — 가죽 수요의 자기 강화 순환(§9)*/   // ★NPC 피해: hp<=0 사망(인구손실), hp<60 요양 귀가. 교역 중 면제(짐 보호)
     if(a.job==='hunter')s._hEvD=(s._hEvD||0)+2;   // ★위험 학습(→직업선택 기회비용): 사냥꾼 부상=이틀치 손실 가중
     if(a.hp<=0){a.hp=0;a._dead=1;s._anyDead=1;s._hDeadN=(s._hDeadN||0)+(a.job==='hunter'?1:0);
@@ -99,18 +108,18 @@ function updateMobs(s,step){
   for(const m of s.mobs){if(m.st==='dead'){carc.push(m);continue;}const D=MOB_DEF[m.type];if(!D.pred){preyN++;preyL.push(m);}else{preds.push(m);if(D.pred===1)wolfN++;else tigN++;}}
   s._gid=s._gid||1;
   const spawnGrp=(type,n,cell)=>{const gid=s._gid++,D=MOB_DEF[type];let sp=0;   // ★무리 스폰(같은 gid) — tmp=개체 성격 편차(겁 많은/대담한 개체), flk=팩 측면 오프셋
-    for(let g=0;g<n;g++){const px=cell.cx+0.5+(Math.random()-0.5)*8,py=cell.cy+0.5+(Math.random()-0.5)*8;
-      if(canWalk(Math.floor(px),Math.floor(py))){s.mobs.push({px,py,type,gid,hp:D.hp,tmp:0.72+Math.random()*0.56,stam:1,hun:Math.random()*0.4,ang:Math.random()*6.283,pause:0,cd:0,fcd:0,cvo:0,cvt:0,flk:(g%3-1)*0.55,st:D.pred?'prowl':'graze'});sp++;}}
+    for(let g=0;g<n;g++){const px=cell.cx+0.5+(_rw()-0.5)*8,py=cell.cy+0.5+(_rw()-0.5)*8;
+      if(canWalk(Math.floor(px),Math.floor(py))){s.mobs.push({px,py,type,gid,hp:D.hp,tmp:0.72+_rw()*0.56,stam:1,hun:_rw()*0.4,ang:_rw()*6.283,pause:0,cd:0,fcd:0,cvo:0,cvt:0,flk:(g%3-1)*0.55,st:D.pred?'prowl':'graze'});sp++;}}
     return sp;};
   let _sg=0;
-  while(preyN<target&&visForest.length&&_sg++<80){const t=MOB_PREY[(Math.random()*MOB_PREY.length)|0],D=MOB_DEF[t];
-    let c=null,bs=-1;for(let t2=0;t2<6;t2++){const cc=visForest[(Math.random()*visForest.length)|0];if(!cc)break;   // ★스폰 셀 = 표본 6 중 풍부도×인가회피 가중 최고 — 마을 근처(영토+완충)엔 거의 안 생기고 먼 숲에 골고루(멧돼지는 예외적으로 근접 허용)
-      const sc=(cc.r||MOB_WILD_RICH)*(0.06+0.94*dfOf(cc.cx,cc.cy,t))*(0.5+Math.random());if(sc>bs){bs=sc;c=cc;}}
-    if(!c)break;preyN+=spawnGrp(t,D.grp[0]+((Math.random()*(D.grp[1]-D.grp[0]+1))|0),c);}
-  if(preyN>target+4)for(let k=0,i=(Math.random()*s.mobs.length)|0;k<s.mobs.length&&preyN>target+4;k++){const j=(i+k)%s.mobs.length,m=s.mobs[j];if(m&&m.st!=='dead'&&m.st!=='hide'&&!MOB_DEF[m.type].pred){s.mobs.splice(j,1);preyN--;}   /* ★hide는 정리 금지(굴속 대기) */}   // 초과분 이탈(초식만)
-  if(visForest.length&&preyN>=10){const far=()=>{let bc=null,bd2=-1;for(let t2=0;t2<10;t2++){const c=visForest[(Math.random()*visForest.length)|0];const d=hall?Math.hypot(c.cx-hall.cx,c.cy-hall.cy):999;if(d>70)return c;if(d>bd2){bd2=d;bc=c;}}return bc;};   // ★포식자 스폰: 마을서 45m+ 숲(없으면 표본 중 최원거리 — 작은 숲에서도 출현 보장)
-    if(!wolfN&&Math.random()<MOB_WOLF_P*dt){const c=far();if(c)spawnGrp('🐺',3+((Math.random()*3)|0),c);}
-    if(!tigN&&preyN>=14&&Math.random()<MOB_TIG_P*dt){const c=far();if(c)spawnGrp('🐯',1,c);}}
+  while(preyN<target&&visForest.length&&_sg++<80){const t=MOB_PREY[(_rw()*MOB_PREY.length)|0],D=MOB_DEF[t];
+    let c=null,bs=-1;for(let t2=0;t2<6;t2++){const cc=visForest[(_rw()*visForest.length)|0];if(!cc)break;   // ★스폰 셀 = 표본 6 중 풍부도×인가회피 가중 최고 — 마을 근처(영토+완충)엔 거의 안 생기고 먼 숲에 골고루(멧돼지는 예외적으로 근접 허용)
+      const sc=(cc.r||MOB_WILD_RICH)*(0.06+0.94*dfOf(cc.cx,cc.cy,t))*(0.5+_rw());if(sc>bs){bs=sc;c=cc;}}
+    if(!c)break;preyN+=spawnGrp(t,D.grp[0]+((_rw()*(D.grp[1]-D.grp[0]+1))|0),c);}
+  if(preyN>target+4)for(let k=0,i=(_rw()*s.mobs.length)|0;k<s.mobs.length&&preyN>target+4;k++){const j=(i+k)%s.mobs.length,m=s.mobs[j];if(m&&m.st!=='dead'&&m.st!=='hide'&&!MOB_DEF[m.type].pred){s.mobs.splice(j,1);preyN--;}   /* ★hide는 정리 금지(굴속 대기) */}   // 초과분 이탈(초식만)
+  if(visForest.length&&preyN>=10){const far=()=>{let bc=null,bd2=-1;for(let t2=0;t2<10;t2++){const c=visForest[(_rw()*visForest.length)|0];const d=hall?Math.hypot(c.cx-hall.cx,c.cy-hall.cy):999;if(d>70)return c;if(d>bd2){bd2=d;bc=c;}}return bc;};   // ★포식자 스폰: 마을서 45m+ 숲(없으면 표본 중 최원거리 — 작은 숲에서도 출현 보장)
+    if(!wolfN&&_rw()<MOB_WOLF_P*dt){const c=far();if(c)spawnGrp('🐺',3+((_rw()*3)|0),c);}
+    if(!tigN&&preyN>=14&&_rw()<MOB_TIG_P*dt){const c=far();if(c)spawnGrp('🐯',1,c);}}
   if(!s.mobs.length)return;   // 몹 0(뷰 밖 마을 등) → 그리드 구축 생략
   s._raidCd=(s._raidCd||0)-dt;   // 🐗 밭 전수스캔 스로틀 타이머(마을당)
   const BK=64,gkey=(x,y)=>((x/BK)|0)*4096+((y/BK)|0);   // ★공간 해시(버킷 64m): 3×3 조회가 반경 ≥64m 보장 — 사람 소음 인지 상한 60m(숲 차폐, 실축) 커버. 수천~만 NPC에도 몹당 비용 일정
@@ -123,10 +132,10 @@ function updateMobs(s,step){
   for(const[gid,g]of G){g.cx/=g.n;g.cy/=g.n;   // ★무리 웨이포인트: 먹이 많은 숲 셀을 골라 무리 단위로 회유(제자리 배회 대신 '이동하는 떼') — 포식자는 마을서 먼 곳 가산
     let wp=s._wp.get(gid);
     if(!wp||(wp.t-=dt)<=0||(Math.abs(wp.x-g.cx)+Math.abs(wp.y-g.cy))<5){let best=null,bs=-1e9;
-      for(let t2=0;t2<8;t2++){const c=visForest[(Math.random()*visForest.length)|0];if(!c)break;const d=Math.hypot(c.cx-g.cx,c.cy-g.cy);if(d>60||d<10)continue;   // 이주 구간 10~60m(실축 일일 이동의 일부)
+      for(let t2=0;t2<8;t2++){const c=visForest[(_rw()*visForest.length)|0];if(!c)break;const d=Math.hypot(c.cx-g.cx,c.cy-g.cy);if(d>60||d<10)continue;   // 이주 구간 10~60m(실축 일일 이동의 일부)
         let sc=(c.r||MOB_WILD_RICH)*(g.pred?1:(0.25+0.75*dfOf(c.cx,c.cy,g.ty)))-d*0.15;if(g.pred&&hall)sc+=Math.min(80,Math.hypot(c.cx-hall.cx,c.cy-hall.cy))*0.3;   // ★초식 웨이포인트도 인가 회피 — 무리가 마을 쪽으로 회유해 오지 않음(먹이가 아무리 좋아도 감가)
         if(sc>bs){bs=sc;best=c;}}
-      wp={x:best?best.cx:g.cx,y:best?best.cy:g.cy,t:60+Math.random()*90};s._wp.set(gid,wp);}   // 한자리 오래 머묾(잦은 이주 방지)
+      wp={x:best?best.cx:g.cx,y:best?best.cy:g.cy,t:60+_rw()*90};s._wp.set(gid,wp);}   // 한자리 오래 머묾(잦은 이주 방지)
     g.wp=wp;}
   if(s._wp.size>G.size+24)for(const k of s._wp.keys())if(!G.has(k))s._wp.delete(k);   // 사라진 무리 웨이포인트 청소
   for(const m of s.mobs){ if(m.st==='dead')continue;
@@ -170,18 +179,18 @@ function updateMobs(s,step){
     else if(!D.pred){   // ══ 초식 ══
       const panic=g.pn>0&&g.n>1;   // ★패닉 전파: 무리원이 튀면 위협을 직접 못 봐도 동요
       if(m.st==='sleep'&&slpW&&!(m.fcd>0||panic||(thr&&td<al*0.1))){m.stam=Math.min(1,m.stam+0.03*dt);}   // 😴 숙면: 둔감(경계의 1/10 — 실축 al 110이면 포복 늑대 기준 ~4m까지 접근 허용, 잠든 놈은 급습에 취약). 무리 패닉엔 즉시 기상
-      else if(thr&&td<fl&&D.brave>0&&m.cd<=0&&Math.random()<D.brave*m.tmp*(m.hp<D.hp?1.5:1)*0.175*dt){goCharge(m,thr);m.cd=60;}   // 🐗 호전 판정(다치면 더 사나움) — ★dt 보정(이전: 프레임당 무보정 재판정=근접 시 돌진 사실상 확정+프레임률 의존 버그). 지속 대치 ~수분당 1회꼴, 겁쟁이 개체(tmp↓)는 그냥 튐
+      else if(thr&&td<fl&&D.brave>0&&m.cd<=0&&_rw()<D.brave*m.tmp*(m.hp<D.hp?1.5:1)*0.175*dt){goCharge(m,thr);m.cd=60;}   // 🐗 호전 판정(다치면 더 사나움) — ★dt 보정(이전: 프레임당 무보정 재판정=근접 시 돌진 사실상 확정+프레임률 의존 버그). 지속 대치 ~수분당 1회꼴, 겁쟁이 개체(tmp↓)는 그냥 튐
       else if((thr&&td<fl)||(m.fcd>0&&(m.fT===undefined||m.fT>0))||(panic&&thr&&td<al*1.5)||(m.st==='flee'&&(m.fT||0)>0)){/*★도주 래치: 래더=매 프레임 조건 재평가라 링 밖으로 뛰는 순간 유지 조건이 사라져 15초 버스트가 실측 2초였음 — 일단 뛰면 fT가 다 탈 때까지(조기 종료는 4301 내부 규칙만)*/if(m.st!=='flee'&&m.fcd<=0){(s._fW=s._fW||{});const _c=(thr&&td<fl)?((thr.sneak?'ring잠행':'ring'))+((td<2?'/근접':'')):'panic';s._fW[_c]=(s._fW[_c]||0)+1;}m.st='flee';
-        if(m._fst!==1){m._fst=1;m.pause=0;/*★도주 진입=멈춤 잔값 소거: '풀뜯기 pause'가 flee에 살아남아 pause>0=취약·방심 게이트를 전부 오염(도주 호랑이에 커밋 들러붙던 진짜 뿌리)*/m.spr=(m.hp<D.hp?5:10)+Math.random()*(m.hp<D.hp?4:8);m.fT=15;   /*★도주 재설계: 발동 순간 '사냥꾼 반대 방향 × 15초 주행거리' 지점을 난수(각 ±0.35rad·거리 ±20%) 섞어 확정*/
-          const aw=thr?Math.atan2(m.py-thr.py,m.px-thr.px):m.ang,fa=aw+(Math.random()-0.5)*0.7,fd=D.spd*2.0*m.fT*(0.8+Math.random()*0.4);
+        if(m._fst!==1){m._fst=1;m.pause=0;/*★도주 진입=멈춤 잔값 소거: '풀뜯기 pause'가 flee에 살아남아 pause>0=취약·방심 게이트를 전부 오염(도주 호랑이에 커밋 들러붙던 진짜 뿌리)*/m.spr=(m.hp<D.hp?5:10)+_rw()*(m.hp<D.hp?4:8);m.fT=15;   /*★도주 재설계: 발동 순간 '사냥꾼 반대 방향 × 15초 주행거리' 지점을 난수(각 ±0.35rad·거리 ±20%) 섞어 확정*/
+          const aw=thr?Math.atan2(m.py-thr.py,m.px-thr.px):m.ang,fa=aw+(_rw()-0.5)*0.7,fd=D.spd*2.0*m.fT*(0.8+_rw()*0.4);
           m.fgx=Math.max(2,Math.min(N-2,m.px+Math.cos(fa)*fd));m.fgy=Math.max(2,Math.min(N-2,m.py+Math.sin(fa)*fd));}
-        let ax=Math.atan2((m.fgy!==undefined?m.fgy:m.py)-m.py,(m.fgx!==undefined?m.fgx:m.px)-m.px)+(Math.random()-0.5)*0.12;   /*★고정 목표점 직진(+미세 흔들림) — 도달 못 해도 15초(fT)에 정지, 장애물은 프로브가 우회. U자 원인(매 프레임 위협 반대 재계산+무리 평균) 제거*/
+        let ax=Math.atan2((m.fgy!==undefined?m.fgy:m.py)-m.py,(m.fgx!==undefined?m.fgx:m.px)-m.px)+(_rw()-0.5)*0.12;   /*★고정 목표점 직진(+미세 흔들림) — 도달 못 해도 15초(fT)에 정지, 장애물은 프로브가 우회. U자 원인(매 프레임 위협 반대 재계산+무리 평균) 제거*/
         if(m.cvt<=0){m.cvt=3;let fb=null,fo=null;for(const o of[0,0.6,-0.6,1.1,-1.1,1.6,-1.6]){const tx=(m.px+Math.cos(ax+o)*7)|0,ty=(m.py+Math.sin(ax+o)*7)|0;
             if(!inG(tx,ty)||(TR.terrain&&TR.terrain.isBlocked(tx,ty)))continue;   // ★물·바위 방향은 도주 후보에서 제외 — 강둑에 끼여 몸 비비다 화살받이 되던 버그 수정
             if(fb===null)fb=o;if(TR.forest&&TR.forest[idx(tx,ty)]){fo=o;break;}}
           m.cvo=(fo!==null)?fo:(fb!==null)?fb:2.4;}   // 숲 방향 > 아무 열린 방향 > 전방위 막힘(곶·반도)이면 크게 꺾어 되돌아 나옴
         if(D.zig&&m._den){const _dd=Math.hypot(m._den.x-m.px,m._den.y-m.py);   // ★🐇 도주=굴로 질주(방향 고정): 도달하면 굴속으로 사라짐(뷰 정리가 제거 — '놓침' 발생)
-          if(_dd<1.5){m.px=-99;m.py=-99;m.st='hide';m._hid=50+Math.random()*50;continue;}ax=Math.atan2(m._den.y-m.py,m._den.x-m.px);}
+          if(_dd<1.5){m.px=-99;m.py=-99;m.st='hide';m._hid=50+_rw()*50;continue;}ax=Math.atan2(m._den.y-m.py,m._den.x-m.px);}
         ax+=m.cvo; if(D.zig)ax+=Math.sin(m.ph=(m.ph||0)+dt*1.3)*0.7;   // 🐇 갈지자(굴 방향 위에 얹힘)
         {let _da=ax-m.ang;while(_da>Math.PI)_da-=6.283;while(_da<-Math.PI)_da+=6.283;m.ang+=Math.max(-1.2*dt,Math.min(1.2*dt,_da));}   /*랩단독 ★도주 회전 제한(2.4rad/유닛): 사수 3인이 수렴하면 '가장 가까운 위협'이 바뀔 때마다 도주각이 90~180° 순간 반전하던 와리가리 — 이제 호를 그리며 돎*/
         const spr=(m.spr=(m.spr||0)-dt)>0;m.stam=Math.max(0,m.stam-(spr?0.05:0.0225)*dt);   // 질주는 체력을 배로 태움
@@ -191,12 +200,12 @@ function updateMobs(s,step){
       else if((thr&&td<(slpW?al*(m.tmp>1.1?0.45:0.25):al)*(m.st==='alert'?1.15:1))||panic||((m._alH||0)>lifeGM)){m.st='alert';m._fst=0;if(thr){m._thx=thr.px;m._thy=thr.py;m._thT=lifeGM+60;m._alH=lifeGM+4;}/*★경계 히스테리시스: 탈출 반경 ×1.15 + 마지막 지각 후 4초 유지 — 링 경계 graze↔alert 프레임 플리커 제거*/m.stam=Math.min(1,m.stam+0.01*dt);/*★경계 기억: 위협 위치 60초 저장*/   // 👀 경계 = 얼어붙어 주시(freeze)가 기본 — 가끔만 뭉침·슬금 후퇴. ★밤 보초 모델: 예민한 개체(tmp>1.1, ~1/3)만 넓게 망보고 무던한 개체는 포식자가 꽤 붙어야 경계 → 늑대가 근처를 어슬렁거려도 무리 대부분은 잠(보초 몇이 서서 감시 — 실제 반추동물 vigilance 분담). 위험 감지는 보초→패닉 전파가 담당
         if((m.alT=(m.alT||0)+dt)>50&&thr){m.alT=0;m.fcd=16;(s._fW=s._fW||{}).timeout=(s._fW.timeout||0)+1;}/*랩단독 계측*/   // ★대치 타임아웃: 위협이 25분째 버티고 서 있으면 자리를 뜸(무한 '얼음 동상' 교착 방지 — 실제 사슴도 결국 트로팅으로 이탈)
         if(thr){const dx=m.px-thr.px,dy=m.py-thr.py,dd=Math.hypot(dx,dy)||1;m.ang=Math.atan2(-dy,-dx);
-          if(Math.random()<0.06*dt)move(dx/dd*D.spd*0.5*dt,dy/dd*D.spd*0.5*dt);}
-        if(g.n>1&&Math.random()<0.075*dt){const cx=g.cx-m.px,cy=g.cy-m.py,cl=Math.hypot(cx,cy)||1;if(cl>1.8)move(cx/cl*D.spd*0.35*dt,cy/cl*D.spd*0.35*dt);}}
+          if(_rw()<0.06*dt)move(dx/dd*D.spd*0.5*dt,dy/dd*D.spd*0.5*dt);}
+        if(g.n>1&&_rw()<0.075*dt){const cx=g.cx-m.px,cy=g.cy-m.py,cl=Math.hypot(cx,cy)||1;if(cl>1.8)move(cx/cl*D.spd*0.35*dt,cy/cl*D.spd*0.35*dt);}}
       else{m.stam=Math.min(1,m.stam+0.015*dt);m.alT=0;m._fst=0;if(D.zig&&!m._den)m._den={x:m.px,y:m.py};   // ★🐇 굴 기억(첫 평시 위치)
-        if(m.hp<D.hp&&m.pause<=0&&Math.random()<0.15*dt)m.pause=10+Math.random()*14;   /*랩단독 ★부상 개체=자주 멈춰 섬(출혈 허약·응혈은 서 있을 때만) — 저격 창이 자연히 열림*/
+        if(m.hp<D.hp&&m.pause<=0&&_rw()<0.15*dt)m.pause=10+_rw()*14;   /*랩단독 ★부상 개체=자주 멈춰 섬(출혈 허약·응혈은 서 있을 때만) — 저격 창이 자연히 열림*/
         // 🌿 평시(풀뜯기·무리 이동·😴 취침·🐗 밤 습격)
-        if(!slpW&&D.raid&&night&&!m.raidK&&(s._raidQ||0)<2&&m.cd<=0&&Math.random()<0.01*dt){   // 🐗 밤: 반경 90m 내 경작지 목표(마을당 야간 총피해 상한) — 숲가 멧돼지가 밭까지 원정(실제 수 km의 압축)
+        if(!slpW&&D.raid&&night&&!m.raidK&&(s._raidQ||0)<2&&m.cd<=0&&_rw()<0.01*dt){   // 🐗 밤: 반경 90m 내 경작지 목표(마을당 야간 총피해 상한) — 숲가 멧돼지가 밭까지 원정(실제 수 km의 압축)
           if(s._raidCd>0)m.cd=6;   // crop 전수스캔은 마을당 ~4게임분 1회로 제한(수만 셀 경작지에도 싸게)
           else{s._raidCd=4;let bk=null,bd=90;
             for(const[k2,e]of s.crop){const d=Math.abs(e.cx-m.px)+Math.abs(e.cy-m.py);if(d<bd){bd=d;bk=k2;m.rx=e.cx;m.ry=e.cy;if(d<25)break;}}   // 충분히 가까우면 조기 종료
@@ -215,10 +224,10 @@ function updateMobs(s,step){
             if(m.hp>=D.hp&&g.n>1){const cx=g.cx-m.px,cy=g.cy-m.py,cl=Math.hypot(cx,cy)||1,ah=Math.hypot(g.ax,g.ay)||1;dx+=cx/cl*MOB_COH+g.ax/ah*MOB_ALI;dy+=cy/cl*MOB_COH+g.ay/ah*MOB_ALI;}   // 응집+정렬 — ★부상 개체는 제외(무리 견인이 버스트마다 방향을 새로 뽑아 와리가리 유발)
             if(m.hp>=D.hp&&g.wp){const wx=g.wp.x-m.px,wy=g.wp.y-m.py,wl=Math.hypot(wx,wy)||1;if(wl>2.5){dx+=wx/wl*MOB_WPT;dy+=wy/wl*MOB_WPT;}}   // 무리 목적지 회유도 건강체만
             if(dx||dy){let da=Math.atan2(dy,dx)-m.ang;while(da>Math.PI)da-=6.283;while(da<-Math.PI)da+=6.283;m.ang+=da*Math.min(1,MOB_TURN*0.45*dt);}   // ★평시 조향 절반: 목적지로 '대충' 향하며 헤맴 허용(도주의 직진과 대비)
-            m.ang+=(Math.random()-0.5)*(m.hp<D.hp?0.05:0.25)*dt;if((m._thT||0)>lifeGM){const ta2=Math.atan2(m._thy-m.py,m._thx-m.px);let dth=m.ang-ta2;while(dth>Math.PI)dth-=6.283;while(dth<-Math.PI)dth+=6.283;if(Math.abs(dth)<1.0)m.ang=ta2+Math.PI+(Math.random()-0.5)*0.6;}/*★경계 기억(60초): 위협을 봤던 방향으로 배회하지 않음 — '사수 쪽으로 걸어오는 컨베이어' 차단*/if(!canWalk(Math.floor(m.px+Math.cos(m.ang)*3),Math.floor(m.py+Math.sin(m.ang)*3)))m.ang+=1.2;/*★3셀 전방 프로브: 물가·바위 닿기 전에 미리 꺾음(강 몸비비기 방지)*/const sp=D.spd*(m.wsp||0.35)*wnd*dt;   /*랩단독 ★부상=흔들림 1/5: 한 방향으로 절뚝 직진(멈췄다 재개해도 같은 방향)*/   // ★느긋한 어슬렁: 걸음마다 다른 속도·큰 각도 흔들림 — 기계적 직선 제거
-            if(!move(Math.cos(m.ang)*sp,Math.sin(m.ang)*sp)){m.ang+=2+Math.random();if((m.blk=(m.blk||0)+1)>2){m.blk=0;const wpp=s._wp.get(m.gid);if(wpp)wpp.t=0;}}else m.blk=0;}   // ★강둑 등에 연속으로 막히면 무리 목적지 재선정(물가 밀치기 루프 방지)
+            m.ang+=(_rw()-0.5)*(m.hp<D.hp?0.05:0.25)*dt;if((m._thT||0)>lifeGM){const ta2=Math.atan2(m._thy-m.py,m._thx-m.px);let dth=m.ang-ta2;while(dth>Math.PI)dth-=6.283;while(dth<-Math.PI)dth+=6.283;if(Math.abs(dth)<1.0)m.ang=ta2+Math.PI+(_rw()-0.5)*0.6;}/*★경계 기억(60초): 위협을 봤던 방향으로 배회하지 않음 — '사수 쪽으로 걸어오는 컨베이어' 차단*/if(!canWalk(Math.floor(m.px+Math.cos(m.ang)*3),Math.floor(m.py+Math.sin(m.ang)*3)))m.ang+=1.2;/*★3셀 전방 프로브: 물가·바위 닿기 전에 미리 꺾음(강 몸비비기 방지)*/const sp=D.spd*(m.wsp||0.35)*wnd*dt;   /*랩단독 ★부상=흔들림 1/5: 한 방향으로 절뚝 직진(멈췄다 재개해도 같은 방향)*/   // ★느긋한 어슬렁: 걸음마다 다른 속도·큰 각도 흔들림 — 기계적 직선 제거
+            if(!move(Math.cos(m.ang)*sp,Math.sin(m.ang)*sp)){m.ang+=2+_rw();if((m.blk=(m.blk||0)+1)>2){m.blk=0;const wpp=s._wp.get(m.gid);if(wpp)wpp.t=0;}}else m.blk=0;}   // ★강둑 등에 연속으로 막히면 무리 목적지 재선정(물가 밀치기 루프 방지)
           else{const wl2=g.wp?Math.abs(g.wp.x-m.px)+Math.abs(g.wp.y-m.py):0;
-            if(wl2>15||Math.random()<0.22){m.wkt=1.6+Math.random()*6.4;m.wsp=0.22+Math.random()*0.28;m.ang+=(Math.random()-0.5)*(wl2>15?0.35:1.8);}else m.pause=8+Math.random()*20;}}}}   // 다음 모드: 이주=직진 유지, 뜯기 배회=버스트마다 방향 크게 틈(±0.9rad — 어슬렁 지그재그). 걷다 서다 리듬
+            if(wl2>15||_rw()<0.22){m.wkt=1.6+_rw()*6.4;m.wsp=0.22+_rw()*0.28;m.ang+=(_rw()-0.5)*(wl2>15?0.35:1.8);}else m.pause=8+_rw()*20;}}}}   // 다음 모드: 이주=직진 유지, 뜯기 배회=버스트마다 방향 크게 틈(±0.9rad — 어슬렁 지그재그). 걷다 서다 리듬
     else{   // ══ 포식자 ══
       m.hun=Math.min(1,m.hun+(m.st==='sleep'?0.0008:0.002)*dt);const hungry=m.hun>0.55;   // 굶주림 주기(하루 ~2사냥): 배부르면 사냥 안 함(늘 학살 방지). 잘 땐 대사 저하 → 낮잠 유지, 박명·밤 사냥 집중
       if(D.pred===2&&m.st!=='flee'){let nn=0;nearIn(agrid,m.px,m.py,a=>{const ddx=a.px-m.px,ddy=a.py-m.py;if(ddx*ddx+ddy*ddy<625)nn++;});if(nn>=3){m.st='flee';m.fcd=20;}}   // 🐯 사람 3+가 25m 내 몰이 → 회피(실축)
@@ -229,14 +238,14 @@ function updateMobs(s,step){
           if((D.pred===1&&pk>=2||D.pred===2)&&m.cd<=0){goCharge(m,thrA);m.cd=D.pred===2?80:40;}else if(D.pred===1&&pk<2){m.st='prowl';m.tgt=null;}}   // ★사체 방어: 🐺 팩(2+)·🐯는 제 먹이에 온 사냥꾼에게 돌진 — 단독 늑대만 양보(사체 회수=늑대 팩과의 담력 싸움)
         else{const dx=c.px-m.px,dy=c.py-m.py,d=Math.hypot(dx,dy);
           if(d>1){m.ang=Math.atan2(dy,dx);move(dx/d*D.spd*0.5*dt,dy/d*D.spd*0.5*dt);}
-          else{m.hun=Math.max(0,m.hun-0.03*dt);c.rot-=dt*0.75;if(m.hun<=0.1){m.st='rest';m.pause=20+Math.random()*30;m.tgt=null;}}}}   // 포식 후 늘어짐. ★먹는 만큼 사체 소모(rot 가속) — 사냥꾼과 도살 경쟁
+          else{m.hun=Math.max(0,m.hun-0.03*dt);c.rot-=dt*0.75;if(m.hun<=0.1){m.st='rest';m.pause=20+_rw()*30;m.tgt=null;}}}}   // 포식 후 늘어짐. ★먹는 만큼 사체 소모(rot 가속) — 사냥꾼과 도살 경쟁
       else if(m.st==='flee'||m.fcd>0||(thr&&td<fl)){m.st='flee';   // 사냥꾼 공격·호랑이 → 이탈
         const ax=(thr&&td<al)?Math.atan2(m.py-thr.py,m.px-thr.px):m.ang;m.ang=ax;
         const sp=D.spd*1.4*wnd*dt;move(Math.cos(ax)*sp,Math.sin(ax)*sp)||move(-Math.sin(ax)*sp,Math.cos(ax)*sp)||(m.ang+=2.5);
         if(m.fcd<=0&&(!thr||td>al))m.st='prowl';}
       else if(m.st==='chase'){const t=m.tgt;const isTig=D.pred===2;m.stam-=(isTig?0.11:0.0175)*dt;   // ★추격 성향 분리(고증): 늑대=지구력 코싱(느린 소진, 수 km), 호랑이=매복(폭발 후 급소진 — 스토킹 사거리 추격서 ~40% 성공, 놓치면 곧 포기). 실측 튜닝: 0.11=12%(과너프)·0.06=87%(과함)·0.09≈40%
         if(!t||t.hp<=0||t.st==='dead'){if(t&&t.st==='dead'&&t.rot>0)m.st='feed';else{m.st='rest';m.pause=24;m.tgt=null;}}
-        else if(m.stam<=0){m.st='rest';m.pause=28+Math.random()*20;m.tgt=null;}   // 소진 → 포기(호랑이는 ~4초 만에 여기 도달=폭발 실패 시 즉시 단념 / 늑대는 오래 버팀)
+        else if(m.stam<=0){m.st='rest';m.pause=28+_rw()*20;m.tgt=null;}   // 소진 → 포기(호랑이는 ~4초 만에 여기 도달=폭발 실패 시 즉시 단념 / 늑대는 오래 버팀)
         else{const dx=t.px-m.px,dy=t.py-m.py,d=Math.hypot(dx,dy)||1,lead=Math.min(8,d*0.45)*(t.st==='flee'?1:0.3);
           const gx=t.px+Math.cos(t.ang)*lead-m.px,gy=t.py+Math.sin(t.ang)*lead-m.py;   // ★요격: 도주 방향 앞지점 조준(꼬리물기 X)
           m.ang=Math.atan2(gy,gx)+(d>2.5?m.flk*0.4:0);   // 팩 측면 분산(포위 인상)
@@ -272,10 +281,10 @@ function updateMobs(s,step){
             if(g.n>1){const cx=g.cx-m.px,cy=g.cy-m.py,cl=Math.hypot(cx,cy)||1,ah=Math.hypot(g.ax,g.ay)||1;dx+=cx/cl*0.8+g.ax/ah*0.5;dy+=cy/cl*0.8+g.ay/ah*0.5;}
             if(g.wp){const wx=g.wp.x-m.px,wy=g.wp.y-m.py,wl=Math.hypot(wx,wy)||1;if(wl>2.5){dx+=wx/wl*0.8;dy+=wy/wl*0.8;}}
             if(dx||dy){let da=Math.atan2(dy,dx)-m.ang;while(da>Math.PI)da-=6.283;while(da<-Math.PI)da+=6.283;m.ang+=da*Math.min(1,MOB_TURN*dt);}
-            m.ang+=(Math.random()-0.5)*0.2*dt;const sp=D.spd*0.45*dt;
-            if(!move(Math.cos(m.ang)*sp,Math.sin(m.ang)*sp)){m.ang+=2+Math.random();if((m.blk=(m.blk||0)+1)>2){m.blk=0;const wpp=s._wp.get(m.gid);if(wpp)wpp.t=0;}}else m.blk=0;}   // 강둑 막힘 → 목적지 재선정
+            m.ang+=(_rw()-0.5)*0.2*dt;const sp=D.spd*0.45*dt;
+            if(!move(Math.cos(m.ang)*sp,Math.sin(m.ang)*sp)){m.ang+=2+_rw();if((m.blk=(m.blk||0)+1)>2){m.blk=0;const wpp=s._wp.get(m.gid);if(wpp)wpp.t=0;}}else m.blk=0;}   // 강둑 막힘 → 목적지 재선정
           else{const wl2=g.wp?Math.abs(g.wp.x-m.px)+Math.abs(g.wp.y-m.py):0;
-            if(wl2>15||Math.random()<0.3)m.wkt=4+Math.random()*6;else m.pause=10+Math.random()*24;}
+            if(wl2>15||_rw()<0.3)m.wkt=4+_rw()*6;else m.pause=10+_rw()*24;}
           if(D.pred===2&&hungry&&thrA&&td<6&&m.cd<=0){hurtNPC(thrA,NPC_DMG_TIGER,'🐯습격');m.cd=180;m.st='flee';m.fcd=24;}}}}}   // 🐯 극히 드문 낙오자 습격(긴 쿨다운) 후 숲으로 이탈
     if(scn)move(sx/scn*MOB_SEP_F*dt,sy/scn*MOB_SEP_F*dt);   // 분리 밀어냄(모든 상태) — 유한가속 필터를 거치므로 무리 내 진동 없음
     if(!m._mv&&((m._vx||0)||(m._vy||0))){const dk=Math.max(0,1-dt*1.4);m._vx*=dk;m._vy*=dk;   // ★관성 감속(follow-through): 서던 참이면 미끄러지듯 잦아들며 멈춤 — 뚝 멈춤 제거
@@ -297,7 +306,7 @@ function updateMobs(s,step){
       if(cm.hp<=0||cm.st==='dead'||((cm.st!=='charge'&&cm.st!=='huff')||cm.tgt!==a)){a._dvM=null;a._dvS=0;a._dvT=0;}
       else if(cm.st==='charge'){const dx6=cm.px-a.px,dy6=cm.py-a.py,d6=Math.hypot(dx6,dy6)||1;
         if(!a._dvT)a._dvT=lifeGM+(1.2-HSK_F(a)*0.09);   /*★회피 반응 지연=발놀림 숙련: Lv1 1.1초·Lv9 0.4초 — 지연 동안 얼음(완벽 타이밍 100% 회피의 형해화 수정: 돌진 43회 피격 0 실측)*/
-        if(d6<14&&lifeGM>=a._dvT){if(!a._dvS)a._dvS=Math.random()<0.5?1:-1;const vsp=(1.25+HSK_F(a)*0.125)*dt,nx6=a.px-dy6/d6*a._dvS*vsp,ny6=a.py+dx6/d6*a._dvS*vsp;
+        if(d6<14&&lifeGM>=a._dvT){if(!a._dvS)a._dvS=_rw()<0.5?1:-1;const vsp=(1.25+HSK_F(a)*0.125)*dt,nx6=a.px-dy6/d6*a._dvS*vsp,ny6=a.py+dx6/d6*a._dvS*vsp;
           if(!(TR.terrain&&TR.terrain.isBlocked(Math.floor(nx6),Math.floor(ny6)))){a.px=nx6;a.py=ny6;}a.action='회피';a._hold=1;continue;}}}
     if(a._bkOff){if(lifeGM>=a._bkOff)a._bkOff=0;else{const bt2=(a._bm2&&a._bm2.hp>0&&a._bm2.st!=='dead')?a._bm2:((a._tgt&&a._tgt.hp>0)?a._tgt:null);
       if(bt2){const dxo=a.px-bt2.px,dyo=a.py-bt2.py,do2=Math.hypot(dxo,dyo)||1;
@@ -315,7 +324,7 @@ function updateMobs(s,step){
     if(rd<(best.st==='sleep'?2.6:MOB_CATCH_R)&&a._acd<=0&&(a.hp===undefined||a.hp>=NPC_MELEE_HP)){a._acd=3.2;best.hp-=calm?3:1;best.fcd=12;a.action='사냥';   /*랩단독 ★잠든 표적 리치 2.6m: 기상 반경(2.5)이 창 리치(2.0)보다 길어 '깨우기만 하고 못 찌르던' 역전 수정 — 깨는 순간 이미 창이 닿는다*/   // 근접타: 방심한 상대=급소(×3). ★다친 사냥꾼(hp<75)은 근접 안 붙고 활만 — 재부상 나선 차단(나감/안 나감 미시 균형)
       if(best.hp<=0){s._kM=(s._kM||0)+1;kill(best);best.rot=60+BD.hp*8;/*★부패=크기 비례(대물 도축 45분 확보)*/best._hk=a;a._carc=best;a._tgt=null;a.action='명중';}   // ★즉시 포획 아님: 사체(40분 유지)를 걸어가 도살해야 수확 — 그 전에 늑대가 먹거나 썩으면 손실
       else{a._tgt=best;a._tgtG=lifeGM;a._lbx=best.px;a._lby=best.py;   // ★생존 → 표적 고정(끝까지 전담)
-        if(BD.brave>0&&Math.random()<BD.brave*best.tmp*0.45)goCharge(best,a);}}   // ★부상 멧돼지·늑대의 반격 — 무장한 사냥꾼 상대론 위축(×0.45 ≈ 최종 ~28%)
+        if(BD.brave>0&&_rw()<BD.brave*best.tmp*0.45)goCharge(best,a);}}   // ★부상 멧돼지·늑대의 반격 — 무장한 사냥꾼 상대론 위축(×0.45 ≈ 최종 ~28%)
     else if(best.st!=='sleep'&&rd<MOB_HUNT_R*(a._eng?1.18:1)){a._eng=1;   // ★교전 존(진입 22m·이탈 26m 히스테리시스): 절차 ①표적 멈춤 확인 ②사수 정지 ③시위 충전 ④발사. (잠든 표적은 근접 급소로)
       const stTh=calm?0.8:0.6,_sRaw=(best._spd||0)<(a._stH?stTh+0.5:stTh);a._stH=_sRaw?1:0;   /*랩단독 ★정지 판정 3차 교정: 종전 히스테리시스(+2)가 '유지' 구멍 — 조준 진입 후 사슴이 5.5(화면 2.75m/s)로 걸어 나가도 조준·발사 유지됐음. 이제 방심 1.6/해제 2.6·경계 1.2/2.2 — 보이는 보행=즉시 조준 해제*/
       a._bStil=_sRaw?(a._bStil||0)+dt:Math.max(0,(a._bStil||0)-dt*2);const stl=_sRaw&&a._bStil>=5;a._hold=stl?1:0;/*랩단독 ★정지 확인 5유닛(사용자 지정) — 잔걸음은 완전 리셋 대신 2배속 감쇠(연속 5초를 영영 못 채우는 교착 방지). 발사 순간 정지(_sRaw)는 불변*/   /*랩단독 ★완전 정지 '확인': 표적이 2유닛 연속 멈춰 있는 걸 보고 나서야 조준 개시(멈추는 척에 활 안 듦)*/   // ★정지 문턱: 방심=3.5(멈춰 뜯는 중 + 잔걸음까지 — 화면 ~1.75m/s. 종전 6은 어슬렁 보행(3m/s)에도 조준하는 시각 부조화) vs 도주·경계=1.5(완전 정지). 1.5 전면 적용은 가감속 노이즈로 '조준 70% 마비' 전력 — 히스테리시스 +2
@@ -329,19 +338,19 @@ function updateMobs(s,step){
       else if(!(a._acd<=0&&a._aimT>=4.0-HSK_W(a)*0.14)){if(a.action!=='저격')a.action=a._acd>0?'재장전':'조준';}   /*랩단독 ★재장전(6유닛)·조준(시위 1.4~1.9유닛) 분리 — '조준 10초' 착시 제거*/
       else{a._alW=0;a._acd=12;if(BD.pred===2){a._bkOff=lifeGM+20;a._bm2=best;}/*★호랑이=쏘고 즉시 물러나기(치고 빠지기): 커밋 고착 후 18m 소모전 지속 노출→돌진 사망 3/3일(H15 위반) — 발사마다 후퇴 발령, 다시 누우면 재접근*/const sk=HSK_W(a),pc=Math.max(0.3,0.80+sk*0.015-rd*0.009);   // ★숙련 반영 명중률(정지 표적·조준 완료): 20m 레벨0 62%→레벨5 69%→레벨10 77%, 10m 71~86% — 궁술은 수련. 어려운 건 여전히 접근
         const _sz=Math.min(1,Math.pow(BD.r,1.7));   // ★표적 크기 보정 r^1.7: 사슴 1·토끼 0.44·늑대 0.92 — 활로 토끼가 어려운 건 물리(그래서 실제론 덫이 정도)
-        const ph=Math.min(0.95,_sz*(calm?pc:pc*(best.hp<BD.hp?0.45:0.25))*(best.hp<BD.hp?1.3:1)),hit=Math.random()<ph;   // 경계 표적=string jump ×0.25(활 유효사거리가 짧은 실제 이유), ★부상 표적은 회피 둔화 ×0.45 — 출혈 피로로 몸을 못 던짐. 부상 보정 ×1.3, 명중 선판정+착탄 재검(비유도)
+        const ph=Math.min(0.95,_sz*(calm?pc:pc*(best.hp<BD.hp?0.45:0.25))*(best.hp<BD.hp?1.3:1)),hit=_rw()<ph;   // 경계 표적=string jump ×0.25(활 유효사거리가 짧은 실제 이유), ★부상 표적은 회피 둔화 ×0.45 — 출혈 피로로 몸을 못 던짐. 부상 보정 ×1.3, 명중 선판정+착탄 재검(비유도)
       const T=Math.max(0.1,rd/MOB_ARROW_V)/*랩단독 ★최소비행 0.5→0.1유닛: 옛 클램프가 50m 이내 전 사격을 1초(실전)로 고정 — 실효 20m/s로 명목(50m/s)의 40%였음. 이제 20m=0.4초 진짜 50m/s*/,bs2=Math.hypot(best._vx||0,best._vy||0);   // 비행시간 + ★리드 = 실측 속도(관성 필터 뒤 실제 이동 벡터) × 비행시간 — 질주·속보·출혈 감속이 자동 반영(상태 추정 리드는 질주 도입 후 계속 빗나갔음)
       const axp=best.px+(bs2>1e-3?best._vx/bs2:0)*(best._spd||0)*T*0.9,ayp=best.py+(bs2>1e-3?best._vy/bs2:0)*(best._spd||0)*T*0.9;
       const aer=(best._spd||0)*T*0.55;   // ★조준 오차 ∝ 표적 속도×비행시간: 방심(정지)=정확, 질주자=리드가 크게 흔들려 자주 빗겨감 — 실측 리드의 저격수화 방지
-      const ix=hit?axp+(Math.random()-0.5)*aer:axp+(Math.random()-0.5)*(4+aer),iy=hit?ayp+(Math.random()-0.5)*aer:ayp+(Math.random()-0.5)*(4+aer);
+      const ix=hit?axp+(_rw()-0.5)*aer:axp+(_rw()-0.5)*(4+aer),iy=hit?ayp+(_rw()-0.5)*aer:ayp+(_rw()-0.5)*(4+aer);
       let cc=false;if(hit&&BD.brave>0){let grp=0;if(BD.pred)for(const o of s.agents)if(!o._dead&&o.job==='hunter'&&Math.abs(o.px-a.px)+Math.abs(o.py-a.py)<10)grp++;   // ★몰이: 사수 곁 3인+이면 맹수가 돌진 못 함(협동사냥의 가치)
-        cc=Math.random()<BD.brave*best.tmp*(BD.pred?(grp>=3?0.08:(BD.pred===2&&best.hp<BD.hp?0.75:(BD.pred===1?0.5:0.35))):(rd<8?0.3:0));}   /* ★부상 🐯=역습 75%(사냥감이 아니라 재앙 — 몰이 3인만이 억제) · 🐺 0.5 */   // ★반격 선판정: 초식=근거리 피격 시만, 맹수=원거리 화살에도 사수에게 돌진
+        cc=_rw()<BD.brave*best.tmp*(BD.pred?(grp>=3?0.08:(BD.pred===2&&best.hp<BD.hp?0.75:(BD.pred===1?0.5:0.35))):(rd<8?0.3:0));}   /* ★부상 🐯=역습 75%(사냥감이 아니라 재앙 — 몰이 3인만이 억제) · 🐺 0.5 */   // ★반격 선판정: 초식=근거리 피격 시만, 맹수=원거리 화살에도 사수에게 돌진
       (s._fx=s._fx||[]).push({x1:a.px,y1:a.py,x2:ix,y2:iy,T:T,t:T,h:hit,tg:best,dmg:(calm?2:1)*(s.econ&&s.econ._bowQ||1)/*★활 티어(§9 3차): 데미지=장비(제작 품질) 몫(§6) — 마을 활 품질 ×1.0~1.25(발수 보존: 사슴2·멧돼지3 유지, 호랑이만 7→6발). 랩(econ 없음)=1*/,cc:cc,a:a});s._shots=(s._shots||0)+1;if(hit)s._hitsN=(s._hitsN||0)+1;a.action='저격';}}
     else{a._eng=0;a._stH=0;a._alW=0;a.action=a.sneak?'잠행':(best.st==='flee'?'추적':'접근');}}   // ★추적(달리기 2×)=진짜 도주(flee) 전용. ★경계(fcd 잔여)는 도주가 아님 — 접근/잠행 유지(경계 사슴에 달려들면 스스로 도주 트리거: 55m 개시 후 관측된 무한 추격 루프의 주범)
   if(s._fx&&s._fx.length){for(const q of s._fx){q.t-=dt;   // ★화살 비행 → 착탄 처리(피해·반격·놀람은 화살이 닿는 순간)
     if(q.t>0&&!q.done){const pr2=1-q.t/(q.T||1),ax2=q.x1+(q.x2-q.x1)*pr2,ay2=q.y1+(q.y2-q.y1)*pr2;   // ★휙— 스침 감지: 비행 중 화살 2.5m 안의 동물(표적이든 옆의 무리원이든)은 45%로 놀라 튐(빗맞아도 조용하지 않음)
       if(pr2>0.15)for(const m2 of s.mobs){if(m2.hp<=0||m2.st==='flee'||m2.fcd>0)continue;const ddx=m2.px-ax2,ddy=m2.py-ay2,_zg=MOB_DEF[m2.type].zig,_w2=ddx*ddx+ddy*ddy;if(_w2>(_zg?16:6.25))continue;
-        if(!q._wz)q._wz=new Set();if(q._wz.has(m2))continue;q._wz.add(m2);if(Math.random()<(_zg?(_w2<4?0.9:0.55):(_w2<1.44?0.45:0.18))){m2.fcd=12;(s._fW=s._fW||{}).whizz=(s._fW.whizz||0)+1;}}/*계측*/}   // 개체당 1발 1회 판정 — 귓전(1.2m) 45%·근처 통과 18%(살깃 소리는 늘 알아채진 못함). 질주는 도주 진입이 자동 발동
+        if(!q._wz)q._wz=new Set();if(q._wz.has(m2))continue;q._wz.add(m2);if(_rw()<(_zg?(_w2<4?0.9:0.55):(_w2<1.44?0.45:0.18))){m2.fcd=12;(s._fW=s._fW||{}).whizz=(s._fW.whizz||0)+1;}}/*계측*/}   // 개체당 1발 1회 판정 — 귓전(1.2m) 45%·근처 통과 18%(살깃 소리는 늘 알아채진 못함). 질주는 도주 진입이 자동 발동
     if(q.t<=0&&!q.done){q.done=1;const tg=q.tg;
       if(TR.rock){const dq=Math.hypot(q.x2-q.x1,q.y2-q.y1),nq=Math.ceil(dq);for(let iq=1;iq<nq;iq++){const tq=iq/nq,xx=Math.floor(q.x1+(q.x2-q.x1)*tq),yy=Math.floor(q.y1+(q.y2-q.y1)*tq);if(inG(xx,yy)&&TR.rock[idx(xx,yy)]){q.x2=q.x1+(q.x2-q.x1)*tq;q.y2=q.y1+(q.y2-q.y1)*tq;q.h=false;break;}}}   /*★화살 바위 차단: 벽에 박힘*/
       {const dq2=Math.hypot(q.x2-q.x1,q.y2-q.y1),nq2=Math.max(2,Math.ceil(dq2/1.2));let icp=null,icT=1;   /*★몸통 콜라이더: 비행 선분의 첫 몸이 가로챔 — 겹친 사슴은 가까운 놈이 맞고, 빗나간 화살도 몸엔 박힘*/
@@ -350,12 +359,12 @@ function updateMobs(s,step){
             if(Math.abs(m9.px-ax9)<r9&&Math.abs(m9.py-ay9)<r9){icp=m9;icT=tq;break;}}}
         if(icp&&icp!==q.tg){q.x2=q.x1+(q.x2-q.x1)*icT;q.y2=q.y1+(q.y2-q.y1)*icT;q.tg=icp;q.h=true;q.dmg=(((icp.st==='graze'||icp.st==='raid'||icp.st==='prowl'||icp.st==='sleep'||icp.pause>0)&&!(icp.fcd>0))?2:1)*(s.econ&&s.econ._bowQ||1)/*★활 티어(§9 3차) — 가로챈 몸에도 같은 활*/;q.cc=false;}}
       for(const m3 of s.mobs){if(m3.hp<=0||m3.st==='flee'||m3.fcd>0||(q.h&&m3===tg))continue;const dx3=m3.px-q.x2,dy3=m3.py-q.y2,_z3=MOB_DEF[m3.type].zig,_w3=dx3*dx3+dy3*dy3;if(_w3>(_z3?16:6.25))continue;
-        if(Math.random()<(_z3?(_w3<4?0.9:0.55):(_w3<1.44?0.45:0.18))){m3.fcd=12;(s._fW=s._fW||{}).impact=(s._fW.impact||0)+1;}}   // ★착탄 소음(계측): 화살이 땅에 박히는 소리에 주변 놀람 — 20m 단거리는 1프레임 착탄이라 비행 스침 체크가 못 돌던 구멍. 🐇=4m·55~90%(한 발 실패=무리째 굴로)
+        if(_rw()<(_z3?(_w3<4?0.9:0.55):(_w3<1.44?0.45:0.18))){m3.fcd=12;(s._fW=s._fW||{}).impact=(s._fW.impact||0)+1;}}   // ★착탄 소음(계측): 화살이 땅에 박히는 소리에 주변 놀람 — 20m 단거리는 1프레임 착탄이라 비행 스침 체크가 못 돌던 구멍. 🐇=4m·55~90%(한 발 실패=무리째 굴로)
       if(q.h&&tg&&tg.hp>0&&tg.st!=='dead'&&Math.abs(tg.px-q.x2)+Math.abs(tg.py-q.y2)<1.6*MOB_DEF[tg.type].r){/*★착탄 유효반경=몸통 크기(사슴 1.6 유지·토끼 1.0)*/tg.hp-=q.dmg;tg.fcd=20;   // ★유도탄 금지: 화살은 조준점(리드 예측)에 떨어질 뿐 — 표적이 비행 중 벗어났으면 회피(방심·직선 이동은 리드가 맞아 명중, 갈지자·급변침은 빠져나감)
         if(tg.hp<=0){s._kA=(s._kA||0)+1;kill(tg);tg.rot=60+MOB_DEF[tg.type].hp*8;if(q.a&&!q.a._dead){tg._hk=q.a;q.a._carc=tg;q.a.action='명중';q.a._tgt=null;}}   // ★사체 클레임 — 도살하러 가야 함
         else{if(q.a&&!q.a._dead&&!(q.a._tgt&&q.a._tgt!==tg&&q.a._tgt.hp>0&&q.a._tgt.st!=='dead')){q.a._tgt=tg;q.a._tgtG=lifeGM;q.a._lbx=tg.px;q.a._lby=tg.py;}/*랩단독 ★기존 전담이 살아있으면 lock 덮어쓰기 금지(이놈저놈 찔끔 봉인). 부상 대기 제거 — 즉시 자국 추적(72m 포복 수정으로 재도주 트리거 해소됨)*/   // ★피 냄새: 부상 입힌 사수는 이 개체를 끝까지 전담(마무리 책임)
           if(q.cc){goCharge(tg,q.a);if(tg.type==='🐺')for(const o2 of s.mobs){if(o2===tg||o2.type!=='🐺'||o2.hp<=0||o2.st==='dead'||o2.gid!==tg.gid)continue;if(Math.abs(o2.px-tg.px)+Math.abs(o2.py-tg.py)<25){goCharge(o2,q.a);break;}}}}}   /* ★🐺 협공: 팩원 1마리 동시 돌진(양방향 포위 — 혼자 늑대 팩 건드리면 감당 못 함) */
-      else if(tg&&tg.hp>0&&tg.st!=='dead'&&Math.abs(tg.px-q.x2)+Math.abs(tg.py-q.y2)<5){if(q.h)s._dodgeN=(s._dodgeN||0)+1;if(Math.random()<0.5){tg.fcd=14;(s._fW=s._fW||{}).nearMiss=(s._fW.nearMiss||0)+1;}}}}   // 회피/빗나감 — 곁에 박힌 화살 소리에 놀라 멀리 이탈(50%)
+      else if(tg&&tg.hp>0&&tg.st!=='dead'&&Math.abs(tg.px-q.x2)+Math.abs(tg.py-q.y2)<5){if(q.h)s._dodgeN=(s._dodgeN||0)+1;if(_rw()<0.5){tg.fcd=14;(s._fW=s._fW||{}).nearMiss=(s._fW.nearMiss||0)+1;}}}}   // 회피/빗나감 — 곁에 박힌 화살 소리에 놀라 멀리 이탈(50%)
     s._fx=s._fx.filter(q=>q.t>-0.6);}   // 착탄 후 0.6분 잔상(빗나간 화살이 땅에 박혀 있음)
   if(s._blood&&s._blood.length){for(const b of s._blood)b.t-=dt;s._blood=s._blood.filter(b=>b.t>0);}   // 핏자국 증발(45분)
   reapDead(s);   // ★사망자 정리(agent 제거 + 인구 감소)
@@ -483,7 +492,7 @@ function _hunterBrain(a, s, dt) {
     if (!(left > 0)) {
       a._bm = null; a._tgt = null; a._cm = null; a.sneak = false;
       if ((a.dwell = (a.dwell || 0) - dt) > 0) return;
-      bMoveTo(a, a.home.cx, a.home.cy); a.action = '귀환'; a.dwell = 24 + Math.random() * 24;
+      bMoveTo(a, a.home.cx, a.home.cy); a.action = '귀환'; a.dwell = 24 + _rw() * 24;
       return;
     }
   }
@@ -543,9 +552,9 @@ function _hunterBrain(a, s, dt) {
   }
   a._bm = bm || null; const _snR = (bm && bm.hp < MOB_DEF[bm.type].hp) ? 72 : (bm ? Math.min(MOB_SNEAK_IN, MOB_DEF[bm.type].alert * 1.2) : MOB_SNEAK_IN);   /*★부상 표적=72m부터 포복(도주 링 밖)*/
   a.sneak = !!(bm && Math.hypot(bm.px - a.px, bm.py - a.py) < _snR && bm.st !== 'flee');   /*★잠행 개시=종별 min(55, 경계×1.2)*/
-  if (!best) { const m = s.gameRich, src = (s.huntCells && s.huntCells.length) ? s.huntCells : s.forestCells; for (let t2 = 0; t2 < 8; t2++) { const c = src[(Math.random() * src.length) | 0]; if (!c) break; if (Math.hypot(c.cx - a.work.cx, c.cy - a.work.cy) <= 9 && m && (m.get(c.cx + ',' + c.cy) || 0) > 8) { best = c; break; } } }   // 몹 없으면 사냥터 밴드의 밀도 셀(작업 앵커 ±9)
+  if (!best) { const m = s.gameRich, src = (s.huntCells && s.huntCells.length) ? s.huntCells : s.forestCells; for (let t2 = 0; t2 < 8; t2++) { const c = src[(_rw() * src.length) | 0]; if (!c) break; if (Math.hypot(c.cx - a.work.cx, c.cy - a.work.cy) <= 9 && m && (m.get(c.cx + ',' + c.cy) || 0) > 8) { best = c; break; } } }   // 몹 없으면 사냥터 밴드의 밀도 셀(작업 앵커 ±9)
   if (best && bMoveTo(a, best.cx, best.cy)) a.action = bm ? ((bm.st === 'flee' || a._onTrail) ? '추적' : (a.sneak ? '잠행' : '접근')) : '수색'; else a.action = '사냥';   /*★추적=flee·핏자국 전용*/
-  a.dwell = 16 + Math.random() * 28;   // 추격 시 더 자주 재조준(몹 따라감)
+  a.dwell = 16 + _rw() * 28;   // 추격 시 더 자주 재조준(몹 따라감)
 }
 
 function _makeShadow(lm) {
@@ -574,7 +583,7 @@ function _dropShadow(lm, keepInMobs) {
 // kill() 미러 — 랩 kill은 updateMobs 클로저 내부라 외부 호출 불가. 동일 5필드 + rot(랩 kill과 동일 분포).
 //   corpsed: 본체 경로(tryAttack/화살)가 이미 spawnCorpse 하므로 사체 중복 생성 방지 플래그.
 function _extKill(lm) {
-  lm.hp = 0; lm.st = 'dead'; lm.rot = 52 + Math.random() * 36; lm.tgt = null; lm.raidK = null;
+  lm.hp = 0; lm.st = 'dead'; lm.rot = 52 + _rw() * 36; lm.tgt = null; lm.raidK = null;
   lm._corpsed = 1; _stats.deaths++;
   _dropShadow(lm, true);   // 본체 mobs 제거·broadcast는 본체 사망 경로가 수행(중복 제거 방지) — 링크만 해제
 }
@@ -589,7 +598,7 @@ function onMobHit(sh, dmgMain, attacker) {
   const D = MOB_DEF[lm.type];
   if (attacker && D && D.brave > 0) {             // 랩 근접 반격 규칙 미러(멧돼지·늑대·호랑이 ×0.45)
     const pr = _proxies.get(attacker.pid);
-    if (pr && pr.hp > 0 && Math.random() < D.brave * (lm.tmp || 1) * 0.45) { goCharge(lm, pr); _stats.charges++; }
+    if (pr && pr.hp > 0 && _rw() < D.brave * (lm.tmp || 1) * 0.45) { goCharge(lm, pr); _stats.charges++; }
   }
 }
 
@@ -616,6 +625,8 @@ function init(host) {
   //   미활성 영역은 0(=없음)으로 읽힘: LoS·숲 판정이 완화되는 fail-open — 몹은 뷰(활성 bbox) 안에만 존재해 영향 미미.
   TR.rock = _rockM;
   TR.forest = _forM;
+  // ★[T350] 흐름 주입 — 호스트가 주면 그걸, 안 주면 종전 그대로(`Math.random` · 랩·하네스 전용 가지)
+  _rw = (typeof host.rng === 'function') ? host.rng : Math.random;
   _ready = true;
   console.log(`[${host.ZONE_ID}] 🐾 wildlife ON — 동물 AI 블록(마을실험실 §4-4) 이식: 5종(🦌🐇🐗🐺🐯), 그리드 ${NX}×${NY}셀, dt=1/${host.TICK_HZ}유닛(1유닛=1초=1게임분)`);
 }

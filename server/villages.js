@@ -76,6 +76,15 @@
 'use strict';
 
 const ENABLED = process.env.ENABLE_VILLAGES !== '0'; // 기본 켜짐. '0'만 완전 no-op.
+// ★★[T350 2026-09-22 · 주사위 0] 씨 해시 **정본**(`server/seed-rand.js`) — 아래 두 함수는 여기로 옮겼다(사본 0).
+//   `_t340Rng`(T340 낚시 흐름)·`_pidHash`(신원 해시)는 **한 글자도 안 바뀐다** — 옮긴 것뿐이고,
+//   `test-fish-act` 73 과 `test-move-soa ④` 가 그 바이트 동일을 건다. 머리에 두는 이유는 TDZ 다(T324).
+const { seedRand: _t340Rng, pidHash: _pidHash, seedOf: _seedOf, makeStream: _makeStream } = require('./seed-rand');
+// ★[T350] 흐름 둘 — 결정마다 클로저를 만들지 않는다(할당 0 · T345).
+//   `_diceLife` = 주민 생활층 결정(순수 해시 · 신원·셀·날·틱) · `_diceVil` = 마을 자리(출생·배치 · 스트림).
+const _diceLife = _makeStream(), _diceVil = _makeStream();
+const _dl = _diceLife.next, _dv = _diceVil.next;
+const _shOfNpc = (n) => (n._sh !== undefined ? n._sh : (n._sh = _pidHash(n.pid || n.playerId || n.id || '')));
 
 const SZ = 32; // 셀 크기(px) — zone.js BUILDING_SIZE(436행)·zone-config 셀과 동일
 const INITIAL_POP = 8; // econ createVillage 초기 인구 기본값(economy-sim.js 697행)과 일치
@@ -718,10 +727,12 @@ function spawnOneNpc(vil) {
   const cxPx = vil.ccx * SZ + SZ / 2, cyPx = vil.ccy * SZ + SZ / 2;
   // Stage 4A: 작업 지점을 회관 밖 도넛(180~320px)으로 — 회관 9×9(반폭 144px+벽)이 실물화되어
   //   내부 좌표를 주면 NPC가 벽에 영원히 비비게 됨(레거시엔 중앙 건물이 없어 ±200 균일이 무해했음).
-  const wAng = Math.random() * Math.PI * 2, wR = 180 + Math.random() * 140;
+  // ★[T350 · 주사위 0] 태어나는 자리 — 씨 = (마을 신원 · 집 셀 · 게임일 · 그 마을의 몇 번째 주민).
+  _diceVil.seed(_seedOf(_pidHash('simvil_' + vil.dbId), Math.floor(hx / SZ), Math.floor(hy / SZ), (state.dayMs ? gameDayOf(Date.now()) : 0) | 0, vil.npcPids.length | 0));   // 날 = `gameDayOf` 정본(사본 0)
+  const wAng = _dv() * Math.PI * 2, wR = 180 + _dv() * 140;
   const p = state.deps.spawnNpc({
-    x: hx + (Math.random() - 0.5) * 60,
-    y: hy + (Math.random() - 0.5) * 60,
+    x: hx + (_dv() - 0.5) * 60,
+    y: hy + (_dv() - 0.5) * 60,
     villageId: `simvil_${vil.dbId}`,
     villageName: vil.name,
     npcHomeX: hx, npcHomeY: hy,
@@ -4100,10 +4111,7 @@ function _t312Deliver(vil, npc) {
 //     창이 닫힐 때까지 그 자리에 **없으면**(자리를 옮겼다·낮이 끝났다·곳간에 갔다) 못 챈다. 그게 전부다.
 let _tMod = null;
 const _terrainMod = () => _tMod || (_tMod = require('./terrain'));   // ★[T340] 지형 정본 — `spotAt` 이 요구하는 그 모듈
-function _t340Rng(seed) {
-  let s = (seed >>> 0) || 1;
-  return () => { s = (Math.imul(s ^ (s >>> 15), 0x85ebca6b) + 0x9e3779b9) >>> 0; return ((s >>> 8) / 16777216) || 1e-9; };
-}
+// ★[T350] `_t340Rng` 정의는 `server/seed-rand.js` 로 옮겼다(머리에서 require · 사본 0).
 // 한 시도 — 상태는 `npc._t340` 하나(던진 자리·입질 시각·창·그 종). 자리를 옮기면 버린다(안 물림).
 function _t340Try(vil, npc, now, day, h, ws) {
   const F = _fishingMod(); if (!F) return false;
@@ -4334,7 +4342,7 @@ function _villageCropFor(vil, field, mo, par) {   // 랩 villageCropFor 동형: 
   else { const c1 = pick(211); if (cand.length < 2) res = c1; else { let c2 = pick(307); if (c2 === c1) c2 = cand[(cand.indexOf(c1) + 1) % cand.length]; res = par ? c2 : c1; } }
   return (_vcfCache[ck] = res);
 }
-function _pidHash(pid) { let h = 7; const s2 = String(pid); for (let i = 0; i < s2.length; i++) h = (h * 31 + s2.charCodeAt(i)) >>> 0; return h; }
+// ★[T350] `_pidHash` 정의는 `server/seed-rand.js` 로 옮겼다(머리에서 require · 사본 0).
 function _lifeAct(npc, s) {   // ★[액션 라벨 가시화] 행동 라벨 세터 — 변경 시 타임스탬프(zone.js makeEntry가 변경 후 1.2s 윈도우+최초가시에만 전송: 무상태 델타)
   if (npc._lifeAct !== s) { npc._lifeAct = s; npc._lifeActAt = Date.now(); }
 }
@@ -6392,7 +6400,11 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
   if (npc._dOff === undefined) npc._dOff = ((_pidHash(npc.pid) % 997) / 997) * SCH_DOFF;
   if (fv >= dayR || fv < npc._dOff) { npc._workT = null; _lifeGoHome(npc, '취침'); return true; }   // 밤·기상 전=취침(진행 작업 유지 — 아침 현장 재개, 노동 적산은 도착부터)
   // 아침 추첨(랩 a._hd/_half 7984): econ 여유노동(_idleFrac) 비율 = 오늘 반일 근무 확률 — 여가→행복의 시각화(궁핍촌 idle 0=항상 종일)
-  if (npc._hd !== day) { npc._hd = day; npc._half = Math.random() < ((vil.econ && vil.econ._idleFrac) || 0); }
+  // ★[T350 · 주사위 0] 그날 '반일' 여부 — 하루 한 번 굴린다. 씨 = (신원 · 집 셀 · 게임일 · 0).
+  //   틱을 안 넣는 이유: **하루 한 번**이라 날이 곧 그 굴림의 자리다(같은 날 다시 물어도 같은 답).
+  if (npc._hd !== day) { npc._hd = day;
+    _diceLife.seed(_seedOf(_shOfNpc(npc), Math.floor((npc.npcHomeX || npc.x || 0) / SZ), Math.floor((npc.npcHomeY || npc.y || 0) / SZ), day, 0));
+    npc._half = _dl() < ((vil.econ && vil.econ._idleFrac) || 0); }
   const dayFrac = fv / dayR;   // 낮 진행률 0~1(랩 상수의 서버 환산 축)
   // 반일 오후(랩 7991 퇴근길 징발 — 일>건축>휴식): 미완공 집터 있으면 전 직업 건축 합류(상한 없음 — 랩 동형), 없으면 자택 휴식
   if (npc._half && dayFrac >= SCH_HALF_R) {
@@ -6675,7 +6687,9 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
     if (Math.hypot(npc.x - ws.x, npc.y - ws.y) > 300) { npc.behavior = 'wander'; npc.targetX = ws.x; npc.targetY = ws.y; npc.gatherTarget = null; return true; }
     if (npc._jobT && now < npc._jobT) return true;
     npc._jobT = now + 7000 + (h % 5) * 1200;
-    npc.behavior = 'wander'; npc.targetX = ws.x + (Math.random() - 0.5) * 260; npc.targetY = ws.y + (Math.random() - 0.5) * 260; npc.gatherTarget = null;
+    // ★[T350 · 주사위 0] 수색 배회 목표 — 씨 = (신원 · 작업장 셀 · 게임일 · 시도 번호 `_jobT` 대신 `h`).
+    _diceLife.seed(_seedOf(_shOfNpc(npc), Math.floor(ws.x / SZ), Math.floor(ws.y / SZ), day, h | 0));
+    npc.behavior = 'wander'; npc.targetX = ws.x + (_dl() - 0.5) * 260; npc.targetY = ws.y + (_dl() - 0.5) * 260; npc.gatherTarget = null;
     _lifeAct(npc, '수색');
     return true;
   }

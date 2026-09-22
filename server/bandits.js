@@ -100,6 +100,15 @@ function denRng(a, b) {
   h ^= h >>> 13; h = Math.imul(h, 1274126177) >>> 0; h ^= h >>> 16;
   return (h >>> 0) / 4294967296;
 }
+// ★★[T350 2026-09-22 · 주사위 0] 이 파일은 **이미** 결정론 rng(`denRng`) 를 쥐고 있었다(원천③).
+//   그런데 여덟 자리가 그걸 안 쓰고 `Math.random` 을 굴리고 있었다 — 누가 도적이 되나(주민 뽑기) ·
+//   교전 피해 배분 · 실체 도적의 배회 자리. 전부 **세계를 움직인다**. 같은 흐름으로 모은다.
+//   흐름은 모듈에 하나(할당 0) · 씨는 `S.denSeed`(이 파일의 그 씨)와 날·시도에서 난다 — 새 수 0.
+const _SEED = require('./seed-rand');
+const _diceB = _SEED.makeStream();
+const _rb = _diceB.next;
+let _bTick = 0;
+function _bSeed(a, b) { _bTick = (_bTick + 1) >>> 0; _diceB.seed(_SEED.seedOf((S.denSeed >>> 0) || 1, a | 0, b | 0, _bTick, 0)); }
 
 // =============================================================================
 // 교역로 표본·거리장 — 랩 bdtRoutePts(getTradePath 캐시 재사용) 서버판.
@@ -293,8 +302,9 @@ function formGang(vil, size, day, why) { // econ 인구에서 *살아있는* siz
   if (!e || e.npcs.length < size || size < BDT_GMIN) return null;
   const camp = campSpot(vil.ccx, vil.ccy);
   if (!camp) { log(day, `${vil.name} 잔존자 이탈 — 은거지 후보 없음(그냥 흩어짐)`); return null; }
+  _bSeed(vil.ccx, vil.ccy);   // ★[T350] 누가 도적이 되나 — 은거지 셀이 씨의 앞자리
   for (let i = 0; i < size; i++) { // counts 증분 캐시 동기(killTrader 패턴)
-    const k = (Math.random() * e.npcs.length) | 0;
+    const k = (_rb() * e.npcs.length) | 0;
     const npc = e.npcs.splice(k, 1)[0];
     if (e.counts && npc && npc.currentJob) e.counts[npc.currentJob] = Math.max(0, (e.counts[npc.currentJob] || 0) - 1);
   }
@@ -349,7 +359,7 @@ function daily(day) { // 하루 1회(villages econ 틱 직후): 위기 추적→
       let bg = null, bd = 1e18;
       for (const g of S.GANGS) { const d = Math.hypot(g.camp.cx - vil.ccx, g.camp.cy - vil.ccy); if (d < bd) { bd = d; bg = g; } }
       if (bg && bd <= infoR) {
-        const k = (Math.random() * e.npcs.length) | 0;
+        const k = (_rb() * e.npcs.length) | 0;
         const npc = e.npcs.splice(k, 1)[0];
         if (e.counts && npc && npc.currentJob) e.counts[npc.currentJob] = Math.max(0, (e.counts[npc.currentJob] || 0) - 1);
         bg.n++; e._bdtExoAt = day; S.stats.exo++;
@@ -389,8 +399,8 @@ function daily(day) { // 하루 1회(villages econ 틱 직후): 위기 추적→
         for (let z = 0; z < _B.length; z++) if (_B[z] > 0) _bL.push(z);
         if (!_aL.length || !_bL.length) break;
         const _dA = _A.map(() => 0), _dB = _B.map(() => 0);
-        for (const z of _aL) _dB[_bL[(Math.random() * _bL.length) | 0]] += _eA;
-        for (const z of _bL) _dA[_aL[(Math.random() * _aL.length) | 0]] += _bA;
+        for (const z of _aL) _dB[_bL[(_rb() * _bL.length) | 0]] += _eA;
+        for (const z of _bL) _dA[_aL[(_rb() * _aL.length) | 0]] += _bA;
         for (let z = 0; z < _A.length; z++) if (_A[z] > 0) _A[z] -= _dA[z];
         for (let z = 0; z < _B.length; z++) if (_B[z] > 0) _B[z] -= _dB[z];
       }
@@ -402,7 +412,7 @@ function daily(day) { // 하루 1회(villages econ 틱 직후): 위기 추적→
       if (fvil) {
         const ev = fvil.econ;
         for (let z = 0; z < _ed && ev && ev.npcs.length > 3; z++) { // 원정 전사 = 실제 사상만큼 마을 NPC 사망
-          const k = (Math.random() * ev.npcs.length) | 0;
+          const k = (_rb() * ev.npcs.length) | 0;
           const npc = ev.npcs.splice(k, 1)[0];
           if (ev.counts && npc && npc.currentJob) ev.counts[npc.currentJob] = Math.max(0, (ev.counts[npc.currentJob] || 0) - 1);
           S.stats.supDead++;
@@ -516,8 +526,9 @@ function syncBodies() {
     const want = Math.min(BDT_BODY_PER_GANG, g.n);
     const cx = g.camp.cx * SZ + SZ / 2, cy = g.camp.cy * SZ + SZ / 2;
     while (pids.length < want) {
-      const a = Math.random() * Math.PI * 2, r = 40 + Math.random() * 80; // 홈=은거지 곁(±셀 몇), 워크=둘레 도넛(~2~15셀) — 배회 반경
-      const wa = Math.random() * Math.PI * 2, wr = 80 + Math.random() * 400;
+      _bSeed(g.camp.cx, g.camp.cy);   // ★[T350] 실체 도적이 서는 자리 — 은거지 셀이 씨
+      const a = _rb() * Math.PI * 2, r = 40 + _rb() * 80; // 홈=은거지 곁(±셀 몇), 워크=둘레 도넛(~2~15셀) — 배회 반경
+      const wa = _rb() * Math.PI * 2, wr = 80 + _rb() * 400;
       let p = null;
       try {
         p = S.host.spawnNpc({
