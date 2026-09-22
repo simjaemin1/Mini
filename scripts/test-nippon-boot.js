@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
-// === scripts/test-nippon-boot.js — 둘째 존이 실제로 산다 (T343 · T348) =========
+// === scripts/test-nippon-boot.js — 둘째 존이 실제로 산다 (T343 · T348 · T351) ===
 //
 // ★왜 [T343 2026-09-21]
 //   T336 이 잰 것: `ZONE_ID=nippon` 은 **오류 0 으로 뜨는데 아무 일도 안 났다**
@@ -17,6 +17,11 @@
 //   ⓕ 의 본선은 "다리를 놓았다"가 아니라 **"교역 격자가 그 다리를 본다"**(`다리구제 > 0`)다.
 //   T348 1차 판이 정확히 그 자리에서 틀렸다: 계획기가 서버와 다른 물을 보고 뽑은 다리를 놓았더니
 //   셀은 선언됐는데 `다리구제 0` 이고 도달 쌍이 **한 쌍도 안 늘었다**. 선언은 판정이 아니다.
+//
+// ★[T351] 닛폰 후보가 **정본 칸에 적혔다**(16곳) — 그래서 ⓑ 가 재는 것이 바뀌었다:
+//   닛폰은 이제 한반도와 **같은 갈래**(정본 칸을 그대로)고, 둘째 갈래(절차 배치기)는
+//   **아직 빈 존**으로 잰다. 둘 다 살아 있어야 다음 존이 같은 길로 선다.
+//   ⓘ 가 "적어도 세계가 안 바뀐다"를 실서버 수로 잰다(적는 일이 세계를 움직이면 그건 옮겨 적기가 아니다).
 //
 // ★★자명 통과 금지 — 이 자는 "마을이 0곳인데 오류도 0" 을 **초록으로 읽지 않는다.**
 //   전제를 먼저 건다: 시딩 줄이 실제로 찍혔나 · econ 인구가 0보다 큰가 · 후보가 실제로 있었나.
@@ -91,6 +96,7 @@ async function waitUp(p, url, tries = 300) {
   // ── ⓐ 후보 정본은 문 하나다 · 한반도는 한 칸도 안 바뀐다 ─────────────────────
   console.log('\n[ⓐ 후보 정본 — terrain.siteCandidates]');
   const T = require(path.join(ROOT, 'server', 'terrain'));
+  const ZONES0 = require(path.join(ROOT, 'server', 'zone-config')).ZONES;
   const hbHard = T.getZoneVillages('hanbando');
   const hbCand = T.siteCandidates('hanbando');
   ok(Array.isArray(hbHard) && hbHard.length > 0, 'ⓐ0 전제: 한반도는 정본 json 에 찍어 둔 마을 칸이 있다(자명 통과 방지)',
@@ -99,11 +105,22 @@ async function waitUp(p, url, tries = 300) {
   ok(hbCand === hbHard, 'ⓐ ★한반도 후보는 **그 칸 그대로**다 — 사본도 재계산도 아니다(같은 배열 객체)',
     hbCand === hbHard ? `${hbCand.length}곳 · 동일 객체` : '다른 객체');
 
-  console.log('\n[ⓑ 정본 칸이 0곳인 존 — 절차 배치기가 후보를 낸다]');
+  // ★★[T351] 닛폰은 이제 **첫 갈래**다 — 후보가 정본 칸에 적혔다(종전엔 0곳이라 둘째 갈래로 돌았다).
+  //   그래서 이 절이 재는 것이 바뀐다: "둘째 갈래가 산다"는 **아직 빈 존**으로 재고,
+  //   닛폰은 "정본 칸을 그대로 돌려준다"로 잰다(한반도와 같은 판정 · ⓐ 와 같은 `===`).
+  console.log('\n[ⓑ 후보 문 두 갈래 — 적힌 존 · 아직 빈 존]');
   const npHard = T.getZoneVillages(ZID);
   const npCand = T.siteCandidates(ZID);
-  ok(!npHard || npHard.length === 0, 'ⓑ0 전제: 닛폰은 정본 json 에 마을 칸이 **0곳**이다(그래서 둘째 길이 필요했다)',
+  ok(Array.isArray(npHard) && npHard.length > 0, 'ⓑ0 ★닛폰 후보가 **정본 칸에 적혀 있다**(T351 — 종전 0곳)',
     `${(npHard || []).length}곳`);
+  ok(npCand === npHard, 'ⓑ0b ★그 칸을 **그대로** 돌려준다(사본도 재계산도 아니다 · 한반도와 같은 갈래)',
+    npCand === npHard ? `${(npCand || []).length}곳 · 동일 객체` : '다른 객체');
+  // ★둘째 갈래(절차 배치기)는 **아직 빈 존**으로 잰다 — 살아 있어야 다음 존이 같은 길로 선다.
+  const emptyZ = Object.keys(ZONES0).find((z) => !ZONES0[z].isOcean && !(T.getZoneVillages(z) || []).length);
+  ok(!!emptyZ, 'ⓑ0c 전제: 정본 칸이 아직 빈 육지 존이 있다(없으면 아래가 자명 통과다)', emptyZ || '(없음)');
+  const emptyCand = emptyZ ? (T.siteCandidates(emptyZ) || []) : [];
+  ok(emptyCand.length > 0, 'ⓑ0d ★둘째 갈래가 살아 있다 — 빈 존도 절차 배치기가 후보를 낸다',
+    emptyZ ? `${emptyZ} ${emptyCand.length}곳` : '-');
   ok(Array.isArray(npCand) && npCand.length > 0, 'ⓑ 닛폰에도 후보가 선다', `${(npCand || []).length}곳`);
   // ★꼴이 같아야 고르는 자(pickSeedVillages)·세우는 자(seedVillages)가 갈래를 모른다.
   const TYPES = new Set(['plain', 'riverside', 'forest', 'mining']);
@@ -115,7 +132,7 @@ async function waitUp(p, url, tries = 300) {
   ok(JSON.stringify(npCand) === JSON.stringify(npCand2), 'ⓑ3 두 번 물어도 같은 답이다(존 하나당 결정론 · 판마다 다른 세계 0)');
 
   console.log('\n[ⓒ 바다 존은 스스로 빠진다 — 새 게이트 0]');
-  const { ZONES } = require(path.join(ROOT, 'server', 'zone-config'));
+  const ZONES = ZONES0;
   const oceans = Object.keys(ZONES).filter((z) => ZONES[z].isOcean);
   ok(oceans.length > 0, 'ⓒ0 전제: 바다 존이 실제로 있다', `${oceans.length}개`);
   const oceanNonZero = oceans.filter((z) => (T.siteCandidates(z) || []).length > 0);
@@ -215,6 +232,17 @@ async function waitUp(p, url, tries = 300) {
   //   그래서 상한이 아니라 **하한 1곳**만 건다. 전부 바닥이면 그건 광맥 정본이 없다는 뜻이다.
   ok(lands.every((v) => v.ore >= 0.1), 'ⓖ2 광맥 값이 바닥 아래로는 안 내려간다(0.1 = 바닥)',
     lands.map((v) => v.ore).sort((a, b) => a - b)[0] + ' ~ ' + lands.map((v) => v.ore).sort((a, b) => b - a)[0]);
+
+  console.log('\n[ⓘ 정본으로 옮겨 적어도 세계가 같다 — T351]');
+  // ★옮겨 적기는 **값을 안 바꾸는 일**이다. 그러니 부팅이 낸 수가 T348 과 같아야 한다.
+  //   다르면 그건 옮겨 적기가 아니라 **세계를 바꾼 것**이다(그래도 초록이면 자가 아무것도 안 잰 것이다).
+  ok(!!mSeeded && +mSeeded[1] === (npHard || []).length,
+    'ⓘ 부팅이 읽은 후보 수 = 정본 칸 수(절차 배치기를 다시 안 돈다)',
+    mSeeded ? `부팅 후보 ${mSeeded[1]} · 정본 ${(npHard || []).length}` : '-');
+  ok(!!mSeeded && +mSeeded[3] === 7, 'ⓘ2 ★시딩 마을 수가 T348 과 같다(옮겨 적기가 세계를 안 움직였다)',
+    mSeeded ? `시딩 ${mSeeded[3]}곳` : '-');
+  ok(pairs === 21 && unreach === 12, 'ⓘ3 ★교역 쌍·도달불능이 T348 과 같다',
+    `${pairs}쌍 · 불능 ${unreach}`);
 
   console.log('\n[ⓗ 한반도 무변 — 자료 쪽]');
   const hbOres = ((require(path.join(ROOT, 'server', 'hanbando-terrain.json')).hanbando || {}).ores || []).length;
