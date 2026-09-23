@@ -136,7 +136,7 @@ const call = async (port, meth, p, hdr, body) => {
     if (!맞나) 어긋남.push(`${key}→${r.s}(기대 ${기대} · ${JSON.stringify(r.d || {}).slice(0, 60)})`);
   }
   ok(어긋남.length === 0, `ⓐ ★★61 문이 갈래대로 답한다(디스패처 1 은 별 프로세스라 제외) · 어긋남 ${어긋남.length}건 ` + (어긋남.join(' · ') || ''));
-  ok(안문목록.length === 40 && 안문목록.every(([, s]) => s === 404 || s === 401),
+  ok(안문목록.length === 41 && 안문목록.every(([, s]) => s === 404 || s === 401),   // ★[T363] 40 → 41(`/check_username` 이 들어왔다)
     `ⓐ2 ★안 문 ${안문목록.length} 이 전부 404·401 — ` + 안문목록.map(([k, s]) => LR.parseKey(k).path + ':' + s).join(' '));
 
   // ── 투영 — **칸 목록이 일치하나**(줄여 주는 것이 뜻이라 늘어나면 사고다) ──
@@ -223,11 +223,12 @@ const call = async (port, meth, p, hdr, body) => {
   say('\n[ⓓ 재집계]');
   {
     const c = LR.counts();
-    // ★[T319] 남음이 **2 → 1** 이다 — `?as=`(#9)를 `DEV_AS` 뒤로 닫았다. 남은 하나는 `/check_username`(#48 · 재민)뿐.
-    ok(c.n === 62 && c.공개 === 16 && c.안문 === 40 && c.본인 === 3 && c.투영 === 3 && c.남음 === 1 && c.회부됨 === 1,
-      `ⓓ ★T245 의 그 줄 · T319 가 하나 닫았다 — 라우트 ${c.n} · 공개 ${c.공개} · 안문 ${c.안문} · 본인 ${c.본인} · 투영 ${c.투영} · 남음 ${c.남음}(쓰기 ${c.쓰기남음} · 읽힘 ${c.읽힘남음} · 회부됨 ${c.회부됨})`);
-    ok(LR.ROUTES['zone GET ^/startinfo'][1] === '닫힘DEV_AS',
-      'ⓓ2 그 하나가 `/startinfo` 가 아니다 — 표가 `닫힘DEV_AS` 라고 적고 있다(아래 ⓔ 가 그 말이 참인지 본다)');
+    // ★[T363] 남음이 **1 → 0** 이다 — `/check_username`(#48)을 안 문으로 옮겼다. 회부된 둘이 다 닫혔다.
+    //   ⚠라우트 수는 **62 그대로**다(지운 게 아니라 바깥만 닫았다 · 갈래가 공개 → 안문).
+    ok(c.n === 62 && c.공개 === 15 && c.안문 === 41 && c.본인 === 3 && c.투영 === 3 && c.남음 === 0 && c.회부됨 === 0,
+      `ⓓ ★T245 의 그 줄 · T319·T363 이 둘을 닫았다 — 라우트 ${c.n} · 공개 ${c.공개} · 안문 ${c.안문} · 본인 ${c.본인} · 투영 ${c.투영} · 남음 ${c.남음}(쓰기 ${c.쓰기남음} · 읽힘 ${c.읽힘남음} · 회부됨 ${c.회부됨})`);
+    ok(LR.ROUTES['zone GET ^/startinfo'][1] === '닫힘DEV_AS' && LR.ROUTES['central POST =/check_username'][0] === '안문',
+      'ⓓ2 표가 그 둘을 그렇게 적고 있다 — `/startinfo` 는 `닫힘DEV_AS` · `/check_username` 은 **안문**(아래 ⓔ·ⓖ 가 그 말이 참인지 본다)');
   }
 
   // ── ⓔ [T319] `?as=` 는 **손잡이 뒤**다 — 두 팔(env 유/무) ────────────────
@@ -319,6 +320,29 @@ const call = async (port, meth, p, hdr, body) => {
     ok(['zone', 'players', 'humans', 'cap', 'observers', 'resources', 'buildings', 'mobs', 'claims', 'latency_ms', 'uptime']
         .every((k) => k in h),
       'ⓕ8 ★옛 칸 열하나가 **그대로** 있다 — 더한 것이지 갈아치운 게 아니다');
+  }
+
+  // ── ⓖ [T363] `/check_username` — 바깥은 닫히고 안은 그대로 ────────────────────
+  //   묻는 것 하나: **비밀 없이 남의 이름 존재를 셀 수 있나.**
+  //   ⚠지우지 못한 이유는 표 주석에 있다 — `zone.js` 게스트 갈래가 `findAccount` 술어를 이 문으로 쓴다.
+  //     그래서 검사도 둘이다: 바깥은 404(몸통까지) · 안은 **종전 그대로 참/거짓을 답한다**.
+  say('\n[ⓖ /check_username — 안 문]');
+  {
+    const OUTr = await call(CPORT, 'POST', '/check_username', OUT, { username: 'doorsv' });
+    ok(문숨김(OUTr), 'ⓖ1 ★★바깥에서는 **404** 다 — 몸통도 `{"error":"not found"}` 하나(이름 존재가 안 샌다) · ' + OUTr.s + ' ' + JSON.stringify(OUTr.d));
+    const INr = await call(CPORT, 'POST', '/check_username', IN, { username: 'doorsv' });
+    ok(INr.s === 200 && INr.d && INr.d.taken === true,
+      'ⓖ2 ★안 문으로는 **그대로 답한다** — 존의 게스트 갈래가 그 답으로 남의 이름 도용을 막는다 · ' + JSON.stringify(INr.d));
+    const INfree = await call(CPORT, 'POST', '/check_username', IN, { username: '없는이름' + Date.now() });
+    ok(INfree.s === 200 && INfree.d && INfree.d.taken === false,
+      'ⓖ3 자명 통과 금지 — 없는 이름엔 `false` 다(늘 true 면 위가 뜻이 없다) · ' + JSON.stringify(INfree.d));
+    // ⓖ4 ★클라가 그 문을 더 안 부른다(소스 계약 — 부르면 바깥이라 404 고, 로비가 조용히 망가진다)
+    const cli = fs.readFileSync(path.join(ROOT, 'public', 'client', '30-n-net.js'), 'utf8');
+    const calls = cli.split('\n').filter((l) => !l.trim().startsWith('//') && /check_username/.test(l));
+    ok(calls.length === 0, 'ⓖ4 ★클라에 이 문을 부르는 줄이 **0** 이다(주석은 역사라 센다 치지 않는다) · ' + calls.length + '줄');
+    // ⓖ5 ★그 대신 제출 때 `/auth` 를 부른다 — **새 문 0**(있는 문 하나로 옮겼다)
+    ok(/fetch\('\/auth'/.test(cli) && /d\.isNew === false/.test(cli),
+      'ⓖ5 로비가 제출 때 **있는 문** `/auth` 로 묻는다 — 새 라우트 0 · 비밀번호를 같이 내야 답한다');
   }
 
   shutdown();

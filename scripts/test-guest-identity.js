@@ -229,7 +229,11 @@ const closeWs = (st) => new Promise((r) => { st.ws.on('close', r); try { st.ws.c
     const g = await postJ(CPORT, '/guest', {});
     ok(g.ok && /^anon_/.test(g.player_id), `승계용 게스트 발급 — ${g.player_id}`);
     // 승계 전: 그 이름은 비어 있다
-    ok((await postJ(CPORT, '/check_username', { username: 'chon1' })).taken === false, '★검사 전제 — 승계 전 그 이름은 비어 있다');
+    // ★[T363] `/check_username` 은 **안 문**이 됐다(#48 ⓑ) — 하네스도 존처럼 비밀을 실어야 답을 받는다.
+    const IN0 = { 'x-zone-secret': SECRET };
+    const cu = async (u) => (await (await fetch(`http://localhost:${CPORT}/check_username`,
+      { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, IN0), body: JSON.stringify({ username: u }) })).json());
+    ok((await cu('chon1')).taken === false, '★검사 전제 — 승계 전 그 이름은 비어 있다');
     const pr = await postJ(CPORT, '/promote', { token: g.token, username: 'chon1', password: 'pw12345678' });
     ok(pr.ok && pr.player && pr.player.player_id === g.player_id,
       `★★승계해도 **playerId 가 그대로**다 — ${pr.player && pr.player.player_id} === ${g.player_id} (소유가 안 사라진다)`);
@@ -240,8 +244,8 @@ const closeWs = (st) => new Promise((r) => { st.ws.on('close', r); try { st.ws.c
     const reuse = await postJ(CPORT, '/guest', { token: g.token });
     ok(reuse.ok && reuse.player_id !== g.player_id, `★★구 게스트 토큰으로는 **더 못 들어온다** — ${reuse.player_id} ≠ ${g.player_id}`);
     // 이제 그 이름은 예약됐다 — 승계 계정은 player_id ≠ name 이라 PK 조회만 하면 놓친다
-    ok((await postJ(CPORT, '/check_username', { username: 'chon1' })).taken === true,
-      '★승계된 이름이 **중복 검사에 잡힌다**(player_id ≠ name 이라 PK 조회만 하면 놓친다)');
+    ok((await cu('chon1')).taken === true,
+      '★승계된 이름이 **중복 검사에 잡힌다**(player_id ≠ name 이라 PK 조회만 하면 놓친다 — 이 술어를 쓰는 문은 이것 하나다 · T363)');
     // 비밀번호로 로그인하면 같은 playerId 로 돌아온다
     const login = await postJ(CPORT, '/auth', { username: 'chon1', password: 'pw12345678' });
     ok(login.ok && login.player.player_id === g.player_id,
@@ -434,9 +438,16 @@ const closeWs = (st) => new Promise((r) => { st.ws.on('close', r); try { st.ws.c
     for (const d of DBG) ins.push([d, (await g(ZPORT, d, IN2)).s]);
     ok(ins.every(([, st]) => st === 200), '⑥ ★안 문에서는 관측창이 **그대로 산다**(하네스는 사설 주소라 무변)',
       ins.map(([d, st]) => `${d.split('?')[0]}:${st}`).join(' '));
-    // #2 · #8 · #9 — **일부러 안 닫은 셋**. 무엇이 남았는지 하네스가 말한다(조용히 두지 않는다).
+    // ★★[T363 2026-09-23 · #48 ⓑ] **이 줄이 뒤집혔다.** T225 는 `/check_username` 을 *"연 채로 둔다"* 고 적었고
+    //   그 근거는 로그인 UX 였다. T310 이 그 문을 회부했고, 재민이 ⓑ(닫는다)를 골랐다.
+    //   ⇒ 이제 **바깥은 404** 이고, 로비는 제출 때 `/auth` 응답으로 같은 답을 받는다(새 문 0).
+    //   ⚠지우지는 못했다 — `zone.js` 게스트 갈래가 `findAccount` 술어를 이 문으로 쓴다(보고 §0-ⓐ).
     const p2 = await pst(CPORT, '/check_username', { username: 't225v' }, OUT2);
-    ok(p2.s === 200 && p2.d.taken === true, '⑥#2 `/check_username` 은 **연 채로 둔다**(로그인 UX · 계정 존재만 · 보고 §0-ⓒ)', JSON.stringify(p2.d));
+    ok(p2.s === 404 && p2.d && p2.d.error === 'not found',
+      '⑥#2 ★`/check_username` 은 **닫혔다**(T363 · 바깥 404 · 몸통도 숨긴다) — 이름 존재가 더는 안 샌다', `${p2.s} ${JSON.stringify(p2.d)}`);
+    const p2in = await pst(CPORT, '/check_username', { username: 't225v' }, IN2);
+    ok(p2in.s === 200 && p2in.d.taken === true,
+      '⑥#2b 안 문으로는 그대로 답한다 — 존의 게스트 갈래가 남의 이름 도용을 막는 그 답이다', JSON.stringify(p2in.d));
     const p9 = await g(ZPORT, '/startinfo?as=t225v', OUT2);
     //   ⚠이 하네스는 `ENABLE_VILLAGES=0` 이라 마을 목록이 비어 있다 — 재는 것은 **문이 여전히 바깥에 열려 있다**는 것뿐이다.
     ok(p9.s === 200 && !!p9.d, '⑥#9 `?as=` 는 **이 카드가 안 건드린다**(#27 로비 순서 · 여전히 열려 있다)', `status ${p9.s} · ${JSON.stringify(p9.d).slice(0, 60)}`);
