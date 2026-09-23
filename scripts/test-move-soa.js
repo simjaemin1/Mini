@@ -529,5 +529,142 @@ console.log('\n⑧ T370_PATH_REUSE — 경로를 두 번 묻지 않는다 [T370]
   console.log('    접점: needPath · _pathFor · _pathAt · pathIndex · computeNpcPath · T370_PATH_REUSE');
 }
 
+// =============================================================================
+// ⑨ T375_ACTIVE_FLAG — 문지기를 **불리언 필드 하나**로 바꿔도 세계가 안 바뀐다 [T375]
+// =============================================================================
+// ★T371 이 '그 밖' 을 열일곱으로 갈랐고, 앞자리 넷(`stairs`·`spatial`·`fall`·`hpRegen`)이 **주민 전수를
+//   매 틱 훑으며 몸엔 못 들어가는** 순회였다(0.717 µs/사람 = 그 밖의 69.4 %). 넷의 문지기는 문자열 키
+//   Set(`isPositionActive`)이고, `p.isNpc` 불리언으로 빠지는 순회 셋은 5.8배 쌌다.
+//   ⇒ 틱 안에서 `isPositionActive` 를 **한 번** 계산해 `_active` 에 적고 넷이 그 필드를 읽는다.
+//
+// ★★이 절이 재는 것은 하나다: **문지기가 답을 안 바꾼다.** 위험은 낡음(staleness)이다 —
+//   결정 문·이동 문이 x·y 를 바꾸므로, 한 번만 적으면 **이동 뒤 순회 셋이 이동 전 답**을 본다.
+//   그래서 제품은 새로 고치는 자리를 둘 두었다(틱 머리 · 이동 문 직후). 이 자가 그 둘을 **실제로 문다**:
+//   ⓒ 가 둘째 자리를 빼고 돌려서 **갈라지는 것을 보인다**(자명 통과 금지).
+//
+// ★자는 T350 ⑥ · T356 ⑦ 의 그 자다 — 제품의 글자를 떠서 **한 프로세스 두 판**(두 존은 못 쓴다: 틱 루프가
+//   `Date.now()` 를 읽어 같은 게임일에 같은 틱 수를 안 돈다 · T350 §3-ⓑ).
+console.log('\n⑨ T375_ACTIVE_FLAG 문지기 필드 — 켬/끔이 같은 세계 [T375]');
+{
+  const srcA = body('isPositionActive'), srcR = body('_t375Refresh'), srcI = body('_isActive');
+  ok(srcA.length > 50 && srcR.length > 50 && srcI.length > 20,
+     '⑨ [전제] 제품에서 **그 글자 셋**을 떴다(술어 · 새로 고침 · 읽기)', `${srcA.length}+${srcR.length}+${srcI.length}자`);
+  ok(/_t375Gen\+\+/.test(srcR) && /_activeGen = _t375Gen/.test(srcR),
+     '⑨ [전제] 새로 고침이 **세대**를 적는다(뒤에 들어온 몸은 종전 길로 떨어진다)');
+  ok(/e\._activeGen === _t375Gen/.test(srcI) && /isPositionActive\(e\.x, e\.y\)/.test(srcI),
+     '⑨ [전제] 읽기가 세대를 확인하고, 아니면 **정본 술어**를 부른다');
+
+  const CS = 512;                                  // 청크 크기(자리수만 같으면 된다)
+  const mk = (on, skipR2) => {
+    const activeChunkKeys = new Set();
+    const chunkManager = { chunkSize: CS, keyOf: (cx, cy) => `${cx}_${cy}` };
+    const players = new Map(), mobs = new Map();
+    const env = { activeChunkKeys, chunkManager, players, mobs, T375_ACTIVE_FLAG: on };
+    const keys = Object.keys(env);
+    const api = new Function(...keys,
+      'let _t375Gen = 0;\n' + srcA + '\n' + srcR + '\n' + srcI +
+      '\nreturn { _t375Refresh, _isActive, isPositionActive };')(...keys.map((k) => env[k]));
+    return { activeChunkKeys, players, mobs, api, on, skipR2 };
+  };
+
+  // ── 한 판 — 제품 틱의 **순서 그대로**: 청크 갱신 → (R1) → 공간 인덱스 문지기 → 이동 → (R2) → 계단·낙하·HP
+  const run = (arm) => {
+    const TICKS = 4200, N = 408, M = 64;
+    const st = require(path.join(ROOT, 'server', 'seed-rand.js')).makeStream(); st.seed(0x375a1);
+    const W = 24000, H = 24000;   // ★작은 세계 — 활성 상자(13청크 = 6,656px)가 자리의 한 몫을 덮어야 **자주 뒤집힌다**
+    for (let i = 0; i < N; i++) arm.players.set('p' + i, { isNpc: true, canadiaVillage: false,
+      x: st.next() * W, y: st.next() * H, tx: st.next() * W, ty: st.next() * H, hp: 50, z: 0 });
+    for (let i = 0; i < M; i++) arm.mobs.set('m' + i, { x: st.next() * W, y: st.next() * H, z: 0 });
+    const { _t375Refresh, _isActive } = arm.api;
+    const dv = new DataView(new ArrayBuffer(8));
+    const dig = new Uint32Array(TICKS);
+    let flips = 0, g1 = 0, g2 = 0, g3 = 0, g4 = 0;
+    const prev = new Map();
+    // 관측자 하나가 돈다 ⇒ 활성 청크 집합이 **틱마다 달라진다**(낡음이 실제로 생기는 조건)
+    for (let t = 0; t < TICKS; t++) {
+      const ox = W / 2 + Math.cos(t / 11) * (W / 3), oy = H / 2 + Math.sin(t / 7) * (H / 3);   // 관측자가 빨리 돈다
+      arm.activeChunkKeys.clear();
+      const ocx = Math.floor(ox / CS), ocy = Math.floor(oy / CS);
+      for (let dx = -6; dx <= 6; dx++) for (let dy = -6; dy <= 6; dy++) arm.activeChunkKeys.add(`${ocx + dx}_${ocy + dy}`);
+      // (R1) 틱 머리 — 주민만
+      _t375Refresh(false);
+      // ① 공간 인덱스 문지기
+      for (const p of arm.players.values()) { if (p.isNpc && !p.canadiaVillage && !_isActive(p)) continue; g1++; }
+      // 이동 문 — x·y 가 **여기서** 바뀐다(낡음의 원천)
+      for (const p of arm.players.values()) {
+        const dx = p.tx - p.x, dy = p.ty - p.y, d = Math.hypot(dx, dy);
+        if (d > 2) { p.x += (dx / d) * 220; p.y += (dy / d) * 220; }
+        else { p.tx = st.next() * W; p.ty = st.next() * H; }
+      }
+      // (R2) 이동 문 직후 — 주민 + 몹. ⓒ 는 이 자리를 뺀다.
+      if (!arm.skipR2) _t375Refresh(true);
+      // ② 계단(몹) · ③ 낙하(주민+몹) · ④ HP 회복(주민) — 문지기를 **통과한 몸만** 상태가 움직인다
+      for (const m of arm.mobs.values()) { if (!_isActive(m)) continue; g2++; m.z += 1; }
+      for (const p of arm.players.values()) { if (p.isNpc && !p.canadiaVillage && !_isActive(p)) continue; g3++; p.z += 2; }
+      for (const m of arm.mobs.values()) { if (!_isActive(m)) continue; g3++; m.z += 3; }
+      for (const p of arm.players.values()) { if (p.isNpc && !p.canadiaVillage && !_isActive(p)) continue; g4++; p.hp += 1; }
+      // 자리 바뀜 계수 — 활성/비활성이 실제로 자주 뒤집혀야 이 자가 무언가를 문 것이다
+      for (const [k, p] of arm.players) { const a = arm.api.isPositionActive(p.x, p.y); if (prev.get(k) !== undefined && prev.get(k) !== a) flips++; prev.set(k, a); }
+      let h = 2166136261;
+      for (const p of arm.players.values()) {
+        dv.setFloat64(0, p.x); h = (Math.imul(h ^ dv.getUint32(0), 16777619) ^ dv.getUint32(4)) >>> 0;
+        dv.setFloat64(0, p.y); h = (Math.imul(h ^ dv.getUint32(0), 16777619) ^ dv.getUint32(4)) >>> 0;
+        h = (Math.imul(h ^ p.hp, 16777619) ^ p.z) >>> 0;
+      }
+      for (const m of arm.mobs.values()) h = (Math.imul(h ^ m.z, 16777619) ^ 0x375) >>> 0;
+      dig[t] = h;
+    }
+    return { dig, players: arm.players, mobs: arm.mobs, flips, gates: [g1, g2, g3, g4] };
+  };
+
+  const A = run(mk(false)), B = run(mk(true));
+  ok(A.flips > 20000, '⑨-a [상황] 활성/비활성이 **실제로 자주 뒤집혔다**(자명 통과 금지 — 안 뒤집히면 낡음이 안 난다)',
+     `뒤집힘 ${A.flips.toLocaleString()}`);
+  ok(A.gates.every((g) => g > 5000), '⑨-a [상황] 문지기 넷이 **다 통과도 하고 막기도 했다**',
+     `통과 ${A.gates.map((g) => g.toLocaleString()).join(' · ')}`);
+  let fd = -1; for (let t = 0; t < A.dig.length; t++) if (A.dig[t] !== B.dig[t]) { fd = t; break; }
+  ok(fd < 0, '⑨-a ★★★끔 ↔ 켬 — **주민 408 + 몹 64 × 4,200틱 좌표·HP·낙하가 비트 동일**',
+     fd < 0 ? `${((408 + 64) * 4200).toLocaleString()} 자리 전부 같다` : `첫 다름 틱 ${fd}`);
+  {
+    let cd = 0; const ap = [...A.players.values()], bp = [...B.players.values()];
+    for (let i = 0; i < ap.length; i++) { if (!sameF64(ap[i].x, bp[i].x)) cd++; if (!sameF64(ap[i].y, bp[i].y)) cd++;
+      if (ap[i].hp !== bp[i].hp) cd++; if (ap[i].z !== bp[i].z) cd++; }
+    const am = [...A.mobs.values()], bm = [...B.mobs.values()];
+    for (let i = 0; i < am.length; i++) if (am[i].z !== bm[i].z) cd++;
+    ok(cd === 0, '⑨-a ★끝 자리 좌표·HP·낙하도 바이트 동일', `다른 수 ${cd}/${ap.length * 4 + am.length}`);
+    ok(A.gates.join() === B.gates.join(), '⑨-a ★문지기 넷의 **통과 수가 한 번도 안 갈렸다**', `${A.gates.join(' · ')}`);
+  }
+  // ⓒ 자명 통과 금지 — **둘째 자리를 빼면 갈린다**(그 자리가 실어 나르는 것이 있다는 증거)
+  {
+    const C = run(mk(true, true));
+    let f2 = -1; for (let t = 0; t < A.dig.length; t++) if (A.dig[t] !== C.dig[t]) { f2 = t; break; }
+    ok(f2 >= 0, '★⑨ 자명 통과 금지 — 새로 고치는 자리를 **하나만** 두면(이동 뒤 갱신 없음) 세계가 갈린다',
+       f2 >= 0 ? `첫 다름 틱 ${f2} · 문지기 통과 ${C.gates.join(' · ')}` : '안 갈렸다(자가 낡음을 못 문다)');
+  }
+  // ⓓ 소스 계수 — 손잡이 하나 · 기본 끔 · 문지기 넷만 · 정본 하나
+  {
+    const Z2 = codeOnly(Z);
+    ok(/const T375_ACTIVE_FLAG = process\.env\.T375_ACTIVE_FLAG === '1';/.test(Z2),
+       "⑨-d 손잡이는 `T375_ACTIVE_FLAG` 하나 · **기본 끔**");
+    ok((Z2.match(/function _t375Refresh\(/g) || []).length === 1 && (Z2.match(/function _isActive\(/g) || []).length === 1,
+       '⑨-d 새로 고침·읽기는 **하나씩**이다(사본 0)');
+    ok((Z2.match(/_t375Refresh\(/g) || []).length === 3,
+       '⑨-d 새로 고치는 자리는 **정확히 둘**이다(정의 1 + 부름 2)', `${(Z2.match(/_t375Refresh\(/g) || []).length}자리`);
+    ok(/updateActiveChunks\(\);\s*\n\s*_t375Refresh\(false\);/.test(Z2),
+       '⑨-d ★첫 자리는 `updateActiveChunks()` **바로 뒤**다(청크 집합이 정해진 직후)');
+    ok(/_t375Refresh\(true\);[\s\S]{0,200}PZ식 다단 계단/.test(Z) ,
+       '⑨-d ★둘째 자리는 **이동 문 직후**다(계단·낙하·HP 앞)');
+    ok((Z2.match(/_isActive\(/g) || []).length === 6,
+       '⑨-d 읽는 자리는 **다섯**이다(정의 1 + 문지기 5: 공간·계단몹·낙하주민·낙하몹·HP)',
+       `${(Z2.match(/_isActive\(/g) || []).length}자리`);
+    const rest = (Z2.match(/isPositionActive\(/g) || []).length;
+    ok(rest >= 6, '⑨-d ★정본 `isPositionActive` 는 **그대로 남아 있다**(결정 문·이동 문·진단은 이 카드 밖)', `${rest}자리`);
+    ok(!/stairCellCache/.test(body('_t375Refresh')) && !/stairCellCache/.test(body('_isActive')),
+       '⑨-d ★`stairCellCache` 문자열 키는 **안 만졌다**(회부 · 카드 지정)');
+  }
+  console.log('    [표] 문지기 — 4,200틱 좌표·HP·낙하 0 다름 · 뒤집힘 ' + A.flips.toLocaleString() + ' · 새로 고침 자리 2(머리 · 이동 뒤)');
+  console.log('    접점: isPositionActive · activeChunkKeys · updateActiveChunks · _active · _activeGen · T375_ACTIVE_FLAG · rebuildSpatialIndex · stepStairFor · processFalling');
+}
+
 console.log(`\n=== 결과: ${pass} PASS / ${fail} FAIL ===\n`);
 process.exit(fail ? 1 : 0);

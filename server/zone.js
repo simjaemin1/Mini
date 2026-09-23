@@ -467,6 +467,30 @@ function isPositionActive(x, y) {
   const cs = chunkManager.chunkSize;
   return activeChunkKeys.has(chunkManager.keyOf(Math.floor(x / cs), Math.floor(y / cs)));
 }
+// ★★[T375 2026-09-23 · T371 회부 1-ⓐ] **문지기를 불리언 필드 하나로.** `T375_ACTIVE_FLAG=1` 일 때만.
+//   ★왜 — T371 이 '그 밖' 2.11µs 를 열일곱으로 갈랐고, 앞자리 넷(`stairs`·`spatial`·`fall`·`hpRegen`)은
+//     **주민 전수를 매 틱 훑으면서 몸엔 못 들어가는** 순회였다(합 0.717µs = 그 밖의 69.4 %).
+//     같은 1,651명을 도는데 `p.isNpc` 불리언 한 줄로 빠지는 순회 셋은 평균 0.031µs — **5.8배** 싸다.
+//     차이는 일이 아니라 **문지기가 무엇을 읽는가**다: 문자열 키 Set(`isPositionActive`) 대 필드 하나.
+//   ★★**정본은 `activeChunkKeys` 그대로다 — `_active` 는 사본이 아니라 그 틱의 유도**(T333 이 `WATER_TILES`
+//     에서 비트를 유도한 그 규율). 원천이 둘이 되지 않게, 값은 **오직 `isPositionActive` 를 불러서** 채운다.
+//   ⚠**자리가 둘인 이유** — 카드의 "그 자리 뒤에 다시 계산". 청크 집합은 틱 안에서 안 바뀌지만
+//     **몸이 움직인다**: 결정 문·이동 문이 x·y 를 바꾸므로, 이동 문 뒤에 쓰는 순회(계단·낙하·HP)는
+//     **이동 뒤 값**을 봐야 종전과 같은 답이 난다. ⇒ 새로 고치는 자리 둘(틱 머리 · 이동 문 직후).
+//   ⚠세대(`_t375Gen`)를 같이 적는다 — 새로 고친 뒤에 **들어온** 몸(접속·스폰·핸드오프)은 세대가 달라
+//     읽는 쪽이 자동으로 종전 길(`isPositionActive`)로 떨어진다. 그래서 "빠뜨린 몸" 이 원리상 없다.
+//   ★끄면 `_isActive(e)` 는 글자 그대로 `isPositionActive(e.x, e.y)` 다 — 필드도 안 쓴다(비트 동일).
+const T375_ACTIVE_FLAG = process.env.T375_ACTIVE_FLAG === '1';
+let _t375Gen = 0;
+function _t375Refresh(withMobs) {
+  if (!T375_ACTIVE_FLAG) return;
+  _t375Gen++;
+  for (const p of players.values()) { p._active = isPositionActive(p.x, p.y); p._activeGen = _t375Gen; }
+  if (withMobs) for (const m of mobs.values()) { m._active = isPositionActive(m.x, m.y); m._activeGen = _t375Gen; }
+}
+function _isActive(e) {
+  return (T375_ACTIVE_FLAG && e._activeGen === _t375Gen) ? e._active : isPositionActive(e.x, e.y);
+}
 // AOI: 활성 청크 안 건물만 (welcome용). 전 존 건물을 한 번에 안 보냄 — NPC 집 수만개로 welcome 폭주 방지.
 //   나머지는 청크 활성/비활성 시 buildings_spawn / buildings_removed 로 점점 전송 (자원과 동일).
 function activeChunkBuildings() {
@@ -487,7 +511,7 @@ function rebuildSpatialIndex() {
   qtMobs      = new Quadtree(0, 0, W, H);
   qtBuildings = new Quadtree(0, 0, W, H);
   for (const p of players.values()) {
-    if (p.isNpc && !p.canadiaVillage && !isPositionActive(p.x, p.y)) continue;  // dormant NPC(플레이어 먼 비활성 청크) — 인덱싱 스킵 → 1000명 확장
+    if (p.isNpc && !p.canadiaVillage && !_isActive(p)) continue;  // dormant NPC(플레이어 먼 비활성 청크) — 인덱싱 스킵 → 1000명 확장 ★[T375] 문지기만 필드로
     qtPlayers.insert({ x: p.x, y: p.y, ref: p });
   }
   for (const m of mobs.values())       qtMobs.insert({ x: m.x, y: m.y, ref: m });
@@ -11500,6 +11524,7 @@ setInterval(() => {
 
   // === 활성 청크 갱신 (player·observer 위치 기반) ===
   updateActiveChunks();
+  _t375Refresh(false);   // ★[T375] 청크 집합이 정해진 **직후** — 이 갱신을 쓰는 건 바로 아래 공간 인덱스 하나뿐이라 주민만 센다(몹은 인덱스에 무조건 들어간다)
 
   // === Spatial index 재구축 — 모든 nearest-search가 이걸 씀 ===
   rebuildSpatialIndex();
@@ -11791,6 +11816,8 @@ setInterval(() => {
   }
   sepNpcs(dt);   // ★[생활 층 ①] NPC 상호 분리 — 이동 적용 직후(같은 틱 위치에 보정) 틱당 1회
 
+  _t375Refresh(true);   // ★[T375] **이동 문 직후** — 결정 문·이동 문·`sepNpcs` 가 x·y 를 바꿨다. 아래 계단·낙하·HP 셋은 이동 뒤 자리로 판정해야 종전과 같다(몹도 함께: 계단·낙하가 몹을 문다)
+
   // === Phase 14.49-e: PZ식 다단 계단 — 3 cell 점유 + step별 z + walk-off로 floor 전환 ===
   // stair (b) — anchor (b.x, b.y) = 낮은 발판. dir = 위로 가는 방향.
   // 3 cells 점유: anchor (step 0, z=0), anchor+dir (step 1, z=16), anchor+2*dir (step 2, z=32)
@@ -11899,7 +11926,7 @@ setInterval(() => {
   for (const m of mobs.values()) {
     if (m.hp <= 0) continue;
     // 14.49-e perf: 비활성 chunk mob은 skip. 정지 mob은 onStairId 있을 때만 (방향 변경 가능)
-    if (!isPositionActive(m.x, m.y)) continue;
+    if (!_isActive(m)) continue;   // ★[T375] 문지기만 필드로
     const moving = (m.vx || 0) !== 0 || (m.vy || 0) !== 0;
     if (!moving && !m.onStairId) continue;
     stepStairFor(m);
@@ -11986,12 +12013,12 @@ setInterval(() => {
   }
   for (const p of players.values()) {
     if (p.handingOff || p.isDown) continue;
-    if (p.isNpc && !p.canadiaVillage && !isPositionActive(p.x, p.y)) continue;  // dormant NPC 낙하 스킵
+    if (p.isNpc && !p.canadiaVillage && !_isActive(p)) continue;  // dormant NPC 낙하 스킵 ★[T375] 문지기만 필드로
     processFalling(p);
   }
   for (const m of mobs.values()) {
     if (m.hp <= 0) continue;
-    if (!isPositionActive(m.x, m.y)) continue;
+    if (!_isActive(m)) continue;   // ★[T375] 문지기만 필드로
     processFalling(m);
   }
 
@@ -12062,7 +12089,7 @@ setInterval(() => {
 
   // === HP 회복 (out-of-combat 1초 후) — 단 hunger/thirst 모두 0이상일 때만 ===
   for (const p of players.values()) {
-    if (p.isNpc && !p.canadiaVillage && !isPositionActive(p.x, p.y)) continue;  // dormant NPC HP회복 스킵
+    if (p.isNpc && !p.canadiaVillage && !_isActive(p)) continue;  // dormant NPC HP회복 스킵 ★[T375] 문지기만 필드로
     // ★마을 NPC = 랩 일일 회복만(villages.js _lifeDaily: 요양18·근무6/일 ×건강·행복·식량 — 랩 7585 verbatim).
     //   초당 회복은 랩에 없음: 부상=수일 노동손실이 요양·약재 수요의 실체라 초당 10hp면 그 경제가 통째로 사라진다.
     if (p.isNpc && p.simVillageId != null) continue;
