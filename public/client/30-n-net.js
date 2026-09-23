@@ -491,8 +491,30 @@
     // === [조준 모드 2026-08-30] 우클릭 홀드 = 조준 · 조준 중 좌클릭 = 공격 =========
     //   ★기존 상호작용을 잡아먹지 않는다: 우클릭은 preventDefault 만(위 contextmenu 가 이미 한다),
     //     좌클릭 공격은 **조준 중이고 배치/건축 모드가 아닐 때만**. click 핸들러(배치·상자)는 그대로 산다.
+    // ★★★[T379 2026-09-23] **포인터를 캔버스가 잡는다.** 재민 실기 09-23:
+    //   "우클릭을 드래그하다가 다른 UI 위로 올라가거나 브라우저 밖으로 이동하면 취소되어 화면이 제자리로".
+    //   재현(`e2e-aim`)이 사건 순서로 범인을 그대로 보여 줬다 — 미니맵 위로 끌면
+    //     `pointerdown(2) mousedown(2) contextmenu(2) **mouseleave(0)**` 에서 조준이 꺼지고,
+    //     그 뒤 `pointerup` 은 **캔버스에 아예 안 온다**(패널이 가져간다).
+    //   ⇒ 누른 순간 `setPointerCapture` 로 포인터를 잡으면 밖으로 나가도 사건이 캔버스로 온다.
+    //     `mouseleave` 리스너는 **없앤다**(그게 끄던 유일한 이유였다). `blur` 는 남긴다 —
+    //     탭이 바뀌면 풀리는 게 맞고, 캡처는 창을 넘어가지는 못한다.
+    //   ⚠`pointerdown` 이 `mousedown` 보다 **먼저** 온다(위 사건 순서). 그래서 조준은 여기서 켜고,
+    //     좌클릭 공격 판정은 종전 자리(`mousedown`)에 그대로 둔다 — 순서가 안 바뀐다.
+    //   ⚠캡처 중 좌클릭도 캔버스로 온다 = **조준 중 공격**이 의도대로 산다(조준 중엔 패널을 안 누른다).
+    canvas.addEventListener('pointerdown', (e) => {
+      if (e.button !== 2) return;
+      _aiming = true;
+      try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* 캡처가 안 되면 종전처럼 군다 */ }
+      // ⚠**여기서 `preventDefault` 를 부르면 안 된다** [T379 실측]. `pointerdown` 을 막으면 브라우저가
+      //   호환 마우스 사건(`mousedown`·`mouseup`)을 **아예 안 만든다**. 그런데 동사 메뉴
+      //   (`46-h-verbs`)는 누른 시각을 `mousedown(2)` 에서 적고 `auxclick(2)` 에서 홀드를 가른다 —
+      //   `mousedown` 이 사라지면 `_rmbAt` 이 안 갱신돼 **모든 우클릭이 홀드로 읽히고 메뉴가 영영 안 뜬다.**
+      //   (첫 판이 실제로 그랬다. 사건 로그에서 `mousedown(2)`·`mouseup(2)` 이 통째로 사라진 것을 보고 잡았다.)
+      //   막는 것은 종전대로 `mousedown`·`contextmenu` 가 한다.
+    });
     canvas.addEventListener('mousedown', (e) => {
-      if (e.button === 2) { _aiming = true; e.preventDefault(); return; }
+      if (e.button === 2) { e.preventDefault(); return; }   // ★[T379] 켜는 것은 위 `pointerdown` 이 한다
       if (e.button === 0 && _aiming && !placementMode && !buildMode) {
         // ★배선까지만 — 타격 판정 아크·타이밍·애니는 **전투 층 배치의 몫**이다(회부).
         //   서버 tryAttack 의 "범위 안 가장 가까운 mob" 판정은 무수정. 조준 방향은 싣기만 한다.
@@ -501,8 +523,15 @@
       }
     });
     const _aimOff = () => { _aiming = false; };
-    canvas.addEventListener('mouseup', (e) => { if (e.button === 2) _aimOff(); });
-    canvas.addEventListener('mouseleave', _aimOff);
+    // ★[T379] 뗄 때·포인터를 빼앗길 때 푼다. 캡처는 반드시 돌려준다(안 돌려주면 다음 클릭이 캔버스에 묶인다).
+    const _aimRelease = (e) => {
+      if (e && e.pointerId != null) { try { if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId); } catch (err) {} }
+      _aimOff();
+    };
+    canvas.addEventListener('pointerup', (e) => { if (e.button === 2) _aimRelease(e); });
+    canvas.addEventListener('pointercancel', _aimRelease);
+    canvas.addEventListener('mouseup', (e) => { if (e.button === 2) _aimOff(); });   // 캡처가 없는 판(구형)의 뒷길
+    // ⚠`mouseleave` 로는 **안 끈다** [T379] — 패널 위로 끌기만 해도 꺼지던 그 줄이다.
     window.addEventListener('blur', _aimOff);
 
     // Phase 14.22: 캔버스 클릭 → screen → world 좌표 변환 → chest bbox hit-test
