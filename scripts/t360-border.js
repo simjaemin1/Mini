@@ -118,6 +118,9 @@ console.log(`본토 #${MAIN} ${sizes.get(MAIN).toLocaleString()}셀 (스폰 ${sx
   }
   console.log(`\n[마을이 선 덩어리] 후보 ${vs.length}곳`);
   for (const [t, names] of [...tally.entries()].sort((a, b) => (sizes.get(b[0]) || 0) - (sizes.get(a[0]) || 0))) {
+    // ★[T373] 덩어리 #0 = 12셀 반경에 뭍이 한 칸도 없다 = **섬이 아니라 설 자리가 없는 곳**이다.
+    //   섬으로 세면 "대양 n섬"이 부풀고, 사람이 없는 바다를 걱정하게 된다(`seedVillages` 가 어차피 스킵한다).
+    if (!t) { console.log(`  (섬 아님 — 설 자리 없는 후보 ${names.length}곳: ${names.join(', ')})`); continue; }
     console.log(`  #${t}${t === MAIN ? '=본토' : ''} ${(sizes.get(t) || 0).toLocaleString()}셀 — ${names.join(', ')}`);
   }
 }

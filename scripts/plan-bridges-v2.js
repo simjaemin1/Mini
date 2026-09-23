@@ -89,6 +89,7 @@ console.log(`도달 불가 마을 ${cut.length}: ${cut.map(v => v.name).join(', 
 
 // 섬별 플러드 (겹치면 dedup)
 const islands = [];
+const drySkip = [];   // ★[T373] 물·바위 위 후보 — 섬이 아니라 **설 자리가 없는 곳**
 let tag = 2;
 for (const v of cut) {
   const cx = Math.round(v.x / SZ), cy = Math.round(v.y / SZ);
@@ -97,6 +98,13 @@ for (const v of cut) {
   if (ex) { const isl = islands.find(i => i.tag === ex); if (isl) isl.villages.push(v.name); continue; }
   const t1 = Date.now();
   const f = flood(cx, cy, tag, label);
+  // ★★[T373 2026-09-23] **플러드 0셀은 섬이 아니다.** 후보가 물(또는 바위) 위에 앉아 있으면
+  //   `flood` 가 24셀 반경에서 설 자리를 못 찾고 0 을 돌려준다 — 뭍이 한 칸도 없다는 뜻이다.
+  //   그런데 종전엔 그것도 `islands` 에 넣어 "대양 분리 n섬"으로 셌다(T348·T360 닛폰 보고의 "대양 4섬"
+  //   중 넷이 전부 이것이었다). 세계엔 무해하다 — `seedVillages` 의 `findOpenCenter` 가 어차피 스킵한다.
+  //   **거짓말을 하는 것은 보고 수뿐이고, 그래서 사람이 없는 바다를 걱정하게 된다.**
+  //   ⇒ 섬에서 빼고 **따로 센다**. 그 후보는 "다리가 없는 곳"이 아니라 **"설 자리가 없는 곳"**이다.
+  if (!f.n) { drySkip.push(v.name); continue; }
   islands.push({ tag, villages: [v.name], n: f.n, cells: Array.from(f.cells), anchor: [cx, cy] });
   console.log(`  섬 #${tag} (${v.name}) ${f.n.toLocaleString()}셀 · ${Date.now() - t1}ms`);
   tag++;
@@ -146,7 +154,7 @@ for (const isl of islands) {
 }
 
 console.log(`\n=== 결과 ===`);
-console.log(`다리 가능 ${found.length}섬 / 대양 ${ocean.length}섬`);
+console.log(`다리 가능 ${found.length}섬 / 대양 ${ocean.length}섬` + (drySkip.length ? ` · (섬 아님 — 설 자리 없는 후보 ${drySkip.length}: ${drySkip.join(', ')})` : ''));
 const flat = [];
 for (const f of found) for (const c of f.cells) flat.push(c[0], c[1]);
 console.log(`추가할 flat 셀 ${flat.length / 2}개:`);
