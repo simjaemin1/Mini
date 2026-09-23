@@ -97,11 +97,19 @@ function meanLum(p, box) {
   //   ⇒ 증인은 **내가 띄운 아이의 입**이다(정본 `fixture-boot.waitUp` · 사본 0).
   const _up = await FB.waitUp(_central, /central server up on/, { name: 'central' });
   if (!_up.ok) { console.log(_up.why); process.exit(1); }
-  const z = boot('zone', '/tmp/zone-wrap-ts.js', {
+  const _zone = boot('zone', '/tmp/zone-wrap-ts.js', {
     PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
     ENABLE_VILLAGES: '1', ENABLE_BANDITS: '0',
   });
-  ok(await waitHttp(`http://localhost:${ZPORT}/health`), 'zone 기동');
+  // ★★[T355 2026-09-22] 존 기동도 **아이의 입**으로 듣는다(정본 `fixture-boot.waitUp` · T344·T349).
+  //   포트 응답은 증인이 아니다 — 앞 판 존이 포트를 쥔 채면 새 존은 `EADDRINUSE` 로 죽고 폴링은
+  //   **앞 판의 존**에게 200 을 받는다. 존은 하네스마다 **세계가 다르므로**(다른 DB·다른 래퍼)
+  //   남의 존에 붙으면 세계가 통째로 바뀐 채로 재게 된다 — central 보다 더 나쁘다.
+  //   ⚠실측(이 카드 · 3판): 존 기동은 **78.8~83.1초**가 걸리고 아이의 입과 1초 폴링의 차는
+  //     **177~306ms** 뿐이다 — central 때처럼 "우연히 벌어 주던 1초"가 **여기엔 없다**(재는 값 무변).
+  //   ⚠듣기는 **띄운 그 틱에** 시작한다(T349 ⑧ 함정) — `await` 만 아래로 내린다.
+  const _zp = FB.waitUp(_zone, /zone server up on/, { name: 'zone', capMs: 300000 });
+  ok(await (await _zp).ok, 'zone 기동');
   await sleep(4000);
 
   const { chromium } = require('playwright');
@@ -207,7 +215,7 @@ function meanLum(p, box) {
   for (let i = 0; i < 10; i++) await pulse('a', 1700);
   await pickPatches('init');
   ok(PATCH !== null, '맨 초원에 시험/대조 뙈기를 잡았다');
-  if (!PATCH) { await browser.close(); try { z.kill(); } catch (e) {} for (const p2 of procs) { try { p2.kill(); } catch (e) {} } say(`\n=== 타일 상태계: 통과 ${pass} · 실패 ${fail} ===`); process.exit(1); }
+  if (!PATCH) { await browser.close(); try { _zone.kill('SIGKILL'); } catch (e) {} for (const p2 of procs) { try { p2.kill(); } catch (e) {} } say(`\n=== 타일 상태계: 통과 ${pass} · 실패 ${fail} ===`); process.exit(1); }
   // ★카메라는 보간(트윈)이라 걷기 직후에도 미끄러진다. 그 상태로 재면 **대조 상자까지 변한다**
   //   (1패스에서 대조 |Δ| 8.88 로 잡혔다 — 국소성 판정이 거짓으로 떨어졌다).
   //   두 프레임이 완전히 같아질 때까지 기다린 뒤, 그 시점 카메라로 상자를 다시 잡는다.
@@ -381,7 +389,7 @@ function meanLum(p, box) {
   say(`    stateOff 로 끈 뒤 |Δ| = ${dOff.toFixed(2)}`);
   ok(dOff > 4, `★★손잡이로 끄면 상태 레이어가 사라진다 (|Δ| ${dOff.toFixed(2)}) — A/B 대조군이 실재한다`);
 
-  await browser.close(); try { z.kill(); } catch (e) { }
+  await browser.close(); try { _zone.kill('SIGKILL'); } catch (e) { }
   for (const p of procs) { try { p.kill(); } catch (e) { } }
   say(`\n=== 타일 상태계: 통과 ${pass} · 실패 ${fail} ===`);
   process.exit(fail ? 1 : 0);

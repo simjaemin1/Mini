@@ -144,7 +144,7 @@ function bestShift(a, b, pred, box, R) {
   const S = {};
   for (const [tag, site] of Object.entries(SITES)) {
     say(`\n── ${tag} 셀(${site.cx},${site.cy}) — ${site.why}`);
-    const z = boot('zone', '/tmp/zone-wrap.js', {
+    const _zone = boot('zone', '/tmp/zone-wrap.js', {
       PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
       // ★★[2026-08-26] 이 하네스가 이 컨테이너에서 29/3 으로 나왔다
       //   (물 4.7% · 얕은물 상관 역전 · 단면 0.05%). 화소만 보고 두 번 헛짚었다 —
@@ -161,7 +161,15 @@ function bestShift(a, b, pred, box, R) {
       ENABLE_VILLAGES: '1', ENABLE_BANDITS: '0', ENABLE_WILDLIFE: '0',
       WRAP_ZONE_PATCH: JSON.stringify({ mainSquare: { x: site.cx * 32 + 16, y: site.cy * 32 + 16, name: '지형 ' + tag } }),
     });
-    ok(await waitHttp(`http://localhost:${ZPORT}/health`), `zone 기동 (${tag})`);
+    // ★★[T355 2026-09-22] 존 기동도 **아이의 입**으로 듣는다(정본 `fixture-boot.waitUp` · T344·T349).
+    //   포트 응답은 증인이 아니다 — 앞 판 존이 포트를 쥔 채면 새 존은 `EADDRINUSE` 로 죽고 폴링은
+    //   **앞 판의 존**에게 200 을 받는다. 존은 하네스마다 **세계가 다르므로**(다른 DB·다른 래퍼)
+    //   남의 존에 붙으면 세계가 통째로 바뀐 채로 재게 된다 — central 보다 더 나쁘다.
+    //   ⚠실측(이 카드 · 3판): 존 기동은 **78.8~83.1초**가 걸리고 아이의 입과 1초 폴링의 차는
+    //     **177~306ms** 뿐이다 — central 때처럼 "우연히 벌어 주던 1초"가 **여기엔 없다**(재는 값 무변).
+    //   ⚠듣기는 **띄운 그 틱에** 시작한다(T349 ⑧ 함정) — `await` 만 아래로 내린다.
+    const _zp = FB.waitUp(_zone, /zone server up on/, { name: 'zone', capMs: 300000 });
+    ok(await (await _zp).ok, `zone 기동 (${tag})`);
     await sleep(4000);
     const browser = await chromium.launch({ headless: true, executablePath: require('playwright').chromium.executablePath() });
     const page = await (await browser.newContext({ viewport: { width: 1400, height: 900 } })).newPage();
@@ -238,7 +246,7 @@ function bestShift(a, b, pred, box, R) {
       return { down: !!(d && !d.classList.contains('hidden')) };
     }).catch(() => ({ down: false }));
     S[tag] = { d0, fA, fA2, fB, fNoP, fMud, fLeg, pLeg, pNew, pNoW, cSh, fmRaw, fmNew, alive: !_alive.down };
-    await browser.close(); try { z.kill(); } catch (e) {}
+    await browser.close(); try { _zone.kill('SIGKILL'); } catch (e) {}
     await sleep(2500);
   }
   const R = S.river, F = S.field;

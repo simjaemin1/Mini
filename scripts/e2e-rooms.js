@@ -184,12 +184,20 @@ const rget = async (q) => (await (await fetch(`http://localhost:${ZPORT}/roomdbg
 
   // zone 을 한 번 띄워 DB 스키마를 만들고 끈다(스키마는 zone-local-db 가 부팅 때 만든다)
   {
-    const z = boot('zone0', path.join(ROOT, 'server', 'zone.js'), {
+    const _zone = boot('zone0', path.join(ROOT, 'server', 'zone.js'), {
       PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
       ENABLE_VILLAGES: '0', ENABLE_BANDITS: '0',
     });
-    ok(await waitHttp(`http://localhost:${ZPORT}/health`), 'DB 스키마 생성용 1차 부팅');
-    try { z.kill(); } catch (e) {}
+    // ★★[T355 2026-09-22] 존 기동도 **아이의 입**으로 듣는다(정본 `fixture-boot.waitUp` · T344·T349).
+    //   포트 응답은 증인이 아니다 — 앞 판 존이 포트를 쥔 채면 새 존은 `EADDRINUSE` 로 죽고 폴링은
+    //   **앞 판의 존**에게 200 을 받는다. 존은 하네스마다 **세계가 다르므로**(다른 DB·다른 래퍼)
+    //   남의 존에 붙으면 세계가 통째로 바뀐 채로 재게 된다 — central 보다 더 나쁘다.
+    //   ⚠실측(이 카드 · 3판): 존 기동은 **78.8~83.1초**가 걸리고 아이의 입과 1초 폴링의 차는
+    //     **177~306ms** 뿐이다 — central 때처럼 "우연히 벌어 주던 1초"가 **여기엔 없다**(재는 값 무변).
+    //   ⚠듣기는 **띄운 그 틱에** 시작한다(T349 ⑧ 함정) — `await` 만 아래로 내린다.
+    const _zp = FB.waitUp(_zone, /zone server up on/, { name: 'zone', capMs: 300000 });
+    ok(await (await _zp).ok, 'DB 스키마 생성용 1차 부팅');
+    try { _zone.kill('SIGKILL'); } catch (e) {}
     await sleep(2000);
   }
   const seeded = seedHouse(ZDB, CELLS, DOOR);
@@ -201,12 +209,20 @@ const rget = async (q) => (await (await fetch(`http://localhost:${ZPORT}/roomdbg
 
   // ── ⓐ 부팅 경로 ────────────────────────────────────────────────────────────
   say('\n[ⓐ 부팅 — DB → 청크 활성화 → welcome → 클라]');
-  const z = boot('zone', wrap, {
+  const _zone2 = boot('zone', wrap, {
     PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
     ENABLE_VILLAGES: '0', ENABLE_BANDITS: '0', E2E_GIVE: '1', WRAP_DAY_MS: '86400000',
     WRAP_ZONE_PATCH: JSON.stringify({ mainSquare: { x: IN.cx * SZ + 16, y: IN.cy * SZ + 16, name: 'ㄱ자 집 안' } }),
   });
-  ok(await waitHttp(`http://localhost:${ZPORT}/health`), 'zone 기동');
+  // ★★[T355 2026-09-22] 존 기동도 **아이의 입**으로 듣는다(정본 `fixture-boot.waitUp` · T344·T349).
+  //   포트 응답은 증인이 아니다 — 앞 판 존이 포트를 쥔 채면 새 존은 `EADDRINUSE` 로 죽고 폴링은
+  //   **앞 판의 존**에게 200 을 받는다. 존은 하네스마다 **세계가 다르므로**(다른 DB·다른 래퍼)
+  //   남의 존에 붙으면 세계가 통째로 바뀐 채로 재게 된다 — central 보다 더 나쁘다.
+  //   ⚠실측(이 카드 · 3판): 존 기동은 **78.8~83.1초**가 걸리고 아이의 입과 1초 폴링의 차는
+  //     **177~306ms** 뿐이다 — central 때처럼 "우연히 벌어 주던 1초"가 **여기엔 없다**(재는 값 무변).
+  //   ⚠듣기는 **띄운 그 틱에** 시작한다(T349 ⑧ 함정) — `await` 만 아래로 내린다.
+  const _zp2 = FB.waitUp(_zone2, /zone server up on/, { name: 'zone', capMs: 300000 });
+  ok(await (await _zp2).ok, 'zone 기동');
   await sleep(4000);
 
   // ★사람이 없으면 청크가 안 켜지고, 청크가 안 켜지면 건물이 메모리에 없어 방도 없다.
@@ -316,7 +332,7 @@ const rget = async (q) => (await (await fetch(`http://localhost:${ZPORT}/roomdbg
   ok(rr && rr.roofs.length === 1 && rr.roofs[0].roofOn === false,
     '★★내가 그 방 안이면 지붕을 안 그린다(컷어웨이 — 투명이 아니라 미표시)');
   
-  await browser.close(); try { z.kill(); } catch (e) {}
+  await browser.close(); try { _zone2.kill('SIGKILL'); } catch (e) {}
   await sleep(2500);
 
   // 같은 집을 **밖에서** — 지붕이 그려져야 한다. 그리고 **카메라를 고정한 채** 방을 해체해
@@ -325,12 +341,20 @@ const rget = async (q) => (await (await fetch(`http://localhost:${ZPORT}/roomdbg
   //     실내 바닥 판자도 이엉과 같은 카키라 안에서도 2.45% 가 잡혔다(지붕은 실제로 안 그려졌는데도).
   //     카메라가 다르면 같은 상자를 못 쓴다 ⇒ **한 자리에서 전/후**로 바꾼다. 이러면 바뀐 것은 지붕뿐이다.
   const OUT = { cx: 100, cy: 107 };   // ㄱ자 팔 남쪽 바로 밖 — 남벽(100,106,'N')에서 51px(분해 사거리 80px 안)
-  const z2 = boot('zone2', wrap, {
+  const _zone3 = boot('zone2', wrap, {
     PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
     ENABLE_VILLAGES: '0', ENABLE_BANDITS: '0', E2E_GIVE: '1', WRAP_DAY_MS: '86400000',
     WRAP_ZONE_PATCH: JSON.stringify({ mainSquare: { x: OUT.cx * SZ + 16, y: OUT.cy * SZ + 16, name: 'ㄱ자 집 밖' } }),
   });
-  ok(await waitHttp(`http://localhost:${ZPORT}/health`), 'zone 재기동(밖 스폰)');
+  // ★★[T355 2026-09-22] 존 기동도 **아이의 입**으로 듣는다(정본 `fixture-boot.waitUp` · T344·T349).
+  //   포트 응답은 증인이 아니다 — 앞 판 존이 포트를 쥔 채면 새 존은 `EADDRINUSE` 로 죽고 폴링은
+  //   **앞 판의 존**에게 200 을 받는다. 존은 하네스마다 **세계가 다르므로**(다른 DB·다른 래퍼)
+  //   남의 존에 붙으면 세계가 통째로 바뀐 채로 재게 된다 — central 보다 더 나쁘다.
+  //   ⚠실측(이 카드 · 3판): 존 기동은 **78.8~83.1초**가 걸리고 아이의 입과 1초 폴링의 차는
+  //     **177~306ms** 뿐이다 — central 때처럼 "우연히 벌어 주던 1초"가 **여기엔 없다**(재는 값 무변).
+  //   ⚠듣기는 **띄운 그 틱에** 시작한다(T349 ⑧ 함정) — `await` 만 아래로 내린다.
+  const _zp3 = FB.waitUp(_zone3, /zone server up on/, { name: 'zone', capMs: 300000 });
+  ok(await (await _zp3).ok, 'zone 재기동(밖 스폰)');
   await sleep(4000);
   const b2 = await chromium.launch({ headless: true, executablePath: require('playwright').chromium.executablePath() });
   const p2 = await (await b2.newContext({ viewport: { width: 1400, height: 900 } })).newPage();
@@ -449,7 +473,7 @@ const rget = async (q) => (await (await fetch(`http://localhost:${ZPORT}/roomdbg
   await p2.screenshot({ path: `${SHOTS}/05-roof-off.png` });
   const rr3 = await p2.evaluate(() => window.__roomRoofDbg || null).catch(() => null);
   ok(rr3 && rr3.roofs.length === 0, '★방이 해체되자 지붕도 사라졌다(계약)');
-  await b2.close(); try { z2.kill(); } catch (e) {}
+  await b2.close(); try { _zone3.kill('SIGKILL'); } catch (e) {}
   await sleep(2500);   // ★포트 3020 이 풀릴 틈 — 안 주면 다음 존이 EADDRINUSE 로 죽고 그 결과를 결함으로 오독한다
 
   // ★화면 층 — **같은 상자**에서 전/후. 바뀐 것은 지붕뿐이다.
@@ -492,12 +516,20 @@ const rget = async (q) => (await (await fetch(`http://localhost:${ZPORT}/roomdbg
   const F2 = RECT(100, 100, 103, 102);
   const s2 = seedHouse(ZDB, F2, null, 1);
   ok(s2.floors === 12, `검사 전제 — 2층 방이 DB 에 들어갔다: 바닥 ${s2.floors}칸 · 벽 ${s2.walls}장`);
-  const z3 = boot('zone3', wrap, {
+  const _zone4 = boot('zone3', wrap, {
     PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
     ENABLE_VILLAGES: '0', ENABLE_BANDITS: '0', E2E_GIVE: '1', WRAP_DAY_MS: '86400000',
     WRAP_ZONE_PATCH: JSON.stringify({ mainSquare: { x: OUT.cx * SZ + 16, y: OUT.cy * SZ + 16, name: '2층집 밖' } }),
   });
-  ok(await waitHttp(`http://localhost:${ZPORT}/health`), 'zone 재기동(2층 세계)');
+  // ★★[T355 2026-09-22] 존 기동도 **아이의 입**으로 듣는다(정본 `fixture-boot.waitUp` · T344·T349).
+  //   포트 응답은 증인이 아니다 — 앞 판 존이 포트를 쥔 채면 새 존은 `EADDRINUSE` 로 죽고 폴링은
+  //   **앞 판의 존**에게 200 을 받는다. 존은 하네스마다 **세계가 다르므로**(다른 DB·다른 래퍼)
+  //   남의 존에 붙으면 세계가 통째로 바뀐 채로 재게 된다 — central 보다 더 나쁘다.
+  //   ⚠실측(이 카드 · 3판): 존 기동은 **78.8~83.1초**가 걸리고 아이의 입과 1초 폴링의 차는
+  //     **177~306ms** 뿐이다 — central 때처럼 "우연히 벌어 주던 1초"가 **여기엔 없다**(재는 값 무변).
+  //   ⚠듣기는 **띄운 그 틱에** 시작한다(T349 ⑧ 함정) — `await` 만 아래로 내린다.
+  const _zp4 = FB.waitUp(_zone4, /zone server up on/, { name: 'zone', capMs: 300000 });
+  ok(await (await _zp4).ok, 'zone 재기동(2층 세계)');
   await sleep(4000);
   const b3 = await chromium.launch({ headless: true, executablePath: require('playwright').chromium.executablePath() });
   const p3 = await (await b3.newContext({ viewport: { width: 1400, height: 900 } })).newPage();
@@ -532,7 +564,7 @@ const rget = async (q) => (await (await fetch(`http://localhost:${ZPORT}/roomdbg
   const rr4 = await p3.evaluate(() => window.__roomRoofDbg || null).catch(() => null);
   ok(rr4 && rr4.roofs.length === 2, `★밖에서는 1층·2층 지붕이 **둘 다** 그려진다 (실측 ${rr4 && rr4.roofs.length})`);
   ok(rr4 && rr4.roofs.every((r) => r.roofOn), '두 지붕 모두 표시 상태');
-  await b3.close(); try { z3.kill(); } catch (e) {}
+  await b3.close(); try { _zone4.kill('SIGKILL'); } catch (e) {}
 
   // ★화면 층 — 2층이 실제로 화면에 더 그려졌는가(1층만일 때와 같은 자리 비교)
   const twoPng = PNG.sync.read(fs.readFileSync(`${SHOTS}/06-two-floor-outside.png`));
@@ -578,7 +610,7 @@ const rget = async (q) => (await (await fetch(`http://localhost:${ZPORT}/roomdbg
     const HUT = { cx: 130, cy: 130 };            // 위에서 심은 픽스처 집 셀
     const CAM = { cx: HUT.cx, cy: HUT.cy + 2 };  // **밖**이라고 주장만 하지 않는다 — 아래서 렉트로 검산한다
     ok(!NPCV.err, `검사 전제 — 픽스처 마을·움집 행이 DB 에 들어갔다 ${NPCV.err || '(마을 ' + NPCV.vid + ')'}`);
-    const z4 = boot('zone4', wrap, {
+    const _zone5 = boot('zone4', wrap, {
       PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
       // ★마을을 켠다 — 그래야 Stage 4A 가 움집을 실체화한다. 시딩은 `villages` 가 안 비어서 건너뛴다(수 분 절약).
       // ★★NPC 상한 1 — 계측 격리다(기준 낮추기가 아니다). 기본 8명이면 제 집 문간에 서서
@@ -586,7 +618,15 @@ const rget = async (q) => (await (await fetch(`http://localhost:${ZPORT}/roomdbg
       ENABLE_VILLAGES: '1', ENABLE_BANDITS: '0', E2E_GIVE: '1', WRAP_DAY_MS: '86400000', VILLAGE_NPC_CAP: '1',
       WRAP_ZONE_PATCH: JSON.stringify({ mainSquare: { x: CAM.cx * SZ + 16, y: CAM.cy * SZ + 16, name: 'NPC 움집 앞' } }),
     });
-    ok(await waitHttp(`http://localhost:${ZPORT}/health`), 'zone 재기동(NPC 움집 세계)');
+    // ★★[T355 2026-09-22] 존 기동도 **아이의 입**으로 듣는다(정본 `fixture-boot.waitUp` · T344·T349).
+    //   포트 응답은 증인이 아니다 — 앞 판 존이 포트를 쥔 채면 새 존은 `EADDRINUSE` 로 죽고 폴링은
+    //   **앞 판의 존**에게 200 을 받는다. 존은 하네스마다 **세계가 다르므로**(다른 DB·다른 래퍼)
+    //   남의 존에 붙으면 세계가 통째로 바뀐 채로 재게 된다 — central 보다 더 나쁘다.
+    //   ⚠실측(이 카드 · 3판): 존 기동은 **78.8~83.1초**가 걸리고 아이의 입과 1초 폴링의 차는
+    //     **177~306ms** 뿐이다 — central 때처럼 "우연히 벌어 주던 1초"가 **여기엔 없다**(재는 값 무변).
+    //   ⚠듣기는 **띄운 그 틱에** 시작한다(T349 ⑧ 함정) — `await` 만 아래로 내린다.
+    const _zp5 = FB.waitUp(_zone5, /zone server up on/, { name: 'zone', capMs: 300000 });
+    ok(await (await _zp5).ok, 'zone 재기동(NPC 움집 세계)');
     await sleep(4000);
     const D = readHutDoor(ZDB);
     say(`    움집 실체화 — ${D.err ? '★' + D.err : `렉트 ${JSON.stringify(D.rect)} · 문칸 y=${D.doorY} x=${JSON.stringify(D.doorXs)} · 행 ${D.rows}`}`);
@@ -594,7 +634,7 @@ const rget = async (q) => (await (await fetch(`http://localhost:${ZPORT}/roomdbg
       // ★★못 쟀다고 적는다 — 초록도 빨강도 아니다.
       say('    ⇒ 이 절은 이 판에서 **못 잰다**(실체화 자체가 안 됐다). 사유를 찍고 유보한다.');
       ok(true, 'ⓕ [못 잼] NPC 움집이 실체화되지 않았다 — 판정 유보(사유를 찍었다)', D.err);
-      try { z4.kill(); } catch (e) {}
+      try { _zone5.kill('SIGKILL'); } catch (e) {}
     } else {
       const inRect = CAM.cx >= D.rect[0] && CAM.cx <= D.rect[2] && CAM.cy >= D.rect[1] && CAM.cy <= D.rect[3];
       const inDoor = CAM.cy === D.doorY && D.doorXs.indexOf(CAM.cx) >= 0;
@@ -712,7 +752,7 @@ const rget = async (q) => (await (await fetch(`http://localhost:${ZPORT}/roomdbg
         ok(best.eff > NEED, `★★★ⓕ 문간 화소가 손잡이를 뒤집으면 **실제로 바뀐다** = 배경이 아니라 바닥이 보인다 (x=${best.dx} 효과 ${best.eff}px > ${NEED} · 잡음 ${best.noise} · 열린 화소 ${best.tot})`);
         ok(best.ctl <= Math.max(best.noise, 4), `★★ⓕ 반례 — **문 앞 바깥 땅**은 손잡이에 안 바뀐다 (${best.ctl}px ≤ ${Math.max(best.noise, 4)}) = 바뀐 건 문간이지 화면 전체가 아니다`);
       }
-      await b4.close(); try { z4.kill(); } catch (e) {}
+      await b4.close(); try { _zone5.kill('SIGKILL'); } catch (e) {}
     }
   }
 

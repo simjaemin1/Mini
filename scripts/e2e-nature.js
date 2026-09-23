@@ -235,12 +235,20 @@ function diffCountNoEnts(a, b, ents) {
   const S = {};
   for (const [tag, site] of Object.entries(SITES)) {
     say(`\n── ${tag} 셀(${site.cx},${site.cy}) — ${site.why}`);
-    const z = boot('zone', '/tmp/zone-wrap.js', {
+    const _zone = boot('zone', '/tmp/zone-wrap.js', {
       PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
       ENABLE_VILLAGES: '1', ENABLE_BANDITS: '0',
       WRAP_ZONE_PATCH: JSON.stringify({ mainSquare: { x: site.cx * 32 + 16, y: site.cy * 32 + 16, name: '자연물 ' + tag } }),
     });
-    ok(await waitHttp(`http://localhost:${ZPORT}/health`), `zone 기동 (${tag})`);
+    // ★★[T355 2026-09-22] 존 기동도 **아이의 입**으로 듣는다(정본 `fixture-boot.waitUp` · T344·T349).
+    //   포트 응답은 증인이 아니다 — 앞 판 존이 포트를 쥔 채면 새 존은 `EADDRINUSE` 로 죽고 폴링은
+    //   **앞 판의 존**에게 200 을 받는다. 존은 하네스마다 **세계가 다르므로**(다른 DB·다른 래퍼)
+    //   남의 존에 붙으면 세계가 통째로 바뀐 채로 재게 된다 — central 보다 더 나쁘다.
+    //   ⚠실측(이 카드 · 3판): 존 기동은 **78.8~83.1초**가 걸리고 아이의 입과 1초 폴링의 차는
+    //     **177~306ms** 뿐이다 — central 때처럼 "우연히 벌어 주던 1초"가 **여기엔 없다**(재는 값 무변).
+    //   ⚠듣기는 **띄운 그 틱에** 시작한다(T349 ⑧ 함정) — `await` 만 아래로 내린다.
+    const _zp = FB.waitUp(_zone, /zone server up on/, { name: 'zone', capMs: 300000 });
+    ok(await (await _zp).ok, `zone 기동 (${tag})`);
     await sleep(4000);
     const browser = await chromium.launch({ headless: true, executablePath: require('playwright').chromium.executablePath() });
     const page = await (await browser.newContext({ viewport: { width: 1400, height: 900 } })).newPage();
@@ -437,7 +445,7 @@ function diffCountNoEnts(a, b, ents) {
     S[tag] = { dDefault, d0, fOn, fOn2, entPx, fNoFr, fNoPr, fNoNat, probe, probeNA, cerr, bad: [...new Set(bad)], fogOn, fogOff, gate, gateOff, simvilOn, simvilOff, claimOn, claimOff,
                wOn100, wOn101, wCalm100, wCalm101, wBase100, wBase101, windFn, shWidths, shWidths0, fMarginOn, fMarginOff,
                cpCalm, cpLegacy, cpW0, cpW1, cpC0, cpC1, cpDbgOn, cpDbgOff };
-    await browser.close(); try { z.kill(); } catch (e) {}
+    await browser.close(); try { _zone.kill('SIGKILL'); } catch (e) {}
     await sleep(2500);
   }
   const R = S.river, F = S.field;
@@ -453,12 +461,20 @@ function diffCountNoEnts(a, b, ents) {
     say(`\n── 논밭 자리 — **못 골랐다**: ${farmSite.err}`);
   } else {
     say(`\n── 논밭 셀(${farmSite.cx},${farmSite.cy}) — ${farmSite.why}`);
-    const z = boot('zone', '/tmp/zone-wrap.js', {
+    const _zone2 = boot('zone', '/tmp/zone-wrap.js', {
       PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
       ENABLE_VILLAGES: '1', ENABLE_BANDITS: '0',
       WRAP_ZONE_PATCH: JSON.stringify({ mainSquare: { x: farmSite.cx * 32 + 16, y: farmSite.cy * 32 + 16, name: '논밭 프로브' } }),
     });
-    ok(await waitHttp(`http://localhost:${ZPORT}/health`), 'zone 기동 (논밭)');
+    // ★★[T355 2026-09-22] 존 기동도 **아이의 입**으로 듣는다(정본 `fixture-boot.waitUp` · T344·T349).
+    //   포트 응답은 증인이 아니다 — 앞 판 존이 포트를 쥔 채면 새 존은 `EADDRINUSE` 로 죽고 폴링은
+    //   **앞 판의 존**에게 200 을 받는다. 존은 하네스마다 **세계가 다르므로**(다른 DB·다른 래퍼)
+    //   남의 존에 붙으면 세계가 통째로 바뀐 채로 재게 된다 — central 보다 더 나쁘다.
+    //   ⚠실측(이 카드 · 3판): 존 기동은 **78.8~83.1초**가 걸리고 아이의 입과 1초 폴링의 차는
+    //     **177~306ms** 뿐이다 — central 때처럼 "우연히 벌어 주던 1초"가 **여기엔 없다**(재는 값 무변).
+    //   ⚠듣기는 **띄운 그 틱에** 시작한다(T349 ⑧ 함정) — `await` 만 아래로 내린다.
+    const _zp2 = FB.waitUp(_zone2, /zone server up on/, { name: 'zone', capMs: 300000 });
+    ok(await (await _zp2).ok, 'zone 기동 (논밭)');
     await sleep(4000);
     const browser = await chromium.launch({ headless: true, executablePath: require('playwright').chromium.executablePath() });
     const page = await (await browser.newContext({ viewport: { width: 1400, height: 900 } })).newPage();
@@ -545,7 +561,7 @@ function diffCountNoEnts(a, b, ents) {
     say(`    화면 안 논밭 개체 ${farmN}칸`);
     await page.screenshot({ path: `${SHOTS}/farm-site.png` }).catch(() => {});
     FARM = { claimOn, claimOff, site: farmSite, farmN };
-    await browser.close(); try { z.kill(); } catch (e) {}
+    await browser.close(); try { _zone2.kill('SIGKILL'); } catch (e) {}
     await sleep(2500);
   }
 
@@ -590,13 +606,21 @@ function diffCountNoEnts(a, b, ents) {
     } else {
       const SQ = { x: Math.floor(FSITE.tree.x / 32) * 32 + 16, y: Math.floor(FSITE.tree.y / 32) * 32 + 16 };
       say(`\n── 열매 자리: 청크(${FSITE.cx},${FSITE.cy})·${CS}px 나무 ${FSITE.n}그루 · 밤나무 ${FSITE.ch} · 소나무 ${FSITE.pn} — 광장 (${SQ.x},${SQ.y})`);
-      const z3 = boot('zone', '/tmp/zone-wrap.js', {
+      const _zone3 = boot('zone', '/tmp/zone-wrap.js', {
         PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
         ENABLE_VILLAGES: '0', ENABLE_BANDITS: '0', E2E_GIVE: '1',
         ZONE_TEST_INV: 'acorn:3,chestnut:3',   // ★[T178·T187] 심기 절 — 있는 테스트 손잡이 하나(운영엔 분기 0)
         WRAP_ZONE_PATCH: JSON.stringify({ mainSquare: { x: SQ.x, y: SQ.y, name: '열매 프로브' } }),
       });
-      ok(await waitHttp(`http://localhost:${ZPORT}/health`), 'zone 기동 (열매)');
+      // ★★[T355 2026-09-22] 존 기동도 **아이의 입**으로 듣는다(정본 `fixture-boot.waitUp` · T344·T349).
+      //   포트 응답은 증인이 아니다 — 앞 판 존이 포트를 쥔 채면 새 존은 `EADDRINUSE` 로 죽고 폴링은
+      //   **앞 판의 존**에게 200 을 받는다. 존은 하네스마다 **세계가 다르므로**(다른 DB·다른 래퍼)
+      //   남의 존에 붙으면 세계가 통째로 바뀐 채로 재게 된다 — central 보다 더 나쁘다.
+      //   ⚠실측(이 카드 · 3판): 존 기동은 **78.8~83.1초**가 걸리고 아이의 입과 1초 폴링의 차는
+      //     **177~306ms** 뿐이다 — central 때처럼 "우연히 벌어 주던 1초"가 **여기엔 없다**(재는 값 무변).
+      //   ⚠듣기는 **띄운 그 틱에** 시작한다(T349 ⑧ 함정) — `await` 만 아래로 내린다.
+      const _zp3 = FB.waitUp(_zone3, /zone server up on/, { name: 'zone', capMs: 300000 });
+      ok(await (await _zp3).ok, 'zone 기동 (열매)');
 
       // ── 실클라가 쓰는 그 선 — 붙어서 **서버가 보낸 행**을 그대로 모은다 ────────────────
       const rows = new Map();       // id → 행(서버가 마지막으로 보낸 것)
@@ -884,7 +908,7 @@ function diffCountNoEnts(a, b, ents) {
         clearInterval(HB);
         try { W.close(); } catch (e) {}
       }
-      try { z3.kill(); } catch (e) {}
+      try { _zone3.kill('SIGKILL'); } catch (e) {}
       await sleep(2500);
     }
   }
@@ -931,8 +955,16 @@ function diffCountNoEnts(a, b, ents) {
           ENABLE_VILLAGES: '0', ENABLE_BANDITS: '0', E2E_GIVE: '1',
           WRAP_ZONE_PATCH: JSON.stringify({ mainSquare: { x: site.x, y: site.y, name: '걸음 ' + tag } }) };
         if (!slideOn) env.T194_SLIDE = '0';       // ★되돌림 손잡이 — 두 쪽 다 종전 비트
-        const zz = boot('zone', '/tmp/zone-wrap.js', env);
-        if (!await waitHttp(`http://localhost:${ZPORT}/health`)) { try { zz.kill(); } catch (e) {} return null; }
+        const _zone4 = boot('zone', '/tmp/zone-wrap.js', env);
+        // ★★[T355 2026-09-22] 존 기동도 **아이의 입**으로 듣는다(정본 `fixture-boot.waitUp` · T344·T349).
+        //   포트 응답은 증인이 아니다 — 앞 판 존이 포트를 쥔 채면 새 존은 `EADDRINUSE` 로 죽고 폴링은
+        //   **앞 판의 존**에게 200 을 받는다. 존은 하네스마다 **세계가 다르므로**(다른 DB·다른 래퍼)
+        //   남의 존에 붙으면 세계가 통째로 바뀐 채로 재게 된다 — central 보다 더 나쁘다.
+        //   ⚠실측(이 카드 · 3판): 존 기동은 **78.8~83.1초**가 걸리고 아이의 입과 1초 폴링의 차는
+        //     **177~306ms** 뿐이다 — central 때처럼 "우연히 벌어 주던 1초"가 **여기엔 없다**(재는 값 무변).
+        //   ⚠듣기는 **띄운 그 틱에** 시작한다(T349 ⑧ 함정) — `await` 만 아래로 내린다.
+        const _zp4 = FB.waitUp(_zone4, /zone server up on/, { name: 'zone', capMs: 300000 });
+        if (!await (await _zp4).ok) { try { _zone4.kill('SIGKILL'); } catch (e) {} return null; }
         let ack = 0, wel = null;
         const ws = await new Promise((res, rej) => {
           const w = new WebSocket(`ws://localhost:${ZPORT}/?name=%EA%B1%B8%EC%9D%8C`);
@@ -942,7 +974,7 @@ function diffCountNoEnts(a, b, ents) {
             if (m.type === 'welcome') { wel = m; clearTimeout(t); res(w); } });
           w.on('error', (e) => { clearTimeout(t); rej(e); });
         }).catch(() => null);
-        if (!ws) { try { zz.kill(); } catch (e) {} return null; }
+        if (!ws) { try { _zone4.kill('SIGKILL'); } catch (e) {} return null; }
         let pos = null;
         const obs = new WebSocket(`ws://localhost:${ZPORT}/?observer=1`);
         await new Promise((r) => { obs.on('open', r); obs.on('error', r); setTimeout(r, 8000); });
@@ -963,7 +995,7 @@ function diffCountNoEnts(a, b, ents) {
         const rate = Math.hypot(p1.x - p0.x, p1.y - p0.y) / secs;
         const full = d.filter((v) => Math.abs(v - STEP6) < 0.05).length, zero = d.filter((v) => v < 0.5).length;
         try { ws.close(); } catch (e) {} try { obs.close(); } catch (e) {}
-        try { zz.kill(); } catch (e) {} await sleep(2500);
+        try { _zone4.kill('SIGKILL'); } catch (e) {} await sleep(2500);
         return { tag, rate, full, zero, n: d.length, ack, seq, slide: wel && wel.moveCfg ? wel.moveCfg.slide : null };
       };
       const W = {};

@@ -91,7 +91,7 @@ async function waitHttp(url, tries = 900) {
   //   ⚠**듣기는 여기서 시작한다**(`await` 는 아래 `ok` 자리에서) — 아이가 표식을 찍는 것은 ~120ms 뒤라
   //     그 사이 다른 `await` 를 지나면 줄을 놓친다. 띄운 **그 틱에** 귀를 붙인다.
   const _upP = FB.waitUp(_central, /central server up on/, { name: 'central' });
-  boot('zone', 'zone.js', {
+  const _zone = boot('zone', 'zone.js', {
     PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB,
     // ★[T319 2026-09-19] `?as=<이름>` 은 이제 **개발 손잡이 뒤**다(`zone.js` `_devAsGate` · 실서버엔 없다).
     //   이 하네스는 그 칸을 **쓰는 쪽**이라 손잡이를 켜고 띄운다 — 켜야 검사가 성립하고,
@@ -105,9 +105,17 @@ async function waitHttp(url, tries = 900) {
     E2E_GIVE: '1',
     SHELTER_BACKFILL_MS: '8000',   // ★[T62] 쉼터 백필 주기 — 4마을이라 금방 굽는다(값의 뜻은 안 바꿨다, 주기만)
   });
+  // ★★[T355 2026-09-22] 존 기동도 **아이의 입**으로 듣는다(정본 `fixture-boot.waitUp` · T344·T349).
+  //   포트 응답은 증인이 아니다 — 앞 판 존이 포트를 쥔 채면 새 존은 `EADDRINUSE` 로 죽고 폴링은
+  //   **앞 판의 존**에게 200 을 받는다. 존은 하네스마다 **세계가 다르므로**(다른 DB·다른 래퍼)
+  //   남의 존에 붙으면 세계가 통째로 바뀐 채로 재게 된다 — central 보다 더 나쁘다.
+  //   ⚠실측(이 카드 · 3판): 존 기동은 **78.8~83.1초**가 걸리고 아이의 입과 1초 폴링의 차는
+  //     **177~306ms** 뿐이다 — central 때처럼 "우연히 벌어 주던 1초"가 **여기엔 없다**(재는 값 무변).
+  //   ⚠듣기는 **띄운 그 틱에** 시작한다(T349 ⑧ 함정) — `await` 만 아래로 내린다.
+  const _zp = FB.waitUp(_zone, /zone server up on/, { name: 'zone', capMs: 300000 });
   const _up = await _upP;
   ok(_up.ok, 'central 기동', _up.ok ? `${_up.ms}ms · 아이가 제 입으로 말했다` : _up.why);
-  ok(await waitHttp(`http://localhost:${ZPORT}/health`), 'zone 기동');
+  ok(await (await _zp).ok, 'zone 기동');
 
   let zmap = null;
   for (let i = 0; i < 120; i++) {
@@ -127,7 +135,7 @@ async function waitHttp(url, tries = 900) {
   // ── ⓪ 서버가 도착 지점을 낸다 ─────────────────────────────────────────────
   let info = null;
   for (let i = 0; i < 90; i++) {
-    try { const r = await fetch(`http://localhost:${ZPORT}/startinfo`); if (r.ok) { const j = await r.json(); if (j && j.ok && j.villages && j.villages.length) { info = j; break; } } } catch (e) {}
+    try { const r = await fetch(`http://localhost:${ZPORT}/startinfo`, { signal: AbortSignal.timeout(5000) }); if (r.ok) { const j = await r.json(); if (j && j.ok && j.villages && j.villages.length) { info = j; break; } } } catch (e) {}
     await sleep(2000);
   }
   ok(!!info, '/startinfo — 시작 화면이 읽을 마을 목록이 선다', info ? `${info.villages.length}곳 · 추천 ${info.recommendN}곳` : 'X');
@@ -396,7 +404,7 @@ async function waitHttp(url, tries = 900) {
     //   ⇒ 하네스가 순서를 맞춘다. 기다린 사실 자체도 판정으로 남긴다(조용히 기다리지 않는다).
     let shRow = null;
     for (let i = 0; i < 40; i++) {
-      try { const j = await (await fetch(`http://localhost:${ZPORT}/shelterdbg`)).json();
+      try { const j = await (await fetch(`http://localhost:${ZPORT}/shelterdbg`, { signal: AbortSignal.timeout(5000) })).json();
             const r = j && j.rows ? j.rows.find((x) => x.vid === vid) : null;
             if (r && r.shelter) { shRow = r; break; } } catch (e) {}
       await sleep(2000);
@@ -448,7 +456,7 @@ async function waitHttp(url, tries = 900) {
     //   ⚠문장만 보면 자명 통과다 — **좌표로 걸어가서 건물이 있는지**까지 본다(§3 의 요구).
     {
       let row = shRow;
-      try { const j = await (await fetch(`http://localhost:${ZPORT}/shelterdbg`)).json();
+      try { const j = await (await fetch(`http://localhost:${ZPORT}/shelterdbg`, { signal: AbortSignal.timeout(5000) })).json();
             row = (j && j.rows ? j.rows.find((r) => r.vid === vid) : null) || shRow; } catch (e) {}
       ok(!!(row && row.shelter), `[${label}] ★[T62] 이 마을에 **공용 쉼터가 서 있다**`,
         row && row.shelter ? `(${row.shelter.cx},${row.shelter.cy})` : '없음');
@@ -614,7 +622,7 @@ async function waitHttp(url, tries = 900) {
       }
       return false;
     };
-    const jget2 = async (u) => { try { const r = await fetch(u); return r.ok ? await r.json() : null; } catch (e) { return null; } };
+    const jget2 = async (u) => { try { const r = await fetch(u, { signal: AbortSignal.timeout(5000) }); return r.ok ? await r.json() : null; } catch (e) { return null; } };
     const jpost2 = async (u, b) => { try { const r = await fetch(u, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }); return r.ok ? await r.json() : null; } catch (e) { return null; } };
 
     // ★★[T181 2026-09-12] **제 판**을 띄운다 — T174 가 잰 것이 곧 이유다: 대본 뒤 세계는

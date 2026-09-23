@@ -128,7 +128,7 @@ function openSession(token) {
 // ★central 에 **실제로 저장된** 좌표 — "미저장 드리프트가 있다"를 증명하는 유일한 원천.
 async function savedPos(playerId) {
   try {
-    const r = await fetch(`http://localhost:${CPORT}/player/${encodeURIComponent(playerId)}`);
+    const r = await fetch(`http://localhost:${CPORT}/player/${encodeURIComponent(playerId)}`, { signal: AbortSignal.timeout(5000) });
     if (!r.ok) return null;
     const j = await r.json();
     const p = j.player || j;

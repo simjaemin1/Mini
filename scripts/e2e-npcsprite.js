@@ -78,15 +78,23 @@ const ZENV = {
   //   ⚠**듣기는 여기서 시작한다**(`await` 는 아래 `ok` 자리에서) — 아이가 표식을 찍는 것은 ~120ms 뒤라
   //     그 사이 다른 `await` 를 지나면 줄을 놓친다. 띄운 **그 틱에** 귀를 붙인다.
   const _upP = FB.waitUp(_central, /central server up on/, { name: 'central' });
-  boot('zone0', path.join(ROOT, 'server', 'zone.js'), { ...ZENV, DB_PATH: '/tmp/npcspr-z.db' });
+  const _zone = boot('zone0', path.join(ROOT, 'server', 'zone.js'), { ...ZENV, DB_PATH: '/tmp/npcspr-z.db' });
+  // ★★[T355 2026-09-22] 존 기동도 **아이의 입**으로 듣는다(정본 `fixture-boot.waitUp` · T344·T349).
+  //   포트 응답은 증인이 아니다 — 앞 판 존이 포트를 쥔 채면 새 존은 `EADDRINUSE` 로 죽고 폴링은
+  //   **앞 판의 존**에게 200 을 받는다. 존은 하네스마다 **세계가 다르므로**(다른 DB·다른 래퍼)
+  //   남의 존에 붙으면 세계가 통째로 바뀐 채로 재게 된다 — central 보다 더 나쁘다.
+  //   ⚠실측(이 카드 · 3판): 존 기동은 **78.8~83.1초**가 걸리고 아이의 입과 1초 폴링의 차는
+  //     **177~306ms** 뿐이다 — central 때처럼 "우연히 벌어 주던 1초"가 **여기엔 없다**(재는 값 무변).
+  //   ⚠듣기는 **띄운 그 틱에** 시작한다(T349 ⑧ 함정) — `await` 만 아래로 내린다.
+  const _zp = FB.waitUp(_zone, /zone server up on/, { name: 'zone', capMs: 300000 });
   const _up = await _upP;
   ok(_up.ok, 'central 기동', _up.ok ? `${_up.ms}ms · 아이가 제 입으로 말했다` : _up.why);
-  ok(await waitHttp(`http://localhost:${ZPORT}/health`), 'zone 기동(1차 — 마을 묻기)');
+  ok(await (await _zp).ok, 'zone 기동(1차 — 마을 묻기)');
 
   let vil = null;
   for (let i = 0; i < 90 && !vil; i++) {
     try {
-      const j = await (await fetch(`http://localhost:${ZPORT}/lifedbg`)).json();
+      const j = await (await fetch(`http://localhost:${ZPORT}/lifedbg`, { signal: AbortSignal.timeout(5000) })).json();
       const rows = Array.isArray(j) ? j : (j.villages || []);
       for (const r of rows) {
         const pts = (r.sample || []).filter((x) => x && typeof x.x === 'number');
@@ -116,11 +124,19 @@ const ZENV = {
   //   ⚠**듣기는 여기서 시작한다**(`await` 는 아래 `ok` 자리에서) — 아이가 표식을 찍는 것은 ~120ms 뒤라
   //     그 사이 다른 `await` 를 지나면 줄을 놓친다. 띄운 **그 틱에** 귀를 붙인다.
   const _upP2 = FB.waitUp(_central2, /central server up on/, { name: 'central' });
-  boot('zone', WRAP, { ...ZENV, DB_PATH: '/tmp/npcspr-z2.db',
+  const _zone2 = boot('zone', WRAP, { ...ZENV, DB_PATH: '/tmp/npcspr-z2.db',
     WRAP_ZONE_PATCH: JSON.stringify({ mainSquare: { x: vil.x, y: vil.y, name: vil.name } }) });
+  // ★★[T355 2026-09-22] 존 기동도 **아이의 입**으로 듣는다(정본 `fixture-boot.waitUp` · T344·T349).
+  //   포트 응답은 증인이 아니다 — 앞 판 존이 포트를 쥔 채면 새 존은 `EADDRINUSE` 로 죽고 폴링은
+  //   **앞 판의 존**에게 200 을 받는다. 존은 하네스마다 **세계가 다르므로**(다른 DB·다른 래퍼)
+  //   남의 존에 붙으면 세계가 통째로 바뀐 채로 재게 된다 — central 보다 더 나쁘다.
+  //   ⚠실측(이 카드 · 3판): 존 기동은 **78.8~83.1초**가 걸리고 아이의 입과 1초 폴링의 차는
+  //     **177~306ms** 뿐이다 — central 때처럼 "우연히 벌어 주던 1초"가 **여기엔 없다**(재는 값 무변).
+  //   ⚠듣기는 **띄운 그 틱에** 시작한다(T349 ⑧ 함정) — `await` 만 아래로 내린다.
+  const _zp2 = FB.waitUp(_zone2, /zone server up on/, { name: 'zone', capMs: 300000 });
   const _up2 = await _upP2;
   ok(_up2.ok, 'central 기동(2차)', _up2.ok ? `${_up2.ms}ms · 아이가 제 입으로 말했다` : _up2.why);
-  ok(await waitHttp(`http://localhost:${ZPORT}/health`), 'zone 기동(2차 — 마을 광장 스폰)');
+  ok(await (await _zp2).ok, 'zone 기동(2차 — 마을 광장 스폰)');
   await sleep(6000);
 
   const { chromium } = require('playwright');
@@ -295,7 +311,7 @@ const ZENV = {
     //   **화면**(`__charDbg` 의 `back_carrier` 층). 하네스가 규칙을 다시 짜지 않는다.
     const carryingNow = async () => {
       try {
-        const d = await (await fetch(`http://localhost:${ZPORT}/lifedbg`)).json();
+        const d = await (await fetch(`http://localhost:${ZPORT}/lifedbg`, { signal: AbortSignal.timeout(5000) })).json();
         const rows = d && (d.villages || d.rows || (Array.isArray(d) ? d : []));
         let n = 0; for (const r of (rows || [])) n += (r.carrying | 0);
         return n;

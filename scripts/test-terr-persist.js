@@ -84,12 +84,20 @@ async function run(label, extraEnv, fresh) {
   const _upP = FB.waitUp(_central, /central server up on/, { name: 'central' });
   const _up = await _upP;
   if (!_up.ok) { console.log(`  ★${_up.why}`); killAll(); return null; }
-  boot('zone.js', Object.assign({
+  const _zone = boot('zone.js', Object.assign({
     PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB,
     CENTRAL_PORT: String(CPORT), CENTRAL_HOST: 'localhost',
     VILLAGE_DAY_MS: String(DAY_MS), ENABLE_BANDITS: '0', ENABLE_ROADS: '0', ENABLE_WILDLIFE: '0',
   }, extraEnv || {}));
-  if (!await waitHttp(`http://localhost:${ZPORT}/health`, 900)) { killAll(); return null; }
+  // ★★[T355 2026-09-22] 존 기동도 **아이의 입**으로 듣는다(정본 `fixture-boot.waitUp` · T344·T349).
+  //   포트 응답은 증인이 아니다 — 앞 판 존이 포트를 쥔 채면 새 존은 `EADDRINUSE` 로 죽고 폴링은
+  //   **앞 판의 존**에게 200 을 받는다. 존은 하네스마다 **세계가 다르므로**(다른 DB·다른 래퍼)
+  //   남의 존에 붙으면 세계가 통째로 바뀐 채로 재게 된다 — central 보다 더 나쁘다.
+  //   ⚠실측(이 카드 · 3판): 존 기동은 **78.8~83.1초**가 걸리고 아이의 입과 1초 폴링의 차는
+  //     **177~306ms** 뿐이다 — central 때처럼 "우연히 벌어 주던 1초"가 **여기엔 없다**(재는 값 무변).
+  //   ⚠듣기는 **띄운 그 틱에** 시작한다(T349 ⑧ 함정) — `await` 만 아래로 내린다.
+  const _zp = FB.waitUp(_zone, /zone server up on/, { name: 'zone', capMs: 300000 });
+  if (!await (await _zp).ok) { killAll(); return null; }
   let days = 0;
   for (let i = 0; i < 2000; i++) {
     await sleep(3000);

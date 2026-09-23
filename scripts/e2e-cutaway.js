@@ -108,12 +108,25 @@ function boxDiff(a, b, x0, y0, x1, y1) {
   let hall = null;
   if (fs.existsSync(ZDB)) hall = readHall(ZDB);
   if (!hall) {
-    const z0 = boot('zone', path.join(ROOT, 'server', 'zone.js'), {
+    const _zone = boot('zone', path.join(ROOT, 'server', 'zone.js'), {
       PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
       ENABLE_VILLAGES: '1', ENABLE_BANDITS: '0',
     });
-    ok(await waitHttp(`http://localhost:${ZPORT}/health`), '시딩 부팅(첫 판 — 50곳이라 오래 걸린다)');
-    try { z0.kill(); } catch (e) {}
+    // ★★[T355 2026-09-22] 존 기동도 **아이의 입**으로 듣는다(정본 `fixture-boot.waitUp` · T344·T349).
+    //   포트 응답은 증인이 아니다 — 앞 판 존이 포트를 쥔 채면 새 존은 `EADDRINUSE` 로 죽고 폴링은
+    //   **앞 판의 존**에게 200 을 받는다. 존은 하네스마다 **세계가 다르므로**(다른 DB·다른 래퍼)
+    //   남의 존에 붙으면 세계가 통째로 바뀐 채로 재게 된다 — central 보다 더 나쁘다.
+    //   ⚠실측(이 카드 · 3판): 존 기동은 **78.8~83.1초**가 걸리고 아이의 입과 1초 폴링의 차는
+    //     **177~306ms** 뿐이다 — central 때처럼 "우연히 벌어 주던 1초"가 **여기엔 없다**(재는 값 무변).
+    //   ⚠듣기는 **띄운 그 틱에** 시작한다(T349 ⑧ 함정) — `await` 만 아래로 내린다.
+    const _zp = FB.waitUp(_zone, /zone server up on/, { name: 'zone', capMs: 300000 });
+    ok(await (await _zp).ok, '시딩 부팅(첫 판 — 50곳이라 오래 걸린다)');
+    // ★★[T355 2026-09-22] **여기 이름이 틀려 있었다** — `z0` 은 어디에도 없는 이름이고
+    //   `try/catch` 가 `ReferenceError` 를 통째로 먹어서 **시딩 존이 한 번도 안 죽었다**.
+    //   종전엔 그게 안 보였다: 다음 존이 `EADDRINUSE` 로 죽어도 `waitHttp(/health)` 가
+    //   **살아 있는 앞 존**에게 200 을 받아 "기동"이라고 답했기 때문이다(자명 통과).
+    //   정본으로 바꾸자마자 `✗ zone 기동 (inside)` 로 **이름이 붙어** 드러났다.
+    try { _zone.kill('SIGKILL'); } catch (e) {}
     await sleep(3000);
     hall = readHall(ZDB);
   }
@@ -128,12 +141,20 @@ function boxDiff(a, b, x0, y0, x1, y1) {
 
   const shots = {};
   for (const [tag, at] of [['inside', IN], ['outside', OUT]]) {
-    const z = boot('zone', wrap, {
+    const _zone2 = boot('zone', wrap, {
       PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
       ENABLE_VILLAGES: '1', ENABLE_BANDITS: '0', WRAP_DAY_MS: '86400000',
       WRAP_ZONE_PATCH: JSON.stringify({ mainSquare: { x: at.cx * 32 + 16, y: at.cy * 32 + 16, name: `컷어웨이 ${tag}` } }),
     });
-    ok(await waitHttp(`http://localhost:${ZPORT}/health`), `zone 기동 (${tag})`);
+    // ★★[T355 2026-09-22] 존 기동도 **아이의 입**으로 듣는다(정본 `fixture-boot.waitUp` · T344·T349).
+    //   포트 응답은 증인이 아니다 — 앞 판 존이 포트를 쥔 채면 새 존은 `EADDRINUSE` 로 죽고 폴링은
+    //   **앞 판의 존**에게 200 을 받는다. 존은 하네스마다 **세계가 다르므로**(다른 DB·다른 래퍼)
+    //   남의 존에 붙으면 세계가 통째로 바뀐 채로 재게 된다 — central 보다 더 나쁘다.
+    //   ⚠실측(이 카드 · 3판): 존 기동은 **78.8~83.1초**가 걸리고 아이의 입과 1초 폴링의 차는
+    //     **177~306ms** 뿐이다 — central 때처럼 "우연히 벌어 주던 1초"가 **여기엔 없다**(재는 값 무변).
+    //   ⚠듣기는 **띄운 그 틱에** 시작한다(T349 ⑧ 함정) — `await` 만 아래로 내린다.
+    const _zp2 = FB.waitUp(_zone2, /zone server up on/, { name: 'zone', capMs: 300000 });
+    ok(await (await _zp2).ok, `zone 기동 (${tag})`);
     await sleep(4000);
     const { chromium } = require('playwright');
     const browser = await chromium.launch({ headless: true, executablePath: require('playwright').chromium.executablePath() });
@@ -165,7 +186,8 @@ function boxDiff(a, b, x0, y0, x1, y1) {
     const shotP = `${SHOTS}/${tag}.png`;
     await page.screenshot({ path: shotP });
     shots[tag] = { dbg, png: PNG.sync.read(fs.readFileSync(shotP)), path: shotP };
-    await browser.close(); try { z.kill(); } catch (e) {}
+    await browser.close();
+    try { _zone2.kill('SIGKILL'); } catch (e) {}   // ★[T355] 위와 같은 자리 — `z` 도 없는 이름이었다
     await sleep(2500);
   }
 

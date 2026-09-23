@@ -50,11 +50,19 @@ async function waitHttp(url, tries = 300) {
   for (let i = 0; i < tries; i++) { try { const r = await fetch(url, { signal: AbortSignal.timeout(5000) }); if (r.ok) return true; } catch (e) {} await sleep(1000); }
   return false;
 }
+// ★★[T355 2026-09-22] 존 기동도 **아이의 입**으로 듣는다(정본 `fixture-boot.waitUp` · T344·T349).
+//   포트 응답은 증인이 아니다 — 앞 판 존이 포트를 쥔 채면 새 존은 `EADDRINUSE` 로 죽고 폴링은
+//   **앞 판의 존**에게 200 을 받는다(세계가 통째로 바뀐 채로 재게 된다).
+//   ⚠이 하네스는 존을 **헬퍼로** 띄우므로 헬퍼가 아이와 약속을 **함께** 돌려준다 —
+//     듣기가 "띄운 그 틱"에 시작해야 하기 때문이다(T349 ⑧ 함정).
+//   ⚠실측(이 카드 · 3판): 존 기동 78.8~83.1초 · 아이의 입과 1초 폴링의 차 177~306ms.
 function bootZone(extraEnv) {
-  return boot('zone', 'zone.js', Object.assign({
+  const _z = boot('zone', 'zone.js', Object.assign({
     PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
     ENABLE_VILLAGES: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', ENABLE_WILDLIFE: '0', E2E_GIVE: '1',
   }, extraEnv || {}));
+  _z.__up = FB.waitUp(_z, /zone server up on/, { name: 'zone', capMs: 300000 });
+  return _z;
 }
 
 function openSession(token) {
@@ -78,7 +86,7 @@ async function waitWelcome(s, ms = 15000) {
 }
 async function savedPos(playerId) {
   try {
-    const r = await fetch(`http://localhost:${CPORT}/player/${encodeURIComponent(playerId)}`);
+    const r = await fetch(`http://localhost:${CPORT}/player/${encodeURIComponent(playerId)}`, { signal: AbortSignal.timeout(5000) });
     if (!r.ok) return null;
     const j = await r.json(); const p = j.player || j;
     return (typeof p.last_x === 'number') ? { x: p.last_x, y: p.last_y } : null;
@@ -107,7 +115,7 @@ async function walk(s, seconds, vx, vy) {
   // ── ⓐ 대조군: 주기 저장 **끔**(간격을 아주 크게) — 걷기는 저장을 부르지 않는다 ──
   //   이게 참이 아니면 아래 ⓑ 의 통과는 주기 저장 덕분이 아니라 픽스처 덕분이다.
   let zone = bootZone({ SAVE_INTERVAL_MS: '999000' });
-  ok(await waitHttp(`http://localhost:${ZPORT}/health`), 'zone 기동(대조군 — 주기 저장 사실상 끔)');
+  ok((await zone.__up).ok, 'zone 기동(대조군 — 주기 저장 사실상 끔)');
   await sleep(2000);
   const A = openSession(null);
   await A.ready;
@@ -143,7 +151,7 @@ async function walk(s, seconds, vx, vy) {
   const _up2 = await _upP2;
   ok(_up2.ok, 'central 재기동', _up2.ok ? `${_up2.ms}ms · 아이가 제 입으로 말했다` : _up2.why);
   zone = bootZone({ SAVE_INTERVAL_MS: '4000' });
-  ok(await waitHttp(`http://localhost:${ZPORT}/health`), 'zone 기동(본군 — 주기 저장 4초)');
+  ok((await zone.__up).ok, 'zone 기동(본군 — 주기 저장 4초)');
   await sleep(2000);
   const B = openSession(null);
   await B.ready;
@@ -177,7 +185,7 @@ async function walk(s, seconds, vx, vy) {
 
   procs.length = 1;                               // central 만 남긴다
   zone = bootZone({ SAVE_INTERVAL_MS: '4000' });
-  ok(await waitHttp(`http://localhost:${ZPORT}/health`), 'ⓒ zone 재기동(크래시 후)');
+  ok((await zone.__up).ok, 'ⓒ zone 재기동(크래시 후)');
   await sleep(2500);
   const C = openSession(tokenB);
   await C.ready;

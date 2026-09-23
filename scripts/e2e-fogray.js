@@ -39,7 +39,7 @@ function boot(name, file, env) {
   p.stdout.on('data', (d) => { const s = d.toString(); if (/server up|Error/i.test(s)) process.stdout.write(`  [${name}] ` + s.slice(0, 110)); });
   procs.push(p); return p;
 }
-async function httpOk(url) { try { const r = await fetch(url); return r.ok; } catch (e) { return false; } }
+async function httpOk(url) { try { const r = await fetch(url, { signal: AbortSignal.timeout(5000) }); return r.ok; } catch (e) { return false; } }
 async function waitHttp(url, tries = 900) { for (let i = 0; i < tries; i++) { if (await httpOk(url)) return true; await sleep(1000); } return false; }
 
 (async () => {
@@ -61,8 +61,16 @@ require(path.join(ROOT,'server','zone.js'));`);
   //   ⇒ 증인은 **내가 띄운 아이의 입**이다(정본 `fixture-boot.waitUp` · 사본 0).
   const _up = await FB.waitUp(_central, /central server up on/, { name: 'central' });
   if (!_up.ok) { console.log(_up.why); process.exit(1); }
-    boot('zone', '/tmp/zone-wrap-fogray.js', { PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`, ENABLE_VILLAGES: '1', ENABLE_BANDITS: '0' });
-    ok(await waitHttp(`http://localhost:${ZPORT}/health`), 'zone 기동');
+    const _zone = boot('zone', '/tmp/zone-wrap-fogray.js', { PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`, ENABLE_VILLAGES: '1', ENABLE_BANDITS: '0' });
+    // ★★[T355 2026-09-22] 존 기동도 **아이의 입**으로 듣는다(정본 `fixture-boot.waitUp` · T344·T349).
+    //   포트 응답은 증인이 아니다 — 앞 판 존이 포트를 쥔 채면 새 존은 `EADDRINUSE` 로 죽고 폴링은
+    //   **앞 판의 존**에게 200 을 받는다. 존은 하네스마다 **세계가 다르므로**(다른 DB·다른 래퍼)
+    //   남의 존에 붙으면 세계가 통째로 바뀐 채로 재게 된다 — central 보다 더 나쁘다.
+    //   ⚠실측(이 카드 · 3판): 존 기동은 **78.8~83.1초**가 걸리고 아이의 입과 1초 폴링의 차는
+    //     **177~306ms** 뿐이다 — central 때처럼 "우연히 벌어 주던 1초"가 **여기엔 없다**(재는 값 무변).
+    //   ⚠듣기는 **띄운 그 틱에** 시작한다(T349 ⑧ 함정) — `await` 만 아래로 내린다.
+    const _zp = FB.waitUp(_zone, /zone server up on/, { name: 'zone', capMs: 300000 });
+    ok(await (await _zp).ok, 'zone 기동');
     await sleep(20000);
   } else say('  (떠 있는 서버를 쓴다)');
 

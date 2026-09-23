@@ -76,7 +76,7 @@ async function waitHttp(url, tries = 900) {
   //   ⚠**듣기는 여기서 시작한다**(`await` 는 아래 `ok` 자리에서) — 아이가 표식을 찍는 것은 ~120ms 뒤라
   //     그 사이 다른 `await` 를 지나면 줄을 놓친다. 띄운 **그 틱에** 귀를 붙인다.
   const _upP = FB.waitUp(_central, /central server up on/, { name: 'central' });
-  boot('zone', 'zone.js', {
+  const _zone = boot('zone', 'zone.js', {
     PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB,
     CENTRAL_URL: `http://localhost:${CPORT}`,
     ENABLE_VILLAGES: '1',          // ★이번엔 켠다 — 마을이 이 검사의 대상이다
@@ -87,15 +87,23 @@ async function waitHttp(url, tries = 900) {
     E2E_GIVE: '1',
     ENABLE_BANDITS: '0', ENABLE_ROADS: '0',
   });
+  // ★★[T355 2026-09-22] 존 기동도 **아이의 입**으로 듣는다(정본 `fixture-boot.waitUp` · T344·T349).
+  //   포트 응답은 증인이 아니다 — 앞 판 존이 포트를 쥔 채면 새 존은 `EADDRINUSE` 로 죽고 폴링은
+  //   **앞 판의 존**에게 200 을 받는다. 존은 하네스마다 **세계가 다르므로**(다른 DB·다른 래퍼)
+  //   남의 존에 붙으면 세계가 통째로 바뀐 채로 재게 된다 — central 보다 더 나쁘다.
+  //   ⚠실측(이 카드 · 3판): 존 기동은 **78.8~83.1초**가 걸리고 아이의 입과 1초 폴링의 차는
+  //     **177~306ms** 뿐이다 — central 때처럼 "우연히 벌어 주던 1초"가 **여기엔 없다**(재는 값 무변).
+  //   ⚠듣기는 **띄운 그 틱에** 시작한다(T349 ⑧ 함정) — `await` 만 아래로 내린다.
+  const _zp = FB.waitUp(_zone, /zone server up on/, { name: 'zone', capMs: 300000 });
   const _up = await _upP;
   ok(_up.ok, 'central 기동', _up.ok ? `${_up.ms}ms · 아이가 제 입으로 말했다` : _up.why);
-  ok(await waitHttp(`http://localhost:${ZPORT}/health`), 'zone 기동');
+  ok(await (await _zp).ok, 'zone 기동');
 
   // 로비 게이트 — central 이 존 인구를 받을 때까지(5초 폴링). 안 기다리면 "지역 없음"으로 막힌다.
   //   ★`/zones` 의 zones 는 **객체 맵**이다(배열 아님) — 1차 작성이 여기서 틀려 게이트가 영영 false 였다.
   let hz = {};
   for (let i = 0; i < 120; i++) {
-    try { const z = await (await fetch(`http://localhost:${CPORT}/zones`)).json(); hz = (z.zones || {}).hanbando || {}; } catch (e) {}
+    try { const z = await (await fetch(`http://localhost:${CPORT}/zones`, { signal: AbortSignal.timeout(5000) })).json(); hz = (z.zones || {}).hanbando || {}; } catch (e) {}
     if (hz.population !== null && hz.population !== undefined && hz.cap) break;
     await sleep(1000);
   }
@@ -422,11 +430,11 @@ async function waitHttp(url, tries = 900) {
   //   ★"자격"은 서버 정본(`newcomers.js`)이 판정한다 — 여기서 다시 풀지 않고 `/welcomedbg` 로 읽는다.
   if (hall) {
     const wdbg = async (scan) => {
-      try { return await (await fetch(`http://localhost:${ZPORT}/welcomedbg${scan ? '?scan=1' : ''}`)).json(); }
+      try { return await (await fetch(`http://localhost:${ZPORT}/welcomedbg${scan ? '?scan=1' : ''}`, { signal: AbortSignal.timeout(5000) })).json(); }
       catch (e) { return null; }
     };
     const sinfo = async () => {
-      try { return await (await fetch(`http://localhost:${ZPORT}/startinfo`)).json(); } catch (e) { return null; }
+      try { return await (await fetch(`http://localhost:${ZPORT}/startinfo`, { signal: AbortSignal.timeout(5000) })).json(); } catch (e) { return null; }
     };
     const w0 = await wdbg(true);
     const row0 = w0 && (w0.villages || []).find((r) => r.name && r.pop != null);
@@ -492,7 +500,7 @@ async function waitHttp(url, tries = 900) {
         `★[T62] ⓕ′ 쉼터 재료를 쥐었다 — 굴립주 ${invS && invS.pillar} · 서까래 ${invS && invS.rafter} · 풀 ${invS && invS.fiber} · 이엉 ${invS && invS.thatch}`);
       // ★좌표계 — `__getAllBuildings` 는 **절대 월드**, `teleport_debug` 는 **존 로컬**이다(족보 54·64).
       let OX = 0, OY = 0;
-      try { const zj = await (await fetch(`http://localhost:${CPORT}/zones`)).json();
+      try { const zj = await (await fetch(`http://localhost:${CPORT}/zones`, { signal: AbortSignal.timeout(5000) })).json();
             const zm = (zj.zones || {}).hanbando || {}; OX = zm.worldOffsetX || 0; OY = zm.worldOffsetY || 0; } catch (e) {}
       const hallCx = Math.floor(hall.wx / 32), hallCy = Math.floor(hall.wy / 32);   // 절대 셀
       await page.evaluate(() => { window.__notices = []; });   // ★링버퍼 40칸 — 비우고 시작한다
@@ -557,7 +565,7 @@ async function waitHttp(url, tries = 900) {
       }
       console.log(`    (쉼터 올리기 — ${advN}회 · 터에 못 닿은 회 ${farN} · 마지막 거리 ${Number.isFinite(lastD) ? lastD.toFixed(0) + 'px' : 'NaN'}`
         + ` · 서버 한계 120px · 상한 ${(NEAR_CAP / 1000) | 0}초 · 판정 아님)`);
-      const shdb = await (await fetch(`http://localhost:${ZPORT}/shelterdbg`)).json().catch(() => null);
+      const shdb = await (await fetch(`http://localhost:${ZPORT}/shelterdbg`, { signal: AbortSignal.timeout(5000) })).json().catch(() => null);
       const shRow = shdb && shdb.rows ? shdb.rows.find((x) => x.player) : null;
       ok(!!(shRow && shRow.shelter), `★[T62] ⓗ ★**내 마을에 공용 쉼터가 섰다**`,
         shRow && shRow.shelter ? `(${shRow.shelter.cx},${shRow.shelter.cy})` : '없음');
@@ -594,7 +602,7 @@ async function waitHttp(url, tries = 900) {
   }
   // ── NPC 마을은 이 UI 의 대상이 아니다(플레이어 마을만) ───────────────────────
   {
-    const c = await (await fetch(`http://localhost:${ZPORT}/health`)).json().catch(() => null);
+    const c = await (await fetch(`http://localhost:${ZPORT}/health`, { signal: AbortSignal.timeout(5000) })).json().catch(() => null);
     ok(!!c, 'zone health 응답(마무리 확인)');
   }
 

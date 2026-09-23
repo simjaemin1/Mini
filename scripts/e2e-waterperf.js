@@ -90,12 +90,20 @@ const BOX = [40, 260, 1360, 860];
   //   ⇒ 증인은 **내가 띄운 아이의 입**이다(정본 `fixture-boot.waitUp` · 사본 0).
   const _up = await FB.waitUp(_central, /central server up on/, { name: 'central' });
   if (!_up.ok) { console.log(_up.why); process.exit(1); }
-  const z = boot('zone', '/tmp/zone-wrap-wp.js', {
+  const _zone = boot('zone', '/tmp/zone-wrap-wp.js', {
     PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
     ENABLE_VILLAGES: '1', ENABLE_BANDITS: '0',   // ★e2e-terrain 과 같게 — 이걸 끄면 mainSquare 스폰이 안 먹어 엉뚱한 마을에서 시작한다(1패스에서 물 0% 로 잡혔다)
     WRAP_ZONE_PATCH: JSON.stringify({ mainSquare: { x: SITE.cx * 32 + 16, y: SITE.cy * 32 + 16, name: '물가렉' } }),
   });
-  ok(await waitHttp(`http://localhost:${ZPORT}/health`), 'zone 기동');
+  // ★★[T355 2026-09-22] 존 기동도 **아이의 입**으로 듣는다(정본 `fixture-boot.waitUp` · T344·T349).
+  //   포트 응답은 증인이 아니다 — 앞 판 존이 포트를 쥔 채면 새 존은 `EADDRINUSE` 로 죽고 폴링은
+  //   **앞 판의 존**에게 200 을 받는다. 존은 하네스마다 **세계가 다르므로**(다른 DB·다른 래퍼)
+  //   남의 존에 붙으면 세계가 통째로 바뀐 채로 재게 된다 — central 보다 더 나쁘다.
+  //   ⚠실측(이 카드 · 3판): 존 기동은 **78.8~83.1초**가 걸리고 아이의 입과 1초 폴링의 차는
+  //     **177~306ms** 뿐이다 — central 때처럼 "우연히 벌어 주던 1초"가 **여기엔 없다**(재는 값 무변).
+  //   ⚠듣기는 **띄운 그 틱에** 시작한다(T349 ⑧ 함정) — `await` 만 아래로 내린다.
+  const _zp = FB.waitUp(_zone, /zone server up on/, { name: 'zone', capMs: 300000 });
+  ok(await (await _zp).ok, 'zone 기동');
   await sleep(4000);
 
   const { chromium } = require('playwright');
@@ -293,7 +301,7 @@ const BOX = [40, 260, 1360, 860];
   ok(Math.abs(wFast - wSlow) < Math.max(0.2, wSlow * 0.05), `★★예산제가 그린 물의 양이 대조군과 같다 (${wFast.toFixed(2)}% vs ${wSlow.toFixed(2)}%) — 늦게 그릴 뿐 덜 그리지 않는다`);
   ok(dd < 3.0, `★그림이 사실상 같다 (평균 |Δ| ${dd.toFixed(2)} < 3.0)`);
 
-  await browser.close(); try { z.kill(); } catch (e) { }
+  await browser.close(); try { _zone.kill('SIGKILL'); } catch (e) { }
   for (const p of procs) { try { p.kill(); } catch (e) { } }
   say(`\n=== 물가 렉: 통과 ${pass} · 실패 ${fail} ===`);
   process.exit(fail ? 1 : 0);

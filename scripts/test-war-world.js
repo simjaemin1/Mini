@@ -415,9 +415,14 @@ async function serverPart() {
   //   ⚠stdio 를 **열어 준다** — 기본이 'ignore' 라 표식이 이쪽에 안 온다.
   const _central = boot('central.js', { PORT: String(CPORT), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando', CENTRAL_SECRET: SECRET }, ['ignore', 'pipe', 'pipe']);
   const _upP = FB.waitUp(_central, /central server up on/, { name: 'central' });
-  boot('zone.js', { PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_HOST: 'localhost', CENTRAL_PORT: String(CPORT), CENTRAL_SECRET: SECRET,
+  const _zone = boot('zone.js', { PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_HOST: 'localhost', CENTRAL_PORT: String(CPORT), CENTRAL_SECRET: SECRET,
     ENABLE_VILLAGES: '1', VILLAGE_MAX: process.env.WAR_WORLD_VILLAGES || '8', VILLAGE_DAY_MS: '60000', ENABLE_BANDITS: '0',
     WAR_FIXTURE: 'assault', WAR_FIXTURE_DAY: '1', VILLAGE_WAR_LOG: '1' }, ['ignore', out, out]);
+  // ★★[T355 2026-09-22] **이 존만 X 다 — 정본으로 못 간다.**
+  //   이 하네스는 존의 출력을 **파일로** 받는다(`['ignore', out, out]` · 전쟁 로그를 뒤에서 읽는다).
+  //   그러면 `child.stdout` 이 null 이라 정본이 아이의 입을 들을 수가 없다 — 파이프로 바꾸면
+  //   그 로그가 사라진다. ⇒ 존 게이트는 **포트 응답 그대로 두고 표에 X 로 남긴다**(카드 규약).
+  //   central 게이트는 T349 가 이미 정본으로 옮겼다(그쪽은 파이프다).
   const _up = await _upP;
   ok(_up.ok, 'ⓕ central 기동', _up.ok ? `${_up.ms}ms · 아이가 제 입으로 말했다` : _up.why);
   if (!_up.ok) { kill(); return; }

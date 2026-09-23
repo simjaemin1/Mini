@@ -72,7 +72,15 @@ const ZENV = (extra) => Object.assign({
   const _up = await _upP;
   ok(_up.ok, 'central 기동', _up.ok ? `${_up.ms}ms · 아이가 제 입으로 말했다` : _up.why);
   let zone = boot('zone', 'zone.js', ZENV());
-  ok(await waitHttp(`http://localhost:${ZPORT}/health`), 'zone 기동');
+  // ★★[T355 2026-09-22] 존 기동도 **아이의 입**으로 듣는다(정본 `fixture-boot.waitUp` · T344·T349).
+  //   포트 응답은 증인이 아니다 — 앞 판 존이 포트를 쥔 채면 새 존은 `EADDRINUSE` 로 죽고 폴링은
+  //   **앞 판의 존**에게 200 을 받는다. 존은 하네스마다 세계가 다르므로 남의 존에 붙으면
+  //   세계가 통째로 바뀐 채로 재게 된다 — central 보다 더 나쁘다.
+  //   ⚠이 하네스는 존을 **다섯 번 갈아 끼운다** — 그래서 약속도 같이 갈아 끼운다(`_zp`).
+  //   ⚠실측(이 카드 · 3판): 존 기동 78.8~83.1초 · 아이의 입과 1초 폴링의 차 177~306ms
+  //     — central 때처럼 "우연히 벌어 주던 1초"가 여기엔 없다(재는 값 무변).
+  let _zp = FB.waitUp(zone, /zone server up on/, { name: 'zone', capMs: 300000 });
+  ok((await _zp).ok, 'zone 기동');
 
   const { chromium } = require('playwright');
   const browser = await chromium.launch({ headless: !HEADED, executablePath: require('playwright').chromium.executablePath() });
@@ -123,7 +131,8 @@ const ZENV = (extra) => Object.assign({
   {
     zone.kill('SIGKILL'); await sleep(2500); zoneLog.length = 0;
     zone = boot('zone', 'zone.js', ZENV({ E2E_CONN_FAIL: 'welcome' }));
-    ok(await waitHttp(`http://localhost:${ZPORT}/health`), '(상황) 던지는 zone 기동');
+    _zp = FB.waitUp(zone, /zone server up on/, { name: 'zone', capMs: 300000 });
+    ok((await _zp).ok, '(상황) 던지는 zone 기동');
     const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
     await enter(page);
     // ★★★[T322 2026-09-19] **예산형을 조건 대기로 바꾼다**(족보 ⑩ · T314 ⓒ-3 이 든 실례가 이 줄이다).
@@ -159,7 +168,8 @@ const ZENV = (extra) => Object.assign({
   {
     zone.kill('SIGKILL'); await sleep(2500); zoneLog.length = 0;
     zone = boot('zone', 'zone.js', ZENV({ E2E_CONN_HANG: 'welcome', CONN_DEADLINE_MS: '6000' }));
-    ok(await waitHttp(`http://localhost:${ZPORT}/health`), '(상황) 멈추는 zone 기동');
+    _zp = FB.waitUp(zone, /zone server up on/, { name: 'zone', capMs: 300000 });
+    ok((await _zp).ok, '(상황) 멈추는 zone 기동');
     const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
     await enter(page);
     // 마감액 전: pong 은 오는데(=서버는 살아 있다) welcome 이 없다 → "입장 처리 중"
@@ -199,7 +209,8 @@ const ZENV = (extra) => Object.assign({
   {
     zone.kill('SIGKILL'); await sleep(2500); zoneLog.length = 0;
     zone = boot('zone', 'zone.js', ZENV());
-    ok(await waitHttp(`http://localhost:${ZPORT}/health`), '(상황) 정상 zone 기동');
+    _zp = FB.waitUp(zone, /zone server up on/, { name: 'zone', capMs: 300000 });
+    ok((await _zp).ok, '(상황) 정상 zone 기동');
     const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
     // ★소켓은 열리되 **서버가 보내는 모든 것**을 삼킨다 = 라이브에서 본 그 침묵.
     await page.addInitScript(() => {
@@ -259,7 +270,8 @@ const ZENV = (extra) => Object.assign({
   {
     zone.kill('SIGKILL'); await sleep(2500);
     zone = boot('zone', 'zone.js', ZENV({ E2E_CONN_FAIL: 'welcome' }));
-    await waitHttp(`http://localhost:${ZPORT}/health`);
+    _zp = FB.waitUp(zone, /zone server up on/, { name: 'zone', capMs: 300000 });
+    (await _zp).ok;
     const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
     await enter(page);
     // ★[T338] 예산형(60×400ms = 24초) → 조건 대기.
@@ -269,7 +281,8 @@ const ZENV = (extra) => Object.assign({
       `${c && c.phase}${rE.timedOut ? ` — ${(CAP / 1000) | 0}초 동안 안 빠졌다` : ` (${rE.ms}ms 만에)`}`);
     zone.kill('SIGKILL'); await sleep(2500);
     zone = boot('zone', 'zone.js', ZENV());          // 고친 서버로 교체
-    await waitHttp(`http://localhost:${ZPORT}/health`);
+    _zp = FB.waitUp(zone, /zone server up on/, { name: 'zone', capMs: 300000 });
+    (await _zp).ok;
     // ★[T338] 예산형(70×1000ms = 70초) → 조건 대기.
     const rB = await waitFor(async () => (await inWorld(page)) || null);
     ok(!!rB.v, '★★⑥ 서버가 고쳐지자 **새로고침 없이** 스스로 들어갔다',

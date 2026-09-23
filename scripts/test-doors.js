@@ -74,13 +74,21 @@ const call = async (port, meth, p, hdr, body) => {
   //   ⚠**듣기는 여기서 시작한다**(`await` 는 아래 `ok` 자리에서) — 아이가 표식을 찍는 것은 ~120ms 뒤라
   //     그 사이 다른 `await` 를 지나면 줄을 놓친다. 띄운 **그 틱에** 귀를 붙인다.
   const _upP = FB.waitUp(_central, /central server up on/, { name: 'central' });
-  boot('zone.js', {
+  const _zone = boot('zone.js', {
     PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_HOST: 'localhost', CENTRAL_PORT: String(CPORT),
     CENTRAL_SECRET: SECRET, ENABLE_VILLAGES: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', E2E_GIVE: '1',
-  });
+  }, ['ignore', 'pipe', 'pipe']);   // ★[T355] 존의 **입도** 연다 — 기본이 'ignore' 라 표식이 이쪽에 안 온다
+  // ★★[T355 2026-09-22] 존 기동도 **아이의 입**으로 듣는다(정본 `fixture-boot.waitUp` · T344·T349).
+  //   포트 응답은 증인이 아니다 — 앞 판 존이 포트를 쥔 채면 새 존은 `EADDRINUSE` 로 죽고 폴링은
+  //   **앞 판의 존**에게 200 을 받는다. 존은 하네스마다 **세계가 다르므로**(다른 DB·다른 래퍼)
+  //   남의 존에 붙으면 세계가 통째로 바뀐 채로 재게 된다 — central 보다 더 나쁘다.
+  //   ⚠실측(이 카드 · 3판): 존 기동은 **78.8~83.1초**가 걸리고 아이의 입과 1초 폴링의 차는
+  //     **177~306ms** 뿐이다 — central 때처럼 "우연히 벌어 주던 1초"가 **여기엔 없다**(재는 값 무변).
+  //   ⚠듣기는 **띄운 그 틱에** 시작한다(T349 ⑧ 함정) — `await` 만 아래로 내린다.
+  const _zp = FB.waitUp(_zone, /zone server up on/, { name: 'zone', capMs: 300000 });
   const _up = await _upP;
   ok(_up.ok, '⓪ central 기동', _up.ok ? `${_up.ms}ms · 아이가 제 입으로 말했다` : _up.why);
-  ok(await waitHttp(`http://localhost:${ZPORT}/health`), '⓪ zone 기동');
+  ok(await (await _zp).ok, '⓪ zone 기동');
   const OUT = {}, IN = { 'x-zone-secret': SECRET };
 
   // ── 전제 — 표와 코드가 같은가(파수꾼과 **같은 표**로) ─────────────────────
@@ -201,11 +209,19 @@ const call = async (port, meth, p, hdr, body) => {
   say('\n[ⓒ3 비밀 없는 팔 — 사설 주소 폴백]');
   {
     const ZP2 = 3321, ZDB2 = `/tmp/doors-z2-${process.pid}.db`;
-    boot('zone.js', {
+    const _zone2 = boot('zone.js', {
       PORT: String(ZP2), ZONE_ID: 'hanbando', DB_PATH: ZDB2, CENTRAL_HOST: 'localhost', CENTRAL_PORT: String(CPORT),
       ENABLE_VILLAGES: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', E2E_GIVE: '1',
-    });
-    const up = await waitHttp(`http://localhost:${ZP2}/health`);
+    }, ['ignore', 'pipe', 'pipe']);   // ★[T355] 둘째 존도 같다
+    // ★★[T355 2026-09-22] 존 기동도 **아이의 입**으로 듣는다(정본 `fixture-boot.waitUp` · T344·T349).
+    //   포트 응답은 증인이 아니다 — 앞 판 존이 포트를 쥔 채면 새 존은 `EADDRINUSE` 로 죽고 폴링은
+    //   **앞 판의 존**에게 200 을 받는다. 존은 하네스마다 **세계가 다르므로**(다른 DB·다른 래퍼)
+    //   남의 존에 붙으면 세계가 통째로 바뀐 채로 재게 된다 — central 보다 더 나쁘다.
+    //   ⚠실측(이 카드 · 3판): 존 기동은 **78.8~83.1초**가 걸리고 아이의 입과 1초 폴링의 차는
+    //     **177~306ms** 뿐이다 — central 때처럼 "우연히 벌어 주던 1초"가 **여기엔 없다**(재는 값 무변).
+    //   ⚠듣기는 **띄운 그 틱에** 시작한다(T349 ⑧ 함정) — `await` 만 아래로 내린다.
+    const _zp2 = FB.waitUp(_zone2, /zone server up on/, { name: 'zone', capMs: 300000 });
+    const up = await (await _zp2).ok;
     ok(up, 'ⓒ3 전제 — 비밀 없는 존이 떴다(아래가 자명 통과가 아니다)');
     const loop = [];
     for (const p of Z2Z) loop.push([p, (await call(ZP2, 'POST', p, OUT, { player_id: '아무개', srcZone: 'x', token: 'a'.repeat(32) })).s]);

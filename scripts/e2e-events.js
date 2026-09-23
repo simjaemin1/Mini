@@ -71,7 +71,7 @@ async function waitHttp(url, tries = 900) {
   //   ⚠**듣기는 여기서 시작한다**(`await` 는 아래 `ok` 자리에서) — 아이가 표식을 찍는 것은 ~120ms 뒤라
   //     그 사이 다른 `await` 를 지나면 줄을 놓친다. 띄운 **그 틱에** 귀를 붙인다.
   const _upP = FB.waitUp(_central, /central server up on/, { name: 'central' });
-  boot('zone', 'zone.js', {
+  const _zone = boot('zone', 'zone.js', {
     PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB,
     CENTRAL_URL: `http://localhost:${CPORT}`,
     // ★마을이 필요한 유일한 실클라 하네스 — 대신 2곳만, 하루는 0.5초.
@@ -80,9 +80,17 @@ async function waitHttp(url, tries = 900) {
     ENABLE_BANDITS: '0', ENABLE_ROADS: '0',
     E2E_GIVE: '1',   // 재료 지급 + 부족 픽스처(둘 다 이 플래그로만 분기가 산다)
   });
+  // ★★[T355 2026-09-22] 존 기동도 **아이의 입**으로 듣는다(정본 `fixture-boot.waitUp` · T344·T349).
+  //   포트 응답은 증인이 아니다 — 앞 판 존이 포트를 쥔 채면 새 존은 `EADDRINUSE` 로 죽고 폴링은
+  //   **앞 판의 존**에게 200 을 받는다. 존은 하네스마다 **세계가 다르므로**(다른 DB·다른 래퍼)
+  //   남의 존에 붙으면 세계가 통째로 바뀐 채로 재게 된다 — central 보다 더 나쁘다.
+  //   ⚠실측(이 카드 · 3판): 존 기동은 **78.8~83.1초**가 걸리고 아이의 입과 1초 폴링의 차는
+  //     **177~306ms** 뿐이다 — central 때처럼 "우연히 벌어 주던 1초"가 **여기엔 없다**(재는 값 무변).
+  //   ⚠듣기는 **띄운 그 틱에** 시작한다(T349 ⑧ 함정) — `await` 만 아래로 내린다.
+  const _zp = FB.waitUp(_zone, /zone server up on/, { name: 'zone', capMs: 300000 });
   const _up = await _upP;
   ok(_up.ok, 'central 기동', _up.ok ? `${_up.ms}ms · 아이가 제 입으로 말했다` : _up.why);
-  ok(await waitHttp(`http://localhost:${ZPORT}/health`), 'zone 기동');
+  ok(await (await _zp).ok, 'zone 기동');
   let zmap = null;
   for (let i = 0; i < 90; i++) {
     zmap = await (await fetch(`http://localhost:${CPORT}/zones`)).json();
@@ -406,20 +414,38 @@ async function waitHttp(url, tries = 900) {
     //   원인은 게이트가 아니라 **옛 게이트가 우연히 벌어 주던 1초**다 — 옛 폴링은 1초 간격이라 대개
     //   1초 뒤에 돌아왔고 정본은 ~100ms 다. 그 1초가 세계가 첫 하루를 도는 값을 대신 내고 있었다.
     //   ⇒ 우연을 다른 우연으로 메우지 않는다. **필요한 것이 생길 때까지** 기다리고 회수를 적는다.
-    const SHORT_CAP = 90000, tShort = Date.now(); let shortN = 0;
-    while (Date.now() - tShort < SHORT_CAP && canGive(bd).length < 2) {
-      const skip = ((bd && bd.rows) || []).map((r) => r.item);
-      await page.evaluate(([vid, sk]) => window.__sendPrimary({ type: '__e2e_village_short', vid, skip: sk }), [V.id, skip]);
+    // ★★[T355 2026-09-22] **얼린 뒤 다시 읽은 판**이 판정의 대상이다 — 기다림도 그것으로 옮긴다.
+    //   T349 는 루프의 조건만 "둘 이상"으로 바꿨는데, 그 뒤에 날을 얼리고 **다시 읽는 줄**이 있었다.
+    //   실측(이 카드): 루프는 `낼 수 있는 줄 2개`로 나왔는데 얼리고 다시 읽으니 `["stone 3/3"]` 하나였다
+    //   ⇒ 기다린 상태와 잰 상태가 **달랐다**(T349 가 `e2e-conn ②-b` 에서 겪은 그 자리와 같다).
+    //   ⇒ **얼리고 다시 읽은 판에 둘이 있을 때까지** 한 바퀴를 통째로 돈다(상한은 표에만).
+    const SHORT_CAP = 90000, tShort = Date.now(); let shortN = 0, rows = [];
+    while (Date.now() - tShort < SHORT_CAP) {
+      if (canGive(bd).length < 2) {                                  // ⓐ 날을 푼 채로 세운다
+        const skip = ((bd && bd.rows) || []).map((r) => r.item);
+        await page.evaluate(([vid, sk]) => window.__sendPrimary({ type: '__e2e_village_short', vid, skip: sk }), [V.id, skip]);
+        await sleep(700);
+        bd = await ensureBoard(4);
+        shortN++;
+        continue;
+      }
+      await page.evaluate(() => window.__sendPrimary({ type: '__e2e_day_freeze', on: true }));   // ⓑ 얼리고
       await sleep(700);
+      bd = await ensureBoard(6);                                     // ⓒ **판정이 읽을 그 판**을 읽는다
+      rows = canGive(bd);
+      if (rows.length >= 2) break;                                   // ⓓ 그 판에 둘이 있어야 끝난다
+      await page.evaluate(() => window.__sendPrimary({ type: '__e2e_day_freeze', on: false }));  // 아니면 다시 푼다
+      await sleep(600);
       bd = await ensureBoard(4);
-      shortN++;
     }
-    console.log(`    (의뢰 세우기 — ${shortN}회 주입 · ${Date.now() - tShort}ms · 지금 낼 수 있는 줄 ${canGive(bd).length}개`
+    console.log(`    (의뢰 세우기 — ${shortN}회 주입 · ${Date.now() - tShort}ms · **얼린 뒤** 낼 수 있는 줄 ${rows.length}개`
       + ` · 상한 ${(SHORT_CAP / 1000) | 0}초 · 판정 아님)`);
-    await page.evaluate(() => window.__sendPrimary({ type: '__e2e_day_freeze', on: true }));
-    await sleep(700);
-    bd = await ensureBoard(6);
-    const rows = canGive(bd);
+    if (rows.length < 2) {   // 상한에 걸려 나왔으면 날이 풀린 채일 수 있다 — 시간 모드 규약대로 얼려 둔다
+      await page.evaluate(() => window.__sendPrimary({ type: '__e2e_day_freeze', on: true }));
+      await sleep(700);
+      bd = await ensureBoard(6); rows = canGive(bd);
+      console.log('    ★상한까지 얼린 판에서 둘을 못 세웠다 — 아래가 조용히 빨개지지 않게 이름을 붙인다');
+    }
     ok(rows.length >= 2, '★④-c (상황) 낼 수 있는 의뢰가 **둘 이상** 걸렸다 — 하나면 이 절은 자명 통과다',
       JSON.stringify(((bd && bd.rows) || []).map((r) => `${r.item} ${r.remain}/${r.qty}`)));
     if (rows.length >= 2) {

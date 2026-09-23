@@ -560,6 +560,23 @@ console.log('\n⑨ 야간 여러 밤 — e2e 는 묶음을 하나 단다 [T220 �
   ok(GATE.own.length > 0, '⑩ [전제] 기동 정본(`fixture-boot.waitUp`)을 쓰는 하네스가 실제로 있다(0 이면 아래가 자명 통과다)',
      `${GATE.own.length}개`);
   ok(fs.existsSync(path.join(SCRIPTS, 'fixture-boot.js')), '⑩ [전제] 정본 파일이 있다');
+  // ★★[T355 2026-09-22] **존 갈래도 센다.** 존은 하네스마다 세계가 다르므로(다른 DB·다른 래퍼)
+  //   남의 존에 붙으면 central 보다 더 나쁘다 — 세계가 통째로 바뀐 채로 잰다.
+  {
+    let zport = 0; const zbad = [];
+    for (const f of fs.readdirSync(SCRIPTS).filter((x) => /^(test|e2e)-.*\.js$/.test(x))) {
+      const src = fs.readFileSync(path.join(SCRIPTS, f), 'utf8');
+      const m = src.match(/waitHttp\(`http:\/\/localhost:\$\{\w+\}\/health`/g);
+      if (m) { zport += m.length; zbad.push(`${f}(${m.length})`); }
+    }
+    // ★[T355] **X 하나는 이름으로 허용한다** — `test-war-world` 는 존 출력을 파일로 받아
+    //   (`['ignore', out, out]`) `child.stdout` 이 null 이다. 파이프로 바꾸면 전쟁 로그가 사라진다.
+    //   ⇒ 게이트는 "0" 이 아니라 **X 표와 수가 맞는 것**이다(카드 T355 규약).
+    const XOK = ['test-war-world.js(1)'];
+    const left = zbad.filter((x) => XOK.indexOf(x) < 0);
+    ok(left.length === 0, '★★⑩c 존 기동도 **아이의 입**으로 기다린다 — 표에 적은 X 말고 남은 자리 0',
+       `남은 자리 ${zport} · 허용 X ${XOK.join(' ')}${left.length ? ' · ★표에 없는 것 ' + left.join(' ') : ''}`);
+  }
   ok(GATE.port.length === 0 && GATE.copy.length === 0 && GATE.blind.length === 0,
      '★★⑩ central 을 띄우는 하네스는 **전부 아이의 입**으로 기다린다 — 포트 응답·지역 사본·맹목 잠 0',
      `정본 ${GATE.own.length} · 포트 ${GATE.port.length} · 사본 ${GATE.copy.length} · 맹목 ${GATE.blind.length}`
@@ -581,9 +598,17 @@ console.log('\n⑨ 야간 여러 밤 — e2e 는 묶음을 하나 단다 [T220 �
   //   정본이 들을 수가 없다 — 이 카드가 `test-doors` 에서 실제로 물었다(`✗ ⓪ central 기동` 인데
   //   나머지 62문은 전부 통과 = 세계는 떠 있었다. 자가 눈이 먼 것이지 세계가 안 선 게 아니다).
   {
+    // ★[T355] **자를 좁혔다.** 종전엔 "파일 어딘가에 pipe 가 있으면 통과"라 `test-doors` 가
+    //   central 만 열고 **존은 막힌 채** 통과했다(이 카드가 물었다 — `✗ ⓪ zone 기동` · 문 19개 0).
+    //   ⇒ 기본이 통째로 'ignore' 인 파일에서는 **정본에 먹이는 boot 하나하나**가 pipe 를 줘야 한다.
     const mute = GATE.own.filter((f) => {
       const src = fs.readFileSync(path.join(SCRIPTS, f), 'utf8');
-      return /stdio:\s*\['ignore',\s*'ignore',\s*'ignore'\]/.test(src) && !/\['ignore',\s*'pipe',\s*'pipe'\]/.test(src);
+      if (!/stdio:\s*(?:io \|\| )?\['ignore',\s*'ignore',\s*'ignore'\]/.test(src)) return false;
+      for (const m of src.matchAll(/const (_\w+) = boot\(([\s\S]*?)\);\n/g)) {
+        if (!new RegExp(`FB\\.waitUp\\(${m[1]}\\b`).test(src)) continue;
+        if (!/'pipe'/.test(m[2])) return true;
+      }
+      return false;
     });
     ok(mute.length === 0, '★★⑩b 정본을 쓰는 하네스는 아이의 **입이 열려 있다** — `stdio` 가 통째로 ignore 면 못 듣는다',
        `${GATE.own.length}개 훑음 · 입 막힌 것 ${mute.length}${mute.length ? ' — ' + mute.join(' ') : ''}`);
@@ -595,7 +620,7 @@ console.log('\n⑨ 야간 여러 밤 — e2e 는 묶음을 하나 단다 [T220 �
 // ── ⑪ **기다림의 `fetch` 에는 마감이 있다** [T349 2026-09-21] ─────────────────
 //   ★왜. 09-20 밤 `e2e-events`·`e2e-winter` 가 **RC=124(2,400초)** 로 잘렸는데 단독은 76~82초다.
 //   예산을 다 더해도 318초·510초라 2,400 이 안 나온다 ⇒ **합이 아니라 한 곳이 안 돌아온 것**이다.
-//   이 카드가 쟀다: 접속은 받되 **아무 답도 안 하는** 서버에 `await fetch(url)` 을 걸면
+//   이 카드가 쟀다: 접속은 받되 **아무 답도 안 하는** 서버에 `await fetch(url, { signal: AbortSignal.timeout(5000) })` 을 걸면
 //   **120초가 지나도 안 돌아오고 안 던진다**(Node 의 fetch 에는 기본 마감이 없다).
 //   그러면 `waitHttp(url, tries)` 의 `tries` 는 **무의미하다** — 다음 바퀴로 못 간다.
 //   끊는 것은 오직 러너의 `timeout 2400` 이고, 그게 RC=124 다.
@@ -618,7 +643,66 @@ console.log('\n⑨ 야간 여러 밤 — e2e 는 묶음을 하나 단다 [T220 �
   const hit = (src) => { const R = new RegExp(LOOP.source); const m2 = R.exec(src); return m2 ? !/AbortSignal\.timeout\(/.test(m2[2]) : null; };
   ok(hit(bait) === true && hit(good) === false,
      '★⑪ 자명 통과 금지 — 마감 뗀 미끼는 **잡고**, 마감 단 미끼는 안 문다', `${hit(bait)} / ${hit(good)}`);
-  console.log('    접점: AbortSignal.timeout · waitHttp · run-regress.sh TIMEOUT_SEC=2400 · RC=124');
+  // ★★[T355 2026-09-22] **단발 `fetch` 도 센다**(`jget` 류 · 한 번 읽고 마는 자리).
+  //   기다림 루프가 아니라 한 번 실패하면 `null` 이 되므로 2,400초를 만들진 않지만,
+  //   **돌아오지도 던지지도 않으면** 그 자리에서 영영 멈추는 것은 같다(T349 실측).
+  //   값은 T349 가 쓴 5000 그대로다 — 새 수 0.
+  {
+    // ★★[T355] **받을 자리가 있는 단발만 판정한다.** 마감을 달면 느린 판이 **던진다** —
+    //   `catch` 가 있는 자리는 지금의 `null` 경로로 떨어져 판정이 안 바뀌지만, 받을 자리가 없는
+    //   자리는 **초록이 크래시로 바뀐다**(이 카드가 `test-tick-slicer` 에서 실제로 물었다:
+    //   부하 픽스처 아래 존의 `/perf` 가 5초를 넘겨 `TimeoutError` 로 하네스가 죽었다).
+    //   ⇒ 받을 자리 없는 단발은 **표로만 센다**(회부). 그 자리에 마감을 달려면 호출부에
+    //     받을 자리를 먼저 만들어야 하고, 그건 이 카드의 제품 0 범위 밖이다.
+    const NAKED = /await fetch\((?![^)]*AbortSignal\.timeout)[^,()]*(?:\([^()]*\)[^,()]*)*\)/g;
+    let naked = 0, loose = 0; const bad = [], looseF = [];
+    for (const f of fs.readdirSync(SCRIPTS).filter((x) => /^(test|e2e)-.*\.js$/.test(x))) {
+      const src = fs.readFileSync(path.join(SCRIPTS, f), 'utf8');
+      const lines = src.split('\n');
+      for (let i = 0; i < lines.length; i++) {
+        const mm = lines[i].match(NAKED);
+        if (!mm) continue;
+        const ctx = lines.slice(Math.max(0, i - 2), i + 1).join('\n');
+        const caught = /try \{/.test(ctx) || /\.catch\(/.test(lines[i]) || /catch \(/.test(ctx);
+        if (caught) { naked += mm.length; if (bad.indexOf(f) < 0) bad.push(`${f}(${mm.length})`); }
+        else { loose += mm.length; if (looseF.indexOf(f) < 0) looseF.push(f); }
+      }
+    }
+    console.log(`    [표] 받을 자리 없는 단발 ${loose}자리 — 마감을 달면 느린 판이 **던진다**(회부)`
+      + (looseF.length ? `\n      ${looseF.join(' ')}` : ''));
+    // ⚠이 자는 **자기 파일도 훑는다**(`test-` 로 시작한다) — 그래서 판정 문구에 그 모양을 그대로 쓰면
+    //   자기 말에 자기가 물린다(실제로 한 번 물렸다 · T304 가 주석의 `Date.now()` 에서 겪은 그 자리).
+    //   ⇒ 문구에서는 그 모양을 쓰지 않는다.
+    ok(naked === 0, '★★⑪b 받을 자리 있는 단발 `fetch` 에 전부 마감이 있다 — 마감 없는 것 0자리',
+       `마감 없는 단발 ${naked}${bad.length ? ' — ' + bad.slice(0, 5).join(' ') : ''}`);
+    // ★★[T355] **없는 이름을 죽이고 있지 않은가.** 죽이는 호출을 `try` 로 감싼 자리에서 그 이름이
+    //   선언된 적 없으면 `ReferenceError` 를 `catch` 가 통째로 먹고 **서버가 안 죽는다**.
+    //   종전엔 안 보였다 — 다음 존이 `EADDRINUSE` 로 죽어도 포트 게이트가 앞 존의 200 을 받았다.
+    //   이 카드가 `e2e-cutaway` 에서 실제로 물었고(`✗ zone 기동 (inside)`), 전수로 **19자리**였다.
+    //   ⚠이 자도 **자기 파일을 훑는다** — 주석에 그 모양을 그대로 쓰면 자기가 걸린다(이 카드가 두 번 물렸다).
+    {
+      const dead = [];
+      for (const f of fs.readdirSync(SCRIPTS).filter((x) => /^(test|e2e)-.*\.js$/.test(x))) {
+        const src = fs.readFileSync(path.join(SCRIPTS, f), 'utf8');
+        for (const m of src.matchAll(/try \{ (\w+)\.kill\(/g)) {
+          const v = m[1];
+          if (v === 'process') continue;
+          const declared = new RegExp(`(?:const|let|var|function)\\s+${v}\\b`).test(src)
+            || new RegExp(`\\b${v}\\s*=\\s*boot`).test(src);
+          if (!declared) dead.push(`${f}:${v}`);
+        }
+      }
+      ok(dead.length === 0, '★★⑩d 죽이는 이름이 **실재한다** — 없는 이름을 죽이면 catch 가 먹고 서버가 안 죽는다',
+         `${dead.length}자리${dead.length ? ' — ' + dead.slice(0, 5).join(' ') : ''}`);
+    }
+    // ★자명 통과 금지 — 마감 뗀 단발 미끼 하나를 같은 자로 재면 **잡는다**(글자를 조각내 자기 자신을 안 문다)
+    const baitN = "const j = await " + "fetch(u);";
+    const goodN = "const j = await " + "fetch(u, { signal: AbortSignal.timeout(5000) });";
+    const hitN = (src) => new RegExp(NAKED.source).test(src);
+    ok(hitN(baitN) === true && hitN(goodN) === false,
+       '★⑪b 자명 통과 금지 — 마감 뗀 단발은 **잡고**, 마감 단 단발은 안 문다', `${hitN(baitN)} / ${hitN(goodN)}`);
+  }
+  console.log('    접점: AbortSignal.timeout · waitHttp · jget · run-regress.sh TIMEOUT_SEC=2400 · RC=124');
 }
 
 // =============================================================================
