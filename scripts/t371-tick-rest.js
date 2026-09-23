@@ -27,7 +27,15 @@ const SLICE_S = parseInt(process.env.SLICE_S || '30', 10);
 const SLICES = parseInt(process.env.SLICES || '8', 10);
 const TPL = process.env.TPL || '/tmp/t316-tpl.db';
 const WINDOW = (process.env.WINDOW || 'day').trim();
+// ★[T375] 팔 — `off`(종전 문지기) / `on`(`T375_ACTIVE_FLAG=1`). 같은 틀 DB · 같은 창 · 같은 조각.
+const ARM = (process.env.ARM || 'off').trim();
+const TAG = ARM === 'off' ? WINDOW : `${WINDOW}-${ARM}`;
 const W_LO = WINDOW === 'day' ? 0.10 : 0.72, W_HI = WINDOW === 'day' ? 0.62 : 0.97;
+// ★[T375] **드는 자리를 좁힌다** — 팔 둘을 견주려면 두 판이 **같은 국면**에서 시작해야 한다.
+//   T375 첫 판 실측: `off` 는 0.102 에 들었고 `on` 은 0.45 에 들어 비취침이 1,205 대 1,642 였다
+//   (같은 세계인데 창이 달랐다 — T345 §3-ⓑ 가 빠진 그 함정). ⇒ 좁은 띠에 들 때까지 기다린다.
+const E_LO = process.env.PH_LO ? parseFloat(process.env.PH_LO) : W_LO;
+const E_HI = process.env.PH_HI ? parseFloat(process.env.PH_HI) : (W_HI - 0.001);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const rmdb = (f) => { for (const s of ['', '-wal', '-shm']) { try { fs.unlinkSync(f + s); } catch (e) {} } };
 
@@ -40,11 +48,13 @@ const SEGS = [
   ['worldDay', '세계 하루 훅 — `Bandits`·`Roads`·`Soil`·`_fruitSeasonSweep`'],
   ['idleScan', 'idle 존 판정 — 사람 하나 찾는 순회 + `observers.size`'],
   ['chunks',   '활성 청크 갱신 — `updateActiveChunks`'],
+  ['t375R1',   '★[T375] 새로 고침 ① — 틱 머리(주민만) · 끔이면 즉시 반환'],
   ['spatial',  '공간 인덱스 재구축 — `rebuildSpatialIndex` + `roomsFlush`'],
   ['inputTO',  '입력 타임아웃 순회 — 전 주민 훑고 사람만 본다'],
   ['decPre',   '결정 문 앞 — 주석뿐(사슬을 닫는 자리)'],
   ['farm',     '밭 단계 — 게임일 경계에만 활성 청크 밭 순회(평시 정수 비교 1)'],
   ['arrows',   '화살 물리 + ghost TTL 청소 — `stepArrows` + 맵 둘 순회'],
+  ['t375R2',   '★[T375] 새로 고침 ② — 이동 문 직후(주민 + 몹) · 끔이면 즉시 반환'],
   ['stairs',   '계단 — `stepStairFor` × (주민 + 몹)'],
   ['fall',     '낙하 — `processFalling` × (주민 + 몹)'],
   ['gauge',    '생존 게이지 — 배고픔·목마름·vp 감쇠 순회'],
@@ -104,8 +114,10 @@ const PATCHES = [
     repl: "  _ANA.cut('worldDay');\n  // === 14.49-e3-perf5: idle zone skip ===" },
   { find: "  // === 활성 청크 갱신 (player·observer 위치 기반) ===",
     repl: "  _ANA.cut('idleScan');\n  // === 활성 청크 갱신 (player·observer 위치 기반) ===" },
+  { find: "  _t375Refresh(false);",
+    repl: "  _ANA.cut('chunks');\n  _t375Refresh(false);" },
   { find: "  // === Spatial index 재구축 — 모든 nearest-search가 이걸 씀 ===",
-    repl: "  _ANA.cut('chunks');\n  // === Spatial index 재구축 — 모든 nearest-search가 이걸 씀 ===" },
+    repl: "  _ANA.cut('t375R1');\n  // === Spatial index 재구축 — 모든 nearest-search가 이걸 씀 ===" },
   { find: "  // 입력 타임아웃 — 2.5초 동안 입력 없으면 정지",
     repl: "  _ANA.cut('spatial');\n  // 입력 타임아웃 — 2.5초 동안 입력 없으면 정지" },
   { find: "  // === NPC 행동 결정 (사람 player는 input으로 vx/vy 받지만 NPC는 직접 결정) ===",
@@ -119,8 +131,10 @@ const PATCHES = [
     repl: "  _ANA.cut('farm');\n  // Phase 5-I: 화살 물리/히트 + 만료된 ghost 정리" },
   { find: "  for (const p of players.values()) {\n    if (p.handingOff) continue;\n    if (p.isNpc) {\n      if (p.simCaravan) continue;",
     repl: "  _ANA.cut('arrows');\n  for (const p of players.values()) {\n    if (p.handingOff) continue;\n    if (p.isNpc) {\n      if (p.simCaravan) continue;" },
+  { find: "  _t375Refresh(true);",
+    repl: "  _ANA.cut('loopMov');\n  _t375Refresh(true);" },
   { find: "  // === Phase 14.49-e: PZ식 다단 계단 — 3 cell 점유 + step별 z + walk-off로 floor 전환 ===",
-    repl: "  _ANA.cut('loopMov');\n  // === Phase 14.49-e: PZ식 다단 계단 — 3 cell 점유 + step별 z + walk-off로 floor 전환 ===" },
+    repl: "  _ANA.cut('t375R2');\n  // === Phase 14.49-e: PZ식 다단 계단 — 3 cell 점유 + step별 z + walk-off로 floor 전환 ===" },
   // ── 사슬(이동 문 뒤 → 델타) ──
   { find: "  // === 14.49-e2: 낙하 (falling) — 위층에서 받침 floor 없는 곳으로 walk-off ===",
     repl: "  _ANA.cut('stairs');\n  // === 14.49-e2: 낙하 (falling) — 위층에서 받침 floor 없는 곳으로 walk-off ===" },
@@ -169,22 +183,23 @@ function makeArm(dir) {
 }
 
 async function run() {
-  const arm = 'rest-' + WINDOW;
-  const dir = `/tmp/wt-t371-${WINDOW}`;
+  const arm = 'rest-' + TAG;
+  const dir = `/tmp/wt-t371-${TAG}`;
   const probes = makeArm(dir);
-  const CP = PB + (WINDOW === 'day' ? 0 : 4), ZP = CP + 1;
-  const SECRET = 't371-' + WINDOW;
-  const DB = `/tmp/t371-z-${WINDOW}.db`, CDB = `/tmp/t371-c-${WINDOW}.db`;
+  const CP = PB + (WINDOW === 'day' ? 0 : 4) + (ARM === 'on' ? 8 : 0), ZP = CP + 1;
+  const SECRET = 't371-' + TAG;
+  const DB = `/tmp/t371-z-${TAG}.db`, CDB = `/tmp/t371-c-${TAG}.db`;
   rmdb(DB); rmdb(CDB);
   for (const s of ['', '-wal', '-shm']) { try { fs.copyFileSync(TPL + s, DB + s); } catch (e) {} }
-  const LOG = `/tmp/t371-${WINDOW}.log`;
+  const LOG = `/tmp/t371-${TAG}.log`;
   const logf = fs.openSync(LOG, 'w');
   const c = spawn(process.execPath, [path.join(dir, 'server/central.js')], { cwd: dir, stdio: 'ignore',
     env: Object.assign({}, process.env, { PORT: String(CP), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando', CENTRAL_SECRET: SECRET }) });
   const z = spawn(process.execPath, [path.join(dir, 'server/zone.js')], { cwd: dir, stdio: ['ignore', logf, logf],
     env: Object.assign({}, process.env, { PORT: String(ZP), ZONE_ID: 'hanbando', CENTRAL_HOST: 'localhost', CENTRAL_PORT: String(CP),
       CENTRAL_SECRET: SECRET, ENABLE_VILLAGES: '1', VILLAGE_DAY_MS: String(DAY_MS), DB_PATH: DB, VILLAGE_WAR_LOG: '0',
-      T312_FISH_ACT: '1', T371_EVERY: String(SLICE_S * 30) }) });
+      T312_FISH_ACT: '1', T371_EVERY: String(SLICE_S * 30),
+      T375_ACTIVE_FLAG: ARM === 'on' ? '1' : '' }) });   // ★[T375] 팔
   const getj = async (p, h) => { try { const r = await fetch(`http://localhost:${ZP}${p}`, h ? { headers: h } : undefined); return await r.json(); } catch (e) { return null; } };
   const perf = (reset) => getj(`/perf${reset ? '?reset=1' : ''}`, { 'x-zone-secret': SECRET });
   const life = () => getj('/lifedbg', { 'x-zone-secret': SECRET });
@@ -201,10 +216,10 @@ async function run() {
   let ph = null;
   for (let i = 0; i < 2000; i++) {
     const L = await life(); ph = L && L.phase;
-    if (ph != null && ph >= W_LO && ph <= W_HI - (SLICES * SLICE_S) / (DAY_MS / 1000)) break;
+    if (ph != null && ph >= E_LO && ph <= Math.min(E_HI, W_HI - (SLICES * SLICE_S) / (DAY_MS / 1000))) break;
     await sleep(5000);
   }
-  say(WINDOW + ' 창 진입 · phase', ph);
+  say(WINDOW + ' 창 진입 · phase', ph, '· 드는 띠', E_LO, '~', E_HI);
   const slices = [];
   for (let k = 0; k < SLICES; k++) {
     await perf(true);
@@ -226,7 +241,7 @@ async function run() {
   try { z.kill(); } catch (e) {} try { c.kill(); } catch (e) {}
   await sleep(1500); rmdb(DB); rmdb(CDB);
   try { execFileSync('git', ['worktree', 'remove', '--force', dir], { cwd: ROOT, stdio: 'ignore' }); } catch (e) {}
-  return { arm, WINDOW, probes, segs: SEGS, slices };
+  return { arm, WINDOW, ARM, probes, segs: SEGS, slices };
 }
 
 (async () => {
@@ -241,7 +256,7 @@ async function run() {
     process.exit(0);
   }
   const r = await run();
-  fs.writeFileSync(OUT, JSON.stringify({ at: new Date().toISOString(), WINDOW, DAY_MS, SLICE_S, SLICES, TPL, run: r }, null, 1));
+  fs.writeFileSync(OUT, JSON.stringify({ at: new Date().toISOString(), WINDOW, ARM, DAY_MS, SLICE_S, SLICES, TPL, run: r }, null, 1));
   console.log('끝 →', OUT);
   process.exit(0);
 })();
