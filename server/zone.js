@@ -855,6 +855,7 @@ function isDitchTileLocal(localX, localY) {
 }
 function refreshDitchCells() {
   DITCH_CELLS.clear();
+  if (_BLK_BITS) _BLK_BITS.fill(0);   // ★[T356 ②] 환호가 바뀌면 막힘 비트를 통째로 영점(유도값이라 다시 구우면 된다)
   try {
     const flat = SimVillages.ditchCells ? SimVillages.ditchCells() : [];
     for (let i = 0; i + 1 < flat.length; i += 2) DITCH_CELLS.add(_cellKey(flat[i], flat[i + 1]));   // ★[T333] 정수 키
@@ -864,13 +865,37 @@ function refreshDitchCells() {
 function ditchPayload() {                 // welcome 페이로드(flat [cx,cy,…]) — 다리와 같은 규약
   try { return SimVillages.ditchCells ? SimVillages.ditchCells() : []; } catch (e) { return []; }
 }
-function isTerrainBlockedLocal(x, y) {
-  _walk.terrQ++;   // ★[T324] 관측 전용 — 걸음당 지형 질의 수(추신 3 후보 2 의 분모)
+// ★★★[T356 ② 2026-09-23 · SoA 1층 — 지형 = 셀당 비트] `T356_SOA=1` 일 때만.
+//   T356 ① 이 해부해 보니 이 술어가 **걸음당 6.2회**(T324 계수) 불리고, 한 번이 술어 **넷**(바위·환호·물·다리)
+//   과 `Math.floor` **여덟**으로 갈라진다. 답은 전부 `(tx,ty)` 의 순수 함수인데 매번 넷을 다시 묻는다.
+//   ⇒ **셀당 두 비트**(계산됨·값)로 굽는다: 처음 묻는 셀에서 넷을 **그대로 불러** 값을 만들고,
+//     그 뒤로는 배열 한 번 읽기다. 술어 넷은 한 글자도 안 바뀐다 — **정본은 그 넷이고 비트는 유도다**
+//     (T333 이 `WATER_TILES` **에서** 비트 색인을 유도한 그 규율 · 원천 둘 금지).
+//   ⚠가드는 **원본과 같은 자리**에 둔다(px 범위·해양) — 그래야 비트가 덮는 구간이 술어 넷과 정확히 겹친다.
+//     `zoneWidth` 가 32의 배수가 아니면 `tx` 범위가 px 범위보다 **넓다** ⇒ tx 로 가드하면 갈린다.
+//   ⚠무효화: 환호(`DITCH_CELLS`)는 런타임에 바뀐다 ⇒ `refreshDitchCells` 가 통째로 영점(아래).
+//     물·바위·다리는 기동 뒤 안 바뀐다(T333 이 이미 그 가정 위에 비트 색인을 세웠다).
+const T356_SOA = process.env.T356_SOA === '1';
+const _BLK_BITS = T356_SOA ? new Uint8Array(((_WT_W * _WT_H) >> 2) + 2) : null;   // 타일당 2비트 = 4타일/바이트
+if (_BLK_BITS) console.log(`[${ZONE_ID}] 🧱 T356 지형 막힘 비트 ON — ${_WT_W}×${_WT_H} 타일 · ${(_BLK_BITS.length / 1048576).toFixed(1)}MB`);
+function _terrBlocked0(x, y) {
   // 다리는 물 위에만 놓인다 — 바위(산맥)는 다리로 뚫지 않는다(고증·지형 무결).
   if (isRockTileLocal(x, y)) return true;
   if (isDitchTileLocal(x, y)) return true;      // ★환호 = 이동 불가. 출입구는 '도랑을 파지 않은 셀'이라 자동으로 열려 있다.
   if (isWaterTileLocal(x, y)) return !isBridgeTileLocal(x, y);
   return false;
+}
+function isTerrainBlockedLocal(x, y) {
+  _walk.terrQ++;   // ★[T324] 관측 전용 — 걸음당 지형 질의 수(추신 3 후보 2 의 분모)
+  if (_BLK_BITS && !ZONE.isOcean && x >= 0 && y >= 0 && x < ZONE.zoneWidth && y < ZONE.zoneHeight) {
+    const b = ((Math.floor(y / 32) * _WT_W + Math.floor(x / 32)) << 1);
+    const i = b >> 3, sh = b & 7, v = _BLK_BITS[i] >> sh;
+    if (v & 1) return (v & 2) !== 0;                       // 이미 구운 셀 — 읽기 하나
+    const r = _terrBlocked0(x, y);
+    _BLK_BITS[i] |= (r ? 3 : 1) << sh;
+    return r;
+  }
+  return _terrBlocked0(x, y);
 }
 // 메트릭 카운터
 const metrics = {

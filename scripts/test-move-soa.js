@@ -336,5 +336,142 @@ console.log('\n⑥ ★게이트 — 같은 씨 · 51마을 7게임일 · 좌표 
   console.log('    접점: decideNpcBehavior · seed-rand.js · seedOf · _tick.n · zoneGameDay');
 }
 
+
+// =============================================================================
+// ⑦ T356_SOA — 지형 **셀당 막힘 비트**가 세계를 안 바꾼다 [T356 ②]
+// =============================================================================
+// ★T356 ① 이 해부해 보니 `isTerrainBlockedLocal` 이 **걸음당 6.2회** 불리고, 한 번이 술어 넷
+//   (바위·환호·물·다리)과 `Math.floor` 여덟로 갈라진다. 답은 전부 `(tx,ty)` 의 순수 함수다.
+//   ⇒ 셀당 두 비트(계산됨·값)로 굽는다. **정본은 술어 넷이고 비트는 유도다.**
+//
+// ★게이트 — 카드는 "켬/끔 두 판 4,200틱 좌표 비트 동일"을 요구한다. **두 프로세스로는 못 건다**
+//   (T350 §3-ⓑ: 틱 루프가 `Date.now()` 를 읽어 두 존이 같은 게임일에 같은 틱 수를 안 돈다).
+//   ⇒ T350 ⑥ 이 세운 그 자를 그대로 쓴다 — 제품의 글자를 떠서 **한 프로세스 두 판**을 돌리고,
+//     이번엔 적분기가 **지형에 막히게** 해서 술어가 좌표에 실제로 들어가게 한다.
+console.log('\n⑦ T356_SOA 지형 막힘 비트 — 켬/끔이 같은 세계 [T356]');
+{
+  const src = body('isTerrainBlockedLocal') + '\n' + body('_terrBlocked0');
+  ok(/_BLK_BITS/.test(src) && /_terrBlocked0\(x, y\)/.test(src),
+     '⑦ [전제] 제품에서 **그 글자**를 떴다(비트 갈래 + 정본 넷)', `${src.length}자`);
+  // 켬/끔 두 꼴을 같은 술어 넷 위에 세운다 — 지형은 결정적 합성(같은 씨)
+  const W = 70016, H = 130016, WT_W = Math.ceil(W / 32), WT_H = Math.ceil(H / 32);
+  const mk = (on, poison) => {
+    let q4 = 0;
+    // 술어 넷 — 어떤 답이든 좋다. 재는 것은 **비트가 그 넷과 같은 답을 내는가**다.
+    const rock = (x, y) => { q4++; const tx = Math.floor(x / 32), ty = Math.floor(y / 32); return (((tx * 73856093) ^ (ty * 19349663)) & 63) === 0; };
+    const ditch = (x, y) => { q4++; const tx = Math.floor(x / 32), ty = Math.floor(y / 32); return (((tx * 83492791) ^ (ty * 2971215073)) & 127) === 0; };
+    const water = (x, y) => { q4++; const tx = Math.floor(x / 32), ty = Math.floor(y / 32); return (((tx * 2654435761) ^ (ty * 40503)) & 15) === 0; };
+    const bridge = (x, y) => { q4++; const tx = Math.floor(x / 32), ty = Math.floor(y / 32); return (((tx * 374761393) ^ (ty * 668265263)) & 255) === 0; };
+    const ZONEs = { isOcean: false, zoneWidth: W, zoneHeight: H };
+    const _walk = { terrQ: 0 };
+    const BITS = on ? new Uint8Array(((WT_W * WT_H) >> 2) + 2) : null;
+    const env = { isRockTileLocal: rock, isDitchTileLocal: ditch, isWaterTileLocal: water, isBridgeTileLocal: bridge,
+      ZONE: ZONEs, _walk, _BLK_BITS: BITS, _WT_W: WT_W };
+    const keys = Object.keys(env);
+    const fn = new Function(...keys, src + '\nreturn isTerrainBlockedLocal;')(...keys.map((k) => env[k]));
+    return { fn, BITS, get q4() { return q4; }, get terrQ() { return _walk.terrQ; }, poison };
+  };
+  const OFF = mk(false), ON = mk(true);
+  // ⓐ 전수 대조 — 셀 경계·격자 밖·음수·큰 좌표를 일부러 자주 밟는다
+  let n = 0, diff = 0, trueN = 0;
+  for (let i = 0; i < 400000; i++) {
+    const k = i % 5;
+    let x, y;
+    if (k === 0) { x = rnd() * W; y = rnd() * H; }                                  // 안쪽 아무 데나
+    else if (k === 1) { x = Math.floor(rnd() * WT_W) * 32; y = Math.floor(rnd() * WT_H) * 32; }   // 정확히 셀 경계
+    else if (k === 2) { x = Math.floor(rnd() * WT_W) * 32 - 0.5; y = Math.floor(rnd() * WT_H) * 32 + 31.5; }
+    else if (k === 3) { x = (rnd() * 2 - 0.5) * W; y = (rnd() * 2 - 0.5) * H; }     // 격자 밖(음수·초과)
+    else { x = W - rnd() * 40; y = H - rnd() * 40; }                                 // ★오른쪽·아래 끝(px 범위 ≠ tx 범위)
+    const a = OFF.fn(x, y), b = ON.fn(x, y);
+    n++; if (a !== b) diff++; if (a) trueN++;
+  }
+  ok(n === 400000, '⑦-a [상황] 표본 40만(셀 경계 · 격자 밖 · 음수 · **존 오른쪽 끝**)', `${n}점`);
+  ok(trueN > 20000 && trueN < n - 20000, '⑦-a [상황] 막힘/열림이 **둘 다** 넉넉하다(한쪽만이면 자명 통과다)', `막힘 ${trueN}`);
+  ok(diff === 0, '⑦-a ★★★켬 ↔ 끔이 **한 점도 안 다르다**', `다른 답 ${diff}/${n}`);
+  // ★비트가 버는 자리는 **같은 셀을 다시 밟을 때**다 — 40만 점을 890만 셀에 흩으면 거의 다 '처음 밟는 셀'이라
+  //   덜 부르는 게 안 보인다(위 표본이 그렇다: 1.19M → 0.95M, 20%뿐). 실서버는 주민이 **제 마을 상자**를
+  //   하루 종일 다시 밟는다 ⇒ 그 꼴로 잰다: 한 마을 크기(64×64셀) 안을 두 바퀴.
+  {
+    const W2 = mk(true), C2 = mk(false);
+    const BX = 1000, BY = 2000;                       // 마을 상자 한 귀퉁이(셀)
+    const sweep = (arm) => { for (let r = 0; r < 2; r++) for (let cy = 0; cy < 64; cy++) for (let cx = 0; cx < 64; cx++) arm.fn((BX + cx) * 32 + 16, (BY + cy) * 32 + 16); };
+    sweep(W2); sweep(C2);
+    ok(W2.q4 < C2.q4 / 1.9, '⑦-a ★같은 상자를 **두 바퀴** 밟으면 술어 넷 호출이 절반 아래로 (둘째 바퀴는 읽기 하나)',
+       `술어 호출 끔 ${C2.q4.toLocaleString()} → 켬 ${W2.q4.toLocaleString()}`);
+    console.log(`    ↳ 흩어진 표본에선 20%만 준다(${OFF.q4.toLocaleString()} → ${ON.q4.toLocaleString()}) — **처음 밟는 셀**이 대부분이라서다(T333 이 미리 굽기로 답한 그 자리)`);
+  }
+  ok(ON.terrQ === OFF.terrQ, '⑦-a 관측 계수(`_walk.terrQ`)는 **그대로**다(자는 안 바뀐다)', `${ON.terrQ}`);
+  // ⓑ 4,200틱 좌표 게이트 — 적분기가 **지형에 막힌다**(술어가 좌표에 실제로 든다)
+  const run = (arm) => {
+    const TICKS = 4200, N = 408, MOVE = 64, dtm = 1 / 30;
+    const st = require(path.join(ROOT, 'server', 'seed-rand.js')).makeStream(); st.seed(0x7e44a);
+    const ppl = [];
+    for (let i = 0; i < N; i++) ppl.push({ x: 4000 + st.next() * 60000, y: 4000 + st.next() * 120000,
+      tx: 4000 + st.next() * 60000, ty: 4000 + st.next() * 120000 });
+    const dv = new DataView(new ArrayBuffer(8));
+    const dig = new Uint32Array(TICKS);
+    let blockedN = 0;
+    for (let t = 0; t < TICKS; t++) {
+      let h = 2166136261;
+      for (let i = 0; i < N; i++) {
+        const p = ppl[i];
+        const dx = p.tx - p.x, dy = p.ty - p.y, d = Math.hypot(dx, dy);
+        if (d > 2) {
+          const nx = p.x + (dx / d) * MOVE * dtm, ny = p.y + (dy / d) * MOVE * dtm;
+          // 축마다 막힘 — 제품의 성분별 취소와 같은 꼴(여기 자는 그 꼴만 흉내낸다)
+          const bx = arm.fn(nx, p.y), by = arm.fn(p.x, ny);
+          if (bx || by) blockedN++;
+          if (!bx) p.x = nx;
+          if (!by) p.y = ny;
+          if (bx && by) { p.tx = 4000 + st.next() * 60000; p.ty = 4000 + st.next() * 120000; }   // 막히면 새 목표
+        } else { p.tx = 4000 + st.next() * 60000; p.ty = 4000 + st.next() * 120000; }
+        dv.setFloat64(0, p.x); h = (Math.imul(h ^ dv.getUint32(0), 16777619) ^ dv.getUint32(4)) >>> 0;
+        dv.setFloat64(0, p.y); h = (Math.imul(h ^ dv.getUint32(0), 16777619) ^ dv.getUint32(4)) >>> 0;
+      }
+      dig[t] = h;
+    }
+    return { dig, ppl, blockedN };
+  };
+  const A = run(mk(false)), B = run(mk(true));
+  ok(A.blockedN > 10000, '⑦-b [상황] 적분기가 **실제로 막혔다**(자명 통과 금지 — 0 이면 지형이 좌표에 안 든 것)',
+     `막힌 걸음 ${A.blockedN.toLocaleString()}`);
+  let fd = -1; for (let t = 0; t < A.dig.length; t++) if (A.dig[t] !== B.dig[t]) { fd = t; break; }
+  ok(fd < 0, '⑦-b ★★★끔 ↔ 켬 — **주민 408 × 4,200틱 좌표가 비트 동일**',
+     fd < 0 ? `${(408 * 4200).toLocaleString()} 자리 전부 같다` : `첫 다름 틱 ${fd}`);
+  let cd = 0; for (let i = 0; i < A.ppl.length; i++) { if (!sameF64(A.ppl[i].x, B.ppl[i].x)) cd++; if (!sameF64(A.ppl[i].y, B.ppl[i].y)) cd++; }
+  ok(cd === 0, '⑦-b ★끝 자리 좌표도 바이트 동일', `다른 좌표 ${cd}/${A.ppl.length * 2}`);
+  // ⓒ 자명 통과 금지 — 비트 한 칸을 일부러 뒤집으면 세계가 갈린다
+  const P = mk(true); P.fn(50000, 60000);          // 한 셀을 굽고
+  { const b = ((Math.floor(60000 / 32) * WT_W + Math.floor(50000 / 32)) << 1); P.BITS[b >> 3] ^= (2 << (b & 7)); }
+  ok(P.fn(50000, 60000) !== OFF.fn(50000, 60000), '★⑦ 자명 통과 금지 — **비트 하나를 뒤집으면 답이 갈린다**(자가 비트를 실제로 본다)');
+  // ⓓ 소스 계수 — 정본 하나 · 가드 동형 · 무효화
+  const Z2 = codeOnly(Z);
+  ok((Z2.match(/function _terrBlocked0\(/g) || []).length === 1, '⑦-d 정본 `_terrBlocked0` 는 **하나**다(사본 0)');
+  ok(/x >= 0 && y >= 0 && x < ZONE\.zoneWidth && y < ZONE\.zoneHeight/.test(src),
+     '⑦-d ★가드가 술어 넷과 **같은 꼴**이다(px 범위 — `tx` 로 가드하면 존 오른쪽 끝이 갈린다)');
+  ok(/refreshDitchCells\(\)[\s\S]{0,200}_BLK_BITS\.fill\(0\)/.test(Z2),
+     '⑦-d ★환호가 바뀌면 비트를 **영점**한다(런타임에 바뀌는 원천은 그것 하나다)');
+  ok(/const T356_SOA = process\.env\.T356_SOA === '1';/.test(Z2), "⑦-d 손잡이는 `T356_SOA` 하나 · **기본 끔**");
+  // ── 값(계측 · 단정 아님) — 같은 프로세스에서 두 꼴의 **한 번 값**을 잰다.
+  //   ⚠존 틱 p50 으로는 이 크기를 **못 가른다**(T345 §3-ⓑ · T356 §3-ⓒ 실측: 창 안 흐름이 ±15 %).
+  //     그래서 값은 **자리에서** 재고, 틱 환산은 걸음당 호출 수(6.2 · T324 계수)로 **유도**한다.
+  {
+    const bench = (arm, N) => {
+      const BX = 1000, BY = 2000;
+      for (let i = 0; i < 4096; i++) arm.fn((BX + (i & 63)) * 32 + 16, (BY + ((i >> 6) & 63)) * 32 + 16);   // 굽기(워밍)
+      const t0 = process.hrtime.bigint();
+      for (let i = 0; i < N; i++) arm.fn((BX + (i & 63)) * 32 + 16, (BY + ((i >> 6) & 63)) * 32 + 16);
+      return Number(process.hrtime.bigint() - t0) / N;
+    };
+    const N = 4e6, W3 = mk(true), C3 = mk(false);
+    const a = Math.min(bench(C3, N), bench(C3, N)), b = Math.min(bench(W3, N), bench(W3, N));
+    const PER_STEP = 6.21;                       // 걸음당 지형 질의(T324 `_walk.terrQ/steps` 실측)
+    console.log(`    [값·아래끝] 한 번 — 끔 ${a.toFixed(1)}ns → 켬 ${b.toFixed(1)}ns (×${(a / b).toFixed(2)}) · 걸음당 ${PER_STEP}회 ⇒ 사람당 ${((a - b) * PER_STEP / 1000).toFixed(3)} µs(유도)`);
+    console.log('    ⚠이 값은 **아래끝**이다 — 여기 술어 넷은 해시 산술 대리물이라 싸다(제품은 메모 조회·Set·floor 여덟). 제품 값은 보고 §3-ⓒ 프로파일.');
+  }
+  console.log(`    [표] 지형 비트 — 전수 40만 0 다름 · 술어 호출 ${OFF.q4.toLocaleString()} → ${ON.q4.toLocaleString()} · 4,200틱 좌표 0 다름`);
+  console.log('    접점: isTerrainBlockedLocal · _terrBlocked0 · T356_SOA · refreshDitchCells · terrain-tilecache');
+}
+
 console.log(`\n=== 결과: ${pass} PASS / ${fail} FAIL ===\n`);
 process.exit(fail ? 1 : 0);
