@@ -11,9 +11,9 @@
  "resourceHit": {
   "_뜻": "서버가 `resource_update`(때렸다 · hp 준다) / `resource_removed`(없어졌다) 를 **브로드캐스트**할 때 나는 소리. 자원의 자리가 있으므로 **거리 감쇠가 걸린다** — 남이 옆에서 나무를 베도 들린다(그게 맞다). 자원 종류는 클라 렌더가 이미 가르는 그 이름이다(`34-m-renderloop` 1515~1524).",
   "tree": "axe",
-  "rock": "bronze_hit",
-  "ore": "bronze_hit",
-  "meteorite": "bronze_hit",
+  "rock": "rock_hit",
+  "ore": "rock_hit",
+  "meteorite": "rock_hit",
   "berry_bush": "harvest",
   "herb": "harvest",
   "sapling": "harvest",
@@ -159,7 +159,8 @@
    "fade": 1.0,
    "indoorMul": 0.35,
    "훅": "34-m-renderloop.js `__sfx.scan` — kind='building' · b.type='campfire' (반복 · 개체마다 하나 · 화면 밖이면 멎는다)",
-   "_반경": "320 월드px = 10셀. 모닥불은 요리 사거리 안에서 들려야 한다."
+   "_반경": "320 월드px = 10셀. 모닥불은 요리 사거리 안에서 들려야 한다.",
+   "_T358": "파일이 바뀌었다(출처·구간만 · 같은 원본) — 이음새가 **+5.3 dB** 였다(10초마다 탁). 원본에서 이음새가 가장 조용한 자리를 **구운 뒤로** 재서 골랐다 ⇒ −41.6 dB."
   },
   "wind": {
    "file": "wind.ogg",
@@ -169,12 +170,13 @@
    "loop": true,
    "maxSame": 1,
    "cooldownMs": 0,
-   "source": "commons_wind_breeze",
+   "source": "commons_pd_forest_wind",
    "gainK": 1.4,
    "fade": 2.0,
    "indoorMul": 0,
    "훅": "37-r1-weather.js drawWeather — `wxState().wind`(server/wind.js seasonWind · 부호 있는 계절풍)의 |세기|. 실내면 0.",
-   "_세기": "볼륨 = volume * min(1, |wind| * 1.4). 1.4 는 빗줄기 기울기가 이미 쓰는 WX_TILT_K 와 **같은 수**다 — 같은 바람을 두 자로 재지 않는다."
+   "_세기": "볼륨 = volume * min(1, |wind| * 1.4). 1.4 는 빗줄기 기울기가 이미 쓰는 WX_TILT_K 와 **같은 수**다 — 같은 바람을 두 자로 재지 않는다.",
+   "_T358": "재확보 — 재민 09-22 \"바람소리가 아니라 그냥 공기 소리인데..?\". 새 것은 **숲 나무둥치에 녹음기를 놓고** 담은 것이라 나뭇잎 스치는 결이 있다. ⚠원본에 까마귀가 섞여 있어 **파고율이 가장 낮은 창**(4.25 · 까마귀 구간은 12.4)을 골랐다 — `bird` 키와 겹치지 않게. 이음새 −23.1 dB."
   },
   "harvest": {
    "file": "harvest.ogg",
@@ -275,7 +277,9 @@
    "cooldownMs": 0,
    "source": "commons_pd_dullthud",
    "훅": "30-n-net.js handleMessage — **수신**. `resourceHit` 표가 `rock`·`ore`·`meteorite` 를 이 키로 보낸다(곡괭이질).",
-   "_주의": "출처가 **무엇을 친 소리인지 안 적어 뒀다**(제목이 Dull thud 다). T272 가 쇠의 울림만 쟀다(4kHz −20dB 까지 139ms — 진짜 울리는 그릇 302ms 의 절반). 청동이냐 돌이냐는 자로 못 가른다 — **판정은 재민 귀.**"
+   "_주의": "출처가 **무엇을 친 소리인지 안 적어 뒀다**(제목이 Dull thud 다). T272 가 쇠의 울림만 쟀다(4kHz −20dB 까지 139ms — 진짜 울리는 그릇 302ms 의 절반). 청동이냐 돌이냐는 자로 못 가른다 — **판정은 재민 귀.**",
+   "_T358": "★이제 **아무 표도 이 키를 안 부른다**. 곡괭이질은 `rock_hit` 으로, 낙하는 `drop`(T354) 으로 갔다. 파일·출처는 그대로 두고 **후보**로 남긴다 — 재민이 소리판에서 새 것과 견줄 수 있게(지우는 것은 판정 뒤 한 줄).",
+   "후보": true
   },
   "cast": {
    "file": "cast.ogg",
@@ -323,7 +327,13 @@
    "cooldownMs": 4200,
    "source": "commons_cc0_tiger",
    "훅": "`wolf_growl` 과 **같은 한 줄**(`mobs` 표가 `tiger` 를 여기로 보낸다). 파일은 T282(세션8).",
-   "_값": "볼륨만 늑대보다 0.05 높다 — 큰 짐승이다. 반경·쿨다운은 늑대와 같은 수를 쓴다(근거가 같으므로 값도 같다)."
+   "_값": "볼륨만 늑대보다 0.05 높다 — 큰 짐승이다. 반경·쿨다운은 늑대와 같은 수를 쓴다(근거가 같으므로 값도 같다).",
+   "files": [
+    "tiger_growl.ogg",
+    "tiger_growl2.ogg",
+    "tiger_growl3.ogg"
+   ],
+   "_T358": "변주 셋 — **같은 원본(65.6s)의 다른 으르렁**이다. 다른 팩에서 가져오면 \"다른 짐승\"으로 들린다 ⇒ 변주는 같은 녹음에서 뜬다. 고르는 것은 씨 해시(주사위 0 · T354)."
   },
   "boar_grunt": {
    "file": "boar_grunt.ogg",
@@ -347,9 +357,10 @@
    "loop": false,
    "maxSame": 1,
    "cooldownMs": 8000,
-   "source": "commons_pd_elk",
+   "source": "commons_ccby_fallowdeer",
    "훅": "`mobs` 표가 `deer` 를 여기로 보낸다. 파일은 T282(세션8).",
-   "_값": "가장 조용하고 가장 드물다 — 사슴은 위협이 아니라 기척이다. 늑대와 같은 빈도로 울면 화면이 시끄러워진다."
+   "_값": "가장 조용하고 가장 드물다 — 사슴은 위협이 아니라 기척이다. 늑대와 같은 빈도로 울면 화면이 시끄러워진다.",
+   "_T358": "재확보 — 재민 09-22 \"울부짖는 거 말고 일반적인 소리가 필요\". 옛 것은 **와피티 울음**(T282 가 종이 다르다고 적어 둔 것). 새 것은 다마사슴의 **낮은 그르렁**(연구 논문 부록 녹음 · 한 울음만 잘랐다). ⚠CC BY 2.0 — 표시 의무가 있다."
   },
   "rain_light": {
    "file": "rain_light.ogg",
@@ -388,6 +399,18 @@
    "source": "kenney_rpg_audio",
    "훅": "30-n-net.js handleMessage — **수신**. `groundDrop` 표가 이 키로 보낸다(`ground_item_added`).",
    "_T354": "새 키 — T321 이 낙하를 `bronze_hit` 과 **나눠 쓰게** 해 뒀고(#50) 재민이 09-22 에 그 겸업을 끊으라고 했다. 이제 곡괭이질과 낙하가 다른 소리다."
+  },
+  "rock_hit": {
+   "file": "rock_hit.ogg",
+   "fileAlt": "rock_hit.m4a",
+   "volume": 0.8,
+   "radius": 320,
+   "loop": false,
+   "maxSame": 2,
+   "cooldownMs": 0,
+   "source": "oga_break_sfx",
+   "훅": "30-n-net.js handleMessage — **수신**. `resourceHit` 표가 `rock`·`ore`·`meteorite` 를 이 키로 보낸다(곡괭이질).",
+   "_T358": "새 키 — 재민 09-22 \"제대로 된 걸 찾아야 함\". `bronze_hit`(둔탁한 쿵 · 중심 391Hz · 저역 91%)은 **돌을 때리는 소리가 아니었다**. 새 것은 중심 4186Hz · 2kHz 위 88% — 돌이 깨지는 날카로운 소리다. T272 가 \"청동이냐 돌이냐는 자로 못 가른다\"고 남긴 자리를 **재민 귀가 갈랐다**."
   }
  },
  "_성사": "카드는 수확·먹기·도끼질 훅을 '서버 동사 결과가 오는 30-n-net.js 핸들러'에 붙이라고 했다. §0-ⓒ 실측: **그런 메시지가 없다.** 서버는 먹기·수확에 전용 결과 타입을 안 보내고 `notice`·`gauges`·`inventory`·`resource_removed` 같은 **공용 메시지**만 보낸다(`doEat`·`tryHarvest`·`gatherResource` 전수). 공용 메시지에 붙이면 남이 한 일에도 소리가 난다. 그래서 **발신 정본 한 자리**(`sendPrimary`)에 붙였다 — 거절당한 동사도 소리가 난다는 맞바꿈이고, 그 대신 훅이 파일 하나·줄 하나다. 성사로 옮기려면 서버가 동사별 결과를 보내야 한다 ⇒ 회부.",
@@ -518,14 +541,34 @@
    "author": "NASA",
    "received": "2026-09-23",
    "_원천": "NASA \"Listening to Raindrops\" · drizzle loop"
+  },
+  "oga_break_sfx": {
+   "license": "CC0",
+   "url": "https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx",
+   "author": "rubberduck",
+   "received": "2026-09-23"
+  },
+  "commons_pd_forest_wind": {
+   "license": "Public domain",
+   "url": "https://commons.wikimedia.org/wiki/File:20090610_0_ambience.ogg",
+   "author": "nille",
+   "received": "2026-09-23",
+   "_원천": "pdsounds.org #707 (2009-06-10) · 숲 나무둥치에 녹음기를 놓고 담은 것"
+  },
+  "commons_ccby_fallowdeer": {
+   "license": "CC BY 2.0",
+   "url": "https://commons.wikimedia.org/wiki/File:Quality-prevails-over-identity-in-the-sexually-selected-vocalisations-of-an-ageing-mammal-1741-7007-8-35-S3.ogg",
+   "author": "Briefer E, Vannoni E, McElligott A",
+   "received": "2026-09-23",
+   "_표기의무": "CC BY 2.0 은 **표시가 필요하다** — `CREDITS.md` §1 에 줄이 하나 늘었다(이 집 첫 CC-BY 소리다)."
   }
  },
  "_실측": {
   "_뜻": "`__sfx.probe()` 가 실클라에서 잰 값. 하네스 ⑧ 이 이 수와 `bus.limiter.knee` 의 부등식을 지킨다. 키를 더하면 **다시 재서 이 칸을 갱신**하라(셈으로 채우지 마라).",
   "date": "2026-09-23",
   "browser": "Chromium(Playwright) · 44100Hz · 오프라인 렌더 4초 · 소리판에서 `__sfx.probe()`",
-  "worstPeak": 0.7631,
-  "worstPeakDb": -2.35,
+  "worstPeak": 0.7623,
+  "worstPeakDb": -2.36,
   "worstCombo": [
    "tiger_growl",
    "wolf_howl",
@@ -533,17 +576,18 @@
    "bronze_hit",
    "hook",
    "boar_grunt",
-   "fire"
+   "rock_hit"
   ],
   "clippedAtWorst": 0,
   "allKeysPeakNoLimiter": 1.1353,
   "allKeysClippedNoLimiter": 8,
   "_주의": "`worstPeak` 는 **리미터 없이** 잰 값이다(문턱을 그것과 견주려면 리미터가 개입하기 전의 수여야 한다). 키를 더하면 `__sfx.probe()` 를 다시 돌려 이 칸을 갱신하라 — 셈으로 채우지 마라. T261·T283 이 셈으로 채웠다가 둘 다 틀렸다.",
   "_자의바닥": "두 판(리미터 있음/없음)의 피크가 문턱 아래에서도 ±0.1 dB 쯤 다르다 — `oversample:'2x'` 의 재표본 필터다. 펌핑을 잴 때 이 바닥을 안 빼면 **없는 펌핑**이 보인다: 1차 판이 `pa>0.02` 인 창을 다 보다가 모닥불 하나에 '최악 −10.92 dB'를 냈다(피크는 한 톨도 안 변했는데). ⇒ 비율은 **`pa > knee` 인 창에서만** 뜻이 있다.",
-  "soundingKeys": 21,
+  "soundingKeys": 22,
   "_왜 이 수를 적나": "소리 나는 키가 이 수와 달라지면 `test-audio ⑧` 이 문다 — **키를 더했으면 다시 재라**는 뜻이다. 셈으로 고치지 말고 `__sfx.probe()` 를 돌려라.",
   "_개명": "[T303] `wolf_growl` → `wolf_howl` 은 **이름만** 바뀐 것이다 — 파일 바이트가 0 변경이라(sha1 d9176d70…/bede1a0f… 그대로) 이 실측값은 여전히 그 파일을 잰 값이다. `worstPeak`·`clippedAtWorst` 는 **다시 재지 않았고 한 자도 안 고쳤다** — 이름표만 갈았다.",
-  "_T354": "21키 전부 동시: 피크 0.772(-2.25 dBFS) · 클리핑 0. **리미터를 빼면 피크 1.1039 · 클리핑 10** — 키가 16→21 로 늘면서 리미터가 무는 자리가 늘었다(T292 때는 최악 조합조차 문턱을 안 넘었다)."
+  "_T354": "21키 전부 동시: 피크 0.772(-2.25 dBFS) · 클리핑 0. **리미터를 빼면 피크 1.1039 · 클리핑 10** — 키가 16→21 로 늘면서 리미터가 무는 자리가 늘었다(T292 때는 최악 조합조차 문턱을 안 넘었다).",
+  "_T358": "22키 전부 동시: 피크 0.7717(-2.25 dBFS) · 클리핑 0. 리미터를 빼면 피크 1.0628 · 클리핑 16. ⚠T354 의 실측은 **21키만 잰 것이었다** — 변주 키(`tiger_growl`)가 `키#파일` 로 담기는 바람에 재는 자가 조용히 빠뜨렸다(T358 이 못 박아 고쳤다). 대상을 빠뜨린 수는 거짓이다."
  },
  "ground": {
   "_뜻": "발밑 지형 → 발자국 키. 지형 정본은 `window.__tileStateAt` 하나(`kind`·`geo`·풀 알파) — 층은 그 답을 이 표로 옮길 뿐이다.",

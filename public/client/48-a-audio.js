@@ -152,6 +152,9 @@ function sfxVarIndex(m, o) {
 /** 이 키가 이번에 쓸 파일 이름. 배열이면 `sfxVarIndex` 가 고른 하나. */
 function sfxFileOf(m, o) {
   if (m.files && m.files.length) {
+    // ★[T358] `o.file` 이 오면 **그 파일로 못 박는다**. 재는 자(`probe`)가 쓰는 구멍이다 —
+    //   변주는 부를 때마다 다른 파일을 주므로, 데우는 줄과 찾는 줄이 **같은 파일**을 가리켜야 한다.
+    if (o && o.file) return o.file;
     const f = m.files[sfxVarIndex(m, o)];
     return (typeof f === 'string') ? f : (f && f.file);
   }
@@ -591,9 +594,26 @@ function initAudio() {
       if (!_sfxMan || !_sfxCtx) return { err: 'not-ready' };
       const list = (keys && keys.length ? keys : Object.keys(_sfxMan.keys).filter((k) => !k.startsWith('_')))
         .filter((k) => sfxKey(k) && sfxKey(k).file);
-      for (const k of list) sfxBuffer(k);                       // 버퍼를 데운다(받는 중이면 아래가 기다린다)
-      for (let i = 0; i < 60 && list.some((k) => !_sfxBuf.get(k)); i++) await new Promise((r) => setTimeout(r, 100));
-      const bufs = list.map((k) => ({ k, b: _sfxBuf.get(k), m: sfxKey(k) })).filter((e) => e.b);
+      // ★[T358] 변주 키는 **첫 파일로 못 박아** 데운다(아래 `bufKeyOf` 와 같은 파일을 봐야 한다).
+      const pinOf = (k) => { const m = sfxKey(k); const f0 = (m && m.files && m.files.length) ? m.files[0] : null;
+        return f0 ? { file: (typeof f0 === 'string' ? f0 : f0.file) } : null; };
+      for (const k of list) sfxBuffer(k, pinOf(k));              // 버퍼를 데운다(받는 중이면 아래가 기다린다)
+      // ★★[T358] 변주 키는 버퍼가 `키#파일` 로 담긴다(T354 가 한 벌씩 받게 만들었다).
+      //   ⇒ `_sfxBuf.get(키)` 로만 보면 **변주 키가 조용히 빠진다** — 실제로 헤드룸 실측이
+      //     22키 중 21키만 재고도 아무 말 없이 통과했다. 재는 자가 대상을 빠뜨리면 그 수는 거짓이다.
+      //   ⇒ 키가 지금 쓸 파일 이름으로 찾는다(단일 `file` 은 종전 그대로 키 이름이 곧 열쇠다).
+      const bufKeyOf = (k) => {
+        const m = sfxKey(k);
+        if (!m) return k;
+        //   ⚠`sfxFileOf(m, null)` 은 **부를 때마다 다른 파일**을 준다(자리 없는 키는 울린 횟수로
+        //     고르므로 셈이 하나씩 는다 — 그게 변주의 뜻이다). 재는 자가 그걸 쓰면 데우는 줄과
+        //     찾는 줄이 서로 다른 파일을 가리켜 **영영 못 찾는다**(실제로 그래서 21/22 였다).
+        //   ⇒ 잴 때는 **첫 파일**로 못 박는다. 변주는 전부 같은 볼륨 칸을 쓰므로 헤드룸은 같다.
+        const p = pinOf(k);
+        return p ? (k + '#' + p.file) : k;
+      };
+      for (let i = 0; i < 60 && list.some((k) => !_sfxBuf.get(bufKeyOf(k))); i++) await new Promise((r) => setTimeout(r, 100));
+      const bufs = list.map((k) => ({ k, b: _sfxBuf.get(bufKeyOf(k)), m: sfxKey(k) })).filter((e) => e.b);
       if (!bufs.length) return { err: 'no-buffers' };
       const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
       if (!OAC) return { err: 'no-offline' };

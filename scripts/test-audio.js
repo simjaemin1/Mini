@@ -255,8 +255,15 @@ ok(fat.length === 0, `훅이 두 줄 이상인 파일 ${fat.length}개 (남의 �
    fat.map((h) => `${h.f}(${h.lines.length})`).join(' '));
 const unknown = [...used].filter((k) => !KEYS[k]);
 ok(unknown.length === 0, `표에 없는 키를 부르는 자리 ${unknown.length}개`, unknown.join(' '));
-const orphan = keyNames.filter((k) => !used.has(k));
-ok(orphan.length === 0, `아무도 안 부르는 키 ${orphan.length}개`, orphan.join(' ') || `${keyNames.length}종 전부 불린다`);
+// ★[T358] **후보 키**는 일부러 배선이 없다 — 재민이 소리판에서 옛 것과 새 것을 견주려고 남겨 둔
+//   것이다(`bronze_hit` 이 `rock_hit`·`drop` 에 자리를 내준 뒤 그렇게 됐다).
+//   ⚠그렇다고 조용히 빼지는 않는다: **세어서 이름을 낸다.** 안 그러면 `후보: true` 한 줄로
+//     아무 키나 이 자를 피해 갈 수 있고, 그러면 "안 불리는 키 0" 이 아무 뜻도 없는 수가 된다.
+const cand = keyNames.filter((k) => KEYS[k]['후보']);
+const orphan = keyNames.filter((k) => !used.has(k) && !KEYS[k]['후보']);
+ok(orphan.length === 0, `아무도 안 부르는 키 ${orphan.length}개`, orphan.join(' ') || `${keyNames.length}종 중 후보 ${cand.length} 빼고 전부 불린다`);
+console.log(`     · 후보(배선 없음이 맞다 · 소리판에서 견주는 용): ${cand.length}개 — ${cand.join(' ') || '없음'}`);
+ok(cand.every((k) => KEYS[k].file), '후보 키에도 파일은 있다(못 들으면 견줄 수가 없다)', cand.join(' ') || '없음');
 
 // ── ④ 제스처 전 AudioContext 0 ────────────────────────────────────────────────
 console.log('\n④ `AudioContext` 를 첫 제스처 전에 만들지 않는다(정적)');
@@ -325,7 +332,7 @@ console.log('\n⑥ ★이 하네스가 실패할 줄 아는가 — 픽스처로 
     const savedMobs = man.mobs; man.mobs = {};
     const u2 = new Set([...keysUsedInModule(modCode), ...hooksInFile(modCode).keys, ...tableKeys()]);
     man.mobs = savedMobs;
-    const orphan2 = keyNames.filter((k) => !u2.has(k));
+    const orphan2 = keyNames.filter((k) => !u2.has(k) && !KEYS[k]['후보']);   // ★[T358] 후보는 원래 배선이 없다
     // ★[T303] 기대값을 **이름 꼴로 짐작하지 않고 `mobs` 표에서 읽는다.** 1차 판은 `/_(growl|grunt|call)$/` 였는데
     //   `wolf_growl` → `wolf_howl` 개명 한 번에 빨개졌다 — 자가 배선을 잰 게 아니라 **이름 철자를 재고 있었다.**
     //   표가 보내는 키가 곧 기대값이다(손 목록 0 · 다음 개명에도 안 흔들린다).
@@ -788,9 +795,13 @@ console.log('\n⑫ ★★[T321] 어부의 소리 — 결말 셋에 키 셋');
   //     낱말이 없다** — 소리로는 던지는 순간이 여전히 비어 있다. 서버 한 줄이라 이 카드 밖이다(회부).
   const hasScript = /_t340Try|'wait'/.test(blk);
   ok(hasScript, '⑫c2 ★대본이 있다(`_t340Try` — 던짐/기다림/걸림/놓침)', hasScript ? '있다' : '없다');
-  ok(!/'wait'\)\s*_lifeAct|_hook === 'wait'.*_lifeAct/.test(blk),
-     '⑫c3 ★기록 — `\'wait\'`(던지는 순간)에는 아직 낱말이 없다 ⇒ 서버 한 줄이면 `cast` 가 제자리를 찾는다(회부)',
-     '던짐 무음');
+  // ⑫c3 ★★[T358] **던지는 순간에 낱말이 생겼다.** T321 이 "없는 순간에 소리를 걸지 마라" 로 결말 셋에
+  //   붙였고, T340 이 대본을 주자 T354 가 "`'wait'` 에 낱말이 없다" 를 **기록으로** 남겼으며,
+  //   T358 이 서버 한 줄로 채웠다. 이제 셋이 **차례로** 난다: 던짐 → (기다림) → 놓침/낚음.
+  //   ⇒ 자가 뒤집힌다 — 없다는 기록에서 **있어야 한다는 계약**으로.
+  ok(/_hook === 'wait'\) _lifeAct\(npc, '드리움'\)/.test(blk),
+     '⑫c3 ★★던지는 순간(`\'wait\'`)에 낱말이 선다 — `cast` 가 제자리를 찾았다',
+     '던짐 → 드리움 → cast');
 
   // ⑫d ★★★[T354 정정] **이 자가 안 물었다 — 철자를 봤기 때문이다.**
   //   T321 판은 "NPC 자리에 `biteAt`·`windowMs` 가 없다" 로 대기 창의 부재를 쟀다. 그런데 T340 은
@@ -918,6 +929,79 @@ console.log('\n⑬ ★★[T323] 소리판 — 손 목록 0');
     const faked = strip + "\n  var k = '" + keyNames[0] + "';\n";
     const bad = keyNames.filter((k) => new RegExp("['\"]" + k + "['\"]").test(faked));
     ok(bad.length === 1, '⑬k 자명 통과 금지 — 키 이름을 한 개 박으면 ⑬b 가 잡는다', bad.join(' '));
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ⑭ ★★★[T358] 이음새 — **반복 파일은 끝과 머리가 이어져야 한다**
+//
+//   T354 가 새 물·비 루프를 만들며 자 하나를 세웠다: **끝↔머리 표본 차 ÷ 이웃 표본 차 평균**(dB).
+//   0 보다 작으면 이음새가 평소 파형 움직임보다 **작다** = 안 들린다. 크면 10초마다 딸깍이 난다.
+//   그 자를 옛 파일에 대 보니 **`wind.ogg` 가 +25.2 dB**, 옛 `water.ogg` 가 +12.0 dB 였다 —
+//   T262 부터 아무도 안 재 봤고, 재민이 바람을 "바람이 아니라 그냥 공기 소리" 라 한 것의
+//   **일부가 이 딸깍**이었다. 자가 한 번 쓰고 사라지면 다음에 또 같은 파일이 들어온다 ⇒ 절로 박는다.
+//
+//   ⚠BGM 13곡은 **재지 않는다.** 곡은 반복이 아니라 한 번 흐르고 마는 것이고(엔진은 절차적이라
+//     그 파일들을 런타임이 읽지도 않는다), 곡의 끝과 머리를 이으라는 요구가 애초에 없다.
+//   ⚠자는 **wav 로 디코드해서** 잰다(ogg 는 압축이라 바이트로는 못 잰다). `ffmpeg` 가 없으면
+//     이 절은 **건너뛴다고 말하고** 건너뛴다 — 조용히 초록이 되지 않는다.
+// ══════════════════════════════════════════════════════════════════════════════
+console.log('\n⑭ ★★[T358] 이음새 — 반복 파일의 끝과 머리');
+{
+  const { execFileSync, spawnSync } = require('child_process');
+  const haveFfmpeg = spawnSync('ffmpeg', ['-version'], { stdio: 'ignore' }).status === 0;
+  const loopKeys = keyNames.filter((k) => KEYS[k].loop && KEYS[k].file);
+  ok(loopKeys.length >= 4, '⑭a 전제: 반복 키가 여럿이다(0 이면 아래가 자명 통과다)', `${loopKeys.length}종 · ${loopKeys.join(' ')}`);
+
+  if (!haveFfmpeg) {
+    ok(false, '⑭b ffmpeg 이 없어 이음새를 **못 쟀다**(조용히 넘어가지 않는다 — 자가 없으면 없다고 말한다)');
+  } else {
+    /** 끝↔머리 차 ÷ 이웃 표본 차 평균 (dB). 작을수록 매끈. */
+    const seamDb = (file) => {
+      const raw = execFileSync('ffmpeg', ['-v', 'error', '-i', file, '-f', 'f32le', '-ac', '1', '-ar', '44100', '-'],
+                               { maxBuffer: 1 << 28 });
+      const y = new Float32Array(raw.buffer, raw.byteOffset, raw.length / 4);
+      if (y.length < 1000) return null;
+      let sum = 0;
+      for (let i = 1; i < y.length; i++) sum += Math.abs(y[i] - y[i - 1]);
+      const typ = sum / (y.length - 1);
+      const jump = Math.abs(y[0] - y[y.length - 1]);
+      return 20 * Math.log10(Math.max(jump, 1e-9) / Math.max(typ, 1e-9));
+    };
+    const rows = [];
+    for (const k of loopKeys) {
+      const f = path.join(SFX_DIR, KEYS[k].file);
+      let d = null;
+      try { d = seamDb(f); } catch (e) { d = null; }
+      rows.push({ k, d });
+    }
+    console.log('    ── 끝↔머리 차 ÷ 이웃 표본 차 평균 ──');
+    for (const r of rows) console.log(`      ${r.k.padEnd(12)} ${r.d === null ? '못 잼' : (r.d >= 0 ? '★' : ' ') + r.d.toFixed(1).padStart(6) + ' dB'}`);
+    const unread = rows.filter((r) => r.d === null);
+    ok(unread.length === 0, '⑭b 반복 파일을 다 읽었다', unread.map((r) => r.k).join(' ') || `${rows.length}장`);
+    const bad = rows.filter((r) => r.d !== null && r.d >= 0);
+    ok(bad.length === 0,
+       '⑭c ★★★반복 키의 이음새가 전부 **0 dB 아래**다(끝↔머리 차가 평소 움직임보다 작다 = 안 들린다)',
+       bad.length ? bad.map((r) => `${r.k} ${r.d.toFixed(1)}dB — 10초마다 딸깍`).join(' · ')
+                  : rows.map((r) => `${r.k} ${r.d.toFixed(1)}`).join(' · '));
+
+    // ⑭d ★★자명 통과 금지 — **문턱을 비틀면** 지금 성한 판정이 뒤집히는가.
+    //    T354 가 실제로 본 값(`wind.ogg` +25.2 dB)이 있으므로, 문턱을 +30 으로 올리면
+    //    **그 파일조차 통과**한다. 그 반례가 없으면 이 절은 "아무 문턱이나 통과"하는 자다.
+    {
+      const loose = rows.filter((r) => r.d !== null && r.d >= 30);
+      ok(loose.length === 0 && rows.some((r) => r.d !== null),
+         '⑭d 자명 통과 금지 — 문턱을 +30 dB 로 풀면 **지금 빨간 것도 통과한다**(그래서 0 이 문턱이다)',
+         `+30 문턱에서 걸리는 파일 ${loose.length}개 — 문턱이 헐거우면 자가 아무것도 안 잰다`);
+    }
+    // ⑭e ★대조 — 일부러 어긋낸 파형은 **반드시** 잡힌다(자가 살아 있다)
+    {
+      const n = 44100, y = new Float32Array(n);
+      for (let i = 0; i < n; i++) y[i] = Math.sin(i * 0.01) * 0.5;   // 끝과 머리가 안 맞는 사인
+      let sum = 0; for (let i = 1; i < n; i++) sum += Math.abs(y[i] - y[i - 1]);
+      const d = 20 * Math.log10(Math.abs(y[0] - y[n - 1]) / (sum / (n - 1)));
+      ok(d >= 0, '⑭e 대조 — 끝과 머리가 안 맞는 파형은 같은 자로 **0 dB 위**로 잡힌다', `${d.toFixed(1)} dB`);
+    }
   }
 }
 
