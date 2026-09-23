@@ -876,6 +876,7 @@ function ditchPayload() {                 // welcome 페이로드(flat [cx,cy,�
 //   ⚠무효화: 환호(`DITCH_CELLS`)는 런타임에 바뀐다 ⇒ `refreshDitchCells` 가 통째로 영점(아래).
 //     물·바위·다리는 기동 뒤 안 바뀐다(T333 이 이미 그 가정 위에 비트 색인을 세웠다).
 const T356_SOA = process.env.T356_SOA === '1';
+const T370_PATH_REUSE = process.env.T370_PATH_REUSE === '1';   // ★[T370 ②] 경로 끝에서 다시 안 묻는다(기본 끔)
 const _BLK_BITS = T356_SOA ? new Uint8Array(((_WT_W * _WT_H) >> 2) + 2) : null;   // 타일당 2비트 = 4타일/바이트
 if (_BLK_BITS) console.log(`[${ZONE_ID}] 🧱 T356 지형 막힘 비트 ON — ${_WT_W}×${_WT_H} 타일 · ${(_BLK_BITS.length / 1048576).toFixed(1)}MB`);
 function _terrBlocked0(x, y) {
@@ -2746,7 +2747,20 @@ function npcStep(npc, dt, now) {
   const needPath = !npc.path || npc.pathIndex >= npc.path.length ||
                    npc._pathFor !== targetKey ||
                    (npc._pathAt && now - npc._pathAt > 5000);
-  if (needPath) {
+  // ★★★[T370 ② 2026-09-23 · 경로를 두 번 묻지 않는다] `T370_PATH_REUSE=1` 일 때만.
+  //   T356 이 "낮에 A* 가 틱마다 899명(61 %)" 을 냈고, T370 ① 이 **왜**를 세었다:
+  //   그중 **98.8 %가 `pathIndex >= length`** 다 — 경로 끝에 닿은(=도착한) 주민이, 목표도 안 바뀌고
+  //   5초도 안 지났는데 **다음 결정이 올 때까지 매 틱** 다시 묻는다(28.6 %는 10틱 넘게 연속으로).
+  //   그때 그 주민은 목표에서 평균 **15px** 이고 행동은 **100 % `wander`** 다 — 갈 데가 없는데 길을 묻는다.
+  //   ⇒ **네 조건 중 '경로 끝' 하나만 참이면 다시 묻지 않는다.** 목표가 바뀌면(조건 셋) 그때 묻고,
+  //     제자리에서 막혀 있으면 **있는 5초 만료**(조건 넷)가 깨운다. **새 수 0** — 5000ms 는 원래 있던 수다.
+  //   ⚠켜면 좌표가 달라진다(경로를 덜 묻는다) ⇒ 게이트는 "끔 = 비트 동일" 과 **반례 표**(도착률·도착 시간·
+  //     벽 비비기)다. 끄면 `_skip` 이 첫 항에서 단락되어 **불리언 읽기 하나** — 종전과 비트 동일.
+  const _skip = T370_PATH_REUSE && needPath
+                && npc.path && npc.pathIndex >= npc.path.length
+                && npc._pathFor === targetKey
+                && !(npc._pathAt && now - npc._pathAt > 5000);
+  if (needPath && !_skip) {
     const p = computeNpcPath(npc, now);
     npc.path = p || [{ x: npc.targetX, y: npc.targetY }]; // 못 찾으면 beeline
     npc.pathIndex = 0;
