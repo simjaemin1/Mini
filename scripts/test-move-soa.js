@@ -473,5 +473,61 @@ console.log('\n⑦ T356_SOA 지형 막힘 비트 — 켬/끔이 같은 세계 [T
   console.log('    접점: isTerrainBlockedLocal · _terrBlocked0 · T356_SOA · refreshDitchCells · terrain-tilecache');
 }
 
+
+// =============================================================================
+// ⑧ T370_PATH_REUSE — 끄면 **비트 동일**, 켜면 경로를 덜 묻는다 [T370 ②]
+// =============================================================================
+// ★T370 ① 이 센 것: 낮에 `needPath` 가 틱마다 **894.5회**(주민의 61.1 %) 참이 되고, 그중
+//   **98.8 %가 `pathIndex >= length`** 다 — 도착한 주민이 다음 결정이 올 때까지 매 틱 길을 다시 묻는다
+//   (목표까지 평균 15px · 행동 100 % `wander` · 28.6 %는 10틱 넘게 연속).
+//   ⇒ **네 조건 중 '경로 끝' 하나만 참이면 안 묻는다.** 5000ms 만료는 원래 있던 수다(새 수 0).
+console.log('\n⑧ T370_PATH_REUSE — 경로를 두 번 묻지 않는다 [T370]');
+{
+  const Z3 = codeOnly(Z);
+  ok(/const T370_PATH_REUSE = process\.env\.T370_PATH_REUSE === '1';/.test(Z3),
+     '⑧ 손잡이는 `T370_PATH_REUSE` 하나 · **기본 끔**');
+  ok(/const _skip = T370_PATH_REUSE && needPath/.test(Z3),
+     '⑧ ★`_skip` 의 **첫 항이 손잡이**다 — 끄면 단락되어 불리언 읽기 하나(종전과 비트 동일)');
+  ok(/npc\._pathAt > 5000/.test(Z3) && !/T370[^\n]*\b(?!5000)\d{3,}/.test(Z3.split('T370_PATH_REUSE')[1] || ''),
+     '⑧ ★새 수 0 — 만료는 **있던 5000ms** 그대로다');
+  ok(!/pathfind|path-core/.test(Z3.slice(Z3.indexOf('const _skip'), Z3.indexOf('const _skip') + 400)),
+     '⑧ A\\* 알고리즘 무접촉 — 고친 것은 **부르는 조건**뿐이다');
+  // ── 네 조건의 진리표를 그대로 복원해 켬/끔을 견준다(제품 글자를 뜬다) ──
+  const nb = body('npcStep');
+  const m = nb.match(/const needPath = [\s\S]*?const _skip = [\s\S]*?\n  if \(needPath && !_skip\) \{/);
+  ok(!!m, '⑧ [전제] 제품에서 조건 묶음 **그 글자**를 떴다', m ? `${m[0].length}자` : '못 찾음');
+  const mkAsk = (on) => new Function('npc', 'now', 'targetKey', 'T370_PATH_REUSE',
+    m[0].replace('\n  if (needPath && !_skip) {', '') + '\nreturn needPath && !_skip;');
+  const ask = mkAsk();
+  // 진리표 16칸 × 상황(경로 있음/없음)
+  let rows = 0, offAsk = 0, onAsk = 0, diffWhenOff = 0;
+  for (let bits = 0; bits < 16; bits++) {
+    const hasPath = !(bits & 1), atEnd = !!(bits & 2), keyDiff = !!(bits & 4), expired = !!(bits & 8);
+    const npc = { path: hasPath ? [{ x: 0, y: 0 }, { x: 1, y: 1 }] : null,
+      pathIndex: atEnd ? 2 : 0, _pathFor: keyDiff ? 'other' : 'K', _pathAt: expired ? 1 : 1000000 };
+    const now = expired ? 1000000 : 1001;
+    const legacy = !npc.path || npc.pathIndex >= npc.path.length || npc._pathFor !== 'K' || (npc._pathAt && now - npc._pathAt > 5000);
+    const a = ask(npc, now, 'K', false), b = ask(npc, now, 'K', true);
+    rows++; if (a) offAsk++; if (b) onAsk++;
+    if (a !== legacy) diffWhenOff++;
+  }
+  ok(rows === 16 && offAsk > 0 && offAsk < 16, '⑧ [상황] 진리표 16칸을 다 밟았고 묻는/안 묻는 칸이 둘 다 있다', `끔 묻는 칸 ${offAsk}/16`);
+  ok(diffWhenOff === 0, '⑧ ★★★**끔 = 종전 식과 한 칸도 안 다르다**(비트 동일)', `다른 칸 ${diffWhenOff}/16`);
+  ok(onAsk < offAsk, '⑧ ★켬은 **덜 묻는다**', `끔 ${offAsk} → 켬 ${onAsk} 칸`);
+  // ★켬이 줄이는 칸은 **'경로 끝'만 참인 칸 하나**여야 한다 — 목표가 바뀌거나 5초가 지나면 여전히 묻는다
+  const onlyEnd = { path: [{ x: 0, y: 0 }], pathIndex: 1, _pathFor: 'K', _pathAt: 1000000 };
+  ok(ask(onlyEnd, 1001, 'K', false) === true && ask(onlyEnd, 1001, 'K', true) === false,
+     '⑧ ★줄이는 칸은 **경로 끝만 참**인 칸이다');
+  const endAndKey = { path: [{ x: 0, y: 0 }], pathIndex: 1, _pathFor: 'other', _pathAt: 1000000 };
+  ok(ask(endAndKey, 1001, 'K', true) === true, '⑧ ★목표가 바뀌면 켬도 **여전히 묻는다**(끝+목표)');
+  const endAndOld = { path: [{ x: 0, y: 0 }], pathIndex: 1, _pathFor: 'K', _pathAt: 1 };
+  ok(ask(endAndOld, 1000000, 'K', true) === true, '⑧ ★★5초가 지나면 켬도 **묻는다** — 제자리에서 막힌 사람을 있는 만료가 깨운다');
+  // 자명 통과 금지 — 손잡이를 무시하는 식으로 바꾸면 위 둘이 갈린다
+  const bad = new Function('npc', 'now', 'targetKey', 'T370_PATH_REUSE',
+    m[0].replace('const _skip = T370_PATH_REUSE &&', 'const _skip = true &&').replace('\n  if (needPath && !_skip) {', '') + '\nreturn needPath && !_skip;');
+  ok(bad(onlyEnd, 1001, 'K', false) === false, '★⑧ 자명 통과 금지 — 손잡이를 `true` 로 비틀면 **끔 칸이 갈린다**(자가 손잡이를 실제로 본다)');
+  console.log('    접점: needPath · _pathFor · _pathAt · pathIndex · computeNpcPath · T370_PATH_REUSE');
+}
+
 console.log(`\n=== 결과: ${pass} PASS / ${fail} FAIL ===\n`);
 process.exit(fail ? 1 : 0);
