@@ -6964,6 +6964,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
         const _cy = Math.floor((npc._fishSpotY != null ? npc._fishSpotY : ws.y) / SZ);
         const _key = _cx + ',' + _cy;
         //   ⓑ 무엇이 물리나 — 던질 때 정해진 그 종이다(주사위 0 · `freshfish.pick` · `_t340Try` 안).
+        if (_hook === 'wait') _lifeAct(npc, '드리움');        // ★[T358] **던지는 순간** — 대본의 첫 칸(소리는 `cast`)
         if (_hook === 'none') _lifeAct(npc, '드리움');        // 그 물·그 철엔 사는 종이 없다
         if (_hook === 'miss') _lifeAct(npc, '놓침');          // 창이 닫혔다 — 물었는데 못 챘다
         const _sp = (_hook && typeof _hook === 'object') ? _hook : null;

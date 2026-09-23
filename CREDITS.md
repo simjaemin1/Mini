@@ -23,6 +23,11 @@
 
 ---
 
+
+* **`deer_call`(사슴 울음) — CC BY 2.0 · 표시 필요** [T358]
+  > Briefer E, Vannoni E, McElligott A (2010), *Quality prevails over identity in the sexually selected
+  > vocalisations of an ageing mammal*, BMC Biology 8:35 — CC BY 2.0
+  ⚠**이 집 첫 CC-BY 소리다.** 여태 효과음은 전부 PD/CC0 라 §1 에 줄이 없었다. 지우려면 음원을 바꿔야 한다.
 ## 2. 빌린 것
 
 | 항목 | 무엇을 | 어디에 들어갔나 | 라이선스 | 요구 | 카드 |
@@ -51,8 +56,8 @@
 
 | 키 | 출처(파일 페이지) | 작성자 | 라이선스 | 녹음/게시 | 받은 날 | 자른 구간 |
 |---|---|---|---|---|---|---|
-| `wind` | [Commons: Gentle breeze and birds singing.ogg](https://commons.wikimedia.org/wiki/File:Gentle_breeze_and_birds_singing.ogg) (원천 pdsounds.org #1) | ezwa | **Public domain** | 2007-04-18 | 2026-09-13 | 원본 32.55s 중 **11.0~22.0s** → 10.0s 반복 |
-| `fire` | [Commons: Dry grass burning in open fireplace.ogg](https://commons.wikimedia.org/wiki/File:Dry_grass_burning_in_open_fireplace.ogg) (원천 pdsounds.org #3) | ezwa | **Public domain** | 2007-06-17 | 2026-09-13 | 원본 25.50s 중 **3.0~14.0s** → 10.0s 반복 |
+| `wind` | [Commons: 20090610 0 ambience.ogg](https://commons.wikimedia.org/wiki/File:20090610_0_ambience.ogg) (pdsounds #707 · 숲 나무둥치 녹음) | nille | **Public domain** | 2009-06-10 | 2026-09-23 | 123.43s 중 **29.0~41.0s** → 10.0s 반복(페이드 2s) · ★[T358] 재확보(재민 09-22 "그냥 공기 소리") · 까마귀 없는 창을 파고율로 골랐다(4.25 ↔ 까마귀 12.4) · 이음새 **−23.1 dB** |
+| `fire` | [Commons: Dry grass burning in open fireplace.ogg](https://commons.wikimedia.org/wiki/File:Dry_grass_burning_in_open_fireplace.ogg) (pdsounds #3) | ezwa | **Public domain** | 2007-06-17 | 2026-09-23 | 25.50s 중 **12.48~24.48s** → 10.0s 반복 · ★[T358] **구간만 바뀌었다** — 옛 이음새 +5.3 dB(10초마다 탁) → **−41.6 dB** |
 | `step_dirt` | [Kenney "RPG Audio"](https://kenney.nl/assets/rpg-audio) · `footstep07.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2023(팩) | 2026-09-23 | 통째(0.26s) · ★[T354] **파일이 바뀌었다** — 재민 09-22 가 옛 `step_grass` 를 흙이라 판정 |
 | `step_grass` | [Kenney "RPG Audio"](https://kenney.nl/assets/rpg-audio) · `footstep05.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2023(팩) | 2026-09-23 | 통째(0.28s) · ★[T354] 새 파일 — 남은 여덟 중 가장 스치는 것(중심 2775Hz) |
 | `axe` | [Kenney "RPG Audio"](https://kenney.nl/assets/rpg-audio) · `chop.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2023(팩) | 2026-09-13 | 통째(0.21s) |
@@ -64,7 +69,7 @@
 | `cast` | [Commons: Bathtub water splashes.ogg](https://commons.wikimedia.org/wiki/File:Bathtub_water_splashes.ogg) (pdsounds #7) | gradha | **Public domain** | 2009-07-23 | 2026-09-13 | 48.12s 중 **7.0~8.2s** |
 | `bite` | 〃 (같은 원본의 다른 사건) | gradha | **Public domain** | 2009-07-23 | 2026-09-13 | 48.12s 중 **37.9~38.9s** |
 | `hook` | 〃 (같은 원본의 다른 사건) | gradha | **Public domain** | 2009-07-23 | 2026-09-13 | 48.12s 중 **24.8~26.2s** |
-| `deer_call` | [Commons: American Elk Bugling.ogg](https://commons.wikimedia.org/wiki/File:American_Elk_Bugling.ogg) (미 국립공원청 wica) | Jim Pisarowicz | **Public domain** (PD US NPS) | 날짜 미상(페이지가 안 적는다) | 2026-09-13 | 5.13s 중 **0.50~2.50s** · ⚠종은 **와피티**(아래) |
+| `deer_call` | [Commons: …ageing-mammal…S3.ogg](https://commons.wikimedia.org/wiki/File:Quality-prevails-over-identity-in-the-sexually-selected-vocalisations-of-an-ageing-mammal-1741-7007-8-35-S3.ogg) (논문 부록 · 다마사슴) | Briefer E, Vannoni E, McElligott A | **CC BY 2.0** | 2010 | 2026-09-23 | 4.30s 중 **1.35~1.78s**(울음 하나) · ★[T358] 재확보 — 옛 것은 **와피티 울음**(재민 "울부짖는 거 말고") |
 | `tiger_growl` | [Commons: 439280 schots angry-tiger.wav](https://commons.wikimedia.org/wiki/File:439280_schots_angry-tiger.wav) (원천 freesound 439280) | schots | **CC0** | 2018-08-31 | 2026-09-13 | 65.64s 중 **11.00~13.00s** · 출처가 `Panthera tigris` 라 적는다 |
 | `wolf_howl` | [Commons: Wolf howls.ogg](https://commons.wikimedia.org/wiki/File:Wolf_howls.ogg) (원천 fws.gov) | U.S. Fish and Wildlife Service | **Public domain** (PD-USGov-FWS) | 날짜 미상(페이지가 안 적는다) | 2026-09-23 | 28.32s 중 **1.00~3.90s** · ★[T354] 재확보(재민 09-22 "최악") |
 | `step_stone` | [Kenney "RPG Audio"](https://kenney.nl/assets/rpg-audio) · `footstep04.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2023(팩) | 2026-09-23 | 통째(0.32s) · ★[T354] 새 키 — 재민 09-22 "돌바닥 걷는 소리야"(옛 `step_dirt`) |
@@ -72,6 +77,9 @@
 | `drop` | [Kenney "RPG Audio"](https://kenney.nl/assets/rpg-audio) · `dropLeather.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2023(팩) | 2026-09-23 | 통째(0.42s) · ★[T354] 새 키 — 낙하가 곡괭이질과 **겸업을 끊었다**(#50) |
 | `boar_grunt` | [OpenGameArt: 80 CC0 creature SFX](https://opengameart.org/content/80-cc0-creature-sfx) · `grunt_02.ogg` | rubberduck | **CC0** (페이지 License 칸) | — | 2026-09-23 | 통째(0.53s) · ★[T354] 무음이던 자리 · ⚠**합성 팩**(진짜 멧돼지 PD/CC0 녹음 없음 — 아래) |
 | `rain_light` | [Commons: Listening to Raindrops (1035382 - drizzle loop).mp3](https://commons.wikimedia.org/wiki/File:Listening_to_Raindrops_(1035382_-_drizzle_loop).mp3) | NASA | **Public domain** (NASA) | 2000-06-14 게시 | 2026-09-23 | 49.08s 중 **5.0~17.0s** → 10.0s 반복(이음새 실측 **−15.5 dB**) · ★[T354] 새 키 — 재민 09-22 "가벼운 빗소리도" |
+| `rock_hit` | [OpenGameArt: 75 CC0 breaking/falling/hit SFX](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) · `bfh1_rock_hit_01.ogg` | rubberduck | **CC0** (페이지 License 칸) | — | 2026-09-23 | 통째(0.13s) · ★[T358] 새 키 — 돌·광석·운석 때리기가 `bronze_hit`(둔탁한 쿵 · 저역 91%)에서 갈라져 나왔다(중심 4186Hz) |
+| `tiger_growl2` | [Commons: 439280 schots angry-tiger.wav](https://commons.wikimedia.org/wiki/File:439280_schots_angry-tiger.wav) (**같은 원본의 다른 으르렁**) | schots | **CC0** | 2018-08-31 | 2026-09-23 | 65.64s 중 **3.90~5.15s** · ★[T358] 변주 |
+| `tiger_growl3` | 〃 (같은 원본의 또 다른 으르렁) | schots | **CC0** | 2018-08-31 | 2026-09-23 | 65.64s 중 **9.60~10.75s** · ★[T358] 변주 — 다른 팩에서 뜨면 **다른 짐승**으로 들린다 |
 | `ui_click` | [Kenney "RPG Audio"](https://kenney.nl/assets/rpg-audio) · `bookPlace1.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2023(팩) | 2026-09-13 | 0.30s 중 **0.020~0.280s**(선행 무음 잘라 냄) · **후보**(훅 없음) |
 
 * **요구 문구 없음** — 둘 다 퍼블릭 도메인이라 표시 의무가 없다(그래서 §1 에 안 들어간다). 예의로 여기 적는다.
