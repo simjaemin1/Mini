@@ -127,6 +127,7 @@ function _markHarvested(seedKey) {
   if (!seedKey) return;
   const d = gameDayNow();
   harvestedSeeds.set(seedKey, Number.isFinite(d) ? Math.floor(d) : -1);
+  _farBump(seedKey);   // ★[T380] 원경 캐시 무효화 — **장부가 바뀐 청크만**(문 하나를 지나므로 새는 길이 없다)
   try { db.insertHarvestedSeed(seedKey, d); } catch (e) {}
 }
 // ★★[T325 2026-09-19] **개체를 세계에서 빼는 문 하나.** 여섯 줄(색인·청크·장부·DB·방송)을 모았다 —
@@ -458,6 +459,163 @@ function deactivateChunk(cx, cy, liveKeys) {
   resourcesDirty = true;
   broadcast({ type: 'resources_removed', ids });  // 배치 제거
 }
+
+// ══ ★★[T380 2026-09-23] 원경 나무 — **자리만** 내준다(개체 0 · 활성화 0) ════════════
+//
+// ★재민 실기 09-23: *"멀리서 나무가 안 보이는 이유는 뭐야?"*
+//
+// ★§0 이 카드의 전제를 **반쯤 뒤집었다**(보고 §0-ⓐ). 카드는 "활성 청크(1,200px) 밖이라
+//   나무가 **없다**" 고 적었는데, 활성화는 px 가 아니라 **청크 색인**으로 켠다:
+//     `r = ceil(CHUNK_ACTIVE_RADIUS / chunkSize) = ceil(1200 / 1024) = 2`
+//   그래서 플레이어 청크 기준 ±2 청크(5×5)가 켜지고, 어느 방향으로든 **최소 2,048px** 이 살아 있다.
+//   그런데 클라의 지면은 `TILE_RENDER_RADIUS = 1500` 까지 그리고, 개체는
+//   `VIEW_RADIUS = 650` 에서 **버려진다**(`34-m-renderloop.js:663`).
+//   ⇒ 화면에서 나무가 비는 띠 650~1,500px 는 **자료가 없는 게 아니라 그리기가 버리는 것**이다
+//     (그 나무는 이미 `c.resources` 에 있다 — 클라가 가진 것을 안 그렸다).
+//   ⇒ 자료가 **정말로 없는 곳**은 그 밖 — 큰지도 배율이 요구하는 존 전역이다. 거기가 이 방송의 자리다.
+//   ⇒ 그래서 이 문은 **활성 청크를 건너뛴다**(겹침 0 을 보내는 쪽에서 보장한다).
+//     띠 650~1,500 은 클라가 **제가 이미 가진 개체 자리**로 그린다(방송 0 · 새 자료 0).
+//
+// ★개체를 세우지 않는다. `generateChunkResources` + `overflowInto`(T301·T317 의 그 둘)를
+//   **읽기만** 한다 — `resources` 무접촉 · `chunkManager` 무접촉 · `activateChunk` 무접촉.
+// ★손잡이 `T380_FAR_TREES` 기본 끔 ⇒ 이 아래 한 줄도 안 돈다(요청이 와도 **조용히 버린다**).
+const T380_FAR_TREES = process.env.T380_FAR_TREES === '1';
+const FAR_MAX_RADIUS = parseInt(process.env.T380_FAR_MAX || '8192', 10);   // 요청 반경 상한(px) — 존 크기로 다시 자른다
+const FAR_CHUNKS_PER_SLICE = parseInt(process.env.T380_FAR_SLICE || '1', 10); // 한 조각에 새로 **계산**할 청크 수
+//   ⚠실측(하네스 ⓑ13 · 숲 한복판 144청크): **청크당 12.7ms**. 한 조각에 넷이면 50ms — 틱(33ms)을 넘긴다.
+//     ⇒ 기본 1. 그래도 16ms 마다 12.7ms 를 쓴다(코어의 79%) — **이 수부터 내려야 켤 수 있다**(회부).
+const FAR_CACHE_MAX = parseInt(process.env.T380_FAR_CACHE || '4096', 10);
+const _farCache = new Map();    // "cx_cy" → { day, ver, pts }
+const _farVer = new Map();      // "cx_cy" → n (그 청크 장부가 바뀐 횟수)
+const _farStat = { us: 0, n: 0, hit: 0, miss: 0, sent: 0, pts: 0 };   // 부하 표의 원자료
+// ★장부가 바뀐 청크 — 그리고 **그 청크가 넘쳐 들어가는 이웃 셋**(T317: 넘침은 동·남·동남으로만 간다).
+//   씨앗 키를 푸는 것은 `chunk.js` 의 일이지만(T317 ②) 여기선 **앞 두 수**만 필요하고
+//   군락(`gv…`)은 나무가 아니라 안 본다 ⇒ 같은 꼴을 다시 적지 않고 앞자리만 읽는다.
+function _farBump(seedKey) {
+  if (!T380_FAR_TREES || typeof seedKey !== 'string') return;
+  const i = seedKey.indexOf('_'); if (i <= 0) return;
+  const j = seedKey.indexOf('_', i + 1); if (j <= i) return;
+  const a = +seedKey.slice(0, i), b = +seedKey.slice(i + 1, j);
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return;
+  for (const [dx, dy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) {
+    const k = (a + dx) + '_' + (b + dy);
+    _farVer.set(k, (_farVer.get(k) || 0) + 1);
+  }
+}
+// ★그 청크의 나무 **자리**. 청크가 켜질 때 쓰는 그 두 함수·그 인자 그대로다(사본 0) —
+//   그래서 원경과 개체가 갈릴 수가 없다. 거르는 자(`isTerrainBlockedLocal`)도 `activateChunk` 의 것 그대로.
+function _farRawOfChunk(cx, cy) {
+  const key = chunkManager.keyOf(cx, cy);
+  const day = gameDayNow();
+  const ver = _farVer.get(key) || 0;
+  const hit = _farCache.get(key);
+  if (hit && hit.day === day && hit.ver === ver) { _farStat.hit++; return hit.raw; }
+  _farStat.miss++;
+  const t0 = process.hrtime.bigint();
+  const cs = chunkManager.chunkSize;
+  const seen = new Set();
+  const raw = [];   // 7칸 묶음: x, y, r, h, sp, **낳은 청크** gcx, gcy
+  const push = (list) => {
+    for (const r of list) {
+      if (r.type !== 'tree') continue;              // 원경은 **성목만** — 그루터기·묘목은 점 하나로 안 읽힌다
+      if (seen.has(r.id)) continue; seen.add(r.id); // 넘침이 같은 개체를 두 번 낼 수 있다
+      if (isTerrainBlockedLocal(r.x, r.y)) continue;
+      const g = seedGenChunkOf(r.seedKey, r.x, r.y, cs);   // ★꼴을 푸는 것은 `chunk.js` 의 일이다(T317 ②)
+      raw.push(Math.round(r.x), Math.round(r.y), Math.round(r.r || 8), Math.round(r.h || 60), r.sp || '', g.cx, g.cy);
+    }
+  };
+  push(generateChunkResources(ZONE_ID, ZONE.biome, cx, cy, cs, harvestedSeeds, day));
+  push(overflowInto(ZONE_ID, ZONE.biome, cx, cy, cs, harvestedSeeds, day));
+  _farStat.us += Number(process.hrtime.bigint() - t0) / 1000; _farStat.n++;
+  if (_farCache.size > FAR_CACHE_MAX) _farCache.clear();
+  _farCache.set(key, { day, ver, raw });
+  return raw;
+}
+// ★★겹침 0 의 **정본 규칙은 이미 적혀 있다** — `deactivateChunk` 가 쓰는 그것이다:
+//   *"개체는 **낳은 청크**와 **든 청크** 둘 중 하나라도 켜져 있으면 남는다."*
+//   ⇒ 그 둘 중 하나라도 켜져 있으면 그 나무는 **개체로 서 있다** — 원경이 보내면 겹친다.
+//   §0 1차 판은 "청크가 비활성이면 그 청크 전부 보낸다"로 잘랐고, 하네스가 **42그루**를 잡았다
+//   (활성 이웃이 이 청크 안으로 넘긴 나무 · 이 청크가 활성 이웃으로 넘긴 나무 — 넘침의 양쪽).
+//   판정을 두 벌 적지 않는다: 여기서도 **같은 두 물음**을 묻는다.
+function _farPtsOfChunk(cx, cy) {
+  const raw = _farRawOfChunk(cx, cy);
+  const cs = chunkManager.chunkSize;
+  const pts = [];
+  for (let i = 0; i + 6 < raw.length; i += 7) {
+    const hx = Math.floor(raw[i] / cs), hy = Math.floor(raw[i + 1] / cs);          // 든 청크
+    if (activeChunkKeys.has(chunkManager.keyOf(hx, hy))) continue;
+    if (activeChunkKeys.has(chunkManager.keyOf(raw[i + 5], raw[i + 6]))) continue; // 낳은 청크
+    pts.push(raw[i], raw[i + 1], raw[i + 2], raw[i + 3], raw[i + 4]);
+  }
+  return pts;
+}
+// ★요청 하나 = 청크 목록 하나. 한 조각에 **새로 계산하는** 청크만 세어 끊는다 —
+//   캐시 적중은 공짜라 세지 않는다(끊을 이유가 없는 것을 끊으면 큰지도가 영영 안 찬다).
+function _farDrain(player) {
+  const q = player && player._farQ;
+  if (!q) return;                                      // 물은 적이 없다 — 답할 것도 없다
+  if (!player.ws || player.ws.readyState !== 1) { player._farQ = null; return; }
+  // ⚠**빈 목록도 답한다.** §0 이 잰 것: 요청 반경 1,500px 이면 그 상자가 **통째로 활성 청크**라
+  //   보낼 청크가 0개다(활성화는 px 가 아니라 청크 색인으로 켠다 — `ceil(1200/1024)=2` ⇒ 최소 2,048px).
+  //   1차 판은 여기서 조용히 돌아갔고, 그래서 클라가 "손잡이가 꺼졌다"와 "보낼 게 없었다"를
+  //   **구분하지 못했다**(하네스 ⓑ2 가 60초를 기다리다 빨개졌다 — 족보 130 의 모양).
+  let budget = FAR_CHUNKS_PER_SLICE;
+  while (q.length && budget > 0) {
+    const k = q.pop();
+    const i = k.indexOf('_');
+    const cx = +k.slice(0, i), cy = +k.slice(i + 1);
+    if (activeChunkKeys.has(k)) continue;              // ★겹침 0 — 켜진 청크는 **개체가 대신한다**
+    const before = _farStat.miss;
+    const pts = _farPtsOfChunk(cx, cy);
+    if (_farStat.miss !== before) budget--;            // 계산한 것만 예산을 쓴다
+    const had = player._farSent.get(k);
+    const stamp = gameDayNow() + ':' + (_farVer.get(k) || 0);
+    if (had === stamp) continue;                       // 이미 보냈고 그대로다 — 다시 안 보낸다
+    player._farSent.set(k, stamp);
+    _farStat.sent++; _farStat.pts += pts.length / 5;
+    send(player.ws, { type: 'far_trees', cx, cy, pts });
+  }
+  if (q.length) { player._farT = setTimeout(() => _farDrain(player), 16); return; }
+  player._farQ = null; player._farT = null;
+  send(player.ws, Object.assign({ type: 'far_trees_done' }, farTreesStat()));
+}
+// ★클라가 **요청 반경을 보낸다**(줌·큰지도 배율이 그 값을 정한다 — 회부: 상한은 재민).
+function _farRequest(player, msg) {
+  if (!T380_FAR_TREES) return;                          // 손잡이 끔 = 방송 0
+  const R = Math.max(0, Math.min(FAR_MAX_RADIUS, msg && msg.r | 0));
+  if (!R) return;
+  const cs = chunkManager.chunkSize;
+  const px = player.x, py = player.y;
+  const c0 = Math.max(0, Math.floor((px - R) / cs)), c1 = Math.min(chunkManager.colsX - 1, Math.floor((px + R) / cs));
+  const r0 = Math.max(0, Math.floor((py - R) / cs)), r1 = Math.min(chunkManager.colsY - 1, Math.floor((py + R) / cs));
+  if (!player._farSent) player._farSent = new Map();
+  const q = [];
+  for (let cy = r1; cy >= r0; cy--) for (let cx = c1; cx >= c0; cx--) {
+    const k = chunkManager.keyOf(cx, cy);
+    if (activeChunkKeys.has(k)) continue;               // ★겹침 0 — 보내는 쪽에서 자른다
+    q.push(k);
+  }
+  // 가까운 것부터 — `pop()` 으로 빼므로 **먼 것을 앞에** 놓는다(정렬은 한 번 · 결정론).
+  q.sort((a, b) => {
+    const ia = a.indexOf('_'), ib = b.indexOf('_');
+    const da = Math.max(Math.abs(+a.slice(0, ia) * cs + cs / 2 - px), Math.abs(+a.slice(ia + 1) * cs + cs / 2 - py));
+    const db = Math.max(Math.abs(+b.slice(0, ib) * cs + cs / 2 - px), Math.abs(+b.slice(ib + 1) * cs + cs / 2 - py));
+    return db - da;
+  });
+  if (player._farT) { clearTimeout(player._farT); player._farT = null; }
+  player._farQ = q;
+  console.log(`[${ZONE_ID}] 🌲 원경 요청 r=${R} — 상자 ${(c1 - c0 + 1)}x${(r1 - r0 + 1)}청크 · 활성 뺀 뒤 ${q.length}개`);
+  _farDrain(player);
+}
+// ★진단 훅(읽기 전용) — 부하 표의 정본. 하네스가 이 수를 읽는다(제 자를 새로 안 짠다).
+function farTreesStat() {
+  const q = _farStat.hit + _farStat.miss;
+  return { on: T380_FAR_TREES, cache: _farCache.size, chunks: _farStat.sent, trees: _farStat.pts,
+           calc: _farStat.n, us: Math.round(_farStat.us), hit: _farStat.hit, miss: _farStat.miss,
+           perChunkUs: _farStat.n ? +(_farStat.us / _farStat.n).toFixed(1) : 0,
+           hitRate: q ? +(_farStat.hit / q).toFixed(3) : 0 };
+}
+
 function isChunkActiveKey(key) { return activeChunkKeys.has(key); }
 function isPositionActive(x, y) {
   // ★[T345] `chunkXY` 가 만들던 `{cx,cy}` 객체를 없앴다 — 이 술어는 주민마다 틱마다 두 번 불린다
@@ -4833,6 +4991,11 @@ function handlePlayerInput(player, raw) {
     console.log(`[${ZONE_ID}] 🎖️ war_command_join ${player.name} → ${warId} (근접 채택·바인딩 훅 대기)`);
     send(ws, { type: 'war_command_ack', warId, ok: true });
   }
+  else if (msg.type === 'far_trees_req') {
+    // ★[T380] 원경 나무 요청 — **읽기만** 한다(개체 0 · 활성화 0 · 세계 무변).
+    //   손잡이가 꺼져 있으면 `_farRequest` 가 첫 줄에서 되돌아간다(방송 0).
+    _farRequest(player, msg);
+  }
   else if (msg.type === 'teleport_debug') {
     // 디버그: zone-local 좌표로 워프. zone 안 + water cell 아닌 곳만 허용.
     const tx = Math.max(0, Math.min(ZONE.zoneWidth  - 1, msg.x | 0));
@@ -5939,6 +6102,7 @@ function attachPlayerHandlers(ws, player) {
     //     소켓 교체와 진짜 로그아웃을 구분할 수 없기 때문이다. 둘 중 본 규칙을 택했다:
     //     **못 전한 소식은 전할 때까지 빚으로 남는다.** (브리핑을 받은 세션은 그대로 오늘을 찍는다.)
     player.lastSeenDay = _lastSeenDayToSave(player);
+    if (player._farT) { clearTimeout(player._farT); player._farT = null; player._farQ = null; }   // ★[T380] 원경 조각 예약 정리
     player._returnBriefDone = false;   // 다음 세션은 다시 받을 자격이 있다(승계되면 그대로 따라간다)
     savePlayer(player, { last_zone: ZONE_ID, last_x: player.x, last_y: player.y });
     players.delete(player.pid);
