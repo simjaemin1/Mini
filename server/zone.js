@@ -58,7 +58,7 @@ const Rooms = require('./rooms'); // ★[배치 18 ①] 방 판정 정본(벽·�
 const SIM_LON_ON = process.env.VILLAGE_LON !== '0'; // §19 경도 로컬 태양시(마을 NPC 야간 귀가) 게이트 — 기본 켜짐
 const central = require('./central-client'); // central HTTP 클라이언트
 const { Quadtree } = require('./quadtree'); // spatial index — O(N²) 검색 회피
-const { ChunkManager, CHUNK_SIZE, generateChunkResources, resourcesAtCell, overflowInto, seedGenChunkOf, regrowStageOf, REGROW, generateVillagesForZone, generateCoastlineWaterTiles, RESOURCE_HP_TABLE, forestSpacing: chunkForestSpacing, FOREST_MIN_COV: chunkForestMinCov } = require('./chunk');   // ★[T325] `resourcesAtCell` — 관측자 무관 색인(T301) 그대로. 나무꾼이 청크 없이 나무를 묻는다 // ★[T124] 재생 정산은 T122 정본을 그대로 받는다(사본 0) // 청크 단위 entity 분류 + procedural + 해안선 + ★[T108] 자연물 hp 정본
+const { ChunkManager, CHUNK_SIZE, generateChunkResources, resourcesAtCell, overflowInto, seedGenChunkOf, regrowStageOf, REGROW, generateVillagesForZone, generateCoastlineWaterTiles, RESOURCE_HP_TABLE, GROVE_KINDS, forestSpacing: chunkForestSpacing, FOREST_MIN_COV: chunkForestMinCov } = require('./chunk');   // ★[T325] `resourcesAtCell` — 관측자 무관 색인(T301) 그대로. 나무꾼이 청크 없이 나무를 묻는다 // ★[T124] 재생 정산은 T122 정본을 그대로 받는다(사본 0) // 청크 단위 entity 분류 + procedural + 해안선 + ★[T108] 자연물 hp 정본
 const { findPath: pfFindPath } = require('./pathfind'); // Phase 14.49-b: NPC A* pathfinding
 const PathCore = require('../sim/path-core.js'); // ★[생활 층 100% ①] 랩·서버 공용 경로 정본 — smoothPath(스트링 풀링)를 주민 이동에 직결
 const { ANIMALS } = require('./animals');  // Phase 5-6: 동물 mob 36종 catalog
@@ -1586,6 +1586,9 @@ function biomeResourceType() {
 //   NPC 채집 경로(2025행)는 ctx 를 안 준다 ⇒ **econ 쪽 동작은 한 줄도 안 달라진다.**
 // ★[T124] 벌목 부산물 도토리 — econ 의 그 수(`economy-sim.js:221` byproduct acorn 0.06)를 그대로 쓴다.
 const ACORN_BYPRODUCT = (() => { const v = parseFloat(process.env.T124_ACORN); return Number.isFinite(v) ? v : 0.06; })();
+// ★[T372] 덤불 `berry` 의 양 — **옮긴 것이지 새 수가 아니다**(바로 아래 덤불 갈래가 쓰던 그 수).
+//   군락 종 넷의 전리품 양이 이 한 칸을 읽는다 ⇒ 두 자리가 갈릴 수 없다(하네스가 같음을 문다).
+const BUSH_BERRY_N = 2;
 function lootOfResource(r, ctx) {
   const t = r && r.type;
   if (t === 'tree') {
@@ -1608,7 +1611,7 @@ function lootOfResource(r, ctx) {
     // ★[재민 확정 2026-08-28] **덤불 E = 잔가지.** 열매·풀과 **함께** 삭정이가 나온다 —
     //   덤불을 헤치면 마른 가지가 딸려 나오는 게 자연스럽고, 조잡한 석기의 세 재료 중 둘이
     //   여기서 한꺼번에 나와 **빈손의 첫 걸음이 막히지 않는다**(잔가지는 숲 바닥에도 있다 — 소스 다종화).
-    const l = { berry: 2, fiber: 1, twig: 1 };
+    const l = { berry: BUSH_BERRY_N, fiber: 1, twig: 1 };
     // ★★[작물 층] **야생 채종** — 덤불이 그 철의 씨앗을 낸다(자리와 계절의 함수 · 주사위 아님).
     //   ⇒ 씨앗이 세계에서 나오는 길이 생겼다. 이게 없으면 34종 작물이 전부 잠긴다(소금의 전철).
     //   ctx 가 없으면(=NPC) 종전 그대로 30% 베리씨앗.
@@ -1633,6 +1636,13 @@ function lootOfResource(r, ctx) {
     return l;
   }
   if (t === 'herb')       return { herb: 2 };
+  // ★★[T372] 군락 종 넷 — 품목은 **그 넷 그대로**, 양은 덤불 `berry` 의 **그 양**이다(읽어서 쓴다 · 새 수 0).
+  //   ⚠아직 세계에 이 종이 없다(`chunk.js GROVE_KINDS` 는 **정의만**이다) — 이 갈래는 `groves` 자료에
+  //     그 `kind` 가 적히는 날 처음 지나간다. 지금 밟는 것은 하네스뿐이고, 그래서 **세계가 무변**이다.
+  //   ⚠덤불의 `fiber`·`twig` 는 **안 따라온다**. 그건 "덤불을 헤치면 마른 가지가 딸려 나온다"는
+  //     덤불의 몸이지 이 넷의 몸이 아니다(카드 — 품목은 그 넷 그대로).
+  const gk = GROVE_KINDS[t];
+  if (gk)                 return { [gk.item]: BUSH_BERRY_N };
   if (t === 'ore')        return { ore: 1, stone: 1 };
   // ★운철 — **제련하지 않는다**. 이미 금속이라 그대로 단조 재료가 된다(era.js §METEORIC).
   if (t === 'meteorite')  return { meteoric_iron: 2 + Math.floor(_dt() * 2) };

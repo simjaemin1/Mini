@@ -399,6 +399,16 @@ M['cat_spike'] = leaf_mat("cat_spike", (0.36, 0.20, 0.07), (0.24, 0.13, 0.04), 9
 M['bush_leaf'] = leaf_mat("bush_leaf", _fix((0.22, 0.34, 0.13)), _fix((0.12, 0.22, 0.08)), 46.0, 0.72, 0.36)
 M['berry'] = simple_mat("berry", (0.48, 0.05, 0.05), 0.35)
 M['herb_leaf'] = leaf_mat("herb_leaf", _fix((0.28, 0.40, 0.15)), _fix((0.16, 0.27, 0.10)), 40.0, 0.7, 0.3)
+
+# ═══════ [T372] 군락 종 넷의 재질 — 덤불·풀의 띠 안에서 고른다(위 T129 규약 그대로) ═══════
+# ★잎 알베도 띠는 `_fix()` 통과 전 (0.18~0.36, 0.31~0.45, 0.13~0.18) 이고 수피 밝기는 0.31~0.44 다.
+#   나물 잎만 그 띠의 **밝은 끝**을 쓴다 — 봄나물은 묵은 풀보다 연하다는 것이 표식이기 때문이다.
+# ★버섯 자루·벌집 밀랍은 잎이 아니라 **밝기로 읽히는 것**이라 `wood_cut`(0.66,0.54,0.35) 을 자로 삼는다.
+M['greens_leaf'] = leaf_mat("greens_leaf", _fix((0.34, 0.45, 0.17)), _fix((0.20, 0.32, 0.12)), 28.0, 0.68, 0.28)
+M['mush_cap'] = bark_mat("mush_cap", (0.46, 0.29, 0.13), (0.28, 0.16, 0.07), 48.0, 0.80, 0.42)   # 송이 갓 — 따뜻한 갈색 섬유무늬
+M['mush_stem'] = bark_mat("mush_stem", (0.64, 0.57, 0.44), (0.50, 0.44, 0.33), 60.0, 0.72, 0.30)  # 자루 — 옅은 크림(갓과 명도로 갈린다)
+M['hive_wax'] = bark_mat("hive_wax", (0.58, 0.42, 0.16), (0.40, 0.28, 0.10), 80.0, 0.62, 0.45)   # 벌집 밀랍 — 따뜻한 금갈
+M['hive_dark'] = bark_mat("hive_dark", (0.22, 0.14, 0.05), (0.13, 0.08, 0.03), 44.0, 0.88, 0.52)  # 집 그늘 — 층이 층으로 읽히게(밀랍과 명도로 갈린다)
 FLOWER_COLS = {
     'w': (0.92, 0.90, 0.78),   # 개망초·구절초 흰꽃
     'y': (0.92, 0.74, 0.16),   # 민들레·마타리 노랑
@@ -741,7 +751,7 @@ def tree_mulberry(seed, h=3.4, spread=1.90, autumn=False, summer=False):
             _fruit_cluster(cen, cr, seed * 19 + i * 37 + 7, kind='mul', n=9)
 
 
-def tree_grape(seed, h=1.9, spread=1.75, autumn=False):
+def tree_grape(seed, h=1.9, spread=1.75, autumn=False, fruit=None):
     """머루(Vitis coignetiae) — **덩굴이다.** 카드 규약대로 관목 문법으로 짓는다:
     낮은 받침(죽은 가지·바위)을 타고 올라 **퍼지는 잎 더미**가 되고, 송이는 그 아래로 늘어진다.
     ⇒ 나무처럼 줄기 하나가 서 있으면 안 된다 — 실루엣이 **옆으로 넓고 낮은 것**이 표식이다."""
@@ -766,7 +776,11 @@ def tree_grape(seed, h=1.9, spread=1.75, autumn=False):
     cr = spread * 0.72
     blob(cen, cr * 0.34, M['in_dark'], rng, squash=0.46, disp=0.32, sub=2, name="gv_in")
     leaf_shell(cen, cr, 520, 0.150, 0.19, LF, rng, squash=0.50, droop=0.44, rmin=0.26, name="gv_top")
-    if autumn:
+    # ★[T372] `fruit` 는 **열매만 따로 켜는 손잡이**다. 안 주면 종전 그대로(단풍이 곧 결실) —
+    #   나무층 `tree15`·`tree15_a` 는 한 화소도 안 바뀐다. 군락 판만 이 손잡이를 쓴다:
+    #   푸른 잎에 **짙은 송이**라야 송이가 보인다(T129 2패스가 밤송이에서 잰 그 명도 대비 규칙 —
+    #   붉은 단풍 위의 청흑 송이는 명도가 겹쳐 실측으로 안 보였다).
+    if autumn if fruit is None else fruit:
         _fruit_cluster(cen, cr, seed * 23 + 13, kind='grape', n=6)
 
 
@@ -1034,6 +1048,125 @@ def cattail(seed, h=1.7, n=6):
                  [0.018, 0.052, 0.052, 0.020], M['cat_spike'], seg=7, name="ct_sp")
 
 
+# ═══════════════ [T372] 군락 종 넷 — 버섯밭 · 나물 · 벌집 · 야생포도 ═══════════════
+# ★★**새 형상은 셋이다. 넷째는 새 부름이 아니다.** 야생포도는 이미 `tree_grape`(머루
+#   Vitis coignetiae · 덩굴을 관목 문법으로 짓는 빌더)가 있다 — 같은 종을 두 번 짓지 않는다.
+#   `PROP_BUILD` 에서 **작게·가을로** 부를 뿐이다(T156 열매 아이콘이 쓴 그 규약: 같은 부름·자리만 다르다).
+#   ⓘ 가을인 것은 멋이 아니라 **출처**다: 머루 결실철은 `server/trees.json` 이 `fs: 2`(가을)로 적는다.
+# ★납작한 머리는 `blob()` 으로 짓지 않는다 — `blob` 은 **무작위로 회전**하므로(위 정의) 눌린 축이
+#   제멋대로 눕는다. 들꽃 꽃머리가 쓰는 규약(이코스피어 + `ob.scale`, 회전 0)을 그대로 쓴다.
+# ★모든 대는 **첫 마디를 수직**으로 둔다 — `tube` 는 첫 점의 고리를 진행 방향에 수직으로 놓으므로,
+#   밑동부터 기울이면 고리가 지면 아래로 내려가 `render()` 의 땅속 검사에 걸린다(T129 규약).
+def _fiddlehead(base, th, h, rng, mat):
+    """고사리 새순(crozier) — 끝이 안으로 도르르 말린 대. **나물의 표식**이다."""
+    bx, by = base[0], base[1]
+    dx, dy = math.cos(th), math.sin(th)
+    reach = h * rng.r(0.10, 0.22)
+    tip = (bx + dx * reach, by + dy * reach, h)
+    pts = [(bx, by, 0.0), (bx, by, h * 0.28)]
+    pts += [tuple(q) for q in arc_pts((bx, by, h * 0.28), tip, h * 0.18, 4)][1:]
+    c = h * rng.r(0.10, 0.15)                     # 말린 고리의 반지름
+    cx, cy, cz = tip[0] - dx * c, tip[1] - dy * c, tip[2]
+    for k in range(1, 6):
+        a = k * (4.2 / 5.0)                       # 약 3/4 바퀴 — 안쪽으로 말린다
+        pts.append((cx + dx * c * math.cos(a), cy + dy * c * math.cos(a), cz + c * math.sin(a)))
+    rad = [h * 0.046, h * 0.044, h * 0.039, h * 0.034, h * 0.030,
+           h * 0.027, h * 0.024, h * 0.021, h * 0.018, h * 0.015]
+    tube(pts, rad[:len(pts)], mat, seg=5, name="gp_fh")
+
+
+def greens_patch(seed, h=0.55, n=11, fh=5):
+    """나물(산나물 — 고사리 *Pteridium* · 취나물 계열) — **넓은 잎 + 말린 새순**.
+
+    ★`herb_clump`(약초)와 **자리가 겹치지 않게** 문법을 따로 둔다: 약초는 가늘고 곧은 잎 다발이고
+      나물은 잎이 **넓고 낮게 퍼지며** 새순이 섞인다. 32px 에서 둘을 가르는 것이 그 둘이다.
+    ★색은 잎 띠의 **밝은 끝**을 쓴다 — 봄나물이 묵은 풀보다 연한 것이 그 자체로 표식이다."""
+    rng = R(seed)
+    for i in range(n):
+        th = rng.r(0, 6.28)
+        hh = h * rng.r(0.45, 1.0)
+        blade((rng.r(-0.07, 0.07), rng.r(-0.07, 0.07), 0.0), th,
+              hh, hh * rng.r(0.62, 1.15), hh * rng.r(0.16, 0.26),
+              M['greens_leaf'], rng, fold=rng.r(0.10, 0.22), name="gp_lf")
+    # ★새순은 **잎보다 높이** 세운다 — 1패스는 잎 높이와 같게 뒀다가 잎 더미에 묻혔다(실측: 안 보였다).
+    #   안 보이는 표식은 표식이 아니다. `_fiddlehead` 의 대 굵기도 잎 너비에 맞춰 키운다.
+    for i in range(fh):
+        th = rng.r(0, 6.28)
+        _fiddlehead((rng.r(-0.05, 0.05), rng.r(-0.05, 0.05), 0.0), th,
+                    h * rng.r(1.18, 1.52), rng, M['greens_leaf'])
+
+
+def mushroom_patch(seed, n=6, h=0.30):
+    """버섯밭(송이 *Tricholoma matsutake*) — 굵은 자루 + 갈색 갓이 무리진다.
+
+    ★표식은 **자루의 밝기**다. 갓만 늘어놓으면 32px 에서 조약돌 무더기와 안 갈린다 —
+      짙은 갓 아래 옅은 자루가 서 있는 것이 버섯의 얼굴이다.
+    ★셋에 하나는 **안 벌어진 봉오리**로 둔다. 다 편 갓만 두면 '접시'로 읽힌다."""
+    rng = R(seed)
+    for i in range(n):
+        th = rng.r(0, 6.28)
+        rr = rng.r(0.03, 0.36)
+        bx, by = math.cos(th) * rr, math.sin(th) * rr
+        hh = h * rng.r(0.58, 1.18)
+        bud = (i % 3 == 2)
+        sr = hh * rng.r(0.17, 0.24)                              # 송이는 자루가 굵다
+        lx = math.cos(th) * hh * rng.r(0.02, 0.10)
+        ly = math.sin(th) * hh * rng.r(0.02, 0.10)
+        tube([(bx, by, 0.0), (bx, by, hh * 0.34),
+              (bx + lx * 0.6, by + ly * 0.6, hh * 0.72), (bx + lx, by + ly, hh)],
+             [sr * 1.15, sr, sr * 0.92, sr * 0.86], M['mush_stem'], seg=7, name="mp_st")
+        cr = hh * (rng.r(0.30, 0.40) if bud else rng.r(0.55, 0.76))
+        bpy.ops.mesh.primitive_ico_sphere_add(
+            subdivisions=2, radius=cr,
+            location=(bx + lx, by + ly, hh + cr * (0.30 if bud else 0.06)))
+        ob = bpy.context.object
+        ob.name = "mp_cap"
+        ob.scale = (1.0, 1.0, 0.88 if bud else 0.42)
+        ob.data.materials.append(M['mush_cap'])
+        try:                                                     # ★면을 부드럽게 — 1패스는 저폴리 면이 **깎은 돌**로 읽혔다
+            ob.data.polygons.foreach_set("use_smooth", [True] * len(ob.data.polygons))
+        except Exception:
+            pass
+        OBJS.append(ob)
+
+
+def beehive(seed, h=0.80, plates=7):
+    """야생 벌집 — 죽은 가지 아래 매달린 **물방울꼴** 밀랍 덩어리. 층이 가로로 쌓인다.
+
+    ★★**1패스는 실패했고 실화면이 잡았다.** 층 넷을 사이를 띄워 쌓았더니 벌집이 아니라
+      **돌무더기**로 읽혔다(회색 기둥 위의 접시 셋). 고친 것은 색이 아니라 **실루엣**이다:
+      ⓐ 층을 **겹쳐** 한 덩어리로 만들고(사이를 띄우면 조각이 따로 논다),
+      ⓑ 반지름을 물방울꼴로 준다 — 위가 넓고 아래로 뾰족하다(그게 매달린 집의 얼굴이다),
+      ⓒ 받침 가지를 **집 위로** 올려 매달린 것이 보이게 한다. 1패스는 가지가 집 아래에 있어
+        '기둥 위에 얹힌 것'으로 읽혔다.
+    ★벌은 안 그린다 — 32px 에서 점 하나는 잡티다. 읽히는 것은 **금갈색 층 실루엣**이다.
+    ★끝은 `_grape_bunch` 규약 그대로 **지면 위에서 끊는다**(T129 4패스 — 땅에 안 박힌다)."""
+    rng = R(seed)
+    th = rng.r(0, 6.28)
+    dx, dy = math.cos(th), math.sin(th)
+    topz = h * 0.98
+    # 받침 — 밑동에서 올라가 집 위에서 옆으로 뻗는 죽은 가지
+    tube([(0, 0, 0.0), (0, 0, h * 0.42), (dx * h * 0.10, dy * h * 0.10, h * 0.78),
+          (dx * h * 0.20, dy * h * 0.20, topz), (dx * h * 0.46, dy * h * 0.46, topz + h * 0.06)],
+         [h * 0.055, h * 0.046, h * 0.038, h * 0.030, h * 0.020], M['bark_oak'], seg=6, name="bh_br")
+    cx, cy = dx * h * 0.20, dy * h * 0.20
+    L = min(h * 0.72, topz - h * 0.14)                            # 끝이 지면 위에서 멈춘다
+    for k in range(plates):
+        t = k / (plates - 1.0)
+        rr = h * 0.30 * math.sqrt(max(0.05, 1.0 - t * t))         # 물방울꼴 — 위가 넓고 아래가 뾰족
+        bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2, radius=rr,
+                                              location=(cx, cy, topz - L * t))
+        ob = bpy.context.object
+        ob.name = "bh_cb"
+        ob.scale = (1.0, 1.0, 0.30)                               # 층은 납작하다 — 겹쳐서 가로 줄로 읽힌다
+        ob.data.materials.append(M['hive_wax'] if k % 2 == 0 else M['hive_dark'])
+        try:
+            ob.data.polygons.foreach_set("use_smooth", [True] * len(ob.data.polygons))
+        except Exception:
+            pass
+        OBJS.append(ob)
+
+
 # ═══════════════ 빌드 표 ═══════════════
 # ═══════════════ 막돌 · 이끼바위 [T101 편입 — legacy_mac/rock_render.py] ═══════════════
 # ★★씨앗이 결정론이 아니었다: 옛 스크립트는 `random.seed(hash(kind) % 9973 + i*131 + 15500)` 인데
@@ -1106,6 +1239,12 @@ PROP_BUILD = [
     ("flower02", herb_clump, dict(seed=709, h=0.38, n=10, flower='y', fh=0.52)),
     ("flower03", herb_clump, dict(seed=719, h=0.45, n=12, flower='p', fh=0.66)),
     ("flower04", herb_clump, dict(seed=727, h=0.36, n=9, flower='r', fh=0.48)),
+    # ★[T372] 군락 종 넷 — 덤불·풀 옆에 선다. 크기는 그 둘의 띠 안(덤불 h 0.95~1.35 · 풀 h 0.58~0.92).
+    #   ⓘ `vine01` 은 **새 빌더가 아니다** — 나무층의 머루 빌더를 작게·가을로 부른 것이다(위 절 머리말).
+    ("mushroom01", mushroom_patch, dict(seed=801, n=7, h=0.32)),
+    ("greens01", greens_patch, dict(seed=811, h=0.58, n=14, fh=4)),
+    ("hive01", beehive, dict(seed=821, h=0.80)),
+    ("vine01", tree_grape, dict(seed=831, h=1.05, spread=0.85, autumn=False, fruit=True)),
     # ★[T101] 막돌 6 + 이끼바위 6 — 여태 저장소 밖 스크립트가 굽던 것(회부 1). 이제 여기서 굽는다.
     #   광맥 `ore01..06` 은 모델이 아니다 — `scripts/ore-outcrop.py` 가 이 바위에서 PIL 로 파생한다.
     ("rock01", rock, dict(i=1)),
