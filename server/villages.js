@@ -1591,7 +1591,10 @@ function ensureRouteGrid() {
 //        따뜻할 때 32노드 ≈ 0.03ms ⇒ 16ms 예산에 시계 500번 ≈ 15µs(예산의 0.1%). 실측이 그렇게 말한다.
 const PATH_STEP_NODES = 32;
 let _pathJob = null;   // { key, S, x0, y0, x1, y1, gw, half, workMs, sliceMax }
-function _routeBegin(x0, y0, x1, y1) {
+//   ★[T364 ②] `extraBlk(gx,gy)` — **코스 노드 하나를 더 막는 술어**(선택). 전쟁 행군로가 숲을 보게 하려고
+//     넣었다: 탐색 본체·격자·스냅·비용은 한 글자도 안 바뀌고, `isBlk` 가 OR 하나를 더 볼 뿐이다(사본 0).
+//     미주입(교역·캐러밴·감사)이면 **종전 경로 그대로**다.
+function _routeBegin(x0, y0, x1, y1, extraBlk) {
   // ★★[T85 · §0-ⓐ 실측의 직접 귀결] **격자 scratch 는 하나다.** 새 탐색이 시작되면 `sc.gen` 이 오르고,
   //   그 순간 세워 둔 탐색의 g 는 전부 "낡은 세대"가 되어 `Infinity` 로 읽힌다(`came` 는 스탬프도 없다).
   //   ⇒ **어떤 문으로든** 새 탐색이 시작되면 세워 둔 것을 버린다. 동기 문(전쟁·귀환 폴백·감사)이
@@ -1605,7 +1608,8 @@ function _routeBegin(x0, y0, x1, y1) {
     if (gx < 0 || gy < 0 || gx >= gw || gy >= gh) return true;
     const i = gy * gw + gx;
     if (R.blk[i] === 0) R.blk[i] = coarseOpen(ta, gx, gy) ? 1 : 2;   // ★거리행렬과 동일 규칙(다리 구제 포함)
-    return R.blk[i] === 2;
+    if (R.blk[i] === 2) return true;
+    return extraBlk ? !!extraBlk(gx, gy) : false;   // ★[T364 ②] 주입 술어(전쟁 행군로의 숲) — 미주입이면 종전 그대로
   };
   const snap = (px, py) => { // 행렬 srcNode와 동일 스냅(반경 6노드 나선)
     const gx0 = Math.min(gw - 1, Math.max(0, Math.round(px / SZ / DIST_STEP)));
@@ -1643,8 +1647,8 @@ function _routeFinish(J, nodesP) {
   return pts;
 }
 // ── 동기 문 — **서명 무변**. 랩·하네스·전쟁·귀환 폴백·감사가 전부 이 문만 안다.
-function computeRoutePts(x0, y0, x1, y1) {
-  const J = _routeBegin(x0, y0, x1, y1);
+function computeRoutePts(x0, y0, x1, y1, extraBlk) {
+  const J = _routeBegin(x0, y0, x1, y1, extraBlk);
   if (!J) return null;
   return _routeFinish(J, PathCore.pathStep(J.S, 0).path);
 }
@@ -2875,50 +2879,73 @@ const _THREAT_W = (() => {
   return (raw.length === 3 && raw[0] + raw[1] + raw[2] > 0) ? raw : [1, 1, 1];
 })();
 const _clamp01v = (x) => (x < 0 ? 0 : (x > 1 ? 1 : x));
-// 한 군대가 한 마을에 거는 위협. body 가 있으면 그 지휘관 자리·접근 속도를 쓴다(없으면 행군 eta 전 = 0).
-function _threatOfArmy(w, vil, now) {
+// ★★[T364 2026-09-23] **접근 속도는 몸의 것이다, 마을의 것이 아니다.**
+//   T329 는 마을마다 `body._thD`(그 마을까지의 거리)를 덮어썼다 — 한 군대가 **여러 마을**에 걸리는 순간
+//   표본이 서로를 지워 접근 속도가 엉킨다. ⇒ 몸의 **속도 벡터**를 한 번만 찍고(아래), 마을마다 그 벡터를
+//   마을 방향에 **투영**한다: 다가오면 +, 스쳐 지나가면 ~0, 멀어지면 −(0 으로 잘린다).
+//   ⚠값은 T329 와 같은 자리에서 나온다(새 수 0) — 정면으로 다가오는 군대의 close 는 예전과 같은 수다.
+function _warBodyVel(body, now) {
+  const cx = body.cmd.cx, cy = body.cmd.cy;
+  let vx = 0, vy = 0;
+  if (body._thX != null && body._thAt != null && now > body._thAt) {
+    const dt = (now - body._thAt) / 1000;
+    if (dt > 0) { vx = (cx - body._thX) / dt; vy = (cy - body._thY) / dt; }
+  }
+  body._thX = cx; body._thY = cy; body._thAt = now;
+  return { vx, vy };
+}
+// 한 군대가 한 마을에 거는 위협(세 항은 T329 그대로 · `vel` 은 위에서 한 번 찍은 몸의 속도).
+function _threatOfArmy(w, vil, now, vel) {
   const WL = state.warLive; if (!WL || !w) return 0;
   const body = state.warBodies && state.warBodies.get(w.id); if (!body || !body.cmd) return 0;
-  const d = Math.hypot(body.cmd.cx - vil.ccx, body.cmd.cy - vil.ccy);
-  const prox = _clamp01v(1 - d / WL.WAR_ALERT_R); if (prox <= 0) { body._thD = d; body._thAt = now; return 0; }
-  // 접근 속도 — 지난 표본과의 차(셀/초)를 본대 행군 속도(셀/초)로 잰다. 첫 표본은 0(모른다).
+  const v = vel || _warBodyVel(body, now);
+  const dx = vil.ccx - body.cmd.cx, dy = vil.ccy - body.cmd.cy;
+  const d = Math.hypot(dx, dy);
+  const prox = _clamp01v(1 - d / WL.WAR_ALERT_R); if (prox <= 0) return 0;
+  // 접근 — 몸의 속도를 '몸 → 마을' 방향에 투영해 본대 행군 속도(셀/초)로 잰다. 첫 표본은 0(모른다).
   let close = 0;
-  if (body._thD != null && body._thAt != null && now > body._thAt) {
+  if (d > 1e-6 && (v.vx || v.vy)) {
     const vCell = (body.atkGroup ? _warWalkCap(body.atkGroup) : (require('../sim/battle-core').UNITS.spear.spd * WL.STEP_DT / WL.M_PER_CELL)) * WL.TICK_HZ;   // 셀/초
-    const dd = (body._thD - d) / ((now - body._thAt) / 1000);   // 다가오면 +
-    if (vCell > 0) close = _clamp01v(dd / vCell);
+    if (vCell > 0) close = _clamp01v((v.vx * (dx / d) + v.vy * (dy / d)) / vCell);
   }
-  body._thD = d; body._thAt = now;
   let odds = 0;
-  try { odds = _clamp01v(1 - (state.warCore || require('../sim/war-core.js'))._opDefOdds(vil, w.force || 0)); } catch (_) { odds = 0; }
+  try { odds = _clamp01v(1 - (state.warCore || require('../sim/war-core.js'))._opDefOdds(vil, w.force || 0)); } catch (_) { odds = 0; }   // ★그 마을의 승산(옆 마을이면 옆 마을 것)
   const [w1, w2, w3] = _THREAT_W, ws = w1 + w2 + w3;
   return prox * (w1 + w2 * close + w3 * odds) / ws;
 }
-// 마을 하나의 T — 지금 이 마을을 향해 와 있는 군대들 중 가장 센 것. 전쟁이 없으면 0(= 종전 세계).
+// 마을 하나의 T — **경보 거리 안에 있는 모든 군대** 중 가장 센 것(목표 여부 무관 · T364 ①).
+//   전쟁이 없으면 0(= 종전 세계).
 function threatOf(vil, now) {
   if (!state.war || !vil) return 0;
   let T = 0;
   for (const w of state.war.WARS) {
-    if (w.def !== vil) continue;                       // 지금은 '이 전쟁의 방어 마을'만 본다(지나가는 군대는 회부)
     if (w.phase !== 'march' && w.phase !== 'battle') continue;
     const t = _threatOfArmy(w, vil, now); if (t > T) T = t;
   }
   return T;
 }
 // 세계에 한 번 적는다 — econ(캐러밴 위험)과 생활층(현장 반경)이 **같은 값**을 읽는다(사본 0).
+//   ★[T364 ①] 군대마다 **경보 거리 안 마을**을 고른다: 거리 술어(hypot 한 번)로 거르고, 통과한 마을에만 T 를 짓는다.
+//   부하 = 전쟁 수 × 마을 수(거리 한 번) + 걸린 마을 수 × 세 항. 전쟁이 없으면 아래 첫 줄에서 즉시 반환.
 function _warWriteThreats(now) {
   if (!state.war || !state.villages) return 0;
   const WARS = state.war.WARS;
-  const prev = state._warThreatOn;                     // 지난번에 값이 붙어 있던 마을들(대개 0~2개)
+  const prev = state._warThreatOn;                     // 지난번에 값이 붙어 있던 마을들(대개 0~몇 개)
   if (!WARS.length && !(prev && prev.length)) return 0;   // 전쟁도 없고 지운 자국도 없다 — 한 걸음도 안 돈다(평시 O(1))
-  if (prev) for (const e of prev) { if (e) delete e._warThreat; }
+  if (prev) for (const e of prev) { if (e) delete e._warThreat; }   // ★지나간 군대의 자국은 남지 않는다(잔류 0)
   const on = [];
   let n = 0;
+  const WL = state.warLive, R = WL ? WL.WAR_ALERT_R : 0;
   for (const w of WARS) {
     if (w.phase !== 'march' && w.phase !== 'battle') continue;
-    const vil = w.def, e = vil && vil.econ; if (!e) continue;
-    const t = _threatOfArmy(w, vil, now);
-    if (t > 0 && t > (e._warThreat || 0)) { e._warThreat = t; if (on.indexOf(e) < 0) on.push(e); n++; }
+    const body = state.warBodies && state.warBodies.get(w.id); if (!body || !body.cmd) continue;
+    const vel = _warBodyVel(body, now);               // 몸의 속도는 한 번만 찍는다
+    for (const vil of state.villages) {
+      const e = vil && vil.econ; if (!e) continue;
+      if (Math.hypot(body.cmd.cx - vil.ccx, body.cmd.cy - vil.ccy) >= R) continue;   // 경보 거리 술어 — 대개 여기서 끝난다
+      const t = _threatOfArmy(w, vil, now, vel);
+      if (t > 0 && t > (e._warThreat || 0)) { e._warThreat = t; if (on.indexOf(e) < 0) on.push(e); n++; }
+    }
   }
   state._warThreatOn = on.length ? on : null;
   return n;
@@ -3164,11 +3191,40 @@ function _warWorld(fight) {
   };
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// ★★[T364 ② 2026-09-23] **행군로가 숲을 본다.**
+//   T295 후속이 나무를 '존의 장애물' 로 만들었는데(병사 콜라이더·시야·엄폐) **행군로 A\*** 만 옛 눈이었다:
+//   길은 숲 한복판으로 났고, 병사는 그 숲에 막혀 걸음이 잘렸다(T295 후속 §0-ⓒ 함정 — 빽빽하면 판이 안 끝난다).
+//   ⇒ 같은 탐색(`_routeBegin`)에 **나무 술어를 주입**한다. 새 코스트는 안 짓는다 — 나무는 벽과 같은 '막힘'이다.
+//   ⚠**교역로 캐시는 안 건드린다**(캐러밴·거리행렬·travelDays 무변). 전쟁만 제 캐시를 쓴다.
+//   ⚠코스 노드 판정은 지형과 **같은 규칙**이다: 노드 한가운데 셀 하나를 본다(`coarseOpen` 이 그렇게 본다).
+//     숲은 격자 간격 2~3셀이라 이 규칙에서 **듬성듬성 막힌다** — 길이 아주 막히지 않고 돌아간다(§0-ⓑ 표).
+const _warRouteCache = new Map();   // 'aId|bId' → { day, pts } · 나무 메모와 같은 시계(하루)로 갈아 준다
+function _warRouteTreeBlk(gx, gy) {
+  const half = DIST_STEP >> 1;
+  return _warTreeCell(gx * DIST_STEP + half, gy * DIST_STEP + half);   // 노드 한가운데 셀(지형과 같은 규칙)
+}
+function _warRoutePts(aVil, bVil) {
+  const day = state.world ? state.world.day : 0;
+  const key = aVil.dbId + '|' + bVil.dbId;
+  const hit = _warRouteCache.get(key);
+  if (hit && hit.day === day) return hit.pts ? hit.pts.slice() : null;
+  let pts = null;
+  try {
+    pts = computeRoutePts(aVil.ccx * SZ + SZ / 2, aVil.ccy * SZ + SZ / 2, bVil.ccx * SZ + SZ / 2, bVil.ccy * SZ + SZ / 2,
+      (state.deps && state.deps.treeCellBlocked) ? _warRouteTreeBlk : null);   // 술어 미주입(랩·구 존)이면 옛 길 그대로
+  } catch (_) { pts = null; }
+  if (!pts) { try { pts = getRoute(aVil, bVil); } catch (_) { pts = null; } }   // 숲이 아주 막으면 옛 길로 떨어진다(길 없음보다 낫다)
+  if (_warRouteCache.size > 64) _warRouteCache.clear();
+  _warRouteCache.set(key, { day, pts });
+  return pts ? pts.slice() : null;
+}
+
 // 몸 생성(캐러밴 body 동형) — 행군로(px)·econ 페이싱(born→eta)·초기 prog. ★[T284] 모든 전쟁에 몸이 생긴다(관측자·상한 없음).
 function _warEnsureBody(w, now) {
   let body = state.warBodies.get(w.id); if (body) return body;
   if (!w.atk || !w.def) return null;
-  let pts = null; try { pts = getRoute(w.atk, w.def); } catch (_) { }
+  let pts = null; try { pts = _warRoutePts(w.atk, w.def); } catch (_) { }   // ★[T364 ②] 숲을 보는 행군로(교역 캐시와 별개)
   if (!pts) pts = [{ x: warCenterPx(w.atk).x, y: warCenterPx(w.atk).y }, { x: warCenterPx(w.def).x, y: warCenterPx(w.def).y }];
   body = { w, phase: 'march', pids: [], defPids: [], atkGroup: null, defGroup: null, retGroup: null,
     instantiated: false, defBuilt: false, fight: null, _bcAt: 0, _bcPhase: null, _retRout: false, ended: null,
@@ -4013,7 +4069,7 @@ function __p3Bind(mock) {
     state, tickWarBodies, warThreats, syncVillagePop, removeOneNpc, spawnOneNpc,
     _warEngage, _warAfterDaily, _warEndFight, _warBuildRectIndex, _warBlockedCell, _warWorld, warPerf, _warOrderFallback, _warToStandoff,
     _warDraftPids, _warReleasePid, econDayToMs, _warEnsureBody, _warSampleComp, _vbFootprint,
-    threatOf, _warWriteThreats, _warOutMul, _lifeJobSites, _lifeJobSiteOK,   // ★[T329] 위협 T·현장 반경 — 하네스가 **이 함수들**을 그대로 부른다(사본 0)
+    threatOf, _warWriteThreats, _warOutMul, _lifeJobSites, _lifeJobSiteOK, _warRoutePts, _warTreeCell, computeRoutePts,   // ★[T329] 위협 T·현장 반경 — 하네스가 **이 함수들**을 그대로 부른다(사본 0)
   };
 }
 

@@ -53,6 +53,9 @@ const WATER = new Set(); for (let x = 176; x <= 178; x++) for (let y = 110; y <=
 // ★[T295 후속] 돌격로 위의 숲 띠(셀) — 나무 술어(존이 주입하는 청크 색인)의 하네스 자리.
 // ★[T295 후속] 숲 띠 — **존 숲의 꼴 그대로**: 격자 간격 2셀(존 `forestSpacing` 60~96px = 2~3셀)이라 사이에 길이 남는다.
 //   ⚠빽빽한 벽(모든 칸)으로 깔면 두 군대가 서로 못 닿아 판이 안 끝난다(실측 — 보고 §0-ⓒ 함정).
+// ★[T364 ⓡ] 행군로 판용 **숲 덩이** — 두 마을을 잇는 직선(y≈100) 위에 놓는다. 코스 노드(4셀)마다 한가운데 셀을
+//   보는 규칙이라, 숲이 노드 크기보다 크면 길이 실제로 돌아간다(존 숲도 군락은 이만큼 뭉친다).
+const FOREST = new Set(); for (let x = 150; x <= 178; x++) for (let y = 84; y <= 116; y++) FOREST.add(x * 65536 + y);
 const TREES = new Set(); for (let x = 195; x <= 215; x++) for (let y = 90; y <= 115; y++) if (x % 2 === 1 && y % 2 === 1) TREES.add(x * 65536 + y);
 const cellKey = (px, py) => Math.floor(px / SZ) * 65536 + Math.floor(py / SZ);
 
@@ -200,10 +203,11 @@ function _run(opts) {
     const WLc = H.state.warLive, R = WLc.WAR_ALERT_R;
     const body = H.state.warBodies.get(w.id) || { cmd: { cx: def.ccx - R, cy: def.ccy } };
     H.state.warBodies.set(w.id, body); w.phase = 'march';
+    const rst = () => { body._thX = null; body._thY = null; body._thAt = 0; };   // ★[T364] 표본은 몸의 속도 벡터다(_thX/_thY)
     const at = (dCell, dtMs) => { body.cmd = { cx: def.ccx - dCell, cy: def.ccy }; return H.threatOf(def, (body._thAt || 0) + (dtMs || 1000)); };
     const rows = [];
     // 멀리 → 가까이(같은 간격으로 다가온다)
-    body._thD = null; body._thAt = 0;
+    rst();
     for (let d = R * 1.4; d >= 2; d -= R * 0.1) rows.push({ d: +d.toFixed(1), T: +at(d, 1000).toFixed(4) });
     const zeroFar = rows.filter(r => r.d > R).reduce((m, r) => Math.max(m, r.T), 0);
     let monoUp = true; for (let i = 2; i < rows.length; i++) if (rows[i].T < rows[i - 1].T - 1e-9) monoUp = false;
@@ -213,13 +217,76 @@ function _run(opts) {
     let monoDown = true; for (let i = 2; i < back.length; i++) if (back[i].T > back[i - 1].T + 1e-9) monoDown = false;
     // 병력비 — 같은 자리·같은 속도에서 병력만 바꾼다
     const force0 = w.force;
-    body._thD = null; body._thAt = 0; w.force = 2; const lo = at(R * 0.3, 1000);
-    body._thD = null; body._thAt = 0; w.force = 200; const hi = at(R * 0.3, 1000);
+    rst(); w.force = 2; const lo = at(R * 0.3, 1000);
+    rst(); w.force = 200; const hi = at(R * 0.3, 1000);
     w.force = force0;
     const all = rows.concat(back).map(r => r.T);
     tr.threat = { rows, zeroFar: +zeroFar.toFixed(6), monoUp, monoDown,
       upTrace: rows.slice(0, 4).map(r => `d${r.d}→T${r.T}`).join(' '), downTrace: back.slice(0, 4).map(r => `d${r.d}→T${r.T}`).join(' '),
       oddsLo: lo, oddsUp: hi, minT: Math.min(...all), maxT: Math.max(...all) };
+  }
+  // ── ★[T364] 옆 마을 프로브 — 군대가 옆 마을 곁을 지나가게 하고 T 를 훑는다(운영 함수 `_warWriteThreats` 그대로) ──
+  if (opts.probeNeighbor) {
+    const WLc = H.state.warLive, R = WLc.WAR_ALERT_R;
+    // 옆 마을 둘 — 행군선(A→B) 근처와 멀리
+    const side = { dbId: 3, name: '옆마을', ccx: Math.round((A_C.cx + B_C.cx) / 2), ccy: A_C.cy + Math.round(R * 0.35), econ: econ.createVillage({ fertility: 1, water: 1, stone: 1, ore: 1, wood: 1, game: 1, size: 60, arable: 1, initialPop: 12, name: '옆마을' }), npcPids: [], housesPx: [] };
+    const far = { dbId: 4, name: '먼마을', ccx: A_C.cx, ccy: A_C.cy + Math.round(R * 3), econ: econ.createVillage({ fertility: 1, water: 1, stone: 1, ore: 1, wood: 1, game: 1, size: 60, arable: 1, initialPop: 12, name: '먼마을' }), npcPids: [], housesPx: [] };
+    H.state.villages.push(side, far); H.state.byDbId.set(3, side); H.state.byDbId.set(4, far);
+    const body = H.state.warBodies.get(w.id) || { cmd: { cx: A_C.cx, cy: A_C.cy } };
+    H.state.warBodies.set(w.id, body); w.phase = 'march';
+    const rows = []; let tNow = 1000;
+    let scanN = 0; const scan0 = Date.now();
+    for (let i = 0; i <= 20; i++) {   // A → B 직선으로 지나간다
+      const f = i / 20;
+      body.cmd = { cx: A_C.cx + (B_C.cx - A_C.cx) * f, cy: A_C.cy + (B_C.cy - A_C.cy) * f };
+      tNow += 1000;
+      H._warWriteThreats(tNow); scanN += H.state.villages.length;
+      rows.push({ f: +f.toFixed(2), side: +(side.econ._warThreat || 0).toFixed(4), def: +(def.econ._warThreat || 0).toFixed(4), far: +(far.econ._warThreat || 0).toFixed(4) });
+    }
+    const maxSide = rows.reduce((m, r) => Math.max(m, r.side), 0);
+    const sideCount = (maxSide > 0 ? 1 : 0) + (rows.reduce((m, r) => Math.max(m, r.far), 0) > 0 ? 1 : 0);
+    const onCount = sideCount + (rows.reduce((m, r) => Math.max(m, r.def), 0) > 0 ? 1 : 0);
+    // 지나간 뒤 — 군대를 옆 마을에서 아주 멀리 보내고 다시 쓴다
+    body.cmd = { cx: B_C.cx + R * 2, cy: B_C.cy + R * 2 }; tNow += 1000; H._warWriteThreats(tNow);
+    const leftZero = !(side.econ._warThreat > 0) && !(def.econ._warThreat > 0);
+    tr.neighbor = { rows, maxSide, sideCount, onCount,
+      defT: rows.reduce((m, r) => Math.max(m, r.def), 0),
+      defAlsoOn: rows.some(r => r.def > 0), leftZero,
+      leftTrace: `떠난 뒤 옆 ${side.econ._warThreat || 0} · 목표 ${def.econ._warThreat || 0}`,
+      scanTrace: `마을 ${H.state.villages.length}곳 × 21틱 = 거리 술어 ${scanN}회 · ${Date.now() - scan0}ms` };
+    H.state.villages.length = 2;   // 프로브가 세운 마을은 도로 치운다
+  }
+  // ── ★[T364] 행군로 프로브 — 같은 마을쌍의 길을 술어 없이/있이 두 번 뽑는다 ──
+  if (opts.probeRoute) {
+    // 목 존엔 교역로 격자가 없다 — **운영과 같은 모양**(터레인 어댑터 + 존 크기)만 세워 주면 같은 탐색이 돈다.
+    H.state._distCtx = {
+      ZONE: { zoneWidth: 400 * SZ, zoneHeight: 200 * SZ },
+      ta: { isBlocked: (cx, cy) => ROCK.has(cx * 65536 + cy) || WATER.has(cx * 65536 + cy), isBridgeCell: null },
+    };
+    H.state._route = null;
+    const cellOf = (p) => Math.floor(p.x / SZ) * 65536 + Math.floor(p.y / SZ);
+    const len = (pts) => { let L = 0; for (let i = 1; i < pts.length; i++) L += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y) / SZ; return L; };
+    const treeHits = (pts) => { let n = 0; for (let i = 1; i < pts.length; i++) { const steps = Math.ceil(Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y) / SZ); for (let k = 0; k <= steps; k++) { const x = pts[i - 1].x + (pts[i].x - pts[i - 1].x) * (k / steps), y = pts[i - 1].y + (pts[i].y - pts[i - 1].y) * (k / steps); if (FOREST.has(Math.floor(x / SZ) * 65536 + Math.floor(y / SZ))) n++; } } return n; };
+    const pairs = [[atk, def], [def, atk], [atk, { ccx: B_C.cx, ccy: B_C.cy - 14, dbId: 9 }]];
+    const rows = []; let allLonger = true, oldSame = true, avoidOk = true;
+    for (const [a, b] of pairs) {
+      const px = (v) => ({ x0: v.ccx * SZ + SZ / 2, y0: v.ccy * SZ + SZ / 2 });
+      const A0 = px(a), B0 = px(b);
+      const old = H.computeRoutePts(A0.x0, A0.y0, B0.x0, B0.y0, null);
+      const treeBlk = (gx, gy) => { const half = 2; return FOREST.has((gx * 4 + half) * 65536 + (gy * 4 + half)); };   // DIST_STEP 4 · 노드 한가운데 셀(운영 `_warRouteTreeBlk` 와 같은 규칙)
+      const neu = H.computeRoutePts(A0.x0, A0.y0, B0.x0, B0.y0, treeBlk);
+      if (!old || !neu) { allLonger = false; rows.push({ err: 'no-path' }); continue; }
+      const lo = len(old), ln = len(neu), ho = treeHits(old), hn = treeHits(neu);
+      if (!(ln > lo)) allLonger = false;
+      if (!(hn < ho)) avoidOk = false;
+      const again = H.computeRoutePts(A0.x0, A0.y0, B0.x0, B0.y0, null);
+      if (JSON.stringify(again) !== JSON.stringify(old)) oldSame = false;
+      rows.push({ lo: +lo.toFixed(1), ln: +ln.toFixed(1), ho, hn });
+    }
+    tr.route = { rows, allLonger, oldSame, avoidOk,
+      trace: rows.map(r => r.err || `${r.lo}셀 → ${r.ln}셀(+${(r.ln - r.lo).toFixed(1)})`).join(' · '),
+      oldTrace: '술어 미주입 판을 두 번 뽑아 대조',
+      avoidTrace: rows.map(r => r.err || `나무 칸 ${r.ho} → ${r.hn}`).join(' · ') };
   }
   // ── ★[T329] R_out 프로브 — T 열한 칸 훑기(현장 목록은 _lifeJobSites 그대로) ──
   if (opts.probeRout) {
@@ -383,6 +450,7 @@ function _run(opts) {
 
   // ── ⓜ~ⓟ 위협 함수 T(T329) ────────────────────────────────────────────────
   threatPart();
+  neighborPart();
 
   // ── ⓖ 서버 ───────────────────────────────────────────────────────────────
   if (process.env.WAR_WORLD_NO_SERVER === '1') { say('\n[ⓖ] 서버 절 건너뜀(WAR_WORLD_NO_SERVER=1)'); }
@@ -671,5 +739,35 @@ function threatPart() {
     const aFish0 = A.fish;
     W.war._opDoSurrender(W.atk, W.def, W.world.day);
     ok(A.fish > aFish0 && A.food === 0 && D.fish < 500, 'ⓟ `food` 0 마을의 공납이 생선으로 건너간다(곡물로 둔갑 0)', `공격 생선 ${aFish0} → ${A.fish.toFixed(0)} · 방어 ${D.fish.toFixed(0)}`);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ★★[T364] ⓠ~ⓡ — 지나가는 군대를 옆 마을이 본다 · 행군로가 숲을 본다
+// ══════════════════════════════════════════════════════════════════════════════
+function neighborPart() {
+  say('\n[ⓠ] 옆 마을 — 목표가 아니어도 경보 거리 안이면 본다 · 지나가면 잔류 0');
+  {
+    const S = runScenario({ seed: 71, viewer: true, scenario: 'assault', warId: 71, probeNeighbor: true });
+    const nb = S.neighbor || {};
+    ok(nb.rows && nb.rows.length >= 3, 'ⓠ 전제 — 군대가 옆 마을 곁을 지나는 동안 여러 번 쟀다', `표본 ${nb.rows ? nb.rows.length : 0}`);
+    ok(nb.maxSide > 0, 'ⓠ **목표가 아닌 마을**의 T 가 0 보다 커진다(지나가는 군대를 본다)', `옆 마을 T 최대 ${(nb.maxSide || 0).toFixed(3)} · 그때 R_out 배수 ${(1 - nb.maxSide).toFixed(3)}`);
+    ok(nb.sideCount >= 1, 'ⓠ T > 0 이 된 비목표 마을 수', `${nb.sideCount}곳 · 목표 포함 ${nb.onCount}곳`);
+    ok(nb.leftZero, 'ⓠ 군대가 지나간 뒤 그 마을 T 는 **0 으로 돌아온다**(잔류 0)', nb.leftTrace || '');
+    ok(nb.defAlsoOn, 'ⓠ 목표 마을도 그대로 본다(옛 규칙을 잃지 않았다)', `목표 T ${(nb.defT || 0).toFixed(3)}`);
+    ok(nb.scanTrace, 'ⓠ 부하 — 거리 술어로 거른다(전쟁 × 마을 hypot 한 번)', nb.scanTrace);
+  }
+
+  say('\n[ⓡ] 행군로 — 숲을 보고 돌아간다(같은 탐색 · 새 코스트 0)');
+  {
+    const S = runScenario({ seed: 72, viewer: true, scenario: 'assault', warId: 72, probeRoute: true });
+    const r = S.route || {};
+    ok(r.rows && r.rows.length === 3, 'ⓡ 전제 — 행군로 세 판(마을쌍 셋)을 전/후로 쟀다', r.trace || '');
+    ok(r.allLonger, 'ⓡ 숲을 보면 길이 **길어진다**(돌아간다 · 세 판 다)', r.trace || '');
+    ok(r.oldSame, 'ⓡ ★대조 — 나무 술어 미주입이면 **옛 길 그대로**(한 점도 안 다르다)', r.oldTrace || '');
+    ok(r.avoidOk, 'ⓡ 숲을 보는 길은 나무 칸을 **덜 지난다**', r.avoidTrace || '');
+    const vilSrc = fs.readFileSync(path.join(ROOT, 'server/villages.js'), 'utf8');
+    ok(/_warRoutePts/.test(vilSrc) && /computeRoutePts\(x0, y0, x1, y1, extraBlk\)/.test(vilSrc), 'ⓡ 탐색은 **같은 함수**다 — 술어 하나만 더 받는다(사본 0)');
+    ok(!/getRoute\(w\.atk, w\.def\)/.test(vilSrc), 'ⓡ 전쟁 몸이 교역 캐시를 안 쓴다(캐러밴 길 무접촉)');
   }
 }
