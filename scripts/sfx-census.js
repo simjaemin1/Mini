@@ -1,0 +1,73 @@
+#!/usr/bin/env node
+// ★[T354 ③] 빠진 소리 전수 — 문서/빠진소리_전수_*.md 를 만든 그 자. 손 목록 0(전부 코드에서 읽는다).
+//   자를 **먼저 검증한다**: 이미 배선된 다섯이 O 로 안 잡히면 exit 1 이다(거짓 표를 안 낸다).
+// T354 ③ — 소리가 붙을 수 있는 자리를 **전수로** 뽑는다. 지어내지 않는다: 전부 코드에서 읽는다.
+const fs=require('fs'), path=require('path');
+const ROOT='/root/minirepo';
+const man=JSON.parse(fs.readFileSync(ROOT+'/public/assets/sfx/manifest.json','utf8'));
+const KEYS=Object.keys(man.keys).filter(k=>!k.startsWith('_'));
+const zone=fs.readFileSync(ROOT+'/server/zone.js','utf8');
+const vil=fs.readFileSync(ROOT+'/server/villages.js','utf8');
+const mod=fs.readFileSync(ROOT+'/public/client/48-a-audio.js','utf8');
+
+// 층이 **지금 듣는** 메시지 종류 — recv 갈래에서 읽는다(사본 0)
+const recv=mod.slice(mod.indexOf('recv: (msg, c)'), mod.indexOf('dbg: ()'));
+const heard=new Set([...recv.matchAll(/t === '([a-z_]+)'/g)].map(m=>m[1]));
+// 표가 잇는 낱말
+const tblWords=new Set();
+for(const t of Object.keys(man)) { const v=man[t];
+  if(!v||typeof v!=='object'||t==='keys'||t==='sources'||t==='bus'||t==='bgm')continue;
+  for(const [k,x] of Object.entries(v)) if(!k.startsWith('_')&&typeof x==='string'&&man.keys[x]) tblWords.add(t+':'+k); }
+
+const rows=[];
+const add=(축,자리,있음,근거)=>rows.push({축,자리,있음,근거});
+
+// ① 서버 메시지 종류 전수
+const types=[...new Set([...zone.matchAll(/type:\s*'([a-z_]+)'/g)].map(m=>m[1]))].sort();
+for(const t of types) add('서버 메시지', t, heard.has(t)?'O':'-', heard.has(t)?'층 recv 갈래':'');
+// ② act 낱말 전수
+const acts=[...new Set([...vil.matchAll(/_lifeAct\(npc, '([^']+)'\)/g)].map(m=>m[1]))].sort();
+for(const a of acts) add('생활 낱말(act)', a, (man.npcAct&&man.npcAct[a])?'O':'-', (man.npcAct&&man.npcAct[a])||'');
+// ③ inventory where 낱말 전수
+const wheres=[...new Set([...zone.matchAll(/sendInventory\([^,)]+,\s*'([^']+)'\)/g)].map(m=>m[1]))].sort();
+for(const w of wheres) add('인벤 낱말(where)', w, (man.inventoryWhere&&man.inventoryWhere[w])?'O':'-', (man.inventoryWhere&&man.inventoryWhere[w])||'');
+// ④ 건물 종류 전수 — 클라가 **그리며 가르는** 이름이 정본이다(`b.type === '…'`).
+//    ⚠첫 판은 `zone.js` 의 `type:'…'` 을 긁었다가 `campfire` 를 놓치고 "건물 2자리·있음 0" 을 냈다 —
+//      `campfire` 는 멀쩡히 배선돼 있는데. **자가 틀리면 없는 결함을 보고한다**(이 집 족보).
+const cli = fs.readdirSync(ROOT+'/public/client').filter(f=>f.endsWith('.js'))
+  .map(f=>fs.readFileSync(ROOT+'/public/client/'+f,'utf8')).join('\n');
+const blds=[...new Set([...cli.matchAll(/b\.type === '([a-z_]+)'/g)].map(m=>m[1]))]
+  .concat(Object.keys(man.buildings||{}).filter(k=>!k.startsWith('_')));
+for(const b of [...new Set(blds)].sort()) add('건물', b, (man.buildings&&man.buildings[b])?'O':'-', (man.buildings&&man.buildings[b])||'');
+// ⑤ 개체 종류 전수 — animals.js 정본
+try{ const an=fs.readFileSync(ROOT+'/public/animals.js','utf8');
+  const sp=[...new Set([...an.matchAll(/^\s{2}([a-z_]+):\s*\{/gm)].map(m=>m[1]))].sort();
+  for(const a of sp) add('개체', a, (man.mobs&&man.mobs[a])?'O':'-', (man.mobs&&man.mobs[a])||'');
+}catch(e){ add('개체','(animals.js 를 못 읽었다)','-',String(e.message).slice(0,40)); }
+// ⑥ 자원 종류 전수 — 매니페스트가 스스로 가리키는 그 자리(`34-m-renderloop` 1513~1526)가 정본이다.
+const rl = fs.readFileSync(ROOT+'/public/client/34-m-renderloop.js','utf8').split('\n').slice(1512,1526).join('\n');
+const res=[...new Set([...rl.matchAll(/type === '([a-z_]+)'/g)].map(m=>m[1]))].sort();
+for(const r of res) add('자원', r, (man.resourceHit&&man.resourceHit[r])?'O':'-', (man.resourceHit&&man.resourceHit[r])||'');
+// ⑦ 날씨 칸
+for(const w of ['wind','precip','indoor','thunder','snow']) {
+  const inWx=new RegExp('_sfxWx[^\\n]*'+w).test(mod)||new RegExp("'"+w+"'").test(mod);
+  add('날씨 칸', w, inWx?'O':'-', inWx?'층이 읽는다':'층에 칸이 없다'); }
+// ⑧ 지면 종류 — ground 표
+for(const g of ['rock','grass','_기본']) add('지면', g, (man.ground&&man.ground[g])?'O':'-', (man.ground&&man.ground[g])||'');
+
+// ★★자를 먼저 검증한다 — **이미 배선된 것이 O 로 잡히는가**. 안 잡히면 이 표는 거짓말이다.
+const mustBeO=[['건물','campfire'],['자원','tree'],['개체','wolf'],['생활 낱말(act)','낚음'],['인벤 낱말(where)','harvest']];
+const ruler=mustBeO.map(([ax,nm])=>{const r=rows.find(x=>x.축===ax&&x.자리===nm);return `${ax}/${nm}=${r?r.있음:'없다'}`;});
+const rulerOk=mustBeO.every(([ax,nm])=>{const r=rows.find(x=>x.축===ax&&x.자리===nm);return r&&r.있음==='O';});
+console.log(`자 검증: ${rulerOk?'성하다':'★고장났다'} — ${ruler.join(' · ')}`);
+if(!rulerOk) process.exitCode=1;
+const have=rows.filter(r=>r.있음==='O').length;
+console.log(`자리 ${rows.length} · 소리 있음 ${have} · 없음 ${rows.length-have}`);
+const byAxis={};
+for(const r of rows){ (byAxis[r.축]=byAxis[r.축]||[]).push(r); }
+for(const ax of Object.keys(byAxis)){
+  const g=byAxis[ax], h=g.filter(r=>r.있음==='O').length;
+  console.log(`\n### ${ax} — ${g.length}자리 · 있음 ${h} · 없음 ${g.length-h}`);
+  console.log(g.map(r=>`  ${r.있음} ${r.자리}${r.근거?' → '+r.근거:''}`).join('\n'));
+}
+fs.writeFileSync('/tmp/sfx/census.json', JSON.stringify(rows,null,1));

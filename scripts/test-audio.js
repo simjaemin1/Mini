@@ -218,7 +218,16 @@ ok(extra.length === 0, `디스크에만 있고 표에 없는 곡 ${extra.length}
 console.log('\n③ 훅 — 부르는 키가 전부 표에 있고, 표의 키가 전부 불린다 · 훅은 파일당 한 줄');
 // ★[T283] 키가 불리는 길이 **둘**이 됐다: 코드가 이름을 적는 자리와, **표 셋이 이름을 보내는** 자리.
 //   둘 다 세지 않으면 "아무도 안 부르는 키"가 거짓 빨강이 된다(1차 판이 실제로 12개를 그렇게 봤다).
-const TABLES = ['resourceHit', 'mobs', 'buildings', 'fishState'];
+// ★★[T354] 배선 표 목록을 **손으로 적지 않는다.** T323 소리판이 이미 배운 것인데 이 자는 아직
+//   목록을 박고 있었다 — 그래서 `ground`·`rainSplit` 이 생기자 멀쩡히 배선된 키 넷이
+//   "아무도 안 부르는 키" 로 빨개졌다(거짓 빨강 · T283 이 같은 모양으로 한 번 당했다).
+//   ⇒ 매니페스트에서 **표를 스스로 찾는다**: 값이 키 이름인 칸을 가진 최상위 객체가 배선 표다.
+const TABLES = Object.keys(man).filter((t) => {
+  if (t.startsWith('_') || t === 'keys' || t === 'sources' || t === 'bus' || t === 'bgm') return false;
+  const v = man[t];
+  if (!v || typeof v !== 'object') return false;
+  return Object.entries(v).some(([k, x]) => !k.startsWith('_') && typeof x === 'string' && man.keys[x]);
+});
 function tableKeys() {
   const out = new Set();
   for (const t of TABLES) for (const [k, v] of Object.entries(man[t] || {})) {
@@ -348,10 +357,13 @@ console.log('\n⑥ ★이 하네스가 실패할 줄 아는가 — 픽스처로 
 console.log('\n⑦ ★[T283] 표 셋 · 발신 훅 0 · 서버가 기대는 성질');
 {
   // ⑦a 표의 값이 전부 실제 키다(오타 한 글자면 그 소리가 영영 안 난다 — 조용한 결함)
+  // ⚠[T354] **글자 칸만 본다.** 표에는 키 말고 **수**가 들어가는 칸도 있다(`rainSplit.문턱` 0.5 —
+  //   두 파일을 가르는 세기). 수까지 "키여야 한다"로 재면 멀쩡한 표가 빨개진다(실제로 그랬다).
+  //   키를 가리키는 칸은 글자다 — 오타를 잡는 자의 대상은 그 칸뿐이다.
   const badTbl = [];
   for (const t of TABLES) for (const [k, v] of Object.entries(man[t] || {})) {
-    if (k.startsWith('_')) continue;
-    if (typeof v !== 'string' || !KEYS[v]) badTbl.push(`${t}.${k}→${v}`);
+    if (k.startsWith('_') || typeof v !== 'string') continue;
+    if (!KEYS[v]) badTbl.push(`${t}.${k}→${v}`);
   }
   ok(badTbl.length === 0, `⑦a 표 셋의 값이 전부 매니페스트 키다 — 어긋난 줄 ${badTbl.length}개`,
      badTbl.join(' ') || TABLES.map((t) => `${t} ${Object.keys(man[t] || {}).filter((k) => !k.startsWith('_')).length}줄`).join(' · '));
@@ -750,21 +762,42 @@ console.log('\n⑫ ★★[T321] 어부의 소리 — 결말 셋에 키 셋');
      '⑫a ★표가 낱말 셋을 **파일 있는 키** 셋으로 옮긴다', words.map((w) => `${w}→${TBL[w]}`).join(' '));
 
   // ⑫b ★★서버가 그 낱말들을 실제로 세운다 — 그리고 **한 시도에 하나만** 선다(배타)
+  // ★[T354] 창을 **글자 수로 자르지 않는다.** T340 이 이 블록을 길게 고쳐 쓰면서 3200자 창이
+  //   `'낚음'` 줄(블록 끝머리)을 못 덮었고, ⑫b·⑫c 가 **코드가 멀쩡한데** 빨개졌다.
+  //   ⇒ 블록은 **다음 직업 갈래**까지다. 자를 대상의 모양이 바뀌어도 창이 따라간다.
   const blk = (() => {
     const i = vil.indexOf("if (job === 'fisher')");
-    return i < 0 ? '' : vil.slice(i, i + 3200);
+    if (i < 0) return '';
+    const j = vil.indexOf("if (job === '", i + 10);
+    return vil.slice(i, j > i ? j : i + 8000);
   })();
   const setWords = (blk.match(/_lifeAct\(npc, '([^']+)'\)/g) || []).map((x) => x.match(/'([^']+)'/)[1]);
   for (const w of words) ok(setWords.includes(w), `⑫b ★서버 어부 자리가 \`${w}\` 을 세운다`, TBL[w]);
-  ok(/if \(!_sp\) _lifeAct/.test(blk) && /\} else _lifeAct\(npc, '놓침'\)/.test(blk),
-     '⑫c ★★셋이 **서로 배타**다(안 물림 / 물고 놓침 / 건짐) — 한 틱에 둘이 서지 않는다',
-     '`!_sp` · `else` · 건짐');
+  // ⑫c ★★한 틱에 낱말이 **하나만** 선다. `_lifeAct` 는 덮어쓰는 칸이라 둘이 서면 마지막만 남는다.
+  //   ⚠[T354] T321 판은 이것을 `if (!_sp)` 라는 **그때의 철자**로 쟀다. T340 이 대본을 주며
+  //     갈래가 `_hook === 'none'|'miss'|객체` 로 바뀌자 자가 빨개졌다 — 코드는 멀쩡한데.
+  //     ⇒ 철자가 아니라 **성질**을 잰다: 낱말을 세우는 갈래들이 **서로 배타인 조건**에 달려 있는가.
+  const actConds = (blk.match(/if \([^)]*\)\s*_lifeAct\(npc, '(드리움|놓침|낚음)'\)|\} else _lifeAct\(npc, '(드리움|놓침|낚음)'\)/g) || []);
+  ok(actConds.length >= 3,
+     '⑫c ★★낱말 셋이 **저마다 조건 아래** 선다(맨몸으로 서는 낱말이 없다 = 한 틱에 하나)',
+     `조건 붙은 자리 ${actConds.length}`);
 
-  // ⑫d ★★★전제 — NPC 경로에는 **대기 창이 없다**. 있으면 소리를 차례로 바꿔야 한다.
-  const hasWindow = /biteAt|windowMs/.test(blk);
-  ok(!hasWindow,
-     '⑫d ★★★전제: NPC 어부 자리에 **대기 창(`biteAt`/`windowMs`)이 없다** — 그래서 셋이 차례가 아니라 결말이다',
-     hasWindow ? '창이 생겼다 — 소리를 차례로 바꿀 때다(회부)' : '창 0 · 한 시도 = 한 순간');
+  // ⑫c2 ★★[T354] **대본이 생겼다** — T321 이 회부해 둔 그날이 왔다.
+  //   T340 이 어부에게 '던짐 → 기다림 → 걸림/놓침' 을 줬다(`_t340Try` 가 `'wait'|'none'|'miss'|{…}`).
+  //   ⇒ 이제 셋은 '한 순간의 결말' 이 아니라 **시도의 흐름**이다. 그런데 **`'wait'`(진짜 던짐)에는
+  //     낱말이 없다** — 소리로는 던지는 순간이 여전히 비어 있다. 서버 한 줄이라 이 카드 밖이다(회부).
+  const hasScript = /_t340Try|'wait'/.test(blk);
+  ok(hasScript, '⑫c2 ★대본이 있다(`_t340Try` — 던짐/기다림/걸림/놓침)', hasScript ? '있다' : '없다');
+  ok(!/'wait'\)\s*_lifeAct|_hook === 'wait'.*_lifeAct/.test(blk),
+     '⑫c3 ★기록 — `\'wait\'`(던지는 순간)에는 아직 낱말이 없다 ⇒ 서버 한 줄이면 `cast` 가 제자리를 찾는다(회부)',
+     '던짐 무음');
+
+  // ⑫d ★★★[T354 정정] **이 자가 안 물었다 — 철자를 봤기 때문이다.**
+  //   T321 판은 "NPC 자리에 `biteAt`·`windowMs` 가 없다" 로 대기 창의 부재를 쟀다. 그런데 T340 은
+  //   그 시간을 **`fishing.js` 정본**에 두고 `_t340Try` 로 불렀다 — 두 낱말이 이 블록에 안 나타나므로
+  //   자는 **계속 초록이었다.** 대기 창이 생겼는데 "없다" 고 답한 것이다.
+  //   ⇒ 부재가 아니라 **존재**를 잰다. 대본이 있으면 `⑫c2` 가 초록이고, 그때 소리를 흐름에 맞춰야 한다.
+  //   ⚠교훈: 사라질 수 있는 것의 **이름**으로 부재를 재지 마라. 이름은 옮겨 다닌다.
   ok(/biteAt/.test(fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8')),
      '⑫e 대조 — **플레이어** 낚시에는 그 창이 있다(자가 "어디에도 없다"를 말하는 게 아니다)', '`biteAt` 은 zone.js 에 있다');
 
