@@ -265,6 +265,9 @@ console.log('\n[H] 랩 부팅 기본 = 서버 기본(주입 없음)');
   const LABKNOBS = [
     // ★[T244] `L_HAPPYWORK`·`L_ALLOC_REAL` 은 이 표에서 **뺐다** — 서버 기본이 켬이 되어 "0 이어야 한다"가 거짓이 됐다.
     //   둘(과 `L_HAPPY_FLOOR1`)은 아래 ⓑ 절에서 **엔진 실측값과 대조**한다. 여기 ⓐ 는 아직 서버가 안 심는 것들뿐이다.
+    // ★[T263 · ★T362] `L_ALLOC_REAL` 과 같은 꼴 — 랩에 `window.…` 기본줄이 없고 econ 정본이 `_allocKnob` 으로 직접 읽는다.
+    //   그래서 인라인 사본의 **그 함수 줄**을 읽어 "'0' 이면 끔"을 확인한다(랩이 `=1` 을 심으면 아래 별도 검사가 문다).
+    ['T263_FOOD_CONS', /function foodConsOn\(\) \{ const x = _allocKnob\('T263_FOOD_CONS'\); return x !== null && x !== '([0-9])'; \}/, '0', 'T263 식사 흐름-EMA — 끔이 곧 2026-07-12 판정(수출 억압 회피)'],
     ['L_STONEREAL',  /window\.L_STONEREAL\s*===\s*undefined\)\s*window\.L_STONEREAL\s*=\s*([0-9.]+)/,   '0', 'T163 석재 실물 — 서버는 stoneBudgetFn 을 안 심는다'],
     ['L_STONE_TRADE',/window\.L_STONE_TRADE\s*===\s*undefined\)\s*window\.L_STONE_TRADE\s*=\s*([0-9.]+)/,'0', 'T173 귀환 화물 — 서버는 returnPullFn 을 안 심는다'],
     ['L_TOOL_WEAR',  /window\.L_TOOL_WEAR\s*===\s*undefined\)\s*window\.L_TOOL_WEAR\s*=\s*([0-9.]+)/,   '1', 'T180 도구 마모 — 배수 1 이면 문을 안 연다(서버도 toolWearMul 없음)'],
@@ -290,6 +293,12 @@ console.log('\n[H] 랩 부팅 기본 = 서버 기본(주입 없음)');
     else bad(`랩 ${name} 기본 ${got} ≠ 서버 기본 ${want} — 랩이 켠 채 뜬다(${why})`);
   }
   if (!bad0.length) ok(`랩 부팅 기본이 서버 기본과 같다 — 손잡이 ${LABKNOBS.length + MODES.length}개 전수(${LABKNOBS.concat(MODES).map((k) => k[0]).join(' · ')})`);
+  // ★[T263 · ★T362] 같은 자리 — 식사 흐름-EMA 도 랩이 `window.T263_FOOD_CONS = 1` 을 심으면 켠 채 뜬다.
+  {
+    const lines = warLab.split('\n').filter((l) => /window\.T263_FOOD_CONS\s*=\s*[1-9]/.test(l) && !/^\s*\/\//.test(l));
+    if (lines.length) bad(`랩이 T263_FOOD_CONS 를 켠 채 뜬다 — ${lines.length}줄`);
+    else ok('랩은 T263_FOOD_CONS 를 심지 않는다(미설정 = 끔 = 서버 기본)');
+  }
   // ★자명 통과 금지 — ⓐ 표의 손잡이 하나를 켠 채 뜨게 만들면 이 검사가 실제로 문다
   const mut = warLab.replace(/(window\.L_STONEREAL\s*===\s*undefined\)\s*window\.L_STONEREAL\s*=\s*)0/, '$1' + '1');
   if (mut === warLab) bad('[자명 통과 금지] 변조판을 못 만들었다 — 검사기가 읽는 자리가 그 자리가 아니다');

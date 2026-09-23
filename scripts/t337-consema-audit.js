@@ -113,12 +113,26 @@ for (const s of seeds) {
 world.day = 0;
 // ★★[T274] **집계** — 유도가 아니라 센다. 장부가 이미 문 둘을 준다(`onEvent`·`onRequest` · 관측만).
 const TALLY = { short: {}, glut: {}, req: {} };
+// ★★[T362] 카드 ②가 묻는 것 — 식량 의뢰가 **몇 건 · 어느 마을 · 어느 계절**인가.
+//   집계만 더한다(세계 무접촉 · 새 수 0). 계절은 **정본 함수**에게 묻는다(사본 0).
+const REQV = {};          // 품목 → { 마을이름: 건수 }
+const REQS = {};          // 품목 → { 계절: 건수 }
+const _bump2 = (m, k1, k2) => { const o = m[k1] || (m[k1] = {}); o[k2] = (o[k2] || 0) + 1; };
+const SEASONS = ['봄', '여름', '가을', '겨울'];
+const _season = (d) => SEASONS[Math.floor(((d % 360) + 360) % 360 / 90)];   // ★[T362] 360일 4등분 — 새 수 0(달력 정본의 그 나눔)
 const _bump = (m, k) => { m[k] = (m[k] || 0) + 1; };
 const DEPOSIT = Villages.playerVillageDepositMap();   // ★정본 그대로 — 이 카드는 표를 안 건드린다
 const _DEL = Events.buildDeliverable(DEPOSIT);
 const L = Events.createLedger({ econV2, vidOf: (v, i) => i, depositMap: DEPOSIT,
   onEvent: (ev) => { if (!ev) return; if (ev.type === 'STOCK_SHORTAGE') _bump(TALLY.short, ev.item); else if (ev.type === 'STOCK_GLUT') _bump(TALLY.glut, ev.item); },
-  onRequest: (req, kind) => { if (kind === 'open' && req && req.item) _bump(TALLY.req, req.item); } });
+  onRequest: (req, kind) => {
+    if (!(kind === 'open' && req && req.item)) return;
+    _bump(TALLY.req, req.item);
+    // ★[T362] 같은 사건을 마을·계절로도 센다 — 마을 이름은 장부가 든 `vid`(= 색인)로 되찾는다.
+    const _v = world.villages[req.vid];
+    _bump2(REQV, req.item, (_v && _v.name) || ('#' + req.vid));
+    _bump2(REQS, req.item, _season(world.day));
+  } });
 L.prime(world);
 
 // ── 표본 ────────────────────────────────────────────────────────────────────
@@ -266,6 +280,23 @@ for (const r of TRACK) {
   }
   const top = Object.entries(TALLY.req).sort((a, b) => b[1] - a[1]).slice(0, 8);
   console.log(`    의뢰 상위 8: ${top.map(([r, n]) => r + ' ' + n).join(' · ') || '(없음)'}`);
+  // ★★[T362 ②] **flowT 와 의뢰의 자리** — 가격 target 의 흐름 항이 실제로 움직이나, 그리고 의뢰가 어디서 어느 철에 나나.
+  //   flowT 는 v2 정본의 그 식이다(`sim/economy-sim-v2.js:406,514`): subs 등재면 **0**(가드), 아니면 `EMA × 30`.
+  //   ⚠식을 여기서 새로 짓지 않는다 — 가드도 값도 정본의 것을 그대로 읽는다(새 수 0 · 사본 0).
+  console.log(`    ★[T362] flowT(= subs 등재면 0 · 아니면 EMA×30) · 의뢰 난 마을·계절`);
+  const _reqTot = (r) => TALLY.req[r] || 0;
+  const _rows = TRACK.filter((r) => ema[r].med > 1e-9 || _reqTot(r) > 0)
+    .sort((a, b) => (_reqTot(b) - _reqTot(a)) || (ema[b].med - ema[a].med));
+  for (const r of _rows) {
+    const e = ema[r];
+    const flowT = e.subs ? 0 : e.med * 30;
+    const vs = Object.entries(REQV[r] || {}).sort((a, b) => b[1] - a[1]).slice(0, 3);
+    const ss = SEASONS.map((k) => `${k} ${(REQS[r] || {})[k] || 0}`).join(' · ');
+    console.log(`      ${r.padEnd(12)} flowT ${flowT.toFixed(3).padStart(8)}${e.subs ? ' (가드 0)' : ''}`
+      + ` · 의뢰 ${String(_reqTot(r)).padStart(5)}`
+      + ` · 마을 ${vs.length ? vs.map(([n, c]) => n + ' ' + c).join(', ') : '-'}`
+      + ` · ${ss}`);
+  }
   // ★★[T337 ①] **EMA 감사** — 0 이 우연인가 구조인가.
   console.log(`    ★사다리 ${LADDER.length}종 EMA 감사(${DAYS}일 × ${world.villages.length}마을 = ${DAYS * world.villages.length} 마을·일)`);
   console.log(`      ${'품목'.padEnd(15)} ${'보존원물'.padEnd(8)} ${'EMA>0 마을·일'.padStart(13)} ${'그런 마을'.padStart(9)} ${'최대EMA'.padStart(9)} ${'첫날'.padStart(6)}  먹힘/마을·일`);
@@ -284,7 +315,10 @@ console.log(`  팔        ARM=${ARM} (food=${ARM_FOOD} · board=${ARM_BOARD}) �
 if (process.env.AB_JSON) {
   const nLive2 = world.villages.filter((v) => (v.npcs || []).length > 0).length;
   for (const r of TRACK) { ema[r].eatenPerVD = ema[r].eat / Math.max(1, DAYS * nLive2); }
-  fs.writeFileSync(process.env.AB_JSON, JSON.stringify({ arm: ARM, audit: Object.fromEntries(LADDER.map((r) => [r, { max: AUDIT[r].max, vDays: AUDIT[r].vDays, vEver: AUDIT[r].vEver.size, firstDay: AUDIT[r].firstDay, preserveFrom: !!(CK.PRESERVE_FROM && (r in CK.PRESERVE_FROM)) }])), tally: TALLY, seed: SEED, days: DAYS, track: TRACK, sides: SIDES, nLive: nLive2,
+  fs.writeFileSync(process.env.AB_JSON, JSON.stringify({ arm: ARM, audit: Object.fromEntries(LADDER.map((r) => [r, { max: AUDIT[r].max, vDays: AUDIT[r].vDays, vEver: AUDIT[r].vEver.size, firstDay: AUDIT[r].firstDay, preserveFrom: !!(CK.PRESERVE_FROM && (r in CK.PRESERVE_FROM)) }])), tally: TALLY, reqByVillage: REQV, reqBySeason: REQS,
+    flowT: Object.fromEntries(TRACK.map((r) => [r, ema[r].subs ? 0 : ema[r].med * 30])),
+    emaMed: Object.fromEntries(TRACK.map((r) => [r, ema[r].med])),
+    knob: process.env.T263_FOOD_CONS || '(미설정=끔)', seed: SEED, days: DAYS, track: TRACK, sides: SIDES, nLive: nLive2,
     eight: { pop, dead, ever, weapQ, expand, toolQ, presStock, reqOpened: S.reqOpened, daysPer },
     cooksTot, cookedTot, standsAll: standsOf(V.map((x) => x.name)), standsBot: standsOf(BOT), standsTop: standsOf(TOP),
     botCooks: sum(BOT, 'cooks'), botOut: sum(BOT, 'out'), botStock: sum(BOT, 'stock'),
