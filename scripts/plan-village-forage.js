@@ -45,6 +45,13 @@ const has = (f) => argv.includes(f);
 const val = (f, d) => { const i = argv.indexOf(f); return i >= 0 ? argv[i + 1] : d; };
 const ZID = val('--zone', 'hanbando');
 const APPLY = has('--apply');
+// ★★[T357 2026-09-23] `--dry` — **자리 후보를 센다. 세계는 한 글자도 안 건드린다.**
+//   #58(재민: 세계를 수식에 맞추나, 수식을 세계에 맞추나)이 결정되려면 *"놓을 수 있나"* 가 있어야 한다.
+//   이 갈래는 배치를 **안 한다** — 마을마다 링에 `fits()` 를 통과하는 자리가 **몇 개**인지,
+//   그 자리들이 품을 수 있는 개체가 **몇 개**인지(자리 × `GROVE_N`) 센다. 규칙은 한 줄도 안 바꾼다:
+//   `fits`·`RING_IN/OUT`·`GROVE_R`·`GROVE_N`·`SCENE_GUARD` 그대로 쓰고, 나무와 겹치는 자리만 **더 뺀다**
+//   (카드 ③ — 숲 격자와 군락이 같은 셀을 쓰면 둘 중 하나가 못 선다 · 개체는 `chunk` 정본에 묻는다).
+const DRY = has('--dry');
 
 const ROOT = path.join(__dirname, '..');
 process.env.ZONE_ID = process.env.ZONE_ID || ZID;
@@ -62,7 +69,8 @@ const d = doc[ZID];
 
 const CELL = 32;
 const MOVE_SPEED = 64;
-const WALK_SEC = parseFloat(process.env.AUDIT_WALK_SEC || '15');
+//   ★[T357] 15 는 `server/forage.js CFG.WALK_SEC` 정본이다(T347 이 옮겼다 · 감사·행위층도 그 수를 본다 · 사본 0).
+const WALK_SEC = parseFloat(process.env.AUDIT_WALK_SEC || String(F.CFG.WALK_SEC));
 const R_AUDIT = Math.round(MOVE_SPEED * WALK_SEC);      // 960
 const RING_IN = 700, RING_OUT = 840;   // ★바깥 840 + 군락 반경 110 = 950 < 감사 반경 960 — 군락이 통째로 기준 안에 든다
 const NEED_EACH = 2, GROVE_N = 3, GROVE_R = 110;
@@ -186,6 +194,56 @@ const villages = T.getZoneVillages(ZID) || [];
 console.log(`\n=== 마을 어귀 채집 군락 배치 · ${ZID} · 마을 ${villages.length}곳 ===`);
 console.log(`  링 ${RING_IN}~${RING_OUT}px(감사 반경 ${R_AUDIT}px 안 · 골목 400px·회관 여유 528px 밖) · 군락 반경 ${GROVE_R}px · 점 ${GROVE_N}개`);
 console.log(`  회귀 장면 보호구 ${SCENE_GUARD.length}곳 반경 ${GUARD_R}px (e2e-nature·e2e-terrain 반례 자리)\n`);
+
+// ══ ★★[T357] `--dry` — 자리 후보만 센다(세계 무변 · 배치 안 함) ══════════════════════
+if (DRY) {
+  const CAP_PER_SITE = GROVE_N;                       // 한 자리가 품는 개체 수 — 이 파일의 그 수 그대로
+  const SEP = GROVE_R * 2.2;                          // 군락끼리 안 겹치는 거리 — `pickSite` 의 그 규칙 그대로
+  //   ★나무와 겹치나 — 개체를 `chunk` 정본에 묻는다(새 술어 0). 군락 반경 안 어느 셀에든 나무가 있으면 뺀다.
+  const hasTree = (x, y) => {
+    for (let a = 0; a < 8; a++) {
+      const th = a * Math.PI / 4;
+      const px = x + Math.cos(th) * GROVE_R * 0.7, py = y + Math.sin(th) * GROVE_R * 0.7;
+      let arr = [];
+      try { arr = CH.resourcesAtCell(ZID, Math.floor(px / CELL), Math.floor(py / CELL), { biome: ZONES[ZID].biome, chunkSize: 512 }) || []; } catch (e) { arr = []; }
+      if (arr.some((r) => r.type === 'tree' || r.type === 'sapling')) return true;
+    }
+    return false;
+  };
+  const rows = [];
+  for (const v of villages) {
+    const a0 = hash(v.name + 'berry_bush') * Math.PI * 2;
+    const put = [];                                   // 잡은 자리(겹침 검사용)
+    let fitN = 0, treeN = 0;
+    //   링을 촘촘히 훑는다 — `pickSite` 는 24방향 × 5반경만 보지만 **용량**을 재려면 더 촘촘해야 한다.
+    //   (그 조밀함은 자리 규칙이 아니라 **세는 해상도**다 — 겹침 거리 `SEP` 가 실제 상한을 정한다.)
+    for (let ri = 0; ri <= 8; ri++) {
+      const rr = RING_IN + (RING_OUT - RING_IN) * (ri / 8);
+      const steps = Math.max(24, Math.round(2 * Math.PI * rr / (CELL * 2)));
+      for (let ai = 0; ai < steps; ai++) {
+        const th = a0 + ai * (2 * Math.PI / steps);
+        const x = v.x + Math.cos(th) * rr, y = v.y + Math.sin(th) * rr;
+        if (!fits('berry_bush', x, y, false)) continue;
+        fitN++;
+        if (put.some((t) => Math.hypot(t[0] - x, t[1] - y) < SEP)) continue;
+        if (hasTree(x, y)) { treeN++; continue; }
+        put.push([Math.round(x), Math.round(y)]);
+      }
+    }
+    rows.push({ name: v.name, sites: put.length, fitSamples: fitN, treeBlocked: treeN, capacity: put.length * CAP_PER_SITE });
+  }
+  console.log(`\n=== [T357 --dry] 자리 후보 — 링 ${RING_IN}~${RING_OUT}px · 군락 반경 ${GROVE_R} · 간격 ${Math.round(SEP)}px · 자리당 개체 ${CAP_PER_SITE} ===`);
+  console.log('  ⚠세계 무변 — 이 갈래는 `groves` 를 만들지도 쓰지도 않는다.\n');
+  console.log(`  ${padr('마을', 10)}│ 자리 │ 개체 용량 │ 나무에 막힌 자리`);
+  for (const r of rows) console.log(`  ${padr(r.name, 10)}│ ${String(r.sites).padStart(4)} │ ${String(r.capacity).padStart(9)} │ ${String(r.treeBlocked).padStart(16)}`);
+  const tot = rows.reduce((a, r) => a + r.capacity, 0);
+  const st = rows.map((r) => r.capacity).sort((a, b) => a - b);
+  console.log(`\n── 마을 ${rows.length} · 개체 용량 합 **${tot}** · 마을당 중앙 ${st[Math.floor(st.length / 2)]} · 최소 ${st[0]} · 최대 ${st[st.length - 1]}`);
+  console.log(`   나무에 막힌 자리 합 ${rows.reduce((a, r) => a + r.treeBlocked, 0)}`);
+  const OUTJ = process.env.T357_DRY_JSON || '';
+  if (OUTJ) { fs.writeFileSync(OUTJ, JSON.stringify({ at: new Date().toISOString(), RING_IN, RING_OUT, GROVE_R, GROVE_N, SEP, rows }, null, 1)); console.log('   [json]', OUTJ); }
+  process.exit(0);
+}
 
 const groves = [];
 const taken = [];
