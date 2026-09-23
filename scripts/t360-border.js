@@ -96,6 +96,25 @@ const sizes = new Map();
   for (let i = 0; i < N; i++) { if (KIND[i] === 1 && !LAB[i]) { tag++; const n = flood(i, tag); sizes.set(tag, n); } }
   console.log(`덩어리 ${tag}개 · 상위 6: ${[...sizes.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([t, n]) => `#${t} ${n.toLocaleString()}`).join(' · ')}`);
 }
+// ★[T381] `--labels <file>` — 덩어리 딱지(LAB)를 그대로 떨어뜨리고 끝낸다.
+//   T381 계측기가 "출발과 목표가 같은 뭍 덩어리인가"(= 강 건너인가)를 물을 때 **이 자를 그대로** 쓰기
+//   위해서다. 자를 두 번 적으면 그게 사본이고, 갈리는 날 두 카드가 다른 답을 낸다(T333 규율).
+//   꼴: 머리 JSON 한 줄 + `\n` + Int32 LAB 원본(NX*NY*4바이트). KIND 도 같이 떨군다(뭍/물/바위 구분용).
+{
+  const LBL = val('--labels', '');
+  if (LBL) {
+    const head = JSON.stringify({ zone: ZID, NX, NY, SZ, cells: N, nobridge: NOBRIDGE,
+      sizes: [...sizes.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12) });
+    const fd = fs.openSync(LBL, 'w');
+    fs.writeSync(fd, head + '\n');
+    fs.writeSync(fd, Buffer.from(LAB.buffer, LAB.byteOffset, LAB.byteLength));
+    fs.writeSync(fd, Buffer.from(KIND.buffer, KIND.byteOffset, KIND.byteLength));
+    fs.closeSync(fd);
+    console.log(`딱지 떨굼 → ${LBL} (머리 ${head.length}자 + LAB ${LAB.byteLength} + KIND ${KIND.byteLength})`);
+    process.exit(0);
+  }
+}
+
 // 본토 = 스폰이 속한 덩어리
 const sx = Math.round(Z.mainSquare.x / SZ), sy = Math.round(Z.mainSquare.y / SZ);
 let MAIN = LAB[sy * NX + sx];

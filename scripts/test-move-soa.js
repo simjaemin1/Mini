@@ -215,8 +215,17 @@ console.log('\n⑤ 분포 무변 — 10만 결정을 T252 자로 견준다 [T350
     const mean = arr.reduce((a, b) => a + b, 0) / arr.length, band = Math.max(...arr) - Math.min(...arr);
     return { same, mean, band, split: same && Math.abs(mean) > band }; };
   const tM = t252(D.map((x) => x.dMean));
-  ok(!tM.split, '⑤ ★★**T252 자로 못 가른다** — 평균 차의 부호가 3/3 이면서 |평균| > 폭 인 경우가 아니다',
-     `부호일치 ${tM.same} · 평균 ${tM.mean.toExponential(2)} · 폭 ${tM.band.toExponential(2)}`);
+  // ★★[T381 2026-09-23 · 자가 흔들렸다] 이 절이 10판에 1판 붉었다(HEAD 에서 실측). 결함은 제품이 아니라
+  //   **자**에 있었다: 대조군이 `Math.random` 이라 통계량에 **대조군 자신의 잡음**이 실린다(150만 굴림의
+  //   평균은 표준편차 2.4e-4 로 흔들린다). T252 자는 "부호 3/3 + |평균| > 폭"인데, 셋뿐이라 그 잡음이
+  //   규약을 켜는 판이 생긴다. ⇒ **잡음을 지어내지 않고 같은 꼴로 잰다** — 주사위끼리 세 쌍(새 수 0).
+  //   씨-대-주사위가 **주사위-대-주사위의 잡음 바닥**을 안 넘으면, 이 자로는 못 가르는 것이다.
+  const Dc = []; for (let s2 = 0; s2 < 3; s2++) { const A = mrun(), B = mrun(); Dc.push(A.mean - B.mean); }
+  const tC = t252(Dc);
+  const floor = Math.max(tC.band, ...Dc.map(Math.abs));
+  ok(!tM.split || Math.abs(tM.mean) <= floor,
+     '⑤ ★★**T252 자로 못 가른다** — 평균 차가 **대조군 자신의 잡음 바닥**을 안 넘는다',
+     `씨-주사위 부호일치 ${tM.same} · 평균 ${tM.mean.toExponential(2)} · 폭 ${tM.band.toExponential(2)} · 주사위-주사위 잡음 바닥 ${floor.toExponential(2)}`);
   const worst = Math.max(...D.map((x) => x.maxBin));
   ok(worst < 0.002, '⑤ ★히스토그램 **칸별 비율 차**가 0.2% 미만(20칸 · 각 칸 기대 5%)', `최대 ${(worst * 100).toFixed(3)}%`);
   // ★자명 통과 금지 — **진짜 치우친** 흐름을 같은 자에 넣으면 갈린다(10% 좁힌 판)
@@ -227,8 +236,8 @@ console.log('\n⑤ 분포 무변 — 10만 결정을 T252 자로 견준다 [T350
     bad.push(sum / N - mrun().mean);
   }
   const tB = t252(bad);
-  ok(tB.split, '★⑤ 자명 통과 금지 — 일부러 10% 좁힌 흐름은 **같은 자가 문다**',
-     `부호일치 ${tB.same} · 평균 ${tB.mean.toExponential(2)} · 폭 ${tB.band.toExponential(2)}`);
+  ok(tB.split && Math.abs(tB.mean) > floor, '★⑤ 자명 통과 금지 — 일부러 10% 좁힌 흐름은 **같은 자가 문다**(잡음 바닥도 훌쩍 넘는다)',
+     `부호일치 ${tB.same} · 평균 ${tB.mean.toExponential(2)} · 폭 ${tB.band.toExponential(2)} · 잡음 바닥의 ${(Math.abs(tB.mean) / floor).toFixed(0)}배`);
   console.log(`    [표] 분포 — 칸별 최대 차 ${(worst * 100).toFixed(3)}% · 평균 차 ${tM.mean.toExponential(2)}(폭 ${tM.band.toExponential(2)})`);
 }
 
@@ -664,6 +673,128 @@ console.log('\n⑨ T375_ACTIVE_FLAG 문지기 필드 — 켬/끔이 같은 세�
   }
   console.log('    [표] 문지기 — 4,200틱 좌표·HP·낙하 0 다름 · 뒤집힘 ' + A.flips.toLocaleString() + ' · 새로 고침 자리 2(머리 · 이동 뒤)');
   console.log('    접점: isPositionActive · activeChunkKeys · updateActiveChunks · _active · _activeGen · T375_ACTIVE_FLAG · rebuildSpatialIndex · stepStairFor · processFalling');
+}
+
+// =============================================================================
+// ⑩ T381_PATH_DEAD — **못 갈 칸엔 길을 안 묻는다** [T381 ②]
+// =============================================================================
+// ★왜 [T381 · 보고/T381_2026-09-25.md]
+//   T370 이 "A\* 갈래의 90.9 % 는 `pfFindPath` 한 번"이라 했고, T381 ① 이 **그 한 번의 안**을 셌다:
+//   호출의 **37.3 % 가 `maxCells` 1500 을 다 태우고 null** 이고 그 갈래가 **시간의 92.9 %** 다
+//   (한 번 6.42ms · 찾은 호출 0.485ms). 그 절반은 **목표 칸이 애초에 못 가는 칸**이다 —
+//   어부 일터가 `_findNpcWorkSite(…, 'water')` 라 ⑤ 배회가 **물칸 둘레**에서 목표를 뽑는다.
+//
+// ★★그리고 이 자가 **결함 하나를 더 찾았다**(처음엔 "켬도 비트 동일"이라 적었다가 자에 걸렸다):
+//   `localPath` 는 **끝점이 막혔는지 안 본다**. 그런데 커널이 왕복 대칭을 위해 **끝점을 사전순으로
+//   정규화**하므로(`_searchBegin` 의 `rev`), 막힌 목표가 사전순으로 앞서면 탐색이 **그 막힌 칸에서
+//   출발**한다 — 출발 칸은 아무도 검사하지 않으므로 **길이 나온다**. 같은 질문이 끝점 순서에 따라
+//   답이 갈린다. `routePath` 는 이미 `if (blocked(sx,sy) || blocked(gx,gy)) return null;` 로 막아 둔
+//   자리다 — 즉 **새 규칙이 아니라 있는 규칙을 `localPath` 부르는 쪽에도 같게 댄 것**이다(사본 0).
+//   ⇒ 그래서 켬은 **비트 동일이 아니다**. 이 절이 거는 것은 넷이다:
+//     ⓐ 끔 = 손잡이가 한 번도 안 선다(단락 — 종전과 비트 동일)
+//     ⓑ ★결함 증인 — 끔에서 막힌 목표의 답이 **끝점 사전순으로 갈린다**
+//     ⓒ 켬 = 막힌 목표엔 **언제나** null(대칭이 선다)
+//     ⓓ ★봉쇄 — 켬이 바꾸는 것은 **막힌 목표뿐**이다(열린 목표는 전수 비트 동일)
+console.log('\n⑩ T381_PATH_DEAD — 못 갈 칸엔 길을 안 묻는다 [T381]');
+{
+  const { findPath: pfFindPath } = require(path.join(ROOT, 'server', 'pathfind.js'));
+  const m = Z.match(/ {2}if \(T381_PATH_DEAD\) \{[\s\S]*?\n {2}\}/);
+  ok(!!m, '⑩ [전제] 제품에서 손잡이 블록 **그 글자**를 떴다', m ? `${m[0].length}자` : '못 찾음');
+  const blk = m ? m[0] : '';
+  const ZC = codeOnly(Z);
+  ok((ZC.match(/T381_PATH_DEAD/g) || []).length === 3
+     && /const T381_PATH_DEAD = process\.env\.T381_PATH_DEAD === '1';/.test(Z),
+     '⑩ 손잡이는 `T381_PATH_DEAD` 하나 · **기본 끔**(env 가 그 글자일 때만 참)',
+     `제품 자리 ${(ZC.match(/T381_PATH_DEAD/g) || []).length}개(선언 2 + 갈래 1)`);
+  const PC = fs.readFileSync(path.join(ROOT, 'sim', 'path-core.js'), 'utf8');
+  const PF = fs.readFileSync(path.join(ROOT, 'server', 'pathfind.js'), 'utf8');
+  ok(!/T381/.test(PC) && !/T381/.test(PF), '⑩ ★`sim/path-core.js`·`server/pathfind.js` 에 T381 글자 0 — A\\* 무접촉');
+  const lits = (codeOnly(blk).match(/(?<![\w.])\d+(?![\w.])/g) || []).filter((v) => v !== '2');
+  ok(lits.length === 0, '⑩ ★새 수 0 — 블록 안 숫자 리터럴이 없다(`BUILDING_SIZE`·그 절반만)', lits.join(',') || '0개');
+  // 있는 규칙 — `routePath` 는 이미 끝점 막힘을 거른다. 이 카드는 그걸 `localPath` 쪽에 같게 댄 것이다.
+  ok(/routePath[\s\S]{0,400}?if \(blocked\(sx, sy\) \|\| blocked\(gx, gy\)\) return null;/.test(PC),
+     '⑩ ★[정본] `routePath` 에 **끝점 막힘 = null** 규칙이 이미 있다(새 규칙 0 — 같은 규칙을 걸음 쪽에 댄다)');
+
+  // ── 판 하나 — 막힌 칸이 섞인 격자(결정론) ──────────────────────────────
+  const B = 32, W = 48, H = 48;
+  const BLK = new Uint8Array(W * H);
+  for (let i = 0; i < W * H; i++) BLK[i] = rnd() < 0.34 ? 1 : 0;
+  const cell = (px) => Math.floor(px / B);
+  const isWaterFn = (x, y) => { const cx = cell(x), cy = cell(y); if (cx < 0 || cy < 0 || cx >= W || cy >= H) return true; return !!BLK[cy * W + cx]; };
+  const isBlockedFn = () => false;
+  const call = (sx, sy, gx, gy) => pfFindPath(sx, sy, gx, gy, { floor: 0, isBlockedFn, isWaterFn, maxCells: 1500, searchRadiusCells: 64 });
+  // 제품 글자 그대로의 손잡이 — `return null;` 만 `return true;` 로 바꿔 **판정만** 꺼낸다
+  const mk = (mut) => new Function('npc', 'T381_PATH_DEAD', 'BUILDING_SIZE', 'isTerrainBlockedLocal',
+    (mut ? mut(blk) : blk).replace('return null;', 'return true;') + '\nreturn false;');
+  const guard = mk(null);
+
+  const SAMP = 4000;
+  const pts = [];
+  for (let i = 0; i < SAMP; i++) pts.push({ x: rnd() * W * B, y: rnd() * H * B, targetX: rnd() * W * B, targetY: rnd() * H * B });
+  // 끝점 사전순 — `_searchBegin` 이 쓰는 그 식(셀 좌표)
+  const revOf = (n) => { const sx = cell(n.x), sy = cell(n.y), gx = cell(n.targetX), gy = cell(n.targetY);
+    return gx < sx || (gx === sx && gy < sy); };
+
+  let deadN = 0, aliveN = 0, sameCellDead = 0;
+  let fwdN = 0, fwdNull = 0, revN = 0, revNull = 0, aliveHit = 0;
+  for (const n of pts) {
+    const g = guard(n, true, B, isWaterFn);
+    const r = call(n.x, n.y, n.targetX, n.targetY);
+    if (g) { deadN++;
+      if (revOf(n)) { revN++; if (r === null) revNull++; } else { fwdN++; if (r === null) fwdNull++; } }
+    else { aliveN++; if (r !== null) aliveHit++; }
+    if (cell(n.x) === cell(n.targetX) && cell(n.y) === cell(n.targetY) && isWaterFn(n.targetX, n.targetY)) sameCellDead++;
+  }
+  ok(deadN > 400 && aliveN > 400, '⑩ [상황] 표본 4,000에 막힌 목표/열린 목표가 **둘 다** 넉넉하다', `막힘 ${deadN} · 열림 ${aliveN}`);
+  ok(aliveHit > 100, '⑩ [상황] 열린 목표는 길을 **찾기도 한다**(자명 통과 아님)', `${aliveHit}/${aliveN}`);
+  ok(sameCellDead > 0, '⑩ [상황] "출발 셀 == 목표 셀인데 막힌 칸" 표본이 **있다**(미끼가 밟을 자리)', `${sameCellDead}개`);
+  // ⓑ ★결함 증인 — 같은 질문이 끝점 순서로 갈린다
+  ok(fwdN > 100 && revN > 100, '⑩-b [상황] 막힌 목표 표본이 **사전순 앞/뒤 양쪽**에 있다', `앞(정방향) ${fwdN} · 뒤(뒤집힘) ${revN}`);
+  ok(fwdNull === fwdN, '⑩-b 사전순이 **안 뒤집히면** 막힌 목표는 언제나 null', `${fwdNull}/${fwdN}`);
+  ok(revNull < revN * 0.9, '⑩-b ★★★**결함 증인** — 사전순이 뒤집히면 막힌 목표에도 **길이 나온다**(커널이 그 칸에서 출발한다)',
+     `뒤집힌 표본 ${revN} 중 길이 난 것 ${revN - revNull}(${((revN - revNull) / revN * 100).toFixed(1)}%)`);
+
+  // ⓒ/ⓓ — 켬의 답과 봉쇄
+  const eq = (a, b) => {
+    if (a === null || b === null) return a === b;
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) if (!sameF64(a[i].x, b[i].x) || !sameF64(a[i].y, b[i].y)) return false;
+    return true;
+  };
+  const sweep = (g) => { let deadNotNull = 0, aliveDiff = 0, skip = 0;
+    for (const n of pts) {
+      const off = call(n.x, n.y, n.targetX, n.targetY);
+      const fired = g(n, true, B, isWaterFn);
+      const on = fired ? (skip++, null) : call(n.x, n.y, n.targetX, n.targetY);
+      const dead = isWaterFn(n.targetX, n.targetY);
+      const sameCell = cell(n.x) === cell(n.targetX) && cell(n.y) === cell(n.targetY);
+      if (dead && !sameCell) { if (on !== null) deadNotNull++; }
+      else if (!dead && !eq(off, on)) aliveDiff++;
+    }
+    return { deadNotNull, aliveDiff, skip }; };
+  const r1 = sweep(guard);
+  ok(r1.deadNotNull === 0, '⑩-c ★★★켬 = **막힌 목표엔 언제나 null**(대칭이 선다 — 끝점 순서가 답을 안 가른다)', `길이 난 것 ${r1.deadNotNull}/${deadN - sameCellDead}`);
+  // ★유일한 예외("출발 셀 == 목표 셀")는 **`computeNpcPath` 가 못 닿는 자리**다 — 그래서 뺀다.
+  //   32px 셀 안의 두 점은 아무리 멀어도 대각선 √2·32 = 45.25px 이고, 그 앞의 `d < 48` 갈래가 이미 돌려보낸 뒤다.
+  const cm = Z.match(/ {2}const d = Math\.hypot\(npc\.targetX - npc\.x, npc\.targetY - npc\.y\);\n {2}if \(d < (\d+)\)/);
+  ok(!!cm && Math.SQRT2 * 32 < Number(cm[1]),
+     '⑩-c2 ★그 예외는 `computeNpcPath` 가 **못 닿는 자리**다 — 같은 셀이면 거리 ≤ √2·32 이고 앞선 `d < 48` 갈래가 이미 돌려보낸 뒤다',
+     cm ? `셀 대각선 ${(Math.SQRT2 * 32).toFixed(2)}px < 제품의 ${cm[1]}px` : '앞 갈래를 못 찾음');
+  ok(r1.aliveDiff === 0, '⑩-d ★★★**봉쇄** — 켬이 바꾸는 것은 막힌 목표뿐이다(열린 목표 전수 비트 동일)', `다른 표본 ${r1.aliveDiff}/${aliveN}`);
+  ok(r1.skip > 400, '⑩ ★켬이 **실제로 A\\* 를 건너뛴다**', `${r1.skip}회`);
+  const off0 = pts.filter((n) => guard(n, false, B, isWaterFn)).length;
+  ok(off0 === 0, '⑩-a ★★끔이면 손잡이가 **한 번도 안 선다**(단락 — 종전과 비트 동일)', `${off0}회`);
+
+  // ── 자명 통과 금지 — 비틀면 반드시 깨진다 ──────────────────────────────
+  const rs = sweep(mk((b) => b.replace(/\(_gcx !== Math\.floor\(npc\.x \/ BUILDING_SIZE\) \|\| _gcy !== Math\.floor\(npc\.y \/ BUILDING_SIZE\)\)\n\s*&& /, '')));
+  ok(rs.deadNotNull === 0 && rs.skip > r1.skip,
+     '★⑩ 자명 통과 금지 ①(전제) — 같은-셀 예외를 빼면 **더 많이 건너뛴다**(그 자리는 `findPath` 가 탐색 없이 답을 주는 자리다)', `건너뜀 ${r1.skip} → ${rs.skip}`);
+  const rsSame = pts.filter((n) => cell(n.x) === cell(n.targetX) && cell(n.y) === cell(n.targetY) && isWaterFn(n.targetX, n.targetY))
+    .filter((n) => call(n.x, n.y, n.targetX, n.targetY) !== null).length;
+  ok(rsSame > 0, '★⑩ 자명 통과 금지 ②(미끼가 밟는다) — 같은 셀이면 막힌 칸이라도 `findPath` 가 **답을 준다**', `${rsSame}개`);
+  const rp = sweep(mk((b) => b.replace(/isTerrainBlockedLocal\([^)]*\)\)/, 'true)')));
+  ok(rp.aliveDiff > 0, '★⑩ 자명 통과 금지 ③ — **술어를 비틀면**(항상 참) 열린 목표까지 갈린다 — 자가 정본 술어를 실제로 본다', `열린 목표 다른 표본 ${rp.aliveDiff}`);
+  console.log('    접점: T381_PATH_DEAD · computeNpcPath · pfFindPath · localPath · isTerrainBlockedLocal · BUILDING_SIZE · maxCells 1500');
 }
 
 console.log(`\n=== 결과: ${pass} PASS / ${fail} FAIL ===\n`);

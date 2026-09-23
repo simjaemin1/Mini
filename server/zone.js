@@ -1059,6 +1059,7 @@ function ditchPayload() {                 // welcome 페이로드(flat [cx,cy,�
 //     물·바위·다리는 기동 뒤 안 바뀐다(T333 이 이미 그 가정 위에 비트 색인을 세웠다).
 const T356_SOA = process.env.T356_SOA === '1';
 const T370_PATH_REUSE = process.env.T370_PATH_REUSE === '1';   // ★[T370 ②] 경로 끝에서 다시 안 묻는다(기본 끔)
+const T381_PATH_DEAD = process.env.T381_PATH_DEAD === '1';     // ★[T381 ②] 못 갈 칸엔 길을 안 묻는다(기본 끔)
 const _BLK_BITS = T356_SOA ? new Uint8Array(((_WT_W * _WT_H) >> 2) + 2) : null;   // 타일당 2비트 = 4타일/바이트
 if (_BLK_BITS) console.log(`[${ZONE_ID}] 🧱 T356 지형 막힘 비트 ON — ${_WT_W}×${_WT_H} 타일 · ${(_BLK_BITS.length / 1048576).toFixed(1)}MB`);
 function _terrBlocked0(x, y) {
@@ -2698,6 +2699,26 @@ function computeNpcPath(npc, now) {
   // A* — NPC당 최소 2초 간격
   if (npc._lastAStarAt && now - npc._lastAStarAt < 2000) return null;
   npc._lastAStarAt = now;
+  // ★★★[T381 ② 2026-09-23 · 못 갈 칸에는 길을 묻지 않는다] `T381_PATH_DEAD=1` 일 때만.
+  //   T370 이 "A* 갈래의 90.9 % 는 `pfFindPath` 한 번"이라 했고, T381 ① 이 **그 한 번의 안**을 셌다:
+  //   호출의 **37.3 % 가 `maxCells` 1500 을 다 태우고 `null`** 로 나오며, 그 갈래가 **시간의 92.9 %**다
+  //   (한 번 6.42ms · 찾은 호출은 0.485ms). 그리고 그 절반은 **목표 칸이 애초에 못 가는 칸**이다 —
+  //   어부의 일터가 `_findNpcWorkSite(…, 'water')` 라 ⑤ 배회가 **물칸 둘레**에서 목표를 뽑는다.
+  //   ⇒ **목표 셀이 통행 불가면 A\* 를 아예 안 부른다.**
+  //   ★★왜 이것이 **비트 동일**인가(되돌림이 곧 증명 — 켬도 끔도):
+  //     ⓐ A* 는 목표 칸을 **꺼내야** 찾는다 → 꺼내려면 **밀어 넣어야** 한다 → 밀어 넣으려면
+  //        `blockedStep(어디 → 목표)` 가 거짓이어야 한다.
+  //     ⓑ `blockedStep` 은 `isWater(목표 셀 중심)` 이면 참이다. 그 `isWater` 가 바로 아래 주입하는
+  //        `isTerrainBlockedLocal` **그 함수**다(정본 하나 · 사본 0 · 다리 칸은 이미 여기서 빠진다).
+  //     ⓒ ⇒ 목표 셀 중심이 막혔으면 A* 는 **반드시** `null` 이다. 유일한 예외인 "출발 셀 == 목표 셀"
+  //        (findPath 가 탐색 없이 답을 주는 자리)은 아래 첫 항이 뺀다.
+  //     ⇒ 반환값·`npc._lastAStarAt`·목표 전부 무변. **좌표는 한 비트도 안 바뀌고 시간만 돌려준다.**
+  //   **새 수 0** — 32(BUILDING_SIZE)·16(그 절반)은 `findPath` 의 셀 중심 식(cpx) 그대로다.
+  if (T381_PATH_DEAD) {
+    const _gcx = Math.floor(npc.targetX / BUILDING_SIZE), _gcy = Math.floor(npc.targetY / BUILDING_SIZE);
+    if ((_gcx !== Math.floor(npc.x / BUILDING_SIZE) || _gcy !== Math.floor(npc.y / BUILDING_SIZE))
+        && isTerrainBlockedLocal(_gcx * BUILDING_SIZE + BUILDING_SIZE / 2, _gcy * BUILDING_SIZE + BUILDING_SIZE / 2)) return null;
+  }
   const wp = pfFindPath(npc.x, npc.y, npc.targetX, npc.targetY, {
     floor: npc.floor || 0,
     isBlockedFn: isBlockedByWall,
