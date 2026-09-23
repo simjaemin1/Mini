@@ -66,6 +66,9 @@
   }
   // terrain.setHardcoded 후 외부에서 호출
   window.__invalidateMinimapCache = invalidateAllCaches;
+  // ★[T380] **다시 그리기만** 요청하는 훅 — 캐시를 버리지 않는다(존 LOD 재굽기는 비싸다).
+  //   원경 자료가 도착하면 열려 있는 지도에 숲 점이 바로 오르게 하는 한 줄(T39 가 잰 그 `needsRedraw`).
+  window.__bigmapDirty = () => { needsRedraw = true; };
 
   const _rgbCache = {};
   function _hexRgb(h) { if (_rgbCache[h]) return _rgbCache[h]; const n = parseInt((h || '#000').slice(1), 16); return _rgbCache[h] = [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
@@ -530,6 +533,15 @@
           }
         }
         ctx.imageSmoothingEnabled = prevSmooth;
+
+        // ★[T380] 이 배율이 보여 주는 만큼을 원경 층에 **요구**한다(요청은 그 층이 보낸다).
+        //   지도를 닫으면 `pollLive` 가 안 돌아 이 줄도 안 돈다 — 요구는 마지막 값으로 남고,
+        //   그건 이미 받아 둔 청크를 다시 안 받는다는 뜻일 뿐이다(캐시가 답한다).
+        if (typeof _farWant === 'function') _farWant(Math.max(canvas.width, canvas.height) / Math.max(zoom, 1e-6) / 2);
+
+        // ★[T380] 원경 나무 — **같은 자료**로 숲 점. 층은 `38-r1-fartree` 가 들고 있고
+        //   여기는 색(타일 표의 `forest`)만 건네준다(새 색 0 · 새 표 0). 손잡이 끔이면 0을 낸다.
+        if (typeof _farBigmapDots === 'function') _farBigmapDots(ctx, zoom, panX, panY, TILE_COLORS.forest);
 
         // zone 경계
         ctx.strokeStyle = 'rgba(255,255,255,0.18)';

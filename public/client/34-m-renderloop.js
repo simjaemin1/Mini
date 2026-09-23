@@ -1098,6 +1098,10 @@
       _natMs = _natMs * 0.969 + (performance.now() - _nt0) * 0.031;
       if (window.__natDbg) { window.__natDbg.ms = _natMs; window.__natDbg.wind = _ww; }
     }
+    // ★[T380] 원경 나무 층 — **안개 마스크 앞**(위 자연물과 같은 자리·같은 이유: 지면 데코는
+    //   3단계를 지면과 똑같이 받아야 한다). 손잡이가 꺼져 있으면 이 함수가 첫 줄에서 돌아간다.
+    //   ⚠`VIEW_RADIUS`·`TILE_RENDER_RADIUS` 는 이 함수의 **지역 상수**라 넘겨 준다(사본 0).
+    if (typeof _farDraw === 'function') _farDraw(ctx, toScreen, worldCx, worldCy, VIEW_RADIUS, TILE_RENDER_RADIUS);
 
     // 3단계 안개 마스크(미탐사 검정 · 봤지만 시야 밖 0.2 · 시야 안 0) — **엔티티 렌더 앞**.
     //   ★왜 여기인가(되돌린 이유, 실측): 마스크를 월드 렌더 **전체 뒤**로 옮겨 봤더니
