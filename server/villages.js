@@ -5115,6 +5115,9 @@ function foragePerf() {
                 r: vil._t347R || 0, back: vil._t347Back || 0, pend: +(vil._t347Grow || 0).toFixed(4),
                 f: +f.toFixed(4), d: +d.toFixed(4), hU: +vu.toFixed(4), hN: vh,
                 fg: (e.counts && e.counts.forager) || 0, mix: e._t347MixShare || 0,
+                //   ★[T357 · 계측 전용 · 행동 무관] 땅값 셋 — 계측기가 채집 믹스를 **정본에 다시 물어**
+                //     품목별 몫(걷는 몫 · `berry→fruit` 판)을 마을마다 유도한다(하네스·계측기에 표 0).
+                land: { f: +(e.land && e.land.fertility || 0).toFixed(4), w: +(e.land && e.land.wood || 0).toFixed(4), s: +(e.land && e.land.stone || 0).toFixed(4) },
                 pop: (e.npcs || []).length, dbg: vil._t347Dbg || null });
   }
   return { villages: (state.villages || []).length, actVillages: act, noGroveVillages: noGrove,
