@@ -281,10 +281,13 @@ console.log('\n=== [T66] 화면 규칙 B — 이모지 0 · 색은 토큰 하나
   //     자연물 정본은 `server/chunk.js` 의 `RESOURCE_HP_TABLE` 이다(스폰이 그 표로 hp 를 준다).
   {
     const RV = require(path.join(ROOT, 'server', 'itemlabel.js')).RESOURCE_VERBS;
-    const chunkSrc = fs.readFileSync(path.join(ROOT, 'server', 'chunk.js'), 'utf8');
-    const m4 = chunkSrc.match(/const RESOURCE_HP_TABLE = \{([^}]*)\}/);
-    ok(!!m4 && !!RV, '★⑭ 전제: 두 표를 실제로 읽었다(자연물 hp 정본 · 동사 이름표)');
-    const kinds = m4 ? [...m4[1].matchAll(/(\w+)\s*:/g)].map((x) => x[1]) : [];
+    // ★★[T372] 종류 정본을 **살아 있는 표**에서 읽는다 — 종전엔 소스의 리터럴을 정규식으로 긁었다.
+    //   위 머리말이 적은 뜻이 그것이다: *"스폰이 그 표로 hp 를 준다."* 스폰이 보는 것은 리터럴이 아니라
+    //   모듈이 내주는 표다. T372 가 군락 종 넷을 **리터럴에 2·1 을 옮겨 적지 않고 파생으로** 넣자
+    //   두 자가 갈렸다(리터럴 8종 ↔ 실제 12종) — 리터럴을 재던 자가 거짓을 말한 자리다.
+    const HP = require(path.join(ROOT, 'server', 'chunk.js')).RESOURCE_HP_TABLE;
+    ok(!!HP && !!RV, '★⑭ 전제: 두 표를 실제로 읽었다(자연물 hp 정본 · 동사 이름표)');
+    const kinds = Object.keys(HP || {});
     ok(kinds.length >= 6, '★⑭ (상황) 자연물 종류가 실제로 여럿이다 — 빈 표면 아래가 자명 통과다',
        `${kinds.length}종: ${kinds.join(' ')}`);
     const missing = kinds.filter((k) => !RV[k]);

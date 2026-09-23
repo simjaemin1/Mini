@@ -190,7 +190,61 @@ const REGROW = {
   TREE_FULL_Y: () => _rgNum('T122_TREE_Y', 52),    // 성목까지(게임년) — 출처 위
   BUSH_Y: () => _rgNum('T122_BUSH_Y', 1),          // 덤불 — 이듬해 다시 열린다
   HERB_Y: () => _rgNum('T122_HERB_Y', 0.5),        // 여러해살이 풀 — 한 철
+  // ★★[T372] 군락 종 넷의 주기 — **값은 출처**이고, 그 출처가 가리키는 자리는 **위 둘 중 하나**다.
+  //   그래서 여기 숫자를 한 자도 안 적는다(새 수 0): 출처가 "해마다 한 번"이면 덤불 자리(1년),
+  //   "한 철"이면 풀 자리(반 해)다. 출처 전문은 아래 `GROVE_KINDS` 머리말에 있다.
+  MUSHROOM_Y: () => _rgNum('T372_MUSHROOM_Y', REGROW.BUSH_Y()),   // 버섯밭 — 해마다 가을
+  GREENS_Y: () => _rgNum('T372_GREENS_Y', REGROW.HERB_Y()),       // 나물 — 여러해살이 풀 그 자체
+  HONEY_Y: () => _rgNum('T372_HONEY_Y', REGROW.BUSH_Y()),         // 벌집 — 연 1회 가을
+  GRAPE_Y: () => _rgNum('T372_GRAPE_Y', REGROW.BUSH_Y()),         // 야생포도 — 연 1회 가을
 };
+
+// ══ ★★★[T372 2026-09-23] 군락 종 넷 — **정의만**. 세계에 심는 갈래는 한 줄도 안 지난다 ═══════
+//   ★왜 넷인가: `foragerYieldsFor` 믹스가 이미 이 품목들을 내는데 **세계에 실체가 없다**
+//     (T347 §7-가 · T357 §2 — 실체 없는 몫이 45~50%). 수식이 부르는 것을 세계가 못 준다.
+//   ★여기는 **표일 뿐이다.** `terrain.ZONE_TERRAIN[z].groves` 에 이 `kind` 가 적히는 날에야
+//     개체가 난다(그 자료는 `scripts/plan-village-forage.js` 가 쓴다 · 손편집 금지). 켜는 것은
+//     T359 청크 생성 갈래(세션1 회부)다. ⇒ **이 표만으로는 청크 해시가 한 비트도 안 달라진다.**
+//
+//   ★★새 수 0 — 세 칸이 다 **빌린 값**이거나 **출처 값**이다:
+//     ⓐ HP 는 `RESOURCE_HP_TABLE` 의 덤불(2)·풀(1) 중 하나를 **읽어서** 쓴다(바로 아래 파생 줄).
+//        고르는 근거는 "한 번에 끝나나"다 — 벌집은 **통째로 떼고**(출처의 그 문장) 나물은 한 줌이라
+//        **풀 자리**, 버섯밭·머루는 여러 번 따는 것이라 **덤불 자리**.
+//     ⓑ 전리품 양은 `zone.js lootOfResource` 가 덤불 `berry` 의 **그 양**을 읽어 쓴다(`BUSH_BERRY_N`).
+//     ⓒ 재생 주기는 **출처**다(아래) — 자리는 위 `REGROW` 의 덤불/풀 둘 중 하나다.
+//
+//   ★★재생 주기의 출처 — 넷 다 찼고, 지어낸 칸은 없다. ⚠벌집만 출처의 결이 다르다(아래 ⚠):
+//     · 버섯밭 `MUSHROOM_Y` = 덤불 자리(연 1회 · 가을)
+//         한국민족문화대백과사전 「송이버섯」 — *"해마다 가을이면(19℃ 정도) 균사의 군데군데가
+//         팽대하여 싹이 생기고"* · Wikipedia *Matsutake* — *"the once-yearly harvest of mushrooms"*
+//     · 나물 `GREENS_Y` = 풀 자리(한 철)
+//         나물은 **여러해살이 풀 그 자체**라 T122 가 이미 적어 둔 그 자리다(*"여러해살이 풀은 한
+//         철이면 돌아온다"*). 한국임업진흥원 「고사리」 재배·관리 매뉴얼은 그보다 **빠르다**고 적는다
+//         (*"3~4회/년 정도 수확"* · *"고사리는 2년째 봄부터 수확하며 … 10년 정도 수확이 가능함"*)
+//         ⇒ 반 해는 **느린 쪽**이라 출처와 어긋나지 않는다.
+//     · 벌집 `HONEY_Y` = 덤불 자리(연 1회 · 가을)
+//         지리산한봉 「꿀이야기」 — *"토종꿀은 서리가 지난 뒤 10월 하순경 1년에 딱 한 번만 채취하기
+//         때문에 수확량이 매우 적습니다"* · Raw Honey Guide(South Korean Honey Guide) —
+//         *"Harvest happens only once per year, in autumn, and takes the entire comb"*
+//         ⚠**둘 다 한봉(재래 양봉) 기록이다.** 야생 벌집 채취 주기를 바로 적은 문헌은 못 찾았고
+//           (한국민속대백과사전 「양봉」은 robots 로 막혀 이 자리에서 못 읽었다), 벌의 한 해가
+//           같으니 **가장 가까운 자리**로 쓴다. 더 나은 앵커가 나오면 갈 칸이다 — 회부.
+//     · 야생포도 `GRAPE_Y` = 덤불 자리(연 1회 · 가을)
+//         **집 안 정본이 이미 말한다** — `server/trees.json` 의 `grape` 가 `fy`(연간 열매 수율) 0.9 ·
+//         `fs` 2(가을)다. 같은 종을 두 자로 재지 않는다.
+//
+//   ★지형은 `decideVillageType` 이 쓰는 **그 술어 이름 그대로**다(새 술어 0):
+//     `forest`(`terrain.getForestMultiplier > 2.0`) · `riverside`(`terrain.isWaterCellLocal` 220px) ·
+//     `plain`(어느 술어에도 안 걸리는 자리 = 초지 · 숲 가장자리).
+//   ★스프라이트는 `scripts/nature_render.py` 의 `PROP_BUILD` 가 굽는 키다(`.py` 가 정본 · 손편집 0).
+const GROVE_KINDS = {
+  mushroom_patch: { item: 'mushroom',  hpFrom: 'berry_bush', regrow: 'MUSHROOM_Y', terrain: 'forest',    sprite: 'mushroom01' },
+  greens_patch:   { item: 'vegetable', hpFrom: 'herb',       regrow: 'GREENS_Y',   terrain: 'plain',     sprite: 'greens01' },
+  beehive:        { item: 'honey',     hpFrom: 'herb',       regrow: 'HONEY_Y',    terrain: 'forest',    sprite: 'hive01' },
+  wild_vine:      { item: 'grape',     hpFrom: 'berry_bush', regrow: 'GRAPE_Y',    terrain: 'riverside', sprite: 'vine01' },
+};
+// ★HP 는 **읽어서** 넣는다 — 이 줄 자체가 "표에 2·1 을 옮겨 적지 않았다"는 증명이다.
+for (const _k of Object.keys(GROVE_KINDS)) RESOURCE_HP_TABLE[_k] = RESOURCE_HP_TABLE[GROVE_KINDS[_k].hpFrom];
 // 한 해의 길이는 **econ 계절 정본에서 유도**한다(365 를 여기 적지 않는다 — `events.yearDaysOf` 규약).
 let _EV = undefined;
 function _yearDays() {
@@ -225,6 +279,9 @@ function regrowStageOf(type, elapsedDays, species) {
   }
   if (type === 'berry_bush') return d < REGROW.BUSH_Y() * Y ? 'gone' : 'mature';
   if (type === 'herb') return d < REGROW.HERB_Y() * Y ? 'gone' : 'mature';
+  // ★[T372] 군락 종 넷 — 덤불·풀과 **같은 문법**이다(베는 게 아니라 따는 것이라 개체가 안 죽는다).
+  const _gk = GROVE_KINDS[type];
+  if (_gk) return d < REGROW[_gk.regrow]() * Y ? 'gone' : 'mature';
   return null;                                        // 바위·광맥·운철·둠벙 — 무변
 }
 
@@ -1047,4 +1104,4 @@ function generateCoastlineWaterTiles(zone, tileSize, findZoneAtFn, oceanRects) {
 
 // ★[T108 2026-09-05] `RESOURCE_HP_TABLE` 을 **내준다** — `zone.js` 가 같은 표를 한 벌 더
 //   들고 있었고(운석이 빠져 3대에 깨졌다 · T90 회부), 그걸 지우려면 정본이 나가야 한다.
-module.exports = { Chunk, ChunkManager, CHUNK_SIZE, generateChunkResources, resourceAt, resourcesAtCell, treeBlockerAt, overflowInto, seedGenChunkOf, regrowStageOf, REGROW, GROVE, seedRand, forestSpacing, forestTreesPerCell, forestTreesPerCellMean, scatterTreesPerCell, treeShareOf, scatterRocksPerCell, rockShareOf, FOREST_MIN_COV, RESOURCES_PER_CHUNK, generateVillagesForZone, makeVillageName, generateCoastlineWaterTiles, RESOURCE_HP_TABLE };
+module.exports = { Chunk, ChunkManager, CHUNK_SIZE, generateChunkResources, resourceAt, resourcesAtCell, treeBlockerAt, overflowInto, seedGenChunkOf, regrowStageOf, REGROW, GROVE, seedRand, forestSpacing, forestTreesPerCell, forestTreesPerCellMean, scatterTreesPerCell, treeShareOf, scatterRocksPerCell, rockShareOf, FOREST_MIN_COV, RESOURCES_PER_CHUNK, generateVillagesForZone, makeVillageName, generateCoastlineWaterTiles, RESOURCE_HP_TABLE, GROVE_KINDS };

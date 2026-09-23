@@ -264,8 +264,15 @@ console.log('\n⑩ ⓖ 걷는 목록 — 실체가 대는 품목 ∩ 수식 믹�
   ok(mix.length === 10, '⑩ [상황] 채집 믹스 품목 수', `${mix.length}종 · ${mix.join('·')}`);
   // 실체가 대는 품목 — 존 전리품 표에서 **읽어서** 센다(옮겨 적지 않는다)
   const ZC = codeOf(ZSRC);
-  const bush = (ZC.match(/const l = \{ berry: 2, fiber: 1, twig: 1 \};/) || [])[0];
-  ok(!!bush, '⑩ [상황] 덤불 전리품이 존 정본에 있다(`berry 2 · fiber 1 · twig 1`)');
+  // ★[T372] 덤불 `berry` 의 양이 **이름을 갖게 됐다**(`BUSH_BERRY_N`) — 군락 종 넷의 전리품 양이
+  //   그 한 칸을 읽기 때문이다(두 자리가 갈릴 수 없게). 그래서 이 자는 **이름을 지나 수를 읽는다**:
+  //   수를 여기 옮겨 적지 않는다는 이 절의 뜻은 그대로다.
+  const bushN = (ZC.match(/const BUSH_BERRY_N = (\d+);/) || [])[1];
+  const bush = (ZC.match(/const l = \{ berry: BUSH_BERRY_N, fiber: 1, twig: 1 \};/) || [])[0];
+  ok(!!bush && bushN === '2', '⑩ [상황] 덤불 전리품이 존 정본에 있다(`berry 2 · fiber 1 · twig 1`)',
+     `BUSH_BERRY_N=${bushN}`);
+  ok(/const gk = GROVE_KINDS\[t\];[\s\S]{0,120}\[gk\.item\]: BUSH_BERRY_N/.test(ZC),
+     '⑩ ★[T372] 군락 종 넷은 그 **같은 칸**을 읽는다(양을 옮겨 적지 않았다)');
   ok(/if \(t === 'herb'\)\s*return \{ herb: 2 \};/.test(ZC), '⑩ [상황] 풀 전리품도 있다(`herb 2`)');
   const ent = ['berry', 'fiber', 'twig', 'herb'];
   const want = mix.filter((k) => ent.includes(k)).sort();

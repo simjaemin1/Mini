@@ -382,18 +382,21 @@
   "grass02": "7e07fb07de610c93",
   "grass03": "2a63f3e1eb3831fb",
   "grass04": "8e7cd71553c7caf3",
+  "greens01": "ed742d65e1a54d46",
   "herb01": "88b12514f72cffba",
   "herb02": "fe9e8bc9ab163114",
   "herb03": "0c897c4d7d3ff5bb",
   "herb04": "670de8fcca3e1b28",
   "herb05": "f3f1011bfc2d59cd",
   "herb06": "b5d24713d089848c",
+  "hive01": "85faf8ef9df697b5",
   "mossrock01": "416be6626890810d",
   "mossrock02": "4a2a679c96982e1c",
   "mossrock03": "44594aee2f1c1553",
   "mossrock04": "c0ea4922e90ba541",
   "mossrock05": "6c1655f811e9a51d",
   "mossrock06": "668d0adc49e3e720",
+  "mushroom01": "afc48a54a0295b51",
   "ore01": "7395a11c38628f78",
   "ore02": "89adc39c96a967df",
   "ore03": "7d259cb5318d8880",
@@ -408,7 +411,8 @@
   "rock03": "550d087ed636ab5e",
   "rock04": "378c9f1ec213aa61",
   "rock05": "75f9521200381dfd",
-  "rock06": "70a324b72e8768d8"
+  "rock06": "70a324b72e8768d8",
+  "vine01": "944aa31cc89b317b"
  },
  "props": {
   "bed": "92bf5de3ca788024",
@@ -528,11 +532,11 @@
  },
  "_상자": {
   "_": "이 잠금표를 마지막으로 다시 쓴 상자. 그림을 구운 상자가 아니다 [T260]. 같은 커밋인데 그림이 다르면 굽기 로그의 [box] 줄과 이 칸을 먼저 견준다.",
-  "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+  "cpu": "Intel(R) Xeon(R) Processor @ 2.80GHz",
   "threads": 2,
   "simd": "fma avx avx2 avx512f avx512dq avx512bw avx512vl avx512_vnni",
   "node": "v22.22.2",
-  "commit": "df16a31",
+  "commit": "e37f5ba6",
   "당시": "2026-09-23"
  }
 }
