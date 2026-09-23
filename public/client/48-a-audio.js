@@ -133,15 +133,42 @@ function sfxSrcOf(m) {
   const canOgg = !!a.canPlayType && a.canPlayType('audio/ogg; codecs="vorbis"') !== '';
   return (canOgg || !m.fileAlt) ? m.file : m.fileAlt;
 }
-function sfxBuffer(key) {
-  if (_sfxBuf.has(key)) return _sfxBuf.get(key);
-  const m = sfxKey(key);
-  if (!m || !m.file) { _sfxBuf.set(key, null); return null; }
-  _sfxBuf.set(key, null);                              // 받는 동안은 무음(중복 요청 방지)
-  fetch('/assets/sfx/' + sfxSrcOf(m))
+// ★★★[T354] **변주 — 한 키에 파일 여럿.** 재민 09-22: 도끼·호랑이에 "다양한 소리가 있다면".
+//   표가 `files: [...]` 를 주면 그중 하나가 난다. 단일 `file` 은 **그대로**다(기존 키 비트 동일).
+//   ⚠고르는 것은 **주사위가 아니다**(`Math.random` 0 — 존 캐논과 같다). 사건에서 씨를 뽑는다:
+//     자리가 있는 소리는 **그 자리**로(같은 나무를 같은 자리에서 때리면 늘 같은 소리 — 세계가 일관된다),
+//     자리가 없는 소리는 그 키의 **울린 횟수**로(발자국은 걸음마다 다른 사건이다).
+//   ⇒ 같은 사건은 몇 번을 다시 재생해도 같은 파일이고, 하네스가 그 결정성을 잰다.
+function sfxVarIndex(m, o) {
+  const n = (m.files && m.files.length) || 0;
+  if (n < 2) return 0;
+  let seed;
+  if (o && o.x != null && o.y != null) seed = (Math.floor(o.x) * 73856093) ^ (Math.floor(o.y) * 19349663);
+  else seed = (m._n = (m._n || 0) + 1) * 2654435761;
+  seed = seed >>> 0;
+  seed ^= seed >>> 15; seed = Math.imul(seed, 2246822507); seed ^= seed >>> 13;
+  return (seed >>> 0) % n;
+}
+/** 이 키가 이번에 쓸 파일 이름. 배열이면 `sfxVarIndex` 가 고른 하나. */
+function sfxFileOf(m, o) {
+  if (m.files && m.files.length) {
+    const f = m.files[sfxVarIndex(m, o)];
+    return (typeof f === 'string') ? f : (f && f.file);
+  }
+  return sfxSrcOf(m);
+}
+function sfxBuffer(key, o) {
+  const m0 = sfxKey(key);
+  const nm = m0 ? sfxFileOf(m0, o) : null;
+  const ck = (m0 && m0.files && m0.files.length) ? (key + '#' + nm) : key;   // 변주는 파일마다 한 벌
+  if (_sfxBuf.has(ck)) return _sfxBuf.get(ck);
+  const m = m0;
+  if (!m || !nm) { _sfxBuf.set(ck, null); return null; }
+  _sfxBuf.set(ck, null);                              // 받는 동안은 무음(중복 요청 방지)
+  fetch('/assets/sfx/' + nm)
     .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(r.status)))
     .then((ab) => _sfxCtx.decodeAudioData(ab))
-    .then((buf) => { _sfxBuf.set(key, buf); })
+    .then((buf) => { _sfxBuf.set(ck, buf); })
     .catch(() => { _sfxStat.missing++; });
   return null;
 }
@@ -175,7 +202,7 @@ function sfxPlay(key, o) {
   const live = (_sfxLive.get(key) || []).filter((e) => e.until > now);
   _sfxLive.set(key, live);
   if (live.length >= (m.maxSame || 3)) { _sfxStat.blocked++; return false; }
-  const buf = sfxBuffer(key);
+  const buf = sfxBuffer(key, o);
   _sfxLast.set(key, now);
   if (!buf) { m.file ? _sfxStat.pending++ : _sfxStat.missing++; return false; }   // 무음. 났다고 안 적는다.
   const src = _sfxCtx.createBufferSource(); src.buffer = buf;
@@ -229,14 +256,20 @@ function sfxGroundKey() {
   if (!cell) return 'step_dirt';
   const ck = cell[0] + ',' + cell[1];
   if (_sfxGroundCell && _sfxGroundCell.k === ck) return _sfxGroundCell.v;
-  let v = 'step_dirt';
+  // ★★[T354] 지면 키는 **표**가 고른다(`ground`). 셋이 된 것은 재민 09-22 귀 판정이다 —
+  //   "좋긴 한데 돌바닥 걷는 소리야"(옛 step_dirt) · "이게 흙바닥에 가까운데?"(옛 step_grass).
+  //   CREDITS 가 T262 부터 달고 있던 "지면 표시가 팩에 없다 — 가설이다" 경고가 그 귀로 닫혔다.
+  const G = (_sfxMan && _sfxMan.ground) || {};
+  let v = G._기본 || 'step_dirt';
   try {
     const ts = (typeof window.__tileStateAt === 'function') ? window.__tileStateAt(cell[0], cell[1]) : null;
-    if (ts && ts.kind === 'land' && !ts.geo && typeof SoilBase !== 'undefined') {
+    // 바위·산터 = 돌 — 이 술어는 `step_dirt` 의 `땅` 칸이 T261 부터 적어 두고도 **안 쓰던** 그것이다.
+    if (ts && (ts.kind === 'rock' || ts.geo) && G.rock) v = G.rock;
+    else if (ts && ts.kind === 'land' && !ts.geo && typeof SoilBase !== 'undefined') {
       const c = (typeof conns !== 'undefined' && typeof primaryZoneId !== 'undefined') ? conns.get(primaryZoneId) : null;
       const B = SoilBase.biomeOf(c && c.meta ? c.meta.biome : undefined);
       const t = Math.max(0, Math.min(1, (ts.soil - B.grass[0]) / (B.grass[1] - B.grass[0])));
-      if (t * t * (3 - 2 * t) * B.capG >= 0.5) v = 'step_grass';
+      if (t * t * (3 - 2 * t) * B.capG >= 0.5 && G.grass) v = G.grass;
     }
   } catch (e) { /* 지형이 아직 안 왔다 — 흙으로 둔다 */ }
   _sfxGroundCell = { k: ck, v };
@@ -495,7 +528,14 @@ function initAudio() {
       if (!_sfxCtx || !w) return;
       _sfxWx = { precip: +w.precip || 0, indoor: !!indoor };
       window.__sfx.ambient('wind', w.wind, { indoor });
-      window.__sfx.ambient('rain', _sfxWx.precip, { indoor });
+      // ★★[T354] 비는 **세기로 두 파일**이 된다(`rainSplit` 표) — 재민 09-22 "이건 폭풍 버전인 거 같은데".
+      //   문턱 아래는 약한 비, 위는 지금 것. 한쪽을 켜면 다른 쪽은 0 으로 꺼진다(둘이 겹쳐 울지 않는다).
+      const RS = _sfxMan.rainSplit;
+      if (RS && RS['아래'] && RS['위']) {
+        const light = _sfxWx.precip > 0 && _sfxWx.precip < (RS['문턱'] || 0.5);
+        window.__sfx.ambient(RS['아래'], light ? _sfxWx.precip : 0, { indoor });
+        window.__sfx.ambient(RS['위'], light ? 0 : _sfxWx.precip, { indoor });
+      } else window.__sfx.ambient('rain', _sfxWx.precip, { indoor });
     },
     /** 개체·지형 훑기 — `34-m-renderloop.js` 한 줄이 이번 프레임의 renderables 와 카메라 중심을 준다.
      *  ★[T283] 무엇이 우는지는 **표 셋**(`mobs`·`buildings`·`bird.trees`)이 정한다 — 종 이름이

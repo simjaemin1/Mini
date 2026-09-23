@@ -44,7 +44,7 @@
 
 ---
 
-## 2-b. 효과음 (`public/assets/sfx/`) [T262 조사 · T266·T269·T272·T282 확보 · 2026-09-13]
+## 2-b. 효과음 (`public/assets/sfx/`) [T262 조사 · T266·T269·T272·T282 확보 · **T354 재민 첫 귀 판정 뒤 재확보** · 2026-09-23]
 
 **출처 없는 소리는 한 장도 없다.** 라이선스는 **파일마다 그 파일의 Commons 페이지에서 읽었다**(검색어의
 "CC0" 는 안 믿는다 — T262 가 그렇게 검색된 늑대가 CC-BY 인 것을 잡았다).
@@ -53,11 +53,11 @@
 |---|---|---|---|---|---|---|
 | `wind` | [Commons: Gentle breeze and birds singing.ogg](https://commons.wikimedia.org/wiki/File:Gentle_breeze_and_birds_singing.ogg) (원천 pdsounds.org #1) | ezwa | **Public domain** | 2007-04-18 | 2026-09-13 | 원본 32.55s 중 **11.0~22.0s** → 10.0s 반복 |
 | `fire` | [Commons: Dry grass burning in open fireplace.ogg](https://commons.wikimedia.org/wiki/File:Dry_grass_burning_in_open_fireplace.ogg) (원천 pdsounds.org #3) | ezwa | **Public domain** | 2007-06-17 | 2026-09-13 | 원본 25.50s 중 **3.0~14.0s** → 10.0s 반복 |
-| `step_dirt` | [Kenney "RPG Audio"](https://kenney.nl/assets/rpg-audio) · `footstep04.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2023(팩) | 2026-09-13 | 통째(0.22s) · ⚠지면 표시는 팩에 **없다**(아래) |
-| `step_grass` | [Kenney "RPG Audio"](https://kenney.nl/assets/rpg-audio) · `footstep07.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2023(팩) | 2026-09-13 | 통째(0.13s) · ⚠같음 |
+| `step_dirt` | [Kenney "RPG Audio"](https://kenney.nl/assets/rpg-audio) · `footstep07.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2023(팩) | 2026-09-23 | 통째(0.26s) · ★[T354] **파일이 바뀌었다** — 재민 09-22 가 옛 `step_grass` 를 흙이라 판정 |
+| `step_grass` | [Kenney "RPG Audio"](https://kenney.nl/assets/rpg-audio) · `footstep05.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2023(팩) | 2026-09-23 | 통째(0.28s) · ★[T354] 새 파일 — 남은 여덟 중 가장 스치는 것(중심 2775Hz) |
 | `axe` | [Kenney "RPG Audio"](https://kenney.nl/assets/rpg-audio) · `chop.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2023(팩) | 2026-09-13 | 통째(0.21s) |
-| `eat` | [OpenGameArt: 80 CC0 creature SFX](https://opengameart.org/content/80-cc0-creature-sfx) · `eat_02.ogg` | rubberduck | **CC0** (페이지 License 칸) | — | 2026-09-13 | 통째(0.24s) |
-| `water` | [Commons: Water flowing pouring trickling.ogg](https://commons.wikimedia.org/wiki/File:Water_flowing_pouring_trickling.ogg) (pdsounds #2) | stephan | **Public domain** | 2007-04-30 | 2026-09-13 | 96.29s 중 **40.0~52.0s** → 10.0s 반복(페이드 2s) |
+| `eat` | [Commons: Chewing gum mouth close.ogg](https://commons.wikimedia.org/wiki/File:Chewing_gum_mouth_close.ogg) (pdsounds #159) | ezwa | **Public domain** | 2007-04-19 | 2026-09-23 | 14.92s 중 **2.00~2.35s** · ★[T354] 재확보(재민 09-22 — 옛 것은 합성 팩) |
+| `water` | [Commons: 433589 jackthemurray stream-river-water-up-close.wav](https://commons.wikimedia.org/wiki/File:433589_jackthemurray_stream-river-water-up-close.wav) (원천 freesound 433589) | jackthemurray | **CC0 1.0** | 2018-06-22 | 2026-09-23 | 68.89s 중 **20.0~32.0s** → 이음새 겹쳐 10.0s 반복(페이드 2s · 이음새 실측 **−8.5 dB**) · ★[T354] 재확보(재민 09-22) |
 | `rain` | [Commons: Rain (1).ogg](https://commons.wikimedia.org/wiki/File:Rain_(1).ogg) (pdsounds #6) | ezwa | **Public domain** | 2008-11-13 | 2026-09-13 | 44.96s 중 **30.0~41.0s** → 10.0s 반복 |
 | `bird` | [Commons: Birds singing in garden.ogg](https://commons.wikimedia.org/wiki/File:Birds_singing_in_garden.ogg) (pdsounds #1) | ezwa | **Public domain** | 2007-04-18 | 2026-09-13 | 49.48s 중 **1.0~12.0s** → 10.0s 반복 |
 | `bronze_hit` | [Commons: Dull thud.ogg](https://commons.wikimedia.org/wiki/File:Dull_thud.ogg) (pdsounds #7) | gregoryweir | **Public domain** | 2009-07-04 | 2026-09-13 | 통째(0.32s) · ⚠재료는 출처가 안 말한다(아래) |
@@ -66,7 +66,12 @@
 | `hook` | 〃 (같은 원본의 다른 사건) | gradha | **Public domain** | 2009-07-23 | 2026-09-13 | 48.12s 중 **24.8~26.2s** |
 | `deer_call` | [Commons: American Elk Bugling.ogg](https://commons.wikimedia.org/wiki/File:American_Elk_Bugling.ogg) (미 국립공원청 wica) | Jim Pisarowicz | **Public domain** (PD US NPS) | 날짜 미상(페이지가 안 적는다) | 2026-09-13 | 5.13s 중 **0.50~2.50s** · ⚠종은 **와피티**(아래) |
 | `tiger_growl` | [Commons: 439280 schots angry-tiger.wav](https://commons.wikimedia.org/wiki/File:439280_schots_angry-tiger.wav) (원천 freesound 439280) | schots | **CC0** | 2018-08-31 | 2026-09-13 | 65.64s 중 **11.00~13.00s** · 출처가 `Panthera tigris` 라 적는다 |
-| `wolf_howl` | [Commons: Rallying.ogg](https://commons.wikimedia.org/wiki/File:Rallying.ogg) (영문 위키 늑대 문서) | Retron at English Wikipedia | **Public domain** (PD-user) | 2005-07 녹음 · 2007-07-06 게시 | 2026-09-13 | 18.12s 중 **6.50~9.00s** · **울부짖음** — T303 이 키를 파일에 맞췄다(아래) |
+| `wolf_howl` | [Commons: Wolf howls.ogg](https://commons.wikimedia.org/wiki/File:Wolf_howls.ogg) (원천 fws.gov) | U.S. Fish and Wildlife Service | **Public domain** (PD-USGov-FWS) | 날짜 미상(페이지가 안 적는다) | 2026-09-23 | 28.32s 중 **1.00~3.90s** · ★[T354] 재확보(재민 09-22 "최악") |
+| `step_stone` | [Kenney "RPG Audio"](https://kenney.nl/assets/rpg-audio) · `footstep04.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2023(팩) | 2026-09-23 | 통째(0.32s) · ★[T354] 새 키 — 재민 09-22 "돌바닥 걷는 소리야"(옛 `step_dirt`) |
+| `harvest` | [Kenney "RPG Audio"](https://kenney.nl/assets/rpg-audio) · `knifeSlice.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2023(팩) | 2026-09-23 | 통째(0.60s) · ★[T354] **T283 이후 무음이던 자리를 채웠다** |
+| `drop` | [Kenney "RPG Audio"](https://kenney.nl/assets/rpg-audio) · `dropLeather.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2023(팩) | 2026-09-23 | 통째(0.42s) · ★[T354] 새 키 — 낙하가 곡괭이질과 **겸업을 끊었다**(#50) |
+| `boar_grunt` | [OpenGameArt: 80 CC0 creature SFX](https://opengameart.org/content/80-cc0-creature-sfx) · `grunt_02.ogg` | rubberduck | **CC0** (페이지 License 칸) | — | 2026-09-23 | 통째(0.53s) · ★[T354] 무음이던 자리 · ⚠**합성 팩**(진짜 멧돼지 PD/CC0 녹음 없음 — 아래) |
+| `rain_light` | [Commons: Listening to Raindrops (1035382 - drizzle loop).mp3](https://commons.wikimedia.org/wiki/File:Listening_to_Raindrops_(1035382_-_drizzle_loop).mp3) | NASA | **Public domain** (NASA) | 2000-06-14 게시 | 2026-09-23 | 49.08s 중 **5.0~17.0s** → 10.0s 반복(이음새 실측 **−15.5 dB**) · ★[T354] 새 키 — 재민 09-22 "가벼운 빗소리도" |
 | `ui_click` | [Kenney "RPG Audio"](https://kenney.nl/assets/rpg-audio) · `bookPlace1.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2023(팩) | 2026-09-13 | 0.30s 중 **0.020~0.280s**(선행 무음 잘라 냄) · **후보**(훅 없음) |
 
 * **요구 문구 없음** — 둘 다 퍼블릭 도메인이라 표시 의무가 없다(그래서 §1 에 안 들어간다). 예의로 여기 적는다.

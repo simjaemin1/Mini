@@ -1,471 +1,562 @@
 {
-  "_규약": "소리 키 표 — 정본 하나 [T261 2026-09-13]. 클라 `public/client/48-a-audio.js` 가 이 표만 읽는다. 표에 없는 키는 안 난다. 값은 전부 여기 있고 코드엔 하나도 없다(눈대중 금지 — 족보 74). 꼴·규약은 `인계/SOUND-소리.md`.",
-  "_단위": "radius = 월드 px (32px = 1셀 · 0 = 위치 없는 소리 = 항상 제 볼륨). volume = 0..1 (효과음 버스 앞단). cooldownMs = 같은 키의 최소 간격. maxSame = 동시에 겹칠 수 있는 같은 키의 수.",
-  "_감쇠": "linear — g = volume * max(0, 1 - d/radius). 역제곱이 아니라 선형을 골랐다: 반경 밖이 정확히 0 이라 '멀리서 웅웅대는 꼬리'가 안 남고, 반경 하나로 '어디까지 들리나'가 표에서 읽힌다. 역제곱은 0 에 점근할 뿐이라 컷오프를 또 정해야 한다(값이 둘이 된다).",
-  "_파일없음": "file: null = 음원 **없음**. 그 키는 무음이고 하네스는 \"미확보\"로 센다 — 빨강이 아니다. ★[T303 · 재민 위임 → PM 2026-09-18] 셋을 **확정**했다(대기 칸 0): `harvest`(키 있음 · state=missing) · `boar_grunt`(키 있음 · state=missing) · `hare`(**키를 안 만든다** — 눈토끼는 거의 소리가 없고 Commons `Category:Audio files of Lepus` 가 0건이다. `mobs` 표에 `arctic_hare` 줄도 없다 ⇒ 없는 것이 맞는 상태이고, 빈 키를 세우면 \"언젠가 온다\"는 대기 칸이 하나 생긴다). `ui_click` 도 **없음**이다 — UI 는 세계의 소리가 아니다(파일과 크레딧은 남아 있고 키·훅이 영영 없다 · 삼자 대조가 \"후보\"로 표에 낸다). 파일이 들어오면 **코드 수정 0** 으로 그대로 난다 — T261 의 여섯과 T283 의 아홉이 실제로 그렇게 이어졌다.",
-  "_포맷": ".ogg + .m4a 쌍(bgm 과 같은 규약) · 단발 ≤ 3초 · 반복 ≤ 10초(이음새) · 파일당 ≤ 150KB · 자리는 public/assets/sfx/<key>.{ogg,m4a}. ★표는 **파일 이름을 그대로** 적는다(어간 아님) — `asset-lock.keyOf` 가 소리만 파일 이름을 키로 쓰고(한 소리에 두 파일), `test-assets-audit` 이 `ogg`·`m4a` 를 **어간 대조에서 뺐기** 때문이다(짧은 영단어가 코드 아무 데나 걸린다 — T266). 이름이나 URL 로 불러야 고아가 풀린다. 그래서 `.m4a` 도 `fileAlt` 로 적는다 — 사파리가 Ogg Vorbis 를 못 튼다는 실제 이유도 같이 있다.",
-  "version": 1,
-  "attenuation": "linear",
-  "_헤드룸": "★[T292] **셈을 실측으로 갈아 끼웠다.** T261·T283 은 볼륨의 **합**으로 넘침을 셌는데, 합은 상한이지 피크가 아니다 — 파형이 같은 순간에 같은 부호로 겹치지 않는다. 실클라(Chromium)에서 진짜 버퍼를 오프라인 렌더해 표본을 전수로 센 값(`__sfx.probe`):\\n  · 카드가 지목한 최악 조합(wind+fire+step_dirt+wolf_growl+axe+rain+bird · 합 4.37) → 리미터 **없이** 피크 **−3.40 dBFS · 클리핑 0**\\n  · T283 헤드룸 셈의 조합(wind+rain+water+fire+axe · 합 3.20) → 리미터 없이 피크 **−6.31 dBFS · 클리핑 0**\\n  · 소리 나는 **16종 전부**(합 10.64) → 리미터 없이 피크 **+1.10 dBFS · 클리핑 8/352,800**(게임에서 날 수 없는 조합)\\n⇒ 버스 기본값(전체 0.8 · 효과음 0.7)은 **그대로 둔다**(내릴 이유가 없었다). 음원 정규화 목표도 −1.0 dBFS 그대로. 리미터는 남기되 **문턱 아래에서 투명한 곡선**으로 고쳤다(`bus.limiter.knee`) — 16종 같은 병적 조합에서만 물고, 평소엔 아무 일도 안 한다.\\n★키를 더하는 카드가 할 일은 이제 곱셈이 아니라 **`__sfx.probe()` 한 번**이다. 최악 피크가 `knee` 를 넘으면 `test-audio ⑧` 이 문다.",
-  "_표셋": "무엇이 어떤 키를 내는가는 **코드가 아니라 이 표 셋**이다 [T283]. 훅은 `msg`·개체를 넘기기만 하고(로직 0), 층은 이 표를 본다. 새 소리를 더할 때 고칠 자리가 표 한 줄이 되게 하려는 것이다.",
-  "resourceHit": {
-    "_뜻": "서버가 `resource_update`(때렸다 · hp 준다) / `resource_removed`(없어졌다) 를 **브로드캐스트**할 때 나는 소리. 자원의 자리가 있으므로 **거리 감쇠가 걸린다** — 남이 옆에서 나무를 베도 들린다(그게 맞다). 자원 종류는 클라 렌더가 이미 가르는 그 이름이다(`34-m-renderloop` 1515~1524).",
-    "tree": "axe",
-    "rock": "bronze_hit",
-    "ore": "bronze_hit",
-    "meteorite": "bronze_hit",
-    "berry_bush": "harvest",
-    "herb": "harvest",
-    "sapling": "harvest",
-    "_뺀것": "`stump`(벤 자리 · 때릴 것이 아니다) · `water_pool`(마시기 — 키 없음)"
+ "_규약": "소리 키 표 — 정본 하나 [T261 2026-09-13]. 클라 `public/client/48-a-audio.js` 가 이 표만 읽는다. 표에 없는 키는 안 난다. 값은 전부 여기 있고 코드엔 하나도 없다(눈대중 금지 — 족보 74). 꼴·규약은 `인계/SOUND-소리.md`.",
+ "_단위": "radius = 월드 px (32px = 1셀 · 0 = 위치 없는 소리 = 항상 제 볼륨). volume = 0..1 (효과음 버스 앞단). cooldownMs = 같은 키의 최소 간격. maxSame = 동시에 겹칠 수 있는 같은 키의 수.",
+ "_감쇠": "linear — g = volume * max(0, 1 - d/radius). 역제곱이 아니라 선형을 골랐다: 반경 밖이 정확히 0 이라 '멀리서 웅웅대는 꼬리'가 안 남고, 반경 하나로 '어디까지 들리나'가 표에서 읽힌다. 역제곱은 0 에 점근할 뿐이라 컷오프를 또 정해야 한다(값이 둘이 된다).",
+ "_파일없음": "file: null = 음원 **없음**. 그 키는 무음이고 하네스는 \"미확보\"로 센다 — 빨강이 아니다. ★[T303 · 재민 위임 → PM 2026-09-18] 셋을 **확정**했다(대기 칸 0): `harvest`(키 있음 · state=missing) · `boar_grunt`(키 있음 · state=missing) · `hare`(**키를 안 만든다** — 눈토끼는 거의 소리가 없고 Commons `Category:Audio files of Lepus` 가 0건이다. `mobs` 표에 `arctic_hare` 줄도 없다 ⇒ 없는 것이 맞는 상태이고, 빈 키를 세우면 \"언젠가 온다\"는 대기 칸이 하나 생긴다). `ui_click` 도 **없음**이다 — UI 는 세계의 소리가 아니다(파일과 크레딧은 남아 있고 키·훅이 영영 없다 · 삼자 대조가 \"후보\"로 표에 낸다). 파일이 들어오면 **코드 수정 0** 으로 그대로 난다 — T261 의 여섯과 T283 의 아홉이 실제로 그렇게 이어졌다.",
+ "_포맷": ".ogg + .m4a 쌍(bgm 과 같은 규약) · 단발 ≤ 3초 · 반복 ≤ 10초(이음새) · 파일당 ≤ 150KB · 자리는 public/assets/sfx/<key>.{ogg,m4a}. ★표는 **파일 이름을 그대로** 적는다(어간 아님) — `asset-lock.keyOf` 가 소리만 파일 이름을 키로 쓰고(한 소리에 두 파일), `test-assets-audit` 이 `ogg`·`m4a` 를 **어간 대조에서 뺐기** 때문이다(짧은 영단어가 코드 아무 데나 걸린다 — T266). 이름이나 URL 로 불러야 고아가 풀린다. 그래서 `.m4a` 도 `fileAlt` 로 적는다 — 사파리가 Ogg Vorbis 를 못 튼다는 실제 이유도 같이 있다.",
+ "version": 1,
+ "attenuation": "linear",
+ "_헤드룸": "★[T292] **셈을 실측으로 갈아 끼웠다.** T261·T283 은 볼륨의 **합**으로 넘침을 셌는데, 합은 상한이지 피크가 아니다 — 파형이 같은 순간에 같은 부호로 겹치지 않는다. 실클라(Chromium)에서 진짜 버퍼를 오프라인 렌더해 표본을 전수로 센 값(`__sfx.probe`):\\n  · 카드가 지목한 최악 조합(wind+fire+step_dirt+wolf_growl+axe+rain+bird · 합 4.37) → 리미터 **없이** 피크 **−3.40 dBFS · 클리핑 0**\\n  · T283 헤드룸 셈의 조합(wind+rain+water+fire+axe · 합 3.20) → 리미터 없이 피크 **−6.31 dBFS · 클리핑 0**\\n  · 소리 나는 **16종 전부**(합 10.64) → 리미터 없이 피크 **+1.10 dBFS · 클리핑 8/352,800**(게임에서 날 수 없는 조합)\\n⇒ 버스 기본값(전체 0.8 · 효과음 0.7)은 **그대로 둔다**(내릴 이유가 없었다). 음원 정규화 목표도 −1.0 dBFS 그대로. 리미터는 남기되 **문턱 아래에서 투명한 곡선**으로 고쳤다(`bus.limiter.knee`) — 16종 같은 병적 조합에서만 물고, 평소엔 아무 일도 안 한다.\\n★키를 더하는 카드가 할 일은 이제 곱셈이 아니라 **`__sfx.probe()` 한 번**이다. 최악 피크가 `knee` 를 넘으면 `test-audio ⑧` 이 문다.",
+ "_표셋": "무엇이 어떤 키를 내는가는 **코드가 아니라 이 표 셋**이다 [T283]. 훅은 `msg`·개체를 넘기기만 하고(로직 0), 층은 이 표를 본다. 새 소리를 더할 때 고칠 자리가 표 한 줄이 되게 하려는 것이다.",
+ "resourceHit": {
+  "_뜻": "서버가 `resource_update`(때렸다 · hp 준다) / `resource_removed`(없어졌다) 를 **브로드캐스트**할 때 나는 소리. 자원의 자리가 있으므로 **거리 감쇠가 걸린다** — 남이 옆에서 나무를 베도 들린다(그게 맞다). 자원 종류는 클라 렌더가 이미 가르는 그 이름이다(`34-m-renderloop` 1515~1524).",
+  "tree": "axe",
+  "rock": "bronze_hit",
+  "ore": "bronze_hit",
+  "meteorite": "bronze_hit",
+  "berry_bush": "harvest",
+  "herb": "harvest",
+  "sapling": "harvest",
+  "_뺀것": "`stump`(벤 자리 · 때릴 것이 아니다) · `water_pool`(마시기 — 키 없음)"
+ },
+ "mobs": {
+  "_뜻": "이번 프레임 화면에 있는 개체(`renderables` kind='mob')의 `type` → 키. 반경·쿨다운은 그 키의 칸이 정한다. 파일이 없으면 무음(빨강 아님).",
+  "wolf": "wolf_howl",
+  "tiger": "tiger_growl",
+  "wild_boar": "boar_grunt",
+  "deer": "deer_call",
+  "_이름주의": "멧돼지의 개체 이름은 `wild_boar` 다(`public/animals.js`) — 키 이름 `boar_grunt` 와 다르다. 키를 개체 이름으로 쓰지 않는 이유가 이것이다."
+ },
+ "inventoryWhere": {
+  "_뜻": "서버 `inventory` 전문의 `where` 칸(= `sendInventory(player, where)` 가 이미 받던 낱말 · T305 가 전문에 실었다) → 키. **표에 없는 낱말은 안 운다**(지어내지 않는다). 자리 값이 없는 소리라 거리 감쇠가 없다(`radius: 0`).",
+  "harvest": "harvest",
+  "_왜_이_표인가": "밭 수확은 `building_updated`(9자리 방송)·`sendInventory`(68자리)·`notice` 셋으로만 나갔다 — **어느 것도 수확의 표식이 아니다**(T292 ⓑ). 짝(방송 뒤 인벤)으로 가르는 길은 **두 메시지의 도착 순서**에 기대는 술어라 안 썼다(족보 226 — 발신 훅은 거짓 소리). 서버가 낱말 하나를 대는 것이 정답이었다.",
+  "_나머지_where": "`drop:*`·`pickup*`·`death` 등 이미 서버가 대고 있는 낱말들은 **표에 없어서 안 운다**. 소리를 줄 값이 있으면 그때 이 표에 한 줄이다(코드 0)."
+ },
+ "npcAct": {
+  "_뜻": "서버 `tick` 전문의 `players[].act` 낱말(= `villages.js _lifeAct` 가 세우고 `zone.js makeEntry` 가 무상태 델타로 싣는 그 칸) → 키. **바뀐 순간에만** 운다(층이 직전 값과 맞대 본다 — 라벨은 안 바뀌면 안 오고, 오는 동안엔 1.2초 창 탓에 같은 값이 여러 틱 온다). 개체 자리가 있으므로 **거리 감쇠가 걸린다**.",
+  "드리움": "cast",
+  "놓침": "bite",
+  "낚음": "hook",
+  "_왜_셋이_동시에_안_나는가": "어부의 한 시도는 **한 순간**이다(`villages.js` 8초 게이트 안에서 종 추첨·예산·장부가 같은 틱에 끝난다 — 플레이어 낚시의 `biteAt`·`windowMs` 같은 대기 창이 NPC 에는 없다). 그래서 '던짐→입질→걸림' 을 차례로 울릴 자리가 **없다**. 대신 그 시도의 **결말**이 원래 셋으로 갈려 있어서(안 물림 / 물고 놓침 / 건짐) 키 셋이 그 셋에 하나씩 붙는다. 없는 순간을 지어내지 않는다(족보 226).",
+  "_나머지_라벨": "`출근`·`취침`·`개간` 등 생활층의 다른 낱말은 **표에 없어서 안 운다**. 소리를 줄 값이 있으면 그때 이 표에 한 줄이다(코드 0)."
+ },
+ "groundDrop": {
+  "_뜻": "`ground_item_added` — 물건이 **바닥에 떨어진 순간**. 버리기·죽어서 쏟기가 전부 이 한 방송으로 나온다(`zone.js:7728`).",
+  "key": "drop",
+  "_왜_같은_키인가": "죽은 어부의 고기가 떨어지는 소리는 **플레이어가 떨어뜨리는 그 소리**여야 한다(T321 ②). 그리고 그건 배선으로 보장된다 — 둘 다 `_deathDrop`·버리기가 같은 `ground_item_added` 하나로 나오기 때문이다(`test-fish-act ⑤`: 죽은 어부의 손은 **플레이어 낙하 함수 그 자리**로 간다 · 새 경로 0). 층은 개체가 사람인지 주민인지 **묻지도 않는다**.",
+  "_왜_bronze_hit_인가": "**새 키 0** 규약이라 있는 키에서 골라야 한다. `bronze_hit` 의 출처가 말 그대로 **Dull thud**(`commons_pd_dullthud`)다 — 물건이 바닥에 닿는 소리로는 표에서 가장 가깝다. ⚠다만 이 키는 **곡괭이질**(`resourceHit` 의 rock·ore·meteorite)에도 쓰인다 — 한 소리가 두 뜻을 진다. T272 가 이 키의 정체를 **재민 귀**에 맡겨 두었으므로 이 겹침도 같은 자리에 둔다. 아니라고 하면 **이 칸 한 줄**을 바꾸면 된다(코드 0)."
+ },
+ "fishState": {
+  "_뜻": "서버 `fish_state` 의 `state` → 키. 서버가 보내는 이름 그대로다(`zone.js` 6493 'wait' · 11937 'bite' · 나머지는 'idle'). 좌표를 같이 보내므로 **찌 자리에서** 난다(존 로컬 → 절대로 접는다 — 찌 그리기가 1차에 빠뜨렸던 그 변환).",
+  "wait": "cast",
+  "bite": "bite",
+  "_idle": "소리 없음 — 줄을 거두는 것은 사건이 아니다."
+ },
+ "buildings": {
+  "_뜻": "개체와 같은 문법 — 건물 `type` → 반복 키. 개체마다 하나씩 나고 화면 밖이면 멎는다.",
+  "campfire": "fire"
+ },
+ "bus": {
+  "master": {
+   "default": 0.8,
+   "label": "전체"
   },
-  "mobs": {
-    "_뜻": "이번 프레임 화면에 있는 개체(`renderables` kind='mob')의 `type` → 키. 반경·쿨다운은 그 키의 칸이 정한다. 파일이 없으면 무음(빨강 아님).",
-    "wolf": "wolf_howl",
-    "tiger": "tiger_growl",
-    "wild_boar": "boar_grunt",
-    "deer": "deer_call",
-    "_이름주의": "멧돼지의 개체 이름은 `wild_boar` 다(`public/animals.js`) — 키 이름 `boar_grunt` 와 다르다. 키를 개체 이름으로 쓰지 않는 이유가 이것이다."
+  "sfx": {
+   "default": 0.7,
+   "label": "효과음"
   },
-  "inventoryWhere": {
-    "_뜻": "서버 `inventory` 전문의 `where` 칸(= `sendInventory(player, where)` 가 이미 받던 낱말 · T305 가 전문에 실었다) → 키. **표에 없는 낱말은 안 운다**(지어내지 않는다). 자리 값이 없는 소리라 거리 감쇠가 없다(`radius: 0`).",
-    "harvest": "harvest",
-    "_왜_이_표인가": "밭 수확은 `building_updated`(9자리 방송)·`sendInventory`(68자리)·`notice` 셋으로만 나갔다 — **어느 것도 수확의 표식이 아니다**(T292 ⓑ). 짝(방송 뒤 인벤)으로 가르는 길은 **두 메시지의 도착 순서**에 기대는 술어라 안 썼다(족보 226 — 발신 훅은 거짓 소리). 서버가 낱말 하나를 대는 것이 정답이었다.",
-    "_나머지_where": "`drop:*`·`pickup*`·`death` 등 이미 서버가 대고 있는 낱말들은 **표에 없어서 안 운다**. 소리를 줄 값이 있으면 그때 이 표에 한 줄이다(코드 0)."
+  "music": {
+   "default": 0.45,
+   "label": "음악"
   },
-  "npcAct": {
-    "_뜻": "서버 `tick` 전문의 `players[].act` 낱말(= `villages.js _lifeAct` 가 세우고 `zone.js makeEntry` 가 무상태 델타로 싣는 그 칸) → 키. **바뀐 순간에만** 운다(층이 직전 값과 맞대 본다 — 라벨은 안 바뀌면 안 오고, 오는 동안엔 1.2초 창 탓에 같은 값이 여러 틱 온다). 개체 자리가 있으므로 **거리 감쇠가 걸린다**.",
-    "드리움": "cast",
-    "놓침": "bite",
-    "낚음": "hook",
-    "_왜_셋이_동시에_안_나는가": "어부의 한 시도는 **한 순간**이다(`villages.js` 8초 게이트 안에서 종 추첨·예산·장부가 같은 틱에 끝난다 — 플레이어 낚시의 `biteAt`·`windowMs` 같은 대기 창이 NPC 에는 없다). 그래서 '던짐→입질→걸림' 을 차례로 울릴 자리가 **없다**. 대신 그 시도의 **결말**이 원래 셋으로 갈려 있어서(안 물림 / 물고 놓침 / 건짐) 키 셋이 그 셋에 하나씩 붙는다. 없는 순간을 지어내지 않는다(족보 226).",
-    "_나머지_라벨": "`출근`·`취침`·`개간` 등 생활층의 다른 낱말은 **표에 없어서 안 운다**. 소리를 줄 값이 있으면 그때 이 표에 한 줄이다(코드 0)."
-  },
-  "groundDrop": {
-    "_뜻": "`ground_item_added` — 물건이 **바닥에 떨어진 순간**. 버리기·죽어서 쏟기가 전부 이 한 방송으로 나온다(`zone.js:7728`).",
-    "key": "bronze_hit",
-    "_왜_같은_키인가": "죽은 어부의 고기가 떨어지는 소리는 **플레이어가 떨어뜨리는 그 소리**여야 한다(T321 ②). 그리고 그건 배선으로 보장된다 — 둘 다 `_deathDrop`·버리기가 같은 `ground_item_added` 하나로 나오기 때문이다(`test-fish-act ⑤`: 죽은 어부의 손은 **플레이어 낙하 함수 그 자리**로 간다 · 새 경로 0). 층은 개체가 사람인지 주민인지 **묻지도 않는다**.",
-    "_왜_bronze_hit_인가": "**새 키 0** 규약이라 있는 키에서 골라야 한다. `bronze_hit` 의 출처가 말 그대로 **Dull thud**(`commons_pd_dullthud`)다 — 물건이 바닥에 닿는 소리로는 표에서 가장 가깝다. ⚠다만 이 키는 **곡괭이질**(`resourceHit` 의 rock·ore·meteorite)에도 쓰인다 — 한 소리가 두 뜻을 진다. T272 가 이 키의 정체를 **재민 귀**에 맡겨 두었으므로 이 겹침도 같은 자리에 둔다. 아니라고 하면 **이 칸 한 줄**을 바꾸면 된다(코드 0)."
-  },
-  "fishState": {
-    "_뜻": "서버 `fish_state` 의 `state` → 키. 서버가 보내는 이름 그대로다(`zone.js` 6493 'wait' · 11937 'bite' · 나머지는 'idle'). 좌표를 같이 보내므로 **찌 자리에서** 난다(존 로컬 → 절대로 접는다 — 찌 그리기가 1차에 빠뜨렸던 그 변환).",
-    "wait": "cast",
-    "bite": "bite",
-    "_idle": "소리 없음 — 줄을 거두는 것은 사건이 아니다."
-  },
-  "buildings": {
-    "_뜻": "개체와 같은 문법 — 건물 `type` → 반복 키. 개체마다 하나씩 나고 화면 밖이면 멎는다.",
-    "campfire": "fire"
-  },
-  "bus": {
-    "master": {
-      "default": 0.8,
-      "label": "전체"
-    },
-    "sfx": {
-      "default": 0.7,
-      "label": "효과음"
-    },
-    "music": {
-      "default": 0.45,
-      "label": "음악"
-    },
-    "limiter": {
-      "knee": 0.8,
-      "_뜻": "효과음 버스 끝 소프트 리미터의 문턱. **이 아래는 파형을 한 톨도 안 건드린다**(기울기 1) · 위만 1.0 으로 부드럽게 수렴한다.",
-      "_T283 정정": "T283 은 `bgm.js` 의 tanh 곡선을 그대로 썼는데 그 곡선은 **원점 기울기 1.4364(+3.15dB)** 라 작은 신호를 키운다. 실측: 모닥불 하나에 피크 −15.88 → −12.90 dBFS. 넘침을 막는 장치가 평소에 전체를 3dB 키우고 있었다. ⚠`bgm.js` 는 안 고친다(재생기 수정 0) — 음악도 같은 3.15dB 를 먹고 있다 ⇒ 회부.",
-      "_왜 0.8": "실측 최악 피크(0.6763 · −3.40 dBFS)보다 **1.4 dB 위**로 잡았다 — 그래야 평소에 리미터가 한 번도 안 문다(실측: 카드가 지목한 최악 조합에서 문턱 넘은 창 **0/400**). 안전장치는 보이지 않아야 안전장치다. 문턱을 올려도 안전은 안 줄어든다 — 이 곡선은 문턱이 얼마든 **1.0 에 점근하고 절대 안 넘는다**(x=5 → 1.0000). 문턱이 하는 일은 '어디서부터 손대기 시작하나'뿐이고, 낮으면 평범한 소리까지 건드린다. `test-audio ⑧` 이 `knee > _실측.worstPeak` 를 지킨다 — 키를 더해 최악 피크가 문턱을 넘으면 거기서 문다."
-    }
-  },
-  "storageKey": "durango.audio",
-  "bgm": {
-    "engine": "DurangoBGM",
-    "source": "public/assets/audio/bgm/bgm.js",
-    "metaTable": "public/assets/audio/bgm/render-meta.json",
-    "trackCount": 13,
-    "sceneFadeSec": 4.0,
-    "_곡사이무음": "카드가 요구한 '곡 사이 무음 2~3초'는 **이 엔진에 자리가 없다**(§0-ⓑ 실측). bgm.js 는 파일을 한 장도 안 받는 **절차적 연속 엔진**이고(`create/start/setScene/setMood/setIntensity/setDayPhase`), 곡이 끝나는 순간이 없다. 장면이 바뀔 때 `setScene(s, fade)` 로 겹쳐 넘어갈 뿐이라 그 페이드 초가 여기 대응값이다. 무음을 넣으려면 엔진을 고쳐야 하는데 이 카드는 '재생기 수정 0' 이다 ⇒ 회부.",
-    "_13곡": "디스크의 .ogg/.m4a 13곡은 이 엔진을 **오프라인으로 뽑아 둔 것**(compose.py 산물)이고 런타임이 읽지 않는다. 그래도 표(render-meta.json tracks)와 디스크가 어긋나면 크레딧·잠금이 같이 썩으므로 하네스가 센다.",
-    "scenes": {
-      "village_day": "마을 안(`window.__evNearVid != null`) · 낮(`isNight()` false)",
-      "village_night": "마을 안 · 밤",
-      "journey": "마을 밖",
-      "battle": "미배선 — 클라에 '전쟁 중' 술어가 없다(§0-ⓑ 실측: `warActive`·`inWar` 0곳). 세계가 그 값을 보내는 날 저절로 켜진다 ⇒ 회부."
-    },
-    "mood": {
-      "value": null,
-      "_왜": "고르지 않는다 — `render-meta.json` 에 **태그 칸이 없다**(seconds·rms_db·peak_db 뿐). 카드가 '표에 이미 있는 태그로(없으면 낮/밤만 · 지어내지 않는다)' 라고 못 박았으므로 엔진 기본값(trad)을 그대로 쓴다. 곡 이름의 `_trad`·`_amb`·`_ari` 는 표의 칸이 아니라 파일 이름이다."
-    },
-    "scenePick": {
-      "_뜻": "두 축(마을 안/밖 × 낮/밤) → `bgm.js` 의 장면 이름. **네 칸이 전부다** — 층은 이 표만 보고 고른다(코드에 장면 이름이 없다). 술어는 이미 있는 정본: 마을 안 = `window.__evNearVid != null`(41-h-bubble · 260px) · 밤 = `isNight()`(20-r2-visibility).",
-      "village:day": "village_day",
-      "village:night": "village_night",
-      "field:day": "journey",
-      "field:night": "journey",
-      "_field:night 이 왜 journey 인가": "밤의 들판에 쓸 곡이 **표에 없다**. `bgm.js` 가 받는 장면은 넷뿐이고(village_day·village_night·battle·journey) 그중 들판은 `journey` 하나다. 밤 전용 여행곡을 지어내지 않는다 — 엔진에 장면이 생기는 날 이 표 한 줄이다."
-    }
-  },
-  "_T283키": "아래 열하나가 T283 이 더한 것이다. 음원은 **T272(일곱)가 이미 올렸고** 야생 넷은 T282(세션8) 몫이다 — `file`·`fileAlt`·`source` 세 칸은 **세션8 자리**이고 T283 은 그 줄을 안 만진다(영역 규약).",
-  "keys": {
-    "step_dirt": {
-      "file": "step_dirt.ogg",
-      "fileAlt": "step_dirt.m4a",
-      "volume": 0.42,
-      "radius": 0,
-      "loop": false,
-      "maxSame": 2,
-      "cooldownMs": 0,
-      "source": "kenney_rpg_audio",
-      "훅": "42-r2-char.js drawCharSprite — 내 캐릭터의 걷기/뛰기 클립 **발 딛는 판**. 새 타이머 0 — 간격은 애니 fps 가 정한다.",
-      "땅": "발밑 정본 `window.__tileStateAt(lcx,lcy)` 의 kind='rock' 또는 geo(산터) · 또는 풀 알파 < 0.5"
-    },
-    "step_grass": {
-      "file": "step_grass.ogg",
-      "fileAlt": "step_grass.m4a",
-      "volume": 0.42,
-      "radius": 0,
-      "loop": false,
-      "maxSame": 2,
-      "cooldownMs": 0,
-      "source": "kenney_rpg_audio",
-      "훅": "step_dirt 와 **같은 한 줄**(발밑 지형이 가른다 — 훅이 둘이 아니다)",
-      "땅": "kind='land' 이고 풀 알파 ≥ 0.5 (알파는 `SoilBase.biomeOf(존 바이옴).grass` 램프 — 클라가 땅을 그릴 때 쓰는 그 자)"
-    },
-    "wolf_howl": {
-      "file": "wolf_howl.ogg",
-      "volume": 0.9,
-      "radius": 480,
-      "loop": false,
-      "maxSame": 1,
-      "cooldownMs": 4200,
-      "source": "commons_pd_wolf",
-      "훅": "34-m-renderloop.js `__sfx.scan` — 이번 프레임 renderables 의 kind='mob' · m.type='wolf'",
-      "_반경": "480 월드px = 15셀. 자는 눈대중이 아니라 이 레포의 것이다: `41-h-bubble.js` 의 '목소리가 닿는' 반경 EV_BRIEF_PX(260px)보다 멀고, 렌더 컬링 반경 VIEW_RADIUS 보다 가깝다 — 화면에 보이는 늑대만 운다.",
-      "fileAlt": "wolf_howl.m4a",
-      "_이름": "[T303 개명 · 재민 위임 → PM 2026-09-18] `wolf_growl` → **`wolf_howl`**. 파일이 울부짖음(howl)이라 이름을 파일에 맞췄다 — T282 가 같은 자를 둘에 대서 갈랐다: 이 파일 중심 1,100~1,240Hz · 평탄도 0.0002 · 500Hz 아래 0.4%(순음=울부짖음) ↔ `tiger_growl` 226~426Hz · 평탄도 0.002~0.016 · 500Hz 아래 71~97%(저역+잡음=으르렁). ⚠**파일 바이트는 0 변경**이다(sha1 d9176d70…/bede1a0f… 그대로) — 이름만 움직였다. 개체 이름(`wolf`)과 키 이름이 다른 것은 `wild_boar → boar_grunt` 로 이미 정해진 규약이고, `mobs` 표가 흡수한다."
-    },
-    "fire": {
-      "file": "fire.ogg",
-      "fileAlt": "fire.m4a",
-      "volume": 0.75,
-      "radius": 320,
-      "loop": true,
-      "maxSame": 3,
-      "cooldownMs": 0,
-      "source": "commons_fire_drygrass",
-      "fade": 1.0,
-      "indoorMul": 0.35,
-      "훅": "34-m-renderloop.js `__sfx.scan` — kind='building' · b.type='campfire' (반복 · 개체마다 하나 · 화면 밖이면 멎는다)",
-      "_반경": "320 월드px = 10셀. 모닥불은 요리 사거리 안에서 들려야 한다."
-    },
-    "wind": {
-      "file": "wind.ogg",
-      "fileAlt": "wind.m4a",
-      "volume": 0.5,
-      "radius": 0,
-      "loop": true,
-      "maxSame": 1,
-      "cooldownMs": 0,
-      "source": "commons_wind_breeze",
-      "gainK": 1.4,
-      "fade": 2.0,
-      "indoorMul": 0,
-      "훅": "37-r1-weather.js drawWeather — `wxState().wind`(server/wind.js seasonWind · 부호 있는 계절풍)의 |세기|. 실내면 0.",
-      "_세기": "볼륨 = volume * min(1, |wind| * 1.4). 1.4 는 빗줄기 기울기가 이미 쓰는 WX_TILT_K 와 **같은 수**다 — 같은 바람을 두 자로 재지 않는다."
-    },
-    "harvest": {
-      "file": null,
-      "volume": 0.7,
-      "radius": 0,
-      "loop": false,
-      "maxSame": 1,
-      "cooldownMs": 120,
-      "source": null,
-      "훅": "30-n-net.js handleMessage — **수신**. `resourceHit` 표가 `berry_bush`·`herb`·`sapling` 을 이 키로 보낸다(자원 자리에서 나므로 거리 감쇠). [T283 이 발신에서 옮겼다]",
-      "state": "missing",
-      "_확정": "확정 · 재민 위임 → PM 2026-09-18 [T303] — 세 출처(Commons·Kenney CC0·OpenGameArt CC0)에 작물 뜯기/풀 뜯기로 적힌 소리가 없다 — T269 가 전수로 확인했다. **대기가 아니라 결정이다**: 재민 녹음이 오면 그때 파일 한 쌍 + 출처 한 줄이고 코드는 0 이다."
-    },
-    "eat": {
-      "file": "eat.ogg",
-      "fileAlt": "eat.m4a",
-      "volume": 0.7,
-      "radius": 0,
-      "loop": false,
-      "maxSame": 1,
-      "cooldownMs": 400,
-      "source": "oga_creature_sfx",
-      "훅": "30-n-net.js handleMessage — **수신**. `gauges` 의 **`ate` 낱말**(T305 가 서버 `doEat` 에 심었다 — `self`=내가 먹었다 · `fed`=남을 먹였다). 서버가 **먹었다는 사실 자체**를 말하므로 배가 꽉 차도 난다. [T283 발신→수신 · T292-b `carry`→허기 상승 · T305 허기→동사]",
- "_경위_1_왜_carry_가_아닌가": "T283 은 `gauges` 중 `carry` 를 실은 자리가 `doEat`(zone.js:5114) 하나라고 보고 그 칸의 **존재**로 갈랐다. 실제로는 초당 한 번 도는 게이지 틱(zone.js:11573)에도 실려 있어서 **1초마다 씹는 소리가 났다**(재민 실측 · 2026-09-14). 하네스 ⑦f 는 `type: 'gauges'` 와 `carry:` 가 **같은 줄**에 있을 때만 셌는데 11573 은 18줄짜리 객체라 안 세어졌다 — 자가 짧아 초록이 거짓이었다. ⇒ 판별은 메시지의 **모양**이 아니라 값의 **변화**여야 한다.", "_경위_2_왜_허기도_아닌가": "T292-b 는 `carry` 모양 대신 **허기 상승**으로 갈랐다. 모양에 안 기대므로 옳은 방향이었지만 구멍이 하나 남았다 — **배가 꽉 찬 채로 먹으면** 허기가 안 올라 무음이다. T305 가 서버 두 자리를 허락받아 `ate` 한 낱말을 심어 그 구멍을 닫았다. ⇒ 짐작 두 판(모양·값)을 거쳐 **서버가 동사를 말하는 것**이 답이었다."
-    },
-    "axe": {
-      "file": "axe.ogg",
-      "fileAlt": "axe.m4a",
-      "volume": 0.8,
-      "radius": 0,
-      "loop": false,
-      "maxSame": 2,
-      "cooldownMs": 0,
-      "source": "kenney_rpg_audio",
-      "훅": "30-n-net.js handleMessage — **수신**. `resourceHit` 표가 `tree` 를 이 키로 보낸다. 서버가 1초/타를 강제하므로 `resource_update` 한 통 = 도끼질 한 번이고, **자원 자리에서 나므로 남이 베는 나무도 들린다**(발신 판에는 없던 것). [T283 이 발신에서 옮겼다]"
-    },
-    "water": {
-      "file": "water.ogg",
-      "fileAlt": "water.m4a",
-      "volume": 0.55,
-      "radius": 288,
-      "loop": true,
-      "maxSame": 1,
-      "cooldownMs": 0,
-      "source": "commons_pd_water",
-      "fade": 1.0,
-      "indoorMul": 0.25,
-      "sampleStride": 2,
-      "훅": "34-m-renderloop.js `__sfx.scan` — 개체가 아니라 **지형**이다. 층이 내 셀 둘레를 훑어 가장 가까운 물 셀까지의 거리를 재고 그 거리로 감쇠한다.",
-      "_자": "물 판정은 `isWaterAtAbs`(00-const · **셀 단위 캐시가 이미 있다** — 프레임마다 9천 타일을 돌던 것을 캐시로 고친 그 함수다). 새 판정을 안 짓는다.",
-      "_예산": "훑기는 **내 셀이 바뀔 때만** 하고 `sampleStride` 칸 간격으로 건너뛴다(288px = 9셀 ⇒ 19×19 를 2칸씩 = 100셀). 차가운 지역에서 한 번 100회 × ~75µs, 그 뒤로는 Map 조회다. 반경을 늘리면 제곱으로 는다 — 늘릴 때 이 줄을 다시 읽어라.",
-      "_반경": "288px = 9셀. 320(모닥불)보다 **한 칸 좁게** 잡았다 — 강가에 서면 들리고 강이 화면에 보이기만 해서는 안 들리게."
-    },
-    "rain": {
-      "file": "rain.ogg",
-      "fileAlt": "rain.m4a",
-      "volume": 0.6,
-      "radius": 0,
-      "loop": true,
-      "maxSame": 1,
-      "cooldownMs": 0,
-      "source": "commons_pd_rain",
-      "fade": 2.0,
-      "indoorMul": 0,
-      "gainK": 1.0,
-      "훅": "37-r1-weather.js `__sfx.weather(w, indoor)` — 바람과 **같은 한 줄**이다(훅이 늘지 않았다). 세기는 `wxState().precip`(0..1) 그대로.",
-      "_주의": "세계가 아직 `precip` 을 안 보낸다(T93 이 적어 둔 그대로 — `server/weather.js` 에 강수 정본이 없다). 진단 훅 `__rainForce({precip:1})` 로만 켜진다. **세계가 그 값을 보내는 날 저절로 난다** — 지어내지 않는다.",
-      "_실내": "0 — 지붕 아래선 비가 안 그려지고(그 층의 규약) 소리도 같이 멎는다. 처마 소리는 다음 묶음."
-    },
-    "bird": {
-      "file": "bird.ogg",
-      "fileAlt": "bird.m4a",
-      "volume": 0.4,
-      "radius": 0,
-      "loop": true,
-      "maxSame": 1,
-      "cooldownMs": 0,
-      "source": "commons_pd_bird",
-      "fade": 1.0,
-      "indoorMul": 0,
-      "trees": 6,
-      "treeRadius": 480,
-      "훅": "34-m-renderloop.js `__sfx.scan` — 이번 프레임 개체 목록의 `tree` 를 센다.",
-      "_조건": "낮(`!isNight()`) **그리고** 반경 `treeRadius` 안 나무 ≥ `trees` **그리고** 비 아님(`precip` 0) — 셋 다여야 난다. 볼륨은 나무 수로 안 키운다(숲이면 숲이다).",
-      "_반복인이유": "카드는 '간헐 · 쿨다운'이라 했는데 **음원이 10초 환경 녹음**이다(T272: Commons 의 Birds singing in garden 49.48s 중 11초를 10초 반복으로 구운 것). 10초짜리를 단발로 쏘면 단발 상한 3초도 넘고 겹쳐서 뭉갠다 ⇒ **반복 + 세 조건 게이트**로 이었다. 새가 울다 그치는 결은 원본이 이미 갖고 있다. 실기는 재민."
-    },
-    "bronze_hit": {
-      "file": "bronze_hit.ogg",
-      "fileAlt": "bronze_hit.m4a",
-      "volume": 0.8,
-      "radius": 320,
-      "loop": false,
-      "maxSame": 2,
-      "cooldownMs": 0,
-      "source": "commons_pd_dullthud",
-      "훅": "30-n-net.js handleMessage — **수신**. `resourceHit` 표가 `rock`·`ore`·`meteorite` 를 이 키로 보낸다(곡괭이질).",
-      "_주의": "출처가 **무엇을 친 소리인지 안 적어 뒀다**(제목이 Dull thud 다). T272 가 쇠의 울림만 쟀다(4kHz −20dB 까지 139ms — 진짜 울리는 그릇 302ms 의 절반). 청동이냐 돌이냐는 자로 못 가른다 — **판정은 재민 귀.**"
-    },
-    "cast": {
-      "file": "cast.ogg",
-      "fileAlt": "cast.m4a",
-      "volume": 0.7,
-      "radius": 384,
-      "loop": false,
-      "maxSame": 1,
-      "cooldownMs": 200,
-      "source": "commons_pd_splashes",
-      "_T321_반경": "T283 은 이 키를 **내 낚시**에만 걸었다(내 찌 자리 = 내 자리 ⇒ 반경 0 = 감쇠 없음이 맞았다). T321 이 **마을 어부**에게도 걸면서 남의 자리에서 나는 소리가 됐다 ⇒ 반경을 준다. 0 으로 두면 지도 반대편 어부의 찌 소리가 귓가에서 난다(T292-b 의 `axe` 가 바로 그 결함이었다 — 반경 0 인 채 수신 훅에 걸려 **전 존의 도끼질이 최대 볼륨**으로 들렸다). 내 낚시는 찌가 코앞이라 여전히 거의 최대다.", "훅": "30-n-net.js handleMessage — **수신** `fish_state` 의 `state:'wait'`(`zone.js:6493` · 던진 직후 · 좌표를 같이 보낸다 ⇒ 찌 자리에서 난다). `회부_낚시_다음층 A-6` 의 '던짐'."
-    },
-    "bite": {
-      "file": "bite.ogg",
-      "fileAlt": "bite.m4a",
-      "volume": 0.75,
-      "radius": 384,
-      "loop": false,
-      "maxSame": 1,
-      "cooldownMs": 200,
-      "source": "commons_pd_splashes",
-      "_T321_반경": "T283 은 이 키를 **내 낚시**에만 걸었다(내 찌 자리 = 내 자리 ⇒ 반경 0 = 감쇠 없음이 맞았다). T321 이 **마을 어부**에게도 걸면서 남의 자리에서 나는 소리가 됐다 ⇒ 반경을 준다. 0 으로 두면 지도 반대편 어부의 찌 소리가 귓가에서 난다(T292-b 의 `axe` 가 바로 그 결함이었다 — 반경 0 인 채 수신 훅에 걸려 **전 존의 도끼질이 최대 볼륨**으로 들렸다). 내 낚시는 찌가 코앞이라 여전히 거의 최대다.", "훅": "30-n-net.js handleMessage — **수신** `fish_state` 의 `state:'bite'`(`zone.js:11937`). A-6 의 '입질' — 30-n-net 주석이 적어 둔 그대로 '`bite` 로 바뀌는 그 순간이 이 동사의 전부'다. 소리가 붙을 자리가 있다면 여기다."
-    },
-    "hook": {
-      "file": "hook.ogg",
-      "fileAlt": "hook.m4a",
-      "volume": 0.8,
-      "radius": 384,
-      "loop": false,
-      "maxSame": 1,
-      "cooldownMs": 200,
-      "source": "commons_pd_splashes",
-      "_T321_반경": "T283 은 이 키를 **내 낚시**에만 걸었다(내 찌 자리 = 내 자리 ⇒ 반경 0 = 감쇠 없음이 맞았다). T321 이 **마을 어부**에게도 걸면서 남의 자리에서 나는 소리가 됐다 ⇒ 반경을 준다. 0 으로 두면 지도 반대편 어부의 찌 소리가 귓가에서 난다(T292-b 의 `axe` 가 바로 그 결함이었다 — 반경 0 인 채 수신 훅에 걸려 **전 존의 도끼질이 최대 볼륨**으로 들렸다). 내 낚시는 찌가 코앞이라 여전히 거의 최대다.", "훅": "30-n-net.js handleMessage — **수신** `fish_catch`(`zone.js:6560` · 나에게만 온다 ⇒ 위치 없음). A-6 의 '걸림'."
-    },
-    "tiger_growl": {
-      "file": "tiger_growl.ogg",
-      "fileAlt": "tiger_growl.m4a",
-      "volume": 0.95,
-      "radius": 480,
-      "loop": false,
-      "maxSame": 1,
-      "cooldownMs": 4200,
-      "source": "commons_cc0_tiger",
-      "훅": "`wolf_growl` 과 **같은 한 줄**(`mobs` 표가 `tiger` 를 여기로 보낸다). 파일은 T282(세션8).",
-      "_값": "볼륨만 늑대보다 0.05 높다 — 큰 짐승이다. 반경·쿨다운은 늑대와 같은 수를 쓴다(근거가 같으므로 값도 같다)."
-    },
-    "boar_grunt": {
-      "file": null,
-      "fileAlt": null,
-      "volume": 0.8,
-      "radius": 384,
-      "loop": false,
-      "maxSame": 1,
-      "cooldownMs": 5000,
-      "source": null,
-      "훅": "`mobs` 표가 `wild_boar` 를 여기로 보낸다. 파일은 T282(세션8).",
-      "_값": "반경 384px = 12셀 — 늑대(15셀)보다 가깝다(으르렁이 아니라 꿀꿀거림이다). 쿨다운은 더 길게.",
-      "state": "missing",
-      "_확정": "확정 · 재민 위임 → PM 2026-09-18 [T303] — Commons `Category:Sus scrofa` 전수 60건 중 소리 파일 다섯이 **전부 발음 녹음**이고 `Category:Audio files of Sus scrofa` 는 0건 — T282 가 전수로 확인했다. 진짜 돼지 소리(Mudchute pig)는 CC BY-SA 3.0 으로 규약 밖. **대기가 아니라 결정이다**: 재민 녹음이 오면 그때 파일 한 쌍 + 출처 한 줄이고 코드는 0 이다."
-    },
-    "deer_call": {
-      "file": "deer_call.ogg",
-      "fileAlt": "deer_call.m4a",
-      "volume": 0.6,
-      "radius": 384,
-      "loop": false,
-      "maxSame": 1,
-      "cooldownMs": 8000,
-      "source": "commons_pd_elk",
-      "훅": "`mobs` 표가 `deer` 를 여기로 보낸다. 파일은 T282(세션8).",
-      "_값": "가장 조용하고 가장 드물다 — 사슴은 위협이 아니라 기척이다. 늑대와 같은 빈도로 울면 화면이 시끄러워진다."
-    }
-  },
-  "_성사": "카드는 수확·먹기·도끼질 훅을 '서버 동사 결과가 오는 30-n-net.js 핸들러'에 붙이라고 했다. §0-ⓒ 실측: **그런 메시지가 없다.** 서버는 먹기·수확에 전용 결과 타입을 안 보내고 `notice`·`gauges`·`inventory`·`resource_removed` 같은 **공용 메시지**만 보낸다(`doEat`·`tryHarvest`·`gatherResource` 전수). 공용 메시지에 붙이면 남이 한 일에도 소리가 난다. 그래서 **발신 정본 한 자리**(`sendPrimary`)에 붙였다 — 거절당한 동사도 소리가 난다는 맞바꿈이고, 그 대신 훅이 파일 하나·줄 하나다. 성사로 옮기려면 서버가 동사별 결과를 보내야 한다 ⇒ 회부.",
-  "sources": {
-    "_꼴": "출처 id → { license, url, author, received } — 값은 `CREDITS.md` §2-b 와 **같은 값**이다(사본이 아니라 같은 표를 두 자리에 적은 것 · 어긋나면 사람이 본다). 칸이 비면 하네스 ①이 문다. 출처 없는 소리는 0 이다.",
-    "commons_wind_breeze": {
-      "license": "Public domain",
-      "url": "https://commons.wikimedia.org/wiki/File:Gentle_breeze_and_birds_singing.ogg",
-      "author": "ezwa",
-      "received": "2026-09-13",
-      "_잘라낸구간": "원본 32.55s 중 11.0~22.0s → 10.0s 반복 [T266]",
-      "_주의": "원본에 새소리(Blackcap·Chaffinch)가 있다 — 2kHz 이상 비율이 가장 낮은 창을 자로 골랐다(0.02%). 아주 없다고는 못 한다 · 실기는 재민."
-    },
-    "commons_fire_drygrass": {
-      "license": "Public domain",
-      "url": "https://commons.wikimedia.org/wiki/File:Dry_grass_burning_in_open_fireplace.ogg",
-      "author": "ezwa",
-      "received": "2026-09-13",
-      "_잘라낸구간": "원본 25.50s 중 3.0~14.0s → 10.0s 반복 [T266]"
-    },
-    "kenney_rpg_audio": {
-      "license": "CC0 1.0",
-      "url": "https://kenney.nl/assets/rpg-audio",
-      "author": "Kenney Vleugels (Kenney.nl)",
-      "received": "2026-09-13",
-      "_원본": "step_dirt = footstep04.ogg · step_grass = footstep07.ogg · axe = chop.ogg (전부 통째) · ui_click = bookPlace1.ogg (0.30s 중 0.020~0.280s · 선행 무음 잘라 냄) [T269·T282]",
-      "_주의": "★지면은 **가설**이다 — 팩에 무슨 바닥인지 안 적혀 있다. 스펙트럴 중심이 가장 낮은 04(1,007Hz)를 흙, 가장 높은 07(2,189Hz)을 풀로 잡았다. **판정은 재민 귀.**",
-      "_후보": "`ui_click` 은 **후보**다 — 훅 0 · 키 0 (\"있어야 하나\"는 재민 · T282). 후보 셋을 같은 자로 쟀다: bookPlace1 선행 6.0ms·SNR 38.8dB ← 골랐다 · bookClose 선행 72.9ms·SNR 29.6 · Woodpecker tapping(USFWS·PD · https://commons.wikimedia.org/wiki/File:Woodpecker_tapping.ogg) 선행 14.5ms·SNR 10.1. 딱따구리가 \"진짜 나무 두드림\"이라 먼저 골랐다가 자가 뒤집었다 — 숲 바닥이 같이 오고 정점이 116ms 뒤에 온다."
-    },
-    "oga_creature_sfx": {
-      "license": "CC0",
-      "url": "https://opengameart.org/content/80-cc0-creature-sfx",
-      "author": "rubberduck",
-      "received": "2026-09-13",
-      "_원본": "eat = eat_02.ogg (통째) [T269]"
-    },
-    "commons_pd_water": {
-      "license": "Public domain",
-      "url": "https://commons.wikimedia.org/wiki/File:Water_flowing_pouring_trickling.ogg",
-      "author": "stephan",
-      "received": "2026-09-13",
-      "_잘라낸구간": "원본 96.29s 중 40.0~52.0s → 10.0s 반복 · 페이드 **2초** [T272]",
-      "_주의": "세기가 10초 안에서 크게 변해 1초 페이드로는 이음새가 5.59dB 였다. 2초로 0.64dB."
-    },
-    "commons_pd_rain": {
-      "license": "Public domain",
-      "url": "https://commons.wikimedia.org/wiki/File:Rain_(1).ogg",
-      "author": "ezwa",
-      "received": "2026-09-13",
-      "_잘라낸구간": "원본 44.96s 중 30.0~41.0s → 10.0s 반복 [T272]"
-    },
-    "commons_pd_bird": {
-      "license": "Public domain",
-      "url": "https://commons.wikimedia.org/wiki/File:Birds_singing_in_garden.ogg",
-      "author": "ezwa",
-      "received": "2026-09-13",
-      "_잘라낸구간": "원본 49.48s 중 1.0~12.0s → 10.0s 반복 [T272]",
-      "_주의": "`wind` 원본에서 새를 되살리는 길을 재 보고 안 썼다 — 그 파일의 새는 얇다(>2kHz 최고 창 0.40%)."
-    },
-    "commons_pd_dullthud": {
-      "license": "Public domain",
-      "url": "https://commons.wikimedia.org/wiki/File:Dull_thud.ogg",
-      "author": "gregoryweir",
-      "received": "2026-09-13",
-      "_잘라낸구간": "통째 0.32s [T272]",
-      "_주의": "⚠재료는 **가설**이다 — 제목이 \"Dull thud\" 이고 무엇을 친 것인지 안 적는다. 쇠의 긴 울림만 쟀다(139ms · metalPot1 302ms 의 절반). 청동이냐 돌이냐는 자로 못 가른다 · 재민 귀."
-    },
-    "commons_pd_splashes": {
-      "license": "Public domain",
-      "url": "https://commons.wikimedia.org/wiki/File:Bathtub_water_splashes.ogg",
-      "author": "gradha",
-      "received": "2026-09-13",
-      "_원본": "cast = 7.0~8.2s · bite = 37.9~38.9s · hook = 24.8~26.2s — **한 원본의 서로 다른 사건 셋** [T272]",
-      "_주의": "⚠배역은 **가설**이다 — 출처가 던짐/입질/걸림을 안 말한다. 크기로 갈랐다(큰 것=hook −3.63dB · 중간=cast −3.82 · 작은 것=bite −7.53). 재민 귀."
-    },
-    "commons_pd_wolf": {
-      "license": "Public domain",
-      "url": "https://commons.wikimedia.org/wiki/File:Rallying.ogg",
-      "author": "Retron at English Wikipedia",
-      "received": "2026-09-13",
-      "_잘라낸구간": "원본 18.12s 중 6.50~9.00s → 2.50s 단발 [T282] · 키는 `wolf_howl` [T303 개명]",
-      "_원문": "A recording of European wolves \"rallying\", recorded by myself in July 2005. (녹음 2005-07 · 게시 2007-07-06 · PD-user)",
-      "_주의": "⚠울부짖음이다 — 그래서 T303 이 키 이름을 `wolf_howl` 로 맞췄다. 키의 `_이름` 칸 참조."
-    },
-    "commons_pd_elk": {
-      "license": "Public domain",
-      "url": "https://commons.wikimedia.org/wiki/File:American_Elk_Bugling.ogg",
-      "author": "Jim Pisarowicz",
-      "received": "2026-09-13",
-      "_잘라낸구간": "원본 5.13s 중 0.50~2.50s → 2.00s 단발 [T282]",
-      "_주의": "⚠종은 **와피티**(Cervus canadensis)다. 한반도 사슴(Cervus nippon·노루)의 PD/CC0 녹음이 Commons 에 없다(Sika Deer 는 CC BY-SA 4.0). 종을 바꿔 부르지 않았다 — 울음 판정은 재민 귀. 원본이 이미 0dBFS 에 붙어 있어(0dB 표본 194개) 깎아서 −1 로 맞췄고, 표본율 11,025Hz 를 올려 굽지 않았다.",
-      "_키": "아직 없다 — 훅과 함께 T283(세션9). 정본 종 목록은 `server/wildlife.js MAIN_TYPE` 의 `deer`."
-    },
-    "commons_cc0_tiger": {
-      "license": "CC0",
-      "url": "https://commons.wikimedia.org/wiki/File:439280_schots_angry-tiger.wav",
-      "author": "schots",
-      "received": "2026-09-13",
-      "_잘라낸구간": "원본 65.64s 중 11.00~13.00s → 2.00s 단발 [T282]",
-      "_원문": "Tiger in a cage, growling and snarling. Lots of reverb (freesound 439280 · 2018-08-31 · Category:Panthera tigris)",
-      "_주의": "⚠잔향은 **원본의 것**이다(출처가 스스로 적는다). 빼지 않았다 — 잔향을 지우면 원본을 고치는 것이다.",
-      "_키": "아직 없다 — 훅과 함께 T283(세션9)."
-    }
-  },
-  "_실측": {
-    "_뜻": "`__sfx.probe()` 가 실클라에서 잰 값. 하네스 ⑧ 이 이 수와 `bus.limiter.knee` 의 부등식을 지킨다. 키를 더하면 **다시 재서 이 칸을 갱신**하라(셈으로 채우지 마라).",
-    "date": "2026-09-14",
-    "browser": "Chromium(Playwright) · 44100Hz · 오프라인 렌더 4초",
-    "worstPeak": 0.6763,
-    "worstPeakDb": -3.4,
-    "worstCombo": [
-      "wind",
-      "fire",
-      "step_dirt",
-      "wolf_howl",
-      "axe",
-      "rain",
-      "bird"
-    ],
-    "clippedAtWorst": 0,
-    "allKeysPeakNoLimiter": 1.1353,
-    "allKeysClippedNoLimiter": 8,
-    "_주의": "`worstPeak` 는 **리미터 없이** 잰 값이다(문턱을 그것과 견주려면 리미터가 개입하기 전의 수여야 한다). 키를 더하면 `__sfx.probe()` 를 다시 돌려 이 칸을 갱신하라 — 셈으로 채우지 마라. T261·T283 이 셈으로 채웠다가 둘 다 틀렸다.",
-    "_자의바닥": "두 판(리미터 있음/없음)의 피크가 문턱 아래에서도 ±0.1 dB 쯤 다르다 — `oversample:'2x'` 의 재표본 필터다. 펌핑을 잴 때 이 바닥을 안 빼면 **없는 펌핑**이 보인다: 1차 판이 `pa>0.02` 인 창을 다 보다가 모닥불 하나에 '최악 −10.92 dB'를 냈다(피크는 한 톨도 안 변했는데). ⇒ 비율은 **`pa > knee` 인 창에서만** 뜻이 있다.",
-    "soundingKeys": 16,
-    "_왜 이 수를 적나": "소리 나는 키가 이 수와 달라지면 `test-audio ⑧` 이 문다 — **키를 더했으면 다시 재라**는 뜻이다. 셈으로 고치지 말고 `__sfx.probe()` 를 돌려라.",
-    "_개명": "[T303] `wolf_growl` → `wolf_howl` 은 **이름만** 바뀐 것이다 — 파일 바이트가 0 변경이라(sha1 d9176d70…/bede1a0f… 그대로) 이 실측값은 여전히 그 파일을 잰 값이다. `worstPeak`·`clippedAtWorst` 는 **다시 재지 않았고 한 자도 안 고쳤다** — 이름표만 갈았다."
+  "limiter": {
+   "knee": 0.8,
+   "_뜻": "효과음 버스 끝 소프트 리미터의 문턱. **이 아래는 파형을 한 톨도 안 건드린다**(기울기 1) · 위만 1.0 으로 부드럽게 수렴한다.",
+   "_T283 정정": "T283 은 `bgm.js` 의 tanh 곡선을 그대로 썼는데 그 곡선은 **원점 기울기 1.4364(+3.15dB)** 라 작은 신호를 키운다. 실측: 모닥불 하나에 피크 −15.88 → −12.90 dBFS. 넘침을 막는 장치가 평소에 전체를 3dB 키우고 있었다. ⚠`bgm.js` 는 안 고친다(재생기 수정 0) — 음악도 같은 3.15dB 를 먹고 있다 ⇒ 회부.",
+   "_왜 0.8": "실측 최악 피크(0.6763 · −3.40 dBFS)보다 **1.4 dB 위**로 잡았다 — 그래야 평소에 리미터가 한 번도 안 문다(실측: 카드가 지목한 최악 조합에서 문턱 넘은 창 **0/400**). 안전장치는 보이지 않아야 안전장치다. 문턱을 올려도 안전은 안 줄어든다 — 이 곡선은 문턱이 얼마든 **1.0 에 점근하고 절대 안 넘는다**(x=5 → 1.0000). 문턱이 하는 일은 '어디서부터 손대기 시작하나'뿐이고, 낮으면 평범한 소리까지 건드린다. `test-audio ⑧` 이 `knee > _실측.worstPeak` 를 지킨다 — 키를 더해 최악 피크가 문턱을 넘으면 거기서 문다."
   }
+ },
+ "storageKey": "durango.audio",
+ "bgm": {
+  "engine": "DurangoBGM",
+  "source": "public/assets/audio/bgm/bgm.js",
+  "metaTable": "public/assets/audio/bgm/render-meta.json",
+  "trackCount": 13,
+  "sceneFadeSec": 4.0,
+  "_곡사이무음": "카드가 요구한 '곡 사이 무음 2~3초'는 **이 엔진에 자리가 없다**(§0-ⓑ 실측). bgm.js 는 파일을 한 장도 안 받는 **절차적 연속 엔진**이고(`create/start/setScene/setMood/setIntensity/setDayPhase`), 곡이 끝나는 순간이 없다. 장면이 바뀔 때 `setScene(s, fade)` 로 겹쳐 넘어갈 뿐이라 그 페이드 초가 여기 대응값이다. 무음을 넣으려면 엔진을 고쳐야 하는데 이 카드는 '재생기 수정 0' 이다 ⇒ 회부.",
+  "_13곡": "디스크의 .ogg/.m4a 13곡은 이 엔진을 **오프라인으로 뽑아 둔 것**(compose.py 산물)이고 런타임이 읽지 않는다. 그래도 표(render-meta.json tracks)와 디스크가 어긋나면 크레딧·잠금이 같이 썩으므로 하네스가 센다.",
+  "scenes": {
+   "village_day": "마을 안(`window.__evNearVid != null`) · 낮(`isNight()` false)",
+   "village_night": "마을 안 · 밤",
+   "journey": "마을 밖",
+   "battle": "미배선 — 클라에 '전쟁 중' 술어가 없다(§0-ⓑ 실측: `warActive`·`inWar` 0곳). 세계가 그 값을 보내는 날 저절로 켜진다 ⇒ 회부."
+  },
+  "mood": {
+   "value": null,
+   "_왜": "고르지 않는다 — `render-meta.json` 에 **태그 칸이 없다**(seconds·rms_db·peak_db 뿐). 카드가 '표에 이미 있는 태그로(없으면 낮/밤만 · 지어내지 않는다)' 라고 못 박았으므로 엔진 기본값(trad)을 그대로 쓴다. 곡 이름의 `_trad`·`_amb`·`_ari` 는 표의 칸이 아니라 파일 이름이다."
+  },
+  "scenePick": {
+   "_뜻": "두 축(마을 안/밖 × 낮/밤) → `bgm.js` 의 장면 이름. **네 칸이 전부다** — 층은 이 표만 보고 고른다(코드에 장면 이름이 없다). 술어는 이미 있는 정본: 마을 안 = `window.__evNearVid != null`(41-h-bubble · 260px) · 밤 = `isNight()`(20-r2-visibility).",
+   "village:day": "village_day",
+   "village:night": "village_night",
+   "field:day": "journey",
+   "field:night": "journey",
+   "_field:night 이 왜 journey 인가": "밤의 들판에 쓸 곡이 **표에 없다**. `bgm.js` 가 받는 장면은 넷뿐이고(village_day·village_night·battle·journey) 그중 들판은 `journey` 하나다. 밤 전용 여행곡을 지어내지 않는다 — 엔진에 장면이 생기는 날 이 표 한 줄이다."
+  }
+ },
+ "_T283키": "아래 열하나가 T283 이 더한 것이다. 음원은 **T272(일곱)가 이미 올렸고** 야생 넷은 T282(세션8) 몫이다 — `file`·`fileAlt`·`source` 세 칸은 **세션8 자리**이고 T283 은 그 줄을 안 만진다(영역 규약).",
+ "keys": {
+  "step_dirt": {
+   "file": "step_dirt.ogg",
+   "fileAlt": "step_dirt.m4a",
+   "volume": 0.42,
+   "radius": 0,
+   "loop": false,
+   "maxSame": 2,
+   "cooldownMs": 0,
+   "source": "kenney_rpg_audio",
+   "훅": "42-r2-char.js drawCharSprite — 내 캐릭터의 걷기/뛰기 클립 **발 딛는 판**. 새 타이머 0 — 간격은 애니 fps 가 정한다.",
+   "땅": "발밑 정본 `window.__tileStateAt(lcx,lcy)` 의 kind='rock' 또는 geo(산터) · 또는 풀 알파 < 0.5",
+   "_T354": "파일이 바뀌었다 — 재민 09-22 \"이게(옛 step_grass) 흙바닥에 가까운 거 같은데?\". 옛 `footstep07` 이 이 키로 왔다."
+  },
+  "step_grass": {
+   "file": "step_grass.ogg",
+   "fileAlt": "step_grass.m4a",
+   "volume": 0.42,
+   "radius": 0,
+   "loop": false,
+   "maxSame": 2,
+   "cooldownMs": 0,
+   "source": "kenney_rpg_audio",
+   "훅": "step_dirt 와 **같은 한 줄**(발밑 지형이 가른다 — 훅이 둘이 아니다)",
+   "땅": "kind='land' 이고 풀 알파 ≥ 0.5 (알파는 `SoilBase.biomeOf(존 바이옴).grass` 램프 — 클라가 땅을 그릴 때 쓰는 그 자)",
+   "_T354": "새 파일 — 남은 케니 발자국 중 **가장 스치는 것**(중심 2775Hz · 2kHz 위 37%)을 골랐다. 풀 스치는 결."
+  },
+  "wolf_howl": {
+   "file": "wolf_howl.ogg",
+   "volume": 0.9,
+   "radius": 480,
+   "loop": false,
+   "maxSame": 1,
+   "cooldownMs": 4200,
+   "source": "commons_pd_wolf_fws",
+   "훅": "34-m-renderloop.js `__sfx.scan` — 이번 프레임 renderables 의 kind='mob' · m.type='wolf'",
+   "_반경": "480 월드px = 15셀. 자는 눈대중이 아니라 이 레포의 것이다: `41-h-bubble.js` 의 '목소리가 닿는' 반경 EV_BRIEF_PX(260px)보다 멀고, 렌더 컬링 반경 VIEW_RADIUS 보다 가깝다 — 화면에 보이는 늑대만 운다.",
+   "fileAlt": "wolf_howl.m4a",
+   "_이름": "[T303 개명 · 재민 위임 → PM 2026-09-18] `wolf_growl` → **`wolf_howl`**. 파일이 울부짖음(howl)이라 이름을 파일에 맞췄다 — T282 가 같은 자를 둘에 대서 갈랐다: 이 파일 중심 1,100~1,240Hz · 평탄도 0.0002 · 500Hz 아래 0.4%(순음=울부짖음) ↔ `tiger_growl` 226~426Hz · 평탄도 0.002~0.016 · 500Hz 아래 71~97%(저역+잡음=으르렁). ⚠**파일 바이트는 0 변경**이다(sha1 d9176d70…/bede1a0f… 그대로) — 이름만 움직였다. 개체 이름(`wolf`)과 키 이름이 다른 것은 `wild_boar → boar_grunt` 로 이미 정해진 규약이고, `mobs` 표가 흡수한다.",
+   "_T354": "재확보 — 재민 09-22 \"최악. 다시 찾아\". 미국 어류야생동물국(USFWS) 녹음."
+  },
+  "fire": {
+   "file": "fire.ogg",
+   "fileAlt": "fire.m4a",
+   "volume": 0.75,
+   "radius": 320,
+   "loop": true,
+   "maxSame": 3,
+   "cooldownMs": 0,
+   "source": "commons_fire_drygrass",
+   "fade": 1.0,
+   "indoorMul": 0.35,
+   "훅": "34-m-renderloop.js `__sfx.scan` — kind='building' · b.type='campfire' (반복 · 개체마다 하나 · 화면 밖이면 멎는다)",
+   "_반경": "320 월드px = 10셀. 모닥불은 요리 사거리 안에서 들려야 한다."
+  },
+  "wind": {
+   "file": "wind.ogg",
+   "fileAlt": "wind.m4a",
+   "volume": 0.5,
+   "radius": 0,
+   "loop": true,
+   "maxSame": 1,
+   "cooldownMs": 0,
+   "source": "commons_wind_breeze",
+   "gainK": 1.4,
+   "fade": 2.0,
+   "indoorMul": 0,
+   "훅": "37-r1-weather.js drawWeather — `wxState().wind`(server/wind.js seasonWind · 부호 있는 계절풍)의 |세기|. 실내면 0.",
+   "_세기": "볼륨 = volume * min(1, |wind| * 1.4). 1.4 는 빗줄기 기울기가 이미 쓰는 WX_TILT_K 와 **같은 수**다 — 같은 바람을 두 자로 재지 않는다."
+  },
+  "harvest": {
+   "file": "harvest.ogg",
+   "volume": 0.7,
+   "radius": 0,
+   "loop": false,
+   "maxSame": 1,
+   "cooldownMs": 120,
+   "source": "kenney_rpg_audio",
+   "훅": "30-n-net.js handleMessage — **수신**. `inventoryWhere` 표가 `harvest` 를 이 키로 보낸다.",
+   "_확정": "확정 · 재민 위임 → PM 2026-09-18 [T303] — 세 출처(Commons·Kenney CC0·OpenGameArt CC0)에 작물 뜯기/풀 뜯기로 적힌 소리가 없다 — T269 가 전수로 확인했다. **대기가 아니라 결정이다**: 재민 녹음이 오면 그때 파일 한 쌍 + 출처 한 줄이고 코드는 0 이다.",
+   "fileAlt": "harvest.m4a",
+   "_T354": "확보 — T283 이후 무음이던 자리. 뜯는/베는 짧은 소리."
+  },
+  "eat": {
+   "file": "eat.ogg",
+   "fileAlt": "eat.m4a",
+   "volume": 0.7,
+   "radius": 0,
+   "loop": false,
+   "maxSame": 1,
+   "cooldownMs": 400,
+   "source": "commons_pd_chewing",
+   "훅": "30-n-net.js handleMessage — **수신**. `gauges` 의 **`ate` 낱말**(T305 가 서버 `doEat` 에 심었다 — `self`=내가 먹었다 · `fed`=남을 먹였다). 서버가 **먹었다는 사실 자체**를 말하므로 배가 꽉 차도 난다. [T283 발신→수신 · T292-b `carry`→허기 상승 · T305 허기→동사]",
+   "_경위_1_왜_carry_가_아닌가": "T283 은 `gauges` 중 `carry` 를 실은 자리가 `doEat`(zone.js:5114) 하나라고 보고 그 칸의 **존재**로 갈랐다. 실제로는 초당 한 번 도는 게이지 틱(zone.js:11573)에도 실려 있어서 **1초마다 씹는 소리가 났다**(재민 실측 · 2026-09-14). 하네스 ⑦f 는 `type: 'gauges'` 와 `carry:` 가 **같은 줄**에 있을 때만 셌는데 11573 은 18줄짜리 객체라 안 세어졌다 — 자가 짧아 초록이 거짓이었다. ⇒ 판별은 메시지의 **모양**이 아니라 값의 **변화**여야 한다.",
+   "_경위_2_왜_허기도_아닌가": "T292-b 는 `carry` 모양 대신 **허기 상승**으로 갈랐다. 모양에 안 기대므로 옳은 방향이었지만 구멍이 하나 남았다 — **배가 꽉 찬 채로 먹으면** 허기가 안 올라 무음이다. T305 가 서버 두 자리를 허락받아 `ate` 한 낱말을 심어 그 구멍을 닫았다. ⇒ 짐작 두 판(모양·값)을 거쳐 **서버가 동사를 말하는 것**이 답이었다.",
+   "_T354": "재확보 — 재민 09-22 \"마인크래프트도 아니고\". 옛 것은 합성 크리처 팩(rubberduck). 새 것은 **진짜 사람이 씹는** 소리(pdsounds · 기존 자산과 같은 출처 집안)."
+  },
+  "axe": {
+   "file": "axe.ogg",
+   "fileAlt": "axe.m4a",
+   "volume": 0.8,
+   "radius": 0,
+   "loop": false,
+   "maxSame": 2,
+   "cooldownMs": 0,
+   "source": "kenney_rpg_audio",
+   "훅": "30-n-net.js handleMessage — **수신**. `resourceHit` 표가 `tree` 를 이 키로 보낸다. 서버가 1초/타를 강제하므로 `resource_update` 한 통 = 도끼질 한 번이고, **자원 자리에서 나므로 남이 베는 나무도 들린다**(발신 판에는 없던 것). [T283 이 발신에서 옮겼다]"
+  },
+  "water": {
+   "file": "water.ogg",
+   "fileAlt": "water.m4a",
+   "volume": 0.55,
+   "radius": 288,
+   "loop": true,
+   "maxSame": 1,
+   "cooldownMs": 0,
+   "source": "commons_cc0_stream",
+   "fade": 1.0,
+   "indoorMul": 0.25,
+   "sampleStride": 2,
+   "훅": "34-m-renderloop.js `__sfx.scan` — 개체가 아니라 **지형**이다. 층이 내 셀 둘레를 훑어 가장 가까운 물 셀까지의 거리를 재고 그 거리로 감쇠한다.",
+   "_자": "물 판정은 `isWaterAtAbs`(00-const · **셀 단위 캐시가 이미 있다** — 프레임마다 9천 타일을 돌던 것을 캐시로 고친 그 함수다). 새 판정을 안 짓는다.",
+   "_예산": "훑기는 **내 셀이 바뀔 때만** 하고 `sampleStride` 칸 간격으로 건너뛴다(288px = 9셀 ⇒ 19×19 를 2칸씩 = 100셀). 차가운 지역에서 한 번 100회 × ~75µs, 그 뒤로는 Map 조회다. 반경을 늘리면 제곱으로 는다 — 늘릴 때 이 줄을 다시 읽어라.",
+   "_반경": "288px = 9셀. 320(모닥불)보다 **한 칸 좁게** 잡았다 — 강가에 서면 들리고 강이 화면에 보이기만 해서는 안 들리게.",
+   "_T354": "재확보 — 재민 09-22 \"오줌 싸는 소리야.. 시냇물 소리 반드시 찾아\". 옛 것은 `Water flowing pouring trickling`(가는 물줄기). 새 것은 가까이서 흐르는 시내. **이음새 실측 −8.5 dB**(끝↔머리 차가 이웃 표본 평균보다 작다 = 안 들린다). ⚠옛 `water.ogg` 는 이음새가 **+12.0 dB** 였다 — 10초마다 딸깍이 났다."
+  },
+  "rain": {
+   "file": "rain.ogg",
+   "fileAlt": "rain.m4a",
+   "volume": 0.6,
+   "radius": 0,
+   "loop": true,
+   "maxSame": 1,
+   "cooldownMs": 0,
+   "source": "commons_pd_rain",
+   "fade": 2.0,
+   "indoorMul": 0,
+   "gainK": 1.0,
+   "훅": "37-r1-weather.js `__sfx.weather(w, indoor)` — 바람과 **같은 한 줄**이다(훅이 늘지 않았다). 세기는 `wxState().precip`(0..1) 그대로.",
+   "_주의": "세계가 아직 `precip` 을 안 보낸다(T93 이 적어 둔 그대로 — `server/weather.js` 에 강수 정본이 없다). 진단 훅 `__rainForce({precip:1})` 로만 켜진다. **세계가 그 값을 보내는 날 저절로 난다** — 지어내지 않는다.",
+   "_실내": "0 — 지붕 아래선 비가 안 그려지고(그 층의 규약) 소리도 같이 멎는다. 처마 소리는 다음 묶음."
+  },
+  "bird": {
+   "file": "bird.ogg",
+   "fileAlt": "bird.m4a",
+   "volume": 0.4,
+   "radius": 0,
+   "loop": true,
+   "maxSame": 1,
+   "cooldownMs": 0,
+   "source": "commons_pd_bird",
+   "fade": 1.0,
+   "indoorMul": 0,
+   "trees": 6,
+   "treeRadius": 480,
+   "훅": "34-m-renderloop.js `__sfx.scan` — 이번 프레임 개체 목록의 `tree` 를 센다.",
+   "_조건": "낮(`!isNight()`) **그리고** 반경 `treeRadius` 안 나무 ≥ `trees` **그리고** 비 아님(`precip` 0) — 셋 다여야 난다. 볼륨은 나무 수로 안 키운다(숲이면 숲이다).",
+   "_반복인이유": "카드는 '간헐 · 쿨다운'이라 했는데 **음원이 10초 환경 녹음**이다(T272: Commons 의 Birds singing in garden 49.48s 중 11초를 10초 반복으로 구운 것). 10초짜리를 단발로 쏘면 단발 상한 3초도 넘고 겹쳐서 뭉갠다 ⇒ **반복 + 세 조건 게이트**로 이었다. 새가 울다 그치는 결은 원본이 이미 갖고 있다. 실기는 재민."
+  },
+  "bronze_hit": {
+   "file": "bronze_hit.ogg",
+   "fileAlt": "bronze_hit.m4a",
+   "volume": 0.8,
+   "radius": 320,
+   "loop": false,
+   "maxSame": 2,
+   "cooldownMs": 0,
+   "source": "commons_pd_dullthud",
+   "훅": "30-n-net.js handleMessage — **수신**. `resourceHit` 표가 `rock`·`ore`·`meteorite` 를 이 키로 보낸다(곡괭이질).",
+   "_주의": "출처가 **무엇을 친 소리인지 안 적어 뒀다**(제목이 Dull thud 다). T272 가 쇠의 울림만 쟀다(4kHz −20dB 까지 139ms — 진짜 울리는 그릇 302ms 의 절반). 청동이냐 돌이냐는 자로 못 가른다 — **판정은 재민 귀.**"
+  },
+  "cast": {
+   "file": "cast.ogg",
+   "fileAlt": "cast.m4a",
+   "volume": 0.7,
+   "radius": 384,
+   "loop": false,
+   "maxSame": 1,
+   "cooldownMs": 200,
+   "source": "commons_pd_splashes",
+   "_T321_반경": "T283 은 이 키를 **내 낚시**에만 걸었다(내 찌 자리 = 내 자리 ⇒ 반경 0 = 감쇠 없음이 맞았다). T321 이 **마을 어부**에게도 걸면서 남의 자리에서 나는 소리가 됐다 ⇒ 반경을 준다. 0 으로 두면 지도 반대편 어부의 찌 소리가 귓가에서 난다(T292-b 의 `axe` 가 바로 그 결함이었다 — 반경 0 인 채 수신 훅에 걸려 **전 존의 도끼질이 최대 볼륨**으로 들렸다). 내 낚시는 찌가 코앞이라 여전히 거의 최대다.",
+   "훅": "30-n-net.js handleMessage — **수신** `fish_state` 의 `state:'wait'`(`zone.js:6493` · 던진 직후 · 좌표를 같이 보낸다 ⇒ 찌 자리에서 난다). `회부_낚시_다음층 A-6` 의 '던짐'."
+  },
+  "bite": {
+   "file": "bite.ogg",
+   "fileAlt": "bite.m4a",
+   "volume": 0.75,
+   "radius": 384,
+   "loop": false,
+   "maxSame": 1,
+   "cooldownMs": 200,
+   "source": "commons_pd_splashes",
+   "_T321_반경": "T283 은 이 키를 **내 낚시**에만 걸었다(내 찌 자리 = 내 자리 ⇒ 반경 0 = 감쇠 없음이 맞았다). T321 이 **마을 어부**에게도 걸면서 남의 자리에서 나는 소리가 됐다 ⇒ 반경을 준다. 0 으로 두면 지도 반대편 어부의 찌 소리가 귓가에서 난다(T292-b 의 `axe` 가 바로 그 결함이었다 — 반경 0 인 채 수신 훅에 걸려 **전 존의 도끼질이 최대 볼륨**으로 들렸다). 내 낚시는 찌가 코앞이라 여전히 거의 최대다.",
+   "훅": "30-n-net.js handleMessage — **수신** `fish_state` 의 `state:'bite'`(`zone.js:11937`). A-6 의 '입질' — 30-n-net 주석이 적어 둔 그대로 '`bite` 로 바뀌는 그 순간이 이 동사의 전부'다. 소리가 붙을 자리가 있다면 여기다."
+  },
+  "hook": {
+   "file": "hook.ogg",
+   "fileAlt": "hook.m4a",
+   "volume": 0.8,
+   "radius": 384,
+   "loop": false,
+   "maxSame": 1,
+   "cooldownMs": 200,
+   "source": "commons_pd_splashes",
+   "_T321_반경": "T283 은 이 키를 **내 낚시**에만 걸었다(내 찌 자리 = 내 자리 ⇒ 반경 0 = 감쇠 없음이 맞았다). T321 이 **마을 어부**에게도 걸면서 남의 자리에서 나는 소리가 됐다 ⇒ 반경을 준다. 0 으로 두면 지도 반대편 어부의 찌 소리가 귓가에서 난다(T292-b 의 `axe` 가 바로 그 결함이었다 — 반경 0 인 채 수신 훅에 걸려 **전 존의 도끼질이 최대 볼륨**으로 들렸다). 내 낚시는 찌가 코앞이라 여전히 거의 최대다.",
+   "훅": "30-n-net.js handleMessage — **수신** `fish_catch`(`zone.js:6560` · 나에게만 온다 ⇒ 위치 없음). A-6 의 '걸림'."
+  },
+  "tiger_growl": {
+   "file": "tiger_growl.ogg",
+   "fileAlt": "tiger_growl.m4a",
+   "volume": 0.95,
+   "radius": 480,
+   "loop": false,
+   "maxSame": 1,
+   "cooldownMs": 4200,
+   "source": "commons_cc0_tiger",
+   "훅": "`wolf_growl` 과 **같은 한 줄**(`mobs` 표가 `tiger` 를 여기로 보낸다). 파일은 T282(세션8).",
+   "_값": "볼륨만 늑대보다 0.05 높다 — 큰 짐승이다. 반경·쿨다운은 늑대와 같은 수를 쓴다(근거가 같으므로 값도 같다)."
+  },
+  "boar_grunt": {
+   "file": "boar_grunt.ogg",
+   "fileAlt": "boar_grunt.m4a",
+   "volume": 0.8,
+   "radius": 384,
+   "loop": false,
+   "maxSame": 1,
+   "cooldownMs": 5000,
+   "source": "oga_creature_sfx",
+   "훅": "34-m-renderloop.js scan — `mobs` 표가 `wild_boar` 를 이 키로 보낸다.",
+   "_값": "반경 384px = 12셀 — 늑대(15셀)보다 가깝다(으르렁이 아니라 꿀꿀거림이다). 쿨다운은 더 길게.",
+   "_확정": "확정 · 재민 위임 → PM 2026-09-18 [T303] — Commons `Category:Sus scrofa` 전수 60건 중 소리 파일 다섯이 **전부 발음 녹음**이고 `Category:Audio files of Sus scrofa` 는 0건 — T282 가 전수로 확인했다. 진짜 돼지 소리(Mudchute pig)는 CC BY-SA 3.0 으로 규약 밖. **대기가 아니라 결정이다**: 재민 녹음이 오면 그때 파일 한 쌍 + 출처 한 줄이고 코드는 0 이다.",
+   "_T354": "확보 — T283 이후 무음이던 자리. ⚠**합성 크리처 팩**이다(진짜 멧돼지 PD/CC0 녹음을 못 찾았다 — 아래 `_못찾음`). 저역 92%로 가장 돼지다운 것을 골랐다."
+  },
+  "deer_call": {
+   "file": "deer_call.ogg",
+   "fileAlt": "deer_call.m4a",
+   "volume": 0.6,
+   "radius": 384,
+   "loop": false,
+   "maxSame": 1,
+   "cooldownMs": 8000,
+   "source": "commons_pd_elk",
+   "훅": "`mobs` 표가 `deer` 를 여기로 보낸다. 파일은 T282(세션8).",
+   "_값": "가장 조용하고 가장 드물다 — 사슴은 위협이 아니라 기척이다. 늑대와 같은 빈도로 울면 화면이 시끄러워진다."
+  },
+  "rain_light": {
+   "file": "rain_light.ogg",
+   "fileAlt": "rain_light.m4a",
+   "volume": 0.5,
+   "radius": 0,
+   "loop": true,
+   "maxSame": 1,
+   "cooldownMs": 0,
+   "indoorMul": 0,
+   "fade": 2.0,
+   "source": "commons_pd_drizzle",
+   "훅": "37-r1-weather.js drawWeather — `ambient('rain', precip)` 이 **세기로 두 파일을 가른다**(`rainSplit` 표).",
+   "_T354": "새로 — 재민 09-22 \"이건 폭풍 버전인 거 같은데.. 가벼운 빗소리도 찾아야 함\". `rain` 은 그대로 두고 **약한 비**를 따로 뒀다. 이음새 실측 **−15.5 dB**."
+  },
+  "step_stone": {
+   "file": "step_stone.ogg",
+   "fileAlt": "step_stone.m4a",
+   "volume": 0.42,
+   "radius": 0,
+   "loop": false,
+   "maxSame": 2,
+   "cooldownMs": 0,
+   "source": "kenney_rpg_audio",
+   "훅": "42-r2-char.js drawCharSprite — 발밑이 바위·산터일 때. 키는 `ground` 표가 고른다.",
+   "_T354": "새 키 — 재민 09-22 \"좋긴 한데, 돌바닥 걷는 소리야\". 옛 `step_dirt`(footstep04)가 이 키로 왔다. CREDITS 의 \"지면은 가설\" 경고가 **재민 귀로 닫혔다**."
+  },
+  "drop": {
+   "file": "drop.ogg",
+   "fileAlt": "drop.m4a",
+   "volume": 0.6,
+   "radius": 384,
+   "loop": false,
+   "maxSame": 2,
+   "cooldownMs": 80,
+   "source": "kenney_rpg_audio",
+   "훅": "30-n-net.js handleMessage — **수신**. `groundDrop` 표가 이 키로 보낸다(`ground_item_added`).",
+   "_T354": "새 키 — T321 이 낙하를 `bronze_hit` 과 **나눠 쓰게** 해 뒀고(#50) 재민이 09-22 에 그 겸업을 끊으라고 했다. 이제 곡괭이질과 낙하가 다른 소리다."
+  }
+ },
+ "_성사": "카드는 수확·먹기·도끼질 훅을 '서버 동사 결과가 오는 30-n-net.js 핸들러'에 붙이라고 했다. §0-ⓒ 실측: **그런 메시지가 없다.** 서버는 먹기·수확에 전용 결과 타입을 안 보내고 `notice`·`gauges`·`inventory`·`resource_removed` 같은 **공용 메시지**만 보낸다(`doEat`·`tryHarvest`·`gatherResource` 전수). 공용 메시지에 붙이면 남이 한 일에도 소리가 난다. 그래서 **발신 정본 한 자리**(`sendPrimary`)에 붙였다 — 거절당한 동사도 소리가 난다는 맞바꿈이고, 그 대신 훅이 파일 하나·줄 하나다. 성사로 옮기려면 서버가 동사별 결과를 보내야 한다 ⇒ 회부.",
+ "sources": {
+  "_꼴": "출처 id → { license, url, author, received } — 값은 `CREDITS.md` §2-b 와 **같은 값**이다(사본이 아니라 같은 표를 두 자리에 적은 것 · 어긋나면 사람이 본다). 칸이 비면 하네스 ①이 문다. 출처 없는 소리는 0 이다.",
+  "commons_wind_breeze": {
+   "license": "Public domain",
+   "url": "https://commons.wikimedia.org/wiki/File:Gentle_breeze_and_birds_singing.ogg",
+   "author": "ezwa",
+   "received": "2026-09-13",
+   "_잘라낸구간": "원본 32.55s 중 11.0~22.0s → 10.0s 반복 [T266]",
+   "_주의": "원본에 새소리(Blackcap·Chaffinch)가 있다 — 2kHz 이상 비율이 가장 낮은 창을 자로 골랐다(0.02%). 아주 없다고는 못 한다 · 실기는 재민."
+  },
+  "commons_fire_drygrass": {
+   "license": "Public domain",
+   "url": "https://commons.wikimedia.org/wiki/File:Dry_grass_burning_in_open_fireplace.ogg",
+   "author": "ezwa",
+   "received": "2026-09-13",
+   "_잘라낸구간": "원본 25.50s 중 3.0~14.0s → 10.0s 반복 [T266]"
+  },
+  "kenney_rpg_audio": {
+   "license": "CC0 1.0",
+   "url": "https://kenney.nl/assets/rpg-audio",
+   "author": "Kenney Vleugels (Kenney.nl)",
+   "received": "2026-09-13",
+   "_원본": "step_dirt = footstep04.ogg · step_grass = footstep07.ogg · axe = chop.ogg (전부 통째) · ui_click = bookPlace1.ogg (0.30s 중 0.020~0.280s · 선행 무음 잘라 냄) [T269·T282]",
+   "_주의": "★지면은 **가설**이다 — 팩에 무슨 바닥인지 안 적혀 있다. 스펙트럴 중심이 가장 낮은 04(1,007Hz)를 흙, 가장 높은 07(2,189Hz)을 풀로 잡았다. **판정은 재민 귀.**",
+   "_후보": "`ui_click` 은 **후보**다 — 훅 0 · 키 0 (\"있어야 하나\"는 재민 · T282). 후보 셋을 같은 자로 쟀다: bookPlace1 선행 6.0ms·SNR 38.8dB ← 골랐다 · bookClose 선행 72.9ms·SNR 29.6 · Woodpecker tapping(USFWS·PD · https://commons.wikimedia.org/wiki/File:Woodpecker_tapping.ogg) 선행 14.5ms·SNR 10.1. 딱따구리가 \"진짜 나무 두드림\"이라 먼저 골랐다가 자가 뒤집었다 — 숲 바닥이 같이 오고 정점이 116ms 뒤에 온다."
+  },
+  "oga_creature_sfx": {
+   "license": "CC0",
+   "url": "https://opengameart.org/content/80-cc0-creature-sfx",
+   "author": "rubberduck",
+   "received": "2026-09-13",
+   "_원본": "eat = eat_02.ogg (통째) [T269]"
+  },
+  "commons_pd_water": {
+   "license": "Public domain",
+   "url": "https://commons.wikimedia.org/wiki/File:Water_flowing_pouring_trickling.ogg",
+   "author": "stephan",
+   "received": "2026-09-13",
+   "_잘라낸구간": "원본 96.29s 중 40.0~52.0s → 10.0s 반복 · 페이드 **2초** [T272]",
+   "_주의": "세기가 10초 안에서 크게 변해 1초 페이드로는 이음새가 5.59dB 였다. 2초로 0.64dB."
+  },
+  "commons_pd_rain": {
+   "license": "Public domain",
+   "url": "https://commons.wikimedia.org/wiki/File:Rain_(1).ogg",
+   "author": "ezwa",
+   "received": "2026-09-13",
+   "_잘라낸구간": "원본 44.96s 중 30.0~41.0s → 10.0s 반복 [T272]"
+  },
+  "commons_pd_bird": {
+   "license": "Public domain",
+   "url": "https://commons.wikimedia.org/wiki/File:Birds_singing_in_garden.ogg",
+   "author": "ezwa",
+   "received": "2026-09-13",
+   "_잘라낸구간": "원본 49.48s 중 1.0~12.0s → 10.0s 반복 [T272]",
+   "_주의": "`wind` 원본에서 새를 되살리는 길을 재 보고 안 썼다 — 그 파일의 새는 얇다(>2kHz 최고 창 0.40%)."
+  },
+  "commons_pd_dullthud": {
+   "license": "Public domain",
+   "url": "https://commons.wikimedia.org/wiki/File:Dull_thud.ogg",
+   "author": "gregoryweir",
+   "received": "2026-09-13",
+   "_잘라낸구간": "통째 0.32s [T272]",
+   "_주의": "⚠재료는 **가설**이다 — 제목이 \"Dull thud\" 이고 무엇을 친 것인지 안 적는다. 쇠의 긴 울림만 쟀다(139ms · metalPot1 302ms 의 절반). 청동이냐 돌이냐는 자로 못 가른다 · 재민 귀."
+  },
+  "commons_pd_splashes": {
+   "license": "Public domain",
+   "url": "https://commons.wikimedia.org/wiki/File:Bathtub_water_splashes.ogg",
+   "author": "gradha",
+   "received": "2026-09-13",
+   "_원본": "cast = 7.0~8.2s · bite = 37.9~38.9s · hook = 24.8~26.2s — **한 원본의 서로 다른 사건 셋** [T272]",
+   "_주의": "⚠배역은 **가설**이다 — 출처가 던짐/입질/걸림을 안 말한다. 크기로 갈랐다(큰 것=hook −3.63dB · 중간=cast −3.82 · 작은 것=bite −7.53). 재민 귀."
+  },
+  "commons_pd_wolf": {
+   "license": "Public domain",
+   "url": "https://commons.wikimedia.org/wiki/File:Rallying.ogg",
+   "author": "Retron at English Wikipedia",
+   "received": "2026-09-13",
+   "_잘라낸구간": "원본 18.12s 중 6.50~9.00s → 2.50s 단발 [T282] · 키는 `wolf_howl` [T303 개명]",
+   "_원문": "A recording of European wolves \"rallying\", recorded by myself in July 2005. (녹음 2005-07 · 게시 2007-07-06 · PD-user)",
+   "_주의": "⚠울부짖음이다 — 그래서 T303 이 키 이름을 `wolf_howl` 로 맞췄다. 키의 `_이름` 칸 참조."
+  },
+  "commons_pd_elk": {
+   "license": "Public domain",
+   "url": "https://commons.wikimedia.org/wiki/File:American_Elk_Bugling.ogg",
+   "author": "Jim Pisarowicz",
+   "received": "2026-09-13",
+   "_잘라낸구간": "원본 5.13s 중 0.50~2.50s → 2.00s 단발 [T282]",
+   "_주의": "⚠종은 **와피티**(Cervus canadensis)다. 한반도 사슴(Cervus nippon·노루)의 PD/CC0 녹음이 Commons 에 없다(Sika Deer 는 CC BY-SA 4.0). 종을 바꿔 부르지 않았다 — 울음 판정은 재민 귀. 원본이 이미 0dBFS 에 붙어 있어(0dB 표본 194개) 깎아서 −1 로 맞췄고, 표본율 11,025Hz 를 올려 굽지 않았다.",
+   "_키": "아직 없다 — 훅과 함께 T283(세션9). 정본 종 목록은 `server/wildlife.js MAIN_TYPE` 의 `deer`."
+  },
+  "commons_cc0_tiger": {
+   "license": "CC0",
+   "url": "https://commons.wikimedia.org/wiki/File:439280_schots_angry-tiger.wav",
+   "author": "schots",
+   "received": "2026-09-13",
+   "_잘라낸구간": "원본 65.64s 중 11.00~13.00s → 2.00s 단발 [T282]",
+   "_원문": "Tiger in a cage, growling and snarling. Lots of reverb (freesound 439280 · 2018-08-31 · Category:Panthera tigris)",
+   "_주의": "⚠잔향은 **원본의 것**이다(출처가 스스로 적는다). 빼지 않았다 — 잔향을 지우면 원본을 고치는 것이다.",
+   "_키": "아직 없다 — 훅과 함께 T283(세션9)."
+  },
+  "commons_cc0_stream": {
+   "license": "CC0 1.0",
+   "url": "https://commons.wikimedia.org/wiki/File:433589_jackthemurray_stream-river-water-up-close.wav",
+   "author": "jackthemurray",
+   "received": "2026-09-23",
+   "_원천": "https://freesound.org/people/jackthemurray/sounds/433589/ (2018-06-22)"
+  },
+  "commons_pd_wolf_fws": {
+   "license": "Public domain (PD-USGov-FWS)",
+   "url": "https://commons.wikimedia.org/wiki/File:Wolf_howls.ogg",
+   "author": "U.S. Fish and Wildlife Service",
+   "received": "2026-09-23",
+   "_원천": "http://www.fws.gov/video/sound.htm · 날짜 미상(페이지가 안 적는다)"
+  },
+  "commons_pd_chewing": {
+   "license": "Public domain",
+   "url": "https://commons.wikimedia.org/wiki/File:Chewing_gum_mouth_close.ogg",
+   "author": "ezwa",
+   "received": "2026-09-23",
+   "_원천": "pdsounds.org #159 (2007-04-19)"
+  },
+  "commons_pd_drizzle": {
+   "license": "Public domain (NASA)",
+   "url": "https://commons.wikimedia.org/wiki/File:Listening_to_Raindrops_(1035382_-_drizzle_loop).mp3",
+   "author": "NASA",
+   "received": "2026-09-23",
+   "_원천": "NASA \"Listening to Raindrops\" · drizzle loop"
+  }
+ },
+ "_실측": {
+  "_뜻": "`__sfx.probe()` 가 실클라에서 잰 값. 하네스 ⑧ 이 이 수와 `bus.limiter.knee` 의 부등식을 지킨다. 키를 더하면 **다시 재서 이 칸을 갱신**하라(셈으로 채우지 마라).",
+  "date": "2026-09-23",
+  "browser": "Chromium(Playwright) · 44100Hz · 오프라인 렌더 4초 · 소리판에서 `__sfx.probe()`",
+  "worstPeak": 0.7631,
+  "worstPeakDb": -2.35,
+  "worstCombo": [
+   "tiger_growl",
+   "wolf_howl",
+   "axe",
+   "bronze_hit",
+   "hook",
+   "boar_grunt",
+   "fire"
+  ],
+  "clippedAtWorst": 0,
+  "allKeysPeakNoLimiter": 1.1353,
+  "allKeysClippedNoLimiter": 8,
+  "_주의": "`worstPeak` 는 **리미터 없이** 잰 값이다(문턱을 그것과 견주려면 리미터가 개입하기 전의 수여야 한다). 키를 더하면 `__sfx.probe()` 를 다시 돌려 이 칸을 갱신하라 — 셈으로 채우지 마라. T261·T283 이 셈으로 채웠다가 둘 다 틀렸다.",
+  "_자의바닥": "두 판(리미터 있음/없음)의 피크가 문턱 아래에서도 ±0.1 dB 쯤 다르다 — `oversample:'2x'` 의 재표본 필터다. 펌핑을 잴 때 이 바닥을 안 빼면 **없는 펌핑**이 보인다: 1차 판이 `pa>0.02` 인 창을 다 보다가 모닥불 하나에 '최악 −10.92 dB'를 냈다(피크는 한 톨도 안 변했는데). ⇒ 비율은 **`pa > knee` 인 창에서만** 뜻이 있다.",
+  "soundingKeys": 21,
+  "_왜 이 수를 적나": "소리 나는 키가 이 수와 달라지면 `test-audio ⑧` 이 문다 — **키를 더했으면 다시 재라**는 뜻이다. 셈으로 고치지 말고 `__sfx.probe()` 를 돌려라.",
+  "_개명": "[T303] `wolf_growl` → `wolf_howl` 은 **이름만** 바뀐 것이다 — 파일 바이트가 0 변경이라(sha1 d9176d70…/bede1a0f… 그대로) 이 실측값은 여전히 그 파일을 잰 값이다. `worstPeak`·`clippedAtWorst` 는 **다시 재지 않았고 한 자도 안 고쳤다** — 이름표만 갈았다.",
+  "_T354": "21키 전부 동시: 피크 0.772(-2.25 dBFS) · 클리핑 0. **리미터를 빼면 피크 1.1039 · 클리핑 10** — 키가 16→21 로 늘면서 리미터가 무는 자리가 늘었다(T292 때는 최악 조합조차 문턱을 안 넘었다)."
+ },
+ "ground": {
+  "_뜻": "발밑 지형 → 발자국 키. 지형 정본은 `window.__tileStateAt` 하나(`kind`·`geo`·풀 알파) — 층은 그 답을 이 표로 옮길 뿐이다.",
+  "rock": "step_stone",
+  "grass": "step_grass",
+  "_기본": "step_dirt",
+  "_왜_표인가": "T261 부터 이 갈래는 **코드에 박혀** 있었고(`v = 'step_grass'`) 그래서 돌바닥이 흙으로 났다. 재민 09-22 판정으로 셋이 되면서 표로 뺀다 — 넷째 지면이 생기면 한 줄이다."
+ },
+ "rainSplit": {
+  "_뜻": "비의 **세기**로 두 파일을 가른다. 값은 `_sfxWx.precip`(0..1) 이고 층이 이미 갖고 있다 — 새 수 0.",
+  "문턱": 0.5,
+  "아래": "rain_light",
+  "위": "rain",
+  "_왜_0.5": "`precip` 은 0..1 정규값이고 층에 다른 눈금이 없다. 가운데를 가른다 — **유도가 아니라 이등분**이라 값은 재민 몫이다(회부). 세계가 아직 `precip` 을 안 보내므로(T93) 지금은 어느 쪽도 저절로 안 난다."
+ }
 }
