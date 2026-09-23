@@ -619,6 +619,7 @@ console.log('\n⑨ 야간 여러 밤 — e2e 는 묶음을 하나 단다 [T220 �
   ok(hit(bait) === true && hit(good) === false,
      '★⑪ 자명 통과 금지 — 마감 뗀 미끼는 **잡고**, 마감 단 미끼는 안 문다', `${hit(bait)} / ${hit(good)}`);
   console.log('    접점: AbortSignal.timeout · waitHttp · run-regress.sh TIMEOUT_SEC=2400 · RC=124');
+}
 
 // =============================================================================
 // ⑫ 세계 자리에 `Math.random` 0 [T350 2026-09-22 · 주사위 0]

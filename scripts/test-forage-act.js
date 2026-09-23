@@ -206,8 +206,8 @@ console.log('\n⑦ 주사위 0 — 덤불 씨앗이 뽑기가 아니다 (T347 �
   const bushBlk = loot.slice(loot.indexOf("t === 'berry_bush'"), loot.indexOf("t === 'ore'"));
   ok(!/Math\.random\(\)/.test(bushBlk),
     '⑦ ★★★채집꾼이 닿는 갈래(덤불·풀)에 **`Math.random` 이 하나도 없다**(캐논 "같은 씨로 같은 결과" · 설계 §3)');
-  ok(/Math\.random/.test(loot) && /meteorite/.test(loot),
-    '⑦ ⚠표에 남은 주사위는 **운철 하나**뿐이고 그건 광부 카드 몫이다(회부 — 범위 밖을 몰래 안 고친다)');
+  ok(!/Math\.random/.test(loot),
+    '⑦ 표에 남은 주사위 0 — 운철 낱개도 T350 이 씨 흐름으로 바꿨다(PM 착지 09-22 · 종전 "운철 하나 남음" 단정을 뒤집음)');
   ok(/_gidHash\(`seedberry:\$\{Math\.round\(r\.x\)\}:\$\{Math\.round\(r\.y\)\}`\)/.test(ZC),
     '⑦ ★그 자리를 **자리 해시**가 정한다(`_gidHash` — T124 도토리가 쓴 정본 · 사본 0)');
   ok(/< 0\.3\) l\.seed_berry = 1;/.test(ZC),
