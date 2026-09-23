@@ -113,8 +113,20 @@ function findSpan(isl) {
       while (len < MAX_SPAN && isWater(x, y)) { x += dx; y += dy; len++; }
       if (len === 0 || len >= MAX_SPAN) continue;
       if (x < 0 || y < 0 || x >= NX || y >= NY) continue;
-      if (label[y * NX + x] !== 1) continue;         // 착지가 본토여야
-      if (!best || len < best.len) best = { len, x0: cx, y0: cy, x1: x, y1: y, dx, dy };
+      // ★★[T360 2026-09-23] **디딤돌을 인정한다.** 종전엔 `label === 1`(본토)에만 착지를 허용했다.
+      //   그래서 닛폰 최대 덩어리(#2 1,529,254셀)가 "200셀 내 도하 없음 = 대양"으로 답해졌는데,
+      //   실측하면 그 덩어리는 **사람이 안 사는 뭍 #6(92,021셀)을 거쳐** 본토에 16칸+11칸으로 닿는다
+      //   (T360 §0-ⓐ · 0-1 BFS). 계획기는 **마을이 있는 섬만** 섬으로 세므로 #6 은 목록에 없었고,
+      //   본토 직행 광선만 봤으므로 16칸 도하를 **거부**했다. 바다가 아니라 **탐색 모양**이 만든 말이었다.
+      //   ⇒ 착지는 "나 아닌 다른 뭍"이면 된다. 한 번 놓고 다시 부르면 그 덩어리가 합쳐져
+      //     다음 도하가 보인다(수렴). 새 규칙이 아니라 **원래 규칙에서 본토 조건 하나를 뺀 것**이다.
+      //   ⚠`label` 은 **본토와 끊긴 마을의 섬만** 칠해져 있다 — 사람이 안 사는 뭍은 0(안 칠함)이다.
+      //     그래서 `label > 0` 으로 보면 디딤돌이 그대로 빠진다(1차 판이 그렇게 헛돌았다).
+      //     착지 조건은 라벨이 아니라 **"막히지 않은 칸"**이고, 내 섬만 빼면 된다.
+      const lb = label[y * NX + x];
+      if (lb === isl.tag) continue;                  // 나 자신으로 돌아오는 건 도하가 아니다
+      if (blocked(x, y)) continue;                   // 착지는 다닐 수 있는 뭍이어야 한다
+      if (!best || len < best.len) best = { len, x0: cx, y0: cy, x1: x, y1: y, dx, dy, land: lb };
     }
   }
   return best;
@@ -124,12 +136,13 @@ const found = [], ocean = [];
 for (const isl of islands) {
   const t1 = Date.now();
   const s = findSpan(isl);
-  if (!s) { ocean.push(isl); console.log(`\n[섬 #${isl.tag}] ${isl.villages.join(',')} — ${MAX_SPAN}셀 내 본토 도하 없음 → **대양 분리(항해 층 필요)** (${Date.now() - t1}ms)`); continue; }
+  if (!s) { ocean.push(isl); console.log(`\n[섬 #${isl.tag}] ${isl.villages.join(',')} — ${MAX_SPAN}셀 내 **다른 뭍으로 가는 도하 없음** → 대양 분리(항해 층 필요) (${Date.now() - t1}ms)`); continue; }
   const perp = s.dx ? [0, 1] : [1, 0];
+  const _land = (s.land === 1) ? '본토' : (s.land ? `섬 #${s.land}` : '디딤돌(사람 없는 뭍)');
   const cells = [];
   for (let k = 0; k <= s.len + 1; k++) { const bx = s.x0 + s.dx * k, by = s.y0 + s.dy * k; for (let w = 0; w < 2; w++) cells.push([bx + perp[0] * w, by + perp[1] * w]); }
   found.push({ tag: isl.tag, villages: isl.villages, span: s, cells });
-  console.log(`\n[섬 #${isl.tag}] ${isl.villages.join(',')} (${isl.n.toLocaleString()}셀) 최단 도하 ${s.len}셀: (${s.x0},${s.y0})→(${s.x1},${s.y1}) → 다리 ${cells.length}셀 (${Date.now() - t1}ms)`);
+  console.log(`\n[섬 #${isl.tag}] ${isl.villages.join(',')} (${isl.n.toLocaleString()}셀) 최단 도하 ${s.len}셀: (${s.x0},${s.y0})→(${s.x1},${s.y1}) [착지 ${_land}] → 다리 ${cells.length}셀 (${Date.now() - t1}ms)`);
 }
 
 console.log(`\n=== 결과 ===`);
