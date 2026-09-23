@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
-// === scripts/test-nippon-boot.js — 둘째 존이 실제로 산다 (T343 · T348 · T351 · T360) ===
+// === scripts/test-nippon-boot.js — 둘째 존이 실제로 산다 (T343·T348·T351·T360·T373) ===
 //
 // ★왜 [T343 2026-09-21]
 //   T336 이 잰 것: `ZONE_ID=nippon` 은 **오류 0 으로 뜨는데 아무 일도 안 났다**
@@ -135,6 +135,22 @@ async function waitUp(p, url, tries = 300) {
   // ★결정론 — 같은 존을 두 번 물으면 같은 답이다(존 하나당 villageSeed).
   const npCand2 = T.siteCandidates(ZID);
   ok(JSON.stringify(npCand) === JSON.stringify(npCand2), 'ⓑ3 두 번 물어도 같은 답이다(존 하나당 결정론 · 판마다 다른 세계 0)');
+
+  console.log('\n[ⓚ 섬 수가 정직하다 — T373]');
+  // ★★T348·T360 이 닛폰을 "대양 분리 4섬"이라 보고했는데 그 넷은 **플러드 0셀**이었다 —
+  //   후보가 물(또는 바위) 위에 앉아 설 자리가 한 칸도 없는 것이지 **섬이 아니다**.
+  //   세계엔 무해하다(`findOpenCenter` 가 스킵한다). 거짓말을 하는 것은 **보고 수**뿐이고,
+  //   그래서 사람이 없는 바다를 걱정하게 된다. ⇒ 계획기가 그것을 섬에서 뺀다.
+  const PBV = fs.readFileSync(path.join(ROOT, 'scripts', 'plan-bridges-v2.js'), 'utf8');
+  ok(/if \(!f\.n\) \{\s*drySkip\.push/.test(PBV),
+    'ⓚ 계획기가 **플러드 0셀 후보를 섬에서 뺀다**(0셀은 섬이 아니라 설 자리가 없는 곳)');
+  ok(/drySkip\.length \? /.test(PBV), 'ⓚ2 그 수를 **따로 센다**(조용히 지우지 않는다 — 없앤 게 아니라 이름이 다른 것이다)');
+  // ★말만 보지 않는다 — 그런 자리가 **실재하는지** 정본 술어로 직접 잰다(자명 통과 방지).
+  const noStand = (npCand || []).filter((v) => {
+    try { return T.isWaterCellLocal(ZID, v.x, v.y) || T.isRockCellLocal(ZID, v.x, v.y); } catch (e) { return false; }
+  });
+  ok(noStand.length > 0, 'ⓚ3 전제: 닛폰에 **설 자리가 없는 후보가 실제로 있다**(0이면 위가 자명 통과다)',
+    `${noStand.length}곳 — ${noStand.map((v) => v.name).join(', ')}`);
 
   console.log('\n[ⓒ 바다 존은 스스로 빠진다 — 새 게이트 0]');
   const ZONES = ZONES0;
