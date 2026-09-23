@@ -30,7 +30,11 @@ const ROUTES = {
   'central POST =/auth':                     ['본인', '공개뜻'],
   'central POST =/guest':                    ['본인', '공개뜻'],
   'central POST =/promote':                  ['본인', '공개뜻'],
-  'central POST =/check_username':           ['공개', '회부2'],
+  // ★★[T363 2026-09-23 · 재민 결정 #48 ⓑ] 갈래가 `공개` → **`안문`** 으로 갔다.
+  //   ⚠**라우트 수는 62 그대로다** — 지우지 못했다: 부르는 쪽이 클라만이 아니라 `zone.js:4191`
+  //     게스트 갈래이기도 했고, 그 물음의 술어(`findAccount`)를 **다른 문은 아무도 안 쓴다**(보고 §0-ⓐ).
+  //   ⇒ 문은 남기고 **바깥만** 닫았다. 남음 1 → **0**(회부된 둘이 다 닫혔다).
+  'central POST =/check_username':           ['안문', '닫힘'],
   'central POST =/friend/req': ['안문', '닫힘'],
   'central POST =/friend/del': ['안문', '닫힘'],
   'central POST =/friend/pending':           ['안문', '닫힘'],

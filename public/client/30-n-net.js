@@ -154,64 +154,22 @@
       } catch (e) { /* 조용히 무시 */ }
     }, 15000);
 
-    // 14.42-a: 이름 입력 시 기존 계정 여부 확인 → zone picker 토글
-    //   - 게스트(이름+비번 없음): picker 노출 — 지역 직접 선택
-    //   - 신규 가입(이름+비번 있음, DB에 없음): picker 노출 — 영구 home 됨
-    //   - 기존 로그인(이름+비번 있음, DB에 있음): picker 숨김 + last_zone 자동 사용
+    // ★★[T363 2026-09-23 · 재민 결정 #48 ⓑ] **입력 중 이름을 확인하던 줄을 지웠다.**
+    //   종전: 이름·비번을 칠 때마다(250ms) `POST /check_username` 으로 *"이 이름 있나"* 를 묻고,
+    //         있으면 지역 고르개를 감추고 `GET /player/<이름>` 으로 `last_zone` 까지 받아 자동 라우팅했다.
+    //   그 문은 **비밀 0 으로 남의 이름 존재를 세는 문**이었다(T310 §4 회부 · #48).
+    //   ⇒ 같은 답을 **제출 뒤**에 받는다: `POST /auth` 는 이미 `{ ok, player, isNew }` 를 내고,
+    //     실패하면 `username_taken`·`wrong_password` 를 낸다 — **새 문 0 · 새 화면 0**.
+    //     (오류 자리는 종전 그대로 `#authError` 다. 그 두 사유는 이미 표에 있다.)
+    //   ⚠지역 고르개는 이제 **늘 보인다**. 기존 계정은 입장하는 순간 제 자리로 간다(아래 `enter` 핸들러).
     const nameInput = document.getElementById('name');
     const pwInput = document.getElementById('password');
     const zoneRow = document.getElementById('zoneRow');
     const existingHint = document.getElementById('existingLoginHint');
-    let checkTimer = null;
-    let lastCheckedName = null;
-    // 기존 계정의 자동 라우팅용 — 마지막에 fetch한 player.last_zone (or home_zone)
+    // 기존 계정의 자동 라우팅용 — 제출 때 `/auth` 응답에서 채운다(종전엔 입력 중 채웠다)
     window.__autoZone = null;
-    async function refreshLobbyMode() {
-      const u = nameInput.value.trim();
-      const p = pwInput.value;
-      if (!u || !p) {
-        zoneRow.classList.remove('hidden');
-        existingHint.classList.add('hidden');
-        window.__autoZone = null;
-        return;
-      }
-      if (u === lastCheckedName) return; // debounce
-      lastCheckedName = u;
-      try {
-        const r = await fetch('/check_username', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: u }) });
-        const d = await r.json();
-        if (d.taken) {
-          zoneRow.classList.add('hidden');
-          existingHint.classList.remove('hidden');
-          // 기존 계정 — last_zone/home_zone 가져와서 자동 라우팅
-          try {
-            const r2 = await fetch('/player/' + encodeURIComponent(u));
-            if (r2.ok) {
-              const pd = await r2.json();
-              const dest = (pd.player?.last_zone) || (pd.player?.home_zone);
-              if (dest && zonesMeta[dest]) {
-                window.__autoZone = dest;
-                existingHint.innerHTML = `기존 계정 — <b>${zonesMeta[dest].displayName}</b>의 마지막 위치에서 시작합니다`;
-              }
-            }
-          } catch (e) {}
-        } else {
-          zoneRow.classList.remove('hidden');
-          existingHint.classList.add('hidden');
-          window.__autoZone = null;
-        }
-      } catch (e) {
-        zoneRow.classList.remove('hidden');
-        existingHint.classList.add('hidden');
-        window.__autoZone = null;
-      }
-    }
-    function debouncedCheck() {
-      if (checkTimer) clearTimeout(checkTimer);
-      checkTimer = setTimeout(refreshLobbyMode, 250);
-    }
-    nameInput.addEventListener('input', debouncedCheck);
-    pwInput.addEventListener('input', debouncedCheck);
+    if (zoneRow) zoneRow.classList.remove('hidden');
+    if (existingHint) existingHint.classList.add('hidden');
 
     // 로비에서 10초마다 zone 인구 갱신
     const zoneRefreshTimer = setInterval(async () => {
@@ -255,9 +213,34 @@
     //   `boot()` 을 부르는 자리가 `50-i-panel.js`(조각 20) 최상위 문 → **`99-main.js`**(조각 25) 로 옮겼다.
     //   ⇒ 이 함수가 사는 `70-lobby.js`(조각 24)가 **반드시 먼저 실려 있다**. 경주 자체가 없어졌다.
     onbLobbyInit();
-    document.getElementById('enter').onclick = () => {
+    document.getElementById('enter').onclick = async () => {
       const inputName = document.getElementById('name').value.trim();
       const inputPw = document.getElementById('password').value;
+      // ★★[T363] **제출 때 한 번** — 이름이 이미 있나 · 있다면 어디로 가야 하나.
+      //   부르는 문은 **이미 있는 그 문**(`POST /auth`)이고, 비밀번호를 같이 내야 답한다
+      //   ⇒ 이름만으로 존재를 세는 길이 사라진다(#48 의 목적 그 자체).
+      //   ⚠못 물어보면 **막지 않는다** — central 이 잠깐 안 뜬 것을 사람의 죄로 삼지 않는다(T19 규약).
+      //     그때는 종전대로 고른 지역으로 들어가고, 판정은 ws 인증이 다시 한다.
+      window.__autoZone = null;
+      if (inputName && inputPw) {
+        try {
+          const r = await fetch('/auth', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: inputName, password: inputPw, color: myColor,
+              home_zone: sel.value, home_x: null, home_y: null }) });
+          const d = await r.json();
+          if (d && d.ok === false) {
+            const err = document.getElementById('authError');
+            err.textContent = ({ username_taken: '이미 사용 중인 이름입니다.',
+                                 wrong_password: '패스워드가 틀렸습니다.' })[d.reason] || `인증 실패: ${d.reason}`;
+            err.classList.remove('hidden');
+            return;                                   // 로비에 남는다(종전 auth_error 자리와 같은 칸)
+          }
+          if (d && d.ok && d.isNew === false && d.player) {
+            const dest = d.player.last_zone || d.player.home_zone;
+            if (dest && zonesMeta[dest]) window.__autoZone = dest;
+          }
+        } catch (e) { /* central 불가 — 고른 지역으로 간다(위 주석) */ }
+      }
       myName = inputName || '여행자';
       myUsername = inputName; // 빈 문자열이면 게스트
       myPassword = inputPw;
