@@ -331,6 +331,70 @@ console.log('\n⑪b 관측 함수 — 나무와 채집이 안 섞였다');
   }
 }
 
+// ── ⑬ [T359] 군락은 지형의 것 — ⓐ 간격이 유도값 ⓑ 켬/끔 ⓒ 링과 겹침 0 ────────────────
+console.log('\n⑬ [T359] 군락 지형 생성 (#58 ⓐ′ · 손잡이 기본 끔)');
+{
+  const CH = require(path.join(ROOT, 'server', 'chunk.js'));
+  const F2 = require(path.join(ROOT, 'server', 'forage.js'));
+  const ZC = codeOf(fs.readFileSync(path.join(ROOT, 'server', 'chunk.js'), 'utf8'));
+  ok(typeof CH.GROVE === 'object' && CH.GROVE.ON() === false,
+    '⑬ ★★손잡이 `T359_GROVE_TERRAIN` 이 **기본 끔**이다(켜기는 재민)');
+  ok(/if \(GROVE\.ON\(\)\) \{/.test(ZC),
+    '⑬ ★군락 갈래 전체가 **손잡이 뒤**에 있다 — 끄면 한 번도 안 돈다(청크 산출 비트 동일)');
+  // ⓐ 간격이 **유도값**인가 — T357 앵커에서 다시 계산해 상수와 맞댄다(하네스에 새 수 0)
+  const CELL = F2.CFG.CELL_PX, R = Math.ceil(64 * F2.CFG.WALK_SEC / CELL);
+  ok(R === 30 && CELL === 32,
+    'ⓐ 생활권 자 = 채집 반경(걸음 64 × 도보 초 ÷ 셀)', `${R}셀 · ${R * CELL}px`);
+  //   ★앵커는 **셀당 밀도의 중앙값** 둘이다(카드 ①의 그 방법: 마을마다 `K ÷ 셀` 을 내고 중앙값 하나).
+  //     실측(보고/T359 §1 · 계측기 `t359-grove-density.js`): 숲 10곳 **0.309525** · 초지·물가 35곳 **0.088724**.
+  //     간격 = 셀 ÷ √밀도 ⇒ 정수 반올림이 `GROVE.SP_*` 와 **정확히** 같아야 한다(하네스에 간격 수 0).
+  const spOf = (dens) => CELL / Math.sqrt(dens);
+  const bush = spOf(0.309525), herb = spOf(0.088724);
+  ok(Math.round(bush) === CH.GROVE.SP_BUSH,
+    'ⓐ ★★덤불 간격이 **유도값**이다(숲 마을 밀도 중앙값에서 다시 계산)', `${bush.toFixed(1)} → ${Math.round(bush)} = ${CH.GROVE.SP_BUSH}`);
+  ok(Math.round(herb) === CH.GROVE.SP_HERB,
+    'ⓐ ★★풀 간격도 유도값이다(초지·물가 밀도 중앙값)', `${herb.toFixed(1)} → ${Math.round(herb)} = ${CH.GROVE.SP_HERB}`);
+  ok(CH.GROVE.SP_BUSH < 60 && CH.GROVE.SP_HERB > 96,
+    'ⓐ ★그 둘이 나무 간격 띠(60~96px)의 **아래·위**다 — 덤불은 숲만큼 촘촘, 풀은 더 듬성',
+    `${CH.GROVE.SP_BUSH} / ${CH.GROVE.SP_HERB}`);
+  ok(/if \(G\.forest \? !\(fm > FOREST_MIN_COV\) : \(fm > FOREST_MIN_COV\)\) continue;/.test(ZC),
+    'ⓐ ★★지형을 가르는 문턱이 **숲 그리드의 그 문턱 하나**다(새 문턱 0 · `FOREST_MIN_COV`)');
+  ok(/GAP: FOREST_GAP,/.test(ZC), 'ⓐ 빈자리 비율도 숲 그리드의 그 수다(사본 0)');
+  ok(!/SP_BUSH: \d+[\s\S]{0,40}Math\.|forestSpacing\(fCov\)[\s\S]{0,20}GROVE/.test(ZC),
+    'ⓐ 군락 간격이 나무 간격식을 덮어쓰지 않는다(둘은 따로 산다)');
+  // ⓑ 켬 판 군락 > 0 · 끔 판 = 0 (청크 갈래만)
+  const vs = require(path.join(ROOT, 'server', 'terrain.js'));
+  const { ZONES } = require(path.join(ROOT, 'server', 'zone-config.js'));
+  if (vs.setZonesMeta) vs.setZonesMeta(ZONES);
+  const one = (vs.getZoneVillages('hanbando') || [])[0];
+  ok(!!one, 'ⓑ [상황] 마을 하나를 잡았다', one ? one.name : '못 잡았다');
+  if (one) {
+    const cx = Math.floor(one.x / 512), cy = Math.floor(one.y / 512);
+    const cnt = (env) => {
+      const js = `const {ZONES}=require(${JSON.stringify(path.join(ROOT, 'server', 'zone-config.js'))});`
+        + `const T=require(${JSON.stringify(path.join(ROOT, 'server', 'terrain.js'))});if(T.setZonesMeta)T.setZonesMeta(ZONES);`
+        + `const CH=require(${JSON.stringify(path.join(ROOT, 'server', 'chunk.js'))});`
+        + `const a=CH.generateChunkResources('hanbando',ZONES['hanbando'].biome,${cx},${cy},512)||[];`
+        + `console.log(JSON.stringify({g:a.filter(r=>/_g[bh]\\d/.test(r.seedKey||'')).length,n:a.length}))`;
+      return probe(env, js);
+    };
+    const off = cnt({}), on = cnt({ T359_GROVE_TERRAIN: '1' });
+    ok(off.g === 0, 'ⓑ ★★끔 판 청크에 지형 군락이 **0** 이다', String(off.g));
+    ok(on.g > 0, 'ⓑ ★★켬 판엔 **난다**', String(on.g));
+    ok(on.n === off.n + on.g, 'ⓑ ★늘어난 개체가 **정확히 군락 수만큼**이다(다른 종이 안 움직였다)',
+      `${off.n} + ${on.g} = ${on.n}`);
+  }
+  // ⓒ 링 군락과 겹침 0 — 정본 무접촉 + 자리 회피
+  ok(/const _inRing = \(x, y\) =>/.test(ZC) && /if \(_inRing\(x, y\)\) continue;/.test(ZC),
+    'ⓒ ★★링 군락 자리를 **비켜 준다**(링이 먼저 심은 자리가 정본 · `groves` 무접촉)');
+  ok(!/t\.groves\s*=|\.groves\.push/.test(ZC),
+    'ⓒ ★이 갈래가 링 군락 데이터를 **쓰지 않는다**(읽기만)');
+  ok(/`\$\{cx\}_\$\{cy\}_\$\{G\.tag\}\$\{gx\}_\$\{gy\}`/.test(ZC),
+    'ⓒ 씨 키가 숲(`ft`)·링(`gv`)과 안 겹친다(`gb`·`gh`)');
+  ok(/const st2 = _stage\(seedKey, G\.type, null\);/.test(ZC),
+    'ⓒ ★재생 회계가 **같은 함수**다(`_stage` — T122 덤불 1년 · 풀 반년 · 사본 0)');
+}
+
 // ── ⑫ 접점 심볼 — 카드가 지목한 이름이 전부 제자리에 ────────────────────────────
 console.log('\n⑫ 접점 심볼');
 {

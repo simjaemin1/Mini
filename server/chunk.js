@@ -330,6 +330,42 @@ const FOREST_SP_MIN = 60, FOREST_SP_MAX = 96;
 const FOREST_MIN_COV = 1.5;        // 이 아래 커버리지엔 숲 그리드를 안 깐다
 const FOREST_GAP = 0.9;            // 10% 빈자리(자연스러움) — 그리드의 `j2 > 0.9` 그대로
 function forestSpacing(fCov) { return Math.max(FOREST_SP_MIN, Math.min(FOREST_SP_MAX, Math.round(FOREST_SPACING_BASE / Math.sqrt(fCov)))); }
+
+// ══ ★★★[T359 2026-09-23 · 재민 결정 #58 ⓐ′] **군락도 지형이 낳는다** ═══════════════════
+//
+// ★왜 — T347: 채집 문법은 섰는데 세계가 비어 있다(군락 마을당 약 5개 · 걷는 몫의 2%만 댄다).
+//   T357: 필요 개체 **10,059**(지금 221의 45.5배)이고 도보 15초 링의 기하 상한은 2,037 ⇒ 링으로는 못 놓는다.
+//   ⇒ 재민 #58 **ⓐ′**: 링 군락(`plan-village-forage.js` · 플레이어 첫 15초용)은 **그대로 두고**,
+//     NPC 경제의 밑변은 **나무처럼 지형에서** 온다. 그래서 이 갈래는 숲 그리드와 **같은 꼴**이다.
+//
+// ★간격은 **유도값**이다(지어낸 수 0 · 유도는 `scripts/t359-grove-density.js` · 보고 §1):
+//     간격 = 셀변 ÷ √(셀당 밀도) · 셀당 밀도 = (T357 필요 K) ÷ (생활권의 쓸 수 있는 셀 수)
+//     생활권 = 채집 반경 30셀(960px = 걸음 64px/s × `forage.CFG.WALK_SEC` 15초 — T347 이 쓰는 그 자)
+//   방법은 카드 ①의 그것 — 마을마다 `K ÷ 셀` 을 내고 **셀당 밀도의 중앙값 하나**를 간격으로 바꾼다.
+//   실측(51마을 중 T357 이 잰 45곳 · `scripts/t359-grove-density.js`):
+//     · 숲 마을 10곳, 숲 셀 분모   ⇒ 밀도 중앙 **0.309525** ⇒ 32/√0.309525 = 57.5 ⇒ **덤불 58px**
+//       (나무 하한 60px 바로 아래 = 숲 바닥이 나무만큼 촘촘해진다)
+//     · 초지·물가 35곳, 그 셀 분모 ⇒ 밀도 중앙 **0.088724** ⇒ 32/√0.088724 = 107.4 ⇒ **풀 107px**
+//       (나무 상한 96px 보다 듬성)
+//   ⚠이 둘이 이 카드가 세운 **유일한 수**이고, 둘 다 위 식의 출력이다(`FOREST_SPACING_BASE` 와 같은 지위).
+//     하네스 ⓐ 가 T357 앵커로 그 유도를 다시 계산해 이 상수와 맞대 본다(사본 0).
+//
+// ★어느 지형이 어느 군락을 내나 — **이미 있는 술어 하나로 가른다**(새 문턱 0):
+//     `getForestMultiplier > FOREST_MIN_COV` (= 숲 그리드가 깔리는 그 문턱) → **덤불**(`berry_bush`)
+//     그 아래(초지·물가)                                                  → **풀**(`herb`)
+//   ⚠"숲 **가장자리**" 를 따로 가르려면 둘째 문턱이 필요하고 그건 새 수라 **안 지었다**(회부).
+//
+// ★새 종 0 · 새 스프라이트 0 · 새 전리품 표 0 — `berry_bush`·`herb` 는 링 군락이 이미 쓰는 종이고
+//   `RESOURCE_HP_TABLE`·`lootOfResource`·`REGROW`(덤불 1년 · 풀 반년)가 다 갖고 있다.
+//
+// ★되돌림 — 기본 끔. 끄면 이 블록이 **한 번도 안 돌아** 청크 산출이 비트 동일이다(청크 해시 자).
+const GROVE = {
+  ON: () => (process.env.T359_GROVE_TERRAIN === '1'),   // ★기본 끔 · 부를 때 읽는다(`REGROW.ON` 규약)
+  SP_BUSH: 58,    // ★유도값 — 위 머리말 · 숲 셀 분모 중앙
+  SP_HERB: 107,   // ★유도값 — 위 머리말 · 초지·물가 셀 분모 중앙
+  GAP: FOREST_GAP,          // 빈자리 비율 — 숲 그리드의 그 수 그대로(사본 0)
+  SEED_POS: 95000,          // 씨 오프셋 — 숲(90000)·크기(91000000)와 겹치지 않는 자리
+};
 /**
  * 32px 셀 하나에 서는 나무 수. 인자가 없으면 **가장 성긴 숲**(SP 상한)으로 — 아래로 잡는다.
  * 새 수 0: 간격·빈자리 둘 다 위 그리드가 이미 쓰던 값이다.
@@ -639,6 +675,65 @@ function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet, 
         if (fsp && ftype === 'tree') fe.szf = +sz.toFixed(3);   // 크기 0..1 — 열매 재고가 이걸 읽는다(사본 0)
         if (_inCell && !_inCell(fe.x, fe.y)) continue;          // ★[T301] 셀 질의
         result.push(fe);
+      }
+    }
+  }
+
+  // ══ ★★★[T359] 군락 그리드 — 숲 그리드와 **같은 꼴**(위 `GROVE` 머리말이 왜와 유도) ═══════
+  //   ⚠끄면 이 블록이 한 번도 안 돈다 ⇒ 청크 산출 **비트 동일**(청크 해시 자가 전수로 잰다).
+  //   ⚠링 군락(`groves`)은 **무접촉**이다 — 겹치면 여기서 **피한다**(링이 먼저 심은 자리가 정본).
+  if (GROVE.ON()) {
+    const cs = chunkSize;
+    //   링 군락 중심들 — 이 청크에 걸치는 것만 미리 모은다(정본 데이터를 읽기만 한다).
+    const _ringC = [];
+    {
+      const t0 = terrain.ZONE_TERRAIN ? terrain.ZONE_TERRAIN[zoneId] : null;
+      for (const g of ((t0 && t0.groves) || [])) {
+        if (!g || !g.center) continue;
+        const gr = (g.r || 140) + 32;
+        if (g.center[0] + gr < cx * cs || g.center[0] - gr > cx * cs + cs) continue;
+        if (g.center[1] + gr < cy * cs || g.center[1] - gr > cy * cs + cs) continue;
+        _ringC.push([g.center[0], g.center[1], gr]);
+      }
+    }
+    const _inRing = (x, y) => { for (const r of _ringC) if ((x - r[0]) * (x - r[0]) + (y - r[1]) * (y - r[1]) < r[2] * r[2]) return true; return false; };
+    //   두 그리드 — 종마다 간격이 다르므로(유도값) 격자를 따로 깐다. 씨는 종마다 다른 오프셋.
+    const _grids = [
+      { type: 'berry_bush', SP: GROVE.SP_BUSH, tag: 'gb', off: GROVE.SEED_POS, forest: true },
+      { type: 'herb', SP: GROVE.SP_HERB, tag: 'gh', off: GROVE.SEED_POS + 500000, forest: false },
+    ];
+    for (const G of _grids) {
+      const SP = G.SP;
+      const _cols = Math.ceil(cs / SP);
+      const _oxLo = _OC ? (_OC.x0 - cx * cs) : 0, _oxHi = _OC ? (_OC.x1 - 1 - cx * cs) : 0;
+      const _oyLo = _OC ? (_OC.y0 - cy * cs) : 0, _oyHi = _OC ? (_OC.y1 - 1 - cy * cs) : 0;
+      let gi = 0;
+      for (let gy = 0; gy < cs; gy += SP) {
+        if (_OC && (gy > _oyHi || gy + SP <= _oyLo)) { gi += _cols; continue; }
+        for (let gx = 0; gx < cs; gx += SP, gi++) {
+          if (_OC && (gx > _oxHi || gx + SP <= _oxLo)) continue;
+          const j1 = seedRand(zoneId, cx, cy, G.off + gi * 2);
+          const j2 = seedRand(zoneId, cx, cy, G.off + gi * 2 + 1);
+          if (j2 > GROVE.GAP) continue;                          // 빈자리 — 숲 그리드의 그 비율
+          const x = cx * cs + gx + j1 * SP;
+          const y = cy * cs + gy + j2 * SP;
+          //   ★지형이 종을 가른다 — 문턱은 숲 그리드의 그 문턱 하나다(새 수 0)
+          const fm = terrain.getForestMultiplier(zoneId, x, y);
+          if (G.forest ? !(fm > FOREST_MIN_COV) : (fm > FOREST_MIN_COV)) continue;
+          if (terrain.isWaterCellLocal(zoneId, x, y)) continue;
+          if (typeof terrain.isRockCellLocal === 'function' && terrain.isRockCellLocal(zoneId, x, y)) continue;
+          if (_inRing(x, y)) continue;                            // ★링 군락 자리는 비켜 준다
+          const seedKey = `${cx}_${cy}_${G.tag}${gx}_${gy}`;
+          //   ★[T122] 같은 재생 회계 — 딴 자리는 주기가 지나야 다시 난다(사본 0 · `_stage` 그 함수)
+          if (harvestedSet && harvestedSet.has(seedKey)) {
+            const st2 = _stage(seedKey, G.type, null);
+            if (st2 !== 'mature') continue;
+          }
+          const mh = RESOURCE_HP_TABLE[G.type] || 1;
+          const ge = { id: `s_${seedKey}`, seedKey, isSeed: true, x, y, type: G.type, hp: mh, maxHp: mh };
+          if (_inCell && !_inCell(ge.x, ge.y)) continue;           // ★[T301] 셀 질의
+          result.push(ge);
+        }
       }
     }
   }
@@ -952,4 +1047,4 @@ function generateCoastlineWaterTiles(zone, tileSize, findZoneAtFn, oceanRects) {
 
 // ★[T108 2026-09-05] `RESOURCE_HP_TABLE` 을 **내준다** — `zone.js` 가 같은 표를 한 벌 더
 //   들고 있었고(운석이 빠져 3대에 깨졌다 · T90 회부), 그걸 지우려면 정본이 나가야 한다.
-module.exports = { Chunk, ChunkManager, CHUNK_SIZE, generateChunkResources, resourceAt, resourcesAtCell, treeBlockerAt, overflowInto, seedGenChunkOf, regrowStageOf, REGROW, seedRand, forestSpacing, forestTreesPerCell, forestTreesPerCellMean, scatterTreesPerCell, treeShareOf, scatterRocksPerCell, rockShareOf, FOREST_MIN_COV, RESOURCES_PER_CHUNK, generateVillagesForZone, makeVillageName, generateCoastlineWaterTiles, RESOURCE_HP_TABLE };
+module.exports = { Chunk, ChunkManager, CHUNK_SIZE, generateChunkResources, resourceAt, resourcesAtCell, treeBlockerAt, overflowInto, seedGenChunkOf, regrowStageOf, REGROW, GROVE, seedRand, forestSpacing, forestTreesPerCell, forestTreesPerCellMean, scatterTreesPerCell, treeShareOf, scatterRocksPerCell, rockShareOf, FOREST_MIN_COV, RESOURCES_PER_CHUNK, generateVillagesForZone, makeVillageName, generateCoastlineWaterTiles, RESOURCE_HP_TABLE };
