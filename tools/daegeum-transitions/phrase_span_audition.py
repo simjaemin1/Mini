@@ -23,11 +23,14 @@ runtime assets.
 
 The input may be a normal ``sequence_retrieval.json`` report plus a selected
 path ID/rank, a direct trajectory report, a source-led
-``phrase_boundary_triage.json`` report, or a standalone selected path JSON
-object.  Boundary-triage reports undergo their additional report/catalog/raw
-source gates before a raw lead-stem is copied.  In every case only a stable
-identifier, ``source``, and ``native_source_span.frame_range`` are used to
-locate audio; no backing mix or runtime asset is involved.
+``phrase_boundary_triage.json`` report, a source-led ``phrase_pool.json``
+report, or a standalone selected path JSON object.  Boundary-triage reports
+undergo their additional report/catalog/raw-source gates before a raw lead stem
+is copied.  Phrase-pool reports must additionally re-bind their selected row
+to the exact downloaded NGC manifest, catalog, and direct WAV before a raw
+span is copied.  In every case only a stable identifier, ``source``, and
+``native_source_span.frame_range`` are used to locate audio; no backing mix or
+runtime asset is involved.
 """
 
 from __future__ import annotations
@@ -55,9 +58,11 @@ SCHEMA = "durango.daegeum.transition-bank.v1"
 SEQUENCE_RETRIEVAL_SCHEMA_PREFIX = f"{SCHEMA}.same-source-sequence-retrieval."
 TRAJECTORY_RETRIEVAL_SCHEMA_PREFIX = f"{SCHEMA}.direct-f0-trajectory-retrieval."
 PHRASE_BOUNDARY_TRIAGE_SCHEMA_PREFIX = f"{SCHEMA}.source-led-phrase-boundary-triage."
+PHRASE_POOL_SCHEMA_PREFIX = f"{SCHEMA}.source-led-phrase-pool."
 PHRASE_SPAN_AUDITION_SCHEMA = f"{SCHEMA}.phrase-span-audition.v1"
 RAW_SPAN_SCHEMA = f"{SCHEMA}.source-faithful-native-span.v1"
 GLOBAL_PREVIEW_SCHEMA = f"{SCHEMA}.global-pitch-time-preview.v1"
+NGC_EXTENDED_MANIFEST_SCHEMA = "durango.ngc.extended-daegeum-sanjo-fetch.v1"
 
 DEFAULT_MAX_GLOBAL_PITCH_SHIFT_SEMITONES = 2.0
 DEFAULT_MIN_GLOBAL_TIME_RATIO = 0.85
@@ -217,6 +222,13 @@ def _select_from_report(
         report_input = triage_input.get("bundle") if isinstance(triage_input, Mapping) and isinstance(
             triage_input.get("bundle"), Mapping
         ) else None
+    elif schema.startswith(PHRASE_POOL_SCHEMA_PREFIX):
+        rows_key = "candidates"
+        report_kind = "source_led_phrase_pool_report"
+        phrase_pool_input = value.get("input")
+        report_input = phrase_pool_input.get("bundle") if isinstance(phrase_pool_input, Mapping) and isinstance(
+            phrase_pool_input.get("bundle"), Mapping
+        ) else None
     else:
         raise PhraseSpanAuditionError("retrieval input does not have a supported retrieval schema prefix")
     rows = value.get(rows_key)
@@ -268,6 +280,19 @@ def _select_from_report(
             dict(value["interpretation_limits"])
             if isinstance(value.get("interpretation_limits"), Mapping) else None
         )
+    elif report_kind == "source_led_phrase_pool_report":
+        phrase_pool_input = value.get("input")
+        report_identity["phrase_pool_artifact_kind"] = value.get("artifact_kind")
+        report_identity["phrase_pool_ngc_extended_manifest"] = (
+            dict(phrase_pool_input["ngc_extended_manifest"])
+            if isinstance(phrase_pool_input, Mapping)
+            and isinstance(phrase_pool_input.get("ngc_extended_manifest"), Mapping)
+            else None
+        )
+        report_identity["phrase_pool_interpretation_limits"] = (
+            dict(value["interpretation_limits"])
+            if isinstance(value.get("interpretation_limits"), Mapping) else None
+        )
     return selected[0], report_identity
 
 
@@ -275,20 +300,28 @@ def _load_selected_path(
     *,
     sequence_retrieval: Path | None,
     phrase_boundary_triage: Path | None,
+    phrase_pool: Path | None,
     path_json: Path | None,
     path_id: str | None,
     priority_rank: int | None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    supplied = [value for value in (sequence_retrieval, phrase_boundary_triage, path_json) if value is not None]
+    supplied = [
+        value for value in (sequence_retrieval, phrase_boundary_triage, phrase_pool, path_json)
+        if value is not None
+    ]
     if len(supplied) != 1:
         raise PhraseSpanAuditionError(
-            "provide exactly one of --sequence-retrieval, --phrase-boundary-triage, or --path-json"
+            "provide exactly one of --sequence-retrieval, --phrase-boundary-triage, --phrase-pool, or --path-json"
         )
-    report_path = sequence_retrieval or phrase_boundary_triage
+    report_path = sequence_retrieval or phrase_boundary_triage or phrase_pool
     if report_path is not None:
         report = _json_load(
             report_path,
-            label="phrase boundary triage JSON" if phrase_boundary_triage is not None else "retrieval JSON",
+            label=(
+                "phrase boundary triage JSON" if phrase_boundary_triage is not None
+                else "source-led phrase pool JSON" if phrase_pool is not None
+                else "retrieval JSON"
+            ),
         )
         selected, identity = _select_from_report(
             report, path_id=path_id, priority_rank=priority_rank
@@ -321,7 +354,15 @@ def _truth_status_mapping(
         raise PhraseSpanAuditionError(
             f"selected path lacks required {expected_field} truth labels"
         )
-    for field in ("automatic_path_status", "automatic_boundary_status"):
+    for field in (
+        "automatic_path_status",
+        "automatic_boundary_status",
+        # Phrase-pool selection is deliberately feature-only, but it carries
+        # the same conservative no-phrase/no-legato/no-game truth values.
+        # Accept the field by name rather than relabelling it as a boundary
+        # detector or silently weakening its limits.
+        "automatic_candidate_status",
+    ):
         status = path.get(field)
         if isinstance(status, Mapping):
             return field, status
@@ -345,14 +386,17 @@ def _require_truth_labels(
             "automatic_detection_is_not_a_musical_gesture_label",
             "trajectory_was_scanned_directly_from_feature_npz_not_candidate_pairs",
             "automatic_measurement_is_not_a_musical_phrase_label",
+            "automatic_measurements_are_not_a_musical_phrase_or_arirang_style_label",
         ),
         "one_verified_source": (
             "same_source_identity_verified", "source_is_one_verified_recording", "source_is_one_sha_verified_native_wav",
+            "source_is_one_sha_verified_ngc_manifest_catalog_recording",
         ),
         "strict_native_or_feature_order": (
             "strict_temporal_ordering_of_boundary_centers_verified",
             "strictly_consecutive_voiced_feature_rows",
             "source_is_one_sha_verified_native_wav",
+            "raw_span_is_one_contiguous_native_coordinate_range",
         ),
         "not_same_breath_evidence": ("not_evidence_of_same_breath",),
         "not_slur_evidence": ("not_evidence_of_slur",),
@@ -470,6 +514,8 @@ def _validate_selected_path(
         span_coordinate_kind = "unreviewed_source_led_boundary_triage_crop"
     elif span.get("frame_range_is_an_unreviewed_feature_window_enclosure_for_raw_review_only") is True:
         span_coordinate_kind = "unreviewed_feature_window_enclosure"
+    elif span.get("coordinate_only_not_a_verified_phrase_or_gesture_boundary") is True:
+        span_coordinate_kind = "unreviewed_source_led_phrase_pool_coordinate_span"
     else:
         span_coordinate_kind = "native_event_context_enclosure"
     if truth_label_field == "automatic_boundary_status":
@@ -573,6 +619,23 @@ def _validate_selected_path(
             "reason": "selected_path_did_not_embed_one_global_pitch_shift_proxy",
             "not_applied_to_source_audio_at_retrieval": True,
         }
+    selected_source: dict[str, Any] = {
+        "source_id": source_id,
+        "sha256": digest,
+        "relative_path": relative.as_posix(),
+        "sample_rate_hz": catalog_rate,
+        "frame_count": catalog_frames,
+    }
+    # A source-led phrase-pool row carries the NGC manifest join that was
+    # checked while the feature-only pool was built.  Preserve it verbatim so
+    # the separate phrase-pool gate can reverify every field against the exact
+    # manifest rather than accepting a renamed generic source row.
+    if truth_label_field == "automatic_candidate_status":
+        selected_source["ngc_extend_seq"] = source.get("ngc_extend_seq")
+        selected_source["source_manifest_evidence"] = (
+            dict(source["source_manifest_evidence"])
+            if isinstance(source.get("source_manifest_evidence"), Mapping) else None
+        )
     selected_result: dict[str, Any] = {
         "path_id": path_id,
         # Keep the selected retrieval row's original words as well as this
@@ -581,13 +644,7 @@ def _validate_selected_path(
         "input_truth_label_field": truth_label_field,
         "input_truth_labels_verbatim": dict(input_truth_labels),
         "input_native_source_span_verbatim": dict(span),
-        "source": {
-            "source_id": source_id,
-            "sha256": digest,
-            "relative_path": relative.as_posix(),
-            "sample_rate_hz": catalog_rate,
-            "frame_count": catalog_frames,
-        },
+        "source": selected_source,
         "span": {
             "frame_range": [start, end],
             "frame_count": end - start,
@@ -601,12 +658,14 @@ def _validate_selected_path(
     }
     if truth_label_field == "automatic_path_status":
         selected_result["input_automatic_path_status_verbatim"] = dict(input_truth_labels)
-    else:
+    elif truth_label_field == "automatic_boundary_status":
         selected_result["input_automatic_boundary_status_verbatim"] = dict(input_truth_labels)
         selected_result["triage_trajectory_provenance"] = {
             "trajectory_id": trajectory_id,
             "trajectory_native_frame_range_enclosed": [trajectory_start, trajectory_end],
         }
+    else:
+        selected_result["input_automatic_candidate_status_verbatim"] = dict(input_truth_labels)
     return selected_result
 
 
@@ -1010,6 +1069,185 @@ def _verify_phrase_boundary_triage_report_gate(
     }
 
 
+def _verify_phrase_pool_report_gate(
+    identity: Mapping[str, Any],
+    *,
+    bundle: Path,
+    catalog_sha256: str,
+    selected: Mapping[str, Any],
+    catalog_source: Mapping[str, Any],
+    raw_native: Mapping[str, Any],
+    ngc_extended_manifest: Path | None,
+) -> dict[str, Any]:
+    """Re-bind a phrase-pool coordinate to its exact NGC source receipt.
+
+    A phrase-pool report is deliberately only a feature-proxy selection.  To
+    export its raw span, it must be joined again to the current R&D-06 catalog,
+    the direct WAV, *and* the exact downloaded NGC manifest that constrained
+    the original source.  This remains a research gate, not a training or game
+    distribution clearance.
+    """
+
+    if identity.get("phrase_pool_artifact_kind") != "unreviewed_source_led_contiguous_raw_span_pool":
+        raise PhraseSpanAuditionError("phrase-pool report has an unsupported artifact_kind")
+    _sha256_hex(identity.get("sha256"), label="phrase-pool report SHA-256")
+    if identity.get("declared_bundle_basename") != bundle.name:
+        raise PhraseSpanAuditionError("phrase-pool bundle basename does not match --bundle")
+    if identity.get("declared_source_catalog_sha256") != catalog_sha256:
+        raise PhraseSpanAuditionError("phrase-pool source_catalog SHA-256 does not match --bundle")
+    if ngc_extended_manifest is None or not ngc_extended_manifest.is_file():
+        raise PhraseSpanAuditionError(
+            "--ngc-extended-manifest is required with --phrase-pool and must name its exact readable manifest"
+        )
+    declared_manifest = identity.get("phrase_pool_ngc_extended_manifest")
+    limits = identity.get("phrase_pool_interpretation_limits")
+    if not isinstance(declared_manifest, Mapping) or not isinstance(limits, Mapping):
+        raise PhraseSpanAuditionError("phrase-pool report lacks NGC-manifest or interpretation-limit attestations")
+    if declared_manifest.get("basename") != ngc_extended_manifest.name:
+        raise PhraseSpanAuditionError("phrase-pool NGC manifest basename does not match --ngc-extended-manifest")
+    manifest_digest = _sha256(ngc_extended_manifest)
+    if declared_manifest.get("sha256") != manifest_digest:
+        raise PhraseSpanAuditionError("phrase-pool NGC manifest SHA-256 does not match --ngc-extended-manifest")
+    required_limits = (
+        "all_candidates_remain_unreviewed_not_approved_not_training_items_not_game_assets",
+        "feature_proxy_contours_are_not_phrase_breath_attack_release_slur_legato_or_quality_labels",
+        "five_pitch_class_lattice_is_not_an_arirang_or_korean_mode_transcription",
+        "no_default_runtime_bgm_or_public_asset_is_changed",
+        "no_pitch_time_gain_channel_or_other_source_audio_change_is_requested_or_applied",
+        "output_contains_only_feature_proxy_measurements_and_native_frame_coordinates",
+        "source_audio_not_read_decoded_copied_written_or_rendered",
+    )
+    if any(limits.get(key) is not True for key in required_limits):
+        raise PhraseSpanAuditionError("phrase-pool report lost a required interpretation-limit flag")
+
+    manifest = _json_load(ngc_extended_manifest, label="NGC extended manifest")
+    if not isinstance(manifest, Mapping) or manifest.get("schema") != NGC_EXTENDED_MANIFEST_SCHEMA:
+        raise PhraseSpanAuditionError("NGC manifest does not have the Extended Daegeum Sanjo fetch schema")
+    r_and_d = manifest.get("r_and_d_only")
+    scope = manifest.get("scope")
+    purpose = manifest.get("submitted_purpose")
+    license_evidence = manifest.get("license_evidence")
+    if not all(isinstance(value, Mapping) for value in (r_and_d, scope, purpose, license_evidence)):
+        raise PhraseSpanAuditionError("NGC manifest lacks R&D/scope/purpose/license evidence")
+    assert isinstance(r_and_d, Mapping)
+    assert isinstance(scope, Mapping)
+    assert isinstance(purpose, Mapping)
+    assert isinstance(license_evidence, Mapping)
+    for key in (
+        "human_review_and_rights_review_required_before_training_or_shipping",
+        "no_game_default_or_runtime_changes",
+        "no_musical_gesture_or_legato_claim_from_download",
+    ):
+        if r_and_d.get(key) is not True:
+            raise PhraseSpanAuditionError("NGC manifest lost a required R&D-only gate: " + key)
+    if (
+        scope.get("division_exact") != "대금산조"
+        or scope.get("instrument_code") != "EXTEND0001"
+        or scope.get("instrument_name") != "대금"
+        or purpose.get("usePurposeGb") != "비상업용"
+        or purpose.get("usePurpose") != "연구용"
+        or license_evidence.get("not_a_model_training_or_game_distribution_clearance") is not True
+    ):
+        raise PhraseSpanAuditionError("NGC manifest no longer proves the exact R&D-only Daegeum Sanjo scope")
+
+    source = selected.get("source")
+    if not isinstance(source, Mapping):
+        raise PhraseSpanAuditionError("validated phrase-pool candidate has no source")
+    source_evidence = source.get("source_manifest_evidence")
+    if not isinstance(source_evidence, Mapping):
+        raise PhraseSpanAuditionError("phrase-pool candidate lacks source-manifest evidence")
+    required_source_evidence = (
+        "exact_daegeum_sanjo_source_verified",
+        "source_sha256_link_verified_between_ngc_manifest_and_catalog",
+        "native_frame_timeline_link_verified_between_ngc_manifest_and_catalog",
+        "research_only_and_no_game_gate_verified",
+        "not_a_training_or_game_distribution_clearance",
+        "catalog_metadata_not_treated_as_phrase_or_legato_label",
+    )
+    if any(source_evidence.get(key) is not True for key in required_source_evidence):
+        raise PhraseSpanAuditionError("phrase-pool source-manifest evidence lost a required conservative flag")
+    extend_seq = _strict_int(source.get("ngc_extend_seq"), label="phrase-pool NGC extend_seq", minimum=1)
+    if source_evidence.get("extend_seq") != extend_seq:
+        raise PhraseSpanAuditionError("phrase-pool source-manifest evidence has a mismatched extend_seq")
+
+    entries = manifest.get("entries")
+    if not isinstance(entries, list):
+        raise PhraseSpanAuditionError("NGC manifest has no entries array")
+    matching_entries = [
+        entry for entry in entries
+        if isinstance(entry, Mapping) and entry.get("extend_seq") == extend_seq
+    ]
+    if len(matching_entries) != 1:
+        raise PhraseSpanAuditionError("NGC manifest has no unique selected extend_seq entry")
+    entry = matching_entries[0]
+    selection = entry.get("selection")
+    download = entry.get("download")
+    musical_status = entry.get("musical_status")
+    catalog_record = entry.get("catalog_record")
+    detail_record = entry.get("file_info_record")
+    if not all(isinstance(value, Mapping) for value in (
+        selection, download, musical_status, catalog_record, detail_record,
+    )):
+        raise PhraseSpanAuditionError("selected NGC manifest entry lacks selection/download/status evidence")
+    assert isinstance(selection, Mapping)
+    assert isinstance(download, Mapping)
+    assert isinstance(musical_status, Mapping)
+    assert isinstance(catalog_record, Mapping)
+    assert isinstance(detail_record, Mapping)
+    if (
+        selection.get("division_exact") != "대금산조"
+        or selection.get("instrument_code") != "EXTEND0001"
+        or selection.get("instrument_name") != "대금"
+        or selection.get("selection_is_exact_metadata_filter_not_title_match") is not True
+        or catalog_record.get("extendSeq") != extend_seq
+        or detail_record.get("extend_seq") != extend_seq
+        or detail_record.get("instr_name") != "대금"
+        or download.get("state") != "downloaded"
+        or download.get("sha256") != source.get("sha256")
+        or musical_status.get("eligible_for_model_training_or_game_asset") is not False
+        or musical_status.get("automatic_filename_or_catalog_metadata_is_not_a_legato_or_transition_label") is not True
+    ):
+        raise PhraseSpanAuditionError("NGC manifest selected entry does not match the phrase-pool source constraints")
+    manifest_relative = download.get("relative_path")
+    if (
+        not isinstance(manifest_relative, str)
+        or PurePosixPath(manifest_relative).name != PurePosixPath(str(source["relative_path"])).name
+    ):
+        raise PhraseSpanAuditionError("NGC manifest download path does not match phrase-pool source basename")
+    download_native = download.get("native_wav")
+    if not isinstance(download_native, Mapping) or not isinstance(download_native.get("native_audio"), Mapping):
+        raise PhraseSpanAuditionError("NGC manifest selected entry lacks a native WAV descriptor")
+    manifest_native = download_native["native_audio"]
+    assert isinstance(manifest_native, Mapping)
+    catalog_native = catalog_source.get("native")
+    if not isinstance(catalog_native, Mapping):
+        raise PhraseSpanAuditionError("selected catalog source lacks its native descriptor")
+    expected_native = {
+        "sample_rate_hz": _strict_int(source["sample_rate_hz"], label="selected source sample_rate_hz", minimum=1),
+        "frame_count": _strict_int(source["frame_count"], label="selected source frame_count", minimum=1),
+        "channels": _strict_int(catalog_native.get("channels"), label="catalog source channels", minimum=1),
+        "encoding": catalog_native.get("encoding"),
+    }
+    if not isinstance(expected_native["encoding"], str) or not expected_native["encoding"]:
+        raise PhraseSpanAuditionError("selected catalog source lacks a native encoding")
+    for native, label in ((manifest_native, "NGC manifest"), (raw_native, "actual raw WAV")):
+        candidate_native = {
+            "sample_rate_hz": _strict_int(native.get("sample_rate_hz"), label=f"{label} sample_rate_hz", minimum=1),
+            "frame_count": _strict_int(native.get("frame_count"), label=f"{label} frame_count", minimum=1),
+            "channels": _strict_int(native.get("channels"), label=f"{label} channels", minimum=1),
+            "encoding": native.get("encoding"),
+        }
+        if candidate_native != expected_native:
+            raise PhraseSpanAuditionError(f"{label} native descriptor does not match phrase-pool catalog source")
+    return {
+        "phrase_pool_report_schema_and_sha256_identity_recorded": True,
+        "source_catalog_sha256_link_verified": True,
+        "phrase_pool_ngc_manifest_sha256_reverified": True,
+        "ngc_exact_daegeum_entry_matches_catalog_and_actual_raw_wav": True,
+        "phrase_pool_unreviewed_not_phrase_not_approved_not_training_not_game_limits_verified": True,
+    }
+
+
 def build_phrase_span_audition(
     *,
     bundle_dir: str | Path,
@@ -1017,6 +1255,8 @@ def build_phrase_span_audition(
     output_dir: str | Path,
     sequence_retrieval: str | Path | None = None,
     phrase_boundary_triage: str | Path | None = None,
+    phrase_pool: str | Path | None = None,
+    ngc_extended_manifest: str | Path | None = None,
     path_json: str | Path | None = None,
     path_id: str | None = None,
     priority_rank: int | None = None,
@@ -1037,6 +1277,11 @@ def build_phrase_span_audition(
         Path(phrase_boundary_triage).expanduser().resolve()
         if phrase_boundary_triage is not None else None
     )
+    pool_report = Path(phrase_pool).expanduser().resolve() if phrase_pool is not None else None
+    ngc_manifest = (
+        Path(ngc_extended_manifest).expanduser().resolve()
+        if ngc_extended_manifest is not None else None
+    )
     direct_path = Path(path_json).expanduser().resolve() if path_json is not None else None
     if not bundle.is_dir():
         raise PhraseSpanAuditionError("--bundle must be a readable R&D-06 bundle directory")
@@ -1046,6 +1291,7 @@ def build_phrase_span_audition(
     selected_path, input_identity = _load_selected_path(
         sequence_retrieval=report,
         phrase_boundary_triage=triage_report,
+        phrase_pool=pool_report,
         path_json=direct_path,
         path_id=path_id,
         priority_rank=priority_rank,
@@ -1056,16 +1302,22 @@ def build_phrase_span_audition(
     catalog_source, catalog_digest = _catalog_source(bundle, source_data["source_id"])
     input_identity["source_catalog_sha256"] = catalog_digest
     is_phrase_boundary_triage = input_identity["kind"] == "phrase_boundary_triage_report"
-    if is_phrase_boundary_triage:
+    is_phrase_pool = input_identity["kind"] == "source_led_phrase_pool_report"
+    if is_phrase_boundary_triage or is_phrase_pool:
         input_identity["source_catalog_link_verified"] = (
             input_identity.get("declared_source_catalog_sha256") == catalog_digest
         )
         if not input_identity["source_catalog_link_verified"]:
-            raise PhraseSpanAuditionError("phrase-boundary triage source_catalog SHA-256 does not match --bundle")
+            report_name = "phrase-boundary triage" if is_phrase_boundary_triage else "phrase-pool"
+            raise PhraseSpanAuditionError(f"{report_name} source_catalog SHA-256 does not match --bundle")
     selected = _validate_selected_path(
         selected_path,
         catalog_source,
-        expected_truth_label_field="automatic_boundary_status" if is_phrase_boundary_triage else None,
+        expected_truth_label_field=(
+            "automatic_boundary_status" if is_phrase_boundary_triage
+            else "automatic_candidate_status" if is_phrase_pool
+            else None
+        ),
     )
     if input_identity["kind"] in {
         "sequence_retrieval_report", "direct_trajectory_retrieval_report",
@@ -1105,8 +1357,23 @@ def build_phrase_span_audition(
             catalog_source=catalog_source,
             raw_native=raw_native,
         )
+    phrase_pool_gate: dict[str, Any] | None = None
+    if is_phrase_pool:
+        phrase_pool_gate = _verify_phrase_pool_report_gate(
+            input_identity,
+            bundle=bundle,
+            catalog_sha256=catalog_digest,
+            selected=selected,
+            catalog_source=catalog_source,
+            raw_native=raw_native,
+            ngc_extended_manifest=ngc_manifest,
+        )
     output.mkdir(parents=True, exist_ok=False)
-    raw_filename = "A_raw_lead_stem.wav" if is_phrase_boundary_triage else "A_native_complete_source_span.wav"
+    raw_filename = (
+        "A_raw_lead_stem.wav" if is_phrase_boundary_triage
+        else "A_source_led_phrase_pool_span.wav" if is_phrase_pool
+        else "A_native_complete_source_span.wav"
+    )
     raw_path = output / raw_filename
     raw_span = write_source_faithful_native_span(
         raw_source,
@@ -1117,6 +1384,15 @@ def build_phrase_span_audition(
     if is_phrase_boundary_triage:
         raw_span.update({
             "artifact_role": "unreviewed_source_led_raw_lead_stem_rnd_only",
+            "not_a_verified_phrase_or_gesture_boundary": True,
+            "not_an_approved_transition_or_phrase": True,
+            "not_a_training_item": True,
+            "not_a_game_asset": True,
+            "no_backing_mix_or_runtime_asset": True,
+        })
+    if is_phrase_pool:
+        raw_span.update({
+            "artifact_role": "unreviewed_source_led_phrase_pool_span_rnd_only",
             "not_a_verified_phrase_or_gesture_boundary": True,
             "not_an_approved_transition_or_phrase": True,
             "not_a_training_item": True,
@@ -1158,7 +1434,13 @@ def build_phrase_span_audition(
         "unreviewed_source_led_raw_lead_stem_audition"
         if is_phrase_boundary_triage else "unreviewed_same_source_complete_native_span_audition"
     )
-    raw_manifest_key = "A_raw_lead_stem" if is_phrase_boundary_triage else "A_native_complete_source_span"
+    if is_phrase_pool:
+        artifact_kind = "unreviewed_source_led_phrase_pool_native_span_audition"
+    raw_manifest_key = (
+        "A_raw_lead_stem" if is_phrase_boundary_triage
+        else "A_source_led_phrase_pool_span" if is_phrase_pool
+        else "A_native_complete_source_span"
+    )
     interpretation_limits: dict[str, Any] = {
         "raw_A_is_one_contiguous_source_frame_span_not_a_stitch_of_candidate_clips": True,
         "same_source_span_is_not_evidence_of_same_breath_slur_or_natural_legato": True,
@@ -1175,6 +1457,13 @@ def build_phrase_span_audition(
             "boundary_triage_A_preserves_not_phrase_not_approved_not_training_not_game_truth_labels": True,
             "boundary_triage_A_is_raw_lead_stem_only_with_no_backing_mix": True,
         })
+    if is_phrase_pool:
+        interpretation_limits.update({
+            "phrase_pool_A_is_an_unreviewed_feature_proxy_coordinate_span_not_a_verified_phrase_or_gesture": True,
+            "phrase_pool_A_preserves_not_phrase_not_approved_not_training_not_game_truth_labels": True,
+            "phrase_pool_A_is_raw_source_led_span_only_with_no_backing_mix": True,
+            "phrase_pool_A_reverified_exact_ngc_manifest_catalog_and_direct_raw_wav_identity": True,
+        })
     result: dict[str, Any] = {
         "schema": PHRASE_SPAN_AUDITION_SCHEMA,
         "artifact_kind": artifact_kind,
@@ -1184,6 +1473,7 @@ def build_phrase_span_audition(
             "raw_root_count": len(roots),
             "absolute_paths_omitted": True,
             "phrase_boundary_triage_gate": triage_gate,
+            "phrase_pool_gate": phrase_pool_gate,
         },
         "selected_path": selected,
         "raw_source_verification": {
@@ -1216,7 +1506,15 @@ def _parser() -> argparse.ArgumentParser:
         "--phrase-boundary-triage",
         help="source-led phrase_boundary_triage.json; exports one unreviewed raw lead stem only",
     )
+    source_group.add_argument(
+        "--phrase-pool",
+        help="source-led phrase_pool.json; exports one NGC-manifest-reverified raw span only",
+    )
     source_group.add_argument("--path-json", help="one standalone selected path JSON object")
+    parser.add_argument(
+        "--ngc-extended-manifest",
+        help="exact NGC fetch manifest; required with --phrase-pool to reverify its source receipt",
+    )
     selector_group = parser.add_mutually_exclusive_group()
     selector_group.add_argument("--path-id", help="selected path/trajectory/candidate ID in a report")
     selector_group.add_argument("--priority-rank", type=int, help="selected priority rank in a report")
@@ -1256,8 +1554,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             ("--raw-daegeum-dir", args.raw_daegeum_dirs),
             ("--output-dir", args.output_dir),
             (
-                "--sequence-retrieval/--phrase-boundary-triage/--path-json",
-                args.sequence_retrieval or args.phrase_boundary_triage or args.path_json,
+                "--sequence-retrieval/--phrase-boundary-triage/--phrase-pool/--path-json",
+                args.sequence_retrieval or args.phrase_boundary_triage or args.phrase_pool or args.path_json,
             ),
         ) if not value
     ]
@@ -1270,6 +1568,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             output_dir=args.output_dir,
             sequence_retrieval=args.sequence_retrieval,
             phrase_boundary_triage=args.phrase_boundary_triage,
+            phrase_pool=args.phrase_pool,
+            ngc_extended_manifest=args.ngc_extended_manifest,
             path_json=args.path_json,
             path_id=args.path_id,
             priority_rank=args.priority_rank,

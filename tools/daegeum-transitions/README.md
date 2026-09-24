@@ -135,3 +135,46 @@ normal human label gate.
 ```sh
 python3 tools/daegeum-transitions/test_fetch_ngc_extended_daegeum.py
 ```
+
+## 연속 원본 프레이즈 풀과 raw audition (R&D-only)
+
+`phrase_pool.py`는 위처럼 이미 SHA/native-WAV가 검증된 NGC 확장 대금산조 corpus의
+feature cache만 읽어, 서로 다른 원본 take에서 **한 파일 안의 연속 native frame 범위**를
+작은 다양성 묶음으로 고른다. 이것은 아리랑/국악 선율의 전사, 슬러·호흡·시김새 판정,
+품질 판정, 학습 허가 또는 게임 사용 허가가 아니다. 원본 WAV는 열거나 바꾸지 않는다.
+
+```sh
+/tmp/durango-bgm-rnd-venv/bin/python tools/daegeum-transitions/phrase_pool.py \
+  --bundle _bgm_rnd/daegeum-transition-bank-ngc-YYYYMMDD \
+  --ngc-extended-manifest _bgm_rnd/ngc-extended-daegeum-sanjo-YYYYMMDD/ngc-extended-daegeum-sanjo.manifest.json \
+  --ngc-extend-seq-range 1520:1711 \
+  --output-dir _bgm_rnd/daegeum-source-led-phrase-pool-YYYYMMDD
+```
+
+`phrase_span_audition.py --phrase-pool`은 이 report의 후보 하나를 실제로 꺼낼 때도
+느슨하게 믿지 않는다. report SHA, R&D-06 source catalog SHA, exact NGC manifest SHA,
+같은 `extendSeq` entry의 SHA/native descriptor, 그리고 explicit raw root의 실제 WAV를
+다시 맞춘 뒤에만 `A_source_led_phrase_pool_span.wav`를 만든다. 이 파일은 source frame을
+byte-for-byte 복사한 한 개의 연속 span이고, crossfade·gain·pitch shift·time stretch·resample·
+channel change·fade가 없다.
+
+```sh
+/tmp/durango-bgm-rnd-venv/bin/python tools/daegeum-transitions/phrase_span_audition.py \
+  --bundle _bgm_rnd/daegeum-transition-bank-ngc-YYYYMMDD \
+  --raw-daegeum-dir _bgm_rnd/ngc-extended-daegeum-sanjo-YYYYMMDD/audio \
+  --phrase-pool _bgm_rnd/daegeum-source-led-phrase-pool-YYYYMMDD/phrase_pool.json \
+  --ngc-extended-manifest _bgm_rnd/ngc-extended-daegeum-sanjo-YYYYMMDD/ngc-extended-daegeum-sanjo.manifest.json \
+  --priority-rank 4 \
+  --output-dir _bgm_rnd/daegeum-phrase-pool-audition-YYYYMMDD
+```
+
+출력은 계속 `unreviewed`, `not_a_verified_phrase_or_gesture_boundary`, `not_training_item`,
+`not_game_asset`다. 즉 단음 이어붙임보다 자연스러운 **원본의 연속 호흡/음색 변화 후보**를
+확보하는 R&D 단계일 뿐, 기본 BGM이나 런타임 asset을 바꾸지 않는다.
+
+검증:
+
+```sh
+python3 tools/daegeum-transitions/test_phrase_pool.py
+python3 tools/daegeum-transitions/test_phrase_span_audition.py
+```
