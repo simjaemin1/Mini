@@ -35,6 +35,7 @@
 
 ## 구현·판정 현황 (2026-09-24)
 
+- **사람 청취 판정: 불통과.** 지속 voice(A)는 음을 무조건 이어 붙인 듯 어색했고, 기존 음별 voice(B)는 툭툭 끊겼다. 이 prototype은 제품에 승격하지 않는다. 결론은 “phrase oscillator 유지”가 아니라 발음(articulation)과 실제 대금 음색 모델이 빠졌다는 것이다.
 - 구현은 `performancePhrases.villageDayAriDaegeum: true`라는 명시 opt-in에만 있다. 제품 소리 층은 이 flag를 모르므로 현재 실게임 기본(`trad`)에는 변화가 없다.
 - `planPerformancePhrase()`가 score를 F0·gain·요성·퇴성·legato/reattack 제어 계획으로 바꾸고, `PerformancePhrase`가 대금 한 pass 동안 지속 oscillator/LFO/숨 voice 하나를 유지한다.
 - 빈 마디, 마디 끝 쉼, scene 전환, `stop()` fade 중 scene/mood 갱신까지 회귀로 검사한다. 특히 `stop()`은 terminal이며 fade 중 새 Program/phrase를 다시 열지 않는다.
@@ -50,7 +51,7 @@
 3. 평음↔요성·퇴성이 기계적으로 튀거나 뭉개지는가.
 4. 전체 선호와 그 근거는 무엇인가.
 
-이 판정이 통과해도 "AI 악기 학습 성공"은 아니다. 그때 비로소 권리 확인된 대금 단선율 프레이즈로 data/rendering 카드를 연다.
+이 판정은 불통과였다. R&D-02에서 실제 대금 원본과 articulation 상태를 먼저 확보한다. 설령 통과했더라도 "AI 악기 학습 성공"은 아니며, 그때 비로소 권리 확인된 대금 단선율 프레이즈로 data/rendering 카드를 연다.
 
 ### 남은 기술 메모 (다음 카드에서 판단)
 
@@ -60,4 +61,4 @@
 
 ## 다음 게이트
 
-R&D-01 청취 판정을 통과한 뒤에만, 권리 확인된 대금 단선율 프레이즈로 신경 렌더러(DDSP/NSF 계열)와 score-to-expression 모델을 별도 카드로 연다.
+R&D-02([`BGM_RND_02.md`](BGM_RND_02.md))에서 권리 확인된 원본 대금 phrase와 articulation schema를 먼저 만든다. 이 단계 없이 신경 렌더러(DDSP/NSF 계열)나 score-to-expression 모델을 열지 않는다.
