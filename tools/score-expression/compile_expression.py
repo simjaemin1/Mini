@@ -1,0 +1,520 @@
+#!/usr/bin/env python3
+"""Compile an explicit score/articulation plan into continuous R&D controls.
+
+This is the expression layer between a symbolic score and a future sustained-
+instrument renderer.  It deliberately writes controls only: it neither reads
+audio nor trains a model nor renders a game asset.  The four articulation
+states are authorial input, never inferred from adjacent timestamps:
+
+``BREATH_START`` / ``REARTICULATE`` / ``SLUR`` / ``RELEASE``.
+
+In particular, an event can be a slur only when its plan explicitly says so
+*and* names ``slur_from_previous: true``.  A mere touching note boundary is a
+validation error rather than an invented legato decision.
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import math
+from pathlib import Path
+import sys
+from typing import Any, Mapping, Sequence
+
+import numpy
+
+
+PLAN_SCHEMA = "mini.score-expression.plan.v1"
+OUTPUT_SCHEMA = "mini.score-expression.controls.v1"
+MANIFEST_SCHEMA = "mini.score-expression.render-manifest.v1"
+CONTROL_FILENAME = "score_expression_controls.npz"
+MANIFEST_FILENAME = "score_expression_manifest.json"
+SAMPLE_RATE_HZ = 48_000
+ARTICULATIONS = ("breath_start", "rearticulate", "slur", "release")
+STATE_CODES = {name: index for index, name in enumerate(ARTICULATIONS, start=1)}
+VIBRATO_RATE_RANGE_HZ = (3.3, 3.8)
+VIBRATO_DEPTH_RANGE_CENTS = (12.0, 45.0)
+
+
+class ScoreExpressionError(RuntimeError):
+    """An explicit score-expression request violates the narrow R&D contract."""
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def _load_json(path: Path) -> Mapping[str, Any]:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError as exc:
+        raise ScoreExpressionError("plan file does not exist") from exc
+    except json.JSONDecodeError as exc:
+        raise ScoreExpressionError("plan file is not valid JSON") from exc
+    if not isinstance(value, Mapping):
+        raise ScoreExpressionError("plan must be a JSON object")
+    return value
+
+
+def _require_bool(value: Mapping[str, Any], key: str, *, label: str) -> None:
+    if value.get(key) is not True:
+        raise ScoreExpressionError(f"{label}.{key} must explicitly be true")
+
+
+def _number(value: Any, *, label: str, minimum: float | None = None, maximum: float | None = None) -> float:
+    if isinstance(value, bool):
+        raise ScoreExpressionError(f"{label} must be a finite number")
+    try:
+        result = float(value)
+    except (TypeError, ValueError) as exc:
+        raise ScoreExpressionError(f"{label} must be a finite number") from exc
+    if not math.isfinite(result):
+        raise ScoreExpressionError(f"{label} must be a finite number")
+    if minimum is not None and result < minimum:
+        raise ScoreExpressionError(f"{label} is below its allowed range")
+    if maximum is not None and result > maximum:
+        raise ScoreExpressionError(f"{label} is above its allowed range")
+    return result
+
+
+def _integer(value: Any, *, label: str, minimum: int, maximum: int) -> int:
+    if type(value) is not int or not minimum <= value <= maximum:
+        raise ScoreExpressionError(f"{label} must be an integer in [{minimum}, {maximum}]")
+    return int(value)
+
+
+def _mapping(value: Any, *, label: str) -> Mapping[str, Any]:
+    if not isinstance(value, Mapping):
+        raise ScoreExpressionError(f"{label} must be an object")
+    return value
+
+
+def _scope(plan: Mapping[str, Any]) -> dict[str, bool]:
+    if plan.get("schema") != PLAN_SCHEMA:
+        raise ScoreExpressionError(f"plan.schema must be {PLAN_SCHEMA}")
+    scope = _mapping(plan.get("r_and_d_scope"), label="plan.r_and_d_scope")
+    for key in ("r_and_d_only", "no_default_assets", "no_runtime_bgm", "no_game_output", "no_public_release"):
+        _require_bool(scope, key, label="plan.r_and_d_scope")
+    return {
+        "r_and_d_only": True,
+        "no_default_assets": True,
+        "no_runtime_bgm": True,
+        "no_game_output": True,
+        "no_public_release": True,
+    }
+
+
+def _gesture_points(raw: Any, *, duration_seconds: float, label: str) -> list[tuple[float, float]]:
+    if raw is None:
+        return [(0.0, 0.0), (duration_seconds, 0.0)]
+    if not isinstance(raw, list) or not raw:
+        raise ScoreExpressionError(f"{label}.gesture_points must be a non-empty list when supplied")
+    points: list[tuple[float, float]] = []
+    previous_time = -1.0
+    for index, item in enumerate(raw):
+        entry = _mapping(item, label=f"{label}.gesture_points[{index}]")
+        time_seconds = _number(entry.get("time_seconds"), label=f"{label}.gesture_points[{index}].time_seconds", minimum=0.0, maximum=duration_seconds)
+        cents = _number(entry.get("cents"), label=f"{label}.gesture_points[{index}].cents", minimum=-600.0, maximum=600.0)
+        if time_seconds <= previous_time:
+            raise ScoreExpressionError(f"{label}.gesture_points must have strictly increasing time_seconds")
+        points.append((time_seconds, cents))
+        previous_time = time_seconds
+    if points[0][0] != 0.0:
+        raise ScoreExpressionError(f"{label}.gesture_points must start at time_seconds 0")
+    if points[-1][0] != duration_seconds:
+        raise ScoreExpressionError(f"{label}.gesture_points must end at the event duration")
+    return points
+
+
+def _vibrato(raw: Any, *, label: str) -> dict[str, float | bool]:
+    if raw is None:
+        return {"enabled": False, "rate_hz": 0.0, "depth_cents": 0.0, "onset_seconds": 0.0, "ramp_seconds": 0.0}
+    value = _mapping(raw, label=f"{label}.vibrato")
+    enabled = value.get("enabled") is True
+    if not enabled:
+        # An explicit false is allowed, but hidden parameters are rejected so
+        # an author cannot accidentally think an inaudible default is active.
+        extras = set(value) - {"enabled"}
+        if extras:
+            raise ScoreExpressionError(f"{label}.vibrato has parameters although enabled is not true")
+        return {"enabled": False, "rate_hz": 0.0, "depth_cents": 0.0, "onset_seconds": 0.0, "ramp_seconds": 0.0}
+    rate = _number(value.get("rate_hz"), label=f"{label}.vibrato.rate_hz", minimum=VIBRATO_RATE_RANGE_HZ[0], maximum=VIBRATO_RATE_RANGE_HZ[1])
+    depth = _number(value.get("depth_cents"), label=f"{label}.vibrato.depth_cents", minimum=VIBRATO_DEPTH_RANGE_CENTS[0], maximum=VIBRATO_DEPTH_RANGE_CENTS[1])
+    onset = _number(value.get("onset_seconds", 0.0), label=f"{label}.vibrato.onset_seconds", minimum=0.0, maximum=60.0)
+    ramp = _number(value.get("ramp_seconds", 0.08), label=f"{label}.vibrato.ramp_seconds", minimum=0.005, maximum=3.0)
+    return {"enabled": True, "rate_hz": rate, "depth_cents": depth, "onset_seconds": onset, "ramp_seconds": ramp}
+
+
+def _event(raw: Any, *, index: int, previous: dict[str, Any] | None) -> dict[str, Any]:
+    value = _mapping(raw, label=f"events[{index}]")
+    event_id = value.get("id")
+    if not isinstance(event_id, str) or not event_id:
+        raise ScoreExpressionError(f"events[{index}].id must be a non-empty string")
+    start = _number(value.get("start_seconds"), label=f"events[{index}].start_seconds", minimum=0.0)
+    end = _number(value.get("end_seconds"), label=f"events[{index}].end_seconds", minimum=0.0)
+    if not end > start:
+        raise ScoreExpressionError(f"events[{index}] must have end_seconds after start_seconds")
+    kind = value.get("articulation")
+    if kind not in ARTICULATIONS:
+        allowed = ", ".join(ARTICULATIONS)
+        raise ScoreExpressionError(f"events[{index}].articulation must explicitly be one of {allowed}")
+    if previous is not None and start < previous["end_seconds"] - (1.0 / SAMPLE_RATE_HZ):
+        raise ScoreExpressionError("events must be monophonic and non-overlapping")
+    if kind == "slur":
+        if previous is None:
+            raise ScoreExpressionError("a SLUR requires a previous voiced event")
+        if value.get("slur_from_previous") is not True:
+            raise ScoreExpressionError("a SLUR must explicitly set slur_from_previous: true")
+        if abs(start - previous["end_seconds"]) > (1.0 / SAMPLE_RATE_HZ):
+            raise ScoreExpressionError("a SLUR must touch its explicitly linked previous event")
+    elif value.get("slur_from_previous"):
+        raise ScoreExpressionError("slur_from_previous is allowed only on an explicit SLUR")
+    if kind == "release":
+        if previous is None or previous["articulation"] == "release":
+            raise ScoreExpressionError("a RELEASE requires a previous voiced event")
+        if "pitch_hz" in value:
+            raise ScoreExpressionError("a RELEASE must not declare pitch_hz")
+        return {
+            "id": event_id,
+            "start_seconds": start,
+            "end_seconds": end,
+            "articulation": kind,
+            "pitch_hz": 0.0,
+            "gesture_points": [(0.0, 0.0), (end - start, 0.0)],
+            "vibrato": _vibrato(value.get("vibrato"), label=f"events[{index}]"),
+            # A release starts from the preceding authored level instead of
+            # silently jumping to a generic volume before it decays.
+            "steady_loudness_db": float(previous["steady_loudness_db"]),
+        }
+    pitch = _number(value.get("pitch_hz"), label=f"events[{index}].pitch_hz", minimum=20.0, maximum=4_000.0)
+    duration = end - start
+    steady_loudness = _number(value.get("steady_loudness_db", -28.0), label=f"events[{index}].steady_loudness_db", minimum=-70.0, maximum=-3.0)
+    vibrato = _vibrato(value.get("vibrato"), label=f"events[{index}]")
+    if float(vibrato["onset_seconds"]) >= duration:
+        raise ScoreExpressionError(f"events[{index}].vibrato.onset_seconds must be inside the event")
+    return {
+        "id": event_id,
+        "start_seconds": start,
+        "end_seconds": end,
+        "articulation": kind,
+        "pitch_hz": pitch,
+        "gesture_points": _gesture_points(value.get("gesture_points"), duration_seconds=duration, label=f"events[{index}]"),
+        "vibrato": vibrato,
+        "steady_loudness_db": steady_loudness,
+    }
+
+
+def validate_plan(path: str | Path) -> dict[str, Any]:
+    """Validate an explicit, R&D-only monophonic score-expression plan."""
+
+    plan_path = Path(path).expanduser().resolve()
+    plan = _load_json(plan_path)
+    scope = _scope(plan)
+    instrument = _mapping(plan.get("instrument"), label="plan.instrument")
+    if instrument.get("id") != "daegeum" or instrument.get("sustained") is not True:
+        raise ScoreExpressionError("v1 accepts only an explicit sustained daegeum R&D plan")
+    control_hz = _integer(plan.get("control_hz", 100), label="plan.control_hz", minimum=25, maximum=1_000)
+    events_raw = plan.get("events")
+    if not isinstance(events_raw, list) or not events_raw:
+        raise ScoreExpressionError("plan.events must be a non-empty explicit list")
+    if len(events_raw) > 2_048:
+        raise ScoreExpressionError("plan.events exceeds the R&D-only limit")
+    events: list[dict[str, Any]] = []
+    seen_ids: set[str] = set()
+    for index, raw in enumerate(events_raw):
+        item = _event(raw, index=index, previous=events[-1] if events else None)
+        if item["id"] in seen_ids:
+            raise ScoreExpressionError("plan.events repeats an id")
+        seen_ids.add(item["id"])
+        events.append(item)
+    if events[0]["articulation"] == "slur":
+        raise ScoreExpressionError("the first event cannot be a SLUR")
+    return {
+        "plan_path": plan_path,
+        "plan_sha256": _sha256(plan_path),
+        "scope": scope,
+        "control_hz": control_hz,
+        "events": events,
+        "duration_seconds": max(event["end_seconds"] for event in events),
+    }
+
+
+def _interpolate_points(points: list[tuple[float, float]], times: numpy.ndarray) -> numpy.ndarray:
+    source_times = numpy.asarray([point[0] for point in points], dtype=numpy.float64)
+    source_cents = numpy.asarray([point[1] for point in points], dtype=numpy.float64)
+    return numpy.interp(times, source_times, source_cents).astype(numpy.float32)
+
+
+def _vibrato_curve(event: Mapping[str, Any], relative_times: numpy.ndarray, *, fade_at_end: bool) -> tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray]:
+    config = event["vibrato"]
+    if not config["enabled"]:
+        zeros = numpy.zeros(relative_times.shape, dtype=numpy.float32)
+        return zeros, zeros, zeros
+    rate = float(config["rate_hz"])
+    depth = float(config["depth_cents"])
+    onset = float(config["onset_seconds"])
+    ramp = float(config["ramp_seconds"])
+    duration = float(event["end_seconds"] - event["start_seconds"])
+    envelope = numpy.clip((relative_times - onset) / ramp, 0.0, 1.0)
+    if fade_at_end:
+        envelope *= numpy.clip((duration - relative_times) / ramp, 0.0, 1.0)
+    cents = depth * envelope * numpy.sin(2.0 * numpy.pi * rate * numpy.maximum(relative_times - onset, 0.0))
+    return cents.astype(numpy.float32), numpy.full(relative_times.shape, rate, dtype=numpy.float32), numpy.full(relative_times.shape, depth, dtype=numpy.float32)
+
+
+def _onset_controls(kind: str, relative_times: numpy.ndarray, steady_db: float) -> tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray]:
+    """Return loudness, air/noise proxy, and voicing for one explicit state."""
+
+    if kind == "breath_start":
+        loudness = -58.0 + numpy.clip(relative_times / 0.065, 0.0, 1.0) * (steady_db + 58.0)
+        air = 0.34 - numpy.clip(relative_times / 0.085, 0.0, 1.0) * 0.29
+        voicing = numpy.clip(relative_times / 0.022, 0.0, 1.0)
+    elif kind == "rearticulate":
+        loudness = -43.0 + numpy.clip(relative_times / 0.022, 0.0, 1.0) * (steady_db + 43.0)
+        air = 0.22 - numpy.clip(relative_times / 0.038, 0.0, 1.0) * 0.17
+        voicing = numpy.ones(relative_times.shape, dtype=numpy.float64)
+    elif kind == "slur":
+        loudness = numpy.full(relative_times.shape, steady_db, dtype=numpy.float64)
+        air = numpy.full(relative_times.shape, 0.035, dtype=numpy.float64)
+        voicing = numpy.ones(relative_times.shape, dtype=numpy.float64)
+    else:
+        duration = max(float(relative_times[-1]) if relative_times.size else 0.001, 0.001)
+        release = numpy.clip(1.0 - relative_times / duration, 0.0, 1.0)
+        loudness = -80.0 + release * (steady_db + 80.0)
+        air = 0.025 * release
+        voicing = release
+    return loudness.astype(numpy.float32), air.astype(numpy.float32), voicing.astype(numpy.float32)
+
+
+def compile_plan(path: str | Path) -> dict[str, Any]:
+    """Compile controls in memory; this does not write audio or modify a plan."""
+
+    validated = validate_plan(path)
+    control_hz = int(validated["control_hz"])
+    duration = float(validated["duration_seconds"])
+    frame_count = int(math.floor(duration * control_hz + 1.0e-9)) + 1
+    times = numpy.arange(frame_count, dtype=numpy.float64) / float(control_hz)
+    sample_centers = numpy.rint(times * SAMPLE_RATE_HZ).astype(numpy.int64)
+    f0_hz = numpy.zeros(frame_count, dtype=numpy.float32)
+    f0_cents = numpy.full(frame_count, numpy.nan, dtype=numpy.float32)
+    loudness_db = numpy.full(frame_count, -80.0, dtype=numpy.float32)
+    air_noise = numpy.zeros(frame_count, dtype=numpy.float32)
+    voicing = numpy.zeros(frame_count, dtype=numpy.float32)
+    gesture_state = numpy.zeros(frame_count, dtype=numpy.int16)
+    event_index = numpy.full(frame_count, -1, dtype=numpy.int32)
+    vibrato_rate = numpy.zeros(frame_count, dtype=numpy.float32)
+    vibrato_depth = numpy.zeros(frame_count, dtype=numpy.float32)
+    vibrato_cents = numpy.zeros(frame_count, dtype=numpy.float32)
+
+    events: list[dict[str, Any]] = validated["events"]
+    for index, event in enumerate(events):
+        start = float(event["start_seconds"])
+        end = float(event["end_seconds"])
+        mask = (times >= start) & (times < end)
+        if not numpy.any(mask):
+            continue
+        local = times[mask] - start
+        kind = str(event["articulation"])
+        gesture_state[mask] = STATE_CODES[kind]
+        event_index[mask] = index
+        loudness, air, voiced = _onset_controls(kind, local, float(event["steady_loudness_db"]))
+        loudness_db[mask] = loudness
+        air_noise[mask] = air
+        voicing[mask] = voiced
+        if kind == "release":
+            continue
+        gesture = _interpolate_points(event["gesture_points"], local)
+        base_hz = float(event["pitch_hz"])
+        if kind == "slur":
+            prior = events[index - 1]
+            if prior["articulation"] == "release":
+                raise ScoreExpressionError("a SLUR cannot follow RELEASE")
+            previous_duration = float(prior["end_seconds"] - prior["start_seconds"])
+            previous_end_cents = float(prior["gesture_points"][-1][1])
+            previous_hz = float(prior["pitch_hz"]) * (2.0 ** (previous_end_cents / 1200.0))
+            transition_seconds = min(0.090, max(0.012, (end - start) * 0.35))
+            target_hz = base_hz * numpy.power(2.0, gesture / 1200.0)
+            initial_hz = previous_hz
+            blend = numpy.clip(local / transition_seconds, 0.0, 1.0)
+            f0_hz[mask] = (initial_hz + (target_hz - initial_hz) * blend).astype(numpy.float32)
+            # Keep an authorial slur continuous in loudness as well as F0.
+            # A score can still ask for a later dynamic change by choosing a
+            # different steady level; it is eased in rather than becoming an
+            # artificial boundary click.
+            prior_loudness = float(prior["steady_loudness_db"])
+            loudness_db[mask] = (prior_loudness + (loudness - prior_loudness) * blend).astype(numpy.float32)
+            # Slur keeps its energy continuous: onset controls above do not
+            # manufacture a breath/noise burst.  A prior vibrato tail is
+            # faded at the prior event's end by ``fade_at_end`` below.
+        else:
+            f0_hz[mask] = (base_hz * numpy.power(2.0, gesture / 1200.0)).astype(numpy.float32)
+        next_is_slur = index + 1 < len(events) and events[index + 1]["articulation"] == "slur"
+        vib_cents, rate, depth = _vibrato_curve(event, local, fade_at_end=next_is_slur)
+        f0_hz[mask] *= numpy.power(2.0, vib_cents / 1200.0).astype(numpy.float32)
+        f0_cents[mask] = gesture + vib_cents
+        vibrato_rate[mask] = rate
+        vibrato_depth[mask] = depth
+        vibrato_cents[mask] = vib_cents
+
+    # Features are compiler prescriptions, not recording-derived labels.
+    pitch_feature = numpy.zeros(frame_count, dtype=numpy.float32)
+    voiced_mask = f0_hz > 0.0
+    pitch_feature[voiced_mask] = numpy.clip(
+        numpy.log2(f0_hz[voiced_mask] / 55.0) / numpy.log2(1_500.0 / 55.0), 0.0, 1.0
+    )
+    loudness_feature = numpy.clip((loudness_db + 80.0) / 80.0, 0.0, 1.0)
+    state_one_hot = numpy.column_stack([gesture_state == STATE_CODES[name] for name in ARTICULATIONS]).astype(numpy.float32)
+    score_features = numpy.column_stack(
+        (
+            pitch_feature,
+            loudness_feature,
+            state_one_hot,
+            air_noise,
+            vibrato_rate / 10.0,
+            vibrato_depth / 120.0,
+        )
+    ).astype(numpy.float32)
+    if score_features.shape[1] != 9:
+        raise AssertionError("score feature layout must remain explicit and stable")
+    return {
+        **validated,
+        "frame_times_seconds": times.astype(numpy.float32),
+        "frame_centers_48k": sample_centers,
+        "f0_hz": f0_hz,
+        "f0_cents": f0_cents,
+        "loudness_db": loudness_db,
+        "air_noise_ratio": air_noise,
+        "voicing": voicing,
+        "gesture_state": gesture_state,
+        "event_index": event_index,
+        "vibrato_rate_hz": vibrato_rate,
+        "vibrato_depth_cents": vibrato_depth,
+        "vibrato_cents": vibrato_cents,
+        "score_features": score_features,
+    }
+
+
+def render_controls(*, plan: str | Path, output_dir: str | Path) -> dict[str, Any]:
+    """Write one fresh, R&D-only NPZ control artifact and its readable manifest."""
+
+    output = Path(output_dir).expanduser().resolve()
+    if output.exists():
+        raise ScoreExpressionError("--output-dir must be fresh; refusing to overwrite an R&D artifact")
+    compiled = compile_plan(plan)
+    output.mkdir(parents=True, exist_ok=False)
+    controls = output / CONTROL_FILENAME
+    numpy.savez_compressed(
+        controls,
+        schema=numpy.asarray(OUTPUT_SCHEMA),
+        sample_rate_hz=numpy.asarray(SAMPLE_RATE_HZ, dtype=numpy.int32),
+        control_hz=numpy.asarray(compiled["control_hz"], dtype=numpy.int32),
+        frame_times_seconds=compiled["frame_times_seconds"],
+        frame_centers_48k=compiled["frame_centers_48k"],
+        f0_hz=compiled["f0_hz"],
+        f0_cents=compiled["f0_cents"],
+        target_f0_hz=compiled["f0_hz"],
+        loudness_db=compiled["loudness_db"],
+        target_loudness_db=compiled["loudness_db"],
+        air_noise_ratio=compiled["air_noise_ratio"],
+        voicing=compiled["voicing"],
+        gesture_state=compiled["gesture_state"],
+        event_index=compiled["event_index"],
+        vibrato_rate_hz=compiled["vibrato_rate_hz"],
+        vibrato_depth_cents=compiled["vibrato_depth_cents"],
+        vibrato_cents=compiled["vibrato_cents"],
+        score_features=compiled["score_features"],
+    )
+    event_summary = [
+        {
+            "id": event["id"],
+            "start_seconds": event["start_seconds"],
+            "end_seconds": event["end_seconds"],
+            "articulation": event["articulation"],
+            "pitch_hz": event["pitch_hz"],
+            "vibrato_enabled": bool(event["vibrato"]["enabled"]),
+        }
+        for event in compiled["events"]
+    ]
+    manifest = {
+        "schema": MANIFEST_SCHEMA,
+        "artifact_kind": "rnd_only_score_to_expression_controls",
+        "r_and_d_scope": compiled["scope"],
+        "input": {
+            "plan_basename": compiled["plan_path"].name,
+            "plan_sha256": compiled["plan_sha256"],
+            "source_audio_read": False,
+            "model_training_run": False,
+            "game_or_runtime_asset_read_or_written": False,
+        },
+        "controls": {
+            "artifact": CONTROL_FILENAME,
+            "sha256": _sha256(controls),
+            "schema": OUTPUT_SCHEMA,
+            "sample_rate_hz": SAMPLE_RATE_HZ,
+            "control_hz": compiled["control_hz"],
+            "frame_count": int(compiled["f0_hz"].shape[0]),
+            "score_feature_dim": int(compiled["score_features"].shape[1]),
+            "feature_layout": [
+                "normalized_log_f0",
+                "normalized_loudness_db",
+                "breath_start_one_hot",
+                "rearticulate_one_hot",
+                "slur_one_hot",
+                "release_one_hot",
+                "air_noise_ratio",
+                "vibrato_rate_hz_div_10",
+                "vibrato_depth_cents_div_120",
+            ],
+            "vibrato_default": "off_unless_explicit_in_plan",
+            "vibrato_explicit_range": {
+                "rate_hz": list(VIBRATO_RATE_RANGE_HZ),
+                "depth_cents": list(VIBRATO_DEPTH_RANGE_CENTS),
+                "basis": "conservative local R&D proxy bounds, not labels or a training authorization",
+            },
+        },
+        "events": event_summary,
+        "interpretation_limits": {
+            "articulations_are_authorial_score_controls_not_inferred_performance_labels": True,
+            "touching_timestamps_never_infer_slur": True,
+            "controls_are_not_recording_derived_training_targets": True,
+            "no_audio_is_rendered_or_modified": True,
+            "not_a_default_asset_runtime_bgm_game_output_or_public_release": True,
+        },
+    }
+    (output / MANIFEST_FILENAME).write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    return manifest
+
+
+def _parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--plan", required=True, help="one explicit score-expression plan JSON")
+    parser.add_argument("--output-dir", required=True, help="fresh R&D-only output directory")
+    parser.add_argument("--confirm-rnd-only", action="store_true", help="required acknowledgement: controls are not a game/runtime/training output")
+    return parser
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    args = _parser().parse_args(argv)
+    if not args.confirm_rnd_only:
+        print("compile_expression: pass --confirm-rnd-only", file=sys.stderr)
+        return 2
+    try:
+        result = render_controls(plan=args.plan, output_dir=args.output_dir)
+    except ScoreExpressionError as exc:
+        print(f"compile_expression: {exc}", file=sys.stderr)
+        return 2
+    print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
