@@ -302,8 +302,12 @@ if __name__ == "__main__":
         print(f"  {inst:12s}{sum(d.values()):5d}  " +
               " · ".join(f"{S.ART_NAME_KO.get(k,k)}{v}" for k, v in
                          sorted(d.items(), key=lambda x: -x[1])[:5]))
-    ec = Counter(e for e, _ in ENTRY)
-    sk = np.array([v for e, v in ENTRY if e == "mid"])
+    # ENTRY now retains the canonical articulation kind and release policy in
+    # addition to the historical (entry, skip) pair.  Keep this CLI summary
+    # deliberately positional-tolerant so renderer metadata can grow without
+    # turning a successful WAV render into a post-render unpacking failure.
+    ec = Counter(item[0] for item in ENTRY)
+    sk = np.array([item[1] for item in ENTRY if item[0] == "mid"])
     print(f"\n대금 진입점  조각 앞머리(숨 새로) {ec.get('head',0)}음"
           f" · 조각 중간(이어 불기) {ec.get('mid',0)}음")
     if len(sk):

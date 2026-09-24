@@ -145,5 +145,21 @@ check(
     "⑩ renderer consumes the canonical policy and contains no legacy prev_end timing-legato branch",
 )
 
+# ENTRY has grown from a historical (entry, skip) pair into a diagnostic
+# record that also carries the chosen canonical articulation/release.  A
+# complete score render must not fail after producing audio merely because
+# its command-line summary still assumes the old tuple length.
+jeongak_source = (ROOT / "public" / "assets" / "audio" / "bgm" / "render_jeongak.py").read_text(
+    encoding="utf-8"
+)
+check(
+    "for e, _ in ENTRY" not in renderer_source
+    and "for e, v in ENTRY" not in renderer_source
+    and "for e, _ in ENTRY" not in jeongak_source
+    and "item[0] for item in ENTRY" in renderer_source
+    and "item[0] for item in ENTRY" in jeongak_source,
+    "⑪ renderer summaries tolerate the expanded articulation diagnostic record",
+)
+
 print(f"\n=== PASS {passed} / FAIL {failed} ===")
 raise SystemExit(1 if failed else 0)

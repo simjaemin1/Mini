@@ -122,7 +122,10 @@ if __name__ == "__main__":
     y = build()
     os.makedirs("out_samples", exist_ok=True)
     G.write_wav("out_samples/village_day_jeongak.wav", y)
-    ec = Counter(e for e, _ in ENTRY)
+    # See render_score: ENTRY carries articulation metadata beyond its
+    # historical (entry, skip) pair, so the CLI summary must not unpack it as
+    # a fixed 2-tuple.
+    ec = Counter(item[0] for item in ENTRY)
     print(f"정악풍 {y.shape[1]/G.SR:.1f}초 · 한 장단 {12*SOB:.2f}초")
     print(f"  대금 진입점  앞머리 {ec.get('head',0)} · 중간 {ec.get('mid',0)}")
     print(f"  가야금 = 정악가야금 (조각 {len(bank.by_inst['gayageum'])}개)")
