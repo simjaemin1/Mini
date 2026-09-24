@@ -12,8 +12,12 @@ R&D-01의 사람 청취에서 두 극단이 모두 탈락했다.
 ## 현재 사실
 
 - 브라우저 A/B의 `daegeum()`은 실제 녹음이 아니라 sine harmonic·noise·envelope 합성이다.
-- 저장소에는 완성 믹스 `village_day_jeongak`만 있고, 독립 대금 원본/어택/전이 조각은 없다. 완성 믹스에서 앞머리를 떼면 반주·잔향이 섞이므로 학습·샘플용으로 쓰지 않는다.
-- 기존 Python sampler에는 새 숨의 `head`와 이어 부는 `mid`를 구분해 크로스페이드하는 틀이 있으나, 그것을 먹일 원본 뱅크가 현재 없다.
+- **원본은 있다.** 일반 파일 탐색에서 제외된 `public/assets/audio/bgm/bk_*.zip`·`bk_*.part` 백업 안에 있다. 이 파일은 게임 런타임이 직접 읽지는 않는다.
+  - `bk_daegeum_a.zip`·`bk_daegeum_b.zip`: 산조대금 긴 PCM WAV 6개. 실제 새 숨·지속부·시김새를 관찰하는 원본이다.
+  - `bk_jdae_aa.part` → `bk_jdae_ab.part`: 정악대금 5 원본을 잘라 만든 실녹음 113조각과 `_index.json`·`_hold.json`이다. 이쪽은 이미 색인된 bank이므로 **재-scan하지 않고** 그대로 복원한다.
+- `CREDITS.md`의 국립국악원 「단음 다운로드」·공공누리 제1유형 표기는 이 사용 근거로 유지한다. 다만 백업 안에는 개별 원본의 다운로드 영수증/전이 라벨이 없으므로, 새 모델이나 raw 파일을 외부 배포하기 전에는 출처 연결과 범위를 다시 확인한다.
+- 기존 Python sampler에는 새 숨의 `head`와 이어 부는 `mid`를 구분해 크로스페이드하는 틀이 있다. 정확히 사용자가 지적한 첫 음/이어 부는 음의 차이를 다루지만, 현재 브라우저 `bgm.js` A/B에는 연결되어 있지 않다.
+- 이 자료만으로 자연스러운 모든 운지 전이를 학습할 수 있다는 뜻은 아니다. 긴 산조 원본에서 실제 연속 전이를 찾아 청취·라벨해야 하며, 정악 113조각은 이미 잘린 단음 bank라 일반 slur의 정답 데이터로 꾸며 쓰지 않는다.
 - 대금은 청공의 갈대청 떨림이 음색 정체성이다. harmonic 수와 백색 noise 하나로 대체하지 않는다.
 
 ## score → expression 계약
@@ -47,11 +51,12 @@ onset-transient and release type
 
 ## 순서
 
-1. **원본 게이트** — 권리와 재배포 범위가 확인된 monophonic 대금 원본을 확보한다. finished mix, 추출 stem, 임의 웹 음원은 쓰지 않는다.
-2. **파일럿 articulation bank** — 같은 음, 상행·하행 전이, 넓은 도약을 위 다섯 상태와 두세 음량 단계로 녹음/라벨한다. 실제 대금 연주자 또는 국악 전문가가 라벨을 검수한다.
-3. **2음 ABX 게이트** — 곡 전체가 아니라 첫 음·연결·혀 재발음·쉼 뒤 재진입을 블라인드로 비교한다. R&D-01의 두 극단보다 낫다는 사람 판정이 먼저다.
-4. **hybrid baseline** — raw head/mid/transition/ornament 조각을 쓰는 샘플 기반 렌더를 기준선으로 만든다. 이 단계는 ML 없이도 통과 가능해야 한다.
-5. **ML 카드** — score+articulation에서 위 control curves를 예측하고, 대금 전용 DDSP/신경 renderer와 onset residual을 분리 학습한다. 모델은 런타임 WebAudio를 즉시 대체하지 않고 오프라인 stem을 먼저 굽는다.
+1. **복원·출처 게이트** — backup을 원본 checkout이 아닌 격리된 작업 폴더에 CRC 검증 후 복원한다. finished mix, 추출 stem, 임의 웹 음원은 쓰지 않는다. 정악 bank의 index/hold는 보존한다.
+2. **원본 청취 게이트** — 긴 산조 원본에서 실제 숨 시작·지속·시김새 전이 후보를, 정악 bank에서 head·hold 진입을 따로 듣는다. 원본에 없는 일반 slur/portato는 합성해서 “정답”이라 부르지 않는다.
+3. **파일럿 articulation bank** — 같은 음, 상행·하행 전이, 넓은 도약을 위 다섯 상태와 두세 음량 단계로 녹음/라벨한다. 실제 대금 연주자 또는 국악 전문가가 라벨을 검수한다.
+4. **2음 ABX 게이트** — 곡 전체가 아니라 첫 음·연결·혀 재발음·쉼 뒤 재진입을 블라인드로 비교한다. R&D-01의 두 극단보다 낫다는 사람 판정이 먼저다.
+5. **hybrid baseline** — raw head/mid/verified-transition/ornament 조각을 쓰는 샘플 기반 렌더를 기준선으로 만든다. 이 단계는 ML 없이도 통과 가능해야 한다.
+6. **ML 카드** — score+articulation에서 위 control curves를 예측하고, 대금 전용 DDSP/신경 renderer와 onset residual을 분리 학습한다. 모델은 런타임 WebAudio를 즉시 대체하지 않고 오프라인 stem을 먼저 굽는다.
 
 ## 금지선
 
