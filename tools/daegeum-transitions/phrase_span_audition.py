@@ -22,10 +22,12 @@ It never uses per-event clips, dynamic pitch maps, gain matching, fades, or
 runtime assets.
 
 The input may be a normal ``sequence_retrieval.json`` report plus a selected
-path ID/rank, or a standalone selected path JSON object.  The latter keeps the
-helper usable when a future retrieval report carries additional direct-span
-trajectory data: only ``path_id``, ``source`` and
-``native_source_span.frame_range`` are required here.
+path ID/rank, a direct trajectory report, a source-led
+``phrase_boundary_triage.json`` report, or a standalone selected path JSON
+object.  Boundary-triage reports undergo their additional report/catalog/raw
+source gates before a raw lead-stem is copied.  In every case only a stable
+identifier, ``source``, and ``native_source_span.frame_range`` are used to
+locate audio; no backing mix or runtime asset is involved.
 """
 
 from __future__ import annotations
@@ -52,6 +54,7 @@ from native_wav import NativeWavError, inspect_wav, sha256_file  # noqa: E402
 SCHEMA = "durango.daegeum.transition-bank.v1"
 SEQUENCE_RETRIEVAL_SCHEMA_PREFIX = f"{SCHEMA}.same-source-sequence-retrieval."
 TRAJECTORY_RETRIEVAL_SCHEMA_PREFIX = f"{SCHEMA}.direct-f0-trajectory-retrieval."
+PHRASE_BOUNDARY_TRIAGE_SCHEMA_PREFIX = f"{SCHEMA}.source-led-phrase-boundary-triage."
 PHRASE_SPAN_AUDITION_SCHEMA = f"{SCHEMA}.phrase-span-audition.v1"
 RAW_SPAN_SCHEMA = f"{SCHEMA}.source-faithful-native-span.v1"
 GLOBAL_PREVIEW_SCHEMA = f"{SCHEMA}.global-pitch-time-preview.v1"
@@ -90,6 +93,18 @@ def _sha256(path: Path) -> str:
         for block in iter(lambda: stream.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
+
+
+def _sha256_hex(value: Any, *, label: str) -> str:
+    """Return a canonical digest-shaped value without silently accepting text."""
+
+    if not isinstance(value, str) or len(value) != 64:
+        raise PhraseSpanAuditionError(f"{label} must be a 64-character SHA-256 hex digest")
+    try:
+        int(value, 16)
+    except ValueError as exc:
+        raise PhraseSpanAuditionError(f"{label} must be a 64-character SHA-256 hex digest") from exc
+    return value
 
 
 def _safe_relative_path(value: Any, *, label: str) -> PurePosixPath:
@@ -186,12 +201,22 @@ def _select_from_report(
     schema = value.get("schema")
     if not isinstance(schema, str):
         raise PhraseSpanAuditionError("retrieval input does not have a schema")
+    report_input: Mapping[str, Any] | None = None
     if schema.startswith(SEQUENCE_RETRIEVAL_SCHEMA_PREFIX):
         rows_key = "paths"
         report_kind = "sequence_retrieval_report"
+        report_input = value.get("input_bundle") if isinstance(value.get("input_bundle"), Mapping) else None
     elif schema.startswith(TRAJECTORY_RETRIEVAL_SCHEMA_PREFIX):
         rows_key = "trajectories"
         report_kind = "direct_trajectory_retrieval_report"
+        report_input = value.get("input_bundle") if isinstance(value.get("input_bundle"), Mapping) else None
+    elif schema.startswith(PHRASE_BOUNDARY_TRIAGE_SCHEMA_PREFIX):
+        rows_key = "candidates"
+        report_kind = "phrase_boundary_triage_report"
+        triage_input = value.get("input")
+        report_input = triage_input.get("bundle") if isinstance(triage_input, Mapping) and isinstance(
+            triage_input.get("bundle"), Mapping
+        ) else None
     else:
         raise PhraseSpanAuditionError("retrieval input does not have a supported retrieval schema prefix")
     rows = value.get(rows_key)
@@ -203,7 +228,7 @@ def _select_from_report(
     for row in rows:
         if not isinstance(row, dict):
             raise PhraseSpanAuditionError("retrieval rows contains a non-object")
-        row_identifier = row.get("path_id", row.get("trajectory_id"))
+        row_identifier = row.get("path_id", row.get("trajectory_id", row.get("candidate_id")))
         if path_id is not None and row_identifier == path_id:
             selected.append(row)
         if priority_rank is not None and row.get("priority_rank") == priority_rank:
@@ -218,29 +243,57 @@ def _select_from_report(
         "source_catalog_link_verified": False,
         "candidates_link_verified": False,
     }
-    input_bundle = value.get("input_bundle")
-    if isinstance(input_bundle, Mapping):
-        report_identity["declared_bundle_basename"] = input_bundle.get("directory_basename")
-        report_identity["declared_source_catalog_sha256"] = input_bundle.get("source_catalog_sha256")
-        report_identity["declared_candidates_jsonl_sha256"] = input_bundle.get("candidates_jsonl_sha256")
+    if isinstance(report_input, Mapping):
+        report_identity["declared_bundle_basename"] = report_input.get("directory_basename")
+        report_identity["declared_source_catalog_sha256"] = report_input.get("source_catalog_sha256")
+        report_identity["declared_candidates_jsonl_sha256"] = report_input.get("candidates_jsonl_sha256")
+    if report_kind == "phrase_boundary_triage_report":
+        triage_input = value.get("input")
+        report_identity["triage_artifact_kind"] = value.get("artifact_kind")
+        report_identity["triage_selected_trajectory"] = (
+            dict(value["selected_trajectory"])
+            if isinstance(value.get("selected_trajectory"), Mapping) else None
+        )
+        report_identity["triage_raw_source_attestation"] = (
+            dict(triage_input["raw_source"])
+            if isinstance(triage_input, Mapping) and isinstance(triage_input.get("raw_source"), Mapping)
+            else None
+        )
+        report_identity["triage_trajectory_attestation"] = (
+            dict(triage_input["trajectory_retrieval"])
+            if isinstance(triage_input, Mapping) and isinstance(triage_input.get("trajectory_retrieval"), Mapping)
+            else None
+        )
+        report_identity["triage_interpretation_limits"] = (
+            dict(value["interpretation_limits"])
+            if isinstance(value.get("interpretation_limits"), Mapping) else None
+        )
     return selected[0], report_identity
 
 
 def _load_selected_path(
     *,
     sequence_retrieval: Path | None,
+    phrase_boundary_triage: Path | None,
     path_json: Path | None,
     path_id: str | None,
     priority_rank: int | None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    if (sequence_retrieval is None) == (path_json is None):
-        raise PhraseSpanAuditionError("provide exactly one of --sequence-retrieval or --path-json")
-    if sequence_retrieval is not None:
-        report = _json_load(sequence_retrieval, label="sequence retrieval JSON")
+    supplied = [value for value in (sequence_retrieval, phrase_boundary_triage, path_json) if value is not None]
+    if len(supplied) != 1:
+        raise PhraseSpanAuditionError(
+            "provide exactly one of --sequence-retrieval, --phrase-boundary-triage, or --path-json"
+        )
+    report_path = sequence_retrieval or phrase_boundary_triage
+    if report_path is not None:
+        report = _json_load(
+            report_path,
+            label="phrase boundary triage JSON" if phrase_boundary_triage is not None else "retrieval JSON",
+        )
         selected, identity = _select_from_report(
             report, path_id=path_id, priority_rank=priority_rank
         )
-        identity["sha256"] = _sha256(sequence_retrieval)
+        identity["sha256"] = _sha256(report_path)
         return selected, identity
     if path_id is not None or priority_rank is not None:
         raise PhraseSpanAuditionError("--path-id/--priority-rank apply only with a retrieval report")
@@ -256,33 +309,57 @@ def _load_selected_path(
     }
 
 
-def _require_truth_labels(path: Mapping[str, Any]) -> None:
-    status = path.get("automatic_path_status")
-    if not isinstance(status, Mapping):
-        raise PhraseSpanAuditionError("selected path lacks automatic_path_status truth labels")
+def _truth_status_mapping(
+    path: Mapping[str, Any], *, expected_field: str | None = None,
+) -> tuple[str, Mapping[str, Any]]:
+    """Return the source status field without translating away its wording."""
+
+    if expected_field is not None:
+        status = path.get(expected_field)
+        if isinstance(status, Mapping):
+            return expected_field, status
+        raise PhraseSpanAuditionError(
+            f"selected path lacks required {expected_field} truth labels"
+        )
+    for field in ("automatic_path_status", "automatic_boundary_status"):
+        status = path.get(field)
+        if isinstance(status, Mapping):
+            return field, status
+    raise PhraseSpanAuditionError(
+        "selected path lacks automatic_path_status or automatic_boundary_status truth labels"
+    )
+
+
+def _require_truth_labels(
+    path: Mapping[str, Any], *, expected_field: str | None = None,
+) -> tuple[str, Mapping[str, Any]]:
+    field, status = _truth_status_mapping(path, expected_field=expected_field)
     # Candidate-pair and direct-trajectory retrieval use different nouns, but
     # both expose explicit, conservative truth labels.  The aliases below do
     # not soften those constraints; every concept still must be present.
     required = {
         "unreviewed_automatic_result": (
-            "all_events_unreviewed", "all_results_remain_unreviewed",
+            "all_events_unreviewed", "all_results_remain_unreviewed", "unreviewed_automatic_boundary_candidate",
         ),
         "not_a_musical_gesture_label": (
             "automatic_detection_is_not_a_musical_gesture_label",
             "trajectory_was_scanned_directly_from_feature_npz_not_candidate_pairs",
+            "automatic_measurement_is_not_a_musical_phrase_label",
         ),
         "one_verified_source": (
-            "same_source_identity_verified", "source_is_one_verified_recording",
+            "same_source_identity_verified", "source_is_one_verified_recording", "source_is_one_sha_verified_native_wav",
         ),
         "strict_native_or_feature_order": (
             "strict_temporal_ordering_of_boundary_centers_verified",
             "strictly_consecutive_voiced_feature_rows",
+            "source_is_one_sha_verified_native_wav",
         ),
         "not_same_breath_evidence": ("not_evidence_of_same_breath",),
         "not_slur_evidence": ("not_evidence_of_slur",),
         "not_natural_legato_evidence": ("not_evidence_of_natural_legato",),
         "not_approved_transition": (
             "not_approved_transition_path", "not_an_approved_transition_path",
+            "not_an_approved_transition", "not_an_approved_transition_or_phrase",
         ),
         "not_transition_bank_item": (
             "not_transition_bank_item", "not_a_transition_bank_item",
@@ -298,21 +375,51 @@ def _require_truth_labels(path: Mapping[str, Any]) -> None:
         raise PhraseSpanAuditionError(
             "selected path does not preserve required unreviewed/truth labels: " + ", ".join(missing)
         )
+    if field == "automatic_boundary_status":
+        boundary_required = (
+            "source_is_one_sha_verified_native_wav",
+            "selected_direct_trajectory_remains_unreviewed",
+            "all_results_remain_unreviewed",
+            "unreviewed_automatic_boundary_candidate",
+            "automatic_measurement_is_not_a_musical_phrase_label",
+            "not_a_verified_musical_phrase",
+            "not_evidence_of_same_breath",
+            "not_evidence_of_slur",
+            "not_evidence_of_natural_legato",
+            "not_an_approved_transition",
+            "not_an_approved_transition_or_phrase",
+            "not_transition_bank_item",
+            "not_a_transition_bank_item",
+            "not_a_training_item",
+            "not_a_game_asset",
+        )
+        missing_boundary = [key for key in boundary_required if status.get(key) is not True]
+        if missing_boundary:
+            raise PhraseSpanAuditionError(
+                "phrase-boundary triage candidate lost required conservative truth labels: "
+                + ", ".join(missing_boundary)
+            )
+    return field, status
 
 
-def _validate_selected_path(path: Mapping[str, Any], catalog_source: Mapping[str, Any]) -> dict[str, Any]:
+def _validate_selected_path(
+    path: Mapping[str, Any],
+    catalog_source: Mapping[str, Any],
+    *,
+    expected_truth_label_field: str | None = None,
+) -> dict[str, Any]:
     """Return validated source/span data without trusting a report's coordinates."""
 
-    path_id = path.get("path_id", path.get("trajectory_id"))
+    path_id = path.get("path_id", path.get("trajectory_id", path.get("candidate_id")))
     source = path.get("source")
     span = path.get("native_source_span")
     if not isinstance(path_id, str) or not path_id:
         raise PhraseSpanAuditionError("selected path has no path_id")
     if not isinstance(source, Mapping) or not isinstance(span, Mapping):
         raise PhraseSpanAuditionError("selected path lacks source or native_source_span")
-    _require_truth_labels(path)
-    input_truth_labels = path["automatic_path_status"]
-    assert isinstance(input_truth_labels, Mapping)  # narrowed by _require_truth_labels()
+    truth_label_field, input_truth_labels = _require_truth_labels(
+        path, expected_field=expected_truth_label_field,
+    )
     source_id = source.get("source_id")
     if not isinstance(source_id, str) or source_id != catalog_source.get("source_id"):
         raise PhraseSpanAuditionError("selected path source_id does not match source_catalog.json")
@@ -355,14 +462,53 @@ def _validate_selected_path(path: Mapping[str, Any], catalog_source: Mapping[str
     span_assertions = (
         "all_intermediate_native_source_frames_are_referenced_without_a_cross_recording_splice",
         "frame_range_is_an_unreviewed_feature_window_enclosure_for_raw_review_only",
+        "single_contiguous_source_frame_range",
     )
     if not any(span.get(key) is True for key in span_assertions):
         raise PhraseSpanAuditionError("selected path does not assert one complete same-source frame span")
-    span_coordinate_kind = (
-        "unreviewed_feature_window_enclosure" if span.get(
-            "frame_range_is_an_unreviewed_feature_window_enclosure_for_raw_review_only"
-        ) is True else "native_event_context_enclosure"
-    )
+    if span.get("feature_center_derived_unreviewed_crop_coordinate_only") is True:
+        span_coordinate_kind = "unreviewed_source_led_boundary_triage_crop"
+    elif span.get("frame_range_is_an_unreviewed_feature_window_enclosure_for_raw_review_only") is True:
+        span_coordinate_kind = "unreviewed_feature_window_enclosure"
+    else:
+        span_coordinate_kind = "native_event_context_enclosure"
+    if truth_label_field == "automatic_boundary_status":
+        for key in (
+            "selected_direct_trajectory_remains_unreviewed",
+            "automatic_measurement_is_not_a_musical_phrase_label",
+            "not_a_verified_musical_phrase",
+        ):
+            if input_truth_labels.get(key) is not True:
+                raise PhraseSpanAuditionError(
+                    "phrase-boundary triage candidate lost its conservative status: " + key
+                )
+        for key in (
+            "single_contiguous_source_frame_range",
+            "feature_center_derived_unreviewed_crop_coordinate_only",
+            "not_a_verified_phrase_or_gesture_boundary",
+        ):
+            if span.get(key) is not True:
+                raise PhraseSpanAuditionError(
+                    "phrase-boundary triage native span lost its conservative coordinate label: " + key
+                )
+        trajectory = path.get("selected_trajectory")
+        if not isinstance(trajectory, Mapping):
+            raise PhraseSpanAuditionError("phrase-boundary triage candidate lacks selected_trajectory provenance")
+        trajectory_id = trajectory.get("trajectory_id")
+        if not isinstance(trajectory_id, str) or not trajectory_id:
+            raise PhraseSpanAuditionError("phrase-boundary triage selected trajectory has no trajectory_id")
+        enclosed = trajectory.get("trajectory_native_frame_range_enclosed")
+        if not isinstance(enclosed, list) or len(enclosed) != 2:
+            raise PhraseSpanAuditionError("phrase-boundary triage trajectory native range is invalid")
+        trajectory_start = _strict_int(enclosed[0], label="enclosed trajectory native start", minimum=0)
+        trajectory_end = _strict_int(enclosed[1], label="enclosed trajectory native end", minimum=1)
+        if not (start <= trajectory_start < trajectory_end <= end):
+            raise PhraseSpanAuditionError("phrase-boundary triage crop does not enclose its selected trajectory span")
+        span_enclosed = span.get("trajectory_native_frame_range_enclosed")
+        if span_enclosed != [trajectory_start, trajectory_end]:
+            raise PhraseSpanAuditionError(
+                "phrase-boundary triage crop and selected trajectory disagree on enclosed native range"
+            )
     events = path.get("events")
     event_ids: list[str] = []
     event_coordinates_embedded = isinstance(events, list)
@@ -427,12 +573,14 @@ def _validate_selected_path(path: Mapping[str, Any], catalog_source: Mapping[str
             "reason": "selected_path_did_not_embed_one_global_pitch_shift_proxy",
             "not_applied_to_source_audio_at_retrieval": True,
         }
-    return {
+    selected_result: dict[str, Any] = {
         "path_id": path_id,
         # Keep the selected retrieval row's original words as well as this
         # helper's normalized limits.  A direct trajectory's feature-window
         # caution must not be silently relabelled as a candidate-pair claim.
-        "input_automatic_path_status_verbatim": dict(input_truth_labels),
+        "input_truth_label_field": truth_label_field,
+        "input_truth_labels_verbatim": dict(input_truth_labels),
+        "input_native_source_span_verbatim": dict(span),
         "source": {
             "source_id": source_id,
             "sha256": digest,
@@ -451,6 +599,15 @@ def _validate_selected_path(path: Mapping[str, Any], catalog_source: Mapping[str
         },
         "global_pitch_shift_proxy": global_pitch_shift_proxy,
     }
+    if truth_label_field == "automatic_path_status":
+        selected_result["input_automatic_path_status_verbatim"] = dict(input_truth_labels)
+    else:
+        selected_result["input_automatic_boundary_status_verbatim"] = dict(input_truth_labels)
+        selected_result["triage_trajectory_provenance"] = {
+            "trajectory_id": trajectory_id,
+            "trajectory_native_frame_range_enclosed": [trajectory_start, trajectory_end],
+        }
+    return selected_result
 
 
 def _resolve_raw_source(source: Mapping[str, Any], roots: Sequence[Path]) -> Path:
@@ -729,12 +886,137 @@ def _render_global_preview(
     }
 
 
+def _verify_phrase_boundary_triage_report_gate(
+    identity: Mapping[str, Any],
+    *,
+    bundle: Path,
+    catalog_sha256: str,
+    selected: Mapping[str, Any],
+    catalog_source: Mapping[str, Any],
+    raw_native: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Require the triage report's own catalog/raw-source evidence too.
+
+    The raw WAV is independently re-hashed below.  These checks make sure a
+    triage report cannot be detached from the catalog/native descriptor that
+    originally constrained its coordinate-only candidate.
+    """
+
+    if identity.get("triage_artifact_kind") != "unreviewed_source_led_low_energy_context_boundary_priority":
+        raise PhraseSpanAuditionError("phrase-boundary triage report has an unsupported artifact_kind")
+    _sha256_hex(identity.get("sha256"), label="phrase-boundary triage report SHA-256")
+    if identity.get("declared_bundle_basename") != bundle.name:
+        raise PhraseSpanAuditionError("phrase-boundary triage bundle basename does not match --bundle")
+    if identity.get("declared_source_catalog_sha256") != catalog_sha256:
+        raise PhraseSpanAuditionError("phrase-boundary triage source_catalog SHA-256 does not match --bundle")
+    raw = identity.get("triage_raw_source_attestation")
+    trajectory = identity.get("triage_trajectory_attestation")
+    limits = identity.get("triage_interpretation_limits")
+    if not isinstance(raw, Mapping) or not isinstance(trajectory, Mapping) or not isinstance(limits, Mapping):
+        raise PhraseSpanAuditionError("phrase-boundary triage report lacks raw-source/trajectory/limit attestations")
+    source = selected.get("source")
+    if not isinstance(source, Mapping):
+        raise PhraseSpanAuditionError("validated triage candidate has no source")
+    catalog_native = catalog_source.get("native")
+    if not isinstance(catalog_native, Mapping):
+        raise PhraseSpanAuditionError("selected catalog source has no native descriptor for triage verification")
+    expected_basename = PurePosixPath(str(source["relative_path"])).name
+    raw_flags = (
+        "sha256_verified_against_source_catalog",
+        "native_descriptor_verified_against_source_catalog",
+        "source_audio_not_decoded_or_written",
+    )
+    if any(raw.get(flag) is not True for flag in raw_flags):
+        raise PhraseSpanAuditionError("phrase-boundary triage raw-source attestation lost a required verification flag")
+    if raw.get("source_basename") != expected_basename:
+        raise PhraseSpanAuditionError("phrase-boundary triage raw-source basename does not match selected catalog source")
+    expected_native = {
+        "sample_rate_hz": _strict_int(source["sample_rate_hz"], label="selected source sample_rate_hz", minimum=1),
+        "frame_count": _strict_int(source["frame_count"], label="selected source frame_count", minimum=1),
+        "channels": _strict_int(catalog_native.get("channels"), label="catalog channels", minimum=1),
+        "encoding": catalog_native.get("encoding"),
+    }
+    if not isinstance(expected_native["encoding"], str) or not expected_native["encoding"]:
+        raise PhraseSpanAuditionError("selected catalog source has no native encoding for triage verification")
+    attested_native = {
+        "sample_rate_hz": _strict_int(raw.get("sample_rate_hz"), label="triage raw source sample_rate_hz", minimum=1),
+        "frame_count": _strict_int(raw.get("frame_count"), label="triage raw source frame_count", minimum=1),
+        "channels": _strict_int(raw.get("channels"), label="triage raw source channels", minimum=1),
+        "encoding": raw.get("encoding"),
+    }
+    actual_native = {
+        "sample_rate_hz": _strict_int(raw_native.get("sample_rate_hz"), label="actual raw source sample_rate_hz", minimum=1),
+        "frame_count": _strict_int(raw_native.get("frame_count"), label="actual raw source frame_count", minimum=1),
+        "channels": _strict_int(raw_native.get("channels"), label="actual raw source channels", minimum=1),
+        "encoding": raw_native.get("encoding"),
+    }
+    if attested_native != expected_native or actual_native != expected_native:
+        raise PhraseSpanAuditionError("phrase-boundary triage raw native descriptor does not match selected catalog source")
+    if trajectory.get("source_catalog_link_verified") is not True:
+        raise PhraseSpanAuditionError("phrase-boundary triage did not preserve its trajectory catalog-link verification")
+    report_schema = trajectory.get("schema")
+    if not isinstance(report_schema, str) or not report_schema.startswith(TRAJECTORY_RETRIEVAL_SCHEMA_PREFIX):
+        raise PhraseSpanAuditionError("phrase-boundary triage trajectory attestation does not name a direct trajectory schema")
+    trajectory_basename = trajectory.get("basename")
+    if (
+        not isinstance(trajectory_basename, str)
+        or not trajectory_basename
+        or "/" in trajectory_basename
+        or "\\" in trajectory_basename
+        or trajectory_basename != PurePosixPath(trajectory_basename).name
+    ):
+        raise PhraseSpanAuditionError("phrase-boundary triage trajectory report basename is unsafe")
+    _sha256_hex(trajectory.get("sha256"), label="phrase-boundary triage trajectory report SHA-256")
+    triage_trajectory = selected.get("triage_trajectory_provenance")
+    report_trajectory = identity.get("triage_selected_trajectory")
+    if not isinstance(triage_trajectory, Mapping) or not isinstance(report_trajectory, Mapping):
+        raise PhraseSpanAuditionError("phrase-boundary triage lost selected trajectory provenance")
+    if report_trajectory.get("trajectory_id") != triage_trajectory.get("trajectory_id"):
+        raise PhraseSpanAuditionError("phrase-boundary candidate trajectory_id disagrees with its report provenance")
+    report_trajectory_span = report_trajectory.get("native_source_span")
+    if not isinstance(report_trajectory_span, Mapping) or report_trajectory_span.get("frame_range") != triage_trajectory.get(
+        "trajectory_native_frame_range_enclosed"
+    ):
+        raise PhraseSpanAuditionError("phrase-boundary candidate trajectory range disagrees with report provenance")
+    report_trajectory_source = report_trajectory.get("source")
+    if not isinstance(report_trajectory_source, Mapping):
+        raise PhraseSpanAuditionError("phrase-boundary report provenance has no trajectory source")
+    for key in ("source_id", "sha256", "relative_path", "sample_rate_hz", "frame_count"):
+        if report_trajectory_source.get(key) != source.get(key):
+            raise PhraseSpanAuditionError(
+                "phrase-boundary candidate source disagrees with its selected trajectory provenance: " + key
+            )
+    report_trajectory_status = report_trajectory.get("input_automatic_path_status_verbatim")
+    if not isinstance(report_trajectory_status, Mapping):
+        raise PhraseSpanAuditionError("phrase-boundary report provenance lost direct trajectory truth labels")
+    _require_truth_labels({"automatic_path_status": report_trajectory_status}, expected_field="automatic_path_status")
+    limit_flags = (
+        "source_audio_not_decoded_copied_written_or_rendered",
+        "all_candidates_remain_unreviewed_not_musical_phrase_not_approved_not_game_assets",
+        "low_energy_onset_and_release_proxies_are_not_breath_slur_legato_or_performance_labels",
+        "no_candidate_is_added_to_transition_bank_training_set_or_runtime_bgm",
+        "every_returned_span_is_one_contiguous_coordinate_range_in_one_sha_verified_source",
+    )
+    if any(limits.get(flag) is not True for flag in limit_flags):
+        raise PhraseSpanAuditionError("phrase-boundary triage report lost a required interpretation-limit flag")
+    return {
+        "triage_report_schema_and_sha256_identity_recorded": True,
+        "source_catalog_sha256_link_verified": True,
+        "triage_raw_source_attestation_matches_catalog_and_actual_native_descriptor": True,
+        "raw_source_sha256_verified_via_candidate_catalog_and_actual_direct_wav": True,
+        "triage_direct_trajectory_catalog_link_and_sha256_attestation_preserved_not_rehashed": True,
+        "triage_candidate_and_report_trajectory_provenance_agree": True,
+        "triage_unreviewed_not_phrase_not_approved_not_training_not_game_limits_verified": True,
+    }
+
+
 def build_phrase_span_audition(
     *,
     bundle_dir: str | Path,
     raw_daegeum_dirs: str | Path | Sequence[str | Path],
     output_dir: str | Path,
     sequence_retrieval: str | Path | None = None,
+    phrase_boundary_triage: str | Path | None = None,
     path_json: str | Path | None = None,
     path_id: str | None = None,
     priority_rank: int | None = None,
@@ -751,6 +1033,10 @@ def build_phrase_span_audition(
     bundle = Path(bundle_dir).expanduser().resolve()
     output = Path(output_dir).expanduser().resolve()
     report = Path(sequence_retrieval).expanduser().resolve() if sequence_retrieval is not None else None
+    triage_report = (
+        Path(phrase_boundary_triage).expanduser().resolve()
+        if phrase_boundary_triage is not None else None
+    )
     direct_path = Path(path_json).expanduser().resolve() if path_json is not None else None
     if not bundle.is_dir():
         raise PhraseSpanAuditionError("--bundle must be a readable R&D-06 bundle directory")
@@ -759,6 +1045,7 @@ def build_phrase_span_audition(
     roots = _normalise_roots(raw_daegeum_dirs)
     selected_path, input_identity = _load_selected_path(
         sequence_retrieval=report,
+        phrase_boundary_triage=triage_report,
         path_json=direct_path,
         path_id=path_id,
         priority_rank=priority_rank,
@@ -767,8 +1054,19 @@ def build_phrase_span_audition(
     if not isinstance(source_data, Mapping) or not isinstance(source_data.get("source_id"), str):
         raise PhraseSpanAuditionError("selected path has no source_id")
     catalog_source, catalog_digest = _catalog_source(bundle, source_data["source_id"])
-    selected = _validate_selected_path(selected_path, catalog_source)
     input_identity["source_catalog_sha256"] = catalog_digest
+    is_phrase_boundary_triage = input_identity["kind"] == "phrase_boundary_triage_report"
+    if is_phrase_boundary_triage:
+        input_identity["source_catalog_link_verified"] = (
+            input_identity.get("declared_source_catalog_sha256") == catalog_digest
+        )
+        if not input_identity["source_catalog_link_verified"]:
+            raise PhraseSpanAuditionError("phrase-boundary triage source_catalog SHA-256 does not match --bundle")
+    selected = _validate_selected_path(
+        selected_path,
+        catalog_source,
+        expected_truth_label_field="automatic_boundary_status" if is_phrase_boundary_triage else None,
+    )
     if input_identity["kind"] in {
         "sequence_retrieval_report", "direct_trajectory_retrieval_report",
     }:
@@ -797,14 +1095,34 @@ def build_phrase_span_audition(
         or int(raw_native["frame_count"]) != selected["source"]["frame_count"]
     ):
         raise PhraseSpanAuditionError("resolved raw source does not match selected catalog source identity/native timeline")
+    triage_gate: dict[str, Any] | None = None
+    if is_phrase_boundary_triage:
+        triage_gate = _verify_phrase_boundary_triage_report_gate(
+            input_identity,
+            bundle=bundle,
+            catalog_sha256=catalog_digest,
+            selected=selected,
+            catalog_source=catalog_source,
+            raw_native=raw_native,
+        )
     output.mkdir(parents=True, exist_ok=False)
-    raw_path = output / "A_native_complete_source_span.wav"
+    raw_filename = "A_raw_lead_stem.wav" if is_phrase_boundary_triage else "A_native_complete_source_span.wav"
+    raw_path = output / raw_filename
     raw_span = write_source_faithful_native_span(
         raw_source,
         selected["span"]["frame_range"][0],
         selected["span"]["frame_range"][1],
         raw_path,
     )
+    if is_phrase_boundary_triage:
+        raw_span.update({
+            "artifact_role": "unreviewed_source_led_raw_lead_stem_rnd_only",
+            "not_a_verified_phrase_or_gesture_boundary": True,
+            "not_an_approved_transition_or_phrase": True,
+            "not_a_training_item": True,
+            "not_a_game_asset": True,
+            "no_backing_mix_or_runtime_asset": True,
+        })
     time_ratio = _finite_float(global_time_ratio, label="--global-time-ratio")
     gate = _preview_gate(
         selected,
@@ -832,16 +1150,40 @@ def build_phrase_span_audition(
             "not_source_faithful": True,
             "not_native_legato": True,
             "not_approved_transition": True,
+            "not_a_training_item": True,
             "not_game_asset": True,
+            "no_backing_mix_or_runtime_asset": True,
         }
+    artifact_kind = (
+        "unreviewed_source_led_raw_lead_stem_audition"
+        if is_phrase_boundary_triage else "unreviewed_same_source_complete_native_span_audition"
+    )
+    raw_manifest_key = "A_raw_lead_stem" if is_phrase_boundary_triage else "A_native_complete_source_span"
+    interpretation_limits: dict[str, Any] = {
+        "raw_A_is_one_contiguous_source_frame_span_not_a_stitch_of_candidate_clips": True,
+        "same_source_span_is_not_evidence_of_same_breath_slur_or_natural_legato": True,
+        "all_events_remain_unreviewed_automatic_candidates": True,
+        "not_an_approved_transition_or_transition_bank_item": True,
+        "not_a_training_item": True,
+        "not_a_game_asset": True,
+        "P_if_present_is_synthetic_uniform_offline_processing_not_source_faithful": True,
+        "no_runtime_BGM_or_public_asset_was_read_or_written": True,
+    }
+    if is_phrase_boundary_triage:
+        interpretation_limits.update({
+            "boundary_triage_A_is_an_unreviewed_coordinate_only_crop_not_a_verified_phrase_or_gesture": True,
+            "boundary_triage_A_preserves_not_phrase_not_approved_not_training_not_game_truth_labels": True,
+            "boundary_triage_A_is_raw_lead_stem_only_with_no_backing_mix": True,
+        })
     result: dict[str, Any] = {
         "schema": PHRASE_SPAN_AUDITION_SCHEMA,
-        "artifact_kind": "unreviewed_same_source_complete_native_span_audition",
+        "artifact_kind": artifact_kind,
         "input": {
             "selected_path": input_identity,
             "bundle_directory_basename": bundle.name,
             "raw_root_count": len(roots),
             "absolute_paths_omitted": True,
+            "phrase_boundary_triage_gate": triage_gate,
         },
         "selected_path": selected,
         "raw_source_verification": {
@@ -849,18 +1191,9 @@ def build_phrase_span_audition(
             "catalog_relative_path_resolved_within_exactly_one_explicit_raw_root": True,
             "catalog_native_timeline_verified_against_raw_direct_wav": True,
         },
-        "A_native_complete_source_span": raw_span,
+        raw_manifest_key: raw_span,
         "P_optional_global_pitch_time_preview": preview,
-        "interpretation_limits": {
-            "raw_A_is_one_contiguous_source_frame_span_not_a_stitch_of_candidate_clips": True,
-            "same_source_span_is_not_evidence_of_same_breath_slur_or_natural_legato": True,
-            "all_events_remain_unreviewed_automatic_candidates": True,
-            "not_an_approved_transition_or_transition_bank_item": True,
-            "not_a_training_item": True,
-            "not_a_game_asset": True,
-            "P_if_present_is_synthetic_uniform_offline_processing_not_source_faithful": True,
-            "no_runtime_BGM_or_public_asset_was_read_or_written": True,
-        },
+        "interpretation_limits": interpretation_limits,
     }
     _json_dump(output / "span_audition.json", result)
     return result
@@ -875,11 +1208,18 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--output-dir", help="new ignored R&D artifact directory; must not already exist")
     source_group = parser.add_mutually_exclusive_group()
-    source_group.add_argument("--sequence-retrieval", help="sequence_retrieval.json report to select from")
+    source_group.add_argument(
+        "--sequence-retrieval",
+        help="sequence_retrieval.json or direct_trajectory_retrieval.json report to select from",
+    )
+    source_group.add_argument(
+        "--phrase-boundary-triage",
+        help="source-led phrase_boundary_triage.json; exports one unreviewed raw lead stem only",
+    )
     source_group.add_argument("--path-json", help="one standalone selected path JSON object")
     selector_group = parser.add_mutually_exclusive_group()
-    selector_group.add_argument("--path-id", help="selected path_id in --sequence-retrieval")
-    selector_group.add_argument("--priority-rank", type=int, help="selected priority rank in --sequence-retrieval")
+    selector_group.add_argument("--path-id", help="selected path/trajectory/candidate ID in a report")
+    selector_group.add_argument("--priority-rank", type=int, help="selected priority rank in a report")
     parser.add_argument("--render-global-preview", action="store_true", help="render a bounded, explicitly synthetic P preview")
     parser.add_argument(
         "--global-time-ratio", type=float, default=DEFAULT_GLOBAL_TIME_RATIO,
@@ -915,7 +1255,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             ("--bundle", args.bundle),
             ("--raw-daegeum-dir", args.raw_daegeum_dirs),
             ("--output-dir", args.output_dir),
-            ("--sequence-retrieval/--path-json", args.sequence_retrieval or args.path_json),
+            (
+                "--sequence-retrieval/--phrase-boundary-triage/--path-json",
+                args.sequence_retrieval or args.phrase_boundary_triage or args.path_json,
+            ),
         ) if not value
     ]
     if missing:
@@ -926,6 +1269,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             raw_daegeum_dirs=args.raw_daegeum_dirs,
             output_dir=args.output_dir,
             sequence_retrieval=args.sequence_retrieval,
+            phrase_boundary_triage=args.phrase_boundary_triage,
             path_json=args.path_json,
             path_id=args.path_id,
             priority_rank=args.priority_rank,

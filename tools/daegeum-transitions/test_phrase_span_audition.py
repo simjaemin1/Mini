@@ -62,6 +62,42 @@ def _truth_status() -> dict[str, bool]:
     }
 
 
+def _boundary_truth_status() -> dict[str, bool]:
+    return {
+        "source_is_one_sha_verified_native_wav": True,
+        "selected_direct_trajectory_remains_unreviewed": True,
+        "all_results_remain_unreviewed": True,
+        "unreviewed_automatic_boundary_candidate": True,
+        "automatic_measurement_is_not_a_musical_phrase_label": True,
+        "not_a_verified_musical_phrase": True,
+        "not_evidence_of_same_breath": True,
+        "not_evidence_of_slur": True,
+        "not_evidence_of_natural_legato": True,
+        "not_an_approved_transition": True,
+        "not_an_approved_transition_or_phrase": True,
+        "not_transition_bank_item": True,
+        "not_a_transition_bank_item": True,
+        "not_a_training_item": True,
+        "not_a_game_asset": True,
+    }
+
+
+def _direct_trajectory_truth_status() -> dict[str, bool]:
+    return {
+        "source_is_one_verified_recording": True,
+        "strictly_consecutive_voiced_feature_rows": True,
+        "trajectory_was_scanned_directly_from_feature_npz_not_candidate_pairs": True,
+        "all_results_remain_unreviewed": True,
+        "not_evidence_of_same_breath": True,
+        "not_evidence_of_slur": True,
+        "not_evidence_of_natural_legato": True,
+        "not_an_approved_transition_path": True,
+        "not_a_transition_bank_item": True,
+        "not_a_training_item": True,
+        "not_a_game_asset": True,
+    }
+
+
 def _event(candidate_id: str, *, start: int, center: int, end: int) -> dict[str, object]:
     return {
         "candidate_id": candidate_id,
@@ -153,6 +189,101 @@ def _fixture(root: Path, *, selected: dict[str, object] | None = None) -> dict[s
         "source": source,
         "path": path,
     }
+
+
+def _phrase_boundary_triage_fixture(root: Path) -> dict[str, Path | dict[str, object]]:
+    """Create one self-contained, source-led coordinate-only triage report."""
+
+    fixture = _fixture(root)
+    source = copy.deepcopy(fixture["source"])
+    assert isinstance(source, dict)
+    native = source["native"]
+    assert isinstance(native, dict)
+    native.update({"channels": 2, "encoding": "PCM"})
+    catalog_path = fixture["bundle"] / "source_catalog.json"
+    catalog_path.write_text(
+        json.dumps({"schema": f"{SCHEMA}.source-catalog.v1", "files": [source]}, sort_keys=True),
+        encoding="utf-8",
+    )
+    source_flat = {
+        "source_id": source["source_id"],
+        "sha256": source["sha256"],
+        "relative_path": source["relative_path"],
+        "sample_rate_hz": native["sample_rate_hz"],
+        "frame_count": native["frame_count"],
+    }
+    trajectory_id = "trajectory_src_fixture_000020_000060_g01"
+    trajectory_span = [20, 60]
+    selected_trajectory = {
+        "trajectory_id": trajectory_id,
+        "priority_rank_at_retrieval": 1,
+        "source": source_flat,
+        "native_source_span": {
+            "frame_range": trajectory_span,
+            "frame_count": 40,
+            "frame_range_is_an_unreviewed_feature_window_enclosure_for_raw_review_only": True,
+        },
+        "input_automatic_path_status_verbatim": _direct_trajectory_truth_status(),
+    }
+    candidate = {
+        "candidate_id": "boundary_span_src_fixture_000010_000080",
+        "priority_rank": 1,
+        "source": source_flat,
+        "selected_trajectory": {
+            "trajectory_id": trajectory_id,
+            "priority_rank_at_retrieval": 1,
+            "trajectory_native_frame_range_enclosed": trajectory_span,
+        },
+        "native_source_span": {
+            "frame_range": [10, 80],
+            "frame_count": 70,
+            "single_contiguous_source_frame_range": True,
+            "trajectory_native_frame_range_enclosed": trajectory_span,
+            "feature_center_derived_unreviewed_crop_coordinate_only": True,
+            "not_a_verified_phrase_or_gesture_boundary": True,
+        },
+        "automatic_boundary_status": _boundary_truth_status(),
+    }
+    report = {
+        "schema": f"{SCHEMA}.source-led-phrase-boundary-triage.v1",
+        "artifact_kind": "unreviewed_source_led_low_energy_context_boundary_priority",
+        "input": {
+            "bundle": {
+                "directory_basename": fixture["bundle"].name,
+                "source_catalog_sha256": hashlib.sha256(catalog_path.read_bytes()).hexdigest(),
+                "absolute_paths_omitted": True,
+            },
+            "trajectory_retrieval": {
+                "basename": "direct_trajectory_retrieval.json",
+                "sha256": "a" * 64,
+                "schema": f"{SCHEMA}.direct-f0-trajectory-retrieval.v1",
+                "source_catalog_link_verified": True,
+            },
+            "raw_source": {
+                "source_basename": "fixture.wav",
+                "sha256_verified_against_source_catalog": True,
+                "native_descriptor_verified_against_source_catalog": True,
+                "source_audio_not_decoded_or_written": True,
+                "sample_rate_hz": 1000,
+                "frame_count": 100,
+                "channels": 2,
+                "encoding": "PCM",
+            },
+        },
+        "selected_trajectory": selected_trajectory,
+        "interpretation_limits": {
+            "source_audio_not_decoded_copied_written_or_rendered": True,
+            "all_candidates_remain_unreviewed_not_musical_phrase_not_approved_not_game_assets": True,
+            "low_energy_onset_and_release_proxies_are_not_breath_slur_legato_or_performance_labels": True,
+            "no_candidate_is_added_to_transition_bank_training_set_or_runtime_bgm": True,
+            "every_returned_span_is_one_contiguous_coordinate_range_in_one_sha_verified_source": True,
+        },
+        "candidates": [candidate],
+    }
+    triage = root / "phrase_boundary_triage.json"
+    triage.write_text(json.dumps(report, sort_keys=True), encoding="utf-8")
+    fixture.update({"source": source, "boundary_candidate": candidate, "triage": triage})
+    return fixture
 
 
 class PhraseSpanAuditionTest(unittest.TestCase):
@@ -359,6 +490,104 @@ class PhraseSpanAuditionTest(unittest.TestCase):
                 trajectory["automatic_path_status"],
             )
             self.assertTrue((root / "trajectory" / "A_native_complete_source_span.wav").is_file())
+
+    def test_phrase_boundary_triage_exports_only_raw_lead_stem_with_strict_provenance(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = _phrase_boundary_triage_fixture(root)
+            output = root / "boundary"
+            result = build_phrase_span_audition(
+                bundle_dir=fixture["bundle"],
+                raw_daegeum_dirs=fixture["raw_root"],
+                output_dir=output,
+                phrase_boundary_triage=fixture["triage"],
+                priority_rank=1,
+            )
+            raw_stem = output / "A_raw_lead_stem.wav"
+            self.assertTrue(raw_stem.is_file())
+            self.assertFalse((output / "A_native_complete_source_span.wav").exists())
+            self.assertFalse((output / "P_global_pitch_time_preview.wav").exists())
+            source_native = inspect_wav(fixture["raw"])["native_audio"]
+            stem_native = inspect_wav(raw_stem)["native_audio"]
+            self.assertEqual(stem_native["frame_count"], 70)
+            start_byte = source_native["data_offset_bytes"] + 10 * source_native["block_align_bytes"]
+            length = 70 * source_native["block_align_bytes"]
+            expected = fixture["raw"].read_bytes()[start_byte:start_byte + length]
+            actual = raw_stem.read_bytes()[
+                stem_native["data_offset_bytes"]:stem_native["data_offset_bytes"] + stem_native["data_byte_length"]
+            ]
+            self.assertEqual(actual, expected)
+            self.assertEqual(result["artifact_kind"], "unreviewed_source_led_raw_lead_stem_audition")
+            self.assertEqual(result["A_raw_lead_stem"]["artifact"], "A_raw_lead_stem.wav")
+            self.assertTrue(result["A_raw_lead_stem"]["source_audio_frames_byte_for_byte_copied"])
+            self.assertEqual(result["A_raw_lead_stem"]["processing"]["gain"], "none")
+            self.assertEqual(result["A_raw_lead_stem"]["processing"]["pitch_shift"], "none")
+            self.assertEqual(result["A_raw_lead_stem"]["processing"]["time_stretch"], "none")
+            self.assertEqual(result["P_optional_global_pitch_time_preview"]["status"], "not_requested")
+            self.assertEqual(
+                result["selected_path"]["input_automatic_boundary_status_verbatim"],
+                fixture["boundary_candidate"]["automatic_boundary_status"],
+            )
+            self.assertEqual(
+                result["selected_path"]["input_native_source_span_verbatim"],
+                fixture["boundary_candidate"]["native_source_span"],
+            )
+            gate = result["input"]["phrase_boundary_triage_gate"]
+            self.assertTrue(gate["source_catalog_sha256_link_verified"])
+            self.assertTrue(gate["triage_raw_source_attestation_matches_catalog_and_actual_native_descriptor"])
+            self.assertTrue(gate["raw_source_sha256_verified_via_candidate_catalog_and_actual_direct_wav"])
+            self.assertTrue(gate["triage_candidate_and_report_trajectory_provenance_agree"])
+
+    def test_phrase_boundary_triage_rejects_bad_native_attestation_before_output(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = _phrase_boundary_triage_fixture(root)
+            report = json.loads(fixture["triage"].read_text(encoding="utf-8"))
+            report["input"]["raw_source"]["channels"] = 1
+            fixture["triage"].write_text(json.dumps(report), encoding="utf-8")
+            output = root / "bad-native-attestation"
+            with self.assertRaises(PhraseSpanAuditionError):
+                build_phrase_span_audition(
+                    bundle_dir=fixture["bundle"],
+                    raw_daegeum_dirs=fixture["raw_root"],
+                    output_dir=output,
+                    phrase_boundary_triage=fixture["triage"],
+                    priority_rank=1,
+                )
+            self.assertFalse(output.exists())
+
+    def test_phrase_boundary_triage_rejects_catalog_status_and_trajectory_bypasses(self) -> None:
+        cases = {
+            "catalog": lambda report: report["input"]["bundle"].update({"source_catalog_sha256": "0" * 64}),
+            "boundary-status": lambda report: report["candidates"][0]["automatic_boundary_status"].update(
+                {"not_a_verified_musical_phrase": False}
+            ),
+            "trajectory-range": lambda report: report["candidates"][0]["native_source_span"].update(
+                {"trajectory_native_frame_range_enclosed": [21, 60]}
+            ),
+        }
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for name, mutate in cases.items():
+                with self.subTest(name=name):
+                    fixture = _phrase_boundary_triage_fixture(root / name)
+                    report = json.loads(fixture["triage"].read_text(encoding="utf-8"))
+                    mutate(report)
+                    # A valid generic status cannot substitute for the
+                    # triage-specific boundary status field.
+                    if name == "boundary-status":
+                        report["candidates"][0]["automatic_path_status"] = _truth_status()
+                    fixture["triage"].write_text(json.dumps(report), encoding="utf-8")
+                    output = root / name / "rejected"
+                    with self.assertRaises(PhraseSpanAuditionError):
+                        build_phrase_span_audition(
+                            bundle_dir=fixture["bundle"],
+                            raw_daegeum_dirs=fixture["raw_root"],
+                            output_dir=output,
+                            phrase_boundary_triage=fixture["triage"],
+                            priority_rank=1,
+                        )
+                    self.assertFalse(output.exists())
 
 
 if __name__ == "__main__":
