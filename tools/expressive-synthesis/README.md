@@ -19,6 +19,42 @@ and public-distribution use.  Passing a manifest is a project gate, **not** a
 claim that a source recording has broader rights or that output is suitable for
 the game.
 
+## Untrained synthetic control preview
+
+`render_synthetic_preview.py` is a separate, CPU-only listening aid for the
+current `tools/score-expression` output.  It reads exactly one fresh compiler
+artifact directory containing `score_expression_controls.npz` and its
+SHA-verified manifest, then writes a fresh isolated directory containing:
+
+```text
+untrained_synthetic_preview.wav
+untrained_synthetic_preview_manifest.json
+```
+
+The WAV is a deterministic **generic harmonic-plus-noise** monitor driven by
+the explicit F0, loudness, air-noise, and voicing curves.  It is not trained,
+does not read, copy, or transform source audio, and is **not a real Daegeum
+renderer**.  The filename and sidecar say so explicitly.  Gesture state is
+validated but never used to invent an attack or slur; audible articulation
+comes only from the compiler's supplied continuous curves.
+
+It rejects a controls hash mismatch, wrong schema/timeline, missing R&D scope
+flags, controls or output inside `public/assets/audio/bgm/`, a nested output,
+or any pre-existing output directory.  It never discovers source audio, loads
+a model, or writes game assets.
+
+```bash
+/tmp/durango-bgm-rnd-venv/bin/python tools/expressive-synthesis/render_synthetic_preview.py \
+  --controls-dir /absolute/path/to/fresh-score-expression-controls \
+  --output-dir /absolute/path/to/fresh-untrained-synthetic-preview \
+  --confirm-rnd-only
+```
+
+The optional `--seed` only makes the generic synthetic air-noise repeatable.
+The sidecar records it, the two input digests, the one global monitoring gain,
+and the explicit limits.  It is not a model export, training result, gameplay
+audio, or clearance to use source recordings for training or distribution.
+
 ## WSL / RTX 4060 preparation
 
 Run these commands in a WSL Ubuntu checkout after confirming that `nvidia-smi`
