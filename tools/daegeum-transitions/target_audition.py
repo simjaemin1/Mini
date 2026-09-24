@@ -767,6 +767,8 @@ def _write_html(path: Path, target_rows: Sequence[Mapping[str, Any]], *, output:
             gate = row["priority_gate"]
             interval = row["interval_error"]["candidate_minus_target_cents"]
             shift = row["single_global_pitch_shift"]["cents"]
+            rms_delta = row["boundary_continuity_proxies"]["rms_valley_db_relative_to_stable_anchors"]
+            onset_flux = row["boundary_continuity_proxies"]["onset_flux"]
             rows.append(
                 "<tr>"
                 f"<td>{row['priority_rank']}</td>"
@@ -774,6 +776,7 @@ def _write_html(path: Path, target_rows: Sequence[Mapping[str, Any]], *, output:
                 f"<td>{html.escape(str(row['automatic_candidate']['detector_class']))}</td>"
                 f"<td>{row['proxy_pitch']['pre_midi']:.2f} → {row['proxy_pitch']['post_midi']:.2f}</td>"
                 f"<td>{shift:+.1f}¢</td><td>{interval:+.1f}¢</td>"
+                f"<td>{rms_delta:+.2f} dB / {onset_flux:.4f}</td>"
                 f"<td>{'bounded preview possible' if gate['eligible_for_optional_gesture_warp_preview'] else 'raw review only'}</td>"
                 f"<td>{' · '.join(links) if links else 'no raw source found'}</td>"
                 "</tr>"
@@ -783,7 +786,8 @@ def _write_html(path: Path, target_rows: Sequence[Mapping[str, Any]], *, output:
             f"<p>Input coverage status: <code>{html.escape(str(target['target'].get('coverage_status_at_input')))}</code>. "
             "Every row remains an unreviewed automatic candidate.</p>"
             "<table><thead><tr><th>rank</th><th>candidate</th><th>detector</th><th>proxy MIDI</th>"
-            "<th>one global shift</th><th>interval error</th><th>gate</th><th>auditions</th>"
+            "<th>one global shift</th><th>interval error</th><th>boundary RMS / onset proxy</th>"
+            "<th>gate</th><th>auditions</th>"
             "</tr></thead><tbody>" + "\n".join(rows) + "</tbody></table></section>"
         )
     processed_note = (
@@ -806,7 +810,8 @@ def _write_tsv(path: Path, target_rows: Sequence[Mapping[str, Any]]) -> None:
         writer = csv.writer(stream, delimiter="\t")
         writer.writerow([
             "target_id", "priority_rank", "candidate_id", "source", "detector_class", "proxy_pre_midi",
-            "proxy_post_midi", "global_shift_cents", "interval_error_cents", "compatible_detector",
+            "proxy_post_midi", "global_shift_cents", "interval_error_cents", "boundary_rms_delta_db",
+            "boundary_onset_flux", "compatible_detector",
             "bounded_gesture_warp_gate", "A_raw_context", "B_raw_boundary_focus", "P_gesture_warp",
         ])
         for target in target_rows:
@@ -819,6 +824,8 @@ def _write_tsv(path: Path, target_rows: Sequence[Mapping[str, Any]]) -> None:
                     row["automatic_candidate"]["detector_class"], row["proxy_pitch"]["pre_midi"],
                     row["proxy_pitch"]["post_midi"], row["single_global_pitch_shift"]["cents"],
                     row["interval_error"]["candidate_minus_target_cents"],
+                    row["boundary_continuity_proxies"]["rms_valley_db_relative_to_stable_anchors"],
+                    row["boundary_continuity_proxies"]["onset_flux"],
                     row["priority_gate"]["detector_class_matches_target_capability"],
                     row["priority_gate"]["eligible_for_optional_gesture_warp_preview"],
                     raw.get("A_raw_context", {}).get("artifact", ""),
