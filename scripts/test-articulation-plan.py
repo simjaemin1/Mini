@@ -59,8 +59,10 @@ check(
 check(
     plan[0]["sample_mode"] == "head"
     and plan[1]["sample_mode"] == "head"
-    and plan[1]["attack_style"] == "tongue",
-    "③ 첫 음·재어택은 recorded head를, 재어택은 tongue 스타일을 요청한다",
+    and plan[1]["attack_style"] == "tongue"
+    and plan[0]["onset_body_recipe"] == "recorded_full_head"
+    and plan[1]["onset_body_recipe"] == "short_tongue_transient_then_recorded_steady_body",
+    "③ 첫 숨과 재어택은 다른 onset/body recipe를 요청한다",
 )
 
 # A touching boundary and the former 50 ms cutoff must never create legato by
@@ -91,6 +93,7 @@ slurred = plan_articulations(
 check(
     slurred[1]["kind"] == SLUR
     and slurred[1]["sample_mode"] == "steady"
+    and slurred[1]["onset_body_recipe"] == "recorded_steady_body"
     and slurred[1]["join_from_previous"]
     and not slurred[1]["release_before"],
     "⑥ 명시적 tie만 steady body + crossfade slur를 만든다",

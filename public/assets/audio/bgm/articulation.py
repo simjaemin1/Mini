@@ -28,9 +28,14 @@ starts a breath by default.  ``time_epsilon`` is only floating-point
 tolerance; it is *not* a musical legato threshold.
 
 Each returned dictionary is intended for :mod:`sampler`-style offline
-rendering: ``sample_mode`` selects a recorded head or steady body,
+rendering: ``sample_mode`` selects the primary recorded head or steady body,
 ``join_from_previous`` requests a crossfade, and ``release_before`` tells the
-renderer whether it must close the previous note before this one.
+renderer whether it must close the previous note before this one.  The
+separate ``onset_body_recipe`` makes one otherwise easy-to-miss distinction
+explicit: a new breath can use a full recorded head, while a tongue/re-attack
+ideally uses a short articulation transient followed by a steady body.  A
+library that lacks a separately labelled tongue transient must report that
+limitation instead of silently treating the two as equivalent.
 """
 
 from __future__ import annotations
@@ -134,6 +139,12 @@ def plan_articulations(
             # a recorded attack and ``steady`` from its hold region without
             # this planner knowing any sample-library filenames.
             "sample_mode": "steady" if kind == SLUR else "head",
+            # ``sample_mode`` is deliberately kept as a small compatibility
+            # surface for existing sample renderers.  This recipe is the
+            # higher-fidelity contract: a re-articulation is not assumed to
+            # sound like a fresh phrase head just because both begin with an
+            # audible attack.
+            "onset_body_recipe": _onset_body_recipe(kind),
             "join_from_previous": kind == SLUR,
             "release_before": kind in (BREATH_START, DETACHED),
             "attack_style": _attack_style(kind),
@@ -257,3 +268,22 @@ def _attack_style(kind: str) -> str:
     if kind == DETACHED:
         return "detached"
     return "tongue"
+
+
+def _onset_body_recipe(kind: str) -> str:
+    """Describe the intended physical realization without inventing audio.
+
+    The planner stays data-agnostic: it does not claim every source bank has
+    all of these materials.  It does make the distinction available to a
+    renderer so a full breath head is never accidentally used as the only
+    possible re-attack implementation.
+    """
+    if kind == BREATH_START:
+        return "recorded_full_head"
+    if kind == SLUR:
+        return "recorded_steady_body"
+    if kind == REARTICULATE:
+        return "short_tongue_transient_then_recorded_steady_body"
+    if kind == DETACHED:
+        return "recorded_full_head_then_declared_silence"
+    raise ValueError(f"unsupported articulation mode: {kind}")
