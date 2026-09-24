@@ -104,6 +104,75 @@
   ];
   const ARI_BASS = [0, 0, -1, -2, 0, -1, 0, 0, 0, 0, -1, -2, 0, -1, 0, 0];
   const ARI_NBAR = ARIRANG.length;
+  // `village_day` 아리랑의 한 박. 미리듣기와 실제 편성이 같은 길이를 읽는다.
+  const ARI_VILLAGE_DAY_BEAT = 0.72;
+
+  /**
+   * 연속 악구의 제어 계획을 만든다. AudioNode를 만들지 않는 순수 함수라서
+   * 오프라인 신경 렌더러가 와도 같은 score → expression 계약을 쓸 수 있다.
+   *
+   * events: [{ start, end, freq, amp, vibCents, vibDelay, bendEnd, grace }, ...]
+   * opt.previous 를 주면 직전 마디의 마지막 음과도 legato/쉼을 판정한다.
+   */
+  function planPerformancePhrase(events, opt) {
+    opt = opt || {};
+    const num = (v, fallback) => (typeof v === 'number' && Number.isFinite(v)) ? v : fallback;
+    const pos = (v, fallback) => Math.max(0, num(v, fallback));
+    const attack = pos(opt.attack, 0.085);
+    const release = pos(opt.release, 0.20);
+    const glide = Math.max(0.004, pos(opt.glide, attack));
+    const vibRamp = Math.max(0.004, pos(opt.vibRamp, 0.35));
+    const eps = 1e-4;
+    const src = Array.isArray(events) ? events : [];
+    const notes = [];
+    let previous = null;
+    if (opt.previous && num(opt.previous.start, NaN) >= 0 && num(opt.previous.end, NaN) > num(opt.previous.start, NaN)) {
+      previous = { start: +opt.previous.start, end: +opt.previous.end, freq: +opt.previous.freq };
+    }
+
+    for (const raw of src) {
+      if (!raw) continue;
+      const start = num(raw.start, NaN), end = num(raw.end, NaN), freq = num(raw.freq, NaN);
+      if (!(start >= 0 && end > start && freq > 0)) continue;
+      const dur = end - start;
+      const gap = previous ? Math.max(0, start - previous.end) : Infinity;
+      const legato = !!previous && gap <= eps;
+      const transition = legato ? Math.min(glide, Math.max(0.004, dur * 0.5)) : 0;
+      const bendEnd = num(raw.bendEnd, 0);
+      const bendLen = bendEnd ? Math.min(release * 1.6, dur * 0.4) : 0;
+      const bendAt = bendLen ? end - bendLen : null;
+      const vibAt = legato ? start : Math.min(end, start + Math.min(pos(raw.vibDelay, 0), dur * 0.5));
+      // 잔가락처럼 짧은 음은 요성 ramp가 다음 음의 automation까지 넘어가면
+      // 안 된다. 음 안에서 끝내고, 다음 연결 음은 자기 target을 건다.
+      const noteVibRamp = legato ? Math.max(0.004, transition) : Math.min(vibRamp, Math.max(0.004, end - vibAt));
+      notes.push({
+        start, end, freq, amp: Math.max(0, num(raw.amp, 0.5)),
+        vibCents: num(raw.vibCents, 0), vibDelay: pos(raw.vibDelay, 0),
+        bendEnd, bendAt, bendFreq: bendEnd ? freq * Math.pow(2, bendEnd / 1200) : freq,
+        grace: !!raw.grace,
+        legato, reattack: !legato, transition,
+        // 첫 음/실제 쉼 뒤에는 현재 대금의 지연 요성을 유지한다. 연결 음은
+        // 깊이를 0으로 되돌리지 않고 즉시 앞 값에서 다음 목표로 간다.
+        vibAt, vibRamp: noteVibRamp,
+        gap: previous ? gap : null
+      });
+      previous = { start, end, freq };
+    }
+
+    const first = notes[0] || null;
+    const last = notes[notes.length - 1] || null;
+    const start = num(opt.start, first ? first.start : 0);
+    const end = Math.max(num(opt.end, last ? last.end : start), last ? last.end : start);
+    // 한 마디 끝에 실제 쉼이 있으면 다음 tick가 다음 마디를 공급할 때까지 기다리지
+    // 않고 지금 release를 예약해야 한다. 그렇지 않으면 실시간 b=7 → b=8처럼
+    // 다음 bar가 늦게 들어오는 동안 마지막 음이 열린 채 남는다.
+    // 빈 마디도 실제 쉼이다. 이전 마디의 `last`를 voice가 들고 있으므로,
+    // event가 0개인 마디에서도 그 끝에 release를 예약해야 다음 유효 음까지
+    // 의도치 않게 hold하지 않는다.
+    const releaseLast = last || (notes.length === 0 ? previous : null);
+    const tailReleaseAt = releaseLast && releaseLast.end < end - eps ? releaseLast.end : null;
+    return { start, end, attack, release, glide, vibRamp, notes, last, tailReleaseAt };
+  }
 
   /** 시김새 — 잔가락(스침음) · 퇴성(끝 흘림). [[박,길이,음,퇴성,잔가락여부]] */
   function ariOrnament(bar, r, level) {
@@ -180,9 +249,39 @@
       dayPhase: 0.5,
       autoDayNight: opts.autoDayNight !== false,
       volume: opts.volume === undefined ? 0.5 : opts.volume,
-      running: false, seed: opts.seed || 1234
+      running: false, stopping: false, seed: opts.seed || 1234,
+      // `renderAriPreview()`만 이 private seed를 준다. 일반 live/offline create는
+      // 여전히 Math.random()을 그대로 써서 기존 소리/난수 소비를 바꾸지 않는다.
+      renderRandomSeed: (typeof opts._renderRandomSeed === 'number' && Number.isFinite(opts._renderRandomSeed))
+        ? Math.floor(opts._renderRandomSeed) : null,
+      // 짧은 R&D preview는 16마디 phrase를 context 끝까지 억지로 유지하지 않는다.
+      // private opt라 제품의 live phrase 수명은 항상 한 pass(16마디)다.
+      performancePhraseEnd: (typeof opts._performancePhraseEnd === 'number' && Number.isFinite(opts._performancePhraseEnd))
+        ? Math.max(0, opts._performancePhraseEnd) : null,
+      renderMuteDaegeum: opts._renderMuteDaegeum === true,
+      // browser R&D harness만 Array를 준다. 실제 score를 다시 계산하지 않고 이
+      // runtime가 해석한 target event/control을 남겨 random A/B를 판정한다.
+      renderTrace: Array.isArray(opts._renderTrace) ? opts._renderTrace : null,
+      // R&D-01은 명시 opt-in 하나가 아니면 기존 `blow()` 경로를 단 한 음도
+      // 바꾸지 않는다. 외부 객체를 붙들지 않고 boolean으로 복사해 둔다.
+      performancePhrases: {
+        villageDayAriDaegeum: !!(opts.performancePhrases && opts.performancePhrases.villageDayAriDaegeum === true)
+      }
     };
     const LOOKAHEAD = 0.35, TICK = 60;
+
+    // preview 전용 난수는 호출 순서가 아닌 소리의 시간/역할 key에서 뽑는다.
+    // legacy는 음마다 숨 source를 열고 phrase는 한 번만 여므로 순차 RNG를 쓰면
+    // 뒤의 바람/반주까지 A/B가 달라진다. live에서는 아래 첫 줄로 정확히 기존
+    // Math.random() 호출 하나를 수행한다.
+    function renderRandom(key) {
+      if (state.renderRandomSeed === null) return Math.random();
+      let h = (state.renderRandomSeed | 0) ^ 0x9E3779B9;
+      const s = String(key);
+      for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x45d9f3b);
+      return mulberry32(h)();
+    }
+    const renderTimeKey = (v) => Math.round(v * 1000000);
 
     // ------------------------------------------------------------ 그래프
     function buildGraph() {
@@ -424,22 +523,23 @@
       return g;
     }
 
-    function noiseSrc(t0, dur) {
+    function noiseSrc(t0, dur, tag) {
       const s = state.ctx.createBufferSource();
       s.buffer = noise(); s.loop = true;
-      s.playbackRate.value = 0.9 + Math.random() * 0.2;
-      s.start(t0, Math.random() * 3); s.stop(t0 + dur + 0.05);
+      const key = (tag || 'noise') + ':' + renderTimeKey(t0) + ':' + renderTimeKey(dur);
+      s.playbackRate.value = 0.9 + renderRandom(key + ':rate') * 0.2;
+      s.start(t0, renderRandom(key + ':offset') * 3); s.stop(t0 + dur + 0.05);
       return s;
     }
 
-    function panTo(node, pan, send) {
+    function panTo(node, pan, send, wetTarget) {
       const ctx = state.ctx;
       let p;
       if (ctx.createStereoPanner) { p = ctx.createStereoPanner(); p.pan.value = pan; }
       else { p = ctx.createGain(); }
       node.connect(p);
       const sg = ctx.createGain(); sg.gain.value = send === undefined ? 0.3 : send;
-      p.connect(sg); sg.connect(state.wet);
+      p.connect(sg); sg.connect(wetTarget || state.wet);
       return p;                      // 호출부에서 p.connect(program.out)
     }
 
@@ -484,7 +584,7 @@
         osc.start(t0); osc.stop(t0 + dur + 0.06);
       }
       // 숨소리
-      const nz = noiseSrc(t0, dur);
+      const nz = noiseSrc(t0, dur, 'blow:' + renderTimeKey(freq));
       const bpf = ctx.createBiquadFilter(); bpf.type = 'bandpass';
       bpf.frequency.value = clamp(freq * 3, 700, 9000); bpf.Q.value = 0.7;
       const ng = ctx.createGain(); ng.gain.value = (o.breath === undefined ? 0.06 : o.breath) * 1.6;
@@ -495,6 +595,154 @@
       g.connect(lp);
       panTo(lp, o.pan || 0, o.send).connect(out);
     }
+
+    // ---------------------------------------------------------------- R&D-01 프레이즈 보이스
+    //
+    // `blow()`는 기존 음별 경로라 이 아래와 완전히 별개로 둔다. 이 보이스는 대금
+    // 한 악구 동안 harmonic oscillator·숨·LFO를 한 번만 열고, 마디마다 들어오는
+    // score event는 AudioParam 자동화만 더한다. 즉 연결 음에서 숨과 요성이 0으로
+    // 되돌아가지 않는다.
+    function PerformancePhrase(out, wetOut, t0, t1, o) {
+      o = o || {};
+      const ctx = state.ctx;
+      this.ctx = ctx;
+      this.start = t0;
+      this.end = t1;
+      this.o = Object.assign({
+        breath: 0.085, vibRate: 4.6, harm: 9, bright: 1.05,
+        scoop: 45, attack: 0.085, release: 0.20, vibRamp: 0.35,
+        pan: -0.18, send: 0.44
+      }, o);
+      this.closed = false;
+      this.last = null;
+      this.lastReleaseAt = -Infinity;
+      this.sources = [];
+      this.oscs = [];
+
+      // 악구 envelope와 음별 expression gain을 분리한다. 앞은 첫 어택/마지막
+      // 릴리즈만, 뒤는 잔가락 세기와 실제 쉼의 여닫기만 맡는다.
+      this.phraseGain = ctx.createGain();
+      this.noteGain = ctx.createGain();
+      const pg = this.phraseGain.gain;
+      pg.setValueAtTime(0.0001, t0);
+      pg.exponentialRampToValueAtTime(1, t0 + this.o.attack);
+      pg.setValueAtTime(1, Math.max(t0 + this.o.attack, t1 - this.o.release));
+      pg.exponentialRampToValueAtTime(0.0001, t1);
+      this.noteGain.gain.setValueAtTime(0.0001, t0);
+
+      this.lp = ctx.createBiquadFilter(); this.lp.type = 'lowpass';
+      this.lp.frequency.setValueAtTime(4200, t0);
+      this.breathFilter = ctx.createBiquadFilter(); this.breathFilter.type = 'bandpass';
+      this.breathFilter.frequency.setValueAtTime(1800, t0); this.breathFilter.Q.value = 0.7;
+      this.phraseGain.connect(this.lp);
+      // generic `panTo()`의 wet send는 state.wet으로 곧장 간다. phrase만은
+      // Program-local wetOut을 거쳐 scene crossfade와 함께 감쇠시킨다.
+      panTo(this.lp, this.o.pan, this.o.send, wetOut).connect(out);
+
+      // 하나의 위상으로 계속 도는 요성. 각 oscillator의 detune에는 이 LFO만
+      // 연결하고, 퇴성은 base frequency 곡선으로 넣어 둘 신호가 충돌하지 않게 한다.
+      this.lfo = ctx.createOscillator(); this.lfo.frequency.value = this.o.vibRate;
+      this.vibGain = ctx.createGain(); this.vibGain.gain.setValueAtTime(0.001, t0);
+      this.lfo.connect(this.vibGain);
+      this.lfo.start(t0); this.lfo.stop(t1 + 0.06);
+      this.sources.push(this.lfo);
+
+      const harm = Math.min(8, this.o.harm || 7); // legacy `blow()`와 같은 상한
+      for (let k = 1; k <= harm; k++) {
+        const osc = ctx.createOscillator(); osc.type = 'sine';
+        osc.frequency.setValueAtTime(440 * k, t0);
+        // phrase 처음에만 어택 scoop. 중간 음에서는 다시 잡아당기지 않는다.
+        osc.detune.setValueAtTime(-this.o.scoop, t0);
+        osc.detune.linearRampToValueAtTime(0, t0 + 0.09);
+        this.vibGain.connect(osc.detune);
+        const kg = ctx.createGain();
+        let a = 1 / Math.pow(k, 1.9 - 0.55 * this.o.bright);
+        if (k % 2 === 0) a *= 0.55;
+        kg.gain.setValueAtTime(0.0001, t0);
+        kg.gain.linearRampToValueAtTime(a, t0 + (k <= 2 ? 0.02 : 0.02 * k + 0.08));
+        osc.connect(kg); kg.connect(this.noteGain);
+        osc.start(t0); osc.stop(t1 + 0.06);
+        this.oscs.push({ osc, k }); this.sources.push(osc);
+      }
+
+      const nz = noiseSrc(t0, Math.max(0.02, t1 - t0), 'phrase:' + renderTimeKey(t1 - t0));
+      const ng = ctx.createGain(); ng.gain.value = this.o.breath * 1.6;
+      nz.connect(this.breathFilter); this.breathFilter.connect(ng); ng.connect(this.noteGain);
+      this.noteGain.connect(this.phraseGain);
+      this.sources.push(nz);
+    }
+
+    PerformancePhrase.prototype.setPitch = function (freq, at, tc, immediate) {
+      for (const x of this.oscs) {
+        const p = x.osc.frequency, target = freq * x.k;
+        if (immediate) p.setValueAtTime(target, at);
+        else p.setTargetAtTime(target, at, Math.max(0.004, tc / 3));
+      }
+    };
+
+    PerformancePhrase.prototype.releaseAt = function (at) {
+      // 현재보다 과거인 release를 다음 tick에서 뒤늦게 다시 넣지 않는다. trailing
+      // rest는 그 rest가 있는 bar를 처음 예약할 때 이미 미래 시간으로 들어간다.
+      if (at <= this.lastReleaseAt + 1e-4 || at < this.ctx.currentTime - 0.001) return;
+      const t = Math.max(this.start, at);
+      const tc = Math.max(0.004, this.o.release / 3);
+      this.noteGain.gain.setTargetAtTime(0.0001, t, tc);
+      this.vibGain.gain.setTargetAtTime(0.001, t, tc);
+      this.lastReleaseAt = at;
+    };
+
+    PerformancePhrase.prototype.scheduleBar = function (events, barEnd) {
+      if (this.closed) return null;
+      const end = (typeof barEnd === 'number' && Number.isFinite(barEnd))
+        ? clamp(barEnd, this.start, this.end) : this.end;
+      const plan = planPerformancePhrase(events, {
+        start: this.start, end: end,
+        attack: this.o.attack, release: this.o.release,
+        glide: this.o.attack, vibRamp: this.o.vibRamp,
+        previous: this.last
+      });
+      const g = this.noteGain.gain, vg = this.vibGain.gain;
+      for (const n of plan.notes) {
+        if (n.legato) {
+          this.setPitch(n.freq, n.start, n.transition, false);
+          g.setTargetAtTime(Math.max(0.0001, n.amp * 0.47), n.start, n.transition / 3);
+          // 이 줄에는 0을 쓰지 않는다. 앞 음의 요성 깊이에서 새 목표까지 간다.
+          vg.setTargetAtTime(Math.max(0.001, n.vibCents), n.start, n.vibRamp / 3);
+        } else {
+          if (this.last) {
+            this.releaseAt(this.last.end);
+          }
+          // 실제 쉼 뒤에는 gain이 닫힌 상태에서 새 음으로 옮긴 뒤, 현재 `blow()`와
+          // 같은 지연 요성으로 다시 연다.
+          this.setPitch(n.freq, n.start, 0, true);
+          g.setTargetAtTime(Math.max(0.0001, n.amp * 0.47), n.start, Math.max(0.004, this.o.attack / 3));
+          vg.setValueAtTime(0.001, n.start);
+          vg.setValueAtTime(0.001, n.vibAt);
+          vg.linearRampToValueAtTime(Math.max(0.001, n.vibCents), n.vibAt + n.vibRamp);
+        }
+        if (n.bendAt !== null) this.setPitch(n.bendFreq, n.bendAt, Math.max(0.004, n.end - n.bendAt), false);
+        this.lp.frequency.setTargetAtTime(clamp(n.freq * 12 + 2500, 900, 16000), n.start, 0.02);
+        this.breathFilter.frequency.setTargetAtTime(clamp(n.freq * 3, 700, 9000), n.start, 0.02);
+        this.last = n;
+      }
+      if (plan.tailReleaseAt !== null) this.releaseAt(plan.tailReleaseAt);
+      return plan;
+    };
+
+    PerformancePhrase.prototype.stopAt = function (at) {
+      if (this.closed) return;
+      this.closed = true;
+      const t = Math.max(at, this.ctx.currentTime);
+      const p = this.phraseGain.gain;
+      // scene 전환은 아직 미래인 `dieAt`에 예약한다. 지원하는 브라우저에서는 이미
+      // 예약된 phrase release의 현재값을 붙들고, 구형 구현은 안전하게 바로 감쇠한다.
+      if (p.cancelAndHoldAtTime) p.cancelAndHoldAtTime(t);
+      else { p.cancelScheduledValues(t); p.setValueAtTime(Math.max(0.0001, p.value), t); }
+      p.linearRampToValueAtTime(0.0001, t + 0.015);
+      for (const s of this.sources) {
+        try { s.stop(t + 0.02); } catch (e) { }
+      }
+    };
 
     const daegeum = (out, t, f, d, o) => blow(out, t, f, d, Object.assign(
       { breath: 0.085, vibRate: 4.6, vibCents: 34, harm: 9, bright: 1.05, scoop: 45, attack: 0.085, release: 0.2 }, o));
@@ -547,7 +795,7 @@
       const amp = (o.amp === undefined ? 0.5 : o.amp);
       // ① 술대 타격
       const mk = (lo, hi, dec, gain) => {
-        const nz = noiseSrc(t0, dec * 6 + 0.02);
+        const nz = noiseSrc(t0, dec * 6 + 0.02, 'geomungo:' + lo + ':' + hi);
         const f = ctx.createBiquadFilter(); f.type = 'bandpass';
         f.frequency.value = Math.sqrt(lo * hi); f.Q.value = 0.7;
         const g = ctx.createGain();
@@ -561,7 +809,7 @@
       mk(170, 760, 0.030, 0.8).connect(slap);
       const wood = ctx.createBiquadFilter(); wood.type = 'bandpass';
       wood.frequency.value = 1380; wood.Q.value = 9;
-      const wn = noiseSrc(t0, 0.09);
+      const wn = noiseSrc(t0, 0.09, 'geomungo:wood:' + renderTimeKey(freq));
       const wg = ctx.createGain();
       wg.gain.setValueAtTime(amp * 0.9, t0);
       wg.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.075);
@@ -610,7 +858,7 @@
         osc.connect(g); g.connect(sum);
         osc.start(t0); osc.stop(t0 + dec + 0.05);
       });
-      const nz = noiseSrc(t0, 0.08);
+      const nz = noiseSrc(t0, 0.08, 'metal:' + (o.small ? 'small' : 'large') + ':' + o.base);
       const bpf = ctx.createBiquadFilter(); bpf.type = 'bandpass';
       bpf.frequency.value = o.small ? 6000 : 4000; bpf.Q.value = 0.5;
       const ng = ctx.createGain();
@@ -649,7 +897,8 @@
       const lp = ctx.createBiquadFilter(); lp.type = 'lowpass';
       lp.frequency.value = o.cutoff || 1200; lp.Q.value = 0.4;
       // 아주 느린 필터 흔들림
-      const lfo = ctx.createOscillator(); lfo.frequency.value = 0.06 + Math.random() * 0.05;
+      const lfo = ctx.createOscillator();
+      lfo.frequency.value = 0.06 + renderRandom('pad:' + renderTimeKey(t0) + ':' + renderTimeKey(freq) + ':' + renderTimeKey(dur)) * 0.05;
       const lg = ctx.createGain(); lg.gain.value = (o.cutoff || 1200) * 0.2;
       lfo.connect(lg); lg.connect(lp.frequency); lfo.start(t0); lfo.stop(t0 + dur + 0.1);
       g.connect(lp);
@@ -659,7 +908,7 @@
     function windBed(out, t0, dur, o) {
       o = o || {};
       const ctx = state.ctx;
-      const nz = noiseSrc(t0, dur);
+      const nz = noiseSrc(t0, dur, 'wind:' + (o.hz || 600) + ':' + renderTimeKey(o.pan || 0));
       const bpf = ctx.createBiquadFilter(); bpf.type = 'bandpass';
       bpf.frequency.value = o.hz || 600; bpf.Q.value = o.q || 0.6;
       const lfo = ctx.createOscillator(); lfo.frequency.value = 0.05;
@@ -677,7 +926,7 @@
 
     function chirp(out, t0, o) {          // 풀벌레 한 마디
       const ctx = state.ctx;
-      const nz = noiseSrc(t0, 0.6);
+      const nz = noiseSrc(t0, 0.6, 'chirp:' + renderTimeKey(o.hz) + ':' + renderTimeKey(o.pan || 0));
       const bpf = ctx.createBiquadFilter(); bpf.type = 'bandpass';
       bpf.frequency.value = o.hz; bpf.Q.value = 14;
       const g = ctx.createGain(); g.gain.value = 0;
@@ -698,10 +947,20 @@
       const out = ctx.createGain();
       out.gain.value = 0.0001;
       out.connect(state.dry);
+      // phrase의 reverb send는 `panTo()` 기본 경로(state.wet)를 우회하면 scene
+      // fade 뒤에도 남는다. 이 bus는 phrase send만 받고 Program dry out과 같은
+      // automation을 받아 같이 사라진다.
+      const wetOut = ctx.createGain();
+      wetOut.gain.value = 0.0001;
+      wetOut.connect(state.wet);
       const r = mulberry32(seed);
       const P = {
-        scene: scene, mood: mood, out: out, rnd: r,
-        cycle: 0, nextTime: 0, dying: false, bedUntil: 0
+        scene: scene, mood: mood, out: out, wetOut: wetOut, rnd: r,
+        cycle: 0, nextTime: 0, dying: false, bedUntil: 0,
+        daegeumPhrase: null
+      };
+      P.dispose = function (at) {
+        if (P.daegeumPhrase) P.daegeumPhrase.stopAt(at);
       };
 
       // 장면별 설정
@@ -716,7 +975,7 @@
       // 아리랑 편성 — 장면마다 조(do)·박 길이·절 구성이 다르다
       P.ari = {
         village_day: {
-          do: 70, beat: 0.72, drumBase: 0.62, swing: 0.14,
+          do: 70, beat: ARI_VILLAGE_DAY_BEAT, drumBase: 0.62, swing: 0.14,
           gaya: [[0, 0], [.5, 2], [1, 4], [1.5, 2], [2, 3], [2.5, 4]], gayaAmp: 0.24,
           passes: [
             { drum: .75, lead: [{ i: 'daegeum', amp: .40, orn: .6, vib: 30 }], bassEvery: 2 },
@@ -753,6 +1012,22 @@
         }
       }[scene];
 
+      // 같은 pass는 정확히 16마디다. 대금만 이 경계에서 한 voice를 열고,
+      // 매 마디가 돌아올 때 score event를 추가한다. 먼저 미래 16마디의 ornament를
+      // 뽑지 않아 `r()` 소비 순서(장단·가야금 포함)를 보존한다.
+      P.ensureDaegeumPhrase = function (t0, b, barLen, L) {
+        if (!P.daegeumPhrase || P.daegeumPhrase.closed || b === 0) {
+          if (P.daegeumPhrase) P.daegeumPhrase.stopAt(t0);
+          const passEnd = t0 + (ARI_NBAR - b) * barLen;
+          const phraseEnd = state.performancePhraseEnd === null ? passEnd : Math.min(passEnd, state.performancePhraseEnd);
+          P.daegeumPhrase = new PerformancePhrase(out, wetOut, t0, phraseEnd, {
+            pan: L.pan === undefined ? -0.18 : L.pan,
+            send: L.send === undefined ? 0.44 : L.send
+          });
+        }
+        return P.daegeumPhrase;
+      };
+
       /** 아리랑 한 마디(=세마치 한 장단). 반환값은 마디 길이(초). */
       P.ariBar = function (t0, c) {
         const A = P.ari, hot = clamp(state.intensity, 0, 1);
@@ -782,7 +1057,61 @@
         }
         for (const L of pass.lead) {
           const inst = { daegeum: daegeum, danso: danso, piri: piri }[L.i];
-          for (const [bt, bd, n, bend, isG] of ariOrnament(ARIRANG[b], r, L.orn)) {
+          // 이 호출의 위치는 legacy와 같아야 한다. phrase가 다음 마디의 장식음을
+          // 미리 물으면 shared PRNG가 달라져 반주까지 A/B가 아니게 된다.
+          const ornaments = ariOrnament(ARIRANG[b], r, L.orn);
+          const targetDaegeum = scene === 'village_day' && mood === 'ari' && L.i === 'daegeum';
+          const phraseEvents = ornaments.map(([bt, bd, n, bend, isG]) => ({
+            start: t0 + bt * beat,
+            // legacy의 `* 0.95`는 음마다 작은 구멍을 만든다. phrase는 score의
+            // 명목 길이를 쓰고, 진짜 쉼만 plan이 reattack으로 읽는다.
+            end: t0 + (bt + bd) * beat,
+            freq: ariF(A.do + 12 * (L.oct || 0), n),
+            amp: L.amp * (isG ? 0.55 : 1),
+            vibCents: bd >= 1 ? (L.vib || 30) : 18,
+            vibDelay: bd >= 1 ? 0.2 : 0.34,
+            bendEnd: bend, grace: !!isG
+          }));
+          const trace = state.renderTrace && targetDaegeum ? {
+            bar: b,
+            // score는 feature-off/phrase 양쪽에서 bit-identical이어야 한다.
+            score: phraseEvents.map((e) => Object.assign({}, e)),
+            control: null
+          } : null;
+          // R&D A/B는 identical accompaniment reference도 필요하다. ornament는
+          // 먼저 풀어 shared score RNG 소비를 보존한 뒤 target daegeum만 뺀다.
+          if (state.renderMuteDaegeum && targetDaegeum) {
+            if (trace) { trace.control = { muted: true }; state.renderTrace.push(trace); }
+            continue;
+          }
+          const phraseScope = state.performancePhrases.villageDayAriDaegeum
+            && targetDaegeum;
+          if (phraseScope) {
+            // 전환 중인 Program은 이미 `dispose(dieAt)`가 voice를 닫았다. 여기서
+            // legacy 음을 새로 열면 fade 뒤에 옛 표현이 되살아나는 역전이 생긴다.
+            if (!P.dying) {
+              const voice = P.ensureDaegeumPhrase(t0, b, barLen, L);
+              const plan = voice.scheduleBar(phraseEvents, t0 + barLen);
+              if (trace && plan) {
+                trace.control = {
+                  phrase: true, tailReleaseAt: plan.tailReleaseAt,
+                  notes: plan.notes.map((n) => ({ start: n.start, end: n.end, freq: n.freq,
+                    amp: n.amp, vibAt: n.vibAt, vibRamp: n.vibRamp, bendAt: n.bendAt,
+                    bendFreq: n.bendFreq, legato: n.legato, reattack: n.reattack, gap: n.gap }))
+                };
+              }
+            }
+            if (trace) state.renderTrace.push(trace);
+            continue;
+          }
+          if (trace) {
+            trace.control = { phrase: false, notes: phraseEvents.map((e) => ({
+              start: e.start, end: e.end * .95 + e.start * .05, freq: e.freq, amp: e.amp,
+              vibDelay: e.vibDelay, bendEnd: e.bendEnd, grace: e.grace
+            })) };
+            state.renderTrace.push(trace);
+          }
+          for (const [bt, bd, n, bend, isG] of ornaments) {
             inst(out, t0 + bt * beat, ariF(A.do + 12 * (L.oct || 0), n), bd * beat * 0.95, {
               amp: L.amp * (isG ? 0.55 : 1), vibCents: bd >= 1 ? (L.vib || 30) : 18,
               vibDelay: bd >= 1 ? 0.2 : 0.34, bendEnd: bend,
@@ -1022,6 +1351,7 @@
         const p = state.programs[i];
         if (p.dying && now > p.dieAt) {
           try { p.out.disconnect(); } catch (e) { }
+          try { p.wetOut.disconnect(); } catch (e) { }
           state.programs.splice(i, 1);
           continue;
         }
@@ -1034,20 +1364,30 @@
     }
 
     function switchTo(scene, mood, fade) {
-      if (!state.running) return;
+      // stop fade는 terminal이다. 이 창에도 day/night·mood 이벤트는 들어올 수
+      // 있지만 새 Program(특히 새 phrase source)을 열어서는 안 된다.
+      if (!state.running || state.stopping) return;
       const now = state.ctx.currentTime;
       fade = fade === undefined ? 2.5 : fade;
       for (const p of state.programs) {
         if (p.dying) continue;
         p.dying = true; p.dieAt = now + fade;
+        // R&D phrase source도 Program의 out fade 끝에서 멎힌다. 기본 Program의
+        // dispose는 no-op이라 기존 scene crossfade 경로에는 변화가 없다.
+        if (p.dispose) p.dispose(p.dieAt);
         p.out.gain.cancelScheduledValues(now);
         p.out.gain.setValueAtTime(Math.max(0.0001, p.out.gain.value), now);
         p.out.gain.linearRampToValueAtTime(0.0001, now + fade);
+        p.wetOut.gain.cancelScheduledValues(now);
+        p.wetOut.gain.setValueAtTime(Math.max(0.0001, p.wetOut.gain.value), now);
+        p.wetOut.gain.linearRampToValueAtTime(0.0001, now + fade);
       }
       const np = makeProgram(scene, mood, (state.seed = (state.seed * 1103515245 + 12345) & 0x7fffffff));
       np.nextTime = now + 0.08;
       np.out.gain.setValueAtTime(0.0001, now);
       np.out.gain.linearRampToValueAtTime(1, now + Math.min(fade, 1.8));
+      np.wetOut.gain.setValueAtTime(0.0001, now);
+      np.wetOut.gain.linearRampToValueAtTime(1, now + Math.min(fade, 1.8));
       state.programs.push(np);
     }
 
@@ -1057,7 +1397,7 @@
       _offlineStart(seconds) {
         state.ctx = opts.context;
         buildGraph();
-        state.running = true;
+        state.running = true; state.stopping = false;
         switchTo(state.scene, state.mood, 0.6);
         const p = state.programs[state.programs.length - 1];
         p.nextTime = 0.05;
@@ -1073,22 +1413,38 @@
         if (!AC && !opts.context) throw new Error('Web Audio 미지원');
         if (!state.ctx) { state.ctx = opts.context || new AC(); buildGraph(); }
         if (state.ctx.state === 'suspended') await state.ctx.resume();
-        state.running = true;
+        state.running = true; state.stopping = false;
         switchTo(state.scene, state.mood, 1.2);
         state.timer = setInterval(tick, TICK);
         tick();
         return api;
       },
       stop(fade) {
-        if (!state.running) return api;
+        if (!state.running || state.stopping) return api;
+        state.stopping = true;
         fade = fade === undefined ? 1.5 : fade;
         const now = state.ctx.currentTime;
         state.master.gain.cancelScheduledValues(now);
         state.master.gain.setValueAtTime(state.master.gain.value, now);
         state.master.gain.linearRampToValueAtTime(0.0001, now + fade);
+        // `stop()`도 scene 전환처럼 Program을 retire한다. master만 fade하면
+        // tick가 fade 창 동안 다음 ariBar를 예약해 closed phrase를 새로 열 수 있다.
+        for (const p of state.programs) {
+          p.dying = true; p.dieAt = now + fade;
+          if (p.dispose) p.dispose(p.dieAt);
+          // master fade만으로는 phrase의 Program-local wet send를 제어할 수 없다.
+          // wetOut에 같은 curve를 걸어 dry/master와 동기화한다(legacy send는 이
+          // bus를 쓰지 않아 종전 stop 음색은 그대로다).
+          p.wetOut.gain.cancelScheduledValues(now);
+          p.wetOut.gain.setValueAtTime(Math.max(0.0001, p.wetOut.gain.value), now);
+          p.wetOut.gain.linearRampToValueAtTime(0.0001, now + fade);
+        }
         setTimeout(() => {
-          clearInterval(state.timer); state.timer = null; state.running = false;
-          for (const p of state.programs) { try { p.out.disconnect(); } catch (e) { } }
+          clearInterval(state.timer); state.timer = null; state.running = false; state.stopping = false;
+          for (const p of state.programs) {
+            try { p.out.disconnect(); } catch (e) { }
+            try { p.wetOut.disconnect(); } catch (e) { }
+          }
           state.programs.length = 0;
           state.master.gain.setValueAtTime(state.volume, state.ctx.currentTime);
         }, fade * 1000 + 80);
@@ -1098,13 +1454,14 @@
         if (!(scene in { village_day: 1, village_night: 1, battle: 1, journey: 1 })) return api;
         if (scene === state.scene) return api;
         state.scene = scene;
-        switchTo(scene, state.mood, fade);
+        // 다음 start의 선택값은 기억하되, stop fade를 되살리지는 않는다.
+        if (!state.stopping) switchTo(scene, state.mood, fade);
         return api;
       },
       setMood(mood, fade) {
         if (mood === state.mood) return api;
         state.mood = mood;
-        switchTo(state.scene, mood, fade);
+        if (!state.stopping) switchTo(state.scene, mood, fade);
         return api;
       },
       setIntensity(v) { state.intensity = clamp(v, 0, 1); return api; },
@@ -1119,7 +1476,9 @@
       },
       setVolume(v) {
         state.volume = clamp(v, 0, 1);
-        if (state.master) {
+        // volume은 다음 start를 위해 기억한다. stop의 master fade를 취소해
+        // 소리를 되살리지는 않는다.
+        if (state.master && !state.stopping) {
           const now = state.ctx.currentTime;
           state.master.gain.cancelScheduledValues(now);
           state.master.gain.setTargetAtTime(state.volume, now, 0.08);
@@ -1145,13 +1504,59 @@
     const ctx = new OAC(2, Math.ceil(secs * sr), sr);
     const bgm = create(Object.assign({}, o, { context: ctx, volume: o.volume === undefined ? 0.9 : o.volume }));
     if (o.intensity !== undefined) bgm.setIntensity(o.intensity);
-    bgm._offlineStart(secs);
+    // R&D preview만 content 예약 끝과 render tail을 분리한다. 보통 offline render
+    // 호출은 `secs` 전부를 종전처럼 예약한다.
+    const scheduleUntil = (typeof o._offlineScheduleUntil === 'number' && Number.isFinite(o._offlineScheduleUntil))
+      ? clamp(o._offlineScheduleUntil, 0, secs) : secs;
+    bgm._offlineStart(scheduleUntil);
+    if (typeof o._offlineMasterFadeAt === 'number' && Number.isFinite(o._offlineMasterFadeAt)) {
+      const at = clamp(o._offlineMasterFadeAt, 0, secs);
+      const dur = clamp(typeof o._offlineMasterFadeDuration === 'number' ? o._offlineMasterFadeDuration : 0.06, 0.01, 1);
+      const g = bgm._state.master.gain;
+      g.setValueAtTime(Math.max(0.0001, g.value), at);
+      g.linearRampToValueAtTime(0.0001, Math.min(secs, at + dur));
+    }
     return await ctx.startRendering();
   }
 
+  /**
+   * R&D 청취용: 본조 아리랑 첫 N마디를 같은 seed로 뽑는다.
+   * `variant:'legacy'`는 기존 음별 대금, `'phrase'`는 opt-in 프레이즈 대금이다.
+   * `lead:false`는 target 대금을 뺀 identical accompaniment reference다.
+   * 선택 마디 뒤에는 짧은 안전 fade tail만 붙고, 다음 마디는 예약하지 않는다.
+   * 파일을 쓰지 않고 AudioBuffer만 돌려주므로 A/B 저장은 호출자가 결정한다.
+   */
+  async function renderAriPreview(o) {
+    o = o || {};
+    const variant = o.variant || 'legacy';
+    if (variant !== 'legacy' && variant !== 'phrase') throw new Error('알 수 없는 아리랑 미리듣기 판: ' + variant);
+    const bars = clamp(Math.floor(o.bars === undefined ? 4 : o.bars), 1, ARI_NBAR);
+    const tail = clamp(typeof o.tail === 'number' && Number.isFinite(o.tail) ? o.tail : 0.12, 0.08, 1.0);
+    const x = Object.assign({}, o);
+    delete x.variant; delete x.bars; delete x.tail; delete x.lead;
+    x.scene = 'village_day';
+    x.mood = 'ari';
+    // `_offlineStart`의 첫 마디는 0.05초에서 시작한다. 선택한 마디 끝에서
+    // phrase를 release하고 master도 짧게 fade한 뒤 tail을 렌더한다. 이 separation
+    // 없이는 4마디 context가 16마디 phrase의 열린 파형을 잘라 click을 만든다.
+    const musicEnd = 0.05 + bars * 3 * ARI_VILLAGE_DAY_BEAT;
+    x.seconds = musicEnd + tail;
+    x._offlineScheduleUntil = musicEnd - 0.001;
+    x._performancePhraseEnd = musicEnd;
+    x._offlineMasterFadeAt = musicEnd;
+    x._offlineMasterFadeDuration = Math.min(0.06, tail);
+    const previewSeed = (typeof x.seed === 'number' && Number.isFinite(x.seed)) ? Math.floor(x.seed) : 1234;
+    x._renderRandomSeed = (previewSeed ^ 0x6D2B79F5) | 0;
+    x._renderMuteDaegeum = o.lead === false;
+    x.performancePhrases = { villageDayAriDaegeum: variant === 'phrase' };
+    return renderOffline(x);
+  }
+
   global.DurangoBGM = {
-    create: create, renderOffline: renderOffline,
+    create: create, renderOffline: renderOffline, renderAriPreview: renderAriPreview,
     PYEONGJO: PYEONGJO, GYEMYEONJO: GYEMYEONJO, JANGDAN: JANGDAN,
+    // score → expression 경계. AudioContext가 없는 단위 하네스와 이후 ML renderer가 쓴다.
+    planPerformancePhrase: planPerformancePhrase,
     // ★[T305] 리미터 곡선 **정본**. `48-a-audio.js` 가 이것을 부른다(사본 0).
     softLimiterCurve: softLimiterCurve, LIMITER_KNEE: LIMITER_KNEE
   };
