@@ -106,6 +106,22 @@ def _integer(value: Any, *, label: str, minimum: int, maximum: int) -> int:
     return result
 
 
+def _sha256_text(value: Any, *, label: str) -> str:
+    if not isinstance(value, str) or len(value) != 64:
+        raise SyntheticPreviewError(f"{label} must be a lowercase SHA-256 digest")
+    if any(character not in "0123456789abcdef" for character in value):
+        raise SyntheticPreviewError(f"{label} must be a lowercase SHA-256 digest")
+    return value
+
+
+def _plan_basename(value: Any) -> str:
+    if not isinstance(value, str) or not value or value in {".", ".."}:
+        raise SyntheticPreviewError("controls manifest.input.plan_basename must be a plan filename")
+    if "/" in value or "\\" in value:
+        raise SyntheticPreviewError("controls manifest.input.plan_basename must not contain a path")
+    return value
+
+
 def _array(archive: Any, key: str, *, frames: int, finite: bool = True) -> numpy.ndarray:
     if key not in archive.files:
         raise SyntheticPreviewError(f"controls archive is missing {key}")
@@ -147,6 +163,11 @@ def _validate_score_manifest(manifest: Mapping[str, Any], *, controls_path: Path
     source_input = _mapping(manifest.get("input"), label="controls manifest.input")
     for key in ("source_audio_read", "model_training_run", "game_or_runtime_asset_read_or_written"):
         _require_false(source_input, key, label="controls manifest.input")
+    plan_basename = _plan_basename(source_input.get("plan_basename"))
+    plan_sha256 = _sha256_text(
+        source_input.get("plan_sha256"),
+        label="controls manifest.input.plan_sha256",
+    )
 
     limits = _mapping(manifest.get("interpretation_limits"), label="controls manifest.interpretation_limits")
     for key in (
@@ -196,6 +217,8 @@ def _validate_score_manifest(manifest: Mapping[str, Any], *, controls_path: Path
         "scope": {key: True for key in SCOPE_KEYS},
         "controls_sha256": str(controls["sha256"]),
         "manifest_sha256": None,
+        "plan_basename": plan_basename,
+        "plan_sha256": plan_sha256,
         "sample_rate_hz": sample_rate_hz,
         "control_hz": control_hz,
         "frame_count": frame_count,
@@ -399,6 +422,10 @@ def render_synthetic_preview(
             "artifact": SCORE_CONTROLS_FILENAME,
             "sha256": controls["controls_sha256"],
             "score_expression_manifest_sha256": controls["manifest_sha256"],
+            "score_expression_plan": {
+                "basename": controls["plan_basename"],
+                "sha256": controls["plan_sha256"],
+            },
             "schema": SCORE_CONTROLS_SCHEMA,
             "frame_count": controls["frame_count"],
             "event_count": controls["event_count"],

@@ -119,6 +119,9 @@ class SyntheticPreviewTests(unittest.TestCase):
             self.assertIn("not a real or trained Daegeum", manifest["renderer"]["instrument_claim"])
             self.assertIn("UNTRAINED SYNTHETIC", manifest["output"]["label"])
             self.assertTrue(manifest["interpretation_limits"]["not_a_real_or_trained_daegeum_render"])
+            plan_identity = manifest["input_controls"]["score_expression_plan"]
+            self.assertEqual(plan_identity["basename"], "explicit-score-plan.json")
+            self.assertRegex(plan_identity["sha256"], r"^[0-9a-f]{64}$")
             sidecar = sidecar_path.read_text(encoding="utf-8")
             self.assertNotIn(str(root), sidecar)
             self.assertNotIn("public/assets/audio/bgm", sidecar)

@@ -51,9 +51,10 @@ a model, or writes game assets.
 ```
 
 The optional `--seed` only makes the generic synthetic air-noise repeatable.
-The sidecar records it, the two input digests, the one global monitoring gain,
-and the explicit limits.  It is not a model export, training result, gameplay
-audio, or clearance to use source recordings for training or distribution.
+The sidecar records it, the compiler-attested score-plan basename and SHA-256,
+the two input-artifact digests, the one global monitoring gain, and the
+explicit limits.  It is not a model export, training result, gameplay audio,
+or clearance to use source recordings for training or distribution.
 
 ## WSL / RTX 4060 preparation
 
