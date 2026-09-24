@@ -64,6 +64,22 @@ def _truth_boundary_status() -> dict[str, bool]:
     }
 
 
+def _truth_phrase_pool_status() -> dict[str, bool]:
+    return {
+        "all_results_remain_unreviewed": True,
+        "automatic_measurements_are_not_a_musical_phrase_or_arirang_style_label": True,
+        "source_is_one_sha_verified_ngc_manifest_catalog_recording": True,
+        "raw_span_is_one_contiguous_native_coordinate_range": True,
+        "not_evidence_of_same_breath": True,
+        "not_evidence_of_slur": True,
+        "not_evidence_of_natural_legato": True,
+        "not_an_approved_transition_or_phrase": True,
+        "not_a_transition_bank_item": True,
+        "not_a_training_item": True,
+        "not_a_game_asset": True,
+    }
+
+
 def _make_bundle(root: Path, *, gap_at: int | None = None) -> tuple[Path, dict[str, object], str]:
     bundle = root / "bundle"
     bundle.mkdir()
@@ -148,6 +164,40 @@ def _trajectory_report(source: dict[str, object], catalog_sha: str) -> dict[str,
     }
 
 
+def _phrase_pool_report(source: dict[str, object], catalog_sha: str) -> dict[str, object]:
+    candidate = {
+        "candidate_id": "pool_fixture_medium_rising",
+        "priority_rank": 1,
+        "source": {
+            "source_id": source["source_id"],
+            "sha256": source["sha256"],
+            "relative_path": source["relative_path"],
+            "sample_rate_hz": 1000,
+            "frame_count": 500,
+            "ngc_extend_seq": 42,
+        },
+        "native_source_span": {
+            "frame_range": [90, 150],
+            "frame_count": 60,
+            "single_contiguous_source_frame_range": True,
+            "coordinate_only_not_a_verified_phrase_or_gesture_boundary": True,
+        },
+        "automatic_candidate_status": _truth_phrase_pool_status(),
+    }
+    return {
+        "schema": f"{RND06_SCHEMA}.source-led-phrase-pool.v1",
+        "artifact_kind": "unreviewed_source_led_contiguous_raw_span_pool",
+        "input": {
+            "bundle": {"directory_basename": "bundle", "source_catalog_sha256": catalog_sha},
+            "ngc_extended_manifest": {
+                "basename": "ngc-extended-daegeum-sanjo.manifest.json",
+                "sha256": "a" * 64,
+            },
+        },
+        "candidates": [candidate],
+    }
+
+
 class SourceLedContourTest(unittest.TestCase):
     def test_direct_report_is_deterministic_and_does_not_need_a_wav(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -229,6 +279,42 @@ class SourceLedContourTest(unittest.TestCase):
             self.assertEqual(result["counts"]["stable_region_suggestion_count"], 0)
             self.assertEqual(result["feature_cache"]["input_declared_feature_span"], None)
             self.assertNotIn("breath", json.dumps(result["coarse_feature_proxy_contour"], sort_keys=True).lower())
+
+    def test_phrase_pool_report_preserves_its_unreviewed_coordinate_contract(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            bundle, source, catalog_sha = _make_bundle(root)
+            report = root / "phrase-pool.json"
+            _write_json(report, _phrase_pool_report(source, catalog_sha))
+            result = build_source_led_contour(
+                bundle,
+                report,
+                root / "out",
+                priority_rank=1,
+                coarse_max_points=4,
+                include_stable_region_suggestions=False,
+            )
+            self.assertEqual(result["input_selection"]["kind"], "source_led_phrase_pool_report_row")
+            self.assertEqual(result["input_truth_labels"]["field"], "automatic_candidate_status")
+            self.assertEqual(result["native_source_span"]["frame_range"], [90, 150])
+            self.assertEqual(result["feature_cache"]["input_declared_feature_span"], None)
+            self.assertEqual(
+                result["input_selection"]["declared_ngc_extended_manifest"]["basename"],
+                "ngc-extended-daegeum-sanjo.manifest.json",
+            )
+            self.assertTrue(result["interpretation_limits"]["source_audio_not_read_written_transformed_or_rendered"])
+
+    def test_phrase_pool_catalog_mismatch_is_rejected_before_output(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            bundle, source, catalog_sha = _make_bundle(root)
+            report = _phrase_pool_report(source, catalog_sha)
+            report["input"]["bundle"]["source_catalog_sha256"] = "0" * 64  # type: ignore[index]
+            input_path = root / "phrase-pool.json"
+            _write_json(input_path, report)
+            with self.assertRaises(SourceLedContourError):
+                build_source_led_contour(bundle, input_path, root / "rejected", priority_rank=1)
+            self.assertFalse((root / "rejected").exists())
 
     def test_rejects_catalog_mismatch_and_feature_timeline_gap(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

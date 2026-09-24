@@ -172,9 +172,22 @@ channel change·fade가 없다.
 `not_game_asset`다. 즉 단음 이어붙임보다 자연스러운 **원본의 연속 호흡/음색 변화 후보**를
 확보하는 R&D 단계일 뿐, 기본 BGM이나 런타임 asset을 바꾸지 않는다.
 
+원본을 다시 decode하거나 변형하지 않고 score 배치 후보를 비교하려면 같은 pool report를
+`source_led_contour.py`에 넣는다. 여기서 나오는 F0·RMS·voicing은 기존 feature cache의
+proxy 요약일 뿐, 전사·아리랑 판정·호흡/슬러/legato 판정이 아니다.
+
+```sh
+/tmp/durango-bgm-rnd-venv/bin/python tools/daegeum-transitions/source_led_contour.py \
+  --bundle _bgm_rnd/daegeum-transition-bank-ngc-YYYYMMDD \
+  --input-json _bgm_rnd/daegeum-source-led-phrase-pool-YYYYMMDD/phrase_pool.json \
+  --priority-rank 4 \
+  --output-dir _bgm_rnd/source-led-contour-YYYYMMDD
+```
+
 검증:
 
 ```sh
 python3 tools/daegeum-transitions/test_phrase_pool.py
 python3 tools/daegeum-transitions/test_phrase_span_audition.py
+python3 tools/daegeum-transitions/test_source_led_contour.py
 ```

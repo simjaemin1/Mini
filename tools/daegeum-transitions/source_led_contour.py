@@ -5,7 +5,9 @@ This is an offline R&D helper for accompaniment planning.  It reads only an
 existing R&D-06 feature cache (``features/*.npz``), never the source WAV.  Its
 input is one selected direct-trajectory row or one selected phrase-boundary
 row, both of which must identify a single catalog source and an explicit
-``native_source_span.frame_range``.
+``native_source_span.frame_range``.  It also accepts a source-led phrase-pool
+report row, which remains an automatic feature-proxy coordinate selection—not
+a phrase, breath, slur, legato, or quality label.
 
 The output is a time-ordered, coarse summary of the cached F0, RMS and
 voicing proxies plus optional low-proxy-variation region suggestions.  It is
@@ -45,6 +47,7 @@ RND06_SCHEMA = "durango.daegeum.transition-bank.v1"
 FEATURE_SCHEMA = "durango.daegeum.expression-features.v1"
 DIRECT_TRAJECTORY_SCHEMA_PREFIX = f"{RND06_SCHEMA}.direct-f0-trajectory-retrieval."
 PHRASE_BOUNDARY_TRIAGE_SCHEMA_PREFIX = f"{RND06_SCHEMA}.source-led-phrase-boundary-triage."
+PHRASE_POOL_SCHEMA_PREFIX = f"{RND06_SCHEMA}.source-led-phrase-pool."
 SOURCE_LED_CONTOUR_SCHEMA = f"{RND06_SCHEMA}.source-led-contour-scaffold.v1"
 
 REQUIRED_FEATURE_ARRAYS = (
@@ -300,7 +303,7 @@ def _load_feature_track(bundle: Path, source: SourceInfo, *, np: Any) -> Feature
 
 
 def _select_input_object(value: Any, *, priority_rank: int | None) -> tuple[dict[str, Any], dict[str, Any]]:
-    """Select a retrieval/triage report row or accept one selected span object."""
+    """Select one retrieval/triage/pool row or accept one selected span object."""
 
     if not isinstance(value, Mapping):
         raise SourceLedContourError("input JSON is not an object")
@@ -317,9 +320,14 @@ def _select_input_object(value: Any, *, priority_rank: int | None) -> tuple[dict
             kind = "phrase_boundary_triage_report_row"
             report_input = value.get("input")
             catalog_link = report_input.get("bundle") if isinstance(report_input, Mapping) else None
+        elif isinstance(schema, str) and schema.startswith(PHRASE_POOL_SCHEMA_PREFIX):
+            rows_key = "candidates"
+            kind = "source_led_phrase_pool_report_row"
+            report_input = value.get("input")
+            catalog_link = report_input.get("bundle") if isinstance(report_input, Mapping) else None
         else:
             raise SourceLedContourError(
-                "--priority-rank is supported only for direct trajectory retrieval or phrase-boundary triage reports"
+                "--priority-rank is supported only for direct trajectory retrieval, phrase-boundary triage, or phrase-pool reports"
             )
         rows = value.get(rows_key)
         if not isinstance(rows, list):
@@ -333,12 +341,20 @@ def _select_input_object(value: Any, *, priority_rank: int | None) -> tuple[dict
             "selected_priority_rank": priority_rank,
             "declared_bundle_basename": catalog_link.get("directory_basename") if isinstance(catalog_link, Mapping) else None,
             "declared_source_catalog_sha256": catalog_link.get("source_catalog_sha256") if isinstance(catalog_link, Mapping) else None,
+            "declared_ngc_extended_manifest": (
+                dict(report_input["ngc_extended_manifest"])
+                if kind == "source_led_phrase_pool_report_row"
+                and isinstance(report_input, Mapping)
+                and isinstance(report_input.get("ngc_extended_manifest"), Mapping)
+                else None
+            ),
         }
     if isinstance(schema, str) and (
         (schema.startswith(DIRECT_TRAJECTORY_SCHEMA_PREFIX) and "trajectories" in value)
         or (schema.startswith(PHRASE_BOUNDARY_TRIAGE_SCHEMA_PREFIX) and "candidates" in value)
+        or (schema.startswith(PHRASE_POOL_SCHEMA_PREFIX) and "candidates" in value)
     ):
-        raise SourceLedContourError("a retrieval or phrase-boundary triage report requires --priority-rank")
+        raise SourceLedContourError("a retrieval, phrase-boundary triage, or phrase-pool report requires --priority-rank")
     if not isinstance(value, dict):
         value = dict(value)
     if "trajectory_id" in value or "path_id" in value:
@@ -351,12 +367,12 @@ def _select_input_object(value: Any, *, priority_rank: int | None) -> tuple[dict
 
 
 def _first_truth_mapping(row: Mapping[str, Any]) -> tuple[str, Mapping[str, Any]]:
-    for name in ("automatic_path_status", "automatic_boundary_status"):
+    for name in ("automatic_path_status", "automatic_boundary_status", "automatic_candidate_status"):
         value = row.get(name)
         if isinstance(value, Mapping):
             return name, value
     raise SourceLedContourError(
-        "selected span lacks automatic_path_status or automatic_boundary_status truth labels"
+        "selected span lacks automatic_path_status, automatic_boundary_status, or automatic_candidate_status truth labels"
     )
 
 
@@ -376,6 +392,7 @@ def _require_truth_labels(status: Mapping[str, Any]) -> None:
         "automatic_not_phrase_label": (
             "trajectory_was_scanned_directly_from_feature_npz_not_candidate_pairs",
             "automatic_measurement_is_not_a_musical_phrase_label",
+            "automatic_measurements_are_not_a_musical_phrase_or_arirang_style_label",
         ),
         "not_same_breath_evidence": ("not_evidence_of_same_breath",),
         "not_slur_evidence": ("not_evidence_of_slur",),
