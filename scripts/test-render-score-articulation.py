@@ -132,6 +132,19 @@ check(
     repr(detached_out),
 )
 
+# A phrase-start helper must not turn a valid explicit staccato head into a
+# conflicting (staccato + phrase_start) annotation.  This protects future
+# score authoring even though the current village score has no such edge.
+phrase_staccato, _ = plan_sustained_score(
+    [[(0, 12, 0)]], 0.0, 0.10,
+    annotations={(0, 0): {"staccato": True}}, phrase_start_bars=(0,),
+)
+check(
+    phrase_staccato[0][0]["kind"] == "detached",
+    "⑩ explicit staccato at a phrase start remains a valid detached head",
+    repr(phrase_staccato[0][0]),
+)
+
 # The pure policy cannot be allowed to become a disconnected helper while
 # ``render_score.play`` quietly restores its old timestamp heuristic.
 renderer_source = (ROOT / "public" / "assets" / "audio" / "bgm" / "render_score.py").read_text(
@@ -142,7 +155,7 @@ check(
     and "plan_sustained_score(" in renderer_source
     and "prev_end" not in renderer_source
     and "(s - prev_end)" not in renderer_source,
-    "⑩ renderer consumes the canonical policy and contains no legacy prev_end timing-legato branch",
+    "⑪ renderer consumes the canonical policy and contains no legacy prev_end timing-legato branch",
 )
 
 # ENTRY has grown from a historical (entry, skip) pair into a diagnostic
@@ -158,7 +171,7 @@ check(
     and "for e, _ in ENTRY" not in jeongak_source
     and "item[0] for item in ENTRY" in renderer_source
     and "item[0] for item in ENTRY" in jeongak_source,
-    "⑪ renderer summaries tolerate the expanded articulation diagnostic record",
+    "⑫ renderer summaries tolerate the expanded articulation diagnostic record",
 )
 
 print(f"\n=== PASS {passed} / FAIL {failed} ===")

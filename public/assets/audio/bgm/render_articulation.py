@@ -77,7 +77,16 @@ def plan_sustained_score(
             incoming_link = any(event.get(key) for key in (
                 "tie_from_previous", "slur_from_previous", "same_breath_from_previous",
             ))
+            # Do not inject a second, conflicting boolean intent on top of a
+            # score author's explicit fresh-breath or detached marking.  In
+            # particular, a staccato phrase head is a valid authoring choice,
+            # not a reason to force ``phrase_start`` and make the canonical
+            # planner reject the score as ambiguous.
+            has_explicit_boundary_intent = any(event.get(key) for key in (
+                "breath_before", "phrase_start", "rest_before", "detached", "staccato",
+            ))
             if bar_index in phrase_starts and not incoming_link \
+                    and not has_explicit_boundary_intent \
                     and "articulation" not in event and "articulation_override" not in event:
                 event["phrase_start"] = True
             events.append(event)
