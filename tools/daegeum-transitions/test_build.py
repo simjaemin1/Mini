@@ -95,6 +95,19 @@ class BuildApprovalGateTests(unittest.TestCase):
         )
         cls.secondary_source_sha_before = hashlib.sha256(cls.secondary_source.read_bytes()).hexdigest()
 
+        # This is the stable filename family used by the official NGC extended
+        # Sanjo phrase collection.  The builder may offer it to the *review*
+        # queue, never auto-label it as a true transition.
+        cls.extended_phrase_raw = cls.root / "direct-extended-sanjo"
+        cls.extended_phrase_raw.mkdir()
+        cls.extended_phrase_source = cls.extended_phrase_raw / "Daegeum_SJ_001_(3_4th_bpm84).wav"
+        _write_direct_test_wav(
+            cls.extended_phrase_source,
+            rate=11_025,
+            frequencies=(466.16376152, 391.99543598, 466.16376152),
+        )
+        cls.extended_phrase_source_sha_before = hashlib.sha256(cls.extended_phrase_source.read_bytes()).hexdigest()
+
         cls.baseline_output, baseline = cls._invoke("baseline")
         if baseline.returncode != 0:
             raise AssertionError(cls._failure_detail(baseline))
@@ -317,17 +330,18 @@ class BuildApprovalGateTests(unittest.TestCase):
         """
 
         output, result = self._invoke(
-            "two-roots",
-            raw_dirs=(self.raw, self.secondary_raw),
+            "three-roots",
+            raw_dirs=(self.raw, self.secondary_raw, self.extended_phrase_raw),
         )
         self.assertEqual(result.returncode, 0, self._failure_detail(result))
 
         catalog = json.loads((output / "source_catalog.json").read_text(encoding="utf-8"))
         files = catalog["files"]
-        self.assertEqual(len(files), 2)
+        self.assertEqual(len(files), 3)
         expected_by_path = {
             "Sanjo_deageum_2.wav": self.source_sha_before,
             "Jeongakdaegeum.wav": self.secondary_source_sha_before,
+            "Daegeum_SJ_001_(3_4th_bpm84).wav": self.extended_phrase_source_sha_before,
         }
         self.assertEqual(
             {item["relative_path"]: item["sha256"] for item in files},
@@ -335,7 +349,7 @@ class BuildApprovalGateTests(unittest.TestCase):
         )
         self.assertEqual(
             {item["source_role"] for item in files},
-            {"continuous_performance_candidate"},
+            {"continuous_performance_candidate", "continuous_phrase_candidate"},
         )
 
         candidates = _jsonl_rows(output / "candidates.jsonl")
@@ -351,12 +365,17 @@ class BuildApprovalGateTests(unittest.TestCase):
             hashlib.sha256(self.secondary_source.read_bytes()).hexdigest(),
             self.secondary_source_sha_before,
         )
+        self.assertEqual(
+            hashlib.sha256(self.extended_phrase_source.read_bytes()).hexdigest(),
+            self.extended_phrase_source_sha_before,
+        )
         for artifact in output.rglob("*"):
             if not artifact.is_file() or artifact.suffix.lower() not in {".json", ".jsonl", ".html", ".svg", ".tsv"}:
                 continue
             text = artifact.read_text(encoding="utf-8")
             self.assertNotIn(str(self.raw.resolve()), text, artifact.name)
             self.assertNotIn(str(self.secondary_raw.resolve()), text, artifact.name)
+            self.assertNotIn(str(self.extended_phrase_raw.resolve()), text, artifact.name)
         self._assert_contract_bundle(output)
 
 

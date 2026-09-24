@@ -143,6 +143,36 @@ transition bank implementation은 raw source를 `public/assets/audio/bgm/`에 �
 BGM manifest를 고치면 안 된다. 사람이 approved transition을 듣고, loop/stem render와
 ABX gate가 별도로 통과한 뒤에만 후속 카드에서 asset 승격을 논의한다.
 
+## Target-priority audition은 bank 밖의 검토 보조물이다
+
+candidate가 200개를 넘으면 `77→74`에 무관한 F0 change부터 임의 순서로 듣는 것은
+비효율적이다. `tools/daegeum-transitions/target_audition.py`는 bundle의 score target별로
+unreviewed candidate의 proxy endpoint `p₁→p₂`를 읽어 다음 한 개의 global shift만
+계산한다.
+
+```text
+g = ((target₁ - p₁) + (target₂ - p₂)) / 2
+interval_error = (p₂ - p₁) - (target₂ - target₁)
+```
+
+`g`는 두 endpoint에 함께 적용되는 least-squares measurement일 뿐, candidate의 앞·뒤를
+각각 pitch-correct한 결과가 아니다. sorting은 target-compatible detector → bounded
+optional P gate → absolute interval error → boundary RMS 변화·onset flux proxy → absolute
+`g` → automatic voicing proxy다. RMS/onset은 볼륨이 툭 끊기는 후보를 뒤로 미루기 위한
+측정값일 뿐, “score target에 가까운 review 우선순위”가 자연스러움·slur·same-breath·승인을
+자동 확정한다는 뜻은 아니다.
+
+각 shortlist의 A/B는 direct WAV sample-frame을 byte-for-byte 복사한 raw crop이다.
+header를 최소 RIFF wrapper로 다시 쓸 수는 있지만 gain/pitch/time/resample/channel/fade는
+없다. 선택적 P(`--render-gesture-warps`)만 Rubber Band R3 formant/pitchmap으로 global
+shift와 transition window 내 작은 endpoint interpolation을 적용한다. P는 명시적으로
+`not_source_faithful`, `not_native_legato`, `not_approved_transition`,
+`not_transition_bank_item`, `not_game_asset`이며, 어떤 coverage나 transition bank도 닫지
+않는다.
+
+이 보조물도 `_bgm_rnd/`의 fresh directory에만 생성하고 `public/assets/audio/bgm/`, runtime
+manifest, 기본 13곡 asset은 읽거나 쓰지 않는다.
+
 ## 검증 방법
 
 ```sh
@@ -152,6 +182,9 @@ python3 scripts/test-daegeum-transition-bank.py
 # builder가 만든 실제 묶음의 JSON/JSONL lineage·frame·approval 검사
 python3 scripts/test-daegeum-transition-bank.py \
   --bundle _bgm_rnd/daegeum-transition-bank-YYYYMMDD
+
+# target-priority math 및 source-faithful A/B sample copy 검사
+python3 tools/daegeum-transitions/test_target_audition.py
 ```
 
 integration test는 catalog, candidates, generated label template, approved transition

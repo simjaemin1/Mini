@@ -107,6 +107,21 @@ KNOWN_SOURCE_ROLE: dict[str, str] = {
     "jungak_deageum_nina_vib_32.wav": "separated_sigimsae_exercises",
 }
 
+
+def _source_role(filename: str) -> str:
+    """Describe only the recording collection, never the candidate gesture.
+
+    NGC's extended Sanjo Daegeum collection names phrase recordings with the
+    stable ``Daegeum_SJ_<sequence>_...`` prefix.  It is a broader source pool
+    than the two local ``..._2.wav`` performance takes, but the name alone
+    still cannot prove slur/tongue/breath intent for any event inside it.
+    """
+    if filename in KNOWN_SOURCE_ROLE:
+        return KNOWN_SOURCE_ROLE[filename]
+    if re.fullmatch(r"Daegeum_SJ_[0-9]+_.+\.wav", filename, flags=re.IGNORECASE):
+        return "continuous_phrase_candidate"
+    return "unclassified_direct_daegeum_source"
+
 # Local access to a user-provided copy is not evidence of a license for model
 # training, redistribution, or a shipped game.  This record intentionally
 # travels with every source rather than relying on an undocumented blanket
@@ -305,7 +320,7 @@ def _source_catalog_item(path: Path) -> dict[str, Any]:
         "source_id": _source_id(sha),
         "sha256": sha,
         "relative_path": path.name,
-        "source_role": KNOWN_SOURCE_ROLE.get(path.name, "unclassified_direct_daegeum_source"),
+        "source_role": _source_role(path.name),
         "rights": dict(LOCAL_RND_RIGHTS),
         "native": compact_native,
     }
@@ -490,7 +505,7 @@ def _candidate_rows(
     stay ``unreviewed`` and are kept out of every bank until a listener labels
     the exact native-frame region.
     """
-    if source["source_role"] != "continuous_performance_candidate":
+    if source["source_role"] not in {"continuous_performance_candidate", "continuous_phrase_candidate"}:
         return []
     times = features["time_s"]
     f0 = features["f0_hz"]
