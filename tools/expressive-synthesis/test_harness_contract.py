@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 import subprocess
 import sys
+import tempfile
 import unittest
 
 
@@ -40,6 +41,38 @@ class HarnessContractTests(unittest.TestCase):
         )
         self.assertEqual(duplicate_mode.returncode, 2)
         self.assertIn("exactly one", duplicate_mode.stderr)
+
+    def test_cpu_readiness_check_does_not_require_torch_before_setup(self) -> None:
+        # The documented first --check must be usable on a clean WSL/Python
+        # environment.  CPU mode makes this portable to the no-GPU test host.
+        # This host intentionally has an unsupported system Python, so use a
+        # tiny fake, valid 3.11 venv interpreter that refuses ``import torch``
+        # and proves the launcher treats that absence as pre-setup state.
+        with tempfile.TemporaryDirectory() as temporary:
+            fake_venv = Path(temporary) / "not-created"
+            fake_bin = fake_venv / "bin"
+            fake_bin.mkdir(parents=True)
+            fake_python = fake_bin / "python"
+            fake_python.write_text(
+                "#!/usr/bin/env bash\n"
+                "case \"${2:-}\" in\n"
+                "  *'import sys'*) printf '3.11\\n'; exit 0 ;;\n"
+                "  *'import torch'*) exit 1 ;;\n"
+                "esac\n"
+                "exit 0\n",
+                encoding="utf-8",
+            )
+            fake_python.chmod(0o755)
+            result = subprocess.run(
+                [
+                    "bash", str(HERE / "setup_train_wsl.sh"), "--check",
+                    "--profile", "cpu", "--venv", str(fake_venv),
+                ],
+                capture_output=True,
+                text=True,
+            )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("Environment check passed", result.stdout)
 
     def test_smoke_help_is_available_without_importing_torch(self) -> None:
         result = subprocess.run(

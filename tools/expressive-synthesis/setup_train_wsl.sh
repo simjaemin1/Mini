@@ -142,7 +142,16 @@ case "${MODE}" in
       printf 'Virtual environment absent; checking system Python only. Use --setup --allow-install to install explicitly.\n' >&2
     fi
     check_python "${PYTHON_BIN}"
-    check_torch "${PYTHON_BIN}" "${PROFILE}"
+    # ``--check`` is deliberately the pre-install diagnostic described in
+    # the README.  It must be able to confirm WSL/Python/GPU readiness before
+    # a venv exists; requiring an import that only --setup installs would
+    # turn the documented first command into a false failure.  Smoke/train
+    # still require PyTorch through their stricter paths below.
+    if "${PYTHON_BIN}" -c 'import torch' >/dev/null 2>&1; then
+      check_torch "${PYTHON_BIN}" "${PROFILE}"
+    else
+      printf 'PyTorch is not installed in this Python yet; environment readiness check continues without an install.\n' >&2
+    fi
     printf 'Environment check passed. No install, corpus read, training, or output write occurred.\n'
     ;;
   setup)
