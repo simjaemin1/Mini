@@ -1055,8 +1055,18 @@ def build_direct_trajectory_retrieval(
     all_rows: list[dict[str, Any]] = []
     input_features: list[dict[str, Any]] = []
     per_source_counts: list[dict[str, Any]] = []
+    direct_windows_scanned_so_far = 0
     for source in selected_sources:
         track = _load_feature_track(bundle, source, np=np)
+        # The cap is deliberately global, not a quiet per-source reset.  A
+        # broad corpus should fail before accumulating an unbounded list even
+        # when every individual take happens to fit below the threshold.
+        remaining_window_budget = max_results_before_nms - direct_windows_scanned_so_far
+        if remaining_window_budget < 1:
+            raise TrajectoryRetrievalError(
+                "direct trajectory count exceeded --max-results-before-nms across selected sources; "
+                "narrow sources, duration grid, or stride rather than accept a partial result"
+            )
         rows, counts = _trajectory_rows_for_track(
             track,
             target=target,
@@ -1069,9 +1079,10 @@ def build_direct_trajectory_retrieval(
             maximum_time_gap_factor=maximum_time_gap,
             max_global_shift_semitones=maximum_shift,
             preferred_max_adjacent_pitch_step_cents=preferred_max_pitch_step,
-            max_results_before_nms=max_results_before_nms,
+            max_results_before_nms=remaining_window_budget,
             np=np,
         )
+        direct_windows_scanned_so_far += counts["direct_windows_scanned"]
         if source.source_id in sequence_by_source:
             for row in rows:
                 row["source"]["ngc_extend_seq"] = sequence_by_source[source.source_id]
@@ -1121,6 +1132,7 @@ def build_direct_trajectory_retrieval(
             "maximum_same_source_result_overlap": _round(maximum_result_overlap),
             "top_returned_trajectories": top,
             "maximum_direct_windows_before_nms": max_results_before_nms,
+            "maximum_direct_windows_before_nms_is_global_across_selected_sources": True,
         },
         "interpretation_limits": {
             "candidate_manifest_not_read_or_used": True,
@@ -1133,7 +1145,7 @@ def build_direct_trajectory_retrieval(
         "counts": {
             "catalog_source_count": len(sources),
             "selected_source_count": len(selected_sources),
-            "direct_windows_scanned": sum(row["direct_windows_scanned"] for row in per_source_counts),
+            "direct_windows_scanned": direct_windows_scanned_so_far,
             "direct_trajectory_rows_before_ranking": len(all_rows),
             "overlap_suppressed_before_top": overlap_suppressed,
             "returned_trajectory_count": len(returned),

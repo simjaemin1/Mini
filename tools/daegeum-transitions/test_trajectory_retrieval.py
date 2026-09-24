@@ -243,6 +243,24 @@ class DirectTrajectoryRetrievalTest(unittest.TestCase):
             with self.assertRaises(TrajectoryRetrievalError):
                 build_direct_trajectory_retrieval(bundle, first, **kwargs)
 
+    def test_window_memory_guard_is_global_across_sources(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            bundle, _ = _make_bundle(root)
+            # src_a and src_b each have one valid 2.16s window.  A cap of one
+            # must reject their combined scan rather than resetting for each
+            # source and quietly retaining two detailed rows in memory.
+            with self.assertRaises(TrajectoryRetrievalError):
+                build_direct_trajectory_retrieval(
+                    bundle,
+                    root / "out",
+                    duration_grid_seconds="2.16",
+                    top=3,
+                    stride_frames=1,
+                    template_samples=37,
+                    max_results_before_nms=1,
+                )
+
 
 if __name__ == "__main__":
     unittest.main()
