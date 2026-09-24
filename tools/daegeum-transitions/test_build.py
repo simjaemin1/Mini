@@ -26,6 +26,8 @@ import unittest
 import wave
 from typing import Any, Mapping, Sequence
 
+from native_wav import inspect_wav
+
 
 TOOL_DIR = Path(__file__).resolve().parent
 BUILD = TOOL_DIR / "build.py"
@@ -69,6 +71,85 @@ def _write_direct_test_wav(
         output.writeframes(payload)
 
 
+def _write_verified_ngc_fetch_manifest(path: Path, audio: Path, *, division: str = "대금산조") -> None:
+    """Make a fetcher-shaped fixture with neutral local name + exact lineage.
+
+    The builder must not infer the role from ``extend-001520.wav``.  This
+    source is eligible for the *review queue* only when every fetch manifest
+    link, including the native descriptor and SHA, validates.
+    """
+
+    descriptor = inspect_wav(audio)
+    sha = descriptor["sha256"]
+    original_path = "/tmusic/05_Daegeum/Daegeum_SJ_001_(3_4th_bpm84).wav"
+    manifest = {
+        "schema": "durango.ngc.extended-daegeum-sanjo-fetch.v1",
+        "tool": "ngc-extended-daegeum-sanjo-fetch",
+        "scope": {
+            "instrument_code": "EXTEND0001",
+            "instrument_name": "대금",
+            "division_exact": division,
+            "selection_requires_explicit_extend_seq": True,
+            "no_all_or_broad_title_selection_mode": True,
+        },
+        "license_evidence": {
+            "notice": "공공누리 제1유형(출처표시)",
+            "not_a_model_training_or_game_distribution_clearance": True,
+        },
+        "submitted_purpose": {
+            "usePurposeGb": "비상업용",
+            "usePurpose": "연구용",
+            "no_credentials_or_cookie_file_used": True,
+        },
+        "r_and_d_only": {
+            "no_game_default_or_runtime_changes": True,
+            "no_musical_gesture_or_legato_claim_from_download": True,
+            "human_review_and_rights_review_required_before_training_or_shipping": True,
+        },
+        "entries": [{
+            "extend_seq": 1520,
+            "selection": {
+                "instrument_code": "EXTEND0001",
+                "instrument_name": "대금",
+                "division_exact": division,
+                "selection_is_exact_metadata_filter_not_title_match": True,
+            },
+            "source": {
+                "source_sequence": 1520,
+                "original_wav_server_path": original_path,
+                "original_wav_filename": "Daegeum_SJ_001_(3_4th_bpm84).wav",
+            },
+            "catalog_record": {
+                "extendSeq": 1520,
+                "instrCd": "EXTEND0001",
+                "instrDivCd": "INDV0001",
+                "division": division,
+                "wavFilePath": original_path,
+            },
+            "file_info_record": {
+                "extend_seq": 1520,
+                "instr_cd": "EXTEND0001",
+                "instr_name": "대금",
+                "division": division,
+                "wav_file_path": original_path,
+            },
+            "download": {
+                "state": "downloaded",
+                "relative_path": audio.resolve().relative_to(path.parent.resolve()).as_posix(),
+                "sha256": sha,
+                "returned_filename": "Daegeum_SJ_001_(3_4th_bpm84).wav",
+                "native_wav": descriptor,
+            },
+            "musical_status": {
+                "automatic_filename_or_catalog_metadata_is_not_a_legato_or_transition_label": True,
+                "approved_transition": False,
+                "eligible_for_model_training_or_game_asset": False,
+            },
+        }],
+    }
+    path.write_text(json.dumps(manifest, ensure_ascii=False, sort_keys=True), encoding="utf-8")
+
+
 class BuildApprovalGateTests(unittest.TestCase):
     """Run the CLI against a direct temporary source and inspect its artifacts."""
 
@@ -107,6 +188,22 @@ class BuildApprovalGateTests(unittest.TestCase):
             frequencies=(466.16376152, 391.99543598, 466.16376152),
         )
         cls.extended_phrase_source_sha_before = hashlib.sha256(cls.extended_phrase_source.read_bytes()).hexdigest()
+
+        # The fetcher deliberately uses a neutral local filename, so only an
+        # explicit manifest (not a filename pattern) can offer it to the
+        # continuous phrase candidate detector.
+        cls.ngc_fetch_root = cls.root / "ngc-extended-fetch"
+        cls.ngc_fetch_audio = cls.ngc_fetch_root / "audio"
+        cls.ngc_fetch_audio.mkdir(parents=True)
+        cls.ngc_fetch_source = cls.ngc_fetch_audio / "extend-001520.wav"
+        _write_direct_test_wav(
+            cls.ngc_fetch_source,
+            rate=11_025,
+            frequencies=(466.16376152, 391.99543598, 466.16376152),
+        )
+        cls.ngc_fetch_source_sha_before = hashlib.sha256(cls.ngc_fetch_source.read_bytes()).hexdigest()
+        cls.ngc_fetch_manifest = cls.ngc_fetch_root / "ngc-extended-daegeum-sanjo.manifest.json"
+        _write_verified_ngc_fetch_manifest(cls.ngc_fetch_manifest, cls.ngc_fetch_source)
 
         cls.baseline_output, baseline = cls._invoke("baseline")
         if baseline.returncode != 0:
@@ -150,11 +247,14 @@ class BuildApprovalGateTests(unittest.TestCase):
         name: str,
         labels: list[Mapping[str, Any]] | None = None,
         raw_dirs: Sequence[Path] | None = None,
+        ngc_extended_manifests: Sequence[Path] | None = None,
     ) -> tuple[Path, subprocess.CompletedProcess[str]]:
         output = cls.root / f"bundle-{name}"
         command = [sys.executable, str(BUILD)]
         for raw_dir in (cls.raw,) if raw_dirs is None else raw_dirs:
             command.extend(("--raw-daegeum-dir", str(raw_dir)))
+        for manifest in () if ngc_extended_manifests is None else ngc_extended_manifests:
+            command.extend(("--ngc-extended-manifest", str(manifest)))
         command.extend(("--output-dir", str(output)))
         if labels is not None:
             label_path = cls.root / f"labels-{name}.jsonl"
@@ -320,6 +420,79 @@ class BuildApprovalGateTests(unittest.TestCase):
             [first, second],
             "a candidate may have only one approved review",
         )
+
+    def test_neutral_ngc_fetch_filename_needs_explicit_verified_manifest(self) -> None:
+        """A local `extend-...` filename cannot grant a phrase role by itself."""
+
+        output, result = self._invoke(
+            "ngc-neutral-without-map",
+            raw_dirs=(self.ngc_fetch_audio,),
+        )
+        self.assertEqual(result.returncode, 0, self._failure_detail(result))
+        catalog = json.loads((output / "source_catalog.json").read_text(encoding="utf-8"))
+        self.assertEqual(catalog["files"][0]["relative_path"], "extend-001520.wav")
+        self.assertEqual(catalog["files"][0]["source_role"], "unclassified_direct_daegeum_source")
+        self.assertEqual(_jsonl_rows(output / "candidates.jsonl"), [])
+
+    def test_verified_ngc_manifest_maps_neutral_filename_to_review_only_phrase_source(self) -> None:
+        """Exact scope + SHA/native descriptor, not a filename, allow review scans."""
+
+        output, result = self._invoke(
+            "ngc-manifest-map",
+            raw_dirs=(self.ngc_fetch_audio,),
+            ngc_extended_manifests=(self.ngc_fetch_manifest,),
+        )
+        self.assertEqual(result.returncode, 0, self._failure_detail(result))
+        catalog = json.loads((output / "source_catalog.json").read_text(encoding="utf-8"))
+        self.assertEqual(len(catalog["files"]), 1)
+        source = catalog["files"][0]
+        self.assertEqual(source["relative_path"], "extend-001520.wav")
+        self.assertEqual(source["sha256"], self.ngc_fetch_source_sha_before)
+        self.assertEqual(source["source_role"], "continuous_phrase_candidate")
+        candidates = _jsonl_rows(output / "candidates.jsonl")
+        self.assertTrue(candidates)
+        self.assertTrue(all(row["status"] == "unreviewed" for row in candidates))
+        self.assertEqual(_jsonl_rows(output / "transition_bank.jsonl"), [])
+        provenance = json.loads((output / "provenance.json").read_text(encoding="utf-8"))
+        self.assertEqual(provenance["ngc_extended_source_role_manifests"], [{
+            "fetch_manifest_schema": "durango.ngc.extended-daegeum-sanjo-fetch.v1",
+            "fetch_manifest_sha256": hashlib.sha256(self.ngc_fetch_manifest.read_bytes()).hexdigest(),
+            "verified_source_count": 1,
+        }])
+        for artifact in output.rglob("*"):
+            if artifact.suffix.lower() not in {".json", ".jsonl", ".html", ".svg", ".tsv"}:
+                continue
+            self.assertNotIn(str(self.ngc_fetch_root.resolve()), artifact.read_text(encoding="utf-8"))
+        self._assert_contract_bundle(output)
+
+    def test_ngc_manifest_rejects_hash_and_scope_tampering_before_output(self) -> None:
+        """No mutable local map can turn arbitrary WAVs into phrase candidates."""
+
+        bad_hash = self.ngc_fetch_root / "ngc-bad-hash.manifest.json"
+        payload = json.loads(self.ngc_fetch_manifest.read_text(encoding="utf-8"))
+        payload["entries"][0]["download"]["sha256"] = "0" * 64
+        bad_hash.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+        output, result = self._invoke(
+            "ngc-bad-hash",
+            raw_dirs=(self.ngc_fetch_audio,),
+            ngc_extended_manifests=(bad_hash,),
+        )
+        self.assertEqual(result.returncode, 2, self._failure_detail(result))
+        self.assertIn("SHA-256", result.stderr)
+        self.assertFalse(output.exists())
+
+        bad_scope = self.ngc_fetch_root / "ngc-bad-scope.manifest.json"
+        payload = json.loads(self.ngc_fetch_manifest.read_text(encoding="utf-8"))
+        payload["scope"]["division_exact"] = "대금정악"
+        bad_scope.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+        output, result = self._invoke(
+            "ngc-bad-scope",
+            raw_dirs=(self.ngc_fetch_audio,),
+            ngc_extended_manifests=(bad_scope,),
+        )
+        self.assertEqual(result.returncode, 2, self._failure_detail(result))
+        self.assertIn("exact Daegeum Sanjo scope", result.stderr)
+        self.assertFalse(output.exists())
 
     def test_multiple_explicit_direct_roots_form_one_path_free_catalog(self) -> None:
         """Both continuous source roots must retain independent provenance.

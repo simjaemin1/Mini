@@ -87,3 +87,51 @@ HTML에서 `not_native_legato`, `not_approved_transition`, `not_transition_bank_
 python3 tools/daegeum-transitions/test_target_audition.py
 python3 tools/daegeum-transitions/target_audition.py --dry-run
 ```
+
+## NGC 확장 대금산조 source ingest (R&D-only)
+
+`fetch_ngc_extended_daegeum.py`는 국립국악원 digital-eum의 **확장 다운로드** catalog에서
+대금산조 source를 가져오는 별도 ingest 도구다. transition detector나 renderer가 아니며,
+catalog metadata/filename만으로 legato·자연 전이·학습 허가를 주장하지 않는다.
+
+이 도구는 broad `대금` title match나 별도 **악구 다운로드** product를 쓰지 않는다. live
+catalog의 exact `EXTEND0001` / `대금` / `division: 대금산조` filter에서 caller가 명시한
+`--extend-seq`만 선택한다. `--all`은 없고 기본은 audio를 전혀 받지 않는 plan-first다.
+
+```sh
+# metadata/provenance plan만 만든다. audio download 없음.
+python3 tools/daegeum-transitions/fetch_ngc_extended_daegeum.py \
+  --output-dir _bgm_rnd/ngc-extended-daegeum-plan --extend-seq 1520
+
+# plan 검토 뒤 한 source만 download한다.
+python3 tools/daegeum-transitions/fetch_ngc_extended_daegeum.py \
+  --output-dir _bgm_rnd/ngc-extended-daegeum-plan --extend-seq 1520 --download
+
+# 네트워크 없이 existing source SHA/native-WAV provenance를 확인한다.
+python3 tools/daegeum-transitions/fetch_ngc_extended_daegeum.py \
+  --output-dir _bgm_rnd/ngc-extended-daegeum-plan --verify-only
+```
+
+여러 source를 실제로 받으려면 exact ID 외에 `--allow-batch`도 필요하며 한 run은 최대
+30개다. manifest에는 `extendSeq`, returned catalog/detail metadata, original server
+path/filename, returned filename, SHA-256/native WAV descriptor, KOGL notice, submitted
+research purpose가 남는다. cookie/API key/hidden credential은 사용하지 않는다.
+
+neutral local filename(`audio/extend-001520.wav`)을 R&D-06 candidate scan에 넣으려면
+filename pattern 대신 explicit verified manifest를 함께 준다.
+
+```sh
+/tmp/durango-bgm-rnd-venv/bin/python tools/daegeum-transitions/build.py \
+  --raw-daegeum-dir _bgm_rnd/ngc-extended-daegeum-plan/audio \
+  --ngc-extended-manifest _bgm_rnd/ngc-extended-daegeum-plan/ngc-extended-daegeum-sanjo.manifest.json \
+  --output-dir _bgm_rnd/daegeum-transition-bank-ngc-review
+```
+
+The builder checks exact NGC scope, catalog/detail/filename agreement, SHA-256, native WAV
+descriptor, research-only gates, and that the WAV is inside an explicit raw root. It grants only
+`continuous_phrase_candidate` review scanning; every emitted event stays `unreviewed` until the
+normal human label gate.
+
+```sh
+python3 tools/daegeum-transitions/test_fetch_ngc_extended_daegeum.py
+```

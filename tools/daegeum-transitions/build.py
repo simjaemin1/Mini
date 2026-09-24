@@ -39,7 +39,7 @@ import math
 import re
 import sys
 import tempfile
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any, Iterable, Mapping, Sequence
 
 
@@ -53,6 +53,11 @@ from native_wav import NativeWavError, inspect_wav, read_native_wav  # noqa: E40
 SCHEMA = "durango.daegeum.transition-bank.v1"
 LABEL_SCHEMA = "durango.daegeum.transition-label.v1"
 ANALYSIS_SCHEMA = "durango.daegeum.expression-features.v1"
+NGC_EXTENDED_FETCH_SCHEMA = "durango.ngc.extended-daegeum-sanjo-fetch.v1"
+NGC_DAEGEUM_INSTRUMENT_CODE = "EXTEND0001"
+NGC_DAEGEUM_INSTRUMENT_NAME = "대금"
+NGC_SANJO_DIVISION = "대금산조"
+SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
 FEATURE_HOP_S = 0.010
 FEATURE_WINDOW_S = 0.050
@@ -284,11 +289,189 @@ def _list_direct_waves(roots: Sequence[Path]) -> list[tuple[Path, Path]]:
     return waves
 
 
+def _safe_manifest_relative_path(value: Any) -> str:
+    """Resolve an NGC manifest audio path without accepting a local escape."""
+
+    if not isinstance(value, str) or not value or value.startswith(("/", "~")):
+        raise BuildError("NGC source-role manifest has an unsafe relative audio path")
+    if "\\" in value or "//" in value or re.match(r"^[A-Za-z]:", value):
+        raise BuildError("NGC source-role manifest has a non-portable audio path")
+    parts = PurePosixPath(value).parts
+    if any(part in ("", ".", "..") for part in parts):
+        raise BuildError("NGC source-role manifest audio path traverses outside its manifest")
+    return value
+
+
+def _manifest_child(manifest_path: Path, relative_path: Any) -> Path:
+    """Keep a role-map entry rooted at its explicit manifest directory."""
+
+    relative = _safe_manifest_relative_path(relative_path)
+    candidate = (manifest_path.parent / relative).resolve()
+    try:
+        candidate.relative_to(manifest_path.parent.resolve())
+    except ValueError as exc:
+        raise BuildError("NGC source-role manifest audio path escapes its manifest directory") from exc
+    return candidate
+
+
+def _ngc_field(record: Any, key: str, *, label: str) -> Any:
+    if not isinstance(record, Mapping) or key not in record:
+        raise BuildError(f"NGC source-role manifest is missing {label}")
+    return record[key]
+
+
+def _ngc_positive_int(value: Any, *, label: str) -> int:
+    if isinstance(value, bool):
+        raise BuildError(f"NGC source-role manifest {label} is not an integer")
+    try:
+        result = int(value)
+    except (TypeError, ValueError) as exc:
+        raise BuildError(f"NGC source-role manifest {label} is not an integer") from exc
+    if result < 1:
+        raise BuildError(f"NGC source-role manifest {label} is not positive")
+    return result
+
+
+def _load_ngc_extended_role_maps(
+    manifest_values: Sequence[str | Path] | None,
+) -> tuple[dict[Path, str], list[dict[str, Any]]]:
+    """Accept only fetcher-produced, hash-verified exact NGC Sanjo sources.
+
+    A local filename such as ``Daegeum_SJ_001_...`` remains supported for old
+    direct copies.  This separate opt-in path is for the fetcher's neutral
+    ``audio/extend-001520.wav`` names: no filename pattern is used to decide
+    its role.  Every mapped file is tied to exact NGC catalog/detail metadata
+    and to the downloader's SHA/native-WAV descriptor before it can merely be
+    *offered for unreviewed candidate detection*.
+    """
+
+    if not manifest_values:
+        return {}, []
+    roles: dict[Path, str] = {}
+    evidence: list[dict[str, Any]] = []
+    seen_manifests: set[Path] = set()
+    for value in manifest_values:
+        manifest_path = Path(value).expanduser().resolve()
+        if manifest_path in seen_manifests:
+            raise BuildError("the same --ngc-extended-manifest was supplied more than once")
+        seen_manifests.add(manifest_path)
+        if not manifest_path.is_file():
+            raise BuildError("--ngc-extended-manifest must name a readable fetch manifest file")
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise BuildError("--ngc-extended-manifest is not readable JSON") from exc
+        if not isinstance(manifest, Mapping) or manifest.get("schema") != NGC_EXTENDED_FETCH_SCHEMA:
+            raise BuildError("--ngc-extended-manifest is not an NGC extended-Daegeum Sanjo fetch manifest")
+        scope = _ngc_field(manifest, "scope", label="scope")
+        if not isinstance(scope, Mapping) or any((
+            scope.get("instrument_code") != NGC_DAEGEUM_INSTRUMENT_CODE,
+            scope.get("instrument_name") != NGC_DAEGEUM_INSTRUMENT_NAME,
+            scope.get("division_exact") != NGC_SANJO_DIVISION,
+            scope.get("selection_requires_explicit_extend_seq") is not True,
+            scope.get("no_all_or_broad_title_selection_mode") is not True,
+        )):
+            raise BuildError("NGC source-role manifest does not prove exact Daegeum Sanjo scope")
+        license_evidence = _ngc_field(manifest, "license_evidence", label="license_evidence")
+        if not isinstance(license_evidence, Mapping) or license_evidence.get("notice") != "공공누리 제1유형(출처표시)" \
+                or license_evidence.get("not_a_model_training_or_game_distribution_clearance") is not True:
+            raise BuildError("NGC source-role manifest license evidence is incomplete")
+        purpose = _ngc_field(manifest, "submitted_purpose", label="submitted_purpose")
+        if not isinstance(purpose, Mapping) or purpose.get("usePurposeGb") != "비상업용" \
+                or purpose.get("usePurpose") != "연구용" \
+                or purpose.get("no_credentials_or_cookie_file_used") is not True:
+            raise BuildError("NGC source-role manifest is not a non-commercial research-only fetch")
+        rnd_only = _ngc_field(manifest, "r_and_d_only", label="r_and_d_only")
+        if not isinstance(rnd_only, Mapping) or rnd_only.get("no_game_default_or_runtime_changes") is not True \
+                or rnd_only.get("no_musical_gesture_or_legato_claim_from_download") is not True \
+                or rnd_only.get("human_review_and_rights_review_required_before_training_or_shipping") is not True:
+            raise BuildError("NGC source-role manifest lost its R&D-only gates")
+        entries = _ngc_field(manifest, "entries", label="entries")
+        if not isinstance(entries, list):
+            raise BuildError("NGC source-role manifest entries is not a list")
+        mapped_count = 0
+        for entry in entries:
+            if not isinstance(entry, Mapping):
+                raise BuildError("NGC source-role manifest contains a non-object entry")
+            download = _ngc_field(entry, "download", label="entry.download")
+            # Planned records are valuable provenance, but have no direct WAV
+            # to map and are therefore intentionally ignored here.
+            if isinstance(download, Mapping) and download.get("state") == "planned":
+                continue
+            if not isinstance(download, Mapping) or download.get("state") != "downloaded":
+                raise BuildError("NGC source-role manifest has an unknown download state")
+            sequence = _ngc_positive_int(_ngc_field(entry, "extend_seq", label="entry.extend_seq"),
+                                         label="entry.extend_seq")
+            selection = _ngc_field(entry, "selection", label="entry.selection")
+            if not isinstance(selection, Mapping) or any((
+                selection.get("instrument_code") != NGC_DAEGEUM_INSTRUMENT_CODE,
+                selection.get("instrument_name") != NGC_DAEGEUM_INSTRUMENT_NAME,
+                selection.get("division_exact") != NGC_SANJO_DIVISION,
+                selection.get("selection_is_exact_metadata_filter_not_title_match") is not True,
+            )):
+                raise BuildError("NGC source-role entry is outside exact Daegeum Sanjo scope")
+            source = _ngc_field(entry, "source", label="entry.source")
+            catalog = _ngc_field(entry, "catalog_record", label="entry.catalog_record")
+            detail = _ngc_field(entry, "file_info_record", label="entry.file_info_record")
+            if not isinstance(source, Mapping) or not isinstance(catalog, Mapping) or not isinstance(detail, Mapping):
+                raise BuildError("NGC source-role entry is missing catalog/detail/source provenance")
+            original_path = source.get("original_wav_server_path")
+            original_filename = source.get("original_wav_filename")
+            if not isinstance(original_path, str) or not original_path.startswith("/") \
+                    or not isinstance(original_filename, str) or PurePosixPath(original_path).name != original_filename:
+                raise BuildError("NGC source-role entry original WAV path/filename is unsafe or inconsistent")
+            if any((
+                _ngc_positive_int(source.get("source_sequence"), label="entry.source.source_sequence") != sequence,
+                _ngc_positive_int(catalog.get("extendSeq"), label="entry.catalog_record.extendSeq") != sequence,
+                _ngc_positive_int(detail.get("extend_seq"), label="entry.file_info_record.extend_seq") != sequence,
+                catalog.get("instrCd") != NGC_DAEGEUM_INSTRUMENT_CODE,
+                catalog.get("instrDivCd") != "INDV0001",
+                catalog.get("division") != NGC_SANJO_DIVISION,
+                catalog.get("wavFilePath") != original_path,
+                detail.get("instr_cd") != NGC_DAEGEUM_INSTRUMENT_CODE,
+                detail.get("instr_name") != NGC_DAEGEUM_INSTRUMENT_NAME,
+                detail.get("division") != NGC_SANJO_DIVISION,
+                detail.get("wav_file_path") != original_path,
+                download.get("returned_filename") != original_filename,
+            )):
+                raise BuildError("NGC source-role entry catalog/detail/download provenance does not agree")
+            expected_sha = download.get("sha256")
+            if not isinstance(expected_sha, str) or not SHA256_RE.fullmatch(expected_sha):
+                raise BuildError("NGC source-role entry has no valid downloaded WAV SHA-256")
+            path = _manifest_child(manifest_path, download.get("relative_path"))
+            if not path.is_file() or path.suffix.lower() != ".wav":
+                raise BuildError("NGC source-role entry downloaded WAV is absent or not a direct .wav")
+            if _sha256(path) != expected_sha:
+                raise BuildError("NGC source-role entry WAV SHA-256 does not match its fetch manifest")
+            native = download.get("native_wav")
+            if not isinstance(native, Mapping) or native.get("sha256") != expected_sha \
+                    or not isinstance(native.get("native_audio"), Mapping):
+                raise BuildError("NGC source-role entry lost its native WAV descriptor")
+            try:
+                inspected = inspect_wav(path)
+            except NativeWavError as exc:
+                raise BuildError(f"NGC source-role entry WAV cannot be inspected: {path.name}") from exc
+            if inspected.get("sha256") != expected_sha or inspected.get("native_audio") != native.get("native_audio"):
+                raise BuildError("NGC source-role entry WAV does not match its native descriptor")
+            if path in roles:
+                raise BuildError("multiple NGC source-role manifests map the same direct WAV")
+            roles[path] = "continuous_phrase_candidate"
+            mapped_count += 1
+        if mapped_count == 0:
+            raise BuildError("--ngc-extended-manifest contains no verified downloaded source to map")
+        evidence.append({
+            "fetch_manifest_schema": NGC_EXTENDED_FETCH_SCHEMA,
+            "fetch_manifest_sha256": _sha256(manifest_path),
+            "verified_source_count": mapped_count,
+        })
+    return roles, evidence
+
+
 def _source_id(sha256: str) -> str:
     return f"src_{sha256[:16]}"
 
 
-def _source_catalog_item(path: Path) -> dict[str, Any]:
+def _source_catalog_item(path: Path, *, source_role_override: str | None = None) -> dict[str, Any]:
     try:
         meta = dict(inspect_wav(path))
     except NativeWavError as exc:
@@ -320,7 +503,10 @@ def _source_catalog_item(path: Path) -> dict[str, Any]:
         "source_id": _source_id(sha),
         "sha256": sha,
         "relative_path": path.name,
-        "source_role": _source_role(path.name),
+        # A verified external role map has priority over the backwards-
+        # compatible local filename classifier.  It can only supply the one
+        # conservative collection-level role below; it never labels an event.
+        "source_role": source_role_override or _source_role(path.name),
         "rights": dict(LOCAL_RND_RIGHTS),
         "native": compact_native,
     }
@@ -980,6 +1166,12 @@ def dry_run_document() -> dict[str, Any]:
         "schema": f"{SCHEMA}.dry-run",
         "actual_audio_read": False,
         "requires_one_or_more_explicit_raw_daegeum_roots": True,
+        "optional_ngc_extended_source_role_manifest": {
+            "flag": "--ngc-extended-manifest",
+            "accepts_only": "hash-verified exact Daegeum/Sanjo R&D fetch manifests",
+            "filename_inference_not_used_for_manifest_mapped_sources": True,
+            "still_requires_human_label_for_any_transition_or_training_bank_row": True,
+        },
         "requires_fresh_output_directory": True,
         "raw_source_policy": {
             "direct_wav_only": True,
@@ -1006,10 +1198,16 @@ def build(
     raw_daegeum_roots: str | Path | Sequence[str | Path],
     output_dir: str | Path,
     labels_path: str | Path | None = None,
+    ngc_extended_manifests: Sequence[str | Path] | None = None,
 ) -> dict[str, Any]:
     roots = _normalize_raw_roots(raw_daegeum_roots)
     output = Path(output_dir).expanduser().resolve()
     waves = _list_direct_waves(roots)
+    source_role_overrides, source_role_map_evidence = _load_ngc_extended_role_maps(ngc_extended_manifests)
+    wave_paths = {path for _, path in waves}
+    mapped_outside_explicit_roots = set(source_role_overrides) - wave_paths
+    if mapped_outside_explicit_roots:
+        raise BuildError("NGC source-role manifest WAV is not inside an explicit --raw-daegeum-dir")
     if output.exists():
         raise BuildError(
             f"--output-dir must not already exist: {output}. Use a fresh R&D directory so a prior review bundle stays intact."
@@ -1019,7 +1217,10 @@ def build(
     label_file = None if labels_path is None else Path(labels_path).expanduser().resolve()
     labels = _read_labels(label_file)
     np, sps, dependency_versions = _load_analysis_modules()
-    catalog = [_source_catalog_item(path) for _, path in waves]
+    catalog = [
+        _source_catalog_item(path, source_role_override=source_role_overrides.get(path))
+        for _, path in waves
+    ]
     catalog_by_id = {item["source_id"]: item for item in catalog}
     # A duplicate digest would make labels ambiguous even if filenames differ.
     if len(catalog_by_id) != len(catalog):
@@ -1130,6 +1331,10 @@ def build(
             },
             "source_policy": dry_run_document()["raw_source_policy"],
             "rights_policy": dict(LOCAL_RND_RIGHTS),
+            # This is a source-manifest hash link only.  It contains no local
+            # path and it neither upgrades the local-R&D rights gate nor
+            # promotes an unreviewed F0/onset proposal.
+            "ngc_extended_source_role_manifests": source_role_map_evidence,
             "reproducibility": {
                 "builder_sha256": _sha256(HERE / "build.py"),
                 "native_wav_reader_sha256": _sha256(HERE / "native_wav.py"),
@@ -1171,6 +1376,8 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
                         help="explicit direct Daegeum source directory; repeat to combine separate direct sets")
     parser.add_argument("--labels", type=Path,
                         help="optional human-reviewed label JSONL; unreviewed labels never enter a bank")
+    parser.add_argument("--ngc-extended-manifest", type=Path, action="append",
+                        help="optional fetcher manifest: hash-verified exact NGC Daegeum/Sanjo WAVs only")
     parser.add_argument("--output-dir", type=Path, default=Path("out_daegeum_transition_bank"),
                         help="fresh output directory for catalog, feature cache, and review bundle")
     parser.add_argument("--dry-run", action="store_true",
@@ -1186,7 +1393,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 0
         if args.raw_daegeum_dir is None:
             raise BuildError("--raw-daegeum-dir is required for actual build; use --dry-run otherwise")
-        document = build(args.raw_daegeum_dir, args.output_dir, args.labels)
+        document = build(
+            args.raw_daegeum_dir,
+            args.output_dir,
+            args.labels,
+            args.ngc_extended_manifest,
+        )
     except (BuildError, NativeWavError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2

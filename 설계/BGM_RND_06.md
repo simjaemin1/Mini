@@ -192,3 +192,30 @@ bank, expression manifest, coverage, provenance의 관계를 함께 검사한다
 unreviewed candidate가 bank/coverage를 닫는지, frame이 native source 밖으로 나가는지,
 source hash/path가 바뀌는지, continuous pitch-change 외 자료가 retrieval에 섞이는지를
 실패로 만든다.
+
+## NGC 확장 대금산조 source는 별도 plan-first ingest를 거친다
+
+local direct WAV만으로 target coverage가 부족할 때, 국립국악원 digital-eum의 **확장
+다운로드** phrase source를 R&D input 후보로 추가할 수 있다. 이 경우
+[`fetch_ngc_extended_daegeum.py`](../tools/daegeum-transitions/fetch_ngc_extended_daegeum.py)가
+official HTTPS catalog의 exact `EXTEND0001` / `대금` / `INDV0001` /
+`division: 대금산조` metadata filter만 허용한다. 별도 악구-download surface의 `phraseCd`,
+broad title match, `--all`은 이 경로에 없다.
+
+caller는 exact `--extend-seq`를 명시하고 첫 run은 plan-only로 catalog/detail provenance를
+기록한다. `--download`는 별도 flag이고 두 개 이상은 `--allow-batch`가 필요하다. source의
+returned server path/filename, `Content-Disposition` filename, SHA-256, native WAV descriptor,
+observed KOGL Type-1 attribution notice, non-commercial/research purpose audit를 manifest에
+남긴다. cookie/API key/hidden credential이나 fabricated organization은 쓰지 않는다.
+
+fetcher의 neutral output filename은 build가 broad filename pattern으로 trust하지 않는다.
+`--ngc-extended-manifest`를 함께 줄 때만 build가 manifest의 exact scope,
+catalog/detail/filename agreement, SHA-256, native descriptor, research-only gates를 확인하고
+그 direct WAV를 `continuous_phrase_candidate` **review source**로 분류한다. 그것도 natural
+legato, same-breath, score-target coverage, approved transition, ML/game eligibility를 만들지
+않는다. 받은 source는 `_bgm_rnd/` 아래에만 두고 R&D-06 native-frame candidate와 human-label
+validation을 새로 거쳐야 한다.
+
+```sh
+python3 tools/daegeum-transitions/test_fetch_ngc_extended_daegeum.py
+```
