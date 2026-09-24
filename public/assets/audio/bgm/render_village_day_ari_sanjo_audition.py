@@ -52,6 +52,17 @@ if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
 
 from articulation import BREATH_START, REARTICULATE, SLUR, plan_articulations  # noqa: E402
+from ari_articulation import (  # noqa: E402
+    ARIRANG_INDEX_END_ZERO_BASED,
+    ARIRANG_INDEX_START_ZERO_BASED,
+    BROWSER_BEAT_S,
+    BROWSER_DO,
+    CANDIDATE_ONLY_EDGES,
+    SCORE_BAR_END_ONE_BASED,
+    SCORE_BAR_START_ONE_BASED,
+    authority_document,
+    controlled_village_day_ari_score,
+)
 
 
 class AuditionError(RuntimeError):
@@ -60,17 +71,6 @@ class AuditionError(RuntimeError):
 
 SCHEMA = "durango.village-day-ari-sanjo-articulation-audition.v1"
 SOURCE_LABEL = "National Gugak Center digital instrument sound archive (local restored Sanjo Daegeum bank)"
-
-# Exact browser scene constants; do not substitute arirang.py's offline do=72.
-BROWSER_DO = 70.0
-BROWSER_BEAT_S = 0.72
-# ``P.ariBar`` indexes ARIRANG from zero; score discussion and the source
-# comments number bars from one.  Preserve both values so an audit cannot
-# quietly slide the phrase by one bar.
-SCORE_BAR_START_ONE_BASED = 8
-SCORE_BAR_END_ONE_BASED = 10
-ARIRANG_INDEX_START_ZERO_BASED = 7
-ARIRANG_INDEX_END_ZERO_BASED = 9
 
 # Musical / audio policy.  These are fixed and logged so a listening result
 # does not depend on a hidden randomization pass.
@@ -91,83 +91,10 @@ ONSET_DECLICK_S = 0.0025
 OUTPUT_PEAK_LIMIT = 0.92
 
 
-# The score slice begins at browser bar 8.  Its b08 rest and b09 repeat make
-# the three onset cases audible without adding arbitrary notes.  Every slur
-# below and b09_e1's re-articulation are conscious *manual R&D* performance
-# annotations; timestamps alone never imply them.  They are intentionally not
-# read from, or asserted to match, bgm.js's legacy time-based phrase planner.
-# No random ornaments are used in this first articulation-only audition.
-DEFAULT_SCORE: tuple[dict[str, Any], ...] = (
-    {
-        "id": "b08_e0",
-        "score_bar_one_based": 8,
-        "browser_arirang_index_zero_based": 7,
-        "degree": 0,
-        "start": 0.000,
-        "end": 1.440,
-        "midi": 70.0,
-        "phrase_start": True,
-        "release_to_rest": True,
-    },
-    {
-        "id": "b08_rest",
-        "score_bar_one_based": 8,
-        "browser_arirang_index_zero_based": 7,
-        "start": 1.440,
-        "end": 2.160,
-        "rest": True,
-    },
-    {
-        "id": "b09_e0",
-        "score_bar_one_based": 9,
-        "browser_arirang_index_zero_based": 8,
-        "degree": 3,
-        "start": 2.160,
-        "end": 3.600,
-        "midi": 77.0,
-        "breath_before": True,
-    },
-    {
-        "id": "b09_e1",
-        "score_bar_one_based": 9,
-        "browser_arirang_index_zero_based": 8,
-        "degree": 3,
-        "start": 3.600,
-        "end": 4.320,
-        "midi": 77.0,
-        "articulation": REARTICULATE,
-    },
-    {
-        "id": "b10_e0",
-        "score_bar_one_based": 10,
-        "browser_arirang_index_zero_based": 9,
-        "degree": 3,
-        "start": 4.320,
-        "end": 5.040,
-        "midi": 77.0,
-        "slur_from_previous": True,
-    },
-    {
-        "id": "b10_e1",
-        "score_bar_one_based": 10,
-        "browser_arirang_index_zero_based": 9,
-        "degree": 2,
-        "start": 5.040,
-        "end": 5.760,
-        "midi": 74.0,
-        "slur_from_previous": True,
-    },
-    {
-        "id": "b10_e2",
-        "score_bar_one_based": 10,
-        "browser_arirang_index_zero_based": 9,
-        "degree": 1,
-        "start": 5.760,
-        "end": 6.480,
-        "midi": 72.0,
-        "slur_from_previous": True,
-    },
-)
+# The controlled score lives next to its source markup, rather than in this
+# renderer.  Keeping a compatibility constant preserves the public R&D API,
+# but every caller receives a fresh copy through ``default_score`` below.
+DEFAULT_SCORE: tuple[dict[str, Any], ...] = tuple(controlled_village_day_ari_score())
 
 
 # The restored Sanjo archive supplies three useful plain sustain takes.  The
@@ -879,6 +806,37 @@ def _boundary_metrics(signal: Any, plans: Sequence[Mapping[str, Any]], sample_ra
     return metrics
 
 
+def _plan_boundary_metadata(plans: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
+    """Emit the score-time/entry contract independently of a WAV variant.
+
+    Per-variant component evidence lives below each WAV in provenance.  This
+    compact table is the objective common reference: it tells an auditor which
+    exact boundary is a head, tongue proxy, or steady-body entry before anyone
+    listens to the A/B files.
+    """
+    rows: list[dict[str, Any]] = []
+    for position, plan in enumerate(plans):
+        next_plan = plans[position + 1] if position + 1 < len(plans) else None
+        kind = str(plan["kind"])
+        rows.append({
+            "id": plan["id"],
+            "score_start_s": plan["start"],
+            "score_end_s": plan["end"],
+            "gap_before_s": plan["gap_before"],
+            "kind": kind,
+            "reason": plan["reason"],
+            "sample_entry_mode": "steady" if kind == SLUR else "head",
+            "onset_body_recipe": plan["onset_body_recipe"],
+            "attack_style": plan["attack_style"],
+            "next_id": None if next_plan is None else next_plan["id"],
+            "next_kind": None if next_plan is None else next_plan["kind"],
+            "next_gap_s": (
+                None if next_plan is None else float(next_plan["start"]) - float(plan["end"])
+            ),
+        })
+    return rows
+
+
 def dry_run_document() -> dict[str, Any]:
     """Return the exact score/realization contract without audio dependencies."""
     score = default_score()
@@ -888,6 +846,12 @@ def dry_run_document() -> dict[str, Any]:
         "actual_render": False,
         "requires_explicit_samples_sanjo_root": True,
         "fallback": "forbidden",
+        "scope": {
+            "output_kind": "offline_R&D_audition_only",
+            "default_released_audio_assets_changed": False,
+            "bgm_js_runtime_changed": False,
+            "new_recorded_assets_added": False,
+        },
         "browser_score": {
             "scene": "village_day",
             "mood": "ari",
@@ -899,17 +863,7 @@ def dry_run_document() -> dict[str, Any]:
                 ARIRANG_INDEX_END_ZERO_BASED,
             ],
             "ornaments": "disabled for articulation-only comparison",
-            "articulation_authority": {
-                "source": "manual R&D annotations in DEFAULT_SCORE",
-                "not_runtime_parity": (
-                    "This audition does not read or replace bgm.js "
-                    "planPerformancePhrase(); the legacy runtime remains unchanged."
-                ),
-                "authorial_choices": {
-                    "b09_e1": "rearticulate",
-                    "b10_e0_to_b10_e2": "explicit_slur_sequence",
-                },
-            },
+            "articulation_authority": authority_document(),
         },
         "performance_events": [
             {
@@ -924,6 +878,7 @@ def dry_run_document() -> dict[str, Any]:
             }
             for plan in plans
         ],
+        "score_articulation_boundaries": _plan_boundary_metadata(plans),
         "variants": [
             "all_sustain_heads",
             "all_steady_crossfades",
@@ -934,6 +889,7 @@ def dry_run_document() -> dict[str, Any]:
             "max_pitch_shift_cents": MAX_PITCH_SHIFT_CENTS,
             "sustain_source_map": SUSTAIN_SOURCES,
             "tongue_source_map": TONGUE_SOURCES,
+            "candidate_only_edges": [list(edge) for edge in CANDIDATE_ONLY_EDGES],
         },
     }
 
@@ -1025,12 +981,19 @@ def render_audition(sample_root: str | Path, output_dir: str | Path) -> dict[str
         document = {
             "schema": SCHEMA,
             "actual_recorded_samples_only": True,
+            "scope": {
+                "output_kind": "offline_R&D_audition_only",
+                "default_released_audio_assets_changed": False,
+                "bgm_js_runtime_changed": False,
+                "new_recorded_assets_added": False,
+            },
             "renderer": (
                 "direct recorded-WAV crop/static pitch-resample/envelope/crossfade; "
                 "no sampler.Voices/install, no oscillator fallback, no reverb, no synthesized vibrato"
             ),
             "source_attribution": SOURCE_LABEL,
             "browser_score": dry_run_document()["browser_score"],
+            "score_articulation_boundaries": _plan_boundary_metadata(plans),
             "source_bank": {
                 "identity": "explicit local samples_daegeum input; raw source is not embedded",
                 "directory_basename": root.name,

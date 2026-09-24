@@ -1509,6 +1509,10 @@ def install(bank, modules, octaves=None):
             # 합성음으로 떨어질 때는 art 를 떼고 넘긴다(합성 쪽은 모르는 인자다)
             skip = ("art", "legato", "prefer_src", "entry_mode", "ring")
             return orig(freq, dur, amp, **{k: v for k, v in kw.items() if k not in skip})
+        # Offline score renderers can use this capability marker to pass the
+        # explicit head/steady contract only to a real sample route.  Bare
+        # synthesis functions intentionally do not accept ``entry_mode``.
+        f._supports_explicit_sample_entry = True
         return f
 
     def wrap_perc(inst, orig):

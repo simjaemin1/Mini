@@ -79,10 +79,12 @@ check(
 )
 authority = score.get("articulation_authority", {})
 check(
-    authority.get("source") == "manual R&D annotations in DEFAULT_SCORE"
-    and "does not read or replace bgm.js" in authority.get("not_runtime_parity", "")
-    and authority.get("authorial_choices", {}).get("b09_e1") == "rearticulate",
-    "④ manual R&D articulation is explicitly not presented as runtime parity",
+    authority.get("source") == "authorial source-score markup in ari_articulation.py"
+    and "does not read" in authority.get("not_runtime_parity", "")
+    and "legacy runtime remains unchanged" in authority.get("not_runtime_parity", "")
+    and authority.get("authorial_choices", {}).get("b09_e1") == "rearticulate"
+    and authority.get("authorial_choices", {}).get("b07_e2_to_b08_e0") == "candidate_only_unmarked",
+    "④ source-score articulation is explicit and is not presented as runtime parity",
     repr(authority),
 )
 events = doc.get("performance_events", [])
@@ -97,9 +99,31 @@ check(
     and all(event.get("recipe") == "recorded_steady_body" for event in events[3:]),
     "⑥ reattack is not conflated with a full new-breath head",
 )
+boundaries = doc.get("score_articulation_boundaries", [])
+check(
+    [item.get("sample_entry_mode") for item in boundaries]
+    == ["head", "head", "head", "steady", "steady", "steady"]
+    and boundaries[2].get("id") == "b09_e1"
+    and boundaries[2].get("next_id") == "b10_e0"
+    and boundaries[2].get("next_kind") == "slur"
+    and abs(float(boundaries[2].get("next_gap_s")) or 0.0) < 1e-12,
+    "⑦ provenance exposes exact score timing and head/steady entry mode per boundary",
+    repr(boundaries),
+)
+scope = doc.get("scope", {})
+check(
+    scope == {
+        "output_kind": "offline_R&D_audition_only",
+        "default_released_audio_assets_changed": False,
+        "bgm_js_runtime_changed": False,
+        "new_recorded_assets_added": False,
+    },
+    "⑧ audition scope explicitly excludes release assets, browser runtime, and new recordings",
+    repr(scope),
+)
 check(
     doc.get("variants") == ["all_sustain_heads", "all_steady_crossfades", "score_articulated"],
-    "⑦ listening bundle contains both known failure references and the score-aware middle case",
+    "⑨ listening bundle contains both known failure references and the score-aware middle case",
 )
 policy = doc.get("source_policy", {})
 check(
@@ -108,7 +132,7 @@ check(
     and sorted(float(key) for key in policy.get("sustain_source_map", {})) == [70.0, 72.0, 74.0, 77.0]
     and policy.get("tongue_source_map", {}).get("77.0", {}).get("raw_wav")
     == "대금_sanjo_deageum_stacatto_60.wav",
-    "⑧ source map limits the exact score slice to the declared pitch-shift coverage",
+    "⑩ source map limits the exact score slice to the declared pitch-shift coverage",
     repr(policy),
 )
 
@@ -116,17 +140,17 @@ source = SCRIPT.read_text(encoding="utf-8")
 calls = dotted_calls(source)
 check(
     "sampler.Voices" not in calls and "sampler.install" not in calls,
-    "⑨ renderer never calls synth-fallback wrappers",
+    "⑪ renderer never calls synth-fallback wrappers",
 )
 check(
     "entry_mode=\"auto\"" not in source and "no oscillator fallback" in source,
-    "⑩ renderer forbids guessed sample entry and records no-oscillator policy",
+    "⑫ renderer forbids guessed sample entry and records no-oscillator policy",
 )
 check(
     "next_score_onsets_are_never_moved" in source
     and "post_mix_gain_is_common_to_all_variants" in source
     and "recorded_staccato_onset_proxy" in source,
-    "⑪ provenance binds timeline, common gain, and labelled tongue proxy",
+    "⑬ provenance binds timeline, common gain, and labelled tongue proxy",
 )
 
 print(f"\n=== PASS {passed} / FAIL {failed} ===")

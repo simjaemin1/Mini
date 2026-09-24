@@ -21,7 +21,8 @@ import compose as C
 import sampler as S
 import score_village_day as SC
 from motif import sigim
-from render_score import play, ride_levels, dmidi, ROOT, RIDE, ENTRY
+from render_score import (play, ride_levels, dmidi, ROOT, RIDE, ENTRY,
+                          plan_sustained_score)
 
 SOB = 0.500          # 정악은 느리다 (산조판 0.395)
 TAIL = 2.0           # 악구 끝 여운
@@ -52,26 +53,25 @@ def build(spec=None):
     def bt(b):
         return b * nsb * sob
 
-    notes, tie0, _pe, _cad = [], [], None, False
-    for b, bar in enumerate(SC.MELODY):
-        cad = (b % 4 == 3 or b == SC.NBAR - 1)
-        for j, (s, d, gg) in enumerate(bar):
-            st = bt(b) + s * sob
-            t = _pe is not None and st - _pe < 0.02 and not _cad
-            if j == 0:
-                tie0.append(t)
-            notes.append((st, st + d * sob, t))
-            _pe = st + d * sob
-            _cad = cad and j == len(bar) - 1
+    # The same authorial articulation map serves both Sanjo and Jeongak
+    # renderers.  Tempo/style can differ; adjacent timestamps still cannot
+    # manufacture an unmarked slur in either version.
+    dae_plans, notes = plan_sustained_score(
+        SC.MELODY, 0.0, sob,
+        annotations=getattr(SC, "DAEGEUM_ARTICULATION", {}),
+        phrase_start_bars=tuple(range(0, SC.NBAR, 4)),
+    )
 
     ENTRY.clear()
     dsrc = None
     for b, bar in enumerate(SC.MELODY):
         lvl = 0.66 if b < SC.NBAR - 2 else (0.52 if b == SC.NBAR - 2 else 0.36)
+        following = dae_plans[b + 1][0] if b + 1 < len(dae_plans) and dae_plans[b + 1] else None
         dsrc = play(dae, daegeum, ROOT["dae"], bar, bt(b), sob, "daegeum",
                     gain=lvl, pan=0.10, send=0.34, seed=100 + b, ncy=nsb,
                     cadence_last=(b % 4 == 3 or b == SC.NBAR - 1),
-                    tie_first=tie0[b], first_src=dsrc, log=ENTRY,
+                    first_src=dsrc, log=ENTRY, articulation_plans=dae_plans[b],
+                    following_plan=following,
                     tail_ring=TAIL, jeongak=True)
         # ★가야금만은 진짜 정악 악기다. 산조가야금의 잘게 뜯는 잔가락 대신
         #   성기게 — 정악 반주는 큰 박 머리를 짚고 기다린다.

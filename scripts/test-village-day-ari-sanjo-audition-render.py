@@ -75,15 +75,25 @@ def main() -> int:
 
         check(doc.get("actual_recorded_samples_only") is True,
               "① renderer declares actual recordings only")
+        check(
+            doc.get("scope") == {
+                "output_kind": "offline_R&D_audition_only",
+                "default_released_audio_assets_changed": False,
+                "bgm_js_runtime_changed": False,
+                "new_recorded_assets_added": False,
+            },
+            "② provenance explicitly excludes default assets, browser runtime, and new recordings",
+            repr(doc.get("scope")),
+        )
         check("no oscillator fallback" in str(doc.get("renderer")),
-              "② renderer provenance explicitly forbids oscillator fallback")
+              "③ renderer provenance explicitly forbids oscillator fallback")
         variants = doc.get("variants", [])
         check([variant.get("name") for variant in variants] == [
             "all_sustain_heads", "all_steady_crossfades", "score_articulated"
-        ], "③ all three controlled listening variants render")
+        ], "④ all three controlled listening variants render")
         common_gain = doc.get("level_policy", {}).get("common_gain")
         check(isinstance(common_gain, (float, int)) and common_gain > 0,
-              "④ one finite common post-mix gain is recorded", repr(common_gain))
+              "⑤ one finite common post-mix gain is recorded", repr(common_gain))
 
         all_valid = True
         all_audible = True
@@ -99,8 +109,8 @@ def main() -> int:
             all_valid &= valid and wav.is_file() and sha256(wav) == variant.get("wav_sha256")
             all_audible &= any(byte != 0 for byte in frames)
             all_valid &= float(variant.get("peak_after_common_gain", 2)) <= 0.920001
-        check(all_valid, "⑤ each variant is an intact mono 44.1 kHz WAV with matching hash and no clip")
-        check(all_audible, "⑥ each rendered WAV contains recorded audio")
+        check(all_valid, "⑥ each variant is an intact mono 44.1 kHz WAV with matching hash and no clip")
+        check(all_audible, "⑦ each rendered WAV contains recorded audio")
 
         provenance_path = output / "provenance.json"
         try:
@@ -113,7 +123,7 @@ def main() -> int:
             and published.get("source_bank", {}).get("directory_basename") == bank.name
             and str(bank) not in provenance_text
             and not list(output.parent.glob(f".{output.name}.stage-*")),
-            "⑦ published provenance is relative-only and staging leaves no partial bundle",
+            "⑧ published provenance is relative-only and staging leaves no partial bundle",
         )
         try:
             module.render_audition(bank, output)
@@ -123,7 +133,7 @@ def main() -> int:
             overwrite_refused = False
         check(
             overwrite_refused,
-            "⑧ renderer refuses an existing output directory instead of overwriting a listening bundle",
+            "⑨ renderer refuses an existing output directory instead of overwriting a listening bundle",
         )
 
         by_name = {variant["name"]: variant for variant in variants}
@@ -133,7 +143,7 @@ def main() -> int:
         check(
             [component["component"] for component in components]
             == ["recorded_staccato_onset_proxy", "recorded_steady_sustain_body"],
-            "⑨ rearticulation uses a distinct staccato onset then steady body",
+            "⑩ rearticulation uses a distinct staccato onset then steady body",
             repr([component["component"] for component in components]),
         )
         onset = components[0]["sample"]
@@ -141,7 +151,7 @@ def main() -> int:
             onset.get("wav") == "대금_sanjo_deageum_stacatto_60.wav"
             and onset.get("recorded_source_crop_s") == [10.73, 11.05]
             and abs(float(onset.get("pitch_shift_cents", 999))) < 10,
-            "⑩ tongue onset preserves the audited native 77 pre-onset/attack, not the mis-tagged multi-note trim",
+            "⑪ tongue onset preserves the audited native 77 pre-onset/attack, not the mis-tagged multi-note trim",
             repr(onset),
         )
         slur_events = [candidate_events[event_id] for event_id in ("b10_e0", "b10_e1", "b10_e2")]
@@ -151,13 +161,13 @@ def main() -> int:
                 == ["recorded_steady_sustain_body"]
                 and abs(event["components"][0]["fade_in_s"] - module.SLUR_XFADE_S) < 1e-12
                 for event in slur_events),
-            "⑪ explicitly marked slurs alone enter steady bodies with the declared crossfade",
+            "⑫ explicitly marked slurs alone enter steady bodies with the declared crossfade",
         )
         head_reattack = next(event for event in by_name["all_sustain_heads"]["events"]
                               if event["id"] == "b09_e1")
         check(
             head_reattack["components"][0]["component"] == "recorded_full_sustain_head",
-            "⑫ choppy reference retains the full-head behavior being tested against",
+            "⑬ choppy reference retains the full-head behavior being tested against",
         )
         all_components = [component for variant in variants for event in variant["events"]
                           for component in event["components"]]
@@ -166,13 +176,13 @@ def main() -> int:
                 and component["sample"]["instrument"] == "daegeum"
                 and component["sample"].get("wav_sha256")
                 for component in all_components),
-            "⑬ every actual component stays within pitch cap and has Daegeum SHA provenance",
+            "⑭ every actual component stays within pitch cap and has Daegeum SHA provenance",
         )
         check(
             doc.get("timing_policy", {}).get("next_score_onsets_are_never_moved") is True
             and abs(reattack["score_start_s"] - 3.6) < 1e-12
             and abs(reattack["components"][1]["timeline_offset_s"] - module.TONGUE_BODY_START_S) < 1e-12,
-            "⑭ tongue/body layering keeps the authored reattack onset fixed on the score grid",
+            "⑮ tongue/body layering keeps the authored reattack onset fixed on the score grid",
         )
         metrics = by_name["score_articulated"].get("boundary_metrics", [])
         slur_metrics = [metric for metric in metrics if metric.get("kind") == "slur"]
@@ -182,7 +192,7 @@ def main() -> int:
                     and float(metric.get("pre_30ms_rms", 0)) >= 0.010
                     and float(metric.get("post_30ms_rms", 0)) >= 0.010
                     for metric in slur_metrics),
-            "⑮ declared slurs pass the no-unintended-silent-hole measurement",
+            "⑯ declared slurs pass the no-unintended-silent-hole measurement",
             repr(slur_metrics),
         )
         declick_metrics = [metric for metric in metrics if metric.get("onset_declick_required")]
@@ -193,8 +203,20 @@ def main() -> int:
                     for metric in declick_metrics)
             and abs(doc.get("timing_policy", {}).get("onset_declick_s", 0)
                     - module.ONSET_DECLICK_S) < 1e-12,
-            "⑯ onset crops are de-clicked without moving the score onset",
+            "⑰ onset crops are de-clicked without moving the score onset",
             repr(declick_metrics),
+        )
+
+        boundaries = doc.get("score_articulation_boundaries", [])
+        check(
+            [row.get("sample_entry_mode") for row in boundaries]
+            == ["head", "head", "head", "steady", "steady", "steady"]
+            and boundaries[2].get("id") == "b09_e1"
+            and boundaries[2].get("next_id") == "b10_e0"
+            and boundaries[2].get("next_kind") == "slur"
+            and abs(float(boundaries[2].get("next_gap_s"))) < 1e-12,
+            "⑱ common provenance records exact b09/b10 score timing and entry modes",
+            repr(boundaries),
         )
 
     print(f"\n=== PASS {passed} / FAIL {failed} ===")
