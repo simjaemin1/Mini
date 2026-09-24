@@ -311,6 +311,8 @@ def _validate_selected_path(path: Mapping[str, Any], catalog_source: Mapping[str
     if not isinstance(source, Mapping) or not isinstance(span, Mapping):
         raise PhraseSpanAuditionError("selected path lacks source or native_source_span")
     _require_truth_labels(path)
+    input_truth_labels = path["automatic_path_status"]
+    assert isinstance(input_truth_labels, Mapping)  # narrowed by _require_truth_labels()
     source_id = source.get("source_id")
     if not isinstance(source_id, str) or source_id != catalog_source.get("source_id"):
         raise PhraseSpanAuditionError("selected path source_id does not match source_catalog.json")
@@ -427,6 +429,10 @@ def _validate_selected_path(path: Mapping[str, Any], catalog_source: Mapping[str
         }
     return {
         "path_id": path_id,
+        # Keep the selected retrieval row's original words as well as this
+        # helper's normalized limits.  A direct trajectory's feature-window
+        # caution must not be silently relabelled as a candidate-pair claim.
+        "input_automatic_path_status_verbatim": dict(input_truth_labels),
         "source": {
             "source_id": source_id,
             "sha256": digest,

@@ -354,6 +354,10 @@ class PhraseSpanAuditionTest(unittest.TestCase):
             self.assertTrue(result["input"]["selected_path"]["source_catalog_link_verified"])
             self.assertIsNone(result["input"]["selected_path"]["candidates_link_verified"])
             self.assertEqual(result["selected_path"]["span"]["coordinate_kind"], "unreviewed_feature_window_enclosure")
+            self.assertEqual(
+                result["selected_path"]["input_automatic_path_status_verbatim"],
+                trajectory["automatic_path_status"],
+            )
             self.assertTrue((root / "trajectory" / "A_native_complete_source_span.wav").is_file())
 
 
