@@ -1,0 +1,5 @@
+# R&D experiment only.  These are deliberately small, pinned dependencies.
+# The launcher installs this file through PyTorch's official CUDA 12.4 wheel
+# index; do not use it for game/runtime assets.
+torch==2.6.0
+numpy==1.26.4
