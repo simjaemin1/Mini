@@ -51,6 +51,7 @@ from native_wav import NativeWavError, inspect_wav, sha256_file  # noqa: E402
 
 SCHEMA = "durango.daegeum.transition-bank.v1"
 SEQUENCE_RETRIEVAL_SCHEMA_PREFIX = f"{SCHEMA}.same-source-sequence-retrieval."
+TRAJECTORY_RETRIEVAL_SCHEMA_PREFIX = f"{SCHEMA}.direct-f0-trajectory-retrieval."
 PHRASE_SPAN_AUDITION_SCHEMA = f"{SCHEMA}.phrase-span-audition.v1"
 RAW_SPAN_SCHEMA = f"{SCHEMA}.source-faithful-native-span.v1"
 GLOBAL_PREVIEW_SCHEMA = f"{SCHEMA}.global-pitch-time-preview.v1"
@@ -181,11 +182,19 @@ def _select_from_report(
     """Choose a row from a versioned retrieval report without fixing its revision."""
 
     if not isinstance(value, Mapping):
-        raise PhraseSpanAuditionError("sequence retrieval input is not an object")
+        raise PhraseSpanAuditionError("retrieval input is not an object")
     schema = value.get("schema")
-    if not isinstance(schema, str) or not schema.startswith(SEQUENCE_RETRIEVAL_SCHEMA_PREFIX):
-        raise PhraseSpanAuditionError("sequence retrieval input does not have a supported retrieval schema prefix")
-    rows = value.get("paths")
+    if not isinstance(schema, str):
+        raise PhraseSpanAuditionError("retrieval input does not have a schema")
+    if schema.startswith(SEQUENCE_RETRIEVAL_SCHEMA_PREFIX):
+        rows_key = "paths"
+        report_kind = "sequence_retrieval_report"
+    elif schema.startswith(TRAJECTORY_RETRIEVAL_SCHEMA_PREFIX):
+        rows_key = "trajectories"
+        report_kind = "direct_trajectory_retrieval_report"
+    else:
+        raise PhraseSpanAuditionError("retrieval input does not have a supported retrieval schema prefix")
+    rows = value.get(rows_key)
     if not isinstance(rows, list) or not rows:
         raise PhraseSpanAuditionError("sequence retrieval input has no returned paths")
     if (path_id is None) == (priority_rank is None):
@@ -193,8 +202,9 @@ def _select_from_report(
     selected: list[dict[str, Any]] = []
     for row in rows:
         if not isinstance(row, dict):
-            raise PhraseSpanAuditionError("sequence retrieval paths contains a non-object")
-        if path_id is not None and row.get("path_id") == path_id:
+            raise PhraseSpanAuditionError("retrieval rows contains a non-object")
+        row_identifier = row.get("path_id", row.get("trajectory_id"))
+        if path_id is not None and row_identifier == path_id:
             selected.append(row)
         if priority_rank is not None and row.get("priority_rank") == priority_rank:
             selected.append(row)
@@ -202,7 +212,7 @@ def _select_from_report(
         selector = f"path_id={path_id!r}" if path_id is not None else f"priority_rank={priority_rank!r}"
         raise PhraseSpanAuditionError(f"retrieval report has no unique selected path for {selector}")
     report_identity: dict[str, Any] = {
-        "kind": "sequence_retrieval_report",
+        "kind": report_kind,
         "schema": schema,
         "sha256": None,
         "source_catalog_link_verified": False,
@@ -233,7 +243,7 @@ def _load_selected_path(
         identity["sha256"] = _sha256(sequence_retrieval)
         return selected, identity
     if path_id is not None or priority_rank is not None:
-        raise PhraseSpanAuditionError("--path-id/--priority-rank apply only with --sequence-retrieval")
+        raise PhraseSpanAuditionError("--path-id/--priority-rank apply only with a retrieval report")
     selected = _json_load(path_json, label="selected path JSON")
     if not isinstance(selected, dict):
         raise PhraseSpanAuditionError("--path-json must contain one selected path object")
@@ -250,20 +260,40 @@ def _require_truth_labels(path: Mapping[str, Any]) -> None:
     status = path.get("automatic_path_status")
     if not isinstance(status, Mapping):
         raise PhraseSpanAuditionError("selected path lacks automatic_path_status truth labels")
-    required = (
-        "all_events_unreviewed",
-        "automatic_detection_is_not_a_musical_gesture_label",
-        "same_source_identity_verified",
-        "strict_temporal_ordering_of_boundary_centers_verified",
-        "not_evidence_of_same_breath",
-        "not_evidence_of_slur",
-        "not_evidence_of_natural_legato",
-        "not_approved_transition_path",
-        "not_transition_bank_item",
-        "not_training_item",
-        "not_game_asset",
-    )
-    missing = [key for key in required if status.get(key) is not True]
+    # Candidate-pair and direct-trajectory retrieval use different nouns, but
+    # both expose explicit, conservative truth labels.  The aliases below do
+    # not soften those constraints; every concept still must be present.
+    required = {
+        "unreviewed_automatic_result": (
+            "all_events_unreviewed", "all_results_remain_unreviewed",
+        ),
+        "not_a_musical_gesture_label": (
+            "automatic_detection_is_not_a_musical_gesture_label",
+            "trajectory_was_scanned_directly_from_feature_npz_not_candidate_pairs",
+        ),
+        "one_verified_source": (
+            "same_source_identity_verified", "source_is_one_verified_recording",
+        ),
+        "strict_native_or_feature_order": (
+            "strict_temporal_ordering_of_boundary_centers_verified",
+            "strictly_consecutive_voiced_feature_rows",
+        ),
+        "not_same_breath_evidence": ("not_evidence_of_same_breath",),
+        "not_slur_evidence": ("not_evidence_of_slur",),
+        "not_natural_legato_evidence": ("not_evidence_of_natural_legato",),
+        "not_approved_transition": (
+            "not_approved_transition_path", "not_an_approved_transition_path",
+        ),
+        "not_transition_bank_item": (
+            "not_transition_bank_item", "not_a_transition_bank_item",
+        ),
+        "not_training_item": ("not_training_item", "not_a_training_item"),
+        "not_game_asset": ("not_game_asset", "not_a_game_asset"),
+    }
+    missing = [
+        label for label, aliases in required.items()
+        if not any(status.get(key) is True for key in aliases)
+    ]
     if missing:
         raise PhraseSpanAuditionError(
             "selected path does not preserve required unreviewed/truth labels: " + ", ".join(missing)
@@ -273,7 +303,7 @@ def _require_truth_labels(path: Mapping[str, Any]) -> None:
 def _validate_selected_path(path: Mapping[str, Any], catalog_source: Mapping[str, Any]) -> dict[str, Any]:
     """Return validated source/span data without trusting a report's coordinates."""
 
-    path_id = path.get("path_id")
+    path_id = path.get("path_id", path.get("trajectory_id"))
     source = path.get("source")
     span = path.get("native_source_span")
     if not isinstance(path_id, str) or not path_id:
@@ -314,11 +344,23 @@ def _validate_selected_path(path: Mapping[str, Any], catalog_source: Mapping[str
     end = _strict_int(frame_range[1], label="native span end", minimum=1)
     if not (start < end <= catalog_frames):
         raise PhraseSpanAuditionError("selected path native span lies outside catalog native frame count")
-    reported_count = _strict_int(span.get("frame_count"), label="native span frame_count", minimum=1)
+    reported_count = (
+        _strict_int(span.get("frame_count"), label="native span frame_count", minimum=1)
+        if "frame_count" in span else end - start
+    )
     if reported_count != end - start:
         raise PhraseSpanAuditionError("selected path native span frame_count is inconsistent with its range")
-    if span.get("all_intermediate_native_source_frames_are_referenced_without_a_cross_recording_splice") is not True:
+    span_assertions = (
+        "all_intermediate_native_source_frames_are_referenced_without_a_cross_recording_splice",
+        "frame_range_is_an_unreviewed_feature_window_enclosure_for_raw_review_only",
+    )
+    if not any(span.get(key) is True for key in span_assertions):
         raise PhraseSpanAuditionError("selected path does not assert one complete same-source frame span")
+    span_coordinate_kind = (
+        "unreviewed_feature_window_enclosure" if span.get(
+            "frame_range_is_an_unreviewed_feature_window_enclosure_for_raw_review_only"
+        ) is True else "native_event_context_enclosure"
+    )
     events = path.get("events")
     event_ids: list[str] = []
     event_coordinates_embedded = isinstance(events, list)
@@ -362,7 +404,9 @@ def _validate_selected_path(path: Mapping[str, Any], catalog_source: Mapping[str
     if shift is not None and not isinstance(shift, Mapping):
         raise PhraseSpanAuditionError("selected path global pitch shift proxy is not an object")
     if isinstance(shift, Mapping):
-        if shift.get("not_applied_to_any_source_audio") is not True:
+        if not any(shift.get(key) is True for key in (
+            "not_applied_to_any_source_audio", "not_applied_to_source_audio",
+        )):
             raise PhraseSpanAuditionError("selected path falsely treats proxy pitch shift as source audio")
         semitones = _finite_float(shift.get("semitones"), label="one global pitch shift proxy")
         within_preferred = shift.get("within_preferred_maximum")
@@ -397,6 +441,7 @@ def _validate_selected_path(path: Mapping[str, Any], catalog_source: Mapping[str
             "event_candidate_ids": event_ids,
             "event_count": len(event_ids) if event_coordinates_embedded else None,
             "event_native_coordinates_embedded_and_validated": event_coordinates_embedded,
+            "coordinate_kind": span_coordinate_kind,
         },
         "global_pitch_shift_proxy": global_pitch_shift_proxy,
     }
@@ -718,7 +763,9 @@ def build_phrase_span_audition(
     catalog_source, catalog_digest = _catalog_source(bundle, source_data["source_id"])
     selected = _validate_selected_path(selected_path, catalog_source)
     input_identity["source_catalog_sha256"] = catalog_digest
-    if input_identity["kind"] == "sequence_retrieval_report":
+    if input_identity["kind"] in {
+        "sequence_retrieval_report", "direct_trajectory_retrieval_report",
+    }:
         input_identity["source_catalog_link_verified"] = (
             input_identity.get("declared_source_catalog_sha256") == catalog_digest
         )
@@ -726,10 +773,11 @@ def build_phrase_span_audition(
         declared_candidates = input_identity.get("declared_candidates_jsonl_sha256")
         input_identity["candidates_link_verified"] = (
             candidates_path.is_file() and declared_candidates == _sha256(candidates_path)
+            if isinstance(declared_candidates, str) else None
         )
         if not input_identity["source_catalog_link_verified"]:
             raise PhraseSpanAuditionError("retrieval report source_catalog SHA-256 does not match --bundle")
-        if not input_identity["candidates_link_verified"]:
+        if declared_candidates is not None and not input_identity["candidates_link_verified"]:
             raise PhraseSpanAuditionError("retrieval report candidates.jsonl SHA-256 does not match --bundle")
     raw_source = _resolve_raw_source(selected["source"], roots)
     try:

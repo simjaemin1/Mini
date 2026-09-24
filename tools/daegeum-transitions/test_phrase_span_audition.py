@@ -313,6 +313,49 @@ class PhraseSpanAuditionTest(unittest.TestCase):
             self.assertFalse(result["selected_path"]["global_pitch_shift_proxy"]["available"])
             self.assertEqual(result["P_optional_global_pitch_time_preview"]["status"], "not_requested")
 
+    def test_direct_trajectory_report_uses_its_own_truth_aliases_and_feature_enclosure(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = _fixture(root)
+            trajectory = copy.deepcopy(fixture["path"])
+            trajectory["priority_rank"] = 1
+            trajectory["automatic_path_status"] = {
+                "source_is_one_verified_recording": True,
+                "strictly_consecutive_voiced_feature_rows": True,
+                "trajectory_was_scanned_directly_from_feature_npz_not_candidate_pairs": True,
+                "all_results_remain_unreviewed": True,
+                "not_evidence_of_same_breath": True,
+                "not_evidence_of_slur": True,
+                "not_evidence_of_natural_legato": True,
+                "not_an_approved_transition_path": True,
+                "not_a_transition_bank_item": True,
+                "not_a_training_item": True,
+                "not_a_game_asset": True,
+            }
+            trajectory["native_source_span"] = {
+                "frame_range": [10, 80],
+                "frame_range_is_an_unreviewed_feature_window_enclosure_for_raw_review_only": True,
+                "not_a_verified_phrase_or_gesture_boundary": True,
+            }
+            trajectory.pop("events")
+            trajectory["one_global_pitch_shift_proxy"].pop("not_applied_to_any_source_audio")
+            trajectory["one_global_pitch_shift_proxy"]["not_applied_to_source_audio"] = True
+            report = json.loads(fixture["retrieval"].read_text(encoding="utf-8"))
+            report["schema"] = f"{SCHEMA}.direct-f0-trajectory-retrieval.v1"
+            report.pop("paths")
+            report["trajectories"] = [trajectory]
+            report["input_bundle"].pop("candidates_jsonl_sha256")
+            fixture["retrieval"].write_text(json.dumps(report), encoding="utf-8")
+            result = build_phrase_span_audition(
+                bundle_dir=fixture["bundle"], raw_daegeum_dirs=fixture["raw_root"], output_dir=root / "trajectory",
+                sequence_retrieval=fixture["retrieval"], priority_rank=1,
+            )
+            self.assertEqual(result["input"]["selected_path"]["kind"], "direct_trajectory_retrieval_report")
+            self.assertTrue(result["input"]["selected_path"]["source_catalog_link_verified"])
+            self.assertIsNone(result["input"]["selected_path"]["candidates_link_verified"])
+            self.assertEqual(result["selected_path"]["span"]["coordinate_kind"], "unreviewed_feature_window_enclosure")
+            self.assertTrue((root / "trajectory" / "A_native_complete_source_span.wav").is_file())
+
 
 if __name__ == "__main__":
     unittest.main()
