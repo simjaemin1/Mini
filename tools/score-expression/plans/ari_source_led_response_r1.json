@@ -1,0 +1,126 @@
+{
+  "schema": "mini.score-expression.plan.v1",
+  "r_and_d_scope": {
+    "r_and_d_only": true,
+    "no_default_assets": true,
+    "no_runtime_bgm": true,
+    "no_game_output": true,
+    "no_public_release": true
+  },
+  "instrument": {
+    "id": "daegeum",
+    "sustained": true
+  },
+  "plan_role": "authorial_ari_score_expression_companion_for_source_led_phrase_pool_rnd_only",
+  "authorial_score_reference": {
+    "module_relative_path": "public/assets/audio/bgm/ari_articulation.py",
+    "controlled_slice": "browser Ari b08-b10 at do=70, beat=0.72 seconds",
+    "explicit_policy": {
+      "b09_e1": "rearticulate",
+      "b10_e0_through_b10_e2": "explicit_slur_sequence",
+      "touching_timestamp_is_not_a_slur_rule": true
+    }
+  },
+  "source_led_phrase_pool_context": {
+    "reference_only": true,
+    "phrase_pool_report": {
+      "relative_path": "_bgm_rnd/daegeum-source-led-phrase-pool-ngc-all192-r2-20260924-234522/phrase_pool.json",
+      "sha256": "264e9bf058c730c8bdc521cdc694f26e23c8cbc603587d6dc3bee59d3d2a5cc1",
+      "schema": "durango.daegeum.transition-bank.v1.source-led-phrase-pool.v1",
+      "candidate_id": "pool_medium_compact_proxy_src_1719b6cfde83d495_000716_001077",
+      "priority_rank": 3,
+      "source_id": "src_1719b6cfde83d495",
+      "source_sha256": "1719b6cfde83d4958ed3a7a46c8870475f7cd89ec905ebfab55793328592fb50",
+      "native_source_frame_range": [343680, 518881],
+      "native_span_duration_seconds": 3.650021
+    },
+    "separation_contract": {
+      "source_span_is_not_read_or_modified_by_this_compiler": true,
+      "score_events_are_not_a_transcription_or_alignment_of_the_source_span": true,
+      "feature_proxy_measurements_do_not_create_breath_rearticulate_slur_or_release_labels": true,
+      "raw_candidate_remains_unreviewed_not_training_not_game_not_approved_phrase": true,
+      "this_plan_is_for_a_separate_future_synthetic_companion_only": true
+    }
+  },
+  "score_rest_intervals_seconds": [
+    {
+      "start_seconds": 1.44,
+      "end_seconds": 2.16,
+      "reason": "written b08 rest before b09 breath_start"
+    }
+  ],
+  "control_hz": 100,
+  "events": [
+    {
+      "id": "b08_e0_breath",
+      "score_location": "b08_e0",
+      "start_seconds": 0.0,
+      "end_seconds": 1.44,
+      "pitch_hz": 466.163762,
+      "articulation": "breath_start",
+      "steady_loudness_db": -30.0
+    },
+    {
+      "id": "b09_e0_breath",
+      "score_location": "b09_e0",
+      "start_seconds": 2.16,
+      "end_seconds": 3.6,
+      "pitch_hz": 698.456463,
+      "articulation": "breath_start",
+      "steady_loudness_db": -28.0
+    },
+    {
+      "id": "b09_e1_rearticulate",
+      "score_location": "b09_e1",
+      "start_seconds": 3.6,
+      "end_seconds": 4.32,
+      "pitch_hz": 698.456463,
+      "articulation": "rearticulate",
+      "steady_loudness_db": -29.0
+    },
+    {
+      "id": "b10_e0_slur",
+      "score_location": "b10_e0",
+      "start_seconds": 4.32,
+      "end_seconds": 5.04,
+      "pitch_hz": 698.456463,
+      "articulation": "slur",
+      "slur_from_previous": true,
+      "steady_loudness_db": -29.0
+    },
+    {
+      "id": "b10_e1_slur",
+      "score_location": "b10_e1",
+      "start_seconds": 5.04,
+      "end_seconds": 5.76,
+      "pitch_hz": 587.329536,
+      "articulation": "slur",
+      "slur_from_previous": true,
+      "steady_loudness_db": -30.0
+    },
+    {
+      "id": "b10_e2_slur_explicit_vibrato",
+      "score_location": "b10_e2",
+      "start_seconds": 5.76,
+      "end_seconds": 6.48,
+      "pitch_hz": 523.251131,
+      "articulation": "slur",
+      "slur_from_previous": true,
+      "steady_loudness_db": -29.0,
+      "vibrato": {
+        "enabled": true,
+        "rate_hz": 3.45,
+        "depth_cents": 23.0,
+        "onset_seconds": 0.2,
+        "ramp_seconds": 0.08
+      }
+    },
+    {
+      "id": "b10_release",
+      "score_location": "b10_after_e2",
+      "start_seconds": 6.48,
+      "end_seconds": 6.72,
+      "articulation": "release"
+    }
+  ]
+}

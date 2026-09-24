@@ -18,6 +18,9 @@ if str(HERE) not in sys.path:
 import compile_expression as compiler
 
 
+TRACKED_SOURCE_LED_ARI_PLAN = HERE / "plans" / "ari_source_led_response_r1.json"
+
+
 def _scope() -> dict[str, bool]:
     return {
         "r_and_d_only": True,
@@ -86,6 +89,28 @@ def _write_plan(root: Path, payload: dict[str, object]) -> Path:
 
 
 class CompileExpressionTests(unittest.TestCase):
+    def test_tracked_source_led_ari_companion_keeps_score_and_raw_source_roles_separate(self) -> None:
+        raw = json.loads(TRACKED_SOURCE_LED_ARI_PLAN.read_text(encoding="utf-8"))
+        context = raw["source_led_phrase_pool_context"]
+        self.assertTrue(context["reference_only"])
+        contract = context["separation_contract"]
+        self.assertTrue(contract["source_span_is_not_read_or_modified_by_this_compiler"])
+        self.assertTrue(contract["score_events_are_not_a_transcription_or_alignment_of_the_source_span"])
+        self.assertTrue(contract["feature_proxy_measurements_do_not_create_breath_rearticulate_slur_or_release_labels"])
+
+        result = compiler.compile_plan(TRACKED_SOURCE_LED_ARI_PLAN)
+        events = result["events"]
+        self.assertEqual(
+            [event["articulation"] for event in events],
+            ["breath_start", "breath_start", "rearticulate", "slur", "slur", "slur", "release"],
+        )
+        self.assertEqual([event["id"] for event in events if event["vibrato"]["enabled"]], ["b10_e2_slur_explicit_vibrato"])
+        # The b09 re-attack and first b10 slur share a timestamp, but their
+        # distinct explicit states survive compilation; time alone cannot
+        # rewrite the re-attack into legato.
+        self.assertEqual(int(result["gesture_state"][360]), compiler.STATE_CODES["rearticulate"])
+        self.assertEqual(int(result["gesture_state"][432]), compiler.STATE_CODES["slur"])
+
     def test_explicit_states_have_distinct_onsets_and_slur_is_pitch_continuous(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             path = _write_plan(Path(temporary), _plan())
