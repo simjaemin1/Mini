@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>브금판 — 듀랑고 미니</title>
+<!--
+  ★★★ 브금판 [T386 2026-09-25 · 세션8/ART] — 재민 귀 #66 의 **브라우저 판**
+  소리판(`sfx-board.html` · T323)과 같은 문법이다. 다른 점은 하나 — 아리랑 대금을 **두 판으로 나란히** 튼다.
+
+  ★무엇을 트나
+      · 「파일」  — 디스크의 굽힌 곡 13(`render-meta.json` 의 `tracks` 가 행을 만든다 · 이름을 손으로 안 적는다).
+                   트는 것은 `bgm-loops.js`(레포의 루프 재생기)다 — **브라우저가 못 트는 형식을 안 고른다**
+                   (Safari 는 `.m4a`, 나머지는 `.ogg` — 그 판단도 bgm-loops.js 의 것이다 · 사본 0).
+      · 「legacy」「phrase」 — `bgm.js` 가 **지금 이 자리에서** 굽는 아리랑 앞 N 마디.
+                   `DurangoBGM.renderAriPreview({ variant })` 를 그대로 부른다(GPT R&D-01 이 놓은 공개 API ·
+                   같은 씨 · 같은 반주 — 대금 한 줄만 다르다). 파일을 새로 만들지 않는다(새 오디오 0).
+
+  ★제품 무접촉: `bgm.js`·`bgm-loops.js` 를 **그대로 싣기만** 한다. 소리 층(`48-a-audio.js`)은 안 싣는다 —
+    제품은 `performancePhrases` 를 모르고(`test-bgm-phrase ⑯`), 이 판도 제품을 향해 아무것도 켜지 않는다.
+  ★서버 0: `server/central.js` 의 정적 갈래가 `public/` 을 그대로 내주므로 배포하면 `<호스트>/bgm-board.html`.
+  ★판정 0: ○/✗·메모는 **이 브라우저에만** 남는다(localStorage — 판정의 정본은 「표 복사」다).
+
+  ⚠「음량 맞춤」 — phrase 판이 legacy 보다 **RMS 가 2.6 dB 크다**(T386 실측 · `renderAriPreview` 엔진 기본
+    마디·씨 · legacy −20.10 / phrase −17.50 dBFS). 귀는 큰 쪽을 좋게 듣는다. 그래서 기본은 **두 판의 RMS 를
+    이 자리에서 재서 큰 쪽을 그만큼 낮춘다** — 낮추는 양은 적힌 수가 아니라 **잰 수**다(마디·씨를 바꾸면
+    다시 잰다 · 끄면 제품이 내는 그대로 들린다).
+
+  ⚠A/B 대상(장면·편성)은 이 파일이 아는 **유일한 이름 둘**이다: `renderAriPreview` 가 제 안에서
+    `scene='village_day'`·`mood='ari'` 로 못 박는다(bgm.js `renderAriPreview` 몸 — 밖에서 못 바꾼다).
+    이 판은 그 곡의 「파일」 행 바로 아래에 두 줄을 붙일 뿐이다.
+-->
+<style>
+  :root{
+    --bg:#f6f4ef; --panel:#fffdf8; --line:#ddd6c8; --ink:#2b2822; --dim:#6f685c;
+    --ok:#2e7d52; --no:#b4453a; --accent:#7a5c2e; --warn:#8a6d1f; --soft:#efeae0;
+  }
+  @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+    --bg:#16150f; --panel:#1e1c16; --line:#3a352a; --ink:#ece7dc; --dim:#a29a8a;
+    --ok:#6cc294; --no:#e08a7e; --accent:#d8b877; --warn:#d8c07a; --soft:#252219;
+  }}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:14px/1.6 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif}
+  .wrap{max-width:1180px;margin:0 auto;padding:20px 16px 80px}
+  h1{font-size:20px;margin:0 0 4px}
+  .sub{color:var(--dim);font-size:13px;margin:0 0 18px}
+  h2{font-size:16px;margin:30px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+  .note{background:var(--soft);border-left:3px solid var(--accent);padding:10px 12px;
+        border-radius:0 6px 6px 0;font-size:13px;color:var(--dim);margin:10px 0}
+  .bar{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin:12px 0}
+  .bar label{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--dim)}
+  .bar input[type=number]{width:92px;font:inherit;background:var(--panel);color:var(--ink);
+       border:1px solid var(--line);border-radius:6px;padding:4px 6px}
+  button{font:inherit;background:var(--panel);color:var(--ink);border:1px solid var(--line);
+         border-radius:6px;padding:5px 10px;cursor:pointer}
+  button:hover{border-color:var(--accent)}
+  button:disabled{opacity:.4;cursor:default}
+  button.on{background:var(--accent);color:var(--panel);border-color:var(--accent)}
+  .play{min-width:44px}
+  .j{width:32px;font-weight:700}
+  td:nth-last-child(2){white-space:nowrap}
+  td.num{white-space:nowrap}
+  .j.ok.on{background:var(--ok);border-color:var(--ok);color:#fff}
+  .j.no.on{background:var(--no);border-color:var(--no);color:#fff}
+  .tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse;width:100%;min-width:900px;font-size:13px}
+  th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+  th{background:var(--soft);font-weight:600;position:sticky;top:0;z-index:1}
+  td.k{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:600;white-space:nowrap}
+  tr.ab td{background:color-mix(in srgb,var(--accent) 6%,transparent)}
+  tr.ab td.k{padding-left:22px}
+  tr.playing td{background:color-mix(in srgb,var(--accent) 14%,transparent)}
+  .tag{display:inline-block;font-size:11px;padding:1px 6px;border-radius:99px;border:1px solid var(--line);
+       background:var(--panel);color:var(--dim);margin:1px 3px 1px 0;white-space:nowrap}
+  .tag.warn{color:var(--warn);border-color:var(--warn)}
+  .tag.good{color:var(--ok);border-color:var(--ok)}
+  .memo{width:100%;min-width:120px;font:inherit;background:transparent;color:var(--ink);
+        border:1px solid var(--line);border-radius:4px;padding:3px 5px}
+  .where{font-size:12px;color:var(--dim);display:block;margin-top:3px}
+  .meas{font-size:12px;color:var(--dim);white-space:nowrap}
+  #out{width:100%;height:190px;font:12px/1.5 ui-monospace,Menlo,monospace;margin-top:10px;
+       background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:8px}
+  .err{color:var(--no);font-weight:600}
+  .stat{font-size:12px;color:var(--dim)}
+  @media (max-width:640px){ .wrap{padding:14px 12px 70px} table{min-width:760px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>브금판</h1>
+  <p class="sub">배경음악 13곡과 <b>아리랑 대금 두 판</b>을 한 장에. <b>「파일」</b>은 굽힌 곡 그대로,
+     <b>「legacy」「phrase」</b>는 <code>bgm.js</code> 가 지금 굽는 소리다(같은 씨 · 같은 반주 · 대금만 다르다).
+     행은 <code>render-meta.json</code> 에서 <b>그때그때 만든다</b>.</p>
+
+  <div class="note" id="boot">정본을 읽는 중…</div>
+
+  <div class="bar">
+    <button id="wake">소리 깨우기</button>
+    <button id="stop">멈춤</button>
+    <label>마디 <input id="bars" type="number" min="1" step="1" placeholder="엔진 기본"></label>
+    <label>씨 <input id="seed" type="number" step="1" placeholder="엔진 기본"></label>
+    <label><input id="match" type="checkbox" checked> 음량 맞춤(두 판의 RMS 를 재서)</label>
+    <span class="stat" id="ctxstat"></span>
+  </div>
+
+  <h2>13곡 + 아리랑 대금 A/B <span class="stat" id="count"></span></h2>
+  <div class="note">「legacy」는 대금을 <b>음마다 새로 부는</b> 지금의 엔진이고, 「phrase」는 GPT R&amp;D-01 이 넣어 둔
+    <b>악구 하나를 한 숨으로 잇는</b> 판이다(<code>performancePhrases</code> — 제품은 안 켠다). R&amp;D-01 의 사람 청취 판정은
+    <b>둘 다 불통과</b>였다(<code>설계/BGM_RND_01.md</code>) — 이 판은 그 판정을 <b>재민 귀로 다시 대는 자리</b>다(#66).
+    마디·씨를 비우면 엔진 기본값을 쓴다. 두 줄은 <b>같은 마디·같은 씨</b>로 굽는다.</div>
+  <div class="tablewrap"><table id="bgm"><thead><tr>
+    <th>곡</th><th>듣기</th><th>장면 · 편성</th><th>길이</th><th>RMS</th><th>피크</th><th>잰 값(이 자리)</th><th>○/✗</th><th>메모</th>
+  </tr></thead><tbody></tbody></table></div>
+
+  <h2>표 복사</h2>
+  <div class="bar">
+    <button id="copy">표 복사(markdown)</button>
+    <button id="clear">판정 지우기</button>
+    <span class="stat" id="saved"></span>
+  </div>
+  <textarea id="out" readonly placeholder="「표 복사」를 누르면 여기에도 나온다 — 클립보드가 막힌 곳에서는 여기서 골라 복사해라."></textarea>
+</div>
+
+<!-- ★제품 파일을 **그대로** 싣는다(사본 0) -->
+<script src="assets/audio/bgm/bgm.js"></script>
+<script src="assets/audio/bgm/bgm-loops.js"></script>
+<script>
+(function () {
+  'use strict';
+  // ── 정본 주소(값이 아니라 **자리**다) ──────────────────────────────────────────
+  var META_URL = 'assets/audio/bgm/render-meta.json';
+  var BGM_BASE = 'assets/audio/bgm/';
+  var STORE    = 'durango.bgmboard.v1';
+  // A/B 대상 — `renderAriPreview` 가 제 안에서 못 박는 장면·편성(머리말 ⚠ 참조). 이 판이 아는 이름은 이 둘뿐이다.
+  var AB = { scene: 'village_day', mood: 'ari' };
+  var VARIANTS = ['legacy', 'phrase'];                 // `renderAriPreview` 가 받는 두 값 그대로
+
+  var $ = function (s) { return document.querySelector(s); };
+  var el = function (t, c, x) { var n = document.createElement(t); if (c) n.className = c; if (x != null) n.textContent = x; return n; };
+  var META = null;
+  var judge = {};
+  try { judge = JSON.parse(localStorage.getItem(STORE) || '{}') || {}; } catch (e) { judge = {}; }
+  var save = function () { try { localStorage.setItem(STORE, JSON.stringify(judge)); $('#saved').textContent = '저장됨(이 브라우저에만 · 정본은 「표 복사」다)'; } catch (e) {} };
+
+  // 이름 → 장면·편성: **마지막 `_`** 에서 가른다(편성 이름에는 `_` 가 없다 — 목록을 손으로 안 적는다).
+  var split = function (n) { var i = n.lastIndexOf('_'); return { scene: n.slice(0, i), mood: n.slice(i + 1) }; };
+  var dbfs = function (x) { return x > 0 ? (20 * Math.log10(x)).toFixed(2) + ' dBFS' : '−∞'; };
+
+  // ── 소리 하나만 — 누르면 앞 것이 멎는다 ────────────────────────────────────────
+  var loops = null, abCtx = null, cur = null;
+  function ensure() {
+    if (!loops && window.DurangoLoops) loops = window.DurangoLoops.create({ base: BGM_BASE });
+    if (!abCtx) { var AC = window.AudioContext || window.webkitAudioContext; if (AC) abCtx = new AC(); }
+    if (abCtx && abCtx.state === 'suspended') abCtx.resume();
+  }
+  function stopAll() {
+    if (cur && cur.stop) { try { cur.stop(); } catch (e) {} }
+    cur = null;
+    var r = document.querySelector('tr.playing'); if (r) r.classList.remove('playing');
+    Array.prototype.forEach.call(document.querySelectorAll('button.play.on'), function (b) { b.classList.remove('on'); });
+  }
+  function mark(btn) { stopAll(); btn.classList.add('on'); var tr = btn.closest('tr'); if (tr) tr.classList.add('playing'); }
+
+  // 「파일」 — 레포의 루프 재생기가 튼다(형식 고르기·반복 이음새도 그 파일의 것)
+  function playFile(btn, name) {
+    ensure(); mark(btn);
+    if (!loops) { btn.textContent = '✗'; btn.title = 'bgm-loops.js 가 안 실렸다'; return; }
+    var s = split(name);
+    loops.start(s.scene, s.mood).catch(function (e) { btn.textContent = '✗'; btn.title = String(e); stopAll(); });
+    cur = { stop: function () { loops.stop(0.08); } };
+  }
+
+  // 「legacy」「phrase」 — bgm.js 가 굽는다. 같은 (마디·씨)면 다시 안 굽는다.
+  var cache = {};
+  function opts(variant) {
+    var o = { variant: variant };
+    var b = parseInt($('#bars').value, 10), s = parseInt($('#seed').value, 10);
+    if (Number.isFinite(b)) o.bars = b;            // 비우면 **엔진 기본값**(이 판은 수를 안 짓는다)
+    if (Number.isFinite(s)) o.seed = s;
+    return o;
+  }
+  function keyOf(o) { return o.variant + '|' + (o.bars === undefined ? '-' : o.bars) + '|' + (o.seed === undefined ? '-' : o.seed); }
+  function measure(buf) {
+    var e = 0, pk = 0, n = 0;
+    for (var c = 0; c < buf.numberOfChannels; c++) {
+      var d = buf.getChannelData(c);
+      for (var i = 0; i < d.length; i++) { var v = d[i]; e += v * v; var a = v < 0 ? -v : v; if (a > pk) pk = a; n++; }
+    }
+    return { rms: Math.sqrt(e / Math.max(1, n)), peak: pk, secs: buf.duration };
+  }
+  function render(variant) {
+    var o = opts(variant), k = keyOf(o);
+    if (cache[k]) return Promise.resolve(cache[k]);
+    var t0 = performance.now();
+    return window.DurangoBGM.renderAriPreview(o).then(function (buf) {
+      cache[k] = { buf: buf, m: measure(buf), ms: Math.round(performance.now() - t0), o: o };
+      return cache[k];
+    });
+  }
+  function playAB(btn, variant) {
+    ensure(); mark(btn);
+    if (!window.DurangoBGM || !window.DurangoBGM.renderAriPreview) { btn.textContent = '✗'; btn.title = 'renderAriPreview 가 없다'; return; }
+    if (!abCtx) { btn.textContent = '✗'; btn.title = 'Web Audio 미지원'; return; }
+    var match = $('#match').checked;
+    btn.title = '굽는 중…';
+    // 맞춤이 켜져 있으면 **두 판을 다** 굽는다 — 큰 쪽을 얼마나 낮출지는 잰 RMS 가 정한다.
+    var jobs = match ? VARIANTS.map(render) : [render(variant)];
+    Promise.all(jobs).then(function (rs) {
+      var me = rs[match ? VARIANTS.indexOf(variant) : 0];
+      var gain = 1;
+      if (match) {
+        var quiet = Math.min(rs[0].m.rms, rs[1].m.rms);
+        gain = me.m.rms > 0 ? quiet / me.m.rms : 1;
+      }
+      rs.forEach(function (r) { showMeas(r.o.variant, r, match ? Math.min(rs[0].m.rms, rs[1].m.rms) / r.m.rms : null); });
+      if (!btn.classList.contains('on')) return;       // 굽는 동안 다른 단추를 눌렀다
+      var src = abCtx.createBufferSource(), g = abCtx.createGain();
+      src.buffer = me.buf; g.gain.value = gain;
+      src.connect(g); g.connect(abCtx.destination);
+      src.start();
+      var tok = { stop: function () { try { src.stop(); } catch (e) {} } };
+      cur = tok;
+      src.onended = function () { if (cur === tok) stopAll(); };
+      btn.title = '';
+    }).catch(function (e) { btn.textContent = '✗'; btn.title = String(e); stopAll(); });
+  }
+  function showMeas(variant, r, g) {
+    var td = document.querySelector('[data-meas="' + variant + '"]');
+    if (!td) return;
+    td.textContent = '';
+    td.appendChild(el('span', 'meas', 'RMS ' + dbfs(r.m.rms) + ' · 피크 ' + dbfs(r.m.peak) + ' · ' + r.m.secs.toFixed(2) + 's'));
+    td.appendChild(el('span', 'where', '마디 ' + (r.o.bars === undefined ? '엔진 기본' : r.o.bars) +
+      ' · 씨 ' + (r.o.seed === undefined ? '엔진 기본' : r.o.seed) + ' · 굽기 ' + r.ms + 'ms' +
+      (g != null ? ' · 맞춤 이득 ' + (20 * Math.log10(g)).toFixed(2) + ' dB' : '')));
+    judge['meas:' + variant] = { rms: +(20 * Math.log10(r.m.rms)).toFixed(2), peak: +(20 * Math.log10(r.m.peak)).toFixed(2),
+      secs: +r.m.secs.toFixed(2), bars: r.o.bars === undefined ? null : r.o.bars, seed: r.o.seed === undefined ? null : r.o.seed,
+      gainDb: g != null ? +(20 * Math.log10(g)).toFixed(2) : null };
+    save();
+  }
+
+  function judgeCells(id, tr) {
+    var td = el('td');
+    ['○', '✗'].forEach(function (sym, n) {
+      var b = el('button', 'j ' + (n ? 'no' : 'ok'), sym);
+      if (judge[id] && judge[id].v === sym) b.classList.add('on');
+      b.onclick = function () {
+        judge[id] = judge[id] || {};
+        judge[id].v = (judge[id].v === sym) ? '' : sym;
+        Array.prototype.forEach.call(td.querySelectorAll('button'), function (x) { x.classList.remove('on'); });
+        if (judge[id].v) b.classList.add('on');
+        save();
+      };
+      td.appendChild(b);
+    });
+    tr.appendChild(td);
+    var tdm = el('td');
+    var inp = el('input', 'memo');
+    inp.value = (judge[id] && judge[id].m) || '';
+    inp.placeholder = '메모';
+    inp.oninput = function () { judge[id] = judge[id] || {}; judge[id].m = inp.value; save(); };
+    tdm.appendChild(inp); tr.appendChild(tdm);
+  }
+
+  // ── 그린다 ────────────────────────────────────────────────────────────────────
+  function draw() {
+    var tracks = (META && META.tracks) || {};
+    var names = Object.keys(tracks).sort();
+    var tb = $('#bgm tbody');
+    var nAB = 0;
+    names.forEach(function (n) {
+      var t = tracks[n], s = split(n), tr = el('tr');
+      tr.appendChild(el('td', 'k', n));
+      var tdp = el('td');
+      var bF = el('button', 'play', '파일');
+      bF.onclick = function () { playFile(bF, n); };
+      tdp.appendChild(bF);
+      tr.appendChild(tdp);
+      var tds = el('td');
+      tds.appendChild(el('span', 'tag', s.scene));
+      tds.appendChild(el('span', 'tag', s.mood));
+      tr.appendChild(tds);
+      var mm = t && (t.measured || t);
+      tr.appendChild(el('td', 'num', mm && mm.seconds != null ? (+mm.seconds).toFixed(1) + 's' : '—'));
+      tr.appendChild(el('td', 'num', mm && mm.rms_db != null ? mm.rms_db + ' dB' : '—'));
+      tr.appendChild(el('td', 'num', mm && mm.peak_db != null ? mm.peak_db + ' dB' : '—'));
+      tr.appendChild(el('td', 'meas', '파일(굽힌 곡)'));
+      judgeCells('file:' + n, tr);
+      tb.appendChild(tr);
+      // A/B 두 줄 — 그 곡의 「파일」 행 바로 아래
+      if (s.scene === AB.scene && s.mood === AB.mood) {
+        VARIANTS.forEach(function (v) {
+          var r = el('tr', 'ab');
+          r.appendChild(el('td', 'k', n + ' · ' + v));
+          var tdb = el('td');
+          var b = el('button', 'play', v);
+          b.onclick = function () { playAB(b, v); };
+          tdb.appendChild(b);
+          r.appendChild(tdb);
+          var tdx = el('td');
+          tdx.appendChild(el('span', v === 'phrase' ? 'tag warn' : 'tag good', v === 'phrase' ? 'R&D opt-in' : '지금 엔진'));
+          tdx.appendChild(el('span', 'where', 'bgm.js renderAriPreview · 앞 N 마디 · 같은 씨·같은 반주'));
+          r.appendChild(tdx);
+          r.appendChild(el('td', '', '—')); r.appendChild(el('td', '', '—')); r.appendChild(el('td', '', '—'));
+          var tdm = el('td', 'meas', '누르면 잰다'); tdm.setAttribute('data-meas', v);
+          r.appendChild(tdm);
+          judgeCells('ab:' + v, r);
+          tb.appendChild(r);
+          nAB++;
+        });
+      }
+    });
+    $('#count').textContent = '— 행 ' + (names.length + nAB) + ' (곡 ' + names.length + ' · A/B ' + nAB + ')';
+    if (!nAB) { $('#count').textContent += ' — ⚠A/B 대상 곡이 표에 없다'; }
+    $('#boot').style.display = 'none';
+  }
+
+  // ── 단추들 ────────────────────────────────────────────────────────────────────
+  function status() {
+    $('#ctxstat').textContent = (abCtx ? '소리 ' + abCtx.state : '소리 아직') +
+      ' · 엔진 ' + (window.DurangoBGM && window.DurangoBGM.renderAriPreview ? '있음' : '없음') +
+      ' · 루프 ' + (window.DurangoLoops ? '있음' : '없음');
+  }
+  $('#wake').onclick = function () { ensure(); setTimeout(status, 150); };
+  window.addEventListener('pointerdown', function () { ensure(); setTimeout(status, 150); }, { once: true });
+  $('#stop').onclick = stopAll;
+  ['#bars', '#seed'].forEach(function (s) { $(s).onchange = function () { stopAll(); }; });
+  $('#clear').onclick = function () {
+    if (!confirm('판정을 모두 지운다. 복사해 뒀나?')) return;
+    judge = {}; save(); location.reload();
+  };
+  $('#copy').onclick = function () {
+    var L = [];
+    L.push('# 브금판 판정 — ' + new Date().toISOString().slice(0, 10));
+    L.push('');
+    L.push('음량 맞춤: ' + ($('#match').checked ? '켬(잰 RMS 로 큰 쪽을 낮춤)' : '끔(제품이 내는 그대로)'));
+    ['legacy', 'phrase'].forEach(function (v) {
+      var m = judge['meas:' + v];
+      if (m) L.push('- ' + v + ' — RMS ' + m.rms + ' dBFS · 피크 ' + m.peak + ' dBFS · ' + m.secs + 's · 마디 ' +
+        (m.bars === null ? '엔진 기본' : m.bars) + ' · 씨 ' + (m.seed === null ? '엔진 기본' : m.seed) +
+        (m.gainDb !== null ? ' · 맞춤 이득 ' + m.gainDb + ' dB' : ''));
+    });
+    L.push('');
+    L.push('| 대상 | ○/✗ | 메모 |');
+    L.push('|---|---|---|');
+    var n0 = L.length;
+    Object.keys(judge).sort().forEach(function (id) {
+      var j = judge[id];
+      if (id.indexOf('meas:') === 0 || !j || (!j.v && !j.m)) return;
+      L.push('| `' + id + '` | ' + (j.v || '') + ' | ' + (j.m || '').replace(/\|/g, '\\|') + ' |');
+    });
+    if (L.length === n0) L.push('| _(아직 적은 것이 없다)_ |  |  |');
+    var txt = L.join('\n');
+    $('#out').value = txt;
+    if (navigator.clipboard) navigator.clipboard.writeText(txt).then(function () {
+      $('#saved').textContent = '클립보드에 복사했다';
+    }, function () { $('#saved').textContent = '클립보드가 막혔다 — 아래 칸에서 골라 복사해라'; });
+  };
+
+  // ── 정본을 받는다 ────────────────────────────────────────────────────────────
+  fetch(META_URL).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then(function (m) { META = m; draw(); status(); })
+    .catch(function (e) {
+      $('#boot').className = 'note err';
+      $('#boot').textContent = '정본을 못 읽었다: ' + e + ' — 배포된 호스트에서 열어라(file:// 로는 fetch 가 막힌다).';
+    });
+})();
+</script>
+</body>
+</html>
