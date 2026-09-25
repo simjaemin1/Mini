@@ -1,0 +1,16 @@
+{
+  "schema": "mini.midi-ddsp-daegeum-adapter.rights.v1",
+  "training_allowed": true,
+  "synthetic_fixture_only": true,
+  "approval_id": "SYNTHETIC_CONTRACT_TEST_ONLY",
+  "approved_dataset_id": "synthetic_daegeum_contract_only",
+  "rights_authority": {
+    "organization": "synthetic fixture only",
+    "approval_reference": "NOT_A_REAL_RIGHTS_APPROVAL"
+  },
+  "authorized_scope": {
+    "local_model_training": true,
+    "derived_training_features": true,
+    "training_record_export": true
+  }
+}

@@ -1,0 +1,159 @@
+{
+  "schema": "mini.midi-ddsp-daegeum-adapter.training-contract.v1",
+  "dataset_id": "synthetic_daegeum_contract_only",
+  "synthetic_fixture_only": true,
+  "continuous_mono_audio": {
+    "continuous": true,
+    "channels": 1,
+    "sample_rate_hz": 16000
+  },
+  "alignment": {
+    "score_timebase_matches_audio": true,
+    "maximum_error_seconds": 0.004
+  },
+  "midi_ddsp_conditioning": {
+    "frame_rate_hz": 250,
+    "expression_fields": [
+      "volume",
+      "vol_fluc",
+      "vibrato",
+      "brightness",
+      "attack",
+      "vol_peak_pos"
+    ],
+    "row_fields": [
+      "pitch",
+      "onset",
+      "offset",
+      "note_length"
+    ]
+  },
+  "items": [
+    {
+      "item_id": "synthetic_phrase_001",
+      "audio": {
+        "relative_path": "unavailable_synthetic/continuous_mono_daegeum.wav",
+        "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "continuous_mono": true,
+        "channels": 1,
+        "sample_rate_hz": 16000,
+        "duration_seconds": 4.2
+      },
+      "aligned_midi": {
+        "relative_path": "unavailable_synthetic/score.mid",
+        "sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+        "timebase_matches_audio": true
+      },
+      "notes": [
+        {
+          "note_id": "n01",
+          "pitch": 70,
+          "onset_frame": 0,
+          "offset_frame": 250,
+          "onset_seconds": 0.0,
+          "offset_seconds": 1.0,
+          "articulation": "breath_start",
+          "slur_from_previous": false,
+          "vibrato": {
+            "enabled": false,
+            "rate_hz": 0.0,
+            "depth_cents": 0.0,
+            "onset_seconds": 0.0,
+            "ramp_seconds": 0.0
+          },
+          "midi_ddsp_expression_targets": {
+            "volume": 0.48,
+            "vol_fluc": 0.22,
+            "vibrato": 0.0,
+            "brightness": 0.55,
+            "attack": 0.72,
+            "vol_peak_pos": 0.26
+          },
+          "expression_target_provenance": "synthetic_only",
+          "post_note_release_seconds": 0.0
+        },
+        {
+          "note_id": "n02",
+          "pitch": 77,
+          "onset_frame": 250,
+          "offset_frame": 500,
+          "onset_seconds": 1.0,
+          "offset_seconds": 2.0,
+          "articulation": "rearticulate",
+          "slur_from_previous": false,
+          "vibrato": {
+            "enabled": false,
+            "rate_hz": 0.0,
+            "depth_cents": 0.0,
+            "onset_seconds": 0.0,
+            "ramp_seconds": 0.0
+          },
+          "midi_ddsp_expression_targets": {
+            "volume": 0.52,
+            "vol_fluc": 0.35,
+            "vibrato": 0.0,
+            "brightness": 0.53,
+            "attack": 0.8,
+            "vol_peak_pos": 0.22
+          },
+          "expression_target_provenance": "synthetic_only",
+          "post_note_release_seconds": 0.0
+        },
+        {
+          "note_id": "n03",
+          "pitch": 77,
+          "onset_frame": 500,
+          "offset_frame": 750,
+          "onset_seconds": 2.0,
+          "offset_seconds": 3.0,
+          "articulation": "slur",
+          "slur_from_previous": true,
+          "vibrato": {
+            "enabled": true,
+            "rate_hz": 3.2,
+            "depth_cents": 28.0,
+            "onset_seconds": 0.18,
+            "ramp_seconds": 0.12
+          },
+          "midi_ddsp_expression_targets": {
+            "volume": 0.5,
+            "vol_fluc": 0.15,
+            "vibrato": 0.45,
+            "brightness": 0.54,
+            "attack": 0.1,
+            "vol_peak_pos": 0.5
+          },
+          "expression_target_provenance": "synthetic_only",
+          "post_note_release_seconds": 0.0
+        },
+        {
+          "note_id": "n04",
+          "pitch": 74,
+          "onset_frame": 750,
+          "offset_frame": 1000,
+          "onset_seconds": 3.0,
+          "offset_seconds": 4.0,
+          "articulation": "rearticulate",
+          "slur_from_previous": false,
+          "vibrato": {
+            "enabled": false,
+            "rate_hz": 0.0,
+            "depth_cents": 0.0,
+            "onset_seconds": 0.0,
+            "ramp_seconds": 0.0
+          },
+          "midi_ddsp_expression_targets": {
+            "volume": 0.41,
+            "vol_fluc": 0.3,
+            "vibrato": 0.0,
+            "brightness": 0.47,
+            "attack": 0.76,
+            "vol_peak_pos": 0.24
+          },
+          "expression_target_provenance": "synthetic_only",
+          "post_note_release_seconds": 0.12
+        }
+      ]
+    }
+  ]
+}
