@@ -1,4 +1,4 @@
-# BGM R&D — 16마디 아리랑 대금 요성 B0/B1/B2-R
+# BGM R&D — 16마디 아리랑 대금 요성 B0/B1/B2-R/B2-Rd
 
 작성일: 2026-09-25  
 작업 브랜치: `codex/bgm-rnd-01`  
@@ -6,19 +6,21 @@
 
 ## 결론
 
-16마디·34.8초짜리 동일 악보를 세 가지 표현으로 끝까지 렌더했다.
+16마디·34.8초짜리 동일 악보를 네 가지 표현으로 끝까지 렌더했다.
 
 - B0는 모든 음이 평음인 기준안이다.
 - B1은 문맥 규칙으로 고른 b08 국소 종지와 b16 전체 종지에만 3.45 Hz,
   18 cents의 후반 요성을 건 보수적 규칙형이다.
 - B2-R은 b08을 B1과 그대로 유지하고, b16만 국립국악원 대금 산조 자료에서
   자동 추출한 65점 F0 윤곽으로 교체한 참조형이다.
+- B2-Rd는 B2-R의 원본 65점·시간·경계를 그대로 보존하고, 최대 절대 깊이만
+  B1과 같은 18 cents 기준으로 줄인 공정 비교형이다.
 
-B2-R은 구현·검증에는 성공했지만 최종안으로 확정하지 않는다. 마른 DDSP 출력의
-음량은 B1과 사실상 같고 새 클릭도 없지만, 체크포인트 리버브 뒤의 100 ms 음량
-변동은 B1보다 커졌다. 따라서 현재 청취 후보의 우선순위는 **B1이 보수적 기준안,
-B2-R은 실제 자료 모양을 시험하는 비교안**이다. 실제 자료를 썼다는 이유만으로
-B2-R을 더 정통이거나 더 좋은 연주라고 부르지 않는다.
+B2-R의 원래 깊이는 리버브 뒤 음량 요동을 키웠다. B2-Rd는 그 요동의 range/std를
+B2-R보다 각각 42.1%/42.8% 줄였고, 평균 레벨도 B1 쪽으로 회복했다. 따라서 현재
+청취 우선순위는 **B1이 보수적 규칙 기준안, B2-Rd가 실제 윤곽의 깊이 보정 비교안,
+B2-R은 원형 깊이 진단안**이다. 어느 것도 최종안으로 확정하지 않는다. 실제 자료를
+썼다는 이유만으로 더 정통이거나 더 좋은 연주라고 부르지 않는다.
 
 기본 게임 BGM과 원본 `Mini` 작업 폴더는 변경하지 않았다.
 
@@ -31,12 +33,13 @@ B2-R을 더 정통이거나 더 좋은 연주라고 부르지 않는다.
 | 후보 | 파일 | SHA-256 | `[0, 34.56)` RMS |
 |---|---|---|---:|
 | B0 평음 | `_bgm_rnd/full-ari-yoseong-audition-pack-r1-20260925-231000/B0_full_ari_hard_step_no_explicit_yoseong.wav` | `9bd113f568f0180b296549629d5630c930c991f7943750e13c24090003c12259` | -24.0003 dBFS |
-| B1 문맥 규칙형 | `_bgm_rnd/full-ari-reference-contour-audition-pack-r1-20260925-175200/B1_full_ari_contextual_sine_yoseong.wav` | `11fd57ccea7a9d65306e335e48a7f0d7caea5b3d5ec82c4bd1dc8b835d723906` | -24.0019 dBFS |
-| B2-R 미검수 참조형 | `_bgm_rnd/full-ari-reference-contour-audition-pack-r1-20260925-175200/B2R_full_ari_reference_shape_unreviewed.wav` | `d71f27efe9af1575ad8c83a6cdf104287b77a303be45a9140930035876430943` | -24.0100 dBFS |
+| B1 문맥 규칙형 | `_bgm_rnd/full-ari-reference-depth-audition-pack-r1-20260925-181000/B1_full_ari_contextual_sine_yoseong.wav` | `11fd57ccea7a9d65306e335e48a7f0d7caea5b3d5ec82c4bd1dc8b835d723906` | -24.0019 dBFS |
+| B2-R 미검수 참조 원형 | `_bgm_rnd/full-ari-reference-depth-audition-pack-r1-20260925-181000/B2R_full_ari_reference_shape_unreviewed_raw_depth.wav` | `d71f27efe9af1575ad8c83a6cdf104287b77a303be45a9140930035876430943` | -24.0100 dBFS |
+| B2-Rd 깊이 보정 참조형 | `_bgm_rnd/full-ari-reference-depth-audition-pack-r1-20260925-181000/B2Rd_full_ari_reference_shape_depth_matched_unreviewed.wav` | `14f260fb42e195046764408d33d4db759cb4ededdae282798f84f262b8b5084c` | -24.0048 dBFS |
 
-B1/B2-R 패키지 manifest는
-`_bgm_rnd/full-ari-reference-contour-audition-pack-r1-20260925-175200/full_ari_reference_contour_audition_manifest.json`이며,
-SHA-256은 `ee5d4c46ee88d441adf89c8e564f7dbc7d48c2a78dbf8636a658851be6a573af`다.
+B1/B2-R/B2-Rd 패키지 manifest는
+`_bgm_rnd/full-ari-reference-depth-audition-pack-r1-20260925-181000/full_ari_reference_depth_audition_manifest.json`이며,
+SHA-256은 `15680db6f22bae35b7b0a0f2c6ec0256e75261c55ef791472d8c0e0266ef6907`다.
 
 ## B2-R 표현 계약
 
@@ -53,6 +56,19 @@ SHA-256은 `ee5d4c46ee88d441adf89c8e564f7dbc7d48c2a78dbf8636a658851be6a573af`다
 - 첫 행과 마지막 행: 정확히 0 cents
 - 마지막 음 및 60행 릴리스: 정확히 466.163762 Hz, 0 cents
 
+B2-Rd는 위 조건과 원본 payload를 그대로 쓰며, 컴파일·런타임에서만 다음 고정
+변환을 적용한다.
+
+- transform: `linear_peak_abs_match`
+- source maximum: 34.047561 cents
+- target maximum: 18.0 cents
+- scale: `0.5286722300020257 = 18 / 34.047561`
+- 실제 250 Hz 최대 절대 편차: 17.9585640734 cents
+- B2-Rd 각 행: B2-R 해당 행 × scale, 최대 검증 오차 1.776e-15 cents
+- plan SHA-256: `76fb1ff28b6b90806539f0a75fde747b51ed8e956975eb6c7e26b8ee0a9fb005`
+- runtime report SHA-256: `e03fa6d13ff5c6ba9a9d8c0bb2c901bdfa9ee677133c437d254276ca58a5e96f`
+- 250 Hz controls SHA-256: `4d4f527a170706f3f8f7ee69e1f203a07485541ca97dc16f6fb1183c9ddf1131`
+
 원본 artifact SHA-256은
 `e584ff8c9142ed51223681d30ba5aa3236f29a7c808bcb5b40b208cb0f886bd2`,
 정규화된 contour payload SHA-256은
@@ -66,34 +82,40 @@ SHA-256은 `ee5d4c46ee88d441adf89c8e564f7dbc7d48c2a78dbf8636a658851be6a573af`다
 
 ## 동일성·음향 QA
 
-- B1/B2-R의 8,700개 제어행에서 frame/time/loudness/voicing/articulation/event ID는
-  모두 정확히 같다.
-- b08의 360행은 F0와 요성까지 완전히 동일하다.
-- 수치상 표현 차이는 b16 내부 373행의 F0/요성뿐이다. 릴리스 CSV의 `-0.0`과
-  `0.0` 표기 차이는 수치적으로 같은 0이며 비교기는 float로 판정한다.
+- B1/B2-R/B2-Rd의 8,700개 제어행에서 frame/time/loudness/voicing/articulation/
+  event ID는 모두 정확히 같다.
+- b08의 360행은 세 후보의 F0와 요성까지 완전히 동일하다.
+- B2-R과 B2-Rd의 수치상 차이는 b16 내부 373행의 F0/요성뿐이며, 모든 cents가
+  고정 scale 관계를 만족한다. 릴리스 CSV의 `-0.0`과 `0.0` 표기 차이는
+  수치적으로 같은 0이며 비교기는 float로 판정한다.
 - B2-R dry WAV의 첫 차이는 33.0646875초의 1 LSB다. wet WAV에서 33.06초 이전에
   보이는 차이는 528,960 samples 중 378개의 1-LSB FFT/양자화 반올림뿐이며
   차이 RMS는 -121.8 dBFS다. 1 LSB를 넘는 첫 차이는 33.0651875초로, 실질
   차이는 의도한 참조 진입 뒤에 난다.
 - dry b16 RMS는 B1 -53.6934, B2-R -53.6927 dBFS로 차이가 0.001 dB 미만이다.
-- wet b16 RMS는 B1 -23.1823, B2-R -23.2899 dBFS다.
+- wet b16 RMS는 B0 -23.1686, B1 -23.1823, B2-R -23.2899,
+  B2-Rd -23.2204 dBFS다. B1 대비 편차는 B2-R보다 B2-Rd에서 64.6% 줄었다.
 - 참조 시작 뒤 100 ms wet envelope의 range/std는 B0 0.264/0.083 dB,
-  B1 1.309/0.289 dB, B2-R 2.099/0.610 dB다. B2-R은 음정 윤곽과 학습 리버브의
-  상호작용으로 청감상 음량 요동이 더 커질 가능성이 있다.
+  B1 1.309/0.289 dB, B2-R 2.099/0.610 dB, B2-Rd 1.216/0.349 dB다.
+  B2-Rd는 B2-R보다 range/std가 42.1%/42.8% 줄었지만 std는 아직 B1보다
+  20.7% 높다. 남은 차이는 음정 윤곽과 학습 리버브의 상호작용으로 추정한다.
+- 마지막 120 ms fade-out 구간의 wet RMS는 B1 대비 B2-R -0.881 dB,
+  B2-Rd -0.543 dB다. B2-Rd도 클릭이 아닌 청감상 dip 후보가 남는다.
 - 각 핵심 경계의 sample-jump click proxy는 해당 후보 b16의 99.9 percentile보다
   작아 새 click outlier가 없다.
-- 두 wet 후보의 최고 peak는 0.214996(-13.35 dBFS)이며 clipping, limiter,
+- 세 wet 표현 후보의 최고 peak는 0.214996(-13.35 dBFS)이며 clipping, limiter,
   compressor가 없다.
 - 표기된 쉼 b08 `[16.56, 17.28)`과 연주용 호흡 틈 두 곳은 제어에서 정확히 0이다.
-- score-length wet의 마지막 10 ms는 약 -69.7 dBFS의 작은 잔향을 자른다. 최종
+- B2-Rd score-length wet의 마지막 10 ms는 약 -70.0 dBFS의 작은 잔향을 자른다. 최종
   비루프 자산에는 37.799875초 full-tail 또는 명시적 tail fade를 써야 한다.
 
 ## 검증
 
-- BGM R&D Python 테스트 35개 묶음, 총 206개 테스트 통과
-- score/compiler 21개, DDSP runtime 26개, B1/B2-R 패커 7개 포함
-- 실제 B2-R full render `succeeded`
-- 실제 B1/B2-R fail-closed pack 생성 `succeeded`
+- BGM R&D Python 테스트 36개 묶음, 총 218개 테스트 통과
+- score/compiler 24개, DDSP runtime 28개, 기존 B1/B2-R 패커 7개,
+  신규 3-way 패커 7개 포함
+- 실제 B2-R 및 B2-Rd full render `succeeded`
+- 실제 B1/B2-R/B2-Rd fail-closed pack 생성 `succeeded`
 - 독립 QA에서 plan/report/control/audio SHA와 실제 bytes 재검증
 - 기본 BGM 무변경 guard 통과
 
@@ -118,18 +140,23 @@ test -z "$(git diff --name-only 03a54f5c..HEAD -- \
 - `c3030d6b` — B2-R selection provenance 범위 수정
 - `fc173c98` — 65점 참조 윤곽 DDSP 런타임
 - `0f68be0e` — B1/B2-R fail-closed 청취 패커
+- `1ef74148` — B2-R 전체 곡 결과·음향 QA 보고
+- `37f6cae1` — 깊이 보정 B2-Rd 계획·컴파일러
+- `943e4b0b` — B2-Rd DDSP 런타임
+- `2417dac2` — B1/B2-R/B2-Rd 3-way fail-closed 패커
 
 ## 해석 한계와 다음 실험 기준
 
-B2-R의 원본은 자동 F0 proxy 후보다. 사람 검수, 요성 판정, 경기민요 문맥 정렬,
+B2-R/B2-Rd의 원본은 자동 F0 proxy 후보다. 사람 검수, 요성 판정, 경기민요 문맥 정렬,
 전체 프레이즈/호흡 적합도, 학습 이용권 및 게임 배포권이 모두 확인되지 않았다.
-그러므로 `reference_shape_unreviewed`, offline R&D-only 상태를 유지한다. 이 결과는
-학습된 경기민요 표현 모델도 아니고 게임 자산도 아니다.
+그러므로 `reference_shape_unreviewed`/`reference_shape_depth_matched_unreviewed`,
+offline R&D-only 상태를 유지한다. 이 결과는 학습된 경기민요 표현 모델도 아니고
+게임 자산도 아니다.
 
-다음 순서는 먼저 참조 shape의 깊이만 B1의 ±18 cents에 맞춘 `B2-Rd`다. 현재
-B2-R의 약 -33.97–+27.06 cents와 B1의 약 ±17.99 cents가 달라 shape와 depth가
-동시에 바뀌었기 때문이다. 그 다음 음량 실험 `B2-RA`에서만 원본 RMS 윤곽에
-저역통과, mean-zero, 최대 ±1 dB 제한을 걸고 동일 B0-derived 상수 게인으로 비교한다.
-동시에 checkpoint-native reverb의 wet 비율 또는 더 안정적인 공간계가 요성에 따른
-envelope 변동을 얼마나 만드는지 분리해야 한다. 사람 청취 전에는 어느 후보도 기본
-BGM으로 승격하지 않는다.
+다음 자동 실험보다 먼저 B1과 B2-Rd를 청취 비교해야 한다. 후속 후보를 만들면
+우선 B2-Rd의 마지막 120 ms depth closure를 더 일찍·완만하게 닫아 남은 wet dip을
+분리한다. 그 뒤 음량 실험 `B2-RA`에서만 원본 RMS 윤곽에 저역통과, mean-zero,
+최대 ±1 dB 제한을 걸고 동일 B0-derived 상수 게인으로 비교한다. 동시에
+checkpoint-native reverb의 wet 비율 또는 더 안정적인 공간계가 요성에 따른 envelope
+변동을 얼마나 만드는지 분리해야 한다. 사람 청취 전에는 어느 후보도 기본 BGM으로
+승격하지 않는다.
