@@ -104,6 +104,25 @@ rows, a nominal-pitch release, and an actual maximum no greater than 18 cents.
 This depth match remains an unreviewed proxy audition; it is not learned,
 style-aligned, human-reviewed, or cleared for training/game use.
 
+B2-Rdf keeps the same unscaled 65-point payload, source hashes, negative claim
+limits, 18-cent depth transform, 120 ms fade-in, and 1.5-second time mapping as
+B2-Rd. Its separate status,
+`reference_shape_depth_matched_long_fade_unreviewed`, adds only a pinned
+`linear_depth_fade_extension`: source fade-out `0.12` seconds and target
+fade-out `0.24` seconds. The runtime rejects any other status, field set,
+duration, transform kind, or source/target value.
+
+The B2-Rdf end envelope remains one linear depth closure anchored to the final
+half-open row. It equals B2-Rd through absolute time `34.32` (frame 8580), then
+starts differing at `34.324` (frame 8581):
+`(34.556 - t) / (34.556 - 34.32)` until the zero-cent row at `34.556`.
+B2-Rd remains full-depth through `34.44`, then uses
+`(34.556 - t) / (34.556 - 34.44)`. The report records both formulas, their
+frame boundaries, exact equality through the new fade start, the 59 compared
+long-fade rows, and that b08 lies outside this single-event transform. Direct
+regression tests also compare every B2-Rd/B2-Rdf control through frame 8580,
+the complete b08 event, the relative fade formula, and the nominal release.
+
 The score-expression compiler has the same canonical constants and math, and
 each runtime sidecar probes both implementations at 5.040/5.044/… seconds.
 That is formula equivalence only: its 100 Hz control artifact can be

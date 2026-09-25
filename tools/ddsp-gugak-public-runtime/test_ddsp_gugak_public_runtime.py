@@ -28,9 +28,119 @@ PLAN = ROOT / "tools/score-expression/plans/ari_source_led_response_r1.json"
 AUDITION_PLAN = ROOT / "tools/score-expression/plans/ari_gyeonggi_policy_r1_audition.json"
 REFERENCE_PLAN = ROOT / "tools/score-expression/plans/ari_full_16bar_b2_reference_shape_unreviewed_r1.json"
 DEPTH_MATCHED_REFERENCE_PLAN = ROOT / "tools/score-expression/plans/ari_full_16bar_b2rd_reference_shape_depth_matched_unreviewed_r1.json"
+LONG_FADE_REFERENCE_PLAN = ROOT / "tools/score-expression/plans/ari_full_16bar_b2rdf_reference_shape_depth_matched_long_fade_unreviewed_r1.json"
 
 
 class PublicRuntimeTests(unittest.TestCase):
+    def test_long_fade_reference_matches_b2rd_through_34_32_then_uses_exact_linear_extension(self) -> None:
+        depth_frames, depth_summary = runtime.build_score_controls(
+            DEPTH_MATCHED_REFERENCE_PLAN,
+            slur_pitch_mode=runtime.SLUR_PITCH_MODE_HARD_STEP,
+        )
+        long_frames, long_summary = runtime.build_score_controls(
+            LONG_FADE_REFERENCE_PLAN,
+            slur_pitch_mode=runtime.SLUR_PITCH_MODE_HARD_STEP,
+        )
+        qa = long_summary["reference_contour_control_qa"]
+        self.assertEqual(qa["status"], "reference_shape_depth_matched_long_fade_unreviewed")
+        event = qa["events"][0]
+        fade = event["end_fade_transform"]
+        self.assertEqual(fade["kind"], "linear_depth_fade_extension")
+        self.assertEqual(fade["source_status"], "reference_shape_depth_matched_unreviewed")
+        self.assertEqual(fade["target_status"], "reference_shape_depth_matched_long_fade_unreviewed")
+        self.assertEqual(fade["source_fade_out_seconds"], 0.12)
+        self.assertEqual(fade["target_fade_out_seconds"], 0.24)
+        self.assertEqual(fade["target_fade_start_seconds_absolute"], 34.32)
+        self.assertEqual(fade["source_fade_start_seconds_absolute"], 34.44)
+        self.assertAlmostEqual(fade["final_zero_anchor_seconds_absolute"], 34.556, places=12)
+        self.assertEqual(fade["last_b2rd_identical_frame_index"], 8580)
+        self.assertEqual(fade["last_b2rd_identical_time_seconds"], 34.32)
+        self.assertEqual(fade["first_b2rdf_modified_frame_index"], 8581)
+        self.assertEqual(fade["first_b2rdf_modified_time_seconds"], 34.324)
+        self.assertTrue(fade["target_fade_is_strict_extension_gate_passed"])
+        self.assertTrue(fade["source_artifact_payload_depth_scale_and_negative_claims_preserved"])
+        self.assertTrue(fade["b08_outside_end_fade_application_scope_gate_passed"])
+        self.assertTrue(fade["b2rd_controls_at_or_before_34_32_seconds_exact_gate_passed"])
+        self.assertTrue(fade["b2rd_relative_long_fade_formula_gate_passed"])
+        self.assertEqual(fade["identical_active_control_row_count_through_fade_start"], 316)
+        self.assertEqual(fade["long_fade_formula_control_row_count"], 59)
+
+        # All controls—not only pitch—are exactly B2-Rd through the long fade
+        # start, including the earlier b08 contextual yoseong.
+        self.assertEqual(long_frames[:8581], depth_frames[:8581])
+        depth_b08 = [frame for frame in depth_frames if frame["event_id"] == "b08_e0_rearticulate"]
+        long_b08 = [frame for frame in long_frames if frame["event_id"] == "b08_e0_rearticulate"]
+        self.assertTrue(depth_b08)
+        self.assertEqual(long_b08, depth_b08)
+
+        final_anchor = 34.556
+        target_start = 34.32
+        source_start = 34.44
+        for index in range(8581, 8640):
+            moment = long_frames[index]["time_seconds"]
+            target_envelope = 0.0 if moment >= final_anchor else (final_anchor - moment) / (final_anchor - target_start)
+            if moment <= source_start:
+                source_envelope = 1.0
+            elif moment >= final_anchor:
+                source_envelope = 0.0
+            else:
+                source_envelope = (final_anchor - moment) / (final_anchor - source_start)
+            expected = 0.0 if source_envelope == 0.0 else depth_frames[index]["vibrato_cents"] * target_envelope / source_envelope
+            self.assertAlmostEqual(long_frames[index]["vibrato_cents"], expected, places=10)
+            for key in ("frame_index", "time_seconds", "loudness_linear", "voicing", "articulation", "event_id"):
+                self.assertEqual(long_frames[index][key], depth_frames[index][key])
+
+        self.assertEqual(event["active_control_frame_count"], 375)
+        self.assertEqual(event["nonzero_interior_frame_count"], 373)
+        self.assertEqual(long_frames[8265]["vibrato_cents"], 0.0)
+        self.assertEqual(long_frames[8639]["vibrato_cents"], 0.0)
+        self.assertEqual(long_frames[8639]["f0_hz"], event["nominal_pitch_hz"])
+        self.assertLessEqual(event["actual_runtime_max_abs_cents"], 18.0)
+        self.assertTrue(event["target_max_abs_not_exceeded_gate_passed"])
+        self.assertTrue(event["no_time_compression_gate_passed"])
+        self.assertEqual(long_frames[8640:], depth_frames[8640:])
+        self.assertTrue(long_summary["release_vibrato_qa"]["final_nominal_pitch_gate_passed"])
+
+        _, depth_events, _ = runtime._validate_plan(DEPTH_MATCHED_REFERENCE_PLAN)
+        _, long_events, _ = runtime._validate_plan(LONG_FADE_REFERENCE_PLAN)
+        depth_reference = depth_events[-2]["reference_contour"]
+        long_reference = long_events[-2]["reference_contour"]
+        for key in ("source_artifact", "normalized_reference_contour", "claim_limits", "depth_transform"):
+            self.assertEqual(long_reference[key], depth_reference[key])
+
+    def test_long_fade_transform_fails_closed_on_status_fade_or_provenance_mutation(self) -> None:
+        source = json.loads(LONG_FADE_REFERENCE_PLAN.read_text(encoding="utf-8"))
+        reference_index = next(
+            index for index, event in enumerate(source["events"])
+            if "reference_contour" in event
+        )
+
+        def reference(plan):
+            return plan["events"][reference_index]["reference_contour"]
+
+        mutations = {
+            "missing_transform": lambda plan: reference(plan).pop("end_fade_transform"),
+            "wrong_status": lambda plan: reference(plan).__setitem__("status", "reference_shape_depth_matched_unreviewed"),
+            "wrong_fade_out": lambda plan: reference(plan).__setitem__("fade_out_seconds", 0.23),
+            "wrong_fade_in": lambda plan: reference(plan).__setitem__("fade_in_seconds", 0.24),
+            "wrong_kind": lambda plan: reference(plan)["end_fade_transform"].__setitem__("kind", "linear_depth"),
+            "source_fade": lambda plan: reference(plan)["end_fade_transform"].__setitem__("source_fade_out_seconds", 0.11),
+            "target_fade": lambda plan: reference(plan)["end_fade_transform"].__setitem__("target_fade_out_seconds", 0.23),
+            "hidden_approval": lambda plan: reference(plan)["end_fade_transform"].__setitem__("approved", True),
+            "depth_scale": lambda plan: reference(plan)["depth_transform"].__setitem__("scale", 0.5),
+            "payload_point": lambda plan: reference(plan)["normalized_reference_contour"]["pitch_residual_cents"].__setitem__(49, -18.0),
+            "claim_upgrade": lambda plan: reference(plan)["claim_limits"].__setitem__("human_reviewed", True),
+        }
+        with tempfile.TemporaryDirectory() as temporary:
+            for name, mutate in mutations.items():
+                with self.subTest(name=name):
+                    altered = copy.deepcopy(source)
+                    mutate(altered)
+                    path = Path(temporary) / f"invalid-long-fade-{name}.json"
+                    path.write_text(json.dumps(altered), encoding="utf-8")
+                    with self.assertRaises(runtime.RuntimeContractError):
+                        runtime.build_score_controls(path)
+
     def test_depth_matched_reference_contour_scales_only_b16_and_preserves_b08_exactly(self) -> None:
         source_frames, source_summary = runtime.build_score_controls(
             REFERENCE_PLAN,

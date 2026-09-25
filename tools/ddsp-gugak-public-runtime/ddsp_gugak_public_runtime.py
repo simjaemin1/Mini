@@ -81,9 +81,11 @@ GAIN_SOURCE_SLOT = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
 REFERENCE_CONTOUR_EVENT_ID = "b16_e0_rearticulate"
 REFERENCE_CONTOUR_STATUS = "reference_shape_unreviewed"
 REFERENCE_CONTOUR_DEPTH_MATCHED_STATUS = "reference_shape_depth_matched_unreviewed"
+REFERENCE_CONTOUR_LONG_FADE_STATUS = "reference_shape_depth_matched_long_fade_unreviewed"
 REFERENCE_CONTOUR_STATUSES = frozenset({
     REFERENCE_CONTOUR_STATUS,
     REFERENCE_CONTOUR_DEPTH_MATCHED_STATUS,
+    REFERENCE_CONTOUR_LONG_FADE_STATUS,
 })
 REFERENCE_CONTOUR_ONSET_SECONDS = 0.66
 REFERENCE_CONTOUR_DURATION_SECONDS = 1.5
@@ -95,6 +97,11 @@ EXPECTED_REFERENCE_CONTOUR_DEPTH_TRANSFORM = {
     "source_max_abs_cents": 34.047561,
     "target_max_abs_cents": 18.0,
     "scale": 0.5286722300020257,
+}
+EXPECTED_REFERENCE_CONTOUR_END_FADE_TRANSFORM = {
+    "kind": "linear_depth_fade_extension",
+    "source_fade_out_seconds": 0.12,
+    "target_fade_out_seconds": 0.24,
 }
 EXPECTED_REFERENCE_CONTOUR_SOURCE = {
     "relative_path": "tools/daegeum-vibrato-reference/reference_shape_unreviewed.ngc-20260925.json",
@@ -234,8 +241,10 @@ def _validate_reference_contour(
         "normalized_reference_contour",
         "claim_limits",
     ]
-    if status == REFERENCE_CONTOUR_DEPTH_MATCHED_STATUS:
+    if status in {REFERENCE_CONTOUR_DEPTH_MATCHED_STATUS, REFERENCE_CONTOUR_LONG_FADE_STATUS}:
         expected_fields.append("depth_transform")
+    if status == REFERENCE_CONTOUR_LONG_FADE_STATUS:
+        expected_fields.append("end_fade_transform")
     _exact_keys(value, expected_fields, label=label)
     if event_id != REFERENCE_CONTOUR_EVENT_ID:
         raise RuntimeContractError(
@@ -264,11 +273,16 @@ def _validate_reference_contour(
         label=f"{label}.fade_out_seconds",
         minimum=FRAME_RESOLUTION,
     )
+    expected_fade_out = (
+        float(EXPECTED_REFERENCE_CONTOUR_END_FADE_TRANSFORM["target_fade_out_seconds"])
+        if status == REFERENCE_CONTOUR_LONG_FADE_STATUS
+        else REFERENCE_CONTOUR_FADE_SECONDS
+    )
     expected_times = (
         (onset, REFERENCE_CONTOUR_ONSET_SECONDS, "onset_seconds"),
         (duration, REFERENCE_CONTOUR_DURATION_SECONDS, "duration_seconds"),
         (fade_in, REFERENCE_CONTOUR_FADE_SECONDS, "fade_in_seconds"),
-        (fade_out, REFERENCE_CONTOUR_FADE_SECONDS, "fade_out_seconds"),
+        (fade_out, expected_fade_out, "fade_out_seconds"),
     )
     for actual, expected, field in expected_times:
         if not math.isclose(actual, expected, abs_tol=1.0e-12, rel_tol=0.0):
@@ -381,7 +395,7 @@ def _validate_reference_contour(
         raise RuntimeContractError(f"{label} embedded contour bytes do not match their payload hash")
 
     depth_transform: Optional[Dict[str, Any]] = None
-    if status == REFERENCE_CONTOUR_DEPTH_MATCHED_STATUS:
+    if status in {REFERENCE_CONTOUR_DEPTH_MATCHED_STATUS, REFERENCE_CONTOUR_LONG_FADE_STATUS}:
         raw_transform = _mapping(
             value.get("depth_transform"),
             label=f"{label}.depth_transform",
@@ -439,6 +453,49 @@ def _validate_reference_contour(
             "scale": scale,
         }
 
+    end_fade_transform: Optional[Dict[str, Any]] = None
+    if status == REFERENCE_CONTOUR_LONG_FADE_STATUS:
+        raw_end_fade_transform = _mapping(
+            value.get("end_fade_transform"),
+            label=f"{label}.end_fade_transform",
+        )
+        _exact_keys(
+            raw_end_fade_transform,
+            EXPECTED_REFERENCE_CONTOUR_END_FADE_TRANSFORM,
+            label=f"{label}.end_fade_transform",
+        )
+        if raw_end_fade_transform.get("kind") != EXPECTED_REFERENCE_CONTOUR_END_FADE_TRANSFORM["kind"]:
+            raise RuntimeContractError(f"{label}.end_fade_transform.kind differs from the pinned transform")
+        source_fade = _finite_number(
+            raw_end_fade_transform.get("source_fade_out_seconds"),
+            label=f"{label}.end_fade_transform.source_fade_out_seconds",
+            minimum=FRAME_RESOLUTION,
+        )
+        target_fade = _finite_number(
+            raw_end_fade_transform.get("target_fade_out_seconds"),
+            label=f"{label}.end_fade_transform.target_fade_out_seconds",
+            minimum=FRAME_RESOLUTION,
+        )
+        if source_fade != float(EXPECTED_REFERENCE_CONTOUR_END_FADE_TRANSFORM["source_fade_out_seconds"]):
+            raise RuntimeContractError(
+                f"{label}.end_fade_transform.source_fade_out_seconds differs from its pinned value"
+            )
+        if target_fade != float(EXPECTED_REFERENCE_CONTOUR_END_FADE_TRANSFORM["target_fade_out_seconds"]):
+            raise RuntimeContractError(
+                f"{label}.end_fade_transform.target_fade_out_seconds differs from its pinned value"
+            )
+        if target_fade != fade_out or source_fade != REFERENCE_CONTOUR_FADE_SECONDS:
+            raise RuntimeContractError(
+                f"{label}.end_fade_transform does not map the B2-Rd fade to the declared B2-Rdf fade"
+            )
+        if target_fade <= source_fade:
+            raise RuntimeContractError(f"{label}.end_fade_transform must strictly extend the fade")
+        end_fade_transform = {
+            "kind": str(raw_end_fade_transform["kind"]),
+            "source_fade_out_seconds": source_fade,
+            "target_fade_out_seconds": target_fade,
+        }
+
     normalized_reference = {
         "status": str(status),
         "onset_seconds": onset,
@@ -459,6 +516,8 @@ def _validate_reference_contour(
     }
     if depth_transform is not None:
         normalized_reference["depth_transform"] = depth_transform
+    if end_fade_transform is not None:
+        normalized_reference["end_fade_transform"] = end_fade_transform
     return normalized_reference
 
 
@@ -772,11 +831,29 @@ def _vibrato_cents(
     return float(vibrato["depth_cents"]) * envelope * math.sin(2.0 * math.pi * float(vibrato["rate_hz"]) * (local_seconds - onset))
 
 
+def _reference_end_fade_envelope(
+    elapsed_seconds: float,
+    duration_seconds: float,
+    fade_out_seconds: float,
+) -> float:
+    fade_start = duration_seconds - fade_out_seconds
+    final_control_elapsed = duration_seconds - FRAME_RESOLUTION
+    if elapsed_seconds >= final_control_elapsed - 1.0e-12:
+        return 0.0
+    if elapsed_seconds <= fade_start + 1.0e-12:
+        return 1.0
+    fade_span = final_control_elapsed - fade_start
+    if fade_span <= 0.0:  # pragma: no cover - pinned validation rejects it.
+        return 0.0
+    return min(1.0, max(0.0, (final_control_elapsed - elapsed_seconds) / fade_span))
+
+
 def _reference_contour_cents(
     event: Mapping[str, Any],
     local_seconds: float,
     *,
     event_duration: Optional[float] = None,
+    fade_out_override_seconds: Optional[float] = None,
 ) -> float:
     """Linearly sample the pinned 65-point contour without time compression."""
 
@@ -831,18 +908,18 @@ def _reference_contour_cents(
         raw_cents *= float(transform["scale"])
 
     fade_in = float(reference["fade_in_seconds"])
-    fade_out = float(reference["fade_out_seconds"])
+    fade_out = (
+        float(reference["fade_out_seconds"])
+        if fade_out_override_seconds is None
+        else _finite_number(
+            fade_out_override_seconds,
+            label="reference contour fade-out override",
+            minimum=FRAME_RESOLUTION,
+            maximum=duration,
+        )
+    )
     envelope = min(1.0, max(0.0, elapsed / fade_in))
-    fade_start = duration - fade_out
-    final_control_elapsed = duration - FRAME_RESOLUTION
-    if elapsed >= final_control_elapsed - 1.0e-12:
-        envelope = 0.0
-    elif elapsed > fade_start:
-        fade_span = final_control_elapsed - fade_start
-        if fade_span <= 0.0:  # pragma: no cover - pinned validation rejects it.
-            envelope = 0.0
-        else:
-            envelope *= min(1.0, max(0.0, (final_control_elapsed - elapsed) / fade_span))
+    envelope *= _reference_end_fade_envelope(elapsed, duration, fade_out)
     return raw_cents * envelope
 
 
@@ -1085,6 +1162,41 @@ def reference_contour_control_qa(
             ):
                 raise RuntimeContractError("reference contour depth-transform provenance gate failed")
             base_record["depth_transform"] = transform_record
+        raw_end_fade_transform = reference.get("end_fade_transform")
+        end_fade_transform: Optional[Mapping[str, Any]] = None
+        if raw_end_fade_transform is not None:
+            end_fade_transform = _mapping(
+                raw_end_fade_transform,
+                label="normalized reference contour end-fade transform",
+            )
+            source_fade = float(end_fade_transform["source_fade_out_seconds"])
+            target_fade = float(end_fade_transform["target_fade_out_seconds"])
+            target_fade_start = round((contour_end - target_fade) * FRAME_RATE_HZ) / FRAME_RATE_HZ
+            source_fade_start = round((contour_end - source_fade) * FRAME_RATE_HZ) / FRAME_RATE_HZ
+            final_control_time = round((contour_end - FRAME_RESOLUTION) * FRAME_RATE_HZ) / FRAME_RATE_HZ
+            last_common_frame_index = int(round(target_fade_start * FRAME_RATE_HZ))
+            first_modified_frame_index = last_common_frame_index + 1
+            base_record["end_fade_transform"] = {
+                "kind": str(end_fade_transform["kind"]),
+                "source_status": REFERENCE_CONTOUR_DEPTH_MATCHED_STATUS,
+                "target_status": REFERENCE_CONTOUR_LONG_FADE_STATUS,
+                "source_fade_out_seconds": source_fade,
+                "target_fade_out_seconds": target_fade,
+                "target_fade_is_strict_extension_gate_passed": target_fade > source_fade,
+                "target_fade_start_seconds_relative_to_contour": duration - target_fade,
+                "target_fade_start_seconds_absolute": target_fade_start,
+                "source_fade_start_seconds_relative_to_contour": duration - source_fade,
+                "source_fade_start_seconds_absolute": source_fade_start,
+                "final_zero_anchor_seconds_absolute": final_control_time,
+                "last_b2rd_identical_frame_index": last_common_frame_index,
+                "last_b2rd_identical_time_seconds": last_common_frame_index / FRAME_RATE_HZ,
+                "first_b2rdf_modified_frame_index": first_modified_frame_index,
+                "first_b2rdf_modified_time_seconds": first_modified_frame_index / FRAME_RATE_HZ,
+                "target_linear_depth_formula": "(34.556 - t) / (34.556 - 34.32) for 34.32 < t < 34.556; zero at 34.556",
+                "source_linear_depth_formula": "1 through 34.44, then (34.556 - t) / (34.556 - 34.44); zero at 34.556",
+                "source_artifact_payload_depth_scale_and_negative_claims_preserved": True,
+                "b08_outside_end_fade_application_scope_gate_passed": True,
+            }
         if not active_frames:
             base_record.update({
                 "truncated_before_reference_contour": True,
@@ -1178,6 +1290,75 @@ def reference_contour_control_qa(
                 "actual_runtime_max_abs_cents": actual_runtime_max,
                 "target_max_abs_not_exceeded_gate_passed": target_gate,
             })
+        if end_fade_transform is not None:
+            source_fade = float(end_fade_transform["source_fade_out_seconds"])
+            target_fade = float(end_fade_transform["target_fade_out_seconds"])
+            target_fade_start = round((contour_end - target_fade) * FRAME_RATE_HZ) / FRAME_RATE_HZ
+            comparison_rows = [
+                frame
+                for frame in active_frames
+                if float(frame["time_seconds"]) <= target_fade_start + 1.0e-12
+            ]
+            pre_start_gate = True
+            for frame in comparison_rows:
+                local = float(frame["time_seconds"]) - event_start
+                source_cents = _reference_contour_cents(
+                    event,
+                    local,
+                    event_duration=event_duration,
+                    fade_out_override_seconds=source_fade,
+                )
+                if float(frame["vibrato_cents"]) != source_cents:
+                    pre_start_gate = False
+                    break
+            if not pre_start_gate:
+                raise RuntimeContractError(
+                    "long-fade reference contour changed a B2-Rd control at or before 34.32 seconds"
+                )
+            formula_gate = True
+            formula_rows = [
+                frame
+                for frame in active_frames
+                if float(frame["time_seconds"]) > target_fade_start + 1.0e-12
+            ]
+            for frame in formula_rows:
+                local = float(frame["time_seconds"]) - event_start
+                elapsed = local - onset
+                source_cents = _reference_contour_cents(
+                    event,
+                    local,
+                    event_duration=event_duration,
+                    fade_out_override_seconds=source_fade,
+                )
+                source_envelope = _reference_end_fade_envelope(elapsed, duration, source_fade)
+                target_envelope = _reference_end_fade_envelope(elapsed, duration, target_fade)
+                if source_envelope > 0.0:
+                    expected_long_cents = source_cents * target_envelope / source_envelope
+                else:
+                    expected_long_cents = 0.0
+                if not math.isclose(
+                    float(frame["vibrato_cents"]),
+                    expected_long_cents,
+                    abs_tol=1.0e-10,
+                    rel_tol=0.0,
+                ):
+                    formula_gate = False
+                    break
+            if not formula_gate:
+                raise RuntimeContractError(
+                    "long-fade reference contour differs from the declared B2-Rd-relative linear formula"
+                )
+            transform_record = _mapping(
+                base_record["end_fade_transform"],
+                label="reference contour end-fade QA record",
+            )
+            base_record["end_fade_transform"] = {
+                **dict(transform_record),
+                "b2rd_controls_at_or_before_34_32_seconds_exact_gate_passed": pre_start_gate,
+                "b2rd_relative_long_fade_formula_gate_passed": formula_gate,
+                "identical_active_control_row_count_through_fade_start": len(comparison_rows),
+                "long_fade_formula_control_row_count": len(formula_rows),
+            }
         base_record.update({
             "truncated_before_reference_contour": False,
             "truncated_during_reference_contour": not complete,
