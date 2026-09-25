@@ -13,6 +13,10 @@ const mod=fs.readFileSync(ROOT+'/public/client/48-a-audio.js','utf8');
 // 층이 **지금 듣는** 메시지 종류 — recv 갈래에서 읽는다(사본 0)
 const recv=mod.slice(mod.indexOf('recv: (msg, c)'), mod.indexOf('dbg: ()'));
 const heard=new Set([...recv.matchAll(/t === '([a-z_]+)'/g)].map(m=>m[1]));
+// ★[T387] 층이 **표로** 듣는 메시지 — `combat` 표(메시지 이름 → 키). 이름이 코드에 안 박혀 있어서
+//   위 철자 긁기로는 안 보인다(철자로 부재를 재면 거짓 — 이 자가 T354 에 campfire 로 한 번 당했다).
+const heardBy=new Map();
+if(/_sfxMan\.combat/.test(recv)) for(const [k,v] of Object.entries(man.combat||{})) if(!k.startsWith('_')&&typeof v==='string'&&man.keys[v]){ heard.add(k); heardBy.set(k,'combat 표 → '+v); }
 // 표가 잇는 낱말
 const tblWords=new Set();
 for(const t of Object.keys(man)) { const v=man[t];
@@ -24,7 +28,7 @@ const add=(축,자리,있음,근거)=>rows.push({축,자리,있음,근거});
 
 // ① 서버 메시지 종류 전수
 const types=[...new Set([...zone.matchAll(/type:\s*'([a-z_]+)'/g)].map(m=>m[1]))].sort();
-for(const t of types) add('서버 메시지', t, heard.has(t)?'O':'-', heard.has(t)?'층 recv 갈래':'');
+for(const t of types) add('서버 메시지', t, heard.has(t)?'O':'-', heard.has(t)?(heardBy.get(t)||'층 recv 갈래'):'');
 // ② act 낱말 전수
 const acts=[...new Set([...vil.matchAll(/_lifeAct\(npc, '([^']+)'\)/g)].map(m=>m[1]))].sort();
 for(const a of acts) add('생활 낱말(act)', a, (man.npcAct&&man.npcAct[a])?'O':'-', (man.npcAct&&man.npcAct[a])||'');
@@ -56,7 +60,7 @@ for(const w of ['wind','precip','indoor','thunder','snow']) {
 for(const g of ['rock','grass','_기본']) add('지면', g, (man.ground&&man.ground[g])?'O':'-', (man.ground&&man.ground[g])||'');
 
 // ★★자를 먼저 검증한다 — **이미 배선된 것이 O 로 잡히는가**. 안 잡히면 이 표는 거짓말이다.
-const mustBeO=[['건물','campfire'],['자원','tree'],['개체','wolf'],['생활 낱말(act)','낚음'],['인벤 낱말(where)','harvest']];
+const mustBeO=[['건물','campfire'],['자원','tree'],['개체','wolf'],['생활 낱말(act)','낚음'],['인벤 낱말(where)','harvest'],['서버 메시지','arrow_spawn']];
 const ruler=mustBeO.map(([ax,nm])=>{const r=rows.find(x=>x.축===ax&&x.자리===nm);return `${ax}/${nm}=${r?r.있음:'없다'}`;});
 const rulerOk=mustBeO.every(([ax,nm])=>{const r=rows.find(x=>x.축===ax&&x.자리===nm);return r&&r.있음==='O';});
 console.log(`자 검증: ${rulerOk?'성하다':'★고장났다'} — ${ruler.join(' · ')}`);

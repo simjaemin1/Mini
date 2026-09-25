@@ -53,6 +53,24 @@
   "bite": "bite",
   "_idle": "소리 없음 — 줄을 거두는 것은 사건이 아니다."
  },
+ "combat": {
+  "_뜻": "사람/전투 갈래 — 서버가 **이미 보내던** 메시지 이름 → 키 [T387]. 서버 무접촉 · `30-n-net.js` 무접촉 · 훅은 `recv` 한 자리(`48-a-audio.js`). 표에 없는 메시지는 안 운다. 11자리 중 **사건 넷만** 여기 있다 — 나머지는 상태 동기화라 소리가 아니다(`보고/T387` 자리 표).",
+  "arrow_spawn": "arrow_shoot",
+  "player_attacked": "swing",
+  "player_downed": "downed",
+  "player_respawn": "wake_up",
+  "_player_attacked": "★코드 그대로: **때리는 쪽**의 휘두름이다(`zone.js tryAttack` — `pid` = 공격자 · \"맞음\"이 아니다). ⚠근처에 짐승이 있으면 그 가지가 먼저 `return` 해서 이 방송이 **안 나간다**(짐승 치기는 `mob_damaged` — 동물 갈래). 사람·벽을 칠 때만 운다.",
+  "_player_downed": "나에게만 온다(`send(ws)`). 위치 없음 = 내 몸. 남이 쓰러지는 것은 `player_down_state` 로만 오는데 그 메시지는 업기·구조에도 같은 꼴로 나와 **사건이 아니다**(보고 ⓑ). ⚠다시 접속한 쓰러진 사람에게도 같은 이름이 한 번 더 온다(`source:'relogin'`) — `combatSkip` 이 거른다.",
+  "_player_respawn": "방송 · 좌표가 실려 온다(깨어난 자리). 내 것은 위치 없이 난다. ⚠pid 는 **존마다 따로 센다**(`p${nextPid++}`) — '나' 판정은 주 연결(`role:'primary'`)에서만 한다.",
+  "_death": "`inventory where:'death'` 는 **여기 없다** — 죽어 쏟은 짐은 `_deathDrop` → `_spawnGroundItems` → `ground_item_added` 로 **이미 `drop` 이 운다**(`groundDrop`). 여기 한 줄을 더하면 한 사건에 두 소리다."
+ },
+ "combatSkip": {
+  "_뜻": "`combat` 표의 메시지 중 **같은 이름으로 오지만 사건이 아닌 것** — 칸 이름 → 값이 맞으면 안 운다 [T387]. 값은 서버가 이미 싣는 칸이다(서버 무접촉).",
+  "player_downed": {
+   "source": "relogin"
+  },
+  "_player_downed": "`zone.js` 가 쓰러진 채 **다시 접속한** 사람에게 같은 `player_downed` 를 welcome 뒤에 한 번 더 보낸다(`source:'relogin'` · 화면 복원용). 그건 쓰러짐이 아니라 **상태 복원**이다 — 울면 접속할 때마다 몸이 바닥에 떨어진다."
+ },
  "buildings": {
   "_뜻": "개체와 같은 문법 — 건물 `type` → 반복 키. 개체마다 하나씩 나고 화면 밖이면 멎는다.",
   "campfire": "fire"
@@ -411,6 +429,98 @@
    "source": "oga_break_sfx",
    "훅": "30-n-net.js handleMessage — **수신**. `resourceHit` 표가 `rock`·`ore`·`meteorite` 를 이 키로 보낸다(곡괭이질).",
    "_T358": "새 키 — 재민 09-22 \"제대로 된 걸 찾아야 함\". `bronze_hit`(둔탁한 쿵 · 중심 391Hz · 저역 91%)은 **돌을 때리는 소리가 아니었다**. 새 것은 중심 4186Hz · 2kHz 위 88% — 돌이 깨지는 날카로운 소리다. T272 가 \"청동이냐 돌이냐는 자로 못 가른다\"고 남긴 자리를 **재민 귀가 갈랐다**."
+  },
+  "arrow_shoot": {
+   "file": "arrow_shoot.ogg",
+   "fileAlt": "arrow_shoot.m4a",
+   "volume": 0.7,
+   "radius": 480,
+   "loop": false,
+   "maxSame": 3,
+   "cooldownMs": 0,
+   "source": "oga_artisticdude_battle",
+   "훅": "30-n-net.js handleMessage — **수신** `arrow_spawn`(`zone.js tryRangedAttack` · 방송 · 쏜 자리 좌표). `combat` 표가 이 키로 보낸다.",
+   "_T387": "새 키 — 사람/전투 갈래 첫 소리. 후보 둘 중 1번(2번 = `arrow_shoot_b`). 판정은 재민 귀(소리판)."
+  },
+  "arrow_shoot_b": {
+   "file": "arrow_shoot_b.ogg",
+   "fileAlt": "arrow_shoot_b.m4a",
+   "volume": 0.7,
+   "radius": 480,
+   "loop": false,
+   "maxSame": 3,
+   "cooldownMs": 0,
+   "source": "commons_pd_bowtwang",
+   "후보": true,
+   "_T387": "`arrow_shoot` 의 후보 2번 — 배선 없음. 느슨한 활시위 튕김(PD). 원본 제목이 'deep twang of **loose** bow string' 이라 팽팽한 활보다 낮고 길다(1.0s) — 그게 장단점이다."
+  },
+  "swing": {
+   "file": "swing.ogg",
+   "fileAlt": "swing.m4a",
+   "files": [
+    "swing.ogg",
+    "swing2.ogg",
+    "swing3.ogg"
+   ],
+   "volume": 0.6,
+   "radius": 320,
+   "loop": false,
+   "maxSame": 3,
+   "cooldownMs": 0,
+   "source": "oga_qubodup_swoshes",
+   "훅": "30-n-net.js handleMessage — **수신** `player_attacked`(`zone.js tryAttack` · 방송 · 공격자 pid). 자리는 그 사람(`c.others`) · 나면 위치 없음. 모르는 pid 는 안 운다.",
+   "_T387": "새 키 — 휘두름. 변주 셋은 **같은 녹음(대나무 막대 휘두름 43번)** 에서 뜬다(다른 팩이면 다른 무기로 들린다 · T358 규약). 고르는 것은 씨 해시.",
+   "_왜 대나무": "청동기 마을의 몽둥이·자루 무기에 쇠칼 휘두름보다 가깝다. 쇠 스침(Kenney `drawKnife`)은 뺐다 — 칼집에서 뽑는 소리다."
+  },
+  "swing_b": {
+   "file": "swing_b.ogg",
+   "fileAlt": "swing_b.m4a",
+   "volume": 0.6,
+   "radius": 320,
+   "loop": false,
+   "maxSame": 3,
+   "cooldownMs": 0,
+   "source": "oga_artisticdude_swishes",
+   "후보": true,
+   "_T387": "`swing` 의 후보 2번 — 배선 없음. 더 짧고(0.12s) 가볍다."
+  },
+  "downed": {
+   "file": "downed.ogg",
+   "fileAlt": "downed.m4a",
+   "volume": 0.9,
+   "radius": 0,
+   "loop": false,
+   "maxSame": 1,
+   "cooldownMs": 0,
+   "source": "kenney_impact_sounds",
+   "훅": "30-n-net.js handleMessage — **수신** `player_downed`(`zone.js damagePlayer` · 나에게만 · 위치 없음 = 내 몸).",
+   "_T387": "새 키 — 쓰러짐. 후보 1번(2번 = `downed_b`).",
+   "_왜 punch": "`impactSoft_heavy`(2번)가 이름으로는 더 몸 같지만 스펙트럴 중심이 **90Hz** · 250Hz 아래가 에너지의 99.7% 다 — 노트북 스피커는 그 대역을 거의 못 낸다(무음처럼 들릴 수 있다). `impactPunch_heavy_000` 은 중심 579Hz · 28% 가 250Hz 위라 작은 스피커에서도 들린다. **자로 고른 것이다 — 귀 판정은 재민.**"
+  },
+  "downed_b": {
+   "file": "downed_b.ogg",
+   "fileAlt": "downed_b.m4a",
+   "volume": 0.9,
+   "radius": 0,
+   "loop": false,
+   "maxSame": 1,
+   "cooldownMs": 0,
+   "source": "kenney_impact_sounds",
+   "후보": true,
+   "_T387": "`downed` 의 후보 2번 — 배선 없음. 깊은 쿵(중심 90Hz) · 헤드폰에서 판정할 것."
+  },
+  "wake_up": {
+   "file": "wake_up.ogg",
+   "fileAlt": "wake_up.m4a",
+   "volume": 0.6,
+   "radius": 384,
+   "loop": false,
+   "maxSame": 2,
+   "cooldownMs": 0,
+   "source": "kenney_rpg_audio",
+   "훅": "30-n-net.js handleMessage — **수신** `player_respawn`(`zone.js` 두 자리 · 방송 · 깨어난 자리 좌표). 내 것은 위치 없음.",
+   "_T387": "새 키 — 깨어남(일어서며 옷 스침). 후보 1개뿐 — **깨어나는 숨**은 CC0/PD 에서 못 찾았다(Commons `Windy breath` 는 바람 부는 입김이라 뺐다) ⇒ 녹음 회부(재민 폰).",
+   "_이름": "`wake` 가 아니라 `wake_up` — 소리판에 `#wake`(소리 깨우기 단추) id 가 있어 ⑬b(페이지에 키 이름 0)가 철자로 문다. 자를 누그러뜨리지 않고 이름을 비켰다."
   }
  },
  "_성사": "카드는 수확·먹기·도끼질 훅을 '서버 동사 결과가 오는 30-n-net.js 핸들러'에 붙이라고 했다. §0-ⓒ 실측: **그런 메시지가 없다.** 서버는 먹기·수확에 전용 결과 타입을 안 보내고 `notice`·`gauges`·`inventory`·`resource_removed` 같은 **공용 메시지**만 보낸다(`doEat`·`tryHarvest`·`gatherResource` 전수). 공용 메시지에 붙이면 남이 한 일에도 소리가 난다. 그래서 **발신 정본 한 자리**(`sendPrimary`)에 붙였다 — 거절당한 동사도 소리가 난다는 맞바꿈이고, 그 대신 훅이 파일 하나·줄 하나다. 성사로 옮기려면 서버가 동사별 결과를 보내야 한다 ⇒ 회부.",
@@ -436,7 +546,7 @@
    "url": "https://kenney.nl/assets/rpg-audio",
    "author": "Kenney Vleugels (Kenney.nl)",
    "received": "2026-09-13",
-   "_원본": "step_dirt = footstep04.ogg · step_grass = footstep07.ogg · axe = chop.ogg (전부 통째) · ui_click = bookPlace1.ogg (0.30s 중 0.020~0.280s · 선행 무음 잘라 냄) [T269·T282]",
+   "_원본": "step_dirt = footstep04.ogg · step_grass = footstep07.ogg · axe = chop.ogg (전부 통째) · ui_click = bookPlace1.ogg (0.30s 중 0.020~0.280s · 선행 무음 잘라 냄) [T269·T282] · wake_up = cloth1.ogg (0.66s 중 0.030~0.554s) [T387]",
    "_주의": "★지면은 **가설**이다 — 팩에 무슨 바닥인지 안 적혀 있다. 스펙트럴 중심이 가장 낮은 04(1,007Hz)를 흙, 가장 높은 07(2,189Hz)을 풀로 잡았다. **판정은 재민 귀.**",
    "_후보": "`ui_click` 은 **후보**다 — 훅 0 · 키 0 (\"있어야 하나\"는 재민 · T282). 후보 셋을 같은 자로 쟀다: bookPlace1 선행 6.0ms·SNR 38.8dB ← 골랐다 · bookClose 선행 72.9ms·SNR 29.6 · Woodpecker tapping(USFWS·PD · https://commons.wikimedia.org/wiki/File:Woodpecker_tapping.ogg) 선행 14.5ms·SNR 10.1. 딱따구리가 \"진짜 나무 두드림\"이라 먼저 골랐다가 자가 뒤집었다 — 숲 바닥이 같이 오고 정점이 116ms 뒤에 온다."
   },
@@ -561,33 +671,87 @@
    "author": "Briefer E, Vannoni E, McElligott A",
    "received": "2026-09-23",
    "_표기의무": "CC BY 2.0 은 **표시가 필요하다** — `CREDITS.md` §1 에 줄이 하나 늘었다(이 집 첫 CC-BY 소리다)."
+  },
+  "kenney_impact_sounds": {
+   "license": "CC0 1.0",
+   "url": "https://kenney.nl/assets/impact-sounds",
+   "author": "Kenney Vleugels (Kenney.nl)",
+   "received": "2026-09-25",
+   "_원본": "downed = impactPunch_heavy_000.ogg (0.65s 중 0.000~0.380s) · downed_b(후보) = impactSoft_heavy_000.ogg (0.51s 중 0.000~0.406s) [T387]",
+   "_라이선스": "팩 안 `License.txt` 를 열어 읽었다: \"License: (Creative Commons Zero, CC0)\" · 페이지 License 칸도 CC0."
+  },
+  "oga_artisticdude_battle": {
+   "license": "CC BY 3.0",
+   "url": "https://opengameart.org/content/battle-sound-effects",
+   "author": "artisticdude",
+   "received": "2026-09-25",
+   "_원본": "arrow_shoot = Bow.wav (0.55s 중 0.099~0.337s · 머리 무음 잘라 냄) [T387]",
+   "_표기의무": "CC BY 3.0 — **표시가 필요하다**. `CREDITS.md` §1 에 줄이 있다(deer_call 에 이어 이 집 둘째 CC-BY 소리).",
+   "_라이선스": "페이지 License(s) 칸 = CC-BY 3.0 한 가지(파일 페이지에서 읽음)."
+  },
+  "commons_pd_bowtwang": {
+   "license": "Public domain",
+   "url": "https://commons.wikimedia.org/wiki/File:Deep_twang_of_loose_bow_string.ogg",
+   "author": "stephan",
+   "received": "2026-09-25",
+   "_원본": "arrow_shoot_b(후보) = 11.49s 중 0.384~1.400s (첫 튕김 하나 · 꼬리 0.25s 페이드) [T387]",
+   "_라이선스": "파일 페이지 LicenseShortName = Public domain(pdsounds 계열 · 같은 작가의 `Water_flowing…` 과 같은 꼴)."
+  },
+  "oga_qubodup_swoshes": {
+   "license": "CC0",
+   "url": "https://opengameart.org/content/swish-bamboo-stick-weapon-swhoshes",
+   "author": "qubodup",
+   "received": "2026-09-25",
+   "_원본": "swing = swosh-01.flac(통째 0.27s) · swing2 = swosh-07.flac(통째 0.33s) · swing3 = swosh-25.flac(통째 0.26s) [T387]",
+   "_라이선스": "페이지 License(s) 칸 = CC0 한 가지. 작가 설명: \"I waved my bamboo stick in front of the mic.\" — 실제 녹음이다."
+  },
+  "oga_artisticdude_swishes": {
+   "license": "CC0",
+   "url": "https://opengameart.org/content/swishes-sound-pack",
+   "author": "artisticdude",
+   "received": "2026-09-25",
+   "_원본": "swing_b(후보) = swish-9.wav (0.20s 중 0.028~0.148s) [T387]",
+   "_라이선스": "페이지 License(s) 칸 = CC0 한 가지."
   }
  },
  "_실측": {
   "_뜻": "`__sfx.probe()` 가 실클라에서 잰 값. 하네스 ⑧ 이 이 수와 `bus.limiter.knee` 의 부등식을 지킨다. 키를 더하면 **다시 재서 이 칸을 갱신**하라(셈으로 채우지 마라).",
-  "date": "2026-09-23",
+  "date": "2026-09-25",
   "browser": "Chromium(Playwright) · 44100Hz · 오프라인 렌더 4초 · 소리판에서 `__sfx.probe()`",
-  "worstPeak": 0.7623,
-  "worstPeakDb": -2.36,
+  "worstPeak": 0.7957,
+  "worstPeakDb": -1.98,
   "worstCombo": [
    "tiger_growl",
    "wolf_howl",
    "axe",
-   "bronze_hit",
    "hook",
    "boar_grunt",
    "rock_hit"
   ],
   "clippedAtWorst": 0,
-  "allKeysPeakNoLimiter": 1.1353,
-  "allKeysClippedNoLimiter": 8,
+  "allKeysPeakNoLimiter": 1.1323,
+  "allKeysClippedNoLimiter": 50,
   "_주의": "`worstPeak` 는 **리미터 없이** 잰 값이다(문턱을 그것과 견주려면 리미터가 개입하기 전의 수여야 한다). 키를 더하면 `__sfx.probe()` 를 다시 돌려 이 칸을 갱신하라 — 셈으로 채우지 마라. T261·T283 이 셈으로 채웠다가 둘 다 틀렸다.",
   "_자의바닥": "두 판(리미터 있음/없음)의 피크가 문턱 아래에서도 ±0.1 dB 쯤 다르다 — `oversample:'2x'` 의 재표본 필터다. 펌핑을 잴 때 이 바닥을 안 빼면 **없는 펌핑**이 보인다: 1차 판이 `pa>0.02` 인 창을 다 보다가 모닥불 하나에 '최악 −10.92 dB'를 냈다(피크는 한 톨도 안 변했는데). ⇒ 비율은 **`pa > knee` 인 창에서만** 뜻이 있다.",
-  "soundingKeys": 22,
+  "soundingKeys": 29,
   "_왜 이 수를 적나": "소리 나는 키가 이 수와 달라지면 `test-audio ⑧` 이 문다 — **키를 더했으면 다시 재라**는 뜻이다. 셈으로 고치지 말고 `__sfx.probe()` 를 돌려라.",
   "_개명": "[T303] `wolf_growl` → `wolf_howl` 은 **이름만** 바뀐 것이다 — 파일 바이트가 0 변경이라(sha1 d9176d70…/bede1a0f… 그대로) 이 실측값은 여전히 그 파일을 잰 값이다. `worstPeak`·`clippedAtWorst` 는 **다시 재지 않았고 한 자도 안 고쳤다** — 이름표만 갈았다.",
   "_T354": "21키 전부 동시: 피크 0.772(-2.25 dBFS) · 클리핑 0. **리미터를 빼면 피크 1.1039 · 클리핑 10** — 키가 16→21 로 늘면서 리미터가 무는 자리가 늘었다(T292 때는 최악 조합조차 문턱을 안 넘었다).",
-  "_T358": "22키 전부 동시: 피크 0.7717(-2.25 dBFS) · 클리핑 0. 리미터를 빼면 피크 1.0628 · 클리핑 16. ⚠T354 의 실측은 **21키만 잰 것이었다** — 변주 키(`tiger_growl`)가 `키#파일` 로 담기는 바람에 재는 자가 조용히 빠뜨렸다(T358 이 못 박아 고쳤다). 대상을 빠뜨린 수는 거짓이다."
+  "_T358": "22키 전부 동시: 피크 0.7717(-2.25 dBFS) · 클리핑 0. 리미터를 빼면 피크 1.0628 · 클리핑 16. ⚠T354 의 실측은 **21키만 잰 것이었다** — 변주 키(`tiger_growl`)가 `키#파일` 로 담기는 바람에 재는 자가 조용히 빠뜨렸다(T358 이 못 박아 고쳤다). 대상을 빠뜨린 수는 거짓이다.",
+  "combatCombo": [
+   "arrow_shoot",
+   "swing",
+   "downed",
+   "wake_up",
+   "drop",
+   "wolf_howl",
+   "tiger_growl",
+   "fire",
+   "wind"
+  ],
+  "combatPeak": 0.7456,
+  "combatPeakDb": -2.55,
+  "_T387": "★★정정 먼저 — T354·T358 이 적은 `worstPeak` 0.7631/0.7623 은 **리미터를 낀 판의 값**이었다(이 칸의 `_주의` 가 '리미터 없이' 라고 적어 놓고). T358 이 `bronze_hit` 을 **후보**(배선 없음)로 돌린 뒤에도 최악 조합에 그 키가 남아 있었고, 그 조합을 리미터 없이 재면 **0.8755(−1.15 dBFS) · 문턱 넘는 창 2/400** 이다 — 즉 ⑧c(문턱 > 최악 피크)는 T354 부터 **거짓 수로 초록**이었다. 게임에서 울 수 없는 키를 넣은 조합은 거짓 대상이다(대상이 틀린 수는 거짓 · T358 문장) ⇒ 최악 조합에서 **후보를 뺐다**(`test-audio ⑧h` 가 못 박는다). 후보 뺀 여섯: 없이 **0.7957(−1.98 dBFS)** · 창 0/400 · 끼고 0.7600. ⚠여유가 **0.04 dB** 뿐이다. 전투 한 판(배선 전투 넷 + 낙하 + 늑대·호랑이 + 모닥불·바람 · 9키): 없이 **0.7456(−2.55)** · 0/400. ★극단 — T292 여섯 + 전투 넷을 **같은 표본에** 겹치면 없이 0.8449 · 2/400 창 문다(끼고 0.7626 · 클리핑 0). 열 개 소리의 머리가 한 표본에 모이는 판이다 — 리미터가 그 일을 하라고 있다. 29키 전부(후보 포함): 없이 1.1323 · 클리핑 50 → 끼고 0.7745(−2.22) · 클리핑 0. 배선 25키: 없이 1.0301 · 클리핑 2 → 끼고 0.771. 재는 법: `__sfx.probe(keys,{seconds:4})` Chromium 44100Hz 오프라인 렌더(`e2e-audio-probe` 가 같은 함수를 부른다)."
  },
  "ground": {
   "_뜻": "발밑 지형 → 발자국 키. 지형 정본은 `window.__tileStateAt` 하나(`kind`·`geo`·풀 알파) — 층은 그 답을 이 표로 옮길 뿐이다.",

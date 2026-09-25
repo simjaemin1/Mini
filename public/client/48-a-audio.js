@@ -156,7 +156,13 @@ function sfxFileOf(m, o) {
     //   변주는 부를 때마다 다른 파일을 주므로, 데우는 줄과 찾는 줄이 **같은 파일**을 가리켜야 한다.
     if (o && o.file) return o.file;
     const f = m.files[sfxVarIndex(m, o)];
-    return (typeof f === 'string') ? f : (f && f.file);
+    const nm = (typeof f === 'string') ? f : (f && f.file);
+    // ★[T387] 변주도 **단일 파일과 같은 규칙**으로 짝을 고른다 — ogg 를 못 여는 브라우저(Safari)는 m4a.
+    //   T358 부터 `files` 칸은 ogg 이름만 적혀 있었고 `sfxSrcOf` 를 안 거쳐서, 단일 파일은 m4a 를 받는 브라우저도
+    //   변주 키(`tiger_growl`)만은 ogg 를 받으러 갔다 — 해독 못 하면 무음이고 `_sfxStat.missing` 에만 쌓인다
+    //   (Safari 실기는 안 했다 · 규칙을 한 벌로 맞춘 것이다). 짝은 `fileAlt` 가
+    //   있는 키에서만 바꾼다(그 키가 짝을 약속한 것이다) · Chromium 은 ogg 그대로 = 비트 동일.
+    return (nm && m.fileAlt && sfxSrcOf(m) === m.fileAlt) ? nm.replace(/\.ogg$/, '.m4a') : nm;
   }
   return sfxSrcOf(m);
 }
@@ -489,6 +495,31 @@ function initAudio() {
           sfxPlay(key, { x: pp.x + ox, y: pp.y + oy });
         }
         return;
+      }
+      // ★★★[T387] **사람/전투** — 서버가 이미 보내던 메시지 이름을 **표**(`combat`)가 키로 옮긴다.
+      //   11자리 중 사건 넷(쏨·휘두름·쓰러짐·깨어남)만 표에 있다. 나머지 일곱은 상태 동기화라 안 운다
+      //   (`hp_changed` 는 매 변화 · `pvp_state`·`player_down_state` 는 배지 · `arrow_removed` 는 맞음/사라짐을
+      //   안 가른다 · `war_command_ack` 는 UI 응답 · `death` 는 `drop` 이 이미 운다 · `self_stat` 은 재민 판정).
+      //   ⚠자리 — 지어내지 않는다: 좌표가 실려 오면 그 자리(존 로컬 → 절대), 사람 pid 면 그 사람(`c.others` · 합치기 전
+      //     직전 값), **나**면 위치 없음, 모르는 pid 는 **안 운다**(존 반대편 휘두름이 귓가에서 나는 것보다 낫다).
+      //   ⚠'나' = **주 연결에서 온 내 pid** 뿐이다. pid 는 존마다 따로 센다(`p${nextPid++}`) — 관전 연결의 p3 은
+      //     내 p3 이 아니다.
+      {
+        const CB = _sfxMan.combat || {};
+        const key = (typeof CB[t] === 'string') ? CB[t] : null;
+        if (key) {
+          // 같은 이름이지만 사건이 아닌 것(다시 접속 때 복원용 재송신 등) — 표(`combatSkip`)가 칸과 값을 댄다.
+          const sk = (_sfxMan.combatSkip || {})[t];
+          if (sk && typeof sk === 'object' && Object.keys(sk).some((f) => !f.startsWith('_') && msg[f] === sk[f])) return;
+          const ox = (c && c.meta && c.meta.worldOffsetX) || 0, oy = (c && c.meta && c.meta.worldOffsetY) || 0;
+          const me = (typeof myPid !== 'undefined') ? myPid : null;
+          const mine = !!(c && c.role === 'primary' && msg.pid != null && msg.pid === me);
+          if (mine) { sfxPlay(key); return; }
+          if (msg.x != null && msg.y != null) { sfxPlay(key, { x: msg.x + ox, y: msg.y + oy }); return; }
+          const o = (msg.pid != null && c && c.others) ? c.others.get(msg.pid) : null;
+          if (o && o.x != null) sfxPlay(key, { x: o.x + ox, y: o.y + oy });
+          return;
+        }
       }
       // ★★[T321] **바닥에 떨어졌다** — 버리기도 죽어 쏟기도 이 한 방송으로 나온다(`zone.js:7728`).
       //   그래서 죽은 어부의 고기는 **플레이어가 떨어뜨리는 그 소리**로 난다 — 층이 묻지 않아도 그렇다.

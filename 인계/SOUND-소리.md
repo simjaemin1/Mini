@@ -12,6 +12,7 @@
 > **T323**(소리판 `public/sfx-board.html` — 정본에서 만든 표 · 「파일」/「층」 두 단추 · ○/✗ 복사 · 제품 diff 0).
 > **T354**(재민 첫 귀 판정 뒤 재확보 3·새 5·지면 셋 · 변주 층 한 줄 · 빠진 소리 전수 168자리 · 키 18→21 · 무음 0).
 > **T358**(이음새 하네스 — `wind`+`fire` 딸깍 · `deer_call` 재확보 · `rock_hit` 가름 · 호랑이 변주 셋 · 던짐 한 줄).
+> **T387**(사람/전투 11자리 — 사건 넷 `combat` 표 · 후보 셋 · `death` 는 `drop` 이 이미 운다 · `_실측` 정정 · 변주 m4a 짝 · `e2e-aim` 격리).
 
 ---
 
@@ -388,3 +389,18 @@ ogg 길이는 마지막 `OggS` 페이지의 granulepos ÷ 표본율로 잰다(Vo
   (`server/weather.js` 에 강수 정본이 없다 — T93 이 적어 둔 그대로다. 소리 층이 지어내지 않는다).
 * 실기는 **재민 귀**다 — 세션은 못 듣는다. 하네스가 잴 수 있는 것은 표·파일·훅·정적 구조·
   그리고 "소리가 실제로 났는가"(진단 계수)까지다.
+
+
+---
+
+## T387 (2026-09-25) — 사람/전투 갈래
+
+* **표 `combat`** = 서버 메시지 이름 → 키. 사건 넷: `arrow_spawn`→`arrow_shoot` · `player_attacked`→`swing`(변주 셋 · 공격자의 휘두름) · `player_downed`→`downed` · `player_respawn`→`wake_up`. 층 코드엔 메시지 이름이 **한 글자도** 없다(`test-audio ⑮g`).
+* **표 `combatSkip`** = 같은 이름이지만 사건이 아닌 것 → `{칸: 값}`. 지금 한 줄: `player_downed.source = 'relogin'`(재접속 복원). 서버에 `source:'relogin'` 재송신이 새로 생기면 `⑮k` 가 문다.
+* **자리 규칙**: 좌표가 실려 오면 그 자리 · 사람 pid 면 `c.others`(직전 값) · **나 = 주 연결(`c.role==='primary'`)의 내 pid** · 모르는 pid 는 무음. ⚠pid 는 존마다 `p1` 부터라 관전 연결의 같은 번호는 내가 아니다(`e2e-audio-probe ㉙` — 빼면 빨개지는 것 확인).
+* **안 붙이는 여섯**(상태 동기화): `hp_changed` · `pvp_state` · `player_down_state` · `arrow_removed` · `war_command_ack` · `self_stat`(재민 판정 대기) — `⑮d` 가 표에 새면 문다. `inventory where:death` 는 `drop` 이 이미 운다(`⑮e`·`⑮f` · e2e ㉝ "한 번").
+* **후보 = `<키>_b`**(배선 없음 · 소리판에서 1번과 나란히 · `⑮i` 가 짝을 본다): `arrow_shoot_b`(PD) · `swing_b` · `downed_b`. `wake_up` 은 하나뿐 — 깨어나는 숨은 녹음 회부.
+* **변주 m4a**: `sfxFileOf` 가 이제 변주에도 `sfxSrcOf` 규칙을 쓴다(`fileAlt` 있는 키만 `.ogg→.m4a`). 변주 파일마다 m4a 짝이 디스크에 있어야 한다(`⑮j`).
+* ★**`_실측` 규약 보강**: `worstCombo` 에 **후보 키 금지**(`⑧h`) — 게임에서 안 우는 키로 잰 최악은 거짓이다. `worstPeak` 는 반드시 **리미터 없는** 값(T354·T358 은 낀 값을 적었다 — 정정함). 지금 0.7957 · 여유 **0.04 dB** · 전투 한 판 0.7456(`⑧i`).
+* 키 이름이 소리판 DOM id 와 겹치면 `⑬b` 가 철자로 문다(`wake` ↔ `#wake`) — 자를 누그러뜨리지 말고 이름을 비켜라(`wake_up`).
+* 원본: 맥 `~/Mini/_sfx_in/_T387/` · 보고 `보고/T387_2026-09-25.md`.

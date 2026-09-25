@@ -538,6 +538,16 @@ console.log('\n⑧ ★[T292] 리미터 — 셈이 아니라 실측');
        : `표는 ${M.soundingKeys}종인데 지금 ${sounding}종 — **\`__sfx.probe()\` 를 다시 돌려라**`);
   const gone = (M.worstCombo || []).filter((k) => !KEYS[k]);
   ok(gone.length === 0, `⑧e 최악 조합의 키가 전부 아직 표에 있다`, gone.join(' ') || (M.worstCombo || []).join(' '));
+  // ⑧h ★★[T387] 최악 조합에 **울 수 없는 키**(후보)가 없다 — 게임에서 안 나는 소리로 잰 최악은 거짓 대상이다.
+  //   T358 이 `bronze_hit` 을 후보로 돌리고도 조합에 남겨 둬서, 그 조합의 '리미터 없는' 피크 0.8755 가 문턱을 넘었는데
+  //   표에는 리미터 **낀** 값(0.7623)이 적혀 ⑧c 가 거짓으로 초록이었다(T354~T358). 자가 두 번 틀린 자리다.
+  const candInCombo = (M.worstCombo || []).filter((k) => KEYS[k] && KEYS[k]['후보']);
+  ok(candInCombo.length === 0, '⑧h ★★최악 조합에 후보 키(배선 없음 = 게임에서 안 운다)가 없다', candInCombo.join(' ') || (M.worstCombo || []).join(' '));
+  ok(['bronze_hit'].some((k) => KEYS[k] && KEYS[k]['후보']),
+     '⑧h2 자명 통과 금지 — 후보 키가 실제로 표에 있다(없으면 ⑧h 는 아무것도 안 거른다)', Object.keys(KEYS).filter((k) => KEYS[k]['후보']).join(' '));
+  // ⑧i ★[T387] 전투 한 판도 **리미터 없이** 문턱 아래다(새 갈래가 평소 판을 넘기지 않았다)
+  ok(typeof M.combatPeak === 'number' && L.knee > M.combatPeak && (M.combatCombo || []).every((k) => KEYS[k] && !KEYS[k]['후보']),
+     '⑧i ★전투 한 판(배선 키만)의 리미터 없는 피크가 문턱 아래다', `${L.knee} > ${M.combatPeak} · ${(M.combatCombo || []).join(' ')}`);
   // ⑧f ★수가 코드에 없다 — 층은 문턱을 표에서 읽는다
   ok(/bus\s*&&\s*_sfxMan\.bus\.limiter|limiter\s*&&\s*_sfxMan\.bus\.limiter\.knee|limiter\.knee/.test(modCode),
      '⑧f 층이 문턱을 **표에서** 읽는다(코드에 박힌 수가 아니다)');
@@ -1003,6 +1013,70 @@ console.log('\n⑭ ★★[T358] 이음새 — 반복 파일의 끝과 머리');
       ok(d >= 0, '⑭e 대조 — 끝과 머리가 안 맞는 파형은 같은 자로 **0 dB 위**로 잡힌다', `${d.toFixed(1)} dB`);
     }
   }
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ⑮ ★★★[T387] 사람/전투 11자리 — 사건만 운다 · 서버가 실제로 보내는 이름 · 표가 정본
+// ══════════════════════════════════════════════════════════════════════════════
+console.log('\n⑮ ★★[T387] 사람/전투 — 사건 넷은 표로 · 상태 동기화 일곱은 무음');
+{
+  const CB = man.combat || {};
+  const rows = Object.entries(CB).filter(([k, v]) => !k.startsWith('_') && typeof v === 'string');
+  const zsrc = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
+  const ELEVEN = ['arrow_spawn', 'arrow_removed', 'hp_changed', 'player_attacked', 'player_down_state',
+                  'player_downed', 'player_respawn', 'pvp_state', 'war_command_ack', 'self_stat', 'death'];
+  const QUIET = ['arrow_removed', 'hp_changed', 'player_down_state', 'pvp_state', 'war_command_ack', 'self_stat'];
+  ok(rows.length === 4, '⑮a 표 `combat` 에 사건 넷(쏨·휘두름·쓰러짐·깨어남)', rows.map(([k, v]) => `${k}→${v}`).join(' · '));
+  const badKey = rows.filter(([, v]) => !KEYS[v] || !KEYS[v].file || KEYS[v]['후보']);
+  ok(badKey.length === 0, '⑮b 표가 가리키는 키가 전부 파일 있는 **배선** 키다(후보를 가리키면 판정 전 소리가 난다)', badKey.map(([k, v]) => `${k}→${v}`).join(' ') || '전부');
+  // ⑮c ★서버가 **정말 보내는** 이름인가 — 철자가 아니라 `type: '<이름>'` 전문 꼴로 본다
+  const sent = (n) => new RegExp(`type:\\s*'${n}'`).test(zsrc);
+  const phantom = rows.filter(([k]) => !sent(k));
+  ok(phantom.length === 0, '⑮c ★표의 메시지 이름이 전부 `zone.js` 에서 **실제로 나간다**(허공의 이름이면 영영 무음)', phantom.map(([k]) => k).join(' ') || rows.map(([k]) => k).join(' '));
+  ok(!sent('player_attacked_zz'), '⑮c2 자명 통과 금지 — 없는 이름은 `sent` 가 거짓을 낸다');
+  // ⑮d ★★상태 동기화는 표에 없다 — 11 중 여섯 + `death`(인벤 낱말)
+  const leaked = QUIET.filter((n) => typeof CB[n] === 'string');
+  ok(leaked.length === 0, '⑮d ★★상태 동기화 여섯은 표에 **없다**(HP 눈금·배지·UI 응답·화살 사라짐·갈증 동기)', leaked.join(' ') || QUIET.join(' '));
+  const whereTbl = man.inventoryWhere || {};
+  ok(typeof whereTbl.death !== 'string', '⑮e ★`inventory where:death` 는 안 운다 — 죽어 쏟기는 `drop` 이 이미 운다(두 번 울지 않는다)', `inventoryWhere.death = ${whereTbl.death}`);
+  // ⑮f ★그 '이미 운다' 가 사실인가 — `_deathDrop` → `_spawnGroundItems` → `ground_item_added` 를 **함수 몸통**에서 읽는다
+  const body = (name) => { const i = zsrc.indexOf(`function ${name}(`); if (i < 0) return '';
+    let d = 0, j = zsrc.indexOf('{', i); const st = j; for (; j < zsrc.length; j++) { if (zsrc[j] === '{') d++; else if (zsrc[j] === '}') { d--; if (!d) break; } } return zsrc.slice(st, j + 1); };
+  const dd = body('_deathDrop'), sg = body('_spawnGroundItems');
+  ok(/_spawnGroundItems\(/.test(dd) && /type:\s*'ground_item_added'/.test(sg) && man.groundDrop && KEYS[man.groundDrop.key],
+     '⑮f ★죽어 쏟기 → `ground_item_added` → `groundDrop.key` 길이 코드에 있다(몸통 괄호 맞춤으로 읽음)',
+     `_deathDrop ${dd.length}자 · _spawnGroundItems ${sg.length}자 · key ${man.groundDrop && man.groundDrop.key}`);
+  ok(dd.length > 200 && sg.length > 200, '⑮f2 자 전제 — 두 몸통을 실제로 찾았다(0 자면 ⑮f 는 허공을 읽는다)', `${dd.length} · ${sg.length}`);
+  // ⑮g ★층은 메시지 이름을 **코드에** 안 박는다(주석 빼고) — 표가 정본
+  const stripC = require('./code-only.js');   // 주석 제거기 **정본**(T171 · 사본 0 — 정규식 판은 문자열 속 `//` 에 먹힌다)
+  const layerCode = stripC(modCode);
+  const spelled = ELEVEN.filter((n) => new RegExp(`['"\`]${n}['"\`]`).test(layerCode));
+  ok(spelled.length === 0, '⑮g ★층 코드(주석 제외)에 11자리 이름이 **문자열로 박혀 있지 않다**', spelled.join(' ') || '0개');
+  ok(new RegExp(`['"\`]fish_state['"\`]`).test(layerCode), '⑮g2 자명 통과 금지 — 같은 자가 박힌 이름(`fish_state`)은 잡는다');
+  // ⑮h ★★'나' 는 주 연결에서만 — pid 는 존마다 `p${nextPid++}` 로 센다(관전 연결의 p1 ≠ 나)
+  ok(/pid\s*=\s*`p\$\{nextPid\+\+\}`/.test(zsrc), '⑮h 전제 — pid 가 존 지역 번호다(`p${nextPid++}`)');
+  ok(/c\.role\s*===\s*'primary'/.test(layerCode) && /_sfxMan\.combat/.test(layerCode), '⑮h2 ★★층이 \'나\' 를 **주 연결에서만** 가른다(`c.role === \'primary\'`)');
+  // ⑮k ★같은 이름의 **재송신**은 안 운다 — 서버가 복원용으로 다시 보내는 자리를 **서버 코드에서** 찾아 표와 맞댄다
+  const reSends = [...zsrc.matchAll(/type:\s*'([a-z_]+)'[^}]*?source:\s*'relogin'/g)].map((m) => m[1]);
+  const SKIP = man.combatSkip || {};
+  const unskipped = reSends.filter((n) => typeof CB[n] === 'string' && !(SKIP[n] && SKIP[n].source === 'relogin'));
+  ok(reSends.length >= 1 && unskipped.length === 0,
+     '⑮k ★서버의 `source:\'relogin\'` 재송신이 `combat` 에 있으면 `combatSkip` 이 거른다(접속할 때마다 쓰러지는 소리 0)',
+     unskipped.join(' ') || `재송신 ${reSends.join(' ')} → 거름`);
+  ok(/_sfxMan\.combatSkip/.test(layerCode), '⑮k2 층이 `combatSkip` 표를 읽는다');
+  // ⑮i 후보는 짝이 있다 — `<키>_b` 는 배선된 `<키>` 의 2번이다
+  const bees = keyNames.filter((k) => /_b$/.test(k) && KEYS[k]['후보']);
+  const lone = bees.filter((k) => !KEYS[k.replace(/_b$/, '')] || KEYS[k.replace(/_b$/, '')]['후보']);
+  ok(bees.length >= 1 && lone.length === 0, '⑮i 후보 2번은 전부 배선된 1번과 짝이다(소리판에서 나란히 견준다)', lone.join(' ') || bees.map((k) => `${k.replace(/_b$/, '')}/${k}`).join(' · '));
+  // ⑮j ★변주도 m4a 짝이 디스크에 있다 — Safari 는 `files` 도 m4a 로 받는다(T387 이 고친 자리)
+  const varKeys = keyNames.filter((k) => Array.isArray(KEYS[k].files));
+  const noPair = [];
+  for (const k of varKeys) for (const f of KEYS[k].files) { const nm = typeof f === 'string' ? f : f.file;
+    if (!fs.existsSync(path.join(PUB, 'assets', 'sfx', nm.replace(/\.ogg$/, '.m4a')))) noPair.push(nm); }
+  ok(varKeys.length >= 2 && noPair.length === 0, '⑮j ★변주 파일마다 m4a 짝이 있다(ogg 못 여는 브라우저가 변주 키에서 무음이 되지 않게)', noPair.join(' ') || varKeys.map((k) => `${k}×${KEYS[k].files.length}`).join(' · '));
+  ok(/\.replace\(\/\\\.ogg\$\/,\s*'\.m4a'\)/.test(layerCode) && /sfxSrcOf\(m\)\s*===\s*m\.fileAlt/.test(layerCode),
+     '⑮j2 층이 변주에도 단일 파일과 **같은 규칙**(`sfxSrcOf`)으로 짝을 고른다');
 }
 
 console.log(`\n=== PASS ${pass} / FAIL ${fail} ===`);

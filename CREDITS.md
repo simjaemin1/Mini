@@ -28,6 +28,10 @@
   > Briefer E, Vannoni E, McElligott A (2010), *Quality prevails over identity in the sexually selected
   > vocalisations of an ageing mammal*, BMC Biology 8:35 — CC BY 2.0
   ⚠**이 집 첫 CC-BY 소리다.** 여태 효과음은 전부 PD/CC0 라 §1 에 줄이 없었다. 지우려면 음원을 바꿔야 한다.
+* **`arrow_shoot`(활 쏨) — CC BY 3.0 · 표시 필요** [T387]
+  > "Battle Sound Effects" (Bow.wav) by artisticdude — https://opengameart.org/content/battle-sound-effects — CC BY 3.0
+  ⚠이 집 **둘째 CC-BY 소리**다. 게임 안 알림 스택(3줄) 밖이라 `deer_call` 과 같은 회부(게임 크레딧 화면)에 묶인다.
+  후보 2번(`arrow_shoot_b` · PD)으로 바꾸면 이 줄이 필요 없다 — 재민 귀 판정이 이 줄의 운명도 정한다.
 ## 2. 빌린 것
 
 | 항목 | 무엇을 | 어디에 들어갔나 | 라이선스 | 요구 | 카드 |
@@ -81,6 +85,15 @@
 | `tiger_growl2` | [Commons: 439280 schots angry-tiger.wav](https://commons.wikimedia.org/wiki/File:439280_schots_angry-tiger.wav) (**같은 원본의 다른 으르렁**) | schots | **CC0** | 2018-08-31 | 2026-09-23 | 65.64s 중 **3.90~5.15s** · ★[T358] 변주 |
 | `tiger_growl3` | 〃 (같은 원본의 또 다른 으르렁) | schots | **CC0** | 2018-08-31 | 2026-09-23 | 65.64s 중 **9.60~10.75s** · ★[T358] 변주 — 다른 팩에서 뜨면 **다른 짐승**으로 들린다 |
 | `ui_click` | [Kenney "RPG Audio"](https://kenney.nl/assets/rpg-audio) · `bookPlace1.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2023(팩) | 2026-09-13 | 0.30s 중 **0.020~0.280s**(선행 무음 잘라 냄) · **후보**(훅 없음) |
+| `arrow_shoot` | [OpenGameArt: Battle Sound Effects](https://opengameart.org/content/battle-sound-effects) · `Bow.wav` | artisticdude | **CC BY 3.0** (페이지 라이선스 칸 · **표시 필요**) | 2012(게시) | 2026-09-25 | 0.55s 중 **0.099~0.337s**(머리 무음 잘라 냄) · ★[T387] 새 키 — 쏨(`arrow_spawn`) · 후보 1번 |
+| `arrow_shoot_b` | [Commons: Deep twang of loose bow string.ogg](https://commons.wikimedia.org/wiki/File:Deep_twang_of_loose_bow_string.ogg) | stephan | **Public domain** (파일 페이지) | — | 2026-09-25 | 11.49s 중 **0.384~1.400s**(첫 튕김 · 꼬리 0.25s 페이드) · ★[T387] **후보 2번**(훅 없음) |
+| `swing` | [OpenGameArt: Swish – bamboo stick weapon swhoshes](https://opengameart.org/content/swish-bamboo-stick-weapon-swhoshes) · `swosh-01.flac` | qubodup | **CC0** (페이지 라이선스 칸) | — | 2026-09-25 | 통째(0.27s) · ★[T387] 새 키 — 휘두름(`player_attacked` · 공격자) · 후보 1번 |
+| `swing2` | 〃 · `swosh-07.flac`(**같은 녹음의 다른 휘두름**) | qubodup | **CC0** | — | 2026-09-25 | 통째(0.33s) · ★[T387] 변주 |
+| `swing3` | 〃 · `swosh-25.flac` | qubodup | **CC0** | — | 2026-09-25 | 통째(0.26s) · ★[T387] 변주 |
+| `swing_b` | [OpenGameArt: Swishes Sound Pack](https://opengameart.org/content/swishes-sound-pack) · `swish-9.wav` | artisticdude | **CC0** (페이지 라이선스 칸) | — | 2026-09-25 | 0.20s 중 **0.028~0.148s** · ★[T387] **후보 2번**(훅 없음) |
+| `downed` | [Kenney "Impact Sounds"](https://kenney.nl/assets/impact-sounds) · `impactPunch_heavy_000.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2019(팩) | 2026-09-25 | 0.65s 중 **0.000~0.380s** · ★[T387] 새 키 — 쓰러짐(`player_downed`) · 후보 1번 |
+| `downed_b` | 〃 · `impactSoft_heavy_000.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2019(팩) | 2026-09-25 | 0.51s 중 **0.000~0.406s** · ★[T387] **후보 2번** — 중심 90Hz(노트북 스피커에선 거의 안 난다 · 헤드폰 판정) |
+| `wake_up` | [Kenney "RPG Audio"](https://kenney.nl/assets/rpg-audio) · `cloth1.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2023(팩) | 2026-09-25 | 0.66s 중 **0.030~0.554s** · ★[T387] 새 키 — 깨어남(`player_respawn` · 일어서는 옷 스침) · **후보 1개뿐** — 깨어나는 숨은 못 찾음(녹음 회부) |
 
 * **요구 문구 없음** — 둘 다 퍼블릭 도메인이라 표시 의무가 없다(그래서 §1 에 안 들어간다). 예의로 여기 적는다.
 * 가공: 단일 채널 유지 · 끝 1초를 머리에 `acrossfade`(삼각창)로 겹쳐 10.0초 반복 · 피크를 재고
