@@ -5111,6 +5111,30 @@ function _t347Deliver(vil, npc) {
   if (got > 0) vil._t347Deliv = +((vil._t347Deliv || 0) + got).toFixed(6);
   return got;
 }
+// ★★[T374 2026-09-23] **마을의 손에 든 것** — 곳간 다리(`_lifeDaily` 의 `_t325Deliver`·`_t347Deliver`)가
+//   다음 날 경계에 비울 **그 손**이다: 같은 사람 목록(`vil.npcPids`) · 같은 품목. 세기만 한다(회계 0 · 사본 0).
+//   ⚠관측 갈래만 쓴다 — 헤드리스 하루는 손을 **먼저** 비우고 딴다(그래서 거기선 손이 0 이다).
+const _T374_WOOD = ['wood'];   // 나무꾼의 손 — `_t325Deliver` 가 비우는 그 칸 하나(목재 낱개 = 단위)
+function _t374Held(vil, items) {
+  const _pl = state.deps.players;
+  if (!_pl || !items || !items.length) return 0;
+  let u = 0;
+  for (const pid of (vil.npcPids || [])) {
+    const p = _pl.get(pid); if (!p || !p.inventory) continue;
+    for (const k of items) u += p.inventory[k] || 0;
+  }
+  return u;
+}
+// ★★[T374] **그날 이 직업의 행위 층이 찼나** — 남은 수요(econ 정본 몸통 `actDemandLeft`) 에서 손까지 뺀 것이 0 이하.
+//   ⚠손잡이가 **첫 줄**이다 — 끄면 손 합도 안 센다(비트 동일 · 비용 0).
+//   ⚠행위 층이 켜진 마을·그 직업만 — `woodActOn`·`forageActOn` 이 거짓인 마을은 수식이 내는 마을이다(무접촉).
+function _t374Done(vil, job) {
+  const E = _lifeEcon();
+  if (!E.T374_DEMAND_STOP || !vil || !vil.econ) return false;
+  if (job === 'forager' && E.forageActOn(vil.econ)) return !(E.forageDemandLeft(vil.econ, _t374Held(vil, _t347ActItems())) > 0);
+  if (job === 'lumberjack' && E.woodActOn(vil.econ)) return !(E.woodDemandLeft(vil.econ, _t374Held(vil, _T374_WOOD)) > 0);
+  return false;
+}
 // ★★[T347] 군락 반경은 **나무의 그 반경이 아니다** — 실측이 그것을 가르쳤다.
 //   `T325_R`(16셀 = 512px)로 스캔했더니 **51마을 전부 군락 0**이었다: 군락은 `plan-village-forage.js` 가
 //   **마을 어귀 바깥 링**(700~840px)에 심고, 마을 중심에서 최근접 군락이 **중앙 858px = 26.8셀**이다.
@@ -6510,7 +6534,8 @@ function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(�
     const _S = vil._t325Trees || {};
     // ★[T341 계측 전용] 걸음이 정한 한도와 실제 벌목을 밖에서 보이게 — 회계 아님(카운터만)
     vil._t325Dbg = { on: _on ? 1 : 0, walked: _walked, ln: _ln, cells: _tr.length,
-      N: _S.N | 0, K: _S.K | 0, wBar: +(_S.wBar || 0).toFixed(3), cap: 0, trips: 0, perLoad: 0, cut: 0, noloot: 0, grow: 0, back: 0 };
+      N: _S.N | 0, K: _S.K | 0, wBar: +(_S.wBar || 0).toFixed(3), cap: 0, trips: 0, perLoad: 0, cut: 0, noloot: 0, grow: 0, back: 0, stop: 0,
+      dem: (() => { const d = _lifeEcon().woodDemandLeft(vil.econ); return d === Infinity ? -1 : +d.toFixed(4); })() };
     if (_on && _walked === 0 && _ln > 0 && _tr.length) {
       //   ⓐ 하루 한도 — **걸음**이 정한다. 거리는 가장 가까운 나무 셀까지(색인 순서 첫 칸이 아니라 실제 최근접).
       let _best = _tr[0], _bd = Infinity;
@@ -6523,6 +6548,9 @@ function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(�
       vil._t325Dbg.trips = _trips; vil._t325Dbg.perLoad = _perLoad; vil._t325Dbg.cap = _cap;
       let ci = 0, made = 0;
       for (let k = 0; k < _tr.length * 8 && ci < _tr.length && made < _cap; k++) {
+        //   ★★[T374] 나무꾼도 **같은 규칙**이다(사본 0 — econ 정본 `woodDemandLeft`).
+        //     ⚠카드는 "값이 안 변할 것" 이라 했지만 실측은 **절반**이다(보고 §4 — 두 시계 어긋남의 반대 방향).
+        if (!(_lifeEcon().woodDemandLeft(vil.econ) > 0)) { vil._t325Dbg.stop = 1; break; }
         const t = _tr[ci];
         let peek = null; try { peek = state.deps.t325TreesAtCell ? state.deps.t325TreesAtCell(t.cx, t.cy) : null; } catch (e) { peek = null; }
         if (!peek || !peek.length) { ci++; continue; }           // 이 셀은 다 벴다 — 다음 셀로
@@ -6586,7 +6614,9 @@ function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(�
     const _S = vil._t347Groves || {};
     vil._t347Dbg = { on: _on ? 1 : 0, walked: _walked, fg: _fg, cells: _gv.length,
       N: _S.N | 0, K: _S.K | 0, wBar: +(_S.wBar || 0).toFixed(3), cap: 0, trips: 0, perLoad: 0,
-      pick: 0, noloot: 0, grow: 0, back: 0, items: _keep.length };
+      pick: 0, noloot: 0, grow: 0, back: 0, items: _keep.length, stop: 0,
+      //   ★[T374 계측 전용] 그날 남은 수요 — 0 이면 더 안 딴다(끈 판은 `Infinity` 라 -1 로 적는다)
+      dem: (() => { const d = _lifeEcon().forageDemandLeft(vil.econ); return d === Infinity ? -1 : +d.toFixed(4); })() };
     if (_on && _walked === 0 && _fg > 0 && _gv.length && _keep.length) {
       //   ⓐ 하루 한도 — **걸음**이 정한다(T341 유도 그대로 · 사본 0). 거리는 가장 가까운 군락 셀까지.
       let _bd = Infinity;
@@ -6599,6 +6629,10 @@ function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(�
       vil._t347Dbg.trips = _trips; vil._t347Dbg.perLoad = _perLoad; vil._t347Dbg.cap = _cap;
       let ci = 0, made = 0;
       for (let k = 0; k < _gv.length * 8 && ci < _gv.length && made < _cap; k++) {
+        //   ★★[T374] **그날 마을이 쓸 만큼까지만 딴다** — 남은 수요가 0 이면 그날은 끝이다(귀가).
+        //     상한은 새 수가 아니라 **수식이 그날 내겠다고 한 몫**이다(econ 정본 `forageDemandLeft`).
+        //     끄면 `Infinity` 라 이 줄이 아무것도 안 한다(비트 동일).
+        if (!(_lifeEcon().forageDemandLeft(vil.econ) > 0)) { vil._t347Dbg.stop = 1; break; }
         const c = _gv[ci];
         let peek = null; try { peek = state.deps.t347GrovesAtCell ? state.deps.t347GrovesAtCell(c.cx, c.cy) : null; } catch (e) { peek = null; }
         if (!peek || !peek.length) { ci++; continue; }     // 이 셀은 다 땄다 — 다음 셀로
@@ -6853,6 +6887,14 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
     _lifeAct(npc, '경작');
     return true;
   }
+  // ★★[T374 2026-09-23] **그날 쓸 만큼 찼으면 오늘은 퇴근이다** — 관측자 있는 갈래도 헤드리스와 같은 규칙.
+  //   ⚠갈래를 새로 안 짓는다: 위 농부의 "창 밖 = 오늘 휴무"와 **같은 한 줄**(`_lifeGoHome(npc, '휴식')` · 새 행동 0).
+  //     위 배정(개간·건설·의뢰 집터)이 먼저 돈다 ⇒ 생활층이 줄 다른 일이 있으면 이미 받았다(카드 ① "그 뒤는 생활층이 다른 일을 준다").
+  //   ⚠`return false`(레거시 폴스루)가 **아니다** — 그 갈래는 `zone.js` ④ "가까운 자원 채집"이라
+  //     멈추는 것이 아니라 **아무 자원이나** 따는 것이다(손에 든 것은 `_lifeDaily` 가 그대로 곳간에 넣는다).
+  //   ⚠행위 층이 켜진 마을·그 직업만(`_t374Done` 안) — 안 켜진 마을은 수식이 내고 걸음은 그림이다(무접촉).
+  //   끄면 `_t374Done` 이 첫 줄에서 false 다(비트 동일 · 손 합도 안 센다).
+  if (_t374Done(vil, job)) { _lifeGoHome(npc, '휴식'); return true; }
   // ★★★[T325 2026-09-19 · 설계_생산_실체 §1] **베는 순간 손에, 귀환하면 곳간에** — 어부(T312)와 같은 문법.
   //   손잡이가 꺼져 있으면 이 블록은 **통째로 안 돈다**(아래 종전 갈래가 그대로 · 비트 동일).
   //   ⚠현장은 `qtResources` 가 아니라 **색인**(`t325Trees` · T301)이 낸 셀이다 — 관측자와 무관하다.
@@ -7892,6 +7934,9 @@ module.exports = { fishPerf, woodPerf, foragePerf,   // ★[T316] `/perf` 가 �
     _farmMulProbe: (vil, npc) => _farmMul(vil, npc),
     // ★[T198] 공간 브리지를 심는 **그 함수 자체**를 내준다 — 하네스가 유도식을 다시 적으면 그게 사본이다.
     _fieldBridgeProbe: (vil) => _fieldBridge(vil),
+    // ★[T374] 관측 갈래 퇴근 판정의 **그 함수 자체**를 내준다(같은 규약 · 최소 주입구 하나 — 손을 세려면 사람 목록이 있어야 한다).
+    //   하네스가 "D − 오늘 − 손" 을 다시 적으면 그게 사본이다 — 정본 `_t374Done`·`_t374Held` 를 그대로 부른다.
+    _t374Probe: { setDeps: (d) => { const k = state.deps; state.deps = d; return k; }, done: (vil, job) => _t374Done(vil, job), held: (vil, items) => _t374Held(vil, items) },
     get VILLAGE_MAX() { return VILLAGE_MAX; },
     get INITIAL_POP() { return INITIAL_POP; },
     get SZ() { return SZ; },

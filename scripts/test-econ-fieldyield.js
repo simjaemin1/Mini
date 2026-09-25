@@ -433,8 +433,13 @@ console.log('\n⑫ 켠 팔의 잠재 — 밭이 낸 식량이 **잠재에도** �
   const reads = hits.filter(([, l]) => !_W.test(l) && !/const dailyProductionPotential = \{\}/.test(l));
   // ★[T312] 어부 장부 다리가 **쓰는 자리 하나**를 더한다 · ★[T325] 나무꾼이 하나 더(선언 1 · 쓰기 4 · 읽기 2 = 일곱).
   //   ⚠수를 올리기만 하지 않는다 — 그 새 자리들이 **어부 다리·나무꾼 다리**임을 아래에서 이름으로 못 박는다.
-  ok(hits.length === 7, '⑫ 잠재를 건드리는 자리는 **일곱**이다(선언 1 · 쓰기 4 · 읽기 2 · ★T312 어부 · ★T325 나무꾼)', `실제 ${hits.length}`);
-  ok(writes.length === 4, '⑫ ★쓰는 곳 **넷** — `addProduce`(끈 팔) · T183(밭) · ★T312(어부) · ★T325(나무꾼)', `실제 ${writes.length}`);
+  //   ★[T374 2026-09-23] 자리가 **하나 늘었다** — 채집 장부 다리(`_t347InByItem`). T347 이 그 다리를 안 놓아
+  //     채집 입고가 장부에 한 번도 안 올랐고(빚), T374 가 수요 문을 걸자 드러났다(보고/T374 §2).
+  //     ⇒ 수를 올리고 **새 자리를 이름으로 못 박는다**(T312·T325 가 쓴 그 규약 · 정규식을 느슨하게 하지 않는다).
+  ok(hits.length === 8, '⑫ 잠재를 건드리는 자리는 **여덟**이다(선언 1 · 쓰기 5 · 읽기 2 · ★T312 어부 · ★T325 나무꾼 · ★T374 채집)', `실제 ${hits.length}`);
+  ok(writes.length === 5, '⑫ ★쓰는 곳 **다섯** — `addProduce`(끈 팔) · T183(밭) · ★T312(어부) · ★T325(나무꾼) · ★T374(채집)', `실제 ${writes.length}`);
+  ok(/dailyProductionPotential\[it\] = \(dailyProductionPotential\[it\] \|\| 0\) \+ a;/.test(C),
+    '⑫ ★★[T374] 그 새 자리가 **채집 장부 다리**다(품목별 · `_t347InByItem`)');
   ok(/dailyProductionPotential\.fish = \(dailyProductionPotential\.fish \|\| 0\) \+ _t312In;/.test(C),
     '⑫ ★[T312] 그 셋째 자리가 **어부 다리**다(이름으로 못 박는다 — 수만 올린 게 아니다)');
   ok(/dailyProductionPotential\.wood = \(dailyProductionPotential\.wood \|\| 0\) \+ _t325In;/.test(C),
@@ -500,7 +505,10 @@ console.log('\n⑮ 장부 — 밭이 곳간에 넣은 그 양이 **실현 흐름
   ok(/const dailyProduction = v\.dailyProductionBuf;/.test(C), '⑮ 장부는 **마을에 사는 버퍼**다(`v.dailyProductionBuf`)');
   ok(/for \(const r in dailyProduction\) dailyProduction\[r\] = 0;/.test(C),
     '⑮ ★그 버퍼는 **틱 머리에서 리셋**된다 — 그래서 생활층(틱 뒤)에서 적으면 지워진다');
-  ok(writes.length === 4, '⑮ ★쓰는 줄 넷 — 리셋 둘 + `addProduce`(끈 팔) + T193(켠 팔)', `실제 ${writes.length}`);
+  //   ★[T374] 한 줄 늘었다 — 채집 장부 다리(품목별). 이름으로 못 박는다(위 ⑫ 와 같은 규약).
+  ok(writes.length === 5, '⑮ ★쓰는 줄 **다섯** — 리셋 둘 + `addProduce`(끈 팔) + T193(켠 팔) + ★T374(채집)', `실제 ${writes.length}`);
+  ok(/dailyProduction\[it\] = \(dailyProduction\[it\] \|\| 0\) \+ a;/.test(C),
+    '⑮ ★★[T374] 그 새 줄이 **채집 장부 다리**다');
   ok(/const dailyFoodProd = totalFoodProductionEquivalent\(dailyProduction\);/.test(C),
     '⑮ 읽는 곳은 하나 — `totalFoodProductionEquivalent` → `dailySurplus` → `surplusEMA.food`');
   ok(/if \(T193_LEDGER\) dailyProduction\.food = \(dailyProduction\.food \|\| 0\) \+ _t100Pot;/.test(C),

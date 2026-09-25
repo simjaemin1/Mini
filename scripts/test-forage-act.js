@@ -62,8 +62,13 @@ console.log('\n② 사본 0 — 몸통은 하나, 표는 남의 것');
 {
   const C = codeOf(SRC), VC = codeOf(VSRC), ZC = codeOf(ZSRC);
   ok(/function actToGranary\(v, item, units, todayKey, countKey\)/.test(C)
-    && /return actToGranary\(v, item, units, '_t347InflowToday', '_t347PickN'\);/.test(C),
+    && /const got = actToGranary\(v, item, actDemandCap\([\s\S]*?'_t347InflowToday', '_t347PickN'\);/.test(C),
     '② ★★곳간 입구가 어부·나무꾼과 **같은 몸통**이다(`actToGranary` — 새 회계 0 · 같은 세금)');
+  ok(/return actToGranary\(v, 'fish', actDemandCap\(/.test(C) && /return actToGranary\(v, 'wood', actDemandCap\(/.test(C),
+    '② ★★[T374] 셋 다 곳간 입구에서 **같은 수요 문**을 지난다(`actDemandCap` — 사본 0)');
+  ok(/const _t347In = T347_FORAGE_ACT \? \(v\._t347InflowToday \|\| 0\) : 0;/.test(C)
+    && /v\._t347InflowToday = 0;/.test(C),
+    '② ★★[T374 · T347 의 빚] 채집 오늘치가 **장부에 오르고 리셋된다**(어부·나무꾼과 같은 자리·같은 꼴)');
   ok(/function _actRegrowR\(day, K, meanUnitsPerEntity\)/.test(C)
     && /return _actRegrowR\(day, K, meanUnitsPerTree\);/.test(C)
     && /return _actRegrowR\(day, K, meanUnitsPerGrove\);/.test(C),
@@ -400,6 +405,140 @@ console.log('\n⑬ [T359] 군락 지형 생성 (#58 ⓐ′ · 손잡이 기본 �
     'ⓒ 씨 키가 숲(`ft`)·링(`gv`)과 안 겹친다(`gb`·`gh`)');
   ok(/const st2 = _stage\(seedKey, G\.type, null\);/.test(ZC),
     'ⓒ ★재생 회계가 **같은 함수**다(`_stage` — T122 덤불 1년 · 풀 반년 · 사본 0)');
+}
+
+// ── ⑭ [T374] 채취는 수요가 멈춘다 — ⓐ D 에 닿으면 그날 0 ⓑ D=0 마을 0 ⓒ 나무·물고기 같은 규칙 ──
+console.log('\n⑭ [T374] 수요 멈춤 (손잡이 기본 끔)');
+{
+  const E = require(path.join(ROOT, 'sim', 'economy-sim.js'));
+  const C = codeOf(SRC), VC = codeOf(VSRC);
+  ok(E.T374_DEMAND_STOP === false, '⑭ ★★손잡이 `T374_DEMAND_STOP` 이 **기본 끔**이다');
+  ok(E.actDemandLeft({}, 10, '_x') === Infinity && E.actDemandCap({}, 99, 10, '_x') === 99,
+    '⑭ ★끄면 자르는 문이 **아예 없다**(`Infinity` · 끈 팔 비트 동일)');
+  ok(/if \(!T374_DEMAND_STOP\) return Infinity;/.test(C),
+    '⑭ ★그 폴백이 함수 **첫 줄**이다(손잡이 뒤에 전부)');
+  //   ★상한이 **정본 관측 칸**인가 — 지어낸 수가 없어야 한다
+  const dbody = (C.match(/function actDemandLeft\(v, D, todayKey, held\)[\s\S]*?\n\}/) || [''])[0];
+  ok(dbody.length > 0, '⑭ 수요 몸통이 **하나**다(`actDemandLeft(v, D, todayKey, held)`)');
+  const lits = (dbody.match(/\b\d+(\.\d+)?\b/g) || []).filter((x) => x !== '0');
+  ok(lits.length === 0, '⑭ ★★그 식에 **지어낸 수가 없다** — 상한은 수식이 그날 내겠다고 한 몫이다', lits.join(',') || '0개');
+  ok(/_forageOutLast\) \|\| 0\) \* share, '_t347InflowToday'/.test(C)
+    && /\(v && v\._woodOutLast\) \|\| 0, '_t325InflowToday'/.test(C)
+    && /\(v && v\._fishOutLast\) \|\| 0, '_t312InflowToday'/.test(C),
+    '⑭ ★★`D` 를 셋 다 **정본 칸**에서 읽는다(채집은 걷는 몫을 곱한다 · 새 수 0)');
+  // ⓐ 기능 — D 에 닿으면 남은 수요가 0 이고, 곳간 입구가 더 안 받는다
+  const on = probe({ T374_DEMAND_STOP: '1' }, `const E=require(${EP});
+    const v={ storage:{}, treasury:{}, _forageOutLast:10, _t347MixShare:0.5, _t347InflowToday:0 };
+    const a=E.actDemandLeft(v,5,'_t347InflowToday');
+    v._t347InflowToday=3; const b=E.actDemandLeft(v,5,'_t347InflowToday');
+    v._t347InflowToday=5; const c=E.actDemandLeft(v,5,'_t347InflowToday');
+    const cap=E.actDemandCap({_t347InflowToday:3},99,5,'_t347InflowToday');
+    const z=E.actDemandLeft({_t347InflowToday:0},0,'_t347InflowToday');
+    console.log(JSON.stringify({a,b,c,cap,z,fd:E.forageDemandLeft(v)}))`);
+  ok(on.a === 5 && on.b === 2 && on.c === 0,
+    'ⓐ ★★오늘 넣은 만큼 남은 수요가 준다(5 → 2 → **0**)', `${on.a} → ${on.b} → ${on.c}`);
+  ok(on.cap === 2, 'ⓐ ★★곳간 입구가 **남은 만큼만** 받는다(99 를 넣어도 2)', String(on.cap));
+  ok(on.z === 0, 'ⓑ ★★`D` 가 0 인 마을은 남은 수요가 **0** 이다 ⇒ 안 딴다', String(on.z));
+  ok(on.fd === 0, 'ⓑ ★채집 `D` 도 그 규칙이다(오늘치가 목표를 넘었다)', String(on.fd));
+  // ⓐ' 손에 든 것 — 카드 ① "손에 든 것 + 오늘 곳간에 넣은 것이 D 에 닿으면"
+  //   관측 갈래는 낮 내내 손에 쥐고 `_lifeDaily` 에 곳간에 넣는다 ⇒ 곳간만 보면 낮 동안 멈춤이 한 번도 안 선다.
+  const hd = probe({ T374_DEMAND_STOP: '1' }, `const E=require(${EP});
+    const v={ storage:{}, treasury:{}, _forageOutLast:10, _t347MixShare:0.5, _t347InflowToday:0, _woodOutLast:4, _t325InflowToday:1 };
+    const a=E.actDemandLeft(v,5,'_t347InflowToday',2);
+    v._t347InflowToday=3; const b=E.actDemandLeft(v,5,'_t347InflowToday',2);
+    const c=E.actDemandLeft(v,5,'_t347InflowToday',99);
+    const cap=E.actDemandCap({_t347InflowToday:3},99,5,'_t347InflowToday');
+    v._t347InflowToday=0; const f=E.forageDemandLeft(v,1), f0=E.forageDemandLeft(v);
+    const w=E.woodDemandLeft(v,3), w0=E.woodDemandLeft(v);
+    console.log(JSON.stringify({a,b,c,cap,f,f0,w,w0}))`);
+  ok(hd.a === 3 && hd.b === 0 && hd.c === 0,
+    'ⓐ\' ★★손에 든 것도 **뺀다**(D 5 · 손 2 → 3 · 오늘 3 + 손 2 → **0** · 손이 넘치면 0)', `${hd.a} · ${hd.b} · ${hd.c}`);
+  ok(hd.cap === 2, 'ⓐ\' ★곳간 입구는 손을 **안 뺀다** — 넣는 그것이 바로 그 손이다(두 번 빼면 손이 스스로를 막는다)', String(hd.cap));
+  ok(hd.f === 4 && hd.f0 === 5 && hd.w === 0 && hd.w0 === 3,
+    'ⓐ\' ★품목별 자리도 손을 넘긴다(채집 5 − 1 = 4 · 나무 4 − 1 − 3 = 0 · 안 넘기면 종전 값)', `${hd.f}/${hd.f0} · ${hd.w}/${hd.w0}`);
+  ok(/function woodDemandLeft\(v, held\)/.test(C) && /function forageDemandLeft\(v, held\)/.test(C) && /function fishDemandLeft\(v, held\)/.test(C),
+    'ⓐ\' ★세 자리가 **같은 인자**를 받는다(몸통 하나 · 사본 0)');
+  // ⓐ 생활층 — 헤드리스 루프와 관측 갈래 둘 다 그 문을 본다
+  ok(/if \(!\(_lifeEcon\(\)\.forageDemandLeft\(vil\.econ\) > 0\)\) \{ vil\._t347Dbg\.stop = 1; break; \}/.test(VC),
+    'ⓐ ★★헤드리스 채집 루프가 수요에서 **멈춘다**(그날 끝 · 손은 이미 비웠다 — 그래서 손을 안 넘긴다)');
+  //   관측 갈래 — **퇴근**이다(농부의 "창 밖 = 오늘 휴무" 와 같은 한 줄). `return false` 가 아니다:
+  //   레거시 폴스루는 `zone.js` ④ "가까운 자원 채집"이라 멈춤이 아니라 **아무 자원이나** 따는 것이다.
+  const stopLine = "if (_t374Done(vil, job)) { _lifeGoHome(npc, '휴식'); return true; }";
+  const iStop = VC.indexOf(stopLine), iJob = VC.indexOf('const job = npc.simJob;'),
+        iT325 = VC.indexOf("if (job === 'lumberjack' && vil.econ && _lifeEcon().woodActOn(vil.econ)) {"),
+        iLegacy = VC.indexOf("if (job === 'lumberjack' || job === 'miner' || job === 'forager') {");
+  ok(iStop > 0 && iJob > 0 && iJob < iStop && iStop < iT325 && iT325 < iLegacy,
+    'ⓐ ★★관측 갈래는 **퇴근**한다 — 직업 실작업 머리(배정 뒤 · 나무꾼·채집꾼 두 갈래 앞)에 한 줄', `${iJob} < ${iStop} < ${iT325} < ${iLegacy}`);
+  ok(VC.split(stopLine).length === 2, 'ⓐ ★그 줄은 **한 자리**다(두 직업이 같은 줄 · 사본 0)');
+  ok(!/DemandLeft\(vil\.econ[^)]*\) > 0\)\) return false;/.test(VC),
+    'ⓐ ★★`return false`(레거시 폴스루 = `zone.js` ④ 가까운 자원 채집)로 **멈추지 않는다**');
+  const doneBody = (VC.match(/function _t374Done\(vil, job\) \{[\s\S]*?\n\}/) || [''])[0];
+  ok(/^function _t374Done\(vil, job\) \{\s*const E = _lifeEcon\(\);\s*if \(!E\.T374_DEMAND_STOP \|\| !vil \|\| !vil\.econ\) return false;/.test(doneBody),
+    'ⓐ ★★손잡이가 **첫 줄**이다 — 끄면 손 합도 안 센다(비트 동일 · 비용 0)');
+  ok(/job === 'forager' && E\.forageActOn\(vil\.econ\)\) return !\(E\.forageDemandLeft\(vil\.econ, _t374Held\(vil, _t347ActItems\(\)\)\) > 0\);/.test(doneBody)
+    && /job === 'lumberjack' && E\.woodActOn\(vil\.econ\)\) return !\(E\.woodDemandLeft\(vil\.econ, _t374Held\(vil, _T374_WOOD\)\) > 0\);/.test(doneBody),
+    'ⓐ ★★행위 층이 켜진 마을·그 직업만 — 안 켜진 마을은 수식이 낸다(무접촉) · 손을 넘긴다');
+  const heldBody = (VC.match(/function _t374Held\(vil, items\) \{[\s\S]*?\n\}/) || [''])[0];
+  ok(/for \(const pid of \(vil\.npcPids \|\| \[\]\)\)/.test(heldBody) && /state\.deps\.players/.test(heldBody) && !/inventory\[[^\]]*\] *=[^=]/.test(heldBody),
+    'ⓐ ★손은 **곳간 다리가 비울 그 손**이다(같은 사람 목록 `vil.npcPids` · 세기만 — 쓰기 0)');
+  //   [자명 통과 금지] 문자열이 아니라 **정본 함수 그대로**를 돌린다(`__labProbe._t374Probe` · 최소 주입구 하나).
+  //   ⚠`94db6dd8` 의 `return false` 는 문자열 핀을 통과했다 — 그래서 여기서는 판정을 **실제로** 부른다.
+  const VP = JSON.stringify(path.join(ROOT, 'server', 'villages.js'));
+  const obs = probe({ T374_DEMAND_STOP: '1', T347_FORAGE_ACT: '1', T325_WOOD_ACT: '1' }, `const V=require(${VP}); const P=V.__labProbe._t374Probe;
+    const pl=new Map([[1,{inventory:{wood:3,herb:1}}],[2,{inventory:{wood:2,twig:2}}],[3,{inventory:{}}]]);
+    P.setDeps({ players: pl, t347LootOf: () => ({ herb: 2, twig: 1, fiber: 1 }) });
+    const vil={ npcPids:[1,2,3], econ:{ storage:{}, _t325Cells:3, _woodOutLast:10, _t325InflowToday:4, _t347Cells:2, _forageOutLast:20, _t347MixShare:0.5, _t347InflowToday:4 } };
+    const hw=P.held(vil,['wood']); const d1=P.done(vil,'lumberjack'); pl.get(3).inventory.wood=1; const d2=P.done(vil,'lumberjack');
+    const items=V._t347ActItems(); const hf=P.held(vil, items); const f1=P.done(vil,'forager'); vil.econ._t347InflowToday=7; const f2=P.done(vil,'forager');
+    const nonAct={ npcPids:[1,2,3], econ:{ storage:{}, _t325Cells:0, _woodOutLast:0, _t347Cells:0, _forageOutLast:20 } };
+    console.log(JSON.stringify({hw,d1,d2,items,hf,f1,f2,n1:P.done(nonAct,'lumberjack'),n2:P.done(nonAct,'forager'),m:P.done(vil,'miner')}))`);
+  ok(obs.hw === 5 && obs.d1 === false && obs.d2 === true,
+    'ⓐ ★★[실행] 나무꾼 — D 10 · 오늘 4 · 손 5 ⇒ 1 남아 **일한다** · 손 6 ⇒ 0 ⇒ **퇴근**', `손 ${obs.hw} · ${obs.d1} → ${obs.d2}`);
+  ok(obs.hf === 3 && obs.f1 === false && obs.f2 === true,
+    'ⓐ ★★[실행] 채집꾼 — D 20×0.5 · 손은 **걷는 품목만**(herb 1 + twig 2 = 3 · 나무·fiber 안 셈) ⇒ 오늘 4 → 일한다 · 오늘 7 → **퇴근**',
+    `손 ${obs.hf}(${(obs.items || []).join('·')}) · ${obs.f1} → ${obs.f2}`);
+  ok(obs.n1 === false && obs.n2 === false && obs.m === false,
+    'ⓐ ★★[실행] 행위 층이 **안 켜진 마을**(셀 0 · D 0)은 안 막는다 · 광부도 무관 — `94db6dd8` 의 자리 결함이 없다');
+  const obsOff = probe({ T347_FORAGE_ACT: '1', T325_WOOD_ACT: '1' }, `const V=require(${VP}); const P=V.__labProbe._t374Probe;
+    let calls=0; P.setDeps({ players: { get: () => { calls++; return { inventory: { wood: 99 } }; } } });
+    const vil={ npcPids:[1,2,3], econ:{ storage:{}, _t325Cells:3, _woodOutLast:1, _t325InflowToday:4 } };
+    console.log(JSON.stringify({ d: P.done(vil,'lumberjack'), calls }))`);
+  ok(obsOff.d === false && obsOff.calls === 0,
+    'ⓐ ★★[실행] 손잡이 끔 — 넘쳐도 **안 막고**, 손을 **한 명도 안 센다**(비트 동일 · 비용 0)', `${obsOff.d} · 센 사람 ${obsOff.calls}`);
+  //   [실행 · 정본 `npcLifeTick` 그대로] 그 판정이 **제자리에서** 퇴근으로 이어지는가 — 낮(위상 0.4) · 반일 아님 · 과업 없음.
+  //   ⚠나무 셀 스캔(`_t325Cells`)은 deps 에 나무가 없으면 0 으로 다시 센다(그게 정본 — 갈 자리가 없는 마을은 행위 마을이 아니다).
+  //     그래서 둘째 판 앞에 셀 수를 되돌린다(스캔 규약을 시험하는 것이 아니다).
+  const lifeJs = `const V=require(${VP}); const P=V.__labProbe; const pl=new Map(); const H={x:1000,y:1000};
+    const mk=(pid,job,inv)=>({pid,simJob:job,simVillageId:1,x:3000,y:3000,hp:100,maxHp:100,npcHomeX:H.x,npcHomeY:H.y,inventory:inv||{},simLonOff:0});
+    const f=mk(11,'forager',{herb:1}), l=mk(12,'lumberjack',{wood:2}), m=mk(13,'miner',{}); for (const n of [f,l,m]) pl.set(n.pid,n);
+    const vil={dbId:1,ccx:10,ccy:10,npcPids:[11,12,13],_terrSet:new Set(['10,10']),_farmSet:new Set(),_claim:new Set(),_cropClaim:new Set(),_clearCrew:0,_buildCrew:0,
+      econ:{storage:{},_t347Cells:2,_forageOutLast:20,_t347MixShare:0.5,_t347InflowToday:0,_t325Cells:3,_woodOutLast:10,_t325InflowToday:0,_idleFrac:0}};
+    P._memberProbe.setup({},[vil]); P._t374Probe.setDeps({players:pl,worldPhase:()=>0.4,dayPhaseRatio:0.7,t347LootOf:()=>({herb:2,twig:1})});
+    const run=(n)=>{ n.targetX=null; n.targetY=null; n._lifeAct=null; const r=V.npcLifeTick(n,1e6); return (r===true && n.targetX===H.x && n.targetY===H.y) ? (n._lifeAct||'?') : ''; };
+    const A=[run(f),run(l),run(m)];
+    vil.econ._t347InflowToday=9; vil.econ._t325InflowToday=8; vil.econ._t325Cells=3;
+    const B=[run(f),run(l),run(m)];
+    f.inventory.herb=0; const C=run(f);
+    console.log(JSON.stringify({A,B,C}))`;
+  const lifeOn = probe({ T374_DEMAND_STOP: '1', T347_FORAGE_ACT: '1', T325_WOOD_ACT: '1' }, lifeJs);
+  const lifeOff = probe({ T347_FORAGE_ACT: '1', T325_WOOD_ACT: '1' }, lifeJs);
+  ok(lifeOn.A.join('|') === '||' && lifeOn.B[0] === '귀가' && lifeOn.B[1] === '귀가' && lifeOn.B[2] === '',
+    'ⓐ ★★★[실행 · 정본 `npcLifeTick`] 수요가 남으면 일터 · **차면 채집꾼·나무꾼이 집으로 간다**(목표 = 집 · 라벨 `귀가`) · 광부 무관',
+    `남음 [${lifeOn.A.map((x) => x || '일터').join(' · ')}] → 참 [${lifeOn.B.map((x) => x || '일터').join(' · ')}]`);
+  ok(lifeOn.C === '', 'ⓐ ★[실행] 손을 곳간에 넣으면(손 0) 1 이 남아 **다시 일터**다(하루 안에서도 규칙이 산다)');
+  ok(lifeOff.A.join('|') === '||' && lifeOff.B.join('|') === '||' && lifeOff.C === '',
+    'ⓐ ★★[실행 · 끔] 같은 상태에서 **아무도 퇴근 안 한다**(끈 팔 무접촉)', JSON.stringify(lifeOff));
+  // ⓒ 나무·물고기도 같은 규칙 — 같은 함수 · 같은 자리
+  ok(/if \(!\(_lifeEcon\(\)\.woodDemandLeft\(vil\.econ\) > 0\)\) \{ vil\._t325Dbg\.stop = 1; break; \}/.test(VC),
+    'ⓒ ★★나무 헤드리스 루프도 **같은 규칙**이다(사본 0)');
+  ok(/function fishToGranary\(v, units\)[\s\S]{0,200}actDemandCap/.test(C),
+    'ⓒ ★어부는 곳간 입구에서 같은 문을 지난다(걷는 갈래는 T312·T340 몫이라 안 만졌다)');
+  //   [자명 통과 금지] 손잡이를 켠 판에서 상한이 실제로 무는가
+  const bite = probe({ T374_DEMAND_STOP: '1' }, `const E=require(${EP});
+    const v={ storage:{}, treasury:{}, _woodOutLast:4, _t325InflowToday:0 };
+    const g1=E.woodDemandLeft(v); v._t325InflowToday=4; const g2=E.woodDemandLeft(v);
+    console.log(JSON.stringify({g1,g2}))`);
+  ok(bite.g1 === 4 && bite.g2 === 0, '⑭ [자명 통과 금지] 켠 판에서 상한이 실제로 **문다**', `${bite.g1} → ${bite.g2}`);
 }
 
 // ── ⑫ 접점 심볼 — 카드가 지목한 이름이 전부 제자리에 ────────────────────────────

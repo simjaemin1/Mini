@@ -2249,6 +2249,15 @@ const T325_WOOD_ACT = process.env.T325_WOOD_ACT === '1';
 //       주입이 없으면 켜도 게이트가 안 열린다(폴백이 곧 종전 = 비트 동일).
 //   켜기는 재민 — 이 카드는 값을 안 정한다.
 const T347_FORAGE_ACT = process.env.T347_FORAGE_ACT === '1';
+// ★★★[T374 2026-09-23] **채취는 수요가 멈춘다 — 기본 끔.**
+//   설계_생산_실체 ⓓ 는 *"옮긴 첫날 하루 합 = 수식 · 그 뒤로는 실체가 내는 만큼(강이 멀면 덜 잡는다)"* 이라
+//   적었다. 그 문장엔 **반대쪽 절반**이 빠져 있었다: 실체가 **더** 낼 수 있어도 마을은 **쓸 만큼만** 딴다.
+//   T359 가 그 빈칸의 값을 보여 줬다 — 군락을 깔자 채집이 수식의 **44배**를 내고 숲이 한 철에 절반이 됐다.
+//   멈출 이유가 캐논에 없던 게 아니라 **코드에 없었다.**
+//   ★그리고 멈출 자리의 수는 **이미 정본에 있다**: 그 마을이 그날 수식으로 내는 몫(`D`).
+//     채집 `_forageOutLast × _t347MixShare` · 나무 `_woodOutLast` · 물고기 `_fishOutLast` — 전부 관측 칸이다.
+//   ⇒ **새 수 0.** 상한은 지어낸 값이 아니라 *"수식이 그날 내겠다고 한 그 양"* 이다.
+const T374_DEMAND_STOP = process.env.T374_DEMAND_STOP === '1';
 
 // 마을 하루 농사 **용량**(부양력 prodK 가 읽는 밑변) — 두 세계가 이 함수 하나로 갈린다.
 //   켜면 **앵커 그 자체**다: 농부 1인은 하루에 `N` 사람 몫을 낸다(= N × 하루 1인 식량).
@@ -2350,9 +2359,43 @@ function actToGranary(v, item, units, todayKey, countKey) {
   if (countKey) v[countKey] = (v[countKey] || 0) + 1;     // 계측 전용 누계(회계 아님)
   return amt;
 }
+// ★★★[T374] **그날 수요 — 몸통 하나.** 어부·나무꾼·채집꾼이 **같은 두 줄**을 쓴다(사본 0).
+//   `D` = 그 마을이 그날 수식으로 내는 몫(정본 관측 칸) · 오늘 이미 넣은 양 = `todayKey` 칸.
+//   ⇒ 남은 수요 = `D − 오늘치`. 0 이하면 **그날은 더 안 받는다**(행위 층이 그걸 보고 멈춘다).
+//   ⚠손잡이가 꺼져 있으면 `Infinity` 를 낸다 — 자르는 문이 아예 없다(끈 팔 비트 동일).
+//   ⚠`D` 가 0 인 마을(그 직업이 없거나 땅이 안 내는 마을)은 **0** 이다 ⇒ 안 딴다.
+//   ★`held` = **손에 든 것**(아직 곳간에 안 든 몫 · 카드 ① "손에 든 것 + 오늘 곳간에 넣은 것").
+//     관측자 있는 갈래는 낮 내내 손에 쥐고 `_lifeDaily` 에 곳간에 넣는다 — 곳간만 보면 낮 동안 늘 `D` 가 남아
+//     **멈춤이 한 번도 안 선다.** 그래서 부르는 쪽(생활층)이 그 손을 세어 넘긴다. 안 넘기면 0(헤드리스는 손을 먼저 비운다).
+function actDemandLeft(v, D, todayKey, held) {
+  if (!T374_DEMAND_STOP) return Infinity;
+  if (!v) return 0;
+  const target = (typeof D === 'number' && D > 0) ? D : 0;
+  if (!(target > 0)) return 0;
+  const got = (todayKey && typeof v[todayKey] === 'number' && v[todayKey] > 0) ? v[todayKey] : 0;
+  const hand = (typeof held === 'number' && held > 0) ? held : 0;
+  const left = target - got - hand;
+  return left > 0 ? left : 0;
+}
+//   그리고 곳간 입구에서 **한 번 더** 자른다 — 행위 층이 못 멈춘 마지막 알갱이까지(장부가 D 를 안 넘는다).
+//   ⚠여기서는 `held` 를 안 뺀다 — 지금 넣는 `units` 가 **바로 그 손**이다(두 번 빼면 손이 스스로를 막는다).
+function actDemandCap(v, units, D, todayKey) {
+  const left = actDemandLeft(v, D, todayKey);
+  if (left === Infinity) return units;
+  const amt = (typeof units === 'number' && units > 0) ? units : 0;
+  return amt > left ? left : amt;
+}
+// ★[T374] 품목마다 `D` 를 어디서 읽나 — 정본 칸 이름만 다르다(식은 하나).
+function fishDemandLeft(v, held) { return actDemandLeft(v, (v && v._fishOutLast) || 0, '_t312InflowToday', held); }
+function woodDemandLeft(v, held) { return actDemandLeft(v, (v && v._woodOutLast) || 0, '_t325InflowToday', held); }
+//   채집만 한 항이 더 붙는다 — 걷는 몫만 대신하므로 그 몫을 곱한다(T347 `_t347MixShare` · 계측 칸이 아니라 계약).
+function forageDemandLeft(v, held) {
+  const share = (v && typeof v._t347MixShare === 'number' && v._t347MixShare > 0) ? v._t347MixShare : 0;
+  return actDemandLeft(v, ((v && v._forageOutLast) || 0) * share, '_t347InflowToday', held);
+}
 function fishToGranary(v, units) {
   if (!T312_FISH_ACT || !v || !v.storage) return 0;
-  return actToGranary(v, 'fish', units, '_t312InflowToday', '_t312CatchN');
+  return actToGranary(v, 'fish', actDemandCap(v, units, (v._fishOutLast || 0), '_t312InflowToday'), '_t312InflowToday', '_t312CatchN');
 }
 // ★★[T325 · 설계_생산_실체 §1·§2] **나무꾼의 곳간 입구.** 캐논: *"베는 순간 손에, 귀환하면 곳간에."*
 //   ⚠어부와 **같은 몸통 · 같은 세금 · 같은 장부 다리**다(위 `actToGranary`) — 새 회계 0.
@@ -2360,7 +2403,7 @@ function fishToGranary(v, units) {
 //     목재는 **낱개 = 단위**다(`weights.js wood 3.00kg` 이 "장작·목재 단(段)" 하나의 무게다 · 환산식 0).
 function woodToGranary(v, units) {
   if (!T325_WOOD_ACT || !v || !v.storage) return 0;
-  return actToGranary(v, 'wood', units, '_t325InflowToday', '_t325CutN');
+  return actToGranary(v, 'wood', actDemandCap(v, units, (v._woodOutLast || 0), '_t325InflowToday'), '_t325InflowToday', '_t325CutN');
 }
 // ★[T325] 이 마을이 **행위 벌목**으로 도는가 — 손잡이 ∧ 나무 셀이 있다(생활층이 `resourceAt` 로 세어 심는다).
 //   ⚠둘 다여야 한다. 나무 없는 마을(T309 ⓒ: 반경 16셀에서 3/51)은 켜도 종전 수식 그대로다 — 몸이 갈 자리가 없다.
@@ -2373,7 +2416,11 @@ function woodActOn(v) { return !!(T325_WOOD_ACT && v && (v._t325Cells | 0) > 0);
 //   ⚠단위 환산이 없다: 군락 전리품의 낱개가 그대로 econ 단위다(나무와 같은 규약 · 환산식 0).
 function forageToGranary(v, item, units) {
   if (!T347_FORAGE_ACT || !v || !v.storage || !item) return 0;
-  return actToGranary(v, item, units, '_t347InflowToday', '_t347PickN');
+  const share = (typeof v._t347MixShare === 'number' && v._t347MixShare > 0) ? v._t347MixShare : 0;
+  const got = actToGranary(v, item, actDemandCap(v, units, (v._forageOutLast || 0) * share, '_t347InflowToday'), '_t347InflowToday', '_t347PickN');
+  //   ★[T374] 품목별 오늘치 — 장부 다리가 품목을 알아야 한다(어부·나무꾼은 품목이 하나라 스칼라로 됐다).
+  if (got > 0) { (v._t347InByItem || (v._t347InByItem = {}))[item] = (v._t347InByItem[item] || 0) + got; }
+  return got;
 }
 // ★[T347] 이 마을이 **행위 채집**으로 도는가 — 손잡이 ∧ 군락 셀이 있다(생활층이 `resourceAt` 로 세어 심는다).
 //   ⚠둘 다여야 한다. 군락 0 마을은 켜도 종전 수식 그대로다 — 몸이 갈 자리가 없다(나무꾼과 같은 계약).
@@ -4296,6 +4343,25 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
     v._t325InflowToday = 0;
     dailyProductionPotential.wood = (dailyProductionPotential.wood || 0) + _t325In;
     dailyProduction.wood = (dailyProduction.wood || 0) + _t325In;
+  }
+  // ★★[T374 2026-09-23 · ★T347 의 빚을 갚는다] **채집 입고도 같은 자리에서 장부에 적는다.**
+  //   T347 은 `_t347InflowToday` 를 남기기만 하고 **이 다리를 안 놓았다** — 그래서 두 가지가 동시에 틀렸다:
+  //     ⓐ 손으로 들여온 채집물이 **생산 장부에 한 번도 안 올랐다**(어부·나무꾼과 달리 · 이중 0 게이트는 걷었으므로
+  //        그 품목의 `dailyProduction` 이 **비었다** — prodK·부양력이 읽는 밑변이다)
+  //     ⓑ 오늘치 칸이 **리셋되지 않아** 영원히 쌓였다 ⇒ T374 의 수요 문이 첫날 뒤로 **항상 0** 이 됐다.
+  //   ⇒ T374 를 켜자 등가가 12% 에 머물러 그 빚이 드러났다(보고 §2 자기신고). 여기가 그 수리다.
+  //   ⚠품목이 여럿이라 `_t347InByItem` 을 쓴다(위 `forageToGranary`) — 스칼라는 수요 문의 분모로 남는다.
+  //   ⚠새 수 0 · 이중 0 — 켠 마을에서 걷는 품목은 `addProduce` 를 안 탄다 ⇒ 들어오는 길은 이 줄 하나다.
+  const _t347In = T347_FORAGE_ACT ? (v._t347InflowToday || 0) : 0;
+  if (_t347In > 0) {
+    v._t347InflowToday = 0;
+    const by = v._t347InByItem || null;
+    v._t347InByItem = null;
+    if (by) for (const it in by) {
+      const a = by[it]; if (!(a > 0)) continue;
+      dailyProductionPotential[it] = (dailyProductionPotential[it] || 0) + a;
+      dailyProduction[it] = (dailyProduction[it] || 0) + a;
+    }
   }
 
   // ★S3 막석기 자급 안전망 — 도구(석기)가 치명적으로 부족(커버리지<SELF_TOOL_COV)하면 도구의존 노동자가 급할 때 막석기를 손수 자급.
@@ -6439,6 +6505,7 @@ module.exports = {
   fishToGranary, fishActOn, fishBudgetPerCell, T312_FISH_ACT,   // ★[T312] 어부 행위 — 생활층이 부르는 문 셋 + 손잡이(하네스가 옮겨 적지 않는다)
   actToGranary, woodToGranary, woodActOn, woodRegrowR, woodRegrowPerDay, T325_WOOD_ACT,
   forageToGranary, forageActOn, forageActItemsOf, foragerYieldsFor, T347_FORAGE_ACT,   // ★[T347] 채집 행위 — 문 셋 + 믹스 정본 + 손잡이(하네스가 표를 옮겨 적지 않는다)
+  actDemandLeft, actDemandCap, fishDemandLeft, woodDemandLeft, forageDemandLeft, T374_DEMAND_STOP,   // ★[T374] 그날 수요 — 몸통 하나 + 품목별 `D` 자리 셋 + 손잡이
   forageRegrowR, forageRegrowPerDay, actRegrowPerDay,   // ★[T347] 재생 — T341 과 **같은 몸통**(`_actRegrowR`), 분자만 갈린다   // ★[T325] 나무꾼 행위 · ★[T341] 예산식은 지웠다(나무는 개체다) — 남은 것은 게이트와 **재생 유도 둘**
   T100_ANCHOR_N, T100_HARVEST_PER_FARMER_YEAR, T100_K, T100_FIELD_YIELD,   // ★[T100 4판] 앵커 하나 · 실측 하나 · 유도값 하나 · 손잡이 — 생활층(`villages.js`)과 하네스가 **여기서만** 읽는다(사본 0)
   DAILY_FOOD_CONSUMPTION,   // ★[T100 4판] 하루 1인 식량 정본 — `k` 유도의 한 항(하네스가 1.0 을 옮겨 적지 않는다)
