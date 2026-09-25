@@ -85,3 +85,36 @@ metadata-only comparison에 넘길 수 있는 path-free baseline이다. audio �
 ```sh
 python3 tools/gugak-corpus-inventory/test_continuous_daegeum_scout.py
 ```
+
+## 권리 미승인 연속 원본의 score lattice 측정
+
+`continuous_source_score_lattice.py`는 위 scout report에 이미 들어 있는
+**권리 미승인** 연속 WAV만, 명시적으로 준 source root 안에서 byte SHA-256과
+relative-path SHA-256를 모두 맞춰 다시 찾는다. source path/filename은 report에
+절대 쓰지 않는다. 분석은 native-rate 메모리 F0/voicing proxy뿐이며 원음의
+copy·render·resample·pitch/time 변환·학습·game inclusion은 하지 않는다.
+
+```sh
+/tmp/durango-bgm-rnd-venv/bin/python \
+  tools/gugak-corpus-inventory/continuous_source_score_lattice.py \
+  --source-root /explicit/Downloads \
+  --source-baseline-report _bgm_rnd/local-daegeum-continuous-source-scout-001/report.json \
+  --score-plan tools/score-expression/plans/ari_source_led_response_r1.json \
+  --output-dir _bgm_rnd/local-daegeum-score-lattice-001 \
+  --confirm-read-only-rnd
+```
+
+Search coverage is exact over the declared **100 Hz measurement lattice**:
+every start/end pair whose single uniform duration ratio stays in the existing
+0.80–1.25 band. Each span gets only one global pitch offset measurement, never
+per-note offsets or a local warp. The existing gates remain fixed: voicing
+0.50, RMSE 120 cents, P95 220 cents, endpoint interval 180 cents, coverage
+0.98. A conservative subset lower bound can reject a span but cannot admit one.
+An in-band number still says only `unreviewed_not_approved`; it never proves a
+phrase, breathing, re-attack, slur, legato, quality, NGC identity, license, or
+training/game permission.
+
+```sh
+/tmp/durango-bgm-rnd-venv/bin/python \
+  tools/gugak-corpus-inventory/test_continuous_source_score_lattice.py
+```
