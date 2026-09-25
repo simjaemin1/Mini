@@ -52,7 +52,8 @@ let _farReqAt = 0, _farReqR = 0;
 let _farWantR = 0;              // 큰지도가 요구하는 반경(px) — 그 배율이 보여 주는 만큼
 let _farHooksDone = false, _farForced = false;
 let _farBlocked = false;        // 하네스 대조군 — `__farOff(1)` 이 켠다(들어오는 방송이 다시 켜지 못하게)
-const _farStat = { near: 0, far: 0, drawn: 0, chunks: 0, done: null, hooked: 0 };
+const _farStat = { near: 0, far: 0, drawn: 0, chunks: 0, done: null, hooked: 0,
+                   culled: 0, capCut: 0, capHits: 0, nMax: 0, lastMs: 0, frames: 0, cx: 0, cy: 0, viewR: 0, tileR: 0 };
 
 // ── 수신 ── 열린 소켓마다 리스너를 하나 더 단다(`onmessage` 무접촉).
 function _farHook() {
@@ -100,9 +101,16 @@ function _farDraw(ctx, toScreen, cx0, cy0, viewR, tileR) {
   _farHook();
   const now = performance.now();
   _farRequest(tileR, now);
-  if (!_farOn) { _farStat.drawn = 0; _farStat.near = 0; _farStat.far = 0; return; }   // 손잡이 끔 — 한 그루도 안 그린다(비트 동일)
-  //   ⚠계수기를 **여기서 0 으로 내린다**: 1차 판은 마지막 값을 그대로 두었고, 하네스 ⓑ9 가
+  // ★★[T384 2026-09-25] **띠는 클라 혼자 켠다.** T380 판은 `if (!_farOn) return` 이 ⓐ 띠 **앞**에 있어서
+  //   서버가 `T380_FAR_TREES=1` 로 답한 적이 없으면 **띠도 한 그루 안 그렸다** — 재민 실기 ②
+  //   ("멀리서 나무가 안 보인다")가 서버 손잡이 뒤에 서 있었다. 그런데 띠의 자료는 **이미 클라에 있다**
+  //   (`conns[].resources` · 활성 청크가 최소 2,048px 을 덮는다 — T380 §0). 서버가 알 일이 아니다.
+  //   ⇒ 서버 답(`_farOn`)은 ⓑ 원경(`_farStore`) **앞으로만** 옮긴다. 띠는 기본 켬.
+  //   ⇒ 대조군(`__farOff(1)` = `_farBlocked`)은 **둘 다** 끈다 — 하네스가 띠의 화소를 재는 자다.
+  if (_farBlocked) { _farStat.drawn = 0; _farStat.near = 0; _farStat.far = 0; _farStat.culled = 0; return; }
+  //   ⚠계수기를 **여기서 0 으로 내린다**: T380 1차 판은 마지막 값을 그대로 두었고, 하네스 ⓑ9 가
   //     "끄면 0" 을 물었을 때 **낡은 235** 를 읽었다(족보 130 — 계측기가 안 움직인 게 아니라 안 갱신됐다).
+  _farStat.cx = cx0; _farStat.cy = cy0; _farStat.viewR = viewR; _farStat.tileR = tileR;   // 하네스가 **같은 상자**로 다시 센다
   const t0 = now;
   const items = [];
   const R = tileR;
@@ -124,7 +132,9 @@ function _farDraw(ctx, toScreen, cx0, cy0, viewR, tileR) {
     _farStat.near = items.length / 7;
   }
   // ⓑ 먼 곳 — 서버가 색인으로 읽어 준 자리(활성 청크는 이미 빠져 있다).
-  for (const [k, pts] of _farStore) {
+  //   ★서버 손잡이는 **여기부터만** 문다(T384): 답이 한 번도 안 왔으면 `_farStore` 도 비어 있지만,
+  //     `_farOn` 으로 한 번 더 막아 "끔 비트 동일" 절이 ⓑ 에 그대로 남게 한다.
+  if (_farOn) for (const [k, pts] of _farStore) {
     const bar = k.indexOf('|');
     const zid = k.slice(0, bar);
     const c = (typeof conns !== 'undefined' && conns) ? conns.get(zid) : null;
@@ -143,7 +153,7 @@ function _farDraw(ctx, toScreen, cx0, cy0, viewR, tileR) {
     }
   }
   _farStat.far = items.length / 7 - _farStat.near;
-  if (!items.length) { _farStat.drawn = 0; return; }
+  if (!items.length) { _farStat.drawn = 0; _farStat.culled = 0; return; }
   // z 정렬 — 7칸 묶음이라 인덱스를 정렬하고 그 순서로 읽는다(객체를 프레임마다 안 만든다).
   //   ★iso 좌표는 **모을 때 한 번** 계산해 같이 싣는다 — 그리면서 다시 부르면 `w2i` 가 두 번 돈다.
   const n = items.length / 7;
@@ -151,17 +161,23 @@ function _farDraw(ctx, toScreen, cx0, cy0, viewR, tileR) {
   for (let i = 0; i < n; i++) idx[i] = i;
   const _farZ = (i) => items[i * 7];
   Array.prototype.sort.call(idx, (a, b) => _farZ(a) - _farZ(b));
-  let drawn = 0;
-  for (let q = 0; q < n && drawn < _farCapV; q++) {
+  let drawn = 0, culled = 0, q = 0;
+  for (; q < n && drawn < _farCapV; q++) {
     const i = idx[q] * 7;
     const s = toScreen(items[i + 6], items[i]);   // ★`34-m-renderloop` 의 지역 함수 — `{x, y}` 를 낸다
     if (s.x < -200 || s.y < -300 || s.x > (typeof W === 'number' ? W : 4096) + 200
-        || s.y > (typeof H === 'number' ? H : 4096) + 300) continue;   // 화면 밖 — 스프라이트 값을 안 만진다
+        || s.y > (typeof H === 'number' ? H : 4096) + 300) { culled++; continue; }   // 화면 밖 — 스프라이트 값을 안 만진다
     drawTreeIso(s.x, s.y, items[i + 3] * _farScaleV, items[i + 4] * _farScaleV, items[i + 1], items[i + 2], items[i + 5]);
     drawn++;
   }
-  _farStat.drawn = drawn;
-  _farMs = _farMs * 0.969 + (performance.now() - t0) * 0.031;
+  // ★[T384] 항등식 하나로 센다: **모은 수 = 그린 수 + 화면 밖 + 상한에 잘린 수.** 상한(`_farCapV`)에
+  //   닿은 프레임은 따로 센다 — 카드가 물은 "띠가 4,000 에 닿는 프레임이 있나"의 답이다.
+  _farStat.drawn = drawn; _farStat.culled = culled; _farStat.capCut = n - q;
+  if (n - q > 0) _farStat.capHits++;
+  if (n > _farStat.nMax) _farStat.nMax = n;
+  const _dt = performance.now() - t0;
+  _farStat.lastMs = _dt; _farStat.frames++;
+  _farMs = _farMs * 0.969 + _dt * 0.031;
 }
 
 // ── 큰지도가 요구하는 반경 ── 지도가 열려 있는 동안만. 다음 요청이 이 값을 싣는다.
@@ -202,13 +218,19 @@ function _farInitHooks() {
   window.__farDbg = () => ({ on: _farOn, scale: _farScaleV, cap: _farCapV, ms: +_farMs.toFixed(3),
                              chunks: _farStore.size, zones: _farSeenAt.size, reqR: _farReqR,
                              near: _farStat.near, far: _farStat.far, drawn: _farStat.drawn,
-                             hooked: _farStat.hooked, done: _farStat.done });
+                             hooked: _farStat.hooked, done: _farStat.done,
+                             culled: _farStat.culled, capCut: _farStat.capCut, capHits: _farStat.capHits,
+                             nMax: _farStat.nMax, lastMs: _farStat.lastMs, frames: _farStat.frames,
+                             cx: _farStat.cx, cy: _farStat.cy, viewR: _farStat.viewR, tileR: _farStat.tileR,
+                             blocked: _farBlocked });
   window.__farScale = (v) => { if (v > 0) _farScaleV = +v; return _farScaleV; };
   window.__farCap = (v) => { if (v >= 0) _farCapV = v | 0; return _farCapV; };
-  // ★되돌림 — 이 층을 통째로 끈다(대조군). `_farOn` 을 내리면 `_farDraw` 가 첫 줄에서 돌아간다.
+  // ★되돌림 — 이 층을 통째로 끈다(대조군). `_farBlocked` 가 서면 `_farDraw` 가 첫 줄에서 돌아간다 — **띠도 끈다**(T384).
   window.__farOff = (v) => { if (v) { _farOn = false; _farForced = false; _farBlocked = true; } else { _farBlocked = false; } return _farOn; };
-  // ★손잡이가 꺼진 서버에서도 **띠**만 켜 보는 반례 팔(하네스 전용 — 라이브에선 아무도 안 부른다).
-  window.__farForce = (v) => { _farForced = !!v; if (_farForced) { _farBlocked = false; _farOn = true; } return _farOn; };
+  // ★대조군을 푼다(하네스 전용). 띠는 T384 부터 기본 켬이라 이것 없이도 그린다 — 원경(ⓑ)만 서버 답을 기다린다.
+  //   ⚠`_farOn` 은 **서버가 답한 적이 있을 때만** 되살린다 — 손잡이 끔 서버에서 이걸 불러 ⓑ 가 켜지면
+  //     "끔 비트 동일" 절이 하네스 손에 깨진다.
+  window.__farForce = (v) => { _farForced = !!v; if (_farForced) { _farBlocked = false; _farOn = !!_farStat.done || _farStore.size > 0; } return _farOn; };
   // ★하네스가 "원경 자리 = 색인 답" 을 **스스로 다시 계산해** 대조하는 정본 창구 — 서버가 준 날것 그대로.
   window.__farPts = () => { const o = {}; for (const [k, v] of _farStore) o[k.slice(k.indexOf('|') + 1)] = v; return o; };
   window.__farCells = () => {   // 청크별 그루 수만(눈으로 볼 때)
