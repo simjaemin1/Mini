@@ -125,9 +125,15 @@ function _promoteHarvestOnce() {
 // ★벤 자리를 적는 **문 하나** — 메모리와 DB 를 같이 적는다(사본 0 · 세 호출부가 이것만 부른다).
 function _markHarvested(seedKey) {
   if (!seedKey) return;
-  const d = gameDayNow();
+  // ★★[T378 2026-09-25] **부팅에도 이 문이 열려야 한다.** 부팅 개간이 이 문을 부르는데, 그때는
+  //   `gameDayNow()` 가 TDZ 로 던진다(`_e2eClock` 선언 전 · 아래 `clearTreesInCells` 주석).
+  //   종전엔 그 예외가 호출부 `try/catch` 에 먹혀 **한 그루도 장부에 못 적었다**.
+  //   ⇒ 날을 모르면 **이미 있는 계약**대로 적는다: `-1`(모름)로 적고 옛 행 승격 문(T122 ·
+  //     `_promoteHarvestOnce` · 첫 청크 활성화 때 한 번)을 연다 — 승격일이 벤 날이 된다. 새 수 0.
+  let d; try { d = gameDayNow(); } catch (e) { d = undefined; }
   harvestedSeeds.set(seedKey, Number.isFinite(d) ? Math.floor(d) : -1);
   _farBump(seedKey);   // ★[T380] 원경 캐시 무효화 — **장부가 바뀐 청크만**(문 하나를 지나므로 새는 길이 없다)
+  if (!Number.isFinite(d)) _harvestPromotePending = 1;
   try { db.insertHarvestedSeed(seedKey, d); } catch (e) {}
 }
 // ★★[T325 2026-09-19] **개체를 세계에서 빼는 문 하나.** 여섯 줄(색인·청크·장부·DB·방송)을 모았다 —
@@ -3106,14 +3112,55 @@ setInterval(() => {
 //   숲에 선 마을은 집·밭 위에 나무가 그대로 서 있었다(실측: 임업3 영토 안 564그루, 어촌2 562그루).
 //   자원 제거는 채집과 **같은 경로**를 쓴다 — harvestedSeeds + DB + 청크 + 브로드캐스트.
 //   (영토 확장은 아직 기능 자체가 없다. 생기면 새로 들어온 셀만 이 함수에 넘기면 된다.)
+// ★★★[T378 2026-09-23 · 재민 실기] **개간이 한 그루도 안 벨 수 있었다.**
+//   종전 몸통은 `qtResources.queryCircle` 로 **지금 서 있는 개체**만 찾았다. 개체는 **활성 청크**
+//   (관측자 1,200px 안)에만 있다 ⇒ 관측자 없는 마을에선 `near` 가 빈 배열이라 **0그루**를 베고 끝났다.
+//   "이미 벤 나무는 harvestedSeeds 에 있어 다시 생성되지 않는다(멱등)"는 위 주석은 **벤 게 있을 때만** 참이다.
+//   나중에 플레이어가 오면 청크가 켜지며 `generateChunkResources` 가 그 셀에 나무를 세운다 — 재민이 본 것이다.
+//   ⚠실측(T378 자 · `scripts/t378-forest-in-village.js` · 관측자 0 · 색인으로 셈 · 정본 청크 1,024):
+//       50마을 영토 셀 172,500칸에 나무 **6,893그루** · 나무 0 인 마을 **0곳** · 벤 장부 **0개**
+//       부팅 개간 로그가 난 마을 **0곳** = 0그루 벴다
+//   ★그리고 뿌리는 **둘**이었다(둘 다 실측):
+//     ⓐ `qtResources` 는 활성 청크의 개체만 안다 — 관측자 없는 마을에선 빈 배열(카드가 짚은 것).
+//     ⓑ 색인으로 물어도 **부팅 땐 던진다** — `gameDayNow()` 가 `_e2eClock`(`let` · 이 파일 뒤쪽) 을
+//        TDZ 에서 읽는다(`Cannot access '_e2eClock' before initialization`). 집 정본 `_actEntitiesAtCell`
+//        은 그 예외를 **말없이 삼켜** 0 을 낸다 — 그래서 첫 고침이 "고쳤는데 여전히 0" 이었다.
+//   ⇒ 색인을 **같은 인자로 직접** 묻고(시계는 물을 수 있을 때만), 개체가 서 있으면 종전처럼 지우고 방송하고,
+//     안 서 있으면 **장부만** 적는다 — 청크가 켜질 때 `harvestedSet` 이 그 자리를 막는다(새 수 0 · 새 손잡이 0).
+//   ⚠종전 `qtResources` 갈래는 **그대로 둔다**(DB 나무 `r.dbId` 가 그 길로만 잡힌다). 색인은 **더하는** 것이다.
+const _T378_TREE = { tree: 1 };
+let _t378Warned = 0;
 function clearTreesInCells(cellKeys) {
   if (!cellKeys || !cellKeys.size) return 0;
-  let cleared = 0;
+  let cleared = 0, ledger = 0;
+  // ★★[T378] **부팅 땐 게임 시계를 물을 수 없다.** `gameDayNow()` 가 `_e2eClock`(`let` · 이 파일 뒤쪽)을
+  //   읽는데 부팅 개간(`SimVillages.init` → `villages.js` 부팅 복원의 "영토 개간" 줄)은 그 선언보다 **먼저** 돈다 ⇒
+  //   `ReferenceError: Cannot access '_e2eClock' before initialization`(TDZ). 이 카드가 실측으로 물었다.
+  //   ⇒ 날을 모르면 `undefined` 로 넘긴다 — 안 벤 씨앗은 날과 무관하게 서고(찾을 대상이 그것이다),
+  //     벤 씨앗은 어차피 아래서 건너뛴다. 새 수 0.
+  let _gd; try { _gd = gameDayNow(); } catch (e) { _gd = undefined; }
+  // ⓐ′ ★[T378] **부팅엔 `qtResources` 가 아직 없다** — 틱이 처음 만든다(최상위 `let` 이라 그때 `undefined`).
+  //    그래서 DB 나무(`r.dbId` · 심은 나무 — 청크와 무관하게 부팅 최상위에서 `resources` 에 올라온다)가
+  //    종전 갈래에 **안 잡혔다**(카드 ② "DB 나무도 같은 길" · 실측: 영토 안에 심은 DB 나무 둘이 2차 부팅 뒤 **남았다**).
+  //    ⇒ 그때만 `resources` 에서 **이 셀들에 든 DB 나무**를 한 번 추려 종전 갈래에 그대로 넘긴다
+  //      (빼는 몸은 종전 그대로 · 사본 0 · 부팅의 `resources` 는 DB 행뿐이라 싸다).
+  let _dbAt = null;
+  if (!qtResources) {
+    _dbAt = new Map();
+    for (const r of resources.values()) {
+      if (r.type !== 'tree' || r.isSeed || !r.dbId) continue;
+      const kk = Math.floor(r.x / 32) + ',' + Math.floor(r.y / 32);
+      if (!cellKeys.has(kk)) continue;
+      let a = _dbAt.get(kk); if (!a) _dbAt.set(kk, a = []); a.push(r);
+    }
+  }
+
   const seen = new Set();
   for (const k of cellKeys) {
     const ci = k.indexOf(','), cx = +k.slice(0, ci), cy = +k.slice(ci + 1);
     const px = cx * 32 + 16, py = cy * 32 + 16;
-    const near = qtResources ? qtResources.queryCircle(px, py, 24) : [];
+    // ⓐ 종전 갈래 — 지금 서 있는 개체(활성 청크 · DB 나무 포함). 부팅엔 ⓐ′ 가 추린 DB 나무.
+    const near = qtResources ? qtResources.queryCircle(px, py, 24) : ((_dbAt && _dbAt.get(k)) || []);
     for (const r of near) {
       if (r.type !== 'tree' || seen.has(r.id)) continue;
       if (Math.floor(r.x / 32) !== cx || Math.floor(r.y / 32) !== cy) continue;   // 이 셀 것만
@@ -3125,9 +3172,29 @@ function clearTreesInCells(cellKeys) {
       broadcast({ type: 'resource_removed', id: r.id });
       cleared++;
     }
+    // ⓑ ★[T378] 색인 갈래 — **관측자가 없어도** 그 셀의 씨 나무를 찾아 장부에 적는다.
+    //    개체가 서 있으면 ⓐ 가 이미 지웠고 `seen` 이 막는다. 안 서 있으면 여기서 장부만 적는다.
+    //    ⚠집 정본 `_actEntitiesAtCell` 은 색인 호출의 예외를 **말없이 삼킨다**(`catch { a = [] }`).
+    //      그러면 "나무가 없다"와 "못 물었다"가 구분이 안 된다 — 이 카드가 그걸 물었다(부팅 개간 0 의 이유를
+    //      알 수 없었다). ⇒ 여기서는 **같은 인자로 직접** 묻고, 터지면 **한 번** 이름을 붙인다(조용한 0 금지).
+    let idx = [];
+    try {
+      idx = resourcesAtCell(ZONE_ID, cx, cy,
+        { biome: ZONE.biome, chunkSize: chunkManager.chunkSize, harvestedSet: harvestedSeeds, gameDay: _gd });
+    } catch (e) {
+      idx = [];
+      if (!_t378Warned) { _t378Warned = 1; console.log(`[${ZONE_ID}] ★영토 개간 — 색인을 못 물었다(${String(e && e.message).slice(0, 140)}) · 이 판은 서 있는 개체만 벤다`); }
+    }
+    for (const e of idx) {
+      if (!_T378_TREE[e.type] || seen.has(e.id) || !e.isSeed || !e.seedKey) continue;
+      seen.add(e.id);
+      if (harvestedSeeds.has(e.seedKey)) continue;   // 이미 벤 자리 — 장부를 두 번 적지 않는다
+      _markHarvested(e.seedKey);
+      ledger++;
+    }
   }
-  if (cleared) resourcesDirty = true;
-  return cleared;
+  if (cleared || ledger) resourcesDirty = true;
+  return cleared + ledger;
 }
 const _simNow = () => { try { return (SimVillages.dayNow && SimVillages.dayNow()) || Date.now(); } catch (e) { return Date.now(); } };
 // ★★[T295 후속] 전쟁이 쓰는 나무 술어 — **청크 한 판을 통째로 캐시**한다.
