@@ -72,6 +72,43 @@ authentic Bonjo Arirang, Gyeonggi-minyo, or Daegeum transcription.  A real
 reference-performance curve is still required before an authenticity claim,
 training label, default BGM, or release decision.
 
+### Full 16-bar B0/B1 plans
+
+`build_full_ari_plans.py` deterministically generates two tracked, directly
+comparable full-score plans:
+
+- `plans/ari_full_16bar_b0_straight_r1.json`: all 59 notes use straight tone;
+  the b08 and b16 policy candidates remain recorded but off.
+- `plans/ari_full_16bar_b1_contextual_yoseong_r1.json`: the same non-expression
+  skeleton, with only b08's local cadence-before-rest and b16's global cadence
+  explicitly selected.  B16 uses 3.45 Hz / 18 cents, a 1.44 s onset, 0.18 s
+  ramp, and 0.24 s end fade.  These remain provisional authored auditions,
+  not measured performance contours.
+
+Both plans preserve the 16-bar game score at do=70 and 0.72 s per beat:
+34.56 s of notation followed by one 0.24 s final release.  The four authored
+breath heads are b01, b05, b09, and b13.  B08 beat 3 is the score's sole
+written rest.  To prevent b05 and b13 from starting against the prior note's
+full-level tail, the performance plan steals exactly 72 ms from the end of
+b04_e3 and b12_e3.  Those gaps are separately recorded as performed breath
+gaps with `notation_has_rest: false`; they do not invent two extra rests.
+`musical_context.duration_beats` is the performed duration while optional
+`notated_duration_beats` retains the score value and
+`timing_interpretation` states the shortening.
+
+The full-score B1 plan needs two different contextual rules at once.  The
+backward-compatible `active_selection_provenance` therefore accepts either
+the original single `source_policy_rule_id` or a
+`source_policy_rule_ids_by_event` map whose keys must exactly equal the
+selected event IDs.  Automatic activation remains forbidden in both forms.
+
+Regenerate or check the tracked JSON with:
+
+```bash
+python tools/score-expression/build_full_ari_plans.py
+python tools/score-expression/build_full_ari_plans.py --check
+```
+
 ## Plan and output
 
 The input plan is an explicit R&D-only JSON object.  It has one sustained

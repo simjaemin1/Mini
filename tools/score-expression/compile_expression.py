@@ -56,6 +56,7 @@ SLUR_BOUNDARY_F0_SCHEMA = "mini.score-expression.slur-boundary-f0.v1"
 # stays straight.  Candidate parameters remain disabled until an author opts
 # in using a separately reviewed audition plan.
 POLICY_RULE_SUSTAINED_CANDIDATE = "gyeonggi_ari.v1.sustained_before_rest_late_yoseong_candidate"
+POLICY_RULE_GLOBAL_CADENCE_CANDIDATE = "gyeonggi_ari.v1.global_cadence_late_yoseong_candidate"
 POLICY_RULE_SHORT_LOCAL_TAIL_OFF = "gyeonggi_ari.v1.short_local_tail_no_full_yoseong"
 POLICY_RULE_DEFAULT_OFF = "gyeonggi_ari.v1.default_straight"
 POLICY_RULE_RELEASE_OFF = "gyeonggi_ari.v1.release_no_vibrato"
@@ -190,10 +191,42 @@ def _expression_policy(raw: Any) -> dict[str, Any] | None:
                 "plan.expression_policy.active_selection_provenance.selected_event_ids repeats an event id"
             )
         source_rule = selection.get("source_policy_rule_id")
-        if source_rule != POLICY_RULE_SUSTAINED_CANDIDATE:
+        source_rules_by_event_raw = selection.get("source_policy_rule_ids_by_event")
+        if source_rule is not None and source_rules_by_event_raw is not None:
             raise ScoreExpressionError(
-                "active audition selection must originate from the sustained candidate rule"
+                "active selection must use either source_policy_rule_id or source_policy_rule_ids_by_event"
             )
+        allowed_candidate_rules = {
+            POLICY_RULE_SUSTAINED_CANDIDATE,
+            POLICY_RULE_GLOBAL_CADENCE_CANDIDATE,
+        }
+        source_rules_by_event: dict[str, str]
+        if source_rules_by_event_raw is not None:
+            source_rule_map = _mapping(
+                source_rules_by_event_raw,
+                label="plan.expression_policy.active_selection_provenance.source_policy_rule_ids_by_event",
+            )
+            if set(source_rule_map) != set(selected_event_ids):
+                raise ScoreExpressionError(
+                    "source_policy_rule_ids_by_event keys must exactly match selected_event_ids"
+                )
+            source_rules_by_event = {}
+            for event_id, event_rule in source_rule_map.items():
+                if event_rule not in allowed_candidate_rules:
+                    raise ScoreExpressionError(
+                        "active audition selection must originate from a candidate policy rule"
+                    )
+                source_rules_by_event[str(event_id)] = str(event_rule)
+            normalized_source_rule: str | None = None
+        else:
+            if source_rule not in allowed_candidate_rules:
+                raise ScoreExpressionError(
+                    "active audition selection must originate from a candidate policy rule"
+                )
+            normalized_source_rule = str(source_rule)
+            source_rules_by_event = {
+                str(event_id): normalized_source_rule for event_id in selected_event_ids
+            }
         active_selection_provenance = {
             "status": _string(
                 selection.get("status"),
@@ -204,7 +237,8 @@ def _expression_policy(raw: Any) -> dict[str, Any] | None:
                 label="plan.expression_policy.active_selection_provenance.selected_by",
             ),
             "selected_event_ids": list(selected_event_ids),
-            "source_policy_rule_id": source_rule,
+            "source_policy_rule_id": normalized_source_rule,
+            "source_policy_rule_ids_by_event": source_rules_by_event,
             "reason": _string(
                 selection.get("reason"),
                 label="plan.expression_policy.active_selection_provenance.reason",
@@ -234,6 +268,12 @@ def _expression_policy(raw: Any) -> dict[str, Any] | None:
                 "style": "late_gentle_yoseong_candidate",
                 "end_behavior": "depth_fade_to_zero",
                 "meaning": "reviewable late-yoseong candidate on a two-beat local phrase cadence before rest; never auto-enabled and not a Bonjo/Gyeonggi universal rule",
+            },
+            POLICY_RULE_GLOBAL_CADENCE_CANDIDATE: {
+                "decision": "candidate_off",
+                "style": "late_gentle_yoseong_candidate",
+                "end_behavior": "depth_fade_to_zero",
+                "meaning": "reviewable late-yoseong candidate on the three-beat global cadence; never auto-enabled and not a Bonjo/Gyeonggi universal rule",
             },
             POLICY_RULE_SHORT_LOCAL_TAIL_OFF: {
                 "decision": "off",
@@ -269,6 +309,27 @@ def _musical_context(
             raise ScoreExpressionError(f"{label}.musical_context is required by the expression policy")
         return None
     value = _mapping(raw, label=f"{label}.musical_context")
+    duration_beats = _number(
+        value.get("duration_beats"), label=f"{label}.musical_context.duration_beats", minimum=0.01
+    )
+    notated_duration_beats = _number(
+        value.get("notated_duration_beats", duration_beats),
+        label=f"{label}.musical_context.notated_duration_beats",
+        minimum=duration_beats,
+    )
+    timing_interpretation = _string(
+        value.get("timing_interpretation", "as_notated"),
+        label=f"{label}.musical_context.timing_interpretation",
+    )
+    if notated_duration_beats > duration_beats and "breath_gap" not in timing_interpretation:
+        raise ScoreExpressionError(
+            f"{label}.musical_context.timing_interpretation must identify the breath_gap shortening"
+        )
+    if math.isclose(notated_duration_beats, duration_beats, abs_tol=1.0e-12, rel_tol=0.0):
+        if timing_interpretation != "as_notated":
+            raise ScoreExpressionError(
+                f"{label}.musical_context.timing_interpretation must be as_notated when duration is unchanged"
+            )
     context = {
         "genre": _string(value.get("genre"), label=f"{label}.musical_context.genre"),
         "style": _string(value.get("style"), label=f"{label}.musical_context.style"),
@@ -276,9 +337,9 @@ def _musical_context(
         "mode": _string(value.get("mode"), label=f"{label}.musical_context.mode"),
         "phrase_role": _string(value.get("phrase_role"), label=f"{label}.musical_context.phrase_role"),
         "modal_degree": _string(value.get("modal_degree"), label=f"{label}.musical_context.modal_degree"),
-        "duration_beats": _number(
-            value.get("duration_beats"), label=f"{label}.musical_context.duration_beats", minimum=0.01
-        ),
+        "duration_beats": duration_beats,
+        "notated_duration_beats": notated_duration_beats,
+        "timing_interpretation": timing_interpretation,
         "metric_beat": _number(
             value.get("metric_beat"), label=f"{label}.musical_context.metric_beat", minimum=1.0
         ),
@@ -296,12 +357,22 @@ def _musical_context(
             raise ScoreExpressionError(
                 f"{label}.musical_context.duration_beats does not match the event duration"
             )
-        if float(context["metric_beat"]) > float(policy["meter_beats"]):
+        # ``metric_beat`` is a one-based onset position, so subdivisions in a
+        # 3-beat bar legitimately include 1.5, 2.5, and 3.5.  The next bar
+        # begins at 4.0 and is therefore the exclusive upper bound.
+        if float(context["metric_beat"]) >= float(policy["meter_beats"]) + 1.0:
             raise ScoreExpressionError(f"{label}.musical_context.metric_beat exceeds the policy meter")
     return context
 
 
 def _expected_vibrato_policy_rule(context: Mapping[str, Any]) -> str:
+    if (
+        float(context["duration_beats"]) >= 3.0
+        and context["phrase_role"] == "global_phrase_cadence"
+        and context["approach"] == "global_cadence_arrival"
+        and context["global_cadence"] is True
+    ):
+        return POLICY_RULE_GLOBAL_CADENCE_CANDIDATE
     if (
         float(context["duration_beats"]) <= 1.0
         and context["phrase_role"] == "local_phrase_tail"
@@ -402,7 +473,7 @@ def _vibrato_policy(
     selected_here = bool(
         active_selection is not None
         and event_id in active_selection["selected_event_ids"]
-        and active_selection["source_policy_rule_id"] == expected_rule
+        and active_selection["source_policy_rule_ids_by_event"].get(event_id) == expected_rule
     )
     if selected_here:
         if decision != "selected" or style != "late_gentle_yoseong" or end_behavior != "depth_fade_to_zero":

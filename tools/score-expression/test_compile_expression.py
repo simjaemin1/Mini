@@ -19,11 +19,14 @@ if str(RUNTIME_HERE) not in sys.path:
     sys.path.insert(0, str(RUNTIME_HERE))
 
 import compile_expression as compiler
+import build_full_ari_plans as full_ari
 import ddsp_gugak_public_runtime as runtime
 
 
 TRACKED_SOURCE_LED_ARI_PLAN = HERE / "plans" / "ari_source_led_response_r1.json"
 GYEONGGI_POLICY_AUDITION_PLAN = HERE / "plans" / "ari_gyeonggi_policy_r1_audition.json"
+FULL_ARI_B0_PLAN = HERE / "plans" / full_ari.B0_FILENAME
+FULL_ARI_B1_PLAN = HERE / "plans" / full_ari.B1_FILENAME
 
 
 def _scope() -> dict[str, bool]:
@@ -350,6 +353,193 @@ class CompileExpressionTests(unittest.TestCase):
             self.assertNotIn(str(root), text)
             with self.assertRaisesRegex(compiler.ScoreExpressionError, "fresh"):
                 compiler.render_controls(plan=path, output_dir=output)
+
+
+class FullAriPlanTests(unittest.TestCase):
+    @staticmethod
+    def _raw(path: Path) -> dict[str, object]:
+        return json.loads(path.read_text(encoding="utf-8"))
+
+    @staticmethod
+    def _voiced(raw: dict[str, object]) -> list[dict[str, object]]:
+        events = raw["events"]
+        assert isinstance(events, list)
+        return [event for event in events if event["articulation"] != "release"]
+
+    def test_generated_full_plans_are_tracked_byte_for_byte(self) -> None:
+        expected = full_ari.build_plans()
+        for filename, document in expected.items():
+            tracked = json.loads((HERE / "plans" / filename).read_text(encoding="utf-8"))
+            self.assertEqual(tracked, document)
+
+    def test_full_score_has_59_notes_exact_duration_and_only_final_release(self) -> None:
+        for path in (FULL_ARI_B0_PLAN, FULL_ARI_B1_PLAN):
+            raw = self._raw(path)
+            voiced = self._voiced(raw)
+            self.assertEqual(len(voiced), 59)
+            releases = [event for event in raw["events"] if event["articulation"] == "release"]
+            self.assertEqual([event["id"] for event in releases], ["b16_final_release"])
+            self.assertEqual(releases[0]["start_seconds"], 34.56)
+            self.assertEqual(releases[0]["end_seconds"], 34.8)
+            self.assertEqual(raw["score_timing"]["notated_score_duration_seconds"], 34.56)
+            self.assertEqual(raw["score_timing"]["render_control_duration_seconds"], 34.8)
+            result = compiler.compile_plan(path)
+            self.assertEqual(len(result["events"]), 60)
+            self.assertAlmostEqual(float(result["duration_seconds"]), 34.8, places=9)
+
+    def test_authored_breaths_and_two_performed_gaps_do_not_invent_score_rests(self) -> None:
+        raw = self._raw(FULL_ARI_B0_PLAN)
+        voiced = self._voiced(raw)
+        breath_locations = [
+            event["score_location"] for event in voiced if event["articulation"] == "breath_start"
+        ]
+        self.assertEqual(breath_locations, ["b01_e0", "b05_e0", "b09_e0", "b13_e0"])
+
+        written_rests = raw["score_rest_intervals_seconds"]
+        self.assertEqual(len(written_rests), 1)
+        self.assertEqual(written_rests[0]["score_location"], "b08_beat3")
+        self.assertTrue(written_rests[0]["notation_has_rest"])
+        self.assertAlmostEqual(written_rests[0]["start_seconds"], 16.56, places=9)
+        self.assertAlmostEqual(written_rests[0]["end_seconds"], 17.28, places=9)
+
+        performed_gaps = raw["performed_breath_gaps_seconds"]
+        self.assertEqual([(gap["start_seconds"], gap["end_seconds"]) for gap in performed_gaps], [
+            (8.568, 8.64),
+            (25.848, 25.92),
+        ])
+        self.assertTrue(all(gap["notation_has_rest"] is False for gap in performed_gaps))
+        by_location = {event["score_location"]: event for event in voiced}
+        for location in ("b04_e3", "b12_e3"):
+            context = by_location[location]["musical_context"]
+            self.assertEqual(context["notated_duration_beats"], 0.5)
+            self.assertEqual(context["duration_beats"], 0.4)
+            self.assertEqual(
+                context["timing_interpretation"],
+                "authorial_breath_gap_time_stolen_from_note_end",
+            )
+
+        compiled = compiler.compile_plan(FULL_ARI_B0_PLAN)
+        times = compiled["frame_times_seconds"]
+        for start, end in ((8.568, 8.64), (16.56, 17.28), (25.848, 25.92)):
+            gap = (times >= start) & (times < end)
+            self.assertTrue(numpy.any(gap))
+            self.assertTrue(numpy.all(compiled["f0_hz"][gap] == 0.0))
+            self.assertTrue(numpy.all(compiled["gesture_state"][gap] == 0))
+
+    def test_b08_b10_pitch_time_grid_and_b09_b10_articulation_keep_slice_parity(self) -> None:
+        short = self._raw(TRACKED_SOURCE_LED_ARI_PLAN)
+        full = self._raw(FULL_ARI_B0_PLAN)
+        short_events = [event for event in short["events"] if event["articulation"] != "release"]
+        full_events = [
+            event
+            for event in full["events"]
+            if str(event.get("score_location", ""))[:3] in {"b08", "b09", "b10"}
+        ]
+        self.assertEqual(len(short_events), len(full_events))
+        offset = 15.12
+        for expected, actual in zip(short_events, full_events):
+            self.assertEqual(expected["score_location"], actual["score_location"])
+            self.assertAlmostEqual(expected["start_seconds"], actual["start_seconds"] - offset, places=9)
+            self.assertAlmostEqual(expected["end_seconds"], actual["end_seconds"] - offset, places=9)
+            self.assertEqual(expected["pitch_hz"], actual["pitch_hz"])
+            self.assertEqual(expected["steady_loudness_db"], actual["steady_loudness_db"])
+        # b08 is no longer a synthetic slice head, so it is a deliberate
+        # re-attack.  The already-auditioned b09/b10 mapping stays exact.
+        self.assertEqual(full_events[0]["articulation"], "rearticulate")
+        self.assertEqual(
+            [event["articulation"] for event in full_events[1:]],
+            [event["articulation"] for event in short_events[1:]],
+        )
+        self.assertEqual(
+            [event.get("slur_from_previous", False) for event in full_events[1:]],
+            [event.get("slur_from_previous", False) for event in short_events[1:]],
+        )
+
+    def test_b0_and_b1_share_an_identical_nonexpression_skeleton(self) -> None:
+        b0 = self._raw(FULL_ARI_B0_PLAN)
+        b1 = self._raw(FULL_ARI_B1_PLAN)
+
+        def skeleton(document: dict[str, object]) -> list[dict[str, object]]:
+            result = []
+            for event in document["events"]:
+                result.append(
+                    {
+                        key: value
+                        for key, value in event.items()
+                        if key not in {"vibrato", "vibrato_policy"}
+                    }
+                )
+            return result
+
+        self.assertEqual(skeleton(b0), skeleton(b1))
+        for key in (
+            "authorial_score_reference",
+            "score_timing",
+            "score_rest_intervals_seconds",
+            "performed_breath_gaps_seconds",
+            "control_hz",
+        ):
+            self.assertEqual(b0[key], b1[key])
+
+    def test_b0_is_all_straight_and_b1_selects_only_contextual_b08_b16_candidates(self) -> None:
+        b0 = compiler.compile_plan(FULL_ARI_B0_PLAN)
+        b1 = compiler.compile_plan(FULL_ARI_B1_PLAN)
+        self.assertEqual([event["id"] for event in b0["events"] if event["vibrato"]["enabled"]], [])
+
+        selected = [
+            event
+            for event in b1["events"]
+            if event["vibrato_policy"] is not None
+            and event["vibrato_policy"]["decision"] == "selected"
+        ]
+        self.assertEqual(
+            [event["id"] for event in selected],
+            ["b08_e0_rearticulate", "b16_e0_rearticulate"],
+        )
+        b08, b16 = selected
+        self.assertEqual(b08["vibrato_policy"]["policy_rule_id"], compiler.POLICY_RULE_SUSTAINED_CANDIDATE)
+        self.assertEqual(b08["vibrato"]["onset_seconds"], 0.72)
+        self.assertEqual(b08["vibrato"]["end_fade_seconds"], 0.18)
+        self.assertEqual(b16["vibrato_policy"]["policy_rule_id"], compiler.POLICY_RULE_GLOBAL_CADENCE_CANDIDATE)
+        self.assertTrue(b16["musical_context"]["global_cadence"])
+        self.assertEqual(b16["vibrato"]["rate_hz"], 3.45)
+        self.assertEqual(b16["vibrato"]["depth_cents"], 18.0)
+        self.assertEqual(b16["vibrato"]["onset_seconds"], 1.44)
+        self.assertEqual(b16["vibrato"]["ramp_seconds"], 0.18)
+        self.assertEqual(b16["vibrato"]["end_fade_seconds"], 0.24)
+        b10_tail = next(event for event in b1["events"] if event["id"] == "b10_e2_slur")
+        self.assertFalse(b10_tail["vibrato"]["enabled"])
+        self.assertEqual(b10_tail["vibrato_policy"]["policy_rule_id"], compiler.POLICY_RULE_SHORT_LOCAL_TAIL_OFF)
+
+        cents = b1["vibrato_cents"]
+        self.assertEqual(float(cents[3383]), 0.0)  # before b16's 1.44 s onset
+        self.assertGreater(float(numpy.max(numpy.abs(cents[3400:3450]))), 10.0)
+        self.assertEqual(float(cents[3455]), 0.0)  # final half-open b16 row
+        self.assertEqual(float(cents[3456]), 0.0)  # release starts at nominal pitch
+
+    def test_multi_rule_selection_must_map_every_selected_event_to_its_fired_rule(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            payload = self._raw(FULL_ARI_B1_PLAN)
+            selection = payload["expression_policy"]["active_selection_provenance"]
+            del selection["source_policy_rule_ids_by_event"]["b16_e0_rearticulate"]
+            path = _write_plan(Path(temporary), payload)
+            with self.assertRaisesRegex(compiler.ScoreExpressionError, "keys must exactly match"):
+                compiler.compile_plan(path)
+
+    def test_all_slurs_are_explicit_and_only_authored_rearticulations_break_sequences(self) -> None:
+        raw = self._raw(FULL_ARI_B0_PLAN)
+        voiced = self._voiced(raw)
+        slurs = [event for event in voiced if event["articulation"] == "slur"]
+        self.assertEqual(len(slurs), 43)
+        self.assertTrue(all(event.get("slur_from_previous") is True for event in slurs))
+        rearticulations = [event["score_location"] for event in voiced if event["articulation"] == "rearticulate"]
+        self.assertEqual(
+            rearticulations,
+            [
+                "b02_e0", "b03_e0", "b04_e0", "b06_e0", "b07_e0", "b08_e0",
+                "b09_e1", "b11_e0", "b12_e0", "b14_e0", "b15_e0", "b16_e0",
+            ],
+        )
 
 
 if __name__ == "__main__":
