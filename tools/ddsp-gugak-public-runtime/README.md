@@ -53,6 +53,37 @@ That is formula equivalence only: its 100 Hz control artifact can be
 quantized/upsampled differently, so this 250 Hz renderer does not claim
 audio-rate parity with a separate synthetic preview path.
 
+### Experimental hard-F0-step diagnostic
+
+`--experimental-hard-f0-step` is a separate R&D mode; it does not replace the
+12 ms default and is mutually exclusive with `--slur-transition-ms`. The last
+control row before a moving slur retains the source F0 and the first row of the
+slur takes the target F0. Loudness still follows the same independently
+authored 80 ms dynamic, voicing stays at one, and no onset or oscillator phase
+reset is introduced. The unchanged published oscillator integrates one phase
+bank continuously and linearly upsamples 250 Hz controls to audio rate, so the
+control discontinuity may be smoothed over roughly one 4 ms frame. The QA gate
+requires no intermediate-pitch control row, target arrival within 8 ms, and no
+re-attack through that interval.
+
+This is not a learned slur. The decoder has a causal GRU, but receives only F0
+and loudness—not breath, tongue, fingering, or articulation labels. Its `a`
+(overall harmonic amplitude), `c` (101-way harmonic distribution), and `H`
+(65-bin filtered-noise response) may react to the changed control history; the
+report calls that a recurrent checkpoint response and makes no stronger claim.
+The compiler's canonical 12 ms policy is still verified, while candidate
+formula equivalence is explicitly recorded as not applicable for the runtime-
+only hard step.
+
+With `--component-diagnostics`, a hard-step run also renders a fresh canonical
+12 ms candidate in the same process with the same checkpoint and noise seed.
+It writes post-authorial-gate harmonic/noise stems and both dry candidates.
+Every diagnostic WAV receives one canonical-derived constant listening gain;
+there is no per-candidate normalization, compression, or limiting. The report
+compares unmodified decoder `a`, `c`, and `H` at -4/0/4/8/12/20/100 ms around
+each moving slur. In particular, the +100 ms record exposes recurrent carry.
+Neither `c` nor `H` is edited, and this experiment adds no noise pulse.
+
 This timing is an R&D **flute-based inference**, not a claim about Daegeum
 performance: the cited flute key-motion study reports roughly 10 ms
 finger-driven and 16 ms spring-driven key motion, with multi-finger timing in
@@ -132,7 +163,24 @@ of -24 dBFS. They fail instead of silently limiting any side if that target
 would clip. The flute WAV is only read after rendering to make a listening
 comparison; it is never an inference or training input.
 
+For the isolated hard-step/canonical diagnostic pair (full score only):
+
+```sh
+"$PYTHON" "$ROOT/tools/ddsp-gugak-public-runtime/ddsp_gugak_public_runtime.py" \
+  --execute --confirm-rnd-only \
+  --plan "$ROOT/tools/score-expression/plans/ari_source_led_response_r1.json" \
+  --gugak-source-root "$ROOT/_bgm_rnd/ddsp-gugak-public-source-r1/DDSP-Gugak" \
+  --ddsp-pytorch-root "$ROOT/_bgm_rnd/ddsp-gugak-public-source-r1/ddsp-pytorch" \
+  --checkpoint "$ROOT/_bgm_rnd/ddsp-gugak-public-daegeum-checkpoint-audit-r1/daegeum.pth" \
+  --checkpoint-config "$ROOT/_bgm_rnd/ddsp-gugak-public-daegeum-checkpoint-audit-r1/daegeum.pth.config" \
+  --repository-root "$ROOT" \
+  --output-dir "$ROOT/_bgm_rnd/ddsp-gugak-public-daegeum-runtime-r1-YYYYMMDD-HHMMSS-hard-step-diagnostic" \
+  --experimental-hard-f0-step \
+  --component-diagnostics
+```
+
 Outputs are a dry WAV, a 250 Hz CSV control table, a path-free provenance
-sidecar, and—only with the explicit flag—the two separate wet audition WAVs.
+sidecar, and—only with their explicit flags—the diagnostic stems/comparison or
+two separate wet audition WAVs.
 The output directory must be new, so a failed or prior experiment cannot be
 overwritten.

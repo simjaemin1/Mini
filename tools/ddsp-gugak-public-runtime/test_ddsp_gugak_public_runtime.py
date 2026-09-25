@@ -5,6 +5,9 @@ These do not import Torch, source checkouts, checkpoints, audio, or CREPE.
 
 from __future__ import annotations
 
+import copy
+import contextlib
+import io
 import json
 from pathlib import Path
 import sys
@@ -80,6 +83,171 @@ class PublicRuntimeTests(unittest.TestCase):
         with self.assertRaisesRegex(runtime.RuntimeContractError, "validated candidates"):
             runtime.build_score_controls(PLAN, slur_transition_milliseconds=16)
 
+    def test_default_is_still_canonical_12ms_and_hard_step_is_separate(self) -> None:
+        default_frames, default_summary = runtime.build_score_controls(PLAN)
+        explicit_frames, explicit_summary = runtime.build_score_controls(
+            PLAN,
+            slur_transition_milliseconds=12,
+            slur_pitch_mode=runtime.SLUR_PITCH_MODE_CURVE,
+        )
+        self.assertEqual(default_frames, explicit_frames)
+        self.assertEqual(default_summary, explicit_summary)
+        self.assertEqual(runtime.SLUR_TRANSITION_MILLISECONDS, 12)
+        self.assertEqual(runtime.SLUR_TRANSITION_CANDIDATE_MILLISECONDS, (8, 12, 20))
+        self.assertAlmostEqual(default_frames[1261]["f0_hz"], 673.5107882753397, places=6)
+        self.assertAlmostEqual(default_frames[1262]["f0_hz"], 609.0832061954886, places=6)
+
+    def test_hard_step_has_zero_control_dwell_and_preserves_nonpitch_controls(self) -> None:
+        canonical, canonical_summary = runtime.build_score_controls(PLAN)
+        hard, hard_summary = runtime.build_score_controls(
+            PLAN,
+            slur_pitch_mode=runtime.SLUR_PITCH_MODE_HARD_STEP,
+        )
+        self.assertAlmostEqual(hard[1259]["f0_hz"], 698.456463, places=6)
+        self.assertAlmostEqual(hard[1260]["f0_hz"], 587.329536, places=6)
+        self.assertAlmostEqual(hard[1439]["f0_hz"], 587.329536, places=6)
+        self.assertAlmostEqual(hard[1440]["f0_hz"], 523.251131, places=6)
+        for canonical_frame, hard_frame in zip(canonical, hard):
+            for field in ("loudness_linear", "voicing", "articulation", "event_id", "vibrato_cents"):
+                self.assertEqual(canonical_frame[field], hard_frame[field])
+        qa = hard_summary["slur_transition_control_qa"]
+        self.assertEqual(qa["policy"]["pitch_mode"], runtime.SLUR_PITCH_MODE_HARD_STEP)
+        self.assertEqual(qa["policy"]["pitch_domain"], "control_frame_f0_discontinuity")
+        self.assertEqual(qa["policy"]["intermediate_pitch_dwell_seconds"], 0.0)
+        for event in qa["events"]:
+            self.assertEqual(event["intermediate_frame_count"], 0)
+            self.assertEqual(event["intermediate_dwell_seconds"], 0.0)
+            self.assertLessEqual(event["target_control_arrival_seconds"], 0.008)
+            self.assertTrue(event["pitch_target_settle_by_8ms_gate_passed"])
+            self.assertTrue(event["pitch_target_settle_by_50ms_gate_passed"])
+            self.assertTrue(event["no_reattack_and_dynamic_continuity_gate_passed"])
+        difference = runtime.verify_diagnostic_control_difference(
+            canonical,
+            hard,
+            canonical_summary["slur_transition_control_qa"],
+        )
+        self.assertTrue(difference["passed"])
+        self.assertTrue(difference["non_f0_controls_exactly_equal"])
+
+    def test_hard_step_qa_rejects_intermediate_same_pitch_corruption_and_reattack(self) -> None:
+        hard, _ = runtime.build_score_controls(PLAN, slur_pitch_mode=runtime.SLUR_PITCH_MODE_HARD_STEP)
+        _, events, _ = runtime._validate_plan(PLAN)
+
+        intermediate = copy.deepcopy(hard)
+        intermediate[1261]["f0_hz"] = (698.456463 + 587.329536) / 2.0
+        with self.assertRaisesRegex(runtime.RuntimeContractError, "target F0"):
+            runtime.slur_transition_control_qa(
+                intermediate,
+                events,
+                transition_seconds=runtime.SLUR_TRANSITION_SECONDS,
+                pitch_mode=runtime.SLUR_PITCH_MODE_HARD_STEP,
+            )
+
+        same_pitch = copy.deepcopy(hard)
+        same_pitch[1081]["f0_hz"] += 5.0
+        with self.assertRaisesRegex(runtime.RuntimeContractError, "target F0"):
+            runtime.slur_transition_control_qa(
+                same_pitch,
+                events,
+                transition_seconds=runtime.SLUR_TRANSITION_SECONDS,
+                pitch_mode=runtime.SLUR_PITCH_MODE_HARD_STEP,
+            )
+
+        reattack = copy.deepcopy(hard)
+        reattack[1262]["voicing"] = 0.5
+        with self.assertRaisesRegex(runtime.RuntimeContractError, "re-attack"):
+            runtime.slur_transition_control_qa(
+                reattack,
+                events,
+                transition_seconds=runtime.SLUR_TRANSITION_SECONDS,
+                pitch_mode=runtime.SLUR_PITCH_MODE_HARD_STEP,
+            )
+
+        loudness_jump = copy.deepcopy(hard)
+        loudness_jump[1260]["loudness_linear"] *= 0.5
+        with self.assertRaisesRegex(runtime.RuntimeContractError, "authored dynamic"):
+            runtime.slur_transition_control_qa(
+                loudness_jump,
+                events,
+                transition_seconds=runtime.SLUR_TRANSITION_SECONDS,
+                pitch_mode=runtime.SLUR_PITCH_MODE_HARD_STEP,
+            )
+
+    def test_hard_step_off_grid_boundary_accepts_target_with_immediate_vibrato(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            altered = json.loads(PLAN.read_text(encoding="utf-8"))
+            altered["events"][3]["end_seconds"] = 5.042
+            altered["events"][4]["start_seconds"] = 5.042
+            altered["events"][4]["vibrato"] = {
+                "enabled": True,
+                "rate_hz": 3.45,
+                "depth_cents": 20.0,
+                "onset_seconds": 0.0,
+                "ramp_seconds": 0.005,
+            }
+            path = Path(temporary) / "off-grid-plan.json"
+            path.write_text(json.dumps(altered), encoding="utf-8")
+            frames, summary = runtime.build_score_controls(
+                path,
+                slur_pitch_mode=runtime.SLUR_PITCH_MODE_HARD_STEP,
+            )
+            event = next(item for item in summary["slur_transition_control_qa"]["events"] if item["event_id"] == "b10_e1_slur")
+            self.assertGreater(frames[1261]["vibrato_cents"], 0.0)
+            self.assertAlmostEqual(event["target_control_arrival_seconds"], 0.002, places=12)
+            self.assertLess(event["target_control_arrival_seconds"], 0.004)
+
+    def test_invalid_hard_step_combinations_are_rejected(self) -> None:
+        common = [
+            "--plan", str(PLAN),
+            "--gugak-source-root", "gugak",
+            "--ddsp-pytorch-root", "ddsp",
+            "--checkpoint", "model.pth",
+            "--checkpoint-config", "model.pth.config",
+        ]
+        with contextlib.redirect_stderr(io.StringIO()):
+            with self.assertRaises(SystemExit):
+                runtime.parse_args(["--execute", "--output-dir", "out", "--experimental-hard-f0-step", "--slur-transition-ms", "8", *common])
+            with self.assertRaises(SystemExit):
+                runtime.parse_args(["--check", "--experimental-hard-f0-step", *common])
+            with self.assertRaises(SystemExit):
+                runtime.parse_args(["--execute", "--output-dir", "out", "--component-diagnostics", "--max-seconds", "1.0", *common])
+        with self.assertRaisesRegex(runtime.RuntimeContractError, "pitch mode"):
+            runtime.build_score_controls(PLAN, slur_pitch_mode="unknown")
+
+    def test_hard_step_compiler_check_keeps_canonical_policy_and_marks_formula_na(self) -> None:
+        expected_policy = {
+            "pitch_transition_milliseconds": runtime.SLUR_TRANSITION_MILLISECONDS,
+            "pitch_shape": runtime.SLUR_TRANSITION_SHAPE,
+            "pitch_domain": "log_frequency_cents",
+            "pitch_target_settle_by_seconds": runtime.SLUR_TARGET_ATTACH_SECONDS,
+            "intermediate_pitch_dwell_strictly_less_than_seconds": runtime.SLUR_MAX_INTERMEDIATE_DWELL_SECONDS,
+            "dynamic_transition_seconds": runtime.SLUR_LOUDNESS_TRANSITION_SECONDS,
+            "dynamic_shape": runtime.SLUR_LOUDNESS_TRANSITION_SHAPE,
+            "dynamic_domain": "linear_loudness",
+            "dynamic_target_settle_by_seconds": runtime.SLUR_LOUDNESS_TARGET_SETTLE_SECONDS,
+            "no_rearticulation_envelope_for_slur": True,
+        }
+        with tempfile.TemporaryDirectory() as temporary:
+            compiler = Path(temporary) / "tools/score-expression/compile_expression.py"
+            compiler.parent.mkdir(parents=True)
+            compiler.write_text(
+                f"SLUR_TRANSITION_SECONDS = {runtime.SLUR_TRANSITION_SECONDS!r}\n"
+                f"def slur_transition_policy():\n    return {expected_policy!r}\n",
+                encoding="utf-8",
+            )
+            _, events, _ = runtime._validate_plan(PLAN)
+            report = runtime.verify_compiler_slur_policy_equivalence(
+                Path(temporary),
+                events,
+                requested_transition_seconds=runtime.SLUR_TRANSITION_SECONDS,
+                pitch_mode=runtime.SLUR_PITCH_MODE_HARD_STEP,
+            )
+        self.assertTrue(report["canonical_default_policy_match"])
+        self.assertIsNone(report["requested_runtime_candidate_milliseconds"])
+        self.assertFalse(report["candidate_formula_equivalence"]["applicable"])
+        self.assertEqual(report["candidate_formula_equivalence"]["status"], "not_applicable")
+        self.assertEqual(report["probes"], [])
+
     def test_missing_explicit_slur_link_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             altered = json.loads(PLAN.read_text(encoding="utf-8"))
@@ -110,6 +278,38 @@ class PublicRuntimeTests(unittest.TestCase):
         self.assertAlmostEqual(scaled[-1] / samples[-1], record["constant_gain_applied_to_entire_file"], places=12)
         with self.assertRaisesRegex(runtime.RuntimeContractError, "would clip"):
             runtime.level_match_shared_interval_whole_file([0.001] * active_count + [1.0])
+
+    def test_shared_fixed_gain_and_latent_delta_helpers_do_not_normalize_candidates_independently(self) -> None:
+        active_count = int(runtime.SHARED_INTERVAL_END_SECONDS * runtime.SAMPLE_RATE_HZ)
+        canonical = [0.01] * active_count
+        hard = [0.02] * active_count
+        scaled, record = runtime.apply_shared_fixed_listening_gain(
+            canonical,
+            {"canonical_12ms": canonical, "experimental_hard_step": hard},
+            reference_label="canonical_12ms",
+        )
+        gain = record["constant_gain_applied_to_every_candidate"]
+        self.assertAlmostEqual(scaled["canonical_12ms"][0], canonical[0] * gain, places=12)
+        self.assertAlmostEqual(scaled["experimental_hard_step"][0], hard[0] * gain, places=12)
+        self.assertFalse(record["independent_candidate_normalization"])
+
+        point = {"frame_index": 10, "time_seconds": 0.04, "a": 0.5, "c": [0.25, 0.75], "H": [0.2, 0.4]}
+        canonical_payload = {"latent_probes": {"move": {"+100ms": point}}}
+        hard_point = {**point, "a": 0.55, "c": [0.3, 0.7], "H": [0.25, 0.35]}
+        hard_payload = {"latent_probes": {"move": {"+100ms": hard_point}}}
+        comparison = runtime.compare_latent_probes(canonical_payload, hard_payload)
+        carry = comparison["events"]["move"]["plus_100ms_recurrent_carry"]
+        self.assertAlmostEqual(carry["hard_minus_canonical_a"], 0.05, places=12)
+        self.assertFalse(comparison["decoder_outputs_manually_modified"])
+        with self.assertRaisesRegex(runtime.RuntimeContractError, "non-finite"):
+            runtime.apply_shared_fixed_listening_gain(
+                [float("nan")] * runtime.HOP_LENGTH,
+                {"bad": [float("nan")] * runtime.HOP_LENGTH},
+                reference_label="bad",
+                shared_interval_end_seconds=runtime.FRAME_RESOLUTION,
+            )
+        with self.assertRaisesRegex(runtime.RuntimeContractError, "non-finite"):
+            runtime._vector_delta_metrics([float("inf")], [0.0], label="synthetic")
 
     def test_release_boundary_qa_rejects_an_artificial_cliff(self) -> None:
         frames, _ = runtime.build_score_controls(PLAN)

@@ -60,6 +60,10 @@ SLUR_TRANSITION_MILLISECONDS = 12
 SLUR_TRANSITION_CANDIDATE_MILLISECONDS = (8, 12, 20)
 SLUR_TRANSITION_SECONDS = SLUR_TRANSITION_MILLISECONDS / 1_000.0
 SLUR_TRANSITION_SHAPE = "minimum_jerk_log_frequency_cents"
+SLUR_PITCH_MODE_CURVE = "minimum_jerk_curve"
+SLUR_PITCH_MODE_HARD_STEP = "experimental_phase_continuous_hard_f0_step"
+SLUR_PITCH_MODES = frozenset({SLUR_PITCH_MODE_CURVE, SLUR_PITCH_MODE_HARD_STEP})
+HARD_STEP_TARGET_ATTACH_SECONDS = 0.008
 SLUR_TARGET_ATTACH_SECONDS = 0.050
 SLUR_MAX_INTERMEDIATE_DWELL_SECONDS = 0.020
 SLUR_LOUDNESS_TRANSITION_SECONDS = 0.080
@@ -325,6 +329,12 @@ def _slur_transition_seconds(milliseconds: Any) -> float:
     return int(milliseconds) / 1_000.0
 
 
+def _slur_pitch_mode(value: Any) -> str:
+    if value not in SLUR_PITCH_MODES:
+        raise RuntimeContractError("slur pitch mode is not a supported R&D candidate")
+    return str(value)
+
+
 def _minimum_jerk_progress(progress: float) -> float:
     """Zero-slope monotonic S-curve used for a wind-instrument fingering change."""
 
@@ -350,9 +360,12 @@ def slur_transition_control_qa(
     events: Sequence[Mapping[str, Any]],
     *,
     transition_seconds: float,
+    pitch_mode: str = SLUR_PITCH_MODE_CURVE,
 ) -> Dict[str, Any]:
     """Gate the no-sweep slur contract directly against compiled 250 Hz controls."""
 
+    pitch_mode = _slur_pitch_mode(pitch_mode)
+    hard_step = pitch_mode == SLUR_PITCH_MODE_HARD_STEP
     records: List[Dict[str, Any]] = []
     tolerance_hz = 1.0e-6
     for event_index, event in enumerate(events):
@@ -372,34 +385,77 @@ def slur_transition_control_qa(
         prior = frames[start_frame - 1]
         source_hz = float(prior["f0_hz"])
         target_hz = float(event["pitch_hz"])
-        if not math.isclose(float(first["f0_hz"]), source_hz, abs_tol=tolerance_hz, rel_tol=0.0):
-            raise RuntimeContractError("slur must begin at its prior pitch without a pitch jump")
+        if hard_step:
+            first_expected_hz = target_hz * math.pow(2.0, float(first["vibrato_cents"]) / 1_200.0)
+            if not math.isclose(float(first["f0_hz"]), first_expected_hz, abs_tol=tolerance_hz, rel_tol=1.0e-9):
+                raise RuntimeContractError("experimental hard-step slur must place the target F0 on its boundary control frame")
+        elif not math.isclose(float(first["f0_hz"]), source_hz, abs_tol=tolerance_hz, rel_tol=0.0):
+            raise RuntimeContractError("minimum-jerk slur must begin at its prior pitch")
+        qa_transition_window = HARD_STEP_TARGET_ATTACH_SECONDS if hard_step else transition_seconds
         transition_rows = [
             frame
             for frame in event_frames
-            if float(frame["time_seconds"]) < float(event["start_seconds"]) + transition_seconds - 1.0e-12
+            if float(frame["time_seconds"]) < float(event["start_seconds"]) + qa_transition_window - 1.0e-12
         ]
         if any(abs(float(frame["voicing"]) - 1.0) > 1.0e-12 for frame in transition_rows):
             raise RuntimeContractError("slur transition must not introduce a re-attack voicing dip")
         entry_loudness = float(first["loudness_linear"])
         prior_loudness = float(prior["loudness_linear"])
-        if not math.isclose(entry_loudness, prior_loudness, abs_tol=1.0e-12, rel_tol=0.0):
-            raise RuntimeContractError("slur must begin at its prior loudness without an onset jump")
-        ordered = [float(frame["f0_hz"]) for frame in event_frames if float(frame["time_seconds"]) <= float(event["start_seconds"]) + transition_seconds + 1.0e-12]
-        if target_hz < source_hz and any(left + tolerance_hz < right for left, right in zip(ordered, ordered[1:])):
-            raise RuntimeContractError("log-frequency slur transition is not monotonic descending")
-        if target_hz > source_hz and any(left - tolerance_hz > right for left, right in zip(ordered, ordered[1:])):
-            raise RuntimeContractError("log-frequency slur transition is not monotonic ascending")
-        lower, upper = sorted((source_hz, target_hz))
-        intermediate_rows = [
-            frame
-            for frame in transition_rows
-            if lower + tolerance_hz < float(frame["f0_hz"]) < upper - tolerance_hz
-        ]
+        target_loudness = math.pow(10.0, float(event["steady_loudness_db"]) / 20.0)
+        first_local_seconds = float(first["time_seconds"]) - float(event["start_seconds"])
+        expected_entry_loudness = prior_loudness + (target_loudness - prior_loudness) * _minimum_jerk_progress(
+            first_local_seconds / SLUR_LOUDNESS_TRANSITION_SECONDS
+        )
+        if not math.isclose(entry_loudness, expected_entry_loudness, abs_tol=1.0e-12, rel_tol=1.0e-9):
+            raise RuntimeContractError("slur must begin on its continuous authored dynamic without an onset jump")
+        if hard_step:
+            hard_step_gate_rows = [
+                frame
+                for frame in event_frames
+                if float(frame["time_seconds"]) <= float(event["start_seconds"]) + HARD_STEP_TARGET_ATTACH_SECONDS + 1.0e-12
+            ]
+            for frame in hard_step_gate_rows:
+                expected_frame_hz = target_hz * math.pow(2.0, float(frame["vibrato_cents"]) / 1_200.0)
+                if not math.isclose(float(frame["f0_hz"]), expected_frame_hz, abs_tol=tolerance_hz, rel_tol=1.0e-9):
+                    raise RuntimeContractError("experimental hard-step slur must remain at its target F0 throughout the 8 ms control gate")
+            if any(abs(float(frame["voicing"]) - 1.0) > 1.0e-12 for frame in hard_step_gate_rows):
+                raise RuntimeContractError("experimental hard-step slur must not introduce a re-attack voicing dip through its 8 ms gate")
+            intermediate_rows: List[Mapping[str, Any]] = []
+        else:
+            ordered = [float(frame["f0_hz"]) for frame in event_frames if float(frame["time_seconds"]) <= float(event["start_seconds"]) + transition_seconds + 1.0e-12]
+            if target_hz < source_hz and any(left + tolerance_hz < right for left, right in zip(ordered, ordered[1:])):
+                raise RuntimeContractError("log-frequency slur transition is not monotonic descending")
+            if target_hz > source_hz and any(left - tolerance_hz > right for left, right in zip(ordered, ordered[1:])):
+                raise RuntimeContractError("log-frequency slur transition is not monotonic ascending")
+            lower, upper = sorted((source_hz, target_hz))
+            intermediate_rows = [
+                frame
+                for frame in transition_rows
+                if lower + tolerance_hz < float(frame["f0_hz"]) < upper - tolerance_hz
+            ]
         intermediate_dwell_seconds = len(intermediate_rows) / FRAME_RATE_HZ
-        if intermediate_dwell_seconds >= SLUR_MAX_INTERMEDIATE_DWELL_SECONDS - 1.0e-12:
+        if hard_step and intermediate_rows:
+            raise RuntimeContractError("experimental hard-step slur must have zero intermediate-pitch control frames")
+        if not hard_step and intermediate_dwell_seconds >= SLUR_MAX_INTERMEDIATE_DWELL_SECONDS - 1.0e-12:
             raise RuntimeContractError("slur intermediate-pitch dwell must remain strictly below 20 ms")
-        attach_threshold = float(event["start_seconds"]) + SLUR_TARGET_ATTACH_SECONDS
+        attach_limit = HARD_STEP_TARGET_ATTACH_SECONDS if hard_step else SLUR_TARGET_ATTACH_SECONDS
+        target_rows = [
+            frame
+            for frame in event_frames
+            if math.isclose(
+                float(frame["f0_hz"]),
+                target_hz * math.pow(2.0, float(frame["vibrato_cents"]) / 1_200.0),
+                abs_tol=tolerance_hz,
+                rel_tol=1.0e-9,
+            )
+        ]
+        if not target_rows:
+            raise RuntimeContractError("slur has no target-pitch control frame")
+        first_target = target_rows[0]
+        target_arrival_seconds = float(first_target["time_seconds"]) - float(event["start_seconds"])
+        if target_arrival_seconds > attach_limit + 1.0e-12:
+            raise RuntimeContractError(f"slur target-pitch control arrival exceeds the {int(round(attach_limit * 1_000.0))} ms gate")
+        attach_threshold = float(event["start_seconds"]) + attach_limit
         attach_rows = [frame for frame in event_frames if float(frame["time_seconds"]) >= attach_threshold - 1.0e-12]
         if not attach_rows:
             records.append({"event_id": event_id, "truncated_before_target_attach_gate": True})
@@ -407,8 +463,7 @@ def slur_transition_control_qa(
         attach = attach_rows[0]
         expected_attach_hz = target_hz * math.pow(2.0, float(attach["vibrato_cents"]) / 1_200.0)
         if not math.isclose(float(attach["f0_hz"]), expected_attach_hz, abs_tol=tolerance_hz, rel_tol=1.0e-9):
-            raise RuntimeContractError("slur must reach the target pitch no later than 50 ms after its boundary")
-        target_loudness = math.pow(10.0, float(event["steady_loudness_db"]) / 20.0)
+            raise RuntimeContractError(f"slur must reach the target pitch no later than {int(round(attach_limit * 1_000.0))} ms after its boundary")
         loudness_rows = [
             frame
             for frame in event_frames
@@ -443,15 +498,22 @@ def slur_transition_control_qa(
             "event_id": event_id,
             "source_hz": source_hz,
             "target_hz": target_hz,
-            "transition_seconds": transition_seconds,
-            "transition_shape": SLUR_TRANSITION_SHAPE,
+            "pitch_mode": pitch_mode,
+            "transition_seconds": 0.0 if hard_step else transition_seconds,
+            "transition_shape": "control_rate_hard_step" if hard_step else SLUR_TRANSITION_SHAPE,
             "first_control_time_seconds": float(first["time_seconds"]),
-            "pitch_target_settle_control_time_seconds": float(attach["time_seconds"]),
-            "pitch_target_settle_hz": float(attach["f0_hz"]),
+            "pitch_target_settle_control_time_seconds": float(first_target["time_seconds"] if hard_step else attach["time_seconds"]),
+            "pitch_target_settle_hz": float(first_target["f0_hz"] if hard_step else attach["f0_hz"]),
+            "first_target_control_time_seconds": float(first_target["time_seconds"]),
+            "target_control_arrival_seconds": target_arrival_seconds,
+            "pitch_target_settle_gate_seconds": attach_limit,
+            "pitch_target_settle_gate_passed": True,
             "pitch_target_settle_by_50ms_gate_passed": True,
+            "pitch_target_settle_by_8ms_gate_passed": hard_step,
             "intermediate_frame_count": len(intermediate_rows),
             "intermediate_dwell_seconds": intermediate_dwell_seconds,
-            "intermediate_dwell_strictly_less_than_seconds": SLUR_MAX_INTERMEDIATE_DWELL_SECONDS,
+            "intermediate_dwell_exact_zero_gate_passed": hard_step,
+            "intermediate_dwell_strictly_less_than_seconds": None if hard_step else SLUR_MAX_INTERMEDIATE_DWELL_SECONDS,
             "dynamic_entry_loudness_linear": entry_loudness,
             "dynamic_target_loudness_linear": target_loudness,
             "dynamic_target_settle_control_time_seconds": float(loudness_attach["time_seconds"]),
@@ -461,18 +523,25 @@ def slur_transition_control_qa(
     return {
         "passed": True,
         "policy": {
-            "pitch_transition_milliseconds": int(round(transition_seconds * 1_000.0)),
-            "pitch_shape": SLUR_TRANSITION_SHAPE,
-            "pitch_domain": "log_frequency_cents",
-            "pitch_target_settle_by_seconds": SLUR_TARGET_ATTACH_SECONDS,
-            "intermediate_pitch_dwell_strictly_less_than_seconds": SLUR_MAX_INTERMEDIATE_DWELL_SECONDS,
+            "pitch_mode": pitch_mode,
+            "pitch_transition_milliseconds": 0 if hard_step else int(round(transition_seconds * 1_000.0)),
+            "pitch_shape": "control_rate_hard_step" if hard_step else SLUR_TRANSITION_SHAPE,
+            "pitch_domain": "control_frame_f0_discontinuity" if hard_step else "log_frequency_cents",
+            "pitch_target_settle_by_seconds": HARD_STEP_TARGET_ATTACH_SECONDS if hard_step else SLUR_TARGET_ATTACH_SECONDS,
+            "intermediate_pitch_dwell_seconds": 0.0 if hard_step else None,
+            "intermediate_pitch_dwell_strictly_less_than_seconds": None if hard_step else SLUR_MAX_INTERMEDIATE_DWELL_SECONDS,
             "dynamic_transition_seconds": SLUR_LOUDNESS_TRANSITION_SECONDS,
             "dynamic_shape": SLUR_LOUDNESS_TRANSITION_SHAPE,
             "dynamic_domain": "linear_loudness",
             "dynamic_target_settle_by_seconds": SLUR_LOUDNESS_TARGET_SETTLE_SECONDS,
             "no_rearticulation_envelope_for_slur": True,
             "renderer_control_frame_seconds": FRAME_RESOLUTION,
-            "oscillator_note": "the published oscillator linearly interpolates adjacent 250 Hz F0 frames; the transition has already settled before the 50 ms target-attach gate",
+            "oscillator_note": (
+                "the published oscillator integrates one continuous phase bank and linearly upsamples adjacent 250 Hz F0 frames, so this control-rate hard step may be smoothed over roughly one 4 ms frame without a phase or onset reset"
+                if hard_step
+                else "the published oscillator linearly interpolates adjacent 250 Hz F0 frames; the transition has already settled before the 50 ms target-attach gate"
+            ),
+            "learned_slur_claim": False,
         },
         "events": records,
     }
@@ -483,6 +552,7 @@ def verify_compiler_slur_policy_equivalence(
     events: Sequence[Mapping[str, Any]],
     *,
     requested_transition_seconds: float,
+    pitch_mode: str = SLUR_PITCH_MODE_CURVE,
 ) -> Dict[str, Any]:
     """Verify the independently implemented compiler math at explicit probes.
 
@@ -492,6 +562,8 @@ def verify_compiler_slur_policy_equivalence(
     minimum-jerk values drift from the runtime implementation.
     """
 
+    pitch_mode = _slur_pitch_mode(pitch_mode)
+    hard_step = pitch_mode == SLUR_PITCH_MODE_HARD_STEP
     compiler_path = (repository_root.expanduser().resolve() / "tools/score-expression/compile_expression.py").resolve()
     if not compiler_path.is_file():
         raise RuntimeContractError("tracked score-expression compiler is required for the slur-policy equivalence gate")
@@ -531,30 +603,31 @@ def verify_compiler_slur_policy_equivalence(
         target_hz = float(event["pitch_hz"])
         start_seconds = float(event["start_seconds"])
         local_probe_seconds = (0.0, 0.004, 0.008, 0.012, 0.020, 0.050)
-        probe_array = compiler_module.numpy.asarray(local_probe_seconds, dtype=compiler_module.numpy.float64)
-        compiler_values = compiler_module.slur_transition_hz(
-            source_hz,
-            target_hz,
-            probe_array,
-            transition_seconds=requested_transition_seconds,
-        )
         probes: List[Dict[str, Any]] = []
-        for local, compiler_value in zip(local_probe_seconds, compiler_values):
-            runtime_value = slur_transition_hz(
+        if not hard_step:
+            probe_array = compiler_module.numpy.asarray(local_probe_seconds, dtype=compiler_module.numpy.float64)
+            compiler_values = compiler_module.slur_transition_hz(
                 source_hz,
                 target_hz,
-                local,
+                probe_array,
                 transition_seconds=requested_transition_seconds,
             )
-            if not math.isclose(float(compiler_value), runtime_value, abs_tol=1.0e-9, rel_tol=1.0e-12):
-                raise RuntimeContractError("tracked compiler and runtime minimum-jerk slur values differ at an explicit probe")
-            probes.append({
-                "absolute_seconds": start_seconds + local,
-                "local_seconds": local,
-                "compiler_hz": float(compiler_value),
-                "runtime_hz": runtime_value,
-                "equal_within_hz": 1.0e-9,
-            })
+            for local, compiler_value in zip(local_probe_seconds, compiler_values):
+                runtime_value = slur_transition_hz(
+                    source_hz,
+                    target_hz,
+                    local,
+                    transition_seconds=requested_transition_seconds,
+                )
+                if not math.isclose(float(compiler_value), runtime_value, abs_tol=1.0e-9, rel_tol=1.0e-12):
+                    raise RuntimeContractError("tracked compiler and runtime minimum-jerk slur values differ at an explicit probe")
+                probes.append({
+                    "absolute_seconds": start_seconds + local,
+                    "local_seconds": local,
+                    "compiler_hz": float(compiler_value),
+                    "runtime_hz": runtime_value,
+                    "equal_within_hz": 1.0e-9,
+                })
     except RuntimeContractError:
         raise
     except Exception as exc:
@@ -565,8 +638,17 @@ def verify_compiler_slur_policy_equivalence(
         "passed": True,
         "compiler_source": _file_record(compiler_path),
         "canonical_default_policy_match": True,
-        "requested_runtime_candidate_milliseconds": int(round(requested_transition_seconds * 1_000.0)),
-        "candidate_formula_equivalence": "verified against compiler helper with the same explicit candidate duration; compiler's canonical default remains 12 ms",
+        "requested_runtime_pitch_mode": pitch_mode,
+        "requested_runtime_candidate_milliseconds": None if hard_step else int(round(requested_transition_seconds * 1_000.0)),
+        "candidate_formula_equivalence": {
+            "applicable": not hard_step,
+            "status": "not_applicable" if hard_step else "verified",
+            "reason": (
+                "experimental hard-F0-step exists only in this R&D runtime; the compiler's canonical 12 ms policy was still verified and was not changed"
+                if hard_step
+                else "verified against compiler helper with the same explicit candidate duration; compiler's canonical default remains 12 ms"
+            ),
+        },
         "control_rate_quantization_limit": "this verifies formula/constants only. The compiler's plan controls are 100 Hz and may be linearly upsampled by a separate preview; it does not claim audio-rate parity with this runtime's 250 Hz control rows or dwell gate.",
         "probe_slur_event_id": str(event["id"]),
         "source_hz": source_hz,
@@ -580,10 +662,13 @@ def build_score_controls(
     *,
     max_seconds: Optional[float] = None,
     slur_transition_milliseconds: int = SLUR_TRANSITION_MILLISECONDS,
+    slur_pitch_mode: str = SLUR_PITCH_MODE_CURVE,
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
     """Create deterministic 250 Hz F0/loudness controls without opening any audio."""
 
     plan, events, duration = _validate_plan(plan_path.expanduser().resolve())
+    slur_pitch_mode = _slur_pitch_mode(slur_pitch_mode)
+    hard_step = slur_pitch_mode == SLUR_PITCH_MODE_HARD_STEP
     slur_transition_seconds = _slur_transition_seconds(slur_transition_milliseconds)
     render_duration = duration if max_seconds is None else _finite_number(max_seconds, label="max_seconds", minimum=FRAME_RESOLUTION, maximum=duration)
     frame_count = int(round(render_duration * FRAME_RATE_HZ))
@@ -651,7 +736,14 @@ def build_score_controls(
                 # zero-slope S-curve in log-frequency, never a 90 ms linear-Hz
                 # slide.  Suppress a deliberately authored vibrato only while
                 # this short pitch transition is still in progress.
-                if local < slur_transition_seconds:
+                if hard_step:
+                    # Experimental control-rate step only.  The immediately
+                    # prior row retains the source pitch and this boundary row
+                    # takes the target pitch.  The unchanged published
+                    # oscillator owns phase integration and audio-rate linear
+                    # upsampling; there is no onset or phase reset here.
+                    f0_hz = target_f0
+                elif local < slur_transition_seconds:
                     vibrato_cents = 0.0
                     f0_hz = slur_transition_hz(
                         event_start_f0,
@@ -678,7 +770,12 @@ def build_score_controls(
         })
         prior_f0 = f0_hz
         prior_loudness = loudness
-    slur_qa = slur_transition_control_qa(frames, events, transition_seconds=slur_transition_seconds)
+    slur_qa = slur_transition_control_qa(
+        frames,
+        events,
+        transition_seconds=slur_transition_seconds,
+        pitch_mode=slur_pitch_mode,
+    )
     summary = {
         "source_plan": _file_record(plan_path.expanduser().resolve()),
         "source_plan_control_hz": plan["control_hz"],
@@ -689,7 +786,11 @@ def build_score_controls(
         "full_plan_duration_seconds": duration,
         "articulation_frame_counts": {name: sum(1 for frame in frames if frame["articulation"] == name) for name in ARTICULATIONS},
         "explicit_release_decoder_mapping": "release declares no new score pitch but carries the immediately prior rendered F0, allowing both published harmonic and learned-noise branches to decay through the explicit decoder loudness curve (release ** 1.35) and compiled release voicing gate",
-        "decoder_inputs": "F0 and linear loudness only; raw score dB is never passed to the decoder. breath/rearticulate/slur/release remain authorial curves, not inferred categorical model labels. A slur is continuous breath plus a short pitch-only fingering transition in log-frequency, with no invented attack; its separately authored dynamic moves monotonically from entry to target over 80 ms without overshoot. Release loudness starts from one fixed inherited steady level.",
+        "decoder_inputs": (
+            "F0 and linear loudness only; raw score dB is never passed to the decoder. breath/rearticulate/slur/release remain authorial controls, not inferred categorical model labels. The experimental hard-step candidate is a control trajectory, not a learned slur. Its separately authored dynamic still moves monotonically from entry to target over 80 ms without overshoot. Release loudness starts from one fixed inherited steady level."
+            if hard_step
+            else "F0 and linear loudness only; raw score dB is never passed to the decoder. breath/rearticulate/slur/release remain authorial curves, not inferred categorical model labels. A slur is continuous breath plus a short pitch-only fingering transition in log-frequency, with no invented attack; its separately authored dynamic moves monotonically from entry to target over 80 ms without overshoot. Release loudness starts from one fixed inherited steady level."
+        ),
         "slur_transition_policy": slur_qa["policy"],
         "slur_transition_control_qa": slur_qa,
         "loudness_mapping": {
@@ -863,7 +964,55 @@ def _decoder_config() -> types.SimpleNamespace:
     )
 
 
-def render_dry_cpu(frames: Sequence[Mapping[str, Any]], *, ddsp_pytorch_root: Path, checkpoint: Path, seed: int) -> Tuple[List[float], Dict[str, Any]]:
+def _moving_slur_probe_frames(
+    frames: Sequence[Mapping[str, Any]],
+    slur_qa: Mapping[str, Any],
+) -> Dict[str, Dict[str, int]]:
+    """Resolve fixed 250 Hz latent probes around each pitch-changing slur."""
+
+    first_by_event: Dict[str, int] = {}
+    for index, frame in enumerate(frames):
+        event_id = str(frame["event_id"])
+        if event_id and event_id not in first_by_event:
+            first_by_event[event_id] = index
+    offsets_ms = (-4, 0, 4, 8, 12, 20, 100)
+    probes: Dict[str, Dict[str, int]] = {}
+    records = slur_qa.get("events")
+    if not isinstance(records, list):
+        raise RuntimeContractError("slur QA records are required for component diagnostics")
+    for raw in records:
+        record = _mapping(raw, label="slur QA event")
+        if record.get("truncated_before_slur"):
+            continue
+        source = _finite_number(record.get("source_hz"), label="slur QA source_hz")
+        target = _finite_number(record.get("target_hz"), label="slur QA target_hz")
+        if math.isclose(source, target, abs_tol=1.0e-9, rel_tol=0.0):
+            continue
+        event_id = str(record.get("event_id", ""))
+        if event_id not in first_by_event:
+            raise RuntimeContractError("moving slur diagnostic event has no control boundary")
+        boundary = first_by_event[event_id]
+        event_probes: Dict[str, int] = {}
+        for offset_ms in offsets_ms:
+            offset_frames = int(round((offset_ms / 1_000.0) * FRAME_RATE_HZ))
+            index = boundary + offset_frames
+            if index < 0 or index >= len(frames):
+                raise RuntimeContractError("moving slur diagnostic probe falls outside rendered controls")
+            event_probes[f"{offset_ms:+d}ms"] = index
+        probes[event_id] = event_probes
+    if not probes:
+        raise RuntimeContractError("component diagnostics require at least one rendered pitch-changing slur")
+    return probes
+
+
+def render_dry_cpu(
+    frames: Sequence[Mapping[str, Any]],
+    *,
+    ddsp_pytorch_root: Path,
+    checkpoint: Path,
+    seed: int,
+    diagnostic_probe_frames: Optional[Mapping[str, Mapping[str, int]]] = None,
+) -> Tuple[List[float], Dict[str, Any], Optional[Dict[str, Any]]]:
     """Load only published decoder weights and synthesize CPU dry audio from controls."""
 
     try:
@@ -902,7 +1051,8 @@ def render_dry_cpu(frames: Sequence[Mapping[str, Any]], *, ddsp_pytorch_root: Pa
         noise_audio = filtered_noise(latent)
         if noise_audio.shape[-1] < harmonic_audio.shape[-1]:
             raise RuntimeContractError("published filtered-noise output was unexpectedly shorter than harmonic output")
-        dry = harmonic_audio + noise_audio[:, : harmonic_audio.shape[-1]]
+        trimmed_noise_audio = noise_audio[:, : harmonic_audio.shape[-1]]
+        dry = harmonic_audio + trimmed_noise_audio
         frame_gate = torch.tensor(gate_values, dtype=torch.float32, device=device).view(1, 1, -1)
         gate = torch.nn.functional.interpolate(frame_gate, scale_factor=HOP_LENGTH, mode="linear", align_corners=False).squeeze(1)
         if gate.shape[-1] != dry.shape[-1]:
@@ -922,6 +1072,33 @@ def render_dry_cpu(frames: Sequence[Mapping[str, Any]], *, ddsp_pytorch_root: Pa
         # breath / 1→0 release envelope to both published branches.
         dry = dry * gate
         audio = dry.squeeze(0).detach().cpu().tolist()
+        diagnostic_payload: Optional[Dict[str, Any]] = None
+        if diagnostic_probe_frames is not None:
+            latent_probes: Dict[str, Dict[str, Any]] = {}
+            for event_id, event_probes in diagnostic_probe_frames.items():
+                points: Dict[str, Any] = {}
+                for label, raw_index in event_probes.items():
+                    index = int(raw_index)
+                    if index < 0 or index >= len(frames):
+                        raise RuntimeContractError("latent diagnostic probe is outside decoder output")
+                    points[str(label)] = {
+                        "frame_index": index,
+                        "time_seconds": float(frames[index]["time_seconds"]),
+                        "a": float(latent["a"][0, index].cpu()),
+                        "c": [float(value) for value in latent["c"][0, :, index].cpu().tolist()],
+                        "H": [float(value) for value in latent["H"][0, index, :].cpu().tolist()],
+                    }
+                latent_probes[str(event_id)] = points
+            diagnostic_payload = {
+                "harmonic_post_gate": (harmonic_audio * gate).squeeze(0).detach().cpu().tolist(),
+                "noise_post_gate": (trimmed_noise_audio * gate).squeeze(0).detach().cpu().tolist(),
+                "latent_probes": latent_probes,
+            }
+            reconstructed = harmonic_audio * gate + trimmed_noise_audio * gate
+            reconstruction_error = float(torch.max(torch.abs(dry - reconstructed)).cpu())
+            if not math.isfinite(reconstruction_error) or reconstruction_error > 1.0e-6:
+                raise RuntimeContractError("post-gate harmonic/noise diagnostics do not reconstruct the dry mix")
+            diagnostic_payload["dry_from_component_stems_maximum_absolute_error"] = reconstruction_error
         latent_shapes = {key: list(value.shape) for key, value in latent.items()}
         amplitude_range = [float(latent["a"].min().cpu()), float(latent["a"].max().cpu())]
         noise_range = [float(latent["H"].min().cpu()), float(latent["H"].max().cpu())]
@@ -933,15 +1110,179 @@ def render_dry_cpu(frames: Sequence[Mapping[str, Any]], *, ddsp_pytorch_root: Pa
         "published_component_outputs": {"latent_shapes": latent_shapes, "harmonic_samples": int(harmonic_audio.shape[-1]), "noise_samples_before_dry_trim": int(noise_audio.shape[-1]), "decoder_amplitude_range": amplitude_range, "decoder_noise_filter_range": noise_range},
         "release_boundary_qa": release_boundary_qa(audio, frames),
         "compatibility": {"legacy_torch_rfft_irfft": "temporary process-local torch.fft adapter; restored before return", "hardcoded_cuda": "published harmonic/noise constructors received device='cpu'; no source file was edited", "encoder_crepe_or_audio_input": "not imported or called", "authored_rest_gate": {"written_rest_is_hard_zeroed_after_published_dry_synthesis": True, "hard_zero_rest_sample_ranges": hard_zero_rests, "voicing_upsampling": "linear 250 Hz to 16 kHz", "pre_rest_anti_click_fades": rest_fades, "pre_rest_fade_seconds": REST_ENTRY_FADE_SECONDS, "release": "no new score pitch; prior voiced F0, decoder-loudness, and voicing decay keep harmonic/noise continuous"}},
-    }
+    }, diagnostic_payload
 
 
 def _audio_stats(samples: Sequence[float]) -> Dict[str, float]:
     if not samples:
         raise RuntimeContractError("renderer produced no audio samples")
-    peak = max(abs(float(value)) for value in samples)
-    rms = math.sqrt(sum(float(value) * float(value) for value in samples) / len(samples))
+    values = [float(value) for value in samples]
+    if not all(math.isfinite(value) for value in values):
+        raise RuntimeContractError("audio samples contain a non-finite value")
+    peak = max(abs(value) for value in values)
+    rms = math.sqrt(sum(value * value for value in values) / len(values))
     return {"peak": peak, "rms": rms, "rms_dbfs": -math.inf if rms == 0.0 else 20.0 * math.log10(rms)}
+
+
+def apply_shared_fixed_listening_gain(
+    reference_samples: Sequence[float],
+    candidates: Mapping[str, Sequence[float]],
+    *,
+    reference_label: str,
+    shared_interval_end_seconds: float = SHARED_INTERVAL_END_SECONDS,
+    target_rms: float = LISTENING_TARGET_RMS,
+) -> Tuple[Dict[str, List[float]], Dict[str, Any]]:
+    """Apply one reference-derived constant gain to every diagnostic candidate."""
+
+    if not candidates:
+        raise RuntimeContractError("shared fixed listening gain requires candidate audio")
+    if not reference_label or reference_label not in candidates:
+        raise RuntimeContractError("shared fixed listening gain requires an explicit candidate reference label")
+    reference = [float(value) for value in reference_samples]
+    end_sample = int(round(_finite_number(shared_interval_end_seconds, label="shared comparison interval end", minimum=FRAME_RESOLUTION) * SAMPLE_RATE_HZ))
+    if end_sample <= 0 or end_sample > len(reference):
+        raise RuntimeContractError("shared fixed-gain interval exceeds its reference audio")
+    reference_rms = _audio_stats(reference[:end_sample])["rms"]
+    if reference_rms <= 0.0:
+        raise RuntimeContractError("shared fixed-gain reference interval is silent")
+    gain = _finite_number(target_rms, label="shared fixed-gain target RMS", minimum=1.0e-12, maximum=0.98) / reference_rms
+    scaled: Dict[str, List[float]] = {}
+    records: Dict[str, Any] = {}
+    expected_length = len(reference)
+    for name, raw in candidates.items():
+        values = [float(value) for value in raw]
+        if len(values) != expected_length:
+            raise RuntimeContractError("shared fixed-gain candidates must have identical lengths")
+        source_stats = _audio_stats(values)
+        if source_stats["peak"] * gain > 0.98:
+            raise RuntimeContractError("shared fixed listening gain would clip a diagnostic candidate")
+        scaled_values = [value * gain for value in values]
+        scaled[str(name)] = scaled_values
+        records[str(name)] = {
+            "source": source_stats,
+            "source_shared_interval_rms": _audio_stats(values[:end_sample])["rms"],
+            "post_gain": _audio_stats(scaled_values),
+            "post_gain_shared_interval_rms": _audio_stats(scaled_values[:end_sample])["rms"],
+        }
+    return scaled, {
+        "gain_reference_candidate": reference_label,
+        "constant_gain_applied_to_every_candidate": gain,
+        "target_reference_shared_interval_rms": target_rms,
+        "target_reference_shared_interval_rms_dbfs": 20.0 * math.log10(target_rms),
+        "shared_interval_start_seconds": 0.0,
+        "shared_interval_end_seconds": end_sample / SAMPLE_RATE_HZ,
+        "shared_interval_sample_count": end_sample,
+        "independent_candidate_normalization": False,
+        "compression_or_limiter": False,
+        "candidate_stats": records,
+    }
+
+
+def _vector_delta_metrics(reference: Sequence[float], candidate: Sequence[float], *, label: str) -> Dict[str, float]:
+    if len(reference) != len(candidate) or not reference:
+        raise RuntimeContractError(f"{label} latent vectors do not have the same non-zero length")
+    reference_values = [float(value) for value in reference]
+    candidate_values = [float(value) for value in candidate]
+    if not all(math.isfinite(value) for value in reference_values + candidate_values):
+        raise RuntimeContractError(f"{label} latent vectors contain a non-finite value")
+    deltas = [right - left for left, right in zip(reference_values, candidate_values)]
+    reference_norm = math.sqrt(sum(value * value for value in reference_values))
+    candidate_norm = math.sqrt(sum(value * value for value in candidate_values))
+    dot = sum(left * right for left, right in zip(reference_values, candidate_values))
+    cosine_distance = 0.0 if reference_norm == 0.0 and candidate_norm == 0.0 else 1.0
+    if reference_norm > 0.0 and candidate_norm > 0.0:
+        cosine_distance = 1.0 - max(-1.0, min(1.0, dot / (reference_norm * candidate_norm)))
+    return {
+        "mean_absolute_delta": sum(abs(value) for value in deltas) / len(deltas),
+        "maximum_absolute_delta": max(abs(value) for value in deltas),
+        "l2_delta": math.sqrt(sum(value * value for value in deltas)),
+        "cosine_distance": cosine_distance,
+    }
+
+
+def compare_latent_probes(
+    canonical_payload: Mapping[str, Any],
+    hard_step_payload: Mapping[str, Any],
+) -> Dict[str, Any]:
+    """Compare unmodified decoder a/c/H at matched slur-relative frames."""
+
+    canonical_events = _mapping(canonical_payload.get("latent_probes"), label="canonical latent probes")
+    hard_events = _mapping(hard_step_payload.get("latent_probes"), label="hard-step latent probes")
+    if set(canonical_events) != set(hard_events):
+        raise RuntimeContractError("canonical and hard-step latent diagnostic events differ")
+    events: Dict[str, Any] = {}
+    for event_id in sorted(canonical_events):
+        canonical_points = _mapping(canonical_events[event_id], label="canonical latent event")
+        hard_points = _mapping(hard_events[event_id], label="hard-step latent event")
+        if set(canonical_points) != set(hard_points):
+            raise RuntimeContractError("canonical and hard-step latent diagnostic offsets differ")
+        points: Dict[str, Any] = {}
+        for offset in canonical_points:
+            canonical = _mapping(canonical_points[offset], label="canonical latent point")
+            hard = _mapping(hard_points[offset], label="hard-step latent point")
+            if canonical.get("frame_index") != hard.get("frame_index"):
+                raise RuntimeContractError("canonical and hard-step latent probes are not frame-aligned")
+            canonical_a = _finite_number(canonical.get("a"), label="canonical latent a", minimum=0.0)
+            hard_a = _finite_number(hard.get("a"), label="hard-step latent a", minimum=0.0)
+            a_ratio_db = None
+            if canonical_a > 0.0 and hard_a > 0.0:
+                a_ratio_db = 20.0 * math.log10(hard_a / canonical_a)
+            points[str(offset)] = {
+                "frame_index": int(canonical["frame_index"]),
+                "time_seconds": float(canonical["time_seconds"]),
+                "hard_minus_canonical_a": hard_a - canonical_a,
+                "hard_over_canonical_a_db": a_ratio_db,
+                "c": _vector_delta_metrics(canonical.get("c", []), hard.get("c", []), label="c"),
+                "H": _vector_delta_metrics(canonical.get("H", []), hard.get("H", []), label="H"),
+            }
+        events[str(event_id)] = {
+            "points": points,
+            "plus_100ms_recurrent_carry": points.get("+100ms"),
+        }
+    return {
+        "comparison": "experimental hard-step minus canonical 12 ms, same checkpoint/seed/loudness/voicing",
+        "interpretation_limit": "these are recurrent checkpoint responses to different F0 controls, not learned slur or fingering labels",
+        "decoder_outputs_manually_modified": False,
+        "harmonic_distribution_c_preserved_from_decoder": True,
+        "noise_filter_H_preserved_from_decoder": True,
+        "events": events,
+    }
+
+
+def verify_diagnostic_control_difference(
+    canonical_frames: Sequence[Mapping[str, Any]],
+    hard_step_frames: Sequence[Mapping[str, Any]],
+    canonical_slur_qa: Mapping[str, Any],
+) -> Dict[str, Any]:
+    """Fail closed unless comparison candidates differ only in intended F0 rows."""
+
+    if len(canonical_frames) != len(hard_step_frames):
+        raise RuntimeContractError("diagnostic candidate control lengths differ")
+    probes = _moving_slur_probe_frames(canonical_frames, canonical_slur_qa)
+    allowed_f0_difference_frames: set[int] = set()
+    transition_frame_count = int(round(SLUR_TRANSITION_SECONDS * FRAME_RATE_HZ))
+    for event_probes in probes.values():
+        boundary = int(event_probes["+0ms"])
+        allowed_f0_difference_frames.update(range(boundary, boundary + transition_frame_count))
+    f0_difference_frames: List[int] = []
+    exact_fields = ("frame_index", "time_seconds", "loudness_linear", "voicing", "articulation", "event_id", "vibrato_cents")
+    for index, (canonical, hard) in enumerate(zip(canonical_frames, hard_step_frames)):
+        if any(canonical[field] != hard[field] for field in exact_fields):
+            raise RuntimeContractError("hard-step diagnostic altered a non-F0 score control")
+        if not math.isclose(float(canonical["f0_hz"]), float(hard["f0_hz"]), abs_tol=1.0e-12, rel_tol=0.0):
+            f0_difference_frames.append(index)
+            if index not in allowed_f0_difference_frames:
+                raise RuntimeContractError("hard-step diagnostic changed F0 outside a canonical slur-transition window")
+    if not f0_difference_frames:
+        raise RuntimeContractError("hard-step diagnostic did not differ from canonical F0 controls")
+    return {
+        "passed": True,
+        "non_f0_controls_exactly_equal": True,
+        "f0_difference_frame_indices": f0_difference_frames,
+        "allowed_f0_difference_frame_indices": sorted(allowed_f0_difference_frames),
+        "canonical_transition_milliseconds": SLUR_TRANSITION_MILLISECONDS,
+        "hard_step_decoder_inputs_other_than_f0_changed": False,
+    }
 
 
 def render_checkpoint_native_reverb_cpu(
@@ -1187,16 +1528,19 @@ def execute(args: argparse.Namespace) -> Dict[str, Any]:
     if args.supersedes_output is not None and OUTPUT_NAME.fullmatch(args.supersedes_output) is None:
         raise RuntimeContractError("--supersedes-output must name one prior DDSP-Gugak R&D output directory")
     check = build_check_report(plan=args.plan, gugak_root=args.gugak_source_root, ddsp_pytorch_root=args.ddsp_pytorch_root, checkpoint=args.checkpoint, checkpoint_config=args.checkpoint_config)
+    slur_pitch_mode = SLUR_PITCH_MODE_HARD_STEP if args.experimental_hard_f0_step else SLUR_PITCH_MODE_CURVE
     frames, controls = build_score_controls(
         args.plan,
         max_seconds=args.max_seconds,
         slur_transition_milliseconds=args.slur_transition_ms,
+        slur_pitch_mode=slur_pitch_mode,
     )
     _, normalized_events, _ = _validate_plan(args.plan.expanduser().resolve())
     compiler_equivalence = verify_compiler_slur_policy_equivalence(
         repository_root,
         normalized_events,
         requested_transition_seconds=_slur_transition_seconds(args.slur_transition_ms),
+        pitch_mode=slur_pitch_mode,
     )
     if args.reference_flute_wav is not None and controls["truncated_for_smoke"]:
         raise RuntimeContractError("the 6.72-second western-flute reference is allowed only for a full-plan listening pair")
@@ -1206,9 +1550,139 @@ def execute(args: argparse.Namespace) -> Dict[str, Any]:
     controls_path = output_dir / "score_controls_250hz.csv"
     write_controls_csv(controls_path, frames)
     try:
-        audio, render = render_dry_cpu(frames, ddsp_pytorch_root=args.ddsp_pytorch_root, checkpoint=args.checkpoint, seed=args.seed)
+        diagnostic_probe_frames = None
+        if args.component_diagnostics:
+            diagnostic_probe_frames = _moving_slur_probe_frames(frames, controls["slur_transition_control_qa"])
+        audio, render, diagnostic_payload = render_dry_cpu(
+            frames,
+            ddsp_pytorch_root=args.ddsp_pytorch_root,
+            checkpoint=args.checkpoint,
+            seed=args.seed,
+            diagnostic_probe_frames=diagnostic_probe_frames,
+        )
         dry_path = output_dir / "published_daegeum_decoder_dry_authorial_gate.wav"
         outputs: Dict[str, Any] = {"controls_csv": _file_record(controls_path), "dry_wav": write_pcm16_wav(dry_path, audio)}
+        component_diagnostics: Optional[Dict[str, Any]] = None
+        if args.component_diagnostics:
+            if diagnostic_payload is None:
+                raise RuntimeContractError("component diagnostics were requested but the renderer returned no diagnostic payload")
+            if slur_pitch_mode == SLUR_PITCH_MODE_HARD_STEP:
+                canonical_frames, canonical_controls = build_score_controls(
+                    args.plan,
+                    max_seconds=args.max_seconds,
+                    slur_transition_milliseconds=SLUR_TRANSITION_MILLISECONDS,
+                    slur_pitch_mode=SLUR_PITCH_MODE_CURVE,
+                )
+                control_difference = verify_diagnostic_control_difference(
+                    canonical_frames,
+                    frames,
+                    canonical_controls["slur_transition_control_qa"],
+                )
+                canonical_probe_frames = _moving_slur_probe_frames(
+                    canonical_frames,
+                    canonical_controls["slur_transition_control_qa"],
+                )
+                canonical_audio, canonical_render, canonical_payload = render_dry_cpu(
+                    canonical_frames,
+                    ddsp_pytorch_root=args.ddsp_pytorch_root,
+                    checkpoint=args.checkpoint,
+                    seed=args.seed,
+                    diagnostic_probe_frames=canonical_probe_frames,
+                )
+                if canonical_payload is None:
+                    raise RuntimeContractError("canonical diagnostic render returned no component payload")
+                canonical_compiler_equivalence = verify_compiler_slur_policy_equivalence(
+                    repository_root,
+                    normalized_events,
+                    requested_transition_seconds=SLUR_TRANSITION_SECONDS,
+                    pitch_mode=SLUR_PITCH_MODE_CURVE,
+                )
+                canonical_controls_path = output_dir / "diagnostic_canonical_12ms_score_controls_250hz.csv"
+                write_controls_csv(canonical_controls_path, canonical_frames)
+                canonical_raw_path = output_dir / "diagnostic_canonical_12ms_published_daegeum_decoder_dry.wav"
+                canonical_raw_record = write_pcm16_wav(canonical_raw_path, canonical_audio)
+                shared_candidates = {
+                    "canonical_12ms": canonical_audio,
+                    "experimental_hard_step": audio,
+                    "canonical_12ms_harmonic_post_gate": canonical_payload["harmonic_post_gate"],
+                    "canonical_12ms_noise_post_gate": canonical_payload["noise_post_gate"],
+                    "experimental_hard_step_harmonic_post_gate": diagnostic_payload["harmonic_post_gate"],
+                    "experimental_hard_step_noise_post_gate": diagnostic_payload["noise_post_gate"],
+                }
+                shared_scaled, shared_gain = apply_shared_fixed_listening_gain(
+                    canonical_audio,
+                    shared_candidates,
+                    reference_label="canonical_12ms",
+                )
+                diagnostic_output_names = {
+                    "canonical_12ms": "A_canonical_12ms_daegeum_shared_gain.wav",
+                    "experimental_hard_step": "B_experimental_hard_f0_step_daegeum_shared_gain.wav",
+                    "canonical_12ms_harmonic_post_gate": "A1_canonical_12ms_harmonic_post_gate_shared_gain.wav",
+                    "canonical_12ms_noise_post_gate": "A2_canonical_12ms_noise_post_gate_shared_gain.wav",
+                    "experimental_hard_step_harmonic_post_gate": "B1_experimental_hard_f0_step_harmonic_post_gate_shared_gain.wav",
+                    "experimental_hard_step_noise_post_gate": "B2_experimental_hard_f0_step_noise_post_gate_shared_gain.wav",
+                }
+                diagnostic_outputs = {
+                    name: write_pcm16_wav(output_dir / diagnostic_output_names[name], shared_scaled[name])
+                    for name in diagnostic_output_names
+                }
+                latent_comparison = compare_latent_probes(canonical_payload, diagnostic_payload)
+                component_diagnostics = {
+                    "purpose": "same-seed canonical-12ms versus experimental hard-F0-step dry comparison; this does not claim a learned slur, fingering transient, or articulation label",
+                    "canonical_controls": canonical_controls,
+                    "canonical_compiler_runtime_equivalence": canonical_compiler_equivalence,
+                    "canonical_render": canonical_render,
+                    "control_difference_gate": control_difference,
+                    "latent_a_c_H_deltas": latent_comparison,
+                    "shared_fixed_listening_gain": shared_gain,
+                    "outputs": {
+                        "canonical_controls_csv": _file_record(canonical_controls_path),
+                        "canonical_unscaled_dry": canonical_raw_record,
+                        **diagnostic_outputs,
+                    },
+                    "component_contract": {
+                        "post_authorial_gate": True,
+                        "same_noise_seed": int(args.seed),
+                        "same_checkpoint": True,
+                        "same_loudness_and_voicing_controls": True,
+                        "harmonic_distribution_c_manually_modified": False,
+                        "noise_filter_H_manually_modified": False,
+                        "post_noise_pulse_or_gain_envelope": False,
+                        "independent_candidate_normalization": False,
+                        "canonical_dry_from_stems_maximum_absolute_error": canonical_payload["dry_from_component_stems_maximum_absolute_error"],
+                        "hard_step_dry_from_stems_maximum_absolute_error": diagnostic_payload["dry_from_component_stems_maximum_absolute_error"],
+                        "published_250hz_to_audio_linear_upsampling_note": "the experimental control-rate F0 step may be smoothed over roughly one 4 ms frame by the unchanged published oscillator; phase is integrated continuously and is not reset",
+                    },
+                }
+                outputs["component_diagnostic_outputs"] = component_diagnostics["outputs"]
+            else:
+                shared_scaled, shared_gain = apply_shared_fixed_listening_gain(
+                    audio,
+                    {
+                        "canonical_candidate": audio,
+                        "harmonic_post_gate": diagnostic_payload["harmonic_post_gate"],
+                        "noise_post_gate": diagnostic_payload["noise_post_gate"],
+                    },
+                    reference_label="canonical_candidate",
+                )
+                diagnostic_outputs = {
+                    name: write_pcm16_wav(output_dir / f"diagnostic_{name}_shared_gain.wav", samples)
+                    for name, samples in shared_scaled.items()
+                }
+                component_diagnostics = {
+                    "purpose": "single-candidate post-gate harmonic/noise inspection; no learned-articulation claim",
+                    "shared_fixed_listening_gain": shared_gain,
+                    "latent_probes": diagnostic_payload["latent_probes"],
+                    "outputs": diagnostic_outputs,
+                    "component_contract": {
+                        "post_authorial_gate": True,
+                        "harmonic_distribution_c_manually_modified": False,
+                        "noise_filter_H_manually_modified": False,
+                        "post_noise_pulse_or_gain_envelope": False,
+                        "dry_from_stems_maximum_absolute_error": diagnostic_payload["dry_from_component_stems_maximum_absolute_error"],
+                    },
+                }
+                outputs["component_diagnostic_outputs"] = diagnostic_outputs
         checkpoint_native_reverb: Optional[Dict[str, Any]] = None
         if args.checkpoint_native_reverb:
             wet_audio, reverb_runtime = render_checkpoint_native_reverb_cpu(
@@ -1266,10 +1740,15 @@ def execute(args: argparse.Namespace) -> Dict[str, Any]:
                     "citation_url": "https://newt.phys.unsw.edu.au/jw/reprints/portamento.pdf",
                     "reported_context": "used only as a perceptual timing rationale supplied for this R&D decision; no direct Daegeum generalization is claimed",
                 },
-                "decision": "8/12/20 ms pitch-only candidates are auditioned; 12 ms is the conservative canonical default, while 20 ms is retained only as a boundary candidate because it maximizes intermediate-pitch dwell",
+                "decision": (
+                    "this isolated candidate uses an experimental target-F0 control step while leaving the canonical 12 ms policy unchanged; the published oscillator may smooth the step over roughly one 4 ms control frame and integrates phase continuously. This is not a learned slur or fingering transient."
+                    if slur_pitch_mode == SLUR_PITCH_MODE_HARD_STEP
+                    else "8/12/20 ms pitch-only candidates are auditioned; 12 ms is the conservative canonical default, while 20 ms is retained only as a boundary candidate because it maximizes intermediate-pitch dwell"
+                ),
             },
             "compiler_runtime_slur_policy_equivalence": compiler_equivalence,
             "render": render,
+            "component_diagnostics": component_diagnostics,
             "outputs": outputs,
             "listening_pair": listening_pair,
             "checkpoint_native_reverb_audition": checkpoint_native_reverb,
@@ -1278,6 +1757,10 @@ def execute(args: argparse.Namespace) -> Dict[str, Any]:
                 "ngc_or_user_audio_read": False,
                 "crepe_or_audio_input_used": False,
                 "learned_reverb_called": args.checkpoint_native_reverb,
+                "component_diagnostics_written": args.component_diagnostics,
+                "experimental_hard_f0_step": slur_pitch_mode == SLUR_PITCH_MODE_HARD_STEP,
+                "decoder_harmonic_distribution_or_noise_filter_modified": False,
+                "post_noise_pulse_applied": False,
                 "default_bgm_changed": False,
                 "source_files_modified": False,
             },
@@ -1307,19 +1790,32 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser.add_argument("--checkpoint-native-reverb", action="store_true", help="also create a separate R&D-only audition through the strictly loaded published three-tensor FIR reverb")
     parser.add_argument("--supersedes-output", help="optional prior DDSP-Gugak R&D output directory basename recorded as superseded")
     parser.add_argument("--max-seconds", type=float, help="250 Hz-aligned score prefix for an actual decoder smoke render")
-    parser.add_argument(
+    transition_mode = parser.add_mutually_exclusive_group()
+    transition_mode.add_argument(
         "--slur-transition-ms",
         type=int,
         choices=SLUR_TRANSITION_CANDIDATE_MILLISECONDS,
         default=SLUR_TRANSITION_MILLISECONDS,
         help="pitch-only log-frequency minimum-jerk fingering transition; 12 ms is the canonical default",
     )
+    transition_mode.add_argument(
+        "--experimental-hard-f0-step",
+        action="store_true",
+        help="R&D-only target-F0 control step at each slur boundary; canonical 12 ms compiler/runtime policy remains unchanged",
+    )
+    parser.add_argument(
+        "--component-diagnostics",
+        action="store_true",
+        help="write post-gate harmonic/noise diagnostics; with hard-step, also render canonical 12 ms using the same seed and one shared fixed gain",
+    )
     parser.add_argument("--seed", type=int, default=20260925)
     parser.add_argument("--confirm-rnd-only", action="store_true")
     args = parser.parse_args(argv)
     if args.execute and args.output_dir is None:
         parser.error("--execute requires --output-dir")
-    if args.check and (args.output_dir is not None or args.reference_flute_wav is not None or args.checkpoint_native_reverb or args.supersedes_output is not None or args.confirm_rnd_only or args.slur_transition_ms != SLUR_TRANSITION_MILLISECONDS):
+    if args.component_diagnostics and args.max_seconds is not None:
+        parser.error("--component-diagnostics requires the full explicit score; omit --max-seconds")
+    if args.check and (args.output_dir is not None or args.reference_flute_wav is not None or args.checkpoint_native_reverb or args.supersedes_output is not None or args.confirm_rnd_only or args.slur_transition_ms != SLUR_TRANSITION_MILLISECONDS or args.experimental_hard_f0_step or args.component_diagnostics):
         parser.error("--check does not accept output, reference, supersession, or execution confirmation flags")
     return args
 
