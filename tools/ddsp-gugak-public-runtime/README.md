@@ -47,6 +47,15 @@ authored dynamic is retained with an independent 80 ms minimum-jerk transition
 in linear loudness (entry → steady target), checked for monotonicity,
 no-overshoot, and target arrival by 100 ms.
 
+An explicitly enabled score vibrato may also declare
+`end_fade_seconds`. The runtime keeps the authored phase clock but linearly
+closes its depth so the final half-open 250 Hz row of that note is exactly on
+the nominal pitch. This is used by the separate Gyeonggi/Arirang research
+audition plan; it is not an automatic pitch-based vibrato rule. A release
+cannot declare a new vibrato. It inherits the preceding note's normalized
+source state, continues that clock when necessary, and independently closes
+the release depth to nominal pitch on its own final control row.
+
 The score-expression compiler has the same canonical constants and math, and
 each runtime sidecar probes both implementations at 5.040/5.044/… seconds.
 That is formula equivalence only: its 100 Hz control artifact can be

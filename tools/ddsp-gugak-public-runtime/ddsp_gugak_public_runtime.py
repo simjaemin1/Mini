@@ -290,12 +290,23 @@ def _validate_plan(path: Path) -> Tuple[Mapping[str, Any], List[Dict[str, Any]],
         if vibrato is not None:
             vibrato_map = _mapping(vibrato, label=f"plan.events[{index}].vibrato")
             if vibrato_map.get("enabled") is True:
+                end_fade_seconds = _finite_number(
+                    vibrato_map.get("end_fade_seconds", 0.0),
+                    label="vibrato.end_fade_seconds",
+                    minimum=0.0,
+                    maximum=end - start,
+                )
+                if 0.0 < end_fade_seconds < FRAME_RESOLUTION:
+                    raise RuntimeContractError(
+                        "vibrato.end_fade_seconds must span at least one 250 Hz control frame"
+                    )
                 item["vibrato"] = {
                     "enabled": True,
                     "rate_hz": _finite_number(vibrato_map.get("rate_hz"), label="vibrato.rate_hz", minimum=3.3, maximum=3.8),
                     "depth_cents": _finite_number(vibrato_map.get("depth_cents"), label="vibrato.depth_cents", minimum=12.0, maximum=45.0),
                     "onset_seconds": _finite_number(vibrato_map.get("onset_seconds", 0.0), label="vibrato.onset_seconds", minimum=0.0),
                     "ramp_seconds": _finite_number(vibrato_map.get("ramp_seconds", 0.08), label="vibrato.ramp_seconds", minimum=0.005),
+                    "end_fade_seconds": end_fade_seconds,
                 }
             elif set(vibrato_map) != {"enabled"}:
                 raise RuntimeContractError("disabled vibrato may not hide nonzero parameters")
@@ -318,7 +329,12 @@ def validate_plan(path: Path) -> Dict[str, Any]:
     }
 
 
-def _vibrato_cents(event: Mapping[str, Any], local_seconds: float) -> float:
+def _vibrato_cents(
+    event: Mapping[str, Any],
+    local_seconds: float,
+    *,
+    event_duration: Optional[float] = None,
+) -> float:
     vibrato = _mapping(event["vibrato"], label="normalized vibrato")
     if vibrato.get("enabled") is not True:
         return 0.0
@@ -327,6 +343,22 @@ def _vibrato_cents(event: Mapping[str, Any], local_seconds: float) -> float:
         return 0.0
     ramp = float(vibrato["ramp_seconds"])
     envelope = min(1.0, (local_seconds - onset) / ramp)
+    end_fade = float(vibrato.get("end_fade_seconds", 0.0))
+    if end_fade > 0.0:
+        if event_duration is None:
+            if "start_seconds" not in event or "end_seconds" not in event:
+                raise RuntimeContractError("event duration is required for a vibrato end fade")
+            event_duration = float(event["end_seconds"]) - float(event["start_seconds"])
+        final_control_local = max(0.0, float(event_duration) - FRAME_RESOLUTION)
+        fade_start = float(event_duration) - end_fade
+        if local_seconds >= final_control_local - 1.0e-12:
+            envelope = 0.0
+        elif local_seconds > fade_start:
+            fade_span = final_control_local - fade_start
+            if fade_span <= 0.0:
+                envelope = 0.0
+            else:
+                envelope *= min(1.0, max(0.0, (final_control_local - local_seconds) / fade_span))
     return float(vibrato["depth_cents"]) * envelope * math.sin(2.0 * math.pi * float(vibrato["rate_hz"]) * (local_seconds - onset))
 
 
@@ -365,7 +397,12 @@ def _release_vibrato_cents(event: Mapping[str, Any], local_seconds: float, event
     if source_vibrato.get("enabled") is not True:
         return 0.0
     source_elapsed = float(source["elapsed_seconds_at_release"]) + local_seconds
-    continued = _vibrato_cents({"vibrato": source_vibrato}, source_elapsed)
+    source_duration = float(source["elapsed_seconds_at_release"])
+    continued = _vibrato_cents(
+        {"vibrato": source_vibrato},
+        source_elapsed,
+        event_duration=source_duration,
+    )
     fade_span = event_duration - FRAME_RESOLUTION
     if fade_span <= 0.0:
         return 0.0

@@ -25,9 +25,43 @@ import ddsp_gugak_public_runtime as runtime
 
 
 PLAN = ROOT / "tools/score-expression/plans/ari_source_led_response_r1.json"
+AUDITION_PLAN = ROOT / "tools/score-expression/plans/ari_gyeonggi_policy_r1_audition.json"
 
 
 class PublicRuntimeTests(unittest.TestCase):
+    def test_selected_late_yoseong_fades_to_nominal_on_the_last_event_row(self) -> None:
+        baseline, _ = runtime.build_score_controls(
+            PLAN,
+            slur_pitch_mode=runtime.SLUR_PITCH_MODE_HARD_STEP,
+        )
+        candidate, summary = runtime.build_score_controls(
+            AUDITION_PLAN,
+            slur_pitch_mode=runtime.SLUR_PITCH_MODE_HARD_STEP,
+        )
+        _, events, _ = runtime._validate_plan(AUDITION_PLAN)
+        selected = events[0]
+        self.assertEqual(selected["id"], "b08_e0_breath")
+        self.assertEqual(selected["vibrato"]["end_fade_seconds"], 0.18)
+        selected_frames = [frame for frame in candidate if frame["event_id"] == selected["id"]]
+        self.assertTrue(any(abs(frame["vibrato_cents"]) > 1.0 for frame in selected_frames))
+        self.assertAlmostEqual(selected_frames[-1]["vibrato_cents"], 0.0, places=12)
+        self.assertAlmostEqual(selected_frames[-1]["f0_hz"], selected["pitch_hz"], places=10)
+        for base_frame, candidate_frame in zip(baseline, candidate):
+            for field in ("loudness_linear", "voicing", "articulation", "event_id"):
+                self.assertEqual(base_frame[field], candidate_frame[field])
+        self.assertTrue(summary["release_vibrato_qa"]["final_nominal_pitch_gate_passed"])
+
+    def test_vibrato_end_fade_rejects_subframe_and_overlong_values(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            source = json.loads(AUDITION_PLAN.read_text(encoding="utf-8"))
+            for value, message in ((0.001, "one 250 Hz control frame"), (1.45, "permitted range")):
+                altered = copy.deepcopy(source)
+                altered["events"][0]["vibrato"]["end_fade_seconds"] = value
+                path = Path(temporary) / f"invalid-end-fade-{value}.json"
+                path.write_text(json.dumps(altered), encoding="utf-8")
+                with self.assertRaisesRegex(runtime.RuntimeContractError, message):
+                    runtime.build_score_controls(path)
+
     def test_250hz_controls_preserve_explicit_score_states(self) -> None:
         frames, summary = runtime.build_score_controls(PLAN)
         self.assertEqual(summary["frame_count"], 1680)
