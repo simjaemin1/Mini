@@ -35,9 +35,10 @@ does not receive invented categorical articulation labels. Written rests are
 hard-zeroed after dry synthesis. The 250 Hz voicing curve is linearly
 upsampled to 16 kHz (not held as 4 ms steps), and each explicit voiced-to-rest
 boundary gets a deterministic 16 ms pre-rest fade-out to avoid a hard-cut
-click. Release uses F0=0 (therefore silent harmonic branch), an explicit
-decoder-loudness decay, and a compiled voicing fade for the learned-noise tail.
-No arbitrary air/noise multiplier is added.
+click. Release declares no new score pitch but carries the immediately prior
+rendered F0, so both published harmonic and learned-noise branches decay over
+the authored 240 ms loudness/voicing tail. No arbitrary air/noise multiplier
+is added.
 
 The legacy source is used untouched. A temporary, process-local adapter maps
 its removed `torch.rfft`/`torch.irfft` calls to `torch.fft`, and source

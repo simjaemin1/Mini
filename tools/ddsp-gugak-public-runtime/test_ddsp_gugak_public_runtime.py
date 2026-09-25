@@ -35,7 +35,7 @@ class PublicRuntimeTests(unittest.TestCase):
         self.assertEqual(frames[900]["articulation"], "rearticulate")
         self.assertEqual(frames[1080]["articulation"], "slur")
         self.assertEqual(frames[1620]["articulation"], "release")
-        self.assertEqual(frames[1620]["f0_hz"], 0.0)
+        self.assertAlmostEqual(frames[1620]["f0_hz"], frames[1619]["f0_hz"], places=6)
         self.assertEqual(frames[360]["f0_hz"], 0.0)
         self.assertEqual(frames[360]["loudness_linear"], 0.0)
         self.assertEqual(summary["renderer_gate"]["audio_rate_upsampling"], "linear interpolation from the compiled 250 Hz voicing curve")
@@ -69,6 +69,16 @@ class PublicRuntimeTests(unittest.TestCase):
     def test_level_match_fails_instead_of_silently_clipping(self) -> None:
         with self.assertRaisesRegex(runtime.RuntimeContractError, "would clip"):
             runtime._level_match([1.0, -1.0], active_rms=0.001)
+
+    def test_release_boundary_qa_rejects_an_artificial_cliff(self) -> None:
+        frames, _ = runtime.build_score_controls(PLAN)
+        boundary = 1620 * runtime.HOP_LENGTH
+        samples = [0.1] * (boundary + 320)
+        passed = runtime.release_boundary_qa(samples, frames)
+        self.assertTrue(passed["passed"])
+        samples[boundary:boundary + 320] = [0.001] * 320
+        with self.assertRaisesRegex(runtime.RuntimeContractError, "energy cliff"):
+            runtime.release_boundary_qa(samples, frames)
 
     def test_pcm16_writer_is_deterministic_without_audio_library(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

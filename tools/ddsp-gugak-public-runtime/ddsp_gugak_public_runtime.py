@@ -331,10 +331,10 @@ def build_score_controls(plan_path: Path, *, max_seconds: Optional[float] = None
         vibrato_cents = 0.0
         if articulation == "release":
             release = max(0.0, 1.0 - local / event_duration)
-            # A release has no new score pitch.  Keeping F0 at zero makes the
-            # published harmonic oscillator silent; the published learned
-            # noise branch can still form its explicitly gated tail.
-            f0_hz = 0.0
+            # A release does not declare a new score pitch, but a sustained
+            # wind-instrument tail must retain its immediately prior voiced
+            # F0 while the authored loudness/voicing curves decay.
+            f0_hz = prior_f0
             loudness = prior_loudness * math.pow(release, 1.35)
             voicing = release
         else:
@@ -379,7 +379,7 @@ def build_score_controls(plan_path: Path, *, max_seconds: Optional[float] = None
         "truncated_for_smoke": max_seconds is not None and render_duration < duration,
         "full_plan_duration_seconds": duration,
         "articulation_frame_counts": {name: sum(1 for frame in frames if frame["articulation"] == name) for name in ARTICULATIONS},
-        "explicit_release_decoder_mapping": "release feeds F0=0, so the published harmonic oscillator is silent; its learned filtered-noise tail is decayed by both the explicit decoder loudness curve (release ** 1.35) and the compiled release voicing gate",
+        "explicit_release_decoder_mapping": "release declares no new score pitch but carries the immediately prior rendered F0, allowing both published harmonic and learned-noise branches to decay through the explicit decoder loudness curve (release ** 1.35) and compiled release voicing gate",
         "decoder_inputs": "F0 and linear loudness only; raw score dB is never passed to the decoder. breath/rearticulate/slur/release remain authorial curves, not inferred categorical model labels",
         "loudness_mapping": {
             "formula": "linear_loudness = 10 ** (steady_loudness_db / 20)",
@@ -598,7 +598,8 @@ def render_dry_cpu(frames: Sequence[Mapping[str, Any]], *, ddsp_pytorch_root: Pa
         "runtime": {"python": sys.version.split()[0], "torch": str(torch.__version__), "device": device, "cuda_selected": False, "seed": int(seed)},
         "checkpoint_tensors": {"decoder_tensor_count": len(decoder_state), "unloaded_reverb_tensor_keys": reverb_keys},
         "published_component_outputs": {"latent_shapes": latent_shapes, "harmonic_samples": int(harmonic_audio.shape[-1]), "noise_samples_before_dry_trim": int(noise_audio.shape[-1]), "decoder_amplitude_range": amplitude_range, "decoder_noise_filter_range": noise_range},
-        "compatibility": {"legacy_torch_rfft_irfft": "temporary process-local torch.fft adapter; restored before return", "hardcoded_cuda": "published harmonic/noise constructors received device='cpu'; no source file was edited", "encoder_crepe_or_audio_input": "not imported or called", "authored_rest_gate": {"written_rest_is_hard_zeroed_after_published_dry_synthesis": True, "hard_zero_rest_sample_ranges": hard_zero_rests, "voicing_upsampling": "linear 250 Hz to 16 kHz", "pre_rest_anti_click_fades": rest_fades, "pre_rest_fade_seconds": REST_ENTRY_FADE_SECONDS, "release": "F0=0 plus decoder-loudness and voicing decay"}},
+        "release_boundary_qa": release_boundary_qa(audio, frames),
+        "compatibility": {"legacy_torch_rfft_irfft": "temporary process-local torch.fft adapter; restored before return", "hardcoded_cuda": "published harmonic/noise constructors received device='cpu'; no source file was edited", "encoder_crepe_or_audio_input": "not imported or called", "authored_rest_gate": {"written_rest_is_hard_zeroed_after_published_dry_synthesis": True, "hard_zero_rest_sample_ranges": hard_zero_rests, "voicing_upsampling": "linear 250 Hz to 16 kHz", "pre_rest_anti_click_fades": rest_fades, "pre_rest_fade_seconds": REST_ENTRY_FADE_SECONDS, "release": "no new score pitch; prior voiced F0, decoder-loudness, and voicing decay keep harmonic/noise continuous"}},
     }
 
 
@@ -608,6 +609,35 @@ def _audio_stats(samples: Sequence[float]) -> Dict[str, float]:
     peak = max(abs(float(value)) for value in samples)
     rms = math.sqrt(sum(float(value) * float(value) for value in samples) / len(samples))
     return {"peak": peak, "rms": rms, "rms_dbfs": -math.inf if rms == 0.0 else 20.0 * math.log10(rms)}
+
+
+def release_boundary_qa(samples: Sequence[float], frames: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
+    """Fail closed if a release begins with a large artificial energy cliff."""
+
+    starts = [index for index, frame in enumerate(frames) if str(frame["articulation"]) == "release" and (index == 0 or str(frames[index - 1]["articulation"]) != "release")]
+    if len(starts) != 1:
+        raise RuntimeContractError("the explicit plan must have exactly one release onset for this R&D boundary QA")
+    boundary = starts[0] * HOP_LENGTH
+    window = int(round(0.020 * SAMPLE_RATE_HZ))
+    if boundary < window or boundary + window > len(samples):
+        raise RuntimeContractError("release boundary cannot support the required 20 ms QA windows")
+    pre = _audio_stats(samples[boundary - window:boundary])["rms"]
+    post = _audio_stats(samples[boundary:boundary + window])["rms"]
+    if pre <= 0.0 or post <= 0.0:
+        raise RuntimeContractError("release boundary contains an unexpected silent 20 ms QA window")
+    delta_db = 20.0 * math.log10(post / pre)
+    if delta_db < -6.0:
+        raise RuntimeContractError("release begins with an artificial >6 dB 20 ms energy cliff")
+    return {
+        "release_start_frame": starts[0],
+        "release_start_seconds": starts[0] / FRAME_RATE_HZ,
+        "window_seconds": 0.020,
+        "pre_window_rms": pre,
+        "post_window_rms": post,
+        "post_minus_pre_db": delta_db,
+        "minimum_permitted_post_minus_pre_db": -6.0,
+        "passed": True,
+    }
 
 
 def write_pcm16_wav(path: Path, samples: Sequence[float], *, sample_rate: int = SAMPLE_RATE_HZ) -> Dict[str, Any]:
