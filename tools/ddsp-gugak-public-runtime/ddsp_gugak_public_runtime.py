@@ -72,6 +72,7 @@ SLUR_LOUDNESS_TRANSITION_SHAPE = "minimum_jerk_linear_loudness"
 ARTICULATIONS = ("rest", "breath_start", "rearticulate", "slur", "release")
 VOICED_ARTICULATIONS = frozenset({"breath_start", "rearticulate", "slur"})
 OUTPUT_NAME = re.compile(r"ddsp-gugak-public-daegeum-runtime-r1-[0-9]{8}-[0-9]{6}(?:-[a-z0-9-]+)?$")
+GAIN_SOURCE_SLOT = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
 
 
 class RuntimeContractError(RuntimeError):
@@ -326,6 +327,59 @@ def validate_plan(path: Path) -> Dict[str, Any]:
         "runtime_control_hz": FRAME_RATE_HZ,
         "duration_seconds": duration,
         "events": events,
+        "breath_start_boundary_qa": breath_start_boundary_qa(events),
+    }
+
+
+def breath_start_boundary_qa(events: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
+    """Reject a new breath envelope that touches an already voiced event.
+
+    ``breath_start`` deliberately begins at four percent of its steady
+    loudness.  It is therefore safe at score start or after an authored gap,
+    but it would create a large artificial energy cliff if placed directly on
+    a preceding voiced boundary.  This gate records the topology without
+    changing the long-standing onset envelope.
+    """
+
+    records: List[Dict[str, Any]] = []
+    for index, event in enumerate(events):
+        if event.get("articulation") != "breath_start":
+            continue
+        if index == 0:
+            records.append({
+                "event_id": str(event["id"]),
+                "boundary_kind": "score_start",
+                "prior_event_id": None,
+                "authored_gap_seconds": None,
+                "rest_control_frame_count": None,
+                "passed": True,
+            })
+            continue
+        prior = events[index - 1]
+        gap = float(event["start_seconds"]) - float(prior["end_seconds"])
+        first_rest_frame = int(math.ceil(float(prior["end_seconds"]) * FRAME_RATE_HZ - 1.0e-12))
+        next_event_frame = int(math.ceil(float(event["start_seconds"]) * FRAME_RATE_HZ - 1.0e-12))
+        rest_frame_count = max(0, next_event_frame - first_rest_frame)
+        prior_is_voiced = str(prior["articulation"]) in VOICED_ARTICULATIONS or str(prior["articulation"]) == "release"
+        if prior_is_voiced and rest_frame_count == 0:
+            raise RuntimeContractError(
+                "breath_start after a voiced event requires an authored gap containing at least one 250 Hz rest control frame"
+            )
+        records.append({
+            "event_id": str(event["id"]),
+            "boundary_kind": "after_authored_gap" if rest_frame_count else "after_nonvoiced_boundary",
+            "prior_event_id": str(prior["id"]),
+            "prior_articulation": str(prior["articulation"]),
+            "authored_gap_seconds": gap,
+            "rest_control_frame_count": rest_frame_count,
+            "passed": True,
+        })
+    return {
+        "passed": True,
+        "touching_breath_start_after_voiced_event_allowed": False,
+        "minimum_authored_rest_control_frames_after_voiced_event": 1,
+        "onset_envelope_changed": False,
+        "events": records,
     }
 
 
@@ -806,6 +860,7 @@ def build_score_controls(
     """Create deterministic 250 Hz F0/loudness controls without opening any audio."""
 
     plan, events, duration = _validate_plan(plan_path.expanduser().resolve())
+    breath_boundary_qa = breath_start_boundary_qa(events)
     slur_pitch_mode = _slur_pitch_mode(slur_pitch_mode)
     hard_step = slur_pitch_mode == SLUR_PITCH_MODE_HARD_STEP
     slur_transition_seconds = _slur_transition_seconds(slur_transition_milliseconds)
@@ -939,6 +994,7 @@ def build_score_controls(
             "release_may_declare_new_pitch_or_vibrato": False,
         },
         "release_vibrato_qa": release_vibrato_qa,
+        "breath_start_boundary_qa": breath_boundary_qa,
         "decoder_inputs": (
             "F0 and linear loudness only; raw score dB is never passed to the decoder. breath/rearticulate/slur/release remain authorial controls, not inferred categorical model labels. The experimental hard-step candidate is a control trajectory, not a learned slur. Its separately authored dynamic still moves monotonically from entry to target over 80 ms without overshoot. Release loudness starts from one fixed inherited steady level."
             if hard_step
@@ -1277,6 +1333,32 @@ def _audio_stats(samples: Sequence[float]) -> Dict[str, float]:
     return {"peak": peak, "rms": rms, "rms_dbfs": -math.inf if rms == 0.0 else 20.0 * math.log10(rms)}
 
 
+def _shared_interval_sample_count(
+    shared_interval_end_seconds: Any,
+    *,
+    available_sample_count: int,
+) -> Tuple[float, int]:
+    """Validate an explicit monitoring interval against score-length audio."""
+
+    end_seconds = _finite_number(
+        shared_interval_end_seconds,
+        label="shared comparison interval end",
+        minimum=FRAME_RESOLUTION,
+    )
+    end_sample = int(round(end_seconds * SAMPLE_RATE_HZ))
+    if abs(end_sample / SAMPLE_RATE_HZ - end_seconds) > 1.0e-12:
+        raise RuntimeContractError("shared comparison interval must align exactly to the 16 kHz audio sample grid")
+    if end_sample > int(available_sample_count):
+        raise RuntimeContractError("shared comparison interval exceeds the available score-length audio")
+    return end_seconds, end_sample
+
+
+def _gain_source_slot(value: Any) -> str:
+    if not isinstance(value, str) or GAIN_SOURCE_SLOT.fullmatch(value) is None:
+        raise RuntimeContractError("listening gain source slot must be 1-64 safe ASCII letters, digits, underscore, or hyphen")
+    return value
+
+
 def apply_shared_fixed_listening_gain(
     reference_samples: Sequence[float],
     candidates: Mapping[str, Sequence[float]],
@@ -1292,9 +1374,10 @@ def apply_shared_fixed_listening_gain(
     if not reference_label or reference_label not in candidates:
         raise RuntimeContractError("shared fixed listening gain requires an explicit candidate reference label")
     reference = [float(value) for value in reference_samples]
-    end_sample = int(round(_finite_number(shared_interval_end_seconds, label="shared comparison interval end", minimum=FRAME_RESOLUTION) * SAMPLE_RATE_HZ))
-    if end_sample <= 0 or end_sample > len(reference):
-        raise RuntimeContractError("shared fixed-gain interval exceeds its reference audio")
+    end_seconds, end_sample = _shared_interval_sample_count(
+        shared_interval_end_seconds,
+        available_sample_count=len(reference),
+    )
     reference_rms = _audio_stats(reference[:end_sample])["rms"]
     if reference_rms <= 0.0:
         raise RuntimeContractError("shared fixed-gain reference interval is silent")
@@ -1323,7 +1406,7 @@ def apply_shared_fixed_listening_gain(
         "target_reference_shared_interval_rms": target_rms,
         "target_reference_shared_interval_rms_dbfs": 20.0 * math.log10(target_rms),
         "shared_interval_start_seconds": 0.0,
-        "shared_interval_end_seconds": end_sample / SAMPLE_RATE_HZ,
+        "shared_interval_end_seconds": end_seconds,
         "shared_interval_sample_count": end_sample,
         "independent_candidate_normalization": False,
         "compression_or_limiter": False,
@@ -1535,18 +1618,21 @@ def level_match_shared_interval_whole_file(
     *,
     shared_interval_end_seconds: float = SHARED_INTERVAL_END_SECONDS,
     target_rms: float = LISTENING_TARGET_RMS,
+    gain_source_slot: str = "current_render",
 ) -> Tuple[List[float], Dict[str, Any]]:
     """Match the explicit shared pre-release interval with one whole-file gain.
 
     This refuses clipping instead of adding a compressor, limiter, or a
-    tail-specific gain.  Dry A/B and the checkpoint-native wet C variant use
-    this same [0.0, 6.48) interval, including the authored rest.
+    tail-specific gain.  The explicit interval can cover an entire score or a
+    stable pre-release portion of it; the historical default remains
+    ``[0.0, 6.48)`` for the original short regression plan.
     """
 
-    end_seconds = _finite_number(shared_interval_end_seconds, label="shared comparison interval end", minimum=FRAME_RESOLUTION)
-    end_sample = int(round(end_seconds * SAMPLE_RATE_HZ))
-    if abs(end_sample / SAMPLE_RATE_HZ - end_seconds) > 1.0e-12 or end_sample > len(samples):
-        raise RuntimeContractError("shared comparison interval must align to available audio samples")
+    source_slot = _gain_source_slot(gain_source_slot)
+    end_seconds, end_sample = _shared_interval_sample_count(
+        shared_interval_end_seconds,
+        available_sample_count=len(samples),
+    )
     shared = [float(value) for value in samples[:end_sample]]
     shared_rms = _audio_stats(shared)["rms"]
     if shared_rms <= 0.0:
@@ -1564,6 +1650,54 @@ def level_match_shared_interval_whole_file(
         "shared_interval_sample_count": end_sample,
         "source_shared_interval_rms": shared_rms,
         "constant_gain_applied_to_entire_file": requested_gain,
+        "gain_derivation": "derived_from_current_render_shared_interval_rms",
+        "gain_source_slot": source_slot,
+        "fixed_gain_reference": None,
+        "independent_candidate_normalization": False,
+        "compression_or_limiter": False,
+        "clipping_limited": False,
+        "post_gain_shared_interval_rms": _audio_stats(scaled[:end_sample])["rms"],
+    }
+
+
+def apply_fixed_listening_gain_whole_file(
+    samples: Sequence[float],
+    *,
+    fixed_gain: float,
+    shared_interval_end_seconds: float,
+    target_rms: float,
+    gain_source_slot: str,
+    fixed_gain_reference: Mapping[str, Any],
+) -> Tuple[List[float], Dict[str, Any]]:
+    """Apply an exact prior-reference gain without candidate normalization."""
+
+    source_slot = _gain_source_slot(gain_source_slot)
+    gain = _finite_number(fixed_gain, label="fixed listening gain", minimum=1.0e-12)
+    target = _finite_number(target_rms, label="fixed-gain reference target RMS", minimum=1.0e-12, maximum=0.98)
+    end_seconds, end_sample = _shared_interval_sample_count(
+        shared_interval_end_seconds,
+        available_sample_count=len(samples),
+    )
+    values = [float(value) for value in samples]
+    source_stats = _audio_stats(values)
+    if source_stats["peak"] * gain > 0.98:
+        raise RuntimeContractError(
+            "reused fixed listening gain would clip this candidate; refusing compression, limiting, or a replacement gain"
+        )
+    scaled = [value * gain for value in values]
+    shared_rms = _audio_stats(values[:end_sample])["rms"]
+    return scaled, {
+        "target_shared_interval_rms": target,
+        "target_shared_interval_rms_dbfs": 20.0 * math.log10(target),
+        "shared_interval_start_seconds": 0.0,
+        "shared_interval_end_seconds": end_seconds,
+        "shared_interval_sample_count": end_sample,
+        "source_shared_interval_rms": shared_rms,
+        "constant_gain_applied_to_entire_file": gain,
+        "gain_derivation": "reused_exactly_from_prior_runtime_report",
+        "gain_source_slot": source_slot,
+        "fixed_gain_reference": dict(fixed_gain_reference),
+        "independent_candidate_normalization": False,
         "compression_or_limiter": False,
         "clipping_limited": False,
         "post_gain_shared_interval_rms": _audio_stats(scaled[:end_sample])["rms"],
@@ -1647,6 +1781,94 @@ def _require_fresh_output(root: Path, output_dir: Path) -> Path:
     return output_dir
 
 
+def load_checkpoint_native_reverb_gain_reference(
+    report_path: Path,
+    *,
+    repository_root: Path,
+    shared_interval_end_seconds: float,
+    checkpoint_sha256: str,
+) -> Dict[str, Any]:
+    """Load one directly derived wet gain from a prior isolated runtime report."""
+
+    root = repository_root.expanduser().resolve()
+    path = report_path.expanduser().resolve()
+    allowed_parent = (root / "_bgm_rnd").resolve()
+    if (
+        path.name != "runtime_report.json"
+        or path.parent.parent != allowed_parent
+        or OUTPUT_NAME.fullmatch(path.parent.name) is None
+    ):
+        raise RuntimeContractError(
+            "fixed wet-gain reference must be runtime_report.json in a direct DDSP-Gugak _bgm_rnd output child"
+        )
+    report = _load_json(path, label="fixed wet-gain reference runtime report")
+    if report.get("schema") != TOOL_SCHEMA or report.get("status") != "succeeded":
+        raise RuntimeContractError("fixed wet-gain reference must be a successful report from this runtime schema")
+    checkpoint = _mapping(report.get("checkpoint"), label="fixed wet-gain reference.checkpoint")
+    checkpoint_file = _mapping(checkpoint.get("checkpoint"), label="fixed wet-gain reference.checkpoint.checkpoint")
+    if checkpoint_file.get("sha256") != checkpoint_sha256:
+        raise RuntimeContractError("fixed wet-gain reference used a different checkpoint")
+    audition = _mapping(
+        report.get("checkpoint_native_reverb_audition"),
+        label="fixed wet-gain reference.checkpoint_native_reverb_audition",
+    )
+    level = _mapping(audition.get("level_match"), label="fixed wet-gain reference.level_match")
+    if level.get("gain_derivation") != "derived_from_current_render_shared_interval_rms":
+        raise RuntimeContractError("fixed wet-gain reference must contain a directly derived, not transitively reused, gain")
+    if level.get("fixed_gain_reference") is not None:
+        raise RuntimeContractError("fixed wet-gain reference unexpectedly names another fixed-gain source")
+    if level.get("compression_or_limiter") is not False or level.get("clipping_limited") is not False:
+        raise RuntimeContractError("fixed wet-gain reference must prove that no limiter or compressor was used")
+    source_slot = _gain_source_slot(level.get("gain_source_slot"))
+    requested_end, requested_count = _shared_interval_sample_count(
+        shared_interval_end_seconds,
+        available_sample_count=2**63 - 1,
+    )
+    source_end = _finite_number(
+        level.get("shared_interval_end_seconds"),
+        label="fixed wet-gain reference shared interval end",
+        minimum=FRAME_RESOLUTION,
+    )
+    if not math.isclose(source_end, requested_end, abs_tol=1.0e-12, rel_tol=0.0):
+        raise RuntimeContractError("fixed wet-gain reference shared interval does not match the requested interval")
+    if level.get("shared_interval_sample_count") != requested_count or level.get("shared_interval_start_seconds") != 0.0:
+        raise RuntimeContractError("fixed wet-gain reference shared interval metadata is inconsistent")
+    target = _finite_number(
+        level.get("target_shared_interval_rms"),
+        label="fixed wet-gain reference target RMS",
+        minimum=1.0e-12,
+        maximum=0.98,
+    )
+    if not math.isclose(target, LISTENING_TARGET_RMS, abs_tol=1.0e-15, rel_tol=0.0):
+        raise RuntimeContractError("fixed wet-gain reference target RMS differs from this runtime contract")
+    gain = _finite_number(
+        level.get("constant_gain_applied_to_entire_file"),
+        label="fixed wet-gain reference constant gain",
+        minimum=1.0e-12,
+    )
+    provenance = {
+        "report": _file_record(path),
+        "output_directory": path.parent.name,
+        "schema": TOOL_SCHEMA,
+        "checkpoint_sha256": checkpoint_sha256,
+        "source_gain_derivation": str(level["gain_derivation"]),
+        "source_gain_source_slot": source_slot,
+        "source_shared_interval_start_seconds": 0.0,
+        "source_shared_interval_end_seconds": requested_end,
+        "source_shared_interval_sample_count": requested_count,
+        "source_target_shared_interval_rms": target,
+        "source_constant_gain_applied_to_entire_file": gain,
+        "source_compression_or_limiter": False,
+        "source_clipping_limited": False,
+    }
+    return {
+        "constant_gain": gain,
+        "target_rms": target,
+        "gain_source_slot": source_slot,
+        "provenance": provenance,
+    }
+
+
 def build_check_report(*, plan: Path, gugak_root: Path, ddsp_pytorch_root: Path, checkpoint: Path, checkpoint_config: Path) -> Dict[str, Any]:
     return {
         "schema": TOOL_SCHEMA,
@@ -1688,6 +1910,19 @@ def execute(args: argparse.Namespace) -> Dict[str, Any]:
         slur_transition_milliseconds=args.slur_transition_ms,
         slur_pitch_mode=slur_pitch_mode,
     )
+    monitoring_interval_end_seconds, monitoring_interval_sample_count = _shared_interval_sample_count(
+        args.shared_interval_end_seconds,
+        available_sample_count=len(frames) * HOP_LENGTH,
+    )
+    gain_source_slot = _gain_source_slot(args.listening_gain_source_slot)
+    fixed_wet_gain: Optional[Dict[str, Any]] = None
+    if args.reuse_checkpoint_native_reverb_gain_from_report is not None:
+        fixed_wet_gain = load_checkpoint_native_reverb_gain_reference(
+            args.reuse_checkpoint_native_reverb_gain_from_report,
+            repository_root=repository_root,
+            shared_interval_end_seconds=monitoring_interval_end_seconds,
+            checkpoint_sha256=str(check["checkpoint"]["checkpoint"]["sha256"]),
+        )
     _, normalized_events, _ = _validate_plan(args.plan.expanduser().resolve())
     compiler_equivalence = verify_compiler_slur_policy_equivalence(
         repository_root,
@@ -1696,9 +1931,9 @@ def execute(args: argparse.Namespace) -> Dict[str, Any]:
         pitch_mode=slur_pitch_mode,
     )
     if args.reference_flute_wav is not None and controls["truncated_for_smoke"]:
-        raise RuntimeContractError("the 6.72-second western-flute reference is allowed only for a full-plan listening pair")
+        raise RuntimeContractError("the western-flute reference is allowed only for a full-plan listening pair")
     if args.checkpoint_native_reverb and controls["truncated_for_smoke"]:
-        raise RuntimeContractError("checkpoint-native reverb is allowed only for the full 6.72-second explicit score")
+        raise RuntimeContractError("checkpoint-native reverb is allowed only for the full explicit score")
     output_dir.mkdir(parents=False)
     controls_path = output_dir / "score_controls_250hz.csv"
     write_controls_csv(controls_path, frames)
@@ -1766,6 +2001,7 @@ def execute(args: argparse.Namespace) -> Dict[str, Any]:
                     canonical_audio,
                     shared_candidates,
                     reference_label="canonical_12ms",
+                    shared_interval_end_seconds=monitoring_interval_end_seconds,
                 )
                 diagnostic_output_names = {
                     "canonical_12ms": "A_canonical_12ms_daegeum_shared_gain.wav",
@@ -1817,6 +2053,7 @@ def execute(args: argparse.Namespace) -> Dict[str, Any]:
                         "noise_post_gate": diagnostic_payload["noise_post_gate"],
                     },
                     reference_label="canonical_candidate",
+                    shared_interval_end_seconds=monitoring_interval_end_seconds,
                 )
                 diagnostic_outputs = {
                     name: write_pcm16_wav(output_dir / f"diagnostic_{name}_shared_gain.wav", samples)
@@ -1844,9 +2081,27 @@ def execute(args: argparse.Namespace) -> Dict[str, Any]:
                 ddsp_pytorch_root=args.ddsp_pytorch_root,
                 checkpoint=args.checkpoint,
             )
-            wet_scaled, wet_gain = level_match_shared_interval_whole_file(wet_audio)
-            wet_full_path = output_dir / "C_published_daegeum_checkpoint_native_reverb_full_tail_shared_interval_rms_matched.wav"
-            wet_score_length_path = output_dir / "C_published_daegeum_checkpoint_native_reverb_score_length_shared_interval_rms_matched.wav"
+            if fixed_wet_gain is None:
+                wet_scaled, wet_gain = level_match_shared_interval_whole_file(
+                    wet_audio,
+                    shared_interval_end_seconds=monitoring_interval_end_seconds,
+                    gain_source_slot=gain_source_slot,
+                )
+                wet_full_name = "C_published_daegeum_checkpoint_native_reverb_full_tail_shared_interval_rms_matched.wav"
+                wet_score_length_name = "C_published_daegeum_checkpoint_native_reverb_score_length_shared_interval_rms_matched.wav"
+            else:
+                wet_scaled, wet_gain = apply_fixed_listening_gain_whole_file(
+                    wet_audio,
+                    fixed_gain=float(fixed_wet_gain["constant_gain"]),
+                    shared_interval_end_seconds=monitoring_interval_end_seconds,
+                    target_rms=float(fixed_wet_gain["target_rms"]),
+                    gain_source_slot=str(fixed_wet_gain["gain_source_slot"]),
+                    fixed_gain_reference=_mapping(fixed_wet_gain["provenance"], label="fixed wet-gain provenance"),
+                )
+                wet_full_name = "C_published_daegeum_checkpoint_native_reverb_full_tail_shared_fixed_gain.wav"
+                wet_score_length_name = "C_published_daegeum_checkpoint_native_reverb_score_length_shared_fixed_gain.wav"
+            wet_full_path = output_dir / wet_full_name
+            wet_score_length_path = output_dir / wet_score_length_name
             wet_full_record = write_pcm16_wav(wet_full_path, wet_scaled)
             wet_score_length_record = write_pcm16_wav(wet_score_length_path, wet_scaled[:len(audio)])
             checkpoint_native_reverb = {
@@ -1857,8 +2112,12 @@ def execute(args: argparse.Namespace) -> Dict[str, Any]:
                     "full_wet_tail": wet_full_record,
                     "score_length_wet_audition": wet_score_length_record,
                 },
-                "written_rest_note": "the dry render is hard-zero during the authored rest. The learned FIR wet output may ring through that rest and after 6.72 seconds; that is expected room-tail behavior, not a claim that the score contains a new note.",
-                "post_processing": "one constant gain derived from [0.0, 6.48) seconds is applied to each entire wet file; no compression, limiter, peak normalization, or tail-specific gain is used",
+                "written_rest_note": f"the dry render is hard-zero during authored rests. The learned FIR wet output may ring through a rest and after the {len(audio) / SAMPLE_RATE_HZ:.6f}-second score; that is expected room-tail behavior, not a claim that the score contains a new note.",
+                "post_processing": (
+                    f"one constant gain derived from this render over [0.0, {monitoring_interval_end_seconds:.6f}) seconds is applied to each entire wet file; no compression, limiter, peak normalization, or tail-specific gain is used"
+                    if fixed_wet_gain is None
+                    else f"the exact constant gain from source slot {wet_gain['gain_source_slot']} is reused over the entire wet file; this render is not independently normalized, and no compression, limiter, peak normalization, or tail-specific gain is used"
+                ),
             }
             outputs["checkpoint_native_reverb_full_tail_wav"] = wet_full_record
             outputs["checkpoint_native_reverb_score_length_wav"] = wet_score_length_record
@@ -1867,12 +2126,20 @@ def execute(args: argparse.Namespace) -> Dict[str, Any]:
             reference_audio, reference_provenance = _read_safe_flute_reference(args.reference_flute_wav)
             if len(reference_audio) != len(audio):
                 raise RuntimeContractError("verified western-flute reference duration does not match the full score render")
-            daegeum_scaled, daegeum_gain = level_match_shared_interval_whole_file(audio)
-            flute_scaled, flute_gain = level_match_shared_interval_whole_file(reference_audio)
+            daegeum_scaled, daegeum_gain = level_match_shared_interval_whole_file(
+                audio,
+                shared_interval_end_seconds=monitoring_interval_end_seconds,
+                gain_source_slot="published_daegeum",
+            )
+            flute_scaled, flute_gain = level_match_shared_interval_whole_file(
+                reference_audio,
+                shared_interval_end_seconds=monitoring_interval_end_seconds,
+                gain_source_slot="official_western_flute_B",
+            )
             daegeum_pair_path = output_dir / "A_published_daegeum_dry_shared_interval_rms_matched.wav"
             flute_pair_path = output_dir / "B_official_midi_ddsp_flute_bridge_shared_interval_rms_matched.wav"
             listening_pair = {
-                "purpose": "post-render listening comparison only; the western-flute WAV is never decoder conditioning or a training input. Both files use the same [0.0, 6.48) interval RMS target and one constant whole-file gain.",
+                "purpose": f"post-render listening comparison only; the western-flute WAV is never decoder conditioning or a training input. Both files use the same [0.0, {monitoring_interval_end_seconds:.6f}) interval RMS target and one constant whole-file gain.",
                 "target_shared_interval_rms": LISTENING_TARGET_RMS,
                 "target_shared_interval_rms_dbfs": -24.0,
                 "published_daegeum": {"audio": write_pcm16_wav(daegeum_pair_path, daegeum_scaled), "gain": daegeum_gain},
@@ -1905,11 +2172,21 @@ def execute(args: argparse.Namespace) -> Dict[str, Any]:
             "outputs": outputs,
             "listening_pair": listening_pair,
             "checkpoint_native_reverb_audition": checkpoint_native_reverb,
+            "monitoring_and_listening_gain_request": {
+                "shared_interval_start_seconds": 0.0,
+                "shared_interval_end_seconds": monitoring_interval_end_seconds,
+                "shared_interval_sample_count": monitoring_interval_sample_count,
+                "requested_gain_source_slot": gain_source_slot,
+                "reuse_checkpoint_native_reverb_gain_from_report": fixed_wet_gain is not None,
+                "independent_candidate_normalization_requested": False,
+                "compression_or_limiter_requested": False,
+            },
             "actions_performed": {
                 "training": False,
                 "ngc_or_user_audio_read": False,
                 "crepe_or_audio_input_used": False,
                 "learned_reverb_called": args.checkpoint_native_reverb,
+                "prior_checkpoint_native_reverb_gain_reused": fixed_wet_gain is not None,
                 "component_diagnostics_written": args.component_diagnostics,
                 "experimental_hard_f0_step": slur_pitch_mode == SLUR_PITCH_MODE_HARD_STEP,
                 "decoder_harmonic_distribution_or_noise_filter_modified": False,
@@ -1941,6 +2218,22 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser.add_argument("--output-dir", type=Path, help="fresh ignored _bgm_rnd output directory, required with --execute")
     parser.add_argument("--reference-flute-wav", type=Path, help="optional verified prior synthetic MIDI-DDSP flute-B listening reference")
     parser.add_argument("--checkpoint-native-reverb", action="store_true", help="also create a separate R&D-only audition through the strictly loaded published three-tensor FIR reverb")
+    parser.add_argument(
+        "--shared-interval-end-seconds",
+        type=float,
+        default=SHARED_INTERVAL_END_SECONDS,
+        help="explicit score-length monitoring interval end; default 6.48 preserves the original short-plan regression",
+    )
+    parser.add_argument(
+        "--listening-gain-source-slot",
+        default="current_render",
+        help="safe provenance label for a gain derived from this render, for example B0",
+    )
+    parser.add_argument(
+        "--reuse-checkpoint-native-reverb-gain-from-report",
+        type=Path,
+        help="reuse the exact directly derived wet gain in a prior successful runtime_report.json; never renormalize this candidate",
+    )
     parser.add_argument("--supersedes-output", help="optional prior DDSP-Gugak R&D output directory basename recorded as superseded")
     parser.add_argument("--max-seconds", type=float, help="250 Hz-aligned score prefix for an actual decoder smoke render")
     transition_mode = parser.add_mutually_exclusive_group()
@@ -1968,7 +2261,11 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         parser.error("--execute requires --output-dir")
     if args.component_diagnostics and args.max_seconds is not None:
         parser.error("--component-diagnostics requires the full explicit score; omit --max-seconds")
-    if args.check and (args.output_dir is not None or args.reference_flute_wav is not None or args.checkpoint_native_reverb or args.supersedes_output is not None or args.confirm_rnd_only or args.slur_transition_ms != SLUR_TRANSITION_MILLISECONDS or args.experimental_hard_f0_step or args.component_diagnostics):
+    if args.reuse_checkpoint_native_reverb_gain_from_report is not None and not args.checkpoint_native_reverb:
+        parser.error("--reuse-checkpoint-native-reverb-gain-from-report requires --checkpoint-native-reverb")
+    if args.reuse_checkpoint_native_reverb_gain_from_report is not None and args.listening_gain_source_slot != "current_render":
+        parser.error("a reused gain inherits its source slot; do not also pass --listening-gain-source-slot")
+    if args.check and (args.output_dir is not None or args.reference_flute_wav is not None or args.checkpoint_native_reverb or args.supersedes_output is not None or args.confirm_rnd_only or args.slur_transition_ms != SLUR_TRANSITION_MILLISECONDS or args.experimental_hard_f0_step or args.component_diagnostics or args.shared_interval_end_seconds != SHARED_INTERVAL_END_SECONDS or args.listening_gain_source_slot != "current_render" or args.reuse_checkpoint_native_reverb_gain_from_report is not None):
         parser.error("--check does not accept output, reference, supersession, or execution confirmation flags")
     return args
 

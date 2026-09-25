@@ -35,7 +35,11 @@ does not receive invented categorical articulation labels. Written rests are
 hard-zeroed after dry synthesis. The 250 Hz voicing curve is linearly
 upsampled to 16 kHz (not held as 4 ms steps), and each explicit voiced-to-rest
 boundary gets a deterministic 16 ms pre-rest fade-out to avoid a hard-cut
-click. A slur is treated as continuous breath plus a fast fingering change:
+click. A `breath_start` after an already voiced event must have an authored
+gap containing at least one 250 Hz rest row. The long-standing breath onset
+still begins at four percent of its steady level; the new topology gate stops
+that envelope from being misused as a touching transition and creating an
+energy cliff. A slur is treated as continuous breath plus a fast fingering change:
 its pitch moves from the captured entry F0 to the new note in **12 ms** by a
 monotonic minimum-jerk S-curve in log-frequency/cents—not a 90 ms linear-Hz
 slide. The runtime can make isolated 8/12/20 ms R&D candidates with
@@ -122,13 +126,24 @@ checkpoint, and passes the authorial-gated dry model result through the public
 FIR component on CPU. It neither opens source audio nor changes the score.
 
 It writes two wet WAVs: a full learned-room tail and a score-length crop for
-audition. The dry input is exact zero in the written rest, but a learned FIR
-tail can remain audible there and after 6.72 seconds; that is room response,
-not a newly asserted score note. Both wet files and the dry/flute A/B pair are
-matched using the same `[0.00, 6.48)` interval (103,680 samples at 16 kHz) to
--24 dBFS RMS. Each file gets one constant gain over its entire duration; a
-potential clip fails the run rather than triggering a limiter, compressor,
-peak normalization, or tail-specific gain.
+audition. The dry input is exact zero in written rests, but a learned FIR tail
+can remain audible there and after the score; that is room response, not a
+newly asserted score note. `--shared-interval-end-seconds` selects the explicit
+score-length monitoring interval used to derive a -24 dBFS RMS listening gain.
+Its default remains `[0.00, 6.48)` (103,680 samples at 16 kHz), preserving the
+original 6.72-second regression. A 34.80-second full score can instead use
+`--shared-interval-end-seconds 34.56` to omit only its final release.
+
+For a matched B0/B1 comparison, B0 names its derivation with
+`--listening-gain-source-slot B0`. B1 supplies B0's successful sidecar with
+`--reuse-checkpoint-native-reverb-gain-from-report`. The runtime only accepts a
+directly derived gain from the same checkpoint, interval, target, and runtime
+schema in an isolated `_bgm_rnd` output. It records the source report hash and
+slot, applies the exact floating-point gain to both the score-length and
+full-tail outputs, and does not normalize B1 independently. Every mode applies
+one constant gain over the entire file; a potential clip fails the run rather
+than triggering a limiter, compressor, peak normalization, replacement gain,
+or tail-specific gain.
 
 ## Check, then render
 
@@ -171,6 +186,28 @@ The pair and optional reverb audition use the same shared-interval RMS target
 of -24 dBFS. They fail instead of silently limiting any side if that target
 would clip. The flute WAV is only read after rendering to make a listening
 comparison; it is never an inference or training input.
+
+For a full-score B0 wet render, add:
+
+```sh
+  --checkpoint-native-reverb \
+  --shared-interval-end-seconds 34.56 \
+  --listening-gain-source-slot B0
+```
+
+Then render B1 with the exact B0 wet gain by replacing the slot flag with:
+
+```sh
+  --checkpoint-native-reverb \
+  --shared-interval-end-seconds 34.56 \
+  --reuse-checkpoint-native-reverb-gain-from-report \
+    "$ROOT/_bgm_rnd/ddsp-gugak-public-daegeum-runtime-r1-YYYYMMDD-HHMMSS-full-b0/runtime_report.json"
+```
+
+The report retains `constant_gain_applied_to_entire_file` and additionally
+records `gain_derivation`, `gain_source_slot`, `fixed_gain_reference`, and the
+explicit interval. Reused-gain outputs are named `shared_fixed_gain`; directly
+derived outputs retain the historical `shared_interval_rms_matched` names.
 
 For the isolated hard-step/canonical diagnostic pair (full score only):
 

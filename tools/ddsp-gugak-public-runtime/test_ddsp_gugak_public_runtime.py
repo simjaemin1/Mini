@@ -132,6 +132,19 @@ class PublicRuntimeTests(unittest.TestCase):
         )
         self.assertAlmostEqual(frames[100]["loudness_linear"], 10 ** (-30 / 20), places=8)
         self.assertAlmostEqual(frames[800]["loudness_linear"], 10 ** (-28 / 20), places=8)
+        breath_qa = summary["breath_start_boundary_qa"]
+        self.assertTrue(breath_qa["passed"])
+        self.assertFalse(breath_qa["touching_breath_start_after_voiced_event_allowed"])
+        self.assertEqual(breath_qa["events"][1]["rest_control_frame_count"], 180)
+
+    def test_touching_breath_start_after_voiced_event_fails_without_changing_onset(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            altered = json.loads(PLAN.read_text(encoding="utf-8"))
+            altered["events"][1]["start_seconds"] = altered["events"][0]["end_seconds"]
+            path = Path(temporary) / "touching-breath.json"
+            path.write_text(json.dumps(altered), encoding="utf-8")
+            with self.assertRaisesRegex(runtime.RuntimeContractError, "authored gap"):
+                runtime.build_score_controls(path)
 
     def test_all_valid_slur_candidates_settle_and_keep_intermediate_dwell_below_20ms(self) -> None:
         expected_dwell_seconds = {8: 0.004, 12: 0.008, 20: 0.016}
@@ -397,10 +410,99 @@ class PublicRuntimeTests(unittest.TestCase):
         samples = [0.01] * active_count + [0.02, -0.02]
         scaled, record = runtime.level_match_shared_interval_whole_file(samples)
         self.assertEqual(record["shared_interval_sample_count"], active_count)
+        self.assertEqual(record["shared_interval_end_seconds"], runtime.SHARED_INTERVAL_END_SECONDS)
+        self.assertEqual(record["gain_derivation"], "derived_from_current_render_shared_interval_rms")
+        self.assertEqual(record["gain_source_slot"], "current_render")
+        self.assertIsNone(record["fixed_gain_reference"])
+        self.assertFalse(record["compression_or_limiter"])
         self.assertAlmostEqual(record["post_gain_shared_interval_rms"], runtime.LISTENING_TARGET_RMS, places=12)
         self.assertAlmostEqual(scaled[-1] / samples[-1], record["constant_gain_applied_to_entire_file"], places=12)
         with self.assertRaisesRegex(runtime.RuntimeContractError, "would clip"):
             runtime.level_match_shared_interval_whole_file([0.001] * active_count + [1.0])
+
+    def test_full_score_monitoring_interval_validation_is_explicit_and_sample_aligned(self) -> None:
+        end, count = runtime._shared_interval_sample_count(
+            34.56,
+            available_sample_count=int(34.8 * runtime.SAMPLE_RATE_HZ),
+        )
+        self.assertEqual(end, 34.56)
+        self.assertEqual(count, 552_960)
+        with self.assertRaisesRegex(runtime.RuntimeContractError, "audio sample grid"):
+            runtime._shared_interval_sample_count(34.56001, available_sample_count=600_000)
+        with self.assertRaisesRegex(runtime.RuntimeContractError, "score-length"):
+            runtime._shared_interval_sample_count(34.56, available_sample_count=count - 1)
+
+    def test_prior_fixed_gain_is_applied_exactly_without_limiter_or_renormalization(self) -> None:
+        samples = [0.01, -0.02, 0.03, -0.04] * 16
+        provenance = {"output_directory": "source", "report": {"sha256": "abc"}}
+        scaled, record = runtime.apply_fixed_listening_gain_whole_file(
+            samples,
+            fixed_gain=2.5,
+            shared_interval_end_seconds=runtime.FRAME_RESOLUTION,
+            target_rms=runtime.LISTENING_TARGET_RMS,
+            gain_source_slot="B0",
+            fixed_gain_reference=provenance,
+        )
+        self.assertEqual(record["constant_gain_applied_to_entire_file"], 2.5)
+        self.assertEqual(record["gain_source_slot"], "B0")
+        self.assertEqual(record["gain_derivation"], "reused_exactly_from_prior_runtime_report")
+        self.assertEqual(record["fixed_gain_reference"], provenance)
+        self.assertFalse(record["independent_candidate_normalization"])
+        self.assertFalse(record["compression_or_limiter"])
+        self.assertFalse(record["clipping_limited"])
+        self.assertEqual(scaled[-1], samples[-1] * 2.5)
+        with self.assertRaisesRegex(runtime.RuntimeContractError, "would clip"):
+            runtime.apply_fixed_listening_gain_whole_file(
+                [0.5] * 64,
+                fixed_gain=2.0,
+                shared_interval_end_seconds=runtime.FRAME_RESOLUTION,
+                target_rms=runtime.LISTENING_TARGET_RMS,
+                gain_source_slot="B0",
+                fixed_gain_reference=provenance,
+            )
+
+    def test_fixed_gain_reference_is_direct_safe_and_interval_matched(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            output = root / "_bgm_rnd/ddsp-gugak-public-daegeum-runtime-r1-20260925-220000-full-b0"
+            output.mkdir(parents=True)
+            report_path = output / "runtime_report.json"
+            report = {
+                "schema": runtime.TOOL_SCHEMA,
+                "status": "succeeded",
+                "checkpoint": {"checkpoint": {"sha256": runtime.EXPECTED_CHECKPOINT_SHA256}},
+                "checkpoint_native_reverb_audition": {
+                    "level_match": {
+                        "gain_derivation": "derived_from_current_render_shared_interval_rms",
+                        "gain_source_slot": "B0",
+                        "fixed_gain_reference": None,
+                        "compression_or_limiter": False,
+                        "clipping_limited": False,
+                        "shared_interval_start_seconds": 0.0,
+                        "shared_interval_end_seconds": 34.56,
+                        "shared_interval_sample_count": 552_960,
+                        "target_shared_interval_rms": runtime.LISTENING_TARGET_RMS,
+                        "constant_gain_applied_to_entire_file": 1.75,
+                    }
+                },
+            }
+            report_path.write_text(json.dumps(report), encoding="utf-8")
+            loaded = runtime.load_checkpoint_native_reverb_gain_reference(
+                report_path,
+                repository_root=root,
+                shared_interval_end_seconds=34.56,
+                checkpoint_sha256=runtime.EXPECTED_CHECKPOINT_SHA256,
+            )
+            self.assertEqual(loaded["constant_gain"], 1.75)
+            self.assertEqual(loaded["gain_source_slot"], "B0")
+            self.assertEqual(loaded["provenance"]["report"]["sha256"], runtime._sha256(report_path))
+            with self.assertRaisesRegex(runtime.RuntimeContractError, "does not match"):
+                runtime.load_checkpoint_native_reverb_gain_reference(
+                    report_path,
+                    repository_root=root,
+                    shared_interval_end_seconds=6.48,
+                    checkpoint_sha256=runtime.EXPECTED_CHECKPOINT_SHA256,
+                )
 
     def test_shared_fixed_gain_and_latent_delta_helpers_do_not_normalize_candidates_independently(self) -> None:
         active_count = int(runtime.SHARED_INTERVAL_END_SECONDS * runtime.SAMPLE_RATE_HZ)
