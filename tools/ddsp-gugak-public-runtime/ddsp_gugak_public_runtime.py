@@ -50,6 +50,7 @@ FRAME_RATE_HZ = 250
 FRAME_RESOLUTION = 1.0 / FRAME_RATE_HZ
 SAMPLE_RATE_HZ = 16_000
 HOP_LENGTH = 64
+REST_ENTRY_FADE_SECONDS = 0.016
 ARTICULATIONS = ("rest", "breath_start", "rearticulate", "slur", "release")
 VOICED_ARTICULATIONS = frozenset({"breath_start", "rearticulate", "slur"})
 OUTPUT_NAME = re.compile(r"ddsp-gugak-public-daegeum-runtime-r1-[0-9]{8}-[0-9]{6}(?:-[a-z0-9-]+)?$")
@@ -387,6 +388,12 @@ def build_score_controls(plan_path: Path, *, max_seconds: Optional[float] = None
             "separate_public_sample_audit_context": "reported active median linear loudness: published DDSP-Gugak Daegeum sample 0.0369, flute sample 0.0347; this runtime does not read either audio file",
         },
         "air_noise_ratio": "not supplied to this published decoder; no arbitrary air/noise multiplier is applied",
+        "renderer_gate": {
+            "audio_rate_upsampling": "linear interpolation from the compiled 250 Hz voicing curve",
+            "written_rest_entry_fades": rest_entry_fade_regions(frames),
+            "written_rest_entry_fade_seconds": REST_ENTRY_FADE_SECONDS,
+            "hard_zero_rest_ranges": rest_sample_ranges(frames),
+        },
     }
     return frames, summary
 
@@ -397,6 +404,46 @@ def write_controls_csv(path: Path, frames: Iterable[Mapping[str, Any]]) -> None:
         writer.writeheader()
         for frame in frames:
             writer.writerow(dict(frame))
+
+
+def rest_entry_fade_regions(frames: Sequence[Mapping[str, Any]]) -> List[Dict[str, Any]]:
+    """Return only deterministic anti-click fades at explicit voiced→rest edges."""
+
+    fade_frames = int(round(REST_ENTRY_FADE_SECONDS * FRAME_RATE_HZ))
+    regions: List[Dict[str, Any]] = []
+    for index in range(1, len(frames)):
+        if str(frames[index]["articulation"]) == "rest" and str(frames[index - 1]["articulation"]) in VOICED_ARTICULATIONS:
+            regions.append({
+                "rest_start_frame": index,
+                "rest_start_seconds": index / FRAME_RATE_HZ,
+                "fade_start_frame": max(0, index - fade_frames),
+                "fade_start_seconds": max(0, index - fade_frames) / FRAME_RATE_HZ,
+                "fade_duration_seconds": REST_ENTRY_FADE_SECONDS,
+            })
+    return regions
+
+
+def rest_sample_ranges(frames: Sequence[Mapping[str, Any]]) -> List[Dict[str, Any]]:
+    """Return contiguous authored-rest ranges that must be exactly silent."""
+
+    ranges: List[Dict[str, Any]] = []
+    start: Optional[int] = None
+    for index, frame in enumerate(frames):
+        is_rest = str(frame["articulation"]) == "rest"
+        if is_rest and start is None:
+            start = index
+        if start is not None and (not is_rest or index == len(frames) - 1):
+            end = index if not is_rest else index + 1
+            ranges.append({
+                "start_frame": start,
+                "end_frame_exclusive": end,
+                "start_seconds": start / FRAME_RATE_HZ,
+                "end_seconds": end / FRAME_RATE_HZ,
+                "start_sample": start * HOP_LENGTH,
+                "end_sample_exclusive": end * HOP_LENGTH,
+            })
+            start = None
+    return ranges
 
 
 @contextlib.contextmanager
@@ -513,6 +560,8 @@ def render_dry_cpu(frames: Sequence[Mapping[str, Any]], *, ddsp_pytorch_root: Pa
     f0_values = [float(frame["f0_hz"]) for frame in frames]
     loudness_values = [float(frame["loudness_linear"]) for frame in frames]
     gate_values = [float(frame["voicing"]) for frame in frames]
+    rest_fades = rest_entry_fade_regions(frames)
+    hard_zero_rests = rest_sample_ranges(frames)
     torch.manual_seed(int(seed))
     with torch.inference_mode(), legacy_fft_compat(torch):
         latent = decoder({"f0": torch.tensor([f0_values], dtype=torch.float32, device=device), "loudness": torch.tensor([loudness_values], dtype=torch.float32, device=device)})
@@ -521,9 +570,20 @@ def render_dry_cpu(frames: Sequence[Mapping[str, Any]], *, ddsp_pytorch_root: Pa
         if noise_audio.shape[-1] < harmonic_audio.shape[-1]:
             raise RuntimeContractError("published filtered-noise output was unexpectedly shorter than harmonic output")
         dry = harmonic_audio + noise_audio[:, : harmonic_audio.shape[-1]]
-        gate = torch.repeat_interleave(torch.tensor(gate_values, dtype=torch.float32, device=device), HOP_LENGTH).unsqueeze(0)
+        frame_gate = torch.tensor(gate_values, dtype=torch.float32, device=device).view(1, 1, -1)
+        gate = torch.nn.functional.interpolate(frame_gate, scale_factor=HOP_LENGTH, mode="linear", align_corners=False).squeeze(1)
         if gate.shape[-1] != dry.shape[-1]:
             raise RuntimeContractError("score gate and published synthesis length disagree")
+        for region in rest_fades:
+            end = int(region["rest_start_frame"]) * HOP_LENGTH
+            start = max(0, end - int(round(REST_ENTRY_FADE_SECONDS * SAMPLE_RATE_HZ)))
+            fade = torch.linspace(1.0, 0.0, end - start, dtype=torch.float32, device=device)
+            gate[:, start:end] *= fade
+        # Linear interpolation is correct for voiced envelopes, but its edge
+        # kernel can otherwise bleed a few samples into a written rest. The
+        # authored rest contract wins: each full rest range is hard-zero.
+        for region in hard_zero_rests:
+            gate[:, int(region["start_sample"]):int(region["end_sample_exclusive"])] = 0.0
         # This is an authorial time-domain gate, not learned conditioning: it
         # hard-zeros the written rest and applies the already compiled 0→1
         # breath / 1→0 release envelope to both published branches.
@@ -538,7 +598,7 @@ def render_dry_cpu(frames: Sequence[Mapping[str, Any]], *, ddsp_pytorch_root: Pa
         "runtime": {"python": sys.version.split()[0], "torch": str(torch.__version__), "device": device, "cuda_selected": False, "seed": int(seed)},
         "checkpoint_tensors": {"decoder_tensor_count": len(decoder_state), "unloaded_reverb_tensor_keys": reverb_keys},
         "published_component_outputs": {"latent_shapes": latent_shapes, "harmonic_samples": int(harmonic_audio.shape[-1]), "noise_samples_before_dry_trim": int(noise_audio.shape[-1]), "decoder_amplitude_range": amplitude_range, "decoder_noise_filter_range": noise_range},
-        "compatibility": {"legacy_torch_rfft_irfft": "temporary process-local torch.fft adapter; restored before return", "hardcoded_cuda": "published harmonic/noise constructors received device='cpu'; no source file was edited", "encoder_crepe_or_audio_input": "not imported or called", "authored_rest_gate": "written rest is hard-zeroed after published dry synthesis; release has F0=0 and a compiled voicing decay"},
+        "compatibility": {"legacy_torch_rfft_irfft": "temporary process-local torch.fft adapter; restored before return", "hardcoded_cuda": "published harmonic/noise constructors received device='cpu'; no source file was edited", "encoder_crepe_or_audio_input": "not imported or called", "authored_rest_gate": {"written_rest_is_hard_zeroed_after_published_dry_synthesis": True, "hard_zero_rest_sample_ranges": hard_zero_rests, "voicing_upsampling": "linear 250 Hz to 16 kHz", "pre_rest_anti_click_fades": rest_fades, "pre_rest_fade_seconds": REST_ENTRY_FADE_SECONDS, "release": "F0=0 plus decoder-loudness and voicing decay"}},
     }
 
 
@@ -652,6 +712,8 @@ def execute(args: argparse.Namespace) -> Dict[str, Any]:
         raise RuntimeContractError("--execute requires --confirm-rnd-only")
     repository_root = args.repository_root.expanduser().resolve()
     output_dir = _require_fresh_output(repository_root, args.output_dir)
+    if args.supersedes_output is not None and OUTPUT_NAME.fullmatch(args.supersedes_output) is None:
+        raise RuntimeContractError("--supersedes-output must name one prior DDSP-Gugak R&D output directory")
     check = build_check_report(plan=args.plan, gugak_root=args.gugak_source_root, ddsp_pytorch_root=args.ddsp_pytorch_root, checkpoint=args.checkpoint, checkpoint_config=args.checkpoint_config)
     frames, controls = build_score_controls(args.plan, max_seconds=args.max_seconds)
     if args.reference_flute_wav is not None and controls["truncated_for_smoke"]:
@@ -682,6 +744,7 @@ def execute(args: argparse.Namespace) -> Dict[str, Any]:
         report = {
             **check,
             "status": "succeeded",
+            "supersedes_rnd_output_directory": args.supersedes_output,
             "score_controls": controls,
             "render": render,
             "outputs": outputs,
@@ -717,14 +780,15 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser.add_argument("--repository-root", type=Path, default=Path(__file__).resolve().parents[2])
     parser.add_argument("--output-dir", type=Path, help="fresh ignored _bgm_rnd output directory, required with --execute")
     parser.add_argument("--reference-flute-wav", type=Path, help="optional verified prior synthetic MIDI-DDSP flute-B listening reference")
+    parser.add_argument("--supersedes-output", help="optional prior DDSP-Gugak R&D output directory basename recorded as superseded")
     parser.add_argument("--max-seconds", type=float, help="250 Hz-aligned score prefix for an actual decoder smoke render")
     parser.add_argument("--seed", type=int, default=20260925)
     parser.add_argument("--confirm-rnd-only", action="store_true")
     args = parser.parse_args(argv)
     if args.execute and args.output_dir is None:
         parser.error("--execute requires --output-dir")
-    if args.check and (args.output_dir is not None or args.reference_flute_wav is not None or args.confirm_rnd_only):
-        parser.error("--check does not accept output, reference, or execution confirmation flags")
+    if args.check and (args.output_dir is not None or args.reference_flute_wav is not None or args.supersedes_output is not None or args.confirm_rnd_only):
+        parser.error("--check does not accept output, reference, supersession, or execution confirmation flags")
     return args
 
 
