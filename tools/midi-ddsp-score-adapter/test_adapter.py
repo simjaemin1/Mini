@@ -34,6 +34,7 @@ from adapter import (  # noqa: E402
 
 
 PLAN = SCORE_EXPRESSION_DIR / "plans" / "ari_source_led_response_r1.json"
+AUDITION_PLAN = SCORE_EXPRESSION_DIR / "plans" / "ari_gyeonggi_policy_r1_audition.json"
 
 
 def _sha256(path: Path) -> str:
@@ -210,13 +211,29 @@ class MidiDdspScoreAdapterTests(unittest.TestCase):
             self.assertEqual(rows[3]["articulation_preservation"]["relation_to_previous_note"], "explicit_authorial_slur")
             self.assertEqual(rows[4]["articulation_preservation"]["relation_to_previous_note"], "explicit_authorial_slur")
             self.assertEqual(rows[5]["articulation_preservation"]["relation_to_previous_note"], "explicit_authorial_slur")
-            self.assertEqual(rows[5]["midi_ddsp_expression"]["vibrato"], 0.511111)
-            self.assertEqual(rows[5]["source_vibrato"]["source_rate_hz"], 3.45)
-            self.assertEqual(rows[0]["midi_ddsp_expression"]["vibrato"], 0.0)
+            self.assertTrue(all(row["midi_ddsp_expression"]["vibrato"] == 0.0 for row in rows))
+            self.assertTrue(all(row["source_vibrato"]["source_end_fade_seconds"] == 0.0 for row in rows))
             self.assertEqual(one["release_segments"][0]["plan_event_id"], "b10_release")
             self.assertIsNone(one["release_segments"][0]["midi_ddsp_expression_row"])
             self.assertTrue(one["authorial_mapping_policy"]["not_inferred_daegeum_performance"])
             self.assertTrue(one["interpretation_limits"]["source_plan_breath_rearticulate_slur_release_are_preserved_not_inferred"])
+
+    def test_explicit_audition_preserves_late_yoseong_metadata_without_inventing_fields(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            manifest = build_adapter(AUDITION_PLAN, Path(temporary) / "audition")
+        rows = manifest["notes"]
+        selected = rows[0]
+        self.assertEqual(selected["plan_event_id"], "b08_e0_breath")
+        self.assertEqual(selected["midi_ddsp_expression"]["vibrato"], 0.4)
+        self.assertEqual(selected["source_vibrato"]["source_rate_hz"], 3.45)
+        self.assertEqual(selected["source_vibrato"]["source_onset_seconds"], 0.72)
+        self.assertEqual(selected["source_vibrato"]["source_ramp_seconds"], 0.18)
+        self.assertEqual(selected["source_vibrato"]["source_end_fade_seconds"], 0.18)
+        self.assertTrue(
+            selected["source_vibrato"]
+            ["source_onset_ramp_and_end_fade_are_metadata_not_representable_by_one_midi_ddsp_vibrato_scalar"]
+        )
+        self.assertTrue(all(row["midi_ddsp_expression"]["vibrato"] == 0.0 for row in rows[1:]))
 
     def test_adapter_refuses_output_overwrite_and_unrepresentable_microtonal_pitch(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

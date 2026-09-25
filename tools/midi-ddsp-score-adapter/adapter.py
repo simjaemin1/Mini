@@ -239,9 +239,13 @@ def _expression_for_event(event: Mapping[str, Any]) -> tuple[dict[str, float], d
             source_rate = float(raw_vibrato.get("rate_hz"))
             source_onset = float(raw_vibrato.get("onset_seconds"))
             source_ramp = float(raw_vibrato.get("ramp_seconds"))
+            source_end_fade = float(raw_vibrato.get("end_fade_seconds", 0.0))
         except (TypeError, ValueError) as exc:
             raise MidiDdspScoreAdapterError(f"{event_id}.vibrato is malformed") from exc
-        if not all(math.isfinite(item) for item in (source_depth, source_rate, source_onset, source_ramp)):
+        if not all(
+            math.isfinite(item)
+            for item in (source_depth, source_rate, source_onset, source_ramp, source_end_fade)
+        ):
             raise MidiDdspScoreAdapterError(f"{event_id}.vibrato must be finite")
         midi_ddsp_vibrato = _clamp_unit(
             source_depth / VIBRATO_DEPTH_REFERENCE_CENTS,
@@ -252,6 +256,7 @@ def _expression_for_event(event: Mapping[str, Any]) -> tuple[dict[str, float], d
         source_rate = 0.0
         source_onset = 0.0
         source_ramp = 0.0
+        source_end_fade = 0.0
         midi_ddsp_vibrato = 0.0
     expression = {
         "volume": _round(_volume_from_loudness_db(event.get("steady_loudness_db"), event_id=event_id)),
@@ -269,8 +274,10 @@ def _expression_for_event(event: Mapping[str, Any]) -> tuple[dict[str, float], d
         "source_depth_cents": _round(source_depth),
         "source_onset_seconds": _round(source_onset),
         "source_ramp_seconds": _round(source_ramp),
+        "source_end_fade_seconds": _round(source_end_fade),
         "midi_ddsp_vibrato_value": expression["vibrato"],
         "source_rate_is_preserved_as_authorial_metadata_not_a_documented_midi_ddsp_note_field": True,
+        "source_onset_ramp_and_end_fade_are_metadata_not_representable_by_one_midi_ddsp_vibrato_scalar": True,
         "depth_to_midi_ddsp_value_policy": (
             "0 when disabled; otherwise source depth cents divided by the explicit 45-cent authorial reference"
         ),
@@ -534,6 +541,7 @@ def _bridge_manifest(
                 "disabled_value": 0.0,
                 "enabled_value_formula": "source_depth_cents / 45",
                 "source_rate_preserved_separately_not_converted_to_a_documented_note_field": True,
+                "source_onset_ramp_and_end_fade_preserved_as_metadata_not_note_expression_fields": True,
             },
             "brightness_policy": "neutral 0.50 unless a future explicitly authored policy changes it",
             "midi_velocity_policy": "round(volume * 127), clamped to [1, 127]; auxiliary standard-MIDI encoding only",

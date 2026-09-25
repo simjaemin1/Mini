@@ -40,7 +40,8 @@ the MIDI End-of-Track preserves its final timeline position.
 MIDI-DDSP's official README names the six note-expression controls as
 `volume`, `vol_fluc`, `vibrato`, `brightness`, `attack`, and `vol_peak_pos`.
 The project describes them as unit-range note controls. This adapter records
-all six per MIDI note, plus the original authorial vibrato rate/depth metadata.
+all six per MIDI note, plus the original authorial vibrato rate/depth and
+onset/ramp/end-fade metadata.
 
 The deterministic policy is visible in the JSON:
 
@@ -48,8 +49,9 @@ The deterministic policy is visible in the JSON:
 - `vol_fluc`, `brightness`, `attack`, `vol_peak_pos`: explicit conservative
   defaults selected by authored `breath_start`, `rearticulate`, or `slur`.
 - `vibrato`: zero when disabled; otherwise `source_depth_cents / 45`. The
-  source vibrato rate is preserved in metadata because it is not one of the
-  documented six note fields.
+  source vibrato rate and its onset/ramp/end-fade envelope are preserved in
+  metadata because a single MIDI-DDSP note scalar cannot represent those
+  time-varying authorial controls.
 
 These are not learned values, acoustic labels, a Korean-wind timbre mapping,
 or a claim that the pretrained western flute model can reproduce Daegeum. They
