@@ -60,10 +60,20 @@ console.log('\n② 사본 0 — 몸통은 하나, 정본은 남의 것');
   const C = codeOf(SRC), VC = codeOf(VSRC), ZC = codeOf(ZSRC);
   ok(/function actToGranary\(v, item, units, todayKey, countKey\)/.test(C),
     '② ★★곳간 입구 몸통이 **하나**다(`actToGranary` — T100·T312·T325 셋째라서 합쳤다)');
-  ok(/function fishToGranary\(v, units\) \{\s*if \(!T312_FISH_ACT \|\| !v \|\| !v\.storage\) return 0;\s*return actToGranary\(v, 'fish', units, '_t312InflowToday', '_t312CatchN'\);/.test(C.replace(/\n\s*/g, '\n  ').replace(/\n\s+/g, '\n  ')) || /return actToGranary\(v, 'fish', units, '_t312InflowToday', '_t312CatchN'\);/.test(C),
-    '② ★어부도 그 몸통을 부른다(합치면서 어부 회계가 안 바뀌었다)');
-  ok(/return actToGranary\(v, 'wood', units, '_t325InflowToday', '_t325CutN'\);/.test(C),
+  ok(/return actToGranary\(v, 'fish', actDemandCap\([\s\S]*?'_t312InflowToday', '_t312CatchN'\);/.test(C),
+    '② ★어부도 그 몸통을 부른다(합치면서 어부 회계가 안 바뀌었다 · T374 수요 문을 같이 지난다)');
+  ok(/return actToGranary\(v, 'wood', actDemandCap\([\s\S]*?'_t325InflowToday', '_t325CutN'\);/.test(C),
     '② ★나무꾼도 같은 몸통이다 — 다른 것은 **품목 하나와 칸 이름 둘**뿐');
+  //   ★[T374] 수요 문도 **몸통 하나**여야 한다 — 품목마다 `D` 를 읽는 자리만 갈린다.
+  ok(/function actDemandLeft\(v, D, todayKey, held\)/.test(C) && /function actDemandCap\(v, units, D, todayKey\)/.test(C),
+    '② ★★[T374] 그날 수요 판정이 **한 몸통**이다(`actDemandLeft`/`actDemandCap` · 손에 든 것은 인자 하나)');
+  ok(/function woodDemandLeft\(v, held\) \{ return actDemandLeft\(v, \(v && v\._woodOutLast\) \|\| 0, '_t325InflowToday', held\); \}/.test(C),
+    '② ★[T374] 나무의 `D` 는 **정본 관측 칸**이다(`_woodOutLast` — 새 수 0)');
+  //   ★[T374] 관측 나무꾼도 **같은 한 줄**로 퇴근한다(채집꾼과 한 자리 · T325 갈래 **앞**) — 손에 든 목재까지 센다.
+  ok(/job === 'lumberjack' && E\.woodActOn\(vil\.econ\)\) return !\(E\.woodDemandLeft\(vil\.econ, _t374Held\(vil, _T374_WOOD\)\) > 0\);/.test(VC)
+    && VC.indexOf("if (_t374Done(vil, job)) { _lifeGoHome(npc, '휴식'); return true; }") > 0
+    && VC.indexOf("if (_t374Done(vil, job)) { _lifeGoHome(npc, '휴식'); return true; }") < VC.indexOf("if (job === 'lumberjack' && vil.econ && _lifeEcon().woodActOn(vil.econ)) {"),
+    '② ★[T374] 관측 나무꾼도 T325 갈래 **앞**에서 퇴근한다(손에 든 목재까지 · 끈 팔 무접촉)');
   const body = (C.match(/function actToGranary\([\s\S]*?\n\}/) || [''])[0];
   ok(/TAX_RATE/.test(body) && !/[0-9]\.[0-9]/.test(body), '② ★그 몸통에 **새 수가 없다**(세율은 `TAX_RATE` 정본)');
   ok(/_lifeEcon\(\)\.woodToGranary\(/.test(VC), '② ★곳간 회계는 **econ 정본 한 함수**가 한다(생활층에 산수 0)');
