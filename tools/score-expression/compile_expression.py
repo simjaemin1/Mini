@@ -29,6 +29,8 @@ import numpy
 PLAN_SCHEMA = "mini.score-expression.plan.v1"
 OUTPUT_SCHEMA = "mini.score-expression.controls.v1"
 MANIFEST_SCHEMA = "mini.score-expression.render-manifest.v2"
+EXPRESSION_POLICY_SCHEMA = "mini.score-expression.gyeonggi-minyo-policy.v1"
+EXPRESSION_POLICY_ID = "gyeonggi-minyo-ari-vibrato-v1"
 CONTROL_FILENAME = "score_expression_controls.npz"
 MANIFEST_FILENAME = "score_expression_manifest.json"
 SAMPLE_RATE_HZ = 48_000
@@ -46,6 +48,20 @@ SLUR_LOUDNESS_TRANSITION_SECONDS = 0.080
 SLUR_LOUDNESS_TARGET_SETTLE_SECONDS = 0.100
 SLUR_LOUDNESS_TRANSITION_SHAPE = "minimum_jerk_linear_loudness"
 SLUR_BOUNDARY_F0_SCHEMA = "mini.score-expression.slur-boundary-f0.v1"
+
+# This policy is deliberately conservative.  The musical literature supports
+# conditioning yoseong/nonghyeon on genre, melodic function, phrase position,
+# duration, and performer interpretation; it does not justify a pitch-only
+# always-on LFO.  V1 therefore emits one reviewable candidate and otherwise
+# stays straight.  Candidate parameters remain disabled until an author opts
+# in using a separately reviewed audition plan.
+POLICY_RULE_SUSTAINED_CANDIDATE = "gyeonggi_ari.v1.sustained_before_rest_late_yoseong_candidate"
+POLICY_RULE_SHORT_LOCAL_TAIL_OFF = "gyeonggi_ari.v1.short_local_tail_no_full_yoseong"
+POLICY_RULE_DEFAULT_OFF = "gyeonggi_ari.v1.default_straight"
+POLICY_RULE_RELEASE_OFF = "gyeonggi_ari.v1.release_no_vibrato"
+VIBRATO_POLICY_DECISIONS = ("off", "candidate_off", "selected")
+VIBRATO_POLICY_STYLES = ("straight", "late_gentle_yoseong_candidate", "late_gentle_yoseong")
+VIBRATO_END_BEHAVIORS = ("none", "depth_fade_to_zero")
 
 
 class ScoreExpressionError(RuntimeError):
@@ -105,6 +121,345 @@ def _mapping(value: Any, *, label: str) -> Mapping[str, Any]:
     return value
 
 
+def _string(value: Any, *, label: str) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise ScoreExpressionError(f"{label} must be a non-empty string")
+    return value
+
+
+def _strict_bool(value: Any, *, label: str) -> bool:
+    if type(value) is not bool:
+        raise ScoreExpressionError(f"{label} must be a boolean")
+    return bool(value)
+
+
+def _expression_policy(raw: Any) -> dict[str, Any] | None:
+    """Validate the opt-in, literature-informed Gyeonggi-minyo policy header."""
+
+    if raw is None:
+        return None
+    value = _mapping(raw, label="plan.expression_policy")
+    if value.get("schema") != EXPRESSION_POLICY_SCHEMA:
+        raise ScoreExpressionError(f"plan.expression_policy.schema must be {EXPRESSION_POLICY_SCHEMA}")
+    if value.get("id") != EXPRESSION_POLICY_ID:
+        raise ScoreExpressionError(f"plan.expression_policy.id must be {EXPRESSION_POLICY_ID}")
+    automatic_activation = _strict_bool(
+        value.get("automatic_activation"), label="plan.expression_policy.automatic_activation"
+    )
+    if automatic_activation:
+        raise ScoreExpressionError("Gyeonggi-minyo policy v1 forbids automatic vibrato activation")
+    if value.get("default_decision") != "off":
+        raise ScoreExpressionError("plan.expression_policy.default_decision must be off")
+    seconds_per_beat = _number(
+        value.get("seconds_per_beat"),
+        label="plan.expression_policy.seconds_per_beat",
+        minimum=0.05,
+        maximum=10.0,
+    )
+    meter_beats = _integer(
+        value.get("meter_beats"), label="plan.expression_policy.meter_beats", minimum=1, maximum=32
+    )
+    evidence_status = _string(
+        value.get("evidence_status"), label="plan.expression_policy.evidence_status"
+    )
+    if "provisional" not in evidence_status:
+        raise ScoreExpressionError("plan.expression_policy.evidence_status must explicitly say provisional")
+    score_evidence_boundary = _string(
+        value.get("score_evidence_boundary"),
+        label="plan.expression_policy.score_evidence_boundary",
+    )
+    if "not_authentic_transcription" not in score_evidence_boundary:
+        raise ScoreExpressionError(
+            "plan.expression_policy.score_evidence_boundary must explicitly say not_authentic_transcription"
+        )
+    selection_raw = value.get("active_selection_provenance")
+    active_selection_provenance = None
+    if selection_raw is not None:
+        selection = _mapping(selection_raw, label="plan.expression_policy.active_selection_provenance")
+        selected_event_ids = selection.get("selected_event_ids")
+        if (
+            not isinstance(selected_event_ids, list)
+            or not selected_event_ids
+            or any(not isinstance(item, str) or not item for item in selected_event_ids)
+        ):
+            raise ScoreExpressionError(
+                "plan.expression_policy.active_selection_provenance.selected_event_ids must be a non-empty string list"
+            )
+        if len(set(selected_event_ids)) != len(selected_event_ids):
+            raise ScoreExpressionError(
+                "plan.expression_policy.active_selection_provenance.selected_event_ids repeats an event id"
+            )
+        source_rule = selection.get("source_policy_rule_id")
+        if source_rule != POLICY_RULE_SUSTAINED_CANDIDATE:
+            raise ScoreExpressionError(
+                "active audition selection must originate from the sustained candidate rule"
+            )
+        active_selection_provenance = {
+            "status": _string(
+                selection.get("status"),
+                label="plan.expression_policy.active_selection_provenance.status",
+            ),
+            "selected_by": _string(
+                selection.get("selected_by"),
+                label="plan.expression_policy.active_selection_provenance.selected_by",
+            ),
+            "selected_event_ids": list(selected_event_ids),
+            "source_policy_rule_id": source_rule,
+            "reason": _string(
+                selection.get("reason"),
+                label="plan.expression_policy.active_selection_provenance.reason",
+            ),
+            "evidence_boundary": _string(
+                selection.get("evidence_boundary"),
+                label="plan.expression_policy.active_selection_provenance.evidence_boundary",
+            ),
+        }
+        if "provisional" not in active_selection_provenance["evidence_boundary"]:
+            raise ScoreExpressionError(
+                "active selection evidence_boundary must explicitly say provisional"
+            )
+    return {
+        "schema": EXPRESSION_POLICY_SCHEMA,
+        "id": EXPRESSION_POLICY_ID,
+        "automatic_activation": False,
+        "default_decision": "off",
+        "seconds_per_beat": seconds_per_beat,
+        "meter_beats": meter_beats,
+        "evidence_status": evidence_status,
+        "score_evidence_boundary": score_evidence_boundary,
+        "active_selection_provenance": active_selection_provenance,
+        "rule_catalog": {
+            POLICY_RULE_SUSTAINED_CANDIDATE: {
+                "decision": "candidate_off",
+                "style": "late_gentle_yoseong_candidate",
+                "end_behavior": "depth_fade_to_zero",
+                "meaning": "reviewable late-yoseong candidate on a two-beat local phrase cadence before rest; never auto-enabled and not a Bonjo/Gyeonggi universal rule",
+            },
+            POLICY_RULE_SHORT_LOCAL_TAIL_OFF: {
+                "decision": "off",
+                "style": "straight",
+                "end_behavior": "none",
+                "meaning": "one-beat non-global descending arrival is not evidence for full-note yoseong",
+            },
+            POLICY_RULE_DEFAULT_OFF: {
+                "decision": "off",
+                "style": "straight",
+                "end_behavior": "none",
+                "meaning": "straight tone unless a reviewed contextual rule supplies a candidate",
+            },
+            POLICY_RULE_RELEASE_OFF: {
+                "decision": "off",
+                "style": "straight",
+                "end_behavior": "none",
+                "meaning": "release is an amplitude/voicing tail, not a new vibrato-bearing note",
+            },
+        },
+    }
+
+
+def _musical_context(
+    raw: Any,
+    *,
+    label: str,
+    duration_seconds: float,
+    policy: Mapping[str, Any] | None,
+) -> dict[str, Any] | None:
+    if raw is None:
+        if policy is not None:
+            raise ScoreExpressionError(f"{label}.musical_context is required by the expression policy")
+        return None
+    value = _mapping(raw, label=f"{label}.musical_context")
+    context = {
+        "genre": _string(value.get("genre"), label=f"{label}.musical_context.genre"),
+        "style": _string(value.get("style"), label=f"{label}.musical_context.style"),
+        "tori": _string(value.get("tori"), label=f"{label}.musical_context.tori"),
+        "mode": _string(value.get("mode"), label=f"{label}.musical_context.mode"),
+        "phrase_role": _string(value.get("phrase_role"), label=f"{label}.musical_context.phrase_role"),
+        "modal_degree": _string(value.get("modal_degree"), label=f"{label}.musical_context.modal_degree"),
+        "duration_beats": _number(
+            value.get("duration_beats"), label=f"{label}.musical_context.duration_beats", minimum=0.01
+        ),
+        "metric_beat": _number(
+            value.get("metric_beat"), label=f"{label}.musical_context.metric_beat", minimum=1.0
+        ),
+        "approach": _string(value.get("approach"), label=f"{label}.musical_context.approach"),
+        "followed_by_rest": _strict_bool(
+            value.get("followed_by_rest"), label=f"{label}.musical_context.followed_by_rest"
+        ),
+        "global_cadence": _strict_bool(
+            value.get("global_cadence"), label=f"{label}.musical_context.global_cadence"
+        ),
+    }
+    if policy is not None:
+        expected_duration = float(context["duration_beats"]) * float(policy["seconds_per_beat"])
+        if not math.isclose(expected_duration, duration_seconds, abs_tol=1.0e-6, rel_tol=0.0):
+            raise ScoreExpressionError(
+                f"{label}.musical_context.duration_beats does not match the event duration"
+            )
+        if float(context["metric_beat"]) > float(policy["meter_beats"]):
+            raise ScoreExpressionError(f"{label}.musical_context.metric_beat exceeds the policy meter")
+    return context
+
+
+def _expected_vibrato_policy_rule(context: Mapping[str, Any]) -> str:
+    if (
+        float(context["duration_beats"]) <= 1.0
+        and context["phrase_role"] == "local_phrase_tail"
+        and context["approach"] == "descending_arrival"
+        and context["global_cadence"] is False
+    ):
+        return POLICY_RULE_SHORT_LOCAL_TAIL_OFF
+    if (
+        float(context["duration_beats"]) >= 2.0
+        and context["phrase_role"] == "local_phrase_cadence_before_rest"
+        and context["approach"] == "phrase_arrival"
+        and context["followed_by_rest"] is True
+        and context["global_cadence"] is False
+    ):
+        return POLICY_RULE_SUSTAINED_CANDIDATE
+    return POLICY_RULE_DEFAULT_OFF
+
+
+def _candidate_parameters(raw: Any, *, label: str, duration_seconds: float) -> dict[str, Any]:
+    value = _mapping(raw, label=f"{label}.candidate_parameters")
+    onset = _number(
+        value.get("onset_seconds"),
+        label=f"{label}.candidate_parameters.onset_seconds",
+        minimum=0.0,
+        maximum=duration_seconds,
+    )
+    ramp = _number(
+        value.get("ramp_seconds"),
+        label=f"{label}.candidate_parameters.ramp_seconds",
+        minimum=0.005,
+        maximum=duration_seconds,
+    )
+    end_fade = _number(
+        value.get("end_fade_seconds"),
+        label=f"{label}.candidate_parameters.end_fade_seconds",
+        minimum=0.005,
+        maximum=duration_seconds,
+    )
+    return {
+        "rate_hz": _number(
+            value.get("rate_hz"),
+            label=f"{label}.candidate_parameters.rate_hz",
+            minimum=VIBRATO_RATE_RANGE_HZ[0],
+            maximum=VIBRATO_RATE_RANGE_HZ[1],
+        ),
+        "depth_cents": _number(
+            value.get("depth_cents"),
+            label=f"{label}.candidate_parameters.depth_cents",
+            minimum=VIBRATO_DEPTH_RANGE_CENTS[0],
+            maximum=VIBRATO_DEPTH_RANGE_CENTS[1],
+        ),
+        "onset_seconds": onset,
+        "ramp_seconds": ramp,
+        "end_fade_seconds": end_fade,
+        "parameter_status": _string(
+            value.get("parameter_status"),
+            label=f"{label}.candidate_parameters.parameter_status",
+        ),
+    }
+
+
+def _vibrato_policy(
+    raw: Any,
+    *,
+    label: str,
+    duration_seconds: float,
+    context: Mapping[str, Any] | None,
+    expression_policy: Mapping[str, Any] | None,
+    vibrato: Mapping[str, Any],
+    event_id: str,
+    is_release: bool = False,
+) -> dict[str, Any] | None:
+    vibrato_enabled = bool(vibrato["enabled"])
+    if raw is None:
+        if expression_policy is not None:
+            raise ScoreExpressionError(f"{label}.vibrato_policy is required by the expression policy")
+        return None
+    if expression_policy is None or (context is None and not is_release):
+        raise ScoreExpressionError(f"{label}.vibrato_policy requires plan.expression_policy and musical_context")
+    value = _mapping(raw, label=f"{label}.vibrato_policy")
+    decision = value.get("decision")
+    style = value.get("style")
+    end_behavior = value.get("end_behavior")
+    if decision not in VIBRATO_POLICY_DECISIONS:
+        raise ScoreExpressionError(f"{label}.vibrato_policy.decision is unsupported")
+    if style not in VIBRATO_POLICY_STYLES:
+        raise ScoreExpressionError(f"{label}.vibrato_policy.style is unsupported")
+    if end_behavior not in VIBRATO_END_BEHAVIORS:
+        raise ScoreExpressionError(f"{label}.vibrato_policy.end_behavior is unsupported")
+    rule_id = _string(value.get("policy_rule_id"), label=f"{label}.vibrato_policy.policy_rule_id")
+    expected_rule = POLICY_RULE_RELEASE_OFF if is_release else _expected_vibrato_policy_rule(context)
+    if rule_id != expected_rule:
+        raise ScoreExpressionError(
+            f"{label}.vibrato_policy.policy_rule_id must be the fired contextual rule {expected_rule}"
+        )
+    expected = expression_policy["rule_catalog"][expected_rule]
+    active_selection = expression_policy.get("active_selection_provenance")
+    selected_here = bool(
+        active_selection is not None
+        and event_id in active_selection["selected_event_ids"]
+        and active_selection["source_policy_rule_id"] == expected_rule
+    )
+    if selected_here:
+        if decision != "selected" or style != "late_gentle_yoseong" or end_behavior != "depth_fade_to_zero":
+            raise ScoreExpressionError(
+                f"{label}.vibrato_policy must explicitly mark the active audition choice as selected"
+            )
+        if not vibrato_enabled:
+            raise ScoreExpressionError(f"{label}.vibrato must be enabled for an explicitly selected audition event")
+    else:
+        if decision != expected["decision"] or style != expected["style"] or end_behavior != expected["end_behavior"]:
+            raise ScoreExpressionError(f"{label}.vibrato_policy does not match fired rule {expected_rule}")
+        if vibrato_enabled:
+            raise ScoreExpressionError(
+                f"{label}.vibrato cannot be enabled without active_selection_provenance"
+            )
+    candidate = None
+    parameter_status = None
+    evidence_boundary = None
+    if decision in ("candidate_off", "selected"):
+        candidate = _candidate_parameters(
+            value.get("candidate_parameters"), label=f"{label}.vibrato_policy", duration_seconds=duration_seconds
+        )
+        if "provisional" not in str(candidate["parameter_status"]):
+            raise ScoreExpressionError(
+                f"{label}.vibrato_policy.candidate_parameters.parameter_status must explicitly say provisional"
+            )
+    elif "candidate_parameters" in value:
+        raise ScoreExpressionError(f"{label}.vibrato_policy candidate parameters require candidate_off")
+    if decision == "selected":
+        parameter_status = _string(
+            value.get("parameter_status"), label=f"{label}.vibrato_policy.parameter_status"
+        )
+        evidence_boundary = _string(
+            value.get("evidence_boundary"), label=f"{label}.vibrato_policy.evidence_boundary"
+        )
+        if "provisional" not in parameter_status or "provisional" not in evidence_boundary:
+            raise ScoreExpressionError(
+                f"{label}.vibrato_policy selected parameters and evidence must explicitly say provisional"
+            )
+        for key in ("rate_hz", "depth_cents", "onset_seconds", "ramp_seconds", "end_fade_seconds"):
+            if not math.isclose(float(vibrato[key]), float(candidate[key]), abs_tol=1.0e-12, rel_tol=0.0):
+                raise ScoreExpressionError(
+                    f"{label}.vibrato.{key} must exactly match the selected provisional candidate"
+                )
+    return {
+        "decision": decision,
+        "style": style,
+        "policy_rule_id": rule_id,
+        "end_behavior": end_behavior,
+        "rule_fired": True,
+        "candidate_parameters": candidate,
+        "parameter_status": parameter_status,
+        "evidence_boundary": evidence_boundary,
+        "active_selection_provenance": active_selection if selected_here else None,
+    }
+
+
 def _scope(plan: Mapping[str, Any]) -> dict[str, bool]:
     if plan.get("schema") != PLAN_SCHEMA:
         raise ScoreExpressionError(f"plan.schema must be {PLAN_SCHEMA}")
@@ -144,7 +499,7 @@ def _gesture_points(raw: Any, *, duration_seconds: float, label: str) -> list[tu
 
 def _vibrato(raw: Any, *, label: str) -> dict[str, float | bool]:
     if raw is None:
-        return {"enabled": False, "rate_hz": 0.0, "depth_cents": 0.0, "onset_seconds": 0.0, "ramp_seconds": 0.0}
+        return {"enabled": False, "rate_hz": 0.0, "depth_cents": 0.0, "onset_seconds": 0.0, "ramp_seconds": 0.0, "end_fade_seconds": 0.0}
     value = _mapping(raw, label=f"{label}.vibrato")
     enabled = value.get("enabled") is True
     if not enabled:
@@ -153,15 +508,27 @@ def _vibrato(raw: Any, *, label: str) -> dict[str, float | bool]:
         extras = set(value) - {"enabled"}
         if extras:
             raise ScoreExpressionError(f"{label}.vibrato has parameters although enabled is not true")
-        return {"enabled": False, "rate_hz": 0.0, "depth_cents": 0.0, "onset_seconds": 0.0, "ramp_seconds": 0.0}
+        return {"enabled": False, "rate_hz": 0.0, "depth_cents": 0.0, "onset_seconds": 0.0, "ramp_seconds": 0.0, "end_fade_seconds": 0.0}
     rate = _number(value.get("rate_hz"), label=f"{label}.vibrato.rate_hz", minimum=VIBRATO_RATE_RANGE_HZ[0], maximum=VIBRATO_RATE_RANGE_HZ[1])
     depth = _number(value.get("depth_cents"), label=f"{label}.vibrato.depth_cents", minimum=VIBRATO_DEPTH_RANGE_CENTS[0], maximum=VIBRATO_DEPTH_RANGE_CENTS[1])
     onset = _number(value.get("onset_seconds", 0.0), label=f"{label}.vibrato.onset_seconds", minimum=0.0, maximum=60.0)
     ramp = _number(value.get("ramp_seconds", 0.08), label=f"{label}.vibrato.ramp_seconds", minimum=0.005, maximum=3.0)
-    return {"enabled": True, "rate_hz": rate, "depth_cents": depth, "onset_seconds": onset, "ramp_seconds": ramp}
+    end_fade = _number(
+        value.get("end_fade_seconds", 0.0),
+        label=f"{label}.vibrato.end_fade_seconds",
+        minimum=0.0,
+        maximum=3.0,
+    )
+    return {"enabled": True, "rate_hz": rate, "depth_cents": depth, "onset_seconds": onset, "ramp_seconds": ramp, "end_fade_seconds": end_fade}
 
 
-def _event(raw: Any, *, index: int, previous: dict[str, Any] | None) -> dict[str, Any]:
+def _event(
+    raw: Any,
+    *,
+    index: int,
+    previous: dict[str, Any] | None,
+    expression_policy: Mapping[str, Any] | None,
+) -> dict[str, Any]:
     value = _mapping(raw, label=f"events[{index}]")
     event_id = value.get("id")
     if not isinstance(event_id, str) or not event_id:
@@ -190,6 +557,18 @@ def _event(raw: Any, *, index: int, previous: dict[str, Any] | None) -> dict[str
             raise ScoreExpressionError("a RELEASE requires a previous voiced event")
         if "pitch_hz" in value:
             raise ScoreExpressionError("a RELEASE must not declare pitch_hz")
+        duration = end - start
+        vibrato = _vibrato(value.get("vibrato"), label=f"events[{index}]")
+        vibrato_policy = _vibrato_policy(
+            value.get("vibrato_policy"),
+            label=f"events[{index}]",
+            duration_seconds=duration,
+            context=None,
+            expression_policy=expression_policy,
+            vibrato=vibrato,
+            event_id=event_id,
+            is_release=True,
+        )
         return {
             "id": event_id,
             "start_seconds": start,
@@ -197,7 +576,9 @@ def _event(raw: Any, *, index: int, previous: dict[str, Any] | None) -> dict[str
             "articulation": kind,
             "pitch_hz": 0.0,
             "gesture_points": [(0.0, 0.0), (end - start, 0.0)],
-            "vibrato": _vibrato(value.get("vibrato"), label=f"events[{index}]"),
+            "vibrato": vibrato,
+            "musical_context": None,
+            "vibrato_policy": vibrato_policy,
             # A release starts from the preceding authored level instead of
             # silently jumping to a generic volume before it decays.
             "steady_loudness_db": float(previous["steady_loudness_db"]),
@@ -208,6 +589,23 @@ def _event(raw: Any, *, index: int, previous: dict[str, Any] | None) -> dict[str
     vibrato = _vibrato(value.get("vibrato"), label=f"events[{index}]")
     if float(vibrato["onset_seconds"]) >= duration:
         raise ScoreExpressionError(f"events[{index}].vibrato.onset_seconds must be inside the event")
+    if float(vibrato["end_fade_seconds"]) > duration:
+        raise ScoreExpressionError(f"events[{index}].vibrato.end_fade_seconds exceeds the event duration")
+    musical_context = _musical_context(
+        value.get("musical_context"),
+        label=f"events[{index}]",
+        duration_seconds=duration,
+        policy=expression_policy,
+    )
+    vibrato_policy = _vibrato_policy(
+        value.get("vibrato_policy"),
+        label=f"events[{index}]",
+        duration_seconds=duration,
+        context=musical_context,
+        expression_policy=expression_policy,
+        vibrato=vibrato,
+        event_id=event_id,
+    )
     return {
         "id": event_id,
         "start_seconds": start,
@@ -216,6 +614,8 @@ def _event(raw: Any, *, index: int, previous: dict[str, Any] | None) -> dict[str
         "pitch_hz": pitch,
         "gesture_points": _gesture_points(value.get("gesture_points"), duration_seconds=duration, label=f"events[{index}]"),
         "vibrato": vibrato,
+        "musical_context": musical_context,
+        "vibrato_policy": vibrato_policy,
         "steady_loudness_db": steady_loudness,
     }
 
@@ -226,6 +626,7 @@ def validate_plan(path: str | Path) -> dict[str, Any]:
     plan_path = Path(path).expanduser().resolve()
     plan = _load_json(plan_path)
     scope = _scope(plan)
+    expression_policy = _expression_policy(plan.get("expression_policy"))
     instrument = _mapping(plan.get("instrument"), label="plan.instrument")
     if instrument.get("id") != "daegeum" or instrument.get("sustained") is not True:
         raise ScoreExpressionError("v1 accepts only an explicit sustained daegeum R&D plan")
@@ -238,19 +639,49 @@ def validate_plan(path: str | Path) -> dict[str, Any]:
     events: list[dict[str, Any]] = []
     seen_ids: set[str] = set()
     for index, raw in enumerate(events_raw):
-        item = _event(raw, index=index, previous=events[-1] if events else None)
+        item = _event(
+            raw,
+            index=index,
+            previous=events[-1] if events else None,
+            expression_policy=expression_policy,
+        )
         if item["id"] in seen_ids:
             raise ScoreExpressionError("plan.events repeats an id")
         seen_ids.add(item["id"])
         events.append(item)
     if events[0]["articulation"] == "slur":
         raise ScoreExpressionError("the first event cannot be a SLUR")
+    if expression_policy is not None and expression_policy["active_selection_provenance"] is not None:
+        selected_ids = set(expression_policy["active_selection_provenance"]["selected_event_ids"])
+        actual_selected_ids = {
+            str(event["id"])
+            for event in events
+            if event["vibrato_policy"] is not None
+            and event["vibrato_policy"]["decision"] == "selected"
+        }
+        if selected_ids != actual_selected_ids:
+            raise ScoreExpressionError(
+                "active_selection_provenance.selected_event_ids must exactly match selected event policies"
+            )
+    fired_policy_rules = [
+        {
+            "event_id": event["id"],
+            "policy_rule_id": event["vibrato_policy"]["policy_rule_id"],
+            "decision": event["vibrato_policy"]["decision"],
+            "style": event["vibrato_policy"]["style"],
+            "end_behavior": event["vibrato_policy"]["end_behavior"],
+        }
+        for event in events
+        if event["vibrato_policy"] is not None
+    ]
     return {
         "plan_path": plan_path,
         "plan_sha256": _sha256(plan_path),
         "scope": scope,
+        "expression_policy": expression_policy,
         "control_hz": control_hz,
         "events": events,
+        "fired_policy_rules": fired_policy_rules,
         "duration_seconds": max(event["end_seconds"] for event in events),
     }
 
@@ -421,10 +852,17 @@ def _vibrato_curve(event: Mapping[str, Any], relative_times: numpy.ndarray, *, f
     depth = float(config["depth_cents"])
     onset = float(config["onset_seconds"])
     ramp = float(config["ramp_seconds"])
+    end_fade = float(config["end_fade_seconds"])
     duration = float(event["end_seconds"] - event["start_seconds"])
     envelope = numpy.clip((relative_times - onset) / ramp, 0.0, 1.0)
     if fade_at_end:
-        envelope *= numpy.clip((duration - relative_times) / ramp, 0.0, 1.0)
+        fade_seconds = end_fade if end_fade > 0.0 else ramp
+        envelope *= numpy.clip((duration - relative_times) / fade_seconds, 0.0, 1.0)
+        # The event interval is half-open, so ``duration`` itself has no
+        # control row.  Make the final row explicit zero rather than leaving a
+        # small off-centre pitch immediately before a rest/release boundary.
+        if envelope.size:
+            envelope[-1] = 0.0
     cents = depth * envelope * numpy.sin(2.0 * numpy.pi * rate * numpy.maximum(relative_times - onset, 0.0))
     return cents.astype(numpy.float32), numpy.full(relative_times.shape, rate, dtype=numpy.float32), numpy.full(relative_times.shape, depth, dtype=numpy.float32)
 
@@ -524,7 +962,16 @@ def compile_plan(path: str | Path) -> dict[str, Any]:
         else:
             f0_hz[mask] = (base_hz * numpy.power(2.0, gesture / 1200.0)).astype(numpy.float32)
         next_is_slur = index + 1 < len(events) and events[index + 1]["articulation"] == "slur"
-        vib_cents, rate, depth = _vibrato_curve(event, local, fade_at_end=next_is_slur)
+        policy_fades_at_end = bool(
+            event["vibrato_policy"] is not None
+            and event["vibrato_policy"]["end_behavior"] == "depth_fade_to_zero"
+        )
+        explicit_end_fade = float(event["vibrato"]["end_fade_seconds"]) > 0.0
+        vib_cents, rate, depth = _vibrato_curve(
+            event,
+            local,
+            fade_at_end=next_is_slur or policy_fades_at_end or explicit_end_fade,
+        )
         if kind == "slur":
             vib_cents = numpy.where(local < SLUR_TRANSITION_SECONDS, 0.0, vib_cents).astype(numpy.float32)
         f0_hz[mask] *= numpy.power(2.0, vib_cents / 1200.0).astype(numpy.float32)
@@ -639,6 +1086,9 @@ def render_controls(*, plan: str | Path, output_dir: str | Path) -> dict[str, An
             "articulation": event["articulation"],
             "pitch_hz": event["pitch_hz"],
             "vibrato_enabled": bool(event["vibrato"]["enabled"]),
+            "vibrato": event["vibrato"],
+            "musical_context": event["musical_context"],
+            "vibrato_policy": event["vibrato_policy"],
         }
         if event["articulation"] == "slur":
             try:
@@ -657,6 +1107,8 @@ def render_controls(*, plan: str | Path, output_dir: str | Path) -> dict[str, An
             "model_training_run": False,
             "game_or_runtime_asset_read_or_written": False,
         },
+        "expression_policy": compiled["expression_policy"],
+        "fired_policy_rules": compiled["fired_policy_rules"],
         "controls": {
             "artifact": CONTROL_FILENAME,
             "sha256": _sha256(controls),

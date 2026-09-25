@@ -42,6 +42,36 @@ labels, a performance claim, a training target, or a rights clearance.  A
 separate sustained-scale scan did not meet that strict periodic screen, which
 is why no globally always-on wobble is introduced.
 
+### Gyeonggi-minyo / Ari policy v1
+
+`plans/ari_source_led_response_r1.json` now carries a fail-closed musical
+policy, not a pitch-only vibrato switch.  Every voiced event preserves
+`musical_context`: genre, style, tori, mode, phrase role, modal degree,
+duration in beats, metric beat, melodic approach, whether a rest follows, and
+whether the event is a global cadence.  Every event also records an explicit
+`vibrato_policy` decision, style, fired rule ID, and end behavior.  The
+compiler checks those contextual rules and copies both the context and fired
+rule into its in-memory result and JSON manifest.
+
+The policy deliberately defaults to straight tone.  In particular, b10_e2 is
+a one-beat `local_phrase_tail` reached by `descending_arrival`, and is not a
+global cadence; `gyeonggi_ari.v1.short_local_tail_no_full_yoseong` therefore
+keeps its former full-note vibrato off.  B08 is a different case: it is a
+two-beat local phrase cadence followed by a written rest.  It receives one
+late, gentle *candidate*, but the canonical plan records `candidate_off` and
+does not synthesize it automatically.
+
+`plans/ari_gyeonggi_policy_r1_audition.json` is the separate B1 audition that
+explicitly selects only that b08 candidate.  Its 3.45 Hz / 18 cent / 0.72 s
+onset / 0.18 s ramp and end-fade values are marked provisional local proxy
+bounds, not measurements of an authentic performance.  The compiler requires
+the selected controls to exactly match the recorded candidate and tapers the
+depth to zero over `end_fade_seconds`.  Both plans explicitly state that the
+underlying browser score is an authorial Western pitch-grid skeleton—not an
+authentic Bonjo Arirang, Gyeonggi-minyo, or Daegeum transcription.  A real
+reference-performance curve is still required before an authenticity claim,
+training label, default BGM, or release decision.
+
 ## Plan and output
 
 The input plan is an explicit R&D-only JSON object.  It has one sustained
@@ -76,7 +106,8 @@ release:
       "slur_from_previous": true,
       "vibrato": {
         "enabled": true, "rate_hz": 3.45, "depth_cents": 23.0,
-        "onset_seconds": 0.20, "ramp_seconds": 0.08
+        "onset_seconds": 0.20, "ramp_seconds": 0.08,
+        "end_fade_seconds": 0.08
       }
     },
     {

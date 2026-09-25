@@ -23,6 +23,7 @@ import ddsp_gugak_public_runtime as runtime
 
 
 TRACKED_SOURCE_LED_ARI_PLAN = HERE / "plans" / "ari_source_led_response_r1.json"
+GYEONGGI_POLICY_AUDITION_PLAN = HERE / "plans" / "ari_gyeonggi_policy_r1_audition.json"
 
 
 def _scope() -> dict[str, bool]:
@@ -153,7 +154,25 @@ class CompileExpressionTests(unittest.TestCase):
             [event["articulation"] for event in events],
             ["breath_start", "breath_start", "rearticulate", "slur", "slur", "slur", "release"],
         )
-        self.assertEqual([event["id"] for event in events if event["vibrato"]["enabled"]], ["b10_e2_slur_explicit_vibrato"])
+        self.assertEqual([event["id"] for event in events if event["vibrato"]["enabled"]], [])
+        b08 = events[0]
+        self.assertEqual(b08["musical_context"]["phrase_role"], "local_phrase_cadence_before_rest")
+        self.assertTrue(b08["musical_context"]["followed_by_rest"])
+        self.assertEqual(b08["vibrato_policy"]["decision"], "candidate_off")
+        self.assertEqual(
+            b08["vibrato_policy"]["policy_rule_id"],
+            compiler.POLICY_RULE_SUSTAINED_CANDIDATE,
+        )
+        b10_tail = events[5]
+        self.assertEqual(b10_tail["musical_context"]["duration_beats"], 1.0)
+        self.assertEqual(b10_tail["musical_context"]["phrase_role"], "local_phrase_tail")
+        self.assertEqual(b10_tail["musical_context"]["approach"], "descending_arrival")
+        self.assertFalse(b10_tail["musical_context"]["global_cadence"])
+        self.assertEqual(b10_tail["vibrato_policy"]["decision"], "off")
+        self.assertEqual(
+            b10_tail["vibrato_policy"]["policy_rule_id"],
+            compiler.POLICY_RULE_SHORT_LOCAL_TAIL_OFF,
+        )
         # The b09 re-attack and first b10 slur share a timestamp, but their
         # distinct explicit states survive compilation; time alone cannot
         # rewrite the re-attack into legato.
@@ -186,6 +205,63 @@ class CompileExpressionTests(unittest.TestCase):
             self.assertGreater(float(result["vibrato_depth_cents"][230]), 0.0)
             self.assertEqual(float(result["f0_hz"][300]), 0.0)
             self.assertGreater(float(result["voicing"][300]), float(result["voicing"][349]))
+
+    def test_explicit_audition_selects_only_the_b08_candidate_and_fades_its_depth(self) -> None:
+        result = compiler.compile_plan(GYEONGGI_POLICY_AUDITION_PLAN)
+        selected = [
+            event
+            for event in result["events"]
+            if event["vibrato_policy"] is not None
+            and event["vibrato_policy"]["decision"] == "selected"
+        ]
+        self.assertEqual([event["id"] for event in selected], ["b08_e0_breath"])
+        event = selected[0]
+        self.assertTrue(event["vibrato"]["enabled"])
+        self.assertEqual(event["vibrato"]["end_fade_seconds"], 0.18)
+        self.assertEqual(event["vibrato_policy"]["style"], "late_gentle_yoseong")
+        self.assertIsNotNone(event["vibrato_policy"]["active_selection_provenance"])
+        self.assertEqual(
+            result["expression_policy"]["score_evidence_boundary"],
+            "authorial_western_pitch_grid_skeleton_not_authentic_transcription",
+        )
+        cents = result["vibrato_cents"]
+        self.assertEqual(float(cents[71]), 0.0)
+        self.assertGreater(float(numpy.max(numpy.abs(cents[80:126]))), 10.0)
+        self.assertLess(abs(float(cents[142])), 2.0)
+        self.assertEqual(float(cents[143]), 0.0)
+        self.assertEqual(float(cents[144]), 0.0)
+        with tempfile.TemporaryDirectory() as temporary:
+            manifest = compiler.render_controls(
+                plan=GYEONGGI_POLICY_AUDITION_PLAN,
+                output_dir=Path(temporary) / "policy-audition-controls",
+            )
+            self.assertEqual(manifest["expression_policy"]["id"], compiler.EXPRESSION_POLICY_ID)
+            selected_summary = next(
+                event for event in manifest["events"] if event["id"] == "b08_e0_breath"
+            )
+            self.assertEqual(selected_summary["musical_context"]["modal_degree"], "do")
+            self.assertEqual(selected_summary["vibrato_policy"]["decision"], "selected")
+            self.assertEqual(selected_summary["vibrato"]["end_fade_seconds"], 0.18)
+            fired = next(
+                item for item in manifest["fired_policy_rules"] if item["event_id"] == "b08_e0_breath"
+            )
+            self.assertEqual(fired["policy_rule_id"], compiler.POLICY_RULE_SUSTAINED_CANDIDATE)
+
+    def test_policy_rejects_reenabling_the_short_non_global_b10_tail(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            payload = json.loads(TRACKED_SOURCE_LED_ARI_PLAN.read_text(encoding="utf-8"))
+            tail = payload["events"][5]
+            tail["vibrato"] = {
+                "enabled": True,
+                "rate_hz": 3.45,
+                "depth_cents": 23.0,
+                "onset_seconds": 0.20,
+                "ramp_seconds": 0.08,
+                "end_fade_seconds": 0.08,
+            }
+            path = _write_plan(Path(temporary), payload)
+            with self.assertRaisesRegex(compiler.ScoreExpressionError, "cannot be enabled without"):
+                compiler.compile_plan(path)
 
     def test_compiler_keeps_valid_prior_vibrato_and_early_target_motion_outside_preview_policy(self) -> None:
         """A generic preview limit must not silently narrow score compilation."""
