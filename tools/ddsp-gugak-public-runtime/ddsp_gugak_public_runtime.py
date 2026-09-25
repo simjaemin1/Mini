@@ -265,9 +265,17 @@ def _validate_plan(path: Path) -> Tuple[Mapping[str, Any], List[Dict[str, Any]],
             raise RuntimeContractError("plan must explicitly name breath_start, rearticulate, slur, or release")
         item: Dict[str, Any] = {"id": event_id, "start_seconds": start, "end_seconds": end, "articulation": articulation}
         if articulation == "release":
-            if prior_event is None or "pitch_hz" in event:
+            if prior_event is None or "pitch_hz" not in prior_event or "pitch_hz" in event:
                 raise RuntimeContractError("a release must follow a voiced event and cannot declare a new pitch")
+            if "vibrato" in event:
+                raise RuntimeContractError("a release inherits its source vibrato and cannot declare a new vibrato")
             item["steady_loudness_db"] = float(prior_event["steady_loudness_db"])
+            item["release_source"] = {
+                "event_id": str(prior_event["id"]),
+                "nominal_pitch_hz": float(prior_event["pitch_hz"]),
+                "elapsed_seconds_at_release": float(prior_event["end_seconds"]) - float(prior_event["start_seconds"]),
+                "vibrato": dict(_mapping(prior_event["vibrato"], label="normalized release-source vibrato")),
+            }
         else:
             pitch = _finite_number(event.get("pitch_hz"), label=f"plan.events[{index}].pitch_hz", minimum=20.0, maximum=4_000.0)
             steady = _finite_number(event.get("steady_loudness_db"), label=f"plan.events[{index}].steady_loudness_db", minimum=-70.0, maximum=-3.0)
@@ -342,6 +350,29 @@ def _minimum_jerk_progress(progress: float) -> float:
     return unit * unit * unit * (10.0 + unit * (-15.0 + 6.0 * unit))
 
 
+def _release_vibrato_cents(event: Mapping[str, Any], local_seconds: float, event_duration: float) -> float:
+    """Continue source phase while closing vibrato depth on nominal pitch.
+
+    The score's release remains pitchless: ``release_source`` is normalized
+    provenance from the immediately preceding voiced event, not a newly
+    authored release pitch or gesture.  The final 250 Hz release row must be
+    nominal, so the depth reaches zero one frame before the half-open event
+    end while phase itself keeps advancing at the source rate.
+    """
+
+    source = _mapping(event.get("release_source"), label="normalized release source")
+    source_vibrato = _mapping(source.get("vibrato"), label="normalized release-source vibrato")
+    if source_vibrato.get("enabled") is not True:
+        return 0.0
+    source_elapsed = float(source["elapsed_seconds_at_release"]) + local_seconds
+    continued = _vibrato_cents({"vibrato": source_vibrato}, source_elapsed)
+    fade_span = event_duration - FRAME_RESOLUTION
+    if fade_span <= 0.0:
+        return 0.0
+    depth_envelope = 1.0 - _minimum_jerk_progress(local_seconds / fade_span)
+    return continued * depth_envelope
+
+
 def slur_transition_hz(initial_hz: float, target_hz: float, local_seconds: float, *, transition_seconds: float = SLUR_TRANSITION_SECONDS) -> float:
     """Minimum-jerk pitch transition in log-frequency/cents, not linear Hz."""
 
@@ -353,6 +384,77 @@ def slur_transition_hz(initial_hz: float, target_hz: float, local_seconds: float
     target_cents = 1_200.0 * math.log2(target)
     cents = start_cents + (target_cents - start_cents) * _minimum_jerk_progress(local / duration)
     return math.pow(2.0, cents / 1_200.0)
+
+
+def release_vibrato_control_qa(
+    frames: Sequence[Mapping[str, Any]],
+    events: Sequence[Mapping[str, Any]],
+) -> Dict[str, Any]:
+    """Fail closed unless every rendered release follows its declared source."""
+
+    records: List[Dict[str, Any]] = []
+    completed_nominal_gates: List[bool] = []
+    for event in events:
+        if event.get("articulation") != "release":
+            continue
+        event_id = str(event["id"])
+        source = _mapping(event.get("release_source"), label=f"{event_id} release source")
+        event_frames = [frame for frame in frames if str(frame["event_id"]) == event_id]
+        if not event_frames:
+            records.append({
+                "release_event_id": event_id,
+                "source_event_id": str(source["event_id"]),
+                "truncated_before_release": True,
+                "final_nominal_pitch_gate_passed": None,
+            })
+            continue
+        duration = float(event["end_seconds"]) - float(event["start_seconds"])
+        nominal_hz = float(source["nominal_pitch_hz"])
+        for frame in event_frames:
+            local = float(frame["time_seconds"]) - float(event["start_seconds"])
+            expected_cents = _release_vibrato_cents(event, local, duration)
+            expected_hz = nominal_hz * math.pow(2.0, expected_cents / 1_200.0)
+            if not math.isclose(float(frame["vibrato_cents"]), expected_cents, abs_tol=1.0e-10, rel_tol=0.0):
+                raise RuntimeContractError("release vibrato no longer preserves source phase and depth-decay policy")
+            if not math.isclose(float(frame["f0_hz"]), expected_hz, abs_tol=1.0e-9, rel_tol=0.0):
+                raise RuntimeContractError("release F0 no longer follows its declared nominal source pitch and vibrato")
+        final_control_time = float(event["end_seconds"]) - FRAME_RESOLUTION
+        complete = float(event_frames[-1]["time_seconds"]) >= final_control_time - 1.0e-12
+        final_gate: Optional[bool] = None
+        if complete:
+            final_gate = (
+                abs(float(event_frames[-1]["vibrato_cents"])) <= 1.0e-10
+                and math.isclose(float(event_frames[-1]["f0_hz"]), nominal_hz, abs_tol=1.0e-9, rel_tol=0.0)
+            )
+            if not final_gate:
+                raise RuntimeContractError("release must close on nominal pitch at its final 250 Hz control row")
+            completed_nominal_gates.append(final_gate)
+        records.append({
+            "release_event_id": event_id,
+            "source_event_id": str(source["event_id"]),
+            "source_vibrato_enabled": _mapping(source["vibrato"], label="release-source vibrato").get("enabled") is True,
+            "source_nominal_pitch_hz": nominal_hz,
+            "first_release_frame_index": int(event_frames[0]["frame_index"]),
+            "first_release_vibrato_cents": float(event_frames[0]["vibrato_cents"]),
+            "last_release_frame_index": int(event_frames[-1]["frame_index"]),
+            "last_release_vibrato_cents": float(event_frames[-1]["vibrato_cents"]),
+            "last_release_f0_hz": float(event_frames[-1]["f0_hz"]),
+            "truncated_before_release": False,
+            "truncated_during_release": not complete,
+            "final_nominal_pitch_gate_passed": final_gate,
+        })
+    if not records:
+        raise RuntimeContractError("the explicit plan must contain a release for release-vibrato QA")
+    return {
+        "passed": True,
+        "policy": {
+            "phase_continuity": "source_vibrato_clock_continues_without_reset",
+            "depth_envelope": "minimum_jerk_to_zero_on_final_control_row",
+            "pitch_source": "normalized_immediately_prior_voiced_event_nominal_pitch",
+        },
+        "final_nominal_pitch_gate_passed": all(completed_nominal_gates) if completed_nominal_gates else None,
+        "events": records,
+    }
 
 
 def slur_transition_control_qa(
@@ -703,10 +805,15 @@ def build_score_controls(
         vibrato_cents = 0.0
         if articulation == "release":
             release = max(0.0, 1.0 - local / event_duration)
-            # A release does not declare a new score pitch, but a sustained
-            # wind-instrument tail must retain its immediately prior voiced
-            # F0 while the authored loudness/voicing curves decay.
-            f0_hz = prior_f0
+            # A release does not declare a new score pitch.  Its normalized
+            # source record keeps the prior nominal pitch and source vibrato
+            # phase explicit: phase advances continuously while a separate
+            # minimum-jerk depth envelope reaches zero on the final release
+            # control row, preventing a one-sided vibrato offset from being
+            # frozen through the tail.
+            release_source = _mapping(event["release_source"], label="normalized release source")
+            vibrato_cents = _release_vibrato_cents(event, local, event_duration)
+            f0_hz = float(release_source["nominal_pitch_hz"]) * math.pow(2.0, vibrato_cents / 1200.0)
             # ``prior_loudness`` is the previous *frame's* rendered value,
             # not the event's start level.  Multiplying it here would make a
             # release decay recursively once per 4 ms frame.  The normalized
@@ -776,6 +883,7 @@ def build_score_controls(
         transition_seconds=slur_transition_seconds,
         pitch_mode=slur_pitch_mode,
     )
+    release_vibrato_qa = release_vibrato_control_qa(frames, events)
     summary = {
         "source_plan": _file_record(plan_path.expanduser().resolve()),
         "source_plan_control_hz": plan["control_hz"],
@@ -785,7 +893,15 @@ def build_score_controls(
         "truncated_for_smoke": max_seconds is not None and render_duration < duration,
         "full_plan_duration_seconds": duration,
         "articulation_frame_counts": {name: sum(1 for frame in frames if frame["articulation"] == name) for name in ARTICULATIONS},
-        "explicit_release_decoder_mapping": "release declares no new score pitch but carries the immediately prior rendered F0, allowing both published harmonic and learned-noise branches to decay through the explicit decoder loudness curve (release ** 1.35) and compiled release voicing gate",
+        "explicit_release_decoder_mapping": "release declares no new score pitch; its normalized manifest record names the immediately prior voiced source event and nominal pitch. Source vibrato phase continues at its authored rate while a minimum-jerk depth envelope reaches zero on the final 250 Hz release row, so both published branches close on nominal pitch while decoder loudness (release ** 1.35) and voicing decay.",
+        "release_vibrato_policy": {
+            "source_event_recorded_in_normalized_manifest": True,
+            "phase": "continue the immediately prior voiced event's authored vibrato clock without reset",
+            "depth_envelope": "1 - minimum_jerk_progress(local_seconds / (release_duration_seconds - 0.004))",
+            "final_control_row_closes_on_nominal_pitch": True,
+            "release_may_declare_new_pitch_or_vibrato": False,
+        },
+        "release_vibrato_qa": release_vibrato_qa,
         "decoder_inputs": (
             "F0 and linear loudness only; raw score dB is never passed to the decoder. breath/rearticulate/slur/release remain authorial controls, not inferred categorical model labels. The experimental hard-step candidate is a control trajectory, not a learned slur. Its separately authored dynamic still moves monotonically from entry to target over 80 ms without overshoot. Release loudness starts from one fixed inherited steady level."
             if hard_step

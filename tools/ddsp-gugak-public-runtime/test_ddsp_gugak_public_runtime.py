@@ -38,7 +38,32 @@ class PublicRuntimeTests(unittest.TestCase):
         self.assertEqual(frames[900]["articulation"], "rearticulate")
         self.assertEqual(frames[1080]["articulation"], "slur")
         self.assertEqual(frames[1620]["articulation"], "release")
-        self.assertAlmostEqual(frames[1620]["f0_hz"], frames[1619]["f0_hz"], places=6)
+        # Release keeps the source vibrato clock advancing instead of freezing
+        # the last (negative) vibrato offset, then closes exactly on nominal
+        # pitch at the final half-open 250 Hz control row.
+        _, events, _ = runtime._validate_plan(PLAN)
+        source_event = events[-2]
+        release_event = events[-1]
+        source_elapsed = source_event["end_seconds"] - source_event["start_seconds"]
+        expected_release_entry_cents = runtime._vibrato_cents(source_event, source_elapsed)
+        self.assertAlmostEqual(frames[1620]["vibrato_cents"], expected_release_entry_cents, places=10)
+        self.assertAlmostEqual(
+            frames[1620]["f0_hz"],
+            source_event["pitch_hz"] * 2 ** (expected_release_entry_cents / 1200.0),
+            places=10,
+        )
+        self.assertAlmostEqual(frames[1679]["vibrato_cents"], 0.0, places=12)
+        self.assertAlmostEqual(frames[1679]["f0_hz"], source_event["pitch_hz"], places=10)
+        self.assertEqual(release_event["release_source"]["event_id"], source_event["id"])
+        self.assertEqual(release_event["release_source"]["nominal_pitch_hz"], source_event["pitch_hz"])
+        self.assertEqual(release_event["release_source"]["vibrato"], source_event["vibrato"])
+        self.assertTrue(summary["release_vibrato_policy"]["final_control_row_closes_on_nominal_pitch"])
+        self.assertTrue(summary["release_vibrato_qa"]["passed"])
+        self.assertTrue(summary["release_vibrato_qa"]["final_nominal_pitch_gate_passed"])
+        self.assertEqual(
+            summary["release_vibrato_qa"]["policy"]["phase_continuity"],
+            "source_vibrato_clock_continues_without_reset",
+        )
         # The release maps its fixed event-start level once; it is not a
         # per-frame recursive attenuation.
         self.assertAlmostEqual(frames[1650]["loudness_linear"], 10 ** (-29 / 20) * (0.5 ** 1.35), places=10)
@@ -66,7 +91,11 @@ class PublicRuntimeTests(unittest.TestCase):
         self.assertEqual(summary["renderer_gate"]["audio_rate_upsampling"], "linear interpolation from the compiled 250 Hz voicing curve")
         self.assertEqual(summary["renderer_gate"]["written_rest_entry_fades"], [{"rest_start_frame": 360, "rest_start_seconds": 1.44, "fade_start_frame": 356, "fade_start_seconds": 1.424, "fade_duration_seconds": 0.016}])
         self.assertEqual(summary["renderer_gate"]["hard_zero_rest_ranges"], [{"start_frame": 360, "end_frame_exclusive": 540, "start_seconds": 1.44, "end_seconds": 2.16, "start_sample": 23040, "end_sample_exclusive": 34560}])
-        self.assertGreater(frames[1515]["vibrato_cents"], 0.0)
+        self.assertAlmostEqual(
+            frames[1515]["vibrato_cents"],
+            runtime._vibrato_cents(source_event, frames[1515]["time_seconds"] - source_event["start_seconds"]),
+            places=10,
+        )
         self.assertAlmostEqual(frames[100]["loudness_linear"], 10 ** (-30 / 20), places=8)
         self.assertAlmostEqual(frames[800]["loudness_linear"], 10 ** (-28 / 20), places=8)
 
@@ -128,6 +157,66 @@ class PublicRuntimeTests(unittest.TestCase):
         )
         self.assertTrue(difference["passed"])
         self.assertTrue(difference["non_f0_controls_exactly_equal"])
+
+    def test_release_vibrato_phase_and_nominal_close_regress_for_both_pitch_modes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            altered = json.loads(PLAN.read_text(encoding="utf-8"))
+            altered["events"][-2]["vibrato"] = {
+                "enabled": True,
+                "rate_hz": 3.45,
+                "depth_cents": 23.0,
+                "onset_seconds": 0.2,
+                "ramp_seconds": 0.08,
+            }
+            path = Path(temporary) / "release-vibrato-plan.json"
+            path.write_text(json.dumps(altered), encoding="utf-8")
+            _, events, _ = runtime._validate_plan(path)
+            source = events[-2]
+            source_duration = source["end_seconds"] - source["start_seconds"]
+            release_duration = events[-1]["end_seconds"] - events[-1]["start_seconds"]
+            fade_span = release_duration - runtime.FRAME_RESOLUTION
+            modes = (runtime.SLUR_PITCH_MODE_CURVE, runtime.SLUR_PITCH_MODE_HARD_STEP)
+            rendered = {}
+            for mode in modes:
+                frames, summary = runtime.build_score_controls(path, slur_pitch_mode=mode)
+                rendered[mode] = frames
+                for frame_index in (1620, 1621, 1630, 1650, 1678):
+                    frame = frames[frame_index]
+                    local = frame["time_seconds"] - events[-1]["start_seconds"]
+                    source_phase_cents = runtime._vibrato_cents(source, source_duration + local)
+                    depth = 1.0 - runtime._minimum_jerk_progress(local / fade_span)
+                    self.assertAlmostEqual(frame["vibrato_cents"], source_phase_cents * depth, places=10)
+                self.assertAlmostEqual(frames[-1]["vibrato_cents"], 0.0, places=12)
+                self.assertAlmostEqual(frames[-1]["f0_hz"], source["pitch_hz"], places=10)
+                self.assertTrue(summary["release_vibrato_qa"]["passed"])
+                self.assertTrue(summary["release_vibrato_qa"]["final_nominal_pitch_gate_passed"])
+            self.assertEqual(
+                [frame["vibrato_cents"] for frame in rendered[runtime.SLUR_PITCH_MODE_CURVE]],
+                [frame["vibrato_cents"] for frame in rendered[runtime.SLUR_PITCH_MODE_HARD_STEP]],
+            )
+            self.assertEqual(
+                [frame["f0_hz"] for frame in rendered[runtime.SLUR_PITCH_MODE_CURVE][1620:]],
+                [frame["f0_hz"] for frame in rendered[runtime.SLUR_PITCH_MODE_HARD_STEP][1620:]],
+            )
+            phase_reset = copy.deepcopy(rendered[runtime.SLUR_PITCH_MODE_HARD_STEP])
+            phase_reset[1620]["vibrato_cents"] = 0.0
+            phase_reset[1620]["f0_hz"] = source["pitch_hz"]
+            with self.assertRaisesRegex(runtime.RuntimeContractError, "source phase"):
+                runtime.release_vibrato_control_qa(phase_reset, events)
+            frozen_final = copy.deepcopy(rendered[runtime.SLUR_PITCH_MODE_HARD_STEP])
+            frozen_final[-1]["vibrato_cents"] = -22.587173112776085
+            frozen_final[-1]["f0_hz"] = 516.4686863056723
+            with self.assertRaisesRegex(runtime.RuntimeContractError, "source phase"):
+                runtime.release_vibrato_control_qa(frozen_final, events)
+
+    def test_release_cannot_hide_a_new_vibrato_declaration(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            altered = json.loads(PLAN.read_text(encoding="utf-8"))
+            altered["events"][-1]["vibrato"] = {"enabled": False}
+            path = Path(temporary) / "invalid-release-vibrato.json"
+            path.write_text(json.dumps(altered), encoding="utf-8")
+            with self.assertRaisesRegex(runtime.RuntimeContractError, "inherits its source vibrato"):
+                runtime.build_score_controls(path)
 
     def test_hard_step_qa_rejects_intermediate_same_pitch_corruption_and_reattack(self) -> None:
         hard, _ = runtime.build_score_controls(PLAN, slur_pitch_mode=runtime.SLUR_PITCH_MODE_HARD_STEP)
