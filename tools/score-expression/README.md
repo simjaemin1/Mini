@@ -20,8 +20,12 @@ The four event states are intentionally distinct:
   proxy.
 - `rearticulate`: a named tongue/re-attack; short, different transient
   recipe—not a new breath and not a steady-state crossfade.
-- `slur`: must set `slur_from_previous: true` and touch the prior event; F0
-  and loudness are eased continuously without an invented attack.
+- `slur`: must set `slur_from_previous: true` and touch the prior event; its
+  canonical pitch move is a 12 ms minimum-jerk curve in log-frequency/cents
+  (not a long linear-Hz slide), with no invented attack. Its separately
+  authored dynamic moves from entry to target over 80 ms in monotonic
+  minimum-jerk linear loudness, rather than being discarded or becoming an
+  onset dip.
 - `release`: pitch-free tail whose loudness/voicing decays from the previous
   authored level.
 
@@ -99,3 +103,14 @@ requested vibrato rate/depth plus the resulting `vibrato_cents` curve, and a
 stable nine-column `score_features` matrix.  The
 arrays are authorial control prescriptions—not audio-derived labels and not
 permission to add a recording to an ML corpus.
+
+## Slur timing and control-rate limit
+
+The compiler's canonical 12 ms pitch policy uses the same independently tested
+minimum-jerk log-frequency math and constants as
+`tools/ddsp-gugak-public-runtime/`. It does **not** claim audio-rate parity:
+the tracked plan is 100 Hz, so a 12 ms transition is represented by 10 ms
+spaced control rows and a downstream preview may linearly interpolate those
+rows. The public Daegeum runtime is the authority for actual 250 Hz candidate
+auditions and its strict `<20 ms` intermediate-pitch dwell / 50 ms target-pitch
+gates. The compiler writes this quantization caveat into every manifest.

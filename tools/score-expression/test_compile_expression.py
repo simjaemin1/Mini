@@ -14,8 +14,12 @@ import numpy
 HERE = Path(__file__).resolve().parent
 if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
+RUNTIME_HERE = HERE.parent / "ddsp-gugak-public-runtime"
+if str(RUNTIME_HERE) not in sys.path:
+    sys.path.insert(0, str(RUNTIME_HERE))
 
 import compile_expression as compiler
+import ddsp_gugak_public_runtime as runtime
 
 
 TRACKED_SOURCE_LED_ARI_PLAN = HERE / "plans" / "ari_source_led_response_r1.json"
@@ -63,7 +67,7 @@ def _plan() -> dict[str, object]:
                 "pitch_hz": 392.0,
                 "articulation": "slur",
                 "slur_from_previous": True,
-                "steady_loudness_db": -28.0,
+                "steady_loudness_db": -30.0,
                 "vibrato": {
                     "enabled": True,
                     "rate_hz": 3.45,
@@ -89,6 +93,50 @@ def _write_plan(root: Path, payload: dict[str, object]) -> Path:
 
 
 class CompileExpressionTests(unittest.TestCase):
+    def test_compiler_and_runtime_match_the_12ms_log_frequency_minimum_jerk_policy(self) -> None:
+        self.assertEqual(compiler.SLUR_TRANSITION_MILLISECONDS, runtime.SLUR_TRANSITION_MILLISECONDS)
+        self.assertEqual(compiler.SLUR_TRANSITION_CANDIDATE_MILLISECONDS, runtime.SLUR_TRANSITION_CANDIDATE_MILLISECONDS)
+        self.assertEqual(compiler.SLUR_TRANSITION_SECONDS, runtime.SLUR_TRANSITION_SECONDS)
+        self.assertEqual(compiler.SLUR_TRANSITION_SHAPE, runtime.SLUR_TRANSITION_SHAPE)
+        initial_hz = 698.456463
+        target_hz = 587.329536
+        _, runtime_summary = runtime.build_score_controls(TRACKED_SOURCE_LED_ARI_PLAN)
+        compiler_policy = compiler.slur_transition_policy()
+        runtime_policy = runtime_summary["slur_transition_policy"]
+        for key, value in compiler_policy.items():
+            self.assertEqual(runtime_policy[key], value)
+        # These are exact b10_e1 probes: start, two 250 Hz intermediate rows,
+        # the 12 ms target row, later 20 ms, and the 50 ms policy gate.
+        for absolute_seconds in (5.040, 5.044, 5.048, 5.052, 5.060, 5.090):
+            local = absolute_seconds - 5.040
+            compiler_value = float(
+                compiler.slur_transition_hz(
+                    initial_hz,
+                    target_hz,
+                    numpy.asarray([local], dtype=numpy.float64),
+                )[0]
+            )
+            runtime_value = runtime.slur_transition_hz(initial_hz, target_hz, local)
+            self.assertAlmostEqual(compiler_value, runtime_value, places=10)
+        self.assertAlmostEqual(runtime.slur_transition_hz(initial_hz, target_hz, 0.012), target_hz, places=9)
+        self.assertAlmostEqual(runtime.slur_transition_hz(initial_hz, target_hz, 0.050), target_hz, places=9)
+        with self.assertRaisesRegex(compiler.ScoreExpressionError, "validated candidates"):
+            compiler.slur_transition_hz(initial_hz, target_hz, numpy.asarray([0.004]), transition_seconds=0.016)
+
+    def test_compiler_records_100hz_slur_quantization_without_claiming_audio_rate_parity(self) -> None:
+        result = compiler.compile_plan(TRACKED_SOURCE_LED_ARI_PLAN)
+        quantization = result["slur_control_rate_quantization"]
+        self.assertEqual(quantization["compiler_control_hz"], 100)
+        self.assertAlmostEqual(quantization["compiler_frame_seconds"], 0.010, places=12)
+        self.assertFalse(quantization["exact_audio_rate_parity_with_250hz_public_runtime_claimed"])
+        # b10_e1 begins at 5.04. The 100 Hz compiler has source at 5.04,
+        # one sampled transition value at 5.05, then target at 5.06. This is
+        # intentional control-rate quantization, not a claim that the later
+        # preview renderer has the public runtime's 250 Hz <20 ms dwell gate.
+        self.assertAlmostEqual(float(result["f0_hz"][504]), 698.456463, places=4)
+        self.assertGreater(float(result["f0_hz"][505]), 587.329536)
+        self.assertAlmostEqual(float(result["f0_hz"][506]), 587.329536, places=4)
+
     def test_tracked_source_led_ari_companion_keeps_score_and_raw_source_roles_separate(self) -> None:
         raw = json.loads(TRACKED_SOURCE_LED_ARI_PLAN.read_text(encoding="utf-8"))
         context = raw["source_led_phrase_pool_context"]
@@ -123,6 +171,15 @@ class CompileExpressionTests(unittest.TestCase):
             # A linked slur begins at the preceding pitch, instead of jumping
             # straight to the target 392 Hz.  It has no invented breath burst.
             self.assertAlmostEqual(float(result["f0_hz"][200]), float(result["f0_hz"][199]), places=4)
+            self.assertAlmostEqual(float(result["f0_hz"][212]), 392.0, places=4)
+            # By 250 ms the explicit vibrato has begun; this is not residual
+            # slur glide, so its pitch is intentionally above the base target.
+            self.assertGreater(float(result["f0_hz"][250]), 392.0)
+            # The distinct authored -30 dB target is retained, but moves from
+            # the prior -28 dB continuously over 80 ms without a re-attack.
+            self.assertAlmostEqual(float(result["loudness_db"][200]), -28.0, places=4)
+            self.assertAlmostEqual(float(result["loudness_db"][280]), -30.0, places=4)
+            self.assertEqual(float(result["voicing"][200]), 1.0)
             self.assertGreater(float(result["air_noise_ratio"][0]), float(result["air_noise_ratio"][100]))
             self.assertGreater(float(result["air_noise_ratio"][100]), float(result["air_noise_ratio"][200]))
             self.assertGreater(float(result["vibrato_depth_cents"][230]), 0.0)

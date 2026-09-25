@@ -39,10 +39,25 @@ class PublicRuntimeTests(unittest.TestCase):
         # The release maps its fixed event-start level once; it is not a
         # per-frame recursive attenuation.
         self.assertAlmostEqual(frames[1650]["loudness_linear"], 10 ** (-29 / 20) * (0.5 ** 1.35), places=10)
-        # The second slur starts at 5.04 s. At 5.08 s it is 40/90 through one
-        # fixed-boundary linear transition, and reaches target after 5.13 s.
-        self.assertAlmostEqual(frames[1270]["f0_hz"], 649.0667176666666, places=6)
-        self.assertAlmostEqual(frames[1283]["f0_hz"], 587.329536, places=6)
+        # The second slur is a 12 ms log-frequency minimum-jerk fingering
+        # change: at 5.044 / 5.048 it moves monotonically, then is already
+        # at target on the 5.052 control row (and therefore well before 50ms).
+        self.assertAlmostEqual(frames[1261]["f0_hz"], 673.5107882753397, places=6)
+        self.assertAlmostEqual(frames[1262]["f0_hz"], 609.0832061954886, places=6)
+        self.assertAlmostEqual(frames[1263]["f0_hz"], 587.329536, places=6)
+        self.assertAlmostEqual(frames[1273]["f0_hz"], 587.329536, places=6)
+        # Its separately authored -29→-30 dB dynamic has no onset jump and
+        # settles smoothly to its target by 100 ms.
+        self.assertAlmostEqual(frames[1260]["loudness_linear"], frames[1259]["loudness_linear"], places=12)
+        self.assertLess(frames[1261]["loudness_linear"], frames[1260]["loudness_linear"])
+        self.assertAlmostEqual(frames[1285]["loudness_linear"], 10 ** (-30 / 20), places=12)
+        qa = summary["slur_transition_control_qa"]
+        self.assertTrue(qa["passed"])
+        self.assertEqual(qa["policy"]["pitch_transition_milliseconds"], 12)
+        second_slur = qa["events"][1]
+        self.assertTrue(second_slur["pitch_target_settle_by_50ms_gate_passed"])
+        self.assertTrue(second_slur["dynamic_target_by_100ms_gate_passed"])
+        self.assertLess(second_slur["intermediate_dwell_seconds"], 0.020)
         self.assertEqual(frames[360]["f0_hz"], 0.0)
         self.assertEqual(frames[360]["loudness_linear"], 0.0)
         self.assertEqual(summary["renderer_gate"]["audio_rate_upsampling"], "linear interpolation from the compiled 250 Hz voicing curve")
@@ -51,6 +66,19 @@ class PublicRuntimeTests(unittest.TestCase):
         self.assertGreater(frames[1515]["vibrato_cents"], 0.0)
         self.assertAlmostEqual(frames[100]["loudness_linear"], 10 ** (-30 / 20), places=8)
         self.assertAlmostEqual(frames[800]["loudness_linear"], 10 ** (-28 / 20), places=8)
+
+    def test_all_valid_slur_candidates_settle_and_keep_intermediate_dwell_below_20ms(self) -> None:
+        expected_dwell_seconds = {8: 0.004, 12: 0.008, 20: 0.016}
+        for milliseconds, expected_dwell in expected_dwell_seconds.items():
+            frames, summary = runtime.build_score_controls(PLAN, slur_transition_milliseconds=milliseconds)
+            second_slur = summary["slur_transition_control_qa"]["events"][1]
+            self.assertAlmostEqual(second_slur["intermediate_dwell_seconds"], expected_dwell, places=12)
+            self.assertLess(second_slur["intermediate_dwell_seconds"], 0.020)
+            self.assertTrue(second_slur["pitch_target_settle_by_50ms_gate_passed"])
+            self.assertTrue(second_slur["dynamic_target_by_100ms_gate_passed"])
+            self.assertAlmostEqual(frames[1273]["f0_hz"], 587.329536, places=6)
+        with self.assertRaisesRegex(runtime.RuntimeContractError, "validated candidates"):
+            runtime.build_score_controls(PLAN, slur_transition_milliseconds=16)
 
     def test_missing_explicit_slur_link_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

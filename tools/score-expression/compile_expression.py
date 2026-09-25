@@ -36,6 +36,15 @@ ARTICULATIONS = ("breath_start", "rearticulate", "slur", "release")
 STATE_CODES = {name: index for index, name in enumerate(ARTICULATIONS, start=1)}
 VIBRATO_RATE_RANGE_HZ = (3.3, 3.8)
 VIBRATO_DEPTH_RANGE_CENTS = (12.0, 45.0)
+SLUR_TRANSITION_MILLISECONDS = 12
+SLUR_TRANSITION_CANDIDATE_MILLISECONDS = (8, 12, 20)
+SLUR_TRANSITION_SECONDS = SLUR_TRANSITION_MILLISECONDS / 1_000.0
+SLUR_TRANSITION_SHAPE = "minimum_jerk_log_frequency_cents"
+SLUR_TARGET_ATTACH_SECONDS = 0.050
+SLUR_MAX_INTERMEDIATE_DWELL_SECONDS = 0.020
+SLUR_LOUDNESS_TRANSITION_SECONDS = 0.080
+SLUR_LOUDNESS_TARGET_SETTLE_SECONDS = 0.100
+SLUR_LOUDNESS_TRANSITION_SHAPE = "minimum_jerk_linear_loudness"
 
 
 class ScoreExpressionError(RuntimeError):
@@ -251,6 +260,55 @@ def _interpolate_points(points: list[tuple[float, float]], times: numpy.ndarray)
     return numpy.interp(times, source_times, source_cents).astype(numpy.float32)
 
 
+def _minimum_jerk_progress(progress: numpy.ndarray) -> numpy.ndarray:
+    """Zero-slope monotonic S-curve for a short wind-instrument fingering change."""
+
+    unit = numpy.clip(progress, 0.0, 1.0)
+    return unit * unit * unit * (10.0 + unit * (-15.0 + 6.0 * unit))
+
+
+def slur_transition_hz(
+    initial_hz: float,
+    target_hz: float,
+    local_seconds: numpy.ndarray,
+    *,
+    transition_seconds: float = SLUR_TRANSITION_SECONDS,
+) -> numpy.ndarray:
+    """Match the runtime's minimum-jerk transition in log-frequency/cents."""
+
+    initial = _number(initial_hz, label="slur initial_hz", minimum=20.0, maximum=4_000.0)
+    target = _number(target_hz, label="slur target_hz", minimum=20.0, maximum=4_000.0)
+    duration = _number(transition_seconds, label="slur transition_seconds", minimum=0.001)
+    candidates = tuple(milliseconds / 1_000.0 for milliseconds in SLUR_TRANSITION_CANDIDATE_MILLISECONDS)
+    if not any(math.isclose(duration, candidate, abs_tol=1.0e-12, rel_tol=0.0) for candidate in candidates):
+        choices = ", ".join(str(milliseconds) for milliseconds in SLUR_TRANSITION_CANDIDATE_MILLISECONDS)
+        raise ScoreExpressionError(f"slur transition_seconds must be one of the validated candidates: {choices} ms")
+    local = numpy.asarray(local_seconds, dtype=numpy.float64)
+    if numpy.any(~numpy.isfinite(local)) or numpy.any(local < 0.0):
+        raise ScoreExpressionError("slur local_seconds must be finite and non-negative")
+    source_cents = 1_200.0 * math.log2(initial)
+    target_cents = 1_200.0 * math.log2(target)
+    cents = source_cents + (target_cents - source_cents) * _minimum_jerk_progress(local / duration)
+    return numpy.power(2.0, cents / 1_200.0)
+
+
+def slur_transition_policy() -> dict[str, Any]:
+    """Readable contract shared mathematically with the public Daegeum runtime."""
+
+    return {
+        "pitch_transition_milliseconds": SLUR_TRANSITION_MILLISECONDS,
+        "pitch_shape": SLUR_TRANSITION_SHAPE,
+        "pitch_domain": "log_frequency_cents",
+        "pitch_target_settle_by_seconds": SLUR_TARGET_ATTACH_SECONDS,
+        "intermediate_pitch_dwell_strictly_less_than_seconds": SLUR_MAX_INTERMEDIATE_DWELL_SECONDS,
+        "dynamic_transition_seconds": SLUR_LOUDNESS_TRANSITION_SECONDS,
+        "dynamic_shape": SLUR_LOUDNESS_TRANSITION_SHAPE,
+        "dynamic_domain": "linear_loudness",
+        "dynamic_target_settle_by_seconds": SLUR_LOUDNESS_TARGET_SETTLE_SECONDS,
+        "no_rearticulation_envelope_for_slur": True,
+    }
+
+
 def _vibrato_curve(event: Mapping[str, Any], relative_times: numpy.ndarray, *, fade_at_end: bool) -> tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray]:
     config = event["vibrato"]
     if not config["enabled"]:
@@ -335,29 +393,42 @@ def compile_plan(path: str | Path) -> dict[str, Any]:
             prior = events[index - 1]
             if prior["articulation"] == "release":
                 raise ScoreExpressionError("a SLUR cannot follow RELEASE")
-            previous_duration = float(prior["end_seconds"] - prior["start_seconds"])
             previous_end_cents = float(prior["gesture_points"][-1][1])
             previous_hz = float(prior["pitch_hz"]) * (2.0 ** (previous_end_cents / 1200.0))
-            transition_seconds = min(0.090, max(0.012, (end - start) * 0.35))
-            target_hz = base_hz * numpy.power(2.0, gesture / 1200.0)
-            initial_hz = previous_hz
-            blend = numpy.clip(local / transition_seconds, 0.0, 1.0)
-            f0_hz[mask] = (initial_hz + (target_hz - initial_hz) * blend).astype(numpy.float32)
-            # Keep an authorial slur continuous in loudness as well as F0.
-            # A score can still ask for a later dynamic change by choosing a
-            # different steady level; it is eased in rather than becoming an
-            # artificial boundary click.
-            prior_loudness = float(prior["steady_loudness_db"])
-            loudness_db[mask] = (prior_loudness + (loudness - prior_loudness) * blend).astype(numpy.float32)
-            # Slur keeps its energy continuous: onset controls above do not
-            # manufacture a breath/noise burst.  A prior vibrato tail is
-            # faded at the prior event's end by ``fade_at_end`` below.
+            target_entry_cents = float(event["gesture_points"][0][1])
+            target_entry_hz = base_hz * (2.0 ** (target_entry_cents / 1200.0))
+            transition_mask = local < SLUR_TRANSITION_SECONDS
+            f0_base = base_hz * numpy.power(2.0, gesture / 1200.0)
+            if numpy.any(transition_mask):
+                f0_base[transition_mask] = slur_transition_hz(
+                    previous_hz,
+                    target_entry_hz,
+                    local[transition_mask],
+                )
+            f0_hz[mask] = f0_base.astype(numpy.float32)
+            # Slur keeps the breath and voicing continuous, but it must not
+            # erase the event's authored steady dynamic.  Ease that dynamic
+            # independently in *linear* loudness over 80 ms—much slower than
+            # the fingering change, with no onset envelope or overshoot.
+            prior_linear = 10.0 ** (float(prior["steady_loudness_db"]) / 20.0)
+            target_linear = 10.0 ** (float(event["steady_loudness_db"]) / 20.0)
+            dynamic_progress = _minimum_jerk_progress(local / SLUR_LOUDNESS_TRANSITION_SECONDS)
+            dynamic_linear = prior_linear + (target_linear - prior_linear) * dynamic_progress
+            loudness_db[mask] = (20.0 * numpy.log10(dynamic_linear)).astype(numpy.float32)
+            # A prior vibrato tail is faded at the prior event's end by
+            # ``fade_at_end`` below; suppress new-event vibrato only inside
+            # the short pitch transition so that the core motion is monotonic.
         else:
             f0_hz[mask] = (base_hz * numpy.power(2.0, gesture / 1200.0)).astype(numpy.float32)
         next_is_slur = index + 1 < len(events) and events[index + 1]["articulation"] == "slur"
         vib_cents, rate, depth = _vibrato_curve(event, local, fade_at_end=next_is_slur)
+        if kind == "slur":
+            vib_cents = numpy.where(local < SLUR_TRANSITION_SECONDS, 0.0, vib_cents).astype(numpy.float32)
         f0_hz[mask] *= numpy.power(2.0, vib_cents / 1200.0).astype(numpy.float32)
-        f0_cents[mask] = gesture + vib_cents
+        if kind == "slur":
+            f0_cents[mask] = (1_200.0 * numpy.log2(f0_hz[mask] / base_hz)).astype(numpy.float32)
+        else:
+            f0_cents[mask] = gesture + vib_cents
         vibrato_rate[mask] = rate
         vibrato_depth[mask] = depth
         vibrato_cents[mask] = vib_cents
@@ -397,6 +468,15 @@ def compile_plan(path: str | Path) -> dict[str, Any]:
         "vibrato_depth_cents": vibrato_depth,
         "vibrato_cents": vibrato_cents,
         "score_features": score_features,
+        "slur_transition_policy": slur_transition_policy(),
+        "slur_control_rate_quantization": {
+            "compiler_control_hz": control_hz,
+            "compiler_frame_seconds": 1.0 / control_hz,
+            "canonical_pitch_transition_seconds": SLUR_TRANSITION_SECONDS,
+            "meaning": "the compiler stores sampled controls, not audio-rate F0. At the plan's 100 Hz, a 12 ms curve is represented by 10 ms-spaced rows and any downstream preview may interpolate those rows.",
+            "exact_audio_rate_parity_with_250hz_public_runtime_claimed": False,
+            "runtime_authority": "the public Daegeum runtime separately verifies its own 250 Hz control rows, <20 ms intermediate-pitch dwell, and 50 ms target-pitch gate",
+        },
     }
 
 
@@ -477,6 +557,8 @@ def render_controls(*, plan: str | Path, output_dir: str | Path) -> dict[str, An
                 "depth_cents": list(VIBRATO_DEPTH_RANGE_CENTS),
                 "basis": "conservative local R&D proxy bounds, not labels or a training authorization",
             },
+            "slur_transition_policy": compiled["slur_transition_policy"],
+            "slur_control_rate_quantization": compiled["slur_control_rate_quantization"],
         },
         "events": event_summary,
         "interpretation_limits": {

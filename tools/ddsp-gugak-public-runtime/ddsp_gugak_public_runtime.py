@@ -15,6 +15,7 @@ import contextlib
 import csv
 import hashlib
 import importlib
+import importlib.util
 import json
 import math
 from pathlib import Path, PurePosixPath
@@ -55,6 +56,15 @@ REST_ENTRY_FADE_SECONDS = 0.016
 CHECKPOINT_NATIVE_REVERB_LENGTH_SAMPLES = 48_000
 SHARED_INTERVAL_END_SECONDS = 6.48
 LISTENING_TARGET_RMS = 0.06309573444801933  # -24 dBFS
+SLUR_TRANSITION_MILLISECONDS = 12
+SLUR_TRANSITION_CANDIDATE_MILLISECONDS = (8, 12, 20)
+SLUR_TRANSITION_SECONDS = SLUR_TRANSITION_MILLISECONDS / 1_000.0
+SLUR_TRANSITION_SHAPE = "minimum_jerk_log_frequency_cents"
+SLUR_TARGET_ATTACH_SECONDS = 0.050
+SLUR_MAX_INTERMEDIATE_DWELL_SECONDS = 0.020
+SLUR_LOUDNESS_TRANSITION_SECONDS = 0.080
+SLUR_LOUDNESS_TARGET_SETTLE_SECONDS = 0.100
+SLUR_LOUDNESS_TRANSITION_SHAPE = "minimum_jerk_linear_loudness"
 ARTICULATIONS = ("rest", "breath_start", "rearticulate", "slur", "release")
 VOICED_ARTICULATIONS = frozenset({"breath_start", "rearticulate", "slur"})
 OUTPUT_NAME = re.compile(r"ddsp-gugak-public-daegeum-runtime-r1-[0-9]{8}-[0-9]{6}(?:-[a-z0-9-]+)?$")
@@ -308,10 +318,273 @@ def _vibrato_cents(event: Mapping[str, Any], local_seconds: float) -> float:
     return float(vibrato["depth_cents"]) * envelope * math.sin(2.0 * math.pi * float(vibrato["rate_hz"]) * (local_seconds - onset))
 
 
-def build_score_controls(plan_path: Path, *, max_seconds: Optional[float] = None) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+def _slur_transition_seconds(milliseconds: Any) -> float:
+    if type(milliseconds) is not int or milliseconds not in SLUR_TRANSITION_CANDIDATE_MILLISECONDS:
+        choices = ", ".join(str(item) for item in SLUR_TRANSITION_CANDIDATE_MILLISECONDS)
+        raise RuntimeContractError(f"slur transition must be one of the validated candidates: {choices} ms")
+    return int(milliseconds) / 1_000.0
+
+
+def _minimum_jerk_progress(progress: float) -> float:
+    """Zero-slope monotonic S-curve used for a wind-instrument fingering change."""
+
+    unit = min(1.0, max(0.0, float(progress)))
+    return unit * unit * unit * (10.0 + unit * (-15.0 + 6.0 * unit))
+
+
+def slur_transition_hz(initial_hz: float, target_hz: float, local_seconds: float, *, transition_seconds: float = SLUR_TRANSITION_SECONDS) -> float:
+    """Minimum-jerk pitch transition in log-frequency/cents, not linear Hz."""
+
+    initial = _finite_number(initial_hz, label="slur initial_hz", minimum=20.0, maximum=4_000.0)
+    target = _finite_number(target_hz, label="slur target_hz", minimum=20.0, maximum=4_000.0)
+    duration = _finite_number(transition_seconds, label="slur transition_seconds", minimum=FRAME_RESOLUTION)
+    local = _finite_number(local_seconds, label="slur local_seconds", minimum=0.0)
+    start_cents = 1_200.0 * math.log2(initial)
+    target_cents = 1_200.0 * math.log2(target)
+    cents = start_cents + (target_cents - start_cents) * _minimum_jerk_progress(local / duration)
+    return math.pow(2.0, cents / 1_200.0)
+
+
+def slur_transition_control_qa(
+    frames: Sequence[Mapping[str, Any]],
+    events: Sequence[Mapping[str, Any]],
+    *,
+    transition_seconds: float,
+) -> Dict[str, Any]:
+    """Gate the no-sweep slur contract directly against compiled 250 Hz controls."""
+
+    records: List[Dict[str, Any]] = []
+    tolerance_hz = 1.0e-6
+    for event_index, event in enumerate(events):
+        if event.get("articulation") != "slur":
+            continue
+        event_id = str(event["id"])
+        event_frames = [frame for frame in frames if str(frame["event_id"]) == event_id]
+        if not event_frames:
+            # A smoke prefix may stop before this slur. It is not evidence of
+            # a policy violation, but cannot claim the full target gate.
+            records.append({"event_id": event_id, "truncated_before_slur": True})
+            continue
+        first = event_frames[0]
+        start_frame = int(first["frame_index"])
+        if start_frame <= 0:
+            raise RuntimeContractError("an explicit slur must have a prior 250 Hz control frame")
+        prior = frames[start_frame - 1]
+        source_hz = float(prior["f0_hz"])
+        target_hz = float(event["pitch_hz"])
+        if not math.isclose(float(first["f0_hz"]), source_hz, abs_tol=tolerance_hz, rel_tol=0.0):
+            raise RuntimeContractError("slur must begin at its prior pitch without a pitch jump")
+        transition_rows = [
+            frame
+            for frame in event_frames
+            if float(frame["time_seconds"]) < float(event["start_seconds"]) + transition_seconds - 1.0e-12
+        ]
+        if any(abs(float(frame["voicing"]) - 1.0) > 1.0e-12 for frame in transition_rows):
+            raise RuntimeContractError("slur transition must not introduce a re-attack voicing dip")
+        entry_loudness = float(first["loudness_linear"])
+        prior_loudness = float(prior["loudness_linear"])
+        if not math.isclose(entry_loudness, prior_loudness, abs_tol=1.0e-12, rel_tol=0.0):
+            raise RuntimeContractError("slur must begin at its prior loudness without an onset jump")
+        ordered = [float(frame["f0_hz"]) for frame in event_frames if float(frame["time_seconds"]) <= float(event["start_seconds"]) + transition_seconds + 1.0e-12]
+        if target_hz < source_hz and any(left + tolerance_hz < right for left, right in zip(ordered, ordered[1:])):
+            raise RuntimeContractError("log-frequency slur transition is not monotonic descending")
+        if target_hz > source_hz and any(left - tolerance_hz > right for left, right in zip(ordered, ordered[1:])):
+            raise RuntimeContractError("log-frequency slur transition is not monotonic ascending")
+        lower, upper = sorted((source_hz, target_hz))
+        intermediate_rows = [
+            frame
+            for frame in transition_rows
+            if lower + tolerance_hz < float(frame["f0_hz"]) < upper - tolerance_hz
+        ]
+        intermediate_dwell_seconds = len(intermediate_rows) / FRAME_RATE_HZ
+        if intermediate_dwell_seconds >= SLUR_MAX_INTERMEDIATE_DWELL_SECONDS - 1.0e-12:
+            raise RuntimeContractError("slur intermediate-pitch dwell must remain strictly below 20 ms")
+        attach_threshold = float(event["start_seconds"]) + SLUR_TARGET_ATTACH_SECONDS
+        attach_rows = [frame for frame in event_frames if float(frame["time_seconds"]) >= attach_threshold - 1.0e-12]
+        if not attach_rows:
+            records.append({"event_id": event_id, "truncated_before_target_attach_gate": True})
+            continue
+        attach = attach_rows[0]
+        expected_attach_hz = target_hz * math.pow(2.0, float(attach["vibrato_cents"]) / 1_200.0)
+        if not math.isclose(float(attach["f0_hz"]), expected_attach_hz, abs_tol=tolerance_hz, rel_tol=1.0e-9):
+            raise RuntimeContractError("slur must reach the target pitch no later than 50 ms after its boundary")
+        target_loudness = math.pow(10.0, float(event["steady_loudness_db"]) / 20.0)
+        loudness_rows = [
+            frame
+            for frame in event_frames
+            if float(frame["time_seconds"]) <= float(event["start_seconds"]) + SLUR_LOUDNESS_TARGET_SETTLE_SECONDS + 1.0e-12
+        ]
+        loudness_values = [float(frame["loudness_linear"]) for frame in loudness_rows]
+        lower_loudness, upper_loudness = sorted((entry_loudness, target_loudness))
+        if any(
+            value < lower_loudness - 1.0e-12 or value > upper_loudness + 1.0e-12
+            for value in loudness_values
+        ):
+            raise RuntimeContractError("slur dynamic must not overshoot or make an artificial loudness dip")
+        if target_loudness < entry_loudness and any(
+            left + 1.0e-12 < right
+            for left, right in zip(loudness_values, loudness_values[1:])
+        ):
+            raise RuntimeContractError("slur dynamic must move monotonically toward a lower authored target")
+        if target_loudness > entry_loudness and any(
+            left - 1.0e-12 > right
+            for left, right in zip(loudness_values, loudness_values[1:])
+        ):
+            raise RuntimeContractError("slur dynamic must move monotonically toward a higher authored target")
+        loudness_attach_threshold = float(event["start_seconds"]) + SLUR_LOUDNESS_TARGET_SETTLE_SECONDS
+        loudness_attach_rows = [frame for frame in event_frames if float(frame["time_seconds"]) >= loudness_attach_threshold - 1.0e-12]
+        if not loudness_attach_rows:
+            records.append({"event_id": event_id, "truncated_before_dynamic_settle_gate": True})
+            continue
+        loudness_attach = loudness_attach_rows[0]
+        if not math.isclose(float(loudness_attach["loudness_linear"]), target_loudness, abs_tol=1.0e-12, rel_tol=1.0e-9):
+            raise RuntimeContractError("slur dynamic must reach its authored target by 100 ms")
+        records.append({
+            "event_id": event_id,
+            "source_hz": source_hz,
+            "target_hz": target_hz,
+            "transition_seconds": transition_seconds,
+            "transition_shape": SLUR_TRANSITION_SHAPE,
+            "first_control_time_seconds": float(first["time_seconds"]),
+            "pitch_target_settle_control_time_seconds": float(attach["time_seconds"]),
+            "pitch_target_settle_hz": float(attach["f0_hz"]),
+            "pitch_target_settle_by_50ms_gate_passed": True,
+            "intermediate_frame_count": len(intermediate_rows),
+            "intermediate_dwell_seconds": intermediate_dwell_seconds,
+            "intermediate_dwell_strictly_less_than_seconds": SLUR_MAX_INTERMEDIATE_DWELL_SECONDS,
+            "dynamic_entry_loudness_linear": entry_loudness,
+            "dynamic_target_loudness_linear": target_loudness,
+            "dynamic_target_settle_control_time_seconds": float(loudness_attach["time_seconds"]),
+            "dynamic_target_by_100ms_gate_passed": True,
+            "no_reattack_and_dynamic_continuity_gate_passed": True,
+        })
+    return {
+        "passed": True,
+        "policy": {
+            "pitch_transition_milliseconds": int(round(transition_seconds * 1_000.0)),
+            "pitch_shape": SLUR_TRANSITION_SHAPE,
+            "pitch_domain": "log_frequency_cents",
+            "pitch_target_settle_by_seconds": SLUR_TARGET_ATTACH_SECONDS,
+            "intermediate_pitch_dwell_strictly_less_than_seconds": SLUR_MAX_INTERMEDIATE_DWELL_SECONDS,
+            "dynamic_transition_seconds": SLUR_LOUDNESS_TRANSITION_SECONDS,
+            "dynamic_shape": SLUR_LOUDNESS_TRANSITION_SHAPE,
+            "dynamic_domain": "linear_loudness",
+            "dynamic_target_settle_by_seconds": SLUR_LOUDNESS_TARGET_SETTLE_SECONDS,
+            "no_rearticulation_envelope_for_slur": True,
+            "renderer_control_frame_seconds": FRAME_RESOLUTION,
+            "oscillator_note": "the published oscillator linearly interpolates adjacent 250 Hz F0 frames; the transition has already settled before the 50 ms target-attach gate",
+        },
+        "events": records,
+    }
+
+
+def verify_compiler_slur_policy_equivalence(
+    repository_root: Path,
+    events: Sequence[Mapping[str, Any]],
+    *,
+    requested_transition_seconds: float,
+) -> Dict[str, Any]:
+    """Verify the independently implemented compiler math at explicit probes.
+
+    The renderer intentionally does not depend on a shared transition module:
+    this check instead imports the tracked compiler only at explicit R&D render
+    time and fails closed if its constants, policy, or log-frequency
+    minimum-jerk values drift from the runtime implementation.
+    """
+
+    compiler_path = (repository_root.expanduser().resolve() / "tools/score-expression/compile_expression.py").resolve()
+    if not compiler_path.is_file():
+        raise RuntimeContractError("tracked score-expression compiler is required for the slur-policy equivalence gate")
+    module_name = "_mini_score_expression_slur_policy_probe"
+    spec = importlib.util.spec_from_file_location(module_name, compiler_path)
+    if spec is None or spec.loader is None:
+        raise RuntimeContractError("could not load tracked score-expression compiler for the slur-policy equivalence gate")
+    compiler_module = importlib.util.module_from_spec(spec)
+    try:
+        sys.modules[module_name] = compiler_module
+        spec.loader.exec_module(compiler_module)
+        expected_default_policy = {
+            "pitch_transition_milliseconds": SLUR_TRANSITION_MILLISECONDS,
+            "pitch_shape": SLUR_TRANSITION_SHAPE,
+            "pitch_domain": "log_frequency_cents",
+            "pitch_target_settle_by_seconds": SLUR_TARGET_ATTACH_SECONDS,
+            "intermediate_pitch_dwell_strictly_less_than_seconds": SLUR_MAX_INTERMEDIATE_DWELL_SECONDS,
+            "dynamic_transition_seconds": SLUR_LOUDNESS_TRANSITION_SECONDS,
+            "dynamic_shape": SLUR_LOUDNESS_TRANSITION_SHAPE,
+            "dynamic_domain": "linear_loudness",
+            "dynamic_target_settle_by_seconds": SLUR_LOUDNESS_TARGET_SETTLE_SECONDS,
+            "no_rearticulation_envelope_for_slur": True,
+        }
+        if compiler_module.slur_transition_policy() != expected_default_policy:
+            raise RuntimeContractError("tracked compiler slur policy differs from the runtime's canonical 12 ms policy")
+        if compiler_module.SLUR_TRANSITION_SECONDS != SLUR_TRANSITION_SECONDS:
+            raise RuntimeContractError("tracked compiler slur transition constant differs from the runtime")
+        moving_slurs = [
+            (index, event)
+            for index, event in enumerate(events)
+            if event.get("articulation") == "slur" and index > 0 and not math.isclose(float(events[index - 1]["pitch_hz"]), float(event["pitch_hz"]), abs_tol=1.0e-9)
+        ]
+        if not moving_slurs:
+            raise RuntimeContractError("explicit plan needs one pitch-changing slur for compiler/runtime equivalence probes")
+        index, event = moving_slurs[0]
+        source_hz = float(events[index - 1]["pitch_hz"])
+        target_hz = float(event["pitch_hz"])
+        start_seconds = float(event["start_seconds"])
+        local_probe_seconds = (0.0, 0.004, 0.008, 0.012, 0.020, 0.050)
+        probe_array = compiler_module.numpy.asarray(local_probe_seconds, dtype=compiler_module.numpy.float64)
+        compiler_values = compiler_module.slur_transition_hz(
+            source_hz,
+            target_hz,
+            probe_array,
+            transition_seconds=requested_transition_seconds,
+        )
+        probes: List[Dict[str, Any]] = []
+        for local, compiler_value in zip(local_probe_seconds, compiler_values):
+            runtime_value = slur_transition_hz(
+                source_hz,
+                target_hz,
+                local,
+                transition_seconds=requested_transition_seconds,
+            )
+            if not math.isclose(float(compiler_value), runtime_value, abs_tol=1.0e-9, rel_tol=1.0e-12):
+                raise RuntimeContractError("tracked compiler and runtime minimum-jerk slur values differ at an explicit probe")
+            probes.append({
+                "absolute_seconds": start_seconds + local,
+                "local_seconds": local,
+                "compiler_hz": float(compiler_value),
+                "runtime_hz": runtime_value,
+                "equal_within_hz": 1.0e-9,
+            })
+    except RuntimeContractError:
+        raise
+    except Exception as exc:
+        raise RuntimeContractError(f"could not verify compiler/runtime slur-policy equivalence: {type(exc).__name__}: {exc}") from exc
+    finally:
+        sys.modules.pop(module_name, None)
+    return {
+        "passed": True,
+        "compiler_source": _file_record(compiler_path),
+        "canonical_default_policy_match": True,
+        "requested_runtime_candidate_milliseconds": int(round(requested_transition_seconds * 1_000.0)),
+        "candidate_formula_equivalence": "verified against compiler helper with the same explicit candidate duration; compiler's canonical default remains 12 ms",
+        "control_rate_quantization_limit": "this verifies formula/constants only. The compiler's plan controls are 100 Hz and may be linearly upsampled by a separate preview; it does not claim audio-rate parity with this runtime's 250 Hz control rows or dwell gate.",
+        "probe_slur_event_id": str(event["id"]),
+        "source_hz": source_hz,
+        "target_hz": target_hz,
+        "probes": probes,
+    }
+
+
+def build_score_controls(
+    plan_path: Path,
+    *,
+    max_seconds: Optional[float] = None,
+    slur_transition_milliseconds: int = SLUR_TRANSITION_MILLISECONDS,
+) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
     """Create deterministic 250 Hz F0/loudness controls without opening any audio."""
 
     plan, events, duration = _validate_plan(plan_path.expanduser().resolve())
+    slur_transition_seconds = _slur_transition_seconds(slur_transition_milliseconds)
     render_duration = duration if max_seconds is None else _finite_number(max_seconds, label="max_seconds", minimum=FRAME_RESOLUTION, maximum=duration)
     frame_count = int(round(render_duration * FRAME_RATE_HZ))
     if abs(frame_count / FRAME_RATE_HZ - render_duration) > 1.0e-9:
@@ -370,10 +643,26 @@ def build_score_controls(plan_path: Path, *, max_seconds: Optional[float] = None
                 f0_hz = target_f0
                 voicing = 1.0
             elif articulation == "slur":
-                transition = min(0.090, max(0.012, event_duration * 0.35))
-                blend = min(1.0, local / transition)
-                f0_hz = event_start_f0 + (target_f0 - event_start_f0) * blend
-                loudness = event_start_loudness + (target_loudness - event_start_loudness) * blend
+                # A sustained wind slur is one breath with a quick fingering
+                # transition: no onset envelope or re-attack. Pitch changes
+                # fast; any separately authored dynamic moves much more
+                # gently from the entry level to its steady target.
+                # The pitch alone travels over 8/12/20 ms candidates with a
+                # zero-slope S-curve in log-frequency, never a 90 ms linear-Hz
+                # slide.  Suppress a deliberately authored vibrato only while
+                # this short pitch transition is still in progress.
+                if local < slur_transition_seconds:
+                    vibrato_cents = 0.0
+                    f0_hz = slur_transition_hz(
+                        event_start_f0,
+                        float(event["pitch_hz"]),
+                        local,
+                        transition_seconds=slur_transition_seconds,
+                    )
+                else:
+                    f0_hz = target_f0
+                loudness_progress = _minimum_jerk_progress(local / SLUR_LOUDNESS_TRANSITION_SECONDS)
+                loudness = event_start_loudness + (target_loudness - event_start_loudness) * loudness_progress
                 voicing = 1.0
             else:  # pragma: no cover - normalized validation makes this unreachable.
                 raise RuntimeContractError("unsupported articulation after plan validation")
@@ -389,6 +678,7 @@ def build_score_controls(plan_path: Path, *, max_seconds: Optional[float] = None
         })
         prior_f0 = f0_hz
         prior_loudness = loudness
+    slur_qa = slur_transition_control_qa(frames, events, transition_seconds=slur_transition_seconds)
     summary = {
         "source_plan": _file_record(plan_path.expanduser().resolve()),
         "source_plan_control_hz": plan["control_hz"],
@@ -399,7 +689,9 @@ def build_score_controls(plan_path: Path, *, max_seconds: Optional[float] = None
         "full_plan_duration_seconds": duration,
         "articulation_frame_counts": {name: sum(1 for frame in frames if frame["articulation"] == name) for name in ARTICULATIONS},
         "explicit_release_decoder_mapping": "release declares no new score pitch but carries the immediately prior rendered F0, allowing both published harmonic and learned-noise branches to decay through the explicit decoder loudness curve (release ** 1.35) and compiled release voicing gate",
-        "decoder_inputs": "F0 and linear loudness only; raw score dB is never passed to the decoder. breath/rearticulate/slur/release remain authorial curves, not inferred categorical model labels. Slur interpolation captures one fixed prior state at each event boundary; release loudness starts from one fixed inherited steady level.",
+        "decoder_inputs": "F0 and linear loudness only; raw score dB is never passed to the decoder. breath/rearticulate/slur/release remain authorial curves, not inferred categorical model labels. A slur is continuous breath plus a short pitch-only fingering transition in log-frequency, with no invented attack; its separately authored dynamic moves monotonically from entry to target over 80 ms without overshoot. Release loudness starts from one fixed inherited steady level.",
+        "slur_transition_policy": slur_qa["policy"],
+        "slur_transition_control_qa": slur_qa,
         "loudness_mapping": {
             "formula": "linear_loudness = 10 ** (steady_loudness_db / 20)",
             "authored_steady_db_range": [-30.0, -28.0],
@@ -895,7 +1187,17 @@ def execute(args: argparse.Namespace) -> Dict[str, Any]:
     if args.supersedes_output is not None and OUTPUT_NAME.fullmatch(args.supersedes_output) is None:
         raise RuntimeContractError("--supersedes-output must name one prior DDSP-Gugak R&D output directory")
     check = build_check_report(plan=args.plan, gugak_root=args.gugak_source_root, ddsp_pytorch_root=args.ddsp_pytorch_root, checkpoint=args.checkpoint, checkpoint_config=args.checkpoint_config)
-    frames, controls = build_score_controls(args.plan, max_seconds=args.max_seconds)
+    frames, controls = build_score_controls(
+        args.plan,
+        max_seconds=args.max_seconds,
+        slur_transition_milliseconds=args.slur_transition_ms,
+    )
+    _, normalized_events, _ = _validate_plan(args.plan.expanduser().resolve())
+    compiler_equivalence = verify_compiler_slur_policy_equivalence(
+        repository_root,
+        normalized_events,
+        requested_transition_seconds=_slur_transition_seconds(args.slur_transition_ms),
+    )
     if args.reference_flute_wav is not None and controls["truncated_for_smoke"]:
         raise RuntimeContractError("the 6.72-second western-flute reference is allowed only for a full-plan listening pair")
     if args.checkpoint_native_reverb and controls["truncated_for_smoke"]:
@@ -954,6 +1256,19 @@ def execute(args: argparse.Namespace) -> Dict[str, Any]:
             "status": "succeeded",
             "supersedes_rnd_output_directory": args.supersedes_output,
             "score_controls": controls,
+            "slur_research_rationale": {
+                "scope": "flute transition literature informs an R&D timing prior only; it is not direct Daegeum performance evidence",
+                "flute_key_transition_study": {
+                    "citation_url": "https://www.phys.unsw.edu.au/jw/reprints/AlmeidaetalJASA09.pdf",
+                    "reported_context": "key motion is typically about 10 ms under finger pressure and 16 ms under spring return; multi-finger timing differences can span tens of milliseconds, and acoustic effects are nonlinear with key displacement",
+                },
+                "portamento_perception_study": {
+                    "citation_url": "https://newt.phys.unsw.edu.au/jw/reprints/portamento.pdf",
+                    "reported_context": "used only as a perceptual timing rationale supplied for this R&D decision; no direct Daegeum generalization is claimed",
+                },
+                "decision": "8/12/20 ms pitch-only candidates are auditioned; 12 ms is the conservative canonical default, while 20 ms is retained only as a boundary candidate because it maximizes intermediate-pitch dwell",
+            },
+            "compiler_runtime_slur_policy_equivalence": compiler_equivalence,
             "render": render,
             "outputs": outputs,
             "listening_pair": listening_pair,
@@ -992,12 +1307,19 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser.add_argument("--checkpoint-native-reverb", action="store_true", help="also create a separate R&D-only audition through the strictly loaded published three-tensor FIR reverb")
     parser.add_argument("--supersedes-output", help="optional prior DDSP-Gugak R&D output directory basename recorded as superseded")
     parser.add_argument("--max-seconds", type=float, help="250 Hz-aligned score prefix for an actual decoder smoke render")
+    parser.add_argument(
+        "--slur-transition-ms",
+        type=int,
+        choices=SLUR_TRANSITION_CANDIDATE_MILLISECONDS,
+        default=SLUR_TRANSITION_MILLISECONDS,
+        help="pitch-only log-frequency minimum-jerk fingering transition; 12 ms is the canonical default",
+    )
     parser.add_argument("--seed", type=int, default=20260925)
     parser.add_argument("--confirm-rnd-only", action="store_true")
     args = parser.parse_args(argv)
     if args.execute and args.output_dir is None:
         parser.error("--execute requires --output-dir")
-    if args.check and (args.output_dir is not None or args.reference_flute_wav is not None or args.checkpoint_native_reverb or args.supersedes_output is not None or args.confirm_rnd_only):
+    if args.check and (args.output_dir is not None or args.reference_flute_wav is not None or args.checkpoint_native_reverb or args.supersedes_output is not None or args.confirm_rnd_only or args.slur_transition_ms != SLUR_TRANSITION_MILLISECONDS):
         parser.error("--check does not accept output, reference, supersession, or execution confirmation flags")
     return args
 

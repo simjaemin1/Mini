@@ -35,14 +35,36 @@ does not receive invented categorical articulation labels. Written rests are
 hard-zeroed after dry synthesis. The 250 Hz voicing curve is linearly
 upsampled to 16 kHz (not held as 4 ms steps), and each explicit voiced-to-rest
 boundary gets a deterministic 16 ms pre-rest fade-out to avoid a hard-cut
-click. Each slur captures its one event-entry F0/loudness state before making
-the documented 90 ms linear transition; it does not recursively re-interpolate
-from each preceding frame. Release declares no new score pitch but carries the
-immediately prior rendered F0. Its loudness starts from the inherited steady
-event level once and decays as `release ** 1.35`, so both published harmonic
-and learned-noise branches decay over the authored 240 ms tail without a
-recursive per-frame attenuation bug. No arbitrary air/noise multiplier is
-added.
+click. A slur is treated as continuous breath plus a fast fingering change:
+its pitch moves from the captured entry F0 to the new note in **12 ms** by a
+monotonic minimum-jerk S-curve in log-frequency/cents—not a 90 ms linear-Hz
+slide. The runtime can make isolated 8/12/20 ms R&D candidates with
+`--slur-transition-ms`; 12 ms is the conservative canonical default. The
+published oscillator then linearly interpolates its 250 Hz frames, so the
+control transition is already settled long before the 50 ms target-pitch QA
+gate. A slur does not manufacture a re-attack or voicing dip. Its separately
+authored dynamic is retained with an independent 80 ms minimum-jerk transition
+in linear loudness (entry → steady target), checked for monotonicity,
+no-overshoot, and target arrival by 100 ms.
+
+The score-expression compiler has the same canonical constants and math, and
+each runtime sidecar probes both implementations at 5.040/5.044/… seconds.
+That is formula equivalence only: its 100 Hz control artifact can be
+quantized/upsampled differently, so this 250 Hz renderer does not claim
+audio-rate parity with a separate synthetic preview path.
+
+This timing is an R&D **flute-based inference**, not a claim about Daegeum
+performance: the cited flute key-motion study reports roughly 10 ms
+finger-driven and 16 ms spring-driven key motion, with multi-finger timing in
+the tens of milliseconds and nonlinear acoustic effects; it supports avoiding
+a long uniform sweep. [Almeida et al., JASA 2009](https://www.phys.unsw.edu.au/jw/reprints/AlmeidaetalJASA09.pdf)
+The companion portamento timing reference is recorded in each R&D sidecar as a
+perceptual rationale, not as direct Daegeum evidence. Release declares no new
+score pitch but carries the immediately prior rendered F0. Its loudness starts
+from the inherited steady event level once and decays as `release ** 1.35`, so
+both published harmonic and learned-noise branches decay over the authored 240
+ms tail without a recursive per-frame attenuation bug. No arbitrary air/noise
+multiplier is added.
 
 The legacy source is used untouched. A temporary, process-local adapter maps
 its removed `torch.rfft`/`torch.irfft` calls to `torch.fft`, and source
@@ -100,6 +122,7 @@ against the already-generated official MIDI-DDSP western-flute B artifact:
   --checkpoint-config "$ROOT/_bgm_rnd/ddsp-gugak-public-daegeum-checkpoint-audit-r1/daegeum.pth.config" \
   --repository-root "$ROOT" \
   --output-dir "$ROOT/_bgm_rnd/ddsp-gugak-public-daegeum-runtime-r1-YYYYMMDD-HHMMSS" \
+  --slur-transition-ms 12 \
   --checkpoint-native-reverb \
   --reference-flute-wav "$ROOT/_bgm_rnd/midi-ddsp-official-flute-runtime-r1-20260925-121434/b_authorial_bridge6_controls/authorial_score_bridge6.wav"
 ```
