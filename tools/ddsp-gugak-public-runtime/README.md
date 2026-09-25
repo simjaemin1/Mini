@@ -82,6 +82,28 @@ Gyeonggi-style-aligned, human-reviewed, training, and game-clearance claims
 false. The source contour is an automatic periodic-F0 proxy with unverified
 rights; embedding it does not upgrade those claims.
 
+The B2-Rd plan is a second, separately named audition of those exact source
+points. Its status is `reference_shape_depth_matched_unreviewed`, and its
+fail-closed `linear_peak_abs_match` record pins source maximum absolute depth
+`34.047561` cents, target `18.0` cents, and scale
+`0.5286722300020257` (`18.0 / 34.047561`). The runtime verifies that the
+embedded source points still reach the declared source maximum, that the
+ratio and product are exact within the numeric contract, and that the source
+artifact, payload hash, normalized points, and negative claims remain those
+of B2-R. It linearly interpolates the unmodified 65-point residual, multiplies
+that result by the fixed scale, and only then applies the same 120 ms boundary
+depth fades. It does not rescale time or modify the b08 contextual sine
+yoseong, loudness, articulation, or release.
+
+The same QA record labels this semantic operation
+`scale_to_max_abs_cents`, records the raw transform kind and application
+order, recomputes both source and transformed embedded maxima, and reports the
+actual maximum across the 250 Hz runtime rows. A completed B2-Rd contour must
+still have 375 rows, exactly 373 nonzero interior rows, zero-cent first/final
+rows, a nominal-pitch release, and an actual maximum no greater than 18 cents.
+This depth match remains an unreviewed proxy audition; it is not learned,
+style-aligned, human-reviewed, or cleared for training/game use.
+
 The score-expression compiler has the same canonical constants and math, and
 each runtime sidecar probes both implementations at 5.040/5.044/… seconds.
 That is formula equivalence only: its 100 Hz control artifact can be

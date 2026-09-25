@@ -27,9 +27,126 @@ import ddsp_gugak_public_runtime as runtime
 PLAN = ROOT / "tools/score-expression/plans/ari_source_led_response_r1.json"
 AUDITION_PLAN = ROOT / "tools/score-expression/plans/ari_gyeonggi_policy_r1_audition.json"
 REFERENCE_PLAN = ROOT / "tools/score-expression/plans/ari_full_16bar_b2_reference_shape_unreviewed_r1.json"
+DEPTH_MATCHED_REFERENCE_PLAN = ROOT / "tools/score-expression/plans/ari_full_16bar_b2rd_reference_shape_depth_matched_unreviewed_r1.json"
 
 
 class PublicRuntimeTests(unittest.TestCase):
+    def test_depth_matched_reference_contour_scales_only_b16_and_preserves_b08_exactly(self) -> None:
+        source_frames, source_summary = runtime.build_score_controls(
+            REFERENCE_PLAN,
+            slur_pitch_mode=runtime.SLUR_PITCH_MODE_HARD_STEP,
+        )
+        matched_frames, matched_summary = runtime.build_score_controls(
+            DEPTH_MATCHED_REFERENCE_PLAN,
+            slur_pitch_mode=runtime.SLUR_PITCH_MODE_HARD_STEP,
+        )
+        source_qa = source_summary["reference_contour_control_qa"]
+        matched_qa = matched_summary["reference_contour_control_qa"]
+        self.assertEqual(source_qa["status"], "reference_shape_unreviewed")
+        self.assertEqual(matched_qa["status"], "reference_shape_depth_matched_unreviewed")
+        event = matched_qa["events"][0]
+        transform = event["depth_transform"]
+        self.assertEqual(transform["operation"], "scale_to_max_abs_cents")
+        self.assertEqual(transform["kind"], "linear_peak_abs_match")
+        self.assertEqual(transform["source_max_abs_cents"], 34.047561)
+        self.assertEqual(transform["target_max_abs_cents"], 18.0)
+        self.assertEqual(transform["scale"], 0.5286722300020257)
+        self.assertEqual(transform["transformed_embedded_source_max_abs_cents"], 18.0)
+        self.assertTrue(transform["source_max_matches_embedded_points_gate_passed"])
+        self.assertTrue(transform["scale_equals_target_over_source_gate_passed"])
+        self.assertTrue(transform["transformed_embedded_source_hits_target_gate_passed"])
+        self.assertTrue(transform["source_artifact_and_payload_identity_preserved"])
+        self.assertFalse(transform["embedded_pitch_points_modified"])
+        self.assertFalse(transform["learned_or_style_aligned_transform"])
+        self.assertLessEqual(event["actual_runtime_max_abs_cents"], 18.0)
+        self.assertAlmostEqual(event["actual_runtime_max_abs_cents"], 17.958564073355973, places=12)
+        self.assertTrue(event["target_max_abs_not_exceeded_gate_passed"])
+        self.assertEqual(event["active_control_frame_count"], 375)
+        self.assertEqual(event["nonzero_interior_frame_count"], 373)
+        self.assertEqual(matched_frames[8265]["vibrato_cents"], 0.0)
+        self.assertEqual(matched_frames[8639]["vibrato_cents"], 0.0)
+        self.assertEqual(matched_frames[8639]["f0_hz"], event["nominal_pitch_hz"])
+        self.assertTrue(event["no_time_compression_gate_passed"])
+
+        source_event = source_qa["events"][0]
+        for key in (
+            "candidate_id",
+            "source_id",
+            "source_sha256",
+            "source_artifact_sha256",
+            "contour_payload_sha256",
+            "rights_status",
+            "source_sample_count",
+            "source_duration_seconds",
+            "onset_seconds_relative",
+            "fade_in_seconds",
+            "fade_out_seconds",
+        ):
+            self.assertEqual(event[key], source_event[key])
+
+        scale = transform["scale"]
+        for source_frame, matched_frame in zip(source_frames[8265:8640], matched_frames[8265:8640]):
+            self.assertAlmostEqual(
+                matched_frame["vibrato_cents"],
+                source_frame["vibrato_cents"] * scale,
+                places=12,
+            )
+            for key in ("frame_index", "time_seconds", "loudness_linear", "voicing", "articulation", "event_id"):
+                self.assertEqual(matched_frame[key], source_frame[key])
+
+        # The existing contextual b08 yoseong and every one of its controls
+        # remain byte-for-byte-equivalent in B2-R and B2-Rd.
+        source_b08 = [frame for frame in source_frames if frame["event_id"] == "b08_e0_rearticulate"]
+        matched_b08 = [frame for frame in matched_frames if frame["event_id"] == "b08_e0_rearticulate"]
+        self.assertTrue(source_b08)
+        self.assertEqual(matched_b08, source_b08)
+
+        _, normalized, _ = runtime._validate_plan(DEPTH_MATCHED_REFERENCE_PLAN)
+        release = normalized[-1]
+        self.assertEqual(
+            release["release_source"]["reference_contour_status"],
+            "reference_shape_depth_matched_unreviewed",
+        )
+        release_frames = [frame for frame in matched_frames if frame["event_id"] == release["id"]]
+        self.assertTrue(release_frames)
+        self.assertTrue(all(frame["vibrato_cents"] == 0.0 for frame in release_frames))
+        self.assertTrue(all(frame["f0_hz"] == event["nominal_pitch_hz"] for frame in release_frames))
+
+    def test_depth_matched_reference_transform_fails_closed_on_any_mutation(self) -> None:
+        source = json.loads(DEPTH_MATCHED_REFERENCE_PLAN.read_text(encoding="utf-8"))
+        reference_index = next(
+            index for index, event in enumerate(source["events"])
+            if "reference_contour" in event
+        )
+
+        def reference(plan):
+            return plan["events"][reference_index]["reference_contour"]
+
+        mutations = {
+            "missing_transform": lambda plan: reference(plan).pop("depth_transform"),
+            "wrong_status": lambda plan: reference(plan).__setitem__("status", "reference_shape_unreviewed"),
+            "wrong_kind": lambda plan: reference(plan)["depth_transform"].__setitem__("kind", "scale_to_max_abs_cents"),
+            "source_max": lambda plan: reference(plan)["depth_transform"].__setitem__("source_max_abs_cents", 34.0),
+            "target_max": lambda plan: reference(plan)["depth_transform"].__setitem__("target_max_abs_cents", 19.0),
+            "scale": lambda plan: reference(plan)["depth_transform"].__setitem__("scale", 0.5),
+            "tiny_scale_drift": lambda plan: reference(plan)["depth_transform"].__setitem__("scale", 0.5286722300020258),
+            "nonfinite_scale": lambda plan: reference(plan)["depth_transform"].__setitem__("scale", float("nan")),
+            "hidden_field": lambda plan: reference(plan)["depth_transform"].__setitem__("approved", True),
+            "source_point_scaled": lambda plan: reference(plan)["normalized_reference_contour"]["pitch_residual_cents"].__setitem__(49, -18.0),
+            "source_payload_hash": lambda plan: reference(plan)["normalized_reference_contour"].__setitem__("contour_payload_sha256", "0" * 64),
+            "artifact_hash": lambda plan: reference(plan)["source_artifact"].__setitem__("sha256", "0" * 64),
+            "claim_upgrade": lambda plan: reference(plan)["claim_limits"].__setitem__("gyeonggi_minyo_style_confirmed", True),
+        }
+        with tempfile.TemporaryDirectory() as temporary:
+            for name, mutate in mutations.items():
+                with self.subTest(name=name):
+                    altered = copy.deepcopy(source)
+                    mutate(altered)
+                    path = Path(temporary) / f"invalid-depth-transform-{name}.json"
+                    path.write_text(json.dumps(altered), encoding="utf-8")
+                    with self.assertRaises(runtime.RuntimeContractError):
+                        runtime.build_score_controls(path)
+
     def test_unreviewed_reference_contour_is_exact_1_5s_linear_and_zero_at_both_boundaries(self) -> None:
         frames, summary = runtime.build_score_controls(
             REFERENCE_PLAN,

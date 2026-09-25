@@ -80,10 +80,22 @@ GAIN_SOURCE_SLOT = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
 # is therefore not enough to make different bytes pass this runtime.
 REFERENCE_CONTOUR_EVENT_ID = "b16_e0_rearticulate"
 REFERENCE_CONTOUR_STATUS = "reference_shape_unreviewed"
+REFERENCE_CONTOUR_DEPTH_MATCHED_STATUS = "reference_shape_depth_matched_unreviewed"
+REFERENCE_CONTOUR_STATUSES = frozenset({
+    REFERENCE_CONTOUR_STATUS,
+    REFERENCE_CONTOUR_DEPTH_MATCHED_STATUS,
+})
 REFERENCE_CONTOUR_ONSET_SECONDS = 0.66
 REFERENCE_CONTOUR_DURATION_SECONDS = 1.5
 REFERENCE_CONTOUR_FADE_SECONDS = 0.12
 REFERENCE_CONTOUR_SAMPLE_COUNT = 65
+REFERENCE_CONTOUR_DEPTH_TRANSFORM_OPERATION = "scale_to_max_abs_cents"
+EXPECTED_REFERENCE_CONTOUR_DEPTH_TRANSFORM = {
+    "kind": "linear_peak_abs_match",
+    "source_max_abs_cents": 34.047561,
+    "target_max_abs_cents": 18.0,
+    "scale": 0.5286722300020257,
+}
 EXPECTED_REFERENCE_CONTOUR_SOURCE = {
     "relative_path": "tools/daegeum-vibrato-reference/reference_shape_unreviewed.ngc-20260925.json",
     "sha256": "e584ff8c9142ed51223681d30ba5aa3236f29a7c808bcb5b40b208cb0f886bd2",
@@ -206,27 +218,29 @@ def _validate_reference_contour(
     """
 
     value = _mapping(raw, label=label)
-    _exact_keys(
-        value,
-        (
-            "status",
-            "onset_seconds",
-            "duration_seconds",
-            "fade_in_seconds",
-            "fade_out_seconds",
-            "fade_shape",
-            "source_artifact",
-            "normalized_reference_contour",
-            "claim_limits",
-        ),
-        label=label,
-    )
+    status = value.get("status")
+    if status not in REFERENCE_CONTOUR_STATUSES:
+        raise RuntimeContractError(
+            f"{label}.status must remain one of the pinned unreviewed reference statuses"
+        )
+    expected_fields = [
+        "status",
+        "onset_seconds",
+        "duration_seconds",
+        "fade_in_seconds",
+        "fade_out_seconds",
+        "fade_shape",
+        "source_artifact",
+        "normalized_reference_contour",
+        "claim_limits",
+    ]
+    if status == REFERENCE_CONTOUR_DEPTH_MATCHED_STATUS:
+        expected_fields.append("depth_transform")
+    _exact_keys(value, expected_fields, label=label)
     if event_id != REFERENCE_CONTOUR_EVENT_ID:
         raise RuntimeContractError(
             f"{label} is allowed only on the pinned {REFERENCE_CONTOUR_EVENT_ID} event"
         )
-    if value.get("status") != REFERENCE_CONTOUR_STATUS:
-        raise RuntimeContractError(f"{label}.status must remain reference_shape_unreviewed")
     if value.get("fade_shape") != "linear_depth":
         raise RuntimeContractError(f"{label}.fade_shape must equal linear_depth")
 
@@ -366,8 +380,67 @@ def _validate_reference_contour(
     if _canonical_object_sha256(unhashed_payload) != payload_hash:
         raise RuntimeContractError(f"{label} embedded contour bytes do not match their payload hash")
 
-    return {
-        "status": REFERENCE_CONTOUR_STATUS,
+    depth_transform: Optional[Dict[str, Any]] = None
+    if status == REFERENCE_CONTOUR_DEPTH_MATCHED_STATUS:
+        raw_transform = _mapping(
+            value.get("depth_transform"),
+            label=f"{label}.depth_transform",
+        )
+        _exact_keys(
+            raw_transform,
+            EXPECTED_REFERENCE_CONTOUR_DEPTH_TRANSFORM,
+            label=f"{label}.depth_transform",
+        )
+        if raw_transform.get("kind") != EXPECTED_REFERENCE_CONTOUR_DEPTH_TRANSFORM["kind"]:
+            raise RuntimeContractError(f"{label}.depth_transform.kind differs from the pinned transform")
+        source_max = _finite_number(
+            raw_transform.get("source_max_abs_cents"),
+            label=f"{label}.depth_transform.source_max_abs_cents",
+            minimum=1.0e-12,
+        )
+        target_max = _finite_number(
+            raw_transform.get("target_max_abs_cents"),
+            label=f"{label}.depth_transform.target_max_abs_cents",
+            minimum=1.0e-12,
+        )
+        scale = _finite_number(
+            raw_transform.get("scale"),
+            label=f"{label}.depth_transform.scale",
+            minimum=1.0e-12,
+            maximum=1.0,
+        )
+        for field, actual in (
+            ("source_max_abs_cents", source_max),
+            ("target_max_abs_cents", target_max),
+            ("scale", scale),
+        ):
+            expected = float(EXPECTED_REFERENCE_CONTOUR_DEPTH_TRANSFORM[field])
+            if actual != expected:
+                raise RuntimeContractError(
+                    f"{label}.depth_transform.{field} differs from its pinned value"
+                )
+        measured_source_max = max(abs(point) for point in pitches)
+        if source_max != measured_source_max:
+            raise RuntimeContractError(
+                f"{label}.depth_transform.source_max_abs_cents does not match the embedded source points"
+            )
+        if scale != target_max / source_max:
+            raise RuntimeContractError(
+                f"{label}.depth_transform.scale is not target_max_abs_cents / source_max_abs_cents"
+            )
+        if source_max * scale != target_max:
+            raise RuntimeContractError(
+                f"{label}.depth_transform does not map the source maximum absolute depth to its target"
+            )
+        depth_transform = {
+            "kind": str(raw_transform["kind"]),
+            "source_max_abs_cents": source_max,
+            "target_max_abs_cents": target_max,
+            "scale": scale,
+        }
+
+    normalized_reference = {
+        "status": str(status),
         "onset_seconds": onset,
         "duration_seconds": duration,
         "fade_in_seconds": fade_in,
@@ -384,6 +457,9 @@ def _validate_reference_contour(
         },
         "claim_limits": dict(claim_limits),
     }
+    if depth_transform is not None:
+        normalized_reference["depth_transform"] = depth_transform
+    return normalized_reference
 
 
 def _safe_relative(value: str, *, label: str) -> str:
@@ -746,6 +822,14 @@ def _reference_contour_cents(
         progress = (normalized_time - times[left]) / span
         raw_cents = pitches[left] + (pitches[right] - pitches[left]) * progress
 
+    raw_transform = reference.get("depth_transform")
+    if raw_transform is not None:
+        transform = _mapping(raw_transform, label="normalized reference contour depth transform")
+        # Preserve the source payload and its time axis.  Only the interpolated
+        # residual depth is multiplied before the same explicit boundary
+        # fades used by B2-R.
+        raw_cents *= float(transform["scale"])
+
     fade_in = float(reference["fade_in_seconds"])
     fade_out = float(reference["fade_out_seconds"])
     envelope = min(1.0, max(0.0, elapsed / fade_in))
@@ -963,6 +1047,44 @@ def reference_contour_control_qa(
             "fade_shape": str(reference["fade_shape"]),
             "expected_active_control_frame_count": int(round(duration * FRAME_RATE_HZ)),
         }
+        raw_depth_transform = reference.get("depth_transform")
+        depth_transform: Optional[Mapping[str, Any]] = None
+        if raw_depth_transform is not None:
+            depth_transform = _mapping(
+                raw_depth_transform,
+                label="normalized reference contour depth transform",
+            )
+            source_points = [float(point) for point in contour["pitch_residual_cents"]]
+            source_max = max(abs(point) for point in source_points)
+            scale = float(depth_transform["scale"])
+            target_max = float(depth_transform["target_max_abs_cents"])
+            transformed_source_max = max(abs(point * scale) for point in source_points)
+            transform_record = {
+                "operation": REFERENCE_CONTOUR_DEPTH_TRANSFORM_OPERATION,
+                "kind": str(depth_transform["kind"]),
+                "application_order": "linear_interpolation_then_multiply_residual_by_scale_then_apply_boundary_depth_fades",
+                "source_max_abs_cents": float(depth_transform["source_max_abs_cents"]),
+                "source_max_abs_cents_recomputed_from_embedded_points": source_max,
+                "target_max_abs_cents": target_max,
+                "scale": scale,
+                "transformed_embedded_source_max_abs_cents": transformed_source_max,
+                "source_max_matches_embedded_points_gate_passed": source_max == float(depth_transform["source_max_abs_cents"]),
+                "scale_equals_target_over_source_gate_passed": scale == target_max / source_max,
+                "transformed_embedded_source_hits_target_gate_passed": transformed_source_max == target_max,
+                "source_artifact_and_payload_identity_preserved": True,
+                "embedded_pitch_points_modified": False,
+                "learned_or_style_aligned_transform": False,
+            }
+            if not all(
+                transform_record[key] is True
+                for key in (
+                    "source_max_matches_embedded_points_gate_passed",
+                    "scale_equals_target_over_source_gate_passed",
+                    "transformed_embedded_source_hits_target_gate_passed",
+                )
+            ):
+                raise RuntimeContractError("reference contour depth-transform provenance gate failed")
+            base_record["depth_transform"] = transform_record
         if not active_frames:
             base_record.update({
                 "truncated_before_reference_contour": True,
@@ -1039,6 +1161,23 @@ def reference_contour_control_qa(
             )
             if not no_compression_gate:
                 raise RuntimeContractError("reference contour source time was compressed onto runtime rows")
+        nonzero_interior_frame_count = sum(
+            1 for frame in active_frames[1:-1] if abs(float(frame["vibrato_cents"])) > 1.0e-10
+        )
+        if complete and nonzero_interior_frame_count != len(active_frames) - 2:
+            raise RuntimeContractError(
+                "reference contour must retain a nonzero interpolated residual on all 373 interior rows"
+            )
+        if depth_transform is not None:
+            actual_runtime_max = max(abs(float(frame["vibrato_cents"])) for frame in active_frames)
+            target_max = float(depth_transform["target_max_abs_cents"])
+            target_gate = actual_runtime_max <= target_max + 1.0e-12
+            if not target_gate:
+                raise RuntimeContractError("depth-matched reference contour exceeds its 18-cent runtime target")
+            base_record.update({
+                "actual_runtime_max_abs_cents": actual_runtime_max,
+                "target_max_abs_not_exceeded_gate_passed": target_gate,
+            })
         base_record.update({
             "truncated_before_reference_contour": False,
             "truncated_during_reference_contour": not complete,
@@ -1052,9 +1191,7 @@ def reference_contour_control_qa(
             "first_boundary_zero_gate_passed": first_gate,
             "final_boundary_zero_gate_passed": final_gate,
             "final_nominal_pitch_gate_passed": final_nominal_gate,
-            "nonzero_interior_frame_count": sum(
-                1 for frame in active_frames[1:-1] if abs(float(frame["vibrato_cents"])) > 1.0e-10
-            ),
+            "nonzero_interior_frame_count": nonzero_interior_frame_count,
             "final_source_normalized_time": final_source_normalized_time,
             "source_endpoint_remapped_to_final_half_open_row": False,
             "no_time_compression_gate_passed": no_compression_gate,
@@ -1062,9 +1199,14 @@ def reference_contour_control_qa(
         records.append(base_record)
     return {
         "passed": True,
-        "status": REFERENCE_CONTOUR_STATUS if reference_events else "not_present",
+        "status": (
+            str(_mapping(reference_events[0]["reference_contour"], label="reference contour QA status")["status"])
+            if reference_events
+            else "not_present"
+        ),
         "event_count": len(reference_events),
         "claim_boundary": "embedded automatic periodic-F0 proxy shape; unreviewed, not learned, not Gyeonggi-style-aligned, and not cleared for training or game use",
+        "application_scope": "the pinned pitch residual or its pinned linear depth match applies only to b16_e0_rearticulate; all other score controls are untouched",
         "learned_claim": False,
         "style_aligned_claim": False,
         "human_reviewed_claim": False,
