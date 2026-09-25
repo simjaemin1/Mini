@@ -75,6 +75,18 @@ oscillator의 250 Hz→16 kHz linear upsampling 때문에 audio에서는 약 한
   `_bgm_rnd/ddsp-gugak-public-daegeum-runtime-r1-20260925-155400-hard-step-diagnostic/runtime_report.json`
   (`63dfa360cbc1bbfe127f562adeeb989e89a1e234d1cfa389616aa95dfb97d0c9`)
 
+실제 BGM 문맥에 가까운 hard-step checkpoint-native reverb 판도 별도로 만들었다.
+
+- wet score-length audition:
+  `_bgm_rnd/ddsp-gugak-public-daegeum-runtime-r1-20260925-160000-hard-step-wet/C_published_daegeum_checkpoint_native_reverb_score_length_shared_interval_rms_matched.wav`
+  (`8aa98a39ce705501bcb1418857387f70192322c47be6b3cd5ea6c3c407a001b6`)
+- report:
+  `_bgm_rnd/ddsp-gugak-public-daegeum-runtime-r1-20260925-160000-hard-step-wet/runtime_report.json`
+  (`168d91b8ba9a62e1e88c38aaa7e2eafdec44a74c0d5fc948bcc31773700b96a2`)
+
+이 wet 판도 shared interval -24.000267 dBFS, hard-step intermediate control dwell 0,
+dry written-rest exact zero, reverb full-tail/score-length prefix equality, release QA를 통과했다.
+
 두 후보에는 canonical에서 계산한 단 하나의 gain `33.75462052226489`를 공통 적용했다. 독립
 정규화, compressor, limiter는 없다. F0 차이는 정확히 moving-slur control frames
 `1260–1262`, `1440–1442`뿐이며 loudness/voicing/seed 등 나머지 decoder input은 exact-equal이다.
