@@ -399,7 +399,11 @@ console.log('\n⑰ 정본 자리(T195) — 상수 · 손잡이 · 서버 한 줄
 {
   const VCODE2 = codeOf(fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8'));
   ok(/const TOOL_WEAR_MUL = \(\(\) => \{/.test(CODE), '⑰ 엔진에 상수 자리가 있다(`TOOL_WEAR_MUL`)');
-  ok(econ.TOOL_WEAR_MUL === 1, '⑰ ★★**기본 1**(= 현행 채택값 · env 미설정)', String(econ.TOOL_WEAR_MUL));
+  //   ★★[T367 2026-09-23 · 재민 확정 #12] 기본이 **1 → 0.9** 로 뒤집혔다. 값을 두 번 적지 않는다 —
+  //     하네스는 **상수 이름**(`TOOL_WEAR_MUL_DEFAULT`)에게 묻고, 그 상수가 실제로 쓰였는지를 본다.
+  ok(/const TOOL_WEAR_MUL_DEFAULT = 0\.9;/.test(CODE), '⑰ ★채택값 상수가 한 자리에 있다(`TOOL_WEAR_MUL_DEFAULT`)');
+  ok(econ.TOOL_WEAR_MUL === 0.9, '⑰ ★★**기본 0.9**(= T367 채택값 · env 미설정 · T191/T200 실측)', String(econ.TOOL_WEAR_MUL));
+  ok(/: TOOL_WEAR_MUL_DEFAULT;/.test(CODE), '⑰ ★기본값이 그 상수를 읽는다(수를 두 번 안 적는다)');
   ok(/process\.env\.T195_TOOL_WEAR/.test(CODE), '⑰ 손잡이 이름이 `T195_TOOL_WEAR` 다');
   const vLines = VCODE2.split('\n').filter((l) => l.indexOf('toolWearMul') >= 0).length;
   ok(vLines === 1, '⑰ ★서버 접점이 **한 줄**이다', `${vLines}줄`);
@@ -437,12 +441,14 @@ console.log('\n⑱ 정본 자리 — env 없으면 문이 안 열리고, 있으�
     const lines = out.split('\n').filter((l) => l.indexOf('MUL=') >= 0);
     return lines.length ? lines[lines.length - 1].trim() : out;
   };
-  const a = run('canon', null), b = run('canon', 0.9), c = run('lab', null);
-  ok(a.startsWith('MUL=none'), '⑱ ★★env 가 없으면 `world.toolWearMul` 이 **아예 안 붙는다**', a.split('|')[0]);
-  ok(b.startsWith('MUL=0.9'), '⑱ `T195_TOOL_WEAR=0.9` 면 정본이 0.9 를 건넨다', b.split('|')[0]);
+  //   ★★[T367] 기본이 켬(0.9)이 됐으므로 **묻는 것이 뒤집혔다**: 이제 "env 가 없으면 0.9 가 붙는다" 이고
+  //     "**명시 `1`** 이면 문이 아예 안 붙는다"(= 넷째 판)이다.
+  const a = run('canon', null), b = run('canon', 1), c = run('lab', null);
+  ok(a.startsWith('MUL=0.9'), '⑱ ★★★env 가 없으면 정본이 **0.9** 를 건넨다(T367 기본 켬)', a.split('|')[0]);
+  ok(b.startsWith('MUL=none'), '⑱ ★★**되돌림 명시 `1`** 이면 `world.toolWearMul` 이 아예 안 붙는다(= 넷째 판)', b.split('|')[0]);
   ok(a.split('|')[1] !== b.split('|')[1], '⑱ ★두 팔이 **다른 세계**다(손잡이가 죽어 있지 않다)');
-  ok(b.split('|')[1] === c.split('|')[1],
-    '⑱ ★★★`=0.9` 정본 주입 = **랩 주입과 같은 지문**(문이 하나라는 증거)', `${b.split('|')[1]} vs ${c.split('|')[1]}`);
+  ok(a.split('|')[1] === c.split('|')[1],
+    '⑱ ★★★기본(0.9) = **랩 주입 0.9 와 같은 지문**(문이 하나라는 증거)', `${a.split('|')[1]} vs ${c.split('|')[1]}`);
 }
 
 // ★★[T206 2026-09-12] **캐러밴 하나 = 품목 하나** — 남는 용량에 둘째 후보 하나.
@@ -770,6 +776,71 @@ console.log('\n㉖ 둘째 화물 기본 끔(T299 정정) — 켠 판 = 끈 판�
     `켬 ${onEnv.secondSum.toFixed(0)} 단위 → 기본 ${dflt.secondSum.toFixed(0)} 단위`);
 }
 
-console.log(`\n=== T299 둘째 화물 기본 끔(정정) 포함: 통과 ${pass} · 실패 ${fail} ===`);
-console.log('접점 심볼: cargoTwoOn|cargoTwoGateOn|L_CARGO_TWO|L_CARGO_TWO_GATE|L_CARGO_TWO_BEST|_legProfitPerUnit|candidates|cand.res|surplus|best.profit|TRADABLE|N_units|CARGO_PER_TRIP|onTradeLeg|_gateBlocked|cargoTwoGate|cargoTwoBest');
+// ════════════════════════════════════════════════════════════════════════════════════════
+// ㉗ [T367] **다섯째 판** — 손잡이 셋 기본 켬 · 되돌림 셋이면 넷째 판
+//   재민 확정 #11(밭 4판 · 장부)·#12(마모 ×0.9). 기본이 뒤집히면 픽스처가 거짓말을 한다(T244) —
+//   그래서 값이 아니라 **관계**를 잠근다:
+//     ⓐ 셋 다 **기본 켬**이다(엔진에게 묻는다 · 자식 프로세스 · env 청소)
+//     ⓑ 되돌림은 **명시 하나씩**(`T100_FIELD_YIELD=0` · `T193_LEDGER=0` · `T195_TOOL_WEAR=1`)
+//     ⓒ 셋을 같이 끈 판 = **넷째 판**(같은 지문) · 기본 판과는 **다른 세계**(자명 통과 금지)
+//     ⓓ `_clearedFrac`·`_paddyShare` 는 **안 건드렸다**(#24 · 여전히 주입 전용)
+//   ⚠엔진은 손잡이를 **모듈 적재 때** 읽는다 ⇒ 같은 프로세스에서는 못 가른다(족보 ⑨ · ⑱ 과 같은 문법).
+console.log('\n㉗ 다섯째 판(T367) — 손잡이 셋 기본 켬 · 되돌림 셋 = 넷째 판');
+{
+  const { execFileSync } = require('child_process');
+  const KEYS = ['T100_FIELD_YIELD', 'T193_LEDGER', 'T195_TOOL_WEAR', 'T100_GARDEN', 'T227_EVEN'];
+  const PROG = `
+    process.env.ENABLE_VILLAGES='0';
+    const econ=require(${JSON.stringify(path.join(ROOT, 'sim', 'economy-sim'))});
+    const econV2=require(${JSON.stringify(path.join(ROOT, 'sim', 'economy-sim-v2'))});
+    const src=require('fs').readFileSync(${JSON.stringify(path.join(ROOT, 'sim', 'economy-sim.js'))},'utf8');
+    const flags={ field:/const T100_FIELD_YIELD = process\\.env\\.T100_FIELD_YIELD !== '0';/.test(src),
+                  ledger:/const T193_LEDGER = process\\.env\\.T193_LEDGER !== '0';/.test(src),
+                  mul:econ.TOOL_WEAR_MUL };
+    const w=econV2.createWorldV2({seed:515,villageCount:0,picker:'rational',infoRange:5000,raidPer100:0.005});
+    w.villages=[];w.events=[];w.caravans=[];
+    if(econ.TOOL_WEAR_MUL!==1) w.toolWearMul=econ.TOOL_WEAR_MUL;   // 서버 한 줄과 같은 가드
+    for(let i=0;i<4;i++){const v=econ.createVillage({fertility:1.1,water:0.8,stone:0.25,ore:0.1,wood:1.0,game:0.6,arable:1,size:60,initialPop:35,name:'마을'+i});
+      v._world=w;v.coord={x:i*150,y:0};w.villages.push(v);}
+    w.day=0; for(let d=0;d<300;d++) econV2.tickWorldV2(w,d);
+    const dig=JSON.stringify(w.villages.map(v=>({n:v.npcs.length,t:+(v.storage.tool||0).toFixed(9),f:+(v.storage.food||0).toFixed(9),s:+(v.storage.stone||0).toFixed(9)})));
+    process.stdout.write(JSON.stringify(flags)+'|'+require('crypto').createHash('sha1').update(dig).digest('hex').slice(0,12));
+  `;
+  const run = (env2) => {
+    const env = Object.assign({}, process.env);
+    for (const k of KEYS) delete env[k];
+    for (const k in (env2 || {})) env[k] = env2[k];
+    //   ⚠`economy-sim-v2` 는 적재할 때 머리글을 찍는다 — **마지막 줄**만 우리 것이다(전문을 파싱하면 빨강).
+    const _o = String(execFileSync(process.execPath, ['-e', PROG], { env, encoding: 'utf8' })).trim().split('\n');
+    const out = _o[_o.length - 1];
+    const i = out.lastIndexOf('|');
+    return { flags: JSON.parse(out.slice(0, i)), dig: out.slice(i + 1) };
+  };
+  const dflt = run(null);
+  const back = run({ T100_FIELD_YIELD: '0', T193_LEDGER: '0', T195_TOOL_WEAR: '1' });
+  const f0 = run({ T100_FIELD_YIELD: '0' });
+  const l0 = run({ T193_LEDGER: '0' });
+  const m1 = run({ T195_TOOL_WEAR: '1' });
+
+  //   ⓐ 둘은 모듈 상수라 밖으로 안 나온다 ⇒ **규칙 자체**를 소스에서 읽는다(`=== '1'` 이면 끔 기본이다).
+  ok(dflt.flags.field === true, '㉗ ★★★`T100_FIELD_YIELD` 규칙이 **미설정 = 켬**이다(`!== \'0\'` · 재민 #11)');
+  ok(dflt.flags.ledger === true, '㉗ ★★★`T193_LEDGER` 규칙이 **미설정 = 켬**이다(4판과 한 처방)');
+  //   ⓑ 마모 배수는 내보내진 값이라 **효과**를 직접 묻는다.
+  ok(dflt.flags.mul === 0.9, '㉗ ★★★`T195_TOOL_WEAR` 기본 **0.9**(재민 #12 · T191/T200 실측)', String(dflt.flags.mul));
+  ok(m1.flags.mul === 1, '㉗ ★★되돌림 `T195_TOOL_WEAR=1` 이 실제로 **1** 을 낸다', String(m1.flags.mul));
+  ok(dflt.dig !== back.dig, '㉗ ★★기본 판과 되돌림 판은 **다른 세계**다(문이 죽어 있지 않다 · 자명 통과 금지)');
+  ok(run(null).dig === dflt.dig, '㉗ ★★기본 두 판이 **비트 동일**(결정론)');
+  ok(run({ T100_FIELD_YIELD: '0', T193_LEDGER: '0', T195_TOOL_WEAR: '1' }).dig === back.dig,
+    '㉗ ★★되돌림 두 판도 **비트 동일**(결정론)');
+  //   ★손잡이 셋이 **서로 독립**이다 — 하나씩 끈 판이 셋 다 다르고, 셋 다 기본·되돌림 어느 쪽과도 다르다
+  const digs = [dflt.dig, back.dig, f0.dig, l0.dig, m1.dig];
+  ok(new Set(digs).size === 5, '㉗ ★손잡이 셋이 **서로 독립**이다(다섯 판이 전부 다른 지문)',
+    digs.join(' · '));
+  //   ★[#24] 새 손잡이를 안 만들었다 — `_clearedFrac`·`_paddyShare` 는 여전히 주입 전용(env 이름 0건)
+  ok(!/process\.env\.[A-Z0-9_]*CLEARED/.test(CODE) && !/process\.env\.[A-Z0-9_]*PADDY/.test(CODE),
+    '㉗ ★`_clearedFrac`·`_paddyShare` 에 env 손잡이가 **없다**(#24 · 끔 그대로)');
+}
+
+console.log(`\n=== T367 다섯째 판 포함: 통과 ${pass} · 실패 ${fail} ===`);
+console.log('접점 심볼: T100_FIELD_YIELD|T193_LEDGER|T195_TOOL_WEAR|TOOL_WEAR_MUL_DEFAULT|cargoTwoOn|cargoTwoGateOn|L_CARGO_TWO|L_CARGO_TWO_GATE|L_CARGO_TWO_BEST|_legProfitPerUnit|candidates|cand.res|surplus|best.profit|TRADABLE|N_units|CARGO_PER_TRIP|onTradeLeg|_gateBlocked|cargoTwoGate|cargoTwoBest');
 process.exit(fail ? 1 : 0);

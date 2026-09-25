@@ -469,7 +469,10 @@ console.log('\n[H] 랩 부팅 기본 = 서버 기본(주입 없음)');
   //     ⚠**랩은 이 문도 안 연다**(T226 과 같은 이유 — 브라우저엔 군락·청크가 없다). 아래 절이 그것을 잰다.
   //   ⚠이름은 위 정규식이 잡는 그 꼴이다(`world.` 부터 잡는다 — 코드에선 `vil.econ._world.forageActItems`).
   const T347_INJ = 'world.forageActItems';
-  const extra = inj.filter((x) => !['world.villages', 'world.events', 'world.day', T347_INJ].includes(x));   // 상태(목록·장부·날짜)는 주입이 아니다
+  //   ★★[T367 2026-09-23 · 재민 확정 #12] `world.toolWearMul` 이 이 목록에 들어온다 —
+  //     T195 가 만든 정본 자리(`econ.TOOL_WEAR_MUL`)를 서버가 **한 줄로** 건네고, T367 이 그 기본을 0.9 로 뒀다.
+  //     ⚠"랩이 맞출 대상"이 아니다 — 값의 정본이 엔진 안에 있어 랩도 같은 상수를 탄다(사본 0).
+  const extra = inj.filter((x) => !['world.villages', 'world.events', 'world.day', 'world.toolWearMul', T347_INJ].includes(x));   // 상태(목록·장부·날짜)는 주입이 아니다 · toolWearMul 은 T367 기본값
   if (inj.includes(T347_INJ)) ok('서버가 채집 걷는 목록을 심는다(`' + T347_INJ + '` · T347) — [H] 표에 적혀 있다');
   else wrn('`' + T347_INJ + '` 주입이 사라졌다 — T347 이 걷어졌으면 이 줄도 지워라');
   {

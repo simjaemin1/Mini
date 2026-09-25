@@ -43,7 +43,10 @@ const econV2 = R('sim/economy-sim-v2');
 const SRC = fs.readFileSync(path.join(ROOT, 'sim', MUT || 'economy-sim.js'), 'utf8');
 const VSRC = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8');
 const LSRC = fs.readFileSync(path.join(ROOT, 'server', 'village-layout.js'), 'utf8');
-const ON = process.env.T100_FIELD_YIELD === '1';
+// ★★[T367 2026-09-23 · 재민 확정 #11] **기본이 뒤집혔다 — 미설정 = 켬.** 팔 판정은 정본과 **같은 규칙**이어야 한다
+//   (안 맞추면 하네스가 끈 팔을 잰다고 말하면서 켠 세계를 재고, 그게 T244 가 배운 "픽스처가 거짓말을 한다" 다).
+//   ⇒ 이 하네스의 **끔 절들은 이제 `T100_FIELD_YIELD=0` 을 명시로 줘야 돈다**(⑤ 가 그 팔을 자식으로 돌린다).
+const ON = process.env.T100_FIELD_YIELD !== '0';
 // ★★[T227] 고르게 켠 판에서는 수확이 **대기열**로 가고 하루치씩 풀린다. 픽스처는 세계를 흉내 내지 않고
 //   **정본 `t100EvenRelease` 를 그대로 불러** 다 푼 뒤에 본다 — 그러면 아래 절들이 두 팔에서 같은 말을 한다.
 //   (총량 항등식은 ⑲ 가 따로 문다. 4,000번이면 남은 대기가 1e-13 아래다 — 아래 비교 허용오차 1e-9 밖.)
@@ -172,11 +175,12 @@ console.log('\n⑤ 되돌림 — 끈 세계가 T86 세계와 비트 동일한가
 if (!process.env.T100_CHILD) {
   const fp = (env) => execFileSync(process.execPath, [__filename, '--fingerprint'],
     { env: Object.assign({}, process.env, env, { T100_CHILD: '1', T100_MUT_MOD: '' }), stdio: 'pipe' }).toString().split('FP:')[1] || 'NONE';
+  //   ★★[T367] 기본이 **켬**이 됐다 ⇒ 묻는 것이 뒤집힌다: 미설정 = **켠** 세계고, 되돌림은 **명시 `0`** 이다.
   const off = fp({ T100_FIELD_YIELD: '0' });
   const unset = fp({ T100_FIELD_YIELD: '' });
   const on = fp({ T100_FIELD_YIELD: '1' });
-  ok(off === unset, '⑤ ★★★`T100_FIELD_YIELD=0` 과 **미설정**이 비트 동일(되돌림이 기본이다)', off.slice(0, 46) + '…');
-  ok(off !== on, '⑤ ★★[자명 통과 금지] 켠 세계는 **실제로 다르다**(0=0 통과가 아니다)', on.slice(0, 46) + '…');
+  ok(unset === on, '⑤ ★★★**미설정 = 켬**(`=1` 과 비트 동일 — T367 기본 켬)', on.slice(0, 46) + '…');
+  ok(off !== unset, '⑤ ★★★되돌림은 **명시 `0`** 하나다(끈 세계는 실제로 다르다 · 자명 통과 금지)', off.slice(0, 46) + '…');
 } else if (process.argv.indexOf('--fingerprint') >= 0) {
   const w = econV2.createWorldV2({ seed: 42, villageCount: 5, namePool: ['가', '나', '다', '라', '마'], infoRange: 5000, raidPer100: 0.005, picker: 'rational' });
   const _l = console.log; console.log = () => {};
@@ -505,8 +509,8 @@ console.log('\n⑮ 장부 — 밭이 곳간에 넣은 그 양이 **실현 흐름
     '⑮ 읽는 곳은 하나 — `totalFoodProductionEquivalent` → `dailySurplus` → `surplusEMA.food`');
   ok(/if \(T193_LEDGER\) dailyProduction\.food = \(dailyProduction\.food \|\| 0\) \+ _t100Pot;/.test(C),
     '⑮ ★★★적는 수는 **잠재에 적는 그 수 그대로**다(`_t100Pot`) — 배수 0 · 새 수 0(`* 2` 를 끼우면 여기가 빨개진다)');
-  ok(/const T193_LEDGER = process\.env\.T193_LEDGER === '1';/.test(C),
-    '⑮ 손잡이는 **기본 끔**이다(`=== \'1\'` — 켜야 켜진다)');
+  ok(/const T193_LEDGER = process\.env\.T193_LEDGER !== '0';/.test(C),
+    '⑮ ★[T367] 손잡이는 **기본 켬**이다(`!== \'0\'` — 끄는 것은 명시 \'0\' 하나)');
   ok(C.indexOf('T193_LEDGER') > 0 && !/T193_LEDGER[^\n]*dailyProductionPotential/.test(C),
     '⑮ 손잡이는 **실현 장부만** 문다 — T183 의 잠재 줄은 손잡이 밖이다(따로 산다)');
 
