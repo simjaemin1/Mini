@@ -35,16 +35,38 @@ does not receive invented categorical articulation labels. Written rests are
 hard-zeroed after dry synthesis. The 250 Hz voicing curve is linearly
 upsampled to 16 kHz (not held as 4 ms steps), and each explicit voiced-to-rest
 boundary gets a deterministic 16 ms pre-rest fade-out to avoid a hard-cut
-click. Release declares no new score pitch but carries the immediately prior
-rendered F0, so both published harmonic and learned-noise branches decay over
-the authored 240 ms loudness/voicing tail. No arbitrary air/noise multiplier
-is added.
+click. Each slur captures its one event-entry F0/loudness state before making
+the documented 90 ms linear transition; it does not recursively re-interpolate
+from each preceding frame. Release declares no new score pitch but carries the
+immediately prior rendered F0. Its loudness starts from the inherited steady
+event level once and decays as `release ** 1.35`, so both published harmonic
+and learned-noise branches decay over the authored 240 ms tail without a
+recursive per-frame attenuation bug. No arbitrary air/noise multiplier is
+added.
 
 The legacy source is used untouched. A temporary, process-local adapter maps
 its removed `torch.rfft`/`torch.irfft` calls to `torch.fft`, and source
 harmonic/noise modules receive `device="cpu"`; neither patch persists nor
 modifies a checkout. The encoder, CREPE, source WAVs, NGC audio, and learned
 reverb are not imported or called for the dry render.
+
+## Optional checkpoint-native reverb audition
+
+`--checkpoint-native-reverb` is explicit and creates a **separate** R&D
+audition while preserving the dry WAV byte-for-byte in the same fresh output
+directory. It hash-gates unchanged published `components/reverb.py`, strictly
+loads exactly `reverb.fir`, `reverb.drywet`, and `reverb.decay` from the pinned
+checkpoint, and passes the authorial-gated dry model result through the public
+FIR component on CPU. It neither opens source audio nor changes the score.
+
+It writes two wet WAVs: a full learned-room tail and a score-length crop for
+audition. The dry input is exact zero in the written rest, but a learned FIR
+tail can remain audible there and after 6.72 seconds; that is room response,
+not a newly asserted score note. Both wet files and the dry/flute A/B pair are
+matched using the same `[0.00, 6.48)` interval (103,680 samples at 16 kHz) to
+-24 dBFS RMS. Each file gets one constant gain over its entire duration; a
+potential clip fails the run rather than triggering a limiter, compressor,
+peak normalization, or tail-specific gain.
 
 ## Check, then render
 
@@ -78,14 +100,16 @@ against the already-generated official MIDI-DDSP western-flute B artifact:
   --checkpoint-config "$ROOT/_bgm_rnd/ddsp-gugak-public-daegeum-checkpoint-audit-r1/daegeum.pth.config" \
   --repository-root "$ROOT" \
   --output-dir "$ROOT/_bgm_rnd/ddsp-gugak-public-daegeum-runtime-r1-YYYYMMDD-HHMMSS" \
+  --checkpoint-native-reverb \
   --reference-flute-wav "$ROOT/_bgm_rnd/midi-ddsp-official-flute-runtime-r1-20260925-121434/b_authorial_bridge6_controls/authorial_score_bridge6.wav"
 ```
 
-The pair is active-RMS matched to -24 dBFS. It fails instead of silently
-limiting either side if that target would clip. The flute WAV is only read
-after rendering to make a listening comparison; it is never an inference or
-training input.
+The pair and optional reverb audition use the same shared-interval RMS target
+of -24 dBFS. They fail instead of silently limiting any side if that target
+would clip. The flute WAV is only read after rendering to make a listening
+comparison; it is never an inference or training input.
 
-Outputs are a dry WAV, a 250 Hz CSV control table, and a path-free provenance
-sidecar. The output directory must be new, so a failed or prior experiment
-cannot be overwritten.
+Outputs are a dry WAV, a 250 Hz CSV control table, a path-free provenance
+sidecar, and—only with the explicit flag—the two separate wet audition WAVs.
+The output directory must be new, so a failed or prior experiment cannot be
+overwritten.

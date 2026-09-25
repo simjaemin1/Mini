@@ -45,12 +45,16 @@ EXPECTED_DDSP_PYTORCH_FILES = {
     "train/network/autoencoder/decoder.py": "2be9c6b5eb8e5bf5f3e4e308de98ecede789c252c10b01f184df57e424458904",
     "components/harmonic_oscillator.py": "7481b999f841334d5759eef9d95308c812920048c153136c785a30e41d49592d",
     "components/filtered_noise.py": "e14593e920f4d7c0d8e0eb3fee1470aa94a845193f277b8d56dfa00d4c492679",
+    "components/reverb.py": "68d21b2df51fd6c98612831983928f16bdb64f31b002ff904a9f906b5ee29b91",
 }
 FRAME_RATE_HZ = 250
 FRAME_RESOLUTION = 1.0 / FRAME_RATE_HZ
 SAMPLE_RATE_HZ = 16_000
 HOP_LENGTH = 64
 REST_ENTRY_FADE_SECONDS = 0.016
+CHECKPOINT_NATIVE_REVERB_LENGTH_SAMPLES = 48_000
+SHARED_INTERVAL_END_SECONDS = 6.48
+LISTENING_TARGET_RMS = 0.06309573444801933  # -24 dBFS
 ARTICULATIONS = ("rest", "breath_start", "rearticulate", "slur", "release")
 VOICED_ARTICULATIONS = frozenset({"breath_start", "rearticulate", "slur"})
 OUTPUT_NAME = re.compile(r"ddsp-gugak-public-daegeum-runtime-r1-[0-9]{8}-[0-9]{6}(?:-[a-z0-9-]+)?$")
@@ -316,6 +320,9 @@ def build_score_controls(plan_path: Path, *, max_seconds: Optional[float] = None
     event_cursor = 0
     prior_f0 = 0.0
     prior_loudness = 0.0
+    active_event_cursor: Optional[int] = None
+    event_start_f0 = 0.0
+    event_start_loudness = 0.0
     for frame_index in range(frame_count):
         moment = frame_index / FRAME_RATE_HZ
         while event_cursor < len(events) and moment >= float(events[event_cursor]["end_seconds"]) - 1.0e-12:
@@ -324,6 +331,13 @@ def build_score_controls(plan_path: Path, *, max_seconds: Optional[float] = None
             frames.append({"frame_index": frame_index, "time_seconds": moment, "f0_hz": 0.0, "loudness_linear": 0.0, "voicing": 0.0, "articulation": "rest", "event_id": "", "vibrato_cents": 0.0})
             continue
         event = events[event_cursor]
+        if active_event_cursor != event_cursor:
+            # A slur needs one fixed event-entry state.  Do not use the
+            # previous *frame* as its start state or an intended 90 ms linear
+            # transition turns into an unintended recursive exponential one.
+            active_event_cursor = event_cursor
+            event_start_f0 = prior_f0
+            event_start_loudness = prior_loudness
         local = moment - float(event["start_seconds"])
         event_duration = float(event["end_seconds"]) - float(event["start_seconds"])
         articulation = str(event["articulation"])
@@ -335,7 +349,12 @@ def build_score_controls(plan_path: Path, *, max_seconds: Optional[float] = None
             # wind-instrument tail must retain its immediately prior voiced
             # F0 while the authored loudness/voicing curves decay.
             f0_hz = prior_f0
-            loudness = prior_loudness * math.pow(release, 1.35)
+            # ``prior_loudness`` is the previous *frame's* rendered value,
+            # not the event's start level.  Multiplying it here would make a
+            # release decay recursively once per 4 ms frame.  The normalized
+            # release event deliberately inherits the previous voiced event's
+            # steady dB value, so map that fixed start level exactly once.
+            loudness = target_loudness * math.pow(release, 1.35)
             voicing = release
         else:
             vibrato_cents = _vibrato_cents(event, local)
@@ -353,8 +372,8 @@ def build_score_controls(plan_path: Path, *, max_seconds: Optional[float] = None
             elif articulation == "slur":
                 transition = min(0.090, max(0.012, event_duration * 0.35))
                 blend = min(1.0, local / transition)
-                f0_hz = prior_f0 + (target_f0 - prior_f0) * blend
-                loudness = prior_loudness + (target_loudness - prior_loudness) * blend
+                f0_hz = event_start_f0 + (target_f0 - event_start_f0) * blend
+                loudness = event_start_loudness + (target_loudness - event_start_loudness) * blend
                 voicing = 1.0
             else:  # pragma: no cover - normalized validation makes this unreachable.
                 raise RuntimeContractError("unsupported articulation after plan validation")
@@ -380,7 +399,7 @@ def build_score_controls(plan_path: Path, *, max_seconds: Optional[float] = None
         "full_plan_duration_seconds": duration,
         "articulation_frame_counts": {name: sum(1 for frame in frames if frame["articulation"] == name) for name in ARTICULATIONS},
         "explicit_release_decoder_mapping": "release declares no new score pitch but carries the immediately prior rendered F0, allowing both published harmonic and learned-noise branches to decay through the explicit decoder loudness curve (release ** 1.35) and compiled release voicing gate",
-        "decoder_inputs": "F0 and linear loudness only; raw score dB is never passed to the decoder. breath/rearticulate/slur/release remain authorial curves, not inferred categorical model labels",
+        "decoder_inputs": "F0 and linear loudness only; raw score dB is never passed to the decoder. breath/rearticulate/slur/release remain authorial curves, not inferred categorical model labels. Slur interpolation captures one fixed prior state at each event boundary; release loudness starts from one fixed inherited steady level.",
         "loudness_mapping": {
             "formula": "linear_loudness = 10 ** (steady_loudness_db / 20)",
             "authored_steady_db_range": [-30.0, -28.0],
@@ -510,6 +529,33 @@ def _import_published_components(torch: Any, root: Path) -> Tuple[Any, Any, Any]
     return decoder_module.Decoder, harmonic_module.HarmonicOscillator, noise_module.FilteredNoise
 
 
+def _import_published_reverb(root: Path) -> Any:
+    """Import only the hash-gated published FIR reverb from the supplied checkout."""
+
+    root = root.expanduser().resolve()
+    root_string = str(root)
+    if root_string not in sys.path:
+        sys.path.insert(0, root_string)
+    try:
+        reverb_module = importlib.import_module("components.reverb")
+    except Exception as exc:
+        raise RuntimeContractError(f"could not import unchanged published reverb component: {type(exc).__name__}: {exc}") from exc
+    expected_file = (root / "components/reverb.py").resolve()
+    if Path(str(reverb_module.__file__)).resolve() != expected_file:
+        raise RuntimeContractError("a pre-existing module shadowed the explicitly supplied published reverb source checkout")
+    return reverb_module.TrainableFIRReverb
+
+
+def _load_tensor_only_checkpoint(torch: Any, checkpoint: Path) -> Mapping[str, Any]:
+    try:
+        state = torch.load(str(checkpoint), map_location="cpu", weights_only=True)
+    except TypeError as exc:
+        raise RuntimeContractError("PyTorch is too old for safe weights_only checkpoint loading") from exc
+    if not isinstance(state, Mapping) or any(not isinstance(value, torch.Tensor) for value in state.values()):
+        raise RuntimeContractError("public checkpoint must be a tensor-only state dictionary")
+    return state
+
+
 def _decoder_config() -> types.SimpleNamespace:
     return types.SimpleNamespace(
         mlp_units=512,
@@ -540,12 +586,7 @@ def render_dry_cpu(frames: Sequence[Mapping[str, Any]], *, ddsp_pytorch_root: Pa
     else:
         device = "cpu"
     Decoder, HarmonicOscillator, FilteredNoise = _import_published_components(torch, ddsp_pytorch_root)
-    try:
-        state = torch.load(str(checkpoint), map_location="cpu", weights_only=True)
-    except TypeError as exc:
-        raise RuntimeContractError("PyTorch is too old for safe weights_only checkpoint loading") from exc
-    if not isinstance(state, Mapping) or any(not isinstance(value, torch.Tensor) for value in state.values()):
-        raise RuntimeContractError("public checkpoint must be a tensor-only state dictionary")
+    state = _load_tensor_only_checkpoint(torch, checkpoint)
     decoder_state = {str(key)[len("decoder."):]: value for key, value in state.items() if str(key).startswith("decoder.")}
     reverb_keys = sorted(str(key) for key in state if str(key).startswith("reverb."))
     if len(decoder_state) != 44 or reverb_keys != ["reverb.decay", "reverb.drywet", "reverb.fir"]:
@@ -609,6 +650,138 @@ def _audio_stats(samples: Sequence[float]) -> Dict[str, float]:
     peak = max(abs(float(value)) for value in samples)
     rms = math.sqrt(sum(float(value) * float(value) for value in samples) / len(samples))
     return {"peak": peak, "rms": rms, "rms_dbfs": -math.inf if rms == 0.0 else 20.0 * math.log10(rms)}
+
+
+def render_checkpoint_native_reverb_cpu(
+    dry_audio: Sequence[float],
+    frames: Sequence[Mapping[str, Any]],
+    *,
+    ddsp_pytorch_root: Path,
+    checkpoint: Path,
+) -> Tuple[List[float], Dict[str, Any]]:
+    """Run the published checkpoint FIR reverb on the already gated dry signal.
+
+    This is intentionally a separate R&D audition, not part of the dry
+    renderer.  The input is the authorial-gated dry output so authored rests
+    are exact zero at its input; a learned FIR tail may quite properly extend
+    into a written rest and beyond the score.
+    """
+
+    try:
+        torch = importlib.import_module("torch")
+    except ModuleNotFoundError as exc:
+        raise RuntimeContractError("the named isolated Python must provide modern CPU PyTorch") from exc
+    if not hasattr(torch, "fft"):
+        raise RuntimeContractError("modern PyTorch with torch.fft is required")
+    expected_dry_samples = len(frames) * HOP_LENGTH
+    if len(dry_audio) != expected_dry_samples:
+        raise RuntimeContractError("checkpoint-native reverb input must be the full published dry render")
+    if not all(math.isfinite(float(value)) for value in dry_audio):
+        raise RuntimeContractError("checkpoint-native reverb input contains a non-finite sample")
+    hard_zero_rests = rest_sample_ranges(frames)
+    for region in hard_zero_rests:
+        start = int(region["start_sample"])
+        end = int(region["end_sample_exclusive"])
+        if any(float(value) != 0.0 for value in dry_audio[start:end]):
+            raise RuntimeContractError("checkpoint-native reverb requires the authored dry rest to be exactly zero before convolution")
+
+    TrainableFIRReverb = _import_published_reverb(ddsp_pytorch_root)
+    state = _load_tensor_only_checkpoint(torch, checkpoint)
+    reverb_keys = sorted(str(key) for key in state if str(key).startswith("reverb."))
+    expected_keys = ["reverb.decay", "reverb.drywet", "reverb.fir"]
+    if reverb_keys != expected_keys:
+        raise RuntimeContractError("checkpoint tensor layout differs from the audited three-tensor published FIR reverb state")
+    reverb_state = {key[len("reverb."):]: state[key] for key in reverb_keys}
+    tensor_shapes = {key: list(reverb_state[key].shape) for key in sorted(reverb_state)}
+    expected_shapes = {"decay": [1], "drywet": [1], "fir": [1, CHECKPOINT_NATIVE_REVERB_LENGTH_SAMPLES]}
+    if tensor_shapes != expected_shapes:
+        raise RuntimeContractError("checkpoint-native reverb tensor shapes differ from the pinned published Daegeum architecture")
+
+    # The constructor's initial random FIR is entirely overwritten by the
+    # strict checkpoint load.  Seeding it nevertheless makes this invocation
+    # reproducible even before load_state_dict validates every tensor.
+    torch.manual_seed(20260925)
+    reverb = TrainableFIRReverb(reverb_length=CHECKPOINT_NATIVE_REVERB_LENGTH_SAMPLES, device="cpu").to("cpu").eval()
+    try:
+        reverb.load_state_dict(reverb_state, strict=True)
+    except RuntimeError as exc:
+        raise RuntimeContractError(f"pinned checkpoint-native reverb state could not load strictly: {exc}") from exc
+    with torch.inference_mode(), legacy_fft_compat(torch):
+        wet_tensor = reverb({"audio_synth": torch.tensor([list(dry_audio)], dtype=torch.float32, device="cpu")})
+        if wet_tensor.ndim != 2 or wet_tensor.shape[0] != 1 or wet_tensor.shape[-1] <= len(dry_audio):
+            raise RuntimeContractError("published checkpoint-native reverb did not produce the required full tail")
+        wet_audio = wet_tensor.squeeze(0).detach().cpu().tolist()
+    if hasattr(torch, "rfft") or hasattr(torch, "irfft"):
+        raise RuntimeContractError("legacy FFT compatibility shim leaked outside its process-local context")
+    if not all(math.isfinite(float(value)) for value in wet_audio):
+        raise RuntimeContractError("published checkpoint-native reverb produced a non-finite sample")
+    nominal_linear_convolution_samples = len(dry_audio) + CHECKPOINT_NATIVE_REVERB_LENGTH_SAMPLES - 1
+    return wet_audio, {
+        "source": {
+            "component": "unchanged published ddsp-pytorch/components/reverb.py",
+            "state_load": "strict checkpoint load succeeded",
+            "checkpoint_tensor_keys": reverb_keys,
+            "checkpoint_tensor_shapes": tensor_shapes,
+            "constructor_device": "cpu",
+            "legacy_fft_compatibility": "temporary process-local torch.fft adapter; restored before return",
+        },
+        "input": {
+            "kind": "authorial-gated published dry decoder output; not source audio",
+            "sample_count": len(dry_audio),
+            "duration_seconds": len(dry_audio) / SAMPLE_RATE_HZ,
+            "written_rest_is_exact_zero_before_reverb": True,
+            "hard_zero_rest_sample_ranges": hard_zero_rests,
+        },
+        "output": {
+            "sample_count": len(wet_audio),
+            "duration_seconds": len(wet_audio) / SAMPLE_RATE_HZ,
+            "tail_samples_after_score": len(wet_audio) - len(dry_audio),
+            "tail_seconds_after_score": (len(wet_audio) - len(dry_audio)) / SAMPLE_RATE_HZ,
+            "nominal_linear_convolution_samples": nominal_linear_convolution_samples,
+            "legacy_irfft_inferred_length_note": "the untouched legacy source omits signal_sizes; for this odd convolution length the torch.fft compatibility adapter returns one sample fewer than nominal linear convolution length",
+            "written_rest_behavior": "learned FIR room tail may remain audible in a written rest and after the score; exact-zero applies to the dry input, not this wet audition",
+        },
+    }
+
+
+def level_match_shared_interval_whole_file(
+    samples: Sequence[float],
+    *,
+    shared_interval_end_seconds: float = SHARED_INTERVAL_END_SECONDS,
+    target_rms: float = LISTENING_TARGET_RMS,
+) -> Tuple[List[float], Dict[str, Any]]:
+    """Match the explicit shared pre-release interval with one whole-file gain.
+
+    This refuses clipping instead of adding a compressor, limiter, or a
+    tail-specific gain.  Dry A/B and the checkpoint-native wet C variant use
+    this same [0.0, 6.48) interval, including the authored rest.
+    """
+
+    end_seconds = _finite_number(shared_interval_end_seconds, label="shared comparison interval end", minimum=FRAME_RESOLUTION)
+    end_sample = int(round(end_seconds * SAMPLE_RATE_HZ))
+    if abs(end_sample / SAMPLE_RATE_HZ - end_seconds) > 1.0e-12 or end_sample > len(samples):
+        raise RuntimeContractError("shared comparison interval must align to available audio samples")
+    shared = [float(value) for value in samples[:end_sample]]
+    shared_rms = _audio_stats(shared)["rms"]
+    if shared_rms <= 0.0:
+        raise RuntimeContractError("cannot level-match an all-silent shared-interval audition")
+    requested_gain = target_rms / shared_rms
+    peak = _audio_stats(samples)["peak"]
+    if requested_gain * peak > 0.98:
+        raise RuntimeContractError("-24 dBFS shared-interval level match would clip; refusing compression, limiting, or unequal gain")
+    scaled = [float(value) * requested_gain for value in samples]
+    return scaled, {
+        "target_shared_interval_rms": target_rms,
+        "target_shared_interval_rms_dbfs": -24.0,
+        "shared_interval_start_seconds": 0.0,
+        "shared_interval_end_seconds": end_seconds,
+        "shared_interval_sample_count": end_sample,
+        "source_shared_interval_rms": shared_rms,
+        "constant_gain_applied_to_entire_file": requested_gain,
+        "compression_or_limiter": False,
+        "clipping_limited": False,
+        "post_gain_shared_interval_rms": _audio_stats(scaled[:end_sample])["rms"],
+    }
 
 
 def release_boundary_qa(samples: Sequence[float], frames: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
@@ -677,30 +850,6 @@ def _read_safe_flute_reference(path: Path) -> Tuple[List[float], Dict[str, Any]]
     return [sample / 32767.0 for sample in pcm], {"audio": _file_record(path), "report": _file_record(report_path), "verified_synthetic_reference_only": True}
 
 
-def _active_rms(samples: Sequence[float], frames: Sequence[Mapping[str, Any]]) -> float:
-    mask: List[bool] = []
-    for frame in frames:
-        active = str(frame["articulation"]) in VOICED_ARTICULATIONS
-        mask.extend([active] * HOP_LENGTH)
-    if len(mask) != len(samples):
-        raise RuntimeContractError("listening-level mask does not align to rendered sample count")
-    chosen = [float(sample) for sample, active in zip(samples, mask) if active]
-    if not chosen:
-        raise RuntimeContractError("score contains no voiced frames for active-RMS matching")
-    return math.sqrt(sum(sample * sample for sample in chosen) / len(chosen))
-
-
-def _level_match(samples: Sequence[float], *, active_rms: float, target_rms: float = 0.06309573444801933) -> Tuple[List[float], Dict[str, float]]:
-    if active_rms <= 0.0:
-        raise RuntimeContractError("cannot level-match an all-silent listening artifact")
-    requested_gain = target_rms / active_rms
-    peak = _audio_stats(samples)["peak"]
-    if peak and requested_gain * peak > 0.98:
-        raise RuntimeContractError("-24 dBFS listening-pair level match would clip; refusing an unequal or silently limited comparison")
-    scaled = [float(sample) * requested_gain for sample in samples]
-    return scaled, {"requested_target_active_rms": target_rms, "source_active_rms": active_rms, "gain": requested_gain, "clipping_limited": False}
-
-
 def _require_fresh_output(root: Path, output_dir: Path) -> Path:
     root = root.expanduser().resolve()
     output_dir = output_dir.expanduser().resolve()
@@ -727,6 +876,7 @@ def build_check_report(*, plan: Path, gugak_root: Path, ddsp_pytorch_root: Path,
             "no_default_bgm_changed": True,
             "not_a_game_asset": True,
             "no_learned_reverb_in_dry_render": True,
+            "checkpoint_native_reverb": "available only as an explicit separate R&D audition; it never replaces or modifies the dry output",
         },
         "license_limits": {
             "ddsp_gugak_repository_code": "MIT license file verified",
@@ -748,6 +898,8 @@ def execute(args: argparse.Namespace) -> Dict[str, Any]:
     frames, controls = build_score_controls(args.plan, max_seconds=args.max_seconds)
     if args.reference_flute_wav is not None and controls["truncated_for_smoke"]:
         raise RuntimeContractError("the 6.72-second western-flute reference is allowed only for a full-plan listening pair")
+    if args.checkpoint_native_reverb and controls["truncated_for_smoke"]:
+        raise RuntimeContractError("checkpoint-native reverb is allowed only for the full 6.72-second explicit score")
     output_dir.mkdir(parents=False)
     controls_path = output_dir / "score_controls_250hz.csv"
     write_controls_csv(controls_path, frames)
@@ -755,19 +907,45 @@ def execute(args: argparse.Namespace) -> Dict[str, Any]:
         audio, render = render_dry_cpu(frames, ddsp_pytorch_root=args.ddsp_pytorch_root, checkpoint=args.checkpoint, seed=args.seed)
         dry_path = output_dir / "published_daegeum_decoder_dry_authorial_gate.wav"
         outputs: Dict[str, Any] = {"controls_csv": _file_record(controls_path), "dry_wav": write_pcm16_wav(dry_path, audio)}
+        checkpoint_native_reverb: Optional[Dict[str, Any]] = None
+        if args.checkpoint_native_reverb:
+            wet_audio, reverb_runtime = render_checkpoint_native_reverb_cpu(
+                audio,
+                frames,
+                ddsp_pytorch_root=args.ddsp_pytorch_root,
+                checkpoint=args.checkpoint,
+            )
+            wet_scaled, wet_gain = level_match_shared_interval_whole_file(wet_audio)
+            wet_full_path = output_dir / "C_published_daegeum_checkpoint_native_reverb_full_tail_shared_interval_rms_matched.wav"
+            wet_score_length_path = output_dir / "C_published_daegeum_checkpoint_native_reverb_score_length_shared_interval_rms_matched.wav"
+            wet_full_record = write_pcm16_wav(wet_full_path, wet_scaled)
+            wet_score_length_record = write_pcm16_wav(wet_score_length_path, wet_scaled[:len(audio)])
+            checkpoint_native_reverb = {
+                "kind": "separate published-checkpoint-native learned-FIR reverb audition; dry output remains preserved",
+                "runtime": reverb_runtime,
+                "level_match": wet_gain,
+                "outputs": {
+                    "full_wet_tail": wet_full_record,
+                    "score_length_wet_audition": wet_score_length_record,
+                },
+                "written_rest_note": "the dry render is hard-zero during the authored rest. The learned FIR wet output may ring through that rest and after 6.72 seconds; that is expected room-tail behavior, not a claim that the score contains a new note.",
+                "post_processing": "one constant gain derived from [0.0, 6.48) seconds is applied to each entire wet file; no compression, limiter, peak normalization, or tail-specific gain is used",
+            }
+            outputs["checkpoint_native_reverb_full_tail_wav"] = wet_full_record
+            outputs["checkpoint_native_reverb_score_length_wav"] = wet_score_length_record
         listening_pair: Optional[Dict[str, Any]] = None
         if args.reference_flute_wav is not None:
             reference_audio, reference_provenance = _read_safe_flute_reference(args.reference_flute_wav)
             if len(reference_audio) != len(audio):
                 raise RuntimeContractError("verified western-flute reference duration does not match the full score render")
-            daegeum_scaled, daegeum_gain = _level_match(audio, active_rms=_active_rms(audio, frames))
-            flute_scaled, flute_gain = _level_match(reference_audio, active_rms=_active_rms(reference_audio, frames))
-            daegeum_pair_path = output_dir / "A_published_daegeum_dry_active_rms_matched.wav"
-            flute_pair_path = output_dir / "B_official_midi_ddsp_flute_bridge_active_rms_matched.wav"
+            daegeum_scaled, daegeum_gain = level_match_shared_interval_whole_file(audio)
+            flute_scaled, flute_gain = level_match_shared_interval_whole_file(reference_audio)
+            daegeum_pair_path = output_dir / "A_published_daegeum_dry_shared_interval_rms_matched.wav"
+            flute_pair_path = output_dir / "B_official_midi_ddsp_flute_bridge_shared_interval_rms_matched.wav"
             listening_pair = {
-                "purpose": "post-render listening comparison only; the western-flute WAV is never decoder conditioning or a training input",
-                "target_active_rms": 0.06309573444801933,
-                "target_active_rms_dbfs": -24.0,
+                "purpose": "post-render listening comparison only; the western-flute WAV is never decoder conditioning or a training input. Both files use the same [0.0, 6.48) interval RMS target and one constant whole-file gain.",
+                "target_shared_interval_rms": LISTENING_TARGET_RMS,
+                "target_shared_interval_rms_dbfs": -24.0,
                 "published_daegeum": {"audio": write_pcm16_wav(daegeum_pair_path, daegeum_scaled), "gain": daegeum_gain},
                 "official_western_flute_B": {"audio": write_pcm16_wav(flute_pair_path, flute_scaled), "gain": flute_gain, "provenance": reference_provenance},
             }
@@ -779,11 +957,12 @@ def execute(args: argparse.Namespace) -> Dict[str, Any]:
             "render": render,
             "outputs": outputs,
             "listening_pair": listening_pair,
+            "checkpoint_native_reverb_audition": checkpoint_native_reverb,
             "actions_performed": {
                 "training": False,
                 "ngc_or_user_audio_read": False,
                 "crepe_or_audio_input_used": False,
-                "learned_reverb_called": False,
+                "learned_reverb_called": args.checkpoint_native_reverb,
                 "default_bgm_changed": False,
                 "source_files_modified": False,
             },
@@ -810,6 +989,7 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser.add_argument("--repository-root", type=Path, default=Path(__file__).resolve().parents[2])
     parser.add_argument("--output-dir", type=Path, help="fresh ignored _bgm_rnd output directory, required with --execute")
     parser.add_argument("--reference-flute-wav", type=Path, help="optional verified prior synthetic MIDI-DDSP flute-B listening reference")
+    parser.add_argument("--checkpoint-native-reverb", action="store_true", help="also create a separate R&D-only audition through the strictly loaded published three-tensor FIR reverb")
     parser.add_argument("--supersedes-output", help="optional prior DDSP-Gugak R&D output directory basename recorded as superseded")
     parser.add_argument("--max-seconds", type=float, help="250 Hz-aligned score prefix for an actual decoder smoke render")
     parser.add_argument("--seed", type=int, default=20260925)
@@ -817,7 +997,7 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     args = parser.parse_args(argv)
     if args.execute and args.output_dir is None:
         parser.error("--execute requires --output-dir")
-    if args.check and (args.output_dir is not None or args.reference_flute_wav is not None or args.supersedes_output is not None or args.confirm_rnd_only):
+    if args.check and (args.output_dir is not None or args.reference_flute_wav is not None or args.checkpoint_native_reverb or args.supersedes_output is not None or args.confirm_rnd_only):
         parser.error("--check does not accept output, reference, supersession, or execution confirmation flags")
     return args
 

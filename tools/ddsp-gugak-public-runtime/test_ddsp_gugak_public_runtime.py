@@ -36,6 +36,13 @@ class PublicRuntimeTests(unittest.TestCase):
         self.assertEqual(frames[1080]["articulation"], "slur")
         self.assertEqual(frames[1620]["articulation"], "release")
         self.assertAlmostEqual(frames[1620]["f0_hz"], frames[1619]["f0_hz"], places=6)
+        # The release maps its fixed event-start level once; it is not a
+        # per-frame recursive attenuation.
+        self.assertAlmostEqual(frames[1650]["loudness_linear"], 10 ** (-29 / 20) * (0.5 ** 1.35), places=10)
+        # The second slur starts at 5.04 s. At 5.08 s it is 40/90 through one
+        # fixed-boundary linear transition, and reaches target after 5.13 s.
+        self.assertAlmostEqual(frames[1270]["f0_hz"], 649.0667176666666, places=6)
+        self.assertAlmostEqual(frames[1283]["f0_hz"], 587.329536, places=6)
         self.assertEqual(frames[360]["f0_hz"], 0.0)
         self.assertEqual(frames[360]["loudness_linear"], 0.0)
         self.assertEqual(summary["renderer_gate"]["audio_rate_upsampling"], "linear interpolation from the compiled 250 Hz voicing curve")
@@ -66,9 +73,15 @@ class PublicRuntimeTests(unittest.TestCase):
             with self.assertRaisesRegex(runtime.RuntimeContractError, "fresh direct child"):
                 runtime._require_fresh_output(root, root / "elsewhere")
 
-    def test_level_match_fails_instead_of_silently_clipping(self) -> None:
+    def test_shared_interval_level_match_uses_one_gain_and_rejects_clipping(self) -> None:
+        active_count = int(runtime.SHARED_INTERVAL_END_SECONDS * runtime.SAMPLE_RATE_HZ)
+        samples = [0.01] * active_count + [0.02, -0.02]
+        scaled, record = runtime.level_match_shared_interval_whole_file(samples)
+        self.assertEqual(record["shared_interval_sample_count"], active_count)
+        self.assertAlmostEqual(record["post_gain_shared_interval_rms"], runtime.LISTENING_TARGET_RMS, places=12)
+        self.assertAlmostEqual(scaled[-1] / samples[-1], record["constant_gain_applied_to_entire_file"], places=12)
         with self.assertRaisesRegex(runtime.RuntimeContractError, "would clip"):
-            runtime._level_match([1.0, -1.0], active_rms=0.001)
+            runtime.level_match_shared_interval_whole_file([0.001] * active_count + [1.0])
 
     def test_release_boundary_qa_rejects_an_artificial_cliff(self) -> None:
         frames, _ = runtime.build_score_controls(PLAN)
