@@ -27,6 +27,7 @@ TRACKED_SOURCE_LED_ARI_PLAN = HERE / "plans" / "ari_source_led_response_r1.json"
 GYEONGGI_POLICY_AUDITION_PLAN = HERE / "plans" / "ari_gyeonggi_policy_r1_audition.json"
 FULL_ARI_B0_PLAN = HERE / "plans" / full_ari.B0_FILENAME
 FULL_ARI_B1_PLAN = HERE / "plans" / full_ari.B1_FILENAME
+FULL_ARI_B2_REFERENCE_PLAN = HERE / "plans" / full_ari.B2_REFERENCE_FILENAME
 
 
 def _scope() -> dict[str, bool]:
@@ -373,7 +374,7 @@ class FullAriPlanTests(unittest.TestCase):
             self.assertEqual(tracked, document)
 
     def test_full_score_has_59_notes_exact_duration_and_only_final_release(self) -> None:
-        for path in (FULL_ARI_B0_PLAN, FULL_ARI_B1_PLAN):
+        for path in (FULL_ARI_B0_PLAN, FULL_ARI_B1_PLAN, FULL_ARI_B2_REFERENCE_PLAN):
             raw = self._raw(path)
             voiced = self._voiced(raw)
             self.assertEqual(len(voiced), 59)
@@ -525,6 +526,90 @@ class FullAriPlanTests(unittest.TestCase):
             path = _write_plan(Path(temporary), payload)
             with self.assertRaisesRegex(compiler.ScoreExpressionError, "keys must exactly match"):
                 compiler.compile_plan(path)
+
+    def test_b2_reference_keeps_b08_b1_and_replaces_only_b16_sine(self) -> None:
+        b1_raw = self._raw(FULL_ARI_B1_PLAN)
+        b2_raw = self._raw(FULL_ARI_B2_REFERENCE_PLAN)
+        b1_by_id = {event["id"]: event for event in b1_raw["events"]}
+        b2_by_id = {event["id"]: event for event in b2_raw["events"]}
+        self.assertEqual(
+            b2_by_id["b08_e0_rearticulate"]["vibrato"],
+            b1_by_id["b08_e0_rearticulate"]["vibrato"],
+        )
+        self.assertEqual(
+            b2_by_id["b08_e0_rearticulate"]["vibrato_policy"],
+            b1_by_id["b08_e0_rearticulate"]["vibrato_policy"],
+        )
+        b16 = b2_by_id[compiler.REFERENCE_CONTOUR_EVENT_ID]
+        self.assertEqual(b16["vibrato"], {"enabled": False})
+        self.assertEqual(b16["reference_contour"], compiler.pinned_reference_contour_contract())
+        self.assertEqual(b16["vibrato_policy"]["decision"], "reference_shape_unreviewed")
+        self.assertEqual(b16["vibrato_policy"]["style"], "reference_shape_unreviewed")
+        self.assertNotIn("candidate_parameters", b16["vibrato_policy"])
+        self.assertEqual(
+            b2_raw["expression_policy"]["active_selection_provenance"]["selected_event_ids"],
+            ["b08_e0_rearticulate"],
+        )
+
+        compiled = compiler.compile_plan(FULL_ARI_B2_REFERENCE_PLAN)
+        reference = compiled["reference_contour_cents"]
+        vibrato = compiled["vibrato_cents"]
+        self.assertEqual(float(reference[3306]), 0.0)  # b16 local 0.66 s boundary
+        self.assertNotEqual(float(reference[3307]), 0.0)
+        self.assertGreater(float(numpy.max(reference[3318:3444])), 20.0)
+        self.assertLess(float(numpy.min(reference[3318:3444])), -30.0)
+        self.assertEqual(float(reference[3455]), 0.0)  # final half-open note row
+        self.assertEqual(float(reference[3456]), 0.0)  # release boundary
+        self.assertTrue(numpy.all(vibrato[3306:3456] == 0.0))
+        self.assertAlmostEqual(
+            float(compiled["f0_hz"][3306]),
+            float(b16["pitch_hz"]),
+            places=4,
+        )
+
+    def test_b2_reference_contract_fails_closed_on_payload_or_claim_edits(self) -> None:
+        for mutate in ("artifact_sha", "pitch", "human_reviewed", "decision"):
+            with self.subTest(mutate=mutate), tempfile.TemporaryDirectory() as temporary:
+                payload = self._raw(FULL_ARI_B2_REFERENCE_PLAN)
+                b16 = next(
+                    event for event in payload["events"] if event["id"] == compiler.REFERENCE_CONTOUR_EVENT_ID
+                )
+                if mutate == "artifact_sha":
+                    b16["reference_contour"]["source_artifact"]["sha256"] = "0" * 64
+                elif mutate == "pitch":
+                    b16["reference_contour"]["normalized_reference_contour"]["pitch_residual_cents"][1] += 0.1
+                elif mutate == "human_reviewed":
+                    b16["reference_contour"]["claim_limits"]["human_reviewed"] = True
+                else:
+                    b16["vibrato_policy"]["decision"] = "selected"
+                path = _write_plan(Path(temporary), payload)
+                with self.assertRaisesRegex(
+                    compiler.ScoreExpressionError,
+                    "pinned unreviewed reference contract|reference_shape_unreviewed",
+                ):
+                    compiler.compile_plan(path)
+
+    def test_b2_manifest_exposes_reference_provenance_without_authenticity_claim(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "compiled"
+            manifest = compiler.render_controls(
+                plan=FULL_ARI_B2_REFERENCE_PLAN,
+                output_dir=output,
+            )
+            b16 = next(event for event in manifest["events"] if event["id"] == compiler.REFERENCE_CONTOUR_EVENT_ID)
+            self.assertEqual(b16["reference_contour"]["status"], "reference_shape_unreviewed")
+            self.assertEqual(
+                b16["reference_contour"]["source_artifact"]["sha256"],
+                compiler.REFERENCE_CONTOUR_SOURCE_SHA256,
+            )
+            self.assertTrue(
+                manifest["interpretation_limits"][
+                    "reference_contour_is_not_learned_gyeonggi_style_training_or_game_material"
+                ]
+            )
+            with numpy.load(output / compiler.CONTROL_FILENAME) as controls:
+                self.assertIn("reference_contour_cents", controls.files)
+                self.assertEqual(float(controls["reference_contour_cents"][3455]), 0.0)
 
     def test_all_slurs_are_explicit_and_only_authored_rearticulations_break_sequences(self) -> None:
         raw = self._raw(FULL_ARI_B0_PLAN)

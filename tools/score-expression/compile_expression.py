@@ -60,9 +60,55 @@ POLICY_RULE_GLOBAL_CADENCE_CANDIDATE = "gyeonggi_ari.v1.global_cadence_late_yose
 POLICY_RULE_SHORT_LOCAL_TAIL_OFF = "gyeonggi_ari.v1.short_local_tail_no_full_yoseong"
 POLICY_RULE_DEFAULT_OFF = "gyeonggi_ari.v1.default_straight"
 POLICY_RULE_RELEASE_OFF = "gyeonggi_ari.v1.release_no_vibrato"
-VIBRATO_POLICY_DECISIONS = ("off", "candidate_off", "selected")
-VIBRATO_POLICY_STYLES = ("straight", "late_gentle_yoseong_candidate", "late_gentle_yoseong")
+VIBRATO_POLICY_DECISIONS = (
+    "off",
+    "candidate_off",
+    "selected",
+    "reference_shape_unreviewed",
+)
+VIBRATO_POLICY_STYLES = (
+    "straight",
+    "late_gentle_yoseong_candidate",
+    "late_gentle_yoseong",
+    "reference_shape_unreviewed",
+)
 VIBRATO_END_BEHAVIORS = ("none", "depth_fade_to_zero")
+REFERENCE_CONTOUR_STATUS = "reference_shape_unreviewed"
+REFERENCE_CONTOUR_DECISION = REFERENCE_CONTOUR_STATUS
+REFERENCE_CONTOUR_STYLE = REFERENCE_CONTOUR_STATUS
+REFERENCE_CONTOUR_SOURCE_RELATIVE_PATH = (
+    "tools/daegeum-vibrato-reference/reference_shape_unreviewed.ngc-20260925.json"
+)
+REFERENCE_CONTOUR_SOURCE_SHA256 = (
+    "e584ff8c9142ed51223681d30ba5aa3236f29a7c808bcb5b40b208cb0f886bd2"
+)
+REFERENCE_CONTOUR_SOURCE_SCHEMA = "durango.daegeum.reference-yoseong-contour.v1"
+REFERENCE_CONTOUR_CANDIDATE_ID = "ref_56a286f5764ffe3d"
+REFERENCE_CONTOUR_SELECTION_STATUS = "automatic_periodic_f0_proxy_candidate_unreviewed"
+REFERENCE_CONTOUR_PAYLOAD_SHA256 = (
+    "3ecbf6f2e7a40118b47d28550ddbec75af9b56df3a8098550ea2d21c702eab0f"
+)
+REFERENCE_CONTOUR_SOURCE_ID = "src_bce31fef7cfe06b2"
+REFERENCE_CONTOUR_AUDIO_SHA256 = (
+    "bce31fef7cfe06b2e7559c308516ea803fececb16037810bdd23e6741ed360ea"
+)
+REFERENCE_CONTOUR_RIGHTS_STATUS = "unverified_local_rnd_only"
+REFERENCE_CONTOUR_ONSET_SECONDS = 0.66
+REFERENCE_CONTOUR_DURATION_SECONDS = 1.5
+REFERENCE_CONTOUR_FADE_SECONDS = 0.12
+REFERENCE_CONTOUR_FADE_SHAPE = "linear_depth"
+REFERENCE_CONTOUR_EVENT_ID = "b16_e0_rearticulate"
+REFERENCE_CONTOUR_EVIDENCE_BOUNDARY = (
+    "automatic_periodic_f0_proxy_candidate_unreviewed_not_human_reviewed_"
+    "not_gyeonggi_style_not_training_or_game"
+)
+REFERENCE_CONTOUR_CLAIM_LIMITS = {
+    "gyeonggi_minyo_style_confirmed": False,
+    "human_reviewed": False,
+    "phrase_or_breath_boundary_confirmed": False,
+    "whole_source_phrase_score_compatibility_confirmed": False,
+    "yoseong_confirmed": False,
+}
 
 
 class ScoreExpressionError(RuntimeError):
@@ -77,6 +123,15 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _canonical_sha256(value: Any) -> str:
+    """Hash one JSON value exactly as the reference extractor does."""
+
+    payload = json.dumps(
+        value, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
 def _load_json(path: Path) -> Mapping[str, Any]:
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
@@ -87,6 +142,97 @@ def _load_json(path: Path) -> Mapping[str, Any]:
     if not isinstance(value, Mapping):
         raise ScoreExpressionError("plan must be a JSON object")
     return value
+
+
+def pinned_reference_contour_contract() -> dict[str, Any]:
+    """Return the only reference-contour payload accepted by this R&D compiler.
+
+    The whole export is byte-hash pinned, then its selected normalized payload
+    is independently canonical-JSON hashed.  This lets a generated plan embed
+    the exact 65-point contour while making any source or plan edit fail
+    closed.  The export is an automatic F0-proxy candidate, not a performance
+    label, learned model output, style attribution, training item, or game
+    asset.
+    """
+
+    repository_root = Path(__file__).resolve().parents[2]
+    source_path = repository_root / REFERENCE_CONTOUR_SOURCE_RELATIVE_PATH
+    if _sha256(source_path) != REFERENCE_CONTOUR_SOURCE_SHA256:
+        raise ScoreExpressionError("pinned reference contour source artifact SHA-256 mismatch")
+    artifact = _load_json(source_path)
+    if artifact.get("schema") != REFERENCE_CONTOUR_SOURCE_SCHEMA:
+        raise ScoreExpressionError("pinned reference contour source schema mismatch")
+    if artifact.get("status") != REFERENCE_CONTOUR_STATUS:
+        raise ScoreExpressionError("pinned reference contour source status mismatch")
+
+    artifact_policy = _mapping(
+        artifact.get("artifact_policy"), label="pinned reference artifact.artifact_policy"
+    )
+    required_false_policy = (
+        "distribution_ready",
+        "game_asset",
+        "human_musicological_review_complete",
+        "rights_cleared",
+        "style_label_assigned",
+        "training_item",
+        "whole_phrase_score_fit_assessed",
+    )
+    if any(artifact_policy.get(key) is not False for key in required_false_policy):
+        raise ScoreExpressionError("pinned reference contour source weakens a required false claim")
+    if artifact_policy.get("offline_rnd_only") is not True:
+        raise ScoreExpressionError("pinned reference contour source must remain offline R&D only")
+
+    selection = _mapping(artifact.get("selection"), label="pinned reference artifact.selection")
+    if selection.get("candidate_id") != REFERENCE_CONTOUR_CANDIDATE_ID:
+        raise ScoreExpressionError("pinned reference contour candidate id mismatch")
+    if selection.get("status") != REFERENCE_CONTOUR_SELECTION_STATUS:
+        raise ScoreExpressionError("pinned reference contour selection status mismatch")
+    if selection.get("claim_limits") != REFERENCE_CONTOUR_CLAIM_LIMITS:
+        raise ScoreExpressionError("pinned reference contour claim limits mismatch")
+    source = _mapping(selection.get("source"), label="pinned reference artifact.selection.source")
+    if source.get("source_id") != REFERENCE_CONTOUR_SOURCE_ID:
+        raise ScoreExpressionError("pinned reference contour source id mismatch")
+    if source.get("source_sha256") != REFERENCE_CONTOUR_AUDIO_SHA256:
+        raise ScoreExpressionError("pinned reference contour source audio SHA-256 mismatch")
+    if source.get("rights_status") != REFERENCE_CONTOUR_RIGHTS_STATUS:
+        raise ScoreExpressionError("pinned reference contour rights status mismatch")
+
+    normalized = dict(
+        _mapping(
+            selection.get("normalized_reference_contour"),
+            label="pinned reference artifact.selection.normalized_reference_contour",
+        )
+    )
+    claimed_payload_sha256 = normalized.pop("contour_payload_sha256", None)
+    if claimed_payload_sha256 != REFERENCE_CONTOUR_PAYLOAD_SHA256:
+        raise ScoreExpressionError("pinned reference contour payload SHA-256 declaration mismatch")
+    if _canonical_sha256(normalized) != REFERENCE_CONTOUR_PAYLOAD_SHA256:
+        raise ScoreExpressionError("pinned reference contour canonical payload SHA-256 mismatch")
+    normalized["contour_payload_sha256"] = claimed_payload_sha256
+    if normalized.get("sample_count") != 65:
+        raise ScoreExpressionError("pinned reference contour must contain exactly 65 samples")
+
+    return {
+        "status": REFERENCE_CONTOUR_STATUS,
+        "onset_seconds": REFERENCE_CONTOUR_ONSET_SECONDS,
+        "duration_seconds": REFERENCE_CONTOUR_DURATION_SECONDS,
+        "fade_in_seconds": REFERENCE_CONTOUR_FADE_SECONDS,
+        "fade_out_seconds": REFERENCE_CONTOUR_FADE_SECONDS,
+        "fade_shape": REFERENCE_CONTOUR_FADE_SHAPE,
+        "source_artifact": {
+            "relative_path": REFERENCE_CONTOUR_SOURCE_RELATIVE_PATH,
+            "sha256": REFERENCE_CONTOUR_SOURCE_SHA256,
+            "schema": REFERENCE_CONTOUR_SOURCE_SCHEMA,
+            "candidate_id": REFERENCE_CONTOUR_CANDIDATE_ID,
+            "selection_status": REFERENCE_CONTOUR_SELECTION_STATUS,
+            "contour_payload_sha256": REFERENCE_CONTOUR_PAYLOAD_SHA256,
+            "source_id": REFERENCE_CONTOUR_SOURCE_ID,
+            "source_sha256": REFERENCE_CONTOUR_AUDIO_SHA256,
+            "rights_status": REFERENCE_CONTOUR_RIGHTS_STATUS,
+        },
+        "normalized_reference_contour": normalized,
+        "claim_limits": dict(REFERENCE_CONTOUR_CLAIM_LIMITS),
+    }
 
 
 def _require_bool(value: Mapping[str, Any], key: str, *, label: str) -> None:
@@ -434,6 +580,63 @@ def _candidate_parameters(raw: Any, *, label: str, duration_seconds: float) -> d
     }
 
 
+def _reference_contour(
+    raw: Any,
+    *,
+    label: str,
+    event_id: str,
+    duration_seconds: float,
+    articulation: str,
+) -> dict[str, Any] | None:
+    if raw is None:
+        return None
+    if event_id != REFERENCE_CONTOUR_EVENT_ID or articulation != "rearticulate":
+        raise ScoreExpressionError(
+            f"{label}.reference_contour is permitted only on {REFERENCE_CONTOUR_EVENT_ID}"
+        )
+    value = _mapping(raw, label=f"{label}.reference_contour")
+    expected = pinned_reference_contour_contract()
+    if value != expected:
+        raise ScoreExpressionError(
+            f"{label}.reference_contour must exactly match the pinned unreviewed reference contract"
+        )
+    if not math.isclose(
+        float(value["onset_seconds"]) + float(value["duration_seconds"]),
+        duration_seconds,
+        abs_tol=1.0e-12,
+        rel_tol=0.0,
+    ):
+        raise ScoreExpressionError(
+            f"{label}.reference_contour must end exactly at the note boundary"
+        )
+    normalized = _mapping(
+        value["normalized_reference_contour"],
+        label=f"{label}.reference_contour.normalized_reference_contour",
+    )
+    count = _integer(
+        normalized.get("sample_count"),
+        label=f"{label}.reference_contour.normalized_reference_contour.sample_count",
+        minimum=2,
+        maximum=4_096,
+    )
+    times = normalized.get("time_normalized_0_to_1")
+    pitch = normalized.get("pitch_residual_cents")
+    if not isinstance(times, list) or not isinstance(pitch, list) or len(times) != count or len(pitch) != count:
+        raise ScoreExpressionError(f"{label}.reference_contour sample arrays do not match sample_count")
+    checked_times = [
+        _number(item, label=f"{label}.reference_contour.time[{index}]", minimum=0.0, maximum=1.0)
+        for index, item in enumerate(times)
+    ]
+    if checked_times[0] != 0.0 or checked_times[-1] != 1.0 or any(
+        right <= left for left, right in zip(checked_times, checked_times[1:])
+    ):
+        raise ScoreExpressionError(f"{label}.reference_contour time axis must increase from 0 to 1")
+    for index, item in enumerate(pitch):
+        _number(item, label=f"{label}.reference_contour.pitch[{index}]", minimum=-600.0, maximum=600.0)
+    # JSON round-trip gives callers a private, serialization-safe copy.
+    return json.loads(json.dumps(expected, ensure_ascii=False))
+
+
 def _vibrato_policy(
     raw: Any,
     *,
@@ -442,6 +645,7 @@ def _vibrato_policy(
     context: Mapping[str, Any] | None,
     expression_policy: Mapping[str, Any] | None,
     vibrato: Mapping[str, Any],
+    reference_contour: Mapping[str, Any] | None,
     event_id: str,
     is_release: bool = False,
 ) -> dict[str, Any] | None:
@@ -475,6 +679,49 @@ def _vibrato_policy(
         and event_id in active_selection["selected_event_ids"]
         and active_selection["source_policy_rule_ids_by_event"].get(event_id) == expected_rule
     )
+    if reference_contour is not None:
+        if selected_here:
+            raise ScoreExpressionError(
+                f"{label}.reference_contour cannot also be an active rule-based vibrato selection"
+            )
+        if expected_rule != POLICY_RULE_GLOBAL_CADENCE_CANDIDATE:
+            raise ScoreExpressionError(
+                f"{label}.reference_contour requires the global-cadence candidate context"
+            )
+        if vibrato_enabled:
+            raise ScoreExpressionError(f"{label}.reference_contour cannot be combined with sine vibrato")
+        if (
+            decision != REFERENCE_CONTOUR_DECISION
+            or style != REFERENCE_CONTOUR_STYLE
+            or end_behavior != "depth_fade_to_zero"
+        ):
+            raise ScoreExpressionError(
+                f"{label}.vibrato_policy must explicitly declare reference_shape_unreviewed"
+            )
+        if value.get("evidence_boundary") != REFERENCE_CONTOUR_EVIDENCE_BOUNDARY:
+            raise ScoreExpressionError(
+                f"{label}.vibrato_policy.evidence_boundary must retain every unreviewed-reference limit"
+            )
+        if "candidate_parameters" in value or "parameter_status" in value:
+            raise ScoreExpressionError(
+                f"{label}.reference_contour must not retain rule-based sine parameters"
+            )
+        return {
+            "decision": decision,
+            "style": style,
+            "policy_rule_id": rule_id,
+            "end_behavior": end_behavior,
+            "rule_fired": True,
+            "candidate_parameters": None,
+            "parameter_status": None,
+            "evidence_boundary": REFERENCE_CONTOUR_EVIDENCE_BOUNDARY,
+            "active_selection_provenance": None,
+            "reference_contour_status": REFERENCE_CONTOUR_STATUS,
+        }
+    if decision == REFERENCE_CONTOUR_DECISION:
+        raise ScoreExpressionError(
+            f"{label}.vibrato_policy declares reference_shape_unreviewed without reference_contour"
+        )
     if selected_here:
         if decision != "selected" or style != "late_gentle_yoseong" or end_behavior != "depth_fade_to_zero":
             raise ScoreExpressionError(
@@ -628,6 +875,8 @@ def _event(
             raise ScoreExpressionError("a RELEASE requires a previous voiced event")
         if "pitch_hz" in value:
             raise ScoreExpressionError("a RELEASE must not declare pitch_hz")
+        if "reference_contour" in value:
+            raise ScoreExpressionError("a RELEASE must not declare reference_contour")
         duration = end - start
         vibrato = _vibrato(value.get("vibrato"), label=f"events[{index}]")
         vibrato_policy = _vibrato_policy(
@@ -637,6 +886,7 @@ def _event(
             context=None,
             expression_policy=expression_policy,
             vibrato=vibrato,
+            reference_contour=None,
             event_id=event_id,
             is_release=True,
         )
@@ -648,6 +898,7 @@ def _event(
             "pitch_hz": 0.0,
             "gesture_points": [(0.0, 0.0), (end - start, 0.0)],
             "vibrato": vibrato,
+            "reference_contour": None,
             "musical_context": None,
             "vibrato_policy": vibrato_policy,
             # A release starts from the preceding authored level instead of
@@ -668,6 +919,13 @@ def _event(
         duration_seconds=duration,
         policy=expression_policy,
     )
+    reference_contour = _reference_contour(
+        value.get("reference_contour"),
+        label=f"events[{index}]",
+        event_id=event_id,
+        duration_seconds=duration,
+        articulation=str(kind),
+    )
     vibrato_policy = _vibrato_policy(
         value.get("vibrato_policy"),
         label=f"events[{index}]",
@@ -675,6 +933,7 @@ def _event(
         context=musical_context,
         expression_policy=expression_policy,
         vibrato=vibrato,
+        reference_contour=reference_contour,
         event_id=event_id,
     )
     return {
@@ -685,6 +944,7 @@ def _event(
         "pitch_hz": pitch,
         "gesture_points": _gesture_points(value.get("gesture_points"), duration_seconds=duration, label=f"events[{index}]"),
         "vibrato": vibrato,
+        "reference_contour": reference_contour,
         "musical_context": musical_context,
         "vibrato_policy": vibrato_policy,
         "steady_loudness_db": steady_loudness,
@@ -734,6 +994,11 @@ def validate_plan(path: str | Path) -> dict[str, Any]:
             raise ScoreExpressionError(
                 "active_selection_provenance.selected_event_ids must exactly match selected event policies"
             )
+    reference_events = [event for event in events if event["reference_contour"] is not None]
+    if reference_events and [event["id"] for event in reference_events] != [REFERENCE_CONTOUR_EVENT_ID]:
+        raise ScoreExpressionError(
+            f"the pinned unreviewed reference contour must occur exactly once on {REFERENCE_CONTOUR_EVENT_ID}"
+        )
     fired_policy_rules = [
         {
             "event_id": event["id"],
@@ -938,6 +1203,39 @@ def _vibrato_curve(event: Mapping[str, Any], relative_times: numpy.ndarray, *, f
     return cents.astype(numpy.float32), numpy.full(relative_times.shape, rate, dtype=numpy.float32), numpy.full(relative_times.shape, depth, dtype=numpy.float32)
 
 
+def _reference_contour_curve(
+    event: Mapping[str, Any], relative_times: numpy.ndarray
+) -> numpy.ndarray:
+    config = event["reference_contour"]
+    result = numpy.zeros(relative_times.shape, dtype=numpy.float64)
+    if config is None:
+        return result.astype(numpy.float32)
+    onset = float(config["onset_seconds"])
+    duration = float(config["duration_seconds"])
+    end = onset + duration
+    active = (relative_times >= onset) & (relative_times < end)
+    if not numpy.any(active):
+        return result.astype(numpy.float32)
+    normalized = config["normalized_reference_contour"]
+    source_times = numpy.asarray(normalized["time_normalized_0_to_1"], dtype=numpy.float64)
+    source_cents = numpy.asarray(normalized["pitch_residual_cents"], dtype=numpy.float64)
+    target = (relative_times[active] - onset) / duration
+    contour = numpy.interp(target, source_times, source_cents)
+    fade_in = numpy.clip(
+        (relative_times[active] - onset) / float(config["fade_in_seconds"]), 0.0, 1.0
+    )
+    fade_out = numpy.clip(
+        (end - relative_times[active]) / float(config["fade_out_seconds"]), 0.0, 1.0
+    )
+    result[active] = contour * numpy.minimum(fade_in, fade_out)
+    # The event is half-open.  Pin its final active row to nominal pitch so a
+    # consumer cannot expose an off-centre sample immediately before release.
+    active_indices = numpy.flatnonzero(active)
+    result[active_indices[0]] = 0.0
+    result[active_indices[-1]] = 0.0
+    return result.astype(numpy.float32)
+
+
 def _onset_controls(kind: str, relative_times: numpy.ndarray, steady_db: float) -> tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray]:
     """Return loudness, air/noise proxy, and voicing for one explicit state."""
 
@@ -981,6 +1279,7 @@ def compile_plan(path: str | Path) -> dict[str, Any]:
     vibrato_rate = numpy.zeros(frame_count, dtype=numpy.float32)
     vibrato_depth = numpy.zeros(frame_count, dtype=numpy.float32)
     vibrato_cents = numpy.zeros(frame_count, dtype=numpy.float32)
+    reference_contour_cents = numpy.zeros(frame_count, dtype=numpy.float32)
 
     events: list[dict[str, Any]] = validated["events"]
     for index, event in enumerate(events):
@@ -1045,14 +1344,17 @@ def compile_plan(path: str | Path) -> dict[str, Any]:
         )
         if kind == "slur":
             vib_cents = numpy.where(local < SLUR_TRANSITION_SECONDS, 0.0, vib_cents).astype(numpy.float32)
-        f0_hz[mask] *= numpy.power(2.0, vib_cents / 1200.0).astype(numpy.float32)
+        reference_cents = _reference_contour_curve(event, local)
+        expression_cents = vib_cents + reference_cents
+        f0_hz[mask] *= numpy.power(2.0, expression_cents / 1200.0).astype(numpy.float32)
         if kind == "slur":
             f0_cents[mask] = (1_200.0 * numpy.log2(f0_hz[mask] / base_hz)).astype(numpy.float32)
         else:
-            f0_cents[mask] = gesture + vib_cents
+            f0_cents[mask] = gesture + expression_cents
         vibrato_rate[mask] = rate
         vibrato_depth[mask] = depth
         vibrato_cents[mask] = vib_cents
+        reference_contour_cents[mask] = reference_cents
 
     # Features are compiler prescriptions, not recording-derived labels.
     pitch_feature = numpy.zeros(frame_count, dtype=numpy.float32)
@@ -1101,6 +1403,7 @@ def compile_plan(path: str | Path) -> dict[str, Any]:
         "vibrato_rate_hz": vibrato_rate,
         "vibrato_depth_cents": vibrato_depth,
         "vibrato_cents": vibrato_cents,
+        "reference_contour_cents": reference_contour_cents,
         "score_features": score_features,
         "slur_boundaries": slur_boundaries,
         "slur_transition_policy": slur_transition_policy(),
@@ -1143,6 +1446,7 @@ def render_controls(*, plan: str | Path, output_dir: str | Path) -> dict[str, An
         vibrato_rate_hz=compiled["vibrato_rate_hz"],
         vibrato_depth_cents=compiled["vibrato_depth_cents"],
         vibrato_cents=compiled["vibrato_cents"],
+        reference_contour_cents=compiled["reference_contour_cents"],
         score_features=compiled["score_features"],
     )
     slur_boundary_by_event_index = {
@@ -1158,6 +1462,7 @@ def render_controls(*, plan: str | Path, output_dir: str | Path) -> dict[str, An
             "pitch_hz": event["pitch_hz"],
             "vibrato_enabled": bool(event["vibrato"]["enabled"]),
             "vibrato": event["vibrato"],
+            "reference_contour": event["reference_contour"],
             "musical_context": event["musical_context"],
             "vibrato_policy": event["vibrato_policy"],
         }
@@ -1200,6 +1505,7 @@ def render_controls(*, plan: str | Path, output_dir: str | Path) -> dict[str, An
                 "vibrato_depth_cents_div_120",
             ],
             "vibrato_default": "off_unless_explicit_in_plan",
+            "reference_contour_default": "off_unless_exact_pinned_unreviewed_contract_is_embedded",
             "vibrato_explicit_range": {
                 "rate_hz": list(VIBRATO_RATE_RANGE_HZ),
                 "depth_cents": list(VIBRATO_DEPTH_RANGE_CENTS),
@@ -1213,6 +1519,8 @@ def render_controls(*, plan: str | Path, output_dir: str | Path) -> dict[str, An
             "articulations_are_authorial_score_controls_not_inferred_performance_labels": True,
             "touching_timestamps_never_infer_slur": True,
             "controls_are_not_recording_derived_training_targets": True,
+            "reference_contour_is_an_automatic_f0_proxy_not_a_human_reviewed_yoseong_label": True,
+            "reference_contour_is_not_learned_gyeonggi_style_training_or_game_material": True,
             "no_audio_is_rendered_or_modified": True,
             "not_a_default_asset_runtime_bgm_game_output_or_public_release": True,
         },

@@ -72,9 +72,9 @@ authentic Bonjo Arirang, Gyeonggi-minyo, or Daegeum transcription.  A real
 reference-performance curve is still required before an authenticity claim,
 training label, default BGM, or release decision.
 
-### Full 16-bar B0/B1 plans
+### Full 16-bar B0/B1/B2-R plans
 
-`build_full_ari_plans.py` deterministically generates two tracked, directly
+`build_full_ari_plans.py` deterministically generates three tracked, directly
 comparable full-score plans:
 
 - `plans/ari_full_16bar_b0_straight_r1.json`: all 59 notes use straight tone;
@@ -84,8 +84,19 @@ comparable full-score plans:
   explicitly selected.  B16 uses 3.45 Hz / 18 cents, a 1.44 s onset, 0.18 s
   ramp, and 0.24 s end fade.  These remain provisional authored auditions,
   not measured performance contours.
+- `plans/ari_full_16bar_b2_reference_shape_unreviewed_r1.json`: keeps B1's b08
+  authored sine candidate exactly, turns b16's sine off, and embeds the exact
+  65-point, 1.5 s pitch-residual export from
+  `tools/daegeum-vibrato-reference/reference_shape_unreviewed.ngc-20260925.json`.
+  It starts at local 0.66 s and has explicit 0.12 s linear depth fades at both
+  ends.  The compiler pins both the source file's raw-byte SHA-256 and the
+  normalized contour's canonical-JSON SHA-256, then requires the embedded
+  provenance, contour, and all five negative claim flags to match exactly.
+  `reference_shape_unreviewed` means an automatic periodic-F0 proxy candidate:
+  it is not learned, human-reviewed, Gyeonggi-style-confirmed, a training
+  authorization, or a game/release asset.
 
-Both plans preserve the 16-bar game score at do=70 and 0.72 s per beat:
+All three plans preserve the 16-bar game score at do=70 and 0.72 s per beat:
 34.56 s of notation followed by one 0.24 s final release.  The four authored
 breath heads are b01, b05, b09, and b13.  B08 beat 3 is the score's sole
 written rest.  To prevent b05 and b13 from starting against the prior note's

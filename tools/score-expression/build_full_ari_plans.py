@@ -15,11 +15,14 @@ import json
 from pathlib import Path
 from typing import Any
 
+import compile_expression as compiler
+
 
 HERE = Path(__file__).resolve().parent
 PLAN_DIRECTORY = HERE / "plans"
 B0_FILENAME = "ari_full_16bar_b0_straight_r1.json"
 B1_FILENAME = "ari_full_16bar_b1_contextual_yoseong_r1.json"
+B2_REFERENCE_FILENAME = "ari_full_16bar_b2_reference_shape_unreviewed_r1.json"
 
 DO_MIDI = 70
 BEAT_SECONDS = 0.72
@@ -193,7 +196,9 @@ def _expression_policy(*, contextual_yoseong: bool, selected_ids: dict[str, str]
     }
 
 
-def build_plan(*, contextual_yoseong: bool) -> dict[str, Any]:
+def build_plan(*, contextual_yoseong: bool, reference_shape_unreviewed: bool = False) -> dict[str, Any]:
+    if reference_shape_unreviewed and not contextual_yoseong:
+        raise ValueError("B2-R keeps B1's b08 selection and therefore requires contextual_yoseong")
     events: list[dict[str, Any]] = []
     previous_degree: int | None = None
     candidate_ids: dict[str, str] = {}
@@ -244,7 +249,8 @@ def build_plan(*, contextual_yoseong: bool) -> dict[str, Any]:
                 rule = DEFAULT_RULE
                 candidate = None
 
-            is_selected = contextual_yoseong and candidate is not None
+            is_reference = reference_shape_unreviewed and bar == 16
+            is_selected = contextual_yoseong and candidate is not None and not is_reference
             vibrato: dict[str, Any]
             if is_selected:
                 vibrato = {"enabled": True, **{key: value for key, value in candidate.items() if key != "parameter_status"}}
@@ -252,7 +258,15 @@ def build_plan(*, contextual_yoseong: bool) -> dict[str, Any]:
             else:
                 vibrato = {"enabled": False}
 
-            if candidate is not None:
+            if is_reference:
+                vibrato_policy = {
+                    "decision": compiler.REFERENCE_CONTOUR_DECISION,
+                    "style": compiler.REFERENCE_CONTOUR_STYLE,
+                    "policy_rule_id": rule,
+                    "end_behavior": "depth_fade_to_zero",
+                    "evidence_boundary": compiler.REFERENCE_CONTOUR_EVIDENCE_BOUNDARY,
+                }
+            elif candidate is not None:
                 vibrato_policy: dict[str, Any] = {
                     "decision": "selected" if is_selected else "candidate_off",
                     "style": "late_gentle_yoseong" if is_selected else "late_gentle_yoseong_candidate",
@@ -301,6 +315,8 @@ def build_plan(*, contextual_yoseong: bool) -> dict[str, Any]:
                 "vibrato": vibrato,
                 "vibrato_policy": vibrato_policy,
             }
+            if is_reference:
+                event["reference_contour"] = compiler.pinned_reference_contour_contract()
             if articulation == "slur":
                 event["slur_from_previous"] = True
             events.append(event)
@@ -334,9 +350,13 @@ def build_plan(*, contextual_yoseong: bool) -> dict[str, Any]:
         },
         "instrument": {"id": "daegeum", "sustained": True},
         "plan_role": (
-            "full_16bar_authorial_game_arrangement_b1_contextual_yoseong_rnd_only"
-            if contextual_yoseong
-            else "full_16bar_authorial_game_arrangement_b0_all_straight_rnd_only"
+            "full_16bar_authorial_game_arrangement_b2_reference_shape_unreviewed_rnd_only"
+            if reference_shape_unreviewed
+            else (
+                "full_16bar_authorial_game_arrangement_b1_contextual_yoseong_rnd_only"
+                if contextual_yoseong
+                else "full_16bar_authorial_game_arrangement_b0_all_straight_rnd_only"
+            )
         ),
         "authorial_score_reference": {
             "module_relative_path": "public/assets/audio/bgm/arirang.py",
@@ -394,6 +414,10 @@ def build_plans() -> dict[str, dict[str, Any]]:
     return {
         B0_FILENAME: build_plan(contextual_yoseong=False),
         B1_FILENAME: build_plan(contextual_yoseong=True),
+        B2_REFERENCE_FILENAME: build_plan(
+            contextual_yoseong=True,
+            reference_shape_unreviewed=True,
+        ),
     }
 
 
