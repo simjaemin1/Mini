@@ -191,3 +191,36 @@ python3 tools/daegeum-transitions/test_phrase_pool.py
 python3 tools/daegeum-transitions/test_phrase_span_audition.py
 python3 tools/daegeum-transitions/test_source_led_contour.py
 ```
+
+## 전체 cache-grid score 적합도 탐색 (R&D-only)
+
+`exhaustive_score_span_search.py`는 작은 phrase pool만 다시 고르는 도구가 아니다. 하나의
+명시적 score-expression plan에 대해, 기존 feature cache의 **모든 source 안에서** 시작·끝이
+기존 feature centre인 연속 span을 전수 측정한다. score 전체 길이로부터 나온 한 개의 uniform
+time ratio와 span 전체에 대한 한 개의 global pitch offset만 쓴다. 음마다 offset을 달리하거나
+local warp·보간·missing-value fill을 하지 않는다.
+
+```sh
+/tmp/durango-bgm-rnd-venv/bin/python tools/daegeum-transitions/exhaustive_score_span_search.py \
+  --bundle _bgm_rnd/daegeum-transition-bank-ngc-YYYYMMDD \
+  --score-plan tools/score-expression/plans/ari_source_led_response_r1.json \
+  --output-dir _bgm_rnd/ari-exhaustive-score-span-search-YYYYMMDD
+```
+
+허용 ratio, voicing coverage, RMSE, P95 absolute pitch error, endpoint interval gate는 기존
+`score_phrase_compatibility.py`와 동일한 고정값이다. CLI로 낮출 수 없다. FFT는 수천만 cache-grid
+span의 global-offset SSE/coverage를 같은 계산으로 빠르게 구하는 용도이며 source를 변환하지
+않는다. coverage/RMSE를 통과한 모든 span과 보고서의 best span은 기존 feature row에서 다시
+직접 P95·endpoint까지 재측정한다.
+
+이 "전수"는 raw audio를 열지 않은 상태에서 가능한 정확한 범위, 즉 **cache grid**에 한정된다.
+report의 source span은 audio clip도 아니고, phrase·같은 호흡·재어택·슬러·자연 legato·연주
+품질·학습 허가·게임 asset 판정도 아니다. 수치상 in-band인 결과조차 계속 `unreviewed`이며 기본
+BGM/runtime asset을 바꾸지 않는다.
+
+검증:
+
+```sh
+python3 tools/daegeum-transitions/test_exhaustive_score_span_search.py
+python3 tools/daegeum-transitions/exhaustive_score_span_search.py --dry-run
+```
