@@ -26,9 +26,116 @@ import ddsp_gugak_public_runtime as runtime
 
 PLAN = ROOT / "tools/score-expression/plans/ari_source_led_response_r1.json"
 AUDITION_PLAN = ROOT / "tools/score-expression/plans/ari_gyeonggi_policy_r1_audition.json"
+REFERENCE_PLAN = ROOT / "tools/score-expression/plans/ari_full_16bar_b2_reference_shape_unreviewed_r1.json"
 
 
 class PublicRuntimeTests(unittest.TestCase):
+    def test_unreviewed_reference_contour_is_exact_1_5s_linear_and_zero_at_both_boundaries(self) -> None:
+        frames, summary = runtime.build_score_controls(
+            REFERENCE_PLAN,
+            slur_pitch_mode=runtime.SLUR_PITCH_MODE_HARD_STEP,
+        )
+        qa = summary["reference_contour_control_qa"]
+        self.assertTrue(qa["passed"])
+        self.assertEqual(qa["status"], "reference_shape_unreviewed")
+        self.assertEqual(qa["event_count"], 1)
+        self.assertFalse(qa["learned_claim"])
+        self.assertFalse(qa["style_aligned_claim"])
+        self.assertFalse(qa["human_reviewed_claim"])
+        self.assertFalse(qa["training_or_game_clearance"])
+        event = qa["events"][0]
+        self.assertEqual(event["event_id"], "b16_e0_rearticulate")
+        self.assertEqual(event["source_sample_count"], 65)
+        self.assertEqual(event["source_duration_seconds"], 1.5)
+        self.assertEqual(event["applied_duration_seconds"], 1.5)
+        self.assertEqual(event["onset_seconds_relative"], 0.66)
+        self.assertEqual(event["fade_in_seconds"], 0.12)
+        self.assertEqual(event["fade_out_seconds"], 0.12)
+        self.assertEqual(event["active_control_frame_count"], 375)
+        self.assertEqual(event["first_active_frame_index"], 8265)
+        self.assertEqual(event["final_active_frame_index"], 8639)
+        self.assertEqual(frames[8264]["vibrato_cents"], 0.0)
+        self.assertEqual(frames[8265]["vibrato_cents"], 0.0)
+        self.assertNotEqual(frames[8453]["vibrato_cents"], 0.0)
+        elapsed = frames[8453]["time_seconds"] - (32.4 + 0.66)
+        normalized = elapsed / 1.5
+        progress = (normalized - 0.5) / (0.515625 - 0.5)
+        expected = -20.101789 + (-4.709745 - -20.101789) * progress
+        self.assertAlmostEqual(frames[8453]["vibrato_cents"], expected, places=9)
+        self.assertEqual(frames[8639]["vibrato_cents"], 0.0)
+        self.assertEqual(frames[8639]["f0_hz"], event["nominal_pitch_hz"])
+        self.assertTrue(event["first_boundary_zero_gate_passed"])
+        self.assertTrue(event["final_boundary_zero_gate_passed"])
+        self.assertTrue(event["final_nominal_pitch_gate_passed"])
+        self.assertTrue(event["no_time_compression_gate_passed"])
+        self.assertAlmostEqual(
+            event["final_source_normalized_time"],
+            (1.5 - runtime.FRAME_RESOLUTION) / 1.5,
+            places=12,
+        )
+        self.assertLess(event["final_source_normalized_time"], 1.0)
+        self.assertFalse(event["source_endpoint_remapped_to_final_half_open_row"])
+
+    def test_unreviewed_reference_contour_fails_closed_on_timing_points_hash_status_or_provenance(self) -> None:
+        source = json.loads(REFERENCE_PLAN.read_text(encoding="utf-8"))
+        reference_index = next(
+            index for index, event in enumerate(source["events"])
+            if "reference_contour" in event
+        )
+
+        def reference(plan):
+            return plan["events"][reference_index]["reference_contour"]
+
+        mutations = {
+            "status": lambda plan: reference(plan).__setitem__("status", "learned"),
+            "onset": lambda plan: reference(plan).__setitem__("onset_seconds", 0.65),
+            "duration": lambda plan: reference(plan).__setitem__("duration_seconds", 1.49),
+            "fade_in": lambda plan: reference(plan).__setitem__("fade_in_seconds", 0.10),
+            "fade_out": lambda plan: reference(plan).__setitem__("fade_out_seconds", 0.10),
+            "fade_shape": lambda plan: reference(plan).__setitem__("fade_shape", "minimum_jerk"),
+            "artifact_hash": lambda plan: reference(plan)["source_artifact"].__setitem__("sha256", "0" * 64),
+            "selection_status": lambda plan: reference(plan)["source_artifact"].__setitem__("selection_status", "reviewed"),
+            "source_id": lambda plan: reference(plan)["source_artifact"].__setitem__("source_id", "other"),
+            "claim_limit": lambda plan: reference(plan)["claim_limits"].__setitem__("human_reviewed", True),
+            "point_without_rehash": lambda plan: reference(plan)["normalized_reference_contour"]["pitch_residual_cents"].__setitem__(10, 99.0),
+            "nonincreasing_time": lambda plan: reference(plan)["normalized_reference_contour"]["time_normalized_0_to_1"].__setitem__(10, 0.140625),
+            "wrong_point_count": lambda plan: reference(plan)["normalized_reference_contour"]["pitch_residual_cents"].pop(),
+            "payload_hash": lambda plan: reference(plan)["normalized_reference_contour"].__setitem__("contour_payload_sha256", "0" * 64),
+            "sine_overlap": lambda plan: plan["events"][reference_index].__setitem__("vibrato", {"enabled": True, "rate_hz": 3.45, "depth_cents": 18.0, "onset_seconds": 0.66, "ramp_seconds": 0.12}),
+        }
+        with tempfile.TemporaryDirectory() as temporary:
+            for name, mutate in mutations.items():
+                with self.subTest(name=name):
+                    altered = copy.deepcopy(source)
+                    mutate(altered)
+                    path = Path(temporary) / f"invalid-reference-{name}.json"
+                    path.write_text(json.dumps(altered), encoding="utf-8")
+                    with self.assertRaises(runtime.RuntimeContractError):
+                        runtime.build_score_controls(path)
+
+    def test_reference_contour_release_stays_nominal_and_control_qa_rejects_boundary_corruption(self) -> None:
+        frames, summary = runtime.build_score_controls(
+            REFERENCE_PLAN,
+            slur_pitch_mode=runtime.SLUR_PITCH_MODE_HARD_STEP,
+        )
+        _, events, _ = runtime._validate_plan(REFERENCE_PLAN)
+        release = events[-1]
+        self.assertEqual(release["articulation"], "release")
+        self.assertEqual(
+            release["release_source"]["reference_contour_status"],
+            "reference_shape_unreviewed",
+        )
+        release_frames = [frame for frame in frames if frame["event_id"] == release["id"]]
+        self.assertTrue(release_frames)
+        self.assertTrue(all(frame["vibrato_cents"] == 0.0 for frame in release_frames))
+        self.assertTrue(all(frame["f0_hz"] == release["release_source"]["nominal_pitch_hz"] for frame in release_frames))
+        self.assertTrue(summary["release_vibrato_qa"]["final_nominal_pitch_gate_passed"])
+
+        corrupted = copy.deepcopy(frames)
+        corrupted[8639]["vibrato_cents"] = 1.0
+        with self.assertRaisesRegex(runtime.RuntimeContractError, "reference contour control row"):
+            runtime.reference_contour_control_qa(corrupted, events)
+
     def test_selected_late_yoseong_fades_to_nominal_on_the_last_event_row(self) -> None:
         baseline, _ = runtime.build_score_controls(
             PLAN,

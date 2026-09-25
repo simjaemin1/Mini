@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import array
+import bisect
 import contextlib
 import csv
 import hashlib
@@ -74,6 +75,43 @@ VOICED_ARTICULATIONS = frozenset({"breath_start", "rearticulate", "slur"})
 OUTPUT_NAME = re.compile(r"ddsp-gugak-public-daegeum-runtime-r1-[0-9]{8}-[0-9]{6}(?:-[a-z0-9-]+)?$")
 GAIN_SOURCE_SLOT = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
 
+# One deliberately narrow R&D contour is accepted.  These values pin both the
+# embedded contour payload and its provenance; updating a hash in a score plan
+# is therefore not enough to make different bytes pass this runtime.
+REFERENCE_CONTOUR_EVENT_ID = "b16_e0_rearticulate"
+REFERENCE_CONTOUR_STATUS = "reference_shape_unreviewed"
+REFERENCE_CONTOUR_ONSET_SECONDS = 0.66
+REFERENCE_CONTOUR_DURATION_SECONDS = 1.5
+REFERENCE_CONTOUR_FADE_SECONDS = 0.12
+REFERENCE_CONTOUR_SAMPLE_COUNT = 65
+EXPECTED_REFERENCE_CONTOUR_SOURCE = {
+    "relative_path": "tools/daegeum-vibrato-reference/reference_shape_unreviewed.ngc-20260925.json",
+    "sha256": "e584ff8c9142ed51223681d30ba5aa3236f29a7c808bcb5b40b208cb0f886bd2",
+    "schema": "durango.daegeum.reference-yoseong-contour.v1",
+    "candidate_id": "ref_56a286f5764ffe3d",
+    "selection_status": "automatic_periodic_f0_proxy_candidate_unreviewed",
+    "contour_payload_sha256": "3ecbf6f2e7a40118b47d28550ddbec75af9b56df3a8098550ea2d21c702eab0f",
+    "source_id": "src_bce31fef7cfe06b2",
+    "source_sha256": "bce31fef7cfe06b2e7559c308516ea803fececb16037810bdd23e6741ed360ea",
+    "rights_status": "unverified_local_rnd_only",
+}
+EXPECTED_REFERENCE_CONTOUR_CLAIM_LIMITS = {
+    "gyeonggi_minyo_style_confirmed": False,
+    "human_reviewed": False,
+    "phrase_or_breath_boundary_confirmed": False,
+    "whole_source_phrase_score_compatibility_confirmed": False,
+    "yoseong_confirmed": False,
+}
+EXPECTED_REFERENCE_CONTOUR_NORMALIZATION = {
+    "time": "linear_resample_of_exact_feature_range_to_closed_unit_interval",
+    "pitch": (
+        "five_frame_symmetric_smoothing_then_least_squares_linear_centerline_"
+        "removal_then_median_zeroing; amplitude_retained_in_cents"
+    ),
+    "rms": "linear_resample_then_candidate_median_subtraction_in_db",
+    "no_attack_release_or_phrase_context_inferred": True,
+}
+
 
 class RuntimeContractError(RuntimeError):
     """Inputs, provenance, scope, or an isolated output target are unsafe."""
@@ -128,6 +166,224 @@ def _mapping(value: Any, *, label: str) -> Mapping[str, Any]:
 def _require_true(value: Mapping[str, Any], key: str, *, label: str) -> None:
     if value.get(key) is not True:
         raise RuntimeContractError(f"{label}.{key} must explicitly be true")
+
+
+def _canonical_object_sha256(value: Any) -> str:
+    payload = json.dumps(
+        value,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def _exact_keys(value: Mapping[str, Any], expected: Iterable[str], *, label: str) -> None:
+    expected_set = set(expected)
+    actual_set = set(value)
+    if actual_set != expected_set:
+        missing = sorted(expected_set - actual_set)
+        extra = sorted(actual_set - expected_set)
+        raise RuntimeContractError(
+            f"{label} has an unexpected field set (missing={missing}, extra={extra})"
+        )
+
+
+def _validate_reference_contour(
+    raw: Any,
+    *,
+    label: str,
+    event_id: str,
+    event_start: float,
+    event_duration: float,
+) -> Dict[str, Any]:
+    """Validate and normalize the sole hash-pinned unreviewed contour.
+
+    The contour samples are embedded in the score plan so rendering does not
+    read the source WAV or feature cache.  The fixed payload hash, artifact
+    identity, status, and negative claim limits keep this an unreviewed R&D
+    shape rather than a learned or style-aligned gesture.
+    """
+
+    value = _mapping(raw, label=label)
+    _exact_keys(
+        value,
+        (
+            "status",
+            "onset_seconds",
+            "duration_seconds",
+            "fade_in_seconds",
+            "fade_out_seconds",
+            "fade_shape",
+            "source_artifact",
+            "normalized_reference_contour",
+            "claim_limits",
+        ),
+        label=label,
+    )
+    if event_id != REFERENCE_CONTOUR_EVENT_ID:
+        raise RuntimeContractError(
+            f"{label} is allowed only on the pinned {REFERENCE_CONTOUR_EVENT_ID} event"
+        )
+    if value.get("status") != REFERENCE_CONTOUR_STATUS:
+        raise RuntimeContractError(f"{label}.status must remain reference_shape_unreviewed")
+    if value.get("fade_shape") != "linear_depth":
+        raise RuntimeContractError(f"{label}.fade_shape must equal linear_depth")
+
+    onset = _finite_number(
+        value.get("onset_seconds"),
+        label=f"{label}.onset_seconds",
+        minimum=0.0,
+    )
+    duration = _finite_number(
+        value.get("duration_seconds"),
+        label=f"{label}.duration_seconds",
+        minimum=FRAME_RESOLUTION,
+    )
+    fade_in = _finite_number(
+        value.get("fade_in_seconds"),
+        label=f"{label}.fade_in_seconds",
+        minimum=FRAME_RESOLUTION,
+    )
+    fade_out = _finite_number(
+        value.get("fade_out_seconds"),
+        label=f"{label}.fade_out_seconds",
+        minimum=FRAME_RESOLUTION,
+    )
+    expected_times = (
+        (onset, REFERENCE_CONTOUR_ONSET_SECONDS, "onset_seconds"),
+        (duration, REFERENCE_CONTOUR_DURATION_SECONDS, "duration_seconds"),
+        (fade_in, REFERENCE_CONTOUR_FADE_SECONDS, "fade_in_seconds"),
+        (fade_out, REFERENCE_CONTOUR_FADE_SECONDS, "fade_out_seconds"),
+    )
+    for actual, expected, field in expected_times:
+        if not math.isclose(actual, expected, abs_tol=1.0e-12, rel_tol=0.0):
+            raise RuntimeContractError(f"{label}.{field} differs from its pinned R&D value")
+    if fade_in >= duration or fade_out >= duration:
+        raise RuntimeContractError(f"{label} fades must be shorter than the contour duration")
+    if not math.isclose(onset + duration, event_duration, abs_tol=1.0e-12, rel_tol=0.0):
+        raise RuntimeContractError(
+            f"{label} must occupy the final exact 1.5 seconds of its event without time compression"
+        )
+    for name, absolute_time in (
+        ("event start", event_start),
+        ("contour onset", event_start + onset),
+        ("contour end", event_start + onset + duration),
+    ):
+        if not math.isclose(
+            absolute_time * FRAME_RATE_HZ,
+            round(absolute_time * FRAME_RATE_HZ),
+            abs_tol=1.0e-9,
+            rel_tol=0.0,
+        ):
+            raise RuntimeContractError(f"{label} {name} must align to the 250 Hz control grid")
+
+    source = _mapping(value.get("source_artifact"), label=f"{label}.source_artifact")
+    _exact_keys(source, EXPECTED_REFERENCE_CONTOUR_SOURCE, label=f"{label}.source_artifact")
+    if dict(source) != EXPECTED_REFERENCE_CONTOUR_SOURCE:
+        raise RuntimeContractError(f"{label}.source_artifact differs from pinned provenance")
+
+    claim_limits = _mapping(value.get("claim_limits"), label=f"{label}.claim_limits")
+    _exact_keys(
+        claim_limits,
+        EXPECTED_REFERENCE_CONTOUR_CLAIM_LIMITS,
+        label=f"{label}.claim_limits",
+    )
+    if dict(claim_limits) != EXPECTED_REFERENCE_CONTOUR_CLAIM_LIMITS:
+        raise RuntimeContractError(
+            f"{label}.claim_limits must retain every unreviewed/non-style/non-compatibility gate"
+        )
+
+    contour = _mapping(
+        value.get("normalized_reference_contour"),
+        label=f"{label}.normalized_reference_contour",
+    )
+    _exact_keys(
+        contour,
+        (
+            "sample_count",
+            "time_normalized_0_to_1",
+            "pitch_residual_cents",
+            "rms_db_relative_to_candidate_median",
+            "normalization",
+            "contour_payload_sha256",
+        ),
+        label=f"{label}.normalized_reference_contour",
+    )
+    if type(contour.get("sample_count")) is not int or contour.get("sample_count") != REFERENCE_CONTOUR_SAMPLE_COUNT:
+        raise RuntimeContractError(
+            f"{label}.normalized_reference_contour.sample_count must equal 65"
+        )
+    times_raw = contour.get("time_normalized_0_to_1")
+    pitch_raw = contour.get("pitch_residual_cents")
+    rms_raw = contour.get("rms_db_relative_to_candidate_median")
+    for points, point_label in (
+        (times_raw, "time_normalized_0_to_1"),
+        (pitch_raw, "pitch_residual_cents"),
+        (rms_raw, "rms_db_relative_to_candidate_median"),
+    ):
+        if not isinstance(points, list) or len(points) != REFERENCE_CONTOUR_SAMPLE_COUNT:
+            raise RuntimeContractError(
+                f"{label}.normalized_reference_contour.{point_label} must contain exactly 65 points"
+            )
+    times = [
+        _finite_number(point, label=f"{label}.time_normalized_0_to_1[{index}]", minimum=0.0, maximum=1.0)
+        for index, point in enumerate(times_raw)
+    ]
+    pitches = [
+        _finite_number(point, label=f"{label}.pitch_residual_cents[{index}]", minimum=-240.0, maximum=240.0)
+        for index, point in enumerate(pitch_raw)
+    ]
+    rms_values = [
+        _finite_number(point, label=f"{label}.rms_db_relative_to_candidate_median[{index}]", minimum=-60.0, maximum=60.0)
+        for index, point in enumerate(rms_raw)
+    ]
+    if any(right <= left for left, right in zip(times, times[1:])):
+        raise RuntimeContractError(f"{label} normalized contour times must be strictly increasing")
+    for index, moment in enumerate(times):
+        expected = index / (REFERENCE_CONTOUR_SAMPLE_COUNT - 1)
+        # The source artifact stores six-decimal time coordinates.
+        if not math.isclose(moment, expected, abs_tol=1.0e-6, rel_tol=0.0):
+            raise RuntimeContractError(
+                f"{label} normalized contour times must preserve the uniform closed 0..1 source grid"
+            )
+    normalization = _mapping(
+        contour.get("normalization"),
+        label=f"{label}.normalized_reference_contour.normalization",
+    )
+    _exact_keys(
+        normalization,
+        EXPECTED_REFERENCE_CONTOUR_NORMALIZATION,
+        label=f"{label}.normalized_reference_contour.normalization",
+    )
+    if dict(normalization) != EXPECTED_REFERENCE_CONTOUR_NORMALIZATION:
+        raise RuntimeContractError(f"{label} normalization provenance differs from the pinned artifact")
+    payload_hash = contour.get("contour_payload_sha256")
+    if payload_hash != EXPECTED_REFERENCE_CONTOUR_SOURCE["contour_payload_sha256"]:
+        raise RuntimeContractError(f"{label} contour payload hash is not the pinned hash")
+    unhashed_payload = dict(contour)
+    unhashed_payload.pop("contour_payload_sha256", None)
+    if _canonical_object_sha256(unhashed_payload) != payload_hash:
+        raise RuntimeContractError(f"{label} embedded contour bytes do not match their payload hash")
+
+    return {
+        "status": REFERENCE_CONTOUR_STATUS,
+        "onset_seconds": onset,
+        "duration_seconds": duration,
+        "fade_in_seconds": fade_in,
+        "fade_out_seconds": fade_out,
+        "fade_shape": "linear_depth",
+        "source_artifact": dict(source),
+        "normalized_reference_contour": {
+            "sample_count": REFERENCE_CONTOUR_SAMPLE_COUNT,
+            "time_normalized_0_to_1": times,
+            "pitch_residual_cents": pitches,
+            "rms_db_relative_to_candidate_median": rms_values,
+            "normalization": dict(normalization),
+            "contour_payload_sha256": str(payload_hash),
+        },
+        "claim_limits": dict(claim_limits),
+    }
 
 
 def _safe_relative(value: str, *, label: str) -> str:
@@ -251,6 +507,7 @@ def _validate_plan(path: Path) -> Tuple[Mapping[str, Any], List[Dict[str, Any]],
     prior_event: Optional[Dict[str, Any]] = None
     normalized: List[Dict[str, Any]] = []
     seen_ids: set[str] = set()
+    reference_contour_count = 0
     for index, raw in enumerate(raw_events):
         event = _mapping(raw, label=f"plan.events[{index}]")
         event_id = event.get("id")
@@ -276,6 +533,11 @@ def _validate_plan(path: Path) -> Tuple[Mapping[str, Any], List[Dict[str, Any]],
                 "nominal_pitch_hz": float(prior_event["pitch_hz"]),
                 "elapsed_seconds_at_release": float(prior_event["end_seconds"]) - float(prior_event["start_seconds"]),
                 "vibrato": dict(_mapping(prior_event["vibrato"], label="normalized release-source vibrato")),
+                "reference_contour_status": (
+                    _mapping(prior_event["reference_contour"], label="normalized release-source reference contour").get("status")
+                    if "reference_contour" in prior_event
+                    else None
+                ),
             }
         else:
             pitch = _finite_number(event.get("pitch_hz"), label=f"plan.events[{index}].pitch_hz", minimum=20.0, maximum=4_000.0)
@@ -312,6 +574,24 @@ def _validate_plan(path: Path) -> Tuple[Mapping[str, Any], List[Dict[str, Any]],
             elif set(vibrato_map) != {"enabled"}:
                 raise RuntimeContractError("disabled vibrato may not hide nonzero parameters")
         item.setdefault("vibrato", {"enabled": False})
+        raw_reference = event.get("reference_contour")
+        if "reference_contour" in event:
+            if articulation == "release":
+                raise RuntimeContractError("a release cannot declare or replay a reference contour")
+            if event.get("vibrato") != {"enabled": False}:
+                raise RuntimeContractError(
+                    "the unreviewed reference contour requires an explicit disabled sine vibrato"
+                )
+            item["reference_contour"] = _validate_reference_contour(
+                raw_reference,
+                label=f"plan.events[{index}].reference_contour",
+                event_id=event_id,
+                event_start=start,
+                event_duration=end - start,
+            )
+            reference_contour_count += 1
+            if reference_contour_count > 1:
+                raise RuntimeContractError("a score plan may contain at most one pinned reference contour event")
         normalized.append(item)
         prior_event = item
         prior_end = end
@@ -414,6 +694,87 @@ def _vibrato_cents(
             else:
                 envelope *= min(1.0, max(0.0, (final_control_local - local_seconds) / fade_span))
     return float(vibrato["depth_cents"]) * envelope * math.sin(2.0 * math.pi * float(vibrato["rate_hz"]) * (local_seconds - onset))
+
+
+def _reference_contour_cents(
+    event: Mapping[str, Any],
+    local_seconds: float,
+    *,
+    event_duration: Optional[float] = None,
+) -> float:
+    """Linearly sample the pinned 65-point contour without time compression."""
+
+    raw = event.get("reference_contour")
+    if raw is None:
+        return 0.0
+    reference = _mapping(raw, label="normalized reference contour")
+    onset = float(reference["onset_seconds"])
+    duration = float(reference["duration_seconds"])
+    elapsed = float(local_seconds) - onset
+    if elapsed < -1.0e-12 or elapsed >= duration - 1.0e-12:
+        return 0.0
+    elapsed = max(0.0, elapsed)
+    if elapsed <= 1.0e-12:
+        return 0.0
+    if event_duration is None:
+        if "start_seconds" not in event or "end_seconds" not in event:
+            raise RuntimeContractError("event duration is required for a reference contour")
+        event_duration = float(event["end_seconds"]) - float(event["start_seconds"])
+    if not math.isclose(onset + duration, float(event_duration), abs_tol=1.0e-12, rel_tol=0.0):
+        raise RuntimeContractError("normalized reference contour no longer ends at its event boundary")
+
+    contour = _mapping(
+        reference["normalized_reference_contour"],
+        label="normalized embedded reference contour",
+    )
+    times = [float(value) for value in contour["time_normalized_0_to_1"]]
+    pitches = [float(value) for value in contour["pitch_residual_cents"]]
+    normalized_time = elapsed / duration
+    # Interpolate against the stored source grid itself.  In particular, the
+    # last half-open runtime row samples t=(1.5-0.004)/1.5 rather than being
+    # remapped to source t=1.0; that would shorten/compress the contour.
+    right = bisect.bisect_right(times, normalized_time)
+    if right <= 0:
+        raw_cents = pitches[0]
+    elif right >= len(times):
+        raw_cents = pitches[-1]
+    else:
+        left = right - 1
+        span = times[right] - times[left]
+        if span <= 0.0:  # pragma: no cover - normalized validation rejects it.
+            raise RuntimeContractError("reference contour has a non-increasing source grid")
+        progress = (normalized_time - times[left]) / span
+        raw_cents = pitches[left] + (pitches[right] - pitches[left]) * progress
+
+    fade_in = float(reference["fade_in_seconds"])
+    fade_out = float(reference["fade_out_seconds"])
+    envelope = min(1.0, max(0.0, elapsed / fade_in))
+    fade_start = duration - fade_out
+    final_control_elapsed = duration - FRAME_RESOLUTION
+    if elapsed >= final_control_elapsed - 1.0e-12:
+        envelope = 0.0
+    elif elapsed > fade_start:
+        fade_span = final_control_elapsed - fade_start
+        if fade_span <= 0.0:  # pragma: no cover - pinned validation rejects it.
+            envelope = 0.0
+        else:
+            envelope *= min(1.0, max(0.0, (final_control_elapsed - elapsed) / fade_span))
+    return raw_cents * envelope
+
+
+def _event_pitch_cents(
+    event: Mapping[str, Any],
+    local_seconds: float,
+    *,
+    event_duration: Optional[float] = None,
+) -> float:
+    if "reference_contour" in event:
+        return _reference_contour_cents(
+            event,
+            local_seconds,
+            event_duration=event_duration,
+        )
+    return _vibrato_cents(event, local_seconds, event_duration=event_duration)
 
 
 def _slur_transition_seconds(milliseconds: Any) -> float:
@@ -544,6 +905,170 @@ def release_vibrato_control_qa(
             "pitch_source": "normalized_immediately_prior_voiced_event_nominal_pitch",
         },
         "final_nominal_pitch_gate_passed": all(completed_nominal_gates) if completed_nominal_gates else None,
+        "events": records,
+    }
+
+
+def reference_contour_control_qa(
+    frames: Sequence[Mapping[str, Any]],
+    events: Sequence[Mapping[str, Any]],
+) -> Dict[str, Any]:
+    """Prove the pinned contour's identity, timing, interpolation, and edges."""
+
+    reference_events = [event for event in events if "reference_contour" in event]
+    if len(reference_events) > 1:  # pragma: no cover - plan validation rejects it.
+        raise RuntimeContractError("reference contour QA accepts at most one event")
+    records: List[Dict[str, Any]] = []
+    for event in reference_events:
+        reference = _mapping(event["reference_contour"], label="normalized reference contour")
+        source = _mapping(reference["source_artifact"], label="reference contour source artifact")
+        contour = _mapping(
+            reference["normalized_reference_contour"],
+            label="embedded normalized reference contour",
+        )
+        event_id = str(event["id"])
+        event_start = float(event["start_seconds"])
+        event_duration = float(event["end_seconds"]) - event_start
+        onset = float(reference["onset_seconds"])
+        duration = float(reference["duration_seconds"])
+        contour_start = event_start + onset
+        contour_end = contour_start + duration
+        event_frames = [frame for frame in frames if str(frame["event_id"]) == event_id]
+        active_frames = [
+            frame
+            for frame in event_frames
+            if float(frame["time_seconds"]) >= contour_start - 1.0e-12
+            and float(frame["time_seconds"]) < contour_end - 1.0e-12
+        ]
+        base_record: Dict[str, Any] = {
+            "event_id": event_id,
+            "status": str(reference["status"]),
+            "candidate_id": str(source["candidate_id"]),
+            "source_id": str(source["source_id"]),
+            "source_sha256": str(source["source_sha256"]),
+            "source_artifact_sha256": str(source["sha256"]),
+            "contour_payload_sha256": str(source["contour_payload_sha256"]),
+            "rights_status": str(source["rights_status"]),
+            "source_sample_count": int(contour["sample_count"]),
+            "source_duration_seconds": duration,
+            "applied_duration_seconds": duration,
+            "time_mapping": "source_normalized_time = contour_elapsed_seconds / 1.5; no endpoint remap to the final half-open control row",
+            "interpolation": "piecewise_linear_between_65_embedded_normalized_pitch_samples_at_250hz_runtime_rows",
+            "onset_seconds_relative": onset,
+            "event_start_seconds": event_start,
+            "contour_start_seconds": contour_start,
+            "contour_end_seconds": contour_end,
+            "fade_in_seconds": float(reference["fade_in_seconds"]),
+            "fade_out_seconds": float(reference["fade_out_seconds"]),
+            "fade_shape": str(reference["fade_shape"]),
+            "expected_active_control_frame_count": int(round(duration * FRAME_RATE_HZ)),
+        }
+        if not active_frames:
+            base_record.update({
+                "truncated_before_reference_contour": True,
+                "active_control_frame_count": 0,
+                "first_boundary_zero_gate_passed": None,
+                "final_boundary_zero_gate_passed": None,
+                "final_nominal_pitch_gate_passed": None,
+                "no_time_compression_gate_passed": None,
+            })
+            records.append(base_record)
+            continue
+
+        nominal_hz = float(event["pitch_hz"])
+        for frame in active_frames:
+            local = float(frame["time_seconds"]) - event_start
+            expected_cents = _reference_contour_cents(
+                event,
+                local,
+                event_duration=event_duration,
+            )
+            expected_hz = nominal_hz * math.pow(2.0, expected_cents / 1_200.0)
+            if not math.isclose(
+                float(frame["vibrato_cents"]),
+                expected_cents,
+                abs_tol=1.0e-10,
+                rel_tol=0.0,
+            ):
+                raise RuntimeContractError(
+                    "reference contour control row differs from pinned linear interpolation and fades"
+                )
+            if not math.isclose(float(frame["f0_hz"]), expected_hz, abs_tol=1.0e-9, rel_tol=0.0):
+                raise RuntimeContractError("reference contour F0 differs from its nominal pitch plus contour cents")
+
+        first = active_frames[0]
+        final = active_frames[-1]
+        first_gate = (
+            math.isclose(float(first["time_seconds"]), contour_start, abs_tol=1.0e-12, rel_tol=0.0)
+            and abs(float(first["vibrato_cents"])) <= 1.0e-10
+        )
+        if not first_gate:
+            raise RuntimeContractError("reference contour must fade in from zero on its first 250 Hz row")
+        final_control_time = contour_end - FRAME_RESOLUTION
+        complete = float(final["time_seconds"]) >= final_control_time - 1.0e-12
+        final_gate: Optional[bool] = None
+        final_nominal_gate: Optional[bool] = None
+        no_compression_gate: Optional[bool] = None
+        final_source_normalized_time: Optional[float] = None
+        if complete:
+            if len(active_frames) != int(round(duration * FRAME_RATE_HZ)):
+                raise RuntimeContractError("reference contour did not occupy exactly 1.5 seconds of 250 Hz rows")
+            final_gate = abs(float(final["vibrato_cents"])) <= 1.0e-10
+            final_nominal_gate = math.isclose(
+                float(final["f0_hz"]),
+                nominal_hz,
+                abs_tol=1.0e-9,
+                rel_tol=0.0,
+            )
+            if not final_gate or not final_nominal_gate:
+                raise RuntimeContractError(
+                    "reference contour must close at zero cents and nominal pitch on its final half-open row"
+                )
+            final_source_normalized_time = (
+                float(final["time_seconds"]) - contour_start
+            ) / duration
+            expected_final_source_time = (duration - FRAME_RESOLUTION) / duration
+            no_compression_gate = (
+                math.isclose(
+                    final_source_normalized_time,
+                    expected_final_source_time,
+                    abs_tol=1.0e-12,
+                    rel_tol=0.0,
+                )
+                and final_source_normalized_time < 1.0
+            )
+            if not no_compression_gate:
+                raise RuntimeContractError("reference contour source time was compressed onto runtime rows")
+        base_record.update({
+            "truncated_before_reference_contour": False,
+            "truncated_during_reference_contour": not complete,
+            "active_control_frame_count": len(active_frames),
+            "first_active_frame_index": int(first["frame_index"]),
+            "first_active_vibrato_cents": float(first["vibrato_cents"]),
+            "final_active_frame_index": int(final["frame_index"]),
+            "final_active_vibrato_cents": float(final["vibrato_cents"]),
+            "final_active_f0_hz": float(final["f0_hz"]),
+            "nominal_pitch_hz": nominal_hz,
+            "first_boundary_zero_gate_passed": first_gate,
+            "final_boundary_zero_gate_passed": final_gate,
+            "final_nominal_pitch_gate_passed": final_nominal_gate,
+            "nonzero_interior_frame_count": sum(
+                1 for frame in active_frames[1:-1] if abs(float(frame["vibrato_cents"])) > 1.0e-10
+            ),
+            "final_source_normalized_time": final_source_normalized_time,
+            "source_endpoint_remapped_to_final_half_open_row": False,
+            "no_time_compression_gate_passed": no_compression_gate,
+        })
+        records.append(base_record)
+    return {
+        "passed": True,
+        "status": REFERENCE_CONTOUR_STATUS if reference_events else "not_present",
+        "event_count": len(reference_events),
+        "claim_boundary": "embedded automatic periodic-F0 proxy shape; unreviewed, not learned, not Gyeonggi-style-aligned, and not cleared for training or game use",
+        "learned_claim": False,
+        "style_aligned_claim": False,
+        "human_reviewed_claim": False,
+        "training_or_game_clearance": False,
         "events": records,
     }
 
@@ -914,7 +1439,11 @@ def build_score_controls(
             loudness = target_loudness * math.pow(release, 1.35)
             voicing = release
         else:
-            vibrato_cents = _vibrato_cents(event, local)
+            vibrato_cents = _event_pitch_cents(
+                event,
+                local,
+                event_duration=event_duration,
+            )
             target_f0 = float(event["pitch_hz"]) * math.pow(2.0, vibrato_cents / 1200.0)
             if articulation == "breath_start":
                 onset = min(1.0, local / 0.065)
@@ -976,6 +1505,7 @@ def build_score_controls(
         pitch_mode=slur_pitch_mode,
     )
     release_vibrato_qa = release_vibrato_control_qa(frames, events)
+    reference_contour_qa = reference_contour_control_qa(frames, events)
     summary = {
         "source_plan": _file_record(plan_path.expanduser().resolve()),
         "source_plan_control_hz": plan["control_hz"],
@@ -994,6 +1524,7 @@ def build_score_controls(
             "release_may_declare_new_pitch_or_vibrato": False,
         },
         "release_vibrato_qa": release_vibrato_qa,
+        "reference_contour_control_qa": reference_contour_qa,
         "breath_start_boundary_qa": breath_boundary_qa,
         "decoder_inputs": (
             "F0 and linear loudness only; raw score dB is never passed to the decoder. breath/rearticulate/slur/release remain authorial controls, not inferred categorical model labels. The experimental hard-step candidate is a control trajectory, not a learned slur. Its separately authored dynamic still moves monotonically from entry to target over 80 ms without overshoot. Release loudness starts from one fixed inherited steady level."

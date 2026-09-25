@@ -60,6 +60,28 @@ cannot declare a new vibrato. It inherits the preceding note's normalized
 source state, continues that clock when necessary, and independently closes
 the release depth to nominal pitch on its own final control row.
 
+The separate B2-R plan can embed exactly one pinned
+`reference_shape_unreviewed` contour on `b16_e0_rearticulate`. This is a
+strictly bounded offline audition path, not a general expression model. The
+runtime independently checks the source-artifact SHA-256, candidate/source
+provenance, negative claim limits, and the canonical SHA-256 of all 65 embedded
+normalized contour points. It rejects changed timing, points, hashes, status,
+or provenance. The original 1.5-second source time is retained exactly: each
+250 Hz row linearly interpolates at
+`source_time = contour_elapsed_seconds / 1.5`, without remapping the last
+half-open row to the source endpoint. Explicit 120 ms linear depth fades begin
+and end the gesture at zero cents; the final event row is forced to zero cents
+and nominal pitch before the release, which remains nominal rather than
+replaying the contour.
+
+Runtime reports expose this as `score_controls.reference_contour_control_qa`,
+including the event and provenance hashes, 375-row duration gate, first/final
+zero-cent gates, final nominal-F0 gate, and the final source interpolation
+position (`(1.5 - 0.004) / 1.5`). The report explicitly keeps learned,
+Gyeonggi-style-aligned, human-reviewed, training, and game-clearance claims
+false. The source contour is an automatic periodic-F0 proxy with unverified
+rights; embedding it does not upgrade those claims.
+
 The score-expression compiler has the same canonical constants and math, and
 each runtime sidecar probes both implementations at 5.040/5.044/… seconds.
 That is formula equivalence only: its 100 Hz control artifact can be
