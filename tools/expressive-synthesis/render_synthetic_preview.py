@@ -26,7 +26,7 @@ import wave
 import numpy
 
 
-SCORE_MANIFEST_SCHEMA = "mini.score-expression.render-manifest.v1"
+SCORE_MANIFEST_SCHEMA = "mini.score-expression.render-manifest.v2"
 SCORE_CONTROLS_SCHEMA = "mini.score-expression.controls.v1"
 SCORE_MANIFEST_FILENAME = "score_expression_manifest.json"
 SCORE_CONTROLS_FILENAME = "score_expression_controls.npz"
@@ -36,6 +36,22 @@ PREVIEW_MANIFEST_FILENAME = "untrained_synthetic_preview_manifest.json"
 EXPECTED_SAMPLE_RATE_HZ = 48_000
 EXPECTED_SCORE_FEATURE_DIM = 9
 DEFAULT_SEED = 20_260_925
+SLUR_BOUNDARY_F0_SCHEMA = "mini.score-expression.slur-boundary-f0.v1"
+SLUR_STATE_CODE = 3
+CANONICAL_SLUR_TRANSITION_SECONDS = 0.012
+CANONICAL_SLUR_TRANSITION_SAMPLES = int(CANONICAL_SLUR_TRANSITION_SECONDS * EXPECTED_SAMPLE_RATE_HZ)
+CANONICAL_SLUR_POLICY = {
+    "pitch_transition_milliseconds": 12,
+    "pitch_shape": "minimum_jerk_log_frequency_cents",
+    "pitch_domain": "log_frequency_cents",
+    "pitch_target_settle_by_seconds": 0.050,
+    "intermediate_pitch_dwell_strictly_less_than_seconds": 0.020,
+    "dynamic_transition_seconds": 0.080,
+    "dynamic_shape": "minimum_jerk_linear_loudness",
+    "dynamic_domain": "linear_loudness",
+    "dynamic_target_settle_by_seconds": 0.100,
+    "no_rearticulation_envelope_for_slur": True,
+}
 SCOPE_KEYS = (
     "r_and_d_only",
     "no_default_assets",
@@ -106,6 +122,25 @@ def _integer(value: Any, *, label: str, minimum: int, maximum: int) -> int:
     return result
 
 
+def _number(value: Any, *, label: str, minimum: float, maximum: float) -> float:
+    if isinstance(value, bool):
+        raise SyntheticPreviewError(f"{label} must be a finite number")
+    try:
+        result = float(value)
+    except (TypeError, ValueError) as exc:
+        raise SyntheticPreviewError(f"{label} must be a finite number") from exc
+    if not math.isfinite(result) or not minimum <= result <= maximum:
+        raise SyntheticPreviewError(f"{label} is outside its allowed range")
+    return result
+
+
+def _require_close(value: Any, expected: float, *, label: str, tolerance: float = 1.0e-9) -> float:
+    result = _number(value, label=label, minimum=-1_000_000.0, maximum=1_000_000.0)
+    if not math.isclose(result, expected, abs_tol=tolerance, rel_tol=0.0):
+        raise SyntheticPreviewError(f"{label} must equal the canonical value")
+    return result
+
+
 def _sha256_text(value: Any, *, label: str) -> str:
     if not isinstance(value, str) or len(value) != 64:
         raise SyntheticPreviewError(f"{label} must be a lowercase SHA-256 digest")
@@ -150,6 +185,146 @@ def _reject_default_bgm_path(path: Path, *, label: str) -> None:
         raise SyntheticPreviewError(f"{label} must not be inside default BGM assets")
 
 
+def _validate_canonical_slur_policy(value: Any) -> dict[str, Any]:
+    """Reject stale or alternate slur policies before any preview is written."""
+
+    policy = _mapping(value, label="controls manifest.controls.slur_transition_policy")
+    for key, expected in CANONICAL_SLUR_POLICY.items():
+        actual = policy.get(key)
+        label = f"controls manifest.controls.slur_transition_policy.{key}"
+        if isinstance(expected, bool):
+            if actual is not expected:
+                raise SyntheticPreviewError(f"{label} must equal the canonical value")
+        elif isinstance(expected, str):
+            if actual != expected:
+                raise SyntheticPreviewError(f"{label} must equal the canonical value")
+        else:
+            _require_close(actual, float(expected), label=label)
+    return dict(CANONICAL_SLUR_POLICY)
+
+
+def _minimum_jerk_progress(progress: numpy.ndarray) -> numpy.ndarray:
+    unit = numpy.clip(progress, 0.0, 1.0)
+    return unit * unit * unit * (10.0 + unit * (-15.0 + 6.0 * unit))
+
+
+def _minimum_jerk_log_frequency_hz(source_hz: float, target_hz: float, local_seconds: numpy.ndarray) -> numpy.ndarray:
+    source_cents = 1_200.0 * math.log2(source_hz)
+    target_cents = 1_200.0 * math.log2(target_hz)
+    cents = source_cents + (target_cents - source_cents) * _minimum_jerk_progress(
+        numpy.asarray(local_seconds, dtype=numpy.float64) / CANONICAL_SLUR_TRANSITION_SECONDS
+    )
+    return numpy.power(2.0, cents / 1_200.0)
+
+
+def _validated_slur_boundaries(manifest: Mapping[str, Any], *, control_hz: int) -> list[dict[str, Any]]:
+    """Validate compiler-attested boundary F0 data needed for a safe handoff.
+
+    The preview deliberately does not reverse-engineer a slur from sampled F0
+    rows.  It accepts only the compiler's explicit, canonical source/target
+    boundary contract and rejects every earlier manifest that lacks it.
+    """
+
+    raw_events = manifest.get("events")
+    if not isinstance(raw_events, list) or not raw_events:
+        raise SyntheticPreviewError("controls manifest.events must be a non-empty compiler event list")
+    events = [_mapping(item, label=f"controls manifest.events[{index}]") for index, item in enumerate(raw_events)]
+    ids: list[str] = []
+    for index, event in enumerate(events):
+        event_id = event.get("id")
+        if not isinstance(event_id, str) or not event_id:
+            raise SyntheticPreviewError(f"controls manifest.events[{index}].id must be a non-empty string")
+        ids.append(event_id)
+        _number(event.get("start_seconds"), label=f"controls manifest.events[{index}].start_seconds", minimum=0.0, maximum=100_000.0)
+        _number(event.get("end_seconds"), label=f"controls manifest.events[{index}].end_seconds", minimum=0.0, maximum=100_000.0)
+    if len(set(ids)) != len(ids):
+        raise SyntheticPreviewError("controls manifest.events repeats an id")
+
+    boundaries: list[dict[str, Any]] = []
+    for index, event in enumerate(events):
+        if event.get("articulation") != "slur":
+            if "slur_boundary_f0" in event:
+                raise SyntheticPreviewError("only an explicit slur event may carry slur boundary F0 metadata")
+            continue
+        if index == 0 or events[index - 1].get("articulation") == "release":
+            raise SyntheticPreviewError("slur boundary metadata requires a preceding voiced event")
+        boundary = _mapping(event.get("slur_boundary_f0"), label=f"controls manifest.events[{index}].slur_boundary_f0")
+        if boundary.get("schema") != SLUR_BOUNDARY_F0_SCHEMA:
+            raise SyntheticPreviewError("slur boundary F0 metadata is missing its canonical schema")
+        if boundary.get("event_id") != event["id"] or _integer(boundary.get("event_index"), label="slur boundary event_index", minimum=0, maximum=len(events) - 1) != index:
+            raise SyntheticPreviewError("slur boundary F0 metadata does not identify its target event")
+        source = events[index - 1]
+        if boundary.get("source_event_id") != source["id"] or _integer(boundary.get("source_event_index"), label="slur boundary source_event_index", minimum=0, maximum=len(events) - 1) != index - 1:
+            raise SyntheticPreviewError("slur boundary F0 metadata does not identify its source event")
+
+        start_seconds = _number(event.get("start_seconds"), label="slur event start_seconds", minimum=0.0, maximum=100_000.0)
+        if not math.isclose(
+            _number(boundary.get("boundary_seconds"), label="slur boundary boundary_seconds", minimum=0.0, maximum=100_000.0),
+            start_seconds,
+            abs_tol=1.0e-9,
+            rel_tol=0.0,
+        ):
+            raise SyntheticPreviewError("slur boundary F0 metadata must begin at its event boundary")
+        if boundary.get("preview_reconstruction_eligible") is not True:
+            raise SyntheticPreviewError("slur boundary is not eligible for the isolated audio-rate preview reconstruction")
+        reasons = boundary.get("preview_reconstruction_ineligible_reasons")
+        if not isinstance(reasons, list) or reasons:
+            raise SyntheticPreviewError("eligible slur boundary must carry an empty ineligible-reasons list")
+        expected_boundary_frame = int(round(start_seconds * control_hz))
+        if not math.isclose(expected_boundary_frame / float(control_hz), start_seconds, abs_tol=1.0e-9, rel_tol=0.0):
+            raise SyntheticPreviewError("slur boundary must align to the compiler control grid")
+        expected_start_sample = int(round(start_seconds * EXPECTED_SAMPLE_RATE_HZ))
+        if not math.isclose(expected_start_sample / float(EXPECTED_SAMPLE_RATE_HZ), start_seconds, abs_tol=1.0e-9, rel_tol=0.0):
+            raise SyntheticPreviewError("slur boundary must align to the 48 kHz timeline")
+        expected_rejoin_frame = int(math.floor((start_seconds + CANONICAL_SLUR_TRANSITION_SECONDS) * control_hz + 1.0e-12)) + 1
+        expected_source_hold_sample = int(round((expected_boundary_frame - 1) * EXPECTED_SAMPLE_RATE_HZ / float(control_hz)))
+        expected_rejoin_sample = int(round(expected_rejoin_frame * EXPECTED_SAMPLE_RATE_HZ / float(control_hz)))
+        integer_expectations = {
+            "boundary_control_frame_index": expected_boundary_frame,
+            "source_hold_control_frame_index": expected_boundary_frame - 1,
+            "source_hold_sample_48k": expected_source_hold_sample,
+            "transition_start_sample_48k": expected_start_sample,
+            "transition_end_sample_48k": expected_start_sample + CANONICAL_SLUR_TRANSITION_SAMPLES,
+            "target_rejoin_control_frame_index": expected_rejoin_frame,
+            "target_rejoin_sample_48k": expected_rejoin_sample,
+        }
+        for key, expected in integer_expectations.items():
+            actual = _integer(boundary.get(key), label=f"slur boundary {key}", minimum=0, maximum=10_000_000_000)
+            if actual != expected:
+                raise SyntheticPreviewError(f"slur boundary {key} does not match the canonical timeline")
+        _require_close(
+            boundary.get("transition_seconds"),
+            CANONICAL_SLUR_TRANSITION_SECONDS,
+            label="slur boundary transition_seconds",
+        )
+        if boundary.get("pitch_shape") != CANONICAL_SLUR_POLICY["pitch_shape"] or boundary.get("pitch_domain") != CANONICAL_SLUR_POLICY["pitch_domain"]:
+            raise SyntheticPreviewError("slur boundary F0 metadata does not declare the canonical log-frequency minimum-jerk policy")
+
+        source_pitch = _number(source.get("pitch_hz"), label="slur source event pitch_hz", minimum=20.0, maximum=4_000.0)
+        target_pitch = _number(event.get("pitch_hz"), label="slur target event pitch_hz", minimum=20.0, maximum=4_000.0)
+        source_cents = _number(boundary.get("source_boundary_gesture_cents"), label="slur source_boundary_gesture_cents", minimum=-600.0, maximum=600.0)
+        target_cents = _number(boundary.get("target_entry_gesture_cents"), label="slur target_entry_gesture_cents", minimum=-600.0, maximum=600.0)
+        expected_source_hz = source_pitch * (2.0 ** (source_cents / 1_200.0))
+        expected_target_hz = target_pitch * (2.0 ** (target_cents / 1_200.0))
+        source_hz = _number(boundary.get("source_boundary_f0_hz"), label="slur source_boundary_f0_hz", minimum=20.0, maximum=4_000.0)
+        target_hz = _number(boundary.get("target_entry_f0_hz"), label="slur target_entry_f0_hz", minimum=20.0, maximum=4_000.0)
+        source_hold_hz = _number(boundary.get("source_hold_f0_hz"), label="slur source_hold_f0_hz", minimum=20.0, maximum=4_000.0)
+        target_rejoin_hz = _number(boundary.get("target_rejoin_f0_hz"), label="slur target_rejoin_f0_hz", minimum=20.0, maximum=4_000.0)
+        if not math.isclose(source_hz, expected_source_hz, abs_tol=2.0e-6, rel_tol=0.0) or not math.isclose(target_hz, expected_target_hz, abs_tol=2.0e-6, rel_tol=0.0):
+            raise SyntheticPreviewError("slur boundary F0 does not match the compiler-attested score pitch and gesture entry")
+        boundaries.append({
+            "event_id": str(event["id"]),
+            "event_index": index,
+            "boundary_seconds": start_seconds,
+            "source_boundary_f0_hz": source_hz,
+            "target_entry_f0_hz": target_hz,
+            "source_hold_f0_hz": source_hold_hz,
+            "target_rejoin_f0_hz": target_rejoin_hz,
+            **integer_expectations,
+        })
+    return boundaries
+
+
 def _validate_score_manifest(manifest: Mapping[str, Any], *, controls_path: Path) -> dict[str, Any]:
     if manifest.get("schema") != SCORE_MANIFEST_SCHEMA:
         raise SyntheticPreviewError(f"controls manifest.schema must be {SCORE_MANIFEST_SCHEMA}")
@@ -192,7 +367,7 @@ def _validate_score_manifest(manifest: Mapping[str, Any], *, controls_path: Path
         maximum=384_000,
     )
     if sample_rate_hz != EXPECTED_SAMPLE_RATE_HZ:
-        raise SyntheticPreviewError("v1 preview accepts only the explicit 48 kHz score-expression timeline")
+        raise SyntheticPreviewError("v2 preview accepts only the explicit 48 kHz score-expression timeline")
     control_hz = _integer(
         controls.get("control_hz"),
         label="controls manifest.controls.control_hz",
@@ -212,7 +387,9 @@ def _validate_score_manifest(manifest: Mapping[str, Any], *, controls_path: Path
         maximum=1_024,
     )
     if score_feature_dim != EXPECTED_SCORE_FEATURE_DIM:
-        raise SyntheticPreviewError("v1 preview accepts only the explicit nine-column score feature layout")
+        raise SyntheticPreviewError("v2 preview accepts only the explicit nine-column score feature layout")
+    slur_policy = _validate_canonical_slur_policy(controls.get("slur_transition_policy"))
+    slur_boundaries = _validated_slur_boundaries(manifest, control_hz=control_hz)
     return {
         "scope": {key: True for key in SCOPE_KEYS},
         "controls_sha256": str(controls["sha256"]),
@@ -224,7 +401,65 @@ def _validate_score_manifest(manifest: Mapping[str, Any], *, controls_path: Path
         "frame_count": frame_count,
         "score_feature_dim": score_feature_dim,
         "event_count": len(manifest.get("events", [])) if isinstance(manifest.get("events"), list) else 0,
+        "slur_transition_policy": slur_policy,
+        "slur_boundaries": slur_boundaries,
     }
+
+
+def _validate_slur_boundary_controls(
+    boundaries: Sequence[Mapping[str, Any]],
+    *,
+    frame_times: numpy.ndarray,
+    frame_centers: numpy.ndarray,
+    f0_hz: numpy.ndarray,
+    voicing: numpy.ndarray,
+    gesture_state: numpy.ndarray,
+    event_index: numpy.ndarray,
+) -> None:
+    """Cross-check boundary metadata against the SHA-verified control rows."""
+
+    for boundary in boundaries:
+        event = int(boundary["event_index"])
+        source_event = event - 1
+        start_frame = int(boundary["boundary_control_frame_index"])
+        source_hold_frame = int(boundary["source_hold_control_frame_index"])
+        rejoin_frame = int(boundary["target_rejoin_control_frame_index"])
+        start_sample = int(boundary["transition_start_sample_48k"])
+        end_sample = int(boundary["transition_end_sample_48k"])
+        rejoin_sample = int(boundary["target_rejoin_sample_48k"])
+        if not (0 <= source_hold_frame < start_frame < rejoin_frame < f0_hz.shape[0]):
+            raise SyntheticPreviewError("slur boundary control-frame indices are outside the archive timeline")
+        if int(frame_centers[source_hold_frame]) != int(boundary["source_hold_sample_48k"]):
+            raise SyntheticPreviewError("slur source-hold sample does not match the archive timeline")
+        if int(frame_centers[start_frame]) != start_sample or int(frame_centers[rejoin_frame]) != rejoin_sample:
+            raise SyntheticPreviewError("slur boundary samples do not match the archive timeline")
+        if rejoin_sample < end_sample:
+            raise SyntheticPreviewError("slur target rejoin precedes the canonical 12 ms transition end")
+        if int(event_index[source_hold_frame]) != source_event or int(event_index[start_frame]) != event or int(event_index[rejoin_frame]) != event:
+            raise SyntheticPreviewError("slur boundary event indices do not match the archive")
+        if int(gesture_state[start_frame]) != SLUR_STATE_CODE or int(gesture_state[rejoin_frame]) != SLUR_STATE_CODE:
+            raise SyntheticPreviewError("slur boundary gesture states do not match the archive")
+        if not math.isclose(float(f0_hz[source_hold_frame]), float(boundary["source_hold_f0_hz"]), abs_tol=2.0e-3, rel_tol=0.0):
+            raise SyntheticPreviewError("slur source-hold F0 does not match the archive")
+        if not math.isclose(float(f0_hz[start_frame]), float(boundary["source_boundary_f0_hz"]), abs_tol=2.0e-3, rel_tol=0.0):
+            raise SyntheticPreviewError("slur source-boundary F0 does not match the archive")
+        if not math.isclose(float(f0_hz[rejoin_frame]), float(boundary["target_rejoin_f0_hz"]), abs_tol=2.0e-3, rel_tol=0.0):
+            raise SyntheticPreviewError("slur target-rejoin F0 does not match the archive")
+
+        local = frame_times - float(boundary["boundary_seconds"])
+        transition_rows = (event_index == event) & (gesture_state == SLUR_STATE_CODE) & (local >= 0.0) & (local < CANONICAL_SLUR_TRANSITION_SECONDS)
+        if not numpy.any(transition_rows):
+            raise SyntheticPreviewError("slur archive has no sampled row inside its canonical transition")
+        expected = _minimum_jerk_log_frequency_hz(
+            float(boundary["source_boundary_f0_hz"]),
+            float(boundary["target_entry_f0_hz"]),
+            local[transition_rows],
+        )
+        if not numpy.allclose(f0_hz[transition_rows], expected, rtol=0.0, atol=2.0e-3):
+            raise SyntheticPreviewError("slur archive does not match the canonical 12 ms log-frequency minimum-jerk transition")
+        slur_rows = (event_index == event) & (gesture_state == SLUR_STATE_CODE)
+        if not numpy.allclose(voicing[slur_rows], 1.0, rtol=0.0, atol=1.0e-7):
+            raise SyntheticPreviewError("slur archive contains a voicing dip; refusing to invent a re-attack-free preview")
 
 
 def load_rnd_score_controls(controls_dir: str | Path) -> dict[str, Any]:
@@ -275,6 +510,7 @@ def load_rnd_score_controls(controls_dir: str | Path) -> dict[str, Any]:
             air_noise_ratio = _array(archive, "air_noise_ratio", frames=frames)
             voicing = _array(archive, "voicing", frames=frames)
             gesture_state = _array(archive, "gesture_state", frames=frames)
+            event_index = _array(archive, "event_index", frames=frames)
             score_features = numpy.asarray(archive["score_features"]).copy() if "score_features" in archive.files else None
     except (OSError, ValueError, EOFError) as exc:
         raise SyntheticPreviewError("controls archive could not be read as a safe NumPy artifact") from exc
@@ -287,6 +523,8 @@ def load_rnd_score_controls(controls_dir: str | Path) -> dict[str, Any]:
         raise SyntheticPreviewError("controls.frame_centers_48k must be integer sample positions")
     if not numpy.issubdtype(gesture_state.dtype, numpy.integer):
         raise SyntheticPreviewError("controls.gesture_state must be integer state codes")
+    if not numpy.issubdtype(event_index.dtype, numpy.integer):
+        raise SyntheticPreviewError("controls.event_index must be integer event positions")
     if float(frame_times[0]) != 0.0 or numpy.any(numpy.diff(frame_times) <= 0.0):
         raise SyntheticPreviewError("controls.frame_times_seconds must start at zero and strictly increase")
     expected_step = 1.0 / float(control_hz)
@@ -311,6 +549,17 @@ def load_rnd_score_controls(controls_dir: str | Path) -> dict[str, Any]:
         raise SyntheticPreviewError("controls.voicing must be within [0, 1]")
     if numpy.any(gesture_state < 0) or numpy.any(gesture_state > 4):
         raise SyntheticPreviewError("controls.gesture_state contains an unknown articulation code")
+    if numpy.any(event_index < -1) or numpy.any(event_index >= validated["event_count"]):
+        raise SyntheticPreviewError("controls.event_index contains an unknown event position")
+    _validate_slur_boundary_controls(
+        validated["slur_boundaries"],
+        frame_times=frame_times.astype(numpy.float64),
+        frame_centers=centers.astype(numpy.int64),
+        f0_hz=f0_hz.astype(numpy.float64),
+        voicing=voicing.astype(numpy.float64),
+        gesture_state=gesture_state.astype(numpy.int16),
+        event_index=event_index.astype(numpy.int32),
+    )
 
     return {
         **validated,
@@ -322,6 +571,89 @@ def load_rnd_score_controls(controls_dir: str | Path) -> dict[str, Any]:
         "air_noise_ratio": air_noise_ratio.astype(numpy.float64),
         "voicing": voicing.astype(numpy.float64),
         "gesture_state": gesture_state.astype(numpy.int16),
+        "event_index": event_index.astype(numpy.int32),
+    }
+
+
+def reconstruct_audio_rate_slur_f0(controls: Mapping[str, Any]) -> tuple[numpy.ndarray, numpy.ndarray, dict[str, Any]]:
+    """Restore canonical slur F0 at 48 kHz without resetting oscillator phase.
+
+    All non-slur F0 remains the legacy deterministic interpolation.  At each
+    compiler-attested slur boundary, the first 12 ms is replaced with the
+    canonical log-frequency minimum-jerk curve.  Any remaining gap until the
+    first authorial target control row is joined in log-frequency as well;
+    this retains a deliberately early gesture/vibrato instead of silently
+    forcing the compiler to write a flat target row.
+    """
+
+    sample_rate_hz = int(controls["sample_rate_hz"])
+    frame_times = numpy.asarray(controls["frame_times_seconds"], dtype=numpy.float64)
+    sample_count = int(numpy.asarray(controls["frame_centers"], dtype=numpy.int64)[-1])
+    sample_indices = numpy.arange(sample_count, dtype=numpy.int64)
+    sample_times = sample_indices.astype(numpy.float64) / float(sample_rate_hz)
+    f0_hz = numpy.interp(sample_times, frame_times, numpy.asarray(controls["f0_hz"], dtype=numpy.float64)).astype(numpy.float64)
+    rendered_boundaries: list[dict[str, Any]] = []
+
+    for boundary in controls["slur_boundaries"]:
+        start_sample = int(boundary["transition_start_sample_48k"])
+        end_sample = int(boundary["transition_end_sample_48k"])
+        rejoin_sample = int(boundary["target_rejoin_sample_48k"])
+        if not (0 <= start_sample < end_sample <= rejoin_sample < sample_count):
+            raise SyntheticPreviewError("slur reconstruction interval is outside the preview waveform")
+        source_hz = float(boundary["source_boundary_f0_hz"])
+        target_hz = float(boundary["target_entry_f0_hz"])
+        rejoin_hz = float(boundary["target_rejoin_f0_hz"])
+
+        transition_samples = numpy.arange(start_sample, end_sample + 1, dtype=numpy.int64)
+        local_seconds = (transition_samples - start_sample).astype(numpy.float64) / float(sample_rate_hz)
+        transition_f0 = _minimum_jerk_log_frequency_hz(source_hz, target_hz, local_seconds)
+        if not math.isclose(float(transition_f0[0]), source_hz, abs_tol=1.0e-9, rel_tol=0.0) or not math.isclose(float(transition_f0[-1]), target_hz, abs_tol=1.0e-9, rel_tol=0.0):
+            raise AssertionError("canonical audio-rate slur transition endpoints must be exact")
+        f0_hz[transition_samples] = transition_f0
+
+        # The compiler's first 100 Hz row after 12 ms can contain an explicit
+        # gesture/vibrato value.  Rejoin to that authorial value in the same
+        # log-frequency domain; never use the old linear-Hz interpolation.
+        rejoin_samples = numpy.arange(end_sample + 1, rejoin_sample + 1, dtype=numpy.int64)
+        if rejoin_samples.size:
+            progress = (rejoin_samples - end_sample).astype(numpy.float64) / float(rejoin_sample - end_sample)
+            source_cents = 1_200.0 * math.log2(target_hz)
+            rejoin_cents = 1_200.0 * math.log2(rejoin_hz)
+            f0_hz[rejoin_samples] = numpy.power(2.0, (source_cents + (rejoin_cents - source_cents) * progress) / 1_200.0)
+
+        lower = min(source_hz, target_hz)
+        upper = max(source_hz, target_hz)
+        intermediate = transition_f0[(transition_f0 > lower + 1.0e-9) & (transition_f0 < upper - 1.0e-9)]
+        intermediate_dwell_seconds = float(intermediate.size) / float(sample_rate_hz)
+        if intermediate_dwell_seconds >= CANONICAL_SLUR_POLICY["intermediate_pitch_dwell_strictly_less_than_seconds"]:
+            raise AssertionError("canonical audio-rate slur exceeds its intermediate-pitch dwell gate")
+        ascending = target_hz >= source_hz
+        differences = numpy.diff(transition_f0)
+        if (ascending and numpy.any(differences < -1.0e-9)) or (not ascending and numpy.any(differences > 1.0e-9)):
+            raise AssertionError("canonical audio-rate slur must be monotonic")
+        rendered_boundaries.append({
+            "event_id": boundary["event_id"],
+            "transition_start_sample_48k": start_sample,
+            "transition_end_sample_48k": end_sample,
+            "target_rejoin_sample_48k": rejoin_sample,
+            "source_boundary_f0_hz": source_hz,
+            "target_entry_f0_hz": target_hz,
+            "target_rejoin_f0_hz": rejoin_hz,
+            "source_at_t0_exact": True,
+            "target_at_12ms_exact": True,
+            "intermediate_pitch_dwell_seconds": intermediate_dwell_seconds,
+            "post_transition_rejoin_domain": "log_frequency_cents",
+        })
+    return sample_times, f0_hz, {
+        "canonical_slur_reconstructed_at_48khz": True,
+        "sample_rate_hz": sample_rate_hz,
+        "pitch_transition_seconds": CANONICAL_SLUR_TRANSITION_SECONDS,
+        "pitch_shape": CANONICAL_SLUR_POLICY["pitch_shape"],
+        "pitch_domain": CANONICAL_SLUR_POLICY["pitch_domain"],
+        "slur_boundary_count": len(rendered_boundaries),
+        "boundaries": rendered_boundaries,
+        "oscillator_phase_reset_at_slur_boundaries": False,
+        "new_attack_or_amplitude_envelope_added_by_reconstruction": False,
     }
 
 
@@ -336,13 +668,12 @@ def synthesize_untrained_preview(controls: Mapping[str, Any], *, seed: int) -> t
     sample_rate_hz = int(controls["sample_rate_hz"])
     frame_times = numpy.asarray(controls["frame_times_seconds"], dtype=numpy.float64)
     sample_count = int(numpy.asarray(controls["frame_centers"], dtype=numpy.int64)[-1])
-    sample_times = numpy.arange(sample_count, dtype=numpy.float64) / float(sample_rate_hz)
+    sample_times, f0_hz, slur_reconstruction = reconstruct_audio_rate_slur_f0(controls)
 
     def resample(key: str) -> numpy.ndarray:
         values = numpy.asarray(controls[key], dtype=numpy.float64)
         return numpy.interp(sample_times, frame_times, values).astype(numpy.float64)
 
-    f0_hz = resample("f0_hz")
     loudness_db = resample("loudness_db")
     air_noise_ratio = resample("air_noise_ratio")
     voicing = resample("voicing")
@@ -381,6 +712,7 @@ def synthesize_untrained_preview(controls: Mapping[str, Any], *, seed: int) -> t
         "peak_before_monitoring": peak_before_monitoring,
         "global_monitor_gain": monitor_gain,
         "peak_after_monitoring": float(numpy.max(numpy.abs(monitored))),
+        "slur_audio_rate_reconstruction": slur_reconstruction,
     }
 
 
@@ -439,7 +771,8 @@ def render_synthetic_preview(
             "source_audio_loaded": False,
             "source_audio_copied_or_transformed": False,
             "instrument_claim": "none: this is not a real or trained Daegeum renderer",
-            "articulation_policy": "uses supplied continuous F0/loudness/air-noise/voicing curves; does not infer gestures",
+            "articulation_policy": "uses supplied continuous loudness/air-noise/voicing curves; reconstructs only compiler-attested canonical slur F0 boundaries and does not infer gestures",
+            "slur_audio_rate_reconstruction": render_summary["slur_audio_rate_reconstruction"],
             "monitoring_gain_is_not_physical_loudness_calibration": True,
         },
         "output": {

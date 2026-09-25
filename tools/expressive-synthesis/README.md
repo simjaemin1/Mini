@@ -62,14 +62,22 @@ untrained_synthetic_preview_manifest.json
 The WAV is a deterministic **generic harmonic-plus-noise** monitor driven by
 the explicit F0, loudness, air-noise, and voicing curves.  It is not trained,
 does not read, copy, or transform source audio, and is **not a real Daegeum
-renderer**.  The filename and sidecar say so explicitly.  Gesture state is
-validated but never used to invent an attack or slur; audible articulation
-comes only from the compiler's supplied continuous curves.
+renderer**.  The filename and sidecar say so explicitly.  For a compiler v2
+slur boundary only, it validates the exact canonical 12 ms policy plus the
+compiler-attested source/target F0 metadata, reconstructs that short move at
+48 kHz with a minimum-jerk curve in log-frequency/cents, and keeps one
+continuous oscillator phase.  It adds no attack or amplitude envelope during
+that reconstruction.  If a post-12-ms compiler control row carries an
+intentional early gesture/vibrato value, the preview joins to it in
+log-frequency rather than linear-Hz.  It does not infer any gesture from
+touching timestamps or recordings.
 
-It rejects a controls hash mismatch, wrong schema/timeline, missing R&D scope
-flags, controls or output inside `public/assets/audio/bgm/`, a nested output,
-or any pre-existing output directory.  It never discovers source audio, loads
-a model, or writes game assets.
+It rejects a controls hash mismatch, old v1 or wrong schema/timeline, missing
+canonical policy/boundary metadata, a non-eligible boundary, a mismatch between
+the metadata and SHA-verified control rows, missing R&D scope flags, controls
+or output inside `public/assets/audio/bgm/`, a nested output, or any
+pre-existing output directory.  It never discovers source audio, loads a
+model, or writes game assets.
 
 ```bash
 /tmp/durango-bgm-rnd-venv/bin/python tools/expressive-synthesis/render_synthetic_preview.py \

@@ -96,7 +96,7 @@ Run only into a fresh R&D output directory:
   --confirm-rnd-only
 ```
 
-The output contains `score_expression_controls.npz` and a path-free JSON
+The output contains `score_expression_controls.npz` and a path-free v2 JSON
 manifest.  NPZ fields include 48 kHz frame centers, `f0_hz`, `f0_cents`,
 `loudness_db`, `air_noise_ratio`, `voicing`, articulation `gesture_state`,
 requested vibrato rate/depth plus the resulting `vibrato_cents` curve, and a
@@ -108,9 +108,13 @@ permission to add a recording to an ML corpus.
 
 The compiler's canonical 12 ms pitch policy uses the same independently tested
 minimum-jerk log-frequency math and constants as
-`tools/ddsp-gugak-public-runtime/`. It does **not** claim audio-rate parity:
-the tracked plan is 100 Hz, so a 12 ms transition is represented by 10 ms
-spaced control rows and a downstream preview may linearly interpolate those
-rows. The public Daegeum runtime is the authority for actual 250 Hz candidate
-auditions and its strict `<20 ms` intermediate-pitch dwell / 50 ms target-pitch
-gates. The compiler writes this quantization caveat into every manifest.
+`tools/ddsp-gugak-public-runtime/`. It does **not** claim that its 100 Hz rows
+are audio-rate F0: the v2 manifest now writes each slur's compiler-derived
+source-boundary F0, target-entry F0, 48 kHz sample boundary, and first
+post-transition authorial rejoin row. The isolated generic preview refuses
+older manifests or incomplete boundary metadata; when eligible, it restores
+the first 12 ms at 48 kHz in log-frequency/cents and rejoins any deliberately
+early authorial target motion in that same domain. This is a preview-specific
+reconstruction contract, not a performance inference or a claim of parity
+with the public Daegeum runtime's separate 250 Hz auditions and strict
+`<20 ms` intermediate-pitch dwell / 50 ms target-pitch gates.

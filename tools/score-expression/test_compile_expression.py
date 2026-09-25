@@ -131,8 +131,9 @@ class CompileExpressionTests(unittest.TestCase):
         self.assertFalse(quantization["exact_audio_rate_parity_with_250hz_public_runtime_claimed"])
         # b10_e1 begins at 5.04. The 100 Hz compiler has source at 5.04,
         # one sampled transition value at 5.05, then target at 5.06. This is
-        # intentional control-rate quantization, not a claim that the later
-        # preview renderer has the public runtime's 250 Hz <20 ms dwell gate.
+        # intentional control-rate quantization.  The v2 generic preview must
+        # use boundary metadata to reconstruct 48 kHz F0; sampled rows alone
+        # are not permission to create a long linear-Hz preview glide.
         self.assertAlmostEqual(float(result["f0_hz"][504]), 698.456463, places=4)
         self.assertGreater(float(result["f0_hz"][505]), 587.329536)
         self.assertAlmostEqual(float(result["f0_hz"][506]), 587.329536, places=4)
@@ -186,6 +187,43 @@ class CompileExpressionTests(unittest.TestCase):
             self.assertEqual(float(result["f0_hz"][300]), 0.0)
             self.assertGreater(float(result["voicing"][300]), float(result["voicing"][349]))
 
+    def test_compiler_keeps_valid_prior_vibrato_and_early_target_motion_outside_preview_policy(self) -> None:
+        """A generic preview limit must not silently narrow score compilation."""
+
+        with tempfile.TemporaryDirectory() as temporary:
+            payload = _plan()
+            events = payload["events"]
+            assert isinstance(events, list)
+            events[1]["vibrato"] = {
+                "enabled": True,
+                "rate_hz": 3.45,
+                "depth_cents": 23.0,
+                "onset_seconds": 0.030,
+                "ramp_seconds": 0.010,
+            }
+            slur_duration = float(events[2]["end_seconds"]) - float(events[2]["start_seconds"])
+            events[2]["gesture_points"] = [
+                {"time_seconds": 0.0, "cents": 0.0},
+                {"time_seconds": slur_duration, "cents": 60.0},
+            ]
+            events[2]["vibrato"] = {
+                "enabled": True,
+                "rate_hz": 3.45,
+                "depth_cents": 23.0,
+                "onset_seconds": 0.005,
+                "ramp_seconds": 0.005,
+            }
+            result = compiler.compile_plan(_write_plan(Path(temporary), payload))
+            boundary = result["slur_boundaries"][0]
+            self.assertTrue(boundary["preview_reconstruction_eligible"])
+            # The compiler records the authorial 20 ms rejoin value instead of
+            # rejecting a legal early gesture/vibrato just for the preview.
+            self.assertNotAlmostEqual(
+                float(boundary["target_rejoin_f0_hz"]),
+                float(boundary["target_entry_f0_hz"]),
+                places=2,
+            )
+
     def test_touching_notes_without_an_explicit_articulation_are_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             payload = _plan()
@@ -219,8 +257,16 @@ class CompileExpressionTests(unittest.TestCase):
             path = _write_plan(root, _plan())
             output = root / "rnd-controls"
             manifest = compiler.render_controls(plan=path, output_dir=output)
+            self.assertEqual(manifest["schema"], compiler.MANIFEST_SCHEMA)
             self.assertEqual(manifest["controls"]["score_feature_dim"], 9)
             self.assertTrue(manifest["interpretation_limits"]["touching_timestamps_never_infer_slur"])
+            slur = next(event for event in manifest["events"] if event["articulation"] == "slur")
+            boundary = slur["slur_boundary_f0"]
+            self.assertEqual(boundary["schema"], compiler.SLUR_BOUNDARY_F0_SCHEMA)
+            self.assertEqual(boundary["event_id"], "slur-down")
+            self.assertAlmostEqual(float(boundary["source_boundary_f0_hz"]), 440.0, places=4)
+            self.assertAlmostEqual(float(boundary["target_entry_f0_hz"]), 392.0, places=4)
+            self.assertTrue(boundary["preview_reconstruction_eligible"])
             with numpy.load(output / compiler.CONTROL_FILENAME) as controls:
                 self.assertEqual(controls["score_features"].shape[1], 9)
                 self.assertEqual(int(controls["sample_rate_hz"]), 48_000)

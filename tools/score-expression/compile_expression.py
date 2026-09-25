@@ -28,7 +28,7 @@ import numpy
 
 PLAN_SCHEMA = "mini.score-expression.plan.v1"
 OUTPUT_SCHEMA = "mini.score-expression.controls.v1"
-MANIFEST_SCHEMA = "mini.score-expression.render-manifest.v1"
+MANIFEST_SCHEMA = "mini.score-expression.render-manifest.v2"
 CONTROL_FILENAME = "score_expression_controls.npz"
 MANIFEST_FILENAME = "score_expression_manifest.json"
 SAMPLE_RATE_HZ = 48_000
@@ -45,6 +45,7 @@ SLUR_MAX_INTERMEDIATE_DWELL_SECONDS = 0.020
 SLUR_LOUDNESS_TRANSITION_SECONDS = 0.080
 SLUR_LOUDNESS_TARGET_SETTLE_SECONDS = 0.100
 SLUR_LOUDNESS_TRANSITION_SHAPE = "minimum_jerk_linear_loudness"
+SLUR_BOUNDARY_F0_SCHEMA = "mini.score-expression.slur-boundary-f0.v1"
 
 
 class ScoreExpressionError(RuntimeError):
@@ -309,6 +310,108 @@ def slur_transition_policy() -> dict[str, Any]:
     }
 
 
+def _slur_boundary_f0_metadata(
+    *,
+    event_index: int,
+    source_event: Mapping[str, Any],
+    target_event: Mapping[str, Any],
+    control_hz: int,
+    frame_times_seconds: numpy.ndarray,
+    frame_centers_48k: numpy.ndarray,
+    f0_hz: numpy.ndarray,
+) -> dict[str, Any]:
+    """Record score-derived boundary facts; do not narrow compiler input.
+
+    The generic preview may later decide whether it has enough 48 kHz/control
+    grid facts to reconstruct this particular boundary.  The compiler always
+    retains a valid authorial plan, including prior vibrato or a deliberately
+    early target gesture, instead of imposing preview-only stability rules.
+    """
+
+    start = float(target_event["start_seconds"])
+    source_end_cents = float(source_event["gesture_points"][-1][1])
+    target_entry_cents = float(target_event["gesture_points"][0][1])
+    source_hz = float(source_event["pitch_hz"]) * (2.0 ** (source_end_cents / 1_200.0))
+    target_hz = float(target_event["pitch_hz"]) * (2.0 ** (target_entry_cents / 1_200.0))
+
+    boundary_frame_index = int(round(start * control_hz))
+    boundary_on_control_grid = (
+        0 < boundary_frame_index < frame_times_seconds.shape[0]
+        and math.isclose(float(frame_times_seconds[boundary_frame_index]), start, abs_tol=1.0e-9, rel_tol=0.0)
+    )
+    start_sample = int(round(start * SAMPLE_RATE_HZ))
+    boundary_on_48k_timeline = start_sample > 0 and math.isclose(
+        start_sample / SAMPLE_RATE_HZ,
+        start,
+        abs_tol=1.0e-9,
+        rel_tol=0.0,
+    )
+
+    transition_samples = int(round(SLUR_TRANSITION_SECONDS * SAMPLE_RATE_HZ))
+    if transition_samples <= 0 or not math.isclose(transition_samples / SAMPLE_RATE_HZ, SLUR_TRANSITION_SECONDS, abs_tol=1.0e-12, rel_tol=0.0):
+        raise AssertionError("canonical 12 ms slur must map exactly to the 48 kHz timeline")
+    transition_end_sample = start_sample + transition_samples if boundary_on_48k_timeline else None
+    # Choose the first sampled row *strictly after* the exact 12 ms endpoint.
+    # At a very dense control rate, the endpoint itself still belongs to the
+    # canonical transition; the next row is the first authorial post-slur
+    # value a preview may join back to.
+    rejoin_frame_index = int(math.floor((start + SLUR_TRANSITION_SECONDS) * control_hz + 1.0e-12)) + 1
+    rejoin_is_inside_target_event = (
+        boundary_on_control_grid
+        and boundary_frame_index < rejoin_frame_index < frame_times_seconds.shape[0]
+        and float(frame_times_seconds[rejoin_frame_index]) < float(target_event["end_seconds"])
+    )
+    preview_reconstruction_eligible = boundary_on_control_grid and boundary_on_48k_timeline and rejoin_is_inside_target_event
+    ineligible_reasons: list[str] = []
+    if not boundary_on_control_grid:
+        ineligible_reasons.append("boundary_not_on_compiler_control_grid")
+    if not boundary_on_48k_timeline:
+        ineligible_reasons.append("boundary_not_on_48khz_sample_grid")
+    if not rejoin_is_inside_target_event:
+        ineligible_reasons.append("no_post_transition_target_control_row_inside_slur_event")
+
+    source_hold_frame_index: int | None = None
+    source_hold_sample: int | None = None
+    source_hold_hz: float | None = None
+    rejoin_sample: int | None = None
+    rejoin_hz: float | None = None
+    if preview_reconstruction_eligible:
+        source_hold_frame_index = boundary_frame_index - 1
+        source_hold_sample = int(frame_centers_48k[source_hold_frame_index])
+        rejoin_sample = int(frame_centers_48k[rejoin_frame_index])
+        source_hold_hz = float(f0_hz[source_hold_frame_index])
+        rejoin_hz = float(f0_hz[rejoin_frame_index])
+        if transition_end_sample is None or rejoin_sample < transition_end_sample:
+            raise AssertionError("slur rejoin row must not precede the canonical transition end")
+
+    return {
+        "schema": SLUR_BOUNDARY_F0_SCHEMA,
+        "event_id": str(target_event["id"]),
+        "event_index": event_index,
+        "source_event_id": str(source_event["id"]),
+        "source_event_index": event_index - 1,
+        "boundary_seconds": start,
+        "boundary_control_frame_index": boundary_frame_index,
+        "source_hold_control_frame_index": source_hold_frame_index,
+        "source_hold_sample_48k": source_hold_sample,
+        "source_hold_f0_hz": source_hold_hz,
+        "transition_start_sample_48k": start_sample if boundary_on_48k_timeline else None,
+        "transition_end_sample_48k": transition_end_sample,
+        "transition_seconds": SLUR_TRANSITION_SECONDS,
+        "source_boundary_f0_hz": source_hz,
+        "source_boundary_gesture_cents": source_end_cents,
+        "target_entry_f0_hz": target_hz,
+        "target_entry_gesture_cents": target_entry_cents,
+        "target_rejoin_control_frame_index": rejoin_frame_index if preview_reconstruction_eligible else None,
+        "target_rejoin_sample_48k": rejoin_sample,
+        "target_rejoin_f0_hz": rejoin_hz,
+        "pitch_shape": SLUR_TRANSITION_SHAPE,
+        "pitch_domain": "log_frequency_cents",
+        "preview_reconstruction_eligible": preview_reconstruction_eligible,
+        "preview_reconstruction_ineligible_reasons": ineligible_reasons,
+    }
+
+
 def _vibrato_curve(event: Mapping[str, Any], relative_times: numpy.ndarray, *, fade_at_end: bool) -> tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray]:
     config = event["vibrato"]
     if not config["enabled"]:
@@ -453,6 +556,19 @@ def compile_plan(path: str | Path) -> dict[str, Any]:
     ).astype(numpy.float32)
     if score_features.shape[1] != 9:
         raise AssertionError("score feature layout must remain explicit and stable")
+    slur_boundaries = [
+        _slur_boundary_f0_metadata(
+            event_index=index,
+            source_event=events[index - 1],
+            target_event=event,
+            control_hz=control_hz,
+            frame_times_seconds=times,
+            frame_centers_48k=sample_centers,
+            f0_hz=f0_hz,
+        )
+        for index, event in enumerate(events)
+        if event["articulation"] == "slur"
+    ]
     return {
         **validated,
         "frame_times_seconds": times.astype(numpy.float32),
@@ -468,12 +584,13 @@ def compile_plan(path: str | Path) -> dict[str, Any]:
         "vibrato_depth_cents": vibrato_depth,
         "vibrato_cents": vibrato_cents,
         "score_features": score_features,
+        "slur_boundaries": slur_boundaries,
         "slur_transition_policy": slur_transition_policy(),
         "slur_control_rate_quantization": {
             "compiler_control_hz": control_hz,
             "compiler_frame_seconds": 1.0 / control_hz,
             "canonical_pitch_transition_seconds": SLUR_TRANSITION_SECONDS,
-            "meaning": "the compiler stores sampled controls, not audio-rate F0. At the plan's 100 Hz, a 12 ms curve is represented by 10 ms-spaced rows and any downstream preview may interpolate those rows.",
+            "meaning": "the compiler stores sampled controls, not audio-rate F0. The isolated v2 generic preview may reconstruct only compiler-attested canonical slur boundaries at 48 kHz; other consumers must not silently reinterpret sampled rows as a long linear-Hz glide.",
             "exact_audio_rate_parity_with_250hz_public_runtime_claimed": False,
             "runtime_authority": "the public Daegeum runtime separately verifies its own 250 Hz control rows, <20 ms intermediate-pitch dwell, and 50 ms target-pitch gate",
         },
@@ -510,8 +627,12 @@ def render_controls(*, plan: str | Path, output_dir: str | Path) -> dict[str, An
         vibrato_cents=compiled["vibrato_cents"],
         score_features=compiled["score_features"],
     )
-    event_summary = [
-        {
+    slur_boundary_by_event_index = {
+        int(boundary["event_index"]): boundary for boundary in compiled["slur_boundaries"]
+    }
+    event_summary = []
+    for index, event in enumerate(compiled["events"]):
+        summary: dict[str, Any] = {
             "id": event["id"],
             "start_seconds": event["start_seconds"],
             "end_seconds": event["end_seconds"],
@@ -519,8 +640,12 @@ def render_controls(*, plan: str | Path, output_dir: str | Path) -> dict[str, An
             "pitch_hz": event["pitch_hz"],
             "vibrato_enabled": bool(event["vibrato"]["enabled"]),
         }
-        for event in compiled["events"]
-    ]
+        if event["articulation"] == "slur":
+            try:
+                summary["slur_boundary_f0"] = slur_boundary_by_event_index[index]
+            except KeyError as exc:
+                raise AssertionError("every compiled SLUR must write its boundary F0 metadata") from exc
+        event_summary.append(summary)
     manifest = {
         "schema": MANIFEST_SCHEMA,
         "artifact_kind": "rnd_only_score_to_expression_controls",
