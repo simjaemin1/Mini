@@ -127,17 +127,88 @@ function bodyOf(name) {
   for (let k = j; k < zsrc.length; k++) { if (zsrc[k] === '{') d++; else if (zsrc[k] === '}') { d--; if (!d) return zsrc.slice(i, k + 1); } }
   return null;
 }
-// 두 술어 각각: terrain 호출의 **인자식**을 전부 뽑아 서로 같은지 본다.
-for (const [fn, call] of [['isWaterTileLocal', 'isWaterCellLocal'], ['isRockTileLocal', 'isRockCellLocal']]) {
-  const b = bodyOf(fn);
-  if (!b) { ok(false, `${fn} 본문을 찾지 못했다`); continue; }
-  const args = [...b.matchAll(new RegExp(`_terrain\\.${call}\\(([^)]*)\\)`, 'g'))].map((m) => m[1].trim());
-  ok(args.length === 2, `${fn}: terrain 호출이 캐시 가지 1 + 종전 가지 1 = 2개`, `${args.length}개`);
-  ok(args.length === 2 && args[0] === args[1],
-     `${fn}: 두 가지에 **글자까지 같은 인자식** — 캐시가 다른 점을 묻지 않는다`,
-     args.length === 2 ? `「${args[0]}」` : '');
-  ok(new RegExp(`_TERR_CACHE\\.${call.includes('Water') ? 'water' : 'rock'}\\(tx, ty,`).test(b),
+// ★★[T383 2026-09-25] **글자 대신 동작으로 잰다 — 그리고 정적 절은 지금 모양을 따라간다.**
+//   종전 절은 "두 술어 본문에 `_terrain.*CellLocal(...)` 이 **두 번**(캐시 가지 · 종전 가지) 나오고 인자식이
+//   글자까지 같다" 를 물었다. 그런데 `faae1b04`[T345 · 09-22]가 걸음당 클로저를 없애려고 캐시 가지의 호출을
+//   **모듈 수준 함수**(`_computeWaterCell`·`_computeRockCell` · `zone.js:969·970`)로 한 칸 옮겼다 ⇒ 본문엔 하나만 남는다.
+//   계약("캐시가 다른 점을 묻지 않는다")은 그대로인데 **자가 옮겨 간 자리를 못 따라갔다** — 09-23 부터 밤마다 4 빨강.
+//   ⇒ 이 절이 원래 재려던 것을 **동작**으로 잰다: 실제 zone.js 를 캐시 켬/끔 두 판으로 띄워 **같은 1,000점**에
+//     두 술어를 묻고 답이 비트 동일한지 본다. 정적 절은 그 동작 절이 초록일 때만 지금 모양으로 옮긴다.
+const { spawnSync } = require('child_process');
+function probeZone(cacheEnv, pts) {
+  //   자식에서 zone.js 를 띄운다(`TERRAIN_TILE_CACHE` 는 모듈 적재 때 읽힌다 — 한 프로세스로는 두 팔을 못 만든다).
+  //   ⚠`zone.js` 는 적재하면 `listen` 한다 — `PORT=0`(임시 포트)으로 충돌을 없앤다(밤 러너 포트 충돌 교훈).
+  const code = `
+    for (const k of ['ENABLE_VILLAGES','ENABLE_WILDLIFE','ENABLE_BANDITS','ENABLE_ROADS']) process.env[k] = '0';
+    const _l = console.log; console.log = () => {};
+    const H = require(${JSON.stringify(path.join(ROOT, 'server', 'zone.js'))}).__testBind();
+    console.log = _l;
+    const pts = JSON.parse(require('fs').readFileSync(0, 'utf8'));
+    let w = '', r = '';
+    for (const [x, y] of pts) { w += H.isWaterTileLocal(x, y) ? '1' : '0'; r += H.isRockTileLocal(x, y) ? '1' : '0'; }
+    _l(JSON.stringify({ w, r })); process.exit(0);`;
+  const env = Object.assign({}, process.env, { PORT: '0', ZONE_ID: ZID, TERRAIN_TILE_CACHE: cacheEnv });
+  const out = spawnSync(process.execPath, ['-e', code], { cwd: ROOT, env, input: JSON.stringify(pts), encoding: 'utf8', timeout: 180000 });
+  const line = String(out.stdout || '').trim().split('\n').pop();
+  try { return JSON.parse(line); } catch (e) { return null; }
+}
+{
+  //   표본 1,000점 — 무작위 400 + **강 가장자리 300 + 산 가장자리 300**(경계에서 참·거짓이 갈린다).
+  //   좌표는 **픽셀**이고 타일 안 오프셋이 섞인다 — 두 가지가 같은 양자화를 하는지까지 같이 잰다.
+  let s2 = 20260925;
+  const rn = () => (s2 = (s2 * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+  const pts = [];
+  for (let i = 0; i < 400; i++) pts.push([Math.floor(rn() * Z.zoneWidth), Math.floor(rn() * Z.zoneHeight)]);
+  const edge = (paths, n) => { const all = []; for (const g of paths) for (const q of (g.path || [])) all.push(q);
+    for (let i = 0; i < n; i++) { const q = all[Math.floor(rn() * all.length)]; const w0 = (q.width || 64);
+      pts.push([Math.floor(q.pos[0] + (rn() - 0.5) * 2 * w0), Math.floor(q.pos[1] + (rn() - 0.5) * 2 * w0)]); } };
+  edge(T.rivers, 300); edge(T.ridges, 300);
+  const on = probeZone('1', pts), off = probeZone('0', pts);
+  ok(!!on && !!off && on.w.length === 1000 && off.w.length === 1000,
+     `★동작 게이트 — 실제 zone.js 두 판(캐시 켬 · 끔)이 같은 1,000점에 답했다`, on && off ? '' : '자식 실패');
+  if (on && off) {
+    const cnt = (b, c) => [...b].filter((x) => x === c).length;
+    ok(cnt(off.w, '1') >= 50 && cnt(off.w, '0') >= 50 && cnt(off.r, '1') >= 50 && cnt(off.r, '0') >= 50,
+       `(상황) 끈 판의 답에 참·거짓이 둘 다 넉넉하다 — 전부 같은 답이면 등가는 공짜다`,
+       `물 ${cnt(off.w, '1')}/${cnt(off.w, '0')} · 바위 ${cnt(off.r, '1')}/${cnt(off.r, '0')}`);
+    const dW = [...on.w].filter((c, i) => c !== off.w[i]).length, dR = [...on.r].filter((c, i) => c !== off.r[i]).length;
+    ok(dW === 0, `★★isWaterTileLocal: 캐시 켬/끔 답이 **비트 동일** — 캐시가 다른 점을 묻지 않는다`, `다른 점 ${dW}/1000`);
+    ok(dR === 0, `★★isRockTileLocal: 캐시 켬/끔 답이 **비트 동일** — 캐시가 다른 점을 묻지 않는다`, `다른 점 ${dR}/1000`);
+    //   ★자명 통과 금지 — 이 표본이 "다른 점을 묻는 캐시"를 **실제로 잡는가**: 셀 중심 대신 모서리를 물으면 답이 갈려야 한다.
+    let baitW = 0, baitR = 0;
+    for (const [x, y] of pts) { const tx = Math.floor(x / 32), ty = Math.floor(y / 32);
+      if (terrain.isWaterCellLocal(ZID, tx * 32 + 16, ty * 32 + 16) !== terrain.isWaterCellLocal(ZID, tx * 32, ty * 32)) baitW++;
+      if (terrain.isRockCellLocal(ZID, tx * 32 + 16, ty * 32 + 16) !== terrain.isRockCellLocal(ZID, tx * 32, ty * 32)) baitR++; }
+    ok(baitW > 0 && baitR > 0,
+       `★자명 통과 금지 — 미끼(셀 중심 대신 **모서리**를 묻는 캐시)라면 이 표본에서 답이 갈린다 ⇒ 위 비트 동일은 공짜가 아니다`,
+       `물 ${baitW} · 바위 ${baitR} 점에서 갈림`);
+  }
+}
+//   ★정적 절 — 동작 절이 초록이므로 **지금 모양**을 따라간다(T345 가 옮긴 그 한 칸):
+//     캐시 가지는 (tx, ty) 와 **모듈 수준 계산 함수 이름**을 넘기고, 그 함수는 **셀 중심**(tx*32+16, ty*32+16)을 묻는다.
+function helperAsksCenter(src, fn, call, which) {
+  const b = (() => { const i = src.indexOf(`function ${fn}(localX, localY) {`); if (i < 0) return null;
+    let d = 0, j = src.indexOf('{', i); for (let k = j; k < src.length; k++) { if (src[k] === '{') d++; else if (src[k] === '}') { d--; if (!d) return src.slice(i, k + 1); } } return null; })();
+  if (!b) return { ok: false, why: '본문 없음' };
+  const m = b.match(new RegExp(`_TERR_CACHE\\.${which}\\(tx, ty, (_[A-Za-z0-9]+)\\)`));
+  if (!m) return { ok: false, why: '캐시 가지가 (tx, ty, 함수이름) 꼴이 아니다' };
+  const def = src.match(new RegExp(`const ${m[1]} = \\(tx, ty\\) => [^;\\n]*_terrain\\.${call}\\(([^)]*)\\)`));
+  if (!def) return { ok: false, why: `${m[1]} 정의를 못 찾았다` };
+  const argsOk = def[1].replace(/\s+/g, ' ').trim() === 'ZONE_ID, tx * 32 + 16, ty * 32 + 16';
+  return { ok: argsOk, why: `${m[1]}(${def[1].trim()})` };
+}
+for (const [fn, call, which] of [['isWaterTileLocal', 'isWaterCellLocal', 'water'], ['isRockTileLocal', 'isRockCellLocal', 'rock']]) {
+  const r = helperAsksCenter(zsrc, fn, call, which);
+  ok(r.ok, `${fn}: 캐시 가지 → 모듈 수준 계산 함수 → **셀 중심**(tx*32+16, ty*32+16)을 묻는다 [T345 모양]`, r.why);
+  ok(new RegExp(`_TERR_CACHE\\.${which}\\(tx, ty,`).test(zsrc),
      `${fn}: 캐시 키가 (tx, ty) — 술어가 이미 양자화한 그 좌표다`);
+}
+//   ★자명 통과 금지 — 위 정적 검사기가 **옛 결함 모양**(모서리를 묻는 계산 함수)을 실제로 거절하는가
+{
+  const bait = zsrc.replace('const _computeWaterCell = (tx, ty) => _terrain.isWaterCellLocal(ZONE_ID, tx * 32 + 16, ty * 32 + 16);',
+                            'const _computeWaterCell = (tx, ty) => _terrain.isWaterCellLocal(ZONE_ID, tx * 32, ty * 32);');
+  ok(bait !== zsrc && !helperAsksCenter(bait, 'isWaterTileLocal', 'isWaterCellLocal', 'water').ok,
+     `★자명 통과 금지 — 미끼 소스(계산 함수가 모서리를 묻는다)를 정적 절이 **거절한다**`);
 }
 // ★terrain.js 안쪽에는 캐시를 걸지 않았다 — chunk.js:447 이 x±D 오프셋 점을 묻기 때문.
 const tsrc = fs.readFileSync(path.join(ROOT, 'server', 'terrain.js'), 'utf8');

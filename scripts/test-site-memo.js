@@ -39,7 +39,25 @@ const { seedPaths, ensureSeed } = require('./slicer-seed.js');
 // ★[T49 2026-09-02] **자기 크기의 씨앗**을 쓴다. 기본 씨앗(20초 성장)은 이 하네스에 너무 어리다 —
 //   "집터를 못 찾는 헛수고"를 재려면 마을이 제 땅을 거의 다 쓴 세계여야 하는데, 어린 세계에선
 //   전수 훑기도 늘 성공해서 **빈손 0** 이 되고 ① 의 상황 선행 assert 가 옳게 거절한다.
-const SITE_SEED_TAG = process.env.SITE_SEED_TAG || 'sitememo';
+// ★★[T383 2026-09-25] **이 하네스가 재는 세계 = 기억이 태어난 세계** — 그 세계를 만드는 손잡이 셋을 **한 곳**에 둔다.
+//   씨앗을 기를 때도, 팔을 돌릴 때도 **같은 이 표**를 쓴다(사본 0). 값은 전부 제품의 되돌림 문이다(새 수 0).
+//   · `T230_TERR_HOUSING=0` — 영토가 안 자란다(T342 가 세운 이유 · 아래 arm 주석).
+//   · `T219_HOUSE_TRIGGER=0` — 방아쇠가 헛수고를 먼저 없애지 않는다(`8441adaa` T298 이후 연속 6밤 빨강의 주인).
+//   · `T315_HOUSE_GAP=0` — 간격 18(T41 이 기억을 만든 세계는 거부의 92%가 `<18` 이었다 · `c85eab41` T326 이 15 로 내렸다).
+const PINS = { T230_TERR_HOUSING: '0', T219_HOUSE_TRIGGER: '0', T315_HOUSE_GAP: '0' };
+// ★★[T383] **씨앗에 제품의 지문을 붙인다.** 로컬 초록 · 밤 빨강이 갈린 까닭이 이것이었다 —
+//   `/tmp/slicer-seed-sitememo-*` 가 09-03 에 만든 **포화 세계**로 남아 있어 로컬(T342 의 19/0)은 그 위에서 쟀고,
+//   밤 러너는 새 씨앗으로 쟀다. 씨앗은 **제품이 바뀌면 다시 길러야** 하는 픽스처다 ⇒ 세계를 정하는 파일 넷의
+//   내용 해시를 꼬리표에 넣는다(바뀌면 새 씨앗 · 안 바뀌면 재사용). 손잡이 표도 해시에 넣는다(표가 바뀌어도 새 씨앗).
+const SITE_SEED_FP = (() => {
+  const h = require('crypto').createHash('sha1');
+  for (const f of ['server/villages.js', 'server/village-layout.js', 'sim/economy-sim.js', 'server/zone.js']) {
+    try { h.update(fs.readFileSync(path.join(__dirname, '..', f))); } catch (e) {}
+  }
+  h.update(JSON.stringify(PINS));
+  return h.digest('hex').slice(0, 10);
+})();
+const SITE_SEED_TAG = process.env.SITE_SEED_TAG || `sitememo-${SITE_SEED_FP}`;
 const SITE_SEED_GROW_MS = parseInt(process.env.SITE_SEED_GROW_MS || '', 10) || 150000;
 const { c: SEED_C, z: SEED_Z } = seedPaths(SITE_SEED_TAG);
 
@@ -98,7 +116,22 @@ async function arm(label, extraEnv) {
     //   T219 §0 실측에서 그 목표는 이미 붙어 있어 200일에 50마을 합쳐 63셀만 자랐다(= 사실상 정지).
     //   ⇒ 손잡이 하나(`T230_TERR_HOUSING=0`)로 **기억이 적용되는 세계**를 고정한다. 제품 기본값은 안 건드린다.
     //   (T342 의 계약 자체는 아래 ⑤ 절이 소스로 건다 — 세계를 안 돌리고도 되돌림을 잡는다.)
-    T230_TERR_HOUSING: '0',
+    ...PINS,   // ★[T383] T230·T219·T315 — 위 `PINS` 한 곳(씨앗과 같은 표)
+    // ★★[T383 2026-09-25] **방아쇠도 같은 이유로 고정한다 — 연속 6밤 빨강의 주인이 이 줄의 부재였다.**
+    //   `8441adaa`[T298 · 09-19]가 `T219_HOUSE_TRIGGER` 를 **기본 켬**으로 돌렸다. 켜면 집터 탐색은
+    //   `houseSiteWant`(모자랄 때만 · `villages.js` `_lifeDaily`)가 부르고, 그러면 **대조군(메모 끔)도 매일 훑지 않는다**
+    //   — 기억이 아끼려던 헛수고를 **방아쇠가 먼저 없앤다.** 그래서 두 팔이 같아졌다(① 훑기 19~26회/9일 · 빈손 0 ·
+    //   ③ 스킵 0 · 종전 60ms ≯ 채택 63ms). 제품 결함이 아니다 — 기억은 그대로 옳고, 일이 위층으로 옮겨 갔을 뿐이다.
+    //   ⚠첫 빨강 밤(09-20 · 기준 `8f12f6e1`)은 T298 을 **포함**하고 직전 초록 밤(09-19 · `b0696b94`)은 **안 포함**한다.
+    //   ⚠로컬에선 이게 **안 보였다**: 씨앗 캐시(`/tmp/slicer-seed-sitememo-*`)가 09-03 에 만든 **포화 세계**라
+    //     방아쇠가 켜져도 매일 모자랐고 매일 빈손이었다(T342 의 19/0 이 그 씨앗 위였다 · T383 이 두 씨앗으로 쟀다).
+    //   ⇒ T230 과 같은 문법으로 **기억이 적용되는 세계**를 고정한다(제품 기본값은 안 건드린다).
+    // ★★[T383] **간격도 기억이 태어난 세계로** — 방아쇠만 끄면 새 씨앗 위에서 훑기가 17→38회/9일로 돌아오지만
+    //   **빈손이 2** 뿐이다(성공 36/37). `c85eab41`[T326 · 09-19]가 간격을 18→15 로 내려 땅이 넓어졌고,
+    //   T342 가 거부 캐시를 고쳐 헛수고가 더 줄었다 ⇒ 기억이 아낄 **빈손 자체가 드물다**(그건 결함이 아니라 두 카드의 성과다).
+    //   T41 이 이 기억을 만든 세계는 "거부의 92%가 `기존 집과 너무 가까움(<18)`" 인 세계였다 — 그 문을 연다.
+    //   ⇒ 되돌림 문(`T315_HOUSE_GAP=0` → `LIFE_HOUSE_GAP_AISLE` 18)으로 고정한다. 제품 기본값(15)은 안 건드린다.
+    //   ⚠출하 세계에서 기억이 **얼마나** 아끼나는 이 하네스가 묻는 것이 아니다 — 보고/T383 §회부(집터 메모 값 · 재민).
   }, extraEnv || {}));
   // ★★[T355 2026-09-22] 존 기동도 **아이의 입**으로 듣는다(정본 `fixture-boot.waitUp` · T344·T349).
   //   포트 응답은 증인이 아니다 — 앞 판 존이 포트를 쥔 채면 새 존은 `EADDRINUSE` 로 죽고 폴링은
@@ -124,6 +157,10 @@ const st = (E, k) => (E && E.stages && E.stages[k]) ? E.stages[k] : { p50: 0, p9
 (async () => {
   console.log('\n=== 집터 "못 찾음 기억" — 짝 비교 + 단조성 감사 ===');
   // 씨앗이 없으면 **스스로 만든다**(앞 하네스가 남긴 것에 기대지 않는다 — 족보 ㊾ 의 러너판).
+  //   ★[T383] 씨앗도 **같은 세계**에서 기른다 — 팔만 고정하면 씨앗이 넓은 세계로 자라 빈손이 안 생긴다
+  //     (실측 · 같은 새 씨앗: 방아쇠만 끔 빈손 2/38 · 간격까지 끔 7/41 — 둘 다 ① 미달).
+  //     `ensureSeed` 는 부모의 `process.env` 를 물려준다(`slicer-seed.js` 무접촉 · 꼬리표가 이 하네스 전용이다).
+  Object.assign(process.env, PINS);
   { const r = await ensureSeed({ tag: SITE_SEED_TAG, growMs: SITE_SEED_GROW_MS });
     if (!r.ok) { console.log(`  ✗ 씨앗 준비 실패 — ${r.why}`); process.exit(1); }
     if (r.built) console.log('  (이 판이 씨앗을 만들었다 — 다음 실행부터는 곧바로 시작한다)'); }
@@ -206,6 +243,15 @@ const st = (E, k) => (E && E.stages && E.stages[k]) ? E.stages[k] : { p50: 0, p9
       '⑤ 그 자리에 표지만 세우는 옛 호출(`lifeSiteDirty`)이 **없다** — 있으면 캐시가 영토 성장을 못 본다');
     ok(/function lifeSiteReset\(vil\) \{ if \(vil\) \{ lifeSiteDirty\(vil\);/.test(VS),
       '⑤ `lifeSiteReset` 의 표지는 **`lifeSiteDirty` 를 통해** 선다 — 픽스처 손잡이(`LIFE_SITE_NODIRTY`)를 안 몰래 무시한다(사본 0)');
+    // ★★[T383] 이 하네스가 고정하는 두 손잡이의 **끄는 문이 제품에 그 글자로 있다** — 문이 바뀌면(`=== '1'` 등)
+    //   아래 `'0'` 이 아무것도 안 끄고 세계가 조용히 방아쇠 켠 세계로 돌아간다(연속 6밤의 그 모양). 그때 여기가 빨개진다.
+    const HS = fs.readFileSync(__filename, 'utf8');
+    for (const [k, door] of [['T219_HOUSE_TRIGGER', /const T219_HOUSE_TRIGGER = process\.env\.T219_HOUSE_TRIGGER !== '0';/],
+                             ['T230_TERR_HOUSING', /process\.env\.T230_TERR_HOUSING !== '0'/],
+                             ['T315_HOUSE_GAP', /HG = T315_HOUSE_GAP === '0' \? _lifeVL\(\)\.LIFE_HOUSE_GAP_AISLE/]]) {
+      ok(door.test(VS) && PINS[k] === '0' && /\.\.\.PINS,/.test(HS) && /Object\.assign\(process\.env, PINS\)/.test(HS),
+        `⑤ [T383] 씨앗과 팔이 **같은 표**로 \`${k}='0'\` 을 준다 — 그리고 제품의 되돌림 문이 **그 글자**다(문이 바뀌면 고정이 헛돈다)`);
+    }
   }
 
   // ④ 표지를 놓쳐도 회복하는가 — 안전망 픽스처
