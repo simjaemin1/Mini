@@ -26,6 +26,9 @@ B2_REFERENCE_FILENAME = "ari_full_16bar_b2_reference_shape_unreviewed_r1.json"
 B2_DEPTH_MATCHED_FILENAME = (
     "ari_full_16bar_b2rd_reference_shape_depth_matched_unreviewed_r1.json"
 )
+B2_DEPTH_MATCHED_LONG_FADE_FILENAME = (
+    "ari_full_16bar_b2rdf_reference_shape_depth_matched_long_fade_unreviewed_r1.json"
+)
 
 DO_MIDI = 70
 BEAT_SECONDS = 0.72
@@ -181,6 +184,7 @@ def _expression_policy(
     selected_ids: dict[str, str],
     reference_shape_unreviewed: bool = False,
     reference_shape_depth_matched_unreviewed: bool = False,
+    reference_shape_depth_matched_long_fade_unreviewed: bool = False,
 ) -> dict[str, Any]:
     active: dict[str, Any] | None = None
     if contextual_yoseong:
@@ -191,12 +195,20 @@ def _expression_policy(
             "source_policy_rule_ids_by_event": selected_ids,
             "reason": (
                 "retain only the provisional b08 rule-based audition while b16 uses a separately pinned unreviewed automatic F0-proxy contour"
-                if reference_shape_unreviewed or reference_shape_depth_matched_unreviewed
+                if (
+                    reference_shape_unreviewed
+                    or reference_shape_depth_matched_unreviewed
+                    or reference_shape_depth_matched_long_fade_unreviewed
+                )
                 else "compare the reviewed local-before-rest and provisional global-cadence late-gentle candidates in one full-score rendering"
             ),
             "evidence_boundary": (
                 "provisional_b08_parameter_audition_separate_from_unreviewed_b16_reference_and_not_an_authenticity_claim"
-                if reference_shape_unreviewed or reference_shape_depth_matched_unreviewed
+                if (
+                    reference_shape_unreviewed
+                    or reference_shape_depth_matched_unreviewed
+                    or reference_shape_depth_matched_long_fade_unreviewed
+                )
                 else "provisional_parameter_audition_not_a_claim_about_authentic_bonjo_arirang_performance"
             ),
         }
@@ -218,9 +230,14 @@ def build_plan(
     contextual_yoseong: bool,
     reference_shape_unreviewed: bool = False,
     reference_shape_depth_matched_unreviewed: bool = False,
+    reference_shape_depth_matched_long_fade_unreviewed: bool = False,
 ) -> dict[str, Any]:
     reference_variant_count = sum(
-        (reference_shape_unreviewed, reference_shape_depth_matched_unreviewed)
+        (
+            reference_shape_unreviewed,
+            reference_shape_depth_matched_unreviewed,
+            reference_shape_depth_matched_long_fade_unreviewed,
+        )
     )
     if reference_variant_count > 1:
         raise ValueError("only one b16 reference-shape variant may be selected")
@@ -287,9 +304,13 @@ def build_plan(
 
             if is_reference:
                 reference_status = (
-                    compiler.REFERENCE_CONTOUR_DEPTH_MATCHED_STATUS
-                    if reference_shape_depth_matched_unreviewed
-                    else compiler.REFERENCE_CONTOUR_STATUS
+                    compiler.REFERENCE_CONTOUR_LONG_FADE_STATUS
+                    if reference_shape_depth_matched_long_fade_unreviewed
+                    else (
+                        compiler.REFERENCE_CONTOUR_DEPTH_MATCHED_STATUS
+                        if reference_shape_depth_matched_unreviewed
+                        else compiler.REFERENCE_CONTOUR_STATUS
+                    )
                 )
                 vibrato_policy = {
                     "decision": reference_status,
@@ -297,9 +318,13 @@ def build_plan(
                     "policy_rule_id": rule,
                     "end_behavior": "depth_fade_to_zero",
                     "evidence_boundary": (
-                        compiler.REFERENCE_CONTOUR_DEPTH_MATCHED_EVIDENCE_BOUNDARY
-                        if reference_shape_depth_matched_unreviewed
-                        else compiler.REFERENCE_CONTOUR_EVIDENCE_BOUNDARY
+                        compiler.REFERENCE_CONTOUR_LONG_FADE_EVIDENCE_BOUNDARY
+                        if reference_shape_depth_matched_long_fade_unreviewed
+                        else (
+                            compiler.REFERENCE_CONTOUR_DEPTH_MATCHED_EVIDENCE_BOUNDARY
+                            if reference_shape_depth_matched_unreviewed
+                            else compiler.REFERENCE_CONTOUR_EVIDENCE_BOUNDARY
+                        )
                     ),
                 }
             elif candidate is not None:
@@ -353,7 +378,11 @@ def build_plan(
             }
             if is_reference:
                 event["reference_contour"] = compiler.pinned_reference_contour_contract(
-                    depth_matched=reference_shape_depth_matched_unreviewed
+                    depth_matched=(
+                        reference_shape_depth_matched_unreviewed
+                        or reference_shape_depth_matched_long_fade_unreviewed
+                    ),
+                    long_fade=reference_shape_depth_matched_long_fade_unreviewed,
                 )
             if articulation == "slur":
                 event["slur_from_previous"] = True
@@ -388,15 +417,19 @@ def build_plan(
         },
         "instrument": {"id": "daegeum", "sustained": True},
         "plan_role": (
-            "full_16bar_authorial_game_arrangement_b2rd_reference_shape_depth_matched_unreviewed_rnd_only"
-            if reference_shape_depth_matched_unreviewed
+            "full_16bar_authorial_game_arrangement_b2rdf_reference_shape_depth_matched_long_fade_unreviewed_rnd_only"
+            if reference_shape_depth_matched_long_fade_unreviewed
             else (
-                "full_16bar_authorial_game_arrangement_b2_reference_shape_unreviewed_rnd_only"
-                if reference_shape_unreviewed
+                "full_16bar_authorial_game_arrangement_b2rd_reference_shape_depth_matched_unreviewed_rnd_only"
+                if reference_shape_depth_matched_unreviewed
                 else (
-                    "full_16bar_authorial_game_arrangement_b1_contextual_yoseong_rnd_only"
-                    if contextual_yoseong
-                    else "full_16bar_authorial_game_arrangement_b0_all_straight_rnd_only"
+                    "full_16bar_authorial_game_arrangement_b2_reference_shape_unreviewed_rnd_only"
+                    if reference_shape_unreviewed
+                    else (
+                        "full_16bar_authorial_game_arrangement_b1_contextual_yoseong_rnd_only"
+                        if contextual_yoseong
+                        else "full_16bar_authorial_game_arrangement_b0_all_straight_rnd_only"
+                    )
                 )
             )
         ),
@@ -449,6 +482,9 @@ def build_plan(
             selected_ids=candidate_ids,
             reference_shape_unreviewed=reference_shape_unreviewed,
             reference_shape_depth_matched_unreviewed=reference_shape_depth_matched_unreviewed,
+            reference_shape_depth_matched_long_fade_unreviewed=(
+                reference_shape_depth_matched_long_fade_unreviewed
+            ),
         ),
         "events": events,
     }
@@ -465,6 +501,10 @@ def build_plans() -> dict[str, dict[str, Any]]:
         B2_DEPTH_MATCHED_FILENAME: build_plan(
             contextual_yoseong=True,
             reference_shape_depth_matched_unreviewed=True,
+        ),
+        B2_DEPTH_MATCHED_LONG_FADE_FILENAME: build_plan(
+            contextual_yoseong=True,
+            reference_shape_depth_matched_long_fade_unreviewed=True,
         ),
     }
 

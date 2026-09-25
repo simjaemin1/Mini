@@ -66,6 +66,7 @@ VIBRATO_POLICY_DECISIONS = (
     "selected",
     "reference_shape_unreviewed",
     "reference_shape_depth_matched_unreviewed",
+    "reference_shape_depth_matched_long_fade_unreviewed",
 )
 VIBRATO_POLICY_STYLES = (
     "straight",
@@ -73,6 +74,7 @@ VIBRATO_POLICY_STYLES = (
     "late_gentle_yoseong",
     "reference_shape_unreviewed",
     "reference_shape_depth_matched_unreviewed",
+    "reference_shape_depth_matched_long_fade_unreviewed",
 )
 VIBRATO_END_BEHAVIORS = ("none", "depth_fade_to_zero")
 REFERENCE_CONTOUR_STATUS = "reference_shape_unreviewed"
@@ -118,6 +120,19 @@ REFERENCE_CONTOUR_DEPTH_TRANSFORM = {
     "target_max_abs_cents": REFERENCE_CONTOUR_TARGET_MAX_ABS_CENTS,
     "scale": REFERENCE_CONTOUR_DEPTH_SCALE,
 }
+REFERENCE_CONTOUR_LONG_FADE_STATUS = (
+    "reference_shape_depth_matched_long_fade_unreviewed"
+)
+REFERENCE_CONTOUR_LONG_FADE_EVIDENCE_BOUNDARY = (
+    "automatic_periodic_f0_proxy_shape_depth_matched_long_fade_unreviewed_"
+    "not_human_reviewed_not_gyeonggi_style_not_training_or_game"
+)
+REFERENCE_CONTOUR_LONG_FADE_SECONDS = 0.24
+REFERENCE_CONTOUR_END_FADE_TRANSFORM = {
+    "kind": "linear_depth_fade_extension",
+    "source_fade_out_seconds": REFERENCE_CONTOUR_FADE_SECONDS,
+    "target_fade_out_seconds": REFERENCE_CONTOUR_LONG_FADE_SECONDS,
+}
 REFERENCE_CONTOUR_CLAIM_LIMITS = {
     "gyeonggi_minyo_style_confirmed": False,
     "human_reviewed": False,
@@ -160,7 +175,9 @@ def _load_json(path: Path) -> Mapping[str, Any]:
     return value
 
 
-def pinned_reference_contour_contract(*, depth_matched: bool = False) -> dict[str, Any]:
+def pinned_reference_contour_contract(
+    *, depth_matched: bool = False, long_fade: bool = False
+) -> dict[str, Any]:
     """Return the only reference-contour payload accepted by this R&D compiler.
 
     The whole export is byte-hash pinned, then its selected normalized payload
@@ -171,6 +188,8 @@ def pinned_reference_contour_contract(*, depth_matched: bool = False) -> dict[st
     asset.
     """
 
+    if long_fade and not depth_matched:
+        raise ScoreExpressionError("the long-fade reference contract requires depth matching")
     repository_root = Path(__file__).resolve().parents[2]
     source_path = repository_root / REFERENCE_CONTOUR_SOURCE_RELATIVE_PATH
     if _sha256(source_path) != REFERENCE_CONTOUR_SOURCE_SHA256:
@@ -265,6 +284,10 @@ def pinned_reference_contour_contract(*, depth_matched: bool = False) -> dict[st
     if depth_matched:
         contract["status"] = REFERENCE_CONTOUR_DEPTH_MATCHED_STATUS
         contract["depth_transform"] = dict(REFERENCE_CONTOUR_DEPTH_TRANSFORM)
+    if long_fade:
+        contract["status"] = REFERENCE_CONTOUR_LONG_FADE_STATUS
+        contract["fade_out_seconds"] = REFERENCE_CONTOUR_LONG_FADE_SECONDS
+        contract["end_fade_transform"] = dict(REFERENCE_CONTOUR_END_FADE_TRANSFORM)
     return contract
 
 
@@ -633,6 +656,8 @@ def _reference_contour(
         expected = pinned_reference_contour_contract()
     elif status == REFERENCE_CONTOUR_DEPTH_MATCHED_STATUS:
         expected = pinned_reference_contour_contract(depth_matched=True)
+    elif status == REFERENCE_CONTOUR_LONG_FADE_STATUS:
+        expected = pinned_reference_contour_contract(depth_matched=True, long_fade=True)
     else:
         raise ScoreExpressionError(f"{label}.reference_contour.status is unsupported")
     if value != expected:
@@ -721,9 +746,13 @@ def _vibrato_policy(
     if reference_contour is not None:
         reference_status = str(reference_contour["status"])
         expected_evidence_boundary = (
-            REFERENCE_CONTOUR_DEPTH_MATCHED_EVIDENCE_BOUNDARY
-            if reference_status == REFERENCE_CONTOUR_DEPTH_MATCHED_STATUS
-            else REFERENCE_CONTOUR_EVIDENCE_BOUNDARY
+            REFERENCE_CONTOUR_LONG_FADE_EVIDENCE_BOUNDARY
+            if reference_status == REFERENCE_CONTOUR_LONG_FADE_STATUS
+            else (
+                REFERENCE_CONTOUR_DEPTH_MATCHED_EVIDENCE_BOUNDARY
+                if reference_status == REFERENCE_CONTOUR_DEPTH_MATCHED_STATUS
+                else REFERENCE_CONTOUR_EVIDENCE_BOUNDARY
+            )
         )
         if selected_here:
             raise ScoreExpressionError(
@@ -763,7 +792,11 @@ def _vibrato_policy(
             "active_selection_provenance": None,
             "reference_contour_status": reference_status,
         }
-    if decision in (REFERENCE_CONTOUR_DECISION, REFERENCE_CONTOUR_DEPTH_MATCHED_STATUS):
+    if decision in (
+        REFERENCE_CONTOUR_DECISION,
+        REFERENCE_CONTOUR_DEPTH_MATCHED_STATUS,
+        REFERENCE_CONTOUR_LONG_FADE_STATUS,
+    ):
         raise ScoreExpressionError(
             f"{label}.vibrato_policy declares a reference shape without reference_contour"
         )

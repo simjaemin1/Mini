@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import json
 import hashlib
+import json
 from pathlib import Path
 import sys
 import tempfile
@@ -30,6 +30,9 @@ FULL_ARI_B0_PLAN = HERE / "plans" / full_ari.B0_FILENAME
 FULL_ARI_B1_PLAN = HERE / "plans" / full_ari.B1_FILENAME
 FULL_ARI_B2_REFERENCE_PLAN = HERE / "plans" / full_ari.B2_REFERENCE_FILENAME
 FULL_ARI_B2_DEPTH_MATCHED_PLAN = HERE / "plans" / full_ari.B2_DEPTH_MATCHED_FILENAME
+FULL_ARI_B2_DEPTH_MATCHED_LONG_FADE_PLAN = (
+    HERE / "plans" / full_ari.B2_DEPTH_MATCHED_LONG_FADE_FILENAME
+)
 
 
 def _scope() -> dict[str, bool]:
@@ -381,6 +384,7 @@ class FullAriPlanTests(unittest.TestCase):
             FULL_ARI_B1_PLAN,
             FULL_ARI_B2_REFERENCE_PLAN,
             FULL_ARI_B2_DEPTH_MATCHED_PLAN,
+            FULL_ARI_B2_DEPTH_MATCHED_LONG_FADE_PLAN,
         ):
             raw = self._raw(path)
             voiced = self._voiced(raw)
@@ -713,11 +717,100 @@ class FullAriPlanTests(unittest.TestCase):
                 ):
                     compiler.compile_plan(path)
 
-    def test_b0_b1_and_raw_b2_plan_bytes_remain_regression_pinned(self) -> None:
+    def test_b2rdf_changes_only_b16_end_fade_and_closes_from_024_seconds(self) -> None:
+        b2rd_raw = self._raw(FULL_ARI_B2_DEPTH_MATCHED_PLAN)
+        b2rdf_raw = self._raw(FULL_ARI_B2_DEPTH_MATCHED_LONG_FADE_PLAN)
+        b2rd_by_id = {event["id"]: event for event in b2rd_raw["events"]}
+        b2rdf_by_id = {event["id"]: event for event in b2rdf_raw["events"]}
+        b08_id = "b08_e0_rearticulate"
+        self.assertEqual(b2rdf_by_id[b08_id], b2rd_by_id[b08_id])
+
+        base = b2rd_by_id[compiler.REFERENCE_CONTOUR_EVENT_ID]["reference_contour"]
+        long_fade = b2rdf_by_id[compiler.REFERENCE_CONTOUR_EVENT_ID]["reference_contour"]
+        for key in (
+            "onset_seconds",
+            "duration_seconds",
+            "fade_in_seconds",
+            "fade_shape",
+            "source_artifact",
+            "normalized_reference_contour",
+            "claim_limits",
+            "depth_transform",
+        ):
+            self.assertEqual(long_fade[key], base[key])
+        self.assertEqual(long_fade["fade_out_seconds"], 0.24)
+        self.assertEqual(
+            long_fade["status"],
+            compiler.REFERENCE_CONTOUR_LONG_FADE_STATUS,
+        )
+        self.assertEqual(
+            long_fade["end_fade_transform"],
+            compiler.REFERENCE_CONTOUR_END_FADE_TRANSFORM,
+        )
+
+        b2rd = compiler.compile_plan(FULL_ARI_B2_DEPTH_MATCHED_PLAN)
+        b2rdf = compiler.compile_plan(FULL_ARI_B2_DEPTH_MATCHED_LONG_FADE_PLAN)
+        base_curve = b2rd["reference_contour_cents"]
+        long_curve = b2rdf["reference_contour_cents"]
+        # B16 begins at 32.40 s.  The 0.24 s close begins at local 1.92 s,
+        # absolute 34.32 s; through that exact row both variants are identical.
+        self.assertTrue(numpy.array_equal(long_curve[:3433], base_curve[:3433]))
+        self.assertFalse(numpy.array_equal(long_curve[3433:3455], base_curve[3433:3455]))
+        self.assertLess(abs(float(long_curve[3440])), abs(float(base_curve[3440])))
+        self.assertEqual(float(long_curve[3306]), 0.0)
+        self.assertEqual(float(long_curve[3455]), 0.0)
+        self.assertEqual(float(long_curve[3456]), 0.0)
+        self.assertLessEqual(
+            float(numpy.max(numpy.abs(long_curve))),
+            compiler.REFERENCE_CONTOUR_TARGET_MAX_ABS_CENTS,
+        )
+
+        compiled_b16 = next(
+            event for event in b2rdf["events"] if event["id"] == compiler.REFERENCE_CONTOUR_EVENT_ID
+        )
+        self.assertEqual(
+            compiled_b16["reference_contour"]["end_fade_transform"],
+            compiler.REFERENCE_CONTOUR_END_FADE_TRANSFORM,
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            manifest = compiler.render_controls(
+                plan=FULL_ARI_B2_DEPTH_MATCHED_LONG_FADE_PLAN,
+                output_dir=Path(temporary) / "compiled",
+            )
+            manifest_b16 = next(
+                event for event in manifest["events"] if event["id"] == compiler.REFERENCE_CONTOUR_EVENT_ID
+            )
+            self.assertEqual(
+                manifest_b16["reference_contour"]["end_fade_transform"],
+                compiler.REFERENCE_CONTOUR_END_FADE_TRANSFORM,
+            )
+
+    def test_b2rdf_end_fade_transform_fails_closed_on_every_field(self) -> None:
+        edits = {
+            "kind": "another_fade",
+            "source_fade_out_seconds": 0.13,
+            "target_fade_out_seconds": 0.23,
+        }
+        for key, replacement in edits.items():
+            with self.subTest(key=key), tempfile.TemporaryDirectory() as temporary:
+                payload = self._raw(FULL_ARI_B2_DEPTH_MATCHED_LONG_FADE_PLAN)
+                b16 = next(
+                    event for event in payload["events"] if event["id"] == compiler.REFERENCE_CONTOUR_EVENT_ID
+                )
+                b16["reference_contour"]["end_fade_transform"][key] = replacement
+                path = _write_plan(Path(temporary), payload)
+                with self.assertRaisesRegex(
+                    compiler.ScoreExpressionError,
+                    "pinned unreviewed reference contract",
+                ):
+                    compiler.compile_plan(path)
+
+    def test_existing_b0_b1_b2_and_b2rd_plan_bytes_remain_regression_pinned(self) -> None:
         expected = {
             FULL_ARI_B0_PLAN: "fbb0274eefb0b5108c6eb9c9f38d3490dac3ef5cb5af75f06133d1816bbeca0e",
             FULL_ARI_B1_PLAN: "ab101c46d4ef988d21f0c1f940f2bb74ec20d94cad802de1c9f405daa1543c02",
             FULL_ARI_B2_REFERENCE_PLAN: "7be3811fc4d47401f7bc17926d3475604d13845223f3593d3cb5fb8bcc073a2a",
+            FULL_ARI_B2_DEPTH_MATCHED_PLAN: "76fb1ff28b6b90806539f0a75fde747b51ed8e956975eb6c7e26b8ee0a9fb005",
         }
         for path, expected_sha256 in expected.items():
             with self.subTest(path=path.name):
