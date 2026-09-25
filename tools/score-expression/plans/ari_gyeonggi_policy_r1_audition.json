@@ -1,0 +1,183 @@
+{
+  "schema": "mini.score-expression.plan.v1",
+  "r_and_d_scope": {
+    "r_and_d_only": true,
+    "no_default_assets": true,
+    "no_runtime_bgm": true,
+    "no_game_output": true,
+    "no_public_release": true
+  },
+  "instrument": {"id": "daegeum", "sustained": true},
+  "plan_role": "explicit_provisional_b1_audition_of_one_policy_candidate_not_authentic_transcription",
+  "authorial_score_reference": {
+    "module_relative_path": "public/assets/audio/bgm/ari_articulation.py",
+    "controlled_slice": "browser Ari b08-b10 at do=70, beat=0.72 seconds",
+    "evidence_boundary": "western_pitch_grid_skeleton_not_an_authentic_gyeonggi_minyo_or_daegeum_transcription"
+  },
+  "score_rest_intervals_seconds": [
+    {"start_seconds": 1.44, "end_seconds": 2.16, "reason": "written b08 rest before b09 breath_start"}
+  ],
+  "control_hz": 100,
+  "expression_policy": {
+    "schema": "mini.score-expression.gyeonggi-minyo-policy.v1",
+    "id": "gyeonggi-minyo-ari-vibrato-v1",
+    "automatic_activation": false,
+    "default_decision": "off",
+    "seconds_per_beat": 0.72,
+    "meter_beats": 3,
+    "evidence_status": "literature_informed_but_provisional_requires_daegeum_reference_validation",
+    "score_evidence_boundary": "authorial_western_pitch_grid_skeleton_not_authentic_transcription",
+    "active_selection_provenance": {
+      "status": "explicit_rnd_audition_opt_in",
+      "selected_by": "audition_plan_author_not_automatic_policy",
+      "selected_event_ids": ["b08_e0_breath"],
+      "source_policy_rule_id": "gyeonggi_ari.v1.sustained_before_rest_late_yoseong_candidate",
+      "reason": "compare one late gentle candidate on the two-beat local phrase cadence before a written rest",
+      "evidence_boundary": "provisional_parameter_audition_not_a_claim_about_authentic_bonjo_arirang_performance"
+    }
+  },
+  "events": [
+    {
+      "id": "b08_e0_breath",
+      "score_location": "b08_e0",
+      "start_seconds": 0.0,
+      "end_seconds": 1.44,
+      "pitch_hz": 466.163762,
+      "articulation": "breath_start",
+      "steady_loudness_db": -30.0,
+      "musical_context": {
+        "genre": "gyeonggi_minyo_derived_game_arrangement",
+        "style": "bonjo_arirang_authorial_score_skeleton",
+        "tori": "gyeong_tori_reference_not_transcription",
+        "mode": "anhemitonic_pentatonic_do_re_mi_sol_la_skeleton",
+        "phrase_role": "local_phrase_cadence_before_rest",
+        "modal_degree": "do",
+        "duration_beats": 2.0,
+        "metric_beat": 1.0,
+        "approach": "phrase_arrival",
+        "followed_by_rest": true,
+        "global_cadence": false
+      },
+      "vibrato": {
+        "enabled": true,
+        "rate_hz": 3.45,
+        "depth_cents": 18.0,
+        "onset_seconds": 0.72,
+        "ramp_seconds": 0.18,
+        "end_fade_seconds": 0.18
+      },
+      "vibrato_policy": {
+        "decision": "selected",
+        "style": "late_gentle_yoseong",
+        "policy_rule_id": "gyeonggi_ari.v1.sustained_before_rest_late_yoseong_candidate",
+        "end_behavior": "depth_fade_to_zero",
+        "candidate_parameters": {
+          "rate_hz": 3.45,
+          "depth_cents": 18.0,
+          "onset_seconds": 0.72,
+          "ramp_seconds": 0.18,
+          "end_fade_seconds": 0.18,
+          "parameter_status": "provisional_local_proxy_bounds_not_reference_performance_measurement"
+        },
+        "parameter_status": "provisional_local_proxy_bounds_not_reference_performance_measurement",
+        "evidence_boundary": "provisional_audition_selection_not_a_bonjo_or_gyeonggi_universal_rule"
+      }
+    },
+    {
+      "id": "b09_e0_breath",
+      "score_location": "b09_e0",
+      "start_seconds": 2.16,
+      "end_seconds": 3.6,
+      "pitch_hz": 698.456463,
+      "articulation": "breath_start",
+      "steady_loudness_db": -28.0,
+      "musical_context": {
+        "genre": "gyeonggi_minyo_derived_game_arrangement", "style": "bonjo_arirang_authorial_score_skeleton",
+        "tori": "gyeong_tori_reference_not_transcription", "mode": "anhemitonic_pentatonic_do_re_mi_sol_la_skeleton",
+        "phrase_role": "phrase_head_sustained", "modal_degree": "sol", "duration_beats": 2.0,
+        "metric_beat": 1.0, "approach": "breath_start", "followed_by_rest": false, "global_cadence": false
+      },
+      "vibrato": {"enabled": false},
+      "vibrato_policy": {"decision": "off", "style": "straight", "policy_rule_id": "gyeonggi_ari.v1.default_straight", "end_behavior": "none"}
+    },
+    {
+      "id": "b09_e1_rearticulate",
+      "score_location": "b09_e1",
+      "start_seconds": 3.6,
+      "end_seconds": 4.32,
+      "pitch_hz": 698.456463,
+      "articulation": "rearticulate",
+      "steady_loudness_db": -29.0,
+      "musical_context": {
+        "genre": "gyeonggi_minyo_derived_game_arrangement", "style": "bonjo_arirang_authorial_score_skeleton",
+        "tori": "gyeong_tori_reference_not_transcription", "mode": "anhemitonic_pentatonic_do_re_mi_sol_la_skeleton",
+        "phrase_role": "repeated_tone_continuation", "modal_degree": "sol", "duration_beats": 1.0,
+        "metric_beat": 3.0, "approach": "same_pitch_rearticulation", "followed_by_rest": false, "global_cadence": false
+      },
+      "vibrato": {"enabled": false},
+      "vibrato_policy": {"decision": "off", "style": "straight", "policy_rule_id": "gyeonggi_ari.v1.default_straight", "end_behavior": "none"}
+    },
+    {
+      "id": "b10_e0_slur",
+      "score_location": "b10_e0",
+      "start_seconds": 4.32,
+      "end_seconds": 5.04,
+      "pitch_hz": 698.456463,
+      "articulation": "slur",
+      "slur_from_previous": true,
+      "steady_loudness_db": -29.0,
+      "musical_context": {
+        "genre": "gyeonggi_minyo_derived_game_arrangement", "style": "bonjo_arirang_authorial_score_skeleton",
+        "tori": "gyeong_tori_reference_not_transcription", "mode": "anhemitonic_pentatonic_do_re_mi_sol_la_skeleton",
+        "phrase_role": "phrase_continuation", "modal_degree": "sol", "duration_beats": 1.0,
+        "metric_beat": 1.0, "approach": "same_pitch_slur", "followed_by_rest": false, "global_cadence": false
+      },
+      "vibrato": {"enabled": false},
+      "vibrato_policy": {"decision": "off", "style": "straight", "policy_rule_id": "gyeonggi_ari.v1.default_straight", "end_behavior": "none"}
+    },
+    {
+      "id": "b10_e1_slur",
+      "score_location": "b10_e1",
+      "start_seconds": 5.04,
+      "end_seconds": 5.76,
+      "pitch_hz": 587.329536,
+      "articulation": "slur",
+      "slur_from_previous": true,
+      "steady_loudness_db": -30.0,
+      "musical_context": {
+        "genre": "gyeonggi_minyo_derived_game_arrangement", "style": "bonjo_arirang_authorial_score_skeleton",
+        "tori": "gyeong_tori_reference_not_transcription", "mode": "anhemitonic_pentatonic_do_re_mi_sol_la_skeleton",
+        "phrase_role": "phrase_continuation", "modal_degree": "mi", "duration_beats": 1.0,
+        "metric_beat": 2.0, "approach": "descending_step", "followed_by_rest": false, "global_cadence": false
+      },
+      "vibrato": {"enabled": false},
+      "vibrato_policy": {"decision": "off", "style": "straight", "policy_rule_id": "gyeonggi_ari.v1.default_straight", "end_behavior": "none"}
+    },
+    {
+      "id": "b10_e2_slur_explicit_vibrato",
+      "score_location": "b10_e2",
+      "start_seconds": 5.76,
+      "end_seconds": 6.48,
+      "pitch_hz": 523.251131,
+      "articulation": "slur",
+      "slur_from_previous": true,
+      "steady_loudness_db": -29.0,
+      "musical_context": {
+        "genre": "gyeonggi_minyo_derived_game_arrangement", "style": "bonjo_arirang_authorial_score_skeleton",
+        "tori": "gyeong_tori_reference_not_transcription", "mode": "anhemitonic_pentatonic_do_re_mi_sol_la_skeleton",
+        "phrase_role": "local_phrase_tail", "modal_degree": "re", "duration_beats": 1.0,
+        "metric_beat": 3.0, "approach": "descending_arrival", "followed_by_rest": false, "global_cadence": false
+      },
+      "vibrato": {"enabled": false},
+      "vibrato_policy": {"decision": "off", "style": "straight", "policy_rule_id": "gyeonggi_ari.v1.short_local_tail_no_full_yoseong", "end_behavior": "none"}
+    },
+    {
+      "id": "b10_release",
+      "score_location": "b10_after_e2",
+      "start_seconds": 6.48,
+      "end_seconds": 6.72,
+      "articulation": "release",
+      "vibrato_policy": {"decision": "off", "style": "straight", "policy_rule_id": "gyeonggi_ari.v1.release_no_vibrato", "end_behavior": "none"}
+    }
+  ]
+}

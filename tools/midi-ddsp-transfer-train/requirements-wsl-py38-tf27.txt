@@ -1,0 +1,19 @@
+# Exact legacy distribution contract for an isolated Python 3.8 WSL venv.
+#
+# This file is intentionally not invoked by a setup script.  Obtain packages
+# only from a separately audited historic wheelhouse; do not install globally,
+# into this repository, or from an unreviewed resolver result.
+# The readiness gate also requires that this isolated venv passes `python -m
+# pip check`; a passing direct-version list alone is not a complete dependency
+# or licence audit.
+tensorflow==2.7.0
+ddsp==3.2.0
+midi-ddsp==0.2.6
+tensorflow-addons==0.15.0
+tensorflow-probability==0.15.0
+tensorflow-datasets==4.5.2
+numpy==1.21.6
+protobuf==3.20.3
+note-seq==0.0.3
+crepe==0.0.12
+pretty-midi==0.2.10

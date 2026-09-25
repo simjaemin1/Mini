@@ -47,11 +47,11 @@ jobs:
       #   · lab-wiring-check          : 랩이 정본 함수를 무는가(자명 통과 금지 줄 포함)
       - name: 게이트 셋 (번들 · 랩 인라인 · 랩 배선 — 서버 0)
         run: node sim/build-econ-bundle.js --check && node sim/inline-engine.js --check && node scripts/lab-wiring-check.js
-      - name: 단위 하네스 25종
+      - name: 단위 하네스 26종
         run: |
           bash scripts/run-regress.sh \
             test-harness-lint.js test-client-globals.js test-calendar.js \
-            test-audio.js test-nightly.js \
+            test-audio.js test-bgm-phrase.js test-nightly.js \
             test-kcal.js test-crops.js test-crops-world.js test-farm-life.js \
             test-econ-diet.js test-econ-rawgrain.js test-winter.js \
             test-carrier.js test-weight.js test-spoil2.js test-preserve.js test-salt.js \

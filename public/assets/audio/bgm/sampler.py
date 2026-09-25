@@ -1074,11 +1074,33 @@ class Bank:
 
     def note(self, inst, midi, dur, amp=1.0, vib_cents=0.0, vib_rate=4.6,
              vib_delay=0.25, bend_end=0.0, rr=0, release=0.09, art=None, ring=0.9,
-             legato=0.0, prefer_src=None):
+             legato=0.0, prefer_src=None, entry_mode="auto"):
         """
         inst 의 음원 하나를 골라 midi 음높이로 리샘플링해 dur 초만큼 연주.
         vib_cents/bend_end 는 농현·요성·퇴성 (가변 리샘플링으로 건다).
+
+        ``entry_mode`` 는 오프라인 articulation renderer가 실제 녹음의 어느
+        부분에서 진입할지를 명시할 때 쓴다.
+
+        ``auto``
+            기존 호환 모드. ``legato`` 가 있으면 지속부, 없으면 기존 head/hold
+            규칙을 그대로 쓴다.
+        ``head``
+            hold 메타가 늦게 시작해도 **절대** 그 앞머리를 자르지 않는다. 새 숨·
+            혀 재발음의 실제 attack을 검증할 때 쓴다.
+        ``steady``
+            hold 구간에서만 시작한다. 이는 명시된 slur의 body→body 연결용이며
+            새 숨과 함께 쓸 수 없다.
+
+        이 인자는 샘플 bank가 있는 지속 악기 전용이다. 합성 fallback에 조용히
+        흘려 보내면 "실제 head를 썼다"는 R&D 증거가 거짓이 되므로 오류로 막는다.
         """
+        if entry_mode not in ("auto", "head", "steady"):
+            raise ValueError(f"unknown entry_mode {entry_mode!r}")
+        if entry_mode != "auto" and inst not in SUSTAINING:
+            raise ValueError(f"entry_mode={entry_mode!r} requires a sustaining instrument")
+        if entry_mode == "head" and legato > 0:
+            raise ValueError("entry_mode='head' cannot request a legato crossfade")
         G.LAST_ANCHOR = 0.0
         G.LAST_ENTRY, G.LAST_SKIP = "head", 0.0
         # 악기의 실제 음역 밖을 요구하면 옥타브를 접어 넣는다.
@@ -1102,6 +1124,11 @@ class Bank:
                             midi, d0 = alt, self._dist(inst, alt)
         got = self._pick(inst, midi, rr, dur=dur, amp=amp, art=art, prefer_src=prefer_src)
         if got is None:
+            if entry_mode != "auto":
+                raise RuntimeError(
+                    f"{inst}: entry_mode={entry_mode!r} could not select an actual sample; "
+                    "synthetic fallback is forbidden"
+                )
             return None
         s_midi, x, meta = got
         G.LAST_ANCHOR = float(meta.get("anchor", 0.0) or 0.0)
@@ -1139,12 +1166,34 @@ class Bank:
         #   시김새 시범 녹음일 수 있다(실측 nira_23: 적힌 midi 68, 실제 67.5~76.0).
         #   **한 음정을 붙들고 있는 대목**만 떼어 쓴다.
         hd = meta.get("hold")
-        if hd and inst in SUSTAINING and len(x) > int(0.12 * SR):
+        steady_skip = 0.0
+        # R&D-02: `head` 는 녹음의 앞머리를 살린다는 **계약**이다. 예전 auto
+        # 모드처럼 hold가 150ms 뒤에서 시작하는 조각을 말없이 잘라내면, 첫 숨
+        # 청취본조차 중간에서 나타나 버린다. 명시 head에서는 어떤 hold crop도 하지
+        # 않는다. 반대로 명시 steady는 항상 보관된 hold 경계에서 시작한다.
+        if entry_mode == "steady":
+            if not hd or len(x) <= int(0.12 * SR):
+                raise RuntimeError(
+                    f"{inst}: entry_mode='steady' requires a recorded hold span; "
+                    "synthetic/body fallback is forbidden"
+                )
+            try:
+                ha, hb = int(hd[0] * SR), int(hd[1] * SR)
+            except (IndexError, TypeError, ValueError) as exc:
+                raise RuntimeError(f"{inst}: invalid recorded hold span for entry_mode='steady'") from exc
+            if hb - ha < int(0.09 * SR):
+                raise RuntimeError(
+                    f"{inst}: recorded hold span is too short for entry_mode='steady'"
+                )
+            x = x[ha:hb]
+            steady_skip = ha / SR
+        elif entry_mode != "head" and hd and inst in SUSTAINING and len(x) > int(0.12 * SR):
             ha, hb = int(hd[0] * SR), int(hd[1] * SR)
             if legato <= 0 and hd[0] < 0.15:
                 ha = 0                      # 새로 부는 음은 어택을 살린다
             if hb - ha >= int(0.09 * SR):
                 x = x[ha:hb]
+                steady_skip = ha / SR
         got_art = str(meta.get("art", ""))
         if art == "sus" and got_art != "sus" and inst in SUSTAINING:
             x = flatten_pitch(x)
@@ -1176,7 +1225,19 @@ class Bank:
         #   새로 넣는 자리다. 거기까지 중간부터 떼면 소리가 허공에서 스르르
         #   생겨나 관악기로 안 들린다.
         per = SR / G.mtof(midi) if midi is not None else 0.0   # 목표 음 한 주기
-        if inst in SUSTAINING and legato > 0:
+        if inst in SUSTAINING and entry_mode == "steady":
+            # `x` 는 위에서 _hold.json 의 안정 구간으로 잘렸다. 다시
+            # steady_start()로 임의 위치를 찾지 않는다 — R&D trace가 보고한
+            # source offset과 실제 렌더 시작을 일치시켜야 한다.
+            G.LAST_ENTRY, G.LAST_SKIP = "mid", steady_skip
+            y = loop_extend(y, int((dur + ring) * SR) + int(0.05 * SR),
+                            head=0.0, period=per)
+            fi = int(max(legato, 0.014) * SR)
+            if fi > 4 and len(y) > fi:
+                u = np.linspace(0.0, 1.0, fi, dtype=np.float32)
+                w = np.sqrt(0.5 - 0.5 * np.cos(np.pi * u)).astype(np.float32)
+                y[:fi] = y[:fi] * (w[:, None] if y.ndim > 1 else w)
+        elif inst in SUSTAINING and legato > 0:
             s0 = steady_start(y)
             body = y[int(s0 * SR):]
             if len(body) >= int(0.09 * SR):
@@ -1422,6 +1483,7 @@ def install(bank, modules, octaves=None):
             midi = 69 + 12 * np.log2(max(1e-6, freq) / 440.0) + oct_shift
             nong = float(kw.get("vib_cents", kw.get("nonghyeon", 0.0)) or 0.0)
             bend = float(kw.get("bend_end", kw.get("bend", 0.0)) or 0.0)
+            requested_entry = kw.get("entry_mode", "auto")
             # 작곡 쪽에서 시김새를 **직접 지정**하면 그것을 따른다.
             # 아래 choose_art 는 농현 깊이/꺾기 값만 보고 어림잡는 것이라
             # 청성·굴림·글리산도·전성·슬기둥처럼 '값' 으로 표현되지 않는 주법에는
@@ -1435,12 +1497,22 @@ def install(bank, modules, octaves=None):
                           bend_end=bend, rr=next_rr(),
                           legato=float(kw.get("legato", 0.0) or 0.0),
                           prefer_src=kw.get("prefer_src"),
+                          entry_mode=kw.get("entry_mode", "auto"),
                           ring=float(kw.get("ring", 0.9)))
             if y is not None:
                 return y
+            if requested_entry != "auto":
+                raise RuntimeError(
+                    f"{inst}: entry_mode={requested_entry!r} could not select an actual sample; "
+                    "synthetic fallback is forbidden"
+                )
             # 합성음으로 떨어질 때는 art 를 떼고 넘긴다(합성 쪽은 모르는 인자다)
-            skip = ("art", "legato", "prefer_src", "ring")
+            skip = ("art", "legato", "prefer_src", "entry_mode", "ring")
             return orig(freq, dur, amp, **{k: v for k, v in kw.items() if k not in skip})
+        # Offline score renderers can use this capability marker to pass the
+        # explicit head/steady contract only to a real sample route.  Bare
+        # synthesis functions intentionally do not accept ``entry_mode``.
+        f._supports_explicit_sample_entry = True
         return f
 
     def wrap_perc(inst, orig):

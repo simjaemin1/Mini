@@ -1,0 +1,35 @@
+{
+  "schema": "mini.midi-ddsp-transfer-train.legacy-wsl-environment.v1",
+  "purpose": "Read-only environment contract for a future isolated WSL2 RTX 4060 R&D dry-run; not an installer.",
+  "python": {
+    "major": 3,
+    "minor": 8,
+    "venv_only": true,
+    "system_python_must_not_be_modified": true
+  },
+  "host": {
+    "required_platform": "linux-wsl2",
+    "expected_gpu_name_substring": "RTX 4060",
+    "minimum_vram_mib": 7600,
+    "legacy_tensorflow_cuda": "11.2",
+    "legacy_tensorflow_cudnn": "8.1"
+  },
+  "distributions": {
+    "tensorflow": "2.7.0",
+    "ddsp": "3.2.0",
+    "midi-ddsp": "0.2.6",
+    "tensorflow-addons": "0.15.0",
+    "tensorflow-probability": "0.15.0",
+    "tensorflow-datasets": "4.5.2",
+    "numpy": "1.21.6",
+    "protobuf": "3.20.3",
+    "note-seq": "0.0.3",
+    "crepe": "0.0.12",
+    "pretty-midi": "0.2.10"
+  },
+  "interpretation_limits": {
+    "no_automatic_install_or_download": true,
+    "package_versions_are_runtime_compatibility_gates_not_weight_or_data_rights": true,
+    "legacy_runtime_is_rnd_only": true
+  }
+}

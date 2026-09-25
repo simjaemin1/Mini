@@ -1,0 +1,471 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://durango-mini.local/schema/daegeum-transition-artifacts-v1.json",
+  "title": "Durango Mini R&D-06 Daegeum transition artifacts",
+  "description": "Record definitions for the separate read-only catalog, candidate, human-label, approved-transition, and expression-manifest artifacts written by build.py. This schema never describes a game audio asset or a synthetic transition.",
+  "oneOf": [
+    { "$ref": "#/$defs/source_catalog" },
+    { "$ref": "#/$defs/candidate" },
+    { "$ref": "#/$defs/label" },
+    { "$ref": "#/$defs/approved_transition" },
+    { "$ref": "#/$defs/expression_manifest" },
+    { "$ref": "#/$defs/coverage" },
+    { "$ref": "#/$defs/provenance" }
+  ],
+  "$defs": {
+    "source_id": {
+      "type": "string",
+      "pattern": "^src_[0-9a-f]{16}$"
+    },
+    "candidate_id": {
+      "type": "string",
+      "pattern": "^cand_src_[0-9a-f]{16}_[0-9]{3,}$"
+    },
+    "label_id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,127}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "portable_relative_path": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?!~)(?![A-Za-z]:)(?!.*\\\\)(?!.*//)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+    },
+    "frame_pair": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "source_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_id", "sha256", "relative_path"],
+      "properties": {
+        "source_id": { "$ref": "#/$defs/source_id" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "relative_path": { "$ref": "#/$defs/portable_relative_path" }
+      }
+    },
+    "native_provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sample_rate_hz",
+        "channels",
+        "frame_count",
+        "encoding",
+        "bits_per_sample",
+        "container_id",
+        "analysis_mono_policy",
+        "reader_descriptor"
+      ],
+      "properties": {
+        "sample_rate_hz": { "type": "integer", "minimum": 1 },
+        "channels": { "type": "integer", "minimum": 1 },
+        "frame_count": { "type": "integer", "minimum": 1 },
+        "encoding": { "type": "string", "minLength": 1 },
+        "bits_per_sample": { "type": "integer", "minimum": 1 },
+        "container_id": { "enum": ["RIFF", "RF64"] },
+        "analysis_mono_policy": {
+          "type": "object",
+          "required": ["id", "resampled", "timeline"],
+          "properties": {
+            "id": { "const": "mean_channels" },
+            "resampled": { "const": false },
+            "timeline": { "const": "native_sample_frames" }
+          }
+        },
+        "reader_descriptor": { "type": "object" }
+      }
+    },
+    "source_item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_id", "sha256", "relative_path", "source_role", "rights", "native"],
+      "properties": {
+        "source_id": { "$ref": "#/$defs/source_id" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "relative_path": { "$ref": "#/$defs/portable_relative_path" },
+        "source_role": { "type": "string", "minLength": 1 },
+        "rights": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "license_assertion", "training_or_distribution_requires_source_term_confirmation"],
+          "properties": {
+            "status": { "const": "unverified_local_rnd_only" },
+            "license_assertion": { "const": "none" },
+            "training_or_distribution_requires_source_term_confirmation": { "const": true }
+          }
+        },
+        "native": { "$ref": "#/$defs/native_provenance" }
+      }
+    },
+    "source_catalog": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "source_coordinate_authority", "files"],
+      "properties": {
+        "schema": { "const": "durango.daegeum.transition-bank.v1.source-catalog.v1" },
+        "source_coordinate_authority": { "const": "native direct WAV SHA-256 and frame coordinates" },
+        "files": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/source_item" }
+        }
+      }
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "candidate_id",
+        "source",
+        "region_frames",
+        "auto_evidence",
+        "status",
+        "automatic_detection_is_not_a_musical_gesture_label"
+      ],
+      "properties": {
+        "schema": { "const": "durango.daegeum.transition-bank.v1.candidate.v1" },
+        "candidate_id": { "$ref": "#/$defs/candidate_id" },
+        "source": { "$ref": "#/$defs/source_ref" },
+        "region_frames": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["context_start", "boundary_center", "proposed_boundary_window", "context_end"],
+          "properties": {
+            "context_start": { "type": "integer", "minimum": 0 },
+            "boundary_center": { "type": "integer", "minimum": 0 },
+            "proposed_boundary_window": { "$ref": "#/$defs/frame_pair" },
+            "context_end": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "auto_evidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "analysis_frame_index",
+            "detector_class",
+            "pre_f0_hz_proxy",
+            "post_f0_hz_proxy",
+            "pre_midi_proxy",
+            "post_midi_proxy",
+            "f0_step_cents",
+            "onset_flux",
+            "same_pitch_onset_flux_threshold",
+            "rms_dbfs",
+            "rms_valley_db_relative_to_stable_anchors",
+            "voicing_confidence"
+          ],
+          "properties": {
+            "analysis_frame_index": { "type": "integer", "minimum": 0 },
+            "detector_class": { "enum": ["f0_change_candidate", "same_pitch_onset_candidate"] },
+            "pre_f0_hz_proxy": { "type": "number" },
+            "post_f0_hz_proxy": { "type": "number" },
+            "pre_midi_proxy": { "type": "number" },
+            "post_midi_proxy": { "type": "number" },
+            "f0_step_cents": { "type": "number" },
+            "onset_flux": { "type": "number" },
+            "same_pitch_onset_flux_threshold": { "type": "number" },
+            "rms_dbfs": { "type": "number" },
+            "rms_valley_db_relative_to_stable_anchors": { "type": "number" },
+            "voicing_confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+          }
+        },
+        "status": { "const": "unreviewed" },
+        "automatic_detection_is_not_a_musical_gesture_label": { "const": true }
+      }
+    },
+    "frame_regions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["clip", "pre_stable", "transition", "post_stable"],
+      "properties": {
+        "clip": { "$ref": "#/$defs/frame_or_blank" },
+        "pre_stable": { "$ref": "#/$defs/frame_or_blank" },
+        "transition": { "$ref": "#/$defs/frame_or_blank" },
+        "post_stable": { "$ref": "#/$defs/frame_or_blank" }
+      }
+    },
+    "approved_frame_regions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["clip", "pre_stable", "transition", "post_stable"],
+      "properties": {
+        "clip": { "$ref": "#/$defs/frame_pair" },
+        "pre_stable": { "$ref": "#/$defs/frame_pair" },
+        "transition": { "$ref": "#/$defs/frame_pair" },
+        "post_stable": { "$ref": "#/$defs/frame_pair" }
+      }
+    },
+    "frame_or_blank": {
+      "oneOf": [
+        { "$ref": "#/$defs/frame_pair" },
+        { "type": "array", "maxItems": 0 }
+      ]
+    },
+    "gesture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["class", "audible_onset", "same_breath", "traditional_term"],
+      "properties": {
+        "class": {
+          "enum": [
+            "unreviewed",
+            "continuous_pitch_change",
+            "tongued_rearticulation",
+            "breath_separated",
+            "same_pitch_continuation",
+            "ornament_or_sigimsae",
+            "not_a_transition"
+          ]
+        },
+        "audible_onset": { "enum": ["unknown", "none", "tongue", "breath", "other"] },
+        "same_breath": { "enum": ["unknown", "yes", "no"] },
+        "traditional_term": { "type": "string", "maxLength": 160 }
+      }
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "retrieval_eligible", "expression_eligible", "reviewer", "notes"],
+      "properties": {
+        "state": { "enum": ["unreviewed", "needs_review", "rejected", "approved"] },
+        "retrieval_eligible": { "type": "boolean" },
+        "expression_eligible": { "type": "boolean" },
+        "reviewer": { "type": "string", "maxLength": 160 },
+        "notes": { "type": "string", "maxLength": 2000 }
+      }
+    },
+    "approved_review": {
+      "allOf": [
+        { "$ref": "#/$defs/review" },
+        {
+          "type": "object",
+          "properties": {
+            "state": { "const": "approved" },
+            "reviewer": { "type": "string", "minLength": 1 }
+          }
+        }
+      ]
+    },
+    "retrieval_review": {
+      "allOf": [
+        { "$ref": "#/$defs/approved_review" },
+        {
+          "type": "object",
+          "properties": {
+            "retrieval_eligible": { "const": true }
+          }
+        }
+      ]
+    },
+    "label": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "label_id",
+        "candidate_id",
+        "source",
+        "frames",
+        "gesture",
+        "pitch_anchors",
+        "review"
+      ],
+      "properties": {
+        "schema": { "const": "durango.daegeum.transition-label.v1" },
+        "label_id": { "type": "string", "maxLength": 128 },
+        "candidate_id": { "$ref": "#/$defs/candidate_id" },
+        "source": { "$ref": "#/$defs/source_ref" },
+        "frames": { "$ref": "#/$defs/frame_regions" },
+        "gesture": { "$ref": "#/$defs/gesture" },
+        "pitch_anchors": { "type": "array" },
+        "review": { "$ref": "#/$defs/review" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "review": { "properties": { "state": { "const": "approved" } } } },
+            "required": ["review"]
+          },
+          "then": {
+            "properties": {
+              "label_id": { "$ref": "#/$defs/label_id" },
+              "frames": { "$ref": "#/$defs/approved_frame_regions" },
+              "gesture": {
+                "type": "object",
+                "properties": {
+                  "class": {
+                    "enum": [
+                      "continuous_pitch_change", "tongued_rearticulation", "breath_separated",
+                      "same_pitch_continuation", "ornament_or_sigimsae", "not_a_transition"
+                    ]
+                  }
+                }
+              },
+              "review": { "$ref": "#/$defs/approved_review" }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "review": { "properties": { "retrieval_eligible": { "const": true } } } },
+            "required": ["review"]
+          },
+          "then": {
+            "properties": {
+              "frames": { "$ref": "#/$defs/approved_frame_regions" },
+              "gesture": { "type": "object", "properties": { "class": { "const": "continuous_pitch_change" } } },
+              "pitch_anchors": { "type": "array", "minItems": 2 },
+              "review": { "$ref": "#/$defs/retrieval_review" }
+            }
+          }
+        }
+      ]
+    },
+    "approved_transition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "label_id",
+        "candidate_id",
+        "source",
+        "frames",
+        "gesture",
+        "pitch_anchors",
+        "review"
+      ],
+      "properties": {
+        "schema": { "const": "durango.daegeum.transition-bank.v1.approved-transition.v1" },
+        "label_id": { "$ref": "#/$defs/label_id" },
+        "candidate_id": { "$ref": "#/$defs/candidate_id" },
+        "source": { "$ref": "#/$defs/source_ref" },
+        "frames": { "$ref": "#/$defs/approved_frame_regions" },
+        "gesture": {
+          "allOf": [
+            { "$ref": "#/$defs/gesture" },
+            { "type": "object", "properties": { "class": { "const": "continuous_pitch_change" } } }
+          ]
+        },
+        "pitch_anchors": { "type": "array", "minItems": 2 },
+        "review": { "$ref": "#/$defs/retrieval_review" }
+      }
+    },
+    "expression_manifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "label_id",
+        "candidate_id",
+        "source",
+        "clip_frames",
+        "gesture_class",
+        "pitch_anchors",
+        "review",
+        "feature_file",
+        "take_split_key"
+      ],
+      "properties": {
+        "schema": { "const": "durango.daegeum.transition-bank.v1.expression-manifest.v1" },
+        "label_id": { "$ref": "#/$defs/label_id" },
+        "candidate_id": { "$ref": "#/$defs/candidate_id" },
+        "source": { "$ref": "#/$defs/source_ref" },
+        "clip_frames": { "$ref": "#/$defs/frame_pair" },
+        "gesture_class": {
+          "enum": [
+            "continuous_pitch_change", "tongued_rearticulation", "breath_separated",
+            "same_pitch_continuation", "ornament_or_sigimsae"
+          ]
+        },
+        "pitch_anchors": { "type": "array", "minItems": 2 },
+        "review": {
+          "allOf": [
+            { "$ref": "#/$defs/approved_review" },
+            { "type": "object", "properties": { "expression_eligible": { "const": true } } }
+          ]
+        },
+        "feature_file": { "$ref": "#/$defs/portable_relative_path" },
+        "take_split_key": { "$ref": "#/$defs/source_id" }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "targets", "unreviewed_candidates_do_not_close_coverage"],
+      "properties": {
+        "schema": { "const": "durango.daegeum.transition-bank.v1.coverage.v1" },
+        "targets": { "type": "array" },
+        "unreviewed_candidates_do_not_close_coverage": { "const": true }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "required": [
+        "schema",
+        "actual_direct_wav_read",
+        "raw_source_modified",
+        "source_root_not_embedded",
+        "automatic_candidates_are_unreviewed",
+        "rights_policy",
+        "reproducibility"
+      ],
+      "properties": {
+        "schema": { "const": "durango.daegeum.transition-bank.v1" },
+        "actual_direct_wav_read": { "const": true },
+        "raw_source_modified": { "const": false },
+        "source_root_not_embedded": { "const": true },
+        "automatic_candidates_are_unreviewed": { "const": true },
+        "rights_policy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "license_assertion", "training_or_distribution_requires_source_term_confirmation"],
+          "properties": {
+            "status": { "const": "unverified_local_rnd_only" },
+            "license_assertion": { "const": "none" },
+            "training_or_distribution_requires_source_term_confirmation": { "const": true }
+          }
+        },
+        "reproducibility": {
+          "type": "object",
+          "required": [
+            "builder_sha256", "native_wav_reader_sha256", "python_version",
+            "analysis_dependency_versions", "candidate_detector_config", "labels"
+          ],
+          "properties": {
+            "builder_sha256": { "$ref": "#/$defs/sha256" },
+            "native_wav_reader_sha256": { "$ref": "#/$defs/sha256" },
+            "python_version": { "type": "string", "minLength": 1 },
+            "analysis_dependency_versions": {
+              "type": "object",
+              "required": ["numpy", "scipy"],
+              "properties": {
+                "numpy": { "type": "string", "minLength": 1 },
+                "scipy": { "type": "string", "minLength": 1 }
+              }
+            },
+            "candidate_detector_config": { "type": "object" },
+            "labels": {
+              "type": "object",
+              "required": ["supplied", "sha256", "record_count"],
+              "properties": {
+                "supplied": { "type": "boolean" },
+                "sha256": { "type": ["string", "null"] },
+                "record_count": { "type": "integer", "minimum": 0 }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
