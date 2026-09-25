@@ -5,6 +5,34 @@ does not install anything, train anything, transform audio, or alter default
 BGM/runtime assets by itself.  It is deliberately independent of the archived
 MIDI-DDSP work: the baseline uses only maintained PyTorch plus NumPy.
 
+## What is actually ready on a given machine?
+
+Before calling any output a trained Daegeum renderer, create a read-only,
+fail-closed report.  It probes only interpreters and directories you name; it
+does not install, download, load a checkpoint, decode audio, train, or render.
+The NGC manifest is deliberately reported as R&D-only/ineligible when it says
+so—it is never silently promoted to training permission.
+
+```bash
+python3 tools/expressive-synthesis/renderer_readiness.py \
+  --repo-root /absolute/path/to/Mini \
+  --runtime-python /usr/bin/python3 \
+  --runtime-python /absolute/path/to/rnd-venv/bin/python \
+  --model-root /absolute/path/to/Mini \
+  --model-root /absolute/path/to/Downloads \
+  --ngc-manifest /absolute/path/to/_bgm_rnd/ngc-extended-daegeum-sanjo.manifest.json \
+  --report-dir /absolute/path/to/_bgm_rnd/renderer-readiness-001
+```
+
+At the present project state, the expected answer is **not ready**: source
+spans are R&D-only and marked ineligible for training/game assets; a real
+score-conditioned checkpoint and a rights-reviewed paired
+WAV/score/breath-slur corpus are absent.  That negative result is intentional:
+the only honest current audio preview is the separate generic/untrained
+monitor below, not a claim of a Daegeum model.  The report names the smallest
+next experiment, which begins only after those paired-data and rights gates
+exist, on the WSL/RTX host where CUDA is actually available.
+
 The model shape is intentionally small and inspectable:
 
 ```
