@@ -85,8 +85,8 @@
       "source_policy_rule_ids_by_event": {
         "b08_e0_rearticulate": "gyeonggi_ari.v1.sustained_before_rest_late_yoseong_candidate"
       },
-      "reason": "compare the reviewed local-before-rest and provisional global-cadence late-gentle candidates in one full-score rendering",
-      "evidence_boundary": "provisional_parameter_audition_not_a_claim_about_authentic_bonjo_arirang_performance"
+      "reason": "retain only the provisional b08 rule-based audition while b16 uses a separately pinned unreviewed automatic F0-proxy contour",
+      "evidence_boundary": "provisional_b08_parameter_audition_separate_from_unreviewed_b16_reference_and_not_an_authenticity_claim"
     }
   },
   "events": [

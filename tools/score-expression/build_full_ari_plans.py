@@ -172,7 +172,12 @@ def _event_id(bar: int, event_index: int, articulation: str) -> str:
     return f"b{bar:02d}_e{event_index}_{articulation}"
 
 
-def _expression_policy(*, contextual_yoseong: bool, selected_ids: dict[str, str]) -> dict[str, Any]:
+def _expression_policy(
+    *,
+    contextual_yoseong: bool,
+    selected_ids: dict[str, str],
+    reference_shape_unreviewed: bool = False,
+) -> dict[str, Any]:
     active: dict[str, Any] | None = None
     if contextual_yoseong:
         active = {
@@ -180,8 +185,16 @@ def _expression_policy(*, contextual_yoseong: bool, selected_ids: dict[str, str]
             "selected_by": "full_score_audition_plan_author_not_automatic_policy",
             "selected_event_ids": list(selected_ids),
             "source_policy_rule_ids_by_event": selected_ids,
-            "reason": "compare the reviewed local-before-rest and provisional global-cadence late-gentle candidates in one full-score rendering",
-            "evidence_boundary": "provisional_parameter_audition_not_a_claim_about_authentic_bonjo_arirang_performance",
+            "reason": (
+                "retain only the provisional b08 rule-based audition while b16 uses a separately pinned unreviewed automatic F0-proxy contour"
+                if reference_shape_unreviewed
+                else "compare the reviewed local-before-rest and provisional global-cadence late-gentle candidates in one full-score rendering"
+            ),
+            "evidence_boundary": (
+                "provisional_b08_parameter_audition_separate_from_unreviewed_b16_reference_and_not_an_authenticity_claim"
+                if reference_shape_unreviewed
+                else "provisional_parameter_audition_not_a_claim_about_authentic_bonjo_arirang_performance"
+            ),
         }
     return {
         "schema": "mini.score-expression.gyeonggi-minyo-policy.v1",
@@ -405,6 +418,7 @@ def build_plan(*, contextual_yoseong: bool, reference_shape_unreviewed: bool = F
         "expression_policy": _expression_policy(
             contextual_yoseong=contextual_yoseong,
             selected_ids=candidate_ids,
+            reference_shape_unreviewed=reference_shape_unreviewed,
         ),
         "events": events,
     }
