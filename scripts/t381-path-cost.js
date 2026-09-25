@@ -122,17 +122,64 @@ const _PC = {
   dup: 0, dupMs: 0, dupSelf: 0, dupOther: 0,        // 2초 안에 같은 (출발 셀,목표 셀) 쌍이 또 왔나(후보 ⓑ)
   dCell: {}, dCellN: {},                            // 문별 출발→목표 격자 거리 평균(searchRadiusCells 64 가 닿나)
   _seen: new Map(),
+  // ★"그 주민이 어디로 가려 했나"(카드 ①) — 막힌 목표(gd)의 **생활 라벨**·**직업**·**튕김 무작위 도약에서 왔나**
+  gdAct: {}, gdJob: {}, gdHop: 0, gdHopMs: 0, lvAct: {},
+  // ★목표를 **누가** 줬나 — 생활 층이 그 결정을 안 잡아(npcLifeTick 거짓) zone ⑤ 배회로 떨어졌나 · 목표가 일터 상자(±80) 안인가
+  gdFall: 0, gdWork: 0, gdWorkDead: 0, lvFall: 0,
+  workN: 0, workDead: 0, workCensus: 0,               // 전수: 주민의 npcWorkX/Y 가 막힌 칸인가(보고 한 번마다 한 번 센다)
   hist: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
   nullN: 0, wpSum: 0, wpN: 0, dSum: 0, dN: 0, dMax: 0,
   cross: 0, crossNull: 0, crossMs: 0, sameIsl: 0, tgtWet: 0, tgtRock: 0, labUnk: 0,
   beh: {}, behCross: {}, homeTgt: 0, homeCross: 0, vilCross: {},
   beeline: 0, beelineWet: 0, watchOn: 0, wetStop: 0, dryStop: 0, moved: 0,
   unstuck: 0,
+  // ★반례 자(T370 자 + 카드 ③) — **부르는 자리와 무관하게** 사람 쪽에서 잰다(손잡이가 호출을 없애도 자가 안 흔들린다)
+  //   여행 = 주민이 새 목표(48px 넘게 먼 곳)를 받은 순간부터 그 목표에 '도착'(followNpcPath 참)까지.
+  //   목표 셀이 막힌 여행(dead)과 열린 여행(live)을 가른다 — 손잡이가 건드리는 건 dead 뿐이어야 한다.
+  trSt: [0, 0], trDone: [0, 0], trAb: [0, 0], trH: {},    // [live, dead] · trH = live 도착 시간 250ms 칸
+  snapN: 0, stopWet: 0, stopDry: 0, going: 0,             // 5초 표본 — 목표가 12px 넘게 먼 주민이 5초에 32px 도 못 갔나
+  // ⚠첫 판은 목표 글자가 바뀌면 표본을 새로 떴다 — 그런데 몸 비비는 주민은 **튕김이 1.5초마다** 오고 셋째에
+  //   무작위 도약(새 목표)이 붙어 목표가 4.5초마다 바뀐다 ⇒ 5초 창에 한 번도 못 닿아 표본 0 이었다(자가 틀렸다).
+  //   ⇒ 목표 글자와 **무관하게** 잰다: 5초 동안 줄곧 먼 목표(12px 초과)를 가진 주민이 32px 도 못 갔나.
+  // ⚠둘째 판도 0 이었다 — npcs 는 **pid 의 Set** 이다(zone.js 정의: "pid 모음"). npcs.values() 는 문자열을
+  //   내주므로 npc.simVillageId 가 늘 undefined 였다(자가 아무것도 안 봤다). 몸은 players 에 있다.
+  snap() {
+    const now = Date.now();
+    for (const pid of npcs) {
+      const npc = players.get(pid);
+      if (!npc || !npc.simVillageId) continue;
+      if (npc.targetX == null || Math.hypot(npc.x - npc.targetX, npc.y - npc.targetY) <= 12) { npc._snT = 0; continue; }
+      if (!npc._snT) { npc._snT = now; npc._snX = npc.x; npc._snY = npc.y; continue; }
+      if (now - npc._snT < 5000) continue;
+      this.snapN++;
+      if (Math.hypot(npc.x - npc._snX, npc.y - npc._snY) < 32) { if (_pcNearWater(npc.x, npc.y)) this.stopWet++; else this.stopDry++; }
+      else this.going++;
+      npc._snT = now; npc._snX = npc.x; npc._snY = npc.y;
+    }
+  },
+  trip(npc, targetKey, now) {
+    if (!npc.simVillageId || npc._trK === targetKey) return;
+    if (npc._trT) this.trAb[npc._trD]++;
+    npc._trK = targetKey; npc._trT = 0;
+    if (Math.hypot(npc.targetX - npc.x, npc.targetY - npc.y) < 48) return;
+    const B = BUILDING_SIZE;
+    npc._trD = isTerrainBlockedLocal(Math.floor(npc.targetX / B) * B + B / 2, Math.floor(npc.targetY / B) * B + B / 2) ? 1 : 0;
+    npc._trT = now; this.trSt[npc._trD]++;
+  },
+  arrive(npc, targetKey, now) {
+    if (!npc._trT || npc._trK !== targetKey) return;
+    this.trDone[npc._trD]++;
+    if (!npc._trD) { const b = Math.min(480, Math.floor((now - npc._trT) / 250)); this.trH[b] = (this.trH[b] || 0) + 1; }
+    npc._trT = 0;
+  },
   cal() { const P = 300000, a = _pcT(); for (let i = 0; i < P; i++) { const x = _pcT(); if (x < 0) console.log(x); } this.clockNs = (_pcT() - a) * 1e6 / P; },
   rep() {
     this.n++;
     if (this.n < this.every) return;
     if (!this.clockNs) this.cal();
+    { const B = BUILDING_SIZE; this.workN = 0; this.workDead = 0;
+      for (const pid of npcs) { const q = players.get(pid); if (!q || !q.simVillageId || q.npcWorkX == null) continue; this.workN++;
+        if (isTerrainBlockedLocal(Math.floor(q.npcWorkX / B) * B + B / 2, Math.floor(q.npcWorkY / B) * B + B / 2)) this.workDead++; } }
     try {
       console.log('[PC] ' + JSON.stringify({ n: this.n, pop: this.pop, phase: +worldPhase(Date.now()).toFixed(4),
         call: this.call, ms: +this.ms.toFixed(2), popsSum: this.popsSum, popsMax: this.popsMax,
@@ -144,6 +191,9 @@ const _PC = {
         gDead: this.gDead, gDeadMs: +this.gDeadMs.toFixed(2), xGD: this.xGD,
         xGDms: Object.fromEntries(Object.entries(this.xGDms).map(([k, v]) => [k, +v.toFixed(2)])), sDead: this.sDead,
         dup: this.dup, dupMs: +this.dupMs.toFixed(2), dupSelf: this.dupSelf, dupOther: this.dupOther,
+        gdAct: this.gdAct, gdJob: this.gdJob, gdHop: this.gdHop, gdHopMs: +this.gdHopMs.toFixed(2), lvAct: this.lvAct,
+        gdFall: this.gdFall, gdWork: this.gdWork, gdWorkDead: this.gdWorkDead, lvFall: this.lvFall,
+        workN: this.workN, workDead: this.workDead,
         dCell: Object.fromEntries(Object.entries(this.dCell).map(([k, v]) => [k, +(v / this.dCellN[k]).toFixed(1)])),
         nullN: this.nullN, wpAvg: this.wpN ? +(this.wpSum / this.wpN).toFixed(1) : 0,
         dAvg: this.dN ? +(this.dSum / this.dN).toFixed(0) : 0, dMax: +this.dMax.toFixed(0),
@@ -152,7 +202,9 @@ const _PC = {
         beh: this.beh, behCross: this.behCross, homeTgt: this.homeTgt, homeCross: this.homeCross, vilCross: this.vilCross,
         beeline: this.beeline, beelineWet: this.beelineWet,
         watchOn: this.watchOn, wetStop: this.wetStop, dryStop: this.dryStop, moved: this.moved,
-        unstuck: this.unstuck, clockNs: +this.clockNs.toFixed(1) }));
+        unstuck: this.unstuck, clockNs: +this.clockNs.toFixed(1),
+        trSt: this.trSt, trDone: this.trDone, trAb: this.trAb, trH: this.trH,
+        snapN: this.snapN, stopWet: this.stopWet, stopDry: this.stopDry, going: this.going }));
     } catch (e) {}
     this.n = 0; this.call = 0; this.ms = 0; this.popsSum = 0; this.popsMax = 0;
     this.ex = { found: 0, capped: 0, exhaust: 0, radius: 0, same: 0 };
@@ -162,6 +214,8 @@ const _PC = {
     this.srcWet = 0; this.srcRock = 0; this.afterUnstuck = 0; this.jobWet = {};
     this.gDead = 0; this.gDeadMs = 0; this.xGD = {}; this.xGDms = {}; this.sDead = 0;
     this.dup = 0; this.dupMs = 0; this.dupSelf = 0; this.dupOther = 0;
+    this.gdAct = {}; this.gdJob = {}; this.gdHop = 0; this.gdHopMs = 0; this.lvAct = {};
+    this.gdFall = 0; this.gdWork = 0; this.gdWorkDead = 0; this.lvFall = 0; this.workN = 0; this.workDead = 0;
     this.dCell = {}; this.dCellN = {};
     this.hist = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
     this.nullN = 0; this.wpSum = 0; this.wpN = 0; this.dSum = 0; this.dN = 0; this.dMax = 0;
@@ -169,6 +223,8 @@ const _PC = {
     this.beh = {}; this.behCross = {}; this.homeTgt = 0; this.homeCross = 0; this.vilCross = {};
     this.beeline = 0; this.beelineWet = 0; this.watchOn = 0; this.wetStop = 0; this.dryStop = 0; this.moved = 0;
     this.unstuck = 0;
+    this.trSt = [0, 0]; this.trDone = [0, 0]; this.trAb = [0, 0]; this.trH = {};
+    this.snapN = 0; this.stopWet = 0; this.stopDry = 0; this.going = 0;
   },
   tally(npc, wp, ms, st, d) {
     this.call++; this.ms += ms;
@@ -204,7 +260,15 @@ const _PC = {
     const gcx = Math.floor(npc.targetX / B), gcy = Math.floor(npc.targetY / B);
     const scx = Math.floor(npc.x / B), scy = Math.floor(npc.y / B);
     const gd = isTerrainBlockedLocal(gcx * B + H, gcy * B + H);
-    if (gd) { this.gDead++; this.gDeadMs += ms; this.xGD[door] = (this.xGD[door] || 0) + 1; this.xGDms[door] = (this.xGDms[door] || 0) + ms; }
+    if (gd) { this.gDead++; this.gDeadMs += ms; this.xGD[door] = (this.xGD[door] || 0) + 1; this.xGDms[door] = (this.xGDms[door] || 0) + ms;
+      const la = npc._lifeAct || '(없음)', jb = npc.simJob || npc.npcJob || '(없음)';
+      this.gdAct[la] = (this.gdAct[la] || 0) + 1; this.gdJob[jb] = (this.gdJob[jb] || 0) + 1;
+      if (npc._pcHop && Date.now() - npc._pcHop < 3000) { this.gdHop++; this.gdHopMs += ms; }
+      if (npc._pcFall) this.gdFall++;
+      if (npc.npcWorkX != null && Math.abs(npc.targetX - npc.npcWorkX) <= 80 && Math.abs(npc.targetY - npc.npcWorkY) <= 80) {
+        this.gdWork++;
+        if (isTerrainBlockedLocal(Math.floor(npc.npcWorkX / B) * B + H, Math.floor(npc.npcWorkY / B) * B + H)) this.gdWorkDead++; } }
+    else { const la = npc._lifeAct || '(없음)'; this.lvAct[la] = (this.lvAct[la] || 0) + 1; if (npc._pcFall) this.lvFall++; }
     if (isTerrainBlockedLocal(scx * B + H, scy * B + H)) this.sDead++;
     // ★후보 ⓑ — 2초 안에 같은 (출발 셀, 목표 셀) 쌍이 또 오나
     const pk = scx + '_' + scy + '_' + gcx + '_' + gcy, nw = Date.now();
@@ -242,7 +306,7 @@ const PATCHES = [
   { find: "const _SEED = require('./seed-rand');",
     repl: "const _SEED = require('./seed-rand');\n__PROBE_HEAD__" },
   { find: "}, TICK_MS);",
-    repl: "  _PC.pop = npcs.size; _PC.rep();\n}, TICK_MS);" },
+    repl: "  _PC.pop = npcs.size; if (_tick.n % 30 === 0) _PC.snap(); _PC.rep();\n}, TICK_MS);" },
   // ★A* 한 번 — 시계와 커널 셈을 양쪽에서 집는다(식 무접촉 · 반환 무변)
   // ⚠T381 ② 가 `_lastAStarAt` 과 `pfFindPath` 사이에 손잡이를 넣었다 —
   //   자는 **지금 고치는 그 글자**를 재야 하므로 앵커를 호출 줄 하나로 좁힌다(T370 에서 배운 것).
@@ -259,6 +323,13 @@ const PATCHES = [
     const p = computeNpcPath(npc, now);
     if (!p) { _PC.beeline++; if (_pcSegWater(npc.x, npc.y, npc.targetX, npc.targetY)) _PC.beelineWet++; }
     npc.path = p || [{ x: npc.targetX, y: npc.targetY }]; // 못 찾으면 beeline` },
+  { find: "  const arrived = followNpcPath(npc, speedMult);",
+    repl: "  _PC.trip(npc, targetKey, now);\n  const arrived = followNpcPath(npc, speedMult);\n  if (arrived) _PC.arrive(npc, targetKey, now);" },
+  // ★결정이 생활 층을 지나쳤나(npcLifeTick 거짓 → zone 옛 갈래 ③~⑤) — 마지막 결정의 출처만 적는다
+  { find: "  if (npc.simVillageId && SimVillages.npcLifeTick && SimVillages.npcLifeTick(npc, now)) return;",
+    repl: "  if (npc.simVillageId && SimVillages.npcLifeTick && SimVillages.npcLifeTick(npc, now)) { npc._pcFall = 0; return; }\n  if (npc.simVillageId) npc._pcFall = now;" },
+  { find: "  // 작은 회피 — 랜덤 방향으로 짧게 비킨다",
+    repl: "  npc._pcHop = now;   // [T381 탐침] 무작위 도약 갈래(3연속 막힘)\n  // 작은 회피 — 랜덤 방향으로 짧게 비킨다" },
   { find: "function unstuckNpc(npc, now) {",
     repl: "function unstuckNpc(npc, now) {\n  _PC.unstuck++; npc._pcUn = now;" },
 ];
@@ -270,10 +341,13 @@ function makeArm(arm, dir) {
   // ★워크트리는 **커밋된 HEAD** 를 떠 온다 — 아직 커밋 안 한 수술은 안 따라온다(T370 에서 한 번 빠졌다).
   //   ⇒ 작업트리에서 **바뀐 파일만** 덮어쓴다. 자가 재는 것이 지금 고치고 있는 그 글자여야 한다.
   try {
-    const dirty = execFileSync('git', ['diff', '--name-only', 'HEAD'], { cwd: ROOT }).toString().split('\n').filter(Boolean);
+    // ⚠한글 경로는 git 이 "\354…" 로 따옴표 쳐 내준다 — 그 글자로는 파일이 없어 **조용히 건너뛴다**(찍힌 수와 실제가 갈린다).
+    //   ⇒ `core.quotepath=off` 로 날 글자를 받고, **실제로 덮은 것만** 센다.
+    const dirty = execFileSync('git', ['-c', 'core.quotepath=off', 'diff', '--name-only', 'HEAD'], { cwd: ROOT }).toString().split('\n').filter(Boolean);
+    const done = [];
     for (const f of dirty) { const src = path.join(ROOT, f), dst = path.join(dir, f);
-      if (fs.existsSync(src)) { fs.mkdirSync(path.dirname(dst), { recursive: true }); fs.copyFileSync(src, dst); } }
-    if (dirty.length) console.log(`  [${arm}] 작업트리에서 덮어쓴 파일 ${dirty.length}개: ${dirty.join(' · ')}`);
+      if (fs.existsSync(src)) { fs.mkdirSync(path.dirname(dst), { recursive: true }); fs.copyFileSync(src, dst); done.push(f); } }
+    if (dirty.length) console.log(`  [${arm}] 작업트리에서 덮어쓴 파일 ${done.length}/${dirty.length}개: ${done.join(' · ')}`);
   } catch (e) {}
   if (/^(base|fix|off|on)$/.test(arm)) return 0;   // 탐침 0 인 팔 — 값을 재는 짝(켬/끔 · 관측자 규약)
   let n = 0;
@@ -314,7 +388,7 @@ async function runArm(arm, idx) {
     env: Object.assign({}, process.env, { PORT: String(ZP), ZONE_ID: 'hanbando', CENTRAL_HOST: 'localhost', CENTRAL_PORT: String(CP),
       CENTRAL_SECRET: SECRET, ENABLE_VILLAGES: '1', VILLAGE_DAY_MS: String(DAY_MS), DB_PATH: DB, VILLAGE_WAR_LOG: '0',
       T312_FISH_ACT: '1', T381_EVERY: String(SLICE_S * 30), T381_LAB: LAB,
-      T381_PATH_DEAD: /(^on$|^whyDead$|^fix$)/.test(arm) ? '1' : (process.env.T381_PATH_DEAD || '') }) });
+      T381_PATH_DEAD: /(^on$|Dead$|^fix$)/.test(arm) ? '1' : (process.env.T381_PATH_DEAD || '') }) });
   const getj = async (p, h) => { try { const r = await fetch(`http://localhost:${ZP}${p}`, h ? { headers: h } : undefined); return await r.json(); } catch (e) { return null; } };
   const perf = (reset) => getj(`/perf${reset ? '?reset=1' : ''}`, { 'x-zone-secret': SECRET });
   const life = () => getj('/lifedbg', { 'x-zone-secret': SECRET });
@@ -370,7 +444,13 @@ async function runArm(arm, idx) {
     process.exit(0);
   }
   const res = [];
-  for (let i = 0; i < ARMS.length; i++) {
+  if (process.env.PARALLEL === '1') {
+    // ★두 팔을 **같은 벽시계**에 띄운다 — 위상이 같아진다(T345 §3-ⓑ 의 함정을 피하는 길 하나).
+    //   ⚠2코어라 서로 CPU 를 먹는다 ⇒ 이 판의 **수**(호출·null·여행·정지)만 쓰고 **ms 는 순차 팔에서** 읽는다.
+    const all = await Promise.all(ARMS.map((a, i) => runArm(a, i)));
+    res.push(...all);
+    fs.writeFileSync(OUT, JSON.stringify({ at: new Date().toISOString(), WINDOW, DAY_MS, SLICE_S, SLICES, TPL, LAB, PARALLEL: 1, arms: res }, null, 1));
+  } else for (let i = 0; i < ARMS.length; i++) {
     res.push(await runArm(ARMS[i], i));
     fs.writeFileSync(OUT, JSON.stringify({ at: new Date().toISOString(), WINDOW, DAY_MS, SLICE_S, SLICES, TPL, LAB, arms: res }, null, 1));
   }

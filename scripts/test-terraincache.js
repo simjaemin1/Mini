@@ -128,14 +128,38 @@ function bodyOf(name) {
   return null;
 }
 // 두 술어 각각: terrain 호출의 **인자식**을 전부 뽑아 서로 같은지 본다.
+// ★★[T381 2026-09-25 · 이 절을 빨갛게 만든 것은 T345 다(야간러너 09-23~25 연속 3밤 · 귀속 후보 T347 은 틀렸다)]
+//   T345 가 캐시 가지의 클로저 `() => _terrain.isWaterCellLocal(ZONE_ID, cellCx, cellCy)` 를 **모듈 수준 함수**
+//   (`_computeWaterCell`/`_computeRockCell`)로 옮겼다(걸음당 할당 5.3개 제거 · 답 무변 · `test-move-soa` ②).
+//   그래서 본문 안 terrain 호출이 2 → 1 이 되었고, 이 절이 **글자를 세다가** 빨개졌다. 지키는 성질은 그대로다 —
+//   **캐시 가지와 종전 가지가 같은 점을 묻는다.** ⇒ 캐시 가지가 넘기는 함수를 **따라가서** 그 인자식을 꺼내고,
+//   종전 가지의 `cellCx`/`cellCy` 는 **본문 자신의 정의**로 풀어 둘을 글자로 견준다(동치를 지어내지 않는다).
+function helperArgs(fn, call) {
+  const b = bodyOf(fn);
+  const m = b && b.match(new RegExp(`_TERR_CACHE\\.(?:water|rock)\\(tx, ty, (\\w+)\\)`));
+  if (!m) return null;
+  const d = zsrc.match(new RegExp(`const ${m[1]} = \\(tx, ty\\) => ([^\\n]*);`));
+  if (!d) return null;
+  const a = d[1].match(new RegExp(`_terrain\\.${call}\\(([^)]*)\\)`));
+  return a ? { name: m[1], args: a[1].trim() } : null;
+}
+function resolveLocals(b, expr) {   // 본문의 `const cellCx = …;` 정의로 이름을 푼다(본문 밖 지식 0)
+  return expr.replace(/\b(cellC[xy])\b/g, (w) => { const d = b.match(new RegExp(`const ${w} = ([^;]+);`)); return d ? d[1].trim() : w; });
+}
 for (const [fn, call] of [['isWaterTileLocal', 'isWaterCellLocal'], ['isRockTileLocal', 'isRockCellLocal']]) {
   const b = bodyOf(fn);
   if (!b) { ok(false, `${fn} 본문을 찾지 못했다`); continue; }
-  const args = [...b.matchAll(new RegExp(`_terrain\\.${call}\\(([^)]*)\\)`, 'g'))].map((m) => m[1].trim());
-  ok(args.length === 2, `${fn}: terrain 호출이 캐시 가지 1 + 종전 가지 1 = 2개`, `${args.length}개`);
-  ok(args.length === 2 && args[0] === args[1],
+  const inBody = [...b.matchAll(new RegExp(`_terrain\\.${call}\\(([^)]*)\\)`, 'g'))].map((m) => m[1].trim());
+  const h = helperArgs(fn, call);
+  const args = h ? [h.args, ...inBody] : inBody;
+  ok(args.length === 2, `${fn}: terrain 호출이 캐시 가지 1${h ? `(${h.name})` : ''} + 종전 가지 1 = 2개`, `${args.length}개`);
+  const norm = args.map((a) => resolveLocals(b, a));
+  ok(args.length === 2 && norm[0] === norm[1],
      `${fn}: 두 가지에 **글자까지 같은 인자식** — 캐시가 다른 점을 묻지 않는다`,
-     args.length === 2 ? `「${args[0]}」` : '');
+     args.length === 2 ? `「${norm[0]}」` : '');
+  // ★자명 통과 금지 — 캐시 가지가 **한 픽셀 옆**을 물으면 위 견줌이 갈린다
+  if (h) ok(resolveLocals(b, h.args.replace('+ 16', '+ 17')) !== norm[1],
+     `★${fn}: 자명 통과 금지 — 캐시 함수가 한 픽셀 옆(+17)을 물으면 견줌이 **갈린다**`);
   ok(new RegExp(`_TERR_CACHE\\.${call.includes('Water') ? 'water' : 'rock'}\\(tx, ty,`).test(b),
      `${fn}: 캐시 키가 (tx, ty) — 술어가 이미 양자화한 그 좌표다`);
 }
