@@ -72,9 +72,9 @@ authentic Bonjo Arirang, Gyeonggi-minyo, or Daegeum transcription.  A real
 reference-performance curve is still required before an authenticity claim,
 training label, default BGM, or release decision.
 
-### Full 16-bar B0/B1/B2-R plans
+### Full 16-bar B0/B1/B2-R/B2-Rd plans
 
-`build_full_ari_plans.py` deterministically generates three tracked, directly
+`build_full_ari_plans.py` deterministically generates four tracked, directly
 comparable full-score plans:
 
 - `plans/ari_full_16bar_b0_straight_r1.json`: all 59 notes use straight tone;
@@ -95,8 +95,17 @@ comparable full-score plans:
   `reference_shape_unreviewed` means an automatic periodic-F0 proxy candidate:
   it is not learned, human-reviewed, Gyeonggi-style-confirmed, a training
   authorization, or a game/release asset.
+- `plans/ari_full_16bar_b2rd_reference_shape_depth_matched_unreviewed_r1.json`
+  keeps B1/B2-R's b08 event exactly and uses the same pinned, unscaled 65-point
+  source payload at b16.  Its fail-closed `depth_transform` records a linear
+  peak-absolute match from the source maximum 34.047561 cents to 18.0 cents
+  with scale `0.5286722300020257`.  Scaling happens only in compiled/rendered
+  controls before the existing 0.12 s boundary fades; the embedded source
+  artifact and canonical payload stay unchanged.  Its separate
+  `reference_shape_depth_matched_unreviewed` status retains all the same
+  negative human-review, style, training, game, and release claims.
 
-All three plans preserve the 16-bar game score at do=70 and 0.72 s per beat:
+All four plans preserve the 16-bar game score at do=70 and 0.72 s per beat:
 34.56 s of notation followed by one 0.24 s final release.  The four authored
 breath heads are b01, b05, b09, and b13.  B08 beat 3 is the score's sole
 written rest.  To prevent b05 and b13 from starting against the prior note's

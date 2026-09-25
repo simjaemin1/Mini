@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 from pathlib import Path
 import sys
 import tempfile
@@ -28,6 +29,7 @@ GYEONGGI_POLICY_AUDITION_PLAN = HERE / "plans" / "ari_gyeonggi_policy_r1_auditio
 FULL_ARI_B0_PLAN = HERE / "plans" / full_ari.B0_FILENAME
 FULL_ARI_B1_PLAN = HERE / "plans" / full_ari.B1_FILENAME
 FULL_ARI_B2_REFERENCE_PLAN = HERE / "plans" / full_ari.B2_REFERENCE_FILENAME
+FULL_ARI_B2_DEPTH_MATCHED_PLAN = HERE / "plans" / full_ari.B2_DEPTH_MATCHED_FILENAME
 
 
 def _scope() -> dict[str, bool]:
@@ -374,7 +376,12 @@ class FullAriPlanTests(unittest.TestCase):
             self.assertEqual(tracked, document)
 
     def test_full_score_has_59_notes_exact_duration_and_only_final_release(self) -> None:
-        for path in (FULL_ARI_B0_PLAN, FULL_ARI_B1_PLAN, FULL_ARI_B2_REFERENCE_PLAN):
+        for path in (
+            FULL_ARI_B0_PLAN,
+            FULL_ARI_B1_PLAN,
+            FULL_ARI_B2_REFERENCE_PLAN,
+            FULL_ARI_B2_DEPTH_MATCHED_PLAN,
+        ):
             raw = self._raw(path)
             voiced = self._voiced(raw)
             self.assertEqual(len(voiced), 59)
@@ -610,6 +617,111 @@ class FullAriPlanTests(unittest.TestCase):
             with numpy.load(output / compiler.CONTROL_FILENAME) as controls:
                 self.assertIn("reference_contour_cents", controls.files)
                 self.assertEqual(float(controls["reference_contour_cents"][3455]), 0.0)
+
+    def test_b2rd_depth_matches_only_b16_and_preserves_unscaled_source_payload(self) -> None:
+        b1_raw = self._raw(FULL_ARI_B1_PLAN)
+        b2_raw = self._raw(FULL_ARI_B2_REFERENCE_PLAN)
+        b2rd_raw = self._raw(FULL_ARI_B2_DEPTH_MATCHED_PLAN)
+        b1_by_id = {event["id"]: event for event in b1_raw["events"]}
+        b2_by_id = {event["id"]: event for event in b2_raw["events"]}
+        b2rd_by_id = {event["id"]: event for event in b2rd_raw["events"]}
+        b08_id = "b08_e0_rearticulate"
+        self.assertEqual(b2rd_by_id[b08_id], b1_by_id[b08_id])
+        self.assertEqual(b2rd_by_id[b08_id], b2_by_id[b08_id])
+
+        raw_reference = b2_by_id[compiler.REFERENCE_CONTOUR_EVENT_ID]["reference_contour"]
+        matched_reference = b2rd_by_id[compiler.REFERENCE_CONTOUR_EVENT_ID]["reference_contour"]
+        self.assertEqual(
+            matched_reference["normalized_reference_contour"],
+            raw_reference["normalized_reference_contour"],
+        )
+        self.assertEqual(matched_reference["source_artifact"], raw_reference["source_artifact"])
+        self.assertEqual(matched_reference["claim_limits"], raw_reference["claim_limits"])
+        self.assertEqual(
+            matched_reference["status"],
+            compiler.REFERENCE_CONTOUR_DEPTH_MATCHED_STATUS,
+        )
+        self.assertEqual(
+            matched_reference["depth_transform"],
+            compiler.REFERENCE_CONTOUR_DEPTH_TRANSFORM,
+        )
+        self.assertEqual(
+            max(abs(value) for value in matched_reference["normalized_reference_contour"]["pitch_residual_cents"]),
+            compiler.REFERENCE_CONTOUR_SOURCE_MAX_ABS_CENTS,
+        )
+
+        b2 = compiler.compile_plan(FULL_ARI_B2_REFERENCE_PLAN)
+        b2rd = compiler.compile_plan(FULL_ARI_B2_DEPTH_MATCHED_PLAN)
+        compiled_b16 = next(
+            event for event in b2rd["events"] if event["id"] == compiler.REFERENCE_CONTOUR_EVENT_ID
+        )
+        self.assertEqual(
+            compiled_b16["reference_contour"]["depth_transform"],
+            compiler.REFERENCE_CONTOUR_DEPTH_TRANSFORM,
+        )
+        raw_curve = b2["reference_contour_cents"]
+        matched_curve = b2rd["reference_contour_cents"]
+        self.assertTrue(
+            numpy.allclose(
+                matched_curve,
+                raw_curve * compiler.REFERENCE_CONTOUR_DEPTH_SCALE,
+                atol=3.0e-6,
+                rtol=0.0,
+            )
+        )
+        self.assertLessEqual(
+            float(numpy.max(numpy.abs(matched_curve))),
+            compiler.REFERENCE_CONTOUR_TARGET_MAX_ABS_CENTS,
+        )
+        self.assertGreater(float(numpy.max(numpy.abs(matched_curve))), 17.9)
+        self.assertEqual(float(matched_curve[3306]), 0.0)
+        self.assertEqual(float(matched_curve[3455]), 0.0)
+        self.assertEqual(float(matched_curve[3456]), 0.0)
+        self.assertTrue(numpy.all(b2rd["vibrato_cents"][3306:3456] == 0.0))
+
+        with tempfile.TemporaryDirectory() as temporary:
+            manifest = compiler.render_controls(
+                plan=FULL_ARI_B2_DEPTH_MATCHED_PLAN,
+                output_dir=Path(temporary) / "compiled",
+            )
+            manifest_b16 = next(
+                event for event in manifest["events"] if event["id"] == compiler.REFERENCE_CONTOUR_EVENT_ID
+            )
+            self.assertEqual(
+                manifest_b16["reference_contour"]["depth_transform"],
+                compiler.REFERENCE_CONTOUR_DEPTH_TRANSFORM,
+            )
+
+    def test_b2rd_depth_transform_is_exact_and_fails_closed_on_every_field(self) -> None:
+        edits = {
+            "kind": "another_scale",
+            "source_max_abs_cents": 34.0,
+            "target_max_abs_cents": 18.1,
+            "scale": 0.5,
+        }
+        for key, replacement in edits.items():
+            with self.subTest(key=key), tempfile.TemporaryDirectory() as temporary:
+                payload = self._raw(FULL_ARI_B2_DEPTH_MATCHED_PLAN)
+                b16 = next(
+                    event for event in payload["events"] if event["id"] == compiler.REFERENCE_CONTOUR_EVENT_ID
+                )
+                b16["reference_contour"]["depth_transform"][key] = replacement
+                path = _write_plan(Path(temporary), payload)
+                with self.assertRaisesRegex(
+                    compiler.ScoreExpressionError,
+                    "pinned unreviewed reference contract",
+                ):
+                    compiler.compile_plan(path)
+
+    def test_b0_b1_and_raw_b2_plan_bytes_remain_regression_pinned(self) -> None:
+        expected = {
+            FULL_ARI_B0_PLAN: "fbb0274eefb0b5108c6eb9c9f38d3490dac3ef5cb5af75f06133d1816bbeca0e",
+            FULL_ARI_B1_PLAN: "ab101c46d4ef988d21f0c1f940f2bb74ec20d94cad802de1c9f405daa1543c02",
+            FULL_ARI_B2_REFERENCE_PLAN: "7be3811fc4d47401f7bc17926d3475604d13845223f3593d3cb5fb8bcc073a2a",
+        }
+        for path, expected_sha256 in expected.items():
+            with self.subTest(path=path.name):
+                self.assertEqual(hashlib.sha256(path.read_bytes()).hexdigest(), expected_sha256)
 
     def test_all_slurs_are_explicit_and_only_authored_rearticulations_break_sequences(self) -> None:
         raw = self._raw(FULL_ARI_B0_PLAN)

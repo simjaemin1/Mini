@@ -65,12 +65,14 @@ VIBRATO_POLICY_DECISIONS = (
     "candidate_off",
     "selected",
     "reference_shape_unreviewed",
+    "reference_shape_depth_matched_unreviewed",
 )
 VIBRATO_POLICY_STYLES = (
     "straight",
     "late_gentle_yoseong_candidate",
     "late_gentle_yoseong",
     "reference_shape_unreviewed",
+    "reference_shape_depth_matched_unreviewed",
 )
 VIBRATO_END_BEHAVIORS = ("none", "depth_fade_to_zero")
 REFERENCE_CONTOUR_STATUS = "reference_shape_unreviewed"
@@ -102,6 +104,20 @@ REFERENCE_CONTOUR_EVIDENCE_BOUNDARY = (
     "automatic_periodic_f0_proxy_candidate_unreviewed_not_human_reviewed_"
     "not_gyeonggi_style_not_training_or_game"
 )
+REFERENCE_CONTOUR_DEPTH_MATCHED_STATUS = "reference_shape_depth_matched_unreviewed"
+REFERENCE_CONTOUR_DEPTH_MATCHED_EVIDENCE_BOUNDARY = (
+    "automatic_periodic_f0_proxy_shape_depth_matched_unreviewed_not_human_reviewed_"
+    "not_gyeonggi_style_not_training_or_game"
+)
+REFERENCE_CONTOUR_SOURCE_MAX_ABS_CENTS = 34.047561
+REFERENCE_CONTOUR_TARGET_MAX_ABS_CENTS = 18.0
+REFERENCE_CONTOUR_DEPTH_SCALE = 0.5286722300020257
+REFERENCE_CONTOUR_DEPTH_TRANSFORM = {
+    "kind": "linear_peak_abs_match",
+    "source_max_abs_cents": REFERENCE_CONTOUR_SOURCE_MAX_ABS_CENTS,
+    "target_max_abs_cents": REFERENCE_CONTOUR_TARGET_MAX_ABS_CENTS,
+    "scale": REFERENCE_CONTOUR_DEPTH_SCALE,
+}
 REFERENCE_CONTOUR_CLAIM_LIMITS = {
     "gyeonggi_minyo_style_confirmed": False,
     "human_reviewed": False,
@@ -144,7 +160,7 @@ def _load_json(path: Path) -> Mapping[str, Any]:
     return value
 
 
-def pinned_reference_contour_contract() -> dict[str, Any]:
+def pinned_reference_contour_contract(*, depth_matched: bool = False) -> dict[str, Any]:
     """Return the only reference-contour payload accepted by this R&D compiler.
 
     The whole export is byte-hash pinned, then its selected normalized payload
@@ -208,11 +224,24 @@ def pinned_reference_contour_contract() -> dict[str, Any]:
         raise ScoreExpressionError("pinned reference contour payload SHA-256 declaration mismatch")
     if _canonical_sha256(normalized) != REFERENCE_CONTOUR_PAYLOAD_SHA256:
         raise ScoreExpressionError("pinned reference contour canonical payload SHA-256 mismatch")
+    pitch_residual = normalized.get("pitch_residual_cents")
+    if not isinstance(pitch_residual, list) or not pitch_residual:
+        raise ScoreExpressionError("pinned reference contour has no pitch residual samples")
+    source_max_abs = max(abs(float(value)) for value in pitch_residual)
+    if not math.isclose(
+        source_max_abs,
+        REFERENCE_CONTOUR_SOURCE_MAX_ABS_CENTS,
+        abs_tol=1.0e-12,
+        rel_tol=0.0,
+    ):
+        raise ScoreExpressionError("pinned reference contour source maximum depth mismatch")
+    if REFERENCE_CONTOUR_TARGET_MAX_ABS_CENTS / source_max_abs != REFERENCE_CONTOUR_DEPTH_SCALE:
+        raise ScoreExpressionError("pinned reference contour depth scale constant mismatch")
     normalized["contour_payload_sha256"] = claimed_payload_sha256
     if normalized.get("sample_count") != 65:
         raise ScoreExpressionError("pinned reference contour must contain exactly 65 samples")
 
-    return {
+    contract = {
         "status": REFERENCE_CONTOUR_STATUS,
         "onset_seconds": REFERENCE_CONTOUR_ONSET_SECONDS,
         "duration_seconds": REFERENCE_CONTOUR_DURATION_SECONDS,
@@ -233,6 +262,10 @@ def pinned_reference_contour_contract() -> dict[str, Any]:
         "normalized_reference_contour": normalized,
         "claim_limits": dict(REFERENCE_CONTOUR_CLAIM_LIMITS),
     }
+    if depth_matched:
+        contract["status"] = REFERENCE_CONTOUR_DEPTH_MATCHED_STATUS
+        contract["depth_transform"] = dict(REFERENCE_CONTOUR_DEPTH_TRANSFORM)
+    return contract
 
 
 def _require_bool(value: Mapping[str, Any], key: str, *, label: str) -> None:
@@ -595,7 +628,13 @@ def _reference_contour(
             f"{label}.reference_contour is permitted only on {REFERENCE_CONTOUR_EVENT_ID}"
         )
     value = _mapping(raw, label=f"{label}.reference_contour")
-    expected = pinned_reference_contour_contract()
+    status = value.get("status")
+    if status == REFERENCE_CONTOUR_STATUS:
+        expected = pinned_reference_contour_contract()
+    elif status == REFERENCE_CONTOUR_DEPTH_MATCHED_STATUS:
+        expected = pinned_reference_contour_contract(depth_matched=True)
+    else:
+        raise ScoreExpressionError(f"{label}.reference_contour.status is unsupported")
     if value != expected:
         raise ScoreExpressionError(
             f"{label}.reference_contour must exactly match the pinned unreviewed reference contract"
@@ -680,6 +719,12 @@ def _vibrato_policy(
         and active_selection["source_policy_rule_ids_by_event"].get(event_id) == expected_rule
     )
     if reference_contour is not None:
+        reference_status = str(reference_contour["status"])
+        expected_evidence_boundary = (
+            REFERENCE_CONTOUR_DEPTH_MATCHED_EVIDENCE_BOUNDARY
+            if reference_status == REFERENCE_CONTOUR_DEPTH_MATCHED_STATUS
+            else REFERENCE_CONTOUR_EVIDENCE_BOUNDARY
+        )
         if selected_here:
             raise ScoreExpressionError(
                 f"{label}.reference_contour cannot also be an active rule-based vibrato selection"
@@ -691,14 +736,14 @@ def _vibrato_policy(
         if vibrato_enabled:
             raise ScoreExpressionError(f"{label}.reference_contour cannot be combined with sine vibrato")
         if (
-            decision != REFERENCE_CONTOUR_DECISION
-            or style != REFERENCE_CONTOUR_STYLE
+            decision != reference_status
+            or style != reference_status
             or end_behavior != "depth_fade_to_zero"
         ):
             raise ScoreExpressionError(
-                f"{label}.vibrato_policy must explicitly declare reference_shape_unreviewed"
+                f"{label}.vibrato_policy must explicitly declare {reference_status}"
             )
-        if value.get("evidence_boundary") != REFERENCE_CONTOUR_EVIDENCE_BOUNDARY:
+        if value.get("evidence_boundary") != expected_evidence_boundary:
             raise ScoreExpressionError(
                 f"{label}.vibrato_policy.evidence_boundary must retain every unreviewed-reference limit"
             )
@@ -714,13 +759,13 @@ def _vibrato_policy(
             "rule_fired": True,
             "candidate_parameters": None,
             "parameter_status": None,
-            "evidence_boundary": REFERENCE_CONTOUR_EVIDENCE_BOUNDARY,
+            "evidence_boundary": expected_evidence_boundary,
             "active_selection_provenance": None,
-            "reference_contour_status": REFERENCE_CONTOUR_STATUS,
+            "reference_contour_status": reference_status,
         }
-    if decision == REFERENCE_CONTOUR_DECISION:
+    if decision in (REFERENCE_CONTOUR_DECISION, REFERENCE_CONTOUR_DEPTH_MATCHED_STATUS):
         raise ScoreExpressionError(
-            f"{label}.vibrato_policy declares reference_shape_unreviewed without reference_contour"
+            f"{label}.vibrato_policy declares a reference shape without reference_contour"
         )
     if selected_here:
         if decision != "selected" or style != "late_gentle_yoseong" or end_behavior != "depth_fade_to_zero":
@@ -1219,8 +1264,9 @@ def _reference_contour_curve(
     normalized = config["normalized_reference_contour"]
     source_times = numpy.asarray(normalized["time_normalized_0_to_1"], dtype=numpy.float64)
     source_cents = numpy.asarray(normalized["pitch_residual_cents"], dtype=numpy.float64)
+    depth_scale = float(config.get("depth_transform", {}).get("scale", 1.0))
     target = (relative_times[active] - onset) / duration
-    contour = numpy.interp(target, source_times, source_cents)
+    contour = numpy.interp(target, source_times, source_cents) * depth_scale
     fade_in = numpy.clip(
         (relative_times[active] - onset) / float(config["fade_in_seconds"]), 0.0, 1.0
     )

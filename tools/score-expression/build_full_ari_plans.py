@@ -23,6 +23,9 @@ PLAN_DIRECTORY = HERE / "plans"
 B0_FILENAME = "ari_full_16bar_b0_straight_r1.json"
 B1_FILENAME = "ari_full_16bar_b1_contextual_yoseong_r1.json"
 B2_REFERENCE_FILENAME = "ari_full_16bar_b2_reference_shape_unreviewed_r1.json"
+B2_DEPTH_MATCHED_FILENAME = (
+    "ari_full_16bar_b2rd_reference_shape_depth_matched_unreviewed_r1.json"
+)
 
 DO_MIDI = 70
 BEAT_SECONDS = 0.72
@@ -177,6 +180,7 @@ def _expression_policy(
     contextual_yoseong: bool,
     selected_ids: dict[str, str],
     reference_shape_unreviewed: bool = False,
+    reference_shape_depth_matched_unreviewed: bool = False,
 ) -> dict[str, Any]:
     active: dict[str, Any] | None = None
     if contextual_yoseong:
@@ -187,12 +191,12 @@ def _expression_policy(
             "source_policy_rule_ids_by_event": selected_ids,
             "reason": (
                 "retain only the provisional b08 rule-based audition while b16 uses a separately pinned unreviewed automatic F0-proxy contour"
-                if reference_shape_unreviewed
+                if reference_shape_unreviewed or reference_shape_depth_matched_unreviewed
                 else "compare the reviewed local-before-rest and provisional global-cadence late-gentle candidates in one full-score rendering"
             ),
             "evidence_boundary": (
                 "provisional_b08_parameter_audition_separate_from_unreviewed_b16_reference_and_not_an_authenticity_claim"
-                if reference_shape_unreviewed
+                if reference_shape_unreviewed or reference_shape_depth_matched_unreviewed
                 else "provisional_parameter_audition_not_a_claim_about_authentic_bonjo_arirang_performance"
             ),
         }
@@ -209,8 +213,18 @@ def _expression_policy(
     }
 
 
-def build_plan(*, contextual_yoseong: bool, reference_shape_unreviewed: bool = False) -> dict[str, Any]:
-    if reference_shape_unreviewed and not contextual_yoseong:
+def build_plan(
+    *,
+    contextual_yoseong: bool,
+    reference_shape_unreviewed: bool = False,
+    reference_shape_depth_matched_unreviewed: bool = False,
+) -> dict[str, Any]:
+    reference_variant_count = sum(
+        (reference_shape_unreviewed, reference_shape_depth_matched_unreviewed)
+    )
+    if reference_variant_count > 1:
+        raise ValueError("only one b16 reference-shape variant may be selected")
+    if reference_variant_count and not contextual_yoseong:
         raise ValueError("B2-R keeps B1's b08 selection and therefore requires contextual_yoseong")
     events: list[dict[str, Any]] = []
     previous_degree: int | None = None
@@ -262,7 +276,7 @@ def build_plan(*, contextual_yoseong: bool, reference_shape_unreviewed: bool = F
                 rule = DEFAULT_RULE
                 candidate = None
 
-            is_reference = reference_shape_unreviewed and bar == 16
+            is_reference = bool(reference_variant_count) and bar == 16
             is_selected = contextual_yoseong and candidate is not None and not is_reference
             vibrato: dict[str, Any]
             if is_selected:
@@ -272,12 +286,21 @@ def build_plan(*, contextual_yoseong: bool, reference_shape_unreviewed: bool = F
                 vibrato = {"enabled": False}
 
             if is_reference:
+                reference_status = (
+                    compiler.REFERENCE_CONTOUR_DEPTH_MATCHED_STATUS
+                    if reference_shape_depth_matched_unreviewed
+                    else compiler.REFERENCE_CONTOUR_STATUS
+                )
                 vibrato_policy = {
-                    "decision": compiler.REFERENCE_CONTOUR_DECISION,
-                    "style": compiler.REFERENCE_CONTOUR_STYLE,
+                    "decision": reference_status,
+                    "style": reference_status,
                     "policy_rule_id": rule,
                     "end_behavior": "depth_fade_to_zero",
-                    "evidence_boundary": compiler.REFERENCE_CONTOUR_EVIDENCE_BOUNDARY,
+                    "evidence_boundary": (
+                        compiler.REFERENCE_CONTOUR_DEPTH_MATCHED_EVIDENCE_BOUNDARY
+                        if reference_shape_depth_matched_unreviewed
+                        else compiler.REFERENCE_CONTOUR_EVIDENCE_BOUNDARY
+                    ),
                 }
             elif candidate is not None:
                 vibrato_policy: dict[str, Any] = {
@@ -329,7 +352,9 @@ def build_plan(*, contextual_yoseong: bool, reference_shape_unreviewed: bool = F
                 "vibrato_policy": vibrato_policy,
             }
             if is_reference:
-                event["reference_contour"] = compiler.pinned_reference_contour_contract()
+                event["reference_contour"] = compiler.pinned_reference_contour_contract(
+                    depth_matched=reference_shape_depth_matched_unreviewed
+                )
             if articulation == "slur":
                 event["slur_from_previous"] = True
             events.append(event)
@@ -363,12 +388,16 @@ def build_plan(*, contextual_yoseong: bool, reference_shape_unreviewed: bool = F
         },
         "instrument": {"id": "daegeum", "sustained": True},
         "plan_role": (
-            "full_16bar_authorial_game_arrangement_b2_reference_shape_unreviewed_rnd_only"
-            if reference_shape_unreviewed
+            "full_16bar_authorial_game_arrangement_b2rd_reference_shape_depth_matched_unreviewed_rnd_only"
+            if reference_shape_depth_matched_unreviewed
             else (
-                "full_16bar_authorial_game_arrangement_b1_contextual_yoseong_rnd_only"
-                if contextual_yoseong
-                else "full_16bar_authorial_game_arrangement_b0_all_straight_rnd_only"
+                "full_16bar_authorial_game_arrangement_b2_reference_shape_unreviewed_rnd_only"
+                if reference_shape_unreviewed
+                else (
+                    "full_16bar_authorial_game_arrangement_b1_contextual_yoseong_rnd_only"
+                    if contextual_yoseong
+                    else "full_16bar_authorial_game_arrangement_b0_all_straight_rnd_only"
+                )
             )
         ),
         "authorial_score_reference": {
@@ -419,6 +448,7 @@ def build_plan(*, contextual_yoseong: bool, reference_shape_unreviewed: bool = F
             contextual_yoseong=contextual_yoseong,
             selected_ids=candidate_ids,
             reference_shape_unreviewed=reference_shape_unreviewed,
+            reference_shape_depth_matched_unreviewed=reference_shape_depth_matched_unreviewed,
         ),
         "events": events,
     }
@@ -431,6 +461,10 @@ def build_plans() -> dict[str, dict[str, Any]]:
         B2_REFERENCE_FILENAME: build_plan(
             contextual_yoseong=True,
             reference_shape_unreviewed=True,
+        ),
+        B2_DEPTH_MATCHED_FILENAME: build_plan(
+            contextual_yoseong=True,
+            reference_shape_depth_matched_unreviewed=True,
         ),
     }
 
