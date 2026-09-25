@@ -350,6 +350,48 @@ class PublicRuntimeTests(unittest.TestCase):
         with self.assertRaisesRegex(runtime.RuntimeContractError, "pitch mode"):
             runtime.build_score_controls(PLAN, slur_pitch_mode="unknown")
 
+    def test_full_score_gain_cli_is_explicit_and_reuse_requires_reverb(self) -> None:
+        common = [
+            "--plan", str(PLAN),
+            "--gugak-source-root", "gugak",
+            "--ddsp-pytorch-root", "ddsp",
+            "--checkpoint", "model.pth",
+            "--checkpoint-config", "model.pth.config",
+        ]
+        b0 = runtime.parse_args([
+            "--execute", "--output-dir", "out",
+            "--checkpoint-native-reverb",
+            "--shared-interval-end-seconds", "34.56",
+            "--listening-gain-source-slot", "B0",
+            *common,
+        ])
+        self.assertEqual(b0.shared_interval_end_seconds, 34.56)
+        self.assertEqual(b0.listening_gain_source_slot, "B0")
+        self.assertIsNone(b0.reuse_checkpoint_native_reverb_gain_from_report)
+        b1 = runtime.parse_args([
+            "--execute", "--output-dir", "out",
+            "--checkpoint-native-reverb",
+            "--shared-interval-end-seconds", "34.56",
+            "--reuse-checkpoint-native-reverb-gain-from-report", "b0/runtime_report.json",
+            *common,
+        ])
+        self.assertEqual(b1.reuse_checkpoint_native_reverb_gain_from_report, Path("b0/runtime_report.json"))
+        with contextlib.redirect_stderr(io.StringIO()):
+            with self.assertRaises(SystemExit):
+                runtime.parse_args([
+                    "--execute", "--output-dir", "out",
+                    "--reuse-checkpoint-native-reverb-gain-from-report", "b0/runtime_report.json",
+                    *common,
+                ])
+            with self.assertRaises(SystemExit):
+                runtime.parse_args([
+                    "--execute", "--output-dir", "out",
+                    "--checkpoint-native-reverb",
+                    "--listening-gain-source-slot", "B1",
+                    "--reuse-checkpoint-native-reverb-gain-from-report", "b0/runtime_report.json",
+                    *common,
+                ])
+
     def test_hard_step_compiler_check_keeps_canonical_policy_and_marks_formula_na(self) -> None:
         expected_policy = {
             "pitch_transition_milliseconds": runtime.SLUR_TRANSITION_MILLISECONDS,
