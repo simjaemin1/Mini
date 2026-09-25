@@ -84,6 +84,10 @@ const db = (x) => (x > 0 ? +(20 * Math.log10(x)).toFixed(2) : -Infinity);
       ['소리 나는 키 전부', soundKeys],
       ['T292 최악 조합', worst],
       ['어부 다섯 + 마을 배경', fiveFishers],
+      // ★[T387] 사람/전투 — 배선된 네 키(후보 제외 · 표에서 읽는다)가 짐승·낙하·모닥불 곁에서 한꺼번에.
+      //   키 이름을 여기 박지 않는다: `combat` 표의 값 + 곁 소리 다섯(늑대·호랑이가 있는 싸움터 · 짐이 떨어짐).
+      ['전투 한 판', [...new Set(Object.entries(MAN.combat || {}).filter(([k, v]) => !k.startsWith('_') && typeof v === 'string').map(([, v]) => v)),
+                     'drop', 'wolf_howl', 'tiger_growl', 'fire', 'wind']],
     ];
     console.log('\n    ── 오프라인 렌더 실측 (리미터 있는 판) ──');
     console.log('      조합                키  합    피크 dBFS   RMS dBFS  클리핑  이득감소(최악)');
@@ -216,6 +220,57 @@ const db = (x) => (x > 0 ? +(20 * Math.log10(x)).toFixed(2) : -Infinity);
            '⑱ ★★어부 다섯이 같은 틱에 낚아도 **표가 정한 겹침 상한 안**이다(연사가 안 난다)',
            `울린 횟수 ${n} · 표의 상한 ${cap} · 쿨다운 ${MAN.keys.hook.cooldownMs}ms`);
       }
+    }
+
+    // ㉕~㉝ ★★★[T387] **사람/전투 — 수신에서 센다**(족보 226). 진짜 `recv` 에 진짜 모양의 메시지를 먹이고
+    //   `stat.played` 의 증분을 센다. 서버 메시지 모양은 `zone.js` 그대로다(발신 자리 줄은 보고 ⓑ 표).
+    //   ★이 자가 겨누는 위험 셋: ① 상태 동기화(`hp_changed` 등)가 운다 ② 자리를 지어낸다(모르는 pid 가 귓가에서)
+    //   ③ **pid 충돌** — pid 는 존마다 `p1` 부터 센다. 관전 연결의 `p1` 을 나로 읽으면 남의 쓰러짐이 내 몸에서 난다.
+    {
+      const played = () => page.evaluate(() => window.__sfx.dbg().stat.played);
+      const blocked = () => page.evaluate(() => window.__sfx.dbg().stat.blocked);
+      const send = (msgs, role, others) => page.evaluate(({ msgs, role, others }) => {
+        const c = { role, others: new Map(others || []), meta: { worldOffsetX: 0, worldOffsetY: 0 } };
+        for (const m of msgs) window.__sfx.recv(m, c);
+      }, { msgs, role, others });
+      const CB = MAN.combat || {};
+      //   칸막이 — 배선된 다섯(쏨·휘두름·쓰러짐·깨어남·낙하) 중 가장 긴 표본이 `wake_up` 0.524s(보고 ⓒ 잰 값).
+      //   거기에 여유를 얹는다. 새면 `막힘` 이 움직이고 그 줄이 빨개진다(자가 스스로 칸막이를 잰다).
+      const settle = () => page.waitForTimeout(900);
+      // 나 = p1 (주 연결). 층은 `myPid` 전역을 읽는다 — 제품이 로그인 때 세우는 그 칸이다.
+      await page.evaluate(() => { myPid = 'p1'; });
+      const P2 = [['p2', { pid: 'p2', x: 40, y: 0 }]];
+      const cases = [
+        ['㉕ 쏨 — `arrow_spawn`(좌표 실림)', [{ type: 'arrow_spawn', aid: 'z_ar1', x: 30, y: 0, vx: 1, vy: 0, ownerPid: 'p2' }], 'primary', null, 1],
+        ['㉖ 휘두름 — 남(`c.others` 에 있는 p2)', [{ type: 'player_attacked', pid: 'p2', t: 1 }], 'primary', P2, 1],
+        ['㉗ ★휘두름 — **모르는 pid** 는 안 운다(자리를 지어내지 않는다)', [{ type: 'player_attacked', pid: 'p9', t: 1 }], 'primary', P2, 0],
+        ['㉘ 휘두름 — 나(주 연결의 p1 · 위치 없음)', [{ type: 'player_attacked', pid: 'p1', t: 1 }], 'primary', null, 1],
+        ['㉙ ★★pid 충돌 — **관전 연결**의 p1 은 내가 아니다(남인데 모르는 자리 = 무음)', [{ type: 'player_attacked', pid: 'p1', t: 1 }, { type: 'player_downed', pid: 'p1', rescueWindowMs: 1 }], 'observer', null, 0],
+        ['㉚ 쓰러짐 — `player_downed`(나에게만 옴)', [{ type: 'player_downed', pid: 'p1', rescueWindowMs: 180000, options: [] }], 'primary', null, 1],
+        ['㉚b ★쓰러진 채 **다시 접속**하면 같은 `player_downed` 가 한 번 더 온다(`source:relogin`) — 복원이지 사건이 아니다', [{ type: 'player_downed', pid: 'p1', rescueWindowMs: 180000, options: [], source: 'relogin' }], 'primary', null, 0],
+        ['㉛ 깨어남 — 나 하나 + 남 하나(좌표)', [{ type: 'player_respawn', pid: 'p1', hp: 100, x: 0, y: 0 }, { type: 'player_respawn', pid: 'p7', hp: 100, x: 60, y: 0 }], 'primary', null, 2],
+        ['㉜ ★★상태 동기화 일곱은 **안 운다**', [
+          { type: 'hp_changed', pid: 'p1', hp: 40 }, { type: 'hp_changed', pid: 'p2', hp: 10 },
+          { type: 'pvp_state', enabled: true }, { type: 'player_down_state', pid: 'p2', isDown: true },
+          { type: 'arrow_removed', aid: 'z_ar1' }, { type: 'war_command_ack', warId: 3, ok: true },
+          { type: 'self_stat', thirst: 80 }, { type: 'inventory', where: 'death', inventory: {} }], 'primary', P2, 0],
+        ['㉝ ★죽어 쏟기는 **한 번** 운다(`inventory death` 0 + `ground_item_added` 1 — `drop`)', [
+          { type: 'inventory', where: 'death', inventory: {} }, { type: 'ground_item_added', gi: { id: 'g1', x: 50, y: 0, item: 'fish' } }], 'primary', null, 1],
+      ];
+      // 데우기 — 변주는 자리 씨로 파일을 고르므로 **같은 메시지**로 한 번 먹여 받아 둔다(첫 번은 받는 중 = 무음이 계약).
+      for (const [, msgs, role, others] of cases) await send(msgs, role, others);
+      await page.waitForTimeout(1500);
+      for (const [label, msgs, role, others, want] of cases) {
+        await settle();
+        const b0 = await played(), k0 = await blocked();
+        await send(msgs, role, others);
+        const n = (await played()) - b0, nb = (await blocked()) - k0;
+        ok(n === want && nb === 0, label, `울린 ${n} / 기대 ${want} · 막힘 ${nb}`);
+      }
+      ok(Object.keys(CB).filter((k) => !k.startsWith('_')).length === 4,
+         '㉞ 자 전제 — `combat` 표의 사건은 넷(쏨·휘두름·쓰러짐·깨어남) · 층이 이름을 코드에 안 박은 것은 test-audio ⑮ 가 철자로 본다',
+         Object.entries(CB).filter(([k]) => !k.startsWith('_')).map(([k, v]) => `${k}→${v}`).join(' · '));
+      await page.evaluate(() => { myPid = null; });
     }
 
     // ④ ★[T305] 옛 곡선이 증폭기였다는 것을 **이 자로 다시 보인다** — 자명 통과 금지.

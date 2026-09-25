@@ -78,7 +78,19 @@ process.on('exit', killAll);
   const cx = box.x + box.w / 2, cy = box.y + box.h / 2;
   const aiming = () => page.evaluate(() => window.__aimDbg().aiming);
   const drain = () => page.evaluate(() => { const l = window.__evLog.slice(); window.__evLog = []; return l.join(' '); });
-  const reset = async () => { await page.mouse.up({ button: 'right' }).catch(() => {}); await page.evaluate(() => { window.__evLog = []; }); };
+  // ★[T387 ⓪] 자의 격리 — 앞 대본이 연 동사 메뉴(`44-h-hud` `#ctxMenu` · `46-h-verbs` 가 연다)를 닫는다.
+  //   PM 컨테이너 12/1: ⓓ 짧은 우클릭이 커서 자리에 메뉴를 열어 둔 채였고, 같은 자리의 ⓔ `pointerdown` 을
+  //   **메뉴가 먹었다**(사건 로그 `pointerup(2) mouseup(2)` 뿐). 제품 결함이 아니라 자가 앞 대본을 끌고 간 것.
+  //   닫는 길 = 제품이 이미 가진 "바깥 클릭 = 닫기"(document capture `click`) — 캔버스에 좌클릭을 안 준다
+  //   (좌클릭은 이동·공격 길이다). 좌표 없는 `click` 을 body 에 쏜다 = 캔버스 밖 좌클릭. 제품 무접촉.
+  const menuOpen = () => page.evaluate(() => !!document.getElementById('ctxMenu'));
+  const closeMenu = async () => {
+    for (let i = 0; i < 20 && await menuOpen(); i++) {
+      await page.evaluate(() => document.body.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 })));
+      await sleep(60);   // 메뉴는 연 뒤 50ms 가 지나야 바깥 클릭을 듣는다(44-h-hud setTimeout 50)
+    }
+  };
+  const reset = async () => { await page.mouse.up({ button: 'right' }).catch(() => {}); await closeMenu(); await page.evaluate(() => { window.__evLog = []; }); };
 
   // 패널 자리 — 캔버스 위에 덮인 DOM 중 하나(HUD·사이드)
   const panel = await page.evaluate(() => {
@@ -139,7 +151,22 @@ process.on('exit', killAll);
      dLog || '(없다)');
 
   // ⓔ 홀드 600ms
+  const dMenu = await menuOpen();   // ⓓ 가 메뉴를 열었나(정보 — 캔버스 가운데 대상 유무에 달렸다)
+  //   ★자를 먼저 검증한다 — 이 컨테이너에선 ⓓ 가 메뉴를 **안 열 수도** 있다(가운데 대상이 없으면 동사 0).
+  //     그러면 아래 전제 단언은 자명하게 통과한다. 그래서 PM 판의 상태(메뉴가 커서 자리에 열림)를
+  //     **제품 함수 그대로**(`showContextMenu` · 44-h-hud) 만들어 두고 ① 먹힌다는 반례 ② reset 이 닫는다를 본다.
+  const forceMenu = async () => { await page.evaluate(({ x, y }) => showContextMenu(x, y, [{ label: '자 검증', onClick() {} }]), { x: cx, y: cy }); await sleep(80); };
+  await forceMenu();
+  await page.evaluate(() => { window.__evLog = []; });
+  await page.mouse.move(cx + 6, cy + 6); await page.mouse.down({ button: 'right' }); await sleep(60); await page.mouse.up({ button: 'right' });
+  const eaten = await drain();
+  ok(!/pointerdown\(2\)/.test(eaten),
+     'ⓔ 반례 — 열린 메뉴 위 우클릭은 캔버스에 `pointerdown` 을 **안 준다**(PM 컨테이너 12/1 의 기전 재현)', eaten || '(없다)');
+  await forceMenu();
+  const forced = await menuOpen();
   await reset();
+  const eMenu = await menuOpen();
+  ok(forced === true && eMenu === false, 'ⓔ 전제 — 누르기 전에 **열린 메뉴가 없다**(ⓓ 가 연 메뉴를 reset 이 닫았다 · T387 ⓪)', `ⓓ뒤 메뉴 ${dMenu} · 강제로 연 메뉴 ${forced} · reset뒤 ${eMenu}`);
   await page.mouse.move(cx, cy); await page.mouse.down({ button: 'right' });
   await sleep(600);
   const e1 = await aiming(); await page.mouse.up({ button: 'right' });
