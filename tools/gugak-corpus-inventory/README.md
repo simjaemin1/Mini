@@ -55,3 +55,33 @@ python3 tools/gugak-corpus-inventory/inventory.py \
 ```sh
 python3 tools/gugak-corpus-inventory/test_inventory.py
 ```
+
+## 연속 대금 원본 scout
+
+`continuous_daegeum_scout.py`는 명시한 root 전체에서 대금 표기 filename만
+골라 SHA-256과 direct WAV container를 확인한다. 전체 Downloads filename을
+report에 흘리지 않도록, 각 대상의 raw path 대신 root id + relative-path hash +
+byte hash만 남긴다. 60초 이상이고 technique keyword가 없는 native WAV는
+**검토 대상**으로만 올린다. 실제 연속 연주, 호흡, 슬러, 음정, score 적합도,
+학습/게임 사용 권리는 판단하지 않는다.
+
+```sh
+python3 tools/gugak-corpus-inventory/continuous_daegeum_scout.py \
+  --root /explicit/audio-root --root-id downloads \
+  --known-ngc-manifest _bgm_rnd/ngc-extended-daegeum-sanjo-YYYYMMDD/ngc-extended-daegeum-sanjo.manifest.json \
+  --reference-catalog legacy-fullscan=_bgm_rnd/daegeum-transition-bank-fullscan-YYYYMMDD/source_catalog.json \
+  --output _bgm_rnd/local-daegeum-source-scout/report.json \
+  --confirm-read-only
+```
+
+`known-ngc-manifest` match는 해당 controlled local manifest와의 **local-byte
+SHA match**일 뿐이며, NGC가 제공한 공식 cryptographic receipt가 아니다.
+browser quarantine / Where From 정보도 출처 단서일 뿐 권리 허가나 NGC source
+identity를 증명하지 않는다. Report 안의
+`unapproved_rnd_source_baseline_manifest`는 이후 source/rights 검토와
+metadata-only comparison에 넘길 수 있는 path-free baseline이다. audio 변환,
+학습, game inclusion을 허가하지 않는다.
+
+```sh
+python3 tools/gugak-corpus-inventory/test_continuous_daegeum_scout.py
+```
