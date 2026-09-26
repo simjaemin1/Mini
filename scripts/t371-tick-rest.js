@@ -30,6 +30,13 @@ const WINDOW = (process.env.WINDOW || 'day').trim();
 // ★[T375 → T385] 팔 — `off`(종전) / `on`(`T385_ONE_SWEEP=1` · 순회 일곱 → 둘). 같은 틀 DB · 같은 창 · 같은 조각.
 //   (T375 의 `T375_ACTIVE_FLAG` 는 T385 가 흡수했다 — 그 손잡이의 새로 고침 토막 둘도 같이 사라졌다)
 const ARM = (process.env.ARM || 'off').trim();
+// ★[T421] 팔 환경을 **글자로** 받는다 — T385 가 기본 켬이 된 뒤로 `off` 가 "손잡이 미설정" 이 아니다.
+//   `ARM_ENV='T421_SPATIAL_INC=1,T385_ONE_SWEEP=0'` 처럼 준다(없으면 옛 규약: on ⇒ T385_ONE_SWEEP=1).
+const ARM_ENV = {};
+for (const kv of String(process.env.ARM_ENV || '').split(',').map((x) => x.trim()).filter(Boolean)) { const i = kv.indexOf('='); ARM_ENV[kv.slice(0, i)] = kv.slice(i + 1); }
+if (!process.env.ARM_ENV && ARM === 'on') ARM_ENV.T385_ONE_SWEEP = '1';
+// ★[T421] `SPATIAL_SUB=1` — `rebuildSpatialIndex` 안을 토막 넷으로 더 가른다(사슬 그대로 · 합은 spatial 칸과 같다)
+const SPATIAL_SUB = process.env.SPATIAL_SUB === '1';
 const TAG = ARM === 'off' ? WINDOW : `${WINDOW}-${ARM}`;
 const W_LO = WINDOW === 'day' ? 0.10 : 0.72, W_HI = WINDOW === 'day' ? 0.62 : 0.97;
 // ★[T375] **드는 자리를 좁힌다** — 팔 둘을 견주려면 두 판이 **같은 국면**에서 시작해야 한다.
@@ -153,6 +160,21 @@ const PATCHES = [
     repl: "  _ANA.cut('aoi');\n  _ANA.tot += (_anaT() - _ANA.t0); _ANA.pop = npcs.size; _ANA.mobN = mobs.size; _ANA.rep();\n}, TICK_MS);" },
 ];
 
+// ★[T421] `SPATIAL_SUB=1` 일 때만 — `rebuildSpatialIndex` 안 토막 넷(주민 바퀴 · 몹 · 건물 · 자원)
+if (SPATIAL_SUB) {
+  const i = SEGS.findIndex((x) => x[0] === 'spatial');
+  SEGS.splice(i, 0, ['spPl', '[T421] 격자 — 주민 바퀴(+격자 셋 할당)'], ['spMob', '[T421] 격자 — 몹 삽입'],
+    ['spBld', '[T421] 격자 — 활성 청크 건물 삽입'], ['spRes', '[T421] 격자 — 자원(5Hz 조절)']);
+  PATCHES.push(
+    { find: "  for (const m of mobs.values())       qtMobs.insert({ x: m.x, y: m.y, ref: m });",
+      repl: "  _ANA.cut('spPl');\n  for (const m of mobs.values())       qtMobs.insert({ x: m.x, y: m.y, ref: m });" },
+    { find: "  // qtBuildings — 활성청크 건물만 인덱싱.",
+      repl: "  _ANA.cut('spMob');\n  // qtBuildings — 활성청크 건물만 인덱싱." },
+    { find: "  // 자원은 안 움직임 — 매 tick 재삽입하면",
+      repl: "  _ANA.cut('spBld');\n  // 자원은 안 움직임 — 매 tick 재삽입하면" },
+    { find: "    _lastResRebuild = Date.now();\n  }\n}\n",
+      repl: "    _lastResRebuild = Date.now();\n  }\n  _ANA.cut('spRes');\n}\n" });
+}
 function probeHead() {
   const names = SEGS.map((s) => s[0]);
   return PROBE_HEAD
@@ -184,7 +206,7 @@ async function run() {
   const arm = 'rest-' + TAG;
   const dir = `/tmp/wt-t371-${TAG}`;
   const probes = makeArm(dir);
-  const CP = PB + (WINDOW === 'day' ? 0 : 4) + (ARM === 'on' ? 8 : 0), ZP = CP + 1;
+  const CP = PB + (WINDOW === 'day' ? 0 : 4) + (ARM === 'off' ? 0 : 8), ZP = CP + 1;
   const SECRET = 't371-' + TAG;
   const DB = `/tmp/t371-z-${TAG}.db`, CDB = `/tmp/t371-c-${TAG}.db`;
   rmdb(DB); rmdb(CDB);
@@ -197,7 +219,7 @@ async function run() {
     env: Object.assign({}, process.env, { PORT: String(ZP), ZONE_ID: 'hanbando', CENTRAL_HOST: 'localhost', CENTRAL_PORT: String(CP),
       CENTRAL_SECRET: SECRET, ENABLE_VILLAGES: '1', VILLAGE_DAY_MS: String(DAY_MS), DB_PATH: DB, VILLAGE_WAR_LOG: '0',
       T312_FISH_ACT: '1', T371_EVERY: String(SLICE_S * 30),
-      T385_ONE_SWEEP: ARM === 'on' ? '1' : '' }) });   // ★[T385] 팔(T375 손잡이는 흡수됐다)
+      }, ARM_ENV) });   // ★[T421] 팔 환경(`ARM_ENV`)
   const getj = async (p, h) => { try { const r = await fetch(`http://localhost:${ZP}${p}`, h ? { headers: h } : undefined); return await r.json(); } catch (e) { return null; } };
   const perf = (reset) => getj(`/perf${reset ? '?reset=1' : ''}`, { 'x-zone-secret': SECRET });
   const life = () => getj('/lifedbg', { 'x-zone-secret': SECRET });
