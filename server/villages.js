@@ -4970,7 +4970,8 @@ function lifeDebug() {   // ★[직접 서버 디버깅 — 사용자 요청] zo
       ditch: (vil._ditch ? vil._ditch.length : 0),   // ★[11차 T3] 환호 도랑 셀 수(0=시범 마을 아님) — 라이브 확인용
       psite: vil._psite ? { cx: vil._psite.cx, cy: vil._psite.cy, stage: vil._psite.stage, crew: vil._psiteCrew || 0, owner: vil._psite.owner } : null,   // ★[11차 T4] 플레이어 의뢰 집터(공정 단계·붙은 크루)
       pHouses: (vil._pHouses ? vil._pHouses.length : 0),   // 완공된 의뢰 집(마을 침대 명부 밖)
-      t400: vil._t400Sum || null,   // ★[T400] 집 행위 누계(끔이면 null) — 걸음초·낮초·왕복·나른 통나무·전진 단계·크루 직업
+      t400: vil._t400Sum || null,
+      t435: vil._t435Sum || null,   // ★[T435] 곳간 증설 행위 누계(끔이면 null) — 크루·일 · 왕복 · 나른 재료 · 곳간 빈 날 · 선 동 수   // ★[T400] 집 행위 누계(끔이면 null) — 걸음초·낮초·왕복·나른 통나무·전진 단계·크루 직업
       mkt: (() => { if (!state.caravanBodies) return 0; for (const b of state.caravanBodies.values()) if (b.phase === 'linger' && state.byEcon.get(b.toV) === vil) return 1; return 0; })(),   // ★[10차 T4] 장마당 개장 여부(캐러밴 체류 중) — 라이브 확인용 계측
       ccx: vil.ccx, ccy: vil.ccy, acts, sample });
   }
@@ -6701,13 +6702,82 @@ function _mktBroadcast() {                   // onGameTick 훅 — **바뀔 때�
   _mktSig = sig;
   state.deps.broadcast({ type: 'markets', m });
 }
+// ══ ★★[T435 2026-09-27] 곳간 증설도 재료를 낸다 — T400 문법 그대로(손잡이 `T435_GRANARY_ACT` 기본 끔) ════════════
+//   재료는 `server/granary-stages.js` 표(판자 12·돌 8 → econ 재화 통나무 6·돌 8) — econ 이 `granaryEconMaterials()` 로 유도한다(사본 0).
+//   짓는 이 = 여유 크루(`LIFE_CREW` · 직업 무관 · `builder` 없음 · #62). 집 크루(T400 · 명부 앞 둘)가 집터에 붙어 있으면 **그다음 둘**이다(한 사람이 두 곳을 오가지 않는다).
+//   하루 — 곳간 출구(`actFromGranary`)에서 꺼내 손에 들고 · 곳간 터로 걸어가(왕복 상한 `_t341TripsPerDay`) · 놓는다(`_granPend.mat`).
+//   시공 시간은 그대로다 — 착공일 + `G_BUILDD`(랩 6일)이 차고 **재료도 다 놓였을 때** 선다. 재료가 모자라면 그날은 안 선다(기다린다).
+//   ★관측자 무관 — `_lifeGranAdd` 는 `_lifeDaily` 의 관측자 문 **앞**에서 모든 마을이 부른다(이 함수도 관측자를 안 읽는다). 주사위 0.
+function _t435On() { return !!_lifeEcon().T435_GRANARY_ACT; }
+function _t435Crew(vil) {
+  const skip = (_lifeEcon().T400_BUILD_ACT && vil._site) ? LIFE_CREW : 0;   // 집 크루가 일하는 날은 그다음 둘
+  const out = [], pl = state.deps && state.deps.players;
+  let i = 0;
+  for (const pid of (vil.npcPids || [])) { const p = pl && pl.get(pid); if (!p) continue; if (i++ < skip) continue; if (out.length >= LIFE_CREW) break; out.push(p); }
+  return out;
+}
+function _t435Ready(vil) {
+  const p = vil._granPend; if (!p) return false;
+  const need = _lifeEcon().granaryEconMaterials() || {};
+  for (const k of Object.keys(need)) if (((p.mat && p.mat[k]) || 0) < need[k]) return false;
+  return true;
+}
+function _t435GranaryDay(vil) {
+  const E = _lifeEcon();
+  const p = vil._granPend; if (!p || !E.T435_GRANARY_ACT || !vil.econ) return null;
+  const day = state.dayMs ? gameDayOf(_dayNow()) : 0;
+  const dbg = vil._t435Dbg = { day, crew: 0, trips: 0, took: 0, stall: 0, walkS: 0, jobs: {} };
+  const need = E.granaryEconMaterials() || {};
+  if (!p.mat) p.mat = {};
+  const crew = _t435Crew(vil); if (!crew.length) return dbg;
+  dbg.crew = crew.length;
+  for (const c of crew) { const j = c.simJob || '-'; dbg.jobs[j] = (dbg.jobs[j] || 0) + 1; }
+  // 꺼내는 자리 = 곳간 터에 가장 가까운 기존 곳간 사다리(없으면 회관)
+  const tx = p.cx * SZ + SZ / 2, ty = p.cy * SZ + SZ / 2;
+  let fromD = Infinity;
+  for (const g of (vil._granList || [])) { const L = _granLadder(g), d = Math.hypot(L.x - tx, L.y - ty); if (d < fromD) fromD = d; }
+  if (!(fromD < Infinity)) fromD = Math.hypot(vil.ccx * SZ + SZ / 2 - tx, vil.ccy * SZ + SZ / 2 - ty);
+  const sp = (state.deps && state.deps.moveSpeed) || 0;
+  const roundS = sp > 0 ? 2 * fromD / sp : 0;
+  const tripsEach = _t341TripsPerDay(vil, fromD, 1);
+  const left = crew.map(() => tripsEach);
+  let rr = 0, short = false;
+  for (const k of Object.keys(need)) {
+    while ((p.mat[k] || 0) < need[k]) {
+      let ci = -1;
+      for (let q = 0; q < crew.length; q++) { const i = (rr + q) % crew.length; if (left[i] > 0) { ci = i; break; } }
+      if (ci < 0) { short = true; break; }                          // 오늘 걸음을 다 썼다
+      const want = Math.min(_t400PerLoad(k), need[k] - (p.mat[k] || 0));
+      const took = E.actFromGranary(vil.econ, k, want);             // ★곳간 → 손(econ 정본 한 함수)
+      if (!(took > 0)) { short = true; dbg.stall = 1; break; }      // 곳간이 비었다 — 기다린다
+      const c = crew[ci];
+      if (!c.inventory) c.inventory = {};
+      c.inventory[k] = (c.inventory[k] || 0) + took;                // 손에 든다
+      left[ci]--; rr = ci + 1; dbg.trips++; dbg.took += took; dbg.walkS += roundS;
+      c.inventory[k] = Math.max(0, (c.inventory[k] || 0) - took);   // 곳간 터에 놓는다(손은 빈다)
+      p.mat[k] = (p.mat[k] || 0) + took;
+    }
+    if (short) break;
+  }
+  dbg.walkS = +dbg.walkS.toFixed(3);
+  // ★[계측 전용] 누계 — `/lifedbg` 의 `t435` 칸. 회계 아님.
+  const S = vil._t435Sum || (vil._t435Sum = { days: 0, crewDays: 0, trips: 0, took: 0, walkS: 0, stallDays: 0, built: 0, jobs: {} });
+  S.days++; S.crewDays += dbg.crew; S.trips += dbg.trips; S.took = +(S.took + dbg.took).toFixed(4); S.walkS = +(S.walkS + dbg.walkS).toFixed(3); S.stallDays += dbg.stall;
+  for (const j of Object.keys(dbg.jobs)) S.jobs[j] = (S.jobs[j] || 0) + dbg.jobs[j];
+  return dbg;
+}
 const G_CAP = 2500, G_MAX = 8, G_BUILDD = 6;
 function _lifeGranAdd(vil) {
   if (!state.ta || !vil.econ || !vil._granList || !vil._terrSet || !vil._terrSet.size) return;
   const day = (state.world && state.world.day) || 0;
   // ① 착공분 완공(랩 built 누적 6일 = 여기선 착공일+G_BUILDD 도래) — 하루 1동 원칙상 완공 처리가 우선.
   if (vil._granPend) {
-    if (day >= vil._granPend.day) { const p = vil._granPend; vil._granPend = null; _lifeCompleteGranary(vil, p.cx, p.cy); }
+    //   ★[T435] 켬이면 크루가 오늘 재료를 나르고, **재료가 다 놓였을 때만** 선다(끔 = 종전 그대로 날짜만).
+    if (_t435On()) _t435GranaryDay(vil);
+    if (day >= vil._granPend.day && (!_t435On() || _t435Ready(vil))) {
+      const p = vil._granPend; vil._granPend = null; _lifeCompleteGranary(vil, p.cx, p.cy);
+      if (vil._t435Sum) vil._t435Sum.built++;
+    }
     return;
   }
   // ② 재고 비례 목표 대비 부족분 1동 착공
@@ -8511,8 +8581,9 @@ module.exports = { fishPerf, woodPerf, foragePerf, farmPerf,   // ★[T316] `/pe
     // ★[T374] 관측 갈래 퇴근 판정의 **그 함수 자체**를 내준다(같은 규약 · 최소 주입구 하나 — 손을 세려면 사람 목록이 있어야 한다).
     //   하네스가 "D − 오늘 − 손" 을 다시 적으면 그게 사본이다 — 정본 `_t374Done`·`_t374Held` 를 그대로 부른다.
     // ★[T400] 집 행위 하네스용 — 같은 규약(최소 주입구 하나). 하네스는 걸음·자재 규칙을 다시 적지 않는다 — 정본 함수를 그대로 부른다.
+    _t435Probe: { granAdd: (vil) => _lifeGranAdd(vil), day: (vil) => _t435GranaryDay(vil), ready: (vil) => _t435Ready(vil), crew: (vil) => _t435Crew(vil).map((p) => p.pid) },   // ★[T435] 하네스가 같은 함수를 부른다
     _t400Probe: { setup: (o) => { const k = { deps: state.deps, db: state.db, dayMs: state.dayMs, epoch: state.epoch, zoneId: state.zoneId };
-        if (o) { if ('deps' in o) state.deps = o.deps; if ('db' in o) state.db = o.db; if ('dayMs' in o) state.dayMs = o.dayMs; if ('epoch' in o) state.epoch = o.epoch; if ('zoneId' in o) state.zoneId = o.zoneId; if ('tickCtx' in o) state.tickCtx = o.tickCtx; } return k; },
+        if (o) { if ('deps' in o) state.deps = o.deps; if ('db' in o) state.db = o.db; if ('dayMs' in o) state.dayMs = o.dayMs; if ('epoch' in o) state.epoch = o.epoch; if ('zoneId' in o) state.zoneId = o.zoneId; if ('tickCtx' in o) state.tickCtx = o.tickCtx; if ('ta' in o) state.ta = o.ta; if ('world' in o) state.world = o.world; } return k; },
       buildDay: (vil) => _t400BuildDay(vil), headlessDay: (vil) => _lifeHeadlessDay(vil), advance: (vil) => _lifeAdvanceSite(vil),
       perLoad: (it) => _t400PerLoad(it), treesPerLoad: (u) => _t341TreesPerLoad(u), tripsPerDay: (vil, d) => _t341TripsPerDay(vil, d, 1),
       get LIFE_CREW() { return LIFE_CREW; }, get LIFE_STAGE_PDAY() { return LIFE_STAGE_PDAY; } },
