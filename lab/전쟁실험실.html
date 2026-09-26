@@ -7097,7 +7097,7 @@ function computeShadowPrices(v) {
       // ★subs 가드(A/B 실측): SUBSISTENCE_PER_NPC 등재 재화(주식·연료·석재·의류 사슬)는 subs×30이 이미 손튜닝
       //   흐름 target — flowT 중복 적용 시 실측(한랭 연료 등)이 캘리브를 2~3배 덮어써 시장 전체 유보 인플레
       //   (s505 576→17 붕괴 실측). flowT는 손튜닝 없는 롱테일 전용.
-      const flowT = SUBSISTENCE_PER_NPC[r] ? 0 : ((v._consEMA || {})[r] || 0) * 30;
+      const flowT = subsGuard(r, 'price') ? 0 : ((v._consEMA || {})[r] || 0) * 30;
       // ★★★[재민 지시 2026-08-01] "모든 기본 비축 목표 없애라"
       //   "전혀 안 쓰는데 최소한의 비축을 위한 수요 때문에 철을 사는 거 아냐..
       //    그걸 완전히 없애도 잘 작동해야 하는 거 아냐?"
@@ -7205,7 +7205,7 @@ function _priceParamsV2(v, r) {
   else if (r === 'clothes') { target = Math.max(2, N * 1.2); stock = Math.max(0.1, v.storage[r] || 0); }   // ★의복(동기 계약: computeShadowPrices CAP_TARGET와 동일)
   else {
     const subs = (SUBSISTENCE_PER_NPC[r] || 0) * N;
-    const flowT = SUBSISTENCE_PER_NPC[r] ? 0 : ((v._consEMA || {})[r] || 0) * 30;   // ★flow-EMA(동기 계약: computeShadowPrices와 동일 공식·subs 가드)
+    const flowT = subsGuard(r, 'price') ? 0 : ((v._consEMA || {})[r] || 0) * 30;   // ★flow-EMA(동기 계약: computeShadowPrices와 동일 공식·subs 가드)
     const buffer = ORNAMENTAL[r] ? N * LUX_TARGET_PC : N * (util * 1.2);
     const derivT = v1.derivedInputTarget ? v1.derivedInputTarget(v, r) : 0;   // ★[2026-08-02f ①-2] 동기 계약
     target = Math.max(subs * 30, buffer, flowT, derivT);
@@ -8107,7 +8107,7 @@ function tickDecay(v) {
     if (s <= 0) continue;
     const subs = (SUBSISTENCE_PER_NPC[r] || 0) * N;
     const util = UTILITY_WEIGHT[r] || 0.1;
-    const flowT = SUBSISTENCE_PER_NPC[r] ? 0 : ((v._consEMA || {})[r] || 0) * 30;   // ★flow-EMA(동기 계약·subs 가드) — 롱테일 작업 재고는 과잉부패에서 보호
+    const flowT = subsGuard(r, 'price') ? 0 : ((v._consEMA || {})[r] || 0) * 30;   // ★flow-EMA(동기 계약·subs 가드) — 롱테일 작업 재고는 과잉부패에서 보호
     const buffer = N * (util * 1.2);
     const derivT = v1.derivedInputTarget ? v1.derivedInputTarget(v, r) : 0;   // ★[2026-08-02f ①-2] 동기 계약
     const target = Math.max(subs * 30, buffer, flowT, derivT);
@@ -8524,6 +8524,28 @@ function computeVillageStats(v) {
   return stats;
 }
 
+
+// ════════════════════════════════════════════════════════════════════════════════════════
+// ★★[T416 2026-09-26] **subs 가드 — 술어 하나**(#63 · 두 기계가 같은 문을 지난다 · 값 무변)
+//   같은 소비 흐름(`v._consEMA`)을 두 기계가 읽는다:
+//     · **가격**(`computeShadowPrices` · `_priceParamsV2` · `tickDecay` — 동기 계약 셋) — `flowT = 가드 ? 0 : EMA×30`
+//       가드 유래: 2026-07-12 flow-EMA 채택 세션(문서/아카이브/CHECKLIST.md:161 ②) — "SUBSISTENCE_PER_NPC 등재 재화는
+//       subs×30 이 이미 손튜닝 흐름 target: flowT 중복 시 … 캘리브를 2~3배 덮어써 시장 유보 인플레(s505 576→17 붕괴·가드로 542 회복)".
+//     · **게시판**(`server/events.js` 부족·과잉 래치 → 의뢰) — `ema > 0 && stock < ema × SHORT_DAYS`. 가드가 **없었다**.
+//       그땐 식량이 EMA 에 아예 안 들어왔다(같은 날 ① "식단 폴드 금지") — 게시판(08-25)이 가드를 물을 일이 없었다.
+//       `T263_FOOD_CONS=1` 이 식량을 EMA 에 넣으면 둘이 갈린다(T362 §3: 가격 5종 · 게시판 14종).
+//   ⇒ 판정 자리는 이 술어 **하나**다. 두 기계는 이것을 부르고 규칙을 다시 적지 않는다(사본 0).
+//   ⚠기본은 **현행 그대로**(가격 가드 · 게시판 무가드) = 넷째 판 비트 동일. 팔은 `T416_SUBS_GUARD`:
+//     `a` = 둘 다 가드(생존 품목은 곳간이 댄다 — 게시판도 안 다룬다) · `b` = 둘 다 무가드(부족은 의뢰로 · 가격도 flowT).
+//     ★어느 팔이 정본인가는 재민 #63 — 이 술어는 **켜지 않는다**.
+function isSubsistenceFlow(r) { return !!SUBSISTENCE_PER_NPC[r]; }
+const _T416_ARM = (typeof process !== 'undefined' && process.env && process.env.T416_SUBS_GUARD) ? String(process.env.T416_SUBS_GUARD).toLowerCase() : '';
+function subsGuard(r, who) {
+  if (_T416_ARM === 'b') return false;
+  if (_T416_ARM === 'a') return isSubsistenceFlow(r);
+  return who === 'board' ? false : isSubsistenceFlow(r);   // 현행: 가격만 가드
+}
+
 module.exports = {
   createWorldV2,
   tickWorldV2,
@@ -8534,6 +8556,7 @@ module.exports = {
   ELASTICITY,
   TAU,
   SUBSISTENCE_PER_NPC,
+  isSubsistenceFlow, subsGuard,   // ★[T416] subs 가드 술어 하나 — 가격 셋·게시판 하나가 같은 문을 부른다
   // 시장 충격 정산 헬퍼(1b) — 프로브·자가검증용 노출
   _priceParamsV2, _impactSegs, _impactF, _impactBuyV2, _impactSellV2,
   // 기온 모델(2026-07-12) — 생활층(밤낮 시간 곡선)·프로브용 노출
