@@ -252,6 +252,16 @@ if (!seeds) {
 const world = econV2.createWorldV2({ seed: SEED, villageCount: seeds.length, picker: 'rational', infoRange: 5000, raidPer100: 0.005 });
 world.villages = []; world.events = [];
 R('server/trees').attachToWorld(world);          // ★T135 나무 층 — `t17-metrics` 와 같은 문(족보 130)
+// ★★[T396 2026-09-26] **같은 인자꼴** — `t17-metrics` 가 세계에 거는 env 손잡이를 **그 줄 그대로** 건다.
+//   이 자가 기준선을 대신하려면 같은 env 로 같은 세계를 세워야 한다(한쪽만 받으면 두 자가 다른 팔을 잰다).
+//   ⚠계산 0 — `t17-metrics.js` 의 그 줄들을 글자 그대로 옮겼다(문이 여럿이 되지 않게 · 문은 엔진에 있다).
+//   ⓐ T195 마모 배수 — main 에 `econ.TOOL_WEAR_MUL` 이 없으면 **아무 일도 안 한다**(typeof 가드 · 넷째 판 무변).
+//      T367 가지를 얹으면 서버와 같은 한 줄이 된다. ★이 줄이 없어서 T367 의 `t176-ab` 판은 #12 를 **못 봤다**(보고/T396 §3).
+if (typeof econ.TOOL_WEAR_MUL === 'number' && econ.TOOL_WEAR_MUL !== 1) world.toolWearMul = econ.TOOL_WEAR_MUL;
+{ const _tw = parseFloat(process.env.T191_TOOLWEAR || ''); if (Number.isFinite(_tw) && _tw > 0 && _tw !== 1) world.toolWearMul = _tw; }
+if (process.env.T206_CARGO_TWO !== undefined) world.cargoTwo = process.env.T206_CARGO_TWO === '1';
+if (process.env.T233_CARGO_GATE !== undefined) world.cargoTwoGate = process.env.T233_CARGO_GATE === '1';
+if (process.env.T239_CARGO_BEST === '1') world.cargoTwoBest = true;
 for (const s of seeds) {
   const ev = econ.createVillage({ ...s.lp, initialPop: P.INITIAL_POP, name: s.name });
   ev._world = world; ev.coord = { x: s.ccx * 2.5, y: s.ccy * 2.5 };
@@ -318,11 +328,31 @@ let clearedTot = 0;
 const _foodSum = () => world.villages.reduce((a, v) => a + ((v.storage && v.storage.food) || 0), 0);
 GRAN.d0 = _foodSum();
 
+// ★★[T396] **ⓛ 표본** — `t17-metrics` 의 석재 바닥 마을 궤적을 **같은 술어·같은 칸**으로 받는다(관측 전용 · 세계 무접촉).
+//   두 자가 같은 ⓚⓛ 문자열을 내야 `diff` 로 대조된다(카드 ②). 술어는 정본(`livelihood.FLOOR.stone`)에게 묻는다.
+const _STONE_FLOOR_L = R('server/livelihood').FLOOR.stone;
+const _floorIdx = world.villages.map((v, i) => [v, i]).filter(([v]) => (v.land && v.land.stone || 0) <= _STONE_FLOOR_L + 1e-9);
+const _floorTrace = _floorIdx.map(([v]) => ({ name: v.name, land: +(v.land.stone || 0).toFixed(3),
+  pop0: (v.npcs || []).length, popMax: (v.npcs || []).length, stoneMin: Infinity, toolMin: Infinity,
+  daysStone0: 0, daysTool0: 0, forDays: 0, masonDays: 0, days: 0 }));
+
 const _log = console.log; console.log = () => {};
 for (let day = 0; day < DAYS; day++) {
   const floorBefore = vils.map((v) => (v.econ && v.econ._t100FloorTot) || 0);
   econV2.tickWorldV2(world);
   L.scanDay(world, world.day, {});                                   // ★장부는 관측자 — `t165-ab` 과 같은 자리
+  for (let k = 0; k < _floorIdx.length; k++) {                       // ★[T396] ⓛ 표본 — `t17-metrics` 와 같은 줄
+    const v = _floorIdx[k][0], t = _floorTrace[k];
+    const n = (v.npcs || []).length, st = +(v.storage.stone || 0), tl = +(v.storage.tool || 0);
+    t.days++;
+    if (n > t.popMax) t.popMax = n;
+    if (st < t.stoneMin) t.stoneMin = st;
+    if (tl < t.toolMin) t.toolMin = tl;
+    if (st < 0.2) t.daysStone0++;
+    if (tl < 0.05) t.daysTool0++;
+    t.forDays += ((v.counts || {}).forager || 0);
+    t.masonDays += ((v.counts || {}).mason || 0);
+  }
   if (CL) clearedTot += CL.tickDay(vils) || 0;
   for (const v of vils) {
     const ev = v.econ; if (!ev) continue;
@@ -698,6 +728,71 @@ console.log(`\n[T176] 시드 ${SEED} · ${DAYS}일 · 팔 ${out.arm.toUpperCase(
 console.log(`  인구 ${pop.toLocaleString()} · 소멸 ${dead}/${ever} · 무기Q ${Math.round(weapQ)} · 확장셀 ${expand.toLocaleString()} · 게시 ${out.reqOpened.toLocaleString()} · 도구Q ${out.toolQ.toFixed(1)} · 보존식 ${out.preserved.toFixed(1)} · 생곡 ${out.rawGrain.toFixed(1)}`);
 console.log(`  밀도 ㉮ ${out.densAll.toFixed(2)} · ㉯ ${out.densVal.toFixed(2)} 일/건 · 밭칸 ${out.cells0Tot.toLocaleString()}→${out.cellsTot.toLocaleString()}(개간 ${out.clearedTot.toLocaleString()}) · 수확 ${out.harvestNTot.toLocaleString()}건 · 첫 수확일 ${out.firstHarvestDay}`);
 console.log(`  곳간 ${Math.round(out.econFoodTot).toLocaleString()} · 텃밭 하한 ${Math.round(out.floorTot).toLocaleString()}(마을·일 ${out.floorDaysTot.toLocaleString()}) · 석재 바닥 ${stoneFloorN}/${ever}곳`);
+// ════════════════════════════════════════════════════════════════════════════════════════
+// ★★[T396 2026-09-26] **같은 열 출력** — `t17-metrics` 의 ⓚ(기준선 한 줄)·ⓛ(석재 바닥 마을) 블록을
+//   **같은 문자열 꼴**로 낸다. 값은 위에서 이미 만든 것 그대로다(새 계산 0 — 반올림 자리도 그 파일 그대로).
+//   ⇒ 두 자의 출력에서 ⓚⓛ 블록만 잘라 `diff` 하면 넷째 판에서 **0 줄**이어야 한다(보고/T396 §1).
+//   ⚠문구도 한 글자 안 바꿨다 — 특히 "생활층 미실행" 줄은 이 자에서도 **참**이다(이 자가 도는 것은
+//     밭 상태기·개간이지 `_lifeDaily`(사냥 land.game)가 아니다 · 족보 130).
+{
+  const S2 = L.stats, B2 = S2.byType || {};
+  const presStock2 = PRESERVED.reduce((a, r) => a + stockOf(r), 0);
+  const rawGrainStock2 = RAWGRAIN.reduce((a, r) => a + stockOf(r), 0);
+  const games = world.villages.filter((v) => (v.npcs || []).length > 0)
+    .map((v) => +((v.land && v.land.game) || 0)).sort((a, b) => a - b);
+  const gMin = games.length ? games[0] : null;
+  const gMed = games.length ? games[games.length >> 1] : null;
+  console.log(`\nⓚ [T152] 기준선 한 줄 — 시드 ${SEED} · ${DAYS}일 · 인구있는 마을 ${live}`);
+  console.log(`  여덟 수   인구 ${pop} · 소멸 ${dead}/${ever} · 무기Q ${weapQ.toFixed(0)} · 확장셀 ${expand}`
+    + ` · 게시 ${S2.reqOpened} · 도구Q ${toolQ.toFixed(1)} · 보존식 ${presStock2.toFixed(1)} · 생곡 ${rawGrainStock2.toFixed(1)}`);
+  console.log(`  밀도      ㉮ 전체 ${dens(S2.emitted).toFixed(2)}일/건 · ㉯ 값 유형 ${dens(vN).toFixed(2)}일/건 (캐논 2~3일)`
+    + `   [값 ${vN} · 일 ${dN} · 합 ${S2.emitted}]`);
+  console.log(`  약속      게시 ${S2.reqOpened} · 철회 ${S2.reqClosed} · 축소 ${S2.reqShrunk}`
+    + ` · 못갚아미게시 ${S2.reqNoPay} · **깨진 약속(재검증철회) ${S2.reqRevalidated}**`);
+  console.log(`  land.game(시딩값 · 정적) 최저 ${gMin == null ? '—' : gMin.toFixed(2)} · 중앙 ${gMed == null ? '—' : gMed.toFixed(2)}`
+    + `   [바닥 ${R('server/livelihood').FLOOR.game}]`);
+  console.log(`            ⚠동적 land.game(T146)은 이 랩이 **안 돈다**(생활층 미실행 · 족보 130) — T146 계측기를 봐라.`);
+
+  console.log(`\nⓛ [T152] 석재 바닥 마을 — \`land.stone == FLOOR(${_STONE_FLOOR_L})\` 전수`);
+  if (!_floorTrace.length) {
+    console.log(`  이 시드엔 바닥 마을이 **0곳**이다(그래서 이 시드에선 그 궤적이 못 난다).`);
+  } else {
+    console.log('  ' + '마을'.padEnd(12) + 'land'.padStart(6) + '인구(끝/최고)'.padStart(14)
+      + '돌 최저'.padStart(9) + '도구 최저'.padStart(10) + '돌<0.2 일수'.padStart(12)
+      + '도구≈0 일수'.padStart(12) + '채집·석공(누적 인·일)'.padStart(22) + '  궤적');
+    let onEdge = 0;
+    for (let k = 0; k < _floorTrace.length; k++) {
+      const v = _floorIdx[k][0], t = _floorTrace[k];
+      const now = (v.npcs || []).length;
+      const spiral = (t.daysTool0 / Math.max(1, t.days) > 0.1) && (now < t.popMax * 0.5);
+      if (spiral) onEdge++;
+      console.log('  ' + String(t.name).padEnd(12) + t.land.toFixed(2).padStart(6)
+        + `${now}/${t.popMax}`.padStart(14) + (isFinite(t.stoneMin) ? t.stoneMin.toFixed(2) : '—').padStart(9)
+        + (isFinite(t.toolMin) ? t.toolMin.toFixed(2) : '—').padStart(10)
+        + String(t.daysStone0).padStart(12) + String(t.daysTool0).padStart(12)
+        + `${t.forDays}/${t.masonDays}`.padStart(22) + (spiral ? '  ★진입' : '  —'));
+    }
+    console.log(`  ⇒ **칼날 위 ${onEdge}곳 / 바닥 마을 ${_floorTrace.length}곳**(인구있는 마을 ${live} 중).`);
+  }
+
+  //   ★`T17_JSON` 을 주면 `t17-metrics` 와 **같은 열쇠·같은 반올림**의 JSON 을 쓴다 — `t17-seeds.js` 같은
+  //     표 기계가 자를 바꿔 끼울 수 있게(여기 담는 것은 기준선 열뿐 · ⓒⓓⓔ… 진단 열은 안 담는다).
+  if (process.env.T17_JSON) {
+    const o17 = {
+      seed: SEED, days: DAYS, villages: seeds.length, live, ruler: 't176-ab',
+      base: { pop, dead, ever, weapQ: +weapQ.toFixed(0), expand, trades: (world.tradeLog || []).length },
+      vpop: world.villages.map((v) => ({ name: v.name, pop: v.npcs.length })),
+      eight: { grain: +rawGrainStock2.toFixed(1), densAll: +dens(S2.emitted).toFixed(2), densValue: +dens(vN).toFixed(2),
+               eventsValue: vN, eventsDeed: dN, eventsAll: S2.emitted },
+      board: { reqOpened: S2.reqOpened, reqClosed: S2.reqClosed, emitted: S2.emitted,
+               daysPer: +(1 / Math.max(1e-9, S2.emitted / Math.max(1, live * S2.days))).toFixed(2) },
+      tool: { q: +toolQ.toFixed(1) },
+      preserve: { stock: +presStock2.toFixed(1) },
+    };
+    try { fs.mkdirSync(path.dirname(process.env.T17_JSON), { recursive: true }); fs.writeFileSync(process.env.T17_JSON, JSON.stringify(o17, null, 1));
+      console.log(`  [t17-json] ${process.env.T17_JSON}`); } catch (e) { console.log('  [t17-json] 실패: ' + e.message); }
+  }
+}
 if (process.env.T176_JSON) {
   try { fs.mkdirSync(path.dirname(process.env.T176_JSON), { recursive: true }); fs.writeFileSync(process.env.T176_JSON, JSON.stringify(out, null, 1));
     console.log(`  [json] ${process.env.T176_JSON}`); } catch (e) { console.log('  [json] 실패: ' + e.message); }
