@@ -2218,6 +2218,8 @@ function _cons(v, r, amt) { if (!(amt > 0)) return; const d = v._consDay || (v._
 
 // 식량 소비 우선순위 — cooked_food > fish/meat > food > 채집물(fruit/veg/mushroom)
 // 채집물은 환산비가 낮아 농사보다 끼니로 비효율
+// ★[T423] 마을 식사 명부 — 원정 중 팩을 먹는 병사(`_warPack`)를 뺀 수. 표식이 없으면(끔 · 전쟁 없는 세계) 한 글자도 안 다르다.
+function _t423EatN(v, N) { let k = 0; for (const p of v.npcs) if (p._warPack && p._warDraft) k++; return k ? N - k : N; }
 function consumeFood(v, need) {
   let remaining = need;
   // ★소비량 군별 기록(_foodEaten) — 이게 진짜 식단(자체생산+수입, 신선히 먹은 것 포함). 다양성 판정에 씀.
@@ -5011,7 +5013,10 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
 
   // 2) 소비
   const N = v.npcs.length;
-  const foodNeed = N * DAILY_FOOD_CONSUMPTION;
+  // ★★[T423 2026-09-26 · 군량 = 행위 ⓐ] 원정군은 **제 짐을 먹는다** — 마을 식사 명부에서 빠진다(T295 "징발자는 생산에서
+  //   빠진다"의 소비판 · 이중 계산 닫힘: 종전엔 팩 1 + 마을 1 = 1인 하루 2단위). 표식 `_warPack` 은 war-core 가 **손잡이 켤 때만**
+  //   공격 징발에 붙인다(방어 소집은 안 붙는다 — 제 마을 곳간을 먹는다) ⇒ 끔이면 이 줄은 `N` 그대로 = 비트 동일.
+  const foodNeed = _t423EatN(v, N) * DAILY_FOOD_CONSUMPTION;
   const foodGap = consumeFood(v, foodNeed);  // 남으면 굶주림
   // 도구 마모 — tool dependent NPC만
   // ★★★[T180 2026-09-12 · 이 파일의 유일한 접점] **도구 수명을 밖에서 물어본다.**

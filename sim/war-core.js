@@ -399,6 +399,8 @@ function _capComplete(fromVil, toVil, npc) {
 //     종전에도 승자는 제 무기를 잃지 않았다). 그래서 **귀환 뒤 곳간은 끔과 같다** — 다른 것은 원정 **동안**뿐이다.
 //   ★방어 소집은 안 건다 — 마을 안에서 들고 마을 안에서 내려놓는다(같은 날 · 장부 무변).
 //   손잡이: `T403_ARMS_LEDGER=1` 일 때만. 끔이면 `w._arms` 가 안 생기고 아래 두 함수는 0 을 낸다 = 비트 동일.
+// ★[T423] 짐이 먹는다(군량 = 행위 ⓐ) — 손잡이 `T423_RATION_ACT=1` 일 때만. 끔이면 아래 문들이 한 글자도 안 돈다.
+function _rationActOn() { return typeof process !== 'undefined' && !!process.env && process.env.T423_RATION_ACT === '1'; }
 function _armsLedgerOn() { return typeof process !== 'undefined' && !!process.env && process.env.T403_ARMS_LEDGER === '1'; }
 function warArmsOut(e, force) {
   if (!_armsLedgerOn() || !e || !e.storage) return null;
@@ -504,7 +506,7 @@ function _warDraftMark(e, npc, pid) {
 // 복귀 — 같은 직업 자리로 되돌린다(직업은 애초에 안 바꿨다).
 function _warDraftUnmark(e, npc) {
   if (!e || !npc || !npc._warDraft) return false;
-  delete npc._warDraft; if (npc._warPid != null) delete npc._warPid;
+  delete npc._warDraft; if (npc._warPid != null) delete npc._warPid; if (npc._warPack) delete npc._warPack;
   if (e.counts && npc.currentJob) e.counts[npc.currentJob] = (e.counts[npc.currentJob] || 0) + 1;
   return true;
 }
@@ -737,7 +739,8 @@ function createWar(opts) {
   // 표본 밖 병력(pid 없는 나머지) — econ 되먹임은 전량이다.
   function warDraftFill(vil, n, warId) {
     const e = vil && vil.econ; let k = 0;
-    for (let i = 0; i < (n | 0); i++) { const npc = _warDraftPick(e, null); if (!npc) break; _warDraftMark(e, npc, null); npc._warDraft = (warId | 0) || 1; k++; }
+    const _pack = _rationActOn();   // ★[T423] 원정군은 팩을 먹는다 — 마을 식사 명부에서 빠진다(econ 이 이 표식을 본다 · 끔이면 안 붙는다)
+    for (let i = 0; i < (n | 0); i++) { const npc = _warDraftPick(e, null); if (!npc) break; _warDraftMark(e, npc, null); npc._warDraft = (warId | 0) || 1; if (_pack) npc._warPack = 1; k++; }
     return k;
   }
   function warDraftReleasePid(vil, pid) {
@@ -760,6 +763,64 @@ function createWar(opts) {
     const t = _warFoodTake(fromE, amount, FOOD);
     if (t.got > 0 && toE) _warFoodGive(toE, t.items, 1);
     return t.got;
+  }
+
+  // ═══════════ ★★[T423] 짐이 먹는다 — 군량 = 행위 ⓐ(설계_군량_행위 §1-ⓐ · PM #68) ═══════════
+  //   싣기는 무변(`_opPackLoad` 가 곳간에서 섭식 정본 순서로 뗀다) → 호스트가 그 팩을 **병사 몸의 inventory** 로 나눠 싣고
+  //   (`packSplit`) → 하루 경계(아래 `_packTick` · 종전 `_packRem −= 1` 세 자리 그대로)마다 **몸이 제 짐에서 먹는다**
+  //   (`bodyEat` = `_warFoodTake` — 싣기와 **같은 문** · 섭식 정본 `consumeFood` 가 품목을 고른다 · 사본 0) → `_packRem` 은
+  //   짐 합의 **거울**(일수 = 짐 식량등가 ÷ (병력 × WAR_RATION) · 결단 식 무변) → 귀환 몸이 `_warFoodGive` 로 내려놓는다.
+  //   몸이 없는 전쟁(pid 0 · `_warNoArmy`)·몸이 아직 안 선 날은 호스트가 null 을 내고 **종전 장부**로 깎는다(되돌림 문).
+  //   ★새 수 0 — 하루치 = `WAR_RATION` · 몸당 몫 = 병력 ÷ 몸 수(유도) · 짐 상한은 싣는 쪽이 표로만 잰다.
+  function _packTick(w, day) {
+    if (_rationActOn() && typeof opts.rationEat === 'function' && w._packOnBodies) {
+      let r = null; try { r = opts.rationEat(w, day); } catch (_) { r = null; }
+      if (r != null && Number.isFinite(r)) {
+        w._packRem = Math.max(0, r);
+        const bk = w._rationBook, d = bk && bk.days[bk.days.length - 1];
+        if (d && d.day === day) log(day, w.atk.name + ' 짐이 먹는다 — 짐꾼 ' + d.bearers + ' · 먹음 ' + d.eaten.toFixed(1) + ' · 남은 짐 ' + d.left.toFixed(1) + '(' + w._packRem.toFixed(2) + '일) · ration ' + (w._ration != null ? w._ration.toFixed(2) : '-'));
+        return;
+      }
+    }
+    w._packRem = Math.max(0, (w._packRem || 0) - 1);
+  }
+  // 팩을 몸 n 개로 나눈다 — 남은 몫(잔량 일수 × 하루치 ÷ 적재)만큼 품목 그대로 · 한 번만(팩은 이제 몸의 것이다).
+  function packSplit(w, n) {
+    if (!_rationActOn() || !w || w._packOnBodies || !(n > 0)) return null;
+    const items = w._packItems, load = w._packLoad || 0, per = (w.force || 0) * WAR_RATION;
+    if (!items || !(load > 0) || !(per > 0)) return null;
+    const frac = Math.max(0, Math.min(1, ((w._packRem || 0) * per) / load)) / n;
+    const one = {}; for (const k in items) { const q = (items[k] || 0) * frac; if (q > 0) one[k] = q; }
+    const book = w._rationBook = { load, split: (w._packRem || 0) * per, eaten: 0, back: 0, drop: 0, ledgerEaten: load - (w._packRem || 0) * per, days: [] };
+    w._packOnBodies = n; w._packKeys = Object.keys(one); w._packShare = (w.force || 0) / n;
+    w._packItems = null; w._packLoad = 0;
+    return one;
+  }
+  // 몸 하나가 먹는다 — 그 짐(품목 칸만 본 거울)에서 섭식 정본 순서로 `need`(식량등가)만큼. → { got, items }
+  function bodyEat(bag, need, ctx) {
+    const e = { storage: bag, _priceCache: ctx && ctx._priceCache, _world: ctx && ctx._world };
+    return _warFoodTake(e, need, FOOD);
+  }
+  // 짐의 식량등가(econ 정본 `totalFoodEquivalent` 그대로 · 없는 칸은 0 으로 채운 거울에 묻는다)
+  function bagFE(bag, ctx) {
+    const st = { food: 0, fish: 0, meat: 0, cooked_food: 0 }; for (const k in bag) st[k] = bag[k] || 0;
+    return Math.max(0, _feOf({ storage: st, _world: ctx && ctx._world }) || 0);
+  }
+  // 귀환 몸이 짐을 내려놓는다 — 환급과 **같은 문**(`_warFoodGive` · 품목 그대로 · 세금 0).
+  function rationLayDown(w, items) {
+    const A = w && w.atk && w.atk.econ; if (!A || !items) return 0;
+    const fe = bagFE(items, { _world: A._world });
+    _warFoodGive(A, items, 1);
+    if (w._rationBook) w._rationBook.back += fe;
+    log(world.day, w.atk.name + ' 짐을 곳간에 내려놓는다 — ' + fe.toFixed(1));
+    return fe;
+  }
+  // war-core 귀환 도착 — 아직 몸에 남은 짐을 호스트가 모아 주면 내려놓고 팩을 닫는다(두 번 안 준다).
+  function _rationLayDownAll(w) {
+    let back = 0;
+    if (typeof opts.rationCollect === 'function') { let items = null; try { items = opts.rationCollect(w); } catch (_) { items = null; } if (items) back = rationLayDown(w, items); }
+    w._packRem = 0; w._packItems = null; w._packLoad = 0;
+    return back;
   }
 
   // 정산 넷이 부르는 문 하나 — 군량을 돌려주고 팩을 비운다(두 번 돌려주지 않는다).
@@ -1027,12 +1088,12 @@ function createWar(opts) {
       if (w.phase === 'march') {
         if (w.op == null) w.op = 'march';   // 방어적(훅 경로·구 객체)
         if (w.op === 'march') {
-          w._packRem = Math.max(0, (w._packRem || 0) - 1);   // ★[T295 ②] 행군에도 먹는다(한 적재 — 행군분이 팩 안에 있다)
+          _packTick(w, day);   // ★[T295 ②] 행군에도 먹는다(한 적재 — 행군분이 팩 안에 있다) · ★[T423] 짐이면 몸이 먹는다
           if (day < w.eta) continue;   // 행군 중
           w.op = 'camp'; w._arriveDay = day;
           log(day, w.atk.name + ' → ' + w.def.name + ' 앞 도착(포위 결정 링) — 주둔·결단');
         } else if (w.op === 'camp' || w.op === 'siege') {
-          w._packRem = Math.max(0, (w._packRem || 0) - 1);   // camp/siege 1일 = 군량 팩 1일분 소모
+          _packTick(w, day);   // camp/siege 1일 = 군량 팩 1일분 소모 · ★[T423] 짐이면 몸이 먹는다
           const e = w.atk.econ; if (e && e._warMobUntil) e._warMobUntil = Math.max(e._warMobUntil, day + (w.marchDays || 1) + 1);   // 원정 지속=동원 생산감소 지속(귀환 여유 포함)
         }
         _opDefenseDaily(w, day);                                        // 방어 3택(응전/버티기·히스테리시스 2일) + sortie 결단
@@ -1044,13 +1105,14 @@ function createWar(opts) {
       else if (w.phase === 'battle') { /* ★[P2 LOD] 실체 전투(server/war-live) 진행 중 — 상태머신이 판정·되먹임(warResolveBattle 3인자)·귀환 전환 담당. daily 관여 안 함(랩 warDaily 정합). */ }
       else {
         // 귀환 중 — 도착까지도 먹는다. 닿으면 ★[T295 ②] **환급 한 곳**(넷 다 이 문을 지난다) + 징발 해제.
-        if (day < w.eta) { w._packRem = Math.max(0, (w._packRem || 0) - 1); continue; }
+        if (day < w.eta) { _packTick(w, day); continue; }
         const e = w.atk.econ;
-        const _back = warRationRefund(w, 'return');
+        const _back = w._packOnBodies ? _rationLayDownAll(w) : warRationRefund(w, 'return');   // ★[T423] 짐이면 몸이 내려놓는다(같은 `_warFoodGive` 문)
         const _armsBack = warArmsReturn(w);   // ★[T403] 무기 반납(끔이면 0)
         const _rel = warDraftReleaseWar(w);
         if (e) { e._warMobUntil = 0; e._warMobFrac = 0; }
         if (_back > 0 || _rel > 0) log(day, w.atk.name + ' 귀환 — 군량 잔량 ' + _back.toFixed(0) + ' 곳간 복귀 · 징발 해제 ' + _rel + '명');
+        if (w._rationBook) { const b = w._rationBook; log(day, w.atk.name + ' 짐 장부 — 적재 ' + b.load.toFixed(1) + ' = 장부 ' + b.ledgerEaten.toFixed(1) + ' + 몸이 먹음 ' + b.eaten.toFixed(1) + ' + 내려놓음 ' + b.back.toFixed(1) + ' + 드랍 ' + b.drop.toFixed(1)); }
         if (w._arms) log(day, w.atk.name + ' 귀환 — 무기 반납 ' + _armsBack + '/' + w._arms.out + '(민병 ' + w._arms.militia + ')');
         WARS.splice(i, 1);
       }
@@ -1108,6 +1170,7 @@ function createWar(opts) {
     OPS_ON: true, _opNpcDecide, _opCheckSurrender, _opDefenseDaily, _warWalkoverOutcome, _opDoSurrender, _opSetSiege, _opPackLoad, _opPackRefund,
     // ★[T295] 동원의 대가 — 결속(pid 정본) · 군량 환급 한 곳. 호스트(server/villages.js)와 하네스가 이 문만 쓴다.
     warDraftBind, warDraftFill, warDraftReleasePid, warDraftReleaseWar, warDraftCount, warRationRefund,
+    packSplit, bodyEat, bagFE, rationLayDown, rationActOn: _rationActOn,   // ★[T423] 짐이 먹는다(손잡이 끔이면 packSplit 이 null)
     // ★[3파 포로] 접점
     CAP_ON: WAR_CAP_ON, warCaptiveDaily,
     get WARS() { return WARS; }, get TRIBUTES() { return TRIBUTES; },

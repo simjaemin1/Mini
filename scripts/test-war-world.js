@@ -29,6 +29,10 @@
 // ★★[T413 2026-09-26 · ⓛ 간헐 빨강의 뿌리 = 자] 한 절
 //   ⓤ 태어나는 자리의 씨 = 판의 날(벽시계를 밀어도 같은 판) · 전멸 판도 끝을 읽는다 · 미끼 셋(날·옛 규칙·자르기)
 //
+// ★★[T423 2026-09-26 · 군량 = 행위 ⓐ · PM #68] 한 절(손잡이 `T423_RATION_ACT` · 기본 끔)
+//   ⓥ 싣기 = 짐 합 · 하루 경계에 몸이 먹는다(병력 × 하루치) · 거울 = 장부 · 항등(곳간에서 나간 = 먹음 + 내려놓음 + 드랍)
+//     · 결판 무변 · 이중 0(원정군은 마을 식사 명부에서 빠진다) · 되돌림(몸 없으면 장부) · 사기 곡선 · 정적
+//
 // 실행: node scripts/test-war-world.js          (서버 절 건너뛰기: WAR_WORLD_NO_SERVER=1)
 'use strict';
 const path = require('path');
@@ -121,6 +125,9 @@ function _run(opts) {
     territoryOf: v => (v.econ.land && v.econ.land.size ? v.econ.land.size * 25 : 2800),
     log: null,
     onEngage: (w, day, why) => H._warEngage(w, day, why),
+    // ★[T423] 운영과 같은 두 훅(짐이 먹는다 · 귀환에 모은다) — 손잡이 끔이면 war-core 가 안 부른다
+    rationEat: (w, day) => H._warRationEat(w, day),
+    rationCollect: (w) => H._warRationCollect(w),
   });
   const dayMs = opts.dayMs || 30000;
   H = SimVillages.__p3Bind({
@@ -156,6 +163,12 @@ function _run(opts) {
   if (sc === 'surrender') { w._opPolicy = 'siege'; def._defPolicy = 'hold'; for (const r of ['food', 'fish', 'meat', 'cooked_food', 'vegetable']) def.econ.storage[r] = 0; }
   if (sc === 'hitrun' || sc === 'assault') def._defPolicy = 'respond';
   if (sc === 'sortie') { w._opPolicy = 'siege'; def._defPolicy = 'respond'; w._forceSortie = true; }
+  // ★[T423] 진짜 팩 — 곳간에서 `_opPackLoad` 로 싣는다(품목이 적혀야 몸에 나눠 실을 수 있다). 옛 판은 일수만 손으로 적었다.
+  if (opts.siegeOnly) { w._opPolicy = 'siege'; def._defPolicy = 'hold'; }   // ★[T423] 포위만 — 군량이 바닥나면 철수(짐이 걸음을 아는 판)
+  if (opts.pack) {
+    if (opts.packFood != null) { for (const r of ['food', 'fish', 'meat', 'cooked_food', 'vegetable']) atk.econ.storage[r] = 0; atk.econ.storage.food = opts.packFood; }
+    w._packDays = w._packRem = war._opPackLoad(atk, w.force, 12, w);
+  }
   war.WARS.push(w);
 
   const tr = { badSpawn, blockedTicks: 0, treeTicks: 0, fightTicks: 0, engagedAt: -1, standoffAt: -1, reengagedAt: -1, resolveAtStandoff: -1,
@@ -171,6 +184,7 @@ function _run(opts) {
       dayAt = now; world.day++; H.state.lastGameDay++;
       const sb = (war.stats().surrender) || 0;
       war.daily(world.day); H._warAfterDaily(sb);
+      (tr.packDays || (tr.packDays = [])).push({ day: world.day, rem: +(w._packRem || 0).toFixed(6), ration: w._ration != null ? +w._ration.toFixed(4) : null, phase: w.phase, op: w.op });
     }
     const body = H.state.warBodies.get(w.id);
     const f = body && body.fight;
@@ -204,6 +218,7 @@ function _run(opts) {
     if (body && body.ended && !tr.endedLive) tr.endedLive = body.ended;   // 옛 규칙(살아 있는 몸만) — 미끼 대조용
     if (_eb && _eb.ended && !tr.ended) { tr.ended = _eb.ended; tr.endT = t; tr.endHit = tr.hitrun; tr.endGone = !body; }
     if (process.env.WW_DEBUG && f && t % 30 === 0 && sc === 'hitrun') { const a = f.ctx.units.filter(u => u.side === 'A' && u.hp > 0); console.log('dbg', t, tr.hitrun, f.state, w.phase, w.op, 'A', a.length, 'rout', a.filter(u => u.routing).length, 'ctl', a.filter(u => u.ctl).length, 'B', f.ctx.units.filter(u => u.side === 'B' && u.hp > 0).length); }
+    if (opts.untilHome) { if (tr.ended && !war.WARS.includes(w) && !H.state.warBodies.has(w.id)) break; continue; }   // ★[T423] 귀환 도착(해제)까지 본다
     if (!H.state.warBodies.has(w.id) && tr.ended) break;
     if (body && body.phase === 'return' && tr.ended) { /* 귀환 중 — 몇 틱 더 */ if (t - tr.endT > 60) break; }
   }
@@ -215,7 +230,10 @@ function _run(opts) {
   // 최종 병사 위치 해시(관측자 대조용)
   let hsh = 0; for (const p of players.values()) { hsh = (hsh * 31 + Math.round(p.x * 16) * 7 + Math.round(p.y * 16) + (p.hp | 0)) >>> 0; }
   tr.posHash = hsh; tr.players = players.size;
-  tr.bodyGoneAtEnd = !!tr.endGone; delete tr._body;   // 몸 참조는 판 밖으로 안 나간다(순환 참조)
+  tr.bodyGoneAtEnd = !!tr.endGone; delete tr._body;
+  tr.book = w._rationBook ? JSON.parse(JSON.stringify(w._rationBook)) : null; tr.onBodies = w._packOnBodies || 0; tr.packLeft = w._packRem;
+  { let fe = 0, n = 0; if (w._packKeys) for (const p of players.values()) { if (p._warPackOf !== w.id) continue; const bag = {}; for (const k of w._packKeys) if (p.inventory && p.inventory[k] > 0) bag[k] = p.inventory[k]; fe += war.bagFE(bag, { _world: atk.econ._world }); n++; } tr.bagLeft = fe; tr.bagBearersLeft = n; }
+  tr.warDone = !war.WARS.includes(w);   // 몸 참조는 판 밖으로 안 나간다(순환 참조)
   tr.bcast = { war: bcast.filter(m => m.type === 'war_battle').length, phases: [...new Set(bcast.filter(m => m.type === 'war_battle').map(m => m.phase))] };
 
   // ── ★[T329] 위협 T 프로브 — **운영 함수 그대로**(H.threatOf · H._warOutMul · H._lifeJobSites) ──
@@ -496,6 +514,9 @@ function _run(opts) {
 
   // ── ⓢ~ⓣ 무기 반출/반납 장부(T403) ────────────────────────────────────────
   armsPart();
+
+  // ── ⓥ 짐이 먹는다(T423) ──────────────────────────────────────────────────
+  rationActPart();
 
   // ── ⓖ 서버 ───────────────────────────────────────────────────────────────
   if (process.env.WAR_WORLD_NO_SERVER === '1') { say('\n[ⓖ] 서버 절 건너뜀(WAR_WORLD_NO_SERVER=1)'); }
@@ -899,4 +920,61 @@ function armsPart() {
       'ⓣ `warWeaponFlow` — 패자 몫을 빼는 자리 하나(곳간 또는 짐) · 회수 규칙(0.7/0.5) 그대로');
   }
   if (prevK == null) delete process.env.T403_ARMS_LEDGER; else process.env.T403_ARMS_LEDGER = prevK;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// ★★[T423] ⓥ — 짐이 먹는다(군량 = 행위 ⓐ)
+// ════════════════════════════════════════════════════════════════════════════
+function rationActPart() {
+  const prevK = process.env.T423_RATION_ACT;
+  const setK = (on) => { if (on) process.env.T423_RATION_ACT = '1'; else delete process.env.T423_RATION_ACT; };
+  const run = (on, o) => { setK(on); try { return runScenario(o); } finally { setK(false); } };
+  const near = (a, b, eps) => Math.abs(a - b) <= (eps || 1e-6);
+  const ident = (r) => r.book ? (r.book.ledgerEaten + r.book.eaten + r.book.back + r.book.drop + (r.bagLeft || 0)) : NaN;
+  const series = (r) => (r.packDays || []).map(d => d.rem).join(',');
+  const sig = (r) => JSON.stringify({ e: r.ended, h: r.posHash, s: r.stat, ph: r.phase, c: r.counts });
+
+  say('\n[ⓥ] 짐이 먹는다 — 팩은 몸의 짐 · 하루 경계에 몸이 먹는다 · 거울 = 장부 · 항등 · 결판 무변 · 이중 0');
+  const S = { seed: 13, viewer: false, scenario: 'surrender', pack: true, untilHome: true };
+  const A = { seed: 11, viewer: true, scenario: 'assault', pack: true, untilHome: true };
+  const H = { seed: 19, viewer: false, scenario: 'assault', siegeOnly: true, pack: true, packFood: 18, untilHome: true, maxTicks: 30 * 60 * 40 };
+  const sOff = run(false, S), sOn = run(true, S), aOff = run(false, A), aOn = run(true, A), hOff = run(false, H), hOn = run(true, H);
+  ok(!sOff.book && !sOff.onBodies && sOn.onBodies > 0 && sOn.book && near(sOn.book.split, sOn.book.load),
+    'ⓥ ★대조 — 끔이면 몸에 안 싣는다 · 켬이면 팩 전부가 몸의 짐(싣기 = 짐 합)', sOn.book ? `짐꾼 ${sOn.onBodies} · 적재 ${sOn.book.load} = 몸에 ${sOn.book.split}` : '짐 없음');
+  const perDay = 12 * WarCore.WAR_RATION;   // 픽스처 병력 12
+  ok(sOn.book && sOn.book.days.length >= 2 && sOn.book.days.every(d => near(d.eaten, perDay)),
+    'ⓥ 하루 경계마다 몸이 먹는다 — 짐꾼 합 = 병력 × 하루치(몸당 = 병력 ÷ 짐꾼)', sOn.book ? sOn.book.days.map(d => `${d.day}:${d.eaten}(${d.bearers}몸)`).join(' · ') : '');
+  ok(series(sOff) === series(sOn) && series(aOff) === series(aOn) && series(hOff) === series(hOn),
+    'ⓥ `_packRem` 은 짐의 거울 — 날마다 장부와 같은 수(결단이 보는 수 무변)', `포위 ${series(sOn)} · 돌격 ${series(aOn)} · 굶주림 ${series(hOn)}`);
+  ok([sOn, aOn, hOn].every(r => r.warDone && near(ident(r), r.book.load)),
+    'ⓥ 항등 — 곳간에서 나간 = 몸이 먹음 + 내려놓음 + 드랍(+ 아직 짐) · 세 판', [sOn, aOn, hOn].map(r => `${r.book.load} = ${r.book.eaten}+${r.book.back}+${r.book.drop}+${(r.bagLeft || 0)}`).join(' · '));
+  ok(sig(sOff) === sig(sOn) && sig(aOff) === sig(aOn) && sig(hOff) === sig(hOn),
+    'ⓥ 결판 무변 — 같은 씨 끔/켬 끝·해시·전이·정산 한 글자 같다(사기 손잡이 끔)', `${sOn.ended && sOn.ended.why} · ${aOn.ended && aOn.ended.why} · ${hOn.ended && hOn.ended.why}`);
+  ok(aOn.book && aOn.book.drop > 0 && aOn.ended && aOn.ended.why === 'rout',
+    'ⓥ 전사자의 짐은 몸과 함께 떨어진다(드랍 — 곳간으로 안 돌아온다)', aOn.book ? `드랍 ${aOn.book.drop} · 살아 돌아온 짐 ${aOn.book.back}` : '');
+  const hr = (hOn.packDays || []).map(d => d.ration).filter(x => x != null);
+  ok(hr.length && hr.some(x => x < 1) && hr.every(x => x >= 0 && x <= 1) && hOn.ended && hOn.ended.why === hOff.ended.why,
+    'ⓥ 사기 곡선 — 오늘 몫이 짐에 있나(0~1)를 **매일** 다시 적는다 · 짐이 모자라면 1 아래 · 결단(철수)은 장부와 같다', `ration ${hr.join(',')} · 끝 ${hOn.ended && hOn.ended.why}`);
+  // 이중 0 — 원정군은 마을 식사 명부에서 빠진다(econ 한 줄)
+  const eatDay = (on) => {
+    setK(on);
+    try {
+      Math.random = seeded(7); const W = _mkCostWorld({}); Math.random = _origRandom;
+      const e = W.atk.econ; e.storage.food = 5000;
+      W.war.warMobilize(W.atk, W.def, 'feud', 300, W.world.day);
+      const w = W.world._warWars[0]; const marks = e.npcs.filter(n => n._warPack).length; const N0 = e.npcs.length;
+      econ.tickVillage(e, W.world.day + 1);
+      const eaten = Object.values(e._foodEaten || {}).reduce((a, b) => a + (b || 0), 0);
+      const r0 = w._packRem; W.war.daily(W.world.day + 1);
+      return { N: N0, Nafter: e.npcs.length, force: w.force, marks, eaten, dRem: r0 - w._packRem, onBodies: w._packOnBodies || 0 };
+    } finally { setK(false); }
+  };
+  const eOff = eatDay(false), eOn = eatDay(true);
+  ok(eOff.marks === 0 && near(eOff.eaten, eOff.N) && eOn.marks === eOn.force && near(eOn.eaten, eOn.N - eOn.force),
+    'ⓥ 이중 0 — 켬이면 원정군이 마을 식사 명부에서 빠진다(1인 하루 2단위 → 1) · ★대조 끔은 전원', `끔 먹음 ${eOff.eaten}/${eOff.N}명 · 켬 먹음 ${eOn.eaten} = ${eOn.N} − 병력 ${eOn.force}`);
+  ok(eOn.onBodies === 0 && near(eOn.dRem, 1), 'ⓥ 되돌림 — 몸이 없는 전쟁(훅 없음)은 종전 장부로 하루 1일분', `짐꾼 ${eOn.onBodies} · 하루 ${eOn.dRem}`);
+  const ecSrc = fs.readFileSync(path.join(ROOT, 'sim/economy-sim.js'), 'utf8'), wcSrc = fs.readFileSync(path.join(ROOT, 'sim/war-core.js'), 'utf8');
+  ok(/p\._warPack && p\._warDraft/.test(ecSrc) && (wcSrc.match(/npc\._warPack = 1/g) || []).length === 1 && /if \(_pack\) npc\._warPack = 1/.test(wcSrc),
+    'ⓥ 정적 — 명부에서 빼는 표식은 공격 징발(`warDraftFill`)에만 · 손잡이 켤 때만(방어 소집은 제 곳간을 먹는다)');
+  if (prevK == null) delete process.env.T423_RATION_ACT; else process.env.T423_RATION_ACT = prevK;
 }
