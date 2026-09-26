@@ -217,14 +217,30 @@ const HEALTH_DP_W = (() => { const m = _ECONSRC.match(/_healthTerm = \(stats\.he
 const P = Villages.__labProbe;
 const CP = P._cropProbe;
 const CL = P._clearProbe || null;
-const Z = 'hanbando', ZONE = ZONES[Z], SZ = P.SZ;
+// ★★[T407 2026-09-26] **존 손잡이** — `T17_ZONE=<존 id>`(기본 `hanbando` = 종전 한 줄 그대로 · 비트 동일).
+//   마을은 이 자가 **서버와 같은 길**로 세운다: 후보 `T.getZoneVillages(Z)`(정본 json 의 칸 — 닛폰도 T351 이후
+//   16곳이 거기 적혀 서버 `siteCandidates` 와 같은 배열이다) → `P.pickSeedVillages`(존 설정 `seedAllVillages`·
+//   `villageMax` — 한반도 = 전수 · 닛폰 = 키 없음 → 품질 게이트) → `findOpenCenter`(뭍 없으면 스킵) → `generate`.
+//   ⚠`LAB_SEEDCACHE` 는 존마다 다른 파일을 줘라(캐시는 존을 모른다).
+const Z = process.env.T17_ZONE || 'hanbando', ZONE = ZONES[Z], SZ = P.SZ;
+if (!ZONE) { console.error(`[T17_ZONE] 모르는 존: ${Z}`); process.exit(2); }
 
 P.setZoneId(Z);
 const _inZone = (x, y) => !(x < 0 || y < 0 || x >= ZONE.zoneWidth || y >= ZONE.zoneHeight);
+// ★★[T407 2026-09-26] **해안선 띠** — 서버의 통행 정본(`zone.js isWaterTileLocal`)은 물을 **둘** 본다:
+//   해안선 띠(`WATER_TILES` = `chunk.generateCoastlineWaterTiles`)와 손그림 강·호수. 이 자는 여태 **뒤엣것만** 봤다.
+//   한반도에선 띠가 가장자리 4.4% 라 마을 땅에 안 닿지만(T407 §1 — 켜고 꺼도 51곳 시딩 JSON 바이트 동일),
+//   닛폰은 폭이 좁아 띠가 16% 로 안쪽까지 든다(T348 계획기가 **정확히 이 자리**에서 헛다리를 놓았다).
+//   띠를 안 보면 자가 바다 위에 마을을 세운다(이즈사키 — 서버는 "뭍 없음 — 스킵").
+//   ⇒ `T17_COAST`(기본: 한반도 끔 = 종전 그대로 · 다른 존 켬). 원천은 서버가 부르는 그 함수 하나(사본 0).
+const _COAST = process.env.T17_COAST !== undefined ? process.env.T17_COAST === '1' : (Z !== 'hanbando');
+const _COAST_TILES = _COAST ? R('server/chunk').generateCoastlineWaterTiles({ ...ZONE, id: Z }, SZ, R('server/zone-config').findZoneAt,
+  Object.values(ZONES).filter((z) => z.isOcean).map((z) => ({ x0: z.worldOffsetX, y0: z.worldOffsetY, x1: z.worldOffsetX + z.zoneWidth, y1: z.worldOffsetY + z.zoneHeight }))) : null;
 const isWaterTileLocal = (x, y) => {
   if (ZONE.isOcean) return true;
   if (!_inZone(x, y)) return false;
   const tx = Math.floor(x / SZ), ty = Math.floor(y / SZ);
+  if (_COAST_TILES && _COAST_TILES.has(`${tx}_${ty}`)) return true;
   try { return !!T.isWaterCellLocal(Z, tx * SZ + SZ / 2, ty * SZ + SZ / 2); } catch { return false; }
 };
 const isRockTileLocal = (x, y) => { if (!_inZone(x, y)) return false; try { return !!T.isRockCellLocal(Z, x, y); } catch { return false; } };
