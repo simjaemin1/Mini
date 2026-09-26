@@ -4,6 +4,25 @@
 // 실제 분산 배포에서는 각 ZONE을 다른 국가의 서버에서 실행하면 됨.
 // 프로토타입에서는 같은 머신에서 다른 포트로 시뮬레이션.
 
+// ★★★[T427 ② 2026-09-26 · 시계 손잡이 — 계측·하네스 전용 · 기본 끔] `ZONE_CLOCK_ANCHOR=boot` 일 때만.
+//   게임 시계(게임일·낮밤·씨의 날·주민 타이머)는 전부 벽시계(`Date.now()`)에서 난다 — 그래서 **기동이 오래 걸린 존은
+//   같은 벽시각에 더 늦게 세계를 시작한다**(T399 §3-4: 부팅 11초 ↔ 50초가 아침 세계를 갈랐다 · 술어는 같았다).
+//   ⇒ 이 프로세스의 벽시계 원점을 **기동 시각에 묶는다**: 기동(이 파일의 평가) 동안은 첫 줄의 벽시각에 멎어 있고,
+//     평가가 끝난 순간(파일 끝 한 줄)부터 그 시각에서 이어 흐른다. 두 존이 같은 벽시각에 뜨면 기동이 11초든 50초든
+//     **같은 게임 시각에 첫 틱**을 돈다. 흐르는 빠르기는 그대로다(타이머·간격은 실시간 그대로 · 새 수 0).
+//   덮는 자리 = 이 프로세스가 `Date.now()` 로 읽는 전부(zone · villages · sim · 나머지 모듈 — 표는 보고/T427 §2).
+//   못 덮는 자리 = 인수 없는 `new Date()` · `performance.now`/`hrtime`(단조 — 길이만 잰다) · 타이머 예약 · 다른 프로세스(central).
+//   ★끄면(기본) 이 블록은 아무것도 안 한다 — `Date.now` 는 그 함수 그대로다(비트 동일). 제품 배포에 쓰지 않는다.
+//   ⚠반드시 **맨 위**(어느 `require` 보다 앞)여야 한다 — 모듈 평가 중 읽는 시각도 같은 원점을 보게.
+const ZONE_CLOCK_ANCHOR = process.env.ZONE_CLOCK_ANCHOR || '';
+const _clockReady = (() => {
+  if (ZONE_CLOCK_ANCHOR !== 'boot') return null;
+  const real = Date.now, t0 = real();
+  let at = 0;
+  Date.now = function () { return at ? t0 + (real() - at) : t0; };
+  return () => { if (!at) at = real(); return at - t0; };   // 돌려주는 값 = 멎어 있던 길이(ms · 로그용)
+})();
+
 const WebSocket = require('ws');
 const http = require('http');
 const { ZONES, WORLD, isNight, worldPhase, darknessLevel, findZoneAt, worldDistance, worldDeltaX } = require('./zone-config');
@@ -2830,6 +2849,18 @@ function _t394OpenTarget(npc, ax, ay) {
 }
 function _roadKeep(x, y) { return Roads.ENABLED && Roads.levelOf((x / 32) | 0, (y / 32) | 0) > 0; }   // px→답압 길 칸(스무딩 keep 앵커)
 function _roadPrefer(x, y) { return Roads.ENABLED ? Roads.levelOf((x / 32) | 0, (y / 32) | 0) : 0; }  // px→길 등급(A* 동률 스냅)
+// ★[T427 ①] 탐색 반경 — **한 자리**에서 낸다(`computeNpcPath` 와 현장 도달 술어 `npcCanReach` 가 같이 읽는다 · 사본 0).
+//   주민=2048px(집→먼 밭·물가 현장) · 비주민=768px. 수는 T399 의 그 줄 그대로다(새 수 0 · 옮기기만 했다).
+function _pfRadius(isVil) { return isVil ? 64 : 24; }
+// ★★★[T427 ① 2026-09-26] **닿나** — 생활층 현장 배정(`villages.js _t427Site` · 손잡이 `T427_SITE_REACH` 는 거기)이 부른다.
+//   `computeNpcPath` 의 **그 술어·그 반경**으로 한 번 묻는다: 직선이 깨끗하면 A* 없이 참(같은 순서) · 아니면 `pfFindPath`.
+//   ⚠칸 예산은 안 준다(`Infinity`) — **반경 상자가 탐색의 끝을 낸다**(= "반경 안에서 실제로 닿는가"의 정확한 답 · 새 수 0).
+//     그래서 못 닿는 후보는 반경 상자 안의 닿는 땅을 다 돌고 멈춘다(T399 실측 평균 13,639칸 상자) — 값은 보고/T427 표.
+//   끝점이 막힌 칸이면 `findPath` 첫 줄이 거른다(T394 ③ · `null`). 새 탐색 함수 0 · 주사위 0.
+function npcCanReach(ax, ay, bx, by) {
+  if (straightPathClear(ax, ay, bx, by, 0)) return true;
+  return !!pfFindPath(ax, ay, bx, by, { floor: 0, isBlockedFn: isBlockedByWall, isWaterFn: isTerrainBlockedLocal, maxCells: Infinity, searchRadiusCells: _pfRadius(true) });
+}
 function computeNpcPath(npc, now) {
   if (typeof npc.targetX !== 'number' || typeof npc.targetY !== 'number') return null;
   const d = Math.hypot(npc.targetX - npc.x, npc.targetY - npc.y);
@@ -2885,7 +2916,7 @@ function computeNpcPath(npc, now) {
   //   ⚠★켜지 말 것(보고/T399 §3-4): 새 main 의 아침엔 반경 안에서 **영영 못 닿는** 사냥터로 가는 사냥꾼이 30쌍 넘게 생긴다 —
   //     켬은 그 실패를 한 번 1,500칸(3.8ms) → 6,434칸(17ms)으로 키워 A* 가 끔의 세 배가 된다. 예산 하나는 "멀다"만 풀고
   //     "못 닿는다"의 값을 키운다 ⇒ 먼저 못 닿는 현장을 안 주거나 `null` 난 목표를 되묻지 않아야 한다(회부).
-  const _pfR = isVil ? 64 : 24;          // 주민=2048px(집→먼 밭·물가 현장). 비주민=768px — ★반경이 정본
+  const _pfR = _pfRadius(isVil);        // 주민=2048px(집→먼 밭·물가 현장). 비주민=768px — ★반경이 정본(★[T427] 수는 `_pfRadius` 한 자리)
   const wp = pfFindPath(npc.x, npc.y, npc.targetX, npc.targetY, {
     floor: npc.floor || 0,
     isBlockedFn: isBlockedByWall,
@@ -3426,6 +3457,7 @@ SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, is
   // ★★[T333] 바위 술어도 넘긴다 — 생활층 지형 어댑터(`villages.js isRock`)가 여태 `terrain.isRockCellLocal` 을
   //   **직접** 불러 메모를 지나쳤다(T324 프로파일: 남은 지형 시간의 9.6%). 같은 양자화(셀 중심)라 답은 같다.
   isRockTileLocal,
+  npcCanReach,   // ★★[T427 ①] 현장 배정이 부르는 도달 술어(`computeNpcPath` 의 그 술어·그 반경 · 손잡이는 생활층 `T427_SITE_REACH`)
   tickHz: TICK_HZ,   // ★[T284] 실체 전쟁 교전 스텝 = 존 틱 한 번(dt = 1/TICK_HZ)
   // ★★[T295 후속 · T284 회부 "나무는 아직 안 본다" 닫기] 전쟁이 쓰는 **나무 술어**(셀 → 서 있는 나무 있나).
   //   ⚠**청크 색인**(T301 `treeBlockerAt`)이다 — 청크 활성·관측자와 무관하게 같은 씨에서 같은 답을 낸다.
@@ -14027,3 +14059,7 @@ function setupCanadiaVillage(village) {
   console.log(`[canadia] 🏘️ ${village.name} 셋업: 거래소 (${cx},${cy}) + 영토 ${claimCount} cells`);
 }
 
+
+// ★★★[T427 ②] 파일 평가 끝 = 기동 끝 — `ZONE_CLOCK_ANCHOR=boot` 이면 여기서부터 게임 시계가 흐른다(끄면 null · 무동작).
+//   ⚠이 줄은 **파일의 마지막 줄**이어야 한다 — 위 어느 타이머 콜백보다 먼저 돈다(콜백은 평가가 끝난 뒤에야 돈다).
+if (_clockReady) console.log(`[${ZONE_ID}] 🕰️ T427 시계 고정 — 기동 원점에서 흐르기 시작(기동 동안 멎어 있던 벽시계 ${_clockReady()}ms)`);

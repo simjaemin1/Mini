@@ -5549,6 +5549,37 @@ function _lifeJobSiteOK(vil, px, py, R_out) {   // 현장 하나가 R_out 안인
   const cx = vil.ccx * SZ + SZ / 2, cy = vil.ccy * SZ + SZ / 2;
   return Math.hypot(px - cx, py - cy) <= R_out;
 }
+// ★★★[T427 ① 2026-09-26 · 닿는 현장만 — 손잡이 `T427_SITE_REACH`(기본 끔)] T399 가 쟀다: 1500 × 뭍(A* 시간의 81~85 %)의
+//   주인은 **직업 현장(`_workSite`) 출근**이고, 새 main 아침엔 그중 30쌍이 **반경 안에서 영영 못 닿는** 현장이었다
+//   (사냥터가 강 건너 · 예산을 풀어도 못 찾음 3,042/4,258). 아래 `_lifeJobSites` 는 후보를 자원·짐승·물가의 **자리**로만
+//   고르고, 배정 네 곳(벌목·채광·채집 · 어부 · 사냥꾼 · 사냥꾼 하루 옮기기)은 그 자리를 **집에서 닿는지 안 보고** 준다.
+//   ⇒ 배정하는 순간 존이 주입한 **그 도달 술어**(`deps.npcCanReach` — `computeNpcPath` 의 그 술어·그 반경 · 칸 예산 없이
+//     반경 상자가 끝을 낸다 · 새 탐색 함수 0)로 **집 → 후보**를 묻고 닿는 후보만 준다. 안 닿으면 **다음 후보**
+//     (종전 순서 그대로 한 칸씩) · 전부 안 닿으면 **집이 현장**이다(그 마을·직업은 보고/T427 표 — 그게 발견이다).
+//   묻는 것은 배정 순간뿐(하루 한 번) — 같은 날 같은 (집 셀 → 후보 셀)은 마을이 기억해 두 번 안 묻는다(되묻기 0).
+//   ★끄면(기본) 아래 셋은 불리지 않는다 — 배정 네 곳의 종전 글자가 그대로 돈다(비트 동일).
+//   ★존 밖(3시드 자 · 헤드리스 하네스)엔 술어가 주입되지 않는다 ⇒ 켜도 끈 것과 같다(`_t427On` 이 거짓).
+const T427_SITE_REACH = process.env.T427_SITE_REACH === '1';
+function _t427On() { return T427_SITE_REACH && !!(state.deps && typeof state.deps.npcCanReach === 'function'); }
+function _t427HomeOf(vil, npc) {   // 집(없으면 회관 중심) — 도달을 묻는 출발점이자 "현장이 없을 때의 현장"
+  return (npc && npc.npcHomeX != null) ? { x: npc.npcHomeX, y: npc.npcHomeY } : { x: vil.ccx * SZ + SZ / 2, y: vil.ccy * SZ + SZ / 2 };
+}
+function _t427Reach(vil, npc, x, y, day) {
+  const o = _t427HomeOf(vil, npc);
+  let M = vil._t427Memo;
+  if (!M || M.day !== day) M = vil._t427Memo = { day, m: new Map() };   // 하루 기억(벽·집이 새로 서면 다음 날 다시 묻는다)
+  const k = Math.floor(o.x / SZ) + ',' + Math.floor(o.y / SZ) + '>' + Math.floor(x / SZ) + ',' + Math.floor(y / SZ);
+  let v = M.m.get(k);
+  if (v === undefined) { v = !!state.deps.npcCanReach(o.x, o.y, x, y); M.m.set(k, v); }
+  return v;
+}
+/** 종전 `sites[h % n]` 자리 — 거기서부터 한 칸씩 **닿는 첫 후보** · 전부 안 닿으면 집(`_t427HomeOf`). */
+function _t427Site(vil, npc, sites, h, day) {
+  const n = sites.length;
+  for (let i = 0; i < n; i++) { const s = sites[(h + i) % n]; if (_t427Reach(vil, npc, s.x, s.y, day)) return { x: s.x, y: s.y, day }; }
+  const o = _t427HomeOf(vil, npc);
+  return { x: o.x, y: o.y, day };
+}
 function _lifeJobSites(vil, day) {   // 마을 생활권의 직업별 현장 후보 — 자원 밀집 버킷(벌목·채광·채집), 물가(어부), 초식 사냥감(사냥꾼)
   const _tmul = _warOutMul(vil);
   if (vil._jobSites && vil._jobSites.day === day && vil._jobSites.tmul === _tmul) return vil._jobSites;   // T 가 바뀌면 그날도 다시 고른다
@@ -6830,20 +6861,35 @@ function huntHunters(vil, players, day) {
     if (k === null || (m.get(k) || 0) < L_GAMEMAX * 0.12) {
       // ★랩 10824~10830 분산 사냥 — 다른 사냥꾼 자리 ±5 를 피해 **빈** 풍부 셀 우선, 다 차 있으면 공유(몰이 폴백)
       let bFree = null, rFree = L_GAMEMAX * 0.15, bAny = null, rAny = L_GAMEMAX * 0.15;
+      //   ★[T427 ①] 켜면 같은 순회에서 후보를 **선호 순서 그대로** 모은다(빈 풍부 셀 · 아무 풍부 셀 — 문턱은 위 첫 값 · 새 수 0).
+      const _t427 = _t427On(), _thr = rAny, _fr = _t427 ? [] : null, _an = _t427 ? [] : null;
       for (const [k2, rr] of m) {
         if (rr > rAny) { rAny = rr; bAny = k2; }
-        if (rr > rFree) {
+        if (_an && rr > _thr) _an.push([k2, rr]);
+        if (rr > rFree || (_fr && rr > _thr)) {   // 끄면 `rr > rFree` 하나 — 종전 비트 그대로
           const ci = k2.indexOf(','), cx2 = +k2.slice(0, ci), cy2 = +k2.slice(ci + 1);
           let occ = false;
           for (const o of hw) if (Math.abs(o.cx - cx2) <= 5 && Math.abs(o.cy - cy2) <= 5) { occ = true; break; }
-          if (!occ) { rFree = rr; bFree = k2; }
+          if (!occ && rr > rFree) { rFree = rr; bFree = k2; }
+          if (!occ && _fr) _fr.push([k2, rr]);
         }
       }
-      const b = bFree || bAny;
+      let b = bFree || bAny, _home = null;
+      //   ★[T427 ①] 고른 셀이 집에서 **안 닿으면** 같은 선호(빈 셀 먼저 · 풍부도 내림 · 동률은 종전 순회 순서 — 안정 정렬)로 닿는 첫 셀.
+      //     전부 안 닿으면 **현장은 집**이다 — 사냥 장부(`_huntWk`)는 종전 셀 그대로 둔다(헤드리스 값 무변 · 값은 회부 · 보고 표).
+      if (b && _t427) {
+        const _xy = (kk) => { const ci = kk.indexOf(','); return { x: +kk.slice(0, ci) * SZ + SZ / 2, y: +kk.slice(ci + 1) * SZ + SZ / 2 }; };
+        let _ok = null;
+        for (const [kk] of [[b]].concat(_fr.sort((u, v) => v[1] - u[1]), _an.sort((u, v) => v[1] - u[1]))) {
+          const q = _xy(kk);
+          if (_t427Reach(vil, p, q.x, q.y, day)) { _ok = kk; break; }
+        }
+        if (_ok) b = _ok; else _home = _t427HomeOf(vil, p);
+      }
       if (b) {
         const ci = b.indexOf(','), bx = +b.slice(0, ci), by = +b.slice(ci + 1);
         p._huntWk = { cx: bx, cy: by };
-        p._workSite = { x: bx * SZ + SZ / 2, y: by * SZ + SZ / 2, day };   // 시각 층도 그 자리로 출근한다
+        p._workSite = _home ? { x: _home.x, y: _home.y, day } : { x: bx * SZ + SZ / 2, y: by * SZ + SZ / 2, day };   // 시각 층도 그 자리로 출근한다 · ★[T427] 못 닿으면 집
         hw.push(p._huntWk);
       }
     }
@@ -7356,7 +7402,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
     const sites = _lifeJobSites(vil, day)[job];
     if (!sites || !sites.length) return false;   // 생활권에 해당 자원 없음 → 레거시 폴스루
     const h = _pidHash(npc.pid);
-    if (!npc._workSite || npc._workSite.day !== day) npc._workSite = { x: sites[h % sites.length].x, y: sites[h % sites.length].y, day };   // 분산 배정(랩 place %분산 동형)
+    if (!npc._workSite || npc._workSite.day !== day) npc._workSite = _t427On() ? _t427Site(vil, npc, sites, h, day) : { x: sites[h % sites.length].x, y: sites[h % sites.length].y, day };   // 분산 배정(랩 place %분산 동형) · ★[T427 ①] 켜면 닿는 후보만
     const ws = npc._workSite;
     if (Math.hypot(npc.x - ws.x, npc.y - ws.y) > 240) { npc.behavior = 'wander'; npc.targetX = ws.x; npc.targetY = ws.y; npc.gatherTarget = null; _lifeAct(npc, '출근'); return true; }   // 출근
     if (npc._jobT && now < npc._jobT) return true;   // 작업 스윙 페이싱
@@ -7395,7 +7441,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
     const sites = _lifeJobSites(vil, day).fisher;
     if (!sites || !sites.length) return false;   // 내륙 마을 → 레거시 폴스루
     const h = _pidHash(npc.pid);
-    if (!npc._workSite || npc._workSite.day !== day) npc._workSite = { x: sites[h % sites.length].x, y: sites[h % sites.length].y, day };
+    if (!npc._workSite || npc._workSite.day !== day) npc._workSite = _t427On() ? _t427Site(vil, npc, sites, h, day) : { x: sites[h % sites.length].x, y: sites[h % sites.length].y, day };   // ★[T427 ①] 켜면 닿는 물가만
     const ws = npc._workSite;
     if (Math.hypot(npc.x - ws.x, npc.y - ws.y) > 130) { npc.behavior = 'wander'; npc.targetX = ws.x; npc.targetY = ws.y; npc.gatherTarget = null; _lifeAct(npc, '출근'); return true; }
     // ★★★[T340 2026-09-21] **박자가 아니라 대본이다.** 종전 이 자리는 `now - _lastFishAt > 8000` —
@@ -7469,7 +7515,9 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
       // 앵커 주변 4셀(128px) 안의 물가 셀 중 하나 — 없으면 앵커 그 자리(물가 셀 중심이라 항상 뭍)
       const near = [];
       for (const s of sites) { if (Math.abs(s.x - ws.x) <= 128 && Math.abs(s.y - ws.y) <= 128) near.push(s); if (near.length >= 12) break; }
-      const pick = near.length ? near[(h + ((now / 1000) | 0)) % near.length] : ws;
+      //   ★[T427 ①] 켜면 드리울 자리도 **집에서 닿는** 물가만(좁은 강이면 128px 안 건너편 물가가 섞인다 — 같은 날 같은 쌍은 한 번만 묻는다).
+      const _nr = (_t427On() && near.length) ? near.filter((q) => _t427Reach(vil, npc, q.x, q.y, day)) : near;
+      const pick = _nr.length ? _nr[(h + ((now / 1000) | 0)) % _nr.length] : ws;
       npc._fishSpotX = pick.x; npc._fishSpotY = pick.y;
       npc._fishT = now + 9000 + (h % 5) * 2000;   // 9~17초 체류(결정론 분산 — 마을 전원이 동시에 안 움직인다)
     }
@@ -7480,7 +7528,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
   if (job === 'hunter') {   // 사냥꾼=사냥터 앵커 출근 + ★wildlife 두뇌 완전체(잠행·핏자국·활·근접·도살 — 랩 실행층·두뇌 동형)
     const sites = _lifeJobSites(vil, day).hunter;
     const h = _pidHash(npc.pid);
-    if ((!npc._workSite || npc._workSite.day !== day) && sites && sites.length) npc._workSite = { x: sites[h % sites.length].x, y: sites[h % sites.length].y, day };
+    if ((!npc._workSite || npc._workSite.day !== day) && sites && sites.length) npc._workSite = _t427On() ? _t427Site(vil, npc, sites, h, day) : { x: sites[h % sites.length].x, y: sites[h % sites.length].y, day };   // ★[T427 ①] 켜면 닿는 사냥터만
     if (!npc._workSite) { npc._huntOn = 0; return false; }   // 사냥감·앵커 전무 → 레거시 폴스루
     const ws = npc._workSite;
     // 뷰 안(활성 청크)=wildlife가 몹·핏자국·전투 전부 구동(LOD 계약): 여기는 마킹+주도권 소유만 —

@@ -1182,7 +1182,8 @@ console.log('\n⑬ T399_CELL_CAP — 상한 하나(칸 예산 = 반경 원의 �
   ok(/const T399_CELL_CAP = process\.env\.T399_CELL_CAP === '1';/.test(Z) && (codeOnly(Z).match(/T399_CELL_CAP/g) || []).length === 3,
      '⑬-a 손잡이 `T399_CELL_CAP` 하나 · **기본 끔**(env 가 그 글자일 때만 참 · 제품 자리 선언 2 + 갈래 1)');
   const cn = body('computeNpcPath');
-  const mR = cn.match(/const _pfR = isVil \? (\d+) : (\d+);/);
+  //   ★[T427] 반경 수는 `_pfRadius` 한 자리로 옮겨졌다(현장 도달 술어 `npcCanReach` 와 같이 읽는다) — 그 글자를 뜨고, 반경 줄이 그걸 부르는지 본다.
+  const mR = /const _pfR = _pfRadius\(isVil\);/.test(cn) ? Z.match(/function _pfRadius\(isVil\) \{ return isVil \? (\d+) : (\d+); \}/) : null;
   const mC = cn.match(/maxCells: (T399_CELL_CAP \? Math\.ceil\(Math\.PI \* _pfR \* _pfR \/ 2\) : \(isVil \? 1500 : 200\)),/);
   ok(!!mR && !!mC && /searchRadiusCells: _pfR,/.test(cn), '⑬ [전제] 제품에서 반경 한 줄 · 예산 식 · 반경 넘기기 **그 글자**를 떴다');
   const cap = new Function('T399_CELL_CAP', 'isVil', '_pfR', `return (${mC ? mC[1] : '0'});`);
@@ -1360,6 +1361,193 @@ console.log('\n⑭ T421_SPATIAL_INC 격자 증분 — 조회 결과 비트 동�
        '⑭-d 자원 나무 문은 **하나**(끔·켬이 같은 함수)');
   }
   console.log('    접점: rebuildSpatialIndex · _rebuildSpatialInc · _spKeep · _spInc · QuadtreeInc.nodeFor · isPositionActive · activeChunkKeys · T421_SPATIAL_INC');
+}
+
+// =============================================================================
+// ⑮ T427 ① — **닿는 현장만**: 직업 현장을 배정하는 순간 집 → 후보가 반경 안에서 닿는지 묻는다 [T427 ①]
+// =============================================================================
+// ★왜 [T427 · T399 회부 1] 1500 × 뭍(A* 시간의 81~85 %)의 주인은 직업 현장(`_workSite`) 출근이고, 새 main 아침엔 그중 30쌍이
+//   **반경 안에서 영영 못 닿는** 현장이었다(사냥터가 강 건너). 후보는 자리로만 골랐지 집에서 닿는지는 안 봤다.
+//   거는 것: ⓐ 손잡이 하나 · 기본 끔 ⓑ 배정 세 자리(벌목·채광·채집 · 어부 · 사냥꾼)가 같은 한 식 — 끄면 종전 `sites[h % n]`
+//     ⓒ 도달 술어는 `computeNpcPath` 의 그 술어·그 반경(존 `npcCanReach` · 칸 예산 없음) ⓓ 켬 = 못 닿는 현장 0 · 종전 자리가 닿으면 **비트 동일**
+//     ⓔ 전부 못 닿으면 집 ⓕ 되묻기 0(같은 날 같은 쌍) ⓖ 존 밖(술어 없음)이면 켜도 끈 것 ⓗ 사냥꾼 하루 옮기기(`huntHunters`)도 같은 규칙
+//     ⓘ 미끼 — 술어가 늘 "닿는다"면(= 안 본다) 못 닿는 현장이 **다시 배정된다**.
+console.log('\n⑮ T427 ① — 닿는 현장만(배정 순간 집 → 후보 · 반경 안 실제 도달) [T427]');
+{
+  const V = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8');
+  const bodyV = (name) => {
+    const i = V.indexOf('function ' + name + '(');
+    if (i < 0) return '';
+    let d = 0, j = V.indexOf('{', i);
+    for (let k = j; k < V.length; k++) { if (V[k] === '{') d++; else if (V[k] === '}') { d--; if (!d) return V.slice(i, k + 1); } }
+    return '';
+  };
+  const onSrc = bodyV('_t427On'), homeSrc = bodyV('_t427HomeOf'), reachSrc = bodyV('_t427Reach'), siteSrc = bodyV('_t427Site'), huntSrc = bodyV('huntHunters');
+  ok(onSrc.length > 40 && homeSrc.length > 60 && reachSrc.length > 200 && siteSrc.length > 100 && huntSrc.length > 1500,
+     '⑮ [전제] 제품에서 **그 글자** 다섯을 떴다(켬 술어 · 집 · 도달 기억 · 현장 고르기 · 사냥꾼 하루 옮기기)',
+     `${onSrc.length} · ${homeSrc.length} · ${reachSrc.length} · ${siteSrc.length} · ${huntSrc.length}자`);
+  const VC = codeOnly(V);
+  ok(/const T427_SITE_REACH = process\.env\.T427_SITE_REACH === '1';/.test(V) && (VC.match(/T427_SITE_REACH/g) || []).length === 3 && !/T427_SITE_REACH/.test(codeOnly(Z)),
+     '⑮-a 손잡이 `T427_SITE_REACH` 하나 · **기본 끔**(env 가 그 글자일 때만 참 · 선언 2 + 켬 술어 1 · 존은 안 읽는다)');
+  const EXPR = '_t427On() ? _t427Site(vil, npc, sites, h, day) : { x: sites[h % sites.length].x, y: sites[h % sites.length].y, day }';
+  const nAssign = V.split('npc._workSite = ' + EXPR).length - 1;
+  ok(nAssign === 3, '⑮-b 배정 세 자리(벌목·채광·채집 · 어부 · 사냥꾼)가 **같은 한 식** — 끄면 종전 `sites[h % n]` 그대로', `${nAssign}/3`);
+  //   어부가 드리울 자리(앵커 128px 안 물가)도 같은 술어 — 끄면 거르개가 `near` 그 배열 그대로라 고름 식이 종전 글자와 같다
+  ok(V.includes("const _nr = (_t427On() && near.length) ? near.filter((q) => _t427Reach(vil, npc, q.x, q.y, day)) : near;")
+     && V.includes("const pick = _nr.length ? _nr[(h + ((now / 1000) | 0)) % _nr.length] : ws;"),
+     '⑮-b 어부가 **드리울 자리**(앵커 128px 안 물가)도 같은 술어 · 끄면 `_nr` 은 `near` 그 배열(고름 식 = 종전 글자)');
+  const rc = body('npcCanReach');
+  ok(/if \(straightPathClear\(ax, ay, bx, by, 0\)\) return true;/.test(rc) && /isBlockedFn: isBlockedByWall, isWaterFn: isTerrainBlockedLocal, maxCells: Infinity, searchRadiusCells: _pfRadius\(true\)/.test(rc)
+     && /\n  npcCanReach,/.test(Z) && /const _pfR = _pfRadius\(isVil\);/.test(body('computeNpcPath')),
+     '⑮-c 도달 술어 = `computeNpcPath` 의 **그 술어·그 반경**(`_pfRadius` 한 자리) · 직선 먼저 · 칸 예산 없음(반경 상자가 끝) · deps 로 주입');
+  // ── 판: 세로 강(셀 x = 110) — 건너편 후보는 못 닿는다 · 집은 서쪽(셀 100)
+  const SZ = 32, RIV = 110;
+  let asks = 0;
+  const across = (ax, bx) => (Math.floor(ax / SZ) < RIV) !== (Math.floor(bx / SZ) < RIV);
+  const reachTrue = (ax, ay, bx, by) => { asks++; return !across(ax, bx); };
+  const mk = (on, pred) => {
+    const state = { deps: pred ? { npcCanReach: pred } : {} };
+    return new Function('state', 'SZ', 'T427_SITE_REACH', onSrc + '\n' + homeSrc + '\n' + reachSrc + '\n' + siteSrc +
+      '\nreturn { _t427On, _t427Site, _t427Reach, _t427HomeOf };')(state, SZ, on);
+  };
+  const assign = (M) => new Function('_t427On', '_t427Site', 'vil', 'npc', 'sites', 'h', 'day', 'return (' + EXPR + ');').bind(null, M._t427On, M._t427Site);
+  // 후보 8개 · 짝수 번은 강 건너(셀 115) · 홀수 번은 이쪽(셀 104) — 마을 250곳 × 주민 h 0..39
+  const cand = (seed) => Array.from({ length: 8 }, (_, i) => ({ x: ((i % 2) ? 104 : 115) * SZ + 16 + ((seed * 7 + i * 3) % 5), y: (95 + i) * SZ + 16 }));
+  const home = { npcHomeX: 100 * SZ + 16, npcHomeY: 100 * SZ + 16 };
+  let same = 0, sameN = 0, moved = 0, bad = 0, badOff = 0, tot = 0;
+  for (let v = 0; v < 250; v++) {
+    const sites = cand(v), vil = { ccx: 100, ccy: 100 };
+    const OFF = mk(false, reachTrue), ON = mk(true, reachTrue);
+    const aOff = assign(OFF), aOn = assign(ON);
+    for (let h = 0; h < 40; h++) {
+      const npc = Object.assign({ pid: 'p' + h }, home);
+      const o = aOff(vil, npc, sites, h, 7), n = aOn(vil, npc, sites, h, 7);
+      tot++;
+      if (across(home.npcHomeX, o.x)) badOff++; else { sameN++; if (o.x === n.x && o.y === n.y && o.day === n.day) same++; }
+      if (across(home.npcHomeX, n.x)) bad++;
+      if (o.x !== n.x || o.y !== n.y) moved++;
+    }
+  }
+  ok(badOff > 1000, '⑮ [상황] 끈 팔이 강 건너 현장을 **넉넉히** 준다(0 이면 자명 통과)', `${badOff}/${tot}`);
+  ok(bad === 0, '⑮-d ★★★켬 = **못 닿는 현장 0**(배정 순간 집 → 후보를 물어 닿는 후보만)', `${badOff} → ${bad}`);
+  ok(same === sameN && sameN > 1000, '⑮-d ★★종전 자리가 닿으면 켬/끔 **비트 동일**(좌표·날)', `${same}/${sameN}`);
+  ok(moved === badOff, '⑮-d 바뀐 배정 = 끈 팔이 못 닿는 곳을 준 그 자리뿐', `${moved} = ${badOff}`);
+  // ⓔ 전부 못 닿으면 집(없으면 회관 중심)
+  {
+    const ON = mk(true, reachTrue), a = assign(ON);
+    const far = Array.from({ length: 6 }, (_, i) => ({ x: 120 * SZ + 16, y: (90 + i) * SZ + 16 }));
+    const r1 = a({ ccx: 100, ccy: 100 }, Object.assign({ pid: 'q' }, home), far, 3, 7);
+    const r2 = a({ ccx: 101, ccy: 99 }, { pid: 'q2' }, far, 3, 7);
+    ok(r1.x === home.npcHomeX && r1.y === home.npcHomeY && r1.day === 7 && r2.x === 101 * SZ + 16 && r2.y === 99 * SZ + 16,
+       '⑮-e 후보가 **전부** 못 닿으면 현장은 **집**(집이 없으면 회관 중심) — 그 마을·직업은 보고 표', `(${r1.x},${r1.y}) · (${r2.x},${r2.y})`);
+  }
+  // ⓕ 되묻기 0 — 같은 날 같은 (집 셀 → 후보 셀)은 한 번만 · 날이 바뀌면 다시
+  {
+    const ON = mk(true, reachTrue), a = assign(ON), vil = { ccx: 100, ccy: 100 }, sites = cand(3);
+    asks = 0; for (let k = 0; k < 50; k++) a(vil, Object.assign({ pid: 'r' + k }, home), sites, k, 9);
+    const day9 = asks; for (let k = 0; k < 50; k++) a(vil, Object.assign({ pid: 'r' + k }, home), sites, k, 9);
+    const again = asks - day9; for (let k = 0; k < 50; k++) a(vil, Object.assign({ pid: 'r' + k }, home), sites, k, 10);
+    ok(day9 > 0 && day9 <= sites.length && again === 0 && asks - day9 > 0,
+       '⑮-f ★되묻기 0 — 같은 날 같은 쌍은 **한 번**(마을이 기억) · 다음 날은 다시 묻는다(벽·집이 새로 설 수 있다)', `9일 ${day9}회(후보 ${sites.length}) · 되풀이 ${again} · 10일 ${asks - day9}회`);
+  }
+  // ⓖ 존 밖(술어 없음)이면 켜도 끈 것
+  {
+    const NOZ = mk(true, null), a = assign(NOZ), sites = cand(1);
+    const r = a({ ccx: 100, ccy: 100 }, Object.assign({ pid: 's' }, home), sites, 2, 7);
+    ok(NOZ._t427On() === false && r.x === sites[2].x && r.y === sites[2].y, '⑮-g 존 밖(3시드 자 · 헤드리스)엔 술어가 없다 ⇒ **켜도 끈 것과 같다**(종전 자리)');
+  }
+  // ⓗ 사냥꾼 하루 옮기기(`huntHunters`) — 같은 선호 순서로 닿는 첫 셀 · 전부 못 닿으면 집(장부 `_huntWk` 는 종전 셀)
+  {
+    const HB = (on, pred) => {
+      const M = mk(on, pred);
+      const _cellOfPx = (p) => Math.floor(p / SZ);
+      const _gameKey = (vil, cx, cy) => { const k = cx + ',' + cy; return vil._gameRich.has(k) ? k : null; };
+      return new Function('_t427On', '_t427Reach', '_t427HomeOf', '_cellOfPx', '_gameKey', 'huntTakeAt', 'L_GAMEMAX', 'SZ',
+        huntSrc + '\nreturn huntHunters;')(M._t427On, M._t427Reach, M._t427HomeOf, _cellOfPx, _gameKey, () => 0, 100, SZ);
+    };
+    // 종전 규칙(대조군) — 제품 글자와 따로 적은 argmax(빈 풍부 셀 먼저 · 다른 사냥꾼 ±5 피함 · 없으면 아무 풍부 셀)
+    const ref = (m, hs, hwSeq) => { const hw = [], out = [];
+      for (let q = 0; q < hs.length; q++) { if (hwSeq && q > 0) { hw.length = 0; for (let u = 0; u < q; u++) if (hwSeq[u]) hw.push(hwSeq[u]); }
+        let bF = null, rF = 15, bA = null, rA = 15;
+        for (const [k2, rr] of m) { if (rr > rA) { rA = rr; bA = k2; }
+          if (rr > rF) { const [cx2, cy2] = k2.split(',').map(Number); if (!hw.some((o) => Math.abs(o.cx - cx2) <= 5 && Math.abs(o.cy - cy2) <= 5)) { rF = rr; bF = k2; } } }
+        const b = bF || bA; if (b) { const [bx, by] = b.split(',').map(Number); if (!hwSeq) hw.push({ cx: bx, cy: by }); out.push(b); } else out.push(null); }
+      return out; };
+    let offSame = 0, offN = 0, onBad = 0, onBadOff = 0, homeN = 0, homeWk = 0;
+    for (let t = 0; t < 300; t++) {
+      const m = new Map(); for (let i = 0; i < 14; i++) { const cx = 96 + ((t * 5 + i * 7) % 30), cy = 90 + ((t * 3 + i * 11) % 20); m.set(cx + ',' + cy, 16 + ((t * 13 + i * 17) % 84)); }
+      const mkHs = () => Array.from({ length: 4 }, (_, i) => Object.assign({ pid: 'h' + i, simJob: 'hunter' }, home));
+      const run = (on) => { const hs = mkHs(), players = new Map(hs.map((p) => [p.pid, p])), vil = { _gameRich: new Map(m), npcPids: hs.map((p) => p.pid), ccx: 100, ccy: 100 };
+        HB(on, reachTrue)(vil, players, 7); return hs; };
+      const off = run(false), on = run(true), r = ref(m, off), rOn = ref(m, on, on.map((p) => p._huntWk || null));   // 켠 팔의 "종전 고름"은 켠 팔 자신의 앞 사냥꾼 자리(hw)로 잰다
+      off.forEach((p, i) => { offN++; if ((p._huntWk ? p._huntWk.cx + ',' + p._huntWk.cy : null) === r[i]) offSame++;
+        if (p._workSite && across(home.npcHomeX, p._workSite.x)) onBadOff++; });
+      on.forEach((p, i) => { if (p._workSite && across(home.npcHomeX, p._workSite.x)) onBad++;
+        //   집으로 떨어진 사람 = 현장이 집 좌표이고 장부 셀은 강 건너(집 셀에 사냥 셀이 우연히 있는 경우와 가른다)
+        if (p._workSite && p._workSite.x === home.npcHomeX && p._workSite.y === home.npcHomeY && p._huntWk && across(home.npcHomeX, p._huntWk.cx * SZ + SZ / 2)) {
+          homeN++; if (p._huntWk.cx + ',' + p._huntWk.cy === rOn[i]) homeWk++; } });
+    }
+    //   전부 강 건너인 판(사냥 셀 14 개가 모두 셀 x ≥ 111) — 네 사람 모두 집이 현장 · 장부는 켠 팔 자신의 종전 고름
+    {
+      const m = new Map(); for (let i = 0; i < 14; i++) m.set((111 + (i * 5) % 12) + ',' + (90 + (i * 7) % 20), 20 + i * 5);
+      const hs = Array.from({ length: 4 }, (_, i) => Object.assign({ pid: 'z' + i, simJob: 'hunter' }, home));
+      const vil = { _gameRich: new Map(m), npcPids: hs.map((p) => p.pid), ccx: 100, ccy: 100 };
+      HB(true, reachTrue)(vil, new Map(hs.map((p) => [p.pid, p])), 7);
+      const rAll = ref(m, hs, hs.map((p) => p._huntWk || null));
+      hs.forEach((p, i) => { if (p._workSite && p._workSite.x === home.npcHomeX && p._workSite.y === home.npcHomeY) { homeN++; if (p._huntWk && p._huntWk.cx + ',' + p._huntWk.cy === rAll[i]) homeWk++; } });
+    }
+    ok(offSame === offN && offN === 1200, '⑮-h 끈 팔 `huntHunters` = **종전 규칙 그대로**(대조군 argmax 와 사냥꾼 1,200명 전부 같은 셀)', `${offSame}/${offN}`);
+    ok(onBadOff > 100 && onBad === 0, '⑮-h ★★사냥꾼 하루 옮기기도 **못 닿는 사냥터 0**(같은 선호 순서로 닿는 첫 셀)', `${onBadOff} → ${onBad}`);
+    ok(homeN > 0 && homeWk === homeN, '⑮-h 전부 못 닿으면 현장은 집 · 사냥 장부(`_huntWk`)는 **종전 셀 그대로**(헤드리스 값 무변 · 값은 회부)', `집 ${homeN}명 · 장부 종전 ${homeWk}/${homeN}`);
+  }
+  // ⓘ 미끼 — 술어가 늘 "닿는다"(= 안 본다)면 못 닿는 현장이 다시 배정된다
+  {
+    const liar = (ax, ay, bx, by) => true;
+    let badL = 0;
+    for (let v = 0; v < 50; v++) { const ON = mk(true, liar), a = assign(ON), sites = cand(v);
+      for (let h = 0; h < 40; h++) { const n = a({ ccx: 100, ccy: 100 }, Object.assign({ pid: 'b' + h }, home), sites, h, 7); if (across(home.npcHomeX, n.x)) badL++; } }
+    ok(badL > 0, '★⑮ 자명 통과 금지 — 술어가 늘 "닿는다"면(= 안 본다) 못 닿는 현장이 **다시 배정된다**(⑮-d 가 빨개진다)', `${badL}/2000`);
+  }
+  console.log('    접점: T427_SITE_REACH · _t427On · _t427Site · _t427Reach · _t427HomeOf · huntHunters · npcCanReach · _pfRadius · _workSite');
+}
+
+// =============================================================================
+// ⑯ T427 ② — **시계 손잡이**: 벽시계 원점을 기동에 묶는다(계측·하네스 전용 · 기본 끔) [T427 ②]
+// =============================================================================
+// ★왜 [T427 · T399 §3-4] 게임 시계는 전부 벽시계에서 난다 — 기동이 11초인 존과 50초인 존은 같은 벽시각에 **다른 게임 시각**으로
+//   첫 틱을 돈다(T406 켬/끔 아침 세계가 갈렸다 · 술어는 같았다). `ZONE_CLOCK_ANCHOR=boot` 면 기동 동안 시계가 멎고,
+//   파일 평가가 끝난 순간 첫 줄의 벽시각에서 이어 흐른다.
+//   거는 것: ⓐ 손잡이 글자 · 파일 **맨 위**(어느 require 보다 앞) · 준비 줄은 **맨 끝** ⓑ 끄면 `Date.now` 는 그 함수 그대로
+//     ⓒ 켜면 기동 동안 멎고 · 준비 뒤엔 실시간 빠르기로 흐른다 ⓓ ★기동 길이가 다른 두 존이 같은 게임 시각에 첫 틱
+//     ⓔ 미끼 — 끄면 ⓓ 가 **갈린다**(기동 차만큼).
+console.log('\n⑯ T427 ② — 시계 손잡이(벽시계 원점을 기동에 묶는다 · 계측 전용) [T427]');
+{
+  const { execFileSync } = require('child_process');
+  const i0 = Z.indexOf("const ZONE_CLOCK_ANCHOR = process.env.ZONE_CLOCK_ANCHOR || '';"), i1 = Z.indexOf('})();', i0);
+  const blk = (i0 > 0 && i1 > i0) ? Z.slice(i0, i1 + 5) : '';
+  const firstReq = Z.search(/require\(/);
+  const lastCode = codeOnly(Z).trimEnd().split('\n').pop();
+  ok(blk.length > 200 && i0 < firstReq, '⑯-a 손잡이 블록은 파일 **맨 위**(어느 `require` 보다 앞 — 모듈 평가 중 시각도 같은 원점)', `블록 ${blk.length}자 @${i0} < require @${firstReq}`);
+  ok(/if \(_clockReady\) console\.log\(/.test(lastCode), '⑯-a 준비 줄은 파일 **맨 끝**(평가가 끝난 순간 = 기동 끝 · 타이머 콜백보다 먼저)', lastCode.slice(0, 40));
+  const probe = (env, bootMs) => {
+    const code = `const _orig = Date.now;\n${blk}\n` +
+      `const w0 = _orig(); const g0 = Date.now(); while (_orig() - w0 < ${bootMs}) {} const gBoot = Date.now();\n` +
+      `const frozen = _clockReady ? _clockReady() : null; const r0 = _orig(), s0 = Date.now(); while (_orig() - r0 < 200) {} const r1 = _orig(), s1 = Date.now();\n` +
+      `process.stdout.write(JSON.stringify({ same: Date.now === _orig, g0, gBoot, frozen, flow: s1 - s0, real: r1 - r0, start: w0, atReady: s0 }));`;
+    return JSON.parse(execFileSync(process.execPath, ['-e', code], { env: Object.assign({}, process.env, { ZONE_CLOCK_ANCHOR: env }) }).toString());
+  };
+  const off = probe('', 50), on = probe('boot', 300);
+  ok(off.same === true && off.frozen === null && off.gBoot - off.g0 >= 50, '⑯-b 끄면 `Date.now` 는 **그 함수 그대로**(비트 동일 · 준비 줄 무동작)', `같은 함수 ${off.same} · 기동 동안 ${off.gBoot - off.g0}ms 흐름`);
+  ok(on.same === false && on.gBoot === on.g0 && on.frozen >= 300 && Math.abs(on.flow - on.real) <= 5 && on.atReady - on.start <= 5,
+     '⑯-c 켜면 기동 동안 **멎고**(300ms 동안 0ms) · 준비 뒤엔 **첫 줄의 벽시각**에서 실시간 빠르기로 흐른다',
+     `기동 중 ${on.gBoot - on.g0}ms · 멎은 길이 ${on.frozen}ms · 준비 뒤 ${on.flow}ms/실 ${on.real}ms · 준비 순간 원점차 ${on.atReady - on.start}ms`);
+  // ⓓ 두 존 — 같은 벽시각에 뜨고 기동은 100ms ↔ 700ms · 준비 뒤 같은 게임 시각에서 시작하는가(첫 줄 벽시각 차만 남는다)
+  const two = (env) => { const a = probe(env, 100), b = probe(env, 700); return { a, b, dStart: b.start - a.start, dReady: b.atReady - a.atReady }; };
+  const T = two('boot'), U = two('');
+  ok(Math.abs(T.dReady - T.dStart) <= 10, '⑯-d ★★기동 길이가 달라도(100 ↔ 700ms) 준비 순간의 게임 시각 차 = **뜬 시각 차뿐**(기동 차 0)',
+     `켬: 뜬 시각 차 ${T.dStart}ms · 준비 게임 시각 차 ${T.dReady}ms`);
+  ok(U.dReady - U.dStart >= 500, '★⑯ 자명 통과 금지 — 끄면 준비 순간 게임 시각이 **기동 차만큼 갈린다**(⑯-d 가 빨개진다)', `끔: 뜬 시각 차 ${U.dStart}ms · 준비 게임 시각 차 ${U.dReady}ms`);
+  console.log('    접점: ZONE_CLOCK_ANCHOR · _clockReady · Date.now · gameDayOf · lastGameDay · _e2eClock · worldPhase');
 }
 
 console.log(`\n=== 결과: ${pass} PASS / ${fail} FAIL ===\n`);
