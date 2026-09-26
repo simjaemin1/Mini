@@ -142,13 +142,19 @@ function _markHarvested(seedKey) {
 //   ⚠`notify` — T324 ⓐ 규약: **관측자가 있을 때만** 방송한다. 아무도 안 보는 마을에서
 //     `resource_removed` 를 쏘는 것은 대역폭이 아니라 **없는 관측자를 가정하는 것**이라 안 한다.
 //   ★행동 무변: 채집 갈래는 `notify=true` 로 부르므로 종전과 **글자 그대로** 같은 일을 한다.
+// ★★[T393 2026-09-26] **일곱째 줄 — DB 나무는 중복 적재 표(`resourcesByDbId`)에서도 뺀다.**
+//   안 빼면 `_shapePlantedAll` 이 그 표를 돌다 단계가 바뀐 **뺀** 심은 나무를 `resource_spawn` 으로
+//   다시 방송한다 — 서버 세계엔 없는데 클라에만 서는 **유령**이다. `test-ghost-tree` 가 세웠다:
+//   심은 묘목을 플레이어 채집·이 문으로 빼고 성목이 되는 날까지 시계를 돌리자 그 id 가 **한 번씩** 다시 왔다
+//   (대조 — 안 뺀 묘목은 그날 한 번 온다). ⇒ 줄은 **여기 하나**다. 플레이어 채집(`gatherResource`)과
+//   개간(`clearTreesInCells`)이 제 몸을 따로 적고 있었다 — 둘 다 이 문을 부르게 했다(사본 0).
 function _takeResourceEntity(r, notify) {
   if (!r) return;
   resources.delete(r.id);
   chunkManager.removeResource(r);
   resourcesDirty = true;
   if (r.isSeed && r.seedKey) _markHarvested(r.seedKey);   // ★[T122] 벤 게임일까지 적는다 — 재생의 입력
-  else if (r.dbId) { try { db.deleteResource(r.dbId); } catch (e) {} }
+  else if (r.dbId) { resourcesByDbId.delete(r.dbId); try { db.deleteResource(r.dbId); } catch (e) {} }   // ★[T393] 표에서도
   if (notify) broadcast({ type: 'resource_removed', id: r.id });
 }
 // ★[T325] 그 셀에 **서 있는 나무**(그루터기·묘목 제외는 안 한다 — 묘목도 목재를 낸다)를 색인으로 묻는다.
@@ -159,6 +165,19 @@ function _takeResourceEntity(r, notify) {
 //   ★★[T347 2026-09-22] **몸통을 종 집합으로 갈랐다** — 채집(군락)이 **같은 규칙**을 쓴다(사본 0).
 //     갈린 것은 어떤 `type` 을 세나 하나뿐이다. 두 벌 적으면 T301 규칙 표(활성 청크 우선 · 없으면 색인에
 //     수확 장부와 게임일을 넘긴다)가 한쪽만 고쳐지는 날이 온다 — 그때 색인과 청크가 조용히 갈린다.
+// ★★[T393 2026-09-26] **"못 물었다"에 이름을 붙이는 문 하나.** 색인 호출이 던지는데 말없이 `[]` 를 내면
+//   "그 셀엔 없다"와 "물을 수 없었다"가 **같은 답**이 된다 — T378 이 부팅 개간 0그루의 이유를 그래서 못 봤다
+//   (`gameDayNow()` 의 TDZ 를 이 함수가 삼켰다 · 족보 308). ⇒ 던지면 **한 번** 이름을 붙인다.
+//   ★같은 이유(자리 · 메시지)는 한 번만 말한다 — 셀마다·틱마다 같은 줄을 쏟지 않는다. 다른 이유면 또 말한다.
+//   ★문 하나 — T378 개간 색인 갈래도 이걸 부른다(그 갈래가 먼저 세운 문법 · 사본 0). 새 수 0 · 새 손잡이 0.
+const _idxWarned = new Set();
+function _idxWarnOnce(where, e, tail) {
+  const msg = String((e && e.message) || e).slice(0, 140);
+  const k = where + '|' + msg;
+  if (_idxWarned.has(k)) return;
+  _idxWarned.add(k);
+  console.log(`[${ZONE_ID}] ★${where} — 색인을 못 물었다(${msg})${tail ? ' · ' + tail : ''}`);
+}
 function _actEntitiesAtCell(cellX, cellY, types, raw) {
   const px = (cellX | 0) * 32 + 16, py = (cellY | 0) * 32 + 16;
   const out = [];
@@ -176,7 +195,7 @@ function _actEntitiesAtCell(cellX, cellY, types, raw) {
     a = resourcesAtCell(ZONE_ID, cellX | 0, cellY | 0,
       raw ? { biome: ZONE.biome, chunkSize: chunkManager.chunkSize }
           : { biome: ZONE.biome, chunkSize: chunkManager.chunkSize, harvestedSet: harvestedSeeds, gameDay: gameDayNow() });
-  } catch (e) { a = []; }
+  } catch (e) { a = []; _idxWarnOnce('자원 셀 질의', e, '이 판은 서 있는 개체만 본다'); }   // ★[T393] 삼키지 않는다 — 한 번 이름
   for (const e of a) if (types[e.type]) out.push(e);
   return out;
 }
@@ -3154,7 +3173,6 @@ setInterval(() => {
 //     안 서 있으면 **장부만** 적는다 — 청크가 켜질 때 `harvestedSet` 이 그 자리를 막는다(새 수 0 · 새 손잡이 0).
 //   ⚠종전 `qtResources` 갈래는 **그대로 둔다**(DB 나무 `r.dbId` 가 그 길로만 잡힌다). 색인은 **더하는** 것이다.
 const _T378_TREE = { tree: 1 };
-let _t378Warned = 0;
 function clearTreesInCells(cellKeys) {
   if (!cellKeys || !cellKeys.size) return 0;
   let cleared = 0, ledger = 0;
@@ -3190,25 +3208,22 @@ function clearTreesInCells(cellKeys) {
       if (r.type !== 'tree' || seen.has(r.id)) continue;
       if (Math.floor(r.x / 32) !== cx || Math.floor(r.y / 32) !== cy) continue;   // 이 셀 것만
       seen.add(r.id);
-      resources.delete(r.id);
-      chunkManager.removeResource(r);
-      if (r.isSeed && r.seedKey) { _markHarvested(r.seedKey); }   // ★[T122]
-      else if (r.dbId) { try { db.deleteResource(r.dbId); } catch (e) {} }
-      broadcast({ type: 'resource_removed', id: r.id });
+      _takeResourceEntity(r, true);   // ★[T393] 빼는 몸은 문 하나(장부·DB·중복 적재 표·방송) — 종전처럼 늘 방송한다
       cleared++;
     }
     // ⓑ ★[T378] 색인 갈래 — **관측자가 없어도** 그 셀의 씨 나무를 찾아 장부에 적는다.
     //    개체가 서 있으면 ⓐ 가 이미 지웠고 `seen` 이 막는다. 안 서 있으면 여기서 장부만 적는다.
-    //    ⚠집 정본 `_actEntitiesAtCell` 은 색인 호출의 예외를 **말없이 삼킨다**(`catch { a = [] }`).
+    //    ⚠집 정본 `_actEntitiesAtCell` 은 색인 호출의 예외를 **말없이 삼켰다**(`catch { a = [] }` · T393 전).
     //      그러면 "나무가 없다"와 "못 물었다"가 구분이 안 된다 — 이 카드가 그걸 물었다(부팅 개간 0 의 이유를
     //      알 수 없었다). ⇒ 여기서는 **같은 인자로 직접** 묻고, 터지면 **한 번** 이름을 붙인다(조용한 0 금지).
+    //    ★[T393] 이름 붙이는 자리는 이제 **문 하나**(`_idxWarnOnce`) — `_actEntitiesAtCell` 도 같은 문으로 말한다.
     let idx = [];
     try {
       idx = resourcesAtCell(ZONE_ID, cx, cy,
         { biome: ZONE.biome, chunkSize: chunkManager.chunkSize, harvestedSet: harvestedSeeds, gameDay: _gd });
     } catch (e) {
       idx = [];
-      if (!_t378Warned) { _t378Warned = 1; console.log(`[${ZONE_ID}] ★영토 개간 — 색인을 못 물었다(${String(e && e.message).slice(0, 140)}) · 이 판은 서 있는 개체만 벤다`); }
+      _idxWarnOnce('영토 개간', e, '이 판은 서 있는 개체만 벤다');   // ★[T393] 이름 붙이는 문 하나(`_actEntitiesAtCell` 과 같은 문)
     }
     for (const e of idx) {
       if (!_T378_TREE[e.type] || seen.has(e.id) || !e.isSeed || !e.seedKey) continue;
@@ -8084,14 +8099,9 @@ function gatherResource(player, best) {
     for (const [item, amt] of Object.entries(loot)) {
       player.inventory[item] = (player.inventory[item] || 0) + amt;
     }
-    resources.delete(best.id);
-    chunkManager.removeResource(best);
-    resourcesDirty = true;
-    if (best.isSeed && best.seedKey) {
-      _markHarvested(best.seedKey);             // ★[T122] 벤 게임일까지 적는다
-    } else if (best.dbId) {
-      db.deleteResource(best.dbId);
-    }
+    // ★[T393] 빼는 몸은 **문 하나**(`_takeResourceEntity`) — 제 몸을 따로 적던 곳이라 중복 적재 표에서 안 빠져
+    //   뺀 심은 나무가 유령으로 다시 방송됐다. 방송은 아래 종전 자리에서 한다(`false` · 메시지 순서 무변).
+    _takeResourceEntity(best, false);
     sendInventory(player);
     broadcast({ type: 'resource_removed', id: best.id });
     savePlayer(player);
@@ -9919,6 +9929,8 @@ function __testBind() {
     // ★[T124] 심기 — 정본을 그대로 내준다(하네스가 규칙을 다시 짜면 사본이다)
     tryPlantTree, foreignClaimAt, _liveResourceRow, _shapeRegrown, _shapePlantedAll, resourcesByDbId,
     plantSeedList, _t124Plant, PLANT_SEEDS, resources, spawnOneResource,
+    // ★[T393] 자원을 세계에서 빼는 문들 · 색인을 묻는 문 — 하네스(`test-ghost-tree`·`test-index-named`)가 **문을 그대로** 두드린다(사본 0)
+    _takeResourceEntity, clearTreesInCells, _t325TreesAtCell,
     // ── 빈손 시작(2026-08-28) ── 줍기·제작·도구 표를 **정본 그대로** 내준다
     RECIPES, TOOL_EFFECTS, TOOL_MAX_DURABILITY, EQUIPMENT_RECIPES, CRUDE_EFF_FRAC, CRUDE_DURA_FRAC,
     doCraft, doEquip, tryForage, Forage, _forageCtx, lootOfResource, getEquippedTool, consumeEquippedDurability,
