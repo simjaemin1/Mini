@@ -8,6 +8,7 @@
 //     ① 품목 — 수확이 **그 밭의 작물**로, **작물 표의 수확량**으로 곳간에 든다(`T100_K` 식량등가 대신 · 캐논 0-b)
 //     ② 몸   — 관측자 없는 마을의 밭도 **몸이 한다**(헤드리스의 농부 몫 두 절이 안 돈다 · 농부가 걷는다)
 //              ⚠존이 **통째로** 자면(사람 0 · 관측자 0) 존 틱이 NPC 루프 앞에서 돌아가 몸이 안 걷는다 ⇒ 그날은 일괄(몸 XOR 일괄)
+//              ★[T410] 존의 idle 문을 열었다(`ZONE_IDLE_SKIP` 기본 끔) — 판정은 존의 `zoneAwake` 하나(주입) · 열면 늘 참 ⇒ 몸 하나
 //   카드 새 절 셋: ⓐ 품목 합 항등 · ⓑ 켬이면 헤드리스 농부 절 호출 0 · ⓒ 끔 비트 동일.
 //
 // ★★이 카드의 고유한 어려움 — **econ 이 작물 34종 중 셋만 안다**(생곡 `wheat·rice·barley`).
@@ -146,7 +147,7 @@ console.log('\n④ 장부 다리 — 밭 입고가 **품목으로** 잠재·실�
 }
 
 // ── ⑤ ⓑ 헤드리스 — 켜면 농부 몫 두 절(① 개간 · ③ 작물)이 **안 돈다**(존이 깨어 있는 동안) ─────────────
-console.log('\n⑤ ⓑ 헤드리스 — 켜면 이 마을 밭은 **몸이 한다**(농부 몫 두 절 호출 0) · 존이 통째로 자면 일괄이 그 몫(몸 XOR 일괄)');
+console.log('\n⑤ ⓑ 헤드리스 — 켜면 이 마을 밭은 **몸이 한다**(농부 몫 두 절 호출 0) · 존이 통째로 자면 일괄이 그 몫(몸 XOR 일괄) · ★T410 문을 열면(기본) 존이 안 잔다');
 {
   const hl = bodyOf(VC, '_lifeHeadlessDay');
   ok(/const _body = _t368Walk\(\) && _t368ZoneAwake\(vil\);/.test(hl) && /if \(!_body\) _lifeClearDay\(vil, farmerN\);/.test(hl) && /if \(!_body\) lifeFarmDay\(vil, day, farmerN\);/.test(hl),
@@ -154,22 +155,36 @@ console.log('\n⑤ ⓑ 헤드리스 — 켜면 이 마을 밭은 **몸이 한다
   //   ★[T400] 집 절에 집 행위 손잡이 가드(`&& !_lifeEcon().T400_BUILD_ACT`)가 붙었다 — 농부 판정(`_body`)과 무관한 것은 그대로다.
   ok(/if \(vil\._site(?: && !_lifeEcon\(\)\.T400_BUILD_ACT)?\) \{ let st = Math\.min\(LIFE_CREW, popN\) \* LIFE_STAGE_PDAY;/.test(hl) && !/_body[^\n]*LIFE_STAGE_PDAY/.test(hl),
     '⑤ ② 신축은 **그대로**다(농부 몫이 아니다 — 직업 무관 크루 · T361 칸)');
-  //   ★깨어 있나 = 반경 **무한**의 `anyViewerNear`(zone.js idle 판정이 보는 두 명부 — 사람 player · 관측자) · 새 문 0
-  ok(/function _t368ZoneAwake\(vil\) \{ const f = state\.deps && state\.deps\.anyViewerNear; return !!\(f && f\(\{ x: vil\.ccx \* SZ \+ SZ \/ 2, y: vil\.ccy \* SZ \+ SZ \/ 2 \}, Infinity\)\); \}/.test(VC),
-    '⑤ ★존이 깨어 있나 = 주입된 `anyViewerNear` 를 반경 **무한**으로 한 번(새 문 0 · 주입이 없으면 거짓 = 일괄)');
+  //   ★★[T410] 깨어 있나 = **존의 idle 문 그 함수**(`zone.js zoneAwake` 주입) — 종전(T368)엔 반경 무한 `anyViewerNear` 로 같은 두 명부를 따로 물었다.
+  ok(/function _t368ZoneAwake\(vil\) \{ const f = state\.deps && state\.deps\.zoneAwake; return !!\(f && f\(\)\); \}/.test(VC),
+    '⑤ ★존이 깨어 있나 = 주입된 `zoneAwake` **한 번**(존의 idle 문과 같은 판정 · 사본 0 · 주입이 없으면 거짓 = 일괄)');
   const ZC2 = fs.readFileSync(path.join(ROOT, 'server/zone.js'), 'utf8');
-  ok(/if \(!hasHuman && !hasObserver\) \{/.test(ZC2) && /for \(const p of players\.values\(\)\) \{\s*if \(p\.isNpc\) continue;/.test(bodyOf(ZC2, 'anyViewerNear')) && /for \(const d of observers\.values\(\)\)/.test(bodyOf(ZC2, 'anyViewerNear')),
-    '⑤ ★그 두 명부가 zone.js idle 판정(`!hasHuman && !hasObserver`)이 보는 그 둘이다 — 사람(비NPC) player · 관측자');
-  //   awake: undefined = 주입 없음(랩·하네스) · true/false = 존이 깨어 있음/잠듦(주입된 술어가 받은 반경을 적는다)
+  const za = bodyOf(ZC2, 'zoneAwake');
+  ok(/^const ZONE_IDLE_SKIP = process\.env\.ZONE_IDLE_SKIP === '1';$/m.test(ZC2) && (ZC2.match(/process\.env\.ZONE_IDLE_SKIP/g) || []).length === 1,
+    '⑤ ★[T410] 손잡이 `ZONE_IDLE_SKIP` 는 **한 자리**에서 읽힌다 · 기본 끔(= 안 건너뜀) · `=1` 만 종전');
+  ok(/if \(!ZONE_IDLE_SKIP\) return true;/.test(za) && /for \(const p of players\.values\(\)\) \{ if \(!p\.isNpc\) return true; \}/.test(za) && /return observers\.size > 0;/.test(za),
+    '⑤ ★[T410] `zoneAwake` — 문이 열려 있으면 **늘 참** · 닫혀 있으면 종전 두 명부(사람 · 비NPC player · 관측자)');
+  ok((ZC2.match(/if \(!zoneAwake\(\)\) \{/g) || []).length === 1 && !/hasHuman|hasObserver/.test(ZC2.replace(/\/\/.*$/gm, '')),
+    '⑤ ★[T410] 틱의 idle 문은 **그 함수 하나**를 본다(`if (!zoneAwake())` · 종전 지역 변수 둘은 코드에서 사라졌다 — 판정 둘 0)');
+  ok(/SimVillages\.init\(\{[^}]*\n\s*zoneAwake,/.test(ZC2), '⑤ ★[T410] 생활층에 **그 함수**를 주입한다(`deps.zoneAwake` · 새 문 0)');
+  //   정본 글자 그대로 돌린다(존을 안 띄운다) — 문 열림(기본)은 사람 0 · 관측자 0 에서도 참 · 닫힘(`=1`)은 종전 그대로
+  {
+    const run = (skip, humans, npcs, obs) => new Function('ZONE_IDLE_SKIP', 'players', 'observers', za + '\nreturn zoneAwake();')(
+      skip, new Map([...Array(humans)].map((_, i) => [i, { isNpc: false }]).concat([...Array(npcs)].map((_, i) => [100 + i, { isNpc: true }]))), new Map([...Array(obs)].map((_, i) => [i, {}])));
+    const t = [run(false, 0, 5, 0), run(false, 1, 5, 0), run(true, 0, 5, 0), run(true, 1, 5, 0), run(true, 0, 5, 1), run(true, 0, 0, 0)];
+    ok(t.join() === 'true,true,false,true,true,false',
+      '⑤ ★★[T410 · 실행] 문 열림 = 사람 0 · 관측자 0 · 주민만 있어도 **참** · 닫힘 = 종전(사람 또는 관측자가 있어야 참 · 주민은 안 센다)', `[${t}]`);
+  }
+  //   awake: undefined = 주입 없음(랩·하네스) · true/false = 존이 깨어 있음/잠듦(주입된 판정이 불린 횟수를 적는다)
   const js = (env, awake) => probe(env, `const V=require(${VP}); const E=require(${EP}); const B=V.__farmBind(), P=V.__labProbe;
     const pl=new Map([[1,{pid:1,simJob:'farmer'}],[2,{pid:2,simJob:'farmer'}],[3,{pid:3,simJob:'fisher'}]]); const rs=[];
-    const deps={players:pl}; ${awake === undefined ? '' : `deps.anyViewerNear=(c,r)=>{rs.push(r);return ${awake};};`} P._t374Probe.setDeps(deps);
+    const deps={players:pl}; ${awake === undefined ? '' : `deps.zoneAwake=()=>{rs.push('z');return ${awake};};`} P._t374Probe.setDeps(deps);
     const ev=E.createVillage({initialPop:0,name:'x',fertility:1}); const farm=new Set(); for(let i=0;i<30;i++) farm.add((100+i)+',100');
     const vil={dbId:7,ccx:100,ccy:100,econ:ev,npcPids:[1,2,3],_farmSet:farm,_drySet:new Set(farm),_potSet:new Set(),_crop:new Map(),_cropClaim:new Set(),_terrSet:new Set(['100,100']),_site:null,_claim:new Set()};
     B._lifeHeadlessDay(vil); console.log(JSON.stringify({tasks:vil._mTk||0, crops:vil._crop.size, rs:rs.map(String), hl:[vil._t368HlBody===undefined?null:vil._t368HlBody, vil._t368HlBatch===undefined?null:vil._t368HlBatch]}))`);
   const off = js({}, true), on = js({ T368_FARM_ACT: '1' }, true), idle = js({ T368_FARM_ACT: '1' }, false), bare = js({ T368_FARM_ACT: '1' }, undefined);
   ok(off.tasks > 0 && off.crops > 0 && off.rs.length === 0, '⑤ [자명 통과 금지] 끈 판은 헤드리스가 **밭을 실제로 돈다**(파종 30) · 존 술어에 **안 닿는다**(끈 팔 무변)', `${off.tasks}건 · 술어 ${off.rs.length}회`);
-  ok(on.tasks === 0 && on.crops === 0 && on.rs.join() === 'Infinity', '⑤ ★★★[실행] 켠 판 · 존 깸 — 헤드리스 **작물 절 호출 0** — 같은 마을 · 같은 날 파종 0 · 술어는 반경 무한 한 번', `${on.tasks}건 · 반경 ${on.rs.join()}`);
+  ok(on.tasks === 0 && on.crops === 0 && on.rs.join() === 'z', '⑤ ★★★[실행] 켠 판 · 존 깸 — 헤드리스 **작물 절 호출 0** — 같은 마을 · 같은 날 파종 0 · 판정은 한 번', `${on.tasks}건 · 판정 ${on.rs.length}회`);
   ok(idle.tasks === off.tasks && idle.crops === off.crops, '⑤ ★★[실행] 켠 판 · 존 잠 — 몸이 안 걷는 날은 **일괄이 그 몫**(끈 판과 같은 수 · 몸 XOR 일괄)', `${idle.tasks}건 = 끔 ${off.tasks}건`);
   ok(bare.tasks === off.tasks && bare.crops === off.crops, '⑤ [실행] 주입이 없으면(존이 없다 — 랩·하네스) 몸도 없다 ⇒ 일괄', `${bare.tasks}건`);
   ok(off.hl.join() === ',' && on.hl.join() === '1,' && idle.hl.join() === ',1',

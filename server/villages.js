@@ -4966,10 +4966,13 @@ function _farmMul(vil, npc) {
 //   ① 품목 — 거기에 `T100_FIELD_YIELD`(밭이 곳간에 닿는다)까지 켜져 있으면 수확이 **그 작물의 낱개**로 곳간에 든다.
 //   하나라도 꺼져 있으면 아래가 전부 `null`/거짓 ⇒ 종전 비트(건수 1 × `T100_K`).
 function _t368Walk() { const E = _lifeEcon(); return !!(E && E.T368_FARM_ACT); }
-// ★[T368] **존이 깨어 있나** — 반경 무한의 `anyViewerNear`(zone.js 주입 · 사람 player + 관측자 두 명부 · idle 판정이 보는 그 둘).
-//   깨어 있으면 몸이 걷고(`_t316WalkAlways`), 잠들면 존 틱이 NPC 루프 앞에서 돌아간다 ⇒ `_lifeHeadlessDay` 가 이 한 판정으로 몸 XOR 일괄.
+// ★[T368] **존이 깨어 있나** — 깨어 있으면 몸이 걷고(`_t316WalkAlways`), 잠들면 존 틱이 NPC 루프 앞에서 돌아간다 ⇒
+//   `_lifeHeadlessDay` 가 이 한 판정으로 몸 XOR 일괄.
+//   ★★[T410 2026-09-26] 판정은 **존의 idle 문 그 함수**다(`zone.js zoneAwake` 주입) — 종전(T368)엔 반경 무한의 `anyViewerNear` 로
+//     같은 두 명부를 **따로** 물었다. 존이 문을 열면(손잡이 `ZONE_IDLE_SKIP` 끔 · 기본) 그 함수가 늘 참이라 여기도 늘 참이다
+//     ⇒ "존이 잠" 인 팔이 없어지고 몸 XOR 일괄은 **몸** 하나가 된다(T410 ④). 문을 닫으면(`=1`) 종전 두 명부 그대로.
 //   ⚠주입이 없으면(랩·하네스 — 존이 없다) 몸도 없다 ⇒ 거짓(일괄이 돈다). 켰을 때만 불린다(끈 팔은 이 줄에 안 닿는다).
-function _t368ZoneAwake(vil) { const f = state.deps && state.deps.anyViewerNear; return !!(f && f({ x: vil.ccx * SZ + SZ / 2, y: vil.ccy * SZ + SZ / 2 }, Infinity)); }
+function _t368ZoneAwake(vil) { const f = state.deps && state.deps.zoneAwake; return !!(f && f()); }
 function _t368ItemsOn() { const E = _lifeEcon(); return !!(E && E.T368_FARM_ACT && E.T100_FIELD_YIELD); }
 // ★[T368] 작물의 식량 값 표 — **열량 정본**(`kcal.econUnitsOf` = kg × kcal/kg ÷ `DAY_KCAL` · T59)을 세계에 **한 번** 심는다.
 //   econ 은 서버 모듈을 안 부른다 ⇒ 주입이다(T347 `forageActItems` 선례 · 심는 줄은 이 함수의 마지막 한 줄).

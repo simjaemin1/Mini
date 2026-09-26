@@ -1251,6 +1251,18 @@ function anyViewerNear(center, r) {
   }
   return false;
 }
+// ★★★[T410 2026-09-26 · ★PM 결정(위임) · 캐논 ⓑ① "관측자 없어도 실걸음" · 재민 767b827e "아무도 안 보는 마을도 일과가 작동해야"]
+//   **존이 자도 걷는다 — 문을 연다.** 틱의 idle 문(14.49-e3-perf5 · 사람 player 도 관측자도 없으면 본문 없이 돌아간다)이
+//   아무도 접속 안 한 서버의 몸을 **한 걸음도** 안 걷게 했다(T368 실측: 걸음 0 · 수확 0) ⇒ 어부·나무꾼·채집·농부 행위가
+//   전부 일괄로 떨어졌다. 손잡이 `ZONE_IDLE_SKIP`(기본 **끔** = 안 건너뜀 · `=1` 이면 종전 · 되돌림 비트 동일).
+//   ★판정은 **하나**다 — 틱의 idle 문과 생활층(`villages.js _t368ZoneAwake` · 헤드리스 농부 절의 몸 XOR 일괄)이 같은 함수를 본다
+//     (주입 `deps.zoneAwake` · 사본 0). 문이 열려 있으면 늘 참(존이 안 잔다) · 닫혀 있으면 종전 그 둘(사람 player · 관측자).
+const ZONE_IDLE_SKIP = process.env.ZONE_IDLE_SKIP === '1';
+function zoneAwake() {
+  if (!ZONE_IDLE_SKIP) return true;
+  for (const p of players.values()) { if (!p.isNpc) return true; }
+  return observers.size > 0;
+}
 // Phase 5-I: 경계 전투 — 이웃 zone 플레이어 ghost(절대좌표) + 화살 발사체
 const ghostPlayers = new Map(); // playerId -> { ax, ay, vx, vy, name, srcZone, recvAt } (절대좌표, 이웃 zone이 동기화)
 const ghostBuildings = new Map(); // key "srcZone:id" -> { acx, acy, side, type, floor } (절대 cell, 경계 너머 벽 콜라이더)
@@ -3315,6 +3327,7 @@ function warTreeCellBlocked(cellX, cellY) {
 }
 
 SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, isWaterTileLocal, isPositionActive, isBlockedByWall, anyViewerNear, perfMark,
+  zoneAwake,   // ★[T410] 존이 이 틱에 몸을 걷게 하나 — 틱의 idle 문과 **같은 판정**(생활층 `_t368ZoneAwake` 가 이것만 본다 · 사본 0)
   // ★★[T333] 바위 술어도 넘긴다 — 생활층 지형 어댑터(`villages.js isRock`)가 여태 `terrain.isRockCellLocal` 을
   //   **직접** 불러 메모를 지나쳤다(T324 프로파일: 남은 지형 시간의 9.6%). 같은 양자화(셀 중심)라 답은 같다.
   isRockTileLocal,
@@ -11816,10 +11829,9 @@ setInterval(() => {
   // === 14.49-e3-perf5: idle zone skip ===
   // 사람 player(isNpc=false) + observer 모두 0명이면 tick 풀 처리 skip.
   // 5초마다 한 번씩만 가벼운 maintenance (NPC 마을 시뮬레이션은 별도 setInterval(60s)라 영향 없음).
-  let hasHuman = false;
-  for (const p of players.values()) { if (!p.isNpc) { hasHuman = true; break; } }
-  const hasObserver = observers.size > 0;
-  if (!hasHuman && !hasObserver) {
+  //   ★★[T410] 그 판정은 이제 `zoneAwake()` 하나다(위 `anyViewerNear` 곁) — 손잡이 `ZONE_IDLE_SKIP` 끔(기본)이면 늘 참 ⇒
+  //     이 문은 **안 닫힌다**(사람 0 · 관측자 0 존도 본문을 돈다). `=1` 이면 종전 두 명부 그대로(비트 동일).
+  if (!zoneAwake()) {
     // idle zone: 5초마다만 가벼운 작업. 26 zone 중 25개가 idle이면 CPU 거의 0.
     if (!global._idleSkipAt || now - global._idleSkipAt > 5000) {
       global._idleSkipAt = now;
