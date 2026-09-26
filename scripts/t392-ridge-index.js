@@ -29,7 +29,7 @@ if (process.argv[2] === '--child') {
   const ZID = 'hanbando', Z = ZONES[ZID], cs = chunk.CHUNK_SIZE;
   const now = () => Number(process.hrtime.bigint()) / 1000;
   const regions = { forest: [57382, 61114], ridge: [41175, 44332] };
-  const out = { on: process.env.TERRAIN_SEG_INDEX === '1', regions: {} };
+  const out = { on: process.env.TERRAIN_SEG_INDEX !== '0', regions: {} };   // ★[T406] 기본 켬 — 끔은 `=0`
   for (const [nm, [X, Y]] of Object.entries(regions)) {
     const c0 = Math.floor(X / cs), r0 = Math.floor(Y / cs);
     const keys = [];
@@ -75,7 +75,7 @@ if (process.argv[2] === '--child') {
 
 // ── 부모 ─────────────────────────────────────────────────────────────────────────
 const child = (on) => JSON.parse(execFileSync(process.execPath, [__filename, '--child'],
-  { env: { ...process.env, TERRAIN_SEG_INDEX: on ? '1' : '' }, maxBuffer: 1 << 26, cwd: ROOT }).toString());
+  { env: { ...process.env, TERRAIN_SEG_INDEX: on ? '1' : '0' }, maxBuffer: 1 << 26, cwd: ROOT }).toString());
 const off = child(false), on = child(true);
 
 // 청크(1,024px) 격자로 색인하면 청크당 후보 선분 몇 개 — 같은 적재 규칙(구간 bbox + max(w1,w2)/2)으로 센다(계측만)

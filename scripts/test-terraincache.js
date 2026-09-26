@@ -98,7 +98,7 @@ const msRawA = best(() => bench(rawBoth, warm)), msRawB = best(() => bench(rawBo
 const gain = msCold / Math.max(0.001, msHot), ctrl = msRawA / Math.max(0.001, msRawB);
 console.log(`     캐시 1회차 ${msCold.toFixed(0)}ms · 2회차 ${msHot.toFixed(0)}ms | 원본 1회차 ${msRawA.toFixed(0)}ms · 2회차 ${msRawB.toFixed(0)}ms`);
 ok(gain > 3, `캐시 적중이 미적중보다 3배 넘게 싸다`,
-   `${gain.toFixed(1)}배 · 색인 ${process.env.TERRAIN_SEG_INDEX === '1' ? '켬' : '끔'}`);
+   `${gain.toFixed(1)}배 · 색인 ${process.env.TERRAIN_SEG_INDEX !== '0' ? '켬' : '끔'}`);
 // ★대조군: 캐시가 없으면 2회차도 안 싸진다. 이게 없으면 "두 번째가 원래 빠르다"와 구별이 안 된다.
 ok(gain > ctrl * 2.5, `이득이 대조군의 2.5배 넘는다 — 빨라진 건 캐시 덕이지 '두 번째라서'가 아니다`,
    `캐시 ${gain.toFixed(1)}배 vs 대조군 ${ctrl.toFixed(2)}배`);
