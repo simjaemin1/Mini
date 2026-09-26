@@ -63,10 +63,18 @@
     const TS = pConn.meta.tileSize;
     // 타일/엔티티 컬링 중심도 카메라(보간) 위치 기준 → 화면 중심과 일치.
     const worldCx = _camAbs.x, worldCy = _camAbs.y;
-    const VIEW_RADIUS = 650;
     // 14.49-e6e: 타일은 화면 전체 덮는 더 큰 범위로 그림 (1500px).
     // 그래야 vignette 가장자리가 셀 stairstep 안 보임 (타일 없는 빈 영역의 boundary가 hard edge).
     const TILE_RENDER_RADIUS = 1500;
+    // ★★[T392 2026-09-25 · PM 결정 #67③] **개체가 그리는 상자 = 지면이 닿는 상자.** 새 수 0 — 같은 상수의 별칭이다.
+    //   종전 650 은 "시야(650)"를 따라 적힌 값이었는데, 개체는 활성 청크(최소 2,048px · `ceil(1200/1024)=2`)에
+    //   이미 있고 지면은 1,500 까지 그렸다 ⇒ 650~1,500 띠에서 **나무만 사라졌다**(재민 실기 ② · T380 §0).
+    //   T384 두 팔 표: 띠를 원경 층으로 메우면 숲 9.1ms · 이 컬링으로 메우면 5.1ms(개체 길은 안개 게이트를
+    //   지나 **본 셀만** 그린다) — 그리고 개체라 **클릭·채집이 된다**. 그래서 이 길로 간다.
+    //   ⚠이 이름을 쓰는 곳 전부가 따라온다: 자원·바닥 아이템·길·다리·도랑·건물·짐승·사체·사람 컬링과
+    //     거리 vignette(`vis = 1 - (d/VIEW_RADIUS)^1.4`). 사람·짐승은 서버 AOI(800)가 먼저 자르고,
+    //     살아 움직이는 것에만 거는 시야 규칙(`entityVisibility`)은 그대로 탄다 — 보고 T392 §1 표.
+    const VIEW_RADIUS = TILE_RENDER_RADIUS;
 
     // === 1) 지면 다이아몬드 타일 ===
     const t0WX = Math.floor((worldCx - TILE_RENDER_RADIUS) / TS) * TS;

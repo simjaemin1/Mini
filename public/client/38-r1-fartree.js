@@ -115,7 +115,12 @@ function _farDraw(ctx, toScreen, cx0, cy0, viewR, tileR) {
   const items = [];
   const R = tileR;
   // ⓐ 띠 — **이미 가진 개체의 자리**. 개체가 그리는 상자(viewR) 안은 건너뛴다 ⇒ 겹침 0.
-  if (typeof conns !== 'undefined' && conns) {
+  //   ★★[T392 2026-09-25] **띠는 꺼졌다** — `34-m-renderloop` 의 `VIEW_RADIUS` 가 `TILE_RENDER_RADIUS` 의
+  //     별칭이 되어 viewR === tileR 이다. 개체 컬링이 이 띠를 **개체로** 메운다(더 싸고 · 클릭·채집이 된다 ·
+  //     안개 밑 나무를 안 그린다 — T384 두 팔 표). 상자가 비었으므로 자원 수천 개를 프레임마다 훑지도 않는다.
+  //     원경 ⓑ(큰지도)는 그대로다.
+  _farStat.near = 0;   // 띠를 건너뛴 프레임에 낡은 수가 남지 않게(족보 130)
+  if (viewR < tileR && typeof conns !== 'undefined' && conns) {
     for (const c of conns.values()) {
       if (!c.meta || !c.resources) continue;
       const ox = c.meta.worldOffsetX, oy = c.meta.worldOffsetY || 0;
