@@ -162,8 +162,10 @@ const ZONE_TERRAIN = new Proxy({}, {
 });
 
 // === helpers ===
-// ★선분 격자 색인 스위치 — 기본 꺼짐(TERRAIN_SEG_INDEX=1 로 켠다). terrain-segindex.js 머리말 참조.
-const _SEG_INDEX_ON = process.env.TERRAIN_SEG_INDEX === '1';
+// ★선분 격자 색인 스위치 — terrain-segindex.js 머리말 참조.
+//   ★[T406 2026-09-26] **기본 켬**(되돌림 `TERRAIN_SEG_INDEX=0`). 게이트: 한반도 8,763청크 + europa 11,176청크
+//   산출 해시 켬/끔 **비트 동일** · 술어 1,000점(능선 옆 300) 다른 답 0 — `scripts/t406-seg-gate.js`.
+const _SEG_INDEX_ON = process.env.TERRAIN_SEG_INDEX !== '0';
 const _buildSegIndex = _SEG_INDEX_ON ? require('./terrain-segindex').buildSegIndex : null;
 function _pointToSegmentDist(px, py, x1, y1, x2, y2) {
   const dx = x2 - x1, dy = y2 - y1;

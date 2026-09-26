@@ -20,6 +20,7 @@
 //   ⇒ 검사 순서만 달라지고 불리언 결과는 같다(원본도 첫 일치에서 true 를 낸다).
 //
 // ★기본 꺼짐: env TERRAIN_SEG_INDEX=1. 끄면 색인을 만들지도 않고 종전 선형 주사 그대로.
+//   ⚠[T406 2026-09-26] **기본 켬으로 바뀌었다** — 스위치는 `terrain.js` 한 줄(`!== '0'`) · 끄려면 `TERRAIN_SEG_INDEX=0`.
 //
 // ★거울에 관하여 (다음 사람에게):
 //   `public/terrain.js` 에도 같은 `_isPointInRiver` 가 있다(클라 거울 — add-valley.js 가 남긴 규약).

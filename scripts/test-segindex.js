@@ -90,7 +90,7 @@ const run = (out, env) => {
   return JSON.parse(o.trim().split('\n').pop());
 };
 console.log('\n① 등가(답을 안 바꾼다) — 자식 프로세스 둘, 진짜 제품 경로');
-const rOff = run(OUT_OFF, { TERRAIN_SEG_INDEX: '' });
+const rOff = run(OUT_OFF, { TERRAIN_SEG_INDEX: '0' });   // ★[T406] 기본 켬 — 끔 팔은 `=0` 으로만 선다
 const rOn = run(OUT_ON, { TERRAIN_SEG_INDEX: '1' });
 const bOff = fs.readFileSync(OUT_OFF), bOn = fs.readFileSync(OUT_ON);
 let firstBad = -1;
@@ -135,7 +135,8 @@ ok(rOn.ms * 3 < rOff.ms, `색인 켬이 3배 넘게 빠르다(구축 비용 포�
 // ── ④ 배선·기본값 ─────────────────────────────────────────────────────────────
 console.log('\n④ 배선·기본값');
 const tsrc = fs.readFileSync(path.join(ROOT, 'server', 'terrain.js'), 'utf8');
-ok(/_SEG_INDEX_ON = process\.env\.TERRAIN_SEG_INDEX === '1'/.test(tsrc), `기본 꺼짐 — env 로만 켜진다`);
+// ★[T406] 기본값이 뒤집혔다 — 켬이 기본 · `=0` 으로만 끈다(되돌림 경로).
+ok(/_SEG_INDEX_ON = process\.env\.TERRAIN_SEG_INDEX !== '0'/.test(tsrc), `[T406] 기본 켬 — \`TERRAIN_SEG_INDEX=0\` 으로만 끈다`);
 ok(/const cnt = cand \? cand\.length : N;/.test(tsrc), `색인이 없으면 N(전체 선분)을 그대로 훑는다 — 종전 경로 보존`);
 const body = tsrc.slice(tsrc.indexOf('function _isPointInRiver'), tsrc.indexOf('function isWaterCellLocal'));
 ok((body.match(/_pointToSegmentDist\(/g) || []).length === 1,
