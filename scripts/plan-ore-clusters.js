@@ -411,7 +411,13 @@ for (const o of added) { const e = { name: o.name, center: o.center, radius: o.r
 //   레포의 정본은 **한 줄(minify)** 이라 광맥 몇 개를 더한 판이 `127,281줄 삽입 / 1줄 삭제` 로 나왔다.
 //   diff 가 그 꼴이면 무엇이 바뀌었는지 아무도 못 본다 — 검토를 통과하는 것과 읽히는 것은 다르다.
 //   ⇒ 원본에 줄바꿈이 없으면 minify 로, 있으면 종전대로 쓴다(내용 판정은 한 글자도 안 바꿨다).
+// ★★[T409 2026-09-26] **쓰는 판은 파일에서 새로 읽은 것이다.** `doc` 는 `require(GAME)` — terrain.js 가 쓰는
+//   **같은 객체**다. T406(선분 색인 기본 켬)·T408(이웃 참조) 뒤엔 술어가 이 존과 **이웃 존** 피처 객체에
+//   캐시(`_segIdx` · `_bbox`)를 달고, 그게 그대로 정본에 새어 들었다(실측: jungwon_n 광맥만 더했는데
+//   hanbando·sibara·jungwon_s·centaria·hindgang 다섯 존 절이 바뀜). ⇒ 파일을 다시 읽어 **이 존 광맥 칸만** 갈아 끼운다.
+const _fresh = JSON.parse(fs.readFileSync(GAME, 'utf8'));
+_fresh[ZID].ores = JSON.parse(JSON.stringify(d.ores));
 const _wasMinified = !fs.readFileSync(GAME, 'utf8').includes('\n');
-fs.writeFileSync(GAME, _wasMinified ? JSON.stringify(doc) : JSON.stringify(doc, null, 1));
+fs.writeFileSync(GAME, _wasMinified ? JSON.stringify(_fresh) : JSON.stringify(_fresh, null, 1));
 console.log('★적용됨 → ' + GAME + ' (광맥 ' + d.ores.length + '개)');
 console.log('  다음: node scripts/audit-terrain-quality.js ' + ZID + ' · build-cell-map · export-editor-work');
