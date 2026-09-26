@@ -43,6 +43,11 @@ const SLICE_S = parseInt(process.env.T368_SLICE_S || '60', 10);
 const REAL_DAY_MS = 1440000;   // = `zone-config.js` WORLD.dayLengthMs(T376 이 대조한 그 수)
 const ENV = { base: {}, t100: { T100_FIELD_YIELD: '1' }, on: { T100_FIELD_YIELD: '1', T368_FARM_ACT: '1' }, onidle: { T100_FIELD_YIELD: '1', T368_FARM_ACT: '1' } };
 const OBS = { base: true, t100: true, on: true, onidle: false };
+// ★[T410 ③] 행위 넷 켬 팔 셋 — 어부(T312)·나무꾼(T325)·채집(T347)·농부(T368 + 4판) · 존의 idle 문 닫힘(`ZONE_IDLE_SKIP=1` 종전) / 열림(기본)
+//   acts0 = 관측자 0 · 문 닫힘(종전 세계) · acts = 관측자 0 · 문 열림 · actsobs = 관측자 하나 · 문 열림(관측자 무관 게이트의 짝)
+{ const A = { T100_FIELD_YIELD: '1', T368_FARM_ACT: '1', T312_FISH_ACT: '1', T325_WOOD_ACT: '1', T347_FORAGE_ACT: '1' };
+  ENV.acts0 = Object.assign({ ZONE_IDLE_SKIP: '1' }, A); ENV.acts = Object.assign({}, A); ENV.actsobs = Object.assign({}, A);
+  OBS.acts0 = false; OBS.acts = false; OBS.actsobs = true; }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const say = (...a) => console.log(...a);
 const rmdb = (f) => { for (const s of ['', '-wal', '-shm']) { try { fs.unlinkSync(f + s); } catch (e) {} } };
@@ -103,7 +108,7 @@ async function phaseA() {
     if (process.env.T368_REUSE === '1' && res.arms[arm] && res.arms[arm].done) { say(`팔 ${arm} — 이미 있다(재사용)`); continue; }
     say(`\n[a] 팔 ${arm} — ${JSON.stringify(env)} · 관측자 ${OBS[arm] ? '하나' : '없음'} · ${DAYS}일 × ${DAY_MS}ms`);
     const zdb = `${TMP}/z-${arm}.db`; rmdb(zdb);
-    const b = boot(arm, env, DAY_MS, zdb, 3910);
+    const b = boot(arm, env, DAY_MS, zdb, parseInt(process.env.T368_PORT || '3910', 10));   // ★[T410] 여러 팔을 나란히 띄울 때 가른다
     const tb = Date.now();
     for (let i = 0; i < 900 && !(await b.health()); i++) await sleep(1000);
     say(`  부팅 ${((Date.now() - tb) / 1000).toFixed(0)}초`);
@@ -128,7 +133,11 @@ async function phaseA() {
         dCl: L && L.dCl, dSt: L && L.dSt, clearCrew: L && L.clearCrew, buildCrew: L && L.buildCrew, sites: L && L.sites,
         p50: t ? t.p50 : null, p95: t ? t.p95 : null, n: t ? t.n : null,
         dropN: p.tick ? p.tick.dropN : null, lagPct: p.tick ? p.tick.lagPct : null,
-        walk: p.walk ? { steps: p.walk.steps, cut: p.walk.cutTicks } : null });
+        walk: p.walk ? { steps: p.walk.steps, cut: p.walk.cutTicks } : null,
+        //   ★[T410 ③] 행위 셋의 관측 칸(끔이면 null) — 누계 입고 · 걷는 이 · 손
+        fish: p.fish ? { delivered: p.fish.delivered, walkers: p.fish.walkers, hands: p.fish.hands } : null,
+        wood: p.wood ? { delivered: p.wood.delivered, walkers: p.wood.walkers, hands: p.wood.hands, cutDay: p.wood.cutDay } : null,
+        forage: p.forage ? { delivered: p.forage.delivered, walkers: p.forage.walkers, hands: p.forage.hands, pickDay: p.forage.pickDay } : null });
       await b.getj('/perf?reset=1');   // 그날 창 — 틱 표본을 하루마다 영점 조정
       if (d % 10 === 0) say(`  day ${d} · 인구 ${pop} · 농부 ${f && f.farmers}(밭 ${f && f.working}) · 헤드리스 몸/일괄 ${f && f.hlBody}/${f && f.hlBatch} · 수확 ${f && f.harvestN} · 입고 낱개 ${f && f.credUnits} · 식량등가 ${f && f.credFoodEq} / 대조 ${f && f.t100Eq} · 곳간 ${f && f.food} · 작물 일 어제 ${L && L.dTk}(예산 ${L && L.farmers}×${L && L.tkPday}) · p50 ${t ? t.p50 : '?'}ms`);
       if (d >= DAYS) break;
