@@ -17,6 +17,8 @@
 //            갈아 띄운다. 창마다: 한반도 틱 p50/p95/max · 한반도 CPU% · 25존 CPU 합 · RSS 합 · 호스트 전체 CPU(`/proc/stat` · 코어 합).
 //            부팅은 다섯씩(부팅 봉우리 메모리를 겹치지 않게 · 이 호스트 8GB). `T410_WAITDAY=1` 이면 한반도가 새 하루 경계를 한 번 넘긴 뒤 잰다.
 //   step   — 새 DB 빈 존 25개(깸)가 **첫 하루 경계**를 넘으면 값이 오르나(틀 존은 오른다) — 같은 프로세스의 경계 앞 창 대 뒤 창.
+//   ★[T432] load 팔 둘 더(`chunks` · `chunksacts` — `T432_BODY_CHUNKS=1`) · `T410_PROBE=1` 이면 조각 끝마다 GC 뒤 메모리 · 활성 청크 ·
+//            몸이 선 청크 · 시드 자원 · 건물 · 몹 · 청크 켜기/끄기 누계(`scripts/t432-probe.js` · 존 원문 무접촉).
 //
 // 실행:  node scripts/t410-zone-awake.js load   (T410_ARMS="asleep,awake,obs" · T410_SLICES=26 · T410_WAITDAY=1 이면 새 하루부터)
 //        node scripts/t410-zone-awake.js zones  (T410_ZONES="europa,…" · T410_ZWARM_S=90 · T410_ZWIN_S=240)
@@ -41,7 +43,20 @@ const ARM = {
   acts0:  { env: Object.assign({ ZONE_IDLE_SKIP: '1' }, ACTS), obs: false },   // 행위 넷 켬 · 문 닫힘(종전 세계)
   acts:   { env: Object.assign({}, ACTS), obs: false },            // 행위 넷 켬 · 문 열림
   actsobs:{ env: Object.assign({}, ACTS), obs: true },             // 행위 넷 켬 · 관측자 하나
+  // ★[T432] 청크 문 — 주민 몸이 선 청크를 켠다(`T432_BODY_CHUNKS`) · 값 분해 네 팔 = awake(ⓐ) · chunks(ⓑ) · acts(ⓒ) · chunksacts(ⓓ)
+  //   ⚠T433 뒤 main 은 T421 격자 증분이 **기본 켬**이다 — 청크 두 팔은 보고 표의 "T421 끔" 칸 그대로 끔을 박았다(잰 때의 기본과 같은 값).
+  //     ⓐ·ⓒ(`awake`·`acts` — T410 팔)을 그 칸 그대로 다시 내려면 밖에서 `T421_SPATIAL_INC=0` 을 준다(팔이 안 박은 칸은 밖의 env 를 따른다).
+  chunks:     { env: { T432_BODY_CHUNKS: '1', T421_SPATIAL_INC: '0' }, obs: false },                        // 청크 켬 · 행위 끔 · 격자 증분 끔
+  chunksacts: { env: Object.assign({ T432_BODY_CHUNKS: '1', T421_SPATIAL_INC: '0' }, ACTS), obs: false },   // 청크 켬 · 행위 넷 켬 · 격자 증분 끔
+  //   ★T421 증분 격자(`T421_SPATIAL_INC=1` · T433 이 기본 켬으로 착지)를 얹은 짝 — 청크 켬의 값에서 격자 몫을 가른다
+  chunksi:     { env: { T432_BODY_CHUNKS: '1', T421_SPATIAL_INC: '1' }, obs: false },
+  chunksactsi: { env: Object.assign({ T432_BODY_CHUNKS: '1', T421_SPATIAL_INC: '1' }, ACTS), obs: false },
+  awakei:      { env: { T421_SPATIAL_INC: '1' }, obs: false },
+  actsi:       { env: Object.assign({ T421_SPATIAL_INC: '1' }, ACTS), obs: false },
 };
+// ★[T432] 들여다보기 — `T410_PROBE=1` 이면 존을 `--expose-gc -r scripts/t432-probe.js` 로 띄워 조각 끝마다 GC 뒤 메모리 ·
+//   활성 청크 · 몸이 선 청크 · 시드 자원 · 건물 · 몹 · 청크 켜기/끄기 누계를 읽는다(레포 zone.js 무접촉 — 적재 순간 덧붙임).
+const PROBE = process.env.T410_PROBE === '1';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const say = (...a) => console.log(...a);
 const rmdb = (f) => { for (const s of ['', '-wal', '-shm']) { try { fs.unlinkSync(f + s); } catch (e) {} } };
@@ -67,7 +82,11 @@ function bootZone(tag, zoneId, env, dayMs, zdb, cport, zport, secret, withCentra
   const zenv = { PORT: String(zport), ZONE_ID: zoneId, CENTRAL_HOST: 'localhost', CENTRAL_PORT: String(cport), CENTRAL_SECRET: secret,
     DB_PATH: zdb, ENABLE_VILLAGES: '1', VILLAGE_WAR_LOG: '0' };
   if (dayMs) zenv.VILLAGE_DAY_MS = String(dayMs);
-  const z = spawn(process.execPath, [path.join(ROOT, 'server/zone.js')], { cwd: ROOT, stdio: ['ignore', logf, logf],
+  const probeOut = `${TMP}/${tag}.probe.json`;
+  if (PROBE) zenv.T432_PROBE_OUT = probeOut;
+  if (PROBE && process.env.T410_PROF === '1') zenv.T432_PROF_OUT = `${TMP}/${tag}.cpuprofile`;   // ★[T432] CPU 프로필(시작·길이는 T432_PROF_START_S · _DUR_S)
+  const zargs = PROBE ? ['--expose-gc', '-r', path.join(ROOT, 'scripts/t432-probe.js'), path.join(ROOT, 'server/zone.js')] : [path.join(ROOT, 'server/zone.js')];
+  const z = spawn(process.execPath, zargs, { cwd: ROOT, stdio: ['ignore', logf, logf],
     env: Object.assign({}, process.env, zenv, env) });
   const getj = async (p) => { try { const r = await fetch(`http://localhost:${zport}${p}`, { headers: { 'x-zone-secret': secret }, signal: AbortSignal.timeout(20000) }); return await r.json(); } catch (e) { return null; } };
   const health = async () => { try { return (await fetch(`http://localhost:${zport}/health`, { signal: AbortSignal.timeout(5000) })).ok; } catch (e) { return false; } };
@@ -84,14 +103,23 @@ function bootZone(tag, zoneId, env, dayMs, zdb, cport, zport, secret, withCentra
   };
   const kill = async () => { clearInterval(pinger); try { ws && ws.close(); } catch (e) {} try { z.kill('SIGINT'); } catch (e) {} await sleep(3000);
     try { z.kill('SIGKILL'); } catch (e) {} try { c && c.kill('SIGKILL'); } catch (e) {} await sleep(300); };
-  return { z, c, getj, health, observe, kill, pid: () => z.pid };
+  //   ★[T432] 신호 한 번 → 존이 GC 뒤 값을 파일로 쓴다(없으면 null)
+  const probe = async () => {
+    if (!PROBE) return null;
+    try { fs.unlinkSync(probeOut); } catch (e) {}
+    try { process.kill(z.pid, 'SIGUSR2'); } catch (e) { return null; }
+    for (let i = 0; i < 100; i++) { await sleep(100); try { return JSON.parse(fs.readFileSync(probeOut, 'utf8')); } catch (e) {} }
+    return null;
+  };
+  return { z, c, getj, health, observe, kill, probe, pid: () => z.pid };
 }
 const lifeOf = (L) => {
   if (!L || !L.villages) return null;
-  let bodies = 0, farmers = 0, nonSleep = 0, dTk = 0, mTk = 0;
+  let bodies = 0, farmers = 0, nonSleep = 0, dTk = 0, mTk = 0, dCl = 0, mCl = 0, dSt = 0, mSt = 0;
   for (const v of L.villages) { bodies += v.pop || 0; farmers += (v.jobs && v.jobs.farmer) || 0; dTk += v.dTk || 0; mTk += v.mTk || 0;
+    dCl += v.dCl || 0; mCl += v.mCl || 0; dSt += v.dSt || 0; mSt += v.mSt || 0;   // ★[T432] 개간 셀 · 건설 단계(어제치 d · 오늘 진행 m)
     for (const [k, n] of Object.entries(v.acts || {})) if (k !== '취침') nonSleep += n; }
-  return { phase: L.phase, dayR: L.dayR, villages: L.villages.length, bodies, farmers, nonSleep, dTk, mTk };
+  return { phase: L.phase, dayR: L.dayR, villages: L.villages.length, bodies, farmers, nonSleep, dTk, mTk, dCl, mCl, dSt, mSt };
 };
 const actOf = (p) => {
   if (!p) return null;
@@ -151,9 +179,20 @@ async function modeLoad() {
         p50: t ? t.p50 : null, p95: t ? t.p95 : null, max: t ? t.max : null, n: t ? t.n : null, cpu, rss: rssMB(B[a].pid()),
         bodies: L ? L.bodies : null, nonSleep: L ? L.nonSleep : null, farmers: L ? L.farmers : null, dTk: L ? L.dTk : null, mTk: L ? L.mTk : null,
         steps: p && p.walk ? p.walk.steps : null, cut: p && p.walk ? p.walk.cutTicks : null, drop: p && p.tick ? p.tick.dropN : null, lag: p && p.tick ? p.tick.lagPct : null,
-        usPer: (t && L && L.bodies > 0 && t.n > 0) ? +(t.p50 * 1000 / L.bodies).toFixed(4) : null, act: actOf(p) };
+        usPer: (t && L && L.bodies > 0 && t.n > 0) ? +(t.p50 * 1000 / L.bodies).toFixed(4) : null, act: actOf(p),
+        dCl: L ? L.dCl : null, mCl: L ? L.mCl : null, dSt: L ? L.dSt : null, mSt: L ? L.mSt : null };
+      //   ★[T432] 들여다보기 — 창을 읽은 **뒤** GC 를 부르고, 다음 창은 그 뒤에 새로 연다(GC 멈춤이 다음 조각에 안 섞이게)
+      if (PROBE) {
+        const h = await B[a].getj('/health'), pr = await B[a].probe();
+        s.health = h ? { res: h.resources, bld: h.buildings, mobs: h.mobs } : null;
+        s.probe = pr;
+        await B[a].getj('/perf?reset=1'); prev[a] = { t: Date.now(), c: cpuTicks(B[a].pid()) };
+      }
       res.arms[a].slices.push(s);
-      say(`  [${a}] 조각 ${k} phase ${s.phase != null ? s.phase.toFixed(3) : '?'}${s.night ? '(밤)' : '(낮)'} · p50 ${s.p50}ms · p95 ${s.p95} · n ${s.n} · CPU ${s.cpu}% · RSS ${s.rss}MB(GC 의 값 · 규약 ⓑ) · 몸 ${s.bodies}(마을 명부) · 걸음 ${s.steps} · 사람당 ${s.usPer}µs`);
+      const q = s.probe && s.probe.s, qm = s.probe && s.probe.mem;
+      say(`  [${a}] 조각 ${k} phase ${s.phase != null ? s.phase.toFixed(3) : '?'}${s.night ? '(밤)' : '(낮)'} · p50 ${s.p50}ms · p95 ${s.p95} · n ${s.n} · CPU ${s.cpu}% · RSS ${s.rss}MB(GC 의 값 · 규약 ⓑ) · 몸 ${s.bodies}(마을 명부) · 걸음 ${s.steps} · 사람당 ${s.usPer}µs` +
+        (q ? ` │ 청크 ${q.act}(몸 ${q.bodyCk} · 띠 ${q.bandN} · 둘레 ${q.viewCk}) · 시드 ${q.seed}/${q.res} · 건물 ${q.bld} · 몹 ${q.mobsAct}/${q.mobs} · 주민 활성 ${q.resAct}/${q.resN} · 켜기 ${q.actN} 끄기 ${q.deactN}` : '') +
+        (qm ? ` │ GC 뒤 heap ${(qm.heapUsed / 1048576).toFixed(0)}MB · RSS ${(qm.rss / 1048576).toFixed(0)}MB(${s.probe.gcMs}ms)` : ''));
     }
     fs.writeFileSync(OUT, JSON.stringify(res, null, 1));
   }

@@ -256,6 +256,21 @@ let prevActiveChunkKeys = new Set();
 //   집 여러채여도 분산됨. 걷는 속도면 큐가 안 쌓여 즉시.)
 let _buildingSendQueue = [];
 const BUILDING_SEND_PER_TICK = 120;
+// ★★★[T432 2026-09-26 · ★PM 결정(위임) · 캐논 ⓑ① "관측자 없어도 실걸음"의 나머지 반] **마을 청크는 몸이 있으면 켜진다.**
+//   T410 이 idle 문을 열었더니 기본 손잡이의 주민은 **청크 문 둘**(결정·이동 — 활성 청크 안의 몸만)에 섰다(걸음 0 → 0) —
+//   이 함수가 사람·관측자 둘레만 켜서다. 손잡이 `T432_BODY_CHUNKS`(기본 **끔** · 켬은 값 뒤 PM · 되돌림 = 끔).
+//   켜면 **주민 몸이 선 청크**를 더한다 — 둘레 0(몸이 없는 청크 · 마을 사이 빈 땅은 그대로 끈다).
+//   ★주민 = `simVillageId` 가 있는 몸(T316 걷기 술어 `_t316WalkAlways` 가 보는 그 칸 · 새 술어 0 · 상단·호위도 마을 몸이다).
+//   ★히스테리시스 = **겹침 띠**(Phase 5-K2 존 경계 핸드오프의 그 문법 · `HANDOFF_COMMIT` 그 수 · 새 수 0):
+//     몸은 들어선 청크를 곧바로 붙잡고(선 청크가 꺼져 있으면 그 몸이 청크 문에 걸려 못 걷는다), 붙잡은 청크는
+//     **그 청크 밖으로 COMMIT px 넘게 벗어나야** 놓는다 ⇒ 경계를 왔다갔다 해도 켜고 끄기(시드 자원 spawn/despawn ·
+//     건물 올리고 내리기)가 되풀이되지 않는다 — 되풀이는 COMMIT 보다 큰 폭으로 드나들 때만 난다.
+//   ⚠끄면 아래 블록이 통째로 안 돈다 — 종전 집합 그대로(비트 동일 · `scripts/test-body-chunks.js` 가 집합 해시로 문다).
+const T432_BODY_CHUNKS = process.env.T432_BODY_CHUNKS === '1';
+//   ★차례를 지킨다 — 붙잡힌 청크 키를 **처음 붙잡힌 차례**로 들고 있다가(판 표지만 고친다) 그 차례로 집합에 넣는다.
+//     몸마다 붙잡은 목록이 바뀌어도 집합이 같으면 차례도 같다 ⇒ T421 증분 격자("활성 청크 집합이 차례까지 같은가")가 안 무너진다.
+const _t432Order = new Map();   // 청크 키 → 마지막으로 붙잡힌 판
+let _t432Tick = 0;
 function updateActiveChunks() {
   const newActive = new Set();
   // 사람 player 시야 기반 활성 청크
@@ -278,6 +293,28 @@ function updateActiveChunks() {
       if (cx < 0 || cy < 0 || cx >= chunkManager.colsX || cy >= chunkManager.colsY) continue;
       newActive.add(chunkManager.keyOf(cx, cy));
     }
+  }
+  // ★[T432] 주민 몸이 선 청크 — 손잡이가 켜졌을 때만(위 머리글). 몸마다 **붙잡은 청크**(≤ 4 — 모서리)를 적어 둔다:
+  //   ⓐ 선 청크는 곧바로 붙잡는다(몸이 걸으려면 선 청크가 켜져 있어야 한다 — 청크 문 둘)
+  //   ⓑ 붙잡은 청크는 몸이 그 청크 밖으로 `HANDOFF_COMMIT` px 넘게 벗어나야 놓는다(겹침 띠 — 경계를 오가도 안 놓는다)
+  //   키 글자는 붙잡을 때 한 번만 짓는다(틱마다 새 글자 0).
+  if (T432_BODY_CHUNKS) {
+    const cs = chunkManager.chunkSize, CX = chunkManager.colsX, CY = chunkManager.colsY, tk = ++_t432Tick;
+    for (const p of players.values()) {
+      if (!p.isNpc || !p.simVillageId || p.hp <= 0) continue;
+      const cx = Math.floor(p.x / cs), cy = Math.floor(p.y / cs);
+      const H = p._t432held || (p._t432held = []);
+      let has = false;
+      for (let i = 0; i < H.length; i++) if (H[i].cx === cx && H[i].cy === cy) { has = true; break; }
+      if (!has) H.push({ cx, cy, k: chunkManager.keyOf(cx, cy) });                                   // ⓐ
+      for (let i = H.length - 1; i >= 0; i--) {                                                      // ⓑ
+        const h = H[i]; if (h.cx === cx && h.cy === cy) continue;
+        const x0 = h.cx * cs, y0 = h.cy * cs;
+        if (Math.max(x0 - p.x, p.x - (x0 + cs), y0 - p.y, p.y - (y0 + cs)) > HANDOFF_COMMIT) H.splice(i, 1);
+      }
+      for (let i = 0; i < H.length; i++) { const h = H[i]; if (h.cx >= 0 && h.cy >= 0 && h.cx < CX && h.cy < CY) _t432Order.set(h.k, tk); }
+    }
+    for (const [k, t] of _t432Order) { if (t !== tk) _t432Order.delete(k); else newActive.add(k); }   // 이 판에 아무도 안 붙잡은 키는 놓는다
   }
   // transition: 새로 활성된 청크 → 즉시 activate (자원 spawn 즉시, 건물은 activateChunk 안에서 큐로)
   for (const k of newActive) {
