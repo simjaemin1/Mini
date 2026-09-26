@@ -250,6 +250,19 @@ if (!seeds) {
 }
 
 const world = econV2.createWorldV2({ seed: SEED, villageCount: seeds.length, picker: 'rational', infoRange: 5000, raidPer100: 0.005 });
+// ★★[T368 · 계측 전용 · **켠 팔만**] 작물별 입구 누계 — econ 입구(`harvestToGranary`)를 **감싼다**(인수·돌려주는 값 그대로 · 산수 0).
+//   생활층은 `_lifeEcon().harvestToGranary(…)` 로 **이 모듈 객체의 칸**을 부른다 ⇒ 그 칸을 감싸면 그 호출이 여기를 지난다.
+//   누계는 econ 이 돌려준 낱개(배율까지 곱한 입구 값)와 건수뿐이고, 식량 값은 끝에 econ 정본(`totalFoodEquivalent`)이 센다.
+//   ⚠끈 팔엔 안 감싼다(JSON 무변).
+const T368_BY = econ.T368_FARM_ACT ? {} : null;
+if (T368_BY) {
+  const _h = econ.harvestToGranary;
+  econ.harvestToGranary = function (v, n, mul, crop, ev) {
+    const r = _h.apply(this, arguments);
+    if (typeof crop === 'string' && crop) { const b = T368_BY[crop] || (T368_BY[crop] = { ev: 0, units: 0 }); b.ev += (ev > 0 ? ev : 1); b.units += (+r || 0); }
+    return r;
+  };
+}
 world.villages = []; world.events = [];
 R('server/trees').attachToWorld(world);          // ★T135 나무 층 — `t17-metrics` 와 같은 문(족보 130)
 for (const s of seeds) {
@@ -694,7 +707,25 @@ const out = {
   firstHarvestDay: firsts.length ? Math.min(...firsts) : null,
   econFoodTot: +_foodSum().toFixed(1), granary: GRAN, per,
 };
+// ★★[T368 2026-09-25 · 계측 전용 · **켠 팔만**] 밭 품목의 항등 — 들어온 낱개·식량등가 ↔ 같은 수확의 `T100_K` 대조 자.
+//   ⚠끈 팔(손잡이 미설정)에는 **한 칸도 안 붙는다** — 3시드 JSON 전수 비교가 넷째 판과 같은 글자를 내야 한다.
+//   ⚠값은 전부 econ 이 제 자리에서 센 누계를 **읽기만** 한다(`_t368CredTot`·`_t368FoodTot`·`_t368KTot` · 계측기 산수 0).
+if (econ.T368_FARM_ACT) {
+  const C368 = R('server/crops');
+  const sumV = (k) => world.villages.reduce((a, v) => a + (+v[k] || 0), 0);
+  const gran = {};
+  for (const id of C368.IDS) { const q = stockOf(id); if (q > 0) gran[id] = +q.toFixed(3); }
+  let pend = 0; for (const v of world.villages) if (v._t368Pend) for (const c in v._t368Pend) pend += (v._t368Pend[c] || 0);
+  out.t368 = { credUnits: +sumV('_t368CredTot').toFixed(3), credFoodEq: +sumV('_t368FoodTot').toFixed(3),
+               t100Eq: +sumV('_t368KTot').toFixed(3), harvestN: sumV('_t100HarvestN'), pendUnits: +pend.toFixed(3),
+               foodEqEnd: +world.villages.reduce((a, v) => a + econ.totalFoodEquivalent(v), 0).toFixed(1), gran };
+  //   작물별 — 건수 · 입구 낱개 · 그 낱개의 식량등가(econ 정본이 센다: 생곡은 도정 수율 · 나머지는 주입 열량 표)
+  const feOf = (c, u) => econ.totalFoodEquivalent({ storage: { food: 0, fish: 0, meat: 0, cooked_food: 0, [c]: u }, _world: world });
+  out.t368.byCrop = {};
+  for (const c of Object.keys(T368_BY).sort()) { const b = T368_BY[c]; out.t368.byCrop[c] = { ev: b.ev, units: +b.units.toFixed(3), fe: +feOf(c, b.units).toFixed(3) }; }
+}
 console.log(`\n[T176] 시드 ${SEED} · ${DAYS}일 · 팔 ${out.arm.toUpperCase()} (T100_FIELD_YIELD ${out.knob ? '켬' : '끔'} · 텃밭 ${out.garden ? '켬' : '끔'})`);
+if (out.t368) console.log(`  [T368] 입고 낱개 ${out.t368.credUnits.toLocaleString()} · 식량등가 ${out.t368.credFoodEq.toLocaleString()} ↔ 대조 자(T100_K) ${out.t368.t100Eq.toLocaleString()} = ${(out.t368.t100Eq > 0 ? out.t368.credFoodEq / out.t368.t100Eq * 100 : 0).toFixed(2)}% · 수확 ${out.t368.harvestN.toLocaleString()}건`);
 console.log(`  인구 ${pop.toLocaleString()} · 소멸 ${dead}/${ever} · 무기Q ${Math.round(weapQ)} · 확장셀 ${expand.toLocaleString()} · 게시 ${out.reqOpened.toLocaleString()} · 도구Q ${out.toolQ.toFixed(1)} · 보존식 ${out.preserved.toFixed(1)} · 생곡 ${out.rawGrain.toFixed(1)}`);
 console.log(`  밀도 ㉮ ${out.densAll.toFixed(2)} · ㉯ ${out.densVal.toFixed(2)} 일/건 · 밭칸 ${out.cells0Tot.toLocaleString()}→${out.cellsTot.toLocaleString()}(개간 ${out.clearedTot.toLocaleString()}) · 수확 ${out.harvestNTot.toLocaleString()}건 · 첫 수확일 ${out.firstHarvestDay}`);
 console.log(`  곳간 ${Math.round(out.econFoodTot).toLocaleString()} · 텃밭 하한 ${Math.round(out.floorTot).toLocaleString()}(마을·일 ${out.floorDaysTot.toLocaleString()}) · 석재 바닥 ${stoneFloorN}/${ever}곳`);

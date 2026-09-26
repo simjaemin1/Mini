@@ -1820,6 +1820,19 @@ function consumeFood(v, need) {
       }
     }
   }
+  // 3.6) ★★[T368] **밭의 작물 — 생곡 바로 뒤, 채집물 앞.** 같은 밭에서 난 것이라 생곡 옆이 자리다.
+  //   환산은 주입된 열량 정본(econ 이 모르는 작물만 — 위 칸들이 먹는 품목은 `_t368Crops` 가 이미 뺐다 · 이중 0).
+  //   ⚠채집물 사다리와 **같은 꼴**(한 단위 = f 식량). 끈 팔·주입 없음은 `null` ⇒ 이 줄은 아무것도 안 한다.
+  {
+    const _own = _t368Crops(v);
+    if (_own) for (const [r, f] of _own) {
+      if (remaining > 0 && v.storage[r] > 0) {
+        const need = remaining / f;
+        const consumed = Math.min(need, v.storage[r]);
+        v.storage[r] -= consumed; remaining -= consumed * f; eaten[r] = (eaten[r] || 0) + consumed;
+      }
+    }
+  }
   // 4) 채집물 (가장 비효율) — fruit/veg 0.4, mushroom 0.3
   for (const r of Object.keys(FORAGE_FOOD_FACTOR)) {
     const f = FORAGE_FOOD_FACTOR[r];
@@ -1873,9 +1886,12 @@ function totalFoodEquivalent(v) {
   if (T17_PRESERVE) for (const r of PRESERVED_FOODS) total += (v.storage[r] || 0) * PRESERVE_FOOD_FACTOR;
   // ★[T73] 곳간의 생곡도 식량이다 — 도정 수율만큼(위 근거 표). 끄면 이 줄은 0 을 더한다.
   if (T73_RAWGRAIN) for (const r of RAW_GRAINS) total += (v.storage[r] || 0) * RAW_GRAIN_FOOD_FACTOR;
+  // ★★[T368] 곳간의 작물도 식량이다 — **econ 이 모르는 것만**(위 줄들이 센 생곡은 빼고 · 이중 0). 끈 팔은 `null` ⇒ 0.
+  const _own = _t368Crops(v);
+  if (_own) for (const [r, f] of _own) total += (v.storage[r] || 0) * f;
   return total;
 }
-function totalFoodProductionEquivalent(prod) {
+function totalFoodProductionEquivalent(prod, v) {
   let total = (prod.food || 0) + (prod.fish || 0) + (prod.meat || 0) + (prod.cooked_food || 0) * 1.12;
   for (const r of Object.keys(FORAGE_FOOD_FACTOR)) {
     total += (prod[r] || 0) * FORAGE_FOOD_FACTOR[r];
@@ -1886,6 +1902,9 @@ function totalFoodProductionEquivalent(prod) {
   if (T17_PRESERVE) for (const r of PRESERVED_FOODS) total += (prod[r] || 0) * PRESERVE_FOOD_FACTOR;
   // ★[T73] 생산 쪽도 같은 자로 — 오늘 거둔 생곡도 식량 생산이다.
   if (T73_RAWGRAIN) for (const r of RAW_GRAINS) total += (prod[r] || 0) * RAW_GRAIN_FOOD_FACTOR;
+  // ★★[T368] 생산 쪽도 같은 자로 — 오늘 밭이 낸 작물(장부 다리가 품목별로 적은 것). 둘째 인수(마을)가 없으면 0.
+  const _own = v ? _t368Crops(v) : null;
+  if (_own) for (const [r, f] of _own) total += (prod[r] || 0) * f;
   return total;
 }
 
@@ -2181,6 +2200,44 @@ const T347_FORAGE_ACT = process.env.T347_FORAGE_ACT === '1';
 //     채집 `_forageOutLast × _t347MixShare` · 나무 `_woodOutLast` · 물고기 `_fishOutLast` — 전부 관측 칸이다.
 //   ⇒ **새 수 0.** 상한은 지어낸 값이 아니라 *"수식이 그날 내겠다고 한 그 양"* 이다.
 const T374_DEMAND_STOP = process.env.T374_DEMAND_STOP === '1';
+// ★★★[T368 2026-09-25] **농부 행위 완성 — 기본 끔.** 재민 09-23: *"농부가 직접 밭 갈고 수확하는 순간 해당
+//   작물이 플러스되기로 했잖아. 우리 모든 추상을 없애기로 했잖아."* 남은 추상이 둘이었다:
+//   ① 수확이 **품목 없는 식량등가**(`T100_K`)로 들어갔다 — 어떤 작물이었는지가 안 왔다(캐논 0-b "뭉뚱그린 품목 없음").
+//      ⇒ 켜면 **그 밭의 작물이 작물 표의 수확량으로** 곳간에 든다: `harvestToGranary(v, n, mul, crop)` 의 `n` 은
+//        건수가 아니라 **그 작물의 낱개**다(`crops.harvestUnits` × 그 칸의 품질 — 부르는 쪽이 정본에서 낸다).
+//      ⚠econ 이 아는 작물은 34종 중 **셋**(생곡 `wheat·rice·barley` — `RAW_GRAIN_FOOD_FACTOR`)뿐이다. 나머지의
+//        식량 값은 **열량 정본**(`server/kcal.js econUnitsOf` = kg × kcal/kg ÷ `DAY_KCAL` — T59)이 답하고,
+//        생활층이 그 표를 세계에 **주입**한다(`world.cropFoodEq` — T347 `forageActItems` 선례 · econ 은 서버 모듈을
+//        안 부른다 · 새 수 0). econ 이 이미 아는 품목은 **econ 정본 그대로**다(주입 표가 덮지 않는다 · 이중 0).
+//   ② 관측자 없는 마을의 밭은 몸 없이 일괄이었다(`_lifeHeadlessDay`) — 켜면 **농부가 걷는다**(생활층 · 걷기 술어).
+//   ⚠**`T100_K` 는 안 지운다** — 끈 팔의 입구 그대로이고, 켠 팔에서는 **대조 자**다(보고 §표 — 작물 표 ↔ 앵커).
+//   ⚠끄면 **넷째 판 비트 동일** — 아래 자리가 전부 이 상수(와 켠 팔만 심는 주입 표) 뒤에 있다.
+//   켜기는 재민 — 이 카드는 값을 안 정한다.
+const T368_FARM_ACT = process.env.T368_FARM_ACT === '1';
+// ★★[T368] econ 이 **모르는** 작물과 그 식량 값 — 주입 표에서 econ 이 아는 품목(생곡·채집·보존식)을 **뺀** 목록.
+//   주입이 없거나 손잡이가 꺼져 있으면 `null` ⇒ 아래 세 자리(재고 환산 · 생산 환산 · 사다리)가 **아무것도 안 한다**.
+//   ⚠순서는 주입 표 순서(작물 정본 `crops.IDS` — 이름순)다. 사다리가 그 순서로 먹는다(결정론 · 새 규약 0).
+function _t368Crops(v) {
+  const W = (T368_FARM_ACT && v) ? v._world : null;
+  const T = W ? W.cropFoodEq : null;
+  if (!T) return null;
+  if (W._t368Own && W._t368OwnOf === T) return W._t368Own;
+  const own = [];
+  for (const r of Object.keys(T)) {
+    const f = +T[r] || 0;
+    if (f > 0 && !(_t86Factor(r) > 0) && PRESERVED_FOODS.indexOf(r) < 0) own.push([r, f]);
+  }
+  W._t368OwnOf = T;
+  return (W._t368Own = own);
+}
+// ★[T368] 작물 낱개 하나의 **식량등가** — econ 이 아는 품목은 econ 정본(생곡 = 도정 수율 · `totalFoodEquivalent` 와 같은 규칙),
+//   모르는 품목은 주입된 열량 정본. 특용(삼·쪽·뽕·차)은 열량 0 이라 0 이다(품목은 곳간에 들고 식량은 아니다).
+function _t368FoodPer(v, crop) {
+  const f = _t86Factor(crop);
+  if (f > 0) return (RAW_GRAINS.indexOf(crop) >= 0 && !T73_RAWGRAIN) ? 0 : f;
+  const W = v ? v._world : null, T = W ? W.cropFoodEq : null;
+  return (T && T[crop] > 0) ? +T[crop] : 0;
+}
 
 // 마을 하루 농사 **용량**(부양력 prodK 가 읽는 밑변) — 두 세계가 이 함수 하나로 갈린다.
 //   켜면 **앵커 그 자체**다: 농부 1인은 하루에 `N` 사람 몫을 낸다(= N × 하루 1인 식량).
@@ -2230,9 +2287,20 @@ function _t100Credit(v, amt) {
   v._t100InflowToday = (v._t100InflowToday || 0) + amt;         // 오늘치 — ⓒ 텃밭 하한이 이걸 보고 모자란 만큼만 댄다
   return amt;
 }
-function harvestToGranary(v, n, mul) {
+function harvestToGranary(v, n, mul, crop, ev) {
   if (!T100_FIELD_YIELD || !v || !v.storage) return 0;
   const _m = (typeof mul === 'number' && mul >= 0) ? mul : 1;   // ★[T179] 미전달 = 1(종전 비트) · 음수·NaN 도 1
+  // ★★★[T368] **품목 갈래** — 손잡이 ∧ 작물 이름. 그러면 `n` 은 건수가 아니라 **그 작물의 낱개**다(작물 표 · 부르는 쪽이 낸 수).
+  //   세금·볏짚·고르게(T227)는 **그대로 이 안에서** — 몸통만 품목을 안다(`_t368Credit`). 배율(T179/T190)도 그대로 곱한다.
+  //   ⚠`ev` = 이 한 번에 든 **수확 건수**(손에 모아 귀환한 몫은 여럿이다 · 안 주면 1). 건수는 배율·낱개에 안 물린다.
+  //   ⚠`T100_K` 는 이 갈래에서 **안 쓴다** — 끈 팔의 입구로 남고, 켠 팔에서는 대조 자다(카드 ①).
+  if (T368_FARM_ACT && typeof crop === 'string' && crop) {
+    const units = (n > 0 ? n : 0) * _m;
+    v._t100HarvestN = (v._t100HarvestN || 0) + ((ev > 0) ? ev : 1);   // 계측·배율 라운드로빈 누계 — 종전과 같은 칸(수확 횟수)
+    v._t368KTot = (v._t368KTot || 0) + ((ev > 0) ? ev : 1) * T100_K * _m;   // ★대조 자 — 같은 수확을 종전 입구가 냈을 식량등가(계측 전용 · 회계 아님)
+    if (T227_EVEN) { const P = v._t368Pend || (v._t368Pend = {}); P[crop] = (P[crop] || 0) + units; return units; }
+    return _t368Credit(v, crop, units);
+  }
   const amt = ((n > 0 ? n : 1)) * T100_K * _m;
   v._t100HarvestN = (v._t100HarvestN || 0) + (n > 0 ? n : 1);   // 계측 전용 누계(회계 아님 · 표가 스스로 말하게) · ★[T179] **건수는 배율에 안 물린다**(수확 횟수지 양이 아니다)
   // ★[T227] 고르게 — 덩어리를 **대기 두지**(`_t100Pend`) 하루치씩 위 크레딧으로 흘린다(아래 `t100EvenRelease`).
@@ -2254,6 +2322,39 @@ function t100EvenRelease(v) {
   const give = (d > 1) ? p / d : p;
   v._t100Pend = p - give;
   return _t100Credit(v, give);
+}
+// ★★[T368] **밭이 품목으로 적는 몸통** — `_t100Credit` 와 **같은 넷**(볏짚 밑변 · 곳간 · 금고 세금 · 오늘치)을
+//   품목으로 적는다. 볏짚 밑변과 오늘치는 **식량등가**(단위가 T100 과 같아야 짚·텃밭 하한이 같은 수를 본다),
+//   곳간·금고는 **그 작물의 낱개**다. 장부 다리(아래 틱 · T312·T325·T374 와 같은 꼴)가 품목별 오늘치를 읽는다.
+//   ★새 수 0 — 이 함수엔 수가 하나도 없다(세율은 `TAX_RATE` · 식량 값은 `_t368FoodPer` 정본).
+function _t368Credit(v, crop, units) {
+  if (!(units > 0)) return 0;
+  const fe = units * _t368FoodPer(v, crop);
+  v._grainToday = (v._grainToday || 0) + fe;
+  const tax = units * TAX_RATE;
+  v.storage[crop] = (v.storage[crop] || 0) + (units - tax);
+  if (v.treasury) v.treasury[crop] = (v.treasury[crop] || 0) + tax;
+  v._t368InflowToday = (v._t368InflowToday || 0) + fe;
+  const by = v._t368InByItem || (v._t368InByItem = {});
+  by[crop] = (by[crop] || 0) + units;
+  v._t368CredTot = (v._t368CredTot || 0) + units;                // 계측 전용 누계(회계 아님) — 보고의 항등 표가 읽는다
+  v._t368FoodTot = (v._t368FoodTot || 0) + fe;
+  return units;
+}
+// ★[T368 · T227 문법 그대로] 대기분(품목별)을 하루 한 번 `1/주기` 씩 푼다 — 주기는 **같은 정본**(`seedFoodDays(0)`).
+//   ⚠`t100EvenRelease` 옆에 따로 둔 이유: 그쪽은 돌려주는 값이 식량(한 품목)이고 하네스가 그 값을 문다.
+function t368EvenRelease(v) {
+  if (!T227_EVEN || !T368_FARM_ACT || !v || !v.storage || !v._t368Pend) return 0;
+  const d = seedFoodDays(0);
+  let out = 0;
+  for (const c of Object.keys(v._t368Pend)) {
+    const p = v._t368Pend[c] || 0;
+    if (!(p > 0)) continue;
+    const give = (d > 1) ? p / d : p;
+    v._t368Pend[c] = p - give;
+    out += _t368Credit(v, c, give);
+  }
+  return out;
 }
 // ★★★[T312 2026-09-19 · 설계_생산_실체 §1·§2 — 재민 09-18/19 확정] **어부의 곳간 입구.**
 //   캐논: *"낚는 순간 손에, 귀환하면 곳간에."* 그 **귀환**이 부르는 자리가 여기다.
@@ -2495,7 +2596,9 @@ const T100_GARDEN_FLOOR = T100_GARDEN_CELLS * T100_K / SEED_FOOD_DAYS_D0;   // �
 function gardenFloorTopUp(v) {
   if (!T100_FIELD_YIELD || !T100_GARDEN || !v || !v.storage) return 0;
   const fN = (v.counts && v.counts.farmer) || 0;
-  const got = v._t100InflowToday || 0;
+  //   ★[T368] 켠 팔의 밭은 품목으로 들어온다 — 그 **식량등가**(`_t368InflowToday`)도 오늘 밭이 낸 몫이다(안 세면 하한이 겹쳐 채운다).
+  //     비우는 자리는 장부 다리(틱 · 이 뒤)다 — 여기서는 읽기만 한다.
+  const got = (v._t100InflowToday || 0) + (T368_FARM_ACT ? (v._t368InflowToday || 0) : 0);
   v._t100InflowToday = 0;
   if (!(fN > 0)) return 0;
   const need = fN * T100_GARDEN_FLOOR;
@@ -4233,6 +4336,7 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
   //   ★손잡이 밖: `T100_FIELD_YIELD` 를 **이 줄에서도** 본다. 실지에선 끈 팔에 `_t100InflowToday` 가
   //     아예 안 생기지만(두 입구가 이미 손잡이를 본다), 밖에서 누가 그 필드를 심어도 끈 팔은 안 움직인다.
   t100EvenRelease(v);   // ★[T227] 대기분 하루치를 **읽기 전에** 푼다 — 그래야 잠재·장부·텃밭 하한이 같은 수를 본다(손잡이 끔이면 0)
+  t368EvenRelease(v);   // ★[T368] 품목별 대기분도 같은 자리에서(손잡이 끔·대기 없음이면 0 — 첫 줄에서 돌아온다)
   const _t100In = T100_FIELD_YIELD ? (v._t100InflowToday || 0) : 0;   // 오늘 수확이 곳간에 넣은 양(아래가 비우기 전에 읽는다)
   const _t100Pot = _t100In + gardenFloorTopUp(v);   // + 텃밭 하한이 채운 양 — 둘 다 **밭이 낸 식량**이다
   if (_t100Pot > 0) {
@@ -4284,6 +4388,21 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
       const a = by[it]; if (!(a > 0)) continue;
       dailyProductionPotential[it] = (dailyProductionPotential[it] || 0) + a;
       dailyProduction[it] = (dailyProduction[it] || 0) + a;
+    }
+  }
+  // ★★[T368 2026-09-25] **밭 입고도 같은 자리에서 장부에 적는다 — 넷째 적용**(T312 어부 · T325 나무꾼 · T374 채집과 같은 꼴).
+  //   품목별 오늘치(`_t368InByItem` — `_t368Credit` 가 남긴 낱개)를 잠재·실현 장부에 **그 품목으로** 적는다.
+  //   ⚠`food` 로 접지 않는다 — 식량 값은 `totalFoodProductionEquivalent(…, v)` 가 품목마다 센다(econ 정본 · 주입 정본).
+  //   ⚠이중 0 — 켠 팔의 밭은 `harvestToGranary` 의 T100 갈래(`_t100InflowToday`)를 **안 탄다** ⇒ 들어오는 길은 이 줄 하나다.
+  //   ⚠`_t368InflowToday`(식량등가)는 위 텃밭 하한이 먼저 읽었다 — 여기서 비운다(누적 누수 차단).
+  const _t368By = T368_FARM_ACT ? (v._t368InByItem || null) : null;
+  if (_t368By || (T368_FARM_ACT && v._t368InflowToday)) {
+    v._t368InflowToday = 0;
+    v._t368InByItem = null;
+    if (_t368By) for (const c in _t368By) {
+      const u = _t368By[c]; if (!(u > 0)) continue;
+      dailyProductionPotential[c] = (dailyProductionPotential[c] || 0) + u;
+      dailyProduction[c] = (dailyProduction[c] || 0) + u;
     }
   }
 
@@ -4523,7 +4642,7 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
   // 2.6) 봉쇄 시 직접 NPC 사망 없음. 봉쇄 효과는 교역 차단으로 식량 부족 → 자연스러운 사망 유도.
 
   // 3) Surplus EMA (식량 흐름) — food_equivalent 기준
-  const dailyFoodProd = totalFoodProductionEquivalent(dailyProduction);
+  const dailyFoodProd = totalFoodProductionEquivalent(dailyProduction, v);   // ★[T368] 둘째 인수 = 이 마을(주입 작물 값 · 끈 팔 0)
   const dailySurplus = dailyFoodProd - foodNeed;
   v.surplusEMA.food = 0.95 * v.surplusEMA.food + 0.05 * dailySurplus;
 
@@ -4545,7 +4664,7 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
   const dailyImport = v._importEMA || 0;
   // ★부양력은 생산 *잠재력*으로 — satiation(창고 글럿 시 여가)이 실제생산을 줄여도 K는 안 낮아짐.
   //   (옛 실제생산 기준: 초기 300일치 식량 글럿→생산 12%로 조임→prodK≈4→N8>K→로지스틱이 인구 끌어내려 초반 진동)
-  const dailyFoodProdPotential = totalFoodProductionEquivalent(dailyProductionPotential);
+  const dailyFoodProdPotential = totalFoodProductionEquivalent(dailyProductionPotential, v);   // ★[T368] 같은 자
   // ★prodK 신뢰 관성(EMA ~33일): 날씨 이벤트(가뭄 7~14일)가 K를 직접 때려 θ=4 로지스틱이 과잉반응(대촌 ±100명 스윙)하지 않게.
   //   진짜 기근은 별도 실시간 항(hunger)이 처리하므로 안전성 손실 없음 — K만 계절·이벤트 노이즈에 둔감해짐.
   // ★★[2026-08-02c 소멸 0] PRODK_CAP — 용량 기준 식량흐름. **fuelK 와 완전 동형**(같은 모양·같은 MSY 처리):
@@ -6428,7 +6547,8 @@ module.exports = {
   fishToGranary, fishActOn, fishBudgetPerCell, T312_FISH_ACT,   // ★[T312] 어부 행위 — 생활층이 부르는 문 셋 + 손잡이(하네스가 옮겨 적지 않는다)
   actToGranary, woodToGranary, woodActOn, woodRegrowR, woodRegrowPerDay, T325_WOOD_ACT,
   forageToGranary, forageActOn, forageActItemsOf, foragerYieldsFor, T347_FORAGE_ACT,   // ★[T347] 채집 행위 — 문 셋 + 믹스 정본 + 손잡이(하네스가 표를 옮겨 적지 않는다)
-  actDemandLeft, actDemandCap, fishDemandLeft, woodDemandLeft, forageDemandLeft, T374_DEMAND_STOP,   // ★[T374] 그날 수요 — 몸통 하나 + 품목별 `D` 자리 셋 + 손잡이
+  actDemandLeft, actDemandCap, fishDemandLeft, woodDemandLeft, forageDemandLeft, T374_DEMAND_STOP,
+  T368_FARM_ACT, t368EvenRelease, totalFoodProductionEquivalent,   // ★[T368] 농부 행위 — 손잡이 + 품목별 고르게 푸는 자리 + 생산 환산(하네스가 옮겨 적지 않는다 · 입구는 `harvestToGranary` 그대로)   // ★[T374] 그날 수요 — 몸통 하나 + 품목별 `D` 자리 셋 + 손잡이
   forageRegrowR, forageRegrowPerDay, actRegrowPerDay,   // ★[T347] 재생 — T341 과 **같은 몸통**(`_actRegrowR`), 분자만 갈린다   // ★[T325] 나무꾼 행위 · ★[T341] 예산식은 지웠다(나무는 개체다) — 남은 것은 게이트와 **재생 유도 둘**
   T100_ANCHOR_N, T100_HARVEST_PER_FARMER_YEAR, T100_K, T100_FIELD_YIELD,   // ★[T100 4판] 앵커 하나 · 실측 하나 · 유도값 하나 · 손잡이 — 생활층(`villages.js`)과 하네스가 **여기서만** 읽는다(사본 0)
   DAILY_FOOD_CONSUMPTION,   // ★[T100 4판] 하루 1인 식량 정본 — `k` 유도의 한 항(하네스가 1.0 을 옮겨 적지 않는다)

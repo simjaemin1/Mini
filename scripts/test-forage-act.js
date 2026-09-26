@@ -249,7 +249,7 @@ console.log('\n⑨ 안 만진 것 — T345 이동 루프 · 어부·나무꾼');
   //   ★걷기 술어는 **`server/zone.js`** 에 산다(생활층이 아니다) — 거기 T347 항이 없어야 한다.
   const walk = (ZC.match(/function _t316WalkAlways\(npc\)[\s\S]*?\n\}/) || [''])[0];
   ok(walk.length > 0 && /T312_FISH_ACT/.test(walk) && !/T347_FORAGE_ACT|T325_WOOD_ACT/.test(walk),
-    '⑨ ★★걷기 술어(`_t316WalkAlways`)에 **T347 항을 안 넣었다** — T324·T345 몫이다(회부 그대로 · 항은 T312 하나)');
+    '⑨ ★★걷기 술어(`_t316WalkAlways`)에 **T347 항을 안 넣었다** — T324·T345 몫이다(회부 그대로 · 항은 T312 · ★T368 농부 둘)');
   ok(/function _t312Take\(vil, day, key, want\)/.test(VC) && /fishBudgetPerCell/.test(VC),
     '⑨ 어부 예산 몸통이 그대로 있다(T312 무변)');
   ok(/function _t341TripsPerDay\(vil, distPx, unitsPerTree\)/.test(VC),

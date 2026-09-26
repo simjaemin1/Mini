@@ -4926,6 +4926,74 @@ function _farmMul(vil, npc) {
   }
   return (e && typeof e._t172mul === 'number') ? e._t172mul : undefined;
 }
+// ★★★[T368 2026-09-25] **농부 행위 완성** — 손잡이 `T368_FARM_ACT`(econ 정본 · 기본 끔).
+//   ② 몸 — 켜면 농부가 관측자와 무관하게 걷고(`zone.js _t316WalkAlways`), 헤드리스의 농부 몫(① 개간 · ③ 작물)이 안 돈다.
+//   ① 품목 — 거기에 `T100_FIELD_YIELD`(밭이 곳간에 닿는다)까지 켜져 있으면 수확이 **그 작물의 낱개**로 곳간에 든다.
+//   하나라도 꺼져 있으면 아래가 전부 `null`/거짓 ⇒ 종전 비트(건수 1 × `T100_K`).
+function _t368Walk() { const E = _lifeEcon(); return !!(E && E.T368_FARM_ACT); }
+// ★[T368] **존이 깨어 있나** — 반경 무한의 `anyViewerNear`(zone.js 주입 · 사람 player + 관측자 두 명부 · idle 판정이 보는 그 둘).
+//   깨어 있으면 몸이 걷고(`_t316WalkAlways`), 잠들면 존 틱이 NPC 루프 앞에서 돌아간다 ⇒ `_lifeHeadlessDay` 가 이 한 판정으로 몸 XOR 일괄.
+//   ⚠주입이 없으면(랩·하네스 — 존이 없다) 몸도 없다 ⇒ 거짓(일괄이 돈다). 켰을 때만 불린다(끈 팔은 이 줄에 안 닿는다).
+function _t368ZoneAwake(vil) { const f = state.deps && state.deps.anyViewerNear; return !!(f && f({ x: vil.ccx * SZ + SZ / 2, y: vil.ccy * SZ + SZ / 2 }, Infinity)); }
+function _t368ItemsOn() { const E = _lifeEcon(); return !!(E && E.T368_FARM_ACT && E.T100_FIELD_YIELD); }
+// ★[T368] 작물의 식량 값 표 — **열량 정본**(`kcal.econUnitsOf` = kg × kcal/kg ÷ `DAY_KCAL` · T59)을 세계에 **한 번** 심는다.
+//   econ 은 서버 모듈을 안 부른다 ⇒ 주입이다(T347 `forageActItems` 선례 · 심는 줄은 이 함수의 마지막 한 줄).
+//   ⚠econ 이 이미 아는 품목(생곡 셋)은 econ 이 제 정본으로 센다 — 이 표가 덮지 않는다(econ `_t368Crops` 가 뺀다).
+function _t368Attach(vil) {
+  const W = vil && vil.econ && vil.econ._world;
+  if (!W || W.cropFoodEq) return;
+  const C = _Crops(), K = _kcal();
+  if (!C || !K) return;
+  const t = {};
+  for (const id of C.IDS) t[id] = +K.econUnitsOf(id, 1) || 0;
+  W.cropFoodEq = t;
+}
+// ★★[T368 ①] **밭 한 칸 한 수확 = 그 작물 몇 낱개** — 작물 표 정본(`crops.harvestUnits` = 수확량 × 물충족 × 발아율)
+//   × 그 칸의 품질(`e.q` — 돌보기가 올리고 방치가 깎는다 · 플레이어 수확과 **같은 식** · `zone.js` T58b `floor(base × q)`).
+//   ⚠물 공급은 **자(계측기)의 규칙 그대로**다(`farm-metrics`·`t176-ab` — 논은 물을 대므로 5 · 밭은 비만 받으므로 1).
+//     생활층엔 칸별 물 공급 정본이 없다(플레이어는 지형 거리 `zone.js _waterSupplyAt` — 존 함수라 여기서 못 부른다 · 보고 A/B).
+//   ⚠씨앗은 마을 것이라 늘 새것(발아율 1 — 자와 같다). 끄면 `null` ⇒ 부르는 쪽이 종전 갈래로 간다.
+function _t368Item(vil, k, e) {
+  if (!e || !e.c || !_t368ItemsOn()) return null;
+  const C = _Crops(); if (!C) return null;
+  _t368Attach(vil);
+  const base = C.harvestUnits(e.c, { supply: vil._drySet.has(k) ? 1 : 5, seedFresh: 1 });
+  const q = (e.q == null) ? 1 : Math.max(0, Math.min(1, e.q));
+  return { c: e.c, u: Math.max(0, Math.floor(base * q + 1e-9)) };
+}
+// ★★[T368] **밭이 곳간에 닿는 한 줄** — 몸 없는 자리(수확 그 자리 · 계측 자)와 손(귀환)이 둘 다 이 함수를 부른다.
+//   산수 0 · 사본 0: 양·배율·작물·건수를 **넘기기만** 한다(세금·볏짚·고르게는 econ 입구 안 · 배율은 `_farmMul` 정본).
+//   끈 팔은 `it` 가 없어 **종전 호출 그대로**다(`harvestToGranary(vil.econ, 1, _farmMul(vil, npc))` — 뒤 두 인수 `undefined`).
+function _farmGranary(vil, npc, it, ev) {
+  return _lifeEcon().harvestToGranary(vil.econ, it ? it.u : 1, _farmMul(vil, npc), it ? it.c : undefined, ev);
+}
+// ★★[T368 ②] **거두는 순간 손에** — 플레이어와 같은 칸(`inventory[작물]`) · 장부값(`_t368H`)과 건수(`_t368N`)는 귀환 때 곳간으로.
+//   ⚠손과 곳간에 같이 있을 수 없다(이중 0) — 귀환(`_t368Deliver`)이 둘을 같이 비운다. 낱개 0 인 수확도 건수는 센다.
+function _t368Hold(npc, it) {
+  if (!npc || !it) return;
+  if (!npc.inventory) npc.inventory = {};
+  if (it.u > 0) npc.inventory[it.c] = (npc.inventory[it.c] || 0) + it.u;
+  const H = npc._t368H || (npc._t368H = {}), N = npc._t368N || (npc._t368N = {});
+  H[it.c] = (H[it.c] || 0) + it.u;
+  N[it.c] = (N[it.c] || 0) + 1;
+}
+// ★★[T368] **귀환하면 곳간에** — 곳간행 정산(`_lifeGranStep` · 볏단이 차서 다녀온 길)과 하루 경계(`_lifeDaily`)가 부른다.
+//   ⚠장부값(`_t368H`)과 손(`inventory`) 중 **작은 쪽**만 넣는다 — 도중에 죽어 손이 낙하 정본으로 비었으면 넣을 것도 없다.
+function _t368Deliver(vil, npc, why) {
+  const H = npc && npc._t368H; if (!H) return 0;
+  const N = npc._t368N || {};
+  let got = 0;
+  for (const c of Object.keys(H)) {
+    const inv = (npc.inventory && npc.inventory[c]) || 0;
+    const u = Math.min(H[c] || 0, inv);
+    if (vil.econ && (u > 0 || N[c] > 0)) got += _farmGranary(vil, npc, { c, u }, N[c] || 1) || 0;
+    if (npc.inventory && inv > 0) npc.inventory[c] = inv - u;
+  }
+  npc._t368H = null; npc._t368N = null;
+  if (got > 0) vil._t368Deliv = +((vil._t368Deliv || 0) + got).toFixed(6);
+  if (why === 'gran') vil._t368Trips = (vil._t368Trips || 0) + 1;   // 계측 전용 — 곳간 왕복 수(보고 걸음 표)
+  return got;
+}
 function _lifeDoTask0(vil, npc, k, day) {
   const e = vil._crop.get(k), nong = !vil._drySet.has(k);
   const ci = k.indexOf(','), par = (+k.slice(0, ci) + +k.slice(ci + 1)) & 1;
@@ -4938,7 +5006,9 @@ function _lifeDoTask0(vil, npc, k, day) {
   //   **걷어냈고**(`economy-sim.js` `addProduce(jdef.output, …)` 한 줄), 그 자리를 여기가 채운다.
   //   수확 한 번 = `T100_K` 식량등가. 산수·세금·볏짚은 전부 econ 쪽 `harvestToGranary` 안에 있다
   //   (여기엔 숫자가 없다 — 사본 0). 끄면 안 부른 것과 같다(비트 동일).
-  if (did === 'harvest') { if (!cropAfterHarvest(e, day)) vil._crop.delete(k); if (npc) { _handAdd(npc, 1); _lifeAct(npc, '수확'); } if (vil.econ) _lifeEcon().harvestToGranary(vil.econ, 1, _farmMul(vil, npc)); return true; }   // ★곳간② 물리 짐 1칸분 적재(회계 아님) · ★[T91] 다년생은 그루터기로 남는다 · ★[T190] 셋째 인수 = 그 농부의 배율(없으면 econ 이 1 로 받는다 — 사본 0)
+  //   ★★[T368] 켜면 **그 밭의 작물**(`_t368Item` — 작물 표 낱개 × 품질)이 간다: 몸(`npc`)이 있으면 **손에**(귀환 때 곳간),
+  //     몸이 없으면(계측 자의 헤드리스 하루) 그 자리에서 곳간에. 곳간에 닿는 줄은 `_farmGranary` **하나**다(사본 0).
+  if (did === 'harvest') { const _it = _t368Item(vil, k, e); if (!cropAfterHarvest(e, day)) vil._crop.delete(k); if (npc) { _handAdd(npc, 1); _lifeAct(npc, '수확'); } if (vil.econ) { if (_it && npc) _t368Hold(npc, _it); else _farmGranary(vil, npc, _it); } return true; }   // ★곳간② 물리 짐 1칸분 적재(회계 아님) · ★[T91] 다년생은 그루터기로 남는다 · ★[T190] 셋째 인수 = 그 농부의 배율(없으면 econ 이 1 로 받는다 — 사본 0)
   if (npc) _lifeAct(npc, did === 'pest' ? '방제' : did === 'water' ? '물대기' : (nong ? '논매기' : '김매기'));
   return true;
 }
@@ -4949,6 +5019,7 @@ function __farmBind() {
     _cropDormant, _cropSky,
     lifeFarmDay, _lifeTasksPerFarmerDay,   // ★[T117] 하루치 작물 노동 정본 — 계측기가 이걸 부른다(사본 0)
     cropTaskOf, cropDoTask, cropDayTick, cropAfterHarvest,
+    _t368Item, _t368Hold, _t368Deliver, _t368Attach, _farmGranary, _lifeHeadlessDay, _t368ZoneAwake,   // ★[T368] 하네스가 품목·손·귀환·헤드리스 끄기를 **정본 그대로** 부른다(사본 0)
     L_WATERGAP, L_WEEDS, L_PESTP, L_QW, L_QP, L_QMIN, L_QREC };
 }
 // ★[헤드리스 일일 결산 — 사용자 "아무도 안 보는 마을도 일과가 작동해야 하는 거 아냐?"] 동면 마을(관측자 없음)의
@@ -4993,12 +5064,21 @@ function _lifeHeadlessDay(vil) {
   let farmerN = 0, popN = 0;
   for (const pid of vil.npcPids) { const p = state.deps.players.get(pid); if (!p) continue; popN++; if (p.simJob === 'farmer') farmerN++; }
   if (!popN) return;
+  // ★★[T368 ②] 켜면 **이 마을 밭은 몸이 한다** — 농부가 관측자와 무관하게 걷는다(`zone.js _t316WalkAlways` 한 항).
+  //   ⇒ 농부 몫 두 절(① 개간 · ③ 작물)은 여기서 **안 돈다**(공존 = 이중 노동 · T316 이 어부 칸을 지운 그 문법).
+  //   ⚠② 신축은 농부 몫이 아니다(직업 무관 크루 · T361 칸) — 그대로 남는다. 끄면 `_body` 가 거짓 ⇒ 종전 세 절 그대로.
+  //   ★★존이 **통째로** 잠들면(사람 0 · 관측자 0 — zone.js idle 판정) 존 틱이 NPC 루프 **앞에서** 돌아간다 ⇒ 몸이 한 걸음도
+  //     안 걷는다(T368 실서버 첫 판: 농부 152 · 밭에 선 이 0). 그날은 이 일괄이 그 몫을 한다 — **몸 XOR 일괄**(이중 0 · 누락 0 ·
+  //     재민 "아무도 안 보는 마을도 일과가 작동해야" 767b827e). 일은 밭 상태기가 정하므로(익은 칸만 거둔다) 깨고 자는
+  //     경계 하루에도 같은 칸을 두 번 거두지 않는다. 판정은 `_t368ZoneAwake` 하나(위 · 새 문 0).
+  const _body = _t368Walk() && _t368ZoneAwake(vil);
+  if (_t368Walk()) { if (_body) vil._t368HlBody = (vil._t368HlBody || 0) + 1; else vil._t368HlBatch = (vil._t368HlBatch || 0) + 1; }   // 계측 전용(켠 팔만 · 회계 아님) — 이 마을 오늘 밭을 누가 했나(몸 · 일괄) · `/perf farm.hl`
   // ① 개간 — 실걸음과 동일: 크루 상한 2 × 3셀/인일, 프론티어 최근접부터(마을 중심 기준)
-  _lifeClearDay(vil, farmerN);
+  if (!_body) _lifeClearDay(vil, farmerN);
   // ② 신축 — 크루 인일=단계(실걸음과 동일 속도). 완공 시 _lifeCompleteHouse가 실체화(집·마당·침대 명부)
   if (vil._site) { let st = Math.min(LIFE_CREW, popN) * LIFE_STAGE_PDAY; while (st-- > 0 && vil._site) _lifeAdvanceSite(vil); }
   // ③ 작물 — `lifeFarmDay` 정본 하나(아래). 계측기도 **이 함수를 부른다**(사본 0 · T117).
-  lifeFarmDay(vil, day, farmerN);
+  if (!_body) lifeFarmDay(vil, day, farmerN);
   vil._hlDay = day;   // lifeDebug 노출용(결산 도장)
 }
 // ★★★[T117 2026-09-05] **하루치 작물 노동 — 정본 하나.**
@@ -5258,6 +5338,42 @@ function _t347Scan(vil, day) {
   return cells;
 }
 // ★[T347] `/perf` 가 내주는 채집 관측 — 나무(`woodPerf`)와 같은 꼴(손잡이 끔이면 null · 계측 전용).
+// ★[T368] `/perf` 가 내주는 **농부 관측** — 손잡이 끔이면 `null`(끈 팔 페이로드 무변). 계측 전용 · 회계 아님.
+//   ⓐ 몸: 농부 수 · 밭에 있는 농부(라벨 '경작'·'수확'·…) · 손에 든 사람·낱개 · 곳간 왕복(`_t368Trips`) ·
+//      헤드리스 하루 누계 — 밭을 몸이 한 마을·일(`hlBody` · 농부 절 호출 0) ↔ 일괄이 한 마을·일(`hlBatch` · 존이 잠든 날)
+//   ⓑ 품목: 곳간의 작물 재고(작물 정본 id 만 · 합) · 들어온 낱개/식량등가 누계(`_t368CredTot`·`_t368FoodTot`)
+//   ⓒ 대조 자: 같은 수확 건수(`_t100HarvestN`)에 `T100_K` 를 곱한 값 — 켠 팔이 **종전 식량등가의 몇 %** 를 냈나(카드 ① 항등 표)
+function farmPerf() {
+  const E = _lifeEcon(), C = _Crops();
+  if (!E || !(E.T368_FARM_ACT || E.T100_FIELD_YIELD)) return null;   // 둘 다 끔(기본) = `null` — 켠 팔 둘(밭 → 곳간 · 품목·몸)을 같은 창으로 잰다
+  const pl = state.deps.players;
+  const ids = (C && C.IDS) || [];
+  const FARM_ACTS = new Set(['경작', '파종', '모내기', '수확', '방제', '물대기', '김매기', '논매기', '개간', '출근']);
+  let farmers = 0, working = 0, hands = 0, handU = 0, pop = 0, trips = 0, deliv = 0, harvN = 0, credU = 0, credFe = 0, pendU = 0, kTot = 0, food = 0, foodEq = 0, hlBody = 0, hlBatch = 0;
+  const gran = {};
+  for (const vil of state.villages || []) {
+    const e = vil.econ; if (!e) continue;
+    pop += (e.npcs || []).length;
+    harvN += (e._t100HarvestN || 0); credU += (e._t368CredTot || 0); credFe += (e._t368FoodTot || 0);
+    kTot += (e._t368KTot || 0);
+    food += (e.storage && e.storage.food) || 0;
+    try { foodEq += +E.totalFoodEquivalent(e) || 0; } catch (err) {}
+    trips += (vil._t368Trips || 0); deliv += (vil._t368Deliv || 0); hlBody += (vil._t368HlBody || 0); hlBatch += (vil._t368HlBatch || 0);
+    for (const c of ids) { const q = (e.storage && e.storage[c]) || 0; if (q > 0) gran[c] = +((gran[c] || 0) + q).toFixed(4); }
+    if (e._t368Pend) for (const c in e._t368Pend) pendU += (e._t368Pend[c] || 0);
+    for (const pid of (vil.npcPids || [])) {
+      const p = pl && pl.get(pid); if (!p || p.simJob !== 'farmer') continue;
+      farmers++;
+      if (FARM_ACTS.has(p._lifeAct)) working++;
+      if (p._t368H) { let u = 0; for (const c in p._t368H) u += (p._t368H[c] || 0); if (u > 0) { hands++; handU += u; } }
+    }
+  }
+  return { on: _t368Walk() ? 1 : 0, items: _t368ItemsOn() ? 1 : 0, villages: (state.villages || []).length, pop, farmers, working, hands,
+           food: +food.toFixed(2), foodEq: +foodEq.toFixed(2),
+           handU: +handU.toFixed(4), trips, delivered: +deliv.toFixed(4), harvestN: harvN, hlBody, hlBatch,
+           credUnits: +credU.toFixed(4), credFoodEq: +credFe.toFixed(4), pendUnits: +pendU.toFixed(4),
+           t100K: E.T100_K, t100Eq: +kTot.toFixed(4), gran };   // ★t100Eq = 같은 수확·같은 배율을 종전 입구(`T100_K`)가 냈을 식량등가(econ `_t368KTot`)
+}
 function foragePerf() {
   if (!_lifeEcon().T347_FORAGE_ACT) return null;
   const pl = state.deps.players;
@@ -5676,7 +5792,7 @@ function _countsAsFoodEq(vil, res) {
     const E = require('../sim/economy-sim');
     const base = +E.totalFoodEquivalent(v) || 0;
     const st = Object.assign({}, v.storage || {}); st[r] = 0;
-    return (+E.totalFoodEquivalent({ storage: st }) || 0) < base - 1e-9;
+    return (+E.totalFoodEquivalent({ storage: st, _world: v._world }) || 0) < base - 1e-9;   // ★[T368] 세계를 같이 넘긴다(작물 값 주입 표 — 안 넘기면 켠 팔에서 모든 재화가 '식량'으로 읽힌다 · 끈 팔 무변)
   } catch (e) { return false; }
 }
 function playerVillageWithdrawStock(vil, res) {
@@ -6132,7 +6248,7 @@ function _lifeGranStep(vil, npc, now) {
   //   서버는 상태가 없고 스케줄 게이트를 매 틱 재평가하므로, 도장이 없으면
   //   퇴근 훅이 저장(짐>0)↔인출(빈손)을 무한 왕복시킨다 — 집에 못 간다.
   if (t.draw) { const q = Math.min(G_DRAW, _granStockOf(vil, g)); _granStockAdd(vil, g, -q); _handAdd(npc, q); npc._granD = state.dayMs ? gameDayOf(now) : 0; }
-  else { _granStockAdd(vil, g, _handOf(npc)); _handSet(npc, 0); }   // ③ 정산(물리 장부만 — econ 무접촉 · ★[T316] 손은 `inventory`)
+  else { _granStockAdd(vil, g, _handOf(npc)); _handSet(npc, 0); if (npc._t368H) _t368Deliver(vil, npc, 'gran'); }   // ③ 정산(물리 장부만 — econ 무접촉 · ★[T316] 손은 `inventory`) · ★[T368] 켠 팔은 **이 귀환이 곳간 입고**다(손의 작물 → `_farmGranary`)
   npc._granTask = null;
   return false;                                                      // 소유권 반납 → 이번 틱부터 평소 일과
 }
@@ -6568,6 +6684,12 @@ function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(�
     for (const pid of (vil.npcPids || [])) { const p = _pl && _pl.get(pid); if (p && (p._t312U || 0) > 0) _t312Deliver(vil, p); }
     vil._t312 = null;   // ★이월 없음 — 날이 바뀌면 예산 장부를 버린다(설계_민물고기 §2)
     vil._t312W = null;  // 물 갈래는 계절이 바뀌면 다시 읽는다(논이 생기기도 한다)
+  }
+  // ★★[T368] **낮이 끝나면 들고 있던 작물을 곳간에 넣는다**(캐논 ⓐ — 귀환 시 입고 · 어부 절과 같은 꼴).
+  //   볏단이 차서(`G_CARRY`) 곳간에 다녀온 농부는 그때 이미 넣었다(`_lifeGranStep`) — 손이 비어 이 줄이 무해하다.
+  if (vil.econ && _t368ItemsOn()) {
+    const _pl = state.deps.players;
+    for (const pid of (vil.npcPids || [])) { const p = _pl && _pl.get(pid); if (p && p._t368H) _t368Deliver(vil, p, 'day'); }
   }
   // ★★[T325] **낮이 끝나면 들고 있던 통나무를 곳간에 넣는다**(캐논 ⓐ — 귀환 시 입고). 어부 절과 같은 꼴.
   //   ⚠그리고 **관측자 없는 마을**의 나무꾼도 여기서 **같은 함수**로 하루를 푼다 —
@@ -7897,7 +8019,7 @@ function __rumorProbe() {
     rumor: Object.assign({}, L.rumorStats) };
 }
 
-module.exports = { fishPerf, woodPerf, foragePerf,   // ★[T316] `/perf` 가 내주는 어부 관측(손잡이 끔이면 null) · ★[T325] 나무꾼 · ★[T347] 채집도 같은 꼴
+module.exports = { fishPerf, woodPerf, foragePerf, farmPerf,   // ★[T316] `/perf` 가 내주는 어부 관측(손잡이 끔이면 null) · ★[T325] 나무꾼 · ★[T347] 채집도 같은 꼴 · ★[T368] 농부
   _t347ActItems, _t347PerLoad,   // ★[T347] 걷는 목록·짐당 개체 — 하네스가 표·유도를 옮겨 적지 않게 내준다(사본 금지)
   _actDay, _actTake,   // ★[T334] 예산 장부 몸통(어부 전용 — T341 이 나무에서 걷어냈다) — 하네스가 규칙을 옮겨 적지 않게 내준다
   _t341TripsPerDay, _t341TreesPerLoad,   // ★[T341] 하루 왕복 수·짐당 그루 — **걸음이 정한다**(하네스가 유도를 다시 계산해 대조한다)

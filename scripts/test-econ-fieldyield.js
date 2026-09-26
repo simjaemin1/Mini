@@ -200,11 +200,17 @@ const bites = (src) => /\.(storage|treasury)\s*(\[|\.)\s*[A-Za-z_'"`]/.test(
   const CODE = codeOf(VSRC);
   const calls = CODE.split('\n').filter(l => l.indexOf('harvestToGranary') >= 0);
   ok(calls.length === 1, '⑥ ★★★생활층이 곳간에 닿는 자리가 **한 줄**이다', `${calls.length}줄`);
-  ok(calls.length === 1 && /_lifeEcon\(\)\.harvestToGranary\(vil\.econ, 1, _farmMul\(vil, npc\)\)/.test(calls[0]),
-    '⑥ ★그 한 줄이 **econ 입구를 부르기만** 한다(건수 1 + 배율 하나 — 계수·환산·세금은 전부 econ 안 · 사본 0)');
+  //   ★[T368 2026-09-25] 그 한 줄이 **`_farmGranary`** 로 모였다 — 수확 갈래(몸 없는 자리)와 귀환(손 · T368)이 둘 다 부른다.
+  //     끈 팔은 `it` 가 없어 **종전 호출 그대로**다(건수 1 · 배율 · 뒤 두 인수 `undefined`) — 이름으로 못 박는다.
+  ok(calls.length === 1 && /return _lifeEcon\(\)\.harvestToGranary\(vil\.econ, it \? it\.u : 1, _farmMul\(vil, npc\), it \? it\.c : undefined, ev\);/.test(calls[0]),
+    '⑥ ★그 한 줄이 **econ 입구를 부르기만** 한다(끈 팔 = 건수 1 + 배율 · ★[T368] 켠 팔 = 작물 낱개·이름·건수 — 계수·환산·세금은 전부 econ 안 · 사본 0)');
   ok(calls.length === 1 && !/[*/+]|T100_K|TAX_RATE/.test(calls[0].split('harvestToGranary')[1] || ''),
     '⑥ ★★[T190] 그 줄에 **산수가 없다**(배율을 여기서 곱하지 않는다 — 이중 0)');
-  ok(calls.length === 1 && /if \(did === 'harvest'\)/.test(calls[0]), '⑥ 그 자리가 **수확 갈래**다(파종·김매기가 곳간을 안 만진다)');
+  {
+    const users = CODE.split('\n').filter((l) => /_farmGranary\(vil, /.test(l) && !/function _farmGranary/.test(l));
+    ok(users.length === 2 && users.some((l) => /if \(did === 'harvest'\)/.test(l)) && users.some((l) => /got \+= _farmGranary/.test(l)),
+      '⑥ 그 한 줄을 부르는 자리가 **수확 갈래**와 ★[T368] **귀환**(손) 둘뿐이다(파종·김매기가 곳간을 안 만진다)', `${users.length}곳`);
+  }
   ok(/ec\._fieldCells = f;/.test(VSRC) && /_fieldBridge\(vil\);/.test(VSRC),
     '⑥ 칸 수 브리지는 그대로다(공간 값 · 장부가 아니다) — ★[T198] 심는 자리가 **한 함수**로 모였다');
 }
@@ -289,8 +295,8 @@ if (!process.env.T100_CHILD) {
   // ★변조 일곱째 [T190] — 배율을 **안 넘기는** 사본(T179 가 문만 열어 두고 끝낸 그 상태)
   let made7 = false;
   try {
-    const mutV = VSRC.replace('_lifeEcon().harvestToGranary(vil.econ, 1, _farmMul(vil, npc))',
-                              '_lifeEcon().harvestToGranary(vil.econ, 1)');
+    const mutV = VSRC.replace('_lifeEcon().harvestToGranary(vil.econ, it ? it.u : 1, _farmMul(vil, npc), it ? it.c : undefined, ev)',
+                              '_lifeEcon().harvestToGranary(vil.econ, it ? it.u : 1, undefined, it ? it.c : undefined, ev)');   // ★[T368] 한 줄이 `_farmGranary` 로 옮겨 갔다
     ok(mutV !== VSRC, '⑦ [T190] 호출부의 변조 지점이 소스에 **실재한다**');
     const VMUT = codeOf(mutV).split('\n').filter((l) => l.indexOf('harvestToGranary') >= 0)[0] || '';
     ok(!/_farmMul\(vil, npc\)/.test(VMUT),
@@ -299,7 +305,7 @@ if (!process.env.T100_CHILD) {
   } finally { if (!made7) console.log('  ⚠[T190] 일곱째 변조 점검 실패'); }
   // ★변조 여덟째 [T190] — 생활층에서 배율을 **한 번 더** 곱하는 사본(이중)
   {
-    const mutV2 = VSRC.replace(', 1, _farmMul(vil, npc))', ', 1, _farmMul(vil, npc) * 2)');   // ★호출부만(선언부가 아니라)
+    const mutV2 = VSRC.replace(', _farmMul(vil, npc), it ? it.c', ', _farmMul(vil, npc) * 2, it ? it.c');   // ★호출부만(선언부가 아니라) · ★[T368] 그 한 줄(`_farmGranary`)
     ok(mutV2 !== VSRC, '⑦ [T190] 이중 곱셈의 변조 지점이 소스에 **실재한다**');
     const line = codeOf(mutV2).split('\n').filter((l) => l.indexOf('harvestToGranary') >= 0)[0] || '';
     ok(/[*/+]/.test(line.split('harvestToGranary')[1] || ''),
@@ -436,8 +442,11 @@ console.log('\n⑫ 켠 팔의 잠재 — 밭이 낸 식량이 **잠재에도** �
   //   ★[T374 2026-09-23] 자리가 **하나 늘었다** — 채집 장부 다리(`_t347InByItem`). T347 이 그 다리를 안 놓아
   //     채집 입고가 장부에 한 번도 안 올랐고(빚), T374 가 수요 문을 걸자 드러났다(보고/T374 §2).
   //     ⇒ 수를 올리고 **새 자리를 이름으로 못 박는다**(T312·T325 가 쓴 그 규약 · 정규식을 느슨하게 하지 않는다).
-  ok(hits.length === 8, '⑫ 잠재를 건드리는 자리는 **여덟**이다(선언 1 · 쓰기 5 · 읽기 2 · ★T312 어부 · ★T325 나무꾼 · ★T374 채집)', `실제 ${hits.length}`);
-  ok(writes.length === 5, '⑫ ★쓰는 곳 **다섯** — `addProduce`(끈 팔) · T183(밭) · ★T312(어부) · ★T325(나무꾼) · ★T374(채집)', `실제 ${writes.length}`);
+  //   ★[T368 2026-09-25] 하나 더 — 밭 장부 다리(품목별 · 넷째 적용). 같은 규약으로 **이름으로 못 박는다**.
+  ok(hits.length === 9, '⑫ 잠재를 건드리는 자리는 **아홉**이다(선언 1 · 쓰기 6 · 읽기 2 · ★T312 어부 · ★T325 나무꾼 · ★T374 채집 · ★T368 밭)', `실제 ${hits.length}`);
+  ok(writes.length === 6, '⑫ ★쓰는 곳 **여섯** — `addProduce`(끈 팔) · T183(밭) · ★T312(어부) · ★T325(나무꾼) · ★T374(채집) · ★T368(밭 품목)', `실제 ${writes.length}`);
+  ok(/dailyProductionPotential\[c\] = \(dailyProductionPotential\[c\] \|\| 0\) \+ u;/.test(C),
+    '⑫ ★★[T368] 그 새 자리가 **밭 장부 다리**다(품목별 · `_t368InByItem`)');
   ok(/dailyProductionPotential\[it\] = \(dailyProductionPotential\[it\] \|\| 0\) \+ a;/.test(C),
     '⑫ ★★[T374] 그 새 자리가 **채집 장부 다리**다(품목별 · `_t347InByItem`)');
   ok(/dailyProductionPotential\.fish = \(dailyProductionPotential\.fish \|\| 0\) \+ _t312In;/.test(C),
@@ -445,7 +454,7 @@ console.log('\n⑫ 켠 팔의 잠재 — 밭이 낸 식량이 **잠재에도** �
   ok(/dailyProductionPotential\.wood = \(dailyProductionPotential\.wood \|\| 0\) \+ _t325In;/.test(C),
     '⑫ ★[T325] 그 넷째 자리가 **나무꾼 다리**다(같은 문법 · 같은 꼴)');
   ok(reads.length === 2, '⑫ 읽는 곳 **둘** — `totalFoodProductionEquivalent`(prodK) · 볏짚(fuelK)', `실제 ${reads.length}`);
-  ok(/const dailyFoodProdPotential = totalFoodProductionEquivalent\(dailyProductionPotential\);/.test(C)
+  ok(/const dailyFoodProdPotential = totalFoodProductionEquivalent\(dailyProductionPotential, v\);/.test(C)
      && /\(dailyProductionPotential\.food \|\| 0\) \* STRAW_FUEL_PER_FOOD/.test(C),
     '⑫ 읽는 두 곳의 꼴이 그대로다(prodK 다리 · 볏짚 다리)');
 
@@ -506,11 +515,14 @@ console.log('\n⑮ 장부 — 밭이 곳간에 넣은 그 양이 **실현 흐름
   ok(/for \(const r in dailyProduction\) dailyProduction\[r\] = 0;/.test(C),
     '⑮ ★그 버퍼는 **틱 머리에서 리셋**된다 — 그래서 생활층(틱 뒤)에서 적으면 지워진다');
   //   ★[T374] 한 줄 늘었다 — 채집 장부 다리(품목별). 이름으로 못 박는다(위 ⑫ 와 같은 규약).
-  ok(writes.length === 5, '⑮ ★쓰는 줄 **다섯** — 리셋 둘 + `addProduce`(끈 팔) + T193(켠 팔) + ★T374(채집)', `실제 ${writes.length}`);
+  //   ★[T368] 한 줄 더 — 밭 장부 다리(품목별). 이름으로 못 박는다(위 ⑫ 와 같은 규약).
+  ok(writes.length === 6, '⑮ ★쓰는 줄 **여섯** — 리셋 둘 + `addProduce`(끈 팔) + T193(켠 팔) + ★T374(채집) + ★T368(밭 품목)', `실제 ${writes.length}`);
+  ok(/dailyProduction\[c\] = \(dailyProduction\[c\] \|\| 0\) \+ u;/.test(C),
+    '⑮ ★★[T368] 그 새 줄이 **밭 장부 다리**다');
   ok(/dailyProduction\[it\] = \(dailyProduction\[it\] \|\| 0\) \+ a;/.test(C),
     '⑮ ★★[T374] 그 새 줄이 **채집 장부 다리**다');
-  ok(/const dailyFoodProd = totalFoodProductionEquivalent\(dailyProduction\);/.test(C),
-    '⑮ 읽는 곳은 하나 — `totalFoodProductionEquivalent` → `dailySurplus` → `surplusEMA.food`');
+  ok(/const dailyFoodProd = totalFoodProductionEquivalent\(dailyProduction, v\);/.test(C),
+    '⑮ 읽는 곳은 하나 — `totalFoodProductionEquivalent` → `dailySurplus` → `surplusEMA.food` · ★[T368] 둘째 인수 = 이 마을(주입 작물 값)');
   ok(/if \(T193_LEDGER\) dailyProduction\.food = \(dailyProduction\.food \|\| 0\) \+ _t100Pot;/.test(C),
     '⑮ ★★★적는 수는 **잠재에 적는 그 수 그대로**다(`_t100Pot`) — 배수 0 · 새 수 0(`* 2` 를 끼우면 여기가 빨개진다)');
   ok(/const T193_LEDGER = process\.env\.T193_LEDGER === '1';/.test(C),
@@ -571,7 +583,15 @@ console.log('\n⑱ 볏짚 — 밭 수확이 **아궁이 밑변**(`_grainToday`)�
   // ★[T240] 읽는 줄이 `strawFuel = Math.min(...)` 한 줄에서 **이름 붙은 두 줄**로 갈렸다
   //   (`_strawCap` · `_strawRaw`). 밑변을 **읽는** 줄은 여전히 하나다 — `_strawRaw` 쪽이다.
   const reads = lines.filter(([, l]) => /_strawRaw = \(v\._grainToday \|\| 0\) \* STRAW_FUEL_PER_FOOD;/.test(l));
-  ok(writes.length === 3, '⑱ ★쓰는 곳 **셋** — `addProduce`(끈 팔 농부) · `harvestToGranary`(켠 팔 밭) · `gardenFloorTopUp`(텃밭)', `실제 ${writes.length}`);
+  //   ★[T368] 넷째 줄은 **밭 품목 몸통**(`_t368Credit`)이다 — T100 갈래와 **배타**(품목 갈래는 먼저 돌아선다)라 한 수확이 두 번 안 든다.
+  ok(writes.length === 4, '⑱ ★쓰는 곳 **넷** — `addProduce`(끈 팔 농부) · `harvestToGranary`(켠 팔 밭) · `gardenFloorTopUp`(텃밭) · ★T368 `_t368Credit`(밭 품목)', `실제 ${writes.length}`);
+  {
+    const cr = (C.match(/function _t368Credit\(v, crop, units\) \{[\s\S]*?\n\}/) || [''])[0];
+    const hv = (C.match(/function harvestToGranary\(v, n, mul, crop, ev\) \{[\s\S]*?\n\}/) || [''])[0];
+    ok(/v\._grainToday = \(v\._grainToday \|\| 0\) \+ fe;/.test(cr) && hv.indexOf('return _t368Credit(v, crop, units);') >= 0
+       && hv.indexOf('return _t368Credit(v, crop, units);') < hv.indexOf('const amt = ((n > 0 ? n : 1)) * T100_K * _m;'),
+      '⑱ ★★[T368] 그 넷째 줄은 `_t368Credit` 안이고, 품목 갈래는 T100 갈래 **앞에서 돌아선다**(배타 · 볏짚 두 배 0)');
+  }
   ok(reads.length === 1 && resets.length === 1, '⑱ 읽는 곳 하나(볏짚) · 비우는 곳 하나', `읽기 ${reads.length} · 리셋 ${resets.length}`);
   ok(reads[0] && resets[0] && reads[0][0] < resets[0][0],
     '⑱ ★★★비우는 줄이 **읽는 줄 뒤**에 있다 — 그래서 생활층(틱 **뒤**)이 적은 값이 다음 틱까지 **산다**',
@@ -583,7 +603,7 @@ console.log('\n⑱ 볏짚 — 밭 수확이 **아궁이 밑변**(`_grainToday`)�
     '⑱ ★이월을 끈 가지는 **종전 식 그대로** `min(상한, 원량)` 이다(T240 비트 동일의 뿌리)');
   // ★T193 의 `dailyProduction` 과 **정확히 갈리는 지점**: 그쪽은 리셋이 틱 **머리**라 생활층 쓰기가 죽는다.
   const dpReset = C.split('\n').findIndex((l) => /for \(const r in dailyProduction\) dailyProduction\[r\] = 0;/.test(l)) + 1;
-  const dpRead = C.split('\n').findIndex((l) => /const dailyFoodProd = totalFoodProductionEquivalent\(dailyProduction\);/.test(l)) + 1;
+  const dpRead = C.split('\n').findIndex((l) => /const dailyFoodProd = totalFoodProductionEquivalent\(dailyProduction(, v)?\);/.test(l)) + 1;
   ok(dpReset > 0 && dpRead > 0 && dpReset < dpRead,
     '⑱ ★대조 — `dailyProduction` 은 리셋이 **읽는 줄 앞**이라 생활층 쓰기가 죽는다(그래서 T193 은 줄이 필요했다)',
     `리셋 :${dpReset} < 읽기 :${dpRead}`);
@@ -603,9 +623,9 @@ console.log('\n⑱ 볏짚 — 밭 수확이 **아궁이 밑변**(`_grainToday`)�
   } else {
     ok(dg === 0 && put === 0, '⑱ [끔] 밭 입구가 안 열리므로 밑변도 한 톨도 안 는다');
   }
-  ok(writes.length === 3,
-    '⑱ ★이중 0 — T218 은 **넷째 쓰기를 안 만들었다**(이미 닿는 칸에 한 줄 더 놓으면 볏짚이 두 배가 된다)',
-    `쓰는 곳 ${writes.length} (셋이 정본)`);
+  ok(writes.length === 4,
+    '⑱ ★이중 0 — T218 은 **넷째 쓰기를 안 만들었다**(★넷째는 T368 품목 몸통 — 위에서 배타를 못 박았다)',
+    `쓰는 곳 ${writes.length} (셋 + T368 하나)`);
 }
 
 // ── ⑲ 건축 상한 손잡이 — 정본 자리 하나 · 기본 끔 · 엔진 안 새 수 0 (T300) ──────
@@ -794,14 +814,17 @@ console.log('\n⑬ 배율 자리 [T179] — 대체가 삼킨 배율 셋을 문�
 {
   const CODE = codeOf(SRC);
   // ⓐ 문이 배율을 받는다 — 인수는 셋, 기본은 1
-  ok(/function harvestToGranary\(v, n, mul\) \{/.test(CODE),
-    '⑬ ★문이 **양과 배율을 따로** 받는다(`harvestToGranary(v, n, mul)`)');
+  ok(/function harvestToGranary\(v, n, mul, crop, ev\) \{/.test(CODE),
+    '⑬ ★문이 **양과 배율을 따로** 받는다(`harvestToGranary(v, n, mul, …)` · ★[T368] 뒤 둘 = 작물 · 건수)');
   ok(/const _m = \(typeof mul === 'number' && mul >= 0\) \? mul : 1;/.test(CODE),
     '⑬ ★미전달·음수·NaN 은 **1** 이다(되돌림의 뿌리 — 지금 부르는 자리는 안 준다)');
   // ⓑ 이중 0 — 배율이 곱해지는 줄이 **하나뿐**이다
   const mLines = CODE.split('\n').filter((l) => /\b_m\b/.test(l) && l.indexOf('const _m =') < 0);
-  ok(mLines.length === 1 && /const amt = \(\(n > 0 \? n : 1\)\) \* T100_K \* _m;/.test(mLines[0]),
-    '⑬ ★★★배율이 물리는 줄이 **하나**다(이중 0 — 두 번 곱하면 빨개진다)', `${mLines.length}줄`);
+  //   ★[T368] 줄이 셋이 됐다 — **갈래마다 곳간에 드는 양에 한 번**(T100 `amt` · T368 `units`)과 T368 의 **대조 자**(계측 · 곳간 아님).
+  //     두 갈래는 배타다(품목 갈래가 먼저 돌아선다) ⇒ 한 수확에 배율은 여전히 **한 번**이다. 이름으로 못 박는다.
+  ok(mLines.length === 3 && /const amt = \(\(n > 0 \? n : 1\)\) \* T100_K \* _m;/.test(mLines[2])
+     && /const units = \(n > 0 \? n : 0\) \* _m;/.test(mLines[0]) && /v\._t368KTot = \(v\._t368KTot \|\| 0\) \+ \(\(ev > 0\) \? ev : 1\) \* T100_K \* _m;/.test(mLines[1]),
+    '⑬ ★★★배율이 물리는 줄 — 갈래마다 **하나**(T100 `amt` · ★T368 `units`) + ★T368 대조 자(계측) — 이중 0', `${mLines.length}줄`);
   ok(!/_t100HarvestN[^\n]*_m/.test(CODE),
     '⑬ ★건수 계측(`_t100HarvestN`)은 배율에 **안 물린다**(수확 횟수지 양이 아니다)');
   // ⓒ 걷어낸 자리가 배율을 **심는다** — 실체 자리가 읽을 정본 하나(사본 0)
@@ -841,8 +864,8 @@ console.log('\n⑬ 배율 자리 [T179] — 대체가 삼킨 배율 셋을 문�
   // ⓔ 실체 자리는 서버다 — T190 이 그 자리를 놓았다(⑯ 절이 본다)
   const VCODE = codeOf(VSRC);
   const calls = VCODE.split('\n').filter((l) => l.indexOf('harvestToGranary') >= 0);
-  ok(calls.length === 1 && /harvestToGranary\(vil\.econ, 1, _farmMul\(vil, npc\)\)/.test(calls[0]),
-    '⑬ ★생활층이 **배율을 넘긴다**(T190 — 문이 열린 채 비어 있던 셋째 인수)');
+  ok(calls.length === 1 && /harvestToGranary\(vil\.econ, it \? it\.u : 1, _farmMul\(vil, npc\), it \? it\.c : undefined, ev\)/.test(calls[0]),
+    '⑬ ★생활층이 **배율을 넘긴다**(T190 — 문이 열린 채 비어 있던 셋째 인수 · ★[T368] 그 한 줄은 `_farmGranary`)');
   ok(VCODE.indexOf('_t172mul') >= 0,
     '⑬ 생활층이 배율 정본(`_t172mul`)을 **읽는다**(심는 곳은 econ 하나 · 여기선 읽기만)');
 }

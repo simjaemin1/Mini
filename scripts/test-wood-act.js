@@ -219,8 +219,10 @@ console.log('\n⑦ 끄면 비트 동일 — 새 줄이 전부 손잡이 뒤에 �
 console.log('\n⑧ 안 만진 것 — T324 이동 문 · 어부 값');
 {
   const ZC = codeOf(ZSRC);
-  ok(/return !!\(_t316Econ && _t316Econ\.T312_FISH_ACT\);/.test(ZC),
-    '⑧ ★★걷기 술어(`_t316WalkAlways`)는 **T312 항 하나 그대로**다 — T324 정본이라 안 만졌다');
+  //   ★[T368 2026-09-25] 술어에 **농부 항**이 하나 붙었다(`T368_FARM_ACT && simJob === 'farmer'`) — 나무꾼 항은 여전히 **없다**.
+  //     이 절이 지키는 것은 "T325 는 걷기 문을 안 열었다(빚)" 이고, 그 뜻은 그대로다 — 이름으로 못 박는다.
+  ok(/return !!\(_t316Econ && \(_t316Econ\.T312_FISH_ACT \|\| \(_t316Econ\.T368_FARM_ACT && npc\.simJob === 'farmer'\)\)\);/.test(ZC),
+    '⑧ ★★걷기 술어(`_t316WalkAlways`)의 항은 **T312 · ★T368(농부)** 둘뿐이다 — 나무꾼 항은 안 넣었다(T324 정본 · T325 빚 그대로)');
   ok(!/T325_WOOD_ACT/.test(ZC), '⑧ ★`zone.js` 에 T325 손잡이 이름이 **없다**(문을 안 열었다 — 보고 §회부의 빚)');
   ok(!/t325.*path|pathCache/i.test(ZC.split('\n').filter((l) => /t325/i.test(l)).join('\n')),
     '⑧ ★길 캐시도 안 만졌다(T324 몫)');
