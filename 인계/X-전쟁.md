@@ -305,3 +305,25 @@
 1. 운영 코드에서 `gameDayOf(Date.now())` 를 읽는 자리는 하네스에서 **판의 날과 어긋난다** — 새 하네스가 스폰·날 씨를 쓰면 같은 고정이 필요하다.
 2. 몸을 `warBodies.get` 으로 매 틱 새로 찾는 관찰은 "같은 틱에 치워지는 몸"을 못 본다 — 끝·정산은 몸 참조나 war 객체(`w.phase`)로 읽는다.
 3. ⓓ(관측자 켬/끔 동일)도 같은 뿌리로 잠재 간헐이었다 — 이 고침으로 같이 닫혔다.
+
+## X-9. ★2026-09-26 — T423 짐이 먹는다: 군량 = 행위 ⓐ 구현(손잡이 `T423_RATION_ACT` 끔)
+
+> 카드 `지시/지시_T423.md`(★PM #68) · 보고 `보고/T423_2026-09-26.md` · 가지 `batch/ration-act-0926` · 코드 `c193c6c2`.
+
+### 흐름(켬)
+
+1. **싣기** — `_opPackLoad` 무변 → 몸이 서는 순간 `_warRationLoad` → `packSplit`: 남은 팩을 품목 그대로 공격 몸(표본 pid) `inventory` 로(몸당 = 병력 ÷ 몸) · 표식 `p._warPackOf = w.id` · 팩 품목 칸 `w._packKeys`.
+2. **먹기** — 종전 `_packRem −= 1` 세 자리가 `_packTick` 하나 → 호스트 `_warRationEat`: 살아 있는 짐꾼마다 몫을 `bodyEat`(= `_warFoodTake` · 섭식 정본) · `_packRem` = 짐 합 ÷ (병력 × 하루치)(거울 · 결단 식 무변) · `ration` 매일(0~1).
+3. **빠진다** — econ `foodNeed = _t423EatN(v, N)` · 표식 `_warPack` 은 `warDraftFill`(공격 징발)에만 · 켤 때만.
+4. **내려놓기** — 집에 닿아 풀리는 몸(`_warCleanupBody` 해제) · war-core 귀환 도착(`rationCollect`) → `rationLayDown` → `_warFoodGive`.
+5. **드랍** — 전사·포로가 된 공격 병사의 짐(`_warBagDrop`) → 장부 `drop`.
+6. **되돌림** — 몸이 없는 전쟁(pid 0)·훅이 없는 판(랩·하네스 비용 세계)·몸이 서기 전 날은 종전 장부.
+7. 장부 `w._rationBook = { load, split, ledgerEaten, eaten, back, drop, days[] }` — 항등 `load = ledgerEaten + eaten + back + drop (+ 아직 짐)`. 귀환 도착에 war 로그 한 줄.
+
+### 함정
+
+1. 존 econ 하루 틱 안에서는 `console.log` 가 **침묵**된다(`villages` 하루 틱 `console.log = () => {}`) — war-core 안 디버그·기록은 `log(day, …)`(전쟁 로그 · `VILLAGE_WAR_LOG`)로만 보인다.
+2. `doEat` 은 econ 품목 이름(`fish`·`meat`·`cooked_food`·`fruit`·`vegetable`·해산물)을 못 먹는다 — 몸의 먹기는 `consumeFood`(몸 짐에)다. 바꾸려면 품목 다리부터.
+3. NPC 허기는 면제(`zone.js` 생존 게이지) — 짐이 비어도 허기는 안 오른다. 굶주림은 거울 → 결단(철수)과 `ration` 으로 온다.
+4. 표본 몸이 병력보다 적으면(몸당 1명 넘는 몫) 살아 돌아온 짐이 종전 "생존 사람 비" 환급과 다르다(돌격 판 +5.5) — 켬이 실체다.
+5. econ 한 줄을 바꿨다 ⇒ `sim/build-econ-bundle.js` + `sim/inline-engine.js` 로 번들·랩 둘을 다시 굽는다(`--check` 둘).
