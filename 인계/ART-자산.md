@@ -578,6 +578,22 @@ T391 이 "07-30 판 · 코드 없음"이라고 한 11곡을 두 팔로 다시 �
 * ★**`tools/ddsp`(T353 — 이 영역 것)는 버림 권고다**: `train.py` 가 f0 를 392 Hz 로 고정해 조건부 모델이 아니고, `phrase.py` 백엔드 B 가 부르는 `ddsp_backend` 는 어디에도 없다.
   `train.sh` 는 레포 안에 venv 를 만들고 네트워크로 pip 를 부른다 — 돌리지 마라.
 
+### tools 버림 14 는 `tools/_rnd_archive/` 에 있다 — 남는 10 의 자리 [T422 2026-09-26]
+
+* **보관소** `tools/_rnd_archive/`(README 한 장 — 왜 · 무엇 · 되살리는 법) = MIDI-DDSP 줄기 7 · 청취 묶음 줄기 5 · `source-led-stem-mixer` · `ddsp`(T353).
+  `git mv` 로 옮겼다(`git log --follow` 가 이어진다). 바꾼 것은 경로 11줄(`parents[k]` 의 k 하나 · 로직 0)과 `phrase.py` 4줄(글자)뿐이다.
+  24 폴더 자기 시험은 옮기기 전과 같다(230 중 229 — `midi-ddsp-daegeum-adapter` 5/6 은 레포 밖 파일 단언).
+* ⚠**되살릴 때는 경로 줄도 되돌린다** — 보관소 안 코드는 한 칸 깊은 자리에 맞춰져 있다(옆 폴더 `parents[1]` · 레포 뿌리 `parents[3]`).
+  폴더 안 README 의 `tools/<이름>/` 명령은 옛 자리다(`tools/_rnd_archive/<이름>/` 으로 읽는다).
+* **배포 밖을 지키는 자** = `test-assets-audit ⑩`: 두 Dockerfile 의 `COPY`(`package*.json server public sim`)를 읽어 보관소 57장 이미지 0 · 미끼 `COPY . .` 면 57/57.
+  `.gitattributes`(이 카드가 처음 만들었다) = `tools/_rnd_archive/** linguist-vendored export-ignore`.
+* ⚠**T411 정정 둘** — ① `source-led-stem-mixer` 의 버림 근거("R&D-07 이 닫은 방향")는 틀렸다: R&D-07 이 닫은 것은 **악보를 충실히 부른 source 악구**고,
+  source-led **편곡**은 R&D-07 이 "즉시 가능한 경로", R&D-08(후보)이 우선순위 2 로 적는다 ⇒ 되살림 후보(회부).
+  ② `phrase.py` 흔적은 4줄이고 `ddsp_model_dir` 는 **처음부터**(T353) `dirname` 4번이라 `public/tools/…` 를 본다(레포 뿌리 아님 · 모델 0 이라 드러난 적 없다 · 회부).
+* **남는 10 의 자리**(판정 0 · 설계 11장 판정의 입력 — 보고/T422 §②): 정본 옆 2 = `score-expression`(표현 층 — `phrase.py` 와 같은 층의 둘째 구현) ·
+  `bgm-samples`(합성 입력 — **맥에서 돈다**: `--verify` 로 대금 4묶음 해시 일치 · 121파일 · 정악 색인 보존) / 아직 모름 4 = `daegeum-vibrato-reference`(#66) ·
+  `ddsp-gugak-public-runtime`(라이선스) · `expressive-synthesis`(#64 ②③) · `daegeum-transitions`(권리·설계 판정) / 참고 4 = 목록·권리·영수증·AI Hub 게이트.
+
 ### 군락 종 넷이 섰다 — 자연물 소품 45 → 49 [T372 2026-09-23]
 
 `scripts/nature_render.py` `PROP_BUILD` 에 넷. **새 빌더는 셋이다**(넷째는 새 부름이 아니다).
