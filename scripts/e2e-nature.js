@@ -536,15 +536,29 @@ function diffCountNoEnts(a, b, ents) {
       {
         const CH = require(path.join(ROOT, 'server', 'chunk.js'));
         const TR = require(path.join(ROOT, 'server', 'terrain.js'));
-        let rows = [];
-        for (let k = 0; k < 6 && !rows.length; k++) {
-          try { rows = CH.generateChunkResources('hanbando', 'forest', 300 + k, 300 + k, CH.CHUNK_SIZE, new Set(), 100) || []; } catch (e) { rows = []; }
+        // ★★[T428 ⓪ 2026-09-26] 청크 좌표는 **존 안** 좌표다. 종전 픽스처 (300+k, 300+k) 는 한반도(70,016×130,016px =
+        //   청크 69×127) **밖** 307,200px 였다 — T408 전엔 숲 격자가 아무 땅에나 나무를 낳아 그걸로 초록이었고,
+        //   T408 "개체는 제 땅에만" 뒤로 0/0 빨강이 됐다(답이 옳고 픽스처가 틀렸다). ⇒ 존 크기 ÷ 청크에서 유도한
+        //   존 안 대각선(⅓ 지점부터)을 걸으며 **나무가 난 첫 청크**를 쓴다(새 수 0 — ⅓ 은 자리 고르기일 뿐 판정값이 아니다).
+        const ZH = require(path.join(ROOT, 'server', 'zone-config.js')).ZONES.hanbando, CSZ = CH.CHUNK_SIZE;
+        const NXC = Math.ceil(ZH.zoneWidth / CSZ), NYC = Math.ceil(ZH.zoneHeight / CSZ);
+        let rows = [], at0 = null;
+        for (let k = 0; k < NXC && !rows.some((r) => r.type === 'tree'); k++) {
+          const qx = Math.floor(NXC / 3) + k, qy = Math.floor(NYC / 3) + k;
+          if (qx >= NXC || qy >= NYC) break;
+          try { rows = CH.generateChunkResources('hanbando', 'forest', qx, qy, CSZ, new Set(), 100) || []; } catch (e) { rows = []; }
+          at0 = [qx, qy];
         }
+        // ★미끼 — 존 **밖** 첫 청크(⌈W/청크⌉, ⌈H/청크⌉)는 개체 0 이어야 한다(T408 규칙이 살아 있다 · 종전 비트면 여기서 빨강)
+        let outRows = [];
+        try { outRows = CH.generateChunkResources('hanbando', 'forest', NXC, NYC, CSZ, new Set(), 100) || []; } catch (e) { outRows = ['throw']; }
+        ok(outRows.length === 0,
+          `★나무ⓗ0 미끼 — 존 밖 청크 (${NXC},${NYC}) 는 개체 **0** 이다(T408 "개체는 제 땅에만" · 픽스처가 존 안이어야 하는 까닭)  ${outRows.length}개`);
         const trees = rows.filter((r) => r.type === 'tree');
         const withSp = trees.filter((r) => r.sp);
         const kinds = Array.from(new Set(withSp.map((r) => r.sp)));
         ok(trees.length > 0 && withSp.length === trees.length,
-          `★★나무ⓗ 시더가 내는 나무가 **전부 종을 들고 있다** — ${withSp.length}/${trees.length} (종 ${kinds.join(',')})`);
+          `★★나무ⓗ 시더가 내는 나무가 **전부 종을 들고 있다** — ${withSp.length}/${trees.length} (종 ${kinds.join(',')} · 청크 ${at0})`);
         ok(kinds.every((k2) => !!TBL[k2]),
           `★★나무ⓗ 그리고 그 종 이름이 **전부 표에 있다** — 서버가 내는 이름과 그림 표가 같은 낱말을 쓴다`);
         void TR;
