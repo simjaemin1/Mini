@@ -40,6 +40,11 @@ let _sfxWxKind = null;   // ★[T397] 그리는 층이 마지막으로 정한 �
 // ★`missing`(표에 파일이 없다 = 영영 무음) 과 `pending`(받는 중 = 곧 난다) 을 **갈라 센다** —
 //   한 칸에 뭉치면 진단이 "음원이 없다"와 "아직 안 왔다"를 구분 못 한다(실측에서 실제로 헷갈렸다).
 let _sfxStat = { played: 0, missing: 0, pending: 0, blocked: 0, loops: 0, noLimiter: 0 };
+// ★[T417] 울린 단발의 **고리 장부**(키 · 시각) — 헤드룸 실측 자(`scripts/sfx-cooccur.js`)가 `__sfx.tap()` 으로 읽는다.
+//   고정 크기(덮어쓰기) · 층의 판정에는 안 쓴다(읽기 전용 관측).
+const SFX_TAP_N = 2048;
+const _sfxTap = [];
+let _sfxTapN = 0;
 
 const SFX_MANIFEST_URL = '/assets/sfx/manifest.json';
 const SFX_SCAN_MS = 250;            // 개체 훑기 주기 — 프레임마다 훑지 않는다(렌더 예산)
@@ -221,6 +226,7 @@ function sfxPlay(key, o) {
   src.start();
   live.push({ until: now + buf.duration * 1000 });
   _sfxStat.played++;
+  _sfxTap[_sfxTapN % SFX_TAP_N] = { i: _sfxTapN, k: key, t: now }; _sfxTapN++;
   return true;
 }
 
@@ -620,6 +626,27 @@ function initAudio() {
         }
         return;
       }
+      // ★★[T417] **동물** — 짐승이 맞음(직전 hp 보다 줄 때만 · 먹여 회복은 조용) · 길들임(그 종의 울음) · 죽음(사체가 생김).
+      //   자리는 직전 `c.mobs`(합치기 전) · 사체는 전문의 좌표. 표 `mobEvents` 가 키를 댄다(종 울음은 `mobs` 표 그대로).
+      if (t === 'mob_damaged' || t === 'mob_tamed' || t === 'corpse_added') {
+        const ME = _sfxMan.mobEvents || {};
+        const ox = (c && c.meta && c.meta.worldOffsetX) || 0, oy = (c && c.meta && c.meta.worldOffsetY) || 0;
+        if (t === 'corpse_added') {
+          const co = msg.corpse;
+          if (co && typeof ME.death === 'string') sfxPlay(ME.death, { x: co.x + ox, y: co.y + oy });
+          return;
+        }
+        const m = (c && c.mobs) ? c.mobs.get(msg.mid) : null;
+        if (!m) return;                                     // 처음 보는 짐승 — 무엇이 바뀌었는지 모른다
+        if (t === 'mob_damaged') {
+          if (typeof m.hp !== 'number' || typeof msg.hp !== 'number' || !(msg.hp < m.hp)) return;
+          if (typeof ME.hurt === 'string') sfxPlay(ME.hurt, { x: m.x + ox, y: m.y + oy });
+          return;
+        }
+        const key = (ME.tamedCall && (_sfxMan.mobs || {})[m.type]) || null;   // 길들임 = 그 종이 운다(종 울음 표)
+        if (typeof key === 'string') sfxPlay(key, { x: m.x + ox, y: m.y + oy });
+        return;
+      }
       if (t === 'ground_item_removed') {                    // 누가 주웠다(서버의 이 방송은 줍기 함수에서만 나간다)
         const key = _sfxMan.groundPick && _sfxMan.groundPick.key;
         const gi = c && c.groundItems ? c.groundItems.get(msg.id) : null;
@@ -828,6 +855,15 @@ function initAudio() {
       };
     },
     /** 진단 — 하네스·실기가 읽는다(읽기 전용). */
+    /** ★[T417] 헤드룸 실측용 — `since` 뒤로 울린 단발(`{i,k,t}` · t = 컨텍스트 ms)과 지금 켜진 반복 키. 읽기 전용. */
+    tap: (since) => {
+      const from = Math.max(since || 0, _sfxTapN - SFX_TAP_N);
+      const plays = [];
+      for (let i = from; i < _sfxTapN; i++) plays.push(_sfxTap[i % SFX_TAP_N]);
+      const loops = [];
+      for (const [, e] of _sfxLoops) loops.push(e.key);
+      return { n: _sfxTapN, now: _sfxCtx ? _sfxCtx.currentTime * 1000 : 0, plays, loops };
+    },
     dbg: () => ({
       ctx: _sfxCtx ? _sfxCtx.state : null,
       manifest: _sfxMan ? Object.keys(_sfxMan.keys || {}).filter((k) => !k.startsWith('_')).length : 0,

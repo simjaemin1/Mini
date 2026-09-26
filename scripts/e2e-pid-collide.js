@@ -128,7 +128,7 @@ function ok(cond, label, detail) {
       await page.mouse.click(5, 5);                                          // 소리 층은 첫 제스처에서만 연다(계약)
       await page.waitForFunction(() => window.__sfx && window.__sfx.dbg && window.__sfx.dbg().ctx && window.__sfx.dbg().manifest > 0, null, { timeout: 20000 });
       const played = () => page.evaluate(() => window.__sfx.dbg().stat.played);
-      const withP2 = () => page.evaluate(() => { conns.get('zA').others.set('p2', { pid: 'p2', x: 40, y: 0 }); });
+      const withP2 = () => page.evaluate(() => { conns.get('zA').others.set('p2', { pid: 'p2', x: 520, y: 500 }); });   // [T417] 내 곁(500,500) — `downed` 반경 384(멀면 안 들리는 게 맞다)
       const down = (zoneId, pid, why) => feed(zoneId, Object.assign({ type: 'player_down_state', pid, isDown: true }, why ? { why } : {}));
       await setup(); await withP2(); await down('zA', 'p2', 'down'); await page.waitForTimeout(900);   // 데우기
       await setup(); await withP2(); let b = await played(); await down('zA', 'p2', 'down'); const s1 = (await played()) - b;

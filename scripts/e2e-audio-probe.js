@@ -430,6 +430,54 @@ const db = (x) => (x > 0 ? +(20 * Math.log10(x)).toFixed(2) : -Infinity);
       ok(loops.on === true && loops.off === false, '㊼ ★노에 불이 들면 불소리 · 꺼지면 멎는다(`buildingsWhen`)', `켬 ${loops.on} · 끔 ${loops.off}`);
     }
 
+    // ㊽~52 ★★[T417] 동물 · 제작 완료 — 수신에서 센다
+    {
+      const played = () => page.evaluate(() => window.__sfx.dbg().stat.played);
+      const run = (msgs, st) => page.evaluate(({ msgs, st }) => {
+        const c = { role: 'primary', others: new Map(), meta: { worldOffsetX: 0, worldOffsetY: 0 },
+                    mobs: new Map((st.m || []).map((m) => [m.mid, m])), buildings: new Map(), groundItems: new Map(), resources: new Map() };
+        for (const m of msgs) window.__sfx.recv(m, c);
+      }, { msgs, st: st || {} });
+      const count = async (msgs, st) => { await page.waitForTimeout(900); const b = await played(); await run(msgs, st); return (await played()) - b; };
+      const WOLF = { mid: 'm1', type: 'wolf', x: 40, y: 0, hp: 50 };
+      const BEAR = { mid: 'm2', type: 'bear', x: 40, y: 0, hp: 80 };
+      const C = {
+        hurt: [[{ type: 'mob_damaged', mid: 'm1', hp: 30 }], { m: [WOLF] }],
+        heal: [[{ type: 'mob_damaged', mid: 'm1', hp: 55 }], { m: [WOLF] }],
+        hurtUnknown: [[{ type: 'mob_damaged', mid: 'zz', hp: 1 }], {}],
+        tamed: [[{ type: 'mob_tamed', mid: 'm2', owner: 'x' }], { m: [BEAR] }],
+        death: [[{ type: 'corpse_added', corpse: { cid: 'c1', type: 'wolf', x: 50, y: 0 } }], {}],
+        craft: [[{ type: 'inventory', where: 'craft', inventory: {} }], {}],
+        noWhere: [[{ type: 'inventory', inventory: {} }, { type: 'craft_queue', queue: [] }], {}],
+        bearScan: null,
+      };
+      delete C.bearScan;
+      for (const k of Object.keys(C)) await run(C[k][0], C[k][1]);      // 데우기
+      await page.waitForTimeout(1500);
+      const n = {};
+      for (const k of Object.keys(C)) {
+        // 쿨다운이 긴 종 울음(곰 6초)은 데우기의 **받는 중** 호출도 쿨다운을 찍는다 — 그만큼 기다린다(표에서 읽은 값)
+        if (k === 'tamed') await page.waitForTimeout(((MAN.keys[MAN.mobs.bear] || {}).cooldownMs || 0) + 300);
+        n[k] = await count(C[k][0], C[k][1]);
+      }
+      ok(n.hurt === 1 && n.heal === 0 && n.hurtUnknown === 0, '㊽ ★짐승이 맞으면 1 · 먹여 회복(hp 오름) 0 · 처음 보는 짐승 0', `맞음 ${n.hurt} · 회복 ${n.heal} · 모름 ${n.hurtUnknown}`);
+      ok(n.tamed === 1, '㊾ 길들이면 그 종이 운다(곰 · `mobs` 표)', `${n.tamed}`);
+      ok(n.death === 1, '㊿ 짐승이 죽어 사체가 생기면 1', `${n.death}`);
+      ok(n.craft === 1 && n.noWhere === 0, '51 ★★제작·보존을 **받으면** 1(`where:craft` · 서버 한 줄) · 맡김·줄 갱신 0', `받음 ${n.craft} · 낱말 없음 ${n.noWhere}`);
+      // 52 새 종 울음 — 훑기(진짜 `scan`)에 곰이 보이면 곰 소리
+      const scanN = await page.evaluate(async () => {
+        const before = window.__sfx.dbg().stat.played;
+        _sfxScanAt = 0; window.__sfx.scan([{ kind: 'mob', m: { type: 'quail' }, ax: 0, ay: 0 }], 0, 0);
+        await new Promise((r) => setTimeout(r, 900));
+        _sfxScanAt = 0; window.__sfx.scan([{ kind: 'mob', m: { type: 'pheasant' }, ax: 0, ay: 0 }], 0, 0);
+        await new Promise((r) => setTimeout(r, 900));
+        const mid = window.__sfx.dbg().stat.played;
+        _sfxScanAt = 0; window.__sfx.scan([{ kind: 'mob', m: { type: 'moose' }, ax: 0, ay: 0 }], 0, 0);   // 표에 없는 종 = 무음
+        return { some: mid - before, moose: window.__sfx.dbg().stat.played - mid };
+      });
+      ok(scanN.some >= 1 && scanN.moose === 0, '52 새 종(메추라기·꿩)은 보이면 운다 · 표에 없는 종(무스)은 무음', `울림 ${scanN.some} · 무스 ${scanN.moose}`);
+    }
+
     // ④ ★[T305] 옛 곡선이 증폭기였다는 것을 **이 자로 다시 보인다** — 자명 통과 금지.
     //    같은 입력을 옛 곡선에 통과시켜 원점 기울기를 잰다. 1 이 나오면 자가 고장 난 것이다.
     {

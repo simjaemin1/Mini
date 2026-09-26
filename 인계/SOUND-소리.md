@@ -16,6 +16,7 @@
 > **T397**(pid 충돌 실측·세 줄 · `hp_changed.why` 서버 두 줄 · `hit_body` 보류 · ⑧g 미끼 · 전수 28/30=자 · 표면 셋 · 눈이면 빗소리 0 · 천둥·고인 물 후보).
 > **T402**(why = `damagePlayer` 출처 앞 낱말 · `hit_body` 배선 · 극단 0 · 남의 쓰러짐 `combatOnly` · 서버 여섯 줄).
 > **T412**(도구/작업 57 — 20 운다 · 9키 배선 · 후보 8 · 건물 표 넷(`buildAdded`·`buildRemoved`·`buildDamaged`·`buildEdge`) · 줍기·심기·궤 · 가마 불은 `job` 일 때만).
+> **T417**(동물 — 곰·꿩·메추라기 · 짐승 맞음/죽음/길들임 · 반경 0 결함 셋 · 헤드룸 조합 = 실측 `sfx-cooccur` · 제작 완료 `where:craft`).
 
 ---
 
@@ -444,3 +445,16 @@ ogg 길이는 마지막 `OggS` 페이지의 granulepos ÷ 표본율로 잰다(Vo
 * `test-audio` 의 배선 표 인식이 **한 겹 깊어졌다**(규칙 목록 안의 on/off 도 키로 센다) — 새 표를 배열로 만들어도 거짓 고아가 안 난다.
 * ⚠헤드룸 여유 0.03 dB(새 최악 = T292 여섯 + 공사 다섯 0.7967).
 * 보고 `보고/T412_2026-09-26.md` · 원본 맥 `~/Mini/_sfx_in/_T412/`.
+
+
+---
+
+## T417 (2026-09-26) — 동물 · 실측 조합 · 제작 완료
+
+* **`mobEvents`** = `{hurt, death, tamedCall}` — `mob_damaged` 는 **직전 hp 보다 줄 때만**(먹여 회복도 같은 메시지) · `corpse_added` = 죽음 · `mob_tamed` = 그 종의 `mobs` 울음.
+* **반경 규칙**: 자리로 부르는 표(`resourceHit`·`mobs`·`combat`·`work`·`build*`·`hpWhy`·`mobEvents`…)의 키는 **반경 > 0**(`test-audio ⑱a`). 반경 0 은 "자기 소리(자리 없이 부름)" 전용이다. T417 이 `axe`·`harvest`·`downed` 를 고쳤다.
+* **헤드룸 최악 조합 = 실측**(★PM): `node scripts/sfx-cooccur.js`(러너 밖 · 30분 · 결정적 씨) → `/tmp/sfx-cooccur.json` → 사람이 `_실측.worstCombo`·`worstPeak`·`worstSource` 로 옮긴다. 손으로 겹친 표는 `handCombo`(대조 자). 키를 더하면 **실측을 다시 돌려라** — ⑧d(키 수)와 ⑧k(출처)가 문다.
+* `__sfx.tap(since)` = 울린 단발 고리 장부(2048) + 켜진 반복 — 읽기 전용 관측. 층 판정에 쓰지 마라.
+* ⚠`sfx-cooccur` 한 판의 한계: 헤드리스 발자국 0 · 짐 무게 25kg 에 걸려 8분쯤부터 더 못 벤다 · 스폰 마을 곁에 주민 사건이 안 온다.
+* 제작·보존·요리 **받음** = `inventory where:craft`(서버 `doCraftCollect` 한 줄) → `craft_done`.
+* 보고 `보고/T417_2026-09-26.md` · 원본 맥 `~/Mini/_sfx_in/_T417/`.
