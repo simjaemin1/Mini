@@ -619,8 +619,10 @@ console.log('\n⑨ ★[T292] BGM 전환 — 두 축 네 칸');
     //   ⚠경고 문단을 표식(그림문자)으로 거르지 마라 — `test-harness-lint ②` 가 판정 자리의 그림문자를 문다
     //   (실제로 물렸다). 목록은 **가운뎃점으로 이어진 줄**이라는 것이 그 자체로 자다.
     const listLine = (rdLines.slice(1).find((l) => l.split('·').length >= 6) || '');
+    // ★[T411] 장구를 **궁편·채편 따로** 맞댄다. 궁편은 배포 2곡에서 샘플(84타 · T391 바이트 동일)이고 11곡은 미상이라
+    //   표가 더는 '합성' 이 아니다 — 둘을 '장구' 한 낱말로 대면 채편('합성')이 궁편을 목록에 붙들어 ⑨l 이 어긋난다.
     const KO = { geomungo: '거문고', daegeum: '대금', danso: '단소', piri: '피리',
-                 janggu_gung: '장구', janggu_chae: '장구', buk: '북', jing: '징', kkwaenggwari: '꽹과리', bak: '박' };
+                 janggu_gung: '장구 궁편', janggu_chae: '장구 채편', buk: '북', jing: '징', kkwaenggwari: '꽹과리', bak: '박' };
     ok(listLine.split('·').length >= 6, '⑨k 전제: README 의 "아직 합성음인 악기" **목록 줄**을 읽었다', listLine.trim());
     const src = meta.source || {};
     const bad = Object.keys(KO).filter((k) => {
