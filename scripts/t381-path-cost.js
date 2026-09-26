@@ -150,6 +150,7 @@ const _PC = {
   rr: 0, rrMs: 0, rrNeed: [0, 0, 0, 0, 0], rrNever: 0, rrNeedSum: 0, rrLenSum: 0, rrDSum: 0, rrSkip: 0, rrLast: -1,   // 풀어서 다시: 1.5~3k·3~6k·6~12k·12~24k·24k+ · 못 닿음
   rrBoxSum: 0,
   hop: 0, hopDead: 0,                                                 // ② 튕겨냄 무작위 도약 · 그 목표 셀이 막혔나
+  rq: 0, rqMs: 0, rqNo: 0, rqMax: 0, rqT: { n: 0, ms: 0, no: 0, max: 0, slow: 0 },   // rqT = 기동부터 누계(안 지운다 · slow = 한 번이 틱 하나(TICK_MS) 넘음)                                  // ★[T427 ①] 현장 도달 술어(npcCanReach) — 부른 수·시간·못 닿음·가장 긴 한 번
   rrRaw: [],                                                          // ★[T399 ①] 풀어서 다시의 필요 칸 원값(분포를 칸 단위로)
   clSrc2: {}, clSrcD: {}, clPairs: new Map(), clPairN: 0, clPairD: new Map(),             // 출처(목표 = 도약 점인가로 가른다) · 출처별 거리 합 · 같은 (사람, 목표) 쌍
   snapN: 0, stopWet: 0, stopDry: 0, going: 0,             // 5초 표본 — 목표가 12px 넘게 먼 주민이 5초에 32px 도 못 갔나
@@ -200,6 +201,11 @@ const _PC = {
     { const B = BUILDING_SIZE; this.workN = 0; this.workDead = 0;
       for (const pid of npcs) { const q = players.get(pid); if (!q || !q.simVillageId || q.npcWorkX == null) continue; this.workN++;
         if (isTerrainBlockedLocal(Math.floor(q.npcWorkX / B) * B + B / 2, Math.floor(q.npcWorkY / B) * B + B / 2)) this.workDead++; } }
+    // ★[T427] 되묻는 쌍(조각 안 3번 넘게)이 반경 안에서 닿나 — 조각 끝에 한 번씩만(틱 중간 흔들기 최소 · 시간은 따로 잰다)
+    this._clsN = 0; this._clsMs = 0;
+    if (typeof npcCanReach === 'function') { const _c0 = _pcT();
+      for (const [k, n] of this.clPairs) { if (n < 3) continue; const pd = this.clPairD.get(k); if (!pd || pd.reach !== undefined) continue; pd.reach = npcCanReach(pd.x, pd.y, pd.tx, pd.ty); this._clsN++; }
+      this._clsMs = _pcT() - _c0; }
     try {
       console.log('[PC] ' + JSON.stringify({ n: this.n, pop: this.pop, phase: +worldPhase(Date.now()).toFixed(4),
         call: this.call, ms: +this.ms.toFixed(2), popsSum: this.popsSum, popsMax: this.popsMax,
@@ -234,6 +240,12 @@ const _PC = {
         hop: this.hop, hopDead: this.hopDead, rrRaw: this.rrRaw, clSrc2: this.clSrc2, clSrcD: this.clSrcD,
         clPairN: this.clPairs.size, clPairMax: Math.max(0, ...this.clPairs.values()),
         clPairTop: [...this.clPairs.entries()].sort((a, b) => b[1] - a[1]).slice(0, 60).map(([k, n]) => Object.assign({ n }, this.clPairD.get(k) || {})),
+        clsN: this._clsN, clsMs: +(this._clsMs || 0).toFixed(1),
+        wl: global.__wl ? Object.assign({}, global.__wl) : null,
+        band: global.__band ? JSON.parse(JSON.stringify(global.__band)) : null,   // ★[T427 ③] 사냥 밴드 다 지은 마을(셀 수) · 예산에 끊긴 날 수   // ★[T427 ③] 서식지 스캔 누계(줄·청크·부른 수·남은 큐)
+        mobN: (() => { const o = {}; try { for (const m of mobs.values()) if (m && m.hp > 0) o[m.type] = (o[m.type] || 0) + 1; } catch (e) {} return o; })(),   // ★[T427 ③] 몹 마릿수(종별) — 서식지 스캔이 얼마나 갔나의 그림자
+        rq: this.rq, rqMs: +this.rqMs.toFixed(2), rqNo: this.rqNo, rqMax: +this.rqMax.toFixed(2), rqT: { n: this.rqT.n, ms: +this.rqT.ms.toFixed(1), no: this.rqT.no, max: +this.rqT.max.toFixed(2), slow: this.rqT.slow },
+        t427: global.__t427 ? JSON.parse(JSON.stringify(global.__t427)) : null,
         t394Spawn: global.__t394Stat ? Object.assign({}, global.__t394Stat) : null }));
     } catch (e) {}
     this.n = 0; this.call = 0; this.ms = 0; this.popsSum = 0; this.popsMax = 0;
@@ -261,6 +273,7 @@ const _PC = {
     this.clSrc = {}; this.clAct = {}; this.clFall = 0; this.clHop = 0; this.clHome = 0; this.clWork = 0; this.clTask = {};
     this.rr = 0; this.rrMs = 0; this.rrNeed = [0, 0, 0, 0, 0]; this.rrNever = 0; this.rrNeedSum = 0; this.rrLenSum = 0; this.rrDSum = 0; this.rrSkip = 0; this.rrBoxSum = 0;
     this.hop = 0; this.hopDead = 0; this.rrRaw = []; this.clSrc2 = {}; this.clSrcD = {}; this.clPairs = new Map(); this.clPairD = new Map();
+    this.rq = 0; this.rqMs = 0; this.rqNo = 0; this.rqMax = 0;
   },
   tally(npc, wp, ms, st, d) {
     this.call++; this.ms += ms;
@@ -389,6 +402,9 @@ const _PC = {
     npc._pcW = 0;
   },
 };
+// ★[T427 ①] 현장 도달 술어를 감싼다 — 부른 수·시간·못 닿음(생활층이 deps 로 부르는 그 함수 · 답 무변)
+function _pcReachWrap(ax, ay, bx, by) { const t0 = _pcT(); PathCore._pcstat.pops = -1; const r = npcCanReach(ax, ay, bx, by); const ms = _pcT() - t0; global.__pcLastPops = PathCore._pcstat.pops; _PC.rq++; _PC.rqMs += ms; if (!r) _PC.rqNo++; if (ms > _PC.rqMax) _PC.rqMax = ms;
+  const T = _PC.rqT; T.n++; T.ms += ms; if (!r) T.no++; if (ms > T.max) T.max = ms; if (ms >= TICK_MS) T.slow++; return r; }
 `;
 
 const PATCHES = [
@@ -424,16 +440,36 @@ const PATCHES = [
     repl: "  _PC.hop++; npc._pcHopX = npc.targetX; npc._pcHopY = npc.targetY; { const B = BUILDING_SIZE; if (isTerrainBlockedLocal(Math.floor(npc.targetX / B) * B + B / 2, Math.floor(npc.targetY / B) * B + B / 2)) _PC.hopDead++; }\n  npc.nextDecisionAt = now + 800; // 잠깐 wander 후 다시 결정" },
   { find: "function unstuckNpc(npc, now) {",
     repl: "function unstuckNpc(npc, now) {\n  _PC.unstuck++; npc._pcUn = now;" },
+  // ★[T427 ①] 현장 도달 술어 — deps 로 넘기는 자리를 감싼 것으로(T427 판에만 · 없는 팔은 건너뛴다)
+  { optional: true, find: "  npcCanReach,   // ★★[T427 ①] 현장 배정이 부르는 도달 술어",
+    repl: "  npcCanReach: _pcReachWrap,   // [T427 탐침] 감싼 것 — 답 무변 ·" },
   // ★[T394 ②] 되짚기가 선 수 — T394 판에만 있는 글자(없는 팔은 건너뛴다)
   { optional: true, find: "    if (T394_WORK_TERRAIN) _t394OpenTarget(npc, npc.npcWorkX, npc.npcWorkY);",
     repl: "    if (T394_WORK_TERRAIN && _t394OpenTarget(npc, npc.npcWorkX, npc.npcWorkY)) _PC.t394Moves++;" },
 ];
 // villages.js 사본 — 태어나기 셈을 전역에 걸어 둔다(T394 판에만 · 관측 전용)
 const VIL_PATCHES = [
+  // ★[T427 ③] 사냥 밴드 짓기 — 하루 시간 예산(T146_BUILD_MS)으로 끊어 짓는다 · 어느 마을이 다 지었나 · 며칠 끊겼나(관측 전용)
+  { optional: true, find: "  vil._gameRich = st.m;",
+    repl: "  vil._gameRich = st.m; { const _b = global.__band || (global.__band = { done: {}, cut: {} }); _b.done[vil.name] = st.m.size; }" },
+  { optional: true, find: "    if (Date.now() - t0 >= budget) { st.dy += 2; return null; }   // 오늘치 끝",
+    repl: "    if (Date.now() - t0 >= budget) { st.dy += 2; { const _b = global.__band || (global.__band = { done: {}, cut: {} }); _b.cut[vil.name] = (_b.cut[vil.name] || 0) + 1; } return null; }   // 오늘치 끝" },
+  // ★[T427 ①] 현장 배정 — 몇 번 골랐나 · 첫 후보가 못 닿아 옮겼나 · 전부 못 닿아 집이 됐나(마을·직업별) · 사냥꾼 하루 옮기기도
+  { optional: true, find: "  for (let i = 0; i < n; i++) { const s = sites[(h + i) % n]; if (_t427Reach(vil, npc, s.x, s.y, day)) return { x: s.x, y: s.y, day }; }",
+    repl: "  const _g = global.__t427 || (global.__t427 = { site: 0, moved: 0, home: {}, hunt: 0, huntMoved: 0, huntHome: {} }); _g.site++;\n  for (let i = 0; i < n; i++) { const s = sites[(h + i) % n]; if (_t427Reach(vil, npc, s.x, s.y, day)) { if (i) _g.moved++; return { x: s.x, y: s.y, day }; } }\n  { const _k = vil.name + '|' + (npc.simJob || '?'); _g.home[_k] = (_g.home[_k] || 0) + 1; const _o = _t427HomeOf(vil, npc); (_g.homeS || (_g.homeS = [])).length < 40 && _g.homeS.push({ v: vil.name, j: npc.simJob || '?', hx: Math.round(_o.x), hy: Math.round(_o.y), n, pops: global.__pcLastPops, s0: n ? [Math.round(sites[h % n].x), Math.round(sites[h % n].y)] : null }); }" },
+  { optional: true, find: "        if (_ok) b = _ok; else _home = _t427HomeOf(vil, p);",
+    repl: "        { const _g = global.__t427 || (global.__t427 = { site: 0, moved: 0, home: {}, hunt: 0, huntMoved: 0, huntHome: {} }); _g.hunt++; if (_ok && _ok !== b) _g.huntMoved++; if (!_ok) { const _k = vil.name + '|hunter'; _g.huntHome[_k] = (_g.huntHome[_k] || 0) + 1; } }\n        if (_ok) b = _ok; else _home = _t427HomeOf(vil, p);" },
   { optional: true, find: "const _t394Stat = { spawn: 0, first: 0, redraw: 0, yard: 0 };",
     repl: "const _t394Stat = { spawn: 0, first: 0, redraw: 0, yard: 0 }; global.__t394Stat = _t394Stat;" },
 ];
 
+// ★[T427 ③] wildlife.js 사본 — 서식지 스캔이 **시간 예산(4ms)** 안에서 몇 줄·몇 청크를 했나(관측 전용 · 답 무변)
+const WL_PATCHES = [
+  { optional: true, find: "    if (++j.row >= cc) {",
+    repl: "    { const _w = global.__wl || (global.__wl = { rows: 0, chunks: 0, calls: 0 }); _w.rows++; }\n    if (++j.row >= cc) {" },
+  { optional: true, find: "  if (!_scanQ.length) return false;",
+    repl: "  if (!_scanQ.length) return false;\n  { const _w = global.__wl || (global.__wl = { rows: 0, chunks: 0, calls: 0 }); _w.calls++; _w.q = _scanQ.length; }" },
+];
 const BASE_REF = process.env.BASE_REF || 'origin/main';
 function makeArm(arm, dir) {
   try { execFileSync('git', ['worktree', 'remove', '--force', dir], { cwd: ROOT, stdio: 'ignore' }); } catch (e) {}
@@ -485,6 +521,11 @@ function makeArm(arm, dir) {
   }
   fs.writeFileSync(vp, vs);
   execFileSync(process.execPath, ['--check', vp]);
+  const wp = path.join(dir, 'server', 'wildlife.js');
+  let ws = fs.readFileSync(wp, 'utf8');
+  for (const p of WL_PATCHES) { const cnt = ws.split(p.find).length - 1; if (p.optional && cnt === 0) continue; if (cnt !== 1) throw new Error(`wildlife 앵커가 ${cnt}개다: ${p.find.slice(0, 60)}`); ws = ws.replace(p.find, () => p.repl); n++; }
+  fs.writeFileSync(wp, ws);
+  execFileSync(process.execPath, ['--check', wp]);
   return n;
 }
 
@@ -506,7 +547,9 @@ async function runArm(arm, idx) {
       T381_PATH_DEAD: /Off$/.test(arm) ? '0' : /(^on$|Dead$|^fix$)/.test(arm) ? '1' : (process.env.T381_PATH_DEAD || ''),
       T399_RERUN: /Rr$/.test(arm) ? '1' : '',                                   // ★[T399 ①] 계측 팔만 — 1500 × 뭍을 풀어서 다시
       T399_CELL_CAP: /Cap$/.test(arm) ? '1' : (process.env.T399_CELL_CAP || ''),
-      TERRAIN_SEG_INDEX: /Seg0$/.test(arm) ? '0' : (process.env.TERRAIN_SEG_INDEX || '') }) });   // ★[T399 · 베이스 갈래] T406 선분 색인 끈 팔(되돌림 글자 그대로)
+      TERRAIN_SEG_INDEX: /Seg0$/.test(arm) ? '0' : (process.env.TERRAIN_SEG_INDEX || ''),
+      T427_SITE_REACH: /Reach/.test(arm) ? '1' : (process.env.T427_SITE_REACH || ''),     // ★[T427 ①] 닿는 현장만 팔
+      ZONE_CLOCK_ANCHOR: /Clk/.test(arm) ? 'boot' : (process.env.ZONE_CLOCK_ANCHOR || '') }) });   // ★[T427 ②] 시계를 기동에 묶은 팔   // ★[T399 · 베이스 갈래] T406 선분 색인 끈 팔(되돌림 글자 그대로)
   const getj = async (p, h) => { try { const r = await fetch(`http://localhost:${ZP}${p}`, h ? { headers: h } : undefined); return await r.json(); } catch (e) { return null; } };
   const perf = (reset) => getj(`/perf${reset ? '?reset=1' : ''}`, { 'x-zone-secret': SECRET });
   const life = () => getj('/lifedbg', { 'x-zone-secret': SECRET });
