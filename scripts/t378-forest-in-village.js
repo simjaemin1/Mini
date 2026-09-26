@@ -363,6 +363,66 @@ function plantDbTrees(DB) {
       wood = { R: TR, cells: sCells, inTerr: sIn, K: kAll, Kout: kOut, N: nNow, zeroN: nZero, rows: wr };
       console.log(`\n=== 나무꾼의 숲 — 중심 ±${TR}셀 네모(${(2 * TR + 1) ** 2}칸) ===`);
       console.log(`네모 셀 ${sCells} 중 영토 셀 ${sIn} (${(100 * sIn / Math.max(1, sCells)).toFixed(1)}%) · 교란 전 나무 K ${kAll}(그중 영토 밖 ${kOut}) · 지금 나무 N ${nNow} · N=0 마을 ${nZero}/${vils.length}`);
+
+      // ── ★[T398] 영토 밖 고리 — 제품 함수(`villages.js _t398Cells`)를 **그대로** 부른다(사본 0) ─────────
+      //   마을 꼴은 DB 에서 세운다(회관 셀 · 제 영토 집합 · 이웃 목록 = 50마을 전부). 영토 0셀 마을은 그 함수가 네모로 돌려준다.
+      //   걸음 거리 — 하루 경계 벌목이 쓰는 그 거리(회관 한가운데 → **나무가 선 가장 가까운 후보 셀** 한가운데 · px).
+      const V = require(path.join(ROOT, 'server', 'villages.js'));
+      if (typeof V._t398Cells !== 'function') console.log('★villages.js 가 `_t398Cells` 를 안 내준다 — 고리 표를 건너뛴다(T398 전 코드)');
+      else {
+        const pv = vils.map((v) => ({ name: v.name, dbId: v.id, ccx: v.cx, ccy: v.cy, _terrSet: new Set((byVil.get(v.id) || []).map((c) => c[0] + ',' + c[1])) }));
+        const SZ = 32;
+        const near = (v, list) => {   // 나무 선 셀 중 회관에서 가장 가까운 것(px)
+          let bd = Infinity; const x0 = v.ccx * SZ + SZ / 2, y0 = v.ccy * SZ + SZ / 2;
+          for (const [tx, ty] of list) { const dx = tx * SZ + SZ / 2 - x0, dy = ty * SZ + SZ / 2 - y0; const d = dx * dx + dy * dy; if (d < bd) bd = d; }
+          return bd === Infinity ? null : Math.sqrt(bd);
+        };
+        const rr = [];
+        let rCells = 0, rK = 0, rN = 0, rZero = 0, rSq = 0, rOther = 0, rInTerr = 0;
+        for (let i = 0; i < pv.length; i++) {
+          const v = pv[i];
+          const C = V._t398Cells(v, pv);
+          const alone = V._t398Cells(Object.assign({}, v, { _t398C: null }), []);   // 이웃을 안 뺀 고리 — 이웃 영토에 걸린 칸 수만 센다
+          let K = 0, N = 0, inT = 0; const treeCells = [];
+          for (let j = 0; j < C.xy.length; j += 2) {
+            const tx = C.xy[j], ty = C.xy[j + 1];
+            if (tx < 0 || ty < 0) continue;
+            if (terrAll.has(tx + ',' + ty)) inT++;
+            let raw = [], now = [];
+            try { raw = resourcesAtCell(ZID, tx, ty, { biome, chunkSize }); } catch (e) {}
+            try { now = resourcesAtCell(ZID, tx, ty, { biome, chunkSize, harvestedSet, gameDay: GAMEDAY }); } catch (e) {}
+            K += raw.filter((e) => e.type === 'tree' || e.type === 'sapling').length;
+            const n = now.filter((e) => e.type === 'tree' || e.type === 'sapling').length;
+            if (n) { N += n; treeCells.push([tx, ty]); }
+          }
+          const sqRow = wr[i];
+          const sqTrees = [];
+          if (sqRow && sqRow.N) {   // 네모의 가장 가까운 나무 셀(같은 셈 · 표 한 칸)
+            for (let dy = -TR; dy <= TR; dy++) for (let dx = -TR; dx <= TR; dx++) {
+              const tx = v.ccx + dx, ty = v.ccy + dy; if (tx < 0 || ty < 0) continue;
+              let now = []; try { now = resourcesAtCell(ZID, tx, ty, { biome, chunkSize, harvestedSet, gameDay: GAMEDAY }); } catch (e) {}
+              if (now.some((e) => e.type === 'tree' || e.type === 'sapling')) sqTrees.push([tx, ty]);
+            }
+          }
+          const row = { name: v.name, terr: v._terrSet.size, ring: C.ring, cells: C.xy.length / 2, otherTerr: (alone.xy.length - C.xy.length) / 2, inTerr: inT,
+            K, N, nearRing: near(v, treeCells), nearSq: near(v, sqTrees), sqN: sqRow ? sqRow.N : null };
+          rr.push(row);
+          rCells += row.cells; rK += K; rN += N; if (N === 0) rZero++; if (!C.ring) rSq++; rOther += row.otherTerr; rInTerr += inT;
+        }
+        const med = (a) => { const b = a.filter((x) => x != null).sort((x, y) => x - y); return b.length ? b[Math.floor((b.length - 1) / 2)] : null; };
+        const mR = med(rr.map((r) => r.nearRing)), mS = med(rr.map((r) => r.nearSq));
+        wood.ring = { cells: rCells, K: rK, N: rN, zeroN: rZero, squareFallback: rSq, otherTerrCut: rOther, inTerr: rInTerr, nearMedRing: mR, nearMedSq: mS,
+          nearMedBoth: med(rr.filter((r) => r.nearSq != null && r.nearRing != null).map((r) => r.nearRing - r.nearSq)), rows: rr };
+        console.log(`\n=== ★[T398] 나무꾼의 숲 — 영토 밖 고리(영토에서 체비쇼프 ≤ ${TR}셀 · 남의 영토 뺌 · 영토 0셀이면 네모) ===`);
+        console.log(`고리 셀 ${rCells}(마을당 ${(rCells / Math.max(1, vils.length)).toFixed(0)}) · 그중 영토 셀 ${rInTerr} · 이웃 영토라 뺀 칸 ${rOther} · 네모로 돌아간 마을 ${rSq}`);
+        console.log(`교란 전 나무 K 네모 ${kAll} → 고리 ${rK} · 지금 나무 N 네모 ${nNow} → **고리 ${rN}** · N=0 마을 네모 ${nZero} → **고리 ${rZero}**/${vils.length}`);
+        console.log(`걸음 거리(회관 → 가장 가까운 나무 셀) 중앙값 — 네모 ${mS == null ? '—' : mS.toFixed(0) + 'px'}(N>0 ${rr.filter((r) => r.nearSq != null).length}곳) · 고리 ${mR == null ? '—' : mR.toFixed(0) + 'px'}(N>0 ${rr.filter((r) => r.nearRing != null).length}곳)`);
+        const top = rr.slice().sort((a, b) => b.N - a.N);
+        console.log(`${'마을'.padEnd(10)}${'영토'.padStart(6)}${'고리칸'.padStart(7)}${'K'.padStart(6)}${'N네모'.padStart(7)}${'N고리'.padStart(7)}${'거리네모'.padStart(9)}${'거리고리'.padStart(9)}`);
+        for (const r of top.slice(0, 12)) console.log(`${String(r.name).padEnd(10)}${String(r.terr).padStart(6)}${String(r.cells).padStart(7)}${String(r.K).padStart(6)}${String(r.sqN).padStart(7)}${String(r.N).padStart(7)}${(r.nearSq == null ? '—' : r.nearSq.toFixed(0)).padStart(9)}${(r.nearRing == null ? '—' : r.nearRing.toFixed(0)).padStart(9)}`);
+        const zs = rr.filter((r) => r.N === 0).map((r) => `${r.name}(영토 ${r.terr} · K ${r.K})`);
+        if (zs.length) console.log(`고리에서도 N=0 인 마을: ${zs.join(' · ')}`);
+      }
     }
   }
 

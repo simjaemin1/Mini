@@ -349,5 +349,106 @@ console.log('\n⑨ [T341] 나무에는 예산이 없다 (PM 결정 · T334 뒤)'
   }
 }
 
+// ── ⑩ [T398] 나무꾼의 숲 = 영토 밖 고리 — 후보 셀은 영토 셀 집합 밖 · 영토에서 체비쇼프 ≤ `T325_R` ──────
+//   ★제품 함수 **그대로**(`_t398Cells`)를 부른다. 판정은 **정의로 센 답**(전수 · 셀마다 영토까지의 거리)과
+//     집합·순서가 같은가다 — 규칙을 옮겨 적은 것이 아니라 카드 문장("영토 밖 · 경계로부터 ≤ 16셀")의 전수 대조다.
+//   ★자명 통과 금지 — 같은 자로 **종전 네모**를 재면 빨갛다(영토 셀이 든다) — 자가 가를 수 있다는 증거(ⓓ).
+console.log('\n⑩ [T398] 나무꾼의 숲 = 영토 밖 고리');
+{
+  const V = require(path.join(ROOT, 'server', 'villages.js'));
+  const VC = codeOf(VSRC);
+  const R = +((/const T325_R = (\d+);/.exec(VSRC) || [])[1]);
+  ok(R === 16, 'ⓐ 반경은 **있는 수** — `T325_R` 16셀 그대로(새 수 0)', String(R));
+  ok(typeof V._t398Cells === 'function', 'ⓐ 후보 셀을 정본이 내준다(`_t398Cells` — 자·하네스가 같은 함수를 부른다)');
+  const body = (VC.match(/function _t398Cells\([\s\S]*?\n\}/) || [''])[0];
+  const lits = (body.match(/\b\d+(\.\d+)?\b/g) || []).filter((x) => x !== '0' && x !== '1');
+  ok(body.length > 0 && lits.length === 0, 'ⓐ ★그 함수에 **지어낸 수가 없다**(반경은 `T325_R` · 남은 것은 0·1)', lits.join(',') || '0개');
+  //   ★고리는 손잡이 **뒤**에서만 센다 — 끈 팔은 이 함수를 한 번도 안 부른다(비트 동일)
+  const scan = (VC.match(/function _t325Scan\([\s\S]*?\n\}/) || [''])[0];
+  const iKnob = scan.indexOf('if (_lifeEcon().T325_WOOD_ACT && state.deps.t325TreesAtCell) {');
+  const iCall = scan.indexOf('const C = _t398Cells(vil);');
+  ok(iKnob > 0 && iCall > iKnob && (scan.match(/_t398Cells\(/g) || []).length === 1,
+    'ⓑ ★★고리를 **손잡이 뒤에서 한 번** 부른다 — 끈 팔은 셀을 한 칸도 안 센다(비트 동일)');
+  ok(/const _needK = \(vil\._t341K == null\) \|\| \(vil\._t341KAt !== C\.key\);/.test(scan)
+     && /vil\._t341KAt = C\.key;/.test(scan),
+    'ⓑ ★`K` 는 **그 셀 집합의 수**다 — 셀 집합(키)이 바뀐 날에만 다시 잰다(네모는 종전 그대로 첫날 한 번)');
+  ok(!/_t398/.test(VC.replace(/function _t398Box\([\s\S]*?\n\}/, '').replace(/function _t398Cells\([\s\S]*?\n\}/, '').replace(scan, '').replace(/_t398Cells,/, '')),
+    'ⓑ ★`villages.js` 에서 고리를 부르는 자리는 `_t325Scan` **하나**다(다른 자리 무접촉)');
+
+  // 정의로 센 답 — 영토에서 체비쇼프 ≤ R · 내 영토 아님 · 남의 영토 아님 · 행 우선
+  const K = (x, y) => x + ',' + y;
+  const truth = (own, others) => {
+    const pts = [...own].map((k) => k.split(',').map(Number));
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const [x, y] of pts) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
+    const out = [];
+    for (let y = y0 - R; y <= y1 + R; y++) for (let x = x0 - R; x <= x1 + R; x++) {
+      const k = K(x, y);
+      if (own.has(k) || others.some((s) => s.has(k))) continue;
+      let near = false;
+      for (const [tx, ty] of pts) if (Math.max(Math.abs(tx - x), Math.abs(ty - y)) <= R) { near = true; break; }
+      if (near) out.push(x, y);
+    }
+    return out;
+  };
+  const same = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
+  // 영토 — 들쭉날쭉한 덩어리(원이 아니다 — 마을 영토는 원이 아니다) · 이웃 마을 영토가 고리 안으로 들어온다
+  const mk = (cx, cy, fn) => { const s = new Set(); for (let y = cy - 30; y <= cy + 30; y++) for (let x = cx - 30; x <= cx + 30; x++) if (fn(x - cx, y - cy)) s.add(K(x, y)); return s; };
+  const A = { name: 'A', dbId: 1, ccx: 500, ccy: 500, _terrSet: mk(500, 500, (dx, dy) => (dx * dx + dy * dy <= 81) || (dx >= 0 && dx <= 14 && Math.abs(dy) <= 2) || (dy === -12 && dx >= -3 && dx <= 3)) };
+  const B = { name: 'B', dbId: 2, ccx: 526, ccy: 506, _terrSet: mk(526, 506, (dx, dy) => dx * dx + dy * dy <= 36) };
+  const Far = { name: 'F', dbId: 3, ccx: 900, ccy: 900, _terrSet: mk(900, 900, (dx, dy) => dx * dx + dy * dy <= 25) };
+  const E = { name: 'E', dbId: 4, ccx: 700, ccy: 300, _terrSet: new Set() };
+  const vils = [A, B, Far, E];
+  // ⓒ 되돌림 문 — 영토 0셀 마을은 종전 네모(회관 ±R · 행 우선 · 같은 셀 · 같은 순서)
+  {
+    const c = V._t398Cells(E, vils);
+    const sq = []; for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) sq.push(E.ccx + dx, E.ccy + dy);
+    ok(c.key === 'sq' && c.ring === 0 && same(c.xy, sq),
+      'ⓒ ★★영토 0셀 마을은 **종전 네모 그대로**(되돌림 문 · 1,089칸 · 같은 순서)', `${c.xy.length / 2}칸`);
+  }
+  // ⓓ 고리 = 정의 — 집합과 순서가 전수 대조로 같다(이웃 영토가 든 판 · 안 든 판)
+  {
+    const c = V._t398Cells(A, vils);
+    const t = truth(A._terrSet, [B._terrSet]);
+    ok(c.ring === 1 && same(c.xy, t), 'ⓓ ★★★고리 = **정의로 센 답**(영토 밖 · 체비쇼프 ≤ R · 남의 영토 뺌 · 행 우선) — 집합·순서 전수 대조',
+      `${c.xy.length / 2}칸 · 정의 ${t.length / 2}칸`);
+    let inOwn = 0, inB = 0, far = 0;
+    for (let i = 0; i < c.xy.length; i += 2) {
+      const k = K(c.xy[i], c.xy[i + 1]);
+      if (A._terrSet.has(k)) inOwn++;
+      if (B._terrSet.has(k)) inB++;
+    }
+    for (let i = 0; i < c.xy.length; i += 2) { let near = false; for (const k of A._terrSet) { const [x, y] = k.split(',').map(Number); if (Math.max(Math.abs(x - c.xy[i]), Math.abs(y - c.xy[i + 1])) <= R) { near = true; break; } } if (!near) far++; }
+    ok(inOwn === 0 && inB === 0 && far === 0, 'ⓓ ★고리에 **내 영토 0 · 남의 영토 0 · R 넘는 셀 0**', `${inOwn} · ${inB} · ${far}`);
+    const tNoB = truth(A._terrSet, []);
+    ok(tNoB.length > t.length, 'ⓓ [상황] 이웃 영토가 정말 고리 안에 들어왔다(빼는 줄이 할 일이 있었다)', `${(tNoB.length - t.length) / 2}칸`);
+    //   ★자명 통과 금지 — 같은 자로 **종전 네모**를 재면 빨갛다(영토 셀이 든다)
+    const sq = []; for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) sq.push(A.ccx + dx, A.ccy + dy);
+    let sqOwn = 0; for (let i = 0; i < sq.length; i += 2) if (A._terrSet.has(K(sq[i], sq[i + 1]))) sqOwn++;
+    ok(!same(sq, t) && sqOwn > 0, 'ⓓ ★대조 — 종전 네모는 이 자로 **빨갛다**(영토 셀이 든다 — 자가 가른다)', `네모 중 영토 ${sqOwn}/${sq.length / 2}칸`);
+  }
+  // ⓔ 같은 꼴 — 영토가 회관 한 셀뿐이면 고리 = 종전 네모에서 그 한 셀을 뺀 것(거리의 꼴이 같다)
+  {
+    const One = { name: 'O', dbId: 5, ccx: 300, ccy: 700, _terrSet: new Set([K(300, 700)]) };
+    const c = V._t398Cells(One, [One]);
+    const sq = []; for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) if (dx || dy) sq.push(One.ccx + dx, One.ccy + dy);
+    ok(same(c.xy, sq), 'ⓔ ★영토가 회관 한 셀이면 고리 = **종전 네모 − 회관**(같은 거리 꼴 · 같은 순서)', `${c.xy.length / 2}칸`);
+  }
+  // ⓕ 캐시 — 영토는 늘기만 한다 ⇒ 크기가 그대로면 같은 답(같은 객체) · 내 영토나 겹친 이웃이 자라면 다시 센다
+  {
+    const c1 = V._t398Cells(A, vils), c2 = V._t398Cells(A, vils);
+    ok(c1 === c2, 'ⓕ 크기가 그대로면 **다시 안 센다**(같은 객체)');
+    Far._terrSet.add(K(905, 905));
+    ok(V._t398Cells(A, vils) === c1, 'ⓕ 겹치지 않는 마을이 자라도 **다시 안 센다**(키에 안 든다)');
+    A._terrSet.add(K(515, 500));
+    const c3 = V._t398Cells(A, vils);
+    ok(c3 !== c1 && same(c3.xy, truth(A._terrSet, [B._terrSet])), 'ⓕ ★내 영토가 자라면 **다시 센다** — 그 답도 정의와 같다', `${c1.xy.length / 2} → ${c3.xy.length / 2}칸`);
+    B._terrSet.add(K(519, 506)); B._terrSet.add(K(518, 506));   // A 의 고리 안(영토 밖 · R 안) 두 칸
+    const c4 = V._t398Cells(A, vils);
+    ok(c4 !== c3 && c4.xy.length === c3.xy.length - 4 && same(c4.xy, truth(A._terrSet, [B._terrSet])),
+      'ⓕ ★겹친 이웃이 자라도 **다시 센다** — 그 두 칸이 빠진다(이제 그 마을이 개간한다)', `${c3.xy.length / 2} → ${c4.xy.length / 2}칸`);
+  }
+}
+
 console.log(`\n=== 결과: ${pass} PASS / ${fail} FAIL ===\n`);
 process.exit(fail ? 1 : 0);
