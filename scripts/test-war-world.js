@@ -22,6 +22,10 @@
 //   ⓙ 군량 품목 순서가 섭식 정본과 **같은 함수**다(심볼 하나 · 정적) · `food` 0 이어도 팩이 찬다
 //   ⓚ `_laborMul` 동원 항 쓰기 0(정적 — 부상 노동력 한 줄만 남는다)
 //
+// ★★[T403 2026-09-26 · 무기는 실체다 — 1층 장부] 두 절(손잡이 `T403_ARMS_LEDGER` · 기본 끔)
+//   ⓢ 소집 = 곳간 무기 −n(n = min(병력, floor 재고)) · 모자라면 민병 수로 적는다 · 방어 소집은 안 건다   ★대조: 끔이면 곳간 무변
+//   ⓣ 복귀 = +(n − 결판에서 잃은 몫) · 잃는 몫은 `warWeaponFlow` 가 **짐에서** · 귀환 뒤 곳간 = 끔과 같다(재고 ≥ 병력) · 이중 반납 0
+//
 // 실행: node scripts/test-war-world.js          (서버 절 건너뛰기: WAR_WORLD_NO_SERVER=1)
 'use strict';
 const path = require('path');
@@ -452,6 +456,9 @@ function _run(opts) {
   threatPart();
   neighborPart();
 
+  // ── ⓢ~ⓣ 무기 반출/반납 장부(T403) ────────────────────────────────────────
+  armsPart();
+
   // ── ⓖ 서버 ───────────────────────────────────────────────────────────────
   if (process.env.WAR_WORLD_NO_SERVER === '1') { say('\n[ⓖ] 서버 절 건너뜀(WAR_WORLD_NO_SERVER=1)'); }
   else await serverPart();
@@ -775,4 +782,83 @@ function neighborPart() {
     ok(/_warRoutePts/.test(vilSrc) && /computeRoutePts\(x0, y0, x1, y1, extraBlk\)/.test(vilSrc), 'ⓡ 탐색은 **같은 함수**다 — 술어 하나만 더 받는다(사본 0)');
     ok(!/getRoute\(w\.atk, w\.def\)/.test(vilSrc), 'ⓡ 전쟁 몸이 교역 캐시를 안 쓴다(캐러밴 길 무접촉)');
   }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// ★★[T403] ⓢ~ⓣ — 무기 반출/반납 장부(1층 · 몸 무접촉)
+// ════════════════════════════════════════════════════════════════════════════
+function armsPart() {
+  const prevK = process.env.T403_ARMS_LEDGER;
+  const setK = (on) => { if (on) process.env.T403_ARMS_LEDGER = '1'; else delete process.env.T403_ARMS_LEDGER; };
+  // 한 원정 — 같은 씨로 세계를 짓고(곳간 무기 wA·wD) 동원 → (결판) → 귀환 도착까지. 끈 팔/켠 팔을 같은 씨로 나란히.
+  const expedition = (on, cfg) => {
+    setK(on);
+    Math.random = seeded(cfg.seed);
+    const W = _mkCostWorld({ atkPop: cfg.atkPop, defPop: cfg.defPop });
+    Math.random = _origRandom;
+    const A = W.atk.econ, D = W.def.econ;
+    A.storage.weapon = cfg.wA; D.storage.weapon = cfg.wD; D._warCd = 1e9;   // 방어 마을이 되받아 선포하지 않게(판 하나만)
+    const r = { a0: A.storage.weapon };
+    r.ok = W.war.warMobilize(W.atk, W.def, 'feud', 300, W.world.day);
+    const w = W.world._warWars[0];
+    if (!r.ok || !w) return r;
+    r.force = w.force; r.arms = w._arms ? Object.assign({}, w._arms) : null; r.aMob = A.storage.weapon;
+    if (cfg.battle) { W.war.warResolveBattle(w, W.world.day); const st = W.world._warStats || {}; r.atkWin = (st.atkWin | 0) > 0; }
+    r.aBat = A.storage.weapon;
+    w.phase = 'return'; w.eta = W.world.day; W.war.daily(W.world.day);   // 귀환 도착 — 환급 한 곳과 같은 문
+    r.left = W.world._warWars.length; r.aEnd = A.storage.weapon; r.dEnd = D.storage.weapon;
+    r.back = w._arms ? w._arms.back : null;
+    r.again = WarCore.warArmsReturn(w);                                   // 두 번 부르면 0
+    r.aAgain = A.storage.weapon;
+    return r;
+  };
+  const near = (a, b) => Math.abs(a - b) <= 1e-9;
+
+  say('\n[ⓢ] 소집 = 곳간에서 꺼낸다 — n = min(병력, floor 재고) · 모자라면 민병 · 방어 소집은 안 건다');
+  {
+    const off = expedition(false, { seed: 7, atkPop: 30, defPop: 24, wA: 40, wD: 40 });
+    ok(off.ok && off.aMob === 40 && off.arms === null, 'ⓢ ★대조 — 끔이면 동원해도 곳간 무기 무변 · 짐 필드 0', `재고 ${off.a0}→${off.aMob} · _arms ${off.arms}`);
+    const on = expedition(true, { seed: 7, atkPop: 30, defPop: 24, wA: 40, wD: 40 });
+    ok(on.ok && on.arms && on.arms.out === on.force && near(on.aMob, 40 - on.force) && on.arms.militia === 0,
+      'ⓢ 켬 — 곳간 −n(n = 병력 · 재고 넉넉) · 민병 0', on.arms ? `병력 ${on.force} · 반출 ${on.arms.out} · 곳간 ${on.a0}→${on.aMob}` : '동원 실패');
+    const low = expedition(true, { seed: 7, atkPop: 30, defPop: 24, wA: 5.6, wD: 40 });
+    ok(low.ok && low.arms && low.arms.out === 5 && low.arms.militia === low.force - 5 && near(low.aMob, 0.6),
+      'ⓢ 재고 부족 — 있는 만큼(한 사람 한 자루 · floor) · 나머지는 민병 수로 적는다', low.arms ? `병력 ${low.force} · 반출 ${low.arms.out} · 민병 ${low.arms.militia} · 곳간 5.6→${low.aMob.toFixed(1)}` : '동원 실패');
+    // 방어 소집 — 마을 안에서 들고 마을 안에서 내려놓는다(장부 무변)
+    setK(true);
+    const Wd = _mkCostWorld({}); const dw0 = Wd.def.econ.storage.weapon;
+    WarCore.conscript(Wd.def, 'full', { defense: true });
+    ok(Wd.def.econ.storage.weapon === dw0, 'ⓢ 방어 소집은 곳간을 안 건드린다(같은 날 들고 내려놓는다)', `${dw0}→${Wd.def.econ.storage.weapon}`);
+    // 편성은 안 바뀐다(1층 = 장부만 · 몸 무접촉)
+    ok(off.force === on.force, 'ⓢ 편성·병력 무변 — 장부만 옮긴다(끔/켬 병력 같다)', `${off.force} / ${on.force}`);
+  }
+
+  say('\n[ⓣ] 복귀 = 내려놓는다 — 잃은 몫은 결판 규칙(드랍·투기)이 짐에서 · 귀환 뒤 곳간 = 끔 · 이중 반납 0');
+  {
+    // ① 결판 없이 귀환(철수·무혈 항복 꼴) — 전부 돌아온다
+    const on = expedition(true, { seed: 7, atkPop: 30, defPop: 24, wA: 40, wD: 40 });
+    ok(on.left === 0 && on.back === on.arms.out && near(on.aEnd, 40), 'ⓣ 결판 없는 귀환 — 반출분 전부 반납(곳간 원상)', `반출 ${on.arms.out} · 반납 ${on.back} · 곳간 ${on.aEnd}`);
+    ok(on.again === 0 && near(on.aAgain, on.aEnd), 'ⓣ 두 번 부르면 0 — 이중 반납 없다', `둘째 ${on.again}`);
+    // ② 공격이 졌다 — 드랍·투기가 짐에서 빠지고, 귀환 뒤 곳간은 끔과 같다
+    const cL = { seed: 7, atkPop: 30, defPop: 24, wA: 40, wD: 40, battle: true };
+    const offL = expedition(false, cL), onL = expedition(true, cL);
+    ok(onL.ok && offL.ok && onL.atkWin === false && offL.atkWin === false, 'ⓣ 전제 — 두 팔 다 방어 승(같은 씨 · 같은 결판)', `끔 ${offL.atkWin} · 켬 ${onL.atkWin}`);
+    ok(onL.back < onL.arms.out && near(onL.aBat, 40 - onL.arms.out), 'ⓣ 공격 패 — 잃은 무기는 **짐에서** 빠진다(원정 중 곳간은 반출 뒤 그대로)',
+      `반출 ${onL.arms.out} · 반납 ${onL.back.toFixed(2)} · 결판 직후 곳간 ${onL.aBat}`);
+    ok(near(onL.aEnd, offL.aEnd) && near(onL.dEnd, offL.dEnd), 'ⓣ ★대조 — 귀환 뒤 공격·방어 곳간 = 끔과 같다(재고 ≥ 병력 · 다른 것은 원정 **동안**뿐)',
+      `공 ${offL.aEnd.toFixed(3)} / ${onL.aEnd.toFixed(3)} · 방 ${offL.dEnd.toFixed(3)} / ${onL.dEnd.toFixed(3)}`);
+    ok(offL.aBat < 40 && onL.aBat < offL.aBat, 'ⓣ ★대조 — 끔은 결판에서 **집 곳간**이 깎이고 켬은 반출 순간 깎인다(원정 동안의 차이)',
+      `결판 직후 곳간 끔 ${offL.aBat.toFixed(2)} · 켬 ${onL.aBat}`);
+    // ③ 공격이 이겼다 — 종전에도 승자는 제 무기를 잃지 않았다 ⇒ 전부 돌아온다
+    const cW = { seed: 3, atkPop: 50, defPop: 10, wA: 60, wD: 5, battle: true };
+    const offW = expedition(false, cW), onW = expedition(true, cW);
+    ok(onW.atkWin === true && offW.atkWin === true && onW.back === onW.arms.out && near(onW.aEnd, offW.aEnd),
+      'ⓣ 공격 승 — 반출분 전부 반납 · 귀환 뒤 곳간 = 끔', `반출 ${onW.arms ? onW.arms.out : '?'} · 반납 ${onW.back} · 곳간 끔 ${offW.aEnd.toFixed(3)} / 켬 ${onW.aEnd.toFixed(3)}`);
+    // ④ 정적 — 흐름 함수는 빼는 자리만 바뀌었다(규칙 수 무변 · 새 수 0)
+    const wcSrc = fs.readFileSync(path.join(ROOT, 'sim/war-core.js'), 'utf8');
+    const fn = wcSrc.slice(wcSrc.indexOf('function warWeaponFlow('), wcSrc.indexOf('function warWeaponFlow(') + 1800);
+    ok(/_src\.weapon = lw0 - loss;/.test(fn) && !/loserE\.storage\.weapon =/.test(fn) && /WAR_SALV_DEAD/.test(fn) && /WAR_SALV_DESERT/.test(fn),
+      'ⓣ `warWeaponFlow` — 패자 몫을 빼는 자리 하나(곳간 또는 짐) · 회수 규칙(0.7/0.5) 그대로');
+  }
+  if (prevK == null) delete process.env.T403_ARMS_LEDGER; else process.env.T403_ARMS_LEDGER = prevK;
 }

@@ -388,17 +388,49 @@ function _capComplete(fromVil, toVil, npc) {
   delete npc.captive;
   return true;
 }
+// ═══════════ ★[T403] 무기 반출/반납 장부 — 소집 = 곳간에서 꺼낸다 · 복귀 = 내려놓는다 (손잡이 끔) ═══════════
+//   X-1 회부 ⑤: *"창·장창·도끼·화살 재고 없이 생김 + 소집 반출/복귀 반납 없음."* 지금 원정군은 곳간 무기를
+//   **읽기만** 하고(편성 `_warConscriptIndividual` 의 `swordStock` · `wep` 비율) 한 자루도 안 가져간다 — 그래서
+//   원정 중에도 마을 방어·위세·전사 목표·교역이 그 무기를 그대로 센다. 이 층은 **장부만** 옮긴다(몸 무접촉 —
+//   손에 드는 것은 2층): 동원 순간 곳간 `weapon` −n · 귀환 도착 순간 +(n − 전투에서 잃은 몫).
+//   ★새 수 0 — n = `min(병력, floor(곳간 무기))`(편성의 `armedCap = Math.floor(weapon)` 그 규칙 · 한 사람 한 자루).
+//     모자란 사람 수(`병력 − n`)는 **표로만** 적는다(`militia`) — 편성은 안 바꾼다(강등 값은 재민 칸).
+//   ★잃는 몫은 새로 안 짓는다 — 결판의 `warWeaponFlow`(드랍·투기) 가 **짐에서** 뺀다(공격이 졌을 때만 흐름이 있다 —
+//     종전에도 승자는 제 무기를 잃지 않았다). 그래서 **귀환 뒤 곳간은 끔과 같다** — 다른 것은 원정 **동안**뿐이다.
+//   ★방어 소집은 안 건다 — 마을 안에서 들고 마을 안에서 내려놓는다(같은 날 · 장부 무변).
+//   손잡이: `T403_ARMS_LEDGER=1` 일 때만. 끔이면 `w._arms` 가 안 생기고 아래 두 함수는 0 을 낸다 = 비트 동일.
+function _armsLedgerOn() { return typeof process !== 'undefined' && !!process.env && process.env.T403_ARMS_LEDGER === '1'; }
+function warArmsOut(e, force) {
+  if (!_armsLedgerOn() || !e || !e.storage) return null;
+  const F = Math.max(0, force | 0);
+  const stock = e.storage.weapon || 0;
+  const n = Math.max(0, Math.min(F, Math.floor(stock)));
+  e.storage.weapon = stock - n;
+  return { weapon: n, out: n, force: F, militia: F - n, back: 0, done: false };
+}
+function warArmsReturn(w) {
+  const a = w && w._arms; if (!a || a.done) return 0;
+  const e = w.atk && w.atk.econ;
+  const n = Math.max(0, a.weapon || 0);
+  if (e && e.storage && n > 0) e.storage.weapon = (e.storage.weapon || 0) + n;
+  a.back = n; a.weapon = 0; a.done = true;
+  return n;
+}
 // 무기 드랍·궤주 투기(econ) — 사망자 드랍 승자 0.7 회수 + 궤주 기대 투기 승자 0.5 회수. 품질 가중평균.
-function warWeaponFlow(winnerE, loserE, loserStart, loserDead, routN, routMrl, st) {
+//   ★[T403] `loserHold` — 패자의 무기가 **곳간이 아니라 원정 짐**에 있을 때(반출 장부 켬 · 공격이 졌을 때) 그 짐.
+//     규칙(드랍 = 전사 × 무장비 · 투기 = 궤주 × p × 무장비 · 회수 0.7/0.5)은 **한 글자도 안 바뀐다** — 빼는 자리만 바뀐다.
+//     미지정(끔 · 방어 · 공격 승)이면 종전 그대로 `loserE.storage` = 비트 동일.
+function warWeaponFlow(winnerE, loserE, loserStart, loserDead, routN, routMrl, st, loserHold) {
   if (!winnerE || !loserE) return null;
-  const lw0 = loserE.storage.weapon || 0; if (lw0 <= 0.01) return null;
+  const _src = (loserHold && typeof loserHold.weapon === 'number') ? loserHold : loserE.storage;
+  const lw0 = _src.weapon || 0; if (lw0 <= 0.01) return null;
   const armed = Math.min(1, lw0 / Math.max(1, loserStart || 1));
   const drop = Math.min(lw0, Math.max(0, loserDead || 0) * armed);
   const mrl = _clamp01(routMrl == null ? 0.5 : routMrl);
   const pDes = _clamp01(WAR_DESERT_P0 + WAR_DESERT_PM * (1 - mrl));
   const desert = Math.min(Math.max(0, lw0 - drop), Math.max(0, routN || 0) * pDes * armed);
   const loss = drop + desert; if (loss <= 0.01) return null;
-  loserE.storage.weapon = lw0 - loss;
+  _src.weapon = lw0 - loss;
   const gain = drop * WAR_SALV_DEAD + desert * WAR_SALV_DESERT;
   const wOld = winnerE.storage.weapon || 0, qW = (winnerE._weapQ != null ? winnerE._weapQ : _warWEAP_Q_STONE), qL = (loserE._weapQ != null ? loserE._weapQ : _warWEAP_Q_STONE);
   winnerE.storage.weapon = wOld + gain;
@@ -635,6 +667,8 @@ function createWar(opts) {
     const _packDays = marchDays * 2 + WAR_SIEGE_PACK;
     _war._packDays = _war._packRem = _opPackLoad(V, _actualForce, _packDays, _war);
     _war._packMarch = marchDays * 2;   // 행군에 쓰는 몫(귀환까지) — 주둔 소모는 이 위에서부터 깎인다
+    // ★[T403] 무기 반출(손잡이 끔이면 null — 필드 자체가 안 생긴다 · 비트 동일)
+    { const _arms = warArmsOut(e, _actualForce); if (_arms) _war._arms = _arms; }
     _war.op = 'march';
     // ★★[T295 ①] 징발 — 동원한 병력만큼 econ 에서 자리를 비운다(전량 · pid 는 호스트가 나중에 붙인다).
     //   이것이 옛 `_laborMul` 동원 항의 자리다: 생산은 이제 "사람이 없어서" 준다(엔진 한 줄).
@@ -953,7 +987,7 @@ function createWar(opts) {
       if (J < WAR_REP_TH) { A._warFatigue = (A._warFatigue || 0) + (WAR_REP_TH - J) * WAR_J_FAT; outcome += ' [불의전 피로]'; }
     } else { st.defWin++; warAddTrauma(A, w.def.name, WAR_TRAUMA_UP); A._warCaution = Math.min(1, (A._warCaution || 0) + 0.5); }
     warThirdPartyRep(w.atk, w.def, J, day);
-    { const _ls = atkWin ? _res.defStart : _res.atkStart, _ld = atkWin ? _defDead : _atkDead; const _rn = atkWin ? (_res.routB || 0) : (_res.routA || 0), _rm = atkWin ? _res.routMrlB : _res.routMrlA; const _wf = warWeaponFlow(winnerE, loserE, _ls, _ld, _rn, _rm, st); if (_wf) outcome += ' +노획' + _wf.gain.toFixed(1) + (_wf.qUp ? '·품질↑' + _wf.newQ.toFixed(2) : ''); }
+    { const _ls = atkWin ? _res.defStart : _res.atkStart, _ld = atkWin ? _defDead : _atkDead; const _rn = atkWin ? (_res.routB || 0) : (_res.routA || 0), _rm = atkWin ? _res.routMrlB : _res.routMrlA; const _wf = warWeaponFlow(winnerE, loserE, _ls, _ld, _rn, _rm, st, (!atkWin && w._arms) ? w._arms : undefined); if (_wf) outcome += ' +노획' + _wf.gain.toFixed(1) + (_wf.qUp ? '·품질↑' + _wf.newQ.toFixed(2) : ''); }
     // ★[3파 포로] 화면 층 인계 스태시 — villages._warOnResolved가 패자측 사상 표본 pid 일부를 호송 실체로 전환(승자 마을 이관).
     if (_cap.take.length || _cap.freed) {
       w._capResolve = { side: atkWin ? 'B' : 'A', npcs: _cap.take.slice(), freedN: _cap.freed, day };
@@ -1013,9 +1047,11 @@ function createWar(opts) {
         if (day < w.eta) { w._packRem = Math.max(0, (w._packRem || 0) - 1); continue; }
         const e = w.atk.econ;
         const _back = warRationRefund(w, 'return');
+        const _armsBack = warArmsReturn(w);   // ★[T403] 무기 반납(끔이면 0)
         const _rel = warDraftReleaseWar(w);
         if (e) { e._warMobUntil = 0; e._warMobFrac = 0; }
         if (_back > 0 || _rel > 0) log(day, w.atk.name + ' 귀환 — 군량 잔량 ' + _back.toFixed(0) + ' 곳간 복귀 · 징발 해제 ' + _rel + '명');
+        if (w._arms) log(day, w.atk.name + ' 귀환 — 무기 반납 ' + _armsBack + '/' + w._arms.out + '(민병 ' + w._arms.militia + ')');
         WARS.splice(i, 1);
       }
     }
@@ -1106,6 +1142,8 @@ const WarCore = {
   _warBronzeCapable, _warConscriptIndividual, _warConscriptAggregate, conscript, _warCompTotal, _warScaleComp, toBattleSpec, runBattleHeadless,
   // 원한·명분·노획(pure — econ 입력)
   warFE, warGrudge, warAddGrudge, warTrauma, warAddTrauma, warJustice, warWeaponFlow,
+  // ★[T403] 무기 반출/반납 장부(손잡이 `T403_ARMS_LEDGER` · 끔 = null/0)
+  warArmsOut, warArmsReturn,
   // 팩토리
   createWar,
 };
