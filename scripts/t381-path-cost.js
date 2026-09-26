@@ -110,8 +110,8 @@ function _pcBucket(v) { let k = 0; while (k < _PCB.length && v >= _PCB[k]) k++; 
 const _PC = {
   n: 0, pop: 0, every: parseInt(process.env.T381_EVERY || '900', 10), clockNs: 0,
   call: 0, ms: 0, popsSum: 0, popsMax: 0,
-  ex: { found: 0, capped: 0, exhaust: 0, radius: 0, same: 0 },
-  msEx: { found: 0, capped: 0, exhaust: 0, radius: 0, same: 0 },
+  ex: { found: 0, capped: 0, exhaust: 0, radius: 0, same: 0, endpoint: 0 },
+  msEx: { found: 0, capped: 0, exhaust: 0, radius: 0, same: 0, endpoint: 0 },
   popsEx: { found: 0, capped: 0, exhaust: 0 },
   // ★교차표 — 나간 문 × 목표 칸 종류(land/wet/rock). 고칠 자리를 정하는 칸이 여기다.
   xN: {}, xMs: {}, xPops: {},
@@ -137,6 +137,8 @@ const _PC = {
   //   여행 = 주민이 새 목표(48px 넘게 먼 곳)를 받은 순간부터 그 목표에 '도착'(followNpcPath 참)까지.
   //   목표 셀이 막힌 여행(dead)과 열린 여행(live)을 가른다 — 손잡이가 건드리는 건 dead 뿐이어야 한다.
   trSt: [0, 0], trDone: [0, 0], trAb: [0, 0], trH: {},    // [live, dead] · trH = live 도착 시간 250ms 칸
+  // ★[T394] 막힌 여행(dead)이 **어디서** 왔나 — 결정 때 잰다(손잡이가 A* 를 안 불러도 자가 안 흔들린다)
+  trDeadFall: 0, trDeadWork: 0, trDeadHop: 0, t394Moves: 0,
   snapN: 0, stopWet: 0, stopDry: 0, going: 0,             // 5초 표본 — 목표가 12px 넘게 먼 주민이 5초에 32px 도 못 갔나
   // ⚠첫 판은 목표 글자가 바뀌면 표본을 새로 떴다 — 그런데 몸 비비는 주민은 **튕김이 1.5초마다** 오고 셋째에
   //   무작위 도약(새 목표)이 붙어 목표가 4.5초마다 바뀐다 ⇒ 5초 창에 한 번도 못 닿아 표본 0 이었다(자가 틀렸다).
@@ -165,6 +167,11 @@ const _PC = {
     const B = BUILDING_SIZE;
     npc._trD = isTerrainBlockedLocal(Math.floor(npc.targetX / B) * B + B / 2, Math.floor(npc.targetY / B) * B + B / 2) ? 1 : 0;
     npc._trT = now; this.trSt[npc._trD]++;
+    if (npc._trD) {
+      if (npc._pcFall) this.trDeadFall++;
+      if (npc.npcWorkX != null && Math.abs(npc.targetX - npc.npcWorkX) <= 80 && Math.abs(npc.targetY - npc.npcWorkY) <= 80) this.trDeadWork++;
+      if (npc._pcHop && now - npc._pcHop < 3000) this.trDeadHop++;
+    }
   },
   arrive(npc, targetKey, now) {
     if (!npc._trT || npc._trK !== targetKey) return;
@@ -184,7 +191,7 @@ const _PC = {
       console.log('[PC] ' + JSON.stringify({ n: this.n, pop: this.pop, phase: +worldPhase(Date.now()).toFixed(4),
         call: this.call, ms: +this.ms.toFixed(2), popsSum: this.popsSum, popsMax: this.popsMax,
         ex: this.ex, msEx: { found: +this.msEx.found.toFixed(2), capped: +this.msEx.capped.toFixed(2),
-          exhaust: +this.msEx.exhaust.toFixed(2), radius: +this.msEx.radius.toFixed(3), same: +this.msEx.same.toFixed(3) },
+          exhaust: +this.msEx.exhaust.toFixed(2), radius: +this.msEx.radius.toFixed(3), same: +this.msEx.same.toFixed(3), endpoint: +this.msEx.endpoint.toFixed(3) },
         popsEx: this.popsEx, hist: this.hist,
         xN: this.xN, xMs: Object.fromEntries(Object.entries(this.xMs).map(([k, v]) => [k, +v.toFixed(2)])), xPops: this.xPops,
         srcWet: this.srcWet, srcRock: this.srcRock, afterUnstuck: this.afterUnstuck, jobWet: this.jobWet,
@@ -204,11 +211,13 @@ const _PC = {
         watchOn: this.watchOn, wetStop: this.wetStop, dryStop: this.dryStop, moved: this.moved,
         unstuck: this.unstuck, clockNs: +this.clockNs.toFixed(1),
         trSt: this.trSt, trDone: this.trDone, trAb: this.trAb, trH: this.trH,
-        snapN: this.snapN, stopWet: this.stopWet, stopDry: this.stopDry, going: this.going }));
+        snapN: this.snapN, stopWet: this.stopWet, stopDry: this.stopDry, going: this.going,
+        trDeadFall: this.trDeadFall, trDeadWork: this.trDeadWork, trDeadHop: this.trDeadHop, t394Moves: this.t394Moves,
+        t394Spawn: global.__t394Stat ? Object.assign({}, global.__t394Stat) : null }));
     } catch (e) {}
     this.n = 0; this.call = 0; this.ms = 0; this.popsSum = 0; this.popsMax = 0;
-    this.ex = { found: 0, capped: 0, exhaust: 0, radius: 0, same: 0 };
-    this.msEx = { found: 0, capped: 0, exhaust: 0, radius: 0, same: 0 };
+    this.ex = { found: 0, capped: 0, exhaust: 0, radius: 0, same: 0, endpoint: 0 };
+    this.msEx = { found: 0, capped: 0, exhaust: 0, radius: 0, same: 0, endpoint: 0 };
     this.popsEx = { found: 0, capped: 0, exhaust: 0 };
     this.xN = {}; this.xMs = {}; this.xPops = {};
     this.srcWet = 0; this.srcRock = 0; this.afterUnstuck = 0; this.jobWet = {};
@@ -225,12 +234,19 @@ const _PC = {
     this.unstuck = 0;
     this.trSt = [0, 0]; this.trDone = [0, 0]; this.trAb = [0, 0]; this.trH = {};
     this.snapN = 0; this.stopWet = 0; this.stopDry = 0; this.going = 0;
+    this.trDeadFall = 0; this.trDeadWork = 0; this.trDeadHop = 0; this.t394Moves = 0;
   },
   tally(npc, wp, ms, st, d) {
     this.call++; this.ms += ms;
     const ran = st.pops >= 0;
     let door;
-    if (!ran) door = wp ? 'same' : 'radius';
+    if (!ran) {
+      if (wp) door = 'same';
+      else {   // ★[T394 ③] 탐색 전 null 은 둘 — 반경(64) 을 넘었나 · 끝점이 막혔나(localPath 첫 줄)
+        const B0 = BUILDING_SIZE, cd = Math.abs(Math.floor(npc.targetX / B0) - Math.floor(npc.x / B0)) + Math.abs(Math.floor(npc.targetY / B0) - Math.floor(npc.y / B0));
+        door = cd > 64 ? 'radius' : 'endpoint';
+      }
+    }
     else if (st.found) door = 'found';
     else if (st.pops > st.max) door = 'capped';
     else door = 'exhaust';
@@ -332,15 +348,27 @@ const PATCHES = [
     repl: "  npc._pcHop = now;   // [T381 탐침] 무작위 도약 갈래(3연속 막힘)\n  // 작은 회피 — 랜덤 방향으로 짧게 비킨다" },
   { find: "function unstuckNpc(npc, now) {",
     repl: "function unstuckNpc(npc, now) {\n  _PC.unstuck++; npc._pcUn = now;" },
+  // ★[T394 ②] 되짚기가 선 수 — T394 판에만 있는 글자(없는 팔은 건너뛴다)
+  { optional: true, find: "    if (T394_WORK_TERRAIN) _t394OpenTarget(npc, npc.npcWorkX, npc.npcWorkY);",
+    repl: "    if (T394_WORK_TERRAIN && _t394OpenTarget(npc, npc.npcWorkX, npc.npcWorkY)) _PC.t394Moves++;" },
+];
+// villages.js 사본 — 태어나기 셈을 전역에 걸어 둔다(T394 판에만 · 관측 전용)
+const VIL_PATCHES = [
+  { optional: true, find: "const _t394Stat = { spawn: 0, first: 0, redraw: 0, yard: 0 };",
+    repl: "const _t394Stat = { spawn: 0, first: 0, redraw: 0, yard: 0 }; global.__t394Stat = _t394Stat;" },
 ];
 
+const BASE_REF = process.env.BASE_REF || 'origin/main';
 function makeArm(arm, dir) {
   try { execFileSync('git', ['worktree', 'remove', '--force', dir], { cwd: ROOT, stdio: 'ignore' }); } catch (e) {}
-  execFileSync('git', ['worktree', 'add', '--detach', '-q', dir, 'HEAD'], { cwd: ROOT, stdio: 'ignore' });
+  // ★[T394] `pre*` 팔은 **이 카드 전의 main** 에서 뜬다(작업트리 덮어쓰기 0) — 카드 전/후를 같은 벽시계에 세운다.
+  const isPre = /^pre/.test(arm);
+  execFileSync('git', ['worktree', 'add', '--detach', '-q', dir, isPre ? BASE_REF : 'HEAD'], { cwd: ROOT, stdio: 'ignore' });
+  if (isPre) console.log(`  [${arm}] ${BASE_REF} 에서 떴다(${execFileSync('git', ['rev-parse', '--short', BASE_REF], { cwd: ROOT }).toString().trim()}) · 작업트리 덮어쓰기 0`);
   try { fs.symlinkSync(path.join(ROOT, 'node_modules'), path.join(dir, 'node_modules')); } catch (e) {}
   // ★워크트리는 **커밋된 HEAD** 를 떠 온다 — 아직 커밋 안 한 수술은 안 따라온다(T370 에서 한 번 빠졌다).
   //   ⇒ 작업트리에서 **바뀐 파일만** 덮어쓴다. 자가 재는 것이 지금 고치고 있는 그 글자여야 한다.
-  try {
+  if (!isPre) try {
     // ⚠한글 경로는 git 이 "\354…" 로 따옴표 쳐 내준다 — 그 글자로는 파일이 없어 **조용히 건너뛴다**(찍힌 수와 실제가 갈린다).
     //   ⇒ `core.quotepath=off` 로 날 글자를 받고, **실제로 덮은 것만** 센다.
     const dirty = execFileSync('git', ['-c', 'core.quotepath=off', 'diff', '--name-only', 'HEAD'], { cwd: ROOT }).toString().split('\n').filter(Boolean);
@@ -364,12 +392,23 @@ function makeArm(arm, dir) {
   let s = fs.readFileSync(zp, 'utf8');
   for (const p of PATCHES) {
     const cnt = s.split(p.find).length - 1;
+    if (p.optional && cnt === 0) { console.log(`  [${arm}] 선택 앵커 없음(건너뜀): ${p.find.trim().slice(0, 50)}`); continue; }
     if (cnt !== 1) throw new Error(`탐침 앵커가 ${cnt}개다(1이어야 한다): ${p.find.slice(0, 60)}`);
     s = s.replace(p.find, () => p.repl.replace('__PROBE_HEAD__', () => PROBE_HEAD));   // ★함수 치환 — `$` 가 든 글자를 문자열로 넘기면 `$&` 로 먹힌다
     n++;
   }
   fs.writeFileSync(zp, s);
   execFileSync(process.execPath, ['--check', zp]);
+  const vp = path.join(dir, 'server', 'villages.js');
+  let vs = fs.readFileSync(vp, 'utf8');
+  for (const p of VIL_PATCHES) {
+    const cnt = vs.split(p.find).length - 1;
+    if (p.optional && cnt === 0) continue;
+    if (cnt !== 1) throw new Error(`villages 앵커가 ${cnt}개다: ${p.find.slice(0, 60)}`);
+    vs = vs.replace(p.find, () => p.repl); n++;
+  }
+  fs.writeFileSync(vp, vs);
+  execFileSync(process.execPath, ['--check', vp]);
   return n;
 }
 
@@ -388,7 +427,7 @@ async function runArm(arm, idx) {
     env: Object.assign({}, process.env, { PORT: String(ZP), ZONE_ID: 'hanbando', CENTRAL_HOST: 'localhost', CENTRAL_PORT: String(CP),
       CENTRAL_SECRET: SECRET, ENABLE_VILLAGES: '1', VILLAGE_DAY_MS: String(DAY_MS), DB_PATH: DB, VILLAGE_WAR_LOG: '0',
       T312_FISH_ACT: '1', T381_EVERY: String(SLICE_S * 30), T381_LAB: LAB,
-      T381_PATH_DEAD: /(^on$|Dead$|^fix$)/.test(arm) ? '1' : (process.env.T381_PATH_DEAD || '') }) });
+      T381_PATH_DEAD: /Off$/.test(arm) ? '0' : /(^on$|Dead$|^fix$)/.test(arm) ? '1' : (process.env.T381_PATH_DEAD || '') }) });
   const getj = async (p, h) => { try { const r = await fetch(`http://localhost:${ZP}${p}`, h ? { headers: h } : undefined); return await r.json(); } catch (e) { return null; } };
   const perf = (reset) => getj(`/perf${reset ? '?reset=1' : ''}`, { 'x-zone-secret': SECRET });
   const life = () => getj('/lifedbg', { 'x-zone-secret': SECRET });

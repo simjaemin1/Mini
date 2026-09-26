@@ -35,14 +35,16 @@ function findPath(startX, startY, endX, endY, opts = {}) {
   if (cellDist > searchRadius) return null;
 
   const cpx = (c) => c * CELL + CELL / 2;
+  // ★[T394 ③] 노드 판정(물·바위 — 다리 예외)을 **한 번만** 적는다 — 간선이 쓰고, 끝점 검사(`localPath` 첫 줄)가 쓴다.
+  //   종전 간선과 같은 순서로 부른다(벽 → 물 → 다리) — 관측 계수기까지 같은 수가 돈다.
+  const nodeBlocked = (x, y) => { const X = cpx(x), Y = cpx(y); return isWater(X, Y) && !(isBridge && isBridge(X, Y)); };
   // 간선(edge) 차단 판정 — 정본 blockedStep 시그니처에 기존 wall-edge + 물(다리 예외) 규칙을 그대로 싣는다.
   const blockedStep = (fx, fy, tx, ty) => {
-    const fX = cpx(fx), fY = cpx(fy), tX = cpx(tx), tY = cpx(ty);
-    if (isBlocked(fX, fY, tX, tY, floor)) return true;
-    if (isWater(tX, tY) && !(isBridge && isBridge(tX, tY))) return true;
-    return false;
+    if (isBlocked(cpx(fx), cpx(fy), cpx(tx), cpx(ty), floor)) return true;
+    return nodeBlocked(tx, ty);
   };
   const nodes = PathCore.localPath(startCx, startCy, endCx, endCy, {
+    blocked: nodeBlocked,   // ★[T394 ③] 끝점이 막혔으면 탐색 전에 null(`routePath` 첫 줄과 같은 규칙)
     blockedStep, maxNodes: maxCells, radius: searchRadius,
     prefer: preferFn ? ((x, y) => preferFn(cpx(x), cpx(y))) : null,
   });
