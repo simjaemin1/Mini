@@ -101,4 +101,58 @@ class Quadtree {
   }
 }
 
-module.exports = { Quadtree };
+// ★★[T421 2026-09-26] **증분 판** — 겉 동작은 `Quadtree` 와 한 글자도 안 다르다: 같은 순서로 넣으면 같은 구조가 서고,
+//   같은 구조면 조회가 **같은 것을 같은 순서로** 낸다(자식 순회 nw·ne·sw·se · 칸 안은 넣은 순서).
+//   다른 것은 둘뿐이다 — ① 칸에 들어간 항목이 **자기가 든 칸**(`_n`)을 기억한다 · ② `nodeFor(x, y)` 가
+//   "지금 구조에 새로 넣었다면 들어갈 칸" 을 답한다(삽입 규칙을 그대로 따라 내려간다).
+//   ⇒ 몸이 움직여도 **들 칸이 같으면** 구조가 안 바뀐다(칸마다 들어오는 몸의 차례가 같으니 나누기도 같다)
+//     ⇒ 항목의 x·y 만 고치면 **새로 세운 나무와 같은 나무**다. 칸이 바뀌면 부르는 쪽이 통째로 다시 세운다.
+//   ⚠원판 `Quadtree` 는 **안 건드렸다**(끔 = 한 글자도 안 바뀐 옛 나무).
+class QuadtreeInc extends Quadtree {
+  subdivide() {
+    const hw = this.w / 2, hh = this.h / 2;
+    const d = this.depth + 1;
+    this.nw = new QuadtreeInc(this.x,      this.y,      hw, hh, this.capacity, d, this.maxDepth);
+    this.ne = new QuadtreeInc(this.x + hw, this.y,      hw, hh, this.capacity, d, this.maxDepth);
+    this.sw = new QuadtreeInc(this.x,      this.y + hh, hw, hh, this.capacity, d, this.maxDepth);
+    this.se = new QuadtreeInc(this.x + hw, this.y + hh, hw, hh, this.capacity, d, this.maxDepth);
+    this.divided = true;
+    const old = this.entities;
+    this.entities = [];
+    for (const e of old) this._insertChild(e);
+  }
+  insert(e) {
+    if (!this.contains(e.x, e.y)) return false;
+    if (!this.divided) {
+      if (this.entities.length < this.capacity || this.depth >= this.maxDepth) {
+        this.entities.push(e); e._n = this;
+        return true;
+      }
+      this.subdivide();
+    }
+    return this._insertChild(e);
+  }
+  _insertChild(e) {
+    if (this.nw.insert(e)) return true;
+    if (this.ne.insert(e)) return true;
+    if (this.sw.insert(e)) return true;
+    if (this.se.insert(e)) return true;
+    this.entities.push(e); e._n = this;
+    return true;
+  }
+  // 지금 구조에 (px,py) 를 넣었다면 들어갈 칸 — `insert` 의 길을 그대로 밟는다(뿌리 밖이면 null)
+  nodeFor(px, py) {
+    if (!this.contains(px, py)) return null;
+    let n = this;
+    for (;;) {
+      if (!n.divided) return n;
+      if (n.nw.contains(px, py)) { n = n.nw; continue; }
+      if (n.ne.contains(px, py)) { n = n.ne; continue; }
+      if (n.sw.contains(px, py)) { n = n.sw; continue; }
+      if (n.se.contains(px, py)) { n = n.se; continue; }
+      return n;
+    }
+  }
+}
+
+module.exports = { Quadtree, QuadtreeInc };

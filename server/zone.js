@@ -57,7 +57,7 @@ const Soil = require('./soil');   // [배치 20 B] 동적 토양치·지질(희�
 const Rooms = require('./rooms'); // ★[배치 18 ①] 방 판정 정본(벽·문으로 닫힌 '바닥 깔린' 셀 집합). 서버가 판정해 클라에 실어 준다 — 클라 재계산 금지(사본 방지)
 const SIM_LON_ON = process.env.VILLAGE_LON !== '0'; // §19 경도 로컬 태양시(마을 NPC 야간 귀가) 게이트 — 기본 켜짐
 const central = require('./central-client'); // central HTTP 클라이언트
-const { Quadtree } = require('./quadtree'); // spatial index — O(N²) 검색 회피
+const { Quadtree, QuadtreeInc } = require('./quadtree'); // spatial index — O(N²) 검색 회피 · ★[T421] 증분 판(겉 동작 동일)
 const { ChunkManager, CHUNK_SIZE, generateChunkResources, resourcesAtCell, overflowInto, seedGenChunkOf, regrowStageOf, REGROW, generateVillagesForZone, generateCoastlineWaterTiles, RESOURCE_HP_TABLE, GROVE_KINDS, forestSpacing: chunkForestSpacing, FOREST_MIN_COV: chunkForestMinCov } = require('./chunk');   // ★[T325] `resourcesAtCell` — 관측자 무관 색인(T301) 그대로. 나무꾼이 청크 없이 나무를 묻는다 // ★[T124] 재생 정산은 T122 정본을 그대로 받는다(사본 0) // 청크 단위 entity 분류 + procedural + 해안선 + ★[T108] 자연물 hp 정본
 const { findPath: pfFindPath } = require('./pathfind'); // Phase 14.49-b: NPC A* pathfinding
 const PathCore = require('../sim/path-core.js'); // ★[생활 층 100% ①] 랩·서버 공용 경로 정본 — smoothPath(스트링 풀링)를 주민 이동에 직결
@@ -665,7 +665,8 @@ function isPositionActive(x, y) {
 //     `isPositionActive(x, y)` 를 부른다(T375 끔과 글자까지 같은 답).
 //   ★단계는 **함수 하나씩**이다(`_inputTOStep`·`_stairStepP`·`_fallStepP`·`_gaugeStep`·`_hpRegenStep`·`_gaugeNetStep`)
 //     — 끔(종전 순회 일곱)과 켬(한 바퀴 둘)이 **같은 함수**를 부른다. 사본 0: 본문은 종전 루프 몸통 그대로(`continue` → `return`).
-const T385_ONE_SWEEP = process.env.T385_ONE_SWEEP === '1';
+// ★★[T421 ⓪ 2026-09-26 · PM 위임] **기본 켬** — 값이 섰다(그 밖 1.00 → 0.72µs · 게이트 ⑨ 비트 동일). 되돌림 `T385_ONE_SWEEP=0`.
+const T385_ONE_SWEEP = process.env.T385_ONE_SWEEP !== '0';
 // 활성 여부가 판정에 쓰이는 몸인가 — 종전 문지기 세 줄(`spatial`·`fall`·`hpRegen`)의 앞 두 항 그대로(술어는 안 부른다)
 function _needAct(p) { return p.isNpc && !p.canadiaVillage; }
 // ★[T385 ③] 계단 칸 **정수 키** — `${cx}_${cy}` 문자열을 몸마다 틱마다 만들던 자리.
@@ -700,8 +701,82 @@ function activeChunkBuildings() {
 let qtPlayers, qtMobs, qtResources, qtBuildings;
 let resourcesDirty = true;  // 자원(나무·돌)은 static — 변경됐을 때만 quadtree 재구축
 let _lastResRebuild = 0;    // qtResources 전체 재구축 throttle (5Hz 상한)
+// ★★★[T421 2026-09-26 · T371 회부 · T375 §4-4 · T385 §4-4 세 번 미룬 자리] **격자 증분.** `T421_SPATIAL_INC=1` 일 때만.
+//   ★왜 — T385 뒤 그 밖에서 두 번째로 큰 것이 `spatial`(0.206µs/사람)이다. 틱마다 나무 셋을 비우고 전수를 다시 넣는다.
+//   ★★무엇을 지키나 — **조회 결과가 비트 동일**해야 한다(무엇이 · **어떤 순서로** 나오나). 나무의 조회 순서는
+//     구조(나누기)와 넣은 순서가 정한다. 그래서 "셀 격자로 갈아타기" 는 못 한다 — 같은 몸들을 **다른 순서로** 내면
+//     `findNearest` 의 동점·"첫 번째로 걸린 것" 이 갈린다(게이트 ⑫-ⓓ 가 그 꼴을 문다).
+//   ⇒ 나무는 그대로 두고 **다시 세울 필요가 없을 때 안 세운다**:
+//     ⓐ 이번 판에 넣을 (몸, x, y) 차례가 지난 판과 같고 ⓑ 움직인 몸마다 **새로 넣었다면 들 칸이 지금 든 칸과 같으면**
+//     새로 세운 나무는 지금 나무와 **같다**(칸마다 들어오는 차례가 같으니 나누기도 같다) ⇒ 항목의 x·y 만 고친다.
+//     하나라도 어긋나면 **통째로 다시 세운다**(종전과 같은 일 · 같은 순서).
+//   ★주민 활성 술어도 같은 문법 — `isPositionActive` 는 (청크 cx, cy) 와 `activeChunkKeys` 만 본다 ⇒ 활성 청크 집합이
+//     **순서까지** 같고 그 몸의 청크가 같으면 지난 답이 곧 이번 답이다(몸 차례대로 줄 세운 배열 · 필드 0 · 새 순회 0).
+//     몸 차례가 어긋나면(접속·퇴장) 그 몸은 술어를 다시 부른다.
+//   ⚠자원 나무는 **그대로**(이미 5Hz 조절 · dirty 문). 끄면 아래 옛 몸통이 한 글자도 안 바뀐 채 돈다.
+const T421_SPATIAL_INC = process.env.T421_SPATIAL_INC === '1';
+const _spInc = { keys: [], pl: [], mob: [], bld: [], ref: [], cx: [], cy: [], act: [], rebuilt: { pl: 0, mob: 0, bld: 0 }, kept: { pl: 0, mob: 0, bld: 0 } };
+// 지난 판과 같은 차례·같은 칸이면 x·y 만 고친다 — 어긋나면 false(부르는 쪽이 통째로 세운다)
+function _spKeep(qt, seq, j, ref, x, y) {
+  const e = seq[j];
+  if (!e || e.ref !== ref) return false;
+  if (e.x !== x || e.y !== y) { if (qt.nodeFor(x, y) !== e._n) return false; e.x = x; e.y = y; }
+  return true;
+}
+function _rebuildSpatialInc(nowIT, W, H) {
+  const S = _spInc;
+  // ── 활성 청크 집합이 **순서까지** 지난 판과 같은가(같으면 몸마다 청크만 보면 된다)
+  let keysSame = true, ki = 0;
+  for (const k of activeChunkKeys) { if (keysSame && S.keys[ki] !== k) keysSame = false; S.keys[ki++] = k; }
+  if (ki !== S.keys.length) { keysSame = false; S.keys.length = ki; }
+  const cs = chunkManager.chunkSize;
+  // ── 주민 — 한 바퀴에 입력 타임아웃 · 활성 여부(캐시) · 나무 유지 판정
+  let ok = qtPlayers instanceof QuadtreeInc, j = 0, i = 0;
+  for (const p of players.values()) {
+    if (nowIT !== undefined) _inputTOStep(p, nowIT);   // ★[T385] 앞 묶음 — 입력 타임아웃
+    const cx = Math.floor(p.x / cs), cy = Math.floor(p.y / cs);
+    let act;
+    if (keysSame && S.ref[i] === p && S.cx[i] === cx && S.cy[i] === cy) act = S.act[i];
+    else { act = activeChunkKeys.has(chunkManager.keyOf(cx, cy)); S.ref[i] = p; S.cx[i] = cx; S.cy[i] = cy; S.act[i] = act; }   // = isPositionActive(p.x, p.y)
+    i++;
+    if (p.isNpc && !p.canadiaVillage && !act) continue;
+    if (ok && !_spKeep(qtPlayers, S.pl, j, p, p.x, p.y)) ok = false;
+    j++;
+  }
+  if (i < S.ref.length) { S.ref.length = i; S.cx.length = i; S.cy.length = i; S.act.length = i; }
+  if (ok && j !== S.pl.length) ok = false;
+  if (!ok) {   // 통째로 — 종전과 같은 차례(활성 여부는 위에서 이번 판 값으로 적어 두었다)
+    qtPlayers = new QuadtreeInc(0, 0, W, H); S.pl = []; let ii = 0;
+    for (const p of players.values()) {
+      const act = S.act[ii++];
+      if (p.isNpc && !p.canadiaVillage && !act) continue;
+      const e = { x: p.x, y: p.y, ref: p }; qtPlayers.insert(e); S.pl.push(e);
+    }
+    S.rebuilt.pl++;
+  } else S.kept.pl++;
+  // ── 몹 — 전부 넣는다(종전 그대로)
+  ok = qtMobs instanceof QuadtreeInc; j = 0;
+  for (const m of mobs.values()) { if (ok && !_spKeep(qtMobs, S.mob, j, m, m.x, m.y)) { ok = false; break; } j++; }
+  if (ok && j !== S.mob.length) ok = false;
+  if (!ok) {
+    qtMobs = new QuadtreeInc(0, 0, W, H); S.mob = [];
+    for (const m of mobs.values()) { const e = { x: m.x, y: m.y, ref: m }; qtMobs.insert(e); S.mob.push(e); }
+    S.rebuilt.mob++;
+  } else S.kept.mob++;
+  // ── 건물 — 활성 청크 건물(종전 그대로 · 청크 차례 → 청크 안 차례)
+  ok = qtBuildings instanceof QuadtreeInc; j = 0;
+  outer: for (const k of activeChunkKeys) { const c = chunkManager.chunks.get(k); if (!c) continue;
+    for (const b of c.buildings.values()) { if (ok && !_spKeep(qtBuildings, S.bld, j, b, b.x, b.y)) { ok = false; break outer; } j++; } }
+  if (ok && j !== S.bld.length) ok = false;
+  if (!ok) {
+    qtBuildings = new QuadtreeInc(0, 0, W, H); S.bld = [];
+    for (const k of activeChunkKeys) { const c = chunkManager.chunks.get(k); if (c) for (const b of c.buildings.values()) { const e = { x: b.x, y: b.y, ref: b }; qtBuildings.insert(e); S.bld.push(e); } }
+    S.rebuilt.bld++;
+  } else S.kept.bld++;
+}
 function rebuildSpatialIndex(nowIT) {   // ★[T385] `nowIT` 가 있으면 입력 타임아웃을 **같은 바퀴**에서 한다(켬 전용)
   const W = ZONE.zoneWidth, H = ZONE.zoneHeight;
+  if (T421_SPATIAL_INC) { _rebuildSpatialInc(nowIT, W, H); _rebuildResources(W, H); return; }   // ★[T421] 증분(자원은 아래 같은 문)
   qtPlayers   = new Quadtree(0, 0, W, H);
   qtMobs      = new Quadtree(0, 0, W, H);
   qtBuildings = new Quadtree(0, 0, W, H);
@@ -719,6 +794,9 @@ function rebuildSpatialIndex(nowIT) {   // ★[T385] `nowIT` 가 있으면 입�
   // ★ 추가: 마을 NPC 채집·이동으로 resourcesDirty가 매틱 떠도, 전체 재구축은 자원 수만큼 비쌈
   //   (5만 그루 ≈ 18ms, 10만 ≈ 59ms). 그래서 dirty여도 200ms(5Hz) 상한으로 throttle.
   //   자원 검색·트리 충돌은 200ms staleness 무해(채집 후보가 한 박자 늦게 갱신될 뿐).
+  _rebuildResources(W, H);
+}
+function _rebuildResources(W, H) {   // ★[T421] 자원 나무 문 — 끔·켬이 같은 함수(사본 0 · 몸통은 종전 그대로)
   if (!qtResources || (resourcesDirty && Date.now() - _lastResRebuild >= 200)) {
     qtResources = new Quadtree(0, 0, W, H);
     for (const r of resources.values()) qtResources.insert({ x: r.x, y: r.y, ref: r });
@@ -12260,14 +12338,16 @@ setInterval(() => {
   }
   let _stairNone = false;
   if (!T385_ONE_SWEEP) for (const p of players.values()) _stairStepP(p);   // ★[T385] 켬이면 아래 한 바퀴가 한다
-  for (const m of mobs.values()) {
-    if (m.hp <= 0) continue;
+  // ★[T421 ③] 몹 한 걸음 — 종전 루프 몸통 그대로(`continue` → `return`). `act` 를 받으면 술어를 다시 안 부른다.
+  function _stairStepM(m, act) {
+    if (m.hp <= 0) return;
     // 14.49-e perf: 비활성 chunk mob은 skip. 정지 mob은 onStairId 있을 때만 (방향 변경 가능)
-    if (!isPositionActive(m.x, m.y)) continue;
+    if (!(act !== undefined ? act : isPositionActive(m.x, m.y))) return;
     const moving = (m.vx || 0) !== 0 || (m.vy || 0) !== 0;
-    if (!moving && !m.onStairId) continue;
+    if (!moving && !m.onStairId) return;
     stepStairFor(m);
   }
+  if (!T385_ONE_SWEEP) for (const m of mobs.values()) _stairStepM(m);   // ★[T421 ③] 켬이면 아래 몹 한 바퀴가 한다
 
   // === 14.49-e2: 낙하 (falling) — 위층에서 받침 floor 없는 곳으로 walk-off ===
   // player.floor > 0인데 그 cell에 자기 floor 받침 (floor 빌딩)이 없고, stair도 아니면 → fall.
@@ -12355,10 +12435,20 @@ setInterval(() => {
     processFalling(p);
   }
   if (!T385_ONE_SWEEP) for (const p of players.values()) _fallStepP(p);
-  for (const m of mobs.values()) {
-    if (m.hp <= 0) continue;
-    if (!isPositionActive(m.x, m.y)) continue;
+  function _fallStepM(m, act) {   // ★[T421 ③] 몹 한 걸음 — 종전 루프 몸통 그대로
+    if (m.hp <= 0) return;
+    if (!(act !== undefined ? act : isPositionActive(m.x, m.y))) return;
     processFalling(m);
+  }
+  if (!T385_ONE_SWEEP) for (const m of mobs.values()) _fallStepM(m);
+  // ★[T421 ③] **몹 한 바퀴** — T385 가 주민만 했다(§4 회부). 몹마다 종전 차례(계단 → 낙하) · 활성 여부는 **한 번**
+  //   (계단은 z·층만 쓴다 — x·y·hp 를 안 바꾼다 ⇒ 낙하가 보는 활성·hp 는 계단 앞과 같다). 의존 표: 몹끼리 서로 안 읽는다.
+  if (T385_ONE_SWEEP) for (const m of mobs.values()) {
+    if (m.hp <= 0) continue;
+    const act = isPositionActive(m.x, m.y);
+    if (!act) continue;
+    _stairStepM(m, act);
+    _fallStepM(m, act);
   }
 
   // === 생존 게이지: hunger/thirst 감소 + 0이면 HP 페널티 + vp decay ===

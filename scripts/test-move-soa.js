@@ -761,10 +761,10 @@ console.log('\n⑨ T385_ONE_SWEEP 순회 일곱 → 둘 — 켬/끔이 같은 �
       class Quadtree { constructor() { this.n = 0; } insert(o) { ins.push((o.ref && (o.ref.pid || o.ref.id)) + '@' + o.x.toFixed(3) + ',' + o.y.toFixed(3)); this.n++; } }
       const activeChunkKeys = new Set(), chunkManager = { chunkSize: CS, keyOf: (cx, cy) => `${cx}_${cy}`, chunks: new Map() };
       const env = { players: w.players, mobs: w.mobs, resources: new Map(), activeChunkKeys, chunkManager, Quadtree, ZONE: { zoneWidth: w.W, zoneHeight: w.H },
-        T385_ONE_SWEEP: on };
+        T385_ONE_SWEEP: on, T421_SPATIAL_INC: false };   // ★[T421] 격자 증분은 ⑫ 가 따로 잰다(여기선 끔 — 옛 나무에 넣는 차례를 본다)
       const keys = Object.keys(env);
       const api = new Function(...keys, 'let qtPlayers, qtMobs, qtBuildings, qtResources = {}, resourcesDirty = false, _lastResRebuild = 0;\n' +
-        body('isPositionActive') + '\n' + ITO + '\n' + RSI + '\nreturn { rebuildSpatialIndex, _inputTOStep };')(...keys.map((k) => env[k]));
+        body('isPositionActive') + '\n' + ITO + '\n' + RSI + '\n' + body('_rebuildResources') + '\nreturn { rebuildSpatialIndex, _inputTOStep };')(...keys.map((k) => env[k]));
       const dig = [];
       for (let t = 0; t < 4200; t++) {
         const now = 1_700_000_000_000 + t * 33;
@@ -834,7 +834,7 @@ console.log('\n⑨ T385_ONE_SWEEP 순회 일곱 → 둘 — 켬/끔이 같은 �
   // ⓔ 소스 계수 — 손잡이 하나 · 단계 함수 하나씩 · T375 흡수
   {
     const Z2 = codeOnly(Z);
-    ok(/const T385_ONE_SWEEP = process\.env\.T385_ONE_SWEEP === '1';/.test(Z2), "⑨-e 손잡이는 `T385_ONE_SWEEP` 하나 · **기본 끔**");
+    ok(/const T385_ONE_SWEEP = process\.env\.T385_ONE_SWEEP !== '0';/.test(Z2), "⑨-e 손잡이는 `T385_ONE_SWEEP` 하나 · **기본 켬**(T421 ⓪ · 되돌림 `=0`)");
     for (const f of ['_inputTOStep', '_stairStepP', '_fallStepP', '_gaugeStep', '_hpRegenStep', '_gaugeNetStep'])
       ok((Z2.match(new RegExp('function ' + f + '\\(', 'g')) || []).length === 1, `⑨-e 단계 \`${f}\` 는 **하나**다(끔·켬이 같은 함수)`);
     ok(!/T375_ACTIVE_FLAG|_t375Refresh|_isActive\(|_activeGen/.test(Z2), '⑨-e ★T375 손잡이는 **흡수됐다**(필드·새 순회·손잡이 0)');
@@ -1225,6 +1225,141 @@ console.log('\n⑬ T399_CELL_CAP — 상한 하나(칸 예산 = 반경 원의 �
   ok(call(W1, 145, 150, 165, 150, capBad(true, true, 64)) === null, '★⑬ 자명 통과 금지 — 켬의 예산을 1,500 으로 비틀면 그 우회를 **다시 못 찾는다**');
   console.log(`    [표] 예산 끔 ${cap(false, true, 64)}·${cap(false, false, 24)} → 켬 ${cap(true, true, 64)}·${cap(true, false, 24)} · 주머니 강 우회: 1,500 ${offP ? '찾음' : 'null'} · 4,096 ${sqP ? '찾음' : 'null'} · 6,434 ${onP ? '찾음' : 'null'} · 예산 안 ${same}/${tot} 동일`);
   console.log('    접점: T399_CELL_CAP · computeNpcPath · maxCells · searchRadiusCells · _pfR · pfFindPath');
+}
+
+// =============================================================================
+// ⑭ T421_SPATIAL_INC — 격자를 **다시 안 세워도** 조회가 비트 동일하다 [T421 ①]
+// =============================================================================
+// ★T385 뒤 그 밖에서 두 번째로 큰 것이 `spatial`(틱마다 나무 셋을 비우고 전수를 다시 넣는다)이다.
+//   T421 은 나무를 그대로 두고, **새로 세운 나무가 지금 나무와 같을 때** 안 세운다(차례가 같고 · 움직인 몸마다
+//   들 칸이 같으면 = 같은 나무 ⇒ x·y 만 고친다). 주민 활성 술어도 (청크, 활성 집합)이 같으면 지난 답을 쓴다.
+// ★★이 절이 재는 것 — **조회가 무엇을, 어떤 순서로 내나**가 끔(틱마다 새로 세움)과 같은가.
+//   제품의 글자(`rebuildSpatialIndex`·`_rebuildSpatialInc`·`_spKeep`·`_rebuildResources`·`isPositionActive`)와
+//   **진짜 나무**(`server/quadtree.js`)를 떠서, 같은 세계에 두 판을 나란히 세우고 틱마다 조회 500번을 견준다.
+//   ⚠조회 사이에 몸을 한 번 더 움직인다 — 제품 조회는 **세운 때의 자리**(칸)와 **지금 자리**(거리)를 섞어 쓴다.
+console.log('\n⑭ T421_SPATIAL_INC 격자 증분 — 조회 결과 비트 동일 [T421]');
+{
+  const { Quadtree, QuadtreeInc } = require(path.join(ROOT, 'server', 'quadtree.js'));
+  const SRC = ['rebuildSpatialIndex', '_rebuildSpatialInc', '_spKeep', '_rebuildResources', 'isPositionActive', '_inputTOStep'].map((n) => body(n));
+  const SPDEF = (Z.match(/const _spInc = \{[^\n]*\};/) || [''])[0];
+  ok(SRC.every((x) => x.length > 60) && SPDEF.length > 50, '⑭ [전제] 제품의 격자 글자 여섯 + 상태 한 줄을 떴다', SRC.map((x) => x.length).join('+') + '자');
+  const QSRC = fs.readFileSync(path.join(ROOT, 'server', 'quadtree.js'), 'utf8');
+  const qBase = QSRC.slice(QSRC.indexOf('class Quadtree {'), QSRC.indexOf('class QuadtreeInc'));
+  ok(qBase.length > 1000 && !/_n\b/.test(codeOnly(qBase)), '⑭ [전제] 원판 `Quadtree` 에는 `_n` 이 **없다**(끔 = 옛 나무 그대로)');
+  const CS = 512, W = 24000, H = 24000;
+  const mkWorld = (seed) => {
+    const st = require(path.join(ROOT, 'server', 'seed-rand.js')).makeStream(); st.seed(seed);
+    const players = new Map(), mobs = new Map(), resources = new Map();
+    const chunks = new Map();
+    const chunkManager = { chunkSize: CS, keyOf: (cx, cy) => `${cx}_${cy}`, chunks };
+    for (let cx = 0; cx < W / CS; cx++) for (let cy = 0; cy < H / CS; cy++) chunks.set(`${cx}_${cy}`, { buildings: new Map() });
+    let bid = 0;
+    const addB = (x, y) => { const c = chunks.get(`${Math.floor(x / CS)}_${Math.floor(y / CS)}`); const b = { id: 'b' + (bid++), x, y }; c.buildings.set(b.id, b); return b; };
+    for (let i = 0; i < 2400; i++) addB(Math.floor(st.next() * (W / 32)) * 32 + 16, Math.floor(st.next() * (H / 32)) * 32 + 16);
+    let pid = 0;
+    const addP = () => { const i = pid++; const k = i % 7; const p = { pid: 'p' + i, isNpc: k !== 6, canadiaVillage: k === 5,
+      x: st.next() * W, y: st.next() * H, vx: 0, vy: 0, lastSeen: 0, handingOff: false, sp: (i % 3) === 0 ? 0 : (1 + st.next() * 40) };
+      if (i % 97 === 0) { p.x = W / 2; p.y = H / 4; }   // 나무 가르는 선 위(경계 규칙)
+      players.set(p.pid, p); return p; };
+    for (let i = 0; i < 600; i++) addP();
+    let mid = 0;
+    const addM = () => { const m = { pid: 'm' + (mid++), x: st.next() * W, y: st.next() * H, sp: st.next() < 0.3 ? 1 + st.next() * 30 : 0 }; mobs.set(m.pid, m); return m; };
+    for (let i = 0; i < 160; i++) addM();
+    for (let i = 0; i < 50; i++) resources.set('r' + i, { x: st.next() * W, y: st.next() * H });
+    return { st, players, mobs, resources, chunks, chunkManager, addB, addP, addM };
+  };
+  const mkIdx = (w, on, twist) => {
+    let src = SRC.join('\n');
+    if (twist === 'nopath') src = src.replace('if (qt.nodeFor(x, y) !== e._n) return false; ', '');
+    if (twist === 'nomove') src = src.replace('e.x = x; e.y = y; }', '}');
+    if (twist === 'nokeys') src = src.replace('if (keysSame && S.ref[i] === p', 'if (S.ref[i] === p');
+    if (twist && src === SRC.join('\n')) throw new Error('미끼를 못 만들었다: ' + twist);
+    const env = { players: w.players, mobs: w.mobs, resources: w.resources, chunkManager: w.chunkManager, Quadtree, QuadtreeInc,
+      ZONE: { zoneWidth: W, zoneHeight: H }, T421_SPATIAL_INC: on };
+    const keys = Object.keys(env);
+    return new Function(...keys,
+      'let activeChunkKeys = new Set(), qtPlayers = null, qtMobs = null, qtBuildings = null, qtResources = null, resourcesDirty = true, _lastResRebuild = 0;\n' +
+      SPDEF + '\n' + src + '\n' +
+      'return { setKeys: (s) => { activeChunkKeys = s; }, rebuild: () => rebuildSpatialIndex(undefined), qt: () => ({ p: qtPlayers, m: qtMobs, b: qtBuildings }), S: _spInc };')(...keys.map((k) => env[k]));
+  };
+  const idOf = (r) => r.pid || r.id;
+  const run = (seed, twist, TICKS = 4200, Q = 500) => {
+    const w = mkWorld(seed);
+    const A = mkIdx(w, false), B = mkIdx(w, true, twist);
+    const q = require(path.join(ROOT, 'server', 'seed-rand.js')).makeStream(); q.seed(seed ^ 0x5eed);
+    const viewers = [{ x: W * 0.3, y: H * 0.3 }, { x: W * 0.7, y: H * 0.6 }];
+    let nQ = 0, diffQ = 0, firstT = -1, nonEmpty = 0;
+    for (let t = 0; t < TICKS; t++) {
+      // 관측자 — 어떤 틱엔 가만히(활성 집합이 같다 ⇒ 캐시 길), 어떤 틱엔 움직인다
+      if (t % 40 < 25) for (const v of viewers) { v.x = (v.x + 97) % W; v.y = (v.y + 61) % H; }
+      const keys = new Set(); const r = 2;
+      for (const v of viewers) { const vx = Math.floor(v.x / CS), vy = Math.floor(v.y / CS);
+        for (let dx = -r; dx <= r; dx++) for (let dy = -r; dy <= r; dy++) { const cx = vx + dx, cy = vy + dy; if (cx < 0 || cy < 0 || cx >= W / CS || cy >= H / CS) continue; keys.add(`${cx}_${cy}`); } }
+      A.setKeys(keys); B.setKeys(keys);
+      // 몸 — 일부는 가만히, 일부는 칸 안에서, 일부는 칸을 넘는다 · 가끔 들고 난다 · 가끔 존 밖
+      // 300틱 중 앞 150틱은 주민이 멈춘다(밤처럼) — 주민 나무를 **그대로 두는 길**도 밟는다
+      if (t % 300 >= 150) for (const p of w.players.values()) if (p.sp) { p.x += (q.next() - 0.5) * p.sp; p.y += (q.next() - 0.5) * p.sp; }
+      if (t % 53 === 0) { const it = w.players.keys().next().value; w.players.delete(it); w.addP(); }
+      if (t % 211 === 7) { const p = [...w.players.values()][t % 300]; p.x = -5; }            // 존 밖 한 틱
+      if (t % 211 === 8) { const p = [...w.players.values()][(t - 1) % 300]; p.x = 100; }
+      for (const m of w.mobs.values()) if (m.sp) { m.x += (q.next() - 0.5) * m.sp; m.y += (q.next() - 0.5) * m.sp; }
+      if (t % 71 === 0) { const it = w.mobs.keys().next().value; w.mobs.delete(it); w.addM(); }
+      if (t % 97 === 0) w.addB(Math.floor(q.next() * (W / 32)) * 32 + 16, Math.floor(q.next() * (H / 32)) * 32 + 16);
+      if (t % 131 === 0) { const c = w.chunks.get([...keys][0]); const it = c && c.buildings.keys().next().value; if (it) c.buildings.delete(it); }
+      A.rebuild(); B.rebuild();
+      // 세운 뒤에 몇 몸이 또 움직인다 — 조회는 세운 자리(칸)와 지금 자리(거리)를 섞는다(제품 그대로)
+      for (const p of w.players.values()) if (p.sp > 30) { p.x += 3; }
+      const a = A.qt(), b = B.qt();
+      for (let k = 0; k < Q; k++) {
+        const which = k % 3, cx = q.next() * W, cy = q.next() * H, rr = 20 + q.next() * 900;
+        const ta = which === 0 ? a.p : which === 1 ? a.m : a.b, tb = which === 0 ? b.p : which === 1 ? b.m : b.b;
+        let ra, rb;
+        if (k % 5 === 4) { ra = ta.findNearest(cx, cy, rr); rb = tb.findNearest(cx, cy, rr); ra = [ra.ref && idOf(ra.ref), ra.dist]; rb = [rb.ref && idOf(rb.ref), rb.dist]; }
+        else if (k % 5 === 3) { ra = ta.queryRect(cx, cy, rr, rr).map(idOf); rb = tb.queryRect(cx, cy, rr, rr).map(idOf); }
+        else { ra = ta.queryCircle(cx, cy, rr).map(idOf); rb = tb.queryCircle(cx, cy, rr).map(idOf); }
+        const sa = JSON.stringify(ra), sb = JSON.stringify(rb);
+        nQ++; if (sa !== sb) { diffQ++; if (firstT < 0) firstT = t; } if (sa.length > 12) nonEmpty++;
+      }
+    }
+    return { nQ, diffQ, firstT, nonEmpty, S: B.S };
+  };
+  const R = run(0x421);
+  ok(R.nonEmpty > 200000, '⑭-a [상황] 조회가 **실제로 걸렸다**(빈 답만이면 자명 통과다)', `빈 답 아님 ${R.nonEmpty.toLocaleString()}/${R.nQ.toLocaleString()}`);
+  ok(R.S.kept.pl > 100 && R.S.rebuilt.pl > 100 && R.S.kept.mob > 500 && R.S.rebuilt.mob > 100 && R.S.kept.bld > 500 && R.S.rebuilt.bld > 100,
+     '⑭-a [상황] 두 길을 **다 밟았다** — 그대로 둔 판(증분)과 통째로 세운 판(칸이 바뀜·들고 남)',
+     `주민 둠 ${R.S.kept.pl}/세움 ${R.S.rebuilt.pl} · 몹 ${R.S.kept.mob}/${R.S.rebuilt.mob} · 건물 ${R.S.kept.bld}/${R.S.rebuilt.bld}`);
+  ok(R.diffQ === 0, '⑭-a ★★★끔(틱마다 새로 세움) ↔ 켬(증분) — **4,200틱 × 조회 500 = 210만 조회, 무엇을·어떤 순서로 비트 동일**',
+     R.diffQ === 0 ? `${R.nQ.toLocaleString()} 조회 전부 같다` : `다른 조회 ${R.diffQ} · 첫 틱 ${R.firstT}`);
+  // ⓑ 미끼 셋 — 자가 **실제로** 무는가
+  for (const [tw, what] of [['nopath', '들 칸을 안 보고 x·y 만 고치면'], ['nomove', '**한 몸의 자리를 안 옮기면**(칸 안에서 움직인 몸의 x·y 를 안 고치면)'], ['nokeys', '활성 집합이 바뀐 걸 안 보고 지난 활성 답을 쓰면']]) {
+    const Bt = run(0x421, tw, 900, 200);
+    ok(Bt.diffQ > 0, `★⑭-b 미끼 — ${what} 갈린다`, Bt.diffQ > 0 ? `다른 조회 ${Bt.diffQ.toLocaleString()} · 첫 틱 ${Bt.firstT}` : '안 갈렸다(자가 못 문다)');
+  }
+  // ⓒ 왜 셀 격자로 안 갈아탔나 — 같은 몸들을 내도 **순서**가 다르다(나무 순서가 곧 답이다)
+  {
+    const w = mkWorld(0x422);
+    const qt = new Quadtree(0, 0, W, H); const G = new Map(); const GS = 256;
+    for (const p of w.players.values()) { qt.insert({ x: p.x, y: p.y, ref: p }); const k = Math.floor(p.x / GS) * 65536 + Math.floor(p.y / GS); if (!G.has(k)) G.set(k, []); G.get(k).push(p); }
+    const gq = (cx, cy, r) => { const o = []; for (let gx = Math.floor((cx - r) / GS); gx <= Math.floor((cx + r) / GS); gx++) for (let gy = Math.floor((cy - r) / GS); gy <= Math.floor((cy + r) / GS); gy++) { const a = G.get(gx * 65536 + gy); if (a) for (const p of a) { const dx = p.x - cx, dy = p.y - cy; if (dx * dx + dy * dy <= r * r) o.push(p); } } return o; };
+    const q = require(path.join(ROOT, 'server', 'seed-rand.js')).makeStream(); q.seed(9);
+    let sameSet = 0, sameOrder = 0, n = 0;
+    for (let k = 0; k < 20000; k++) { const cx = q.next() * W, cy = q.next() * H, r = 300 + q.next() * 1500;
+      const a = qt.queryCircle(cx, cy, r).map(idOf), b = gq(cx, cy, r).map(idOf); if (a.length < 2) continue; n++;
+      if ([...a].sort().join() === [...b].sort().join()) sameSet++; if (a.join() === b.join()) sameOrder++; }
+    ok(sameSet === n && sameOrder < n, '⑭-c 셀 격자는 **같은 몸들을 다른 순서로** 낸다 — 그래서 나무를 그대로 두었다(`findNearest` 동점·첫 번째 걸린 것이 갈린다)',
+       `같은 모음 ${sameSet}/${n} · 같은 순서 ${sameOrder}/${n}`);
+  }
+  // ⓓ 소스 — 손잡이 하나 · 기본 끔 · 끔 몸통 그대로 · 자원 문 하나
+  {
+    const Z2 = codeOnly(Z);
+    ok(/const T421_SPATIAL_INC = process\.env\.T421_SPATIAL_INC === '1';/.test(Z2), "⑭-d 손잡이는 `T421_SPATIAL_INC` 하나 · **기본 끔**");
+    const RS = codeOnly(body('rebuildSpatialIndex'));
+    ok(/qtPlayers   = new Quadtree\(0, 0, W, H\);/.test(RS) && /for \(const m of mobs\.values\(\)\)       qtMobs\.insert\(\{ x: m\.x, y: m\.y, ref: m \}\);/.test(RS),
+       '⑭-d 끔 몸통은 **옛 글자 그대로**(옛 나무 · 전수 삽입)');
+    ok((Z2.match(/function _rebuildResources\(/g) || []).length === 1 && (RS.match(/_rebuildResources\(W, H\)/g) || []).length === 2,
+       '⑭-d 자원 나무 문은 **하나**(끔·켬이 같은 함수)');
+  }
+  console.log('    접점: rebuildSpatialIndex · _rebuildSpatialInc · _spKeep · _spInc · QuadtreeInc.nodeFor · isPositionActive · activeChunkKeys · T421_SPATIAL_INC');
 }
 
 console.log(`\n=== 결과: ${pass} PASS / ${fail} FAIL ===\n`);
