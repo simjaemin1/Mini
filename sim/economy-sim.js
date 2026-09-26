@@ -975,6 +975,47 @@ const T325_WOOD_ACT = process.env.T325_WOOD_ACT === '1';
 //       주입이 없으면 켜도 게이트가 안 열린다(폴백이 곧 종전 = 비트 동일).
 //   켜기는 재민 — 이 카드는 값을 안 정한다.
 const T347_FORAGE_ACT = process.env.T347_FORAGE_ACT === '1';
+// ★★★[T400 2026-09-26] **집도 행위다 — 기본 끔.** 끄면 이 파일은 **넷째 판과 비트 동일**이다
+//   (아래 두 자리가 전부 이 상수 뒤에 있다: 주거 증축의 자재 단가 · 곳간 출구 `actFromGranary`).
+//   ① 자재의 정본은 **하나**다 — `server/hut-stages.js`(서버 움집 공정 · PM 권고 #61 · 재민 거부권).
+//      켜면 한 채의 econ 자재 = 그 표의 원자재 중 **econ 재화인 것**(`RESOURCES` 에 있는 것 — 통나무 22 · 풀은 econ 재화가 아니다)
+//      이고, 수용력 1인당 단가는 그것을 한 채의 정원(`village-layout` `HOUSE_CAP_PER_FLOOR × HOUSE_MAX_FLOORS`)으로 나눈 값이다.
+//      ⇒ 석재 수요가 집에서 **사라진다**(표에 돌이 없다 · 광산 수요가 그만큼 준다 — 보고/T400 §ⓐ 3시드 표).
+//      `HOUSE_WOOD`·`HOUSE_STONE` 은 끈 팔의 값이자 대조 자로 남는다(지우지 않는다).
+//   ② 서버가 크루로 **실제로** 나르는 마을(`v._t400Live` — 생활층이 날마다 적는다)에서는 여기서 자재를 **안 뺀다** —
+//      크루가 곳간에서 꺼낼 때(`actFromGranary`) 빠진다. 두 번 빼면 그게 유령이다.
+//   켜기는 재민 — 이 카드는 값을 안 정한다.
+const T400_BUILD_ACT = process.env.T400_BUILD_ACT === '1';
+let _hutMod, _vlMod;
+function _hutStages() { if (_hutMod === undefined) { try { _hutMod = require('../server/hut-stages'); } catch (e) { _hutMod = null; } } return _hutMod; }
+function _villageLayoutMod() { if (_vlMod === undefined) { try { _vlMod = require('../server/village-layout'); } catch (e) { _vlMod = null; } } return _vlMod; }
+//   econ 재화만 남긴다 — 그 판정은 이 파일의 재화 목록(`RESOURCES`) 하나다(표 0 · 사본 0).
+function _econOnly(raw) { const o = {}; for (const k of Object.keys(raw || {})) if (RESOURCES.indexOf(k) >= 0) o[k] = raw[k]; return o; }
+function hutEconMaterials() { const H = _hutStages(); return H ? _econOnly(H.hutRaw()) : null; }        // 한 채
+function hutEconStage(i) { const H = _hutStages(); return H ? _econOnly(H.stageRaw(i)) : null; }        // 한 단계
+function hutStageCount() { const H = _hutStages(); return H ? H.HUT_STAGES.length : 0; }
+function hutCapPerHut() { const L = _villageLayoutMod(); return L ? L.HOUSE_CAP_PER_FLOOR * L.HOUSE_MAX_FLOORS : 0; }
+//   수용력 1인당 자재 단가 — 끔이면 종전 상수, 켬이면 표에서 유도(표를 못 읽으면 종전 — 게이트가 안 열린 것과 같다)
+function houseCostPerCap(res) {
+  const legacy = res === 'wood' ? HOUSE_WOOD : (res === 'stone' ? HOUSE_STONE : 0);
+  if (!T400_BUILD_ACT) return legacy;
+  const m = hutEconMaterials(), cap = hutCapPerHut();
+  if (!m || !(cap > 0)) return legacy;
+  return (m[res] || 0) / cap;
+}
+function buildActOn(v) { return !!(T400_BUILD_ACT && v && v._t400Live); }
+//   ★곳간 **출구** — `actToGranary` 의 역. 크루가 집터로 들고 가는 자재가 여기서 빠진다(있는 만큼만 · 세금 없음 — 마을 제 것이다).
+//     흐름 EMA 는 종전 주거 갈래가 찍던 **그 칸**(`_cons(v, 'wood', …)`)에 찍는다 — 수요 신호가 같은 자리에서 나온다.
+function actFromGranary(v, item, units) {
+  if (!T400_BUILD_ACT || !v || !v.storage) return 0;
+  const want = (typeof units === 'number' && units > 0) ? units : 0;
+  const have = v.storage[item] || 0;
+  const take = Math.min(want, have);
+  if (!(take > 0)) return 0;
+  v.storage[item] = have - take;
+  _cons(v, item, take);
+  return take;
+}
 // ★★★[T374 2026-09-23] **채취는 수요가 멈춘다 — 기본 끔.**
 //   설계_생산_실체 ⓓ 는 *"옮긴 첫날 하루 합 = 수식 · 그 뒤로는 실체가 내는 만큼(강이 멀면 덜 잡는다)"* 이라
 //   적었다. 그 문장엔 **반대쪽 절반**이 빠져 있었다: 실체가 **더** 낼 수 있어도 마을은 **쓸 만큼만** 딴다.
@@ -3540,19 +3581,25 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
     //   식량안보(곳간 여유)일수록 잉여노동 많아 건설 빠름. 쪼들리면 정체(노동을 식량에 다 씀).
     const _fe = totalFoodEquivalent(v);
     const slack = _fe > N * 40 ? 1.0 : (_fe > N * 25 ? 0.5 : 0.15);
-    let built = Math.min(houseTarget - v.housing, (v.storage.wood || 0) / HOUSE_WOOD, N * HOUSE_BUILD_MAX * slack);   // 목재 필수 + 여유노동 제약
+    // ★[T400] 자재 단가 — 끔이면 종전 상수 그대로(`_HW === HOUSE_WOOD` · 같은 연산 · 비트 동일), 켬이면 `hut-stages.js` 표에서 유도.
+    const _HW = T400_BUILD_ACT ? houseCostPerCap('wood') : HOUSE_WOOD;
+    const _HS = T400_BUILD_ACT ? houseCostPerCap('stone') : HOUSE_STONE;
+    const _live = buildActOn(v);   // ★[T400] 크루가 곳간에서 실제로 꺼내 가는 마을 — 목재 제약·차감은 그 행위가 진다
+    let built = Math.min(houseTarget - v.housing, _live ? Infinity : (v.storage.wood || 0) / _HW, N * HOUSE_BUILD_MAX * slack);   // 목재 필수 + 여유노동 제약
     if (built > 0) {
       // ★석재 준-필수: 석재 충분하면 정상 건축, 없으면 30%만(주춧돌·구들 없는 임시 가옥). 강한 석재 수요 → 광산 교역 유발.
-      const stoneNeed = built * HOUSE_STONE;
+      const stoneNeed = built * _HS;
       const stoneFrac = stoneNeed > 0 ? Math.min(1, (v.storage.stone || 0) / stoneNeed) : 1;
       built *= 0.3 + 0.7 * stoneFrac;   // 석재 0 → 30% 속도, 충분 → 100%
       // ★[T300] 하루 건축 상한 — **이 한 자리**다(기본 끔 · 값은 손잡이가 바깥에서 준다 · 위 `buildCapOf`).
       //   석재 배수 뒤에 거는 이유: 끔 팔이 실측한 "하루 지은 양"과 **같은 축**이어야 값이 그 값이다.
       { const _cap = buildCapOf(v); if (_cap !== null && built > _cap) built = _cap; }
-      v.storage.wood -= built * HOUSE_WOOD;
-      _cons(v, 'wood', built * HOUSE_WOOD);   // ★flow-EMA(주거 목재)
+      if (!_live) {
+        v.storage.wood -= built * _HW;
+        _cons(v, 'wood', built * _HW);   // ★flow-EMA(주거 목재)
+      }
       // ★유령 박멸(§9): 자갈 기초 — 기초·구들 채움(석재 수요의 ≤절반)은 채집 자갈이 하급 대체(PEBBLE_STONE_EQ). 석재 실절약.
-      const _needS = built * HOUSE_STONE;
+      const _needS = built * _HS;
       const _pebUse = Math.min(v.storage.pebble || 0, (_needS * 0.5) / PEBBLE_STONE_EQ);
       if (_pebUse > 0) v.storage.pebble -= _pebUse;   // ★flow-EMA 제외: 자갈 기초도 석재의 가용성 대체 소비(잔가지 동형)
       const _stUse = Math.min(v.storage.stone || 0, Math.max(0, _needS - _pebUse * PEBBLE_STONE_EQ));
@@ -5329,6 +5376,7 @@ module.exports = {
   RAW_GRAINS, RAW_GRAIN_FOOD_FACTOR,   // ★[T73] 계수를 하네스·계측기가 옮겨 적지 않게(사본 금지)
   farmFlowPerDay, farmLandBoost, harvestToGranary,   // ★[T100] 같은 이유 — 하네스·계측기가 앵커를 옮겨 적지 않는다
   fishToGranary, fishActOn, fishBudgetPerCell, T312_FISH_ACT,   // ★[T312] 어부 행위 — 생활층이 부르는 문 셋 + 손잡이(하네스가 옮겨 적지 않는다)
+  T400_BUILD_ACT, buildActOn, actFromGranary, hutEconMaterials, hutEconStage, hutStageCount, hutCapPerHut, houseCostPerCap,   // ★[T400] 집 행위 — 하네스·생활층이 표·유도를 옮겨 적지 않게 내준다
   actToGranary, woodToGranary, woodActOn, woodRegrowR, woodRegrowPerDay, T325_WOOD_ACT,
   forageToGranary, forageActOn, forageActItemsOf, foragerYieldsFor, T347_FORAGE_ACT,   // ★[T347] 채집 행위 — 문 셋 + 믹스 정본 + 손잡이(하네스가 표를 옮겨 적지 않는다)
   actDemandLeft, actDemandCap, fishDemandLeft, woodDemandLeft, forageDemandLeft, T374_DEMAND_STOP,

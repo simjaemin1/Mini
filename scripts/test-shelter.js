@@ -264,10 +264,12 @@ console.log('\n⑦ 재료·크기를 발명하지 않았다 — 움집에서 유
   ok(need.pillar === 6 && need.rafter === 8 && need.fiber === 6 && need.thatch === 8,
     '⑦ ★재료가 움집 ②③④ **그대로**다', JSON.stringify(need));
   // 소스 대조 — HUT_STAGES 의 그 수와 같은가(두 표가 갈리면 빨개진다)
-  const hut = zsrc.slice(zsrc.indexOf('const HUT_STAGES'), zsrc.indexOf('function tryHutStart'));
-  ok(/pillar: 6/.test(hut) && /rafter: 8, fiber: 6/.test(hut) && /thatch: 8/.test(hut),
-    '⑦ ★움집 정본의 수와 대조 — 같다(한쪽이 바뀌면 이 줄이 빨개진다)');
-  ok(/PSITE_COST = \{ pillar: 6, rafter: 8, thatch: 8 \}/.test(zsrc),
+  //   ★[T400] 움집 공정의 정본은 `server/hut-stages.js` 다(zone.js 는 부른다) — 그 표에 직접 묻는다.
+  const HS = require(path.join(__dirname, '..', 'server', 'hut-stages.js'));
+  const hn = Object.assign({}, ...HS.HUT_STAGES.map((s) => s.need));
+  ok(hn.pillar === need.pillar && hn.rafter === need.rafter && hn.fiber === need.fiber && hn.thatch === need.thatch && /const HUT_STAGES = HutStages\.HUT_STAGES;/.test(zsrc),
+    '⑦ ★움집 정본의 수와 대조 — 같다(한쪽이 바뀌면 이 줄이 빨개진다)', JSON.stringify(hn));
+  ok(JSON.stringify(HS.PSITE_COST) === JSON.stringify({ pillar: 6, rafter: 8, thatch: 8 }) && /const PSITE_COST = HutStages\.PSITE_COST;/.test(zsrc),
     '⑦ 같은 수가 이미 한 번 더 쓰이고 있다(`PSITE_COST`) — 새 눈금이 아니라 세 번째 재사용');
 }
 

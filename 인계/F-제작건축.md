@@ -4,6 +4,19 @@
 > 원문은 `_아카이브_2026-08_다음세션_인계.md` 에 그대로 동결돼 있다(족보 · 삭제 금지).
 > 이사할 때 **문장을 한 글자도 안 고쳤다** — 낡아 보이는 줄엔 `[낡음? 확인 필요]` 표만 붙였다.
 
+## T400-표. ★★2026-09-26 — **움집 공정·자재 표는 `server/hut-stages.js` 하나다**(zone·econ·랩 번들·하네스가 읽는다 · 사본 0)
+
+* **정본** — `HUT_STAGES`(① 굴착 · ② 기둥 6 · ③ 서까래 8·풀 6 · ④ 이엉 8) + `HUT_RECIPES`(기둥 = 통나무 3 · 서까래 = 통나무 1 → 2 · 이엉 = 풀 4)
+  + 유도 셋: `PSITE_COST`(선납 중간재 · 기둥 6·서까래 8·이엉 8) · `stageRaw(i)`(단계별 원자재) · `hutRaw()`(한 채 = **통나무 22 · 풀 38**).
+  `zone.js` 는 `HUT_STAGES = HutStages.HUT_STAGES` · `PSITE_COST = HutStages.PSITE_COST` · `ITEM_RECIPES` 에 `...HutStages.HUT_RECIPES`(키 순서 불변).
+* **econ 이 읽는다**(`sim/economy-sim.js` `hutEconMaterials`·`hutEconStage` — econ 재화만: 통나무 18·4 · 풀은 econ 재화가 아니라 0).
+  손잡이 `T400_BUILD_ACT` 켬일 때만 집 단가 = 표 ÷ 채당 정원(`village-layout` 6×1) = 통나무 3.667/인 · 석재 0. 끔이면 `HOUSE_WOOD 1.5`·`HOUSE_STONE 2.5` 그대로(대조 자).
+* **표 한 줄을 바꾸면 전부 따라온다** — `test-build-act ①` 이 자식 프로세스에서 기둥 7·석재 5 로 고쳐 econ 이 25·5/6 을 내는지 본다.
+* 브라우저 번들(`build-econ-bundle.js`)이 `hut-stages`·`village-layout` 을 싣는다(`village-layout` 은 `window` 를 가려 `window.VillageLayout` 을 안 덮는다).
+* 쉼터 표(`SHELTER_STAGES`)도 **움집 표 ②③④ 에서 유도**한다(`HUT_STAGES.slice(1)` · 라벨 번호만 ①②③ · 값·글자 종전과 같음 — `test-shelter` 47).
+* 텍스트로 표를 읽던 하네스 넷(`test-psite-server`·`test-shelter`·`test-itemlabel`·`t361-build-days`)은 `hut-stages.js` 를 require 로 읽게 고쳤다(수 단언 그대로).
+* 회부: #61(서버 표가 정본 — PM 권고 · 재민 거부권 · 뒤집히면 이 파일 한 줄) · 석재 실물 수요(화덕·석기·석축 — PM) · 플레이어 집이 같은 표인지 실기(재민).
+
 ## 다른 영역에 있는 관련 절
 
 * → 참조: `인계/W-월드질의.md` — 3-j. ★2026-08-04d 배치 18 — **건축 제대로**: 방 판정 · 자동 지붕 · 다층 (재민 "건축 제대로 하자

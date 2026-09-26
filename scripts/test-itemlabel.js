@@ -74,6 +74,12 @@ for (const [name, re] of COST_TABLES) {
     for (const kv of mm[1].matchAll(/([A-Za-z_][\w]*)\s*:\s*\d/g)) costKeys.add(kv[1]);
   }
 }
+// ★[T400] 움집 중간재 레시피 셋은 `server/hut-stages.js` 로 옮겨 갔다(zone.js 는 펼쳐 넣는다) — 그 표의 재료 키도 센다(덜 세지 않게).
+try {
+  const HS = require(path.join(ROOT, 'server', 'hut-stages.js'));
+  for (const r of Object.values(HS.HUT_RECIPES || {})) for (const k of Object.keys(r.from || {})) costKeys.add(k);
+  for (const st of HS.HUT_STAGES || []) for (const k of Object.keys(st.need || {})) costKeys.add(k);
+} catch (e) { console.log(`    (hut-stages.js 로드 실패 — 그만큼 덜 센다: ${e.message})`); }
 try {
   const Salt = require(path.join(ROOT, 'server', 'salt.js'));
   for (const k of Object.keys(Salt.potCost ? Salt.potCost(Object.keys(Salt.RECIPES || {})[0]) : {})) costKeys.add(k);

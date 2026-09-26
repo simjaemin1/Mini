@@ -151,7 +151,8 @@ console.log('\n⑤ ⓑ 헤드리스 — 켜면 이 마을 밭은 **몸이 한다
   const hl = bodyOf(VC, '_lifeHeadlessDay');
   ok(/const _body = _t368Walk\(\) && _t368ZoneAwake\(vil\);/.test(hl) && /if \(!_body\) _lifeClearDay\(vil, farmerN\);/.test(hl) && /if \(!_body\) lifeFarmDay\(vil, day, farmerN\);/.test(hl),
     '⑤ ★★두 절이 **같은 한 판정**(`_t368Walk() && _t368ZoneAwake`) 뒤에 선다 — 개간 · 작물');
-  ok(/if \(vil\._site\) \{ let st = Math\.min\(LIFE_CREW, popN\) \* LIFE_STAGE_PDAY;/.test(hl),
+  //   ★[T400] 집 절에 집 행위 손잡이 가드(`&& !_lifeEcon().T400_BUILD_ACT`)가 붙었다 — 농부 판정(`_body`)과 무관한 것은 그대로다.
+  ok(/if \(vil\._site(?: && !_lifeEcon\(\)\.T400_BUILD_ACT)?\) \{ let st = Math\.min\(LIFE_CREW, popN\) \* LIFE_STAGE_PDAY;/.test(hl) && !/_body[^\n]*LIFE_STAGE_PDAY/.test(hl),
     '⑤ ② 신축은 **그대로**다(농부 몫이 아니다 — 직업 무관 크루 · T361 칸)');
   //   ★깨어 있나 = 반경 **무한**의 `anyViewerNear`(zone.js idle 판정이 보는 두 명부 — 사람 player · 관측자) · 새 문 0
   ok(/function _t368ZoneAwake\(vil\) \{ const f = state\.deps && state\.deps\.anyViewerNear; return !!\(f && f\(\{ x: vil\.ccx \* SZ \+ SZ \/ 2, y: vil\.ccy \* SZ \+ SZ \/ 2 \}, Infinity\)\); \}/.test(VC),
