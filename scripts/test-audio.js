@@ -535,9 +535,30 @@ console.log('\n⑧ ★[T292] 리미터 — 셈이 아니라 실측');
   ok(typeof L.knee === 'number' && L.knee > 0 && L.knee < 1, `⑧a 문턱이 표에 있다(0<knee<1)`, `knee ${L.knee}`);
   ok(typeof M.worstPeak === 'number', `⑧b 실측 최악 피크가 표에 있다`, `${M.worstPeak} (${M.worstPeakDb} dBFS)`);
   const kneeHolds = (peak) => typeof peak === 'number' && L.knee > peak;   // ⑧c 와 ⑧g 가 **같은 술어**를 쓴다
-  ok(kneeHolds(M.worstPeak),
-     '⑧c ★★문턱이 **실측 최악 피크보다 위**다 — 평소엔 리미터가 한 번도 안 문다',
-     `${L.knee} > ${M.worstPeak} · 여유 ${(20 * Math.log10(L.knee / M.worstPeak)).toFixed(2)}dB`);
+  // ⑧c ★★[T431] 두 갈래 — ⓐ 문턱이 실측 최악 위(평소엔 리미터가 한 번도 안 문다) **또는** ⓑ 실측이 문턱을 넘었다면
+  //   **넘은 묶음·시각이 표에 적혀 있고**(`overKnee` · 최악 묶음이 그 안에 있다) 리미터를 낀 판이 클리핑 0 · 1 아래로 잡는다.
+  //   ⚠문턱 값은 무변(0.8 · T412 ⑧c). T431 짐승 판이 **실제로 넘었다**(늑대 둘이 한 창에 무는 순간) — 그걸 초록으로 숨기지도,
+  //     문턱을 올려 없애지도 않는다: 넘는 창을 표에 적고 "어느 묶음을 줄이나"는 재민 판정으로 넘긴다(보고 §4).
+  const sigOf = (a) => (a || []).slice().sort().join('+');
+  const c8Of = (X) => {                                                // ⑧c·⑧c2·⑧g 가 **같은 판정**을 쓴다
+    const o = X.overKnee || {};
+    const rec = Array.isArray(o.rows) && o.rows.some((r) => r && r.sig === sigOf(X.worstCombo) && Array.isArray(r.atMin) && r.atMin.length > 0);
+    const lim = typeof X.worstPeakLim === 'number' && X.worstPeakLim < 1 && X.clippedAtWorst === 0;
+    return kneeHolds(X.worstPeak) || (rec && lim);
+  };
+  const OK_ = M.overKnee || {};
+  const c8 = c8Of(M);
+  ok(c8,
+     kneeHolds(M.worstPeak) ? '⑧c ★★문턱이 **실측 최악 피크보다 위**다 — 평소엔 리미터가 한 번도 안 문다'
+       : '⑧c ★★실측이 문턱을 **넘었다** — 넘는 묶음·시각이 표에 있고(`overKnee`) 리미터를 낀 판이 클리핑 0 으로 잡는다(문턱 무변 · 회부)',
+     kneeHolds(M.worstPeak) ? `${L.knee} > ${M.worstPeak} · 여유 ${(20 * Math.log10(L.knee / M.worstPeak)).toFixed(2)}dB`
+       : `없이 ${M.worstPeak} > ${L.knee} · 끼고 ${M.worstPeakLim} · 클리핑 ${M.clippedAtWorst} · 넘는 창 ${OK_.windows} · 묶음 ${(OK_.rows || []).length}`);
+  // ⑧c2 자명 통과 금지 — 문턱 밖 최악에 ① 다른 묶음의 기록 ② 리미터가 못 잡는(클리핑) 판을 먹이면 ⓑ 갈래가 **안 선다**
+  const over = { worstCombo: ['hit_body', 'wind'], worstPeak: 0.9, worstPeakLim: 0.77, clippedAtWorst: 0, overKnee: { rows: [{ sig: 'hit_body+wind', atMin: [1] }] } };
+  const b1 = Object.assign({}, over, { overKnee: { rows: [{ sig: 'wind', atMin: [1] }] } });
+  const b2 = Object.assign({}, over, { worstPeakLim: 1.02, clippedAtWorst: 3 });
+  ok(c8Of(over) && !c8Of(b1) && !c8Of(b2), '⑧c2 자명 통과 금지 — ⓑ 갈래는 **최악 묶음의 기록 + 클리핑 0** 일 때만 선다(다른 묶음 기록 · 클리핑 판은 빨강)',
+     `본보기 ${c8Of(over)} · 다른 묶음 ${c8Of(b1)} · 클리핑 ${c8Of(b2)}`);
   // ⑧d ★실측이 **지금 키 표**를 잰 것인가 — 키를 더하고 다시 안 재면 여기서 문다
   const sounding = keyNames.filter((k) => KEYS[k].file).length;
   ok(M.soundingKeys === sounding,
@@ -573,9 +594,10 @@ console.log('\n⑧ ★[T292] 리미터 — 셈이 아니라 실측');
   //   이제 **잰 미끼**를 같은 술어에 넣는다: `_실측.bait` = 문턱을 실제로 넘는 조합(리미터 없이 잰 값).
   //   ⑧c 의 술어가 그 미끼를 **빨갛게** 판정해야 자가 산 것이다(미끼가 초록이면 술어가 아무거나 통과시킨다).
   const B = M.bait || {};
-  ok(typeof B.peak === 'number' && Array.isArray(B.combo) && B.combo.length > 0 && !kneeHolds(B.peak) && kneeHolds(M.worstPeak),
-     '⑧g ★자명 통과 금지 — ⑧c 와 **같은 술어**가 잰 미끼(문턱 넘는 조합)는 빨갛게, 최악 조합은 초록으로 판정한다',
-     `미끼 ${(B.combo || []).length}키 ${B.peak} → ${kneeHolds(B.peak) ? '초록(자가 죽었다)' : '빨강'} · 최악 ${M.worstPeak} → ${kneeHolds(M.worstPeak) ? '초록' : '빨강'}`);
+  //   [T431] 최악 조합 쪽은 ⑧c 의 판정 그대로 본다(실측이 문턱을 넘은 판은 ⓑ 갈래 — 술어 `kneeHolds` 자체는 무변).
+  ok(typeof B.peak === 'number' && Array.isArray(B.combo) && B.combo.length > 0 && !kneeHolds(B.peak) && c8,
+     '⑧g ★자명 통과 금지 — ⑧c 와 **같은 술어**가 잰 미끼(문턱 넘는 조합)는 빨갛게, 최악 조합은 ⑧c 판정대로 본다',
+     `미끼 ${(B.combo || []).length}키 ${B.peak} → ${kneeHolds(B.peak) ? '초록(자가 죽었다)' : '빨강'} · 최악 ${M.worstPeak} → ${kneeHolds(M.worstPeak) ? '문턱 안' : '문턱 밖(⑧c ⓑ)'}`);
   ok(!!(B.combo || []).length && (B.combo || []).every((k) => KEYS[k]), '⑧g2 미끼 조합의 키가 전부 표에 있다(없는 키로 잰 미끼는 거짓)', (B.combo || []).join(' '));
 }
 
@@ -1216,6 +1238,30 @@ console.log('\n⑱ ★★[T417] 동물 · 제작 완료 · 반경');
   ok(posKeys.size >= 20 && flat.length === 0, '⑱a ★★자리로 부르는 표의 키 전부 반경 > 0(0 이면 존 반대편 소리가 귓가에서 최대 볼륨)', flat.join(' ') || `${posKeys.size}키`);
   const baitK = Object.assign({}, KEYS, { axe: Object.assign({}, KEYS.axe, { radius: 0 }) });   // 종전 표 그대로의 미끼
   ok(JSON.stringify(flatOf(baitK)) === JSON.stringify(['axe']), '⑱a2 자명 통과 금지 — 같은 술어에 `axe` 반경 0(종전 표)을 먹이면 **그 키 하나**를 잡는다', flatOf(baitK).join(' '));
+  // ⑱a3 ★★[T431 ③] **63키 전수** — ⑱a 는 자리로 부르는 표(16)에 든 키만 봤다(29). 나머지 34 는 두 갈래다:
+  //   ⓐ 자리 없이 부르는 게 **맞는** 소리(아래 명시 목록 · 까닭 한 줄씩) ⓑ 지금 배선이 없는 **후보**·지형 반복 — 이들도 반경 > 0 이어야 한다
+  //   (후보는 재민이 1번과 바꾸는 날 1번의 자리를 그대로 물려받는다 · `downed_b` 가 반경 0 이었다 — T431 이 찾은 넷째).
+  //   ⇒ 규칙 하나: **명시 목록 밖의 키는 전부 반경 > 0**. 목록 안의 키는 자리로 부르는 표에 들면 안 된다.
+  const SELF = {
+    step_dirt: '내 발 — `step` 이 자리 없이 부른다(듣는 사람의 몸)', step_grass: '내 발', step_stone: '내 발', step_floor: '내 발(실내)',
+    step_floor_b: '내 발 후보', step_yard: '내 발(마당)', step_yard_b: '내 발 후보', step_farm: '내 발(밭)', step_farm_b: '내 발 후보',
+    eat: '내가 먹는다 — `gauges.ate` 는 내 전문에만 온다',
+    wind: '들판 전체의 바람(환경 반복 · 세기 = 계절풍)', rain: '하늘 전체의 비(환경 반복)', rain_light: '하늘 전체의 약한 비(환경 반복)',
+    bird: '숲 둘레 새(환경 반복 · 나무 수로 켠다 — 자리는 "내 둘레" 그 자체)',
+    thunder: '하늘 — 천둥은 한 자리에서 안 난다(후보 · 세계가 천둥을 안 보낸다)', thunder_b: '하늘(후보)',
+  };
+  const allK = Object.keys(KEYS).filter((k) => !k.startsWith('_'));
+  const selfInPos = Object.keys(SELF).filter((k) => posKeys.has(k));
+  const selfGhost = Object.keys(SELF).filter((k) => !KEYS[k]);
+  const flatAll = (K) => allK.filter((k) => !SELF[k] && !(K[k] && K[k].radius > 0));
+  ok(allK.length === 63 && selfInPos.length === 0 && selfGhost.length === 0 && flatAll(KEYS).length === 0,
+     `⑱a3 ★★63키 전수 — 자리 표 ${posKeys.size} · 자기/환경 ${Object.keys(SELF).length}(명시) · 나머지 ${allK.length - posKeys.size - Object.keys(SELF).length}(후보·지형) 전부 반경 > 0`,
+     [flatAll(KEYS).join(' '), selfInPos.join(' '), selfGhost.join(' ')].filter(Boolean).join(' | ') || `${allK.length}키`);
+  ok(/sfxPlay\('eat'\)/.test(layerCode) && !/sfxPlay\('eat',/.test(layerCode) && /sfxPlay\(sfxGroundKey\(\)\)/.test(layerCode),
+     '⑱a3b 명시 목록의 근거 — `eat`·발자국은 코드에서 **자리 없이** 불린다(목록이 거짓말이면 빨갛다)');
+  const baitB = Object.assign({}, KEYS, { downed_b: Object.assign({}, KEYS.downed_b, { radius: 0 }) });   // T431 전의 표 그대로
+  ok(JSON.stringify(flatAll(baitB)) === JSON.stringify(['downed_b']) && JSON.stringify(flatOf(baitB)) === '[]',
+     '⑱a4 자명 통과 금지 — 종전 `downed_b` 반경 0 을 먹이면 ⑱a3 은 **그 하나**를 잡고 ⑱a(자리 표만)는 못 잡는다', flatAll(baitB).join(' '));
   // ⑱b 종 울음 — 표의 종이 서버 동물 목록에 있다(새 종 0)
   const A = require(path.join(ROOT, 'server', 'animals.js')).ANIMALS;
   const sp = Object.keys(man.mobs || {}).filter((k) => !k.startsWith('_'));
