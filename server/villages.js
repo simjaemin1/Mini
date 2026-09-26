@@ -2757,12 +2757,17 @@ function init(deps) {
       food: { consumeFood: econ.consumeFood, totalFoodEquivalent: econ.totalFoodEquivalent },
       // ★[2파 작전층] 실체 개전 훅 — assault/sortie '결단' 시점에만 호출(자동 개전 없음).
       //   ★[T284] 관측자 조건 폐지 — 전쟁은 항상 실체다. true = 전진 명령(w.phase='battle' = 교전 중 표식).
+      // ★[T423] 짐이 먹는다 — 하루 경계에 몸이 제 짐에서 먹고(`_warRationEat` → 거울 일수) · 귀환 도착에 남은 짐을 모은다.
+      //   손잡이 `T423_RATION_ACT` 끔이면 war-core 가 이 둘을 부르지 않는다(종전 장부 = 비트 동일).
+      rationEat: (w, day) => { try { return _warRationEat(w, day); } catch (e) { console.error(`[${state.zoneId}] 🍙 [T423] 먹기 실패(그날은 장부로):`, e.message); return null; } },
+      rationCollect: (w) => _warRationCollect(w),
       onEngage: (w, day, why) => {
         try { return _warEngage(w, day, why); }
         catch (e) { state._warStat.engageErr++; console.error(`[${state.zoneId}] ⚔️ 교전 훅 실패(이 전투만 war-core 정산으로 떨어진다):`, e.message); return false; }
       },
     });
     state.war.rebuildFromEcon();   // 재부팅 복원: econ._warTribOut → world TRIBUTES 재구성
+    if (state.war.rationActOn && state.war.rationActOn()) console.log(`[${state.zoneId}] 🍙 [T423] 짐이 먹는다 켬 — 원정 팩은 병사 몸의 짐 · 하루 경계에 몸이 먹는다 · 원정군은 마을 식사에서 빠진다`);
 
     // --- 실체 전쟁 기하(server/war-live) — 대형·교전 · 좌표 = 존(1셀 = 1m = 32px · zone.js "32px=1m") ---
     //   정산 함수는 war-core warResolveBattle(3인자) 그대로 — 계기(궤주·철수)만 교전이 본다.
@@ -3321,6 +3326,7 @@ function _warInstantiateAttackers(body) {
   const g = WL.buildGroup(d.units, WL._muCompForm(w.composition), { cx: body.cmd.cx, cy: body.cmd.cy }, body.heading, seed);
   if (!g) return; g.cmd = { cx: body.cmd.cx, cy: body.cmd.cy }; g.heading = body.heading; g.detour = _warDetourFor(body);
   body.atkGroup = g; body.pids = d.pids; _warSnapToSlots(g);
+  _warRationLoad(body);   // ★[T423] 팩을 몸의 짐으로(끔이면 아무것도 안 한다)
   _warEnsureFight(body); _warEnlistGroup(body, g, 'A');
   _warSyncMeta(g, 0, false);
 }
@@ -3464,6 +3470,7 @@ function _warEndFight(body, why, winner) {
     const n = Math.min(w._capResolve.npcs.length, loserDead.length);
     for (let k = 0; k < n; k++) {
       const pid = loserDead.pop(); const p = players.get(pid); if (!p) continue;
+      if (w._capResolve.side === 'A') _warBagDrop(w, p);   // ★[T423] 끌려가는 병사의 짐은 전장에 남는다(드랍)
       p.simCaptive = 1; p._brout = false; p.hp = Math.max(1, Math.round((p.maxHp || 100) * 0.4));
       const oldVil = (p.simVillageId != null) ? state.byDbId.get(p.simVillageId) : null;
       if (oldVil) { const kk = oldVil.npcPids.indexOf(pid); if (kk >= 0) oldVil.npcPids.splice(kk, 1); }
@@ -3472,6 +3479,7 @@ function _warEndFight(body, why, winner) {
     }
     w._capResolve = null;
   }
+  for (const pid of deadA) _warBagDrop(w, players.get(pid));   // ★[T423] 전사자의 짐은 몸과 함께 떨어진다(드랍 — 궤주 규칙 자리)
   for (const pid of deadA) _warDespawnPid(pid);
   for (const pid of deadB) _warDespawnPid(pid);
   if (f && f.engagedOnce) { try { _warBroadcastBattle(body, state._warTickAt || Date.now(), 'resolved'); } catch (_) { } }
@@ -3533,7 +3541,76 @@ function _warReleasePid(pid) {
   p._wpx = undefined; p._wpy = undefined;
   p.hp = p.maxHp || 100; p.vx = 0; p.vy = 0; npcs.add(pid);
 }
+// ════════════════════════════════════════════════════════════════
+// ★★[T423 2026-09-26 · 군량 = 행위 ⓐ · PM #68] **짐이 먹는다** — 설계_군량_행위 §1-ⓐ 그대로.
+//   ① 싣기: `_opPackLoad` 가 곳간에서 뗀 팩(품목별)을 공격 몸(표본 pid)의 `inventory` 로 나눠 싣는다(`packSplit` · 몸당 = 병력 ÷ 몸).
+//   ② 먹기: war-core 가 종전 `_packRem −= 1` 을 하던 **그 하루 경계**에서 우리를 부른다 — 살아 있는 짐꾼 몸마다
+//      몫(병력 ÷ 몸 × WAR_RATION)을 제 짐에서 먹는다(`bodyEat` = 싣기와 같은 `_warFoodTake` · 섭식 정본이 품목을 고른다).
+//      `_packRem` 은 짐 합의 거울(일수)로 돌려준다 — 결단 식(`WAR_PACK_CRIT`·소모전 비교)은 한 글자도 안 바뀐다.
+//      사기 항 `ration` = 오늘 먹을 몫이 짐에 있나(짐 ÷ (짐꾼 병력 × 하루치) · 0~1) — **매일** 다시 적는다(T295 단위 결함 닫힘).
+//   ③ 내려놓기: 집에 닿아 풀려나는 몸(`_warCleanupBody` 해제)과 war-core 귀환 도착(`rationCollect`)이 `_warFoodGive` 한 문으로.
+//   ④ 드랍: 전사·포로가 된 병사의 짐은 몸과 함께 전장에 남는다(곳간으로 안 돌아온다 — 종전 "전사자 몫 제외" 와 같은 값).
+//   ⚠몸은 짐을 **품목 칸만** 본다(`w._packKeys`) — 어부가 들고 있던 제 고기는 군량이 아니다.
+//   ⚠NPC 몸은 허기 게이지가 면제다(zone 생존 게이지 루프 `if (p.isNpc) … HUNGER_MAX`) — 그래서 이 층이 옮기는 것은 **짐이 준다는 사실**이다.
+function _warPackCtx(w) { const A = w && w.atk && w.atk.econ; return { _priceCache: A && A._priceCache, _world: A && A._world }; }
+function _warBagView(p, keys) { const inv = p && p.inventory; const v = {}; if (!inv) return v; for (const k of keys) { const q = inv[k] || 0; if (q > 0) v[k] = q; } return v; }
+function _warBagWrite(p, keys, v) { if (!p.inventory) p.inventory = {}; for (const k of keys) { const q = v[k] || 0; if (q > 1e-9) p.inventory[k] = q; else delete p.inventory[k]; } }
+function _warRationLoad(body) {
+  const w = body && body.w, WC = state.war; if (!w || !WC || !WC.packSplit || !WC.rationActOn || !WC.rationActOn()) return 0;
+  const players = state.deps.players, bearers = (body.pids || []).map(pid => players.get(pid)).filter(Boolean);
+  const one = WC.packSplit(w, bearers.length); if (!one) return 0;
+  for (const p of bearers) { const cur = _warBagView(p, w._packKeys); for (const k in one) cur[k] = (cur[k] || 0) + one[k]; _warBagWrite(p, w._packKeys, cur); p._warPackOf = w.id; }
+  if (w._rationBook) w._rationBook.bearers = bearers.length;
+  return bearers.length;
+}
+function _warBearers(w, body) {
+  const players = state.deps.players, out = [];
+  for (const pid of ((body && body.pids) || [])) { const p = players.get(pid); if (p && p._warPackOf === w.id && (p.hp == null || p.hp > 0)) out.push(p); }
+  return out;
+}
+function _warRationEat(w, day) {
+  const WC = state.war; if (!w || !w._packOnBodies || !WC || !WC.bodyEat) return null;
+  const body = state.warBodies && state.warBodies.get(w.id);
+  const ctx = _warPackCtx(w), keys = w._packKeys || [], need = (w._packShare || 0) * (state.warCore ? state.warCore.WAR_RATION : 1);
+  const bearers = _warBearers(w, body);
+  let eaten = 0, left = 0;
+  for (const p of bearers) {
+    const bag = _warBagView(p, keys);
+    const r = WC.bodyEat(bag, need, ctx); eaten += r.got || 0;
+    _warBagWrite(p, keys, bag); left += WC.bagFE(bag, ctx);
+  }
+  const perDay = (w.force || 0) * (state.warCore ? state.warCore.WAR_RATION : 1);
+  const bk = w._rationBook; if (bk) { bk.eaten += eaten; if (bk.days.length < 64) bk.days.push({ day, bearers: bearers.length, eaten: +eaten.toFixed(4), left: +left.toFixed(4) }); }
+  // 사기 항 — 오늘 몫이 짐에 있나(짐꾼 병력 기준 · 0~1). 교전 몸이 있으면 그 판의 편 값에 바로 적는다.
+  const needNow = bearers.length * need;
+  const ration = needNow > 0 ? Math.max(0, Math.min(1, left / needNow)) : 0;
+  w._ration = ration;
+  if (body && body.fight && body.fight.ctx && body.fight.ctx.sides && body.fight.ctx.sides.A) body.fight.ctx.sides.A.ration = ration;
+  return perDay > 0 ? left / perDay : 0;
+}
+function _warRationLayDownBody(body) {
+  const w = body && body.w, WC = state.war; if (!w || !w._packOnBodies || !WC || !WC.rationLayDown) return 0;
+  const players = state.deps.players, keys = w._packKeys || [], items = {};
+  for (const pid of (body.pids || [])) { const p = players.get(pid); if (!p || p._warPackOf !== w.id) continue; const bag = _warBagView(p, keys); for (const k in bag) items[k] = (items[k] || 0) + bag[k]; _warBagWrite(p, keys, {}); delete p._warPackOf; }
+  let n = 0; for (const k in items) n += items[k];
+  return n > 0 ? WC.rationLayDown(w, items) : 0;
+}
+function _warRationCollect(w) {
+  const body = state.warBodies && state.warBodies.get(w.id); if (!body) return null;
+  const players = state.deps.players, keys = w._packKeys || [], items = {};
+  for (const pid of (body.pids || [])) { const p = players.get(pid); if (!p || p._warPackOf !== w.id) continue; const bag = _warBagView(p, keys); for (const k in bag) items[k] = (items[k] || 0) + bag[k]; _warBagWrite(p, keys, {}); delete p._warPackOf; }
+  return Object.keys(items).length ? items : null;
+}
+function _warBagDrop(w, p) {
+  if (!w || !p || !w._packOnBodies || p._warPackOf !== w.id || !state.war || !state.war.bagFE) return 0;
+  const keys = w._packKeys || [], bag = _warBagView(p, keys), fe = state.war.bagFE(bag, _warPackCtx(w));
+  _warBagWrite(p, keys, {}); delete p._warPackOf;
+  if (w._rationBook) w._rationBook.drop += fe;
+  return fe;
+}
+
 function _warCleanupBody(body, releaseRemaining) {
+  if (releaseRemaining) _warRationLayDownBody(body);   // ★[T423] 집에 닿은 몸이 짐을 내려놓는다(풀려나기 전에 · 끔이면 0)
   if (releaseRemaining) { for (const pid of (body.pids || [])) _warReleasePid(pid); for (const pid of (body.defPids || [])) _warReleasePid(pid); }
   state.warBodies.delete(body.w.id);
 }
@@ -4103,7 +4180,8 @@ function __p3Bind(mock) {
     state, tickWarBodies, warThreats, syncVillagePop, removeOneNpc, spawnOneNpc,
     _warEngage, _warAfterDaily, _warEndFight, _warBuildRectIndex, _warBlockedCell, _warWorld, warPerf, _warOrderFallback, _warToStandoff,
     _warDraftPids, _warReleasePid, econDayToMs, _warEnsureBody, _warSampleComp, _vbFootprint,
-    threatOf, _warWriteThreats, _warOutMul, _lifeJobSites, _lifeJobSiteOK, _warRoutePts, _warTreeCell, computeRoutePts,   // ★[T329] 위협 T·현장 반경 — 하네스가 **이 함수들**을 그대로 부른다(사본 0)
+    threatOf, _warWriteThreats, _warOutMul, _lifeJobSites, _lifeJobSiteOK, _warRoutePts, _warTreeCell, computeRoutePts,
+    _warRationEat, _warRationCollect, _warRationLoad,   // ★[T423] 짐이 먹는다 — 하네스가 **이 함수들**을 war-core 에 건다(운영과 같은 두 훅)   // ★[T329] 위협 T·현장 반경 — 하네스가 **이 함수들**을 그대로 부른다(사본 0)
   };
 }
 
