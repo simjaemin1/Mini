@@ -383,12 +383,15 @@ function pxDiff(a, b) {
     for (const c of conns.values()) for (const r of c.resources.values()) { ids.push(r.id); ch.add(Math.floor(r.x / 1024) + '_' + Math.floor(r.y / 1024)); }
     return { ids, ch: [...ch] };
   });
-  const before = await snap();
-  await page.evaluate(() => { window.__t392Rec = { spawn: [], gone: [] }; });
+  //   ⚠스냅샷과 장부 켜기는 **한 evaluate 안에서**(페이지는 한 줄기라 그 사이에 메시지가 못 끼어든다).
+  //     따로 부르면 그 틈에 온 없어짐이 장부에 안 적힌다 — 첫 판 전수 러너가 "장부 밖 1"로 그걸 잡았다.
+  const snapIn = `(() => { const ids = []; const ch = new Set();
+    for (const c of conns.values()) for (const r of c.resources.values()) { ids.push(r.id); ch.add(Math.floor(r.x / 1024) + '_' + Math.floor(r.y / 1024)); }
+    return { ids, ch: [...ch] }; })()`;
+  const before = await page.evaluate((src) => { const s = eval(src); window.__t392Rec = { spawn: [], gone: [] }; return s; }, snapIn);
   await page.evaluate(() => _farWant(9000));   // 제품 길(ⓑ4 와 같은 이유)
   await page.waitForFunction(() => window.__t380Spy.doneAfterTrees >= 2, { timeout: 120000 }).catch(() => {});
-  const rec = await page.evaluate(() => { const R = window.__t392Rec; window.__t392Rec = null; return R; });
-  const after = await snap();
+  const { rec, after } = await page.evaluate((src) => { const R = window.__t392Rec; window.__t392Rec = null; return { rec: R, after: eval(src) }; }, snapIn);
   const ident = (B, A) => {
     const gone = new Set(rec.gone), sp = new Set(rec.spawn.map((x) => x[0]));
     const want = new Set(B.ids.filter((id) => !gone.has(id))); for (const id of sp) want.add(id);
