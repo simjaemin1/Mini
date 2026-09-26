@@ -1536,6 +1536,7 @@ function aggroPackmates(sourceWolf, targetPid) {
 //   ⇒ `cost` 를 정본으로 쓰고, 옛 `wood/stone` 표기는 그대로 두어 하위 호환(클라 표시 포함)을 지킨다.
 const CRUDE_EFF_FRAC = (() => { const x = parseFloat(process.env.CRUDE_EFF_FRAC || ''); return Number.isFinite(x) ? x : 0.5; })();
 const CRUDE_DURA_FRAC = (() => { const x = parseFloat(process.env.CRUDE_DURA_FRAC || ''); return Number.isFinite(x) ? x : 0.25; })();
+const StoneUses = require('./stone-uses');   // ★[T419] 돌 쓰는 실물 중 econ 짝이 있는 자리의 정본(작업대 장비 재료 수 · 조잡한 석기)
 const RECIPES = {
   axe:     { wood: 5, stone: 2, cost: { wood: 5, stone: 2 }, label: '도끼' },
   pickaxe: { wood: 3, stone: 5, cost: { wood: 3, stone: 5 }, label: '곡괭이' },
@@ -1543,14 +1544,8 @@ const RECIPES = {
   saw:     { wood: 2, stone: 4, cost: { wood: 2, stone: 4 }, label: '톱' },    // 통나무 → 판자 가공용
   hammer:  { wood: 3, stone: 3, cost: { wood: 3, stone: 3 }, label: '망치' },  // 건축 시 필수
   // ── ★★조잡한 석기 — **맨손으로, 주운 것만으로** [재민 확정 2026-08-28] ──────────────
-  //   재민 원문: *"돌멩이를 줍고 나뭇가지를 줍고"*. 빈손으로 도착한 사람이 **오늘을 버티게** 해 주는 물건이다.
-  //   고증: 청동기 후기에도 서민의 일상 도구는 돌이었고, 급하면 자갈을 깨 날을 세워 나뭇가지에
-  //   섬유로 동여맸다(뗀석기 급조). 위세축·청동과는 무관한 층이다 — 이걸 갖고 자랑하지 않는다.
-  //   ★★**명확히 나빠야 한다**: 효율은 정품이 준 이득의 절반(`CRUDE_EFF_FRAC`),
-  //     내구는 정품의 1/4(`CRUDE_DURA_FRAC`). 자급이 충분해지면 마을 장인 경제가 죽는다(듀랑고의 자급자족 병).
-  crude_axe:   { cost: { pebble: 2, twig: 1, fiber: 2 }, label: '조잡한 돌도끼', crude: true },
-  crude_pick:  { cost: { pebble: 3, twig: 1, fiber: 2 }, label: '조잡한 돌괭이', crude: true },
-  crude_blade: { cost: { pebble: 2, twig: 1, fiber: 1 }, label: '조잡한 돌칼',   crude: true },
+  //   ★[T419] 세 줄(crude_axe · crude_pick · crude_blade)의 정본은 `server/stone-uses.js` 다 — econ 막석기가 같은 표로 재료를 유도한다(사본 0 · 값·순서 무변).
+  ...StoneUses.CRUDE_TOOLS,
 };
 // 14.50: 자원 변환 레시피 (도구 필요). saw로 통나무→판자.
 const HutStages = require('./hut-stages');   // ★[T400] 움집 공정·자재 정본 하나(econ 과 같은 표)
@@ -1693,8 +1688,8 @@ const EQUIPMENT_RECIPES = {
   // ★meteoric_iron(운철)은 **주조가 아니라 단조** 재료다 — 녹이지 않고 두들긴다(cast 목록엔 안 들어간다).
   //   accepts 에만 있으므로 단일 재료 경로(MAT_GRADE)를 탄다. 노도 시대도 필요 없다.
   armor:   { label: '갑옷', slot: 'armor',   skill: 'smithing',   qty: 4, cast: true, accepts: ['bronze','copper','iron','meteoric_iron','leather','hide'] },
-  weapon:  { label: '무기', slot: 'weapon',  skill: 'smithing',   qty: 3, cast: true, accepts: ['bronze','copper','iron','meteoric_iron','stone','wood','bone','obsidian'] },
-  tool:    { label: '도구', slot: 'tool',    skill: 'toolmaking', qty: 3, cast: true, accepts: ['bronze','copper','iron','meteoric_iron','stone','wood','bone'] },
+  weapon:  { label: '무기', slot: 'weapon',  skill: 'smithing',   qty: StoneUses.EQUIP_MAT_QTY.weapon, cast: true, accepts: ['bronze','copper','iron','meteoric_iron','stone','wood','bone','obsidian'] },
+  tool:    { label: '도구', slot: 'tool',    skill: 'toolmaking', qty: StoneUses.EQUIP_MAT_QTY.tool, cast: true, accepts: ['bronze','copper','iron','meteoric_iron','stone','wood','bone'] },
   // ★★[T12 지게 2026-09-01] **지게** — 이 표의 다섯째 줄이자 **다섯째 슬롯**이다.
   //   슬롯은 여기 적지 않고 `Carry.CARRIER_SLOT` 을 부른다: 상한을 더하는 쪽(carry)과 착용을 정하는 쪽(zone)이
   //   슬롯 이름을 **각자 적으면** 언젠가 한쪽만 고쳐져 "입었는데 안 올라간다"가 된다.
@@ -1706,6 +1701,7 @@ const EQUIPMENT_RECIPES = {
   //   (`Carry` 바인딩은 이 표보다 **아래**에서 생긴다 — require 는 캐시라 여기서 한 번 더 불러도 같은 객체다.)
   carrier: { label: '지게', slot: require('./carry').CARRIER_SLOT, skill: 'toolmaking', qty: 2, accepts: ['wood'], extra: { fiber: 2 } },
 };
+// ★[T419] 무기·도구 재료 수(qty)는 `server/stone-uses.js EQUIP_MAT_QTY` 가 정본이다 — econ 석공의 간석기·마제석검 돌 단가가 켬에서 그 수로 유도된다.
 // 제작 숙련: xp → 레벨(0~10). 유효 완성품 1개당 +1 xp(설계 §3 xp 원칙). 초반 빠르고 만렙 완만 — "레벨업하면 다음 제작품 수치가 오른다" 가시화.
 const CRAFT_XP_PER_LEVEL = 6; // 레벨당 6개 → 만렙 ~60개(플레이 스케일; econ NPC 2150노동일과 별개 척도).
 function craftLevel(xp) { return Math.max(0, Math.min(10, Math.floor((xp || 0) / CRAFT_XP_PER_LEVEL))); }
