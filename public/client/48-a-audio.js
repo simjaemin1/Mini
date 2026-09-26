@@ -35,7 +35,8 @@ let _sfxPanel = null;
 let _sfxScanAt = 0;
 let _sfxGroundCell = null;          // { k, kind } 발밑 지형 캐시(셀 하나)
 let _sfxWaterCell = null;           // ★[T283] { k, d } 가장 가까운 물 셀까지의 거리(내 셀이 바뀔 때만 다시 잰다)
-let _sfxWx = { precip: 0, indoor: false };   // ★[T283] 날씨 훅이 넣어 둔 마지막 값 — 새(bird) 게이트가 읽는다
+let _sfxWx = { precip: 0, indoor: false };
+let _sfxWxKind = null;   // ★[T397] 그리는 층이 마지막으로 정한 강수 종류('rain'|'snow') — 눈이면 빗소리 0   // ★[T283] 날씨 훅이 넣어 둔 마지막 값 — 새(bird) 게이트가 읽는다
 // ★`missing`(표에 파일이 없다 = 영영 무음) 과 `pending`(받는 중 = 곧 난다) 을 **갈라 센다** —
 //   한 칸에 뭉치면 진단이 "음원이 없다"와 "아직 안 왔다"를 구분 못 한다(실측에서 실제로 헷갈렸다).
 let _sfxStat = { played: 0, missing: 0, pending: 0, blocked: 0, loops: 0, noLimiter: 0 };
@@ -264,12 +265,16 @@ function sfxGroundKey() {
   const cell = (typeof window.__camCellLocal === 'function') ? window.__camCellLocal() : null;
   if (!cell) return 'step_dirt';
   const ck = cell[0] + ',' + cell[1];
-  if (_sfxGroundCell && _sfxGroundCell.k === ck) return _sfxGroundCell.v;
+  if (_sfxGroundCell && _sfxGroundCell.k === ck && _sfxGroundCell.n === sfxSurfaceVer()) return _sfxGroundCell.v;
   // ★★[T354] 지면 키는 **표**가 고른다(`ground`). 셋이 된 것은 재민 09-22 귀 판정이다 —
   //   "좋긴 한데 돌바닥 걷는 소리야"(옛 step_dirt) · "이게 흙바닥에 가까운데?"(옛 step_grass).
   //   CREDITS 가 T262 부터 달고 있던 "지면 표시가 팩에 없다 — 가설이다" 경고가 그 귀로 닫혔다.
   const G = (_sfxMan && _sfxMan.ground) || {};
   let v = G._기본 || 'step_dirt';
+  // ★★[T397] **발밑 표면 타일이 지형보다 먼저다** — 밭(`farmland`)·실내 바닥(`floor`)·마당(`vtile`)은 건물이라
+  //   `__tileStateAt` 이 모른다. 어느 타입이 어느 키인지·무엇이 먼저인지는 **표**(`surface` · `_순서`)가 정한다.
+  const surf = sfxSurfaceKeyAt(cell);
+  if (surf) { _sfxGroundCell = { k: ck, v: surf, n: _sfxSurfN }; return surf; }
   try {
     const ts = (typeof window.__tileStateAt === 'function') ? window.__tileStateAt(cell[0], cell[1]) : null;
     // 바위·산터 = 돌 — 이 술어는 `step_dirt` 의 `땅` 칸이 T261 부터 적어 두고도 **안 쓰던** 그것이다.
@@ -281,8 +286,39 @@ function sfxGroundKey() {
       if (t * t * (3 - 2 * t) * B.capG >= 0.5 && G.grass) v = G.grass;
     }
   } catch (e) { /* 지형이 아직 안 왔다 — 흙으로 둔다 */ }
-  _sfxGroundCell = { k: ck, v };
+  _sfxGroundCell = { k: ck, v, n: _sfxSurfN };
   return v;
+}
+// ★[T397] 표면 타일 셀 지도 — 주 연결의 `buildings` 에서 표(`surface`)에 있는 타입만 셀→타입으로 접는다.
+//   셀 환산은 지면 그리기가 쓰는 그 식(`Math.floor(b.x / 32)` · `10-r1-terrain _tsFarmSet`)이다. 층(`floor`)까지 같아야 밟는다.
+//   다시 접는 때: 건물 수가 바뀌거나 내 층이 바뀌면(버전 = 수 × 층). 매 걸음 훑지 않는다.
+let _sfxSurf = null, _sfxSurfN = -1;
+function sfxSurfaceVer() {
+  const c = (typeof conns !== 'undefined' && typeof primaryZoneId !== 'undefined') ? conns.get(primaryZoneId) : null;
+  const fl = (typeof myFloor !== 'undefined' && myFloor) || 0;
+  return c && c.buildings ? (c.buildings.size * 64 + fl) : -1;
+}
+function sfxSurfaceKeyAt(cell) {
+  const T = (_sfxMan && _sfxMan.surface) || null;
+  if (!T || !cell) return null;
+  const ver = sfxSurfaceVer();
+  if (ver < 0) return null;
+  if (ver !== _sfxSurfN) {
+    const c = conns.get(primaryZoneId);
+    const fl = (typeof myFloor !== 'undefined' && myFloor) || 0;
+    const order = Array.isArray(T._순서) ? T._순서 : [];
+    const rank = (t) => { const i = order.indexOf(t); return i < 0 ? 99 : i; };
+    const map = new Map();
+    for (const b of c.buildings.values()) {
+      if (!b || typeof T[b.type] !== 'string' || (b.floor || 0) !== fl) continue;
+      const k = Math.floor(b.x / 32) + ',' + Math.floor(b.y / 32);
+      const prev = map.get(k);
+      if (!prev || rank(b.type) < rank(prev)) map.set(k, b.type);
+    }
+    _sfxSurf = map; _sfxSurfN = ver;
+  }
+  const t = _sfxSurf.get(cell[0] + ',' + cell[1]);
+  return t ? T[t] : null;
 }
 
 // ── 물가까지의 거리 [T283] ─────────────────────────────────────────────────────
@@ -521,6 +557,20 @@ function initAudio() {
           return;
         }
       }
+      // ★★[T397] **맞음** — `hp_changed` 의 `why`(서버 `setHp` 가 받던 낱말 · T397 이 전문에 실었다)를 표(`hpWhy`)가 키로.
+      //   ⚠`why` 가 없는 옛 전문은 안 운다(짐작 0). 회복·먹기 낱말은 표에 없으니 안 운다.
+      //   자리 규칙은 `combat` 과 같다 — 나(주 연결) = 위치 없음 · 남 = `c.others` · 모르는 pid 는 무음.
+      const HW = _sfxMan.hpWhy || {};
+      if (HW.msgType && t === HW.msgType) {           // 메시지 이름도 표가 댄다(층 코드에 이름 0 — test-audio ⑮g)
+        const key = msg.why && HW[msg.why];
+        if (typeof key !== 'string') return;
+        const me = (typeof myPid !== 'undefined') ? myPid : null;
+        if (c && c.role === 'primary' && msg.pid === me) { sfxPlay(key); return; }
+        const o = (c && c.others) ? c.others.get(msg.pid) : null;
+        const ox = (c && c.meta && c.meta.worldOffsetX) || 0, oy = (c && c.meta && c.meta.worldOffsetY) || 0;
+        if (o && o.x != null) sfxPlay(key, { x: o.x + ox, y: o.y + oy });
+        return;
+      }
       // ★★[T321] **바닥에 떨어졌다** — 버리기도 죽어 쏟기도 이 한 방송으로 나온다(`zone.js:7728`).
       //   그래서 죽은 어부의 고기는 **플레이어가 떨어뜨리는 그 소리**로 난다 — 층이 묻지 않아도 그렇다.
       //   키는 표가 준다(`groundDrop.key` · 새 키 0).
@@ -561,15 +611,20 @@ function initAudio() {
     weather: (w, indoor) => {
       if (!_sfxCtx || !w) return;
       _sfxWx = { precip: +w.precip || 0, indoor: !!indoor };
+      // ★★[T397] **눈이 오면 빗소리가 안 난다.** 종전엔 기온과 무관하게 강수면 빗소리였다 — 화면은 눈인데 귀는 비.
+      //   눈이냐 비냐는 **그리는 층이 정한다**(`37-r1-weather` · 어는점 하나) — 여기서 문턱을 다시 안 짓는다(사본 0).
+      //   그 층의 판정(`__rainDbg().kind`)은 한 프레임 늦고, 실내·무강수면 비어 있으므로 **마지막 판정**을 쥔다.
+      try { const k = (typeof window.__rainDbg === 'function') ? window.__rainDbg().kind : null; if (k) _sfxWxKind = k; } catch (e) {}
+      const precipRain = (_sfxWxKind === 'snow') ? 0 : _sfxWx.precip;
       window.__sfx.ambient('wind', w.wind, { indoor });
       // ★★[T354] 비는 **세기로 두 파일**이 된다(`rainSplit` 표) — 재민 09-22 "이건 폭풍 버전인 거 같은데".
       //   문턱 아래는 약한 비, 위는 지금 것. 한쪽을 켜면 다른 쪽은 0 으로 꺼진다(둘이 겹쳐 울지 않는다).
       const RS = _sfxMan.rainSplit;
       if (RS && RS['아래'] && RS['위']) {
-        const light = _sfxWx.precip > 0 && _sfxWx.precip < (RS['문턱'] || 0.5);
-        window.__sfx.ambient(RS['아래'], light ? _sfxWx.precip : 0, { indoor });
-        window.__sfx.ambient(RS['위'], light ? 0 : _sfxWx.precip, { indoor });
-      } else window.__sfx.ambient('rain', _sfxWx.precip, { indoor });
+        const light = precipRain > 0 && precipRain < (RS['문턱'] || 0.5);
+        window.__sfx.ambient(RS['아래'], light ? precipRain : 0, { indoor });
+        window.__sfx.ambient(RS['위'], light ? 0 : precipRain, { indoor });
+      } else window.__sfx.ambient('rain', precipRain, { indoor });
     },
     /** 개체·지형 훑기 — `34-m-renderloop.js` 한 줄이 이번 프레임의 renderables 와 카메라 중심을 준다.
      *  ★[T283] 무엇이 우는지는 **표 셋**(`mobs`·`buildings`·`bird.trees`)이 정한다 — 종 이름이

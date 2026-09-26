@@ -10551,8 +10551,8 @@ function setHp(p, v, why) {
   //   T109 가 회복·구조·먹기까지 이 한 창구로 보내면서 "damaged" 는 거짓말이 됐다(T109 회부).
   //   ⚠**옛 이름 폴백 0** — 두 이름을 동시에 보내면 그게 사본이고, 클라가 둘 다 읽으면 두 벌이 된다.
   //     한 번에 갈아 끼운다(서버 2줄 · 클라 1줄 · 하네스 참조 전수 — 보고 §0-ⓐ 표).
-  if (HP_PEER.has(why)) broadcast({ type: 'hp_changed', pid: p.pid, hp: p.hp });
-  else if (p.ws) send(p.ws, { type: 'hp_changed', pid: p.pid, hp: p.hp });
+  if (HP_PEER.has(why)) broadcast({ type: 'hp_changed', pid: p.pid, hp: p.hp, why: why || '' });   // ★[T397] 이미 받던 `why` 를 싣는다(새 낱말 0)
+  else if (p.ws) send(p.ws, { type: 'hp_changed', pid: p.pid, hp: p.hp, why: why || '' });
   return next;
 }
 

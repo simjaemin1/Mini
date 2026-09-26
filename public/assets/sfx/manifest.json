@@ -71,6 +71,12 @@
   },
   "_player_downed": "`zone.js` 가 쓰러진 채 **다시 접속한** 사람에게 같은 `player_downed` 를 welcome 뒤에 한 번 더 보낸다(`source:'relogin'` · 화면 복원용). 그건 쓰러짐이 아니라 **상태 복원**이다 — 울면 접속할 때마다 몸이 바닥에 떨어진다."
  },
+ "hpWhy": {
+  "_뜻": "`hp_changed` 의 `why` 낱말 → 키 [T397]. 서버 `setHp(p, v, why)` 가 받던 낱말을 T397 이 전문에 실었다(서버 두 줄). 표에 없는 낱말은 안 운다.",
+  "msgType": "hp_changed",
+  "_damage_보류": "★★`damage` → `hit_body` 는 **아직 안 잇는다.** `setHp` 호출부 전수(보고 ⓑ): `damagePlayer` 가 **모든 피해**를 `'damage'` 하나로 보낸다 — 짐승·화살·주먹·낙하·독 음식에 **극단 감소**(`extreme:cold` 추위 3.6초마다 1HP · 갈증 21.6초 · 허기 43초)까지. 이으면 추위 속에서 3.6초마다 몸이 맞는 소리가 나고, 그게 방송이라 곁 사람도 듣는다. 값(피해량)으로 가르는 것은 짐작이다 — 짐승 한 대도 `Math.round(d)` 로 1 이 될 수 있다. ⇒ 파일은 확보(후보 둘)하고 표 줄은 비운다. 서버가 극단 감소를 다른 낱말로 보내는 날(`damagePlayer` 한 줄 · PM) 이 표에 `\"damage\": \"hit_body\"` 한 줄이면 운다(e2e-audio-probe ㉟ 가 그 한 줄을 넣어 보고 운다는 것을 이미 잰다).",
+  "_회복": "`food`·`dish`·`rescue`·`debug` 는 소리가 아니다(회복·구조·시험) — 넣지 않는다."
+ },
  "buildings": {
   "_뜻": "개체와 같은 문법 — 건물 `type` → 반복 키. 개체마다 하나씩 나고 화면 밖이면 멎는다.",
   "campfire": "fire"
@@ -521,6 +527,154 @@
    "훅": "30-n-net.js handleMessage — **수신** `player_respawn`(`zone.js` 두 자리 · 방송 · 깨어난 자리 좌표). 내 것은 위치 없음.",
    "_T387": "새 키 — 깨어남(일어서며 옷 스침). 후보 1개뿐 — **깨어나는 숨**은 CC0/PD 에서 못 찾았다(Commons `Windy breath` 는 바람 부는 입김이라 뺐다) ⇒ 녹음 회부(재민 폰).",
    "_이름": "`wake` 가 아니라 `wake_up` — 소리판에 `#wake`(소리 깨우기 단추) id 가 있어 ⑬b(페이지에 키 이름 0)가 철자로 문다. 자를 누그러뜨리지 않고 이름을 비켰다."
+  },
+  "hit_body": {
+   "file": "hit_body.ogg",
+   "fileAlt": "hit_body.m4a",
+   "volume": 0.8,
+   "radius": 384,
+   "loop": false,
+   "maxSame": 2,
+   "cooldownMs": 0,
+   "source": "kenney_impact_sounds",
+   "후보": true,
+   "_T397": "맞음 1번 — **배선 보류**(`hpWhy._damage_보류`). 파일은 판정용으로 소리판에 있다."
+  },
+  "hit_body_b": {
+   "file": "hit_body_b.ogg",
+   "fileAlt": "hit_body_b.m4a",
+   "volume": 0.8,
+   "radius": 384,
+   "loop": false,
+   "maxSame": 2,
+   "cooldownMs": 0,
+   "source": "kenney_impact_sounds",
+   "후보": true,
+   "_T397": "맞음 2번 — 더 밝다(중심 1029Hz · 1번 801Hz)."
+  },
+  "step_floor": {
+   "file": "step_floor.ogg",
+   "fileAlt": "step_floor.m4a",
+   "volume": 0.42,
+   "radius": 0,
+   "loop": false,
+   "maxSame": 2,
+   "cooldownMs": 0,
+   "source": "kenney_impact_sounds",
+   "훅": "`42-r2-char.js` 발자국 훅 한 줄 — `surface` 표가 `floor` 를 여기로 보낸다.",
+   "_T397": "실내 바닥 1번 — 돗자리(carpet) 걸음. 2번(나무)은 중심 171Hz 라 노트북에서 거의 안 난다."
+  },
+  "step_floor_b": {
+   "file": "step_floor_b.ogg",
+   "fileAlt": "step_floor_b.m4a",
+   "volume": 0.42,
+   "radius": 0,
+   "loop": false,
+   "maxSame": 2,
+   "cooldownMs": 0,
+   "source": "kenney_impact_sounds",
+   "후보": true,
+   "_T397": "실내 바닥 2번 — 나무 걸음(깊다 · 헤드폰 판정)."
+  },
+  "step_yard": {
+   "file": "step_yard.ogg",
+   "fileAlt": "step_yard.m4a",
+   "volume": 0.42,
+   "radius": 0,
+   "loop": false,
+   "maxSame": 2,
+   "cooldownMs": 0,
+   "source": "kenney_impact_sounds",
+   "훅": "`42-r2-char.js` 발자국 훅 — `surface` 표 `vtile`(마당·광장·텃밭 타일).",
+   "_T397": "마당 1번 — 다짐 바닥(concrete · 0.10s). ⚠`vtile` 의 `kind` 가 셋(yard·plaza·garden)인데 표는 타입 하나만 본다 — 텃밭도 이 소리다(가르려면 표에 칸 하나 · 회부)."
+  },
+  "step_yard_b": {
+   "file": "step_yard_b.ogg",
+   "fileAlt": "step_yard_b.m4a",
+   "volume": 0.42,
+   "radius": 0,
+   "loop": false,
+   "maxSame": 2,
+   "cooldownMs": 0,
+   "source": "kenney_rpg_audio",
+   "후보": true,
+   "_T397": "마당 2번 — RPG 팩 footstep02(중심 1298Hz · 흙 계열)."
+  },
+  "step_farm": {
+   "file": "step_farm.ogg",
+   "fileAlt": "step_farm.m4a",
+   "volume": 0.42,
+   "radius": 0,
+   "loop": false,
+   "maxSame": 2,
+   "cooldownMs": 0,
+   "source": "kenney_rpg_audio",
+   "훅": "`42-r2-char.js` 발자국 훅 — `surface` 표 `farmland`.",
+   "_T397": "밭 1번 — RPG 팩 안 쓴 걸음 중 가장 둔한 footstep09(중심 1127Hz · 갈아엎은 흙)."
+  },
+  "step_farm_b": {
+   "file": "step_farm_b.ogg",
+   "fileAlt": "step_farm_b.m4a",
+   "volume": 0.42,
+   "radius": 0,
+   "loop": false,
+   "maxSame": 2,
+   "cooldownMs": 0,
+   "source": "kenney_rpg_audio",
+   "후보": true,
+   "_T397": "밭 2번 — footstep06(1450Hz)."
+  },
+  "thunder": {
+   "file": "thunder.ogg",
+   "fileAlt": "thunder.m4a",
+   "volume": 0.9,
+   "radius": 0,
+   "loop": false,
+   "maxSame": 1,
+   "cooldownMs": 0,
+   "source": "commons_pd_thunder_veranda",
+   "후보": true,
+   "_T397": "천둥 1번 — **훅 없음**: 세계가 천둥을 안 보낸다(서버 날씨에 칸 0 · 클라 `w` = precip·tempC·wind 뿐). 사건 없이 울리면 지어낸 소리다. 3.0s(단발 상한 3s — 우르릉 꼬리는 페이드로 접었다 · 빗소리 깔림)."
+  },
+  "thunder_b": {
+   "file": "thunder_b.ogg",
+   "fileAlt": "thunder_b.m4a",
+   "volume": 0.9,
+   "radius": 0,
+   "loop": false,
+   "maxSame": 1,
+   "cooldownMs": 0,
+   "source": "commons_pd_rainthunder",
+   "후보": true,
+   "_T397": "천둥 2번 — 원본이 작아 +20.7dB 올렸다(빗소리도 같이 올라온다 · 판정 때 감안)."
+  },
+  "water_pool": {
+   "file": "water_pool.ogg",
+   "fileAlt": "water_pool.m4a",
+   "volume": 0.4,
+   "radius": 192,
+   "loop": true,
+   "maxSame": 1,
+   "cooldownMs": 0,
+   "source": "commons_pd_bubbles",
+   "fade": 1.0,
+   "indoorMul": 0.25,
+   "후보": true,
+   "_T397": "고인 물(자원 `water_pool`) 1번 — **후보만**(카드). 시냇물(`water`)과 다른 소리: 보글거림. 8.0s 반복 · 이음새 −49.8dB."
+  },
+  "water_pool_b": {
+   "file": "water_pool_b.ogg",
+   "fileAlt": "water_pool_b.m4a",
+   "volume": 0.4,
+   "radius": 192,
+   "loop": true,
+   "maxSame": 1,
+   "cooldownMs": 0,
+   "source": "commons_pd_tidalrocks",
+   "fade": 1.0,
+   "indoorMul": 0.25,
+   "후보": true,
+   "_T397": "고인 물 2번 — 물가 찰랑임(물이 빠지는 바위) · 8.0s 반복 · 이음새 −24.5dB."
   }
  },
  "_성사": "카드는 수확·먹기·도끼질 훅을 '서버 동사 결과가 오는 30-n-net.js 핸들러'에 붙이라고 했다. §0-ⓒ 실측: **그런 메시지가 없다.** 서버는 먹기·수확에 전용 결과 타입을 안 보내고 `notice`·`gauges`·`inventory`·`resource_removed` 같은 **공용 메시지**만 보낸다(`doEat`·`tryHarvest`·`gatherResource` 전수). 공용 메시지에 붙이면 남이 한 일에도 소리가 난다. 그래서 **발신 정본 한 자리**(`sendPrimary`)에 붙였다 — 거절당한 동사도 소리가 난다는 맞바꿈이고, 그 대신 훅이 파일 하나·줄 하나다. 성사로 옮기려면 서버가 동사별 결과를 보내야 한다 ⇒ 회부.",
@@ -546,7 +700,7 @@
    "url": "https://kenney.nl/assets/rpg-audio",
    "author": "Kenney Vleugels (Kenney.nl)",
    "received": "2026-09-13",
-   "_원본": "step_dirt = footstep04.ogg · step_grass = footstep07.ogg · axe = chop.ogg (전부 통째) · ui_click = bookPlace1.ogg (0.30s 중 0.020~0.280s · 선행 무음 잘라 냄) [T269·T282] · wake_up = cloth1.ogg (0.66s 중 0.030~0.554s) [T387]",
+   "_원본": "step_dirt = footstep04.ogg · step_grass = footstep07.ogg · axe = chop.ogg (전부 통째) · ui_click = bookPlace1.ogg (0.30s 중 0.020~0.280s · 선행 무음 잘라 냄) [T269·T282] · wake_up = cloth1.ogg (0.66s 중 0.030~0.554s) [T387] · step_yard_b = footstep02 (0.010~0.212s) · step_farm = footstep09 (0.002~0.215s) · step_farm_b = footstep06 (0.000~0.208s) [T397]",
    "_주의": "★지면은 **가설**이다 — 팩에 무슨 바닥인지 안 적혀 있다. 스펙트럴 중심이 가장 낮은 04(1,007Hz)를 흙, 가장 높은 07(2,189Hz)을 풀로 잡았다. **판정은 재민 귀.**",
    "_후보": "`ui_click` 은 **후보**다 — 훅 0 · 키 0 (\"있어야 하나\"는 재민 · T282). 후보 셋을 같은 자로 쟀다: bookPlace1 선행 6.0ms·SNR 38.8dB ← 골랐다 · bookClose 선행 72.9ms·SNR 29.6 · Woodpecker tapping(USFWS·PD · https://commons.wikimedia.org/wiki/File:Woodpecker_tapping.ogg) 선행 14.5ms·SNR 10.1. 딱따구리가 \"진짜 나무 두드림\"이라 먼저 골랐다가 자가 뒤집었다 — 숲 바닥이 같이 오고 정점이 116ms 뒤에 온다."
   },
@@ -677,7 +831,7 @@
    "url": "https://kenney.nl/assets/impact-sounds",
    "author": "Kenney Vleugels (Kenney.nl)",
    "received": "2026-09-25",
-   "_원본": "downed = impactPunch_heavy_000.ogg (0.65s 중 0.000~0.380s) · downed_b(후보) = impactSoft_heavy_000.ogg (0.51s 중 0.000~0.406s) [T387]",
+   "_원본": "downed = impactPunch_heavy_000.ogg (0.65s 중 0.000~0.380s) · downed_b(후보) = impactSoft_heavy_000.ogg (0.51s 중 0.000~0.406s) [T387] · hit_body = impactPunch_medium_001 (0.40s 중 0.000~0.218s) · hit_body_b = impactPunch_medium_003 (0.000~0.228s) · step_floor = footstep_carpet_003 (0.000~0.067s) · step_floor_b = footstep_wood_003 (0.000~0.074s) · step_yard = footstep_concrete_000 (통째 0.10s) [T397]",
    "_라이선스": "팩 안 `License.txt` 를 열어 읽었다: \"License: (Creative Commons Zero, CC0)\" · 페이지 License 칸도 CC0."
   },
   "oga_artisticdude_battle": {
@@ -712,11 +866,43 @@
    "received": "2026-09-25",
    "_원본": "swing_b(후보) = swish-9.wav (0.20s 중 0.028~0.148s) [T387]",
    "_라이선스": "페이지 License(s) 칸 = CC0 한 가지."
+  },
+  "commons_pd_thunder_veranda": {
+   "license": "Public domain",
+   "url": "https://commons.wikimedia.org/wiki/File:Thunder_and_rain_on_a_v.ogg",
+   "author": "ezwa",
+   "received": "2026-09-26",
+   "_원본": "thunder(후보) = 30.17s 중 5.800~8.800s (가장 센 벼락 · 머리 0.15s·꼬리 1.2s 페이드) [T397]",
+   "_라이선스": "파일 페이지 LicenseShortName = Public domain(제목 원문 'Thunder and rain on a veranda')."
+  },
+  "commons_pd_rainthunder": {
+   "license": "Public domain",
+   "url": "https://commons.wikimedia.org/wiki/File:Rain_and_thunder_(1).ogg",
+   "author": "ezwa",
+   "received": "2026-09-26",
+   "_원본": "thunder_b(후보) = 60.08s 중 3.400~6.400s (꼬리 1.2s 페이드) [T397]",
+   "_라이선스": "파일 페이지 = Public domain."
+  },
+  "commons_pd_bubbles": {
+   "license": "Public domain",
+   "url": "https://commons.wikimedia.org/wiki/File:Water_bubbles_chortling.ogg",
+   "author": "stephan",
+   "received": "2026-09-26",
+   "_원본": "water_pool(후보) = 35.75~43.75s + 뒤 1.0s 를 머리에 겹쳐 8.0s 반복 [T397]",
+   "_라이선스": "파일 페이지 = Public domain."
+  },
+  "commons_pd_tidalrocks": {
+   "license": "Public domain",
+   "url": "https://commons.wikimedia.org/wiki/File:Water_over_rocks_as_tide_recedes.ogg",
+   "author": "earthcalling",
+   "received": "2026-09-26",
+   "_원본": "water_pool_b(후보) = 1.50~9.50s + 1.0s 겹침 8.0s 반복 [T397]",
+   "_라이선스": "파일 페이지 = Public domain."
   }
  },
  "_실측": {
   "_뜻": "`__sfx.probe()` 가 실클라에서 잰 값. 하네스 ⑧ 이 이 수와 `bus.limiter.knee` 의 부등식을 지킨다. 키를 더하면 **다시 재서 이 칸을 갱신**하라(셈으로 채우지 마라).",
-  "date": "2026-09-25",
+  "date": "2026-09-26",
   "browser": "Chromium(Playwright) · 44100Hz · 오프라인 렌더 4초 · 소리판에서 `__sfx.probe()`",
   "worstPeak": 0.7957,
   "worstPeakDb": -1.98,
@@ -729,11 +915,11 @@
    "rock_hit"
   ],
   "clippedAtWorst": 0,
-  "allKeysPeakNoLimiter": 1.1323,
-  "allKeysClippedNoLimiter": 50,
+  "allKeysPeakNoLimiter": 1.2706,
+  "allKeysClippedNoLimiter": 132,
   "_주의": "`worstPeak` 는 **리미터 없이** 잰 값이다(문턱을 그것과 견주려면 리미터가 개입하기 전의 수여야 한다). 키를 더하면 `__sfx.probe()` 를 다시 돌려 이 칸을 갱신하라 — 셈으로 채우지 마라. T261·T283 이 셈으로 채웠다가 둘 다 틀렸다.",
   "_자의바닥": "두 판(리미터 있음/없음)의 피크가 문턱 아래에서도 ±0.1 dB 쯤 다르다 — `oversample:'2x'` 의 재표본 필터다. 펌핑을 잴 때 이 바닥을 안 빼면 **없는 펌핑**이 보인다: 1차 판이 `pa>0.02` 인 창을 다 보다가 모닥불 하나에 '최악 −10.92 dB'를 냈다(피크는 한 톨도 안 변했는데). ⇒ 비율은 **`pa > knee` 인 창에서만** 뜻이 있다.",
-  "soundingKeys": 29,
+  "soundingKeys": 41,
   "_왜 이 수를 적나": "소리 나는 키가 이 수와 달라지면 `test-audio ⑧` 이 문다 — **키를 더했으면 다시 재라**는 뜻이다. 셈으로 고치지 말고 `__sfx.probe()` 를 돌려라.",
   "_개명": "[T303] `wolf_growl` → `wolf_howl` 은 **이름만** 바뀐 것이다 — 파일 바이트가 0 변경이라(sha1 d9176d70…/bede1a0f… 그대로) 이 실측값은 여전히 그 파일을 잰 값이다. `worstPeak`·`clippedAtWorst` 는 **다시 재지 않았고 한 자도 안 고쳤다** — 이름표만 갈았다.",
   "_T354": "21키 전부 동시: 피크 0.772(-2.25 dBFS) · 클리핑 0. **리미터를 빼면 피크 1.1039 · 클리핑 10** — 키가 16→21 로 늘면서 리미터가 무는 자리가 늘었다(T292 때는 최악 조합조차 문턱을 안 넘었다).",
@@ -751,7 +937,23 @@
   ],
   "combatPeak": 0.7456,
   "combatPeakDb": -2.55,
-  "_T387": "★★정정 먼저 — T354·T358 이 적은 `worstPeak` 0.7631/0.7623 은 **리미터를 낀 판의 값**이었다(이 칸의 `_주의` 가 '리미터 없이' 라고 적어 놓고). T358 이 `bronze_hit` 을 **후보**(배선 없음)로 돌린 뒤에도 최악 조합에 그 키가 남아 있었고, 그 조합을 리미터 없이 재면 **0.8755(−1.15 dBFS) · 문턱 넘는 창 2/400** 이다 — 즉 ⑧c(문턱 > 최악 피크)는 T354 부터 **거짓 수로 초록**이었다. 게임에서 울 수 없는 키를 넣은 조합은 거짓 대상이다(대상이 틀린 수는 거짓 · T358 문장) ⇒ 최악 조합에서 **후보를 뺐다**(`test-audio ⑧h` 가 못 박는다). 후보 뺀 여섯: 없이 **0.7957(−1.98 dBFS)** · 창 0/400 · 끼고 0.7600. ⚠여유가 **0.04 dB** 뿐이다. 전투 한 판(배선 전투 넷 + 낙하 + 늑대·호랑이 + 모닥불·바람 · 9키): 없이 **0.7456(−2.55)** · 0/400. ★극단 — T292 여섯 + 전투 넷을 **같은 표본에** 겹치면 없이 0.8449 · 2/400 창 문다(끼고 0.7626 · 클리핑 0). 열 개 소리의 머리가 한 표본에 모이는 판이다 — 리미터가 그 일을 하라고 있다. 29키 전부(후보 포함): 없이 1.1323 · 클리핑 50 → 끼고 0.7745(−2.22) · 클리핑 0. 배선 25키: 없이 1.0301 · 클리핑 2 → 끼고 0.771. 재는 법: `__sfx.probe(keys,{seconds:4})` Chromium 44100Hz 오프라인 렌더(`e2e-audio-probe` 가 같은 함수를 부른다)."
+  "_T387": "★★정정 먼저 — T354·T358 이 적은 `worstPeak` 0.7631/0.7623 은 **리미터를 낀 판의 값**이었다(이 칸의 `_주의` 가 '리미터 없이' 라고 적어 놓고). T358 이 `bronze_hit` 을 **후보**(배선 없음)로 돌린 뒤에도 최악 조합에 그 키가 남아 있었고, 그 조합을 리미터 없이 재면 **0.8755(−1.15 dBFS) · 문턱 넘는 창 2/400** 이다 — 즉 ⑧c(문턱 > 최악 피크)는 T354 부터 **거짓 수로 초록**이었다. 게임에서 울 수 없는 키를 넣은 조합은 거짓 대상이다(대상이 틀린 수는 거짓 · T358 문장) ⇒ 최악 조합에서 **후보를 뺐다**(`test-audio ⑧h` 가 못 박는다). 후보 뺀 여섯: 없이 **0.7957(−1.98 dBFS)** · 창 0/400 · 끼고 0.7600. ⚠여유가 **0.04 dB** 뿐이다. 전투 한 판(배선 전투 넷 + 낙하 + 늑대·호랑이 + 모닥불·바람 · 9키): 없이 **0.7456(−2.55)** · 0/400. ★극단 — T292 여섯 + 전투 넷을 **같은 표본에** 겹치면 없이 0.8449 · 2/400 창 문다(끼고 0.7626 · 클리핑 0). 열 개 소리의 머리가 한 표본에 모이는 판이다 — 리미터가 그 일을 하라고 있다. 29키 전부(후보 포함): 없이 1.1323 · 클리핑 50 → 끼고 0.7745(−2.22) · 클리핑 0. 배선 25키: 없이 1.0301 · 클리핑 2 → 끼고 0.771. 재는 법: `__sfx.probe(keys,{seconds:4})` Chromium 44100Hz 오프라인 렌더(`e2e-audio-probe` 가 같은 함수를 부른다).",
+  "bait": {
+   "combo": [
+    "tiger_growl",
+    "wolf_howl",
+    "axe",
+    "bronze_hit",
+    "hook",
+    "boar_grunt",
+    "rock_hit"
+   ],
+   "peak": 0.8755,
+   "peakDb": -1.15,
+   "overKnee": "2/400",
+   "_뜻": "[T397] ⑧g 의 미끼 — **문턱을 실제로 넘는** 잰 조합(T354~T358 의 옛 최악 조합 · 후보 `bronze_hit` 포함 · 리미터 없이). ⑧c 와 같은 술어가 이것을 빨갛게 판정해야 자가 산 것이다."
+  },
+  "_T397": "41키(후보 포함) 재측정: 최악(후보 뺀 여섯) 0.7957 그대로(새 배선 키 셋은 발자국이라 조합에 안 든다 · 넣어 재도 0.7944) · 전투 한 판 0.7456 그대로 · 배선 28키 전부 없이 0.9959 · 클리핑 0 → 끼고 0.771 · 41키 전부 없이 1.2706 · 클리핑 132 → 끼고 0.7791(−2.17) · 클리핑 0."
  },
  "ground": {
   "_뜻": "발밑 지형 → 발자국 키. 지형 정본은 `window.__tileStateAt` 하나(`kind`·`geo`·풀 알파) — 층은 그 답을 이 표로 옮길 뿐이다.",
@@ -760,11 +962,25 @@
   "_기본": "step_dirt",
   "_왜_표인가": "T261 부터 이 갈래는 **코드에 박혀** 있었고(`v = 'step_grass'`) 그래서 돌바닥이 흙으로 났다. 재민 09-22 판정으로 셋이 되면서 표로 뺀다 — 넷째 지면이 생기면 한 줄이다."
  },
+ "surface": {
+  "_뜻": "발밑 **표면 타일**(건물 타입) → 발자국 키 [T397]. 지형(`ground`)보다 먼저 본다 — 밭·바닥·마당은 흙 위에 놓인 건물이라 `__tileStateAt` 이 모른다.",
+  "floor": "step_floor",
+  "vtile": "step_yard",
+  "farmland": "step_farm",
+  "_순서": [
+   "floor",
+   "vtile",
+   "farmland"
+  ],
+  "_왜_순서": "한 셀에 둘이 겹치면(움집 바닥이 마당 타일 위에 깔림) 사람이 밟는 것은 **맨 위**다: 실내 바닥 > 마당 > 밭.",
+  "_층": "`floor` 는 층이 있다(`b.floor`) — 내 층(`myFloor`)과 같을 때만 밟는다. 위층 바닥을 아래층에서 밟지 않는다."
+ },
  "rainSplit": {
   "_뜻": "비의 **세기**로 두 파일을 가른다. 값은 `_sfxWx.precip`(0..1) 이고 층이 이미 갖고 있다 — 새 수 0.",
   "문턱": 0.5,
   "아래": "rain_light",
   "위": "rain",
-  "_왜_0.5": "`precip` 은 0..1 정규값이고 층에 다른 눈금이 없다. 가운데를 가른다 — **유도가 아니라 이등분**이라 값은 재민 몫이다(회부). 세계가 아직 `precip` 을 안 보내므로(T93) 지금은 어느 쪽도 저절로 안 난다."
+  "_왜_0.5": "`precip` 은 0..1 정규값이고 층에 다른 눈금이 없다. 가운데를 가른다 — **유도가 아니라 이등분**이라 값은 재민 몫이다(회부). 세계가 아직 `precip` 을 안 보내므로(T93) 지금은 어느 쪽도 저절로 안 난다.",
+  "_T397_눈": "★눈이 오면(그리는 층 `37-r1-weather` 가 `kind:'snow'` 로 정한 때) 두 파일 다 0 이다. 종전엔 기온과 무관하게 빗소리였다. 눈 자체의 소리는 **없다**(PD/CC0 에서 못 찾았고, 실제 눈 내림은 거의 무음이다 — 바람이 이미 운다)."
  }
 }

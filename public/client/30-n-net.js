@@ -1326,12 +1326,12 @@
     } else if (msg.type === 'hp_changed') {
       // ★[T131] 옛 이름은 `player_damaged` 였다. T109 뒤로 이 창구는 다침만이 아니라
       //   회복·구조·먹기까지 나른다 — 이름이 사실과 어긋나 있었다(T109 회부). 폴백은 안 둔다.
-      if (msg.pid === myPid) { myHp = msg.hp; updateHud(); }
+      if (msg.pid === myPid && c.role === 'primary') { myHp = msg.hp; updateHud(); }   // ★[T397] pid 는 존마다 p1 부터 — 관전 연결의 같은 번호는 남이다(e2e-pid-collide)
       else {
         const o = c.others.get(msg.pid); if (o) o.hp = msg.hp;
       }
     } else if (msg.type === 'player_respawn') {
-      if (msg.pid === myPid) {
+      if (msg.pid === myPid && c.role === 'primary') {   // ★[T397] 관전 연결의 p1 부활이 나를 텔레포트시켰다(e2e-pid-collide ②)
         myHp = msg.hp;
         // Phase 14.41: 부활 → 다운 상태 해제
         myIsDown = false;
@@ -1370,7 +1370,7 @@
       }
     } else if (msg.type === 'player_down_state') {
       // 다른 사람 다운/일어남 상태 (시각용)
-      if (msg.pid === myPid) {
+      if (msg.pid === myPid && c.role === 'primary') {   // ★[T397] 관전 연결의 p1 쓰러짐이 '나'로 읽혀 버려졌다(③)
         // 본인은 player_downed/respawn 로직으로 처리. 여기선 안 변경
       } else {
         if (msg.isDown) downStates.set(msg.pid, true);
