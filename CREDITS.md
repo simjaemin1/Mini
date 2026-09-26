@@ -32,6 +32,9 @@
   > "Battle Sound Effects" (Bow.wav) by artisticdude — https://opengameart.org/content/battle-sound-effects — CC BY 3.0
   ⚠이 집 **둘째 CC-BY 소리**다. 게임 안 알림 스택(3줄) 밖이라 `deer_call` 과 같은 회부(게임 크레딧 화면)에 묶인다.
   후보 2번(`arrow_shoot_b` · PD)으로 바꾸면 이 줄이 필요 없다 — 재민 귀 판정이 이 줄의 운명도 정한다.
+* **`quail_call`(메추라기) — CC BY 3.0 · 표시 필요** [T417]
+  > "Kohoutek-krepelky" by Martin Hajda — https://commons.wikimedia.org/wiki/File:Kohoutek-krepelky.ogg — CC BY 3.0
+  ⚠이 집 **셋째 CC-BY 소리**다(`deer_call`·`arrow_shoot` 에 이어). 메추라기 PD/CC0 녹음은 못 찾았다(Commons 의 나머지는 전부 BY-SA).
 ## 2. 빌린 것
 
 | 항목 | 무엇을 | 어디에 들어갔나 | 라이선스 | 요구 | 카드 |
@@ -123,6 +126,11 @@
 | `craft_done` | [Kenney "Impact Sounds"](https://kenney.nl/assets/impact-sounds) · `impactMetal_light_000.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2019(팩) | 2026-09-26 | **0.000~0.190s** · ★[T412] 새 키 — 가마에서 꺼냄(`job` 꺼짐) · 1번 |
 | `craft_done_b` | [Kenney "RPG Audio"](https://kenney.nl/assets/rpg-audio) · `metalPot2.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2023(팩) | 2026-09-26 | **0.107~0.738s** · 2번 · 후보 |
 | `dig` | [OpenGameArt: Shovel Sound](https://opengameart.org/content/shovel-sound) · `shovel.ogg` | themightyglider (원천 freesound 503672 RavenWolfProds) | **CC0** (OGA 페이지 · 원천 freesound 페이지도 CC0) | — | 2026-09-26 | 0.91s 중 **0.000~0.722s** · ★[T412] 새 키 — 삽질(심기·밭 일굼·씨 넣음) · 1번뿐 |
+| `bear_growl` | [Commons: Yellowstone sound library – Grizzly Bears Roar 001](https://commons.wikimedia.org/wiki/File:Yellowstone_sound_library_-_Grizzly_Bears_Roar_-_001.mp3) | NPS & MSU Acoustic Atlas / Jennifer Jerrett | **Public domain** (NPS · 파일 페이지) | — | 2026-09-26 | 10.6s 중 **2.067~4.250s**(+10.8dB) · ★[T417] 새 키 — 곰(`bear`) · 1번 |
+| `bear_growl_b` | [Commons: … Grizzly Bear vocalizations 001](https://commons.wikimedia.org/wiki/File:Yellowstone_sound_library_-_Grizzly_Bear_vocalizations_-_001.mp3) | NPS & MSU Acoustic Atlas / Jennifer Jerrett | **Public domain** (NPS) | — | 2026-09-26 | 65.2s 중 **22.750~22.999s**(콧김) · 2번 · 후보 |
+| `pheasant_call` | [Commons: Phasianus colchicus.ogg](https://commons.wikimedia.org/wiki/File:Phasianus_colchicus.ogg) | 작가 미상 | **Public domain** (파일 페이지) | — | 2026-09-26 | 통째(1.0s) · ★[T417] 새 키 — 꿩(`pheasant`) · 1번뿐 |
+| `quail_call` | [Commons: Kohoutek-krepelky.ogg](https://commons.wikimedia.org/wiki/File:Kohoutek-krepelky.ogg) | Martin Hajda | **CC BY 3.0** (파일 페이지 · **표시 필요**) | — | 2026-09-26 | 182.9s 중 **2.174~3.236s** · ★[T417] 새 키 — 메추라기(`quail`) · 1번뿐 |
+| `goat_bleat` | [Commons: Herd of goats bleating.ogg](https://commons.wikimedia.org/wiki/File:Herd_of_goats_bleating.ogg) | stephan | **Public domain** (파일 페이지) | — | 2026-09-26 | 42.8s 중 **2.950~3.950s** · ★[T417] 후보 — 아이벡스 대체 판정용(배선 0) |
 
 * **요구 문구 없음** — 둘 다 퍼블릭 도메인이라 표시 의무가 없다(그래서 §1 에 안 들어간다). 예의로 여기 적는다.
 * 가공: 단일 채널 유지 · 끝 1초를 머리에 `acrossfade`(삼각창)로 겹쳐 10.0초 반복 · 피크를 재고

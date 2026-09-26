@@ -546,6 +546,15 @@ console.log('\n⑧ ★[T292] 리미터 — 셈이 아니라 실측');
        : `표는 ${M.soundingKeys}종인데 지금 ${sounding}종 — **\`__sfx.probe()\` 를 다시 돌려라**`);
   const gone = (M.worstCombo || []).filter((k) => !KEYS[k]);
   ok(gone.length === 0, `⑧e 최악 조합의 키가 전부 아직 표에 있다`, gone.join(' ') || (M.worstCombo || []).join(' '));
+  // ⑧k ★★[T417 ★PM] 최악 조합은 **실측에서 뽑는다** — 손으로 겹친 표가 아니라 진짜 한 판(`scripts/sfx-cooccur.js`)에서
+  //   같은 200ms 창에 **실제로 겹친** 묶음 중 리미터 없이 가장 센 것. 손으로 겹친 표는 `handCombo` 로 남아 대조 자로만 쓴다.
+  const WS = M.worstSource || {};
+  ok(WS.tool === 'sfx-cooccur' && WS.windows > 0 && WS.distinct > 0 && (M.worstCombo || []).length > 0 && (M.worstCombo || []).every((k) => KEYS[k]),
+     '⑧k ★★최악 조합이 **실측 묶음**이다(`sfx-cooccur` 한 판 · 관측 창·묶음 수가 적혀 있다)',
+     `${WS.minutes}분 · 창 ${WS.windows} · 묶음 ${WS.distinct} · 울림 ${WS.plays} · ${(M.worstCombo || []).join('+')} = ${M.worstPeak}`);
+  ok(!kneeHolds(undefined) && !kneeHolds(NaN), '⑧k2 자명 통과 금지 — 묶음을 비우면(잰 값 없음) ⑧c 의 술어가 **빨갛다**');
+  ok(Array.isArray(M.handCombo) && typeof M.handPeak === 'number', '⑧k3 손으로 겹친 표는 대조 자로 남아 있다(`handCombo`)',
+     `${(M.handCombo || []).length}키 · 없이 ${M.handPeak}${typeof M.handPeak === 'number' ? (kneeHolds(M.handPeak) ? ' (문턱 안)' : ' (★문턱 밖 — 대조만)') : ''}`);
   // ⑧h ★★[T387] 최악 조합에 **울 수 없는 키**(후보)가 없다 — 게임에서 안 나는 소리로 잰 최악은 거짓 대상이다.
   //   T358 이 `bronze_hit` 을 후보로 돌리고도 조합에 남겨 둬서, 그 조합의 '리미터 없는' 피크 0.8755 가 문턱을 넘었는데
   //   표에는 리미터 **낀** 값(0.7623)이 적혀 ⑧c 가 거짓으로 초록이었다(T354~T358). 자가 두 번 틀린 자리다.
@@ -1186,6 +1195,40 @@ console.log('\n⑰ ★★[T412] 도구/작업 — 사건만 운다 · 서버가 
   const leak = SYNC.filter((n) => typeof W[n] === 'string' || typeof CB[n] === 'string');
   ok(leak.length === 0, '⑰g ★★상태 동기화 열일곱은 표에 없다', leak.join(' ') || `${SYNC.length}종`);
   ok(sitesOf('craft_queue').length >= 1, '⑰g2 자 전제 — 그 이름들이 서버에 실제로 있다(없는 이름을 막는 자는 아무것도 안 막는다)');
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ⑱ ★★[T417] 동물 · 제작 완료 · 자리로 부르는 키의 반경
+// ══════════════════════════════════════════════════════════════════════════════
+console.log('\n⑱ ★★[T417] 동물 · 제작 완료 · 반경');
+{
+  const zsrc = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
+  const layerCode = require('./code-only.js')(modCode);
+  // ⑱a ★★자리로 부르는 표의 키는 반경이 있다 — 반경 0 = 존 어디서 나도 귓가에서 최대 볼륨(T417 이 axe·harvest·downed 에서 찾았다)
+  const POS = ['resourceHit', 'mobs', 'npcAct', 'groundDrop', 'fishState', 'combat', 'work', 'buildAdded', 'buildRemoved', 'buildDamaged', 'buildEdge', 'groundPick', 'resourceNew', 'hpWhy', 'mobEvents', 'buildings'];
+  const posKeys = new Set();
+  for (const t of POS) for (const x of tableStrings(man[t] || {}, 0)) if (KEYS[x]) posKeys.add(x);
+  const flatOf = (K) => [...posKeys].filter((k) => !(K[k] && K[k].radius > 0));
+  const flat = flatOf(KEYS);
+  ok(posKeys.size >= 20 && flat.length === 0, '⑱a ★★자리로 부르는 표의 키 전부 반경 > 0(0 이면 존 반대편 소리가 귓가에서 최대 볼륨)', flat.join(' ') || `${posKeys.size}키`);
+  const baitK = Object.assign({}, KEYS, { axe: Object.assign({}, KEYS.axe, { radius: 0 }) });   // 종전 표 그대로의 미끼
+  ok(JSON.stringify(flatOf(baitK)) === JSON.stringify(['axe']), '⑱a2 자명 통과 금지 — 같은 술어에 `axe` 반경 0(종전 표)을 먹이면 **그 키 하나**를 잡는다', flatOf(baitK).join(' '));
+  // ⑱b 종 울음 — 표의 종이 서버 동물 목록에 있다(새 종 0)
+  const A = require(path.join(ROOT, 'server', 'animals.js')).ANIMALS;
+  const sp = Object.keys(man.mobs || {}).filter((k) => !k.startsWith('_'));
+  ok(sp.length >= 7 && sp.every((k) => A[k]), '⑱b `mobs` 표의 종이 전부 `server/animals.js` 에 있다(새 종 0)', sp.join(' '));
+  // ⑱c 짐승 사건 — 맞음은 hp 가 **줄 때만**(먹여 회복 `tryFeed` 도 같은 메시지)
+  ok(/function tryFeed[\s\S]{0,1500}type: 'mob_damaged'/.test(zsrc) && /msg\.hp < m\.hp/.test(layerCode),
+     '⑱c ★`mob_damaged` 는 먹여 회복에도 나간다 — 층은 직전 hp 보다 **줄 때만** 운다');
+  const ME = man.mobEvents || {};
+  ok(KEYS[ME.hurt] && KEYS[ME.death] && ME.tamedCall === true, '⑱c2 `mobEvents` 의 키가 표에 있다(맞음·죽음 · 길들임 = 종 울음)', `${ME.hurt} · ${ME.death}`);
+  // ⑱d 제작 완료 — 서버 한 줄(`doCraftCollect` 안 · 받은 게 있을 때) · 맡김은 낱말 없음
+  const collect = zsrc.slice(zsrc.indexOf('function doCraftCollect('), zsrc.indexOf('function doCraftCollect(') + 4000);
+  const enq = zsrc.slice(zsrc.indexOf('function _enqueueCraft('), zsrc.indexOf('function _enqueueCraft(') + 2500);
+  ok((zsrc.match(/sendInventory\(player, 'craft'\)/g) || []).length === 1 && /sendInventory\(player, 'craft'\)/.test(collect) && !/'craft'\)/.test(enq),
+     '⑱d ★제작·보존 **받음**만 `where:craft` 를 댄다(서버 한 줄 · 맡김 무변)');
+  ok((man.inventoryWhere || {}).craft === 'craft_done', '⑱d2 층 표 `inventoryWhere.craft → craft_done`(T412 이 확보한 그 키)');
 }
 
 console.log(`\n=== PASS ${pass} / FAIL ${fail} ===`);

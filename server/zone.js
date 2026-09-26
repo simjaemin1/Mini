@@ -6601,7 +6601,7 @@ function doCraftCollect(player, buildingId) {
       player.craftSkill.cooking = (player.craftSkill.cooking || 0) + 1;
     }
   }
-  sendInventory(player);
+  sendInventory(player, 'craft');   // ★[T417] 받았다(끝난 것이 하나라도 있을 때만 여기 온다) — `where` 낱말 · 소리 층 `inventoryWhere.craft`
   sendEquipment(player); sendDishes(player); sendCraftQueue(player);
   send(player.ws, { type: 'notice', text: `✅ ${f.ko}에서 받았다 — ${got.map((j) => j.label).join(' · ')}` });
   if (canPersist(player)) savePlayer(player);
