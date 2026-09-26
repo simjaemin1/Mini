@@ -1065,7 +1065,8 @@ function ditchPayload() {                 // welcome 페이로드(flat [cx,cy,�
 //     물·바위·다리는 기동 뒤 안 바뀐다(T333 이 이미 그 가정 위에 비트 색인을 세웠다).
 const T356_SOA = process.env.T356_SOA === '1';
 const T370_PATH_REUSE = process.env.T370_PATH_REUSE === '1';   // ★[T370 ②] 경로 끝에서 다시 안 묻는다(기본 끔)
-const T381_PATH_DEAD = process.env.T381_PATH_DEAD === '1';     // ★[T381 ②] 못 갈 칸엔 길을 안 묻는다(기본 끔)
+const T381_PATH_DEAD = process.env.T381_PATH_DEAD !== '0';     // ★[T381 ② · T394 ④ 기본 켬] 못 갈 칸엔 길을 안 묻는다 · 되돌림 `T381_PATH_DEAD=0`
+const T394_WORK_TERRAIN = process.env.T394_WORK_TERRAIN !== '0'; // ★[T394 ①②] 일터·⑤ 배회 목표에 지형(villages.js 태어나기와 한 손잡이) · 되돌림 `=0`
 const _BLK_BITS = T356_SOA ? new Uint8Array(((_WT_W * _WT_H) >> 2) + 2) : null;   // 타일당 2비트 = 4타일/바이트
 if (_BLK_BITS) console.log(`[${ZONE_ID}] 🧱 T356 지형 막힘 비트 ON — ${_WT_W}×${_WT_H} 타일 · ${(_BLK_BITS.length / 1048576).toFixed(1)}MB`);
 function _terrBlocked0(x, y) {
@@ -2648,6 +2649,7 @@ function decideNpcBehavior(npc, now) {
       npc.targetX = npc.npcWorkX + (_dn() - 0.5) * 160;
       npc.targetY = npc.npcWorkY + (_dn() - 0.5) * 160;
     }
+    if (T394_WORK_TERRAIN) _t394OpenTarget(npc, npc.npcWorkX, npc.npcWorkY);   // ★[T394 ②] 막힌 칸이면 일터 쪽 첫 열린 칸
   } else if (npc.myClaim) {
     const cl = npc.myClaim;
     npc.targetX = cl.x + _dn() * cl.w;
@@ -2687,6 +2689,26 @@ function straightPathClear(x0, y0, x1, y1, floor) {
 //   서버 매핑: lineClear=straightPathClear(벽 변+물·바위 — 동일 규칙) · bfsPath=pfFindPath(같은 path-core 정본,
 //   주민만 기본 한도 4096/64로 랩의 '마을 생활권 전체' 탐색 동형) · roadLevel=Roads.levelOf(§16 답압 길) ·
 //   A* 2s 쿨다운은 서버 스케일 방어(결과 경로 모양은 동일 — 이동 양식 불변). 비주민(야생·도적·레거시)은 현행 유지.
+// ★★★[T394 ② 2026-09-26 · ⑤ 배회 목표가 막힌 칸이면 일터 쪽 첫 열린 칸으로] T381 이 쟀다: 막힌 목표의 **89 %**가
+//   생활 층이 넘긴 결정의 ⑤ 배회(`일터 ± 50/80`)에서 왔다. ① 이 일터 자체를 뭍으로 옮겨도 그 **둘레 상자**는 강에
+//   걸칠 수 있다(일터가 물가면 상자의 절반이 물이다).
+//   ⇒ 목표 셀이 막혔으면 **목표 → 일터** 직선을 32px(`straightPathClear` 의 그 걸음) 씩 되짚어 **첫 열린 칸**의
+//     그 점으로 옮긴다. 술어는 A* 가 간선에 대는 그 함수(`isTerrainBlockedLocal` · 셀 중심 = `findPath` 의 `cpx`).
+//     **새 탐색 0**(길찾기가 아니라 한 줄 되짚기 — 상자 대각선 113px 이면 네 걸음) · **새 수 0** · **주사위 0**(흐름 무소비 —
+//     뒤따르는 결정의 굴림이 한 자도 안 밀린다) · 열린 목표는 **안 건드린다**(비트 동일).
+//   일터마저 막혔으면(① 전에 태어난 몸 · 레거시 마을) 목표를 그대로 둔다 — beeline 을 넣지 않는다(T381 §4-5).
+function _t394OpenTarget(npc, ax, ay) {
+  const B = BUILDING_SIZE, H = B / 2;
+  const blk = (x, y) => isTerrainBlockedLocal(Math.floor(x / B) * B + H, Math.floor(y / B) * B + H);
+  if (!blk(npc.targetX, npc.targetY)) return false;
+  const x0 = npc.targetX, y0 = npc.targetY, dx = ax - x0, dy = ay - y0;
+  const steps = Math.ceil(Math.hypot(dx, dy) / B);
+  for (let i = 1; i <= steps; i++) {
+    const x = x0 + dx * i / steps, y = y0 + dy * i / steps;
+    if (!blk(x, y)) { npc.targetX = x; npc.targetY = y; return true; }
+  }
+  return false;
+}
 function _roadKeep(x, y) { return Roads.ENABLED && Roads.levelOf((x / 32) | 0, (y / 32) | 0) > 0; }   // px→답압 길 칸(스무딩 keep 앵커)
 function _roadPrefer(x, y) { return Roads.ENABLED ? Roads.levelOf((x / 32) | 0, (y / 32) | 0) : 0; }  // px→길 등급(A* 동률 스냅)
 function computeNpcPath(npc, now) {
@@ -2705,7 +2727,9 @@ function computeNpcPath(npc, now) {
   // A* — NPC당 최소 2초 간격
   if (npc._lastAStarAt && now - npc._lastAStarAt < 2000) return null;
   npc._lastAStarAt = now;
-  // ★★★[T381 ② 2026-09-25 · 못 갈 칸에는 길을 묻지 않는다] `T381_PATH_DEAD=1` 일 때만.
+  // ★★★[T381 ② 2026-09-25 · 못 갈 칸에는 길을 묻지 않는다] ★[T394 ④ 2026-09-26] **기본 켬** — 되돌림 `T381_PATH_DEAD=0`.
+  //   ⚠T394 ③ 이 `localPath` 첫 줄을 `routePath` 와 같게 만든 뒤로는 **켬/끔이 같은 답**이다(둘 다 막힌 목표에 `null`).
+  //     켬은 그 앞에서 `findPath`·반경 셈도 안 부르는 것뿐이고 — 정본이 되돌려져도 값을 지키는 **이중 자물쇠**다.
   //   T370 이 "A* 갈래의 90.9 % 는 `pfFindPath` 한 번"이라 했고, T381 ① 이 **그 한 번의 안**을 셌다:
   //   호출의 **37.3 % 가 `maxCells` 1500 을 다 태우고 `null`** 로 나오며, 그 갈래가 **시간의 92.9 %**다
   //   (한 번 6.42ms · 찾은 호출은 0.485ms). 그리고 그 절반은 **목표 칸이 애초에 못 가는 칸**이다

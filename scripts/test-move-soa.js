@@ -258,6 +258,11 @@ console.log('\n⑥ ★게이트 — 같은 씨 · 51마을 7게임일 · 좌표 
   const S = require(path.join(ROOT, 'server', 'seed-rand.js'));
   const src = body('decideNpcBehavior');
   ok(src.length > 1000, '⑥ [전제] 제품에서 결정 함수 **그 글자**를 떴다(사본 0 — 하네스가 다시 안 쓴다)', `${src.length}자`);
+  const _t394Src = body('_t394OpenTarget');
+  let _t394Moves = 0;
+  const _t394River = (x, y) => { const c = Math.floor(x / 32); return ((c % 7) + 7) % 7 >= 5; };   // 7칸마다 2칸 물(결정론)
+  const _t394Raw = new Function('BUILDING_SIZE', 'isTerrainBlockedLocal', _t394Src + '\nreturn _t394OpenTarget;')(32, _t394River);
+  const _t394Fn = (npc, ax, ay) => { const r = _t394Raw(npc, ax, ay); if (r) _t394Moves++; return r; };
 
   const VILLAGES = 51, PER_VIL = 8, NPCS = VILLAGES * PER_VIL;   // 408명
   const TICK_HZ = 30, MOVE = 64, TPD = 600;                       // 자의 하루 = 600틱(7일 = 4,200틱)
@@ -277,6 +282,10 @@ console.log('\n⑥ ★게이트 — 같은 씨 · 51마을 7게임일 · 좌표 
       resources: new Map(), claims: new Map(),
       Crops: { isReady: () => false },
       SimVillages: { npcLifeTick: null },
+      // ★[T394 ②] ⑤ 배회의 막힌 목표 되짚기도 **제품 기본(켬)** 그대로 싣는다 — 제품 글자를 떠서(사본 0),
+      //   결정론 모의 지형(세로 줄 강 — 7칸마다 2칸)을 준다. 이 게이트는 그 되짚기까지 **두 판 비트 동일**을 건다.
+      T394_WORK_TERRAIN: true,
+      _t394OpenTarget: _t394Fn,
     };
     const keys = Object.keys(env);
     const fn = new Function(...keys, src + '\nreturn decideNpcBehavior;')(...keys.map((k) => env[k]));
@@ -341,7 +350,8 @@ console.log('\n⑥ ★게이트 — 같은 씨 · 51마을 7게임일 · 좌표 
   for (let t = 0; t < TICKS; t++) if (A.dig[t] === C.dig[t]) sameCnt++;
   ok(sameCnt < TICKS * 0.02, '★⑥ 자명 통과 금지 — **씨를 바꾸면 세계가 달라진다**(신원 한 자만 바꿔도)',
      `같은 틱 ${sameCnt}/${TICKS}`);
-  console.log(`    [표] 게이트 — 마을 ${VILLAGES} · 주민 ${NPCS} · 게임일 ${DAYS}(${TICKS}틱) · 결정 ${A.decided.toLocaleString()}회 · 다른 자리 0`);
+  ok(_t394Moves > 100, '⑥ [상황] ★[T394 ②] 되짚기가 이 판에서 **실제로 섰다**(모의 강 위 목표를 뭍으로 옮겼다 — 0 이면 안 탄 것)', `${_t394Moves.toLocaleString()}회(세 판 합)`);
+  console.log(`    [표] 게이트 — 마을 ${VILLAGES} · 주민 ${NPCS} · 게임일 ${DAYS}(${TICKS}틱) · 결정 ${A.decided.toLocaleString()}회 · 다른 자리 0 · T394 되짚기 ${_t394Moves.toLocaleString()}회`);
   console.log('    접점: decideNpcBehavior · seed-rand.js · seedOf · _tick.n · zoneGameDay');
 }
 
@@ -703,13 +713,16 @@ console.log('\n⑩ T381_PATH_DEAD — 못 갈 칸엔 길을 안 묻는다 [T381]
   ok(!!m, '⑩ [전제] 제품에서 손잡이 블록 **그 글자**를 떴다', m ? `${m[0].length}자` : '못 찾음');
   const blk = m ? m[0] : '';
   const ZC = codeOnly(Z);
+  // ★[T394 ④ 2026-09-26] **기본 켬**으로 뒤집혔다(PM 위임 판정) — 끄는 문은 env `T381_PATH_DEAD=0` 하나다.
   ok((ZC.match(/T381_PATH_DEAD/g) || []).length === 3
-     && /const T381_PATH_DEAD = process\.env\.T381_PATH_DEAD === '1';/.test(Z),
-     '⑩ 손잡이는 `T381_PATH_DEAD` 하나 · **기본 끔**(env 가 그 글자일 때만 참)',
+     && /const T381_PATH_DEAD = process\.env\.T381_PATH_DEAD !== '0';/.test(Z)
+     && !/process\.env\.T381_PATH_DEAD === '1'/.test(Z),
+     '⑩ 손잡이는 `T381_PATH_DEAD` 하나 · **기본 켬**(T394 ④) · 끄는 문은 `=0` 하나 · 옛 글자(`=== \'1\'`) 0',
      `제품 자리 ${(ZC.match(/T381_PATH_DEAD/g) || []).length}개(선언 2 + 갈래 1)`);
   const PC = fs.readFileSync(path.join(ROOT, 'sim', 'path-core.js'), 'utf8');
   const PF = fs.readFileSync(path.join(ROOT, 'server', 'pathfind.js'), 'utf8');
-  ok(!/T381/.test(PC) && !/T381/.test(PF), '⑩ ★`sim/path-core.js`·`server/pathfind.js` 에 T381 글자 0 — A\\* 무접촉');
+  // ★[T394 ③] 정본은 이제 **끝점 규칙**을 가졌다(`routePath` 첫 줄과 같게) — 그러나 이 손잡이는 여전히 **부르는 쪽에만** 있다.
+  ok(!/T381_PATH_DEAD/.test(PC) && !/T381_PATH_DEAD/.test(PF), '⑩ ★손잡이 글자는 `sim/path-core.js`·`server/pathfind.js` 에 0 — 손잡이는 부르는 쪽에만');
   const lits = (codeOnly(blk).match(/(?<![\w.])\d+(?![\w.])/g) || []).filter((v) => v !== '2');
   ok(lits.length === 0, '⑩ ★새 수 0 — 블록 안 숫자 리터럴이 없다(`BUILDING_SIZE`·그 절반만)', lits.join(',') || '0개');
   // 있는 규칙 — `routePath` 는 이미 끝점 막힘을 거른다. 이 카드는 그걸 `localPath` 쪽에 같게 댄 것이다.
@@ -752,8 +765,18 @@ console.log('\n⑩ T381_PATH_DEAD — 못 갈 칸엔 길을 안 묻는다 [T381]
   // ⓑ ★결함 증인 — 같은 질문이 끝점 순서로 갈린다
   ok(fwdN > 100 && revN > 100, '⑩-b [상황] 막힌 목표 표본이 **사전순 앞/뒤 양쪽**에 있다', `앞(정방향) ${fwdN} · 뒤(뒤집힘) ${revN}`);
   ok(fwdNull === fwdN, '⑩-b 사전순이 **안 뒤집히면** 막힌 목표는 언제나 null', `${fwdNull}/${fwdN}`);
-  ok(revNull < revN * 0.9, '⑩-b ★★★**결함 증인** — 사전순이 뒤집히면 막힌 목표에도 **길이 나온다**(커널이 그 칸에서 출발한다)',
-     `뒤집힌 표본 ${revN} 중 길이 난 것 ${revN - revNull}(${((revN - revNull) / revN * 100).toFixed(1)}%)`);
+  // ★[T394 ③] 결함은 **고쳐졌다** — 어댑터가 `localPath` 에 끝점 규칙(`blocked`)을 넘기므로 뒤집혀도 null 이다.
+  ok(revNull === revN, '⑩-b ★★★[T394 ③] 사전순이 **뒤집혀도** 막힌 목표엔 길이 **안 난다**(끝점 규칙 · 비대칭 0)', `${revNull}/${revN}`);
+  // 미끼 — 규칙을 **안 넘기고** 커널을 직접 부르면 결함이 되살아난다(자가 규칙을 실제로 본다)
+  const PCk = require(path.join(ROOT, 'sim', 'path-core.js'));
+  let revRaw = 0;
+  for (const n of pts) {
+    if (!isWaterFn(n.targetX, n.targetY) || !revOf(n)) continue;
+    const bs = (fx, fy, tx, ty) => isWaterFn(tx * B + B / 2, ty * B + B / 2);
+    if (PCk.localPath(cell(n.x), cell(n.y), cell(n.targetX), cell(n.targetY), { blockedStep: bs, maxNodes: 1500, radius: 64 })) revRaw++;
+  }
+  ok(revRaw > revN * 0.2, '★⑩-b 자명 통과 금지 — 끝점 규칙을 **빼고** 부르면 뒤집힌 막힌 목표에 **길이 다시 난다**(결함 증인 · T381 그대로)',
+     `뒤집힌 표본 ${revN} 중 ${revRaw}(${(revRaw / revN * 100).toFixed(1)}%)`);
 
   // ⓒ/ⓓ — 켬의 답과 봉쇄
   const eq = (a, b) => {
@@ -796,6 +819,128 @@ console.log('\n⑩ T381_PATH_DEAD — 못 갈 칸엔 길을 안 묻는다 [T381]
   const rp = sweep(mk((b) => b.replace(/isTerrainBlockedLocal\([^)]*\)\)/, 'true)')));
   ok(rp.aliveDiff > 0, '★⑩ 자명 통과 금지 ③ — **술어를 비틀면**(항상 참) 열린 목표까지 갈린다 — 자가 정본 술어를 실제로 본다', `열린 목표 다른 표본 ${rp.aliveDiff}`);
   console.log('    접점: T381_PATH_DEAD · computeNpcPath · pfFindPath · localPath · isTerrainBlockedLocal · BUILDING_SIZE · maxCells 1500');
+}
+
+// =============================================================================
+// ⑪ T394 ①② — **몸 비비기의 뿌리 둘**: 일터 도넛에 지형 · ⑤ 배회 목표 되짚기 [T394]
+// =============================================================================
+// ★왜 [T394 · 보고/T394_2026-09-26.md] T381 이 쟀다 — 주민 159/1,476(10.8 %)의 일터(`npcWorkX/Y` · 회관 둘레 180~320px
+//   도넛)가 물·바위였고, 막힌 목표의 89 %가 그 일터 ±80 에서 나왔다(생활 층이 넘긴 결정의 ⑤ 배회).
+//   ① `villages.js` 태어나기: 도넛 후보를 A* 의 그 술어(`isTerrainBlockedLocal` · 셀 중심)로 거르고, 막히면 **같은 씨 흐름**으로
+//      다시 뽑는다(상한 = 도넛 바깥 둘레 셀 수 63) · 다 막히면 남문 앞 마당.
+//   ② `zone.js` ⑤: 목표 셀이 막혔으면 **일터 쪽으로 32px 씩 되짚어** 첫 열린 칸으로(새 탐색 0 · 주사위 0).
+//   이 절이 거는 것: ⓐ 끔 = 종전 비트 동일 ⓑ 첫 점이 열린 몸은 켬도 **비트 동일**(흐름도 안 민다) ⓒ 켬 = 막힌 일터 0
+//     ⓓ 몸 자리 굴림 순서 무변 ⓔ ② 열린 목표 무변 · 막힌 목표는 선분 위 첫 열린 칸 · 주사위 0 ⓕ 미끼.
+console.log('\n⑪ T394 ①② — 일터 도넛에 지형 · ⑤ 목표 되짚기 [T394]');
+{
+  const S = require(path.join(ROOT, 'server', 'seed-rand.js'));
+  const V = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8');
+  const bodyV = (name) => {
+    const i = V.indexOf('function ' + name + '(');
+    if (i < 0) return '';
+    let d = 0, j = V.indexOf('{', i);
+    for (let k = j; k < V.length; k++) { if (V[k] === '{') d++; else if (V[k] === '}') { d--; if (!d) return V.slice(i, k + 1); } }
+    return '';
+  };
+  const wsSrc = bodyV('_t394WorkSite'), blSrc = bodyV('_t394Blocked'), spSrc = bodyV('spawnOneNpc');
+  ok(wsSrc.length > 200 && blSrc.length > 50 && spSrc.length > 500, '⑪ [전제] 제품에서 **그 글자** 셋을 떴다(일터 고르기 · 막힘 술어 · 태어나기)',
+     `${wsSrc.length} · ${blSrc.length} · ${spSrc.length}자`);
+  const tries = V.match(/const _T394_TRIES = Math\.ceil\(2 \* Math\.PI \* \(180 \+ 140\) \/ SZ\);/);
+  ok(!!tries && Math.ceil(2 * Math.PI * 320 / 32) === 63, '⑪ ★새 수 0 — 시도 상한은 **도넛 바깥 둘레 셀 수**(2π·(180+140)/32 = 63 · 180·140 은 도넛 그 수)');
+  ok(/const T394_WORK_TERRAIN = process\.env\.T394_WORK_TERRAIN !== '0';/.test(V) && /const T394_WORK_TERRAIN = process\.env\.T394_WORK_TERRAIN !== '0';/.test(Z),
+     '⑪ 손잡이 `T394_WORK_TERRAIN` 하나(두 파일이 같은 env 를 읽는다) · **기본 켬** · 되돌림 `=0`');
+  // ⓓ 몸 자리 굴림 순서 — wAng · wR · 몸 x · 몸 y 다음에 일터(다시 뽑기는 그 뒤)
+  const iA = spSrc.indexOf('const wAng = _dv()'), iB = spSrc.indexOf('const bodyX = hx + (_dv() - 0.5) * 60, bodyY = hy + (_dv() - 0.5) * 60;'), iW = spSrc.indexOf('_t394WorkSite(vil, cxPx, cyPx, wAng, wR)');
+  ok(iA > 0 && iB > iA && iW > iB && /x: bodyX,\s*\n\s*y: bodyY,/.test(spSrc),
+     '⑪-d ★몸 자리 굴림은 **종전 순서 그대로**(셋째·넷째) — 일터 다시 뽑기는 그 **뒤** 흐름을 쓴다(몸·pid·집·침대 무변)');
+  // 판 — 모의 지형(가로 줄 강: 5칸마다 2칸 물) · 도넛이 반쯤 강에 걸리게
+  const SZ = 32;
+  const river = (x, y) => { const r = Math.floor(y / SZ); return ((r % 5) + 5) % 5 >= 3; };
+  const mk = (on, pred, T = 63) => {
+    const st = S.makeStream();
+    const state = { deps: { isTerrainBlockedLocal: pred } };
+    const stat = { spawn: 0, first: 0, redraw: 0, yard: 0 };
+    const f = new Function('state', 'SZ', '_dv', 'T394_WORK_TERRAIN', '_T394_TRIES', '_t394Stat',
+      blSrc + '\n' + wsSrc + '\nreturn _t394WorkSite;')(state, SZ, st.next, on, T, stat);
+    return { f, st, stat };
+  };
+  const N = 5000, vil = { ccx: 300, ccy: 300 }, cx = 300 * SZ + 16, cy = 300 * SZ + 16;
+  const run = (on, pred) => {
+    const M = mk(on, pred); const out = [];
+    for (let i = 0; i < N; i++) {
+      M.st.seed(0x394 + i * 7919);
+      const wAng = M.st.next() * Math.PI * 2, wR = 180 + M.st.next() * 140;
+      const bx = M.st.next(), by = M.st.next();                 // 몸 자리 두 굴림(종전 셋째·넷째)
+      const w = M.f(vil, cx, cy, wAng, wR);
+      out.push({ x: w.x, y: w.y, first: !pred(Math.floor((cx + Math.cos(wAng) * wR) / SZ) * SZ + 16, Math.floor((cy + Math.sin(wAng) * wR) / SZ) * SZ + 16),
+                 old: { x: cx + Math.cos(wAng) * wR, y: cy + Math.sin(wAng) * wR }, next: M.st.next(), bx, by });
+    }
+    return { out, stat: M.stat };
+  };
+  const cellBlk = (p, pred) => pred(Math.floor(p.x / SZ) * SZ + 16, Math.floor(p.y / SZ) * SZ + 16);
+  const OFF = run(false, river), ON = run(true, river);
+  let offDiff = 0; for (const o of OFF.out) if (!sameF64(o.x, o.old.x) || !sameF64(o.y, o.old.y)) offDiff++;
+  ok(offDiff === 0, '⑪-a ★★끔 = **종전 식과 비트 동일**(도넛 첫 점 그대로)', `다른 표본 ${offDiff}/${N}`);
+  const oldDead = OFF.out.filter((o) => cellBlk(o, river)).length, newDead = ON.out.filter((o) => cellBlk(o, river)).length;
+  ok(oldDead > N * 0.2, '⑪ [상황] 모의 강이 도넛에 **넉넉히** 걸렸다(끔의 막힌 일터가 많다 — 0 이면 자명 통과)', `${oldDead}/${N}`);
+  ok(newDead === 0, '⑪-c ★★★켬 = **막힌 일터 0**(같은 도넛 · 같은 흐름에서 다시 뽑았다)', `${oldDead} → ${newDead}`);
+  let firstSame = 0, firstN = 0, firstStream = 0;
+  for (let i = 0; i < N; i++) { const a = ON.out[i], b = OFF.out[i]; if (!a.first) continue; firstN++;
+    if (sameF64(a.x, b.x) && sameF64(a.y, b.y)) firstSame++; if (a.next === b.next) firstStream++; }
+  ok(firstN > N * 0.3 && firstSame === firstN && firstStream === firstN,
+     '⑪-b ★★★첫 점이 열린 몸은 켬도 **비트 동일** — 일터도, 뒤따르는 흐름도 한 자도 안 민다', `${firstSame}/${firstN} · 흐름 ${firstStream}/${firstN}`);
+  let bodySame = 0; for (let i = 0; i < N; i++) if (ON.out[i].bx === OFF.out[i].bx && ON.out[i].by === OFF.out[i].by) bodySame++;
+  ok(bodySame === N, '⑪-d 몸 자리 두 굴림은 켬/끔이 **같다**(다시 뽑기는 그 뒤에서만)', `${bodySame}/${N}`);
+  ok(ON.stat.redraw === oldDead && ON.stat.yard === 0, '⑪ [표] 다시 뽑아 열린 곳을 찾은 수 = 막혔던 수 · 마당 폴백 0', `다시 뽑기 ${ON.stat.redraw} · 마당 ${ON.stat.yard}`);
+  // 온 땅이 막히면 — 마당 폴백
+  const ALL = run(true, () => true);
+  ok(ALL.stat.yard === N && ALL.out.every((o) => o.x === vil.ccx * SZ + SZ / 2 && o.y === (vil.ccy + 6) * SZ + SZ / 2),
+     '⑪ ★온 도넛이 막히면 **남문 앞 마당**(집 폴백과 같은 점 `(ccx, ccy+6)`)', `마당 ${ALL.stat.yard}/${N}`);
+  // 미끼 — 술어를 안 보는 꼴로 비틀면 막힌 일터가 되살아난다
+  const BAD = (() => { const M = mk(true, () => false); const r = []; for (let i = 0; i < N; i++) { M.st.seed(0x394 + i * 7919);
+    const wAng = M.st.next() * Math.PI * 2, wR = 180 + M.st.next() * 140; M.st.next(); M.st.next(); r.push(M.f(vil, cx, cy, wAng, wR)); } return r; })();
+  ok(BAD.filter((o) => cellBlk(o, river)).length === oldDead, '★⑪ 자명 통과 금지 — 술어가 늘 거짓이면(= 안 보면) 막힌 일터가 **그대로 남는다**',
+     `${BAD.filter((o) => cellBlk(o, river)).length}/${N}`);
+
+  // ② — ⑤ 배회 목표 되짚기(zone.js)
+  const otSrc = body('_t394OpenTarget');
+  ok(otSrc.length > 200 && !/_dn\(|_dt\(|_dl\(|_dv\(|Math\.random/.test(otSrc), '⑪-e [전제] 되짚기 함수를 떴다 · ★주사위 0(흐름 무소비)', `${otSrc.length}자`);
+  const ds = body('decideNpcBehavior');
+  ok(/npc\.targetY = npc\.npcWorkY \+ \(_dn\(\) - 0\.5\) \* 160;\n\s*\}\n\s*if \(T394_WORK_TERRAIN\) _t394OpenTarget\(npc, npc\.npcWorkX, npc\.npcWorkY\);/.test(ds),
+     '⑪-e 되짚기는 ⑤ 의 **두 굴림 뒤**에만 선다(일터 ±50/80 을 뽑은 다음 줄 · 켬일 때만)');
+  const OT = new Function('BUILDING_SIZE', 'isTerrainBlockedLocal', otSrc + '\nreturn _t394OpenTarget;')(32, river);
+  let untouched = 0, openN = 0, moved = 0, deadN = 0, onSeg = 0, stuck = 0;
+  for (let i = 0; i < 20000; i++) {
+    const ax = 5000 + (i % 97) * 3, ay = 5000 + ((i * 37) % 400);                 // 일터(열림/막힘 섞임)
+    const tx = ax + ((i * 7919) % 160) - 80, ty = ay + ((i * 104729) % 160) - 80;  // ⑤ 상자 ±80
+    const n = { targetX: tx, targetY: ty };
+    const wasDead = river(Math.floor(tx / 32) * 32 + 16, Math.floor(ty / 32) * 32 + 16);
+    const anchorOpen = !river(Math.floor(ax / 32) * 32 + 16, Math.floor(ay / 32) * 32 + 16);
+    const r = OT(n, ax, ay);
+    if (!wasDead) { openN++; if (!r && n.targetX === tx && n.targetY === ty) untouched++; continue; }
+    if (!anchorOpen) continue;
+    deadN++;
+    if (r && !river(Math.floor(n.targetX / 32) * 32 + 16, Math.floor(n.targetY / 32) * 32 + 16)) moved++;
+    const cr = (n.targetX - tx) * (ay - ty) - (n.targetY - ty) * (ax - tx);          // 선분 위(외적 0)
+    const along = (n.targetX - tx) * (ax - tx) + (n.targetY - ty) * (ay - ty);
+    if (Math.abs(cr) < 1e-6 * (1 + Math.hypot(ax - tx, ay - ty) ** 2) && along >= 0 && along <= (ax - tx) ** 2 + (ay - ty) ** 2 + 1e-9) onSeg++;
+  }
+  ok(openN > 5000 && untouched === openN, '⑪-e ★★열린 목표는 **안 건드린다**(비트 동일)', `${untouched}/${openN}`);
+  ok(deadN > 2000 && moved === deadN, '⑪-e ★★★막힌 목표는 **전부 열린 칸으로**(일터가 열려 있으면)', `${moved}/${deadN}`);
+  ok(onSeg === deadN, '⑪-e 옮긴 자리는 **목표→일터 선분 위**다(되짚기 · 새 탐색 0)', `${onSeg}/${deadN}`);
+  const yA = 158 * 32 + 5, yB = 159 * 32 + 5;                                        // 줄 158·159 = 모의 강(%5 ≥ 3) — 선분 전체가 물
+  ok(river(5000, yA) && river(5100, yB), '⑪-e [상황] 목표·일터·그 사이가 전부 막힌 판을 골랐다');
+  const nS = { targetX: 5000, targetY: yA };
+  const rS = OT(nS, 5100, yB);
+  ok(rS === false && nS.targetX === 5000 && nS.targetY === yA, '⑪-e 일터마저 막혔으면 목표를 **그대로** 둔다(beeline 안 넣는다 · T381 §4-5)');
+  const OTbad = new Function('BUILDING_SIZE', 'isTerrainBlockedLocal', otSrc.replace('if (!blk(x, y))', 'if (true)') + '\nreturn _t394OpenTarget;')(32, river);
+  let badDead = 0;
+  for (let i = 0; i < 2000; i++) { const ax = 5000 + (i % 97) * 3, ay = 5000 + ((i * 37) % 400), n = { targetX: ax + ((i * 7919) % 160) - 80, targetY: ay + ((i * 104729) % 160) - 80 };
+    if (!river(Math.floor(n.targetX / 32) * 32 + 16, Math.floor(n.targetY / 32) * 32 + 16)) continue; OTbad(n, ax, ay);
+    if (river(Math.floor(n.targetX / 32) * 32 + 16, Math.floor(n.targetY / 32) * 32 + 16)) badDead++; }
+  ok(badDead > 0, '★⑪-e 자명 통과 금지 — 되짚기가 술어를 **안 보면**(첫 걸음에 멈추면) 막힌 목표가 남는다', `${badDead}건`);
+  console.log(`    [표] ① 막힌 일터 ${oldDead} → ${newDead}(다시 뽑기 ${ON.stat.redraw} · 마당 ${ON.stat.yard}) · 첫 점 열린 몸 비트 동일 ${firstSame}/${firstN} · ② 막힌 목표 ${deadN} → 0 · 열린 목표 무변 ${untouched}/${openN}`);
+  console.log('    접점: npcWorkX · npcWorkY · isTerrainBlockedLocal · decideNpcBehavior · _t394WorkSite · _t394OpenTarget · T394_WORK_TERRAIN · seed-rand');
 }
 
 console.log(`\n=== 결과: ${pass} PASS / ${fail} FAIL ===\n`);

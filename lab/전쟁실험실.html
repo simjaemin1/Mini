@@ -9432,6 +9432,13 @@ function _search(sx, sy, gx, gy, o) {
 // ── localPath: 걸음 프리셋(4방·간선 차단·길 스냅) — 랩 bfsPath·서버 findPath가 위임 ──
 function localPath(sx, sy, gx, gy, opts) {
   opts = opts || {};
+  // ★★[T394 ③ 2026-09-26] **첫 줄을 `routePath` 첫 줄과 같게** — 끝점이 막혔으면 `null`.
+  //   커널은 왕복 대칭을 위해 끝점을 사전순으로 뒤집고(`_searchBegin` 의 `rev`) **출발 칸은 아무도 검사하지 않는다.**
+  //   그래서 막힌 끝점이 사전순으로 앞서면 탐색이 **그 막힌 칸에서 출발해** 길을 냈다 — 같은 질문이 끝점을
+  //   어느 쪽에 적었느냐로 답이 갈렸다(T381 실측: 서버가 찾은 길의 17.6 %가 물칸에서 끝났다 · 격자 58.6 %).
+  //   `blocked` 는 **노드** 술어다(`routePath` 와 같은 이름·같은 모양). 안 넘기면 `() => false` — 종전과 비트 동일.
+  const blocked = opts.blocked || (() => false);
+  if (blocked(sx, sy) || blocked(gx, gy)) return null;
   return _search(sx, sy, gx, gy, {
     dirs: DIRS4, octile: false, biasW: BIAS_LOCAL,
     stepBlocked: opts.blockedStep || (() => false),

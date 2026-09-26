@@ -717,6 +717,37 @@ const HOME_SLOTS = [[-4, -1], [-2, -1], [0, -1], [-5, 0], [-3, 0], [-1, 0]];
 //   HOME_SLOTS(마당)는 휴식·대피·낮 대기 자리로 유지, 취침·요양만 침대 — 문(남벽 개구)으로 실제 출입(주민 A*가
 //   벽 변 인지+스무딩이라 가능해짐 — 종전엔 경로가 벽을 몰라 실내 좌표를 주면 영원히 벽에 비볐다).
 const BED_SLOTS = [[-4, -4], [-3, -4], [-2, -4], [-1, -4], [-4, -3], [-1, -3]];
+// ★★★[T394 ① 2026-09-26 · 일터에 지형] 주민이 태어날 때 받는 일터(`npcWorkX/Y` — 회관 둘레 180~320px 도넛)가
+//   **지형을 안 봤다.** T381 이 쟀다: 주민 **159/1,476(10.8 %)**의 일터가 물·바위였고, 생활 층이 결정을 넘긴 틱에
+//   `decideNpcBehavior` ⑤ 가 그 일터 ±80 을 목표로 주면 A* 가 1500칸을 태우고 `null` → 강으로 beeline → 물가에서
+//   몸을 비볐다(막힌 목표의 89 %). 배산임수 마을은 회관 앞이 물이라 도넛 한쪽이 강에 걸린다.
+//   ⇒ 도넛의 후보 점을 **A* 가 간선에 대는 그 술어**(`deps.isTerrainBlockedLocal` · 존 정본 · 사본 0 · 새 술어 0)로
+//     **셀 중심**에서 거른다(`findPath` 의 `cpx` 와 같은 자리). 막히면 **같은 도넛에서 같은 씨 흐름으로** 다시 뽑는다
+//     (`_dv` · T350 씨 해시 · `Math.random` 0). 시도 상한은 **도넛 바깥 둘레의 셀 수**(2π·320/32 → 63 · 새 수 0).
+//     그래도 전부 막혔으면 이 함수가 이미 쓰는 **남문 앞 마당**(집 폴백 `(ccx, ccy+6)` — 큰집 벽 밖)으로.
+//   ★몸은 안 바뀐다: 다시 뽑기는 몸 자리(셋째·넷째 굴림) **뒤에서** 같은 흐름을 이어 쓴다 — 첫 점이 열려 있던
+//     주민(89 %)은 일터까지 **비트 동일**이고, 막혔던 주민도 몸 자리·pid·집·침대는 그대로다. econ 은 일터를 안 읽는다.
+//   되돌림 `T394_WORK_TERRAIN=0` = 종전과 비트 동일(첫 점 그대로).
+const T394_WORK_TERRAIN = process.env.T394_WORK_TERRAIN !== '0';
+const _T394_TRIES = Math.ceil(2 * Math.PI * (180 + 140) / SZ);   // 도넛 바깥 둘레 셀 수 = 63 (180·140 은 도넛 그 수)
+const _t394Stat = { spawn: 0, first: 0, redraw: 0, yard: 0 };        // 관측 전용 — 첫 점 열림 · 다시 뽑아 열림 · 마당 폴백
+function _t394Blocked(x, y) {
+  const f = state.deps && state.deps.isTerrainBlockedLocal;
+  return !!f && f(Math.floor(x / SZ) * SZ + SZ / 2, Math.floor(y / SZ) * SZ + SZ / 2);
+}
+function _t394WorkSite(vil, cxPx, cyPx, wAng, wR) {
+  let x = cxPx + Math.cos(wAng) * wR, y = cyPx + Math.sin(wAng) * wR;
+  if (!T394_WORK_TERRAIN) return { x, y };
+  _t394Stat.spawn++;
+  if (!_t394Blocked(x, y)) { _t394Stat.first++; return { x, y }; }
+  for (let k = 0; k < _T394_TRIES; k++) {
+    const a = _dv() * Math.PI * 2, r = 180 + _dv() * 140;   // 같은 도넛 · 같은 흐름(몸 자리 굴림 뒤)
+    x = cxPx + Math.cos(a) * r; y = cyPx + Math.sin(a) * r;
+    if (!_t394Blocked(x, y)) { _t394Stat.redraw++; return { x, y }; }
+  }
+  _t394Stat.yard++;
+  return { x: vil.ccx * SZ + SZ / 2, y: (vil.ccy + 6) * SZ + SZ / 2 };   // 남문 앞 마당 — 아래 집 폴백과 같은 점(사본 아님 · 같은 식)
+}
 function spawnOneNpc(vil) {
   const houses = vil.housesPx.length ? vil.housesPx : [{ x: vil.ccx * SZ + SZ / 2, y: (vil.ccy + 6) * SZ + SZ / 2 }];   // ★폴백도 큰집 벽 안(중심 셀) 금지 — 남문 앞 마당
   const home = houses[vil.npcPids.length % houses.length];
@@ -730,14 +761,17 @@ function spawnOneNpc(vil) {
   // ★[T350 · 주사위 0] 태어나는 자리 — 씨 = (마을 신원 · 집 셀 · 게임일 · 그 마을의 몇 번째 주민).
   _diceVil.seed(_seedOf(_pidHash('simvil_' + vil.dbId), Math.floor(hx / SZ), Math.floor(hy / SZ), (state.dayMs ? gameDayOf(Date.now()) : 0) | 0, vil.npcPids.length | 0));   // 날 = `gameDayOf` 정본(사본 0)
   const wAng = _dv() * Math.PI * 2, wR = 180 + _dv() * 140;
+  // ★[T394 ①] 몸 자리는 **종전 순서 그대로**(셋째·넷째 굴림) 먼저 꺼내 두고, 일터를 고른다(다시 뽑기는 그 뒤 흐름).
+  const bodyX = hx + (_dv() - 0.5) * 60, bodyY = hy + (_dv() - 0.5) * 60;
+  const work = _t394WorkSite(vil, cxPx, cyPx, wAng, wR);
   const p = state.deps.spawnNpc({
-    x: hx + (_dv() - 0.5) * 60,
-    y: hy + (_dv() - 0.5) * 60,
+    x: bodyX,
+    y: bodyY,
     villageId: `simvil_${vil.dbId}`,
     villageName: vil.name,
     npcHomeX: hx, npcHomeY: hy,
-    npcWorkX: cxPx + Math.cos(wAng) * wR,
-    npcWorkY: cyPx + Math.sin(wAng) * wR,
+    npcWorkX: work.x,
+    npcWorkY: work.y,
     // npcJob 의도적 미지정(null): zone.js tallyVillageJobs(4415행)가 npcJob 있는 NPC를
     //   legacy 마을 생산(60s 틱 → central 길드 금고)에 합산한다. econ 마을의 생산은
     //   economy-sim(storage)이 진실이므로 이중 계상 + 기존 50마을 금고 교란을 피한다

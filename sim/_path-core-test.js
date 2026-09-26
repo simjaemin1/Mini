@@ -287,5 +287,67 @@ const shape = p => { let s = ''; for (let i = 1; i < p.length; i++) { const dx =
   }
 }
 
+// ── ★★[T394 ③ 2026-09-26] `localPath` 끝점 — **첫 줄을 `routePath` 첫 줄과 같게** ─────────────────
+//   T381 이 찾았다: `localPath` 는 끝점 막힘을 안 봤다 → 커널이 끝점을 사전순으로 뒤집으면 **막힌 칸에서 출발해** 길을 낸다
+//   (같은 질문이 끝점을 어느 쪽에 적었느냐로 갈린다). 이제 `opts.blocked`(노드 술어 · `routePath` 와 같은 이름)를 주면
+//   끝점이 막혔을 때 탐색 전에 `null`. 안 주면 `() => false` — 종전과 비트 동일.
+//   재는 것 넷: ⓐ 첫 줄이 **글자까지** `routePath` 와 같다 ⓑ 열린 끝점 40쌍(T89 자) **비트 동일** ⓒ 막힌 끝점 — 규칙 없으면
+//   끝점 순서로 답이 **갈린다**(결함 증인 = 미끼) · 규칙 있으면 **어느 순서로도** `null` ⓓ 안 주면 종전과 같다.
+{
+  console.log('\n[T394] localPath 끝점 — routePath 첫 줄과 같게');
+  const src = require('fs').readFileSync(require('path').join(__dirname, 'path-core.js'), 'utf8');
+  const FIRST = "const blocked = opts.blocked || (() => false);\n  if (blocked(sx, sy) || blocked(gx, gy)) return null;";
+  const lp = src.slice(src.indexOf('function localPath('), src.indexOf('function _routeOpts('));
+  const rp = src.slice(src.indexOf('function routePath('), src.indexOf('function routePathBegin('));
+  ok(lp.includes(FIRST) && rp.includes(FIRST), 'ⓐ `localPath` 와 `routePath` 가 **같은 첫 줄**(끝점 막힘 = null)을 가졌다');
+  // 판 — 30×30 · 막힌 칸 34 %(결정론 · 파일 머리의 LCG 꼴)
+  const W = 30; let seed = 394; const rnd = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
+  const BL = new Uint8Array(W * W); for (let i = 0; i < W * W; i++) BL[i] = rnd() < 0.34 ? 1 : 0;
+  const node = (x, y) => x < 0 || y < 0 || x >= W || y >= W || BL[y * W + x] === 1;
+  const step = (fx, fy, tx, ty) => node(tx, ty);
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const mirror = (a, b) => (a === null || b === null) ? a === b : JSON.stringify(a) === JSON.stringify(b.slice().reverse());
+  // ⓑ 열린 끝점 40쌍 — 규칙이 있든 없든 **한 자도** 안 다르다
+  const open = [], dead = [];
+  for (let k = 0; open.length < 40 || dead.length < 200; k++) {
+    const a = [(rnd() * W) | 0, (rnd() * W) | 0], b = [(rnd() * W) | 0, (rnd() * W) | 0];
+    if (a[0] === b[0] && a[1] === b[1]) continue;
+    const da = node(a[0], a[1]), db = node(b[0], b[1]);
+    if (!da && !db) { if (open.length < 40) open.push([a, b]); }
+    else if (dead.length < 200) dead.push([a, b]);
+    if (k > 100000) break;
+  }
+  let eq = 0, found = 0;
+  for (const [a, b] of open) {
+    const x = PC.localPath(a[0], a[1], b[0], b[1], { blockedStep: step });
+    const y = PC.localPath(a[0], a[1], b[0], b[1], { blockedStep: step, blocked: node });
+    if (same(x, y)) eq++; if (x) found++;
+  }
+  ok(open.length === 40 && eq === 40, `ⓑ ★★★열린 끝점 40쌍 **비트 동일**(T89 자) — 규칙이 열린 질문을 안 건드린다 (${eq}/${open.length})`);
+  ok(found >= 20, `ⓑ [상황] 40쌍 중 길이 난 것이 넉넉하다(자명 통과 아님 · ${found}/40)`);
+  // ⓒ 막힌 **목표** 200쌍(출발은 열림) — 커널은 끝점을 **사전순으로** 정규화하므로 (A→B)·(B→A) 는 언제나 거울이다.
+  //   결함은 방향이 아니라 **사전순 자리**다: 막힌 목표가 출발보다 사전순으로 **앞서면** 탐색이 그 막힌 칸에서 출발해
+  //   길을 내고, **뒤면** 그 칸에 못 들어가 null 이다 — 같은 모양의 질문이 목표가 왼쪽이냐 오른쪽이냐로 갈린다.
+  let fwdN = 0, fwdPath = 0, revN = 0, revPath = 0, newPath = 0, mirrorBad = 0;
+  for (const [a, b] of dead) {
+    if (node(a[0], a[1]) || !node(b[0], b[1])) continue;          // 출발 열림 · 목표 막힘만
+    const rev = b[0] < a[0] || (b[0] === a[0] && b[1] < a[1]);
+    const f0 = PC.localPath(a[0], a[1], b[0], b[1], { blockedStep: step });
+    const r0 = PC.localPath(b[0], b[1], a[0], a[1], { blockedStep: step });
+    if (!mirror(f0, r0)) mirrorBad++;
+    if (rev) { revN++; if (f0) revPath++; } else { fwdN++; if (f0) fwdPath++; }
+    if (PC.localPath(a[0], a[1], b[0], b[1], { blockedStep: step, blocked: node })) newPath++;
+  }
+  ok(fwdN > 20 && revN > 20, `ⓒ [상황] 막힌 목표가 사전순 **앞/뒤 양쪽**에 넉넉하다(앞 ${revN} · 뒤 ${fwdN})`);
+  ok(mirrorBad === 0, `ⓒ 커널은 방향으로는 갈리지 않는다 — (A→B)·(B→A) 는 언제나 거울(${mirrorBad})`);
+  ok(fwdPath === 0 && revPath > 5, `★ⓒ 결함 증인(미끼) — 규칙이 없으면 **사전순 자리가 답을 가른다**: 목표가 뒤 ${fwdN}쌍은 길 0 · 앞 ${revN}쌍 중 **${revPath}쌍에 막힌 칸으로 가는 길**`);
+  ok(newPath === 0, `ⓒ ★★★규칙이 있으면 막힌 목표엔 **자리와 무관하게** null (길 ${newPath})`);
+  const asymOld = revPath, asymNew = newPath, nonNullOld = revPath + fwdPath, nonNullNew = newPath;
+  // ⓓ 안 주면 종전 — `blocked` 없이 부른 막힌 끝점의 답이 커널 직행(_search)과 같다(기본값이 아무것도 안 막는다)
+  let d0 = 0; for (const [a, b] of dead.slice(0, 40)) { const x = PC.localPath(a[0], a[1], b[0], b[1], { blockedStep: step }), y = PC.localPath(a[0], a[1], b[0], b[1], { blockedStep: step, blocked: undefined }); if (!same(x, y)) d0++; }
+  ok(d0 === 0, `ⓓ \`blocked\` 를 안 주면 종전과 같다(기본값 \`() => false\` · 다른 쌍 ${d0}/40)`);
+  console.log(`  [표] 열린 40쌍 비트 동일 ${eq}/40 · 막힌 목표(출발 열림) ${fwdN + revN}쌍 — 사전순 앞 목표에 길 ${asymOld} → ${asymNew} · 뒤 목표에 길 ${fwdPath}(원래 0)`);
+}
+
 console.log(fail === 0 ? `PASS ${pass}/${pass + fail}` : `FAIL ${fail}/${pass + fail}`);
 process.exit(fail === 0 ? 0 : 1);
