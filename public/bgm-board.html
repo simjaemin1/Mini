@@ -51,6 +51,12 @@
     판정 열쇠(`ab:*` · `t401:*`)도 그대로라 전에 적은 답이 그대로 뜬다. 「sigim 켬/끔」(T391 · 판정 번호 없음)은 제자리.
     ⚠#70 은 판에 **줄이 없다** — 규칙을 켠 판의 소리가 아직 없다(T391 은 sigim 켬/끔을 올렸다). 새 줄을 안 만들고
     그 사실을 표 머리에 적었다(회부 · 보고/T430).
+
+  ★[T437 2026-09-27] 「#70」 두 줄 — 정본 코드가 있는 두 곡(`village_day_trad`·`village_day_jeongak` · 바이트 재현 2/13)마다
+    한 줄씩, 두 단추 「A 끔」「B 켬」. 무표기 재발음 규칙(`render_score.ARTICULATION_CONTRACT`)만 끄고 켠 T391 레시피 굽기다
+    (끔 = 배포 규칙 · **배포 파일과 바이트 동일** / 켬 = GPT R&D 계약). 켬은 **배포하지 않는 로컬 청취본**이라 `~/Mini/_bgm_ab/` 를
+    고르면 이름(`T437_<곡>_<끔|켬>.ogg|m4a`)으로 짝을 찾고 sha256 으로 그 파일인지 잰다(아래 `T437_SHA` · T401 문법 그대로).
+    ○/✗ 은 두 판 각각, 메모 하나. 판정 열쇠 `ab:t437:<곡>:off|on|memo`. 새 열 0 · 줄을 만드는 옛 코드 무변.
 -->
 <style>
   :root{
@@ -132,14 +138,14 @@
   <div class="note">위에서 아래로 <b>한 글자씩</b>(○/✗ · 메모). <b>#66</b> 프레이즈 A/B(「legacy」「phrase」) →
     <b>#70</b> 무표기 재발음 A/B → <b>#72</b> 07-30 판 11곡(「배포」「07-31」「지금」). 답은 이 브라우저에 남고
     (<code>localStorage</code> · <code>durango.bgmboard.v1</code>) 맨 아래 「표 복사」가 한 장으로 옮긴다.
-    <br>⚠<b>#70 은 이 판에 줄이 없다</b> — 규칙(<code>ARTICULATION_CONTRACT</code>)을 켠 판의 소리가 아직 없다.
-    이 판은 새 줄·새 소리를 안 만든다(회부 · 보고/T430).</div>
+    <br><b>#70</b>(T437) 은 곡마다 「A 끔」(배포 규칙 · 배포 파일과 바이트 동일) · 「B 켬」(<code>ARTICULATION_CONTRACT = True</code>) —
+    배포 안 하는 청취본이라 <code>~/Mini/_bgm_ab/</code> 를 고르면 선다(이름 <code>T437_&lt;곡&gt;_&lt;끔|켬&gt;</code> · sha256 으로 그 파일인지 잰다).</div>
   <div class="bar" id="t401bar">
     <button id="pickdir">청취본 폴더 고르기</button>
     <button id="pickfiles">파일 여럿 고르기</button>
     <input id="pickdirIn" type="file" webkitdirectory multiple style="display:none">
     <input id="pickfilesIn" type="file" multiple accept=".ogg,.m4a,audio/*" style="display:none">
-    <span class="stat" id="t401stat">「#72」 줄의 「07-31」「지금」은 <code>~/Mini/_bgm_ab/T401/</code> 를 고르면 선다(배포 안 하는 소리)</span>
+    <span class="stat" id="t401stat">「#72」 줄의 「07-31」「지금」은 <code>~/Mini/_bgm_ab/T401/</code>, 「#70」 줄은 <code>~/Mini/_bgm_ab/</code> 를 고르면 선다(배포 안 하는 소리 · <code>_bgm_ab</code> 하나를 고르면 아래 폴더까지 한 번에)</span>
   </div>
   <div class="note">「legacy」는 대금을 <b>음마다 새로 부는</b> 지금의 엔진이고, 「phrase」는 GPT R&amp;D-01 이 넣어 둔
     <b>악구 하나를 한 숨으로 잇는</b> 판이다(<code>performancePhrases</code> — 제품은 안 켠다). R&amp;D-01 의 사람 청취 판정은
@@ -201,6 +207,15 @@
     journey_trad: { seed: 0, score: 'compose.journey_trad', '0731': { ogg: 'edb20f2e856820bb', m4a: '536cad3dde6305c5' }, now: { ogg: '427b86c14041cd2b', m4a: '85391f207319a0df' } },
     journey_amb: { seed: 0, score: 'compose.journey_amb', '0731': { ogg: '4f4bbead5770b587', m4a: '248ef9beaebb1ea5' }, now: { ogg: 'ecf800b70c844226', m4a: '24b1c9366ba187cd' } },
     journey_ari: { seed: 0, score: 'arirang.journey_ari', '0731': { ogg: 'a742d442e624d28b', m4a: '50007ccc38936f07' }, now: { ogg: '09ce91825d91c6ef', m4a: '3f8742dc2f798f34' } }
+  };
+  // ★[T437] #70 — 무표기 재발음 규칙(`render_score.ARTICULATION_CONTRACT`) 끔/켬 · 정본 코드가 있는 두 곡만.
+  //   이름 = `T437_<곡>_<끔|켬>.<ogg|m4a>` · 기대 해시 = sha256 앞 16자(T391 레시피로 구워 배포와 같은 인코딩 · Ogg 일련번호는 그 곡의 배포 값).
+  //   끔 해시 = 배포 파일 해시(README-BGM 표와 같은 수 — 바이트 동일). `touched` = 켬이 손댄 음(이어 불기 → 재발음 · 보고/T437 §ⓐ).
+  var T437_DIR = '~/Mini/_bgm_ab/';
+  var T437_ARMS = [{ id: 'off', label: 'A 끔', word: '끔' }, { id: 'on', label: 'B 켬', word: '켬' }];
+  var T437_SHA = {
+    village_day_trad: { touched: 83, off: { ogg: '1c2e033b29776089', m4a: '9752f3a3241498bc' }, on: { ogg: '9b81b1ef541aff6f', m4a: '2b5b5019ededdf0d' } },
+    village_day_jeongak: { touched: 83, off: { ogg: '134f172b941fb11f', m4a: '70a0834e078e41a8' }, on: { ogg: '7fe27c1781fe8cd4', m4a: 'd42a7cfe61d0970f' } }
   };
 
   var $ = function (s) { return document.querySelector(s); };
@@ -454,10 +469,77 @@
       btn.title = have.length > 1 ? '맞춤 이득 ' + (20 * Math.log10(gain)).toFixed(2) + ' dB (' + have.length + '판 중)' : '다른 판이 아직 없다 — 맞춤 없이 튼다';
     }).catch(function (e) { btn.title = String(e); stopAll(); });
   }
-  function takeFiles(fl) {                              // 고른 파일들을 이름으로 짝짓는다 — T401 표와 T391 두 줄 모두
-    var n401 = 0, n391 = 0;
-    t401cand = {};
+  // ── [T437] #70 줄 — A 끔 · B 켬(T401 줄과 같은 문법 · 고른 파일만 · 배포 파일은 안 부른다) ─────────────
+  var t437 = {};                                        // 곡 → { off, on } 각 { buf, m, name, sha16, ok }
+  var t437cells = {};                                   // 곡 → 칸 참조
+  var t437cand = {};                                    // '곡|팔' → [File…]
+  function loadArm437(name, arm) {                      // 짝 파일 여럿이면 m4a → ogg 차례로(Safari 는 m4a)
+    ensure();                                           // 푸는 데 소리 문맥이 있어야 한다(T391 loadLocal 과 같이)
+    if (!abCtx) return Promise.reject(new Error('Web Audio 미지원'));
+    var files = (t437cand[name + '|' + arm] || []).slice().sort(function (a, b) { return /\.m4a$/i.test(a.name) ? -1 : /\.m4a$/i.test(b.name) ? 1 : 0; });
+    var want = T437_SHA[name] && T437_SHA[name][arm];
+    var tryOne = function (i) {
+      if (i >= files.length) return Promise.reject(new Error('풀 수 있는 파일이 없다'));
+      var f = files[i];
+      return f.arrayBuffer().then(function (ab) {
+        return hex16(ab.slice(0)).then(function (h) {
+          return decodeBuf(ab).then(function (buf) {
+            var ext = (f.name.split('.').pop() || '').toLowerCase();
+            t437[name] = t437[name] || {};
+            t437[name][arm] = { buf: buf, m: measure(buf), name: f.name, sha16: h, ok: h && want ? want[ext] === h : null };
+            showT437(name);
+            return t437[name][arm];
+          });
+        });
+      }).catch(function () { return tryOne(i + 1); });
+    };
+    return tryOne(0);
+  }
+  function showT437(name) {
+    var c = t437cells[name], r = t437[name] || {};
+    if (!c) return;
+    c.meas.textContent = '';
+    T437_ARMS.forEach(function (a) {
+      var v = r[a.id], line = el('span', 'where');
+      if (!v) { line.textContent = a.label + ' — ' + (t437cand[name + '|' + a.id] ? '읽는 중…' : '파일 없음'); c.meas.appendChild(line); return; }
+      line.textContent = a.label + ' — RMS ' + dbfs(v.m.rms) + ' · 피크 ' + dbfs(v.m.peak) + ' · ' + v.m.secs.toFixed(1) + 's · ' +
+        v.name + ' · sha256 ' + (v.sha16 || '—');
+      if (v.ok === true) line.appendChild(el('span', 'tag good', '○ 그 파일'));
+      if (v.ok === false) line.appendChild(el('span', 'tag warn', '✗ 다른 파일'));
+      c.meas.appendChild(line);
+      judge['meas:t437:' + name + ':' + a.id] = { rms: +(20 * Math.log10(v.m.rms)).toFixed(2), secs: +v.m.secs.toFixed(2),
+        file: v.name, sha16: v.sha16, same: v.ok };
+    });
+    T437_ARMS.forEach(function (a) { var b = c.btn[a.id]; if (b) b.disabled = !r[a.id]; });
+    save();
+  }
+  function playT437(btn, name, arm) {
+    ensure(); mark(btn);
+    var r = t437[name] || {}, me = r[arm];
+    if (!me || !abCtx) { stopAll(); return; }
+    var have = T437_ARMS.map(function (a) { return a.id; }).filter(function (k) { return r[k]; });
+    var gain = 1;
+    // 맞춤: 두 판이 다 풀렸을 때만 — 큰 쪽을 **잰 RMS** 만큼 낮춘다(적힌 수 0)
+    if ($('#match').checked && have.length > 1) {
+      var quiet = Math.min.apply(null, have.map(function (k) { return r[k].m.rms; }));
+      gain = me.m.rms > 0 ? quiet / me.m.rms : 1;
+    }
+    var src = abCtx.createBufferSource(), g = abCtx.createGain();
+    src.buffer = me.buf; g.gain.value = gain;
+    src.connect(g); g.connect(abCtx.destination);
+    src.start();
+    var tok = { stop: function () { try { src.stop(); } catch (e) {} } };
+    cur = tok;
+    src.onended = function () { if (cur === tok) stopAll(); };
+    btn.title = have.length > 1 ? '맞춤 이득 ' + (20 * Math.log10(gain)).toFixed(2) + ' dB' : '다른 판이 아직 없다 — 맞춤 없이 튼다';
+  }
+  function takeFiles(fl) {                              // 고른 파일들을 이름으로 짝짓는다 — T401 표 · T437 #70 · T391 두 줄
+    var n401 = 0, n391 = 0, n437 = 0;
+    t401cand = {}; t437cand = {};
     Array.prototype.forEach.call(fl || [], function (f) {
+      // [T437] 한글 이름은 맥 파일 체계가 자모로 풀어 줄 수 있다 — 견주기 전에 NFC 로 모은다
+      var m7 = /^T437_(.+)_(끔|켬)\.(ogg|m4a)$/i.exec(f.name.normalize ? f.name.normalize('NFC') : f.name);
+      if (m7 && T437_SHA[m7[1]]) { var k7 = m7[1] + '|' + (m7[2] === '끔' ? 'off' : 'on'); (t437cand[k7] = t437cand[k7] || []).push(f); n437++; return; }
       var m = /^(.+)_t401_(0731|now)\.(ogg|m4a)$/i.exec(f.name);
       if (m && T401_SHA[m[1]]) { (t401cand[m[1] + '|' + m[2]] = t401cand[m[1] + '|' + m[2]] || []).push(f); n401++; return; }
       LOCAL_AB.forEach(function (s) {
@@ -468,8 +550,10 @@
     });
     Object.keys(t401cand).forEach(function (k) { var p = k.split('|'); loadArm(p[0], p[1]); });
     Object.keys(t401cells).forEach(showT401);
-    $('#t401stat').textContent = '고른 파일: #72 짝 ' + n401 + '장 · T391 ' + n391 + '장' +
-      (n401 ? ' — 이름·해시는 각 줄 「잰 값」에' : ' — 이름이 `<곡>_t401_0731|now.ogg|m4a` 인 파일이 없다');
+    Object.keys(t437cand).forEach(function (k) { var p = k.split('|'); loadArm437(p[0], p[1]); });
+    Object.keys(t437cells).forEach(showT437);
+    $('#t401stat').textContent = '고른 파일: #70 짝 ' + n437 + '장 · #72 짝 ' + n401 + '장 · T391 ' + n391 + '장' +
+      (n401 || n437 ? ' — 이름·해시는 각 줄 「잰 값」에' : ' — 이름이 `T437_<곡>_<끔|켬>` · `<곡>_t401_0731|now` 인 .ogg|.m4a 가 없다');
   }
   var localCells = {};                                  // [T391] 두 줄의 칸 — 폴더 고르기가 같이 채운다
 
@@ -503,6 +587,7 @@
     var tb = $('#bgm tbody');
     var nAB = 0;
     var j66 = [], j72 = [];                              // ★[T430] 판정 세 판의 줄 — 만든 뒤 `#judge` 에 모아 붙인다
+    var j70 = [];                                        // ★[T437] #70 두 줄(곡마다 A 끔 · B 켬)
     names.forEach(function (n) {
       var t = tracks[n], s = split(n), tr = el('tr');
       tr.appendChild(el('td', 'k', n));
@@ -622,12 +707,63 @@
         showT401(n);
         nAB++;
       }
+      // [T437] #70 한 줄 — 정본 코드가 있는 두 곡(`T437_SHA` 에 있는 곡만): A 끔 · B 켬(#72 줄 문법 그대로)
+      if (T437_SHA[n]) {
+        var r7 = el('tr', 'ab');
+        r7.appendChild(el('td', 'k', '#70 · ' + n));
+        var td7 = el('td'), btn7 = {};
+        T437_ARMS.forEach(function (a) {
+          var b = el('button', 'play', a.label);
+          b.disabled = true; b.title = '청취본 폴더를 고르면 선다';
+          b.onclick = function () { playT437(b, n, a.id); };
+          td7.appendChild(b); td7.appendChild(document.createTextNode(' '));
+          btn7[a.id] = b;
+        });
+        r7.appendChild(td7);
+        var tdx7 = el('td');
+        tdx7.appendChild(el('span', 'tag warn', '#70 · 청취본 · 배포 안 함'));
+        tdx7.appendChild(el('span', 'where', 'A 끔 = 배포 규칙(배포 파일과 바이트 동일) · B 켬 = ARTICULATION_CONTRACT = True · 켬이 손댄 음 ' +
+          T437_SHA[n].touched + '(이어 불기 → 재발음) · ' + T437_DIR + 'T437_' + n + '_끔|켬.ogg|m4a'));
+        r7.appendChild(tdx7);
+        r7.appendChild(el('td', '', '—')); r7.appendChild(el('td', '', '—')); r7.appendChild(el('td', '', '—'));
+        var tdm7 = el('td', 'meas', '');
+        r7.appendChild(tdm7);
+        t437cells[n] = { meas: tdm7, btn: btn7 };
+        // ○/✗ — 두 판 각각("이 규칙이 맞나") · 메모 하나
+        var tdj7 = el('td');
+        T437_ARMS.forEach(function (a) {
+          var id = 'ab:t437:' + n + ':' + a.id;
+          tdj7.appendChild(el('span', 'meas', a.label + ' '));
+          ['○', '✗'].forEach(function (sym, k) {
+            var b = el('button', 'j ' + (k ? 'no' : 'ok'), sym);
+            if (judge[id] && judge[id].v === sym) b.classList.add('on');
+            b.onclick = function () {
+              judge[id] = judge[id] || {};
+              judge[id].v = (judge[id].v === sym) ? '' : sym;
+              Array.prototype.forEach.call(b.parentNode.querySelectorAll('button[data-g="' + id + '"]'), function (x) { x.classList.remove('on'); });
+              if (judge[id].v) b.classList.add('on');
+              save();
+            };
+            b.setAttribute('data-g', id);
+            tdj7.appendChild(b);
+          });
+          tdj7.appendChild(document.createElement('br'));
+        });
+        r7.appendChild(tdj7);
+        var tdm7m = el('td'), inp7 = el('input', 'memo'), mid7 = 'ab:t437:' + n + ':memo';
+        inp7.value = (judge[mid7] && judge[mid7].m) || ''; inp7.placeholder = '#70 — 이어 불기(끔) / 재발음(켬)';
+        inp7.oninput = function () { judge[mid7] = judge[mid7] || {}; judge[mid7].m = inp7.value; save(); };
+        tdm7m.appendChild(inp7); r7.appendChild(tdm7m);
+        j70.push(r7);
+        showT437(n);
+        nAB++;
+      }
     });
     var tj = $('#judge tbody');
-    j66.concat(j72).forEach(function (r) { tj.appendChild(r); });   // #66 → #72(곡 이름 차례) · #70 은 줄 없음
-    var nMain = names.length + nAB - j66.length - j72.length;
+    j66.concat(j70, j72).forEach(function (r) { tj.appendChild(r); });   // #66 → #70 → #72(곡 이름 차례)
+    var nMain = names.length + nAB - j66.length - j70.length - j72.length;
     $('#count').textContent = '— 행 ' + nMain + ' (곡 ' + names.length + ' · sigim ' + (nMain - names.length) + ')';
-    $('#jcount').textContent = '— #66 ' + j66.length + '줄 · #70 0줄(판 없음) · #72 ' + j72.length + '줄 · 모두 ' + (names.length + nAB) + '줄 그대로';
+    $('#jcount').textContent = '— #66 ' + j66.length + '줄 · #70 ' + j70.length + '줄 · #72 ' + j72.length + '줄 · 모두 ' + (names.length + nAB) + '줄';
     if (!nAB) { $('#count').textContent += ' — ⚠A/B 대상 곡이 표에 없다'; }
     $('#boot').style.display = 'none';
   }
@@ -661,6 +797,13 @@
       if (m) L.push('- ' + v + ' — RMS ' + m.rms + ' dBFS · 피크 ' + m.peak + ' dBFS · ' + m.secs + 's · 마디 ' +
         (m.bars === null ? '엔진 기본' : m.bars) + ' · 씨 ' + (m.seed === null ? '엔진 기본' : m.seed) +
         (m.gainDb !== null ? ' · 맞춤 이득 ' + m.gainDb + ' dB' : ''));
+    });
+    Object.keys(T437_SHA).sort().forEach(function (n) {   // [T437] #70 — 어느 파일을 들었는지까지
+      T437_ARMS.forEach(function (a) {
+        var m = judge['meas:t437:' + n + ':' + a.id];
+        if (m) L.push('- #70 ' + n + ' ' + a.label + ' — ' + m.file + ' · sha256 ' + (m.sha16 || '—') +
+          (m.same === true ? ' ○그 파일' : m.same === false ? ' ✗다른 파일' : '') + ' · RMS ' + m.rms + ' dBFS · ' + m.secs + 's');
+      });
     });
     Object.keys(T401_SHA).sort().forEach(function (n) {   // [T401] #72 — 어느 파일을 들었는지까지
       T401_ARMS.forEach(function (a) {
