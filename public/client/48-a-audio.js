@@ -4,7 +4,7 @@
 //   (`AudioContext`·`<audio`·`.play(` 전부 없었다), BGM 이 "13곡 음원 + 재생기"라는 것은 **틀렸다**:
 //   `public/assets/audio/bgm/bgm.js` 는 파일을 한 장도 안 받는 **절차적 엔진**이다
 //   (`DurangoBGM.create → start/setScene/setMood/setIntensity/setDayPhase/setVolume`).
-//   디스크의 13곡(.ogg/.m4a)은 그 엔진을 `compose.py` 로 **오프라인으로 뽑아 둔 것**이고
+//   디스크의 13곡(.ogg/.m4a)은 그 엔진이 아니라 파이썬으로 구워 둔 것이고(2곡 `render_score.py`·`render_jeongak.py` · 11곡 07-30 `tracks2.py` · 정본 없음 — T391·T401 · ★T437 정정)
 //   런타임이 읽지 않는다. ⇒ "잇기"는 파일을 트는 것이 아니라 **엔진을 부르는 것**이다(재구현 0).
 //
 // ★이 파일의 경계(다른 세션과 안 부딪히려고):
