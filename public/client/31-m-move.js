@@ -2,7 +2,10 @@
 
   // === 인접 존 자동 구독/해제 ===
   // 시야 반경(VIEW_RADIUS=650) + 여유 = 800. 시야에 들어오기 전에 미리 구독.
-  const PEEK_THRESHOLD = 900;  // 이웃 zone 경계에서 이만큼 안쪽에 있으면 observer 미리 연결
+  // ★[T428 2026-09-26] 화면은 이제 1,500px 까지 그린다(T392 `VIEW_RADIUS = TILE_RENDER_RADIUS`) — 900 이면 900~1,500 띠에
+  //   선 너머(이웃 존 땅)가 **나무 없이** 보였다(T408 뒤 개체는 제 땅 주인 존이 낸다). ⇒ 렌더 반경 상수 그대로(새 수 0 ·
+  //   `VIEW_RADIUS` 는 렌더 함수 지역 상수라 여기서 못 쓴다 — 같은 값의 최상위 이름 `NAT_VIEW_PAD`). 해제는 ×1.6 그대로.
+  const PEEK_THRESHOLD = NAT_VIEW_PAD;  // 이웃 zone 경계에서 이만큼 안쪽에 있으면 observer 미리 연결
   function manageNeighborSubscriptions() {
     if (!primaryZoneId) return;
     const pmeta = zonesMeta[primaryZoneId];
