@@ -190,5 +190,45 @@ const vil=mk(1,100); let e=null; try{ P.buildDay(vil); now+=DAY; P.buildDay(vil)
   ok(!/process\.env\.T400_BUILD_ACT/.test(VSRC) && !/process\.env\.T400_BUILD_ACT/.test(ZSRC), '⑤ villages·zone 은 env 를 따로 안 읽는다');
 }
 
+// ── ⑥ [T435] 곳간 증설도 재료를 낸다 — 같은 자 문법 ──────────────────────────────────
+console.log('\n⑥ [T435] 곳간 증설 — 표 하나 · 크루가 나른다 · 재료가 다 놓여야 선다');
+{
+  const G = require(path.join(ROOT, 'server', 'granary-stages.js'));
+  ok(JSON.stringify(G.GRANARY_COST) === '{"plank":12,"stone":8}' && JSON.stringify(G.granaryRaw()) === '{"wood":6,"stone":8}',
+    '⑥ 정본 `granary-stages.js` — 판자 12·돌 8 = 원자재 통나무 6·돌 8(판자 레시피로 유도)');
+  ok(/const GRANARY_COST = GranaryStages\.GRANARY_COST;/.test(ZSRC) && /\.\.\.GranaryStages\.GRANARY_RECIPES,/.test(ZSRC) && !/const GRANARY_COST = \{/.test(ZSRC),
+    '⑥ ★플레이어 길드 곳간·판자 레시피가 **그 표를 읽는다**(사본 0)');
+  const E = require(path.join(ROOT, 'sim', 'economy-sim.js'));
+  ok(E.T435_GRANARY_ACT === false && E.actFromGranary({ storage: { wood: 9 } }, 'wood', 3) === 0, '⑥ ★★기본 **끔** · 끈 판 곳간 출구는 한 톨도 안 꺼낸다');
+  ok((SRC.match(/process\.env\.T435_GRANARY_ACT/g) || []).length === 1 && !/process\.env\.T435_GRANARY_ACT/.test(VSRC), '⑥ 손잡이 하나(econ 한 자리)');
+  const ga = fnBody(VSRC, '_lifeGranAdd');
+  ok(/if \(_t435On\(\)\) _t435GranaryDay\(vil\);/.test(ga) && /day >= vil\._granPend\.day && \(!_t435On\(\) \|\| _t435Ready\(vil\)\)/.test(ga), '⑥ 곳간 증설 절에 손잡이 두 줄(나르기 · 재료가 다 놓여야 완공) — 끔 = 날짜만(종전)');
+  const gd = (fnBody(VSRC, '_t435GranaryDay') + fnBody(VSRC, '_t435Crew') + fnBody(VSRC, '_t435Ready')).replace(/const G_CAP = [^\n]*/, '');   // (잘라낸 꼬리에 붙는 종전 랩 상수 줄은 뺀다)
+  ok(gd.length > 400 && !/anyViewerNear|Math\.random/.test(gd) && !/\b(12|8|6)\b/.test(gd.replace(/_t435|T435|_t400|_t341/g, '')), '⑥ 관측자 0 · 주사위 0 · 재료 수를 옮겨 적지 않았다');
+  const W6 = (env, body) => probe(env, WORLD({ jobs: ['fisher', 'farmer', 'hunter', 'forager'] }) + `
+const Q=V.__labProbe._t435Probe; P.setup({ta:{isBlocked:()=>false,isWater:()=>false},world:{day:0}});
+const setDay=(d)=>{P.setup({world:{day:d}});};
+` + body);
+  const on = W6({ T435_GRANARY_ACT: '1', T400_BUILD_ACT: '1' }, `
+const vil=mk(1,100); vil.econ.storage.stone=20; vil._site=null; vil._terrSet=new Set(['1,1']); vil._potSet=new Set(); vil._granPend={cx:120,cy:100,day:6};
+const crew0=Q.crew(vil); setDay(1); Q.granAdd(vil); const d1=JSON.parse(JSON.stringify(vil._t435Dbg)); const mat1=JSON.parse(JSON.stringify(vil._granPend.mat));
+setDay(5); Q.granAdd(vil); const pend5=!!vil._granPend; setDay(6); Q.granAdd(vil);
+vil._site={cx:104,cy:112,stage:1}; const crewH=Q.crew(vil);
+process.stdout.write(JSON.stringify({crew0,crewH,d1,mat1,pend5,after:!!vil._granPend,gran:vil._granList.length,w:vil.econ.storage.wood,s:vil.econ.storage.stone,sum:vil._t435Sum,hands:[...players.values()].map(p=>p.inventory.wood||0)}));`);
+  ok(JSON.stringify(on.mat1) === '{"wood":6,"stone":8}' && on.w === 94 && on.s === 12, '⑥ ★켬 — 첫날 크루가 곳간에서 통나무 6·돌 8 을 꺼내 곳간 터에 놓았다(econ 재고 100→94 · 20→12)', JSON.stringify(on.mat1));
+  ok(on.pend5 === true && on.after === false && on.gran === 2, '⑥ 시공 시간은 그대로 — 재료가 먼저 다 놓여도 착공 + `G_BUILDD` 날에 선다');
+  ok(JSON.stringify(on.crew0) === '["n0","n1"]' && JSON.stringify(on.crewH) === '["n2","n3"]', '⑥ ★여유 크루 — 집 크루가 없으면 앞 둘, T400 집터가 있으면 **그다음 둘**(한 사람이 두 곳을 안 오간다)', `${on.crew0} / ${on.crewH}`);
+  ok(JSON.stringify(on.hands) === '[0,0,0,0]' && on.sum && on.sum.built === 1, '⑥ 손은 날을 넘겨 들지 않는다 · 누계 `t435` 에 선 동 수 1');
+  const st = W6({ T435_GRANARY_ACT: '1' }, `
+const vil=mk(1,100); vil.econ.storage.stone=3; vil._site=null; vil._terrSet=new Set(['1,1']); vil._potSet=new Set(); vil._granPend={cx:120,cy:100,day:2};
+setDay(2); Q.granAdd(vil); const a=!!vil._granPend; vil.econ.storage.stone=10; setDay(3); Q.granAdd(vil);
+process.stdout.write(JSON.stringify({a,b:!!vil._granPend,gran:vil._granList.length,stall:vil._t435Sum.stallDays}));`);
+  ok(st.a === true && st.b === false && st.gran === 2 && st.stall === 1, '⑥ ★★곳간에 돌이 모자라면 **날이 와도 안 선다** — 채워진 다음 날 선다(기다린다)', JSON.stringify(st));
+  const off = W6({}, `
+const vil=mk(1,100); vil.econ.storage.stone=20; vil._site=null; vil._terrSet=new Set(['1,1']); vil._potSet=new Set(); vil._granPend={cx:120,cy:100,day:6};
+setDay(6); Q.granAdd(vil); process.stdout.write(JSON.stringify({p:!!vil._granPend,gran:vil._granList.length,w:vil.econ.storage.wood,s:vil.econ.storage.stone,sum:vil._t435Sum||null}));`);
+  ok(off.p === false && off.gran === 2 && off.w === 100 && off.s === 20 && off.sum === null, '⑥ 미끼 — 끔이면 종전대로 날짜만 차면 재료 0 으로 선다(이 자가 문다)', JSON.stringify(off));
+}
+
 console.log(`\n=== ${pass}/${pass + fail} ${fail ? '✗' : '✓'} ===`);
 process.exit(fail ? 1 : 0);

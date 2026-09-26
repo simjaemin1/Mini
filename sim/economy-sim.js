@@ -1020,8 +1020,14 @@ function stoneRealPer(kind) {   // 한 개당 재료(econ 재화만) — kind: '
   return raw ? _econOnly(raw) : null;
 }
 function stoneRealOn() { return T419_STONE_REAL && !!_stoneUses(); }
+// ══ ★★[T435 2026-09-27] 곳간 증설도 재료를 낸다 — 정본 `server/granary-stages.js`(판자 12·돌 8 → 통나무 6·돌 8) · 손잡이 기본 끔 ══
+//   켬이면 NPC 크루가 이 곳간 출구(`actFromGranary`)로 재료를 꺼내 곳간 터에 놓는다(villages.js `_t435GranaryDay`). 끔 = 한 줄도 안 돈다.
+const T435_GRANARY_ACT = process.env.T435_GRANARY_ACT === '1';
+let _granMod;
+function _granaryStages() { if (_granMod === undefined) { try { _granMod = require('../server/granary-stages'); } catch (e) { _granMod = null; } } return _granMod; }
+function granaryEconMaterials() { const G = _granaryStages(); return G ? _econOnly(G.granaryRaw()) : null; }   // 한 동(econ 재화만)
 function actFromGranary(v, item, units) {
-  if (!T400_BUILD_ACT || !v || !v.storage) return 0;
+  if (!(T400_BUILD_ACT || T435_GRANARY_ACT) || !v || !v.storage) return 0;   // ★[T435] 곳간 증설 크루도 같은 출구를 쓴다(둘 다 끔 = 종전 그대로 0)
   const want = (typeof units === 'number' && units > 0) ? units : 0;
   const have = v.storage[item] || 0;
   const take = Math.min(want, have);
@@ -5407,6 +5413,7 @@ module.exports = {
   farmFlowPerDay, farmLandBoost, harvestToGranary,   // ★[T100] 같은 이유 — 하네스·계측기가 앵커를 옮겨 적지 않는다
   fishToGranary, fishActOn, fishBudgetPerCell, T312_FISH_ACT,   // ★[T312] 어부 행위 — 생활층이 부르는 문 셋 + 손잡이(하네스가 옮겨 적지 않는다)
   T419_STONE_REAL, stoneRealPer, stoneRealOn,   // ★[T419] 돌 쓰는 실물 — 하네스·계측기가 표·유도를 옮겨 적지 않게 내준다
+  T435_GRANARY_ACT, granaryEconMaterials,   // ★[T435] 곳간 증설 재료 — 생활층·하네스가 표를 옮겨 적지 않게
   T400_BUILD_ACT, buildActOn, actFromGranary, hutEconMaterials, hutEconStage, hutStageCount, hutCapPerHut, houseCostPerCap,   // ★[T400] 집 행위 — 하네스·생활층이 표·유도를 옮겨 적지 않게 내준다
   actToGranary, woodToGranary, woodActOn, woodRegrowR, woodRegrowPerDay, T325_WOOD_ACT,
   forageToGranary, forageActOn, forageActItemsOf, foragerYieldsFor, T347_FORAGE_ACT,   // ★[T347] 채집 행위 — 문 셋 + 믹스 정본 + 손잡이(하네스가 표를 옮겨 적지 않는다)

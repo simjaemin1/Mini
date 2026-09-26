@@ -1549,8 +1549,10 @@ const RECIPES = {
 };
 // 14.50: 자원 변환 레시피 (도구 필요). saw로 통나무→판자.
 const HutStages = require('./hut-stages');   // ★[T400] 움집 공정·자재 정본 하나(econ 과 같은 표)
+const GranaryStages = require('./granary-stages');   // ★[T435] 곳간 재료 정본 하나(NPC 곳간 증설·econ 과 같은 표)
 const ITEM_RECIPES = {
-  plank:   { from: { wood: 1 }, to: { plank: 2 }, requiresTool: 'saw', label: '판자 (통나무 1 → 판자 2)' },
+  // ★[T435] 판자 줄의 정본은 `server/granary-stages.js` 다(곳간 재료의 중간재 — econ 이 같은 표로 곳간 원자재를 유도한다 · 값·순서 무변).
+  ...GranaryStages.GRANARY_RECIPES,
   // ★[사용자 확정 — 건축 조합법 고증] 움집(수혈주거) 축조 중간재: 발굴 근거 자재 체계(굴립주·서까래·이엉).
   //   ★[T400] 세 줄의 정본은 `server/hut-stages.js` 다(econ 이 같은 표로 집 자재를 유도한다 · 사본 0 · 순서·값 무변).
   ...HutStages.HUT_RECIPES,
@@ -10098,7 +10100,7 @@ function __testBind() {
 }
 module.exports = { __testBind, __furnaceBind: __testBind };
 
-const GRANARY_COST = { plank: 12, stone: 8 };
+const GRANARY_COST = GranaryStages.GRANARY_COST;   // ★[T435] 판자 12·돌 8 — `granary-stages.js` 에서 유도(NPC 곳간 증설과 같은 표 · 사본 0)
 async function tryBuildGuildGranary(player, atX, atY) {
   if (!player.tribeId) { send(player.ws, { type: 'notice', text: '길드 소속이 아닙니다' }); return; }
   // 리더 검사(central)
