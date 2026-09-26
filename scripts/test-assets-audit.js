@@ -531,6 +531,73 @@ console.log('\n⑧ 배포 폴더에 바이트코드 0 — `.pyc`·`__pycache__/`
   for (const r of quiet.slice(0, 8)) console.log(`       ${r}`);
 }
 
+// ── ⑨ `legacy/` 는 배포 폴더 밖이어야 한다 — `.dockerignore` 로 [T401] ─────────────────
+//
+// T401 ① 은 07-30 판 11곡의 코드를 찾으면 `public/assets/audio/bgm/legacy/` 에 올리라고 했다(배포 폴더 **밖** —
+// 이미지에 안 실리게). 이미지는 `COPY public ./public` 으로 굽고 빼는 것은 `.dockerignore` 하나다.
+// ⇒ 이 절은 **Docker 의 규칙으로** `.dockerignore` 를 읽어 legacy 파일이 빠지는지 잰다.
+//   ★Docker 규칙은 .gitignore 와 다르다: 패턴은 **문맥 뿌리에 붙는다**(`*.zip` 은 뿌리의 zip 만 — 어디서나는 `**/*.zip`) ·
+//     `*` 는 `/` 를 못 넘는다 · 폴더가 걸리면 그 안이 다 빠진다 · 뒤 줄이 앞 줄을 이긴다 · `!` 는 되살린다.
+//     (moby/patternmatcher 꼴 — T401 실측: 레포 추적 2,446장 전수에서 docker-py 7.2.0 `exclude_paths` 와 **들어가는
+//      집합이 같다**(1,864장 · 양쪽에만 있는 것 0).) 그 결과 하나: T303 의 `*.zip`·`samples/` 두 줄은 **뿌리에만** 걸려
+//      `bgm/코드백업*.zip` 2장·`bgm/samples/` 는 **지금도 실린다**(T303 이 센 0.55 MB 중 0.31 MB) — 표만 · 회부.
+console.log('\n⑨ `legacy/` 는 배포 폴더 밖 — `.dockerignore`(Docker 규칙)로 [T401]');
+{
+  const DI = path.join(ROOT, '.dockerignore');
+  const toRe = (p) => {                                   // moby/patternmatcher 꼴 — ** · * · ? · 나머지는 글자 그대로
+    let s = '^';
+    for (let i = 0; i < p.length; i++) {
+      const c = p[i];
+      if (c === '*') {
+        if (p[i + 1] === '*') { i++; if (p[i + 1] === '/') { i++; s += '(?:.*/)?'; } else s += '.*'; }
+        else s += '[^/]*';
+      } else if (c === '?') s += '[^/]';
+      else s += c.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+    }
+    return new RegExp(s + '$');
+  };
+  const parse = (txt) => txt.split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('#')).map((l) => {
+    const neg = l.startsWith('!'); let p = neg ? l.slice(1).trim() : l;
+    p = path.posix.normalize(p).replace(/\/+$/, '').replace(/^\/+/, '');   // filepath.Clean + 앞 `/` 떼기
+    return { p, neg, re: toRe(p) };
+  });
+  const excluded = (rel, pats) => {                       // 파일이나 **그 위 폴더**가 걸리면 빠진다 · 뒤 줄이 이긴다
+    const parts = rel.split('/'); let ex = false;
+    for (const q of pats) {
+      let hit = false;
+      for (let i = parts.length; i >= 1 && !hit; i--) hit = q.re.test(parts.slice(0, i).join('/'));
+      if (hit) ex = !q.neg;
+    }
+    return ex;
+  };
+  const PATS = fs.existsSync(DI) ? parse(fs.readFileSync(DI, 'utf8')) : [];
+  const LEG = 'public/assets/audio/bgm/legacy';
+  const DECOY = `${LEG}/tracks2.py`;
+  let tracked = null;
+  try { tracked = require('child_process').execFileSync('git', ['ls-files', '-z', '--', 'public'], { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).split('\0').filter(Boolean); }
+  catch (e) { tracked = ASSETS.map((a) => a.rel); }
+  const legacyFiles = tracked.filter((r) => r.startsWith(LEG + '/'));
+  const shipping = (xs, pats) => xs.filter((r) => r.startsWith(LEG + '/') && !excluded(r, pats));
+  ok(shipping(legacyFiles, PATS).length === 0,
+     `⑨a \`legacy/\` 에서 이미지에 실리는 파일 ${shipping(legacyFiles, PATS).length}장`,
+     legacyFiles.length ? `legacy ${legacyFiles.length}장 전부 \`.dockerignore\` 가 뺀다` : '`legacy/` 없음 — T401 ① 이 정본을 못 찾았다(0/11 · 보고/T401)');
+  // 자가 서는지 — 이미 있는 줄로 알려진 답을 낸다(자명 통과 금지 · 대조 둘)
+  ok(excluded('public/assets/audio/bgm/compose.py', PATS) && !excluded('public/assets/audio/bgm/bgm.js', PATS)
+     && !excluded(DECOY, PATS),
+     'ⓐ 자 대조 — `bgm/*.py` 줄은 `compose.py` 를 빼고 `bgm.js` 는 안 뺀다 · `*` 는 `/` 를 못 넘어 `legacy/tracks2.py` 는 **안 뺀다**',
+     `compose.py ${excluded('public/assets/audio/bgm/compose.py', PATS) ? '빠짐' : '★실림'} · bgm.js ${excluded('public/assets/audio/bgm/bgm.js', PATS) ? '★빠짐' : '실림'} · legacy/tracks2.py ${excluded(DECOY, PATS) ? '빠짐' : '실림'}`);
+  // 미끼 — legacy 파일 한 장을 추적 목록에 놓으면 ⑨a 가 **하나 더** 문다 · 규칙 한 줄을 (가상으로) 더하면 안 문다
+  const base = shipping(legacyFiles, PATS).length;
+  const withRule = PATS.concat(parse(LEG + '/'));
+  ok(shipping([...legacyFiles, DECOY], PATS).length === base + 1 && shipping([...legacyFiles, DECOY], withRule).length === 0,
+     `ⓑ 미끼 \`${DECOY}\` 를 놓으면 ⑨a 가 **하나 더** 문다 · \`${LEG}/\` 한 줄을 더하면 안 문다(세우는 카드가 같이 넣을 줄)`,
+     `${base}→${base + 1} · 줄 더하면 ${shipping([...legacyFiles, DECOY], withRule).length}`);
+  // 표만 — 뿌리에 붙은 줄 때문에 **지금 실리는** bgm 의 zip·samples (빨강 아님 · 회부)
+  const rooted = tracked.filter((r) => r.startsWith('public/assets/audio/bgm/') && /(\.zip$|\/samples\/)/.test(r) && !excluded(r, PATS));
+  console.log(`     · 뿌리에 붙은 줄(\`*.zip\`·\`samples/\`)이 못 빼는 bgm 파일 ${rooted.length}장 — **이미지에 실린다**(표만 · 회부 — 어디서나 빼려면 \`**/\`)`);
+  for (const r of rooted) console.log(`       ${r}`);
+}
+
 // ── ⑥ 반례 — 화소 자가 **무엇에 둔하고 무엇에 예민한지** [T308] ──────────────
 //
 // T303 이 자를 webp 까지 넓히며 **그 자가 둔하지 않다는 것도 쟀다**: 같은 RGBA 를 무손실
