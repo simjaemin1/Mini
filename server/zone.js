@@ -2924,10 +2924,13 @@ function sepNpcs(dt) {
 // ★[T316] 이 NPC 가 **관측자와 무관하게** 걸어야 하나 — 마을 주민이고 손잡이가 켜져 있을 때.
 //   손잡이는 econ 정본이 쥔다(사본 0). 모듈이 아직 없으면 거짓(부팅 중 · 무해).
 let _t316Econ = null;
+//   ★★[T368 2026-09-25] **농부도** — `T368_FARM_ACT` 면 마을 농부는 관측자와 무관하게 걷는다(캐논 ⓑ① "항상 실걸음").
+//     술어는 여전히 **이 하나**다(둘째 술어 0 · 문 둘 — 결정·이동 — 이 같이 연다). 헤드리스의 농부 몫은 `villages.js` 가 끈다.
+//     ⚠직업은 생활층이 심는 그 칸(`simJob`)이다 — 농부가 다른 일로 바뀌면 그날부터 이 항이 거짓이다(새 규약 0).
 function _t316WalkAlways(npc) {
   if (!npc || !npc.simVillageId) return false;
   if (_t316Econ === null) { try { _t316Econ = require('../sim/economy-sim'); } catch (e) { _t316Econ = false; } }
-  return !!(_t316Econ && _t316Econ.T312_FISH_ACT);
+  return !!(_t316Econ && (_t316Econ.T312_FISH_ACT || (_t316Econ.T368_FARM_ACT && npc.simJob === 'farmer')));
 }
 
 function npcStep(npc, dt, now) {
@@ -3806,6 +3809,7 @@ const server = http.createServer((req, res) => {
       walk: walkPerf(_rst),
       wood: (() => { try { return SimVillages.woodPerf ? SimVillages.woodPerf() : null; } catch (e) { return null; } })(),   // ★[T325] 나무꾼 관측(끔이면 null)
       forage: (() => { try { return SimVillages.foragePerf ? SimVillages.foragePerf() : null; } catch (e) { return null; } })(),   // ★[T347] 채집 관측(끔이면 null)
+      farm: (() => { try { return SimVillages.farmPerf ? SimVillages.farmPerf() : null; } catch (e) { return null; } })(),   // ★[T368] 농부 관측(끔이면 null)
       tick: Object.assign({}, _tick, { ms: _tickMsStats(_rst), on: TICK_DEBT_ON, dtMax: DT_MAX, debtMax: TICK_DEBT_MAX,
         lagPct: _tick.wall > 0 ? +(100 * (_tick.wall - _tick.sim) / _tick.wall).toFixed(3) : null }) }));
     return;

@@ -152,8 +152,10 @@ console.log('\n⑦ [T316] 관측자 없는 마을도 걷는다');
 {
   const Z = codeOf(ZSRC), V = codeOf(VSRC);
   ok(/function _t316WalkAlways\(npc\)/.test(Z), '⑦ 걷기 술어가 존에 **하나** 있다(`_t316WalkAlways`)');
-  ok(/return !!\(_t316Econ && _t316Econ\.T312_FISH_ACT\)/.test(Z),
-     '⑦ ★★그 술어의 첫 항이자 유일한 항이 **`T312_FISH_ACT`** 다 — 둘째 손잡이를 안 만들었다');
+  //   ★[T368 2026-09-25] 둘째 항이 붙었다 — **농부만**(`T368_FARM_ACT && simJob === 'farmer'`). 첫 항(주민 전부)은 그대로 `T312_FISH_ACT` 다.
+  //     T316 이 지킨 뜻("술어는 하나 · 둘째 **술어**를 안 만든다")은 그대로다 — 항은 T368 카드가 붙였고 이름으로 못 박는다.
+  ok(/return !!\(_t316Econ && \(_t316Econ\.T312_FISH_ACT \|\| \(_t316Econ\.T368_FARM_ACT && npc\.simJob === 'farmer'\)\)\)/.test(Z),
+     '⑦ ★★그 술어의 첫 항이 **`T312_FISH_ACT`**(주민 전부)이고, 둘째 항은 ★T368 **농부만**이다 — 둘째 술어는 없다');
   ok(!/T316_[A-Z_]+/.test(Z + V + SRC), '⑦ ★레포 어디에도 `T316_*` 라는 **새 손잡이가 없다**');
   ok(/if \(!npc\.canadiaVillage && !_t316WalkAlways\(npc\) && !isPositionActive\(npc\.x, npc\.y\)\)/.test(Z),
      '⑦ ★★결정 게이트 **그 한 줄**에 끼워 넣었다(루프 사본 0 · 새 루프 0)');
