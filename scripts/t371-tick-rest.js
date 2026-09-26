@@ -233,6 +233,10 @@ async function run() {
   const ws = new WS(`ws://localhost:${ZP}/?observer=1`); ws.on('error', () => {}); ws.on('message', () => {});
   const ping = setInterval(() => { try { ws.send(JSON.stringify({ type: 'ping', t: Date.now() })); } catch (e) {} }, 5000);
   await sleep(25000);
+  // ★[T433 ② 규약 ⓐ] `WAITDAY=1` — 부팅 뒤 **첫 하루 경계**를 넘긴 뒤에야 창을 찾는다(틀 존은 그 경계에서 한 칸 오른다 · T410 §2-⓪).
+  //   기본 끔(종전 값 무변). 켜면 팔 둘이 **같은 조건**(경계 뒤)에서 든다 — 부팅 국면이 달라도.
+  let dayWait = null;
+  if (process.env.WAITDAY === '1') { dayWait = await require('./lib-tick-rule').waitDayBoundary(async () => { const L = await life(); return L && L.phase; }); say('첫 하루 경계', dayWait.crossed ? '넘김' : '못 넘김', '· phase', dayWait.phase); }
   let ph = null;
   for (let i = 0; i < 2000; i++) {
     const L = await life(); ph = L && L.phase;
@@ -261,7 +265,7 @@ async function run() {
   try { z.kill(); } catch (e) {} try { c.kill(); } catch (e) {}
   await sleep(1500); rmdb(DB); rmdb(CDB);
   try { execFileSync('git', ['worktree', 'remove', '--force', dir], { cwd: ROOT, stdio: 'ignore' }); } catch (e) {}
-  return { arm, WINDOW, ARM, probes, segs: SEGS, slices };
+  return { arm, WINDOW, ARM, probes, segs: SEGS, slices, dayWait };
 }
 
 (async () => {
