@@ -16,6 +16,8 @@ const heard=new Set([...recv.matchAll(/t === '([a-z_]+)'/g)].map(m=>m[1]));
 // ★[T387] 층이 **표로** 듣는 메시지 — `combat` 표(메시지 이름 → 키). 이름이 코드에 안 박혀 있어서
 //   위 철자 긁기로는 안 보인다(철자로 부재를 재면 거짓 — 이 자가 T354 에 campfire 로 한 번 당했다).
 const heardBy=new Map();
+// [T402] `hp_changed` 는 `hpWhy._msgType` 이 이름을 댄다 — 표에 키가 하나라도 있으면 그 메시지는 운다
+if(/_sfxMan\.hpWhy/.test(recv) && man.hpWhy && man.hpWhy._msgType && Object.entries(man.hpWhy).some(([k,v])=>!k.startsWith('_')&&typeof v==='string'&&man.keys[v])){ heard.add(man.hpWhy._msgType); heardBy.set(man.hpWhy._msgType,'hpWhy 표(why 낱말) → hit_body'); }
 if(/_sfxMan\.combat/.test(recv)) for(const [k,v] of Object.entries(man.combat||{})) if(!k.startsWith('_')&&typeof v==='string'&&man.keys[v]){ heard.add(k); heardBy.set(k,'combat 표 → '+v); }
 // 표가 잇는 낱말
 const tblWords=new Set();

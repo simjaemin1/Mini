@@ -91,8 +91,15 @@ async function waitHttp(url, tries = 600) {
     // ★남에게 가는 규약 — 방송하는 `why` 는 종전 넷 그대로다(늘리지도 줄이지도 않았다)
     const m = code.match(/const HP_PEER = new Set\(\[([^\]]*)\]\)/);
     const peers = m ? [...m[1].matchAll(/'([a-z]+)'/g)].map((x) => x[1]).sort() : [];
-    ok(JSON.stringify(peers) === JSON.stringify(['damage', 'debug', 'dish', 'food']),
-       '★★⓪ 방송하는 갈래는 **종전 넷 그대로**다(남의 규약 무변)', JSON.stringify(peers));
+    // ★[T402] `damagePlayer` 가 이제 `why` 로 출처 앞 낱말(arrow·mob·…)을 보낸다 — 전부 **종전엔 'damage'** 였던 피해다.
+    //   그래서 규약 무변의 뜻은 "종전 넷 + 그 낱말들 **만**" 이다. 그 낱말은 손으로 적지 않고 **호출부에서 긁는다**.
+    const srcWords = new Set([...code.matchAll(/damagePlayer\([^,]+,[^,]+,\s*[`']([a-z]+)[:`']/g)].map((x) => x[1]));
+    try { const wl = fs.readFileSync(path.join(ROOT, 'server', 'wildlife.js'), 'utf8');
+          for (const x of wl.matchAll(/damagePlayer\([^,]+,[^,]+,\s*'([a-z]+):/g)) srcWords.add(x[1]); } catch (e) {}
+    const want = [...new Set(['damage', 'debug', 'dish', 'food', ...srcWords])].sort();
+    ok(srcWords.size >= 5 && JSON.stringify(peers) === JSON.stringify(want),
+       '★★⓪ 방송하는 갈래는 **종전 넷 + 피해 출처 낱말**뿐이다(종전에 `damage` 로 방송되던 것만 · 남의 규약 무변)',
+       `${JSON.stringify(peers)} · 출처 ${[...srcWords].sort().join(',')}`);
     // ★[T131] 창구는 **하나**다 — `hp_changed` 말고 hp 전용 타입을 또 만들지 않았다.
     ok(!/type:\s*'hp_update'|type:\s*'player_damaged'/.test(code),
        '★★⓪ hp 창구는 하나(`hp_changed`) — 옛 이름도 새 타입도 없다');
@@ -260,7 +267,9 @@ async function waitHttp(url, tries = 600) {
     ok(/setHp\(p, Math\.max\(1, Math\.round\(p\.maxHp \* hpFrac\)\), 'rescue'\)/.test(code),
        '★★④ 일어나는 자리가 문을 지난다(`rescue`)');
     ok(/setHp\(p, p\.hp \+ 2 \* dt \* 5 \* _rm, 'regen'\)/.test(code), '★★④ 자연 회복도 문을 지난다(`regen` · 조용)');
-    ok(/setHp\(p, p\.hp - dmg, 'damage'\)/.test(code), '★★④ 다침도 문을 지난다(`damage` · 방송)');
+    // ★[T402] 다침의 `why` 는 이제 출처 앞 낱말(arrow·mob·…)이다 — 그 낱말들은 전부 `HP_PEER`(위 ⓪ 이 대조) ⇒ 방송 그대로.
+    ok(/setHp\(p, p\.hp - dmg, String\(source \|\| 'damage'\)\.split\(':'\)\[0\]\)/.test(code),
+       '★★④ 다침도 문을 지난다(`why` = 출처 앞 낱말 · 전부 방송 갈래 — T402)');
     ok(!/p\.hp = 0;/.test(code), '★★④ 죽음의 `p.hp = 0` 사본은 사라졌다(문이 하한을 누른다)');
   }
 

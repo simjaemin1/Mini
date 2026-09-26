@@ -39,7 +39,7 @@ function ok(cond, label, detail) {
      '전제 ② `broadcast` 는 관전자에게도 보낸다(`observers.keys()`)');
 
   const http = require('http');
-  const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.json': 'application/json', '.css': 'text/css', '.png': 'image/png' };
+  const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.json': 'application/json', '.css': 'text/css', '.png': 'image/png', '.ogg': 'audio/ogg', '.m4a': 'audio/mp4' };
   const srv = http.createServer((req, res) => {
     const rel = decodeURIComponent(req.url.split('?')[0]).replace(/^\/+/, '') || 'index.html';
     const f = path.join(ROOT, 'public', rel);
@@ -48,7 +48,7 @@ function ok(cond, label, detail) {
     fs.createReadStream(f).pipe(res);
   });
   await new Promise((r) => srv.listen(PORT, r));
-  const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
+  const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ['--autoplay-policy=no-user-gesture-required', '--mute-audio'] });
   const page = await browser.newPage();
   const errs = [];
   page.on('pageerror', (e) => errs.push(String(e).slice(0, 160)));
@@ -121,6 +121,24 @@ function ok(cond, label, detail) {
     await feed('zB', { type: 'player_down_state', pid: 'p2', isDown: true });
     const o1 = await page.evaluate(() => downStates.has('p2'));
     ok(o1 === true, '⑤ 다른 pid 는 관전 연결에서도 남으로 기록된다(종전 그대로)', `${o1}`);
+
+    // ⑥ ★[T402] 남이 쓰러지는 소리 — **진짜 수신 길**(`handleMessage` 머리의 `__sfx.recv`)로 센다.
+    //   같은 존(주 연결)의 p2 가 쓰러지면 운다 · 재접속 복원(`why:relogin`)은 안 운다 · 관전 연결의 p1 쓰러짐은 '나'가 아니다.
+    {
+      await page.mouse.click(5, 5);                                          // 소리 층은 첫 제스처에서만 연다(계약)
+      await page.waitForFunction(() => window.__sfx && window.__sfx.dbg && window.__sfx.dbg().ctx && window.__sfx.dbg().manifest > 0, null, { timeout: 20000 });
+      const played = () => page.evaluate(() => window.__sfx.dbg().stat.played);
+      const withP2 = () => page.evaluate(() => { conns.get('zA').others.set('p2', { pid: 'p2', x: 40, y: 0 }); });
+      const down = (zoneId, pid, why) => feed(zoneId, Object.assign({ type: 'player_down_state', pid, isDown: true }, why ? { why } : {}));
+      await setup(); await withP2(); await down('zA', 'p2', 'down'); await page.waitForTimeout(900);   // 데우기
+      await setup(); await withP2(); let b = await played(); await down('zA', 'p2', 'down'); const s1 = (await played()) - b;
+      await page.waitForTimeout(900);
+      await setup(); await withP2(); b = await played(); await down('zA', 'p2', 'relogin'); const s0 = (await played()) - b;
+      await setup(); b = await played(); await down('zB', 'p1', 'down'); const sB = (await played()) - b;   // 관전 B 의 p1 · B 의 others 에 없음
+      ok(s1 === 1, '⑥a ★★같은 존의 p2 가 쓰러지면 **소리가 난다**(진짜 수신 길 · `why:down`)', `울린 ${s1}`);
+      ok(s0 === 0, '⑥b 재접속 복원(`why:relogin`)은 안 운다', `울린 ${s0}`);
+      ok(sB === 0, '⑥c 관전 연결의 p1 쓰러짐은 **내 몸 소리가 아니다**(나 판정은 주 연결만)', `울린 ${sB}`);
+    }
 
     console.log('\n    ── 재현 표 ──');
     for (const [n, v, e] of rows) console.log(`      ${n.padEnd(34)} ${v}${e ? ' · 오류 ' + e : ''}`);
