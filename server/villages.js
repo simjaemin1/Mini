@@ -591,12 +591,22 @@ function pickSeedVillages(all, ta, opts) {
     try { lp = extractLandParamsApprox(ta, Math.round(v.x / SZ), Math.round(v.y / SZ), { territory: [] }); } catch (e) {}
     _lpCache.set(v.name, lp); return lp;
   };
+  const foodOf = (lp) => (lp.fertility || 0) * 1.5 + (lp.water || 0) * 1.2 + (lp.game || 0) * 0.7;   // ★[T436] 식 한 자리(아래 두 곳이 부른다)
+  // ★★[T436 2026-09-27 · ★PM #78 ⓐ · 손잡이 `T436_GATE_TRADE`(기본 끔)] **게이트가 교역을 본다.**
+  //   T429: 이 하한은 후보 칸 한 점의 자급만 보고 교역을 한 글자도 안 봤다. 한반도(전수)가 이 문을 탔다면
+  //   9곳이 떨어지는데, 그 9곳은 800일 3시드에서 전부 살며 먹은 것의 중앙 76.5% 를 교역으로 먹는다.
+  //   ⇒ 하한에 **교역 잠재** 한 항: 캐러밴이 닿는 이웃 후보의 식량 잉여를 **캐러밴 시계**(`travelDaysForDistance`)로 나눈 합.
+  //     `food + T436_K × 교역잠재 ≥ FOOD_FLOOR` 이면 통과(문턱 2.0 무변 · 점수 식 무변 — 통과 뒤 점수는 종전 그대로 `food` 로 매긴다).
+  //   계수 `T436_K` 는 한반도에서 **유도**했다(보고/T436 §0-ⓐ): 탈락 9곳이 전부 통과하는 가장 작은 값 = 9곳의 (하한−food)/교역잠재 최댓값.
+  //   끔이면 이 줄은 아무것도 안 한다(`_tradeOf` null) — 세 존 시딩 비트 동일.
+  const _tradeOf = (ta && typeof process !== 'undefined' && process.env && process.env.T436_GATE_TRADE === '1')
+    ? _gateTradePotential(all, ta, (v) => { const lp = lpOf(v); return lp ? foodOf(lp) : 0; }, FOOD_FLOOR) : null;
   const landScore = (v) => {
     if (!ta) return 0;
     const lp = lpOf(v);
     if (!lp) return 0;
-    const food = (lp.fertility || 0) * 1.5 + (lp.water || 0) * 1.2 + (lp.game || 0) * 0.7;
-    if (food < FOOD_FLOOR) return 0;                       // 필수 미달 — 심지 않는다(부얼타운 예외는 아래 별도 패스)
+    const food = foodOf(lp);
+    if (food < FOOD_FLOOR && !(_tradeOf && food + T436_K * (_tradeOf.get(v.name) || 0) >= FOOD_FLOOR)) return 0;   // 필수 미달 — 심지 않는다(부얼타운 예외는 아래 별도 패스 · ★T436 켬이면 교역 잠재로 넘을 수 있다)
     const toolAccess = Math.min(1, Math.max(0, (lp.stone || 0) - 0.25) / 0.75 + Math.max(0, (lp.wood || 0) - 0.45) / 1.5);
     return food * (0.5 + toolAccess);                      // 도구 접근 0 → ×0.5, 충분 → ×1.5
   };
@@ -608,6 +618,7 @@ function pickSeedVillages(all, ta, opts) {
     return { ...v, _land: +ls.toFixed(3), _vein: lp ? +veinScore(lp).toFixed(3) : 0, _score: ta ? ls + tp * 0.3 : tp };
   });
   scored.sort((a, b) => b._score - a._score);
+  if (opts && Array.isArray(opts._scoredOut)) for (const v of scored) opts._scoredOut.push(v);   // ★[T436] 관측 전용 — 표 기계가 하한 통과(`_land > 0`)를 정본에서 읽는다
   const picked = [];
   const farEnough = (v) => picked.every(p => Math.hypot(p.x - v.x, p.y - v.y) >= MIN_SPACING_PX);
   // ⓪ ★부얼타운 — **먼저** 뽑는다. 나중에 뽑으면 남은 자리가 없어 예외가 사문이 된다.
@@ -1452,6 +1463,9 @@ function foundPlayerVillage(opts) {
 //     전 마을 상호 고립이면 경고 로그(지형 병리 — 교역 전무).
 // =============================================================================
 const DIST_STEP = Math.max(1, parseInt(process.env.VILLAGE_DIST_STEP || '4', 10));
+// ★[T436] 게이트 교역 잠재의 계수 — **유도값**(보고/T436 §0-ⓐ · `scripts/t436-gate-trade.js` 가 다시 유도해 이 값과 견준다).
+//   한반도 후보 51 에서 하한 미달 9곳이 전부 통과하는 가장 작은 값 = max((하한−food)/교역잠재). 통과 42곳은 이 항과 무관(무변).
+const T436_K = 0.154081;   // = ceil₆(유도값 · 표 기계 kRaw) — 광산1(food 0.589 · 교역잠재 9.158)이 묶는 자리
 // ★[11차 실측 · 다리 구제] 코스 셀 1칸의 통행 판정 — **거리행렬과 캐러밴 A*가 같은 함수를 쓴다**(모듈 헤더 계약).
 //   중심 1점 샘플은 **폭 2셀 다리를 절반 확률로 못 본다**: 다리가 코스 셀 중심선(좌표 %STEP==half)에
 //   걸쳐야만 보이기 때문이다. 실측(한반도 다리 28개 · STEP 4): 13개만 보이고 **15개가 안 보였다**.
@@ -1460,14 +1474,87 @@ const DIST_STEP = Math.max(1, parseInt(process.env.VILLAGE_DIST_STEP || '4', 10)
 //   구제는 **중심이 막혔을 때만** 코스 셀 안(STEP×STEP)을 훑어 '다리이면서 통행 가능한 칸'을 찾는다.
 //   물·바위 일반에는 적용하지 않는다 — 좁은 물목을 임의로 뚫으면 거리 근사가 아니라 거짓말이 된다.
 //   반환 0=차단 1=중심이 열림 2=다리로 구제.
-function coarseOpen(ta, gx, gy) {
+function coarseOpen(ta, gx, gy, brSet) {
   const half = DIST_STEP >> 1, bx = gx * DIST_STEP, by = gy * DIST_STEP;
   if (!ta.isBlocked(bx + half, by + half)) return 1;
+  // ★[T436] `brSet`(존 설정 `bridges` 셀 집합)을 주면 다리를 **그 표에서** 본다 — 어댑터에 다리 훅이 안 꽂힌 자리
+  //   (계측기·랩)에서도 서버와 같은 답을 내려고. 뜻은 위 줄과 같다: 물 위 다리 칸은 통행 · 바위는 다리로 못 덮는다.
+  //   안 주면 종전 그대로(거리행렬·캐러밴은 안 준다 — 값 무변).
+  if (brSet) {
+    for (let dy = 0; dy < DIST_STEP; dy++) for (let dx = 0; dx < DIST_STEP; dx++) {
+      const x = bx + dx, y = by + dy;
+      if (brSet.has(x + '_' + y) && (!ta.isBlocked(x, y) || ta.isWater(x, y))) return 2;
+    }
+    return 0;
+  }
   if (!ta.isBridgeCell) return 0;
   for (let dy = 0; dy < DIST_STEP; dy++) for (let dx = 0; dx < DIST_STEP; dx++) {
     if (ta.isBridgeCell(bx + dx, by + dy) && !ta.isBlocked(bx + dx, by + dy)) return 2;
   }
   return 0;
+}
+
+// ★★[T436 2026-09-27] **게이트의 교역 잠재** — 후보마다 "캐러밴이 닿는 이웃 후보의 식량 잉여 ÷ 캐러밴 시계" 의 합.
+//   · 닿음 = 교역 거리행렬과 **같은 코스 격자·같은 열림 판정**(`coarseOpen` · 다리는 존 설정 `bridges`) · 8방 · 코너 절단 금지.
+//     후보 칸이 막혔으면 거리행렬의 `srcNode` 와 같은 나선 스냅(반경 6노드 · 16방)으로 붙인다. 성분이 같으면 닿는다.
+//   · 잉여 = 이웃의 `food − 하한`(음수면 0 — 제 하한도 못 넘는 이웃은 줄 것이 없다).
+//   · 시계 = `economy-sim-v2.travelDaysForDistance`(econ 좌표 = 셀×2.5 · 캐러밴·소문이 쓰는 그 시계 · 유클리드).
+//   ⚠새 수 0 — 격자 간격·스냅 반경·시계 전부 있는 것을 부른다. 곱할 계수(`T436_K`)만 유도값이다(아래 상수 주석).
+function _gateTradePotential(all, ta, foodFn, floor) {
+  const Z = require('./zone-config').ZONES[state.zoneId] || {};
+  const brSet = new Set(); { const b = Z.bridges || []; for (let i = 0; i + 1 < b.length; i += 2) brSet.add(b[i] + '_' + b[i + 1]); }
+  const v2 = require('../sim/economy-sim-v2');
+  const openMemo = new Map();
+  const K = (gx, gy) => gy * 65536 + gx;
+  const isOpen = (gx, gy) => {
+    if (gx < 0 || gy < 0 || gx >= 65536) return false;
+    const k = K(gx, gy); let o = openMemo.get(k);
+    if (o === undefined) { o = !!coarseOpen(ta, gx, gy, brSet); openMemo.set(k, o); }
+    return o;
+  };
+  const snap = (v) => {
+    const gx0 = Math.max(0, Math.round(v.x / SZ / DIST_STEP)), gy0 = Math.max(0, Math.round(v.y / SZ / DIST_STEP));
+    if (isOpen(gx0, gy0)) return [gx0, gy0];
+    for (let r = 1; r <= 6; r++) for (let a = 0; a < 16; a++) {
+      const nx = Math.round(gx0 + Math.cos(a / 16 * 2 * Math.PI) * r), ny = Math.round(gy0 + Math.sin(a / 16 * 2 * Math.PI) * r);
+      if (nx >= 0 && ny >= 0 && isOpen(nx, ny)) return [nx, ny];
+    }
+    return null;
+  };
+  const label = new Map();
+  let nextLab = 0;
+  const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
+  const labOf = all.map((v) => {
+    const n = snap(v); if (!n) return -1;
+    const k0 = K(n[0], n[1]);
+    if (label.has(k0)) return label.get(k0);
+    const id = nextLab++; label.set(k0, id);
+    const q = [n];
+    for (let h = 0; h < q.length; h++) {
+      const [x, y] = q[h];
+      for (const [dx, dy] of DIRS) {
+        const nx = x + dx, ny = y + dy;
+        if (!isOpen(nx, ny)) continue;
+        if (dx && dy && (!isOpen(x + dx, y) || !isOpen(x, y + dy))) continue;   // 코너 절단 금지(거리행렬과 같다)
+        const k = K(nx, ny); if (label.has(k)) continue;
+        label.set(k, id); q.push([nx, ny]);
+      }
+    }
+    return id;
+  });
+  const food = all.map((v) => foodFn(v));
+  const out = new Map();
+  all.forEach((v, i) => {
+    let s = 0;
+    if (labOf[i] >= 0) all.forEach((u, j) => {
+      if (j === i || labOf[j] !== labOf[i]) return;
+      const sur = food[j] - floor; if (!(sur > 0)) return;
+      const d = Math.hypot(u.x - v.x, u.y - v.y) / SZ * 2.5;
+      s += sur / v2.travelDaysForDistance(d);
+    });
+    out.set(v.name, s);
+  });
+  return out;
 }
 // ★★[2026-08-03d 배치 11 ①-2] **증분 계산** — 마을 하나가 늘 때 전쌍을 다시 돌지 않는다.
 //   실측 근거: 18마을 153쌍 BFS 가 **25.5초**다(그리드 547×1016 · 지형판정 476,112회). O(N²)라
@@ -8333,6 +8420,7 @@ module.exports = { fishPerf, woodPerf, foragePerf, farmPerf,   // ★[T316] `/pe
   LAND_SCAN_R,   // ★[T135] 부존 스캔 반경 — 나무 층이 생활권 숲 셀 수를 유도할 때 읽는다(사본 0)
   __labProbe: {
     makeTerrainAdapter, extractLandParamsApprox, findOpenCenter, pickSeedVillages,
+    _gateTradePotential, get T436_K() { return T436_K; },   // ★[T436] 게이트 교역 잠재 — 표 기계가 **그 함수**를 부른다(사본 0)
     setZoneId: (z) => { state.zoneId = z; },
     // ★[T146 2026-09-06] 사냥터 밴드 하네스용 — `_distProbe`·`_memberProbe` 와 **같은 규약**(최소 주입구 하나).
     //   왜: 밴드 구축은 지형을 훑는다. 예산에서 끊고 이어 짓는지 재려면 **지형을 하네스가 쥐어야** 한다.
