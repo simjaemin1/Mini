@@ -143,7 +143,7 @@ def _safe_child(root: Path, relative: Any, *, label: str) -> Path:
 
 def _load_native_wav_module() -> Any:
     module_path = (
-        Path(__file__).resolve().parents[1]
+        Path(__file__).resolve().parents[2]
         / "daegeum-transitions"
         / "native_wav.py"
     )

@@ -1,0 +1,2 @@
+# ★[T422] R&D 보관소 — 정본 아님(`tools/_rnd_archive/README.md`) · GitHub 언어 통계에 안 센다(vendored) · `git archive` 로 내보낼 때 뺀다(export-ignore). 배포 이미지는 이 줄과 무관하게 `COPY server·public·sim` 만 싣는다(`test-assets-audit ⑩`).
+tools/_rnd_archive/** linguist-vendored export-ignore

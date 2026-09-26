@@ -42,7 +42,7 @@ from typing import Any, Mapping, Sequence
 
 
 HERE = Path(__file__).resolve().parent
-SCORE_EXPRESSION_DIR = HERE.parent / "score-expression"
+SCORE_EXPRESSION_DIR = HERE.parents[1] / "score-expression"
 if str(SCORE_EXPRESSION_DIR) not in sys.path:
     sys.path.insert(0, str(SCORE_EXPRESSION_DIR))
 

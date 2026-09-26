@@ -52,7 +52,7 @@ class RuntimeContractError(RuntimeError):
 
 
 def default_repo_root() -> Path:
-    return Path(__file__).resolve().parents[2]
+    return Path(__file__).resolve().parents[3]
 
 
 def sha256_file(path: Path) -> str:
