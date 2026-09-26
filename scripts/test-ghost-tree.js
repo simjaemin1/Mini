@@ -138,7 +138,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
       n ? `유령 ${n}번 — 서버 세계엔 없다(resources.has=${H.resources.has(t.id)})` : '');
   }
 
-  // ── ④ 개간 — 성목만 벤다(T378 문법) ⇒ 먼저 자란 뒤에 벤다 ───────────────
+  // ── ④ 개간 — 서 있는 나무를 벤다(★T426: 묘목까지 · 종전 T378 은 성목만) ⇒ 여기선 ③ 에서 자란 성목으로 잰다 ──
   {
     const t = T.c;
     pre(t.type === 'tree', `ⓒ 개간 대상은 성목이다 — ③ 에서 자랐다(${t.type})`);
