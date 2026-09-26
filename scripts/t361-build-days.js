@@ -64,14 +64,12 @@ function srcObj(src, where, name, close) {   // 객체·배열 리터럴 선언�
 }
 
 //   ⓐ 움집 정본 — 4단계 공정과 선납 값
-const HUT_STAGES = srcObj(ZSRC, 'zone.js', 'HUT_STAGES', ']');
-const PSITE_COST = srcObj(ZSRC, 'zone.js', 'PSITE_COST', '}');
+//   ★[T400] 공정·선납·중간재 레시피의 정본이 `server/hut-stages.js` 로 옮겨 갔다 — require 로 닿는다(소스 읽기 불필요).
+const HS = require(path.join(ROOT, 'server', 'hut-stages.js'));
+const HUT_STAGES = HS.HUT_STAGES, PSITE_COST = HS.PSITE_COST;
+srcLine(ZSRC, 'zone.js', /^const HUT_STAGES = HutStages\.HUT_STAGES;/);   // zone.js 가 그 표를 부른다는 증거 한 줄
 //   ⓑ 중간재 레시피 — 원자재로 되돌리는 표(필요한 세 줄만)
-const RECIPE = {};
-for (const k of ['pillar', 'rafter', 'thatch']) {
-  const l = srcLine(ZSRC, 'zone.js', new RegExp(`^\\s{2}${k}:\\s+\\{ from:`));
-  RECIPE[k] = eval('(' + l.trim().replace(/^[a-z_]+:\s*/, '').replace(/,\s*$/, '') + ')');   // eslint-disable-line no-eval
-}
+const RECIPE = HS.HUT_RECIPES;
 //   ⓒ 걸음·날 — 정본 셋
 const MOVE_SPEED = srcNum(ZSRC, 'zone.js', 'MOVE_SPEED');
 const DAY_MS = WORLD.dayLengthMs, DAY_RATIO = WORLD.dayPhaseRatio;
@@ -241,14 +239,21 @@ function readDb(p) {
 // ── 본문 ──────────────────────────────────────────────────────────────────────
 const argv = process.argv.slice(2);
 const WATCH_N = parseInt(process.env.T361_OBSERVE || '', 10) || 6;
-let BASE, NOW, OBS, EYE = null;
+let BASE, NOW, OBS, EYE = null, ACT = null, ACTEYE = null;
+// ★[T400] 팔 둘을 더한다 — 집 행위 켬(`T400_BUILD_ACT=1`) · 켬 + 관측자(④ 관측자 게이트의 실서버판).
+//   `T361_ACT=0` 이면 종전 네 팔만(T361 판 그대로 재현).
+const WANT_ACT = process.env.T361_ACT !== '0';
 if (argv[0] === 'run') {
-  console.log('■ 네 팔을 돌린다(1일 기준선 · 30일 끔 · 30일 걸음켬 · 30일 관측자)');
+  console.log(`■ ${WANT_ACT ? '여섯' : '네'} 팔을 돌린다(1일 기준선 · 30일 끔 · 30일 걸음켬 · 30일 관측자${WANT_ACT ? ' · 30일 집 행위 켬 · 30일 켬+관측자' : ''})`);
   BASE = arm('base', 1, {}, 3661);
   NOW = arm('now', DAYS, {}, 3681);
   OBS = arm('walk', DAYS, { T312_FISH_ACT: '1' }, 3701);   // ★`_t316WalkAlways` 가 보는 손잡이 = 걷는 세계
   EYE = arm('eye', DAYS, {}, 3721, WATCH_N);               // ★관측자를 세운 세계 = 헤드리스가 **빠지는** 유일한 팔
-} else if (argv.length >= 3) { [BASE, NOW, OBS, EYE] = argv; }
+  if (WANT_ACT) {
+    ACT = arm('act', DAYS, { T400_BUILD_ACT: '1' }, 3741);                // ★[T400] 집도 행위 — 크루가 곳간에서 자재를 나른다
+    ACTEYE = arm('acteye', DAYS, { T400_BUILD_ACT: '1' }, 3761, WATCH_N); // ★[T400] 켬 + 관측자 — 관측자가 집 수를 바꾸나
+  }
+} else if (argv.length >= 3) { [BASE, NOW, OBS, EYE, ACT, ACTEYE] = argv; }
 else { console.error('쓰는 법: node scripts/t361-build-days.js run | <BASE.db> <NOW.db> <WALK.db> [EYE.db]'); process.exit(2); }
 
 const B = readDb(BASE), N = readDb(NOW), O = readDb(OBS);
@@ -337,4 +342,30 @@ console.log(`  ⇒ 비  행위/지금(끔) ${hN - hB > 0 ? (pred / (hN - hB)).to
                                         : '**짓는 속도가 병목이다** — 옮기면 집 수가 준다'}`);
   console.log(`  ⇒ 실측이 그렇게 말한다: 끔 +${hN - hB} · 걸음켬 +${hO - hB}${E ? ` · 관측자 +${sum(E, (v) => v.house.length) - hB}` : ''} — **세 팔이 같은 수다**`);
 }
-console.log(`\n  ★판정 0 — 이 수는 설계 표의 입력이다. 손잡이(T361_BUILD_ACT)는 여기 없다(다음 카드).`);
+// ══ ★[T400] 집 행위 켬 — 등가(③)와 관측자(④ 실서버판) ══════════════════════════════
+if (ACT && fs.existsSync(ACT)) {
+  const A = readDb(ACT), AE = ACTEYE && fs.existsSync(ACTEYE) ? readDb(ACTEYE) : null;
+  const hA = sum(A, (v) => v.house.length);
+  console.log('\n═══ ⓓ [T400] 집 행위 켬 — 등가 ═══');
+  console.log(`  끔(${DAYS}일)            집 ${hN}채 ⇒ +${hN - hB}채`);
+  console.log(`  켬(${DAYS}일)            집 ${hA}채 · 인구 ${sum(A, (v) => v.pop)} ⇒ +${hA - hB}채   (**절대 ${hA} ↔ 끔 ${hN} · ${hA - hN >= 0 ? '+' : ''}${hA - hN}**)`);
+  if (AE) { const hAE = sum(AE, (v) => v.house.length); console.log(`  켬+관측자 ${WATCH_N}명(${DAYS}일)  집 ${hAE}채 ⇒ +${hAE - hB}채   (${hAE - hA >= 0 ? '+' : ''}${hAE - hA} ↔ 켬 · 실서버는 판마다 흔들린다 — T254)`); }
+  //   걸음이 먹는 낮 — 서버가 센 누계(`/lifedbg` 의 `t400` · 계측 전용)
+  //   스냅은 그 팔의 DB 옆 파일(`…-z.db` → `…-snap.json` · `arm()` 이 그렇게 이름 짓는다) — 위치 인자로 준 팔도 같은 규약.
+  let snap = null; try { snap = JSON.parse(fs.readFileSync(ACT.replace(/-z\.db$/, '-snap.json'), 'utf8')); } catch (e) {}
+  const lv = (snap && snap.life && snap.life.villages) || [];
+  const T = { walkS: 0, dayS: 0, trips: 0, took: 0, adv: 0, crewDays: 0, stallDays: 0, days: 0, jobs: {} };
+  for (const v of lv) { const t = v.t400; if (!t) continue; for (const k of ['walkS', 'dayS', 'trips', 'took', 'adv', 'crewDays', 'stallDays', 'days']) T[k] += t[k] || 0; for (const j of Object.keys(t.jobs || {})) T.jobs[j] = (T.jobs[j] || 0) + t.jobs[j]; }
+  //   ★한 채당 걸음 — 분모는 **크루가 올린 채 수**(전진 단계 ÷ 한 채의 전진 수 = `HUT_STAGES.length − 1` · 집터는 ①굴착을 마친 1단계로 선다).
+  //     `hA − hB` 는 분모가 아니다 — 1일 기준선은 **끈 세계**의 첫날이라(첫날에 이미 지은 집이 들어 있다) 켠 팔의 출발점이 아니다.
+  const built = Math.max(1, T.adv / Math.max(1, HUT_STAGES.length - 1));
+  //   ★걸음이 하루에 안 들어가는 마을 — 하루 왕복 상한 0(`_t341TripsPerDay`)이면 그 마을은 자재를 못 나른다.
+  //     압축한 날(`T361_DAY_MS`)에서는 낮이 짧아 이 수가 커진다 — 실제 날(낮 ${DAY_S}초)의 수가 아니다.
+  const noTrip = lv.filter((v) => v.t400 && v.t400.days > 0 && v.t400.trips === 0 && v.t400.crewDays > 0).length;
+  console.log(`  하루 왕복이 0 인 마을(걸음이 낮에 안 들어감) ${noTrip}/${lv.filter((v) => v.t400).length}   (낮 = 팔의 dayMs × ${DAY_RATIO})`);
+  console.log(`  서버 누계  왕복 ${T.trips} · 나른 통나무 ${+T.took.toFixed(1)} · 전진 단계 ${T.adv}(= ${built.toFixed(1)}채) · 크루·일 ${T.crewDays} · 곳간 빈 날 ${T.stallDays}`);
+  console.log(`  ★걸음이 먹는 낮 — 한 채당 ${(T.walkS / built).toFixed(1)}초 ÷ 낮 ${DAY_S}초 = ${(T.walkS / built / DAY_S * 100).toFixed(2)}%   (T361 설계 표 중앙 ${q(몫s, 0.5)}% · 같은 식)`);
+  console.log(`              크루가 짓는 낮 중 걸음 몫 = ${T.dayS > 0 ? (T.walkS / T.dayS * 100).toFixed(2) : 'n/a'}%`);
+  console.log(`  ★제 일을 못 한 몫(표만) — 크루·일 ${T.crewDays} 의 직업: ${Object.entries(T.jobs).sort((a, b) => b[1] - a[1]).map(([j, n]) => `${j} ${n}`).join(' · ') || '없음'}`);
+}
+console.log(`\n  ★판정 0 — 이 수는 설계 표의 입력이다. 손잡이는 \`T400_BUILD_ACT\`(기본 끔 · T400).`);

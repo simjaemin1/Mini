@@ -4805,6 +4805,7 @@ function lifeDebug() {   // ★[직접 서버 디버깅 — 사용자 요청] zo
       ditch: (vil._ditch ? vil._ditch.length : 0),   // ★[11차 T3] 환호 도랑 셀 수(0=시범 마을 아님) — 라이브 확인용
       psite: vil._psite ? { cx: vil._psite.cx, cy: vil._psite.cy, stage: vil._psite.stage, crew: vil._psiteCrew || 0, owner: vil._psite.owner } : null,   // ★[11차 T4] 플레이어 의뢰 집터(공정 단계·붙은 크루)
       pHouses: (vil._pHouses ? vil._pHouses.length : 0),   // 완공된 의뢰 집(마을 침대 명부 밖)
+      t400: vil._t400Sum || null,   // ★[T400] 집 행위 누계(끔이면 null) — 걸음초·낮초·왕복·나른 통나무·전진 단계·크루 직업
       mkt: (() => { if (!state.caravanBodies) return 0; for (const b of state.caravanBodies.values()) if (b.phase === 'linger' && state.byEcon.get(b.toV) === vil) return 1; return 0; })(),   // ★[10차 T4] 장마당 개장 여부(캐러밴 체류 중) — 라이브 확인용 계측
       ccx: vil.ccx, ccy: vil.ccy, acts, sample });
   }
@@ -5110,7 +5111,8 @@ function _lifeHeadlessDay(vil) {
   // ① 개간 — 실걸음과 동일: 크루 상한 2 × 3셀/인일, 프론티어 최근접부터(마을 중심 기준)
   if (!_body) _lifeClearDay(vil, farmerN);
   // ② 신축 — 크루 인일=단계(실걸음과 동일 속도). 완공 시 _lifeCompleteHouse가 실체화(집·마당·침대 명부)
-  if (vil._site) { let st = Math.min(LIFE_CREW, popN) * LIFE_STAGE_PDAY; while (st-- > 0 && vil._site) _lifeAdvanceSite(vil); }
+  //   ★[T400] 켬이면 이 절은 **안 돈다**(호출 0) — 집은 `_t400BuildDay`(자재를 나르는 크루)가 모든 마을에서 올린다(관측자 무관).
+  if (vil._site && !_lifeEcon().T400_BUILD_ACT) { let st = Math.min(LIFE_CREW, popN) * LIFE_STAGE_PDAY; while (st-- > 0 && vil._site) _lifeAdvanceSite(vil); }
   // ③ 작물 — `lifeFarmDay` 정본 하나(아래). 계측기도 **이 함수를 부른다**(사본 0 · T117).
   if (!_body) lifeFarmDay(vil, day, farmerN);
   vil._hlDay = day;   // lifeDebug 노출용(결산 도장)
@@ -6169,6 +6171,113 @@ function _lifeAdvanceSite(vil, which) {   // 크루 1단계 완수 → 단계 �
   }
   _lifeCompleteHouse(vil, which);
 }
+// ══ ★★[T400 2026-09-26] 집도 행위다 — 1층(어부 문법 다섯째 · 손잡이 `T400_BUILD_ACT` 기본 끔) ════════════
+//   크루(`LIFE_CREW` · 직업 무관 · `builder` 없음)가 **곳간에서 자재를 꺼내 손에 들고**(`actFromGranary` = `actToGranary` 의 역 ·
+//   `npc.inventory`) 집터로 걸어가 **놓는 순간** 단계가 오른다(`_lifeAdvanceSite` 는 그 순간에만 불린다).
+//   ★자재는 **`hut-stages.js` 표 그 수**다 — econ 이 `hutEconStage(s)` 로 유도한다(econ 재화만: 통나무 18·4 · 풀은 econ 재화가 아니라 0).
+//     단계 번호는 플레이어 움집(`zone.js tryHutAdvance`)과 **같은 문법**: 집터가 `stage` 에 있으면 다음 전진은 `HUT_STAGES[stage].need` 를 먹는다
+//     (집터는 ①굴착을 마친 `stage:1` 로 선다 — 기존 그대로).
+//   ★시공 시간은 그대로다 — 한 사람 하루 `LIFE_STAGE_PDAY` 단계(헤드리스 절과 같은 수). 걸음은 **그 위에 드는 비용**이고
+//     하루 왕복 수는 **걸음이 정한다**(`_t341TripsPerDay` · 짐당 개수 = `carry.CAP_KG ÷ weights.kgOf` · 나무꾼 유도 그대로 · 새 수 0).
+//   ★★관측자 무관 — 이 함수는 `anyViewerNear` 를 **읽지 않는다.** 관측 마을·빈 마을이 **같은 장부 같은 걸음**을 걷는다
+//     (T347·T368 의 "빈 마을의 하루" 문법을 **모든 마을**에 쓴 것 · 그래서 관측자 0 ↔ 1 이 비트 동일이다 — 이 카드 ④).
+//     관측 마을의 몸은 같은 길(곳간 사다리 → 집터)을 **보여 준다**(`_t400BodyStep` · 라벨만 · 회계·단계 0).
+//   ★씨 흐름 — 주사위 0(크루 = 명부 순서 앞 `LIFE_CREW` 명 · 곳간 = 집터 최근접). `Math.random` 0.
+function _t400Crew(vil) {   // 명부 순서 앞 min(LIFE_CREW, 인구) — 헤드리스 절의 `min(LIFE_CREW, popN)` 과 같은 수(요양·관측 상태를 안 본다 = 관측자 무관)
+  const out = [], pl = state.deps && state.deps.players;
+  for (const pid of (vil.npcPids || [])) { if (out.length >= LIFE_CREW) break; const p = pl && pl.get(pid); if (p) out.push(p); }
+  return out;
+}
+function _t400PerLoad(item) {   // 한 짐 = ⌊CAP_KG ÷ kgOf(item)⌋(최소 1) — 통나무면 `_t341TreesPerLoad(1)` 과 같은 수(하네스가 대조)
+  const cc = _carryCfg(), W = _weights();
+  const cap = (cc && cc.CFG && cc.CFG.CAP_KG) || 0;
+  const kg = (W && W.kgOf) ? (W.kgOf(item) || 0) : 0;
+  if (!(cap > 0) || !(kg > 0)) return 1;
+  const n = Math.floor(cap / kg);
+  return n > 0 ? n : 1;
+}
+function _t400From(vil, s2) {   // 꺼내는 자리 = 집터에 가장 가까운 곳간 사다리(없으면 회관 — 마을 중심)
+  const sx = (s2.cx - 2.5) * SZ, sy = (s2.cy - 0.5) * SZ;
+  let best = null, bd = Infinity;
+  for (const g of (vil._granList || [])) { const L = _granLadder(g), d = Math.hypot(L.x - sx, L.y - sy); if (d < bd) { bd = d; best = L; } }
+  if (!best) { best = { x: vil.ccx * SZ + SZ / 2, y: vil.ccy * SZ + SZ / 2 }; bd = Math.hypot(best.x - sx, best.y - sy); }
+  return { L: best, d: bd, sx, sy };
+}
+// 하루 — 꺼내고(곳간 → 손) · 걷고(왕복 1) · 놓고(손 → 집터 장부 `mat`) · 자재와 시공이 차면 그 순간 `_lifeAdvanceSite`.
+function _t400BuildDay(vil) {
+  const E = _lifeEcon();
+  if (!E.T400_BUILD_ACT || !vil.econ) return null;
+  vil.econ._t400Live = true;   // econ 이 이 마을의 집 자재를 **추상 차감하지 않게**(차감은 아래 행위가 진다 · `buildActOn`)
+  const day = state.dayMs ? gameDayOf(_dayNow()) : 0;
+  const dbg = vil._t400Dbg = { day, crew: 0, trips: 0, perTrip: 0, took: 0, placed: 0, adv: 0, stall: 0, walkS: 0, dayS: 0, jobs: {} };
+  const s2 = vil._site; if (!s2) { vil._t400Crew = null; return dbg; }
+  const crew = _t400Crew(vil); if (!crew.length) return dbg;
+  vil._t400Crew = crew.map((p) => p.pid);
+  dbg.crew = crew.length;
+  for (const p of crew) { const j = p.simJob || '-'; dbg.jobs[j] = (dbg.jobs[j] || 0) + 1; }   // ③ 표 — 오늘 집을 지은 사람의 직업(그 사람은 제 일을 못 했다)
+  const F = _t400From(vil, s2);
+  const sp = (state.deps && state.deps.moveSpeed) || 0;
+  const roundS = sp > 0 ? 2 * F.d / sp : 0;
+  const tripsEach = _t341TripsPerDay(vil, F.d, 1);   // 한 사람 하루 왕복 상한 — 걸음이 정한다(나무꾼과 같은 식)
+  dbg.perTrip = tripsEach;
+  dbg.dayS = +(((state.dayMs || 0) * ((state.deps && state.deps.dayPhaseRatio) || 0) / 1000) * crew.length).toFixed(3);
+  const left = crew.map(() => tripsEach);
+  let labor = crew.length * LIFE_STAGE_PDAY, rr = 0;
+  if (!s2.mat) s2.mat = {};
+  while (vil._site === s2 && labor > 0) {
+    const need = E.hutEconStage((s2.stage | 0)) || {};
+    // ⓐ 모자란 자재를 나른다 — 짐 하나씩(곳간 → 손 → 걸음 → 집터)
+    let short = false;
+    for (const k of Object.keys(need)) {
+      while ((s2.mat[k] || 0) < need[k]) {
+        let ci = -1;
+        for (let q = 0; q < crew.length; q++) { const i = (rr + q) % crew.length; if (left[i] > 0) { ci = i; break; } }
+        if (ci < 0) { short = true; break; }                         // 오늘 걸음을 다 썼다
+        //   ★짐은 **꽉 채워** 든다 — 이 단계 모자란 몫이 아니라 **이 집에 남은 몫**까지(통나무 22 = 8·8·6 = 3짐 · T361 §ⓑ).
+        //     남은 몫도 표에서 읽는다(`hutEconStage(i)` 의 i ≥ 지금 단계 합 · 사본 0).
+        let rem = 0; for (let i = (s2.stage | 0); i < E.hutStageCount(); i++) rem += ((E.hutEconStage(i) || {})[k] || 0);
+        const want = Math.min(_t400PerLoad(k), rem - (s2.mat[k] || 0));
+        const took = E.actFromGranary(vil.econ, k, want);            // ★곳간 → 손(econ 정본 한 함수 · `actToGranary` 의 역)
+        if (!(took > 0)) { short = true; dbg.stall = 1; break; }     // 곳간이 비었다 — 기다린다(그게 세계다)
+        const c = crew[ci];
+        if (!c.inventory) c.inventory = {};
+        c.inventory[k] = (c.inventory[k] || 0) + took;               // 손에 든다
+        left[ci]--; rr = ci + 1; dbg.trips++; dbg.took += took; dbg.walkS += roundS;
+        c.inventory[k] = Math.max(0, (c.inventory[k] || 0) - took);  // 집터에 놓는다(손은 빈다 — 날을 넘겨 들고 있지 않다)
+        s2.mat[k] = (s2.mat[k] || 0) + took; dbg.placed += took;
+      }
+      if (short) break;
+    }
+    if (short) break;
+    // ⓑ 자재가 찼다 — 시공(한 사람 하루 `LIFE_STAGE_PDAY`)이 남아 있으면 **이 순간** 단계가 오른다
+    for (const k of Object.keys(need)) s2.mat[k] = (s2.mat[k] || 0) - need[k];
+    labor--; dbg.adv++;
+    (vil._t400Log || (vil._t400Log = [])).push(day + ':' + (s2.stage | 0));   // ④ 단계 시각(관측자 게이트 대조)
+    if (vil._t400Log.length > 400) vil._t400Log.splice(0, vil._t400Log.length - 400);
+    _lifeAdvanceSite(vil);
+  }
+  dbg.walkS = +dbg.walkS.toFixed(3);
+  // ★[계측 전용] 누계 — `/lifedbg` 의 `t400` 칸(③ 등가 표: 걸음이 먹는 낮 · 누가 지었나). 회계 아님.
+  const S = vil._t400Sum || (vil._t400Sum = { days: 0, crewDays: 0, walkS: 0, dayS: 0, trips: 0, took: 0, adv: 0, stallDays: 0, jobs: {} });
+  S.days++; S.crewDays += dbg.crew; S.walkS = +(S.walkS + dbg.walkS).toFixed(3); S.dayS = +(S.dayS + dbg.dayS).toFixed(3);
+  S.trips += dbg.trips; S.took += dbg.took; S.adv += dbg.adv; S.stallDays += dbg.stall;
+  for (const j of Object.keys(dbg.jobs)) S.jobs[j] = (S.jobs[j] || 0) + dbg.jobs[j];
+  return dbg;
+}
+// 관측 마을의 몸 — 크루가 같은 길을 **보여 준다**(곳간 사다리 ↔ 집터 · 라벨 '인출'·'운반'·'건축'). 회계·단계·손 0.
+function _t400BodyStep(vil, npc, now) {
+  if (!vil._site || !vil._t400Crew || vil._t400Crew.indexOf(npc.pid) < 0) return false;
+  const F = _t400From(vil, vil._site);
+  const leg = npc._t400Leg || (npc._t400Leg = { to: 'g' });
+  const tx = leg.to === 'g' ? F.L.x : F.sx, ty = leg.to === 'g' ? F.L.y : F.sy;
+  npc.behavior = 'wander'; npc.targetX = tx; npc.targetY = ty; npc.gatherTarget = null;
+  if (Math.hypot(npc.x - tx, npc.y - ty) <= 44) {
+    if (!leg.at) leg.at = now;
+    _lifeAct(npc, leg.to === 'g' ? '인출' : '건축');
+    if (now - leg.at >= G_DRAWW) { leg.to = leg.to === 'g' ? 's' : 'g'; leg.at = 0; }
+  } else _lifeAct(npc, leg.to === 'g' ? '출근' : '운반');
+  return true;
+}
 // ★★[T62 2026-09-03] **6×4 움집 실체 — 런타임 정본 하나.**
 //   여태 이 열 줄은 `_lifeCompleteHouse` 안에만 있었다. T62 의 쉼터가 **같은 실체**를 세우므로
 //   뽑아낸다 — 두 번째 사본을 만들면 그게 곧 "벽 규약이 갈리는" 자리다(족보 ㉒·(83)).
@@ -6917,6 +7026,8 @@ function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(�
     : (vil.econ.npcs.length > cap * 0.92);
   if (!vil._site && _wantSite) { try { _lifeAddHouseSite(vil); } catch (e) { console.error(`[${state.zoneId}] 생활층 신축 실패(${vil.name}):`, e.message); } }
   _sub('site');
+  // ★★[T400] 집 — 자재를 나르는 크루의 하루(관측자 무관 · 이 줄은 아래 관측자 문 **앞**이다). 끔이면 한 줄도 안 돈다.
+  if (_lifeEcon().T400_BUILD_ACT) { try { _t400BuildDay(vil); } catch (e) { console.error(`[${state.zoneId}] 생활층 집 행위 실패(${vil.name}):`, e.message); } _sub('site'); }
   // ★[헤드리스 결산] 관측자 없는 마을 = 랩 빨리감기 — 하루치 물리 결과 일괄 적산(관측 마을은 실걸음 크루 소유)
   const anyNear = state.deps.anyViewerNear;
   if (!(anyNear && anyNear(vil.ccx * SZ + SZ / 2, vil.ccy * SZ + SZ / 2, (vil._maxRPx || 800) + 1600))) {
@@ -7014,7 +7125,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
   if (npc._half && dayFrac >= SCH_HALF_R) {
     if (!(npc._lifeTask && npc._lifeTask.k === 'build')) {
       _lifeDropTask(vil, npc);
-      if (vil._site) { vil._buildCrew++; npc._lifeTask = { k: 'build', px: (vil._site.cx - 2.5) * SZ, py: (vil._site.cy - 0.5) * SZ, prog: 0 }; npc._workT = now; }
+      if (vil._site && !_lifeEcon().T400_BUILD_ACT) { vil._buildCrew++; npc._lifeTask = { k: 'build', px: (vil._site.cx - 2.5) * SZ, py: (vil._site.cy - 0.5) * SZ, prog: 0 }; npc._workT = now; }   // ★[T400] 켬이면 징발 0 — 집은 크루 둘이 나르고 짓는다
       else if (vil._psite) { vil._psiteCrew = (vil._psiteCrew || 0) + 1; npc._lifeTask = { k: 'build', ps: 1, px: (vil._psite.cx - 2.5) * SZ, py: (vil._psite.cy - 0.5) * SZ, prog: 0 }; npc._workT = now; }   // ★[11차 T4] 마을 일감이 없을 때만 의뢰 집터로(마을 우선 — 랩 ④ 규약)
       else {
         // ★[곳간②] 퇴근길: 든 짐은 곳간에 넣고, 빈손이면 재고에서 하루치를 꺼내 집으로 나른다
@@ -7030,6 +7141,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
   const t = npc._lifeTask;
   if (t) {
     if (t.k === 'build' && !(t.ps ? vil._psite : vil._site)) { npc._lifeTask = null; return false; }   // 완공/소멸 → 해산
+    if (t.k === 'build' && !t.ps && _lifeEcon().T400_BUILD_ACT) { _lifeDropTask(vil, npc); return true; }   // ★[T400] 마을 집터 시공은 하루 장부가 진다(몸의 진척 0 — 이중 진척 금지)
     const d = Math.hypot(npc.x - t.px, npc.y - t.py);
     if (d > 44) { npc.behavior = 'wander'; npc.targetX = t.px; npc.targetY = t.py; npc.gatherTarget = null; npc._workT = now; _lifeAct(npc, '출근'); return true; }
     const el = Math.min(3000, now - (npc._workT || now)); npc._workT = now;   // 현장 도착 — 실시간 노동 누적(틱 간격 캡)
@@ -7059,7 +7171,8 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
     if (best) { vil._claim.add(best.cx + ',' + best.cy); vil._clearCrew++; npc._lifeTask = { k: 'clear', cx: best.cx, cy: best.cy, f: best.f, px: best.cx * SZ + SZ / 2, py: best.cy * SZ + SZ / 2, prog: 0 }; npc._workT = now;
       npc.behavior = 'wander'; npc.targetX = npc._lifeTask.px; npc.targetY = npc._lifeTask.py; npc.gatherTarget = null; _lifeAct(npc, '출근'); return true; }   // ★배정 틱에도 즉시 이동 목표(미세팅 시 신선 NPC target NaN)
   }
-  if (vil._site && vil._buildCrew < LIFE_CREW) {
+  if (_lifeEcon().T400_BUILD_ACT) { if (_t400BodyStep(vil, npc, now)) return true; }   // ★[T400] 오늘의 크루는 곳간 ↔ 집터를 오간다(보여 주기만)
+  else if (vil._site && vil._buildCrew < LIFE_CREW) {
     vil._buildCrew++; npc._lifeTask = { k: 'build', px: (vil._site.cx - 2.5) * SZ, py: (vil._site.cy - 0.5) * SZ, prog: 0 }; npc._workT = now;   // 남측 마당에서 시공
     npc.behavior = 'wander'; npc.targetX = npc._lifeTask.px; npc.targetY = npc._lifeTask.py; npc.gatherTarget = null; _lifeAct(npc, '출근'); return true;   // ★배정 틱 즉시 이동 목표
   }
@@ -8054,6 +8167,7 @@ function __rumorProbe() {
 }
 
 module.exports = { fishPerf, woodPerf, foragePerf, farmPerf,   // ★[T316] `/perf` 가 내주는 어부 관측(손잡이 끔이면 null) · ★[T325] 나무꾼 · ★[T347] 채집도 같은 꼴 · ★[T368] 농부
+  _t400BuildDay, _t400PerLoad, _t400Crew, _t400From,   // ★[T400] 집 행위 1층 — 하네스가 같은 함수를 부른다(사본 0)
   _t347ActItems, _t347PerLoad,   // ★[T347] 걷는 목록·짐당 개체 — 하네스가 표·유도를 옮겨 적지 않게 내준다(사본 금지)
   _actDay, _actTake,   // ★[T334] 예산 장부 몸통(어부 전용 — T341 이 나무에서 걷어냈다) — 하네스가 규칙을 옮겨 적지 않게 내준다
   _t341TripsPerDay, _t341TreesPerLoad,   // ★[T341] 하루 왕복 수·짐당 그루 — **걸음이 정한다**(하네스가 유도를 다시 계산해 대조한다)
@@ -8148,6 +8262,12 @@ module.exports = { fishPerf, woodPerf, foragePerf, farmPerf,   // ★[T316] `/pe
     _fieldBridgeProbe: (vil) => _fieldBridge(vil),
     // ★[T374] 관측 갈래 퇴근 판정의 **그 함수 자체**를 내준다(같은 규약 · 최소 주입구 하나 — 손을 세려면 사람 목록이 있어야 한다).
     //   하네스가 "D − 오늘 − 손" 을 다시 적으면 그게 사본이다 — 정본 `_t374Done`·`_t374Held` 를 그대로 부른다.
+    // ★[T400] 집 행위 하네스용 — 같은 규약(최소 주입구 하나). 하네스는 걸음·자재 규칙을 다시 적지 않는다 — 정본 함수를 그대로 부른다.
+    _t400Probe: { setup: (o) => { const k = { deps: state.deps, db: state.db, dayMs: state.dayMs, epoch: state.epoch, zoneId: state.zoneId };
+        if (o) { if ('deps' in o) state.deps = o.deps; if ('db' in o) state.db = o.db; if ('dayMs' in o) state.dayMs = o.dayMs; if ('epoch' in o) state.epoch = o.epoch; if ('zoneId' in o) state.zoneId = o.zoneId; if ('tickCtx' in o) state.tickCtx = o.tickCtx; } return k; },
+      buildDay: (vil) => _t400BuildDay(vil), headlessDay: (vil) => _lifeHeadlessDay(vil), advance: (vil) => _lifeAdvanceSite(vil),
+      perLoad: (it) => _t400PerLoad(it), treesPerLoad: (u) => _t341TreesPerLoad(u), tripsPerDay: (vil, d) => _t341TripsPerDay(vil, d, 1),
+      get LIFE_CREW() { return LIFE_CREW; }, get LIFE_STAGE_PDAY() { return LIFE_STAGE_PDAY; } },
     _t374Probe: { setDeps: (d) => { const k = state.deps; state.deps = d; return k; }, done: (vil, job) => _t374Done(vil, job), held: (vil, items) => _t374Held(vil, items) },
     get VILLAGE_MAX() { return VILLAGE_MAX; },
     get INITIAL_POP() { return INITIAL_POP; },

@@ -1462,12 +1462,12 @@ const RECIPES = {
   crude_blade: { cost: { pebble: 2, twig: 1, fiber: 1 }, label: '조잡한 돌칼',   crude: true },
 };
 // 14.50: 자원 변환 레시피 (도구 필요). saw로 통나무→판자.
+const HutStages = require('./hut-stages');   // ★[T400] 움집 공정·자재 정본 하나(econ 과 같은 표)
 const ITEM_RECIPES = {
   plank:   { from: { wood: 1 }, to: { plank: 2 }, requiresTool: 'saw', label: '판자 (통나무 1 → 판자 2)' },
   // ★[사용자 확정 — 건축 조합법 고증] 움집(수혈주거) 축조 중간재: 발굴 근거 자재 체계(굴립주·서까래·이엉).
-  pillar:  { from: { wood: 3 }, to: { pillar: 1 },  requiresTool: 'axe', label: '기둥 (통나무 3 → 굴립주 기둥 1)' },
-  rafter:  { from: { wood: 1 }, to: { rafter: 2 },  requiresTool: 'axe', label: '서까래 (통나무 1 → 서까래 2)' },
-  thatch:  { from: { fiber: 4 }, to: { thatch: 1 },                      label: '이엉 (풀 4 → 이엉 1 — 맨손 엮기)' },
+  //   ★[T400] 세 줄의 정본은 `server/hut-stages.js` 다(econ 이 같은 표로 집 자재를 유도한다 · 사본 0 · 순서·값 무변).
+  ...HutStages.HUT_RECIPES,
   // ★[재민 확정 2026-08-02 노 건설] 숯 — 노 연료. 장작으론 900℃ 위로 못 간다(era.js FUEL_CAP).
   //   숯가마 설치물은 후속(회부_플레이어_제련_노모델)로 이월 — MVP 는 제작 경로.
   charcoal: { from: { wood: 3 }, to: { charcoal: 2 },                    label: '숯 (통나무 3 → 숯 2 — 노 연료)' },
@@ -9068,12 +9068,8 @@ function _liveBuildRow(type, x, y, data, ownerId, ownerName, made) {
 // ★[사용자 확정 "건축 순서 고증"] 움집 다단계 건축 — 수혈주거 축조 공정(발굴 순서):
 //   ① 수혈 굴착(곡괭이 — 깊이 반지하 터파기) → ② 굴립주 기둥 6주(도끼 다듬은 통나무) → ③ 도리·서까래 골조(풀 결속) → ④ 이엉 지붕 잇기 → 완공.
 //   완공 실체 = NPC 움집과 동일 6×4(벽=변·남벽 2칸 문·바닥). 발자국 [gx-3..gx+2]×[gy-4..gy-1](시전자 북쪽 — 갇힘 방지), 문 = 남벽 중앙 2칸.
-const HUT_STAGES = [
-  { need: {},                        tool: 'pickaxe', wear: 3, label: '① 수혈 굴착(터파기)' },
-  { need: { pillar: 6 },                                       label: '② 굴립주 기둥 세우기(기둥 6)' },
-  { need: { rafter: 8, fiber: 6 },                             label: '③ 도리·서까래 골조(서까래 8·풀 6)' },
-  { need: { thatch: 8 },                                       label: '④ 이엉 지붕 잇기(이엉 8)' },
-];
+//   ★[T400] 공정 표의 정본은 `server/hut-stages.js` 다 — 이 파일은 그 표를 **부른다**(사본 0 · 값·순서 무변).
+const HUT_STAGES = HutStages.HUT_STAGES;
 function tryHutStart(player, atX, atY) {
   const SZg = BUILDING_SIZE;
   let x0, y0, x1, y1;
@@ -9119,7 +9115,7 @@ function tryHutStart(player, atX, atY) {
 //   │ 왜 중간재 3종인가: 굴립주(pillar)·도리서까래(rafter)·이엉(thatch)이 HUT_STAGES ②③④의 실물이고,
 //   └ 이건 플레이어가 이미 만들 줄 아는 것들이다(기존 크래프트 경로 재사용 — 발명 0).
 //   부족하면 **지정 자체를 거절**한다(외상 없음 — 진행 중 미납 상태라는 새 개념을 만들지 않기 위해).
-const PSITE_COST = { pillar: 6, rafter: 8, thatch: 8 };   // = HUT_STAGES ②굴립주6 ③서까래8 ④이엉8 (fiber는 원자재라 제외)
+const PSITE_COST = HutStages.PSITE_COST;   // = HUT_STAGES ②굴립주6 ③서까래8 ④이엉8 (fiber는 원자재라 제외) — ★[T400] 공정 표에서 **유도**(`hut-stages.js`)
 function tryRequestVillageHouse(player, atX, atY) {
   if (!Number.isFinite(atX) || !Number.isFinite(atY)) { send(player.ws, { type: 'notice', text: '자리를 지정해 주세요' }); return; }
   if (Math.hypot(atX - player.x, atY - player.y) > 400) { send(player.ws, { type: 'notice', text: '너무 멀어서 거기에 의뢰할 수 없다' }); return; }
@@ -9449,11 +9445,9 @@ const VILLAGE_SPEC = {
 //      pillar 6·rafter 8·thatch 8 이다. 새 눈금이 아니라 **세 번째 재사용**이다.)
 // ★실체도 움집과 같다(6×4 · 남벽 2칸 문 · `hut` 태그) ⇒ **새 스프라이트 0 · 클라 렌더 접점 0**.
 //   다른 것은 뜻뿐이다: 이 집은 아무의 집도 아니고, 그래서 **이방인이 첫날 밤을 여기서 난다**(§9.5 사다리 1칸).
-const SHELTER_STAGES = [
-  { need: { pillar: 6 },              label: '① 굴립주 기둥 세우기(기둥 6)' },
-  { need: { rafter: 8, fiber: 6 },    label: '② 도리·서까래 골조(서까래 8·풀 6)' },
-  { need: { thatch: 8 },              label: '③ 이엉 지붕 잇기(이엉 8)' },
-];
+// ★★[T400] 이 표도 **움집 표에서 유도한다**(`hut-stages.js` ②③④ · 사본 0) — 움집 표 한 줄이 바뀌면 쉼터도 따라온다.
+//   바뀐 것은 라벨의 동그라미 번호뿐이다(쉼터는 ①굴착이 없어 ②③④ → ①②③). 값·글자는 종전 표와 같다(`test-shelter` 가 본다).
+const SHELTER_STAGES = HUT_STAGES.slice(1).map((st, i) => ({ need: st.need, label: '①②③④'[i] + st.label.slice(1) }));
 const SHELTER_SPEC = {
   siteType: 'shelter_site', doneType: 'shelter', ko: '공용 쉼터', icon: '🛖',
   stages: SHELTER_STAGES, kind: 'shelter',

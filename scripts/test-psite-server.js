@@ -60,7 +60,8 @@ console.log('\n[③ ★마을이 굶지 않는다 — 여유 크루만(포화점
   chk(/vil\._psiteCrew \|\| 0\) < LIFE_CREW/.test(VIL), '의뢰 집터도 크루 상한 LIFE_CREW(서버의 하루 진척 포화점)');
   // 반일 오후 징발도 마을 우선
   const half = VIL.slice(VIL.indexOf('if (npc._half && dayFrac >= SCH_HALF_R)'), VIL.indexOf('// ══ 진행 중 작업'));
-  chk(/if \(vil\._site\)[\s\S]{0,240}else if \(vil\._psite\)/.test(half), '반일 오후 징발도 마을 집터 우선 → 없을 때만 의뢰');
+  //   ★[T400] 마을 집터 갈래에 손잡이 가드(`&& !_lifeEcon().T400_BUILD_ACT` — 켬이면 징발 0)가 붙었다 — 순서(마을 → 의뢰)는 그대로다.
+  chk(/if \(vil\._site(?: && !_lifeEcon\(\)\.T400_BUILD_ACT)?\)[\s\S]{0,400}else if \(vil\._psite\)/.test(half), '반일 오후 징발도 마을 집터 우선 → 없을 때만 의뢰');
   // 무상 진척(빨리감기 일괄) 금지
   const headless = VIL.slice(VIL.indexOf('function _lifeHeadlessDay(vil)'), VIL.indexOf('function _lifeTasksPerFarmerDay') > 0 ? VIL.indexOf('function _lifeTasksPerFarmerDay') : VIL.indexOf('function _lifeAddHouseSite'));
   chk(!/_psite/.test(headless), '★무인 존 일괄 진척(_lifeHeadlessDay)에 의뢰 집터 없음 = 크루가 실제로 와야만 지어진다(랩 규약 ②)');
@@ -81,7 +82,10 @@ console.log('\n[④ 회계·명부 무접촉 — 의뢰 집은 마을 침대가 
 
 console.log('\n[⑤ 대가 = 재료 선납 — 부족하면 지정 자체를 거절(외상 없음)]');
 {
-  chk(/const PSITE_COST = \{ pillar: 6, rafter: 8, thatch: 8 \}/.test(ZONE), '선납 재료 = 움집 중간재 3종(기둥6·서까래8·이엉8)');
+  // ★[T400] 공정·선납의 정본은 `server/hut-stages.js` 다(zone.js 는 그 표를 부른다) — 값은 **그 모듈에** 묻는다.
+  const _HS = require(path.join(__dirname, '..', 'server', 'hut-stages.js'));
+  chk(JSON.stringify(_HS.PSITE_COST) === JSON.stringify({ pillar: 6, rafter: 8, thatch: 8 }) && /const PSITE_COST = HutStages\.PSITE_COST;/.test(ZONE),
+    '선납 재료 = 움집 중간재 3종(기둥6·서까래8·이엉8) — 정본 `hut-stages.js` 를 zone.js 가 부른다');
   const fn = ZONE.slice(ZONE.indexOf('function tryRequestVillageHouse'), ZONE.indexOf('function tryHutAdvance'));
   const iLack = fn.indexOf('lack.push'), iPlace = fn.indexOf('lifeRequestPlayerSite');
   chk(iLack > 0 && iPlace > iLack, '재료 검사가 배치보다 **먼저**(부족하면 상태를 안 건드림)');
@@ -93,10 +97,11 @@ console.log('\n[⑤ 대가 = 재료 선납 — 부족하면 지정 자체를 거
   chk(/type: 'notice'/.test(fn) && /재료 선납 부족/.test(fn), '부족 사유를 notice로 돌려준다');
   chk(/거리|너무 멀어서/.test(fn), '거리 게이트 실재(원격 의뢰 금지)');
   // HUT_STAGES 실제 소요와 대조 — 선납이 공정 소요와 어긋나면 '이 집은 뭘로 짓나'가 깨진다
-  const hs = ZONE.slice(ZONE.indexOf('const HUT_STAGES = ['), ZONE.indexOf('function tryHutStart'));
+  const _need = {}; for (const st of _HS.HUT_STAGES) for (const [k, n] of Object.entries(st.need || {})) _need[k] = (_need[k] || 0) + n;
   for (const [k, v] of [['pillar', 6], ['rafter', 8], ['thatch', 8]]) {
-    chk(new RegExp(`${k}: ${v}`).test(hs), `  HUT_STAGES 소요와 일치 — ${k} ${v}`);
+    chk(_need[k] === v && _HS.PSITE_COST[k] === v, `  HUT_STAGES 소요와 일치 — ${k} ${v}`);
   }
+  chk(/const HUT_STAGES = HutStages\.HUT_STAGES;/.test(ZONE), '  zone.js 의 공정 표는 **정본을 부른다**(리터럴 사본 0 · T400)');
 }
 
 console.log('\n[⑥ 클라 — placementMode.special 재사용(발명 0) + 마을 정본 발자국]');
