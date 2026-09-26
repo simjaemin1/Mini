@@ -24,6 +24,10 @@ HB17 = sys.argv[2] if len(sys.argv) > 2 else '/tmp/t407/b17'
 PNG = sys.argv[3] if len(sys.argv) > 3 else '/tmp/t407/T407_닛폰_소외.png'
 OUTJ = sys.argv[4] if len(sys.argv) > 4 else '/tmp/t407/tables.json'
 SEEDS = [1020, 7, 42]
+# ★[T409] 존 손잡이 — `T407_ZONE=<존>`(기본 nippon = 종전 그대로 · 글자 동일). 셋째 존(중원북)을 같은 자로 잰다.
+ZN = os.environ.get('T407_ZONE', 'nippon')
+ZLABEL = {'nippon': '닛폰(아사기 열도)', 'jungwon_n': '중원북(하란 북부)'}.get(ZN, ZN)
+ZSHORT = {'nippon': '닛폰', 'jungwon_n': '중원북'}.get(ZN, ZN)
 
 def load_iso(z):
     J = json.load(open(os.path.join(D, f'iso-{z}.json'), encoding='utf-8'))
@@ -57,7 +61,7 @@ def dists(J, M, xy):
         out[name] = r
     return out
 
-NP, NPM = load_iso('nippon')
+NP, NPM = load_iso(ZN)
 HB, HBM = load_iso('hanbando')
 
 def pos(v):
@@ -131,7 +135,7 @@ npL, npD, npA = dens(NP)
 dens_rows = [dict(k=k, hb=hbA[k], np=npA[k], hbPer=hbD[k], npPer=npD[k], ratio=(npD[k] / hbD[k] * 100 if hbD[k] else None)) for k in hbD]
 src_rows = {z: {'강 원천/전체': (J['geo']['rivers']['srcN'], J['geo']['rivers']['n']), '능선 원천/전체': (J['geo']['ridges']['srcN'], J['geo']['ridges']['n']),
                 '호수 원천/전체': (J['geo']['lakes']['srcN'], J['geo']['lakes']['nAll']), '숲 원천/전체': (J['geo']['forests']['srcN'], J['geo']['forests']['nAll']),
-                '숲 손그림(타원)/사각': (J['geo']['forests']['hand'], J['geo']['forests']['rect'])} for z, J in (('hanbando', HB), ('nippon', NP))}
+                '숲 손그림(타원)/사각': (J['geo']['forests']['hand'], J['geo']['forests']['rect'])} for z, J in (('hanbando', HB), (ZN, NP))}
 
 # ── 두 존 한 줄 비율(② — 한반도 넷째 판 대비)
 def base(dirp, s):
@@ -144,7 +148,7 @@ for s in SEEDS:
     h = base(HB17, s); n = base(os.path.join(D, 'n17'), s)
     ratio.append(dict(seed=s, hb=h, np=n, hbFloor=len(hbfloor[s]), npFloor=len(floor[s])))
 
-json.dump(dict(rows=rows, thr=thr, cand_far=cand_far, cand_any=cand_any, dens=dens_rows, landCells={'hanbando': hbL, 'nippon': npL},
+json.dump(dict(rows=rows, thr=thr, cand_far=cand_far, cand_any=cand_any, dens=dens_rows, landCells={'hanbando': hbL, ZN: npL},
                src=src_rows, ratio=ratio, hbDist=hb_d, npDist=np_d, npComps={'B': NP['compsB'], '0': NP['comps0']},
                hbPartners=sorted([v.get('partnersB') for v in HB['vills'] if v.get('seeded')])), open(OUTJ, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
 
@@ -207,7 +211,7 @@ def bridges_of(z):
     if i < 0 or j < 0: return []
     nums = [int(t) for t in src[j + 10:k].split(',') if t.strip()]
     return list(zip(nums[0::2], nums[1::2]))
-for ox, J, z in ((oxH, HB, 'hanbando'), (oxN, NP, 'nippon')):
+for ox, J, z in ((oxH, HB, 'hanbando'), (oxN, NP, ZN)):
     st = J['STEP']
     for (cx, cy) in bridges_of(z):
         x, y = ox + cx / st, oy + cy / st
@@ -216,8 +220,8 @@ for ox, J, z in ((oxH, HB, 'hanbando'), (oxN, NP, 'nippon')):
 draw_zone(oxH, HB, False, set())
 draw_zone(oxN, NP, True, set(cand_far))
 
-d.text((M_, 14), 'T407 · 닛폰(아사기 열도) 소외 후보 — 한반도와 같은 축척', font=font(28, True), fill=INK)
-d.text((M_, 54), f'한 칸 = {NP["STEP"]}셀({NP["STEP"]*32}px) · 한반도 {HB["NX"]}×{HB["NY"]}셀 · 닛폰 {NP["NX"]}×{NP["NY"]}셀 · 닛폰 후보 {len(NP["vills"])} → 시딩 {sum(1 for v in NP["vills"] if v.get("seeded"))}',
+d.text((M_, 14), ('T407' if ZN == 'nippon' else 'T409') + f' · {ZLABEL} 소외 후보 — 한반도와 같은 축척', font=font(28, True), fill=INK)
+d.text((M_, 54), f'한 칸 = {NP["STEP"]}셀({NP["STEP"]*32}px) · 한반도 {HB["NX"]}×{HB["NY"]}셀 · {ZSHORT} {NP["NX"]}×{NP["NY"]}셀 · {ZSHORT} 후보 {len(NP["vills"])} → 시딩 {sum(1 for v in NP["vills"] if v.get("seeded"))}',
        font=font(18), fill=INK2)
 lx, ly = M_, 96
 def leg(col, label, shape='box'):
@@ -231,14 +235,14 @@ def leg(col, label, shape='box'):
 leg(SEA, '바다(해안선 띠)'); leg(RIVER, '강·호수'); leg(ROCK, '바위(능선)'); leg(FOREST, '숲'); leg(ORE, '주 광맥', 'dot')
 leg(STUMP, '다리', 'dot'); leg(INK, '시딩 마을', 'dot'); leg(INK2, '안 선 후보', 'hollow'); leg(RED, '소외 후보(짝≤2·거리)', 'ring')
 d.text((oxH, oy - 26), f'한반도(hanbando) — 시딩 {sum(1 for v in HB["vills"] if v.get("seeded"))}곳 · 이름 생략', font=font(17, True), fill=INK)
-d.text((oxN, oy - 26), '닛폰(nippon)', font=font(17, True), fill=INK)
+d.text((oxN, oy - 26), f'{ZSHORT}({ZN})', font=font(17, True), fill=INK)
 fy = oy + max(imH.height, imN.height) + 14
 d.text((M_, fy), '지형 = terrain.js 정본 술어(강·호수 isWaterCellLocal · 바위 isRockCellLocal · 숲 getForestMultiplier>1.5 · 광맥 isOreClusterAt) · 바다 = chunk.generateCoastlineWaterTiles(서버 WATER_TILES 와 같은 함수)',
        font=font(14), fill=INK3)
 d.text((M_, fy + 22), '다리 = zone-config bridges · 마을 = terrain.siteCandidates → pickSeedVillages → findOpenCenter(서버 시딩과 같은 길) · 소외 후보 문턱 = 한반도 51곳 분포(3위 거리) · 판정 0',
        font=font(14), fill=INK3)
 _nf = sum(1 for r in rows if r['seeded'] and all(r['floor'])); _ns = sum(1 for r in rows if r['seeded'])
-d.text((M_, fy + 44), f'바닥 마을(ⓛ 돌 바닥 · 3시드 모두)은 닛폰 {_ns}곳 중 {_nf}곳이라 빨간 테두리에서 뺐다 — 표의 칸에 있다(보고/T407 §0-ⓒ)', font=font(14), fill=INK3)
+d.text((M_, fy + 44), f'바닥 마을(ⓛ 돌 바닥 · 3시드 모두)은 {ZSHORT} {_ns}곳 중 {_nf}곳이라 빨간 테두리에서 뺐다 — 표의 칸에 있다(보고/' + ('T407 §0-ⓒ)' if ZN == 'nippon' else 'T409)'), font=font(14), fill=INK3)
 os.makedirs(os.path.dirname(PNG) or '.', exist_ok=True)
 im.save(PNG)
 print(PNG, im.size, '후보(짝·거리)', cand_far, '후보(바닥 포함)', cand_any)
