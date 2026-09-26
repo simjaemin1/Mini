@@ -1034,7 +1034,7 @@ console.log('\n⑮ ★★[T387] 사람/전투 — 사건 넷은 표로 · 상태
   const ELEVEN = ['arrow_spawn', 'arrow_removed', 'hp_changed', 'player_attacked', 'player_down_state',
                   'player_downed', 'player_respawn', 'pvp_state', 'war_command_ack', 'self_stat', 'death'];
   const QUIET = ['arrow_removed', 'hp_changed', 'player_down_state', 'pvp_state', 'war_command_ack', 'self_stat'];
-  ok(rows.length === 4, '⑮a 표 `combat` 에 사건 넷(쏨·휘두름·쓰러짐·깨어남)', rows.map(([k, v]) => `${k}→${v}`).join(' · '));
+  ok(rows.length === 5, '⑮a 표 `combat` 에 사건 다섯(쏨·휘두름·쓰러짐·깨어남 + [T402] 남의 쓰러짐)', rows.map(([k, v]) => `${k}→${v}`).join(' · '));
   const badKey = rows.filter(([, v]) => !KEYS[v] || !KEYS[v].file || KEYS[v]['후보']);
   ok(badKey.length === 0, '⑮b 표가 가리키는 키가 전부 파일 있는 **배선** 키다(후보를 가리키면 판정 전 소리가 난다)', badKey.map(([k, v]) => `${k}→${v}`).join(' ') || '전부');
   // ⑮c ★서버가 **정말 보내는** 이름인가 — 철자가 아니라 `type: '<이름>'` 전문 꼴로 본다
@@ -1043,7 +1043,12 @@ console.log('\n⑮ ★★[T387] 사람/전투 — 사건 넷은 표로 · 상태
   ok(phantom.length === 0, '⑮c ★표의 메시지 이름이 전부 `zone.js` 에서 **실제로 나간다**(허공의 이름이면 영영 무음)', phantom.map(([k]) => k).join(' ') || rows.map(([k]) => k).join(' '));
   ok(!sent('player_attacked_zz'), '⑮c2 자명 통과 금지 — 없는 이름은 `sent` 가 거짓을 낸다');
   // ⑮d ★★상태 동기화는 표에 없다 — 11 중 여섯 + `death`(인벤 낱말)
-  const leaked = QUIET.filter((n) => typeof CB[n] === 'string');
+  // [T402] `player_down_state` 는 **`combatOnly` 가 `why:'down'` 만 거를 때** 표에 있어도 된다(쓰러짐 ≠ 업힘 ≠ 재접속).
+  const ONLY = man.combatOnly || {};
+  const gated = (n) => ONLY[n] && ONLY[n].why === 'down' && ONLY[n]._남만 === true;
+  const leaked = QUIET.filter((n) => typeof CB[n] === 'string' && !gated(n));
+  ok(typeof CB.player_down_state !== 'string' || gated('player_down_state'),
+     '⑮d0 [T402] 남의 쓰러짐은 `combatOnly{why:down, _남만}` 으로만 운다(업힘·내려놓음·재접속 0 · 내 것은 `player_downed`)', JSON.stringify(ONLY.player_down_state || null));
   ok(leaked.length === 0, '⑮d ★★상태 동기화 여섯은 표에 **없다**(HP 눈금·배지·UI 응답·화살 사라짐·갈증 동기)', leaked.join(' ') || QUIET.join(' '));
   const whereTbl = man.inventoryWhere || {};
   ok(typeof whereTbl.death !== 'string', '⑮e ★`inventory where:death` 는 안 운다 — 죽어 쏟기는 `drop` 이 이미 운다(두 번 울지 않는다)', `inventoryWhere.death = ${whereTbl.death}`);
@@ -1099,14 +1104,18 @@ console.log('\n⑯ ★★[T397] `hp_changed.why` · 표면 타일 · 눈이면 �
   const sends = [...zsrc.matchAll(/\{\s*type:\s*'hp_changed'[^}]*\}/g)].map((m) => m[0]);
   ok(sends.length === 2 && sends.every((x) => /why:\s*why\s*\|\|\s*''/.test(x)),
      '⑯a ★서버의 `hp_changed` 전문 두 자리가 전부 `why` 를 싣는다(T397 두 줄 · 새 낱말 0 — `setHp` 의 인자)', `${sends.length}자리`);
-  // ⑯b ★★`damage` 를 잇기 전에 — 그 낱말이 **극단 감소**까지 나르는가를 코드에서 읽는다
+  // ⑯b ★★[T402] `damagePlayer` 가 **출처 앞 낱말**을 `why` 로 보낸다 — 극단 감소는 이제 `extreme` 이다
   const H = man.hpWhy || {};
-  const extremeViaDamage = /damagePlayer\(p,\s*_hpDmg,\s*`extreme:/.test(zsrc) && /setHp\(p,\s*p\.hp\s*-\s*dmg,\s*'damage'\)/.test(zsrc);
-  ok(extremeViaDamage, '⑯b 전제 — 극단 감소(추위·갈증·허기)가 `damagePlayer` → `why:\'damage\'` 로 나간다(보류의 근거가 코드에 있다)');
-  ok(!(typeof H.damage === 'string' && extremeViaDamage),
-     '⑯b2 ★★`damage` 가 극단 감소를 같이 나르는 동안 `hpWhy.damage` 는 **비어 있다**(이으면 추위 속 3.6초마다 맞는 소리)',
-     typeof H.damage === 'string' ? `hpWhy.damage = ${H.damage}` : '보류');
-  ok(H.msgType === 'hp_changed' && /_sfxMan\.hpWhy/.test(layerCode), '⑯b3 층이 메시지 이름까지 **표에서** 읽는다(`hpWhy.msgType`)');
+  ok(/setHp\(p,\s*p\.hp\s*-\s*dmg,\s*String\(source \|\| 'damage'\)\.split\(':'\)\[0\]\)/.test(zsrc) && /damagePlayer\(p,\s*_hpDmg,\s*`extreme:/.test(zsrc),
+     '⑯b 전제 — `damagePlayer` 가 출처 앞 낱말을 `why` 로 보내고, 극단 감소의 출처는 `extreme:` 이다(T402 서버 한 줄)');
+  ok(typeof H.extreme !== 'string' && typeof H.food !== 'string' && typeof H.damage !== 'string',
+     '⑯b2 ★★`extreme`(추위 3.6초마다 1HP)·`food`(회복/독)·`damage` 는 표에 **없다** — 추위 속에서 맞는 소리 0',
+     ['extreme', 'food', 'damage'].filter((w) => typeof H[w] === 'string').join(' ') || '0개');
+  const srcWords = [...new Set([...zsrc.matchAll(/damagePlayer\([^,]+,[^,]+,\s*[`']([a-z]+)[:`']/g)].map((x) => x[1]))];
+  const HIT = ['arrow', 'mob', 'player', 'fall', 'wild'];
+  ok(HIT.every((w) => H[w] === 'hit_body') && HIT.filter((w) => w !== 'wild').every((w) => srcWords.includes(w)),
+     '⑯b5 맞음 낱말(arrow·mob·player·fall·wild)이 `hit_body` 로 가고, 그 낱말이 **서버 호출부에 실제로 있다**', `호출부 ${srcWords.sort().join(',')}`);
+  ok(H._msgType === 'hp_changed' && /_sfxMan\.hpWhy/.test(layerCode), '⑯b3 층이 메시지 이름까지 **표에서** 읽는다(`hpWhy._msgType`)');
   const HEAL = ['food', 'dish', 'rescue', 'debug', 'regen', 'respawn', 'takeover'];
   ok(HEAL.every((w) => typeof H[w] !== 'string'), '⑯b4 회복·먹기·구조 낱말은 표에 없다(소리가 아니다)', HEAL.filter((w) => typeof H[w] === 'string').join(' ') || '0개');
   // ⑯c 표면 타일 — 표의 타입이 **정말 그려지는 건물 타입**이고, 순서가 셋을 다 덮는다

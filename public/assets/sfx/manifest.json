@@ -54,15 +54,16 @@
   "_idle": "소리 없음 — 줄을 거두는 것은 사건이 아니다."
  },
  "combat": {
-  "_뜻": "사람/전투 갈래 — 서버가 **이미 보내던** 메시지 이름 → 키 [T387]. 서버 무접촉 · `30-n-net.js` 무접촉 · 훅은 `recv` 한 자리(`48-a-audio.js`). 표에 없는 메시지는 안 운다. 11자리 중 **사건 넷만** 여기 있다 — 나머지는 상태 동기화라 소리가 아니다(`보고/T387` 자리 표).",
+  "_뜻": "사람/전투 갈래 — 서버가 **이미 보내던** 메시지 이름 → 키 [T387]. 서버 무접촉 · `30-n-net.js` 무접촉 · 훅은 `recv` 한 자리(`48-a-audio.js`). 표에 없는 메시지는 안 운다. 11자리 중 **사건 넷**(T387) + 남의 쓰러짐(T402 · `combatOnly`)이 여기 있다 — 나머지는 상태 동기화라 소리가 아니다(`보고/T387` 자리 표).",
   "arrow_spawn": "arrow_shoot",
   "player_attacked": "swing",
   "player_downed": "downed",
   "player_respawn": "wake_up",
   "_player_attacked": "★코드 그대로: **때리는 쪽**의 휘두름이다(`zone.js tryAttack` — `pid` = 공격자 · \"맞음\"이 아니다). ⚠근처에 짐승이 있으면 그 가지가 먼저 `return` 해서 이 방송이 **안 나간다**(짐승 치기는 `mob_damaged` — 동물 갈래). 사람·벽을 칠 때만 운다.",
-  "_player_downed": "나에게만 온다(`send(ws)`). 위치 없음 = 내 몸. 남이 쓰러지는 것은 `player_down_state` 로만 오는데 그 메시지는 업기·구조에도 같은 꼴로 나와 **사건이 아니다**(보고 ⓑ). ⚠다시 접속한 쓰러진 사람에게도 같은 이름이 한 번 더 온다(`source:'relogin'`) — `combatSkip` 이 거른다.",
+  "_player_downed": "나에게만 온다(`send(ws)`). 위치 없음 = 내 몸. 남이 쓰러지는 것은 `player_down_state` 로 온다 — [T402] 서버가 `why` 를 실어 `combatOnly` 가 `down` 만 거른다. ⚠다시 접속한 쓰러진 사람에게도 같은 이름이 한 번 더 온다(`source:'relogin'`) — `combatSkip` 이 거른다.",
   "_player_respawn": "방송 · 좌표가 실려 온다(깨어난 자리). 내 것은 위치 없이 난다. ⚠pid 는 **존마다 따로 센다**(`p${nextPid++}`) — '나' 판정은 주 연결(`role:'primary'`)에서만 한다.",
-  "_death": "`inventory where:'death'` 는 **여기 없다** — 죽어 쏟은 짐은 `_deathDrop` → `_spawnGroundItems` → `ground_item_added` 로 **이미 `drop` 이 운다**(`groundDrop`). 여기 한 줄을 더하면 한 사건에 두 소리다."
+  "_death": "`inventory where:'death'` 는 **여기 없다** — 죽어 쏟은 짐은 `_deathDrop` → `_spawnGroundItems` → `ground_item_added` 로 **이미 `drop` 이 운다**(`groundDrop`). 여기 한 줄을 더하면 한 사건에 두 소리다.",
+  "player_down_state": "downed"
  },
  "combatSkip": {
   "_뜻": "`combat` 표의 메시지 중 **같은 이름으로 오지만 사건이 아닌 것** — 칸 이름 → 값이 맞으면 안 운다 [T387]. 값은 서버가 이미 싣는 칸이다(서버 무접촉).",
@@ -71,11 +72,25 @@
   },
   "_player_downed": "`zone.js` 가 쓰러진 채 **다시 접속한** 사람에게 같은 `player_downed` 를 welcome 뒤에 한 번 더 보낸다(`source:'relogin'` · 화면 복원용). 그건 쓰러짐이 아니라 **상태 복원**이다 — 울면 접속할 때마다 몸이 바닥에 떨어진다."
  },
+ "combatOnly": {
+  "_뜻": "`combat` 표의 메시지 중 **이 칸이 맞을 때만** 우는 것 [T402] — 같은 이름이 여러 사건을 나를 때(칸 이름 → 값). 칸 `_남만: true` 면 내 pid(주 연결)는 안 운다.",
+  "player_down_state": {
+   "why": "down",
+   "_남만": true
+  },
+  "_player_down_state": "서버가 다섯 자리에서 같은 꼴로 보낸다 — `why`: `down`(쓰러짐)·`carried`(업힘)·`set`(내려놓음·놓침)·`relogin`(재접속 복원) · 깨어남(`_wakeUp` · `isDown:false`)은 낱말 없음. **쓰러짐만** 운다. 나는 `player_downed`(나에게만)가 이미 운다 ⇒ `_남만`."
+ },
  "hpWhy": {
   "_뜻": "`hp_changed` 의 `why` 낱말 → 키 [T397]. 서버 `setHp(p, v, why)` 가 받던 낱말을 T397 이 전문에 실었다(서버 두 줄). 표에 없는 낱말은 안 운다.",
-  "msgType": "hp_changed",
-  "_damage_보류": "★★`damage` → `hit_body` 는 **아직 안 잇는다.** `setHp` 호출부 전수(보고 ⓑ): `damagePlayer` 가 **모든 피해**를 `'damage'` 하나로 보낸다 — 짐승·화살·주먹·낙하·독 음식에 **극단 감소**(`extreme:cold` 추위 3.6초마다 1HP · 갈증 21.6초 · 허기 43초)까지. 이으면 추위 속에서 3.6초마다 몸이 맞는 소리가 나고, 그게 방송이라 곁 사람도 듣는다. 값(피해량)으로 가르는 것은 짐작이다 — 짐승 한 대도 `Math.round(d)` 로 1 이 될 수 있다. ⇒ 파일은 확보(후보 둘)하고 표 줄은 비운다. 서버가 극단 감소를 다른 낱말로 보내는 날(`damagePlayer` 한 줄 · PM) 이 표에 `\"damage\": \"hit_body\"` 한 줄이면 운다(e2e-audio-probe ㉟ 가 그 한 줄을 넣어 보고 운다는 것을 이미 잰다).",
-  "_회복": "`food`·`dish`·`rescue`·`debug` 는 소리가 아니다(회복·구조·시험) — 넣지 않는다."
+  "_msgType": "hp_changed",
+  "_회복": "`food`(회복·독 둘 다)·`dish`·`rescue`·`debug` 는 소리가 아니다 — 넣지 않는다.",
+  "arrow": "hit_body",
+  "mob": "hit_body",
+  "player": "hit_body",
+  "fall": "hit_body",
+  "wild": "hit_body",
+  "_T402": "★서버가 `damagePlayer(p,dmg,source)` 의 **출처 앞 낱말**을 `why` 로 싣는다(T402 · 종전엔 전부 'damage'). 맞음 = 짐승(`mob`)·야생 습격(`wild`)·화살(`arrow`)·주먹/무기(`player`)·낙하(`fall`) → `hit_body`. ★`extreme`(추위·갈증·허기 극단 감소 — 추위 3.6초마다 1HP)·`food`(독 음식 · 먹어 회복도 같은 낱말)는 **안 운다**. 방송이라 곁 사람도 듣는다(거리 감쇠 `radius`).",
+  "_msgType_왜": "[T402] 메시지 이름은 `_` 칸에 둔다 — 이 표가 배선 표(값 = 키)가 되자 `msgType` 값이 키로 읽혀 ⑦a 가 물었다. 층은 이 칸을 읽는다(층 코드에 이름 0)."
  },
  "buildings": {
   "_뜻": "개체와 같은 문법 — 건물 `type` → 반복 키. 개체마다 하나씩 나고 화면 밖이면 멎는다.",
@@ -537,8 +552,9 @@
    "maxSame": 2,
    "cooldownMs": 0,
    "source": "kenney_impact_sounds",
-   "후보": true,
-   "_T397": "맞음 1번 — **배선 보류**(`hpWhy._damage_보류`). 파일은 판정용으로 소리판에 있다."
+   "_T397": "맞음 1번 — T397 은 배선 보류(낱말 부족)였다.",
+   "훅": "30-n-net.js handleMessage — **수신** `hp_changed`(`why` = 출처 앞 낱말 · `hpWhy` 표). 나 = 위치 없음 · 남 = 그 사람 자리.",
+   "_T402": "배선 — `hpWhy` 의 arrow·mob·player·fall·wild. 2번(`hit_body_b`)은 후보로 나란히."
   },
   "hit_body_b": {
    "file": "hit_body_b.ogg",

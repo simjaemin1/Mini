@@ -4989,7 +4989,7 @@ async function _acceptConnection(ws, req, C) {
   if (player.isDown) {
     send(ws, { type: 'player_downed', pid: player.pid, rescueWindowMs: RESCUE_WINDOW_MS,
       options: listRespawnOptions(player), source: 'relogin' });
-    broadcast({ type: 'player_down_state', pid: player.pid, isDown: true });
+    broadcast({ type: 'player_down_state', pid: player.pid, isDown: true, why: 'relogin' });   // ★[T402] 재접속 복원 — 옆 `player_downed` 의 그 낱말
   }
 
   // ★★[T139 2026-09-06] **부름 알림함** — 접속 중이 아니어도 부름은 남는다(T128 회부 2 · T115 와 같은 자리).
@@ -10573,7 +10573,7 @@ async function isAtWar(guildA, guildB) {
 //   ⚠자연 회복(`regen`)은 **조용하다.** T61 이 초당 하나 나가는 `gauges` 에 hp 를 이미 실어 뒀고
 //     (`§0-ⓑ` · 클라 `30-n-net.js` 가 그 칸을 읽는다), 그게 곧 **1hp 양자화이자 틱 정본**이다.
 //     여기서 또 보내면 초당 열 건이 되는데, 화면이 얻는 것은 0 이다(새 수 0 · 초당 메시지 표는 보고 §2).
-const HP_PEER = new Set(['damage', 'food', 'dish', 'debug']);   // 종전에 방송하던 넷 — 규약 무변
+const HP_PEER = new Set(['damage', 'food', 'dish', 'debug', 'arrow', 'mob', 'player', 'fall', 'extreme', 'wild']);   // 종전에 방송하던 넷 + [T402] `damagePlayer` 출처 앞 낱말(전부 종전 'damage' 였다 — 방송 규약 무변)
 const HP_QUIET = new Set(['regen', 'respawn', 'takeover']);     // 이미 다른 문이 나른다(gauges · player_respawn · welcome)
 function setHp(p, v, why) {
   const max = p.maxHp || PLAYER_MAX_HP;
@@ -10596,7 +10596,7 @@ function damagePlayer(p, dmg, source) {
   if (p.hp <= 0 || p.isDown) return;
   // ★[T109] 종전엔 **음수 hp 를 그대로 방송**하고 그 뒤에 0 으로 눌렀다(화면이 잠깐 음수를 봤다).
   //   이제 문 하나가 0 으로 눌러 두고 방송한다 — 게임 판정(`p.hp <= 0`)은 그대로다.
-  setHp(p, p.hp - dmg, 'damage');
+  setHp(p, p.hp - dmg, String(source || 'damage').split(':')[0]);   // ★[T402] why = 출처 앞 낱말(arrow·mob·player·fall·food·extreme·wild — 새 낱말 0)
   p.lastDamagedAt = Date.now();
   // ★[신체 상태 §7] 부상 — **주사위가 아니라 피해량 문턱**이다(일관성 원칙: 같은 상황이면 같은 결과).
   //   잔타는 안 다치고 늑대 한 대는 다친다. 회복은 시간 + 약초(medicinal_herb 가 재촉한다).
@@ -10648,7 +10648,7 @@ function damagePlayer(p, dmg, source) {
       source,
     });
     // 모두에게 down 상태 broadcast (시각/동작용)
-    broadcast({ type: 'player_down_state', pid: p.pid, isDown: true });
+    broadcast({ type: 'player_down_state', pid: p.pid, isDown: true, why: 'down' });   // ★[T402] 쓰러진 순간
     // ★★[T56 2026-09-02 · §12] **소리.** 창 3분의 근거가 "소리를 듣고 달려오는 사람"인데
     //   T43 까지 쓰러짐은 그 사람 화면에만 떴다. 야생에서만 외친다(마을은 이미 사람이 있다).
     Rescue.onDown(p, Date.now());
@@ -10958,7 +10958,7 @@ function tryRescue(rescuer, downedPid) {
   rescuer._carryingKg = CARRY_PERSON_KG;      // ★`carry.totalKg` 가 이 한 값을 더한다(곡선 무변)
   target._carriedBy = rescuer.pid;
   target._rescueHoldMs = 0;
-  broadcast({ type: 'player_down_state', pid: target.pid, isDown: true, carriedBy: rescuer.pid });
+  broadcast({ type: 'player_down_state', pid: target.pid, isDown: true, carriedBy: rescuer.pid, why: 'carried' });   // ★[T402] 업힘
   const eff = Carry.effects(rescuer);
   send(rescuer.ws, { type: 'notice',
     text: `🫂 ${target.name}을(를) 업었다 — ${Math.round(RESCUE_HOLD_MS / 1000)}초 붙들면 깨어난다`
@@ -10979,7 +10979,7 @@ function _dropCarried(carrier, target, why) {
   if (carrier) { carrier._carrying = null; carrier._carryingKg = 0; }
   if (target) {
     target._carriedBy = null;
-    broadcast({ type: 'player_down_state', pid: target.pid, isDown: !!target.isDown });
+    broadcast({ type: 'player_down_state', pid: target.pid, isDown: !!target.isDown, why: 'set' });   // ★[T402] 내려놓음·놓침
   }
   if (carrier && carrier.ws && why) send(carrier.ws, { type: 'notice', text: `🫳 ${target ? target.name : '그 사람'}을(를) ${why}` });
 }

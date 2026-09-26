@@ -267,8 +267,8 @@ const db = (x) => (x > 0 ? +(20 * Math.log10(x)).toFixed(2) : -Infinity);
         const n = (await played()) - b0, nb = (await blocked()) - k0;
         ok(n === want && nb === 0, label, `울린 ${n} / 기대 ${want} · 막힘 ${nb}`);
       }
-      ok(Object.keys(CB).filter((k) => !k.startsWith('_')).length === 4,
-         '㉞ 자 전제 — `combat` 표의 사건은 넷(쏨·휘두름·쓰러짐·깨어남) · 층이 이름을 코드에 안 박은 것은 test-audio ⑮ 가 철자로 본다',
+      ok(Object.keys(CB).filter((k) => !k.startsWith('_')).length === 5,
+         '㉞ 자 전제 — `combat` 표의 사건은 다섯(쏨·휘두름·쓰러짐·깨어남·남의 쓰러짐[T402]) · 층이 이름을 코드에 안 박은 것은 test-audio ⑮ 가 철자로 본다',
          Object.entries(CB).filter(([k]) => !k.startsWith('_')).map(([k, v]) => `${k}→${v}`).join(' · '));
       await page.evaluate(() => { myPid = null; });
     }
@@ -281,27 +281,39 @@ const db = (x) => (x > 0 ? +(20 * Math.log10(x)).toFixed(2) : -Infinity);
         for (const m of msgs) window.__sfx.recv(m, c);
       }, { msgs, role, others });
       await page.evaluate(() => { myPid = 'p1'; });
-      const HIT = [{ type: 'hp_changed', pid: 'p1', hp: 80, why: 'damage' }];
-      const QUIET = [{ type: 'hp_changed', pid: 'p1', hp: 80 },                       // 옛 전문(why 없음) — 미끼
-                     { type: 'hp_changed', pid: 'p1', hp: 90, why: 'food' },
+      // ★[T402] 서버가 `why` = `damagePlayer` 출처 앞 낱말을 싣는다. 모양은 `zone.js setHp` 그대로.
+      const HIT = [{ type: 'hp_changed', pid: 'p1', hp: 80, why: 'mob' }];                 // 늑대에게 물림(`mob:wolf`)
+      const QUIET = [{ type: 'hp_changed', pid: 'p1', hp: 79, why: 'extreme' },          // ★미끼 — 추위 극단 감소(`extreme:cold`)
+                     { type: 'hp_changed', pid: 'p1', hp: 80 },                          // 옛 전문(why 없음)
+                     { type: 'hp_changed', pid: 'p1', hp: 90, why: 'food' },             // 먹어 회복(독도 같은 낱말)
                      { type: 'hp_changed', pid: 'p1', hp: 95, why: 'dish' },
                      { type: 'hp_changed', pid: 'p1', hp: 60, why: 'rescue' }];
       const count = async (msgs, role, others) => { await page.waitForTimeout(700); const b = await played(); await send(msgs, role, others); return (await played()) - b; };
-      // ㉟ 지금 표(damage 보류) — 아무 것도 안 운다
-      const n0 = await count([...HIT, ...QUIET], 'primary');
-      ok(n0 === 0, '㉟ ★`hpWhy` 에 `damage` 가 **보류**인 지금 — 다침·회복·옛 전문 모두 안 운다(보고 ⓑ · 극단 감소가 같은 낱말)', `울린 ${n0}`);
-      // ㊱ 그 한 줄을 넣으면 운다 — 표 한 줄이 배선의 전부라는 것을 잰다(시험 안에서만 · 제품 표 무변)
-      await page.evaluate(() => { _sfxMan.hpWhy = Object.assign({}, _sfxMan.hpWhy, { damage: 'hit_body' }); });
       await send(HIT, 'primary'); await page.waitForTimeout(800);          // 데우기(첫 번은 받는 중 = 무음이 계약)
       const n1 = await count(HIT, 'primary');
-      const n2 = await count(QUIET, 'primary');
+      const n0 = await count(QUIET, 'primary');
+      const nX = await count(Array.from({ length: 10 }, (_, i) => ({ type: 'hp_changed', pid: 'p1', hp: 70 - i, why: 'extreme' })), 'primary');
       const n3 = await count(HIT, 'observer');                             // 관전 연결의 p1 = 남 · others 에 없음 = 무음
-      const n4 = await count([{ type: 'hp_changed', pid: 'p2', hp: 50, why: 'damage' }], 'primary', [['p2', { pid: 'p2', x: 30, y: 0 }]]);
-      await page.evaluate(() => { delete _sfxMan.hpWhy.damage; });
-      ok(n1 === 1, '㊱a ★표에 `damage` 한 줄이면 **내가 맞는 소리**가 난다(위치 없음)', `울린 ${n1}`);
-      ok(n2 === 0, '㊱b ★★옛 전문(why 없음)·회복·먹기·구조는 **그래도 안 운다**(자명 통과 금지 — 막기만 하는 자가 아니다)', `울린 ${n2}`);
+      const n4 = await count([{ type: 'hp_changed', pid: 'p2', hp: 50, why: 'arrow' }], 'primary', [['p2', { pid: 'p2', x: 30, y: 0 }]]);
+      ok(n1 === 1, '㉟ ★★늑대에게 물리면(`why:mob`) **맞는 소리**가 난다(나 · 위치 없음)', `울린 ${n1}`);
+      ok(n0 === 0, '㊱a ★★미끼 — 극단 감소(`extreme`)·옛 전문·먹기·구조는 **안 운다**', `울린 ${n0}`);
+      ok(nX === 0, '㊱b ★추위 속 극단 감소 열 번 = 맞는 소리 **0**(3.6초마다 쿵 0)', `울린 ${nX}`);
       ok(n3 === 0, '㊱c 관전 연결의 p1 은 내가 아니다(pid 충돌 · T387 규칙 그대로)', `울린 ${n3}`);
-      ok(n4 === 1, '㊱d 남(`c.others` 의 p2)이 맞으면 그 자리에서 난다', `울린 ${n4}`);
+      ok(n4 === 1, '㊱d 남(`c.others` 의 p2)이 화살에 맞으면 그 자리에서 난다(방송 · 곁 사람도 듣는다)', `울린 ${n4}`);
+
+      // ㊴ ★★[T402] 남이 쓰러지는 소리 — `player_down_state.why` · 쓰러짐만 운다
+      const P2 = [['p2', { pid: 'p2', x: 40, y: 0 }]];
+      await send([{ type: 'player_down_state', pid: 'p2', isDown: true, why: 'down' }], 'primary', P2); await page.waitForTimeout(800);   // 데우기
+      const d1 = await count([{ type: 'player_down_state', pid: 'p2', isDown: true, why: 'down' }], 'primary', P2);
+      const d0 = await count([{ type: 'player_down_state', pid: 'p2', isDown: true, why: 'carried', carriedBy: 'p3' },
+                              { type: 'player_down_state', pid: 'p2', isDown: true, why: 'set' },
+                              { type: 'player_down_state', pid: 'p2', isDown: true, why: 'relogin' },
+                              { type: 'player_down_state', pid: 'p2', isDown: false },
+                              { type: 'player_down_state', pid: 'p2', isDown: true }], 'primary', P2);
+      const dMe = await count([{ type: 'player_down_state', pid: 'p1', isDown: true, why: 'down' }], 'primary');
+      ok(d1 === 1, '㊴a ★★곁 사람(p2)이 쓰러지면 **쓰러지는 소리**가 난다(그 자리 · 거리 감쇠)', `울린 ${d1}`);
+      ok(d0 === 0, '㊴b ★업힘·내려놓음·재접속·일어남·낱말 없는 옛 전문은 **안 운다**', `울린 ${d0}`);
+      ok(dMe === 0, '㊴c 내 쓰러짐은 여기서 안 운다(`player_downed` 가 이미 운다 — 두 번 0)', `울린 ${dMe}`);
 
       // ㊲ 표면 타일 — 발밑 셀에 밭·마당·바닥을 놓고 층의 **그 함수**(`sfxGroundKey`)에 묻는다
       const ground = (blds, floor) => page.evaluate(({ blds, floor }) => {

@@ -547,10 +547,13 @@ function initAudio() {
           // 같은 이름이지만 사건이 아닌 것(다시 접속 때 복원용 재송신 등) — 표(`combatSkip`)가 칸과 값을 댄다.
           const sk = (_sfxMan.combatSkip || {})[t];
           if (sk && typeof sk === 'object' && Object.keys(sk).some((f) => !f.startsWith('_') && msg[f] === sk[f])) return;
+          // [T402] 같은 이름이 여러 사건을 나를 때 — 표(`combatOnly`)의 칸이 **다 맞을 때만** 운다(쓰러짐 ≠ 업힘 ≠ 재접속).
+          const only = (_sfxMan.combatOnly || {})[t];
+          if (only && typeof only === 'object' && !Object.keys(only).every((f) => f.startsWith('_') || msg[f] === only[f])) return;
           const ox = (c && c.meta && c.meta.worldOffsetX) || 0, oy = (c && c.meta && c.meta.worldOffsetY) || 0;
           const me = (typeof myPid !== 'undefined') ? myPid : null;
           const mine = !!(c && c.role === 'primary' && msg.pid != null && msg.pid === me);
-          if (mine) { sfxPlay(key); return; }
+          if (mine) { if (!(only && only._남만)) sfxPlay(key); return; }   // `_남만` — 내 것은 다른 메시지가 이미 운다
           if (msg.x != null && msg.y != null) { sfxPlay(key, { x: msg.x + ox, y: msg.y + oy }); return; }
           const o = (msg.pid != null && c && c.others) ? c.others.get(msg.pid) : null;
           if (o && o.x != null) sfxPlay(key, { x: o.x + ox, y: o.y + oy });
@@ -561,7 +564,7 @@ function initAudio() {
       //   ⚠`why` 가 없는 옛 전문은 안 운다(짐작 0). 회복·먹기 낱말은 표에 없으니 안 운다.
       //   자리 규칙은 `combat` 과 같다 — 나(주 연결) = 위치 없음 · 남 = `c.others` · 모르는 pid 는 무음.
       const HW = _sfxMan.hpWhy || {};
-      if (HW.msgType && t === HW.msgType) {           // 메시지 이름도 표가 댄다(층 코드에 이름 0 — test-audio ⑮g)
+      if (HW._msgType && t === HW._msgType) {           // 메시지 이름도 표가 댄다(층 코드에 이름 0 — test-audio ⑮g)
         const key = msg.why && HW[msg.why];
         if (typeof key !== 'string') return;
         const me = (typeof myPid !== 'undefined') ? myPid : null;
