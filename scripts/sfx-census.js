@@ -42,25 +42,30 @@ const cli = fs.readdirSync(ROOT+'/public/client').filter(f=>f.endsWith('.js'))
   .map(f=>fs.readFileSync(ROOT+'/public/client/'+f,'utf8')).join('\n');
 const blds=[...new Set([...cli.matchAll(/b\.type === '([a-z_]+)'/g)].map(m=>m[1]))]
   .concat(Object.keys(man.buildings||{}).filter(k=>!k.startsWith('_')));
-for(const b of [...new Set(blds)].sort()) add('건물', b, (man.buildings&&man.buildings[b])?'O':'-', (man.buildings&&man.buildings[b])||'');
+// ★[T397] 표면 타일(밭·바닥·마당)은 **밟는** 건물이다 — `buildings`(우는 건물) 표가 아니라 `surface` 표가 잇는다.
+const bKey=(b)=>(man.buildings&&man.buildings[b])||(man.surface&&man.surface[b]&&('밟음 → '+man.surface[b]))||'';
+for(const b of [...new Set(blds)].sort()) add('건물', b, bKey(b)?'O':'-', bKey(b));
 // ⑤ 개체 종류 전수 — animals.js 정본
 try{ const an=fs.readFileSync(ROOT+'/public/animals.js','utf8');
   const sp=[...new Set([...an.matchAll(/^\s{2}([a-z_]+):\s*\{/gm)].map(m=>m[1]))].sort();
   for(const a of sp) add('개체', a, (man.mobs&&man.mobs[a])?'O':'-', (man.mobs&&man.mobs[a])||'');
 }catch(e){ add('개체','(animals.js 를 못 읽었다)','-',String(e.message).slice(0,40)); }
 // ⑥ 자원 종류 전수 — 매니페스트가 스스로 가리키는 그 자리(`34-m-renderloop` 1513~1526)가 정본이다.
-const rl = fs.readFileSync(ROOT+'/public/client/34-m-renderloop.js','utf8').split('\n').slice(1512,1526).join('\n');
-const res=[...new Set([...rl.matchAll(/type === '([a-z_]+)'/g)].map(m=>m[1]))].sort();
+//   ★★[T397 ④] 첫 판은 **줄 번호**(1513~1526)로 잘랐다 — 그 파일 위쪽에 두 줄이 늘자 `ore`·`meteorite` 가
+//     창 밖으로 밀려 "소리 있음" 이 30 → 28 로 **조용히** 줄었다(자리는 그대로였다 · 자가 움직였다).
+//     ⇒ 줄 번호 대신 **그리기 갈래의 꼴**(`item.r.type === '…'`)을 파일 전체에서 긁는다.
+const rl = fs.readFileSync(ROOT+'/public/client/34-m-renderloop.js','utf8');
+const res=[...new Set([...rl.matchAll(/item\.r\.type === '([a-z_]+)'/g)].map(m=>m[1]))].sort();
 for(const r of res) add('자원', r, (man.resourceHit&&man.resourceHit[r])?'O':'-', (man.resourceHit&&man.resourceHit[r])||'');
 // ⑦ 날씨 칸
 for(const w of ['wind','precip','indoor','thunder','snow']) {
   const inWx=new RegExp('_sfxWx[^\\n]*'+w).test(mod)||new RegExp("'"+w+"'").test(mod);
-  add('날씨 칸', w, inWx?'O':'-', inWx?'층이 읽는다':'층에 칸이 없다'); }
+  add('날씨 칸', w, inWx?'O':'-', inWx?'층이 읽는다':(w==='thunder'?'세계가 안 보낸다(서버·클라 날씨에 칸 0)':'층에 칸이 없다')); }
 // ⑧ 지면 종류 — ground 표
 for(const g of ['rock','grass','_기본']) add('지면', g, (man.ground&&man.ground[g])?'O':'-', (man.ground&&man.ground[g])||'');
 
 // ★★자를 먼저 검증한다 — **이미 배선된 것이 O 로 잡히는가**. 안 잡히면 이 표는 거짓말이다.
-const mustBeO=[['건물','campfire'],['자원','tree'],['개체','wolf'],['생활 낱말(act)','낚음'],['인벤 낱말(where)','harvest'],['서버 메시지','arrow_spawn']];
+const mustBeO=[['건물','campfire'],['자원','tree'],['개체','wolf'],['생활 낱말(act)','낚음'],['인벤 낱말(where)','harvest'],['서버 메시지','arrow_spawn'],['자원','ore'],['자원','meteorite'],['건물','farmland']];
 const ruler=mustBeO.map(([ax,nm])=>{const r=rows.find(x=>x.축===ax&&x.자리===nm);return `${ax}/${nm}=${r?r.있음:'없다'}`;});
 const rulerOk=mustBeO.every(([ax,nm])=>{const r=rows.find(x=>x.축===ax&&x.자리===nm);return r&&r.있음==='O';});
 console.log(`자 검증: ${rulerOk?'성하다':'★고장났다'} — ${ruler.join(' · ')}`);

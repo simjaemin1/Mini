@@ -273,6 +273,91 @@ const db = (x) => (x > 0 ? +(20 * Math.log10(x)).toFixed(2) : -Infinity);
       await page.evaluate(() => { myPid = null; });
     }
 
+    // ㉟~㊴ ★★★[T397] 맞음(`hp_changed.why`) · 표면 타일 · 눈 — 수신/훅에서 센다(사본 0 · 제품 함수 그대로).
+    {
+      const played = () => page.evaluate(() => window.__sfx.dbg().stat.played);
+      const send = (msgs, role, others) => page.evaluate(({ msgs, role, others }) => {
+        const c = { role, others: new Map(others || []), meta: { worldOffsetX: 0, worldOffsetY: 0 } };
+        for (const m of msgs) window.__sfx.recv(m, c);
+      }, { msgs, role, others });
+      await page.evaluate(() => { myPid = 'p1'; });
+      const HIT = [{ type: 'hp_changed', pid: 'p1', hp: 80, why: 'damage' }];
+      const QUIET = [{ type: 'hp_changed', pid: 'p1', hp: 80 },                       // 옛 전문(why 없음) — 미끼
+                     { type: 'hp_changed', pid: 'p1', hp: 90, why: 'food' },
+                     { type: 'hp_changed', pid: 'p1', hp: 95, why: 'dish' },
+                     { type: 'hp_changed', pid: 'p1', hp: 60, why: 'rescue' }];
+      const count = async (msgs, role, others) => { await page.waitForTimeout(700); const b = await played(); await send(msgs, role, others); return (await played()) - b; };
+      // ㉟ 지금 표(damage 보류) — 아무 것도 안 운다
+      const n0 = await count([...HIT, ...QUIET], 'primary');
+      ok(n0 === 0, '㉟ ★`hpWhy` 에 `damage` 가 **보류**인 지금 — 다침·회복·옛 전문 모두 안 운다(보고 ⓑ · 극단 감소가 같은 낱말)', `울린 ${n0}`);
+      // ㊱ 그 한 줄을 넣으면 운다 — 표 한 줄이 배선의 전부라는 것을 잰다(시험 안에서만 · 제품 표 무변)
+      await page.evaluate(() => { _sfxMan.hpWhy = Object.assign({}, _sfxMan.hpWhy, { damage: 'hit_body' }); });
+      await send(HIT, 'primary'); await page.waitForTimeout(800);          // 데우기(첫 번은 받는 중 = 무음이 계약)
+      const n1 = await count(HIT, 'primary');
+      const n2 = await count(QUIET, 'primary');
+      const n3 = await count(HIT, 'observer');                             // 관전 연결의 p1 = 남 · others 에 없음 = 무음
+      const n4 = await count([{ type: 'hp_changed', pid: 'p2', hp: 50, why: 'damage' }], 'primary', [['p2', { pid: 'p2', x: 30, y: 0 }]]);
+      await page.evaluate(() => { delete _sfxMan.hpWhy.damage; });
+      ok(n1 === 1, '㊱a ★표에 `damage` 한 줄이면 **내가 맞는 소리**가 난다(위치 없음)', `울린 ${n1}`);
+      ok(n2 === 0, '㊱b ★★옛 전문(why 없음)·회복·먹기·구조는 **그래도 안 운다**(자명 통과 금지 — 막기만 하는 자가 아니다)', `울린 ${n2}`);
+      ok(n3 === 0, '㊱c 관전 연결의 p1 은 내가 아니다(pid 충돌 · T387 규칙 그대로)', `울린 ${n3}`);
+      ok(n4 === 1, '㊱d 남(`c.others` 의 p2)이 맞으면 그 자리에서 난다', `울린 ${n4}`);
+
+      // ㊲ 표면 타일 — 발밑 셀에 밭·마당·바닥을 놓고 층의 **그 함수**(`sfxGroundKey`)에 묻는다
+      const ground = (blds, floor) => page.evaluate(({ blds, floor }) => {
+        window.__camCellLocal = () => [3, 4];
+        const c = { role: 'primary', meta: { worldOffsetX: 0, worldOffsetY: 0 }, buildings: new Map(), others: new Map() };
+        blds.forEach((b, i) => c.buildings.set('b' + i, { id: 'b' + i, type: b[0], x: 3 * 32 + 16, y: 4 * 32 + 16, floor: b[1] || 0 }));
+        conns.set('zS', c); primaryZoneId = 'zS'; myFloor = floor || 0;
+        _sfxSurfN = -1; _sfxGroundCell = null;          // 캐시를 비운다 — 판마다 다른 발밑이다(층의 캐시 규칙은 ㊲f 가 따로 본다)
+        const k = sfxGroundKey();
+        conns.delete('zS'); primaryZoneId = null; myFloor = 0;
+        return k;
+      }, { blds, floor });
+      const S = MAN.surface || {};
+      const gF = await ground([['farmland']]);
+      const gY = await ground([['farmland'], ['vtile']]);
+      const gB = await ground([['farmland'], ['vtile'], ['floor']]);
+      const gUp = await ground([['floor', 1]], 0);
+      const gUp1 = await ground([['floor', 1], ['wall']], 1);
+      const gNone = await ground([['wall']]);
+      ok(gF === S.farmland, '㊲a 밭 위 발자국 = 표의 `farmland` 키', `${gF}`);
+      ok(gY === S.vtile, '㊲b 밭+마당이 겹치면 **마당**(표의 `_순서`)', `${gY}`);
+      ok(gB === S.floor, '㊲c 셋이 겹치면 **실내 바닥**', `${gB}`);
+      ok(gUp !== S.floor && gUp1 === S.floor, '㊲d 위층 바닥은 **그 층에서만** 밟는다(아래층에선 지형)', `아래층 ${gUp} · 1층 ${gUp1}`);
+      ok(gNone === ((MAN.ground || {})._기본), '㊲e 표면 타일이 없으면 종전 지형 판정(기존 키 비트 동일)', `${gNone}`);
+      // ㊲f 캐시 — 밭을 **놓는 순간**(건물 수가 바뀜) 같은 셀에서도 다시 읽는다(캐시가 옛 흙을 쥐고 있지 않다)
+      const gCache = await page.evaluate(() => {
+        window.__camCellLocal = () => [3, 4];
+        const c = { role: 'primary', meta: { worldOffsetX: 0, worldOffsetY: 0 }, buildings: new Map(), others: new Map() };
+        conns.set('zS', c); primaryZoneId = 'zS'; myFloor = 0; _sfxSurfN = -1; _sfxGroundCell = null;
+        const before = sfxGroundKey();
+        c.buildings.set('f', { id: 'f', type: 'farmland', x: 3 * 32 + 16, y: 4 * 32 + 16 });
+        const after = sfxGroundKey();
+        conns.delete('zS'); primaryZoneId = null;
+        return [before, after];
+      });
+      ok(gCache[0] === ((MAN.ground || {})._기본) && gCache[1] === S.farmland, '㊲f 밭을 놓으면 같은 셀에서도 곧바로 밭 소리(캐시가 건물 수를 본다)', gCache.join(' → '));
+
+      // ㊳ 눈 — 그리는 층의 판정(`__rainDbg().kind`)이 snow 면 빗소리 반복이 **멎는다**
+      const rainLoop = (kind, precip) => page.evaluate(async ({ kind, precip }) => {
+        window.__rainDbg = () => ({ kind });
+        const w = { precip, wind: 0, tempC: kind === 'snow' ? -5 : 10 };
+        window.__sfx.weather(w, false);
+        await new Promise((r) => setTimeout(r, 900));                       // 버퍼 받기
+        window.__sfx.weather(w, false);
+        return [..._sfxLoops.keys()].filter((k) => /^amb:rain/.test(k));
+      }, { kind, precip });
+      const lr = await rainLoop('rain', 0.8);
+      const ls = await rainLoop('snow', 0.8);
+      const lr2 = await rainLoop('rain', 0.8);
+      await page.evaluate(() => { window.__sfx.weather({ precip: 0, wind: 0 }, false); delete window.__rainDbg; });
+      ok(lr.length === 1, '㊳a 대조 — 비면 빗소리 반복이 하나 켜진다', lr.join(' ') || '없음');
+      ok(ls.length === 0, '㊳b ★★눈이면 빗소리가 **멎는다**(화면은 눈인데 귀는 비 — 종전 결함)', ls.join(' ') || '없음');
+      ok(lr2.length === 1, '㊳c 다시 비면 다시 난다(끄기만 하는 자가 아니다)', lr2.join(' ') || '없음');
+      await page.evaluate(() => { myPid = null; });
+    }
+
     // ④ ★[T305] 옛 곡선이 증폭기였다는 것을 **이 자로 다시 보인다** — 자명 통과 금지.
     //    같은 입력을 옛 곡선에 통과시켜 원점 기울기를 잰다. 1 이 나오면 자가 고장 난 것이다.
     {

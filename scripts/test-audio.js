@@ -527,7 +527,8 @@ console.log('\n⑧ ★[T292] 리미터 — 셈이 아니라 실측');
   const M = man._실측 || {};
   ok(typeof L.knee === 'number' && L.knee > 0 && L.knee < 1, `⑧a 문턱이 표에 있다(0<knee<1)`, `knee ${L.knee}`);
   ok(typeof M.worstPeak === 'number', `⑧b 실측 최악 피크가 표에 있다`, `${M.worstPeak} (${M.worstPeakDb} dBFS)`);
-  ok(L.knee > M.worstPeak,
+  const kneeHolds = (peak) => typeof peak === 'number' && L.knee > peak;   // ⑧c 와 ⑧g 가 **같은 술어**를 쓴다
+  ok(kneeHolds(M.worstPeak),
      '⑧c ★★문턱이 **실측 최악 피크보다 위**다 — 평소엔 리미터가 한 번도 안 문다',
      `${L.knee} > ${M.worstPeak} · 여유 ${(20 * Math.log10(L.knee / M.worstPeak)).toFixed(2)}dB`);
   // ⑧d ★실측이 **지금 키 표**를 잰 것인가 — 키를 더하고 다시 안 재면 여기서 문다
@@ -552,8 +553,14 @@ console.log('\n⑧ ★[T292] 리미터 — 셈이 아니라 실측');
   ok(/bus\s*&&\s*_sfxMan\.bus\.limiter|limiter\s*&&\s*_sfxMan\.bus\.limiter\.knee|limiter\.knee/.test(modCode),
      '⑧f 층이 문턱을 **표에서** 읽는다(코드에 박힌 수가 아니다)');
   // ⑧g 자명 통과 금지 — 문턱을 최악 피크 아래로 내린 셈 치면 ⑧c 의 부등식이 깨진다
-  ok(!((M.worstPeak * 0.9) > M.worstPeak),
-     '⑧g 자명 통과 금지 — 문턱을 최악 피크 아래로 내리면 ⑧c 의 부등식이 깨진다', `${(M.worstPeak * 0.9).toFixed(4)} < ${M.worstPeak}`);
+  // ⑧g 자명 통과 금지 — ★[T397] 옛 줄은 `!(x*0.9 > x)` 였다: 값과 무관하게 참인 **항진**이라 아무것도 안 쟀다.
+  //   이제 **잰 미끼**를 같은 술어에 넣는다: `_실측.bait` = 문턱을 실제로 넘는 조합(리미터 없이 잰 값).
+  //   ⑧c 의 술어가 그 미끼를 **빨갛게** 판정해야 자가 산 것이다(미끼가 초록이면 술어가 아무거나 통과시킨다).
+  const B = M.bait || {};
+  ok(typeof B.peak === 'number' && Array.isArray(B.combo) && B.combo.length > 0 && !kneeHolds(B.peak) && kneeHolds(M.worstPeak),
+     '⑧g ★자명 통과 금지 — ⑧c 와 **같은 술어**가 잰 미끼(문턱 넘는 조합)는 빨갛게, 최악 조합은 초록으로 판정한다',
+     `미끼 ${(B.combo || []).length}키 ${B.peak} → ${kneeHolds(B.peak) ? '초록(자가 죽었다)' : '빨강'} · 최악 ${M.worstPeak} → ${kneeHolds(M.worstPeak) ? '초록' : '빨강'}`);
+  ok(!!(B.combo || []).length && (B.combo || []).every((k) => KEYS[k]), '⑧g2 미끼 조합의 키가 전부 표에 있다(없는 키로 잰 미끼는 거짓)', (B.combo || []).join(' '));
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1067,8 +1074,9 @@ console.log('\n⑮ ★★[T387] 사람/전투 — 사건 넷은 표로 · 상태
   ok(/_sfxMan\.combatSkip/.test(layerCode), '⑮k2 층이 `combatSkip` 표를 읽는다');
   // ⑮i 후보는 짝이 있다 — `<키>_b` 는 배선된 `<키>` 의 2번이다
   const bees = keyNames.filter((k) => /_b$/.test(k) && KEYS[k]['후보']);
-  const lone = bees.filter((k) => !KEYS[k.replace(/_b$/, '')] || KEYS[k.replace(/_b$/, '')]['후보']);
-  ok(bees.length >= 1 && lone.length === 0, '⑮i 후보 2번은 전부 배선된 1번과 짝이다(소리판에서 나란히 견준다)', lone.join(' ') || bees.map((k) => `${k.replace(/_b$/, '')}/${k}`).join(' · '));
+  //   [T397] 1번도 후보일 수 있다(배선 보류 — 사건이 아직 없거나 서버 낱말이 모자란다). 그땐 **보류 사유**를 적어야 한다.
+  const lone = bees.filter((k) => { const a = KEYS[k.replace(/_b$/, '')]; return !a || (a['후보'] && !Object.keys(a).some((f) => /^_T\d+/.test(f))); });
+  ok(bees.length >= 1 && lone.length === 0, '⑮i 후보 2번은 전부 1번과 짝이다(1번이 후보면 보류 사유 칸이 있다 · 소리판에서 나란히 견준다)', lone.join(' ') || bees.map((k) => `${k.replace(/_b$/, '')}/${k}`).join(' · '));
   // ⑮j ★변주도 m4a 짝이 디스크에 있다 — Safari 는 `files` 도 m4a 로 받는다(T387 이 고친 자리)
   const varKeys = keyNames.filter((k) => Array.isArray(KEYS[k].files));
   const noPair = [];
@@ -1077,6 +1085,47 @@ console.log('\n⑮ ★★[T387] 사람/전투 — 사건 넷은 표로 · 상태
   ok(varKeys.length >= 2 && noPair.length === 0, '⑮j ★변주 파일마다 m4a 짝이 있다(ogg 못 여는 브라우저가 변주 키에서 무음이 되지 않게)', noPair.join(' ') || varKeys.map((k) => `${k}×${KEYS[k].files.length}`).join(' · '));
   ok(/\.replace\(\/\\\.ogg\$\/,\s*'\.m4a'\)/.test(layerCode) && /sfxSrcOf\(m\)\s*===\s*m\.fileAlt/.test(layerCode),
      '⑮j2 층이 변주에도 단일 파일과 **같은 규칙**(`sfxSrcOf`)으로 짝을 고른다');
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ⑯ ★★[T397] 맞음 낱말 · 표면 타일 · 눈
+// ══════════════════════════════════════════════════════════════════════════════
+console.log('\n⑯ ★★[T397] `hp_changed.why` · 표면 타일 · 눈이면 빗소리 0');
+{
+  const zsrc = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
+  const stripC = require('./code-only.js');
+  const layerCode = stripC(modCode);
+  const sends = [...zsrc.matchAll(/\{\s*type:\s*'hp_changed'[^}]*\}/g)].map((m) => m[0]);
+  ok(sends.length === 2 && sends.every((x) => /why:\s*why\s*\|\|\s*''/.test(x)),
+     '⑯a ★서버의 `hp_changed` 전문 두 자리가 전부 `why` 를 싣는다(T397 두 줄 · 새 낱말 0 — `setHp` 의 인자)', `${sends.length}자리`);
+  // ⑯b ★★`damage` 를 잇기 전에 — 그 낱말이 **극단 감소**까지 나르는가를 코드에서 읽는다
+  const H = man.hpWhy || {};
+  const extremeViaDamage = /damagePlayer\(p,\s*_hpDmg,\s*`extreme:/.test(zsrc) && /setHp\(p,\s*p\.hp\s*-\s*dmg,\s*'damage'\)/.test(zsrc);
+  ok(extremeViaDamage, '⑯b 전제 — 극단 감소(추위·갈증·허기)가 `damagePlayer` → `why:\'damage\'` 로 나간다(보류의 근거가 코드에 있다)');
+  ok(!(typeof H.damage === 'string' && extremeViaDamage),
+     '⑯b2 ★★`damage` 가 극단 감소를 같이 나르는 동안 `hpWhy.damage` 는 **비어 있다**(이으면 추위 속 3.6초마다 맞는 소리)',
+     typeof H.damage === 'string' ? `hpWhy.damage = ${H.damage}` : '보류');
+  ok(H.msgType === 'hp_changed' && /_sfxMan\.hpWhy/.test(layerCode), '⑯b3 층이 메시지 이름까지 **표에서** 읽는다(`hpWhy.msgType`)');
+  const HEAL = ['food', 'dish', 'rescue', 'debug', 'regen', 'respawn', 'takeover'];
+  ok(HEAL.every((w) => typeof H[w] !== 'string'), '⑯b4 회복·먹기·구조 낱말은 표에 없다(소리가 아니다)', HEAL.filter((w) => typeof H[w] === 'string').join(' ') || '0개');
+  // ⑯c 표면 타일 — 표의 타입이 **정말 그려지는 건물 타입**이고, 순서가 셋을 다 덮는다
+  const S = man.surface || {};
+  const types = Object.keys(S).filter((k) => !k.startsWith('_'));
+  const bsrc = fs.readFileSync(path.join(PUB, 'client', '36-r2-building.js'), 'utf8');
+  const drawn = types.filter((t) => new RegExp(`type === '${t}'`).test(bsrc));
+  ok(types.length === 3 && drawn.length === 3, '⑯c 표면 타입 셋이 전부 클라가 **그리는** 건물 타입이다(`36-r2-building`)', drawn.join(' '));
+  ok(Array.isArray(S._순서) && types.every((t) => S._순서.includes(t)), '⑯c2 겹침 순서가 셋을 다 덮는다', (S._순서 || []).join(' > '));
+  ok(types.every((t) => KEYS[S[t]] && KEYS[S[t]].file && !KEYS[S[t]]['후보']), '⑯c3 표면 키가 전부 파일 있는 배선 키다', types.map((t) => `${t}→${S[t]}`).join(' · '));
+  ok(/sfxSurfaceKeyAt\(cell\)/.test(layerCode) && /Math\.floor\(b\.x \/ 32\)/.test(layerCode), '⑯c4 발자국 판정이 표면을 먼저 본다(셀 환산은 지면 그리기와 같은 식)');
+  // ⑯d 눈 — 판정은 그리는 층의 것(사본 0)
+  const wsrc = fs.readFileSync(path.join(PUB, 'client', '37-r1-weather.js'), 'utf8');
+  ok(/kind:\s*snow \? 'snow' : 'rain'/.test(wsrc) && /__rainDbg/.test(layerCode) && /_sfxWxKind === 'snow'/.test(layerCode),
+     '⑯d ★눈이냐 비냐는 **그리는 층의 판정**(`37-r1-weather` `kind`)을 읽는다 — 층이 어는점을 다시 안 짓는다');
+  ok(!/tempC\s*<\s*0/.test(layerCode), '⑯d2 층 코드에 어는점 사본(`tempC < 0`)이 없다');
+  // ⑯e 사건 없는 소리는 안 잇는다 — 천둥·고인 물은 후보뿐
+  const noEvent = ['thunder', 'thunder_b', 'water_pool', 'water_pool_b'];
+  ok(noEvent.every((k) => KEYS[k] && KEYS[k]['후보'] && KEYS[k].file), '⑯e 천둥(세계가 안 보냄)·고인 물(카드: 후보만)은 **후보**로만 있다', noEvent.join(' '));
 }
 
 console.log(`\n=== PASS ${pass} / FAIL ${fail} ===`);

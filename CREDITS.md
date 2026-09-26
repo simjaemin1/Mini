@@ -94,6 +94,18 @@
 | `downed` | [Kenney "Impact Sounds"](https://kenney.nl/assets/impact-sounds) · `impactPunch_heavy_000.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2019(팩) | 2026-09-25 | 0.65s 중 **0.000~0.380s** · ★[T387] 새 키 — 쓰러짐(`player_downed`) · 후보 1번 |
 | `downed_b` | 〃 · `impactSoft_heavy_000.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2019(팩) | 2026-09-25 | 0.51s 중 **0.000~0.406s** · ★[T387] **후보 2번** — 중심 90Hz(노트북 스피커에선 거의 안 난다 · 헤드폰 판정) |
 | `wake_up` | [Kenney "RPG Audio"](https://kenney.nl/assets/rpg-audio) · `cloth1.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2023(팩) | 2026-09-25 | 0.66s 중 **0.030~0.554s** · ★[T387] 새 키 — 깨어남(`player_respawn` · 일어서는 옷 스침) · **후보 1개뿐** — 깨어나는 숨은 못 찾음(녹음 회부) |
+| `hit_body` | [Kenney "Impact Sounds"](https://kenney.nl/assets/impact-sounds) · `impactPunch_medium_001.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2019(팩) | 2026-09-26 | 0.40s 중 **0.000~0.218s** · ★[T397] 맞음 1번 — **배선 보류**(`hpWhy._damage_보류`) · 후보 |
+| `hit_body_b` | 〃 · `impactPunch_medium_003.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2019(팩) | 2026-09-26 | **0.000~0.228s** · ★[T397] 맞음 2번 · 후보 |
+| `step_floor` | [Kenney "Impact Sounds"](https://kenney.nl/assets/impact-sounds) · `footstep_carpet_003.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2019(팩) | 2026-09-26 | **0.000~0.067s** · ★[T397] 새 키 — 실내 바닥(`surface.floor`) · 1번 |
+| `step_floor_b` | 〃 · `footstep_wood_003.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2019(팩) | 2026-09-26 | **0.000~0.074s** · ★[T397] 2번 · 후보 — 중심 171Hz(헤드폰 판정) |
+| `step_yard` | [Kenney "Impact Sounds"](https://kenney.nl/assets/impact-sounds) · `footstep_concrete_000.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2019(팩) | 2026-09-26 | 통째(0.10s) · ★[T397] 새 키 — 마당 타일(`surface.vtile`) · 1번 |
+| `step_yard_b` | [Kenney "RPG Audio"](https://kenney.nl/assets/rpg-audio) · `footstep02.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2023(팩) | 2026-09-26 | **0.010~0.212s** · ★[T397] 2번 · 후보 |
+| `step_farm` | [Kenney "RPG Audio"](https://kenney.nl/assets/rpg-audio) · `footstep09.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2023(팩) | 2026-09-26 | **0.002~0.215s** · ★[T397] 새 키 — 밭(`surface.farmland`) · 1번 |
+| `step_farm_b` | [Kenney "RPG Audio"](https://kenney.nl/assets/rpg-audio) · `footstep06.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2023(팩) | 2026-09-26 | **0.000~0.208s** · ★[T397] 2번 · 후보 |
+| `thunder` | [Commons: Thunder and rain on a v.ogg](https://commons.wikimedia.org/wiki/File:Thunder_and_rain_on_a_v.ogg) | ezwa | **Public domain** (파일 페이지) | — | 2026-09-26 | 30.17s 중 **5.800~8.800s** · ★[T397] 후보 — 훅 없음(세계가 천둥을 안 보낸다) |
+| `thunder_b` | [Commons: Rain and thunder (1).ogg](https://commons.wikimedia.org/wiki/File:Rain_and_thunder_(1).ogg) | ezwa | **Public domain** (파일 페이지) | — | 2026-09-26 | 60.08s 중 **3.400~6.400s**(+20.7dB) · ★[T397] 후보 |
+| `water_pool` | [Commons: Water bubbles chortling.ogg](https://commons.wikimedia.org/wiki/File:Water_bubbles_chortling.ogg) | stephan | **Public domain** (파일 페이지) | — | 2026-09-26 | **35.75~43.75s** + 1.0s 겹침 → 8.0s 반복(이음새 −49.8dB) · ★[T397] 후보 |
+| `water_pool_b` | [Commons: Water over rocks as tide recedes.ogg](https://commons.wikimedia.org/wiki/File:Water_over_rocks_as_tide_recedes.ogg) | earthcalling | **Public domain** (파일 페이지) | — | 2026-09-26 | **1.50~9.50s** + 1.0s 겹침 → 8.0s 반복(−24.5dB) · ★[T397] 후보 |
 
 * **요구 문구 없음** — 둘 다 퍼블릭 도메인이라 표시 의무가 없다(그래서 §1 에 안 들어간다). 예의로 여기 적는다.
 * 가공: 단일 채널 유지 · 끝 1초를 머리에 `acrossfade`(삼각창)로 겹쳐 10.0초 반복 · 피크를 재고
