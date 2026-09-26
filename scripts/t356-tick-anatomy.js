@@ -181,6 +181,8 @@ async function runArm(arm, idx) {
   const ws = new WS(`ws://localhost:${ZP}/?observer=1`); ws.on('error', () => {}); ws.on('message', () => {});
   const ping = setInterval(() => { try { ws.send(JSON.stringify({ type: 'ping', t: Date.now() })); } catch (e) {} }, 5000);
   await sleep(25000);                                   // 마을이 깨어나 걷는다 + 미리 굽기가 끝난다
+  // ★[T433 ② 규약 ⓐ] `WAITDAY=1` — 부팅 뒤 첫 하루 경계를 넘긴 뒤에야 창을 찾는다(기본 끔 = 종전 값 무변)
+  if (process.env.WAITDAY === '1') { const w = await require('./lib-tick-rule').waitDayBoundary(async () => { const L = await life(); return L && L.phase; }); say('첫 하루 경계', w.crossed ? '넘김' : '못 넘김', '· phase', w.phase); }
   // ── 밤 창을 기다린다 ──
   let ph = null;
   for (let i = 0; i < 2000; i++) {

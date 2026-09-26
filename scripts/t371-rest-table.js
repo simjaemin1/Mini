@@ -60,6 +60,7 @@ const out = process.argv.slice(2).filter(Boolean).map(reduce);
 for (const r of out) {
   const DENOM = r.W === 'day' ? DEN : DEN_N;
   console.log(`\n=== ${r.W}${r.ARM && r.ARM !== 'off' ? '/' + r.ARM : ''} · 틱 ${r.ticks} · 주민 ${r.pop.toFixed(0)} · 몹 ${r.mob.toFixed(0)} · 틱 p50 ${r.p50}ms ===`);
+  console.log(`${require('./lib-tick-rule').DENOM.npcs} = ${r.pop.toFixed(0)}(★규약 ⓔ)`);
   console.log(`틀: tot ${r.tot.toFixed(2)} − loopDec ${r.loopDec.toFixed(2)} − loopMov ${r.loopMov.toFixed(2)} − aoi ${r.aoi.toFixed(2)} = 그 밖 ${r.rest.toFixed(2)} µs/사람 (T356 ${REST356[r.W]})`);
   console.log('| 갈래 | µs/사람 | %(T356 합 ' + DENOM + ') | %(이 판 합 ' + r.tot.toFixed(2) + ') | %(이 판 그 밖) | 호출/틱 |');
   console.log('|---|---:|---:|---:|---:|---|');

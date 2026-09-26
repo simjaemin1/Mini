@@ -153,7 +153,7 @@ async function modeLoad() {
         steps: p && p.walk ? p.walk.steps : null, cut: p && p.walk ? p.walk.cutTicks : null, drop: p && p.tick ? p.tick.dropN : null, lag: p && p.tick ? p.tick.lagPct : null,
         usPer: (t && L && L.bodies > 0 && t.n > 0) ? +(t.p50 * 1000 / L.bodies).toFixed(4) : null, act: actOf(p) };
       res.arms[a].slices.push(s);
-      say(`  [${a}] 조각 ${k} phase ${s.phase != null ? s.phase.toFixed(3) : '?'}${s.night ? '(밤)' : '(낮)'} · p50 ${s.p50}ms · p95 ${s.p95} · n ${s.n} · CPU ${s.cpu}% · RSS ${s.rss}MB · 몸 ${s.bodies} · 걸음 ${s.steps} · 사람당 ${s.usPer}µs`);
+      say(`  [${a}] 조각 ${k} phase ${s.phase != null ? s.phase.toFixed(3) : '?'}${s.night ? '(밤)' : '(낮)'} · p50 ${s.p50}ms · p95 ${s.p95} · n ${s.n} · CPU ${s.cpu}% · RSS ${s.rss}MB(GC 의 값 · 규약 ⓑ) · 몸 ${s.bodies}(마을 명부) · 걸음 ${s.steps} · 사람당 ${s.usPer}µs`);
     }
     fs.writeFileSync(OUT, JSON.stringify(res, null, 1));
   }

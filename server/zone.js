@@ -714,7 +714,7 @@ let _lastResRebuild = 0;    // qtResources 전체 재구축 throttle (5Hz 상한
 //     **순서까지** 같고 그 몸의 청크가 같으면 지난 답이 곧 이번 답이다(몸 차례대로 줄 세운 배열 · 필드 0 · 새 순회 0).
 //     몸 차례가 어긋나면(접속·퇴장) 그 몸은 술어를 다시 부른다.
 //   ⚠자원 나무는 **그대로**(이미 5Hz 조절 · dirty 문). 끄면 아래 옛 몸통이 한 글자도 안 바뀐 채 돈다.
-const T421_SPATIAL_INC = process.env.T421_SPATIAL_INC === '1';
+const T421_SPATIAL_INC = process.env.T421_SPATIAL_INC !== '0';   // ★★[T433 ① · PM 결정] **기본 켬** — 조회 210만 비트 동일(`test-move-soa ⑭`) · 되돌림 `T421_SPATIAL_INC=0`
 const _spInc = { keys: [], pl: [], mob: [], bld: [], ref: [], cx: [], cy: [], act: [], rebuilt: { pl: 0, mob: 0, bld: 0 }, kept: { pl: 0, mob: 0, bld: 0 } };
 // 지난 판과 같은 차례·같은 칸이면 x·y 만 고친다 — 어긋나면 false(부르는 쪽이 통째로 세운다)
 function _spKeep(qt, seq, j, ref, x, y) {

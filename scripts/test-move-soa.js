@@ -1352,7 +1352,7 @@ console.log('\n⑭ T421_SPATIAL_INC 격자 증분 — 조회 결과 비트 동�
   // ⓓ 소스 — 손잡이 하나 · 기본 끔 · 끔 몸통 그대로 · 자원 문 하나
   {
     const Z2 = codeOnly(Z);
-    ok(/const T421_SPATIAL_INC = process\.env\.T421_SPATIAL_INC === '1';/.test(Z2), "⑭-d 손잡이는 `T421_SPATIAL_INC` 하나 · **기본 끔**");
+    ok(/const T421_SPATIAL_INC = process\.env\.T421_SPATIAL_INC !== '0';/.test(Z2), "⑭-d 손잡이는 `T421_SPATIAL_INC` 하나 · **기본 켬**(T433 ① · 되돌림 `=0`)");
     const RS = codeOnly(body('rebuildSpatialIndex'));
     ok(/qtPlayers   = new Quadtree\(0, 0, W, H\);/.test(RS) && /for \(const m of mobs\.values\(\)\)       qtMobs\.insert\(\{ x: m\.x, y: m\.y, ref: m \}\);/.test(RS),
        '⑭-d 끔 몸통은 **옛 글자 그대로**(옛 나무 · 전수 삽입)');

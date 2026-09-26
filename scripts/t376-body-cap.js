@@ -153,6 +153,11 @@ async function phaseB() {
     ws.on('open', look);
     const ping = setInterval(look, 5000);
     await sleep(30000);                                    // 마을이 깨어나 걷는다 + 미리 굽기
+    // ★[T433 ② 규약 ⓐ·ⓓ] `T376_WAITDAY=1` — 첫 하루 경계 뒤 · `T376_PH_LO`/`T376_PH_HI` — 그 띠에 들 때 조각을 시작한다
+    //   (팔 여럿을 견줄 때 **같은 창**. 둘 다 기본 끔 = 종전 값 무변 — 종전엔 부팅한 국면에서 바로 잤다).
+    if (process.env.T376_WAITDAY === '1') { const w = await require('./lib-tick-rule').waitDayBoundary(async () => { const L = await getj('/lifedbg'); return L && L.phase; }); console.log(`      첫 하루 경계 ${w.crossed ? '넘김' : '못 넘김'} · phase ${w.phase}`); }
+    if (process.env.T376_PH_LO) { const lo = +process.env.T376_PH_LO, hi = +(process.env.T376_PH_HI || 1);
+      for (let k = 0; k < 2000; k++) { const L = await getj('/lifedbg'); if (L && L.phase != null && L.phase >= lo && L.phase <= hi) { console.log(`      창 진입 phase ${L.phase.toFixed(3)} · 띠 ${lo}~${hi}`); break; } await sleep(5000); } }
     { const p0 = await getj('/perf'); console.log(`      관측자 ${(p0 && p0.tick && p0.tick.ms && p0.tick.ms.n) || 0} 표본 · 걸음 ${(p0 && p0.walk && p0.walk.steps) || 0}`); }
     const slices = [];
     const n = Math.max(1, Math.floor(LOAD_MIN * 60 / SLICE_S));
@@ -235,7 +240,8 @@ function table() {
         return { d0: curve[0].bodies, q25: at(0.25), q50: at(0.5), q75: at(0.75), end: curve[n - 1].bodies, samples: n, endDay: Math.round((n - 1) * 3000 / DAY_MS_A) }; })() });
   }
   const pct = (x) => (x == null ? '—' : `${(100 * x / BUDGET).toFixed(0)}%`);
-  console.log(`  예산 ${BUDGET.toFixed(1)}ms(30Hz) · 걸음 켬(T312_FISH_ACT=1 · T356·T324 의 자)`);
+  console.log(`  예산 ${BUDGET.toFixed(1)}ms(30Hz) · 걸음 켬(T312_FISH_ACT=1 · T356·T324 의 자) · ${require('./lib-tick-rule').DENOM.village}(★규약 ⓔ)`);
+  console.log('  ⚠ⓐ 의 집·침상·닿은 날은 **압축 시계(게임일 4초)의 값**이다 — 몸 행위(시공)는 실제 날 자로만 읽는다(★규약 ⓒ · T368 §4-ⓒ)');
   console.log('  ┌ 상한 ── econ 인구 ─ 몸 수 ─ Σmin(인구,상한) ─ 몸없는이 ─ 닿은마을 ─ 집 ─ 침상 ─ 소멸 ─│ 낮 p50/p95 ─ 예산 ─ 밤 p50/p95 ─ drop ─ lag% ─ 비취침');
   for (const r of rows) {
     console.log(`  │ ${String(r.cap).padStart(6)} ${String(r.econ).padStart(9)} ${String(r.bodies).padStart(7)} ${String(r.predBodies).padStart(16)} `
