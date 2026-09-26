@@ -18,6 +18,8 @@ const heard=new Set([...recv.matchAll(/t === '([a-z_]+)'/g)].map(m=>m[1]));
 const heardBy=new Map();
 // [T402] `hp_changed` 는 `hpWhy._msgType` 이 이름을 댄다 — 표에 키가 하나라도 있으면 그 메시지는 운다
 if(/_sfxMan\.hpWhy/.test(recv) && man.hpWhy && man.hpWhy._msgType && Object.entries(man.hpWhy).some(([k,v])=>!k.startsWith('_')&&typeof v==='string'&&man.keys[v])){ heard.add(man.hpWhy._msgType); heardBy.set(man.hpWhy._msgType,'hpWhy 표(why 낱말) → hit_body'); }
+// [T412] `work` 표도 같은 자리 규칙으로 운다
+if(/_sfxMan\.work/.test(recv)) for(const [k,v] of Object.entries(man.work||{})) if(!k.startsWith('_')&&typeof v==='string'&&man.keys[v]){ heard.add(k); heardBy.set(k,'work 표 → '+v); }
 if(/_sfxMan\.combat/.test(recv)) for(const [k,v] of Object.entries(man.combat||{})) if(!k.startsWith('_')&&typeof v==='string'&&man.keys[v]){ heard.add(k); heardBy.set(k,'combat 표 → '+v); }
 // 표가 잇는 낱말
 const tblWords=new Set();
@@ -45,7 +47,8 @@ const cli = fs.readdirSync(ROOT+'/public/client').filter(f=>f.endsWith('.js'))
 const blds=[...new Set([...cli.matchAll(/b\.type === '([a-z_]+)'/g)].map(m=>m[1]))]
   .concat(Object.keys(man.buildings||{}).filter(k=>!k.startsWith('_')));
 // ★[T397] 표면 타일(밭·바닥·마당)은 **밟는** 건물이다 — `buildings`(우는 건물) 표가 아니라 `surface` 표가 잇는다.
-const bKey=(b)=>(man.buildings&&man.buildings[b])||(man.surface&&man.surface[b]&&('밟음 → '+man.surface[b]))||'';
+const bEdge=(b)=>{ const R=(man.buildEdge||[]).find((r)=>Array.isArray(r.types)&&r.types.includes(b)); return R?('가장자리 '+R.field+' → '+[R.on,R.off].filter(Boolean).join('/')):''; };
+const bKey=(b)=>(man.buildings&&man.buildings[b])||(man.surface&&man.surface[b]&&('밟음 → '+man.surface[b]))||bEdge(b)||'';
 for(const b of [...new Set(blds)].sort()) add('건물', b, bKey(b)?'O':'-', bKey(b));
 // ⑤ 개체 종류 전수 — animals.js 정본
 try{ const an=fs.readFileSync(ROOT+'/public/animals.js','utf8');
