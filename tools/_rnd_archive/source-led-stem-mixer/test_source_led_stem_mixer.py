@@ -14,7 +14,7 @@ import numpy
 
 
 HERE = Path(__file__).resolve().parent
-NATIVE_WAV_DIR = HERE.parent / "daegeum-transitions"
+NATIVE_WAV_DIR = HERE.parents[1] / "daegeum-transitions"
 for directory in (HERE, NATIVE_WAV_DIR):
     if str(directory) not in sys.path:
         sys.path.insert(0, str(directory))

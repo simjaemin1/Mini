@@ -477,7 +477,7 @@ def validate_approved_dataset_manifest(
         raise TransferReadinessError("dataset manifest.entries must be a non-empty explicit list")
     if len(entries) > 10_000:
         raise TransferReadinessError("dataset manifest.entries exceeds the bounded R&D limit")
-    repo_root = Path(repository_root).resolve() if repository_root is not None else Path(__file__).resolve().parents[2]
+    repo_root = Path(repository_root).resolve() if repository_root is not None else Path(__file__).resolve().parents[3]
     validated: list[dict[str, Any]] = []
     for index, raw_entry in enumerate(entries, 1):
         entry = _require_mapping(raw_entry, label=f"dataset manifest.entries[{index}]")
@@ -828,7 +828,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--dataset-manifest", type=Path, help="One later rights-reviewed derived-feature manifest")
     parser.add_argument("--fine-tune-config", type=Path, default=default_fine_tune_config())
     parser.add_argument("--environment-lock", type=Path, default=default_environment_lock())
-    parser.add_argument("--repository-root", type=Path, default=Path(__file__).resolve().parents[2])
+    parser.add_argument("--repository-root", type=Path, default=Path(__file__).resolve().parents[3])
     return parser.parse_args(argv)
 
 

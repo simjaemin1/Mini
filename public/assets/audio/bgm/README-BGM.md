@@ -58,3 +58,5 @@
     python3 sampler.py scan samples_gaya   # 음원 색인
     python3 check_use.py samples_gaya      # 어떤 녹음이 쓰였는지 확인
     python3 render_samples.py samples_gaya # 12곡 렌더 → out_samples/
+
+R&D 도구 — 쓰는 것·참고 10 폴더는 `tools/`, 버림 14 폴더는 `tools/_rnd_archive/`(T422 · **정본 아님** · 까닭과 되살리는 법은 그 폴더 README).

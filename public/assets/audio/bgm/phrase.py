@@ -164,14 +164,14 @@ def render_curve(inst, f0_hz, loud, sr=SR, amp=1.0, seed=None, backend=None):
     """
     ★**인터페이스 하나.** 백엔드는 둘:
       A = 지금 `gugak.py` 합성기(곡선판)  — 언제나 있다
-      B = DDSP 모델(`tools/ddsp/models/<inst>/`) — 있으면 그것
+      B = DDSP 모델(`tools/_rnd_archive/ddsp/models/<inst>/`) — 있으면 그것
     ⚠**조용히 A 로 떨어지지 않는다** — 어느 백엔드가 울었는지 한 줄을 돌려준다(부르는 쪽이 찍는다).
     """
     want = backend or os.environ.get("BGM_BACKEND", "auto")
     have_b = ddsp_model_dir(inst)
     if want in ("auto", "B") and have_b:
         try:
-            import ddsp_backend                            # tools/ddsp/export.py 가 놓는다
+            import ddsp_backend                            # tools/_rnd_archive/ddsp/export.py 가 놓는다
             y = ddsp_backend.render(inst, f0_hz, loud, sr)
             return np.asarray(y, np.float32) * amp, f"B(ddsp:{have_b})"
         except Exception as e:                             # 있는데 못 불렀으면 **말한다**
@@ -179,13 +179,13 @@ def render_curve(inst, f0_hz, loud, sr=SR, amp=1.0, seed=None, backend=None):
                 raise
             return _render_a(inst, f0_hz, loud, sr, amp, seed), f"A(합성 · B 있으나 실패: {e})"
     if want == "B" and not have_b:
-        raise RuntimeError(f"백엔드 B 를 시켰는데 모델이 없다: tools/ddsp/models/{inst}/")
+        raise RuntimeError(f"백엔드 B 를 시켰는데 모델이 없다: tools/_rnd_archive/ddsp/models/{inst}/")
     return _render_a(inst, f0_hz, loud, sr, amp, seed), "A(합성)" + ("" if have_b else " · B 없음")
 
 
 def ddsp_model_dir(inst):
     root = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(
-        os.path.dirname(os.path.abspath(__file__))))), "tools", "ddsp", "models", inst)
+        os.path.dirname(os.path.abspath(__file__))))), "tools", "_rnd_archive", "ddsp", "models", inst)
     return root if os.path.isdir(root) and os.listdir(root) else None
 
 

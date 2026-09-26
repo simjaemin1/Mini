@@ -13,7 +13,7 @@ import unittest
 
 
 HERE = Path(__file__).resolve().parent
-REPO_ROOT = HERE.parents[1]
+REPO_ROOT = HERE.parents[2]
 if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
 

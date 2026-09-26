@@ -541,9 +541,8 @@ console.log('\n⑧ 배포 폴더에 바이트코드 0 — `.pyc`·`__pycache__/`
 //     (moby/patternmatcher 꼴 — T401 실측: 레포 추적 2,446장 전수에서 docker-py 7.2.0 `exclude_paths` 와 **들어가는
 //      집합이 같다**(1,864장 · 양쪽에만 있는 것 0).) 그 결과 하나: T303 의 `*.zip`·`samples/` 두 줄은 **뿌리에만** 걸려
 //      `bgm/코드백업*.zip` 2장·`bgm/samples/` 는 **지금도 실린다**(T303 이 센 0.55 MB 중 0.31 MB) — 표만 · 회부.
-console.log('\n⑨ `legacy/` 는 배포 폴더 밖 — `.dockerignore`(Docker 규칙)로 [T401]');
-{
-  const DI = path.join(ROOT, '.dockerignore');
+// ★[T422] Docker 규칙 셋(`toRe`·`parse`·`excluded`)은 ⑩ 도 쓴다 — ⑨ 블록 밖으로 **그대로** 옮겼다(몸 무변).
+const DOCKER_RULES = (() => {
   const toRe = (p) => {                                   // moby/patternmatcher 꼴 — ** · * · ? · 나머지는 글자 그대로
     let s = '^';
     for (let i = 0; i < p.length; i++) {
@@ -570,6 +569,12 @@ console.log('\n⑨ `legacy/` 는 배포 폴더 밖 — `.dockerignore`(Docker �
     }
     return ex;
   };
+  return { toRe, parse, excluded };
+})();
+console.log('\n⑨ `legacy/` 는 배포 폴더 밖 — `.dockerignore`(Docker 규칙)로 [T401]');
+{
+  const DI = path.join(ROOT, '.dockerignore');
+  const { parse, excluded } = DOCKER_RULES;
   const PATS = fs.existsSync(DI) ? parse(fs.readFileSync(DI, 'utf8')) : [];
   const LEG = 'public/assets/audio/bgm/legacy';
   const DECOY = `${LEG}/tracks2.py`;
@@ -596,6 +601,62 @@ console.log('\n⑨ `legacy/` 는 배포 폴더 밖 — `.dockerignore`(Docker �
   const rooted = tracked.filter((r) => r.startsWith('public/assets/audio/bgm/') && /(\.zip$|\/samples\/)/.test(r) && !excluded(r, PATS));
   console.log(`     · 뿌리에 붙은 줄(\`*.zip\`·\`samples/\`)이 못 빼는 bgm 파일 ${rooted.length}장 — **이미지에 실린다**(표만 · 회부 — 어디서나 빼려면 \`**/\`)`);
   for (const r of rooted) console.log(`       ${r}`);
+}
+
+// ── ⑩ R&D 보관소 `tools/_rnd_archive/` 는 배포 밖 — 이미지는 `COPY` 가 가리키는 것만 싣는다 [T422] ─────
+//
+// T422 가 GPT R&D 도구 14 폴더(T411 권고 "버림")를 `tools/_rnd_archive/` 로 옮겼다 — **정본 아님**(그 폴더 README).
+// 배포는 서버 checkout 에서 `docker build -f Dockerfile.{zone,central}` 로 굽는다(`scripts/redeploy-hanbando.sh`).
+// 이미지에 드는 것은 Dockerfile 의 `COPY <원본…> <목적>` 이 가리키는 것뿐이고, 그 안에서 `.dockerignore` 가 뺀다(⑨ 의 자).
+// ⇒ 이 절은 **Dockerfile 전부**의 `COPY` 원본을 읽어 보관소 파일이 어느 이미지에도 안 실리는지 잰다(정적 폴더 `public/` 밖인지도).
+//   ⓐ 자 대조 — `public/…/bgm.js`·`server/` 파일은 **실린다** · `보고/` 는 안 실린다(COPY 읽기가 살아 있다)
+//   ⓑ 미끼 — `COPY . .` 한 줄을 (가상으로) 더하면 ⑩a 가 보관소 파일 **전부**를 문다 · 그때 `tools/` 한 줄을 `.dockerignore` 에 더하면 다시 0
+console.log('\n⑩ R&D 보관소 `tools/_rnd_archive/` 는 배포 밖 — 이미지는 `COPY` 한 것만 [T422]');
+{
+  const { toRe, parse, excluded } = DOCKER_RULES;
+  const ARC = 'tools/_rnd_archive';
+  const DI = path.join(ROOT, '.dockerignore');
+  const PATS = fs.existsSync(DI) ? parse(fs.readFileSync(DI, 'utf8')) : [];
+  const DOCKERFILES = fs.readdirSync(ROOT).filter((f) => /^Dockerfile(\..+)?$/.test(f)).sort();
+  const copySrcs = (txt) => txt.split('\n').map((l) => l.trim())
+    .filter((l) => /^COPY\s/i.test(l) && !/--from=/i.test(l))
+    .flatMap((l) => {
+      const args = l.replace(/^COPY\s+/i, '').split(/\s+/).filter((a) => a && !a.startsWith('--'));
+      return args.slice(0, -1).map((a) => path.posix.normalize(a).replace(/^\.\//, '').replace(/\/+$/, '') || '.');
+    });
+  const IMAGES = DOCKERFILES.map((f) => ({ f, srcs: copySrcs(fs.readFileSync(path.join(ROOT, f), 'utf8')) }));
+  const copiedBy = (rel, srcs) => srcs.some((src) => {
+    if (src === '.') return true;
+    if (/[*?]/.test(src)) { const re = toRe(src); const parts = rel.split('/'); for (let i = 1; i <= parts.length; i++) if (re.test(parts.slice(0, i).join('/'))) return true; return false; }
+    return rel === src || rel.startsWith(src + '/');
+  });
+  const ships = (rel, images, pats) => images.some((im) => copiedBy(rel, im.srcs)) && !excluded(rel, pats);
+  let tracked = null;
+  try { tracked = require('child_process').execFileSync('git', ['ls-files', '-z', '--', ARC, 'public', 'server'], { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).split('\0').filter(Boolean); }
+  catch (e) { tracked = null; }
+  if (tracked === null) {                                  // git 없음 — 디스크로 센다
+    const walk = (d) => (fs.existsSync(path.join(ROOT, d)) ? fs.readdirSync(path.join(ROOT, d), { withFileTypes: true })
+      .flatMap((e) => (e.isDirectory() ? walk(`${d}/${e.name}`) : [`${d}/${e.name}`])) : []);
+    tracked = [...walk(ARC), ...ASSETS.map((a) => a.rel)];
+  }
+  const arcFiles = tracked.filter((r) => r.startsWith(ARC + '/'));
+  const arcShip = arcFiles.filter((r) => ships(r, IMAGES, PATS));
+  ok(arcFiles.length > 0 && arcShip.length === 0,
+     `⑩a 보관소 파일 중 이미지에 실리는 것 ${arcShip.length}장`,
+     `보관소 ${arcFiles.length}장 · ${IMAGES.map((im) => `${im.f}: COPY ${im.srcs.join(' ')}`).join(' / ')}`);
+  const inPublic = tracked.filter((r) => r.startsWith('public/') && r.split('/').includes('_rnd_archive'));
+  ok(inPublic.length === 0, `⑩b 정적 폴더 \`public/\` 아래 \`_rnd_archive\` ${inPublic.length}장`, inPublic.slice(0, 4).join(' ') || '없다');
+  const serverFile = tracked.find((r) => r.startsWith('server/'));
+  ok(IMAGES.length > 0 && ships('public/assets/audio/bgm/bgm.js', IMAGES, PATS) && !!serverFile && ships(serverFile, IMAGES, PATS)
+     && !ships('보고/T422_2026-09-26.md', IMAGES, PATS),
+     'ⓐ 자 대조 — `bgm.js`·`server/` 파일은 **실린다** · `보고/` 는 안 실린다(COPY 읽기가 살아 있다)',
+     `Dockerfile ${IMAGES.length}장 · bgm.js ${ships('public/assets/audio/bgm/bgm.js', IMAGES, PATS) ? '실림' : '★안 실림'} · ${serverFile} ${serverFile && ships(serverFile, IMAGES, PATS) ? '실림' : '★안 실림'}`);
+  const withDot = IMAGES.map((im) => ({ f: im.f, srcs: [...im.srcs, '.'] }));
+  const bitAll = arcFiles.filter((r) => ships(r, withDot, PATS)).length;
+  const healed = arcFiles.filter((r) => ships(r, withDot, PATS.concat(parse('tools/')))).length;
+  ok(bitAll === arcFiles.length && healed === 0,
+     'ⓑ 미끼 — `COPY . .` 를 더하면 ⑩a 가 보관소 **전부**를 문다 · `.dockerignore` 에 `tools/` 를 더하면 다시 0',
+     `${arcShip.length}→${bitAll}/${arcFiles.length} · 줄 더하면 ${healed}`);
 }
 
 // ── ⑥ 반례 — 화소 자가 **무엇에 둔하고 무엇에 예민한지** [T308] ──────────────

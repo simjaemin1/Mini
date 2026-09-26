@@ -14,7 +14,7 @@ import unittest
 
 
 HERE = Path(__file__).resolve().parent
-SCORE_EXPRESSION_DIR = HERE.parent / "score-expression"
+SCORE_EXPRESSION_DIR = HERE.parents[1] / "score-expression"
 for module_dir in (HERE, SCORE_EXPRESSION_DIR):
     if str(module_dir) not in sys.path:
         sys.path.insert(0, str(module_dir))
