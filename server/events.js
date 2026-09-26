@@ -390,6 +390,12 @@ function createLedger(opts) {
   const cfg = Object.assign({}, CFG, o.cfg || {});
   const vidOf = o.vidOf || ((v, i) => i);
   const econV2 = o.econV2 || require(path.join(__dirname, '..', 'sim', 'economy-sim-v2'));
+  // ★★[T416 2026-09-26] **게시판도 가격과 같은 가드 문을 지난다**(`economy-sim-v2.subsGuard` — 술어 하나 · 사본 0).
+  //   부족·과잉 래치(→ 의뢰)가 보는 흐름을 가드면 0 으로 읽는다 — 가격이 `flowT` 를 0 으로 읽는 것과 같은 뜻.
+  //   기본(현행)은 게시판 무가드라 **EMA 그대로**다(넷째 판 비트 동일). 가격 표시·관련성(`relevant`)은 원래 EMA 를 본다.
+  //   ⚠스텁 econV2(하네스)가 술어를 안 내주면 현행 그대로 읽는다.
+  const _sg = (econV2 && typeof econV2.subsGuard === 'function') ? econV2.subsGuard : null;
+  const _boardEma = (r, e) => ((_sg && _sg(r, 'board')) ? 0 : (+e[r] || 0));
   const DEL = buildDeliverable(o.depositMap);
   const onEvent = o.onEvent || null;          // (ev) => void — 영속화 훅(서버가 DB 에 꽂는다)
   const onRequest = o.onRequest || null;      // (req, 'open'|'close') => void
@@ -595,7 +601,7 @@ function createLedger(opts) {
       const e = v._consEMA || {}, sto = v.storage || {};
       for (const r of itemsOf(s, v)) {
         const d = det(s, r);
-        const ema = +e[r] || 0, stock = +sto[r] || 0;
+        const ema = _boardEma(r, e), stock = +sto[r] || 0;   // ★[T416] 래치가 보는 흐름 — 술어 하나(아래 scanDay 와 같은 문)
         d.short = ema > 0 && stock < ema * cfg.SHORT_DAYS;
         d.glut = ema > 0 && stock > ema * cfg.GLUT_DAYS;
         const p = +prices[r] || 0;
@@ -652,17 +658,18 @@ function createLedger(opts) {
       for (const r of itemsOf(s, v)) {
         const ema = +e[r] || 0, stock = +sto[r] || 0;
         const d = det(s, r);
+        const emaL = _boardEma(r, e);   // ★[T416] 부족·과잉 래치가 보는 흐름 — 가드면 0(가격의 flowT 와 같은 문 · 기본은 현행 = ema)
 
         // ① 재고 부족 — 소비가 있는 품목만(소비 0 이면 문턱 0 → 애초에 성립 불가)
-        if (ema > 0) {
-          const thr = ema * cfg.SHORT_DAYS;
+        if (emaL > 0) {
+          const thr = emaL * cfg.SHORT_DAYS;
           if (!d.short && stock < thr) {
             d.short = true;
             mine.push({ day, vid, type: 'STOCK_SHORTAGE', item: r, mag: +(stock / thr).toFixed(4), meta: { stock: +stock.toFixed(2), thr: +thr.toFixed(2) } });
           } else if (d.short && stock > thr * cfg.HYST) d.short = false;
 
           // ② 재고 과잉 — ★소비EMA>0 인 품목만. 소비 없는 품목의 허위 글럿 금지(재민 명시).
-          const thrG = ema * cfg.GLUT_DAYS;
+          const thrG = emaL * cfg.GLUT_DAYS;
           if (!d.glut && stock > thrG) {
             d.glut = true;
             mine.push({ day, vid, type: 'STOCK_GLUT', item: r, mag: +(stock / thrG).toFixed(4), meta: { stock: +stock.toFixed(2), thr: +thrG.toFixed(2) } });
