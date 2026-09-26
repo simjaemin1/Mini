@@ -5167,6 +5167,82 @@ const JOB_RES = { lumberjack: ['tree'], miner: ['rock', 'ore'], forager: ['berry
 //     ⚠지어낸 수가 아니라 **그 표의 반경**이다. 넓히면(48셀) 나무 0 마을이 0 이 되는데 스캔이 8배다 —
 //       그 판정은 재민·PM 칸이라 여기서 안 고른다(보고 §회부).
 const T325_R = 16;
+// ★★★[T398 2026-09-26 · PM 판정 ① · 재민 거부권] **나무꾼의 숲은 영토 밖이다.**
+//   마을은 제 영토를 개간해 밭·집을 놓고(T378 — 마을 안엔 숲이 없다) 나무는 영토 **밖** 숲에서 벤다.
+//   그런데 종전 네모(회관 ±`T325_R`)는 **거의 전부 영토 안**이었다 — 마을별 중앙값 99.2% ⇒ 개간 뒤 켜면
+//   나무꾼이 볼 나무 1,889 → 8 · 0그루 마을 3 → 44/50(보고/T378 §0-ⓕ · T393 §0-ⓓ). 켜는 날의 충돌이다.
+//   ⇒ 후보 셀 = **영토 셀 집합 밖 · 영토에서 체비쇼프 거리 ≤ `T325_R`** 인 고리.
+//     ⓐ 반경은 **있는 수**(`T325_R` 16셀 그대로 · 새 수 0). 거리의 꼴도 종전과 **같다** — 종전 네모는
+//        회관 한 셀을 ±R 네모로 부풀린 것이고, 고리는 영토를 **같은 네모로** 부풀리고 영토를 뺀 것이다.
+//     ⓑ 영토 = `vil._terrSet`(`_terrGrow` 가 적는 `terr` 행 · 부팅 복원이 읽는 그 집합 · T378 자가 아는 그 집합).
+//        **남의 영토도 뺀다** — 그 셀은 그 마을이 개간한다(나무꾼이 남의 마을 안에서 베지 않는다).
+//     ⓒ 영토가 0셀인 마을은 **종전 네모 그대로**(되돌림 문 · 같은 셀 · 같은 순서).
+//     ⓓ 순서는 종전과 같은 **행 우선**이다(헤드리스 벌목은 색인 순서로 벤다 — `_lifeDaily` 나무꾼 절 주석).
+//   ★캐시 — 영토는 **늘기만** 한다(`own.add` 뿐 · 지우는 자리 0). 그래서 내 영토 크기와 겹치는 이웃 영토 크기가
+//     그대로면 고리도 그대로다(키 = 그 크기들). 이웃 상자도 그 마을 영토 크기가 바뀐 날에만 다시 잰다.
+//   ★순수 함수 — 자(`t378-forest-in-village`)·하네스(`test-wood-act ⑩`)가 **이 함수를** 부른다(사본 0).
+//     `villages` 를 넘기면 그 목록을 이웃으로 본다(자가 DB 에서 세운 마을 꼴) · 안 넘기면 `state.villages`.
+function _t398Box(v) {
+  const own = v._terrSet;
+  const n = own ? own.size : 0;
+  if (v._t398Box && v._t398Box.n === n) return v._t398Box;
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  if (own) for (const k of own) {
+    const ci = k.indexOf(','), x = +k.slice(0, ci), y = +k.slice(ci + 1);
+    if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+  }
+  return (v._t398Box = { n, x0, y0, x1, y1 });
+}
+function _t398Cells(vil, villages) {
+  const R = T325_R;
+  const own = vil._terrSet;
+  if (!own || !own.size) {
+    //   ⓒ 되돌림 문 — 종전 네모(회관 ±R · 행 우선 · 음수 셀은 부르는 쪽이 건너뛴다 — 종전 그대로)
+    if (vil._t398C && vil._t398C.key === 'sq') return vil._t398C;
+    const xy = [];
+    for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) xy.push(vil.ccx + dx, vil.ccy + dy);
+    return (vil._t398C = { key: 'sq', ring: 0, xy });
+  }
+  const b = _t398Box(vil);
+  const bx0 = b.x0 - R, by0 = b.y0 - R, bx1 = b.x1 + R, by1 = b.y1 + R;
+  //   ⓑ 이웃 — 내 고리 상자와 겹치는 남의 영토만(대개 0~2곳) · 키에 그 크기를 싣는다
+  const nb = [];
+  let key = 'r' + own.size;
+  for (const v of (villages || state.villages || [])) {
+    if (v === vil || !v._terrSet || !v._terrSet.size) continue;
+    const o = _t398Box(v);
+    if (o.x1 < bx0 || o.x0 > bx1 || o.y1 < by0 || o.y0 > by1) continue;
+    nb.push(v._terrSet);
+    key += ',' + (v.dbId != null ? v.dbId : v.name) + ':' + v._terrSet.size;
+  }
+  if (vil._t398C && vil._t398C.key === key) return vil._t398C;
+  //   ⓐ 부풀리기 — 영토를 ±R 네모로(체비쇼프 ≤ R). 가로 한 번 · 세로 한 번 누적합(상자 칸 수에 비례 · 영토 모양과 무관).
+  const W = bx1 - bx0 + 1, H = by1 - by0 + 1;
+  const g = new Uint8Array(W * H), h = new Uint8Array(W * H), d = new Uint8Array(W * H);
+  for (const k of own) { const ci = k.indexOf(','); g[(+k.slice(ci + 1) - by0) * W + (+k.slice(0, ci) - bx0)] = 1; }
+  const rp = new Int32Array(W + 1);
+  for (let y = 0; y < H; y++) {
+    const row = y * W;
+    for (let x = 0; x < W; x++) rp[x + 1] = rp[x] + g[row + x];
+    for (let x = 0; x < W; x++) h[row + x] = (rp[Math.min(W, x + R + 1)] - rp[Math.max(0, x - R)]) > 0 ? 1 : 0;
+  }
+  const cp = new Int32Array(H + 1);
+  for (let x = 0; x < W; x++) {
+    for (let y = 0; y < H; y++) cp[y + 1] = cp[y] + h[y * W + x];
+    for (let y = 0; y < H; y++) d[y * W + x] = (cp[Math.min(H, y + R + 1)] - cp[Math.max(0, y - R)]) > 0 ? 1 : 0;
+  }
+  const xy = [];
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const i = y * W + x;
+      if (!d[i] || g[i]) continue;                         // 고리 밖 · 내 영토
+      const cx = bx0 + x, cy = by0 + y;
+      if (nb.length) { const k = cx + ',' + cy; let other = false; for (const s of nb) if (s.has(k)) { other = true; break; } if (other) continue; }
+      xy.push(cx, cy);
+    }
+  }
+  return (vil._t398C = { key, ring: 1, xy });
+}
 // ★★[T341] 스캔이 재생의 세 항을 같이 낸다 — **전부 남의 정본을 읽어서**(새 수 0):
 //     `N` 지금 서 있는 그루 · `K` 교란 전 그루(같은 색인에 벤 장부를 **안 넘기고** 물은 수) ·
 //     `w̄` 그 숲 그루당 평균 목재 단(`lootOfResource`).
@@ -5180,22 +5256,25 @@ function _t325Scan(vil, day) {
   //     (33×33 = 1,089셀 × 마을 × 하루 — 실측 p95 5.0 → 30.0ms 가 그 값이었다). 그래서 캐시한다.
   //   ⚠`> 0` 이 아니라 `== null` 로 묻는다 — 나무 0 마을(K = 0)도 **한 번 재고 끝나야** 한다
   //     (`> 0` 이면 그 마을만 영원히 두 벌로 스캔한다 · 나무 0 마을은 3~24곳이다).
-  const _needK = (vil._t341K == null) && _lifeEcon().T325_WOOD_ACT && state.deps.t325TreesAtCell;
   if (_lifeEcon().T325_WOOD_ACT && state.deps.t325TreesAtCell) {
+    //   ★★[T398] 후보 셀 — 영토 밖 고리(영토 0셀이면 종전 네모 · 같은 순서) · 손잡이 뒤에서만 센다(끈 팔 비트 동일).
+    const C = _t398Cells(vil);
+    //   ★[T398] `K` 는 **그 셀 집합의 수**다 — 영토가 자라 고리가 옮겨 간 날 **한 번** 다시 잰다(키가 바뀐 날).
+    //     네모는 셀 집합이 안 바뀌므로 종전 그대로 첫 하루 한 번이다.
+    const _needK = (vil._t341K == null) || (vil._t341KAt !== C.key);
     let K = 0, wSum = 0, wN = 0;
-    for (let dy = -T325_R; dy <= T325_R; dy++) {
-      for (let dx = -T325_R; dx <= T325_R; dx++) {
-        const tx = vil.ccx + dx, ty = vil.ccy + dy;
-        if (tx < 0 || ty < 0) continue;
-        if (_needK) {   // 교란 전(raw) — 첫 하루에만 돈다
-          let b = null; try { b = state.deps.t325TreesAtCell(tx, ty, true); } catch (e) { b = null; }
-          if (b && b.length) { K += b.length; for (const r of b) { const w = _lifeLootWood(r); if (w > 0) { wSum += w; wN++; } } }
-        }
-        let a = null; try { a = state.deps.t325TreesAtCell(tx, ty); } catch (e) { a = null; }
-        if (a && a.length) { N += a.length; trees.push({ cx: tx, cy: ty, x: tx * SZ + SZ / 2, y: ty * SZ + SZ / 2, n: a.length }); }
+    const xy = C.xy;
+    for (let i = 0; i < xy.length; i += 2) {
+      const tx = xy[i], ty = xy[i + 1];
+      if (tx < 0 || ty < 0) continue;
+      if (_needK) {   // 교란 전(raw) — 셀 집합이 정해진 날에만 돈다
+        let b = null; try { b = state.deps.t325TreesAtCell(tx, ty, true); } catch (e) { b = null; }
+        if (b && b.length) { K += b.length; for (const r of b) { const w = _lifeLootWood(r); if (w > 0) { wSum += w; wN++; } } }
       }
+      let a = null; try { a = state.deps.t325TreesAtCell(tx, ty); } catch (e) { a = null; }
+      if (a && a.length) { N += a.length; trees.push({ cx: tx, cy: ty, x: tx * SZ + SZ / 2, y: ty * SZ + SZ / 2, n: a.length }); }
     }
-    if (_needK) { vil._t341K = K; vil._t341WBar = wN > 0 ? wSum / wN : 0; }
+    if (_needK) { vil._t341K = K; vil._t341WBar = wN > 0 ? wSum / wN : 0; vil._t341KAt = C.key; }
   }
   vil._t325Trees = { day, list: trees, N, K: vil._t341K || 0, wBar: vil._t341WBar || 0 };
   if (vil.econ) vil.econ._t325Cells = trees.length;   // ★게이트의 입력("갈 자리가 있나" — T341 이후 분모가 아니다)
@@ -8170,7 +8249,7 @@ module.exports = { fishPerf, woodPerf, foragePerf, farmPerf,   // ★[T316] `/pe
   _t400BuildDay, _t400PerLoad, _t400Crew, _t400From,   // ★[T400] 집 행위 1층 — 하네스가 같은 함수를 부른다(사본 0)
   _t347ActItems, _t347PerLoad,   // ★[T347] 걷는 목록·짐당 개체 — 하네스가 표·유도를 옮겨 적지 않게 내준다(사본 금지)
   _actDay, _actTake,   // ★[T334] 예산 장부 몸통(어부 전용 — T341 이 나무에서 걷어냈다) — 하네스가 규칙을 옮겨 적지 않게 내준다
-  _t341TripsPerDay, _t341TreesPerLoad,   // ★[T341] 하루 왕복 수·짐당 그루 — **걸음이 정한다**(하네스가 유도를 다시 계산해 대조한다)
+  _t341TripsPerDay, _t341TreesPerLoad, _t398Cells,   // ★[T341] 하루 왕복 수·짐당 그루 — **걸음이 정한다**(하네스가 유도를 다시 계산해 대조한다) · ★[T398] 나무꾼 후보 셀(고리 · 자·하네스가 이 함수를 부른다)
  
   init, onGameTick, invalidateTradeDistances, npcLifeTick, lifeDebug, econDay,
   tickPerf,   // ★[T1 §0] 일틱 단계별 소요 — zone.js `/perf` 가 소비(계측 전용)
