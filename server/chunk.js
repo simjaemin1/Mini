@@ -794,6 +794,22 @@ function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet, 
       }
     }
   }
+  // ★★[T408 2026-09-26] **개체는 제 땅에만.** 존의 마지막 청크는 존 밖으로 삐져나간다
+  //   (한반도 동쪽 마지막 청크 69,632~70,656 · 존 폭 70,016) — 그리고 숲 격자는 그 너머 **남의 땅에**
+  //   나무를 낳았다(실측: 한반도 → 닛폰 1,610그루 · 최대 +720px · 중원북 → 한반도 한 자리 148그루).
+  //   그 칸은 이웃 존이 **두 목록 모두로**(T408 경계 접합) 스스로 답한다 — 여기서 또 낳으면 두 존이
+  //   같은 칸에 나무를 둘 세우고, 이웃 서버가 없으면 숲이 **청크 선**에서 반듯하게 끊긴다.
+  //   ⇒ 값을 만드는 줄은 하나도 안 바꾸고 **내보내기만** 거른다(id 순번이 그대로라 안쪽 청크는 비트 동일).
+  //   (경계 접합과 한 규칙의 두 쪽이다 — 땅은 합으로 보고, 개체는 그 칸을 가진 존만 낳는다.)
+  {
+    const Z = _zoneMeta(zoneId);
+    if (Z && Z.zoneWidth) {
+      const W = Z.zoneWidth, H = Z.zoneHeight;
+      let k = 0;
+      for (let i = 0; i < result.length; i++) { const e = result[i]; if (e.x >= 0 && e.y >= 0 && e.x < W && e.y < H) result[k++] = e; }
+      result.length = k;
+    }
+  }
   return result;
 }
 
@@ -914,6 +930,10 @@ function treeBlockerAt(zoneId, cellX, cellY, opts) {
 
 // 존의 biome — `zone-config` 정본에서 읽는다(값을 이 파일에 안 적는다).
 let _ZC = null;
+function _zoneMeta(zoneId) {   // ★[T408] 존 크기 — `_zoneBiome` 과 같은 문(zone-config 한 번)
+  if (!_ZC) { try { _ZC = require('./zone-config'); } catch (e) { _ZC = { ZONES: {} }; } }
+  return (_ZC.ZONES || {})[zoneId] || null;
+}
 function _zoneBiome(zoneId) {
   if (!_ZC) { try { _ZC = require('./zone-config'); } catch (e) { _ZC = { ZONES: {} }; } }
   const z = (_ZC.ZONES || {})[zoneId];
