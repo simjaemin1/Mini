@@ -27,7 +27,8 @@ const SLICE_S = parseInt(process.env.SLICE_S || '30', 10);
 const SLICES = parseInt(process.env.SLICES || '8', 10);
 const TPL = process.env.TPL || '/tmp/t316-tpl.db';
 const WINDOW = (process.env.WINDOW || 'day').trim();
-// ★[T375] 팔 — `off`(종전 문지기) / `on`(`T375_ACTIVE_FLAG=1`). 같은 틀 DB · 같은 창 · 같은 조각.
+// ★[T375 → T385] 팔 — `off`(종전) / `on`(`T385_ONE_SWEEP=1` · 순회 일곱 → 둘). 같은 틀 DB · 같은 창 · 같은 조각.
+//   (T375 의 `T375_ACTIVE_FLAG` 는 T385 가 흡수했다 — 그 손잡이의 새로 고침 토막 둘도 같이 사라졌다)
 const ARM = (process.env.ARM || 'off').trim();
 const TAG = ARM === 'off' ? WINDOW : `${WINDOW}-${ARM}`;
 const W_LO = WINDOW === 'day' ? 0.10 : 0.72, W_HI = WINDOW === 'day' ? 0.62 : 0.97;
@@ -48,18 +49,17 @@ const SEGS = [
   ['worldDay', '세계 하루 훅 — `Bandits`·`Roads`·`Soil`·`_fruitSeasonSweep`'],
   ['idleScan', 'idle 존 판정 — 사람 하나 찾는 순회 + `observers.size`'],
   ['chunks',   '활성 청크 갱신 — `updateActiveChunks`'],
-  ['t375R1',   '★[T375] 새로 고침 ① — 틱 머리(주민만) · 끔이면 즉시 반환'],
   ['spatial',  '공간 인덱스 재구축 — `rebuildSpatialIndex` + `roomsFlush`'],
   ['inputTO',  '입력 타임아웃 순회 — 전 주민 훑고 사람만 본다'],
   ['decPre',   '결정 문 앞 — 주석뿐(사슬을 닫는 자리)'],
   ['farm',     '밭 단계 — 게임일 경계에만 활성 청크 밭 순회(평시 정수 비교 1)'],
   ['arrows',   '화살 물리 + ghost TTL 청소 — `stepArrows` + 맵 둘 순회'],
-  ['t375R2',   '★[T375] 새로 고침 ② — 이동 문 직후(주민 + 몹) · 끔이면 즉시 반환'],
   ['stairs',   '계단 — `stepStairFor` × (주민 + 몹)'],
   ['fall',     '낙하 — `processFalling` × (주민 + 몹)'],
   ['gauge',    '생존 게이지 — 배고픔·목마름·vp 감쇠 순회'],
   ['hpRegen',  'HP 회복 순회 — 전투 밖 1초'],
   ['gaugeNet', '게이지 방송 순회 — 1초 간격 self 전송'],
+  ['sweep',    '★[T385] 한 바퀴 — 뒤 묶음 다섯(계단·낙하·게이지·HP·방송) · 끔이면 즉시 지나간다'],
   ['mobs',     '몹 AI — `for (const m of mobs.values())` 한 바퀴'],
   ['wildlife', '야생 5종 — `Wildlife.tick`'],
 ];
@@ -114,10 +114,8 @@ const PATCHES = [
     repl: "  _ANA.cut('worldDay');\n  // === 14.49-e3-perf5: idle zone skip ===" },
   { find: "  // === 활성 청크 갱신 (player·observer 위치 기반) ===",
     repl: "  _ANA.cut('idleScan');\n  // === 활성 청크 갱신 (player·observer 위치 기반) ===" },
-  { find: "  _t375Refresh(false);",
-    repl: "  _ANA.cut('chunks');\n  _t375Refresh(false);" },
   { find: "  // === Spatial index 재구축 — 모든 nearest-search가 이걸 씀 ===",
-    repl: "  _ANA.cut('t375R1');\n  // === Spatial index 재구축 — 모든 nearest-search가 이걸 씀 ===" },
+    repl: "  _ANA.cut('chunks');\n  // === Spatial index 재구축 — 모든 nearest-search가 이걸 씀 ===" },
   { find: "  // 입력 타임아웃 — 2.5초 동안 입력 없으면 정지",
     repl: "  _ANA.cut('spatial');\n  // 입력 타임아웃 — 2.5초 동안 입력 없으면 정지" },
   { find: "  // === NPC 행동 결정 (사람 player는 input으로 vx/vy 받지만 NPC는 직접 결정) ===",
@@ -131,10 +129,8 @@ const PATCHES = [
     repl: "  _ANA.cut('farm');\n  // Phase 5-I: 화살 물리/히트 + 만료된 ghost 정리" },
   { find: "  for (const p of players.values()) {\n    if (p.handingOff) continue;\n    if (p.isNpc) {\n      if (p.simCaravan) continue;",
     repl: "  _ANA.cut('arrows');\n  for (const p of players.values()) {\n    if (p.handingOff) continue;\n    if (p.isNpc) {\n      if (p.simCaravan) continue;" },
-  { find: "  _t375Refresh(true);",
-    repl: "  _ANA.cut('loopMov');\n  _t375Refresh(true);" },
   { find: "  // === Phase 14.49-e: PZ식 다단 계단 — 3 cell 점유 + step별 z + walk-off로 floor 전환 ===",
-    repl: "  _ANA.cut('t375R2');\n  // === Phase 14.49-e: PZ식 다단 계단 — 3 cell 점유 + step별 z + walk-off로 floor 전환 ===" },
+    repl: "  _ANA.cut('loopMov');\n  // === Phase 14.49-e: PZ식 다단 계단 — 3 cell 점유 + step별 z + walk-off로 floor 전환 ===" },
   // ── 사슬(이동 문 뒤 → 델타) ──
   { find: "  // === 14.49-e2: 낙하 (falling) — 위층에서 받침 floor 없는 곳으로 walk-off ===",
     repl: "  _ANA.cut('stairs');\n  // === 14.49-e2: 낙하 (falling) — 위층에서 받침 floor 없는 곳으로 walk-off ===" },
@@ -144,8 +140,10 @@ const PATCHES = [
     repl: "  _ANA.cut('gauge');\n  // === HP 회복 (out-of-combat 1초 후) — 단 hunger/thirst 모두 0이상일 때만 ===" },
   { find: "  // === 게이지 변화 주기 broadcast (1초 간격, self에만) ===",
     repl: "  _ANA.cut('hpRegen');\n  // === 게이지 변화 주기 broadcast (1초 간격, self에만) ===" },
+  { find: "  // === [T385] 한 바퀴 — 뒤 묶음 다섯(계단·낙하·게이지·HP·방송) ===",
+    repl: "  _ANA.cut('gaugeNet');\n  // === [T385] 한 바퀴 — 뒤 묶음 다섯(계단·낙하·게이지·HP·방송) ===" },
   { find: "  // === Mob AI ===",
-    repl: "  _ANA.cut('gaugeNet');\n  // === Mob AI ===" },
+    repl: "  _ANA.cut('sweep');\n  // === Mob AI ===" },
   { find: "  // §4-4 동물 AI 블록(마을실험실 이식) — 활성 청크 뷰의 야생 5종.",
     repl: "  _ANA.cut('mobs');\n  // §4-4 동물 AI 블록(마을실험실 이식) — 활성 청크 뷰의 야생 5종." },
   { find: "  const allPlayers = Array.from(players.values());",
@@ -199,7 +197,7 @@ async function run() {
     env: Object.assign({}, process.env, { PORT: String(ZP), ZONE_ID: 'hanbando', CENTRAL_HOST: 'localhost', CENTRAL_PORT: String(CP),
       CENTRAL_SECRET: SECRET, ENABLE_VILLAGES: '1', VILLAGE_DAY_MS: String(DAY_MS), DB_PATH: DB, VILLAGE_WAR_LOG: '0',
       T312_FISH_ACT: '1', T371_EVERY: String(SLICE_S * 30),
-      T375_ACTIVE_FLAG: ARM === 'on' ? '1' : '' }) });   // ★[T375] 팔
+      T385_ONE_SWEEP: ARM === 'on' ? '1' : '' }) });   // ★[T385] 팔(T375 손잡이는 흡수됐다)
   const getj = async (p, h) => { try { const r = await fetch(`http://localhost:${ZP}${p}`, h ? { headers: h } : undefined); return await r.json(); } catch (e) { return null; } };
   const perf = (reset) => getj(`/perf${reset ? '?reset=1' : ''}`, { 'x-zone-secret': SECRET });
   const life = () => getj('/lifedbg', { 'x-zone-secret': SECRET });

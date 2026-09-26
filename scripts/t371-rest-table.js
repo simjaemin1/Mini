@@ -14,10 +14,10 @@ const CALLS = { head: '1', econDay: '1', worldDay: '4', idleScan: '1 루프(≤N
   farm: '1 (평시 정수 비교 1 · 게임일 경계에만 순회)', arrows: '3 (화살 + ghost 맵 둘)',
   stairs: '2 루프(N + M)', fall: '2 루프(N + M)', gauge: '1 루프(N)', hpRegen: '1 루프(N)',
   gaugeNet: '1 루프(N)', mobs: '1 루프(M)', wildlife: '1',
-  t375R1: '1 (N번 술어 · 끔이면 0)', t375R2: '1 (N+M번 술어 · 끔이면 0)' };
+  sweep: '1 루프(N) — 켬이면 뒤 묶음 다섯 · 끔이면 0' };
 
-const SEGS = ['head','econDay','worldDay','idleScan','chunks','t375R1','spatial','inputTO','decPre','farm','arrows',
-  't375R2','stairs','fall','gauge','hpRegen','gaugeNet','mobs','wildlife'];
+const SEGS = ['head','econDay','worldDay','idleScan','chunks','spatial','inputTO','decPre','farm','arrows',
+  'stairs','fall','gauge','hpRegen','gaugeNet','sweep','mobs','wildlife'];
 
 function reduce(file) {
   const j = JSON.parse(fs.readFileSync(file, 'utf8'));

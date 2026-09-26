@@ -650,29 +650,41 @@ function isPositionActive(x, y) {
   const cs = chunkManager.chunkSize;
   return activeChunkKeys.has(chunkManager.keyOf(Math.floor(x / cs), Math.floor(y / cs)));
 }
-// ★★[T375 2026-09-23 · T371 회부 1-ⓐ] **문지기를 불리언 필드 하나로.** `T375_ACTIVE_FLAG=1` 일 때만.
-//   ★왜 — T371 이 '그 밖' 2.11µs 를 열일곱으로 갈랐고, 앞자리 넷(`stairs`·`spatial`·`fall`·`hpRegen`)은
-//     **주민 전수를 매 틱 훑으면서 몸엔 못 들어가는** 순회였다(합 0.717µs = 그 밖의 69.4 %).
-//     같은 1,651명을 도는데 `p.isNpc` 불리언 한 줄로 빠지는 순회 셋은 평균 0.031µs — **5.8배** 싸다.
-//     차이는 일이 아니라 **문지기가 무엇을 읽는가**다: 문자열 키 Set(`isPositionActive`) 대 필드 하나.
-//   ★★**정본은 `activeChunkKeys` 그대로다 — `_active` 는 사본이 아니라 그 틱의 유도**(T333 이 `WATER_TILES`
-//     에서 비트를 유도한 그 규율). 원천이 둘이 되지 않게, 값은 **오직 `isPositionActive` 를 불러서** 채운다.
-//   ⚠**자리가 둘인 이유** — 카드의 "그 자리 뒤에 다시 계산". 청크 집합은 틱 안에서 안 바뀌지만
-//     **몸이 움직인다**: 결정 문·이동 문이 x·y 를 바꾸므로, 이동 문 뒤에 쓰는 순회(계단·낙하·HP)는
-//     **이동 뒤 값**을 봐야 종전과 같은 답이 난다. ⇒ 새로 고치는 자리 둘(틱 머리 · 이동 문 직후).
-//   ⚠세대(`_t375Gen`)를 같이 적는다 — 새로 고친 뒤에 **들어온** 몸(접속·스폰·핸드오프)은 세대가 달라
-//     읽는 쪽이 자동으로 종전 길(`isPositionActive`)로 떨어진다. 그래서 "빠뜨린 몸" 이 원리상 없다.
-//   ★끄면 `_isActive(e)` 는 글자 그대로 `isPositionActive(e.x, e.y)` 다 — 필드도 안 쓴다(비트 동일).
-const T375_ACTIVE_FLAG = process.env.T375_ACTIVE_FLAG === '1';
-let _t375Gen = 0;
-function _t375Refresh(withMobs) {
-  if (!T375_ACTIVE_FLAG) return;
-  _t375Gen++;
-  for (const p of players.values()) { p._active = isPositionActive(p.x, p.y); p._activeGen = _t375Gen; }
-  if (withMobs) for (const m of mobs.values()) { m._active = isPositionActive(m.x, m.y); m._activeGen = _t375Gen; }
+// ★★★[T385 2026-09-26 · T371 회부 1-ⓑ · T375 가 음수로 증명한 자리] **순회 일곱을 둘로.** `T385_ONE_SWEEP=1` 일 때만.
+//   ★왜 — T375 가 문지기를 필드로 싸게 했더니 그 밖이 1.15 → 1.46µs(+27 %)였다. 넷이 던 것(−0.200)보다
+//     **새로 놓은 순회 둘**(+0.462)이 더 들었다 ⇒ 값은 문지기가 아니라 **순회 한 바퀴**(≈ 0.21~0.25µs/사람)에 있다.
+//     그 밖에서 주민 전수를 도는 순회는 일곱이다(`spatial`·`inputTO`·`stairs`·`fall`·`gauge`·`hpRegen`·`gaugeNet`).
+//   ★★**순서가 세계다 — 의존 표가 본체**(보고 §1). 일곱 중 어느 단계도 **다른 몸의 같은 틱 결과**를 안 읽는다
+//     (계단·낙하·게이지·HP·방송은 자기 몸 필드 + 틱 안에서 안 바뀌는 세계만 읽는다 · `_followPayload` 가 읽는
+//     벗의 x·y·`_hidden` 은 일곱 중 누구도 안 쓴다). 그래서 **몸마다 지금 순서 그대로** 단계를 밟으면 같은 세계다.
+//     ⚠그런데 일곱은 **한 자리에 있지 않다**: `spatial`·`inputTO` 는 결정 문·이동 문 **앞**, 나머지 다섯은 **뒤**다.
+//     그 사이에서 결정 문·이동 문이 격자(`qtPlayers`)와 `vx`·`vy` 를 읽고 x·y 를 쓴다 ⇒ **둘을 건너 합칠 수 없다.**
+//     ⇒ 앞 묶음 {spatial, inputTO} 한 바퀴 · 뒤 묶음 {stairs, fall, gauge, hpRegen, gaugeNet} 한 바퀴 = **일곱 → 둘**.
+//   ★T375 손잡이는 **흡수했다**(지웠다): 한 바퀴 안에서는 활성 여부를 **몸마다 한 번** 재어 지역 변수로 넘긴다
+//     — 필드도 새 순회도 없다(T375 의 교훈: 필드 쓰기와 새 순회가 값이었다). 끄면 모든 자리가 종전 그대로
+//     `isPositionActive(x, y)` 를 부른다(T375 끔과 글자까지 같은 답).
+//   ★단계는 **함수 하나씩**이다(`_inputTOStep`·`_stairStepP`·`_fallStepP`·`_gaugeStep`·`_hpRegenStep`·`_gaugeNetStep`)
+//     — 끔(종전 순회 일곱)과 켬(한 바퀴 둘)이 **같은 함수**를 부른다. 사본 0: 본문은 종전 루프 몸통 그대로(`continue` → `return`).
+const T385_ONE_SWEEP = process.env.T385_ONE_SWEEP === '1';
+// 활성 여부가 판정에 쓰이는 몸인가 — 종전 문지기 세 줄(`spatial`·`fall`·`hpRegen`)의 앞 두 항 그대로(술어는 안 부른다)
+function _needAct(p) { return p.isNpc && !p.canadiaVillage; }
+// ★[T385 ③] 계단 칸 **정수 키** — `${cx}_${cy}` 문자열을 몸마다 틱마다 만들던 자리.
+//   ⚠있는 정수 키(`_cellKey = cx*_WT_H + cy` · T333)는 **격자 안에서만** 전단사다 — 계단은 존 가장자리에서 격자 밖으로
+//     한두 칸 삐져나갈 수 있고(anchor + dir×2), 그 칸이 `(cx−1, _WT_H−1)` 와 부딪친다. 그래서 그 자는 못 쓴다.
+//   ⇒ 부호를 밀어 올린 16비트 둘(|cx|,|cy| < 32768 = ±1,048,576px — 존은 70,016 × 130,016px)에서 전단사.
+//     그 밖은 계단 칸이 원리상 없다(계단은 존 안 건물이고 ±2칸) ⇒ 두 판 모두 `null`(표 · `test-move-soa ⑨-c`).
+const _STAIR_K = 32768;
+function _stairKey(cx, cy) {
+  if (cx <= -_STAIR_K || cx >= _STAIR_K || cy <= -_STAIR_K || cy >= _STAIR_K) return -1;
+  return (cx + _STAIR_K) * 65536 + (cy + _STAIR_K);
 }
-function _isActive(e) {
-  return (T375_ACTIVE_FLAG && e._activeGen === _t375Gen) ? e._active : isPositionActive(e.x, e.y);
+// ★[T385 ②] 입력 타임아웃 한 걸음 — 종전 루프 몸통 그대로. 끔: 종전 자리(격자 재구축 **뒤**)의 순회가 부른다.
+//   켬: `rebuildSpatialIndex` 의 주민 순회가 부른다(의존 표: 이 단계는 `vx`·`vy`·`inputQueue` 만 쓰고, 격자는 x·y 만 읽는다).
+function _inputTOStep(p, now) {
+  if (p.handingOff) return;
+  if (p.isNpc) return;  // NPC는 입력 타임아웃 무관 (npcStep이 vx/vy 관리) — 600명 순회 절약
+  // 입력 큐 적용은 아래 '입력 큐 구동' 루프(입력 1개=1스텝)에서. 여기선 끊김 감지만.
+  if (now - p.lastSeen > 2500) { p.vx = 0; p.vy = 0; if (p.inputQueue) p.inputQueue.length = 0; }
 }
 // AOI: 활성 청크 안 건물만 (welcome용). 전 존 건물을 한 번에 안 보냄 — NPC 집 수만개로 welcome 폭주 방지.
 //   나머지는 청크 활성/비활성 시 buildings_spawn / buildings_removed 로 점점 전송 (자원과 동일).
@@ -688,13 +700,14 @@ function activeChunkBuildings() {
 let qtPlayers, qtMobs, qtResources, qtBuildings;
 let resourcesDirty = true;  // 자원(나무·돌)은 static — 변경됐을 때만 quadtree 재구축
 let _lastResRebuild = 0;    // qtResources 전체 재구축 throttle (5Hz 상한)
-function rebuildSpatialIndex() {
+function rebuildSpatialIndex(nowIT) {   // ★[T385] `nowIT` 가 있으면 입력 타임아웃을 **같은 바퀴**에서 한다(켬 전용)
   const W = ZONE.zoneWidth, H = ZONE.zoneHeight;
   qtPlayers   = new Quadtree(0, 0, W, H);
   qtMobs      = new Quadtree(0, 0, W, H);
   qtBuildings = new Quadtree(0, 0, W, H);
   for (const p of players.values()) {
-    if (p.isNpc && !p.canadiaVillage && !_isActive(p)) continue;  // dormant NPC(플레이어 먼 비활성 청크) — 인덱싱 스킵 → 1000명 확장 ★[T375] 문지기만 필드로
+    if (nowIT !== undefined) _inputTOStep(p, nowIT);   // ★[T385] 앞 묶음 — 입력 타임아웃(주민은 첫 줄에서 빠진다)
+    if (p.isNpc && !p.canadiaVillage && !isPositionActive(p.x, p.y)) continue;  // dormant NPC(플레이어 먼 비활성 청크) — 인덱싱 스킵 → 1000명 확장
     qtPlayers.insert({ x: p.x, y: p.y, ref: p });
   }
   for (const m of mobs.values())       qtMobs.insert({ x: m.x, y: m.y, ref: m });
@@ -11443,7 +11456,8 @@ function rebuildStairCellCache() {
     const acx = Math.floor(b.x / BUILDING_SIZE);
     const acy = Math.floor(b.y / BUILDING_SIZE);
     for (let s = 0; s <= 2; s++) {
-      const k = `${acx + dv.x * s}_${acy + dv.y * s}`;
+      const k = T385_ONE_SWEEP ? _stairKey(acx + dv.x * s, acy + dv.y * s) : `${acx + dv.x * s}_${acy + dv.y * s}`;   // ★[T385 ③]
+      if (k === -1) continue;   // ★[T385 ③] ±32,768칸 밖 — 계단은 존 안 건물 ±2칸이라 원리상 없다(키가 한 점에 겹치지 않게)
       stairCellCache.set(k, { stairId: b.id, step: s });
     }
   }
@@ -11451,7 +11465,9 @@ function rebuildStairCellCache() {
 }
 function findStairBuildingForCell(cx, cy) {
   if (stairCellDirty) rebuildStairCellCache();
-  const entry = stairCellCache.get(`${cx}_${cy}`);
+  const _k = T385_ONE_SWEEP ? _stairKey(cx, cy) : `${cx}_${cy}`;   // ★[T385 ③] 켬 = 정수 키
+  if (_k === -1) return null;                                          // ±32,768칸 밖엔 계단 칸이 없다(위 짝)
+  const entry = stairCellCache.get(_k);
   if (!entry) return null;
   const stair = buildings.get(entry.stairId);
   if (!stair) { stairCellDirty = true; return null; } // 이미 삭제된 stair
@@ -11820,21 +11836,15 @@ setInterval(() => {
 
   // === 활성 청크 갱신 (player·observer 위치 기반) ===
   updateActiveChunks();
-  _t375Refresh(false);   // ★[T375] 청크 집합이 정해진 **직후** — 이 갱신을 쓰는 건 바로 아래 공간 인덱스 하나뿐이라 주민만 센다(몹은 인덱스에 무조건 들어간다)
 
   // === Spatial index 재구축 — 모든 nearest-search가 이걸 씀 ===
-  rebuildSpatialIndex();
+  rebuildSpatialIndex(T385_ONE_SWEEP ? now : undefined);   // ★[T385] 켬 = 입력 타임아웃이 이 바퀴에 탄다
   roomsFlush();   // ★[배치 18 ①] 방 재판정은 **인덱스가 최신이 된 뒤**에(위 스테일 인덱스 주석 참조)
 
   // 입력 타임아웃 — 2.5초 동안 입력 없으면 정지
   // 14.46-b-smooth: 1000 → 2500. 평지에서 짧은 네트워크 hiccup으로 server가 멈췄다가 클라 예측이 앞서면
   // 다음 snapshot으로 사용자가 뒤로 밀려나는 느낌 받음. 2.5초로 늘려서 잠깐 끊겨도 server는 계속 이동.
-  for (const p of players.values()) {
-    if (p.handingOff) continue;
-    if (p.isNpc) continue;  // NPC는 입력 타임아웃 무관 (npcStep이 vx/vy 관리) — 600명 순회 절약
-    // 입력 큐 적용은 아래 '입력 큐 구동' 루프(입력 1개=1스텝)에서. 여기선 끊김 감지만.
-    if (now - p.lastSeen > 2500) { p.vx = 0; p.vy = 0; if (p.inputQueue) p.inputQueue.length = 0; }
-  }
+  if (!T385_ONE_SWEEP) for (const p of players.values()) _inputTOStep(p, now);   // ★[T385] 몸통은 `_inputTOStep` 하나(켬이면 위 격자 바퀴가 이미 했다)
 
   // === NPC 행동 결정 (사람 player는 input으로 vx/vy 받지만 NPC는 직접 결정) ===
   // 비활성 청크 NPC는 멈춤 (CPU 절약). 가까이 player 오면 자동 재개.
@@ -12112,8 +12122,6 @@ setInterval(() => {
   }
   sepNpcs(dt);   // ★[생활 층 ①] NPC 상호 분리 — 이동 적용 직후(같은 틱 위치에 보정) 틱당 1회
 
-  _t375Refresh(true);   // ★[T375] **이동 문 직후** — 결정 문·이동 문·`sepNpcs` 가 x·y 를 바꿨다. 아래 계단·낙하·HP 셋은 이동 뒤 자리로 판정해야 종전과 같다(몹도 함께: 계단·낙하가 몹을 문다)
-
   // === Phase 14.49-e: PZ식 다단 계단 — 3 cell 점유 + step별 z + walk-off로 floor 전환 ===
   // stair (b) — anchor (b.x, b.y) = 낮은 발판. dir = 위로 가는 방향.
   // 3 cells 점유: anchor (step 0, z=0), anchor+dir (step 1, z=16), anchor+2*dir (step 2, z=32)
@@ -12215,14 +12223,20 @@ setInterval(() => {
     entity.z = cur_z + (targetRelZ - cur_z) * lerpT;
     if (Math.abs(entity.z - targetRelZ) < 0.5) entity.z = targetRelZ;
   }
-  for (const p of players.values()) {
-    if (p.handingOff || p.isDown) continue;
+  // ★[T385] 주민 한 걸음 — 종전 루프 몸통 그대로. ③ 켬이면 **계단 칸이 하나도 없을 때** 몸 필드 둘만 보고 빠진다:
+  //   계단이 없으면 `findStairStepFor` 는 언제나 `null` 이고, 그때 `stepStairFor` 가 하는 일은 `onStairId` 정리와
+  //   `z > 0` 감쇠 **둘뿐**이다 ⇒ 그 둘이 없는 몸은 아무 일도 안 일어난다(같은 답 · 문자열 0).
+  function _stairStepP(p) {
+    if (p.handingOff || p.isDown) return;
+    if (T385_ONE_SWEEP && _stairNone && !p.onStairId && !((p.z || 0) > 0)) return;   // ★[T385 ③] 있음/없음 한 비트
     stepStairFor(p);
   }
+  let _stairNone = false;
+  if (!T385_ONE_SWEEP) for (const p of players.values()) _stairStepP(p);   // ★[T385] 켬이면 아래 한 바퀴가 한다
   for (const m of mobs.values()) {
     if (m.hp <= 0) continue;
     // 14.49-e perf: 비활성 chunk mob은 skip. 정지 mob은 onStairId 있을 때만 (방향 변경 가능)
-    if (!_isActive(m)) continue;   // ★[T375] 문지기만 필드로
+    if (!isPositionActive(m.x, m.y)) continue;
     const moving = (m.vx || 0) !== 0 || (m.vy || 0) !== 0;
     if (!moving && !m.onStairId) continue;
     stepStairFor(m);
@@ -12307,24 +12321,27 @@ setInterval(() => {
       entity.fallStartFloor = 0;
     }
   }
-  for (const p of players.values()) {
-    if (p.handingOff || p.isDown) continue;
-    if (p.isNpc && !p.canadiaVillage && !_isActive(p)) continue;  // dormant NPC 낙하 스킵 ★[T375] 문지기만 필드로
+  // ★[T385] 주민 한 걸음 — 종전 루프 몸통 그대로. `act` 를 받으면 술어를 다시 안 부른다(한 바퀴 머리에서 한 번 쟀다).
+  function _fallStepP(p, act) {
+    if (p.handingOff || p.isDown) return;
+    if (p.isNpc && !p.canadiaVillage && !(act !== undefined ? act : isPositionActive(p.x, p.y))) return;  // dormant NPC 낙하 스킵
     processFalling(p);
   }
+  if (!T385_ONE_SWEEP) for (const p of players.values()) _fallStepP(p);
   for (const m of mobs.values()) {
     if (m.hp <= 0) continue;
-    if (!_isActive(m)) continue;   // ★[T375] 문지기만 필드로
+    if (!isPositionActive(m.x, m.y)) continue;
     processFalling(m);
   }
 
   // === 생존 게이지: hunger/thirst 감소 + 0이면 HP 페널티 + vp decay ===
-  for (const p of players.values()) {
-    if (p.hp <= 0 || p.isDown) continue;
+  // ★[T385] 몸통을 함수 하나로(끔·켬이 같은 함수를 부른다 · `continue` → `return` 둘뿐)
+  function _gaugeStep(p) {
+    if (p.hp <= 0 || p.isDown) return;
     // ★NPC 전면 면제(랩 100% 동형 — 사용자 확정): 랩 NPC에는 개체 허기·갈증이 없다 — 식량은 econ 소유(기근=econ 인구감소가
     //   유일한 식량 사망 경로). 기존엔 canadia만 면제라 활성 청크의 마을 NPC가 게이지 드레인→기아 hp 드레인을 맞았고,
     //   이것이 '관측할수록 마을이 굶는' 임업3 요양 사태(24/24 hp<60%)의 원인이었다. 도적·캐러밴·병사도 랩에 개체 허기 없음.
-    if (p.isNpc) { p.hunger = HUNGER_MAX; p.thirst = THIRST_MAX; continue; }
+    if (p.isNpc) { p.hunger = HUNGER_MAX; p.thirst = THIRST_MAX; return; }
     // ★★[신체 상태 §7 · 2026-08-26] 여기 있던 허기·갈증·밤추위 계산을 **`server/body.js` 로 옮겼다.**
     //   종전엔 감쇠는 여기, 추위는 여기 안 지역변수(`p._cold`), 효과는 여기저기 흩어져 있었다.
     //   축이 다섯이 되면 그 흩어짐이 곧 사고다 ⇒ **정본 하나**로 모은다. 여기 남는 건 **맥락 수집**뿐이다.
@@ -12382,13 +12399,15 @@ setInterval(() => {
     // ★아사(기아 hp 드레인) 제거 — 사용자 확정: 식량 사망은 econ 기근 인구감소가 유일, 별도 아사 기능은 중복이라 폐지.
     //   기갈 0/0은 디버프만: 달리기 불가(위 sprint 게이트)·자연 회복 정지(아래 회복 루프 게이지 조건)·클라 지침/시야 축소.
   }
+  if (!T385_ONE_SWEEP) for (const p of players.values()) _gaugeStep(p);
 
   // === HP 회복 (out-of-combat 1초 후) — 단 hunger/thirst 모두 0이상일 때만 ===
-  for (const p of players.values()) {
-    if (p.isNpc && !p.canadiaVillage && !_isActive(p)) continue;  // dormant NPC HP회복 스킵 ★[T375] 문지기만 필드로
+  // ★[T385] 몸통을 함수 하나로 — `act` 를 받으면 술어를 다시 안 부른다(`continue` → `return`)
+  function _hpRegenStep(p, act) {
+    if (p.isNpc && !p.canadiaVillage && !(act !== undefined ? act : isPositionActive(p.x, p.y))) return;  // dormant NPC HP회복 스킵
     // ★마을 NPC = 랩 일일 회복만(villages.js _lifeDaily: 요양18·근무6/일 ×건강·행복·식량 — 랩 7585 verbatim).
     //   초당 회복은 랩에 없음: 부상=수일 노동손실이 요양·약재 수요의 실체라 초당 10hp면 그 경제가 통째로 사라진다.
-    if (p.isNpc && p.simVillageId != null) continue;
+    if (p.isNpc && p.simVillageId != null) return;
     if (p.hp > 0 && p.hp < p.maxHp && now - p.lastDamagedAt > 1000) {
       // ★★[신체 3층 재배선] 하드 게이트(허기>10 && 갈증>10)를 **회복 배율**로 바꾼다.
       //   종전엔 10 을 경계로 회복이 **뚝 끊겼다**(§8.3 "속은 연속" 위반 · 절벽).
@@ -12403,10 +12422,12 @@ setInterval(() => {
       if (_rm > 0 && _extreme <= 0) setHp(p, p.hp + 2 * dt * 5 * _rm, 'regen'); // 만복 기준 초당 ~10hp · `gauges` 가 초당 하나로 나른다
     }
   }
+  if (!T385_ONE_SWEEP) for (const p of players.values()) _hpRegenStep(p);
 
   // === 게이지 변화 주기 broadcast (1초 간격, self에만) ===
-  for (const p of players.values()) {
-    if (p.isNpc) continue;  // NPC는 클라(ws) 없음 — 게이지 전송 불필요. 600명 순회·메시지 생성 절약
+  // ★[T385] 몸통을 함수 하나로(`continue` → `return`)
+  function _gaugeNetStep(p) {
+    if (p.isNpc) return;  // NPC는 클라(ws) 없음 — 게이지 전송 불필요. 600명 순회·메시지 생성 절약
     if (!p._lastGaugeSentAt || now - p._lastGaugeSentAt > 1000) {
       p._lastGaugeSentAt = now;
       // ★★[무게 배치] 로트·개체 장부를 인벤과 맞춘다(초당 1회).
@@ -12446,6 +12467,23 @@ setInterval(() => {
         //   ⚠키는 **따라갈 때만** 실린다 — 끈 그 순간에 한 번 `null` 을 실어 화살을 거둔다.
         ...(_followPayload(p) || {}),
       });
+    }
+  }
+  if (!T385_ONE_SWEEP) for (const p of players.values()) _gaugeNetStep(p);
+
+  // === [T385] 한 바퀴 — 뒤 묶음 다섯(계단·낙하·게이지·HP·방송) ===
+  //   ★몸마다 **종전 순서 그대로** 다섯 단계를 밟는다. 몹의 계단·낙하는 위 제자리에서 이미 돌았다(의존 표: 몹과 주민은 서로 안 읽는다).
+  //   ★활성 여부는 몸마다 **한 번**(낙하·HP 가 같이 쓴다 · 그 사이 x·y 를 바꾸는 단계가 없다 — 계단·낙하·게이지는 z·floor·hp 만 쓴다).
+  if (T385_ONE_SWEEP) {
+    if (stairCellDirty) rebuildStairCellCache();   // ③ 있음/없음을 재기 전에 캐시를 맞춘다(종전엔 첫 조회가 했다 — 같은 일)
+    _stairNone = stairCellCache.size === 0;
+    for (const p of players.values()) {
+      const act = _needAct(p) ? isPositionActive(p.x, p.y) : true;
+      _stairStepP(p);
+      _fallStepP(p, act);
+      _gaugeStep(p);
+      _hpRegenStep(p, act);
+      _gaugeNetStep(p);
     }
   }
 

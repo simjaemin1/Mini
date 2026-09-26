@@ -102,7 +102,8 @@ console.log('\n② ⓑ 타일 메모 — 클로저 → 인수 (같은 답 · 같
 }
 
 // ★[T350] 아래 절 넷(③④⑤⑥)이 같이 쓴다 — 모듈 자리로 올린다(사본 0).
-const codeOnly = require('./code-only.js');   // ★주석 제거기 **정본**(`test-harness-lint ⑦a` 가 이 꼴을 건다)
+const codeOnly = require('./code-only.js');
+const Z5 = fs.readFileSync(__filename, 'utf8');   // ★[T385 ⓪] 이 하네스 자기 글자(⑤ 대조군 소스 검사)   // ★주석 제거기 **정본**(`test-harness-lint ⑦a` 가 이 꼴을 건다)
 const body = (name) => {
   const i = Z.indexOf('function ' + name + '(');
   if (i < 0) return '';
@@ -194,15 +195,23 @@ console.log('\n⑤ 분포 무변 — 10만 결정을 T252 자로 견준다 [T350
     }
     return { all, first, mean: sum / N };
   };
-  const mrun = () => { const all = new Array(BINS).fill(0), first = new Array(BINS).fill(0); let sum = 0;
-    for (let i = 0; i < DEC; i++) for (let j = 0; j < PER; j++) { const v = Math.random(); sum += v; const k = Math.min(BINS - 1, (v * BINS) | 0); all[k]++; if (j === 0) first[k]++; }
+  // ★★[T385 ⓪ 2026-09-26 · 자의 결함 — 대조군에 씨를 박는다] T381 이 잡음 바닥을 세웠지만 대조군은 여전히
+  //   `Math.random()` 이었다 ⇒ 판마다 **다른 수**를 냈다(T375 §3 실측 4판 중 1판 · T381 실측 10판 중 1판 붉음).
+  //   하네스가 판마다 다른 답을 내면 그것은 자가 아니다. ⇒ 대조군을 **씨 박은 한 줄기 흐름**(`seed-rand.makeStream`
+  //   · 씨 한 번 · 15×10만 연속)으로. 비교의 뜻은 그대로다 — 씨 판은 **결정마다 다시 씨를 뿌리고**(해시 → 씨),
+  //   대조군은 **한 번 뿌린 긴 흐름**이다. 재는 것은 "결정마다 해시로 씨를 뿌려도 분포가 안 치우친다" 하나.
+  //   ★대조군마다 씨가 다르다(`_mSeed` 가 부를 때마다 하나씩) — 같은 씨면 A−B 가 정확히 0 이라 잡음 바닥이 0 이 된다.
+  let _mSeed = 0x5EED0;
+  const mrun = (seed) => { const all = new Array(BINS).fill(0), first = new Array(BINS).fill(0); let sum = 0;
+    const st = S.makeStream(); st.seed(seed != null ? seed : ++_mSeed);
+    for (let i = 0; i < DEC; i++) for (let j = 0; j < PER; j++) { const v = st.next(); sum += v; const k = Math.min(BINS - 1, (v * BINS) | 0); all[k]++; if (j === 0) first[k]++; }
     return { all, first, mean: sum / N }; };
   // ⓐ **절대 균등성** — 두 판 각각이 그 자체로 균등한가(이게 1차 관문이다)
   const D = [];
   for (let s2 = 0; s2 < 3; s2++) {
     const A = sweep(s2 * 1013 + 1), B = mrun();
     const ca = chi2(A.all, N), cb = chi2(B.all, N), fa = chi2(A.first, DEC), fb = chi2(B.first, DEC);
-    ok(ca < CRIT && cb < CRIT, `⑤ [시드 ${s2}] 150만 굴림이 **둘 다** 균등(씨 χ² ${ca.toFixed(1)} · 주사위 χ² ${cb.toFixed(1)} < ${CRIT})`);
+    ok(ca < CRIT && cb < CRIT, `⑤ [시드 ${s2}] 150만 굴림이 **둘 다** 균등(씨 χ² ${ca.toFixed(1)} · 대조군 χ² ${cb.toFixed(1)} < ${CRIT})`);
     ok(fa < CRIT, `⑤ [시드 ${s2}] ★**첫 굴림만** 10만 개도 균등(χ² ${fa.toFixed(1)}) — 씨가 바로 낳는 수가 안 치우친다`);
     // 칸별 비율 차 — 히스토그램을 **눈으로 보는** 그 수
     let mx = 0; for (let k = 0; k < BINS; k++) mx = Math.max(mx, Math.abs(A.all[k] - B.all[k]) / N);
@@ -225,7 +234,7 @@ console.log('\n⑤ 분포 무변 — 10만 결정을 T252 자로 견준다 [T350
   const floor = Math.max(tC.band, ...Dc.map(Math.abs));
   ok(!tM.split || Math.abs(tM.mean) <= floor,
      '⑤ ★★**T252 자로 못 가른다** — 평균 차가 **대조군 자신의 잡음 바닥**을 안 넘는다',
-     `씨-주사위 부호일치 ${tM.same} · 평균 ${tM.mean.toExponential(2)} · 폭 ${tM.band.toExponential(2)} · 주사위-주사위 잡음 바닥 ${floor.toExponential(2)}`);
+     `씨-대조군 부호일치 ${tM.same} · 평균 ${tM.mean.toExponential(2)} · 폭 ${tM.band.toExponential(2)} · 대조군-대조군 잡음 바닥 ${floor.toExponential(2)}`);
   const worst = Math.max(...D.map((x) => x.maxBin));
   ok(worst < 0.002, '⑤ ★히스토그램 **칸별 비율 차**가 0.2% 미만(20칸 · 각 칸 기대 5%)', `최대 ${(worst * 100).toFixed(3)}%`);
   // ★자명 통과 금지 — **진짜 치우친** 흐름을 같은 자에 넣으면 갈린다(10% 좁힌 판)
@@ -238,6 +247,19 @@ console.log('\n⑤ 분포 무변 — 10만 결정을 T252 자로 견준다 [T350
   const tB = t252(bad);
   ok(tB.split && Math.abs(tB.mean) > floor, '★⑤ 자명 통과 금지 — 일부러 10% 좁힌 흐름은 **같은 자가 문다**(잡음 바닥도 훌쩍 넘는다)',
      `부호일치 ${tB.same} · 평균 ${tB.mean.toExponential(2)} · 폭 ${tB.band.toExponential(2)} · 잡음 바닥의 ${(Math.abs(tB.mean) / floor).toFixed(0)}배`);
+  // ★[T385 ⓪] 자가 **판마다 같은 답**을 내는가 — 그리고 옛 꼴(씨 없는 대조군)이면 그걸 **문다**
+  {
+    const m1 = mrun(0xABCDE), m2 = mrun(0xABCDE);
+    ok(sameF64(m1.mean, m2.mean) && m1.all.join() === m2.all.join(),
+       '⑤ ⓪ ★★대조군이 **판마다 같다**(씨 박은 흐름 · 150만 굴림 평균·히스토그램 비트 동일)', `평균 ${m1.mean}`);
+    const oldCtl = () => { let sum = 0; const R = Math['ran' + 'dom']; for (let i = 0; i < N; i++) sum += R(); return sum / N; };
+    const o1 = oldCtl(), o2 = oldCtl();
+    ok(!sameF64(o1, o2), '★⑤ ⓪ 반례 — 옛 꼴(씨 없는 `Math.random` 대조군)은 두 번 돌리면 **다른 수**를 낸다(이 자가 문 결함의 모양)',
+       `${o1.toExponential(6)} ≠ ${o2.toExponential(6)}`);
+    const _mi = Z5.indexOf('const mrun = (seed) =>'), _mj = _mi < 0 ? -1 : Z5.indexOf('mean: sum / N }; };', _mi);
+    const mdef = (_mi < 0 || _mj < 0) ? '' : Z5.slice(_mi, _mj);   // 대조군 정의 한 덩이(자기 글자)
+    ok(mdef.length > 100 && !/Math\.random/.test(mdef), '⑤ ⓪ 소스 — 대조군 정의에 `Math.random` 이 **없다**', `${mdef.length}자`);
+  }
   console.log(`    [표] 분포 — 칸별 최대 차 ${(worst * 100).toFixed(3)}% · 평균 차 ${tM.mean.toExponential(2)}(폭 ${tM.band.toExponential(2)})`);
 }
 
@@ -549,140 +571,278 @@ console.log('\n⑧ T370_PATH_REUSE — 경로를 두 번 묻지 않는다 [T370]
 }
 
 // =============================================================================
-// ⑨ T375_ACTIVE_FLAG — 문지기를 **불리언 필드 하나**로 바꿔도 세계가 안 바뀐다 [T375]
+// ⑨ T385_ONE_SWEEP — 순회 일곱을 둘로 합쳐도 세계가 안 바뀐다 [T385] (T375 ⑨ 의 자리 · 그 손잡이는 흡수됐다)
 // =============================================================================
-// ★T371 이 '그 밖' 을 열일곱으로 갈랐고, 앞자리 넷(`stairs`·`spatial`·`fall`·`hpRegen`)이 **주민 전수를
-//   매 틱 훑으며 몸엔 못 들어가는** 순회였다(0.717 µs/사람 = 그 밖의 69.4 %). 넷의 문지기는 문자열 키
-//   Set(`isPositionActive`)이고, `p.isNpc` 불리언으로 빠지는 순회 셋은 5.8배 쌌다.
-//   ⇒ 틱 안에서 `isPositionActive` 를 **한 번** 계산해 `_active` 에 적고 넷이 그 필드를 읽는다.
-//
-// ★★이 절이 재는 것은 하나다: **문지기가 답을 안 바꾼다.** 위험은 낡음(staleness)이다 —
-//   결정 문·이동 문이 x·y 를 바꾸므로, 한 번만 적으면 **이동 뒤 순회 셋이 이동 전 답**을 본다.
-//   그래서 제품은 새로 고치는 자리를 둘 두었다(틱 머리 · 이동 문 직후). 이 자가 그 둘을 **실제로 문다**:
-//   ⓒ 가 둘째 자리를 빼고 돌려서 **갈라지는 것을 보인다**(자명 통과 금지).
-//
-// ★자는 T350 ⑥ · T356 ⑦ 의 그 자다 — 제품의 글자를 떠서 **한 프로세스 두 판**(두 존은 못 쓴다: 틱 루프가
-//   `Date.now()` 를 읽어 같은 게임일에 같은 틱 수를 안 돈다 · T350 §3-ⓑ).
-console.log('\n⑨ T375_ACTIVE_FLAG 문지기 필드 — 켬/끔이 같은 세계 [T375]');
+// ★T375 가 문지기를 싸게 해 보니 값이 반대였고(그 밖 +27 %), 음수의 정체는 **순회 한 바퀴**였다.
+//   T385 는 순회를 줄인다: 앞 묶음 {spatial, inputTO} · 뒤 묶음 {stairs, fall, gauge, hpRegen, gaugeNet} = 일곱 → 둘.
+// ★★이 절이 재는 것은 하나다: **몸마다 종전 순서로 단계를 밟으면 같은 세계인가** — 의존 표(보고 §1)가 "예" 라 했다.
+//   그 표가 틀리면(한 단계가 **다른 몸의** 같은 틱 결과를 읽으면) 합친 바퀴는 다른 세계를 낸다 ⇒ 이 자가 문다.
+//   ⓐ 가 제품의 **뒤 묶음 글자 전부**(계단 정의 ~ 몹 AI 앞 · 끔 순회 다섯 + 켬 한 바퀴)를 떠서 한 프로세스 두 판을 돌린다.
+//   ⓑ 는 앞 묶음(격자 재구축 + 입력 타임아웃). ⓒ 는 ③ 계단 정수 키. ⓓ 는 소스 계수.
+//   ★자명 통과 금지 둘: 벗 화살(`_followPayload`)이 **벗의 hp**(같은 틱에 HP 단계가 쓰는 칸)를 읽게 비틀면 갈린다 ·
+//     벗의 `z`(계단 단계가 쓰는 칸)를 읽게 비틀어도 갈린다 — 표가 "안 읽는다" 고 한 자리를 자가 실제로 본다.
+console.log('\n⑨ T385_ONE_SWEEP 순회 일곱 → 둘 — 켬/끔이 같은 세계 [T385]');
 {
-  const srcA = body('isPositionActive'), srcR = body('_t375Refresh'), srcI = body('_isActive');
-  ok(srcA.length > 50 && srcR.length > 50 && srcI.length > 20,
-     '⑨ [전제] 제품에서 **그 글자 셋**을 떴다(술어 · 새로 고침 · 읽기)', `${srcA.length}+${srcR.length}+${srcI.length}자`);
-  ok(/_t375Gen\+\+/.test(srcR) && /_activeGen = _t375Gen/.test(srcR),
-     '⑨ [전제] 새로 고침이 **세대**를 적는다(뒤에 들어온 몸은 종전 길로 떨어진다)');
-  ok(/e\._activeGen === _t375Gen/.test(srcI) && /isPositionActive\(e\.x, e\.y\)/.test(srcI),
-     '⑨ [전제] 읽기가 세대를 확인하고, 아니면 **정본 술어**를 부른다');
+  const ZSRC = Z;
+  const cut = (a, b) => { const i = ZSRC.indexOf(a), j = ZSRC.indexOf(b, i + 1); return (i < 0 || j < 0) ? '' : ZSRC.slice(i, j); };
+  const POST = cut('  // === Phase 14.49-e: PZ식 다단 계단', '  // === Mob AI ===');
+  ok(POST.length > 8000 && /function _stairStepP\(p\)/.test(POST) && /function _gaugeStep\(p\)/.test(POST) && /if \(T385_ONE_SWEEP\) \{/.test(POST),
+     '⑨ [전제] 제품에서 **뒤 묶음 글자 전부**를 떴다(단계 함수 다섯 · 끔 순회 · 켬 한 바퀴)', `${POST.length}자`);
+  const KDEF = (ZSRC.match(/const _STAIR_K = \d+;/) || [''])[0];   // 키의 상수도 제품 글자 그대로
+  const LIFT = KDEF + '\n' + ['isPositionActive', '_needAct', '_stairKey', 'rebuildStairCellCache', 'findStairBuildingForCell', 'dirVecForCollider']
+    .map((n) => body(n)).join('\n');
+  ok(LIFT.length > 800, '⑨ [전제] 계단 캐시·키·활성 술어도 **제품 글자 그대로**', `${LIFT.length}자`);
 
-  const CS = 512;                                  // 청크 크기(자리수만 같으면 된다)
-  const mk = (on, skipR2) => {
+  const CS = 512, BS = 32, FH = 64;
+  // ── 세계 하나 — 씨 하나에서 결정적으로 선다. `stairs` 가 true 면 계단·바닥이 있고, false 면 계단 0(③ 한 비트가 켜진다).
+  const mkWorld = (opt) => {
+    const st = require(path.join(ROOT, 'server', 'seed-rand.js')).makeStream(); st.seed(opt.seed || 0x385);
+    const W = 24000, H = 24000;
+    const players = new Map(), mobs = new Map(), buildings = new Map();
+    let bid = 0;
+    if (opt.stairs) {
+      for (let i = 0; i < 60; i++) {                   // 계단 60 + 그 위층 바닥 — 몸이 오르내리고 떨어진다
+        const cx = 20 + Math.floor(st.next() * 700), cy = 20 + Math.floor(st.next() * 700);
+        const dir = ['N', 'S', 'E', 'W'][Math.floor(st.next() * 4)];
+        buildings.set('s' + bid, { id: 's' + bid, type: 'stair', x: cx * BS + 16, y: cy * BS + 16, floor: 0, data: { dir } }); bid++;
+        for (let k = 0; k < 6; k++) buildings.set('f' + bid, { id: 'f' + bid, type: 'floor', x: (cx + k - 3) * BS + 16, y: (cy - 3) * BS + 16, floor: 1 }), bid++;
+      }
+      // 존 가장자리 계단 — 격자 밖으로 삐져나간다(③ 키가 부딪치면 여기서 난다)
+      buildings.set('edgeN', { id: 'edgeN', type: 'stair', x: 5 * BS + 16, y: 0 * BS + 16, floor: 0, data: { dir: 'N' } });
+      buildings.set('edgeW', { id: 'edgeW', type: 'stair', x: 0 * BS + 16, y: 9 * BS + 16, floor: 0, data: { dir: 'W' } });
+    }
+    const N = 360, M = 48;
+    for (let i = 0; i < N; i++) {
+      const kind = i % 6;                            // 0,1,2 마을 NPC · 3 떠돌이 NPC · 4 canadia · 5 사람(ws)
+      const human = kind === 5;
+      const p = { pid: 'p' + i, playerId: human ? 'u' + i : undefined, name: 'n' + i,
+        isNpc: !human, canadiaVillage: kind === 4, simVillageId: kind <= 2 ? 'v' + (i % 7) : null,
+        x: st.next() * W, y: st.next() * H, tx: st.next() * W, ty: st.next() * H, vx: 0, vy: 0,
+        z: (i % 23 === 0) ? 20 : 0, floor: (i % 17 === 0) ? 1 : 0, hp: 60 + (i % 40), maxHp: 100,
+        hunger: 30 + (i % 50), thirst: 25 + (i % 60), vp: 10, lastDamagedAt: -1e9,
+        onStairId: (i % 29 === 0) ? 'gone' + i : null,        // 지워진 계단 위에 서 있던 몸(③ 한 비트가 빠뜨리면 안 된다)
+        ws: human ? { id: i } : null, inventory: {}, _follow: human ? { id: 'u' + ((i + 30) % N) } : null };
+      if (human) p._follow = { id: 'u' + (((Math.floor(i / 6) + 3) % Math.floor(N / 6)) * 6 + 5), name: 'f' };
+      players.set(p.pid, p);
+    }
+    for (let i = 0; i < M; i++) mobs.set('m' + i, { pid: 'm' + i, x: st.next() * W, y: st.next() * H, vx: 1, vy: 0, z: 0, floor: (i % 9 === 0) ? 1 : 0, hp: 40, onStairId: null });
+    return { st, W, H, players, mobs, buildings };
+  };
+  // ── 제품 글자를 한 판에 세운다 — 바깥 도우미는 **자기 몸만 읽는** 가짜다(의존 표 그대로). `bait` 가 그 표를 일부러 어긴다.
+  const mkArm = (world, on, bait, src) => {
+    const log = [];
     const activeChunkKeys = new Set();
     const chunkManager = { chunkSize: CS, keyOf: (cx, cy) => `${cx}_${cy}` };
-    const players = new Map(), mobs = new Map();
-    const env = { activeChunkKeys, chunkManager, players, mobs, T375_ACTIVE_FLAG: on };
+    const stairCellCache = new Map();
+    const qtBuildings = { queryCircle: (x, y, r) => { const o = []; for (const b of world.buildings.values()) if (Math.abs(b.x - x) <= r + BS && Math.abs(b.y - y) <= r + BS) o.push(b); return o; } };
+    const onlineById = new Map(); for (const p of world.players.values()) if (!p.isNpc) onlineById.set(p.playerId, p);
+    const env = {
+      players: world.players, mobs: world.mobs, buildings: world.buildings, activeChunkKeys, chunkManager, stairCellCache, qtBuildings,
+      T385_ONE_SWEEP: on, BUILDING_SIZE: BS, FLOOR_HEIGHT: FH, HUNGER_MAX: 100, THIRST_MAX: 100,
+      COLD_CLOTH_WEAR_MS: 60000, CARRIER_WEAR_MS: 60000, VP_DECAY_PER_SEC: 0.5,
+      send: (ws, m) => log.push('S' + ws.id + ':' + m.type + ':' + (m.hp ?? m.floor ?? '') + (m.follow ? ':' + JSON.stringify(m.follow) : '')),
+      broadcast: (m) => log.push('B:' + m.type + ':' + m.pid + ':' + (m.floor ?? m.hp ?? '')),
+      setHp: (p, v, why) => { const n = Math.max(0, Math.min(p.maxHp || 100, v)); if (n === p.hp) return n; p.hp = n; log.push('H:' + p.pid + ':' + why + ':' + n.toFixed(3)); return n; },
+      damagePlayer: null,   // 아래에서 채운다(setHp 를 부른다)
+      getEquippedEquipment: (p) => (p.pid.charCodeAt(1) % 2 ? { attrs: { warmth: 1 } } : null),
+      bodyNight: (t) => ((t / 1000) % 20) > 10, isNearCampfire: (p) => ((p.x / 800) | 0) % 5 === 0, isIndoorAt: (p) => (p.floor || 0) > 0,
+      Carry: { effects: (p) => ({ ratio: ((p.x | 0) % 7) / 7 }), carrierWorking: (p) => (p.vp | 0) % 2 === 0, CARRIER_SLOT: 'back', reconcile: () => {}, payload: () => ({}) },
+      gameDayNow: () => 12, villageShelterOf: (p) => (p.simVillageId ? 0.5 : 0), elevKmAt: (p) => p.y / 1e5,
+      windExposureOf: (p) => (p.x % 100) / 100, coverOf: (p) => (p.y % 50) / 50, seasonColdNow: () => 0.3,
+      wearEquipment: (p, slot) => { p._wear = (p._wear || 0) + 1; },
+      zoneGameDay: () => 12, Lots: { isLot: () => false, reconcile: () => {} },
+      weatherFor: (p) => ({ t: (p.x | 0) % 10 }), moveMultOf: (p) => 1,
+      _followPayload: (p) => {                       // ★벗의 **x·y** 만 읽는다 — 일곱 단계 중 누구도 안 쓰는 칸(표 그대로)
+        const f = p._follow; if (!f) return null; const t = onlineById.get(f.id); if (!t) return null;
+        if (bait === 'hp') return { follow: { v: t.hp } };      // ★미끼 ① — 같은 틱에 HP 단계가 쓰는 칸
+        if (bait === 'z') return { follow: { v: t.z } };        // ★미끼 ② — 같은 틱에 계단 단계가 쓰는 칸
+        return { follow: { x: Math.round(t.x), y: Math.round(t.y) } };
+      },
+      Body: {
+        tick: (p, dt, c) => { p.hunger = Math.max(0, p.hunger - dt * (c.moving ? 3 : 1) * (c.night ? 1.5 : 1)); p.thirst = Math.max(0, p.thirst - dt * 2 * (1 + c.carryRatio));
+          p._stam = (p._stam ?? 50) + (c.sprint ? -dt * 10 : dt * 2); p._acc = (p._acc || 0) + (p.hunger <= 0 ? dt * 3 : 0); },
+        takeHpDamage: (p) => { const d = Math.floor(p._acc || 0); p._acc = (p._acc || 0) - d; return d; },
+        extremeHpRate: (p) => ({ rate: p.hunger <= 0 ? 0.3 : 0, parts: [{ axis: 'hunger' }] }),
+        ensure: (p) => ({ cold: p._night ? 0.1 : 0, injury: 0 }), canSprint: (p) => (p._stam ?? 50) > 5,
+        recoverMult: (p) => Math.min(1, (p.hunger + p.thirst) / 100), onDamage: () => 0, selfPayload: () => ({}),
+      },
+    };
+    env.damagePlayer = (p, dmg, src) => { if (p.hp <= 0 || p.isDown) return; env.setHp(p, p.hp - dmg, 'damage'); p.lastDamagedAt = env.__now;
+      if (p.hp <= 0 && !p.isNpc) { p.isDown = true; p.vx = 0; p.vy = 0; for (const m of world.mobs.values()) if (m.aggroTarget === p.pid) m.aggroTarget = null;
+        env.broadcast({ type: 'player_down_state', pid: p.pid }); } };
     const keys = Object.keys(env);
-    const api = new Function(...keys,
-      'let _t375Gen = 0;\n' + srcA + '\n' + srcR + '\n' + srcI +
-      '\nreturn { _t375Refresh, _isActive, isPositionActive };')(...keys.map((k) => env[k]));
-    return { activeChunkKeys, players, mobs, api, on, skipR2 };
+    const fn = new Function(...keys, 'dt', 'now',
+      'let stairCellDirty = true;\n' + LIFT + '\n' +
+      'return function __tick(dt, now) {\n' + (src || POST) + '\n};')(...keys.map((k) => env[k]));
+    return { env, log, activeChunkKeys, tick: (dt, now) => { env.__now = now; return fn(dt, now); } };
   };
-
-  // ── 한 판 — 제품 틱의 **순서 그대로**: 청크 갱신 → (R1) → 공간 인덱스 문지기 → 이동 → (R2) → 계단·낙하·HP
-  const run = (arm) => {
-    const TICKS = 4200, N = 408, M = 64;
-    const st = require(path.join(ROOT, 'server', 'seed-rand.js')).makeStream(); st.seed(0x375a1);
-    const W = 24000, H = 24000;   // ★작은 세계 — 활성 상자(13청크 = 6,656px)가 자리의 한 몫을 덮어야 **자주 뒤집힌다**
-    for (let i = 0; i < N; i++) arm.players.set('p' + i, { isNpc: true, canadiaVillage: false,
-      x: st.next() * W, y: st.next() * H, tx: st.next() * W, ty: st.next() * H, hp: 50, z: 0 });
-    for (let i = 0; i < M; i++) arm.mobs.set('m' + i, { x: st.next() * W, y: st.next() * H, z: 0 });
-    const { _t375Refresh, _isActive } = arm.api;
+  // ── 4,200틱 한 판 — 이동 문 대신 몸을 옮기고(두 판에 **같은 흐름**), 관측자를 돌려 활성 청크를 바꾼다
+  const run = (opt, on, bait, src) => {
+    const w = mkWorld(opt), A = mkArm(w, on, bait, src);
+    const TICKS = opt.ticks || 4200, dtt = 1 / 30;
     const dv = new DataView(new ArrayBuffer(8));
-    const dig = new Uint32Array(TICKS);
-    let flips = 0, g1 = 0, g2 = 0, g3 = 0, g4 = 0;
-    const prev = new Map();
-    // 관측자 하나가 돈다 ⇒ 활성 청크 집합이 **틱마다 달라진다**(낡음이 실제로 생기는 조건)
+    const dig = new Uint32Array(TICKS), msgMulti = [], msgSeq = [];
+    let seqDiffTicks = 0;
+    const H = (h, v) => { dv.setFloat64(0, +v || 0); h = (Math.imul(h ^ dv.getUint32(0), 16777619) ^ dv.getUint32(4)) >>> 0; return h; };
     for (let t = 0; t < TICKS; t++) {
-      const ox = W / 2 + Math.cos(t / 11) * (W / 3), oy = H / 2 + Math.sin(t / 7) * (H / 3);   // 관측자가 빨리 돈다
-      arm.activeChunkKeys.clear();
+      const now = 1_700_000_000_000 + t * 33;
+      const ox = w.W / 2 + Math.cos(t / 11) * (w.W / 3), oy = w.H / 2 + Math.sin(t / 7) * (w.H / 3);
+      A.activeChunkKeys.clear();
       const ocx = Math.floor(ox / CS), ocy = Math.floor(oy / CS);
-      for (let dx = -6; dx <= 6; dx++) for (let dy = -6; dy <= 6; dy++) arm.activeChunkKeys.add(`${ocx + dx}_${ocy + dy}`);
-      // (R1) 틱 머리 — 주민만
-      _t375Refresh(false);
-      // ① 공간 인덱스 문지기
-      for (const p of arm.players.values()) { if (p.isNpc && !p.canadiaVillage && !_isActive(p)) continue; g1++; }
-      // 이동 문 — x·y 가 **여기서** 바뀐다(낡음의 원천)
-      for (const p of arm.players.values()) {
-        const dx = p.tx - p.x, dy = p.ty - p.y, d = Math.hypot(dx, dy);
-        if (d > 2) { p.x += (dx / d) * 220; p.y += (dy / d) * 220; }
-        else { p.tx = st.next() * W; p.ty = st.next() * H; }
+      for (let dx = -6; dx <= 6; dx++) for (let dy = -6; dy <= 6; dy++) A.activeChunkKeys.add(`${ocx + dx}_${ocy + dy}`);
+      for (const p of w.players.values()) {           // 이동 문 대역 — 두 판이 같은 순서·같은 수로 옮긴다
+        if (p.isDown) continue;
+        const ddx = p.tx - p.x, ddy = p.ty - p.y, d = Math.hypot(ddx, ddy);
+        if (d > 3) { p.vx = ddx / d * 90; p.vy = ddy / d * 90; p.x += p.vx * dtt * 4; p.y += p.vy * dtt * 4; }
+        else { p.tx = w.st.next() * w.W; p.ty = w.st.next() * w.H; p.vx = 0; p.vy = 0; }
+        p.sprint = (t + p.pid.length) % 50 < 10;
       }
-      // (R2) 이동 문 직후 — 주민 + 몹. ⓒ 는 이 자리를 뺀다.
-      if (!arm.skipR2) _t375Refresh(true);
-      // ② 계단(몹) · ③ 낙하(주민+몹) · ④ HP 회복(주민) — 문지기를 **통과한 몸만** 상태가 움직인다
-      for (const m of arm.mobs.values()) { if (!_isActive(m)) continue; g2++; m.z += 1; }
-      for (const p of arm.players.values()) { if (p.isNpc && !p.canadiaVillage && !_isActive(p)) continue; g3++; p.z += 2; }
-      for (const m of arm.mobs.values()) { if (!_isActive(m)) continue; g3++; m.z += 3; }
-      for (const p of arm.players.values()) { if (p.isNpc && !p.canadiaVillage && !_isActive(p)) continue; g4++; p.hp += 1; }
-      // 자리 바뀜 계수 — 활성/비활성이 실제로 자주 뒤집혀야 이 자가 무언가를 문 것이다
-      for (const [k, p] of arm.players) { const a = arm.api.isPositionActive(p.x, p.y); if (prev.get(k) !== undefined && prev.get(k) !== a) flips++; prev.set(k, a); }
+      for (const m of w.mobs.values()) { m.x += m.vx; if (m.x > w.W) m.x = 0; }
+      A.log.length = 0;
+      A.tick(dtt, now);
+      msgMulti.push(A.log.slice().sort().join('|')); msgSeq.push(A.log.join('|'));
       let h = 2166136261;
-      for (const p of arm.players.values()) {
-        dv.setFloat64(0, p.x); h = (Math.imul(h ^ dv.getUint32(0), 16777619) ^ dv.getUint32(4)) >>> 0;
-        dv.setFloat64(0, p.y); h = (Math.imul(h ^ dv.getUint32(0), 16777619) ^ dv.getUint32(4)) >>> 0;
-        h = (Math.imul(h ^ p.hp, 16777619) ^ p.z) >>> 0;
-      }
-      for (const m of arm.mobs.values()) h = (Math.imul(h ^ m.z, 16777619) ^ 0x375) >>> 0;
+      for (const p of w.players.values()) for (const k of ['x', 'y', 'z', 'floor', 'hp', 'hunger', 'thirst', 'vp', 'stairStep', 'stairSubStep', 'fallVz', '_stam', '_acc', '_wear', 'lastDamagedAt'])
+        h = H(h, p[k]);
+      for (const p of w.players.values()) h = (Math.imul(h ^ ((p.falling ? 1 : 0) | (p.isDown ? 2 : 0) | (p._cold ? 4 : 0) | (p.sprint ? 8 : 0) | (p.onStairId ? 16 : 0)), 16777619)) >>> 0;
+      for (const m of w.mobs.values()) for (const k of ['z', 'floor', 'hp', 'stairStep']) h = H(h, m[k]);
       dig[t] = h;
     }
-    return { dig, players: arm.players, mobs: arm.mobs, flips, gates: [g1, g2, g3, g4] };
+    const cnt = { falls: 0, onStair: 0, down: 0, msgs: 0 };
+    for (const p of w.players.values()) { if ((p.floor || 0) === 0 && p.fallStartFloor === 0) cnt.falls++; if (p.stairStep) cnt.onStair++; if (p.isDown) cnt.down++; }
+    return { dig, msgMulti, msgSeq, w, cnt };
   };
+  const firstDiff = (a, b) => { for (let t = 0; t < a.length; t++) if (a[t] !== b[t]) return t; return -1; };
 
-  const A = run(mk(false)), B = run(mk(true));
-  ok(A.flips > 20000, '⑨-a [상황] 활성/비활성이 **실제로 자주 뒤집혔다**(자명 통과 금지 — 안 뒤집히면 낡음이 안 난다)',
-     `뒤집힘 ${A.flips.toLocaleString()}`);
-  ok(A.gates.every((g) => g > 5000), '⑨-a [상황] 문지기 넷이 **다 통과도 하고 막기도 했다**',
-     `통과 ${A.gates.map((g) => g.toLocaleString()).join(' · ')}`);
-  let fd = -1; for (let t = 0; t < A.dig.length; t++) if (A.dig[t] !== B.dig[t]) { fd = t; break; }
-  ok(fd < 0, '⑨-a ★★★끔 ↔ 켬 — **주민 408 + 몹 64 × 4,200틱 좌표·HP·낙하가 비트 동일**',
-     fd < 0 ? `${((408 + 64) * 4200).toLocaleString()} 자리 전부 같다` : `첫 다름 틱 ${fd}`);
+  // ⓐ 계단이 있는 세계 — 몸이 오르고 떨어지고 굶고 아문다
   {
-    let cd = 0; const ap = [...A.players.values()], bp = [...B.players.values()];
-    for (let i = 0; i < ap.length; i++) { if (!sameF64(ap[i].x, bp[i].x)) cd++; if (!sameF64(ap[i].y, bp[i].y)) cd++;
-      if (ap[i].hp !== bp[i].hp) cd++; if (ap[i].z !== bp[i].z) cd++; }
-    const am = [...A.mobs.values()], bm = [...B.mobs.values()];
-    for (let i = 0; i < am.length; i++) if (am[i].z !== bm[i].z) cd++;
-    ok(cd === 0, '⑨-a ★끝 자리 좌표·HP·낙하도 바이트 동일', `다른 수 ${cd}/${ap.length * 4 + am.length}`);
-    ok(A.gates.join() === B.gates.join(), '⑨-a ★문지기 넷의 **통과 수가 한 번도 안 갈렸다**', `${A.gates.join(' · ')}`);
+    const OFF = run({ stairs: true }, false), ON = run({ stairs: true }, true);
+    const touched = OFF.msgSeq.reduce((a, s) => a + (s ? s.split('|').length : 0), 0);
+    ok(touched > 2000, '⑨-a [상황] 단계들이 **실제로 일했다** — 메시지(층 바뀜·HP·게이지·쓰러짐)', `${touched.toLocaleString()}건`);
+    ok(OFF.cnt.onStair + OFF.cnt.falls > 0 || /floor_changed/.test(OFF.msgSeq.join('')), '⑨-a [상황] 계단을 오르내린 몸이 있다(층 바뀜 메시지)',
+       `층 바뀜 ${(OFF.msgSeq.join('|').match(/floor_changed/g) || []).length}건`);
+    const fd = firstDiff(OFF.dig, ON.dig);
+    ok(fd < 0, '⑨-a ★★★끔(순회 다섯) ↔ 켬(한 바퀴) — **몸 360 + 몹 48 × 4,200틱, 좌표·z·층·HP·게이지·쓰러짐 비트 동일**',
+       fd < 0 ? `${(4200).toLocaleString()}틱 전부 같다` : `첫 다름 틱 ${fd}`);
+    const fm = firstDiff(OFF.msgMulti, ON.msgMulti);
+    ok(fm < 0, '⑨-a ★틱마다 **보낸 메시지의 모음**도 같다(무엇을 보냈나 — 순서 말고)', fm < 0 ? '0 다름' : `첫 다름 틱 ${fm}`);
+    let sd = 0; for (let t = 0; t < OFF.msgSeq.length; t++) if (OFF.msgSeq[t] !== ON.msgSeq[t]) sd++;
+    console.log(`    [표] ★메시지 **순서**는 ${sd.toLocaleString()}/4,200틱에서 다르다 — 같은 틱 안, **서로 다른 몸**의 메시지가 섞이는 순서(몸마다 자기 메시지 순서는 같다). 켜기 판정 몫(보고 §1-ⓒ)`);
+    // 몸마다 자기 메시지 순서는 같은가 — 보낸 몸별로 줄 세워 견준다
+    const perBody = (seq) => seq.map((s) => { const m = new Map(); for (const x of (s ? s.split('|') : [])) { const k = x.split(':').slice(0, 3).join(':').replace(/^(S\d+|B:[^:]+|H):?/, ''); const who = (x.match(/p\d+/) || [x.split(':')[0]])[0]; if (!m.has(who)) m.set(who, []); m.get(who).push(x); } return [...m.entries()].sort().map(([k, v]) => k + '=' + v.join(',')).join(';'); });
+    const pa = perBody(OFF.msgSeq), pb = perBody(ON.msgSeq);
+    ok(firstDiff(pa, pb) < 0, '⑨-a ★**몸마다** 자기 메시지 순서는 같다(섞이는 건 몸 사이뿐)');
   }
-  // ⓒ 자명 통과 금지 — **둘째 자리를 빼면 갈린다**(그 자리가 실어 나르는 것이 있다는 증거)
+  // ⓐ′ 계단이 **없는** 세계 — ③ 한 비트가 켜진다. 지워진 계단 위에 서 있던 몸·z>0 인 몸을 빠뜨리면 여기서 갈린다
   {
-    const C = run(mk(true, true));
-    let f2 = -1; for (let t = 0; t < A.dig.length; t++) if (A.dig[t] !== C.dig[t]) { f2 = t; break; }
-    ok(f2 >= 0, '★⑨ 자명 통과 금지 — 새로 고치는 자리를 **하나만** 두면(이동 뒤 갱신 없음) 세계가 갈린다',
-       f2 >= 0 ? `첫 다름 틱 ${f2} · 문지기 통과 ${C.gates.join(' · ')}` : '안 갈렸다(자가 낡음을 못 문다)');
+    const OFF = run({ stairs: false, seed: 0x3850 }, false), ON = run({ stairs: false, seed: 0x3850 }, true);
+    const w0 = mkWorld({ stairs: false, seed: 0x3850 });
+    let left = 0, zup = 0; for (const p of w0.players.values()) { if (p.onStairId) left++; if (p.z > 0) zup++; }
+    ok(left > 0 && zup > 0, '⑨-a′ [상황] 계단 0 인 세계에 **지워진 계단 위의 몸**과 **z>0 인 몸**이 있다(한 비트가 빠뜨리면 안 되는 몸)', `onStairId ${left} · z>0 ${zup}`);
+    const fd = firstDiff(OFF.dig, ON.dig);
+    ok(fd < 0, '⑨-a′ ★★계단 0 — **한 비트로 빠져도** 4,200틱 비트 동일', fd < 0 ? '전부 같다' : `첫 다름 틱 ${fd}`);
+    // 자명 통과 금지 — 한 비트가 `onStairId`·`z` 를 안 보면(계단 0 이면 무조건 빠지면) 갈린다
+    const bad = POST.replace('if (T385_ONE_SWEEP && _stairNone && !p.onStairId && !((p.z || 0) > 0)) return;', 'if (T385_ONE_SWEEP && _stairNone) return;');
+    ok(bad !== POST, '⑨-a′ [전제] 한 비트 줄을 제품에서 찾았다(미끼를 만들 수 있다)');
+    const BAD = run({ stairs: false, seed: 0x3850 }, true, null, bad);
+    const fb = firstDiff(OFF.dig, BAD.dig);
+    ok(fb >= 0, '★⑨-a′ 자명 통과 금지 — 한 비트가 `onStairId`·`z` 를 **안 보면**(계단 0 이면 무조건 빠지면) 갈린다',
+       fb >= 0 ? `첫 다름 틱 ${fb}` : '안 갈렸다(자가 한 비트의 조건을 못 문다)');
   }
-  // ⓓ 소스 계수 — 손잡이 하나 · 기본 끔 · 문지기 넷만 · 정본 하나
+  // ⓑ 앞 묶음 — 격자 재구축 + 입력 타임아웃(켬이면 격자 바퀴가 입력 타임아웃을 싣는다)
+  {
+    const RSI = body('rebuildSpatialIndex'), ITO = body('_inputTOStep');
+    ok(RSI.length > 300 && ITO.length > 100, '⑨-b [전제] 제품의 격자 재구축·입력 타임아웃 **글자 그대로**', `${RSI.length}+${ITO.length}자`);
+    const OFFLOOP = (ZSRC.match(/  if \(!T385_ONE_SWEEP\) for \(const p of players\.values\(\)\) _inputTOStep\(p, now\);/) || [''])[0];
+    ok(OFFLOOP.length > 0, '⑨-b [전제] 끔 순회 줄(입력 타임아웃)을 떴다');
+    const runPre = (on) => {
+      const w = mkWorld({ stairs: true, seed: 0x3851 });
+      const ins = [];
+      class Quadtree { constructor() { this.n = 0; } insert(o) { ins.push((o.ref && (o.ref.pid || o.ref.id)) + '@' + o.x.toFixed(3) + ',' + o.y.toFixed(3)); this.n++; } }
+      const activeChunkKeys = new Set(), chunkManager = { chunkSize: CS, keyOf: (cx, cy) => `${cx}_${cy}`, chunks: new Map() };
+      const env = { players: w.players, mobs: w.mobs, resources: new Map(), activeChunkKeys, chunkManager, Quadtree, ZONE: { zoneWidth: w.W, zoneHeight: w.H },
+        T385_ONE_SWEEP: on };
+      const keys = Object.keys(env);
+      const api = new Function(...keys, 'let qtPlayers, qtMobs, qtBuildings, qtResources = {}, resourcesDirty = false, _lastResRebuild = 0;\n' +
+        body('isPositionActive') + '\n' + ITO + '\n' + RSI + '\nreturn { rebuildSpatialIndex, _inputTOStep };')(...keys.map((k) => env[k]));
+      const dig = [];
+      for (let t = 0; t < 4200; t++) {
+        const now = 1_700_000_000_000 + t * 33;
+        activeChunkKeys.clear();
+        const ox = w.W / 2 + Math.cos(t / 11) * (w.W / 3), oy = w.H / 2 + Math.sin(t / 7) * (w.H / 3);
+        for (let dx = -6; dx <= 6; dx++) for (let dy = -6; dy <= 6; dy++) activeChunkKeys.add(`${Math.floor(ox / CS) + dx}_${Math.floor(oy / CS) + dy}`);
+        for (const p of w.players.values()) { p.x += (p.pid.length % 3 - 1) * 7; p.lastSeen = (t % 90 < 60) ? now : now - 3000; p.vx = 5; p.vy = -5; p.inputQueue = [1, 2]; }
+        ins.length = 0;
+        api.rebuildSpatialIndex(on ? now : undefined);
+        if (!on) for (const p of w.players.values()) api._inputTOStep(p, now);   // 끔 순회 줄(위에서 뜬 그 줄과 같은 꼴)
+        let h = ins.join('|');
+        for (const p of w.players.values()) h += '|' + p.vx + ',' + p.vy + ',' + p.inputQueue.length;
+        dig.push(h);
+      }
+      return dig;
+    };
+    const A = runPre(false), B = runPre(true);
+    const stops = A.filter((s) => /\|0,0,0/.test(s)).length;
+    ok(stops > 100, '⑨-b [상황] 입력 타임아웃이 **실제로 멈춰 세웠다**(사람 몸 vx·vy·큐 0)', `${stops}틱`);
+    const fd = firstDiff(A, B);
+    ok(fd < 0, '⑨-b ★★끔(격자 → 입력 순회) ↔ 켬(한 바퀴) — **4,200틱 격자 삽입 순서·좌표·입력 상태 동일**', fd < 0 ? '전부 같다' : `첫 다름 틱 ${fd}`);
+  }
+  // ⓒ 자명 통과 금지 — 표가 "안 읽는다" 고 한 칸을 **읽게** 비틀면 갈린다(자가 몸 사이 의존을 실제로 본다)
+  {
+    const H1 = run({ stairs: true, ticks: 600 }, false, 'hp'), H2 = run({ stairs: true, ticks: 600 }, true, 'hp');
+    const f1 = firstDiff(H1.msgMulti, H2.msgMulti);
+    ok(f1 >= 0, '★⑨-c 미끼 ① — 벗 화살이 **벗의 hp**(같은 틱 HP 단계가 쓰는 칸)를 읽으면 끔 ↔ 켬이 **갈린다**',
+       f1 >= 0 ? `첫 다름 틱 ${f1}` : '안 갈렸다(자가 몸 사이 의존을 못 문다)');
+    const Z1 = run({ stairs: true, ticks: 600 }, false, 'z'), Z2 = run({ stairs: true, ticks: 600 }, true, 'z');
+    const f2 = firstDiff(Z1.msgMulti, Z2.msgMulti);
+    ok(f2 >= 0, '★⑨-c 미끼 ② — 벗 화살이 **벗의 z**(같은 틱 계단 단계가 쓰는 칸)를 읽어도 **갈린다**',
+       f2 >= 0 ? `첫 다름 틱 ${f2}` : '안 갈렸다');
+  }
+  // ⓓ ③ 계단 정수 키 — 문자열 판과 **모든 칸에서** 같은 답(격자 밖·가장자리·음수 포함)
+  {
+    const w = mkWorld({ stairs: true });
+    const mk = (on) => {
+      const stairCellCache = new Map();
+      const env = { buildings: w.buildings, stairCellCache, T385_ONE_SWEEP: on, BUILDING_SIZE: 32 };
+      const keys = Object.keys(env);
+      return new Function(...keys, 'let stairCellDirty = true;\n' + LIFT + '\nreturn { findStairBuildingForCell, stairCellCache: () => stairCellCache };')(...keys.map((k) => env[k]));
+    };
+    const S = mk(false), I = mk(true);
+    const st = require(path.join(ROOT, 'server', 'seed-rand.js')).makeStream(); st.seed(0x5a1);
+    let n = 0, diff = 0, hit = 0; const hitCells = new Set();
+    const probe = (cx, cy) => { const a = S.findStairBuildingForCell(cx, cy), b = I.findStairBuildingForCell(cx, cy); n++;
+      const sa = a ? a.stair.id + ':' + a.step : '-', sb = b ? b.stair.id + ':' + b.step : '-'; if (sa !== sb) diff++; if (a) { hit++; hitCells.add(cx + '_' + cy); } };
+    for (const b of w.buildings.values()) if (b.type === 'stair') { const ax = Math.floor(b.x / 32), ay = Math.floor(b.y / 32);
+      for (let dx = -3; dx <= 3; dx++) for (let dy = -3; dy <= 3; dy++) probe(ax + dx, ay + dy); }
+    for (let i = 0; i < 200000; i++) probe(Math.floor((st.next() * 2 - 0.5) * 800), Math.floor((st.next() * 2 - 0.5) * 800));
+    for (const [cx, cy] of [[-1, 0], [0, -1], [-1, -1], [5, -1], [5, -2], [-1, 9], [-2, 9], [40000, 5], [5, -40000], [-32768, 0], [32767, 32767]]) probe(cx, cy);
+    ok(hitCells.size === S.stairCellCache().size && hitCells.size > 150, '⑨-d [상황] 계단 칸을 **하나도 빠짐없이** 밟았다(가장자리·격자 밖 포함)', `밟은 계단 칸 ${hitCells.size} = 캐시 ${S.stairCellCache().size} · 조회 ${n.toLocaleString()}`);
+    ok(diff === 0, '⑨-d ★★정수 키 ↔ 문자열 키 — **한 칸도 안 다르다**(격자 밖 ·음수 · ±32,768 경계)', `다른 답 ${diff}`);
+    ok(S.stairCellCache().size === I.stairCellCache().size, '⑨-d 캐시 크기가 같다(키가 한 점에 겹치지 않았다)', `${S.stairCellCache().size} = ${I.stairCellCache().size}`);
+    // 자명 통과 금지 — 있는 자 `_cellKey`(격자 안에서만 전단사)를 쓰면 가장자리에서 갈린다
+    const WTH = Math.ceil(24000 / 32);
+    const naive = new Map(); for (const b of w.buildings.values()) if (b.type === 'stair') { const ax = Math.floor(b.x / 32), ay = Math.floor(b.y / 32);
+      const d = { N: [0, -1], S: [0, 1], E: [1, 0], W: [-1, 0] }[b.data.dir]; for (let s2 = 0; s2 <= 2; s2++) naive.set((ax + d[0] * s2) * WTH + (ay + d[1] * s2), b.id); }
+    // 격자 밖 계단 칸 (5,−1)·(5,−2) 의 `_cellKey` 는 격자 안 (4, H−1)·(4, H−2) 와 **같은 수**다 — 거기를 밟는다
+    let clash = 0; const cells = [];
+    for (let cx = -2; cx <= 30; cx++) for (let cy = -2; cy <= 30; cy++) cells.push([cx, cy]);
+    for (let cx = 0; cx <= 8; cx++) for (let cy = WTH - 3; cy < WTH; cy++) cells.push([cx, cy]);
+    for (const [cx, cy] of cells) { const a = S.findStairBuildingForCell(cx, cy); const nb = naive.get(cx * WTH + cy);
+      if ((a ? a.stair.id : undefined) !== nb) clash++; }
+    ok(clash > 0, '★⑨-d 자명 통과 금지 — 있는 자 `_cellKey`(cx·H+cy)를 그대로 쓰면 **가장자리에서 갈린다**(그래서 안 썼다)', `갈린 칸 ${clash}`);
+  }
+  // ⓔ 소스 계수 — 손잡이 하나 · 단계 함수 하나씩 · T375 흡수
   {
     const Z2 = codeOnly(Z);
-    ok(/const T375_ACTIVE_FLAG = process\.env\.T375_ACTIVE_FLAG === '1';/.test(Z2),
-       "⑨-d 손잡이는 `T375_ACTIVE_FLAG` 하나 · **기본 끔**");
-    ok((Z2.match(/function _t375Refresh\(/g) || []).length === 1 && (Z2.match(/function _isActive\(/g) || []).length === 1,
-       '⑨-d 새로 고침·읽기는 **하나씩**이다(사본 0)');
-    ok((Z2.match(/_t375Refresh\(/g) || []).length === 3,
-       '⑨-d 새로 고치는 자리는 **정확히 둘**이다(정의 1 + 부름 2)', `${(Z2.match(/_t375Refresh\(/g) || []).length}자리`);
-    ok(/updateActiveChunks\(\);\s*\n\s*_t375Refresh\(false\);/.test(Z2),
-       '⑨-d ★첫 자리는 `updateActiveChunks()` **바로 뒤**다(청크 집합이 정해진 직후)');
-    ok(/_t375Refresh\(true\);[\s\S]{0,200}PZ식 다단 계단/.test(Z) ,
-       '⑨-d ★둘째 자리는 **이동 문 직후**다(계단·낙하·HP 앞)');
-    ok((Z2.match(/_isActive\(/g) || []).length === 6,
-       '⑨-d 읽는 자리는 **다섯**이다(정의 1 + 문지기 5: 공간·계단몹·낙하주민·낙하몹·HP)',
-       `${(Z2.match(/_isActive\(/g) || []).length}자리`);
-    const rest = (Z2.match(/isPositionActive\(/g) || []).length;
-    ok(rest >= 6, '⑨-d ★정본 `isPositionActive` 는 **그대로 남아 있다**(결정 문·이동 문·진단은 이 카드 밖)', `${rest}자리`);
-    ok(!/stairCellCache/.test(body('_t375Refresh')) && !/stairCellCache/.test(body('_isActive')),
-       '⑨-d ★`stairCellCache` 문자열 키는 **안 만졌다**(회부 · 카드 지정)');
+    ok(/const T385_ONE_SWEEP = process\.env\.T385_ONE_SWEEP === '1';/.test(Z2), "⑨-e 손잡이는 `T385_ONE_SWEEP` 하나 · **기본 끔**");
+    for (const f of ['_inputTOStep', '_stairStepP', '_fallStepP', '_gaugeStep', '_hpRegenStep', '_gaugeNetStep'])
+      ok((Z2.match(new RegExp('function ' + f + '\\(', 'g')) || []).length === 1, `⑨-e 단계 \`${f}\` 는 **하나**다(끔·켬이 같은 함수)`);
+    ok(!/T375_ACTIVE_FLAG|_t375Refresh|_isActive\(|_activeGen/.test(Z2), '⑨-e ★T375 손잡이는 **흡수됐다**(필드·새 순회·손잡이 0)');
+    ok((Z2.match(/if \(!T385_ONE_SWEEP\) for \(const p of players\.values\(\)\)/g) || []).length === 6,
+       '⑨-e 끔 순회는 **여섯 줄 그대로**(입력·계단·낙하·게이지·HP·방송 — `spatial` 은 격자 함수 안)', `${(Z2.match(/if \(!T385_ONE_SWEEP\) for \(const p of players\.values\(\)\)/g) || []).length}줄`);
+    ok(/rebuildSpatialIndex\(T385_ONE_SWEEP \? now : undefined\)/.test(Z2), '⑨-e 앞 묶음 — 켬이면 격자 바퀴가 입력 타임아웃을 싣는다');
   }
-  console.log('    [표] 문지기 — 4,200틱 좌표·HP·낙하 0 다름 · 뒤집힘 ' + A.flips.toLocaleString() + ' · 새로 고침 자리 2(머리 · 이동 뒤)');
-  console.log('    접점: isPositionActive · activeChunkKeys · updateActiveChunks · _active · _activeGen · T375_ACTIVE_FLAG · rebuildSpatialIndex · stepStairFor · processFalling');
+  console.log('    접점: T385_ONE_SWEEP · rebuildSpatialIndex · _inputTOStep · stepStairFor · findStairBuildingForCell · stairCellCache · _stairKey · processFalling · _gaugeStep · _hpRegenStep · _gaugeNetStep · isPositionActive');
 }
 
 // =============================================================================
