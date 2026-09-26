@@ -943,5 +943,129 @@ console.log('\n⑪ T394 ①② — 일터 도넛에 지형 · ⑤ 목표 되짚�
   console.log('    접점: npcWorkX · npcWorkY · isTerrainBlockedLocal · decideNpcBehavior · _t394WorkSite · _t394OpenTarget · T394_WORK_TERRAIN · seed-rand');
 }
 
+// =============================================================================
+// ⑫ T399 ② — 튕김 도약이 강으로 뛰지 않는다 [T399]
+// =============================================================================
+// ★왜 [T399 · 보고/T399_2026-09-26.md] T394 뒤 남은 막힌 목표 여행 548 의 94 %가 `unstuckNpc` 의 무작위 도약(±80px)이었다.
+//   ⇒ 도약 점이 막혔으면 T394 의 **그 되짚기 함수**(`_t394OpenTarget` · 사본 0)로 **제 몸 쪽** 첫 열린 점으로.
+//   거는 것: ⓐ 끔 = 종전 비트 동일 ⓑ 켬 = 막힌 도약 0(몸 칸이 열려 있으면) ⓒ 주사위 한 알 그대로(흐름 무소비)
+//     ⓓ 열린 도약은 안 건드린다 ⓔ 되짚기는 도약 점을 정한 **다음 줄** · 결정 시각 앞 ⓕ 미끼.
+console.log('\n⑫ T399 ② — 튕김 도약이 강으로 뛰지 않는다 [T399]');
+{
+  const S = require(path.join(ROOT, 'server', 'seed-rand.js'));
+  const us = body('unstuckNpc'), ot = body('_t394OpenTarget');
+  ok(us.length > 400 && ot.length > 200, '⑫ [전제] 제품에서 **그 글자** 둘을 떴다(튕겨냄 · 되짚기)', `${us.length} · ${ot.length}자`);
+  ok(/npc\.targetY = npc\.y \+ Math\.sin\(ang\) \* 80;[\s\S]{0,700}?if \(T394_WORK_TERRAIN\) _t394OpenTarget\(npc, npc\.x, npc\.y\);\n\s*npc\.nextDecisionAt = now \+ 800;/.test(us),
+     '⑫-e 되짚기는 도약 점을 정한 **다음 줄**이고 결정 시각 **앞**이다(제 몸 쪽으로)');
+  const SZ = 32;
+  const river = (x, y) => { const c = Math.floor(x / SZ); return ((c % 6) + 6) % 6 >= 4; };   // 6칸마다 2칸 물(세로 줄)
+  const mk = (on, pred) => {
+    const dn = S.makeStream();
+    const env = { _diceNpc: dn, _SEED: S, _shOf: (o) => S.pidHash(o.playerId), BUILDING_SIZE: SZ, zoneGameDay: () => 3, _tick: { n: 77 },
+      _dn: dn.next, T394_WORK_TERRAIN: on, isTerrainBlockedLocal: pred };
+    const keys = Object.keys(env);
+    const f = new Function(...keys, ot + '\n' + us + '\nreturn unstuckNpc;')(...keys.map((k) => env[k]));
+    return { f, dn };
+  };
+  const N = 6000;
+  const run = (on, pred) => {
+    const M = mk(on, pred), out = [];
+    for (let i = 0; i < N; i++) {
+      // 몸은 열린 칸(물 줄 밖)에만 세운다 — 콜라이더 계약(T381 실측: 막힌 칸 안에 선 몸 0) · 자리는 **세계**(모의 강)가 정한다
+      let x = 1000 + (i * 7919 % 3000), y = 1000 + (i * 104729 % 3000);
+      while (river(Math.floor(x / SZ) * SZ + 16, Math.floor(y / SZ) * SZ + 16)) x += SZ;
+      const npc = { playerId: 'npc_u_' + i, x, y, simVillageId: null, targetX: x + 5, targetY: y, _stuckN: 5 };
+      M.f(npc, 1000);
+      out.push({ tx: npc.targetX, ty: npc.targetY, x, y, next: M.dn.next() });
+    }
+    return out;
+  };
+  const OFF = run(false, river), ON = run(true, river);
+  const cellBlk = (x, y) => river(Math.floor(x / SZ) * SZ + 16, Math.floor(y / SZ) * SZ + 16);
+  const deadOff = OFF.filter((o) => cellBlk(o.tx, o.ty)).length, deadOn = ON.filter((o) => cellBlk(o.tx, o.ty)).length;
+  // ⓐ 끔 = 종전 식 — 제품 글자에서 되짚기 줄만 지운 판과 견준다
+  const usOld = us.replace(/\n\s*\/\/ ★★\[T399 ②[\s\S]*?if \(T394_WORK_TERRAIN\) _t394OpenTarget\(npc, npc\.x, npc\.y\);/, '');
+  ok(usOld !== us && !/_t394OpenTarget/.test(usOld), '⑫ [전제] 종전 꼴을 제품 글자에서 **되짚기 줄만** 지워 되살렸다(대조군)');
+  const OLD = (() => { const dn = S.makeStream(); const env = { _diceNpc: dn, _SEED: S, _shOf: (o) => S.pidHash(o.playerId), BUILDING_SIZE: SZ, zoneGameDay: () => 3, _tick: { n: 77 }, _dn: dn.next };
+    const keys = Object.keys(env); const f = new Function(...keys, usOld + '\nreturn unstuckNpc;')(...keys.map((k) => env[k]));
+    return OFF.map((o, i) => { const npc = { playerId: 'npc_u_' + i, x: o.x, y: o.y, simVillageId: null, targetX: o.x + 5, targetY: o.y, _stuckN: 5 }; f(npc, 1000); return { tx: npc.targetX, ty: npc.targetY, next: dn.next() }; }); })();
+  let offDiff = 0; for (let i = 0; i < N; i++) if (!sameF64(OFF[i].tx, OLD[i].tx) || !sameF64(OFF[i].ty, OLD[i].ty) || OFF[i].next !== OLD[i].next) offDiff++;
+  ok(offDiff === 0, '⑫-a ★★끔 = **종전과 비트 동일**(도약 점 · 뒤따르는 흐름)', `다른 표본 ${offDiff}/${N}`);
+  ok(deadOff > N * 0.15, '⑫ [상황] 모의 강 위로 뛰는 도약이 **넉넉하다**(0 이면 자명 통과)', `${deadOff}/${N}`);
+  ok(deadOn === 0, '⑫-b ★★★켬 = **막힌 도약 0**(몸 칸이 열려 있으므로 되짚기는 언제나 끝난다)', `${deadOff} → ${deadOn}`);
+  let streamSame = 0, openSame = 0, openN = 0;
+  for (let i = 0; i < N; i++) { if (ON[i].next === OFF[i].next) streamSame++;
+    if (!cellBlk(OFF[i].tx, OFF[i].ty)) { openN++; if (sameF64(ON[i].tx, OFF[i].tx) && sameF64(ON[i].ty, OFF[i].ty)) openSame++; } }
+  ok(streamSame === N, '⑫-c ★주사위 **한 알 그대로** — 켬/끔 뒤따르는 흐름이 같다', `${streamSame}/${N}`);
+  ok(openN > N * 0.5 && openSame === openN, '⑫-d ★★열린 도약은 **안 건드린다**(비트 동일)', `${openSame}/${openN}`);
+  let shorter = 0; for (let i = 0; i < N; i++) { if (!cellBlk(OFF[i].tx, OFF[i].ty)) continue;
+    if (Math.hypot(ON[i].tx - ON[i].x, ON[i].ty - ON[i].y) <= 80 + 1e-9) shorter++; }
+  ok(shorter === deadOff, '⑫-b 옮긴 도약은 **제 몸 쪽**이다(도약 거리 80px 이하)', `${shorter}/${deadOff}`);
+  const BAD = run(true, () => false);
+  ok(BAD.filter((o) => cellBlk(o.tx, o.ty)).length === deadOff, '★⑫ 자명 통과 금지 — 술어가 늘 거짓이면(= 안 보면) 막힌 도약이 **그대로 남는다**');
+  console.log(`    [표] 도약 ${N} · 막힌 도약 ${deadOff} → ${deadOn} · 열린 도약 무변 ${openSame}/${openN} · 흐름 ${streamSame}/${N}`);
+  console.log('    접점: unstuckNpc · _t394OpenTarget · T394_WORK_TERRAIN · isTerrainBlockedLocal · _dn');
+}
+
+// =============================================================================
+// ⑬ T399_CELL_CAP — **상한 하나**: 칸 예산은 반경에서 난다(반경 원의 절반) [T399 ③]
+// =============================================================================
+// ★왜 [T399 · 보고/T399_2026-09-26.md] T394 뒤 A* 시간의 81~85 %가 "1500 × 뭍"(목표 칸은 열렸는데 1,500칸을 다 태우고 null).
+//   예산 없이 다시 돌리면 **전부 닿는다**(필요 칸 p50 3,643 · 최대 5,584 · 다리를 도는 우회). 반경 64 는 그 우회를 허락하는데
+//   예산 1,500 이 막았다 — 두 상한이 서로를 몰랐다. ⇒ 켬: 예산 = ⌈π·R²/2⌉(반원 — 우회는 직선의 한쪽으로 돈다).
+//   거는 것: ⓐ 손잡이 하나 · 기본 끔 · 끔 = 종전 수(1500·200) ⓑ 켬 = 반원(6,434·905) · 새 수 0 ⓒ 예산 안의 질문은 켬/끔 **비트 동일**
+//     ⓓ 1,500 을 넘는 우회를 켬은 **찾는다**(진짜 `pfFindPath` · 물 벽 + 먼 다리) · 길은 물을 안 밟는다 ⓔ 반원을 넘는 우회는 둘 다 null(최악이 묶인다)
+//     ⓕ 미끼 — 켬의 예산을 1,500 으로 비틀면 ⓓ 가 깨진다.
+console.log('\n⑬ T399_CELL_CAP — 상한 하나(칸 예산 = 반경 원의 절반) [T399]');
+{
+  const { findPath: pf } = require(path.join(ROOT, 'server', 'pathfind.js'));
+  ok(/const T399_CELL_CAP = process\.env\.T399_CELL_CAP === '1';/.test(Z) && (codeOnly(Z).match(/T399_CELL_CAP/g) || []).length === 3,
+     '⑬-a 손잡이 `T399_CELL_CAP` 하나 · **기본 끔**(env 가 그 글자일 때만 참 · 제품 자리 선언 2 + 갈래 1)');
+  const cn = body('computeNpcPath');
+  const mR = cn.match(/const _pfR = isVil \? (\d+) : (\d+);/);
+  const mC = cn.match(/maxCells: (T399_CELL_CAP \? Math\.ceil\(Math\.PI \* _pfR \* _pfR \/ 2\) : \(isVil \? 1500 : 200\)),/);
+  ok(!!mR && !!mC && /searchRadiusCells: _pfR,/.test(cn), '⑬ [전제] 제품에서 반경 한 줄 · 예산 식 · 반경 넘기기 **그 글자**를 떴다');
+  const cap = new Function('T399_CELL_CAP', 'isVil', '_pfR', `return (${mC ? mC[1] : '0'});`);
+  const R1 = mR ? +mR[1] : 0, R0 = mR ? +mR[2] : 0;
+  ok(R1 === 64 && R0 === 24 && cap(false, true, R1) === 1500 && cap(false, false, R0) === 200,
+     '⑬-a ★★끔 = **종전 수 그대로**(주민 1,500 · 비주민 200 · 반경 64 · 24)', `${cap(false, true, R1)} · ${cap(false, false, R0)}`);
+  ok(cap(true, true, R1) === 6434 && cap(true, false, R0) === 905 && Math.ceil(Math.PI * 64 * 64 / 2) === 6434,
+     '⑬-b ★켬 = **반원** ⌈π·R²/2⌉ — 주민 6,434 · 비주민 905(새 수 0 — 반경과 원의 넓이 · 한쪽)', `${cap(true, true, R1)} · ${cap(true, false, R0)}`);
+  // ── 판: **주머니 강**(U 자 물길 — 출발은 주머니 안, 목표는 바로 건너편) · 우회는 주머니 입구로 나가 돌아온다(다리를 도는 꼴)
+  const B = 32, cellOf = (p) => Math.floor(p / B);
+  const pocket = (top, bot, left, right) => ({ isWaterFn: (x, y) => { const cx = cellOf(x), cy = cellOf(y);
+    if (cx < 0 || cy < 0 || cx >= 300 || cy >= 300) return true;
+    if (cx === right && cy >= top && cy <= bot) return true;
+    return (cy === top || cy === bot) && cx >= left && cx <= right; } });
+  const call = (w, sx, sy, gx, gy, mc) => pf(sx * B + 16, sy * B + 16, gx * B + 16, gy * B + 16, { floor: 0, isBlockedFn: () => false, isWaterFn: w.isWaterFn, maxCells: mc, searchRadiusCells: 64 });
+  const W1 = pocket(112, 188, 122, 155);          // 주머니 76 × 33 · 출발 (145,150) · 목표 (165,150) = 강 건너 20칸
+  const offP = call(W1, 145, 150, 165, 150, cap(false, true, 64)), sqP = call(W1, 145, 150, 165, 150, 64 * 64), onP = call(W1, 145, 150, 165, 150, cap(true, true, 64));
+  const wet = (w, p) => p && p.some((q) => w.isWaterFn(q.x, q.y));
+  ok(offP === null, '⑬-d [상황] 끔(1,500)은 이 우회를 **못 찾는다** — "1500 × 뭍" 을 판에 세웠다', offP ? '찾음' : 'null');
+  ok(sqP === null, '⑬-d [표] 반경²(4,096 · `pathfind.js` 기본)도 **모자란다** — 실측 55 %만 닿던 그 자리', sqP ? '찾음' : 'null');
+  ok(onP !== null && !wet(W1, onP), '⑬-d ★★★켬(반원 6,434)은 **찾는다** — 길은 물을 안 밟고 주머니 입구로 돈다', onP ? `웨이포인트 ${onP.length}` : 'null');
+  // ⓔ 닫힌 주머니(사방 물 · 안 넓이 > 반원) — 둘 다 null 이고 켬도 **반원 칸에서 멈춘다**(최악이 묶인다)
+  const ring = { isWaterFn: (x, y) => { const cx = cellOf(x), cy = cellOf(y); if (cx < 0 || cy < 0 || cx >= 300 || cy >= 300) return true;
+    return ((cx === 100 || cx === 200) && cy >= 100 && cy <= 200) || ((cy === 100 || cy === 200) && cx >= 100 && cx <= 200); } };
+  const t0 = Date.now(); const rOff = call(ring, 150, 150, 210, 150, 1500); const rOn = call(ring, 150, 150, 210, 150, cap(true, true, 64)); const dt = Date.now() - t0;
+  ok(rOff === null && rOn === null, '⑬-e 닫힌 주머니(안 넓이 9,801 > 반원) — 켬/끔 **둘 다 null** · 켬은 반원 칸에서 멈춘다', `두 질문 ${dt}ms`);
+  // ⓒ 예산 안의 질문(열린 들판 · 짧은 우회)은 켬/끔 비트 동일 — 무작위 300쌍
+  let same = 0, tot = 0, foundN = 0;
+  const W3 = { isWaterFn: (x, y) => { const cx = cellOf(x), cy = cellOf(y); return cx < 0 || cy < 0 || cx >= 200 || cy >= 200 || ((cx * 73856093 ^ cy * 19349663) >>> 0) % 7 === 0; } };
+  for (let i = 0; i < 300; i++) {
+    const sx = 30 + (i * 37) % 90, sy = 30 + (i * 53) % 90, gx = sx + ((i * 11) % 21) - 10, gy = sy + ((i * 17) % 21) - 10;
+    if (W3.isWaterFn(sx * B + 16, sy * B + 16) || W3.isWaterFn(gx * B + 16, gy * B + 16) || (sx === gx && sy === gy)) continue;
+    const a = call(W3, sx, sy, gx, gy, 1500), b = call(W3, sx, sy, gx, gy, cap(true, true, 64));
+    tot++; if (a) foundN++;
+    if (JSON.stringify(a) === JSON.stringify(b)) same++;
+  }
+  ok(tot > 150 && foundN > tot * 0.8 && same === tot, '⑬-c ★★예산 안의 질문은 켬/끔 **비트 동일**(흩뿌린 물 들판 · 반경 10칸 안 쌍)', `${same}/${tot} · 찾음 ${foundN}`);
+  // ⓕ 미끼 — 켬의 예산을 1,500 으로 비틀면 ⓓ 가 깨진다
+  const capBad = new Function('T399_CELL_CAP', 'isVil', '_pfR', `return (${mC ? mC[1].replace('Math.ceil(Math.PI * _pfR * _pfR / 2)', '1500') : '0'});`);
+  ok(call(W1, 145, 150, 165, 150, capBad(true, true, 64)) === null, '★⑬ 자명 통과 금지 — 켬의 예산을 1,500 으로 비틀면 그 우회를 **다시 못 찾는다**');
+  console.log(`    [표] 예산 끔 ${cap(false, true, 64)}·${cap(false, false, 24)} → 켬 ${cap(true, true, 64)}·${cap(true, false, 24)} · 주머니 강 우회: 1,500 ${offP ? '찾음' : 'null'} · 4,096 ${sqP ? '찾음' : 'null'} · 6,434 ${onP ? '찾음' : 'null'} · 예산 안 ${same}/${tot} 동일`);
+  console.log('    접점: T399_CELL_CAP · computeNpcPath · maxCells · searchRadiusCells · _pfR · pfFindPath');
+}
+
 console.log(`\n=== 결과: ${pass} PASS / ${fail} FAIL ===\n`);
 process.exit(fail ? 1 : 0);

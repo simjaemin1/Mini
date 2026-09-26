@@ -46,13 +46,17 @@ const CORE_PATCHES = [
   { find: `function _search(sx, sy, gx, gy, o) {
   return _searchStep(_searchBegin(sx, sy, gx, gy, o), 0).path;
 }`,
-    repl: `const _PCSTAT = { pops: 0, found: false, open: 0, max: 0 };
+    repl: `const _PCSTAT = { pops: 0, found: false, open: 0, max: 0, bx0: 0, bx1: 0, by0: 0, by1: 0, rmax: 0, sx: 0, sy: 0 };
 function _search(sx, sy, gx, gy, o) {
   const S = _searchBegin(sx, sy, gx, gy, o);
+  _PCSTAT.bx0 = S.sx; _PCSTAT.bx1 = S.sx; _PCSTAT.by0 = S.sy; _PCSTAT.by1 = S.sy; _PCSTAT.rmax = 0; _PCSTAT.sx = S.sx; _PCSTAT.sy = S.sy;
   const r = _searchStep(S, 0);
   _PCSTAT.pops = S.pops; _PCSTAT.found = S.found; _PCSTAT.open = S.open.size; _PCSTAT.max = o.maxPops;
   return r.path;
 }` },
+  // ★[T399 ①] 꺼낸 칸이 **어디까지** 퍼졌나 — 테두리 상자와 출발에서 가장 먼 맨해튼 거리(탐색 한 번에 네 비교)
+  { find: "    if (++S.pops > maxPops) break;   // 예산 가드",
+    repl: "    if (++S.pops > maxPops) break;   // 예산 가드\n    if (cur.x < _PCSTAT.bx0) _PCSTAT.bx0 = cur.x; else if (cur.x > _PCSTAT.bx1) _PCSTAT.bx1 = cur.x;\n    if (cur.y < _PCSTAT.by0) _PCSTAT.by0 = cur.y; else if (cur.y > _PCSTAT.by1) _PCSTAT.by1 = cur.y;\n    { const _r = Math.abs(cur.x - _PCSTAT.sx) + Math.abs(cur.y - _PCSTAT.sy); if (_r > _PCSTAT.rmax) _PCSTAT.rmax = _r; }" },
   { find: "const PathCore = { localPath, routePath, smoothPath, routePathBegin, pathStep, ORTHO, DIAG };",
     repl: "const PathCore = { localPath, routePath, smoothPath, routePathBegin, pathStep, ORTHO, DIAG, _pcstat: _PCSTAT };" },
 ];
@@ -139,6 +143,15 @@ const _PC = {
   trSt: [0, 0], trDone: [0, 0], trAb: [0, 0], trH: {},    // [live, dead] · trH = live 도착 시간 250ms 칸
   // ★[T394] 막힌 여행(dead)이 **어디서** 왔나 — 결정 때 잰다(손잡이가 A* 를 안 불러도 자가 안 흔들린다)
   trDeadFall: 0, trDeadWork: 0, trDeadHop: 0, t394Moves: 0,
+  // ★[T399 ①] 1500 × 뭍 — 열린 목표인데 칸을 다 태운 호출의 해부
+  cl: 0, clMs: 0, clD: [0, 0, 0, 0, 0, 0], clDsum: 0, clEsum: 0,       // 거리 칸(맨해튼) 분포: <8 · 8~16 · 16~32 · 32~48 · 48~64 · >64
+  clBoxSum: 0, clRmaxSum: 0, clRmaxHist: [0, 0, 0, 0, 0],             // 1500 칸이 덮은 테두리 넓이 · 가장 먼 맨해튼(<8·8~16·16~24·24~32·>32)
+  clSrc: {}, clAct: {}, clFall: 0, clHop: 0, clHome: 0, clWork: 0, clTask: {},
+  rr: 0, rrMs: 0, rrNeed: [0, 0, 0, 0, 0], rrNever: 0, rrNeedSum: 0, rrLenSum: 0, rrDSum: 0, rrSkip: 0, rrLast: -1,   // 풀어서 다시: 1.5~3k·3~6k·6~12k·12~24k·24k+ · 못 닿음
+  rrBoxSum: 0,
+  hop: 0, hopDead: 0,                                                 // ② 튕겨냄 무작위 도약 · 그 목표 셀이 막혔나
+  rrRaw: [],                                                          // ★[T399 ①] 풀어서 다시의 필요 칸 원값(분포를 칸 단위로)
+  clSrc2: {}, clSrcD: {}, clPairs: new Map(), clPairN: 0, clPairD: new Map(),             // 출처(목표 = 도약 점인가로 가른다) · 출처별 거리 합 · 같은 (사람, 목표) 쌍
   snapN: 0, stopWet: 0, stopDry: 0, going: 0,             // 5초 표본 — 목표가 12px 넘게 먼 주민이 5초에 32px 도 못 갔나
   // ⚠첫 판은 목표 글자가 바뀌면 표본을 새로 떴다 — 그런데 몸 비비는 주민은 **튕김이 1.5초마다** 오고 셋째에
   //   무작위 도약(새 목표)이 붙어 목표가 4.5초마다 바뀐다 ⇒ 5초 창에 한 번도 못 닿아 표본 0 이었다(자가 틀렸다).
@@ -213,6 +226,14 @@ const _PC = {
         trSt: this.trSt, trDone: this.trDone, trAb: this.trAb, trH: this.trH,
         snapN: this.snapN, stopWet: this.stopWet, stopDry: this.stopDry, going: this.going,
         trDeadFall: this.trDeadFall, trDeadWork: this.trDeadWork, trDeadHop: this.trDeadHop, t394Moves: this.t394Moves,
+        cl: this.cl, clMs: +this.clMs.toFixed(2), clD: this.clD, clDsum: this.clDsum, clEsum: +this.clEsum.toFixed(1),
+        clBoxSum: this.clBoxSum, clRmaxSum: this.clRmaxSum, clRmaxHist: this.clRmaxHist,
+        clSrc: this.clSrc, clAct: this.clAct, clFall: this.clFall, clHop: this.clHop, clHome: this.clHome, clWork: this.clWork, clTask: this.clTask,
+        rr: this.rr, rrMs: +this.rrMs.toFixed(2), rrNeed: this.rrNeed, rrNever: this.rrNever, rrNeedSum: this.rrNeedSum,
+        rrLenSum: this.rrLenSum, rrDSum: this.rrDSum, rrSkip: this.rrSkip, rrBoxSum: this.rrBoxSum,
+        hop: this.hop, hopDead: this.hopDead, rrRaw: this.rrRaw, clSrc2: this.clSrc2, clSrcD: this.clSrcD,
+        clPairN: this.clPairs.size, clPairMax: Math.max(0, ...this.clPairs.values()),
+        clPairTop: [...this.clPairs.entries()].sort((a, b) => b[1] - a[1]).slice(0, 60).map(([k, n]) => Object.assign({ n }, this.clPairD.get(k) || {})),
         t394Spawn: global.__t394Stat ? Object.assign({}, global.__t394Stat) : null }));
     } catch (e) {}
     this.n = 0; this.call = 0; this.ms = 0; this.popsSum = 0; this.popsMax = 0;
@@ -235,6 +256,11 @@ const _PC = {
     this.trSt = [0, 0]; this.trDone = [0, 0]; this.trAb = [0, 0]; this.trH = {};
     this.snapN = 0; this.stopWet = 0; this.stopDry = 0; this.going = 0;
     this.trDeadFall = 0; this.trDeadWork = 0; this.trDeadHop = 0; this.t394Moves = 0;
+    this.cl = 0; this.clMs = 0; this.clD = [0, 0, 0, 0, 0, 0]; this.clDsum = 0; this.clEsum = 0;
+    this.clBoxSum = 0; this.clRmaxSum = 0; this.clRmaxHist = [0, 0, 0, 0, 0];
+    this.clSrc = {}; this.clAct = {}; this.clFall = 0; this.clHop = 0; this.clHome = 0; this.clWork = 0; this.clTask = {};
+    this.rr = 0; this.rrMs = 0; this.rrNeed = [0, 0, 0, 0, 0]; this.rrNever = 0; this.rrNeedSum = 0; this.rrLenSum = 0; this.rrDSum = 0; this.rrSkip = 0; this.rrBoxSum = 0;
+    this.hop = 0; this.hopDead = 0; this.rrRaw = []; this.clSrc2 = {}; this.clSrcD = {}; this.clPairs = new Map(); this.clPairD = new Map();
   },
   tally(npc, wp, ms, st, d) {
     this.call++; this.ms += ms;
@@ -294,6 +320,53 @@ const _PC = {
     if (this._seen.size > 40000) { for (const [k, v] of this._seen) { if (nw - v.t >= 2000) this._seen.delete(k); } }
     const dc = Math.abs(gcx - scx) + Math.abs(gcy - scy);
     this.dCell[door] = (this.dCell[door] || 0) + dc; this.dCellN[door] = (this.dCellN[door] || 0) + 1;
+    // ★[T399 ①] 1500 × 뭍 — 칸을 다 태웠는데 목표 셀은 열려 있다
+    if (door === 'capped' && !gd) {
+      this.cl++; this.clMs += ms;
+      const de = Math.hypot(gcx - scx, gcy - scy);
+      this.clDsum += dc; this.clEsum += de;
+      this.clD[dc < 8 ? 0 : dc < 16 ? 1 : dc < 32 ? 2 : dc < 48 ? 3 : dc <= 64 ? 4 : 5]++;
+      const bw = st.bx1 - st.bx0 + 1, bh = st.by1 - st.by0 + 1;
+      this.clBoxSum += bw * bh; this.clRmaxSum += st.rmax;
+      this.clRmaxHist[st.rmax < 8 ? 0 : st.rmax < 16 ? 1 : st.rmax < 24 ? 2 : st.rmax < 32 ? 3 : 4]++;
+      // 누가 그 목표를 줬나 — 생활 라벨 · ⑤ 로 떨어진 결정 · 튕김 도약 · 집(침대)·일터 · 생활 과업 종류
+      const la = npc._lifeAct || '(없음)'; this.clAct[la] = (this.clAct[la] || 0) + 1;
+      const src = npc._pcHop && Date.now() - npc._pcHop < 3000 ? '튕김도약' : npc._pcFall ? '⑤배회' : (npc._lifeAct ? '생활층' : '(없음)');
+      this.clSrc[src] = (this.clSrc[src] || 0) + 1;
+      if (npc._pcFall) this.clFall++;
+      if (npc._pcHop && Date.now() - npc._pcHop < 3000) this.clHop++;
+      const hx2 = npc.npcBedX != null ? npc.npcBedX : npc.npcHomeX, hy2 = npc.npcBedY != null ? npc.npcBedY : npc.npcHomeY;
+      if (hx2 != null && Math.hypot(npc.targetX - hx2, npc.targetY - hy2) < 48) this.clHome++;
+      if (npc.npcWorkX != null && Math.abs(npc.targetX - npc.npcWorkX) <= 80 && Math.abs(npc.targetY - npc.npcWorkY) <= 80) this.clWork++;
+      const tk = npc._lifeTask ? (npc._lifeTask.k || '?') : (npc._workSite ? 'workSite' : '-');
+      this.clTask[tk] = (this.clTask[tk] || 0) + 1;
+      // ★출처 2판 — **목표가 그 도약 점인가**로 가른다(시간 창이 아니라 좌표로) · 생활층은 라벨로 · 일터(_workSite)·침대·집
+      const isHop = npc._pcHopX !== undefined && npc.targetX === npc._pcHopX && npc.targetY === npc._pcHopY;
+      const bedT = npc.npcBedX != null && npc.targetX === npc.npcBedX && npc.targetY === npc.npcBedY;
+      const homeT = npc.npcHomeX != null && npc.targetX === npc.npcHomeX && npc.targetY === npc.npcHomeY;
+      const wsT = npc._workSite && npc.targetX === npc._workSite.x && npc.targetY === npc._workSite.y;
+      const src2 = isHop ? '튕김도약' : bedT ? '침대(취침·요양)' : homeT ? '집 마당' : wsT ? '일터(_workSite)' : npc._pcFall ? '⑤배회' : ('생활층:' + (npc._lifeAct || '?'));
+      this.clSrc2[src2] = (this.clSrc2[src2] || 0) + 1; this.clSrcD[src2] = (this.clSrcD[src2] || 0) + dc;
+      const pk2 = (npc.playerId || npc.pid) + '|' + (npc.targetX | 0) + '_' + (npc.targetY | 0);
+      this.clPairs.set(pk2, (this.clPairs.get(pk2) || 0) + 1);
+      if (!this.clPairD.has(pk2)) this.clPairD.set(pk2, { pid: npc.pid || npc.playerId, job: npc.simJob || npc.npcJob || null, vil: npc.simVillageId || null, act: npc._lifeAct || null, x: Math.round(npc.x), y: Math.round(npc.y), tx: Math.round(npc.targetX), ty: Math.round(npc.targetY) });   // ★[T399 · 베이스 갈래] 되묻는 쌍의 얼굴
+      // 풀어서 다시 — 같은 질문을 maxCells 없이(반경 64 그대로). 계측 팔에서만 · 틱마다 한 번까지(세계를 덜 흔든다)
+      if (process.env.T399_RERUN === '1' && npc.simVillageId) {
+        if (this.rrLast === _tick.n) { this.rrSkip++; }
+        else {
+          this.rrLast = _tick.n;
+          const t0 = _pcT(); PathCore._pcstat.pops = -1;
+          const wp2 = pfFindPath(npc.x, npc.y, npc.targetX, npc.targetY, { floor: npc.floor || 0, isBlockedFn: isBlockedByWall,
+            isWaterFn: isTerrainBlockedLocal, maxCells: 1e9, searchRadiusCells: 64, preferFn: _roadPrefer });
+          this.rrMs += _pcT() - t0; this.rr++;
+          const s2 = PathCore._pcstat;
+          if (s2.found && wp2) {
+            const nd = s2.pops; this.rrNeedSum += nd; this.rrLenSum += wp2.length; this.rrDSum += dc; this.rrRaw.push(nd);
+            this.rrNeed[nd < 3000 ? 0 : nd < 6000 ? 1 : nd < 12000 ? 2 : nd < 24000 ? 3 : 4]++;
+          } else { this.rrNever++; this.rrBoxSum += (s2.bx1 - s2.bx0 + 1) * (s2.by1 - s2.by0 + 1); }
+        }
+      }
+    }
     let crossed = false;
     if (la <= 0 || lb < 0) this.labUnk++;
     else if (lb === 0) { /* 목표가 뭍이 아니다 — 위에서 셌다 */ }
@@ -346,6 +419,9 @@ const PATCHES = [
     repl: "  if (npc.simVillageId && SimVillages.npcLifeTick && SimVillages.npcLifeTick(npc, now)) { npc._pcFall = 0; return; }\n  if (npc.simVillageId) npc._pcFall = now;" },
   { find: "  // 작은 회피 — 랜덤 방향으로 짧게 비킨다",
     repl: "  npc._pcHop = now;   // [T381 탐침] 무작위 도약 갈래(3연속 막힘)\n  // 작은 회피 — 랜덤 방향으로 짧게 비킨다" },
+  // ★[T399 ②] 도약 목표가 막힌 칸인가 — 목표를 다 정한 **뒤**(② 가 들어가면 그 뒤) 잰다
+  { find: "  npc.nextDecisionAt = now + 800; // 잠깐 wander 후 다시 결정",
+    repl: "  _PC.hop++; npc._pcHopX = npc.targetX; npc._pcHopY = npc.targetY; { const B = BUILDING_SIZE; if (isTerrainBlockedLocal(Math.floor(npc.targetX / B) * B + B / 2, Math.floor(npc.targetY / B) * B + B / 2)) _PC.hopDead++; }\n  npc.nextDecisionAt = now + 800; // 잠깐 wander 후 다시 결정" },
   { find: "function unstuckNpc(npc, now) {",
     repl: "function unstuckNpc(npc, now) {\n  _PC.unstuck++; npc._pcUn = now;" },
   // ★[T394 ②] 되짚기가 선 수 — T394 판에만 있는 글자(없는 팔은 건너뛴다)
@@ -427,7 +503,10 @@ async function runArm(arm, idx) {
     env: Object.assign({}, process.env, { PORT: String(ZP), ZONE_ID: 'hanbando', CENTRAL_HOST: 'localhost', CENTRAL_PORT: String(CP),
       CENTRAL_SECRET: SECRET, ENABLE_VILLAGES: '1', VILLAGE_DAY_MS: String(DAY_MS), DB_PATH: DB, VILLAGE_WAR_LOG: '0',
       T312_FISH_ACT: '1', T381_EVERY: String(SLICE_S * 30), T381_LAB: LAB,
-      T381_PATH_DEAD: /Off$/.test(arm) ? '0' : /(^on$|Dead$|^fix$)/.test(arm) ? '1' : (process.env.T381_PATH_DEAD || '') }) });
+      T381_PATH_DEAD: /Off$/.test(arm) ? '0' : /(^on$|Dead$|^fix$)/.test(arm) ? '1' : (process.env.T381_PATH_DEAD || ''),
+      T399_RERUN: /Rr$/.test(arm) ? '1' : '',                                   // ★[T399 ①] 계측 팔만 — 1500 × 뭍을 풀어서 다시
+      T399_CELL_CAP: /Cap$/.test(arm) ? '1' : (process.env.T399_CELL_CAP || ''),
+      TERRAIN_SEG_INDEX: /Seg0$/.test(arm) ? '0' : (process.env.TERRAIN_SEG_INDEX || '') }) });   // ★[T399 · 베이스 갈래] T406 선분 색인 끈 팔(되돌림 글자 그대로)
   const getj = async (p, h) => { try { const r = await fetch(`http://localhost:${ZP}${p}`, h ? { headers: h } : undefined); return await r.json(); } catch (e) { return null; } };
   const perf = (reset) => getj(`/perf${reset ? '?reset=1' : ''}`, { 'x-zone-secret': SECRET });
   const life = () => getj('/lifedbg', { 'x-zone-secret': SECRET });
@@ -459,7 +538,8 @@ async function runArm(arm, idx) {
     const ana = buf.split('\n').filter((x) => x.startsWith('[PC] ')).map((x) => { try { return JSON.parse(x.slice(5)); } catch (e) { return null; } }).filter(Boolean);
     let nonSleep = 0;
     for (const v of ((L && L.villages) || [])) for (const [kk, n] of Object.entries(v.acts || {})) if (kk !== '취침') nonSleep += n;
-    slices.push({ k, phase: L && L.phase, p50: t && t.p50, p95: t && t.p95, ticks: p.tick.n,
+    const vacts = ((L && L.villages) || []).map((v) => [v.id != null ? v.id : (v.name || '?'), v.acts || {}, v.jobs || {}]);   // ★[T399 · 베이스 갈래] 마을별 라벨(어느 마을이 안 자나)
+    slices.push({ k, vacts, phase: L && L.phase, p50: t && t.p50, p95: t && t.p95, ticks: p.tick.n,
       pop: (L && L.totals && L.totals.pop) || 0, nonSleep, drop: p.tick.dropN, lag: p.tick.lagPct,
       walk: p.walk || null, ana });
     say(`조각 ${k} phase ${L && L.phase != null ? L.phase.toFixed(3) : '?'} · p50 ${t ? t.p50 : '?'}ms · 비취침 ${nonSleep} · PC줄 ${ana.length}`);

@@ -1085,7 +1085,8 @@ function ditchPayload() {                 // welcome 페이로드(flat [cx,cy,�
 const T356_SOA = process.env.T356_SOA === '1';
 const T370_PATH_REUSE = process.env.T370_PATH_REUSE === '1';   // ★[T370 ②] 경로 끝에서 다시 안 묻는다(기본 끔)
 const T381_PATH_DEAD = process.env.T381_PATH_DEAD !== '0';     // ★[T381 ② · T394 ④ 기본 켬] 못 갈 칸엔 길을 안 묻는다 · 되돌림 `T381_PATH_DEAD=0`
-const T394_WORK_TERRAIN = process.env.T394_WORK_TERRAIN !== '0'; // ★[T394 ①②] 일터·⑤ 배회 목표에 지형(villages.js 태어나기와 한 손잡이) · 되돌림 `=0`
+const T394_WORK_TERRAIN = process.env.T394_WORK_TERRAIN !== '0'; // ★[T394 ①② · T399 ②] 일터·⑤ 배회·튕김 도약 목표에 지형(villages.js 태어나기와 한 손잡이) · 되돌림 `=0`
+const T399_CELL_CAP = process.env.T399_CELL_CAP === '1';       // ★[T399 ③] A* 칸 예산 = 반경 원의 절반(상한 둘을 하나에서) · 기본 끔
 const _BLK_BITS = T356_SOA ? new Uint8Array(((_WT_W * _WT_H) >> 2) + 2) : null;   // 타일당 2비트 = 4타일/바이트
 if (_BLK_BITS) console.log(`[${ZONE_ID}] 🧱 T356 지형 막힘 비트 ON — ${_WT_W}×${_WT_H} 타일 · ${(_BLK_BITS.length / 1048576).toFixed(1)}MB`);
 function _terrBlocked0(x, y) {
@@ -2772,12 +2773,26 @@ function computeNpcPath(npc, now) {
     if ((_gcx !== Math.floor(npc.x / BUILDING_SIZE) || _gcy !== Math.floor(npc.y / BUILDING_SIZE))
         && isTerrainBlockedLocal(_gcx * BUILDING_SIZE + BUILDING_SIZE / 2, _gcy * BUILDING_SIZE + BUILDING_SIZE / 2)) return null;
   }
+  // ★★★[T399 ③ 2026-09-26 · 상한 하나] `T399_CELL_CAP=1` 일 때만. **반경이 정본이고 칸 예산은 반경에서 난다.**
+  //   T394 뒤 A* 시간의 81~85 %가 "1500 × 뭍" — 목표 칸은 열렸는데 1,500칸을 다 태우고 `null` 이었다(주인 = 생활 층이 주는
+  //   **직업 현장(`_workSite` — 사냥터·물가·벌목·채집) 출근** 92 % · 같은 사람이 같은 목표를 **7.3번** 되묻는다). T399 ① 이 그 호출을 예산 없이 다시
+  //   돌렸다: **1,640/1,640 전부 닿는다** — 필요 칸 p50 3,643 · p99 5,520 · 최대 5,584 · 경로는 직선의 ~4.8배(다리를 돈다).
+  //   **두 상한이 서로를 몰랐다**: 반경 64 는 한 방향으로 64칸 나가는 우회까지 허락하는데 예산 1,500 은 그 우회의 넓이에 못 미친다.
+  //   ⇒ 예산 = **반경 원의 절반**(⌈π·R²/2⌉ — 주민 6,434 · 비주민 905). 우회는 직선의 **한쪽**으로 돌고, 반경이 허락하는 한쪽의
+  //     넓이가 반원이다. 새 수 0(R 과 원의 넓이 · 한쪽 = 절반). 표(보고/T399 §3): 반경²(4,096 · `pathfind.js` 기본) 닿는 몫 55 % —
+  //     못 닿은 45 %는 되물을 때마다 1,500 이 아니라 4,096 을 태운다(더 나쁘다) · 반원(6,434) 100 % · 온원(12,868) 100 %(최악이 두 배).
+  //   ⚠1,500 은 14.49-b(05-30)가 처음 단 수이고 14.49-fix 가 200 으로 내렸다가 생활 층 100% ①(07-27)이 주민에게 되돌린 수다 —
+  //     반경(64)과는 따로 왔다(이 함수 머리 주석은 "4096/64" 라 적었는데 글자는 1500 이었다).
+  //   ⚠★켜지 말 것(보고/T399 §3-4): 새 main 의 아침엔 반경 안에서 **영영 못 닿는** 사냥터로 가는 사냥꾼이 30쌍 넘게 생긴다 —
+  //     켬은 그 실패를 한 번 1,500칸(3.8ms) → 6,434칸(17ms)으로 키워 A* 가 끔의 세 배가 된다. 예산 하나는 "멀다"만 풀고
+  //     "못 닿는다"의 값을 키운다 ⇒ 먼저 못 닿는 현장을 안 주거나 `null` 난 목표를 되묻지 않아야 한다(회부).
+  const _pfR = isVil ? 64 : 24;          // 주민=2048px(집→먼 밭·물가 현장). 비주민=768px — ★반경이 정본
   const wp = pfFindPath(npc.x, npc.y, npc.targetX, npc.targetY, {
     floor: npc.floor || 0,
     isBlockedFn: isBlockedByWall,
     isWaterFn: isTerrainBlockedLocal,
-    maxCells: isVil ? 1500 : 200,          // 주민=마을 생활권 우회 커버(수백 노드면 충분 — 도달 불가 목표도 빨리 확정, 최악 ~10ms). 비주민=현행 ~4ms 한도
-    searchRadiusCells: isVil ? 64 : 24,    // 주민=2048px(집→먼 밭·물가 현장). 비주민=768px
+    maxCells: T399_CELL_CAP ? Math.ceil(Math.PI * _pfR * _pfR / 2) : (isVil ? 1500 : 200),   // 끔=종전(주민 1500 · 비주민 200) · 켬=반원(6,434 · 905)
+    searchRadiusCells: _pfR,
     preferFn: isVil ? _roadPrefer : undefined,   // ★답압 수렴(랩 bfsPath prefer 동형): 등거리 동률이 길로 스냅
   });
   if (!wp || wp.length < 3 || !isVil) return wp;
@@ -2861,6 +2876,12 @@ function unstuckNpc(npc, now) {
   const ang = _dn() * Math.PI * 2;
   npc.targetX = npc.x + Math.cos(ang) * 80;
   npc.targetY = npc.y + Math.sin(ang) * 80;
+  // ★★[T399 ② 2026-09-26 · 도약이 강으로 뛰지 않게] T394 뒤 남은 막힌 목표 여행 548 의 **94 %**가 이 도약이었다 —
+  //   물가에서 세 번 막힌 사람에게 ±80px 무작위 점을 주면 그 점이 또 물이다(→ A* null → 또 막힘 → 또 도약).
+  //   ⇒ T394 ② 의 **그 되짚기 함수**(`_t394OpenTarget` · 사본 0)를 **제자리 쪽으로** 댄다: 도약 점이 막혔으면
+  //     도약 점 → 제 몸 직선을 32px 씩 되짚어 첫 열린 점으로. 몸이 선 칸은 열려 있으므로(콜라이더) 언제나 끝난다.
+  //     주사위는 위 한 알 그대로(흐름 무소비) · 새 수 0. 손잡이는 T394 그 손잡이(목표에 지형 · 기본 켬 · 되돌림 `=0`).
+  if (T394_WORK_TERRAIN) _t394OpenTarget(npc, npc.x, npc.y);
   npc.nextDecisionAt = now + 800; // 잠깐 wander 후 다시 결정
   npc.behavior = 'wander';
   npc.vx = 0; npc.vy = 0;
