@@ -33,7 +33,8 @@ let _hardcodedCache = {};
 function setHardcoded(zoneId, data) {
   if (!zoneId) return;
   _hardcodedCache[zoneId] = data || null;
-  _generated.delete(zoneId);
+  // ★[T408] 이웃 존의 경계 참조가 이 존 자료를 들고 있다 — 한 존이 바뀌면 **전부** 다시 짓는다.
+  _generated.clear();
 }
 
 function _getZonesMeta() {
@@ -55,6 +56,71 @@ function setZonesMeta(metas) {
   _zonesMetaCache = metas;
   _generated.clear();
 }
+
+// ══ ★★[T408 2026-09-26] 경계 접합 — **경계 칸은 그 칸을 가진 존이 두 목록 모두로 답한다** ═══════
+//   재민 09-26: "닛폰과 새벌 사이에 강·숲·호수가 걸쳐 있을 때 어색하게 잘려 있는 곳이 있다."
+//   ★§0 — 정본 `pos` 는 **존 로컬** px 이고 존은 **제 목록만** 읽는다. 목록 둘이 경계선에서 대부분 짝을
+//     갖고 있지만(T408 전수: 한반도 동·서 넘는 피처 35 중 32 짝) **모양이 같지 않다** — 한반도 강이
+//     경계에서 굽고 닛폰 강은 곧게 이어지면 두 존이 **각자** 제 모양을 경계선까지 그려 선에서 꺾인다.
+//     그리고 짝이 없는 것(골짜기 4)은 선에서 끝난다.
+//   ⇒ 규칙: 이웃 존 피처 중 **모양 상자가 이 존 땅에 들어오는 것**을 참조로 들고(사본 0 — 좌표를
+//     옮겨 적지 않고 **질의점을** 이웃 로컬로 옮겨 이웃의 그 객체에 묻는다), 이 존 술어가 제 목록과 **합**으로 본다.
+//     경계 양쪽이 같은 합을 보므로 선에서 모양이 끊기지 않는다.
+//   ★띠 폭은 새 수가 아니다 — "그 피처의 모양 상자(폭·반경 포함)가 이 존에 닿는가"가 전부다.
+//   ★개체를 낳는 목록(군락·광맥)은 **안 읽는다** — 읽으면 경계 칸에서 두 존이 같은 개체를 낳는다.
+//   ⚠서버 `server/terrain.js` 에 **같은 함수**가 있다(한쪽만 고치면 보이지 않는 물·바위가 생긴다).
+const _SEAM_KINDS = ['rivers', 'lakes', 'ridges', 'valleys', 'passes', 'forests'];
+function _seamBox(kind, f) {
+  if (f.path) {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity, mw = 0;
+    for (const p of f.path) {
+      const x = p.pos ? p.pos[0] : p[0], y = p.pos ? p.pos[1] : p[1], w = (p.width != null) ? p.width : (f.width || 200);
+      if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; if (w > mw) mw = w;
+    }
+    const m = mw / 2 + 1; return [x0 - m, y0 - m, x1 + m, y1 + m];
+  }
+  if (kind === 'passes' && f.pos) { const r = f.radius || 0; return [f.pos[0] - r, f.pos[1] - r, f.pos[0] + r, f.pos[1] + r]; }
+  if (f.shape === 'multi' && f.circles) {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const c of f.circles) { const R = c.radius * 1.3; x0 = Math.min(x0, c.center[0] - R); y0 = Math.min(y0, c.center[1] - R); x1 = Math.max(x1, c.center[0] + R); y1 = Math.max(y1, c.center[1] + R); }
+    return [x0, y0, x1, y1];
+  }
+  if (f.rect) return f.rect.slice(0, 4);
+  if (f.center) {
+    const R = kind === 'lakes' ? ((f.shape === 'ellipse' ? Math.max(f.a || 0, f.b || 0) : (f.radius || 0)) * 1.3)
+                               : Math.max(f.rx || f.a || f.radius || 0, f.ry || f.b || f.radius || 0);
+    return [f.center[0] - R, f.center[1] - R, f.center[0] + R, f.center[1] + R];
+  }
+  return null;
+}
+// 이 존에 닿는 이웃 피처 — `{ f, dx, dy }`: 이웃 로컬 = 이 존 로컬 + (dx, dy)
+function _seamRefs(zoneId, hc, metas) {
+  const out = { water: [], ridges: [], valleys: [], passes: [], forests: [] };
+  const Z = metas && metas[zoneId];
+  if (!Z || !hc) return out;
+  const zx = Z.worldOffsetX || 0, zy = Z.worldOffsetY || 0, W = Z.zoneWidth || 0, H = Z.zoneHeight || 0;
+  for (const nid of Object.keys(hc)) {
+    if (nid === zoneId || !hc[nid]) continue;
+    const N = metas[nid]; if (!N || N.isOcean) continue;
+    const nx = N.worldOffsetX || 0, ny = N.worldOffsetY || 0;
+    // 사각형이 **맞닿는** 존만(모서리 포함) — 떨어진 존의 피처가 넘어올 일은 없다
+    if (nx > zx + W || nx + (N.zoneWidth || 0) < zx || ny > zy + H || ny + (N.zoneHeight || 0) < zy) continue;
+    const dx = zx - nx, dy = zy - ny;
+    for (const kind of _SEAM_KINDS) {
+      for (const f of (hc[nid][kind] || [])) {
+        const b = _seamBox(kind, f); if (!b) continue;
+        // 이 존 로컬 상자 = 이웃 상자 − (dx, dy) — 이 존 땅 [0,W]×[0,H] 와 겹치나
+        if (b[2] - dx < 0 || b[0] - dx > W || b[3] - dy < 0 || b[1] - dy > H) continue;
+        const ref = { f, dx, dy, from: nid };
+        if (kind === 'rivers' || kind === 'lakes') out.water.push(Object.assign(ref, { lake: kind === 'lakes' }));
+        else out[kind].push(ref);
+      }
+    }
+  }
+  return out;
+}
+const _SEAM_NONE = { water: [], ridges: [], valleys: [], passes: [], forests: [] };
+function _seamOf(t) { return (t && t.seam) || _SEAM_NONE; }
 
 function _getZoneTerrain(zoneId) {
   if (_generated.has(zoneId)) return _generated.get(zoneId);
@@ -87,6 +153,7 @@ function _getZoneTerrain(zoneId) {
     data.groves    = hc.groves || [];
     data.mountains = [];
     // data.ores 는 절차생성 그대로 둔다.
+    data.seam = _seamRefs(zoneId, _hardcodedCache, metas);   // ★[T408] 경계 접합 — 서버와 같은 합
   }
   _generated.set(zoneId, data);
   return data;
@@ -204,6 +271,10 @@ function isWaterCellLocal(zoneId, localX, localY) {
   for (const river of t.rivers || []) {
     if (_isPointInRiver(localX, localY, river)) return true;
   }
+  // ★[T408] 이웃 존의 물 — 서버와 같은 합(질의점을 이웃 로컬로 옮겨 그 객체에 묻는다)
+  for (const s of _seamOf(t).water) {
+    if (s.lake ? _isPointInLake(localX + s.dx, localY + s.dy, s.f) : _isPointInRiver(localX + s.dx, localY + s.dy, s.f)) return true;
+  }
   return false;
 }
 
@@ -228,23 +299,24 @@ function getTerrainWaterTilesForChunk(zoneId, cx, cy, chunkSize) {
   return tiles;
 }
 
+function _forestDm(f, x, y) {   // 서버 terrain.js 와 동일
+  let inside = false;
+  if (f.rect) {                                  // 절차생성 숲 (사각형)
+    const [x1, y1, x2, y2] = f.rect;
+    inside = x >= x1 && x <= x2 && y >= y1 && y <= y2;
+  } else if (f.center) {                          // 손으로 그린 숲 (타원 center/rx/ry) — 서버 terrain.js와 동일
+    const rx = f.rx || f.a || 1, ry = f.ry || f.b || 1;
+    const dx = (x - f.center[0]) / rx, dy = (y - f.center[1]) / ry;
+    inside = dx * dx + dy * dy <= 1;
+  }
+  return inside ? (f.densityMult || f.density || 1.0) : 0;
+}
 function getForestMultiplier(zoneId, x, y) {
   const t = ZONE_TERRAIN[zoneId];
   if (!t || !t.forests) return 1.0;
   let m = 1.0;
-  for (const f of t.forests) {
-    let inside = false;
-    if (f.rect) {                                  // 절차생성 숲 (사각형)
-      const [x1, y1, x2, y2] = f.rect;
-      inside = x >= x1 && x <= x2 && y >= y1 && y <= y2;
-    } else if (f.center) {                          // 손으로 그린 숲 (타원 center/rx/ry) — 서버 terrain.js와 동일
-      const rx = f.rx || f.a || 1, ry = f.ry || f.b || 1;
-      const dx = (x - f.center[0]) / rx, dy = (y - f.center[1]) / ry;
-      inside = dx * dx + dy * dy <= 1;
-    }
-    const dm = f.densityMult || f.density || 1.0;
-    if (inside && dm > m) m = dm;
-  }
+  for (const f of t.forests) { const dm = _forestDm(f, x, y); if (dm > m) m = dm; }
+  for (const s of _seamOf(t).forests) { const dm = _forestDm(s.f, x + s.dx, y + s.dy); if (dm > m) m = dm; }   // ★[T408]
   return m;
 }
 
@@ -500,19 +572,24 @@ function oreProbAt(zoneId, x, y) {
 // ★서버 server/terrain.js isRockCellLocal의 거울 — 한쪽만 고치면 유령 벽/유령 통로가 된다.
 function isRockCellLocal(zoneId, localX, localY) {
   const t = ZONE_TERRAIN[zoneId];
-  if (!t || !t.ridges || t.ridges.length === 0) return false;
+  if (!t) return false;
+  const S = _seamOf(t);   // ★[T408] 이웃 존의 능선·고개·골짜기 — 서버와 같은 합 · 같은 우선순위
+  if ((!t.ridges || t.ridges.length === 0) && !S.ridges.length) return false;
   let inRidge = false;
-  for (const ridge of t.ridges) {
+  for (const ridge of t.ridges || []) {
     if (_isPointInRiver(localX, localY, ridge)) { inRidge = true; break; }
   }
+  if (!inRidge) for (const s of S.ridges) { if (_isPointInRiver(localX + s.dx, localY + s.dy, s.f)) { inRidge = true; break; } }
   if (!inRidge) return false;
   for (const q of t.passes || []) {
     const dx = localX - q.pos[0], dy = localY - q.pos[1];
     if (dx * dx + dy * dy < q.radius * q.radius) return false;
   }
+  for (const s of S.passes) { const q = s.f; const dx = localX + s.dx - q.pos[0], dy = localY + s.dy - q.pos[1]; if (dx * dx + dy * dy < q.radius * q.radius) return false; }
   for (const v of t.valleys || []) {
     if (_isPointInRiver(localX, localY, v)) return false;
   }
+  for (const s of S.valleys) { if (_isPointInRiver(localX + s.dx, localY + s.dy, s.f)) return false; }
   if (isWaterCellLocal(zoneId, localX, localY)) return false;
   return true;
 }
