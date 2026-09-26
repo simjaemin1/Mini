@@ -34,7 +34,10 @@
 //        자 바꾸기가 고친 것은 **압축기 탓의 거짓 빨강**이고, 드리프트는 재굽기 카드 몫이다(별 카드).
 //        잠금표는 지금 배포판 값으로 재생성했으므로 ②는 초록이고, 넷은 "알려진 드리프트"로 보고에 적혀 있다.
 //
-// 자명 통과 금지(--selftest): 없는 참조 하나와 잠금 어긋남 하나를 **주입**해서 ①②가 무는지 본다.
+//   ⑧ **배포 폴더에 바이트코드 0 [T391]** — public/ 아래 추적되는 `.pyc`·`__pycache__/` 0 · 무시 규칙이 살아 있다.
+//      디스크의 **무시된** 캐시는 표만(안 실린다). 미끼는 절 안에 상주(⑤ 와 같은 꼴).
+//
+// 자명 통과 금지(--selftest): 없는 참조 하나 · 잠금 어긋남 하나 · 추적 목록의 미끼 `.pyc` 하나를 **주입**해서 ①②⑧a 가 무는지 본다.
 //
 // 실행: node scripts/test-assets-audit.js [--json <경로>] [--selftest]
 const fs = require('fs');
@@ -420,9 +423,10 @@ if (JSONI >= 0 && process.argv[JSONI + 1]) {
 }
 
 if (SELFTEST) {
-  console.log('\n[--selftest] 없는 참조 하나(`icons/__selftest_ghost__`)와 잠금 어긋남 하나를 주입했다. ①②가 둘 다 빨개야 한다.');
-  console.log('결과: ' + (fail >= 2 ? `PASS(검사기가 둘 다 물었다 · ${fail}건)` : `FAIL(자명 통과 — ${fail}건만 물었다)`));
-  process.exit(fail >= 2 ? 0 : 1);
+  // ★[T391] 셋째 주입 — 추적 목록에 미끼 `.pyc` 한 장(⑧a). 셋 다 물어야 한다.
+  console.log('\n[--selftest] 없는 참조 하나(`icons/__selftest_ghost__`) · 잠금 어긋남 하나 · 추적 목록의 미끼 `.pyc` 하나를 주입했다. ①②⑧a 가 셋 다 빨개야 한다.');
+  console.log('결과: ' + (fail >= 3 ? `PASS(검사기가 셋 다 물었다 · ${fail}건)` : `FAIL(자명 통과 — ${fail}건만 물었다)`));
+  process.exit(fail >= 3 ? 0 : 1);
 }
 console.log('\n결과: ' + (fail ? `FAIL(${fail})` : 'PASS'));
 process.exit(fail ? 1 : 0);
@@ -474,6 +478,57 @@ console.log('\n⑦ 배선은 있는데 파일이 없는 키 — 고아의 반대
   const wouldBite = wiredSilent.filter((k) => !probe[k].state);
   ok(!first || wouldBite.length === 1,
      `⑦b 자명 통과 금지 — \`${first || '-'}\` 의 \`state\` 를 떼면 ⑦a 가 문다`, `문 키 ${wouldBite.length}개`);
+}
+
+// ── ⑧ 배포 폴더에 바이트코드 0 — `.pyc`·`__pycache__/` [T391] ─────────────────
+//
+// T386 이 `public/assets/audio/bgm/__pycache__/*.cpython-311.pyc` **4장**을 찾았다 — GPT R&D 착지(`462b4acc`)가
+// 같이 커밋했다. 원본이 아니라 파이썬이 import 할 때 떨구는 캐시이고, 부르는 데도 없다.
+// 배포는 **서버 checkout** 에서 이미지를 굽는다(`redeploy-hanbando.sh` = git pull · `.dockerignore` 는 `bgm/*.py` 만 뺀다)
+// ⇒ **추적되는 `.pyc` 는 이미지에 실린다.** 그래서 이 절은 "디스크에 있나" 가 아니라 **"실리나"** 를 잰다:
+//   ⑧a public/ 아래 **git 이 추적하는** 바이트코드 0
+//   ⑧b `git add -A` 가 주울 **무시 안 된** 바이트코드 0 (다음 커밋에 새어 들어갈 것)
+//   ⑧c `.gitignore` 의 `__pycache__/` 규칙이 **살아 있다** — 대조: 같은 폴더의 `.py` 는 안 무시(규칙이 뭉툭하지 않다)
+// 디스크의 **무시된** 캐시는 빨강이 아니다(bgm 모듈을 import 하는 파이썬 하네스·도구가 돌 때마다 생긴다 — 안 실린다) → 표만.
+// 자명 통과 금지는 절 안에 상주한다(⑤ 와 같은 꼴 · 미끼를 **목록에** 놓고 **늘어난 수**로 본다).
+console.log('\n⑧ 배포 폴더에 바이트코드 0 — `.pyc`·`__pycache__/` [T391]');
+{
+  const { execFileSync } = require('child_process');
+  const isByte = (rel) => /(^|\/)__pycache__\//.test(rel) || /\.py[co]$/i.test(rel);
+  const bytecode = (xs) => xs.filter(isByte);
+  const git = (args) => execFileSync('git', args, { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+  const lsz = (extra) => git(['ls-files', '-z', ...extra, '--', 'public']).split('\0').filter(Boolean);
+  const ignored = (p) => { try { git(['check-ignore', '-q', '--no-index', '--', p]); return true; } catch (e) { return false; } };
+  const DECOY = 'public/assets/audio/bgm/__pycache__/zz_t391_decoy.cpython-311.pyc';
+  const CTRL = 'public/assets/audio/bgm/zz_t391_decoy.py';
+  let tracked = null, loose = [];
+  try { tracked = lsz([]); loose = lsz(['--others', '--exclude-standard']); } catch (e) { tracked = null; }
+  const onDisk = ASSETS.map((a) => a.rel).filter(isByte);
+  if (tracked === null) {
+    // git checkout 이 아니다(타르볼 등) — **디스크 전수**로 대신 잰다(더 엄하다: 무시된 캐시까지 문다).
+    tracked = ASSETS.map((a) => a.rel);
+    console.log('     · git 없음 — ⑧a 를 디스크 전수로 잰다(무시된 캐시도 빨강이다)');
+  }
+  const trackedEff = SELFTEST ? [...tracked, DECOY] : tracked;          // ★--selftest 주입 — ⑧a 가 물어야 한다
+  const shipT = bytecode(trackedEff), shipL = bytecode(loose);
+  ok(shipT.length === 0, `⑧a public/ 아래 **추적되는** 바이트코드 ${shipT.length}장 — 서버 checkout 에 실리는 것`,
+     shipT.slice(0, 6).join(' ') || `추적 ${tracked.length}장 중 0`);
+  ok(shipL.length === 0, `⑧b \`git add -A\` 가 주울 **무시 안 된** 바이트코드 ${shipL.length}장`,
+     shipL.slice(0, 6).join(' ') || `미추적·미무시 ${loose.length}장 중 0`);
+  const ruleLive = ignored(DECOY), ctrlFree = !ignored(CTRL);
+  ok(ruleLive && ctrlFree, `⑧c \`.gitignore\` 의 \`__pycache__/\` 가 살아 있다 — 미끼 경로는 무시 · 같은 폴더 \`.py\` 는 안 무시`,
+     `pyc ${ruleLive ? '무시' : '★안 무시'} · py ${ctrlFree ? '안 무시' : '★무시(뭉툭)'}`);
+  // ★자명 통과 금지 — 미끼 한 장을 **추적 목록**에 놓으면 ⑧a 가, **무시 안 된 목록**에 놓으면 ⑧b 가 하나씩 더 문다.
+  //   대조: 같은 자리에 `.py` 한 장을 놓으면 수가 그대로다(자가 아무거나 물지 않는다).
+  const base = bytecode(tracked).length;
+  ok(bytecode([...tracked, DECOY]).length === base + 1 && bytecode([...loose, DECOY]).length === shipL.length + 1,
+     'ⓐ 미끼 `.pyc` 한 장을 놓으면 ⑧a·⑧b 가 **하나씩 더** 문다', `a ${base}→${base + 1} · b ${shipL.length}→${shipL.length + 1}`);
+  ok(bytecode([...tracked, CTRL]).length === base,
+     'ⓑ ★대조 — 같은 자리에 `.py` 한 장을 놓으면 수가 그대로다', `a=${base}`);
+  const tset = new Set(tracked), lset = new Set(loose);
+  const quiet = onDisk.filter((r) => !tset.has(r) && !lset.has(r));    // 추적도 아니고 주울 것도 아닌 것 = 무시된 캐시
+  console.log(`     · 디스크의 바이트코드 ${onDisk.length}장 — 추적 ${onDisk.filter((r) => tset.has(r)).length} · 무시 안 됨 ${onDisk.filter((r) => lset.has(r)).length} · **무시됨 ${quiet.length}**(안 실린다 · 빨강 아님 · 파이썬 하네스가 bgm 모듈을 import 하면 생긴다)`);
+  for (const r of quiet.slice(0, 8)) console.log(`       ${r}`);
 }
 
 // ── ⑥ 반례 — 화소 자가 **무엇에 둔하고 무엇에 예민한지** [T308] ──────────────

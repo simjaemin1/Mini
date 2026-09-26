@@ -12,6 +12,10 @@ render_jeongak.py — 같은 악보를 **정악풍**으로.
   호흡     여운을 길게. 악구 끝은 1.35 → 2.0초.
   장단     굴림(더러러러)을 뺀다. 정악 장단은 잔가락이 적다. 세기도 낮춘다.
   음색     손대지 않는다. 진짜 정악대금 녹음이라 기울일 이유가 없다.
+
+★[T391 2026-09-26] 대금 이음 규칙의 기본은 배포판을 구운 것(`450c6e44`)이다 — 산조판과 같은
+  "붙은 음은 이어 분다". GPT R&D 의 "무표기 = 재발음" 계약은 `render_score.ARTICULATION_CONTRACT`
+  (기본 끔 · #70)가 켤 때만 탄다. 스위치는 그 한 자리다.
 """
 import numpy as np
 import scipy.signal as sps
@@ -21,6 +25,7 @@ import compose as C
 import sampler as S
 import score_village_day as SC
 from motif import sigim
+import render_score as RS      # ★[T391] 스위치(`RS.ARTICULATION_CONTRACT`)는 부를 때 읽는다 — 한 자리에서 켠다
 from render_score import (play, ride_levels, dmidi, ROOT, RIDE, ENTRY,
                           plan_sustained_score)
 
@@ -53,26 +58,49 @@ def build(spec=None):
     def bt(b):
         return b * nsb * sob
 
-    # The same authorial articulation map serves both Sanjo and Jeongak
-    # renderers.  Tempo/style can differ; adjacent timestamps still cannot
-    # manufacture an unmarked slur in either version.
-    dae_plans, notes = plan_sustained_score(
-        SC.MELODY, 0.0, sob,
-        annotations=getattr(SC, "DAEGEUM_ARTICULATION", {}),
-        phrase_start_bars=tuple(range(0, SC.NBAR, 4)),
-    )
+    # ★[T391] 기본은 배포판 규칙(`450c6e44`) — 산조판(render_score)과 같은 이음 규칙.
+    #   GPT R&D 의 명시-연음 계약은 `render_score.ARTICULATION_CONTRACT` 가 켤 때만(#70 · 기본 끔).
+    contract = RS.ARTICULATION_CONTRACT
+    if contract:
+        # The same authorial articulation map serves both Sanjo and Jeongak
+        # renderers.  Tempo/style can differ; adjacent timestamps still cannot
+        # manufacture an unmarked slur in either version.
+        dae_plans, notes = plan_sustained_score(
+            SC.MELODY, 0.0, sob,
+            annotations=getattr(SC, "DAEGEUM_ARTICULATION", {}),
+            phrase_start_bars=tuple(range(0, SC.NBAR, 4)),
+        )
+    else:
+        notes, tie0, _pe, _cad = [], [], None, False
+        for b, bar in enumerate(SC.MELODY):
+            cad = (b % 4 == 3 or b == SC.NBAR - 1)
+            for j, (s, d, gg) in enumerate(bar):
+                st = bt(b) + s * sob
+                t = _pe is not None and st - _pe < 0.02 and not _cad
+                if j == 0:
+                    tie0.append(t)
+                notes.append((st, st + d * sob, t))
+                _pe = st + d * sob
+                _cad = cad and j == len(bar) - 1
 
     ENTRY.clear()
     dsrc = None
     for b, bar in enumerate(SC.MELODY):
         lvl = 0.66 if b < SC.NBAR - 2 else (0.52 if b == SC.NBAR - 2 else 0.36)
-        following = dae_plans[b + 1][0] if b + 1 < len(dae_plans) and dae_plans[b + 1] else None
-        dsrc = play(dae, daegeum, ROOT["dae"], bar, bt(b), sob, "daegeum",
-                    gain=lvl, pan=0.10, send=0.34, seed=100 + b, ncy=nsb,
-                    cadence_last=(b % 4 == 3 or b == SC.NBAR - 1),
-                    first_src=dsrc, log=ENTRY, articulation_plans=dae_plans[b],
-                    following_plan=following,
-                    tail_ring=TAIL, jeongak=True)
+        if contract:
+            following = dae_plans[b + 1][0] if b + 1 < len(dae_plans) and dae_plans[b + 1] else None
+            dsrc = play(dae, daegeum, ROOT["dae"], bar, bt(b), sob, "daegeum",
+                        gain=lvl, pan=0.10, send=0.34, seed=100 + b, ncy=nsb,
+                        cadence_last=(b % 4 == 3 or b == SC.NBAR - 1),
+                        first_src=dsrc, log=ENTRY, articulation_plans=dae_plans[b],
+                        following_plan=following,
+                        tail_ring=TAIL, jeongak=True)
+        else:
+            dsrc = play(dae, daegeum, ROOT["dae"], bar, bt(b), sob, "daegeum",
+                        gain=lvl, pan=0.10, send=0.34, seed=100 + b, ncy=nsb,
+                        cadence_last=(b % 4 == 3 or b == SC.NBAR - 1),
+                        tie_first=tie0[b], first_src=dsrc, log=ENTRY,
+                        tail_ring=TAIL, jeongak=True)
         # ★가야금만은 진짜 정악 악기다. 산조가야금의 잘게 뜯는 잔가락 대신
         #   성기게 — 정악 반주는 큰 박 머리를 짚고 기다린다.
         for s, d, g in SC.GAYA[0 if SC.GAYA_PLAN[b] < 2 else 1]:
@@ -124,7 +152,7 @@ if __name__ == "__main__":
     G.write_wav("out_samples/village_day_jeongak.wav", y)
     # See render_score: ENTRY carries articulation metadata beyond its
     # historical (entry, skip) pair, so the CLI summary must not unpack it as
-    # a fixed 2-tuple.
+    # a fixed 2-tuple.  ★[T391] 기본 경로는 두 칸, 계약 경로는 네 칸 — 둘 다 읽는다.
     ec = Counter(item[0] for item in ENTRY)
     print(f"정악풍 {y.shape[1]/G.SR:.1f}초 · 한 장단 {12*SOB:.2f}초")
     print(f"  대금 진입점  앞머리 {ec.get('head',0)} · 중간 {ec.get('mid',0)}")

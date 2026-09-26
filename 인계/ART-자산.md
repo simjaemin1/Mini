@@ -448,6 +448,13 @@ T303·T308 은 *"옛 자는 재압축마다 갈라진다"* 고 적었다. 시트
 ★**`sigim()` 은 배포 13곡 중 0곡을 지난다**(정악 하나는 `render_jeongak` 경로라 별도).
 ⇒ "표현 층의 센트를 프레이즈로 잇는다"는 12곡에 대해 **이을 것이 없는** 일이다. 끼우려면 작곡 층을 건드린다 ⇒ 회부.
 
+> ★★**[T391 2026-09-26 정정 — 위 표와 문장은 틀렸다. 지우지 않고 남긴다.]** 표는 배포 12곡이 `compose.py`·`arirang.py`
+> 에서 온다고 **가정**했다(README 의 "다시 만들려면" 세 줄을 믿었다). 길이를 **표본 단위로** 대 보니 아니었다:
+> 11곡 = `tracks2.py`(`render2.py` · 레포 밖 `코드백업.zip` 안 · ncy×주기+5.0 이 네 장면 다 표본까지 맞다) ·
+> `village_day_trad` = `render_score.py` · `village_day_jeongak` = `render_jeongak.py`. `tracks2` 의 선율은
+> `garak.voice()`·`motif.voice()` 로 가고 **둘 다 `sigim()` 을 부른다** ⇒ **`sigim()` 은 13곡 모두를 지난다.**
+> README 레시피(`render_samples.py samples_gaya`)는 뱅크를 놓고 돌려도 **TypeError** 로 죽는다(`compose.py:123`).
+
 ### ⚠이 세션에서 13곡을 못 굽는다 — 굽기는 레포 밖 뱅크를 요구한다
 
 * `samples_*/_index.json`(국악원 녹음) — 레포 **0개** · `~/Mini` **0개** · 맥 VM 엔 scipy 도 없다.
@@ -509,6 +516,26 @@ T303·T308 은 *"옛 자는 재압축마다 갈라진다"* 고 적었다. 시트
   phrase 기본값 일곱은 legacy `daegeum` 프리셋 **사본**이다 — 두 벌이 됐다(한쪽만 고쳐지는 날을 조심).
 * **브금판** `public/bgm-board.html` — 13곡 「파일」(`bgm-loops.js` 가 Safari 는 `.m4a` 로) + `village_day_ari` 의
   「legacy」「phrase」(`renderAriPreview` · 같은 씨·같은 반주). ★phrase 가 **2.6 dB 크다** — 「음량 맞춤」(잰 RMS)이 기본 켬이다.
+
+### 배포 두 곡이 **바이트까지** 되살아났다 · 기본값 복원 · 나머지 11곡은 레포 밖 [T391 2026-09-26]
+
+GPT(`462b4acc`)가 카드 없이 바꾼 Python 굽기 기본값(붙은 음 자동 이음 → 무표기 재발음)을 착지 전(`450c6e44`)으로 돌렸다.
+GPT 규칙은 **지우지 않았다** — `render_score.py` 의 `ARTICULATION_CONTRACT = False` 한 자리가 켜고 끈다(`render_jeongak` 도 같은 스위치를 읽는다).
+다음 사람이 알아야 할 것:
+
+* ★**굽기 레시피(배포 2곡 — 파일 바이트 동일)**: 뱅크 bk_* 12 풀기 → `samples_{gaya,daegeum,piri,danso,geomungo,janggu}` 를
+  **12:22판 `sampler.py`**(`코드백업_최신.zip` · `split_notes(max_len=4.0)`)로 스캔 → **numpy 2.3 이상**(AVX-512 CPU · scipy 무관) →
+  `python3 render_score.py`(= `village_day_trad`) · `python3 render_jeongak.py` → `ffmpeg -c:a libvorbis -q:a 4` · `-c:a aac -b:a 128k`.
+  .ogg 는 먹서가 **일련번호를 난수로** 뽑아 그 한 칸만 다르다(배포 값 441839687 · 577416829 로 맞추면 sha256 같다) · .m4a 는 그대로 같다.
+* ⚠**레포 `sampler.py` 로 뱅크를 풀면 다른 조각이 나온다**(13:01판 `max_len=9.0` — 정악대금을 9초로 풀려고 바꾼 값). 배포 조각은 4.0 판이다.
+  반대로 GPT R&D 의 감사표(`render_village_day_ari_sanjo_audition.py`)는 **9.0 판 조각**에 맞춰져 있다 — 4.0 판을 주면 "음정 바뀜"으로 멈춘다. 스캐너가 **두 판**이다.
+* **결정론**: 같은 판·같은 조각·같은 환경이면 두 번 구워 같다. 환경이 표본 끝자리를 흔든다 — numpy 1.26(패킷 91%) · 2.0~2.2(99.5%) · **2.3/2.4(100%)** · AVX-512 끔(99.4%). 귀 밖(코덱 바닥 안)이다.
+* **GPT 기본값으로 구우면 배포와 다른 소리다**(같은 뱅크 · SNR −1.9/+3.0 dB · 패킷 1/6517) — 음량은 0.1 dB 안인데 파형이 어긋난다(음마다 7ms 떨림이 빠져 난수 차례가 밀린다).
+* **11곡(`tracks2.py`)은 재현 불가**: 코드가 레포에 없고(`코드백업.zip` 안), 배포본은 **07-30 판**이다(맥 bgm 폴더의 `두랑고BGM_통합.html` 07-30 12:33 미리듣기와 mp3 바닥 안에서 같다) —
+  그 판이 부른 `gugak`·`compose`·`motif`·`sampler` 는 07-31 에 다 고쳐졌다. 씨앗은 `hash((scene, mood))`(PYTHONHASHSEED) · 뱅크 넷(징·북·박·꽹과리)은 bk_* 에 없다.
+* **`render-meta.json.source` 는 배포 2곡에 대해 틀렸다** — 장구 궁편 84타·채편·거문고·단소·피리·산조대금 전부 **샘플**(바이트 동일 재현으로 증명 · 장구 뱅크 없이는 TypeError). 값은 안 고쳤다(메모 `_T391`) — `README-BGM.md`·`test-audio ⑨l` 과 한 판에서 같이 고칠 것(회부).
+* **`.pyc`**: 배포는 서버 checkout 을 굽는다 ⇒ **추적되는** 바이트코드가 실린다. `.gitignore` `__pycache__/` · `test-assets-audit ⑧` 이 추적·무시 안 됨·무시됨을 갈라 센다(무시된 디스크 캐시는 빨강 아님 — 파이썬 하네스가 import 할 때마다 생긴다).
+* **브금판** 「sigim 켬」「sigim 끔」 — 배포하지 않는 **로컬 청취본**이라 파일을 판이 고른다(`~/Mini/_bgm_ab/T391/` · sha256 으로 그 파일인지 잰다). 배포 곡과 씨가 달라 뜻은 "sigim 하나의 몫"뿐이다.
 
 ### 군락 종 넷이 섰다 — 자연물 소품 45 → 49 [T372 2026-09-23]
 

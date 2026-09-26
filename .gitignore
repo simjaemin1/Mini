@@ -64,3 +64,8 @@ assets-src/char_raw/
 
 # BGM-R&D 청취·계측 산출물 — 재생성 가능한 WAV/CSV/plot 이며 원본 음악 자산이 아니다.
 _bgm_rnd/
+
+# ★[T391] 파이썬 바이트코드 캐시 — **어느 폴더든**. bgm 모듈을 import 하는 하네스·도구가 돌면
+#   `public/assets/audio/bgm/__pycache__/` 에 생긴다(GPT R&D 착지 `462b4acc` 가 4장을 같이 커밋 · T386 발견).
+#   배포는 서버 checkout 에서 이미지를 굽는다 — 추적되면 실린다. 지키는 자: `test-assets-audit ⑧`.
+__pycache__/

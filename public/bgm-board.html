@@ -29,6 +29,13 @@
   ⚠A/B 대상(장면·편성)은 이 파일이 아는 **유일한 이름 둘**이다: `renderAriPreview` 가 제 안에서
     `scene='village_day'`·`mood='ari'` 로 못 박는다(bgm.js `renderAriPreview` 몸 — 밖에서 못 바꾼다).
     이 판은 그 곡의 「파일」 행 바로 아래에 두 줄을 붙일 뿐이다.
+
+  ★[T391 2026-09-26] 「sigim 켬」「sigim 끔」 — **로컬 청취본** 두 줄(같은 곡 아래).
+    배포 `village_day_ari` 를 구운 계보(`tracks2.py` · 코드백업.zip 안 · 레포 밖)를 뱅크로 다시 구워
+    `motif.sigim()` 만 켜고 끈 한 쌍이다(PYTHONHASHSEED=0 · 음표·반주·장단 같다). **배포하지 않는 소리**라
+    (§1 새 소리 0) 이 판은 파일을 안 싣는다 — 재민이 **디스크에서 고른다**(`~/Mini/_bgm_ab/T391/` · Safari 는 .m4a).
+    고른 파일이 그 파일인지는 이 판이 sha256 으로 잰다(아래 `LOCAL_AB` 의 기대값 · 틀리면 ✗ 표시).
+    이 두 줄은 **배포판이 아니다** — 배포 곡과 씨가 달라(해시 씨앗) 비교의 뜻은 "sigim 하나의 몫"뿐이다.
 -->
 <style>
   :root{
@@ -91,6 +98,7 @@
   <h1>브금판</h1>
   <p class="sub">배경음악 13곡과 <b>아리랑 대금 두 판</b>을 한 장에. <b>「파일」</b>은 굽힌 곡 그대로,
      <b>「legacy」「phrase」</b>는 <code>bgm.js</code> 가 지금 굽는 소리다(같은 씨 · 같은 반주 · 대금만 다르다).
+     <b>「sigim 켬」「sigim 끔」</b>은 배포하지 않는 <b>로컬 청취본</b>이라 디스크에서 고른다(<code>~/Mini/_bgm_ab/T391/</code>).
      행은 <code>render-meta.json</code> 에서 <b>그때그때 만든다</b>.</p>
 
   <div class="note" id="boot">정본을 읽는 중…</div>
@@ -135,6 +143,15 @@
   // A/B 대상 — `renderAriPreview` 가 제 안에서 못 박는 장면·편성(머리말 ⚠ 참조). 이 판이 아는 이름은 이 둘뿐이다.
   var AB = { scene: 'village_day', mood: 'ari' };
   var VARIANTS = ['legacy', 'phrase'];                 // `renderAriPreview` 가 받는 두 값 그대로
+  // ★[T391] 로컬 청취본 A/B — 배포 안 하는 소리라 **고르는 파일**이다(머리말 ★T391). 기대 해시 = sha256 앞 16자
+  //   (bitexact 인코딩이라 같은 WAV 에서 다시 구우면 같은 값 · 보고/T391 §ⓑ 표와 같은 수).
+  var LOCAL_AB = [
+    { id: 'sigim_on',  label: 'sigim 켬', base: 'village_day_ari_t391_sigim_on',
+      sha: { ogg: '1bd8b4d986671835', m4a: '9fdd30b11c731ec1' } },
+    { id: 'sigim_off', label: 'sigim 끔', base: 'village_day_ari_t391_sigim_off',
+      sha: { ogg: 'add2f73f60ac6c34', m4a: '64979c822b01ad52' } }
+  ];
+  var LOCAL_DIR = '~/Mini/_bgm_ab/T391/';
 
   var $ = function (s) { return document.querySelector(s); };
   var el = function (t, c, x) { var n = document.createElement(t); if (c) n.className = c; if (x != null) n.textContent = x; return n; };
@@ -239,6 +256,64 @@
     save();
   }
 
+  // ── [T391] 로컬 청취본 — 고른 파일을 잰다(해시 · RMS) · 둘 다 있으면 음량 맞춤 ─────────────
+  var local = {};                                       // id → { buf, m, name, sha16, ok }
+  function hex16(ab) {
+    if (!(window.crypto && crypto.subtle)) return Promise.resolve(null);   // 보안 문맥이 아니면 못 잰다(적는다)
+    return crypto.subtle.digest('SHA-256', ab).then(function (h) {
+      return Array.prototype.map.call(new Uint8Array(h), function (b) { return ('0' + b.toString(16)).slice(-2); }).join('').slice(0, 16);
+    });
+  }
+  function loadLocal(spec, file, cells) {
+    ensure();
+    if (!abCtx) { cells.meas.textContent = '✗ Web Audio 미지원'; return; }
+    cells.meas.textContent = '읽는 중…';
+    file.arrayBuffer().then(function (ab) {
+      return hex16(ab.slice(0)).then(function (h) {
+        return new Promise(function (ok, no) { abCtx.decodeAudioData(ab, ok, no); }).then(function (buf) {
+          var ext = (file.name.split('.').pop() || '').toLowerCase();
+          var want = spec.sha[ext];
+          local[spec.id] = { buf: buf, m: measure(buf), name: file.name, sha16: h, ok: h ? (want === h) : null };
+          showLocal(spec, cells);
+          cells.play.disabled = false;
+        });
+      });
+    }).catch(function (e) { cells.meas.textContent = '✗ ' + e; });
+  }
+  function showLocal(spec, cells) {
+    var r = local[spec.id]; if (!r) return;
+    cells.secs.textContent = r.m.secs.toFixed(1) + 's';
+    cells.rms.textContent = dbfs(r.m.rms);
+    cells.peak.textContent = dbfs(r.m.peak);
+    cells.meas.textContent = '';
+    var tag = r.ok === true ? el('span', 'tag good', '○ 그 파일') : r.ok === false ? el('span', 'tag warn', '✗ 다른 파일') : el('span', 'tag', '해시 못 잼');
+    cells.meas.appendChild(tag);
+    cells.meas.appendChild(el('span', 'where', r.name + ' · sha256 ' + (r.sha16 || '—') +
+      (r.ok === false ? ' (기대 ' + Object.keys(spec.sha).map(function (k) { return k + ' ' + spec.sha[k]; }).join(' · ') + ')' : '')));
+    judge['meas:local:' + spec.id] = { rms: +(20 * Math.log10(r.m.rms)).toFixed(2), peak: +(20 * Math.log10(r.m.peak)).toFixed(2),
+      secs: +r.m.secs.toFixed(2), file: r.name, sha16: r.sha16, same: r.ok };
+    save();
+  }
+  function playLocal(btn, spec) {
+    ensure(); mark(btn);
+    var me = local[spec.id];
+    if (!me || !abCtx) { stopAll(); return; }
+    var gain = 1, both = LOCAL_AB.every(function (s) { return local[s.id]; });
+    // 맞춤: 두 판이 다 골라져 있을 때만 — 큰 쪽을 **잰 RMS** 만큼 낮춘다(적힌 수 0)
+    if ($('#match').checked && both) {
+      var quiet = Math.min.apply(null, LOCAL_AB.map(function (s) { return local[s.id].m.rms; }));
+      gain = me.m.rms > 0 ? quiet / me.m.rms : 1;
+    }
+    var src = abCtx.createBufferSource(), g = abCtx.createGain();
+    src.buffer = me.buf; g.gain.value = gain;
+    src.connect(g); g.connect(abCtx.destination);
+    src.start();
+    var tok = { stop: function () { try { src.stop(); } catch (e) {} } };
+    cur = tok;
+    src.onended = function () { if (cur === tok) stopAll(); };
+    btn.title = both ? '맞춤 이득 ' + (20 * Math.log10(gain)).toFixed(2) + ' dB' : '다른 판을 아직 안 골랐다 — 맞춤 없이 튼다';
+  }
+
   function judgeCells(id, tr) {
     var td = el('td');
     ['○', '✗'].forEach(function (sym, n) {
@@ -308,6 +383,32 @@
           tb.appendChild(r);
           nAB++;
         });
+        // [T391] 로컬 청취본 두 줄 — 파일은 이 판이 안 싣는다(배포 안 하는 소리 · 재민이 고른다)
+        LOCAL_AB.forEach(function (spec) {
+          var r = el('tr', 'ab');
+          r.appendChild(el('td', 'k', n + ' · ' + spec.label));
+          var tdb = el('td');
+          var pick = el('button', '', '고르기');
+          var inp = el('input'); inp.type = 'file'; inp.accept = '.ogg,.m4a,audio/*'; inp.style.display = 'none';
+          var b = el('button', 'play', spec.label.replace('sigim ', ''));
+          b.disabled = true; b.title = '먼저 파일을 고른다';
+          tdb.appendChild(pick); tdb.appendChild(document.createTextNode(' ')); tdb.appendChild(b); tdb.appendChild(inp);
+          r.appendChild(tdb);
+          var tdx = el('td');
+          tdx.appendChild(el('span', 'tag warn', '청취본 · 배포 안 함'));
+          tdx.appendChild(el('span', 'where', 'tracks2.py 계보 · sigim ' + (spec.id === 'sigim_on' ? '켬' : '끔') +
+            ' · ' + LOCAL_DIR + spec.base + '.ogg|.m4a'));
+          r.appendChild(tdx);
+          var cells = { secs: el('td', 'num', '—'), rms: el('td', 'num', '—'), peak: el('td', 'num', '—'),
+                        meas: el('td', 'meas', '고르면 잰다(해시·RMS)'), play: b };
+          r.appendChild(cells.secs); r.appendChild(cells.rms); r.appendChild(cells.peak); r.appendChild(cells.meas);
+          pick.onclick = function () { inp.click(); };
+          inp.onchange = function () { if (inp.files && inp.files[0]) loadLocal(spec, inp.files[0], cells); };
+          b.onclick = function () { playLocal(b, spec); };
+          judgeCells('local:' + spec.id, r);
+          tb.appendChild(r);
+          nAB++;
+        });
       }
     });
     $('#count').textContent = '— 행 ' + (names.length + nAB) + ' (곡 ' + names.length + ' · A/B ' + nAB + ')';
@@ -339,6 +440,12 @@
       if (m) L.push('- ' + v + ' — RMS ' + m.rms + ' dBFS · 피크 ' + m.peak + ' dBFS · ' + m.secs + 's · 마디 ' +
         (m.bars === null ? '엔진 기본' : m.bars) + ' · 씨 ' + (m.seed === null ? '엔진 기본' : m.seed) +
         (m.gainDb !== null ? ' · 맞춤 이득 ' + m.gainDb + ' dB' : ''));
+    });
+    LOCAL_AB.forEach(function (s) {                    // [T391] 로컬 청취본 — 어느 파일을 들었는지까지 적는다
+      var m = judge['meas:local:' + s.id];
+      if (m) L.push('- ' + s.label + '(로컬) — ' + m.file + ' · sha256 ' + (m.sha16 || '—') +
+        (m.same === true ? ' ○그 파일' : m.same === false ? ' ✗다른 파일' : '') +
+        ' · RMS ' + m.rms + ' dBFS · 피크 ' + m.peak + ' dBFS · ' + m.secs + 's');
     });
     L.push('');
     L.push('| 대상 | ○/✗ | 메모 |');
