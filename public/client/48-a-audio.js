@@ -541,8 +541,9 @@ function initAudio() {
       //   ⚠'나' = **주 연결에서 온 내 pid** 뿐이다. pid 는 존마다 따로 센다(`p${nextPid++}`) — 관전 연결의 p3 은
       //     내 p3 이 아니다.
       {
-        const CB = _sfxMan.combat || {};
-        const key = (typeof CB[t] === 'string') ? CB[t] : null;
+        // [T412] 도구/작업 갈래의 **메시지 → 키** 도 같은 자리 규칙을 쓴다(표 `work`) — 표 둘, 코드 하나.
+        const CB = _sfxMan.combat || {}, WK = _sfxMan.work || {};
+        const key = (typeof CB[t] === 'string') ? CB[t] : ((typeof WK[t] === 'string') ? WK[t] : null);
         if (key) {
           // 같은 이름이지만 사건이 아닌 것(다시 접속 때 복원용 재송신 등) — 표(`combatSkip`)가 칸과 값을 댄다.
           const sk = (_sfxMan.combatSkip || {})[t];
@@ -555,6 +556,9 @@ function initAudio() {
           const mine = !!(c && c.role === 'primary' && msg.pid != null && msg.pid === me);
           if (mine) { if (!(only && only._남만)) sfxPlay(key); return; }   // `_남만` — 내 것은 다른 메시지가 이미 운다
           if (msg.x != null && msg.y != null) { sfxPlay(key, { x: msg.x + ox, y: msg.y + oy }); return; }
+          // [T412] 건물을 가리키는 메시지(`buildingId`)는 그 건물 자리에서 난다(궤 등 · 합치기 전 직전 값)
+          const bb = (msg.buildingId != null && c && c.buildings) ? c.buildings.get(msg.buildingId) : null;
+          if (bb && bb.x != null) { sfxPlay(key, { x: bb.x + ox, y: bb.y + oy }); return; }
           const o = (msg.pid != null && c && c.others) ? c.others.get(msg.pid) : null;
           if (o && o.x != null) sfxPlay(key, { x: o.x + ox, y: o.y + oy });
           return;
@@ -572,6 +576,61 @@ function initAudio() {
         const o = (c && c.others) ? c.others.get(msg.pid) : null;
         const ox = (c && c.meta && c.meta.worldOffsetX) || 0, oy = (c && c.meta && c.meta.worldOffsetY) || 0;
         if (o && o.x != null) sfxPlay(key, { x: o.x + ox, y: o.y + oy });
+        return;
+      }
+      // ★★★[T412] **도구/작업 — 건물·줍기·심기.** 전부 서버가 이미 보내던 메시지를 **표**가 키로 옮긴다.
+      //   ⚠`recv` 는 `handleMessage` **머리**에서 불린다 — `c.buildings`·`c.groundItems`·`c.resources` 에는
+      //     아직 **직전** 값이 있다. 그래서 지워지는 건물의 타입·줍히는 물건의 자리·새 자원인지를 여기서 안다.
+      if (t === 'building_added' || t === 'building_removed' || t === 'building_damaged' || t === 'building_updated') {
+        const ox = (c && c.meta && c.meta.worldOffsetX) || 0, oy = (c && c.meta && c.meta.worldOffsetY) || 0;
+        const at = (b) => (b && b.x != null) ? { x: b.x + ox, y: b.y + oy } : null;
+        const quiet = (T, ty) => Array.isArray(T._조용) && T._조용.indexOf(ty) >= 0;
+        if (t === 'building_added') {                       // 무엇이 섰다 — 타입별 키(없으면 `기본`) · `_조용` 은 안 운다
+          const b = msg.building, T = _sfxMan.buildAdded || {};
+          if (!b || quiet(T, b.type)) return;
+          const key = (typeof T[b.type] === 'string') ? T[b.type] : T.기본;
+          const o = at(b); if (typeof key === 'string' && o) sfxPlay(key, o);
+          return;
+        }
+        const prev = (c && c.buildings) ? c.buildings.get(t === 'building_updated' ? (msg.building && msg.building.id) : msg.id) : null;
+        if (!prev) return;                                  // 처음 보는 건물 — 무엇이 바뀌었는지 모른다(지어내지 않는다)
+        if (t === 'building_removed') {                     // 무엇이 없어졌다 — 터(`_site`)는 다음 단계로 **바뀐** 것이라 조용
+          const T = _sfxMan.buildRemoved || {};
+          if (quiet(T, prev.type)) return;
+          const key = (typeof T[prev.type] === 'string') ? T[prev.type] : T.기본;
+          const o = at(prev); if (typeof key === 'string' && o) sfxPlay(key, o);
+          return;
+        }
+        if (t === 'building_damaged') {                     // 벽이 깎였다/고쳐졌다 — 직전 hp 와 견준다
+          const T = _sfxMan.buildDamaged || {};
+          const was = prev.data && prev.data.hp, now = msg.hp;
+          if (typeof was !== 'number' || typeof now !== 'number' || was === now) return;
+          const key = T[now < was ? 'down' : 'up'];
+          const o = at(prev); if (typeof key === 'string' && o) sfxPlay(key, o);
+          return;
+        }
+        // building_updated — 표(`buildEdge`)의 규칙: {types, field, on, off} · 칸이 **켜지면** on · **꺼지면** off
+        const nd = (msg.building && msg.building.data) || {}, pd = prev.data || {};
+        for (const R of (_sfxMan.buildEdge || [])) {
+          if (!R || !Array.isArray(R.types) || R.types.indexOf(prev.type) < 0) continue;
+          const a = !!pd[R.field], b = !!nd[R.field];
+          if (a === b) continue;
+          const key = b ? R.on : R.off;
+          const o = at(prev); if (typeof key === 'string' && o) sfxPlay(key, o);
+        }
+        return;
+      }
+      if (t === 'ground_item_removed') {                    // 누가 주웠다(서버의 이 방송은 줍기 함수에서만 나간다)
+        const key = _sfxMan.groundPick && _sfxMan.groundPick.key;
+        const gi = c && c.groundItems ? c.groundItems.get(msg.id) : null;
+        if (typeof key !== 'string' || !gi) return;
+        sfxPlay(key, { x: gi.x + ((c.meta && c.meta.worldOffsetX) || 0), y: gi.y + ((c.meta && c.meta.worldOffsetY) || 0) });
+        return;
+      }
+      if (t === 'resource_spawn') {                         // **새** 자원(처음 보는 id)만 — 자람·열매 갱신은 같은 id 라 조용
+        const r = msg.resource, T = _sfxMan.resourceNew || {};
+        if (!r || !c || !c.resources || c.resources.has(r.id) || typeof T[r.type] !== 'string') return;
+        sfxPlay(T[r.type], { x: r.x + ((c.meta && c.meta.worldOffsetX) || 0), y: r.y + ((c.meta && c.meta.worldOffsetY) || 0) });
         return;
       }
       // ★★[T321] **바닥에 떨어졌다** — 버리기도 죽어 쏟기도 이 한 방송으로 나온다(`zone.js:7728`).
@@ -647,6 +706,8 @@ function initAudio() {
         if (r.kind === 'mob' && r.m) { const k = MOB[r.m.type]; if (k) sfxPlay(k, { x: r.ax, y: r.ay }); }
         else if (r.kind === 'building' && r.b) {
           const k = BLD[r.b.type], m = k && sfxKey(k);
+          const need = (_sfxMan.buildingsWhen || {})[r.b.type];   // [T412] 노·숯가마는 **불이 들었을 때만**(`data.job`)
+          if (m && need && need.field && !(r.b.data && r.b.data[need.field])) continue;
           if (m) sfxLoop(k + ':' + r.b.id, k, sfxGain(m, r.ax, r.ay) * (_sfxWx.indoor ? (m.indoorMul || 0) : 1));
         } else if (bird && r.kind === 'resource' && r.r && r.r.type === 'tree') {
           const dx = r.ax - cx, dy = r.ay - cy;

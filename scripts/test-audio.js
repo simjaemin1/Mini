@@ -222,18 +222,25 @@ console.log('\n③ 훅 — 부르는 키가 전부 표에 있고, 표의 키가 
 //   목록을 박고 있었다 — 그래서 `ground`·`rainSplit` 이 생기자 멀쩡히 배선된 키 넷이
 //   "아무도 안 부르는 키" 로 빨개졌다(거짓 빨강 · T283 이 같은 모양으로 한 번 당했다).
 //   ⇒ 매니페스트에서 **표를 스스로 찾는다**: 값이 키 이름인 칸을 가진 최상위 객체가 배선 표다.
+// ★[T412] 배선 표가 **한 겹 더 깊어졌다** — 규칙 목록(`buildEdge` · `[{types, field, on, off}]`)의 `on`/`off` 도 키를 잇는다.
+//   겉 칸만 보면 그 키들이 "아무도 안 부르는 키" 로 거짓 빨강이 된다(T354 가 같은 꼴로 한 번 당했다).
+//   ⇒ 표 안의 객체·배열을 **한 겹** 더 내려가 키 이름인 문자열을 모은다. `_` 칸은 설명이라 안 본다.
+function tableStrings(v, depth) {
+  const out = [];
+  if (typeof v === 'string') { out.push(v); return out; }
+  if (!v || typeof v !== 'object' || depth > 2) return out;
+  for (const [k, x] of Object.entries(v)) { if (typeof k === 'string' && k.startsWith('_')) continue; out.push(...tableStrings(x, depth + 1)); }
+  return out;
+}
 const TABLES = Object.keys(man).filter((t) => {
   if (t.startsWith('_') || t === 'keys' || t === 'sources' || t === 'bus' || t === 'bgm') return false;
   const v = man[t];
   if (!v || typeof v !== 'object') return false;
-  return Object.entries(v).some(([k, x]) => !k.startsWith('_') && typeof x === 'string' && man.keys[x]);
+  return tableStrings(v, 0).some((x) => man.keys[x]);
 });
 function tableKeys() {
   const out = new Set();
-  for (const t of TABLES) for (const [k, v] of Object.entries(man[t] || {})) {
-    if (k.startsWith('_')) continue;
-    if (typeof v === 'string') out.add(v);
-  }
+  for (const t of TABLES) for (const x of tableStrings(man[t], 0)) if (man.keys[x]) out.add(x);
   return out;
 }
 const used = keysUsedInModule(modCode);
@@ -1135,6 +1142,50 @@ console.log('\n⑯ ★★[T397] `hp_changed.why` · 표면 타일 · 눈이면 �
   // ⑯e 사건 없는 소리는 안 잇는다 — 천둥·고인 물은 후보뿐
   const noEvent = ['thunder', 'thunder_b', 'water_pool', 'water_pool_b'];
   ok(noEvent.every((k) => KEYS[k] && KEYS[k]['후보'] && KEYS[k].file), '⑯e 천둥(세계가 안 보냄)·고인 물(카드: 후보만)은 **후보**로만 있다', noEvent.join(' '));
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ⑰ ★★[T412] 도구/작업 — 건물·줍기·심기·궤·가마
+// ══════════════════════════════════════════════════════════════════════════════
+console.log('\n⑰ ★★[T412] 도구/작업 — 사건만 운다 · 서버가 실제로 보내는 자리 · 표가 정본');
+{
+  const zsrc = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
+  const layerCode = require('./code-only.js')(modCode);
+  const fnOf = (line) => { const lines = zsrc.split('\n'); for (let i = line - 1; i >= 0; i--) { const m = /^(?:async )?function ([A-Za-z_0-9]+)\(/.exec(lines[i]); if (m) return m[1]; } return null; };
+  const sitesOf = (type) => zsrc.split('\n').map((l, i) => (new RegExp(`type:\\s*'${type}'`).test(l) ? fnOf(i + 1) : null)).filter(Boolean);
+  // ⑰a 줍기 — `ground_item_removed` 는 줍기 함수에서만 나간다(그래서 '누가 주웠다' 로 읽어도 된다)
+  const gr = [...new Set(sitesOf('ground_item_removed'))];
+  ok(gr.length === 1 && gr[0] === 'tryPickupItem', '⑰a ★`ground_item_removed` 는 `tryPickupItem` 에서만 나간다(= 줍기 · 썩어 사라짐이 아니다)', gr.join(' '));
+  ok(man.groundPick && KEYS[man.groundPick.key] && typeof (man.inventoryWhere || {}).pickup !== 'string',
+     '⑰a2 줍기는 방송 한 길로만 운다 — `inventory where:pickup` 은 표에 없다(두 번 0)');
+  // ⑰b 궤 — `chest_state` 는 넣기·꺼내기 뒤에만 나간다
+  const cs = [...new Set(sitesOf('chest_state'))].sort();
+  ok(JSON.stringify(cs) === JSON.stringify(['tryChestPut', 'tryChestTake']), '⑰b `chest_state` 는 궤에 넣기·꺼내기 뒤에만 나간다(= 사건)', cs.join(' '));
+  // ⑰c 터 — 지워지는 자리가 **단계 오름**이면 조용(새 것이 선다)
+  const rmSites = [...new Set(sitesOf('building_removed'))].sort();
+  const advance = rmSites.filter((f) => /Advance/.test(f));
+  const Q = (man.buildRemoved || {})._조용 || [];
+  ok(advance.length >= 3 && ['hut_site', 'kiln_site', 'furnace_site', 'shelter_site'].every((x) => Q.includes(x)),
+     '⑰c ★터가 다음 단계로 **바뀌는** 지움(`*Advance`)은 `build_break` 로 안 운다 — 터 타입이 `_조용` 에 있다', `지우는 자리 ${rmSites.join(' ')}`);
+  // ⑰d 가장자리 규칙 — 표의 칸이 서버 코드에서 실제로 켜지고 꺼진다
+  const E = man.buildEdge || [];
+  const bad = E.filter((R) => !(Array.isArray(R.types) && R.field && (!R.on || KEYS[R.on]) && (!R.off || KEYS[R.off])
+                        && new RegExp(`data\\.${R.field}\\s*=|delete b\\.data\\.${R.field}|${R.field}:`).test(zsrc)));
+  ok(E.length === 3 && bad.length === 0, '⑰d `buildEdge` 규칙 셋의 칸(open·job·crop)이 서버에서 실제로 바뀌고, 키가 표에 있다', bad.map((R) => R.field).join(' ') || E.map((R) => `${R.types.join('/')}.${R.field}`).join(' · '));
+  const farm = E.find((R) => R.types.includes('farmland'));
+  ok(farm && !farm.off, '⑰d2 밭 `crop` 꺼짐(수확)은 **안 잇는다** — 사람 수확은 `where:harvest` 가 이미 운다(두 번 0)');
+  // ⑰e 가마 불 — 반복 소리는 `job` 이 있을 때만
+  ok((man.buildings || {}).furnace === 'fire' && (man.buildingsWhen || {}).furnace && man.buildingsWhen.furnace.field === 'job'
+     && /_sfxMan\.buildingsWhen/.test(layerCode), '⑰e 노·숯가마 불소리는 `data.job` 이 있을 때만(꺼진 가마가 타는 소리 0)');
+  // ⑰f 심기 — 새 id 만(자람·열매 갱신 0)
+  ok(/c\.resources\.has\(r\.id\)/.test(layerCode) && (man.resourceNew || {}).sapling === 'dig', '⑰f 묘목 심기는 **처음 보는 id** 일 때만(`resource_spawn` 의 자람·열매 갱신은 같은 id)');
+  // ⑰g 상태 동기화는 표에 없다
+  const SYNC = ['buildings_spawn', 'buildings_removed', 'resources_spawn', 'resources_removed', 'rooms_update', 'craft_queue', 'claim_added', 'claim_removed', 'claim_updated', 'tools', 'equipment', 'dishes', 'facility', 'plant_menu', 'preserve_menu', 'cast_preview', 'floor_changed'];
+  const W = man.work || {}, CB = man.combat || {};
+  const leak = SYNC.filter((n) => typeof W[n] === 'string' || typeof CB[n] === 'string');
+  ok(leak.length === 0, '⑰g ★★상태 동기화 열일곱은 표에 없다', leak.join(' ') || `${SYNC.length}종`);
+  ok(sitesOf('craft_queue').length >= 1, '⑰g2 자 전제 — 그 이름들이 서버에 실제로 있다(없는 이름을 막는 자는 아무것도 안 막는다)');
 }
 
 console.log(`\n=== PASS ${pass} / FAIL ${fail} ===`);

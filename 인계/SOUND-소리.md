@@ -15,6 +15,7 @@
 > **T387**(사람/전투 11자리 — 사건 넷 `combat` 표 · 후보 셋 · `death` 는 `drop` 이 이미 운다 · `_실측` 정정 · 변주 m4a 짝 · `e2e-aim` 격리).
 > **T397**(pid 충돌 실측·세 줄 · `hp_changed.why` 서버 두 줄 · `hit_body` 보류 · ⑧g 미끼 · 전수 28/30=자 · 표면 셋 · 눈이면 빗소리 0 · 천둥·고인 물 후보).
 > **T402**(why = `damagePlayer` 출처 앞 낱말 · `hit_body` 배선 · 극단 0 · 남의 쓰러짐 `combatOnly` · 서버 여섯 줄).
+> **T412**(도구/작업 57 — 20 운다 · 9키 배선 · 후보 8 · 건물 표 넷(`buildAdded`·`buildRemoved`·`buildDamaged`·`buildEdge`) · 줍기·심기·궤 · 가마 불은 `job` 일 때만).
 
 ---
 
@@ -430,3 +431,16 @@ ogg 길이는 마지막 `OggS` 페이지의 granulepos ÷ 표본율로 잰다(Vo
 * 표 `combatOnly` = `{메시지: {칸: 값, _남만}}` — 같은 이름이 여러 사건을 나를 때 **다 맞아야** 운다. 지금 한 줄: `player_down_state {why:'down', _남만:true}`. 서버 `why`: relogin·down·carried·set(깨어남은 없음).
 * ⚠`extreme` 을 `hpWhy` 에 넣지 마라(추위 속 3.6초마다 맞는 소리) — `⑯b2` 가 문다.
 * 보고 `보고/T402_2026-09-26.md`.
+
+
+---
+
+## T412 (2026-09-26) — 도구/작업
+
+* **건물 사건 표 넷** — `buildAdded`(타입 → 키 · `기본` · `_조용`) · `buildRemoved`(**직전** 타입 · 터 `*_site` 는 조용 — 단계 오름은 지우고 새로 세운다) · `buildDamaged`(직전 hp 와 견줘 `down`/`up`) · `buildEdge`(규칙 목록 `{types, field, on, off}` — 칸이 켜지면 on · 꺼지면 off · 처음 보는 건물은 안 운다).
+* **`work` 표** = `combat` 과 같은 자리 규칙의 메시지 표(`chest_state → chest_use`). 건물을 가리키는 메시지(`buildingId`)는 그 건물 자리에서 난다.
+* **줍기** = `ground_item_removed` 하나(`groundPick`) — `where:pickup` 은 **넣지 마라**(두 번). **심기** = `resource_spawn` 의 **새 id** 만(`resourceNew`).
+* **`buildingsWhen`** = `buildings` 반복 소리의 조건 칸(`{field}`) — 노·숯가마는 `job` 이 있을 때만 `fire`.
+* `test-audio` 의 배선 표 인식이 **한 겹 깊어졌다**(규칙 목록 안의 on/off 도 키로 센다) — 새 표를 배열로 만들어도 거짓 고아가 안 난다.
+* ⚠헤드룸 여유 0.03 dB(새 최악 = T292 여섯 + 공사 다섯 0.7967).
+* 보고 `보고/T412_2026-09-26.md` · 원본 맥 `~/Mini/_sfx_in/_T412/`.

@@ -106,6 +106,23 @@
 | `thunder_b` | [Commons: Rain and thunder (1).ogg](https://commons.wikimedia.org/wiki/File:Rain_and_thunder_(1).ogg) | ezwa | **Public domain** (파일 페이지) | — | 2026-09-26 | 60.08s 중 **3.400~6.400s**(+20.7dB) · ★[T397] 후보 |
 | `water_pool` | [Commons: Water bubbles chortling.ogg](https://commons.wikimedia.org/wiki/File:Water_bubbles_chortling.ogg) | stephan | **Public domain** (파일 페이지) | — | 2026-09-26 | **35.75~43.75s** + 1.0s 겹침 → 8.0s 반복(이음새 −49.8dB) · ★[T397] 후보 |
 | `water_pool_b` | [Commons: Water over rocks as tide recedes.ogg](https://commons.wikimedia.org/wiki/File:Water_over_rocks_as_tide_recedes.ogg) | earthcalling | **Public domain** (파일 페이지) | — | 2026-09-26 | **1.50~9.50s** + 1.0s 겹침 → 8.0s 반복(−24.5dB) · ★[T397] 후보 |
+| `build_place` | [Kenney "Impact Sounds"](https://kenney.nl/assets/impact-sounds) · `impactPlank_medium_000.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2019(팩) | 2026-09-26 | **0.000~0.174s** · ★[T412] 새 키 — 건물이 섬(`building_added`) · 1번 |
+| `build_place_b` | 〃 · `impactPlank_medium_002.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2019(팩) | 2026-09-26 | **0.000~0.187s** · 2번 · 후보 |
+| `build_hit` | [Kenney "Impact Sounds"](https://kenney.nl/assets/impact-sounds) · `impactPlank_medium_001.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2019(팩) | 2026-09-26 | **0.000~0.386s** · ★[T412] 새 키 — 벽 치기·고치기(`building_damaged`) · 1번 |
+| `build_hit_b` | 〃 · `impactWood_heavy_003.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2019(팩) | 2026-09-26 | **0.000~0.171s** · 2번 · 후보(중심 123Hz) |
+| `build_break` | [OpenGameArt: 75 CC0 breaking/falling/hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) · `bfh1_wood_breaking_03.ogg` | rubberduck | **CC0** (페이지 라이선스 칸) | — | 2026-09-26 | **0.000~0.286s** · ★[T412] 새 키 — 허묾(`building_removed`) · 1번 |
+| `build_break_b` | 〃 · `bfh1_wood_breaking_04.ogg` | rubberduck | **CC0** | — | 2026-09-26 | **0.016~0.228s** · 2번 · 후보 |
+| `door_open` | [Kenney "RPG Audio"](https://kenney.nl/assets/rpg-audio) · `doorOpen_1.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2023(팩) | 2026-09-26 | **0.003~0.881s** · ★[T412] 새 키 — 문 열림 · 1번 |
+| `door_open_b` | 〃 · `doorOpen_2.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2023(팩) | 2026-09-26 | **0.030~1.364s** · 2번 · 후보 |
+| `door_close` | [Kenney "RPG Audio"](https://kenney.nl/assets/rpg-audio) · `doorClose_1.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2023(팩) | 2026-09-26 | **0.001~0.431s** · ★[T412] 새 키 — 문 닫힘 · 1번 |
+| `door_close_b` | 〃 · `doorClose_2.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2023(팩) | 2026-09-26 | **0.006~0.503s** · 2번 · 후보 |
+| `pickup` | [Kenney "RPG Audio"](https://kenney.nl/assets/rpg-audio) · `cloth2.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2023(팩) | 2026-09-26 | **0.035~0.357s** · ★[T412] 새 키 — 줍기(`ground_item_removed`) · 1번 |
+| `pickup_b` | 〃 · `handleSmallLeather.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2023(팩) | 2026-09-26 | **0.028~0.221s** · 2번 · 후보 |
+| `chest_use` | [Kenney "RPG Audio"](https://kenney.nl/assets/rpg-audio) · `creak3.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2023(팩) | 2026-09-26 | **0.016~0.283s** · ★[T412] 새 키 — 궤 넣기/꺼내기(`chest_state`) · 1번 |
+| `chest_use_b` | 〃 · `creak1.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2023(팩) | 2026-09-26 | **0.056~0.625s** · 2번 · 후보 |
+| `craft_done` | [Kenney "Impact Sounds"](https://kenney.nl/assets/impact-sounds) · `impactMetal_light_000.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2019(팩) | 2026-09-26 | **0.000~0.190s** · ★[T412] 새 키 — 가마에서 꺼냄(`job` 꺼짐) · 1번 |
+| `craft_done_b` | [Kenney "RPG Audio"](https://kenney.nl/assets/rpg-audio) · `metalPot2.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2023(팩) | 2026-09-26 | **0.107~0.738s** · 2번 · 후보 |
+| `dig` | [OpenGameArt: Shovel Sound](https://opengameart.org/content/shovel-sound) · `shovel.ogg` | themightyglider (원천 freesound 503672 RavenWolfProds) | **CC0** (OGA 페이지 · 원천 freesound 페이지도 CC0) | — | 2026-09-26 | 0.91s 중 **0.000~0.722s** · ★[T412] 새 키 — 삽질(심기·밭 일굼·씨 넣음) · 1번뿐 |
 
 * **요구 문구 없음** — 둘 다 퍼블릭 도메인이라 표시 의무가 없다(그래서 §1 에 안 들어간다). 예의로 여기 적는다.
 * 가공: 단일 채널 유지 · 끝 1초를 머리에 `acrossfade`(삼각창)로 겹쳐 10.0초 반복 · 피크를 재고

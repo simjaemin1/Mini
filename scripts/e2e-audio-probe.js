@@ -370,6 +370,66 @@ const db = (x) => (x > 0 ? +(20 * Math.log10(x)).toFixed(2) : -Infinity);
       await page.evaluate(() => { myPid = null; });
     }
 
+    // ㊵~㊻ ★★★[T412] 도구/작업 — 수신에서 센다(사본 0 · 진짜 `recv` · `c` 는 합치기 **전**의 직전 값)
+    {
+      const played = () => page.evaluate(() => window.__sfx.dbg().stat.played);
+      const run = (msgs, st) => page.evaluate(({ msgs, st }) => {
+        const c = { role: 'primary', others: new Map(), meta: { worldOffsetX: 0, worldOffsetY: 0 },
+                    buildings: new Map((st.b || []).map((b) => [b.id, b])), groundItems: new Map((st.g || []).map((g) => [g.id, g])),
+                    resources: new Map((st.r || []).map((r) => [r.id, r])) };
+        for (const m of msgs) window.__sfx.recv(m, c);
+      }, { msgs, st: st || {} });
+      const count = async (msgs, st) => { await page.waitForTimeout(800); const b = await played(); await run(msgs, st); return (await played()) - b; };
+      const W = (id, type, data, x) => ({ id, type, x: x || 40, y: 0, data: data || {} });
+      const C = {
+        add: [{ type: 'building_added', building: W('n1', 'wall') }],
+        addV: [{ type: 'building_added', building: W('n2', 'vtile') }],
+        addF: [{ type: 'building_added', building: W('n3', 'farmland', { crop: 'millet' }) }],
+        rm: [[{ type: 'building_removed', id: 'w1' }], { b: [W('w1', 'wall')] }],
+        rmSite: [[{ type: 'building_removed', id: 's1' }], { b: [W('s1', 'hut_site')] }],
+        rmUnknown: [[{ type: 'building_removed', id: 'zz' }], {}],
+        dmg: [[{ type: 'building_damaged', id: 'w1', hp: 80, maxHp: 100 }], { b: [W('w1', 'wall', { hp: 100 })] }],
+        dmgSame: [[{ type: 'building_damaged', id: 'w1', hp: 100, maxHp: 100 }], { b: [W('w1', 'wall', { hp: 100 })] }],
+        doorOpen: [[{ type: 'building_updated', building: W('d1', 'door', { open: true }) }], { b: [W('d1', 'door', { open: false })] }],
+        doorClose: [[{ type: 'building_updated', building: { id: 'd1', data: { open: false } } }], { b: [W('d1', 'door', { open: true })] }],
+        doorFirst: [[{ type: 'building_updated', building: W('d9', 'door', { open: true }) }], {}],
+        jobOn: [[{ type: 'building_updated', building: { id: 'f1', data: { job: { kind: 'smelt' } } } }], { b: [W('f1', 'furnace', {})] }],
+        jobOff: [[{ type: 'building_updated', building: { id: 'f1', data: {} } }], { b: [W('f1', 'furnace', { job: { kind: 'smelt' } })] }],
+        sow: [[{ type: 'building_updated', building: { id: 'fa', data: { crop: 'millet' } } }], { b: [W('fa', 'farmland', { crop: null })] }],
+        reap: [[{ type: 'building_updated', building: { id: 'fa', data: { crop: null } } }], { b: [W('fa', 'farmland', { crop: 'millet' })] }],
+        pick: [[{ type: 'ground_item_removed', id: 'g1' }], { g: [{ id: 'g1', x: 30, y: 0, item: 'fish' }] }],
+        pickUnknown: [[{ type: 'ground_item_removed', id: 'g9' }], {}],
+        sap: [[{ type: 'resource_spawn', resource: { id: 'r1', type: 'sapling', x: 20, y: 0 } }], {}],
+        sapGrow: [[{ type: 'resource_spawn', resource: { id: 'r2', type: 'tree', x: 20, y: 0 } }], { r: [{ id: 'r2', type: 'sapling', x: 20, y: 0 }] }],
+        chest: [[{ type: 'chest_state', buildingId: 'c1', data: {} }], { b: [W('c1', 'chest')] }],
+      };
+      const norm = (v) => Array.isArray(v[0]) ? v : [v, {}];
+      for (const k of Object.keys(C)) { const [m, st] = norm(C[k]); await run(m, st); }   // 데우기
+      await page.waitForTimeout(1500);
+      const n = {};
+      for (const k of Object.keys(C)) { const [m, st] = norm(C[k]); n[k] = await count(m, st); }
+      ok(n.add === 1 && n.addV === 0 && n.addF === 1, '㊵ ★건물이 서면 운다(벽 1) · 마을 바닥 타일 0 · 밭 일굼 = 삽질 1', `벽 ${n.add} · vtile ${n.addV} · 밭 ${n.addF}`);
+      ok(n.rm === 1 && n.rmSite === 0 && n.rmUnknown === 0, '㊶ ★허물면 운다(벽 1) · 터가 다음 단계로 **바뀌는** 지움 0 · 모르는 건물 0', `벽 ${n.rm} · 터 ${n.rmSite} · 모름 ${n.rmUnknown}`);
+      ok(n.dmg === 1 && n.dmgSame === 0, '㊷ 벽이 깎이면 운다 · hp 가 같으면 0', `깎임 ${n.dmg} · 같음 ${n.dmgSame}`);
+      ok(n.doorOpen === 1 && n.doorClose === 1 && n.doorFirst === 0, '㊸a ★문 열림·닫힘 각 1 · 처음 보는 문 0(무엇이 바뀌었는지 모른다)', `열 ${n.doorOpen} · 닫 ${n.doorClose} · 처음 ${n.doorFirst}`);
+      ok(n.jobOn === 0 && n.jobOff === 1, '㊸b 가마에 불 넣음은 단발 0(반복 불소리가 맡는다) · 꺼냄 1', `넣음 ${n.jobOn} · 꺼냄 ${n.jobOff}`);
+      ok(n.sow === 1 && n.reap === 0, '㊸c 밭에 씨 넣음 1 · 수확(crop 꺼짐) 0 — 사람 수확은 `where:harvest` 가 이미 운다', `씨 ${n.sow} · 수확 ${n.reap}`);
+      ok(n.pick === 1 && n.pickUnknown === 0, '㊹ 주우면 그 자리에서 운다 · 모르는 물건 0', `${n.pick} · ${n.pickUnknown}`);
+      ok(n.sap === 1 && n.sapGrow === 0, '㊺ ★묘목을 심으면 1 · 같은 id 가 자라 나무가 돼도 0', `심기 ${n.sap} · 자람 ${n.sapGrow}`);
+      ok(n.chest === 1, '㊻ 궤에 넣기/꺼내기 뒤 1(그 궤 자리)', `${n.chest}`);
+      // ㊼ 가마 반복 불소리 — `job` 이 있을 때만(훑기 · 진짜 `scan`)
+      const loops = await page.evaluate(async () => {
+        const mk = (job) => [{ kind: 'building', b: { id: 'fz', type: 'furnace', x: 0, y: 0, data: job ? { job: {} } : {} }, ax: 0, ay: 0 }];
+        const has = () => [..._sfxLoops.keys()].some((k) => /^fire:fz/.test(k));
+        _sfxScanAt = 0; window.__sfx.scan(mk(true), 0, 0); await new Promise((r) => setTimeout(r, 900));
+        _sfxScanAt = 0; window.__sfx.scan(mk(true), 0, 0); const on = has();
+        _sfxScanAt = 0; window.__sfx.scan(mk(false), 0, 0); const off = has();
+        _sfxScanAt = 0; window.__sfx.scan([], 0, 0);
+        return { on, off };
+      });
+      ok(loops.on === true && loops.off === false, '㊼ ★노에 불이 들면 불소리 · 꺼지면 멎는다(`buildingsWhen`)', `켬 ${loops.on} · 끔 ${loops.off}`);
+    }
+
     // ④ ★[T305] 옛 곡선이 증폭기였다는 것을 **이 자로 다시 보인다** — 자명 통과 금지.
     //    같은 입력을 옛 곡선에 통과시켜 원점 기울기를 잰다. 1 이 나오면 자가 고장 난 것이다.
     {

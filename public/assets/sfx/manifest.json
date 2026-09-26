@@ -17,7 +17,9 @@
   "berry_bush": "harvest",
   "herb": "harvest",
   "sapling": "harvest",
-  "_뺀것": "`stump`(벤 자리 · 때릴 것이 아니다) · `water_pool`(마시기 — 키 없음)"
+  "_뺀것": "`stump`(벤 자리 · 때릴 것이 아니다) · `water_pool`(마시기 — 키 없음)",
+  "stump": "axe",
+  "_T412_stump": "그루터기 캐기 = 도끼질(서버는 나무와 같은 `resource_update`/`removed` 를 보낸다) — 이웃 키 `axe` · 새 파일 0."
  },
  "mobs": {
   "_뜻": "이번 프레임 화면에 있는 개체(`renderables` kind='mob')의 `type` → 키. 반경·쿨다운은 그 키의 칸이 정한다. 파일이 없으면 무음(빨강 아님).",
@@ -92,9 +94,91 @@
   "_T402": "★서버가 `damagePlayer(p,dmg,source)` 의 **출처 앞 낱말**을 `why` 로 싣는다(T402 · 종전엔 전부 'damage'). 맞음 = 짐승(`mob`)·야생 습격(`wild`)·화살(`arrow`)·주먹/무기(`player`)·낙하(`fall`) → `hit_body`. ★`extreme`(추위·갈증·허기 극단 감소 — 추위 3.6초마다 1HP)·`food`(독 음식 · 먹어 회복도 같은 낱말)는 **안 운다**. 방송이라 곁 사람도 듣는다(거리 감쇠 `radius`).",
   "_msgType_왜": "[T402] 메시지 이름은 `_` 칸에 둔다 — 이 표가 배선 표(값 = 키)가 되자 `msgType` 값이 키로 읽혀 ⑦a 가 물었다. 층은 이 칸을 읽는다(층 코드에 이름 0)."
  },
+ "work": {
+  "_뜻": "[T412] 도구/작업 — 메시지 이름 → 키. `combat` 과 **같은 자리 규칙**(좌표 · pid · `buildingId` 의 건물 자리).",
+  "chest_state": "chest_use",
+  "_chest_state": "서버가 궤에 **넣기·꺼내기 뒤에만** 보낸다(`tryChestPut`·`tryChestTake` 두 자리 · 나에게만). 이름은 상태지만 나가는 자리는 사건이다."
+ },
+ "buildAdded": {
+  "_뜻": "[T412] `building_added` — 선 건물의 타입 → 키(`_기본`). `_조용` 은 안 운다.",
+  "기본": "build_place",
+  "farmland": "dig",
+  "_조용": [
+   "vtile"
+  ],
+  "_왜_vtile": "마을 바닥 타일은 주민 마을이 스스로 깐다(사람 손 사건이 아니다 · 한 번에 수십 장)."
+ },
+ "buildRemoved": {
+  "_뜻": "[T412] `building_removed` — **직전** 타입(층이 아직 쥐고 있다) → 키.",
+  "기본": "build_break",
+  "_조용": [
+   "hut_site",
+   "kiln_site",
+   "furnace_site",
+   "shelter_site",
+   "village_site",
+   "vtile",
+   "farmland"
+  ],
+  "_왜_조용": "터(`*_site`)는 단계가 오르며 **바뀌는** 것이다(`tryHutAdvance`·`_siteAdvance`·`tryKilnAdvance` 가 지우고 새로 세운다 — 새 것이 `build_place` 로 운다). 밭·바닥 타일은 부서지는 구조물이 아니다."
+ },
+ "buildDamaged": {
+  "_뜻": "[T412] `building_damaged` — 직전 hp 와 견준다(깎임 `down` · 고침 `up`). 두 자리: `tryAttack`(벽 치기) · `tryRepairBuilding`(고치기).",
+  "down": "build_hit",
+  "up": "build_hit"
+ },
+ "buildEdge": [
+  {
+   "types": [
+    "door"
+   ],
+   "field": "open",
+   "on": "door_open",
+   "off": "door_close",
+   "_자리": "doDoorToggle"
+  },
+  {
+   "types": [
+    "furnace",
+    "charcoal_kiln"
+   ],
+   "field": "job",
+   "off": "craft_done",
+   "_자리": "tryFurnaceSmelt·tryKilnBurn — job 이 생기면 불이 든다(반복 `fire` 가 운다 · `buildingsWhen`) · 없어지면 꺼냈다"
+  },
+  {
+   "types": [
+    "farmland"
+   ],
+   "field": "crop",
+   "on": "dig",
+   "_자리": "_plantInto(사람) — 밭에 씨를 넣음 · ⚠꺼짐(수확)은 안 잇는다: 사람 수확은 `inventory where:harvest` 가 이미 운다(두 번 0)"
+  }
+ ],
+ "groundPick": {
+  "_뜻": "[T412] `ground_item_removed` — 이 방송은 `tryPickupItem` 네 자리에서만 나간다(= 누가 주웠다). 자리 = 직전 `groundItems`.",
+  "key": "pickup",
+  "_where": "`inventory where:pickup·pickup:tool` 은 **표에 안 넣는다** — 내 줍기도 이 방송이 이미 울린다(두 번 0 · `drop:*` 이 `ground_item_added` 로 우는 것과 같은 꼴)."
+ },
+ "resourceNew": {
+  "_뜻": "[T412] `resource_spawn` 중 **처음 보는 id** 만 — 자람(`r.type` 바뀜)·열매 갱신은 같은 id 라 조용.",
+  "sapling": "dig"
+ },
+ "buildingsWhen": {
+  "_뜻": "[T412] `buildings` 반복 소리를 **이 칸이 켜졌을 때만** 낸다.",
+  "furnace": {
+   "field": "job"
+  },
+  "charcoal_kiln": {
+   "field": "job"
+  }
+ },
  "buildings": {
   "_뜻": "개체와 같은 문법 — 건물 `type` → 반복 키. 개체마다 하나씩 나고 화면 밖이면 멎는다.",
-  "campfire": "fire"
+  "campfire": "fire",
+  "furnace": "fire",
+  "charcoal_kiln": "fire",
+  "_T412": "노·숯가마도 **불이 들었을 때만**(`buildingsWhen` · `data.job`) 모닥불 소리를 낸다 — 새 파일 0(이웃 키)."
  },
  "bus": {
   "master": {
@@ -691,6 +775,210 @@
    "indoorMul": 0.25,
    "후보": true,
    "_T397": "고인 물 2번 — 물가 찰랑임(물이 빠지는 바위) · 8.0s 반복 · 이음새 −24.5dB."
+  },
+  "build_place": {
+   "file": "build_place.ogg",
+   "fileAlt": "build_place.m4a",
+   "volume": 0.6,
+   "radius": 384,
+   "loop": false,
+   "maxSame": 2,
+   "cooldownMs": 60,
+   "source": "kenney_impact_sounds",
+   "훅": "30-n-net.js handleMessage — **수신**. `building_added`(`buildAdded` 표 · 타입별 · `_기본`).",
+   "_T412": "무엇이 섰다 — 놓기·터 단계 오름·주민 집 짓기. 판자 두드림(1073Hz). 1번."
+  },
+  "build_place_b": {
+   "file": "build_place_b.ogg",
+   "fileAlt": "build_place_b.m4a",
+   "volume": 0.6,
+   "radius": 384,
+   "loop": false,
+   "maxSame": 2,
+   "cooldownMs": 60,
+   "source": "kenney_impact_sounds",
+   "후보": true,
+   "_T412": "2번 — 같은 팩 다른 판자."
+  },
+  "build_hit": {
+   "file": "build_hit.ogg",
+   "fileAlt": "build_hit.m4a",
+   "volume": 0.7,
+   "radius": 384,
+   "loop": false,
+   "maxSame": 2,
+   "cooldownMs": 0,
+   "source": "kenney_impact_sounds",
+   "훅": "30-n-net.js handleMessage — **수신**. `building_damaged`(직전 hp 와 견줘 깎임·고침 — `buildDamaged`).",
+   "_T412": "벽을 치거나 고칠 때. 판자 두드림(744Hz). 1번."
+  },
+  "build_hit_b": {
+   "file": "build_hit_b.ogg",
+   "fileAlt": "build_hit_b.m4a",
+   "volume": 0.7,
+   "radius": 384,
+   "loop": false,
+   "maxSame": 2,
+   "cooldownMs": 0,
+   "source": "kenney_impact_sounds",
+   "후보": true,
+   "_T412": "2번 — 나무 쿵(중심 123Hz · 헤드폰)."
+  },
+  "build_break": {
+   "file": "build_break.ogg",
+   "fileAlt": "build_break.m4a",
+   "volume": 0.75,
+   "radius": 384,
+   "loop": false,
+   "maxSame": 2,
+   "cooldownMs": 60,
+   "source": "oga_break_sfx",
+   "훅": "30-n-net.js handleMessage — **수신**. `building_removed`(직전 타입 · `buildRemoved` · 터 `_site` 는 조용 — 다음 단계로 바뀐 것).",
+   "_T412": "허묾·철거. 나무 부러짐. 1번."
+  },
+  "build_break_b": {
+   "file": "build_break_b.ogg",
+   "fileAlt": "build_break_b.m4a",
+   "volume": 0.75,
+   "radius": 384,
+   "loop": false,
+   "maxSame": 2,
+   "cooldownMs": 60,
+   "source": "oga_break_sfx",
+   "후보": true,
+   "_T412": "2번."
+  },
+  "door_open": {
+   "file": "door_open.ogg",
+   "fileAlt": "door_open.m4a",
+   "volume": 0.6,
+   "radius": 320,
+   "loop": false,
+   "maxSame": 2,
+   "cooldownMs": 0,
+   "source": "kenney_rpg_audio",
+   "훅": "30-n-net.js handleMessage — **수신**. `building_updated` 의 `door.open` 이 켜짐(`buildEdge`).",
+   "_T412": "문 열림(나무문 삐걱). 1번."
+  },
+  "door_open_b": {
+   "file": "door_open_b.ogg",
+   "fileAlt": "door_open_b.m4a",
+   "volume": 0.6,
+   "radius": 320,
+   "loop": false,
+   "maxSame": 2,
+   "cooldownMs": 0,
+   "source": "kenney_rpg_audio",
+   "후보": true,
+   "_T412": "2번(1.33s · 더 길다)."
+  },
+  "door_close": {
+   "file": "door_close.ogg",
+   "fileAlt": "door_close.m4a",
+   "volume": 0.6,
+   "radius": 320,
+   "loop": false,
+   "maxSame": 2,
+   "cooldownMs": 0,
+   "source": "kenney_rpg_audio",
+   "훅": "30-n-net.js handleMessage — **수신**. `building_updated` 의 `door.open` 이 꺼짐(`buildEdge`).",
+   "_T412": "문 닫힘. 1번."
+  },
+  "door_close_b": {
+   "file": "door_close_b.ogg",
+   "fileAlt": "door_close_b.m4a",
+   "volume": 0.6,
+   "radius": 320,
+   "loop": false,
+   "maxSame": 2,
+   "cooldownMs": 0,
+   "source": "kenney_rpg_audio",
+   "후보": true,
+   "_T412": "2번."
+  },
+  "pickup": {
+   "file": "pickup.ogg",
+   "fileAlt": "pickup.m4a",
+   "volume": 0.55,
+   "radius": 320,
+   "loop": false,
+   "maxSame": 2,
+   "cooldownMs": 0,
+   "source": "kenney_rpg_audio",
+   "훅": "30-n-net.js handleMessage — **수신**. `ground_item_removed`(줍기 함수에서만 나간다 · 물건 자리 = 직전 `groundItems`).",
+   "_T412": "줍기 — 천 스침(cloth2). `drop` 의 짝. 1번."
+  },
+  "pickup_b": {
+   "file": "pickup_b.ogg",
+   "fileAlt": "pickup_b.m4a",
+   "volume": 0.55,
+   "radius": 320,
+   "loop": false,
+   "maxSame": 2,
+   "cooldownMs": 0,
+   "source": "kenney_rpg_audio",
+   "후보": true,
+   "_T412": "2번 — 가죽 쥠(handleSmallLeather)."
+  },
+  "chest_use": {
+   "file": "chest_use.ogg",
+   "fileAlt": "chest_use.m4a",
+   "volume": 0.55,
+   "radius": 256,
+   "loop": false,
+   "maxSame": 1,
+   "cooldownMs": 0,
+   "source": "kenney_rpg_audio",
+   "훅": "30-n-net.js handleMessage — **수신**. `chest_state`(궤에 넣기·꺼내기 뒤에만 나간다 · `work` 표 · 자리 = 그 궤).",
+   "_T412": "궤 뚜껑 삐걱(creak3). 1번."
+  },
+  "chest_use_b": {
+   "file": "chest_use_b.ogg",
+   "fileAlt": "chest_use_b.m4a",
+   "volume": 0.55,
+   "radius": 256,
+   "loop": false,
+   "maxSame": 1,
+   "cooldownMs": 0,
+   "source": "kenney_rpg_audio",
+   "후보": true,
+   "_T412": "2번(creak1 · 길다)."
+  },
+  "craft_done": {
+   "file": "craft_done.ogg",
+   "fileAlt": "craft_done.m4a",
+   "volume": 0.7,
+   "radius": 384,
+   "loop": false,
+   "maxSame": 1,
+   "cooldownMs": 0,
+   "source": "kenney_impact_sounds",
+   "훅": "30-n-net.js handleMessage — **수신**. `building_updated` 의 노·숯가마 `job` 이 꺼짐(출탕·숯 꺼냄 · `buildEdge`).",
+   "_T412": "가마에서 꺼냄 — 쇠 부딪힘(impactMetal_light). 1번."
+  },
+  "craft_done_b": {
+   "file": "craft_done_b.ogg",
+   "fileAlt": "craft_done_b.m4a",
+   "volume": 0.7,
+   "radius": 384,
+   "loop": false,
+   "maxSame": 1,
+   "cooldownMs": 0,
+   "source": "kenney_rpg_audio",
+   "후보": true,
+   "_T412": "2번 — 쇠그릇(metalPot2)."
+  },
+  "dig": {
+   "file": "dig.ogg",
+   "fileAlt": "dig.m4a",
+   "volume": 0.6,
+   "radius": 320,
+   "loop": false,
+   "maxSame": 2,
+   "cooldownMs": 0,
+   "source": "oga_shovel",
+   "훅": "30-n-net.js handleMessage — **수신**. `resource_spawn`(처음 보는 묘목 id · `resourceNew`) · `building_added` 밭(`buildAdded.farmland`) · 밭에 씨 넣음(`buildEdge` farmland.crop 켜짐).",
+   "_T412": "삽질 — 심기·밭 일구기. 1번뿐(2번 없음 — 회부)."
   }
  },
  "_성사": "카드는 수확·먹기·도끼질 훅을 '서버 동사 결과가 오는 30-n-net.js 핸들러'에 붙이라고 했다. §0-ⓒ 실측: **그런 메시지가 없다.** 서버는 먹기·수확에 전용 결과 타입을 안 보내고 `notice`·`gauges`·`inventory`·`resource_removed` 같은 **공용 메시지**만 보낸다(`doEat`·`tryHarvest`·`gatherResource` 전수). 공용 메시지에 붙이면 남이 한 일에도 소리가 난다. 그래서 **발신 정본 한 자리**(`sendPrimary`)에 붙였다 — 거절당한 동사도 소리가 난다는 맞바꿈이고, 그 대신 훅이 파일 하나·줄 하나다. 성사로 옮기려면 서버가 동사별 결과를 보내야 한다 ⇒ 회부.",
@@ -716,7 +1004,7 @@
    "url": "https://kenney.nl/assets/rpg-audio",
    "author": "Kenney Vleugels (Kenney.nl)",
    "received": "2026-09-13",
-   "_원본": "step_dirt = footstep04.ogg · step_grass = footstep07.ogg · axe = chop.ogg (전부 통째) · ui_click = bookPlace1.ogg (0.30s 중 0.020~0.280s · 선행 무음 잘라 냄) [T269·T282] · wake_up = cloth1.ogg (0.66s 중 0.030~0.554s) [T387] · step_yard_b = footstep02 (0.010~0.212s) · step_farm = footstep09 (0.002~0.215s) · step_farm_b = footstep06 (0.000~0.208s) [T397]",
+   "_원본": "step_dirt = footstep04.ogg · step_grass = footstep07.ogg · axe = chop.ogg (전부 통째) · ui_click = bookPlace1.ogg (0.30s 중 0.020~0.280s · 선행 무음 잘라 냄) [T269·T282] · wake_up = cloth1.ogg (0.66s 중 0.030~0.554s) [T387] · step_yard_b = footstep02 (0.010~0.212s) · step_farm = footstep09 (0.002~0.215s) · step_farm_b = footstep06 (0.000~0.208s) [T397] · door_open = doorOpen_1 (0.003~0.881s) · door_open_b = doorOpen_2 (0.030~1.364s) · door_close = doorClose_1 (0.001~0.431s) · door_close_b = doorClose_2 (0.006~0.503s) · pickup = cloth2 (0.035~0.357s) · pickup_b = handleSmallLeather (0.028~0.221s) · chest_use = creak3 (0.016~0.283s) · chest_use_b = creak1 (0.056~0.625s) · craft_done_b = metalPot2 (0.107~0.738s) [T412]",
    "_주의": "★지면은 **가설**이다 — 팩에 무슨 바닥인지 안 적혀 있다. 스펙트럴 중심이 가장 낮은 04(1,007Hz)를 흙, 가장 높은 07(2,189Hz)을 풀로 잡았다. **판정은 재민 귀.**",
    "_후보": "`ui_click` 은 **후보**다 — 훅 0 · 키 0 (\"있어야 하나\"는 재민 · T282). 후보 셋을 같은 자로 쟀다: bookPlace1 선행 6.0ms·SNR 38.8dB ← 골랐다 · bookClose 선행 72.9ms·SNR 29.6 · Woodpecker tapping(USFWS·PD · https://commons.wikimedia.org/wiki/File:Woodpecker_tapping.ogg) 선행 14.5ms·SNR 10.1. 딱따구리가 \"진짜 나무 두드림\"이라 먼저 골랐다가 자가 뒤집었다 — 숲 바닥이 같이 오고 정점이 116ms 뒤에 온다."
   },
@@ -826,7 +1114,8 @@
    "license": "CC0",
    "url": "https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx",
    "author": "rubberduck",
-   "received": "2026-09-23"
+   "received": "2026-09-23",
+   "_원본": " · build_break = bfh1_wood_breaking_03 (0.000~0.286s) · build_break_b = bfh1_wood_breaking_04 (0.016~0.228s) [T412]"
   },
   "commons_pd_forest_wind": {
    "license": "Public domain",
@@ -847,7 +1136,7 @@
    "url": "https://kenney.nl/assets/impact-sounds",
    "author": "Kenney Vleugels (Kenney.nl)",
    "received": "2026-09-25",
-   "_원본": "downed = impactPunch_heavy_000.ogg (0.65s 중 0.000~0.380s) · downed_b(후보) = impactSoft_heavy_000.ogg (0.51s 중 0.000~0.406s) [T387] · hit_body = impactPunch_medium_001 (0.40s 중 0.000~0.218s) · hit_body_b = impactPunch_medium_003 (0.000~0.228s) · step_floor = footstep_carpet_003 (0.000~0.067s) · step_floor_b = footstep_wood_003 (0.000~0.074s) · step_yard = footstep_concrete_000 (통째 0.10s) [T397]",
+   "_원본": "downed = impactPunch_heavy_000.ogg (0.65s 중 0.000~0.380s) · downed_b(후보) = impactSoft_heavy_000.ogg (0.51s 중 0.000~0.406s) [T387] · hit_body = impactPunch_medium_001 (0.40s 중 0.000~0.218s) · hit_body_b = impactPunch_medium_003 (0.000~0.228s) · step_floor = footstep_carpet_003 (0.000~0.067s) · step_floor_b = footstep_wood_003 (0.000~0.074s) · step_yard = footstep_concrete_000 (통째 0.10s) [T397] · build_place = impactPlank_medium_000 (0.000~0.174s) · build_place_b = impactPlank_medium_002 (0.000~0.187s) · build_hit = impactPlank_medium_001 (0.000~0.386s) · build_hit_b = impactWood_heavy_003 (0.000~0.171s) · craft_done = impactMetal_light_000 (0.000~0.190s) [T412]",
    "_라이선스": "팩 안 `License.txt` 를 열어 읽었다: \"License: (Creative Commons Zero, CC0)\" · 페이지 License 칸도 CC0."
   },
   "oga_artisticdude_battle": {
@@ -914,28 +1203,41 @@
    "received": "2026-09-26",
    "_원본": "water_pool_b(후보) = 1.50~9.50s + 1.0s 겹침 8.0s 반복 [T397]",
    "_라이선스": "파일 페이지 = Public domain."
+  },
+  "oga_shovel": {
+   "license": "CC0",
+   "url": "https://opengameart.org/content/shovel-sound",
+   "author": "themightyglider (원본: RavenWolfProds · freesound 503672 'Shovel in dirt' · CC0)",
+   "received": "2026-09-26",
+   "_원본": "dig = shovel.ogg (0.91s 중 0.000~0.722s) [T412]",
+   "_라이선스": "OGA 페이지 License(s) = CC0 · 작가가 밝힌 원천(freesound 503672)의 페이지 라이선스도 **CC0**(publicdomain/zero/1.0) — 2차 저작의 사슬을 끝까지 읽었다."
   }
  },
  "_실측": {
   "_뜻": "`__sfx.probe()` 가 실클라에서 잰 값. 하네스 ⑧ 이 이 수와 `bus.limiter.knee` 의 부등식을 지킨다. 키를 더하면 **다시 재서 이 칸을 갱신**하라(셈으로 채우지 마라).",
   "date": "2026-09-26",
   "browser": "Chromium(Playwright) · 44100Hz · 오프라인 렌더 4초 · 소리판에서 `__sfx.probe()`",
-  "worstPeak": 0.7957,
-  "worstPeakDb": -1.98,
+  "worstPeak": 0.7967,
+  "worstPeakDb": -1.97,
   "worstCombo": [
    "tiger_growl",
    "wolf_howl",
    "axe",
    "hook",
    "boar_grunt",
-   "rock_hit"
+   "rock_hit",
+   "build_place",
+   "build_hit",
+   "build_break",
+   "craft_done",
+   "dig"
   ],
   "clippedAtWorst": 0,
-  "allKeysPeakNoLimiter": 1.2706,
-  "allKeysClippedNoLimiter": 132,
+  "allKeysPeakNoLimiter": 1.3905,
+  "allKeysClippedNoLimiter": 290,
   "_주의": "`worstPeak` 는 **리미터 없이** 잰 값이다(문턱을 그것과 견주려면 리미터가 개입하기 전의 수여야 한다). 키를 더하면 `__sfx.probe()` 를 다시 돌려 이 칸을 갱신하라 — 셈으로 채우지 마라. T261·T283 이 셈으로 채웠다가 둘 다 틀렸다.",
   "_자의바닥": "두 판(리미터 있음/없음)의 피크가 문턱 아래에서도 ±0.1 dB 쯤 다르다 — `oversample:'2x'` 의 재표본 필터다. 펌핑을 잴 때 이 바닥을 안 빼면 **없는 펌핑**이 보인다: 1차 판이 `pa>0.02` 인 창을 다 보다가 모닥불 하나에 '최악 −10.92 dB'를 냈다(피크는 한 톨도 안 변했는데). ⇒ 비율은 **`pa > knee` 인 창에서만** 뜻이 있다.",
-  "soundingKeys": 41,
+  "soundingKeys": 58,
   "_왜 이 수를 적나": "소리 나는 키가 이 수와 달라지면 `test-audio ⑧` 이 문다 — **키를 더했으면 다시 재라**는 뜻이다. 셈으로 고치지 말고 `__sfx.probe()` 를 돌려라.",
   "_개명": "[T303] `wolf_growl` → `wolf_howl` 은 **이름만** 바뀐 것이다 — 파일 바이트가 0 변경이라(sha1 d9176d70…/bede1a0f… 그대로) 이 실측값은 여전히 그 파일을 잰 값이다. `worstPeak`·`clippedAtWorst` 는 **다시 재지 않았고 한 자도 안 고쳤다** — 이름표만 갈았다.",
   "_T354": "21키 전부 동시: 피크 0.772(-2.25 dBFS) · 클리핑 0. **리미터를 빼면 피크 1.1039 · 클리핑 10** — 키가 16→21 로 늘면서 리미터가 무는 자리가 늘었다(T292 때는 최악 조합조차 문턱을 안 넘었다).",
@@ -969,7 +1271,23 @@
    "overKnee": "2/400",
    "_뜻": "[T397] ⑧g 의 미끼 — **문턱을 실제로 넘는** 잰 조합(T354~T358 의 옛 최악 조합 · 후보 `bronze_hit` 포함 · 리미터 없이). ⑧c 와 같은 술어가 이것을 빨갛게 판정해야 자가 산 것이다."
   },
-  "_T397": "41키(후보 포함) 재측정: 최악(후보 뺀 여섯) 0.7957 그대로(새 배선 키 셋은 발자국이라 조합에 안 든다 · 넣어 재도 0.7944) · 전투 한 판 0.7456 그대로 · 배선 28키 전부 없이 0.9959 · 클리핑 0 → 끼고 0.771 · 41키 전부 없이 1.2706 · 클리핑 132 → 끼고 0.7791(−2.17) · 클리핑 0."
+  "_T397": "41키(후보 포함) 재측정: 최악(후보 뺀 여섯) 0.7957 그대로(새 배선 키 셋은 발자국이라 조합에 안 든다 · 넣어 재도 0.7944) · 전투 한 판 0.7456 그대로 · 배선 28키 전부 없이 0.9959 · 클리핑 0 → 끼고 0.771 · 41키 전부 없이 1.2706 · 클리핑 132 → 끼고 0.7791(−2.17) · 클리핑 0.",
+  "workCombo": [
+   "build_place",
+   "build_hit",
+   "build_break",
+   "door_open",
+   "door_close",
+   "pickup",
+   "chest_use",
+   "craft_done",
+   "dig",
+   "fire",
+   "wind"
+  ],
+  "workPeak": 0.6305,
+  "workPeakDb": -4.01,
+  "_T412": "58키 재측정. ★최악이 바뀌었다: T292 여섯 + 공사 다섯(build_place·build_hit·build_break·craft_done·dig)을 한 표본에 겹치면 없이 **0.7967**(−1.97 dBFS · 창 0/400) — 종전 여섯만 0.7957 보다 0.01 dB 위라 이 조합을 새 `worstCombo` 로 적었다. ⚠여유 **0.03 dB**. 공사판 한 판(11키) 0.6305 · 배선 38키 전부 없이 1.3524/클리핑 40 → 끼고 0.7788 · 58키 전부 없이 1.3905/290 → 끼고 0.7871/0."
  },
  "ground": {
   "_뜻": "발밑 지형 → 발자국 키. 지형 정본은 `window.__tileStateAt` 하나(`kind`·`geo`·풀 알파) — 층은 그 답을 이 표로 옮길 뿐이다.",
