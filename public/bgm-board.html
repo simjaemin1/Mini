@@ -44,6 +44,13 @@
     sha256 으로 그 파일인지 잰다(아래 `T401_SHA` · T391 문법). ○/✗ 은 두 대안 각각 — "이 판이 배포본 자리에
     들어가도 되나". #72(곡마다 되찾음 / 다시 굽기 / 그대로)의 재민 귀 칸이다. 파일 이름·기대 해시는
     `scripts/t401-bgm-legacy.js` 가 구운 판에서 온다(손으로 안 적는다 — 보고/T401 표와 같은 수).
+
+  ★[T430 2026-09-26] **재민 판정 세 판을 한 자리에** — 맨 위 「재민 판정 세 판」 표로 **옮기기만** 했다(새 줄 0 · 새 소리 0).
+    #66 = 「legacy」「phrase」 두 줄(T386) → #70 = 무표기 재발음 A/B → #72 = 11줄(T401) 순서로 위에서 아래로 답한다.
+    줄을 만드는 코드는 그대로이고 **붙는 표만** 바뀌었다(`draw()` 가 두 무리를 모아 `#judge` 에 붙인다).
+    판정 열쇠(`ab:*` · `t401:*`)도 그대로라 전에 적은 답이 그대로 뜬다. 「sigim 켬/끔」(T391 · 판정 번호 없음)은 제자리.
+    ⚠#70 은 판에 **줄이 없다** — 규칙을 켠 판의 소리가 아직 없다(T391 은 sigim 켬/끔을 올렸다). 새 줄을 안 만들고
+    그 사실을 표 머리에 적었다(회부 · 보고/T430).
 -->
 <style>
   :root{
@@ -107,7 +114,8 @@
   <p class="sub">배경음악 13곡과 <b>아리랑 대금 두 판</b>을 한 장에. <b>「파일」</b>은 굽힌 곡 그대로,
      <b>「legacy」「phrase」</b>는 <code>bgm.js</code> 가 지금 굽는 소리다(같은 씨 · 같은 반주 · 대금만 다르다).
      <b>「sigim 켬」「sigim 끔」</b>은 배포하지 않는 <b>로컬 청취본</b>이라 디스크에서 고른다(<code>~/Mini/_bgm_ab/T391/</code>).
-     행은 <code>render-meta.json</code> 에서 <b>그때그때 만든다</b>.</p>
+     행은 <code>render-meta.json</code> 에서 <b>그때그때 만든다</b>.
+     <b>재민 판정 세 판(#66 · #70 · #72)은 맨 위 한 자리</b>에 모았다 — 위에서 아래로 한 글자씩(○/✗).</p>
 
   <div class="note" id="boot">정본을 읽는 중…</div>
 
@@ -120,7 +128,12 @@
     <span class="stat" id="ctxstat"></span>
   </div>
 
-  <h2>13곡 + 아리랑 대금 A/B <span class="stat" id="count"></span></h2>
+  <h2>재민 판정 세 판 — 한 자리 <span class="stat" id="jcount"></span></h2>
+  <div class="note">위에서 아래로 <b>한 글자씩</b>(○/✗ · 메모). <b>#66</b> 프레이즈 A/B(「legacy」「phrase」) →
+    <b>#70</b> 무표기 재발음 A/B → <b>#72</b> 07-30 판 11곡(「배포」「07-31」「지금」). 답은 이 브라우저에 남고
+    (<code>localStorage</code> · <code>durango.bgmboard.v1</code>) 맨 아래 「표 복사」가 한 장으로 옮긴다.
+    <br>⚠<b>#70 은 이 판에 줄이 없다</b> — 규칙(<code>ARTICULATION_CONTRACT</code>)을 켠 판의 소리가 아직 없다.
+    이 판은 새 줄·새 소리를 안 만든다(회부 · 보고/T430).</div>
   <div class="bar" id="t401bar">
     <button id="pickdir">청취본 폴더 고르기</button>
     <button id="pickfiles">파일 여럿 고르기</button>
@@ -132,6 +145,11 @@
     <b>악구 하나를 한 숨으로 잇는</b> 판이다(<code>performancePhrases</code> — 제품은 안 켠다). R&amp;D-01 의 사람 청취 판정은
     <b>둘 다 불통과</b>였다(<code>설계/BGM_RND_01.md</code>) — 이 판은 그 판정을 <b>재민 귀로 다시 대는 자리</b>다(#66).
     마디·씨를 비우면 엔진 기본값을 쓴다. 두 줄은 <b>같은 마디·같은 씨</b>로 굽는다.</div>
+  <div class="tablewrap"><table id="judge"><thead><tr>
+    <th>곡</th><th>듣기</th><th>장면 · 편성</th><th>길이</th><th>RMS</th><th>피크</th><th>잰 값(이 자리)</th><th>○/✗</th><th>메모</th>
+  </tr></thead><tbody></tbody></table></div>
+
+  <h2>13곡 파일 · sigim 청취본 <span class="stat" id="count"></span></h2>
   <div class="tablewrap"><table id="bgm"><thead><tr>
     <th>곡</th><th>듣기</th><th>장면 · 편성</th><th>길이</th><th>RMS</th><th>피크</th><th>잰 값(이 자리)</th><th>○/✗</th><th>메모</th>
   </tr></thead><tbody></tbody></table></div>
@@ -484,6 +502,7 @@
     var names = Object.keys(tracks).sort();
     var tb = $('#bgm tbody');
     var nAB = 0;
+    var j66 = [], j72 = [];                              // ★[T430] 판정 세 판의 줄 — 만든 뒤 `#judge` 에 모아 붙인다
     names.forEach(function (n) {
       var t = tracks[n], s = split(n), tr = el('tr');
       tr.appendChild(el('td', 'k', n));
@@ -507,7 +526,7 @@
       if (s.scene === AB.scene && s.mood === AB.mood) {
         VARIANTS.forEach(function (v) {
           var r = el('tr', 'ab');
-          r.appendChild(el('td', 'k', n + ' · ' + v));
+          r.appendChild(el('td', 'k', '#66 · ' + n + ' · ' + v));
           var tdb = el('td');
           var b = el('button', 'play', v);
           b.onclick = function () { playAB(b, v); };
@@ -521,7 +540,7 @@
           var tdm = el('td', 'meas', '누르면 잰다'); tdm.setAttribute('data-meas', v);
           r.appendChild(tdm);
           judgeCells('ab:' + v, r);
-          tb.appendChild(r);
+          j66.push(r);
           nAB++;
         });
         // [T391] 로컬 청취본 두 줄 — 파일은 이 판이 안 싣는다(배포 안 하는 소리 · 재민이 고른다)
@@ -599,12 +618,16 @@
         inp4.value = (judge[mid] && judge[mid].m) || ''; inp4.placeholder = '#72 — 되찾음 / 다시 굽기 / 그대로';
         inp4.oninput = function () { judge[mid] = judge[mid] || {}; judge[mid].m = inp4.value; save(); };
         tdmm.appendChild(inp4); r4.appendChild(tdmm);
-        tb.appendChild(r4);
+        j72.push(r4);
         showT401(n);
         nAB++;
       }
     });
-    $('#count').textContent = '— 행 ' + (names.length + nAB) + ' (곡 ' + names.length + ' · A/B ' + nAB + ')';
+    var tj = $('#judge tbody');
+    j66.concat(j72).forEach(function (r) { tj.appendChild(r); });   // #66 → #72(곡 이름 차례) · #70 은 줄 없음
+    var nMain = names.length + nAB - j66.length - j72.length;
+    $('#count').textContent = '— 행 ' + nMain + ' (곡 ' + names.length + ' · sigim ' + (nMain - names.length) + ')';
+    $('#jcount').textContent = '— #66 ' + j66.length + '줄 · #70 0줄(판 없음) · #72 ' + j72.length + '줄 · 모두 ' + (names.length + nAB) + '줄 그대로';
     if (!nAB) { $('#count').textContent += ' — ⚠A/B 대상 곡이 표에 없다'; }
     $('#boot').style.display = 'none';
   }
