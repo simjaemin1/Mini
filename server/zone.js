@@ -3319,7 +3319,29 @@ setInterval(() => {
 //   ⇒ 색인을 **같은 인자로 직접** 묻고(시계는 물을 수 있을 때만), 개체가 서 있으면 종전처럼 지우고 방송하고,
 //     안 서 있으면 **장부만** 적는다 — 청크가 켜질 때 `harvestedSet` 이 그 자리를 막는다(새 수 0 · 새 손잡이 0).
 //   ⚠종전 `qtResources` 갈래는 **그대로 둔다**(DB 나무 `r.dbId` 가 그 길로만 잡힌다). 색인은 **더하는** 것이다.
-const _T378_TREE = { tree: 1 };
+// ★★★[T426 2026-09-26 · PM #74 · 재민 거부권] **개간이 다시 벤다 — 서 있으면 벤다(묘목까지).**
+//   T398 §1-1 이 잰 것: 개간은 **한 번만** 벴다 — 색인 갈래가 장부 씨를 건너뛰고(`harvestedSeeds.has → continue`)
+//   성목만 봤다(`{ tree: 1 }`). 영토 안 그루터기 9,035 가 T122 대로 돌아와(포도 묘목 실일 10.3일 · 참나무 243일)
+//   다시 서도 한 그루도 안 벴다. PM 판정: **영토는 마을이 개간한 땅이다 — 거기 서는 나무는 종·단계 무관하게 벤다**(술어 0).
+//   ⇒ ⓐ 벨 종류 = **서 있는 나무** — T122 단계 묘목·성목이 청크에서 나는 이름(`sapling`·`tree` · chunk.js 가 단계를
+//        그 이름으로 낸다) = 나무꾼이 보는 **그 종 집합**(`_T325_TYPES`) 하나다(사본 0 · 그루터기는 서 있지 않다).
+//     ⓑ 장부에 있는 씨라도 **지금 서 있으면** 다시 적는다 — "마지막으로 벤 날"이 정본이다(T122 재생 시계의 입력).
+//        DB 도 그 날로 **갱신**한다(`insertHarvestedSeed` 의 `INSERT OR IGNORE` → `ON CONFLICT … DO UPDATE` ·
+//        메모리 새 날 ↔ DB 옛 날이 갈리면 재부팅에 다시 벤 그루가 옛 단계로 돌아온다 — T378 §1-4 의 그 병).
+//     ⓒ 부팅 갈래는 날을 몰라(TDZ · econ 시계 전) **장부 씨의 단계를 못 본다** — 색인이 `_stage` 에서 null 을 내
+//        다시 자란 나무가 아예 안 보인다. ⇒ 그 셀들을 적어 두고 **부팅이 끝나 시계가 선 그 틱에 같은 문으로 한 번 더**
+//        훑는다(`_recutBootOnce` · 관측자 무관 · 새 문 0 — 이 함수 그대로). 옛 행(−1) 승격도 그때 한다(T122 "시계가 선 뒤").
+const _T378_TREE = _T325_TYPES;
+let _recutBoot = null;   // ★[T426] 부팅 개간이 날을 모른 채 훑은 셀(키 Set) — 시계가 서면 한 번 더
+function _recutBootOnce() {
+  const cells = _recutBoot; _recutBoot = null;
+  if (!cells || !cells.size) return;
+  let d; try { d = gameDayNow(); } catch (e) { d = undefined; }
+  if (!Number.isFinite(d)) return;   // 시계가 아직이면 종전(T122 첫 청크 활성화 승격)대로 — 날을 지어내지 않는다
+  _promoteHarvestOnce();             // −1(부팅에 적은 행) 먼저 오늘로 — 그러면 방금 벤 그루는 그루터기로 선다
+  const n = clearTreesInCells(cells);
+  console.log(`[${ZONE_ID}] ★[T426] 부팅 개간 다시 훑기 — 영토 ${cells.size}칸 · 서 있어 다시 벤 ${n}그루(게임일 ${Math.floor(d)})`);
+}
 function clearTreesInCells(cellKeys) {
   if (!cellKeys || !cellKeys.size) return 0;
   let cleared = 0, ledger = 0;
@@ -3327,8 +3349,13 @@ function clearTreesInCells(cellKeys) {
   //   읽는데 부팅 개간(`SimVillages.init` → `villages.js` 부팅 복원의 "영토 개간" 줄)은 그 선언보다 **먼저** 돈다 ⇒
   //   `ReferenceError: Cannot access '_e2eClock' before initialization`(TDZ). 이 카드가 실측으로 물었다.
   //   ⇒ 날을 모르면 `undefined` 로 넘긴다 — 안 벤 씨앗은 날과 무관하게 서고(찾을 대상이 그것이다),
-  //     벤 씨앗은 어차피 아래서 건너뛴다. 새 수 0.
+  //     벤 씨앗은 날을 모르면 색인이 아예 안 낸다(`_stage` → null · ★[T426] 그래서 아래 다시 훑기가 있다). 새 수 0.
   let _gd; try { _gd = gameDayNow(); } catch (e) { _gd = undefined; }
+  //   ★[T426] 날을 모르면(부팅) 이 셀들을 적어 두고 시계가 선 뒤 **한 번 더** 훑는다 — 장부 씨의 단계는 날이 있어야 보인다.
+  if (!Number.isFinite(_gd)) {
+    if (!_recutBoot) { _recutBoot = new Set(); setImmediate(_recutBootOnce); }
+    for (const k of cellKeys) _recutBoot.add(k);
+  }
   // ⓐ′ ★[T378] **부팅엔 `qtResources` 가 아직 없다** — 틱이 처음 만든다(최상위 `let` 이라 그때 `undefined`).
   //    그래서 DB 나무(`r.dbId` · 심은 나무 — 청크와 무관하게 부팅 최상위에서 `resources` 에 올라온다)가
   //    종전 갈래에 **안 잡혔다**(카드 ② "DB 나무도 같은 길" · 실측: 영토 안에 심은 DB 나무 둘이 2차 부팅 뒤 **남았다**).
@@ -3338,7 +3365,7 @@ function clearTreesInCells(cellKeys) {
   if (!qtResources) {
     _dbAt = new Map();
     for (const r of resources.values()) {
-      if (r.type !== 'tree' || r.isSeed || !r.dbId) continue;
+      if (!_T378_TREE[r.type] || r.isSeed || !r.dbId) continue;   // ★[T426] 서 있는 나무 — 심은 묘목도(단계 무관)
       const kk = Math.floor(r.x / 32) + ',' + Math.floor(r.y / 32);
       if (!cellKeys.has(kk)) continue;
       let a = _dbAt.get(kk); if (!a) _dbAt.set(kk, a = []); a.push(r);
@@ -3352,7 +3379,7 @@ function clearTreesInCells(cellKeys) {
     // ⓐ 종전 갈래 — 지금 서 있는 개체(활성 청크 · DB 나무 포함). 부팅엔 ⓐ′ 가 추린 DB 나무.
     const near = qtResources ? qtResources.queryCircle(px, py, 24) : ((_dbAt && _dbAt.get(k)) || []);
     for (const r of near) {
-      if (r.type !== 'tree' || seen.has(r.id)) continue;
+      if (!_T378_TREE[r.type] || seen.has(r.id)) continue;   // ★[T426] 서 있는 나무(성목·묘목) — 그루터기는 안 선 것
       if (Math.floor(r.x / 32) !== cx || Math.floor(r.y / 32) !== cy) continue;   // 이 셀 것만
       seen.add(r.id);
       _takeResourceEntity(r, true);   // ★[T393] 빼는 몸은 문 하나(장부·DB·중복 적재 표·방송) — 종전처럼 늘 방송한다
@@ -3375,7 +3402,8 @@ function clearTreesInCells(cellKeys) {
     for (const e of idx) {
       if (!_T378_TREE[e.type] || seen.has(e.id) || !e.isSeed || !e.seedKey) continue;
       seen.add(e.id);
-      if (harvestedSeeds.has(e.seedKey)) continue;   // 이미 벤 자리 — 장부를 두 번 적지 않는다
+      //   ★[T426] 장부에 있어도 **서 있으면**(색인이 묘목·성목으로 냈다) 다시 적는다 — 날이 "마지막으로 벤 날"로 간다.
+      //     그루터기는 위 종류 거르개에서 이미 빠졌다(서 있지 않다) ⇒ 이미 벤 자리를 헛되이 다시 적지는 않는다.
       _markHarvested(e.seedKey);
       ledger++;
     }

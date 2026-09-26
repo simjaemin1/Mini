@@ -237,7 +237,10 @@ function deleteClaim(dbId) { if (!dbId) return false; try { stmtDeleteClaim.run(
 //   부팅 때 zone.js 가 **승격일**을 채운다(= 지금부터 자라기 시작한다 · 즉시 성목이 되지 않는다).
 { const _hs = db.prepare('PRAGMA table_info(harvested_seeds)').all().map(c => c.name);
   if (!_hs.includes('harvested_day')) db.exec('ALTER TABLE harvested_seeds ADD COLUMN harvested_day INTEGER NOT NULL DEFAULT -1'); }
-const stmtInsertHarvested = db.prepare('INSERT OR IGNORE INTO harvested_seeds (seed_key, harvested_at, harvested_day) VALUES (?, ?, ?)');
+// ★★[T426 2026-09-26] **마지막으로 벤 날이 정본이다** — `INSERT OR IGNORE` → `ON CONFLICT … DO UPDATE`(이 파일의 갱신 문법).
+//   종전엔 이미 있는 씨를 다시 베면 메모리(`harvestedSeeds`)는 새 날, DB 는 **옛 날**이었다 ⇒ 재부팅이 옛 날을 읽어
+//   다시 벤 그루가 옛 단계(다 자란 나무)로 **바로 돌아왔다**(T378 §1-4 · T398 §1-2). 이제 DB = 메모리.
+const stmtInsertHarvested = db.prepare('INSERT INTO harvested_seeds (seed_key, harvested_at, harvested_day) VALUES (?, ?, ?) ON CONFLICT(seed_key) DO UPDATE SET harvested_at = excluded.harvested_at, harvested_day = excluded.harvested_day');
 const stmtGetAllHarvested = db.prepare('SELECT seed_key, harvested_day FROM harvested_seeds');
 const stmtSetHarvestedDay = db.prepare('UPDATE harvested_seeds SET harvested_day = ? WHERE harvested_day < 0');
 function insertHarvestedSeed(key, gameDay) {
