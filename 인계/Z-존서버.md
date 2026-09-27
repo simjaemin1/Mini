@@ -3,6 +3,14 @@
 > ★이 파일은 **영역 소유 세션만** 갱신한다. 다른 영역에 쓸 말이 생기면 `인계/회부.md` 에 한 줄.
 > 원문은 `_아카이브_2026-08_다음세션_인계.md` 에 그대로 동결돼 있다(족보 · 삭제 금지).
 > 이사할 때 **문장을 한 글자도 안 고쳤다** — 낡아 보이는 줄엔 `[낡음? 확인 필요]` 표만 붙였다.
+## T469. ★★2026-09-28 — 배포 리허설(도커로 두 스크립트 그대로) · 재민 한 줄
+
+* `redeploy-hanbando.sh --all` 은 **존 목록을 안 읽는다** — `durango-zone-hanbando` 가 박혀 있고 env 는 옛 컨테이너 것을 `docker inspect` 로 복사한다(central `ENABLED_ZONES` 도). 컨테이너가 없으면 `[err]`.
+* 셋 = `--all` + `RUN_ZONES="jungwon_n nippon" bash scripts/redeploy-light.sh`(처음 만든다 · 새 DB · `CENTRAL_IP` 기본 `141.164.35.114`) + `/zones` 에 셋이 없으면 central env 한 줄(`보고/T469_2026-09-28.md` §4).
+* 리허설(도커 · `scripts/t469-rehearsal.sh`): `--all` 20s(한반도 재기동 9s) · light 42s · 경계 왕복 46/0(외부 모드 `ZX_EXTERNAL`) · 가라앉은 셋 + central 605MB · 흐름 중 동시 최고 1.15GB · 롤백 12s.
+* ⚠light 는 `CHAR_SPRITE` 를 안 준다 — 걸어 넘기는 무해(승격 welcome 에 `uiCfg` 없음) · 그 땅 곧장 로그인은 꺼진다(회부).
+* 이 상자에서 도커가 된다: `dockerd`(HTTPS_PROXY · SSL_CERT_FILE 로 띄움) · `node:22-alpine` 을 샌드박스 CA 를 믿는 판으로 바꿔야 npm install 이 돈다(상자 사정).
+
 ## T453. ★★2026-09-27 — 존 RSS 의 주인 · 26존 합 · 도적 표본 놓기
 
 * **943MB = 새 세계(새 DB) 첫 부팅의 봉우리**(VmHWM · 9판 560~956MiB). 주인 = `bandits.denScan` → `routePts` 의 **전쌍 교역로 A\*** (한반도 1,219쌍 · 39.5s · 510 → 897MB). 2~3분 뒤 V8 이 빈 페이지를 돌려주면 **344~374MB**(하루 경계 뒤 355 · 관측자 1 뒤 370). **같은 DB 재기동은 11.8s · 487MB**(교역로·소굴 DB 복원 · A\* 0).

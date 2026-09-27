@@ -17,6 +17,8 @@
 //      ⓐ 자리는 옛 문턱(900) **밖**이다 · 걸음이 실제로 경계를 건넜다(주 존이 바뀌었다).
 //
 // 실행: node scripts/e2e-zone-cross.js [--headed] [--shots <dir>]
+//   ★[T469] `ZX_EXTERNAL=http://<host>:3010` — 띄우지 않고 **이미 떠 있는** central·존 셋(배포 리허설의 도커 셋)에 붙는다.
+//     그때 존 로그는 `ZX_DOCKER=1` 이면 `docker logs durango-zone-<id>` 로 읽는다. 없으면(기본) 종전 그대로 제가 띄운다.
 'use strict';
 const path = require('path');
 const fs = require('fs');
@@ -116,15 +118,25 @@ function corridor(dir) {
   ok(!!CE && !!CW, 'ⓒ 전제: 동·서 경계에 걸을 길(물·바위·개체 없는 가로줄)이 있다', `${CE ? 'E y' + (CE.wy - HB.worldOffsetY) : 'E 없음'} · ${CW ? 'W y' + (CW.wy - HB.worldOffsetY) : 'W 없음'}`);
 
   // ── 기동 ─────────────────────────────────────────────────────────────────
-  for (const port of [CPORT].concat(ZIDS.map((z) => ZONES[z].port))) if (!await portFree(port)) { ok(false, `포트 ${port} 가 비어 있다(남의 서버를 잴 수 없다)`); process.exit(1); }
-  const DDIR = `/tmp/e2e-zx-${process.pid}`; fs.mkdirSync(DDIR, { recursive: true });
-  const c = boot('central', 'central.js', { PORT: String(CPORT), DB_PATH: `${DDIR}/central.db`, PUBLIC_HOST: 'localhost', ENABLED_ZONES: ZIDS.join(',') });
-  const cu = await FB.waitUp(c, /central server up on/, { name: 'central' });
-  ok(cu.ok, 'ⓔ0 central 기동', cu.ok ? `${cu.ms}ms` : cu.why);
-  const common = { CENTRAL_URL: `http://localhost:${CPORT}`, ENABLE_VILLAGES: '0', ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0' };
-  const ups = {};
-  for (const z of ZIDS) { const p = boot(z, 'zone.js', Object.assign({ PORT: String(ZONES[z].port), ZONE_ID: z, DB_PATH: `${DDIR}/w-${z}.db` }, common)); ups[z] = FB.waitUp(p, /zone server up on/, { name: z, capMs: 600000 }); }
-  for (const z of ZIDS) { const r = await ups[z]; ok(r.ok, `ⓔ ${z} 존 기동`, r.ok ? `${(r.ms / 1000).toFixed(1)}s` : r.why); }
+  const EXT = process.env.ZX_EXTERNAL || '';
+  const CBASE = EXT || `http://localhost:${CPORT}`;
+  let DDIR = null;
+  if (EXT) {   // ★[T469] 떠 있는 스택 — 셋이 central 목록에 있고 /health 가 초록인가만 본다(띄우기 0)
+    let zl = null; try { zl = await (await fetch(`${EXT}/zones`, { signal: AbortSignal.timeout(10000) })).json(); } catch (e) {}
+    const have = zl && zl.zones ? Object.keys(zl.zones) : [];
+    ok(ZIDS.every((z) => have.includes(z)), 'ⓔ0 [외부] central `/zones` 에 존 셋이 있다', have.join(','));
+    for (const z of ZIDS) { let h = false; try { const u = new URL(zl.zones[z].wsUrl.replace(/^ws/, 'http')); h = (await fetch(`${u.origin}/health`, { signal: AbortSignal.timeout(10000) })).ok; } catch (e) {} ok(h, `ⓔ [외부] ${z} /health`); }
+  } else {
+    for (const port of [CPORT].concat(ZIDS.map((z) => ZONES[z].port))) if (!await portFree(port)) { ok(false, `포트 ${port} 가 비어 있다(남의 서버를 잴 수 없다)`); process.exit(1); }
+    DDIR = `/tmp/e2e-zx-${process.pid}`; fs.mkdirSync(DDIR, { recursive: true });
+    const c = boot('central', 'central.js', { PORT: String(CPORT), DB_PATH: `${DDIR}/central.db`, PUBLIC_HOST: 'localhost', ENABLED_ZONES: ZIDS.join(',') });
+    const cu = await FB.waitUp(c, /central server up on/, { name: 'central' });
+    ok(cu.ok, 'ⓔ0 central 기동', cu.ok ? `${cu.ms}ms` : cu.why);
+    const common = { CENTRAL_URL: `http://localhost:${CPORT}`, ENABLE_VILLAGES: '0', ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0' };
+    const ups = {};
+    for (const z of ZIDS) { const p = boot(z, 'zone.js', Object.assign({ PORT: String(ZONES[z].port), ZONE_ID: z, DB_PATH: `${DDIR}/w-${z}.db` }, common)); ups[z] = FB.waitUp(p, /zone server up on/, { name: z, capMs: 600000 }); }
+    for (const z of ZIDS) { const r = await ups[z]; ok(r.ok, `ⓔ ${z} 존 기동`, r.ok ? `${(r.ms / 1000).toFixed(1)}s` : r.why); }
+  }
 
   const { chromium } = require('playwright');
   const browser = await chromium.launch({ headless: !HEADED, executablePath: require('playwright').chromium.executablePath() });
@@ -133,7 +145,7 @@ function corridor(dir) {
   page.on('pageerror', (e) => errs.push(String(e.message).slice(0, 160)));
   const clog = [];
   page.on('console', (m) => { const t = m.text(); if (/handoff|promote|kicked|welcome|neighbor|primary|reconnect|zone|recover|\[ws\]|player_left|orphan|고아|재연결/i.test(t)) clog.push(`${Date.now()} ${t.slice(0, 240)}`); });
-  await page.goto(`http://localhost:${CPORT}/`, { waitUntil: 'domcontentloaded' });
+  await page.goto(`${CBASE}/`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => { const b = document.getElementById('enter'); return !!(b && b.onclick && !b.disabled); }, { timeout: 60000 }).catch(() => {});
   const enter = await page.$('#enter'); if (enter) await enter.click();
   for (let i = 0; i < 120 && !(await page.evaluate(() => !!(window.__getMyAbs && window.__getMyAbs() && window.__getPrimaryZoneId && window.__getPrimaryZoneId()))); i++) await sleep(500);
@@ -248,6 +260,7 @@ function corridor(dir) {
       if (c._zxP2 && !c._zxW && !c._promoteSentAt) { c._zxW = performance.now(); c._zxL0 = lastTickWithMyPidAt; }
       if (c._zxP2 && c._zxW && !c._zxT && primaryZoneId === zid && lastTickWithMyPidAt && lastTickWithMyPidAt !== c._zxL0) { window.__zxTK.push([zid, c._zxW - c._zxP2, lastTickWithMyPidAt - c._zxP2]); c._zxT = true; } } } catch (e) {} }, 10); });
   const tkAll = [];
+  const window_cs = {};
   for (const [tag, C, fwd, back] of [['한반도 ↔ 닛폰', CE, ['s', 'd'], ['w', 'a']], ['한반도 ↔ 중원북', CW, ['w', 'a'], ['s', 'd']]]) {
     if (!C) continue;
     await warpW(C.from, C.wy); await sleep(2500);
@@ -263,6 +276,7 @@ function corridor(dir) {
         for (const q of w.pts) { if (Math.abs(q.x - C.seam) > STAND) far++; if (MS && Math.hypot(q.x - MS[0], q.y - MS[1]) < VIEW) nearSq++; }
         const who = await page.evaluate(() => (window.__getPlayerId ? window.__getPlayerId() : null));
         if (who && who === who0) same++;
+        if (EXT) { const cs = await page.evaluate(() => (typeof uiCfg !== 'undefined' ? !!uiCfg.charSprite : null)); (window_cs[w.pz] = window_cs[w.pz] || []).push(cs); }   // ★[T469] 배포 env 한 칸이 존마다 같은가(판정 0 · 표)
 
       }
     }
@@ -286,7 +300,9 @@ function corridor(dir) {
   }
   try { fs.writeFileSync(path.join(SHOTS, 'first-pong-ms.json'), JSON.stringify(firstPongMs)); fs.writeFileSync(path.join(SHOTS, 'promote-tick-ms.json'), JSON.stringify(tkAll)); } catch (e) {}
 
+  if (EXT) console.log(`  · [외부 · 표] 다리 끝의 uiCfg.charSprite(주 존별): ${JSON.stringify(Object.fromEntries(Object.entries(window_cs).map(([z, a]) => [z, [...new Set(a)]])))}`);
   // ── 오류 ─────────────────────────────────────────────────────────────────
+  if (EXT && process.env.ZX_DOCKER === '1') for (const z of ZIDS) { let o = ''; try { o = require('child_process').execSync(`docker logs durango-zone-${z} 2>&1`, { maxBuffer: 1 << 28 }).toString(); } catch (e) {} procs.push({ _name: z, _out: o, _err: o.split('\n').filter((l) => /^\s+at\s+\S/.test(l)).join('\n'), kill() {} }); }
   const zerr = procs.filter((p) => ZIDS.includes(p._name)).map((p) => [p._name, p._out.split('\n').filter((l) => /(^|\s)(TypeError|ReferenceError)\b|Cannot read|is not a function/.test(l)).length + p._err.split('\n').filter((l) => /^\s+at\s+\S/.test(l)).length]);
   ok(zerr.every(([, n]) => n === 0), 'ⓔ 존 셋 로그에 예외 0', zerr.map(([z, n]) => `${z} ${n}`).join(' · '));
   ok(errs.length === 0, 'ⓔ 클라 pageerror 0', errs.slice(0, 2).join(' | '));
@@ -294,7 +310,7 @@ function corridor(dir) {
   // 로그를 남긴다 — 빨강이 났을 때 "왜"를 다시 띄우지 않고 읽게(하네스 신뢰가 먼저)
   for (const p of procs) { try { fs.writeFileSync(path.join(SHOTS, `${p._name}.log`), p._out + '\n--- stderr ---\n' + p._err); } catch (e) {} }
   try { fs.writeFileSync(path.join(SHOTS, 'client-console.log'), clog.join('\n')); } catch (e) {}
-  killAll(); try { fs.rmSync(DDIR, { recursive: true, force: true }); } catch (e) {}
+  killAll(); try { if (DDIR) fs.rmSync(DDIR, { recursive: true, force: true }); } catch (e) {}
   console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
   process.exit(fail ? 1 : 0);
 })().catch((e) => { console.error('하네스 실패:', e); killAll(); process.exit(1); });
