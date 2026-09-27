@@ -277,5 +277,82 @@ console.log('\n⑪ 접점 심볼');
     '⑪ 생활층이 작물·열량·무게 정본을 **부른다**(`crops.js`·`kcal.js`·`weights.js` — 표를 옮겨 적지 않는다)');
 }
 
+// ── ⑫ [T449] 결산 문을 산다 — 관측 마을의 하루는 **팔 켜진 직업은 몸 · 나머지는 일괄** · 끔 = 종전(늘 거짓) 비트 동일 ─────
+//   `_lifeDaily` 의 관측자 문은 `767b827e` 부터 수 셋을 넘겨(`anyViewerNear(x, y, r)`) **늘 거짓**이었다 — 정본은 `(점, r)`.
+//   켜면 그 술어를 그 꼴로 묻고: ⓐ 헤드리스 결산은 그대로 부른다(그 함수가 팔로 직업을 가른다 — ⑤)
+//   ⓑ 나무꾼·채집의 헤드리스 갈래는 관측 마을이면 **몸 명부**(일괄 명부 0 · T423 이중 식사 문법 — 한 몸이 두 번 안 한다).
+//   ★실행 절은 정본 `_lifeDaily` 를 그대로 돈다(`__labProbe._t449Probe` · 존 술어는 zone.js 글자 그대로 — 사본 0).
+console.log('\n⑫ [T449] 결산 문 — 켬이면 관측 마을은 팔 켜진 직업을 **몸이** 한다 · 끔 = 종전(늘 거짓) 비트 동일');
+{
+  const daily = bodyOf(VC, '_lifeDaily');
+  ok(/^const T449_BODY_DAY = process\.env\.T449_BODY_DAY === '1';$/m.test(VC) && (VC.match(/process\.env\.T449_BODY_DAY/g) || []).length === 1,
+    '⑫ ★손잡이 `T449_BODY_DAY` 는 **한 자리**에서 읽힌다 · `=== \'1\'` 이라야 켜진다(기본 끔)');
+  //   ★점과 반경은 옛 줄의 두 식 **그대로**다(새 술어 0 · 새 수 0) — 옛 줄은 끈 팔을 위해 남는다
+  ok(/return !!\(f && f\(\{ x: vil\.ccx \* SZ \+ SZ \/ 2, y: vil\.ccy \* SZ \+ SZ \/ 2 \}, \(vil\._maxRPx \|\| 800\) \+ 1600\)\);/.test(VC)
+     && /if \(T449_BODY_DAY \|\| !\(anyNear && anyNear\(vil\.ccx \* SZ \+ SZ \/ 2, vil\.ccy \* SZ \+ SZ \/ 2, \(vil\._maxRPx \|\| 800\) \+ 1600\)\)\) \{/.test(daily),
+    '⑫ ★★켬 = 그 술어를 **점 · 반경 그 수**로 묻는다(옛 줄의 두 식 그대로) · 끔 = 옛 줄 그대로(수 셋 — 늘 거짓)');
+  ok(/const _t449S = T449_BODY_DAY && _t449Seen\(vil\);/.test(daily) && (daily.match(/_t449Seen\(vil\)/g) || []).length === 1,
+    '⑫ 관측 마을인가는 하루 경계에 **한 번** 묻는다(끔이면 묻지도 않는다 — `&&` 앞이 거짓)');
+  ok(/const _ln = _t449S \? 0 : _lnE;/.test(daily) && /const _fg = _t449S \? 0 : _fgE;/.test(daily),
+    '⑫ ★★나무꾼·채집 — 관측 마을은 **일괄 명부에서 빠진다**(명부 한 칸 · 절의 글자는 그대로 — `test-wood-act ⑦`)');
+  ok(!/_t449/.test(bodyOf(VC, '_lifeHeadlessDay')), '⑫ 헤드리스 결산 함수는 **무변**(팔로 직업을 이미 가른다 — ⑤ 글자 그대로)');
+  //   ① 옛 줄이 왜 늘 거짓인가 — zone.js 의 정본 술어를 글자 그대로 돌린다(사람을 마을 한가운데 세워도 거짓)
+  {
+    const ZS2 = fs.readFileSync(path.join(ROOT, 'server/zone.js'), 'utf8');
+    const aSrc = (ZS2.match(/function anyViewerNear\(center, r\) \{[\s\S]*?\n\}/) || [''])[0];
+    const mk = (hx, hy) => new Function('players', 'observers', aSrc + '\nreturn anyViewerNear;')(new Map([['h', { isNpc: false, x: hx, y: hy }]]), new Map());
+    const f = mk(1000, 1000);
+    const r = [f({ x: 1000, y: 1000 }, 2400), f(1000, 1000, 2400), f({ x: 9000, y: 9000 }, 2400)];
+    ok(aSrc.length > 200 && r.join() === 'true,false,false',
+      '⑫ ★★★[실행] 존의 술어는 **점**을 받는다 — `(점, r)` 은 참 · 옛 호출 `(x, y, r)` 은 사람이 한가운데 서 있어도 **거짓**(767b827e 부터 죽은 문) · 먼 점은 거짓', `[${r}]`);
+  }
+  //   ② 정본 `_lifeDaily` 를 도는 판 — 나무꾼 둘(손이 빈 채 — 오늘 몸이 든 통나무 0) · 셀 12 × 3그루 · 관측자 = 마을 가운데 300px 사람
+  const PX = JSON.stringify(path.join(ROOT, 'server/zone.js'));
+  const day = (env, o) => probe(Object.assign({ T325_WOOD_ACT: '1', T347_FORAGE_ACT: '', T449_BODY_DAY: '' }, env), `const E=require(${EP}); const V=require(${VP}); const fs=require('fs'); const P=V.__labProbe;
+    const aSrc=(fs.readFileSync(${PX},'utf8').match(/function anyViewerNear\\(center, r\\) \\{[\\s\\S]*?\\n\\}/)||[''])[0];
+    const SZ=32, ccx=400, ccy=400; const players=new Map(), observers=new Map();
+    ${o.obs ? 'players.set("h",{isNpc:false,x:ccx*SZ+16+300,y:ccy*SZ+16});' : ''}
+    const anyViewerNear=new Function('players','observers',aSrc+'\\nreturn anyViewerNear;')(players,observers);
+    players.set(1,{pid:1,isNpc:true,simJob:'lumberjack',inventory:{wood:${o.hand || 0}}}); players.set(2,{pid:2,isNpc:true,simJob:'lumberjack',inventory:{}});
+    ${o.farm ? "players.set(3,{pid:3,isNpc:true,simJob:'farmer',inventory:{}});" : ''}
+    const trees=new Map(); for(let i=0;i<12;i++) trees.set((ccx+10)+','+(ccy+i),3); let cut=0;
+    const deps={players,broadcast(){},moveSpeed:64,dayPhaseRatio:0.7,worldPhase:()=>0.3,anyViewerNear,
+      t325TreesAtCell:(cx,cy)=>{const n=trees.get(cx+','+cy)||0; return n>0?Array.from({length:n},(_,j)=>({id:cx+'_'+cy+'_'+j,seedKey:'s'+cx+'_'+cy+'_'+j})):[];},
+      t325CutTreeAt:(cx,cy)=>{const k=cx+','+cy; const n=trees.get(k)||0; if(!n) return null; trees.set(k,n-1); cut++; return {wood:3};},
+      t325LootOf:()=>({wood:3}), t341Unharvest:()=>0};
+    P._t400Probe.setup({deps,db:{insertVillageBuilding:()=>1},dayMs:1440000,epoch:0,zoneId:'t449'});
+    const ev=E.createVillage({initialPop:0,name:'x',fertility:1}); ev.counts=ev.counts||{}; ev.counts.lumberjack=2; const w0=ev.storage.wood||0;
+    const terr=new Set(); for(let dx=-3;dx<=3;dx++) for(let dy=-3;dy<=3;dy++) terr.add((ccx+dx)+','+(ccy+dy));
+    const farm=new Set(); ${o.farm ? 'for(let i=0;i<20;i++) farm.add((ccx-2+(i%5))+","+(ccy-2+Math.floor(i/5)));' : ''}
+    const vil={dbId:7,name:'x',ccx,ccy,econ:ev,npcPids:[1,2${o.farm ? ',3' : ''}],_terrSet:terr,_farmSet:farm,_drySet:new Set(farm),_potSet:new Set(),_crop:new Map(),_cropClaim:new Set(),_claim:new Set(),_site:null,_houseCells:[],_granList:[],_maxRPx:200};
+    P._t449Probe.daily(vil);
+    console.log(JSON.stringify({seen:P._t449Probe.seen(vil),cut,wood:+((ev.storage.wood||0)-w0).toFixed(6),walked:vil._t325Dbg&&vil._t325Dbg.walked,tk:vil._mTk||0,t449:vil._t449||null}))`);
+  const off0 = day({}, {}), off1 = day({}, { obs: true }), on0 = day({ T449_BODY_DAY: '1' }, {}), on1 = day({ T449_BODY_DAY: '1' }, { obs: true });
+  ok(off0.seen === false && off1.seen === true && off0.cut > 0,
+    '⑫ [전제 · 자명 통과 금지] 판이 실제로 벤다(일괄이 **나무를 쓰러뜨린다**) · 관측자를 세운 판은 새 술어로 **관측 마을**이다', `일괄 ${off0.cut}그루`);
+  ok(off1.cut === off0.cut && off1.wood === off0.wood,
+    '⑫ ★★[실행] 끔 · 관측 마을 = 비관측과 **같은 일괄**(결산 문이 죽어 있다 — 보는 앞에서 새벽에 나무가 쓰러진다 · 종전 그대로)', `${off1.cut}그루`);
+  ok(on0.cut === off0.cut && on0.wood === off0.wood && on0.t449 && on0.t449.seen === 0 && off0.t449 === null,
+    '⑫ ★★[실행] 켬 · 비관측 마을 = 끔과 **비트 동일**(몸 XOR 일괄 그대로) · 누계 칸은 켠 판에만 생긴다', `${on0.cut}그루 = ${off0.cut}`);
+  ok(on1.cut === 0 && on1.wood === 0 && on1.t449 && on1.t449.seen === 1 && on1.t449.woodBody === 1,
+    '⑫ ★★★[실행] 켬 · 관측 마을 = **일괄 0**(나무꾼은 몸 명부 — 그 마을의 하루는 몸이 오늘 한 만큼이다) · "일괄이었을 날" 1 을 센다', `${on1.cut}그루 · 몸 명부로 넘긴 날 ${on1.t449 && on1.t449.woodBody}`);
+  //   ③ 이중 0 — 몸이 오늘 통나무를 들고 왔으면(손 > 0) 네 판 모두 일괄 0 · 손은 곳간으로(한 몸이 두 번 안 한다)
+  const h = [day({}, { hand: 6 }), day({}, { hand: 6, obs: true }), day({ T449_BODY_DAY: '1' }, { hand: 6 }), day({ T449_BODY_DAY: '1' }, { hand: 6, obs: true })];
+  ok(h.every((x) => x.cut === 0 && x.walked === 1 && x.wood > 0) && h.every((x) => x.wood === h[0].wood),
+    '⑫ ★★[실행] 이중 0 — 몸이 든 통나무가 있으면 **네 판 모두** 일괄 0 · 곳간엔 몸이 든 그 몫만(한 몸이 두 번 안 한다)', h.map((x) => `${x.cut}/${x.wood}`).join(' · '));
+  //   ④ 나머지 직업은 일괄 그대로 — 관측 마을 · 켬 · 농부 팔 끔이면 헤드리스 작물 절이 돈다 · 농부 팔 켬(존 깸)이면 몸
+  const zAw = "deps.zoneAwake=()=>true;";
+  const fa = (env) => day(Object.assign({ T449_BODY_DAY: '1', T325_WOOD_ACT: '' }, env), { obs: true, farm: true });
+  const fOff = fa({}), fOn = probe(Object.assign({ T449_BODY_DAY: '1', T325_WOOD_ACT: '', T368_FARM_ACT: '1' }), `const V=require(${VP}); const E=require(${EP}); const B=V.__farmBind(), P=V.__labProbe;
+    const pl=new Map([[3,{pid:3,simJob:'farmer'}]]); const deps={players:pl}; ${zAw} P._t374Probe.setDeps(deps);
+    const ev=E.createVillage({initialPop:0,name:'x',fertility:1}); const farm=new Set(); for(let i=0;i<20;i++) farm.add((100+i)+',100');
+    const vil={dbId:7,ccx:100,ccy:100,econ:ev,npcPids:[3],_farmSet:farm,_drySet:new Set(farm),_potSet:new Set(),_crop:new Map(),_cropClaim:new Set(),_terrSet:new Set(['100,100']),_site:null,_claim:new Set()};
+    B._lifeHeadlessDay(vil); console.log(JSON.stringify({tk:vil._mTk||0}))`);
+  ok(fOff.tk > 0 && fOff.t449 && fOff.t449.hlFarm === 1,
+    '⑫ ★★[실행] 나머지 직업은 **일괄 그대로** — 관측 마을 · 켬 · 농부 팔 끔 = 헤드리스 작물 절이 돈다(밭 일 ' + fOff.tk + ') · "관측 마을 일괄" 1 을 센다');
+  ok(fOn.tk === 0, '⑫ [실행] 농부 팔 켬 · 존 깸 = 몸(작물 절 0 — ⑤ 의 그 판정 · 관측 마을은 언제나 존 깸)');
+  ok(/t449: vil\._t449 \|\| null,/.test(VC), '⑫ `/lifedbg` 에 마을마다 누계 한 칸(끔이면 `null`)');
+}
+
 console.log(`\n=== 결과: ${pass} PASS / ${fail} FAIL ===`);
 process.exit(fail ? 1 : 0);

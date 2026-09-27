@@ -638,6 +638,7 @@ console.log('\n⑨ T385_ONE_SWEEP 순회 일곱 → 둘 — 켬/끔이 같은 �
     const onlineById = new Map(); for (const p of world.players.values()) if (!p.isNpc) onlineById.set(p.playerId, p);
     const env = {
       players: world.players, mobs: world.mobs, buildings: world.buildings, activeChunkKeys, chunkManager, stairCellCache, qtBuildings,
+      qtColl: qtBuildings,   // ★[T449 ③] 받침 술어(`hasFloorSupportAt`)가 이제 벽 질의 격자를 본다 — 여기선 같은 모의 격자(종류는 술어가 거른다 · 판정은 `test-coll-grid`)
       T385_ONE_SWEEP: on, BUILDING_SIZE: BS, FLOOR_HEIGHT: FH, HUNGER_MAX: 100, THIRST_MAX: 100,
       COLD_CLOTH_WEAR_MS: 60000, CARRIER_WEAR_MS: 60000, VP_DECAY_PER_SEC: 0.5,
       send: (ws, m) => log.push('S' + ws.id + ':' + m.type + ':' + (m.hp ?? m.floor ?? '') + (m.follow ? ':' + JSON.stringify(m.follow) : '')),
@@ -763,7 +764,9 @@ console.log('\n⑨ T385_ONE_SWEEP 순회 일곱 → 둘 — 켬/끔이 같은 �
       const env = { players: w.players, mobs: w.mobs, resources: new Map(), activeChunkKeys, chunkManager, Quadtree, ZONE: { zoneWidth: w.W, zoneHeight: w.H },
         T385_ONE_SWEEP: on, T421_SPATIAL_INC: false };   // ★[T421] 격자 증분은 ⑫ 가 따로 잰다(여기선 끔 — 옛 나무에 넣는 차례를 본다)
       const keys = Object.keys(env);
-      const api = new Function(...keys, 'let qtPlayers, qtMobs, qtBuildings, qtResources = {}, resourcesDirty = false, _lastResRebuild = 0;\n' +
+      //   ★[T449 ③] 끔 갈래가 벽 질의 격자(`qtColl`)도 같이 세운다 — 그 이름과 종류 집합 한 줄을 같이 싣는다(암묵 전역 0)
+      const api = new Function(...keys, 'let qtPlayers, qtMobs, qtBuildings, qtColl, qtResources = {}, resourcesDirty = false, _lastResRebuild = 0;\n' +
+        ((ZSRC.match(/^const COLL_TYPES = new Set\(\[[^\]]*\]\);$/m) || [''])[0]) + '\n' +
         body('isPositionActive') + '\n' + ITO + '\n' + RSI + '\n' + body('_rebuildResources') + '\nreturn { rebuildSpatialIndex, _inputTOStep };')(...keys.map((k) => env[k]));
       const dig = [];
       for (let t = 0; t < 4200; t++) {
@@ -1243,6 +1246,8 @@ console.log('\n⑭ T421_SPATIAL_INC 격자 증분 — 조회 결과 비트 동�
   const { Quadtree, QuadtreeInc } = require(path.join(ROOT, 'server', 'quadtree.js'));
   const SRC = ['rebuildSpatialIndex', '_rebuildSpatialInc', '_spKeep', '_rebuildResources', 'isPositionActive', '_inputTOStep'].map((n) => body(n));
   const SPDEF = (Z.match(/const _spInc = \{[^\n]*\};/) || [''])[0];
+  //   ★[T449 ③] 건물 격자를 세우는 자리가 벽 질의 격자(`qtColl`)도 같이 세운다 — 그 종류 집합 한 줄을 같이 뜬다(판정은 `test-coll-grid`)
+  const COLLDEF = (Z.match(/^const COLL_TYPES = new Set\(\[[^\]]*\]\);$/m) || [''])[0];
   ok(SRC.every((x) => x.length > 60) && SPDEF.length > 50, '⑭ [전제] 제품의 격자 글자 여섯 + 상태 한 줄을 떴다', SRC.map((x) => x.length).join('+') + '자');
   const QSRC = fs.readFileSync(path.join(ROOT, 'server', 'quadtree.js'), 'utf8');
   const qBase = QSRC.slice(QSRC.indexOf('class Quadtree {'), QSRC.indexOf('class QuadtreeInc'));
@@ -1279,8 +1284,8 @@ console.log('\n⑭ T421_SPATIAL_INC 격자 증분 — 조회 결과 비트 동�
       ZONE: { zoneWidth: W, zoneHeight: H }, T421_SPATIAL_INC: on };
     const keys = Object.keys(env);
     return new Function(...keys,
-      'let activeChunkKeys = new Set(), qtPlayers = null, qtMobs = null, qtBuildings = null, qtResources = null, resourcesDirty = true, _lastResRebuild = 0;\n' +
-      SPDEF + '\n' + src + '\n' +
+      'let activeChunkKeys = new Set(), qtPlayers = null, qtMobs = null, qtBuildings = null, qtResources = null, qtColl = null, resourcesDirty = true, _lastResRebuild = 0;\n' +
+      SPDEF + '\n' + COLLDEF + '\n' + src + '\n' +
       'return { setKeys: (s) => { activeChunkKeys = s; }, rebuild: () => rebuildSpatialIndex(undefined), qt: () => ({ p: qtPlayers, m: qtMobs, b: qtBuildings }), S: _spInc };')(...keys.map((k) => env[k]));
   };
   const idOf = (r) => r.pid || r.id;
