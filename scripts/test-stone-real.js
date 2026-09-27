@@ -12,6 +12,8 @@
 //   이 하네스가 지키는 것: 표가 하나다(zone·econ·번들이 읽는다) · 표를 고치면 econ 이 따라온다 · 끄면 문이 하나도 안 열린다 ·
 //   켜면 세 자리의 돌 단가가 표의 그 수다 · 주사위 0 · 손잡이 하나.
 //
+//   ⑤ T443 제련 연료 · ⑥ T452 숯가마 · ⑦ T463 숯 파생수요(노의 숯 목표 → 값 → 캐러밴) + era 숯가마 문.
+//
 // 실행: node scripts/test-stone-real.js
 'use strict';
 process.env.ENABLE_VILLAGES = process.env.ENABLE_VILLAGES || '0';
@@ -155,6 +157,34 @@ process.stdout.write(JSON.stringify({b1,s1,d2,s2,d3,x1,nolj:nolj.storage,nk:!!no
   ok(r.z1 === null && r.zk === false, '⑥ 재료(돌 10)가 모자라면 안 선다(기다린다)');
   const kd = SRC.slice(SRC.indexOf('const T452_KILN_ACT'), SRC.indexOf('function _trySmelt'));
   ok(kd.length > 500 && !/Math\.random/.test(kd) && !/\b(3|4|10|41)\b/.test(kd.split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n')), '⑥ 주사위 0 · 표의 수(3·4·10·41)를 옮겨 적지 않았다');
+}
+
+// ── ⑦ [T463] 숯이 광산으로 간다 — 노의 숯 목표가 파생수요다 ─────────────────────────────────
+console.log('\n⑦ [T463] 숯 파생수요 — 노가 있는 마을의 숯 목표(원석 비축 × 숯 2)가 값이 된다 · 손잡이 0');
+{
+  const js = `const E=require(${EP});const V2=require(${V2P});const npcs=new Array(10).fill({});
+const mine={npcs,counts:{miner:1},land:{oreMix:{copper:1}},storage:{ore:4,charcoal:0}};
+const idle={npcs,counts:{},land:{oreMix:{copper:1}},storage:{ore:0}};
+const noMix={npcs,counts:{miner:1},storage:{ore:4}};
+const full={npcs,counts:{miner:1},land:{oreMix:{copper:1}},storage:{ore:4,charcoal:40}};
+process.stdout.write(JSON.stringify({m:E.derivedInputTarget(mine,'charcoal'),f:E.furnaceCharcoalTarget(mine),i:E.derivedInputTarget(idle,'charcoal'),n:E.derivedInputTarget(noMix,'charcoal'),
+ p:V2.computeShadowPrices(mine).charcoal,pf:V2.computeShadowPrices(full).charcoal,cu:E.derivedInputTarget(mine,'copper')}));`;
+  const off = probe({}, js), a = probe({ T443_SMELT_FUEL: '1' }, js), b = probe({ T452_KILN_ACT: '1' }, js), on = probe({ T443_SMELT_FUEL: '1', T452_KILN_ACT: '1' }, js);
+  ok(off.m === 0 && a.m === 0 && b.m === 0, '⑦ ★★끔 — T443·T452 중 하나라도 끄면 숯 파생수요 0(손잡이 0 · 뜻은 둘 다 켰을 때만)', JSON.stringify([off.m, a.m, b.m]));
+  ok(off.p === a.p && off.p === b.p, '⑦ 끈 판 숯 값 = 종전(바닥)', String(off.p));
+  ok(on.m === 20 && on.m === on.f, '⑦ 켬 — 캐는 마을 숯 목표 = max(원석 비축 1×10, 원석 4) × 숯 2 = 20 = 숯가마가 굽는 그 목표(`furnaceCharcoalTarget` 한 함수)', JSON.stringify(on));
+  ok(on.i === 0 && on.n === 0, '⑦ ★미끼 — 캐지도 않고 녹일 원석도 없는 마을 · 광맥 조성이 없는 마을은 숯을 원하지 않는다(유령 비축 0)');
+  ok(on.p > off.p * 100 && on.pf < on.p && on.pf <= 2, '⑦ 값은 있는 가격 기계 — 숯 0 인 광산 마을은 값이 오르고 목표를 채우면 기준가 아래로 내려온다', `${off.p} → ${on.p} · 채움 ${on.pf}`);
+  ok(on.cu === off.cu, '⑦ 구리 파생수요(COPPER_DERIV) 는 무변');
+  const dt = SRC.slice(SRC.indexOf('function derivedInputTarget'), SRC.indexOf("if (!COPPER_DERIV_ON || r !== 'copper'"));
+  ok(/smeltFuelOn\(\)/.test(dt) && /kilnActOn\(\)/.test(dt) && /return furnaceCharcoalTarget\(v\);/.test(dt) && !/process\.env/.test(dt) && !/\b(?!0\b)\d+(\.\d+)?\b/.test(codeOf(dt)),
+    '⑦ 파생수요 절 — 두 손잡이의 문을 그대로 읽는다 · 새 손잡이 0 · 새 수 0(0 밖의 수 글자 0)');
+  ok(/const target = furnaceCharcoalTarget\(v\);/.test(SRC.slice(SRC.indexOf('function kilnDay'), SRC.indexOf('function _trySmelt'))), '⑦ 숯가마(`kilnDay`)와 파생수요가 **같은 함수**를 부른다(사본 0)');
+  const V2S = fs.readFileSync(path.join(ROOT, 'sim', 'economy-sim-v2.js'), 'utf8');
+  ok((V2S.match(/v1\.derivedInputTarget \? v1\.derivedInputTarget\(v, r\) : 0/g) || []).length === 3 && !/charcoal/.test(V2S), '⑦ v2 가격 셋 자리(값 · 정산 · 부패)가 같은 줄을 부른다 · 캐러밴·v2 무접촉');
+  const ERS = fs.readFileSync(path.join(ROOT, 'server', 'era.js'), 'utf8');
+  ok(/bronze: \{\s*\n\s*tech: \[[^\]]*'charcoal_kiln'/.test(ERS) && /function tryKilnStart\(player, atX, atY\) \{ if \(!require\('\.\/era'\)\.hasTech\('charcoal_kiln'\)\)/.test(ZSRC),
+    '⑦ era — 표(`UNLOCK.bronze.tech` 의 `charcoal_kiln`)가 정본 · 숯가마 건설 함수가 그 표를 묻는다(노 `tryFurnaceStart` 와 같은 문)');
 }
 
 console.log(`\n=== ${pass}/${pass + fail} ${fail ? '✗' : '✓'} ===`);
