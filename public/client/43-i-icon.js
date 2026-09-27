@@ -74,6 +74,9 @@
     //     `public/assets/icons/` 의 **정확한 일치**를 못 박은 뒤로(T66 착지), 그림만 넣고 키를
     //     안 올리면 그 자리에서 빨개진다 — 배선은 이제 "아이콘을 굽는 일"의 일부다.
     'acorn', 'chestnut', 'mulberry_fruit', 'grape',
+    // ★[T472] 군락 품목 셋 — 나는 자리의 소품(T372 `mushroom01`·`greens01`·`hive01`)과 **같은 모델**을
+    //   아이콘 프리셋으로 한 번 더 구웠다(`nature_render.py` ICON_BUILD · 새 형상 0). 키는 서버 `GROVE_KINDS.item` 그대로다.
+    'mushroom', 'vegetable', 'honey',
   ]);
   // ★★[T66 2차 · 재민 확정 2026-09-03] 옛 **거부 목록** `ICON_NO_RENDER` 은 **없앴다** — 뒤집혔다.
   //   종전: "여기 있으면 렌더가 없다"(빠뜨리면 404). 지금: `ICON_RENDERED` 에 **있으면 그림, 없으면 점선 칸**.

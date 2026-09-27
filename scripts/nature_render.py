@@ -1308,6 +1308,22 @@ def BKW(kw):
     return {k: v for k, v in kw.items() if k not in TABLE_ONLY}
 
 
+# ═══════════════ [T472] 군락 품목 아이콘 셋 — **세계 소품과 같은 부름** ═══════════════
+# ★★새 형상 0 · 새 수 0 · 새 재질 0. 이 품목 셋의 그림은 그것이 **나는 자리의 소품 그 모델**이다 —
+#   `PROP_BUILD` 의 그 줄(빌더 · 인자)을 **그대로** 불러 아이콘 프리셋으로 한 번 더 굽는다
+#   ("물건 하나 = 모델 하나 = 렌더 둘" · 재민 확정 09-03). 인자는 여기 옮겨 적지 않는다 — 표에서 찾는다.
+# ★품목 ← 소품 짝은 서버 `server/chunk.js GROVE_KINDS` 의 `item`·`sprite` 두 칸 그대로다
+#   (mushroom_patch → mushroom · greens_patch → vegetable · beehive → honey).
+#   머루(`wild_vine → grape`)는 넣지 않는다 — T156 `ic_grape` 가 이미 그 열매(`_grape_bunch`)를 굽는다.
+# ⓘ 꿀(`honey`)의 그림은 벌집 **덩어리 그대로**다 — 서버 `HONEY_Y` 앵커가 적는 채취가 "takes the entire comb" 다.
+# ⚠굽기 경로는 `NAT_ICONS=1` 갈래 하나뿐이다 — 나무·소품 굽기(`TREE_BUILD`·`PROP_BUILD`)는 한 줄도 안 지난다.
+_T472_GROVE_ICONS = (('mushroom', 'mushroom01'), ('vegetable', 'greens01'), ('honey', 'hive01'))
+_PROP_ROW = {k: (fn, kw) for k, fn, kw in PROP_BUILD}
+for _item, _spr in _T472_GROVE_ICONS:
+    _fn, _kw = _PROP_ROW[_spr]
+    ICON_BUILD.append((_item, (lambda f=_fn, kw=_kw: f(**BKW(kw)))))
+
+
 def build_species_table():
     """`TREE_BUILD` 를 훑어 종 표를 만든다 — 사람이 적는 칸은 위 `SPECIES` 뿐이다."""
     out = {}
@@ -1369,7 +1385,7 @@ def build_species_table():
 # ═══════════════ 굽기 ═══════════════
 # ★[T101] `__main__` 가드 — 대조 하네스가 **빌더만** 꺼내 쓸 수 있어야 한다(편입 증명).
 if __name__ == '__main__':
- # ★[T156] 아이콘 갈래 — `NAT_ICONS=1` 이면 **열매 아이콘만** 굽고 끝낸다.
+ # ★[T156] 아이콘 갈래 — `NAT_ICONS=1` 이면 **아이콘만**(열매 넷 · [T472] 군락 품목 셋) 굽고 끝낸다.
  #   나무·소품 굽기 경로는 한 줄도 안 지난다(배포본 무변의 근거).
  if os.environ.get('NAT_ICONS') == '1':
   os.makedirs(ICON_OUT, exist_ok=True)
