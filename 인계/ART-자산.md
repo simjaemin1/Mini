@@ -668,6 +668,21 @@ T391 이 "07-30 판 · 코드 없음"이라고 한 11곡을 두 팔로 다시 �
   브라우저로 여는 하네스(21장)와 랩 제 코드를 읽는 절은 0. 실측 판은 스크래치 worktree 에서만 만들었다(레포 랩 무변). 전문 = 보고/T464.
 * ⚠`lab/전쟁실험실.html` 의 BATTLE-CORE 사본은 `sim/battle-core.js` 와 9줄 다르다(T458 `onArrow` 훅) — `inline-battle.js` 는 `--check` 가 없고 기본 대상이 레포 밖이다(회부).
 
+### 그림 없는 품목 전수 — 324 중 그림 151 · 군락 품목 셋을 소품과 **같은 모델**로 [T472 2026-09-27]
+
+* **전수 324 · 그림 151 · 점선 칸 173**(전: 148 · 176). 품목 = 무게 카탈로그 ∪ 이름표 정본 ∪ `PV_DEPOSIT_MAP` 양쪽 ∪ 군락·곳간·돌·제련·옷·장비 갈래 키.
+  잠금 행 = PNG = `ICON_RENDERED` 가 한 키도 안 어긋난다(파일은 있는데 잠금에 없음 0). 전 행 표·못 만든 까닭 = 보고/T472 §ⓐ.
+* **군락 셋 `mushroom`·`vegetable`·`honey`** = `nature_render.py` `ICON_BUILD` 에 **`PROP_BUILD` 의 그 줄을 불러** 붙였다(`_T472_GROVE_ICONS` · 짝은 서버 `GROVE_KINDS` 의 `item`·`sprite`).
+  인자를 옮겨 적지 않는다 · 굽기 `NAT_ICONS=1 python3 scripts/nature_render.py -- <키…>` → `icons-postprocess.js <입력폴더> public/assets/icons`.
+  ⚠`ICON_BUILD` **글자 표**는 `test-icons ⑩` 이 `=== 4`(열매 넷)로 못 박았다 — 군락 셋은 표 **뒤에서** 붙는다. 표 안에 넣으면 ⑩ 이 빨개진다(⑩ 은 군락 셋을 안 본다 · 회부).
+* **새 아이콘 하나 = 세 곳**: PNG · 잠금 JSON 에 줄 **먼저**(`asset-lock --write` 는 있는 키만 새로 쓴다) · `ICON_RENDERED` 키(`test-itemlabel ⑪` 정확 일치).
+* **다른 상자에서 다시 구우면 바이트가 안 같다**(대조: 열매 둘 평균 |Δ| 0.04 · 각 1화소 >24) — 새 키만 넣고 있는 PNG 는 덮지 마라. 같은 상자 세 번은 바이트 같다.
+* **못 만든 173**(다음 ART 카드 재료): econ 특산 156 = 렌더 스크립트에 모델 0 · 모델 없음 5(`armor`·`saw`·`grain_sheaf`·`ramie`·`food_cooked`) ·
+  갇힘 2(`bronze` = 잉곳 빌더는 `icon_render.py` · 청동 재질은 `props_render.py` / `hammer` = 가드 없는 `char_render.py`) · 갈래 6(`tool`·`weapon`·`clothes`·`cooked_food`·`bronze_tool`·`iron_tool`) ·
+  T458 "같은 물건" 2(`fruit`=`berry` · `meat`=`meat_raw` — 그림은 하나여야 한다 · 둘째 PNG 는 사본) · 정본이 말 안 함 2(`food` 어느 곡식 · `jade` ↔ `jade_raw`).
+* 플레이어가 **작업대**에서 보는 점선 칸(헤드리스 실측) = 장비 갈래 `armor`·`weapon`·`tool`(작업대 장비 **전부**) · `saw`·`hammer` · 재질 칸 `fur`·`leather`·`hemp`·`bone`·`obsidian`·`ramie`·`bronze`.
+  이름표 없음 13 + `vegetable` 은 짐 창에 영문 키가 뜬다(회부 — 이름표는 코드).
+
 ### 군락 종 넷이 섰다 — 자연물 소품 45 → 49 [T372 2026-09-23]
 
 `scripts/nature_render.py` `PROP_BUILD` 에 넷. **새 빌더는 셋이다**(넷째는 새 부름이 아니다).
@@ -867,6 +882,8 @@ node scripts/test-props.js
 **남은 것**(다음 ART 카드 순서, 회부에 등재):
 작물 34 + 씨앗 34(`crop_render.py` 와 **같은 모델**에서 수확물을 뽑는다 · T77) → 옷 · 나머지.
 그리고 **재료별 도구 아이콘**(§0-ⓐ — 지금은 품목당 하나) · 지게 등짐 스프라이트 · 계단·바닥·농지 세계 스프라이트.
+
+★[T472] 위 표는 T76 때 것이다(그 뒤 작물·옷·열매·군락이 섰다). 지금 전수(324 · 그림 151 · 점선 칸 173)와 스크립트별 목록 · 못 만든 까닭은 보고/T472 와 위 T472 절이다 — `nature_render.py` 가 열매 넷(T156)에 이어 군락 셋을 굽는다.
 
 ## 9-A. 모델 재사용의 세 층 [T76]
 
