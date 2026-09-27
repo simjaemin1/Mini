@@ -479,7 +479,9 @@ async function runDays(n) {
     const src = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8');
     const slots = (src.match(/let _pathJob\b/g) || []).length;
     ok(slots === 1, '⑩ ★재개형 슬롯이 **하나**다(`_pathJob`)', `선언 ${slots}개`);
-    ok(/_routeBegin\(x0, y0, x1, y1\) \{[\s\S]{0,900}?if \(_pathJob\) \{ _probe\.pathDrop\+\+; _pathJob = null; \}/.test(src),
+    //   ★[T458 ⓪] 서명은 T364(`d6081024`)가 `extraBlk`(행군로가 숲을 본다) 하나를 늘렸다 — 자의 글자만 따라간다.
+    //     버리는 한 줄 검사는 그대로다(그 줄을 지우면 이 칸이 빨개진다).
+    ok(/_routeBegin\(x0, y0, x1, y1, extraBlk\) \{[\s\S]{0,900}?if \(_pathJob\) \{ _probe\.pathDrop\+\+; _pathJob = null; \}/.test(src),
       '★★⑩ **새 탐색이 시작되면 세워 둔 것을 버린다** — 동기 문(전쟁·귀환·감사)이 30Hz 로 끼어들어도 안 섞인다');
     ok(!/PathCore\.routePathBegin/.test(src.replace(/function _routeBegin[\s\S]*?\n\}/, '')),
       '⑩ 재개형 문을 여는 자리가 `_routeBegin` **하나**다(사본 0)');
