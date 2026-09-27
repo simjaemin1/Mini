@@ -1527,6 +1527,10 @@
         //   떠날 때 값으로 낡아 있어 위 pong 파수꾼이 0.6초 만에 좀비로 끊었다(되돌아오면 새 손님 · T428 회부 ①).
         //   ⚠둘 다 비운다 — `lastPongAt` 만 비우면 "ping 후 15초간 pong 0" 문(낡은 `firstPingAt`)이 대신 끊는다(T439 표 ⓐ′).
         existingTarget.lastPongAt = 0; existingTarget.firstPingAt = 0;
+        // ★[T453 ⓪] 둘째 파수꾼(고아 — `33-m-conn checkOrphan` · 주 존 틱에 내 pid 가 2초 없음)도 같은 병이다: 승격 뒤 welcome 전까지
+        //   새 존 틱(관측자 틱 — 내가 아직 없다)이 먼저 오는데 창은 **옛 존의 마지막 내 틱**부터 센다 → 부하 아래 welcome 이 2초를 넘으면 끊었다.
+        //   ⇒ 끄고 welcome 이 다시 켠다(`player_left` 가지와 같은 문법 · 새 수 0).
+        lastTickWithMyPidAt = 0;
         existingTarget.ws.send(JSON.stringify({ type: 'promote_to_primary', token }));
         existingTarget.role = 'primary';
         // server가 welcome 보낼 거 — 기존 handleMessage('welcome')에서 처리

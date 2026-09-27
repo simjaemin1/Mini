@@ -241,11 +241,19 @@ function corridor(dir) {
   await page.evaluate(() => { window.__zxFP = []; setInterval(() => { try { for (const [zid, c] of conns) {
       if (c._promoteSentAt && c._zxProm !== c._promoteSentAt) { c._zxProm = c._promoteSentAt; c._zxDone = false; }
       if (c._zxProm && !c._zxDone && c.lastPongAt && c.lastPongAt > c._zxProm) { window.__zxFP.push([zid, c.lastPongAt - c._zxProm]); c._zxDone = true; } } } catch (e) {} }, 10); });
+  // ★[T453 ⓪] 둘째 파수꾼(고아 — `33-m-conn checkOrphan` · 주 존 틱에 내 pid 가 2초 없음)이 재는 창을 하네스가 잰다:
+  //   승격 → 승격 welcome(`_promoteSentAt` 이 0 으로 지워지는 순간) · 승격 → 새 존 틱에 **내 pid 가 처음** 실린 순간(`lastTickWithMyPidAt` 이 welcome 값에서 바뀜).
+  await page.evaluate(() => { window.__zxTK = []; setInterval(() => { try { for (const [zid, c] of conns) {
+      if (c._promoteSentAt && c._zxP2 !== c._promoteSentAt) { c._zxP2 = c._promoteSentAt; c._zxW = 0; c._zxL0 = 0; c._zxT = false; }
+      if (c._zxP2 && !c._zxW && !c._promoteSentAt) { c._zxW = performance.now(); c._zxL0 = lastTickWithMyPidAt; }
+      if (c._zxP2 && c._zxW && !c._zxT && primaryZoneId === zid && lastTickWithMyPidAt && lastTickWithMyPidAt !== c._zxL0) { window.__zxTK.push([zid, c._zxW - c._zxP2, lastTickWithMyPidAt - c._zxP2]); c._zxT = true; } } } catch (e) {} }, 10); });
+  const tkAll = [];
   for (const [tag, C, fwd, back] of [['한반도 ↔ 닛폰', CE, ['s', 'd'], ['w', 'a']], ['한반도 ↔ 중원북', CW, ['w', 'a'], ['s', 'd']]]) {
     if (!C) continue;
     await warpW(C.from, C.wy); await sleep(2500);
     const who0 = await page.evaluate(() => (window.__getPlayerId ? window.__getPlayerId() : null));
     const rec0 = clog.filter((l) => /\[recover\]/.test(l)).length;
+    await page.evaluate(() => { window.__zxTK = []; });
     let legs = 0, legsOk = 0, same = 0, nearSq = 0, maxStep = 0, far = 0; const ms = [];
     for (let r = 0; r < ROUNDS; r++) {
       for (const [keysDown, target] of [[fwd, C.nb], [back, 'hanbando']]) {
@@ -269,8 +277,14 @@ function corridor(dir) {
     ok(nearSq === 0 && maxStep <= CS / 2, `ⓡ3 [${tag}] 광장으로 튄 표본 0 · 가장 큰 걸음 ≤ ${CS / 2}px`, `광장 ${VIEW}px 안 ${nearSq} · 최대 걸음 ${maxStep.toFixed(0)}px`);
     ok(far === 0, `ⓡ4 [${tag}] 전 구간이 경계 양쪽 ${STAND}px 안이다(카드 조건)`, `밖 ${far}`);
     ok(ms.length === legs, `ⓡ5 [${tag}] 승격마다 그 소켓에 **첫 pong 이 왔다**(승격 → 첫 pong ms 를 잴 수 있다)`, `${ms.length}/${legs} · 중앙 ${med != null ? med.toFixed(0) : '-'}ms · 최대 ${srt.length ? srt[srt.length - 1].toFixed(0) : '-'}ms`);
+    const tk = await page.evaluate(() => { const a = window.__zxTK || []; window.__zxTK = []; return a; });
+    tkAll.push(...tk.map((q) => [tag].concat(q)));
+    const q = (arr, f) => { const a = arr.slice().sort((x, y) => x - y); return a.length ? a[Math.min(a.length - 1, Math.floor(a.length * f))].toFixed(0) : '-'; };
+    const wl = tk.map((t) => t[1]), ft = tk.map((t) => t[2]);
+    const why = {}; for (const l of recs) { const m = l.match(/\[recover\] ([^—-]+)/); const k = m ? m[1].trim().slice(0, 24) : '?'; why[k] = (why[k] || 0) + 1; }
+    ok(tk.length === legs, `ⓡ6 [${tag}] 승격마다 새 존 틱에 **내 pid 가 실렸다**(고아 파수꾼 2초 창)`, `${tk.length}/${legs} · 승격→welcome 중앙 ${q(wl, 0.5)} · 최대 ${q(wl, 1)}ms · 승격→첫 내 틱 중앙 ${q(ft, 0.5)} · 최대 ${q(ft, 1)}ms` + (recs.length ? ` · recover ${JSON.stringify(why)}` : ''));
   }
-  try { fs.writeFileSync(path.join(SHOTS, 'first-pong-ms.json'), JSON.stringify(firstPongMs)); } catch (e) {}
+  try { fs.writeFileSync(path.join(SHOTS, 'first-pong-ms.json'), JSON.stringify(firstPongMs)); fs.writeFileSync(path.join(SHOTS, 'promote-tick-ms.json'), JSON.stringify(tkAll)); } catch (e) {}
 
   // ── 오류 ─────────────────────────────────────────────────────────────────
   const zerr = procs.filter((p) => ZIDS.includes(p._name)).map((p) => [p._name, p._out.split('\n').filter((l) => /(^|\s)(TypeError|ReferenceError)\b|Cannot read|is not a function/.test(l)).length + p._err.split('\n').filter((l) => /^\s+at\s+\S/.test(l)).length]);
