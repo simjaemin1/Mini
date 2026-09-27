@@ -504,3 +504,16 @@ ogg 길이는 마지막 `OggS` 페이지의 granulepos ÷ 표본율로 잰다(Vo
 * 운영 픽스처 교전엔 **궁수가 없다**(어촌2 ↔ 광산2 · 둘 다 어부 → 활 찾는 사냥꾼 0) → 실측 화살 0. 화살 든 창은 손 상한 `_실측.handArrows`(1.5074 → 끼고 0.7919 · 클리핑 0)로만 있다 — 궁수 든 교전이 오면 `sfx-cooccur war` 로 다시 재라.
 * `sfx-cooccur`: `SFX_COOCCUR_WARS=n` → `assault*n`(있는 픽스처 문법) · 화살 셈(`arrows`) · 병사 hp 순간 전부(`warHpDrops.all`).
 * 보고 `보고/T465_2026-09-27.md`.
+
+
+---
+
+## T473 (2026-09-27) — 환경음
+
+* **물은 둘이다** — 표 `waterSplit` = `{민물:'water', 바다:'waves'}`. 바다 = 바다 존(`isOcean`) 또는 해안선 타일(00-const `waterTilesByZone`). 층 `sfxSeaAt`·`sfxWaterDist`(한 번 훑어 두 거리). 해안선 타일은 **`zonesMeta` 에 바다 존이 있어야** 선다 — 하네스에서 central `ENABLED_ZONES=hanbando` 하나면 해안선 0 이다(`sfx-cooccur` 물가 판은 존 전부를 싣는다).
+* **자원 반복** — 표 `resourceLoop`(`water_pool` 1번). 건물 반복과 같은 문법이다.
+* `waves` = CC BY 3.0(넷째 CC-BY · CREDITS §1). 볼륨·반경은 `water` 와 같은 값이다.
+* 환경 상수는 `_실측.envConst`(해안 실측) · 정본 최악에 얹은 값은 `worstComboEnv`(1.0473 → 끼고 0.7628 · 0). `worstCombo` 는 사건 실측 그대로 둔다.
+* `sfx-cooccur` 판 `SFX_COOCCUR_AT=coast|river` — 클라 지형 표로 물가 뭍을 골라 서 있는다.
+* 밤 벌레는 녹음 회부, 천둥은 서버 회부.
+* 보고 `보고/T473_2026-09-27.md`.

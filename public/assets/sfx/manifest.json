@@ -788,8 +788,8 @@
    "source": "commons_pd_bubbles",
    "fade": 1.0,
    "indoorMul": 0.25,
-   "후보": true,
-   "_T397": "고인 물(자원 `water_pool`) 1번 — **후보만**(카드). 시냇물(`water`)과 다른 소리: 보글거림. 8.0s 반복 · 이음새 −49.8dB."
+   "_T397": "고인 물(자원 `water_pool`) 1번 — **후보만**(카드). 시냇물(`water`)과 다른 소리: 보글거림. 8.0s 반복 · 이음새 −49.8dB.",
+   "_T473": "★후보 → **배선**(1번): 표 `resourceLoop.water_pool` — 고인 물 자원 자리에서 반복(건물 반복과 같은 문법 · 반경 192). 2번(`water_pool_b`)은 후보 그대로."
   },
   "water_pool_b": {
    "file": "water_pool_b.ogg",
@@ -804,6 +804,20 @@
    "indoorMul": 0.25,
    "후보": true,
    "_T397": "고인 물 2번 — 물가 찰랑임(물이 빠지는 바위) · 8.0s 반복 · 이음새 −24.5dB."
+  },
+  "waves": {
+   "file": "waves.ogg",
+   "fileAlt": "waves.m4a",
+   "volume": 0.55,
+   "radius": 288,
+   "loop": true,
+   "maxSame": 1,
+   "cooldownMs": 0,
+   "source": "commons_ccby_luftrum_waves",
+   "fade": 1.0,
+   "indoorMul": 0.25,
+   "훅": "34-m-renderloop.js `__sfx.scan` — `water` 와 **같은 훑기**(내 셀 둘레 물 셀)가 바다 셀(바다 존 · 해안선 타일)까지의 거리를 따로 잰다(`waterSplit.바다`).",
+   "_T473": "바닷가 파도 1번(1번뿐) — 종전엔 바다도 `water`(시냇물)로 울었다. 볼륨·반경·페이드·실내 배율은 `water` 와 **같은 값**(이웃 키 · 새 수 0). 원본 120s 중 61.5~71.5s 10초 반복 · 이음새 −62 dB · RMS −23.4 dB(시냇물 −24.4)."
   },
   "build_place": {
    "file": "build_place.ogg",
@@ -1340,6 +1354,14 @@
    "received": "2026-09-26",
    "_원본": "bear_growl_b(후보) = 65.2s 중 22.750~22.999s(콧김) [T417]",
    "_라이선스": "파일 페이지 = Public domain(미국 국립공원청)."
+  },
+  "commons_ccby_luftrum_waves": {
+   "license": "CC BY 3.0",
+   "url": "https://commons.wikimedia.org/wiki/File:Oceanwavescrushing.ogg",
+   "author": "Luftrum",
+   "received": "2026-09-27",
+   "_원본": "waves = 120.0s 중 61.5~71.5s 10초 반복(1.5s 겹침) · +5.2 dB [T473] · 원 출처 freesound #48412(2008-02-16 · Kalundborg 피오르 · Zoom H2)",
+   "_표기의무": "CC BY 3.0 — `CREDITS.md` §1 에 줄이 있다(이 집 넷째 CC-BY 소리)."
   }
  },
  "_실측": {
@@ -1356,11 +1378,11 @@
    "wind"
   ],
   "clippedAtWorst": 0,
-  "allKeysPeakNoLimiter": 1.5001,
-  "allKeysClippedNoLimiter": 456,
+  "allKeysPeakNoLimiter": 1.4912,
+  "allKeysClippedNoLimiter": 454,
   "_주의": "`worstPeak` 는 **리미터 없이** 잰 값이다(문턱을 그것과 견주려면 리미터가 개입하기 전의 수여야 한다). 키를 더하면 `__sfx.probe()` 를 다시 돌려 이 칸을 갱신하라 — 셈으로 채우지 마라. T261·T283 이 셈으로 채웠다가 둘 다 틀렸다.",
   "_자의바닥": "두 판(리미터 있음/없음)의 피크가 문턱 아래에서도 ±0.1 dB 쯤 다르다 — `oversample:'2x'` 의 재표본 필터다. 펌핑을 잴 때 이 바닥을 안 빼면 **없는 펌핑**이 보인다: 1차 판이 `pa>0.02` 인 창을 다 보다가 모닥불 하나에 '최악 −10.92 dB'를 냈다(피크는 한 톨도 안 변했는데). ⇒ 비율은 **`pa > knee` 인 창에서만** 뜻이 있다.",
-  "soundingKeys": 63,
+  "soundingKeys": 64,
   "_왜 이 수를 적나": "소리 나는 키가 이 수와 달라지면 `test-audio ⑧` 이 문다 — **키를 더했으면 다시 재라**는 뜻이다. 셈으로 고치지 말고 `__sfx.probe()` 를 돌려라.",
   "_개명": "[T303] `wolf_growl` → `wolf_howl` 은 **이름만** 바뀐 것이다 — 파일 바이트가 0 변경이라(sha1 d9176d70…/bede1a0f… 그대로) 이 실측값은 여전히 그 파일을 잰 값이다. `worstPeak`·`clippedAtWorst` 는 **다시 재지 않았고 한 자도 안 고쳤다** — 이름표만 갈았다.",
   "_T354": "21키 전부 동시: 피크 0.772(-2.25 dBFS) · 클리핑 0. **리미터를 빼면 피크 1.1039 · 클리핑 10** — 키가 16→21 로 늘면서 리미터가 무는 자리가 늘었다(T292 때는 최악 조합조차 문턱을 안 넘었다).",
@@ -1760,6 +1782,89 @@
       "hit": 0,
       "end": 0
      }
+    },
+    {
+     "at": "coast",
+     "card": "T473",
+     "arms": false,
+     "minutes": 30,
+     "windows": 8996,
+     "distinct": 2,
+     "oneShots": 0,
+     "steps": 0,
+     "worst": [
+      "water",
+      "waves",
+      "wind"
+     ],
+     "peakNoLim": 0.2989,
+     "overKneeWindows": 0,
+     "spot": "해안선 타일 (38992,121616) 곁 3칸 · 해안선 타일 393686",
+     "waterNow": {
+      "waterDist": 64,
+      "seaDist": 128
+     },
+     "rows": [
+      {
+       "keys": [
+        "water",
+        "waves",
+        "wind"
+       ],
+       "n": 4490,
+       "peakNoLim": 0.2989
+      },
+      {
+       "keys": [
+        "rain_light",
+        "water",
+        "waves",
+        "wind"
+       ],
+       "n": 4506,
+       "peakNoLim": 0.2975
+      }
+     ]
+    },
+    {
+     "at": "river",
+     "card": "T473",
+     "arms": false,
+     "minutes": 30,
+     "windows": 8992,
+     "distinct": 2,
+     "oneShots": 0,
+     "steps": 0,
+     "worst": [
+      "water",
+      "wind"
+     ],
+     "peakNoLim": 0.2894,
+     "overKneeWindows": 0,
+     "spot": "민물 셀 (30384,59408) 곁 1칸",
+     "waterNow": {
+      "waterDist": 64,
+      "seaDist": null
+     },
+     "rows": [
+      {
+       "keys": [
+        "water",
+        "wind"
+       ],
+       "n": 4479,
+       "peakNoLim": 0.2894
+      },
+      {
+       "keys": [
+        "rain_light",
+        "water",
+        "wind"
+       ],
+       "n": 4513,
+       "peakNoLim": 0.288
+      }
+     ]
     }
    ],
    "_한계": "[T431] 판 다섯(짐승·교전·마을 한가운데·일꾼 곁·벌목) + T417 나무 판. 주민 일 팔(T312·T325·T347·T368)은 기본 꺼짐이라 마을·일꾼·벌목 판은 켜고 쟀다 — 그래도 마을 한가운데·일꾼 곁 30분에 주민 소리 **0**(어부 라벨 셋이 곁에서 안 바뀌었다 · 나무꾼 0명). 교전은 `war_battle`(2Hz 집계)만 오고 표에 없어 **소리 층에 안 닿는다**(T387 회부 그대로) — 교전 판 최악은 발자국+날씨다. 발자국은 이제 센다(`CHAR_SPRITE=on`)."
@@ -1902,7 +2007,53 @@
   "handArrowsPeakLim": 0.7919,
   "handArrowsClippedLim": 0,
   "_handArrows": "[T465] 화살이 든 창의 **상한**(손 조합 · 대조 — 실측이 아니다): 같은 창에 날 수 있는 발사 `arrow_shoot` × maxSame 3 + 교전 실측 최악(병사 둘 맞음 + 새 + 바람) + 쓰러짐. 없이 1.5074(+3.56 dBFS · 클리핑 100) → 끼고 0.7919 · 클리핑 0. 운영 픽스처 교전엔 궁수가 없어(두 마을 다 어부 — 활 찾는 사냥꾼 0) 실측 창에 화살이 0 이었다 — 궁수 든 교전이 오는 날 `sfx-cooccur war` 로 실측이 이 자리를 대신한다(`e2e-audio-probe 55e`).",
-  "_T465": "교전 판 30분(`assault*4` — 520셀 안 쌍이 하나뿐이라 전쟁은 하나): 화살 **0**(궁수 0) · 병사 hp 줄어듦 26(곁 23) → hit_body 16 · downed 5 · 곁인데 못 운 몸 2 · 최악 0.8473(T457 과 같은 꼴) · `worstCombo` 무변. 화살 든 창은 손 상한 `handArrows` 로만(1.5074 → 끼고 0.7919 · 클리핑 0)."
+  "_T465": "교전 판 30분(`assault*4` — 520셀 안 쌍이 하나뿐이라 전쟁은 하나): 화살 **0**(궁수 0) · 병사 hp 줄어듦 26(곁 23) → hit_body 16 · downed 5 · 곁인데 못 운 몸 2 · 최악 0.8473(T457 과 같은 꼴) · `worstCombo` 무변. 화살 든 창은 손 상한 `handArrows` 로만(1.5074 → 끼고 0.7919 · 클리핑 0).",
+  "_T473_전부": "[T473] 64키(+`waves`) 전부 동시: 없이 1.4912(+3.47 dBFS · 클리핑 454) → 끼고 0.7869 · 클리핑 0 · 리미터 59/400 창.",
+  "envConst": [
+   "rain_light",
+   "water",
+   "waves",
+   "wind"
+  ],
+  "envConstPeak": 0.2975,
+  "_envConst": "[T473] 환경 상수 = 물가 판 실측의 반복 묶음(해안 30분: `water`+`waves`+`wind` 0.2989 · 비 오는 창 +`rain_light` 0.2975 / 강가 30분: `water`+`wind` 0.2894). 단발 0 — 환경은 늘 깔린다(★PM).",
+  "worstComboEnv": [
+   "downed",
+   "hit_body",
+   "hit_body",
+   "rain_light",
+   "wind",
+   "water",
+   "waves"
+  ],
+  "worstComboEnvPeak": 1.0473,
+  "worstComboEnvPeakDb": 0.4,
+  "worstComboEnvClippedNoLim": 28,
+  "worstComboEnvPeakLim": 0.7628,
+  "worstComboEnvClippedLim": 0,
+  "_worstComboEnv": "[T473] 정본 최악 사건(`worstCombo` 1.0266 · 짐승 판 쓰러지는 순간)에 물가 환경 상수를 얹은 묶음 — 없이 1.0473(+0.40 dBFS · 클리핑 28) → 끼고 0.7628 · 클리핑 0. 환경이 더한 것은 **+0.17 dB** 뿐이다(사건이 문턱을 넘긴다).",
+  "handEnv": [
+   "wind",
+   "rain",
+   "waves",
+   "water",
+   "water_pool",
+   "fire"
+  ],
+  "handEnvPeak": 0.3761,
+  "handEnvWorstPeak": 1.0931,
+  "handEnvWorstPeakLim": 0.7637,
+  "handEnvWorstClippedLim": 0,
+  "envEach": {
+   "wind": 0.2402,
+   "fire": 0.2352,
+   "rain": 0.1893,
+   "water": 0.1285,
+   "waves": 0.1124,
+   "water_pool": 0.0518,
+   "_뜻": "[T473] 환경 반복 하나씩(리미터 없이 · 소리판 볼륨 그대로) — 줄일 차례를 고를 때의 자(값은 재민)."
+  },
+  "_T473": "환경 판 둘(해안 30분 · 강가 30분 · 서 있기 · 단발 0): 최악 해안 `water`+`waves`+`wind` 0.2989 · 강가 `water`+`wind` 0.2894 — 문턱에서 −8.5 dB 아래. 환경 전부 손 상한(바람+센 비+파도+시냇물+고인 물+불) 0.3761 · 정본 최악 사건에 얹으면 1.0931 → 끼고 0.7637 · 클리핑 0. `worstCombo` 무변(환경은 `worstComboEnv` 로 따로)."
  },
  "ground": {
   "_뜻": "발밑 지형 → 발자국 키. 지형 정본은 `window.__tileStateAt` 하나(`kind`·`geo`·풀 알파) — 층은 그 답을 이 표로 옮길 뿐이다.",
@@ -1931,5 +2082,15 @@
   "위": "rain",
   "_왜_0.5": "`precip` 은 0..1 정규값이고 층에 다른 눈금이 없다. 가운데를 가른다 — **유도가 아니라 이등분**이라 값은 재민 몫이다(회부). 세계가 아직 `precip` 을 안 보내므로(T93) 지금은 어느 쪽도 저절로 안 난다.",
   "_T397_눈": "★눈이 오면(그리는 층 `37-r1-weather` 가 `kind:'snow'` 로 정한 때) 두 파일 다 0 이다. 종전엔 기온과 무관하게 빗소리였다. 눈 자체의 소리는 **없다**(PD/CC0 에서 못 찾았고, 실제 눈 내림은 거의 무음이다 — 바람이 이미 운다)."
+ },
+ "waterSplit": {
+  "_뜻": "[T473] 물 셀을 **민물 / 바다**로 가른다 — `water`(시냇물)가 바닷가에서도 울던 착시를 고친다. 바다 = 바다 존(`isOcean`) 또는 해안선 타일(00-const `waterTilesByZone`) · 그 밖의 물 = 민물(강·호수). 판정은 00-const 가 이미 구운 표 둘이다(새 판정 0).",
+  "민물": "water",
+  "바다": "waves"
+ },
+ "resourceLoop": {
+  "_뜻": "[T473] 자원 `type` → 반복 키(건물 `buildings` 와 같은 문법 — 개체마다 하나 · 거리 감쇠 · 화면 밖이면 멎음).",
+  "water_pool": "water_pool",
+  "_water_pool": "고인 물(자원 · `RESOURCE_HP_TABLE` 999 — 사실상 부서지지 않는 환경물). 보글거림 1번(T397 확보 · 후보 → 배선)."
  }
 }
