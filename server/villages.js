@@ -5193,6 +5193,7 @@ function lifeDebug() {   // ★[직접 서버 디버깅 — 사용자 요청] zo
       psite: vil._psite ? { cx: vil._psite.cx, cy: vil._psite.cy, stage: vil._psite.stage, crew: vil._psiteCrew || 0, owner: vil._psite.owner } : null,   // ★[11차 T4] 플레이어 의뢰 집터(공정 단계·붙은 크루)
       pHouses: (vil._pHouses ? vil._pHouses.length : 0),   // 완공된 의뢰 집(마을 침대 명부 밖)
       t400: vil._t400Sum || null,
+      t449: vil._t449 || null,   // ★[T449] 결산 문 누계(끔이면 null) — 날 · 관측 날 · 관측 마을 일괄(농부·신축 — 팔 꺼짐) · 몸 명부로 넘긴 나무꾼·채집 날
       t435: vil._t435Sum || null,   // ★[T435] 곳간 증설 행위 누계(끔이면 null) — 크루·일 · 왕복 · 나른 재료 · 곳간 빈 날 · 선 동 수   // ★[T400] 집 행위 누계(끔이면 null) — 걸음초·낮초·왕복·나른 통나무·전진 단계·크루 직업
       mkt: (() => { if (!state.caravanBodies) return 0; for (const b of state.caravanBodies.values()) if (b.phase === 'linger' && state.byEcon.get(b.toV) === vil) return 1; return 0; })(),   // ★[10차 T4] 장마당 개장 여부(캐러밴 체류 중) — 라이브 확인용 계측
       ccx: vil.ccx, ccy: vil.ccy, acts, sample });
@@ -7415,9 +7416,31 @@ function huntDeforest(vil, cx, cy) {
 //   (T212 실측 50마을 전부 층합 = 채수). 층당 정원은 이 파일이 안 갖는다 — 정본은 레이아웃 모듈이고,
 //   랩이 `L_FLOORCAP = VillageLayout.HOUSE_CAP` 으로 읽는 **그 상수**다.
 function _mapBedsOf(vil) { return (vil._houseCells ? vil._houseCells.length : 0) * _lifeVL().HOUSE_CAP_PER_FLOOR; }
+// ★★★[T449 2026-09-27 · ★PM 결정(위임) · 재민 767b827e "아무도 안 보는 마을도 일과가 작동해야"의 반대쪽] **결산 문을 산다.**
+//   `_lifeDaily` 의 관측자 문은 `767b827e` 부터 **늘 거짓**이었다 — 존이 주입한 정본은 `anyViewerNear(점, r)` 인데 수 셋을
+//   넘겼다(`center.x` = undefined ⇒ 거리 NaN · T432 §2-ⓑ). 그래서 관측 마을도 새벽 일괄이 하루를 했다.
+//   손잡이 `T449_BODY_DAY`(기본 **끔** · 끔 = 종전 비트 동일 = 늘 거짓 — 아래 `_lifeDaily` 의 옛 줄이 그대로 돈다).
+//   켜면 **그 술어를 그 꼴로** 묻는다(점 · 반경 그 수 — 옛 줄의 두 식 그대로 · 새 술어 0 · 새 수 0).
+//   관측 마을의 하루는 **행위 팔이 켜진 직업은 몸이 · 나머지 직업은 일괄이** 한다(직업 × 몸/일괄 표 — 보고/T449 §1):
+//     ⓐ 헤드리스 결산(`_lifeHeadlessDay` — 개간 · 신축 · 작물)은 **이미 스스로 직업을 가른다** — 농부 두 절은 T368 켬이면
+//        `_body`(몸 · 존 깸 — 관측 마을은 늘 깸) · 신축은 T400 켬이면 크루 장부. 그러니 관측 마을도 **그 함수를 그대로** 부르면
+//        팔 켜진 직업은 몸, 꺼진 직업(나머지)은 일괄이다 — 함수는 무변(T368 ⑤ 글자 그대로).
+//     ⓑ 나무꾼·채집(T325·T347 — `_lifeDaily` 안의 헤드리스 갈래)만 관측자를 안 보고 "해 질 녘 손에 든 몸이 0 이면 일괄"
+//        (`_walked`)이었다 ⇒ 관측 마을은 **몸 명부**다 — 일괄 명부에서 빠진다(T423 이중 식사 문법: 제 짐을 먹는 병사는
+//        마을 식사 명부에서 빠진다 · 한 몸이 두 번 안 한다). 명부 한 칸(`_ln`·`_fg`)만 바뀌고 절의 글자는 그대로다.
+//     ⓒ 어부(T312)는 일괄 갈래가 없다(T316 이 지웠다) · 곳간(T435)·집(T400)은 관측자 무관 크루 장부 — 무변.
+const T449_BODY_DAY = process.env.T449_BODY_DAY === '1';
+function _t449Seen(vil) {
+  const f = state.deps && state.deps.anyViewerNear;
+  return !!(f && f({ x: vil.ccx * SZ + SZ / 2, y: vil.ccy * SZ + SZ / 2 }, (vil._maxRPx || 800) + 1600));
+}
 function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(디스폰 누수 자가치유) + 신축 판단 + 작물 하루 성장
   if (!LIFE_ON || !vil._terrSet || !vil._terrSet.size || !vil.econ) return;
   _lifeVL();
+  // ★[T449] 결산 문 — 켬이면 이 마을이 오늘 관측 마을인가(끔이면 묻지 않는다 · 거짓 · 비트 동일)
+  const _t449S = T449_BODY_DAY && _t449Seen(vil);
+  const _t449T = T449_BODY_DAY ? (vil._t449 || (vil._t449 = { d: 0, seen: 0, hlFarm: 0, hlSite: 0, woodBody: 0, forageBody: 0 })) : null;   // 계측 전용 누계(켬만 · 회계 아님)
+  if (_t449T) { _t449T.d++; if (_t449S) _t449T.seen++; }
   let _lt = Date.now(); const _lt0 = _lt;   // ★[T1 §0] 하위 스톱워치(계측 전용)
   const _sub = (nm) => { const t = Date.now(), d = t - _lt; _lt = t; _lifeSub[nm] += d; if (d > (_lifeSubMax[nm] || 0)) _lifeSubMax[nm] = d; };
   // ★[LIFE_* 튜닝 계측] 하루 누계를 '어제치'로 확정하고 리셋 — /lifedbg가 dCl/dSt/dTk로 노출한다.
@@ -7463,7 +7486,10 @@ function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(�
     const _pl = state.deps.players;
     let _walked = 0;
     if (_on) for (const pid of (vil.npcPids || [])) { const p = _pl && _pl.get(pid); if (p && p.inventory && (p.inventory.wood || 0) > 0) { _t325Deliver(vil, p); _walked++; } }
-    const _ln = (vil.econ.counts && vil.econ.counts.lumberjack) || 0;
+    //   ★[T449 ⓑ] 관측 마을(켬)의 나무꾼은 **몸 명부** — 일괄 명부에서 빠진다(T423 문법 · 끔이면 종전 명부 그대로)
+    const _lnE = (vil.econ.counts && vil.econ.counts.lumberjack) || 0;
+    const _ln = _t449S ? 0 : _lnE;
+    if (_t449S && _on && _walked === 0 && _lnE > 0 && _tr.length) _t449T.woodBody++;   // 계측 — 종전이면 일괄이 돌았을 날
     const _S = vil._t325Trees || {};
     // ★[T341 계측 전용] 걸음이 정한 한도와 실제 벌목을 밖에서 보이게 — 회계 아님(카운터만)
     vil._t325Dbg = { on: _on ? 1 : 0, walked: _walked, ln: _ln, cells: _tr.length,
@@ -7543,7 +7569,10 @@ function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(�
       let u = 0; for (const k of _keep) for (const h of _t347HandsOf(k)) u += p.inventory[h] || 0;   // ★[T458] 손 이름
       if (u > 0) { _t347Deliver(vil, p); _walked++; }
     }
-    const _fg = (vil.econ.counts && vil.econ.counts.forager) || 0;
+    //   ★[T449 ⓑ] 관측 마을(켬)의 채집꾼도 **몸 명부**(나무꾼 절과 같은 한 칸)
+    const _fgE = (vil.econ.counts && vil.econ.counts.forager) || 0;
+    const _fg = _t449S ? 0 : _fgE;
+    if (_t449S && _on && _walked === 0 && _fgE > 0 && _gv.length && _keep.length) _t449T.forageBody++;   // 계측 — 종전이면 일괄이 돌았을 날
     const _S = vil._t347Groves || {};
     vil._t347Dbg = { on: _on ? 1 : 0, walked: _walked, fg: _fg, cells: _gv.length,
       N: _S.N | 0, K: _S.K | 0, wBar: +(_S.wBar || 0).toFixed(3), cap: 0, trips: 0, perLoad: 0,
@@ -7641,8 +7670,11 @@ function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(�
   // ★★[T400] 집 — 자재를 나르는 크루의 하루(관측자 무관 · 이 줄은 아래 관측자 문 **앞**이다). 끔이면 한 줄도 안 돈다.
   if (_lifeEcon().T400_BUILD_ACT) { try { _t400BuildDay(vil); } catch (e) { console.error(`[${state.zoneId}] 생활층 집 행위 실패(${vil.name}):`, e.message); } _sub('site'); }
   // ★[헤드리스 결산] 관측자 없는 마을 = 랩 빨리감기 — 하루치 물리 결과 일괄 적산(관측 마을은 실걸음 크루 소유)
+  //   ★★[T449 ⓐ] 끔 = 아래 옛 줄 그대로(수 셋 — 늘 거짓 ⇒ 모든 마을이 결산). 켬 = **관측 마을도 같은 함수를 부른다** —
+  //     그 함수가 팔로 직업을 가른다(농부 T368 켬 = 몸 · 신축 T400 켬 = 크루 장부 · 꺼진 팔 = 일괄 그대로).
   const anyNear = state.deps.anyViewerNear;
-  if (!(anyNear && anyNear(vil.ccx * SZ + SZ / 2, vil.ccy * SZ + SZ / 2, (vil._maxRPx || 800) + 1600))) {
+  if (_t449S) { if (!_t368Walk()) _t449T.hlFarm++; if (vil._site && !_lifeEcon().T400_BUILD_ACT) _t449T.hlSite++; }   // 계측 — 관측 마을에서 일괄이 한 직업(팔 꺼짐)
+  if (T449_BODY_DAY || !(anyNear && anyNear(vil.ccx * SZ + SZ / 2, vil.ccy * SZ + SZ / 2, (vil._maxRPx || 800) + 1600))) {
     try { _lifeHeadlessDay(vil); } catch (e) { console.error(`[${state.zoneId}] 생활층 헤드리스 결산 실패(${vil.name}):`, e.message); }
     _sub('headless');
   }
@@ -8886,6 +8918,8 @@ module.exports = { fishPerf, woodPerf, foragePerf, farmPerf,   // ★[T316] `/pe
       perLoad: (it) => _t400PerLoad(it), treesPerLoad: (u) => _t341TreesPerLoad(u), tripsPerDay: (vil, d) => _t341TripsPerDay(vil, d, 1),
       get LIFE_CREW() { return LIFE_CREW; }, get LIFE_STAGE_PDAY() { return LIFE_STAGE_PDAY; } },
     _t374Probe: { setDeps: (d) => { const k = state.deps; state.deps = d; return k; }, done: (vil, job) => _t374Done(vil, job), held: (vil, items) => _t374Held(vil, items) },
+    // ★[T449] 결산 문 하네스용 — 같은 규약(최소 주입구 하나). 하네스는 문·명부 규칙을 다시 적지 않는다 — 정본 `_t449Seen`·`_lifeDaily` 를 그대로 부른다.
+    _t449Probe: { seen: (vil) => _t449Seen(vil), daily: (vil) => _lifeDaily(vil), get T449_BODY_DAY() { return T449_BODY_DAY; } },
     get VILLAGE_MAX() { return VILLAGE_MAX; },
     get INITIAL_POP() { return INITIAL_POP; },
     get SZ() { return SZ; },

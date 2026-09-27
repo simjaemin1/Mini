@@ -85,7 +85,10 @@ function bootZone(tag, zoneId, env, dayMs, zdb, cport, zport, secret, withCentra
   const probeOut = `${TMP}/${tag}.probe.json`;
   if (PROBE) zenv.T432_PROBE_OUT = probeOut;
   if (PROBE && process.env.T410_PROF === '1') zenv.T432_PROF_OUT = `${TMP}/${tag}.cpuprofile`;   // ★[T432] CPU 프로필(시작·길이는 T432_PROF_START_S · _DUR_S)
-  const zargs = PROBE ? ['--expose-gc', '-r', path.join(ROOT, 'scripts/t432-probe.js'), path.join(ROOT, 'server/zone.js')] : [path.join(ROOT, 'server/zone.js')];
+  //   ★[T449] 예비 적재를 고를 수 있다(`T410_PRELOAD` — 기본 t432-probe · `scripts/t449-coll-probe.js` 는 그것을 싣고 벽 질의 견주기를 더한다)
+  const PRE = process.env.T410_PRELOAD || 'scripts/t432-probe.js';
+  if (PROBE && /t449-coll-probe/.test(PRE)) zenv.T449_COLL_OUT = `${TMP}/${tag}.coll.json`;
+  const zargs = PROBE ? ['--expose-gc', '-r', path.join(ROOT, PRE), path.join(ROOT, 'server/zone.js')] : [path.join(ROOT, 'server/zone.js')];
   const z = spawn(process.execPath, zargs, { cwd: ROOT, stdio: ['ignore', logf, logf],
     env: Object.assign({}, process.env, zenv, env) });
   const getj = async (p) => { try { const r = await fetch(`http://localhost:${zport}${p}`, { headers: { 'x-zone-secret': secret }, signal: AbortSignal.timeout(20000) }); return await r.json(); } catch (e) { return null; } };
@@ -186,6 +189,7 @@ async function modeLoad() {
         const h = await B[a].getj('/health'), pr = await B[a].probe();
         s.health = h ? { res: h.resources, bld: h.buildings, mobs: h.mobs } : null;
         s.probe = pr;
+        try { s.coll = JSON.parse(fs.readFileSync(`${TMP}/load-${a}.coll.json`, 'utf8')).s; } catch (e) { s.coll = undefined; }   // ★[T449] 벽 질의 견주기(있을 때만)
         await B[a].getj('/perf?reset=1'); prev[a] = { t: Date.now(), c: cpuTicks(B[a].pid()) };
       }
       res.arms[a].slices.push(s);

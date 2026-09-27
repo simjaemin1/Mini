@@ -839,6 +839,21 @@ function activeChunkBuildings() {
 // 모든 nearest-search (visiblePlayers, tryGather 등)에서 사용. message handler에서도
 // stale 33ms 정도는 OK (다음 tick에 재구축).
 let qtPlayers, qtMobs, qtResources, qtBuildings;
+// ★★★[T449 ③ 2026-09-27 · 캐논 "밭은 벽이 아니다"] **벽 질의의 격자에는 밭이 없다.**
+//   Stage 4A(`249ca5c0` · 07-07)가 마을 농지를 "청크 활성화 비영속 타일"(`vb` · `SimVillages.farmTilesInRect`)로 실물화하면서
+//   "비활성/AOI/quadtree/충돌은 기존 경로가 일반 건물과 동일하게 처리(추가 코드 없음)" 라 적었다 — 밭(과 `d98f4c78` 의 마당·광장·텃밭
+//   `vtile`)이 **벽 질의가 보는 격자**에 같이 들었다. 벽 질의는 종류를 걸러 버리니(벽·문·울타리·바닥·계단만 본다) 답은 같지만,
+//   청크 켬 세계에선 격자의 **73 %** 가 그 타일이라 A* 안 벽 질의가 틱의 18~25 %였다(T432 ⓑ). ⇒ 벽 질의에는 **그 종류만 든 격자**를 준다.
+//   ⚠`qtBuildings` 는 **그대로**다 — 자리 검사(마을 땅엔 못 짓는다)·공격 대상·모닥불·AOI 가 그 격자(와 그 차례)를 본다.
+//   ★새 격자는 `qtBuildings` 를 **통째로 세우는 그 자리에서 같이** 세운다(T421 증분 — 같은 활성 청크 · 같은 차례에서 거른 것 — 사본 0 · 새 수 0).
+//     증분이 `qtBuildings` 를 그대로 두는 판은 건물 목록이 차례까지 같은 판이라 이 격자도 같다(건물은 안 움직이고 종류가 안 바뀐다).
+//   ⚠되돌림 판(`T421_SPATIAL_INC=0` — 매 틱 통째로)은 **옛 몸통 그대로**다: 벽 질의도 옛 격자(`qtColl = qtBuildings`).
+//     그 판에서 새 격자를 매 틱 한 번 더 세우는 값이 벽 질의 절약을 먹는다(한 판 안 번갈이 — 최신 main 새<옛 4/6 · −2.4 % · 못 가름 ·
+//     결정 예산 찬 틱 +254/분 — 예산은 틱 머리부터 잰다) ⇒ 되돌림은 되돌림답게 둔다(보고/T449 §3-ⓓ).
+//   종류는 아래 네 술어가 거르는 그 이름의 합이다(`_edgeScan` 벽·문 · `findCellFence` 울타리 · `findFloorTile` 바닥 · 받침 바닥·계단 —
+//   `test-coll-grid` 가 술어의 글자와 이 집합을 맞대 본다).
+let qtColl;
+const COLL_TYPES = new Set(['wall', 'door', 'fence', 'floor', 'stair']);
 let resourcesDirty = true;  // 자원(나무·돌)은 static — 변경됐을 때만 quadtree 재구축
 let _lastResRebuild = 0;    // qtResources 전체 재구축 throttle (5Hz 상한)
 // ★★★[T421 2026-09-26 · T371 회부 · T375 §4-4 · T385 §4-4 세 번 미룬 자리] **격자 증분.** `T421_SPATIAL_INC=1` 일 때만.
@@ -910,7 +925,8 @@ function _rebuildSpatialInc(nowIT, W, H) {
   if (ok && j !== S.bld.length) ok = false;
   if (!ok) {
     qtBuildings = new QuadtreeInc(0, 0, W, H); S.bld = [];
-    for (const k of activeChunkKeys) { const c = chunkManager.chunks.get(k); if (c) for (const b of c.buildings.values()) { const e = { x: b.x, y: b.y, ref: b }; qtBuildings.insert(e); S.bld.push(e); } }
+    qtColl = new Quadtree(0, 0, W, H);   // ★[T449 ③] 벽 질의 격자 — 같은 자리 · 같은 차례에서 그 종류만
+    for (const k of activeChunkKeys) { const c = chunkManager.chunks.get(k); if (c) for (const b of c.buildings.values()) { const e = { x: b.x, y: b.y, ref: b }; qtBuildings.insert(e); S.bld.push(e); if (COLL_TYPES.has(b.type)) qtColl.insert({ x: b.x, y: b.y, ref: b }); } }
     S.rebuilt.bld++;
   } else S.kept.bld++;
 }
@@ -929,6 +945,7 @@ function rebuildSpatialIndex(nowIT) {   // ★[T385] `nowIT` 가 있으면 입�
   // qtBuildings — 활성청크 건물만 인덱싱. queryCircle은 전부 플레이어 주변(활성청크)이라 충분.
   //   집 ON이면 전 존 건물 3만+채 → 매틱 전체 재삽입은 ~7ms(22% CPU). 활성청크만이면 ~수백채.
   for (const k of activeChunkKeys) { const c = chunkManager.chunks.get(k); if (c) for (const b of c.buildings.values()) qtBuildings.insert({ x: b.x, y: b.y, ref: b }); }
+  qtColl = qtBuildings;   // ★[T449 ③] 되돌림 판(T421 끔)은 옛 몸통 그대로 — 벽 질의도 옛 격자(위 `qtColl` 머리 주석)
   // 자원은 안 움직임 — 매 tick 재삽입하면 숲 수천 그루를 30Hz로 재구축해 1 vCPU가 죽음.
   // 청크 활성/비활성·채집으로 바뀐 경우(resourcesDirty)에만 다시 만든다.
   // ★ 추가: 마을 NPC 채집·이동으로 resourcesDirty가 매틱 떠도, 전체 재구축은 자원 수만큼 비쌈
@@ -11599,7 +11616,7 @@ function _edgeScan(cx, cy, side, floor, roomMode) {
   // fence는 14.50부터 cell 위치 (edge 아님). 여기선 check 안 함.
   const ex = cx * BUILDING_SIZE;
   const ey = cy * BUILDING_SIZE;
-  const nearby = qtBuildings ? qtBuildings.queryCircle(ex, ey, BUILDING_SIZE * 2) : Array.from(buildings.values());
+  const nearby = qtColl ? qtColl.queryCircle(ex, ey, BUILDING_SIZE * 2) : Array.from(buildings.values());   // ★[T449 ③] 벽 질의 격자(밭 0)
   for (const b of nearby) {
     if (b.type !== 'wall' && b.type !== 'door') continue;
     if ((b.floor || 0) !== floor) continue;
@@ -11627,7 +11644,7 @@ function findEdgeBoundary(cx, cy, side, floor) { return _edgeScan(cx, cy, side, 
 // 그 칸의 바닥 타일(방 판정 정본 입력). 계단이 만든 자동 바닥도 바닥이다.
 function findFloorTile(cx, cy, floor) {
   const ax = cx * BUILDING_SIZE + BUILDING_SIZE / 2, ay = cy * BUILDING_SIZE + BUILDING_SIZE / 2;
-  const nearby = qtBuildings ? qtBuildings.queryCircle(ax, ay, BUILDING_SIZE) : Array.from(buildings.values());
+  const nearby = qtColl ? qtColl.queryCircle(ax, ay, BUILDING_SIZE) : Array.from(buildings.values());   // ★[T449 ③] 벽 질의 격자(밭 0)
   for (const b of nearby) {
     if (b.type !== 'floor') continue;
     if ((b.floor || 0) !== floor) continue;
@@ -11646,7 +11663,7 @@ function _roomsApply(res) {
   if (!res || (!res.changed.length && !res.removed.length)) return;
   broadcast({ type: 'rooms_update', rooms: res.changed.map(Rooms.wireRoom), removed: res.removed });
 }
-// ★★스테일 인덱스 함정 — E2E 가 잡았다. 방 판정 입력(벽·문·바닥 조회)은 `qtBuildings` 를 쓰는데
+// ★★스테일 인덱스 함정 — E2E 가 잡았다. 방 판정 입력(벽·문·바닥 조회)은 `qtBuildings` 를 쓰는데(★[T449 ③] 지금은 `qtColl` — 같은 자리에서 같이 세운다 · 같은 함정)
 //   그 쿼드트리는 **틱마다 통째로 다시 만든다**(209행). 그래서 건물을 놓거나 헌 **바로 그 순간** 다시 재면
 //   방금 헌 벽이 아직 남아 보이고(→ 방이 안 풀린다) 방금 놓은 문은 아직 안 보인다(→ 방이 풀린다).
 //   ⇒ **다음 틱으로 미룬다.** 시드만 모아 두고 rebuildSpatialIndex() 직후에 한 번에 처리한다.
@@ -11705,7 +11722,7 @@ function roomsDropChunk(c) {
 function findCellFence(cx, cy, floor) {
   const cellAx = cx * BUILDING_SIZE + BUILDING_SIZE / 2;
   const cellAy = cy * BUILDING_SIZE + BUILDING_SIZE / 2;
-  const nearby = qtBuildings ? qtBuildings.queryCircle(cellAx, cellAy, BUILDING_SIZE) : Array.from(buildings.values());
+  const nearby = qtColl ? qtColl.queryCircle(cellAx, cellAy, BUILDING_SIZE) : Array.from(buildings.values());   // ★[T449 ③] 벽 질의 격자(밭 0)
   for (const b of nearby) {
     if (b.type !== 'fence') continue;
     if ((b.floor || 0) !== floor) continue;
@@ -12527,7 +12544,7 @@ setInterval(() => {
     if (floor === 0) return true; // 0층은 항상 땅
     const cx = Math.floor(absX / BUILDING_SIZE);
     const cy = Math.floor(absY / BUILDING_SIZE);
-    const near = qtBuildings ? qtBuildings.queryCircle(absX, absY, BUILDING_SIZE) : Array.from(buildings.values());
+    const near = qtColl ? qtColl.queryCircle(absX, absY, BUILDING_SIZE) : Array.from(buildings.values());   // ★[T449 ③] 벽 질의 격자(밭 0)
     for (const b of near) {
       if (b.type !== 'floor' && b.type !== 'stair') continue;
       const bcx = Math.floor(b.x / BUILDING_SIZE);
