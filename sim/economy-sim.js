@@ -2184,11 +2184,11 @@ function _era() { if (_eraMod === undefined) { try { _eraMod = require('../serve
 const _ERA_METALS = new Set(['copper', 'tin', 'lead', 'gold', 'silver', 'iron', 'nickel', 'zinc', 'aluminium', 'uranium']);
 const _ERA_METAL = (id) => _ERA_METALS.has(id);
 function _eraKnows(metal) { const E = _era(); if (!E || !E.npcKnows) return true; try { return E.npcKnows(metal); } catch (e) { return true; } }
-// ══ ★★[T443 2026-09-27] 제련 연료도 실물 — 정본 `server/smelt-uses.js`(원석 1 = 숯 2 · 숯 1 = 통나무 3÷2) · 손잡이 기본 끔 ══
+// ══ ★★[T443 2026-09-27] 제련 연료도 실물 — 정본 `server/smelt-uses.js`(원석 1 = 숯 2 · 숯 1 = 통나무 3÷2) · 손잡이 `T443_SMELT_FUEL` · ★T471 기본 켬(넷째 판-c · 되돌림 `=0`) ══
 //   켬이면 대장장이가 원석을 녹일 때 **숯을 뺀다** — 곳간의 숯(`charcoal` · specialty 품목 그대로 · 새 품목 0)이 먼저이고,
 //   모자라면 그 자리에서 **노천 탄화**(시설 없이 되는 레시피)로 통나무를 태워 숯을 낸다(econ 마을엔 숯가마가 없다).
 //   통나무도 모자라면 **있는 연료만큼만** 녹인다(연료가 없으면 제련이 안 돈다 = 행위). 끔 = 이 함수는 안 불린다(비트 동일).
-const T443_SMELT_FUEL = process.env.T443_SMELT_FUEL === '1';
+const T443_SMELT_FUEL = process.env.T443_SMELT_FUEL !== '0';   // ★[T471] 기본 켬(넷째 판-c) · 되돌림 `T443_SMELT_FUEL=0` = 넷째 판-b 비트 동일
 let _smeltMod;
 function _smeltUses() { if (_smeltMod === undefined) { try { _smeltMod = require('../server/smelt-uses'); } catch (e) { _smeltMod = null; } } return _smeltMod; }
 function smeltFuelOn() { return T443_SMELT_FUEL && !!_smeltUses(); }
@@ -2208,13 +2208,13 @@ function smeltFuelTake(v, want) {
   if (can < want) v._smeltShort = (v._smeltShort || 0) + 1;
   return can;
 }
-// ══ ★★[T452 2026-09-27] 숯가마 행위 — 숯은 숯가마가 굽는다(정본 `smelt-uses.js` · 손잡이 `T452_KILN_ACT` 기본 끔) ══
+// ══ ★★[T452 2026-09-27] 숯가마 행위 — 숯은 숯가마가 굽는다(정본 `smelt-uses.js` · 손잡이 `T452_KILN_ACT` · ★T471 기본 켬) ══
 //   서는 조건(유도 · 새 수 0): **숲 마을** = 나무꾼이 있고(`counts.lumberjack > 0`) 통나무가 비축 목표(`RESERVE_PC.wood × 인구`)를 넘는다.
 //   짓기: 숯가마 공정 재료(`kilnBuildCost` = 돌 10·통나무 2)가 곳간에 있으면 그날 선다(재료만 · 몸은 생활층 회부).
 //   굽기: 하루 배치 상한 = 서버 조업 시간식(`kilnBatchesPerDay(dayLengthMs)`) · 배치 = 통나무 3 → 숯 4 ·
 //     **잉여 통나무**(비축 목표 초과분)로만 · 숯 목표 = 원석 비축 목표(`RESERVE_PC.ore × 인구`)와 지금 원석 중 큰 쪽을 녹일 숯(× 원석당 숯)까지.
 //   숯 = 곳간 품목(`charcoal` — specialty 품목 · 이미 교역재) — 캐러밴이 값대로 옮긴다(새 줄 0 · 보고 §ⓐ).
-const T452_KILN_ACT = process.env.T452_KILN_ACT === '1';
+const T452_KILN_ACT = process.env.T452_KILN_ACT !== '0';   // ★[T471] 기본 켬(넷째 판-c) · 되돌림 `T452_KILN_ACT=0` = 넷째 판-b 비트 동일
 let _zcfgMod;
 function _dayLengthMs() { if (_zcfgMod === undefined) { try { _zcfgMod = require('../server/zone-config'); } catch (e) { _zcfgMod = null; } } return (_zcfgMod && _zcfgMod.WORLD && _zcfgMod.WORLD.dayLengthMs) || 0; }
 function kilnActOn() { return T452_KILN_ACT && !!_smeltUses(); }
