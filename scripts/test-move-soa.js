@@ -1362,5 +1362,42 @@ console.log('\n⑭ T421_SPATIAL_INC 격자 증분 — 조회 결과 비트 동�
   console.log('    접점: rebuildSpatialIndex · _rebuildSpatialInc · _spKeep · _spInc · QuadtreeInc.nodeFor · isPositionActive · activeChunkKeys · T421_SPATIAL_INC');
 }
 
+// =============================================================================
+// ⑮ T444 ② — 되짚기(`_t394OpenTarget`)에 **캐시할 자리가 있나** [T444]
+// =============================================================================
+// ★T433 이 T394 를 켜면 +0.45ms 라 했고, T444 ① 이 해부했다: 되짚기 자체는 틱당 0.015ms(0.74µs × 20회)다.
+//   카드는 "같은 몸 · 같은 목표 **셀**이면 답이 같다 — T421 문법으로 같을 때 안 되짚는다" 를 후보로 줬다.
+//   ⇒ 이 절이 그 전제를 **글자로 잰다**: ⓐ 입력이 **글자 그대로** 같으면 답이 같다(결정적 — 캐시가 옳을 **수** 있다) ·
+//     ⓑ 그런데 **같은 셀 · 같은 닻**이라도 목표 **점**이 다르면 답이 다르다(셀 열쇠 캐시는 **틀린 답**을 낸다) ·
+//     ⓒ 실서버 실측(T444 ①)에서 글자 그대로 같은 입력의 되풀이는 **0회** ⇒ 옳은 캐시(점 열쇠)는 적중 0 이다.
+//   ⇒ **손잡이를 안 만들었다**(`T444_OPEN_CACHE` 0줄 · 새 수 0) — 이 절이 그 까닭의 자다.
+console.log('\n⑮ T444 ② — 되짚기에 캐시할 자리가 있나(없다) [T444]');
+{
+  const OT = body('_t394OpenTarget');
+  ok(OT.length > 200, '⑮ [전제] 제품의 되짚기 글자를 떴다', `${OT.length}자`);
+  // 지형: 물 띠(셀 x 100~104) — 닻은 뭍
+  const blocked = (x, y) => { const cx = Math.floor(x / 32); return cx >= 100 && cx <= 104; };
+  const fn = new Function('BUILDING_SIZE', 'isTerrainBlockedLocal', OT + '\nreturn _t394OpenTarget;')(32, blocked);
+  const run = (tx, ty, ax, ay) => { const n = { targetX: tx, targetY: ty }; const r = fn(n, ax, ay); return [r, n.targetX, n.targetY]; };
+  // ⓐ 같은 입력 → 같은 답(1만 번)
+  let same = 0; for (let i = 0; i < 10000; i++) { const tx = 3200 + (i % 160) + 0.37, ty = 5000 + (i % 7) * 11.1;
+    if (JSON.stringify(run(tx, ty, 3000, 5000)) === JSON.stringify(run(tx, ty, 3000, 5000))) same++; }
+  ok(same === 10000, '⑮-a 입력이 **글자 그대로** 같으면 답이 같다(결정적 · 주사위 0)', `${same}/10000`);
+  // ⓑ 같은 막힌 셀 · 같은 닻 · 셀 안 다른 점 → 다른 답
+  let cellPairs = 0, differ = 0;
+  for (let i = 0; i < 2000; i++) {
+    const cx = 100 + (i % 5), cy = 150 + (i % 13);
+    const p1 = run(cx * 32 + 3.5, cy * 32 + 7.25, 3000, 5000), p2 = run(cx * 32 + 27.75, cy * 32 + 21.5, 3000, 5000);
+    if (p1[0] && p2[0]) { cellPairs++; if (p1[1] !== p2[1] || p1[2] !== p2[2]) differ++; }
+  }
+  ok(cellPairs > 1000 && differ === cellPairs, '⑮-b ★같은 막힌 셀 · 같은 닻이라도 목표 **점**이 다르면 옮긴 점이 **다르다** — 셀 열쇠 캐시는 틀린 답을 낸다',
+     `셀 짝 ${cellPairs} · 다른 답 ${differ}`);
+  // ⓒ 열린 셀은 어디든 "안 옮김" — 셀 열쇠로 옳은 몫은 **술어 한 번**(이미 셀 메모 · T356 비트)뿐이다
+  let openSame = 0; for (let i = 0; i < 2000; i++) { const r = run(2000 + (i % 30) * 32 + 5, 5000, 3000, 5000); if (r[0] === false) openSame++; }
+  ok(openSame === 2000, '⑮-c 열린 목표는 어디든 **안 옮긴다** — 셀로 캐시할 수 있는 것은 술어 한 번뿐(지형 메모가 이미 그 일을 한다)', `${openSame}/2000`);
+  ok(!/T444_OPEN_CACHE/.test(codeOnly(Z)), '⑮ 손잡이 `T444_OPEN_CACHE` 는 **만들지 않았다**(옳은 캐시는 실측 적중 0 · 셀 캐시는 틀린다 — 보고 §2)');
+  console.log('    접점: _t394OpenTarget · isTerrainBlockedLocal · T394_WORK_TERRAIN');
+}
+
 console.log(`\n=== 결과: ${pass} PASS / ${fail} FAIL ===\n`);
 process.exit(fail ? 1 : 0);

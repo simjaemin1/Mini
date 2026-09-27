@@ -78,7 +78,7 @@ const PROBE_HEAD = `
 //   ★자 값을 자가 잰다: \`cut()\` 한 번 값(ns)을 기동 때 재어 같이 찍는다 — 보는 쪽이 계수로 뺀다.
 const _ANA = {
   n: 0, t0: 0, m: 0, tot: 0, pop: 0, mobN: 0, clockNs: 0, cutNs: 0,
-  loopDec: 0, loopMov: 0, aoi: 0,
+  loopDec: 0, loopMov: 0, aoi: 0, x: {},
 __SEGFIELDS__
   every: parseInt(process.env.T371_EVERY || '900', 10),
   cut(k) { const t = _anaT(); this[k] += t - this.m; this.m = t; },
@@ -96,10 +96,10 @@ __SEGFIELDS__
     if (!this.clockNs) this.cal();
     const o = { n: this.n, pop: this.pop, mobN: this.mobN, phase: +worldPhase(Date.now()).toFixed(4),
       clockNs: +this.clockNs.toFixed(1), cutNs: +this.cutNs.toFixed(1),
-      tot: this.tot, loopDec: this.loopDec, loopMov: this.loopMov, aoi: this.aoi };
+      tot: this.tot, loopDec: this.loopDec, loopMov: this.loopMov, aoi: this.aoi, x: this.x };
 __SEGREP__
     try { console.log('[REST] ' + JSON.stringify(o)); } catch (e) {}
-    this.n = 0; this.tot = this.loopDec = this.loopMov = this.aoi = 0;
+    this.n = 0; this.tot = this.loopDec = this.loopMov = this.aoi = 0; this.x = {};
 __SEGZERO__
   } };
 const _anaPerf = require('perf_hooks').performance;
@@ -160,6 +160,22 @@ const PATCHES = [
     repl: "  _ANA.cut('aoi');\n  _ANA.tot += (_anaT() - _ANA.t0); _ANA.pop = npcs.size; _ANA.mobN = mobs.size; _ANA.rep();\n}, TICK_MS);" },
 ];
 
+// ★[T444] `T444_SUB=1` 일 때만 — T394 의 값 해부(되짚기 갈래 둘 · 되짚기 안 술어 · 배회 결정 · A* · 되짚기 반복률)
+//   계수는 보고줄 `x` 에 실린다(ms 합 · 호출 수). 되짚기 반복 = 같은 몸의 **바로 앞 되짚기와 입력(목표 x·y · 닻 x·y)이 글자 그대로 같은가**.
+if (process.env.T444_SUB === '1') {
+  const X = (k) => `(_ANA.x.${k} = (_ANA.x.${k} || 0) + 1)`;
+  PATCHES.push(
+    { find: "    if (T394_WORK_TERRAIN) _t394OpenTarget(npc, npc.npcWorkX, npc.npcWorkY);",
+      repl: "    if (T394_WORK_TERRAIN) { const _k = npc.targetX + ',' + npc.targetY + ',' + npc.npcWorkX + ',' + npc.npcWorkY; const _m = (global._t444k || (global._t444k = new Map())); if (_m.get(npc.pid) === _k) " + X('owRep') + "; _m.set(npc.pid, _k);\n      const _s = _anaT(); const _r = _t394OpenTarget(npc, npc.npcWorkX, npc.npcWorkY); _ANA.x.owT = (_ANA.x.owT || 0) + (_anaT() - _s); " + X('ow') + "; if (_r) " + X('owMoved') + "; }" },
+    { find: "  if (T394_WORK_TERRAIN) _t394OpenTarget(npc, npc.x, npc.y);",
+      repl: "  if (T394_WORK_TERRAIN) { const _s = _anaT(); const _r = _t394OpenTarget(npc, npc.x, npc.y); _ANA.x.ojT = (_ANA.x.ojT || 0) + (_anaT() - _s); " + X('oj') + "; if (_r) " + X('ojMoved') + "; }" },
+    { find: "  const blk = (x, y) => isTerrainBlockedLocal(Math.floor(x / B) * B + H, Math.floor(y / B) * B + H);",
+      repl: "  const blk = (x, y) => (" + X('oq') + ", isTerrainBlockedLocal(Math.floor(x / B) * B + H, Math.floor(y / B) * B + H));" },
+    { find: "  npc.behavior = 'wander';\n  if (npc.npcWorkX != null && npc.npcWorkY != null) {",
+      repl: "  npc.behavior = 'wander';\n  if (npc.npcWorkX != null && npc.npcWorkY != null) " + X('wander') + ";\n  if (npc.npcWorkX != null && npc.npcWorkY != null) {" },
+    { find: "    const p = computeNpcPath(npc, now);",
+      repl: "    const _ps = _anaT(); const p = computeNpcPath(npc, now); _ANA.x.pathT = (_ANA.x.pathT || 0) + (_anaT() - _ps); " + X('path') + ";" });
+}
 // ★[T421] `SPATIAL_SUB=1` 일 때만 — `rebuildSpatialIndex` 안 토막 넷(주민 바퀴 · 몹 · 건물 · 자원)
 if (SPATIAL_SUB) {
   const i = SEGS.findIndex((x) => x[0] === 'spatial');
@@ -185,7 +201,7 @@ function probeHead() {
 
 function makeArm(dir) {
   try { execFileSync('git', ['worktree', 'remove', '--force', dir], { cwd: ROOT, stdio: 'ignore' }); } catch (e) {}
-  execFileSync('git', ['worktree', 'add', '--detach', '-q', dir, 'HEAD'], { cwd: ROOT, stdio: 'ignore' });
+  execFileSync('git', ['worktree', 'add', '--detach', '-q', dir, process.env.SRC_REF || 'HEAD'], { cwd: ROOT, stdio: 'ignore' });   // ★[T444] `SRC_REF` — 재는 나무(기본 HEAD)
   try { fs.symlinkSync(path.join(ROOT, 'node_modules'), path.join(dir, 'node_modules')); } catch (e) {}
   const zp = path.join(dir, 'server', 'zone.js');
   let s = fs.readFileSync(zp, 'utf8');
@@ -258,7 +274,7 @@ async function run() {
     let nonSleep = 0;
     for (const v of ((L && L.villages) || [])) for (const [kk, n] of Object.entries(v.acts || {})) if (kk !== '취침') nonSleep += n;
     slices.push({ k, phase: L && L.phase, p50: t && t.p50, p95: t && t.p95, ticks: p.tick.n,
-      pop: (L && L.totals && L.totals.pop) || 0, nonSleep, drop: p.tick.dropN, lag: p.tick.lagPct, rest });
+      pop: (L && L.totals && L.totals.pop) || 0, nonSleep, drop: p.tick.dropN, lag: p.tick.lagPct, rest, walk: p.walk || null });
     say(`조각 ${k} phase ${L && L.phase != null ? L.phase.toFixed(3) : '?'} · p50 ${t ? t.p50 : '?'}ms · 비취침 ${nonSleep} · REST줄 ${rest.length}`);
   }
   clearInterval(ping); try { ws.close(); } catch (e) {}
