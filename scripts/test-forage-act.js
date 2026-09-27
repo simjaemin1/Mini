@@ -120,9 +120,10 @@ console.log('\n④ ⓓ 장부 = 손 — 넣으면 그 품목 손을 비운다');
 {
   const VC = codeOf(VSRC);
   const d = VC.match(/function _t347Deliver\(vil, npc\)[\s\S]*?\n\}/)[0];
-  ok(/for \(const k of keep\)/.test(d) && /npc\.inventory\[k\] = 0;/.test(d),
+  //   ★[T458] 손의 이름(`h` — 덤불 `berry`)과 곳간의 이름(`k` — econ `fruit`)이 갈린다(같은 물건 · `_t347HandsOf`). 뜻은 그대로다.
+  ok(/for \(const k of keep\) for \(const h of _t347HandsOf\(k\)\)/.test(d) && /npc\.inventory\[h\] = 0;/.test(d),
     '④ ★★걷는 목록의 품목만 넣고, 넣은 품목은 **그때 비운다**(이중 0)');
-  ok(/const u = npc\.inventory\[k\] \|\| 0;/.test(d) && /forageToGranary\(vil\.econ, k, u\)/.test(d),
+  ok(/const u = npc\.inventory\[h\] \|\| 0;/.test(d) && /forageToGranary\(vil\.econ, k, u\)/.test(d),
     '④ ★★넣는 양이 **손에 든 그 수**다 — 군락 전리품의 낱개가 그대로 econ 단위다(환산식 0)');
   ok(!/npc\.inventory\.fiber|npc\.inventory\.seed_/.test(d),
     '④ ★`fiber`·씨앗은 **안 건드린다** — econ 재화가 아니다(손에 남는다 · 보고 §회부)');
@@ -281,11 +282,16 @@ console.log('\n⑩ ⓖ 걷는 목록 — 실체가 대는 품목 ∩ 수식 믹�
      '⑩ ★[T372] 군락 종 넷은 그 **같은 칸**을 읽는다(양을 옮겨 적지 않았다)');
   ok(/if \(t === 'herb'\)\s*return \{ herb: 2 \};/.test(ZC), '⑩ [상황] 풀 전리품도 있다(`herb 2`)');
   const ent = ['berry', 'fiber', 'twig', 'herb'];
-  const want = mix.filter((k) => ent.includes(k)).sort();
-  ok(want.join('|') === 'herb|twig', '⑩ ★★교집합이 **`twig`·`herb` 둘**이다 — 실체와 수식이 말하는 품목이 거의 다르다', want.join('·'));
-  ok(!ent.some((k) => k === 'berry' && mix.includes('berry')),
-    '⑩ ★`berry` 는 믹스에 **없다** — econ 은 그것을 `fruit` 이라 부른다(동의어 매핑은 PM 칸 · 보고 §표)');
+  //   ★[T458 · ★PM "실물이 정본"] 교집합은 **이름이 아니라 물건**이다 — 손 이름을 대응 정본(`PV_DEPOSIT_MAP`)으로 옮기되
+  //     열량 정본(`kcal.js` kg당)이 같을 때만(같은 물건). 이름 교집합(T347)은 `twig`·`herb` 둘이었다.
   const M = V.playerVillageDepositMap();
+  const KC = require(path.join(ROOT, 'server', 'kcal.js'));
+  const same = (n) => { const m = M[n]; if (!m || m === n) return n; const a = KC.kcalPerKg(n), b = KC.kcalPerKg(m); return (a > 0 && a === b) ? m : n; };
+  const byName = mix.filter((k) => ent.includes(k)).sort();
+  const want = mix.filter((k) => ent.some((n) => same(n) === k)).sort();
+  ok(want.join('|') === 'fruit|herb|twig' && byName.join('|') === 'herb|twig', '⑩ ★★교집합(물건)이 **`fruit`·`twig`·`herb` 셋**이다 — 이름으로만 잡으면 `twig`·`herb` 둘(T347 · T458 전)', `물건 ${want.join('·')} · 이름 ${byName.join('·')}`);
+  ok(!ent.some((k) => k === 'berry' && mix.includes('berry')),
+    '⑩ ★`berry` 는 믹스에 **없다** — econ 은 그것을 `fruit` 이라 부른다(★T458: 같은 물건 한 줄로 걷는다 · 새 이름 0)');
   ok(M.berry === 'fruit', '⑩ ★그 동의어가 **이미 정본에 있다**(`PV_DEPOSIT_MAP` 첫 줄 — T302/T328 문법)', `berry → ${M.berry}`);
   ok(M.fiber === undefined, '⑩ ★`fiber` 는 econ 재화가 **아니다**(그 표에도 없다 — 걷을 것이 없다)');
   // 정본이 내는 목록과 위 유도가 같은가

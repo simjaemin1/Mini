@@ -2871,6 +2871,9 @@ function init(deps) {
       tickHz: (deps && deps.tickHz) || 30,          // 존 틱 Hz(zone TICK_HZ) — 교전 스텝 dt = 1/tickHz
       blockedCell: (cx, cy) => _warBlockedCell(cx, cy),   // 대형 콜라이더 = 지형 술어 + 건물 행
       log: null,
+      // ★[T458 ③] 전쟁 화살 → 있는 방송(`arrow_spawn`/`arrow_removed`) · 관측자 반경 = 존 `anyViewerNear`(AOI 800px) — 둘 다 존 주입 그대로
+      arrowOut: (m) => state.deps.broadcast(m),
+      arrowNear: (x, y) => !!(state.deps.anyViewerNear && state.deps.anyViewerNear({ x, y }, 800)),
     });
 
     // --- ★[생활층 휴면 해소] 영토 런타임 백필 — terr 0셀 구DB 마을 자가치유 ---
@@ -3715,10 +3718,10 @@ function _warForageMarch(w, body, day, bearers) {
   for (const [key, d] of seen) { const tx = Math.floor(key / 65536), ty = key % 65536; let a = null; try { a = dp.t347GrovesAtCell(tx, ty); } catch (e) { a = null; } if (a && a.length) cand.push({ cx: tx, cy: ty, d }); }
   cand.sort((a, b) => a.d - b.d || a.cx - b.cx || a.cy - b.cy);
   const bk = w._rationBook || (w._rationBook = { load: 0, split: 0, eaten: 0, back: 0, drop: 0, ledgerEaten: 0, days: [] });
-  if (!w._fgKeys) w._fgKeys = keep.slice();
+  if (!w._fgKeys) { w._fgKeys = keep.slice(); let u0 = 0; for (const p of bearers) u0 += _warFgUnits(w, _warBagView(p, w._fgKeys)); bk.fgPack = +u0.toFixed(6); }   // ★[T458] 짐에 이미 든 같은 품목(팩의 열매) — 낱개 항등의 들어온 쪽
   for (const k of keep) if ((w._packKeys || (w._packKeys = [])).indexOf(k) < 0) w._packKeys.push(k);
   const kgOf = (k) => (W && W.kgOfOrDefault) ? W.kgOfOrDefault(k) : 0;
-  let picks = 0, units = 0, usedS = 0, ci = 0;
+  let picks = 0, units = 0, usedS = 0, ci = 0; const pickedItems = {};
   for (const p of bearers) {
     let s = forageS;
     while (ci < cand.length) {
@@ -3733,15 +3736,19 @@ function _warForageMarch(w, body, day, bearers) {
       s -= cost; usedS += cost; picks++;
       if (sk) { const own = _warGroveOwner(c.cx, c.cy, R); if (own) (own._t347Cut || (own._t347Cut = [])).push(sk); else bk.wildCut = (bk.wildCut || 0) + 1; }
       if (!p.inventory) p.inventory = {};
-      for (const k in loot) {
-        const a = loot[k] || 0; if (!(a > 0)) continue;
+      for (const k0 in loot) {
+        const a = loot[k0] || 0; if (!(a > 0)) continue;
+        //   ★[T458] 짐 칸은 econ 이름이다(팩과 같은 칸) — 같은 물건이면 econ 이름으로 싣는다(덤불 berry → fruit).
+        const ke = _econSameOf(k0) || k0, k = (keep.indexOf(ke) >= 0) ? ke : k0;
         p.inventory[k] = (p.inventory[k] || 0) + a;
-        if (keep.indexOf(k) >= 0) units += a; else { const r = bk.rawLoot || (bk.rawLoot = {}); r[k] = +((r[k] || 0) + a).toFixed(6); }
+        if (keep.indexOf(k) >= 0) { units += a; pickedItems[k] = (pickedItems[k] || 0) + a; } else { const r = bk.rawLoot || (bk.rawLoot = {}); r[k] = +((r[k] || 0) + a).toFixed(6); }
       }
       if (cap > 0 && _warBagKg(p) >= cap) break;
     }
   }
   bk.picks = (bk.picks || 0) + picks; bk.pickUnits = +((bk.pickUnits || 0) + units).toFixed(6);
+  //   ★[T458] 딴 것의 식량등가 — 팩과 같은 식(`bagFE` = econ `totalFoodEquivalent`) · 항등의 들어온 쪽(곳간에서 나간 양 + 이것)
+  if (state.war && state.war.bagFE) bk.pickFE = +((bk.pickFE || 0) + state.war.bagFE(pickedItems, _warPackCtx(w))).toFixed(6);
   (bk.fgDays || (bk.fgDays = [])).length < 64 && bk.fgDays.push({ day, cells: path.length, groves: cand.length, forageS: +forageS.toFixed(1), usedS: +usedS.toFixed(1), picks, units });
   return units;
 }
@@ -3760,20 +3767,39 @@ function _warBearers(w, body) {
   for (const pid of ((body && body.pids) || [])) { const p = players.get(pid); if (p && p._warPackOf === w.id && (p.hp == null || p.hp > 0)) out.push(p); }
   return out;
 }
+// ★★[T458] **먼저 상하는 것부터 먹는다** — 짐엔 곳간과 달리 가격 식단이 없다: 들고 걷는 사람은 곡물보다 열매·생선을 먼저 먹는다.
+//   순서 = `spoil.shelfOf`(부패 정본 · 생선·고기 2.5일 < 조리식 3.5 < 열매·채소 6 < 곡물 180 · 새 수 0) · 같은 날이면 짐 칸 순서.
+//   품목마다 **같은 문**(`bodyEat` = `_warFoodTake` · 섭식 정본이 그 품목의 식량 계수로 뗀다 · 사본 0). 식량이 아닌 것(twig·herb)은 0 을 뗀다.
+let _spMod = null;
+function _spoilMod() { if (_spMod === null) { try { _spMod = require('./spoil'); } catch (e) { _spMod = false; } } return _spMod || null; }
+function _warEatBySpoil(WC, bag, need, ctx, eatU) {
+  const S = _spoilMod(), ks = Object.keys(bag).filter(k => (bag[k] || 0) > 0);
+  const idx = new Map(ks.map((k, i) => [k, i]));
+  if (S && typeof S.shelfOf === 'function') ks.sort((a, b) => (S.shelfOf(a) - S.shelfOf(b)) || (idx.get(a) - idx.get(b)));
+  let left = need, got = 0;
+  for (const k of ks) {
+    if (!(left > 1e-12)) break;
+    const one = { [k]: bag[k] };
+    const r = WC.bodyEat(one, left, ctx);
+    if (eatU) eatU[k] = (eatU[k] || 0) + (bag[k] - (one[k] || 0));   // 먹은 낱개(항등 낱개 칸)
+    bag[k] = one[k] || 0; got += r.got || 0; left -= r.got || 0;
+  }
+  return got;
+}
 function _warRationEat(w, day) {
   const WC = state.war; if (!w || !w._packOnBodies || !WC || !WC.bodyEat) return null;
   const body = state.warBodies && state.warBodies.get(w.id);
   const ctx = _warPackCtx(w), keys = w._packKeys || [], need = (w._packShare || 0) * (state.warCore ? state.warCore.WAR_RATION : 1);
   const bearers = _warBearers(w, body);
   if (_forageMarchOn()) _warForageMarch(w, body, day, bearers);   // ★[T441] 먹기 전에 — 그날 지난 길에서 딴 것도 짐이다
-  let eaten = 0, left = 0;
+  let eaten = 0, left = 0; const eatU = {};
   for (const p of bearers) {
     const bag = _warBagView(p, keys);
-    const r = WC.bodyEat(bag, need, ctx); eaten += r.got || 0;
+    eaten += _warEatBySpoil(WC, bag, need, ctx, eatU);   // ★[T458] 상하는 것부터(부패 정본 순서) · 품목마다 같은 문
     _warBagWrite(p, keys, bag); left += WC.bagFE(bag, ctx);
   }
   const perDay = (w.force || 0) * (state.warCore ? state.warCore.WAR_RATION : 1);
-  const bk = w._rationBook; if (bk) { bk.eaten += eaten; if (bk.days.length < 64) bk.days.push({ day, bearers: bearers.length, eaten: +eaten.toFixed(4), left: +left.toFixed(4) }); }
+  const bk = w._rationBook; if (bk) { bk.eaten += eaten; if (w._fgKeys) bk.fgEat = +((bk.fgEat || 0) + _warFgUnits(w, eatU)).toFixed(6); if (bk.days.length < 64) bk.days.push({ day, bearers: bearers.length, eaten: +eaten.toFixed(4), left: +left.toFixed(4) }); }
   // 사기 항 — 오늘 몫이 짐에 있나(짐꾼 병력 기준 · 0~1). 교전 몸이 있으면 그 판의 편 값에 바로 적는다.
   const needNow = bearers.length * need;
   const ration = needNow > 0 ? Math.max(0, Math.min(1, left / needNow)) : 0;
@@ -4377,6 +4403,7 @@ function __p3Bind(mock) {
     _warEngage, _warAfterDaily, _warEndFight, _warBuildRectIndex, _warBlockedCell, _warWorld, warPerf, _warOrderFallback, _warToStandoff,
     _warDraftPids, _warReleasePid, econDayToMs, _warEnsureBody, _warSampleComp, _vbFootprint,
     threatOf, _warWriteThreats, _warOutMul, _lifeJobSites, _lifeJobSiteOK, _warRoutePts, _warTreeCell, computeRoutePts,
+    _econSameOf, _warEatBySpoil,   // ★[T458] 같은 물건 한 줄 · 상하는 것부터 — 하네스가 **이 함수**로 등가 표를 센다(사본 0)
     _warRationEat, _warRationCollect, _warRationLoad,   // ★[T423] 짐이 먹는다 — 하네스가 **이 함수들**을 war-core 에 건다(운영과 같은 두 훅)   // ★[T329] 위협 T·현장 반경 — 하네스가 **이 함수들**을 그대로 부른다(사본 0)
   };
 }
@@ -5610,10 +5637,30 @@ function _t347ActItems() {
     if (l) for (const k in l) if (l[k] > 0) ent.add(k);
   }
   //   ⓒ 교집합 — 실체가 대고 수식도 내는 품목. 그것만 걷는다.
+  //   ★★[T458 2026-09-27 · ★PM "실물이 정본"] 교집합은 **이름이 아니라 물건**으로 잡는다 — 손의 품목 이름을
+  //     econ 이름으로 옮겨(`_econSameOf` · 대응 정본 `PV_DEPOSIT_MAP` 한 줄 ∧ 열량 정본 `kcal.js` 가 같은 물건이라 말할 때만)
+  //     믹스와 맞춘다. 덤불 `berry` = econ `fruit`(kg·kcal/kg 이 같다) 가 그 한 줄이다. 걷는 목록은 **econ id** 그대로다.
+  const pairs = [];
+  for (const n of ent) { const e = _econSameOf(n) || n; if (Object.prototype.hasOwnProperty.call(mix, e)) pairs.push({ loot: n, econ: e }); }
+  _t347PairsC = pairs;
   const out = [];
-  for (const k of Object.keys(mix)) if (ent.has(k)) out.push(k);
+  for (const k of Object.keys(mix)) if (pairs.some(p => p.econ === k)) out.push(k);
   return (_t347Items = out);
 }
+// ★★[T458] 같은 물건 · 다른 이름 — 플레이어(손) 품목 → econ 재화. **대응 정본은 `PV_DEPOSIT_MAP`**(곳간 넣기 · "그 대응을
+//   여기 한 곳에만 둔다")이고, 그 표의 줄 중 **열량(kg당)이 같은 것만** 같은 물건이다(`kcal.js` · 재민 확정 "식량의 단위는 열량").
+//   berry→fruit(500 = 500) · meat_raw→meat(1500 = 1500). 가공 대응(berry_jam·fish_cooked→cooked_food)과
+//   광석→금속(iron_ore→iron · 열량 없음)은 걸러진다 — 그건 "같은 물건"이 아니라 "바꿔 받는 물건"이다. 표 0 · 새 수 0.
+function _econSameOf(item) {
+  const m = (typeof PV_DEPOSIT_MAP !== 'undefined') ? PV_DEPOSIT_MAP[item] : null;
+  if (!m || m === item) return null;
+  const K = _kcal(); if (!K || typeof K.kcalPerKg !== 'function') return null;
+  const a = K.kcalPerKg(item), b = K.kcalPerKg(m);
+  return (a > 0 && a === b) ? m : null;
+}
+let _t347PairsC = null;   // 걷는 짝 [{ loot(손 이름), econ(재화 id) }] — `_t347ActItems` 가 같이 센다
+// 그 econ 재화를 **손에서는 어떤 이름으로** 드나 — 짝이 없으면 제 이름(나무·잔가지처럼 이름이 같은 것)
+function _t347HandsOf(k) { const P = _t347PairsC; if (!P) return [k]; const out = []; for (const p of P) if (p.econ === k) out.push(p.loot); return out.length ? out : [k]; }
 // ★[T347] 그 개체가 내는 **걷는 목록의 econ 단위** — 표는 존이 쥔다(`lootOfResource`). 여긴 읽기만 한다.
 //   ⚠묻는 것과 따는 것을 나눈 이유는 나무와 같다: 하루 한도가 그 개체를 못 대면 **안 따야** 한다.
 function _lifeLootForage(r) {
@@ -5621,7 +5668,7 @@ function _lifeLootForage(r) {
   let l = null; try { l = state.deps.t347LootOf ? state.deps.t347LootOf(r) : null; } catch (e) { l = null; }
   if (!l) return 0;
   const keep = _t347ActItems(); if (!keep || !keep.length) return 0;
-  let u = 0; for (const k of keep) { const a = l[k]; if (a > 0) u += a; }
+  let u = 0; for (const k of keep) for (const h of _t347HandsOf(k)) { const a = l[h]; if (a > 0) u += a; }   // ★[T458] 손 이름으로 읽는다
   return u;
 }
 // ★★[T347] **귀환하면 곳간에.** 회계는 econ 정본 한 함수(`forageToGranary` → `actToGranary`)가 한다.
@@ -5631,11 +5678,11 @@ function _t347Deliver(vil, npc) {
   if (!npc || !npc.inventory) return 0;
   const keep = _t347ActItems(); if (!keep || !keep.length) return 0;
   let got = 0;
-  for (const k of keep) {
-    const u = npc.inventory[k] || 0;
+  for (const k of keep) for (const h of _t347HandsOf(k)) {   // ★[T458] 손의 `berry` 가 곳간의 `fruit` 로(같은 물건)
+    const u = npc.inventory[h] || 0;
     if (!(u > 0)) continue;
     got += _lifeEcon().forageToGranary(vil.econ, k, u) || 0;
-    npc.inventory[k] = 0;
+    npc.inventory[h] = 0;
   }
   if (got > 0) vil._t347Deliv = +((vil._t347Deliv || 0) + got).toFixed(6);
   return got;
@@ -5650,7 +5697,7 @@ function _t374Held(vil, items) {
   let u = 0;
   for (const pid of (vil.npcPids || [])) {
     const p = _pl.get(pid); if (!p || !p.inventory) continue;
-    for (const k of items) u += p.inventory[k] || 0;
+    for (const k of items) for (const h of _t347HandsOf(k)) u += p.inventory[h] || 0;   // ★[T458] 손 이름으로(짝 없으면 제 이름)
   }
   return u;
 }
@@ -7400,7 +7447,7 @@ function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(�
     let _walked = 0;
     if (_on && _keep.length) for (const pid of (vil.npcPids || [])) {
       const p = _pl && _pl.get(pid); if (!p || !p.inventory) continue;
-      let u = 0; for (const k of _keep) u += p.inventory[k] || 0;
+      let u = 0; for (const k of _keep) for (const h of _t347HandsOf(k)) u += p.inventory[h] || 0;   // ★[T458] 손 이름
       if (u > 0) { _t347Deliver(vil, p); _walked++; }
     }
     const _fg = (vil.econ.counts && vil.econ.counts.forager) || 0;
@@ -7436,7 +7483,7 @@ function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(�
         if (!loot) { vil._t347Dbg.noloot++; break; }        // ★`continue` 가 아니라 `break`(T334 의 단위 증발 교훈)
         if (sk) (vil._t347Cut || (vil._t347Cut = [])).push(sk);
         made++; vil._t347Dbg.pick++;
-        for (const it of _keep) { const a = loot[it]; if (a > 0) _lifeEcon().forageToGranary(vil.econ, it, a); }
+        for (const it of _keep) for (const h of _t347HandsOf(it)) { const a = loot[h]; if (a > 0) _lifeEcon().forageToGranary(vil.econ, it, a); }   // ★[T458] 덤불 berry → fruit
         vil._t347Deliv = +((vil._t347Deliv || 0) + u).toFixed(6);
       }
     }
