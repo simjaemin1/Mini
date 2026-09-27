@@ -128,6 +128,29 @@ const db = (x) => (x > 0 ? +(20 * Math.log10(x)).toFixed(2) : -Infinity);
       }
     }
 
+    // 53 ★★[T445] **짐승 판** — T431 실측 최악(`_실측.worstCombo`)은 늑대 둘이 한 창(200ms)에 문 순간이다(`hit_body` 둘).
+    //   ★PM: 두 늑대 = 두 사건 = 소리 둘(가리지 않는다 · 리미터가 그 자리). 그러니 여기서 재는 것은 **리미터가 정말 잡는가**다.
+    //   ⓐ 표의 최악 묶음에 같은 키가 둘 이상 있다(겹침이 표에 그대로 있다 — 누가 하나로 접으면 빨갛다)
+    //   ⓑ 그 묶음을 리미터 **끼고** 재면 클리핑 0 · 피크 < 1 ⓒ 표에 적힌 없이-값과 지금 잰 없이-값이 같다(±0.01)
+    //   ⓓ 미끼 — 리미터를 **빼면** 넘치는 묶음(`handBeasts` · 숲 짐승 한 판 · 손 조합)은 클리핑 > 0 이고 끼면 0 이다(자가 산 증거)
+    {
+      const M = MAN._실측 || {};
+      const W = M.worstCombo || [];
+      const cnt = {}; for (const k of W) cnt[k] = (cnt[k] || 0) + 1;
+      const twice = Object.keys(cnt).filter((k) => cnt[k] >= 2);
+      ok(twice.length >= 1, '53a ★짐승 판 최악 묶음에 **같은 키 둘**이 그대로 있다(두 사건 = 소리 둘 · 접지 않았다)', `${W.join('+')} · 둘 이상 ${twice.join(' ')}`);
+      const rw = await page.evaluate((k) => window.__sfx.probe(k, { seconds: 4 }), W);
+      ok(rw && !rw.err && rw.withLimiter.clipped === 0 && rw.withLimiter.peak < 1,
+         '53b ★★그 묶음을 리미터 **끼고** 재면 클리핑 0 · 피크 1 아래(문턱을 넘는 창을 리미터가 잡는다)',
+         rw && !rw.err ? `없이 ${rw.withoutLimiter.peak}(${rw.withoutLimiter.peakDb} dB) → 끼고 ${rw.withLimiter.peak} · 클리핑 ${rw.withLimiter.clipped} · 문 창 ${rw.gainReduction.overKnee}/${rw.gainReduction.windows}` : String(rw && rw.err));
+      ok(rw && !rw.err && Math.abs(rw.withoutLimiter.peak - M.worstPeak) <= 0.01,
+         '53c 표의 `worstPeak` 이 지금 잰 값과 같다(±0.01 — 표가 낡지 않았다)', rw && !rw.err ? `표 ${M.worstPeak} · 지금 ${rw.withoutLimiter.peak}` : '');
+      const rb = await page.evaluate((k) => window.__sfx.probe(k, { seconds: 4 }), M.handBeasts || []);
+      ok(rb && !rb.err && rb.withoutLimiter.clipped > 0 && rb.withLimiter.clipped === 0,
+         '53d ★자명 통과 금지 — 미끼(숲 짐승 한 판)는 리미터를 **빼면 넘치고**(클리핑 > 0) 끼면 0 이다 — 53b 의 0 은 리미터가 만든 값이다',
+         rb && !rb.err ? `없이 ${rb.withoutLimiter.peak} · 클리핑 ${rb.withoutLimiter.clipped} → 끼고 ${rb.withLimiter.clipped}` : String(rb && rb.err));
+    }
+
     // ⑭~⑰ ★★★[T321] **수신에서 센다** — 족보 226: 발신 훅은 거짓 소리다.
     //   어부 소리가 제대로 걸렸는지는 "서버가 몇 번 불렀나"가 아니라 **"층이 몇 번 울렸나"** 로 잰다.
     //   여기서는 진짜 `window.__sfx.recv` 에 진짜 모양의 `tick` 을 먹이고 `stat.played` 의 증분을 센다

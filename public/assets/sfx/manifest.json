@@ -1336,15 +1336,14 @@
   "_뜻": "`__sfx.probe()` 가 실클라에서 잰 값. 하네스 ⑧ 이 이 수와 `bus.limiter.knee` 의 부등식을 지킨다. 키를 더하면 **다시 재서 이 칸을 갱신**하라(셈으로 채우지 마라).",
   "date": "2026-09-26",
   "browser": "Chromium(Playwright) · 44100Hz · 오프라인 렌더 4초 · 소리판에서 `__sfx.probe()`",
-  "worstPeak": 0.8917,
-  "worstPeakDb": -1,
+  "worstPeak": 1.0266,
+  "worstPeakDb": 0.23,
   "worstCombo": [
+   "downed",
    "hit_body",
    "hit_body",
    "rain_light",
-   "step_grass",
-   "wind",
-   "wolf_howl"
+   "wind"
   ],
   "clippedAtWorst": 0,
   "allKeysPeakNoLimiter": 1.5001,
@@ -1405,25 +1404,25 @@
   "worstSource": {
    "tool": "sfx-cooccur",
    "at": "beast",
-   "minutes": 30,
+   "minutes": 2,
    "seed": 1020,
-   "windows": 8997,
-   "distinct": 18,
-   "plays": 3746,
-   "date": "2026-09-26",
+   "windows": 600,
+   "distinct": 6,
+   "plays": 56,
+   "date": "2026-09-27",
    "rows": [
     {
      "keys": [
+      "downed",
       "hit_body",
       "hit_body",
       "rain_light",
-      "step_grass",
-      "wind",
-      "wolf_howl"
+      "wind"
      ],
      "n": 1,
-     "peakNoLim": 0.8917,
-     "peakLim": 0.7634
+     "peakNoLim": 1.0266,
+     "peakLim": 0.7629,
+     "clippedNoLim": 26
     },
     {
      "keys": [
@@ -1432,9 +1431,10 @@
       "rain_light",
       "wind"
      ],
-     "n": 10,
+     "n": 4,
      "peakNoLim": 0.8361,
-     "peakLim": 0.7619
+     "peakLim": 0.7619,
+     "clippedNoLim": 0
     },
     {
      "keys": [
@@ -1443,19 +1443,10 @@
       "rain_light",
       "wind"
      ],
-     "n": 5,
-     "peakNoLim": 0.653,
-     "peakLim": 0.653
-    },
-    {
-     "keys": [
-      "downed",
-      "rain_light",
-      "wind"
-     ],
      "n": 1,
-     "peakNoLim": 0.4741,
-     "peakLim": 0.4741
+     "peakNoLim": 0.653,
+     "peakLim": 0.653,
+     "clippedNoLim": 0
     },
     {
      "keys": [
@@ -1463,21 +1454,90 @@
       "wind",
       "wolf_howl"
      ],
-     "n": 86,
+     "n": 27,
      "peakNoLim": 0.4696,
-     "peakLim": 0.4696
-    },
-    {
-     "keys": [
-      "hit_body",
-      "rain_light",
-      "wind"
-     ],
-     "n": 13,
-     "peakNoLim": 0.4501,
-     "peakLim": 0.4501
+     "peakLim": 0.4696,
+     "clippedNoLim": 0
     }
    ],
+   "_뜻": "T445 짐승 판 2분(자 점검 판)에서 쓰러지는 순간이 물림 둘과 한 창에 겹쳤다 — 30분 판 둘(T431·T445)보다 세다. 한 번 본 창이지만 실제로 난 겹침이라 이 묶음이 정본이다(★PM T431: 실측이 넘으면 그것이 정본).",
+   "_T431": {
+    "at": "beast",
+    "minutes": 30,
+    "seed": 1020,
+    "windows": 8997,
+    "distinct": 18,
+    "plays": 3746,
+    "date": "2026-09-26",
+    "rows": [
+     {
+      "keys": [
+       "hit_body",
+       "hit_body",
+       "rain_light",
+       "step_grass",
+       "wind",
+       "wolf_howl"
+      ],
+      "n": 1,
+      "peakNoLim": 0.8917,
+      "peakLim": 0.7634
+     },
+     {
+      "keys": [
+       "hit_body",
+       "hit_body",
+       "rain_light",
+       "wind"
+      ],
+      "n": 10,
+      "peakNoLim": 0.8361,
+      "peakLim": 0.7619
+     },
+     {
+      "keys": [
+       "downed",
+       "hit_body",
+       "rain_light",
+       "wind"
+      ],
+      "n": 5,
+      "peakNoLim": 0.653,
+      "peakLim": 0.653
+     },
+     {
+      "keys": [
+       "downed",
+       "rain_light",
+       "wind"
+      ],
+      "n": 1,
+      "peakNoLim": 0.4741,
+      "peakLim": 0.4741
+     },
+     {
+      "keys": [
+       "rain_light",
+       "wind",
+       "wolf_howl"
+      ],
+      "n": 86,
+      "peakNoLim": 0.4696,
+      "peakLim": 0.4696
+     },
+     {
+      "keys": [
+       "hit_body",
+       "rain_light",
+       "wind"
+      ],
+      "n": 13,
+      "peakNoLim": 0.4501,
+      "peakLim": 0.4501
+     }
+    ],
+    "_뜻": "T431 짐승 판 30분의 최악(hit_body×2 + rain_light + step_grass + wind + wolf_howl 0.8917) — 종전 정본."
+   },
    "runs": [
     {
      "at": "trees",
@@ -1587,6 +1647,46 @@
      "peakNoLim": 0.4498,
      "overKneeWindows": 0,
      "spot": "임업1 · 점수 0/1/8 · 직업 {\"hunter\":8}"
+    },
+    {
+     "at": "beast",
+     "card": "T445",
+     "arms": false,
+     "minutes": 30,
+     "windows": 8996,
+     "distinct": 22,
+     "oneShots": 3718,
+     "steps": 3579,
+     "worst": [
+      "hit_body",
+      "hit_body",
+      "rain_light",
+      "wind",
+      "wolf_howl"
+     ],
+     "peakNoLim": 0.8871,
+     "overKneeWindows": 10,
+     "spot": "짐승 449 중 500px 안 {\"wolf\":4}"
+    },
+    {
+     "at": "beast",
+     "card": "T445(2분)",
+     "arms": false,
+     "minutes": 2,
+     "windows": 600,
+     "distinct": 6,
+     "oneShots": 56,
+     "steps": 0,
+     "worst": [
+      "downed",
+      "hit_body",
+      "hit_body",
+      "rain_light",
+      "wind"
+     ],
+     "peakNoLim": 1.0266,
+     "overKneeWindows": 5,
+     "spot": "짐승 449 중 500px 안 {\"wolf\":4}"
     }
    ],
    "_한계": "[T431] 판 다섯(짐승·교전·마을 한가운데·일꾼 곁·벌목) + T417 나무 판. 주민 일 팔(T312·T325·T347·T368)은 기본 꺼짐이라 마을·일꾼·벌목 판은 켜고 쟀다 — 그래도 마을 한가운데·일꾼 곁 30분에 주민 소리 **0**(어부 라벨 셋이 곁에서 안 바뀌었다 · 나무꾼 0명). 교전은 `war_battle`(2Hz 집계)만 오고 표에 없어 **소리 층에 안 닿는다**(T387 회부 그대로) — 교전 판 최악은 발자국+날씨다. 발자국은 이제 센다(`CHAR_SPRITE=on`)."
@@ -1620,16 +1720,36 @@
   ],
   "handBeastsPeak": 1.0407,
   "_T417": "★PM 판정: 최악 조합은 **실측에서 뽑는다**(문턱 0.8 무변). `scripts/sfx-cooccur.js` 30분 한 판 — 창 8998 · 서로 다른 묶음 4 · 단발 62 · 최악 **axe+wind = 0.4213**(없이). 손으로 겹친 표는 대조 자: T412 최악 11키 0.7967(문턱 안) · **숲 짐승 한 판 11키 1.0407(★문턱 밖 · 리미터 22/400 창 · 끼고 0.7649 · 클리핑 0)** — 그런 겹침이 실제로 오는지는 이 한 판이 못 봤다(보고 §4-1). 첫 30분 판은 반복 소리를 긁은 창에만 적어 'axe 단독 0.4304' 라는 **착시**를 냈다 — 반복을 지난 긁기 이후 모든 창에 주게 고쳐 다시 돌린 값이 위다. 63키 전부 없이 1.5001 · 클리핑 456 → 끼고 0.7869 · 0.",
-  "worstPeakLim": 0.7634,
+  "worstPeakLim": 0.7629,
   "overKnee": {
-   "windows": 11,
+   "windows": 26,
    "rows": [
+    {
+     "sig": "downed+hit_body+hit_body+rain_light+wind",
+     "n": 1,
+     "atMin": [
+      0.1
+     ],
+     "run": "T445 짐승 2분"
+    },
+    {
+     "sig": "hit_body+hit_body+rain_light+wind",
+     "n": 4,
+     "atMin": [
+      0.01,
+      0.02,
+      0.04,
+      0.06
+     ],
+     "run": "T445 짐승 2분"
+    },
     {
      "sig": "hit_body+hit_body+rain_light+step_grass+wind+wolf_howl",
      "n": 1,
      "atMin": [
       6.51
-     ]
+     ],
+     "run": "T431 짐승 30분"
     },
     {
      "sig": "hit_body+hit_body+rain_light+wind",
@@ -1643,12 +1763,39 @@
       0.05,
       6.53,
       6.56
-     ]
+     ],
+     "run": "T431 짐승 30분"
+    },
+    {
+     "sig": "hit_body+hit_body+rain_light+wind+wolf_howl",
+     "n": 1,
+     "atMin": [
+      0.05
+     ],
+     "run": "T445 짐승 30분"
+    },
+    {
+     "sig": "hit_body+hit_body+rain_light+wind",
+     "n": 9,
+     "atMin": [
+      0,
+      0.02,
+      0.03,
+      0.04,
+      0.07,
+      6.54,
+      6.56,
+      6.58
+     ],
+     "run": "T445 짐승 30분"
     }
    ],
-   "_뜻": "[T431] 실측 창 중 **리미터 없이 문턱(0.8)을 넘은** 묶음과 그 시각(판 시작부터 분). 짐승 판(늑대 넷 곁에서 치고받기)에서만 났다 — 늑대 둘이 한 창(200ms)에 무는 순간 `hit_body` 둘. 리미터를 끼면 0.7634 · 클리핑 0. 문턱은 무변 — 어느 묶음을 줄이나는 재민 판정(보고 T431 §4)."
+   "_뜻": "[T431] 실측 창 중 **리미터 없이 문턱(0.8)을 넘은** 묶음과 그 시각(판 시작부터 분). 짐승 판(늑대 넷 곁에서 치고받기)에서만 났다 — 늑대 둘이 한 창(200ms)에 무는 순간 `hit_body` 둘. 리미터를 끼면 0.7634 · 클리핑 0. 문턱은 무변 — 어느 묶음을 줄이나는 재민 판정(보고 T431 §4). [T445] 판 셋(T431 30분 · T445 30분 · T445 2분)을 모았다. **다 사건 둘**이다(같은 사건 두 번 0 — 울림마다 부른 메시지를 붙여 갈랐다): 내가 물림 둘(hp 가 다른 두 `hp_changed`) · 내가 친 짐승(`mob_damaged`) + 나를 문 늑대. 최악은 쓰러지는 순간(`downed`)이 겹친 창 — 리미터 없이 1.0266(클리핑 26) · 끼고 0.7629 · 클리핑 0."
   },
-  "_T431": "★네 판(+일꾼 곁 한 판) 30분씩. 최악이 바뀌었다: 짐승 판 **hit_body×2 + rain_light + step_grass + wind + wolf_howl = 0.8917(−1.0 dBFS · 없이)** — **문턱 밖**(끼고 0.7634 · 리미터 2/400 창 · 클리핑 0). 문턱 넘는 창 11(묶음 둘 · 6.5분 곁 · 시작 직후) — 늑대 떼에게 물리는 순간. T417 실측(axe+wind 0.4213)·손 조합 `handCombo` 0.7967 을 넘고 손 `handBeasts` 1.0407 아래다. 문턱 0.8 무변 — `test-audio ⑧c` 는 ⓑ 갈래(넘는 기록 + 리미터가 클리핑 0 으로 잡는다)로 선다."
+  "_T431": "★네 판(+일꾼 곁 한 판) 30분씩. 최악이 바뀌었다: 짐승 판 **hit_body×2 + rain_light + step_grass + wind + wolf_howl = 0.8917(−1.0 dBFS · 없이)** — **문턱 밖**(끼고 0.7634 · 리미터 2/400 창 · 클리핑 0). 문턱 넘는 창 11(묶음 둘 · 6.5분 곁 · 시작 직후) — 늑대 떼에게 물리는 순간. T417 실측(axe+wind 0.4213)·손 조합 `handCombo` 0.7967 을 넘고 손 `handBeasts` 1.0407 아래다. 문턱 0.8 무변 — `test-audio ⑧c` 는 ⓑ 갈래(넘는 기록 + 리미터가 클리핑 0 으로 잡는다)로 선다.",
+  "_T445": "★최악이 또 바뀌었다: 쓰러지는 순간 **downed + hit_body×2 + rain_light + wind = 1.0266(+0.23 dBFS · 없이 · 클리핑 26)** · 끼고 0.7629 · 클리핑 0. 같은 창 같은 키는 판 셋 모두 **사건 둘**(같은 사건 두 번 0) — ★PM 캐논대로 접지 않는다(리미터가 그 자리). `e2e-audio-probe 53` 이 리미터가 이 묶음을 클리핑 0 으로 잡는지 잰다.",
+  "clippedAtWorstNoLim": 26,
+  "_clippedAtWorst": "[T445] `clippedAtWorst` = 최악 묶음을 **리미터 낀 판**에서 잰 클리핑 표본 수(`⑧c ⓑ` 가 본다). 리미터 없는 판의 클리핑은 `clippedAtWorstNoLim`. (T431 은 두 판이 다 0 이라 가르지 않았다.)"
  },
  "ground": {
   "_뜻": "발밑 지형 → 발자국 키. 지형 정본은 `window.__tileStateAt` 하나(`kind`·`geo`·풀 알파) — 층은 그 답을 이 표로 옮길 뿐이다.",
