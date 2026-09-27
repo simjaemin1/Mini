@@ -228,7 +228,11 @@
             body: JSON.stringify({ username: inputName, password: inputPw, color: myColor,
               home_zone: sel.value, home_x: null, home_y: null }) });
           const d = await r.json();
-          if (d && d.ok === false) {
+          //   ★★[T451 ⓪ 2026-09-27] `missing_home_zone` 은 실패가 아니라 **"새 이름"** 이다 — `/auth` 는 집 좌표 없이는 가입을 못 해
+          //     그렇게 답하고(central.js `/auth` 신규 갈래), 가입·**승계**는 ws 인증이 한다(존이 마을광장을 집으로 준다 · zone.js
+          //     `promoteGuest`/`authenticate`). T363 뒤 이 답을 로비에 막아 두어 **새 계정·게스트 승계가 로비에서 못 나갔다**
+          //     (`e2e-guest-reconnect` 32/8 · 야간 09-24·09-27 빨강). ⇒ 종전(T363 전)처럼 ws 로 간다. 되돌림 = 이 조건 하나.
+          if (d && d.ok === false && d.reason !== 'missing_home_zone') {
             const err = document.getElementById('authError');
             err.textContent = ({ username_taken: '이미 사용 중인 이름입니다.',
                                  wrong_password: '패스워드가 틀렸습니다.' })[d.reason] || `인증 실패: ${d.reason}`;
