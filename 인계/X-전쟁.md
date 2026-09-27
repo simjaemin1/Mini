@@ -363,3 +363,20 @@
 4. 화살 `aid` 는 `W<전쟁>.<n>` 문자열 — 존 플레이어 화살(수)과 안 겹친다. 재부팅하면 n 이 다시 1(클라 화살은 4.5초 만료라 무해).
 5. 관측자 게이트는 **나갈지**만 정한다 — 존 `broadcast` 는 존 전원에게 간다(플레이어 화살과 같은 규약).
 6. 생활층 헤드리스 결산의 `anyNear(x, y, r)` 는 존 `anyViewerNear(center, r)` 와 서명이 다르다(늘 거짓) — 회부(보고 §6-2).
+
+## X-12. ★2026-09-27 — T466 약탈은 몸이 옮긴다: 군량 = 행위 ⓒ(손잡이 `T466_LOOT_ACT` 끔)
+
+> 카드 `지시/지시_T466.md` · 보고 `보고/T466_2026-09-27.md` · 가지 `batch/loot-act-0927` · 코드 `adccf9a3`.
+
+* war-core `_warLootMove(w, D, A, amount, kind)` — 정산 수를 `_warFoodTake` 로 뗀다 · 켬 ∧ `w._packOnBodies` ∧ `opts.lootCarry` 가 받음 ⇒ A 곳간에 안 준다 · 아니면 종전 `_warFoodMove`. 자리 셋: 실체 교전 결판(`precomputedRes`) · `_opDoSurrender(…, w)` · `_warWalkoverOutcome(…, w)`.
+* villages `_warLootAccept` → `w._lootPend` · `_warBagDrop` → `w._lootPile` · `_warEndFight` 결판 자리 `_warLootPickup(w, 산 몸, 편)` — 곳간 몫 먼저, 더미 나중 · 몸마다 `CAP_KG − _warBagKg` · 못 실은 곳간 몫은 `lootGive`(그 곳간) · 못 주운 더미는 버림 · 수비 승이면 주워 곧장 제 곳간.
+* 귀환은 T423 짐 그대로(상하는 것부터 먹음 · `rationLayDown`). 안전: `_warCleanupBody` 가 맡긴 몫을 되돌린다.
+* 항등(공격 장부): `load + pickFE + lootG + lootP = ledgerEaten + eaten + back + drop + 짐` · 더미: `drop = lootP + lootPB + lootLost`.
+
+### 함정
+
+1. 켜도 **T423 짐이 몸에 없으면**(끔 · 몸 없는 전쟁 · 헤드리스 결판) 종전 즉시 정산이다 — 훅은 몸이 있을 때만 받는다.
+2. 상한 25kg은 **표본 몸 기준**이다(병력 몫 비례 아님) — A승 약탈이 정산의 약 ¾만 돌아온다. 켜기 전 재민 칸.
+3. 포위 항복 마을은 곡물이 없다(`warFE` 문턱) — 항복 노획은 늘 작다. 하네스는 `opts.defStore` 로 곡물 밖 식량을 준다.
+4. 위신재·무기 노획·조공은 아직 즉시다(식량 곳간 몫 + 전장 더미만 몸).
+5. 하네스는 운영과 같은 `lootCarry` 훅을 늘 건다 — 끔 대조는 `opts.noLootHook`.
