@@ -344,3 +344,22 @@
 2. 압축된 하루(`VILLAGE_DAY_MS` 몇 초 ~ 몇 분)에선 낮이 행군 시간보다 짧아 **딸 시간 0** — 채집을 보려면 실제 하루 길이로 돌린다(하네스 ⓦ 는 `WORLD.dayLengthMs`).
 3. 군락은 마을 어귀 링(중심 23~30셀)에만 있다 — 주둔점(목표 95셀)에선 딸 것이 없고, 행군 첫날 출발 마을 링에서만 딴다(그 마을 채집꾼과 같은 창고).
 4. 하네스 한 프로세스 안에서 절 사이 상태가 샌다 — ⓦ 는 데우기 한 판 뒤에 비교한다.
+
+## X-11. ★2026-09-27 — T458 덤불 열매는 열매다(berry = econ fruit) · 짐은 상하는 것부터 · 전쟁 화살 한 메시지
+
+> 카드 `지시/지시_T458.md` · 보고 `보고/T458_2026-09-27.md` · 가지 `batch/berry-arrow-0927` · 코드 `1838b0af` · ⓪ `8d2d7a0e`.
+
+* 등가 = `_econSameOf(item)`(villages) — `PV_DEPOSIT_MAP` 줄 ∧ `kcal.kcalPerKg` 양쪽 같음 ⇒ 같은 물건. 2행(berry=fruit · meat_raw=meat). 손잡이 0.
+* T347 걷는 목록은 econ 이름(`fruit·twig·herb`) · 손에서는 `_t347HandsOf(k)`(짝 `_t347PairsC`)로 읽는다 — 손 `berry` 가 곳간 `fruit`.
+* T441 길 채집: 짐 칸은 econ 이름 · `bk.pickFE`(딴 것의 식량등가) · 항등 `load + pickFE = ledgerEaten + eaten + back + drop + 짐`.
+* 짐 먹기 = `_warEatBySpoil(WC, bag, need, ctx, eatU)` — `spoil.shelfOf` 오름차순 · 품목마다 `bodyEat` · 낱개 장부 `fgPack`·`fgEat`.
+* 화살 = war-live `createWarLive({ arrowOut, arrowNear })` → `makeFight` 가 `ctx.onArrow` 를 건다 · `arrow_spawn`(있는 모양) · `arrow_removed{aid, hit?}` · 궁수만 · 쏜 자리 관측자(AOI 800) · `settle` 때 흘림 닫기 · `WL.arrowStat`.
+
+### 함정
+
+1. 하네스 목 `createWar` 는 기본이 **폴백 식량**(`warFE` — 열매 0)이다. 열매를 식량으로 재려면 `opts.econFood`(운영과 같은 `consumeFood`·`totalFoodEquivalent`).
+2. 결판 서명(ⓦ)에 날마다 거울을 넣지 마라 — 딴 열매가 거울을 올리는 게 이제 정상이다(거울은 ⓧ② 가 잰다).
+3. 철수는 하루 경계에서만 본다 ⇒ +0.67일은 +1 또는 +0 으로 양자화(팩 54 +1 · 팩 18 +0).
+4. 화살 `aid` 는 `W<전쟁>.<n>` 문자열 — 존 플레이어 화살(수)과 안 겹친다. 재부팅하면 n 이 다시 1(클라 화살은 4.5초 만료라 무해).
+5. 관측자 게이트는 **나갈지**만 정한다 — 존 `broadcast` 는 존 전원에게 간다(플레이어 화살과 같은 규약).
+6. 생활층 헤드리스 결산의 `anyNear(x, y, r)` 는 존 `anyViewerNear(center, r)` 와 서명이 다르다(늘 거짓) — 회부(보고 §6-2).
