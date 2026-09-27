@@ -98,11 +98,16 @@ __SEGFIELDS__
       clockNs: +this.clockNs.toFixed(1), cutNs: +this.cutNs.toFixed(1),
       tot: this.tot, loopDec: this.loopDec, loopMov: this.loopMov, aoi: this.aoi, x: this.x };
 __SEGREP__
+    if (_anaOwn) { const c = process.cpuUsage(_anaOwn.cpu); o.own = { gcN: _anaOwn.gcN, gcMs: +_anaOwn.gcMs.toFixed(2), gcMaj: _anaOwn.gcMaj, cpuU: +(c.user / 1000).toFixed(1), cpuS: +(c.system / 1000).toFixed(1), heapMB: +(process.memoryUsage().heapUsed / 1048576).toFixed(1) };
+      _anaOwn.gcN = 0; _anaOwn.gcMs = 0; _anaOwn.gcMaj = 0; _anaOwn.cpu = process.cpuUsage(); }
     try { console.log('[REST] ' + JSON.stringify(o)); } catch (e) {}
     this.n = 0; this.tot = this.loopDec = this.loopMov = this.aoi = 0; this.x = {};
 __SEGZERO__
   } };
 const _anaPerf = require('perf_hooks').performance;
+// ★[T455] \`T455_OWN=1\` 일 때만 — 흔들림의 주인 후보 값: GC 횟수·ms(perf_hooks 'gc' 항목) · 존 프로세스 CPU(ms · user/sys)
+const _anaOwn = process.env.T455_OWN === '1' ? { gcN: 0, gcMs: 0, gcMaj: 0, cpu: process.cpuUsage() } : null;
+if (_anaOwn) { try { new (require('perf_hooks').PerformanceObserver)((l) => { for (const e of l.getEntries()) { _anaOwn.gcN++; _anaOwn.gcMs += e.duration; const k = (e.detail && e.detail.kind) || e.kind; if (k === 4) _anaOwn.gcMaj++; } }).observe({ entryTypes: ['gc'] }); } catch (e) {} }
 const _anaT = () => _anaPerf.now();   // ⚠performance.now 는 묶지 않으면 this 가 없다(T356 실측)
 `;
 
@@ -191,6 +196,14 @@ if (SPATIAL_SUB) {
     { find: "    _lastResRebuild = Date.now();\n  }\n}\n",
       repl: "    _lastResRebuild = Date.now();\n  }\n  _ANA.cut('spRes');\n}\n" });
 }
+// ★[T455] `T455_CLOCK_AT=<ms>` 일 때만(자의 손잡이 · 사본에만) — T427 시계 블록의 원점을 **고정 시각**으로 바꾼다.
+//   T427 `ZONE_CLOCK_ANCHOR=boot` 는 원점을 "기동 시각(벽시계)"에 묶는다 → 판마다 게임일이 다르다(씨 해시의 게임일 · 템플릿 뒤 흐른 시간).
+//   이 손잡이는 그 원점을 **판마다 같은 한 시각**에 묶는다 ⇒ 판 다섯이 같은 게임일 · 같은 phase 에서 첫 틱을 돈다(씨·국면·기동 뒤 시간 셋이 한꺼번에 같아진다).
+//   ⚠`ZONE_CLOCK_ANCHOR=boot` 와 같이 줘야 돈다(그 블록 안의 한 글자다).
+if (process.env.T455_CLOCK_AT) {
+  PATCHES.push({ find: "  const real = Date.now, t0 = real();",
+    repl: "  const real = Date.now, t0 = (process.env.T455_CLOCK_AT ? +process.env.T455_CLOCK_AT : real());   // [T455 자 · 사본에만]" });
+}
 function probeHead() {
   const names = SEGS.map((s) => s[0]);
   return PROBE_HEAD
@@ -244,7 +257,8 @@ async function run() {
 
   const t0 = Date.now();
   for (let i = 0; i < 900 && !(await health()); i++) await sleep(1000);
-  say('기동', Date.now() - t0, 'ms · 탐침', probes);
+  const bootMs0 = Date.now() - t0;
+  say('기동', bootMs0, 'ms · 탐침', probes);
   const WS = require(path.join(ROOT, 'node_modules', 'ws'));
   const ws = new WS(`ws://localhost:${ZP}/?observer=1`); ws.on('error', () => {}); ws.on('message', () => {});
   const ping = setInterval(() => { try { ws.send(JSON.stringify({ type: 'ping', t: Date.now() })); } catch (e) {} }, 5000);
@@ -261,10 +275,16 @@ async function run() {
   }
   say(WINDOW + ' 창 진입 · phase', ph, '· 드는 띠', E_LO, '~', E_HI);
   const slices = [];
+  // ★[T455] 호스트 경합 — 조각마다 `/proc/stat` 전체 CPU(코어 합) 차 · steal · `os.loadavg()` 1분(자 자신도 이 호스트에 있다)
+  const cpuStat = () => { try { const f = fs.readFileSync('/proc/stat', 'utf8').split('\n')[0].trim().split(/\s+/).slice(1).map(Number); return { tot: f.reduce((a, b) => a + b, 0), idle: f[3] + (f[4] || 0), steal: f[7] || 0 }; } catch (e) { return null; } };
+  const winAt = Date.now();
   for (let k = 0; k < SLICES; k++) {
     await perf(true);
     const mark = fs.statSync(LOG).size;
+    const h0 = cpuStat();
     await sleep(SLICE_S * 1000);
+    const h1 = cpuStat();
+    const host = (h0 && h1) ? { busy: +(100 * (1 - (h1.idle - h0.idle) / (h1.tot - h0.tot))).toFixed(1), steal: +(100 * (h1.steal - h0.steal) / (h1.tot - h0.tot)).toFixed(2), load1: +require('os').loadavg()[0].toFixed(2) } : null;
     const p = await perf(false), L = await life();
     const t = p && p.tick && p.tick.ms;
     // ⚠바이트 자리다 — `readFileSync(...,'utf8').slice(mark)` 로 자르면 **글자 자리**로 잘려
@@ -274,14 +294,14 @@ async function run() {
     let nonSleep = 0;
     for (const v of ((L && L.villages) || [])) for (const [kk, n] of Object.entries(v.acts || {})) if (kk !== '취침') nonSleep += n;
     slices.push({ k, phase: L && L.phase, p50: t && t.p50, p95: t && t.p95, ticks: p.tick.n,
-      pop: (L && L.totals && L.totals.pop) || 0, nonSleep, drop: p.tick.dropN, lag: p.tick.lagPct, rest, walk: p.walk || null });
+      pop: (L && L.totals && L.totals.pop) || 0, nonSleep, drop: p.tick.dropN, lag: p.tick.lagPct, rest, walk: p.walk || null, host });
     say(`조각 ${k} phase ${L && L.phase != null ? L.phase.toFixed(3) : '?'} · p50 ${t ? t.p50 : '?'}ms · 비취침 ${nonSleep} · REST줄 ${rest.length}`);
   }
   clearInterval(ping); try { ws.close(); } catch (e) {}
   try { z.kill(); } catch (e) {} try { c.kill(); } catch (e) {}
   await sleep(1500); rmdb(DB); rmdb(CDB);
   try { execFileSync('git', ['worktree', 'remove', '--force', dir], { cwd: ROOT, stdio: 'ignore' }); } catch (e) {}
-  return { arm, WINDOW, ARM, probes, segs: SEGS, slices, dayWait };
+  return { arm, WINDOW, ARM, probes, segs: SEGS, slices, dayWait, bootMs: bootMs0, bootAt: t0, winAt, armEnv: ARM_ENV };
 }
 
 (async () => {

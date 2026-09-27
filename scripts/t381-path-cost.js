@@ -617,5 +617,6 @@ async function runArm(arm, idx) {
     fs.writeFileSync(OUT, JSON.stringify({ at: new Date().toISOString(), WINDOW, DAY_MS, SLICE_S, SLICES, TPL, LAB, arms: res }, null, 1));
   }
   console.log('끝 →', OUT);
+  console.log(require('./lib-tick-rule').SINGLE_NOTE);   // ★[T455 규약 ⓕ] 한 번 = 한 판
   process.exit(0);
 })();
