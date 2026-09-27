@@ -102,5 +102,34 @@ console.log('\n④ 주사위 0 · 새 수 0');
   ok(i > 0 && j > i && !/Math\.random/.test(SRC.slice(i, j)), '④ econ T419 함수에 `Math.random` 0');
 }
 
+// ── ⑤ [T443] 제련 연료도 실물 — `server/smelt-uses.js` ─────────────────────────────────
+console.log('\n⑤ [T443] 제련 연료 — 노 표 하나 · econ 이 켬에서 숯을 뺀다');
+{
+  const MP = JSON.stringify(path.join(ROOT, 'server', 'smelt-uses.js'));
+  const M = require(path.join(ROOT, 'server', 'smelt-uses.js'));
+  ok(M.FURNACE_FUEL_PER_ORE === 2 && M.CHARCOAL_KILN_WOOD === 3 && M.CHARCOAL_KILN_YIELD === 4 && JSON.stringify(M.SMELT_RECIPES.charcoal.from) === '{"wood":3}' && M.SMELT_RECIPES.charcoal.to.charcoal === 2,
+    '⑤ 정본 그 수 — 원석 1 = 숯 2 · 숯가마 통나무 3 → 숯 4 · 노천 탄화 통나무 3 → 숯 2');
+  const st = (k) => M.FURNACE_KINDS[k].stages.reduce((a, x) => a + (x.need.stone || 0), 0);
+  ok(st('crucible') === 14 && st('bloomery') === 24 && M.CHARCOAL_KILN_STAGES.reduce((a, x) => a + (x.need.stone || 0), 0) === 10, '⑤ 노 돌 — 도가니로 14 · 괴련로 24 · 숯가마 10(T419 ⓐ 그 줄)');
+  ok(/const SmeltUses = require\('\.\/smelt-uses'\)/.test(ZSRC) && /const FURNACE_KINDS = SmeltUses\.FURNACE_KINDS;/.test(ZSRC) && /const FURNACE_FUEL_PER_ORE = SmeltUses\.FURNACE_FUEL_PER_ORE;/.test(ZSRC)
+    && /\.\.\.require\('\.\/smelt-uses'\)\.SMELT_RECIPES,/.test(ZSRC) && !/charcoal: \{ from: \{ wood: 3 \}/.test(codeOf(ZSRC)), '⑤ ★zone 이 **그 표를 읽는다**(노·숯가마·숯 레시피 · 옛 글자 0)');
+  const B = fs.readFileSync(path.join(ROOT, 'sim', 'build-econ-bundle.js'), 'utf8');
+  ok(/rd\('server\/smelt-uses\.js'\)/.test(B) && /smelt-uses/.test(B.match(/function req\(p\)\{[^\n]*/)[0]), '⑤ 번들이 표를 싣는다');
+  const E = require(path.join(ROOT, 'sim', 'economy-sim.js'));
+  ok(E.T443_SMELT_FUEL === false && E.smeltFuelOn() === false, '⑤ ★★기본 **끔**');
+  ok((SRC.match(/process\.env\.T443_SMELT_FUEL/g) || []).length === 1 && !/T443_SMELT_FUEL/.test(ZSRC), '⑤ 손잡이 하나(econ 한 자리)');
+  ok(/const use = smeltFuelOn\(\) \? smeltFuelTake\(v, Math\.min\(have, cap\)\) : Math\.min\(have, cap\);/.test(SRC), '⑤ 끈 판 제련 = 종전 식(`min(have, cap)`)');
+  const on = probe({ T443_SMELT_FUEL: '1' }, `const E=require(${EP});const a={storage:{wood:9,charcoal:1}},b={storage:{wood:0,charcoal:0}},c={storage:{wood:30,charcoal:0}};
+process.stdout.write(JSON.stringify({per:E.smeltFuelPerOre(),a:E.smeltFuelTake(a,5),as:a.storage,b:E.smeltFuelTake(b,5),bn:b._smeltNoFuel,c:E.smeltFuelTake(c,5),cs:c.storage}));`);
+  ok(JSON.stringify(on.per) === '{"charcoal":2}', '⑤ 켬 — 원석 한 덩이 = 숯 2');
+  ok(on.c === 5 && on.cs.wood === 15, '⑤ ★숯이 없으면 노천 탄화로 굽는다 — 원석 5 = 숯 10 = 통나무 15(3÷2)', JSON.stringify(on.cs));
+  ok(on.a === 3.5 && on.as.wood === 0 && on.as.charcoal === 0, '⑤ 곳간 숯을 먼저 쓰고 모자란 몫만 통나무 · 연료가 댈 수 있는 만큼만 녹인다(3.5)');
+  ok(on.b === 0 && on.bn === 1, '⑤ ★★연료가 없으면 **제련이 안 돈다**(= 행위)');
+  const mut = probe({ T443_SMELT_FUEL: '1' }, `const M=require(${MP});M.FURNACE_FUEL_PER_ORE=3;M.fuelPerOre=()=>({charcoal:M.FURNACE_FUEL_PER_ORE});const E=require(${EP});const v={storage:{wood:9}};process.stdout.write(JSON.stringify({n:E.smeltFuelTake(v,5)}));`);
+  ok(mut.n === 2, '⑤ ★표를 고치면(원석당 숯 3) econ 이 따라온다(통나무 9 = 숯 6 = 원석 2)', JSON.stringify(mut));
+  const i = SRC.indexOf('const T443_SMELT_FUEL'), j = SRC.indexOf('function _trySmelt');
+  ok(i > 0 && j > i && !/Math\.random/.test(SRC.slice(i, j)) && !/\b[23]\b/.test(SRC.slice(i, j).split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n')), '⑤ 주사위 0 · 표의 수(2·3)를 옮겨 적지 않았다');
+}
+
 console.log(`\n=== ${pass}/${pass + fail} ${fail ? '✗' : '✓'} ===`);
 process.exit(fail ? 1 : 0);

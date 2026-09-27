@@ -2184,6 +2184,30 @@ function _era() { if (_eraMod === undefined) { try { _eraMod = require('../serve
 const _ERA_METALS = new Set(['copper', 'tin', 'lead', 'gold', 'silver', 'iron', 'nickel', 'zinc', 'aluminium', 'uranium']);
 const _ERA_METAL = (id) => _ERA_METALS.has(id);
 function _eraKnows(metal) { const E = _era(); if (!E || !E.npcKnows) return true; try { return E.npcKnows(metal); } catch (e) { return true; } }
+// ══ ★★[T443 2026-09-27] 제련 연료도 실물 — 정본 `server/smelt-uses.js`(원석 1 = 숯 2 · 숯 1 = 통나무 3÷2) · 손잡이 기본 끔 ══
+//   켬이면 대장장이가 원석을 녹일 때 **숯을 뺀다** — 곳간의 숯(`charcoal` · specialty 품목 그대로 · 새 품목 0)이 먼저이고,
+//   모자라면 그 자리에서 **노천 탄화**(시설 없이 되는 레시피)로 통나무를 태워 숯을 낸다(econ 마을엔 숯가마가 없다).
+//   통나무도 모자라면 **있는 연료만큼만** 녹인다(연료가 없으면 제련이 안 돈다 = 행위). 끔 = 이 함수는 안 불린다(비트 동일).
+const T443_SMELT_FUEL = process.env.T443_SMELT_FUEL === '1';
+let _smeltMod;
+function _smeltUses() { if (_smeltMod === undefined) { try { _smeltMod = require('../server/smelt-uses'); } catch (e) { _smeltMod = null; } } return _smeltMod; }
+function smeltFuelOn() { return T443_SMELT_FUEL && !!_smeltUses(); }
+function smeltFuelPerOre() { const S = _smeltUses(); return S ? S.fuelPerOre() : null; }
+// 원석 `want` 덩이를 녹일 연료를 댄다 — 댈 수 있는 만큼의 원석 덩이 수를 돌려주고 연료를 뺀다.
+function smeltFuelTake(v, want) {
+  const S = _smeltUses(); if (!S || !(want > 0)) return 0;
+  const per = S.fuelPerOre().charcoal || 0, wpc = S.woodPerCharcoal();
+  if (!(per > 0)) return want;
+  const ch = v.storage.charcoal || 0, wd = v.storage.wood || 0;
+  const can = Math.min(want, (ch + (wpc > 0 ? wd / wpc : 0)) / per);
+  if (!(can > 0)) { v._smeltNoFuel = (v._smeltNoFuel || 0) + 1; return 0; }
+  const needCh = can * per, fromCh = Math.min(ch, needCh), fromWood = (needCh - fromCh) * wpc;
+  if (fromCh > 0) { v.storage.charcoal = ch - fromCh; _cons(v, 'charcoal', fromCh); }
+  if (fromWood > 0) { v.storage.wood = Math.max(0, wd - fromWood); _cons(v, 'wood', fromWood); }
+  v._smeltFuelCh = (v._smeltFuelCh || 0) + fromCh; v._smeltFuelWood = (v._smeltFuelWood || 0) + fromWood;
+  if (can < want) v._smeltShort = (v._smeltShort || 0) + 1;
+  return can;
+}
 function _trySmelt(v, laborBase) {
   const om = oreMixOf(v);                              // ★유효 조성 우선(수입 원석 포함) — 없으면 땅 조성
   if (!om) return 0;                                   // 지도 정보 없는 호출부(랩·CLI)는 옛 경로
@@ -2213,7 +2237,8 @@ function _trySmelt(v, laborBase) {
     if (!(tt > 0) || !(rec / tt > 0.02)) return 0;   // 회수 몫 2% 미만이면 땔감 낭비다
   }
   const cap = Math.max(0, laborBase * SMELT_PER_LABOR);
-  const use = Math.min(have, cap);
+  // ★[T443] 켬이면 연료가 댈 수 있는 만큼만 녹인다(끔 = 종전 식 그대로).
+  const use = smeltFuelOn() ? smeltFuelTake(v, Math.min(have, cap)) : Math.min(have, cap);
   if (!(use > 0)) return 0;
   v.storage.ore = have - use; _cons(v, 'ore', use);
   let tot = 0; for (const k in mix) tot += mix[k];
@@ -5417,6 +5442,7 @@ module.exports = {
   RAW_GRAINS, RAW_GRAIN_FOOD_FACTOR,   // ★[T73] 계수를 하네스·계측기가 옮겨 적지 않게(사본 금지)
   farmFlowPerDay, farmLandBoost, harvestToGranary,   // ★[T100] 같은 이유 — 하네스·계측기가 앵커를 옮겨 적지 않는다
   fishToGranary, fishActOn, fishBudgetPerCell, T312_FISH_ACT,   // ★[T312] 어부 행위 — 생활층이 부르는 문 셋 + 손잡이(하네스가 옮겨 적지 않는다)
+  T443_SMELT_FUEL, smeltFuelOn, smeltFuelPerOre, smeltFuelTake,   // ★[T443] 제련 연료 — 하네스·계측기가 표를 옮겨 적지 않게
   T419_STONE_REAL, stoneRealPer, stoneRealOn,   // ★[T419] 돌 쓰는 실물 — 하네스·계측기가 표·유도를 옮겨 적지 않게 내준다
   T435_GRANARY_ACT, granaryEconMaterials,   // ★[T435] 곳간 증설 재료 — 생활층·하네스가 표를 옮겨 적지 않게
   T400_BUILD_ACT, buildActOn, actFromGranary, hutEconMaterials, hutEconStage, hutStageCount, hutCapPerHut, houseCostPerCap,   // ★[T400] 집 행위 — 하네스·생활층이 표·유도를 옮겨 적지 않게 내준다
