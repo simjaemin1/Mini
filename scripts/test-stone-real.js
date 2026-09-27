@@ -13,6 +13,7 @@
 //   켜면 세 자리의 돌 단가가 표의 그 수다 · 주사위 0 · 손잡이 하나.
 //
 //   ⑤ T443 제련 연료 · ⑥ T452 숯가마 · ⑦ T463 숯 파생수요(노의 숯 목표 → 값 → 캐러밴) + era 숯가마 문.
+//   ★[T471] ⑤⑥ 손잡이 둘 기본 켬(넷째 판-c) — 되돌림 `=0` 이 끔(넷째 판-b)이다.
 //
 // 실행: node scripts/test-stone-real.js
 'use strict';
@@ -118,7 +119,9 @@ console.log('\n⑤ [T443] 제련 연료 — 노 표 하나 · econ 이 켬에서
   const B = fs.readFileSync(path.join(ROOT, 'sim', 'build-econ-bundle.js'), 'utf8');
   ok(/rd\('server\/smelt-uses\.js'\)/.test(B) && /smelt-uses/.test(B.match(/function req\(p\)\{[^\n]*/)[0]), '⑤ 번들이 표를 싣는다');
   const E = require(path.join(ROOT, 'sim', 'economy-sim.js'));
-  ok(E.T443_SMELT_FUEL === false && E.smeltFuelOn() === false, '⑤ ★★기본 **끔**');
+  ok(E.T443_SMELT_FUEL === true && E.smeltFuelOn() === true, '⑤ ★★기본 **켬**(T471 · 넷째 판-c)');
+  const rv5 = probe({ T443_SMELT_FUEL: '0' }, `const E=require(${EP});process.stdout.write(JSON.stringify({k:E.T443_SMELT_FUEL,on:E.smeltFuelOn()}));`);
+  ok(rv5.k === false && rv5.on === false, '⑤ 되돌림 `T443_SMELT_FUEL=0` → 끔(넷째 판-b)');
   ok((SRC.match(/process\.env\.T443_SMELT_FUEL/g) || []).length === 1 && !/T443_SMELT_FUEL/.test(ZSRC), '⑤ 손잡이 하나(econ 한 자리)');
   ok(/const use = smeltFuelOn\(\) \? smeltFuelTake\(v, Math\.min\(have, cap\)\) : Math\.min\(have, cap\);/.test(SRC), '⑤ 끈 판 제련 = 종전 식(`min(have, cap)`)');
   const on = probe({ T443_SMELT_FUEL: '1' }, `const E=require(${EP});const a={storage:{wood:9,charcoal:1}},b={storage:{wood:0,charcoal:0}},c={storage:{wood:30,charcoal:0}};
@@ -141,7 +144,9 @@ console.log('\n⑥ [T452] 숯가마 — 숲 마을에만 서고 · 잉여 통나
     '⑥ 정본 — 숯가마 조업 4분 + 배치당 30초 → 하루(24분) 41배치 · 짓는 재료 돌 10·통나무 2');
   ok(/const KILN_BURN_MS  = SmeltUses\.KILN_BURN_MS;/.test(ZSRC) && /const KILN_BATCH_MS_PER = SmeltUses\.KILN_BATCH_MS_PER;/.test(ZSRC), '⑥ zone 숯가마 조업 시간도 그 표를 읽는다');
   const E = require(path.join(ROOT, 'sim', 'economy-sim.js'));
-  ok(E.T452_KILN_ACT === false && E.kilnActOn() === false && /if \(T452_KILN_ACT\) kilnDay\(v\);/.test(SRC), '⑥ ★★기본 **끔** · 켬일 때만 하루 한 줄');
+  ok(E.T452_KILN_ACT === true && E.kilnActOn() === true && /if \(T452_KILN_ACT\) kilnDay\(v\);/.test(SRC), '⑥ ★★기본 **켬**(T471 · 넷째 판-c) · 켬일 때만 하루 한 줄');
+  const rv6 = probe({ T452_KILN_ACT: '0' }, `const E=require(${EP});process.stdout.write(JSON.stringify({k:E.T452_KILN_ACT,on:E.kilnActOn()}));`);
+  ok(rv6.k === false && rv6.on === false, '⑥ 되돌림 `T452_KILN_ACT=0` → 끔(넷째 판-b · 숯가마 하루 한 줄도 안 돈다)');
   ok((SRC.match(/process\.env\.T452_KILN_ACT/g) || []).length === 1, '⑥ 손잡이 하나');
   const r = probe({ T452_KILN_ACT: '1' }, `const E=require(${EP});const npcs=new Array(10).fill({});
 const forest={npcs,counts:{lumberjack:2},storage:{wood:120,stone:12,ore:4}}; const b1=E.kilnDay(forest); const s1=JSON.parse(JSON.stringify(forest.storage)); const d2=E.kilnDay(forest); const s2=JSON.parse(JSON.stringify(forest.storage)); const d3=E.kilnDay(forest);
@@ -169,8 +174,10 @@ const noMix={npcs,counts:{miner:1},storage:{ore:4}};
 const full={npcs,counts:{miner:1},land:{oreMix:{copper:1}},storage:{ore:4,charcoal:40}};
 process.stdout.write(JSON.stringify({m:E.derivedInputTarget(mine,'charcoal'),f:E.furnaceCharcoalTarget(mine),i:E.derivedInputTarget(idle,'charcoal'),n:E.derivedInputTarget(noMix,'charcoal'),
  p:V2.computeShadowPrices(mine).charcoal,pf:V2.computeShadowPrices(full).charcoal,cu:E.derivedInputTarget(mine,'copper')}));`;
-  const off = probe({}, js), a = probe({ T443_SMELT_FUEL: '1' }, js), b = probe({ T452_KILN_ACT: '1' }, js), on = probe({ T443_SMELT_FUEL: '1', T452_KILN_ACT: '1' }, js);
-  ok(off.m === 0 && a.m === 0 && b.m === 0, '⑦ ★★끔 — T443·T452 중 하나라도 끄면 숯 파생수요 0(손잡이 0 · 뜻은 둘 다 켰을 때만)', JSON.stringify([off.m, a.m, b.m]));
+  const off = probe({ T443_SMELT_FUEL: '0', T452_KILN_ACT: '0' }, js), a = probe({ T443_SMELT_FUEL: '1', T452_KILN_ACT: '0' }, js), b = probe({ T443_SMELT_FUEL: '0', T452_KILN_ACT: '1' }, js), on = probe({ T443_SMELT_FUEL: '1', T452_KILN_ACT: '1' }, js);
+  const dflt = probe({}, js);   // ★[T471] 기본 = 셋 켬
+  ok(JSON.stringify(dflt) === JSON.stringify(on), '⑦ [T471] 기본(손잡이 안 줌) = 셋 켬 판 그대로');
+  ok(off.m === 0 && a.m === 0 && b.m === 0, '⑦ ★★되돌림 — T443·T452 중 하나라도 `=0` 이면 숯 파생수요 0(손잡이 0 · 뜻은 둘 다 켰을 때만)', JSON.stringify([off.m, a.m, b.m]));
   ok(off.p === a.p && off.p === b.p, '⑦ 끈 판 숯 값 = 종전(바닥)', String(off.p));
   ok(on.m === 20 && on.m === on.f, '⑦ 켬 — 캐는 마을 숯 목표 = max(원석 비축 1×10, 원석 4) × 숯 2 = 20 = 숯가마가 굽는 그 목표(`furnaceCharcoalTarget` 한 함수)', JSON.stringify(on));
   ok(on.i === 0 && on.n === 0, '⑦ ★미끼 — 캐지도 않고 녹일 원석도 없는 마을 · 광맥 조성이 없는 마을은 숯을 원하지 않는다(유령 비축 0)');
