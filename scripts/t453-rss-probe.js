@@ -68,6 +68,8 @@ Module.prototype._compile = function (content, filename) {
 })();
 `;
   }
+  // ★[T453 ③] 도적 모듈의 상태 창(읽기만) — 거리장·소굴이 고침 앞뒤로 같은가(비트 동일 게이트)
+  if (filename.endsWith(path.join('server', 'bandits.js'))) content += '\n;globalThis.__t453bandits = function () { return S; };\nglobalThis.__t453brf = function () { S._routes = null; S.routeField = null; return ensureRouteField(); };\n';
   return _compile.call(this, content, filename);
 };
 function snapOnce(tag) {
@@ -80,13 +82,23 @@ function snapOnce(tag) {
     const spaces = {}; for (const s of v8.getHeapSpaceStatistics()) spaces[s.space_name] = { used: s.space_used_size, size: s.space_size };
     const hs = v8.getHeapStatistics();
     const counts = typeof globalThis.__t453counts === 'function' ? globalThis.__t453counts() : null;
+    let bandits = null;
+    try { const S = globalThis.__t453bandits && globalThis.__t453bandits(); if (S) { const h = require('crypto').createHash('sha256');
+      const F = S.routeField; if (F) { h.update(Buffer.from(F.f.buffer, F.f.byteOffset, F.f.byteLength)); h.update(F.gw + ',' + F.gh + ',' + F.empty); }
+      h.update(JSON.stringify(S.DENS || [])); h.update(String(S.routeFieldSig || ''));
+      bandits = { hash: h.digest('hex').slice(0, 16), field: !!F, dens: (S.DENS || []).map((d) => [d.cx, d.cy, d.sc, d.dr]), routePts: S._routes && S._routes.pts ? S._routes.pts.length : null };
+      // T453_RECOMP=1: 붙든 거리장 == 지금 교역로로 **처음부터 다시 만든** 거리장인가(표본을 놓아도 거리장이 같다는 게이트 · 캐시 적중이라 싸다)
+      if (process.env.T453_RECOMP === '1' && F && globalThis.__t453brf) { const G = globalThis.__t453brf(); const h2 = require('crypto').createHash('sha256');
+        h2.update(Buffer.from(G.f.buffer, G.f.byteOffset, G.f.byteLength)); h2.update(G.gw + ',' + G.gh + ',' + G.empty);
+        const h1 = require('crypto').createHash('sha256'); h1.update(Buffer.from(F.f.buffer, F.f.byteOffset, F.f.byteLength)); h1.update(F.gw + ',' + F.gh + ',' + F.empty);
+        bandits.fieldHeld = h1.digest('hex').slice(0, 16); bandits.fieldRecomp = h2.digest('hex').slice(0, 16); } } } catch (e) { bandits = { err: String(e && e.stack || e) }; }
     let snap = null;
     if (process.env.T453_SNAP === '1') {
       globalThis.__t453o = typeof globalThis.__t453owners === 'function' ? globalThis.__t453owners() : null;
       snap = v8.writeHeapSnapshot(`${OUT}.${tag}.heapsnapshot`);
       globalThis.__t453o = null;
     }
-    const rec = { tag, t: Date.now(), gcMs, mem: m, spaces, heap: { total: hs.total_heap_size, used: hs.used_heap_size, malloced: hs.malloced_memory, peakMalloced: hs.peak_malloced_memory, external: hs.external_memory }, counts, snap };
+    const rec = { tag, t: Date.now(), gcMs, mem: m, bandits, spaces, heap: { total: hs.total_heap_size, used: hs.used_heap_size, malloced: hs.malloced_memory, peakMalloced: hs.peak_malloced_memory, external: hs.external_memory }, counts, snap };
     let all = []; try { all = JSON.parse(fs.readFileSync(OUT, 'utf8')); } catch (e) {}
     all.push(rec);
     fs.writeFileSync(OUT + '.tmp', JSON.stringify(all)); fs.renameSync(OUT + '.tmp', OUT);
