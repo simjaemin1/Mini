@@ -402,5 +402,6 @@ async function modeStep() {
   else if (mode === 'host') await modeHost();
   else if (mode === 'step') await modeStep();
   else { say('모드: load | zones | host | step'); process.exit(2); }
+  say(require('./lib-tick-rule').SINGLE_NOTE);   // ★[T455 규약 ⓕ] 한 번 = 한 판(n판은 밖에서 n번 · 고정 원점 `t455-clock.js`)
   process.exit(0);
 })();

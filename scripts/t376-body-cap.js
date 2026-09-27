@@ -241,6 +241,7 @@ function table() {
   }
   const pct = (x) => (x == null ? '—' : `${(100 * x / BUDGET).toFixed(0)}%`);
   console.log(`  예산 ${BUDGET.toFixed(1)}ms(30Hz) · 걸음 켬(T312_FISH_ACT=1 · T356·T324 의 자) · ${require('./lib-tick-rule').DENOM.village}(★규약 ⓔ)`);
+  console.log('  ' + require('./lib-tick-rule').SINGLE_NOTE);   // ★[T455 규약 ⓕ] 팔마다 한 판
   console.log('  ⚠ⓐ 의 집·침상·닿은 날은 **압축 시계(게임일 4초)의 값**이다 — 몸 행위(시공)는 실제 날 자로만 읽는다(★규약 ⓒ · T368 §4-ⓒ)');
   console.log('  ┌ 상한 ── econ 인구 ─ 몸 수 ─ Σmin(인구,상한) ─ 몸없는이 ─ 닿은마을 ─ 집 ─ 침상 ─ 소멸 ─│ 낮 p50/p95 ─ 예산 ─ 밤 p50/p95 ─ drop ─ lag% ─ 비취침');
   for (const r of rows) {
