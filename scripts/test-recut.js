@@ -18,6 +18,11 @@
 //   ⑦ ★[T440] 정적 — 셀 색인의 문 하나 · 청크 목록은 색인과 같은 함수 · 판이 낡는 사건 셋 · 영토가 자란 날 영토 전체
 //   ⑧ ★[T440] 런타임 다시 훑기(자식 프로세스 · 마을 켬 · 새 세계) — 시계를 첫 묘목 날로 당기고 econ 날을 흘린다:
 //      영토가 **자란** 마을은 옛 영토에 다시 선 그루를 그날 벤다(장부 날 = 그날) · ★미끼: **안 자란** 마을은 그대로 선다
+//      ★[T450 ⓪] 창은 벽시계가 아니라 **영토 편입 사건**으로 자른다 — 하루 마감이 끝난 경계(`villagesBusy` 거짓)마다
+//        마을의 영토(메모리 `_terrSet`)가 늘었나(= 그 마을에 `_terrGrow` 가 왔나)로 가른다 · 두 집합(다시 선 그루를 든
+//        자란 마을 · 안 자란 마을)이 다 차지 않으면 econ 날을 하나씩 더(상한 400 · 카드) · 다시 선 그루가 다 베였으면
+//        시계를 다음 재생 창으로 한 번 더 당긴다 · 끝까지 안 자란 마을이 0 이면 "창 안에서 전부 자란다"고 적고
+//        전제를 **자란 날 앞/뒤**로 세운다(자란 날 전엔 다시 선 그루가 그대로 · 자란 날에 0)
 //
 // ⚠존을 **이 프로세스 안에서** 띄운다(`test-ghost-tree` 문법 · `Zone.__testBind`). 가짜 플레이어는 **`players` 에 안 넣는다**
 //   (관측자 0 — 넣으면 그 자리 청크가 켜져 색인 대신 개체 갈래를 탄다). 시계 손잡이(`__e2e_clock`)는 객체를 직접 받는다.
@@ -245,6 +250,7 @@ if (process.argv[2] === '--grow') { growChild().then(() => process.exit(0), (e) 
       '★⑦ 영토가 자란 날(`_terrGrow`) — 그 마을 영토 **전체**를 같은 문으로 훑는다(새 셀만이 아니다)');
   }
   // ── ⑧ ★[T440] 런타임 다시 훑기 — 자식 프로세스(마을 켬 · 새 세계) ─────────────────────
+  //   ★[T450 ⓪] 창 = 영토 편입 사건(하루 마감 경계마다 마을 영토가 늘었나) — 벽시계에 안 묶인다(자식 주석)
   {
     const OUTG = `/tmp/test-recut-grow-${process.pid}.json`;
     try { fs.unlinkSync(OUTG); } catch (e) {}
@@ -253,19 +259,27 @@ if (process.argv[2] === '--grow') { growChild().then(() => process.exit(0), (e) 
     spawnSync(process.execPath, [__filename, '--grow', OUTG], { cwd: ROOT, stdio: 'ignore', timeout: 600000, env: process.env });
     let G = null; try { G = JSON.parse(fs.readFileSync(OUTG, 'utf8')); } catch (e) { G = { err: 'no json' }; }
     try { fs.unlinkSync(OUTG); } catch (e) {}
-    pre(!G.err, `⑧ 자식 — 새 세계 · 마을 ${G.vils || 0} · 창 A 시계 ${G.A && G.A.day}(econ ${G.A && G.A.econ.join('→')}) · 안 자라는 날까지 ${G.waited}일 · 창 B 시계 ${G.B && G.B.day}(econ ${G.B && G.B.econ.join('→')}) · ${((Date.now() - t0) / 1000).toFixed(0)}초`, G.err ? String(G.err).slice(0, 200) : '');
-    if (!G.err) {
-      const all = G.A.rows.concat(G.B.rows);
-      const grew = all.filter((r) => r.grew), still = all.filter((r) => !r.grew);
-      const gS = grew.filter((r) => r.before > 0), sS = still.filter((r) => r.before > 0);
-      pre(gS.length > 0 && sS.length > 0, '⑧ (전제) 다시 선 그루가 있는 마을이 **자란 쪽·안 자란 쪽 둘 다** 있다(둘 중 하나가 비면 이 절은 자명하다)',
-        `두 창 합 — 자란 ${grew.length}곳(그중 다시 선 그루 ${gS.length}곳) · 안 자란 ${still.length}곳(${sS.length}곳)`);
+    //   자식은 하루마다 중간 결과를 적는다 — 끝을 못 봤으면(시간 초과) 그 줄까지를 말한다
+    pre(!G.err && G.done, `⑧ 자식 — 새 세계 · 마을 ${G.vils || 0} · 첫 창 시계 ${G.day0} · 하루 마감 ${G.steps || 0}번(econ ${G.econ ? G.econ.join('→') : '?'}) · 시계 당김 ${G.pulls || 0}번 · ${((Date.now() - t0) / 1000).toFixed(0)}초`
+      + (G.done ? '' : ' · ★끝을 못 봤다(상한 · 시간 초과)'), G.err ? String(G.err).slice(0, 200) : '');
+    if (!G.err && G.rows) {
+      const gS = G.rows.filter((r) => r.grew && r.before > 0), sS = G.rows.filter((r) => !r.grew && r.before > 0);
+      const allGrow = sS.length === 0;
+      pre(gS.length > 0, '⑧ (전제) 다시 선 그루를 든 채 영토가 **자란** 마을-날이 있다(비면 이 절은 자명하다)',
+        `자란 ${gS.length} · 안 자란 ${sS.length}(마을-날 · 다시 선 그루를 든 것만)` + (allGrow ? ' · ★이 세계는 창 안에서 전부 자란다 — 전제를 자란 날 앞/뒤로' : ''));
       const gB = gS.reduce((a, r) => a + r.before, 0), gA = gS.reduce((a, r) => a + r.after, 0), gDay = gS.reduce((a, r) => a + r.dayNow, 0);
       ok(gS.length > 0 && gA === 0 && gDay === gB,
-        '★★⑧ 영토가 **자란** 마을 — 옛 영토에 다시 선 그루를 그날 **다 벤다** · 장부 날 = 그날', `${gS.length}곳 · 다시 선 ${gB} → ${gA} · 장부 날 그날 ${gDay}/${gB}`);
-      const sB = sS.reduce((a, r) => a + r.before, 0), sA = sS.reduce((a, r) => a + r.after, 0), sDay = sS.reduce((a, r) => a + r.dayNow, 0);
-      ok(sS.length > 0 && sA === sB && sDay === 0,
-        '★★⑧ 미끼 — 영토가 **안 자란** 마을은 그대로 선다(주기는 영토가 자란 날이다 · 날마다 훑지 않는다)', `${sS.length}곳 · 다시 선 ${sB} → ${sA} · 장부 날 바뀜 ${sDay}`);
+        '★★⑧ 영토가 **자란** 마을 — 옛 영토에 다시 선 그루를 그날 **다 벤다** · 장부 날 = 그날', `${gS.length}마을-날 · 다시 선 ${gB} → ${gA} · 장부 날 그날 ${gDay}/${gB}`);
+      if (!allGrow) {
+        const sB = sS.reduce((a, r) => a + r.before, 0), sA = sS.reduce((a, r) => a + r.after, 0), sDay = sS.reduce((a, r) => a + r.dayNow, 0);
+        ok(sA === sB && sDay === 0,
+          '★★⑧ 미끼 — 영토가 **안 자란** 마을은 그대로 선다(주기는 영토가 자란 날이다 · 날마다 훑지 않는다)', `${sS.length}마을-날 · 다시 선 ${sB} → ${sA} · 장부 날 바뀜 ${sDay}`);
+      } else {
+        //   카드 문법(T450 ⓪): 안 자란 마을이 끝내 0 이면 같은 마을의 **자란 날 앞**(그날 마감 전 경계 — 시계를 당긴 것만으로는
+        //     안 베였다)과 **뒤**(0)를 견준다 · ⚠이 판은 날마다 훑는 돌연변이를 못 가른다(안 자란 마을-날이 없다)
+        ok(gB > 0 && gA === 0,
+          '★★⑧ 미끼(자란 날 앞/뒤) — 자란 날 **앞** 경계엔 다시 선 그루가 그대로 섰고(시계만으로는 안 베인다) 자란 날에 0', `앞 ${gB} · 뒤 ${gA} ⚠날마다 훑기를 못 가른다`);
+      }
     }
   }
 
@@ -273,10 +287,17 @@ if (process.argv[2] === '--grow') { growChild().then(() => process.exit(0), (e) 
   process.exit(fail ? 1 : 0);
 })().catch((e) => { console.error('하네스 크래시:', e); process.exit(1); });
 
-// ══ ⑧ 의 자식 — 새 세계를 띄우고(마을 켬 · 하루 2.5초) 시계를 당긴 두 창에서 econ 날을 흘린다 ═══════════════
-//   ★창 A — 첫 며칠(새 세계는 **모든 마을**이 자란다 — 실측 1~8일 50/50) · 시계 = 영토 벤 씨의 첫 묘목 날 + 한 해
-//   ★창 B — 마을이 목표에 닿아 **안 자라는 날**이 온 뒤(실측 9일부터 0/50) · 시계 = 창 A + 세 해(여러 종이 다시 선다)
-//     ⇒ 두 창을 합치면 "자란 마을"과 "안 자란 마을"이 **둘 다** 다시 선 그루를 들고 있다(한쪽이 비면 미끼가 자명하다).
+// ══ ⑧ 의 자식 — 새 세계를 띄우고(마을 켬 · 하루 2.5초) 시계를 당긴 창에서 econ 날을 **하루 마감씩** 흘린다 ═══════
+//   ★[T450 ⓪] 창을 **영토 편입 사건**으로 자른다(종전 T440 판은 벽시계 두 창 — 부하에 따라 창 B 가 아직 모든 마을이
+//     자라는 날에 떨어져 "안 자란 마을 0"이 났다 · PM 판 23/2).
+//     ⓐ 경계 = 하루 마감이 **끝난** 순간(`econDay` 가 넘어가고 `villagesBusy()` 가 거짓) — 그 사이 모든 마을의 하루 조각
+//        (`terr` 포함)이 돌았다. 벽시계로 끊지 않는다(조각은 예산만큼 여러 프레임에 걸쳐 돈다).
+//     ⓑ 자랐나 = 그 경계 사이에 마을 영토(메모리 `_terrSet`)가 늘었나 = 그 마을에 `_terrGrow` 가 왔나(늘면 같은 호출이 훑는다).
+//     ⓒ 센다 = 그 마을 **옛 영토**(경계 앞 영토)의 셀 가운데 끝 경계에서 **남의 영토가 아닌** 셀(겹친 셀은 자란 이웃이 벤다 —
+//        T440 §0-ⓑ) · 다시 선 그루(제품 창구 `_t325TreesAtCell` · 관측자 0 ⇒ 색인) · 장부 날(DB).
+//     ⓓ 두 집합(다시 선 그루를 든 자란 마을-날 · 안 자란 마을-날)이 다 찰 때까지 하루씩 더(상한 400일 · 카드) ·
+//        다시 선 그루가 다 베였으면 시계를 다음 재생 창(T440 과 같은 세 해 · 벤 포도·개암·버들이 다시 선다)으로 한 번 더 당긴다.
+//     ⓔ 하루마다 중간 결과를 적는다(부모가 시간 초과로 끊어도 그 줄까지 말한다).
 async function growChild() {
   const OUT = process.argv[3];
   const TMPG = `/tmp/test-recut-g-${process.pid}.db`;
@@ -302,32 +323,14 @@ async function growChild() {
     const t = D.prepare("SELECT village_id, cx, cy FROM village_buildings WHERE type = 'terr'").all();
     const l = new Map(D.prepare('SELECT seed_key, harvested_day FROM harvested_seeds').all().map((r) => [r.seed_key, r.harvested_day]));
     D.close(); return { v, t, l }; };
-  const sizes = () => { const D = new Database(TMPG, { readonly: true }); const m = new Map();
-    for (const r of D.prepare("SELECT village_id, COUNT(*) n FROM village_buildings WHERE type = 'terr' GROUP BY village_id").all()) m.set(r.village_id, r.n);
-    D.close(); return m; };
-  const nextDay = async () => { const ed = H.SimVillages.econDay(); for (let i = 0; i < 60; i++) { await sleep(250); if (H.SimVillages.econDay() > ed) break; } await sleep(700); };
-  const standKeys = (cells) => { const out = []; for (const [cx, cy] of cells) for (const e of (H._t325TreesAtCell(cx, cy) || [])) if (e.isSeed && e.seedKey) out.push(e.seedKey); return out; };
-  //   한 창 — 시계를 당기고(다시 선 그루를 센다) econ 이틀을 흘린 뒤 다시 센다 · 자랐나는 영토 행 수로 본다
-  const window = async (day) => {
-    clock(day);
-    const L0 = readDb(), s0 = sizes();
-    const terrBy = new Map(); for (const r of L0.t) { if (!terrBy.has(r.village_id)) terrBy.set(r.village_id, []); terrBy.get(r.village_id).push([r.cx, r.cy]); }
-    const before = new Map(); for (const [vid, cells] of terrBy) before.set(vid, standKeys(cells));
-    const e0 = H.SimVillages.econDay();
-    await nextDay(); await nextDay();
-    const L1 = readDb(), s1 = sizes();
-    const rows = [];
-    for (const v of L0.v) {
-      const cells = terrBy.get(v.id) || [], b = before.get(v.id) || [];
-      const after = new Set(standKeys(cells));
-      let dayNow = 0; for (const k of b) if (L1.l.get(k) === day) dayNow++;
-      rows.push({ id: v.id, name: v.name, grew: (s1.get(v.id) || 0) > (s0.get(v.id) || 0), before: b.length, after: b.filter((k) => after.has(k)).length, dayNow });
-    }
-    return { day, econ: [e0, H.SimVillages.econDay()], rows };
-  };
+  const SV = H.SimVillages;
+  //   하루 마감 경계 — econ 날이 넘어가고 그날 조각이 다 돌았다(벽시계가 아니라 마감이 끝난 사건)
+  const closedDay = async () => { const ed = SV.econDay(); while (SV.econDay() === ed) await sleep(50); while (SV.villagesBusy()) await sleep(20); };
   await sleep(1200);
-  //   창 A 시계 — 영토의 벤 씨 가운데 가장 먼저 묘목이 되는 날 + 한 해(정본 유도 · 벤 날 + 종의 그루터기 해 × 한 해)
+  while (SV.villagesBusy()) await sleep(20);
   const L = readDb();
+  const vils = L.v.map((v) => ({ id: v.id, name: v.name, V: SV.villageByDbId(v.id) })).filter((x) => x.V && x.V._terrSet);
+  //   첫 창 시계 — 영토의 벤 씨 가운데 가장 먼저 묘목이 되는 날 + 한 해(정본 유도 · 벤 날 + 종의 그루터기 해 × 한 해 · T440 그대로)
   let C = Infinity;
   for (const r of L.t) for (const e of CH.resourcesAtCell('hanbando', r.cx, r.cy, { biome: Zc.biome, chunkSize: CH.CHUNK_SIZE })) {
     if (e.type !== 'tree' || !L.l.has(e.seedKey)) continue;
@@ -337,14 +340,39 @@ async function growChild() {
     C = Math.min(C, cd + Math.ceil(g[0] * YD));
   }
   if (!Number.isFinite(C)) throw new Error('영토에 벤 씨가 없다 — 창을 세울 수 없다');
-  const A = await window(C + YD);
-  //   안 자라는 날이 올 때까지(마을 셋 이상이 하루 내내 안 자란 날이 이틀 이어지면) — 상한 30일
-  let prev = sizes(), calm = 0, waited = 0;
-  while (waited < 30 && calm < 2) {
-    await nextDay(); waited++;
-    const cur = sizes(); let st = 0; for (const [k, n] of cur) if (prev.get(k) === n) st++;
-    calm = st >= 3 ? calm + 1 : 0; prev = cur;
+  //   경계 한 판 — 마을마다 영토(메모리) 크기와 옛 영토 셀(복사본)
+  const snap = () => vils.map((x) => ({ id: x.id, name: x.name, size: x.V._terrSet.size, cells: [...x.V._terrSet] }));
+  //   셀 목록의 다시 선 그루 — [씨, 셀] 쌍(제품 창구 · 관측자 0 ⇒ 색인)
+  const standing = (cells) => { const out = []; for (const k of cells) { const i = k.indexOf(','); for (const e of (H._t325TreesAtCell(+k.slice(0, i), +k.slice(i + 1)) || [])) if (e.isSeed && e.seedKey) out.push([e.seedKey, k]); } return out; };
+  const CAP = 400;   // 카드(T450 ⓪): 상한은 있는 400일 픽스처 — 보통 열흘 안에 끝난다
+  let day = C + YD; clock(day);
+  const out = { vils: vils.length, day0: day, steps: 0, pulls: 1, econ: [SV.econDay(), SV.econDay()], rows: [], done: false };
+  const flush = () => { try { fs.writeFileSync(OUT, JSON.stringify(out)); } catch (e) {} };
+  let s0 = snap();
+  let gN = 0, sN = 0;
+  while (out.steps < CAP) {
+    //   경계 앞 — 마을마다 옛 영토의 다시 선 그루
+    const before = s0.map((q) => standing(q.cells));
+    if (!before.some((b) => b.length)) { day += 3 * YD; clock(day); out.pulls++; continue; }   // 다 베였다 — 다음 재생 창(T440 창 B 와 같은 세 해)
+    await closedDay(); out.steps++;
+    const s1 = snap();
+    //   끝 경계에서 둘 이상이 가진 셀 — 자란 이웃의 훑기가 벨 수 있다 ⇒ 센 데서 뺀다(양쪽 다)
+    const owners = new Map(); for (const q of s1) for (const k of q.cells) owners.set(k, (owners.get(k) || 0) + 1);
+    const L1 = readDb();
+    for (let i = 0; i < s0.length; i++) {
+      const b = before[i].filter(([, c]) => owners.get(c) === 1);
+      if (!b.length) continue;
+      const grew = s1[i].size > s0[i].size;   // 그 마을에 `_terrGrow` 가 왔다(영토가 늘면 같은 호출이 훑는다)
+      const now = new Set(standing([...new Set(b.map(([, c]) => c))]).map(([k]) => k));
+      let after = 0, dayNow = 0; for (const [k] of b) { if (now.has(k)) after++; if (L1.l.get(k) === day) dayNow++; }
+      out.rows.push({ id: s0[i].id, name: s0[i].name, step: out.steps, grew, before: b.length, after, dayNow });
+      if (grew) gN++; else sN++;
+    }
+    out.econ[1] = SV.econDay();
+    s0 = s1;
+    flush();
+    if (gN && sN) break;   // 두 집합이 다 찼다
   }
-  const B = await window(C + YD + 3 * YD);
-  fs.writeFileSync(OUT, JSON.stringify({ vils: L.v.length, waited, A, B }));
+  out.done = true;
+  flush();
 }
