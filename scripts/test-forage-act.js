@@ -155,10 +155,11 @@ console.log('\n⑤ ⓑ 낙하 — 죽은 채집꾼 손의 열매는 그 자리�
 console.log('\n⑥ ⓐ 관측자 무관 · ⓔ 딴 개체는 없어지고 딴 날이 남는다');
 {
   const ZC = codeOf(ZSRC);
-  ok(/harvestedSet: harvestedSeeds, gameDay: gameDayNow\(\)/.test(ZC),
-    '⑥ ★색인에 **수확 장부와 게임일**을 넘긴다 — 청크가 꺼져 있어도 같은 답(T301 규칙 표)');
-  ok(/raw \? \{ biome: ZONE\.biome, chunkSize: chunkManager\.chunkSize \}/.test(ZC),
-    '⑥ ★★`raw` 는 장부를 **안 넘긴다** — *"교란 전 그 셀에 무엇이 있었나"*(로지스틱 `K`)');
+  //   ★[T440] 색인은 청크 한 판(`_idxAtCell` → `_ringBuild`)으로 묻는다 — 판을 낳는 인자에 장부·날이 들고, 원시 판엔 안 든다
+  ok(/_idxAtCell\(cellX \| 0, cellY \| 0, !!raw, raw \? undefined : gameDayNow\(\)\)/.test(ZC) && /_ringBuild\(qx, qy, harvestedSeeds, day\)/.test(ZC),
+    '⑥ ★색인에 **수확 장부와 게임일**을 넘긴다 — 청크가 꺼져 있어도 같은 답(T301 규칙 표 · ★[T440] 청크 판이 그 둘로 낳는다)');
+  ok(/_ringBuild\(qx, qy, undefined, undefined\)/.test(ZC),
+    '⑥ ★★`raw` 는 장부를 **안 넘긴다** — *"교란 전 그 셀에 무엇이 있었나"*(로지스틱 `K` · ★[T440] 원시 판은 장부·날 없이 낳는다)');
   ok(/const _T347_TYPES = \{ berry_bush: 1, herb: 1 \};/.test(ZC),
     '⑥ 군락 종 집합이 생활층 `JOB_RES.forager` 와 같은 둘이다');
   const VC = codeOf(VSRC);

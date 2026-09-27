@@ -315,6 +315,22 @@ if (MODE === '--recut') {
       const own = new Set(pre.terr.filter((t) => t.village_id === OBS.vid).map((t) => t.cx + ',' + t.cy));
       const all = new Set(pre.terr.map((t) => t.cx + ',' + t.cy));
       const m0 = Z.msgs.length;
+      //   ★[T440] 누가 장부를 적었나(`T440_WHO=1`) — DB 장부 문에 스택을 건다(읽기만 · T426 디버그 판 문법).
+      //     관측자 창 동안 적힌 행을 부른 자리(함수 이름 넷)로 센다 · 주민이 겨눈 개체(`gatherTarget`)도 받아 적는다.
+      let who = null, aimed = null, poll = null, seen = null;   // seen = 씨 → 셀(창 동안 본 개체 · 0.25초마다)
+      if (process.env.T440_WHO === '1') {
+        who = {}; aimed = new Map(); seen = new Map();
+        const D = Z.H.db, f0 = D.insertHarvestedSeed;
+        D.insertHarvestedSeed = function (k, d) {
+          const fr = String(new Error().stack).split('\n').slice(2, 7).map((s) => { const m = /at (?:async )?([\w$.<>]+)/.exec(s); return m ? m[1] : '?'; }).join(' ← ');
+          const c = seen.get(k), inT = c ? (own.has(c) ? '영토 안' : '영토 밖') : '자리 모름';
+          const key = fr + ' · ' + inT; who[key] = (who[key] || 0) + 1;
+          return f0.apply(this, arguments);
+        };
+        poll = setInterval(() => { for (const r of Z.H.resources.values()) if (r.seedKey && !seen.has(r.seedKey)) seen.set(r.seedKey, Math.floor(r.x / 32) + ',' + Math.floor(r.y / 32));
+          for (const q of Z.H.players.values()) { if (!q.isNpc || !q.gatherTarget) continue;
+          const r = Z.H.resources.get(q.gatherTarget); if (r && !aimed.has(q.gatherTarget)) aimed.set(q.gatherTarget, { type: r.type, job: q.npcJob || null, beh: q.behavior || null }); } }, 250);
+      }
       Z.observe(OBS.px, OBS.py);
       //   방송이 멎을 때까지(= 켤 청크를 다 켰다 · T378 자 문법) — 정해진 초를 자지 않는다
       let last = Z.msgs.length, quietSince = Date.now(); const tq = Date.now();
@@ -333,6 +349,7 @@ if (MODE === '--recut') {
         else if (!all.has(k) && (r.type === 'tree' || r.type === 'sapling') && r.seedKey) o.outKeys.push(r.seedKey + '@' + r.type);
       }
       o.outKeys.sort();
+      if (who) { clearInterval(poll); o.who = who; const at = {}; for (const v of aimed.values()) { const kk = `${v.type} · ${v.job || '무직'} · ${v.beh}`; at[kk] = (at[kk] || 0) + 1; } o.aimed = at; }
       out.obs = o;
     }
     await sleep(1500);
@@ -358,6 +375,172 @@ if (MODE === '--recut') {
     fs.writeFileSync(OUT, JSON.stringify(out));
     process.exit(0);
   })().catch((e) => { try { fs.writeFileSync(process.argv[5], JSON.stringify({ err: String((e && e.stack) || e) })); } catch (x) {} process.exit(1); });
+  return;
+}
+
+// ══ ★[T440] 런타임 창 — 새 프로세스 · 부팅 **없이** 시계를 당긴 창들을 이어 흘린다 ═══════════════════
+//   부팅(시계 안 당김 = econ 날 · T426 다시 훑기는 아무것도 못 본다) → 창마다: 시계를 당기고 마을마다 영토에 다시 선 그루를
+//   센다(제품 창구) → econ n일 → 다시 센다 · 그 사이 영토가 자랐나(영토 행 수) · 그 그루의 장부 날이 창의 날로 갔나(DB).
+//   [관측자] 창 내내 한 마을 한가운데 선다(부팅 직후 · 쫓겨나지 않게 lastSeen 갱신).
+if (MODE === '--run') {
+  (async () => {
+    const DB = process.argv[3], DAYS = JSON.parse(process.argv[4]), N = +process.argv[5], OUT = process.argv[6];
+    //   TRK = { vid, name, px, py, observe } — 그 마을의 씨를 두 팔 다 적는다 · `observe` 면 창마다 그 마을 한가운데 선다
+    const TRK = process.argv[7] ? JSON.parse(process.argv[7]) : null;
+    const Z = await bootZone(DB, 40500 + (process.pid % 300));
+    await new Promise((r) => setImmediate(r));
+    const { H } = Z;
+    const Database = require(path.join(ROOT, 'node_modules', 'better-sqlite3'));
+    const sizes = () => { const D = new Database(DB, { readonly: true }); const m = new Map();
+      for (const r of D.prepare("SELECT village_id, COUNT(*) n FROM village_buildings WHERE type = 'terr' GROUP BY village_id").all()) m.set(r.village_id, r.n);
+      D.close(); return m; };
+    const cellOf = new Map();   // 씨 → 셀(귀속용 · 읽기만)
+    const standBy = (terr) => { const m = new Map(); for (const t of terr) { let a = []; try { a = H._t325TreesAtCell(t.cx, t.cy) || []; } catch (e) {}
+      for (const e of a) if (e.isSeed && e.seedKey) { let b = m.get(t.village_id); if (!b) m.set(t.village_id, b = []); b.push(e.seedKey); cellOf.set(e.seedKey, t.cx + ',' + t.cy); } } return m; };
+    const obs = !!(TRK && TRK.observe);
+    const out = { boot: { recut: recutLine(Z.log), econ: H.SimVillages.econDay() }, windows: [] };
+    for (const day of DAYS) {
+      //   ★차례 — (관측자면 구석으로 비켜 마을 청크를 끈다) → 시계 → **곧바로** 센다(색인) → (관측자면 그 마을에 선다 —
+      //     청크가 켜지는 순간의 단계로 개체가 선다 · T122 "볼 때 정산") → econ n일(시계를 당긴 그 날부터) → 다시 센다.
+      //     두 팔(관측자 0·1)의 창이 **같은 econ 날**에 열리고 닫힌다(관측자를 세우는 시간이 창 안에 든다).
+      //   두 팔이 같은 걸음으로 — 관측자 팔만 구석으로 비키지만 **기다림은 두 팔 다**(창이 같은 econ 날 근처에서 열리게)
+      if (TRK) { if (obs) Z.observe(100, 100); await sleep(4000); }
+      Z.clock(day);
+      const pre = readDb(DB), s0 = sizes(), before = standBy(pre.terr);
+      const e0 = H.SimVillages.econDay();
+      const m0 = Z.msgs.length, logN = Z.log.length;
+      const own = TRK ? new Set(pre.terr.filter((t) => t.village_id === TRK.vid).map((t) => t.cx + ',' + t.cy)) : null;
+      const aimedBy = new Map(); let poll = null;
+      if (obs) {
+        Z.observe(TRK.px, TRK.py);
+        //   누가 뺐나 — 주민이 개체를 **겨눈 순간**을 받아 적는다(`npc.gatherTarget` · 옛 채집 갈래 · 읽기만 · T398 자 문법)
+        poll = setInterval(() => { for (const q of H.players.values()) { if (!q.isNpc || !q.gatherTarget) continue;
+          if (!aimedBy.has(q.gatherTarget)) aimedBy.set(q.gatherTarget, { job: q.npcJob || null, beh: q.behavior || null }); } }, 250);
+      }
+      for (let i = 0; i < 4000; i++) { if (H.SimVillages.econDay() >= e0 + N) break; await sleep(500); }
+      if (poll) clearInterval(poll);
+      await sleep(1500);
+      const post = readDb(DB), s1 = sizes(), after = standBy(pre.terr);
+      const rows = [];
+      //   귀속 — 창 끝 영토(DB)에서 셀 → 그 셀을 가진 마을들(영토 성장은 남의 영토 셀도 편입한다 · `_terrGrow` 후보에 남의 영토 거르개 없음)
+      const ownersAt = new Map(); for (const t of post.terr) { const kk = t.cx + ',' + t.cy; let s = ownersAt.get(kk); if (!s) ownersAt.set(kk, s = []); s.push(t.village_id); }
+      const nameOf = new Map(pre.vils.map((v) => [v.id, v.name]));
+      const grewIds = new Set(pre.vils.filter((v) => (s1.get(v.id) || 0) > (s0.get(v.id) || 0)).map((v) => v.id));
+      for (const v of pre.vils) {
+        const b = before.get(v.id) || [], aS = new Set(after.get(v.id) || []);
+        let recut = 0; const rk = []; for (const k of b) if (post.ledger.get(k) === day && pre.ledger.get(k) !== day) { recut++; rk.push(k); }
+        const grew = grewIds.has(v.id);
+        rows.push({ id: v.id, name: v.name, grew, before: b.length, after: b.filter((k) => aS.has(k)).length, recut,
+          keys: TRK && v.id === TRK.vid ? b.filter((k) => post.ledger.get(k) === day).sort() : undefined,
+          //   안 자란 마을에서 벤 씨 — 그 셀의 창 끝 주인들(자랐나)
+          odd: !grew && recut ? rk.map((k) => ({ k, cell: cellOf.get(k), owners: (ownersAt.get(cellOf.get(k)) || []).map((id) => ({ id, name: nameOf.get(id), grew: grewIds.has(id) })) })) : undefined });
+      }
+      //   마을별 성장 개간 줄(제품 로그 · 창 안) — 이름 → { 줄, 그루 }
+      const growBy = {}; for (const s of Z.log.slice(logN)) { const m = /🏘️ (\S+) 영토 \+(\d+)셀[^\n]*?개간 (\d+)그루/.exec(s); if (m) { const g = growBy[m[1]] || (growBy[m[1]] = { lines: 0, cut: 0 }); g.lines++; g.cut += +m[3]; } }
+      //   관측자가 받은 뺌 — 무엇을 · 어디서(그 마을 영토 안/밖) · 누가(주민이 겨눴나 · 아니면 개간)
+      let removed = null;
+      if (obs) {
+        const byId = new Map(); for (const m of Z.msgs) { const L = m.type === 'resources_spawn' || m.type === 'welcome' ? (m.resources || []) : (m.type === 'resource_spawn' && m.resource ? [m.resource] : []); for (const r of L) byId.set(r.id, r); }
+        removed = { total: 0, byWho: {}, list: [] };
+        //   ⚠`resources_removed`(묶음)는 **청크가 꺼질 때 내려놓는 것**이다(관측자가 비켜 선 구석 청크 · 벤 것이 아니다) —
+        //     벤 것은 한 그루씩 `resource_removed`(`_takeResourceEntity` 문)로 온다. 그것만 센다.
+        for (const m of Z.msgs.slice(m0)) {
+          const ids = m.type === 'resource_removed' ? [m.id] : [];
+          for (const id of ids) {
+            const r = byId.get(id) || {}; removed.total++;
+            const inOwn = own.has(Math.floor((r.x || -1) / 32) + ',' + Math.floor((r.y || -1) / 32));
+            const who = aimedBy.has(id) ? `주민(${aimedBy.get(id).job || '무직'}·${aimedBy.get(id).beh})` : '개간·그 밖';
+            const k = `${inOwn ? '영토 안' : '영토 밖'} · ${r.type || '?'} · ${who}`;
+            removed.byWho[k] = (removed.byWho[k] || 0) + 1;
+            if (removed.list.length < 400 && aimedBy.has(id)) removed.list.push({ id, type: r.type, seedKey: r.seedKey || null, cell: [Math.floor(r.x / 32), Math.floor(r.y / 32)], inOwn, regrown: r.seedKey ? (pre.ledger.has(r.seedKey) ? pre.ledger.get(r.seedKey) : null) : null });
+          }
+        }
+      }
+      out.windows.push({ day, econ: { from: e0, to: H.SimVillages.econDay() }, rows, grow: growCut(Z.log.slice(logN)), growBy, removed, ledger: ledgerDiff(pre.ledger, post.ledger) });
+    }
+    if (obs) Z.unobserve();
+    fs.writeFileSync(OUT, JSON.stringify(out));
+    process.exit(0);
+  })().catch((e) => { try { fs.writeFileSync(process.argv[6], JSON.stringify({ err: String((e && e.stack) || e) })); } catch (x) {} process.exit(1); });
+  return;
+}
+
+// ══ ★[T440] 런타임 게이트 — 부르는 쪽: 부팅 없이 첫 묘목 날 → 첫 성목 날(같은 프로세스 · 창 둘 · econ n일씩) ═════
+//   팔 — 베이스(`T426_BASE_ROOT`) · 가지 · 가지 + 관측자(창 ⓑ 에서 다시 선 그루가 가장 많은 마을)
+//   쓰는 법: T398_DB=<40일 DB> T426_BASE_ROOT=<베이스> [T440_DAYS=10] node scripts/t398-regrow-recut.js --runtime [out.json]
+if (MODE === '--runtime') {
+  (async () => {
+    const SRC = process.env.T398_DB, OUT = process.argv[3] || '/tmp/t440-runtime.json';
+    const BASE = process.env.T426_BASE_ROOT ? path.resolve(process.env.T426_BASE_ROOT) : '';
+    if (!SRC || !fs.existsSync(SRC) || !BASE) { console.log('T398_DB=<40일 DB> T426_BASE_ROOT=<베이스> 가 필요하다'); process.exit(2); }
+    const N = +(process.env.T440_DAYS || 10);
+    const say = (s) => process.stdout.write(s + '\n');
+    const TMP = `/tmp/t440-rt-${process.pid}`;
+    const cp = (from, to) => { for (const x of ['', '-wal', '-shm']) { try { fs.unlinkSync(to + x); } catch (e) {} try { fs.copyFileSync(from + x, to + x); } catch (e) {} } };
+    const rm = (f) => { for (const x of ['', '-wal', '-shm']) { try { fs.unlinkSync(f + x); } catch (e) {} } };
+    const PRIS = `${TMP}-src.db`; cp(SRC, PRIS);
+    const res = { src: SRC, base: BASE, branch: ROOT, days: N, at: new Date().toISOString() };
+    const { CHECK, L0 } = projection(PRIS, res, say);
+    const DAYS = [CHECK[0].day, CHECK[1].day];
+    let k = 0;
+    const arm = (root, obs) => {
+      const db = `${TMP}-a${++k}.db`, o = `${TMP}-o${k}.json`; cp(PRIS, db);
+      const t = Date.now();
+      spawnSync(process.execPath, [__filename, '--run', db, JSON.stringify(DAYS), String(N), o].concat(obs ? [JSON.stringify(obs)] : []),
+        { cwd: root, stdio: 'ignore', timeout: 3600000, env: Object.assign({}, process.env, { T398_ROOT: root }) });
+      let r = null; try { r = JSON.parse(fs.readFileSync(o, 'utf8')); } catch (e) { r = { err: 'no json' }; }
+      try { fs.unlinkSync(o); } catch (e) {} rm(db);
+      r.wallMs = Date.now() - t; return r;
+    };
+    //   관측자 자리 — 창 ⓑ 시계로 입력 DB 를 믿으면 영토에 다시 선 그루가 가장 많은 마을(`T440_OBS=<이름>` 이면 그 마을)
+    const pre = countIdx(L0.terr, L0.ledger, DAYS[1]);
+    const top = [...pre.byVil.entries()].sort((x, y) => (y[1].tree + y[1].sap) - (x[1].tree + x[1].sap))[0];
+    const v = process.env.T440_OBS ? L0.vils.find((q) => q.name === process.env.T440_OBS) : L0.vils.find((q) => q.id === top[0]);
+    if (!v) { say(`관측 마을 ${process.env.T440_OBS} 없음`); process.exit(2); }
+    const trk = { vid: v.id, name: v.name, px: v.cx * 32 + 16, py: v.cy * 32 + 16, observe: false };
+    const obs = Object.assign({}, trk, { observe: true });
+    say(`\n=== ★[T440] 런타임 게이트 — 부팅 없이 ${DAYS[0]}일(첫 묘목) → ${DAYS[1]}일(첫 성목) · 창마다 econ ${N}일 · 관측자 팔 @${v.name} ===`);
+    //   팔 고르기(`T440_ARMS=base,br,brObs` 기본 셋) — 관측 마을을 바꿔 한 팔만 더 볼 때
+    const ARMS = String(process.env.T440_ARMS || 'base,br,brObs').split(',');
+    res.arms = {};
+    for (const k of ARMS) res.arms[k] = arm(k === 'base' ? BASE : ROOT, k === 'brObs' ? obs : trk);
+    const sumRows = (rows, pred) => { const r = rows.filter(pred); return { n: r.length, before: r.reduce((a, x) => a + x.before, 0), after: r.reduce((a, x) => a + x.after, 0), recut: r.reduce((a, x) => a + x.recut, 0) }; };
+    for (const [lab, key] of [['베이스', 'base'], ['가지', 'br'], ['가지 + 관측자', 'brObs']]) {
+      const A = res.arms[key];
+      if (!A) continue;
+      if (A.err) { say(`  ${lab} ★실패 ${String(A.err).slice(0, 300)}`); continue; }
+      say(`  ${lab}(부팅 다시 훑기 ${A.boot.recut ? A.boot.recut.cut + '그루 · 게임일 ' + A.boot.recut.day : '줄 없음'} · ${(A.wallMs / 1000).toFixed(0)}초)`);
+      for (const W of A.windows) {
+        const g = sumRows(W.rows, (x) => x.grew && x.before > 0), s = sumRows(W.rows, (x) => !x.grew && x.before > 0);
+        W.sum = { grew: g, still: s, grewN: W.rows.filter((x) => x.grew).length, stillN: W.rows.filter((x) => !x.grew).length };
+        say(`    ${W.day}일 · econ ${W.econ.from}→${W.econ.to} — 자란 마을 ${W.sum.grewN}곳(다시 선 그루 있는 ${g.n}곳: ${g.before} → ${g.after} · 그날 다시 벰 ${g.recut}) · 안 자란 마을 ${W.sum.stillN}곳(${s.n}곳: ${s.before} → ${s.after} · 다시 벰 ${s.recut}) · 장부 새 행 ${W.ledger.added} · 날 바뀐 행 ${W.ledger.changed}`
+          + (W.removed ? ` · 관측자가 받은 뺌 ${W.removed.total} ${JSON.stringify(W.removed.byWho)}` : ''));
+      }
+    }
+    //   관측자 0 ↔ 1 — 그 마을 영토에서 창의 날로 장부가 간 씨(키 집합)
+    if (res.arms.br && res.arms.brObs && !res.arms.br.err && !res.arms.brObs.err) {
+      res.obsCmp = DAYS.map((d, i) => {
+        const a = res.arms.br.windows[i].rows.find((x) => x.id === obs.vid) || {}, b = res.arms.brObs.windows[i].rows.find((x) => x.id === obs.vid) || {};
+        const A = new Set(a.keys || []), B = new Set(b.keys || []);
+        let onlyA = 0, onlyB = 0; const onlyAKeys = [], onlyBKeys = []; for (const x of A) if (!B.has(x)) { onlyA++; onlyAKeys.push(x); } for (const x of B) if (!A.has(x)) { onlyB++; onlyBKeys.push(x); }
+        //   한쪽만인 씨 — 관측 팔에서 **앞 창들** 동안 주민이 겨눠 뺀 씨인가(옛 채집 · 그 씨의 장부 날이 그때로 갔다)
+        const picked = new Map(); for (let j = 0; j < i; j++) { const R = res.arms.brObs.windows[j].removed; if (R) for (const q of R.list) if (q.seedKey) picked.set(q.seedKey, { day: DAYS[j], type: q.type, inOwn: q.inOwn }); }
+        const why = onlyAKeys.map((x) => ({ k: x, pickedBefore: picked.get(x) || null }));
+        return { day: d, grew0: a.grew, grew1: b.grew, before0: a.before, before1: b.before, after0: a.after, after1: b.after, keys0: A.size, keys1: B.size, onlyA, onlyB, onlyAKeys: why, onlyBKeys };
+      });
+      for (const c of res.obsCmp) say(`  관측자 0 ↔ 1 @${obs.name} ${c.day}일 — 자랐나 ${c.grew0 ? '○' : '✗'} / ${c.grew1 ? '○' : '✗'} · 다시 선 ${c.before0} / ${c.before1} → 남은 ${c.after0} / ${c.after1} · 그날로 간 씨 ${c.keys0} / ${c.keys1} · 한쪽만 ${c.onlyA} / ${c.onlyB}`
+        + (c.onlyA ? ` · 관측 0 에만 있는 씨 ${c.onlyA} 중 관측 팔 앞 창에 주민이 뺀 씨 ${c.onlyAKeys.filter((q) => q.pickedBefore).length} ${JSON.stringify(c.onlyAKeys.map((q) => q.pickedBefore ? q.pickedBefore.type + '@' + q.pickedBefore.day + (q.pickedBefore.inOwn ? '·영토 안' : '·영토 밖') : '—'))}` : ''));
+      //   안 자란 마을에서 벤 씨 — 그 셀의 주인(창 끝 영토)
+      for (const [lab, key] of [['가지', 'br'], ['가지 + 관측자', 'brObs'], ['베이스', 'base']]) { const A = res.arms[key]; if (!A || !A.windows) continue;
+        for (const W of A.windows) for (const r of W.rows) if (r.odd) say(`  ${lab} ${W.day}일 안 자란 ${r.name} 에서 벤 ${r.odd.length} — ${r.odd.map((q) => `${q.k} 셀 ${q.cell} 주인 ${q.owners.map((o) => o.name + (o.grew ? '(자람)' : '(안 자람)')).join('·')}`).join(' ; ')}`
+          + ` · 그 창 성장 개간 줄 ${JSON.stringify(Object.fromEntries(r.odd.flatMap((q) => q.owners).map((o) => [o.name, W.growBy && W.growBy[o.name] || null])))}`); }
+    }
+    for (const kk of ['base', 'br', 'brObs']) if (res.arms[kk] && res.arms[kk].windows) for (const W of res.arms[kk].windows) for (const r of W.rows) delete r.keys;
+    rm(PRIS);
+    fs.writeFileSync(OUT, JSON.stringify(res, null, 1));
+    say(`\n표 → ${OUT}`);
+    process.exit(0);
+  })().catch((e) => { console.error('게이트 크래시:', e); process.exit(1); });
   return;
 }
 

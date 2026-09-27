@@ -2631,8 +2631,12 @@ function _terrGrow(vil) {
   //     `_potSet` 감소 · 쉼터 신설)와 **같은 함수**를 부른다 — 사본 0 · 새 수 0 · 새 손잡이 0.
   lifeSiteReset(vil);   // ★[T41 ① → T342] 표지 + **거부 캐시 파기**. 새 셀 = 새 집터 후보이고, 옛 거부도 뒤집힌다.
   // ★새 셀 개간 — 나무 제거(마을 안엔 숲이 없다)
+  //   ★★[T440 2026-09-27 · ★PM 결정(위임) · T426 §1-1] **영토가 자란 날엔 그 마을 영토 전체를 훑는다.**
+  //     새 셀만 훑으면 옛 영토에 다시 선 그루(색인이 서 있는 단계로 내는 씨 · 첫 묘목 실일 10.3일)는 다음 부팅(T426 다시 훑기)까지 선다.
+  //     주기는 새 수가 아니라 **이 사건**(영토 편입 · 그날 시계)이고, 문은 같다(`clearTreesInCells` — T426 부팅 갈래가
+  //     부르는 그 함수 · 사본 0 · 새 셀은 `own` 안에 있다). 영토가 안 자란 날·안 자라는 마을은 종전 그대로(여기 안 온다).
   let cut = 0;
-  try { if (state.deps.clearTreesInCells) cut = state.deps.clearTreesInCells(added) || 0; } catch (e) {}
+  try { if (state.deps.clearTreesInCells) cut = state.deps.clearTreesInCells(own) || 0; } catch (e) {}
   // ★★[T237 2026-09-13 재민 확정] **비옥도는 안 덮는다.**
   //   종전엔 여기서 `land.fertility = (Σ fert / n) × 1.4` 로 다시 적었다(`6412516a` 2026-07-30 ·
   //   "영토 확장 실동" · 뜻은 리카도였다 — 한계지를 삼키면 평균 지력이 내려간다).

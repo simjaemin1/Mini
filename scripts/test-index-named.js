@@ -9,9 +9,12 @@
 //     ② **같은 이유는 한 번만** — 셀마다 · 부를 때마다 같은 줄을 쏟지 않는다(다른 이유면 또 말한다)
 //     ③ 안 던지면 **아무 말도 안 한다** — "0"(없다)과 "못 물었다"가 갈린다(자명 통과 금지: ①이 말하는 걸 봤다)
 //
-// ★던지게 하는 법 — 제품 손잡이를 만들지 않는다. 존이 `require('./chunk')` 에서 `resourcesAtCell` 을
+// ★던지게 하는 법 — 제품 손잡이를 만들지 않는다. 존이 `require('./chunk')` 에서 셀 색인의 문을
 //   **구조 분해로 받아 가기 전에** 이 프로세스가 그 자리를 감싼다(모듈 캐시 · 깃발이 서면 던진다).
 //   존 소스는 한 글자도 안 바뀐다.
+//   ★[T440] 그 문은 이제 **청크 한 판**(`zone.js _idxAtCell`)이다 — 셀마다 `resourcesAtCell` 을 안 부르고, 셀에 닿는 청크
+//     목록(`chunk.js cellChunksOf` — 색인이 쓰는 그 함수)을 물은 뒤 청크 판을 본다. 판이 이미 있으면 생성은 안 돈다 ⇒
+//     **셀마다 반드시 지나는 자리**(`cellChunksOf`)를 감싼다(판 유무와 무관하게 던진다 · 종전 `resourcesAtCell` 자리와 같은 뜻).
 //
 // ⚠존을 **이 프로세스 안에서** 띄운다(`test-regrow ⑦` · `test-ghost-tree` 와 같은 문법 · `Zone.__testBind`).
 // 실행: node scripts/test-index-named.js
@@ -36,9 +39,9 @@ const ok = (c, m, x) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  �
 
   // ── 감싼다 — 존이 받아 가기 전에(구조 분해는 require 순간의 값을 쥔다) ──────────
   const CH = require(path.join(ROOT, 'server', 'chunk.js'));
-  const _orig = CH.resourcesAtCell;
+  const _orig = CH.cellChunksOf;
   let boom = null;                                   // 문자열이 서면 그 말로 던진다
-  CH.resourcesAtCell = function (...a) { if (boom) throw new Error(boom); return _orig.apply(this, a); };
+  CH.cellChunksOf = function (...a) { if (boom) throw new Error(boom); return _orig.apply(this, a); };
 
   const lines = [];
   const _l = console.log, _w = console.warn, _e = console.error;
@@ -84,7 +87,7 @@ const ok = (c, m, x) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  �
       '★② **다른 이유면 또** 말한다(삼키는 게 아니라 줄이는 것이다)', `${named('영토 개간').length} · ${named('자원 셀 질의').length}`);
   }
   boom = null;
-  CH.resourcesAtCell = _orig;
+  CH.cellChunksOf = _orig;
 
   console.log(`\n=== 결과: ${pass} PASS / ${fail} FAIL ===\n`);
   process.exit(fail ? 1 : 0);
