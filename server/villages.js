@@ -2852,6 +2852,8 @@ function init(deps) {
       //   손잡이 `T423_RATION_ACT` 끔이면 war-core 가 이 둘을 부르지 않는다(종전 장부 = 비트 동일).
       rationEat: (w, day) => { try { return _warRationEat(w, day); } catch (e) { console.error(`[${state.zoneId}] 🍙 [T423] 먹기 실패(그날은 장부로):`, e.message); return null; } },
       rationCollect: (w) => _warRationCollect(w),
+      // ★[T466] 약탈 곳간 몫을 몸이 받는다(몸이 있을 때만 true — 아니면 war-core 가 종전대로 즉시 옮긴다) · 손잡이 끔이면 안 불린다
+      lootCarry: (w, items, kind) => { try { return _warLootAccept(w, items, kind); } catch (e) { console.error(`[${state.zoneId}] 💰 [T466] 노획 받기 실패(즉시 정산으로):`, e.message); return false; } },
       onEngage: (w, day, why) => {
         try { return _warEngage(w, day, why); }
         catch (e) { state._warStat.engageErr++; console.error(`[${state.zoneId}] ⚔️ 교전 훅 실패(이 전투만 war-core 정산으로 떨어진다):`, e.message); return false; }
@@ -3574,6 +3576,7 @@ function _warEndFight(body, why, winner) {
     w._capResolve = null;
   }
   for (const pid of deadA) _warBagDrop(w, players.get(pid));   // ★[T423] 전사자의 짐은 몸과 함께 떨어진다(드랍 — 궤주 규칙 자리)
+  if (_lootActOn()) _warLootPickup(w, winner === 'A' ? atkSurv : defSurv, winner === 'A' ? 'A' : 'B');   // ★[T466] 이긴 쪽 산 몸이 곳간 몫 + 전장 더미를 싣는다(끔이면 안 돈다)
   for (const pid of deadA) _warDespawnPid(pid);
   for (const pid of deadB) _warDespawnPid(pid);
   if (f && f.engagedOnce) { try { _warBroadcastBattle(body, state._warTickAt || Date.now(), 'resolved'); } catch (_) { } }
@@ -3814,6 +3817,7 @@ function _warRationLayDownBody(body) {
   for (const pid of (body.pids || [])) { const p = players.get(pid); if (!p || p._warPackOf !== w.id) continue; const bag = _warBagView(p, keys); for (const k in bag) items[k] = (items[k] || 0) + bag[k]; _warBagWrite(p, keys, {}); delete p._warPackOf; }
   let n = 0; for (const k in items) n += items[k];
   if (w._rationBook && w._fgKeys) w._rationBook.fgBack = (w._rationBook.fgBack || 0) + _warFgUnits(w, items);
+  if (w._rationBook && w._rationBook.lootDay != null && w._rationBook.homeDay == null) { w._rationBook.homeDay = state.world.day; w._rationBook.homeAt = state._warTickAt || 0; }   // ★[T466] 노획이 집에 닿은 날
   return n > 0 ? WC.rationLayDown(w, items) : 0;
 }
 function _warRationCollect(w) {
@@ -3821,6 +3825,7 @@ function _warRationCollect(w) {
   const players = state.deps.players, keys = w._packKeys || [], items = {};
   for (const pid of (body.pids || [])) { const p = players.get(pid); if (!p || p._warPackOf !== w.id) continue; const bag = _warBagView(p, keys); for (const k in bag) items[k] = (items[k] || 0) + bag[k]; _warBagWrite(p, keys, {}); delete p._warPackOf; }
   if (w._rationBook && w._fgKeys) w._rationBook.fgBack = (w._rationBook.fgBack || 0) + _warFgUnits(w, items);
+  if (w._rationBook && w._rationBook.lootDay != null && w._rationBook.homeDay == null) { w._rationBook.homeDay = state.world.day; w._rationBook.homeAt = state._warTickAt || 0; }   // ★[T466] 노획이 집에 닿은 날
   return Object.keys(items).length ? items : null;
 }
 function _warBagDrop(w, p) {
@@ -3828,10 +3833,90 @@ function _warBagDrop(w, p) {
   const keys = w._packKeys || [], bag = _warBagView(p, keys), fe = state.war.bagFE(bag, _warPackCtx(w));
   _warBagWrite(p, keys, {}); delete p._warPackOf;
   if (w._rationBook) { w._rationBook.drop += fe; if (w._fgKeys) w._rationBook.fgDrop = (w._rationBook.fgDrop || 0) + _warFgUnits(w, bag); }
+  if (_lootActOn()) { const pile = w._lootPile || (w._lootPile = {}); for (const k in bag) pile[k] = (pile[k] || 0) + bag[k]; }   // ★[T466] 떨어진 짐은 전장에 남는다(이긴 쪽이 줍는다)
   return fe;
+}
+// ════════════════════════════════════════════════════════════════
+// ★★[T466 2026-09-27 · 군량 = 행위 ⓒ · PM #68 · 재민 비전 "물리 노획 → 운반 → 귀가 저장"] **약탈은 몸이 옮긴다** — 손잡이 `T466_LOOT_ACT`(끔).
+//   ① 노획: 전투가 끝난 그 자리(`_warEndFight` · 있는 결판 사건)에서 이긴 쪽 산 몸이 ⓐ 곳간 몫(war-core 정산이 뗀 **그 수 그대로** ·
+//     `_warLootMove` → `lootCarry` 가 여기 `w._lootPend` 에 맡긴다) ⓑ 전장 더미(`_warBagDrop` 이 쌓은 전사·포로의 짐)를 제 짐에 싣는다.
+//     상한 = `carry.js CAP_KG`(25kg · 있는 짐 문법 — T441 과 같은 몸 기준) · 무게 `weights.js`. 곳간 몫 먼저, 더미 나중(각각 섭식 정본이 뗀 순서).
+//   ② 넘치면 남긴다: 곳간 몫의 남은 것은 **그 곳간에 그대로**(`lootGive` = `_warFoodGive` 로 되돌림 — 뗀 품목 그대로) ·
+//     더미의 남은 것은 전장에 버려진다(`lootLost` · 다음 원정이 줍는 자리는 없다 — 더미는 이 전쟁의 것이다).
+//   ③ 운반·귀가: 공격 쪽은 **그 짐 그대로** 귀환 행군(T423 몸 · 하루 경계에 상하는 것부터 먹는다 · T458) → 집에 닿으면 T423 내려놓기
+//     (`rationLayDown` = `_warFoodGive`). 방어 쪽은 제 마을 안이라 주운 것을 그 자리에서 곳간에(`lootGive`).
+//   ★새 수 0 · 정산 수 무변(옮김만 몸) · 끔이면 이 절은 한 줄도 안 돈다(더미 0 · 훅 안 불림 = T458 비트 동일).
+function _lootActOn() { return typeof process !== 'undefined' && !!process.env && process.env.T466_LOOT_ACT === '1'; }
+function _warLootAccept(w, items, kind) {
+  if (!_lootActOn() || !w || !items || !w._packOnBodies) return false;
+  const body = state.warBodies && state.warBodies.get(w.id);
+  if (!body || body.phase === 'return' || body.ended || !(body.pids && body.pids.length)) return false;
+  if (kind === 'battle' && !body.fight) return false;
+  const pend = w._lootPend || (w._lootPend = {});
+  for (const k in items) { const q = items[k] || 0; if (q > 0) pend[k] = (pend[k] || 0) + q; }
+  const bk = w._rationBook; if (bk) { bk.lootSettle = +((bk.lootSettle || 0) + state.war.bagFE(items, _warPackCtx(w))).toFixed(6); bk.lootKind = kind; }
+  return true;
+}
+// 이긴 쪽 몸(pids)이 src(품목 → 양)에서 제 짐으로 싣는다 — 몸마다 남은 kg 만큼 · 품목 순서대로. 반환 = 실은 품목 합. src 는 남은 것으로 줄어든다.
+function _warLootLoad(w, bodies, src, keys) {
+  const W = _weights(), cc = _carryCfg(), cap = (cc && cc.CFG && cc.CFG.CAP_KG) || 0;
+  const kgOf = (k) => (W && W.kgOfOrDefault) ? W.kgOfOrDefault(k) : 0;
+  const got = {};
+  for (const p of bodies) {
+    for (const k of Object.keys(src)) {
+      const q = src[k] || 0; if (!(q > 1e-9)) continue;
+      const kg = kgOf(k), room = cap > 0 ? cap - _warBagKg(p) : Infinity;
+      if (!(room > 1e-9)) break;
+      const take = kg > 0 ? Math.min(q, room / kg) : q;
+      if (!(take > 1e-9)) continue;
+      if (!p.inventory) p.inventory = {};
+      p.inventory[k] = (p.inventory[k] || 0) + take; src[k] = q - take; got[k] = (got[k] || 0) + take;
+      if (keys && keys.indexOf(k) < 0) keys.push(k);
+    }
+  }
+  return got;
+}
+function _warLootPickup(w, winSurvPids, side) {
+  const WC = state.war; if (!_lootActOn() || !w || !WC || !WC.lootGive) return;
+  const pend = w._lootPend, pile = w._lootPile; w._lootPend = null; w._lootPile = null;
+  if (!pend && !pile) return;
+  const players = state.deps.players, ctx = _warPackCtx(w), bk = w._rationBook || null, W = _weights();
+  const kgSum = (it) => { let kg = 0; for (const k in it) kg += (it[k] || 0) * ((W && W.kgOfOrDefault) ? W.kgOfOrDefault(k) : 0); return kg; };
+  const bodies = [];
+  for (const pid of (winSurvPids || [])) { const p = players.get(pid); if (!p || (p.hp != null && p.hp <= 0)) continue; if (side === 'A' && p._warPackOf !== w.id) continue; bodies.push(p); }
+  let fgKg = 0; if (side === 'A' && w._fgKeys && W && W.kgOfOrDefault) for (const p of bodies) for (const k of w._fgKeys) fgKg += ((p.inventory && p.inventory[k]) || 0) * W.kgOfOrDefault(k);   // 길에서 딴 것이 이미 차지한 kg(T441)
+  let gG = {}, gP = {};
+  if (side === 'A') {
+    const keys = w._packKeys || (w._packKeys = []);
+    if (pend) gG = _warLootLoad(w, bodies, pend, keys);
+    if (pile) gP = _warLootLoad(w, bodies, pile, keys);
+  } else if (pile) {
+    //   방어 쪽 — 제 마을 안: 몸마다 남은 kg 만큼 주워 **그 자리에서 곳간에**(짐을 곳간에 두는 것이 귀가다 · 손 칸은 안 쓴다).
+    const Wt = _weights(), cc = _carryCfg(), cap = (cc && cc.CFG && cc.CFG.CAP_KG) || 0;
+    let room = 0; for (const p of bodies) room += cap > 0 ? Math.max(0, cap - _warBagKg(p)) : Infinity;
+    for (const k of Object.keys(pile)) {
+      const q = pile[k] || 0; if (!(q > 1e-9) || !(room > 1e-9)) continue;
+      const kg = (Wt && Wt.kgOfOrDefault) ? Wt.kgOfOrDefault(k) : 0, take = kg > 0 ? Math.min(q, room / kg) : q;
+      pile[k] = q - take; gP[k] = take; room -= take * kg;
+    }
+    if (Object.keys(gP).length) WC.lootGive(w.def.econ, gP);
+  }
+  const feG = WC.bagFE(gG, ctx), feP = WC.bagFE(gP, ctx);
+  const leftG = pend ? WC.lootGive(w.def.econ, pend) : 0;   // 못 실은 곳간 몫 — 그 곳간에 그대로
+  let lost = 0; if (pile) lost = WC.bagFE(pile, ctx);        // 못 주운 더미 — 전장에 버려진다
+  if (bk) {
+    bk.lootSide = side; bk.lootDay = state.world.day; bk.lootAt = state._warTickAt || 0; bk.lootBodies = bodies.length; bk.lootFgKg = +fgKg.toFixed(3);
+    bk.lootG = +((bk.lootG || 0) + feG).toFixed(6); bk.lootLeftG = +((bk.lootLeftG || 0) + leftG).toFixed(6);
+    if (side === 'A') bk.lootP = +((bk.lootP || 0) + feP).toFixed(6); else bk.lootPB = +((bk.lootPB || 0) + feP).toFixed(6);
+    bk.lootLost = +((bk.lootLost || 0) + lost).toFixed(6);
+    bk.lootKg = +((bk.lootKg || 0) + kgSum(gG) + kgSum(gP)).toFixed(3);
+    if (side === 'A' && w._fgKeys) bk.fgLoot = +((bk.fgLoot || 0) + _warFgUnits(w, gG) + _warFgUnits(w, gP)).toFixed(6);
+  }
+  if (WC.warLog) WC.warLog(state.world.day, (side === 'A' ? w.atk.name : w.def.name) + ' 노획을 짐에 — 곳간 몫 ' + feG.toFixed(1) + (leftG > 0 ? '(남김 ' + leftG.toFixed(1) + ')' : '') + ' · 전장 ' + feP.toFixed(1) + (lost > 0 ? '(버림 ' + lost.toFixed(1) + ')' : '') + ' · 몸 ' + bodies.length);
 }
 
 function _warCleanupBody(body, releaseRemaining) {
+  if (body && body.w && (body.w._lootPend || body.w._lootPile)) _warLootPickup(body.w, [], 'A');   // ★[T466] 싣지 못한 채 몸이 끝나면: 곳간 몫은 그 곳간에 · 더미는 버림(맡긴 것이 사라지지 않게)
   if (releaseRemaining) _warRationLayDownBody(body);   // ★[T423] 집에 닿은 몸이 짐을 내려놓는다(풀려나기 전에 · 끔이면 0)
   if (releaseRemaining) { for (const pid of (body.pids || [])) _warReleasePid(pid); for (const pid of (body.defPids || [])) _warReleasePid(pid); }
   state.warBodies.delete(body.w.id);
@@ -3917,7 +4002,7 @@ function tickWarBodies(now) {
       if (!body.defGroup && f.state !== 'engaged') {   // 수비가 없다 — 목표(마을 중심)에 닿으면 무저항 함락(war-core)
         const c = WL.centroid(f, 'A');
         if (c && Math.hypot(c.x - f.objective.x, c.y - f.objective.y) <= WL.WAR_ENGAGE_R * WL.M_PER_CELL) {
-          try { state.war._warWalkoverOutcome(w.atk, w.def, state.world.day, w.casus); } catch (_) { }
+          try { state.war._warWalkoverOutcome(w.atk, w.def, state.world.day, w.casus, w); } catch (_) { }   // ★[T466] w — 켬이면 곳간 몫을 몸이 옮긴다
           WL.settle(f, 'walkover', 'A');
           w._sortie = false; w.phase = 'return'; w.eta = state.world.day + (w.marchDays || 1);
           _warEndFight(body, 'walkover', 'A');
@@ -4404,6 +4489,7 @@ function __p3Bind(mock) {
     _warDraftPids, _warReleasePid, econDayToMs, _warEnsureBody, _warSampleComp, _vbFootprint,
     threatOf, _warWriteThreats, _warOutMul, _lifeJobSites, _lifeJobSiteOK, _warRoutePts, _warTreeCell, computeRoutePts,
     _econSameOf, _warEatBySpoil,   // ★[T458] 같은 물건 한 줄 · 상하는 것부터 — 하네스가 **이 함수**로 등가 표를 센다(사본 0)
+    _warLootAccept, _warLootPickup,   // ★[T466] 약탈 = 행위 — 하네스가 운영과 같은 훅을 war-core 에 건다
     _warRationEat, _warRationCollect, _warRationLoad,   // ★[T423] 짐이 먹는다 — 하네스가 **이 함수들**을 war-core 에 건다(운영과 같은 두 훅)   // ★[T329] 위협 T·현장 반경 — 하네스가 **이 함수들**을 그대로 부른다(사본 0)
   };
 }

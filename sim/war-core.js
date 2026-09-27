@@ -401,6 +401,8 @@ function _capComplete(fromVil, toVil, npc) {
 //   손잡이: `T403_ARMS_LEDGER=1` 일 때만. 끔이면 `w._arms` 가 안 생기고 아래 두 함수는 0 을 낸다 = 비트 동일.
 // ★[T423] 짐이 먹는다(군량 = 행위 ⓐ) — 손잡이 `T423_RATION_ACT=1` 일 때만. 끔이면 아래 문들이 한 글자도 안 돈다.
 function _rationActOn() { return typeof process !== 'undefined' && !!process.env && process.env.T423_RATION_ACT === '1'; }
+// ★★[T466] 약탈 = 행위(군량 행위 ⓒ · PM #68 · 재민 "즉시 판정이 아니라 물리 노획 → 운반 → 귀가 저장") — 손잡이 끔.
+function _lootActOn() { return typeof process !== 'undefined' && !!process.env && process.env.T466_LOOT_ACT === '1'; }
 function _armsLedgerOn() { return typeof process !== 'undefined' && !!process.env && process.env.T403_ARMS_LEDGER === '1'; }
 function warArmsOut(e, force) {
   if (!_armsLedgerOn() || !e || !e.storage) return null;
@@ -764,6 +766,18 @@ function createWar(opts) {
     if (t.got > 0 && toE) _warFoodGive(toE, t.items, 1);
     return t.got;
   }
+  // ★★[T466] 약탈 곳간 몫 — **정산 수 그대로**(amount) 같은 문으로 뗀다. 켬 ∧ 짐이 몸에 있음 ∧ 호스트가 받음(`opts.lootCarry`)이면
+  //   받은 쪽 몸이 싣고 걸어 귀가해 T423 내려놓기 문(`_warFoodGive`)으로 곳간에 넣는다 — 여기선 A 곳간에 **안 준다**.
+  //   호스트가 못 받으면(몸 없음·헤드리스·끔) 종전과 한 글자 같은 즉시 이동. 반환 = 뗀 양(정산 수 · 로그·통계 무변).
+  function _warLootMove(w, D, A, amount, kind) {
+    if (!(amount > 0)) return 0;
+    if (!(w && _lootActOn() && _rationActOn() && w._packOnBodies && typeof opts.lootCarry === 'function')) return _warFoodMove(D, A, amount);
+    const t = _warFoodTake(D, amount, FOOD);
+    if (t.got > 0) { let ok = false; try { ok = !!opts.lootCarry(w, t.items, kind); } catch (_) { ok = false; } if (!ok) _warFoodGive(A, t.items, 1); }
+    return t.got;
+  }
+  // 몸이 다 싣지 못한 곳간 몫은 **그 곳간에 그대로**(뗀 품목 그대로 되돌림) · 몸이 집에 닿으면 받은 쪽 곳간에 — 둘 다 같은 문.
+  function lootGive(e, items) { if (!e || !items) return 0; const fe = bagFE(items, { _world: e._world }); _warFoodGive(e, items, 1); return fe; }
 
   // ═══════════ ★★[T423] 짐이 먹는다 — 군량 = 행위 ⓐ(설계_군량_행위 §1-ⓐ · PM #68) ═══════════
   //   싣기는 무변(`_opPackLoad` 가 곳간에서 섭식 정본 순서로 뗀다) → 호스트가 그 팩을 **병사 몸의 inventory** 로 나눠 싣고
@@ -834,9 +848,9 @@ function createWar(opts) {
     return back;
   }
   // 무혈 항복 공통 효과 — 조공 계약+곳간 공납(WAR_LOOT 절반·★음수 하한 0 — 빈 곳간 항복=공납 0+조공 계약만, 랩 최신 수리)·사상 0·방화 없음·원한/피로 소폭
-  function _opDoSurrender(atkVil, defVil, day) {
+  function _opDoSurrender(atkVil, defVil, day, w) {
     const A = atkVil && atkVil.econ, D = defVil && defVil.econ; if (!A || !D) return 0;
-    const take = _warFoodMove(D, A, Math.max(0, _feOf(D)) * WAR_LOOT * 0.5);   // ★[T295 ③] 곳간 품목대로(식량등가)
+    const take = _warLootMove(w, D, A, Math.max(0, _feOf(D)) * WAR_LOOT * 0.5, 'surrender');   // ★[T295 ③] 곳간 품목대로(식량등가) · ★[T466] 켬이면 몸이 옮긴다
     if (D.npcs.length > 4) _addTribute(defVil, atkVil, day);
     warAddGrudge(D, atkVil.name, WAR_GRUDGE_UP * 0.5);
     A._warFatigue = (A._warFatigue || 0) + 0.10; D._warFatigue = (D._warFatigue || 0) + 0.25;
@@ -846,10 +860,10 @@ function createWar(opts) {
   }
   // 무저항 함락(walkover) — 방어 징발 불가(주민<2)·전투·사상·유령 0. 승리 권리는 J 상한(§17) 그대로.
   //   ※방화(builtFloors--)는 랩 시각층 소유 — 서버 실체 집(buildings 행)엔 미적용(econ 무의미·엔티티 부채로 기록, 2파 TODO 주석).
-  function _warWalkoverOutcome(atkVil, defVil, day, casus) {
+  function _warWalkoverOutcome(atkVil, defVil, day, casus, w) {
     const A = atkVil && atkVil.econ, D = defVil && defVil.econ; if (!A || !D) return;
     const J = warJustice(A, defVil.name, casus);
-    const loot = _warFoodMove(D, A, Math.max(0, _feOf(D)) * (WAR_J_LOOT0 + WAR_J_LOOT1 * J));   // ★[T295 ③]
+    const loot = _warLootMove(w, D, A, Math.max(0, _feOf(D)) * (WAR_J_LOOT0 + WAR_J_LOOT1 * J), 'walkover');   // ★[T295 ③] · ★[T466]
     for (const pg of ['tigerhide', 'hide', 'bronze', 'jade']) { if (D.storage[pg] > 0) { const q = D.storage[pg] * WAR_LOOT_PREST * (WAR_J_PREST0 + WAR_J_PREST1 * J); D.storage[pg] -= q; A.storage[pg] = (A.storage[pg] || 0) + q; } }
     if (D.npcs.length > 4) _addTribute(defVil, atkVil, day);
     warAddGrudge(D, atkVil.name, WAR_GRUDGE_UP * 0.5);
@@ -903,7 +917,7 @@ function createWar(opts) {
     if (fd >= WAR_SURR_FOODD) return false;
     const _oddsTh = fd < 2 ? WAR_SURR_ODDS * 2.2 : WAR_SURR_ODDS;   // ★절박 항복(랩 수리): 곳간 2일 미만이면 문턱 완화 — 곳간 음수 추락·공납 불능 결함 차단
     if (_opDefOdds(w.def, w.force || 0) >= _oddsTh) return false;
-    _opDoSurrender(w.atk, w.def, day);
+    _opDoSurrender(w.atk, w.def, day, w);
     _opSetSiege(w, false, day);
     w.op = 'withdraw'; w._sortie = false; w.phase = 'return'; w.eta = day + (w.marchDays || 1);   // ★[T295] 환급은 복귀 한 곳
     return true;
@@ -996,7 +1010,7 @@ function createWar(opts) {
   function _opResolveEngage(w, day, why) {
     const D = w.def && w.def.econ;
     _opSetSiege(w, false, day);   // 개전=봉쇄 해제(전투가 봉쇄를 대체 — 랩 8283 정합)
-    if (!D || D.npcs.length < 2) { _warWalkoverOutcome(w.atk, w.def, day, w.casus); }
+    if (!D || D.npcs.length < 2) { _warWalkoverOutcome(w.atk, w.def, day, w.casus, w); }
     else {
       if (typeof opts.onEngage === 'function') { let took = false; try { took = !!opts.onEngage(w, day, why); } catch (_) { } if (took && w.phase === 'battle') return; }
       warResolveBattle(w, day);
@@ -1042,7 +1056,7 @@ function createWar(opts) {
     let outcome = '격퇴';
     if (atkWin) {
       st.atkWin++; warAddTrauma(A, w.def.name, -0.4);
-      const loot = _warFoodMove(D, A, Math.max(0, _feOf(D)) * (WAR_J_LOOT0 + WAR_J_LOOT1 * J)); st.loot++;   // ★[T295 ③] outcome = '약탈곡물' + loot.toFixed(0) + '(J ' + J.toFixed(2) + ')';
+      const loot = _warLootMove(precomputedRes ? w : null, D, A, Math.max(0, _feOf(D)) * (WAR_J_LOOT0 + WAR_J_LOOT1 * J), 'battle'); st.loot++;   // ★[T466] 실체 교전만(헤드리스 결판은 몸이 없다 — 종전)   // ★[T295 ③] outcome = '약탈곡물' + loot.toFixed(0) + '(J ' + J.toFixed(2) + ')';
       for (const pg of ['tigerhide', 'hide', 'bronze', 'jade']) { if (D.storage[pg] > 0) { const t = D.storage[pg] * WAR_LOOT_PREST * (WAR_J_PREST0 + WAR_J_PREST1 * J); D.storage[pg] -= t; A.storage[pg] = (A.storage[pg] || 0) + t; } }
       if (w.casus === 'feud') { warAddGrudge(A, w.def.name, -1); outcome += ' +원한해소'; }
       else if (w.casus === 'territory') { A._terrSat = day + 720; outcome += ' +경계양보(2년)'; }
@@ -1114,7 +1128,7 @@ function createWar(opts) {
         const _rel = warDraftReleaseWar(w);
         if (e) { e._warMobUntil = 0; e._warMobFrac = 0; }
         if (_back > 0 || _rel > 0) log(day, w.atk.name + ' 귀환 — 군량 잔량 ' + _back.toFixed(0) + ' 곳간 복귀 · 징발 해제 ' + _rel + '명');
-        if (w._rationBook) { const b = w._rationBook; log(day, w.atk.name + ' 짐 장부 — 적재 ' + b.load.toFixed(1) + ' = 장부 ' + b.ledgerEaten.toFixed(1) + ' + 몸이 먹음 ' + b.eaten.toFixed(1) + ' + 내려놓음 ' + b.back.toFixed(1) + ' + 드랍 ' + b.drop.toFixed(1)); }
+        if (w._rationBook) { const b = w._rationBook; log(day, w.atk.name + ' 짐 장부 — 적재 ' + b.load.toFixed(1) + (b.pickFE ? ' + 길에서 딴 ' + b.pickFE.toFixed(1) : '') + ((b.lootG || b.lootP) ? ' + 노획 ' + ((b.lootG || 0) + (b.lootP || 0)).toFixed(1) : '') + ' = 장부 ' + b.ledgerEaten.toFixed(1) + ' + 몸이 먹음 ' + b.eaten.toFixed(1) + ' + 내려놓음 ' + b.back.toFixed(1) + ' + 드랍 ' + b.drop.toFixed(1)); }
         if (w._arms) log(day, w.atk.name + ' 귀환 — 무기 반납 ' + _armsBack + '/' + w._arms.out + '(민병 ' + w._arms.militia + ')');
         WARS.splice(i, 1);
       }
@@ -1172,7 +1186,8 @@ function createWar(opts) {
     OPS_ON: true, _opNpcDecide, _opCheckSurrender, _opDefenseDaily, _warWalkoverOutcome, _opDoSurrender, _opSetSiege, _opPackLoad, _opPackRefund,
     // ★[T295] 동원의 대가 — 결속(pid 정본) · 군량 환급 한 곳. 호스트(server/villages.js)와 하네스가 이 문만 쓴다.
     warDraftBind, warDraftFill, warDraftReleasePid, warDraftReleaseWar, warDraftCount, warRationRefund,
-    packSplit, bodyEat, bagFE, rationLayDown, rationActOn: _rationActOn,   // ★[T423] 짐이 먹는다(손잡이 끔이면 packSplit 이 null)
+    packSplit, bodyEat, bagFE, rationLayDown, rationActOn: _rationActOn,
+    lootGive, lootActOn: _lootActOn, warLog: (day, m) => log(day, m),   // ★[T466] 약탈 = 행위(손잡이 끔 · 끔이면 호스트 훅을 안 부른다)   // ★[T423] 짐이 먹는다(손잡이 끔이면 packSplit 이 null)
     // ★[3파 포로] 접점
     CAP_ON: WAR_CAP_ON, warCaptiveDaily,
     get WARS() { return WARS; }, get TRIBUTES() { return TRIBUTES; },
