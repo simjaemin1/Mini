@@ -1368,7 +1368,7 @@ console.log('\n⑭ T421_SPATIAL_INC 격자 증분 — 조회 결과 비트 동�
 // =============================================================================
 // ★왜 [T427 · T399 회부 1] 1500 × 뭍(A* 시간의 81~85 %)의 주인은 직업 현장(`_workSite`) 출근이고, 새 main 아침엔 그중 30쌍이
 //   **반경 안에서 영영 못 닿는** 현장이었다(사냥터가 강 건너). 후보는 자리로만 골랐지 집에서 닿는지는 안 봤다.
-//   거는 것: ⓐ 손잡이 하나 · 기본 끔 ⓑ 배정 세 자리(벌목·채광·채집 · 어부 · 사냥꾼)가 같은 한 식 — 끄면 종전 `sites[h % n]`
+//   거는 것: ⓐ 손잡이 하나 · 기본 끔(★T451 부터 **기본 켬** · 되돌림 `=0`) ⓑ 배정 세 자리(벌목·채광·채집 · 어부 · 사냥꾼)가 같은 한 식 — 끄면 종전 `sites[h % n]`
 //     ⓒ 도달 술어는 `computeNpcPath` 의 그 술어·그 반경(존 `npcCanReach` · 칸 예산 없음) ⓓ 켬 = 못 닿는 현장 0 · 종전 자리가 닿으면 **비트 동일**
 //     ⓔ 전부 못 닿으면 집 ⓕ 되묻기 0(같은 날 같은 쌍) ⓖ 존 밖(술어 없음)이면 켜도 끈 것 ⓗ 사냥꾼 하루 옮기기(`huntHunters`)도 같은 규칙
 //     ⓘ 미끼 — 술어가 늘 "닿는다"면(= 안 본다) 못 닿는 현장이 **다시 배정된다**.
@@ -1387,8 +1387,17 @@ console.log('\n⑮ T427 ① — 닿는 현장만(배정 순간 집 → 후보 ·
      '⑮ [전제] 제품에서 **그 글자** 다섯을 떴다(켬 술어 · 집 · 도달 기억 · 현장 고르기 · 사냥꾼 하루 옮기기)',
      `${onSrc.length} · ${homeSrc.length} · ${reachSrc.length} · ${siteSrc.length} · ${huntSrc.length}자`);
   const VC = codeOnly(V);
-  ok(/const T427_SITE_REACH = process\.env\.T427_SITE_REACH === '1';/.test(V) && (VC.match(/T427_SITE_REACH/g) || []).length === 3 && !/T427_SITE_REACH/.test(codeOnly(Z)),
-     '⑮-a 손잡이 `T427_SITE_REACH` 하나 · **기본 끔**(env 가 그 글자일 때만 참 · 선언 2 + 켬 술어 1 · 존은 안 읽는다)');
+  //   ★[T451 2026-09-27 · PM 결정] 기본 **켬** — 되돌림 `=0` 만 끈다. 켬/끔 두 팔은 아래 판이 **나란히** 그대로 잰다(기본값과 무관 · `mk(on)`).
+  const declM = V.match(/const T427_SITE_REACH = (process\.env\.T427_SITE_REACH !== '0');/);
+  ok(!!declM && (VC.match(/T427_SITE_REACH/g) || []).length === 3 && !/T427_SITE_REACH/.test(codeOnly(Z)),
+     '⑮-a 손잡이 `T427_SITE_REACH` 하나 · **기본 켬**[T451](env 가 `0` 일 때만 끔 · 선언 2 + 켬 술어 1 · 존은 안 읽는다)');
+  {
+    //   그 식 **글자 그대로**를 env 넷에 대 본다 — 없음·빈칸·`1` 은 켬 · `0` 만 끔(되돌림 한 글자)
+    const envOf = new Function('process', 'return (' + (declM ? declM[1] : 'null') + ');');
+    const r = [undefined, '', '1', '0'].map((e) => envOf({ env: e === undefined ? {} : { T427_SITE_REACH: e } }));
+    ok(r[0] === true && r[1] === true && r[2] === true && r[3] === false,
+       '⑮-a 되돌림은 `T427_SITE_REACH=0` 한 글자 — 없음·빈칸·`1` 은 켬 · `0` 만 끔(끔 = 아래 판의 끈 팔 = 종전 글자)', `없음 ${r[0]} · 빈칸 ${r[1]} · 1 ${r[2]} · 0 ${r[3]}`);
+  }
   const EXPR = '_t427On() ? _t427Site(vil, npc, sites, h, day) : { x: sites[h % sites.length].x, y: sites[h % sites.length].y, day }';
   const nAssign = V.split('npc._workSite = ' + EXPR).length - 1;
   ok(nAssign === 3, '⑮-b 배정 세 자리(벌목·채광·채집 · 어부 · 사냥꾼)가 **같은 한 식** — 끄면 종전 `sites[h % n]` 그대로', `${nAssign}/3`);

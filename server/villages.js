@@ -5881,7 +5881,7 @@ function _lifeJobSiteOK(vil, px, py, R_out) {   // 현장 하나가 R_out 안인
 //   묻는 것은 배정 순간뿐(하루 한 번) — 같은 날 같은 (집 셀 → 후보 셀)은 마을이 기억해 두 번 안 묻는다(되묻기 0).
 //   ★끄면(기본) 아래 셋은 불리지 않는다 — 배정 네 곳의 종전 글자가 그대로 돈다(비트 동일).
 //   ★존 밖(3시드 자 · 헤드리스 하네스)엔 술어가 주입되지 않는다 ⇒ 켜도 끈 것과 같다(`_t427On` 이 거짓).
-const T427_SITE_REACH = process.env.T427_SITE_REACH === '1';
+const T427_SITE_REACH = process.env.T427_SITE_REACH !== '0';   // ★[T451 2026-09-27 · PM 결정] **기본 켬** — 되돌림 `T427_SITE_REACH=0`(= 종전 글자 · 비트 동일) · 위 머리의 "기본 끔"은 T427 때 말
 function _t427On() { return T427_SITE_REACH && !!(state.deps && typeof state.deps.npcCanReach === 'function'); }
 function _t427HomeOf(vil, npc) {   // 집(없으면 회관 중심) — 도달을 묻는 출발점이자 "현장이 없을 때의 현장"
   return (npc && npc.npcHomeX != null) ? { x: npc.npcHomeX, y: npc.npcHomeY } : { x: vil.ccx * SZ + SZ / 2, y: vil.ccy * SZ + SZ / 2 };

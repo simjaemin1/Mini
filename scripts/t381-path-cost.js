@@ -548,8 +548,8 @@ async function runArm(arm, idx) {
       T399_RERUN: /Rr$/.test(arm) ? '1' : '',                                   // ★[T399 ①] 계측 팔만 — 1500 × 뭍을 풀어서 다시
       T399_CELL_CAP: /Cap$/.test(arm) ? '1' : (process.env.T399_CELL_CAP || ''),
       TERRAIN_SEG_INDEX: /Seg0$/.test(arm) ? '0' : (process.env.TERRAIN_SEG_INDEX || ''),
-      T427_SITE_REACH: /Reach/.test(arm) ? '1' : (process.env.T427_SITE_REACH || ''),     // ★[T427 ①] 닿는 현장만 팔
-      ZONE_CLOCK_ANCHOR: /Clk/.test(arm) ? 'boot' : (process.env.ZONE_CLOCK_ANCHOR || '') }) });   // ★[T427 ②] 시계를 기동에 묶은 팔   // ★[T399 · 베이스 갈래] T406 선분 색인 끈 팔(되돌림 글자 그대로)
+      T427_SITE_REACH: /Reach0/.test(arm) ? '0' : /Reach/.test(arm) ? '1' : (process.env.T427_SITE_REACH || ''),     // ★[T427 ①] 닿는 현장만 팔 · ★[T451] 기본 켬이라 끈 팔은 글자 `Reach0`(= 되돌림 `=0`)
+      ZONE_CLOCK_ANCHOR: /Clk/.test(arm) ? require('./lib-tick-rule').CLOCK_ANCHOR.ZONE_CLOCK_ANCHOR : (process.env.ZONE_CLOCK_ANCHOR || '') }) });   // ★[T427 ②] 시계를 기동에 묶은 팔(★[T451] 글자는 규약 ⓕ `lib-tick-rule.CLOCK_ANCHOR` 하나 — 값 'boot' 무변)   // ★[T399 · 베이스 갈래] T406 선분 색인 끈 팔(되돌림 글자 그대로)
   const getj = async (p, h) => { try { const r = await fetch(`http://localhost:${ZP}${p}`, h ? { headers: h } : undefined); return await r.json(); } catch (e) { return null; } };
   const perf = (reset) => getj(`/perf${reset ? '?reset=1' : ''}`, { 'x-zone-secret': SECRET });
   const life = () => getj('/lifedbg', { 'x-zone-secret': SECRET });
