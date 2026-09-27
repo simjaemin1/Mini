@@ -1523,6 +1523,10 @@
       if (existingTarget && existingTarget.role === 'observer' && existingTarget.ws.readyState === 1) {
         console.log('[handoff] promote existing observer ws');
         existingTarget._promoteSentAt = performance.now(); // 끊김 측정용
+        // ★[T439 2026-09-27] 승격 = **첫 넘기와 같은 상태**로 — 이 소켓이 예전에 주 소켓이었으면 pong 기록(`lastPongAt`·`firstPingAt`)이
+        //   떠날 때 값으로 낡아 있어 위 pong 파수꾼이 0.6초 만에 좀비로 끊었다(되돌아오면 새 손님 · T428 회부 ①).
+        //   ⚠둘 다 비운다 — `lastPongAt` 만 비우면 "ping 후 15초간 pong 0" 문(낡은 `firstPingAt`)이 대신 끊는다(T439 표 ⓐ′).
+        existingTarget.lastPongAt = 0; existingTarget.firstPingAt = 0;
         existingTarget.ws.send(JSON.stringify({ type: 'promote_to_primary', token }));
         existingTarget.role = 'primary';
         // server가 welcome 보낼 거 — 기존 handleMessage('welcome')에서 처리
