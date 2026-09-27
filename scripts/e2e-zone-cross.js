@@ -225,6 +225,53 @@ function corridor(dir) {
     ok(!!who0 && who1 === who0, `ⓑ6 [${tag}] ★되돌아와도 **같은 사람**이다(재연결 0 — 계정 id 같음)`, `${who0} → ${who1}${recs.length ? ' · ' + recs.map((l) => l.replace(/^\d+ /, '')).join(' / ').slice(0, 160) : ''}`);
   }
 
+  // ── ⓡ 왕복 — 경계 양쪽 몇백 px 안에서 열 번씩 오간다 (T439) ────────────────────
+  //   T428 이 잡은 병: 이웃 소켓이 **예전에 주 소켓이었으면** 승격 순간 그 소켓의 pong 기록이 낡아
+  //   파수꾼(`30-n-net` pong watchdog)이 0.6초 만에 좀비로 끊었다 → 새 접속 = 새 손님 · 광장. 한 번 왕복은
+  //   둘째 넘기에서만 밟히므로, **여러 번** 오가야 두 소켓이 모두 "옛 주 소켓"인 판을 여러 번 밟는다.
+  //   재는 것(다리마다): 주 존이 바뀌었나 · 계정 id 같은가 · `[recover]` 0 · 광장 근처로 튀지 않았나 ·
+  //   승격 → 그 소켓의 첫 pong 까지 ms(`_promoteSentAt` → `lastPongAt` — 클라가 이미 들고 있는 두 칸).
+  const ROUNDS = parseInt(process.env.ZX_ROUNDS || '10', 10);
+  console.log(`\n[ⓡ 왕복 — 경계를 ${ROUNDS}번씩 오간다]`);
+  const MS = HB.mainSquare ? [HB.worldOffsetX + HB.mainSquare.x, (HB.worldOffsetY || 0) + HB.mainSquare.y] : null;
+  const firstPongMs = [];
+  // ★첫 pong 은 **하네스가** 잰다(제품 코드 0): 10ms 마다 주 소켓의 두 칸(`_promoteSentAt` · `lastPongAt`)을 보고
+  //   승격 뒤 처음으로 `lastPongAt` 이 승격 시각을 넘는 순간을 적는다(pong 은 1초 간격이라 10ms 표본이면 첫 것을 안 놓친다).
+  //   ⚠`_promoteSentAt` 은 승격 welcome 이 오면 0 으로 지워진다(`30-n-net` "promote→welcome gap" 줄) — 그래서 하네스가 **제 칸**(`_zxProm`)에 옮겨 둔다.
+  await page.evaluate(() => { window.__zxFP = []; setInterval(() => { try { for (const [zid, c] of conns) {
+      if (c._promoteSentAt && c._zxProm !== c._promoteSentAt) { c._zxProm = c._promoteSentAt; c._zxDone = false; }
+      if (c._zxProm && !c._zxDone && c.lastPongAt && c.lastPongAt > c._zxProm) { window.__zxFP.push([zid, c.lastPongAt - c._zxProm]); c._zxDone = true; } } } catch (e) {} }, 10); });
+  for (const [tag, C, fwd, back] of [['한반도 ↔ 닛폰', CE, ['s', 'd'], ['w', 'a']], ['한반도 ↔ 중원북', CW, ['w', 'a'], ['s', 'd']]]) {
+    if (!C) continue;
+    await warpW(C.from, C.wy); await sleep(2500);
+    const who0 = await page.evaluate(() => (window.__getPlayerId ? window.__getPlayerId() : null));
+    const rec0 = clog.filter((l) => /\[recover\]/.test(l)).length;
+    let legs = 0, legsOk = 0, same = 0, nearSq = 0, maxStep = 0, far = 0; const ms = [];
+    for (let r = 0; r < ROUNDS; r++) {
+      for (const [keysDown, target] of [[fwd, C.nb], [back, 'hanbando']]) {
+        const w = await walk(keysDown, target, 30000);
+        legs++; if (w.pz === target) legsOk++;
+        maxStep = Math.max(maxStep, w.jumpDist);
+        for (const q of w.pts) { if (Math.abs(q.x - C.seam) > STAND) far++; if (MS && Math.hypot(q.x - MS[0], q.y - MS[1]) < VIEW) nearSq++; }
+        const who = await page.evaluate(() => (window.__getPlayerId ? window.__getPlayerId() : null));
+        if (who && who === who0) same++;
+
+      }
+    }
+    const recs = clog.filter((l) => /\[recover\]/.test(l)).slice(rec0);
+    const fp = await page.evaluate(() => { const a = window.__zxFP || []; window.__zxFP = []; return a; });
+    for (const [, v] of fp) ms.push(v);
+    firstPongMs.push(...ms);
+    const srt = ms.slice().sort((a, b) => a - b), med = srt.length ? srt[srt.length >> 1] : null;
+    ok(legsOk === legs && legs === ROUNDS * 2, `ⓡ [${tag}] ★${ROUNDS}번 왕복 — 다리 ${legs}개 전부 주 존이 바뀌었다`, `${legsOk}/${legs}`);
+    ok(same === legs, `ⓡ1 [${tag}] ★★**재탄생 0** — 다리마다 계정 id 가 같다`, `${same}/${legs} · ${who0}`);
+    ok(recs.length === 0, `ⓡ2 [${tag}] 클라 \`[recover]\` 0(스스로 끊고 다시 붙은 적 없다)`, recs.length ? recs.slice(0, 2).map((l) => l.replace(/^\d+ /, '')).join(' / ').slice(0, 160) : '0');
+    ok(nearSq === 0 && maxStep <= CS / 2, `ⓡ3 [${tag}] 광장으로 튄 표본 0 · 가장 큰 걸음 ≤ ${CS / 2}px`, `광장 ${VIEW}px 안 ${nearSq} · 최대 걸음 ${maxStep.toFixed(0)}px`);
+    ok(far === 0, `ⓡ4 [${tag}] 전 구간이 경계 양쪽 ${STAND}px 안이다(카드 조건)`, `밖 ${far}`);
+    ok(ms.length === legs, `ⓡ5 [${tag}] 승격마다 그 소켓에 **첫 pong 이 왔다**(승격 → 첫 pong ms 를 잴 수 있다)`, `${ms.length}/${legs} · 중앙 ${med != null ? med.toFixed(0) : '-'}ms · 최대 ${srt.length ? srt[srt.length - 1].toFixed(0) : '-'}ms`);
+  }
+  try { fs.writeFileSync(path.join(SHOTS, 'first-pong-ms.json'), JSON.stringify(firstPongMs)); } catch (e) {}
+
   // ── 오류 ─────────────────────────────────────────────────────────────────
   const zerr = procs.filter((p) => ZIDS.includes(p._name)).map((p) => [p._name, p._out.split('\n').filter((l) => /(^|\s)(TypeError|ReferenceError)\b|Cannot read|is not a function/.test(l)).length + p._err.split('\n').filter((l) => /^\s+at\s+\S/.test(l)).length]);
   ok(zerr.every(([, n]) => n === 0), 'ⓔ 존 셋 로그에 예외 0', zerr.map(([z, n]) => `${z} ${n}`).join(' · '));
