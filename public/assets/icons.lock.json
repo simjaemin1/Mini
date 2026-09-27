@@ -175,6 +175,7 @@
   "herb": "868d364f8b9eadf1",
   "herring": "72831b90445a70f6",
   "hide": "1d6e6423875b5c5b",
+  "honey": "956c31188f52ef44",
   "indigo_plant": "f3adacd7ad8fe0a0",
   "iron": "19796ac868e9b3c6",
   "iron_ore": "1276d1ce3d8c7156",
@@ -200,6 +201,7 @@
   "mulberry_fruit": "cbf055b349edc458",
   "mulberry_leaf": "d3cd3aec609846ba",
   "mungbean": "a26046a8cd2c0f99",
+  "mushroom": "2a7577013e388bab",
   "nickel": "a916bf81f6f9e7f8",
   "ore": "f45fee01f0d535a8",
   "ore_chunk": "9ff6814caf955bed",
@@ -268,6 +270,7 @@
   "trout": "1ec4bdd04281cd14",
   "turnip": "2f5f6bea86c67238",
   "twig": "80dc5a2cb12bd583",
+  "vegetable": "3006a3aeeeb446c6",
   "water_bottle": "9070687ded7a51c1",
   "water_dropwort": "d987a657d0efe101",
   "wheat": "c35d563d58a18f0f",
@@ -616,11 +619,11 @@
  },
  "_상자": {
   "_": "이 잠금표를 마지막으로 다시 쓴 상자. 그림을 구운 상자가 아니다 [T260]. 같은 커밋인데 그림이 다르면 굽기 로그의 [box] 줄과 이 칸을 먼저 견준다.",
-  "cpu": "Intel(R) Xeon(R) Processor @ 2.80GHz",
+  "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
   "threads": 2,
   "simd": "fma avx avx2 avx512f avx512dq avx512bw avx512vl avx512_vnni",
   "node": "v22.22.2",
-  "commit": "e37f5ba6",
-  "당시": "2026-09-23"
+  "commit": "ee27832c",
+  "당시": "2026-09-27"
  }
 }
