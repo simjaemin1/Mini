@@ -9654,7 +9654,7 @@ function tryFurnaceAdvance(player, buildingId) {
   if (!b || b.type !== 'furnace_site') return;
   return _siteAdvance(player, b, _furnaceSpec(b.data && b.data.kind));
 }
-function tryKilnStart(player, atX, atY) { return _siteStart(player, atX, atY, KILN_SPEC); }
+function tryKilnStart(player, atX, atY) { if (!require('./era').hasTech('charcoal_kiln')) { send(player.ws, { type: 'notice', text: `${KILN_SPEC.ko} 설계는 아직 이 세상에 알려지지 않았다` }); return; } return _siteStart(player, atX, atY, KILN_SPEC); }   // ★[T463] 표(`era.js UNLOCK.bronze.tech`)가 정본 — 노(`tryFurnaceStart`)와 같은 문
 function tryKilnAdvance(player, buildingId) {
   const b = buildings.get(buildingId);
   if (!b || b.type !== 'kiln_site') return;

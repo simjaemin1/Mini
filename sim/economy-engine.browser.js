@@ -4081,6 +4081,12 @@ function kilnWant(v) {   // 서는 조건 — 숲 마을
   const N = (v.npcs && v.npcs.length) || 0;
   return ((v.counts && v.counts.lumberjack) || 0) > 0 && (v.storage.wood || 0) > (RESERVE_PC.wood || 0) * N;
 }
+// ★[T463] 노의 숯 목표 — 원석 비축 목표(`RESERVE_PC.ore × 인구`)와 지금 원석 중 큰 쪽을 녹일 숯(× 원석당 숯). 숯가마(`kilnDay`)와 파생수요가 같은 식을 부른다.
+function furnaceCharcoalTarget(v) {
+  const S = _smeltUses(); if (!S || !v || !v.storage) return 0;
+  const N = (v.npcs && v.npcs.length) || 0;
+  return Math.max((RESERVE_PC.ore || 0) * N, v.storage.ore || 0) * (S.fuelPerOre().charcoal || 0);
+}
 function kilnDay(v) {
   const S = _smeltUses(); if (!S || !v || !v.storage) return null;
   const N = (v.npcs && v.npcs.length) || 0;
@@ -4094,8 +4100,7 @@ function kilnDay(v) {
   }
   const reserve = (RESERVE_PC.wood || 0) * N;
   const spare = (v.storage.wood || 0) - reserve;
-  const perOre = (S.fuelPerOre().charcoal || 0);
-  const target = Math.max((RESERVE_PC.ore || 0) * N, v.storage.ore || 0) * perOre;
+  const target = furnaceCharcoalTarget(v);   // ★[T463] 식 한 곳 — 파생수요(`derivedInputTarget`)가 같은 함수를 부른다(산술 불변)
   const gap = target - (v.storage.charcoal || 0);
   if (!(spare >= S.CHARCOAL_KILN_WOOD) || !(gap > 0)) return { batches: 0 };
   const n = Math.min(S.kilnBatchesPerDay(_dayLengthMs()), Math.floor(spare / S.CHARCOAL_KILN_WOOD), Math.ceil(gap / S.CHARCOAL_KILN_YIELD));
@@ -6010,6 +6015,16 @@ const COPPER_DERIV_ON = (typeof process !== 'undefined' && process.env && proces
 const COPPER_DERIV_DAYS = (typeof process !== 'undefined' && process.env && process.env.COPPER_DERIV_DAYS != null)
   ? Number(process.env.COPPER_DERIV_DAYS) : 30;
 function derivedInputTarget(v, r) {
+  // ★★[T463 2026-09-27] **숯도 파생수요다** — 노가 있는 마을(캐는 마을이거나 녹일 원석이 있는 마을 · `_trySmelt` 의 그 문)은
+  //   숯을 **쓸 데가 실제로 있다**. 그런데 T443 연료는 곳간에 숯이 있을 때만 `_cons(charcoal)` 를 적는다 — 숯이 없는 광산 마을은
+  //   노천 탄화(통나무)로 때우니 숯 흐름(flowT)이 **0** 이고, 값이 바닥(0.02)이라 캐러밴이 숯을 안 싣는다(보고 §ⓐ: 800일 숯 leg 1건).
+  //   ⇒ 목표 = 숯가마가 굽는 그 목표(`furnaceCharcoalTarget` · 원석 비축 × 숯 2) · 모자람(목표 − 곳간)은 있는 가격 기계가 값으로 만든다.
+  //   ★뜻은 T443 연료 **와** T452 숯가마가 둘 다 켜졌을 때만 있다 — 하나라도 끄면 0(손잡이 0 · 끔 = 종전 비트).
+  if (r === 'charcoal') {
+    if (!v || !v.storage || !smeltFuelOn() || !kilnActOn() || !oreMixOf(v)) return 0;
+    if (!(((v.counts && v.counts.miner) || 0) > 0 || (v.storage.ore || 0) >= SMELT_MIN_ORE)) return 0;
+    return furnaceCharcoalTarget(v);
+  }
   if (!COPPER_DERIV_ON || r !== 'copper' || !v || !v.storage) return 0;
   if (_ERA_METAL('copper') && !_eraKnows('copper')) return 0;   // 시대가 모르는 금속은 파생수요도 없다
   // ★★[1차 실측으로 뒤집은 게이트] 처음엔 "무기 커버리지(v2 CAP_TARGET.weapon)가 미달일 때만"으로 짰다.
@@ -7341,7 +7356,7 @@ module.exports = {
   RAW_GRAINS, RAW_GRAIN_FOOD_FACTOR,   // ★[T73] 계수를 하네스·계측기가 옮겨 적지 않게(사본 금지)
   farmFlowPerDay, farmLandBoost, harvestToGranary,   // ★[T100] 같은 이유 — 하네스·계측기가 앵커를 옮겨 적지 않는다
   fishToGranary, fishActOn, fishBudgetPerCell, T312_FISH_ACT,   // ★[T312] 어부 행위 — 생활층이 부르는 문 셋 + 손잡이(하네스가 옮겨 적지 않는다)
-  T452_KILN_ACT, kilnActOn, kilnWant, kilnDay,   // ★[T452] 숯가마 행위
+  T452_KILN_ACT, kilnActOn, kilnWant, kilnDay, furnaceCharcoalTarget,   // ★[T452] 숯가마 행위
   T443_SMELT_FUEL, smeltFuelOn, smeltFuelPerOre, smeltFuelTake,   // ★[T443] 제련 연료 — 하네스·계측기가 표를 옮겨 적지 않게
   T419_STONE_REAL, stoneRealPer, stoneRealOn,   // ★[T419] 돌 쓰는 실물 — 하네스·계측기가 표·유도를 옮겨 적지 않게 내준다
   T435_GRANARY_ACT, granaryEconMaterials,   // ★[T435] 곳간 증설 재료 — 생활층·하네스가 표를 옮겨 적지 않게
