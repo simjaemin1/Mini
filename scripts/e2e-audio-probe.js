@@ -501,6 +501,75 @@ const db = (x) => (x > 0 ? +(20 * Math.log10(x)).toFixed(2) : -Infinity);
       ok(scanN.some >= 1 && scanN.moose === 0, '52 새 종(메추라기·꿩)은 보이면 운다 · 표에 없는 종(무스)은 무음', `울림 ${scanN.some} · 무스 ${scanN.moose}`);
     }
 
+    // 54 ★★★[T457] **전쟁 병사 몸** — `tick` 의 병사 hp 가 **줄어든 순간**만 운다(직전 값 = 명부 `c.others`).
+    //   T445 교전 30분 실측의 꼴 그대로 먹인다: 줄어든 순간 **34**(그중 0 이 된 것 **9**) → 울림 34(`hit_body` 25 · `downed` 9).
+    //   명부 합치기는 제품(`30-n-net` handleMessage)이 `recv` **뒤에** 하는 일이라, 여기서도 매 전문 뒤에 hp 를 적어 넣는다(같은 순서).
+    {
+      const WB = MAN.warBody || {}, MK = WB._mark;
+      await page.evaluate(() => { myPid = 'p1'; myAbsPredicted = { x: 0, y: 0 }; window.__t457 = { role: 'primary', others: new Map(), meta: { worldOffsetX: 0, worldOffsetY: 0 } }; });
+      // 전문 하나 = 병사 몸 여럿 · 끝나면 명부 합치기(hp·좌표)
+      const tick = (players) => page.evaluate(({ players }) => {
+        const c = window.__t457;
+        window.__sfx.recv({ type: 'tick', players }, c);
+        for (const pp of players) { const o = c.others.get(pp.pid) || { pid: pp.pid }; o.x = pp.x; o.y = pp.y; o.hp = pp.hp; c.others.set(pp.pid, o); }
+      }, { players });
+      const hpChanged = (m) => page.evaluate((m) => { const c = window.__t457; window.__sfx.recv(m, c); const o = c.others.get(m.pid); if (o) o.hp = m.hp; }, m);
+      const tapN = () => page.evaluate(() => window.__sfx.tap(1e15).n);
+      const keysSince = (n) => page.evaluate((n) => window.__sfx.tap(n).plays.map((p) => p.k), n);
+      const body = (pid, x, hp, mark) => { const b = { pid, x, y: 0, hp, vx: 0, vy: 0 }; if (mark !== false) b[MK] = 0; return b; };
+      const gap = () => page.waitForTimeout(450);   // `hit_body` 0.22s · `downed` 0.38s — 겹쳐 `maxSame` 에 막히지 않게
+      // 데우기(버퍼 받기) — 첫 울림은 받는 중이라 무음이 계약이다
+      await tick([body('w0', 50, 100)]); await tick([body('w0', 50, 60)]); await tick([body('w0', 50, 0)]);
+      await page.waitForTimeout(1500);
+      // ⓐ 34 순간 — 병사 열 · 곁(≤ 200px) · 25 번 깎이고 9 번 0 이 된다
+      const plan = [];
+      for (let i = 0; i < 9; i++) { const pid = 's' + i; plan.push([pid, 30 + i * 18, 100]); plan.push([pid, 30 + i * 18, 70]); plan.push([pid, 30 + i * 18, 40]); plan.push([pid, 30 + i * 18, 0]); }   // 9 × (첫 봄 + 줄 둘 + 0)
+      for (let i = 0; i < 7; i++) { plan.push(['t' + i, 60 + i * 15, 100]); plan.push(['t' + i, 60 + i * 15, 88]); }                                            // 7 × 줄 하나
+      const n0 = await tapN(); let drops = 0, zeros = 0; const last = {};
+      for (const [pid, x, hp] of plan) {
+        if (last[pid] != null && hp < last[pid]) { drops++; if (hp <= 0) zeros++; }
+        last[pid] = hp; await tick([body(pid, x, hp)]); await gap();
+      }
+      const ks = await keysSince(n0);
+      const nHit = ks.filter((k) => k === WB.hurt).length, nDown = ks.filter((k) => k === WB.down).length;
+      ok(drops === 34 && zeros === 9 && nHit === 25 && nDown === 9 && ks.length === 34,
+         '54a ★★★병사 hp 가 줄어든 순간 34 → 울림 34(`hit_body` 25 · 0 이 된 9 → `downed` 9) — 한 사건 = 한 소리',
+         `줄어듦 ${drops}(0 됨 ${zeros}) · 울림 ${ks.length} = ${WB.hurt} ${nHit} · ${WB.down} ${nDown}`);
+      // ⓑ 미끼 — 같은 hp 가 매 틱 온다(병사가 그대로 서 있다 · 25 틱). 직전 값을 안 보고 "maxHp 보다 낮다" 로 재면 25 번 운다.
+      const n1 = await tapN(); let naive = 0;
+      for (let i = 0; i < 25; i++) { await tick([body('t0', 60, 88)]); if (88 < 100) naive++; }
+      await gap();
+      const same = (await keysSince(n1)).length;
+      ok(same === 0 && naive === 25, '54b ★자명 통과 금지 — 같은 hp 가 25 틱 와도 **0**(직전 값을 안 보는 자는 25 번 운다)', `층 ${same} · 직전 값 없는 셈 ${naive}`);
+      // ⓒ 반경 밖 5 · 처음 보는 몸 · 오른 hp · 병사 표식 없는 몸 — 전부 0
+      const n2 = await tapN();
+      for (let i = 0; i < 5; i++) { await tick([body('far' + i, 900, 100)]); await tick([body('far' + i, 900, 50)]); await gap(); }
+      const far = (await keysSince(n2)).length;
+      const n3 = await tapN();
+      await tick([body('new1', 40, 30)]); await gap();                                   // 처음 보는 몸(직전 값 없음)
+      await tick([body('t1', 75, 95)]); await gap();                                     // 88 → 95 오름
+      await tick([body('v1', 40, 100, false)]); await tick([body('v1', 40, 60, false)]); await gap();   // 마을 사람(표식 없음 — `hp_changed` 가 맡는다)
+      const quiet = (await keysSince(n3)).length;
+      ok(far === 0, `54c ★반경 밖(900px · 키 반경 ${(MAN.keys[WB.hurt] || {}).radius}) 병사 다섯은 안 운다`, `${far}`);
+      ok(quiet === 0, '54d 처음 보는 몸 · 오른 hp · 병사 표식 없는 몸 — 0', `${quiet}`);
+      // ⓔ 이중 0 — 내 몸(주 연결 p1)이 병사 칸을 달고 와도 `tick` 에선 안 운다 · 내 다침은 `hp_changed`(hpWhy) 한 번
+      await tick([body('p1', 0, 100)]); await gap();
+      const n4 = await tapN();
+      await hpChanged({ type: 'hp_changed', pid: 'p1', hp: 70, why: 'mob' });
+      await tick([body('p1', 0, 70)]); await tick([body('p1', 0, 40)]); await gap();
+      const mine = (await keysSince(n4)).length;
+      ok(mine === 1, '54e ★★내 몸은 **한 번**만 운다(`hpWhy` · `tick` 길은 내 pid 를 안 본다) — 두 번이면 빨갛다', `${mine}`);
+      // ⓕ 이중 0 — 사람이 병사를 치면 `hp_changed`(why player) 가 먼저 명부를 낮춘다 → 뒤따르는 같은 값 `tick` 은 조용
+      const n5 = await tapN();
+      await hpChanged({ type: 'hp_changed', pid: 't2', hp: 50, why: 'player' });
+      await tick([body('t2', 90, 50)]); await gap();
+      const pvp = (await keysSince(n5)).length;
+      ok(pvp === 1, '54f 사람이 병사를 친 한 대 = 울림 1(`hp_changed` 1 + 같은 값 `tick` 0)', `${pvp}`);
+      ok(MK && !new RegExp(`['"\`]${MK}['"\`]`).test(require('./code-only.js')(fs.readFileSync(path.join(ROOT, 'public/client/48-a-audio.js'), 'utf8'))),
+         '54g 병사 표식 칸 이름은 표(`warBody._mark`)가 댄다 — 층 코드에 박혀 있지 않다', `_mark = ${MK}`);
+      await page.evaluate(() => { myPid = null; delete window.__t457; });
+    }
+
     // ④ ★[T305] 옛 곡선이 증폭기였다는 것을 **이 자로 다시 보인다** — 자명 통과 금지.
     //    같은 입력을 옛 곡선에 통과시켜 원점 기울기를 잰다. 1 이 나오면 자가 고장 난 것이다.
     {
