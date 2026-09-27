@@ -1690,7 +1690,8 @@ const ITEM_RECIPES = {
   ...HutStages.HUT_RECIPES,
   // ★[재민 확정 2026-08-02 노 건설] 숯 — 노 연료. 장작으론 900℃ 위로 못 간다(era.js FUEL_CAP).
   //   숯가마 설치물은 후속(회부_플레이어_제련_노모델)로 이월 — MVP 는 제작 경로.
-  charcoal: { from: { wood: 3 }, to: { charcoal: 2 },                    label: '숯 (통나무 3 → 숯 2 — 노 연료)' },
+  //   ★[T443] 숯 줄의 정본은 `server/smelt-uses.js` 다(econ 제련 연료가 같은 표로 통나무를 유도한다 · 값·순서 무변).
+  ...require('./smelt-uses').SMELT_RECIPES,
   // ★★[자염 배치 2026-09-01] **물병을 되살린다.** §0 실측: `water_bottle` 은 무게표(1.00 "박 물병 + 물")·
   //   라벨·아이콘·상자 허용목록에 **다 있는데 만들 길이 없었다** — 서버 레시피가 아예 없었다
   //   (클라에 폴백 목록이 있었지만 그건 `cookRecipes` 가 빌 때만 뜬다 = 영영 안 뜬다). **죽은 품목**이었다.
@@ -9469,37 +9470,24 @@ function tryHutAdvance(player, buildingId) {
 //     · **사유지 필수**(움집은 남의 사유지만 피하면 됐다): 개인=본인만, 길드=같은 길드원만(건설·조업 동일 규칙)
 //     · 완공물이 조업 설비다: 철 정광 + 숯 → era.js 물리(smeltYield)대로 철. 청동기엔 수율 3.4% —
 //       "거의 불가능"이 노를 지어도 유지되고, 시대가 열리면 같은 노가 67.8%를 낸다(지식이 풀린 것).
-const FURNACE_STAGES = [
-  { need: { stone: 6 },            tool: 'pickaxe', wear: 2, label: '① 노 터 다지기(돌 기초 6)' },
-  { need: { stone: 8, wood: 4 },                            label: '② 노벽 쌓기(돌 8·통나무 4)' },
-  { need: { hide: 4, wood: 2 },                             label: '③ 풀무 걸기(가죽 4·통나무 2)' },
-];
+const SmeltUses = require('./smelt-uses');   // ★[T443] 노·숯가마·제련 연료 정본 하나(econ 제련이 켬에서 같은 표로 숯을 유도한다)
+const FURNACE_STAGES = SmeltUses.FURNACE_STAGES;
 // ★★[2026-08-02] 노 티어 — kind 파라미터화. **게이트는 era.hasTech 하나뿐이다**(표 복제 금지).
 //   도가니로(crucible)는 청동기 tech 라 늘 지을 수 있고, 괴련로(bloomery)는 early_iron 이 열려야 한다.
 //   고증: 괴련로는 "더 뜨거운 도가니"가 아니라 **환원 분위기를 유지하도록 설계된 원통 노**다 —
 //   더 크고(돌·통나무 더 많이), 송풍구가 따로 있다. 그래서 공정 자재가 더 든다.
 //   ⇒ 새 노를 추가할 때 고칠 곳은 이 표 하나. 온도·수율은 era.js FURNACE 가 이미 안다.
-const FURNACE_KINDS = {
-  crucible: { ko: '도가니로', stages: FURNACE_STAGES },
-  bloomery: { ko: '괴련로', stages: [
-    { need: { stone: 10 },           tool: 'pickaxe', wear: 3, label: '① 괴련로 터 다지기(돌 기초 10)' },
-    { need: { stone: 14, wood: 6 },                            label: '② 원통 노벽 쌓기(돌 14·통나무 6)' },
-    { need: { hide: 6, wood: 4 },                              label: '③ 송풍구·풀무 걸기(가죽 6·통나무 4)' },
-  ] },
-};
-const FURNACE_FUEL_PER_ORE = 2;   // 정광 1덩이(3.5kg)당 숯 2 — 고증: 제련 연료는 광석의 수 배 무게
+const FURNACE_KINDS = SmeltUses.FURNACE_KINDS;   // ★[T443] 표는 `smelt-uses.js`(값·키 순서 무변)
+const FURNACE_FUEL_PER_ORE = SmeltUses.FURNACE_FUEL_PER_ORE;   // 정광 1덩이(3.5kg)당 숯 2 — 고증: 제련 연료는 광석의 수 배 무게 · ★[T443] 정본 `smelt-uses.js`
 
 // ═══ ★[2026-08-02] 숯가마(炭窯) — 노와 **같은 건설 계약**(사유지·2×2·단계·재료) ═══
 //   고증: 노천 탄화(구덩이에 덮어 굽기)는 수율이 나쁘다 — 공기가 새 들어가 상당량이 그냥 재가 된다.
 //   진짜 탄요는 밀폐된 가마에 연도(굴뚝)를 내어 공기를 통제한다. 같은 나무로 숯이 훨씬 많이 나온다.
 //   ⇒ 제작창 레시피(통나무 3 → 숯 2)는 노천 탄화로 남기고, 가마를 지으면 통나무 3 → 숯 4.
 //   가마는 풀무가 필요 없다(불을 불려 태우는 게 아니라 **공기를 막아** 찌는 것) — 그래서 2단계다.
-const CHARCOAL_KILN_STAGES = [
-  { need: { stone: 4 },            tool: 'pickaxe', wear: 2, label: '① 가마 구덩이 파기(돌 기초 4)' },
-  { need: { stone: 6, wood: 2 },                            label: '② 가마 봉토·연도 내기(돌 6·통나무 2)' },
-];
-const CHARCOAL_KILN_WOOD = 3;    // 1회 조업 장입량(통나무)
-const CHARCOAL_KILN_YIELD = 4;   // 1회 산출(숯) — 제작창 노천 탄화는 같은 통나무 3에 숯 2
+const CHARCOAL_KILN_STAGES = SmeltUses.CHARCOAL_KILN_STAGES;   // ★[T443] 정본 `smelt-uses.js`
+const CHARCOAL_KILN_WOOD = SmeltUses.CHARCOAL_KILN_WOOD;    // 1회 조업 장입량(통나무) — 3
+const CHARCOAL_KILN_YIELD = SmeltUses.CHARCOAL_KILN_YIELD;   // 1회 산출(숯) — 4 — 제작창 노천 탄화는 같은 통나무 3에 숯 2
 // ★[2026-08-02d ④] 가득 채우기 상한 — 한 번 클릭에 최대 몇 회분을 굽나. **가마 용량이 아니라 UI 폭주 방지**다
 //   (인벤 통나무 999를 한 클릭에 333회 돌려 로그·저장이 튀는 것만 막는다). 수지는 1회 조업 ×n 로 정확히 같다.
 const KILN_BATCH_MAX = 20;
