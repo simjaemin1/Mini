@@ -543,6 +543,126 @@ console.log('\n⑭ [T374] 수요 멈춤 (손잡이 기본 끔)');
 }
 
 // ── ⑫ 접점 심볼 — 카드가 지목한 이름이 전부 제자리에 ────────────────────────────
+// ── ⑮ [T450] 야생 군락 — 서식이 낳는다(T415 표 · 수동 군락 53 의 지형별 밀도 · 손잡이 기본 끔) ──────────
+//   ⓐ 유도 — 밀도·모양·서식 술어가 **정본에서 다시 계산한 값**과 같다(하네스에 수 0 · 계산은 `_wildClass` 가 아니라 지형 함수로 다시)
+//   ⓑ 켬/끔 — 끄면 0 · 켜면 **더해지기만** 한다(다른 개체 비트 동일)
+//   ⓒ ★미끼 — 서식을 `_wildClass` 가 아니라 **지형 함수로 직접** 다시 본다(술어를 늘 참으로 하면 들에 군락이 서서 빨갛다)
+//   ⓓ 색인 = 청크(T301) · 청크 경계 넘는 군락은 한 점도 두 번 안 난다
+//   ⓔ 링 군락 무접촉 · 재생은 그 종의 주기(`GROVE_KINDS` · T122 `_stage`)
+//   ⓕ 채집꾼·원정군의 종 집합(`_T347_TYPES`)엔 이 넷이 없다 — 마을 채집이 보는 개체는 켬/끔 비트 동일
+console.log('\n⑮ [T450] 야생 군락 — 서식이 낳는다 (T415 표 · 손잡이 기본 끔)');
+{
+  const CH = require(path.join(ROOT, 'server', 'chunk.js'));
+  const F2 = require(path.join(ROOT, 'server', 'forage.js'));
+  const TT = require(path.join(ROOT, 'server', 'terrain.js'));
+  const { ZONES } = require(path.join(ROOT, 'server', 'zone-config.js'));
+  if (TT.setZonesMeta) TT.setZonesMeta(ZONES);
+  const CSRC = fs.readFileSync(path.join(ROOT, 'server', 'chunk.js'), 'utf8');
+  const CC = codeOf(CSRC);
+  const Z = 'hanbando', ZN = ZONES[Z], cs = CH.CHUNK_SIZE;
+  const W = CH.WILD, HAB = CH.WILD_HAB;
+  delete process.env.T450_WILD_GROVES;
+  ok(!!W && W.ON() === false, '⑮ ★★손잡이 `T450_WILD_GROVES` 가 **기본 끔**이다');
+  ok(/if \(WILD\.ON\(\) && WILD_PMAX > 0\) \{/.test(CC), '⑮ ★야생 군락 갈래 전체가 **손잡이 뒤**다 — 끄면 한 번도 안 돈다(청크 산출 비트 동일)');
+  // ⓐ 서식 술어는 **있는 둘**(`decideVillageType` 의 물가 거리·깊은 숲 문턱) + 숲 그리드 문턱 — 글자로 맞댄다
+  const dv = /function decideVillageType\(x, y\) \{[\s\S]*?\n  \}/.exec(CSRC);
+  const dvD = dv && +((/const D = (\d+);/.exec(dv[0]) || [])[1]), dvF = dv && +((/getForestMultiplier\(zone\.id, x, y\) > ([\d.]+)\)/.exec(dv[0]) || [])[1]);
+  ok(dv && dvD === W.RIV_D && dvF === W.FOREST, 'ⓐ ★서식 술어의 두 수가 `decideVillageType` 의 그 줄 그대로다(물가 거리 · 깊은 숲)', `${dvD} · ${dvF}`);
+  // ⓐ 종 = T415 표 — 표에 없는 종(링 군락 종 · 채집꾼 종)은 안 깐다 · 종은 전부 T372 정의에 있다
+  const DOC = fs.readFileSync(path.join(ROOT, '설계', '고증_군락.md'), 'utf8');
+  const kinds = Object.values(HAB).flat();
+  ok(kinds.every((k) => !!CH.GROVE_KINDS[k]) && !kinds.some((k) => ['berry_bush', 'herb', 'rock', 'water_pool'].includes(k)),
+    'ⓐ ★종은 T372 네 종 안에서만(표에 없는 덤불·풀·돌·둠벙은 안 깐다)', JSON.stringify(HAB));
+  ok(/반음지/.test(DOC) && /산림 유형 혼합/.test(DOC) && /\*\*물가\*\*/.test(DOC) && HAB.edge[0] === 'greens_patch' && HAB.riverside[0] === 'wild_vine' && HAB.forest.includes('beehive'),
+    'ⓐ 서식이 T415 표 그대로다 — 나물=반음지(가장자리) · 벌집=산림 · 머루=물가');
+  // ⓐ 밀도 — 수동 군락 53 의 중심을 **지형 함수로** 가르고 51마을 채집 원판 셀로 나눈다(`WILD.D` 와 맞댄다)
+  const riv = (x, y) => { const D = dvD; return TT.isWaterCellLocal(Z, x - D, y) || TT.isWaterCellLocal(Z, x + D, y) || TT.isWaterCellLocal(Z, x, y - D) || TT.isWaterCellLocal(Z, x, y + D); };
+  const cls = (x, y) => {   // ★`_wildClass` 를 부르지 않는다 — 지형 함수를 직접(미끼가 술어를 바꿔도 이쪽은 안 바뀐다)
+    if (TT.isWaterCellLocal(Z, x, y) || (TT.isRockCellLocal && TT.isRockCellLocal(Z, x, y))) return null;
+    if (riv(x, y)) return 'riverside';
+    const fm = TT.getForestMultiplier(Z, x, y);
+    return fm > dvF ? 'forest' : (fm > CH.FOREST_MIN_COV ? 'edge' : 'plain');
+  };
+  const R30 = Math.round(64 * F2.CFG.WALK_SEC / F2.CFG.CELL_PX);
+  const G53 = (TT.ZONE_TERRAIN[Z] && TT.ZONE_TERRAIN[Z].groves) || [];
+  const gByC = {}; for (const g of G53) { const c = cls(g.center[0], g.center[1]) || 'x'; gByC[c] = (gByC[c] || 0) + 1; }
+  const seen = new Set(), cByC = {};
+  for (const v of (TT.getZoneVillages(Z) || [])) { const vx = Math.floor(v.x / 32), vy = Math.floor(v.y / 32);
+    for (let dy = -R30; dy <= R30; dy++) for (let dx = -R30; dx <= R30; dx++) { if (dx * dx + dy * dy > R30 * R30) continue;
+      const k = (vx + dx) * 65536 + (vy + dy); if (seen.has(k)) continue; seen.add(k); const c = cls((vx + dx) * 32 + 16, (vy + dy) * 32 + 16) || 'x'; cByC[c] = (cByC[c] || 0) + 1; } }
+  const same = Object.keys(W.D).every((c) => W.D[c][0] === (gByC[c] || 0) && W.D[c][1] === (cByC[c] || 0));
+  ok(G53.length === 53 && same, 'ⓐ ★★밀도가 **유도값**이다 — 수동 군락 53 × 51마을 채집 원판(반경 = 걸음 × 도보 초 ÷ 셀)을 지형 함수로 다시 세면 `WILD.D` 그대로',
+    `${JSON.stringify(W.D)} · 다시 센 것 ${JSON.stringify(Object.fromEntries(Object.keys(W.D).map((c) => [c, [gByC[c] || 0, cByC[c] || 0]])))} · 반경 ${R30}셀`);
+  const nr = G53.filter((g) => g.kind !== 'water_pool'); const med = (a) => a.slice().sort((x, y) => x - y)[Math.floor(a.length / 2)];
+  ok(W.N === med(nr.map((g) => g.n)) && W.R === med(nr.map((g) => g.r)), 'ⓐ 군락 모양 = 수동 군락(돌·덤불)의 점 수·반경 그대로', `${W.N} · ${W.R}px`);
+  // ⓑ 켬/끔 — 한반도 청크 셋 중 하나씩(989청크)
+  const scan = (on) => { if (on) process.env.T450_WILD_GROVES = '1'; else delete process.env.T450_WILD_GROVES;
+    const m = new Map(); for (let cy = 0; cy < Math.ceil(ZN.zoneHeight / cs); cy += 3) for (let cx = 0; cx < Math.ceil(ZN.zoneWidth / cs); cx += 3) m.set(cx * 1000 + cy, CH.generateChunkResources(Z, ZN.biome, cx, cy, cs, null, 0));
+    delete process.env.T450_WILD_GROVES; return m; };
+  const isW = (e) => /_wg\d+_\d+_\d+$/.test(e.seedKey || '');
+  const OFF = scan(false), ON = scan(true);
+  let wOff = 0, wOn = 0, restSame = true; const wild = [];
+  for (const [k, a] of OFF) { wOff += a.filter(isW).length; const b = ON.get(k); const bw = b.filter(isW); wOn += bw.length; for (const e of bw) wild.push(e);
+    if (JSON.stringify(b.filter((e) => !isW(e))) !== JSON.stringify(a)) restSame = false; }
+  ok(wOff === 0, 'ⓑ ★★끔 판 청크에 야생 군락이 **0** 이다', `${OFF.size}청크`);
+  ok(wOn > 0 && restSame, 'ⓑ ★★켬 판엔 **난다** — 그리고 다른 개체는 끔 판과 비트 동일(더해지기만 한다)', `야생 ${wOn}개체 · 나머지 같다 ${restSame}`);
+  // ⓒ ★미끼 — 서식을 지형 함수로 직접(중심 = 씨 키의 셀) · 종이 그 서식의 종인가 · 들·물·바위엔 0
+  const ctr = new Map(); for (const e of wild) { const m = /_wg(\d+)_(\d+)_\d+$/.exec(e.seedKey); const ck = m[1] + ',' + m[2]; if (!ctr.has(ck)) ctr.set(ck, { gx: +m[1], gy: +m[2], kind: e.type }); }
+  let habBad = 0, plain = 0; const byC = {};
+  for (const g of ctr.values()) { const c = cls(g.gx * 32 + 16, g.gy * 32 + 16); byC[c] = (byC[c] || 0) + 1; if (c === 'plain' || c === null) plain++; if (!c || !(HAB[c] || []).includes(g.kind)) habBad++; }
+  ok(ctr.size > 0 && habBad === 0 && plain === 0,
+    'ⓒ ★★미끼 — 군락 중심의 서식을 **지형 함수로 직접** 보면 전부 그 종의 서식이다(술어를 늘 참으로 하면 들에 서서 빨갛다)', `군락 ${ctr.size} · 서식 ${JSON.stringify(byC)} · 어긋남 ${habBad} · 들·물·바위 ${plain}`);
+  let pBad = 0; for (const e of wild) if (TT.isWaterCellLocal(Z, e.x, e.y) || (TT.isRockCellLocal && TT.isRockCellLocal(Z, e.x, e.y))) pBad++;
+  ok(pBad === 0, 'ⓒ 점은 물·바위에 안 선다', `${pBad}`);
+  // ⓓ 색인 = 청크(T301) — 야생 개체가 든 셀을 색인으로 물으면 그 개체들이 같은 차례로 나온다 · 한 점은 한 번만
+  process.env.T450_WILD_GROVES = '1';
+  let idxBad = 0, dup = 0; const keys = new Set();
+  for (const e of wild) { if (keys.has(e.seedKey)) dup++; keys.add(e.seedKey); }
+  const byCell = new Map(); for (const e of wild) { const k = Math.floor(e.x / 32) + ',' + Math.floor(e.y / 32); (byCell.get(k) || byCell.set(k, []).get(k)).push(e); }
+  for (const [k, a] of byCell) { const [x, y] = k.split(',').map(Number);
+    const got = CH.resourcesAtCell(Z, x, y, { biome: ZN.biome, chunkSize: cs }).filter(isW);
+    if (JSON.stringify(got) !== JSON.stringify(a)) idxBad++; }
+  //   청크 경계를 넘는 군락 — 이웃 넷을 다 낳아 그 군락의 점을 모으면 한 점도 두 번 안 난다
+  let crossN = 0, crossBad = 0;
+  for (const g of ctr.values()) {
+    const pcx = Math.floor((g.gx * 32 + 16) / cs), pcy = Math.floor((g.gy * 32 + 16) / cs);
+    const got = []; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { if (pcx + dx < 0 || pcy + dy < 0) continue;
+      for (const e of CH.generateChunkResources(Z, ZN.biome, pcx + dx, pcy + dy, cs, null, 0)) { const m = /_wg(\d+)_(\d+)_(\d+)$/.exec(e.seedKey || ''); if (m && +m[1] === g.gx && +m[2] === g.gy) got.push(+m[3]); } }
+    if (new Set(got).size !== got.length) crossBad++;
+    if (got.length > W.N) crossBad++;
+    crossN++;
+  }
+  delete process.env.T450_WILD_GROVES;
+  ok(idxBad === 0 && dup === 0, 'ⓓ ★★색인(`resourcesAtCell`) = 청크 — 야생 개체가 든 셀 전부 · 같은 차례(T301)', `셀 ${byCell.size} · 어긋남 ${idxBad} · 겹친 씨 ${dup}`);
+  ok(crossBad === 0, 'ⓓ 군락 하나의 점은 이웃 청크를 다 합쳐도 한 번씩만 난다(그 점이 든 청크만 낳는다)', `군락 ${crossN} · 어긋남 ${crossBad}`);
+  // ⓔ 링 군락 무접촉 — 야생 중심은 링 원판과 안 겹친다 · 재생은 그 종의 주기
+  let ringHit = 0; for (const g of ctr.values()) for (const r of G53) { const dx = g.gx * 32 + 16 - r.center[0], dy = g.gy * 32 + 16 - r.center[1]; if (dx * dx + dy * dy < ((r.r || 140) + W.R) ** 2) ringHit++; }
+  ok(ringHit === 0 && !/t\.groves\s*=|\.groves\.push/.test(CC), 'ⓔ ★링 군락(수동 53) 원판과 겹치는 야생 군락 0 · 링 데이터는 읽기만', `${ringHit}`);
+  const YD = require(path.join(ROOT, 'server', 'events.js')).yearDaysOf();
+  const e0 = wild[0];
+  if (e0) {
+    process.env.T450_WILD_GROVES = '1';
+    const ecx = Math.floor(e0.x / 32), ecy = Math.floor(e0.y / 32);
+    const per = CH.REGROW[CH.GROVE_KINDS[e0.type].regrow]() * YD, d0 = 1000;
+    const at = (day) => CH.resourcesAtCell(Z, ecx, ecy, { biome: ZN.biome, chunkSize: cs, harvestedSet: new Map([[e0.seedKey, d0]]), gameDay: day }).some((q) => q.seedKey === e0.seedKey);
+    const r1 = at(d0 + 1), r2 = at(d0 + Math.ceil(per) - 1), r3 = at(d0 + Math.ceil(per));
+    delete process.env.T450_WILD_GROVES;
+    ok(!r1 && !r2 && r3, 'ⓔ ★딴 자리는 **그 종의 주기**가 지나야 다시 난다(`GROVE_KINDS[kind].regrow` · T122 `_stage` 그 함수)', `${e0.type} · 주기 ${Math.ceil(per)}일 · 다음날 ${r1} · 하루 전 ${r2} · 그날 ${r3}`);
+  } else ok(false, 'ⓔ [상황] 야생 개체가 없다');
+  // ⓕ 채집꾼·원정군의 종 집합엔 이 넷이 없다 — 마을 채집이 보는 개체는 켬/끔 비트 동일(한 마을 원판 전수)
+  const t347 = (/const _T347_TYPES = \{([^}]*)\}/.exec(ZSRC) || [])[1] || '';
+  const PICK = new Set([...t347.matchAll(/(\w+)\s*:/g)].map((q) => q[1]));
+  ok(PICK.size > 0 && !kinds.some((k) => PICK.has(k)), 'ⓕ ★채집꾼·원정군이 따는 종(`zone.js _T347_TYPES`)엔 야생 군락 종이 **없다** — 마을 채집 등가 무변의 근거', `{${[...PICK].join(', ')}}`);
+  const vv = (TT.getZoneVillages(Z) || []).find((v) => { const c = cls(v.x, v.y); return c === 'forest' || c === 'edge'; }) || (TT.getZoneVillages(Z) || [])[0];
+  const viewOf = (on) => { if (on) process.env.T450_WILD_GROVES = '1'; else delete process.env.T450_WILD_GROVES; let s = '', n = 0, other = 0;
+    const vx = Math.floor(vv.x / 32), vy = Math.floor(vv.y / 32);
+    for (let dy = -R30; dy <= R30; dy++) for (let dx = -R30; dx <= R30; dx++) { if (dx * dx + dy * dy > R30 * R30) continue;
+      for (const e of CH.resourcesAtCell(Z, vx + dx, vy + dy, { biome: ZN.biome, chunkSize: cs })) { if (PICK.has(e.type)) { s += `${e.id}|${e.x}|${e.y};`; n++; } else if (isW(e)) other++; } }
+    delete process.env.T450_WILD_GROVES; return { s, n, other }; };
+  const v0 = viewOf(false), v1 = viewOf(true);
+  ok(v0.s === v1.s, 'ⓕ ★마을 채집 원판(반경 30셀)에서 채집꾼이 보는 개체가 켬/끔 **비트 동일**', `${vv.name} · 딸 개체 ${v0.n} = ${v1.n} · 원판 안 야생 개체 ${v1.other}`);
+}
+
 console.log('\n⑫ 접점 심볼');
 {
   const all = SRC + VSRC + ZSRC;

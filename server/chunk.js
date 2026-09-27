@@ -423,6 +423,55 @@ const GROVE = {
   GAP: FOREST_GAP,          // 빈자리 비율 — 숲 그리드의 그 수 그대로(사본 0)
   SEED_POS: 95000,          // 씨 오프셋 — 숲(90000)·크기(91000000)와 겹치지 않는 자리
 };
+
+// ══ ★★★[T450 2026-09-27 · ★PM 결정(위임)] **야생 군락 — 서식이 낳는다** ═══════════════════════
+//
+// ★왜 — T441: 원정군이 길에서 채집하려니 군락이 **마을 어귀 링(수동 53)에만** 있다(첫날 15포기 · 같은 길 둘째 0 ·
+//   "시간이 아니라 군락 수가 막는다"). 캐논(추상 없애기 · 실물이 세계에) — 군락도 나무처럼 **지형**에서 난다.
+// ★종과 서식 = **T415 `설계/고증_군락.md` ② 표 그대로**(판정 0 · 표에 없는 종은 안 깐다):
+//     · 벌집(`beehive`)       — "산림 유형 혼합(침엽·활엽·혼효림) · 밀원수종"      → **숲**(`forest`)
+//     · 버섯밭(`mushroom_patch`) — 송이(침엽) · 표고(활엽) — 짝은 흔들려도 **둘 다 숲 밑** → **숲**(T372 `forest` 그대로)
+//     · 나물(`greens_patch`)  — "반음지(참취) ~ 그늘·다습(곰취)"                    → **숲 가장자리**(`edge` — 나무는 서되 깊은 숲은 아니다)
+//     · 머루(`wild_vine`)     — "물가(`isWaterCellLocal` — 기존 그대로)"          → **물가**(`riverside`)
+//   표에 없는 것: 덤불·풀·돌·둠벙(링 군락 종) · 습지 술어(세계에 없다) · 양지 종(표에 없다) ⇒ **안 깐다**.
+//   ⚠채집꾼·원정군이 따는 종 집합은 `zone.js _T347_TYPES`(덤불·풀)다 — 이 넷은 **플레이어·옛 채집**만 딴다(보고 §회부).
+// ★서식 술어는 **이미 있는 셋**이다(새 문턱 0 · `_wildClass`):
+//     물가 = `decideVillageType` 의 그 판정(220px 네 방향 물) · 숲 = 그 판정의 `getForestMultiplier > 2.0` ·
+//     가장자리 = 숲 그리드가 서는 문턱(`FOREST_MIN_COV`)은 넘고 숲 판정은 못 넘는 자리 · 그 밖 = 들(`plain` — 종 없음).
+// ★밀도 = **한반도 수동 군락 53 의 지형별 셀당 밀도**(유도 · 새 수 0 — `scripts/t450-wild-groves.js --derive` 가 다시 잰다):
+//     그 53 의 중심을 `_wildClass` 로 가르고, 51마을 채집 반경(30셀 = 걸음 64 × `forage.CFG.WALK_SEC` 15 ÷ 32 ·
+//     T347 이 쓰는 그 원판) 안 그 지형 셀 수로 나눈다 ⇒ 숲 15/19,261 · 가장자리 4/5,642 · 물가 **0**/14,809.
+//     ⚠물가 0 = 계획기(`plan-village-forage.js`)가 물가 마을엔 군락을 안 심었다(물·자갈이 이미 있다) — 유도 그대로 둔다(회부).
+//   군락 하나의 모양 = 수동 군락(돌·덤불)의 그것 — 점 **3** · 반경 **110px**(계획기 `GROVE_N`·`GROVE_R` · 극좌표 `r·√u`).
+// ★씨 = **셀 해시**(`seedRand` · T301 결정론 그대로) — 중심 셀마다 한 번 굴려 그 지형의 밀도보다 작으면 선다.
+//   중심 셀은 **세계 좌표**라 이웃 청크도 같은 답을 낸다 · 점은 **그 점이 든 청크**만 낳는다(넘침 0 · 겹침 0).
+// ★되돌림 — 기본 끔. 끄면 아래 갈래가 **한 번도 안 돌아** 청크 산출이 비트 동일이다(존 전체 청크 해시).
+const WILD = {
+  ON: () => (process.env.T450_WILD_GROVES === '1'),   // ★기본 끔 · 부를 때 읽는다(`GROVE.ON` 규약)
+  D: { forest: [15, 19261], edge: [4, 5642], riverside: [0, 14809] },   // ★유도값 [수동 군락 수, 채집 원판 셀 수] — 위 머리말
+  N: 3, R: 110,             // ★수동 군락의 모양 그대로(점 3 · 반경 110px)
+  SEED: 450000,             // 씨 오프셋 — 숲(90000~)·T359(95000~)·링(700000+)과 겹치지 않는 자리
+  RIV_D: 220,               // ★`decideVillageType` 물가 거리 그대로(사본 — 하네스가 그 줄과 맞대 본다)
+  FOREST: 2.0,              // ★`decideVillageType` 깊은 숲 문턱 그대로(사본 — 하네스가 그 줄과 맞대 본다)
+};
+const WILD_HAB = { forest: ['mushroom_patch', 'beehive'], edge: ['greens_patch'], riverside: ['wild_vine'] };
+const WILD_P = {}; let WILD_PMAX = 0;
+for (const _c of Object.keys(WILD.D)) { const [_n, _cells] = WILD.D[_c]; WILD_P[_c] = _cells > 0 ? _n / _cells : 0; if (WILD_P[_c] > WILD_PMAX) WILD_PMAX = WILD_P[_c]; }
+/**
+ * 야생 군락의 **서식** — 한 점이 어느 지형인가(`null` = 물·바위 · 군락이 못 선다).
+ * 물가 → 숲 → 가장자리 → 들 차례(`decideVillageType` 이 물가를 먼저 보는 그 차례).
+ */
+function _wildClass(zoneId, x, y) {
+  if (terrain.isWaterCellLocal(zoneId, x, y)) return null;
+  if (typeof terrain.isRockCellLocal === 'function' && terrain.isRockCellLocal(zoneId, x, y)) return null;
+  const D = WILD.RIV_D;
+  if (terrain.isWaterCellLocal(zoneId, x - D, y) || terrain.isWaterCellLocal(zoneId, x + D, y) ||
+      terrain.isWaterCellLocal(zoneId, x, y - D) || terrain.isWaterCellLocal(zoneId, x, y + D)) return 'riverside';
+  const fm = terrain.getForestMultiplier(zoneId, x, y);
+  if (fm > WILD.FOREST) return 'forest';
+  if (fm > FOREST_MIN_COV) return 'edge';
+  return 'plain';
+}
 /**
  * 32px 셀 하나에 서는 나무 수. 인자가 없으면 **가장 성긴 숲**(SP 상한)으로 — 아래로 잡는다.
  * 새 수 0: 간격·빈자리 둘 다 위 그리드가 이미 쓰던 값이다.
@@ -794,6 +843,62 @@ function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet, 
       }
     }
   }
+
+  // ══ ★★★[T450] 야생 군락 — 서식이 낳는다(위 `WILD` 머리말이 왜·서식·밀도) ═══════════════════
+  //   ⚠끄면 이 블록이 한 번도 안 돈다 ⇒ 청크 산출 **비트 동일**(존 전체 청크 해시가 잰다).
+  //   ⚠링 군락(`groves`)은 **무접촉** — 원판이 겹치는 중심은 여기서 **비켜 준다**(T359 문법 · 링이 먼저 심은 자리가 정본).
+  if (WILD.ON() && WILD_PMAX > 0) {
+    const cs = chunkSize, R = WILD.R;
+    //   이 청크(셀 질의면 그 셀)에 점을 떨굴 수 있는 중심 셀 — 상자 ± 군락 반경
+    const bx0 = _OC ? _OC.x0 : cx * cs, by0 = _OC ? _OC.y0 : cy * cs;
+    const bx1 = _OC ? _OC.x1 : cx * cs + cs, by1 = _OC ? _OC.y1 : cy * cs + cs;
+    const gx0 = Math.max(0, Math.floor((bx0 - R) / 32)), gx1 = Math.floor((bx1 - 1 + R) / 32);
+    const gy0 = Math.max(0, Math.floor((by0 - R) / 32)), gy1 = Math.floor((by1 - 1 + R) / 32);
+    //   링 군락 — 이 상자에 걸칠 수 있는 것만(정본 데이터를 읽기만 한다)
+    const _ringW = [];
+    {
+      const t0 = terrain.ZONE_TERRAIN ? terrain.ZONE_TERRAIN[zoneId] : null;
+      for (const g of ((t0 && t0.groves) || [])) {
+        if (!g || !g.center) continue;
+        const gr = (g.r || 140) + R;                       // 두 원판이 겹치면 비킨다(두 반경의 합 · 새 수 0)
+        if (g.center[0] + gr < bx0 - R || g.center[0] - gr > bx1 + R) continue;
+        if (g.center[1] + gr < by0 - R || g.center[1] - gr > by1 + R) continue;
+        _ringW.push([g.center[0], g.center[1], gr]);
+      }
+    }
+    for (let gy = gy0; gy <= gy1; gy++) {
+      for (let gx = gx0; gx <= gx1; gx++) {
+        const u = seedRand(zoneId, gx, gy, WILD.SEED);
+        if (u >= WILD_PMAX) continue;                      // 가장 짙은 서식보다도 크면 어디서도 안 선다(술어를 안 묻는다)
+        const px = gx * 32 + 16, py = gy * 32 + 16;        // 중심 = 그 셀 한가운데
+        const hab = _wildClass(zoneId, px, py);
+        if (!hab || !(u < (WILD_P[hab] || 0))) continue;   // ★서식의 밀도 — 표에 종이 없는 지형(들)은 밀도가 없다
+        let clash = false;
+        for (const r of _ringW) if ((px - r[0]) * (px - r[0]) + (py - r[1]) * (py - r[1]) < r[2] * r[2]) { clash = true; break; }
+        if (clash) continue;
+        const kinds = WILD_HAB[hab];
+        const kind = kinds[Math.min(kinds.length - 1, Math.floor(seedRand(zoneId, gx, gy, WILD.SEED + 1) * kinds.length))];
+        for (let i = 0; i < WILD.N; i++) {
+          const uu = seedRand(zoneId, gx, gy, WILD.SEED + 2 + i * 2);
+          const a = seedRand(zoneId, gx, gy, WILD.SEED + 3 + i * 2) * Math.PI * 2;
+          const rr = R * Math.sqrt(uu);
+          const x = px + Math.cos(a) * rr, y = py + Math.sin(a) * rr;
+          if (Math.floor(x / cs) !== cx || Math.floor(y / cs) !== cy) continue;   // 그 점이 든 청크만 낳는다(넘침 0 · 겹침 0)
+          if (_inCell && !_inCell(x, y)) continue;                               // ★[T301] 셀 질의
+          if (terrain.isWaterCellLocal(zoneId, x, y)) continue;
+          if (typeof terrain.isRockCellLocal === 'function' && terrain.isRockCellLocal(zoneId, x, y)) continue;
+          const seedKey = `${cx}_${cy}_wg${gx}_${gy}_${i}`;
+          //   ★[T122] 같은 재생 회계 — 딴 자리는 그 종의 주기(`GROVE_KINDS[kind].regrow`)가 지나야 다시 난다(사본 0)
+          if (harvestedSet && harvestedSet.has(seedKey)) {
+            const st3 = _stage(seedKey, kind, null);
+            if (st3 !== 'mature') continue;
+          }
+          const mh = RESOURCE_HP_TABLE[kind] || 1;
+          result.push({ id: `s_${seedKey}`, seedKey, isSeed: true, x, y, type: kind, hp: mh, maxHp: mh });
+        }
+      }
+    }
+  }
   // ★★[T408 2026-09-26] **개체는 제 땅에만.** 존의 마지막 청크는 존 밖으로 삐져나간다
   //   (한반도 동쪽 마지막 청크 69,632~70,656 · 존 폭 70,016) — 그리고 숲 격자는 그 너머 **남의 땅에**
   //   나무를 낳았다(실측: 한반도 → 닛폰 1,610그루 · 최대 +720px · 중원북 → 한반도 한 자리 148그루).
@@ -1137,4 +1242,4 @@ function generateCoastlineWaterTiles(zone, tileSize, findZoneAtFn, oceanRects) {
 
 // ★[T108 2026-09-05] `RESOURCE_HP_TABLE` 을 **내준다** — `zone.js` 가 같은 표를 한 벌 더
 //   들고 있었고(운석이 빠져 3대에 깨졌다 · T90 회부), 그걸 지우려면 정본이 나가야 한다.
-module.exports = { Chunk, ChunkManager, CHUNK_SIZE, generateChunkResources, resourceAt, resourcesAtCell, cellChunksOf, treeBlockerAt, overflowInto, seedGenChunkOf, regrowStageOf, REGROW, GROVE, seedRand, forestSpacing, forestTreesPerCell, forestTreesPerCellMean, scatterTreesPerCell, treeShareOf, scatterRocksPerCell, rockShareOf, FOREST_MIN_COV, RESOURCES_PER_CHUNK, generateVillagesForZone, makeVillageName, generateCoastlineWaterTiles, RESOURCE_HP_TABLE, GROVE_KINDS };
+module.exports = { Chunk, ChunkManager, CHUNK_SIZE, generateChunkResources, resourceAt, resourcesAtCell, cellChunksOf, treeBlockerAt, overflowInto, seedGenChunkOf, regrowStageOf, REGROW, GROVE, WILD, WILD_HAB, _wildClass, seedRand, forestSpacing, forestTreesPerCell, forestTreesPerCellMean, scatterTreesPerCell, treeShareOf, scatterRocksPerCell, rockShareOf, FOREST_MIN_COV, RESOURCES_PER_CHUNK, generateVillagesForZone, makeVillageName, generateCoastlineWaterTiles, RESOURCE_HP_TABLE, GROVE_KINDS };
