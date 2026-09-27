@@ -543,7 +543,7 @@ console.log('\n⑧ ★[T292] 리미터 — 셈이 아니라 실측');
   const c8Of = (X) => {                                                // ⑧c·⑧c2·⑧g 가 **같은 판정**을 쓴다
     const o = X.overKnee || {};
     const rec = Array.isArray(o.rows) && o.rows.some((r) => r && r.sig === sigOf(X.worstCombo) && Array.isArray(r.atMin) && r.atMin.length > 0);
-    const lim = typeof X.worstPeakLim === 'number' && X.worstPeakLim < 1 && X.clippedAtWorst === 0;
+    const lim = typeof X.worstPeakLim === 'number' && X.worstPeakLim < 1 && X.clippedAtWorst === 0;   // [T445] `clippedAtWorst` = 리미터 **낀** 판의 클리핑(없는 판은 `clippedAtWorstNoLim`)
     return kneeHolds(X.worstPeak) || (rec && lim);
   };
   const OK_ = M.overKnee || {};

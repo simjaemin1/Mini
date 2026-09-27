@@ -26,6 +26,8 @@
 //        (`/lifedbg` 마을 표본 중앙값 · 존 로그의 픽스처 선포 줄 · 존 DB 의 짐승 자리). 하네스가 좌표를 지어내지 않는다.
 //     ③ 주민 일 팔(`T312_FISH_ACT`·`T325_WOOD_ACT`·`T347_FORAGE_ACT`·`T368_FARM_ACT`)은 **기본 꺼짐**이다 — 꺼져 있으면 주민은
 //        낚지도 베지도 않아 **소리를 낼 사건이 없다**. `SFX_COOCCUR_ARMS=1` 이 넷을 켠다(켤 날의 최악 · 결과에 적는다).
+//     ★★[T445 규약] **`CHAR_SPRITE=on` 필수** — 이 손잡이 없이 잰 판은 발자국이 0 인 채로 "최악"을 낸다(T417 판이 그랬다).
+//        존 env 에 늘 싣고, 입장 뒤 클라 `uiCfg.charSprite` 가 참인지 **확인하고** 아니면 판을 멈춘다(아래 ①′).
 //     ④ 프레임: GL 두 층(물 셰이더·산 3D)을 이미 있는 끄는 문(`__terrain19.waterOff`·`mt3dOff` · T395)으로 끈다 — 소리와 무관한
 //        소프트웨어 GPU 칠이라서(T395 · 마을 366 → 4.7ms). 개체·캐릭터 그림(발자국 훅이 사는 곳)은 그대로 그린다.
 // ══════════════════════════════════════════════════════════════════════════════
@@ -47,7 +49,8 @@ const ARMS = process.env.SFX_COOCCUR_ARMS === '1';
 const OUT = process.env.SFX_COOCCUR_OUT || (AT === 'trees' ? '/tmp/sfx-cooccur.json' : `/tmp/sfx-cooccur-${AT}.json`);
 const ZENV_AT = {
   trees: {}, village: {}, workers: {}, logging: {}, beast: {},
-  war: { VILLAGE_MAX: '8', VILLAGE_DAY_MS: '60000', ENABLE_BANDITS: '0', WAR_FIXTURE: 'assault', WAR_FIXTURE_DAY: '1', VILLAGE_WAR_LOG: '1' },   // `test-war-world` ⓖ 와 같은 판
+  war: { VILLAGE_MAX: '8', VILLAGE_DAY_MS: '60000', ENABLE_BANDITS: '0', WAR_FIXTURE: 'assault', WAR_FIXTURE_DAY: '1', VILLAGE_WAR_LOG: '1',   // `test-war-world` ⓖ 와 같은 판
+         WAR_FIXTURE_REPEAT: '1' },   // [T445] 끝난 만큼 다시 선포(`war-world-perf` 의 손잡이) — 첫 싸움은 재기 전에 끝나 버렸다(T445 둘째 판: 창 30분 내내 교전 0)
 }[AT];
 if (!ZENV_AT) { console.error('SFX_COOCCUR_AT 모름: ' + AT); process.exit(2); }
 const ARMS_ENV = ARMS ? { T312_FISH_ACT: '1', T325_WOOD_ACT: '1', T347_FORAGE_ACT: '1', T368_FARM_ACT: '1' } : {};
@@ -100,6 +103,39 @@ require(path.join(ROOT,'server','zone.js'));`);
   await page.mouse.click(240, 160);                                  // 소리 층은 첫 제스처에서 연다(작은 창 = 헤드리스 14fps · 1280×800 은 2fps 라 거의 못 걷는다)
   await page.waitForFunction(() => window.__sfx && window.__sfx.tap && window.__sfx.dbg().ctx, null, { timeout: 30000 });
   console.log('  입장 · 소리 층 켜짐');
+  // ①′ [T445] 발자국 규약 — 시트 손잡이가 켜진 채로 들어왔나(꺼져 있으면 `drawCharSprite` 가 첫 줄에서 돌아가 `__sfx.step` 이 안 불린다)
+  const cs = await page.evaluate(() => (typeof uiCfg !== 'undefined' && uiCfg) ? uiCfg.charSprite : null);
+  if (cs !== true) { console.log(`  ✗ uiCfg.charSprite = ${cs} — CHAR_SPRITE=on 없이 잰 판은 발자국 0 이다(T445 규약) · 멈춘다`); await browser.close(); killAll(); process.exit(1); }
+  // ★[T445 ①] **누가 불렀나** — 층의 수신 훅(`__sfx.recv`)을 감싸 울림마다 그 메시지(이름·pid·mid·hp·why·연결)를 붙인다.
+  //   층 코드 무접촉(감싸기는 이 페이지 안에서만) · 같은 창 같은 키 둘이 **다른 사건**인지 **같은 사건 두 번**인지 가르는 재료.
+  //   덤: 전쟁 병사(`br` 가 오는 몸)의 hp 가 `tick` 에서 **줄어든 순간**을 센다 — 소리 자리가 이미 오는지(T445 ②).
+  await page.evaluate(() => {
+    const S = window.__sfx, orig = S.recv, origScan = S.scan;
+    window.__coWho = []; window.__coWar = []; let seq = 0;
+    const tagNew = (n0, info) => { const t = S.tap(n0); for (const p of t.plays) window.__coWho.push(Object.assign({ i: p.i, k: p.k }, info)); };
+    S.recv = function (msg, c) {
+      const n0 = S.tap(1e15).n; seq++;
+      if (msg && msg.type === 'tick' && Array.isArray(msg.players) && c && c.others) {
+        const me = window.__getMyAbs ? window.__getMyAbs() : null; const ox = (c.meta && c.meta.worldOffsetX) || 0, oy = (c.meta && c.meta.worldOffsetY) || 0;
+        for (const pp of msg.players) {
+          if (pp.br === undefined) continue;
+          const prev = c.others.get(pp.pid);
+          if (prev && typeof prev.hp === 'number' && typeof pp.hp === 'number' && pp.hp < prev.hp)
+            window.__coWar.push({ t: S.tap(1e15).now, pid: pp.pid, hp: pp.hp, was: prev.hp, d: me ? Math.round(Math.hypot(pp.x + ox - me.x, pp.y + oy - me.y)) : null });
+        }
+      }
+      if (msg && msg.type === 'war_battle') {                      // 교전 집계(2Hz) — 몇 번 · 얼마나 가까이 · 산 수가 줄었나
+        const me = window.__getMyAbs ? window.__getMyAbs() : null; const ox = (c && c.meta && c.meta.worldOffsetX) || 0, oy = (c && c.meta && c.meta.worldOffsetY) || 0;
+        const o = msg.origin || {};
+        (window.__coWB = window.__coWB || []).push({ t: S.tap(1e15).now, phase: msg.phase, a: msg.aliveA, b: msg.aliveB, d: me ? Math.round(Math.hypot((o.x || 0) + ox - me.x, (o.y || 0) + oy - me.y)) : null });
+        if (msg.phase === 'battle') window.__coLastWB = { x: o.x || 0, y: o.y || 0, at: Date.now() };   // 존 로컬 — 싸움터로 가는 자리
+      }
+      const r = orig.call(this, msg, c);
+      tagNew(n0, { via: 'recv', seq, m: msg && msg.type, why: msg && msg.why, pid: msg && msg.pid, mid: msg && msg.mid, hp: msg && msg.hp, role: c && c.role, zone: c && c.zoneId });
+      return r;
+    };
+    S.scan = function (list, cx, cy) { const n0 = S.tap(1e15).n; seq++; const r = origScan.call(this, list, cx, cy); tagNew(n0, { via: 'scan', seq }); return r; };
+  });
   // ★[T431 ④] 소리와 무관한 GL 두 층을 이미 있는 문으로 끈다(T395 — 소프트웨어 GPU 칠) · 개체·캐릭터 그림은 그대로
   await page.evaluate(() => { if (window.__terrain19) { window.__terrain19.waterOff = true; window.__terrain19.mt3dOff = true; } });
 
@@ -121,6 +157,18 @@ require(path.join(ROOT,'server','zone.js'));`);
   const median = (a) => { const s2 = a.slice().sort((p, q) => p - q); return s2[s2.length >> 1]; };
   const vilSpot = (v) => { const pts = (v.sample || []).filter((x) => x && typeof x.x === 'number'); return pts.length ? { x: Math.round(median(pts.map((p) => p.x))), y: Math.round(median(pts.map((p) => p.y))) } : null; };
   let spot = null;
+  //   물·바위면 서버가 거절한다(`teleport_debug`) — 둘레를 나선으로 한 칸씩(32px) 넓혀 다시 · 선 자리(존 로컬)를 돌려준다
+  const landNear = async (x0, y0, maxR) => {
+    const off = await page.evaluate(() => { const c = conns.get(primaryZoneId); return { x: c.meta.worldOffsetX, y: c.meta.worldOffsetY || 0 }; });
+    for (let r = 0; r <= (maxR || 8); r++) for (let k = 0; k < Math.max(1, r * 8); k++) {
+      const a = (k / Math.max(1, r * 8)) * Math.PI * 2, tx = Math.round(x0 + Math.cos(a) * r * 32), ty = Math.round(y0 + Math.sin(a) * r * 32);
+      await page.evaluate(([x, y]) => window.__sendPrimary({ type: 'teleport_debug', x, y }), [tx, ty]);
+      await sleep(900);
+      const me = await pos();
+      if (me && Math.hypot(me.x - off.x - tx, me.y - off.y - ty) < 64) return { x: tx, y: ty };
+    }
+    return null;
+  };
   if (AT === 'village' || AT === 'workers' || AT === 'logging') {
     await sleep(60000);                                               // 주민이 일을 잡을 틈(존이 뜬 직후 표본은 전부 wander)
     const L = await zget('/lifedbg');
@@ -154,15 +202,8 @@ require(path.join(ROOT,'server','zone.js'));`);
   }
   if (spot) {
     //   물이면 서버가 거절한다(`teleport_debug`) — 둘레를 나선으로 한 칸씩(32px) 넓혀 다시
-    const off = await page.evaluate(() => { const c = conns.get(primaryZoneId); return { x: c.meta.worldOffsetX, y: c.meta.worldOffsetY || 0 }; });
-    let landed = false;
-    for (let r = 0; r <= 8 && !landed; r++) for (let k = 0; k < Math.max(1, r * 8) && !landed; k++) {
-      const a = (k / Math.max(1, r * 8)) * Math.PI * 2, tx = Math.round(spot.x + Math.cos(a) * r * 32), ty = Math.round(spot.y + Math.sin(a) * r * 32);
-      await page.evaluate(([x, y]) => window.__sendPrimary({ type: 'teleport_debug', x, y }), [tx, ty]);
-      await sleep(900);
-      const me = await pos();
-      if (me && Math.hypot(me.x - off.x - tx, me.y - off.y - ty) < 64) { landed = true; spot.tx = tx; spot.ty = ty; }
-    }
+    const L0 = await landNear(spot.x, spot.y);
+    const landed = !!L0; if (L0) { spot.tx = L0.x; spot.ty = L0.y; }
     console.log(`  자리: (${spot.x},${spot.y}) ${landed ? '→ 섰다 (' + spot.tx + ',' + spot.ty + ')' : '✗ 못 섰다'} · ${spot.why}`);
     if (!landed) { await browser.close(); killAll(); process.exit(1); }
     await sleep(5000);
@@ -186,6 +227,10 @@ require(path.join(ROOT,'server','zone.js'));`);
   const warriors = (mode) => page.evaluate((mode) => {
     const me = window.__getMyAbs(); const all = (window.__getNpcs ? window.__getNpcs() : []);
     let ws = mode === 'war' ? all.filter((n) => n.job === 'warrior') : all.filter((n) => n.act && n.act !== '취침');
+    //   [T445] 교전 판은 **동원된 몸**(`tick` 에 `br` 가 오는 병사 = 클라 `_war`)을 먼저 따른다 — 마을에 남은 전사(simJob)는 싸움터에 없다
+    if (mode === 'war') { const c = conns.get(primaryZoneId); const ox = c.meta.worldOffsetX, oy = c.meta.worldOffsetY || 0;
+      const mw = [...c.others.values()].filter((o) => o._war && o.hp > 0).map((o) => ({ wx: o.x + ox, wy: o.y + oy }));
+      if (mw.length) ws = mw; }
     if (mode !== 'war' && !ws.length) ws = all;
     if (mode !== 'war' && me && ws.length) { ws.sort((a, b) => Math.hypot(a.wx - me.x, a.wy - me.y) - Math.hypot(b.wx - me.x, b.wy - me.y)); ws = ws.slice(0, 3); }
     if (!me || !ws.length) return null;
@@ -193,6 +238,7 @@ require(path.join(ROOT,'server','zone.js'));`);
     return { id: 'war', x, y, d: Math.hypot(x - me.x, y - me.y), n: ws.length };
   }, mode);
   const buckets = new Map();                                        // 창 번호 → { plays: [키], loops: Set }
+  const who = new Map(), warHits = [], warBattles = [];                               // [T445] 울림 i → 부른 메시지 · 병사 hp 가 준 순간
   const bad = new Set();
   let since = 0, held = null, nextTurn = 0, nextE = 0, target = null, stuckAt = 0, lastD = 1e9, wander = 0;
   const t0 = Date.now(), until = t0 + MINUTES * 60000;
@@ -201,7 +247,7 @@ require(path.join(ROOT,'server','zone.js'));`);
   //   ★[T431] 재기는 **여기서부터**다 — 장부는 소리 층이 켜진 때부터 쌓이므로 방향 재기·옮기기 동안 난 소리를 건너뛴다
   //     (T417 판은 `since = 0` 으로 시작해 그 몇 초를 첫 창에 넣었다 — 걷기 재기 중엔 소리 날 일이 적어 값은 같다).
   since = (await page.evaluate(() => window.__sfx.tap(1e15))).n;
-  let backs = 0, nextBack = Date.now() + 30000;
+  let backs = 0, nextBack = Date.now() + 30000, jumps = 0, jumpFail = 0, nextJump = 0;
   const off0 = spot ? await page.evaluate(() => { const c = conns.get(primaryZoneId); return { x: c.meta.worldOffsetX, y: c.meta.worldOffsetY || 0 }; }) : null;
   while (Date.now() < until) {
     const now = Date.now();
@@ -245,19 +291,30 @@ require(path.join(ROOT,'server','zone.js'));`);
       else want = FOLLOW ? null : KEYS[Math.floor(rnd() * 4)];        // 교전 판은 전사가 안 보이면 방어 마을에 선다
       if (want !== held) { if (held) await page.keyboard.up(held); held = want; if (held) await page.keyboard.down(held); }
     }
+    //   [T445] 교전 판 — 싸움은 두 마을 사이 들판에서 난다(방어 마을 한가운데는 조용했다) ⇒ `war_battle` 이 알려 준 무게중심으로 간다(같은 `teleport_debug`)
+    if (FOLLOW && AT === 'war' && now >= nextJump) {
+      nextJump = now + 5000;
+      const J = await page.evaluate(() => { const L = window.__coLastWB; if (!L || Date.now() - L.at > 3000) return null; const c = conns.get(primaryZoneId); const me = window.__getMyAbs();
+        return { x: Math.round(L.x), y: Math.round(L.y), d: me ? Math.hypot(L.x + c.meta.worldOffsetX - me.x, L.y + (c.meta.worldOffsetY || 0) - me.y) : 1e9 }; });
+      if (J && J.d > 320) { const L = await landNear(J.x, J.y, 4); if (L) { jumps++; target = null; if (spot) { spot.tx = L.x; spot.ty = L.y; } } else jumpFail++; }
+    }
     //   [T431] 쓰러져 죽고 되살면 광장(존 반대편)에 선다 — 그 판의 자리로 되돌린다(같은 `teleport_debug`)
     if (spot && now >= nextBack) {
       nextBack = now + 30000;
       const me = await pos();
       if (me && Math.hypot(me.x - off0.x - spot.tx, me.y - off0.y - spot.ty) > 2000) { await page.evaluate(([x, y]) => window.__sendPrimary({ type: 'teleport_debug', x, y }), [spot.tx, spot.ty]); backs++; target = null; }
     }
-    const tp = await page.evaluate((s) => window.__sfx.tap(s), since);
+    const tp = await page.evaluate((s) => { const t = window.__sfx.tap(s); t.who = window.__coWho; t.war = window.__coWar; t.wb = window.__coWB || []; window.__coWho = []; window.__coWar = []; window.__coWB = []; return t; }, since);
+    for (const w of tp.who) who.set(w.i, w);
+    for (const e of tp.war) warHits.push(e);
+    for (const e of tp.wb) warBattles.push(e);
     since = tp.n; polls++;
     if (tapT0 == null) tapT0 = tp.now;
     for (const p of tp.plays) {
       const w = Math.floor(p.t / WIN_MS);
       if (!buckets.has(w)) buckets.set(w, { plays: [], loops: new Set() });
       buckets.get(w).plays.push(p.k);
+      (buckets.get(w).ids = buckets.get(w).ids || []).push(p.i);
       if (p.k === 'axe') axeN++;
     }
     // 반복 소리는 **이어진다** — 이번 긁기에서 본 반복을 지난 긁기 이후의 모든 창에 준다(첫 판은 긁기 창에만 줘서
@@ -273,13 +330,43 @@ require(path.join(ROOT,'server','zone.js'));`);
       lastLog = now;
       const night = await page.evaluate(() => (typeof isNight === 'function') ? !!isNight() : null);
       if (night) nightW++;
-      console.log(`  ${Math.round((now - t0) / 60000)}분 · 창 ${buckets.size} · 울림 ${since} · ${HUNT ? '침' : 'E'} ${chops}${drops ? ' · 버림 ' + drops : ''}${backs ? ' · 되돌림 ' + backs : ''}${FOLLOW ? (AT === 'war' ? ' · 전사 ' : ' · 주민 ') + (target ? target.n : 0) : ''}${night ? ' · 밤' : ''}`);
+      console.log(`  ${Math.round((now - t0) / 60000)}분 · 창 ${buckets.size} · 울림 ${since} · ${HUNT ? '침' : 'E'} ${chops}${drops ? ' · 버림 ' + drops : ''}${backs ? ' · 되돌림 ' + backs : ''}${jumps ? ' · 싸움터로 ' + jumps : ''}${FOLLOW ? (AT === 'war' ? ' · 전사 ' : ' · 주민 ') + (target ? target.n : 0) : ''}${night ? ' · 밤' : ''}`);
     }
     await sleep(WIN_MS);
   }
   if (held) await page.keyboard.up(held);
 
   // ── 묶음 ── 같은 키는 maxSame 까지만(층이 그 이상을 막는다)
+  // ★[T445 ①] 같은 창 같은 키 — **사건 둘**(다른 몸·다른 hp) / **같은 사건 두 번**(같은 메시지 내용이 두 번 · 결함) / 발자국(두 발) / 모름
+  const dup = { windows: 0, twoEvents: 0, sameEvent: 0, steps: 0, unknown: 0, samples: [] };
+  for (const [w, b] of buckets) {
+    const byK = {};
+    (b.ids || []).forEach((i, j) => { (byK[b.plays[j]] = byK[b.plays[j]] || []).push(i); });
+    for (const [k, ids] of Object.entries(byK)) {
+      if (ids.length < 2) continue;
+      dup.windows++;
+      let kind;
+      if (/^step_/.test(k)) kind = 'steps';
+      else {
+        const ws = ids.map((i) => who.get(i));
+        if (ws.some((x) => !x)) kind = 'unknown';
+        else {
+          const sig = (x) => JSON.stringify([x.via, x.m, x.why, x.pid, x.mid, x.hp]);
+          const sigs = ws.map(sig);
+          kind = (new Set(sigs).size < sigs.length) ? 'sameEvent' : 'twoEvents';
+        }
+        if (dup.samples.length < 12) dup.samples.push({ atMin: +(((w * WIN_MS) - tapT0) / 60000).toFixed(2), k, kind, who: ids.map((i) => who.get(i) || null) });
+      }
+      dup[kind]++;
+    }
+  }
+  const warNear = warHits.filter((e) => e.d != null && e.d < 384);
+  console.log(`\n  같은 창 같은 키 ${dup.windows}창 — 사건 둘 ${dup.twoEvents} · 같은 사건 두 번 ${dup.sameEvent} · 두 발 ${dup.steps} · 모름 ${dup.unknown}`);
+  const wbDeaths = warBattles.reduce((a, e, i) => { const p = warBattles[i - 1]; return a + (p ? Math.max(0, (p.a - e.a)) + Math.max(0, (p.b - e.b)) : 0); }, 0);
+  if (AT === 'war') console.log(`  war_battle ${warBattles.length}번 · 가장 가까이 ${warBattles.length ? Math.min(...warBattles.map((e) => e.d == null ? 1e9 : e.d)) : '-'}px · 산 수가 준 합 ${wbDeaths} · 국면 ${[...new Set(warBattles.map((e) => e.phase))].join('/')}`);
+  if (AT === 'war') console.log(`  병사 hp 가 준 순간(tick) ${warHits.length} · 384px 안 ${warNear.length} · 쓰러짐(0) ${warHits.filter((e) => e.hp <= 0).length}`);
+  const warPerf = (AT === 'war') ? await (async () => { try { const j = await zget('/perf'); return j && j.war ? { stat: j.war.stat, soldiersMax: j.war.soldiersMax } : null; } catch (e) { return null; } })() : null;
+  if (warPerf) console.log(`  존 전쟁 장부: ${JSON.stringify(warPerf)}`);
   const combos = new Map();
   let nonEmpty = 0;
   const keyN = {};                                                   // [T431] 키별 울림 수(발자국 칸이 여기서 보인다)
@@ -317,7 +404,8 @@ require(path.join(ROOT,'server','zone.js'));`);
   const steps = Object.keys(keyN).filter((k) => /^step_/.test(k)).reduce((a, k) => a + keyN[k], 0);
   const out = { date: new Date().toISOString(), at: AT, arms: ARMS, spot, minutes: MINUTES, seed: +(process.env.SFX_COOCCUR_SEED || 1020), windows: buckets.size, nonEmpty,
                 distinct: combos.size, plays: since, knee, worst, overKnee: { combos: over.length, windows: over.reduce((a, r) => a + r.n, 0), rows: over.map((r) => ({ sig: r.sig, n: r.n, atMin: r.atMin })) },
-                steps, keyN, nightMin: nightW, warriorsSeen: warSeen, presses: chops, drops, backs, rows, pageErrors: errs.slice(0, 5) };
+                steps, keyN, nightMin: nightW, warriorsSeen: warSeen, presses: chops, drops, backs, jumps, jumpFail,
+                dupSameKey: dup, warPerf, warBattle: { n: warBattles.length, minD: warBattles.length ? Math.min(...warBattles.map((e) => e.d == null ? 1e9 : e.d)) : null, deaths: wbDeaths, first: warBattles.slice(0, 10) }, warHpDrops: { n: warHits.length, near384: warNear.length, zero: warHits.filter((e) => e.hp <= 0).length, first: warHits.slice(0, 20) }, rows, pageErrors: errs.slice(0, 5) };
   fs.writeFileSync(OUT, JSON.stringify(out, null, 1));
   console.log(`\n  최악: ${worst ? worst.peakNoLim + ' (' + worst.keys.join('+') + ')' : '없음'} · 문턱 ${knee} → ${worst && worst.peakNoLim < knee ? '안' : '★밖'}`);
   console.log(`  문턱 넘는 묶음 ${over.length} · 창 ${out.overKnee.windows}${over.length ? ' — ' + over.map((r) => r.sig + ' @' + r.atMin.join('/') + '분').join(' · ') : ''}`);
