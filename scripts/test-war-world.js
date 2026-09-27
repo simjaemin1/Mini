@@ -155,6 +155,7 @@ function _run(opts) {
     // ★[T423] 운영과 같은 두 훅(짐이 먹는다 · 귀환에 모은다) — 손잡이 끔이면 war-core 가 안 부른다
     rationEat: (w, day) => H._warRationEat(w, day),
     rationCollect: (w) => H._warRationCollect(w),
+    lootCarry: opts.noLootHook ? undefined : (w, items, kind) => H._warLootAccept(w, items, kind),   // ★[T466] 운영과 같은 훅(손잡이 끔이면 war-core 가 안 부른다)
     //   ★[T458] 운영과 같은 식량 정본(econ `consumeFood`·`totalFoodEquivalent`) — 없으면 war-core 폴백(`warFE` = 곡물·생선·고기·조리·채소 · 열매 0).
     //     앞 절들은 종전 폴백 그대로(비트 동일 대조) · 열매가 식량인지 재는 판(ⓦ·ⓧ)만 운영 쪽을 쓴다.
     food: opts.econFood ? { consumeFood: econ.consumeFood, totalFoodEquivalent: econ.totalFoodEquivalent } : undefined,
@@ -196,6 +197,7 @@ function _run(opts) {
   if (sc === 'surrender') { w._opPolicy = 'siege'; def._defPolicy = 'hold'; for (const r of ['food', 'fish', 'meat', 'cooked_food', 'vegetable']) def.econ.storage[r] = 0; }
   if (sc === 'hitrun' || sc === 'assault') def._defPolicy = 'respond';
   if (sc === 'sortie') { w._opPolicy = 'siege'; def._defPolicy = 'respond'; w._forceSortie = true; }
+  if (opts.defStore) for (const k in opts.defStore) def.econ.storage[k] = opts.defStore[k];   // ★[T466] 방어 곳간(곡물 밖 식량 — 포위 판의 항복은 `warFE` 로 재고 약탈은 식량등가 전체로 뗀다)
   // ★[T423] 진짜 팩 — 곳간에서 `_opPackLoad` 로 싣는다(품목이 적혀야 몸에 나눠 실을 수 있다). 옛 판은 일수만 손으로 적었다.
   if (opts.siegeOnly) { w._opPolicy = 'siege'; def._defPolicy = 'hold'; }   // ★[T423] 포위만 — 군량이 바닥나면 철수(짐이 걸음을 아는 판)
   if (opts.pack) {
@@ -258,6 +260,7 @@ function _run(opts) {
   const st = war.stats();
   tr.counts = { resolve: counts.resolve, surrender: st.surrender || 0, battle: st.battle || 0 };
   tr.stat = Object.assign({}, H.state._warStat);
+  tr.fe = { A: +econ.totalFoodEquivalent(atk.econ).toFixed(6), B: +econ.totalFoodEquivalent(def.econ).toFixed(6) };   // ★[T466] 두 곳간 식량등가(판 끝)
   tr.econ = { A: atk.econ.npcs.length, B: def.econ.npcs.length, foodA: +(atk.econ.storage.food || 0).toFixed(4), foodB: +(def.econ.storage.food || 0).toFixed(4) };
   tr.phase = w.phase;
   // 최종 병사 위치 해시(관측자 대조용)
@@ -397,7 +400,7 @@ function _run(opts) {
 
 (async () => {
   //   ★[T458] 절 하나만(개발 — 전 절은 7분) · WW_PART=ration,forage,berry
-  if (process.env.WW_PART) { const P = { ration: rationActPart, forage: forageMarchPart, berry: berryArrowPart }; for (const k of process.env.WW_PART.split(',')) P[k](); say(`\n결과: ${pass} 통과 / ${fail} 실패`); process.exit(fail ? 1 : 0); }
+  if (process.env.WW_PART) { const P = { ration: rationActPart, forage: forageMarchPart, berry: berryArrowPart, loot: lootActPart }; for (const k of process.env.WW_PART.split(',')) P[k](); say(`\n결과: ${pass} 통과 / ${fail} 실패`); process.exit(fail ? 1 : 0); }
   if (process.env.WW_ONLY) { const r = runScenario({ seed: parseInt(process.env.WW_SEED || '31', 10), viewer: false, scenario: process.env.WW_ONLY, trees: process.env.WW_TREES === '1', maxTicks: parseInt(process.env.WW_TICKS || '', 10) || 30 * 60 * 20 }); say(JSON.stringify({ ended: r.ended, counts: r.counts, stat: r.stat, fight: r.fightTicks, blocked: r.blockedTicks, box: [r._bx0, r._bx1, r._by0, r._by1] })); process.exit(0); }
   say('\n=== T284 실체 전쟁 — 좌표계 하나 · 장애물은 존의 것 · 연속 전투 ===');
 
@@ -568,6 +571,9 @@ function _run(opts) {
 
   // ── ⓧ 덤불 열매는 열매다 · 화살 한 메시지(T458) ─────────────────────────
   berryArrowPart();
+
+  // ── ⓨ 약탈은 몸이 옮긴다(T466) ─────────────────────────────────────────
+  lootActPart();
 
   // ── ⓖ 서버 ───────────────────────────────────────────────────────────────
   if (process.env.WAR_WORLD_NO_SERVER === '1') { say('\n[ⓖ] 서버 절 건너뜀(WAR_WORLD_NO_SERVER=1)'); }
@@ -1104,6 +1110,70 @@ function berryArrowPart() {
   ok(/arrowOut: \(m\) => state\.deps\.broadcast\(m\)/.test(VC) && /arrowNear: \(x, y\) => !!\(state\.deps\.anyViewerNear && state\.deps\.anyViewerNear\(\{ x, y \}, 800\)\)/.test(VC)
     && (BCs.match(/ctx\.onArrow\)ctx\.onArrow\(/g) || []).length === 2,
     'ⓧ③ 정적 — 운영이 하네스와 같은 두 손을 건다(있는 `broadcast` · 존 `anyViewerNear` AOI 800) · battle-core 훅 둘(발사·끝 — 보기만)');
+  for (const [k, v] of keep) { if (v == null) delete process.env[k]; else process.env[k] = v; }
+}
+// ════════════════════════════════════════════════════════════════════════════
+// ★★[T466] ⓨ — 약탈은 몸이 옮긴다(군량 = 행위 ⓒ)
+// ════════════════════════════════════════════════════════════════════════════
+function lootActPart() {
+  const KEYS = ['T423_RATION_ACT', 'T441_FORAGE_MARCH', 'T347_FORAGE_ACT', 'T466_LOOT_ACT'];
+  const keep = KEYS.map(k => [k, process.env[k]]);
+  const env = (v) => { KEYS.forEach((k, i) => { if (v[i]) process.env[k] = '1'; else delete process.env[k]; }); };
+  const run = (v, o) => { env(v); groveReset(); try { return runScenario(o); } finally { env([0, 0, 0, 0]); } };
+  const sig = (r) => JSON.stringify({ e: r.ended, h: r.posHash, s: r.stat, ph: r.phase, c: r.counts });
+  const bkNo = (r) => { const b = Object.assign({}, r.book || {}); for (const k of Object.keys(b)) if (/^loot|^home|^fgLoot/.test(k)) delete b[k]; return JSON.stringify(b); };
+  const n3 = (a, b, e) => Math.abs((a || 0) - (b || 0)) <= (e || 1e-6);
+  const feId = (r) => { const b = r.book; return { inn: b.load + (b.pickFE || 0) + (b.lootG || 0) + (b.lootP || 0), out: b.ledgerEaten + b.eaten + b.back + b.drop + (r.bagLeft || 0) }; };
+  const days = (r, dayMs) => (r.book.homeAt != null && r.book.lootAt != null) ? +((r.book.homeAt - r.book.lootAt) / dayMs).toFixed(3) : null;
+  const rows = [];
+  const row = (nm, off, on, dayMs) => { const b = on.book || {}; const settle = b.lootSettle || 0, back = (b.lootG || 0) + (b.lootP || 0);
+    rows.push(`${nm}: 정산 ${settle.toFixed(1)} · 실은 곳간 ${(b.lootG || 0).toFixed(1)}(남김 ${(b.lootLeftG || 0).toFixed(1)}) · 전장 A ${(b.lootP || 0).toFixed(1)}/B ${(b.lootPB || 0).toFixed(1)}/버림 ${(b.lootLost || 0).toFixed(1)} · ${(b.lootKg || 0).toFixed(1)}kg/${b.lootBodies || 0}몸 · 돌아온 ${settle > 0 ? (100 * (b.lootG || 0) / settle).toFixed(1) : '-'}% · ${days(on, dayMs)}일 · 드랍 ${(b.drop || 0).toFixed(1)} · 곳간 차 A ${(on.fe.A - off.fe.A).toFixed(1)} B ${(on.fe.B - off.fe.B).toFixed(1)}`); };
+
+  say('\n[ⓨ] 약탈은 몸이 옮긴다 — 곳간 몫(정산 수 그대로) + 전장 더미 → 이긴 몸의 짐(25kg) → 걸어 귀가 → 내려놓기 문 · 항등 · 결판 무변');
+  const S = { seed: 13, viewer: false, scenario: 'surrender', pack: true, untilHome: true, econFood: true, defStore: { fruit: 300, rice: 200 } };
+  const AW = { seed: 11, viewer: true, scenario: 'assault', pack: true, untilHome: true, econFood: true, comp: { champion: 8, greataxe: 4 } };
+  const BW = { seed: 11, viewer: true, scenario: 'assault', pack: true, untilHome: true, econFood: true };
+  const HG = { seed: 19, viewer: false, scenario: 'assault', siegeOnly: true, pack: true, packFood: 18, untilHome: true, econFood: true, maxTicks: 30 * 60 * 40 };
+  const s0 = run([1, 0, 0, 0], S), s1 = run([1, 0, 0, 1], S), a0 = run([1, 0, 0, 0], AW), a1 = run([1, 0, 0, 1], AW);
+  const b0 = run([1, 0, 0, 0], BW), b1 = run([1, 0, 0, 1], BW), h0 = run([1, 0, 0, 0], HG), h1 = run([1, 0, 0, 1], HG);
+  const a0n = run([1, 0, 0, 0], Object.assign({}, AW, { noLootHook: true })), aNoPack = run([0, 0, 0, 1], AW), aNoPack0 = run([0, 0, 0, 0], AW);
+  row('포위(항복)', s0, s1, 30000); row('돌격 A승', a0, a1, 30000); row('돌격 B승', b0, b1, 30000); row('굶주림(철수)', h0, h1, 30000);
+  ok(sig(a0) === sig(a0n) && JSON.stringify(a0.fe) === JSON.stringify(a0n.fe) && bkNo(a0) === JSON.stringify(a0n.book) && !a0.book.lootSettle && sig(aNoPack) === sig(aNoPack0) && JSON.stringify(aNoPack.fe) === JSON.stringify(aNoPack0.fe),
+    'ⓨ ★끔 동일 — 손잡이 끔이면 훅이 있어도 안 불린다(훅 없는 판과 한 글자) · 짐이 몸에 없는 세계(T423 끔)는 켜도 종전 즉시 정산', `A 곳간 ${a0.fe.A} = ${a0n.fe.A} · T423 끔 켬/끔 ${aNoPack.fe.A}/${aNoPack0.fe.A}`);
+  const ab = a1.book;
+  ok(ab.lootSide === 'A' && ab.lootSettle > 0 && n3(ab.lootG + ab.lootLeftG, ab.lootSettle) && n3(a1.fe.B - a0.fe.B, ab.lootLeftG) && n3(a1.fe.A - a0.fe.A, (ab.lootP || 0) - ab.lootLeftG),
+    'ⓨ① 노획 — 곳간 몫은 **정산 수 그대로** 뗀다 · 실은 것 + 남긴 것 = 정산 수 · 남긴 것은 그 곳간에 그대로 · 즉시 정산 대비 곳간 차 = 남김(+ 주운 더미)', `정산 ${ab.lootSettle} = 실음 ${ab.lootG} + 남김 ${ab.lootLeftG} · 곳간 차 A ${(a1.fe.A - a0.fe.A).toFixed(3)} · B +${(a1.fe.B - a0.fe.B).toFixed(3)}`);
+  ok(ab.lootKg <= 25 * ab.lootBodies + 1e-6 && ab.lootLeftG > 0,
+    'ⓨ① 상한 25kg(`carry.js CAP_KG` · 몸 기준 — 있는 짐 문법) — 넘치면 남긴다(이 판은 넘친다 = 발견: 몸이 옮긴 양 < 정산 수)', `실음 ${ab.lootKg}kg ≤ 25 × ${ab.lootBodies}몸(팩 먼저 차 있다) · 돌아온 ${(100 * ab.lootG / ab.lootSettle).toFixed(1)}%`);
+  const fa = feId(a1), fs1 = feId(s1), fb = feId(b1);
+  ok([a1, s1, b1].every(r => { const f = feId(r); return n3(f.inn, f.out); }) && n3(ab.drop, (ab.lootP || 0) + (ab.lootPB || 0) + (ab.lootLost || 0)) && n3(b1.book.drop, (b1.book.lootP || 0) + (b1.book.lootPB || 0) + (b1.book.lootLost || 0)),
+    'ⓨ② 항등 — 곳간에서 나간 + 딴 + 노획(곳간 몫 + 주운 더미) = 장부 + 먹음 + 내려놓음 + 드랍 + 짐 · 더미: 드랍 = 이긴 쪽이 주운 것 + 버린 것', `A승 ${fa.inn.toFixed(2)} = ${fa.out.toFixed(2)} · 항복 ${fs1.inn.toFixed(2)} = ${fs1.out.toFixed(2)} · B승 ${fb.inn.toFixed(2)} = ${fb.out.toFixed(2)}`);
+  ok([[s0, s1], [a0, a1], [b0, b1], [h0, h1]].every(([x, y]) => sig(x) === sig(y)),
+    'ⓨ② 결판 무변 — 네 판 끔/켬 끝·해시·전이·정산 한 글자 같다', `${s1.ended.why}/${s1.ended.winner} · ${a1.ended.why}/${a1.ended.winner} · ${b1.ended.why}/${b1.ended.winner} · ${h1.ended.why}/${h1.ended.winner}`);
+  const sb = s1.book, dS = days(s1, 30000), dA = days(a1, 30000);
+  ok(sb.lootKind === 'surrender' && n3(sb.lootG, sb.lootSettle) && n3(s1.fe.A, s0.fe.A) && n3(s1.fe.B, s0.fe.B) && dS > 0.5 && dS <= 1 + 1e-6 && dA > 0 && dA <= 1 + 1e-6,
+    'ⓨ② 운반·귀가 — 항복 몫은 다 실린다(곡물 밖 식량 · 짐이 가볍다) · 걸어서 하루(행군 그 걸음) 뒤 내려놓기 문 · 끝 곳간은 즉시 정산과 같다', `항복 ${sb.lootG}/${sb.lootSettle} · ${dS}일 · A승 ${dA}일`);
+  const bb = b1.book;
+  ok(bb.lootSide === 'B' && bb.lootPB > 0 && n3(b1.fe.B - b0.fe.B, bb.lootPB) && n3(b1.fe.A, b0.fe.A) && !bb.lootSettle,
+    'ⓨ② 수비가 이기면 — 전장 더미(공격 전사자의 짐)를 수비 몸이 주워 제 곳간에(제 마을 안 = 귀가) · 공격 곳간 무변', `주움 ${bb.lootPB}(${bb.lootKg}kg · ${bb.lootBodies}몸) · 버림 ${bb.lootLost || 0}`);
+  ok(!h1.book.lootSettle && !h1.book.lootSide && JSON.stringify(h1.fe) === JSON.stringify(h0.fe),
+    'ⓨ② 굶주림 판(철수 · 싸움 0) — 노획 0 · 끄나 켜나 같다', `곳간 A ${h1.fe.A} · 끝 ${h1.ended.why}`);
+  // 길에서 딴 것이 짐 자리를 먹는다(T441) — 하루 24분 · 군락 길
+  const GR = Object.assign({}, AW, { groves: true, dayMs: ZC.WORLD.dayLengthMs, maxTicks: 30 * 60 * 24 * 8 });
+  run([1, 1, 1, 1], GR);   // 데우기
+  const g0 = run([1, 0, 0, 1], GR), g1 = run([1, 1, 1, 1], GR);
+  const gb = g1.book;
+  ok(sig(g0) === sig(g1) && n3((gb.fgPack || 0) + (gb.pickUnits || 0) + (gb.fgLoot || 0), (gb.fgBack || 0) + (gb.fgDrop || 0) + (g1.fgLeft || 0) + (gb.fgEat || 0)) && n3(feId(g1).inn, feId(g1).out)
+    && (gb.lootFgKg > 0 ? (gb.lootG || 0) <= (g0.book.lootG || 0) + 1e-6 : (gb.fgDrop > 0 && n3(gb.lootG, g0.book.lootG))),
+    'ⓨ③ 길 채집과 함께(T441) — 딴 짐은 산 몸이면 노획 자리를 먹고, 쓰러진 몸이면 더미로 간다 · 낱개 항등(+ 노획 낱개) · 결판 무변',
+    `딴 것 산 몸 ${gb.lootFgKg}kg · 쓰러진 몸과 함께 ${gb.fgDrop || 0}낱개(더미로) · 노획 곳간 ${(g0.book.lootG || 0).toFixed(1)} → ${(gb.lootG || 0).toFixed(1)} · 버림 ${(g0.book.lootLost || 0).toFixed(1)} → ${(gb.lootLost || 0).toFixed(1)} · 따기 ${gb.picks || 0}포기`);
+  rows.push(`길 채집 켬(하루 24분): 정산 ${(gb.lootSettle || 0).toFixed(1)} · 실은 곳간 ${(gb.lootG || 0).toFixed(1)}(끔 ${(g0.book.lootG || 0).toFixed(1)}) · 딴 것 ${gb.lootFgKg}kg · ${days(g1, ZC.WORLD.dayLengthMs)}일`);
+  const WS = fs.readFileSync(path.join(ROOT, 'sim/war-core.js'), 'utf8'), VS = fs.readFileSync(path.join(ROOT, 'server/villages.js'), 'utf8');
+  const lm = WS.slice(WS.indexOf('function _warLootMove('), WS.indexOf('function _warLootMove(') + 900);
+  ok(/_warFoodTake\(D, amount, FOOD\)/.test(lm) && /return _warFoodMove\(D, A, amount\)/.test(lm) && /_warLootMove\(precomputedRes \? w : null/.test(WS)
+    && (WS.match(/T466_LOOT_ACT/g) || []).length === 1 && (VS.match(/process\.env\.T466_LOOT_ACT/g) || []).length === 1 && /function lootGive\(e, items\)[^\n]*_warFoodGive\(e, items, 1\)/.test(WS),
+    'ⓨ 정적 — 정산 수를 같은 문(`_warFoodTake`)으로 떼고 되돌림·내려놓기도 같은 문(`_warFoodGive`) · 헤드리스 결판(몸 없음)은 종전 즉시 · 손잡이 하나');
+  for (const r of rows) say('      ' + r);
   for (const [k, v] of keep) { if (v == null) delete process.env[k]; else process.env[k] = v; }
 }
 function forageMarchPart() {
