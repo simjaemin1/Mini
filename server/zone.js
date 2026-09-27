@@ -295,11 +295,19 @@ function _ringBump(seedKey, x, y) {
 }
 const _T325_TYPES = { tree: 1, sapling: 1 };
 function _t325TreesAtCell(cellX, cellY, raw) { return _actEntitiesAtCell(cellX, cellY, _T325_TYPES, raw); }
-// ★★[T347] **군락 개체** — 채집꾼의 현장이다. 종 집합은 생활층의 `JOB_RES.forager` 그 둘이다
-//   (`berry_bush`·`herb` — 여기서 새 표를 만들지 않는다 · 군락은 `chunk.js` 가 `groves` 로 심는다).
+// ★★[T347] **군락 개체** — 채집꾼의 현장이다(군락은 `chunk.js` 가 `groves`·지형·야생으로 심는다).
+//   ★★[T462] 종 집합은 **정본 하나**를 읽는다 — `chunk.js forageKinds`(덤불·풀 + `T450_WILD_GROVES` 켬이면 야생 군락 중
+//     세계에 서고 품목을 kcal.js 가 아는 종). 생활층 `JOB_RES.forager` 도 같은 함수를 읽는다 — 여기 글자를 두지 않는다(사본 0).
+//     정본이 켬/끔마다 **같은 배열 객체**를 돌려주므로 그 배열이 바뀔 때만 조회 표(`_T347_TYPES`)를 다시 짓는다(부를 때 드는 것은 손잡이 한 번 읽기).
 //   ⚠`raw` 면 **벤 장부를 안 넘긴다** — *"교란 전 그 셀에 무엇이 있었나"*(로지스틱 `K` · T341 규약 그대로).
-const _T347_TYPES = { berry_bush: 1, herb: 1 };
-function _t347GrovesAtCell(cellX, cellY, raw) { return _actEntitiesAtCell(cellX, cellY, _T347_TYPES, raw); }
+const { forageKinds: _forageKinds } = require('./chunk');
+let _t347Of = null, _T347_TYPES = null;
+function _t347Types() {
+  const a = _forageKinds();
+  if (a !== _t347Of) { _t347Of = a; _T347_TYPES = {}; for (const k of a) _T347_TYPES[k] = 1; }
+  return _T347_TYPES;
+}
+function _t347GrovesAtCell(cellX, cellY, raw) { return _actEntitiesAtCell(cellX, cellY, _t347Types(), raw); }
 // ★★[T341] **그 그루가 다시 자랐다** — 벤 기록을 지운다(메모리 + DB). 문 하나 · 사본 0.
 //   ⚠활성 청크에 이미 없어진 개체를 **되살려 넣지는 않는다**: 다음 활성화 때 색인이 다시 낳는다
 //     (개체를 손으로 만들면 그게 색인과 청크 두 벌이 된다 — T301 이 금한 그것).

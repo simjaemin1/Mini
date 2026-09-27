@@ -21,18 +21,25 @@
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
-const ROOT = path.join(__dirname, '..');
+// ★[T462] `T347_ROOT` — 서버 코드 자리(베이스 워크트리를 **같은 자**로 잰다 · T450 자 `T450_ROOT` 와 같은 꼴). 없으면 이 레포.
+const ROOT = process.env.T347_ROOT ? path.resolve(process.env.T347_ROOT) : path.join(__dirname, '..');
 const OUT = process.argv[2] || '/tmp/t347/forage-day.json';
 const WARMS = (process.env.T347_WARMS || '45,60,75').split(',').map((x) => parseInt(x, 10)).filter(Boolean);
 const DAYS = parseInt(process.env.DAYS || '30', 10);
 const DAY_MS = parseInt(process.env.DAY_MS || '6000', 10);
+// ★[T462] 틀 굽는 하루 — 기본은 종전 그대로(`max(1200, DAY_MS/4)`). 켠 팔 하루를 늘려도(왕복이 서게) 틀은 빨리 굽는다.
+const WARM_DAY_MS = parseInt(process.env.WARM_DAY_MS || String(Math.max(1200, Math.floor(DAY_MS / 4))), 10);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const say = (...a) => console.log(...a);
 const rmdb = (f) => { for (const s of ['', '-wal', '-shm']) { try { fs.unlinkSync(f + s); } catch (e) {} } };
 
+// ★[T462] 두 팔을 **나란히** 돌릴 때 — 자리(포트)·이름(파일)이 겹치지 않게(기본 0 · 없음 = 종전 그대로)
+const PORT_OFF = parseInt(process.env.T347_PORT || '0', 10) || 0;
+const TAGP = process.env.T347_TAG || '';
 function boot(tag, zenv) {
+  tag = TAGP + tag;
   const SECRET = 't347-' + tag;
-  const CP = 3830, ZP = 3840;
+  const CP = 3830 + PORT_OFF, ZP = 3840 + PORT_OFF;
   const logf = fs.openSync(`/tmp/t347/${tag}.log`, 'w');
   const c = spawn(process.execPath, [path.join(ROOT, 'server/central.js')], { cwd: ROOT, stdio: 'ignore',
     env: Object.assign({}, process.env, { PORT: String(CP), DB_PATH: `/tmp/t347/c-${tag}.db`, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando', CENTRAL_SECRET: SECRET }) });
@@ -50,11 +57,11 @@ const popOf = (p) => (p && p.forage && p.forage.popAll) || null;
 (async () => {
   const res = { at: new Date().toISOString(), host: { cpus: require('os').cpus().length }, WARMS, DAYS, DAY_MS, runs: {} };
   for (const warm of WARMS) {
-    const tag = 'w' + warm, db = `/tmp/t347/z-${tag}.db`;
+    const tag = 'w' + warm, db = `/tmp/t347/z-${TAGP}${tag}.db`;
     rmdb(db);
     // ── 틀 — **끈 팔로** 굽는다(켠 팔이 그 세계에서 갈라지게). 굽는 동안은 손잡이가 없다.
     say(`\n판 ${warm}일 — 틀 굽기(끈 팔)`);
-    const b0 = boot(tag + '-warm', { DB_PATH: db, VILLAGE_DAY_MS: String(Math.max(1200, Math.floor(DAY_MS / 4))) });
+    const b0 = boot(tag + '-warm', { DB_PATH: db, VILLAGE_DAY_MS: String(WARM_DAY_MS) });
     for (let i = 0; i < 900 && !(await b0.health()); i++) await sleep(1000);
     let d = 0; const t0 = Date.now();
     while (d < warm && Date.now() - t0 < 45 * 60000) { await sleep(6000); d = dayOf(await b0.perf(false)); }
@@ -77,7 +84,9 @@ const popOf = (p) => (p && p.forage && p.forage.popAll) || null;
       const w = p.forage, t = p.tick && p.tick.ms;
       curve.push({ day: dd, act: w.actVillages, noGrove: w.noGroveVillages, cells: w.cells, groves: w.groves, K: w.K, back: w.back, cap: w.cap, pickDay: w.pickDay,
         delivered: w.delivered, formula: w.formulaActPerDay, formulaAll: w.formulaPerDay, hands: w.hands, walkers: w.walkers,
-        p50: t ? t.p50 : null, p95: t ? t.p95 : null, players: popOf(p) });
+        p50: t ? t.p50 : null, p95: t ? t.p95 : null, players: popOf(p),
+        //   ★[T462] 마을별 하루 — 입고를 **딴 개체 × w̄**(T347 §3 자기신고 · 누계 `delivered` 는 게이트에서 빠진 마을 몫이 사라진다)로 다시 세려고 남긴다
+        rows: (w.rows || []).map((r) => ({ n: r.n, pick: (r.dbg && r.dbg.pick) | 0, wBar: r.wBar, cap: (r.dbg && r.dbg.cap) | 0, N: r.N, K: r.K, f: r.f, mix: r.mix, back: (r.dbg && r.dbg.back) | 0, dem: r.dbg ? r.dbg.dem : null })) });
       if (!first) first = { day: dd, rows: w.rows, delivered: w.delivered, formula: w.formulaActPerDay, formulaAll: w.formulaPerDay, groves: w.groves, cells: w.cells, act: w.actVillages, noGrove: w.noGroveVillages };
       say(`  day ${dd} · 입고 ${w.delivered} / 수식(걷은 몫) ${w.formulaActPerDay}/${w.formulaPerDay} · 군락 ${w.groves}/${w.K} · 딴 ${w.pickDay} · 되살아난 ${w.back} · 한도 ${w.cap} · p50 ${t ? t.p50 : '?'}`);
     }
