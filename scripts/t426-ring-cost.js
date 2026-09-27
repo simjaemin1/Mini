@@ -21,6 +21,16 @@
 //
 // 쓰는 법:  T426_DB=/path/w40.db node scripts/t426-ring-cost.js [out.json]
 //   T426_REPS=3(판 수 · 중앙값) · T426_DAY=(게임일 · 없으면 장부의 가장 늦은 날)
+//
+// ★★[T440 2026-09-27] `--zone` — **제품 문 그대로** 잰다(ⓑ 를 제품에 넣은 뒤 · 존을 이 프로세스 안에 띄운다 · 마을 끔 ·
+//   장부는 DB 에서 · 시계는 `__e2e_clock`). 서버 코드 자리는 `T426_ROOT`(베이스 워크트리를 같은 자로 · 없으면 이 레포).
+//   ① 하루 50마을 고리 스캔 — 나무꾼이 부르는 그 문(`_t325TreesAtCell`)으로 고리 셀 전부 · 날 셋(날이 바뀌면 판이 낡는다 =
+//      날마다 차가운 판) + 같은 날 한 번 더(표 조회만). ② 셀 답 비트 동일 — 고리 셀 전수 × (장부·원시) · `_idxAtCell` ↔
+//      `resourcesAtCell`(같은 장부 · 같은 날 · JSON 통째) · 제품 문(`_t325TreesAtCell`) ↔ 색인을 종으로 거른 것.
+//   ③ 사건 — 마을마다 고리의 나무 한 그루를 **벤다**(`_t325CutTreeAt` · 나무꾼 문) → 그 셀 답 대조 · **되살린다**
+//      (`_t341Unharvest`) → 대조 · **날을 넘긴다**(벤 그루가 묘목이 되는 날) → 대조 · **심는다**(`tryPlantTree`) → 색인은 그대로
+//      · 제품 문은 심은 묘목을 낸다. ★미끼: 판을 안 비우는 코드(돌연변이 워크트리)로 돌리면 ③ 이 빨갛다.
+//   쓰는 법: T426_DB=<40일 DB> [T426_ROOT=<워크트리>] node scripts/t426-ring-cost.js --zone [out.json]
 // =============================================================================
 'use strict';
 const path = require('path');
@@ -31,6 +41,11 @@ const DB = process.env.T426_DB;
 const OUT = process.argv[2] || '/tmp/t426-ring-cost.json';
 if (!DB || !fs.existsSync(DB)) { console.log('T426_DB=<40일 DB> 가 필요하다'); process.exit(2); }
 const REPS = Math.max(1, +(process.env.T426_REPS || 3));
+//   ★[T440] 제품 문 판 — 위 머리글 `--zone`(아래 함수 · 이 파일 끝)
+if (process.argv[2] === '--zone') {
+  zoneMode().then(() => process.exit(0), (e) => { process.stdout.write('자 크래시: ' + ((e && e.stack) || e) + '\n'); process.exit(1); });
+  return;
+}
 const _log = console.log;
 console.log = () => {};                                   // 모듈 적재 소음(econ-sim 등) — 표만 남긴다
 const CH = require(path.join(ROOT, 'server', 'chunk.js'));
@@ -162,3 +177,180 @@ say(`   (존 쪽 문이면 0 — \`_actEntitiesAtCell\` 이 쿼드트리 갈래�
 fs.writeFileSync(OUT, JSON.stringify({ db: DB, day: DAY, reps: REPS, types: [...TYPES], cells: cellsAll, keep: keepAll, dayNow, dayA, dayRaw, dayB, ok, bad, rawZeroDb,
   rows: rows.map((r) => ({ name: r.name, cells: r.cells, keep: r.keepCells, K: r.K, N: r.N, chunks: r.chunks, now: +r.now.toFixed(2), a: +r.a.toFixed(2), raw: +r.raw.toFixed(2), bOwn: +r.bOwn.toFixed(2), bLook: +r.bLook.toFixed(3) })) }, null, 1));
 say(`\n표 → ${OUT}`);
+
+// ══ ★[T440] `--zone` — 제품 문 그대로 ════════════════════════════════════════════
+async function zoneMode() {
+  const SROOT = process.env.T426_ROOT ? path.resolve(process.env.T426_ROOT) : ROOT;
+  const OUTZ = process.argv[3] || '/tmp/t440-ring-zone.json';
+  const say = (s) => process.stdout.write(s + '\n');
+  const WORK = `/tmp/t440-ring-zone-${process.pid}.db`;
+  const rmW = () => { for (const x of ['', '-wal', '-shm']) { try { fs.unlinkSync(WORK + x); } catch (e) {} } };
+  rmW(); for (const x of ['', '-wal', '-shm']) { try { fs.copyFileSync(DB + x, WORK + x); } catch (e) {} }
+  process.on('exit', rmW);
+  Object.assign(process.env, { ZONE_ID: ZID, PORT: String(40700 + (process.pid % 200)), DB_PATH: WORK,
+    ENABLE_VILLAGES: '0', ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', E2E_GIVE: '1' });
+  const logs = [];
+  const _l = console.log, _w = console.warn, _e = console.error;
+  console.log = (...a) => logs.push(a.map(String).join(' ')); console.warn = console.log; console.error = console.log;
+  const Zone = require(path.join(SROOT, 'server', 'zone.js'));
+  const H = Zone.__testBind();
+  await new Promise((r) => setImmediate(r));
+  const CHz = require(path.join(SROOT, 'server', 'chunk.js'));
+  const { ZONES: ZN } = require(path.join(SROOT, 'server', 'zone-config.js'));
+  const Vz = require(path.join(SROOT, 'server', 'villages.js'));
+  console.log = _l; console.warn = _w; console.error = _e;
+  const hasIdx = typeof H._idxAtCell === 'function';
+  const me = { pid: 'p_t440', playerId: 't440', name: 't440', persistent: false, ws: { readyState: 1, send: () => {} },
+    x: 100, y: 100, vx: 0, vy: 0, floor: 0, hp: 100, maxHp: 100, hunger: 100, thirst: 100, inventory: {}, toolItems: [],
+    equipment: [], equipSlots: {}, lots: {}, isNpc: false, isDown: false, tribeId: null, lastSeen: Date.now() };
+  const clock = (d) => H.handlePlayerInput(me, JSON.stringify({ type: '__e2e_clock', day: d, night: false }));
+  //   입력 — 마을·영토는 DB(존은 마을을 안 띄운다 · 장부는 존이 DB 에서 올렸다)
+  const Dz = require(path.join(ROOT, 'node_modules', 'better-sqlite3'))(WORK, { readonly: true });
+  const vz = Dz.prepare('SELECT id, name, cx, cy FROM villages').all();
+  const tz = Dz.prepare("SELECT village_id, cx, cy FROM village_buildings WHERE type = 'terr'").all();
+  const ledN = Dz.prepare('SELECT COUNT(*) n FROM harvested_seeds').get().n;
+  let D0 = -Infinity; for (const r of Dz.prepare('SELECT harvested_day d FROM harvested_seeds').all()) if (r.d > D0) D0 = r.d;
+  Dz.close();
+  if (process.env.T426_DAY != null) D0 = +process.env.T426_DAY;
+  const byz = new Map(); for (const t of tz) { if (!byz.has(t.village_id)) byz.set(t.village_id, new Set()); byz.get(t.village_id).add(t.cx + ',' + t.cy); }
+  const pvz = vz.map((v) => ({ name: v.name, dbId: v.id, ccx: v.cx, ccy: v.cy, _terrSet: byz.get(v.id) || new Set() }));
+  const R = pvz.map((v) => Vz._t398Cells(v, pvz));
+  const cellsAll = R.reduce((a, r) => a + r.xy.length / 2, 0);
+  const tt = /const _T325_TYPES = \{([^}]*)\}/.exec(fs.readFileSync(path.join(SROOT, 'server', 'zone.js'), 'utf8'));
+  const TY = new Set(tt ? [...tt[1].matchAll(/(\w+)\s*:/g)].map((m) => m[1]) : []);
+  const bz = ZN[ZID].biome, csz = CHz.CHUNK_SIZE;
+  const res = { root: SROOT, db: DB, hasIdx, villages: vz.length, ledger: ledN, day0: D0, cells: cellsAll };
+  say(`[자 --zone] 코드 ${SROOT === ROOT ? '이 레포' : SROOT} · 청크 판 문 ${hasIdx ? '있음' : '없음(옛 코드 — 셀마다 색인)'} · 마을 ${vz.length} · 고리 셀 ${cellsAll} · 장부 ${ledN}행 · 게임일 ${D0}`);
+  const nsz = () => process.hrtime.bigint(), msz = (a) => Number(process.hrtime.bigint() - a) / 1e6;
+  const medz = (a) => { const b = a.slice().sort((x, y) => x - y); return b[Math.floor((b.length - 1) / 2)]; };
+  //   데우기(JIT) — 이 날의 판은 버린다(아래 첫 날은 다른 날이다)
+  clock(D0 - 1);
+  for (let i = 0; i < 3000; i++) H._t325TreesAtCell(1000 + (i % 50), 1000 + Math.floor(i / 50));
+  // ── ① 하루 50마을 — 날 셋(차가운 판) + 같은 날 한 번 더(표 조회만) ─────────────
+  const perDay = [];
+  const vilMs = pvz.map(() => []);
+  const scanAll = (store) => {
+    let tot = 0;
+    for (let i = 0; i < R.length; i++) {
+      const xy = R[i].xy, t0 = nsz();
+      for (let j = 0; j < xy.length; j += 2) { const x = xy[j], y = xy[j + 1]; if (x < 0 || y < 0) continue; H._t325TreesAtCell(x, y); }
+      const m = msz(t0); tot += m; if (store) vilMs[i].push(m);
+    }
+    return tot;
+  };
+  const st0 = hasIdx ? Object.assign({}, H._ringStat) : null;
+  for (let d = 0; d < REPS; d++) {
+    clock(D0 + d);
+    const cold = scanAll(true);
+    const warm = scanAll(false);
+    perDay.push({ day: D0 + d, cold, warm });
+  }
+  const vm = vilMs.map((a) => medz(a));
+  const heavy = vm.indexOf(Math.max(...vm));
+  res.day = { perDay, vilMed: medz(vm), vilMax: Math.max(...vm), heavy: pvz[heavy].name, heavyCells: R[heavy].xy.length / 2, sumMed: medz(perDay.map((p) => p.cold)), warmMed: medz(perDay.map((p) => p.warm)) };
+  if (hasIdx) { const st = H._ringStat; res.day.stat = { miss: st.miss - st0.miss, hit: st.hit - st0.hit, buildMs: (st.us - st0.us) / 1000, tables: H._ringCache.size }; }
+  say(`① 하루 50마을(차가운 판 · 날 ${REPS}) — 합 중앙 ${res.day.sumMed.toFixed(0)}ms(${perDay.map((p) => p.cold.toFixed(0)).join(' · ')}) · 마을 중앙 ${res.day.vilMed.toFixed(1)}ms · 가장 무거운 ${res.day.heavy} ${res.day.vilMax.toFixed(1)}ms(${res.day.heavyCells}칸) · 같은 날 한 번 더(표 조회만) ${res.day.warmMed.toFixed(0)}ms`
+    + (res.day.stat ? ` · 판 낳음 ${res.day.stat.miss}번 ${res.day.stat.buildMs.toFixed(0)}ms · 판 ${res.day.stat.tables}` : ''));
+  if (!hasIdx) { fs.writeFileSync(OUTZ, JSON.stringify(res, null, 1)); say(`표 → ${OUTZ}`); return; }
+  // ── ② 셀 답 비트 동일 — 고리 셀 전수 × (장부·원시) · 제품 문 ────────────────────
+  const dayNow = D0 + REPS - 1;
+  clock(dayNow);
+  const J = (a) => JSON.stringify(a);
+  const cmpCell = (x, y, day) => {
+    const A = J(H._idxAtCell(x, y, false, day));
+    const Rr = CHz.resourcesAtCell(ZID, x, y, { biome: bz, chunkSize: csz, harvestedSet: H.harvestedSeeds, gameDay: day });
+    const ok1 = A === J(Rr);
+    const ok2 = J(H._t325TreesAtCell(x, y)) === J(Rr.filter((e) => TY.has(e.type)));
+    return { ok: ok1 && ok2, ok1, ok2, R: Rr };
+  };
+  let n = 0, badN = 0, badR = 0, badP = 0, ents = 0; const badList = [];
+  const t2 = nsz();
+  for (let i = 0; i < R.length; i++) {
+    const xy = R[i].xy;
+    for (let j = 0; j < xy.length; j += 2) {
+      const x = xy[j], y = xy[j + 1]; if (x < 0 || y < 0) continue;
+      n++;
+      const c = cmpCell(x, y, dayNow); ents += c.R.length;
+      if (!c.ok1) { badN++; if (badList.length < 5) badList.push(`${pvz[i].name}(${x},${y}) 장부`); }
+      if (!c.ok2) { badP++; if (badList.length < 5) badList.push(`${pvz[i].name}(${x},${y}) 제품 문`); }
+      const Ar = J(H._idxAtCell(x, y, true));
+      if (Ar !== J(CHz.resourcesAtCell(ZID, x, y, { biome: bz, chunkSize: csz }))) { badR++; if (badList.length < 5) badList.push(`${pvz[i].name}(${x},${y}) 원시`); }
+    }
+  }
+  res.same = { cells: n, entities: ents, badLedger: badN, badRaw: badR, badProduct: badP, ms: msz(t2), bad: badList };
+  say(`② 셀 답 비트 동일 — 고리 셀 ${n} × (장부 · 원시 · 제품 문) · 개체 ${ents} · 어긋난 셀: 장부 ${badN} · 원시 ${badR} · 제품 문 ${badP}${badList.length ? ' ★' + badList.join(', ') : ''}`);
+  // ── ③ 사건 — 벰 · 되살림 · 날 넘김(재생 단계) · 심음 ───────────────────────
+  const ev = { cut: { n: 0, same: 0, changed: 0 }, unh: { n: 0, same: 0, changed: 0 }, stage: { n: 0, same: 0, changed: 0 }, plant: { n: 0, idxSame: 0, product: 0 } };
+  const picks = [];
+  for (let i = 0; i < R.length; i++) {   // 마을마다 고리의 나무 한 그루(그 셀의 첫 개체가 성목)
+    const xy = R[i].xy;
+    for (let j = 0; j < xy.length; j += 2) {
+      const x = xy[j], y = xy[j + 1]; if (x < 0 || y < 0) continue;
+      const a = H._t325TreesAtCell(x, y);
+      if (a.length && a[0].type === 'tree' && a[0].seedKey && !H.harvestedSeeds.has(a[0].seedKey)) { picks.push({ vil: pvz[i].name, x, y, seedKey: a[0].seedKey, before: J(CHz.resourcesAtCell(ZID, x, y, { biome: bz, chunkSize: csz, harvestedSet: H.harvestedSeeds, gameDay: dayNow })) }); break; }
+    }
+  }
+  //   벤다 — 나무꾼 문(`_t325CutTreeAt` → `_actTakeAtCell` → `_markHarvested`)
+  for (const p of picks) {
+    const loot = H._t325CutTreeAt(p.x, p.y);
+    if (!loot) continue;
+    ev.cut.n++;
+    const c = cmpCell(p.x, p.y, dayNow);
+    if (c.ok) ev.cut.same++;
+    if (J(c.R) !== p.before) ev.cut.changed++;
+    p.afterCut = J(c.R);
+  }
+  //   날을 넘긴다 — 벤 그루가 가장 빨리 묘목이 되는 날(정본: 셀 답이 바뀌는 첫 날을 찾지 않고, 종 표에서 유도)
+  const TR = require(path.join(SROOT, 'server', 'trees.js'));
+  const YD = require(path.join(SROOT, 'server', 'events.js')).yearDaysOf();
+  let sapD = Infinity;
+  for (const p of picks) { const sp = TR.ON() ? TR.speciesAt(ZID, p.x, p.y) : null; const g = sp ? TR.stageYearsOf(sp, CHz.REGROW.TREE_STUMP_Y(), CHz.REGROW.TREE_FULL_Y()) : [CHz.REGROW.TREE_STUMP_Y(), CHz.REGROW.TREE_FULL_Y()]; sapD = Math.min(sapD, Math.ceil(g[0] * YD)); }
+  const dayLater = dayNow + (Number.isFinite(sapD) ? sapD : 0);
+  clock(dayLater);
+  for (const p of picks) {
+    if (!p.afterCut) continue;
+    ev.stage.n++;
+    const c = cmpCell(p.x, p.y, dayLater);
+    if (c.ok) ev.stage.same++;
+    if (J(c.R) !== p.afterCut) ev.stage.changed++;
+  }
+  //   되살린다 — T341 문(`_t341Unharvest` · 자리는 모른다 → 그 청크 판을 버린다)
+  for (const p of picks) {
+    if (!p.afterCut) continue;
+    const before = J(CHz.resourcesAtCell(ZID, p.x, p.y, { biome: bz, chunkSize: csz, harvestedSet: H.harvestedSeeds, gameDay: dayLater }));
+    if (!H._t341Unharvest(p.seedKey)) continue;
+    ev.unh.n++;
+    const c = cmpCell(p.x, p.y, dayLater);
+    if (c.ok) ev.unh.same++;
+    if (J(c.R) !== before) ev.unh.changed++;
+  }
+  //   심는다 — 마을 셋의 고리에서 빈 셀 하나씩(DB 나무 · 색인은 그대로여야 한다 · 제품 문은 심은 묘목을 낸다)
+  for (let i = 0; i < R.length && ev.plant.n < 3; i++) {
+    const xy = R[i].xy;
+    for (let j = 0; j < xy.length; j += 2) {
+      const x = xy[j], y = xy[j + 1]; if (x < 0 || y < 0) continue;
+      const px = x * 32 + 16, py = y * 32 + 16;
+      if (H.isTerrainBlockedLocal(px, py)) continue;
+      if (CHz.resourcesAtCell(ZID, x, y, { biome: bz, chunkSize: csz }).length) continue;
+      let busy = false; for (const rr of H.resources.values()) if (Math.floor(rr.x / 32) === x && Math.floor(rr.y / 32) === y) { busy = true; break; }
+      if (busy) continue;
+      const idxBefore = J(H._idxAtCell(x, y, false, dayLater));
+      me.x = px; me.y = py; me.inventory.acorn = 1;
+      const t = H.tryPlantTree(me, px, py, 'acorn');
+      if (!t) continue;
+      ev.plant.n++;
+      await new Promise((r) => setTimeout(r, 400));   // 쿼드트리는 틱이 다시 세운다(5Hz 상한 — 종전 규칙 그대로)
+      if (J(H._idxAtCell(x, y, false, dayLater)) === idxBefore && cmpCell(x, y, dayLater).ok1) ev.plant.idxSame++;
+      const a = H._t325TreesAtCell(x, y);
+      if (a.length && a[0].id === t.id) ev.plant.product++;
+      break;
+    }
+  }
+  res.events = ev;
+  say(`③ 사건 — 벰 ${ev.cut.n}(답이 바뀐 셀 ${ev.cut.changed} · 판 = 색인 ${ev.cut.same}) · 날 넘김 ${dayNow} → ${dayLater}일 ${ev.stage.n}(바뀐 셀 ${ev.stage.changed} · 같음 ${ev.stage.same}) · 되살림 ${ev.unh.n}(바뀐 셀 ${ev.unh.changed} · 같음 ${ev.unh.same}) · 심음 ${ev.plant.n}(색인 그대로 ${ev.plant.idxSame} · 제품 문이 심은 묘목을 냄 ${ev.plant.product})`);
+  const allSame = (res.same.badLedger + res.same.badRaw + res.same.badProduct) === 0 && ev.cut.same === ev.cut.n && ev.stage.same === ev.stage.n && ev.unh.same === ev.unh.n && ev.plant.idxSame === ev.plant.n && ev.plant.product === ev.plant.n;
+  res.verdict = allSame ? 'SAME' : 'DIFF';
+  say(`판정 — ${allSame ? '★셀 답 비트 동일(사건 뒤까지)' : '✗ 어긋났다(위 수)'} · 판 ${H._ringCache.size} · 낳음 ${H._ringStat.miss} · 셀만 새로 ${H._ringStat.patch} · 판 버림 ${H._ringStat.drop}`);
+  fs.writeFileSync(OUTZ, JSON.stringify(res, null, 1));
+  say(`표 → ${OUTZ}`);
+}

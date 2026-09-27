@@ -155,14 +155,15 @@ console.log('\n⑥ ⓐ 관측자 무관 · ⓕ 벤 그루는 없어지고 벤 �
   ok(/function _takeResourceEntity\(r, notify\)/.test(ZC),
     '⑥ ★★개체를 세계에서 빼는 문이 **하나**다(채집 갈래와 벌목이 같은 줄을 쓴다)');
   ok(/_takeResourceEntity\(r, true\);/.test(ZC), '⑥ ★채집 갈래는 `notify=true` — 종전과 **글자 그대로** 같은 일을 한다');
-  ok(/if \(r\.isSeed && r\.seedKey\) _markHarvested\(r\.seedKey\);/.test(ZC),
-    '⑥ ★★★벤 날을 **장부에 적는다**(`harvestedSeeds` → T122 재생의 입력 — 영구 소실이 아니다)');
+  ok(/if \(r\.isSeed && r\.seedKey\) _markHarvested\(r\.seedKey, r\.x, r\.y\);/.test(ZC),
+    '⑥ ★★★벤 날을 **장부에 적는다**(`harvestedSeeds` → T122 재생의 입력 — 영구 소실이 아니다 · ★[T440] 자리까지 — 청크 판이 그 셀만 새로 낳는다)');
   ok(/_takeResourceEntity\(r, anyViewerNear\(\{ x: px, y: py \}, AOI_RADIUS\)\)/.test(ZC),
     '⑥ ★★방송은 **관측자가 있을 때만**(T324 ⓐ 규약 — 없는 관측자를 가정하지 않는다)');
-  ok(/else if \(r\.isSeed && r\.seedKey\) _markHarvested\(r\.seedKey\);/.test(ZC),
+  ok(/else if \(r\.isSeed && r\.seedKey\) _markHarvested\(r\.seedKey, r\.x, r\.y\);/.test(ZC),
     '⑥ ★청크가 꺼져 있으면 지울 개체가 없다 — **장부만** 적는다(그래도 나무는 없어진다)');
-  ok(/harvestedSet: harvestedSeeds, gameDay: gameDayNow\(\)/.test(ZC),
-    '⑥ ★★색인에 **수확 장부와 게임일을 넘긴다** ⇒ 색인 답 = 청크 답(T301 §0ⓐ 규칙 표)');
+  //   ★[T440] 색인은 청크 한 판(`_idxAtCell` → `_ringBuild`)으로 묻는다 — 판을 낳는 인자에 장부·날이 든다
+  ok(/_idxAtCell\(cellX \| 0, cellY \| 0, !!raw, raw \? undefined : gameDayNow\(\)\)/.test(ZC) && /_ringBuild\(qx, qy, harvestedSeeds, day\)/.test(ZC),
+    '⑥ ★★색인에 **수확 장부와 게임일을 넘긴다** ⇒ 색인 답 = 청크 답(T301 §0ⓐ 규칙 표 · ★[T440] 청크 판이 그 둘로 낳는다)');
   // ★기능 — 색인이 정말 그 장부를 본다: 같은 셀을 두 번 묻되 둘째엔 벤 것으로 표시한다
   const CH = require(path.join(ROOT, 'server', 'chunk.js'));
   const { ZONES } = require(path.join(ROOT, 'server', 'zone-config.js'));

@@ -841,14 +841,29 @@ function resourcesAtCell(zoneId, cellX, cellY, opts) {
   const o = opts || {};
   const cs = o.chunkSize || CHUNK_SIZE;
   const biome = o.biome || _zoneBiome(zoneId);
+  const q = cellChunksOf(cellX, cellY, cs);
+  const out = [];
+  for (let i = 0; i < q.length; i += 2) {
+    const got = generateChunkResources(zoneId, biome, q[i], q[i + 1], cs, o.harvestedSet, o.gameDay,
+      { cx: cellX | 0, cy: cellY | 0 });
+    for (const e of got) out.push(e);
+  }
+  return out;
+}
+// ★★[T301 · 하네스가 잡은 것] 청크는 **자기 밖에도 낳는다.** 숲 그리드의 마지막 격자점이
+//   지터(`j1 * SP`)로 청크 경계를 넘는다 — 실측: 청크 (0,0) 이 `ft1020_0` 을 x=1032.5 에 낳는다
+//   (그 자리는 청크 (1,0) 의 셀 32 다). 그래서 목표 셀의 청크만 물으면 **그 나무를 놓친다**
+//   (`test-resource-index ⓐ` 가 숲 청크 100개에서 1,328셀을 잡았다 — 논증이 아니라 전수가 잡았다).
+//   ⇒ 넘어올 수 있는 이웃 청크까지 묻는다. 넘침의 상한은 격자 간격의 최댓값 `FOREST_SP_MAX` 다
+//     (값은 이 파일의 정본 상수 — 자가 새로 적는 수 0).
+// ★★[T440 2026-09-27] 그 목록(**차례까지**)을 함수 하나로 뺐다 — `resourcesAtCell` 과 존의 청크 판 캐시
+//   (`zone.js _ringCache` · 셀마다 색인을 다시 낳지 않고 청크를 한 판 낳아 셀로 나눈다)가 **같은 목록·같은 차례**로
+//   청크를 모은다 ⇒ 두 길의 답이 개체 차례까지 같다(판정을 두 벌 적지 않는다 · 사본 0).
+// @returns [qx0, qy0, qx1, qy1, …] — `dy` 바깥 · `dx` 안쪽 차례(종전 두 겹 루프 그대로)
+function cellChunksOf(cellX, cellY, chunkSize) {
+  const cs = chunkSize || CHUNK_SIZE;
   const px = (cellX | 0) * 32, py = (cellY | 0) * 32;
   const ccx = Math.floor(px / cs), ccy = Math.floor(py / cs);
-  // ★★[T301 · 하네스가 잡은 것] 청크는 **자기 밖에도 낳는다.** 숲 그리드의 마지막 격자점이
-  //   지터(`j1 * SP`)로 청크 경계를 넘는다 — 실측: 청크 (0,0) 이 `ft1020_0` 을 x=1032.5 에 낳는다
-  //   (그 자리는 청크 (1,0) 의 셀 32 다). 그래서 목표 셀의 청크만 물으면 **그 나무를 놓친다**
-  //   (`test-resource-index ⓐ` 가 숲 청크 100개에서 1,328셀을 잡았다 — 논증이 아니라 전수가 잡았다).
-  //   ⇒ 넘어올 수 있는 이웃 청크까지 묻는다. 넘침의 상한은 격자 간격의 최댓값 `FOREST_SP_MAX` 다
-  //     (값은 이 파일의 정본 상수 — 자가 새로 적는 수 0).
   const OV = FOREST_SP_MAX;
   const out = [];
   for (let dy = -1; dy <= 1; dy++) {
@@ -859,9 +874,7 @@ function resourcesAtCell(zoneId, cellX, cellY, opts) {
       const bx0 = qx * cs, by0 = qy * cs;
       if (px + 31 < bx0 - OV || px > bx0 + cs - 1 + OV) continue;
       if (py + 31 < by0 - OV || py > by0 + cs - 1 + OV) continue;
-      const got = generateChunkResources(zoneId, biome, qx, qy, cs, o.harvestedSet, o.gameDay,
-        { cx: cellX | 0, cy: cellY | 0 });
-      for (const e of got) out.push(e);
+      out.push(qx, qy);
     }
   }
   return out;
@@ -1124,4 +1137,4 @@ function generateCoastlineWaterTiles(zone, tileSize, findZoneAtFn, oceanRects) {
 
 // ★[T108 2026-09-05] `RESOURCE_HP_TABLE` 을 **내준다** — `zone.js` 가 같은 표를 한 벌 더
 //   들고 있었고(운석이 빠져 3대에 깨졌다 · T90 회부), 그걸 지우려면 정본이 나가야 한다.
-module.exports = { Chunk, ChunkManager, CHUNK_SIZE, generateChunkResources, resourceAt, resourcesAtCell, treeBlockerAt, overflowInto, seedGenChunkOf, regrowStageOf, REGROW, GROVE, seedRand, forestSpacing, forestTreesPerCell, forestTreesPerCellMean, scatterTreesPerCell, treeShareOf, scatterRocksPerCell, rockShareOf, FOREST_MIN_COV, RESOURCES_PER_CHUNK, generateVillagesForZone, makeVillageName, generateCoastlineWaterTiles, RESOURCE_HP_TABLE, GROVE_KINDS };
+module.exports = { Chunk, ChunkManager, CHUNK_SIZE, generateChunkResources, resourceAt, resourcesAtCell, cellChunksOf, treeBlockerAt, overflowInto, seedGenChunkOf, regrowStageOf, REGROW, GROVE, seedRand, forestSpacing, forestTreesPerCell, forestTreesPerCellMean, scatterTreesPerCell, treeShareOf, scatterRocksPerCell, rockShareOf, FOREST_MIN_COV, RESOURCES_PER_CHUNK, generateVillagesForZone, makeVillageName, generateCoastlineWaterTiles, RESOURCE_HP_TABLE, GROVE_KINDS };

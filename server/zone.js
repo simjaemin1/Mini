@@ -58,7 +58,7 @@ const Rooms = require('./rooms'); // ★[배치 18 ①] 방 판정 정본(벽·�
 const SIM_LON_ON = process.env.VILLAGE_LON !== '0'; // §19 경도 로컬 태양시(마을 NPC 야간 귀가) 게이트 — 기본 켜짐
 const central = require('./central-client'); // central HTTP 클라이언트
 const { Quadtree, QuadtreeInc } = require('./quadtree'); // spatial index — O(N²) 검색 회피 · ★[T421] 증분 판(겉 동작 동일)
-const { ChunkManager, CHUNK_SIZE, generateChunkResources, resourcesAtCell, overflowInto, seedGenChunkOf, regrowStageOf, REGROW, generateVillagesForZone, generateCoastlineWaterTiles, RESOURCE_HP_TABLE, GROVE_KINDS, forestSpacing: chunkForestSpacing, FOREST_MIN_COV: chunkForestMinCov } = require('./chunk');   // ★[T325] `resourcesAtCell` — 관측자 무관 색인(T301) 그대로. 나무꾼이 청크 없이 나무를 묻는다 // ★[T124] 재생 정산은 T122 정본을 그대로 받는다(사본 0) // 청크 단위 entity 분류 + procedural + 해안선 + ★[T108] 자연물 hp 정본
+const { ChunkManager, CHUNK_SIZE, generateChunkResources, resourcesAtCell, cellChunksOf, overflowInto, seedGenChunkOf, regrowStageOf, REGROW, generateVillagesForZone, generateCoastlineWaterTiles, RESOURCE_HP_TABLE, GROVE_KINDS, forestSpacing: chunkForestSpacing, FOREST_MIN_COV: chunkForestMinCov } = require('./chunk');   // ★[T325] `resourcesAtCell` — 관측자 무관 색인(T301) 그대로. 나무꾼이 청크 없이 나무를 묻는다 // ★[T124] 재생 정산은 T122 정본을 그대로 받는다(사본 0) // 청크 단위 entity 분류 + procedural + 해안선 + ★[T108] 자연물 hp 정본
 const { findPath: pfFindPath } = require('./pathfind'); // Phase 14.49-b: NPC A* pathfinding
 const PathCore = require('../sim/path-core.js'); // ★[생활 층 100% ①] 랩·서버 공용 경로 정본 — smoothPath(스트링 풀링)를 주민 이동에 직결
 const { ANIMALS } = require('./animals');  // Phase 5-6: 동물 mob 36종 catalog
@@ -120,10 +120,12 @@ function _promoteHarvestOnce() {
   let wrote = 0;
   try { wrote = db.promoteHarvestedDays(today) || 0; } catch (e) {}
   _harvestPromotePending = 0;
+  if (n) _ringCache.clear();   // ★[T440] 여러 청크의 장부가 한꺼번에 바뀌었다 — 청크 판(ringCache)을 통째로 버린다
   if (n || wrote) console.log(`[${ZONE_ID}] ★[T122] 벤 날 없는 옛 행 ${n}개를 게임일 ${today}로 승격 — DB ${wrote}행 기록`);
 }
 // ★벤 자리를 적는 **문 하나** — 메모리와 DB 를 같이 적는다(사본 0 · 세 호출부가 이것만 부른다).
-function _markHarvested(seedKey) {
+//   ★[T440] `x`·`y` = 그 개체 자리(청크 판이 **그 셀만** 새로 낳는다 · 모르면 그 청크 판을 버린다).
+function _markHarvested(seedKey, x, y) {
   if (!seedKey) return;
   // ★★[T378 2026-09-25] **부팅에도 이 문이 열려야 한다.** 부팅 개간이 이 문을 부르는데, 그때는
   //   `gameDayNow()` 가 TDZ 로 던진다(`_e2eClock` 선언 전 · 아래 `clearTreesInCells` 주석).
@@ -133,6 +135,7 @@ function _markHarvested(seedKey) {
   let d; try { d = gameDayNow(); } catch (e) { d = undefined; }
   harvestedSeeds.set(seedKey, Number.isFinite(d) ? Math.floor(d) : -1);
   _farBump(seedKey);   // ★[T380] 원경 캐시 무효화 — **장부가 바뀐 청크만**(문 하나를 지나므로 새는 길이 없다)
+  _ringBump(seedKey, x, y);   // ★[T440] 청크 판 — 그 씨를 낳은 청크의 그 셀만(같은 문 · 새는 길이 없다)
   if (!Number.isFinite(d)) _harvestPromotePending = 1;
   try { db.insertHarvestedSeed(seedKey, d); } catch (e) {}
 }
@@ -153,7 +156,7 @@ function _takeResourceEntity(r, notify) {
   resources.delete(r.id);
   chunkManager.removeResource(r);
   resourcesDirty = true;
-  if (r.isSeed && r.seedKey) _markHarvested(r.seedKey);   // ★[T122] 벤 게임일까지 적는다 — 재생의 입력
+  if (r.isSeed && r.seedKey) _markHarvested(r.seedKey, r.x, r.y);   // ★[T122] 벤 게임일까지 적는다 — 재생의 입력
   else if (r.dbId) { resourcesByDbId.delete(r.dbId); try { db.deleteResource(r.dbId); } catch (e) {} }   // ★[T393] 표에서도
   if (notify) broadcast({ type: 'resource_removed', id: r.id });
 }
@@ -191,13 +194,85 @@ function _actEntitiesAtCell(cellX, cellY, types, raw) {
     if (out.length) return out;
   }
   let a = [];
-  try {
-    a = resourcesAtCell(ZONE_ID, cellX | 0, cellY | 0,
-      raw ? { biome: ZONE.biome, chunkSize: chunkManager.chunkSize }
-          : { biome: ZONE.biome, chunkSize: chunkManager.chunkSize, harvestedSet: harvestedSeeds, gameDay: gameDayNow() });
-  } catch (e) { a = []; _idxWarnOnce('자원 셀 질의', e, '이 판은 서 있는 개체만 본다'); }   // ★[T393] 삼키지 않는다 — 한 번 이름
+  //   ★[T440] 색인은 **청크 한 판**(`_idxAtCell` · 아래)으로 묻는다 — `resourcesAtCell` 과 같은 답(개체 차례까지).
+  try { a = _idxAtCell(cellX | 0, cellY | 0, !!raw, raw ? undefined : gameDayNow()); }
+  catch (e) { a = []; _idxWarnOnce('자원 셀 질의', e, '이 판은 서 있는 개체만 본다'); }   // ★[T393] 삼키지 않는다 — 한 번 이름
   for (const e of a) if (types[e.type]) out.push(e);
   return out;
+}
+// ★★★[T440 2026-09-27 · ★PM 결정(위임) · T398 §1-4 ⓑ · T426 §0-ⓖ 표] **청크 한 판(ringCache)** — 셀 색인의 문 하나.
+//   셀마다 색인(`resourcesAtCell`)을 부르면 그 셀에 닿는 청크(1~4)를 **셀마다 다시 낳는다** — 나무꾼 고리(50마을 32만 칸)를
+//   하루 한 번 훑는 데 3,057ms 였다(T426 ④ · 셀당 9.5µs). ⇒ 청크를 **한 판** 낳아(`generateChunkResources` — 청크가 켜질 때
+//   부르는 그 함수 · 같은 인자) 셀 → 개체 표로 나눠 두고 셀은 표를 본다(T295 전쟁 나무 칸 캐시 · T380 원경 캐시와 같은 꼴).
+//   ★답이 **개체 차례까지** 같다 — 셀에 닿는 청크 목록·차례는 `chunk.js cellChunksOf`(색인이 쓰는 그 함수 · 사본 0)이고
+//     청크 안 차례는 생성 차례다(색인은 같은 생성을 셀로 거른 것 · T301 `_inCell`).
+//   ★판이 낡는 사건 — **그 청크(그 셀)만** 새로 낳는다:
+//     ⓐ 장부가 바뀐 씨(벰·다시 벰 `_markHarvested`) — 그 씨를 **낳은 청크**(`seedGenChunkOf` · T317 정본)의 판에서
+//        **그 셀만** 다시 낳는다(같은 생성기를 그 셀로 거른 것 = 색인 그 자체) · 자리를 모르면(되살림 `_t341Unharvest`)
+//        그 청크 판을 버린다 · 청크도 모르면(군락 키) 통째로 버린다
+//     ⓑ 옛 행 승격(`_promoteHarvestOnce` — 여러 청크가 한꺼번에) — 통째로 버린다
+//     ⓒ 게임일이 바뀌면(재생 단계는 날의 함수다) 판의 날이 어긋나 그 청크를 다시 낳는다(T380 과 같은 꼴 · 보는 청크만)
+//   ★심음은 판을 안 바꾼다 — 심은 나무는 DB 개체라 색인에 없다(`_actEntitiesAtCell` 의 쿼드트리 갈래가 먼저 본다 ·
+//     DB 개체는 부팅에 전부 올라온다 · 청크 무관). 원시 판(`raw` — 장부·날 없이)은 세계 씨만의 함수라 안 버린다.
+//   ★개체는 판이 든 그 객체다 — 부르는 쪽은 **읽기만** 한다(전리품·장부·개수 · 종전 호출부 전수 확인).
+//   ★크기 — 청크마다 판 하나(날이 바뀌면 그 자리에서 갈아 끼운다) ⇒ 존 청크 수가 상한이다(새 수 0).
+const _ringCache = new Map();      // 청크 키 → { day, cells: Map(셀 번호 → 개체[]) } — 장부·날을 넘긴 판
+const _ringCacheRaw = new Map();   // 청크 키 → cells — 원시 판(교란 전 · 버리지 않는다)
+const _ringStat = { hit: 0, miss: 0, patch: 0, drop: 0, us: 0 };   // 부하 표의 원자료(`__testBind` 로만 읽는다)
+const _cellNum = (x, y) => x * 65536 + y;   // 셀 번호 — 존 셀은 0 ≤ x, y < 65536(한반도 2,188 × 4,063)
+function _ringBuild(qx, qy, ledger, day) {
+  _ringStat.miss++;
+  const t0 = process.hrtime.bigint();
+  const cells = new Map();
+  const got = generateChunkResources(ZONE_ID, ZONE.biome, qx, qy, chunkManager.chunkSize, ledger, day);
+  for (const e of got) {
+    const c = _cellNum(Math.floor(e.x / 32), Math.floor(e.y / 32));
+    const a = cells.get(c); if (a) a.push(e); else cells.set(c, [e]);
+  }
+  _ringStat.us += Number(process.hrtime.bigint() - t0) / 1000;
+  return cells;
+}
+function _ringTable(qx, qy, raw, day) {
+  const key = chunkManager.keyOf(qx, qy);
+  if (raw) {
+    let t = _ringCacheRaw.get(key);
+    if (t) { _ringStat.hit++; return t; }
+    t = _ringBuild(qx, qy, undefined, undefined);
+    _ringCacheRaw.set(key, t);
+    return t;
+  }
+  const hit = _ringCache.get(key);
+  if (hit && hit.day === day) { _ringStat.hit++; return hit.cells; }
+  const cells = _ringBuild(qx, qy, harvestedSeeds, day);
+  _ringCache.set(key, { day, cells });
+  return cells;
+}
+// 셀 하나 — `resourcesAtCell(ZONE_ID, x, y, raw ? {…} : {…, harvestedSet: harvestedSeeds, gameDay: day})` 와 같은 답
+function _idxAtCell(cellX, cellY, raw, day) {
+  const q = cellChunksOf(cellX, cellY, chunkManager.chunkSize);
+  const c = _cellNum(cellX, cellY);
+  const out = [];
+  for (let i = 0; i < q.length; i += 2) {
+    const a = _ringTable(q[i], q[i + 1], raw, day).get(c);
+    if (a) for (let j = 0; j < a.length; j++) out.push(a[j]);
+  }
+  return out;
+}
+// ★판이 낡는 문 하나 — 장부가 바뀐 씨(위 ⓐ). `x`·`y` 는 그 개체 자리(모르면 그 청크 판을 버린다).
+function _ringBump(seedKey, x, y) {
+  if (!_ringCache.size || typeof seedKey !== 'string') return;
+  const cs = chunkManager.chunkSize;
+  const g = seedGenChunkOf(seedKey, x, y, cs);
+  if (!Number.isFinite(g.cx) || !Number.isFinite(g.cy)) { _ringCache.clear(); _ringStat.drop++; return; }
+  const key = chunkManager.keyOf(g.cx, g.cy);
+  const hit = _ringCache.get(key);
+  if (!hit) return;
+  let day; try { day = gameDayNow(); } catch (e) { day = undefined; }
+  if (hit.day !== day || !Number.isFinite(x) || !Number.isFinite(y)) { _ringCache.delete(key); _ringStat.drop++; return; }
+  const cx = Math.floor(x / 32), cy = Math.floor(y / 32);
+  const got = generateChunkResources(ZONE_ID, ZONE.biome, g.cx, g.cy, cs, harvestedSeeds, day, { cx, cy });
+  if (got.length) hit.cells.set(_cellNum(cx, cy), got); else hit.cells.delete(_cellNum(cx, cy));
+  _ringStat.patch++;
 }
 const _T325_TYPES = { tree: 1, sapling: 1 };
 function _t325TreesAtCell(cellX, cellY, raw) { return _actEntitiesAtCell(cellX, cellY, _T325_TYPES, raw); }
@@ -213,6 +288,7 @@ function _t347GrovesAtCell(cellX, cellY, raw) { return _actEntitiesAtCell(cellX,
 function _t341Unharvest(seedKey) {
   if (!seedKey || !harvestedSeeds.has(seedKey)) return 0;
   harvestedSeeds.delete(seedKey);
+  _ringBump(seedKey);   // ★[T440] 청크 판 — 자리를 모른다(키만 온다) ⇒ 그 씨를 낳은 청크 판을 버린다
   try { db.deleteHarvestedSeed(seedKey); } catch (e) {}
   return 1;
 }
@@ -229,7 +305,7 @@ function _actTakeAtCell(cellX, cellY, find, ctx) {
   const loot = lootOfResource(r, ctx);
   const px = (cellX | 0) * 32 + 16, py = (cellY | 0) * 32 + 16;
   if (resources.has(r.id)) _takeResourceEntity(r, anyViewerNear({ x: px, y: py }, AOI_RADIUS));
-  else if (r.isSeed && r.seedKey) _markHarvested(r.seedKey);   // 청크가 꺼져 있다 — 지울 개체가 없고 **장부만** 적는다
+  else if (r.isSeed && r.seedKey) _markHarvested(r.seedKey, r.x, r.y);   // 청크가 꺼져 있다 — 지울 개체가 없고 **장부만** 적는다
   return loot;
 }
 function _t325CutTreeAt(cellX, cellY) {
@@ -3430,10 +3506,11 @@ function clearTreesInCells(cellKeys) {
     //      그러면 "나무가 없다"와 "못 물었다"가 구분이 안 된다 — 이 카드가 그걸 물었다(부팅 개간 0 의 이유를
     //      알 수 없었다). ⇒ 여기서는 **같은 인자로 직접** 묻고, 터지면 **한 번** 이름을 붙인다(조용한 0 금지).
     //    ★[T393] 이름 붙이는 자리는 이제 **문 하나**(`_idxWarnOnce`) — `_actEntitiesAtCell` 도 같은 문으로 말한다.
+    //    ★[T440] 묻는 문도 하나 — 청크 한 판(`_idxAtCell` · `resourcesAtCell` 과 같은 답 · 같은 인자). 영토 전체를 훑는
+    //      자리(부팅 · T426 다시 훑기 · 영토가 자란 날)가 셀마다 청크를 다시 낳지 않는다.
     let idx = [];
     try {
-      idx = resourcesAtCell(ZONE_ID, cx, cy,
-        { biome: ZONE.biome, chunkSize: chunkManager.chunkSize, harvestedSet: harvestedSeeds, gameDay: _gd });
+      idx = _idxAtCell(cx, cy, false, _gd);
     } catch (e) {
       idx = [];
       _idxWarnOnce('영토 개간', e, '이 판은 서 있는 개체만 벤다');   // ★[T393] 이름 붙이는 문 하나(`_actEntitiesAtCell` 과 같은 문)
@@ -3443,7 +3520,7 @@ function clearTreesInCells(cellKeys) {
       seen.add(e.id);
       //   ★[T426] 장부에 있어도 **서 있으면**(색인이 묘목·성목으로 냈다) 다시 적는다 — 날이 "마지막으로 벤 날"로 간다.
       //     그루터기는 위 종류 거르개에서 이미 빠졌다(서 있지 않다) ⇒ 이미 벤 자리를 헛되이 다시 적지는 않는다.
-      _markHarvested(e.seedKey);
+      _markHarvested(e.seedKey, e.x, e.y);
       ledger++;
     }
   }
@@ -10141,6 +10218,9 @@ function __testBind() {
     plantSeedList, _t124Plant, PLANT_SEEDS, resources, spawnOneResource,
     // ★[T393] 자원을 세계에서 빼는 문들 · 색인을 묻는 문 — 하네스(`test-ghost-tree`·`test-index-named`)가 **문을 그대로** 두드린다(사본 0)
     _takeResourceEntity, clearTreesInCells, _t325TreesAtCell,
+    // ★[T440] 청크 한 판 — 자·하네스가 **그 문**(`_idxAtCell`)과 판(`_ringCache`)·부하 표(`_ringStat`)를 그대로 본다 ·
+    //   장부(`harvestedSeeds` — 읽기만)와 장부를 바꾸는 문 둘(벰 `_t325CutTreeAt` · 되살림 `_t341Unharvest`)도 그대로 두드린다
+    _idxAtCell, _ringCache, _ringStat, harvestedSeeds, _t325CutTreeAt, _t341Unharvest,
     // ── 빈손 시작(2026-08-28) ── 줍기·제작·도구 표를 **정본 그대로** 내준다
     RECIPES, TOOL_EFFECTS, TOOL_MAX_DURABILITY, EQUIPMENT_RECIPES, CRUDE_EFF_FRAC, CRUDE_DURA_FRAC,
     doCraft, doEquip, tryForage, Forage, _forageCtx, lootOfResource, getEquippedTool, consumeEquippedDurability,
