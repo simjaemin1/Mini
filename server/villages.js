@@ -3646,12 +3646,113 @@ function _warReleasePid(pid) {
 function _warPackCtx(w) { const A = w && w.atk && w.atk.econ; return { _priceCache: A && A._priceCache, _world: A && A._world }; }
 function _warBagView(p, keys) { const inv = p && p.inventory; const v = {}; if (!inv) return v; for (const k of keys) { const q = inv[k] || 0; if (q > 0) v[k] = q; } return v; }
 function _warBagWrite(p, keys, v) { if (!p.inventory) p.inventory = {}; for (const k of keys) { const q = v[k] || 0; if (q > 1e-9) p.inventory[k] = q; else delete p.inventory[k]; } }
+// ════════════════════════════════════════════════════════════════
+// ★★[T441 2026-09-27 · 군량 = 행위 ⓑ · PM #68] **길에서 채집한다** — T423 짐 위에 선다(손잡이 `T441_FORAGE_MARCH` · 끔).
+//   그날 몸이 지난 길(행군·귀환 = 폴리라인의 지난 구간 · 주둔 = 선 자리)에서 **채집꾼과 같은 반경**(`_t347R` = 걸음 × 도보 15초)
+//   안의 군락을 **채집꾼과 같은 문**으로 딴다: 색인(`t347GrovesAtCell` = `resourceAt`) → 따기(`t347PickAt` = `_actTakeAtCell`
+//   → 개체 제거 · `_markHarvested`) → 걷는 목록(`_t347ActItems` — 채집꾼이 곳간에 넣는 그 품목)만 짐에 · 나머지는 손에(채집꾼과 같다).
+//   ★시간 — 채집꾼의 하루 한도(`_t341TripsPerDay`)와 **같은 식**: 낮의 실초(dayMs × 낮 비율) 중 그날 걸은 길(÷ 걸음 속도)을 뺀 것이
+//     딸 시간이고, 한 번 다녀오는 데 왕복 거리 ÷ 걸음 속도. 몸의 행군 속도·도착일은 **안 바뀐다**(몸은 시간표로 걷는다 · 이건 장부의 시간).
+//   ★짐 상한 — `carry.js CAP_KG`(25kg) · 넘치면 그 몸은 안 딴다. 무게는 `weights.js`(짐과 전리품 모두).
+//   ★재생 — 딴 개체의 씨 키는 **그 군락이 속한 마을**(반경 안 최근접)의 되돌림 목록(`_t347Cut`)에 — T347 로지스틱이 돌려놓는다.
+//   ★곳간 무접촉 — `forageToGranary` 를 안 부른다. 딴 것은 짐이고, 귀환하면 T423 내려놓기 문(`_warFoodGive`)으로 간다.
+//   ⚠걷는 목록(`twig`·`herb`)에는 **econ 식량이 없다**(덤불의 `berry` 는 econ `fruit` 의 동의어 판정이 PM 칸이라 안 걷는다 · T347 결정 A)
+//     ⇒ 지금은 짐이 무거워질 뿐 먹을 몫은 늘지 않는다. 날것 전리품은 장부 `rawLoot` 에 따로 센다(판정 입력).
+function _forageMarchOn() { return typeof process !== 'undefined' && !!process.env && process.env.T441_FORAGE_MARCH === '1'; }
+function _warBagKg(p) {
+  const W = _weights(); if (!W || !p || !p.inventory) return 0;
+  let kg = 0; for (const k in p.inventory) { const q = p.inventory[k] || 0; if (q > 0) kg += q * (W.kgOfOrDefault ? W.kgOfOrDefault(k) : 0); }
+  return kg;
+}
+function _warGroveOwner(cx, cy, R) {
+  let best = null, bd = Infinity;
+  for (const v of (state.villages || [])) { const d = Math.hypot(v.ccx - cx, v.ccy - cy); if (d <= R && d < bd) { bd = d; best = v; } }
+  return best;
+}
+function _warDayCells(body) {
+  // 그날 지난 길 — 폴리라인의 [어제 선 자리, 오늘 선 자리] 구간(행군·귀환) · 없으면 선 자리 하나(주둔).
+  const out = [];
+  if (!body) return out;
+  if (body.pts && body.pts.length && body.len > 0 && body.prog != null && body.mode !== 'camp' && body.mode !== 'fight') {
+    if (body._fgPts !== body.pts) { body._fgPts = body.pts; body._fgProg = 0; }
+    const a = Math.max(0, Math.min(body.len, body._fgProg || 0)), b = Math.max(a, Math.min(body.len, body.prog));
+    for (let s = a; ; s += SZ) { const c = caravanPointAt(body, Math.min(s, b), {}); out.push({ x: c.x, y: c.y }); if (s >= b) break; }
+    body._fgProg = b;
+    return out;
+  }
+  const c = body.cmd || null; if (c) out.push({ x: c.cx * SZ + SZ / 2, y: c.cy * SZ + SZ / 2 });
+  return out;
+}
+function _warForageMarch(w, body, day, bearers) {
+  const dp = state.deps || {};
+  if (!w || !body || !bearers || !bearers.length || !dp.t347GrovesAtCell || !dp.t347PickAt) return 0;
+  //   ★채집이 **행위인 세계**에서만 — `T347_FORAGE_ACT`(채집꾼이 걷고 군락이 T347 로지스틱으로 돌아오는 세계)가 켜져야 딴다.
+  //     꺼진 세계에서 따면 딴 군락이 돌아올 문이 없다(되돌림 목록을 도는 것이 T347 하루다). 같은 손잡이를 **그 자리에서** 읽는다.
+  if (!(typeof process !== 'undefined' && process.env && process.env.T347_FORAGE_ACT === '1')) return 0;
+  const keep = _t347ActItems(); if (!keep || !keep.length) return 0;
+  const R = _t347R(), sp = dp.moveSpeed || 0, dayR = dp.dayPhaseRatio || 0;
+  const dayS = (state.dayMs || 0) * dayR / 1000;
+  const cc = _carryCfg(), cap = (cc && cc.CFG && cc.CFG.CAP_KG) || 0, W = _weights();
+  if (!(R > 0) || !(sp > 0) || !(dayS > 0)) return 0;
+  const path = _warDayCells(body); if (!path.length) return 0;
+  // 그날 걸은 길이(px) — 딸 시간은 낮에서 이것을 뺀 것(채집꾼의 하루 한도와 같은 식)
+  let walked = 0; for (let i = 1; i < path.length; i++) walked += Math.hypot(path[i].x - path[i - 1].x, path[i].y - path[i - 1].y);
+  const forageS = Math.max(0, dayS - walked / sp);
+  // 길 둘레 R 안의 군락 셀 — 표본을 R 칸마다 두고 사각 R 을 훑는다(중복 제거) · 거리 = 가장 가까운 표본까지
+  const seen = new Map();
+  const step = Math.max(1, Math.floor(R));
+  for (let i = 0; i < path.length; i += step) {
+    const px = path[i], cx0 = Math.floor(px.x / SZ), cy0 = Math.floor(px.y / SZ);
+    for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) {
+      const tx = cx0 + dx, ty = cy0 + dy; if (tx < 0 || ty < 0) continue;
+      const key = tx * 65536 + ty, d = Math.hypot(dx, dy) * SZ;
+      if (d > R * SZ) continue;
+      const prev = seen.get(key); if (prev != null && prev <= d) continue;
+      seen.set(key, d);
+    }
+  }
+  const cand = [];
+  for (const [key, d] of seen) { const tx = Math.floor(key / 65536), ty = key % 65536; let a = null; try { a = dp.t347GrovesAtCell(tx, ty); } catch (e) { a = null; } if (a && a.length) cand.push({ cx: tx, cy: ty, d }); }
+  cand.sort((a, b) => a.d - b.d || a.cx - b.cx || a.cy - b.cy);
+  const bk = w._rationBook || (w._rationBook = { load: 0, split: 0, eaten: 0, back: 0, drop: 0, ledgerEaten: 0, days: [] });
+  if (!w._fgKeys) w._fgKeys = keep.slice();
+  for (const k of keep) if ((w._packKeys || (w._packKeys = [])).indexOf(k) < 0) w._packKeys.push(k);
+  const kgOf = (k) => (W && W.kgOfOrDefault) ? W.kgOfOrDefault(k) : 0;
+  let picks = 0, units = 0, usedS = 0, ci = 0;
+  for (const p of bearers) {
+    let s = forageS;
+    while (ci < cand.length) {
+      const c = cand[ci], cost = 2 * c.d / sp;
+      if (cost > s) break;
+      let peek = null; try { peek = dp.t347GrovesAtCell(c.cx, c.cy); } catch (e) { peek = null; }
+      if (!peek || !peek.length) { ci++; continue; }
+      if (cap > 0 && _warBagKg(p) >= cap) break;                       // 짐이 찼다 — 이 몸은 그만 딴다
+      const sk = peek[0].seedKey || null;
+      let loot = null; try { loot = dp.t347PickAt(c.cx, c.cy); } catch (e) { loot = null; }
+      if (!loot) { ci++; continue; }
+      s -= cost; usedS += cost; picks++;
+      if (sk) { const own = _warGroveOwner(c.cx, c.cy, R); if (own) (own._t347Cut || (own._t347Cut = [])).push(sk); else bk.wildCut = (bk.wildCut || 0) + 1; }
+      if (!p.inventory) p.inventory = {};
+      for (const k in loot) {
+        const a = loot[k] || 0; if (!(a > 0)) continue;
+        p.inventory[k] = (p.inventory[k] || 0) + a;
+        if (keep.indexOf(k) >= 0) units += a; else { const r = bk.rawLoot || (bk.rawLoot = {}); r[k] = +((r[k] || 0) + a).toFixed(6); }
+      }
+      if (cap > 0 && _warBagKg(p) >= cap) break;
+    }
+  }
+  bk.picks = (bk.picks || 0) + picks; bk.pickUnits = +((bk.pickUnits || 0) + units).toFixed(6);
+  (bk.fgDays || (bk.fgDays = [])).length < 64 && bk.fgDays.push({ day, cells: path.length, groves: cand.length, forageS: +forageS.toFixed(1), usedS: +usedS.toFixed(1), picks, units });
+  return units;
+}
+
 function _warRationLoad(body) {
   const w = body && body.w, WC = state.war; if (!w || !WC || !WC.packSplit || !WC.rationActOn || !WC.rationActOn()) return 0;
   const players = state.deps.players, bearers = (body.pids || []).map(pid => players.get(pid)).filter(Boolean);
   const one = WC.packSplit(w, bearers.length); if (!one) return 0;
   for (const p of bearers) { const cur = _warBagView(p, w._packKeys); for (const k in one) cur[k] = (cur[k] || 0) + one[k]; _warBagWrite(p, w._packKeys, cur); p._warPackOf = w.id; }
   if (w._rationBook) w._rationBook.bearers = bearers.length;
+  body._fgPts = body.pts; body._fgProg = body.prog || 0;   // ★[T441] 길에서 채집 — 그날 지난 구간의 시작점
   return bearers.length;
 }
 function _warBearers(w, body) {
@@ -3664,6 +3765,7 @@ function _warRationEat(w, day) {
   const body = state.warBodies && state.warBodies.get(w.id);
   const ctx = _warPackCtx(w), keys = w._packKeys || [], need = (w._packShare || 0) * (state.warCore ? state.warCore.WAR_RATION : 1);
   const bearers = _warBearers(w, body);
+  if (_forageMarchOn()) _warForageMarch(w, body, day, bearers);   // ★[T441] 먹기 전에 — 그날 지난 길에서 딴 것도 짐이다
   let eaten = 0, left = 0;
   for (const p of bearers) {
     const bag = _warBagView(p, keys);
@@ -3679,24 +3781,27 @@ function _warRationEat(w, day) {
   if (body && body.fight && body.fight.ctx && body.fight.ctx.sides && body.fight.ctx.sides.A) body.fight.ctx.sides.A.ration = ration;
   return perDay > 0 ? left / perDay : 0;
 }
+function _warFgUnits(w, items) { let u = 0; if (w && w._fgKeys && items) for (const k of w._fgKeys) u += items[k] || 0; return u; }   // ★[T441] 길에서 딴 품목의 낱개(식량등가 0 인 것도 센다)
 function _warRationLayDownBody(body) {
   const w = body && body.w, WC = state.war; if (!w || !w._packOnBodies || !WC || !WC.rationLayDown) return 0;
   const players = state.deps.players, keys = w._packKeys || [], items = {};
   for (const pid of (body.pids || [])) { const p = players.get(pid); if (!p || p._warPackOf !== w.id) continue; const bag = _warBagView(p, keys); for (const k in bag) items[k] = (items[k] || 0) + bag[k]; _warBagWrite(p, keys, {}); delete p._warPackOf; }
   let n = 0; for (const k in items) n += items[k];
+  if (w._rationBook && w._fgKeys) w._rationBook.fgBack = (w._rationBook.fgBack || 0) + _warFgUnits(w, items);
   return n > 0 ? WC.rationLayDown(w, items) : 0;
 }
 function _warRationCollect(w) {
   const body = state.warBodies && state.warBodies.get(w.id); if (!body) return null;
   const players = state.deps.players, keys = w._packKeys || [], items = {};
   for (const pid of (body.pids || [])) { const p = players.get(pid); if (!p || p._warPackOf !== w.id) continue; const bag = _warBagView(p, keys); for (const k in bag) items[k] = (items[k] || 0) + bag[k]; _warBagWrite(p, keys, {}); delete p._warPackOf; }
+  if (w._rationBook && w._fgKeys) w._rationBook.fgBack = (w._rationBook.fgBack || 0) + _warFgUnits(w, items);
   return Object.keys(items).length ? items : null;
 }
 function _warBagDrop(w, p) {
   if (!w || !p || !w._packOnBodies || p._warPackOf !== w.id || !state.war || !state.war.bagFE) return 0;
   const keys = w._packKeys || [], bag = _warBagView(p, keys), fe = state.war.bagFE(bag, _warPackCtx(w));
   _warBagWrite(p, keys, {}); delete p._warPackOf;
-  if (w._rationBook) w._rationBook.drop += fe;
+  if (w._rationBook) { w._rationBook.drop += fe; if (w._fgKeys) w._rationBook.fgDrop = (w._rationBook.fgDrop || 0) + _warFgUnits(w, bag); }
   return fe;
 }
 
