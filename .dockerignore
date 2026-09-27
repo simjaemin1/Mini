@@ -24,3 +24,6 @@ ecosystem.config.js
 public/assets/audio/bgm/*.py
 *.zip
 samples/
+# ★[T456] sim 산물(`economy-sim.js`·`-v2.js` CLI 덤프) — 게임·서버·랩이 안 읽는다(`econ-regress` 는 지우고 새로 굽는다).
+#    실측(T446 자 · main 8121ccb): 이미지 1,014장 132.38 MB 중 15장 47.85 MB(36%). 레포엔 남는다 — 빼는 것은 이미지뿐이다.
+sim/out/

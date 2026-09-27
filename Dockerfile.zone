@@ -19,6 +19,9 @@ RUN npm install --omit=dev
 COPY server ./server
 COPY public ./public
 COPY sim ./sim
+# ★[T456] `/크레딧` 이 읽는 요구 문구(zone.js:125 → server/credits.js → /app/CREDITS.md) — 없으면 "크레딧을 지금 못 읽었다"
+#   존만 읽는다(central 은 credits.js 에 안 닿는다 · 그래서 Dockerfile.central 엔 없다)
+COPY CREDITS.md ./
 
 # 기본 환경
 ENV NODE_ENV=production
