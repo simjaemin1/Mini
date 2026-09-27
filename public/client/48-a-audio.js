@@ -525,10 +525,23 @@ function initAudio() {
       //   ⚠모서리로 잡아야 하는 이유: 라벨은 **1.2초 창** 동안 같은 값이 계속 온다(최대 25틱 · 무상태
       //     델타라 서버가 뷰어별로 안 센다). 값이 왔다고 울리면 한 번의 낚음이 스물다섯 번 난다.
       //   ⚠내가 아닌 개체만 본다 — 내 낚시는 `fish_state`·`fish_catch` 가 이미 말한다(두 번 울리지 않는다).
+      // ★★[T457] **전쟁 병사 몸이 맞았다/쓰러졌다** — 병사끼리의 타격은 battle-core 안에서 끝나 `hp_changed` 가 안 나가고,
+      //   몸의 `hp` 만 `tick` 에 매 틱 실려 온다(T445 실측: 교전 30분에 줄어든 순간 34 · 전부 무음이었다).
+      //   같은 문법(T412): 이 순간 `c.others` 에는 **직전** hp 가 있다 — 줄었으면 `hurt`, 0 이 됐으면 `down`(한 사건 = 한 소리).
+      //   ⚠직전 값 표를 따로 두지 않는다 — 명부(`c.others`)가 곧 그 표다(명부에서 빠지면 같이 사라진다 · 크기 상한 = 명부).
+      //   ⚠병사 표식 칸 이름도 표가 댄다(`warBody._mark` — 서버가 병사 몸에만 매 틱 싣는 칸). 처음 보는 몸(직전 값 없음) · 오른 hp 는 조용.
+      //   ⚠내 몸(주 연결의 내 pid)은 여기서 안 운다 — 내 다침은 `hp_changed` → `hpWhy` 가 이미 운다(이중 0).
+      //   ⚠사람이 병사를 치면 `hp_changed` 가 먼저 와서 명부의 hp 를 낮춰 둔다 → 뒤따르는 `tick` 은 같은 값이라 여기서 또 안 운다(이중 0).
       if (t === 'tick' && msg.players && c && c.others) {
         const TBL = _sfxMan.npcAct || {};
         const ox = (c.meta && c.meta.worldOffsetX) || 0, oy = (c.meta && c.meta.worldOffsetY) || 0;
+        const WB = _sfxMan.warBody || {}, mark = WB._mark, meP = (typeof myPid !== 'undefined') ? myPid : null;
         for (const pp of msg.players) {
+          const was = (mark && pp[mark] !== undefined && !(c.role === 'primary' && pp.pid === meP)) ? c.others.get(pp.pid) : null;
+          if (was && typeof was.hp === 'number' && typeof pp.hp === 'number' && pp.hp < was.hp) {
+            const key = pp.hp <= 0 ? WB.down : WB.hurt;
+            if (typeof key === 'string') sfxPlay(key, { x: pp.x + ox, y: pp.y + oy });
+          }
           if (pp.act === undefined) continue;                 // 안 왔다 = 안 바뀌었다(델타 규약)
           const prev = c.others.get(pp.pid);
           if (!prev || prev.act === pp.act) continue;         // 같은 값이 또 온 것 — 모서리가 아니다

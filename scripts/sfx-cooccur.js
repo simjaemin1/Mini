@@ -104,12 +104,13 @@ require(path.join(ROOT,'server','zone.js'));`);
   await page.waitForFunction(() => window.__sfx && window.__sfx.tap && window.__sfx.dbg().ctx, null, { timeout: 30000 });
   console.log('  입장 · 소리 층 켜짐');
   // ①′ [T445] 발자국 규약 — 시트 손잡이가 켜진 채로 들어왔나(꺼져 있으면 `drawCharSprite` 가 첫 줄에서 돌아가 `__sfx.step` 이 안 불린다)
-  const cs = await page.evaluate(() => (typeof uiCfg !== 'undefined' && uiCfg) ? uiCfg.charSprite : null);
+  let cs = null;                                                     // 존 환영(uiCfg)이 입장보다 늦게 올 수 있다 — 20초까지 기다린다(T457 판에서 한 번 먼저 물었다)
+  for (let i = 0; i < 40 && cs !== true; i++) { cs = await page.evaluate(() => (typeof uiCfg !== 'undefined' && uiCfg) ? uiCfg.charSprite : null); if (cs !== true) await sleep(500); }
   if (cs !== true) { console.log(`  ✗ uiCfg.charSprite = ${cs} — CHAR_SPRITE=on 없이 잰 판은 발자국 0 이다(T445 규약) · 멈춘다`); await browser.close(); killAll(); process.exit(1); }
   // ★[T445 ①] **누가 불렀나** — 층의 수신 훅(`__sfx.recv`)을 감싸 울림마다 그 메시지(이름·pid·mid·hp·why·연결)를 붙인다.
   //   층 코드 무접촉(감싸기는 이 페이지 안에서만) · 같은 창 같은 키 둘이 **다른 사건**인지 **같은 사건 두 번**인지 가르는 재료.
   //   덤: 전쟁 병사(`br` 가 오는 몸)의 hp 가 `tick` 에서 **줄어든 순간**을 센다 — 소리 자리가 이미 오는지(T445 ②).
-  await page.evaluate(() => {
+  await page.evaluate((WBK) => {
     const S = window.__sfx, orig = S.recv, origScan = S.scan;
     window.__coWho = []; window.__coWar = []; let seq = 0;
     const tagNew = (n0, info) => { const t = S.tap(n0); for (const p of t.plays) window.__coWho.push(Object.assign({ i: p.i, k: p.k }, info)); };
@@ -120,8 +121,11 @@ require(path.join(ROOT,'server','zone.js'));`);
         for (const pp of msg.players) {
           if (pp.br === undefined) continue;
           const prev = c.others.get(pp.pid);
-          if (prev && typeof prev.hp === 'number' && typeof pp.hp === 'number' && pp.hp < prev.hp)
-            window.__coWar.push({ t: S.tap(1e15).now, pid: pp.pid, hp: pp.hp, was: prev.hp, d: me ? Math.round(Math.hypot(pp.x + ox - me.x, pp.y + oy - me.y)) : null });
+          if (prev && typeof prev.hp === 'number' && typeof pp.hp === 'number' && pp.hp < prev.hp) {
+            const d = me ? Math.round(Math.hypot(pp.x + ox - me.x, pp.y + oy - me.y)) : null;
+            window.__coWar.push({ t: S.tap(1e15).now, pid: pp.pid, hp: pp.hp, was: prev.hp, d });
+            (msg.__coBodies = msg.__coBodies || []).push({ pid: pp.pid, hp: pp.hp, down: pp.hp <= 0, d });   // [T457] 이 전문에서 운 몸(차례대로) — 울림에 pid 를 붙인다
+          }
         }
       }
       if (msg && msg.type === 'war_battle') {                      // 교전 집계(2Hz) — 몇 번 · 얼마나 가까이 · 산 수가 줄었나
@@ -131,11 +135,26 @@ require(path.join(ROOT,'server','zone.js'));`);
         if (msg.phase === 'battle') window.__coLastWB = { x: o.x || 0, y: o.y || 0, at: Date.now() };   // 존 로컬 — 싸움터로 가는 자리
       }
       const r = orig.call(this, msg, c);
+      const n1 = S.tap(1e15).n;
+      if (msg && msg.type === 'tick' && msg.__coBodies) {             // (T457 첫 판은 `n1 > n0` 일 때만 봐서 한 몸도 안 운 전문의 몸을 못 셌다 — 18 곁 · 15 울림 · 못 운 몸 0 으로 셈이 안 맞았다)
+        //   [T457] 병사 몸 울림 ↔ 그 몸 — 같은 차례로 짝짓는다(키가 맞는 다음 몸 · 반경 밖·막힘으로 안 운 몸은 건너뛴다)
+        const bodies = msg.__coBodies.slice(); const t = S.tap(n0);
+        for (const p of t.plays) {
+          let j = bodies.findIndex((b) => (b.down ? WBK.down : WBK.hurt) === p.k);
+          const b = j >= 0 ? bodies.splice(j, 1)[0] : null;
+          window.__coWho.push({ i: p.i, k: p.k, via: 'recv', seq, m: 'tick', pid: b ? b.pid : undefined, hp: b ? b.hp : undefined, role: c && c.role, zone: c && c.zoneId });
+        }
+        //   짝을 못 찾은 몸 = 안 울린 몸(반경 밖 · 같은 키가 이미 `maxSame` 만큼 울고 있음) — 곁(반경 안)인데 못 운 몸만 센다
+        for (const b of bodies) if (b.d != null && b.d < (b.down ? WBK.rDown : WBK.rHurt)) (window.__coMiss = window.__coMiss || []).push({ t: S.tap(1e15).now, pid: b.pid, hp: b.hp, d: b.d, blocked: S.dbg().stat.blocked });
+        delete msg.__coBodies;
+        return r;
+      }
       tagNew(n0, { via: 'recv', seq, m: msg && msg.type, why: msg && msg.why, pid: msg && msg.pid, mid: msg && msg.mid, hp: msg && msg.hp, role: c && c.role, zone: c && c.zoneId });
       return r;
     };
     S.scan = function (list, cx, cy) { const n0 = S.tap(1e15).n; seq++; const r = origScan.call(this, list, cx, cy); tagNew(n0, { via: 'scan', seq }); return r; };
-  });
+  }, { hurt: (MAN.warBody || {}).hurt, down: (MAN.warBody || {}).down,
+       rHurt: (MAN.keys[(MAN.warBody || {}).hurt] || {}).radius || 0, rDown: (MAN.keys[(MAN.warBody || {}).down] || {}).radius || 0 });
   // ★[T431 ④] 소리와 무관한 GL 두 층을 이미 있는 문으로 끈다(T395 — 소프트웨어 GPU 칠) · 개체·캐릭터 그림은 그대로
   await page.evaluate(() => { if (window.__terrain19) { window.__terrain19.waterOff = true; window.__terrain19.mt3dOff = true; } });
 
@@ -238,7 +257,7 @@ require(path.join(ROOT,'server','zone.js'));`);
     return { id: 'war', x, y, d: Math.hypot(x - me.x, y - me.y), n: ws.length };
   }, mode);
   const buckets = new Map();                                        // 창 번호 → { plays: [키], loops: Set }
-  const who = new Map(), warHits = [], warBattles = [];                               // [T445] 울림 i → 부른 메시지 · 병사 hp 가 준 순간
+  const who = new Map(), warHits = [], warBattles = [], warMiss = [];                               // [T445] 울림 i → 부른 메시지 · 병사 hp 가 준 순간
   const bad = new Set();
   let since = 0, held = null, nextTurn = 0, nextE = 0, target = null, stuckAt = 0, lastD = 1e9, wander = 0;
   const t0 = Date.now(), until = t0 + MINUTES * 60000;
@@ -304,10 +323,11 @@ require(path.join(ROOT,'server','zone.js'));`);
       const me = await pos();
       if (me && Math.hypot(me.x - off0.x - spot.tx, me.y - off0.y - spot.ty) > 2000) { await page.evaluate(([x, y]) => window.__sendPrimary({ type: 'teleport_debug', x, y }), [spot.tx, spot.ty]); backs++; target = null; }
     }
-    const tp = await page.evaluate((s) => { const t = window.__sfx.tap(s); t.who = window.__coWho; t.war = window.__coWar; t.wb = window.__coWB || []; window.__coWho = []; window.__coWar = []; window.__coWB = []; return t; }, since);
+    const tp = await page.evaluate((s) => { const t = window.__sfx.tap(s); t.who = window.__coWho; t.war = window.__coWar; t.wb = window.__coWB || []; t.miss = window.__coMiss || []; window.__coWho = []; window.__coWar = []; window.__coWB = []; window.__coMiss = []; return t; }, since);
     for (const w of tp.who) who.set(w.i, w);
     for (const e of tp.war) warHits.push(e);
     for (const e of tp.wb) warBattles.push(e);
+    for (const e of tp.miss) warMiss.push(e);
     since = tp.n; polls++;
     if (tapT0 == null) tapT0 = tp.now;
     for (const p of tp.plays) {
@@ -360,10 +380,15 @@ require(path.join(ROOT,'server','zone.js'));`);
       dup[kind]++;
     }
   }
-  const warNear = warHits.filter((e) => e.d != null && e.d < 384);
+  const warNear = warHits.filter((e) => e.d != null && e.d < ((MAN.keys[(MAN.warBody || {}).hurt] || {}).radius || 384));
   console.log(`\n  같은 창 같은 키 ${dup.windows}창 — 사건 둘 ${dup.twoEvents} · 같은 사건 두 번 ${dup.sameEvent} · 두 발 ${dup.steps} · 모름 ${dup.unknown}`);
   const wbDeaths = warBattles.reduce((a, e, i) => { const p = warBattles[i - 1]; return a + (p ? Math.max(0, (p.a - e.a)) + Math.max(0, (p.b - e.b)) : 0); }, 0);
   if (AT === 'war') console.log(`  war_battle ${warBattles.length}번 · 가장 가까이 ${warBattles.length ? Math.min(...warBattles.map((e) => e.d == null ? 1e9 : e.d)) : '-'}px · 산 수가 준 합 ${wbDeaths} · 국면 ${[...new Set(warBattles.map((e) => e.phase))].join('/')}`);
+  //   [T457] 층이 `tick` 병사 hp 로 울린 수(부른 메시지 = tick · 키 = `warBody` 의 둘)
+  const WBt = MAN.warBody || {};
+  const warPlays = [...who.values()].filter((x) => x.m === 'tick' && (x.k === WBt.hurt || x.k === WBt.down));
+  const warPlayN = { hurt: warPlays.filter((x) => x.k === WBt.hurt).length, down: warPlays.filter((x) => x.k === WBt.down).length };
+  if (AT === 'war') console.log(`  층이 병사 hp 로 울린 수 — ${WBt.hurt} ${warPlayN.hurt} · ${WBt.down} ${warPlayN.down} · 곁인데 못 운 몸 ${warMiss.length}`);
   if (AT === 'war') console.log(`  병사 hp 가 준 순간(tick) ${warHits.length} · 384px 안 ${warNear.length} · 쓰러짐(0) ${warHits.filter((e) => e.hp <= 0).length}`);
   const warPerf = (AT === 'war') ? await (async () => { try { const j = await zget('/perf'); return j && j.war ? { stat: j.war.stat, soldiersMax: j.war.soldiersMax } : null; } catch (e) { return null; } })() : null;
   if (warPerf) console.log(`  존 전쟁 장부: ${JSON.stringify(warPerf)}`);
@@ -405,7 +430,7 @@ require(path.join(ROOT,'server','zone.js'));`);
   const out = { date: new Date().toISOString(), at: AT, arms: ARMS, spot, minutes: MINUTES, seed: +(process.env.SFX_COOCCUR_SEED || 1020), windows: buckets.size, nonEmpty,
                 distinct: combos.size, plays: since, knee, worst, overKnee: { combos: over.length, windows: over.reduce((a, r) => a + r.n, 0), rows: over.map((r) => ({ sig: r.sig, n: r.n, atMin: r.atMin })) },
                 steps, keyN, nightMin: nightW, warriorsSeen: warSeen, presses: chops, drops, backs, jumps, jumpFail,
-                dupSameKey: dup, warPerf, warBattle: { n: warBattles.length, minD: warBattles.length ? Math.min(...warBattles.map((e) => e.d == null ? 1e9 : e.d)) : null, deaths: wbDeaths, first: warBattles.slice(0, 10) }, warHpDrops: { n: warHits.length, near384: warNear.length, zero: warHits.filter((e) => e.hp <= 0).length, first: warHits.slice(0, 20) }, rows, pageErrors: errs.slice(0, 5) };
+                dupSameKey: dup, warPerf, warBattle: { n: warBattles.length, minD: warBattles.length ? Math.min(...warBattles.map((e) => e.d == null ? 1e9 : e.d)) : null, deaths: wbDeaths, first: warBattles.slice(0, 10) }, warPlays: warPlayN, warMiss, warHpDrops: { n: warHits.length, near384: warNear.length, zero: warHits.filter((e) => e.hp <= 0).length, first: warHits.slice(0, 20) }, rows, pageErrors: errs.slice(0, 5) };
   fs.writeFileSync(OUT, JSON.stringify(out, null, 1));
   console.log(`\n  최악: ${worst ? worst.peakNoLim + ' (' + worst.keys.join('+') + ')' : '없음'} · 문턱 ${knee} → ${worst && worst.peakNoLim < knee ? '안' : '★밖'}`);
   console.log(`  문턱 넘는 묶음 ${over.length} · 창 ${out.overKnee.windows}${over.length ? ' — ' + over.map((r) => r.sig + ' @' + r.atMin.join('/') + '분').join(' · ') : ''}`);

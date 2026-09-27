@@ -1230,7 +1230,7 @@ console.log('\n⑱ ★★[T417] 동물 · 제작 완료 · 반경');
   const zsrc = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
   const layerCode = require('./code-only.js')(modCode);
   // ⑱a ★★자리로 부르는 표의 키는 반경이 있다 — 반경 0 = 존 어디서 나도 귓가에서 최대 볼륨(T417 이 axe·harvest·downed 에서 찾았다)
-  const POS = ['resourceHit', 'mobs', 'npcAct', 'groundDrop', 'fishState', 'combat', 'work', 'buildAdded', 'buildRemoved', 'buildDamaged', 'buildEdge', 'groundPick', 'resourceNew', 'hpWhy', 'mobEvents', 'buildings'];
+  const POS = ['resourceHit', 'mobs', 'npcAct', 'groundDrop', 'fishState', 'combat', 'work', 'buildAdded', 'buildRemoved', 'buildDamaged', 'buildEdge', 'groundPick', 'resourceNew', 'hpWhy', 'mobEvents', 'buildings', 'warBody'];
   const posKeys = new Set();
   for (const t of POS) for (const x of tableStrings(man[t] || {}, 0)) if (KEYS[x]) posKeys.add(x);
   const flatOf = (K) => [...posKeys].filter((k) => !(K[k] && K[k].radius > 0));
@@ -1277,6 +1277,27 @@ console.log('\n⑱ ★★[T417] 동물 · 제작 완료 · 반경');
   ok((zsrc.match(/sendInventory\(player, 'craft'\)/g) || []).length === 1 && /sendInventory\(player, 'craft'\)/.test(collect) && !/'craft'\)/.test(enq),
      '⑱d ★제작·보존 **받음**만 `where:craft` 를 댄다(서버 한 줄 · 맡김 무변)');
   ok((man.inventoryWhere || {}).craft === 'craft_done', '⑱d2 층 표 `inventoryWhere.craft → craft_done`(T412 이 확보한 그 키)');
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+console.log('\n⑲ ★★[T457] 전쟁 병사 몸 — `tick` 의 hp 모서리');
+{
+  const zsrc = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
+  const vsrc = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8');
+  const layerCode = require('./code-only.js')(modCode);
+  const WB = man.warBody || {};
+  ok(KEYS[WB.hurt] && KEYS[WB.down] && typeof WB._mark === 'string', '⑲a `warBody` 표 — 줄면 `hurt` · 0 이면 `down`(있는 키 · 새 소리 0) · 병사 표식 칸 `_mark`', `${WB.hurt} · ${WB.down} · _mark ${WB._mark}`);
+  // ⑲b 서버가 정말 그렇게 보낸다 — 몸마다 hp · 표식 칸은 **동원된 병사에만** · 그 hp 는 전투 hp 비율(병사끼리는 `hp_changed` 0)
+  const me = zsrc.slice(zsrc.indexOf('function makeEntry('), zsrc.indexOf('function makeEntry(') + 3000);
+  ok(/hp:\s*o\.hp/.test(me) && new RegExp(`if \\(o\\._muster\\) \\{ e\\.${WB._mark} =`).test(me),
+     '⑲b ★서버 `makeEntry` — 몸마다 `hp` 를 싣고, 표의 표식 칸(`_mark`)은 **동원된 병사(`_muster`)에만** 싣는다', `_mark ${WB._mark}`);
+  const sync = vsrc.slice(vsrc.indexOf('function _warSyncMeta('), vsrc.indexOf('function _warSyncMeta(') + 1500);
+  ok(/p\.hp = bu\.hp <= 0 \? 0/.test(sync) && !/setHp\(|hp_changed/.test(sync),
+     '⑲b2 ★병사끼리의 타격은 `_warSyncMeta` 가 몸 hp 에 **바로** 적는다(`setHp`·`hp_changed` 0) — 그래서 `tick` 을 읽어야 한다');
+  // ⑲c 층 — 직전 값은 명부(`c.others`)에서 · 내 pid 는 안 본다 · 줄었을 때만
+  const tb = layerCode.slice(layerCode.indexOf("t === 'tick'"), layerCode.indexOf("t === 'tick'") + 1200);
+  ok(/_sfxMan\.warBody/.test(tb) && /c\.others\.get\(pp\.pid\)/.test(tb) && /pp\.hp < was\.hp/.test(tb) && /pp\.pid === meP/.test(tb),
+     '⑲c ★층 — 직전 hp = 명부 `c.others`(따로 표 0) · **줄었을 때만** · 주 연결의 내 pid 는 제외(내 다침은 `hpWhy`)');
 }
 
 console.log(`\n=== PASS ${pass} / FAIL ${fail} ===`);
