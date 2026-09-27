@@ -434,7 +434,7 @@ const GROVE = {
 //     · 나물(`greens_patch`)  — "반음지(참취) ~ 그늘·다습(곰취)"                    → **숲 가장자리**(`edge` — 나무는 서되 깊은 숲은 아니다)
 //     · 머루(`wild_vine`)     — "물가(`isWaterCellLocal` — 기존 그대로)"          → **물가**(`riverside`)
 //   표에 없는 것: 덤불·풀·돌·둠벙(링 군락 종) · 습지 술어(세계에 없다) · 양지 종(표에 없다) ⇒ **안 깐다**.
-//   ⚠채집꾼·원정군이 따는 종 집합은 `zone.js _T347_TYPES`(덤불·풀)다 — 이 넷은 **플레이어·옛 채집**만 딴다(보고 §회부).
+//   ★[T462] 채집꾼·원정군이 따는 종은 아래 `forageKinds` 하나다 — 켬이면 이 넷 중 **세계에 서고 품목을 kcal.js 가 아는 종**이 든다.
 // ★서식 술어는 **이미 있는 셋**이다(새 문턱 0 · `_wildClass`):
 //     물가 = `decideVillageType` 의 그 판정(220px 네 방향 물) · 숲 = 그 판정의 `getForestMultiplier > 2.0` ·
 //     가장자리 = 숲 그리드가 서는 문턱(`FOREST_MIN_COV`)은 넘고 숲 판정은 못 넘는 자리 · 그 밖 = 들(`plain` — 종 없음).
@@ -457,6 +457,44 @@ const WILD = {
 const WILD_HAB = { forest: ['mushroom_patch', 'beehive'], edge: ['greens_patch'], riverside: ['wild_vine'] };
 const WILD_P = {}; let WILD_PMAX = 0;
 for (const _c of Object.keys(WILD.D)) { const [_n, _cells] = WILD.D[_c]; WILD_P[_c] = _cells > 0 ? _n / _cells : 0; if (WILD_P[_c] > WILD_PMAX) WILD_PMAX = WILD_P[_c]; }
+
+// ══ ★★★[T462 2026-09-27 · ★PM 결정(위임) · 재민 거부권] **채집 종 집합 — 정본 하나** ═══════════════════════
+//
+// ★왜 — T450 이 야생 군락을 세웠는데 채집꾼·원정군이 안 땄다. 종 집합이 **두 벌의 글자**였다
+//   (`zone.js _T347_TYPES = { berry_bush, herb }` · 생활층 `villages.js JOB_RES.forager = ['berry_bush', 'herb']` —
+//   하네스가 두 글자가 같은지 맞대 볼 뿐이었다). 야생 종은 그 어느 쪽에도 없었다.
+// ★이제 **이 함수 하나**를 읽는다(사본 0):
+//     존 `_T347_TYPES`(색인 `_t347GrovesAtCell` → T347 스캔·따기 · T441 원정 길) ·
+//     생활층 `JOB_RES.forager`(걷는 목록 `_t347ActItems` · 현장 버킷 · 옛 채집) ·
+//     자(`scripts/t450-wild-groves.js` · `scripts/t462-wild-forage.js` · `test-forage-act`).
+//   ⓐ 링·지형 군락 종 = 덤불·풀 — T347 이 세운 그 둘(링 `groves` · T359 지형 군락). 생활층이 쓰던 글자를 **옮겨 온** 자리다.
+//   ⓑ 야생 군락 종 = `WILD_HAB` 의 값(T415 표 · T450) — **켬일 때만** 든다. 끄면 세계에 없는 종이라 집합 = ⓐ = 비트 동일(손잡이 0).
+//      켬 안에서 둘을 거른다(새 수 0 · 표 = `보고/T462` §1):
+//        · 세계에 설 수 없는 종 — 그 서식의 유도 밀도(`WILD_P`)가 0 이면 한 포기도 안 난다(물가 0 → 머루).
+//          품목만 있고 개체가 없는 종을 넣으면 걷는 목록이 그 품목을 수식에서 걷어내고 **아무도 못 채운다**(T347 교집합 규약).
+//        · 품목을 `kcal.js` 가 모르는 종 — T458 등가 문법: *"kcal.js 가 같은 물건이라 하는 것만 econ 품목"*.
+//          손 품목과 econ 재화의 이름이 같으니 같은 물건인지는 **kg당 열량이 서는가**(`kcalPerKg > 0` — 양쪽이 같은 줄)로만 답한다.
+//          나머지(벌집 → 꿀 · 머루 → 포도)는 **서버 품목뿐**이라 채집꾼의 일이 아니다 — 플레이어는 딴다(`lootOfResource` 그대로).
+//   ⇒ 켬 = 덤불·풀·버섯밭·나물 · 끔 = 덤불·풀. 걷는 품목은 생활층이 이 집합의 전리품에서 센다(T458 문법 · 사본 0).
+//   ⚠배열 둘(끔·켬) 중 하나를 **같은 객체로** 돌려준다 — 받는 쪽은 배열이 바뀔 때만 조회 표를 다시 짓는다(부를 때 드는 것은 손잡이 한 번 읽기).
+const FORAGE_RING = Object.freeze(['berry_bush', 'herb']);
+let _FK_ON = null, _KC = undefined;
+function _kcalMod() { if (_KC === undefined) { try { _KC = require('./kcal'); } catch (e) { _KC = null; } } return _KC; }
+function forageKinds() {
+  if (!WILD.ON()) return FORAGE_RING;
+  if (_FK_ON) return _FK_ON;
+  const K = _kcalMod(), out = FORAGE_RING.slice();
+  for (const c of Object.keys(WILD_HAB)) {
+    if (!(WILD_P[c] > 0)) continue;                                  // 세계에 설 수 없는 종(유도 밀도 0)
+    for (const k of WILD_HAB[c]) {
+      const g = GROVE_KINDS[k];
+      if (!g || out.indexOf(k) >= 0) continue;
+      if (!(K && typeof K.kcalPerKg === 'function' && K.kcalPerKg(g.item) > 0)) continue;   // kcal.js 가 모르는 품목 — 서버 품목뿐
+      out.push(k);
+    }
+  }
+  return (_FK_ON = Object.freeze(out));
+}
 /**
  * 야생 군락의 **서식** — 한 점이 어느 지형인가(`null` = 물·바위 · 군락이 못 선다).
  * 물가 → 숲 → 가장자리 → 들 차례(`decideVillageType` 이 물가를 먼저 보는 그 차례).
@@ -1242,4 +1280,4 @@ function generateCoastlineWaterTiles(zone, tileSize, findZoneAtFn, oceanRects) {
 
 // ★[T108 2026-09-05] `RESOURCE_HP_TABLE` 을 **내준다** — `zone.js` 가 같은 표를 한 벌 더
 //   들고 있었고(운석이 빠져 3대에 깨졌다 · T90 회부), 그걸 지우려면 정본이 나가야 한다.
-module.exports = { Chunk, ChunkManager, CHUNK_SIZE, generateChunkResources, resourceAt, resourcesAtCell, cellChunksOf, treeBlockerAt, overflowInto, seedGenChunkOf, regrowStageOf, REGROW, GROVE, WILD, WILD_HAB, _wildClass, seedRand, forestSpacing, forestTreesPerCell, forestTreesPerCellMean, scatterTreesPerCell, treeShareOf, scatterRocksPerCell, rockShareOf, FOREST_MIN_COV, RESOURCES_PER_CHUNK, generateVillagesForZone, makeVillageName, generateCoastlineWaterTiles, RESOURCE_HP_TABLE, GROVE_KINDS };
+module.exports = { Chunk, ChunkManager, CHUNK_SIZE, generateChunkResources, resourceAt, resourcesAtCell, cellChunksOf, treeBlockerAt, overflowInto, seedGenChunkOf, regrowStageOf, REGROW, GROVE, WILD, WILD_HAB, _wildClass, FORAGE_RING, forageKinds, seedRand, forestSpacing, forestTreesPerCell, forestTreesPerCellMean, scatterTreesPerCell, treeShareOf, scatterRocksPerCell, rockShareOf, FOREST_MIN_COV, RESOURCES_PER_CHUNK, generateVillagesForZone, makeVillageName, generateCoastlineWaterTiles, RESOURCE_HP_TABLE, GROVE_KINDS };

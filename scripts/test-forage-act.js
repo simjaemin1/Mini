@@ -79,7 +79,7 @@ console.log('\n② 사본 0 — 몸통은 하나, 표는 남의 것');
     '② ★로지스틱도 한 몸통이고 이름만 갈렸다(래퍼 · 식은 한 벌)');
   ok(/function _actEntitiesAtCell\(cellX, cellY, types, raw\)/.test(ZC)
     && /return _actEntitiesAtCell\(cellX, cellY, _T325_TYPES, raw\);/.test(ZC)
-    && /return _actEntitiesAtCell\(cellX, cellY, _T347_TYPES, raw\);/.test(ZC),
+    && /return _actEntitiesAtCell\(cellX, cellY, _t347Types\(\), raw\);/.test(ZC),   // ★[T462] 종 집합 = 정본 `forageKinds` 의 조회 표
     '② ★★색인 규칙(T301 활성 청크 우선 · 없으면 수확 장부·게임일)이 **한 벌**이다 — 종 집합만 갈린다');
   ok(/function _actTakeAtCell\(cellX, cellY, find, ctx\)/.test(ZC),
     '② ★빼는 규칙도 한 벌이다(활성 개체면 개체를, 꺼져 있으면 장부만)');
@@ -161,11 +161,21 @@ console.log('\n⑥ ⓐ 관측자 무관 · ⓔ 딴 개체는 없어지고 딴 �
     '⑥ ★색인에 **수확 장부와 게임일**을 넘긴다 — 청크가 꺼져 있어도 같은 답(T301 규칙 표 · ★[T440] 청크 판이 그 둘로 낳는다)');
   ok(/_ringBuild\(qx, qy, undefined, undefined\)/.test(ZC),
     '⑥ ★★`raw` 는 장부를 **안 넘긴다** — *"교란 전 그 셀에 무엇이 있었나"*(로지스틱 `K` · ★[T440] 원시 판은 장부·날 없이 낳는다)');
-  ok(/const _T347_TYPES = \{ berry_bush: 1, herb: 1 \};/.test(ZC),
-    '⑥ 군락 종 집합이 생활층 `JOB_RES.forager` 와 같은 둘이다');
+  //   ★[T462] 종 집합은 **정본 하나**(`chunk.js forageKinds`)다 — 종전엔 존·생활층 두 글자를 여기서 맞대 봤다(사본 둘).
+  //     이제 두 자리 다 그 함수를 읽고 글자는 정본 한 곳(`FORAGE_RING`)에만 있다. 끔이면 그 둘 그대로(비트 동일).
+  const CC6 = codeOf(fs.readFileSync(path.join(ROOT, 'server', 'chunk.js'), 'utf8'));
+  ok(/const FORAGE_RING = Object\.freeze\(\['berry_bush', 'herb'\]\);/.test(CC6) && /function forageKinds\(\) \{\s*if \(!WILD\.ON\(\)\) return FORAGE_RING;/.test(CC6),
+    '⑥ ★★[T462] 군락 종 집합의 정본이 **하나**다 — `chunk.js forageKinds`(끔 = 덤불·풀 그 둘 · 켬이면 야생 군락 종이 든다)');
   const VC = codeOf(VSRC);
-  ok(/JOB_RES = \{[^}]*forager: \['berry_bush', 'herb'\]/.test(VC),
-    '⑥ ★그 둘이 **생활층 정본**이다(존이 표를 지어내지 않았다)');
+  ok(!/berry_bush: 1, herb: 1/.test(ZC) && /const \{ forageKinds: _forageKinds \} = require\('\.\/chunk'\);/.test(ZC) && /const a = _forageKinds\(\);/.test(ZC)
+    && !/forager: \['berry_bush', 'herb'\]/.test(VC) && /get forager\(\) \{[^}]*C\.forageKinds\(\)/.test(VC),
+    '⑥ ★★존 `_T347_TYPES` 와 생활층 `JOB_RES.forager` 가 **그 함수를 읽는다** — 글자 사본 0(종전 두 벌)');
+  const CH6 = require(path.join(ROOT, 'server', 'chunk.js'));
+  const _w6 = process.env.T450_WILD_GROVES; delete process.env.T450_WILD_GROVES;
+  const off6 = CH6.forageKinds();
+  if (_w6 != null) process.env.T450_WILD_GROVES = _w6;
+  ok(off6 === CH6.FORAGE_RING && off6.join('|') === 'berry_bush|herb',
+    '⑥ ★끔 — 그 집합이 **종전 두 글자 그대로**다(덤불·풀 · 같은 차례)', off6.join('·'));
   // 기능 — 색인이 실제로 군락을 찾고, 딴 뒤 하나 줄고, 장부에 남는다
   const chunk = require(path.join(ROOT, 'server', 'chunk.js'));
   const terr = require(path.join(ROOT, 'server', 'terrain.js'));
@@ -555,7 +565,7 @@ console.log('\n⑭ [T374] 수요 멈춤 (손잡이 기본 끔)');
 //   ⓒ ★미끼 — 서식을 `_wildClass` 가 아니라 **지형 함수로 직접** 다시 본다(술어를 늘 참으로 하면 들에 군락이 서서 빨갛다)
 //   ⓓ 색인 = 청크(T301) · 청크 경계 넘는 군락은 한 점도 두 번 안 난다
 //   ⓔ 링 군락 무접촉 · 재생은 그 종의 주기(`GROVE_KINDS` · T122 `_stage`)
-//   ⓕ 채집꾼·원정군의 종 집합(`_T347_TYPES`)엔 이 넷이 없다 — 마을 채집이 보는 개체는 켬/끔 비트 동일
+//   ⓕ 채집꾼·원정군의 종 집합 — ★[T462] 정본 `forageKinds`: 끔이면 야생 종 0(마을 채집이 보는 개체 비트 동일) · 켬이면 든다
 console.log('\n⑮ [T450] 야생 군락 — 서식이 낳는다 (T415 표 · 손잡이 기본 끔)');
 {
   const CH = require(path.join(ROOT, 'server', 'chunk.js'));
@@ -655,18 +665,101 @@ console.log('\n⑮ [T450] 야생 군락 — 서식이 낳는다 (T415 표 · 손
     delete process.env.T450_WILD_GROVES;
     ok(!r1 && !r2 && r3, 'ⓔ ★딴 자리는 **그 종의 주기**가 지나야 다시 난다(`GROVE_KINDS[kind].regrow` · T122 `_stage` 그 함수)', `${e0.type} · 주기 ${Math.ceil(per)}일 · 다음날 ${r1} · 하루 전 ${r2} · 그날 ${r3}`);
   } else ok(false, 'ⓔ [상황] 야생 개체가 없다');
-  // ⓕ 채집꾼·원정군의 종 집합엔 이 넷이 없다 — 마을 채집이 보는 개체는 켬/끔 비트 동일(한 마을 원판 전수)
-  const t347 = (/const _T347_TYPES = \{([^}]*)\}/.exec(ZSRC) || [])[1] || '';
-  const PICK = new Set([...t347.matchAll(/(\w+)\s*:/g)].map((q) => q[1]));
-  ok(PICK.size > 0 && !kinds.some((k) => PICK.has(k)), 'ⓕ ★채집꾼·원정군이 따는 종(`zone.js _T347_TYPES`)엔 야생 군락 종이 **없다** — 마을 채집 등가 무변의 근거', `{${[...PICK].join(', ')}}`);
+  // ⓕ ★[T462] 채집꾼·원정군의 종 집합 = 정본 `forageKinds`(존 `_T347_TYPES` · 생활층 `JOB_RES.forager` 가 읽는 그 함수)
+  //   끔 — 야생 군락 종이 **없다**(덤불·풀 그 둘) ⇒ 마을 채집이 보는 개체가 T450 전과 비트 동일.
+  //   켬 — 세계에 서고 품목을 kcal.js 가 아는 야생 종이 **든다** ⇒ 덤불·풀 개체는 그대로이고 야생 개체가 **더해진다**.
+  const pickOf = (on) => { if (on) process.env.T450_WILD_GROVES = '1'; else delete process.env.T450_WILD_GROVES; const P = new Set(CH.forageKinds()); delete process.env.T450_WILD_GROVES; return P; };
+  const PICK0 = pickOf(false), PICK1 = pickOf(true);
+  ok(PICK0.size > 0 && !kinds.some((k) => PICK0.has(k)), 'ⓕ ★끔 — 채집꾼·원정군이 따는 종(정본 `forageKinds`)엔 야생 군락 종이 **없다** — 끔 판 마을 채집 비트 동일의 근거', `{${[...PICK0].join(', ')}}`);
+  ok([...PICK0].every((k) => PICK1.has(k)) && kinds.some((k) => PICK1.has(k)), 'ⓕ ★★[T462] 켬 — 야생 군락 종이 **든다**(덤불·풀은 그대로)', `{${[...PICK1].join(', ')}}`);
   const vv = (TT.getZoneVillages(Z) || []).find((v) => { const c = cls(v.x, v.y); return c === 'forest' || c === 'edge'; }) || (TT.getZoneVillages(Z) || [])[0];
-  const viewOf = (on) => { if (on) process.env.T450_WILD_GROVES = '1'; else delete process.env.T450_WILD_GROVES; let s = '', n = 0, other = 0;
+  const viewOf = (on) => { const P = on ? PICK1 : PICK0; if (on) process.env.T450_WILD_GROVES = '1'; else delete process.env.T450_WILD_GROVES; let s = '', n = 0, w = 0, other = 0;
     const vx = Math.floor(vv.x / 32), vy = Math.floor(vv.y / 32);
     for (let dy = -R30; dy <= R30; dy++) for (let dx = -R30; dx <= R30; dx++) { if (dx * dx + dy * dy > R30 * R30) continue;
-      for (const e of CH.resourcesAtCell(Z, vx + dx, vy + dy, { biome: ZN.biome, chunkSize: cs })) { if (PICK.has(e.type)) { s += `${e.id}|${e.x}|${e.y};`; n++; } else if (isW(e)) other++; } }
-    delete process.env.T450_WILD_GROVES; return { s, n, other }; };
+      for (const e of CH.resourcesAtCell(Z, vx + dx, vy + dy, { biome: ZN.biome, chunkSize: cs })) {
+        if (P.has(e.type) && !isW(e)) { s += `${e.id}|${e.x}|${e.y};`; n++; } else if (P.has(e.type)) w++; else if (isW(e)) other++; } }
+    delete process.env.T450_WILD_GROVES; return { s, n, w, other }; };
   const v0 = viewOf(false), v1 = viewOf(true);
-  ok(v0.s === v1.s, 'ⓕ ★마을 채집 원판(반경 30셀)에서 채집꾼이 보는 개체가 켬/끔 **비트 동일**', `${vv.name} · 딸 개체 ${v0.n} = ${v1.n} · 원판 안 야생 개체 ${v1.other}`);
+  ok(v0.s === v1.s && v0.w === 0, 'ⓕ ★마을 채집 원판(반경 30셀)에서 덤불·풀 개체는 켬/끔 **비트 동일** · 끔 판 야생 0', `${vv.name} · 덤불·풀 ${v0.n} = ${v1.n}`);
+  ok(v1.w > 0, 'ⓕ ★★[T462] 켬 판엔 채집꾼이 야생 개체를 **본다**(종 집합 안 · 종 집합 밖 야생은 따로 센다)', `${vv.name} · 딸 야생 ${v1.w} · 종 집합 밖 야생 ${v1.other}`);
+}
+
+// ── ⑯ [T462] 야생 군락을 딴다 — 종 집합 하나 · 품목 = T458 등가 문법 · 끔 비트 동일 ─────────────────
+//   ⓐ 정본 하나 — `forageKinds` 가 끔/켬마다 같은 배열 객체 · 켬 집합 = 링 ∪ {서식 밀도 > 0 ∧ kcal.js 가 품목을 아는 야생 종}
+//      (하네스가 정본 값 — `WILD.D`·`WILD_HAB`·`GROVE_KINDS`·`kcal.js`·econ 믹스 — 으로 **다시 센다**)
+//   ⓑ 품목 표 — 야생 넷의 품목: econ 믹스에 있나 · kcal.js kg당 열량 · 같은 물건이면 econ(걷는다) · 아니면 서버 품목뿐
+//   ⓒ 걷는 목록 — 끔 = fruit·twig·herb(T458 그대로) · 켬 = + vegetable·mushroom · 정본(`_t347ActItems`) = 다시 센 교집합
+//   ⓓ 세는 것 = 따는 것 — 켬 집합의 **모든 종**이 걷는 단위를 낸다(채집꾼이 건너뛰는 종이 집합에 없다 · K·게이트가 안 부푼다)
+//   ⓔ ★미끼 — 정본 함수 몸통에서 kcal 문 한 줄을 빼면 벌집이 들고(ⓐ 가 빨갛다), 밀도 문을 빼면 kcal 이 포도를 알게 된 날 머루가 든다
+console.log('\n⑯ [T462] 야생 군락을 딴다 — 종 집합 하나 · 품목 = T458 등가 문법');
+{
+  const CH = require(path.join(ROOT, 'server', 'chunk.js'));
+  const V = require(path.join(ROOT, 'server', 'villages.js'));
+  const E = require(path.join(ROOT, 'sim', 'economy-sim.js'));
+  const KC = require(path.join(ROOT, 'server', 'kcal.js'));
+  const M = V.playerVillageDepositMap();
+  const env0 = process.env.T450_WILD_GROVES;
+  const withWild = (on, f) => { if (on) process.env.T450_WILD_GROVES = '1'; else delete process.env.T450_WILD_GROVES;
+    try { return f(); } finally { if (env0 == null) delete process.env.T450_WILD_GROVES; else process.env.T450_WILD_GROVES = env0; } };
+  // ⓐ 정본 하나
+  const off = withWild(false, () => CH.forageKinds()), off2 = withWild(false, () => CH.forageKinds());
+  const on = withWild(true, () => CH.forageKinds()), on2 = withWild(true, () => CH.forageKinds());
+  ok(off === off2 && on === on2 && off !== on && Object.isFrozen(on) && Object.isFrozen(off),
+    'ⓐ ★정본이 끔/켬마다 **같은 배열 객체**를 준다(받는 쪽 — 존 조회 표·걷는 목록 — 은 배열이 바뀔 때만 다시 짓는다)');
+  const mixKeys = Object.keys(E.foragerYieldsFor({ land: { fertility: 1, wood: 1, stone: 1 } }));
+  const P = {}; for (const c of Object.keys(CH.WILD.D)) { const [n, cells] = CH.WILD.D[c]; P[c] = cells > 0 ? n / cells : 0; }
+  const want = CH.FORAGE_RING.slice(), table = [];
+  for (const c of Object.keys(CH.WILD_HAB)) for (const k of CH.WILD_HAB[c]) {
+    const it = CH.GROVE_KINDS[k].item, kc = KC.kcalPerKg(it), mix = mixKeys.includes(it);
+    const stands = P[c] > 0, same = kc > 0;   // T458 — 이름이 같으니 kg당 열량이 서면(양쪽이 kcal.js 의 같은 줄) 같은 물건
+    table.push({ k, hab: c, it, mix, pv: M[it] || null, kc, food: E.FORAGE_FOOD_FACTOR[it] || 0, stands, econ: mix && same });
+    if (stands && mix && same && !want.includes(k)) want.push(k);
+  }
+  ok(on.join('|') === want.join('|'),
+    'ⓐ ★★켬 집합 = 링(덤불·풀) ∪ {서식 밀도 > 0 ∧ 품목이 econ 믹스에 있고 kcal.js 가 아는 야생 종} — 정본 값으로 다시 센 것과 같다', on.join('·'));
+  // ⓑ 품목 표
+  ok(table.length === 4 && table.every((r) => r.mix),
+    'ⓑ 야생 넷의 품목은 전부 econ 채집 믹스에 **있다**(econ 품목이 있나 — 넷 다 ○ · 새 품목 0)', table.map((r) => `${r.k}→${r.it}`).join(' · '));
+  const econ = table.filter((r) => r.econ).map((r) => r.it).sort();
+  ok(econ.join('|') === 'mushroom|vegetable',
+    'ⓑ ★★kcal.js 가 같은 물건이라 하는 것 = **버섯·채소 둘**(250·250) · 꿀·포도는 kcal.js 에 줄이 없다 → 서버 품목뿐(플레이어는 딴다)',
+    table.map((r) => `${r.it} ${r.kc}kcal/kg ${r.econ ? 'econ' : '서버'}${r.stands ? '' : '(밀도 0)'}`).join(' · '));
+  // ⓒ 걷는 목록 — 정본(`_t347ActItems`)과 다시 센 교집합(⑩ 의 T458 규칙 그대로)
+  const ZC16 = codeOf(ZSRC);
+  const BN = +((ZC16.match(/const BUSH_BERRY_N = (\d+);/) || [])[1]);
+  const loot = (r) => { const t = r && r.type; if (t === 'berry_bush') return { berry: BN, fiber: 1, twig: 1 }; if (t === 'herb') return { herb: 2 };
+    const g = CH.GROVE_KINDS[t]; return g ? { [g.item]: BN } : {}; };   // 존 `lootOfResource` 그 줄들(⑩ 이 글자로 대조한다)
+  const S0 = V.__p3Bind({}).state, deps0 = S0.deps;
+  V.__p3Bind({ deps: Object.assign({}, deps0 || {}, { t347LootOf: loot }) });
+  try {
+    const sameOf = (n) => { const m = M[n]; if (!m || m === n) return n; const a = KC.kcalPerKg(n), b = KC.kcalPerKg(m); return (a > 0 && a === b) ? m : n; };
+    const walkOf = (kinds) => { const ent = new Set(); for (const t of kinds) for (const n in loot({ type: t })) ent.add(n); return mixKeys.filter((k) => [...ent].some((n) => sameOf(n) === k)); };
+    const wOff = withWild(false, () => V._t347ActItems()) || [], wOn = withWild(true, () => V._t347ActItems()) || [];
+    ok(wOff.join('|') === walkOf(off).join('|') && wOff.join('|') === 'fruit|twig|herb',
+      'ⓒ ★끔 — 걷는 목록이 **T458 그대로**(fruit·twig·herb) · 끔 판 비트 동일', wOff.join('·'));
+    ok(wOn.join('|') === walkOf(on).join('|') && wOn.includes('mushroom') && wOn.includes('vegetable') && !wOn.includes('honey') && !wOn.includes('grape'),
+      'ⓒ ★★켬 — + 채소·버섯(econ · 발이 곳간에 넣는다) · 꿀·포도는 안 걷는다(서버 품목뿐 — 수식이 종전대로 낸다)', wOn.join('·'));
+    // ⓓ 세는 것 = 따는 것
+    const u = withWild(true, () => on.map((k) => [k, V._lifeLootForage({ type: k, x: 0, y: 0 })]));
+    ok(u.every(([, x]) => x > 0),
+      'ⓓ ★★켬 집합의 **모든 종**이 걷는 단위를 낸다 — 채집꾼이 건너뛰는 종(벌집·머루)이 집합에 없다(K·군락 셀·게이트가 안 부푼다)', u.map(([k, x]) => `${k} ${x}`).join(' · '));
+    //   재생 — 딴 야생 개체의 씨 키가 되돌림 문(`_t341Unharvest` → `_ringBump` → `seedGenChunkOf`)에서 **낳은 청크**로 풀린다
+    const sg = CH.seedGenChunkOf('12_34_wg400_1100_2', 0, 0, CH.CHUNK_SIZE);
+    ok(sg.cx === 12 && sg.cy === 34, 'ⓓ 되돌림 — 야생 씨 키(`<cx>_<cy>_wg…`)가 낳은 청크로 풀린다(T347 로지스틱이 되살리면 그 청크 판만 버린다 · T440)', JSON.stringify(sg));
+    // ⓔ 미끼 — 정본 함수 몸통을 그대로 떠서(한 줄씩 빼서) 같은 입력에 돌린다
+    const CS16 = fs.readFileSync(path.join(ROOT, 'server', 'chunk.js'), 'utf8');
+    const at = CS16.indexOf('function forageKinds() {'), fb = CS16.slice(at, CS16.indexOf('\n}\n', at) + 2);
+    const gateK = fb.split('\n').find((l) => /kcalPerKg\(g\.item\) > 0/.test(l)), gateP = fb.split('\n').find((l) => /WILD_P\[c\] > 0/.test(l));
+    const mk = (src, kc) => new Function('WILD', 'WILD_HAB', 'WILD_P', 'GROVE_KINDS', 'FORAGE_RING', '_kcalMod', `let _FK_ON = null;\n${src}\nreturn forageKinds;`)(
+      { ON: () => true }, CH.WILD_HAB, P, CH.GROVE_KINDS, CH.FORAGE_RING, () => kc)();
+    const real = mk(fb, KC), noK = mk(fb.replace(gateK, ''), KC);
+    ok(!!gateK && real.join('|') === want.join('|') && noK.includes('beehive') && noK.join('|') !== want.join('|'),
+      'ⓔ ★미끼 — kcal 문 한 줄을 뺀 몸통은 **벌집을 넣는다**(ⓐ 가 빨갛다 · 자명 통과 아님)', `정본 ${real.join('·')} · 미끼 ${noK.join('·')}`);
+    const KG = { kcalPerKg: (it) => (it === 'grape' ? 500 : KC.kcalPerKg(it)) };   // 가정 — kcal.js 가 포도를 알게 된 날
+    const realG = mk(fb, KG), noP = mk(fb.replace(gateP, ''), KG);
+    ok(!!gateP && !realG.includes('wild_vine') && noP.includes('wild_vine'),
+      'ⓔ ★미끼 — kcal.js 가 포도를 알게 돼도 정본은 **머루를 안 넣는다**(물가 밀도 0 — 세계에 없다) · 밀도 문을 빼면 든다(공급원 없이 수식에서 걷어낸다)', `정본 ${realG.join('·')} · 미끼 ${noP.join('·')}`);
+  } finally { V.__p3Bind({ deps: deps0 }); }
 }
 
 console.log('\n⑫ 접점 심볼');

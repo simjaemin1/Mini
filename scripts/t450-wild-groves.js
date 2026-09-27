@@ -6,7 +6,7 @@
 // ★재기만 한다. 제품은 읽기만 하고, 값은 전부 정본에서 읽는다(수를 적지 않는다):
 //   · 서식 술어·종·밀도·모양 — `chunk.js` 의 `_wildClass` · `WILD_HAB` · `WILD.D` · `WILD.N/R`
 //   · 채집 반경 — `forage.CFG.WALK_SEC` × `zone.js MOVE_SPEED` ÷ 셀 32(T347 `_t347R` 그 식 · 소스에서 읽는다)
-//   · 채집꾼·원정군의 종 집합 — `zone.js _T347_TYPES` 글자 그대로(소스에서 읽는다)
+//   · 채집꾼·원정군의 종 집합 — ★[T462] 정본 `chunk.js forageKinds`(그 팔의 손잡이로 부른다) · 옛 판(`T450_ROOT` 베이스)은 `zone.js _T347_TYPES` 글자
 //   · 수동 군락 53 · 마을 자리 51 — `terrain.ZONE_TERRAIN.hanbando.groves` · `terrain.getZoneVillages`
 //
 // 쓰는 법(모드 하나씩 · 서버 코드 자리는 `T450_ROOT` — 베이스 워크트리를 같은 자로 잰다):
@@ -40,8 +40,10 @@ function forageR() {
   const mv = +((zsrc.match(/const MOVE_SPEED = (\d+);/) || [])[1]);
   return { R: Math.round(mv * F.CFG.WALK_SEC / 32), walk: F.CFG.WALK_SEC, move: mv };
 }
-//   채집꾼·원정군의 종 집합 — `zone.js _T347_TYPES` 글자
-function pickSet() {
+//   채집꾼·원정군의 종 집합 — ★[T462] 정본 `chunk.js forageKinds` 를 **그 팔의 손잡이로** 부른다(끔 = 덤불·풀 · 켬 = + 야생 중 딸 종).
+//     정본이 없는 옛 판(`T450_ROOT` 베이스 워크트리)은 `zone.js _T347_TYPES` 글자를 읽는다(T450 자 그대로).
+function pickSet(on) {
+  if (typeof CH.forageKinds === 'function') { setWild(on); const P = new Set(CH.forageKinds()); setWild(false); return P; }
   const zsrc = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
   const m = /const _T347_TYPES = \{([^}]*)\}/.exec(zsrc);
   return new Set(m ? [...m[1].matchAll(/(\w+)\s*:/g)].map((q) => q[1]) : []);
@@ -150,42 +152,46 @@ if (MODE === '--hash') {
 // ── 채집꾼이 보는 개체 — 51마을 채집 원판 전수 · 끔/켬 ─────────────────────────────
 if (MODE === '--forager') {
   if (!HASWILD) { say('WILD 없음'); process.exit(0); }
-  const PICK = pickSet();
   const V = T.getZoneVillages(HB);
   const { R } = forageR();
   const Z = ZONES[HB];
+  //   ★[T462] 팔마다 그 팔의 종 집합(정본)으로 센다 — 덤불·풀(야생 아닌 개체)은 해시로 끔/켬 비트 동일을 보고, 야생 중 딸 개체는 따로 센다.
   const view = (on) => {
+    const PICK = pickSet(on);
     setWild(on);
-    const Hh = crypto.createHash('sha1'); let pick = 0, other = 0; const otherKind = {}; const perVil = [];
+    const Hh = crypto.createHash('sha1'); let pick = 0, wildPick = 0, other = 0; const otherKind = {}, wildKind = {}; const perVil = [];
     for (const v of V) {
-      const vx = Math.floor(v.x / 32), vy = Math.floor(v.y / 32); let pv = 0, ov = 0;
+      const vx = Math.floor(v.x / 32), vy = Math.floor(v.y / 32); let pv = 0, wv = 0, ov = 0;
       for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) {
         if (dx * dx + dy * dy > R * R) continue;
         const a = CH.resourcesAtCell(HB, vx + dx, vy + dy, { biome: Z.biome, chunkSize: CH.CHUNK_SIZE });
         for (const e of a) {
-          if (PICK.has(e.type)) { pick++; pv++; Hh.update(`${e.id}|${e.type}|${e.x}|${e.y};`); }
-          else if (wildOf(e.seedKey)) { other++; ov++; otherKind[e.type] = (otherKind[e.type] || 0) + 1; }
+          const w = wildOf(e.seedKey);
+          if (PICK.has(e.type) && !w) { pick++; pv++; Hh.update(`${e.id}|${e.type}|${e.x}|${e.y};`); }
+          else if (PICK.has(e.type)) { wildPick++; wv++; wildKind[e.type] = (wildKind[e.type] || 0) + 1; }
+          else if (w) { other++; ov++; otherKind[e.type] = (otherKind[e.type] || 0) + 1; }
         }
       }
-      perVil.push([v.name, pv, ov]);
+      perVil.push([v.name, pv, ov, wv]);
     }
     setWild(false);
-    return { hash: Hh.digest('hex').slice(0, 16), pick, other, otherKind, perVil };
+    return { set: [...PICK], hash: Hh.digest('hex').slice(0, 16), pick, wildPick, wildKind, other, otherKind, perVil };
   };
   const t0 = Date.now();
   const A = view(false), B = view(true);
-  say(`=== T450 채집꾼이 보는 개체 — 51마을 채집 원판(반경 ${R}셀) 전수 · 종 집합 = zone.js _T347_TYPES {${[...PICK].join(', ')}} · ${((Date.now() - t0) / 1000).toFixed(1)}s ===`);
-  say(`끔: 딸 개체 ${A.pick} · 해시 ${A.hash} · 원판 안 야생 개체 ${A.other}`);
-  say(`켬: 딸 개체 ${B.pick} · 해시 ${B.hash} · 원판 안 야생 개체 ${B.other} ${JSON.stringify(B.otherKind)}`);
-  const withWild = B.perVil.filter((q) => q[2] > 0);
-  say(`판정 — 채집꾼이 보는 개체 ${A.hash === B.hash && A.pick === B.pick ? '★끔/켬 비트 동일' : '✗갈린다'} · 원판 안에 야생 군락 개체가 있는 마을 ${withWild.length}/${V.length}(중앙 ${withWild.length ? withWild.map((q) => q[2]).sort((x, y) => x - y)[Math.floor(withWild.length / 2)] : 0})`);
-  process.exit(A.hash === B.hash ? 0 : 1);
+  say(`=== T450 채집꾼이 보는 개체 — 51마을 채집 원판(반경 ${R}셀) 전수 · 종 집합 끔 {${A.set.join(', ')}} · 켬 {${B.set.join(', ')}} · ${((Date.now() - t0) / 1000).toFixed(1)}s ===`);
+  say(`끔: 덤불·풀 ${A.pick} · 해시 ${A.hash} · 딸 야생 ${A.wildPick} · 종 집합 밖 야생 ${A.other}`);
+  say(`켬: 덤불·풀 ${B.pick} · 해시 ${B.hash} · 딸 야생 ${B.wildPick} ${JSON.stringify(B.wildKind)} · 종 집합 밖 야생 ${B.other} ${JSON.stringify(B.otherKind)}`);
+  const withWild = B.perVil.filter((q) => q[3] > 0), med = (a) => a.length ? a.slice().sort((x, y) => x - y)[Math.floor(a.length / 2)] : 0;
+  say(`판정 — 덤불·풀 ${A.hash === B.hash && A.pick === B.pick ? '★끔/켬 비트 동일' : '✗갈린다'} · 딸 야생 개체가 원판에 있는 마을 ${withWild.length}/${V.length}(중앙 ${med(withWild.map((q) => q[3]))}) · 끔 판 딸 야생 ${A.wildPick}`);
+  if (process.argv[3]) fs.writeFileSync(process.argv[3], JSON.stringify({ off: A, on: B }, null, 1));
+  process.exit(A.hash === B.hash && A.wildPick === 0 ? 0 : 1);
 }
 
 // ── 원정 길 — T441 실서버 판(siegehold 어촌2→광산2 · 403셀) · 채집 반경 띠 ─────────────
 if (MODE === '--route') {
   if (!HASWILD) { say('WILD 없음'); process.exit(0); }
-  const PICK = pickSet();
+  const PICK0 = pickSet(false), PICK1 = pickSet(true);   // ★[T462] 팔마다 그 팔의 종 집합(정본)
   const V = T.getZoneVillages(HB);
   const { R } = forageR();
   const Z = ZONES[HB];
@@ -200,15 +206,15 @@ if (MODE === '--route') {
       for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) if (dx * dx + dy * dy <= R * R) set.add((px + dx) * 65536 + (py + dy)); }
     return { L, cells: set };
   };
-  const count = (cells, on) => { setWild(on); const r = { pick: 0, wild: 0, byKind: {}, cls: {} };
+  const count = (cells, on) => { const PICK = on ? PICK1 : PICK0; setWild(on); const r = { pick: 0, wildPick: 0, wild: 0, byKind: {}, cls: {} };
     for (const k of cells) { const x = Math.floor(k / 65536), y = k % 65536; if (x < 0 || y < 0) continue;
       for (const e of CH.resourcesAtCell(HB, x, y, { biome: Z.biome, chunkSize: CH.CHUNK_SIZE })) {
-        if (PICK.has(e.type)) r.pick++;
+        if (PICK.has(e.type)) { r.pick++; if (wildOf(e.seedKey)) r.wildPick++; }
         if (wildOf(e.seedKey)) { r.wild++; r.byKind[e.type] = (r.byKind[e.type] || 0) + 1; }
       } }
     setWild(false); return r; };
   const clsOf = (cells) => { const c = {}; for (const k of cells) { const x = Math.floor(k / 65536), y = k % 65536; const q = CH._wildClass(HB, x * 32 + 16, y * 32 + 16) || 'water·rock'; c[q] = (c[q] || 0) + 1; } return c; };
-  say(`=== T450 원정 길 — 직선 · 칸마다 채집 반경 ${R}셀 띠(T441 _warDayCells 반경) · 종 집합 {${[...PICK].join(', ')}} ===`);
+  say(`=== T450 원정 길 — 직선 · 칸마다 채집 반경 ${R}셀 띠(T441 _warDayCells 반경) · 종 집합 끔 {${[...PICK0].join(', ')}} · 켬 {${[...PICK1].join(', ')}} ===`);
   const rows = [];
   for (const [an, bn] of pairs) {
     const A = V.find((v) => v.name === an), B = V.find((v) => v.name === bn); if (!A || !B) continue;
@@ -217,12 +223,13 @@ if (MODE === '--route') {
     rows.push({ a: an, b: bn, L, cells: cells.size, off, on });
     if (rows.length === 1) {
       const c = clsOf(cells);
-      say(`${an}→${bn}: 길 ${L}셀 · 띠 ${cells.size}셀(지형 ${JSON.stringify(c)}) — 딸 수 있는(종 집합) 끔 ${off.pick} → 켬 ${on.pick} · 야생 군락 개체 끔 ${off.wild} → 켬 ${on.wild} ${JSON.stringify(on.byKind)}`);
+      say(`${an}→${bn}: 길 ${L}셀 · 띠 ${cells.size}셀(지형 ${JSON.stringify(c)}) — 딸 수 있는(종 집합) 끔 ${off.pick} → 켬 ${on.pick}(야생 ${on.wildPick}) · 야생 군락 개체 끔 ${off.wild} → 켬 ${on.wild} ${JSON.stringify(on.byKind)}`);
     }
   }
   const agg = (f) => { const a = rows.slice(1).map(f).sort((x, y) => x - y); return { sum: a.reduce((s, x) => s + x, 0), med: a[Math.floor(a.length / 2)], max: a[a.length - 1], zero: a.filter((x) => x === 0).length }; };
   const w = agg((r) => r.on.wild), p0 = agg((r) => r.off.pick), p1 = agg((r) => r.on.pick), Ls = agg((r) => r.L);
-  say(`가장 가까운 이웃 쌍 ${rows.length - 1}개(길 중앙 ${Ls.med}셀): 딸 수 있는 개체 끔 중앙 ${p0.med} → 켬 ${p1.med}(합 ${p0.sum} → ${p1.sum}) · 야생 군락 개체(종 집합 밖) 켬 중앙 ${w.med} · 최대 ${w.max} · 0 인 길 ${w.zero}/${rows.length - 1}`);
+  const wp = agg((r) => r.on.wildPick);
+  say(`가장 가까운 이웃 쌍 ${rows.length - 1}개(길 중앙 ${Ls.med}셀): 딸 수 있는 개체 끔 중앙 ${p0.med} → 켬 ${p1.med}(합 ${p0.sum} → ${p1.sum}) · 야생 군락 개체 켬 중앙 ${w.med}(그중 딸 것 중앙 ${wp.med} · 합 ${wp.sum}) · 최대 ${w.max} · 야생 0 인 길 ${w.zero}/${rows.length - 1}`);
   fs.writeFileSync('/tmp/t450-route.json', JSON.stringify(rows, null, 1));
   process.exit(0);
 }

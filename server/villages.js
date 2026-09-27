@@ -5460,7 +5460,11 @@ function _lifeNextFarmCell(vil, npc, day) {   // 랩 nextTask 동형(구역 대�
   return best;
 }
 // ── 직업 현장(랩 place/resourceTick 동형 원리 — 서버는 실물 자원·실물 사냥감이 정본): 일 캐시 ──
-const JOB_RES = { lumberjack: ['tree'], miner: ['rock', 'ore'], forager: ['berry_bush', 'herb'] };
+// ★★[T462] 채집꾼의 종은 **정본 하나**(`chunk.js forageKinds`)를 읽는다 — 여기 글자로 두지 않는다(존 `_T347_TYPES` 도 그 함수다 · 사본 0).
+//   끔 = 덤불·풀(종전 그 둘 그대로) · `T450_WILD_GROVES` 켬 = + 야생 군락 중 세계에 서고 품목을 kcal.js 가 아는 종.
+let _chMod = null;
+function _chunkMod() { if (_chMod === null) { try { _chMod = require('./chunk'); } catch (e) { _chMod = false; } } return _chMod || null; }
+const JOB_RES = { lumberjack: ['tree'], miner: ['rock', 'ore'], get forager() { const C = _chunkMod(); return (C && C.forageKinds) ? C.forageKinds() : []; } };
 // ★★★[T325 2026-09-19] **나무 셀은 관측자와 무관하게 센다 — 그리고 걷는 길과 무관하게 매일 한 번.**
 //   ⚠첫 판에서 이걸 `_lifeJobSites` 안에 두었더니 **셀 수가 51마을 전부 0** 이었다(실측 · 자기수리).
 //     까닭: `_lifeJobSites` 를 부르는 것은 **걷는 NPC 의 결정 틱**이고, 관측자 없는 마을의 NPC 는
@@ -5621,18 +5625,20 @@ function _t341TreesPerLoad(unitsPerTree) {
 //   ⚠대응은 **항등뿐**이다: 덤불의 `berry` 가 econ `fruit` 의 동의어라는 판단(`PV_DEPOSIT_MAP` 첫 줄이
 //     이미 그렇게 적어 뒀다)은 **PM 칸**이라 여기서 안 쓴다 — 보고 §표가 그 수만 적는다.
 //   ⚠`fiber` 는 econ 재화가 아예 아니다(`specialty` 224종에 없다 · 플레이어 제작재다) — 걷을 것이 없다.
-let _t347Items = null;   // 걷는 목록(econ 재화 id) — 한 번만 센다(종·표 둘 다 시간에 안 매인다)
+let _t347Items = null, _t347ItemsOf = null;   // 걷는 목록(econ 재화 id) — 종 집합 하나에 한 번만 센다(종·표 둘 다 시간에 안 매인다)
 function _t347ActItems() {
-  if (_t347Items) return _t347Items;
+  //   ★[T462] 종 집합이 바뀌면(정본 `forageKinds` 가 켬/끔마다 다른 배열) 다시 센다 — 같은 배열이면 종전처럼 한 번.
+  const kinds = JOB_RES.forager;
+  if (_t347Items && _t347ItemsOf === kinds) return _t347Items;
   const E = _lifeEcon();
   if (!E || typeof E.foragerYieldsFor !== 'function' || !state.deps || !state.deps.t347LootOf) return null;
   //   ⓐ 채집 믹스의 품목 이름 — econ 정본이 답한다(여기 표 0 · 땅값은 아무 값이나 넣어도 **키**는 같다).
   let mix = null;
   try { mix = E.foragerYieldsFor({ land: { fertility: 1, wood: 1, stone: 1 } }); } catch (e) { mix = null; }
   if (!mix) return null;
-  //   ⓑ 군락 개체가 내는 품목 — 전리품 표가 답한다(종은 `JOB_RES.forager` 그 둘).
+  //   ⓑ 군락 개체가 내는 품목 — 전리품 표가 답한다(종은 `JOB_RES.forager` = 정본 `forageKinds` · ★[T462] 켬이면 버섯밭·나물도).
   const ent = new Set();
-  for (const t of JOB_RES.forager) {
+  for (const t of kinds) {
     let l = null; try { l = state.deps.t347LootOf({ type: t, x: 0, y: 0 }); } catch (e) { l = null; }
     if (l) for (const k in l) if (l[k] > 0) ent.add(k);
   }
@@ -5645,6 +5651,7 @@ function _t347ActItems() {
   _t347PairsC = pairs;
   const out = [];
   for (const k of Object.keys(mix)) if (pairs.some(p => p.econ === k)) out.push(k);
+  _t347ItemsOf = kinds;
   return (_t347Items = out);
 }
 // ★★[T458] 같은 물건 · 다른 이름 — 플레이어(손) 품목 → econ 재화. **대응 정본은 `PV_DEPOSIT_MAP`**(곳간 넣기 · "그 대응을
@@ -8690,6 +8697,7 @@ function __rumorProbe() {
 module.exports = { fishPerf, woodPerf, foragePerf, farmPerf,   // ★[T316] `/perf` 가 내주는 어부 관측(손잡이 끔이면 null) · ★[T325] 나무꾼 · ★[T347] 채집도 같은 꼴 · ★[T368] 농부
   _t400BuildDay, _t400PerLoad, _t400Crew, _t400From,   // ★[T400] 집 행위 1층 — 하네스가 같은 함수를 부른다(사본 0)
   _t347ActItems, _t347PerLoad,   // ★[T347] 걷는 목록·짐당 개체 — 하네스가 표·유도를 옮겨 적지 않게 내준다(사본 금지)
+  _lifeLootForage,   // ★[T462] 개체 하나가 내는 걷는 단위 — 자·하네스가 "세는 것 = 따는 것"을 이 함수로 잰다(사본 0)
   _actDay, _actTake,   // ★[T334] 예산 장부 몸통(어부 전용 — T341 이 나무에서 걷어냈다) — 하네스가 규칙을 옮겨 적지 않게 내준다
   _t341TripsPerDay, _t341TreesPerLoad, _t398Cells,   // ★[T341] 하루 왕복 수·짐당 그루 — **걸음이 정한다**(하네스가 유도를 다시 계산해 대조한다) · ★[T398] 나무꾼 후보 셀(고리 · 자·하네스가 이 함수를 부른다)
  
