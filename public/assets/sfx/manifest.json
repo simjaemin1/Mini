@@ -89,7 +89,8 @@
   "_player_downed": "나에게만 온다(`send(ws)`). 위치 없음 = 내 몸. 남이 쓰러지는 것은 `player_down_state` 로 온다 — [T402] 서버가 `why` 를 실어 `combatOnly` 가 `down` 만 거른다. ⚠다시 접속한 쓰러진 사람에게도 같은 이름이 한 번 더 온다(`source:'relogin'`) — `combatSkip` 이 거른다.",
   "_player_respawn": "방송 · 좌표가 실려 온다(깨어난 자리). 내 것은 위치 없이 난다. ⚠pid 는 **존마다 따로 센다**(`p${nextPid++}`) — '나' 판정은 주 연결(`role:'primary'`)에서만 한다.",
   "_death": "`inventory where:'death'` 는 **여기 없다** — 죽어 쏟은 짐은 `_deathDrop` → `_spawnGroundItems` → `ground_item_added` 로 **이미 `drop` 이 운다**(`groundDrop`). 여기 한 줄을 더하면 한 사건에 두 소리다.",
-  "player_down_state": "downed"
+  "player_down_state": "downed",
+  "_arrow_T465": "[T465] **전쟁 화살**(T458 · 있는 모양 · 관측자 800px 안일 때만)도 같은 줄로 운다 — `arrow_spawn` → `arrow_shoot`(쏜 자리 · 반경 480 · 표·코드 무변). `arrow_removed` 는 여전히 표에 없다: 맞음(`hit` = 맞은 병사 pid)의 정본은 **몸의 hp**(`warBody` · 다음 `tick` 에서 준 hp → `hit_body`)라 여기서 또 울리면 한 대가 두 번 운다(`e2e-audio-probe 55b` 미끼). 땅에 박힘(빗나감 · `hit` 없음)은 이웃 키가 없다 — 무음(새 소리 0)."
  },
  "combatSkip": {
   "_뜻": "`combat` 표의 메시지 중 **같은 이름으로 오지만 사건이 아닌 것** — 칸 이름 → 값이 맞으면 안 운다 [T387]. 값은 서버가 이미 싣는 칸이다(서버 무접촉).",
@@ -1724,6 +1725,41 @@
        "down": 4
       }
      }
+    },
+    {
+     "at": "war",
+     "card": "T465",
+     "arms": false,
+     "minutes": 30,
+     "windows": 8998,
+     "distinct": 28,
+     "oneShots": 726,
+     "steps": 677,
+     "worst": [
+      "bird",
+      "hit_body",
+      "hit_body",
+      "wind"
+     ],
+     "peakNoLim": 0.8473,
+     "overKneeWindows": 6,
+     "spot": "방어 광산2(8명) ← 공격 어촌2(8명) · 선포 성공",
+     "warBody": {
+      "hpDrops": 26,
+      "near": 23,
+      "zero": 7,
+      "plays": {
+       "hurt": 16,
+       "down": 5
+      },
+      "miss": 2
+     },
+     "arrows": {
+      "spawn": 0,
+      "spawnNear": 0,
+      "hit": 0,
+      "end": 0
+     }
     }
    ],
    "_한계": "[T431] 판 다섯(짐승·교전·마을 한가운데·일꾼 곁·벌목) + T417 나무 판. 주민 일 팔(T312·T325·T347·T368)은 기본 꺼짐이라 마을·일꾼·벌목 판은 켜고 쟀다 — 그래도 마을 한가운데·일꾼 곁 30분에 주민 소리 **0**(어부 라벨 셋이 곁에서 안 바뀌었다 · 나무꾼 0명). 교전은 `war_battle`(2Hz 집계)만 오고 표에 없어 **소리 층에 안 닿는다**(T387 회부 그대로) — 교전 판 최악은 발자국+날씨다. 발자국은 이제 센다(`CHAR_SPRITE=on`)."
@@ -1849,7 +1885,24 @@
   "_T445": "★최악이 또 바뀌었다: 쓰러지는 순간 **downed + hit_body×2 + rain_light + wind = 1.0266(+0.23 dBFS · 없이 · 클리핑 26)** · 끼고 0.7629 · 클리핑 0. 같은 창 같은 키는 판 셋 모두 **사건 둘**(같은 사건 두 번 0) — ★PM 캐논대로 접지 않는다(리미터가 그 자리). `e2e-audio-probe 53` 이 리미터가 이 묶음을 클리핑 0 으로 잡는지 잰다.",
   "clippedAtWorstNoLim": 26,
   "_clippedAtWorst": "[T445] `clippedAtWorst` = 최악 묶음을 **리미터 낀 판**에서 잰 클리핑 표본 수(`⑧c ⓑ` 가 본다). 리미터 없는 판의 클리핑은 `clippedAtWorstNoLim`. (T431 은 두 판이 다 0 이라 가르지 않았다.)",
-  "_T457": "교전 판 30분(병사 hp 를 층이 읽은 첫 판): 최악 **bird + hit_body×2 + wind = 0.8473**(없이 · 문턱 밖 1창) · 끼고 0.7621 · 클리핑 0 — 병사 둘(p77·p95)이 한 틱에 맞은 순간(사건 둘). 정본 최악(쓰러지는 순간 1.0266) 아래라 `worstCombo` 무변. 병사 hp 줄어듦 22(곁 18 · 0 이 된 6) → 울림 `hit_body` 11 · `downed` 4."
+  "_T457": "교전 판 30분(병사 hp 를 층이 읽은 첫 판): 최악 **bird + hit_body×2 + wind = 0.8473**(없이 · 문턱 밖 1창) · 끼고 0.7621 · 클리핑 0 — 병사 둘(p77·p95)이 한 틱에 맞은 순간(사건 둘). 정본 최악(쓰러지는 순간 1.0266) 아래라 `worstCombo` 무변. 병사 hp 줄어듦 22(곁 18 · 0 이 된 6) → 울림 `hit_body` 11 · `downed` 4.",
+  "handArrows": [
+   "arrow_shoot",
+   "arrow_shoot",
+   "arrow_shoot",
+   "hit_body",
+   "hit_body",
+   "downed",
+   "bird",
+   "wind"
+  ],
+  "handArrowsPeak": 1.5074,
+  "handArrowsPeakDb": 3.56,
+  "handArrowsClippedNoLim": 100,
+  "handArrowsPeakLim": 0.7919,
+  "handArrowsClippedLim": 0,
+  "_handArrows": "[T465] 화살이 든 창의 **상한**(손 조합 · 대조 — 실측이 아니다): 같은 창에 날 수 있는 발사 `arrow_shoot` × maxSame 3 + 교전 실측 최악(병사 둘 맞음 + 새 + 바람) + 쓰러짐. 없이 1.5074(+3.56 dBFS · 클리핑 100) → 끼고 0.7919 · 클리핑 0. 운영 픽스처 교전엔 궁수가 없어(두 마을 다 어부 — 활 찾는 사냥꾼 0) 실측 창에 화살이 0 이었다 — 궁수 든 교전이 오는 날 `sfx-cooccur war` 로 실측이 이 자리를 대신한다(`e2e-audio-probe 55e`).",
+  "_T465": "교전 판 30분(`assault*4` — 520셀 안 쌍이 하나뿐이라 전쟁은 하나): 화살 **0**(궁수 0) · 병사 hp 줄어듦 26(곁 23) → hit_body 16 · downed 5 · 곁인데 못 운 몸 2 · 최악 0.8473(T457 과 같은 꼴) · `worstCombo` 무변. 화살 든 창은 손 상한 `handArrows` 로만(1.5074 → 끼고 0.7919 · 클리핑 0)."
  },
  "ground": {
   "_뜻": "발밑 지형 → 발자국 키. 지형 정본은 `window.__tileStateAt` 하나(`kind`·`geo`·풀 알파) — 층은 그 답을 이 표로 옮길 뿐이다.",

@@ -49,7 +49,10 @@ const ARMS = process.env.SFX_COOCCUR_ARMS === '1';
 const OUT = process.env.SFX_COOCCUR_OUT || (AT === 'trees' ? '/tmp/sfx-cooccur.json' : `/tmp/sfx-cooccur-${AT}.json`);
 const ZENV_AT = {
   trees: {}, village: {}, workers: {}, logging: {}, beast: {},
-  war: { VILLAGE_MAX: '8', VILLAGE_DAY_MS: '60000', ENABLE_BANDITS: '0', WAR_FIXTURE: 'assault', WAR_FIXTURE_DAY: '1', VILLAGE_WAR_LOG: '1',   // `test-war-world` ⓖ 와 같은 판
+  war: { VILLAGE_MAX: '8', VILLAGE_DAY_MS: '60000', ENABLE_BANDITS: '0', VILLAGE_WAR_LOG: '1',   // `test-war-world` ⓖ 와 같은 판
+         //   [T465] `SFX_COOCCUR_WARS=n` → `assault*n`(있는 픽스처 문법 · `war-world-perf` 가 쓰는 그것). 한 쌍(어촌2↔광산2 — 둘 다 어부 마을)은
+         //   활을 찾는 사람(사냥꾼)이 0 이라 궁수 0 · 화살 0 이었다 — 쌍을 늘리면 사냥꾼 마을(광산3·광산5)이 싸움에 든다.
+         WAR_FIXTURE: 'assault' + ((+process.env.SFX_COOCCUR_WARS || 1) > 1 ? '*' + (+process.env.SFX_COOCCUR_WARS) : ''), WAR_FIXTURE_DAY: '1',
          WAR_FIXTURE_REPEAT: '1' },   // [T445] 끝난 만큼 다시 선포(`war-world-perf` 의 손잡이) — 첫 싸움은 재기 전에 끝나 버렸다(T445 둘째 판: 창 30분 내내 교전 0)
 }[AT];
 if (!ZENV_AT) { console.error('SFX_COOCCUR_AT 모름: ' + AT); process.exit(2); }
@@ -127,6 +130,12 @@ require(path.join(ROOT,'server','zone.js'));`);
             (msg.__coBodies = msg.__coBodies || []).push({ pid: pp.pid, hp: pp.hp, down: pp.hp <= 0, d });   // [T457] 이 전문에서 운 몸(차례대로) — 울림에 pid 를 붙인다
           }
         }
+      }
+      if (msg && (msg.type === 'arrow_spawn' || msg.type === 'arrow_removed')) {   // [T465] 화살 — 발사 · 끝(맞음 `hit` · 땅)
+        const me = window.__getMyAbs ? window.__getMyAbs() : null; const ox = (c && c.meta && c.meta.worldOffsetX) || 0, oy = (c && c.meta && c.meta.worldOffsetY) || 0;
+        const A = (window.__coArrow = window.__coArrow || { spawn: 0, spawnNear: 0, hit: 0, end: 0, hitPids: [] });
+        if (msg.type === 'arrow_spawn') { A.spawn++; if (me && Math.hypot(msg.x + ox - me.x, msg.y + oy - me.y) < 480) A.spawnNear++; }
+        else if (msg.hit != null) { A.hit++; A.hitPids.push({ t: S.tap(1e15).now, pid: msg.hit, seq }); } else A.end++;
       }
       if (msg && msg.type === 'war_battle') {                      // 교전 집계(2Hz) — 몇 번 · 얼마나 가까이 · 산 수가 줄었나
         const me = window.__getMyAbs ? window.__getMyAbs() : null; const ox = (c && c.meta && c.meta.worldOffsetX) || 0, oy = (c && c.meta && c.meta.worldOffsetY) || 0;
@@ -390,6 +399,7 @@ require(path.join(ROOT,'server','zone.js'));`);
   const warPlayN = { hurt: warPlays.filter((x) => x.k === WBt.hurt).length, down: warPlays.filter((x) => x.k === WBt.down).length };
   if (AT === 'war') console.log(`  층이 병사 hp 로 울린 수 — ${WBt.hurt} ${warPlayN.hurt} · ${WBt.down} ${warPlayN.down} · 곁인데 못 운 몸 ${warMiss.length}`);
   if (AT === 'war') console.log(`  병사 hp 가 준 순간(tick) ${warHits.length} · 384px 안 ${warNear.length} · 쓰러짐(0) ${warHits.filter((e) => e.hp <= 0).length}`);
+  const arrowStat = await page.evaluate(() => window.__coArrow || null);
   const warPerf = (AT === 'war') ? await (async () => { try { const j = await zget('/perf'); return j && j.war ? { stat: j.war.stat, soldiersMax: j.war.soldiersMax } : null; } catch (e) { return null; } })() : null;
   if (warPerf) console.log(`  존 전쟁 장부: ${JSON.stringify(warPerf)}`);
   const combos = new Map();
@@ -430,11 +440,12 @@ require(path.join(ROOT,'server','zone.js'));`);
   const out = { date: new Date().toISOString(), at: AT, arms: ARMS, spot, minutes: MINUTES, seed: +(process.env.SFX_COOCCUR_SEED || 1020), windows: buckets.size, nonEmpty,
                 distinct: combos.size, plays: since, knee, worst, overKnee: { combos: over.length, windows: over.reduce((a, r) => a + r.n, 0), rows: over.map((r) => ({ sig: r.sig, n: r.n, atMin: r.atMin })) },
                 steps, keyN, nightMin: nightW, warriorsSeen: warSeen, presses: chops, drops, backs, jumps, jumpFail,
-                dupSameKey: dup, warPerf, warBattle: { n: warBattles.length, minD: warBattles.length ? Math.min(...warBattles.map((e) => e.d == null ? 1e9 : e.d)) : null, deaths: wbDeaths, first: warBattles.slice(0, 10) }, warPlays: warPlayN, warMiss, warHpDrops: { n: warHits.length, near384: warNear.length, zero: warHits.filter((e) => e.hp <= 0).length, first: warHits.slice(0, 20) }, rows, pageErrors: errs.slice(0, 5) };
+                dupSameKey: dup, arrows: arrowStat ? Object.assign({}, arrowStat, { hitPids: arrowStat.hitPids.slice(0, 200) }) : null, warPerf, warBattle: { n: warBattles.length, minD: warBattles.length ? Math.min(...warBattles.map((e) => e.d == null ? 1e9 : e.d)) : null, deaths: wbDeaths, first: warBattles.slice(0, 10) }, warPlays: warPlayN, warMiss, warHpDrops: { n: warHits.length, near384: warNear.length, zero: warHits.filter((e) => e.hp <= 0).length, first: warHits.slice(0, 20), all: warHits.slice(0, 500) }, rows, pageErrors: errs.slice(0, 5) };
   fs.writeFileSync(OUT, JSON.stringify(out, null, 1));
   console.log(`\n  최악: ${worst ? worst.peakNoLim + ' (' + worst.keys.join('+') + ')' : '없음'} · 문턱 ${knee} → ${worst && worst.peakNoLim < knee ? '안' : '★밖'}`);
   console.log(`  문턱 넘는 묶음 ${over.length} · 창 ${out.overKnee.windows}${over.length ? ' — ' + over.map((r) => r.sig + ' @' + r.atMin.join('/') + '분').join(' · ') : ''}`);
   console.log(`  발자국 ${steps} · 키별 ${JSON.stringify(keyN)}`);
+  if (AT === 'war') console.log(`  [T465] 화살 — 발사 ${arrowStat ? arrowStat.spawn : 0}(곁 480px ${arrowStat ? arrowStat.spawnNear : 0}) · 맞음 ${arrowStat ? arrowStat.hit : 0} · 땅 ${arrowStat ? arrowStat.end : 0} · 울림 arrow_shoot ${keyN.arrow_shoot || 0}`);
   console.log(`  페이지 오류 ${errs.length} · 결과 ${OUT}`);
   await browser.close(); killAll();
   process.exit(0);
