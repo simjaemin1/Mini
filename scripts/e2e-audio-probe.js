@@ -639,6 +639,48 @@ const db = (x) => (x > 0 ? +(20 * Math.log10(x)).toFixed(2) : -Infinity);
       await page.evaluate(() => { myPid = null; delete window.__t465; });
     }
 
+    // 56 ★★[T473] **바다는 시냇물이 아니다** · 고인 물 — 진짜 `scan` 을 부른다(지형 판정은 00-const 의 그 함수들 · 존 하나를 세워 준다).
+    //   바다 = 해안선 타일(`waterTilesByZone`) · 민물 = `Terrain.isWaterCellLocal`(여기선 한 줄로 세운 강) — 층은 둘을 **따로** 운다.
+    {
+      const WS = MAN.waterSplit || {}, RL = MAN.resourceLoop || {};
+      const setup = (mode) => page.evaluate((mode) => {
+        zonesMeta = { T: { id: 'T', worldOffsetX: 0, worldOffsetY: 0, zoneWidth: 20000, zoneHeight: 20000 } };
+        _waterCellCache.clear(); _sfxWaterCell = null;
+        waterTilesByZone.T = new Set();
+        if (mode === 'sea') for (let tx = 5; tx < 40; tx++) waterTilesByZone.T.add(tx + '_14');          // 바다 띠(y = 448~480px)
+        window.Terrain = { isWaterCellLocal: (zid, x, y) => mode === 'river' && y > 448 && y < 480, isRockCellLocal: () => false };   // 강 한 줄(같은 자리)
+        myAbsPredicted = { x: 600, y: 400 };                                                         // 물에서 ~60px
+      }, mode);
+      const loopsNow = () => page.evaluate(async () => { _sfxScanAt = 0; window.__sfx.scan([], 600, 400); await new Promise((r) => setTimeout(r, 300)); return [..._sfxLoops.keys()].filter((k) => /^amb:(water|waves)$/.test(k)).sort(); });
+      await setup('sea'); await loopsNow(); await setup('river'); await loopsNow(); await page.waitForTimeout(800);   // 데우기(두 버퍼 받기 — 첫 번은 받는 중 = 무음이 계약)
+      await setup('sea'); const sea = await loopsNow();
+      await setup('river'); const river = await loopsNow();
+      await setup('none'); const none = await loopsNow();
+      ok(sea.join() === 'amb:' + WS.바다 && river.join() === 'amb:' + WS.민물 && none.length === 0,
+         `56a ★★바닷가 = \`${WS.바다}\` 만 · 강가 = \`${WS.민물}\` 만 · 물 없음 = 0(종전엔 바다도 시냇물이었다)`, `바다 [${sea}] · 강 [${river}] · 없음 [${none}]`);
+      // 미끼 — 가르는 표(`waterSplit`)를 빼면 바닷가에서 다시 시냇물이 운다(종전 그대로)
+      await setup('sea'); await page.evaluate(() => { window.__t473ws = _sfxMan.waterSplit; delete _sfxMan.waterSplit; });
+      const seaOld = await loopsNow();
+      await page.evaluate(() => { _sfxMan.waterSplit = window.__t473ws; delete window.__t473ws; });
+      ok(seaOld.join() === 'amb:water', '56b 자명 통과 금지 — 표를 빼면 바닷가에서 `water`(시냇물)가 운다(종전 모습 · 56a 는 표가 가른 값이다)', `[${seaOld}]`);
+      // 고인 물 — 자원 자리 반복(건물 반복과 같은 문법) · 보이면 켜지고 안 보이면 멎는다 · 반경 밖이면 0
+      const has = (ax) => page.evaluate(async ({ ax, k }) => {
+        _sfxScanAt = 0; window.__sfx.scan(ax == null ? [] : [{ kind: 'resource', r: { id: 'wp1', type: 'water_pool', x: ax, y: 400 }, ax, ay: 400 }], 600, 400);
+        await new Promise((r) => setTimeout(r, 300)); return _sfxLoops.has(k + ':wp1');
+      }, { ax, k: RL.water_pool });
+      await setup('none');
+      await has(650); await page.waitForTimeout(600);                                            // 데우기(버퍼 받기)
+      const on = await has(650), gone = await has(null), far = await has(600 + ((MAN.keys[RL.water_pool] || {}).radius || 0) + 100);
+      ok(on === true && gone === false && far === false, `56c 고인 물 — 곁(50px)이면 \`${RL.water_pool}\` 반복 · 안 보이면 멎음 · 반경 밖 0`, `곁 ${on} · 사라짐 ${gone} · 반경 밖 ${far}`);
+      // 56d ★환경 상수 + 정본 최악 사건 — 환경은 늘 깔린다(★PM): `worstComboEnv` = `worstCombo` ∪ 물가 판 실측 반복 묶음. 리미터가 잡는가 · 표 값 = 지금 값
+      const M = MAN._실측 || {};
+      const re = await page.evaluate((k) => window.__sfx.probe(k, { seconds: 4 }), M.worstComboEnv || []);
+      ok(Array.isArray(M.worstComboEnv) && (M.worstCombo || []).every((k) => M.worstComboEnv.includes(k)) && re && !re.err && re.withLimiter.clipped === 0 && re.withLimiter.peak < 1 && Math.abs(re.withoutLimiter.peak - M.worstComboEnvPeak) <= 0.01,
+         '56d ★환경 상수를 얹은 최악(`worstComboEnv`) — 리미터 끼면 클리핑 0 · 표와 같은 값',
+         re && !re.err ? `${(M.worstComboEnv || []).join('+')} · 없이 ${re.withoutLimiter.peak}(클리핑 ${re.withoutLimiter.clipped}) → 끼고 ${re.withLimiter.peak} · 표 ${M.worstComboEnvPeak}` : String(re && re.err));
+      await page.evaluate(() => { zonesMeta = {}; _waterCellCache.clear(); _sfxWaterCell = null; delete waterTilesByZone.T; delete window.Terrain; for (const k of [..._sfxLoops.keys()]) { if (/^amb:(water|waves)$|^water_pool:/.test(k)) { try { _sfxLoops.get(k).src.stop(); } catch (e) {} _sfxLoops.delete(k); } } });
+    }
+
     // ④ ★[T305] 옛 곡선이 증폭기였다는 것을 **이 자로 다시 보인다** — 자명 통과 금지.
     //    같은 입력을 옛 곡선에 통과시켜 원점 기울기를 잰다. 1 이 나오면 자가 고장 난 것이다.
     {

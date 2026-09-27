@@ -1172,9 +1172,11 @@ console.log('\n⑯ ★★[T397] `hp_changed.why` · 표면 타일 · 눈이면 �
   ok(/kind:\s*snow \? 'snow' : 'rain'/.test(wsrc) && /__rainDbg/.test(layerCode) && /_sfxWxKind === 'snow'/.test(layerCode),
      '⑯d ★눈이냐 비냐는 **그리는 층의 판정**(`37-r1-weather` `kind`)을 읽는다 — 층이 어는점을 다시 안 짓는다');
   ok(!/tempC\s*<\s*0/.test(layerCode), '⑯d2 층 코드에 어는점 사본(`tempC < 0`)이 없다');
-  // ⑯e 사건 없는 소리는 안 잇는다 — 천둥·고인 물은 후보뿐
-  const noEvent = ['thunder', 'thunder_b', 'water_pool', 'water_pool_b'];
-  ok(noEvent.every((k) => KEYS[k] && KEYS[k]['후보'] && KEYS[k].file), '⑯e 천둥(세계가 안 보냄)·고인 물(카드: 후보만)은 **후보**로만 있다', noEvent.join(' '));
+  // ⑯e 사건 없는 소리는 안 잇는다 — 천둥은 후보뿐(세계가 안 보냄) · ★[T473] 고인 물 1번은 **자원 자리**가 생겨 배선(`resourceLoop`) · 2번은 후보
+  const noEvent = ['thunder', 'thunder_b', 'water_pool_b'];
+  ok(noEvent.every((k) => KEYS[k] && KEYS[k]['후보'] && KEYS[k].file), '⑯e 천둥(세계가 안 보냄)·고인 물 2번은 **후보**로만 있다', noEvent.join(' '));
+  ok(KEYS.water_pool && !KEYS.water_pool['후보'] && (man.resourceLoop || {}).water_pool === 'water_pool',
+     '⑯e2 [T473] 고인 물 1번은 자원 자리(`resourceLoop.water_pool`)로 배선 — 후보 칸 뗌');
 }
 
 
@@ -1230,7 +1232,7 @@ console.log('\n⑱ ★★[T417] 동물 · 제작 완료 · 반경');
   const zsrc = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
   const layerCode = require('./code-only.js')(modCode);
   // ⑱a ★★자리로 부르는 표의 키는 반경이 있다 — 반경 0 = 존 어디서 나도 귓가에서 최대 볼륨(T417 이 axe·harvest·downed 에서 찾았다)
-  const POS = ['resourceHit', 'mobs', 'npcAct', 'groundDrop', 'fishState', 'combat', 'work', 'buildAdded', 'buildRemoved', 'buildDamaged', 'buildEdge', 'groundPick', 'resourceNew', 'hpWhy', 'mobEvents', 'buildings', 'warBody'];
+  const POS = ['resourceHit', 'mobs', 'npcAct', 'groundDrop', 'fishState', 'combat', 'work', 'buildAdded', 'buildRemoved', 'buildDamaged', 'buildEdge', 'groundPick', 'resourceNew', 'hpWhy', 'mobEvents', 'buildings', 'warBody', 'resourceLoop'];
   const posKeys = new Set();
   for (const t of POS) for (const x of tableStrings(man[t] || {}, 0)) if (KEYS[x]) posKeys.add(x);
   const flatOf = (K) => [...posKeys].filter((k) => !(K[k] && K[k].radius > 0));
@@ -1254,8 +1256,8 @@ console.log('\n⑱ ★★[T417] 동물 · 제작 완료 · 반경');
   const selfInPos = Object.keys(SELF).filter((k) => posKeys.has(k));
   const selfGhost = Object.keys(SELF).filter((k) => !KEYS[k]);
   const flatAll = (K) => allK.filter((k) => !SELF[k] && !(K[k] && K[k].radius > 0));
-  ok(allK.length === 63 && selfInPos.length === 0 && selfGhost.length === 0 && flatAll(KEYS).length === 0,
-     `⑱a3 ★★63키 전수 — 자리 표 ${posKeys.size} · 자기/환경 ${Object.keys(SELF).length}(명시) · 나머지 ${allK.length - posKeys.size - Object.keys(SELF).length}(후보·지형) 전부 반경 > 0`,
+  ok(allK.length === 64 && selfInPos.length === 0 && selfGhost.length === 0 && flatAll(KEYS).length === 0,
+     `⑱a3 ★★64키 전수(T473 +파도) — 자리 표 ${posKeys.size} · 자기/환경 ${Object.keys(SELF).length}(명시) · 나머지 ${allK.length - posKeys.size - Object.keys(SELF).length}(후보·지형) 전부 반경 > 0`,
      [flatAll(KEYS).join(' '), selfInPos.join(' '), selfGhost.join(' ')].filter(Boolean).join(' | ') || `${allK.length}키`);
   ok(/sfxPlay\('eat'\)/.test(layerCode) && !/sfxPlay\('eat',/.test(layerCode) && /sfxPlay\(sfxGroundKey\(\)\)/.test(layerCode),
      '⑱a3b 명시 목록의 근거 — `eat`·발자국은 코드에서 **자리 없이** 불린다(목록이 거짓말이면 빨갛다)');
@@ -1311,6 +1313,22 @@ console.log('\n⑳ ★★[T465] 전쟁 화살 — 발사는 `combat` 줄 그대�
   const dblRule = (T) => typeof T.arrow_removed === 'string';   // 명중을 화살 쪽에서도 울리면 = 한 대 두 소리
   ok(!dblRule(CB) && dblRule(Object.assign({}, CB, { arrow_removed: 'hit_body' })),
      '⑳c ★★맞음은 화살 쪽에서 안 운다(`arrow_removed` 표에 없음 — 정본은 몸 hp) · 미끼: 한 줄 더하면 이 자가 잡는다');
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+console.log('\n㉑ ★★[T473] 환경 — 바다/민물 · 고인 물');
+{
+  const layerCode = require('./code-only.js')(modCode);
+  const WS = man.waterSplit || {}, W = KEYS.water || {}, S = KEYS[WS.바다] || {};
+  ok(WS.민물 === 'water' && S.loop && S.radius === W.radius && S.volume === W.volume && S.indoorMul === W.indoorMul && S.fade === W.fade,
+     '㉑a `waterSplit` — 바다 키는 반복 · 반경·볼륨·실내·페이드가 `water` 와 **같은 값**(이웃 키 · 새 수 0)', `${WS.바다} r${S.radius} v${S.volume}`);
+  ok(/z\.isOcean/.test(layerCode) && /waterTilesByZone\[z\.id\]/.test(layerCode) && !/computeCoastline/.test(layerCode),
+     '㉑b ★바다 판정은 00-const 가 **이미 구운 표**(바다 존 `isOcean` · 해안선 타일 `waterTilesByZone`)를 읽는다 — 해안선을 다시 안 짓는다');
+  ok((man.resourceLoop || {}).water_pool === 'water_pool' && /_sfxMan\.resourceLoop/.test(layerCode) && /sfxLoopSweep\(RL\[t\] \+ ':'\)/.test(layerCode),
+     '㉑c 자원 반복(`resourceLoop`) — 건물 반복과 같은 문법(개체마다 · 훑기에서 안 보이면 멎음)');
+  const cr = fs.readFileSync(path.join(ROOT, 'CREDITS.md'), 'utf8');
+  ok(/\*\*`waves`\(바닷가 파도\) — CC BY 3\.0/.test(cr) && (man.sources[S.source] || {}).license === 'CC BY 3.0',
+     '㉑d 파도 — CC BY 3.0 · `CREDITS §1` 표시 줄이 있다(넷째 CC-BY)', S.source);
 }
 
 console.log(`\n=== PASS ${pass} / FAIL ${fail} ===`);

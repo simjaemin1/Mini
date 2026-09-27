@@ -48,7 +48,7 @@ const AT = process.env.SFX_COOCCUR_AT || 'trees';
 const ARMS = process.env.SFX_COOCCUR_ARMS === '1';
 const OUT = process.env.SFX_COOCCUR_OUT || (AT === 'trees' ? '/tmp/sfx-cooccur.json' : `/tmp/sfx-cooccur-${AT}.json`);
 const ZENV_AT = {
-  trees: {}, village: {}, workers: {}, logging: {}, beast: {},
+  trees: {}, village: {}, workers: {}, logging: {}, beast: {}, river: {}, coast: {},
   war: { VILLAGE_MAX: '8', VILLAGE_DAY_MS: '60000', ENABLE_BANDITS: '0', VILLAGE_WAR_LOG: '1',   // `test-war-world` ⓖ 와 같은 판
          //   [T465] `SFX_COOCCUR_WARS=n` → `assault*n`(있는 픽스처 문법 · `war-world-perf` 가 쓰는 그것). 한 쌍(어촌2↔광산2 — 둘 다 어부 마을)은
          //   활을 찾는 사람(사냥꾼)이 0 이라 궁수 0 · 화살 0 이었다 — 쌍을 늘리면 사냥꾼 마을(광산3·광산5)이 싸움에 든다.
@@ -72,7 +72,9 @@ process.on('exit', killAll);
   console.log(`=== sfx-cooccur — ${MINUTES}분 동안 실제로 겹친 소리 묶음 (T417 ③ · T431 판 ${AT}${ARMS ? ' · 주민 일 팔 켬' : ''}) ===\n`);
   const CDB = `/tmp/sfx-co-c-${process.pid}.db`, ZDB = `/tmp/sfx-co-z-${process.pid}.db`;
   for (const f of [CDB, ZDB]) for (const s of ['', '-wal', '-shm']) { try { fs.unlinkSync(f + s); } catch (e) {} }
-  const _central = boot('central.js', { PORT: String(CPORT), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });
+  const _central = boot('central.js', { PORT: String(CPORT), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: (AT === 'coast' || AT === 'river') ? Object.keys(require(path.join(ROOT, 'server', 'zone-config')).ZONES).join(',') : 'hanbando' });
+  //   [T473] 물가 판은 central 에 **존 전부**를 싣는다(운영 `redeploy-*` 가 "전체 26존 기준"으로 싣는 그 값) — 클라의 `zonesMeta` 에
+  //   바다 존이 있어야 해안선 타일(`waterTilesByZone`)이 선다(한반도 하나만이면 해안선 0 — 첫 판이 거기서 멈췄다).
   const _cp = FB.waitUp(_central, /central server up on/, { name: 'central' });
   //   ★[T431] 판 넷은 **새벽에 시작**한다(존이 뜨는 순간 = phase 0 = 06시 · 하루 길이는 운영 그대로 24분).
   //     존이 뜨고 재기까지 ~3분 → 재기 30분 중 ~20분이 낮·~7분이 밤이다(판마다 같은 시각표 — 네 판을 나란히 놓을 수 있다).
@@ -213,6 +215,42 @@ require(path.join(ROOT,'server','zone.js'));`);
     const L = await zget('/lifedbg');
     const v = m && ((L && L.villages) || []).find((x) => x.name === m[3]);
     if (v) spot = Object.assign(vilSpot(v), { why: `방어 ${m[3]}(${m[4]}명) ← 공격 ${m[1]}(${m[2]}명) · 선포 ${m[5]}` });
+  } else if (AT === 'river' || AT === 'coast') {
+    //   [T473] 물가 판 — 클라가 이미 가진 지형 표로 자리를 고른다(00-const `isWaterAtAbs` · `waterTilesByZone` · 층 `sfxSeaAt`).
+    //   강가 = 내 자리에서 가장 가까운 **민물** 셀 곁의 뭍 · 해안 = 가장 가까운 **해안선 타일** 곁의 뭍. 셀 32px · 새 수 0.
+    spot = await page.evaluate((mode) => {
+      const c = conns.get(primaryZoneId), z = c.meta, ox = z.worldOffsetX, oy = z.worldOffsetY || 0, me = window.__getMyAbs();
+      const isW = (x, y) => isWaterAtAbs(x, y), isSea = (x, y) => sfxSeaAt(x, y);
+      let tgt = null;
+      const landNear = (t, R) => {                                   // 물 셀 t 곁 R 칸 안의 뭍(물 아님 · 바위 아님) — 가까운 고리부터
+        for (let r = 1; r <= R; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+          if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+          const x = t.x + dx * 32, y = t.y + dy * 32;
+          if (!isW(x, y) && !(typeof isRockAtAbs === 'function' && isRockAtAbs(x, y))) return { x, y, r };
+        }
+        return null;
+      };
+      if (mode === 'coast') {
+        //   해안선 타일을 가까운 차례로 — 곁 3칸 안에 뭍이 있는 첫 타일(가장 가까운 타일이 강 하구·호수 곁이면 뭍이 없다 — 첫 판이 거기서 멈췄다)
+        const set = waterTilesByZone[z.id] || new Set(); const arr = [];
+        for (const k of set) { const [tx, ty] = k.split('_').map(Number); const x = ox + tx * 32 + 16, y = oy + ty * 32 + 16; arr.push({ x, y, d: (x - me.x) ** 2 + (y - me.y) ** 2 }); }
+        arr.sort((a, b) => a.d - b.d);
+        for (const t of arr.slice(0, 4000)) { const L = landNear(t, 3); if (L) { return { x: Math.round(L.x - ox), y: Math.round(L.y - oy), why: `해안선 타일 (${Math.round(t.x - ox)},${Math.round(t.y - oy)}) 곁 ${L.r}칸 · 해안선 타일 ${arr.length}` }; } }
+        return { err: 'no-land', tiles: arr.length };
+      } else {
+        const cx = Math.floor(me.x / 32), cy = Math.floor(me.y / 32);
+        for (let ring = 1; ring <= 600 && !tgt; ring++) for (let dy = -ring; dy <= ring && !tgt; dy++) for (let dx = -ring; dx <= ring; dx++) {
+          if (Math.max(Math.abs(dx), Math.abs(dy)) !== ring) continue;
+          const x = (cx + dx) * 32 + 16, y = (cy + dy) * 32 + 16;
+          if (isW(x, y) && !isSea(x, y)) { tgt = { x, y }; break; }
+        }
+      }
+      if (!tgt) return { err: 'no-water', set: (waterTilesByZone[z.id] || new Set()).size, zid: z.id, zones: Object.keys(waterTilesByZone).length };
+      const L = landNear(tgt, 6);
+      if (L) return { x: Math.round(L.x - ox), y: Math.round(L.y - oy), why: `민물 셀 (${Math.round(tgt.x - ox)},${Math.round(tgt.y - oy)}) 곁 ${L.r}칸` };
+      return { err: 'no-land', tgt };
+    }, AT);
+    if (spot && spot.err) { console.log('  ✗ 물가 자리: ' + JSON.stringify(spot)); spot = null; }
   } else if (AT === 'beast') {
     //   존 DB 의 짐승 자리(존이 쓴 그 표 · 읽기 전용) — 사나운 짐승 둘레 500px 에 짐승이 가장 많은 자리
     const D = require(path.join(ROOT, 'node_modules', 'better-sqlite3'));
@@ -400,6 +438,7 @@ require(path.join(ROOT,'server','zone.js'));`);
   if (AT === 'war') console.log(`  층이 병사 hp 로 울린 수 — ${WBt.hurt} ${warPlayN.hurt} · ${WBt.down} ${warPlayN.down} · 곁인데 못 운 몸 ${warMiss.length}`);
   if (AT === 'war') console.log(`  병사 hp 가 준 순간(tick) ${warHits.length} · 384px 안 ${warNear.length} · 쓰러짐(0) ${warHits.filter((e) => e.hp <= 0).length}`);
   const arrowStat = await page.evaluate(() => window.__coArrow || null);
+  const waterNow = await page.evaluate(() => { const d = window.__sfx.dbg(); return { waterDist: d.waterDist, seaDist: d.seaDist }; });   // [T473]
   const warPerf = (AT === 'war') ? await (async () => { try { const j = await zget('/perf'); return j && j.war ? { stat: j.war.stat, soldiersMax: j.war.soldiersMax } : null; } catch (e) { return null; } })() : null;
   if (warPerf) console.log(`  존 전쟁 장부: ${JSON.stringify(warPerf)}`);
   const combos = new Map();
@@ -440,7 +479,7 @@ require(path.join(ROOT,'server','zone.js'));`);
   const out = { date: new Date().toISOString(), at: AT, arms: ARMS, spot, minutes: MINUTES, seed: +(process.env.SFX_COOCCUR_SEED || 1020), windows: buckets.size, nonEmpty,
                 distinct: combos.size, plays: since, knee, worst, overKnee: { combos: over.length, windows: over.reduce((a, r) => a + r.n, 0), rows: over.map((r) => ({ sig: r.sig, n: r.n, atMin: r.atMin })) },
                 steps, keyN, nightMin: nightW, warriorsSeen: warSeen, presses: chops, drops, backs, jumps, jumpFail,
-                dupSameKey: dup, arrows: arrowStat ? Object.assign({}, arrowStat, { hitPids: arrowStat.hitPids.slice(0, 200) }) : null, warPerf, warBattle: { n: warBattles.length, minD: warBattles.length ? Math.min(...warBattles.map((e) => e.d == null ? 1e9 : e.d)) : null, deaths: wbDeaths, first: warBattles.slice(0, 10) }, warPlays: warPlayN, warMiss, warHpDrops: { n: warHits.length, near384: warNear.length, zero: warHits.filter((e) => e.hp <= 0).length, first: warHits.slice(0, 20), all: warHits.slice(0, 500) }, rows, pageErrors: errs.slice(0, 5) };
+                dupSameKey: dup, waterNow, arrows: arrowStat ? Object.assign({}, arrowStat, { hitPids: arrowStat.hitPids.slice(0, 200) }) : null, warPerf, warBattle: { n: warBattles.length, minD: warBattles.length ? Math.min(...warBattles.map((e) => e.d == null ? 1e9 : e.d)) : null, deaths: wbDeaths, first: warBattles.slice(0, 10) }, warPlays: warPlayN, warMiss, warHpDrops: { n: warHits.length, near384: warNear.length, zero: warHits.filter((e) => e.hp <= 0).length, first: warHits.slice(0, 20), all: warHits.slice(0, 500) }, rows, pageErrors: errs.slice(0, 5) };
   fs.writeFileSync(OUT, JSON.stringify(out, null, 1));
   console.log(`\n  최악: ${worst ? worst.peakNoLim + ' (' + worst.keys.join('+') + ')' : '없음'} · 문턱 ${knee} → ${worst && worst.peakNoLim < knee ? '안' : '★밖'}`);
   console.log(`  문턱 넘는 묶음 ${over.length} · 창 ${out.overKnee.windows}${over.length ? ' — ' + over.map((r) => r.sig + ' @' + r.atMin.join('/') + '분').join(' · ') : ''}`);

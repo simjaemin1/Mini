@@ -35,6 +35,9 @@
 * **`quail_call`(메추라기) — CC BY 3.0 · 표시 필요** [T417]
   > "Kohoutek-krepelky" by Martin Hajda — https://commons.wikimedia.org/wiki/File:Kohoutek-krepelky.ogg — CC BY 3.0
   ⚠이 집 **셋째 CC-BY 소리**다(`deer_call`·`arrow_shoot` 에 이어). 메추라기 PD/CC0 녹음은 못 찾았다(Commons 의 나머지는 전부 BY-SA).
+* **`waves`(바닷가 파도) — CC BY 3.0 · 표시 필요** [T473]
+  > "Oceanwavescrushing" by Luftrum — https://commons.wikimedia.org/wiki/File:Oceanwavescrushing.ogg (원본 freesound #48412) — CC BY 3.0
+  ⚠이 집 **넷째 CC-BY 소리**다. Commons 의 CC0 파도(`Ocean Waves on a Tropical Beach.ogg`)는 올린 이와 설명의 지은이가 달라(“own work” · “By J.D. Savanyu”) 출처가 흐려 뺐다.
 ## 2. 빌린 것
 
 | 항목 | 무엇을 | 어디에 들어갔나 | 라이선스 | 요구 | 카드 |
@@ -129,6 +132,7 @@
 | `bear_growl_b` | [Commons: … Grizzly Bear vocalizations 001](https://commons.wikimedia.org/wiki/File:Yellowstone_sound_library_-_Grizzly_Bear_vocalizations_-_001.mp3) | NPS & MSU Acoustic Atlas / Jennifer Jerrett | **Public domain** (NPS) | — | 2026-09-26 | 65.2s 중 **22.750~22.999s**(콧김) · 2번 · 후보 |
 | `pheasant_call` | [Commons: Phasianus colchicus.ogg](https://commons.wikimedia.org/wiki/File:Phasianus_colchicus.ogg) | 작가 미상 | **Public domain** (파일 페이지) | — | 2026-09-26 | 통째(1.0s) · ★[T417] 새 키 — 꿩(`pheasant`) · 1번뿐 |
 | `quail_call` | [Commons: Kohoutek-krepelky.ogg](https://commons.wikimedia.org/wiki/File:Kohoutek-krepelky.ogg) | Martin Hajda | **CC BY 3.0** (파일 페이지 · **표시 필요**) | — | 2026-09-26 | 182.9s 중 **2.174~3.236s** · ★[T417] 새 키 — 메추라기(`quail`) · 1번뿐 |
+| `waves` | [Commons: Oceanwavescrushing.ogg](https://commons.wikimedia.org/wiki/File:Oceanwavescrushing.ogg) | Luftrum | **CC BY 3.0** (파일 페이지 · **표시 필요**) | 2008-02-16 | 2026-09-27 | 120.0s 중 **61.5~71.5s** 10초 반복(1.5s 겹침 · 이음새 −62 dB · +5.2 dB) · ★[T473] 새 키 — 바닷가(`waterSplit.바다`) · 1번뿐 |
 | `goat_bleat` | [Commons: Herd of goats bleating.ogg](https://commons.wikimedia.org/wiki/File:Herd_of_goats_bleating.ogg) | stephan | **Public domain** (파일 페이지) | — | 2026-09-26 | 42.8s 중 **2.950~3.950s** · ★[T417] 후보 — 아이벡스 대체 판정용(배선 0) |
 
 * **요구 문구 없음** — 둘 다 퍼블릭 도메인이라 표시 의무가 없다(그래서 §1 에 안 들어간다). 예의로 여기 적는다.

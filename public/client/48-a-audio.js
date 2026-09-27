@@ -332,29 +332,43 @@ function sfxSurfaceKeyAt(cell) {
 //     — 프레임마다 9천 타일을 돌다 fps 10 까지 떨어지던 것을 그 캐시로 고친 자리다(주석이 적어 뒀다).
 //   ★예산: 훑기는 **내 셀이 바뀔 때만** 한다. 반경은 표(`water.radius`), 건너뛰는 칸도 표(`sampleStride`).
 //     안쪽 고리부터 나가며 처음 만나는 물에서 멈춘다 — 물가에 서 있으면 몇 칸 만에 끝난다.
+// ★★[T473] **바다는 시냇물이 아니다** — 종전엔 물 셀이면 다 `water`(시냇물 녹음)였다: 남해 바닷가에 서도 시냇물이 졸졸 흘렀다.
+//   물 셀을 둘로 가른다(표 `waterSplit` · 없으면 종전 그대로 하나): **바다** = 바다 존(`isOcean`) 이거나 해안선 타일(`waterTilesByZone` —
+//   바다 존에서 번진 물, 00-const `computeCoastlineWaterTiles` 가 이미 구운 것) · **민물** = 그 밖의 물(강·호수 · `Terrain.isWaterCellLocal`).
+//   판정은 새로 짓지 않는다(두 표 다 00-const 가 이미 갖고 있다 · 셀 캐시 그대로). 한 번 훑어 둘 다 잰다(내 셀이 바뀔 때만).
+function sfxSeaAt(wx, wy) {
+  const z = (typeof clientFindZoneAt === 'function') ? clientFindZoneAt(wx, wy) : null;
+  if (!z) return false;
+  if (z.isOcean) return true;
+  const set = (typeof waterTilesByZone !== 'undefined') ? waterTilesByZone[z.id] : null;
+  return !!(set && set.has(Math.floor((wx - z.worldOffsetX) / 32) + '_' + Math.floor((wy - (z.worldOffsetY || 0)) / 32)));
+}
 function sfxWaterDist() {
   const m = sfxKey('water');
-  if (!m || !m.radius || typeof isWaterAtAbs !== 'function') return Infinity;
+  const none = { d: Infinity, sea: Infinity };
+  if (!m || !m.radius || typeof isWaterAtAbs !== 'function') return none;
   const me = (typeof myAbsPredicted !== 'undefined' && myAbsPredicted) ? myAbsPredicted : null;
-  if (!me) return Infinity;
+  if (!me) return none;
   const cx = Math.floor(me.x / 32), cy = Math.floor(me.y / 32);
   const ck = cx + ',' + cy;
-  if (_sfxWaterCell && _sfxWaterCell.k === ck) return _sfxWaterCell.d;
+  if (_sfxWaterCell && _sfxWaterCell.k === ck) return _sfxWaterCell;
+  const split = !!(_sfxMan && _sfxMan.waterSplit && _sfxMan.waterSplit.바다);
   const R = Math.ceil(m.radius / 32), st = Math.max(1, m.sampleStride || 1);
-  let best = Infinity;
-  for (let ring = 0; ring <= R && best === Infinity; ring += st) {
+  let best = Infinity, sea = Infinity;
+  for (let ring = 0; ring <= R && (best === Infinity || (split && sea === Infinity)); ring += st) {
     for (let dy = -ring; dy <= ring; dy += st) {
       for (let dx = -ring; dx <= ring; dx += st) {
         if (Math.max(Math.abs(dx), Math.abs(dy)) !== ring) continue;   // 고리의 테두리만
         const wx = (cx + dx) * 32 + 16, wy = (cy + dy) * 32 + 16;
         if (!isWaterAtAbs(wx, wy)) continue;
         const d = Math.hypot(wx - me.x, wy - me.y);
-        if (d < best) best = d;
+        if (split && sfxSeaAt(wx, wy)) { if (d < sea) sea = d; }
+        else if (d < best) best = d;
       }
     }
   }
-  _sfxWaterCell = { k: ck, d: best };
-  return best;
+  _sfxWaterCell = { k: ck, d: best, sea };
+  return _sfxWaterCell;
 }
 
 // ── 첫 제스처 · 컨텍스트 ───────────────────────────────────────────────────────
@@ -737,7 +751,7 @@ function initAudio() {
       const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
       if (now - _sfxScanAt < SFX_SCAN_MS) return;
       _sfxScanAt = now;
-      const MOB = _sfxMan.mobs || {}, BLD = _sfxMan.buildings || {};
+      const MOB = _sfxMan.mobs || {}, BLD = _sfxMan.buildings || {}, RL = _sfxMan.resourceLoop || {};
       const bird = sfxKey('bird');
       const treeR2 = bird ? (bird.treeRadius || 0) * (bird.treeRadius || 0) : 0;
       let trees = 0;
@@ -749,12 +763,15 @@ function initAudio() {
           const need = (_sfxMan.buildingsWhen || {})[r.b.type];   // [T412] 노·숯가마는 **불이 들었을 때만**(`data.job`)
           if (m && need && need.field && !(r.b.data && r.b.data[need.field])) continue;
           if (m) sfxLoop(k + ':' + r.b.id, k, sfxGain(m, r.ax, r.ay) * (_sfxWx.indoor ? (m.indoorMul || 0) : 1));
-        } else if (bird && r.kind === 'resource' && r.r && r.r.type === 'tree') {
-          const dx = r.ax - cx, dy = r.ay - cy;
-          if (dx * dx + dy * dy <= treeR2) trees++;
+        } else if (r.kind === 'resource' && r.r) {
+          // [T473] 자원 반복(표 `resourceLoop` — 고인 물 `water_pool` 등): 건물 반복과 같은 문법(개체마다 하나 · 화면 밖이면 멎음)
+          const k = RL[r.r.type], m = (typeof k === 'string') && sfxKey(k);
+          if (m) sfxLoop(k + ':' + r.r.id, k, sfxGain(m, r.ax, r.ay) * (_sfxWx.indoor ? (m.indoorMul || 0) : 1));
+          if (bird && r.r.type === 'tree') { const dx = r.ax - cx, dy = r.ay - cy; if (dx * dx + dy * dy <= treeR2) trees++; }
         }
       }
       for (const k of Object.keys(BLD)) sfxLoopSweep(BLD[k] + ':');
+      for (const t of Object.keys(RL)) if (!t.startsWith('_') && typeof RL[t] === 'string') sfxLoopSweep(RL[t] + ':');
       // 새 — 낮 · 숲 · 비 아님. 셋 다여야 난다(값은 전부 표).
       if (bird) {
         const night = (typeof isNight === 'function') ? !!isNight() : false;
@@ -762,12 +779,15 @@ function initAudio() {
         window.__sfx.ambient('bird', ok ? 1 : 0, { indoor: _sfxWx.indoor });
       }
       // 물 — 개체가 아니라 지형이다. 내 셀이 바뀔 때만 다시 잰다.
+      //   [T473] 민물(`water`)과 바다(`waterSplit.바다` — 파도)를 따로 — 한 번 훑은 두 거리.
       const water = sfxKey('water');
       if (water) {
-        const d = sfxWaterDist();
-        const g = (d >= water.radius) ? 0 : (water.volume || 0) * (1 - d / water.radius)
-          * (_sfxWx.indoor ? (typeof water.indoorMul === 'number' ? water.indoorMul : 1) : 1);
-        sfxLoop('amb:water', 'water', g);
+        const W = sfxWaterDist();
+        const gOf = (m, d) => (d >= m.radius) ? 0 : (m.volume || 0) * (1 - d / m.radius)
+          * (_sfxWx.indoor ? (typeof m.indoorMul === 'number' ? m.indoorMul : 1) : 1);
+        sfxLoop('amb:water', 'water', gOf(water, W.d));
+        const seaK = _sfxMan.waterSplit && _sfxMan.waterSplit.바다, sea = seaK && sfxKey(seaK);
+        if (sea) sfxLoop('amb:' + seaK, seaK, gOf(sea, W.sea));
       }
       sfxBgmScene(false);
     },
@@ -888,6 +908,7 @@ function initAudio() {
       missingFiles: _sfxMan ? Object.keys(_sfxMan.keys || {}).filter((k) => !k.startsWith('_') && !_sfxMan.keys[k].file) : [],
       wx: Object.assign({}, _sfxWx),
       waterDist: _sfxWaterCell ? (_sfxWaterCell.d === Infinity ? null : Math.round(_sfxWaterCell.d)) : undefined,
+      seaDist: _sfxWaterCell ? (_sfxWaterCell.sea === Infinity ? null : Math.round(_sfxWaterCell.sea)) : undefined,   // [T473]
     }),
   };
 }
