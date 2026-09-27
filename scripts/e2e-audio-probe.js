@@ -570,6 +570,75 @@ const db = (x) => (x > 0 ? +(20 * Math.log10(x)).toFixed(2) : -Infinity);
       await page.evaluate(() => { myPid = null; delete window.__t457; });
     }
 
+    // 55 ★★[T465] **전쟁 화살** — T458 이 있는 모양(`arrow_spawn` · `arrow_removed` + `hit`)으로 보낸다. 소리 층은 **손대지 않았다**:
+    //   발사는 `combat.arrow_spawn → arrow_shoot`(T387 표 그대로 · 쏜 자리) · 맞음의 정본은 **몸의 hp**(T457 `warBody`) —
+    //   `arrow_removed.hit` 은 울리지 않는다(같은 몸 같은 순간을 두 번 울리지 않는다) · 땅에 박힘(빗나감)은 이웃 키가 없어 무음(표만).
+    {
+      const CB = MAN.combat || {}, WB = MAN.warBody || {}, MK = WB._mark;
+      await page.evaluate(() => { myPid = 'p1'; myAbsPredicted = { x: 0, y: 0 }; window.__t465 = { role: 'primary', others: new Map(), meta: { worldOffsetX: 0, worldOffsetY: 0 } }; });
+      const send = (m) => page.evaluate((m) => { const c = window.__t465; window.__sfx.recv(m, c);
+        if (m.type === 'tick') for (const pp of m.players) { const o = c.others.get(pp.pid) || { pid: pp.pid }; o.x = pp.x; o.y = pp.y; o.hp = pp.hp; c.others.set(pp.pid, o); }
+        if (m.type === 'hp_changed') { const o = c.others.get(m.pid); if (o) o.hp = m.hp; } }, m);
+      const tapN = () => page.evaluate(() => window.__sfx.tap(1e15).n);
+      const keysSince = (n) => page.evaluate((n) => window.__sfx.tap(n).plays.map((p) => p.k), n);
+      const gap = () => page.waitForTimeout(350);   // `arrow_shoot` 0.24s · `hit_body` 0.22s — `maxSame` 에 안 막히게
+      const soldier = (pid, x, hp) => { const b = { pid, x, y: 0, hp, vx: 0, vy: 0 }; b[MK] = 0; return b; };
+      // 데우기
+      await send({ type: 'arrow_spawn', aid: 'W0.0', x: 20, y: 0, vx: 1, vy: 0, ownerPid: 'a0' }); await send({ type: 'tick', players: [soldier('d0', 60, 100)] }); await send({ type: 'tick', players: [soldier('d0', 60, 80)] });
+      await page.waitForTimeout(1200);
+      // ⓐ 화살 12 발 — 궁수 셋(곁 ≤ 200px) · 넷은 맞고(뒤따르는 `tick` 에서 맞은 몸 hp 가 준다) · 여덟은 땅
+      const n0 = await tapN(); let shots = 0, hits = 0, ends = 0;
+      for (let i = 0; i < 12; i++) {
+        const aid = 'W1.' + (i + 1), arc = 'a' + (i % 3), x = 40 + (i % 3) * 30;
+        await send({ type: 'arrow_spawn', aid, x, y: 0, vx: 300, vy: 0, ownerPid: arc }); shots++; await gap();
+        if (i % 3 === 0) {
+          const pid = 'd' + (1 + i / 3), hp0 = 100;
+          await send({ type: 'tick', players: [soldier(pid, 150, hp0)] });                      // 맞기 전 한 번 봄(직전 값)
+          await send({ type: 'arrow_removed', aid, hit: pid }); hits++;
+          await send({ type: 'tick', players: [soldier(pid, 150, hp0 - 23)] });                 // battle-core 가 깎은 hp 가 다음 `tick` 에 온다
+        } else { await send({ type: 'arrow_removed', aid }); ends++; }
+        await gap();
+      }
+      const ks = await keysSince(n0);
+      const nShot = ks.filter((k) => k === CB.arrow_spawn).length, nHit = ks.filter((k) => k === WB.hurt).length;
+      ok(shots === 12 && nShot === 12 && hits === 4 && nHit === 4 && ks.length === 16,
+         '55a ★★화살 12 발 → `arrow_shoot` 12 · 맞음 4 → `hit_body` 4(몸 hp 가 정본 — `arrow_removed.hit` 은 안 운다) · 땅 8 → 0',
+         `발사 ${shots}→${nShot} · 맞음 ${hits}→${nHit} · 땅 ${ends}→0 · 울림 합 ${ks.length}`);
+      // ⓑ 미끼 — 명중을 **화살 쪽에서도** 울리면(표에 `arrow_removed` 를 한 줄 더하면) 맞음 하나가 두 번 운다
+      const n1 = await tapN();
+      await page.evaluate((k) => { _sfxMan.combat.arrow_removed = k; }, WB.hurt);
+      await send({ type: 'tick', players: [soldier('d9', 100, 100)] });
+      await send({ type: 'arrow_removed', aid: 'W1.99', hit: 'd9', x: 100, y: 0 });              // (표가 좌표를 원하므로 미끼에만 실었다)
+      await send({ type: 'tick', players: [soldier('d9', 100, 70)] }); await gap();
+      await page.evaluate(() => { delete _sfxMan.combat.arrow_removed; });
+      const dbl = (await keysSince(n1)).filter((k) => k === WB.hurt).length;
+      ok(dbl === 2, '55b ★자명 통과 금지 — 명중을 화살 쪽에서도 울리면 한 대가 **두 번** 운다(55a 의 4 는 한 대 = 한 소리라서 4다)', `미끼 ${dbl}`);
+      // ⓒ 반경 밖(900px · 키 반경 ${(MAN.keys[CB.arrow_spawn] || {}).radius}) 발사 셋 → 0 · 관측자 0 이면 서버가 안 보낸다(메시지 0 = 울림 0 · `test-war-world ⓧ`)
+      const n2 = await tapN();
+      for (let i = 0; i < 3; i++) { await send({ type: 'arrow_spawn', aid: 'W2.' + i, x: 900, y: 0, vx: 1, vy: 0, ownerPid: 'a9' }); await gap(); }
+      const far = (await keysSince(n2)).length;
+      ok(far === 0, `55c ★반경 밖(900px) 화살 셋 → 0`, `${far}`);
+      // ⓓ 내 화살(플레이어 `arrow:` 길) — 쏨 1 · 남(p2)이 맞음 `hp_changed why:arrow` 1 · 끝 `arrow_removed`(hit 없음) 0 = 2(사건 둘 · 이중 0)
+      await send({ type: 'tick', players: [{ pid: 'p2', x: 70, y: 0, hp: 100, vx: 0, vy: 0 }] });
+      const n3 = await tapN();
+      await send({ type: 'arrow_spawn', aid: 'z_ar9', x: 0, y: 0, vx: 1, vy: 0, ownerPid: 'p1' }); await gap();
+      await send({ type: 'hp_changed', pid: 'p2', hp: 80, why: 'arrow' });
+      await send({ type: 'arrow_removed', aid: 'z_ar9' }); await gap();
+      const mine = await keysSince(n3);
+      ok(mine.length === 2 && mine.filter((k) => k === CB.arrow_spawn).length === 1 && mine.filter((k) => k === (MAN.hpWhy || {}).arrow).length === 1,
+         '55d 내 화살 — 쏨 1 + 맞음(`hpWhy.arrow`) 1 · 끝 0 = 2(이중 0)', mine.join(' '));
+      // ⓔ 화살이 든 창의 **상한**(손 조합 · 대조) — 운영 픽스처 교전엔 궁수가 없어 실측 창에 화살이 0 이었다(보고 T465 ⓒ).
+      //   같은 창에 날 수 있는 가장 많은 발사(`arrow_shoot` × `maxSame`) + 교전 실측 최악(병사 둘 맞음 + 새 + 바람) + 쓰러짐 하나.
+      const HA = MAN._실측 && MAN._실측.handArrows;
+      const ms = (MAN.keys[CB.arrow_spawn] || {}).maxSame || 3;
+      const combo = [...Array(ms).fill(CB.arrow_spawn), WB.hurt, WB.hurt, WB.down, 'bird', 'wind'];
+      const ra = await page.evaluate((k) => window.__sfx.probe(k, { seconds: 4 }), combo);
+      ok(ra && !ra.err && ra.withLimiter.clipped === 0 && ra.withLimiter.peak < 1 && Array.isArray(HA) && HA.join('+') === combo.join('+') && Math.abs(ra.withoutLimiter.peak - MAN._실측.handArrowsPeak) <= 0.01,
+         `55e 화살 든 창 상한(손 · 대조) — 발사 ${ms} + 맞음 둘 + 쓰러짐 + 새 + 바람 · 리미터 끼면 클리핑 0 · 표(\`handArrows\`)와 같은 값`,
+         ra && !ra.err ? `없이 ${ra.withoutLimiter.peak}(${ra.withoutLimiter.peakDb} dB · 클리핑 ${ra.withoutLimiter.clipped}) → 끼고 ${ra.withLimiter.peak} · 클리핑 ${ra.withLimiter.clipped} · 표 ${MAN._실측.handArrowsPeak}` : String(ra && ra.err));
+      await page.evaluate(() => { myPid = null; delete window.__t465; });
+    }
+
     // ④ ★[T305] 옛 곡선이 증폭기였다는 것을 **이 자로 다시 보인다** — 자명 통과 금지.
     //    같은 입력을 옛 곡선에 통과시켜 원점 기울기를 잰다. 1 이 나오면 자가 고장 난 것이다.
     {

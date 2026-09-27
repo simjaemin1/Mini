@@ -1300,5 +1300,18 @@ console.log('\n⑲ ★★[T457] 전쟁 병사 몸 — `tick` 의 hp 모서리');
      '⑲c ★층 — 직전 hp = 명부 `c.others`(따로 표 0) · **줄었을 때만** · 주 연결의 내 pid 는 제외(내 다침은 `hpWhy`)');
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+console.log('\n⑳ ★★[T465] 전쟁 화살 — 발사는 `combat` 줄 그대로 · 맞음의 정본은 몸 hp');
+{
+  const wl = fs.readFileSync(path.join(ROOT, 'server', 'war-live.js'), 'utf8');
+  const CB = man.combat || {};
+  ok(CB.arrow_spawn === 'arrow_shoot' && KEYS.arrow_shoot && KEYS.arrow_shoot.radius > 0, '⑳a 발사 = `combat.arrow_spawn → arrow_shoot`(쏜 자리 · 반경 있음 · T387 줄 그대로)', `반경 ${KEYS.arrow_shoot && KEYS.arrow_shoot.radius}`);
+  ok(/arrowOut\(\{ type: 'arrow_spawn', aid, x, y,/.test(wl) && /m\.hit = u\.agent/.test(wl),
+     '⑳b ★서버(T458) — 전쟁 화살은 있는 모양으로 온다: 발사에 좌표 `x·y` · 끝에 `hit` = 맞은 **병사 pid**(그 몸의 hp 가 `tick` 으로 온다 → `warBody`)');
+  const dblRule = (T) => typeof T.arrow_removed === 'string';   // 명중을 화살 쪽에서도 울리면 = 한 대 두 소리
+  ok(!dblRule(CB) && dblRule(Object.assign({}, CB, { arrow_removed: 'hit_body' })),
+     '⑳c ★★맞음은 화살 쪽에서 안 운다(`arrow_removed` 표에 없음 — 정본은 몸 hp) · 미끼: 한 줄 더하면 이 자가 잡는다');
+}
+
 console.log(`\n=== PASS ${pass} / FAIL ${fail} ===`);
 process.exit(fail ? 1 : 0);

@@ -493,3 +493,14 @@ ogg 길이는 마지막 `OggS` 페이지의 granulepos ÷ 표본율로 잰다(Vo
 * `sfx-cooccur` 는 `tick` 울림에 **어느 몸**인지를 붙인다(pid 없는 전문이라 종전엔 "같은 사건 두 번"으로 잘못 세졌다). 반경 안인데 못 운 몸도 센다(`warMiss`).
 * 전쟁 화살은 세션10(T458)이 `arrow_spawn` 모양으로 보내면 `combat` 표 그대로 운다 — 손댈 것 없음.
 * 보고 `보고/T457_2026-09-27.md`.
+
+
+---
+
+## T465 (2026-09-27) — 전쟁 화살
+
+* **층 diff 0** — T458 전쟁 화살(`arrow_spawn` · `W…` aid)은 `combat.arrow_spawn → arrow_shoot` 줄로 이미 운다(쏜 자리 · 480).
+* **맞음의 정본은 몸 hp** — `arrow_removed.hit` 을 표에 넣지 마라(한 대가 두 번 운다 · `e2e-audio-probe 55b` · `test-audio ⑳c` 미끼). 빗나감(`hit` 없음)은 이웃 키가 없어 무음.
+* 운영 픽스처 교전엔 **궁수가 없다**(어촌2 ↔ 광산2 · 둘 다 어부 → 활 찾는 사냥꾼 0) → 실측 화살 0. 화살 든 창은 손 상한 `_실측.handArrows`(1.5074 → 끼고 0.7919 · 클리핑 0)로만 있다 — 궁수 든 교전이 오면 `sfx-cooccur war` 로 다시 재라.
+* `sfx-cooccur`: `SFX_COOCCUR_WARS=n` → `assault*n`(있는 픽스처 문법) · 화살 셈(`arrows`) · 병사 hp 순간 전부(`warHpDrops.all`).
+* 보고 `보고/T465_2026-09-27.md`.
