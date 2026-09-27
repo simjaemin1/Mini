@@ -75,7 +75,7 @@ const S = {
   GANGS: [],         // {id,camp:{cx,cy},n,food,zero,born,home,why,lootN,lastLoot,den(소굴id|null),_sup:{vilDbId,eta,force,wep}|null,_supKill}
   pairs: new Map(),  // 'A|B'(econ name 정렬) → [gang,...] — econ 훅 O(1) 조회 테이블
   pairSig: '',
-  _routes: null,     // { sig, pts:[{x,y}셀] } — 유한쌍 교역로 표본(마을 구성 변경 시만 재수집)
+  _routes: null,     // { sig, pts:[{x,y}셀] } — 유한쌍 교역로 표본(마을 구성 변경 시만 재수집) · ★T453: 거리장을 만든 뒤 pts 는 null(서명만)
   routeField: null, routeFieldSig: '', // 코스해상도 L1 거리장
   lastDay: -1,
   campSig: '',
@@ -134,8 +134,9 @@ function routePts() {
   return S._routes;
 }
 function ensureRouteField() {
-  const rp = routePts();
+  let rp = routePts();
   if (S.routeField && S.routeFieldSig === rp.sig) return S.routeField;
+  if (!rp.pts) { S._routes = null; rp = routePts(); }   // ★[T453 ③] 놓은 표본은 다시 모은다(아래 — 지금 길로는 안 닿는다 · 안전판)
   const gw = Math.max(1, Math.ceil(S.host.cellsW / FG)), gh = Math.max(1, Math.ceil(S.host.cellsH / FG));
   const INF = 0x7fff;
   const f = new Uint16Array(gw * gh).fill(INF);
@@ -158,6 +159,10 @@ function ensureRouteField() {
   }
   S.routeField = { f, gw, gh, empty: rp.pts.length === 0 };
   S.routeFieldSig = rp.sig;
+  // ★[T453 ③ 2026-09-27] 표본(`pts` — 교역로 정점마다 {x,y} · 한반도 114만 개 · 힙 41.8MB)은 **이 거리장을 한 번 만들 때만** 읽힌다.
+  //   다음 부름은 위 두 줄(서명 같음 → 거리장 그대로)에서 끝나고, 서명이 바뀌면 `routePts` 가 통째로 다시 모은다 ⇒ 붙들 까닭이 없다.
+  //   서명만 남기고 놓는다(거리장·소굴 비트 동일 · 새 수 0 · 손잡이 0).
+  rp.pts = null;
   return S.routeField;
 }
 function routeDistCells(cx, cy) { // 최근접 교역로 표본까지 L1 거리(셀) — 표본 없으면 1e9(랩 '경로 없음' 취급)
