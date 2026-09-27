@@ -14,6 +14,7 @@ process.on('exit', () => {
   const vs = W.villages.filter((v) => v && v.npcs).map((v) => ({ name: v.name, pop: v.npcs.length, smelted: +(v._smeltedTotal || 0).toFixed(2),
     fuelWood: +(v._smeltFuelWood || 0).toFixed(2), fuelCh: +(v._smeltFuelCh || 0).toFixed(2), noFuel: v._smeltNoFuel || 0, short: v._smeltShort || 0,
     copper: +(v.storage.copper || 0).toFixed(1), tin: +(v.storage.tin || 0).toFixed(1), wood: +(v.storage.wood || 0).toFixed(1), charcoal: +(v.storage.charcoal || 0).toFixed(1),
-    woodMin: minS.has(v.name) ? +minS.get(v.name).wood.toFixed(1) : null, bronzeW: +(v._bronzeWeaponMade || 0).toFixed(1) }));
+    woodMin: minS.has(v.name) ? +minS.get(v.name).wood.toFixed(1) : null, bronzeW: +(v._bronzeWeaponMade || 0).toFixed(1),
+    kiln: v._kiln ? 1 : 0, kilnWood: +(v._kilnWood || 0).toFixed(1), kilnCharcoal: +(v._kilnCharcoal || 0).toFixed(1), kilnDays: v._kilnDays || 0, lumberjack: (v.counts && v.counts.lumberjack) || 0 }));   // ★[T452] 숯가마 칸
   fs.writeFileSync(process.env.T443_JSON, JSON.stringify({ days: day, vs }, null, 1));
 });

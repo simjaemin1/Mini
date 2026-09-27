@@ -9507,8 +9507,8 @@ const KILN_BATCH_MAX = 20;
 //     "불 붙여 놓고 로그아웃"이 최적 전략이 되는 건 **의도한 것**이다 — 청동기 제련은 원래 몇 시간 걸린다.
 const SMELT_BASE_MS = 180000;        // 기준 조업 시간(3분) — 1,150℃(도가니로+숯+풀무) 기준
 const SMELT_MIN_MS  = 45000;         // 하한 45초(고로급이어도 클릭 연타 게임이 되지 않게)
-const KILN_BURN_MS  = 240000;        // 숯가마 1회분 4분 — 밀폐 탄화는 제련보다 느리다(고증)
-const KILN_BATCH_MS_PER = 30000;     // 배치 1회분 추가 시간(가득 채우면 그만큼 오래 걸린다 — 수지 불변 원칙의 시간판)
+const KILN_BURN_MS  = SmeltUses.KILN_BURN_MS;        // 숯가마 1회분 4분 — 밀폐 탄화는 제련보다 느리다(고증) · ★[T452] 정본 `smelt-uses.js`
+const KILN_BATCH_MS_PER = SmeltUses.KILN_BATCH_MS_PER;     // ★[T452] 정본 `smelt-uses.js` · 배치 1회분 추가 시간(가득 채우면 그만큼 오래 걸린다 — 수지 불변 원칙의 시간판)
 // 노 온도(era.js furnaceTemp)가 높을수록 짧다: t = BASE × (1150 / T)^1.5, 하한 SMELT_MIN_MS.
 //   1150℃ → 180초 · 1300℃(괴련로) → 148초 · 1450℃(개량) → 126초. 물리가 시간을 정한다.
 function _smeltDurationMs(kind) {

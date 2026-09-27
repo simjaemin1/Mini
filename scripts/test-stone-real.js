@@ -131,5 +131,31 @@ process.stdout.write(JSON.stringify({per:E.smeltFuelPerOre(),a:E.smeltFuelTake(a
   ok(i > 0 && j > i && !/Math\.random/.test(SRC.slice(i, j)) && !/\b[23]\b/.test(SRC.slice(i, j).split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n')), '⑤ 주사위 0 · 표의 수(2·3)를 옮겨 적지 않았다');
 }
 
+// ── ⑥ [T452] 숯가마 행위 — 숯은 숯가마가 굽는다 ─────────────────────────────────────
+console.log('\n⑥ [T452] 숯가마 — 숲 마을에만 서고 · 잉여 통나무로 · 숯 목표까지');
+{
+  const M = require(path.join(ROOT, 'server', 'smelt-uses.js'));
+  ok(M.KILN_BURN_MS === 240000 && M.KILN_BATCH_MS_PER === 30000 && M.kilnBatchesPerDay(1440000) === 41 && JSON.stringify(M.kilnBuildCost()) === '{"stone":10,"wood":2}',
+    '⑥ 정본 — 숯가마 조업 4분 + 배치당 30초 → 하루(24분) 41배치 · 짓는 재료 돌 10·통나무 2');
+  ok(/const KILN_BURN_MS  = SmeltUses\.KILN_BURN_MS;/.test(ZSRC) && /const KILN_BATCH_MS_PER = SmeltUses\.KILN_BATCH_MS_PER;/.test(ZSRC), '⑥ zone 숯가마 조업 시간도 그 표를 읽는다');
+  const E = require(path.join(ROOT, 'sim', 'economy-sim.js'));
+  ok(E.T452_KILN_ACT === false && E.kilnActOn() === false && /if \(T452_KILN_ACT\) kilnDay\(v\);/.test(SRC), '⑥ ★★기본 **끔** · 켬일 때만 하루 한 줄');
+  ok((SRC.match(/process\.env\.T452_KILN_ACT/g) || []).length === 1, '⑥ 손잡이 하나');
+  const r = probe({ T452_KILN_ACT: '1' }, `const E=require(${EP});const npcs=new Array(10).fill({});
+const forest={npcs,counts:{lumberjack:2},storage:{wood:120,stone:12,ore:4}}; const b1=E.kilnDay(forest); const s1=JSON.parse(JSON.stringify(forest.storage)); const d2=E.kilnDay(forest); const s2=JSON.parse(JSON.stringify(forest.storage)); const d3=E.kilnDay(forest);
+const nolj={npcs,counts:{lumberjack:0},storage:{wood:500,stone:50,ore:20}}; const x1=E.kilnDay(nolj); E.kilnDay(nolj);
+const poor={npcs,counts:{lumberjack:3},storage:{wood:40,stone:50,ore:20}}; const y1=E.kilnDay(poor);
+const nost={npcs,counts:{lumberjack:3},storage:{wood:200,stone:9,ore:5}}; const z1=E.kilnDay(nost);
+process.stdout.write(JSON.stringify({b1,s1,d2,s2,d3,x1,nolj:nolj.storage,nk:!!nolj._kiln,y1,z1,zk:!!nost._kiln}));`);
+  ok(r.b1 && r.b1.built === 1 && r.s1.stone === 2 && r.s1.wood === 118, '⑥ 숲 마을(나무꾼 · 통나무 > 비축)은 재료(돌 10·통나무 2)가 있으면 그날 선다');
+  ok(r.d2.batches === 5 && r.s2.charcoal === 20 && r.s2.wood === 103, '⑥ 굽기 — 숯 목표 = max(원석 비축 1×10, 원석 4) × 숯 2 = 20 → 5배치 · 통나무 15 → 숯 20(가마 3 → 4)', JSON.stringify(r.s2));
+  ok(r.d3.batches === 0, '⑥ 목표에 닿으면 더 안 굽는다(잉여 통나무를 다 태우지 않는다)');
+  ok(r.x1 === null && r.nk === false && !r.nolj.charcoal && r.nolj.wood === 500, '⑥ ★★미끼 — 나무꾼 없는 마을은 숯가마가 **안 서고 숯이 한 톨도 안 생긴다**');
+  ok(r.y1 === null, '⑥ 통나무가 비축(5/인) 아래인 마을도 안 선다(잉여가 조건)');
+  ok(r.z1 === null && r.zk === false, '⑥ 재료(돌 10)가 모자라면 안 선다(기다린다)');
+  const kd = SRC.slice(SRC.indexOf('const T452_KILN_ACT'), SRC.indexOf('function _trySmelt'));
+  ok(kd.length > 500 && !/Math\.random/.test(kd) && !/\b(3|4|10|41)\b/.test(kd.split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n')), '⑥ 주사위 0 · 표의 수(3·4·10·41)를 옮겨 적지 않았다');
+}
+
 console.log(`\n=== ${pass}/${pass + fail} ${fail ? '✗' : '✓'} ===`);
 process.exit(fail ? 1 : 0);

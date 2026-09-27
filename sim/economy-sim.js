@@ -2208,6 +2208,45 @@ function smeltFuelTake(v, want) {
   if (can < want) v._smeltShort = (v._smeltShort || 0) + 1;
   return can;
 }
+// ══ ★★[T452 2026-09-27] 숯가마 행위 — 숯은 숯가마가 굽는다(정본 `smelt-uses.js` · 손잡이 `T452_KILN_ACT` 기본 끔) ══
+//   서는 조건(유도 · 새 수 0): **숲 마을** = 나무꾼이 있고(`counts.lumberjack > 0`) 통나무가 비축 목표(`RESERVE_PC.wood × 인구`)를 넘는다.
+//   짓기: 숯가마 공정 재료(`kilnBuildCost` = 돌 10·통나무 2)가 곳간에 있으면 그날 선다(재료만 · 몸은 생활층 회부).
+//   굽기: 하루 배치 상한 = 서버 조업 시간식(`kilnBatchesPerDay(dayLengthMs)`) · 배치 = 통나무 3 → 숯 4 ·
+//     **잉여 통나무**(비축 목표 초과분)로만 · 숯 목표 = 원석 비축 목표(`RESERVE_PC.ore × 인구`)와 지금 원석 중 큰 쪽을 녹일 숯(× 원석당 숯)까지.
+//   숯 = 곳간 품목(`charcoal` — specialty 품목 · 이미 교역재) — 캐러밴이 값대로 옮긴다(새 줄 0 · 보고 §ⓐ).
+const T452_KILN_ACT = process.env.T452_KILN_ACT === '1';
+let _zcfgMod;
+function _dayLengthMs() { if (_zcfgMod === undefined) { try { _zcfgMod = require('../server/zone-config'); } catch (e) { _zcfgMod = null; } } return (_zcfgMod && _zcfgMod.WORLD && _zcfgMod.WORLD.dayLengthMs) || 0; }
+function kilnActOn() { return T452_KILN_ACT && !!_smeltUses(); }
+function kilnWant(v) {   // 서는 조건 — 숲 마을
+  const N = (v.npcs && v.npcs.length) || 0;
+  return ((v.counts && v.counts.lumberjack) || 0) > 0 && (v.storage.wood || 0) > (RESERVE_PC.wood || 0) * N;
+}
+function kilnDay(v) {
+  const S = _smeltUses(); if (!S || !v || !v.storage) return null;
+  const N = (v.npcs && v.npcs.length) || 0;
+  if (!v._kiln) {
+    if (!kilnWant(v)) return null;
+    const cost = S.kilnBuildCost();
+    for (const k of Object.keys(cost)) if ((v.storage[k] || 0) < cost[k]) return null;   // 재료가 모이면 선다
+    for (const k of Object.keys(cost)) { v.storage[k] -= cost[k]; _cons(v, k, cost[k]); }
+    v._kiln = { built: (v._day || 0) };
+    return { built: 1 };
+  }
+  const reserve = (RESERVE_PC.wood || 0) * N;
+  const spare = (v.storage.wood || 0) - reserve;
+  const perOre = (S.fuelPerOre().charcoal || 0);
+  const target = Math.max((RESERVE_PC.ore || 0) * N, v.storage.ore || 0) * perOre;
+  const gap = target - (v.storage.charcoal || 0);
+  if (!(spare >= S.CHARCOAL_KILN_WOOD) || !(gap > 0)) return { batches: 0 };
+  const n = Math.min(S.kilnBatchesPerDay(_dayLengthMs()), Math.floor(spare / S.CHARCOAL_KILN_WOOD), Math.ceil(gap / S.CHARCOAL_KILN_YIELD));
+  if (!(n > 0)) return { batches: 0 };
+  const w = n * S.CHARCOAL_KILN_WOOD, c = n * S.CHARCOAL_KILN_YIELD;
+  v.storage.wood -= w; _cons(v, 'wood', w);
+  v.storage.charcoal = (v.storage.charcoal || 0) + c;
+  v._kilnWood = (v._kilnWood || 0) + w; v._kilnCharcoal = (v._kilnCharcoal || 0) + c; v._kilnDays = (v._kilnDays || 0) + 1;
+  return { batches: n };
+}
 function _trySmelt(v, laborBase) {
   const om = oreMixOf(v);                              // ★유효 조성 우선(수입 원석 포함) — 없으면 땅 조성
   if (!om) return 0;                                   // 지도 정보 없는 호출부(랩·CLI)는 옛 경로
@@ -3674,6 +3713,7 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
       v.housing += built;
     }
   }
+  if (T452_KILN_ACT) kilnDay(v);   // ★[T452] 숯가마 하루(켬만 · 끔 = 한 줄도 안 돈다)
   // ★fuelK(리비히) — 연료도 식량처럼 필수 소비 흐름(온돌·취사, 고증). 숲 용량(벌목 자리×산출)+수입EMA가 부양 가능한 인구.
   //   식량만 K에 넣으면 비옥·숲빈약 마을이 식량 K까지 성장 후 연료 붕괴(건강 죽음나선) — K가 미리 보게 한다.
   if (v._woodImpSnap === undefined) { v._woodImpSnap = 0; v._woodImportEMA = 0; }
@@ -5442,6 +5482,7 @@ module.exports = {
   RAW_GRAINS, RAW_GRAIN_FOOD_FACTOR,   // ★[T73] 계수를 하네스·계측기가 옮겨 적지 않게(사본 금지)
   farmFlowPerDay, farmLandBoost, harvestToGranary,   // ★[T100] 같은 이유 — 하네스·계측기가 앵커를 옮겨 적지 않는다
   fishToGranary, fishActOn, fishBudgetPerCell, T312_FISH_ACT,   // ★[T312] 어부 행위 — 생활층이 부르는 문 셋 + 손잡이(하네스가 옮겨 적지 않는다)
+  T452_KILN_ACT, kilnActOn, kilnWant, kilnDay,   // ★[T452] 숯가마 행위
   T443_SMELT_FUEL, smeltFuelOn, smeltFuelPerOre, smeltFuelTake,   // ★[T443] 제련 연료 — 하네스·계측기가 표를 옮겨 적지 않게
   T419_STONE_REAL, stoneRealPer, stoneRealOn,   // ★[T419] 돌 쓰는 실물 — 하네스·계측기가 표·유도를 옮겨 적지 않게 내준다
   T435_GRANARY_ACT, granaryEconMaterials,   // ★[T435] 곳간 증설 재료 — 생활층·하네스가 표를 옮겨 적지 않게
