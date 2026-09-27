@@ -321,17 +321,17 @@ function stepBattle(ctx,dt){
     sep(ctx,u,dt);
   }
   // ── 화살 ──
-  for(let i=ctx.arrows.length-1;i>=0;i--){const ar=ctx.arrows[i]; ar.px=ar.x; ar.py=ar.y; const mx=ar.vx*dt,my=ar.vy*dt; ar.x+=mx; ar.y+=my; ar.trav+=Math.hypot(mx,my); let done=false;
+  for(let i=ctx.arrows.length-1;i>=0;i--){const ar=ctx.arrows[i]; ar.px=ar.x; ar.py=ar.y; const mx=ar.vx*dt,my=ar.vy*dt; ar.x+=mx; ar.y+=my; ar.trav+=Math.hypot(mx,my); let done=false, hitU=null;
     if(ctx.world&&treeBlocks(ctx,ar.px,ar.py,ar.x,ar.y))done=true;
     if(!done){const dx=ar.x-ar.px,dy=ar.y-ar.py,L=Math.hypot(dx,dy)||1,ux=dx/L,uy=dy/L; const bx=Math.floor(ar.x/BK),by=Math.floor(ar.y/BK); let hu=null,hd=1e9;
       for(let ix=bx-1;ix<=bx+1;ix++)for(let iy=by-1;iy<=by+1;iy++){const c=ctx._grid.get(((ix+256)*8192)+(iy+256));if(!c)continue;
         for(const o of c){if(o.hp<=0||o===ar.sh)continue; const ox=o.x-ar.px,oy=o.y-ar.py,t=ox*ux+oy*uy; if(t<-0.25||t>L+0.35)continue; const perp=Math.abs(ox*uy-oy*ux); const rr=UNITS[o.type].r+0.22; if(perp<rr&&t<hd&&(o.side!==ar.side||ar.trav>6.0)){hd=t;hu=o;}}}
-      if(hu){ if(hu.side!==ar.side){ hurt(ctx,hu,ar.dmg,hu.x,hu.y,'arrow',0);
+      if(hu){ if(hu.side!==ar.side){ hurt(ctx,hu,ar.dmg,hu.x,hu.y,'arrow',0); hitU=hu;
           const hbx=Math.floor(hu.x/BK),hby=Math.floor(hu.y/BK);
           for(let ix=hbx-1;ix<=hbx+1;ix++)for(let iy=hby-1;iy<=hby+1;iy++){const c=ctx._grid.get(((ix+256)*8192)+(iy+256));if(!c)continue;for(const en of c){if(en.side!==ar.side&&en.hp>0){const ex=en.x-hu.x,ey=en.y-hu.y;if(ex*ex+ey*ey<SUP_R*SUP_R)en.mrl=Math.max(0,(en.mrl||1)-SUP_ARROW);}}}
         } done=true; }
     }
-    if(done||ar.trav>=ar.range)ctx.arrows.splice(i,1);
+    if(done||ar.trav>=ar.range){ if(ctx.onArrow)ctx.onArrow(hitU?'hit':'end',ar,hitU); ctx.arrows.splice(i,1); }   // ★[T458] 화살 사건 — 보기만 하는 훅(상태 무변 · 없으면 종전)
   }
   // ── 종료 판정 ──
   const la=ctx.units.filter(u=>u.side==='A'&&u.hp>0).length, lb=ctx.units.filter(u=>u.side==='B'&&u.hp>0).length;
@@ -350,7 +350,8 @@ function shoot(ctx,u,e){const D=UNITS[u.type]; const dist=Math.hypot(e.x-u.x,e.y
   const scatter=(0.015+dist*0.0022)*(D.spread||1);   // 투석병 spread>1=명중 낮음(궁수는 spread 없음→동일)
   const ang=Math.atan2(ly-u.y,lx-u.x)+(ctx.rng()-0.5)*2*scatter;
   const aDmg=u.atk!=null?u.atk:D.atk;   // ★궁수 품질: u.atk 설정 시 화살 피해 반영, 미설정이면 D.atk(전투실험실 동일)
-  ctx.arrows.push({x:u.x,y:u.y,px:u.x,py:u.y,vx:Math.cos(ang)*D.arrowV,vy:Math.sin(ang)*D.arrowV,dmg:aDmg,side:u.side,range:D.ranged*1.5,trav:0,sh:u});}
+  ctx.arrows.push({x:u.x,y:u.y,px:u.x,py:u.y,vx:Math.cos(ang)*D.arrowV,vy:Math.sin(ang)*D.arrowV,dmg:aDmg,side:u.side,range:D.ranged*1.5,trav:0,sh:u});
+  if(ctx.onArrow)ctx.onArrow('fire',ctx.arrows[ctx.arrows.length-1],u);}   // ★[T458] 쏜 순간(보기만 · 상태 무변)
 function sep(ctx,u,dt){let sx=0,sy=0,n=0,hxx=0,hyy=0,hn=0; const bx=Math.floor(u.x/BK),by=Math.floor(u.y/BK);
   for(let ix=bx-1;ix<=bx+1;ix++)for(let iy=by-1;iy<=by+1;iy++){const c=ctx._grid.get(((ix+256)*8192)+(iy+256)); if(!c)continue;
     for(const o of c){if(o===u||o.hp<=0)continue; const dx=u.x-o.x,dy=u.y-o.y,d2=dx*dx+dy*dy; if(d2<1.0*1.0&&d2>1e-4){const d=Math.sqrt(d2);sx+=dx/d;sy+=dy/d;n++;

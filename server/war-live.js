@@ -47,6 +47,13 @@ function createWarLive(opts) {
   const M_PER_CELL = (+opts.cellPx || PX_PER_M) / PX_PER_M;
   const TICK_HZ = +opts.tickHz || 30;
   const STEP_DT = 1 / TICK_HZ;
+  // ★[T458 ③] 전쟁 화살 → 있는 `arrow_spawn`/`arrow_removed` 모양 그대로(존 플레이어 화살 · 클라 30-n-net 이 이미 그린다 · 소리 표 `arrow_spawn`).
+  //   호스트가 둘을 준다: arrowOut(msg) = 방송 · arrowNear(xPx, yPx) = 관측자 반경 술어(존 anyViewerNear · AOI 800px).
+  //   둘 중 하나라도 없으면 ctx.onArrow 를 안 건다 = 종전 그대로(메시지 0 · 비용 0).
+  const arrowOut = typeof opts.arrowOut === 'function' ? opts.arrowOut : null;
+  const arrowNear = typeof opts.arrowNear === 'function' ? opts.arrowNear : null;
+  const arrowStat = { fire: 0, stone: 0, far: 0, sent: 0, hit: 0, end: 0, flush: 0 };   // 진단(프로세스 누적 · 영속 0)
+  let _arrowSeq = 0;
 
   // ── 대형 상수 (전쟁실험실 5977~5980·7268~7283 verbatim) ──
   const WAR_ENGAGE_R = 50;                     // 두 대형 지휘관 접근 거리(셀) — 공격 주둔 링 = ENGAGE_R + DEF_STANDOFF
@@ -175,9 +182,37 @@ function createWarLive(opts) {
     ctx.world = world || null;
     ctx.terrain = 'zone';
     const handle = BC._makeHandle(ctx);
-    return { w, ctx, handle, seed, quality: quality || { A: null, B: null },
+    const f = { w, ctx, handle, seed, quality: quality || { A: null, B: null },
       state: 'form', t: 0, contactT: -1, gapT: 0, bestGap: Infinity, engagedOnce: false, contacts: 0,
       byPid: new Map(), settled: null, _stepMs: 0 };
+    if (arrowOut && arrowNear) ctx.onArrow = (kind, ar, u) => _arrowEvent(f, kind, ar, u);
+    return f;
+  }
+  // ★[T458 ③] 화살 사건 하나 — 발사('fire') · 끝('hit' 맞음 | 'end' 사거리 다 날아 땅). battle-core 는 보기만 하는 훅이라 상태 무변.
+  //   발사: 궁수만(투석병 `ammo:'stones'` 은 화살이 아니다 — 세지만 안 보낸다) · 쏜 몸 자리가 관측자 반경 안일 때만.
+  //   끝: 보낸 화살만 닫는다(안 보낸 화살의 remove 0). 필드 = 있는 모양 + `hit`(맞은 몸 pid · 땅이면 없음) 하나.
+  function _arrowEvent(f, kind, ar, u) {
+    if (kind === 'fire') {
+      arrowStat.fire++;
+      const D = BC.UNITS && u ? BC.UNITS[u.type] : null;
+      if (D && D.ammo) { arrowStat.stone++; return; }
+      const x = ar.x * PX_PER_M, y = ar.y * PX_PER_M;
+      if (!arrowNear(x, y)) { arrowStat.far++; return; }
+      const aid = 'W' + (f.w && f.w.id != null ? f.w.id : 0) + '.' + (++_arrowSeq);
+      ar._aid = aid; arrowStat.sent++;
+      arrowOut({ type: 'arrow_spawn', aid, x, y, vx: ar.vx * PX_PER_M, vy: ar.vy * PX_PER_M, ownerPid: u && u.agent != null ? u.agent : null });
+      return;
+    }
+    if (!ar || !ar._aid) return;
+    const m = { type: 'arrow_removed', aid: ar._aid };
+    if (kind === 'hit') { arrowStat.hit++; if (u && u.agent != null) m.hit = u.agent; } else arrowStat.end++;
+    ar._aid = null;
+    arrowOut(m);
+  }
+  // 정산 때 아직 날고 있는 보낸 화살을 닫는다(교전 ctx 가 버려지면 battle-core 가 끝 사건을 못 낸다 → 클라가 4.5초 헛날림).
+  function _arrowFlush(f) {
+    if (!f || !f.ctx || !f.ctx.arrows) return;
+    for (const ar of f.ctx.arrows) if (ar && ar._aid) { arrowStat.flush++; const aid = ar._aid; ar._aid = null; if (arrowOut) arrowOut({ type: 'arrow_removed', aid }); }
   }
   // 병사 하나를 교전에 올린다 — battle-core addUnits(무변) 로 만들고, 그 x/y 를 존 NPC 위치에 **묶는다**.
   //   gu = 대형 병사 {type, pid, x, y(셀)} · p = players.get(pid). 반환 = battle unit.
@@ -258,6 +293,7 @@ function createWarLive(opts) {
   function settle(f, why, winner, spec) {
     if (!f || f.settled) return false;
     f.settled = { why, winner: winner || null, day: dayOf(), t: f.t };
+    _arrowFlush(f);   // ★[T458 ③]
     if ((why === 'rout' || why === 'withdraw') && typeof resolveBattle === 'function') {
       const res = buildRes(f, winner);
       f.settled.res = res;
@@ -271,7 +307,7 @@ function createWarLive(opts) {
     // 대형
     buildGroup, regroup, _muAssignSlots, _muSlotXY, _muSeparate, _muStepFollow, _muDefHold, _muCmdDist, _muCompForm, bindGroupUnit,
     // 교전
-    makeFight, enlist, stepFight, orderAdvance, toStandoff, setSideCtl, settle, buildRes, aliveCounts, centroid, engR, standoffSec,
+    makeFight, enlist, stepFight, arrowStat, orderAdvance, toStandoff, setSideCtl, settle, buildRes, aliveCounts, centroid, engR, standoffSec,
     // 상수
     WAR_ENGAGE_R, WAR_ALERT_R, WAR_DEF_STANDOFF, MU, MU_TYPES, MU_TYPE_INT, M_PER_CELL, PX_PER_M, TICK_HZ, STEP_DT, MELEE_ENG_R,
   };

@@ -97,11 +97,11 @@ function runScenario(opts) {
   try { return _run(opts); } finally { Math.random = _origRandom; }
 }
 function _run(opts) {
-  const players = new Map(), npcs = new Set(), bcast = [];
+  const players = new Map(), npcs = new Set(), bcast = [], arrT = []; let _curT = 0;
   let _pid = 1;
   const JOBS = ['warrior', 'hunter', 'farmer', 'fisher', 'miner', 'forager', 'lumberjack', 'mason'];
   const deps = {
-    players, npcs, broadcast: (m) => bcast.push(m),
+    players, npcs, broadcast: (m) => { bcast.push(m); if (m && (m.type === 'arrow_spawn' || m.type === 'arrow_removed')) arrT.push(_curT); },   // ★[T458] 화살 메시지의 틱(초당 봉우리)
     spawnNpc: (o) => { const pid = 'p' + (_pid++); const p = { pid, x: o.x, y: o.y, vx: 0, vy: 0, hp: 100, maxHp: 100, isNpc: true, simJob: JOBS[_pid % JOBS.length] }; players.set(pid, p); npcs.add(pid); return p; },
     anyViewerNear: () => !!opts.viewer,
     isPositionActive: () => !!opts.viewer,
@@ -155,6 +155,9 @@ function _run(opts) {
     // ★[T423] 운영과 같은 두 훅(짐이 먹는다 · 귀환에 모은다) — 손잡이 끔이면 war-core 가 안 부른다
     rationEat: (w, day) => H._warRationEat(w, day),
     rationCollect: (w) => H._warRationCollect(w),
+    //   ★[T458] 운영과 같은 식량 정본(econ `consumeFood`·`totalFoodEquivalent`) — 없으면 war-core 폴백(`warFE` = 곡물·생선·고기·조리·채소 · 열매 0).
+    //     앞 절들은 종전 폴백 그대로(비트 동일 대조) · 열매가 식량인지 재는 판(ⓦ·ⓧ)만 운영 쪽을 쓴다.
+    food: opts.econFood ? { consumeFood: econ.consumeFood, totalFoodEquivalent: econ.totalFoodEquivalent } : undefined,
   });
   const dayMs = opts.dayMs || 30000;
   H = SimVillages.__p3Bind({
@@ -168,6 +171,9 @@ function _run(opts) {
     BC, dayOf: () => world.day, cellPx: SZ, pxPerM: SZ, tickHz: 30,
     resolveBattle: (w, day, pre) => { counts.resolve++; war.warResolveBattle(w, day, pre); },
     blockedCell: (cx, cy) => H._warBlockedCell(cx, cy),
+    // ★[T458 ③] 운영과 같은 두 손(villages `createWarLive` 인자 그대로 — ⓧ 정적 칸이 운영 쪽 글자를 대조한다)
+    arrowOut: (m) => deps.broadcast(m),
+    arrowNear: (x, y) => !!(deps.anyViewerNear && deps.anyViewerNear({ x, y }, 800)),
   });
   H.state.warLive = WL;
   // ★★[T413 ①] **태어나는 자리의 씨는 하네스의 날이다.** 운영 `spawnOneNpc` 는 자리 주사위를 `gameDayOf(Date.now())`
@@ -183,7 +189,7 @@ function _run(opts) {
 
   // 전쟁 하나 — 실경로(war-core march→camp→결단). 시나리오가 정책·곳간을 만든다(픽스처 문법과 같은 손잡이).
   const sc = opts.scenario || 'assault';
-  const comp = WarCore.conscript(atk, 'full', {}).composition;
+  const comp = opts.comp || WarCore.conscript(atk, 'full', {}).composition;   // ★[T458] opts.comp = 궁수 섞인 판(화살 메시지)
   const w = { id: opts.warId || 1, atk, def, casus: 'feud', force: 12, warriors: 2, composition: comp, weapQ: 0.5,
     phase: 'march', op: 'march', eta: world.day + 1, marchDays: 1, born: world.day, _packDays: 12, _packRem: 12 };
   if (sc === 'assault' || sc === 'hitrun') w._opPolicy = 'assault';
@@ -204,7 +210,7 @@ function _run(opts) {
   const stepMs = 1000 / 30;
   const maxTicks = opts.maxTicks || 30 * 60 * 12;   // 12분(판정 창)
   for (let t = 0; t < maxTicks; t++) {
-    now += stepMs;
+    now += stepMs; _curT = t;
     H.tickWarBodies(now);
     // 하루 경계 — onGameTick 과 같은 순서(daily → 결단 뒤 정리)
     if (now - dayAt >= dayMs) {
@@ -264,6 +270,14 @@ function _run(opts) {
   { let u = 0; if (w._fgKeys) for (const p of players.values()) { if (p._warPackOf !== w.id || !p.inventory) continue; for (const k of w._fgKeys) u += p.inventory[k] || 0; } tr.fgLeft = u; }
   tr.cutA = (atk._t347Cut || []).length; tr.fgStoreA = { herb: atk.econ.storage.herb || 0, twig: atk.econ.storage.twig || 0 };   // 몸 참조는 판 밖으로 안 나간다(순환 참조)
   tr.bcast = { war: bcast.filter(m => m.type === 'war_battle').length, phases: [...new Set(bcast.filter(m => m.type === 'war_battle').map(m => m.phase))] };
+  { // ★[T458 ③] 화살 메시지 — 보낸 수 · 닫은 수 · 바이트 · 교전 몸의 발사 수(battle-core 사건 · 이 판의 war-live 하나)
+    const sp = bcast.filter(m => m.type === 'arrow_spawn'), rm = bcast.filter(m => m.type === 'arrow_removed');
+    const open = new Set(); let dup = 0, orphan = 0; for (const m of bcast) { if (m.type === 'arrow_spawn') { if (open.has(m.aid)) dup++; open.add(m.aid); } else if (m.type === 'arrow_removed') { if (!open.delete(m.aid)) orphan++; } }
+    const by = (a) => a.reduce((s, m) => s + JSON.stringify(m).length, 0);
+    tr.arrows = { stat: Object.assign({}, WL.arrowStat), spawn: sp.length, removed: rm.length, hit: rm.filter(m => m.hit != null).length, open: open.size, dup, orphan,
+      peak1s: (() => { const c = new Map(); for (const t of arrT) { const k = Math.floor(t / 30); c.set(k, (c.get(k) || 0) + 1); } let m = 0; for (const v of c.values()) if (v > m) m = v; return m; })(),
+      bytes: by(sp) + by(rm), bytesWar: by(bcast.filter(m => m.type === 'war_battle')), keys: [...new Set(sp.flatMap(m => Object.keys(m)).concat(rm.flatMap(m => Object.keys(m))))].sort() };
+  }
 
   // ── ★[T329] 위협 T 프로브 — **운영 함수 그대로**(H.threatOf · H._warOutMul · H._lifeJobSites) ──
   if (opts.probeThreat) {
@@ -382,6 +396,8 @@ function _run(opts) {
 }
 
 (async () => {
+  //   ★[T458] 절 하나만(개발 — 전 절은 7분) · WW_PART=ration,forage,berry
+  if (process.env.WW_PART) { const P = { ration: rationActPart, forage: forageMarchPart, berry: berryArrowPart }; for (const k of process.env.WW_PART.split(',')) P[k](); say(`\n결과: ${pass} 통과 / ${fail} 실패`); process.exit(fail ? 1 : 0); }
   if (process.env.WW_ONLY) { const r = runScenario({ seed: parseInt(process.env.WW_SEED || '31', 10), viewer: false, scenario: process.env.WW_ONLY, trees: process.env.WW_TREES === '1', maxTicks: parseInt(process.env.WW_TICKS || '', 10) || 30 * 60 * 20 }); say(JSON.stringify({ ended: r.ended, counts: r.counts, stat: r.stat, fight: r.fightTicks, blocked: r.blockedTicks, box: [r._bx0, r._bx1, r._by0, r._by1] })); process.exit(0); }
   say('\n=== T284 실체 전쟁 — 좌표계 하나 · 장애물은 존의 것 · 연속 전투 ===');
 
@@ -549,6 +565,9 @@ function _run(opts) {
 
   // ── ⓦ 길에서 채집한다(T441) ──────────────────────────────────────────────
   forageMarchPart();
+
+  // ── ⓧ 덤불 열매는 열매다 · 화살 한 메시지(T458) ─────────────────────────
+  berryArrowPart();
 
   // ── ⓖ 서버 ───────────────────────────────────────────────────────────────
   if (process.env.WAR_WORLD_NO_SERVER === '1') { say('\n[ⓖ] 서버 절 건너뜀(WAR_WORLD_NO_SERVER=1)'); }
@@ -1014,12 +1033,88 @@ function rationActPart() {
 // ════════════════════════════════════════════════════════════════════════════
 // ★★[T441] ⓦ — 길에서 채집한다(군량 = 행위 ⓑ)
 // ════════════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════════
+// ★★[T458] ⓧ — 덤불 열매는 열매다(berry = econ fruit) · 원정군이 짐의 열매를 먹는다 · 화살 한 메시지
+// ════════════════════════════════════════════════════════════════════════════
+function berryArrowPart() {
+  const keep = ['T423_RATION_ACT', 'T441_FORAGE_MARCH', 'T347_FORAGE_ACT'].map(k => [k, process.env[k]]);
+  const env = (a, b, c) => { const set = (k, v) => { if (v) process.env[k] = '1'; else delete process.env[k]; }; set('T423_RATION_ACT', a); set('T441_FORAGE_MARCH', b); set('T347_FORAGE_ACT', c); };
+  const run = (a, b, c, o) => { env(a, b, c); groveReset(); try { return runScenario(o); } finally { env(0, 0, 0); } };
+  const HV = SimVillages.__p3Bind({});
+  const KC = R('server/kcal.js'), SP = R('server/spoil.js');
+  const VS = fs.readFileSync(path.join(ROOT, 'server/villages.js'), 'utf8');
+
+  say('\n[ⓧ] 덤불 열매는 열매다 — 등가 한 줄(대응 정본 ∧ 열량 정본) · 짐의 열매를 먹는다(부패 순서) · 철수 날 · 화살 한 메시지');
+  // ── ① 등가 표 ──
+  const M = SimVillages.playerVillageDepositMap();
+  const renamed = Object.keys(M).filter(k => M[k] !== k);
+  const same = renamed.filter(k => HV._econSameOf(k)).map(k => `${k}=${M[k]}(${KC.kcalPerKg(k)})`);
+  ok(same.join('·') === 'berry=fruit(500)·meat_raw=meat(1500)' && renamed.length === 7,
+    'ⓧ① 등가 표 — 대응 정본의 이름이 다른 줄 7 중 **같은 물건 2**(kg당 열량이 같다) · 가공·제련 대응 5 는 "바꿔 받는 물건"이라 빠진다', `${same.join(' · ')} · 빠짐 ${renamed.filter(k => !HV._econSameOf(k)).map(k => k + '→' + M[k]).join(' ')}`);
+  ok(KC.kcalPerKg('berry') === KC.kcalPerKg('fruit') && HV._econSameOf('fiber') === null && HV._econSameOf('twig') === null && HV._econSameOf('herb') === null,
+    'ⓧ① 군락 전리품 넷 — berry → fruit(같은 물건) · twig·herb 는 이름이 같다 · fiber 는 econ 재화가 아니다(대응 없음)', `berry ${KC.kcalPerKg('berry')} = fruit ${KC.kcalPerKg('fruit')} kcal/kg`);
+  const fnSame = VS.slice(VS.indexOf('function _econSameOf('), VS.indexOf('function _econSameOf(') + 600);
+  ok((VS.match(/berry: 'fruit'/g) || []).length === 1 && /PV_DEPOSIT_MAP\[item\]/.test(fnSame) && /kcalPerKg\(item\)/.test(fnSame) && !/process\.env/.test(fnSame),
+    'ⓧ① 정적 — 정본 자리 하나(`PV_DEPOSIT_MAP` 의 그 줄 · 사본 0) · 판정은 `kcal.js` 값 · 손잡이 0(등가는 세계의 사실)');
+
+  // ── ② 짐의 열매를 먹는다 — 부패 순서 ──
+  const WC = WarCore.createWar({ villages: [], world: { day: 1 }, seed: 1, log: null, food: { consumeFood: econ.consumeFood, totalFoodEquivalent: econ.totalFoodEquivalent } });
+  const bag = { food: 10, fruit: 5, fish: 1, twig: 3 }, eU = {};
+  const got = HV._warEatBySpoil(WC, bag, 2.5, {}, eU);
+  ok(near3(got, 2.5) && near3(eU.fish, 1) && near3(eU.fruit, 3.75) && !(eU.food > 0) && near3(bag.twig, 3) && SP.shelfOf('fish') < SP.shelfOf('fruit') && SP.shelfOf('fruit') < SP.shelfOf('food'),
+    'ⓧ② 짐은 **먼저 상하는 것부터** 먹는다(`spoil.shelfOf` 생선 2.5 < 열매 6 < 곡물 180 · 새 수 0) · 품목마다 같은 문(섭식 정본) · 식량 아닌 것은 0',
+    `먹음 ${got} = 생선 ${eU.fish} + 열매 ${eU.fruit}×0.4 · 곡물 ${eU.food || 0} · 잔가지 그대로 ${bag.twig}`);
+  // 굶주림 판 — 포위만 · 팩 54(병력 12 × 4.5일) · 군락 길 · 운영 식량 정본. 끔(T441 끔) vs 켬 — 딴 열매 20 × 0.4 = 8 = 0.67일.
+  const HO = (pf) => ({ seed: 19, viewer: false, scenario: 'assault', siegeOnly: true, pack: true, packFood: pf, untilHome: true, groves: true, econFood: true, dayMs: ZC.WORLD.dayLengthMs, maxTicks: 30 * 60 * 24 * 12 });
+  const wd = (r) => { const d = (r.packDays || []).find(x => x.op === 'withdraw'); return d ? d.day : null; };
+  const fe = (r) => r.book.ledgerEaten + r.book.eaten + r.book.back + r.book.drop + (r.bagLeft || 0);
+  const fgIn = (r) => (r.book.fgPack || 0) + (r.book.pickUnits || 0), fgOut = (r) => (r.book.fgBack || 0) + (r.book.fgDrop || 0) + (r.fgLeft || 0) + (r.book.fgEat || 0);
+  run(1, 0, 1, HO(54));   // 데우기(ⓦ 와 같은 이유 — 한 프로세스의 앞 절 모듈 상태)
+  const h0 = run(1, 0, 1, HO(54)), h1 = run(1, 1, 1, HO(54)), s0 = run(1, 0, 1, HO(18)), s1 = run(1, 1, 1, HO(18));
+  const rem1 = (r) => ((r.packDays || [])[0] || {}).rem;
+  ok(wd(h1) - wd(h0) === 1 && near3(h1.book.pickFE, 8) && near3(rem1(h1) - rem1(h0), 8 / 12),
+    'ⓧ② ★철수 날 — 딴 열매 식량등가 8 = 0.67일(병력 12) · 거울이 그만큼 올라 결단이 하루 늦다(날 경계로 양자화 · +1일)', `철수 D${wd(h0)} → D${wd(h1)} · 첫날 거울 ${rem1(h0)} → ${rem1(h1)}`);
+  ok(h0.ended && h1.ended && h0.ended.why === h1.ended.why && h0.ended.winner === h1.ended.winner && near3(fe(h1), h1.book.load + h1.book.pickFE) && near3(fgIn(h1), fgOut(h1)),
+    'ⓧ② 항등 — 식량등가(곳간에서 나간 + 딴 = 먹음 + 내려놓음 + 드랍 + 짐) · 낱개(짐에 든 + 딴 = 내려놓음 + 드랍 + 짐 + 먹음) · 결판 같은 꼴',
+    `${h1.book.load}+${h1.book.pickFE} = ${fe(h1)} · ${fgIn(h1)} = ${fgOut(h1)} · 끝 ${h0.ended.why}/${h1.ended.why}`);
+  const r0 = ((s0.packDays || [])[0] || {}).ration, r1 = ((s1.packDays || [])[0] || {}).ration;
+  ok(wd(s0) === wd(s1) && r0 < 1 && r1 > r0,
+    'ⓧ② 모자란 판(팩 18) — 철수 날은 같고 **오늘 몫이 짐에 있나**가 오른다(열매가 곡물 모자람을 메운다 · 사기 손잡이 끔이라 결판 무변)', `철수 D${wd(s0)} = D${wd(s1)} · ration ${r0} → ${r1}`);
+
+  // ── ③ 화살 한 메시지 ──
+  const COMP = { archer: 6, slinger: 2, dagger: 4 };
+  const A1 = run(0, 0, 0, { seed: 11, viewer: true, scenario: 'assault', comp: COMP }), A0 = run(0, 0, 0, { seed: 11, viewer: false, scenario: 'assault', comp: COMP });
+  const a = A1.arrows, z = A0.arrows;
+  ok(a.stat.fire > 0 && a.spawn === a.stat.fire - a.stat.stone - a.stat.far && a.spawn === a.stat.sent && a.removed === a.spawn && a.open === 0 && a.dup === 0 && a.orphan === 0,
+    'ⓧ③ ★발사 n = 메시지 n(궁수 · 투석은 화살이 아니다) · 보낸 화살은 정확히 한 번 닫힌다(맞음·땅·정산 흘림)', `발사 ${a.stat.fire}(투석 ${a.stat.stone}) → spawn ${a.spawn} · removed ${a.removed}(맞음 ${a.hit} · 땅 ${a.stat.end} · 흘림 ${a.stat.flush})`);
+  ok(z.stat.fire === a.stat.fire && z.spawn === 0 && z.removed === 0 && z.stat.far === z.stat.fire - z.stat.stone,
+    'ⓧ③ ★관측자 0 이면 0 — 같은 판·같은 발사 수인데 메시지 0(관측자 반경 = 존 `anyViewerNear` · AOI 800px)', `발사 ${z.stat.fire} · 멀어서 안 보냄 ${z.stat.far} · 메시지 ${z.spawn + z.removed}`);
+  ok(A0.posHash === A1.posHash && JSON.stringify(A0.ended) === JSON.stringify(A1.ended) && JSON.stringify(A0.stat) === JSON.stringify(A1.stat),
+    'ⓧ③ 결판 무변 — 보내든 안 보내든 같은 판(훅은 보기만 · rng 무소비)', `끝 ${A1.ended && A1.ended.why} · 해시 ${A1.posHash}`);
+  ok(a.keys.join(',') === 'aid,hit,ownerPid,type,vx,vy,x,y',
+    'ⓧ③ 필드 — 있는 모양 그대로(`arrow_spawn` aid·x·y·vx·vy·ownerPid · `arrow_removed` aid) + **새 필드 1**(`hit` = 맞은 몸 pid · 땅이면 없음)', a.keys.join(','));
+  // 교전 픽스처 30분 — 궁수 섞인 돌격 판을 씨를 바꿔 교전 시간 합이 30분이 될 때까지
+  let ft = 0, n = 0, by = 0, byW = 0, pk = 0, fire = 0, hit = 0, sd = 100, runs = 0;
+  while (ft < 30 * 60 * 30 && runs < 80) { const r = run(0, 0, 0, { seed: sd++, viewer: true, scenario: 'assault', comp: COMP }); runs++; ft += r.fightTicks; n += r.arrows.spawn + r.arrows.removed; by += r.arrows.bytes; byW += r.arrows.bytesWar; pk = Math.max(pk, r.arrows.peak1s); fire += r.arrows.spawn; hit += r.arrows.hit; }
+  const sec = ft / 30;
+  ok(sec >= 1800 && n > 0 && pk <= 2 * COMP.archer,
+    'ⓧ③ 초당 수 — 교전 30분(궁수 6 · 투석 2 · 단검 4 · 씨 여럿) · 봉우리 ≤ 궁수 × 2(쏘기 한 번 + 닫기 한 번)', `${runs}판 ${sec.toFixed(0)}초 · 메시지 ${n}(${(n / sec).toFixed(2)}/s · 봉우리 ${pk}/s) · ${(by / sec).toFixed(0)} B/s(수신자 1) · war_battle ${(byW / sec).toFixed(0)} B/s · 화살 ${fire} 맞음 ${hit}`);
+  const VC = VS.slice(VS.indexOf('state.warLive = warLive.createWarLive({'), VS.indexOf('state.warLive = warLive.createWarLive({') + 1200);
+  const BCs = fs.readFileSync(path.join(ROOT, 'sim/battle-core.js'), 'utf8');
+  ok(/arrowOut: \(m\) => state\.deps\.broadcast\(m\)/.test(VC) && /arrowNear: \(x, y\) => !!\(state\.deps\.anyViewerNear && state\.deps\.anyViewerNear\(\{ x, y \}, 800\)\)/.test(VC)
+    && (BCs.match(/ctx\.onArrow\)ctx\.onArrow\(/g) || []).length === 2,
+    'ⓧ③ 정적 — 운영이 하네스와 같은 두 손을 건다(있는 `broadcast` · 존 `anyViewerNear` AOI 800) · battle-core 훅 둘(발사·끝 — 보기만)');
+  for (const [k, v] of keep) { if (v == null) delete process.env[k]; else process.env[k] = v; }
+}
 function forageMarchPart() {
   const keep = ['T423_RATION_ACT', 'T441_FORAGE_MARCH', 'T347_FORAGE_ACT'].map(k => [k, process.env[k]]);
   const env = (a, b, c) => { const set = (k, v) => { if (v) process.env[k] = '1'; else delete process.env[k]; }; set('T423_RATION_ACT', a); set('T441_FORAGE_MARCH', b); set('T347_FORAGE_ACT', c); };
   const run = (a, b, c, o, noReset) => { env(a, b, c); if (!noReset) groveReset(); try { return runScenario(o); } finally { env(0, 0, 0); } };
-  const sig = (r) => JSON.stringify({ e: r.ended, h: r.posHash, s: r.stat, ph: r.phase, c: r.counts, d: (r.packDays || []).map(x => x.rem) });
-  const O = { seed: 13, viewer: false, scenario: 'surrender', pack: true, untilHome: true, groves: true, dayMs: ZC.WORLD.dayLengthMs, maxTicks: 30 * 60 * 24 * 6 };
+  //   ★[T458] 결판 서명에서 날마다 거울(`_packRem`)을 뺐다 — 덤불 열매가 이제 식량(berry = fruit)이라 딴 날부터 거울이 **올라간다**(그게 발견).
+  //     결판(끝·해시·전이·정산·명부)은 그대로 한 글자 같아야 한다 · 거울은 아래 ⓧ 가 따로 잰다.
+  const sig = (r) => JSON.stringify({ e: r.ended, h: r.posHash, s: r.stat, ph: r.phase, c: r.counts });
+  const sigD = (r) => JSON.stringify((r.packDays || []).map(x => x.rem));
+  const O = { seed: 13, viewer: false, scenario: 'surrender', pack: true, untilHome: true, groves: true, econFood: true, dayMs: ZC.WORLD.dayLengthMs, maxTicks: 30 * 60 * 24 * 6 };
   const OA = Object.assign({}, O, { seed: 11, viewer: true, scenario: 'assault' });
 
   say('\n[ⓦ] 길에서 채집한다 — 그날 지난 길 둘레 군락을 채집 문으로 · 시간 = 낮 − 걸음 · 짐 상한 · 항등 · 결판 무변');
@@ -1030,7 +1125,7 @@ function forageMarchPart() {
   const t423 = run(1, 0, 1, O), off2 = run(1, 1, 0, O), on = run(1, 1, 1, O);
   const cells0 = [...GROVE.cells.values()].reduce((a, b) => a + b.length, 0);
   const again = run(1, 1, 1, O, true);   // 같은 길 두 번째 원정(군락을 되돌려 놓지 않는다 — 재생은 T347 하루의 일)
-  ok(!t423.book.picks && sig(t423) === sig(off2) && !off2.book.picks,
+  ok(!t423.book.picks && sig(t423) === sig(off2) && sigD(t423) === sigD(off2) && !off2.book.picks,
     'ⓦ ★대조 — 손잡이 끔(또는 채집이 행위가 아닌 세계)이면 T423 과 한 글자 같다', `끔 따기 ${t423.book.picks || 0} · T347 끔 따기 ${off2.book.picks || 0}`);
   const fd = (on.book.fgDays || [])[0] || {};
   ok(on.book.picks > 0 && on.book.pickUnits > 0 && fd.picks > 0,
@@ -1038,20 +1133,21 @@ function forageMarchPart() {
   const dayS = ZC.WORLD.dayLengthMs * ZC.WORLD.dayPhaseRatio / 1000;
   ok((on.book.fgDays || []).every(d => d.forageS <= dayS + 1e-9 && d.usedS <= d.forageS * on.book.bearers + 1e-9) && fd.forageS < dayS,
     'ⓦ 시간 — 딸 시간 = 낮의 실초 − 그날 걸은 길 ÷ 걸음(채집꾼 하루 한도와 같은 식) · 쓴 시간 ≤ 짐꾼 × 그 시간', `낮 ${dayS}초 · 첫날 딸 시간 ${fd.forageS}초/몸 · 쓴 ${fd.usedS}초`);
-  ok(near3(on.book.pickUnits, (on.book.fgBack || 0) + (on.book.fgDrop || 0) + (on.fgLeft || 0)),
-    'ⓦ 항등(낱개) — 길에서 딴 = 내려놓음 + 드랍 + 아직 짐', `${on.book.pickUnits} = ${on.book.fgBack || 0} + ${on.book.fgDrop || 0} + ${on.fgLeft || 0}`);
+  const fgIn = (r) => (r.book.fgPack || 0) + (r.book.pickUnits || 0), fgOut = (r) => (r.book.fgBack || 0) + (r.book.fgDrop || 0) + (r.fgLeft || 0) + (r.book.fgEat || 0);
+  ok(near3(fgIn(on), fgOut(on)),
+    'ⓦ 항등(낱개) — 짐에 든 것 + 길에서 딴 = 내려놓음 + 드랍 + 아직 짐 + 먹음(★T458 열매는 먹힌다)', `${on.book.fgPack || 0} + ${on.book.pickUnits} = ${on.book.fgBack || 0} + ${on.book.fgDrop || 0} + ${on.fgLeft || 0} + ${on.book.fgEat || 0}`);
   const fe = (r) => r.book.ledgerEaten + r.book.eaten + r.book.back + r.book.drop + (r.bagLeft || 0);
-  ok(near3(fe(on), on.book.load) && sig(on) === sig(t423),
-    'ⓦ 결판 무변 — 끝·해시·전이·정산·날마다 거울 T423 과 같다 · 식량등가 항등도 그대로', `적재 ${on.book.load} = ${fe(on)}`);
+  ok(near3(fe(on), on.book.load + (on.book.pickFE || 0)) && sig(on) === sig(t423),
+    'ⓦ 결판 무변 — 끝·해시·전이·정산 T423 과 같다 · 식량등가 항등: 곳간에서 나간 + 길에서 딴(식량등가) = 먹음 + 내려놓음 + 드랍 + 짐', `${on.book.load} + ${on.book.pickFE || 0} = ${fe(on)}`);
   ok(on.cutA > 0 && on.fgStoreA.herb - t423.fgStoreA.herb > 0,
     'ⓦ 딴 군락은 그 마을의 되돌림 목록으로(T347 재생) · 딴 것은 귀환 내려놓기로만 곳간에', `되돌림 ${on.cutA} · herb 곳간 ${t423.fgStoreA.herb} → ${on.fgStoreA.herb}`);
-  ok(on.book.eaten === t423.book.eaten && on.book.back === t423.book.back && on.book.pickUnits > 0,
-    'ⓦ 식량 0 — 걷는 목록(twig·herb)엔 econ 식량이 없다(덤불 berry = fruit 판정은 PM 칸) · 먹은 몫·거울 무변', `먹음 ${on.book.eaten} · 날것 ${JSON.stringify(on.book.rawLoot || {})}`);
+  ok(near3(on.book.eaten, t423.book.eaten) && on.book.pickFE > 0 && near3(on.book.back, t423.book.back + on.book.pickFE) && !(on.book.rawLoot || {}).berry,
+    'ⓦ ★T458 열매는 식량이다 — 덤불 berry 는 econ fruit 로 짐에(날것 칸에 berry 0) · 먹은 몫 무변(하루치) · 딴 식량등가만큼 더 돌아온다', `먹음 ${on.book.eaten} · 딴 식량등가 ${on.book.pickFE} · 내려놓음 ${t423.book.back} → ${on.book.back} · 날것 ${JSON.stringify(on.book.rawLoot || {})}`);
   ok((again.book.picks || 0) < on.book.picks,
     'ⓦ 길이 먹힌다 — 되돌려 놓지 않은 같은 길의 두 번째 원정은 덜 딴다', `첫 ${on.book.picks}포기 → 둘째 ${again.book.picks || 0}포기 · 남은 개체 ${cells0}`);
   run(1, 0, 1, OA);   // 데우기(위와 같은 이유 · 돌격 판 쌍)
   const onA = run(1, 1, 1, OA), t423A = run(1, 0, 1, OA);
-  ok(sig(onA) === sig(t423A) && near3(onA.book.pickUnits || 0, (onA.book.fgBack || 0) + (onA.book.fgDrop || 0) + (onA.fgLeft || 0)),
+  ok(sig(onA) === sig(t423A) && near3(fgIn(onA), fgOut(onA)),
     'ⓦ 돌격 판 — 결판 무변 · 전사자의 딴 것도 드랍(항등 낱개)', `따기 ${onA.book.picks || 0} · 드랍 ${onA.book.fgDrop || 0} · 내려놓음 ${onA.book.fgBack || 0}`);
   const VS = fs.readFileSync(path.join(ROOT, 'server/villages.js'), 'utf8');
   const fn = VS.slice(VS.indexOf('function _warForageMarch('), VS.indexOf('function _warForageMarch(') + 6000);
