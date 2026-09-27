@@ -37,6 +37,9 @@
 //   ⑧ **배포 폴더에 바이트코드 0 [T391]** — public/ 아래 추적되는 `.pyc`·`__pycache__/` 0 · 무시 규칙이 살아 있다.
 //      디스크의 **무시된** 캐시는 표만(안 실린다). 미끼는 절 안에 상주(⑤ 와 같은 꼴).
 //
+//   ⑪ **실리는 것은 닿아야 한다 [T456]** — 이미지에 실리는데 어디서도 안 닿는 파일 수 ≤ 기준(파일에 적힌 수 · 늘면 빨강) ·
+//      이미지가 읽는데 그 이미지에 안 실리는 파일 0. 자는 T446 전수(acorn · 정적 글자 · 뿌리 = 이미지 진입점). 미끼는 절 안에 상주.
+//
 // 자명 통과 금지(--selftest): 없는 참조 하나 · 잠금 어긋남 하나 · 추적 목록의 미끼 `.pyc` 하나를 **주입**해서 ①②⑧a 가 무는지 본다.
 //
 // 실행: node scripts/test-assets-audit.js [--json <경로>] [--selftest]
@@ -603,18 +606,10 @@ console.log('\n⑨ `legacy/` 는 배포 폴더 밖 — `.dockerignore`(Docker �
   for (const r of rooted) console.log(`       ${r}`);
 }
 
-// ── ⑩ R&D 보관소 `tools/_rnd_archive/` 는 배포 밖 — 이미지는 `COPY` 가 가리키는 것만 싣는다 [T422] ─────
-//
-// T422 가 GPT R&D 도구 14 폴더(T411 권고 "버림")를 `tools/_rnd_archive/` 로 옮겼다 — **정본 아님**(그 폴더 README).
-// 배포는 서버 checkout 에서 `docker build -f Dockerfile.{zone,central}` 로 굽는다(`scripts/redeploy-hanbando.sh`).
-// 이미지에 드는 것은 Dockerfile 의 `COPY <원본…> <목적>` 이 가리키는 것뿐이고, 그 안에서 `.dockerignore` 가 뺀다(⑨ 의 자).
-// ⇒ 이 절은 **Dockerfile 전부**의 `COPY` 원본을 읽어 보관소 파일이 어느 이미지에도 안 실리는지 잰다(정적 폴더 `public/` 밖인지도).
-//   ⓐ 자 대조 — `public/…/bgm.js`·`server/` 파일은 **실린다** · `보고/` 는 안 실린다(COPY 읽기가 살아 있다)
-//   ⓑ 미끼 — `COPY . .` 한 줄을 (가상으로) 더하면 ⑩a 가 보관소 파일 **전부**를 문다 · 그때 `tools/` 한 줄을 `.dockerignore` 에 더하면 다시 0
-console.log('\n⑩ R&D 보관소 `tools/_rnd_archive/` 는 배포 밖 — 이미지는 `COPY` 한 것만 [T422]');
-{
+// ★[T456] ⑩ 의 COPY 읽기(`copySrcs`·`IMAGES`·`copiedBy`·`ships`)는 ⑪ 도 쓴다 — ⑩ 블록 밖으로 **그대로** 옮겼다
+//   (몸 무변 · T422 가 ⑨ 의 Docker 규칙을 옮긴 꼴). ⑩ 은 여기서 받아 쓴다.
+const DOCKER_SHIP = (() => {
   const { toRe, parse, excluded } = DOCKER_RULES;
-  const ARC = 'tools/_rnd_archive';
   const DI = path.join(ROOT, '.dockerignore');
   const PATS = fs.existsSync(DI) ? parse(fs.readFileSync(DI, 'utf8')) : [];
   const DOCKERFILES = fs.readdirSync(ROOT).filter((f) => /^Dockerfile(\..+)?$/.test(f)).sort();
@@ -631,6 +626,22 @@ console.log('\n⑩ R&D 보관소 `tools/_rnd_archive/` 는 배포 밖 — 이미
     return rel === src || rel.startsWith(src + '/');
   });
   const ships = (rel, images, pats) => images.some((im) => copiedBy(rel, im.srcs)) && !excluded(rel, pats);
+  return { DI, PATS, DOCKERFILES, copySrcs, IMAGES, copiedBy, ships };
+})();
+
+// ── ⑩ R&D 보관소 `tools/_rnd_archive/` 는 배포 밖 — 이미지는 `COPY` 가 가리키는 것만 싣는다 [T422] ─────
+//
+// T422 가 GPT R&D 도구 14 폴더(T411 권고 "버림")를 `tools/_rnd_archive/` 로 옮겼다 — **정본 아님**(그 폴더 README).
+// 배포는 서버 checkout 에서 `docker build -f Dockerfile.{zone,central}` 로 굽는다(`scripts/redeploy-hanbando.sh`).
+// 이미지에 드는 것은 Dockerfile 의 `COPY <원본…> <목적>` 이 가리키는 것뿐이고, 그 안에서 `.dockerignore` 가 뺀다(⑨ 의 자).
+// ⇒ 이 절은 **Dockerfile 전부**의 `COPY` 원본을 읽어 보관소 파일이 어느 이미지에도 안 실리는지 잰다(정적 폴더 `public/` 밖인지도).
+//   ⓐ 자 대조 — `public/…/bgm.js`·`server/` 파일은 **실린다** · `보고/` 는 안 실린다(COPY 읽기가 살아 있다)
+//   ⓑ 미끼 — `COPY . .` 한 줄을 (가상으로) 더하면 ⑩a 가 보관소 파일 **전부**를 문다 · 그때 `tools/` 한 줄을 `.dockerignore` 에 더하면 다시 0
+console.log('\n⑩ R&D 보관소 `tools/_rnd_archive/` 는 배포 밖 — 이미지는 `COPY` 한 것만 [T422]');
+{
+  const { parse } = DOCKER_RULES;
+  const ARC = 'tools/_rnd_archive';
+  const { PATS, IMAGES, ships } = DOCKER_SHIP;                      // ★[T456] 끌어올림(위 · 몸 무변)
   let tracked = null;
   try { tracked = require('child_process').execFileSync('git', ['ls-files', '-z', '--', ARC, 'public', 'server'], { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).split('\0').filter(Boolean); }
   catch (e) { tracked = null; }
@@ -657,6 +668,312 @@ console.log('\n⑩ R&D 보관소 `tools/_rnd_archive/` 는 배포 밖 — 이미
   ok(bitAll === arcFiles.length && healed === 0,
      'ⓑ 미끼 — `COPY . .` 를 더하면 ⑩a 가 보관소 **전부**를 문다 · `.dockerignore` 에 `tools/` 를 더하면 다시 0',
      `${arcShip.length}→${bitAll}/${arcFiles.length} · 줄 더하면 ${healed}`);
+}
+
+// ── ⑪ 실리는 것은 닿아야 한다 · 닿는 것은 실려야 한다 — 이미지 전수의 자 [T456] ─────────────────
+//
+// T446 이 배포 이미지에 실리는 파일을 전수로 쟀다(`보고/T446_2026-09-27.md` · 기록 `보고/T446_실리는것_2026-09-27.json`):
+//   어디서도 안 닿는 것 68장 49 MB(그중 `sim/out` 산물 15장 47.85 MB) · 닿는데 **안 실리는** 것 1(`CREDITS.md` —
+//   `server/credits.js` 가 읽는데 COPY 밖이라 배포판 `/크레딧` 이 "크레딧을 지금 못 읽었다"였다).
+// T456 이 `sim/out/` 을 `.dockerignore` 에 · `CREDITS.md` 를 존 이미지 COPY 에 · 고아 소리 2 를 보관소로 옮겼다 → 안 닿는 것 53.
+// 이 절이 그 수를 박는다:
+//   ⑪a 이미지에 실리는데 어디서도 안 닿는 파일 ≤ 기준 `T456_BASE` — **늘면 빨갛다**(줄면 초록 · 기준을 내려 적으라고 찍는다)
+//   ⑪b 이미지가 읽는데 그 이미지에 안 실리는 파일 0 — 서버는 **이미지마다**(Dockerfile CMD 의 진입 JS) · 웹은 `public/*.html` 뿌리
+// 닿음의 자(T446 그대로 · acorn · 정적 글자만 따라간다):
+//   웹 — `public/*.html` 이 뿌리(게임 = `index.html` · 판 = 나머지). `src`·`href`·인라인 스크립트 → JS 의 문자열·템플릿·`+` 사슬.
+//        접두 + 변수로 만드는 경로(`'/assets/icons/' + k + '.png'`)는 **동적 접두**다. 그 아래 파일은 **키**가 닿은 원천
+//        (클라 JS 의 식별자·낱말 하나짜리 문자열 · 닿은 JSON 표의 키/값 · 서버가 닿은 JS)에 있으면 닿음이다.
+//        키 규칙은 ① 과 같다 — 어간은 그림만(`NO_STEM_EXT`) · 소리 `.m4a` 는 `.ogg` 이름에서 바꿔 만든다(`48-a-audio.js`).
+//        키가 없으면 "동적 접두만" — 닿음으로 치되 표로 찍는다(빨강 아님).
+//   서버 — 진입 JS 에서 `require('./…')`·`require(path.join(__dirname, …))` · `path.join(__dirname, 글자…)` 자료 읽기를 따라간다.
+// ⚠이 자의 뿌리는 **이미지 진입점**뿐이다(① 의 뿌리엔 `scripts/` 가 있다) — 두 자는 다른 물음에 답한다(T446 §검증).
+// ★자명 통과 금지(절 안 상주 · 늘어난 수로 본다):
+//   ⓐ 안 부르는 미끼 한 장을 실리는 목록에 놓으면 ⑪a 가 **하나 더** · ⓑ 같은 미끼를 게임 JS 한 줄이 글자로 부르면 **그대로**
+//   ⓒ `.dockerignore` 의 `sim/out/` 줄을 (가상으로) 빼면 ⑪a 가 그 산물 수만큼 더 · ⓓ 존 COPY 에서 `CREDITS.md` 를 빼면 ⑪b 가 문다
+console.log('\n⑪ 실리는 것은 닿아야 한다 · 닿는 것은 실려야 한다 — 이미지 전수 [T456]');
+{
+  const T456_BASE = 53;       // ★기준 = T456 뒤 수. 줄면 내려 적는다 · 올리려면 그 파일이 왜 실려야 하는지 보고에 적고 올린다
+  const { excluded } = DOCKER_RULES;
+  const { PATS, IMAGES, copiedBy, ships } = DOCKER_SHIP;
+  let acorn = null, tracked = null;
+  try { acorn = require(path.join(ROOT, 'node_modules', 'acorn')); } catch (e) { acorn = null; }
+  try { tracked = require('child_process').execFileSync('git', ['ls-files', '-z'], { cwd: ROOT, encoding: 'utf8', maxBuffer: 1 << 26, stdio: ['ignore', 'pipe', 'ignore'] }).split('\0').filter(Boolean); }
+  catch (e) { tracked = null; }
+  const read = (f) => { try { return fs.readFileSync(path.join(ROOT, f), 'utf8'); } catch (e) { return ''; } };
+  const size = (f) => { try { return fs.statSync(path.join(ROOT, f)).size; } catch (e) { return 0; } };
+  const mbOf = (xs) => (xs.reduce((n, f) => n + size(f), 0) / 1048576).toFixed(2);
+  // 이미지마다 — 원본(COPY · ⑩ 그대로)과 진입(CMD 의 JS)
+  const IMGS = IMAGES.map((im) => {
+    const cmd = read(im.f).split('\n').filter((l) => /^\s*(CMD|ENTRYPOINT)\s/i.test(l)).join(' ');
+    const entries = [...new Set((cmd.match(/[\w./-]+\.m?js\b/g) || []).map((x) => path.posix.normalize(x).replace(/^\.\//, '')))];
+    return { f: im.f, srcs: im.srcs, entries };
+  });
+  const TR = new Set(tracked || []);
+  const entriesOk = IMGS.length > 0 && IMGS.every((im) => im.entries.length > 0 && im.entries.every((x) => TR.has(x)));
+  ok(!!acorn && !!tracked && entriesOk,
+     '⓪ [전제] acorn(레포 의존성) · git 추적 목록 · 이미지마다 CMD 진입 JS 가 있다 — 하나라도 없으면 이 자를 못 잰다(빨강)',
+     `${acorn ? 'acorn ' + acorn.version : '★acorn 없음(npm install)'} · ${tracked ? '추적 ' + tracked.length + '장' : '★git 없음'} · `
+     + IMGS.map((im) => `${im.f}: ${im.entries.join(' ') || '★진입 없음'}`).join(' / '));
+  if (acorn && tracked && entriesOk) {
+    const t0 = Date.now();
+    const shipsIn = (rel, im, pats) => copiedBy(rel, im.srcs) && !excluded(rel, pats);
+    const SHIP = tracked.filter((r) => ships(r, IMGS, PATS));
+    const SHIPSET = new Set(SHIP);
+    // ── JS 읽기(acorn) — 문자열 · 템플릿 · `+` 사슬 · require · path.join(__dirname, …)
+    const ONEWORD = /^[A-Za-z0-9_.\-ㄱ-힝]+$/;
+    const parseJS = (text) => {
+      for (const sourceType of ['script', 'module']) {
+        try { return acorn.parse(text, { ecmaVersion: 'latest', sourceType, allowHashBang: true, allowReturnOutsideFunction: true, allowAwaitOutsideFunction: true, locations: true }); }
+        catch (e) { /* 다음 꼴로 */ }
+      }
+      return null;
+    };
+    const visit = (node, fn) => {
+      if (!node || typeof node.type !== 'string') return;
+      fn(node);
+      for (const k of Object.keys(node)) {
+        if (k === 'loc') continue;
+        const v = node[k];
+        if (Array.isArray(v)) { for (const c of v) if (c && typeof c.type === 'string') visit(c, fn); }
+        else if (v && typeof v.type === 'string') visit(v, fn);
+      }
+    };
+    const strOf = (n) => (n && n.type === 'Literal' && typeof n.value === 'string' ? n.value
+      : n && n.type === 'TemplateLiteral' && n.expressions.length === 0 ? n.quasis[0].value.cooked : null);
+    const isDirname = (n) => !!n && n.type === 'Identifier' && n.name === '__dirname';
+    const isPathCall = (n) => !!n && n.type === 'CallExpression' && n.callee.type === 'MemberExpression' && !n.callee.computed
+      && n.callee.object.type === 'Identifier' && n.callee.object.name === 'path' && ['join', 'resolve'].includes(n.callee.property.name);
+    const flatPlus = (n, out) => { if (n.type === 'BinaryExpression' && n.operator === '+') { flatPlus(n.left, out); flatPlus(n.right, out); } else out.push(n); return out; };
+    const jsCache = new Map();
+    const analyzeJS = (text) => {
+      const res = { text, strings: [], dyn: [], requires: [], dataJoins: [], tokens: new Set() };
+      const ast = parseJS(text);
+      if (!ast) { for (const t of text.match(TOKENS) || []) res.tokens.add(t); return res; }   // 못 읽으면 낱말만(닿음은 못 준다)
+      const inner = new Set();
+      visit(ast, (n) => { if (n.type === 'BinaryExpression' && n.operator === '+') for (const c of [n.left, n.right]) if (c.type === 'BinaryExpression' && c.operator === '+') inner.add(c); });
+      visit(ast, (n) => {
+        const line = n.loc ? n.loc.start.line : 0;
+        if (n.type === 'Identifier') res.tokens.add(n.name);
+        const s = strOf(n);
+        if (s != null) { res.strings.push({ s, line }); if (ONEWORD.test(s)) res.tokens.add(s); }
+        if (n.type === 'TemplateLiteral' && n.expressions.length) {
+          const q = n.quasis.map((x) => x.value.cooked || '');
+          res.dyn.push({ prefix: q[0], suffix: q[q.length - 1], line });
+        }
+        if (n.type === 'BinaryExpression' && n.operator === '+' && !inner.has(n)) {
+          const parts = flatPlus(n, []);
+          if (parts.some((x) => strOf(x) == null)) {
+            let i = 0, pre = ''; while (i < parts.length && strOf(parts[i]) != null) pre += strOf(parts[i++]);
+            let j = parts.length - 1, suf = ''; while (j > i && strOf(parts[j]) != null) suf = strOf(parts[j--]) + suf;
+            if (pre) res.dyn.push({ prefix: pre, suffix: suf, line });
+            if (isDirname(parts[0]) && parts.slice(1).every((x) => strOf(x) != null)) res.dataJoins.push({ rel: parts.slice(1).map(strOf).join(''), line });
+          }
+        }
+        if (n.type === 'CallExpression' && n.callee.type === 'Identifier' && n.callee.name === 'require') {
+          const a = n.arguments[0];
+          if (strOf(a) != null) res.requires.push({ spec: strOf(a), line });
+          else if (isPathCall(a) && isDirname(a.arguments[0]) && a.arguments.slice(1).every((x) => strOf(x) != null)) res.requires.push({ joined: path.posix.join(...a.arguments.slice(1).map(strOf)), line });
+        }
+        if (isPathCall(n) && isDirname(n.arguments[0]) && n.arguments.slice(1).every((x) => strOf(x) != null)) res.dataJoins.push({ rel: path.posix.join(...n.arguments.slice(1).map(strOf)), line });
+      });
+      return res;
+    };
+    const jsOf = (f) => { if (!jsCache.has(f)) jsCache.set(f, analyzeJS(read(f))); return jsCache.get(f); };
+    // ── 서버 — 이미지마다 CMD 진입에서
+    const tryFile = (p) => { for (const c of [p, p + '.js', p + '.json', p + '/index.js']) if (TR.has(c)) return c; return null; };
+    const serverWalk = (entries) => {
+      const got = new Map(entries.map((e) => [e, { how: 'CMD', from: null }]));
+      const q = [...entries];
+      while (q.length) {
+        const f = q.shift();
+        if (!/\.(c?js|mjs)$/.test(f)) continue;
+        const a = jsOf(f), dir = path.posix.dirname(f);
+        for (const r of a.requires) {
+          const spec = r.spec != null ? (r.spec.startsWith('.') ? r.spec : null) : r.joined;   // 점 없는 이름 = npm·node 모듈
+          if (spec == null) continue;
+          const t = tryFile(path.posix.normalize(path.posix.join(dir, spec)));
+          if (t && !got.has(t)) { got.set(t, { how: 'require', from: `${f}:${r.line}` }); q.push(t); }
+        }
+        for (const d of a.dataJoins) {
+          const t = path.posix.normalize(path.posix.join(dir, d.rel));
+          if (TR.has(t) && !got.has(t)) { got.set(t, { how: '자료 읽기', from: `${f}:${d.line}` }); if (/\.js$/.test(t)) q.push(t); }
+        }
+      }
+      return got;
+    };
+    for (const im of IMGS) im.reach = serverWalk(im.entries);
+    const SRV = new Map();
+    for (const im of IMGS) for (const [f, v] of im.reach) if (!SRV.has(f)) SRV.set(f, v);
+    // 이름 언급(약한 닿음) — 닿은 서버 JS 가 `server/`·`sim/` 파일의 **이름**을 글자로 적는다(폴더 변수 + 이름으로 읽는 꼴)
+    const byBase = new Map();
+    for (const f of tracked) if (/^(server|sim)\//.test(f)) { const b = path.posix.basename(f); if (!byBase.has(b)) byBase.set(b, []); byBase.get(b).push(f); }
+    const SRV_NAME = new Map();
+    for (const f of [...SRV.keys()].filter((x) => /\.js$/.test(x))) {
+      for (const s of jsOf(f).strings) for (const c of byBase.get(s.s) || []) if (!SRV.has(c) && !SRV_NAME.has(c)) SRV_NAME.set(c, `${f}:${s.line}`);
+    }
+    const SRV_JS = [...SRV.keys()].filter((f) => /\.js$/.test(f));
+    // ── 웹 — `public/*.html` 뿌리
+    const HTMLS = SHIP.filter((f) => /^public\/[^/]+\.html$/.test(f));
+    const GROUPS = { game: HTMLS.filter((f) => f === 'public/index.html'), board: HTMLS.filter((f) => f !== 'public/index.html') };
+    const webRel = (s) => {
+      if (!s || /^(https?:|data:|blob:|mailto:|#|javascript:)/i.test(s)) return null;
+      const t = s.split(/[?#]/)[0].replace(/^\.?\//, '').replace(/^\/+/, '');
+      return t ? 'public/' + t : null;
+    };
+    const pathLike = (p) => /^(\.{0,2}\/)*[A-Za-z0-9_\-ㄱ-힝]+(\/[A-Za-z0-9_.\-ㄱ-힝]*)+$/.test(p) || /^\/?assets\/[A-Za-z0-9_.\-\/ㄱ-힝]*$/.test(p);
+    const jsonKeyTokens = (v, out) => {
+      if (typeof v === 'string') { if (ONEWORD.test(v)) { out.add(v.replace(/\.[A-Za-z0-9]+$/, '')); out.add(v); } }
+      else if (Array.isArray(v)) v.forEach((x) => jsonKeyTokens(x, out));
+      else if (v && typeof v === 'object') for (const [k, x] of Object.entries(v)) { if (!k.startsWith('_')) out.add(k); jsonKeyTokens(x, out); }
+    };
+    const jsonStrings = (v, out) => {
+      if (typeof v === 'string') out.push(v);
+      else if (Array.isArray(v)) v.forEach((x) => jsonStrings(x, out));
+      else if (v && typeof v === 'object') for (const x of Object.values(v)) jsonStrings(x, out);
+      return out;
+    };
+    const OGG2M4A = /\.replace\(\/\\\.ogg\$\/,\s*'\.m4a'\)/;              // `48-a-audio.js` — `.m4a` 는 `.ogg` 이름에서 만든다
+    const dynHits = (f, st) => {
+      const w = f.slice('public/'.length);
+      return st.dyn.filter((d) => { const p = d.prefix.replace(/^\.?\//, '').replace(/^\/+/, ''), sf = d.suffix || ''; return p && w.startsWith(p) && w.endsWith(sf) && w.length >= p.length + sf.length; });
+    };
+    const statusOf = (f, st) => {
+      if (st.static.has(f)) return { status: 'static', via: st.static.get(f) };
+      const hits = dynHits(f, st);
+      if (!hits.length) return { status: 'none' };
+      const name = path.posix.basename(f), ext = path.posix.extname(f).slice(1).toLowerCase(), stem = path.posix.basename(f, path.posix.extname(f));
+      const keyed = st.tokens.has(name) || (!NO_STEM_EXT.has(ext) && st.tokens.has(stem)) || st.jtokens.has(stem)
+        || (ext === 'm4a' && !!st.oggToM4a && st.tokens.has(stem + '.ogg'));
+      return { status: keyed ? 'dyn+key' : 'dyn-prefix', via: hits.map((h) => `${h.prefix}…${h.suffix} @${h.from}`).slice(0, 2) };
+    };
+    const webWalk = (roots, tokenFiles, shipset, inject) => {
+      const st = { static: new Map(), dyn: [], tokens: new Set(), jtokens: new Set(), sources: new Set(), missing: new Map(), oggToM4a: null };
+      const pub = [...shipset].filter((f) => f.startsWith('public/'));
+      const addStatic = (rel, from) => {
+        if (!rel) return;
+        if (shipset.has(rel)) { if (!st.static.has(rel)) st.static.set(rel, from); }
+        else if (TR.has(rel) && !st.missing.has(rel)) st.missing.set(rel, from);      // 부르는데 안 실린다 → ⑪b
+      };
+      const q = [...roots];
+      const take = (a, from) => {
+        if (OGG2M4A.test(a.text || '')) st.oggToM4a = st.oggToM4a || from;
+        for (const t of a.tokens) st.tokens.add(t);
+        for (const s of a.strings) {
+          const r = webRel(s.s);
+          if (r && /[/.]/.test(s.s)) { addStatic(r, `${from}:${s.line}`); if (shipset.has(r) && /\.(js|json|css|html)$/.test(r)) q.push(r); }
+          // 폴더 글자(끝이 `/`)는 바탕 경로다 — 나중에 변수로 이어 붙인다(`BASE + name + ext` 꼴) → 동적 접두
+          if (/\/$/.test(s.s) && pathLike(s.s) && r && pub.some((f) => f.startsWith(r))) st.dyn.push({ prefix: s.s, suffix: '', from: `${from}:${s.line}` });
+        }
+        for (const d of a.dyn) { const p = d.prefix.split(/[?#]/)[0]; if (pathLike(p)) st.dyn.push({ prefix: p, suffix: d.suffix.split(/[?#]/)[0], from: `${from}:${d.line}` }); }
+      };
+      const eat = (f) => {
+        if (st.sources.has(f)) return;
+        st.sources.add(f);
+        if (/\.html$/.test(f)) {
+          const text = read(f);
+          for (const m of text.matchAll(/\b(src|href)\s*=\s*(["'])([^"']+)\2/g)) { const r = webRel(m[3]); addStatic(r, `${f}:${text.slice(0, m.index).split('\n').length}`); if (r && shipset.has(r)) q.push(r); }
+          for (const m of text.matchAll(/url\(\s*(["']?)([^"')]+)\1\s*\)/g)) addStatic(webRel(m[2]), f);
+          for (const m of text.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)) take(analyzeJS(m[1]), f + '#inline');
+        } else if (/\.(c?js|mjs)$/.test(f)) take(jsOf(f), f);
+        else if (/\.css$/.test(f)) { for (const m of read(f).matchAll(/url\(\s*(["']?)([^"')]+)\1\s*\)/g)) addStatic(webRel(m[2]), f); }
+        else if (/\.json$/.test(f)) {
+          let v = null; try { v = JSON.parse(read(f)); } catch (e) { v = null; }
+          if (v != null) {
+            jsonKeyTokens(v, st.jtokens);
+            for (const t of st.jtokens) st.tokens.add(t);
+            for (const s of jsonStrings(v, [])) { const r = webRel(s); if (r && shipset.has(r) && /^(\/|assets\/|client\/)/.test(s)) { addStatic(r, f); q.push(r); } }
+          }
+        }
+      };
+      for (const f of tokenFiles) for (const t of jsOf(f).tokens) st.tokens.add(t);   // 서버가 대는 키(품목 id·건물 종 따위)
+      if (inject) take(analyzeJS(inject.text), inject.from);
+      let grew = true;
+      while (grew) {
+        while (q.length) eat(q.shift());
+        grew = false;
+        // 동적 접두 + 키로 닿은 JSON 표도 원천이 된다(① 의 계약 ④ 와 같은 전이 · 잠금표는 쓰임이 아니다)
+        for (const f of pub) {
+          if (!/\.json$/.test(f) || st.sources.has(f) || /\.lock\.json$/.test(f)) continue;
+          const s = statusOf(f, st);
+          if (s.status === 'static' || s.status === 'dyn+key') { q.push(f); grew = true; }
+        }
+      }
+      return st;
+    };
+    const reachOf = (f, web) => {
+      if (f.startsWith('public/')) {
+        if (GROUPS.game.includes(f) || GROUPS.board.includes(f)) return 'root';
+        const g = statusOf(f, web.game), b = statusOf(f, web.board);
+        if (g.status !== 'none') return 'game:' + g.status;
+        if (b.status !== 'none') return 'board:' + b.status;
+      }
+      if (/^package(-lock)?\.json$/.test(f)) return 'npm';
+      if (SRV.has(f)) return 'server:' + SRV.get(f).how;
+      if (SRV_NAME.has(f)) return 'server:이름';
+      return null;
+    };
+    const WEB = { game: webWalk(GROUPS.game, SRV_JS, SHIPSET, null), board: webWalk(GROUPS.board, [], SHIPSET, null) };
+    const ROWS = SHIP.map((f) => ({ f, reach: reachOf(f, WEB) }));
+    const U = ROWS.filter((r) => !r.reach).map((r) => r.f);
+    const DYN = ROWS.filter((r) => r.reach && /dyn-prefix$/.test(r.reach)).map((r) => r.f);
+    const tally = (xs) => { const m = {}; for (const r of xs) { const k = r.reach ? r.reach.split(':')[0] : '안 닿음'; m[k] = (m[k] || 0) + 1; } return Object.entries(m).map(([k, n]) => `${k} ${n}`).join(' · '); };
+
+    // ⑪a — 안 닿는 수 ≤ 기준
+    ok(U.length <= T456_BASE,
+       `⑪a 이미지에 실리는데 어디서도 안 닿는 파일 ${U.length}장 ≤ 기준 ${T456_BASE}(T456 뒤 수) — 늘면 빨갛다`,
+       U.length > T456_BASE
+         ? `★${U.length - T456_BASE}장 늘었다 — 새로 실린 것을 부르는 자리를 만들거나, 산물·도구면 \`.dockerignore\`·\`tools/_rnd_archive/\` 로 빼라(정말 실어야 하면 까닭을 보고에 적고 기준을 올린다)`
+         : `${mbOf(U)} MB · 이미지 ${SHIP.length}장 ${mbOf(SHIP)} MB`);
+    if (U.length < T456_BASE) console.log(`     · 기준보다 ${T456_BASE - U.length}장 적다 — \`T456_BASE\` 를 ${U.length} 로 내려 적어도 된다(자는 조일수록 좋다)`);
+    console.log(`     · 닿음 갈래: ${tally(ROWS)}`);
+    const byTop = {};
+    for (const f of U) { const d = path.posix.dirname(f).split('/'); const k = d.slice(0, d[0] === 'public' ? 3 : 1).join('/') + '/'; byTop[k] = (byTop[k] || 0) + 1; }
+    console.log(`     · 안 닿는 ${U.length}장(폴더별): ${Object.entries(byTop).sort((A, B) => B[1] - A[1]).map(([k, n]) => `${k} ${n}`).join(' · ')}`);
+    if (U.length > T456_BASE) for (const f of U) console.log(`       ${f}`);
+
+    // ⑪b — 닿는데 안 실림 0 (서버는 이미지마다 · 웹은 정적 글자)
+    const missOf = (imgs) => {
+      const out = [];
+      for (const im of imgs) for (const [f, v] of im.reach) if (!shipsIn(f, im, PATS)) out.push({ f, where: im.f, from: v.from, why: copiedBy(f, im.srcs) ? '.dockerignore' : 'COPY 밖' });
+      return out;
+    };
+    const miss = missOf(IMGS);
+    for (const [g, st] of Object.entries(WEB)) for (const [f, from] of st.missing) miss.push({ f, where: 'web:' + g, from, why: IMGS.some((im) => copiedBy(f, im.srcs)) ? '.dockerignore' : 'COPY 밖' });
+    ok(miss.length === 0,
+       `⑪b 이미지가 읽는데 그 이미지에 **안 실리는** 파일 ${miss.length}장`,
+       miss.slice(0, 4).map((m) => `★${m.f}(${m.where} · ${m.from} · ${m.why})`).join(' · ')
+         || IMGS.map((im) => `${im.f}: ${im.entries.join('+')} → 서버 ${im.reach.size}장`).join(' · ') + ` · 웹 뿌리 ${HTMLS.length}(게임 ${GROUPS.game.length} · 판 ${GROUPS.board.length})`);
+
+    // ★자명 통과 금지 — 넷(늘어난 수로 본다 · 절대값이면 진짜 결함이 있을 때 같이 넘어진다)
+    const GHOST = 'public/zz_t456_ghost.bin';
+    const uA = U.length + (reachOf(GHOST, WEB) ? 0 : 1);                  // 원천이 아니다(.bin) — 걸음은 그대로
+    ok(uA === U.length + 1,
+       `ⓐ 미끼 — 안 부르는 \`${GHOST}\` 를 실리는 목록에 놓으면 ⑪a 가 **하나 더** 센다`, `${U.length}→${uA}(기준 ${T456_BASE} 에서 이러면 빨강)`);
+    const SHIP_B = new Set([...SHIP, GHOST]);
+    const WEB_B = { game: webWalk(GROUPS.game, SRV_JS, SHIP_B, { text: `fetch('/${GHOST.slice('public/'.length)}');`, from: '미끼' }), board: WEB.board };
+    const uB = [...SHIP_B].filter((f) => !reachOf(f, WEB_B)).length;
+    ok(uB === U.length && reachOf(GHOST, WEB_B) === 'game:static',
+       'ⓑ ★대조 — 같은 미끼를 게임 JS 한 줄이 글자로 부르면 수가 그대로다(자가 아무거나 물지 않는다)', `${U.length}→${uB} · 미끼 ${reachOf(GHOST, WEB_B)}`);
+    const OUT_GHOST = 'sim/out/zz_t456_ghost.json';
+    const PATS_C = PATS.filter((q) => q.p !== 'sim/out');
+    const addC = [...tracked, OUT_GHOST].filter((f) => ships(f, IMGS, PATS_C) && !SHIPSET.has(f));
+    const uC = U.length + addC.filter((f) => !reachOf(f, WEB)).length;    // 늘어난 것은 public 밖 — 걸음은 그대로
+    ok(PATS_C.length < PATS.length && !ships(OUT_GHOST, IMGS, PATS) && addC.includes(OUT_GHOST)
+       && addC.every((f) => f.startsWith('sim/out/')) && uC === U.length + addC.length,
+       'ⓒ 미끼 — `.dockerignore` 의 `sim/out/` 줄을 (가상으로) 빼면 ⑪a 가 그 산물 수만큼 더 센다(T456 ① 을 지킨다)',
+       `${U.length}→${uC}(+${addC.length} = 산물 ${addC.length - 1} + 미끼 1) · 줄이 있으면 미끼 ${ships(OUT_GHOST, IMGS, PATS) ? '★실림' : '안 실림'}`);
+    const IMGS_D = IMGS.map((im) => ({ ...im, srcs: im.srcs.filter((s) => s !== 'CREDITS.md') }));
+    const missD = missOf(IMGS_D).map((m) => m.f);
+    ok(missD.includes('CREDITS.md') && missD.length === missOf(IMGS).length + 1,
+       'ⓓ 미끼 — 존 COPY 에서 `CREDITS.md` 를 (가상으로) 빼면 ⑪b 가 그 파일을 문다(T446 이 찾은 구멍 · 배포판 `/크레딧` 이 못 읽었다)',
+       `${missOf(IMGS).length}→${missD.length} · ${missD.join(' ') || '없음'}`);
+
+    // 표만 — 동적 접두만(키가 원천에 없다 · 닿음으로 친다 · 빨강 아님)
+    console.log(`     · 동적 접두만(키 없음 · 표만) ${DYN.length}장 · ${mbOf(DYN)} MB`);
+    for (const f of DYN) { const r = ROWS.find((x) => x.f === f); const st = /^game:/.test(r.reach) ? WEB.game : WEB.board; console.log(`       ${f}  ← ${(statusOf(f, st).via || []).join(' · ')}`); }
+    const uniq = (st) => new Set(st.dyn.map((d) => d.prefix + '…' + d.suffix)).size;
+    console.log(`     · 잰 시간 ${((Date.now() - t0) / 1000).toFixed(1)} s(JS ${jsCache.size}장 · 동적 접두 게임 ${uniq(WEB.game)} · 판 ${uniq(WEB.board)})`);
+  }
 }
 
 // ── ⑥ 반례 — 화소 자가 **무엇에 둔하고 무엇에 예민한지** [T308] ──────────────

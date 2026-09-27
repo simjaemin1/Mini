@@ -3,6 +3,7 @@
 GPT BGM R&D 착지(`462b4acc` · 86커밋 스쿼시)가 들여온 도구 24 폴더 가운데 **14 폴더**를 옮겨 둔 자리다.
 이 14 폴더는 이 레포에서 제 일을 못 하고, 다른 곳이 이 폴더에 기대지도 않는다.
 **R&D 미확정 · 정본 아님** — 제품(`public/client`·`bgm.js`)·서버·배포 이미지 어디서도 이 폴더를 부르지 않는다.
+★[T456] `sfx/` — 매니페스트 키가 없는 소리 파일 2장(고아)도 여기 둔다(아래 §`sfx/`).
 
 ## 왜 옮겼나
 
@@ -51,9 +52,25 @@ MIDI-DDSP 줄기를 버린 근거는 `설계/BGM_RND_08.md` 의 한 줄이다: *
 - `midi-ddsp-transfer-train` 의 계보 문자열 `tools/midi-ddsp-runtime/run_official_flute_rnd.py` — 설정과 검사기가 **같은 글자**를 맞대는 기록이다(감사 때의 자리).
 - 보고·설계·지시의 옛 경로 — 역사다.
 
+## `sfx/` — 고아 소리 2 (T456)
+
+| 파일 | 크기 | 형식 | 출처 |
+|---|---|---|---|
+| `ui_click.ogg` | 6,110 B | vorbis · 모노 · 48 kHz · 0.26 s | Kenney RPG Audio `bookPlace1.ogg`(0.30 s 중 0.020~0.280 s) · Kenney Vleugels · CC0 1.0 · 팩 2023 · 가져온 날 2026-09-13 |
+| `ui_click.m4a` | 4,164 B | aac · 모노 · 48 kHz · 0.26 s | 〃 |
+
+**왜 여기 있나** — T303 결정(매니페스트 `_파일없음`)이 "`ui_click` 도 **없음**이다 — UI 는 세계의 소리가 아니다"라 키·훅을 안 세웠다. 그런데 파일 둘은 `public/assets/sfx/` 에 남아 배포 이미지에 실렸다(T446 ⓑ-2 고아 2 · 어디서도 안 부른다). T456 이 `git mv` 로 옮겼다 — 바이트 무변 · 히스토리는 `git log --follow`.
+**같이 옮긴 줄** — `icons.lock.json` sfx 두 줄(`"ui_click.m4a": "ea5a35267e84cdf9"` · `"ui_click.ogg": "80e2f0f4d970472b"`) 을 뺐고, `CREDITS.md` §2-b 표의 `ui_click` 줄은 표 아래 보관 노트로 내렸다(출처 글자 그대로). 원본은 맥 `~/Mini/_sfx_in/ui_click/`(`SOURCE.txt` 동봉).
+
+**되살리려면**(키를 세우는 판정은 재민 — T282·T303):
+1. `git mv tools/_rnd_archive/sfx/ui_click.ogg tools/_rnd_archive/sfx/ui_click.m4a public/assets/sfx/`
+2. `public/assets/icons.lock.json` 의 `sfx` 에 위 두 줄을 되넣는다(바이트가 같아 해시도 같다).
+3. `CREDITS.md` 보관 노트를 §2-b 표의 한 줄로 되올린다(없으면 `test-assets-audit ⑤` 삼자 대조가 빨갛다).
+4. 키를 세우면 매니페스트 `keys` 에 한 칸 + 훅(T354 규약). 키 없이 파일만 되돌리면 이미지 고아가 다시 둘이다.
+
 ## 배포
 
-배포 이미지는 `Dockerfile.{zone,central}` 의 `COPY package*.json server public sim` 만 싣는다. 이 폴더는 어느 이미지에도 **안 실린다**. `scripts/test-assets-audit.js ⑩` 이 두 Dockerfile 의 `COPY` 를 읽어 지킨다(미끼: `COPY . .` 를 더하면 이 폴더 전부를 문다).
+배포 이미지는 `Dockerfile.{zone,central}` 의 `COPY package*.json server public sim` 만 싣는다(존 이미지는 T456 부터 `CREDITS.md` 도 — `/크레딧` 이 읽는다). 이 폴더는 어느 이미지에도 **안 실린다**. `scripts/test-assets-audit.js ⑩` 이 두 Dockerfile 의 `COPY` 를 읽어 지킨다(미끼: `COPY . .` 를 더하면 이 폴더 전부를 문다).
 `.gitattributes` 는 `tools/_rnd_archive/** linguist-vendored export-ignore` 다(GitHub 언어 통계에 안 센다 · `git archive` 에서 뺀다).
 
 ## 되살리려면

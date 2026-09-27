@@ -87,7 +87,6 @@
 | `rock_hit` | [OpenGameArt: 75 CC0 breaking/falling/hit SFX](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) · `bfh1_rock_hit_01.ogg` | rubberduck | **CC0** (페이지 License 칸) | — | 2026-09-23 | 통째(0.13s) · ★[T358] 새 키 — 돌·광석·운석 때리기가 `bronze_hit`(둔탁한 쿵 · 저역 91%)에서 갈라져 나왔다(중심 4186Hz) |
 | `tiger_growl2` | [Commons: 439280 schots angry-tiger.wav](https://commons.wikimedia.org/wiki/File:439280_schots_angry-tiger.wav) (**같은 원본의 다른 으르렁**) | schots | **CC0** | 2018-08-31 | 2026-09-23 | 65.64s 중 **3.90~5.15s** · ★[T358] 변주 |
 | `tiger_growl3` | 〃 (같은 원본의 또 다른 으르렁) | schots | **CC0** | 2018-08-31 | 2026-09-23 | 65.64s 중 **9.60~10.75s** · ★[T358] 변주 — 다른 팩에서 뜨면 **다른 짐승**으로 들린다 |
-| `ui_click` | [Kenney "RPG Audio"](https://kenney.nl/assets/rpg-audio) · `bookPlace1.ogg` | Kenney Vleugels (Kenney.nl) | **CC0 1.0** (팩 안 `License.txt`) | 2023(팩) | 2026-09-13 | 0.30s 중 **0.020~0.280s**(선행 무음 잘라 냄) · **후보**(훅 없음) |
 | `arrow_shoot` | [OpenGameArt: Battle Sound Effects](https://opengameart.org/content/battle-sound-effects) · `Bow.wav` | artisticdude | **CC BY 3.0** (페이지 라이선스 칸 · **표시 필요**) | 2012(게시) | 2026-09-25 | 0.55s 중 **0.099~0.337s**(머리 무음 잘라 냄) · ★[T387] 새 키 — 쏨(`arrow_spawn`) · 후보 1번 |
 | `arrow_shoot_b` | [Commons: Deep twang of loose bow string.ogg](https://commons.wikimedia.org/wiki/File:Deep_twang_of_loose_bow_string.ogg) | stephan | **Public domain** (파일 페이지) | — | 2026-09-25 | 11.49s 중 **0.384~1.400s**(첫 튕김 · 꼬리 0.25s 페이드) · ★[T387] **후보 2번**(훅 없음) |
 | `swing` | [OpenGameArt: Swish – bamboo stick weapon swhoshes](https://opengameart.org/content/swish-bamboo-stick-weapon-swhoshes) · `swosh-01.flac` | qubodup | **CC0** (페이지 라이선스 칸) | — | 2026-09-25 | 통째(0.27s) · ★[T387] 새 키 — 휘두름(`player_attacked` · 공격자) · 후보 1번 |
@@ -159,7 +158,10 @@
   이 프로젝트가 쓰는 rubberduck 팩의 `howl.ogg`(페이지가 *"i created"* 라 적는 창작 괴물 소리)는 **늑대가 아니다.**
 * ⚠**`tiger_growl` 의 잔향은 원본의 것이다.** 출처가 스스로 *"Tiger in a cage, ... Lots of reverb"* 라 적는다.
   빼지 않았다 — 잔향을 지우면 원본을 고치는 것이다.
-* `ui_click` 은 **후보**다(훅 없음 · "있어야 하나"는 재민). 후보 셋을 **같은 자**로 재서 골랐다:
+* ★[T456] **`ui_click` 은 배포 밖 보관소로 옮겼다** — 키가 없다(T303 결정 · 매니페스트 `_파일없음` "UI 는 세계의 소리가 아니다"). 이미지에 실리던 고아 둘(`.ogg` 6.0 KB · `.m4a` 4.1 KB)이다.
+  파일은 `tools/_rnd_archive/sfx/` 에 있다(레포엔 남는다 · 되살리는 법은 그 폴더 README). 원본은 맥 `~/Mini/_sfx_in/ui_click/`(`SOURCE.txt` 동봉).
+  출처 줄은 표에서 여기로 옮겼다(그대로): [Kenney "RPG Audio"](https://kenney.nl/assets/rpg-audio) · `bookPlace1.ogg` · Kenney Vleugels (Kenney.nl) · **CC0 1.0**(팩 안 `License.txt`) · 2023(팩) · 받은 날 2026-09-13 · 0.30s 중 **0.020~0.280s**(선행 무음 잘라 냄).
+  그때(T282) 후보는 이렇게 골랐다 — "있어야 하나"는 재민. 후보 셋을 **같은 자**로 재서 골랐다:
   `bookPlace1` 선행 6.0ms·SNR **38.8 dB** ← 골랐다 · `bookClose` 선행 72.9ms·SNR 29.6 · [`Woodpecker tapping`
   (USFWS · PD)](https://commons.wikimedia.org/wiki/File:Woodpecker_tapping.ogg) 선행 14.5ms·SNR **10.1 dB**.
   딱따구리가 "진짜 나무 두드림"이라 먼저 골랐다가 **자가 뒤집었다** — 숲 바닥이 같이 오고 정점이 116ms 뒤에 온다.
