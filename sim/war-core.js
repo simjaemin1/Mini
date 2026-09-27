@@ -778,7 +778,9 @@ function createWar(opts) {
       if (r != null && Number.isFinite(r)) {
         w._packRem = Math.max(0, r);
         const bk = w._rationBook, d = bk && bk.days[bk.days.length - 1];
-        if (d && d.day === day) log(day, w.atk.name + ' 짐이 먹는다 — 짐꾼 ' + d.bearers + ' · 먹음 ' + d.eaten.toFixed(1) + ' · 남은 짐 ' + d.left.toFixed(1) + '(' + w._packRem.toFixed(2) + '일) · ration ' + (w._ration != null ? w._ration.toFixed(2) : '-'));
+        const fg = bk && bk.fgDays && bk.fgDays[bk.fgDays.length - 1];   // ★[T441] 그날 길에서 딴 것(호스트가 적는다 · 끄면 없다)
+        if (d && d.day === day) log(day, w.atk.name + ' 짐이 먹는다 — 짐꾼 ' + d.bearers + ' · 먹음 ' + d.eaten.toFixed(1) + ' · 남은 짐 ' + d.left.toFixed(1) + '(' + w._packRem.toFixed(2) + '일) · ration ' + (w._ration != null ? w._ration.toFixed(2) : '-')
+          + ((fg && fg.day === day) ? ' · 길에서 딴 것 ' + fg.picks + '포기 ' + fg.units + '단위(지난 칸 ' + fg.cells + ' · 군락 셀 ' + fg.groves + ' · 쓴 시간 ' + fg.usedS + '초)' : ''));
         return;
       }
     }

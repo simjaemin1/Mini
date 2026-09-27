@@ -33,6 +33,10 @@
 //   ⓥ 싣기 = 짐 합 · 하루 경계에 몸이 먹는다(병력 × 하루치) · 거울 = 장부 · 항등(곳간에서 나간 = 먹음 + 내려놓음 + 드랍)
 //     · 결판 무변 · 이중 0(원정군은 마을 식사 명부에서 빠진다) · 되돌림(몸 없으면 장부) · 사기 곡선 · 정적
 //
+// ★★[T441 2026-09-27 · 군량 = 행위 ⓑ] 한 절(손잡이 `T441_FORAGE_MARCH` · 끔 = T423 비트 동일)
+//   ⓦ 그날 지난 길 둘레(채집 반경)의 군락을 채집 문으로 딴다 · 시간 = 낮 − 걸은 길 · 짐 상한 · 재생 목록 · 항등(낱개)
+//     · 결판 무변 · 곳간은 내려놓기로만 · 길이 먹힌다(두 번째 원정) · 식량 0(걷는 목록) — PM 칸 입력(날것 전리품)
+//
 // 실행: node scripts/test-war-world.js          (서버 절 건너뛰기: WAR_WORLD_NO_SERVER=1)
 'use strict';
 const path = require('path');
@@ -71,6 +75,23 @@ const TREES = new Set(); for (let x = 195; x <= 215; x++) for (let y = 90; y <= 
 const cellKey = (px, py) => Math.floor(px / SZ) * 65536 + Math.floor(py / SZ);
 
 // 한 판 — 새 목 존 · 새 war-core · 새 war-live. opts: { seed, viewer, noCollide, scenario, maxTicks, warId }
+// ★[T441] 군락 목 — 존의 `t347GrovesAtCell`·`t347PickAt`·`t347LootOf` 자리(셀 단위 개체 · 따면 없어진다).
+//   전리품 수는 **존 정본에서 읽는다**(`BUSH_BERRY_N` · 덤불의 fiber·twig 1 · 풀 herb 2 — zone.js `lootOfResource` 그 줄) — 옮겨 적지 않게
+//   덤불 열매 수만 소스에서 뽑고 나머지는 그 함수의 리터럴을 정적 검사로 대조한다(ⓦ 정적 칸).
+const ZSRC = fs.readFileSync(path.join(ROOT, 'server/zone.js'), 'utf8');
+const Z_MOVE = parseInt((ZSRC.match(/const MOVE_SPEED = (\d+);/) || [])[1], 10);
+const Z_BERRY = parseInt((ZSRC.match(/const BUSH_BERRY_N = (\d+);/) || [])[1], 10);
+const ZC = R('server/zone-config');
+const GROVE = { cells: new Map(), picked: 0 };
+function groveReset() {
+  GROVE.cells = new Map(); GROVE.picked = 0;
+  const put = (cx, cy, type) => { const k = cx * 65536 + cy; const a = GROVE.cells.get(k) || []; a.push({ type, x: cx * SZ + 16, y: cy * SZ + 16, seedKey: 'g:' + cx + ':' + cy + ':' + a.length }); GROVE.cells.set(k, a); };
+  for (let y = 92; y <= 108; y += 4) { put(123, y, 'berry_bush'); put(126, y, 'berry_bush'); }   // 공격 마을 어귀 — 돌격로 쪽 링(중심에서 23~26셀)
+  for (let y = 90; y <= 110; y += 5) put(129, y, 'herb');
+  for (let x = 196; x <= 212; x += 4) put(x, 112, 'berry_bush');                                     // 길 중간 — 돌격로에서 12셀 옆
+}
+groveReset();
+function groveLoot(r) { return r.type === 'herb' ? { herb: 2 } : { berry: Z_BERRY, fiber: 1, twig: 1 }; }
 function runScenario(opts) {
   Math.random = seeded(opts.seed || 7);
   try { return _run(opts); } finally { Math.random = _origRandom; }
@@ -92,6 +113,12 @@ function _run(opts) {
   // ★[T295 후속] 나무 술어 — 존이 주입하는 그 자리(`deps.treeCellBlocked` · 셀 단위 · 관측자 무관).
   //   미주입 팔(opts.trees 없음)은 **빈 들판**이다 = 이 카드 전 동작(대조군).
   if (opts.trees) deps.treeCellBlocked = (cx, cy) => TREES.has(Math.floor(cx) * 65536 + Math.floor(cy));
+  if (opts.groves) {   // ★[T441] 군락 · 걸음 속도 · 낮 비율 — 존이 넘기는 그 자리(값은 존 정본에서 읽는다)
+    deps.t347GrovesAtCell = (cx, cy) => (GROVE.cells.get(cx * 65536 + cy) || []).slice();
+    deps.t347PickAt = (cx, cy) => { const a = GROVE.cells.get(cx * 65536 + cy); if (!a || !a.length) return null; const r = a.shift(); GROVE.picked++; return groveLoot(r); };
+    deps.t347LootOf = (r) => groveLoot(r);
+    deps.moveSpeed = Z_MOVE; deps.dayPhaseRatio = ZC.WORLD.dayPhaseRatio;
+  }
   // ★[T329 ⓝ] 현장 후보를 만들 자원·짐승·물가 — 운영과 같은 모양(쿼드트리 질의·mobs·_terrSet)만 갖춘다.
   if (opts.probeRout) {
     const RES = [];
@@ -233,7 +260,9 @@ function _run(opts) {
   tr.bodyGoneAtEnd = !!tr.endGone; delete tr._body;
   tr.book = w._rationBook ? JSON.parse(JSON.stringify(w._rationBook)) : null; tr.onBodies = w._packOnBodies || 0; tr.packLeft = w._packRem;
   { let fe = 0, n = 0; if (w._packKeys) for (const p of players.values()) { if (p._warPackOf !== w.id) continue; const bag = {}; for (const k of w._packKeys) if (p.inventory && p.inventory[k] > 0) bag[k] = p.inventory[k]; fe += war.bagFE(bag, { _world: atk.econ._world }); n++; } tr.bagLeft = fe; tr.bagBearersLeft = n; }
-  tr.warDone = !war.WARS.includes(w);   // 몸 참조는 판 밖으로 안 나간다(순환 참조)
+  tr.warDone = !war.WARS.includes(w);
+  { let u = 0; if (w._fgKeys) for (const p of players.values()) { if (p._warPackOf !== w.id || !p.inventory) continue; for (const k of w._fgKeys) u += p.inventory[k] || 0; } tr.fgLeft = u; }
+  tr.cutA = (atk._t347Cut || []).length; tr.fgStoreA = { herb: atk.econ.storage.herb || 0, twig: atk.econ.storage.twig || 0 };   // 몸 참조는 판 밖으로 안 나간다(순환 참조)
   tr.bcast = { war: bcast.filter(m => m.type === 'war_battle').length, phases: [...new Set(bcast.filter(m => m.type === 'war_battle').map(m => m.phase))] };
 
   // ── ★[T329] 위협 T 프로브 — **운영 함수 그대로**(H.threatOf · H._warOutMul · H._lifeJobSites) ──
@@ -517,6 +546,9 @@ function _run(opts) {
 
   // ── ⓥ 짐이 먹는다(T423) ──────────────────────────────────────────────────
   rationActPart();
+
+  // ── ⓦ 길에서 채집한다(T441) ──────────────────────────────────────────────
+  forageMarchPart();
 
   // ── ⓖ 서버 ───────────────────────────────────────────────────────────────
   if (process.env.WAR_WORLD_NO_SERVER === '1') { say('\n[ⓖ] 서버 절 건너뜀(WAR_WORLD_NO_SERVER=1)'); }
@@ -978,3 +1010,54 @@ function rationActPart() {
     'ⓥ 정적 — 명부에서 빼는 표식은 공격 징발(`warDraftFill`)에만 · 손잡이 켤 때만(방어 소집은 제 곳간을 먹는다)');
   if (prevK == null) delete process.env.T423_RATION_ACT; else process.env.T423_RATION_ACT = prevK;
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+// ★★[T441] ⓦ — 길에서 채집한다(군량 = 행위 ⓑ)
+// ════════════════════════════════════════════════════════════════════════════
+function forageMarchPart() {
+  const keep = ['T423_RATION_ACT', 'T441_FORAGE_MARCH', 'T347_FORAGE_ACT'].map(k => [k, process.env[k]]);
+  const env = (a, b, c) => { const set = (k, v) => { if (v) process.env[k] = '1'; else delete process.env[k]; }; set('T423_RATION_ACT', a); set('T441_FORAGE_MARCH', b); set('T347_FORAGE_ACT', c); };
+  const run = (a, b, c, o, noReset) => { env(a, b, c); if (!noReset) groveReset(); try { return runScenario(o); } finally { env(0, 0, 0); } };
+  const sig = (r) => JSON.stringify({ e: r.ended, h: r.posHash, s: r.stat, ph: r.phase, c: r.counts, d: (r.packDays || []).map(x => x.rem) });
+  const O = { seed: 13, viewer: false, scenario: 'surrender', pack: true, untilHome: true, groves: true, dayMs: ZC.WORLD.dayLengthMs, maxTicks: 30 * 60 * 24 * 6 };
+  const OA = Object.assign({}, O, { seed: 11, viewer: true, scenario: 'assault' });
+
+  say('\n[ⓦ] 길에서 채집한다 — 그날 지난 길 둘레 군락을 채집 문으로 · 시간 = 낮 − 걸음 · 짐 상한 · 항등 · 결판 무변');
+  //   ⚠데우기 한 판 — 이 절의 **첫 판만** 해시가 다르다(같은 씨 둘째 판부터는 한 글자 같다). 하네스 한 프로세스가 앞 절들과
+  //     모듈 상태를 나눠 쓰기 때문이다 — 유력 후보는 `_warRouteCache`(같은 날 400 · 같은 쌍 · 술어가 키가 아니다: 앞 절 숲 판의 길).
+  //     운영에선 술어가 늘 하나라 무해하다. 비교는 데운 뒤에(보고 T441 §4 회부).
+  run(1, 0, 1, O);
+  const t423 = run(1, 0, 1, O), off2 = run(1, 1, 0, O), on = run(1, 1, 1, O);
+  const cells0 = [...GROVE.cells.values()].reduce((a, b) => a + b.length, 0);
+  const again = run(1, 1, 1, O, true);   // 같은 길 두 번째 원정(군락을 되돌려 놓지 않는다 — 재생은 T347 하루의 일)
+  ok(!t423.book.picks && sig(t423) === sig(off2) && !off2.book.picks,
+    'ⓦ ★대조 — 손잡이 끔(또는 채집이 행위가 아닌 세계)이면 T423 과 한 글자 같다', `끔 따기 ${t423.book.picks || 0} · T347 끔 따기 ${off2.book.picks || 0}`);
+  const fd = (on.book.fgDays || [])[0] || {};
+  ok(on.book.picks > 0 && on.book.pickUnits > 0 && fd.picks > 0,
+    'ⓦ 켬 — 행군 날 지난 길 둘레 군락을 딴다(채집 문 · 걷는 목록만 짐에)', `첫날 지난 칸 ${fd.cells} · 군락 셀 ${fd.groves} · ${fd.picks}포기 · ${fd.units}단위(${JSON.stringify(on.book.rawLoot || {})} 는 손에)`);
+  const dayS = ZC.WORLD.dayLengthMs * ZC.WORLD.dayPhaseRatio / 1000;
+  ok((on.book.fgDays || []).every(d => d.forageS <= dayS + 1e-9 && d.usedS <= d.forageS * on.book.bearers + 1e-9) && fd.forageS < dayS,
+    'ⓦ 시간 — 딸 시간 = 낮의 실초 − 그날 걸은 길 ÷ 걸음(채집꾼 하루 한도와 같은 식) · 쓴 시간 ≤ 짐꾼 × 그 시간', `낮 ${dayS}초 · 첫날 딸 시간 ${fd.forageS}초/몸 · 쓴 ${fd.usedS}초`);
+  ok(near3(on.book.pickUnits, (on.book.fgBack || 0) + (on.book.fgDrop || 0) + (on.fgLeft || 0)),
+    'ⓦ 항등(낱개) — 길에서 딴 = 내려놓음 + 드랍 + 아직 짐', `${on.book.pickUnits} = ${on.book.fgBack || 0} + ${on.book.fgDrop || 0} + ${on.fgLeft || 0}`);
+  const fe = (r) => r.book.ledgerEaten + r.book.eaten + r.book.back + r.book.drop + (r.bagLeft || 0);
+  ok(near3(fe(on), on.book.load) && sig(on) === sig(t423),
+    'ⓦ 결판 무변 — 끝·해시·전이·정산·날마다 거울 T423 과 같다 · 식량등가 항등도 그대로', `적재 ${on.book.load} = ${fe(on)}`);
+  ok(on.cutA > 0 && on.fgStoreA.herb - t423.fgStoreA.herb > 0,
+    'ⓦ 딴 군락은 그 마을의 되돌림 목록으로(T347 재생) · 딴 것은 귀환 내려놓기로만 곳간에', `되돌림 ${on.cutA} · herb 곳간 ${t423.fgStoreA.herb} → ${on.fgStoreA.herb}`);
+  ok(on.book.eaten === t423.book.eaten && on.book.back === t423.book.back && on.book.pickUnits > 0,
+    'ⓦ 식량 0 — 걷는 목록(twig·herb)엔 econ 식량이 없다(덤불 berry = fruit 판정은 PM 칸) · 먹은 몫·거울 무변', `먹음 ${on.book.eaten} · 날것 ${JSON.stringify(on.book.rawLoot || {})}`);
+  ok((again.book.picks || 0) < on.book.picks,
+    'ⓦ 길이 먹힌다 — 되돌려 놓지 않은 같은 길의 두 번째 원정은 덜 딴다', `첫 ${on.book.picks}포기 → 둘째 ${again.book.picks || 0}포기 · 남은 개체 ${cells0}`);
+  run(1, 0, 1, OA);   // 데우기(위와 같은 이유 · 돌격 판 쌍)
+  const onA = run(1, 1, 1, OA), t423A = run(1, 0, 1, OA);
+  ok(sig(onA) === sig(t423A) && near3(onA.book.pickUnits || 0, (onA.book.fgBack || 0) + (onA.book.fgDrop || 0) + (onA.fgLeft || 0)),
+    'ⓦ 돌격 판 — 결판 무변 · 전사자의 딴 것도 드랍(항등 낱개)', `따기 ${onA.book.picks || 0} · 드랍 ${onA.book.fgDrop || 0} · 내려놓음 ${onA.book.fgBack || 0}`);
+  const VS = fs.readFileSync(path.join(ROOT, 'server/villages.js'), 'utf8');
+  const fn = VS.slice(VS.indexOf('function _warForageMarch('), VS.indexOf('function _warForageMarch(') + 6000);
+  ok(/dp\.t347PickAt\(c\.cx, c\.cy\)/.test(fn) && /_t347ActItems\(\)/.test(fn) && /_t347R\(\)/.test(fn) && !/forageToGranary/.test(fn)
+    && /const l = \{ berry: BUSH_BERRY_N, fiber: 1, twig: 1 \};/.test(ZSRC) && /if \(t === 'herb'\)\s+return \{ herb: 2 \};/.test(ZSRC),
+    'ⓦ 정적 — 따기는 채집 문(`t347PickAt`)·걷는 목록·반경 그대로 · 곳간 입구(`forageToGranary`) 안 부른다 · 하네스 전리품 = 존 표');
+  for (const [k, v] of keep) { if (v == null) delete process.env[k]; else process.env[k] = v; }
+}
+function near3(a, b) { return Math.abs((a || 0) - (b || 0)) <= 1e-6; }
