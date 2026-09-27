@@ -33,6 +33,9 @@ const CHARCOAL_KILN_STAGES = [
 ];
 const CHARCOAL_KILN_WOOD = 3;
 const CHARCOAL_KILN_YIELD = 4;
+// 숯가마 조업 시간 — 1회분 4분 · 배치 하나 더할 때마다 30초(zone `KILN_BURN_MS`·`KILN_BATCH_MS_PER` · ★[T452] 글자 그대로 옮김)
+const KILN_BURN_MS = 240000;
+const KILN_BATCH_MS_PER = 30000;
 // 노천 탄화 — 제작창 레시피(zone `ITEM_RECIPES` 가 이 줄을 펼친다 · 시설 없이 된다)
 const SMELT_RECIPES = {
   charcoal: { from: { wood: 3 }, to: { charcoal: 2 },                    label: '숯 (통나무 3 → 숯 2 — 노 연료)' },
@@ -43,7 +46,11 @@ const SMELT_RECIPES = {
 //   econ 마을엔 숯가마가 없다(숯가마는 플레이어 사유지 시설). ⇒ 숯 1 = 통나무 from.wood ÷ to.charcoal.
 const fuelPerOre = () => ({ charcoal: FURNACE_FUEL_PER_ORE });
 const woodPerCharcoal = () => SMELT_RECIPES.charcoal.from.wood / SMELT_RECIPES.charcoal.to.charcoal;
-const woodPerCharcoalKiln = () => CHARCOAL_KILN_WOOD / CHARCOAL_KILN_YIELD;   // (대조용 — 가마가 있으면 반값)
+const woodPerCharcoalKiln = () => CHARCOAL_KILN_WOOD / CHARCOAL_KILN_YIELD;   // 가마가 있으면 반값(통나무 3 → 숯 4)
+// ★[T452] 숯가마 한 곳이 하루(dayMs)에 구울 수 있는 배치 수 — 서버 조업 시간식 `KILN_BURN_MS + KILN_BATCH_MS_PER × (n − 1) ≤ dayMs` 의 최대 n.
+function kilnBatchesPerDay(dayMs) { if (!(dayMs > KILN_BURN_MS)) return dayMs > 0 ? 1 : 0; return 1 + Math.floor((dayMs - KILN_BURN_MS) / KILN_BATCH_MS_PER); }
+// ★[T452] 숯가마 짓는 재료(두 단계 합) — 돌 10 · 통나무 2.
+const kilnBuildCost = () => { const o = {}; for (const st of CHARCOAL_KILN_STAGES) for (const [k, n] of Object.entries(st.need || {})) o[k] = (o[k] || 0) + n; return o; };
 
 module.exports = { FURNACE_STAGES, FURNACE_KINDS, FURNACE_FUEL_PER_ORE, CHARCOAL_KILN_STAGES, CHARCOAL_KILN_WOOD, CHARCOAL_KILN_YIELD,
-  SMELT_RECIPES, fuelPerOre, woodPerCharcoal, woodPerCharcoalKiln };
+  KILN_BURN_MS, KILN_BATCH_MS_PER, SMELT_RECIPES, fuelPerOre, woodPerCharcoal, woodPerCharcoalKiln, kilnBatchesPerDay, kilnBuildCost };
