@@ -451,5 +451,92 @@ console.log('\n⑩ [T398] 나무꾼의 숲 = 영토 밖 고리');
   }
 }
 
+// ── ⑪ [T491] 일괄 = 몸의 하루 — 명부는 그날 일한 나무꾼 몸 · 한 짐은 단 · 같은 함수 · 끔 = 옛 줄 ──────────────
+//   ★실행 절은 정본 `_lifeDaily` 를 그대로 돈다(`__labProbe._t449Probe.daily` · T449 ⑫ 의 그 판 · 사본 0).
+//   판: 영토 7×7 · 나무 셀 12 × 3그루(그루당 3단) · 가장 가까운 셀까지 10셀(320px) · 하루 60,000ms(낮 42초 — 왕복 10초 ⇒ 4짐)
+//     ⇒ 끔 한도 = 4짐 × 짐당 2그루(⌊25 ÷ (3단 × 3kg)⌋) × econ 나무꾼 2 = 16그루 · 켬 한도 = 4짐 × 8단(⌊25 ÷ 3⌋) × 몸 2 = 64단(22그루).
+//     한도가 **숲보다 작은** 판이라야 가른다(하루 1,440,000ms 면 둘 다 36그루를 다 벤다 — 자명 통과 금지).
+console.log('\n⑪ [T491] 일괄 = 몸의 하루 — 명부는 그날 일한 나무꾼 몸 · 한 짐은 단 · 끔 = 옛 줄');
+{
+  const VC = codeOf(VSRC);
+  const daily = (VC.match(/function _lifeDaily\(vil\) \{[\s\S]*?\n\}/) || [''])[0];
+  ok(/^const T491_BATCH_FROM_BODY = process\.env\.T491_BATCH_FROM_BODY === '1';$/m.test(VSRC)
+     && (VSRC.match(/process\.env\.T491_BATCH_FROM_BODY/g) || []).length === 1,
+    '⑪ ★손잡이 `T491_BATCH_FROM_BODY` 는 **한 자리**에서 읽힌다 · `=== \'1\'` 이라야 켜진다(기본 끔)');
+  //   ★같은 함수 — 한 몸의 하루 = T400 집 크루가 쓰는 **그 두 함수**(짐 수 · 한 짐)의 곱 · 몸통에 수 0
+  const bd = (VC.match(/function _t491BodyDay\([\s\S]*?\n\}/) || [''])[0];
+  const bdLits = (bd.replace(/_t\d+\w*/g, '').match(/\b\d+(\.\d+)?\b/g) || []).filter((x) => x !== '1');
+  ok(/return _t341TripsPerDay\(vil, distPx, 1\) \* _t400PerLoad\('wood'\);/.test(bd) && bdLits.length === 0,
+    '⑪ ★★한 몸의 하루 = `_t341TripsPerDay`(짐 수) × `_t400PerLoad(\'wood\')`(한 짐) — **새 수 0**', bdLits.join(',') || '수 0개');
+  const b4 = (VC.match(/function _t400BuildDay\([\s\S]*?\n\}/) || [''])[0];
+  ok(/const tripsEach = _t341TripsPerDay\(vil, F\.d, 1\);/.test(b4) && /_t400PerLoad\(k\)/.test(b4),
+    '⑪ ★★그 두 함수는 **T400 집 크루가 쓰는 그것**이다(몸 크루 문법 — 사본 0)');
+  const cr = (VC.match(/function _t491Crew\([\s\S]*?\n\}/) || [''])[0];
+  ok(/p\.simJob !== 'lumberjack'/.test(cr) && /if \(p\._rest\) continue;/.test(cr) && /p\._lifeTask\.k === 'build'/.test(cr) && /vil\._t400Crew/.test(cr)
+     && !/Math\.random|\b\d{2,}\b/.test(cr),
+    '⑪ ★명부 = 나무꾼 **몸** 중 그날 일한 몸(요양 · 시공 과업 · 집 크루는 뺀다 — 몸이 이미 가진 칸 · 주사위 0 · 수 0)');
+  //   ★끔 = 옛 줄 — 명부는 econ 수 · 한 짐은 그루 · 한도 = 짐 수 × 짐당 그루 × 명부 · `made` 는 그루(+1)
+  ok(/const _t491C = T491_BATCH_FROM_BODY \? _t491Crew\(vil\) : null;/.test(daily)
+     && /const _lnE = _t491C \? _t491C\.length : \(\(vil\.econ\.counts && vil\.econ\.counts\.lumberjack\) \|\| 0\);/.test(daily)
+     && /const _perLoad = _t491C \? _t400PerLoad\('wood'\) : _t341TreesPerLoad\(_w\);/.test(daily)
+     && /const _cap = _t491C \? _body \* _ln : _trips \* _perLoad \* _ln;/.test(daily)
+     && /made \+= _t491C \? u : 1;/.test(daily),
+    '⑪ ★★끔 = 옛 줄 그대로(명부 econ 수 · 짐당 그루 · 한도 `왕복 × 짐 × 명부` · 그루 세기) — 켬만 명부·짐·세기 단위가 바뀐다');
+  ok(!/_t491/.test((VC.match(/if \(vil\.econ && _lifeEcon\(\)\.T347_FORAGE_ACT\) \{[\s\S]*?\n  \}/) || [''])[0]),
+    '⑪ ★채집 절(T347)은 **무접촉**(T490 자리 — 같은 함수를 그 절에 앉히는 것은 뒤 카드)');
+  //   ② 실행 — 정본 `_lifeDaily` 를 도는 판
+  const VP = JSON.stringify(path.join(ROOT, 'server', 'villages.js'));
+  const run = (env, o) => probe(Object.assign({ T325_WOOD_ACT: '1', T347_FORAGE_ACT: '', T449_BODY_DAY: '', T491_BATCH_FROM_BODY: '' }, env), `const E=require(${EP}); const V=require(${VP}); const P=V.__labProbe;
+    const SZ=32, ccx=400, ccy=400; const players=new Map(), observers=new Map();
+    const b=(pid,x)=>Object.assign({pid,isNpc:true,simJob:'lumberjack',inventory:{}},x||{});
+    players.set(1,b(1,${JSON.stringify(o.b1 || {})})); players.set(2,b(2,${JSON.stringify(o.b2 || {})}));
+    const trees=new Map(); for(let i=0;i<12;i++) trees.set((ccx+10)+','+(ccy+i),3); let cut=0;
+    const near=${o.obs ? 'true' : 'false'};
+    const deps={players,broadcast(){},moveSpeed:64,dayPhaseRatio:0.7,worldPhase:()=>0.3,anyViewerNear:()=>near,
+      t325TreesAtCell:(cx,cy)=>{const n=trees.get(cx+','+cy)||0; return n>0?Array.from({length:n},(_,j)=>({id:cx+'_'+cy+'_'+j,seedKey:'s'+cx+'_'+cy+'_'+j})):[];},
+      t325CutTreeAt:(cx,cy)=>{const k=cx+','+cy; const n=trees.get(k)||0; if(!n) return null; trees.set(k,n-1); cut++; return {wood:3};},
+      t325LootOf:()=>({wood:3}), t341Unharvest:()=>0};
+    P._t400Probe.setup({deps,db:{insertVillageBuilding:()=>1},dayMs:${o.dayMs || 60000},epoch:0,zoneId:'t491',tickCtx:{now:60*${o.dayMs || 60000}}});   // 시계 고정(게임일 60 — 벽시계 무관)
+    const ev=E.createVillage({initialPop:0,name:'x',fertility:1}); ev.counts=ev.counts||{}; ev.counts.lumberjack=${o.ljE == null ? 2 : o.ljE}; const w0=ev.storage.wood||0;
+    const terr=new Set(); for(let dx=-3;dx<=3;dx++) for(let dy=-3;dy<=3;dy++) terr.add((ccx+dx)+','+(ccy+dy));
+    const vil={dbId:7,name:'x',ccx,ccy,econ:ev,npcPids:[1,2],_terrSet:terr,_farmSet:new Set(),_drySet:new Set(),_potSet:new Set(),_crop:new Map(),_cropClaim:new Set(),_claim:new Set(),_site:null,_houseCells:[],_granList:[],_maxRPx:200${o.t400 ? ',_t400Crew:' + JSON.stringify(o.t400) : ''}};
+    const crew=P._t491Probe.crew(vil), body=P._t491Probe.bodyDay(vil,320), tp=P._t400Probe.tripsPerDay(vil,320), pl=P._t400Probe.perLoad('wood'), tl=P._t400Probe.treesPerLoad(3);
+    P._t449Probe.daily(vil);
+    const g=(ev.storage.wood||0)+((ev.treasury&&ev.treasury.wood)||0)-w0;
+    console.log(JSON.stringify({knob:P._t491Probe.T491_BATCH_FROM_BODY,crew,body,tp,pl,tl,cut,wood:+g.toFixed(6),walked:vil._t325Dbg&&vil._t325Dbg.walked,cap:vil._t325Dbg&&vil._t325Dbg.cap,ln:vil._t325Dbg&&vil._t325Dbg.ln,t491:(vil._t325Dbg&&vil._t325Dbg.t491)||null}))`);
+  const ON = { T491_BATCH_FROM_BODY: '1' };
+  const off = run({}, {}), on = run(ON, {});
+  ok(off.knob === false && on.knob === true && off.tp === 4 && off.tl === 2 && off.pl === 8,
+    '⑪ [전제 · 자명 통과 금지] 판이 한도에 걸린다 — 하루 4짐(낮 42초 ÷ 왕복 10초) · 짐당 2그루 · 한 짐 8단(정본이 낸 수)', `짐 ${off.tp} · ${off.tl}그루 · ${off.pl}단`);
+  ok(off.cut === off.tp * off.tl * 2 && off.cut < 36 && off.t491 === null && off.ln === 2,
+    '⑪ ★★끔 = 옛 줄 — 한도 `4짐 × 2그루 × econ 2` = **16그루**(숲 36 보다 작다) · T491 칸은 안 선다', `${off.cut}그루 · ${off.wood}단`);
+  ok(on.body === on.tp * on.pl && on.body === 32 && on.cap === 64 && on.crew.join() === '1,2',
+    '⑪ ★★켬 = 한 몸의 하루 **32단**(4짐 × 8단 — T400 크루의 그 두 함수) × 명부 2몸 = 한도 **64단**', `${on.body}단 × ${on.crew.length} = ${on.cap}`);
+  ok(on.cut === 22 && on.wood === 66 && on.t491 && on.t491.made === 66,
+    '⑪ ★★[실행] 켬은 **단으로** 센다 — 64단에 닿을 때까지 통째 그루로(한 그루는 지고 온다 · 22그루 = 66단)', `${on.cut}그루 · ${on.wood}단`);
+  //   ③ 명부 — 그날 일 못 한 몸은 빠진다(요양 · 시공 과업 · 집 크루) · 다 빠지면 일괄 0(앓은 날에 일괄이 성한 몸의 걸음을 베지 않는다)
+  const rest1 = run(ON, { b2: { _rest: 1 } }), rest2 = run(ON, { b1: { _rest: 1 }, b2: { _rest: 1 } });
+  const bld = run(ON, { b1: { _lifeTask: { k: 'build' } } }), t4 = run(ON, { t400: [2] });
+  ok(rest1.crew.join() === '1' && rest1.cap === 32 && rest1.cut === 11 && rest1.wood === 33,
+    '⑪ ★★[실행] 한 몸이 요양이면 명부 1 — 한도 32단(11그루)', `${rest1.cut}그루 · ${rest1.wood}단`);
+  ok(rest2.crew.length === 0 && rest2.cut === 0 && rest2.wood === 0,
+    '⑪ ★★★[실행] 나무꾼 몸이 **다 앓은 날은 일괄 0** — 몸이 안 나른 날 일괄도 안 나른다(끔은 그날 16그루를 벤다 — T449 ② 의 25배가 그 자리)', `켬 ${rest2.cut}그루 ↔ 끔 ${run({}, { b1: { _rest: 1 }, b2: { _rest: 1 } }).cut}그루`);
+  ok(bld.crew.join() === '2' && bld.cut === 11 && t4.crew.join() === '1' && t4.cut === 11,
+    '⑪ [실행] 시공 과업인 몸 · 집 크루(T400)인 몸도 그날 명부에서 빠진다(한 몸이 두 일을 안 한다)', `시공 ${bld.cut} · 집 크루 ${t4.cut}그루`);
+  //   ④ 명부는 몸이다 — econ 수와 무관(econ 0 · 몸 2 ⇒ 켬은 벤다 · 끔은 안 벤다) · 이중 0 · 관측 마을(T449)
+  const e0on = run(ON, { ljE: 0 }), e0off = run({}, { ljE: 0 });
+  ok(e0on.cut === 22 && e0off.cut === 0,
+    '⑪ ★[실행] 켬 명부는 **몸**이다 — econ 나무꾼 0 · 몸 2 인 마을: 켬 22그루 · 끔 0(econ 수를 본다)', `${e0on.cut} · ${e0off.cut}`);
+  const hand = [run({}, { b1: { inventory: { wood: 6 } } }), run(ON, { b1: { inventory: { wood: 6 } } })];
+  ok(hand.every((x) => x.cut === 0 && x.walked === 1 && x.wood > 0) && hand[0].wood === hand[1].wood,
+    '⑪ ★★[실행] 이중 0 그대로 — 몸이 든 통나무가 있으면 켬·끔 **둘 다** 일괄 0 · 곳간엔 그 손만(몸 XOR 일괄 무변)', hand.map((x) => `${x.cut}/${x.wood}`).join(' · '));
+  const seen = run(Object.assign({ T449_BODY_DAY: '1' }, ON), { obs: true });
+  ok(seen.cut === 0 && seen.ln === 0, '⑪ [실행] 관측 마을(T449 켬)은 두 손잡이 다 켜도 몸 명부 — 일괄 0(T449 문법 그대로)', `${seen.cut}그루`);
+  //   ⑤ 하루가 길면(운영 1,440,000ms) 둘 다 숲을 다 벤다 — 한도는 **숲**이 쥔다(값: 끔 44그루 한도 ↔ 켬 32단 × 몸 — 보고 §②)
+  const L0 = run({}, { dayMs: 1440000 }), L1 = run(ON, { dayMs: 1440000 });
+  ok(L0.cut === 36 && L1.cut === 36 && L0.tp === 100,
+    '⑪ [상황] 운영 하루(낮 1,008초 · 100짐)면 켬·끔 둘 다 **숲을 다 벤다**(36그루) — 이 판의 한도는 숲이다', `${L0.cut} · ${L1.cut}`);
+}
+
 console.log(`\n=== 결과: ${pass} PASS / ${fail} FAIL ===\n`);
 process.exit(fail ? 1 : 0);
