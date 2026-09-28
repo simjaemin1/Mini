@@ -19,6 +19,12 @@
 * ③ `__frameCapture(60)`(콘솔) — 프레임 dt · 렌더 · 메시지 · 층 넷 · 핑마다 세 몫(클라 막힘 · 서버 · 망). ⚠"망 = rtt − 서버 체류" 만으로는 느린 클라의 큐 대기가 망으로 보인다(헤드리스 437ms 전부 "망" → 클라 막힘을 빼니 415 / 1.7 / 31.8).
 * 기준선(컨테이너 · 빈 한반도 5분 · `[단판]`): 스파이크 초 9/299 — econ 하루 경계 3초(틱 max 140ms · 주인 · 들어 올림 129) + **틱 밖** 6초(루프 50~91ms · 사건·GC·디스크 0) · steal 최대 2.5% · GC 0. 서울 값은 재민 캡처 뒤(보고/T486_2026-09-28.md §0-ⓓ).
 
+
+
+## T484. ★2026-09-28 — 존 기동 때 존 기후를 econ 에 얹는다(한 호출 · 정본은 `인계/K-달력온도.md` 3-연)
+
+* `zone.js` 맨 위 `SimVillages` 바로 뒤 — `weather.applyZoneClimate(ZONE_ID)`. 표(`server/climate-normals.js`)의 `apply` 인 존(중원북·닛폰)만 평년값을 얹는다. `T484_PALEO=1` 이면 청동기 Δ 를 더한다. 나머지 존 · 한반도는 무동작(비트 동일).
+* 기온의 시계는 `gameDayT(now)` 다(분수 게임일 + 세계 phase) — HUD `weatherNow` · 몸 `Body.tick` ctx `dayT`·`dayPh` 가 쓴다.
 ## T485. ★★2026-09-28 — 두 호스트(서울 central·한반도 + 도쿄 닛폰) · 안 도는 자리 1 = 안 문 비밀
 
 * 호스트가 갈리면 안 문(`internal-door` — 존↔central `/player`·`/tribe/*` · 존↔존 `/handoff_prepare`·`/handoff_ack`·`/ghost_sync`·`/cross_damage`·`/kick_player`)이 **사설 주소 폴백을 잃는다** → 404/401. `CENTRAL_SECRET` 을 **셋 다**(central · 한반도 · 닛폰) — 하나만 주면 서울 안에서도 401.

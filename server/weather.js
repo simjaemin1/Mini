@@ -222,6 +222,7 @@ const _MONTH_DAYS = [31, 28.25, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 /** 그 달에 비가 오는 날의 비율 p(0..1) — 평년 강수일수 ÷ 그 달의 날 수. */
 function precipPOfMonth(month) {
   const i = (((month | 0) - 1) % 12 + 12) % 12;
+  if (_paleo.on) return PRECIP_DAYS[i] * _paleo.pMult / _MONTH_DAYS[i];   // ★[T484 ③] 켬만 — 앵커 열둘에 배수(T98 문법)
   return PRECIP_DAYS[i] / _MONTH_DAYS[i];
 }
 
@@ -284,21 +285,42 @@ function ampMultOf(day) {
  * ⚠다만 **이 세계의 산은 35m 다**(산 높이 캐논) ⇒ 0.23℃ ≈ 추위 0.007. 모델은 살았지만 세계가 낮다.
  *   게다가 바위 셀은 **통행 불가**라 플레이어가 설 수 있는 고도가 지금은 0 뿐이다 — 회부.
  */
-function tempAt(day, night, elevKm) {
+// ★★[T484 ① 2026-09-28] **기온은 시각의 연속 함수다** — 종전 식은 `mean(정수 일) + 편차(정수 일) ± 일교차·배율`(낮/밤 **깃발**)이라
+//   하루 두 번 뛰었다: 낮→밤(phase 0.7)에 일교차 두 배(5.5~14.5℃) · 하루 경계에 연주기·편차·배율의 한 날 치.
+//   ⇒ 이제 econ 정본의 **시각 코사인**(`temperatureAt(day, hourFrac)` — econ 이 "생활층 인계용"으로 이미 내보낸 그것)을 그대로 쓴다.
+//     t = **분수 게임일**(정수부 = 그날 · 소수부 = 그날 안의 시각) · 연주기·편차·배율은 t 로(`_vnoise` 는 분수를 받는다 — C¹) ·
+//     일교차 = econ 의 시각 항(`temperatureAt(t, hf) − temperatureAt(t, null)`)에 그날의 배율(`ampMultOf`)을 곱한다(같은 자리 · 새 수 0).
+//   ★시각(hourFrac)은 **세계 phase** 에서 온다: 정오 = 낮의 한가운데(`dayPhaseRatio/2`) · 자정 = 밤의 한가운데(`(1+dayPhaseRatio)/2`) —
+//     둘 다 `WORLD.dayPhaseRatio` 하나에서 유도(두 점은 정확히 반날 떨어진다 · 새 수 0). econ 의 hourFrac 0 = 자정 최저 · 0.5 = 정오 최고.
+function _dayPhaseRatio() { try { return require('./zone-config').WORLD.dayPhaseRatio; } catch (e) { return null; } }
+const PH = (() => { const r = _dayPhaseRatio(); const q = Number.isFinite(r) ? r : 0.7; return { noon: q / 2, midnight: (1 + q) / 2 }; })();
+/** 세계 phase(0..1) → econ hourFrac(0 = 자정 · 0.5 = 정오). */
+function hourFracOf(phase) { const f = (phase - PH.midnight) % 1; return f < 0 ? f + 1 : f; }
+/** ★정본 — 분수 게임일 t 의 기온(℃). `phase` 를 안 주면 t 의 소수부가 곧 세계 phase 다. */
+function tempAtT(t, elevKm, phase) {
   const E = _E(), a = _anchors();
-  if (!E || !a) return null;
-  const mean = E.temperatureAt(day, null, elevKm || 0);
-  return mean + devCOf(day) + (night ? -1 : 1) * a.diurnalAmp * ampMultOf(day);
+  if (!E || !a || !Number.isFinite(t)) return null;
+  const ph = Number.isFinite(phase) ? phase : (t - Math.floor(t));
+  const hf = hourFracOf(ph), el = elevKm || 0;
+  const mean = E.temperatureAt(t, null, el);
+  return mean + devCOf(t) + (E.temperatureAt(t, hf, el) - mean) * ampMultOf(t);
+}
+/** 옛 호출 규약 — 그날(정수 일)의 **낮 = 정오 · 밤 = 자정** 값(눈·상함처럼 "그날 최고/최저"를 묻는 자리). 같은 곡선의 두 점이다. */
+function tempAt(day, night, elevKm) {
+  // 그날(day) 의 연주기·편차·배율 + 시각만 정오/자정 — 종전 식(`mean ± 일교차·배율`)과 **같은 수**다(econ 코사인 cos 0 = 1 · cos π = −1).
+  return tempAtT(day, elevKm, night ? PH.midnight : PH.noon);
 }
 /** 불·실내·마을을 **뺀** "얼마나 추운가"(옷의 단열 `insC` ℃ 는 반영). ★**1 을 넘을 수 있다**(하한만 0).
  *  ★한 틱의 모든 플레이어가 **같은 (day, night, elev)** 를 묻는다 ⇒ 한 칸 메모로 적중률이 사실상 100%다.
  *    (fBm 3옥타브 + 코사인을 플레이어 수만큼 다시 도는 건 그냥 낭비다. 결과는 순수 함수라 같다.) */
 let _oc = { k: null, v: null };
-function outdoorCold(day, night, elevKm, insC) {
-  const k = `${day}|${night ? 1 : 0}|${elevKm || 0}|${insC || 0}`;
+// ★[T484 ①] `dayT`(분수 게임일)·`phase`(세계 phase)가 오면 **그 시각**의 기온 — 안 오면 옛 규약(그날 정오/자정) 그대로.
+function _tNow(day, night, elevKm, dayT, phase) { return Number.isFinite(dayT) ? tempAtT(dayT, elevKm, phase) : tempAt(day, night, elevKm); }
+function outdoorCold(day, night, elevKm, insC, dayT, phase) {
+  const k = `${day}|${night ? 1 : 0}|${elevKm || 0}|${insC || 0}|${Number.isFinite(dayT) ? dayT : ''}|${Number.isFinite(phase) ? phase : ''}`;
   if (_oc.k === k) return _oc.v;
   // ★[옷 티어] `insC` = 옷의 단열(℃). 고도 감률·날씨 편차와 **같은 단위**라 그냥 더한다.
-  const t0 = tempAt(day, night, elevKm);
+  const t0 = _tNow(day, night, elevKm, dayT, phase);
   const t = (t0 === null) ? null : t0 + (+insC || 0);
   const v = (t === null) ? null : +Math.max(0, coldOfC(t)).toFixed(4);   // ★상한 없음(천장 해제)
   _oc = { k, v };
@@ -320,16 +342,87 @@ function label(cold) {
   for (const [at, ko, emo] of _LABELS) if (cold < at) return { ko, emo };
   return { ko: '살을 에는 추위', emo: '🩸' };
 }
-function hintOf(day, night, elevKm) {
-  const cold = outdoorCold(day, night, elevKm);
+function hintOf(day, night, elevKm, dayT, phase) {
+  const cold = outdoorCold(day, night, elevKm, 0, dayT, phase);
   if (cold === null) return null;
   const L = label(cold);
   // ℃ 도 같이 낸다 — 화면이 "왜 추운지"를 말할 수 있어야 한다(비네트 원인 축과 같은 규약).
-  return { cold, ko: L.ko, emo: L.emo, night: !!night, tempC: +tempAt(day, night, elevKm).toFixed(1) };
+  return { cold, ko: L.ko, emo: L.emo, night: !!night, tempC: +_tNow(day, night, elevKm, dayT, phase).toFixed(1) };
+}
+
+// ═══ ★★[T484 ② 2026-09-28] 존별 평년값 → econ `CLIMATE` — **유도는 여기 한 곳** ═══════════════════════════════════
+//   원자료 = `server/climate-normals.js` CLIMATE_NORMALS(관측소 30년 평년 월평균·월평균최고·월평균최저 열둘 · 출처 URL).
+//   유도(새 수 0 — 12·2·½ 은 셈이다):
+//     연평균   = 월평균 열둘의 평균(기상청·CMA·JMA 표의 "Year" 칸과 같은 정의)
+//     연진폭·위상 = 월평균 열둘의 **1차 조화**(달 한가운데 = (k+½)/12 해) — 진폭 = √(a²+b²) · 최난 = atan2(b, a) · 최한 = 최난 + ½ 해
+//     일교차   = (월평균최고 − 월평균최저)/2 의 열둘 평균(econ 의 ±diurnalAmp 코사인과 같은 뜻 — 하루 폭의 반)
+//   ⚠최한 위상은 **표만**이다 — econ 식에 doy 315 가 글자로 박혀 있어(`sim/` 무수정) 얹을 자리가 없다(보고 ② · 회부).
+function deriveClimate(n) {
+  if (!n || !Array.isArray(n.mean) || n.mean.length !== 12) return null;
+  const K = 12;
+  let s = 0, a = 0, b = 0, d = 0;
+  for (let k = 0; k < K; k++) {
+    const x = 2 * Math.PI * (k + 0.5) / K;
+    s += n.mean[k]; a += n.mean[k] * Math.cos(x); b += n.mean[k] * Math.sin(x);
+    if (Array.isArray(n.max) && Array.isArray(n.min)) d += (n.max[k] - n.min[k]) / 2;
+  }
+  a *= 2 / K; b *= 2 / K;
+  const warm = ((Math.atan2(b, a) / (2 * Math.PI)) % 1 + 1) % 1;   // 해 안 자리(1월 1일 = 0)
+  return { zoneLatBase: s / K, annualAmp: Math.hypot(a, b), diurnalAmp: d / K, warmFrac: warm, coldFrac: (warm + 0.5) % 1 };
+}
+
+// ═══ ★★[T484 ③ 2026-09-28] 청동기 고기후 오프셋 — 손잡이 `T484_PALEO`(기본 **끔** · 끔 = 비트 동일) · **값은 재민 판정 칸(#81)** ═══
+//   재민 확정(09-28) "청동기 온난습윤을 고려한다" — 그 **크기**를 논문에서 읽는다(송국리 ≈ 3,000~2,500 BP).
+//   ★기준에 주의: 우리 평년값은 **1991~2020** 이다(산업화 뒤 +1℃ 안팎이 이미 들었다). 같은 청동기가
+//     산업화 전(1800~1900) 대비로는 따뜻하고(+0.46) 오늘 평년 대비로는 조금 춥다(−0.54). 표는 **오늘 평년 대비**다(존 평년값에 더하니까).
+//   정량 행(Δ℃ · ΔP%)만 범위를 만든다 · 정성 행은 방향만 적는다. 권고 = 정량 범위의 가운데(PM · 재민 거부권).
+const PALEO_SOURCES = [
+  { id: 'Kaufman2020', dC: 0.7 - 0.08 * 3 - 1.0, dP: null, kind: 'GMST(Temp12k)',
+    cite: '"0.7 °C (0.3, 1.8) warmer than the 1800–1900" · "−0.08 °C per 1000 years" · "past decade ... 1 °C higher"',
+    url: 'https://www.nature.com/articles/s41597-020-0530-7', note: '6 ka +0.7 → 3 ka +0.46(1800–1900 대비) → 2011–19 대비 −0.54' },
+  { id: 'Song2026', dC: 11.0 - 11.2, dP: null, kind: 'brGDGT MAT · 화북 동부',
+    cite: '"average MAT of 11°C from ∼3440 cal. yr BP" · 현재 11.2℃', url: 'https://www.sciencedirect.com/science/article/abs/pii/S0031018225008156',
+    note: '3.2 · 2.8 · 2.5 ka 냉각 사건이 그 평균 안에 있다' },
+  { id: 'Lee2024', dC: null, dP: [(1385 - 1475) / 1475 * 100, (1545 - 1475) / 1475 * 100], kind: '화분 Tann/Pann · 광양(섬진강 하구)',
+    cite: '"Pann was 1,385–1,545 mm" · "Tann ... gradually decreased"', url: 'https://www.sciencedirect.com/science/article/pii/S0341816224002297',
+    note: 'Tann 최고 ≈4000 BP 뒤 감소 · 건조 사건 2800 BP · 강수는 홀로세 평균(≈1,475mm) 대비 폭' },
+  { id: 'Park2023', dC: null, dP: null, kind: '화분·숯 · 한반도 서해안', cite: '"cooling events at 2.8 ka and 2.3 ka"', url: 'https://www.nature.com/articles/s41598-023-42551-x',
+    note: '2600~1700 BP 건조(정성 · 수 없음)' },
+  { id: 'Park2019', dC: null, dP: null, kind: '화분 · 한반도', cite: '"abrupt drying and/or cooling event"', url: 'https://www.nature.com/articles/s41598-019-47264-8',
+    note: '2.8 ka 사건 · 송국리 문화에 위협(정성)' },
+  { id: 'Geng2024', dC: null, dP: null, kind: '화분 계절 기온 · 동북 중국', cite: '"2.5 ka" · "amplitude variation up to 3 °C"', url: 'https://www.sciencedirect.com/science/article/abs/pii/S0031018224003808',
+    note: '사건 폭(최한월) — 연평균 오프셋이 아니다' },
+];
+function paleoRange() {
+  const C = PALEO_SOURCES.map((r) => r.dC).filter((x) => Number.isFinite(x));
+  const P = [].concat(...PALEO_SOURCES.map((r) => r.dP).filter(Boolean));
+  const mid = (xs) => (xs.length ? (Math.min(...xs) + Math.max(...xs)) / 2 : 0);
+  return { dC: [Math.min(...C), Math.max(...C)], dP: P.length ? [Math.min(...P), Math.max(...P)] : [0, 0], recC: mid(C), recP: mid(P) };
+}
+const T484_PALEO = process.env.T484_PALEO === '1';
+const _paleo = { on: T484_PALEO, dC: 0, pMult: 1 };
+if (T484_PALEO) { const R = paleoRange(); _paleo.dC = R.recC; _paleo.pMult = 1 + R.recP / 100; }
+/**
+ * 존 기동 때 한 번 — econ `CLIMATE` 에 그 존의 평년값(`apply` 인 존만 · 또는 `opts.forceNormals`)과 고기후 Δ(손잡이 켬만)를 얹는다.
+ * ★표에 없는 존 · `apply: false` · 손잡이 끔이면 **아무것도 안 바꾼다**(비트 동일). econ 은 이 객체를 호출마다 읽는다(econ 파일 무수정 —
+ *   econ 주석 그대로의 "존 생성 시 오버라이드").
+ */
+function applyZoneClimate(zoneId, opts) {
+  const E = _E(); if (!E) return null;
+  let N = null; try { N = require('./climate-normals').CLIMATE_NORMALS[zoneId] || null; } catch (e) { N = null; }
+  const use = !!(N && (N.apply || (opts && opts.forceNormals)));
+  const D = use ? deriveClimate(N) : null;
+  if (!D && !_paleo.on) return { zoneId, changed: false };
+  if (D) { E.CLIMATE.zoneLatBase = D.zoneLatBase; E.CLIMATE.annualAmp = D.annualAmp; E.CLIMATE.diurnalAmp = D.diurnalAmp; }
+  if (_paleo.on) E.CLIMATE.zoneLatBase += _paleo.dC;
+  _anch = null; _oc = { k: null, v: null }; _pc = null;
+  return { zoneId, changed: true, normals: !!D, paleo: _paleo.on, CLIMATE: Object.assign({}, E.CLIMATE) };
 }
 
 module.exports = {
   CFG, available, bindEcon, anchors,
+  // ★[T484] 연속 시각 · 존 평년값 · 고기후
+  tempAtT, hourFracOf, PH, deriveClimate, applyZoneClimate, PALEO_SOURCES, paleoRange, T484_PALEO,
   coldOfC, devCOf, ampMultOf, tempAt, outdoorCold, label, hintOf,
   // ★[T98] 강수 정본 — 값 하나(`precipAt`)와 그 재료(하네스·보고가 표를 만들 수 있게)
   precipAt, precipPOfMonth, PRECIP_DAYS, PRECIP_OFF,

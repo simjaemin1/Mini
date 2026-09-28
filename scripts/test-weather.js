@@ -217,5 +217,77 @@ for (const [name, days, from] of WINDOWS) {
   ok(/w\.precip/.test(csrc), '⑧e (T93 무접촉) 클라 층은 이미 `wx.precip` 을 읽고 있다 — 값이 오는 날 저절로 켜진다');
 }
 
+console.log('\n=== ⑨ T484 — 기온은 시각의 연속 함수 · 존 평년값 · 청동기 Δ · 한 함수 (T484) ===\n');
+{
+  const E = require(R('sim/economy-sim-v2.js'));
+  const { WORLD } = require(R('server/zone-config.js'));
+  const DAYS_S = WORLD.dayLengthMs / 1000;                     // 게임일 = 실시간 초(1,440)
+  // 옛 식(T484 전 글자 그대로 — 이 파일 안에서만 · 견줌용): 정수 일 + 낮밤 깃발
+  const a = W.anchors();
+  const oldAt = (day, night) => E.temperatureAt(day, null, 0) + W.devCOf(day) + (night ? -1 : 1) * a.diurnalAmp * W.ampMultOf(day);
+  // ⑨-a 옛 규약(그날 정오/자정) = 옛 식 — 3년 × 낮밤 전수 · 차 최대
+  let dMax = 0; for (let d = 0; d < 365 * 3; d++) for (const n of [false, true]) dMax = Math.max(dMax, Math.abs(W.tempAt(d, n, 0) - oldAt(d, n)));
+  ok(dMax < 1e-9, '⑨-a 옛 호출 규약 `tempAt(day, night)` = 종전 식(3년 × 낮밤 2,190점 · econ 코사인 cos0=1·cosπ=−1 · 차는 부동소수 반올림뿐)', `최대 차 ${dMax.toExponential(2)}℃`);
+  // ⑨-b 하루(24분)를 1초 격자로 — 옛 HUD(정수 일 · 깃발) 대 새 HUD(분수 일 · phase) · 60일(겨울 30 · 여름 30)
+  const days = []; for (let i = 0; i < 30; i++) { days.push(a.winterMid - 15 + i); days.push(a.summerMid - 15 + i); }
+  let oldMax = 0, newMax = 0, oldJumps = 0, oldBig = [], tMin = 99, tMax = -99;
+  for (const D0 of days) {
+    const D = Math.floor(D0);
+    let po = null, pn = null;
+    for (let s = 0; s <= DAYS_S; s++) {
+      const ph = (s % DAYS_S) / DAYS_S, dd = D + Math.floor(s / DAYS_S);
+      const to = oldAt(dd, ph > WORLD.dayPhaseRatio), tn = W.tempAtT(D + s / DAYS_S, 0, ph);
+      if (po !== null) { const j = Math.abs(to - po); if (j > oldMax) oldMax = j; if (j > 1) { oldJumps++; if (oldBig.length < 4) oldBig.push(`${(s / DAYS_S).toFixed(3)}:${j.toFixed(2)}`); } }
+      if (pn !== null) newMax = Math.max(newMax, Math.abs(tn - pn));
+      po = to; pn = tn; tMin = Math.min(tMin, tn); tMax = Math.max(tMax, tn);
+    }
+  }
+  // 새 식의 이론 상한(유도 · 새 수 0): 일교차 코사인 기울기 최대 + 연주기 기울기 + 편차 기울기(smoothstep 최대 기울기 1.5/주기)
+  const C = E.CLIMATE, F = W.CFG, wsum = F.W1 + F.W2 + F.W3;
+  const bound = (C.diurnalAmp * F.AMP_MAX * 2 * Math.PI) / DAYS_S
+              + (C.annualAmp * 2 * Math.PI / 365) / DAYS_S
+              + (F.DEV_C * 2 * 1.5 * (F.W1 / F.P1 + F.W2 / F.P2 + F.W3 / F.P3) / wsum) / DAYS_S
+              + (C.diurnalAmp * F.AMP_NOISE * 2 * 1.5 / F.AMP_P) / DAYS_S;
+  ok(oldJumps === days.length * 2, '⑨-b [옛] 하루 두 번 뛴다(낮→밤 phase 0.7 · 하루 경계) — 60일 × 2', `점프 ${oldJumps} · 최대 ${oldMax.toFixed(2)}℃/s · 예 ${oldBig.join(' ')}`);
+  ok(newMax <= bound, '⑨-b ★[새] 하루 어느 초에서도 안 뛴다 — |Δ℃/s| 최대 ≤ 이론 상한(일교차·연주기·편차 기울기의 합)', `최대 ${newMax.toFixed(4)}℃/s ≤ ${bound.toFixed(4)} · 옛 ${oldMax.toFixed(2)}`);
+  ok(tMax - tMin > 20, '⑨-b [자명 통과 금지] 새 곡선도 실제로 크게 움직인다(겨울·여름 60일)', `${tMin.toFixed(1)}~${tMax.toFixed(1)}℃`);
+  // 정오 최고 · 자정 최저 — phase 에서 유도
+  ok(W.hourFracOf(W.PH.noon) === 0.5 && W.hourFracOf(W.PH.midnight) === 0 && W.PH.midnight - W.PH.noon === 0.5,
+     '⑨-c 정오 = 낮의 한가운데(dayPhaseRatio/2) · 자정 = 밤의 한가운데((1+dayPhaseRatio)/2) · 반날 거리', `${W.PH.noon} · ${W.PH.midnight}`);
+  // ⑨-d 존 평년값 유도 — 표 셋 · 한반도 끔(비트 동일) · 닛폰 켬
+  const N = require(R('server/climate-normals.js')).CLIMATE_NORMALS;
+  const before = JSON.stringify(E.CLIMATE);
+  const rH = W.applyZoneClimate('hanbando'), rX = W.applyZoneClimate('europa');
+  ok(JSON.stringify(E.CLIMATE) === before && !rH.changed && !rX.changed, '⑨-d 한반도(`apply: false`)·표에 없는 존 → econ `CLIMATE` **그대로**(비트 동일)', before);
+  for (const z of Object.keys(N)) {
+    const d = W.deriveClimate(N[z]);
+    const yr = N[z].mean.reduce((x, y) => x + y, 0) / 12;
+    ok(d && Math.abs(d.zoneLatBase - yr) < 1e-12 && d.annualAmp > 5 && d.diurnalAmp > 2 && N[z].src && /https?:\/\//.test(N[z].src),
+       `⑨-d ${z} 평년값 유도(${N[z].station.split('(')[0]}) — 연평균 ${d.zoneLatBase.toFixed(2)} · 연진폭 ${d.annualAmp.toFixed(2)} · 일교차 ${d.diurnalAmp.toFixed(2)} · 최한 해 자리 ${d.coldFrac.toFixed(3)}`, N[z].period);
+  }
+  { const cp = require('child_process').spawnSync(process.execPath, ['-e',
+      `const W=require(${JSON.stringify(R('server/weather.js'))});const E=require(${JSON.stringify(R('sim/economy-sim-v2.js'))});const r=W.applyZoneClimate('nippon');const d=W.deriveClimate(require(${JSON.stringify(R('server/climate-normals.js'))}).CLIMATE_NORMALS.nippon);process.stdout.write('R'+JSON.stringify([E.CLIMATE.zoneLatBase===d.zoneLatBase,E.CLIMATE.annualAmp===d.annualAmp,E.CLIMATE.diurnalAmp===d.diurnalAmp,r.changed]));`],
+      { encoding: 'utf8', env: Object.assign({}, process.env, { T484_PALEO: '' }) });
+    let v = null; try { v = JSON.parse(String(cp.stdout).split('R').pop()); } catch (e) {}
+    ok(v && v.every(Boolean), '⑨-d 닛폰(`apply: true`) → econ `CLIMATE` = 유도값(자식 프로세스 · 기동 한 번의 그 호출)', JSON.stringify(v)); }
+  // ⑨-e 청동기 Δ — 끔 = 비트 동일 · 켬 = 권고 Δ(표에서 유도)
+  const PR = W.paleoRange();
+  ok(!W.T484_PALEO && W.precipPOfMonth(7) === W.PRECIP_DAYS[6] / W._internals._MONTH_DAYS[6], '⑨-e 끔(기본) — 강수 p 는 앵커 그대로 · 기온 Δ 0');
+  { const cp = require('child_process').spawnSync(process.execPath, ['-e',
+      `const W=require(${JSON.stringify(R('server/weather.js'))});const E=require(${JSON.stringify(R('sim/economy-sim-v2.js'))});const b=E.CLIMATE.zoneLatBase;W.applyZoneClimate('hanbando');process.stdout.write('R'+JSON.stringify([E.CLIMATE.zoneLatBase-b, W.precipPOfMonth(7)/(W.PRECIP_DAYS[6]/W._internals._MONTH_DAYS[6])]));`],
+      { encoding: 'utf8', env: Object.assign({}, process.env, { T484_PALEO: '1' }) });
+    let v = null; try { v = JSON.parse(String(cp.stdout).split('R').pop()); } catch (e) {}
+    ok(v && Math.abs(v[0] - PR.recC) < 1e-12 && Math.abs(v[1] - (1 + PR.recP / 100)) < 1e-12,
+       `⑨-e 켬 — 연평균 ${PR.recC.toFixed(2)}℃ · 강수일 ×${(1 + PR.recP / 100).toFixed(4)}(자료 범위 ${PR.dC.map((x) => x.toFixed(2)).join('~')}℃ · ${PR.dP.map((x) => x.toFixed(1)).join('~')}% 의 가운데)`, JSON.stringify(v)); }
+  ok(W.PALEO_SOURCES.length >= 2 && W.PALEO_SOURCES.every((r) => /^https?:\/\//.test(r.url) && r.cite), '⑨-e 고기후 표 — 자료마다 URL · 인용', `${W.PALEO_SOURCES.length}편`);
+  // ⑨-f 한 함수 — 서버·클라에 연주기 코사인 사본이 없다(econ 정본 하나) · 소비자는 weather 를 부른다
+  const files = ['server/zone.js', 'server/body.js', 'server/snow.js', 'server/spoil.js', 'server/wind.js', 'server/weather.js', 'public/client.js'].filter((f) => fs.existsSync(R(f)));
+  const copies = files.filter((f) => /doy\s*-\s*315|Math\.cos\(2 \* Math\.PI \* \(doy/.test(fs.readFileSync(R(f), 'utf8')));
+  ok(copies.length === 0, '⑨-f 연주기 코사인 사본 0(econ `temperatureAt` 하나)', copies.join(',') || `${files.length}파일`);
+  const Z = fs.readFileSync(R('server/zone.js'), 'utf8'), B = fs.readFileSync(R('server/body.js'), 'utf8');
+  ok(/hintOf\(gameDayNow\(\), bodyNight\(now\), 0, _dt\.t, _dt\.ph\)/.test(Z) && /W\.outdoorCold\(c\.day,[^\n]*c\.dayT, c\.dayPh\)/.test(B),
+     '⑨-f HUD(`hintOf`)·몸(`outdoorCold`)이 **같은 시계**(분수 게임일 + phase)로 같은 함수를 부른다');
+}
+
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
 process.exit(fail ? 1 : 0);

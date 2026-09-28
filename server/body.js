@@ -641,7 +641,7 @@ function coldTarget(ctx) {
     // ★[T105] 옷이 젖었으면 그만큼 덜 막는다 — 곱 하나가 `warmthInsC` 안에서 걸린다.
     //   ⚠아래 폴백(4단 계단) 경로엔 안 걸린다: 거긴 옷이 ℃ 가 아니라 `exposure` 곱으로 들어가고,
     //     그 경로는 `day` 없는 옛 호출부를 위한 **계약 보존**용이다(비도 `day` 없이는 못 묻는다).
-    ? W.outdoorCold(c.day, !!c.night, +c.elevKm || 0, warmthInsC(c.warmth, c.wet)) : null;
+    ? W.outdoorCold(c.day, !!c.night, +c.elevKm || 0, warmthInsC(c.warmth, c.wet), c.dayT, c.dayPh) : null;   // ★[T484 ①] 그 시각의 ℃(없으면 옛 규약)
   if (outdoor !== null) {
     // ★연중 연속 — 계절 이름이 아니라 **그날의 기온(℃)** 이 추위를 정한다(econ `temperatureAt` 정본).
     //   옷은 이미 ℃ 로 더해져 들어왔다 ⇒ 여기서 `exposure` 를 곱하지 않는다(이중 계산 금지).

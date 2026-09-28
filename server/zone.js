@@ -28,6 +28,9 @@ const http = require('http');
 const { ZONES, WORLD, isNight, worldPhase, darknessLevel, findZoneAt, worldDistance, worldDeltaX } = require('./zone-config');
 const db = require('./zone-local-db'); // 로컬 zone DB — players 없음
 const SimVillages = require('./villages'); // §4-4 NPC 마을 시뮬 — top-level은 상수뿐(실작업은 아래 init 호출, ENABLE_VILLAGES=0이면 완전 no-op)
+// ★[T484 ②③] 존 기후 — 이 존의 평년값(`server/climate-normals.js` · `apply` 인 존만)과 청동기 Δ(`T484_PALEO` 켬만)를 econ `CLIMATE` 에 얹는다.
+//   표에 없는 존 · 한반도(`apply: false`) · 손잡이 끔이면 아무것도 안 바꾼다(비트 동일). econ 이 기온을 읽기 전(기동)에 한 번.
+{ try { const _c = require('./weather').applyZoneClimate(process.env.ZONE_ID || 'korea'); if (_c && _c.changed) console.log(`[${process.env.ZONE_ID}] 🌡️ T484 존 기후 — 평년값 ${_c.normals ? '얹음' : '없음'} · 청동기 Δ ${_c.paleo ? '켬' : '끔'} · ${JSON.stringify(_c.CLIMATE)}`); } catch (e) {} }
 // ★★★[T350 2026-09-22 · 주사위 0] 씨 해시 정본 — `server/seed-rand.js`(사본 0 · 새 수 0).
 //   이 게임의 첫 캐논은 **주사위 금지**(07-12 재민)인데, T340 이 세어 보니 `decideNpcBehavior` 가
 //   **걸음마다 `Math.random` 을 15번** 굴리고 있었다. 그래서 T345 의 게이트("같은 씨 같은 좌표")가
@@ -7173,6 +7176,19 @@ function gameDayNow() {
 function calendarNow() {
   try { return require('./events').calendarOf(gameDayNow()); } catch (e) { return null; }
 }
+// ★★[T484 ① 2026-09-28] **기온의 시계 = 분수 게임일 + 세계 phase** — 정수 게임일·낮밤 깃발로 재면 하루 두 번 뛴다(보고/T484 ①).
+//   t = econ 의 게임일 + 그날 안에서 흐른 몫(`SimVillages.econDayT` — econ 이 제 날의 경계를 아는 그 시각에서 · 경계 앞뒤 한 틱에도 연속) ·
+//   ph = 세계 phase(몸의 낮밤과 같은 시계). ⚠얼린 시계(`__e2e_clock`)면 옛 규약 그대로 — 그날 정오/자정의 한 점(하네스 기대값 무변).
+function gameDayT(now) {
+  if (_e2eClock && Number.isFinite(_e2eClock.day)) {
+    const W = require('./weather'); const f = bodyNight(now) ? W.PH.midnight : W.PH.noon;
+    return { t: _e2eClock.day + f, ph: f };
+  }
+  const ph = worldPhase(now);
+  let t = null; try { t = SimVillages.econDayT ? SimVillages.econDayT(now) : null; } catch (e) { t = null; }
+  if (!Number.isFinite(t)) t = gameDayNow() + ph;
+  return { t, ph };
+}
 // 몸·날씨가 보는 밤 — 평시엔 `isNight` 그대로다(하네스만 이걸 갈아끼운다).
 function bodyNight(now) {
   if (_e2eClock && typeof _e2eClock.night === 'boolean') return _e2eClock.night;
@@ -7199,7 +7215,7 @@ function weatherNow() {
   const now = Date.now();
   if (_wxHint.v && now - _wxHint.at < 1000) return _wxHint.v;
   let v = null;
-  try { v = require('./weather').hintOf(gameDayNow(), bodyNight(now)); } catch (e) { v = null; }
+  try { const _dt = gameDayT(now); v = require('./weather').hintOf(gameDayNow(), bodyNight(now), 0, _dt.t, _dt.ph); } catch (e) { v = null; }   // ★[T484 ①] 그 시각의 ℃
   if (T487_SNOW && v) v.snow = _snowNow(gameDayNow());   // ★[T487] 칸 하나(켬만)
   _wxHint = { at: now, v };
   return v;
@@ -12849,9 +12865,9 @@ setInterval(() => {
     //   여기선 안 쓰이지만, 계약이 살아 있다는 걸 호출부가 보여 주는 편이 낫다.
     //   ★[겨울 난이도] 마을 완충은 여기서만 계산한다(사본 금지 — `SimVillages.shelterAt` 이 정본).
     // ★[바람 노출 2026-09-01] 완충을 한 번만 재고 노출에 **그대로 넘긴다** — 두 번 재면 두 값이 갈린다.
-    const _day = gameDayNow();
+    const _day = gameDayNow(), _dT = gameDayT(now);   // ★[T484 ①] 추위는 그 시각의 ℃(`dayT`·`dayPh`) · 나머지 일 셈은 정수 일 그대로
     const _sh = villageShelterOf(p, now);
-    Body.tick(p, dt, { day: _day, elevKm: elevKmAt(p), night: _night, nearFire: _fire, indoor: _indoor, warmth,
+    Body.tick(p, dt, { day: _day, dayT: _dT.t, dayPh: _dT.ph, elevKm: elevKmAt(p), night: _night, nearFire: _fire, indoor: _indoor, warmth,
                        villageShelter: _sh, windExposure: windExposureOf(p, now, _day, _sh),
                        // ★[T114] 수관 차폐 — 젖음이 이 곱 하나를 쓴다(`Body.coverMult` · 추위 축 무접촉)
                        cover: coverOf(p),
