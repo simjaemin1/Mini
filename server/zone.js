@@ -1087,6 +1087,11 @@ function _lastSeenDayToSave(player) {
 }
 function savePlayer(player, extra = {}) {
   if (!canPersist(player)) return;
+  return _saveSend(player.playerId, _savePatch(player, extra));
+}
+// ★[T498] 저장 = **행 만들기**(`_savePatch` · 그 순간의 몸 스냅샷) + **보내기**(`_saveSend`). 몸통은 종전 `savePlayer` 그대로 둘로 갈랐을 뿐이다 —
+//   핸드오프가 **떠나는 순간의 행**을 쥐고 있다가 실패했을 때만 보내려면 둘이 따로 불려야 한다(`fireHandoff`).
+function _savePatch(player, extra = {}) {
   // wood/stone은 별도 컬럼, 나머지 아이템(berry, meat_raw 등)은 inventory_json에
   const inv = player.inventory || {};
   const { wood = 0, stone = 0, ...extInv } = inv;
@@ -1107,6 +1112,9 @@ function savePlayer(player, extra = {}) {
     color: player.color,
     ...extra,
   };
+  return patch;
+}
+function _saveSend(playerId, patch) {
   // ★[T47] **Promise 를 돌려준다.** 평시 호출부는 그대로 fire-and-forget 이고,
   //   핸드오프만 `await` 한다 — 도착 존이 central 행을 읽을 때 이미 최신이어야 하기 때문이다.
   // ★★[T42-b 2026-09-01] **날아가는 쓰기를 센다.** fire-and-forget 은 "안 기다린다"는 뜻이지
@@ -1114,8 +1122,8 @@ function savePlayer(player, extra = {}) {
   //   (교역로 선계산)이 그동안 루프를 잡으면 이 쓰기가 소켓 밖으로 못 나간다.
   //   실제로 그렇게 깨졌다: `e2e-rumor ⑦` 복귀 브리핑이 "부재 0일"(`인계/Z-존서버.md ## T42.`).
   _savesInFlight++;
-  return central.updatePlayer(player.playerId, patch).catch(e =>
-    console.warn(`[${process.env.ZONE_ID || 'zone'}] central save 실패 (${player.playerId}):`, e.message)
+  return central.updatePlayer(playerId, patch).catch(e =>
+    console.warn(`[${process.env.ZONE_ID || 'zone'}] central save 실패 (${playerId}):`, e.message)
   ).finally(() => { _savesInFlight--; _savesDoneAt = Date.now(); });
 }
 // ★[T42-b] 날아가는 central 쓰기 수와 **마지막으로 착지한 시각**. `SimVillages.init` 에 술어로 넘긴다.
@@ -4666,6 +4674,8 @@ wss.on('connection', (ws, req) => {
 //   롤링 배포 창(옛 존에서 넘어옴)을 시늉해 도착 경로의 **central 행 폴백**을 실제로 밟게 한다.
 //   그 갈래를 밟아 보지 않으면 폴백은 "있다고 적혀만 있는 코드"다.
 const E2E_HANDOFF_NO_BODY = (process.env.E2E_GIVE === '1') && process.env.E2E_HANDOFF_NO_BODY === '1';
+// ★[T498] 핸드오프 페이로드 정본 팔 — 켜면 떠나기 전 central 저장을 기다리지 않는다(`fireHandoff` 주석) · 기본 끔 = 종전 바이트 동일
+const T498_HANDOFF_PAYLOAD = process.env.T498_HANDOFF_PAYLOAD === '1';
 const E2E_CONN_FAIL = (process.env.E2E_GIVE === '1') ? (process.env.E2E_CONN_FAIL || '') : '';
 const E2E_CONN_HANG = (process.env.E2E_GIVE === '1') ? (process.env.E2E_CONN_HANG || '') : '';
 function _connFailPoint(stage) {
@@ -13374,8 +13384,20 @@ async function fireHandoff(player, targetZoneId, newX, newY) {
   player.y = Math.max(0, Math.min(ZONE.zoneHeight, player.y));
   // ★★[T47] **저장을 기다린다.** 종전엔 fire-and-forget 이라 도착 존이 central 을 읽을 때
   //   아직 안 써져 있을 수 있었다. 이제 행과 페이로드가 **같은 스냅샷**이 되도록 순서를 잡는다.
-  try { await savePlayer(player, { last_zone: targetZoneId, last_x: newX, last_y: newY }); }
-  catch (e) { console.warn(`[${ZONE_ID}] 핸드오프 직전 저장 실패(페이로드로 계속):`, e.message); }
+  // ★★[T498 2026-09-28 · 팔 `T498_HANDOFF_PAYLOAD` · 기본 끔] **페이로드가 정본이면 central 을 기다리지 않는다.**
+  //   도착 존은 몸을 페이로드에서만 읽고(central `getPlayer` 는 몸이 없을 때의 폴백 — `:4824`) 접속하자마자 **스스로 저장한다**
+  //   (`savePlayer(player, { last_zone: ZONE_ID … })` — 도착이 성공했음을 아는 유일한 자리 = "성공 뒤 한 번").
+  //   그러니 여기의 await 저장은 경계마다 central 왕복 하나를 **길 위에** 올려 두기만 했다(호스트가 갈리면 태평양 한 번 · T485 §1).
+  //   켜면: 떠나는 순간의 행을 **쥐고만** 있다가 — 인계가 실패한 쪽(ACK 가 3초 안에 안 옴)에서만 보낸다(종전 경로와 같은 행 · 같은 뜻).
+  //     성공 쪽에서 보내지 않는 까닭: ACK 뒤에 보내면 도착 존이 그 사이 쓴 새 행을 옛 행으로 덮을 창이 생긴다.
+  //   ⚠몸을 안 싣는 판(`E2E_HANDOFF_NO_BODY` 픽스처 — 도착이 행을 읽는다)은 종전대로 기다린다.
+  let _t498Held = null;
+  if (T498_HANDOFF_PAYLOAD && !E2E_HANDOFF_NO_BODY) {
+    if (canPersist(player)) _t498Held = { playerId: player.playerId, patch: _savePatch(player, { last_zone: targetZoneId, last_x: newX, last_y: newY }) };
+  } else {
+    try { await savePlayer(player, { last_zone: targetZoneId, last_x: newX, last_y: newY }); }
+    catch (e) { console.warn(`[${ZONE_ID}] 핸드오프 직전 저장 실패(페이로드로 계속):`, e.message); }
+  }
   const token = generateToken();
   try {
     await postJSON(target.host, target.port, '/handoff_prepare', {
@@ -13429,6 +13451,8 @@ async function fireHandoff(player, targetZoneId, newX, newY) {
         try { p.ws.close(); } catch (e) {}
         console.warn(`[${ZONE_ID}] ⚠ ACK timeout token=${token.slice(0,8)} — fallback 정리`);
       }
+      // ★[T498] 인계가 확인되지 않았다 — 떠나는 순간 쥔 행을 이제 보낸다(끔 판이 떠나기 전에 써 둔 그 행과 같다)
+      if (_t498Held) { _saveSend(_t498Held.playerId, _t498Held.patch); console.warn(`[${ZONE_ID}] ⚠ [T498] ACK 없음 — 떠나는 순간의 행 저장`); }
     }
   }, 3000);
   outgoingHandoffs.set(token, { pid, timeoutHandle });
