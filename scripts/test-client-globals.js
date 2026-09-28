@@ -99,8 +99,10 @@ console.log('\n③ 최상위 실행문이 99-main.js 밖에 **새로** 생기지
 //   클라가 central 을 직접 부르던 다섯 문을 **존 경유**로 옮기면서 생긴 **유일한** 새 전역이고,
 //   위 `__sendPrimary`·`__sendPrimaryAt` 과 **같은 자리·같은 문법**이다(그 둘이 이미 13 안에 있다).
 //   ⇒ 표를 늘리는 것이 이 검사의 쓰임이다(위 주석의 '같이 갱신하라' — 그 자체가 리뷰 지점).
+// ★[T486 2026-09-28] `00-const.js` 15 → **16**. 시험 손잡이 하나가 늘었다: `window.__frameCapture(sec)`(렉 해부 — 프레임 캡처 60초).
+//   바로 위 `__connState`·`__netStalled` 와 **같은 자리·같은 문법**이고 그 둘이 이미 15 안에 들어 있다(같이 갱신하라 — 리뷰 지점).
 const BASELINE = {
-  'client/00-const.js': 15, 'client/11-r1-mountain.js': 43, 'client/20-r2-visibility.js': 5,
+  'client/00-const.js': 16, 'client/11-r1-mountain.js': 43, 'client/20-r2-visibility.js': 5,
   'client/30-n-net.js': 14, 'client/40-r2-sprites.js': 2,
   // ★★[T53 2026-09-02] `41-h-char.js`(18) 를 2차 분할했다. **실행문이 늘지 않았다 — 나뉘었다.**
   //   17 은 조각 ①(진단 훅), 1 은 조각 ④(`setInterval(updateHud,100)`). 합은 그대로 18.

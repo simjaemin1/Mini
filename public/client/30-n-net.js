@@ -750,7 +750,12 @@
     }
     // ★유령 클라 fix: 자기 conn 객체(c)를 같이 넘김. 교체된 옛 소켓이 close 직전 흘리는 잔여 메시지가
     //   zoneId 재조회로 "새 연결"의 상태에 섞여 들어가던 경로 차단(myPid/좌표/엔티티 오염).
-    ws.onmessage = (ev) => handleMessage(zoneId, JSON.parse(ev.data), c);
+    //   ★[T486 ③] 프레임 캡처가 켜져 있을 때만 메시지 처리 시간을 쌓는다(`__frameCapture` · 끔이면 종전 한 줄 그대로).
+    ws.onmessage = (ev) => {
+      if (!window.__fcOn) return handleMessage(zoneId, JSON.parse(ev.data), c);
+      const _t0 = performance.now();
+      try { return handleMessage(zoneId, JSON.parse(ev.data), c); } finally { window.__fcMsgMs += performance.now() - _t0; window.__fcMsgN++; }
+    };
     ws.onclose = (ev) => {
       if (conns.get(zoneId) === c) conns.delete(zoneId);
       _lastCloseAt.set(zoneId, performance.now()); // cooldown 기록
@@ -1617,6 +1622,12 @@
       // 14.43: watchdog용 — 최근 pong 시각 기록
       c.lastPongAt = performance.now();
       if (c.role === 'primary') lastRttMs = c.lastPongAt - msg.t;
+      //   ★[T486] pong 셋 — 서버가 실었을 때만(끔이면 칸이 없다 · 이 줄은 아무것도 안 한다). 망 = 왕복 − 서버 체류.
+      if (c.role === 'primary' && typeof msg.srvIn === 'number' && typeof msg.srvOut === 'number') {
+        const _srv = msg.srvOut - msg.srvIn, _rtt = c.lastPongAt - msg.t;
+        lastPongSplit = { rtt: _rtt, net: _rtt - _srv, srv: _srv, loopP95: msg.loopP95, at: c.lastPongAt, sentAt: msg.t };
+        if (window.__fcOn && window.__fcPong) window.__fcPong.push(lastPongSplit);
+      } else if (c.role === 'primary' && window.__fcOn && window.__fcPong) window.__fcPong.push({ rtt: c.lastPongAt - msg.t, at: c.lastPongAt, sentAt: msg.t });
       // ★[접속 진단] 입장 처리 중의 pong 은 **단계**를 싣고 온다 — 어디서 막혔는지 화면이 안다.
       if (c.role === 'primary' && msg.stage && connPhase !== 'ready') {
         if (!connHelloAt) connHelloAt = performance.now();

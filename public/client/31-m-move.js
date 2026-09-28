@@ -377,6 +377,7 @@
     manageNeighborSubscriptions();
     const _zOn = zoomBegin();          // ★여기부터 월드 패스 — ZOOM=1 이면 아무 일도 안 일어난다
     { const _rA = performance.now(); render(); const _rd = performance.now() - _rA;
+      if (window.__fcOn) window.__fcRenderMs += _rd;   // ★[T486 ③] 프레임 캡처 중에만(끔이면 안 읽힌다)
       window._gAcc = (window._gAcc||0)+_rd; window._gN = (window._gN||0)+1; if (_rd > (window._gMax||0)) window._gMax = _rd;
       if (window._gN >= 30) { if (window._renderDbg) { let _bn=0; for (const c of conns.values()) _bn += c.buildings.size;
         console.log(`[render] avg=${(window._gAcc/window._gN).toFixed(1)}ms tiles=${((window._tileAccDbg||0)/window._gN).toFixed(1)}ms max=${window._gMax.toFixed(0)}ms bld=${_bn}`); } window._gAcc=0; window._gN=0; window._gMax=0; window._tileAccDbg=0; } }

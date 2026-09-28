@@ -266,6 +266,9 @@
     const simLat = primaryZoneId ? (zonesMeta[primaryZoneId]?.simulatedLatencyMs || 0) * 2 : 0;
     const rttStr = lastRttMs > 0 ? `${Math.round(lastRttMs)}ms` : '측정중';
     document.getElementById('pingBadge').textContent = `${rttStr}`;
+    //   ★[T486] 서버가 pong 셋을 실어 보낼 때만 툴팁에 세 수(망 · 서버 체류 · 서버 루프 p95) — 배지 본문은 무변
+    if (lastPongSplit) document.getElementById('pingBadge').title =
+      `망 ${Math.round(lastPongSplit.net)}ms · 서버 ${lastPongSplit.srv.toFixed(1)}ms · 서버 루프 p95 ${lastPongSplit.loopP95 == null ? '—' : lastPongSplit.loopP95 + 'ms'}`;
     if (primaryZoneId) {
       document.getElementById('zoneBadge').textContent =
         `${zonesMeta[primaryZoneId].displayName}`;

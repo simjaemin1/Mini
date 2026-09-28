@@ -40,6 +40,7 @@
   let worldWidth = 2048;
   let worldHeight = 2048;
   let lastRttMs = 0;
+  let lastPongSplit = null;   // ★[T486] 서버가 pong 셋을 실어 보낼 때만 선다(`T486_PONG_SPLIT`) — { rtt, net, srv, loopP95 }
   // 부드러운 서버 보정 — snap 대신 150ms에 걸쳐 lerp
   let correctionVel = { x: 0, y: 0 };
   let correctionUntil = 0;

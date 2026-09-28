@@ -3,6 +3,15 @@
 > ★이 파일은 **영역 소유 세션만** 갱신한다. 다른 영역에 쓸 말이 생기면 `인계/회부.md` 에 한 줄.
 > 원문은 `_아카이브_2026-08_다음세션_인계.md` 에 그대로 동결돼 있다(족보 · 삭제 금지).
 > 이사할 때 **문장을 한 글자도 안 고쳤다** — 낡아 보이는 줄엔 `[낡음? 확인 필요]` 표만 붙였다.
+## T486. ★★2026-09-28 — 렉·핑 튐을 가르는 도구 셋 · pong 셋(`T486_PONG_SPLIT` · 기본 끔) · 기준선 = econ 하루 경계 + 틱 밖 막힘
+
+* HUD 핑은 ws 왕복이고 pong 은 **존 이벤트 루프 안**에서 답한다 — 루프가 막힌 초에 온 ping 은 망이 멀쩡해도 그만큼 튄다(`/perf` 왕복 q 가 같은 줄을 기다린다 · 기준선 최대 92ms).
+* ① `scripts/lag-capture.sh` — 재민 `ssh seoul 'bash -s' < …/lag-capture.sh > ~/Mini/_lag/<월일>_seoul.jsonl`(5분) · 존 컨테이너 **안의 node** 가 `/perf?reset=1` 을 읽는다(안 문 그대로 · 비밀은 컨테이너 밖으로 0) · 호스트 `/proc`(steal · 존/중앙 CPU·RSS · 디스크) · `ss`(주소 0) · `docker logs` GC 줄. 표 = `scripts/lag-table.js <jsonl> [frame.json] --md`(가름 기준이 머리말에 먼저 있다).
+  ⚠`node -`(표준입력 스크립트)에서 `URL` 같은 전역 이름을 가리면 fetch 가 죽는다(실측 300/300 실패 → `PURL`).
+* ② pong 셋: 켜면 `{t, srvIn, srvOut, loopP95}`(따로 둔 루프 히스토그램 5초 창 — `loopDelayStats` 는 `/perf?reset=1` 이 비우는 창이라 안 섞는다) · HUD `pingBadge` 툴팁만(본문 무변) · 끔 = 원문 `{"type":"pong","t":…}` 바이트 동일(`t486-pong-check` 8/0 · 플레이어·관측자).
+* ③ `__frameCapture(60)`(콘솔) — 프레임 dt · 렌더 · 메시지 · 층 넷 · 핑마다 세 몫(클라 막힘 · 서버 · 망). ⚠"망 = rtt − 서버 체류" 만으로는 느린 클라의 큐 대기가 망으로 보인다(헤드리스 437ms 전부 "망" → 클라 막힘을 빼니 415 / 1.7 / 31.8).
+* 기준선(컨테이너 · 빈 한반도 5분 · `[단판]`): 스파이크 초 9/299 — econ 하루 경계 3초(틱 max 140ms · 주인 · 들어 올림 129) + **틱 밖** 6초(루프 50~91ms · 사건·GC·디스크 0) · steal 최대 2.5% · GC 0. 서울 값은 재민 캡처 뒤(보고/T486_2026-09-28.md §0-ⓓ).
+
 ## T485. ★★2026-09-28 — 두 호스트(서울 central·한반도 + 도쿄 닛폰) · 안 도는 자리 1 = 안 문 비밀
 
 * 호스트가 갈리면 안 문(`internal-door` — 존↔central `/player`·`/tribe/*` · 존↔존 `/handoff_prepare`·`/handoff_ack`·`/ghost_sync`·`/cross_damage`·`/kick_player`)이 **사설 주소 폴백을 잃는다** → 404/401. `CENTRAL_SECRET` 을 **셋 다**(central · 한반도 · 닛폰) — 하나만 주면 서울 안에서도 401.
