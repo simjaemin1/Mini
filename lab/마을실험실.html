@@ -8348,8 +8348,37 @@ function temperatureAt(day, hourFrac, elevKm) {
 //   사용자 의도: 모든 행상 같은 속도로 걷는 시각.
 const NPC_SPEED = 500; // px/sec (= px/시뮬-day)
 function travelDaysForDistance(dist) {
-  return Math.max(1, Math.round(dist / NPC_SPEED));
+  return Math.max(1, Math.round(dist / CARAVAN_DAY_SPEED));
 }
+// ═══ ★★[T474 2026-09-28 · 표만 · **기본 끔** · 켜기는 재민] 캐러밴 시계를 **몸 걸음에서 유도**하는 팔 ═══════════════
+//   T468(고증): 위 500 은 econ 단위(셀×2.5 → 1단위 = 0.4m)로 **200m/일**이다. 몸은 2m/s × 게임일 1,440s = 2.88km/일 — 그 1/14.4.
+//   출처: 이 수는 몸에서 온 적이 없다. canadia 시절 "시뮬 1초 = 1일" 의 **동기 수**였다(존 NPC 가 초당 500px 로 걸어 시뮬을
+//     따라갔다 — `server/zone.js` `canadiaCaravanSpeed = c.npcSpeed || 500; // px/sec — 시뮬과 동기화`). econ 좌표가
+//     셀×2.5 로 바뀐 뒤에도 수는 그대로 남아 단위만 0.4m 로 옮겨 갔다(보고/T474 ⓑ).
+//   캐논(모든 NPC 는 일관된 물리 엔티티 · 몸 걸음 하나)에선 **캐러밴 날 = 거리 ÷ 몸 하루 걸음**이다.
+//   ⇒ `T474_CARAVAN_WALK=1` 이면 하루 걸음(econ 단위/일) = 몸 px/s × 게임일 초 × 셀당 econ 단위 ÷ 셀 px — **새 수 0**:
+//       몸 px/s        = `public/move-model.js` 표의 `baseSpeed`(존 `MOVE_SPEED` 64 가 이 표로 간다 — 계약 test-move-soa ⑱)
+//       게임일 초      = `server/zone-config.js` `WORLD.dayLengthMs` ÷ 1000(T368 자 · 존이 econ 을 하루 한 번 굴리는 그 길이)
+//       셀 px          = `WORLD.tileSize`(1셀 = 1m = 32px)
+//       셀당 econ 단위 = 2.5(호스트 좌표 규약 "econ 좌표 = 셀×2.5" 의 **거울** — 아래 한 줄 · 계약 test-move-soa ⑱)
+//     = 64 × 1,440 × 2.5 ÷ 32 = **7,200** econ 단위/일(2.88km/일 · 끔의 ×14.4).
+//   ⚠끔(기본 · 미설정 · `1` 밖의 모든 값)이면 `CARAVAN_DAY_SPEED === NPC_SPEED` — 같은 두 수의 나눗셈이라 **비트 동일**이고
+//     아래 두 require 는 불리지 않는다(번들 무변).
+//   ⚠켬은 node(env) 만이다 — 번들(랩)은 process.env 가 비어 **구조적으로 끔**이다(번들엔 move-model 표가 없다 — WORLD 는 T471 이 실었다 ·
+//     켤 때 move-model 을 같이 싣는다 · 안 실으면 아래 함수가 소리 내 던진다).
+//   ⚠소문(`server/rumor.js` `CFG.SPEED` 500)은 이 시계의 **거울**이다 — 이 손잡이만 켜면 `test-events ⑲` 가 빨개진다
+//     (시계 둘 금지 · T7 제2 규약). 켤 때 거울이 이 시계를 읽는 한 줄이 같이 간다(보고/T474 · 켜기 조건).
+const T474_CARAVAN_WALK = (typeof process !== 'undefined' && process.env && process.env.T474_CARAVAN_WALK === '1');
+const ECON_PER_CELL = 2.5;   // ★거울 — 호스트 좌표 규약(villages.js `PX_PER_ECON = SZ / 2.5` · `ev.coord = 셀×2.5` · t17-metrics · 랩) · 계약 ⑱
+function caravanWalkPerDay() {   // 몸 하루 걸음(econ 단위/일) — 켬이 쓰고, 표(scripts/t474-clocks.js)가 부른다(사본 0)
+  const MM = require('../public/move-model');
+  const W = (require('../server/zone-config') || {}).WORLD;
+  if (!MM || !MM.DEFAULTS || !(MM.DEFAULTS.baseSpeed > 0) || !W || !(W.dayLengthMs > 0) || !(W.tileSize > 0)) {
+    throw new Error('[T474] 몸 걸음 정본(move-model 표 · WORLD)을 못 읽었다 — 번들에선 켤 수 없다');
+  }
+  return MM.DEFAULTS.baseSpeed * (W.dayLengthMs / 1000) * ECON_PER_CELL / W.tileSize;
+}
+const CARAVAN_DAY_SPEED = T474_CARAVAN_WALK ? caravanWalkPerDay() : NPC_SPEED;
 
 // 이동 시간 범위 (일) — 거리 무관 3~7일 random (사용자 요청)
 const TRAVEL_DAY_MIN = 3;
@@ -9976,6 +10005,7 @@ module.exports = {
   TAU,
   SUBSISTENCE_PER_NPC,
   travelDaysForDistance,   // ★[T436] 캐러밴 시계 — 시딩 게이트의 교역 잠재가 **같은 시계**를 부른다(사본 0)
+  NPC_SPEED, CARAVAN_DAY_SPEED, ECON_PER_CELL, caravanWalkPerDay,   // ★[T474] 캐러밴 시계의 수 · 몸 걸음 유도 — 하네스(⑱)·네 시계 표가 **이 값**을 읽는다(사본 0)
   isSubsistenceFlow, subsGuard,   // ★[T416] subs 가드 술어 하나 — 가격 셋·게시판 하나가 같은 문을 부른다
   // 시장 충격 정산 헬퍼(1b) — 프로브·자가검증용 노출
   _priceParamsV2, _impactSegs, _impactF, _impactBuyV2, _impactSellV2,

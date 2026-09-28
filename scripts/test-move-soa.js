@@ -1596,5 +1596,122 @@ console.log('\n⑰ T444 ② — 되짚기에 캐시할 자리가 있나(없다) 
   console.log('    접점: _t394OpenTarget · isTerrainBlockedLocal · T394_WORK_TERRAIN');
 }
 
+// ═══ ⑱ T474 — 캐러밴 시계를 **몸 걸음에서 유도**하는 팔(손잡이 하나 · **기본 끔** · 표만) ═══════════════════════════
+//   T468(고증): econ `NPC_SPEED` 500 은 econ 단위(셀×2.5)/일 = **200m/일** — 몸(2m/s × 게임일 1,440s = 2.88km/일)의 1/14.4.
+//   T474 ③: `T474_CARAVAN_WALK=1` 이면 캐러밴 하루 걸음 = 몸 px/s × 게임일 초 × 셀당 econ ÷ 칸 px(**새 수 0** · 7,200).
+//   이 절이 거는 것:
+//     ⓐ 손잡이 하나 · `1` 만 켬 · 읽는 자리는 econ 하나(존·소문·장부·계측기는 안 읽는다)
+//     ⓑ 끔 = 종전 글자 `max(1, round(d / 500))` 와 **같은 답**(옛 꼴을 이 파일에 복원해 표본 전수로 견준다)
+//     ⓒ 유도 = 정본 셋(move-model 표 `baseSpeed` · WORLD 하루 · WORLD 칸)과 거울 하나(셀×2.5)의 곱 = 7,200
+//     ⓓ 계약 — 몸: 존 `MOVE_SPEED` 글자 = move-model 표 `baseSpeed`(존이 그 표를 `baseSpeed: MOVE_SPEED` 로 만든다)
+//     ⓔ 계약 — 좌표 규약: 호스트 자리(존 PX_PER_ECON · 시딩 두 곳 · 거리행렬 두 곳 · t17 · 랩 · war-core)가 econ 거울과 **같은 수**
+//     ⓕ 켬(자식 프로세스): 시계 = 유도값 · 날 = `max(1, round(d / 7200))`
+//     ⓖ 끔에선 소문 거울 = 캐러밴 시계(⑲ 와 같은 계약) — 켬 자식에선 어긋난다(켜기 조건: 거울이 이 시계를 읽는 한 줄)
+//     ⓗ 번들(랩): process 가 없는 곳에선 env 를 줘도 **끔**(구조적) · 유도 함수는 소리 내 던진다(move-model 표가 번들에 없다 — WORLD 는 T471 이 실었다)
+//     ⓘ 미끼 — 셀당 econ 을 빠뜨린 유도(2,880)는 ⓕ 대조에서 갈린다 · 500 ↔ 7,200 도 표본에서 갈린다(ⓑ 가 빈 대조가 아니다)
+console.log('\n⑱ T474 — 캐러밴 시계 = 몸 걸음에서 유도(손잡이 `T474_CARAVAN_WALK` · 기본 끔 · 표만) [T474]');
+{
+  const { execFileSync } = require('child_process');
+  const _cl = console.log; console.log = () => {};
+  const V2 = require(path.join(ROOT, 'sim', 'economy-sim-v2'));
+  const Rumor = require(path.join(ROOT, 'server', 'rumor'));
+  console.log = _cl;
+  const MM = require(path.join(ROOT, 'public', 'move-model'));
+  const { WORLD } = require(path.join(ROOT, 'server', 'zone-config'));
+  const E = fs.readFileSync(path.join(ROOT, 'sim', 'economy-sim-v2.js'), 'utf8');
+  const EC = codeOnly(E);
+  const declM = E.match(/const T474_CARAVAN_WALK = (\(typeof process !== 'undefined' && process\.env && process\.env\.T474_CARAVAN_WALK === '1'\));/);
+  const i0 = E.indexOf('const T474_CARAVAN_WALK = '), i1 = E.indexOf('const CARAVAN_DAY_SPEED = T474_CARAVAN_WALK ? caravanWalkPerDay() : NPC_SPEED;');
+  const knobBlk = (i0 > 0 && i1 > i0) ? E.slice(i0, E.indexOf('\n', i1)) : '';
+  ok(!!declM && knobBlk.length > 400 && /return Math\.max\(1, Math\.round\(dist \/ CARAVAN_DAY_SPEED\)\);/.test(E),
+     '⑱ [전제] econ 에서 **그 글자**를 떴다(손잡이 선언 · 거울 · 유도 함수 · 시계 한 줄 · 날 수 함수)', `${knobBlk.length}자`);
+  // ⓐ 손잡이 하나
+  const readers = ['server/villages.js', 'server/zone.js', 'server/rumor.js', 'server/events.js', 'server/bandits.js', 'sim/economy-sim.js', 'sim/war-core.js', 'scripts/t17-metrics.js']
+    .filter((f) => /T474_CARAVAN_WALK/.test(codeOnly(fs.readFileSync(path.join(ROOT, f), 'utf8'))));
+  ok((EC.match(/T474_CARAVAN_WALK/g) || []).length === 3 && readers.length === 0,
+     '⑱-a 손잡이 `T474_CARAVAN_WALK` 하나 · 읽는 자리 econ 하나(선언 2 + 시계 1 · 존·소문·장부·도적·전쟁·계측기는 안 읽는다)', readers.join(',') || '');
+  {
+    const envOf = new Function('process', 'return ' + (declM ? declM[1] : 'null') + ';');
+    const r = [undefined, '', '0', '1', 'true', 'on'].map((e) => envOf({ env: e === undefined ? {} : { T474_CARAVAN_WALK: e } }));
+    ok(JSON.stringify(r) === JSON.stringify([false, false, false, true, false, false]),
+       '⑱-a 켜는 것은 **`1` 한 글자**뿐 — 없음·빈칸·`0`·`true`·`on` 은 끔(미설정 = 끔 = 종전)', r.join(' · '));
+  }
+  // ⓑ 끔 = 종전 글자(옛 꼴 복원)
+  const OLD = (dist) => Math.max(1, Math.round(dist / 500));
+  const sample = [0, 1, 249.999, 250, 250.0001, 499.5, 500, 749.9999, 750, 750.0001, 1249.5, 1250, 3599.99, 3600, 7199.99, 7200, 10799.99, 10800, 12220, 30000];
+  for (let i = 0; i < 20000; i++) sample.push(rnd() * 13000);
+  let offSame = 0; for (const d of sample) if (V2.travelDaysForDistance(d) === OLD(d)) offSame++;
+  ok(process.env.T474_CARAVAN_WALK === undefined && V2.CARAVAN_DAY_SPEED === V2.NPC_SPEED && V2.NPC_SPEED === 500 && offSame === sample.length,
+     '⑱-b 끔(이 프로세스 · env 없음) = 종전 `max(1, round(d / 500))` 와 **같은 답**(표본 전수) · 시계 = `NPC_SPEED` 그 수',
+     `${offSame}/${sample.length} · 시계 ${V2.CARAVAN_DAY_SPEED}`);
+  // ⓒ 유도
+  const want = MM.DEFAULTS.baseSpeed * (WORLD.dayLengthMs / 1000) * V2.ECON_PER_CELL / WORLD.tileSize;
+  const w = V2.caravanWalkPerDay();
+  ok(w === want && w === 7200 && MM.DEFAULTS.baseSpeed / WORLD.tileSize * (WORLD.dayLengthMs / 1000) === 2880,
+     '⑱-c 유도 = move-model 표 `baseSpeed` × 게임일 초 × 셀당 econ ÷ 칸 px = **7,200** econ/일(몸 2,880칸/일 = 2.88km/일 · 끔의 ×14.4)',
+     `${MM.DEFAULTS.baseSpeed}px/s × ${WORLD.dayLengthMs / 1000}s × ${V2.ECON_PER_CELL} ÷ ${WORLD.tileSize}px = ${w} · ×${(w / V2.NPC_SPEED).toFixed(1)}`);
+  // ⓓ 계약 — 몸
+  const zm = Z.match(/^const MOVE_SPEED = (\d+(?:\.\d+)?);/m);
+  ok(!!zm && +zm[1] === MM.DEFAULTS.baseSpeed && /model: MOVE_MODEL, baseSpeed: MOVE_SPEED,/.test(codeOnly(Z)),
+     '⑱-d 계약 — 몸: 존 `MOVE_SPEED` 글자 = move-model 표 `baseSpeed`(존이 `paramsFrom({ baseSpeed: MOVE_SPEED })` 로 그 표를 만든다)',
+     `존 ${zm && zm[1]} · 표 ${MM.DEFAULTS.baseSpeed}`);
+  // ⓔ 계약 — 좌표 규약(econ 좌표 = 셀×2.5) · 읽기만(war-core 는 T476 무접촉 — 글자를 읽을 뿐이다)
+  const V = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8');
+  const T17 = fs.readFileSync(path.join(ROOT, 'scripts', 't17-metrics.js'), 'utf8');
+  const LAB = fs.readFileSync(path.join(ROOT, 'lab', '마을실험실.html'), 'utf8');
+  const WC = fs.readFileSync(path.join(ROOT, 'sim', 'war-core.js'), 'utf8');
+  const sites = [
+    ['존 PX_PER_ECON', V, /const PX_PER_ECON = SZ \/ ([\d.]+);/],
+    ['존 시딩', V, /ev\.coord = \{ x: ccx \* ([\d.]+), y: ccy \* \1 \};/],
+    ['존 재적재', V, /ev\.coord = \{ x: row\.cx \* ([\d.]+), y: row\.cy \* \1 \};/],
+    ['거리행렬 노드', V, /Math\.round\(v\.coord\.x \/ ([\d.]+) \/ DIST_STEP\)/],
+    ['거리행렬 거리', V, /const d = \(c \/ 10\) \* DIST_STEP \* ([\d.]+);/],
+    ['t17', T17, /ev\.coord = \{ x: s\.ccx \* ([\d.]+), y: s\.ccy \* \1 \};/],
+    ['랩', LAB, /ev\.coord=\{x:centers\[i\]\.cx\*([\d.]+),y:centers\[i\]\.cy\*\1\}/],
+    ['war-core 정보 반경', WC, /const infoR = infoRange \/ ([\d.]+);/],
+  ].map(([k, src, re]) => { const m = src.match(re); return [k, m ? +m[1] : null]; });
+  const szM = V.match(/^const SZ = (\d+);/m);
+  ok(sites.every(([, x]) => x === V2.ECON_PER_CELL) && !!szM && +szM[1] === WORLD.tileSize,
+     '⑱-e 계약 — 좌표 규약: 호스트 자리 여덟이 전부 econ 거울 `ECON_PER_CELL` 과 **같은 수**(셀×2.5) · 존 셀 px = WORLD 칸',
+     sites.map(([k, x]) => `${k} ${x}`).join(' · ') + ` · SZ ${szM && szM[1]}`);
+  // ⓕ 켬 — 자식 프로세스(env 하나 · 표본은 stdin 으로 같은 것)
+  const onCode = `console.log = () => {};\n` +
+    `const V2 = require(${JSON.stringify(path.join(ROOT, 'sim', 'economy-sim-v2'))}); const Rm = require(${JSON.stringify(path.join(ROOT, 'server', 'rumor'))});\n` +
+    `const S = JSON.parse(require('fs').readFileSync(0, 'utf8')); let same = 0, bait = 0, rum = 0;\n` +
+    `for (const d of S) { const t = V2.travelDaysForDistance(d); if (t === Math.max(1, Math.round(d / 7200))) same++;\n` +
+    `  if (t !== Math.max(1, Math.round(d / 2880))) bait++; if (Rm.travelDaysOf(d) !== t) rum++; }\n` +
+    `process.stdout.write(JSON.stringify({ on: V2.CARAVAN_DAY_SPEED, walk: V2.caravanWalkPerDay(), same, bait, rum, n: S.length }));`;
+  const kid = JSON.parse(execFileSync(process.execPath, ['-e', onCode], { input: JSON.stringify(sample), env: Object.assign({}, process.env, { T474_CARAVAN_WALK: '1' }) }).toString());
+  ok(kid.on === w && kid.walk === w && kid.same === kid.n && kid.n === sample.length,
+     '⑱-f 켬(`T474_CARAVAN_WALK=1` 자식) — 시계 = 유도값 · 날 = `max(1, round(d / 7200))`(표본 전수)', `시계 ${kid.on} · ${kid.same}/${kid.n}`);
+  // ⓖ 소문 거울
+  let rumOff = 0; for (const d of sample) if (Rumor.travelDaysOf(d) === V2.travelDaysForDistance(d)) rumOff++;
+  ok(rumOff === sample.length && kid.rum > 0,
+     '⑱-g 끔에선 소문 거울 = 캐러밴 시계(표본 전수 · ⑲ 와 같은 계약) — 켬 자식에선 **어긋난다**(켜기 조건: 거울이 이 시계를 읽는 한 줄 · 시계 둘 금지)',
+     `끔 ${rumOff}/${sample.length} · 켬 어긋남 ${kid.rum}/${kid.n}`);
+  // ⓗ 번들 — process 가 없는 곳(랩)
+  {
+    const vm = require('vm');
+    const B = fs.readFileSync(path.join(ROOT, 'sim', 'economy-engine.browser.js'), 'utf8');
+    const box = { console: { log() {}, warn() {}, error() {}, info() {} } };
+    let bOk = false, threw = '', err = '';
+    try {
+      vm.createContext(box); vm.runInContext(B, box, { timeout: 20000 });
+      const EE = box.EconEngine;
+      try { EE.caravanWalkPerDay(); } catch (e) { threw = String(e && e.message || e); }
+      bOk = !!EE && EE.CARAVAN_DAY_SPEED === 500 && EE.travelDaysForDistance(2600) === OLD(2600);
+    } catch (e) { err = String(e && e.message || e); }
+    ok(B.includes(knobBlk) && bOk && /^\[T474\]/.test(threw) && process.env.T474_CARAVAN_WALK === undefined,
+       '⑱-h 번들(랩): 같은 글자 · process 없는 곳에선 **구조적으로 끔**(시계 500) · 유도 함수는 소리 내 던진다(move-model 표가 번들에 없다 — 켤 때 같이 싣는다)',
+       err || `시계 ${bOk ? 500 : '?'} · ${threw.slice(0, 40)}`);
+  }
+  // ⓘ 미끼
+  let diffOn = 0; for (const d of sample) if (OLD(d) !== Math.max(1, Math.round(d / 7200))) diffOn++;
+  ok(kid.bait > 0 && diffOn > 0,
+     '★⑱ 자명 통과 금지 — 셀당 econ 을 빠뜨린 유도(2,880)는 ⑱-f 대조에서 **갈리고** · 끔 500 ↔ 켬 7,200 도 표본에서 갈린다(⑱-b 는 빈 대조가 아니다)',
+     `2,880 과 갈린 표본 ${kid.bait}/${kid.n} · 500↔7,200 갈린 표본 ${diffOn}/${sample.length}`);
+  console.log('    접점: NPC_SPEED · CARAVAN_DAY_SPEED · caravanWalkPerDay · ECON_PER_CELL · travelDaysForDistance · T474_CARAVAN_WALK · PX_PER_ECON · move-model · rumor.js');
+}
+
 console.log(`\n=== 결과: ${pass} PASS / ${fail} FAIL ===\n`);
 process.exit(fail ? 1 : 0);
