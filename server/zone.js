@@ -11881,7 +11881,7 @@ function treeBlockerAt(x, y) {
 }
 function isBlockedByTree(x, y) { return !!treeBlockerAt(x, y); }
 
-// ★★★[T461 2026-09-28 · #53 · T352 ⓒ 판을 제품에] **걸음 문 WASM 커널** — `T461_WALK_WASM=1` 켬 · `=verify` 견줌 · 없으면 끔(기본).
+// ★★★[T461 2026-09-28 · #53 · T352 ⓒ 판을 제품에] **걸음 문 WASM 커널** — ★[T499] **기본 켬** · 되돌림 `T461_WALK_WASM=0` · `=verify` 견줌.
 //   ★무엇 — `movePlayerStep(p)` 의 **NPC 갈래**(1층 · 계단 밖 · 입력 없음)를 커널(`tools/walk-wasm/walk.c` → `server/walk-wasm.wasm`)이
 //     한 번에 돈다. 산술은 글자 그대로 옮겼고, 세계 술어는 정본을 쓴다:
 //       지형 = 커널이 타일 2비트로 굽되 처음 보는 타일은 `_terrBlocked0` 을 부른다 · 벽 = 셀을 넘을 때만 `isBlockedByWall` 을 부른다 ·
@@ -11890,10 +11890,10 @@ function isBlockedByTree(x, y) { return !!treeBlockerAt(x, y); }
 //     (답압 스탬프 · 클램프의 `nextDecisionAt` · 탈출의 `dirty`). 한 몸의 걸음은 다른 몸의 같은 틱 걸음을 안 읽는다
 //     (벽·나무·지형만 읽는다) ⇒ 먼저 옮겨도 같다. 스탬프는 차례가 있으니 원래 자리에서.
 //   ★`verify` — 커널을 돌리되 몸에 안 쓰고, JS 정본이 원래대로 옮긴 뒤 **전원 x·y·vx·vy 를 비트로** 견준다(`/perf` `walk.ww`).
-//   ⚠끄면(기본) 이 블록은 아무것도 안 만든다 — 이동 문은 한 글자도 안 바뀐 옛 문이다. 바다 존은 늘 끔.
+//   ⚠끄면(`=0`) 이 블록은 아무것도 안 만든다 — 이동 문은 한 글자도 안 바뀐 옛 문이다. 바다 존은 늘 끔.
 //   ⚠관측 계수(`/perf walk`)는 커널이 센 것을 더한다 — `waterQ` 만은 커널이 처음 보는 타일에서만 늘어난다(비트가 대신 답한다).
 const T461_WALK_WASM = (process.env.T461_WALK_WASM || '').trim();
-const _wwOn = T461_WALK_WASM === '1', _wwVerify = T461_WALK_WASM === 'verify';
+const _wwVerify = T461_WALK_WASM === 'verify', _wwOn = !_wwVerify && T461_WALK_WASM !== '0';   // ★[T499] 기본 켬 — `0` 만 끔(옛 문 · 커널을 안 만든다)
 const _wwList = [];                     // 커널 몸(차례대로) — 열의 i 번째가 이 배열의 i 번째
 const _wwSeq = [], _wwCode = [];        // 이동 문 거름까지 온 주민 전부(차례대로)와 그 갈래: 0 잠(비활성 청크) · 1 커널 · 2 JS 정본(위층·계단)
 const _wwStat = { ticks: 0, steps: 0, bad: 0, badTicks: 0, sample: [], gateBad: 0 };

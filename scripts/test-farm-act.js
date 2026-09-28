@@ -221,7 +221,15 @@ console.log('\n⑦ 걷기 술어 — `_t316WalkAlways` 에 **농부 항 하나**
   ok(/return !!\(_t316Econ && \(_t316Econ\.T312_FISH_ACT \|\| \(_t316Econ\.T368_FARM_ACT && npc\.simJob === 'farmer'\)\)\);/.test(walk),
     '⑦ ★★★술어는 **하나**이고 항은 둘 — T312(주민 전부) · ★T368(농부만 · 생활층이 심는 `simJob`)');
   ok(!/T325_WOOD_ACT|T347_FORAGE_ACT/.test(walk), '⑦ 나무꾼·채집꾼 항은 **없다**(그 카드들의 빚은 그대로)');
-  ok((ZC.match(/_t316WalkAlways\(/g) || []).length === 3, '⑦ 그 술어를 부르는 자리는 그대로 **둘**(결정 · 이동 — 셋째 문 0)');
+  // ★[T499 ⓪] 넷째 글자는 **이동 문의 거울**이다 — T461 WASM 팔의 앞문(`_wwPre`)이 이동 문과 **같은 거름을 같은 차례로 먼저** 돌고
+  //   켬이면 이동 문은 그 답(갈래 표)을 읽는다(같은 몸에 문이 둘이 되지 않는다 · 끔이면 `_WW` 가 없어 앞문 자체가 안 돈다).
+  //   ⇒ 문은 여전히 **둘**(결정 · 이동). 셈은 글자 넷 = 정의 1 + 결정 1 + 이동 1 + 이동의 거울 1. 거울은 **글자로** 건다:
+  //     이동 문의 거름 식이 앞문 안에 **글자 그대로** 있고, 그 밖 어디에도 셋째 문이 없다.
+  const _gate = '!p.canadiaVillage && !_t316WalkAlways(p) && !isPositionActive(p.x, p.y)';
+  const _pre = bodyOf(ZC, '_wwPre');
+  ok((ZC.match(/_t316WalkAlways\(/g) || []).length === 4 && (_pre.match(/_t316WalkAlways\(/g) || []).length === 1 && _pre.includes(_gate)
+     && ZC.split(_gate).length - 1 === 2,
+     '⑦ 그 술어를 부르는 **문**은 그대로 **둘**(결정 · 이동 — 셋째 문 0) · 넷째 글자는 이동 문의 **거울**(`_wwPre` · 같은 거름 식 글자 그대로 · T499)');
   ok(/farm: \(\(\) => \{ try \{ return SimVillages\.farmPerf \? SimVillages\.farmPerf\(\) : null; \} catch \(e\) \{ return null; \} \}\)\(\),/.test(ZC),
     '⑦ `/perf` 에 농부 관측 한 줄(끔이면 `null` — 끈 팔 페이로드 무변)');
 }

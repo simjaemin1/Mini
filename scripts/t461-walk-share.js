@@ -84,12 +84,14 @@ function table() {
 // `repeats <T455_DIR>` — ③ 켬 값: `t455-repeats` 의 `k-on`/`k-ww` 짝 바퀴(t371 자 · 틱당 탐침만 · 걸음마다 시계 0 — 두 팔에 같은 자)
 //   사람당 µs = Σtot ÷ Σ틱 ÷ 몸(`npcs.size` · ⓔ) · p50/p95 · GC ms/s · heap MB · 짝 차 [lo–hi] ± 폭(ⓖ `widthPaired`)
 function repeats(dir) {
-  const js = fs.readdirSync(dir).filter((f) => /^k-(on|ww)-\d+\.json$/.test(f)).map((f) => JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')));
+  const js = fs.readdirSync(dir).filter((f) => /^k-(on|ww|wwoff)-\d+\.json$/.test(f)).map((f) => JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')));
   const val = (j) => { let tot = 0, n = 0, pop = 0, gc = 0, heap = []; for (const sl of j.run.slices) { const r = sl.rest && sl.rest[0]; if (!r) continue; tot += r.tot; n += r.n; pop = r.pop; if (r.own) { gc += r.own.gcMs; heap.push(r.own.heapMB); } }
     return { arm: j.t455.tag.split('-')[1], round: j.t455.round, us: tot / n * 1000 / pop, pop, p50: R.median(j.run.slices.map((x) => x.p50)), p95: R.median(j.run.slices.map((x) => x.p95)),
       under: j.run.slices.filter((x) => x.p95 < 33.3).length + '/' + j.run.slices.length, gcS: gc / (j.run.slices.length * j.SLICE_S), heap: R.median(heap), drop: j.run.slices.reduce((a, x) => a + (x.drop || 0), 0) }; };
   const V = js.map(val); const by = (a) => Object.fromEntries(V.filter((v) => v.arm === a).map((v) => [v.round, v]));
-  const A = by('on'), B = by('ww'); const ks = Object.keys(B).filter((k) => A[k]).sort();
+  // ★[T499] 기본 켬 뒤엔 `k-on` 이 커널 켬이다 — 끔 팔은 `k-wwoff` · 그 판이면 (끔 = wwoff · 켬 = on)
+  const T499 = V.some((v) => v.arm === 'wwoff');
+  const A = T499 ? by('wwoff') : by('on'), B = T499 ? by('on') : by('ww'); const ks = Object.keys(B).filter((k) => A[k]).sort();
   const out = { dir, n: ks.length, pop: V[0] && V[0].pop };
   for (const k of ['us', 'p50', 'p95', 'gcS', 'heap']) {
     const d = ks.map((r) => B[r][k] - A[r][k]); const sd = R.sd(d), m = R.median(d), w = sd != null ? R.RULE_REPEATS.widthPaired(sd, d.length) : null;
