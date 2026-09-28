@@ -824,7 +824,8 @@ function initAudio() {
       const NA = _sfxMan.nightAmbient, naK = NA && NA.key, naM = naK && sfxKey(naK);
       if (naM) {
         const night = (typeof isNight === 'function') ? !!isNight() : false;
-        window.__sfx.ambient(naK, (night && !(_sfxWx.precip > 0) && inSeason('밤', naK)) ? 1 : 0, { indoor: _sfxWx.indoor });
+        //   [T501] 키가 생겼다 — 이제 **계절 칸이 있을 때만**(손잡이 켬) 운다. 끔이면 종전처럼 무음(겨울 밤 귀뚜라미 0 · 끔 무변).
+        window.__sfx.ambient(naK, (SC && night && !(_sfxWx.precip > 0) && inSeason('밤', naK)) ? 1 : 0, { indoor: _sfxWx.indoor });
       }
       // [T492] 계절 칸의 나머지 키(여름 낮 매미 …) — 낮 키는 새와 같은 문(숲 · 비 아님), 밤 키는 밤 벌레와 같은 문. **키가 표에 없으면 무음.**
       if (SC && _sfxMan.seasonAmb.calendar) {

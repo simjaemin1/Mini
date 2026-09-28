@@ -228,7 +228,8 @@ console.log('\n③ 훅 — 부르는 키가 전부 표에 있고, 표의 키가 
 function tableStrings(v, depth) {
   const out = [];
   if (typeof v === 'string') { out.push(v); return out; }
-  if (!v || typeof v !== 'object' || depth > 2) return out;
+  // ★[T501] 계절 칸(`seasonAmb.calendar.여름.낮 = [...]`)은 네 겹이다 — 겉 세 겹만 보면 `cicada` 가 거짓 고아가 된다(T354·T412 와 같은 꼴).
+  if (!v || typeof v !== 'object' || depth > 4) return out;
   for (const [k, x] of Object.entries(v)) { if (typeof k === 'string' && k.startsWith('_')) continue; out.push(...tableStrings(x, depth + 1)); }
   return out;
 }
@@ -1251,14 +1252,15 @@ console.log('\n⑱ ★★[T417] 동물 · 제작 완료 · 반경');
     eat: '내가 먹는다 — `gauges.ate` 는 내 전문에만 온다',
     wind: '들판 전체의 바람(환경 반복 · 세기 = 계절풍)', rain: '하늘 전체의 비(환경 반복)', rain_light: '하늘 전체의 약한 비(환경 반복)',
     bird: '숲 둘레 새(환경 반복 · 나무 수로 켠다 — 자리는 "내 둘레" 그 자체)',
+    cicada: '숲 둘레 매미(환경 반복 · 새와 같은 문 · T501)', crickets: '밤 들판 귀뚜라미(환경 반복 · 밤 벌레 자리 · T501)',
     thunder: '하늘 — 천둥은 한 자리에서 안 난다(후보 · 세계가 천둥을 안 보낸다)', thunder_b: '하늘(후보)',
   };
   const allK = Object.keys(KEYS).filter((k) => !k.startsWith('_'));
   const selfInPos = Object.keys(SELF).filter((k) => posKeys.has(k));
   const selfGhost = Object.keys(SELF).filter((k) => !KEYS[k]);
   const flatAll = (K) => allK.filter((k) => !SELF[k] && !(K[k] && K[k].radius > 0));
-  ok(allK.length === 66 && selfInPos.length === 0 && selfGhost.length === 0 && flatAll(KEYS).length === 0,
-     `⑱a3 ★★66키 전수(T473 +파도 · T492 +눈 걸음 둘) — 자리 표 ${posKeys.size} · 자기/환경 ${Object.keys(SELF).length}(명시) · 나머지 ${allK.length - posKeys.size - Object.keys(SELF).length}(후보·지형) 전부 반경 > 0`,
+  ok(allK.length === 68 && selfInPos.length === 0 && selfGhost.length === 0 && flatAll(KEYS).length === 0,
+     `⑱a3 ★★68키 전수(T473 +파도 · T492 +눈 걸음 둘 · T501 +매미·귀뚜라미) — 자리 표 ${posKeys.size} · 자기/환경 ${Object.keys(SELF).length}(명시) · 나머지 ${allK.length - posKeys.size - Object.keys(SELF).length}(후보·지형) 전부 반경 > 0`,
      [flatAll(KEYS).join(' '), selfInPos.join(' '), selfGhost.join(' ')].filter(Boolean).join(' | ') || `${allK.length}키`);
   ok(/sfxPlay\('eat'\)/.test(layerCode) && !/sfxPlay\('eat',/.test(layerCode) && /sfxPlay\(sfxGroundKey\(\)\)/.test(layerCode),
      '⑱a3b 명시 목록의 근거 — `eat`·발자국은 코드에서 **자리 없이** 불린다(목록이 거짓말이면 빨갛다)');
@@ -1351,8 +1353,10 @@ console.log('\n㉒ ★★[T482] 세계가 안 보내는 소리 — 천둥 · 시
      '㉒b ★노·숯가마 — 조업 칸 `job.until`(서버가 이미 싣는다 · 서버 0줄) · 층은 서버 시계로 **끝나기 전까지만** 불소리(식은 가마 0)');
   // ㉒c 밤 벌레 — 자리 배선은 섰고 키는 아직 없다(녹음 회부) ⇒ 무음
   const NA = man.nightAmbient || {};
-  ok(typeof NA.key === 'string' && !KEYS[NA.key] && /_sfxMan\.nightAmbient/.test(layerCode) && /naM = naK && sfxKey\(naK\)/.test(layerCode),
-     '㉒c 밤 벌레 — 자리(`nightAmbient`)는 배선 · 키가 표에 없어 무음(녹음이 오면 `keys` 한 줄)', `key ${NA.key}`);
+  //   [T501] 녹음이 왔다(`crickets` 키) — 이제 자리는 **계절 칸이 있을 때만**(손잡이 켬) 운다: 끔이면 종전처럼 무음(겨울 밤 귀뚜라미 0)
+  ok(typeof NA.key === 'string' && KEYS[NA.key] && KEYS[NA.key].file && /_sfxMan\.nightAmbient/.test(layerCode) && /naM = naK && sfxKey\(naK\)/.test(layerCode)
+     && /\(SC && night && !\(_sfxWx\.precip > 0\) && inSeason\('밤', naK\)\)/.test(layerCode),
+     '㉒c 밤 벌레 — 자리(`nightAmbient`) 배선 · [T501] 키가 섰다 · 계절 칸(손잡이 켬)이 있을 때만 운다(끔 = 종전 무음)', `key ${NA.key}`);
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1388,13 +1392,38 @@ console.log('\n㉓ ★★[T492] 계절 환경음 — 눈 위 걸음 · 눈 덮�
   const absent = [...listed].filter((x) => !KEYS[x]);
   const badLic = absent.filter((x) => !Array.isArray(miss[x]) || !miss[x].length || miss[x].some((r) => !r.url || !r.license || /SA|NC/.test(r.license)));
   ok(JSON.stringify(Object.keys(C).sort()) === JSON.stringify(Object.values(KO).sort()) && C['겨울'] && !(C['겨울']['낮'] || []).length && !(C['겨울']['밤'] || []).length
-     && (C['봄']['낮'] || []).includes('bird') && absent.length > 0 && badLic.length === 0 && /myCalendar\.seasonKo/.test(layerCode),
-     '㉓d ★계절 칸 — 봄·여름·가을·겨울(서버 달력 낱말) · 겨울 0 · 없는 키는 녹음 회부 표(후보 URL · 라이선스 · BY-SA/NC 0)', `있는 키 ${[...listed].filter((x) => KEYS[x]).join(',')} · 없는 키 ${absent.join(',')}`);
+     && (C['봄']['낮'] || []).includes('bird') && absent.length === 0 && badLic.length === 0 && /myCalendar\.seasonKo/.test(layerCode),
+     '㉓d ★계절 칸 — 봄·여름·가을·겨울(서버 달력 낱말) · 겨울 0 · [T501] 칸의 키가 전부 표에 있다(없는 키 0)', `있는 키 ${[...listed].filter((x) => KEYS[x]).join(',')} · 없는 키 ${absent.join(',')}`);
   // ㉓e 헤드룸 — 환경 + 불 둘 + 최악 사건 + 이 카드 셋의 손 상한을 리미터가 클리핑 0 으로 잡는다(`e2e 58c` 가 같은 묶음을 다시 잰다)
   const HS = M.handSeason || {}, efw = ((M.handFacility || {}).envFireWorst) || [];
   ok(Array.isArray(HS.keys) && efw.every((x) => HS.keys.includes(x)) && HS.keys.includes(ST.key) && HS.peakLim < 1 && HS.clippedLim === 0
      && HS.keys.every((x) => KEYS[x]) && JSON.stringify(M.worstCombo) === JSON.stringify(['downed', 'hit_body', 'hit_body', 'rain_light', 'wind']),
      '㉓e ★헤드룸 — 환경 + 불 둘 + 최악 사건 + 눈 걸음 둘 + 계절 새: 끼고 < 1 · 클리핑 0 · `worstCombo` 무변', `없이 ${HS.peak} → 끼고 ${HS.peakLim} · 클리핑 ${HS.clippedLim}`);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+console.log('\n㉔ ★★[T501] 없는 키 둘 — 매미 · 귀뚜라미');
+{
+  const SRC = man.sources || {}, M = man._실측 || {};
+  const credits = fs.readFileSync(path.join(ROOT, 'CREDITS.md'), 'utf8');
+  const lock = JSON.parse(fs.readFileSync(path.join(ROOT, 'public', 'assets', 'icons.lock.json'), 'utf8'));
+  // ㉔a 두 키 — 파일·출처·반복·자기 자리(반경 0 · 실내 0) · 볼륨 = 새와 같은 실효 RMS 에서 유도(표에 식)
+  const two = ['cicada', 'crickets'];
+  const bad = two.filter((k) => { const m = KEYS[k]; return !m || !m.file || !m.fileAlt || !m.loop || m.radius !== 0 || m.indoorMul !== 0 || m['후보'] || !SRC[m.source] || !/bird/.test(m._볼륨 || ''); });
+  ok(bad.length === 0, '㉔a ★두 키 — ogg+m4a · 출처 칸 · 반복 · 자기 자리(반경 0 · 실내 0) · 볼륨은 새와 같은 실효 RMS(식이 표에)', bad.join(' ') || two.map((k) => `${k} ${KEYS[k].volume}`).join(' · '));
+  // ㉔b 라이선스 — CC0 · 공공누리 제1유형(= 출처표시 · CC-BY 급)만 · BY-SA/NC/변경금지 0 · 원문 15자 이상이 출처 칸에
+  const lic = two.map((k) => SRC[KEYS[k].source]);
+  ok(lic.every((x) => x && /^(CC0 1\.0|공공누리 제1유형)/.test(x.license) && !/SA|NC|ND|제[234]유형/.test(x.license) && (x._라이선스 || '').length >= 15 && /^https:\/\//.test(x.url)),
+     '㉔b ★라이선스 — CC0 · 공공누리 제1유형만(BY-SA/NC/변경금지 0) · 원문이 출처 칸에 · URL', lic.map((x) => x && x.license).join(' · '));
+  // ㉔c 표기 — CREDITS §2-b 두 줄 · 공공누리는 §1 아래 출처표시 줄 · 잠금표 넷
+  ok(/\| `cicada` \|/.test(credits) && /\| `crickets` \|/.test(credits) && /`crickets`\(왕귀뚜라미[^\n]*공공누리 제1유형/.test(credits)
+     && ['cicada.ogg', 'cicada.m4a', 'crickets.ogg', 'crickets.m4a'].every((f) => lock.sfx && lock.sfx[f]),
+     '㉔c 표기 — CREDITS §2-b 두 줄 + 공공누리 출처표시 줄(§1 아래) · 잠금표 +4');
+  // ㉔d 헤드룸 — 매미를 얹은 손 상한도 리미터가 클리핑 0 · 여름 낮·가을 밤 장면 · `worstCombo` 무변
+  const H = M.handSeason || {};
+  ok(H.keys && H.keys.includes('cicada') && H.peakLim < 1 && H.clippedLim === 0 && H.summerDay && H.summerDay.keys.includes('cicada') && H.summerDay.clippedLim === 0
+     && H.autumnNight && H.autumnNight.keys.includes('crickets') && H.autumnNight.clippedLim === 0 && M.soundingKeys === 68,
+     '㉔d ★헤드룸 — 손 상한(+매미) · 여름 낮 · 가을 밤 모두 끼고 클리핑 0', `상한 ${H.peak} → ${H.peakLim} · 여름 낮 ${H.summerDay && H.summerDay.peak} → ${H.summerDay && H.summerDay.peakLim} · 가을 밤 ${H.autumnNight && H.autumnNight.peak} → ${H.autumnNight && H.autumnNight.peakLim}`);
 }
 
 console.log(`\n=== PASS ${pass} / FAIL ${fail} ===`);

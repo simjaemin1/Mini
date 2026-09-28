@@ -420,6 +420,36 @@
    "_조건": "낮(`!isNight()`) **그리고** 반경 `treeRadius` 안 나무 ≥ `trees` **그리고** 비 아님(`precip` 0) — 셋 다여야 난다. 볼륨은 나무 수로 안 키운다(숲이면 숲이다).",
    "_반복인이유": "카드는 '간헐 · 쿨다운'이라 했는데 **음원이 10초 환경 녹음**이다(T272: Commons 의 Birds singing in garden 49.48s 중 11초를 10초 반복으로 구운 것). 10초짜리를 단발로 쏘면 단발 상한 3초도 넘고 겹쳐서 뭉갠다 ⇒ **반복 + 세 조건 게이트**로 이었다. 새가 울다 그치는 결은 원본이 이미 갖고 있다. 실기는 재민."
   },
+  "cicada": {
+   "file": "cicada.ogg",
+   "fileAlt": "cicada.m4a",
+   "volume": 0.55,
+   "radius": 0,
+   "loop": true,
+   "maxSame": 1,
+   "cooldownMs": 0,
+   "source": "commons_cc0_hyalessa_kr",
+   "fade": 1.0,
+   "indoorMul": 0,
+   "훅": "34-m-renderloop.js `__sfx.scan` — 계절 칸(`seasonAmb.calendar.여름.낮`)의 키. 새와 같은 문(낮 · 숲 · 비 아님) · 손잡이 `T492_SEASON_AMB` 켬일 때만.",
+   "_T501": "여름 낮 매미 1번 — **참매미**(Hyalessa fuscata · 한반도 · 경기 안산 2023-08-15 녹음 · CC0). 원본 144.5s 중 97.25~105.05s = 울음 **한 마디**(7.8s · 자기상관으로 잰 주기) 반복(1.0s 겹침 · 이음새 −40 dB · 반복 상한 10s 안). 두 마디(15.6s)는 상한(반복 10s · 150KB)을 넘어 한 마디로 줄였다.",
+   "_볼륨": "0.55 = 새(`bird` 0.4)와 **같은 실효 RMS** — 0.4 × 10^((−20.1 − (−22.9))/20) = 0.553. 새 수 0."
+  },
+  "crickets": {
+   "file": "crickets.ogg",
+   "fileAlt": "crickets.m4a",
+   "volume": 0.24,
+   "radius": 0,
+   "loop": true,
+   "maxSame": 1,
+   "cooldownMs": 0,
+   "source": "kogl1_nibr_teleogryllus",
+   "fade": 1.0,
+   "indoorMul": 0,
+   "훅": "34-m-renderloop.js `__sfx.scan` — 밤 벌레 자리(`nightAmbient.key` · T482) = 계절 칸(`여름.밤`·`가을.밤`)의 키. 밤 · 비 아님 · 바깥 · 손잡이 켬일 때만.",
+   "_T501": "여름·가을 밤 1번 — **왕귀뚜라미**(Teleogryllus emma · 국립생물자원관 『한국의 귀뚜라미 소리』 · 2020 · 23℃ 녹음 · 공공누리 제1유형). 원본 94.6s 중 48.75~58.75s 10초 반복(1.0s 겹침 · 이음새 −52 dB).",
+   "_볼륨": "0.24 = 새(`bird` 0.4)와 같은 실효 RMS — 0.4 × 10^((−20.1 − (−15.6))/20) = 0.238. 새 수 0."
+  },
   "bronze_hit": {
    "file": "bronze_hit.ogg",
    "fileAlt": "bronze_hit.m4a",
@@ -1389,6 +1419,24 @@
    "received": "2026-09-27",
    "_원본": "waves = 120.0s 중 61.5~71.5s 10초 반복(1.5s 겹침) · +5.2 dB [T473] · 원 출처 freesound #48412(2008-02-16 · Kalundborg 피오르 · Zoom H2)",
    "_표기의무": "CC BY 3.0 — `CREDITS.md` §1 에 줄이 있다(이 집 넷째 CC-BY 소리)."
+  },
+  "commons_cc0_hyalessa_kr": {
+   "license": "CC0 1.0",
+   "url": "https://commons.wikimedia.org/wiki/File:HyalessaFuscata_KR.flac",
+   "author": "金旻秀 (kim.min.su)",
+   "received": "2026-09-28",
+   "_원본": "cicada = HyalessaFuscata_KR.flac(144.5s · 40kHz 모노 24bit) 중 97.25~105.05s 7.8초 반복(한 마디 · 1.0s 겹침) · +0.87 dB [T501]",
+   "_라이선스": "파일 페이지 위키문 `{{self|cc-zero}}` · UsageTerms \"Creative Commons Zero, Public Domain Dedication\" · Source \"Directly shoot and convert to flac (GoldWave)\" · 작가 = 올린 이 본인. ⚠같은 녹음의 먼저 올린 ogg 판(`HyalessaFuscata_KR.ogg`)은 CC BY-SA 4.0 — **flac 판만** CC0 이다(작가가 flac 에 CC0 를 따로 걸었다) ⇒ flac 을 받았다.",
+   "_버린것": "같은 올린 이의 `Hyalessa Fuscata (朝鮮半島).flac`·`Meimuna Opalifera/Mongolica (朝鮮半島).flac`·`Meimuna Opalifera KR.wav`(윤기상 박사 녹음) — 틀은 CC BY 4.0 인데 허락 칸이 \"상업적 용도는 사용할 수 없습니다\"(네이버 블로그 전재) ⇒ 라이선스가 서로 어긋난다 ✗."
+  },
+  "kogl1_nibr_teleogryllus": {
+   "license": "공공누리 제1유형(출처표시)",
+   "url": "https://www.kogl.or.kr/recommend/recommendDivView.do?recommendIdx=10524&division=audio",
+   "author": "국립생물자원관",
+   "received": "2026-09-28",
+   "_원본": "crickets = 왕귀뚜라미(23도).mp3(94.6s · 48kHz 스테레오 320k → 모노) 중 48.75~58.75s 10초 반복(1.0s 겹침) [T501]",
+   "_라이선스": "페이지 원문: \"국립생물자원관이(가) 보유한 본 저작물은 \\\"공공누리\\\" 제1유형:출처표시 조건에 따라 이용 할 수 있습니다.\" · 제1유형 = 출처표시 · 상업적·비상업적 이용 가능 · 2차적 저작물로 변경 가능. 촬영연도 2020 · 촬영기관 국립생물자원관.",
+   "_표기의무": "공공누리 제1유형 — `CREDITS.md` §1 에 줄이 있다(국립국악원과 같은 틀)."
   }
  },
  "_실측": {
@@ -1405,11 +1453,11 @@
    "wind"
   ],
   "clippedAtWorst": 0,
-  "allKeysPeakNoLimiter": 1.6078,
-  "allKeysClippedNoLimiter": 510,
+  "allKeysPeakNoLimiter": 1.598,
+  "allKeysClippedNoLimiter": 518,
   "_주의": "`worstPeak` 는 **리미터 없이** 잰 값이다(문턱을 그것과 견주려면 리미터가 개입하기 전의 수여야 한다). 키를 더하면 `__sfx.probe()` 를 다시 돌려 이 칸을 갱신하라 — 셈으로 채우지 마라. T261·T283 이 셈으로 채웠다가 둘 다 틀렸다.",
   "_자의바닥": "두 판(리미터 있음/없음)의 피크가 문턱 아래에서도 ±0.1 dB 쯤 다르다 — `oversample:'2x'` 의 재표본 필터다. 펌핑을 잴 때 이 바닥을 안 빼면 **없는 펌핑**이 보인다: 1차 판이 `pa>0.02` 인 창을 다 보다가 모닥불 하나에 '최악 −10.92 dB'를 냈다(피크는 한 톨도 안 변했는데). ⇒ 비율은 **`pa > knee` 인 창에서만** 뜻이 있다.",
-  "soundingKeys": 66,
+  "soundingKeys": 68,
   "_왜 이 수를 적나": "소리 나는 키가 이 수와 달라지면 `test-audio ⑧` 이 문다 — **키를 더했으면 다시 재라**는 뜻이다. 셈으로 고치지 말고 `__sfx.probe()` 를 돌려라.",
   "_개명": "[T303] `wolf_growl` → `wolf_howl` 은 **이름만** 바뀐 것이다 — 파일 바이트가 0 변경이라(sha1 d9176d70…/bede1a0f… 그대로) 이 실측값은 여전히 그 파일을 잰 값이다. `worstPeak`·`clippedAtWorst` 는 **다시 재지 않았고 한 자도 안 고쳤다** — 이름표만 갈았다.",
   "_T354": "21키 전부 동시: 피크 0.772(-2.25 dBFS) · 클리핑 0. **리미터를 빼면 피크 1.1039 · 클리핑 10** — 키가 16→21 로 늘면서 리미터가 무는 자리가 늘었다(T292 때는 최악 조합조차 문턱을 안 넘었다).",
@@ -2134,12 +2182,13 @@
     "hit_body",
     "step_snow",
     "step_snow",
-    "bird"
+    "bird",
+    "cicada"
    ],
-   "peak": 1.111,
-   "peakDb": 0.91,
+   "peak": 1.1321,
+   "peakDb": 1.08,
    "clippedNoLim": 66,
-   "peakLim": 0.7651,
+   "peakLim": 0.7661,
    "clippedLim": 0,
    "overKnee": "2/400",
    "winter": {
@@ -2167,12 +2216,13 @@
      "fire",
      "fire",
      "bird",
+     "cicada",
      "downed",
      "hit_body",
      "hit_body"
     ],
-    "peak": 1.0646,
-    "peakLim": 0.7635,
+    "peak": 1.0703,
+    "peakLim": 0.7631,
     "clippedLim": 0
    },
    "snowSteps": {
@@ -2182,9 +2232,48 @@
     ],
     "peak": 0.3817
    },
-   "_뜻": "[T492] 손 상한 — 환경(바람·센 비·파도·시냇물) + 불 둘 + 정본 최악 사건(`handFacility.envFireWorst` 1.0987) 위에 이 카드 셋(눈 걸음 × maxSame 2 · 계절 새)을 얹었다. 바람은 **다 센 채**(눈 덮인 들의 곱 ≤ 1 은 줄이기만 한다 — 상한엔 안 쓴다). 없이 1.111(+0.91 dBFS · 클리핑 66) → 끼고 **0.7651** · 클리핑 0. 계절 장면 둘(겨울: 눈 걸음 · 비 없음 / 여름 낮: 새)은 각각 1.0559 · 1.0646 → 끼고 0.764 · 0.7635. `cicada`·`crickets` 는 키가 없어(녹음 회부) 울 수 없다 — 상한에 안 든다. `worstCombo` 무변."
+   "_뜻": "[T492] 손 상한 — 환경(바람·센 비·파도·시냇물) + 불 둘 + 정본 최악 사건(`handFacility.envFireWorst` 1.0987) 위에 이 카드 셋(눈 걸음 × maxSame 2 · 계절 새)을 얹었다. 바람은 **다 센 채**(눈 덮인 들의 곱 ≤ 1 은 줄이기만 한다 — 상한엔 안 쓴다). 없이 1.111(+0.91 dBFS · 클리핑 66) → 끼고 **0.7651** · 클리핑 0. 계절 장면 둘(겨울: 눈 걸음 · 비 없음 / 여름 낮: 새)은 각각 1.0559 · 1.0646 → 끼고 0.764 · 0.7635. `cicada`·`crickets` 는 키가 없어(녹음 회부) 울 수 없다 — 상한에 안 든다. `worstCombo` 무변.",
+   "_T492값": {
+    "keys": [
+     "wind",
+     "rain",
+     "waves",
+     "water",
+     "fire",
+     "fire",
+     "downed",
+     "hit_body",
+     "hit_body",
+     "step_snow",
+     "step_snow",
+     "bird"
+    ],
+    "peak": 1.111,
+    "peakLim": 0.7651
+   },
+   "autumnNight": {
+    "keys": [
+     "wind",
+     "waves",
+     "water",
+     "fire",
+     "fire",
+     "crickets",
+     "downed",
+     "hit_body",
+     "hit_body",
+     "rain_light"
+    ],
+    "peak": 1.056,
+    "peakLim": 0.7637,
+    "clippedLim": 0,
+    "_주": "귀뚜라미는 비 오면 멎는다 — 비(`rain_light`)를 같이 넣은 것은 상한(문이 막는 겹침까지 얹었다)."
+   },
+   "_T501": "[T501] 매미가 들어 손 상한이 1.111 → **1.1321**(+1.08 dBFS · 클리핑 66) → 끼고 **0.7661** · 클리핑 0. 여름 낮(새+매미) 1.0703 → 0.7631 · 가을 밤(귀뚜라미) 1.056 → 0.7637. `worstCombo` 무변."
   },
-  "_T492": "계절 환경음 — 손잡이 `T492_SEASON_AMB`(기본 끔). 눈 위 걸음 `step_snow`(Kenney CC0 · T487 `snow` > 0 · 바깥 · 물·실내 바닥 제외) · 바람 에너지 × (1 − 0.445·snow)(갓 눈 흡음 0.89 / 두 길) · 계절 칸(봄 새 · 여름 새+매미 · 가을 새 · 겨울 0 / 밤: 여름·가을 귀뚜라미 — 매미·귀뚜라미는 키 없음 = 무음). 헤드룸 손 상한 1.111 → 끼고 0.7651 · 클리핑 0 · `worstCombo` 무변."
+  "_T492": "계절 환경음 — 손잡이 `T492_SEASON_AMB`(기본 끔). 눈 위 걸음 `step_snow`(Kenney CC0 · T487 `snow` > 0 · 바깥 · 물·실내 바닥 제외) · 바람 에너지 × (1 − 0.445·snow)(갓 눈 흡음 0.89 / 두 길) · 계절 칸(봄 새 · 여름 새+매미 · 가을 새 · 겨울 0 / 밤: 여름·가을 귀뚜라미 — 매미·귀뚜라미는 키 없음 = 무음). 헤드룸 손 상한 1.111 → 끼고 0.7651 · 클리핑 0 · `worstCombo` 무변.",
+  "_T501_전부": "[T501] 68키(+`cicada`·`crickets`) 전부 동시: 없이 1.598(+4.07 dBFS · 클리핑 518) → 끼고 0.7811 · 클리핑 0 · 리미터 61/400 창. (66키 1.6078 보다 조금 낮다 — 피크는 머리들이 한 표본에 모이는 자리라 키가 늘어도 꼭 오르지 않는다.)",
+  "_T501": "매미·귀뚜라미 들임 — `cicada` 참매미(Commons CC0 · 한반도 녹음) · `crickets` 왕귀뚜라미(국립생물자원관 · 공공누리 제1유형). 볼륨은 새와 같은 실효 RMS(0.55 · 0.24). 헤드룸 손 상한 1.1321 → 끼고 0.7661 · 클리핑 0."
  },
  "ground": {
   "_뜻": "발밑 지형 → 발자국 키. 지형 정본은 `window.__tileStateAt` 하나(`kind`·`geo`·풀 알파) — 층은 그 답을 이 표로 옮길 뿐이다.",
@@ -2226,7 +2315,8 @@
  },
  "nightAmbient": {
   "_뜻": "[T482] 밤 벌레 — 밤 · 비 아님 · 바깥이면 이 키가 환경 반복으로 운다. **키가 아직 없다**(PD/CC0/CC-BY 녹음 0 — Commons 귀뚜라미 전부 BY-SA · 녹음 회부 `_sfx_in/`). 키가 `keys` 에 없으면 층은 조용하다 — 녹음이 오면 `keys` 에 한 줄이면 운다.",
-  "key": "crickets"
+  "key": "crickets",
+  "_T501": "키가 생겼다(`crickets` · 왕귀뚜라미). 이 자리는 **손잡이 `T492_SEASON_AMB` 켬 + 계절 칸의 `밤`** 에 들 때만 운다(끔이면 종전처럼 무음 — 겨울 밤 귀뚜라미 0)."
  },
  "seasonAmb": {
   "_뜻": "[T492] 계절 환경음 — 손잡이 `T492_SEASON_AMB`(서버 env → welcome `uiCfg.seasonAmb` · 기본 **끔**). 끔이면 층이 이 표를 **읽지 않는다**(걸음·바람·새·밤 벌레 종전 그대로). 켬이면 셋: 눈 위 걸음 · 눈 덮인 들의 바람 · 계절 칸.",
@@ -2279,48 +2369,6 @@
   },
   "_계절": "계절 = 서버 달력 `myCalendar.seasonKo`(econ 계절 정본 · 새 시계 0). 칸에 든 키만 운다 — 낮 키는 새의 문(낮 · 숲 · 비 아님), 밤 키는 밤 벌레의 문(밤 · 비 아님). **키가 `keys` 에 없으면 무음**(`cicada`·`crickets` 둘 다 없다 — 녹음 회부 `_없는키`).",
   "_고증": "겨울 낮 새 0 — 카드(겨울 0) · 한반도 텃새는 겨울에도 있으나 번식 노래(봄~여름)가 멎는다. 매미 성충 = 여름(7~8월) 낮. 귀뚜라미(왕귀뚜라미 성충) = 늦여름~가을(8~10월) 밤 — 여름 밤에도 둔다.",
-  "_없는키": {
-   "cicada": [
-    {
-     "url": "https://scienceon.kisti.re.kr/srch/selectPORSrchReport.do?cn=TRKO201400003091",
-     "what": "국립생물자원관 『한국 자생생물 소리도감(Ⅳ) 매미』(2014) — 토종 12종(참매미·말매미·애매미…)",
-     "license": "공공누리 — 파일마다 유형 확인(국립생물자원관 곤충 소리는 1유형 선례 · 아래 쌕쌔기)",
-     "rank": "1순위(고증 · 토종)"
-    },
-    {
-     "url": "https://commons.wikimedia.org/wiki/File:Cicada_orni.ogg",
-     "what": "Cicada orni(지중해 매미)",
-     "license": "Public domain",
-     "rank": "대체(종 다름)"
-    },
-    {
-     "url": "https://commons.wikimedia.org/wiki/File:Chorus_Cicada_singing.ogg",
-     "what": "Chorus cicada(뉴질랜드)",
-     "license": "CC0",
-     "rank": "대체(종 다름)"
-    }
-   ],
-   "crickets": [
-    {
-     "url": "https://www.nibr.go.kr/aiibook/ecatalog5.jsp?Dir=937&callmode=admin",
-     "what": "국립생물자원관 『한국의 귀뚜라미 소리』(자생생물 소리도감 곤충2)",
-     "license": "공공누리 — 파일마다 유형 확인",
-     "rank": "1순위(고증 · 토종)"
-    },
-    {
-     "url": "https://www.kogl.or.kr/recommend/recommendDivView.do?recommendIdx=10573&division=audio",
-     "what": "점박이쌕쌔기(국립생물자원관 · 한국의 여치 소리)",
-     "license": "공공누리 제1유형(출처표시 · 상업·변경 허용)",
-     "rank": "가을 풀벌레 대체 — 라이선스 확인됨"
-    },
-    {
-     "url": "https://commons.wikimedia.org/wiki/File:BioAcoustica_415-1_Teleogryllus_mitratus_535r1_.flac",
-     "what": "Teleogryllus mitratus(왕귀뚜라미 속) — BioAcoustica(런던 자연사박물관)",
-     "license": "CC BY 3.0",
-     "rank": "속 같음 · 실험실 녹음(깔림 없음)"
-    }
-   ],
-   "_정정": "T473 이 적은 'Commons 귀뚜라미 전부 BY-SA' 는 틀렸다 — BioAcoustica 의 왕귀뚜라미 속(Teleogryllus) 녹음은 CC BY 3.0 이다(이번 전수)."
-  }
+  "_T501": "[T501] 없는 키 둘을 들였다 — `cicada` = 참매미(Commons CC0 · 한반도 녹음) · `crickets` = 왕귀뚜라미(국립생물자원관 · 공공누리 제1유형). 계절 칸은 그대로. ★밤 벌레(`nightAmbient`)는 이제 **계절 칸이 있을 때만**(손잡이 켬) 운다 — 키가 생겼으니 T482 의 '키 한 줄이면 밤마다' 문법대로 두면 손잡이 끔에서도 겨울 밤에 귀뚜라미가 운다(끔 무변 규약 위반 · 고증 틀림). 후보였던 표(`_없는키`)는 뗐다 — 버린 후보와 까닭은 `sources` 두 칸."
  }
 }
