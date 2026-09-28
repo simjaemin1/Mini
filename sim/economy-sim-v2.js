@@ -265,7 +265,38 @@ function caravanWalkPerDay() {   // 몸 하루 걸음(econ 단위/일) — 켬�
   }
   return MM.DEFAULTS.baseSpeed * (W.dayLengthMs / 1000) * ECON_PER_CELL / W.tileSize;
 }
-const CARAVAN_DAY_SPEED = T474_CARAVAN_WALK ? caravanWalkPerDay() : NPC_SPEED;
+// ═══ ★★[T489 2026-09-28 · 표만 · **기본 끔** · 켜기는 재민 #82] 소문 분리 팔 — 소문 = 몸 · 캐러밴(몸 시계일 때) = 짐 진 몸 ═══════
+//   T474 켬 3시드: 캐러밴 ×3.1 · 사건 밀도 ㉮ 1.85 → 1.05(캐논 2~3 밖). 그 세계에서 소문은 캐러밴 시계의 **거울**이다(T7 제2 규약).
+//   이 팔은 둘을 **뗀다**(카드 T489 ③):
+//     ⓐ 소문 시계 = **몸**(`caravanWalkPerDay()` — 사람이 걸어서 옮긴다 · 거울을 끊고 정본을 직접) — `server/rumor.js` 가 `rumorDaySpeed()` 를 읽는다.
+//     ⓑ 캐러밴 시계 = **짐 진 몸** — 몸 시계(T474 켬) 위에서만 짐 배수를 곱한다. T474 끔이면 캐러밴은 종전 500 그대로다
+//        (이 팔 혼자 켜면 **소문만** 떨어져 나간다 — 밀도 ㉮ 가 소문 시계에 기대는지 가르는 판).
+//   짐 배수(새 수 0 · 있는 짐꾼 자 T468 = `설계/고증_교역.md` §② · 보고/T468 §0-ⓑ):
+//     `1`   시속 비 = 짐 진 짐꾼 시속(보이저 포티지 실측 2.4~3.2km/h · 짐 41kg — 가운데) ÷ 몸 시속(move-model 표 baseSpeed ÷ 칸 px = 2m/s)
+//           = 2.8 ÷ 7.2 = 0.389 — "캐러밴만 **짐 무게로** 느려짐"(쉬는 시간은 안 뺀다 — 몸 시계·소문 시계가 연속이듯)
+//     `day` 하루 비 = 짐꾼 하루 거리(아즈텍 짐꾼 12~15마일 = 19.3~24.1km — 가운데) ÷ 몸 연속 하루(2m/s × 86,400s = 172.8km)
+//           = 21.7 ÷ 172.8 = 0.126 — 짐꾼이 **쉬는 시간까지** 친 둘째 읽기(소문은 연속 · 캐러밴만 쉰다 — 표 견주기용)
+//     (86,400 = 하루 초 · 3.6 = km/h ÷ m/s — 단위 환산일 뿐 세계의 수가 아니다)
+//   ⚠끔(미설정 · `1`·`day` 밖의 모든 값)이면 소문 = 500 거울 · 캐러밴 = T474 그대로 — **비트 동일**(아래 require 는 안 불린다).
+//   ⚠켬이면 `test-events ⑲`(소문 시계 = 캐러밴 시계 계약)은 **일부러** 깨진다 — 이 팔의 전제가 그 거울을 끊는 것이다.
+const T489_RUMOR_SPLIT = (typeof process !== 'undefined' && process.env
+  && (process.env.T489_RUMOR_SPLIT === '1' || process.env.T489_RUMOR_SPLIT === 'day')) ? process.env.T489_RUMOR_SPLIT : '';
+const T468_PORTER = { kmh: [2.4, 3.2], kmDay: [19.3, 24.1] };   // ★T468 짐꾼 자(설계/고증_교역.md §②) — 계약 test-move-soa ⑲
+function cargoWalkMul(mode) {   // 짐 배수 — `1`(시속 비) · `day`(하루 비) — 켬이 쓰고, 표(scripts/t489-table.js)가 부른다(사본 0)
+  const MM = require('../public/move-model');
+  const W = (require('../server/zone-config') || {}).WORLD;
+  if (!MM || !MM.DEFAULTS || !(MM.DEFAULTS.baseSpeed > 0) || !W || !(W.tileSize > 0)) {
+    throw new Error('[T489] 몸 걸음 정본(move-model 표 · WORLD)을 못 읽었다 — 번들에선 켤 수 없다');
+  }
+  const bodyMs = MM.DEFAULTS.baseSpeed / W.tileSize;                 // 몸 m/s(1칸 = 1m) = 2
+  const mid = (a) => (a[0] + a[1]) / 2;
+  return mode === 'day' ? mid(T468_PORTER.kmDay) * 1000 / (bodyMs * 86400)
+                        : mid(T468_PORTER.kmh) / 3.6 / bodyMs;
+}
+function rumorDaySpeed() { return T489_RUMOR_SPLIT ? caravanWalkPerDay() : NPC_SPEED; }   // 소문 시계(econ 단위/일) — rumor.js 가 켬일 때 읽는다
+const CARAVAN_DAY_SPEED = T474_CARAVAN_WALK
+  ? (T489_RUMOR_SPLIT ? caravanWalkPerDay() * cargoWalkMul(T489_RUMOR_SPLIT) : caravanWalkPerDay())
+  : NPC_SPEED;
 
 // 이동 시간 범위 (일) — 거리 무관 3~7일 random (사용자 요청)
 const TRAVEL_DAY_MIN = 3;
@@ -1893,6 +1924,7 @@ module.exports = {
   SUBSISTENCE_PER_NPC,
   travelDaysForDistance,   // ★[T436] 캐러밴 시계 — 시딩 게이트의 교역 잠재가 **같은 시계**를 부른다(사본 0)
   NPC_SPEED, CARAVAN_DAY_SPEED, ECON_PER_CELL, caravanWalkPerDay,   // ★[T474] 캐러밴 시계의 수 · 몸 걸음 유도 — 하네스(⑱)·네 시계 표가 **이 값**을 읽는다(사본 0)
+  T489_RUMOR_SPLIT, T468_PORTER, cargoWalkMul, rumorDaySpeed,   // ★[T489] 소문 분리 팔 — 소문 시계(rumor.js)·짐 배수 · 하네스(⑲)·표가 **이 값**을 읽는다(사본 0)
   isSubsistenceFlow, subsGuard,   // ★[T416] subs 가드 술어 하나 — 가격 셋·게시판 하나가 같은 문을 부른다
   // 시장 충격 정산 헬퍼(1b) — 프로브·자가검증용 노출
   _priceParamsV2, _impactSegs, _impactF, _impactBuyV2, _impactSellV2,
