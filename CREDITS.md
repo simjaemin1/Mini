@@ -38,6 +38,9 @@
 * **`waves`(바닷가 파도) — CC BY 3.0 · 표시 필요** [T473]
   > "Oceanwavescrushing" by Luftrum — https://commons.wikimedia.org/wiki/File:Oceanwavescrushing.ogg (원본 freesound #48412) — CC BY 3.0
   ⚠이 집 **넷째 CC-BY 소리**다. Commons 의 CC0 파도(`Ocean Waves on a Tropical Beach.ogg`)는 올린 이와 설명의 지은이가 달라(“own work” · “By J.D. Savanyu”) 출처가 흐려 뺐다.
+* **`crickets`(왕귀뚜라미 · 여름·가을 밤) — 공공누리 제1유형 · 출처표시 필요** [T501]
+  > 본 저작물은 국립생물자원관이 2020년 작성하여 공공누리 제1유형으로 개방한 '왕귀뚜라미'(한국의 귀뚜라미 소리)를 이용하였으며, 해당 저작물은 공공누리(https://www.kogl.or.kr/recommend/recommendDivView.do?recommendIdx=10524&division=audio)에서 무료로 다운받으실 수 있습니다.
+  ⚠이 집 **첫 공공누리 소리**다(국립국악원 BGM 과 같은 틀 — 위 표식 안에 줄을 올리면 알림 스택 셋째 줄이 찬다 · 올릴지는 재민 판정 · 지금은 CC-BY 넷과 같은 `/크레딧` 묶음 회부).
 ## 2. 빌린 것
 
 | 항목 | 무엇을 | 어디에 들어갔나 | 라이선스 | 요구 | 카드 |
@@ -135,6 +138,8 @@
 | `pheasant_call` | [Commons: Phasianus colchicus.ogg](https://commons.wikimedia.org/wiki/File:Phasianus_colchicus.ogg) | 작가 미상 | **Public domain** (파일 페이지) | — | 2026-09-26 | 통째(1.0s) · ★[T417] 새 키 — 꿩(`pheasant`) · 1번뿐 |
 | `quail_call` | [Commons: Kohoutek-krepelky.ogg](https://commons.wikimedia.org/wiki/File:Kohoutek-krepelky.ogg) | Martin Hajda | **CC BY 3.0** (파일 페이지 · **표시 필요**) | — | 2026-09-26 | 182.9s 중 **2.174~3.236s** · ★[T417] 새 키 — 메추라기(`quail`) · 1번뿐 |
 | `waves` | [Commons: Oceanwavescrushing.ogg](https://commons.wikimedia.org/wiki/File:Oceanwavescrushing.ogg) | Luftrum | **CC BY 3.0** (파일 페이지 · **표시 필요**) | 2008-02-16 | 2026-09-27 | 120.0s 중 **61.5~71.5s** 10초 반복(1.5s 겹침 · 이음새 −62 dB · +5.2 dB) · ★[T473] 새 키 — 바닷가(`waterSplit.바다`) · 1번뿐 |
+| `cicada` | [Commons: HyalessaFuscata_KR.flac](https://commons.wikimedia.org/wiki/File:HyalessaFuscata_KR.flac) | 金旻秀 (kim.min.su) | **CC0 1.0** (파일 페이지 틀 `self` · `cc-zero` · ⚠같은 녹음의 ogg 판은 BY-SA — flac 판만 CC0) | 2023-08-15(경기 안산) | 2026-09-28 | 144.5s 중 **97.25~105.05s** 7.8초 반복(울음 한 마디 · 1.0s 겹침 · 이음새 −40 dB) · ★[T501] 새 키 — 참매미 · 여름 낮(`seasonAmb`) · 1번뿐 |
+| `crickets` | [공공누리: 왕귀뚜라미](https://www.kogl.or.kr/recommend/recommendDivView.do?recommendIdx=10524&division=audio) · `왕귀뚜라미(23도).mp3` | 국립생물자원관 | **공공누리 제1유형**(출처표시 · **표시 필요** · 상업·변경 허용) | 2020 | 2026-09-28 | 94.6s 중 **48.75~58.75s** 10초 반복(1.0s 겹침 · 이음새 −52 dB) · ★[T501] 새 키 — 여름·가을 밤(`nightAmbient` · `seasonAmb`) · 1번뿐 |
 | `goat_bleat` | [Commons: Herd of goats bleating.ogg](https://commons.wikimedia.org/wiki/File:Herd_of_goats_bleating.ogg) | stephan | **Public domain** (파일 페이지) | — | 2026-09-26 | 42.8s 중 **2.950~3.950s** · ★[T417] 후보 — 아이벡스 대체 판정용(배선 0) |
 
 * **요구 문구 없음** — 둘 다 퍼블릭 도메인이라 표시 의무가 없다(그래서 §1 에 안 들어간다). 예의로 여기 적는다.
@@ -215,6 +220,7 @@ Blender / `bpy` 5.0.1(굽기) · numpy · scipy(BGM 합성) · Pillow(광맥 파
 | CMU 모캡 | "you may not **resell this data directly**, even in converted form" | 이 저장소는 `assets-src/mocap/` 에 **원본 BVH 다섯을 그대로 담아** 배포한다. 게임이 파는 것은 시트(파생물)이지 데이터가 아니지만, **저장소 공개·유료 배포 시 BVH 자체가 함께 나간다** | ⚠**재민 판정** — 게임만 팔면 문제 없다(상업 제품 포함은 허용). 원본 BVH 를 뺄지(포즈표만 남긴다) 둘지가 결정할 일 |
 | CMU 모캡 | 문구 표시 | `/크레딧` 이 §1 에서 읽어 띄운다 | ✅ |
 | 국립국악원 | 공공누리 1유형 = 출처표시 | 같은 자리 | ✅ 상업·변형 모두 허용 |
+| 국립생물자원관(`crickets` · T501) | 공공누리 1유형 = 출처표시 | §1 아래 줄(게임 크레딧 화면 회부) | ✅ 상업·변형 모두 허용 · ⚠표시는 `/크레딧` 묶음이 설 때 |
 | npm 다섯 | MIT = 라이선스·저작권 표시 동봉 | 지금은 `node_modules` 안에만 있다 | ⚠ 바이너리로 묶어 팔면 **전문 동봉**이 필요하다(소스 배포면 그대로 따라간다) |
 | 폰트 | — | 파일을 안 배포한다 | ✅ 의무 없음 |
 | 효과음 둘(§2-b) | 퍼블릭 도메인 = 조건 없음 | `public/assets/sfx/` 에 배포한다 | ✅ 상업·변형 모두 허용 · 표시 의무 없음 |

@@ -692,18 +692,21 @@ const db = (x) => (x > 0 ? +(20 * Math.log10(x)).toFixed(2) : -Infinity);
       const cooled = await fireOn({ kind: 'kiln', startedAt: now - 90000, until: now - 1000 });
       const idle = await fireOn(null);
       ok(burning === true && cooled === false && idle === false, '57a ★숯가마 — 타는 동안 불소리 · 다 탄 뒤(꺼내기 전 식은 가마) 0 · 조업 없음 0', `타는 중 ${burning} · 식음 ${cooled} · 없음 ${idle}`);
-      // 밤 벌레 — 키가 없으면 밤이어도 0 · 미끼: 키를 한 줄(다른 파일로) 세우면 운다(배선은 서 있다)
-      const night = (addKey) => page.evaluate(async ({ k, addKey }) => {
-        const saveN = isNight; isNight = () => true; _sfxWx.precip = 0; _sfxWx.indoor = false;
-        if (addKey) _sfxMan.keys[k] = Object.assign({}, _sfxMan.keys.bird);
-        _sfxScanAt = 0; window.__sfx.scan([], 0, 0); await new Promise((r) => setTimeout(r, 400));
+      // 밤 벌레 — [T501] 키가 섰다(`crickets`). 손잡이 끔이면 밤이어도 0(끔 무변 · 겨울 밤 귀뚜라미 0) · 켬이면 계절 칸(가을 밤 ○ · 겨울 밤 ✗)
+      const night = (knob, season) => page.evaluate(async ({ k, knob, season }) => {
+        const saveN = isNight, saveCal = myCalendar, had = Object.prototype.hasOwnProperty.call(uiCfg, 'seasonAmb');
+        isNight = () => true; _sfxWx.precip = 0; _sfxWx.indoor = false;
+        if (knob) uiCfg.seasonAmb = true; else delete uiCfg.seasonAmb;
+        myCalendar = season ? { seasonKo: season } : null;
+        _sfxScanAt = 0; window.__sfx.scan([], 0, 0); await new Promise((r) => setTimeout(r, 600));
         _sfxScanAt = 0; window.__sfx.scan([], 0, 0); await new Promise((r) => setTimeout(r, 300));
         const on = [..._sfxLoops.keys()].includes('amb:' + k);
-        if (addKey) { window.__sfx.ambient(k, 0, {}); delete _sfxMan.keys[k]; }
-        isNight = saveN; return on;
-      }, { k: NA.key, addKey });
-      const noKey = await night(false), withKey = await night(true);
-      ok(noKey === false && withKey === true, `57b 밤 벌레(\`${NA.key}\`) — 키 없음 = 무음 · 미끼: 키 한 줄이면 밤에 운다(자리 배선은 서 있다)`, `없음 ${noKey} · 세움 ${withKey}`);
+        window.__sfx.ambient(k, 0, {});
+        isNight = saveN; myCalendar = saveCal; if (!had) delete uiCfg.seasonAmb;
+        return on;
+      }, { k: NA.key, knob, season });
+      const offN = await night(false, '가을'), autN = await night(true, '가을'), winN = await night(true, '겨울');
+      ok(offN === false && autN === true && winN === false, `57b 밤 벌레(\`${NA.key}\`) — [T501] 키가 섰다 · 손잡이 끔 = 무음(종전) · 켬 가을 밤 ○ · 켬 겨울 밤 ✗`, `끔 ${offN} · 가을 ${autN} · 겨울 ${winN}`);
     }
 
     // 58 ★★[T492] 계절 환경음 — 손잡이 끔 = 종전 · 켬 = 눈 걸음 · 바람 × 적설 · 계절 칸 (진짜 `weather`·`scan`·`sfxGroundKey`)
@@ -761,22 +764,46 @@ const db = (x) => (x > 0 ? +(20 * Math.log10(x)).toFixed(2) : -Infinity);
       const WS = SA.windSnow || {}, want1 = +(0.5 * Math.sqrt(1 - WS.alpha / WS.paths)).toFixed(4);
       ok(Math.abs(sOn.wind - want1) < 1e-3 && s0.wind === 0.5 && sNo.wind === 0.5,
          '58c ★눈 덮인 들의 바람 — 적설 1 = 0.5 × √(1 − 0.445) · 적설 0·칸 없음 = 0.5 그대로', `눈 1 ${sOn.wind}(식 ${want1}) · 0 ${s0.wind} · 없음 ${sNo.wind}`);
-      // 58d 계절 칸 — 겨울 낮 새 0 · 봄 낮 새 · 여름 밤 귀뚜라미 키 없음 = 무음 · 미끼: 매미 키 한 줄 → 여름 낮 ○ · 겨울 낮 ✗
+      // 58d 계절 칸 — [T501] 진짜 키 둘: 겨울 낮 새 0 · 봄 낮 새 · 여름 낮 매미 · 겨울 낮 매미 ✗ · 여름 밤 귀뚜라미 · 봄 밤 귀뚜라미 ✗
       const winD = await scene({ knob: true, snow: 0, season: '겨울' });
       const sprD = await scene({ knob: true, snow: 0, season: '봄' });
+      const sumD = await scene({ knob: true, snow: 0, season: '여름' });
       const sumN = await scene({ knob: true, snow: 0, season: '여름', night: true });
-      const sumC = await scene({ knob: true, snow: 0, season: '여름', addKey: 'cicada' });
-      const winC = await scene({ knob: true, snow: 0, season: '겨울', addKey: 'cicada' });
-      ok(!winD.loops.includes('amb:bird') && sprD.loops.includes('amb:bird') && !sumN.loops.some((k) => /bird|crickets/.test(k))
-         && sumC.loops.includes('amb:cicada') && !winC.loops.includes('amb:cicada'),
-         '58d ★계절 칸 — 겨울 낮 새 0 · 봄 낮 새 · 여름 밤 귀뚜라미 = 키 없음 무음 · 미끼: 매미 키 한 줄이면 여름 낮 ○ · 겨울 낮 ✗',
-         `겨울 ${winD.loops.join('+') || '-'} · 봄 ${sprD.loops.join('+')} · 여름밤 ${sumN.loops.join('+') || '-'} · 매미(여름) ${sumC.loops.join('+')} · 매미(겨울) ${winC.loops.join('+') || '-'}`);
+      const sprN = await scene({ knob: true, snow: 0, season: '봄', night: true });
+      ok(!winD.loops.some((k) => /bird|cicada/.test(k)) && sprD.loops.includes('amb:bird') && !sprD.loops.includes('amb:cicada')
+         && sumD.loops.includes('amb:cicada') && sumD.loops.includes('amb:bird') && sumN.loops.includes('amb:crickets') && !sumN.loops.includes('amb:cicada')
+         && !sprN.loops.includes('amb:crickets'),
+         '58d ★계절 칸 — 겨울 낮 0 · 봄 낮 새 · 여름 낮 새+매미 · 여름 밤 귀뚜라미(매미 ✗) · 봄 밤 귀뚜라미 ✗',
+         `겨울 ${winD.loops.join('+') || '-'} · 봄 ${sprD.loops.join('+')} · 여름 ${sumD.loops.join('+')} · 여름밤 ${sumN.loops.join('+')} · 봄밤 ${sprN.loops.join('+') || '-'}`);
       // 58e 헤드룸 — 손 상한(환경 + 불 둘 + 최악 사건 + 눈 걸음 둘 + 새)을 리미터가 클리핑 0 으로 잡는다 · 표와 같은 값
       const HS = (MAN._실측 || {}).handSeason || {};
       const hr = await page.evaluate((k) => window.__sfx.probe(k, { seconds: 4 }), HS.keys || []);
       ok(hr && !hr.err && hr.withLimiter.clipped === 0 && hr.withLimiter.peak < 1 && Math.abs(hr.withoutLimiter.peak - HS.peak) <= 0.01,
          '58e ★헤드룸 — 이 카드 셋을 얹은 손 상한: 리미터 끼면 클리핑 0 · 표와 같은 값',
          hr && !hr.err ? `없이 ${hr.withoutLimiter.peak}(클리핑 ${hr.withoutLimiter.clipped}) → 끼고 ${hr.withLimiter.peak} · 표 ${HS.peak}` : String(hr && hr.err));
+      // 59 ★★[T501] 매미·귀뚜라미 — 두 파일이 이 브라우저에서 풀리고(ogg/m4a 중 층이 고른 것) 반복이 이음새 없이 돈다 · 끔 = 키만 는다
+      {
+        const dec = await page.evaluate(async () => {
+          const out = {};
+          for (const k of ['cicada', 'crickets']) {
+            sfxBuffer(k); let b = null;
+            for (let i = 0; i < 40 && !(b = sfxBuffer(k)); i++) await new Promise((r) => setTimeout(r, 100));
+            if (!b) { out[k] = null; continue; }
+            const d = b.getChannelData(0), n = d.length, w = Math.floor(b.sampleRate * 0.05);
+            let pk = 0, a = 0, z = 0; for (let i = 0; i < n; i++) pk = Math.max(pk, Math.abs(d[i]));
+            for (let i = 0; i < w; i++) { a += d[n - w + i] * d[n - w + i]; z += d[i] * d[i]; }
+            out[k] = { sec: +(n / b.sampleRate).toFixed(2), pk: +pk.toFixed(3), tailRms: +Math.sqrt(a / w).toFixed(4), headRms: +Math.sqrt(z / w).toFixed(4) };
+          }
+          return out;
+        });
+        const C = dec.cicada, R = dec.crickets;
+        ok(C && R && C.sec <= 10.05 && R.sec <= 10.05 && C.pk < 1 && R.pk < 1 && C.headRms > 0 && R.headRms > 0 && C.tailRms > 0 && R.tailRms > 0,
+           '59a ★두 파일이 풀린다 — 반복 상한 10s 안(디코더 덧붙임 50ms 까지 · 파일 길이는 `test-audio` 가 잰다) · 피크 < 1 · 머리·꼬리가 무음이 아니다(겹쳐 구운 반복)', JSON.stringify(dec));
+        // 59b 끔 = 키만 는다 — 손잡이 끔 · 여름 낮/가을 밤이어도 두 키가 안 운다(58a 와 같은 자 · 새는 종전 그대로)
+        const offD = await scene({ knob: false, season: '여름' }), offN = await scene({ knob: false, season: '가을', night: true });
+        ok(!offD.loops.includes('amb:cicada') && offD.loops.includes('amb:bird') && !offN.loops.includes('amb:crickets'),
+           '59b ★손잡이 끔 — 여름 낮·가을 밤이어도 매미·귀뚜라미 0(키만 늘었다 · 새는 종전)', `여름 낮 ${offD.loops.join('+')} · 가을 밤 ${offN.loops.join('+') || '-'}`);
+      }
     }
 
     // ④ ★[T305] 옛 곡선이 증폭기였다는 것을 **이 자로 다시 보인다** — 자명 통과 금지.
