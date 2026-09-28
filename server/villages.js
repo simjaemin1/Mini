@@ -7705,6 +7705,36 @@ function _t449Seen(vil) {
   const f = state.deps && state.deps.anyViewerNear;
   return !!(f && f({ x: vil.ccx * SZ + SZ / 2, y: vil.ccy * SZ + SZ / 2 }, (vil._maxRPx || 800) + 1600));
 }
+// ★★★[T491 2026-09-28 · ★PM 결정(위임) · 캐논 "추상 없애기" · T449 닫는 카드] **일괄을 몸에서 유도한다.**
+//   T449 ② 가 잰 것: 관측 마을 임업1 의 나무꾼 **몸**은 하루 ≈8단을 댔는데, 빈손 날의 **일괄**은 걸음 한도 하루 ≈210단을 벴다(25배).
+//   T449 켬 판의 빈손 14일은 나무꾼 몸이 `요양`한 날이었다(T449 §2-ⓒ) — 옛 명부(econ 수)는 몸의 그날을 안 보고 **성한 몸의 걸음 한도**를 벤다.
+//   ⚠몸의 ≈8 은 **하루 1그루**다 — 몸 갈래가 그날 목록(하루 캐시)에서 방금 비운 셀을 다시 고른다(보고/T491 §2-ⓑ · 회부 — 이 손잡이는 몸을 안 만진다).
+//   캐논: 일괄은 몸이 없을 때 몸을 **대신** 하는 것이지 몸보다 많이 내면 안 된다.
+//   손잡이 `T491_BATCH_FROM_BODY`(기본 **끔** · 끔 = 아래 `_lifeDaily` 나무꾼 절의 옛 줄 글자 그대로 — 명부 = econ 나무꾼 수 · 한 짐 = 그루).
+//   켜면 나무꾼 절의 일괄은 **몸 크루의 하루**를 벤다 — 같은 함수(`_t491BodyDay` · T400 집 크루의 그 문법):
+//     ⓐ 명부 = 그날 일한 **나무꾼 몸**(`_t491Crew` — econ 수가 아니다) · 요양(`_rest`) · 시공 과업(`_lifeTask` 'build') ·
+//        집 크루(T400 `vil._t400Crew`)인 몸은 그날 나무를 못 했다 ⇒ 명부에서 빠진다(몸이 안 나른 날 일괄도 안 나른다 · 새 상태 0 — 몸이 이미 가진 칸).
+//     ⓑ 한 몸의 하루 = 짐 수 × 한 짐 — 짐 수 `_t341TripsPerDay`(낮 초 ÷ 왕복 초 · T341 그 함수 · 거리는 마을 원판의 가장 가까운 나무 셀 —
+//        옛 줄 그대로) · 한 짐 `_t400PerLoad('wood')`(⌊CAP_KG ÷ kgOf('wood')⌋ = 단 · T400 크루의 그 짐 · 옛 줄은 **그루**였다 — 한 그루가 짐을 넘어도 통째).
+//   ⚠새 수 0 · 새 술어 0 — 속도 · 낮 · 짐 상한 · 무게 · 요양 · 과업 · 집 크루 **전부 남의 정본**이다.
+//   ⚠짐 수의 걸음은 존 `moveSpeed`(64px/s — 플레이어 걸음 · T341·T400·T435 가 같은 함수) — 몸의 배회는 `npcStep` 0.6(38.4px/s)이다(값은 재민 · 보고/T491 §2-ⓒ).
+//   ⚠채집 절(T347)은 **안 만진다** — T490(세션2 채집 자리)의 자리다(보고 §회부 · 같은 함수를 그 절에 앉히는 것은 뒤 카드).
+//   ⚠관측 마을(T449 켬)은 그대로 몸 명부(일괄 0) — 두 손잡이는 서로 무관하게 켜고 끈다.
+const T491_BATCH_FROM_BODY = process.env.T491_BATCH_FROM_BODY === '1';
+function _t491Crew(vil) {   // 그날 나무를 한 몸 — 명부 순서 · 주사위 0
+  const out = [], pl = state.deps && state.deps.players, t4 = vil._t400Crew || null;
+  for (const pid of (vil.npcPids || [])) {
+    const p = pl && pl.get(pid); if (!p || p.simJob !== 'lumberjack') continue;
+    if (p._rest) continue;                                             // 요양 — 그 몸은 그날 침상에 있었다(SCH_REST_IN · 만피에 풀린다)
+    if (p._lifeTask && p._lifeTask.k === 'build') continue;            // 시공 — 그 몸은 그날 집터에 있었다
+    if (t4 && t4.indexOf(pid) >= 0) continue;                          // 집 크루(T400) — 그 몸은 그날 자재를 날랐다
+    out.push(p);
+  }
+  return out;
+}
+function _t491BodyDay(vil, distPx) {   // 나무꾼 **한 몸**이 하루에 곳간에 댈 수 있는 단 = 짐 수 × 한 짐(T400 크루와 같은 두 함수)
+  return _t341TripsPerDay(vil, distPx, 1) * _t400PerLoad('wood');
+}
 function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(디스폰 누수 자가치유) + 신축 판단 + 작물 하루 성장
   if (!LIFE_ON || !vil._terrSet || !vil._terrSet.size || !vil.econ) return;
   _lifeVL();
@@ -7758,7 +7788,9 @@ function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(�
     let _walked = 0; if (vil._t325PreWalked) { _walked = vil._t325PreWalked; vil._t325PreWalked = 0; }   // ★[T475 ②] 손은 econ 틱 앞에서 이미 곳간에(`_lifeHandsIn`) — 사람 수만 이어 받는다
     if (_on) for (const pid of (vil.npcPids || [])) { const p = _pl && _pl.get(pid); if (p && p.inventory && (p.inventory.wood || 0) > 0) { _t325Deliver(vil, p); _walked++; } }
     //   ★[T449 ⓑ] 관측 마을(켬)의 나무꾼은 **몸 명부** — 일괄 명부에서 빠진다(T423 문법 · 끔이면 종전 명부 그대로)
-    const _lnE = (vil.econ.counts && vil.econ.counts.lumberjack) || 0;
+    //   ★★[T491 ⓐ] 켬이면 명부 = 그날 일한 **나무꾼 몸**(`_t491Crew`) · 끔 = econ 나무꾼 수(옛 줄 그대로)
+    const _t491C = T491_BATCH_FROM_BODY ? _t491Crew(vil) : null;
+    const _lnE = _t491C ? _t491C.length : ((vil.econ.counts && vil.econ.counts.lumberjack) || 0);
     const _ln = _t449S ? 0 : _lnE;
     if (_t449S && _on && _walked === 0 && _lnE > 0 && _tr.length) _t449T.woodBody++;   // 계측 — 종전이면 일괄이 돌았을 날
     const _S = vil._t325Trees || {};
@@ -7773,9 +7805,12 @@ function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(�
       for (const t of _tr) { const dd = (t.x - _cx0) * (t.x - _cx0) + (t.y - _cy0) * (t.y - _cy0); if (dd < _bd) { _bd = dd; _best = t; } }
       const _w = (_S.wBar > 0) ? _S.wBar : 1;
       const _trips = _t341TripsPerDay(vil, Math.sqrt(_bd), _w);
-      const _perLoad = _t341TreesPerLoad(_w);
-      const _cap = _trips * _perLoad * _ln;                     // 그 마을 사람들이 하루에 낼 수 있는 그루 수
+      //   ★★[T491 ⓑ] 켬 = 한 짐이 **단**이다(`_t400PerLoad('wood')` — 몸 크루의 그 짐) ⇒ 한도 = 몸의 하루(`_t491BodyDay`) × 명부 · 끔 = 그루(옛 줄)
+      const _perLoad = _t491C ? _t400PerLoad('wood') : _t341TreesPerLoad(_w);
+      const _body = _t491C ? _t491BodyDay(vil, Math.sqrt(_bd)) : 0;
+      const _cap = _t491C ? _body * _ln : _trips * _perLoad * _ln;   // 그 마을 사람들이 하루에 낼 수 있는 그루 수(켬: 단 = 몸의 하루 × 명부)
       vil._t325Dbg.trips = _trips; vil._t325Dbg.perLoad = _perLoad; vil._t325Dbg.cap = _cap;
+      if (_t491C) vil._t325Dbg.t491 = { crew: _ln, body: _body, made: 0 };   // ★[T491 계측 전용] 켠 판에만 서는 칸(명부 · 한 몸의 하루 단 · 벤 단)
       let ci = 0, made = 0;
       for (let k = 0; k < _tr.length * 8 && ci < _tr.length && made < _cap; k++) {
         //   ★★[T374] 나무꾼도 **같은 규칙**이다(사본 0 — econ 정본 `woodDemandLeft`).
@@ -7790,7 +7825,8 @@ function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(�
         let loot = null; try { loot = state.deps.t325CutTreeAt ? state.deps.t325CutTreeAt(t.cx, t.cy) : null; } catch (e) { loot = null; }
         if (!loot) { vil._t325Dbg.noloot++; break; }
         if (sk) (vil._t341Cut || (vil._t341Cut = [])).push(sk);   // ★재생이 되돌릴 목록(벤 순서)
-        made++; vil._t325Dbg.cut++;
+        made += _t491C ? u : 1; vil._t325Dbg.cut++;                // ★[T491] 켬 = 단으로 센다(한도가 단이다) · 끔 = 그루(옛 줄 `made++` 와 같은 수)
+        if (_t491C) vil._t325Dbg.t491.made = +(vil._t325Dbg.t491.made + u).toFixed(6);
         _lifeEcon().woodToGranary(vil.econ, u);
         vil._t325Deliv = +((vil._t325Deliv || 0) + u).toFixed(6);
       }
@@ -9203,6 +9239,8 @@ module.exports = { fishPerf, woodPerf, foragePerf, farmPerf,   // ★[T316] `/pe
       trips: (vil, d, w) => _t341TripsPerDay(vil, d, w) },
     // ★[T449] 결산 문 하네스용 — 같은 규약(최소 주입구 하나). 하네스는 문·명부 규칙을 다시 적지 않는다 — 정본 `_t449Seen`·`_lifeDaily` 를 그대로 부른다.
     _t449Probe: { seen: (vil) => _t449Seen(vil), daily: (vil) => _lifeDaily(vil), get T449_BODY_DAY() { return T449_BODY_DAY; } },
+    // ★[T491] 일괄 = 몸의 하루 하네스용 — 같은 규약(최소 주입구 하나). 하네스는 명부·짐 규칙을 다시 적지 않는다 — 정본 `_t491Crew`·`_t491BodyDay` 를 그대로 부른다.
+    _t491Probe: { crew: (vil) => _t491Crew(vil).map((p) => p.pid), bodyDay: (vil, d) => _t491BodyDay(vil, d), get T491_BATCH_FROM_BODY() { return T491_BATCH_FROM_BODY; } },
     get VILLAGE_MAX() { return VILLAGE_MAX; },
     get INITIAL_POP() { return INITIAL_POP; },
     get SZ() { return SZ; },

@@ -32,7 +32,15 @@ const OUT = process.env.T449_OUT || `${TMP}/body-day.json`;
 const ARMS = (process.env.T449_ARMS || 'off,on').split(',').filter(Boolean);
 const REAL_DAY_MS = 1440000;   // = `zone-config.js` WORLD.dayLengthMs (T368·T410 의 그 수)
 const ACTS = process.env.T449_ACTS === '0' ? {} : { T100_FIELD_YIELD: '1', T368_FARM_ACT: '1', T312_FISH_ACT: '1', T325_WOOD_ACT: '1', T347_FORAGE_ACT: '1' };
-const ENV = { off: Object.assign({ T449_BODY_DAY: '' }, ACTS), on: Object.assign({ T449_BODY_DAY: '1' }, ACTS), off2: Object.assign({ T449_BODY_DAY: '' }, ACTS) };
+const ENV = { off: Object.assign({ T449_BODY_DAY: '' }, ACTS), on: Object.assign({ T449_BODY_DAY: '1' }, ACTS), off2: Object.assign({ T449_BODY_DAY: '' }, ACTS),
+  //   ★[T491] 팔 둘 더 — `t491` = 일괄을 몸에서 유도(`T491_BATCH_FROM_BODY=1` · 결산 문 끔) · `both` = 둘 다 켬(관측 마을은 몸 · 나머지는 몸에서 유도한 일괄)
+  //     `t491b` = `t491` 한 번 더(A/A)
+  t491: Object.assign({ T449_BODY_DAY: '', T491_BATCH_FROM_BODY: '1' }, ACTS), t491b: Object.assign({ T449_BODY_DAY: '', T491_BATCH_FROM_BODY: '1' }, ACTS),
+  both: Object.assign({ T449_BODY_DAY: '1', T491_BATCH_FROM_BODY: '1' }, ACTS),
+  //   ★[T491 ② 되물음] 몸이 안 멈추면(`scripts/t491-whatif-probe.js` 로 띄울 때만 뜻이 있다) — `wa` 빈 셀 건너기 · `wb` + 곳간 사다리에서 목재도 내림
+  wa: Object.assign({ T449_BODY_DAY: '', T491_WHATIF: 'a' }, ACTS), wb: Object.assign({ T449_BODY_DAY: '', T491_WHATIF: 'b' }, ACTS) };
+//   ★[T491] 들여다보기 창 — 기본은 T449 의 그 창 · `T449_PROBE=scripts/t491-probe.js` 면 몸의 하루까지(그 창이 T449 창을 같이 싣는다)
+const PROBE = process.env.T449_PROBE || 'scripts/t449-probe.js';
 const TPL = process.env.T449_TPL || '';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const say = (...a) => console.log(`[${new Date().toISOString().slice(11, 19)}]`, ...a);
@@ -48,9 +56,10 @@ function boot(tag, env, i) {
   const c = spawn(process.execPath, [path.join(ROOT, 'server/central.js')], { cwd: ROOT, stdio: 'ignore',
     env: Object.assign({}, process.env, { PORT: String(CP), DB_PATH: cdb, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando', CENTRAL_SECRET: SECRET }) });
   const probeOut = `${TMP}/${tag}.probe.json`;
-  const z = spawn(process.execPath, ['-r', path.join(ROOT, 'scripts/t449-probe.js'), path.join(ROOT, 'server/zone.js')], { cwd: ROOT, stdio: ['ignore', logf, logf],
+  const z = spawn(process.execPath, ['-r', path.join(ROOT, PROBE), path.join(ROOT, 'server/zone.js')], { cwd: ROOT, stdio: ['ignore', logf, logf],
     env: Object.assign({}, process.env, { PORT: String(ZP), ZONE_ID: 'hanbando', CENTRAL_HOST: 'localhost', CENTRAL_PORT: String(CP), CENTRAL_SECRET: SECRET,
-      DB_PATH: zdb, ENABLE_VILLAGES: '1', VILLAGE_DAY_MS: String(REAL_DAY_MS), VILLAGE_WAR_LOG: '0', T449_PROBE_OUT: probeOut }, env) });
+      DB_PATH: zdb, ENABLE_VILLAGES: '1', VILLAGE_DAY_MS: String(REAL_DAY_MS), VILLAGE_WAR_LOG: '0', T449_PROBE_OUT: probeOut,
+      T491_PROBE_OUT: `${TMP}/${tag}.body.json`, T491_TRACE_OUT: `${TMP}/${tag}.trace.jsonl` }, env) });
   const getj = async (p) => { try { const r = await fetch(`http://localhost:${ZP}${p}`, { headers: { 'x-zone-secret': SECRET }, signal: AbortSignal.timeout(20000) }); return await r.json(); } catch (e) { return null; } };
   const health = async () => { try { return (await fetch(`http://localhost:${ZP}/health`, { signal: AbortSignal.timeout(5000) })).ok; } catch (e) { return false; } };
   let ws = null, pinger = null;
