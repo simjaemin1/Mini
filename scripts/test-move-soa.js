@@ -1845,8 +1845,14 @@ console.log('\n⑳ T461 걸음 문 WASM 커널 — 1,000틱 뒤 전원 좌표 �
   }
   // 끔 = 옛 문 — 손잡이가 없으면 커널을 안 만들고, 이동 문의 옛 줄은 그대로다
   const Zc = codeOnly(Z);
-  ok(/const _wwOn = T461_WALK_WASM === '1', _wwVerify = T461_WALK_WASM === 'verify';/.test(Zc) && /if \(\(_wwOn \|\| _wwVerify\) && !ZONE\.isOcean\)/.test(Zc),
-     '⑳ 끔(기본)이면 커널을 **만들지 않는다**(`_WW = null` · 앞문·뒷문·견줌 셋 다 `_WW` 없으면 무동작)');
+  ok(/const _wwVerify = T461_WALK_WASM === 'verify', _wwOn = !_wwVerify && T461_WALK_WASM !== '0';/.test(Zc) && /if \(\(_wwOn \|\| _wwVerify\) && !ZONE\.isOcean\)/.test(Zc),
+     '⑳ ★[T499] 기본 **켬** · `=0` 이면 커널을 **만들지 않는다**(`_WW = null` · 앞문·뒷문·견줌 셋 다 `_WW` 없으면 무동작 = 옛 문)');
+  {   // 손잡이 글자 → 갈래(선언 두 줄을 그대로 떠서 env 표본에 물린다)
+    const decl = (Z.match(/const T461_WALK_WASM = [^\n]*\n(const _wwVerify = [^\n]*?;)/) || [])[1];
+    const f = decl ? new Function('T461_WALK_WASM', decl + '\nreturn [_wwOn, _wwVerify];') : null;
+    const r = f ? ['', '1', 'on', '0', 'verify'].map((e) => f(e).map(Number).join('')) : [];
+    ok(r.join(' ') === '10 10 10 00 01', '⑳ 손잡이 표: 없음·`1`·그 밖 = 켬 · `0` = 끔 · `verify` = 견줌(몸엔 JS 정본)', r.join(' '));
+  }
   ok(Z.includes("      if (!p.canadiaVillage && !_t316WalkAlways(p) && !isPositionActive(p.x, p.y)) continue; // dormant NPC skip\n      movePlayerStep(p);"),
      '⑳ 이동 문의 옛 두 줄(거름 · `movePlayerStep(p)`)은 **한 글자도 안 바뀌었다**(자들의 닻 그대로)');
   ok(fs.existsSync(path.join(ROOT, 'server', 'walk-wasm.wasm')) && fs.existsSync(path.join(ROOT, 'tools', 'walk-wasm', 'walk.c')), '⑳ 산출물 `server/walk-wasm.wasm` · 원문 `tools/walk-wasm/walk.c` 가 레포에 있다');
