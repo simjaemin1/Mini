@@ -762,6 +762,10 @@ function initAudio() {
           const k = BLD[r.b.type], m = k && sfxKey(k);
           const need = (_sfxMan.buildingsWhen || {})[r.b.type];   // [T412] 노·숯가마는 **불이 들었을 때만**(`data.job`)
           if (m && need && need.field && !(r.b.data && r.b.data[need.field])) continue;
+          //   [T482] 그리고 **아직 타는 동안만** — 조업이 끝나도 사람이 꺼낼 때까지 `job` 이 남는다(숯가마: 식은 가마를 헐기 전).
+          //   끝 시각은 서버가 실어 둔 그 칸(`job.until` · 서버 시계) · 비교는 이미 맞춘 서버 시계(`worldNow`) — 새 수 0.
+          if (m && need && need.until) { const j = r.b.data && r.b.data[need.field], u = j && j[need.until];
+            if (typeof u === 'number' && typeof worldNow === 'function' && worldNow() >= u) continue; }
           if (m) sfxLoop(k + ':' + r.b.id, k, sfxGain(m, r.ax, r.ay) * (_sfxWx.indoor ? (m.indoorMul || 0) : 1));
         } else if (r.kind === 'resource' && r.r) {
           // [T473] 자원 반복(표 `resourceLoop` — 고인 물 `water_pool` 등): 건물 반복과 같은 문법(개체마다 하나 · 화면 밖이면 멎음)
@@ -777,6 +781,12 @@ function initAudio() {
         const night = (typeof isNight === 'function') ? !!isNight() : false;
         const ok = !night && trees >= (bird.trees || 0) && !(_sfxWx.precip > 0);
         window.__sfx.ambient('bird', ok ? 1 : 0, { indoor: _sfxWx.indoor });
+      }
+      // [T482] 밤 벌레 — 밤 · 비 아님 · 바깥. 자리는 서 있다(표 `nightAmbient.key`) · **키가 표에 없으면 무음**(녹음 회부 — 소리가 오면 한 줄이다).
+      const NA = _sfxMan.nightAmbient, naK = NA && NA.key, naM = naK && sfxKey(naK);
+      if (naM) {
+        const night = (typeof isNight === 'function') ? !!isNight() : false;
+        window.__sfx.ambient(naK, (night && !(_sfxWx.precip > 0)) ? 1 : 0, { indoor: _sfxWx.indoor });
       }
       // 물 — 개체가 아니라 지형이다. 내 셀이 바뀔 때만 다시 잰다.
       //   [T473] 민물(`water`)과 바다(`waterSplit.바다` — 파도)를 따로 — 한 번 훑은 두 거리.

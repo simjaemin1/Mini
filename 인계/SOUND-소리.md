@@ -517,3 +517,15 @@ ogg 길이는 마지막 `OggS` 페이지의 granulepos ÷ 표본율로 잰다(Vo
 * `sfx-cooccur` 판 `SFX_COOCCUR_AT=coast|river` — 클라 지형 표로 물가 뭍을 골라 서 있는다.
 * 밤 벌레는 녹음 회부, 천둥은 서버 회부.
 * 보고 `보고/T473_2026-09-27.md`.
+
+
+---
+
+## T482 (2026-09-28) — 세계가 안 보내는 소리 셋
+
+* **천둥은 세계에 없다** — `server/weather.js`(강수·기온·일교차)와 `zone.js weatherFor` 전문 어디에도 천둥·번개 값이 없다. `precip` 문턱이나 기상청 뇌전일수 앵커는 새 수라 짓지 않았다(회부). `test-audio ㉒a` 는 서버가 천둥을 보내기 시작하면 빨개진다 — 그날 후보 키 둘(`thunder`·`thunder_b`)을 배선하라.
+* **시설 가동은 이미 온다** — 노·숯가마 조업은 `building_updated {data.job{kind, startedAt, until…}}` 로 온다(서버 0줄). `buildingsWhen` 에 **`until` 칸**을 더했다: 층은 `b.data[field][until]` 와 `worldNow()` 를 견줘 **타는 동안만** 운다(다 탄 뒤 안 꺼낸 가마는 조용하다). 다른 시설이 끝 시각을 실으면 같은 칸으로 된다.
+* 마을(NPC) 노·숯가마는 econ 장부 행위 — 존에 몸이 없어 소리 자리가 없다(생활층 회부).
+* **밤 벌레** — 표 `nightAmbient {key:'crickets'}` · 밤 ∧ 비 아님 ∧ 바깥 → 환경 반복. 키가 없어 무음. 녹음이 오면 `keys.crickets` 한 줄(자는 `e2e-audio-probe 57b`).
+* 헤드룸 손 상한 `_실측.handFacility` — 환경 + 불 둘 + 정본 최악 사건 1.0987 → 끼고 0.7644 · 클리핑 0. `worstCombo` 무변.
+* 보고 `보고/T482_2026-09-28.md`.
