@@ -3951,14 +3951,27 @@ function _t476DenVil(g) {
   _t476DenRefresh(den);
   return den;
 }
-function _t476DenRefresh(den) {   // 갱 → 어댑터(편성: n 명 전사 · 한 사람 한 무기 · 비축 = 곳간 food)
+function _t476DenRefresh(den) {   // 갱 → 어댑터(T476: n 명 전사 · 한 사람 한 무기 · 비축 = 곳간 food)
   const g = den._den.gang, e = den.econ, n = Math.max(0, g.n | 0);
+  //   ★★[T502 2026-09-28 · T476 발견 "3명 갱에도 31%"] 팔 `T502_ODDS_REAL`(끔) — 갱을 **세계가 가진 것만으로** 비춘다:
+  //     몸 = `g.n` 그대로 · 직업 = bandits 몸의 그 이름(`'bandit'` — 전쟁 표에 없는 직업 = 민병) · 무기 = 갱이 가진 무기 **0**
+  //     (bandits.js 는 무기를 들지 않는다 — 장물은 전부 식량으로 환산된다 `BDT_FENCE_*`) · 비축 = `g.food`. 새 수 0.
+  //   끔이면 T476 그대로(전원 `warrior` · 무기 n) — 비트 동일.
+  const real = _t502On(), job = real ? 'bandit' : 'warrior';
   while (e.npcs.length > n) e.npcs.pop();
-  while (e.npcs.length < n) e.npcs.push({ currentJob: 'warrior', age: 30 });
-  e.counts.warrior = n;
+  while (e.npcs.length < n) e.npcs.push({ currentJob: job, age: 30 });
+  for (const npc of e.npcs) npc.currentJob = job;
+  e.counts = { [job]: n };
   e.storage.food = Math.max(0, g.food || 0); e.storage.fish = 0; e.storage.meat = 0; e.storage.cooked_food = 0; e.storage.vegetable = 0;
-  e.storage.weapon = n; e.storage.armor = 0;
+  e.storage.weapon = real ? 0 : n; e.storage.armor = 0;
 }
+function _t476GangLive(g) {   // bandits 가 준비되지 않은 세계(하네스)는 모른다 → 살아 있다고 본다
+  let camps = null; try { const B = require('./bandits'); camps = B && B.clientCamps ? B.clientCamps() : null; } catch (_) { camps = null; }
+  if (!camps || !g || !g.camp) return true;
+  const x = g.camp.cx * SZ + SZ / 2, y = g.camp.cy * SZ + SZ / 2;
+  return camps.some(c => c.n > 0 && Math.abs(c.x - x) < 1 && Math.abs(c.y - y) < 1);
+}
+function _t502On() { return typeof process !== 'undefined' && !!process.env && process.env.T502_ODDS_REAL === '1'; }
 function _t476DenSync(w) {   // 어댑터 → 갱(전투·노획 뒤)
   const den = w && w.def; if (!den || !den._den) return;
   const g = den._den.gang, S2 = den.econ.storage;
@@ -3998,23 +4011,29 @@ function _t476Decide(day) {
     if (WC.WARS.some(x => x.def && x.def._den && x.def._den.gid === gd.g.id)) continue;   // 그 소굴로 이미 가는 원정이 있다
     const den = _t476DenVil(gd.g);
     const plan = WC._warNpcMobPlan(vil, den, 'feud', gd.dist, day);
-    if (!plan || !plan.viable) { st.plan++; _say('소굴#' + gd.g.id + '(' + gd.g.n + '명 · ' + gd.dist.toFixed(0) + '셀) 동원 안 됨(' + ((plan && plan.capReason) || '-') + (plan && plan.pWin != null ? ' · 승산 ' + (plan.pWin * 100).toFixed(0) + '%' : '') + (plan && plan.forceCount != null ? ' · 병력 ' + plan.forceCount : '') + ')'); continue; }
+    //   ★[T502] 팔 켬이면 옛 비춤(T476)의 승산도 같은 줄에 적는다(같은 마을·같은 날·같은 갱 — 대조만 · 결단은 팔이 한다)
+    let oldP = null; if (_t502On()) { try { delete process.env.T502_ODDS_REAL; oldP = WC._warNpcMobPlan(vil, _t476DenVil(gd.g), 'feud', gd.dist, day); } finally { process.env.T502_ODDS_REAL = '1'; } }
+    const _oldTxt = oldP ? ' · T476 비춤 승산 ' + (oldP.pWin != null ? (oldP.pWin * 100).toFixed(0) + '%' : '-') + '/병력 ' + (oldP.forceCount != null ? oldP.forceCount : '-') : '';
+    if (!plan || !plan.viable) { st.plan++; _say('소굴#' + gd.g.id + '(' + gd.g.n + '명 · ' + gd.dist.toFixed(0) + '셀) 동원 안 됨(' + ((plan && plan.capReason) || '-') + (plan && plan.pWin != null ? ' · 승산 ' + (plan.pWin * 100).toFixed(0) + '%' : '') + (plan && plan.forceCount != null ? ' · 병력 ' + plan.forceCount : '') + _oldTxt + ')'); continue; }
     const cost = plan.forceCount * (plan.marchDays * 2 + K.WAR_SIEGE_PACK) * K.WAR_RATION;
-    if (lost < cost) { st.short++; _say('소굴#' + gd.g.id + ' 팩 비용 ' + cost.toFixed(1) + ' 에 못 미침(병력 ' + plan.forceCount + ' · 행군 ' + plan.marchDays + '일)'); continue; }
+    if (lost < cost) { st.short++; _say('소굴#' + gd.g.id + ' 팩 비용 ' + cost.toFixed(1) + ' 에 못 미침(병력 ' + plan.forceCount + ' · 행군 ' + plan.marchDays + '일 · 승산 ' + (plan.pWin * 100).toFixed(0) + '%' + _oldTxt + ')'); continue; }
     if (!WC.warMobilize(vil, den, 'feud', gd.dist, day)) { st.plan++; continue; }
     const w = WC.WARS[WC.WARS.length - 1]; if (!w || w.def !== den) continue;
     w._opPolicy = 'assault';
-    w._t476 = { day, raids, lost: +lost.toFixed(3), cost: +cost.toFixed(3), gid: gd.g.id, gangN: gd.g.n, gangFood: +(gd.g.food || 0).toFixed(3), dist: +gd.dist.toFixed(1) };
+    w._t476 = { day, raids, lost: +lost.toFixed(3), cost: +cost.toFixed(3), gid: gd.g.id, gangN: gd.g.n, gangFood: +(gd.g.food || 0).toFixed(3), dist: +gd.dist.toFixed(1), pWin: +(plan.pWin || 0).toFixed(3), real: _t502On() ? 1 : 0, pWinOld: oldP && oldP.pWin != null ? +oldP.pWin.toFixed(3) : null };
     e._t476Seen = day; e._t476Lost0 = lostNow;
     e._bdtSupCd = Math.max(e._bdtSupCd || 0, e._warCd || 0);   // abstract 토벌은 이 원정 동안 쉰다(쿨은 war 의 그 수)
     go++; st.go++;
     if (st.rows.length < 64) st.rows.push(Object.assign({ vil: vil.name, wid: w.id, force: w.force, marchDays: w.marchDays }, w._t476));
-    if (WC.warLog) WC.warLog(day, vil.name + ' 토벌 결단 → 소굴#' + gd.g.id + '(' + gd.g.n + '명 · ' + gd.dist.toFixed(0) + '셀) — 약탈 ' + raids + '건 · 털린 양 ' + lost.toFixed(1) + ' ≥ 팩 비용 ' + cost.toFixed(1) + ' · 병력 ' + w.force + ' · 행군 ' + w.marchDays + '일');
+    if (WC.warLog) WC.warLog(day, vil.name + ' 토벌 결단 → 소굴#' + gd.g.id + '(' + gd.g.n + '명 · ' + gd.dist.toFixed(0) + '셀) — 약탈 ' + raids + '건 · 털린 양 ' + lost.toFixed(1) + ' ≥ 팩 비용 ' + cost.toFixed(1) + ' · 병력 ' + w.force + ' · 행군 ' + w.marchDays + '일 · 승산 ' + ((plan.pWin || 0) * 100).toFixed(0) + '%' + _oldTxt);
   }
   return go;
 }
 function _t476DenBattle(body) {
   const w = body.w, f = body.fight, WL = state.warLive, den = w.def, day = state.world.day, WC = state.war;
+  //   ★[T502 발견] 원정 동안 갱이 **흩어졌을** 수 있다(3명 미만 해산 — bandits 가 명부에서 뺀다 · 우리 손엔 옛 객체만 남는다).
+  //     bandits 공개 마커(`clientCamps` — 산 단 n>0 · 읽기만)에 그 은거지가 없으면 빈 소굴이다(몸 0 · 비축은 흩어진 자들이 갖고 갔다).
+  if (!_t476GangLive(den._den.gang)) { den._den.gang.n = 0; den._den.gang.food = 0; den._den.gone = 1; }
   _t476DenRefresh(den);   // 원정 동안 갱이 변했을 수 있다(유지비·합류·abstract 사건) — 싸우는 순간의 갱
   let r = null, walk = false;
   if (den.econ.npcs.length >= 2) { try { r = WC.warResolveBattle(w, day, { bodies: true }); } catch (e) { console.error(`[${state.zoneId}] 🏴 [T476] 소굴 전투 실패:`, e.message); } }
@@ -4025,7 +4044,7 @@ function _t476DenBattle(body) {
     const k = Math.min(A.length, Math.round(r.atkCas * A.length / Math.max(1, w.force || A.length)));
     for (let i = 0; i < k; i++) A[i].hp = 0;
   }
-  const bk = w._t476; if (bk) { bk.winner = r.winner; bk.atkCas = r.atkCas; bk.defCas = r.defCas; bk.battleDay = day; bk.walk = walk; }
+  const bk = w._t476; if (bk) { bk.winner = r.winner; bk.atkCas = r.atkCas; bk.defCas = r.defCas; bk.battleDay = day; bk.walk = walk; bk.gone = den._den.gone ? 1 : 0; }
   if (f) WL.settle(f, 'walkover', r.winner);   // 기록만(정산은 위 한 번 · rout 으로 부르면 war-live 가 한 번 더 정산한다)
   w._sortie = false; w.phase = 'return'; w.eta = day + (w.marchDays || 1);
   _warEndFight(body, walk ? 'walkover' : 'rout', r.winner);
