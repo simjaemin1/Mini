@@ -77,6 +77,10 @@
     // ★[T472] 군락 품목 셋 — 나는 자리의 소품(T372 `mushroom01`·`greens01`·`hive01`)과 **같은 모델**을
     //   아이콘 프리셋으로 한 번 더 구웠다(`nature_render.py` ICON_BUILD · 새 형상 0). 키는 서버 `GROVE_KINDS.item` 그대로다.
     'mushroom', 'vegetable', 'honey',
+    // ★[T481] 특산 갈래 대표 셋 — **품목이 아니다**(키 `grp_<갈래>`). 세계 소품 그 모델을 아이콘 프리셋으로 한 번 더 구웠다
+    //   (농산물 = 익은 곡물 밭 `fields_render` · 임산물 = 소나무 `tree01` · 향신료 = 약초 풀 `herb01` · 새 형상 0).
+    //   제 그림 없는 특산 품목이 `icons.lock.json` 의 `_갈래` 로 빌려 쓴다(아래 `itemIconImg` 뒤 한 줄 · 광물은 있는 `ore`).
+    'grp_agri', 'grp_forest', 'grp_spice',
   ]);
   // ★★[T66 2차 · 재민 확정 2026-09-03] 옛 **거부 목록** `ICON_NO_RENDER` 은 **없앴다** — 뒤집혔다.
   //   종전: "여기 있으면 렌더가 없다"(빠뜨리면 404). 지금: `ICON_RENDERED` 에 **있으면 그림, 없으면 점선 칸**.
@@ -89,6 +93,10 @@
     const im = ITEM_ICON_IMG[k];
     return (im && im.complete && im.naturalWidth > 0) ? im : null;
   }
+  // ★★[T481] **특산 갈래 대표 그림** — 제 그림이 없는 econ 특산 품목은 **제 갈래의 대표 그림**을 빌린다(라벨은 제 이름 그대로).
+  //   정본은 `icons.lock.json` 의 `_갈래`(갈래마다 대표 키 + 빌려 쓰는 품목) 하나 — 여기 표를 옮겨 적지 않는다.
+  //   제 그림이 있는 키는 **안 덮는다** · 대표가 구운 목록에 없거나 표가 안 오면 종전대로 점선 칸이다(요청은 구운 PNG 에만 · 404 0).
+  if (typeof fetch === 'function' && typeof Image === 'function') fetch('/assets/icons.lock.json').then((r) => (r.ok ? r.json() : null)).then((L) => { for (const g of Object.values((L && L['_갈래']) || {})) { if (!g || !g.icon || !ICON_RENDERED.has(g.icon) || !Array.isArray(g.items)) continue; for (const k of g.items) { if (ICON_RENDERED.has(k)) continue; const im = new Image(); im.onload = () => { ITEM_ICON_IMG[k] = im; }; im.src = '/assets/icons/' + g.icon + '.png'; } } }).catch(() => {});
   // ★★[T66] **물건 그림은 함수 하나다.** 인벤 · 조합법 · 바닥 · 거래소 · 창고가 전부 이걸 부른다.
   //   있으면 `/assets/icons/<key>.png` 렌더, 없으면 **점선 빈 칸**. 이모지는 없다(재민 확정 4·5).
   function itemPic(k, px) {

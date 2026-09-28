@@ -171,6 +171,9 @@
   "gold": "693dc93f911f91bf",
   "gourd": "854a5e8b96378f1d",
   "grape": "5ea5361722a74959",
+  "grp_agri": "0f2d467a352c8ac3",
+  "grp_forest": "e20bb8b0d9142736",
+  "grp_spice": "83bc6fe6fb65fadf",
   "hemp_plant": "9044205432304d2f",
   "herb": "868d364f8b9eadf1",
   "herring": "72831b90445a70f6",
@@ -276,6 +279,216 @@
   "wheat": "c35d563d58a18f0f",
   "wood": "cdbe862de0bb1384",
   "yam": "0bb3c0a5111393df"
+ },
+ "_갈래": {
+  "_": "[T481] 특산 갈래 대표 그림 — 제 그림이 없는 econ 특산 품목(server/specialty.js RESOURCES)이 **제 갈래(category)의 대표 그림**을 빌린다 · 라벨은 제 이름 그대로. 클라 `public/client/43-i-icon.js` 한 줄이 이 칸을 읽는다(제 그림이 있는 키는 안 덮는다 · icon 이 null 이면 점선 칸 그대로). items 는 특산 표에서 뽑았다(그 갈래 중 icons/<키>.png 가 없는 것) — 새 품목·새 그림이 생기면 다시 뽑는다(보고/T481 재현). grp_* 는 품목이 아니다.",
+  "agri": {
+   "_": "익은 곡물 밭 — fields_render.py `build('grain', 3)` = 세계 `crops/grain_3` 과 같은 모델(심긴 것을 모르는 밭은 곡물 · 00-const.js)",
+   "icon": "grp_agri",
+   "items": [
+    "apple",
+    "banana",
+    "cassava",
+    "chickpea",
+    "chili",
+    "cocoa",
+    "coconut",
+    "coffee",
+    "corn",
+    "cotton",
+    "dates",
+    "fig",
+    "flax",
+    "hemp",
+    "lentil",
+    "mango",
+    "mulberry",
+    "oats",
+    "olive",
+    "onion",
+    "peanut",
+    "pineapple",
+    "potato",
+    "pumpkin",
+    "rye",
+    "sugarbeet",
+    "sugarcane",
+    "sweet_potato",
+    "tobacco",
+    "tomato"
+   ]
+  },
+  "forest": {
+   "_": "소나무 성목 — nature_render.py `TREE_BUILD` `tree01` 그 줄(목재 수율 기준 종 · trees.json 소나무=1.00)",
+   "icon": "grp_forest",
+   "items": [
+    "amber_resin",
+    "bamboo",
+    "beeswax",
+    "birch_log",
+    "birch_sap",
+    "cedar_log",
+    "chamomile",
+    "cork",
+    "ebony_log",
+    "fruit_berries",
+    "ginseng",
+    "herbs",
+    "latex",
+    "mahogany_log",
+    "nuts",
+    "oak_log",
+    "paper_mulberry",
+    "pine_log",
+    "resin",
+    "rubber",
+    "sage",
+    "teak_log",
+    "truffle",
+    "wild_ginseng"
+   ]
+  },
+  "gem": {
+   "icon": null,
+   "items": [
+    "iron_relic"
+   ]
+  },
+  "goods": {
+   "icon": null,
+   "items": [
+    "armor",
+    "beer",
+    "bow",
+    "bread",
+    "brush",
+    "clay_brick",
+    "clothes",
+    "dye_indigo",
+    "dye_purple",
+    "glass",
+    "ink",
+    "kimchi",
+    "paper",
+    "perfume",
+    "pottery",
+    "silk_cloth",
+    "soy_sauce",
+    "stone_brick",
+    "wine"
+   ]
+  },
+  "jewel": {
+   "icon": null,
+   "items": [
+    "amber_polished",
+    "amethyst",
+    "diamond",
+    "emerald",
+    "gold_coin",
+    "jade_polished",
+    "relic",
+    "ruby",
+    "sapphire",
+    "scroll",
+    "silver_coin",
+    "topaz",
+    "turquoise"
+   ]
+  },
+  "livestock": {
+   "icon": null,
+   "items": [
+    "beef_tallow",
+    "bone",
+    "cheese",
+    "duck_meat",
+    "egg",
+    "feather",
+    "fur",
+    "goat_milk",
+    "horn",
+    "ivory",
+    "leather",
+    "linen",
+    "meat_beef",
+    "meat_chicken",
+    "meat_game",
+    "meat_mutton",
+    "meat_pork",
+    "milk",
+    "silk_raw",
+    "silkworm",
+    "wool"
+   ]
+  },
+  "marine": {
+   "icon": null,
+   "items": [
+    "anchovy",
+    "lobster",
+    "murex_shell",
+    "octopus",
+    "sardine",
+    "squid"
+   ]
+  },
+  "mineral": {
+   "_": "있는 그림 `ore`(이름표 '광물' = 갈래 이름) — 새로 굽지 않았다",
+   "icon": "ore",
+   "items": [
+    "amber_raw",
+    "bauxite",
+    "chromium",
+    "clay",
+    "coal",
+    "cobalt",
+    "flint",
+    "granite",
+    "kaolin",
+    "limestone",
+    "magnesite",
+    "manganese",
+    "marble",
+    "mercury",
+    "meteorite",
+    "nitrate",
+    "obsidian",
+    "phosphate",
+    "sand",
+    "soda_ash",
+    "sulfur",
+    "tungsten",
+    "zinc"
+   ]
+  },
+  "spice": {
+   "_": "약초 풀 — nature_render.py `PROP_BUILD` `herb01` 그 줄(세계 `herb` 자원의 소품 · 채취 16/21)",
+   "icon": "grp_spice",
+   "items": [
+    "basil",
+    "black_pepper",
+    "cardamom",
+    "cinnamon",
+    "clove",
+    "coriander",
+    "cumin",
+    "frankincense",
+    "lavender",
+    "mint",
+    "musk",
+    "myrrh",
+    "nutmeg",
+    "paprika",
+    "rosemary",
+    "saffron",
+    "sage_herb",
+    "star_anise",
+    "thyme",
+    "turmeric",
+    "vanilla"
+   ]
+  }
  },
  "mountains": {
   "mt_F0v0": "86f90c1d0e2c6571",
@@ -625,7 +838,7 @@
   "threads": 2,
   "simd": "fma avx avx2 avx512f avx512dq avx512bw avx512vl avx512_vnni",
   "node": "v22.22.2",
-  "commit": "ee27832c",
-  "당시": "2026-09-27"
+  "commit": "5391f076",
+  "당시": "2026-09-28"
  }
 }
