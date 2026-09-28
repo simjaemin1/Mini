@@ -3160,8 +3160,13 @@ function forageActOn(v) { return !!(T347_FORAGE_ACT && v && (v._t347Cells | 0) >
 //   여기서는 그 목록과 채집 믹스의 **교집합**만 걷는다. 목록이 없으면 아무것도 안 걷는다(비트 동일).
 //   ⚠교집합인 이유: 실체가 대지만 econ 믹스에 없는 품목(`fiber`)은 걷을 것이 없고,
 //     믹스에 있지만 실체가 없는 품목(`mushroom`·`vegetable`·`honey`)은 **걷으면 공급원 없이 지우는 셈**이다.
+//   ★★[T475 2026-09-28] **마을 목록이 먼저다** — 생활층이 그 마을 채집 원판에 **실제로 선 종**의 품목만 세어 마을에 심는다
+//     (`v._forageActItems` · 세계 목록의 부분집합 · 이 파일은 여전히 표를 안 갖는다). 없으면 세계 목록(종전 · 랩·픽스처·CLI 무변).
+//     ⇒ 야생 군락이 없는 마을은 버섯·채소를 안 걷는다 — 걷어낸 몫을 **그 마을이 딴다**(걷은 몫 = 딴 몫).
 function forageActItemsOf(v) {
   if (!forageActOn(v)) return null;
+  const own = Array.isArray(v._forageActItems) ? v._forageActItems : null;
+  if (own) return own.length ? own : null;
   const w = v._world || null;
   const a = (w && Array.isArray(w.forageActItems)) ? w.forageActItems : null;
   return (a && a.length) ? a : null;

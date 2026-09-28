@@ -33,6 +33,58 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const say = (...a) => console.log(...a);
 const rmdb = (f) => { for (const s of ['', '-wal', '-shm']) { try { fs.unlinkSync(f + s); } catch (e) {} } };
 
+// ── ★[T475] 요약 — 이 자가 남긴 JSON 을 읽기만 한다(세계를 안 세운다 · 새 자 0) ─────────────────────────
+//   node scripts/t347-forage-day.js --summary <팔 이름>=<a.json> [<팔 이름>=<b.json> …]
+//   마을·하루(행위 마을 행)마다: 걷은 몫 = 그날 남은 수요 `dem`(헤드리스는 `_lifeDaily` 머리 = `D·share` — 두 시계 검사) ·
+//   곳간 = 누계 `g` 의 하루 증분(가지 · T475 계측) · 세계 비용 = 딴 개체 × w̄(T462 자기신고 그대로).
+//   ⇒ 항등 = 곳간 증분 = 걷은 몫(그 마을·그날) · 비(세계) = Σ 세계 비용 ÷ Σ 걷은 몫 = T462 의 "비"(134 → 91).
+if (process.argv[2] === '--summary') {
+  const arms = process.argv.slice(3).map((a) => { const i = a.indexOf('='); return i > 0 ? [a.slice(0, i), a.slice(i + 1)] : [path.basename(a), a]; });
+  const med = (a) => (a.length ? a.slice().sort((x, y) => x - y)[Math.floor(a.length / 2)] : null);
+  say(['팔', '판', '날', '행위 마을', '군락 0 마을', '군락 시작→끝', '딴 개체', '세계 비용(단)', '걷은 몫(단)', '비(세계) %', '곳간(단)', '비(곳간) %',
+    '항등 마을·날', '모자람', '넘침(세계−곳간)', 'dem=D·share', '걸은 손 마을·날', '그중 수요 0', '걸음 곳간÷걷은 몫 %', '걷는 몫 평균', '목록(마을 수 · 목록이 선 첫날)', 'p95 중앙'].join(' | '));
+  for (const [nm, f] of arms) {
+    let J = null; try { J = JSON.parse(fs.readFileSync(f, 'utf8')); } catch (e) { say(`${nm} | 못 읽음 ${f}`); continue; }
+    for (const [tag, r] of Object.entries(J.runs || {})) {
+      const cv = r.curve || []; if (!cv.length) continue;
+      let pick = 0, world = 0, strip = 0, gran = 0, hasG = false, eq = 0, short = 0, vd = 0, dAlign = 0, dN = 0, walkedVD = 0, mixS = 0, mixN = 0;
+      let wDem0 = 0, wIn = 0, wStrip = 0;   // ★[T475 ②] 걷는 몸 마을·날 — 그날 남은 수요가 0(어제 손이 먹었다) · 손이 곳간에 든 몫 ÷ 걷은 몫
+      let granEst = 0;   // 곳간 칸(`g`)이 없는 판(베이스) — 추정 = min(세계 비용, 걷은 몫)(곳간 입구가 수요에서 자른다 · 헤드리스)
+      const prevG = new Map(), prevD = new Map(); const p95 = [];
+      for (const d of cv) {
+        if (d.p95 != null) p95.push(d.p95);
+        for (const q of (d.rows || [])) {
+          const w = (q.pick || 0) * (q.wBar || 0);
+          pick += q.pick || 0; world += w;
+          const dem = (q.f > 0 && q.mix > 0) ? q.f * q.mix : 0;   // 걷은 몫 = 그날 수식이 걷어낸 몫(`_forageOutLast × _t347MixShare`)
+          strip += dem; granEst += Math.min(w, dem);
+          if (q.mix > 0) { mixS += q.mix; mixN++; }
+          const dd = (typeof q.d === 'number') ? q.d - (prevD.has(q.n) ? prevD.get(q.n) : q.d) : 0; if (typeof q.d === 'number') prevD.set(q.n, q.d);
+          if (q.walked > 0) { walkedVD++; if (typeof q.dem === 'number' && q.dem >= 0 && q.dem <= 1e-6 && dem > 0) wDem0++; wIn += dd; wStrip += dem; }
+          if (typeof q.dem === 'number' && q.dem >= 0 && q.f != null && q.mix != null && !(q.walked > 0)) { dN++; if (Math.abs(q.f * q.mix - q.dem) <= 1e-3 * Math.max(1, q.dem)) dAlign++; }
+          if (typeof q.g === 'number') {
+            hasG = true;
+            const dg = q.g - (prevG.has(q.n) ? prevG.get(q.n) : 0); prevG.set(q.n, q.g);
+            gran += dg;
+            if (dem > 0) { vd++; if (Math.abs(dg - dem) <= 1e-4 * Math.max(1, dem)) eq++; else if (dg < dem) short++; }   // 걷은 몫이 있는 마을·날만(0 = 0 은 안 센다)
+          }
+        }
+      }
+      const last = cv[cv.length - 1];
+      //   목록 분포 — 마을 목록이 다 선 첫날(켠 첫날은 스캔 전이라 세계 목록 폴백 · 가지만 `it` 가 있다)
+      const d1 = cv.find((d) => (d.rows || []).length && (d.rows || []).every((q) => Array.isArray(q.it))) || cv[Math.min(1, cv.length - 1)];
+      const lists = {}; for (const q of (d1.rows || [])) { const k = Array.isArray(q.it) ? q.it.join('·') : '(세계)'; lists[k] = (lists[k] || 0) + 1; }
+      say([nm, tag, cv.length, `${cv[0].act}→${last.act}`, `${cv[0].noGrove}→${last.noGrove}`, `${cv[0].groves}→${last.groves}`, pick,
+        world.toFixed(1), strip.toFixed(1), strip > 0 ? (100 * world / strip).toFixed(1) : '—',
+        hasG ? gran.toFixed(1) : `(추정 ${granEst.toFixed(1)})`, strip > 0 ? (hasG ? (100 * gran / strip).toFixed(1) : `(추정 ${(100 * granEst / strip).toFixed(1)})`) : '—',
+        hasG ? `${eq}/${vd}` : '—', hasG ? short : '—', hasG ? (world - gran).toFixed(1) : '—',
+        `${dAlign}/${dN}`, walkedVD, walkedVD ? wDem0 : '—', wStrip > 0 ? (100 * wIn / wStrip).toFixed(1) : '—', mixN ? (mixS / mixN).toFixed(3) : '—',
+        Object.entries(lists).map(([k, n]) => `${k} ${n}`).join(' ; '), med(p95)].join(' | '));
+    }
+  }
+  process.exit(0);
+}
+
 // ★[T462] 두 팔을 **나란히** 돌릴 때 — 자리(포트)·이름(파일)이 겹치지 않게(기본 0 · 없음 = 종전 그대로)
 const PORT_OFF = parseInt(process.env.T347_PORT || '0', 10) || 0;
 const TAGP = process.env.T347_TAG || '';
@@ -86,7 +138,10 @@ const popOf = (p) => (p && p.forage && p.forage.popAll) || null;
         delivered: w.delivered, formula: w.formulaActPerDay, formulaAll: w.formulaPerDay, hands: w.hands, walkers: w.walkers,
         p50: t ? t.p50 : null, p95: t ? t.p95 : null, players: popOf(p),
         //   ★[T462] 마을별 하루 — 입고를 **딴 개체 × w̄**(T347 §3 자기신고 · 누계 `delivered` 는 게이트에서 빠진 마을 몫이 사라진다)로 다시 세려고 남긴다
-        rows: (w.rows || []).map((r) => ({ n: r.n, pick: (r.dbg && r.dbg.pick) | 0, wBar: r.wBar, cap: (r.dbg && r.dbg.cap) | 0, N: r.N, K: r.K, f: r.f, mix: r.mix, back: (r.dbg && r.dbg.back) | 0, dem: r.dbg ? r.dbg.dem : null })) });
+        rows: (w.rows || []).map((r) => ({ n: r.n, pick: (r.dbg && r.dbg.pick) | 0, wBar: r.wBar, cap: (r.dbg && r.dbg.cap) | 0, N: r.N, K: r.K, f: r.f, mix: r.mix, back: (r.dbg && r.dbg.back) | 0, dem: r.dbg ? r.dbg.dem : null,
+          //   ★[T475] 곳간 누계(`g` — 수요에서 자른 뒤 실제로 든 몫 · 항등의 한쪽) · 그 마을 걷는 목록(`it`) · 걷는 몸(`walked` 손을 넣은 사람 · `hU` 지금 손) · 멈춤(`stop`)
+          g: r.g, it: r.it, walked: r.dbg ? r.dbg.walked : null, hU: r.hU, stop: r.dbg ? r.dbg.stop : null, fg: r.fg, d: r.d })),
+        gran: w.gran });
       if (!first) first = { day: dd, rows: w.rows, delivered: w.delivered, formula: w.formulaActPerDay, formulaAll: w.formulaPerDay, groves: w.groves, cells: w.cells, act: w.actVillages, noGrove: w.noGroveVillages };
       say(`  day ${dd} · 입고 ${w.delivered} / 수식(걷은 몫) ${w.formulaActPerDay}/${w.formulaPerDay} · 군락 ${w.groves}/${w.K} · 딴 ${w.pickDay} · 되살아난 ${w.back} · 한도 ${w.cap} · p50 ${t ? t.p50 : '?'}`);
     }
