@@ -685,6 +685,7 @@ const SERIALIZE_SKIP = new Set([
   'history',           // 아래서 최근 50개만 별도 저장
   '_near20', '_near20N', // tickTradeV2 이웃 캐시 — '마을 객체 참조' 배열(순환). 다음 틱에 재구축됨.
   '_priceCache', '_priceCacheDay', // 일 단위 가격 캐시 — 다음 틱에 재계산
+  '_forageActItems',   // ★[T475] 마을별 걷는 목록 — 생활층이 원판 종에서 **세는** 값(사본 0 · 세계 목록 `forageActItems` 처럼 하루 경계에서 다시 심는다)
 ]);
 const _serializeWarned = new Set();
 function serializeEcon(v) {
@@ -4251,6 +4252,8 @@ function _openDayJobs(now) {
       // ★[T284 ④ 계측 손잡이] 전쟁 수를 창 내내 N 으로 유지 — 끝난 만큼 다시 선포(성능 팔 전용 · 운영 무설정)
       try { _applyWarFixture(process.env.WAR_FIXTURE, true); } catch (e) { console.error(`[${state.zoneId}] ⚔️ [FIXTURE] 재선포 실패:`, e.message); }
     }
+    // ★★[T475 ② 두 시계 한 줄] 생활 하루는 econ 틱 **앞**에서 닫는다 — 걷는 몸이 낮에 딴 손을 이 틱이 오늘치를 장부로 옮기고 비우기 전에 곳간에.
+    for (const vil of C.vils) _lifeHandsIn(vil);
     // econ 1일 틱 — tickWorldV2 내부 로그(캐러밴·회복 등)는 침묵시키고 아래 요약 1줄만.
     //   (헤드리스 하네스 regression-check 126행과 같은 검증된 패턴)
     const _log = console.log;
@@ -5770,6 +5773,42 @@ function _econSameOf(item) {
 let _t347PairsC = null;   // 걷는 짝 [{ loot(손 이름), econ(재화 id) }] — `_t347ActItems` 가 같이 센다
 // 그 econ 재화를 **손에서는 어떤 이름으로** 드나 — 짝이 없으면 제 이름(나무·잔가지처럼 이름이 같은 것)
 function _t347HandsOf(k) { const P = _t347PairsC; if (!P) return [k]; const out = []; for (const p of P) if (p.econ === k) out.push(p.loot); return out.length ? out : [k]; }
+// ★★★[T475 2026-09-28 · ★PM 결정(위임) · 재민 거부권] **걷는 목록은 마을마다** — 그 마을 채집 원판에 **실제로 선 종**의 품목만.
+//   T462 §5: 목록이 세계 하나(`world.forageActItems`)라 야생 군락이 없는 마을(43/51)도 채소·버섯을 수식에서 걷어냈다 —
+//   걷어낸 몫을 **아무도 못 채운다**(등가 134 → 91%). 캐논: 마을이 따는 것은 그 마을 땅에 실제로 서는 종이다.
+//   ⓐ 종 = `_t347Scan` 이 **오늘 서 있는** 개체에서 본 종(`vil._t347Kinds` · N 과 같은 훑기 · 하루 한 번 · 정본 `forageKinds` 차례)
+//   ⓑ 품목 = 세계 목록(`_t347ActItems` — T458 등가 문법 그대로) 중 그 종들의 전리품이 대는 것 — 새 표 0 · 새 수 0 · 사본 0
+//   ⓒ econ 은 `v._forageActItems` 가 있으면 그것을 걷는다(문 `forageActItemsOf` · 없으면 세계 목록 — 랩·픽스처 무변)
+//   ⇒ 야생 없는 마을 = 덤불·풀 품목만 · 풀이 없는 마을은 약초를 안 걷는다 · 게이트에서 빠진 마을은 수식 그대로(있는 문법).
+const _t347VilItems = new Map();   // (세계 목록 · 종) 글자 키 → 마을 목록 — 같은 종 집합이면 같은 배열(한 번만 센다)
+function _t347ItemsFor(kinds) {
+  const all = _t347ActItems(); if (!all || !kinds) return all;
+  const key = all.join('|') + '#' + kinds.join('|');
+  let hit = _t347VilItems.get(key); if (hit) return hit;
+  const got = new Set();
+  for (const t of kinds) {
+    let l = null; try { l = state.deps.t347LootOf({ type: t, x: 0, y: 0 }); } catch (e) { l = null; }
+    if (l) for (const n in l) if (l[n] > 0) got.add(_econSameOf(n) || n);   // ★[T458] 손 이름 → 같은 물건(econ 이름)
+  }
+  hit = all.filter((k) => got.has(k));
+  _t347VilItems.set(key, hit);
+  return hit;
+}
+// 그 마을이 걷는 목록 — 마을 목록이 서 있으면 그것 · 아니면 세계 목록(종전 · 켠 첫날 등)
+//   ⚠세계 목록을 **먼저** 부른다 — 손 이름 짝(`_t347PairsC` · berry→fruit)이 거기서 선다(마을 목록만 있어도 손을 옳은 이름으로 읽게).
+function _t347KeepOf(vil) {
+  const all = _t347ActItems();
+  const own = vil && vil.econ && vil.econ._forageActItems;
+  return Array.isArray(own) ? own : all;
+}
+// 마을 목록을 econ 마을에 심는다 — `_lifeDaily` 채집 절이 부르는 **그 한 줄**(하네스도 이 함수를 부른다 · 사본 0).
+//   종(`vil._t347Kinds`)은 `_t347Scan` 이 N 을 셀 때 **오늘 서 있는** 개체에서 센다(하루 한 번) — 스캔 전(켠 첫날)엔 안 심는다(세계 목록 폴백).
+//   ⚠교란 전 원판(K 의 `raw`)이 아니다: 다 딴 종(예: 주기 183일 나물)을 목록에 두면 걷어내기만 하고 아무도 못 채운다(T462 §5 와 같은 모양).
+//     종이 바닥나면 그 품목만 수식으로 돌아간다 — 마을 게이트(`_t347Cells` 0 ⇒ 수식)와 **같은 문법의 종 판**이다(새 규약 0).
+function _t347PlantList(vil) {
+  if (!vil || !vil.econ || !vil._t347Kinds) return null;
+  return (vil.econ._forageActItems = _t347ItemsFor(vil._t347Kinds));
+}
 // ★[T347] 그 개체가 내는 **걷는 목록의 econ 단위** — 표는 존이 쥔다(`lootOfResource`). 여긴 읽기만 한다.
 //   ⚠묻는 것과 따는 것을 나눈 이유는 나무와 같다: 하루 한도가 그 개체를 못 대면 **안 따야** 한다.
 function _lifeLootForage(r) {
@@ -5785,7 +5824,7 @@ function _lifeLootForage(r) {
 //   ⚠넣은 품목은 그때 손에서 비운다(이중 0 — 손과 곳간에 같이 있을 수 없다).
 function _t347Deliver(vil, npc) {
   if (!npc || !npc.inventory) return 0;
-  const keep = _t347ActItems(); if (!keep || !keep.length) return 0;
+  const keep = _t347KeepOf(vil); if (!keep || !keep.length) return 0;   // ★[T475] 그 마을이 걷는 품목만(수식이 안 걷어낸 품목은 손에 남는다)
   let got = 0;
   for (const k of keep) for (const h of _t347HandsOf(k)) {   // ★[T458] 손의 `berry` 가 곳간의 `fruit` 로(같은 물건)
     const u = npc.inventory[h] || 0;
@@ -5794,6 +5833,7 @@ function _t347Deliver(vil, npc) {
     npc.inventory[h] = 0;
   }
   if (got > 0) vil._t347Deliv = +((vil._t347Deliv || 0) + got).toFixed(6);
+  if (got > 0) vil._t347Gran = +((vil._t347Gran || 0) + got).toFixed(6);   // ★[T475 계측] 곳간에 실제로 든 몫(수요에서 자른 뒤) — 항등의 한쪽
   return got;
 }
 // ★★[T374 2026-09-23] **마을의 손에 든 것** — 곳간 다리(`_lifeDaily` 의 `_t325Deliver`·`_t347Deliver`)가
@@ -5816,9 +5856,36 @@ function _t374Held(vil, items) {
 function _t374Done(vil, job) {
   const E = _lifeEcon();
   if (!E.T374_DEMAND_STOP || !vil || !vil.econ) return false;
-  if (job === 'forager' && E.forageActOn(vil.econ)) return !(E.forageDemandLeft(vil.econ, _t374Held(vil, _t347ActItems())) > 0);
+  if (job === 'forager' && E.forageActOn(vil.econ)) return !(E.forageDemandLeft(vil.econ, _t374Held(vil, _t347KeepOf(vil))) > 0);   // ★[T475] 그 마을 목록
   if (job === 'lumberjack' && E.woodActOn(vil.econ)) return !(E.woodDemandLeft(vil.econ, _t374Held(vil, _T374_WOOD)) > 0);
   return false;
+}
+// ★★★[T475 ② 2026-09-28 · 두 시계 한 줄] **생활 하루는 econ 틱 앞에서 닫는다** — 부르는 자리는 `_openDayJobs` 'econ' 한 줄.
+//   T374 가 적은 "수요 문의 시계 = 생활 하루" 는 **헤드리스에선 이미 참**이다(실측: 매 `_lifeDaily` 머리 `dem = D·share` 406/406 —
+//   econ 틱 하나에 생활 하루 하나 · 보고 §ⓑ). 어긋난 것은 **걷는 몸의 손** 하나였다: 낮 N 에 딴 손이 `_lifeDaily` N+1 에서 곳간에
+//   드는데 그때는 econ 틱 N+1 이 오늘치를 이미 장부에 옮기고 비운 뒤다 ⇒ 어제 딴 것이 **오늘 수요를 먹는다** ⇒ 하루걸러 반.
+//   ⇒ 손을 **틱 앞에서** 곳간에 넣는다 — 같은 두 다리(`_t347Deliver`·`_t325Deliver`) · 새 수 0 · 새 단계 0(조각 순서 캐논 무변).
+//   ⚠헤드리스는 손이 비어 있어 아무것도 안 한다 · 손잡이가 꺼져 있으면 첫 줄에서 돌아간다(끈 팔 비트 동일).
+//   ⚠사람 수만 `_lifeDaily` 로 넘긴다(`_t347PreWalked`·`_t325PreWalked` — "몸이 걷는 마을은 헤드리스로 안 딴다" 판정 무변).
+function _lifeHandsIn(vil) {
+  const E = _lifeEcon();
+  if (!(E.T347_FORAGE_ACT || E.T325_WOOD_ACT) || !vil || !vil.econ) return;
+  const pl = state.deps.players; if (!pl) return;
+  if (E.T347_FORAGE_ACT && E.forageActOn(vil.econ)) {
+    const keep = _t347KeepOf(vil) || [];
+    let n = 0;
+    if (keep.length) for (const pid of (vil.npcPids || [])) {
+      const p = pl.get(pid); if (!p || !p.inventory) continue;
+      let u = 0; for (const k of keep) for (const h of _t347HandsOf(k)) u += p.inventory[h] || 0;
+      if (u > 0) { _t347Deliver(vil, p); n++; }
+    }
+    if (n) vil._t347PreWalked = (vil._t347PreWalked | 0) + n;
+  }
+  if (E.T325_WOOD_ACT && E.woodActOn(vil.econ)) {
+    let n = 0;
+    for (const pid of (vil.npcPids || [])) { const p = pl.get(pid); if (p && p.inventory && (p.inventory.wood || 0) > 0) { _t325Deliver(vil, p); n++; } }
+    if (n) vil._t325PreWalked = (vil._t325PreWalked | 0) + n;
+  }
 }
 // ★★[T347] 군락 반경은 **나무의 그 반경이 아니다** — 실측이 그것을 가르쳤다.
 //   `T325_R`(16셀 = 512px)로 스캔했더니 **51마을 전부 군락 0**이었다: 군락은 `plan-village-forage.js` 가
@@ -5868,6 +5935,7 @@ function _t347Scan(vil, day) {
   const R = _t347R();
   if (_lifeEcon().T347_FORAGE_ACT && state.deps.t347GrovesAtCell && R > 0) {
     let K = 0, wSum = 0, wN = 0;
+    const _kinds = new Set();   // ★[T475] **오늘 서 있는** 종 — 마을별 걷는 목록의 입력(N 을 세는 그 훑기 · 하루 한 번 · 새 조회 0)
     for (let dy = -R; dy <= R; dy++) {
       for (let dx = -R; dx <= R; dx++) {
         const tx = vil.ccx + dx, ty = vil.ccy + dy;
@@ -5877,10 +5945,11 @@ function _t347Scan(vil, day) {
           if (b && b.length) { K += b.length; for (const r of b) { const w = _lifeLootForage(r); if (w > 0) { wSum += w; wN++; } } }
         }
         let a = null; try { a = state.deps.t347GrovesAtCell(tx, ty); } catch (e) { a = null; }
-        if (a && a.length) { N += a.length; cells.push({ cx: tx, cy: ty, x: tx * SZ + SZ / 2, y: ty * SZ + SZ / 2, n: a.length }); }
+        if (a && a.length) { N += a.length; for (const r of a) _kinds.add(r.type); cells.push({ cx: tx, cy: ty, x: tx * SZ + SZ / 2, y: ty * SZ + SZ / 2, n: a.length }); }
       }
     }
     if (_needK) { vil._t347K = K; vil._t347WBar = wN > 0 ? wSum / wN : 0; }
+    vil._t347Kinds = JOB_RES.forager.filter((k) => _kinds.has(k));   // ★[T475] 정본 차례 그대로 — 다 딴 종은 빠진다(그 품목은 수식이 낸다 · 게이트 문법의 종 판)
   }
   vil._t347Groves = { day, list: cells, N, K: vil._t347K || 0, wBar: vil._t347WBar || 0 };
   if (vil.econ) vil.econ._t347Cells = cells.length;   // ★게이트의 입력("갈 자리가 있나")
@@ -5928,10 +5997,12 @@ function foragePerf() {
   const pl = state.deps.players;
   let walkers = 0, hands = 0, handU = 0, cells = 0, deliv = 0, formula = 0, formulaAll = 0, act = 0, noGrove = 0;
   let groves = 0, popAll = 0, backAll = 0, kAll = 0, capAll = 0, pickDay = 0, formulaAct = 0;
+  let granAll = 0;   // ★[T475 계측] 곳간에 실제로 든 몫(마을 누계의 합)
   const rows = [];
   const keep = _t347ActItems() || [];
   for (const vil of state.villages || []) {
     const e = vil.econ; if (!e) continue;
+    granAll += (vil._t347Gran || 0);   // ★[T475 계측] 곳간에 실제로 든 몫 누계(게이트에서 빠진 마을 것도 — 누계라 안 사라진다)
     const f = (typeof e._forageOutLast === 'number' ? e._forageOutLast : 0);
     formulaAll += f;
     popAll += (e.npcs || []).length;
@@ -5946,9 +6017,10 @@ function foragePerf() {
     //     (`_t347MixShare` = 걷는 품목 가중치 ÷ 믹스 가중치 합 · 계측 전용 · 이 파일에 표 0).
     deliv += d; formula += f; formulaAct += f * (e._t347MixShare || 0);
     let vu = 0, vh = 0;
+    const vkeep = _t347KeepOf(vil) || keep;   // ★[T475] 그 마을이 걷는 목록 · 손 이름으로(T458 — 손의 `berry` 가 곳간의 `fruit`)
     for (const pid of (vil.npcPids || [])) {
       const p = pl && pl.get(pid); if (!p) continue;
-      let u = 0; for (const k of keep) u += (p.inventory && p.inventory[k]) || 0;
+      let u = 0; for (const k of vkeep) for (const h of _t347HandsOf(k)) u += (p.inventory && p.inventory[h]) || 0;
       if (u > 0) { hands++; vh++; handU += u; vu += u; }
       if (p._lifeAct === '채집') walkers++;
     }
@@ -5961,10 +6033,12 @@ function foragePerf() {
                 //   ★[T357 · 계측 전용 · 행동 무관] 땅값 셋 — 계측기가 채집 믹스를 **정본에 다시 물어**
                 //     품목별 몫(걷는 몫 · `berry→fruit` 판)을 마을마다 유도한다(하네스·계측기에 표 0).
                 land: { f: +(e.land && e.land.fertility || 0).toFixed(4), w: +(e.land && e.land.wood || 0).toFixed(4), s: +(e.land && e.land.stone || 0).toFixed(4) },
-                pop: (e.npcs || []).length, dbg: vil._t347Dbg || null });
+                pop: (e.npcs || []).length, dbg: vil._t347Dbg || null,
+                //   ★[T475 계측] 곳간 누계(`g` — 수요에서 자른 뒤 실제로 든 몫) · 그 마을 걷는 목록(`it` — 없으면 세계 목록)
+                g: +(vil._t347Gran || 0).toFixed(4), it: Array.isArray(e._forageActItems) ? e._forageActItems.slice() : null });
   }
   return { villages: (state.villages || []).length, actVillages: act, noGroveVillages: noGrove,
-           cells, groves, popAll, K: kAll, back: backAll, cap: capAll, pickDay, items: keep.slice(),
+           cells, groves, popAll, K: kAll, back: backAll, cap: capAll, pickDay, items: keep.slice(), gran: +granAll.toFixed(4),
            walkers, hands, handU: +handU.toFixed(4),
            delivered: +deliv.toFixed(4), formulaPerDay: +formula.toFixed(4),
            formulaActPerDay: +formulaAct.toFixed(4),   // ★[T347 등가의 분모] 믹스 전체가 아니라 **걷은 몫**
@@ -7477,7 +7551,7 @@ function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(�
     //     일과(작물 클레임 리셋 · 사냥꾼 링크 · 현장 캐시 비우기)가 통째로 안 돈다(자기수리 — 한 번 그렇게 썼다).
     const _on = _lifeEcon().woodActOn(vil.econ);
     const _pl = state.deps.players;
-    let _walked = 0;
+    let _walked = 0; if (vil._t325PreWalked) { _walked = vil._t325PreWalked; vil._t325PreWalked = 0; }   // ★[T475 ②] 손은 econ 틱 앞에서 이미 곳간에(`_lifeHandsIn`) — 사람 수만 이어 받는다
     if (_on) for (const pid of (vil.npcPids || [])) { const p = _pl && _pl.get(pid); if (p && p.inventory && (p.inventory.wood || 0) > 0) { _t325Deliver(vil, p); _walked++; } }
     const _ln = (vil.econ.counts && vil.econ.counts.lumberjack) || 0;
     const _S = vil._t325Trees || {};
@@ -7550,10 +7624,13 @@ function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(�
       const _it = _t347ActItems();
       if (_it && _it.length) vil.econ._world.forageActItems = _it;   // ★심는 것은 이 한 줄(`lab-wiring-check` [H] 표에 적었다)
     }
+    //   ★★[T475] **마을별 목록** — 그 마을 원판에 교란 전 선 종의 품목만(`_t347ItemsFor` · T458 문법 · 사본 0). 다음 econ 틱이 이것을 걷는다.
+    _t347PlantList(vil);
     const _on = _lifeEcon().forageActOn(vil.econ);
     const _pl = state.deps.players;
-    const _keep = _t347ActItems() || [];
-    let _walked = 0;
+    const _keep = _t347KeepOf(vil) || [];
+    //   ★[T475 ②] 걷는 몸의 손은 **econ 틱 앞에서** 이미 곳간에 들었다(`_lifeHandsIn`) — 그 사람 수를 여기 이어 받는다(헤드리스 판정 무변).
+    let _walked = 0; if (vil._t347PreWalked) { _walked = vil._t347PreWalked; vil._t347PreWalked = 0; }
     if (_on && _keep.length) for (const pid of (vil.npcPids || [])) {
       const p = _pl && _pl.get(pid); if (!p || !p.inventory) continue;
       let u = 0; for (const k of _keep) for (const h of _t347HandsOf(k)) u += p.inventory[h] || 0;   // ★[T458] 손 이름
@@ -7592,7 +7669,7 @@ function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(�
         if (!loot) { vil._t347Dbg.noloot++; break; }        // ★`continue` 가 아니라 `break`(T334 의 단위 증발 교훈)
         if (sk) (vil._t347Cut || (vil._t347Cut = [])).push(sk);
         made++; vil._t347Dbg.pick++;
-        for (const it of _keep) for (const h of _t347HandsOf(it)) { const a = loot[h]; if (a > 0) _lifeEcon().forageToGranary(vil.econ, it, a); }   // ★[T458] 덤불 berry → fruit
+        for (const it of _keep) for (const h of _t347HandsOf(it)) { const a = loot[h]; if (a > 0) { const g = _lifeEcon().forageToGranary(vil.econ, it, a) || 0; if (g > 0) vil._t347Gran = +((vil._t347Gran || 0) + g).toFixed(6); } }   // ★[T458] 덤불 berry → fruit · ★[T475 계측] 곳간에 든 몫
         vil._t347Deliv = +((vil._t347Deliv || 0) + u).toFixed(6);
       }
     }
@@ -8902,6 +8979,9 @@ module.exports = { fishPerf, woodPerf, foragePerf, farmPerf,   // ★[T316] `/pe
       perLoad: (it) => _t400PerLoad(it), treesPerLoad: (u) => _t341TreesPerLoad(u), tripsPerDay: (vil, d) => _t341TripsPerDay(vil, d, 1),
       get LIFE_CREW() { return LIFE_CREW; }, get LIFE_STAGE_PDAY() { return LIFE_STAGE_PDAY; } },
     _t374Probe: { setDeps: (d) => { const k = state.deps; state.deps = d; return k; }, done: (vil, job) => _t374Done(vil, job), held: (vil, items) => _t374Held(vil, items) },
+    // ★[T475] 마을별 걷는 목록 · 두 시계 한 줄 — 같은 규약(최소 주입구 하나 · 정본 함수를 그대로 부른다 · 하네스가 목록을 다시 짜면 그게 사본이다).
+    _t475Probe: { setDeps: (d) => { const k = state.deps; state.deps = d; return k; }, scan: (vil, day) => _t347Scan(vil, day), plant: (vil) => _t347PlantList(vil),
+      itemsFor: (kinds) => _t347ItemsFor(kinds), keepOf: (vil) => _t347KeepOf(vil), handsIn: (vil) => _lifeHandsIn(vil) },
     get VILLAGE_MAX() { return VILLAGE_MAX; },
     get INITIAL_POP() { return INITIAL_POP; },
     get SZ() { return SZ; },
