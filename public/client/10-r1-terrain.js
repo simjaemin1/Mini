@@ -234,8 +234,13 @@
   const GT_DIA_GROW = 0.75;
   const GT_DIA_K = 1 + GT_DIA_GROW / 14.311;
   function _diaPath(g, cx, cy, grow) {
+    g.beginPath(); _diaSub(g, cx, cy, grow);
+  }
+  // ★[T500] 같은 다이아를 **지금 경로에 덧붙인다**(beginPath 없음) — 여러 칸을 경로 하나로 모아 한 번에 채울 때 쓴다.
+  //   `_diaPath` 는 이것 앞에 beginPath 하나를 붙인 것뿐이다(그리는 명령은 종전과 한 글자도 같다).
+  function _diaSub(g, cx, cy, grow) {
     const dx = grow ? 32 * GT_DIA_K : 32, dy = grow ? 16 * GT_DIA_K : 16;
-    g.beginPath(); g.moveTo(cx, cy - dy); g.lineTo(cx + dx, cy); g.lineTo(cx, cy + dy); g.lineTo(cx - dx, cy); g.closePath();
+    g.moveTo(cx, cy - dy); g.lineTo(cx + dx, cy); g.lineTo(cx, cy + dy); g.lineTo(cx - dx, cy); g.closePath();
   }
   //   ★`gm` = 투과율 캔버스. 같은 도형·같은 알파로 지운다(destination-out) — T ×= (1−α).
   function _covDia(gm, cx, cy, alpha) {
@@ -277,6 +282,34 @@
   function _gtSnowAlpha(st) {
     const s = _gtSnowNow();
     return (s > 0 && !(st && st.road > 0)) ? s : 0;
+  }
+  // ★★[T500 2026-09-28] **서리 — 언 밤 뒤 아침 땅의 흰 기미**(카드 ③ · "적설 색의 낮은 값 · T487 `ICE_COLOR` 문법").
+  //   값은 서버 정본 하나다(`myWeather.frost` ← `server/snow.js frostAt` · 그 파일 머리 표 — 밤이 얼고 아침 적설이 0 일 때
+  //   F₀ = 일교차 가운데 어는점 아래 몫 · 아침 낮 기온이 적설과 같은 k 로 녹여 **첫 낮에 사라진다**).
+  //   ★칠은 적설과 **같은 자리 · 같은 색 · 같은 제외 규칙**이다(위 표 — 물·바위·길·존 밖 제외) — 세기만 서리 값(α = frost).
+  //     서버가 눈이 보이는 땅엔 0 을 준다(카드 "snow = 0") ⇒ 두 칠이 한 칸에 겹치는 판이 없다.
+  //   ★★칠하는 법만 다르다 — **칸을 모아 경로 하나로 한 번** 채운다(`_gtFrostPaint`). 1판은 적설처럼 칸마다 반투명
+  //     다이아를 칠했는데, 이웃 칸의 안티에일리어싱 가장자리가 α 를 두 번 **덜** 받아 셀 테두리가 어두운 **격자**로 섰다
+  //     (서리 0.32 · 스크린샷 실측). 한 경로의 채움은 맞닿은 변을 한 덩이로 덮으므로 알파가 한 번만 곱해진다.
+  //     (적설도 소수 값에서 같은 격자가 옅게 선다 — T487 자리라 여기선 안 고친다 · 회부.)
+  //   ★끔(서버가 `frost` 칸을 안 보냄 · 손잡이 `T500_WINTER_FX` 하나) 또는 0 이면 **아무것도 안 칠한다** ⇒ 굽는 그림·지문 그대로.
+  function _gtFrostNow() {
+    return (typeof myWeather !== 'undefined' && myWeather && myWeather.frost > 0) ? Math.min(1, +myWeather.frost) : 0;
+  }
+  function _gtFrostAlpha(st) {
+    const f = _gtFrostNow();
+    return (f > 0 && !(st && st.road > 0)) ? f : 0;
+  }
+  /** 서리 칸들(`[sx, sy, sx, sy, …]` · 타일 좌표)을 경로 하나로 모아 한 번에 칠한다 — 지면 굽기의 **맨 끝**(셀 마감 뒤). */
+  function _gtFrostPaint(g, gm, cells, color) {
+    const f = _gtFrostNow();
+    if (!(f > 0) || !cells.length) return;
+    for (const c of gm ? [g, gm] : [g]) {
+      c.globalAlpha = f; c.fillStyle = c === g ? color : '#000';   // 투과율 캔버스는 적설과 같은 문법(같은 알파로 지운다)
+      c.beginPath();
+      for (let i = 0; i < cells.length; i += 2) _diaSub(c, cells[i], cells[i + 1], false);
+      c.fill(); c.globalAlpha = 1;
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

@@ -35,6 +35,19 @@
 //   ⚠날짜가 뒤로 가면(하네스 시계) 0 일부터 다시 재생한다 — 느려질 뿐 답은 같다.
 //
 // ★이 파일에 **손잡이가 없다.** 켜고 끄는 것은 `zone.js` 의 `T487_SNOW` 하나다(카드 "손잡이 하나").
+//
+// ── ★★[T500 2026-09-28] 서리 — "밤 tempC < 0 ∧ snow = 0 인 아침 지면 흰 기미 · 첫 낮에 사라짐" ──
+//   재료는 위 적설과 **같은 셋**이다(두 기온 · 어는점 T₀ · 녹음 계수 k = 1) — 새 수 0 · 새 문턱 0(0℃ 하나).
+//   │ 항            │ 값                                        │ 어디서 왔나                                 │
+//   │ 맺힘 조건      │ T밤(d) < T₀ ∧ S(d+1) = 0                  │ 카드 "밤 tempC < 0 ∧ snow = 0 인 아침"        │
+//   │ 양 F₀(d)      │ (T₀ − T밤(d)) / (T낮(d) − T밤(d))  · 0..1  │ 그날 일교차 가운데 **어는점 아래 몫** — 기온 둘 · T₀ 뿐 │
+//   │ 눈금          │ 적설과 같은 0..1                           │ 카드 "적설 색의 낮은 값" — 같은 칠(ICE_COLOR)의 알파 │
+//   │ 녹음          │ k · max(0, T낮(d+1) − T₀) · (아침부터 흐른 날) │ 위 적설 녹음과 **같은 식 같은 k**              │
+//   │ 사라짐        │ 녹은 양 ≥ F₀ 인 순간 0 (그 전까지 F₀ 그대로)  │ 이진 — 값이 바뀔 때마다 땅을 다시 굽지 않는다(판 1장) │
+//   ⇒ F₀ 는 밤이 어는점에 **겨우** 닿으면 0 에 가깝고, 하루 전체가 어는점 아래면 1 이다(그때는 서리가 아니라 온 땅이 언 것이다).
+//     4씨앗 × 세 해 실측(`test-winter-fx ③` · T500 보고): 언 밤의 67~79% 가 서리 밤 · F₀ 평균 0.29~0.42 · 해 뜨고 평균 0.045~0.11 일(실시간 1.1~2.7 분)에 녹는다.
+//   ⚠순서는 적설과 같다 — 날 d = 낮(0~0.7) 다음 밤(0.7~1). 밤 d 에 맺힌 서리가 **날 d+1 아침**에 보이고 그 낮에 녹는다.
+//   ⚠밤에 보이는 땅은 S(d)(그날 낮의 적설) 이므로, 그 값이 0 이 아닌 밤엔 서리를 안 얹는다(눈 위에 서리를 두 번 칠하지 않는다).
 'use strict';
 
 /**
@@ -79,7 +92,39 @@ function make(W) {
     for (let d = 0; d < Math.max(0, day | 0); d++) v = stepOf(v, d);
     return v;
   }
-  return { T0, accOf, meltOf, stepOf, at, snowAt, replay, memo: () => ({ day: _d, v: _v }) };
+  // ── ★[T500] 서리 — 위 머리 표. 메모는 **앞으로만** 민다(`at(d+1)` 대신 `stepOf(at(d), d)` — 뒤로 가면 0 일부터 재생이다) ──
+  /** 밤 `dn` 의 서리 양 — 다음 아침 적설 `sMorning` 이 0 이고 그 밤이 얼었을 때만. */
+  function _frostFormed(dn, sMorning) {
+    if (sMorning !== 0) return 0;                     // 다음 아침에 눈이 덮였으면 서리가 아니라 눈이다
+    const tN = W.tempAt(dn, true, 0), tD = W.tempAt(dn, false, 0);
+    if (tN === null || tN === undefined || tD === null || tD === undefined) return 0;
+    if (!(tN < T0)) return 0;
+    const span = tD - tN;
+    return span > 0 ? Math.min(1, (T0 - tN) / span) : 1;   // 일교차가 없으면(한 번도 녹을 틈이 없으면) 다 언 것이다
+  }
+  /** 밤 `day` 에 맺히는 서리 F₀(0..1 · 날것) — 곡선 표·하네스용. */
+  function frostOf(day) {
+    const d = Math.max(0, day | 0);
+    return _frostFormed(d, stepOf(at(d), d));
+  }
+  /**
+   * 지금 땅에 보이는 서리(0..1 · 넷째 자리) — 날 `day` · 밤인가 `night` · 그날 위상 `phase`(낮이면 아침부터 흐른 날).
+   *   밤 d  : S(d) = 0 이면 F₀(d)(맺히는 중) · 아니면 0
+   *   낮 d  : F₀(d−1)(지난밤 것) — k·max(0, T낮(d))·phase ≥ F₀ 가 되는 순간 0(첫 낮에 사라짐)
+   */
+  function frostAt(day, night, phase) {
+    const d = Math.max(0, day | 0);
+    const s = at(d);
+    let f;
+    if (night) f = (s === 0) ? _frostFormed(d, stepOf(s, d)) : 0;
+    else {
+      if (d === 0) return 0;                          // 세계가 난 날 아침 — 지난밤이 없다
+      f = _frostFormed(d - 1, s);                     // S(d) = 지난밤 d−1 다음 아침의 적설(메모를 뒤로 안 민다)
+      if (f > 0 && meltOf(d) * Math.max(0, +phase || 0) >= f) f = 0;
+    }
+    return +f.toFixed(4);
+  }
+  return { T0, accOf, meltOf, stepOf, at, snowAt, replay, frostOf, frostAt, memo: () => ({ day: _d, v: _v }) };
 }
 
 module.exports = Object.assign(make(require('./weather')), { make });

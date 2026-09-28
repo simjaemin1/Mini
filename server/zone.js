@@ -7156,12 +7156,29 @@ function _snowNow(day) {
   if (_e2eSnow !== null) return _e2eSnow;
   try { return require('./snow').snowAt(day); } catch (e) { return 0; }
 }
+// ★★[T500 2026-09-28] **겨울 이펙트 셋 — 눈보라 · 입김 · 서리**(재민 눈 · T487 회부).
+//   서버가 얹는 것은 **서리 한 칸**(`frost` 0..1)뿐이다 — 눈보라(`wind`·`precip`)·입김(`tempC`)은 이미 스냅에 있는 칸을
+//   클라가 읽는다(세계 값은 다 있다 — 카드 머리).
+//   ★손잡이 하나 `T500_WINTER_FX` · 기본 **끔** · 끔이면 아래 한 줄이 아무것도 안 한다 ⇒ 스냅 바이트 동일
+//     (클라는 `frost` 칸이 **있는가**로 켬을 안다 — T487 `snow` 칸과 같은 문법 · 세 이펙트가 전부 그 한 칸을 본다).
+//   정본은 `server/snow.js` `frostAt`(그 파일 머리 표 — 새 수 0 · 문턱 0℃ 하나 · 녹음 k 는 적설과 같은 1).
+//   ⚠위상은 **세계 시계**(`worldPhase`)다 — 클라 하늘은 경도로 최대 4.5% 밀린다(`_lonView`) · 서리가 녹는 순간의 차는 그 몫뿐.
+//   ⚠`weather.js`(T484 · 세션7) 무접촉 — 기온은 `snow.js` 가 **읽기만** 한다.
+const T500_WINTER_FX = process.env.T500_WINTER_FX === '1';
+function _frostNow(now) {
+  const day = gameDayNow(), night = bodyNight(now);
+  if (_snowNow(day) > 0) return 0;                  // 눈이 보이는 땅엔 서리를 안 얹는다(카드 "snow = 0" · 적설 세움 문도 따른다)
+  // 낮이면 "아침부터 흐른 날" = 위상(낮 = 0~`dayPhaseRatio`). 테스트 시계가 낮이라 했는데 하늘이 밤이면 낮 끝에서 멈춘다.
+  const p = night ? 0 : Math.min(worldPhase(now), WORLD.dayPhaseRatio);
+  try { return require('./snow').frostAt(day, night, p); } catch (e) { return 0; }
+}
 function weatherNow() {
   const now = Date.now();
   if (_wxHint.v && now - _wxHint.at < 1000) return _wxHint.v;
   let v = null;
   try { v = require('./weather').hintOf(gameDayNow(), bodyNight(now)); } catch (e) { v = null; }
   if (T487_SNOW && v) v.snow = _snowNow(gameDayNow());   // ★[T487] 칸 하나(켬만)
+  if (T500_WINTER_FX && v) v.frost = _frostNow(now);     // ★[T500] 칸 하나(켬만)
   _wxHint = { at: now, v };
   return v;
 }

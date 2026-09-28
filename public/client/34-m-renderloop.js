@@ -99,7 +99,8 @@
     { const _kf = (_LEG ? 'L' : '') + (_t19.stateOff ? 'S' : '') + (_t19.wxOff ? 'W' : '')
                 + (_t19.waterOff ? 'o' : '') + ((_t19.windOff || _t19.windGrassOff) ? 'g' : 'G')
                 + 'm' + (_t19.shMarginOff ? 'x' : (_t19.shMargin == null ? 1 : _t19.shMargin))
-                + (_gtSnowNow() > 0 ? 's' + _gtSnowNow() : '');   // ★[T487] 적설도 타일에 굳는다(0·끔이면 지문 그대로)
+                + (_gtSnowNow() > 0 ? 's' + _gtSnowNow() : '')    // ★[T487] 적설도 타일에 굳는다(0·끔이면 지문 그대로)
+                + (_gtFrostNow() > 0 ? 'f' + _gtFrostNow() : '');  // ★[T500] 서리도 같은 문법(이진 값이라 아침에 한 번 굽고 녹을 때 한 번)
       if (_gtKnob !== _kf) { _gtKnob = _kf; _groundTiles.clear(); _shMarginN = 0; } }
     if (!_LEG) _waterInit();   // ★타일을 굽기 **전에** 물 가능 여부를 확정한다(진흙/단색 갈림이 타일에 굳는다)
     window.__groundDbg = { legacy: _LEG, tex: _gtexReady, texNames: Object.keys(GTEX).filter(k => GTEX[k] && GTEX[k].naturalWidth), tiles: 0, baked: 0, cached: _groundTiles.size, stateCells: 0 };
@@ -1642,6 +1643,8 @@
         // ★[T143] 시트 경로의 표식 — 포로 발치 링 · 지휘관 금테+★. 도형 경로는 제 안에서
         //   **같은 함수**를 부른다(사본 0 · `42-r2-char.js drawWarMarks`).
         else {
+          // ★[T500] 입김 — 몸 바로 위 · 표식·이름표 아래(판정은 `37-r1-weather drawBreath` 한 곳 · 끔이면 첫 줄에 돌아간다)
+          drawBreath(s.x, s.y, item, fvx, fvy, downFlag, now);
           drawWarMarks(s.x, s.y, { cap: !!item.cap, war: !!item._war, bc: item.bc });
           if (downFlag) drawDownTag(s.x, s.y, item.name);
           else drawNameTag(s.x, s.y, item.name, !!item.isMe, item.act);
