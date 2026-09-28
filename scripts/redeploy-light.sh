@@ -11,6 +11,10 @@
 #   bash scripts/redeploy-light.sh                          # 그려진 11존만 고친 이미지로 직렬 재생성
 #   STOP_OTHERS=1 bash scripts/redeploy-light.sh            # 나머지 존은 정지(저RAM)
 #   RUN_ZONES="hanbando jungwon_n nippon" bash scripts/redeploy-light.sh   # 일부만
+#   ★[T485 2026-09-28 · 두 호스트] 다른 호스트(예: 도쿄)에서 존을 띄울 때 — 둘 다 **안 주면 종전과 한 글자도 같다**:
+#     CENTRAL_SECRET=… (이 셸 env 에 있으면) → 컨테이너에 `-e CENTRAL_SECRET` 으로 **이름만** 넘긴다(값은 명령줄·로그에 안 남는다).
+#       호스트가 갈리면 안 문(존↔central · 존↔존)이 사설 주소 폴백을 못 쓴다 — 비밀이 양쪽에 있어야 한다(`internal-door.js`).
+#     EXTRA_ENV="CHAR_SPRITE=on ZONE_HOST_HANBANDO=…" → 낱말마다 `-e` 한 개(서울 존 컨테이너가 이어받는 손잡이를 여기서도 같게).
 set -euo pipefail
 CENTRAL_IP="${CENTRAL_IP:-141.164.35.114}"
 PLAYER_CAP="${PLAYER_CAP:-150}"
@@ -54,12 +58,16 @@ fi
 for ID in $RUN_ZONES; do
   P="${PORT[$ID]:-}"; [ -z "$P" ] && { echo "  [skip] $ID — 포트 미정"; continue; }
   mkdir -p "/srv/durango/$ID"
+  XE=()
+  [ -n "${CENTRAL_SECRET:-}" ] && XE+=(-e CENTRAL_SECRET)
+  for KV in ${EXTRA_ENV:-}; do XE+=(-e "$KV"); done
   docker rm -f "durango-zone-$ID" >/dev/null 2>&1 || true
   docker run -d --name "durango-zone-$ID" --restart unless-stopped \
     -p "$P:$P" -v "/srv/durango/$ID:/data" \
     -e ZONE_ID="$ID" -e PORT="$P" -e DB_PATH="/data/world-$ID.db" \
     -e CENTRAL_HOST="$CENTRAL_IP" -e CENTRAL_PORT=3010 \
     -e ENABLED_ZONES="$EN" -e "ZONE_HOSTS=$ZH" -e PLAYER_CAP="$PLAYER_CAP" \
+    ${XE[@]+"${XE[@]}"} \
     durango-zone >/dev/null
   echo "  [up] durango-zone-$ID :$P  (다음까지 ${BOOT_GAP}s 대기)"
   sleep "$BOOT_GAP"
