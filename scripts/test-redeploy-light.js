@@ -47,7 +47,8 @@ console.log(`\n=== redeploy-light — 두 호스트 손잡이 (베이스 ${BASE}
 for (const [tag, env] of [['기본(11존)', {}], ['RUN_ZONES=nippon · CENTRAL_IP 바꿈', { RUN_ZONES: 'nippon', CENTRAL_IP: '203.0.113.9' }], ['STOP_OTHERS=1', { STOP_OTHERS: '1', RUN_ZONES: 'hanbando jungwon_n' }]]) {
   const a = run(baseSh, env), b = run(newSh, env);
   ok(a.runs.length > 0 && a.runs === b.runs, `ⓐ [${tag}] 손잡이 안 주면 docker run 인자가 베이스와 **바이트로 같다**`, `${a.runs.split('\n').filter(Boolean).length}줄`);
-  ok(a.out === b.out, `ⓐ [${tag}] 화면도 같다`);
+  const norm = (t) => t.replace(/\b\d+s\b/g, 'Ns');   // 준비 대기 줄의 경과 초(벽시계)만 지운다
+  ok(norm(a.out) === norm(b.out), `ⓐ [${tag}] 화면도 같다(경과 초 빼고)`);
 }
 {
   const SEC = 'zz-test-secret-' + Date.now();
