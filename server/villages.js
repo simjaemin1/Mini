@@ -387,6 +387,10 @@ function seaDistPx(zoneId, ccx, ccy) {
   const tiles = _coastSet(zoneId);
   if (!tiles.size) return Infinity;
   let best2 = Infinity;
+  if (typeof tiles.forEachTile === 'function') {   // ★[T480 ②] 존 판 — `WATER_TILES` 가 비트 창이면 정수로 바로 훑는다(같은 칸 · 같은 순서)
+    tiles.forEachTile((x, y) => { const dx = (x - ccx), dy = (y - ccy); const d2 = dx * dx + dy * dy; if (d2 < best2) best2 = d2; });
+    return Math.sqrt(best2) * SZ;
+  }
   for (const k of tiles) {
     let x = 0, y = 0, j = 0, c;
     const n = k.length;

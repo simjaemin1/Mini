@@ -3,6 +3,13 @@
 > ★이 파일은 **영역 소유 세션만** 갱신한다. 다른 영역에 쓸 말이 생기면 `인계/회부.md` 에 한 줄.
 > 원문은 `_아카이브_2026-08_다음세션_인계.md` 에 그대로 동결돼 있다(족보 · 삭제 금지).
 > 이사할 때 **문장을 한 글자도 안 고쳤다** — 낡아 보이는 줄엔 `[낡음? 확인 필요]` 표만 붙였다.
+## T480. ★★2026-09-28 — 물타일은 하나: 마을 모듈 사본 삭제 · `WATER_TILES` = 비트 창 · 26존 4.33 → 3.00GB
+
+* ① `villages.seaDistPx` 는 존의 `WATER_TILES` 를 읽는다(`SimVillages.init` deps `waterTiles`) — `_coastTilesCache`([x,y] 사본 · 한반도 28.5MB) 삭제. 존 없이 villages 만 부르는 헤드리스(`t17-metrics` 등)만 생성기로 그 판의 Set 하나.
+* ② `WATER_TILES` 는 이제 **T333 비트 색인 위의 창**(`let` · 생성기 문자열 Set 은 비트 굽는 한 번 뒤 GC). 같은 이름 · `size` · `has('tx_ty')` · 같은 순서 `for…of`/`keys`/`forEach` + `forEachTile(tx, ty)`. ⚠`instanceof Set` 은 아니다(레포 안 묻는 자리 0).
+* 게이트: 시딩 JSON(`t480-seed-gate` · 세 존) cmp 같다 · 창 전수(`t480-view-probe` · 여섯 존) 다른 곳 0 · `t17` 1020 바이트 동일 7,997.
+* 존 RSS 는 해안선과 무관해졌다(힙 R² 0.92 → 0.01) · 콩라 333 → 114 · 닛폰 272 → 131 · 한반도 306 → 239(힙 134 → 85).
+
 ## T469. ★★2026-09-28 — 배포 리허설(도커로 두 스크립트 그대로) · 재민 한 줄
 
 * `redeploy-hanbando.sh --all` 은 **존 목록을 안 읽는다** — `durango-zone-hanbando` 가 박혀 있고 env 는 옛 컨테이너 것을 `docker inspect` 로 복사한다(central `ENABLED_ZONES` 도). 컨테이너가 없으면 `[err]`.
