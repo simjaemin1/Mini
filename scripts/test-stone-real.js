@@ -194,5 +194,21 @@ process.stdout.write(JSON.stringify({m:E.derivedInputTarget(mine,'charcoal'),f:E
     '⑦ era — 표(`UNLOCK.bronze.tech` 의 `charcoal_kiln`)가 정본 · 숯가마 건설 함수가 그 표를 묻는다(노 `tryFurnaceStart` 와 같은 문)');
 }
 
+// ── ⑧ [T488] 숯가마의 잉여 = 재고 − 비축 − 집 몫 ─────────────────────────────────────────
+console.log('\n⑧ [T488] 숯가마 잉여에서 집 몫을 먼저 뺀다 — 같은 함수(`houseDayBuild`) · 손잡이 0');
+{
+  const js = `const E=require(${EP});const npcs=new Array(10).fill({});
+const mk=()=>({npcs,counts:{lumberjack:2},storage:{wood:53,ore:4,food:1000},housing:5,_kiln:{built:0}});
+const a=mk();const share=E.houseWoodShare(a);const r=E.kilnDay(a);
+process.stdout.write(JSON.stringify({share,dayBuild:E.houseDayBuild(mk(),10,E.totalFoodEquivalent(mk())),cost:E.houseCostPerCap('wood'),b:r.batches,wood:a.storage.wood,ch:a.storage.charcoal||0}));`;
+  const off = probe({ T400_BUILD_ACT: '0' }, js), on = probe({ T400_BUILD_ACT: '1' }, js);
+  ok(off.share === 0, '⑧ ★집 끔 — 집 몫 0 = 숯가마 종전 그대로(손잡이 0)', JSON.stringify(off));
+  ok(on.share > 0 && Math.abs(on.share - on.dayBuild * on.cost) < 1e-9, '⑧ 집 켬 — 집 몫 = 오늘 집이 올릴 양(`houseDayBuild`) × 통나무 단가(`houseCostPerCap`)', JSON.stringify(on));
+  ok(off.b === 1 && on.b === 0 && on.wood === 53, '⑧ ★집 몫만큼 숯가마가 통나무를 남긴다 — 비축(5/인 × 10 = 50) 위 3 은 끔이면 한 배치 · 켬이면 집 몫(0.33)을 빼 3 미만이라 안 굽는다', `${off.b} → ${on.b} 배치 · 통나무 ${off.wood} → ${on.wood}`);
+  const hb = SRC.slice(SRC.indexOf('★주거 증축: 집이 인구보다 모자라면'), SRC.indexOf('if (T452_KILN_ACT) kilnDay(v);'));
+  ok(/houseDayBuild\(v, N, _fe\)/.test(hb) && !/HOUSE_BUILD_MAX/.test(codeOf(hb)), '⑧ 집 증축 절과 숯가마가 **같은 함수**를 부른다(여유노동 식 사본 0)');
+  ok(/const spare = \(v\.storage\.wood \|\| 0\) - reserve - houseWoodShare\(v\);/.test(SRC) && SRC.indexOf('★주거 증축') < SRC.indexOf('if (T452_KILN_ACT) kilnDay(v);'), '⑧ 순서 무변(집 → 숯가마) · 잉여 한 줄');
+}
+
 console.log(`\n=== ${pass}/${pass + fail} ${fail ? '✗' : '✓'} ===`);
 process.exit(fail ? 1 : 0);
