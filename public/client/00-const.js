@@ -490,6 +490,83 @@ function cropSprite(stage, crop) {
     else console.log('[recover] 서버 틱 복구 — 예측 재개');
   }
   window.__netStalled = () => netStalled;
+  // ★★[T486 ③ 2026-09-28] **프레임 캡처** — 렉이 클라(프레임)인가 서버(틱)인가 망인가를 **같은 60초**에 나란히 본다.
+  //   쓰는 법(재민 · 브라우저 콘솔 한 줄): `__frameCapture()` — 60초 뒤 표를 콘솔에 찍고 JSON 을 내려받는다
+  //   (`frame_<월일-시분>.json` → `~/Mini/_lag/` 에 둔다). 인자 = 초(`__frameCapture(30)`).
+  //   ⓐ 프레임 = 이 함수가 따로 거는 `requestAnimationFrame` 사이 간격(dt) · 그 사이에 쌓인 몫:
+  //      렌더(`render()` · 31-m-move) · 메시지 처리(ws onmessage · 30-n-net) · 층 넷(지면 `_tileAcc` · 물 `_waterAcc` · 산 `_mtAcc` · 자연물 `_natAcc` — 이미 있는 누계)
+  //      · 나머지(dt − 렌더 − 메시지 = 브라우저 몫: 그리기·GC·타이머 · vsync 대기 포함)
+  //   ⓑ 같은 60초의 pong — 서버가 pong 셋(`T486_PONG_SPLIT`)을 실으면 망 · 서버 체류 · 서버 루프 p95 까지
+  //   ⓒ 핑 하나마다 세 몫(클라 막힘 · 서버 · 망 — 아래 `blockOf`)을 내고, 튄 핑(rtt > 2×중앙 이고 +30ms 넘음)은
+  //      세 몫 중 **가장 큰 것**이 주인이다 · pong 셋이 없으면 클라 막힘이 반을 넘을 때만 "클라" · 아니면 "미상"
+  //   ⚠켜져 있는 동안만 두 곳에서 performance.now() 를 한 번 더 읽는다(`window.__fcOn`) — 끄면 종전 그대로.
+  //   ⚠Safari 는 뒤 탭에서 rAF 를 멈춘다 — 캡처 동안 탭을 앞에 둔다(가려지면 표에 `hidden` 칸이 선다).
+  window.__frameCapture = (sec = 60) => new Promise((resolve) => {
+    if (window.__fcOn) { console.warn('[frame] 이미 도는 중'); resolve(null); return; }
+    const L = [['tile', '_tileAcc'], ['water', '_waterAcc'], ['mt', '_mtAcc'], ['nat', '_natAcc']];
+    const snap = () => { const o = { r: window.__fcRenderMs, m: window.__fcMsgMs, mn: window.__fcMsgN }; for (const [k, g] of L) o[k] = +(window[g] || 0); return o; };
+    window.__fcRenderMs = 0; window.__fcMsgMs = 0; window.__fcMsgN = 0; window.__fcPong = []; window.__fcOn = true;
+    const frames = [], hid = [];
+    const onVis = () => hid.push({ t: performance.now(), hidden: document.hidden });
+    document.addEventListener('visibilitychange', onVis);
+    const t0 = performance.now(), epoch0 = Date.now() - t0;
+    let prevT = null, prev = null;
+    console.log(`[frame] ${sec}초 캡처 시작 — 탭을 앞에 두고 평소처럼 논다`);
+    const q = (a, p) => { if (!a.length) return null; const b = a.slice().sort((x, y) => x - y); return +b[Math.min(b.length - 1, Math.floor(b.length * p))].toFixed(1); };
+    const finish = () => {
+      window.__fcOn = false; document.removeEventListener('visibilitychange', onVis);
+      const pong = window.__fcPong.slice(); window.__fcPong = null;
+      const dts = frames.map((f) => f.dt), longF = frames.filter((f) => f.dt > 50);
+      const rtts = pong.map((p) => p.rtt), rMed = q(rtts, 0.5) || 0;
+      //   ★세 몫(핑 하나마다): 클라 막힘 = 그 ping~pong 사이 프레임이 16.7ms 를 넘긴 몫의 합(pong 이 큐에서 기다린 시간의 추정 —
+      //     실측: 헤드리스가 프레임 200ms 로 돌 때 rtt 446ms 가 전부 "망"으로 보였다 ⇒ 망 = rtt − 서버 − 클라 막힘 으로 뺀다)
+      //     · 서버 = 체류(srvOut − srvIn) + 루프 막힘(loopP95 − 해상도 10ms · 음수면 0) · 망 = 나머지
+      const blockOf = (p) => { let b = 0; for (const f of frames) { const s0 = f.t - f.dt, s1 = f.t; const o = Math.min(s1, p.at) - Math.max(s0, p.sentAt); if (o > 0 && f.dt > 16.7) b += o * (f.dt - 16.7) / f.dt; } return b; };
+      const parts = pong.map((p) => { const cl = blockOf(p), sv = typeof p.srv === 'number' ? p.srv + Math.max(0, (p.loopP95 || 0) - 10) : null;
+        return { p, cl, sv, nt: sv == null ? null : Math.max(0, p.rtt - sv - cl) }; });
+      const spikes = parts.filter((x) => x.p.rtt > Math.max(2 * rMed, rMed + 30)).map(({ p, cl, sv, nt }) => {
+        const lf = frames.filter((f) => f.dt > 50 && f.t >= p.sentAt && f.t - f.dt <= p.at);
+        const who = sv == null ? (cl > p.rtt / 2 ? '클라' : '미상') : [['클라', cl], ['서버', sv], ['망', nt]].sort((a, b2) => b2[1] - a[1])[0][0];
+        return { at: +(p.at - t0).toFixed(0), rtt: +p.rtt.toFixed(1), clientBlock: +cl.toFixed(1), server: sv == null ? null : +sv.toFixed(2), net: nt == null ? null : +nt.toFixed(1),
+          srv: typeof p.srv === 'number' ? +p.srv.toFixed(2) : null, loopP95: typeof p.srv === 'number' ? p.loopP95 : null, longFrames: lf.map((f) => +f.dt.toFixed(0)), who };
+      });
+      const cnt = (w) => spikes.filter((x) => x.who === w).length;
+      const sumK = (k) => +frames.reduce((a, f) => a + (f[k] || 0), 0).toFixed(1);
+      const out = { k: 'frame', ver: 1, at: new Date(epoch0 + t0).toISOString(), epoch0: +epoch0.toFixed(1), sec, ua: navigator.userAgent, dpr: window.devicePixelRatio,
+        view: [innerWidth, innerHeight], zoom: typeof ZOOM !== 'undefined' ? ZOOM : null, zone: typeof primaryZoneId !== 'undefined' ? primaryZoneId : null, hidden: hid,
+        frames: { n: frames.length, fps: +(frames.length / sec).toFixed(1), p50: q(dts, 0.5), p95: q(dts, 0.95), p99: q(dts, 0.99), max: q(dts, 1),
+          long50: longF.length, long100: frames.filter((f) => f.dt > 100).length,
+          sum: { dt: sumK('dt'), render: sumK('r'), msg: sumK('m'), tile: sumK('tile'), water: sumK('water'), mt: sumK('mt'), nat: sumK('nat') } },
+        longFrames: longF.map((f) => ({ t: +(f.t - t0).toFixed(0), dt: +f.dt.toFixed(1), render: +f.r.toFixed(1), msg: +f.m.toFixed(1), msgN: f.mn,
+          tile: +f.tile.toFixed(1), water: +f.water.toFixed(1), mt: +f.mt.toFixed(1), nat: +f.nat.toFixed(1), other: +(f.dt - f.r - f.m).toFixed(1) })),
+        pong: { n: pong.length, split: pong.filter((p) => typeof p.srv === 'number').length, rtt: { p50: q(rtts, 0.5), p95: q(rtts, 0.95), max: q(rtts, 1) },
+          net: { p50: q(pong.filter((p) => typeof p.net === 'number').map((p) => p.net), 0.5), p95: q(pong.filter((p) => typeof p.net === 'number').map((p) => p.net), 0.95) },
+          srv: { p50: q(pong.filter((p) => typeof p.srv === 'number').map((p) => p.srv), 0.5), p95: q(pong.filter((p) => typeof p.srv === 'number').map((p) => p.srv), 0.95),
+                 max: q(pong.filter((p) => typeof p.srv === 'number').map((p) => p.srv), 1) },
+          series: pong.map((p) => ({ at: +(p.at - t0).toFixed(0), rtt: +p.rtt.toFixed(1), net: typeof p.net === 'number' ? +p.net.toFixed(1) : null, srv: typeof p.srv === 'number' ? +p.srv.toFixed(2) : null, loopP95: p.loopP95 == null ? null : p.loopP95 })) },
+        parts: { clientBlock: { p50: q(parts.map((x) => x.cl), 0.5), p95: q(parts.map((x) => x.cl), 0.95) }, server: { p50: q(parts.filter((x) => x.sv != null).map((x) => x.sv), 0.5), p95: q(parts.filter((x) => x.sv != null).map((x) => x.sv), 0.95) },
+                 net: { p50: q(parts.filter((x) => x.nt != null).map((x) => x.nt), 0.5), p95: q(parts.filter((x) => x.nt != null).map((x) => x.nt), 0.95) } },
+        spikes, verdict: { spikes: spikes.length, client: cnt('클라'), server: cnt('서버'), net: cnt('망'), unknown: cnt('미상') } };
+      console.log(`[frame] 프레임 p50 ${out.frames.p50}ms · p95 ${out.frames.p95} · max ${out.frames.max} · 긴 프레임(>50ms) ${out.frames.long50} · 핑 p50 ${out.pong.rtt.p50} · p95 ${out.pong.rtt.p95} · 몫 중앙(클라 ${out.parts.clientBlock.p50} · 서버 ${out.parts.server.p50} · 망 ${out.parts.net.p50}) · 튄 핑 ${spikes.length} = 클라 ${cnt('클라')} · 서버 ${cnt('서버')} · 망 ${cnt('망')} · 미상 ${cnt('미상')}`);
+      if (out.longFrames.length) console.table(out.longFrames.slice(0, 30));
+      window.__frameCaptureResult = out;
+      try {
+        const d = new Date(), z = (n) => String(n).padStart(2, '0');
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([JSON.stringify(out)], { type: 'application/json' }));
+        a.download = `frame_${z(d.getMonth() + 1)}${z(d.getDate())}-${z(d.getHours())}${z(d.getMinutes())}.json`;
+        document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+      } catch (e) { console.warn('[frame] 내려받기 실패 — `copy(JSON.stringify(__frameCaptureResult))` 로 옮긴다', e); }
+      resolve(out);
+    };
+    const step = (ts) => {
+      const s = snap();
+      if (prevT != null) frames.push({ t: ts, dt: ts - prevT, r: s.r - prev.r, m: s.m - prev.m, mn: s.mn - prev.mn, tile: s.tile - prev.tile, water: s.water - prev.water, mt: s.mt - prev.mt, nat: s.nat - prev.nat });
+      prevT = ts; prev = s;
+      if (ts - t0 < sec * 1000) requestAnimationFrame(step); else finish();
+    };
+    requestAnimationFrame(step);
+  });
 // @@moved:491
   // Phase 14.41: 사망/구조
   let myIsDown = false;

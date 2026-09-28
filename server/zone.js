@@ -5417,6 +5417,7 @@ const VILLAGE_BOOK_MSG = new Set([
 
 // === 외부 player 핸들러 (observer promotion에서 재사용) ===
 function handlePlayerInput(player, raw) {
+  const _t486In = T486_PONG_SPLIT ? _t486Now() : 0;   // ★[T486] 이 메시지를 집은 순간(끔이면 0 · 안 읽힌다)
   let msg;
   try { msg = JSON.parse(raw.toString()); } catch (e) { return; }
   const ws = player.ws;
@@ -5475,7 +5476,7 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'repair_building') tryRepairBuilding(player);
   else if (msg.type === 'unclaim') tryUnclaim(player, msg.claimId);
   // ★★[재민 확정 2026-08-27] `trade_offer`(T/Y) **제거됨**. 왜 지웠는지는 아래 함수 자리의 주석 참조.
-  else if (msg.type === 'ping') { player.lastSeen = Date.now(); send(ws, { type: 'pong', t: msg.t }); }
+  else if (msg.type === 'ping') { player.lastSeen = Date.now(); send(ws, _t486Pong(msg.t, _t486In)); }   // ★[T486] 끔 = `{ type:'pong', t }` 그대로
   else if (msg.type === 'war_command_join') {
     // §4-4 P4: 플레이어 전투 지휘 참가 요청(client.js 송신). warId=null → 지휘 해제.
     //   근접 검증 = 활동 중 전쟁 병사(SimVillages.warThreats, 존-로컬 px) 반경 안인지(WAR_CMD_R=320px≈10셀).
@@ -6474,10 +6475,11 @@ function doEatDish(player, id) {
 // Phase 5-K3: observer 메시지 핸들러 — 일반 observer 연결 + 핸드오프 후 primary→observer 전환 공용.
 // (옛 인라인 클로저를 모듈 스코프로 승격. ws를 인자로 받음.)
 function handleObserverMessage(ws, raw) {
+  const _t486In = T486_PONG_SPLIT ? _t486Now() : 0;   // ★[T486]
   let msg; try { msg = JSON.parse(raw.toString()); } catch (e) { return; }
   if (msg.type === 'ping') {
     const d = observers.get(ws); if (d) d.lastSeen = Date.now();
-    send(ws, { type: 'pong', t: msg.t });
+    send(ws, _t486Pong(msg.t, _t486In));
   }
   else if (msg.type === 'viewport_update') {
     const data = observers.get(ws);
@@ -7128,6 +7130,25 @@ function perfMark(kind, ms, extra) {
   if (!(ms >= 0)) return;
   _perfRing.push(Object.assign({ t: Date.now(), kind, ms: Math.round(ms * 100) / 100 }, extra || {}));
   if (_perfRing.length > 400) _perfRing.splice(0, _perfRing.length - 400);
+}
+// ★★[T486 2026-09-28] **pong 에 서버 시각 둘 + 최근 루프 p95** — 손잡이 `T486_PONG_SPLIT`(기본 **끔** · 끔 = pong 바이트 동일).
+//   HUD 핑은 ws 왕복이고 pong 은 **이 루프 안에서** 답한다 ⇒ 틱이 막히면 망이 멀쩡해도 핑이 튄다.
+//   켜면 pong 이 `srvIn`(이 메시지를 집은 순간) · `srvOut`(답을 내는 순간) · `loopP95`(최근 5초 루프 지연 p95)를 싣는다 —
+//   클라가 `rtt − (srvOut − srvIn)` = 망 왕복 · `srvOut − srvIn` = 서버 체류로 가른다.
+//   ⚠`srvIn` 은 메시지가 **집힌 뒤**다 — 소켓에 닿아 루프를 기다린 몫은 못 잰다. 그 몫의 크기가 `loopP95` 다
+//     (`loopDelayStats` 와 **다른** 히스토그램 — 그쪽은 `/perf?reset=1` 이 비우는 관측 창이라 섞으면 서로를 지운다).
+//   시각은 `performance.now()`(단조 · 원점이 프로세스마다 다르다 — 클라는 **차**만 쓴다) · 새 메시지 0 · 새 필드 셋.
+const T486_PONG_SPLIT = process.env.T486_PONG_SPLIT === '1';
+const _t486Now = require('perf_hooks').performance.now.bind(require('perf_hooks').performance);
+let _t486LoopP95 = null;
+if (T486_PONG_SPLIT) {
+  try {
+    const _m = require('perf_hooks').monitorEventLoopDelay({ resolution: 10 }); _m.enable();
+    setInterval(() => { _t486LoopP95 = +(_m.percentile(95) / 1e6).toFixed(2); _m.reset(); }, 5000).unref();
+  } catch (e) { /* perf_hooks 없으면 loopP95 = null */ }
+}
+function _t486Pong(t, srvIn) {
+  return T486_PONG_SPLIT ? { type: 'pong', t, srvIn: +srvIn.toFixed(3), srvOut: +_t486Now().toFixed(3), loopP95: _t486LoopP95 } : { type: 'pong', t };
 }
 // ★★[달력 2026-08-30 재민 확정] 화면에 나갈 연·계절·일. **새 매핑을 여기서 만들지 않는다** —
 //   `Events.calendarOf` 가 econ `seasonOf` 하나만 보고 전부 유도한다(상수 0개).
