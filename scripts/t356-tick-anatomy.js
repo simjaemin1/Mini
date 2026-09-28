@@ -199,7 +199,9 @@ async function runArm(arm, idx) {
     const p = await perf(false), L = await life();
     const t = p && p.tick && p.tick.ms;
     // 그 조각 동안 찍힌 [ANA] 줄들
-    const buf = fs.readFileSync(`/tmp/t356-${arm}.log`, 'utf8').slice(mark);
+    // ★[T461] 바이트 자리로 자른다 — `mark` 는 `statSync().size`(바이트)다. 글자 자리로 자르면 한글 로그에서 창을 지나쳐
+    //   [ANA] 줄을 놓친다(T371 첫 판이 밟은 그 함정 · t371 은 이미 바이트로 자른다).
+    const buf = fs.readFileSync(`/tmp/t356-${arm}.log`).subarray(mark).toString('utf8');
     const ana = buf.split('\n').filter((x) => x.startsWith('[ANA] ')).map((x) => { try { return JSON.parse(x.slice(6)); } catch (e) { return null; } }).filter(Boolean);
     let nonSleep = 0;
     for (const v of ((L && L.villages) || [])) for (const [kk, n] of Object.entries(v.acts || {})) if (kk !== '취침') nonSleep += n;
