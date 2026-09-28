@@ -278,6 +278,7 @@
       ox = m.carryOffset[row][0]; oy = m.carryOffset[row][1];
     }
     const dx = Math.round(x + ox - m.anchorX), dy = Math.round(y + oy - m.anchorY);
+    _charAnim.get(opts.pid).drawn = [stt.clip, stt.frame, row];   // ★[T500] 이 몸이 이번에 그린 판 — 입 자리(`charMouthOffset`)가 읽는다
     // 발밑 그림자 — 도형 경로와 같은 자리·같은 크기(시트가 바뀌어도 접지감은 유지)
     //   ★업힌 사람은 땅에 안 닿는다 ⇒ 그림자 없음(업는 사람의 것 하나만 남는다).
     // ★[T143] 궤주 반투명 — 도형 경로와 **같은 상수**. 몸을 그리는 동안만 걸고 바로 되돌린다
@@ -309,6 +310,19 @@
                          facing: [+(opts.fvx || 0).toFixed(4), +(opts.fvy || 0).toFixed(4)],
                          anchor: [m.anchorX, m.anchorY], t: performance.now() };
     return true;
+  }
+
+  /**
+   * ★★[T500 2026-09-28] **입 자리** — 이 몸이 **방금 그린** 판(클립·판·방향)의 입, 발밑 기준 화면 오프셋 [dx, dy].
+   *   값은 `char_meta.mouthScreen`(char_render.py 가 턱·광대 링 앞면 가운데를 머리 뼈로 옮겨 잰 것 · `handScreen` 문법)이다
+   *   — 클라는 규격을 하나도 지어내지 않는다. 표가 없거나(옛 메타) 아직 그리지 않은 몸이면 null(입김이 안 나온다).
+   */
+  function charMouthOffset(pid) {
+    const m = _charMeta, st = _charAnim.get(pid);
+    const ms = m && m.mouthScreen, dr = st && st.drawn;
+    const rows = ms && dr && ms[dr[0]];
+    const p = rows && rows[dr[2]] && rows[dr[2]][dr[1]];
+    return p ? [p[0] - m.anchorX, p[1] - m.anchorY] : null;
   }
 
   // ★★[T137] 그림자와 '쓰러진 이름표'를 **한 자리**로 모은다 — 종전엔 도형 경로 안에만 있었고,

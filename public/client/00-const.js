@@ -943,6 +943,7 @@ function cropSprite(stage, crop) {
       ? { dry: g.createPattern(GTEX.dry_angled, 'repeat'), mud: g.createPattern(GTEX.mud_angled, 'repeat') } : null;
     const _wxL = _wxListOf(_pc);   // ★날씨 걸린 마을만(보통 0~5) — 없으면 셀 루프에서 비용 0
     let nState = 0, nWx = 0;
+    const _frostCells = [];   // ★[T500] 서리 칸(타일 좌표 쌍) — 끔·서리 0 이면 빈 채로 끝난다(아래 한 줄이 첫 줄에 돌아간다)
     for (let cx = c0x; cx <= c1x; cx++) for (let cy = c0y; cy <= c1y; cy++) {
       const cxw = cx * 32 + 16, cyw = cy * 32 + 16;
       const sx = (cxw - cyw) - X0, sy = (cxw + cyw) / 2 - Y0;
@@ -987,6 +988,7 @@ function cropSprite(stage, crop) {
         _gtPaintState(g, sx, sy, _st, _lcx, _lcy, _pat, _bio, gm); nState++;
         if (GT_ZONE_TINT > 0) _gtDiamond(g, sx, sy, zMeta.groundColor, GT_ZONE_TINT * 0.5, gm);
         _gtDiamond(g, sx, sy, ICE_COLOR, _gtSnowAlpha(_st), gm);   // ★[T487] 적설 — 산터도 땅이다(10-r1-terrain 규칙 표)
+        if (_gtFrostAlpha(_st) > 0) _frostCells.push(sx, sy);       // ★[T500] 서리 — 적설과 같은 자리(칠은 셀 마감 뒤 경로 하나로 한 번)
         continue;
       }
       if (isWater) {
@@ -1025,8 +1027,11 @@ function cropSprite(stage, crop) {
         //   왜 위인가(실측 · e2e-snow 1판): 틴트 아래에 두면 적설 1 에서 텍스처가 다 덮인 흰 바탕 위로
         //   반투명 틴트 두 겹의 **다이아몬드 이음새가 격자로** 드러났다. 맨 위 불투명 한 겹(α≥0.999 는 부풀림)은 그 이음새를 덮는다.
         _gtDiamond(g, sx, sy, ICE_COLOR, _gtSnowAlpha(_st), gm);
+        if (_gtFrostAlpha(_st) > 0) _frostCells.push(sx, sy);       // ★[T500] 서리 — 적설 바로 뒤 같은 자리(둘이 한 칸에 겹치는 판은 없다 · 서버가 가른다)
       }
     }
+    // ★[T500] 서리 — 셀 마감이 다 끝난 **맨 위**에 경로 하나로 한 번(칸마다 칠하면 이음새 격자 · 10-r1-terrain `_gtFrostPaint`)
+    _gtFrostPaint(g, gm, _frostCells, ICE_COLOR);
     // ★잎 층 = (풀텍스처 − 평탄색) × 투과율 T. 이걸 매 프레임 가로 띠로 어긋나게 가산 blit 한다.
     let bl = null;
     if (_wg) {

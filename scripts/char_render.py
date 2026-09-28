@@ -1487,6 +1487,36 @@ for _c in CLIP_N:
         HAND_SCREEN[_c].append(_row)
         HAND_SCREEN_L[_c].append(_rowL)
 
+# ★★[T500 2026-09-28] **입의 화면 자리** — 입김(겨울 이펙트 ②)이 나오는 자리를 클라가 눈대중하지 않게 **몸에서** 잰다.
+#   `handScreen` 과 같은 문법이다(클립×방향×프레임 · 프레임 좌표 클라 px · 앵커를 더해 둔다).
+#   입 = 턱 링(`TORSO_R` 8)과 광대 링(9 · 눈 아래) **앞면의 가운데** — 사람 얼굴에서 입·코는 그 둘 사이다.
+#     새 수 0: 링 둘의 값(z · 앞 오프셋 + 앞뒤 반지름)을 평균할 뿐이다. 머리 비례 손잡이(`_hz`)도 링이 이미 먹었다.
+#   그 점은 **머리 뼈 하나**에 붙는다 — 몸통 가중(`blendw`)에서 1.478 위는 `head` 100% 다(두 링 다 그 위).
+#     ⇒ 선 자세의 점을 머리 뼈의 변형(포즈 행렬 · 쉬는 행렬의 역)으로 옮기고, 리그 오브젝트(방향 회전 · 높이 압축)를 태운다.
+_MR8, _MR9 = TORSO_R[8], TORSO_R[9]
+MOUTH_REST = V((((_MR8[1] + _MR8[3]) + (_MR9[1] + _MR9[3])) / 2.0, 0.0, (_MR8[0] + _MR9[0]) / 2.0))
+
+
+def _mouth_screen(clip, d, fi):
+    apply_pose(clip, fi, CLIP_N[clip], d)
+    pb = rig.pose.bones['head']
+    pw = rig.matrix_world @ ((pb.matrix @ pb.bone.matrix_local.inverted()) @ MOUTH_REST)
+    return (pw.dot(RHAT) * PPU, -pw.dot(UHAT) * PPU)
+
+
+MOUTH_SCREEN = {}
+for _c in CLIP_N:
+    MOUTH_SCREEN[_c] = []
+    for _d in range(DIRS):
+        _row = []
+        for _f in range(CLIP_N[_c]):
+            _mu, _mw = _mouth_screen(_c, _d, _f)
+            _row.append([round((ANCH_X + _mu) / SS, 3), round((ANCH_Y + _mw) / SS, 3)])
+        MOUTH_SCREEN[_c].append(_row)
+_m0 = MOUTH_SCREEN['idle'][0][0]
+print(f"[char] 입 자리(T500 · 선 판 동쪽 0번): 프레임 ({_m0[0]:.2f}, {_m0[1]:.2f}) · 발밑 위 {ANCH_Y / SS - _m0[1]:.2f}px"
+      f" (링 둘 가운데 z {MOUTH_REST.z:.4f}m × {_PXM:.1f}px/m = {MOUTH_REST.z * _PXM:.2f}px)")
+
 scene.render.resolution_x = FW
 scene.render.resolution_y = FH
 cam_d.ortho_scale = FW / PPU
@@ -1610,6 +1640,7 @@ META = {
     "anchorX": round(ANCH_X / SS, 3), "anchorY": round(ANCH_Y / SS, 3),
     "handScreen": HAND_SCREEN,          # ★[T143] 클립×방향×프레임 손목(handR 머리) 프레임 좌표(클라 px)
     "handScreenL": HAND_SCREEN_L,       # ★[T149] 같은 표의 왼쪽 — 손목 = `larmL` 끝(handL 뼈가 없다)
+    "mouthScreen": MOUTH_SCREEN,        # ★[T500] 같은 문법의 입 자리(턱·광대 링 앞면 가운데 · 머리 뼈) — 입김이 여기서 나온다
     # ★[T149] 묶인 손의 **목표 자리**(아마추어 공간 m · 앞·반간격·높이) + 그것을 푼 최대 잔차(mm).
     #   셋 다 유도된 값이다(`TUNIC_R` 의 가슴 링 · `ARM_R` 의 손목 반지름 · 척추 뼈 한가운데) —
     #   하네스가 문턱을 지어내지 않고 여기서 읽는다.
