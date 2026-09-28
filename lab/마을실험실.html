@@ -3545,6 +3545,21 @@ function houseCostPerCap(res) {
   return (m[res] || 0) / cap;
 }
 function buildActOn(v) { return !!(T400_BUILD_ACT && v && v._t400Live); }
+// ★[T488 2026-09-28] 집이 오늘 올릴 수 있는 양(수용력 인분 · **목재 제약 전**) — 모자란 집(`N × HOUSE_BUFFER − housing`)과
+//   여유노동 상한(`N × HOUSE_BUILD_MAX × slack` · slack 은 곳간 식량 여유) 중 작은 쪽. 집 증축 절이 이것에 목재 제약을 얹고,
+//   숯가마의 "잉여 통나무"는 이것 × 통나무 단가를 **집 몫**으로 먼저 뺀다(`houseWoodShare`) — 같은 함수 · 새 수 0.
+function houseDayBuild(v, N, fe) {
+  const houseTarget = N * HOUSE_BUFFER;
+  if (!(v.housing < houseTarget)) return 0;
+  const slack = fe > N * 40 ? 1.0 : (fe > N * 25 ? 0.5 : 0.15);
+  return Math.min(houseTarget - v.housing, N * HOUSE_BUILD_MAX * slack);
+}
+//   집 몫(통나무) — 숯가마가 태우지 말고 남겨 둘 양. ★집(T400)이 끔이면 0 = 숯가마 종전 그대로(비트 동일 · 손잡이 0).
+function houseWoodShare(v) {
+  if (!T400_BUILD_ACT || !v || !v.npcs || v.housing === undefined) return 0;
+  const N = v.npcs.length;
+  return houseDayBuild(v, N, totalFoodEquivalent(v)) * houseCostPerCap('wood');
+}
 //   ★곳간 **출구** — `actToGranary` 의 역. 크루가 집터로 들고 가는 자재가 여기서 빠진다(있는 만큼만 · 세금 없음 — 마을 제 것이다).
 //     흐름 EMA 는 종전 주거 갈래가 찍던 **그 칸**(`_cons(v, 'wood', …)`)에 찍는다 — 수요 신호가 같은 자리에서 나온다.
 // ══ ★★[T419 2026-09-26] 돌 쓰는 실물 — econ 이 같은 물건을 만드는 세 자리의 단가를 서버 표에서 유도(손잡이 기본 끔) ══
@@ -4784,7 +4799,7 @@ function kilnDay(v) {
     return { built: 1 };
   }
   const reserve = (RESERVE_PC.wood || 0) * N;
-  const spare = (v.storage.wood || 0) - reserve;
+  const spare = (v.storage.wood || 0) - reserve - houseWoodShare(v);   // ★[T488] 잉여 = 재고 − 비축 − **집 몫**(집이 끔이면 0 · 순서 집 → 숯가마 무변)
   const target = furnaceCharcoalTarget(v);   // ★[T463] 식 한 곳 — 파생수요(`derivedInputTarget`)가 같은 함수를 부른다(산술 불변)
   const gap = target - (v.storage.charcoal || 0);
   if (!(spare >= S.CHARCOAL_KILN_WOOD) || !(gap > 0)) return { batches: 0 };
@@ -6234,12 +6249,11 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
     // ★노동기반 건설: "시간 남는 NPC가 집을 짓는다" — 여유노동이 건설속도를 결정.
     //   식량안보(곳간 여유)일수록 잉여노동 많아 건설 빠름. 쪼들리면 정체(노동을 식량에 다 씀).
     const _fe = totalFoodEquivalent(v);
-    const slack = _fe > N * 40 ? 1.0 : (_fe > N * 25 ? 0.5 : 0.15);
     // ★[T400] 자재 단가 — 끔이면 종전 상수 그대로(`_HW === HOUSE_WOOD` · 같은 연산 · 비트 동일), 켬이면 `hut-stages.js` 표에서 유도.
     const _HW = T400_BUILD_ACT ? houseCostPerCap('wood') : HOUSE_WOOD;
     const _HS = T400_BUILD_ACT ? houseCostPerCap('stone') : HOUSE_STONE;
     const _live = buildActOn(v);   // ★[T400] 크루가 곳간에서 실제로 꺼내 가는 마을 — 목재 제약·차감은 그 행위가 진다
-    let built = Math.min(houseTarget - v.housing, _live ? Infinity : (v.storage.wood || 0) / _HW, N * HOUSE_BUILD_MAX * slack);   // 목재 필수 + 여유노동 제약
+    let built = Math.min(houseDayBuild(v, N, _fe), _live ? Infinity : (v.storage.wood || 0) / _HW);   // 목재 필수 + 여유노동 제약(★[T488] 여유노동 몫은 `houseDayBuild` 한 함수 — 숯가마의 집 몫이 같은 함수를 부른다 · min 은 묶는 순서와 무관 = 비트 동일)
     if (built > 0) {
       // ★석재 준-필수: 석재 충분하면 정상 건축, 없으면 30%만(주춧돌·구들 없는 임시 가옥). 강한 석재 수요 → 광산 교역 유발.
       const stoneNeed = built * _HS;
@@ -8045,7 +8059,7 @@ module.exports = {
   T443_SMELT_FUEL, smeltFuelOn, smeltFuelPerOre, smeltFuelTake,   // ★[T443] 제련 연료 — 하네스·계측기가 표를 옮겨 적지 않게
   T419_STONE_REAL, stoneRealPer, stoneRealOn,   // ★[T419] 돌 쓰는 실물 — 하네스·계측기가 표·유도를 옮겨 적지 않게 내준다
   T435_GRANARY_ACT, granaryEconMaterials,   // ★[T435] 곳간 증설 재료 — 생활층·하네스가 표를 옮겨 적지 않게
-  T400_BUILD_ACT, buildActOn, actFromGranary, hutEconMaterials, hutEconStage, hutStageCount, hutCapPerHut, houseCostPerCap,   // ★[T400] 집 행위 — 하네스·생활층이 표·유도를 옮겨 적지 않게 내준다
+  T400_BUILD_ACT, buildActOn, houseDayBuild, houseWoodShare, actFromGranary, hutEconMaterials, hutEconStage, hutStageCount, hutCapPerHut, houseCostPerCap,   // ★[T400] 집 행위 — 하네스·생활층이 표·유도를 옮겨 적지 않게 내준다
   actToGranary, woodToGranary, woodActOn, woodRegrowR, woodRegrowPerDay, T325_WOOD_ACT,
   forageToGranary, forageActOn, forageActItemsOf, foragerYieldsFor, T347_FORAGE_ACT,   // ★[T347] 채집 행위 — 문 셋 + 믹스 정본 + 손잡이(하네스가 표를 옮겨 적지 않는다)
   actDemandLeft, actDemandCap, fishDemandLeft, woodDemandLeft, forageDemandLeft, T374_DEMAND_STOP,
