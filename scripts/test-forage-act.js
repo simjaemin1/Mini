@@ -990,6 +990,105 @@ console.log('\n⑱ [T490] 원판이 비면 밖으로 걷는다 — 팔 `T490_FOR
   ok(/if \(c\.ext\) vx \+= \(c\.n \| 0\); else groves \+= \(c\.n \| 0\);/.test(VC), 'ⓖ `/perf` 군락 합은 원판만 · 밖은 따로(`reach`)');
 }
 
+// ── ⑲ [T495] 부분 수확 — 개체가 아니라 단위로 딴다 · 팔 `T495_PARTIAL_PICK`(기본 끔) ──────────────────────
+//   ⓐ 손잡이 기본 끔 · 끄면 문이 한 번도 안 불린다 · 계측 칸이 안 생긴다 · 존 장부를 짓지도 읽지도 않는다(끔 비트 동일)
+//   ⓑ 생활층 한 번(`_t495Visit`) — 그날 남은 몫(⌈남은 수요⌉)까지만 · 그 마을 목록 차례로 · 곳간은 수요에서 자른다
+//   ⓒ 빈 개체만 되살릴 목록(`_t347Cut`)에 든다 · 원판 밖(T490)은 안 든다 · 되살이는 개체 수로 그대로
+//   ⓓ 존 문(`_t495PickAt`) — 존을 **자식 프로세스에서 띄워** 정본 문을 두드린다: 단위만 빠지고 개체는 서 있다 ·
+//      장부·DB 에 딴 것이 적힌다 · 다 따면 벤 장부로(색인에서 빠진다 · 장부 줄 지움) · 되살면 온전 · 재부팅해도 남은 단위 그대로
+//   ⓔ 플레이어·NPC 채집은 **남은 단위만** 받는다(두 자리 모두 같은 문 `_t495Rest`) · ⓕ econ 무접촉
+console.log('\n⑲ [T495] 부분 수확 — 개체가 아니라 단위로 딴다 · 팔 `T495_PARTIAL_PICK`(기본 끔)');
+{
+  const VC = codeOf(VSRC), ZC = codeOf(ZSRC), C = codeOf(SRC);
+  const VP = JSON.stringify(path.join(ROOT, 'server', 'villages.js'));
+  // ⓐ 손잡이 · 끔 비트 동일(정적 — 부르는 자리는 손잡이 뒤 한 곳씩)
+  const off = probe({ T347_FORAGE_ACT: '1', T374_DEMAND_STOP: '1', T495_PARTIAL_PICK: '' }, `const V=require(${VP}); console.log(JSON.stringify({ on: V.__labProbe._t495Probe.on() }))`);
+  ok(off.on === false, 'ⓐ ★★`T495_PARTIAL_PICK` 가 **기본 끔**이다(켜기는 PM·재민)');
+  ok(/const _t495 = _t495On\(\) && !!state\.deps\.t495PickAt;/.test(VC) && (VC.match(/_t495Visit\(vil, c, peek\[0\]/g) || []).length === 1
+    && /if \(_t495\) \{\s*_t495Order = \[\];[\s\S]{0,400}vil\._t347Dbg\.units = 0; vil\._t347Dbg\.empt = 0; vil\._t347Dbg\.part = 0;/.test(VC),
+    'ⓐ ★끄면 헤드리스 루프가 **종전 갈래 그대로**다 — 단위 갈래는 손잡이 뒤 한 곳 · 계측 칸(units·empt·part)도 켠 팔만');
+  const DBC = codeOf(fs.readFileSync(path.join(ROOT, 'server', 'zone-local-db.js'), 'utf8'));
+  ok(/if \(_t495On\(\)\) \{[\s\S]{0,200}db\.getAllPickedSeeds\(\)/.test(ZC) && /function _picked\(\) \{\s*if \(_pickedStmts\) return _pickedStmts;\s*db\.exec\(`\s*CREATE TABLE IF NOT EXISTS picked_seeds/.test(DBC)
+    && (DBC.match(/CREATE TABLE IF NOT EXISTS picked_seeds/g) || []).length === 1,
+    'ⓐ ★끄면 존이 부분 수확 장부를 **읽지도 짓지도** 않는다(표는 처음 쓸 때 짓는다 · DB 한 바이트도 안 바뀐다)');
+  // ⓑⓒ 생활층 한 번 — 가짜 세계(개체 셋 · 딴 것 장부)는 이 하네스의 픽스처다 · 존 문 자체는 ⓓ 가 정본으로 두드린다
+  const world = `const V=require(${VP}); const P=V.__labProbe._t495Probe, S=V.__labProbe._t400Probe;
+    const L={b0:{berry:2,fiber:1,twig:1},b1:{berry:2,fiber:1,twig:1},h0:{herb:2}}; const taken={}; const gone=new Set();
+    const rest=(k)=>{ const o={}; for (const [h,n] of Object.entries(L[k])) { const r=n-((taken[k]||{})[h]||0); if (r>0) o[h]=r; } return o; };
+    const pickAt=(cx,cy,order,want,worth)=>{ const k=cx===110?'b0':cx===111?'b1':'h0'; if (gone.has(k)) return null; const r=rest(k); const took={}; let n=0;
+      for (const h of order) { if (n>=want) break; const a=r[h]||0; if (!(a>0)) continue; const t=Math.min(a,want-n); took[h]=t; n+=t; }
+      let left=0; for (const h of worth) left+=Math.max(0,(r[h]||0)-(took[h]||0));
+      if (!(left>0)) { gone.add(k); delete taken[k]; return { took, n, emptied:1, seedKey:k }; }
+      taken[k]=taken[k]||{}; for (const h in took) taken[k][h]=(taken[k][h]||0)+took[h]; return { took, n, emptied:0, seedKey:k }; };
+    S.setup({ deps:{ t495RestOf:(e)=>rest(e.seedKey), t495PickAt:pickAt, t347LootOf:(e)=>(e.type==='herb'?{herb:2}:e.type==='berry_bush'?{berry:2,fiber:1,twig:1}:L[e.seedKey]) } });
+    V.__labProbe._t475Probe.itemsFor(['berry_bush','herb']);   // 손 이름 짝(berry → fruit)은 세계 목록이 세운다(하루 머리에 이미 서 있는 그것)
+    const mk=(D)=>({ econ:{ storage:{}, _forageOutLast:D*2, _t347MixShare:0.5, _t347InflowToday:0 }, _t347Dbg:{ pick:0 } });
+    const order=['berry','twig','herb'], worth=['berry','twig','herb'], keep=['fruit','twig','herb'];
+    const day=(v)=>{ v.econ._t347InflowToday=0; };`;
+  const on5 = { T347_FORAGE_ACT: '1', T374_DEMAND_STOP: '1', T495_PARTIAL_PICK: '1' };
+  const rb = probe(on5, `${world}
+    const v=mk(0.6); const c={cx:110,cy:100}; const out=[];
+    for (let d=0; d<3; d++) { day(v); const r=P.visit(v,c,{seedKey:'b0'},order,worth,keep); out.push({ r, g:+(v._t347Gran||0).toFixed(4), cut:(v._t347Cut||[]).slice(), st:+(v.econ.storage.fruit||0).toFixed(4), tw:+(v.econ.storage.twig||0).toFixed(4) }); }
+    const w=mk(2.3); day(w); const r2=P.visit(w,{cx:111,cy:100,ext:1},{seedKey:'b1'},order,worth,keep);
+    const x=mk(0.6); day(x); const r3=P.visit(x,{cx:112,cy:100},{seedKey:'h0'},['berry','twig'],worth,['fruit','twig']);
+    console.log(JSON.stringify({ out, r2, cut2:(w._t347Cut||[]).length, dbg2:w._t347Dbg, r3, on:P.on() }))`);
+  ok(rb.on === true && rb.out[0].r.n === 1 && rb.out[0].r.emptied === 0 && rb.out[0].cut.length === 0 && Math.abs(rb.out[0].g - 0.6) < 1e-9,
+    'ⓑ ★★몫 0.6 인 날 — **한 단위만** 딴다(열매 한 알 · 개체는 선 채) · 곳간엔 몫만큼(0.6 — 넘친 0.4 는 입구가 자른다)', JSON.stringify(rb.out[0]));
+  ok(rb.out[1].r.n === 1 && rb.out[1].r.emptied === 0 && rb.out[2].r.n === 1 && rb.out[2].r.emptied === 1 && rb.out[2].cut.join() === 'b0',
+    'ⓒ ★★덤불 한 개체(걷는 단위 셋)가 **사흘**을 댄다 — 셋째 날 비어서야 되살릴 목록에 든다(되살이는 개체 수로 그대로)', rb.out.map((o) => `${o.r.n}${o.r.emptied ? '·빔' : ''}`).join(' → '));
+  ok(rb.out[2].tw > 0 && rb.out[0].st > 0, 'ⓑ 차례는 **그 마을 목록 차례**(열매 먼저 · 잔가지는 열매가 다 한 뒤)', `열매 ${rb.out[2].st} · 잔가지 ${rb.out[2].tw}`);
+  ok(rb.r2.n === 3 && rb.r2.emptied === 1 && rb.cut2 === 0 && rb.dbg2.units === 3 && rb.dbg2.empt === 1 && rb.dbg2.xpick === 1,
+    'ⓒ ★몫 2.3 → ⌈2.3⌉ = 3 단위 · 개체가 비어도 **원판 밖(T490)** 은 되살릴 목록에 안 든다(제 주기)', JSON.stringify(rb.r2));
+  ok(rb.r3 === null, 'ⓑ ★그 마을 목록에 없는 종(풀 — 목록 열매·잔가지)은 **손대지 않는다**(셀 넘김 · 개체 무변)');
+  // ⓓ 존 문 — 자식 프로세스에서 존을 띄운다(임시 DB · 마을 끔 · T347 셀 색인은 관측자 없이 선다)
+  const TMP = `/tmp/t495-forage-${process.pid}.db`;
+  const rm = () => { for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} } };
+  rm();
+  const ZP = JSON.stringify(path.join(ROOT, 'server', 'zone.js'));
+  const zenv = (on) => ({ ZONE_ID: 'hanbando', DB_PATH: TMP, ENABLE_VILLAGES: '0', ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0',
+    PORT: String(39300 + (process.pid % 400)), T495_PARTIAL_PICK: on ? '1' : '' });
+  //   존은 부팅 말을 stdout 에 쓴다 — 답은 표지(`@@T495@@`) 뒤 한 줄만 읽는다
+  const zprobe = (env, js) => { const o = execFileSync(process.execPath, ['-e', js], { env: Object.assign({}, process.env, env), stdio: 'pipe' }).toString(); const i = o.lastIndexOf('@@T495@@'); return JSON.parse(o.slice(i + 8).split('\n')[0]); };
+  const zboot = `const _l=console.log; console.log=()=>{}; console.warn=()=>{}; const Z=require(${ZP}); const H=Z.__testBind(); console.log=_l;
+    const OUT=(o)=>{ process.stdout.write('\\n@@T495@@'+JSON.stringify(o)+'\\n'); process.exit(0); };
+    let F=null; for (let y=1000; y<1400 && !F; y++) for (let x=500; x<900 && !F; x++) { const a=H._t347GrovesAtCell(x,y); if (a && a.length && a[0].type==='berry_bush') F={x,y,k:a[0].seedKey}; }
+    const at=()=> (H._t347GrovesAtCell(F.x,F.y)||[]).find((e)=>e.seedKey===F.k)||null;
+    const O=['berry','twig','herb'];`;
+  let rd = null, rr = null, ro = null;
+  try {
+    rd = zprobe(zenv(true), `${zboot}
+      const e0=at(); const full=H.lootOfResource(e0); const rest0=H._t495RestOf(e0); const same=H._t495Rest(e0,full)===full;
+      const p1=H._t495PickAt(F.x,F.y,O,1,O); const e1=at(); const rest1=H._t495RestOf(e1); const npc1=H._t495Rest(e1,H.lootOfResource(e1)); const led1=JSON.stringify(H.pickedSeeds.get(F.k)); const db1=H.db.getAllPickedSeeds().length;
+      OUT({ F, same, rest0, p1, stand1:!!e1, rest1, npc1, led1, db1 });`);
+    rr = zprobe(zenv(true), `${zboot}
+      const e0=at(); const rest0=H._t495RestOf(e0);
+      const p2=H._t495PickAt(F.x,F.y,O,9,O); const e2=at(); const harv=H.harvestedSeeds.has(F.k); const led2=H.pickedSeeds.has(F.k); const db2=H.db.getAllPickedSeeds().length;
+      const u=H._t341Unharvest(F.k); const e3=at(); const rest3=e3?H._t495RestOf(e3):null;
+      OUT({ rest0, p2, stand2:!!e2, harv, led2, db2, u, stand3:!!e3, rest3 });`);
+    // 재부팅 판 — 한 단위를 딴 채 끝낸 DB 를 **끈 팔**로 다시 띄우면 장부를 안 읽는다(온전 · 비트 동일)
+    zprobe(zenv(true), `${zboot} H._t495PickAt(F.x,F.y,O,1,O); OUT({});`);
+    ro = zprobe(zenv(false), `${zboot} const e=at(); OUT({ n:H.pickedSeeds.size, loot:H._t495Rest(e,H.lootOfResource(e,{day:0})) });`);
+  } catch (e) { console.log('  · [상황] 존 자식 프로세스 실패: ' + String(e.message || e).slice(0, 200)); }
+  rm();
+  ok(!!rd && rd.same === true && rd.rest0.berry === 2 && rd.rest0.twig === 1,
+    'ⓓ ★장부가 비면 남은 전리품 = **정본 그 객체 그대로**(끔·온전 개체 비트 동일)', rd && JSON.stringify(rd.rest0));
+  ok(!!rd && rd.p1.n === 1 && rd.p1.took.berry === 1 && rd.p1.emptied === 0 && rd.stand1 === true && rd.rest1.berry === 1 && rd.rest1.twig === 1,
+    'ⓓ ★★존 문 — **한 단위만** 빠지고 개체는 **서 있다**(색인이 그대로 돌려준다 · 남은 열매 1 · 잔가지 1)', rd && JSON.stringify(rd.p1));
+  ok(!!rd && rd.led1 === '{"berry":1}' && rd.db1 === 1, 'ⓓ ★딴 것이 장부와 DB 에 **같이** 적힌다(온전한 개체는 안 적는다 · `fish_cells` 문법)', rd && `${rd.led1} · DB ${rd.db1}행`);
+  ok(!!rr && rr.rest0.berry === 1 && rr.p2.n === 2 && rr.p2.emptied === 1 && rr.stand2 === false && rr.harv === true && rr.led2 === false && rr.db2 === 0,
+    'ⓓ ★★재부팅해도 남은 단위 그대로(열매 1) · 남은 것을 다 따면 **빈 개체** — 색인에서 빠지고 벤 장부로 · 장부 줄·DB 행을 지운다', rr && JSON.stringify(rr.p2));
+  ok(!!rr && rr.u === 1 && rr.stand3 === true && rr.rest3 && rr.rest3.berry === 2 && rr.rest3.twig === 1,
+    'ⓓ ★되살면(`_t341Unharvest` · 원판 로지스틱의 그 문) **온전하다**', rr && JSON.stringify(rr.rest3));
+  ok(!!ro && ro.n === 0 && ro.loot && ro.loot.berry === 2,
+    'ⓐ ★★끈 팔로 다시 띄우면 장부를 **안 읽는다** — 한 단위 딴 개체도 온전(끄면 종전 그대로)', ro && JSON.stringify(ro));
+  // ⓔ 플레이어·NPC 채집 — 같은 문(`_t495Rest`)으로 남은 단위만
+  ok(!!rd && rd.npc1.berry === 1, 'ⓔ ★NPC 채집이 받는 전리품 = **남은 단위**(한 알 딴 덤불은 열매 1)', rd && JSON.stringify(rd.npc1));
+  ok(/const loot = _t495Rest\(r, lootOfResource\(r\)\);/.test(ZC) && /const loot = _t495Rest\(best, lootOfResource\(best, \{ day: zoneGameDay\(\) \}\)\);/.test(ZC),
+    'ⓔ ★플레이어 채집(`gatherResource`)·NPC 채집(걷는 몸) **두 자리 모두** 같은 문을 지난다(세계가 단위를 새로 만들지 않는다)');
+  // ⓕ econ 무접촉
+  ok(!/T495/.test(C), 'ⓕ ★econ(`sim/economy-sim.js`)에 T495 글자 **0** — 곳간 입구·수요 문·로지스틱 그대로(여덟 수가 움직일 자리가 없다)');
+}
+
 console.log('\n⑫ 접점 심볼');
 {
   const all = SRC + VSRC + ZSRC;
