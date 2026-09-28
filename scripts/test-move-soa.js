@@ -1626,8 +1626,10 @@ console.log('\n⑱ T474 — 캐러밴 시계 = 몸 걸음에서 유도(손잡이
   const E = fs.readFileSync(path.join(ROOT, 'sim', 'economy-sim-v2.js'), 'utf8');
   const EC = codeOnly(E);
   const declM = E.match(/const T474_CARAVAN_WALK = (\(typeof process !== 'undefined' && process\.env && process\.env\.T474_CARAVAN_WALK === '1'\));/);
-  const i0 = E.indexOf('const T474_CARAVAN_WALK = '), i1 = E.indexOf('const CARAVAN_DAY_SPEED = T474_CARAVAN_WALK ? caravanWalkPerDay() : NPC_SPEED;');
-  const knobBlk = (i0 > 0 && i1 > i0) ? E.slice(i0, E.indexOf('\n', i1)) : '';
+  //   ★[T489] 시계 한 줄이 셋째 갈래(짐 진 몸)를 품으며 세 줄이 됐다 — 끝은 `: NPC_SPEED;`(끔 갈래) 글자로 자른다.
+  const i0 = E.indexOf('const T474_CARAVAN_WALK = '), i1 = E.indexOf('const CARAVAN_DAY_SPEED = T474_CARAVAN_WALK');
+  const i2 = i1 > 0 ? E.indexOf(': NPC_SPEED;', i1) : -1;
+  const knobBlk = (i0 > 0 && i1 > i0 && i2 > i1) ? E.slice(i0, i2 + ': NPC_SPEED;'.length) : '';
   ok(!!declM && knobBlk.length > 400 && /return Math\.max\(1, Math\.round\(dist \/ CARAVAN_DAY_SPEED\)\);/.test(E),
      '⑱ [전제] econ 에서 **그 글자**를 떴다(손잡이 선언 · 거울 · 유도 함수 · 시계 한 줄 · 날 수 함수)', `${knobBlk.length}자`);
   // ⓐ 손잡이 하나
@@ -1716,6 +1718,85 @@ console.log('\n⑱ T474 — 캐러밴 시계 = 몸 걸음에서 유도(손잡이
      '★⑱ 자명 통과 금지 — 셀당 econ 을 빠뜨린 유도(2,880)는 ⑱-f 대조에서 **갈리고** · 끔 500 ↔ 켬 7,200 도 표본에서 갈린다(⑱-b 는 빈 대조가 아니다)',
      `2,880 과 갈린 표본 ${kid.bait}/${kid.n} · 500↔7,200 갈린 표본 ${diffOn}/${sample.length}`);
   console.log('    접점: NPC_SPEED · CARAVAN_DAY_SPEED · caravanWalkPerDay · ECON_PER_CELL · travelDaysForDistance · T474_CARAVAN_WALK · PX_PER_ECON · move-model · rumor.js');
+}
+
+// ═══ ⑲ T489 — 소문 분리 팔(`T489_RUMOR_SPLIT` · 기본 끔): 소문 = 몸 · 캐러밴(몸 시계일 때) = 짐 진 몸 ═══════════════════
+//   T474 켬: 사건 밀도 ㉮ 1.85 → 1.05(캐논 밖). 이 팔은 소문 시계를 캐러밴 시계에서 **뗀다**(T7 거울을 끊고 몸을 직접) ·
+//   캐러밴이 몸 시계일 때(T474 켬) 짐 배수를 곱한다(T468 짐꾼 자 · 새 수 0).
+//   이 절이 거는 것:
+//     ⓐ 손잡이 하나 · `1`·`day` 만 켬 · 읽는 자리 둘(econ 시계 · rumor.js 문)이 **같은 술어** · 그 밖은 안 읽는다
+//     ⓑ 끔 = 종전(이 프로세스): 소문 500 · 캐러밴 `NPC_SPEED`
+//     ⓒ 짐 배수 = T468 짐꾼 자 ÷ 몸(`1` 시속 비 2.8÷7.2 · `day` 하루 비 21.7÷172.8) · 둘 다 (0,1) 이고 옛 시계(500)보다 빠르다
+//     ⓓ 계약 — T468 짐꾼 자: econ 의 수가 `설계/고증_교역.md` 의 글자와 같다
+//     ⓔ 켬 자식 넷: T489 만(소문 7,200 · 캐러밴 500 그대로) · T474 만(캐러밴 7,200 · 소문 500 그대로 — T474 무변) ·
+//        둘 다 `1`(캐러밴 2,800 · 소문 7,200) · 둘 다 `day`(캐러밴 904 · 소문 7,200) · `RUMOR_SPEED` 가 여전히 가장 세다
+//     ⓕ 미끼 — 둘 다 켬의 날 수는 T474 만과 **갈린다**(짐 배수가 실제로 곱해졌다) · T489 만에선 소문 ≠ 캐러밴(실제로 뗐다)
+console.log('\n⑲ T489 — 소문 분리 팔(`T489_RUMOR_SPLIT` · 기본 끔 · 표만) [T489]');
+{
+  const { execFileSync } = require('child_process');
+  const _cl = console.log; console.log = () => {};
+  const V2 = require(path.join(ROOT, 'sim', 'economy-sim-v2'));
+  const Rumor = require(path.join(ROOT, 'server', 'rumor'));
+  console.log = _cl;
+  const MM = require(path.join(ROOT, 'public', 'move-model'));
+  const { WORLD } = require(path.join(ROOT, 'server', 'zone-config'));
+  const E = fs.readFileSync(path.join(ROOT, 'sim', 'economy-sim-v2.js'), 'utf8');
+  const RS = fs.readFileSync(path.join(ROOT, 'server', 'rumor.js'), 'utf8');
+  const declE = E.match(/const T489_RUMOR_SPLIT = (\(typeof process !== 'undefined' && process\.env\s*&& \(process\.env\.T489_RUMOR_SPLIT === '1' \|\| process\.env\.T489_RUMOR_SPLIT === 'day'\)\)) \? process\.env\.T489_RUMOR_SPLIT : '';/);
+  const gateR = RS.match(/if \(x !== '1' && x !== 'day'\) return 500;\n  return require\('\.\.\/sim\/economy-sim-v2'\)\.rumorDaySpeed\(\);/);
+  ok(!!declE && !!gateR && /SPEED: _num\('RUMOR_SPEED', _t489Speed\(\)\),/.test(RS)
+     && /\? \(T489_RUMOR_SPLIT \? caravanWalkPerDay\(\) \* cargoWalkMul\(T489_RUMOR_SPLIT\) : caravanWalkPerDay\(\)\)\n  : NPC_SPEED;/.test(E),
+     '⑲ [전제] econ(선언 · 짐 배수 · 소문 시계 · 캐러밴 세 갈래)과 rumor.js(문 · SPEED 기본값)에서 **그 글자**를 떴다');
+  // ⓐ
+  const envOf = new Function('process', 'return (' + (declE ? declE[1] : 'null') + ');');
+  const vals = [undefined, '', '0', '1', 'day', 'DAY', 'true'];
+  const eOn = vals.map((v) => envOf({ env: v === undefined ? {} : { T489_RUMOR_SPLIT: v } }));
+  const rOn = vals.map((v) => v === '1' || v === 'day');   // rumor.js 문의 글자(위 gateR)가 켜는 값
+  const readers = ['server/villages.js', 'server/zone.js', 'server/events.js', 'server/bandits.js', 'sim/economy-sim.js', 'sim/war-core.js', 'scripts/t17-metrics.js']
+    .filter((f) => /T489_RUMOR_SPLIT/.test(codeOnly(fs.readFileSync(path.join(ROOT, f), 'utf8'))));
+  ok(JSON.stringify(eOn) === JSON.stringify(rOn) && JSON.stringify(eOn) === JSON.stringify([false, false, false, true, true, false, false]) && readers.length === 0,
+     '⑲-a 손잡이 하나 · `1`·`day` 만 켬 · 읽는 자리 둘(econ 시계 · rumor.js 문)이 **같은 술어**다 · 존·장부·도적·전쟁·계측기는 안 읽는다',
+     `${vals.map((v, i) => `${v === undefined ? '없음' : JSON.stringify(v)}→${eOn[i] ? '켬' : '끔'}`).join(' · ')}${readers.length ? ' · 읽는 곳 ' + readers.join(',') : ''}`);
+  // ⓑ
+  ok(process.env.T489_RUMOR_SPLIT === undefined && V2.T489_RUMOR_SPLIT === '' && Rumor.CFG.SPEED === 500 && V2.rumorDaySpeed() === V2.NPC_SPEED
+     && V2.CARAVAN_DAY_SPEED === V2.NPC_SPEED,
+     '⑲-b 끔(이 프로세스 · env 없음) = 종전 — 소문 시계 500(거울) · 캐러밴 시계 `NPC_SPEED` · 소문 시계 함수도 거울 값을 낸다',
+     `소문 ${Rumor.CFG.SPEED} · 캐러밴 ${V2.CARAVAN_DAY_SPEED}`);
+  // ⓒ
+  const bodyMs = MM.DEFAULTS.baseSpeed / WORLD.tileSize, P = V2.T468_PORTER;
+  const m1 = V2.cargoWalkMul('1'), md = V2.cargoWalkMul('day'), walk = V2.caravanWalkPerDay();
+  const want1 = ((P.kmh[0] + P.kmh[1]) / 2) / 3.6 / bodyMs, wantD = ((P.kmDay[0] + P.kmDay[1]) / 2) * 1000 / (bodyMs * 86400);
+  ok(m1 === want1 && md === wantD && Math.abs(m1 - 2.8 / 7.2) < 1e-12 && Math.abs(md - 21.7 / 172.8) < 1e-12
+     && m1 < 1 && md < 1 && walk * md > V2.NPC_SPEED && walk * m1 > walk * md,
+     '⑲-c 짐 배수 = T468 짐꾼 자 ÷ 몸(시속 비 2.8÷7.2 · 하루 비 21.7÷172.8) — 둘 다 (0,1) · 짐 진 캐러밴도 옛 시계(500)보다 빠르다',
+     `시속 비 ${m1.toFixed(4)} → ${(walk * m1).toFixed(1)} econ/일 · 하루 비 ${md.toFixed(4)} → ${(walk * md).toFixed(1)} · 옛 ${V2.NPC_SPEED}`);
+  // ⓓ
+  const DOC = fs.readFileSync(path.join(ROOT, '설계', '고증_교역.md'), 'utf8');
+  const kmhDoc = DOC.match(/시속 (\d+(?:\.\d+)?)~(\d+(?:\.\d+)?)km\(짐 41kg/), dayDoc = DOC.match(/≈ \*\*(\d+(?:\.\d+)?)~(\d+(?:\.\d+)?) km\/일\*\*/);
+  ok(!!kmhDoc && !!dayDoc && +kmhDoc[1] === P.kmh[0] && +kmhDoc[2] === P.kmh[1] && +dayDoc[1] === P.kmDay[0] && +dayDoc[2] === P.kmDay[1],
+     '⑲-d 계약 — T468 짐꾼 자: econ 의 수(시속 2.4~3.2 · 하루 19.3~24.1km)가 `설계/고증_교역.md` §② 의 글자와 같다(옮겨 적기 대조)',
+     `문서 ${kmhDoc && kmhDoc.slice(1).join('~')}km/h · ${dayDoc && dayDoc.slice(1).join('~')}km/일`);
+  // ⓔ 자식 넷(+ RUMOR_SPEED 우선)
+  const kidCode = `console.log = () => {};\n` +
+    `const V2 = require(${JSON.stringify(path.join(ROOT, 'sim', 'economy-sim-v2'))}); const R = require(${JSON.stringify(path.join(ROOT, 'server', 'rumor'))});\n` +
+    `const S = [300, 1400, 2799, 3600, 4200, 4999, 7200, 9000]; process.stdout.write(JSON.stringify({ car: V2.CARAVAN_DAY_SPEED, rum: R.CFG.SPEED,\n` +
+    `  days: S.map((d) => V2.travelDaysForDistance(d)), rdays: S.map((d) => R.travelDaysOf(d)) }));`;
+  const kid = (env) => JSON.parse(execFileSync(process.execPath, ['-e', kidCode], { env: Object.assign({}, process.env, env) }).toString());
+  const kR = kid({ T489_RUMOR_SPLIT: '1' }), kW = kid({ T474_CARAVAN_WALK: '1' }), kB = kid({ T474_CARAVAN_WALK: '1', T489_RUMOR_SPLIT: '1' }),
+        kD = kid({ T474_CARAVAN_WALK: '1', T489_RUMOR_SPLIT: 'day' }), kS = kid({ T489_RUMOR_SPLIT: '1', RUMOR_SPEED: '1234' });
+  const S = [300, 1400, 2799, 3600, 4200, 4999, 7200, 9000], dOf = (sp) => S.map((d) => Math.max(1, Math.round(d / sp)));
+  ok(kR.car === 500 && kR.rum === walk && JSON.stringify(kR.days) === JSON.stringify(dOf(500)) && JSON.stringify(kR.rdays) === JSON.stringify(dOf(walk)),
+     '⑲-e T489 만 — 소문 = 몸(7,200) · 캐러밴 = 500 그대로(소문**만** 뗐다)', `캐러밴 ${kR.car} · 소문 ${kR.rum}`);
+  ok(kW.car === walk && kW.rum === 500,
+     '⑲-e T474 만 — 캐러밴 = 몸(7,200) · 소문 = 500 거울 그대로(**T474 무변** — 이 카드는 그 팔을 안 건드린다)', `캐러밴 ${kW.car} · 소문 ${kW.rum}`);
+  ok(Math.abs(kB.car - walk * m1) < 1e-9 && kB.rum === walk && Math.abs(kD.car - walk * md) < 1e-9 && kD.rum === walk && JSON.stringify(kB.days) === JSON.stringify(dOf(kB.car)),
+     '⑲-e 둘 다 — 캐러밴 = 몸 × 짐 배수(`1` 2,800 · `day` 904) · 소문 = 몸(7,200)', `\`1\` ${kB.car.toFixed(1)} · \`day\` ${kD.car.toFixed(1)} · 소문 ${kB.rum}`);
+  ok(kS.rum === 1234, '⑲-e `RUMOR_SPEED` 가 여전히 가장 세다(팔을 켜도 명시 값이 이긴다)', `${kS.rum}`);
+  // ⓕ 미끼
+  ok(JSON.stringify(kB.days) !== JSON.stringify(kW.days) && JSON.stringify(kR.rdays) !== JSON.stringify(kR.days),
+     '★⑲ 자명 통과 금지 — 둘 다 켬의 날 수는 T474 만과 **갈리고**(짐 배수가 실제로 곱해졌다) · T489 만에선 소문 날 ≠ 캐러밴 날(실제로 뗐다)',
+     `둘 다 ${kB.days.join(',')} ↔ T474 만 ${kW.days.join(',')} · T489 만 소문 ${kR.rdays.join(',')} ↔ 캐러밴 ${kR.days.join(',')}`);
+  console.log('    접점: T489_RUMOR_SPLIT · T468_PORTER · cargoWalkMul · rumorDaySpeed · _t489Speed · CARAVAN_DAY_SPEED · caravanWalkPerDay · rumor.js');
 }
 
 console.log(`\n=== 결과: ${pass} PASS / ${fail} FAIL ===\n`);
