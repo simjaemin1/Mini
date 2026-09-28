@@ -328,7 +328,7 @@ console.log('\n⑫ [T449] 결산 문 — 켬이면 관측 마을은 팔 켜진 �
       t325TreesAtCell:(cx,cy)=>{const n=trees.get(cx+','+cy)||0; return n>0?Array.from({length:n},(_,j)=>({id:cx+'_'+cy+'_'+j,seedKey:'s'+cx+'_'+cy+'_'+j})):[];},
       t325CutTreeAt:(cx,cy)=>{const k=cx+','+cy; const n=trees.get(k)||0; if(!n) return null; trees.set(k,n-1); cut++; return {wood:3};},
       t325LootOf:()=>({wood:3}), t341Unharvest:()=>0};
-    P._t400Probe.setup({deps,db:{insertVillageBuilding:()=>1},dayMs:1440000,epoch:0,zoneId:'t449'});
+    P._t400Probe.setup({deps,db:{insertVillageBuilding:()=>1},dayMs:1440000,epoch:0,zoneId:'t449',tickCtx:{now:60*1440000}});   // ★[T491 ⓪] 시계 고정 — 게임일 60(5월 · 밭 파종창) · 벽시계를 따라가면 겨울(12~2월)엔 밭 일감이 0 이라 ④ 가 빨갛다
     const ev=E.createVillage({initialPop:0,name:'x',fertility:1}); ev.counts=ev.counts||{}; ev.counts.lumberjack=2; const w0=ev.storage.wood||0;
     const terr=new Set(); for(let dx=-3;dx<=3;dx++) for(let dy=-3;dy<=3;dy++) terr.add((ccx+dx)+','+(ccy+dy));
     const farm=new Set(); ${o.farm ? 'for(let i=0;i<20;i++) farm.add((ccx-2+(i%5))+","+(ccy-2+Math.floor(i/5)));' : ''}
