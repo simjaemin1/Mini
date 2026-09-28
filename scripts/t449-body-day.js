@@ -38,7 +38,9 @@ const ENV = { off: Object.assign({ T449_BODY_DAY: '' }, ACTS), on: Object.assign
   t491: Object.assign({ T449_BODY_DAY: '', T491_BATCH_FROM_BODY: '1' }, ACTS), t491b: Object.assign({ T449_BODY_DAY: '', T491_BATCH_FROM_BODY: '1' }, ACTS),
   both: Object.assign({ T449_BODY_DAY: '1', T491_BATCH_FROM_BODY: '1' }, ACTS),
   //   ★[T491 ② 되물음] 몸이 안 멈추면(`scripts/t491-whatif-probe.js` 로 띄울 때만 뜻이 있다) — `wa` 빈 셀 건너기 · `wb` + 곳간 사다리에서 목재도 내림
-  wa: Object.assign({ T449_BODY_DAY: '', T491_WHATIF: 'a' }, ACTS), wb: Object.assign({ T449_BODY_DAY: '', T491_WHATIF: 'b' }, ACTS) };
+  wa: Object.assign({ T449_BODY_DAY: '', T491_WHATIF: 'a' }, ACTS), wb: Object.assign({ T449_BODY_DAY: '', T491_WHATIF: 'b' }, ACTS),
+  //   ★[T491 ④ 대조] 나무꾼이 앓은 날(`scripts/t491-injure-probe.js` 로 띄울 때만 뜻이 있다 · 마을은 `T491_INJURE_VIL`) — 끔 · T449 켬 · T491 켬
+  ioff: Object.assign({ T449_BODY_DAY: '' }, ACTS), ion: Object.assign({ T449_BODY_DAY: '1' }, ACTS), it491: Object.assign({ T449_BODY_DAY: '', T491_BATCH_FROM_BODY: '1' }, ACTS) };
 //   ★[T491] 들여다보기 창 — 기본은 T449 의 그 창 · `T449_PROBE=scripts/t491-probe.js` 면 몸의 하루까지(그 창이 T449 창을 같이 싣는다)
 const PROBE = process.env.T449_PROBE || 'scripts/t449-probe.js';
 const TPL = process.env.T449_TPL || '';
