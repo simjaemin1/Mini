@@ -1152,7 +1152,7 @@ const VILLAGE_SAFE_RADIUS = 600; // 늑대 이 안에 spawn X (마을 안전구�
 // ocean zone은 빈 set 받고 isOcean flag로 처리. 육지 zone만 실제 water tiles 보유.
 // 주의: BUILDING_SIZE가 아래 ~218줄에서 정의되므로 여기선 리터럴 32 직접 사용 (TDZ 회피).
 const OCEAN_RECTS = Object.values(ZONES).filter(z => z.isOcean).map(z => ({ x0: z.worldOffsetX, y0: z.worldOffsetY, x1: z.worldOffsetX + z.zoneWidth, y1: z.worldOffsetY + z.zoneHeight }));
-const WATER_TILES = generateCoastlineWaterTiles(
+let WATER_TILES = generateCoastlineWaterTiles(   // ★[T480 ②] 생성기 정본(문자열 Set) — 아래 비트 색인을 구운 뒤 **같은 이름의 창**으로 바꾼다
   { ...ZONE, id: ZONE_ID },
   32, // = BUILDING_SIZE
   findZoneAt,
@@ -1180,6 +1180,32 @@ const _WATER_BITS = (() => {
 //   ⚠경계 가드는 **부르는 쪽이 이미 한다**(존 밖은 위에서 걸러진다) — 여기서 또 재면 그게 사본이다.
 const _waterBit = (tx, ty) => { const b = ty * _WT_W + tx; return ((_WATER_BITS[b >> 3] >> (b & 7)) & 1) === 1; };
 if (WATER_TILES.size) console.log(`[${ZONE_ID}] 🧮 해안선 비트 색인 — ${(_WATER_BITS.length / 1048576).toFixed(2)}MB (${_WT_W}×${_WT_H})`);
+// ★★[T480 ② 2026-09-28 · export 계약 그대로 · 사본 0] `WATER_TILES` = **비트 색인 위의 창**.
+//   생성기가 낸 문자열 Set(칸당 ~55B · 한반도 39만 칸 20.8MB · 26존 535MB — T453 §2)은 위에서 비트를 굽는 **한 번**만 읽히고,
+//   그 뒤로는 부팅 때 마을 모듈(`seaDistPx`)과 export(하네스)만 읽는다 — 뜨거운 자리엔 없다(T333 · `test-terrain-memo` ⑥).
+//   ⇒ 같은 이름 · 같은 `size` · 같은 `has('tx_ty')` · 같은 순서의 `for…of`(생성기는 ty 바깥 · tx 안쪽으로 넣는다 = 비트의 행 우선 순서)를
+//     1.06MB 비트 한 장이 대신한다. 문자열 Set 은 여기서 놓는다(GC). 새 수 0 · 손잡이 0.
+//   ⚠`instanceof Set` 은 아니다 — 레포 안에 그렇게 묻는 자리 0(전수 · 보고 T480 §2).
+WATER_TILES = (() => {
+  const size = WATER_TILES.size;
+  const N = _WT_W * _WT_H;
+  // 물 칸을 행 우선으로 훑는다 — 0 바이트는 한 번에 건너뛴다(한반도 1.1MB 중 대부분이 0)
+  const each = (fn) => { for (let i = 0, L = _WATER_BITS.length; i < L; i++) { const v = _WATER_BITS[i]; if (!v) continue;
+    for (let j = 0; j < 8; j++) if ((v >> j) & 1) { const b = (i << 3) + j; if (b < N) fn(b % _WT_W, (b / _WT_W) | 0); } } };
+  const has = (k) => {
+    if (typeof k !== 'string') return false;
+    const u = k.indexOf('_'); if (u <= 0) return false;
+    const tx = +k.slice(0, u), ty = +k.slice(u + 1);
+    if (!(Number.isInteger(tx) && Number.isInteger(ty) && tx >= 0 && ty >= 0 && tx < _WT_W && ty < _WT_H)) return false;
+    if (k !== `${tx}_${ty}`) return false;   // 생성기 키 꼴만(앞자리 0 · 공백 · 부호 거절 — 문자열 Set 과 같은 답)
+    return _waterBit(tx, ty);
+  };
+  function* keys() { for (let i = 0, L = _WATER_BITS.length; i < L; i++) { const v = _WATER_BITS[i]; if (!v) continue;
+    for (let j = 0; j < 8; j++) if ((v >> j) & 1) { const b = (i << 3) + j; if (b < N) yield `${b % _WT_W}_${(b / _WT_W) | 0}`; } } }
+  return { size, has, keys, values: keys, [Symbol.iterator]: keys,
+    forEach(fn, thisArg) { for (const k of keys()) fn.call(thisArg, k, k, this); },
+    forEachTile: each };   // ★마을 모듈(`seaDistPx`)이 문자열을 안 만들고 훑는 문(같은 칸 · 같은 순서)
+})();
 // Phase 5-1-fix: inland water (강·호수)는 zone start pre-compute 안 함 (수 분 timeout).
 // ⚠[T324] 이 블록은 **파일 위쪽**에 있어야 한다 — `isTerrainBlockedLocal` 이 모듈 적재 중에도
 //   불린다(`spawnMob` → zone.js:1672 초기 스폰). 아래쪽에 `const` 로 두면 그 한 번이 TDZ 에 걸려
