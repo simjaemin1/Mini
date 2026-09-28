@@ -1247,6 +1247,7 @@ console.log('\n⑱ ★★[T417] 동물 · 제작 완료 · 반경');
   const SELF = {
     step_dirt: '내 발 — `step` 이 자리 없이 부른다(듣는 사람의 몸)', step_grass: '내 발', step_stone: '내 발', step_floor: '내 발(실내)',
     step_floor_b: '내 발 후보', step_yard: '내 발(마당)', step_yard_b: '내 발 후보', step_farm: '내 발(밭)', step_farm_b: '내 발 후보',
+    step_snow: '내 발(눈 · T492)', step_snow_b: '내 발 후보(눈)',
     eat: '내가 먹는다 — `gauges.ate` 는 내 전문에만 온다',
     wind: '들판 전체의 바람(환경 반복 · 세기 = 계절풍)', rain: '하늘 전체의 비(환경 반복)', rain_light: '하늘 전체의 약한 비(환경 반복)',
     bird: '숲 둘레 새(환경 반복 · 나무 수로 켠다 — 자리는 "내 둘레" 그 자체)',
@@ -1256,8 +1257,8 @@ console.log('\n⑱ ★★[T417] 동물 · 제작 완료 · 반경');
   const selfInPos = Object.keys(SELF).filter((k) => posKeys.has(k));
   const selfGhost = Object.keys(SELF).filter((k) => !KEYS[k]);
   const flatAll = (K) => allK.filter((k) => !SELF[k] && !(K[k] && K[k].radius > 0));
-  ok(allK.length === 64 && selfInPos.length === 0 && selfGhost.length === 0 && flatAll(KEYS).length === 0,
-     `⑱a3 ★★64키 전수(T473 +파도) — 자리 표 ${posKeys.size} · 자기/환경 ${Object.keys(SELF).length}(명시) · 나머지 ${allK.length - posKeys.size - Object.keys(SELF).length}(후보·지형) 전부 반경 > 0`,
+  ok(allK.length === 66 && selfInPos.length === 0 && selfGhost.length === 0 && flatAll(KEYS).length === 0,
+     `⑱a3 ★★66키 전수(T473 +파도 · T492 +눈 걸음 둘) — 자리 표 ${posKeys.size} · 자기/환경 ${Object.keys(SELF).length}(명시) · 나머지 ${allK.length - posKeys.size - Object.keys(SELF).length}(후보·지형) 전부 반경 > 0`,
      [flatAll(KEYS).join(' '), selfInPos.join(' '), selfGhost.join(' ')].filter(Boolean).join(' | ') || `${allK.length}키`);
   ok(/sfxPlay\('eat'\)/.test(layerCode) && !/sfxPlay\('eat',/.test(layerCode) && /sfxPlay\(sfxGroundKey\(\)\)/.test(layerCode),
      '⑱a3b 명시 목록의 근거 — `eat`·발자국은 코드에서 **자리 없이** 불린다(목록이 거짓말이면 빨갛다)');
@@ -1352,6 +1353,48 @@ console.log('\n㉒ ★★[T482] 세계가 안 보내는 소리 — 천둥 · 시
   const NA = man.nightAmbient || {};
   ok(typeof NA.key === 'string' && !KEYS[NA.key] && /_sfxMan\.nightAmbient/.test(layerCode) && /naM = naK && sfxKey\(naK\)/.test(layerCode),
      '㉒c 밤 벌레 — 자리(`nightAmbient`)는 배선 · 키가 표에 없어 무음(녹음이 오면 `keys` 한 줄)', `key ${NA.key}`);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+console.log('\n㉓ ★★[T492] 계절 환경음 — 눈 위 걸음 · 눈 덮인 들의 바람 · 계절 칸 · 헤드룸');
+{
+  const layerCode = require('./code-only.js')(modCode);
+  const zsrc = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
+  const SA = man.seasonAmb || {}, M = man._실측 || {};
+  // ㉓a 손잡이 하나 · 기본 끔 — 서버는 env 가 'on' 일 때만 칸을 싣고(끔 = welcome 바이트 동일) 층은 그 칸이 true 일 때만 표를 연다
+  const knobLine = /\.\.\.\(process\.env\.T492_SEASON_AMB === 'on' \? \{ seasonAmb: true \} : \{\}\)/.test(zsrc);
+  const knobN = (zsrc.match(/T492_SEASON_AMB/g) || []).length;
+  const gate = /uiCfg\.seasonAmb === true/.test(layerCode) && /if \(sfxSeasonOn\(\)\) _sfxWx\.snow = sfxSnowOf\(w\)/.test(layerCode)
+    && /function sfxSnowStepKey\(cell\) \{\s*if \(!sfxSeasonOn\(\)\) return null;/.test(layerCode)
+    && /function sfxSeasonCell\(\) \{\s*if \(!sfxSeasonOn\(\)\) return null;/.test(layerCode);
+  ok(knobLine && knobN === 1 && gate, '㉓a ★손잡이 `T492_SEASON_AMB` 하나 · 기본 끔 — 서버는 켬일 때만 `uiCfg.seasonAmb` 칸을 싣고(끔 = 칸 없음) 층의 세 갈래는 전부 `sfxSeasonOn()` 뒤에 선다',
+     `zone.js 손잡이 ${knobN}곳 · 층 문 ${gate}`);
+  // ㉓b 눈 위 걸음 — 키는 표 · 문턱은 T487 눈금(>0) · 실내 바닥 제외 · 물 제외(판정 = 00-const) · 걸음 함수의 맨 앞
+  const ST = SA.stepSnow || {};
+  ok(KEYS[ST.key] && KEYS[ST.key].file && !KEYS[ST.key]['후보'] && KEYS[ST.key].radius === 0 && ST['문턱'] === 0
+     && Array.isArray(ST['제외']) && ST['제외'].includes((man.surface || {}).floor)
+     && /const snowK = sfxSnowStepKey\(cell\);\s*if \(snowK\) return snowK;/.test(layerCode) && /isWaterAtAbs\(me\.x, me\.y\)\) return null/.test(layerCode)
+     && KEYS.step_snow_b && KEYS.step_snow_b['후보'],
+     '㉓b ★눈 위 걸음 — `step_snow`(1번 · 2번 후보) · 적설 > 0(T487 눈금) · 실내 바닥·물 위 제외 · 발밑 판정의 맨 앞', `${ST.key} · 제외 ${(ST['제외'] || []).join(',')}`);
+  // ㉓c 바람 × 적설 — k = 흡음(출처) / 길 수 · 눈 1 = 에너지 1 − k · 층은 그 식 하나
+  const WS = SA.windSnow || {}, k = WS.alpha / WS.paths, amp1 = Math.sqrt(1 - k);
+  ok(WS.alpha === 0.89 && WS.paths === 2 && Math.abs(k - 0.445) < 1e-9 && /_출처/.test(Object.keys(WS).join(' ')) && /Acentech|CRREL/.test(WS['_출처'] || '')
+     && /Math\.sqrt\(Math\.max\(0, 1 - \(WS\.alpha \/ WS\.paths\) \* \(_sfxWx\.snow \|\| 0\)\)\)/.test(layerCode) && /\(o && typeof o\.mul === 'number'\) \? o\.mul : 1/.test(layerCode),
+     '㉓c ★눈 덮인 들의 바람 — 에너지 × (1 − k·snow) · k = 0.89(갓 눈 흡음 · 출처) / 2(곧장 + 땅 한 번) · 층은 곱 한 칸', `k ${k} · 눈 1 = 진폭 ${amp1.toFixed(3)}(${(20 * Math.log10(amp1)).toFixed(2)} dB)`);
+  // ㉓d 계절 칸 — 칸 이름 = 서버 달력 낱말(econ 계절 정본 · 새 시계 0) · 겨울 0 · 칸의 키는 **표에 있거나** 없는키 표(후보 URL·라이선스)에 있다
+  const KO = require(path.join(ROOT, 'server', 'events.js')).KO_SEASON;
+  const C = SA.calendar || {}, miss = SA['_없는키'] || {};
+  const listed = new Set(); for (const c of Object.values(C)) for (const w of ['낮', '밤']) for (const x of (c && c[w]) || []) listed.add(x);
+  const absent = [...listed].filter((x) => !KEYS[x]);
+  const badLic = absent.filter((x) => !Array.isArray(miss[x]) || !miss[x].length || miss[x].some((r) => !r.url || !r.license || /SA|NC/.test(r.license)));
+  ok(JSON.stringify(Object.keys(C).sort()) === JSON.stringify(Object.values(KO).sort()) && C['겨울'] && !(C['겨울']['낮'] || []).length && !(C['겨울']['밤'] || []).length
+     && (C['봄']['낮'] || []).includes('bird') && absent.length > 0 && badLic.length === 0 && /myCalendar\.seasonKo/.test(layerCode),
+     '㉓d ★계절 칸 — 봄·여름·가을·겨울(서버 달력 낱말) · 겨울 0 · 없는 키는 녹음 회부 표(후보 URL · 라이선스 · BY-SA/NC 0)', `있는 키 ${[...listed].filter((x) => KEYS[x]).join(',')} · 없는 키 ${absent.join(',')}`);
+  // ㉓e 헤드룸 — 환경 + 불 둘 + 최악 사건 + 이 카드 셋의 손 상한을 리미터가 클리핑 0 으로 잡는다(`e2e 58c` 가 같은 묶음을 다시 잰다)
+  const HS = M.handSeason || {}, efw = ((M.handFacility || {}).envFireWorst) || [];
+  ok(Array.isArray(HS.keys) && efw.every((x) => HS.keys.includes(x)) && HS.keys.includes(ST.key) && HS.peakLim < 1 && HS.clippedLim === 0
+     && HS.keys.every((x) => KEYS[x]) && JSON.stringify(M.worstCombo) === JSON.stringify(['downed', 'hit_body', 'hit_body', 'rain_light', 'wind']),
+     '㉓e ★헤드룸 — 환경 + 불 둘 + 최악 사건 + 눈 걸음 둘 + 계절 새: 끼고 < 1 · 클리핑 0 · `worstCombo` 무변', `없이 ${HS.peak} → 끼고 ${HS.peakLim} · 클리핑 ${HS.clippedLim}`);
 }
 
 console.log(`\n=== PASS ${pass} / FAIL ${fail} ===`);
