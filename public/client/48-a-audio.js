@@ -270,6 +270,8 @@ function sfxStopAll() {
 function sfxGroundKey() {
   const cell = (typeof window.__camCellLocal === 'function') ? window.__camCellLocal() : null;
   if (!cell) return 'step_dirt';
+  const snowK = sfxSnowStepKey(cell);   // [T492] 눈 덮인 땅이 먼저다(손잡이 끔이면 늘 null — 아래 종전 그대로)
+  if (snowK) return snowK;
   const ck = cell[0] + ',' + cell[1];
   if (_sfxGroundCell && _sfxGroundCell.k === ck && _sfxGroundCell.n === sfxSurfaceVer()) return _sfxGroundCell.v;
   // ★★[T354] 지면 키는 **표**가 고른다(`ground`). 셋이 된 것은 재민 09-22 귀 판정이다 —
@@ -294,6 +296,35 @@ function sfxGroundKey() {
   } catch (e) { /* 지형이 아직 안 왔다 — 흙으로 둔다 */ }
   _sfxGroundCell = { k: ck, v, n: _sfxSurfN };
   return v;
+}
+// ── [T492] 계절 환경음 — 손잡이 `T492_SEASON_AMB`(서버 env → welcome `uiCfg.seasonAmb` · 기본 **끔**) ──────────
+//   끔이면 이 층은 표 `seasonAmb` 를 **읽지 않는다** — 걸음·바람·새·밤 벌레가 종전 그대로다(값·호출 순서 동일).
+function sfxSeasonOn() {
+  return !!(typeof uiCfg !== 'undefined' && uiCfg && uiCfg.seasonAmb === true && _sfxMan && _sfxMan.seasonAmb);
+}
+//   적설 = T487 의 `snow`(0..1 · 존 값 · 서버 정본). 날씨 훅 값(`w.snow`)이 먼저, 없으면 받은 날씨 통째(`myWeather.snow`).
+//   T487 이 main 에 앉기 전엔 칸이 없다 = 0 = 무음(T93 문법 — 세계가 보내는 날 저절로). 여기서 짓지 않는다.
+function sfxSnowOf(w) {
+  const v = (w && typeof w.snow === 'number') ? w.snow
+    : ((typeof myWeather !== 'undefined' && myWeather && typeof myWeather.snow === 'number') ? myWeather.snow : 0);
+  return v > 0 ? Math.min(1, v) : 0;
+}
+//   계절 칸 — 서버 달력(`myCalendar.seasonKo` · econ 계절 정본)으로 표 `seasonAmb.calendar` 를 연다. 칸이 없으면 null(게이트 없음 = 종전).
+function sfxSeasonCell() {
+  if (!sfxSeasonOn()) return null;
+  const C = _sfxMan.seasonAmb.calendar, s = (typeof myCalendar !== 'undefined' && myCalendar) ? myCalendar.seasonKo : null;
+  return (C && s && C[s]) || null;
+}
+//   눈 위 걸음 — 적설 > 표의 문턱 ∧ 바깥 ∧ 물 아님 ∧ 실내 바닥 아님. 키·문턱·제외 표면은 전부 표(`seasonAmb.stepSnow`).
+function sfxSnowStepKey(cell) {
+  if (!sfxSeasonOn()) return null;
+  const S = _sfxMan.seasonAmb.stepSnow, m = S && S.key && sfxKey(S.key);
+  if (!m || _sfxWx.indoor || !((_sfxWx.snow || 0) > (S.문턱 || 0))) return null;
+  const surf = sfxSurfaceKeyAt(cell);   // 실내 바닥(`floor` → 표면 키)은 눈이 안 덮는다
+  if (surf && Array.isArray(S.제외) && S.제외.includes(surf)) return null;
+  const me = (typeof myAbsPredicted !== 'undefined' && myAbsPredicted) ? myAbsPredicted : null;
+  if (me && typeof isWaterAtAbs === 'function' && isWaterAtAbs(me.x, me.y)) return null;   // 물엔 눈이 안 쌓인다(판정 = 00-const 하나)
+  return S.key;
 }
 // ★[T397] 표면 타일 셀 지도 — 주 연결의 `buildings` 에서 표(`surface`)에 있는 타입만 셀→타입으로 접는다.
 //   셀 환산은 지면 그리기가 쓰는 그 식(`Math.floor(b.x / 32)` · `10-r1-terrain _tsFarmSet`)이다. 층(`floor`)까지 같아야 밟는다.
@@ -717,7 +748,8 @@ function initAudio() {
       if (!_sfxCtx) return;
       const m = sfxKey(key); if (!m) return;
       const inMul = (o && o.indoor) ? (typeof m.indoorMul === 'number' ? m.indoorMul : 0) : 1;
-      const s = Math.min(1, Math.abs(strength || 0) * (m.gainK || 1)) * inMul;
+      const s = Math.min(1, Math.abs(strength || 0) * (m.gainK || 1)) * inMul
+        * ((o && typeof o.mul === 'number') ? o.mul : 1);   // [T492] 곱 한 칸(눈 덮인 들의 바람) — 없으면 1
       sfxLoop('amb:' + key, key, (m.volume || 0) * s);
     },
     /** ★[T283] 날씨 훅 — `37-r1-weather.js drawWeather` 의 **같은 한 줄**이 이제 날씨 통째를 준다.
@@ -727,12 +759,16 @@ function initAudio() {
     weather: (w, indoor) => {
       if (!_sfxCtx || !w) return;
       _sfxWx = { precip: +w.precip || 0, indoor: !!indoor };
+      if (sfxSeasonOn()) _sfxWx.snow = sfxSnowOf(w);   // [T492] 손잡이 켬일 때만 칸이 선다(끔 = 종전 모양 그대로)
       // ★★[T397] **눈이 오면 빗소리가 안 난다.** 종전엔 기온과 무관하게 강수면 빗소리였다 — 화면은 눈인데 귀는 비.
       //   눈이냐 비냐는 **그리는 층이 정한다**(`37-r1-weather` · 어는점 하나) — 여기서 문턱을 다시 안 짓는다(사본 0).
       //   그 층의 판정(`__rainDbg().kind`)은 한 프레임 늦고, 실내·무강수면 비어 있으므로 **마지막 판정**을 쥔다.
       try { const k = (typeof window.__rainDbg === 'function') ? window.__rainDbg().kind : null; if (k) _sfxWxKind = k; } catch (e) {}
       const precipRain = (_sfxWxKind === 'snow') ? 0 : _sfxWx.precip;
-      window.__sfx.ambient('wind', w.wind, { indoor });
+      // [T492] 눈 덮인 들은 조용하다 — 바람 소리 **에너지** × (1 − k·snow) · k = α_snow / 길 수(표 `seasonAmb.windSnow` · 출처 그 표).
+      const WS = sfxSeasonOn() && _sfxMan.seasonAmb.windSnow;
+      const wMul = (WS && WS.alpha > 0 && WS.paths > 0) ? Math.sqrt(Math.max(0, 1 - (WS.alpha / WS.paths) * (_sfxWx.snow || 0))) : undefined;
+      window.__sfx.ambient('wind', w.wind, wMul === undefined ? { indoor } : { indoor, mul: wMul });
       // ★★[T354] 비는 **세기로 두 파일**이 된다(`rainSplit` 표) — 재민 09-22 "이건 폭풍 버전인 거 같은데".
       //   문턱 아래는 약한 비, 위는 지금 것. 한쪽을 켜면 다른 쪽은 0 으로 꺼진다(둘이 겹쳐 울지 않는다).
       const RS = _sfxMan.rainSplit;
@@ -777,16 +813,29 @@ function initAudio() {
       for (const k of Object.keys(BLD)) sfxLoopSweep(BLD[k] + ':');
       for (const t of Object.keys(RL)) if (!t.startsWith('_') && typeof RL[t] === 'string') sfxLoopSweep(RL[t] + ':');
       // 새 — 낮 · 숲 · 비 아님. 셋 다여야 난다(값은 전부 표).
+      //   [T492] 손잡이 켬이면 **계절 칸**(`seasonAmb.calendar[봄|여름|가을|겨울]`)에 든 키만 운다(겨울 낮 = 새 0).
+      const SC = sfxSeasonCell(), inSeason = (when, k) => !SC || (Array.isArray(SC[when]) && SC[when].includes(k));
       if (bird) {
         const night = (typeof isNight === 'function') ? !!isNight() : false;
-        const ok = !night && trees >= (bird.trees || 0) && !(_sfxWx.precip > 0);
+        const ok = !night && trees >= (bird.trees || 0) && !(_sfxWx.precip > 0) && inSeason('낮', 'bird');
         window.__sfx.ambient('bird', ok ? 1 : 0, { indoor: _sfxWx.indoor });
       }
       // [T482] 밤 벌레 — 밤 · 비 아님 · 바깥. 자리는 서 있다(표 `nightAmbient.key`) · **키가 표에 없으면 무음**(녹음 회부 — 소리가 오면 한 줄이다).
       const NA = _sfxMan.nightAmbient, naK = NA && NA.key, naM = naK && sfxKey(naK);
       if (naM) {
         const night = (typeof isNight === 'function') ? !!isNight() : false;
-        window.__sfx.ambient(naK, (night && !(_sfxWx.precip > 0)) ? 1 : 0, { indoor: _sfxWx.indoor });
+        window.__sfx.ambient(naK, (night && !(_sfxWx.precip > 0) && inSeason('밤', naK)) ? 1 : 0, { indoor: _sfxWx.indoor });
+      }
+      // [T492] 계절 칸의 나머지 키(여름 낮 매미 …) — 낮 키는 새와 같은 문(숲 · 비 아님), 밤 키는 밤 벌레와 같은 문. **키가 표에 없으면 무음.**
+      if (SC && _sfxMan.seasonAmb.calendar) {
+        const night = (typeof isNight === 'function') ? !!isNight() : false, dry = !(_sfxWx.precip > 0);
+        const all = new Set();
+        for (const c of Object.values(_sfxMan.seasonAmb.calendar)) for (const w of ['낮', '밤']) for (const k of (c && c[w]) || []) all.add(k);
+        for (const k of all) {
+          if (k === 'bird' || k === naK || !sfxKey(k)) continue;
+          const on = dry && ((!night && inSeason('낮', k) && trees >= ((bird && bird.trees) || 0)) || (night && inSeason('밤', k)));
+          window.__sfx.ambient(k, on ? 1 : 0, { indoor: _sfxWx.indoor });
+        }
       }
       // 물 — 개체가 아니라 지형이다. 내 셀이 바뀔 때만 다시 잰다.
       //   [T473] 민물(`water`)과 바다(`waterSplit.바다` — 파도)를 따로 — 한 번 훑은 두 거리.
@@ -919,6 +968,7 @@ function initAudio() {
       wx: Object.assign({}, _sfxWx),
       waterDist: _sfxWaterCell ? (_sfxWaterCell.d === Infinity ? null : Math.round(_sfxWaterCell.d)) : undefined,
       seaDist: _sfxWaterCell ? (_sfxWaterCell.sea === Infinity ? null : Math.round(_sfxWaterCell.sea)) : undefined,   // [T473]
+      season: sfxSeasonOn() ? { on: true, cell: (typeof myCalendar !== 'undefined' && myCalendar) ? myCalendar.seasonKo : null, snow: _sfxWx.snow || 0 } : undefined,   // [T492]
     }),
   };
 }

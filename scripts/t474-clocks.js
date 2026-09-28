@@ -174,6 +174,16 @@ const inOff = inR.map((p) => tdd(p.dB)), inWalk = inR.map((p) => walkDays(p.dB))
 const inMulOff = inR.map((p) => r3(bodyMul(p.dB, tdd(p.dB)))), inMulWalk = inR.map((p) => r3(bodyMul(p.dB, walkDays(p.dB))));
 // 재routing 뒤 귀환 구간 — 새 목적지는 지금 자리에서 정보 반경 안 ⇒ 집까지는 최대 2 × 반경(삼각부등식) · 그 구간이 켬에서 몸보다 빠를 수 있는 유일한 자리
 const retMax = 2 * INFO, retWalkMul = r3(bodyMul(retMax, walkDays(retMax)));
+// ★[T489] 짐 진 몸 두 읽기(econ `cargoWalkMul` — T468 짐꾼 자) — 교역이 서는 쌍의 날 · 존 캐러밴 몸 속도(사본 0 · 식은 econ 이 낸다)
+const t489 = {};
+for (const mode of ['1', 'day']) {
+  const sp = WALK * econV2.cargoWalkMul(mode), dOf = (d) => Math.max(1, Math.round(d / sp));
+  const days = inR.map((p) => dOf(p.dB)), mul = inR.map((p) => r3(bodyMul(p.dB, dOf(p.dB))));
+  t489[mode] = { mul: +econV2.cargoWalkMul(mode).toFixed(4), speed: +sp.toFixed(1), kmDay: +(sp / EPC / 1000).toFixed(3), tradeDays: dist5(days),
+    tradeOneDay: +(days.filter((d) => d === 1).length / Math.max(1, days.length)).toFixed(3), bodyMul: dist5(mul),
+    overBody: +(mul.filter((m) => m > 1 + 1e-9).length / Math.max(1, mul.length)).toFixed(3),
+    retMul: r3(bodyMul(retMax, dOf(retMax))) };
+}
 // 소문 도달(출발 마을마다): 닿는 마을 전부에 닿는 날 · 한 주(7일) 안에 닿는 마을 수 · 한 달(30일)
 const reach = (RR) => {
   const allDay = [], in7 = [], in30 = [], med = [];
@@ -195,6 +205,7 @@ const res = { at: new Date().toISOString(), zone: Z, N, bridges: BR.size, finite
   bodyMul: { off: dist5(mulOff), walk: dist5(mulWalk), walkOverBody: +(mulWalk.filter((m) => m > 1 + 1e-9).length / mulWalk.length).toFixed(3),
     tradeOff: dist5(inMulOff), tradeWalk: dist5(inMulWalk), tradeWalkOverBody: +(inMulWalk.filter((m) => m > 1 + 1e-9).length / Math.max(1, inMulWalk.length)).toFixed(3),
     rerouteReturnMax: { econ: retMax, walkDays: walkDays(retMax), walkMul: retWalkMul } },
+  t489,
   rumorReach: { off: reach(RB), walk: reach(RW) },
   pathKm: { p10: +(q(pairs.map((p) => p.dB), 0.1) / EPC / 1000).toFixed(2), p50: +(q(pairs.map((p) => p.dB), 0.5) / EPC / 1000).toFixed(2), max: +(pairs[pairs.length - 1].dB / EPC / 1000).toFixed(2) } };
 fs.mkdirSync(path.dirname(OUT), { recursive: true });
@@ -206,5 +217,6 @@ _log(`  캐러밴 날 수 전수(유한 ${pairs.length}쌍): 끔 ${JSON.stringif
 _log(`  존 캐러밴 몸 속도(몸 걸음의 배 · 전 쌍): 끔 ${JSON.stringify(res.bodyMul.off)} ↔ 유도 팔 ${JSON.stringify(res.bodyMul.walk)} · 몸보다 빠른 쌍 ${res.bodyMul.walkOverBody}`);
 _log(`  ★교역이 서는 쌍(${inR.length}): 캐러밴 날 끔 ${JSON.stringify(res.caravanDays.tradeOff)} ↔ 유도 팔 ${JSON.stringify(res.caravanDays.tradeWalk)}(하루 ${res.caravanDays.tradeOneDayShareWalk}) · 몸 속도 끔 ${JSON.stringify(res.bodyMul.tradeOff)} ↔ 유도 팔 ${JSON.stringify(res.bodyMul.tradeWalk)} · 몸보다 빠른 쌍 ${res.bodyMul.tradeWalkOverBody}`);
 _log(`  재routing 뒤 귀환 구간 최대 ${retMax} econ → 유도 팔 ${walkDays(retMax)}일 · 몸의 ×${retWalkMul}(몸보다 빠를 수 있는 유일한 자리)`);
+for (const [mode, t] of Object.entries(t489)) _log(`  [T489 짐 진 몸 \`${mode}\`] 배수 ${t.mul} → ${t.speed} econ/일(${t.kmDay}km) · 교역 쌍 날 ${JSON.stringify(t.tradeDays)}(하루 ${t.tradeOneDay}) · 존 캐러밴 몸 ×${JSON.stringify(t.bodyMul)} · 몸보다 빠른 쌍 ${t.overBody} · 재routing 귀환 최대 ×${t.retMul}`);
 _log(`  소문 도달(출발 마을마다): 끔 전부 ${JSON.stringify(res.rumorReach.off.allDay)} · 7일 안 ${JSON.stringify(res.rumorReach.off.in7)} ↔ 유도 팔 전부 ${JSON.stringify(res.rumorReach.walk.allDay)} · 7일 안 ${JSON.stringify(res.rumorReach.walk.in7)}`);
 _log(`  → ${OUT}`);

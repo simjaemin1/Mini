@@ -706,6 +706,79 @@ const db = (x) => (x > 0 ? +(20 * Math.log10(x)).toFixed(2) : -Infinity);
       ok(noKey === false && withKey === true, `57b 밤 벌레(\`${NA.key}\`) — 키 없음 = 무음 · 미끼: 키 한 줄이면 밤에 운다(자리 배선은 서 있다)`, `없음 ${noKey} · 세움 ${withKey}`);
     }
 
+    // 58 ★★[T492] 계절 환경음 — 손잡이 끔 = 종전 · 켬 = 눈 걸음 · 바람 × 적설 · 계절 칸 (진짜 `weather`·`scan`·`sfxGroundKey`)
+    {
+      const SA = MAN.seasonAmb || {};
+      const trees = Array.from({ length: 8 }, (_, i) => ({ kind: 'resource', r: { id: 't' + i, type: 'tree' }, ax: 10 * i, ay: 0 }));
+      // 한 장면: 손잡이·적설·계절·밤낮·실내·발밑을 놓고 층의 세 자리(바람 이득 · 발밑 키 · 켜진 환경 반복)를 읽는다
+      const scene = (o) => page.evaluate(async ({ o, trees }) => {
+        const saveN = isNight, saveW = window.isWaterAtAbs, saveCal = myCalendar;
+        const had = Object.prototype.hasOwnProperty.call(uiCfg, 'seasonAmb');
+        if (o.knob) uiCfg.seasonAmb = true; else delete uiCfg.seasonAmb;
+        isNight = () => !!o.night; myCalendar = o.season ? { seasonKo: o.season } : null;
+        myAbsPredicted = { x: 3 * 32 + 16, y: 4 * 32 + 16 };
+        if (o.water) isWaterAtAbs = () => true;
+        if (o.addKey) _sfxMan.keys[o.addKey] = Object.assign({}, _sfxMan.keys.bird);
+        window.__camCellLocal = () => [3, 4];
+        const c = { role: 'primary', meta: { worldOffsetX: 0, worldOffsetY: 0 }, buildings: new Map(), others: new Map() };
+        (o.blds || []).forEach((t, i) => c.buildings.set('b' + i, { id: 'b' + i, type: t, x: 3 * 32 + 16, y: 4 * 32 + 16, floor: 0 }));
+        conns.set('zS', c); primaryZoneId = 'zS'; myFloor = 0; _sfxSurfN = -1; _sfxGroundCell = null;
+        const orig = sfxLoop, gains = {};
+        sfxLoop = (id, k, g) => { gains[id] = g; return orig(id, k, g); };
+        const w = { precip: 0, wind: 1, tempC: -3 }; if (typeof o.snow === 'number') w.snow = o.snow;
+        window.__sfx.weather(w, !!o.indoor);
+        const wx = Object.assign({}, _sfxWx);
+        const step = sfxGroundKey();
+        _sfxScanAt = 0; window.__sfx.scan(trees, 0, 0); await new Promise((r) => setTimeout(r, 500));
+        _sfxScanAt = 0; window.__sfx.scan(trees, 0, 0); await new Promise((r) => setTimeout(r, 200));
+        const loops = [..._sfxLoops.keys()].filter((k) => /^amb:/.test(k)).sort();
+        sfxLoop = orig;
+        for (const k of loops) window.__sfx.ambient(k.slice(4), 0, {});
+        if (o.addKey) delete _sfxMan.keys[o.addKey];
+        conns.delete('zS'); primaryZoneId = null; isNight = saveN; myCalendar = saveCal;
+        if (o.water) isWaterAtAbs = saveW;
+        if (!had) delete uiCfg.seasonAmb;
+        return { wind: +(gains['amb:wind'] || 0).toFixed(4), step, loops, wxKeys: Object.keys(wx).sort().join(','), snow: wx.snow };
+      }, { o, trees });
+      // 58a 끔 = 종전 — 적설 1 · 겨울이어도 바람 이득·발밑·새·날씨 칸 모양이 그대로(표를 안 읽는다)
+      const off = await scene({ knob: false, snow: 1, season: '겨울' });
+      const off0 = await scene({ knob: false, season: '겨울' });
+      ok(JSON.stringify(off) === JSON.stringify(off0) && off.wind === 0.5 && off.step === ((MAN.ground || {})._기본) && off.loops.includes('amb:bird') && off.wxKeys === 'indoor,precip',
+         '58a ★손잡이 끔 = 종전 — 적설 1·겨울이어도 바람 0.5 · 발밑 흙 · 새 그대로 · 날씨 칸 모양 동일(적설 칸 0)', JSON.stringify(off));
+      // 58b 눈 위 걸음 — 켬 + 적설 > 0 이면 `step_snow` · 적설 0 · 실내 바닥 · 실내 · 물 위는 아니다
+      const sOn = await scene({ knob: true, snow: 1, season: '겨울' });
+      const s0 = await scene({ knob: true, snow: 0, season: '겨울' });
+      const sNo = await scene({ knob: true, season: '겨울' });
+      const sFl = await scene({ knob: true, snow: 1, season: '겨울', blds: ['floor'] });
+      const sFarm = await scene({ knob: true, snow: 1, season: '겨울', blds: ['farmland'] });
+      const sIn = await scene({ knob: true, snow: 1, season: '겨울', indoor: true });
+      const sW = await scene({ knob: true, snow: 1, season: '겨울', water: true });
+      const SK = (SA.stepSnow || {}).key;
+      ok(sOn.step === SK && s0.step !== SK && sNo.step !== SK && sFl.step === (MAN.surface || {}).floor && sFarm.step === SK && sIn.step !== SK && sW.step !== SK,
+         '58b ★눈 위 걸음 — 켬·적설 1 = `step_snow`(밭도 덮는다) · 적설 0/칸 없음(T487 전) · 실내 바닥 · 실내 · 물 위는 아니다',
+         `눈 ${sOn.step} · 0 ${s0.step} · 없음 ${sNo.step} · 바닥 ${sFl.step} · 밭 ${sFarm.step} · 실내 ${sIn.step} · 물 ${sW.step}`);
+      // 58c 바람 × 적설 — 눈 1 = 0.5 × √(1 − 0.445) · 눈 0 = 0.5 · 칸 없음 = 0.5
+      const WS = SA.windSnow || {}, want1 = +(0.5 * Math.sqrt(1 - WS.alpha / WS.paths)).toFixed(4);
+      ok(Math.abs(sOn.wind - want1) < 1e-3 && s0.wind === 0.5 && sNo.wind === 0.5,
+         '58c ★눈 덮인 들의 바람 — 적설 1 = 0.5 × √(1 − 0.445) · 적설 0·칸 없음 = 0.5 그대로', `눈 1 ${sOn.wind}(식 ${want1}) · 0 ${s0.wind} · 없음 ${sNo.wind}`);
+      // 58d 계절 칸 — 겨울 낮 새 0 · 봄 낮 새 · 여름 밤 귀뚜라미 키 없음 = 무음 · 미끼: 매미 키 한 줄 → 여름 낮 ○ · 겨울 낮 ✗
+      const winD = await scene({ knob: true, snow: 0, season: '겨울' });
+      const sprD = await scene({ knob: true, snow: 0, season: '봄' });
+      const sumN = await scene({ knob: true, snow: 0, season: '여름', night: true });
+      const sumC = await scene({ knob: true, snow: 0, season: '여름', addKey: 'cicada' });
+      const winC = await scene({ knob: true, snow: 0, season: '겨울', addKey: 'cicada' });
+      ok(!winD.loops.includes('amb:bird') && sprD.loops.includes('amb:bird') && !sumN.loops.some((k) => /bird|crickets/.test(k))
+         && sumC.loops.includes('amb:cicada') && !winC.loops.includes('amb:cicada'),
+         '58d ★계절 칸 — 겨울 낮 새 0 · 봄 낮 새 · 여름 밤 귀뚜라미 = 키 없음 무음 · 미끼: 매미 키 한 줄이면 여름 낮 ○ · 겨울 낮 ✗',
+         `겨울 ${winD.loops.join('+') || '-'} · 봄 ${sprD.loops.join('+')} · 여름밤 ${sumN.loops.join('+') || '-'} · 매미(여름) ${sumC.loops.join('+')} · 매미(겨울) ${winC.loops.join('+') || '-'}`);
+      // 58e 헤드룸 — 손 상한(환경 + 불 둘 + 최악 사건 + 눈 걸음 둘 + 새)을 리미터가 클리핑 0 으로 잡는다 · 표와 같은 값
+      const HS = (MAN._실측 || {}).handSeason || {};
+      const hr = await page.evaluate((k) => window.__sfx.probe(k, { seconds: 4 }), HS.keys || []);
+      ok(hr && !hr.err && hr.withLimiter.clipped === 0 && hr.withLimiter.peak < 1 && Math.abs(hr.withoutLimiter.peak - HS.peak) <= 0.01,
+         '58e ★헤드룸 — 이 카드 셋을 얹은 손 상한: 리미터 끼면 클리핑 0 · 표와 같은 값',
+         hr && !hr.err ? `없이 ${hr.withoutLimiter.peak}(클리핑 ${hr.withoutLimiter.clipped}) → 끼고 ${hr.withLimiter.peak} · 표 ${HS.peak}` : String(hr && hr.err));
+    }
+
     // ④ ★[T305] 옛 곡선이 증폭기였다는 것을 **이 자로 다시 보인다** — 자명 통과 금지.
     //    같은 입력을 옛 곡선에 통과시켜 원점 기울기를 잰다. 1 이 나오면 자가 고장 난 것이다.
     {

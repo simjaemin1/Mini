@@ -40,9 +40,20 @@ const _num = (envName, def) => {
   return isFinite(x) ? x : def;
 };
 
+// ★★[T489 2026-09-28 · 기본 끔] **소문 분리 팔** — `T489_RUMOR_SPLIT` 이 켜지면(`1`·`day` — econ 과 **같은 술어**)
+//   아래 거울을 **끊고** 소문 시계 = 몸 하루 걸음(econ `rumorDaySpeed()` = `caravanWalkPerDay()` — 사람이 걸어서 옮긴다).
+//   값은 econ 이 낸다(사본 0). 끄면(미설정 · 그 밖의 값) 이 함수는 종전 거울 500 을 그대로 돌려준다 — 비트 동일 · require 0.
+//   ⚠켜면 캐러밴 시계와 **일부러** 갈라진다(시계 둘) — `test-events ⑲` 의 거울 계약이 깨지는 것이 이 팔의 전제다(보고/T489).
+function _t489Speed() {
+  const x = (typeof process !== 'undefined' && process.env) ? process.env.T489_RUMOR_SPLIT : undefined;
+  if (x !== '1' && x !== 'day') return 500;
+  return require('../sim/economy-sim-v2').rumorDaySpeed();
+}
+
 const CFG = {
   // ★★econ `NPC_SPEED` 의 거울(위 제2 규약). 손잡이로 열어 두되 **기본값이 곧 econ 값**이다.
-  SPEED: _num('RUMOR_SPEED', 500),
+  //   ★[T489] 소문 분리 팔이 켜지면 거울 대신 몸 걸음(위 `_t489Speed`) · `RUMOR_SPEED` 가 여전히 가장 세다.
+  SPEED: _num('RUMOR_SPEED', _t489Speed()),
   // ★같은 거울의 나머지 반쪽 — `max(1, ...)`. 같은 날 도착하는 이웃은 없다(하루는 걸린다).
   MIN_DAYS: _num('RUMOR_MIN_DAYS', 1),
   // ★★단일 손잡이(재민 확정 "플래그를 두 개 만들지 마라"). 1 이면 **전파 없음** =

@@ -31,6 +31,14 @@
   * `/perf walk.waterQ` 는 커널이 처음 보는 타일에서만 는다(비트가 대신 답한다).
   * 위층·계단·입력 있는 몸은 JS 정본 그대로다.
   * 바다 존은 늘 끔이다.
+## T485. ★★2026-09-28 — 두 호스트(서울 central·한반도 + 도쿄 닛폰) · 안 도는 자리 1 = 안 문 비밀
+
+* 호스트가 갈리면 안 문(`internal-door` — 존↔central `/player`·`/tribe/*` · 존↔존 `/handoff_prepare`·`/handoff_ack`·`/ghost_sync`·`/cross_damage`·`/kick_player`)이 **사설 주소 폴백을 잃는다** → 404/401. `CENTRAL_SECRET` 을 **셋 다**(central · 한반도 · 닛폰) — 하나만 주면 서울 안에서도 401.
+* 주소: `hostFromEnv` = `ZONE_HOST_<ID>` > `ZONE_HOSTS[id]` > `PUBLIC_HOST` > localhost — 서울 central·한반도에 `ZONE_HOST_NIPPON=108.160.135.177` 한 줄(맵 재작성 불필요).
+* 라이브는 **http/ws**(읽기 실측 — `ws://141.164.35.114:<포트>` · 443/80 닫힘) — TLS·DNS 지금 불필요. 3010·존 포트는 브라우저 문이라 IP 제한 금지 · 도커 `-p` 는 ufw 를 우회.
+* `redeploy-light.sh` 손잡이 둘: `CENTRAL_SECRET`(이름만 `-e` · 값 0) · `EXTRA_ENV`(낱말마다 `-e`) — 안 주면 베이스와 바이트 동일(`test-redeploy-light`).
+* 리허설(`t485-rehearsal.sh` — dockerd `--bip=198.51.100.1/24` 로 사설 폴백 끔 · 서울/도쿄 다른 주소): 비밀 없음 안 문 6/6 거절 · 비밀 셋 6/6 통과 · `e2e-zone-cross` 외부 **46/0** · 롤백 1초. ⚠샌드박스 프록시가 TEST-NET 대역을 안 비켜 줘 브라우저 ws 1006 — e2e 는 프록시 끄고.
+* 절차서 14줄 + 롤백 2줄 = `보고/T485_2026-09-28.md` §3. 핸드오프 central 왕복은 **1**(await 저장) — 도착 `getPlayer` 는 몸 없는 폴백일 때만.
 
 ## T480. ★★2026-09-28 — 물타일은 하나: 마을 모듈 사본 삭제 · `WATER_TILES` = 비트 창 · 26존 4.33 → 3.00GB
 

@@ -184,7 +184,8 @@ function diffCountNoEnts(a, b, ents) {
     for (const id of Object.keys(sp)) {
       // ★[T169] 열매판 칸이 둘이 됐다(`summer`·`autumn`) — 철 이름 칸이다. 여기 이름을 적지 않고
       //   **종 표가 부르는 칸을 전부** 훑는다: 칸이 또 늘어도 이 줄은 안 고친다.
-      const PLATES = ['sprites', 'summer', 'autumn'];
+      // ★[T487] 철 판 두 칸이 더해졌다 — 이름을 늘려 적는 대신 **배열인 칸 = 그림 목록**을 전부 읽는다.
+      const PLATES = Object.keys(sp[id]).filter((c) => Array.isArray(sp[id][c]));
       for (const k of PLATES.flatMap((c) => sp[id][c] || [])) TSTAGE[k] = 'adult';
       if (sp[id].sapling) TSTAGE[sp[id].sapling] = 'sapling';
     }

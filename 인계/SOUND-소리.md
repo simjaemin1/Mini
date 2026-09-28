@@ -529,3 +529,16 @@ ogg 길이는 마지막 `OggS` 페이지의 granulepos ÷ 표본율로 잰다(Vo
 * **밤 벌레** — 표 `nightAmbient {key:'crickets'}` · 밤 ∧ 비 아님 ∧ 바깥 → 환경 반복. 키가 없어 무음. 녹음이 오면 `keys.crickets` 한 줄(자는 `e2e-audio-probe 57b`).
 * 헤드룸 손 상한 `_실측.handFacility` — 환경 + 불 둘 + 정본 최악 사건 1.0987 → 끼고 0.7644 · 클리핑 0. `worstCombo` 무변.
 * 보고 `보고/T482_2026-09-28.md`.
+
+
+---
+
+## T492 (2026-09-28) — 계절 환경음
+
+* **손잡이 하나** `T492_SEASON_AMB` — 서버 env `on` 이면 welcome `uiCfg.seasonAmb: true`(끔이면 칸 자체가 없다 = welcome 바이트 동일). 층은 `sfxSeasonOn()` 이 참일 때만 표 `seasonAmb` 를 연다. 끔 = 걸음·바람·새·밤 벌레 종전 그대로(`e2e 58a`).
+* **적설은 T487 의 `snow` 를 읽기만 한다** — `w.snow`(날씨 훅) → `myWeather.snow`. 칸이 없으면 0(T487 착지 전 무음). 이름이 다르게 오면 `sfxSnowOf` 한 줄.
+* **눈 위 걸음** `step_snow`(Kenney CC0 · 2번 후보 `step_snow_b`) — 발밑 판정의 **맨 앞**: 적설 > `stepSnow.문턱`(0 = T487 눈금) ∧ 바깥 ∧ 물 위 아님 ∧ 실내 바닥(`stepSnow.제외`) 아님.
+* **바람 × 적설** — 에너지 × (1 − (alpha/paths)·snow) · alpha 0.89(갓 눈 NRC · 출처 표 안) · paths 2(곧장 + 땅 한 번). `ambient(key, s, {mul})` 곱 한 칸이 이걸 받는다.
+* **계절 칸** `seasonAmb.calendar[봄|여름|가을|겨울].낮/밤` — 계절 = `myCalendar.seasonKo`. 낮 키 = 새의 문 · 밤 키 = 밤 벌레의 문. 키가 없으면 무음. `cicada`·`crickets` 녹음은 `seasonAmb._없는키` 후보 표(국립생물자원관 공공누리 1순위).
+* 헤드룸 `_실측.handSeason` — 1.111 → 끼고 0.7651 · 클리핑 0. 청취본 `~/Mini/_sfx_ab/T492_*.wav`(렌더 식은 층과 같은 이득).
+* 보고 `보고/T492_2026-09-28.md`.

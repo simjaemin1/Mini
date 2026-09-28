@@ -98,7 +98,8 @@
     //     (강가만 평균 |Δ| 6.18 · 12.6% 어긋남 — 초원은 0.395 였다).
     { const _kf = (_LEG ? 'L' : '') + (_t19.stateOff ? 'S' : '') + (_t19.wxOff ? 'W' : '')
                 + (_t19.waterOff ? 'o' : '') + ((_t19.windOff || _t19.windGrassOff) ? 'g' : 'G')
-                + 'm' + (_t19.shMarginOff ? 'x' : (_t19.shMargin == null ? 1 : _t19.shMargin));
+                + 'm' + (_t19.shMarginOff ? 'x' : (_t19.shMargin == null ? 1 : _t19.shMargin))
+                + (_gtSnowNow() > 0 ? 's' + _gtSnowNow() : '');   // ★[T487] 적설도 타일에 굳는다(0·끔이면 지문 그대로)
       if (_gtKnob !== _kf) { _gtKnob = _kf; _groundTiles.clear(); _shMarginN = 0; } }
     if (!_LEG) _waterInit();   // ★타일을 굽기 **전에** 물 가능 여부를 확정한다(진흙/단색 갈림이 타일에 굳는다)
     window.__groundDbg = { legacy: _LEG, tex: _gtexReady, texNames: Object.keys(GTEX).filter(k => GTEX[k] && GTEX[k].naturalWidth), tiles: 0, baked: 0, cached: _groundTiles.size, stateCells: 0 };

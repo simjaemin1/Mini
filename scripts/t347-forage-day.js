@@ -17,6 +17,7 @@
 //
 // 실행: node scripts/t347-forage-day.js [out.json]
 //   T347_WARMS="45,60,75" · DAYS(기본 30) · DAY_MS(기본 6000)
+//   T347_KEEP_DB=<폴더> · T347_FROM=<폴더> … [T490] 틀을 한 번 구워 남기고(`DAYS=0` 이면 굽기만) 팔 여럿을 그 세계에서 짝으로(T334 자와 같은 꼴)
 'use strict';
 const path = require('path');
 const fs = require('fs');
@@ -111,14 +112,25 @@ const popOf = (p) => (p && p.forage && p.forage.popAll) || null;
   for (const warm of WARMS) {
     const tag = 'w' + warm, db = `/tmp/t347/z-${TAGP}${tag}.db`;
     rmdb(db);
+    //   ★[T490] `T347_FROM=<폴더>` — 틀을 **굽지 않고** 남겨 둔 틀(`<tag>-warm.db`)에서 켠 팔만 돈다(팔 여럿을 **같은 세계**에서 짝으로 ·
+    //     T334 자 `T334_FROM` 과 같은 꼴 — 틀은 벽시계 지터로 판마다 다르다 · T341 §3) · `T347_KEEP_DB=<폴더>` — 틀 끝(켠 팔이 받는 세계)을 남긴다.
+    const FROM = process.env.T347_FROM || '', KEEP = process.env.T347_KEEP_DB || '';
+    let d = 0;
+    if (FROM) {
+      for (const s of ['', '-wal', '-shm']) { try { fs.copyFileSync(path.join(FROM, `${tag}-warm.db${s}`), db + s); } catch (e) {} }
+      say(`\n판 ${warm}일 — 틀은 남겨 둔 것(${FROM}/${tag}-warm.db)`);
+    } else {
     // ── 틀 — **끈 팔로** 굽는다(켠 팔이 그 세계에서 갈라지게). 굽는 동안은 손잡이가 없다.
     say(`\n판 ${warm}일 — 틀 굽기(끈 팔)`);
     const b0 = boot(tag + '-warm', { DB_PATH: db, VILLAGE_DAY_MS: String(WARM_DAY_MS) });
     for (let i = 0; i < 900 && !(await b0.health()); i++) await sleep(1000);
-    let d = 0; const t0 = Date.now();
+    const t0 = Date.now();
     while (d < warm && Date.now() - t0 < 45 * 60000) { await sleep(6000); d = dayOf(await b0.perf(false)); }
     await sleep(5000); await b0.kill();
     say(`  틀 day ${d}`);
+    if (KEEP) { fs.mkdirSync(KEEP, { recursive: true }); for (const s of ['', '-wal', '-shm']) { try { fs.copyFileSync(db + s, path.join(KEEP, `${tag}-warm.db${s}`)); } catch (e) {} } }
+    }
+    if (!(DAYS > 0)) { rmdb(db); continue; }   // ★[T490] 틀만 굽는 판(`DAYS=0` + `T347_KEEP_DB`)
     // ── 켠 팔 — 같은 DB 를 이어 받아 하루 경계마다 창을 읽는다
     const b = boot(tag + '-on', { DB_PATH: db, T347_FORAGE_ACT: '1' });
     for (let i = 0; i < 900 && !(await b.health()); i++) await sleep(1000);
@@ -140,8 +152,10 @@ const popOf = (p) => (p && p.forage && p.forage.popAll) || null;
         //   ★[T462] 마을별 하루 — 입고를 **딴 개체 × w̄**(T347 §3 자기신고 · 누계 `delivered` 는 게이트에서 빠진 마을 몫이 사라진다)로 다시 세려고 남긴다
         rows: (w.rows || []).map((r) => ({ n: r.n, pick: (r.dbg && r.dbg.pick) | 0, wBar: r.wBar, cap: (r.dbg && r.dbg.cap) | 0, N: r.N, K: r.K, f: r.f, mix: r.mix, back: (r.dbg && r.dbg.back) | 0, dem: r.dbg ? r.dbg.dem : null,
           //   ★[T475] 곳간 누계(`g` — 수요에서 자른 뒤 실제로 든 몫 · 항등의 한쪽) · 그 마을 걷는 목록(`it`) · 걷는 몸(`walked` 손을 넣은 사람 · `hU` 지금 손) · 멈춤(`stop`)
-          g: r.g, it: r.it, walked: r.dbg ? r.dbg.walked : null, hU: r.hU, stop: r.dbg ? r.dbg.stop : null, fg: r.fg, d: r.d })),
-        gran: w.gran });
+          g: r.g, it: r.it, walked: r.dbg ? r.dbg.walked : null, hU: r.hU, stop: r.dbg ? r.dbg.stop : null, fg: r.fg, d: r.d,
+          //   ★[T490] 원판 밖(팔 켬) — 목록에 붙은 개체(`x`) · 그날 훑기(`xr`: 모자람·찾은 단위·링·물/먼 칸·µs) · 밖에서 딴 개체(`xpick`)
+          x: r.x, xr: r.xr, xpick: r.dbg ? r.dbg.xpick : null, cells: r.cells })),
+        gran: w.gran, reach: w.reach });
       if (!first) first = { day: dd, rows: w.rows, delivered: w.delivered, formula: w.formulaActPerDay, formulaAll: w.formulaPerDay, groves: w.groves, cells: w.cells, act: w.actVillages, noGrove: w.noGroveVillages };
       say(`  day ${dd} · 입고 ${w.delivered} / 수식(걷은 몫) ${w.formulaActPerDay}/${w.formulaPerDay} · 군락 ${w.groves}/${w.K} · 딴 ${w.pickDay} · 되살아난 ${w.back} · 한도 ${w.cap} · p50 ${t ? t.p50 : '?'}`);
     }

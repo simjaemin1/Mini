@@ -3551,6 +3551,21 @@ function houseCostPerCap(res) {
   return (m[res] || 0) / cap;
 }
 function buildActOn(v) { return !!(T400_BUILD_ACT && v && v._t400Live); }
+// ★[T488 2026-09-28] 집이 오늘 올릴 수 있는 양(수용력 인분 · **목재 제약 전**) — 모자란 집(`N × HOUSE_BUFFER − housing`)과
+//   여유노동 상한(`N × HOUSE_BUILD_MAX × slack` · slack 은 곳간 식량 여유) 중 작은 쪽. 집 증축 절이 이것에 목재 제약을 얹고,
+//   숯가마의 "잉여 통나무"는 이것 × 통나무 단가를 **집 몫**으로 먼저 뺀다(`houseWoodShare`) — 같은 함수 · 새 수 0.
+function houseDayBuild(v, N, fe) {
+  const houseTarget = N * HOUSE_BUFFER;
+  if (!(v.housing < houseTarget)) return 0;
+  const slack = fe > N * 40 ? 1.0 : (fe > N * 25 ? 0.5 : 0.15);
+  return Math.min(houseTarget - v.housing, N * HOUSE_BUILD_MAX * slack);
+}
+//   집 몫(통나무) — 숯가마가 태우지 말고 남겨 둘 양. ★집(T400)이 끔이면 0 = 숯가마 종전 그대로(비트 동일 · 손잡이 0).
+function houseWoodShare(v) {
+  if (!T400_BUILD_ACT || !v || !v.npcs || v.housing === undefined) return 0;
+  const N = v.npcs.length;
+  return houseDayBuild(v, N, totalFoodEquivalent(v)) * houseCostPerCap('wood');
+}
 //   ★곳간 **출구** — `actToGranary` 의 역. 크루가 집터로 들고 가는 자재가 여기서 빠진다(있는 만큼만 · 세금 없음 — 마을 제 것이다).
 //     흐름 EMA 는 종전 주거 갈래가 찍던 **그 칸**(`_cons(v, 'wood', …)`)에 찍는다 — 수요 신호가 같은 자리에서 나온다.
 // ══ ★★[T419 2026-09-26] 돌 쓰는 실물 — econ 이 같은 물건을 만드는 세 자리의 단가를 서버 표에서 유도(손잡이 기본 끔) ══
@@ -4790,7 +4805,7 @@ function kilnDay(v) {
     return { built: 1 };
   }
   const reserve = (RESERVE_PC.wood || 0) * N;
-  const spare = (v.storage.wood || 0) - reserve;
+  const spare = (v.storage.wood || 0) - reserve - houseWoodShare(v);   // ★[T488] 잉여 = 재고 − 비축 − **집 몫**(집이 끔이면 0 · 순서 집 → 숯가마 무변)
   const target = furnaceCharcoalTarget(v);   // ★[T463] 식 한 곳 — 파생수요(`derivedInputTarget`)가 같은 함수를 부른다(산술 불변)
   const gap = target - (v.storage.charcoal || 0);
   if (!(spare >= S.CHARCOAL_KILN_WOOD) || !(gap > 0)) return { batches: 0 };
@@ -6240,12 +6255,11 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
     // ★노동기반 건설: "시간 남는 NPC가 집을 짓는다" — 여유노동이 건설속도를 결정.
     //   식량안보(곳간 여유)일수록 잉여노동 많아 건설 빠름. 쪼들리면 정체(노동을 식량에 다 씀).
     const _fe = totalFoodEquivalent(v);
-    const slack = _fe > N * 40 ? 1.0 : (_fe > N * 25 ? 0.5 : 0.15);
     // ★[T400] 자재 단가 — 끔이면 종전 상수 그대로(`_HW === HOUSE_WOOD` · 같은 연산 · 비트 동일), 켬이면 `hut-stages.js` 표에서 유도.
     const _HW = T400_BUILD_ACT ? houseCostPerCap('wood') : HOUSE_WOOD;
     const _HS = T400_BUILD_ACT ? houseCostPerCap('stone') : HOUSE_STONE;
     const _live = buildActOn(v);   // ★[T400] 크루가 곳간에서 실제로 꺼내 가는 마을 — 목재 제약·차감은 그 행위가 진다
-    let built = Math.min(houseTarget - v.housing, _live ? Infinity : (v.storage.wood || 0) / _HW, N * HOUSE_BUILD_MAX * slack);   // 목재 필수 + 여유노동 제약
+    let built = Math.min(houseDayBuild(v, N, _fe), _live ? Infinity : (v.storage.wood || 0) / _HW);   // 목재 필수 + 여유노동 제약(★[T488] 여유노동 몫은 `houseDayBuild` 한 함수 — 숯가마의 집 몫이 같은 함수를 부른다 · min 은 묶는 순서와 무관 = 비트 동일)
     if (built > 0) {
       // ★석재 준-필수: 석재 충분하면 정상 건축, 없으면 30%만(주춧돌·구들 없는 임시 가옥). 강한 석재 수요 → 광산 교역 유발.
       const stoneNeed = built * _HS;
@@ -8051,7 +8065,7 @@ module.exports = {
   T443_SMELT_FUEL, smeltFuelOn, smeltFuelPerOre, smeltFuelTake,   // ★[T443] 제련 연료 — 하네스·계측기가 표를 옮겨 적지 않게
   T419_STONE_REAL, stoneRealPer, stoneRealOn,   // ★[T419] 돌 쓰는 실물 — 하네스·계측기가 표·유도를 옮겨 적지 않게 내준다
   T435_GRANARY_ACT, granaryEconMaterials,   // ★[T435] 곳간 증설 재료 — 생활층·하네스가 표를 옮겨 적지 않게
-  T400_BUILD_ACT, buildActOn, actFromGranary, hutEconMaterials, hutEconStage, hutStageCount, hutCapPerHut, houseCostPerCap,   // ★[T400] 집 행위 — 하네스·생활층이 표·유도를 옮겨 적지 않게 내준다
+  T400_BUILD_ACT, buildActOn, houseDayBuild, houseWoodShare, actFromGranary, hutEconMaterials, hutEconStage, hutStageCount, hutCapPerHut, houseCostPerCap,   // ★[T400] 집 행위 — 하네스·생활층이 표·유도를 옮겨 적지 않게 내준다
   actToGranary, woodToGranary, woodActOn, woodRegrowR, woodRegrowPerDay, T325_WOOD_ACT,
   forageToGranary, forageActOn, forageActItemsOf, foragerYieldsFor, T347_FORAGE_ACT,   // ★[T347] 채집 행위 — 문 셋 + 믹스 정본 + 손잡이(하네스가 표를 옮겨 적지 않는다)
   actDemandLeft, actDemandCap, fishDemandLeft, woodDemandLeft, forageDemandLeft, T374_DEMAND_STOP,
@@ -8389,7 +8403,38 @@ function caravanWalkPerDay() {   // 몸 하루 걸음(econ 단위/일) — 켬�
   }
   return MM.DEFAULTS.baseSpeed * (W.dayLengthMs / 1000) * ECON_PER_CELL / W.tileSize;
 }
-const CARAVAN_DAY_SPEED = T474_CARAVAN_WALK ? caravanWalkPerDay() : NPC_SPEED;
+// ═══ ★★[T489 2026-09-28 · 표만 · **기본 끔** · 켜기는 재민 #82] 소문 분리 팔 — 소문 = 몸 · 캐러밴(몸 시계일 때) = 짐 진 몸 ═══════
+//   T474 켬 3시드: 캐러밴 ×3.1 · 사건 밀도 ㉮ 1.85 → 1.05(캐논 2~3 밖). 그 세계에서 소문은 캐러밴 시계의 **거울**이다(T7 제2 규약).
+//   이 팔은 둘을 **뗀다**(카드 T489 ③):
+//     ⓐ 소문 시계 = **몸**(`caravanWalkPerDay()` — 사람이 걸어서 옮긴다 · 거울을 끊고 정본을 직접) — `server/rumor.js` 가 `rumorDaySpeed()` 를 읽는다.
+//     ⓑ 캐러밴 시계 = **짐 진 몸** — 몸 시계(T474 켬) 위에서만 짐 배수를 곱한다. T474 끔이면 캐러밴은 종전 500 그대로다
+//        (이 팔 혼자 켜면 **소문만** 떨어져 나간다 — 밀도 ㉮ 가 소문 시계에 기대는지 가르는 판).
+//   짐 배수(새 수 0 · 있는 짐꾼 자 T468 = `설계/고증_교역.md` §② · 보고/T468 §0-ⓑ):
+//     `1`   시속 비 = 짐 진 짐꾼 시속(보이저 포티지 실측 2.4~3.2km/h · 짐 41kg — 가운데) ÷ 몸 시속(move-model 표 baseSpeed ÷ 칸 px = 2m/s)
+//           = 2.8 ÷ 7.2 = 0.389 — "캐러밴만 **짐 무게로** 느려짐"(쉬는 시간은 안 뺀다 — 몸 시계·소문 시계가 연속이듯)
+//     `day` 하루 비 = 짐꾼 하루 거리(아즈텍 짐꾼 12~15마일 = 19.3~24.1km — 가운데) ÷ 몸 연속 하루(2m/s × 86,400s = 172.8km)
+//           = 21.7 ÷ 172.8 = 0.126 — 짐꾼이 **쉬는 시간까지** 친 둘째 읽기(소문은 연속 · 캐러밴만 쉰다 — 표 견주기용)
+//     (86,400 = 하루 초 · 3.6 = km/h ÷ m/s — 단위 환산일 뿐 세계의 수가 아니다)
+//   ⚠끔(미설정 · `1`·`day` 밖의 모든 값)이면 소문 = 500 거울 · 캐러밴 = T474 그대로 — **비트 동일**(아래 require 는 안 불린다).
+//   ⚠켬이면 `test-events ⑲`(소문 시계 = 캐러밴 시계 계약)은 **일부러** 깨진다 — 이 팔의 전제가 그 거울을 끊는 것이다.
+const T489_RUMOR_SPLIT = (typeof process !== 'undefined' && process.env
+  && (process.env.T489_RUMOR_SPLIT === '1' || process.env.T489_RUMOR_SPLIT === 'day')) ? process.env.T489_RUMOR_SPLIT : '';
+const T468_PORTER = { kmh: [2.4, 3.2], kmDay: [19.3, 24.1] };   // ★T468 짐꾼 자(설계/고증_교역.md §②) — 계약 test-move-soa ⑲
+function cargoWalkMul(mode) {   // 짐 배수 — `1`(시속 비) · `day`(하루 비) — 켬이 쓰고, 표(scripts/t489-table.js)가 부른다(사본 0)
+  const MM = require('../public/move-model');
+  const W = (require('../server/zone-config') || {}).WORLD;
+  if (!MM || !MM.DEFAULTS || !(MM.DEFAULTS.baseSpeed > 0) || !W || !(W.tileSize > 0)) {
+    throw new Error('[T489] 몸 걸음 정본(move-model 표 · WORLD)을 못 읽었다 — 번들에선 켤 수 없다');
+  }
+  const bodyMs = MM.DEFAULTS.baseSpeed / W.tileSize;                 // 몸 m/s(1칸 = 1m) = 2
+  const mid = (a) => (a[0] + a[1]) / 2;
+  return mode === 'day' ? mid(T468_PORTER.kmDay) * 1000 / (bodyMs * 86400)
+                        : mid(T468_PORTER.kmh) / 3.6 / bodyMs;
+}
+function rumorDaySpeed() { return T489_RUMOR_SPLIT ? caravanWalkPerDay() : NPC_SPEED; }   // 소문 시계(econ 단위/일) — rumor.js 가 켬일 때 읽는다
+const CARAVAN_DAY_SPEED = T474_CARAVAN_WALK
+  ? (T489_RUMOR_SPLIT ? caravanWalkPerDay() * cargoWalkMul(T489_RUMOR_SPLIT) : caravanWalkPerDay())
+  : NPC_SPEED;
 
 // 이동 시간 범위 (일) — 거리 무관 3~7일 random (사용자 요청)
 const TRAVEL_DAY_MIN = 3;
@@ -10017,6 +10062,7 @@ module.exports = {
   SUBSISTENCE_PER_NPC,
   travelDaysForDistance,   // ★[T436] 캐러밴 시계 — 시딩 게이트의 교역 잠재가 **같은 시계**를 부른다(사본 0)
   NPC_SPEED, CARAVAN_DAY_SPEED, ECON_PER_CELL, caravanWalkPerDay,   // ★[T474] 캐러밴 시계의 수 · 몸 걸음 유도 — 하네스(⑱)·네 시계 표가 **이 값**을 읽는다(사본 0)
+  T489_RUMOR_SPLIT, T468_PORTER, cargoWalkMul, rumorDaySpeed,   // ★[T489] 소문 분리 팔 — 소문 시계(rumor.js)·짐 배수 · 하네스(⑲)·표가 **이 값**을 읽는다(사본 0)
   isSubsistenceFlow, subsGuard,   // ★[T416] subs 가드 술어 하나 — 가격 셋·게시판 하나가 같은 문을 부른다
   // 시장 충격 정산 헬퍼(1b) — 프로브·자가검증용 노출
   _priceParamsV2, _impactSegs, _impactF, _impactBuyV2, _impactSellV2,

@@ -380,3 +380,21 @@
 3. 포위 항복 마을은 곡물이 없다(`warFE` 문턱) — 항복 노획은 늘 작다. 하네스는 `opts.defStore` 로 곡물 밖 식량을 준다.
 4. 위신재·무기 노획·조공은 아직 즉시다(식량 곳간 몫 + 전장 더미만 몸).
 5. 하네스는 운영과 같은 `lootCarry` 훅을 늘 건다 — 끔 대조는 `opts.noLootHook`.
+
+## X-13. ★2026-09-28 — T476 토벌도 원정이다: #68 넷째 길(손잡이 `T476_PUNITIVE` 끔)
+
+> 카드 `지시/지시_T476.md` · 보고 `보고/T476_2026-09-28.md` · 가지 `batch/punitive-0928` · 코드 `a18ea875` · ⓪ `bebfa0f4`(e2e-preserve 자).
+
+* 결단 `_t476Decide(day)` — villages 하루 경계, war-core `daily`·`_warAfterDaily` 바로 뒤. 입력은 `state.ledger.visibleEvents(vid)` 의 제 마을 `CARAVAN_RAIDED`·`TRADER_KILLED` + `tradeStats.cargoLost` 증분(켠 날 기준선). 소굴은 `world.banditGang(마을, 이웃)` 중 가장 가까운 갱이다.
+* 문턱 = `lost ≥ plan.forceCount × (plan.marchDays × 2 + WAR_SIEGE_PACK) × WAR_RATION`(= 싣게 될 팩) · 승산·병력은 `_warNpcMobPlan(…, 'feud', …)` 그대로.
+* 소굴 어댑터 `{ _den: { gid, gang }, dbId: 'den<id>', econ: npcs n×warrior · storage.food = 비축 · weapon = n }` → `warMobilize` → 이후 전쟁 사슬 그대로. 목표 도착(수비 몸 없음) → `_t476DenBattle` → `warResolveBattle(w, day, { bodies: true })` → 표본 몸 사상 → `_warEndFight` → `_t476DenSync`.
+* war-core 는 `w.def._den` 이면 포로·관전 평판 0 · `warResolveBattle` 반환 `{winner, atkCas, defCas}`.
+
+### 함정
+
+1. 실서버에선 **승산**이 토벌을 막는다(3명 갱에도 16~31% · 기준 42%) — 전사를 기르는 마을만 나간다. 도적 편성 비춤(전원 무장 전사)이 재민 칸.
+2. 사건엔 소굴 좌표가 없다 — 위치는 bandits 길목 표에서 온다(`events.js` 무접촉).
+3. `_supKill` 은 bandits 다음 경계 해산 분기용 표식이다 — 살아남은 갱은 다음다음 경계에 거둔다(`state._t476Kill`). 나중의 자연 해산이 격멸로 읽히지 않게.
+4. 소굴 전투는 헤드리스 판이다(도적 몸은 bandits 연출 몸 ≤3 · 전쟁 명부 밖). 사상은 표본 몸 비율로 옮긴다 — 원정 전사자의 짐이 더미가 되어 이긴 몸이 줍는다(T466).
+5. 하네스 ⓩ 는 판마다 `_t476Stat`·`_t476Kill`·`ledger` 를 비운다(모듈 상태가 판 사이로 샌다).
+6. `e2e-preserve` 류의 부패 픽스처는 **나이가 아니라 노출**로 역산한다 — 게임일 24분이라 계절이 벽시계로 몇 시간마다 돈다.

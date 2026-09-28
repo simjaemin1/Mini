@@ -327,8 +327,10 @@ console.log('\n[⑤ 자연물 앵커·잠금 — 굽는 표가 정본이다 (T97
       ok(ids.length >= 8, `종 ${ids.length}가지 — ${ids.join(' ')}`);
       // ⓐ 표가 부르는 그림이 **전부 있다**(앵커에도 있고 파일도 있다)
       // ★[T169] 열매판 칸이 둘(`summer`·`autumn`)이다 — 칸 이름을 여기 박지 않고 표에서 읽는다.
-      const PLATES = ['sprites', 'summer', 'autumn'];
-      const platesOf = (id) => PLATES.flatMap((c) => sp[id][c] || []);          // 열매판 포함 전수
+      // ★[T487] 철 판 두 칸(`sprites_autumn`·`sprites_winter`)이 더해졌다 — 칸 이름을 여기 늘려 적는 대신
+      //   **그림 목록인 칸을 전부** 표에서 읽는다(배열인 칸 = 그림 목록 · `sapling` 은 한 장이라 아래 따로).
+      const PLATES = [...new Set(Object.values(sp).flatMap((e) => Object.keys(e).filter((c) => Array.isArray(e[c]))))];
+      const platesOf = (id) => PLATES.flatMap((c) => sp[id][c] || []);          // 열매판·철 판 포함 전수
       const fruitPlatesOf = (id) => [...(sp[id].summer || []), ...(sp[id].autumn || [])];
       const named = [];
       for (const id of ids) for (const k of [...platesOf(id),

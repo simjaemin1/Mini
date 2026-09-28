@@ -915,6 +915,81 @@ console.log('\n⑰ [T475] 걷는 목록은 마을마다 — 그 마을 원판에
     'ⓕ ★econ 문은 **목록을 고르기만** 한다(표 0 · 수 0 — 마을 목록이 없으면 종전 한 글자도 안 바뀐다)');
 }
 
+// ── ⑱ [T490] 원판이 비면 밖으로 걷는다 — 팔 `T490_FORAGE_REACH`(기본 끔) ─────────────────────────────
+//   ⓐ 손잡이 기본 끔 · 끄면 원판 그대로(밖 칸 0 · 칸 하나도 안 생긴다) · 켜면 원판 **뒤에** 붙는다
+//   ⓑ 반경 = 하루 왕복 — `_t341TripsPerDay` 를 거리로 푼 값(자의 60초 하루 · 실제 하루 둘 다 · 하네스가 정본 수로 다시 센다)
+//   ⓒ 그날 몫만큼만 — 원판이 대면 0 · 모자라면 가까운 테두리부터 모자람이 찰 때까지 · 반경 밖은 안 본다
+//   ⓓ path-core 걸음 — 물 건너 다리 없는 군락은 못 딴다 · 다리가 서면 딴다 · ★미끼: 직선만 보면 물 건너를 딴다(이 검사가 문다)
+//   ⓔ 원판이 **비었으면** 그날 몫이 0 이어도 한 포기(게이트를 살린다) · ⓕ 수요 문이 없으면 아무것도 안 한다
+//   ⓖ 원판 로지스틱·econ 무접촉 — 밖에서 딴 것은 `_t347Cut` 에 안 든다 · N·K 는 원판 · `sim/` 에 T490 글자 0
+console.log('\n⑱ [T490] 원판이 비면 밖으로 걷는다 — 팔 `T490_FORAGE_REACH`(기본 끔)');
+{
+  const VC = codeOf(VSRC), C = codeOf(SRC);
+  const VP = JSON.stringify(path.join(ROOT, 'server', 'villages.js'));
+  const MOVE = +((codeOf(ZSRC).match(/const MOVE_SPEED = (\d+);/) || [])[1]);
+  const { WORLD } = require(path.join(ROOT, 'server', 'zone-config.js'));
+  //   세계(자식 프로세스 공통): 마을 (100,100) · 원판 R · 원판 안 덤불 1 · 밖 (133,100)·(100,136) · 강 x=63 너머 (60,100) · 반경 밖 (150,100)
+  const world = `const V=require(${VP}); const P=V.__labProbe._t490Probe, S=V.__labProbe._t400Probe, P75=V.__labProbe._t475Probe;
+    const now={'110,100':[{type:'berry_bush',seedKey:'b0'}],'133,100':[{type:'berry_bush',seedKey:'b1'}],'100,136':[{type:'berry_bush',seedKey:'b2'}],'60,100':[{type:'berry_bush',seedKey:'b3'}],'150,100':[{type:'berry_bush',seedKey:'b4'}]};
+    const water=new Set(); for (let y=0;y<200;y++) water.add('63,'+y);
+    const mkTa=(bridge,none)=>({ isBlocked:(x,y)=> none ? false : (water.has(x+','+y) && !(bridge && x===63 && y===100)) });
+    const deps={ moveSpeed:${MOVE}, dayPhaseRatio:${WORLD.dayPhaseRatio}, t347LootOf:()=>({berry:3,fiber:1,twig:1}), t347GrovesAtCell:(x,y,raw)=>now[x+','+y]||null };
+    S.setup({ deps, ta: mkTa(false), dayMs: 60000 });
+    const mk=(dem)=>({ ccx:100, ccy:100, econ:{ storage:{}, _t347Cells:1, _forageOutLast:dem*2, _t347MixShare:0.5, _t347InflowToday:0 } });
+    const board=[{cx:110,cy:100,n:1}];`;
+  const onEnv = { T347_FORAGE_ACT: '1', T374_DEMAND_STOP: '1', T490_FORAGE_REACH: '1' };
+  // ⓐ 손잡이
+  const k0 = probe({ T347_FORAGE_ACT: '1', T374_DEMAND_STOP: '1', T490_FORAGE_REACH: '' }, `${world}
+    const v=mk(7); const L=P75.scan(v,1); console.log(JSON.stringify({ on:P.on(), n:L.length, cells:v.econ._t347Cells, keys:Object.keys(v).filter((k)=>/_t490/.test(k)), list:L.map((c)=>c.cx+','+c.cy) }))`);
+  const k1 = probe(onEnv, `${world}
+    const v=mk(7); const L=P75.scan(v,1); console.log(JSON.stringify({ on:P.on(), n:L.length, cells:v.econ._t347Cells, ext:L.filter((c)=>c.ext).length, list:L.map((c)=>c.cx+','+c.cy), N:v._t347Groves.N, dbg:v._t490 }))`);
+  ok(k0.on === false && k0.n === 1 && k0.cells === 1 && k0.keys.length === 0,
+    'ⓐ ★★끄면(기본) 원판 그대로 — 밖 칸 0 · `_t490` 칸도 안 생긴다(비트 동일)', `목록 ${k0.list.join(' ')}`);
+  ok(k1.on === true && k1.n === 2 && k1.ext === 1 && k1.list[0] === k0.list[0] && k1.cells === 2 && k1.N === 1,
+    'ⓐ ★켜면 밖 자리가 원판 **뒤에** 붙는다(원판 먼저 딴다) · 게이트 칸에 든다 · N 은 원판 그대로', `목록 ${k1.list.join(' ')} · N ${k1.N}`);
+  ok(/if \(_t490ReachOn\(\)\) \{ const ext = _t490Reach\(vil, cells, R\);/.test(VC) && (VC.match(/_t490Reach\(vil, cells, R\)/g) || []).length === 1,
+    'ⓐ 부르는 자리는 `_t347Scan` 한 곳 · 손잡이 뒤');
+  // ⓑ 반경 = 하루 왕복(정본 수로 다시 센다)
+  const rb = probe(onEnv, `${world}
+    const a=P.reachCells(); S.setup({ dayMs: ${WORLD.dayLengthMs} }); const b=P.reachCells(); S.setup({ dayMs: 60000 });
+    const v={ ccx:100, ccy:100 }; console.log(JSON.stringify({ a, b, t1:P.trips(v, a*32, 1), t2:P.trips(v, (a+1)*32, 1), R:P.R() }))`);
+  const want = (dms) => Math.floor(MOVE * (dms * WORLD.dayPhaseRatio / 1000) / 2 / 32);
+  ok(rb.a === want(60000) && rb.b === want(WORLD.dayLengthMs),
+    'ⓑ ★★반경 = 걸음 × 낮 초 ÷ 2 — 정본 수(존 걸음 · `WORLD.dayPhaseRatio` · 하루 길이)로 다시 센 값과 같다', `자의 하루 60초 ${rb.a}셀 · 실제 하루 ${rb.b}셀`);
+  ok(rb.t1 >= 1 && rb.t2 === 0, 'ⓑ ★그 반경이 `_t341TripsPerDay` 의 경계다 — 반경까지 하루 한 번 오가고, 한 칸 더면 0', `${rb.t1} → ${rb.t2}`);
+  // ⓒ 그날 몫만큼만
+  const rc = probe(onEnv, `${world}
+    const f=(dem)=>{ const r=P.reach(mk(dem), board, P.R()); return { n:r.cells.length, at:r.cells.map((c)=>c.cx+','+c.cy), dbg:r.dbg }; };
+    console.log(JSON.stringify({ carry:f(2), need3:f(7), all:f(30) }))`);
+  ok(rc.carry.n === 0, 'ⓒ ★원판이 그날 몫을 대면(단위 4 ≥ 몫 2) **밖에 안 나간다**', JSON.stringify(rc.carry.dbg));
+  ok(rc.need3.n === 1 && rc.need3.at[0] === '133,100',
+    'ⓒ ★★모자람 3 — 가장 가까운 테두리(33)의 한 포기에서 **멈춘다**(더 먼 (100,136) 은 안 본다)', rc.need3.at.join(' '));
+  ok(rc.all.at.join(' ') === '133,100 100,136' && !rc.all.at.includes('150,100'),
+    'ⓒ ★모자람이 커도 반경(42셀) 밖 (150,100)은 **안 본다** · 차례 = 가까운 테두리부터', `${rc.all.at.join(' ')} · 멀어 못 간 칸 ${rc.all.dbg.far}`);
+  // ⓓ path-core 걸음 — 물 · 다리 · 미끼
+  const rd = probe(onEnv, `${world}
+    const g=(ta)=>{ S.setup({ ta }); const r=P.reach(mk(30), board, P.R()); return { at:r.cells.map((c)=>c.cx+','+c.cy+'@'+c.d), wet:r.dbg.wet }; };
+    console.log(JSON.stringify({ river:g(mkTa(false)), bridge:g(mkTa(true)), straight:g(mkTa(false,true)) }))`);
+  ok(!rd.river.at.some((s) => s.startsWith('60,100')) && rd.river.wet === 1,
+    'ⓓ ★★물 건너 다리 없는 군락은 **못 딴다**(직선 40셀 < 반경 42 인데도 · path-core 가 길을 못 낸다)', `${rd.river.at.join(' ')} · 물에 막힘 ${rd.river.wet}`);
+  ok(rd.bridge.at.some((s) => s.startsWith('60,100@')) && +rd.bridge.at.find((s) => s.startsWith('60,100@')).split('@')[1] >= 40,
+    'ⓓ ★다리(63,100)가 서면 딴다 — 걸음 칸 수로(직선 이상)', rd.bridge.at.join(' '));
+  ok(rd.straight.at.some((s) => s.startsWith('60,100')),
+    'ⓓ ★★미끼 — 직선만 보면(막힘 0) 물 건너를 **딴다** — 이 검사가 그 판을 문다');
+  // ⓔ 원판이 비면 · ⓕ 수요 문 끔
+  const re = probe(onEnv, `${world}
+    const r=P.reach(mk(0), [], P.R()); console.log(JSON.stringify({ n:r.cells.length, at:r.cells.map((c)=>c.cx+','+c.cy) }))`);
+  ok(re.n === 1, 'ⓔ ★★원판이 **비었으면** 그날 몫이 0 이어도 한 포기를 찾는다(게이트를 살린다 — 이튿날 수요가 선다)', re.at.join(' '));
+  const rf = probe({ T347_FORAGE_ACT: '1', T374_DEMAND_STOP: '', T490_FORAGE_REACH: '1' }, `${world}
+    const r=P.reach(mk(30), board, P.R()); const e=P.reach(mk(0), [], P.R()); console.log(JSON.stringify({ n:r.cells.length, e:e.cells.length }))`);
+  ok(rf.n === 0 && rf.e === 0, 'ⓕ ★수요 문(`T374_DEMAND_STOP`)이 없으면 **아무것도 안 한다** — "그날 몫" 이 없다(끝없이 넓히지 않는다)');
+  // ⓖ 원판 로지스틱·econ 무접촉
+  ok(/if \(sk && !c\.ext\) \(vil\._t347Cut \|\| \(vil\._t347Cut = \[\]\)\)\.push\(sk\);/.test(VC),
+    'ⓖ ★밖에서 딴 것은 원판 로지스틱(`_t347Cut`)에 **안 든다** — 그 종의 제 주기(T122)로 돌아온다');
+  ok(!/T490/.test(C), 'ⓖ ★econ(`sim/economy-sim.js`)에 T490 글자 **0** — 여덟 수가 움직일 자리가 없다');
+  ok(/if \(c\.ext\) vx \+= \(c\.n \| 0\); else groves \+= \(c\.n \| 0\);/.test(VC), 'ⓖ `/perf` 군락 합은 원판만 · 밖은 따로(`reach`)');
+}
+
 console.log('\n⑫ 접점 심볼');
 {
   const all = SRC + VSRC + ZSRC;
