@@ -744,5 +744,141 @@
       "cite15": "도쿄 연강수 1598mm",
       "accessed": "2026-09-28"
     }
+  },
+  "paleo_quant_T504": {
+    "설명": "T504 갱신 — Δ℃ 또는 Δ강수 %가 숫자로 있는 논문만. 전문·서술은 설계/고기후_청동기.md T504 갱신 절. 판정 0 · PM 권고 없음.",
+    "청동기_시기_정의_대조": {
+      "카드_전제_BP": [
+        3300,
+        2400
+      ],
+      "송국리_좁은뜻_BP": [
+        2800,
+        2500
+      ],
+      "무문토기_전체_BP": [
+        3450,
+        2250
+      ],
+      "무문_전기_BP": [
+        3450,
+        2800
+      ],
+      "무문_중기_송국리_BP": [
+        2800,
+        2500
+      ],
+      "무문_후기_BP": [
+        2500,
+        2250
+      ],
+      "출처": "https://en.wikipedia.org/wiki/Mumun_pottery_period (2차, BC 원문을 BP=BC+1950으로 환산)"
+    },
+    "papers": [
+      {
+        "id": 3,
+        "region": "중원북(베이징)",
+        "window_bp": [
+          3000,
+          2000
+        ],
+        "in_window": "부분(창의 뒤 2/3와 겹침)",
+        "delta_c": -1.9,
+        "delta_precip_pct": null,
+        "note": "cool and wet, 3000-2000aBP 평균 9.8도 대 3000년 평균 11.7도",
+        "doi": "10.1007/BF03183237",
+        "from_report": "T494"
+      },
+      {
+        "id": 5,
+        "region": "전지구/북반구(Marcott 2013)",
+        "window_bp": [
+          [
+            7000,
+            100
+          ],
+          [
+            5500,
+            100
+          ]
+        ],
+        "in_window": "밖(장기추세)",
+        "delta_c_nh_extratropics": -2.0,
+        "delta_c_global": -0.7,
+        "delta_precip_pct": null,
+        "note": "1961-1990 기준 · 창 전용 수치 없음",
+        "doi": "10.1126/science.1228026"
+      },
+      {
+        "id": 6,
+        "region": "전지구/북반구(Kaufman 2020 Temp12k)",
+        "window_bp": [
+          6000,
+          "1800-1900CE"
+        ],
+        "in_window": "밖(선형 냉각률)",
+        "cooling_rate_c_per_1000yr_global": -0.08,
+        "cooling_rate_c_per_1000yr_nh": -0.1,
+        "derived_delta_c_at_window_center_2850bp": {
+          "global_approx": -0.25,
+          "nh_approx": -0.32,
+          "method": "이 카드가 6000BP 기준 3150년 x 비율로 선형 외삽 — 논문 직접값 아님"
+        },
+        "delta_precip_pct": null,
+        "doi": "10.1038/s41597-020-0530-7"
+      },
+      {
+        "id": 7,
+        "region": "중국(동아시아 여름몬순 종합)",
+        "window_bp": [
+          7800,
+          5300
+        ],
+        "in_window": "경계(3.3ka가 창 시작점과 겹침, %수치 자체는 창 밖)",
+        "delta_c": null,
+        "delta_precip_pct": 30,
+        "precip_pct_note": "중기 홀로세(7.8-5.3ka) 현재 대비 +30%, 이후 3.3ka부터 급격 하강(하강폭 %는 논문에 없음)",
+        "doi": "10.1038/srep11186"
+      },
+      {
+        "id": 8,
+        "region": "한반도(광양 섬진강 STP17-013)",
+        "window_bp": [
+          "Holocene 전체, 정점 4000calBP 이후 점감"
+        ],
+        "in_window": "경계",
+        "delta_c": null,
+        "temp_range_c": [
+          9.0,
+          12.2
+        ],
+        "temp_amplitude_c": 3.2,
+        "delta_precip_pct": null,
+        "note": "정점 이후 창이 점감 구간에 포함되나 창 전용 수치 없음",
+        "doi": "10.1016/j.catena.2024.108032"
+      },
+      {
+        "id": 9,
+        "region": "한반도(수치모델, 대리지표 아님)",
+        "window_bp": [
+          6000,
+          6000
+        ],
+        "in_window": "밖",
+        "delta_c_north": 0.5,
+        "delta_c_south": -0.5,
+        "delta_precip_pct": null,
+        "note": "6000BP 모델 재현 — 카드 시기보다 이름 · 참고용",
+        "doi": "10.1016/j.quaint.2014.04.052"
+      }
+    ],
+    "요약": {
+      "정량_논문_수": 6,
+      "창_안_정확히_있는_논문_수": 1,
+      "창_안_유일값_Δ℃": -1.9,
+      "Δ강수_숫자있는_논문_수": 1,
+      "Δ강수_숫자": "+30%(중기 홀로세, 창 밖)",
+      "온난_방향_정량값_존재": false
+    }
   }
 }
