@@ -18,6 +18,8 @@
 // 실행: node scripts/t347-forage-day.js [out.json]
 //   T347_WARMS="45,60,75" · DAYS(기본 30) · DAY_MS(기본 6000)
 //   T347_KEEP_DB=<폴더> · T347_FROM=<폴더> … [T490] 틀을 한 번 구워 남기고(`DAYS=0` 이면 굽기만) 팔 여럿을 그 세계에서 짝으로(T334 자와 같은 꼴)
+//   T347_MAX_MIN(기본 60) … [T495] 켠 판 한 판의 벽시계 상한(분 · 긴 하루로 30일을 채울 때)
+//   T495_PARTIAL_PICK=1 … [T495] 부분 수확 팔 — 행에 `units`(딴 단위)·`empt`(비운 개체)·`part`(서 있게 둔 개체)가 붙고 세계 비용은 단위로 센다(끄면 칸 0)
 'use strict';
 const path = require('path');
 const fs = require('fs');
@@ -28,6 +30,8 @@ const OUT = process.argv[2] || '/tmp/t347/forage-day.json';
 const WARMS = (process.env.T347_WARMS || '45,60,75').split(',').map((x) => parseInt(x, 10)).filter(Boolean);
 const DAYS = parseInt(process.env.DAYS || '30', 10);
 const DAY_MS = parseInt(process.env.DAY_MS || '6000', 10);
+// ★[T495] 켠 판 한 판의 벽시계 상한(분) — 기본은 종전 그대로 60분. 하루가 길면(T490 반경 120셀 = 하루 171,429ms · 30일 86분) 늘린다.
+const RUN_MAX_MS = (parseFloat(process.env.T347_MAX_MIN || '60') || 60) * 60000;
 // ★[T462] 틀 굽는 하루 — 기본은 종전 그대로(`max(1200, DAY_MS/4)`). 켠 팔 하루를 늘려도(왕복이 서게) 틀은 빨리 굽는다.
 const WARM_DAY_MS = parseInt(process.env.WARM_DAY_MS || String(Math.max(1200, Math.floor(DAY_MS / 4))), 10);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -37,7 +41,7 @@ const rmdb = (f) => { for (const s of ['', '-wal', '-shm']) { try { fs.unlinkSyn
 // ── ★[T475] 요약 — 이 자가 남긴 JSON 을 읽기만 한다(세계를 안 세운다 · 새 자 0) ─────────────────────────
 //   node scripts/t347-forage-day.js --summary <팔 이름>=<a.json> [<팔 이름>=<b.json> …]
 //   마을·하루(행위 마을 행)마다: 걷은 몫 = 그날 남은 수요 `dem`(헤드리스는 `_lifeDaily` 머리 = `D·share` — 두 시계 검사) ·
-//   곳간 = 누계 `g` 의 하루 증분(가지 · T475 계측) · 세계 비용 = 딴 개체 × w̄(T462 자기신고 그대로).
+//   곳간 = 누계 `g` 의 하루 증분(가지 · T475 계측) · 세계 비용 = 딴 개체 × w̄(T462 자기신고 그대로 · ★[T495] 켠 팔은 딴 단위 `units`).
 //   ⇒ 항등 = 곳간 증분 = 걷은 몫(그 마을·그날) · 비(세계) = Σ 세계 비용 ÷ Σ 걷은 몫 = T462 의 "비"(134 → 91).
 if (process.argv[2] === '--summary') {
   const arms = process.argv.slice(3).map((a) => { const i = a.indexOf('='); return i > 0 ? [a.slice(0, i), a.slice(i + 1)] : [path.basename(a), a]; });
@@ -55,7 +59,7 @@ if (process.argv[2] === '--summary') {
       for (const d of cv) {
         if (d.p95 != null) p95.push(d.p95);
         for (const q of (d.rows || [])) {
-          const w = (q.pick || 0) * (q.wBar || 0);
+          const w = (typeof q.units === 'number') ? q.units : (q.pick || 0) * (q.wBar || 0);   // ★[T495] 켠 팔은 딴 **단위**가 세계 비용이다(개체 × w̄ 가 아니다)
           pick += q.pick || 0; world += w;
           const dem = (q.f > 0 && q.mix > 0) ? q.f * q.mix : 0;   // 걷은 몫 = 그날 수식이 걷어낸 몫(`_forageOutLast × _t347MixShare`)
           strip += dem; granEst += Math.min(w, dem);
@@ -139,7 +143,7 @@ const popOf = (p) => (p && p.forage && p.forage.popAll) || null;
     let first = null;
     const t1 = Date.now();
     let last = d0;
-    while (curve.length < DAYS && Date.now() - t1 < 60 * 60000) {
+    while (curve.length < DAYS && Date.now() - t1 < RUN_MAX_MS) {
       await sleep(Math.max(1500, Math.floor(DAY_MS / 3)));
       const p = await b.perf(false);
       const dd = dayOf(p);
@@ -154,7 +158,9 @@ const popOf = (p) => (p && p.forage && p.forage.popAll) || null;
           //   ★[T475] 곳간 누계(`g` — 수요에서 자른 뒤 실제로 든 몫 · 항등의 한쪽) · 그 마을 걷는 목록(`it`) · 걷는 몸(`walked` 손을 넣은 사람 · `hU` 지금 손) · 멈춤(`stop`)
           g: r.g, it: r.it, walked: r.dbg ? r.dbg.walked : null, hU: r.hU, stop: r.dbg ? r.dbg.stop : null, fg: r.fg, d: r.d,
           //   ★[T490] 원판 밖(팔 켬) — 목록에 붙은 개체(`x`) · 그날 훑기(`xr`: 모자람·찾은 단위·링·물/먼 칸·µs) · 밖에서 딴 개체(`xpick`)
-          x: r.x, xr: r.xr, xpick: r.dbg ? r.dbg.xpick : null, cells: r.cells })),
+          x: r.x, xr: r.xr, xpick: r.dbg ? r.dbg.xpick : null, cells: r.cells,
+          //   ★[T495] 부분 수확(팔 켬) — 딴 단위(`units`) · 비운 개체(`empt`) · 서 있게 둔 개체(`part`) · `pick` 은 개체를 **들른** 수(끄면 칸이 안 생긴다)
+          units: r.dbg ? r.dbg.units : undefined, empt: r.dbg ? r.dbg.empt : undefined, part: r.dbg ? r.dbg.part : undefined })),
         gran: w.gran, reach: w.reach });
       if (!first) first = { day: dd, rows: w.rows, delivered: w.delivered, formula: w.formulaActPerDay, formulaAll: w.formulaPerDay, groves: w.groves, cells: w.cells, act: w.actVillages, noGrove: w.noGroveVillages };
       say(`  day ${dd} · 입고 ${w.delivered} / 수식(걷은 몫) ${w.formulaActPerDay}/${w.formulaPerDay} · 군락 ${w.groves}/${w.K} · 딴 ${w.pickDay} · 되살아난 ${w.back} · 한도 ${w.cap} · p50 ${t ? t.p50 : '?'}`);

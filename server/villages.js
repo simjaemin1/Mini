@@ -5928,6 +5928,40 @@ function _lifeLootForage(r) {
   let u = 0; for (const k of keep) for (const h of _t347HandsOf(k)) { const a = l[h]; if (a > 0) u += a; }   // ★[T458] 손 이름으로 읽는다
   return u;
 }
+// ★★★[T495 2026-09-28 · 손잡이 `T495_PARTIAL_PICK` 기본 끔] **부분 수확 — 개체가 아니라 단위로 딴다**(존 `_t495PickAt` 이 정본 문).
+//   헤드리스 하루가 그날 몫만큼만 **품목 단위**(열매 한 알 · 나물 한 줌 · T458 berry = fruit)로 따고, 개체는 남은 단위를 들고 서 있다.
+//   빈 개체만 원판 로지스틱의 되살릴 목록(`_t347Cut`)에 든다 — 되살이는 **개체 수로 그대로**(N·K·r 무변).
+//   끄면 아래 둘이 한 번도 안 불린다(비트 동일).
+function _t495On() { return typeof process !== 'undefined' && !!process.env && process.env.T495_PARTIAL_PICK === '1'; }
+//   그 개체에 **남은** 걷는 단위(세계 목록) — `_lifeLootForage` 의 남은 판(전리품 = 존 정본 − 딴 것)
+function _t495Units(r) {
+  let l = null; try { l = state.deps.t495RestOf ? state.deps.t495RestOf(r) : null; } catch (e) { l = null; }
+  if (!l) return 0;
+  const keep = _t347ActItems(); if (!keep || !keep.length) return 0;
+  let u = 0; for (const k of keep) for (const h of _t347HandsOf(k)) { const a = l[h]; if (a > 0) u += a; }
+  return u;
+}
+//   ★★[T495] **한 개체 한 번** — 그날 남은 몫(⌈남은 수요⌉ 단위)까지만 · 그 마을 걷는 목록의 손 이름 차례로(`order`).
+//     개체가 비면 존 문이 세계에서 뺀다(벤 장부) — 원판 개체면 되살릴 목록에 든다(되살이는 개체 수로 그대로 · T490: 밖은 제 주기).
+//     안 비면 개체는 남은 단위를 들고 서 있다(내일 아침 N 에 그대로 센다). 곳간 다리·계측은 통째 따기 갈래와 같은 줄이다.
+//     돌려주는 것: `null` = 이 마을이 걷는 단위가 없는 개체(셀 넘김) · `{ fail }` = 문이 못 땄다(멈춤) · `{ n, emptied }`.
+function _t495Visit(vil, c, e, order, worth, keep) {
+  let rest = null; try { rest = state.deps.t495RestOf ? state.deps.t495RestOf(e) : null; } catch (x) { rest = null; }
+  let have = 0; if (rest) for (const h of order) { const a = rest[h]; if (a > 0) have += a; }
+  if (!(have > 0)) return null;
+  const left = _lifeEcon().forageDemandLeft(vil.econ);
+  const want = (left === Infinity) ? have : Math.min(have, Math.ceil(left - 1e-9));
+  let res = null; try { res = state.deps.t495PickAt(c.cx, c.cy, order, want, worth); } catch (x) { res = null; }
+  if (!res || !(res.n > 0 || res.whole)) return { fail: 1 };
+  if (res.emptied && res.seedKey && !c.ext) (vil._t347Cut || (vil._t347Cut = [])).push(res.seedKey);
+  const took = res.took || {};
+  let n = 0;
+  for (const it of keep) for (const h of _t347HandsOf(it)) { const a = took[h]; if (a > 0) { n += a; const g = _lifeEcon().forageToGranary(vil.econ, it, a) || 0; if (g > 0) vil._t347Gran = +((vil._t347Gran || 0) + g).toFixed(6); } }   // ★[T458] berry → fruit · ★[T475 계측] 곳간에 든 몫
+  const D = vil._t347Dbg;
+  if (D) { D.pick++; D.units = (D.units || 0) + n; if (res.emptied) D.empt = (D.empt || 0) + 1; else D.part = (D.part || 0) + 1; if (c.ext) D.xpick = (D.xpick | 0) + 1; }
+  vil._t347Deliv = +((vil._t347Deliv || 0) + n).toFixed(6);
+  return { n, emptied: res.emptied ? 1 : 0 };
+}
 // ★★[T347] **귀환하면 곳간에.** 회계는 econ 정본 한 함수(`forageToGranary` → `actToGranary`)가 한다.
 //   ⚠걷는 목록의 품목만 넣는다 — `fiber`·씨앗은 econ 재화가 아니라 **손에 남는다**(종전과 같다 · 보고 §회부).
 //   ⚠넣은 품목은 그때 손에서 비운다(이중 0 — 손과 곳간에 같이 있을 수 없다).
@@ -6069,7 +6103,8 @@ function _t490Reach(vil, board, R) {
   const reach = _t490ReachCells(); out.dbg.reach = reach;
   if (!(reach > R)) return out;
   let S = 0;                                                        // 원판에 오늘 서 있는 걷는 단위
-  for (const c of board) { let a = null; try { a = state.deps.t347GrovesAtCell(c.cx, c.cy); } catch (e) { a = null; } if (a) for (const r of a) S += _lifeLootForage(r) || 0; }
+  const _uOf = _t495On() ? _t495Units : _lifeLootForage;           // ★[T495] 켜면 **남은** 단위(부분 수확된 개체는 덜 든다)
+  for (const c of board) { let a = null; try { a = state.deps.t347GrovesAtCell(c.cx, c.cy); } catch (e) { a = null; } if (a) for (const r of a) S += _uOf(r) || 0; }
   const dem = E.forageDemandLeft(vil.econ);
   let need = (dem === Infinity) ? 0 : dem - S;
   const mustOne = board.length === 0;                               // 원판이 비었다 — 게이트를 살릴 한 포기
@@ -6095,7 +6130,7 @@ function _t490Reach(vil, board, R) {
       if (!p) { out.dbg.wet++; continue; }
       const steps = p.length - 1;
       if (steps > reach) { out.dbg.far++; continue; }
-      let u = 0; for (const e of a) u += _lifeLootForage(e) || 0;
+      let u = 0; for (const e of a) u += _uOf(e) || 0;
       out.cells.push({ cx: tx, cy: ty, x: tx * SZ + SZ / 2, y: ty * SZ + SZ / 2, n: a.length, ext: 1, d: steps, kinds: a.map((e) => e.type) });
       need -= u; out.dbg.got = +(out.dbg.got + u).toFixed(4); out.dbg.n += a.length; out.dbg.r = r;
     }
@@ -7853,6 +7888,15 @@ function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(�
       pick: 0, noloot: 0, grow: 0, back: 0, items: _keep.length, stop: 0,
       //   ★[T374 계측 전용] 그날 남은 수요 — 0 이면 더 안 딴다(끈 판은 `Infinity` 라 -1 로 적는다)
       dem: (() => { const d = _lifeEcon().forageDemandLeft(vil.econ); return d === Infinity ? -1 : +d.toFixed(4); })() };
+    //   ★★★[T495] 부분 수확 — 손잡이를 **하루 한 번** 읽는다 · 켜면 따는 차례(그 마을 걷는 목록의 손 이름)와 빈 개체 판정의 목록(세계 걷는 목록) ·
+    //     계측 칸 셋(딴 단위 · 비운 개체 · 서 있게 둔 개체)이 생긴다(끄면 칸이 안 생긴다 — 끔 비트 동일).
+    const _t495 = _t495On() && !!state.deps.t495PickAt;
+    let _t495Order = null, _t495Worth = null;
+    if (_t495) {
+      _t495Order = []; for (const it of _keep) for (const h of _t347HandsOf(it)) _t495Order.push(h);
+      _t495Worth = []; for (const it of (_t347ActItems() || [])) for (const h of _t347HandsOf(it)) _t495Worth.push(h);
+      vil._t347Dbg.units = 0; vil._t347Dbg.empt = 0; vil._t347Dbg.part = 0;
+    }
     if (_on && _walked === 0 && _fg > 0 && _gv.length && _keep.length) {
       //   ⓐ 하루 한도 — **걸음**이 정한다(T341 유도 그대로 · 사본 0). 거리는 가장 가까운 군락 셀까지.
       let _bd = Infinity;
@@ -7872,6 +7916,14 @@ function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(�
         const c = _gv[ci];
         let peek = null; try { peek = state.deps.t347GrovesAtCell ? state.deps.t347GrovesAtCell(c.cx, c.cy) : null; } catch (e) { peek = null; }
         if (!peek || !peek.length) { ci++; continue; }     // 이 셀은 다 땄다 — 다음 셀로
+        //   ★★★[T495] **단위로 딴다** — 한 개체 한 번(`_t495Visit`) · 셀 넘김·멈춤만 여기서 가른다(루프 모양 무변).
+        if (_t495) {
+          const v5 = _t495Visit(vil, c, peek[0], _t495Order, _t495Worth, _keep);
+          if (!v5) { ci++; continue; }                       // 이 마을이 걷는 단위가 없는 개체(다른 목록의 종)
+          if (v5.fail) { vil._t347Dbg.noloot++; break; }     // ★`break`(T334 의 단위 증발 교훈)
+          made += v5.n / _w;                                 // 한도(`_cap` · 개체)는 단위 ÷ w̄ 로 센다
+          continue;
+        }
         const u = _lifeLootForage(peek[0]) || 0;
         if (!(u > 0)) { ci++; continue; }                  // 걷는 목록에 드는 것이 없는 개체(물둠벙 등)
         const sk = peek[0].seedKey || null;
@@ -9199,6 +9251,8 @@ module.exports = { fishPerf, woodPerf, foragePerf, farmPerf,   // ★[T316] `/pe
     // ★[T490] 원판 밖 — 같은 규약(정본 함수를 그대로 부른다 · 상태는 `_t400Probe.setup` 으로 꽂는다)
     _t490Probe: { on: () => _t490ReachOn(), reachCells: () => _t490ReachCells(), reach: (vil, board, R) => _t490Reach(vil, board, R), R: () => _t347R(),
       trips: (vil, d, w) => _t341TripsPerDay(vil, d, w) },
+    // ★[T495] 부분 수확 — 같은 규약(정본 함수를 그대로 부른다 · 상태는 `_t400Probe.setup` 으로 꽂는다)
+    _t495Probe: { on: () => _t495On(), units: (r) => _t495Units(r), visit: (vil, c, e, order, worth, keep) => _t495Visit(vil, c, e, order, worth, keep) },
     // ★[T449] 결산 문 하네스용 — 같은 규약(최소 주입구 하나). 하네스는 문·명부 규칙을 다시 적지 않는다 — 정본 `_t449Seen`·`_lifeDaily` 를 그대로 부른다.
     _t449Probe: { seen: (vil) => _t449Seen(vil), daily: (vil) => _lifeDaily(vil), get T449_BODY_DAY() { return T449_BODY_DAY; } },
     get VILLAGE_MAX() { return VILLAGE_MAX; },

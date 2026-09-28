@@ -295,6 +295,31 @@ function upsertFishCell(key, stock, lastT) { stmtUpsertFish.run(key, stock, last
 function getAllFishCells() { return stmtGetAllFish.all(); }
 function deleteFishCell(key) { stmtDeleteFish.run(key); }
 
+// === ★★[T495 2026-09-28] 부분 수확 — 개체에 **남은 단위** ================================
+//   `fish_cells`·`mined_cells` 와 **같은 문법**: 온전한 개체는 적지 않는다(암묵적 온전) → 표가 작다.
+//   taken = 그 개체에서 이미 딴 단위(손 이름 → 수 · JSON). 다 따이면 행을 지우고 벤 장부(`harvested_seeds`)로 간다.
+//   ★표는 **처음 쓸 때** 짓는다 — 손잡이(`T495_PARTIAL_PICK`)가 꺼져 있으면 존이 이 문을 한 번도 안 부르므로
+//     DB 가 한 바이트도 안 바뀐다(끔 비트 동일 · 다른 표는 부팅에 짓는 게 규약이나 이 표는 켠 팔만의 것이다).
+let _pickedStmts = null;
+function _picked() {
+  if (_pickedStmts) return _pickedStmts;
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS picked_seeds (
+      seed_key  TEXT PRIMARY KEY,
+      taken     TEXT NOT NULL
+    );
+  `);
+  _pickedStmts = {
+    up: db.prepare('INSERT INTO picked_seeds (seed_key, taken) VALUES (?, ?) ON CONFLICT(seed_key) DO UPDATE SET taken=excluded.taken'),
+    all: db.prepare('SELECT seed_key, taken FROM picked_seeds'),
+    del: db.prepare('DELETE FROM picked_seeds WHERE seed_key = ?'),
+  };
+  return _pickedStmts;
+}
+function upsertPickedSeed(key, taken) { _picked().up.run(key, taken); }
+function getAllPickedSeeds() { return _picked().all.all(); }
+function deletePickedSeed(key) { if (!key) return 0; try { return _picked().del.run(key).changes || 0; } catch (e) { return 0; } }
+
 // === §4-4 Stage 1: NPC 마을 시뮬 (server/villages.js) — 추가 전용 스키마 ===
 // 기존 테이블 불변. CREATE TABLE IF NOT EXISTS라 구DB에도 마이그레이션 안전.
 //   villages: 마을 1행 = econ 인스턴스 1개. econ_state = tickVillage 재개에 필요한 전체
@@ -577,6 +602,7 @@ module.exports = {
   insertHarvestedSeed, getAllHarvestedSeeds, promoteHarvestedDays, deleteHarvestedSeed,   // ★[T341] 재생 — 벤 기록을 지우는 문
   upsertMinedCell, getAllMinedCells, deleteMinedCell,
   upsertFishCell, getAllFishCells, deleteFishCell,
+  upsertPickedSeed, getAllPickedSeeds, deletePickedSeed,   // ★[T495] 부분 수확 — 개체에 남은 단위(켠 팔만 · 표는 처음 쓸 때)
   // §4-4 마을 시뮬 (villages.js)
   getVillagesByZone, insertVillage, updateVillageState, insertVillageBuilding, getVillageBuildings,
   getVillageFarmInCellRect, getVillageStructRows,

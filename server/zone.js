@@ -126,6 +126,28 @@ const Credits = require('./credits');         // ★[T168 2026-09-10] `/크레�
 // ★★[T122 2026-09-05] **Map 이다** — 키 → 벤 게임일. 종전엔 Set(=영원히 없음)이었다.
 //   `has` 계약은 그대로라 옛 호출부가 전부 산다. 새로 생긴 건 `get(key) = 벤 날` 하나다.
 const harvestedSeeds = new Map(); // 채집된 시드 자원 → 벤 게임일 (DB에서 load · T122 재생의 입력)
+// ★★★[T495 2026-09-28 · ★PM 결정(위임) · 손잡이 `T495_PARTIAL_PICK` 기본 끔] **부분 수확 — 개체가 아니라 단위로 딴다.**
+//   T490: 원판이 비어 수식으로 돌아간 마을·날의 57% 는 하루 몫 < 한 개체인 마을이 날마다 개체 하나를 **통째로** 따
+//   남는 알갱이를 버린 것이다(원판 MSY h/w̄ < 1 개체/일을 넘는다 → 0 은 되살이의 흡수 상태). ⇒ 따는 알갱이를 **품목 단위**
+//   (열매 한 알 · 나물 한 줌 · T458 berry = fruit 문법 그대로)로 내린다: 몫만큼만 따고 **개체는 남은 단위를 들고 서 있다**.
+//   다 따이면 그때 벤 장부로 간다(= 빈 개체 · 되살이는 개체 수로 그대로 · T341/T347 로지스틱 무변).
+//   ★장부는 **딴 것**을 적는다(손 이름 → 수) — 온전한 개체는 안 적는다(암묵적 온전 · `fish_cells` 문법 · 표가 작다).
+//     남은 단위 = 전리품 정본(`lootOfResource`) − 딴 것. 전리품 표를 옮겨 적지 않는다(새 수 0).
+//   ★끄면 장부가 비어 있다 — 아래 문들이 들어온 전리품을 **그 객체 그대로** 돌려준다(비트 동일 · 부르는 쪽 무변).
+const _t495On = () => process.env.T495_PARTIAL_PICK === '1';
+const pickedSeeds = new Map();    // seedKey → { 손 이름: 이미 딴 수 }
+function _t495Rest(r, loot) {
+  const t = (r && r.seedKey && pickedSeeds.size) ? pickedSeeds.get(r.seedKey) : null;
+  if (!t || !loot) return loot;
+  const out = {};
+  for (const k of Object.keys(loot)) { const n = (loot[k] || 0) - (t[k] || 0); if (n > 0) out[k] = n; }
+  return out;
+}
+//   개체가 세계에서 빠지거나(벰·통째 채집) 되살아나면 그 개체의 장부 줄을 지운다 — 다음에 설 때는 온전하다.
+function _t495Forget(seedKey) {
+  if (!seedKey || !pickedSeeds.size || !pickedSeeds.delete(seedKey)) return;
+  try { db.deletePickedSeed(seedKey); } catch (e) {}
+}
 let _harvestPromotePending = 0;
 // ★★[T122] 옛 행 승격 — **한 번**만, 그리고 게임 시계가 선 뒤에(첫 청크 활성화 시점).
 //   벤 날 = **승격일**이다: 지금부터 자라기 시작한다(즉시 성목이 되지 않는다).
@@ -153,6 +175,7 @@ function _markHarvested(seedKey, x, y) {
   //     `_promoteHarvestOnce` · 첫 청크 활성화 때 한 번)을 연다 — 승격일이 벤 날이 된다. 새 수 0.
   let d; try { d = gameDayNow(); } catch (e) { d = undefined; }
   harvestedSeeds.set(seedKey, Number.isFinite(d) ? Math.floor(d) : -1);
+  _t495Forget(seedKey);   // ★[T495] 빈 개체는 벤 장부로 — 남은 단위 줄은 지운다(장부가 비어 있으면 아무 일도 안 한다)
   _farBump(seedKey);   // ★[T380] 원경 캐시 무효화 — **장부가 바뀐 청크만**(문 하나를 지나므로 새는 길이 없다)
   _ringBump(seedKey, x, y);   // ★[T440] 청크 판 — 그 씨를 낳은 청크의 그 셀만(같은 문 · 새는 길이 없다)
   if (!Number.isFinite(d)) _harvestPromotePending = 1;
@@ -315,6 +338,7 @@ function _t347GrovesAtCell(cellX, cellY, raw) { return _actEntitiesAtCell(cellX,
 function _t341Unharvest(seedKey) {
   if (!seedKey || !harvestedSeeds.has(seedKey)) return 0;
   harvestedSeeds.delete(seedKey);
+  _t495Forget(seedKey);   // ★[T495] 되살아난 개체는 온전하다(방어 · 빈 개체는 이미 줄이 없다)
   _ringBump(seedKey);   // ★[T440] 청크 판 — 자리를 모른다(키만 온다) ⇒ 그 씨를 낳은 청크 판을 버린다
   try { db.deleteHarvestedSeed(seedKey); } catch (e) {}
   return 1;
@@ -347,6 +371,47 @@ function _t325CutTreeAt(cellX, cellY) {
 function _t347PickAt(cellX, cellY) {
   return _actTakeAtCell(cellX, cellY, (x, y) => _t347GrovesAtCell(x, y), { day: zoneGameDay() });
 }
+// ★★★[T495] **단위로 따는 순간** — 그 셀 첫 군락 개체(`_t347PickAt` 과 같은 개체 · 생성 순서)에서 `order`(손 이름 차례 ·
+//   부르는 마을의 걷는 목록)대로 **`want` 단위까지만** 딴다. 남은 걷는 단위(`worth` — 세계 걷는 목록의 손 이름)가
+//   0 이 되면 **빈 개체**다 — 통째로 따는 그 문 그대로 세계에서 뺀다(색인·청크·장부·DB·방송 규칙 · T325 `_takeResourceEntity`).
+//   아니면 딴 것을 장부에 더 적고 개체는 **서 있다**(남은 단위를 들고).
+//   ⚠전리품 ctx 는 `_t347PickAt` 과 같다(`{ day }` · 계절 야생 씨앗) — 걷지 않는 품목(섬유·씨앗)은 빈 개체와 함께 빠진다
+//     (통째로 따던 종전 헤드리스도 걷는 품목만 곳간에 넣었다 · 버려지는 몫 무변).
+//   ⚠씨 키가 없는 개체(심은 것 — 군락 종엔 없다)는 적을 자리가 없으니 **통째로** 딴다(종전 그대로 · 방어).
+function _t495PickAt(cellX, cellY, order, want, worth) {
+  const list = _t347GrovesAtCell(cellX, cellY);
+  if (!list.length) return null;
+  const r = list[0];
+  const k = r.seedKey || null;
+  const full = lootOfResource(r, { day: zoneGameDay() });
+  if (!k) { const loot = _t347PickAt(cellX, cellY); return loot ? { took: loot, n: 0, emptied: 1, seedKey: null, whole: 1 } : null; }
+  const rest = _t495Rest(r, full);
+  const took = {}; let n = 0;
+  const w = (want > 0) ? want : 0;
+  for (const h of (order || [])) {
+    if (n >= w) break;
+    const a = rest[h] || 0; if (!(a > 0)) continue;
+    const t = Math.min(a, w - n); if (!(t > 0)) continue;
+    took[h] = (took[h] || 0) + t; n += t;
+  }
+  let left = 0; for (const h of (worth || order || [])) left += Math.max(0, (rest[h] || 0) - (took[h] || 0));
+  if (!(left > 0)) {
+    //   빈 개체 — 세계에서 뺀다(`_actTakeAtCell` 과 같은 두 갈래 · 장부 줄은 `_markHarvested` 가 지운다)
+    const px = (cellX | 0) * 32 + 16, py = (cellY | 0) * 32 + 16;
+    if (resources.has(r.id)) _takeResourceEntity(r, anyViewerNear({ x: px, y: py }, AOI_RADIUS));
+    else if (r.isSeed) _markHarvested(k, r.x, r.y);
+    return { took, n, emptied: 1, seedKey: k };
+  }
+  if (!(n > 0)) return { took, n: 0, emptied: 0, seedKey: k };
+  const prev = pickedSeeds.get(k) || {};
+  const next = Object.assign({}, prev);
+  for (const h of Object.keys(took)) next[h] = (next[h] || 0) + took[h];
+  pickedSeeds.set(k, next);
+  try { db.upsertPickedSeed(k, JSON.stringify(next)); } catch (e) {}
+  return { took, n, emptied: 0, seedKey: k };
+}
+//   그 개체에 **남은** 전리품(정본 − 딴 것) — 생활층이 남은 단위를 셀 때(원판 단위 합 · 모자람)
+function _t495RestOf(r) { return _t495Rest(r, lootOfResource(r, { day: zoneGameDay() })); }
 
 // === 활성 청크 (12.2.b) — 사람 player + observer 위치 주변 청크만 시뮬레이션 ===
 // 비활성 청크의 mob/NPC는 멈춤 — CPU 절약. 청크 시스템의 핵심.
@@ -2274,6 +2339,13 @@ function spawnOneResource() {
   _harvestPromotePending = _old;
   console.log(`[${ZONE_ID}] 채집된 시드 자원 ${harvested.length}개 로드 (procedural 모드)`
     + (_old ? ` · ★[T122] 벤 날 없는 옛 행 ${_old}개 — 첫 청크 활성화 때 오늘로 승격한다` : ''));
+  // ★★[T495] 부분 수확 장부 — **켠 팔만** 읽는다(끄면 표를 짓지도 읽지도 않는다 · 끔 비트 동일).
+  //   빈 개체는 벤 장부에 있고 여기엔 없다(두 장부가 같은 개체를 같이 들지 않는다 — 들면 벤 장부가 이긴다).
+  if (_t495On()) {
+    let _pk = 0;
+    try { for (const row of db.getAllPickedSeeds()) { if (harvestedSeeds.has(row.seed_key)) continue; let t = null; try { t = JSON.parse(row.taken); } catch (e) { t = null; } if (t && typeof t === 'object') { pickedSeeds.set(row.seed_key, t); _pk++; } } } catch (e) {}
+    console.log(`[${ZONE_ID}] ★[T495] 부분 수확 개체 ${_pk}개 로드(남은 단위를 들고 서 있다)`);
+  }
 }
 
 // === DB에서 자기 zone의 claims 로드 ===
@@ -3365,7 +3437,7 @@ function npcStep(npc, dt, now) {
         // 직접 채집 (tryGather 로직 간소화)
         r.hp -= 1;
         if (r.hp <= 0) {
-          const loot = lootOfResource(r);   // ★정본 하나 — 플레이어와 같은 표를 쓴다(사본 금지)
+          const loot = _t495Rest(r, lootOfResource(r));   // ★정본 하나 — 플레이어와 같은 표를 쓴다(사본 금지) · ★[T495] 남은 단위만(장부 없으면 그 객체 그대로)
           for (const [k, v] of Object.entries(loot)) npc.inventory[k] = (npc.inventory[k] || 0) + v;
           _takeResourceEntity(r, true);     // ★[T325] 빼는 여섯 줄을 **문 하나**로 모았다(아래 정의 · 행동 무변)
         } else {
@@ -3706,6 +3778,9 @@ SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, is
   //   ⚠`t347LootOf` 는 `{ day }` 를 넘긴다 — 야생 채종이 계절 정본을 지나게(주사위 0 · `_t347PickAt` 과 같은 ctx).
   t347GrovesAtCell: (cx, cy, raw) => _t347GrovesAtCell(cx, cy, raw),
   t347PickAt: (cx, cy) => _t347PickAt(cx, cy),
+  //   ★[T495] 부분 수확 문 둘 — 단위로 딴다 · 남은 전리품(생활층은 손잡이가 켜져 있을 때만 부른다)
+  t495PickAt: (cx, cy, order, want, worth) => _t495PickAt(cx, cy, order, want, worth),
+  t495RestOf: (r) => _t495RestOf(r),
   t347LootOf: (r) => lootOfResource(r, { day: zoneGameDay() }) });   // ★[생활 층 100% ②③] 일과 스케줄(하루 위상)·직업 실작업(자원·사냥감 현장) 소스
 // ★[11차 T3 환호] 도랑 콜라이더 적재 — SimVillages.init이 시범 마을 도랑을 실체화한 **직후**여야 한다.
 //   (이 줄이 없으면 도랑 행은 DB에 있는데 통행 판정은 열려 있는 '유령 도랑'이 된다.)
@@ -8490,7 +8565,7 @@ function gatherResource(player, best) {
   if (eqInst) consumeEquippedDurability(player, 1);
   if (best.hp <= 0) {
     // 자원 종류별 산출물 — ★정본 하나(`lootOfResource`). NPC 채집도 같은 표를 쓴다.
-    const loot = lootOfResource(best, { day: zoneGameDay() });   // ★[작물 층] 플레이어 채집만 계절 씨앗을 본다
+    const loot = _t495Rest(best, lootOfResource(best, { day: zoneGameDay() }));   // ★[작물 층] 플레이어 채집만 계절 씨앗을 본다 · ★[T495] 남은 단위만(장부 없으면 그 객체 그대로)
     //   운철만 말이 붙는다(전리품은 정본이 내고, 여기선 그 뜻을 사람에게 알린다).
     if (best.type === 'meteorite') {
       send(player.ws, { type: 'notice', text: '☄️ 하늘에서 떨어진 쇠 — 불에 넣지 않아도 이미 금속이다. 두들기면 바로 날이 선다.' });
@@ -10314,6 +10389,8 @@ function __testBind() {
     // ★[T440] 청크 한 판 — 자·하네스가 **그 문**(`_idxAtCell`)과 판(`_ringCache`)·부하 표(`_ringStat`)를 그대로 본다 ·
     //   장부(`harvestedSeeds` — 읽기만)와 장부를 바꾸는 문 둘(벰 `_t325CutTreeAt` · 되살림 `_t341Unharvest`)도 그대로 두드린다
     _idxAtCell, _ringCache, _ringStat, harvestedSeeds, _t325CutTreeAt, _t341Unharvest,
+    // ★[T495] 부분 수확 — 하네스가 **문 그대로** 두드린다(단위로 따기 · 남은 전리품 · 장부 · 군락 색인 · 통째 따기 · 플레이어 채집)
+    _t495PickAt, _t495RestOf, _t495Rest, pickedSeeds, _t347GrovesAtCell, _t347PickAt, gatherResource,
     // ── 빈손 시작(2026-08-28) ── 줍기·제작·도구 표를 **정본 그대로** 내준다
     RECIPES, TOOL_EFFECTS, TOOL_MAX_DURABILITY, EQUIPMENT_RECIPES, CRUDE_EFF_FRAC, CRUDE_DURA_FRAC,
     doCraft, doEquip, tryForage, Forage, _forageCtx, lootOfResource, getEquippedTool, consumeEquippedDurability,
