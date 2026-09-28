@@ -192,11 +192,14 @@
  "buildingsWhen": {
   "_뜻": "[T412] `buildings` 반복 소리를 **이 칸이 켜졌을 때만** 낸다.",
   "furnace": {
-   "field": "job"
+   "field": "job",
+   "until": "until"
   },
   "charcoal_kiln": {
-   "field": "job"
-  }
+   "field": "job",
+   "until": "until"
+  },
+  "_T482": "[T482] `until` = 그 조업 칸의 끝 시각 이름(서버 `tryKilnBurn`·`tryFurnaceSmelt` 가 `job.until` 을 싣는다). 끝났는데 아직 안 꺼낸 가마(식은 가마)는 안 운다 — 비교는 서버 시계(`worldNow`)."
  },
  "buildings": {
   "_뜻": "개체와 같은 문법 — 건물 `type` → 반복 키. 개체마다 하나씩 나고 화면 밖이면 멎는다.",
@@ -2053,7 +2056,46 @@
    "water_pool": 0.0518,
    "_뜻": "[T473] 환경 반복 하나씩(리미터 없이 · 소리판 볼륨 그대로) — 줄일 차례를 고를 때의 자(값은 재민)."
   },
-  "_T473": "환경 판 둘(해안 30분 · 강가 30분 · 서 있기 · 단발 0): 최악 해안 `water`+`waves`+`wind` 0.2989 · 강가 `water`+`wind` 0.2894 — 문턱에서 −8.5 dB 아래. 환경 전부 손 상한(바람+센 비+파도+시냇물+고인 물+불) 0.3761 · 정본 최악 사건에 얹으면 1.0931 → 끼고 0.7637 · 클리핑 0. `worstCombo` 무변(환경은 `worstComboEnv` 로 따로)."
+  "_T473": "환경 판 둘(해안 30분 · 강가 30분 · 서 있기 · 단발 0): 최악 해안 `water`+`waves`+`wind` 0.2989 · 강가 `water`+`wind` 0.2894 — 문턱에서 −8.5 dB 아래. 환경 전부 손 상한(바람+센 비+파도+시냇물+고인 물+불) 0.3761 · 정본 최악 사건에 얹으면 1.0931 → 끼고 0.7637 · 클리핑 0. `worstCombo` 무변(환경은 `worstComboEnv` 로 따로).",
+  "handFacility": {
+   "fire2": 0.4703,
+   "envFire": [
+    "wind",
+    "rain",
+    "waves",
+    "water",
+    "fire",
+    "fire"
+   ],
+   "envFirePeak": 0.61,
+   "envFireWorst": [
+    "wind",
+    "rain",
+    "waves",
+    "water",
+    "fire",
+    "fire",
+    "downed",
+    "hit_body",
+    "hit_body"
+   ],
+   "envFireWorstPeak": 1.0987,
+   "envFireWorstPeakLim": 0.7644,
+   "envFireWorstClippedLim": 0,
+   "thunderRef": {
+    "keys": [
+     "thunder",
+     "rain",
+     "wind"
+    ],
+    "peak": 0.4597,
+    "withWorst": 1.0978,
+    "withWorstLim": 0.7648,
+    "_뜻": "천둥은 세계에 없다 — 후보 키로 잰 **참고**(세계가 보내는 날의 자리)."
+   },
+   "_뜻": "[T482] 시설 불(노+숯가마 곁에 둘 · 같은 파일 두 벌을 같은 순간에 — 상한) + 환경 손 상한(바람·센 비·파도·시냇물) + 정본 최악 사건. 없이 1.0987 → 끼고 0.7644 · 클리핑 0. 같은 불 두 벌은 위상이 겹쳐 0.2352 × 2 = 0.4703 이다(실제로는 시작 시각이 달라 이보다 작다)."
+  },
+  "_T482": "천둥 ✗(세계에 값 없음 — 날씨 기계에 강수·바람·기온뿐 · 새 수로 안 짓는다) · 시설 가동 ○(서버가 이미 `building_updated` 로 `job.until` 을 싣는다 — 서버 0줄 · 층이 식은 가마를 끔) · 밤 벌레 자리 배선(키 없음 = 무음). 헤드룸 손 상한 1.0987 → 끼고 0.7644 · `worstCombo` 무변."
  },
  "ground": {
   "_뜻": "발밑 지형 → 발자국 키. 지형 정본은 `window.__tileStateAt` 하나(`kind`·`geo`·풀 알파) — 층은 그 답을 이 표로 옮길 뿐이다.",
@@ -2092,5 +2134,9 @@
   "_뜻": "[T473] 자원 `type` → 반복 키(건물 `buildings` 와 같은 문법 — 개체마다 하나 · 거리 감쇠 · 화면 밖이면 멎음).",
   "water_pool": "water_pool",
   "_water_pool": "고인 물(자원 · `RESOURCE_HP_TABLE` 999 — 사실상 부서지지 않는 환경물). 보글거림 1번(T397 확보 · 후보 → 배선)."
+ },
+ "nightAmbient": {
+  "_뜻": "[T482] 밤 벌레 — 밤 · 비 아님 · 바깥이면 이 키가 환경 반복으로 운다. **키가 아직 없다**(PD/CC0/CC-BY 녹음 0 — Commons 귀뚜라미 전부 BY-SA · 녹음 회부 `_sfx_in/`). 키가 `keys` 에 없으면 층은 조용하다 — 녹음이 오면 `keys` 에 한 줄이면 운다.",
+  "key": "crickets"
  }
 }

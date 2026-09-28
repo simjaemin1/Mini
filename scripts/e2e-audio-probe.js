@@ -681,6 +681,31 @@ const db = (x) => (x > 0 ? +(20 * Math.log10(x)).toFixed(2) : -Infinity);
       await page.evaluate(() => { zonesMeta = {}; _waterCellCache.clear(); _sfxWaterCell = null; delete waterTilesByZone.T; delete window.Terrain; for (const k of [..._sfxLoops.keys()]) { if (/^amb:(water|waves)$|^water_pool:/.test(k)) { try { _sfxLoops.get(k).src.stop(); } catch (e) {} _sfxLoops.delete(k); } } });
     }
 
+    // 57 ★★[T482] 시설 가동 · 밤 벌레 — 진짜 `scan`
+    {
+      const NA = MAN.nightAmbient || {};
+      const kiln = (job) => [{ kind: 'building', b: { id: 'kz', type: 'charcoal_kiln', x: 0, y: 0, data: job ? { job } : {} }, ax: 0, ay: 0 }];
+      const fireOn = (job) => page.evaluate(async (list) => { _sfxScanAt = 0; myAbsPredicted = { x: 0, y: 0 }; window.__sfx.scan(list, 0, 0); await new Promise((r) => setTimeout(r, 300)); return [..._sfxLoops.keys()].some((k) => /^fire:kz/.test(k)); }, kiln(job));
+      const now = await page.evaluate(() => worldNow());
+      await fireOn({ kind: 'kiln', startedAt: now, until: now + 60000 }); await page.waitForTimeout(600);   // 데우기
+      const burning = await fireOn({ kind: 'kiln', startedAt: now, until: now + 60000 });
+      const cooled = await fireOn({ kind: 'kiln', startedAt: now - 90000, until: now - 1000 });
+      const idle = await fireOn(null);
+      ok(burning === true && cooled === false && idle === false, '57a ★숯가마 — 타는 동안 불소리 · 다 탄 뒤(꺼내기 전 식은 가마) 0 · 조업 없음 0', `타는 중 ${burning} · 식음 ${cooled} · 없음 ${idle}`);
+      // 밤 벌레 — 키가 없으면 밤이어도 0 · 미끼: 키를 한 줄(다른 파일로) 세우면 운다(배선은 서 있다)
+      const night = (addKey) => page.evaluate(async ({ k, addKey }) => {
+        const saveN = isNight; isNight = () => true; _sfxWx.precip = 0; _sfxWx.indoor = false;
+        if (addKey) _sfxMan.keys[k] = Object.assign({}, _sfxMan.keys.bird);
+        _sfxScanAt = 0; window.__sfx.scan([], 0, 0); await new Promise((r) => setTimeout(r, 400));
+        _sfxScanAt = 0; window.__sfx.scan([], 0, 0); await new Promise((r) => setTimeout(r, 300));
+        const on = [..._sfxLoops.keys()].includes('amb:' + k);
+        if (addKey) { window.__sfx.ambient(k, 0, {}); delete _sfxMan.keys[k]; }
+        isNight = saveN; return on;
+      }, { k: NA.key, addKey });
+      const noKey = await night(false), withKey = await night(true);
+      ok(noKey === false && withKey === true, `57b 밤 벌레(\`${NA.key}\`) — 키 없음 = 무음 · 미끼: 키 한 줄이면 밤에 운다(자리 배선은 서 있다)`, `없음 ${noKey} · 세움 ${withKey}`);
+    }
+
     // ④ ★[T305] 옛 곡선이 증폭기였다는 것을 **이 자로 다시 보인다** — 자명 통과 금지.
     //    같은 입력을 옛 곡선에 통과시켜 원점 기울기를 잰다. 1 이 나오면 자가 고장 난 것이다.
     {

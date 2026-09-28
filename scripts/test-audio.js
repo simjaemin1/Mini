@@ -1331,5 +1331,28 @@ console.log('\n㉑ ★★[T473] 환경 — 바다/민물 · 고인 물');
      '㉑d 파도 — CC BY 3.0 · `CREDITS §1` 표시 줄이 있다(넷째 CC-BY)', S.source);
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+console.log('\n㉒ ★★[T482] 세계가 안 보내는 소리 — 천둥 · 시설 가동 · 밤 벌레');
+{
+  const layerCode = require('./code-only.js')(modCode);
+  const wsrc = require('./code-only.js')(fs.readFileSync(path.join(ROOT, 'server', 'weather.js'), 'utf8'));
+  const zsrc = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
+  const wf = zsrc.slice(zsrc.indexOf('function weatherFor('), zsrc.indexOf('function weatherFor(') + 3500);
+  // ㉒a 천둥 — 세계의 날씨 기계(`weather.js`)와 날씨 전문(`weatherFor`)에 천둥·번개 값이 **없다** ⇒ 후보 키는 후보로 남는다.
+  //   이 줄이 빨개지는 날 = 서버가 천둥을 보내기 시작한 날(그때 한 줄로 배선한다 — 지금 짓지 않는다 · 새 수 0).
+  ok(!/thunder|lightning|storm/i.test(wsrc) && !/thunder|lightning/i.test(wf) && KEYS.thunder && KEYS.thunder['후보'],
+     '㉒a ★천둥 — 세계에 천둥 값이 없다(날씨 기계·날씨 전문 모두) · `thunder` 는 후보 그대로(사건 없는 소리는 안 잇는다)');
+  // ㉒b 시설 가동 — 서버가 조업에 끝 시각을 싣고(`job.until`) 건물 전문으로 보낸다 · 층은 **타는 동안만** 운다
+  const BW = man.buildingsWhen || {};
+  ok(BW.furnace && BW.furnace.until === 'until' && BW.charcoal_kiln && BW.charcoal_kiln.until === 'until'
+     && /b\.data\.job = \{ kind: 'kiln', startedAt: nowK, until:/.test(zsrc) && /b\.data\.job = \{ kind: 'smelt', startedAt: now, until:/.test(zsrc)
+     && /worldNow\(\) >= u/.test(layerCode),
+     '㉒b ★노·숯가마 — 조업 칸 `job.until`(서버가 이미 싣는다 · 서버 0줄) · 층은 서버 시계로 **끝나기 전까지만** 불소리(식은 가마 0)');
+  // ㉒c 밤 벌레 — 자리 배선은 섰고 키는 아직 없다(녹음 회부) ⇒ 무음
+  const NA = man.nightAmbient || {};
+  ok(typeof NA.key === 'string' && !KEYS[NA.key] && /_sfxMan\.nightAmbient/.test(layerCode) && /naM = naK && sfxKey\(naK\)/.test(layerCode),
+     '㉒c 밤 벌레 — 자리(`nightAmbient`)는 배선 · 키가 표에 없어 무음(녹음이 오면 `keys` 한 줄)', `key ${NA.key}`);
+}
+
 console.log(`\n=== PASS ${pass} / FAIL ${fail} ===`);
 process.exit(fail ? 1 : 0);
