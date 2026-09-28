@@ -3915,6 +3915,111 @@ function _warLootPickup(w, winSurvPids, side) {
   if (WC.warLog) WC.warLog(state.world.day, (side === 'A' ? w.atk.name : w.def.name) + ' 노획을 짐에 — 곳간 몫 ' + feG.toFixed(1) + (leftG > 0 ? '(남김 ' + leftG.toFixed(1) + ')' : '') + ' · 전장 ' + feP.toFixed(1) + (lost > 0 ? '(버림 ' + lost.toFixed(1) + ')' : '') + ' · 몸 ' + bodies.length);
 }
 
+// ════════════════════════════════════════════════════════════════
+// ★★[T476 2026-09-28 · 도적 Phase 2 마지막 · #68 넷째 길] **토벌도 원정이다** — 손잡이 `T476_PUNITIVE`(끔).
+//   ① 결단(여기 · 하루 경계 war-core daily 직후): 마을이 **아는** 약탈 — 사건 장부 `visibleEvents` 의 제 마을 `CARAVAN_RAIDED`·
+//     `TRADER_KILLED`(0홉 = 제 눈) — 와 제 장부의 털린 양(econ `tradeStats.cargoLost` 증분 · 손잡이 켠 날부터).
+//     소굴 = 그 마을 교역로에 선 갱(bandits 가 이미 세운 길목 표 `world.banditGang` — 사건엔 좌표가 없다 · 보고 §4).
+//     문턱 = **털린 양 ≥ 원정 팩 비용**(war-core 동원 계획이 낼 병력 × (행군 왕복 + 공성분) × WAR_RATION — 싣게 될 그 수 · 새 수 0).
+//     승산·병력·행군일은 war-core `_warNpcMobPlan` 그대로(마을 대 마을과 같은 결단 · 목표만 소굴).
+//   ② 원정: `warMobilize(마을, 소굴 어댑터, 'feud', 거리, 날)` — 그 뒤는 전쟁 사슬 그대로(T423 짐 · T441 길 채집 · T466 노획).
+//     소굴 어댑터 = 갱의 편성(n 명 전사 · 제 무기 · 비축)을 econ 모양으로 비춘 것 — 곳간 = 갱의 비축.
+//   ③ 소굴 전투: 목표에 닿으면(수비 몸 없음) war-core 그 판(`warResolveBattle` · 헤드리스 · 몸 표식 → T466 문) → 사상을 표본 몸에 옮기고
+//     → `_warEndFight` → 갱에 되비춘다(`g.n`·`g.food` · 3명 미만이면 bandits 가 해산·철거).
+//   ★abstract 토벌(bandits `_sup`)은 이 마을에선 쉰다 — war 쿨(`_warCd`)을 bandits 쿨(`_bdtSupCd`)에 그대로 적는다(이중 토벌 0).
+function _t476On() { return typeof process !== 'undefined' && !!process.env && process.env.T476_PUNITIVE === '1'; }
+function _t476DenVil(g) {
+  const den = { name: '소굴#' + g.id, dbId: 'den' + g.id, ccx: g.camp.cx, ccy: g.camp.cy, npcPids: [], housesPx: [], _defPolicy: 'respond',
+    _den: { gid: g.id, gang: g }, econ: { name: '소굴#' + g.id, npcs: [], counts: {}, storage: {}, _world: state.world } };
+  _t476DenRefresh(den);
+  return den;
+}
+function _t476DenRefresh(den) {   // 갱 → 어댑터(편성: n 명 전사 · 한 사람 한 무기 · 비축 = 곳간 food)
+  const g = den._den.gang, e = den.econ, n = Math.max(0, g.n | 0);
+  while (e.npcs.length > n) e.npcs.pop();
+  while (e.npcs.length < n) e.npcs.push({ currentJob: 'warrior', age: 30 });
+  e.counts.warrior = n;
+  e.storage.food = Math.max(0, g.food || 0); e.storage.fish = 0; e.storage.meat = 0; e.storage.cooked_food = 0; e.storage.vegetable = 0;
+  e.storage.weapon = n; e.storage.armor = 0;
+}
+function _t476DenSync(w) {   // 어댑터 → 갱(전투·노획 뒤)
+  const den = w && w.def; if (!den || !den._den) return;
+  const g = den._den.gang, S2 = den.econ.storage;
+  g.n = den.econ.npcs.length;
+  g.food = Math.max(0, (S2.food || 0) + (S2.fish || 0) + (S2.meat || 0) + (S2.cooked_food || 0) + (S2.vegetable || 0));
+}
+function _t476Gang(vil) {   // 그 마을 교역로에 선 갱 중 가장 가까운 것(bandits 길목 표)
+  const W = state.world; if (!W || typeof W.banditGang !== 'function') return null;
+  let best = null, bd = Infinity;
+  for (const o of state.villages) {
+    if (o === vil || !o.econ) continue;
+    let g = null; try { g = W.banditGang(vil.econ, o.econ); } catch (_) { g = null; }
+    if (!g || !(g.n > 0) || !g.camp) continue;
+    const d = Math.hypot(g.camp.cx - vil.ccx, g.camp.cy - vil.ccy);
+    if (d < bd) { bd = d; best = g; }
+  }
+  return best ? { g: best, dist: bd } : null;
+}
+function _t476Decide(day) {
+  const WC = state.war, K = state.warCore, L = state.ledger;
+  if (!_t476On() || !WC || !K || !L || typeof L.visibleEvents !== 'function') return 0;
+  const st = state._t476Stat || (state._t476Stat = { seen: 0, known: 0, noDen: 0, plan: 0, short: 0, go: 0, rows: [] });
+  if (state._t476Kill) state._t476Kill = state._t476Kill.filter(k => { if (day >= k.day + 2) { k.g._supKill = 0; return false; } return true; });
+  let go = 0;
+  for (const vil of state.villages) {
+    const e = vil.econ; if (!e || !e.npcs || e.npcs.length < 2) continue;
+    const lostNow = +((e.tradeStats && e.tradeStats.cargoLost) || 0);
+    if (e._t476Lost0 == null) { e._t476Lost0 = lostNow; e._t476Seen = day; continue; }   // 켠 날부터 아는 것만(과거 누계로 한꺼번에 떠나지 않는다)
+    if (day < (e._warCd || 0)) continue;
+    let raids = 0; const rows = L.visibleEvents(vil.dbId | 0, { n: 64, today: day }).rows;
+    for (const r of rows) { const ev = r.ev; if (ev && ev.vid === (vil.dbId | 0) && (ev.type === 'CARAVAN_RAIDED' || ev.type === 'TRADER_KILLED') && r.heard > (e._t476Seen || 0)) raids++; }
+    if (!raids) continue;
+    st.known++;
+    const lost = Math.max(0, lostNow - e._t476Lost0);
+    const _say = (m) => { if (WC.warLog && e._t476Said !== day) { e._t476Said = day; WC.warLog(day, vil.name + ' 토벌 검토 — 약탈 ' + raids + '건 · 털린 양 ' + lost.toFixed(1) + ' · ' + m); } };
+    const gd = _t476Gang(vil); if (!gd) { st.noDen++; _say('소굴 모름(길목 갱 없음)'); continue; }
+    if (WC.WARS.some(x => x.def && x.def._den && x.def._den.gid === gd.g.id)) continue;   // 그 소굴로 이미 가는 원정이 있다
+    const den = _t476DenVil(gd.g);
+    const plan = WC._warNpcMobPlan(vil, den, 'feud', gd.dist, day);
+    if (!plan || !plan.viable) { st.plan++; _say('소굴#' + gd.g.id + '(' + gd.g.n + '명 · ' + gd.dist.toFixed(0) + '셀) 동원 안 됨(' + ((plan && plan.capReason) || '-') + (plan && plan.pWin != null ? ' · 승산 ' + (plan.pWin * 100).toFixed(0) + '%' : '') + (plan && plan.forceCount != null ? ' · 병력 ' + plan.forceCount : '') + ')'); continue; }
+    const cost = plan.forceCount * (plan.marchDays * 2 + K.WAR_SIEGE_PACK) * K.WAR_RATION;
+    if (lost < cost) { st.short++; _say('소굴#' + gd.g.id + ' 팩 비용 ' + cost.toFixed(1) + ' 에 못 미침(병력 ' + plan.forceCount + ' · 행군 ' + plan.marchDays + '일)'); continue; }
+    if (!WC.warMobilize(vil, den, 'feud', gd.dist, day)) { st.plan++; continue; }
+    const w = WC.WARS[WC.WARS.length - 1]; if (!w || w.def !== den) continue;
+    w._opPolicy = 'assault';
+    w._t476 = { day, raids, lost: +lost.toFixed(3), cost: +cost.toFixed(3), gid: gd.g.id, gangN: gd.g.n, gangFood: +(gd.g.food || 0).toFixed(3), dist: +gd.dist.toFixed(1) };
+    e._t476Seen = day; e._t476Lost0 = lostNow;
+    e._bdtSupCd = Math.max(e._bdtSupCd || 0, e._warCd || 0);   // abstract 토벌은 이 원정 동안 쉰다(쿨은 war 의 그 수)
+    go++; st.go++;
+    if (st.rows.length < 64) st.rows.push(Object.assign({ vil: vil.name, wid: w.id, force: w.force, marchDays: w.marchDays }, w._t476));
+    if (WC.warLog) WC.warLog(day, vil.name + ' 토벌 결단 → 소굴#' + gd.g.id + '(' + gd.g.n + '명 · ' + gd.dist.toFixed(0) + '셀) — 약탈 ' + raids + '건 · 털린 양 ' + lost.toFixed(1) + ' ≥ 팩 비용 ' + cost.toFixed(1) + ' · 병력 ' + w.force + ' · 행군 ' + w.marchDays + '일');
+  }
+  return go;
+}
+function _t476DenBattle(body) {
+  const w = body.w, f = body.fight, WL = state.warLive, den = w.def, day = state.world.day, WC = state.war;
+  _t476DenRefresh(den);   // 원정 동안 갱이 변했을 수 있다(유지비·합류·abstract 사건) — 싸우는 순간의 갱
+  let r = null, walk = false;
+  if (den.econ.npcs.length >= 2) { try { r = WC.warResolveBattle(w, day, { bodies: true }); } catch (e) { console.error(`[${state.zoneId}] 🏴 [T476] 소굴 전투 실패:`, e.message); } }
+  if (!r) { walk = true; try { WC._warWalkoverOutcome(w.atk, den, day, w.casus, w); } catch (_) { } r = { winner: 'A', atkCas: 0, defCas: 0 }; }
+  //   사상을 표본 몸에 — econ 이 죽인 수(atkCas)를 몸 비율로(표본 몸 k = round(atkCas × 몸 ÷ 병력)) · 앞에서부터(결정론)
+  if (f && r.atkCas > 0) {
+    const A = f.ctx.units.filter(u => u.side === 'A' && u.hp > 0);
+    const k = Math.min(A.length, Math.round(r.atkCas * A.length / Math.max(1, w.force || A.length)));
+    for (let i = 0; i < k; i++) A[i].hp = 0;
+  }
+  const bk = w._t476; if (bk) { bk.winner = r.winner; bk.atkCas = r.atkCas; bk.defCas = r.defCas; bk.battleDay = day; bk.walk = walk; }
+  if (f) WL.settle(f, 'walkover', r.winner);   // 기록만(정산은 위 한 번 · rout 으로 부르면 war-live 가 한 번 더 정산한다)
+  w._sortie = false; w.phase = 'return'; w.eta = day + (w.marchDays || 1);
+  _warEndFight(body, walk ? 'walkover' : 'rout', r.winner);
+  _t476DenSync(w);
+  if (bk) { bk.gangAfter = den._den.gang.n; bk.foodAfter = +(den._den.gang.food || 0).toFixed(3); }
+  //   bandits 해산 분기(있는 규칙): 토벌이 3명 미만으로 깎았으면 소굴 영구 철거 — 그 판단을 bandits 가 **다음 경계**에 하게 표식만 둔다.
+  //   살아남으면(3명 이상) 그다음 경계에 표식을 거둔다(`_t476Decide` 머리) — 나중의 자연 해산이 격멸로 읽히지 않게.
+  if (r.winner === 'A') { den._den.gang._supKill = 1; (state._t476Kill || (state._t476Kill = [])).push({ g: den._den.gang, day }); }
+  if (WC.warLog) WC.warLog(day, w.atk.name + ' 소굴#' + den._den.gid + ' 토벌 ' + (r.winner === 'A' ? '승' : '패') + ' — 사상 원정 ' + (r.atkCas || 0) + ' · 도적 ' + (r.defCas || 0) + ' · 갱 ' + den._den.gang.n + '명 남음 · 비축 ' + (den._den.gang.food || 0).toFixed(1));
+}
+
 function _warCleanupBody(body, releaseRemaining) {
   if (body && body.w && (body.w._lootPend || body.w._lootPile)) _warLootPickup(body.w, [], 'A');   // ★[T466] 싣지 못한 채 몸이 끝나면: 곳간 몫은 그 곳간에 · 더미는 버림(맡긴 것이 사라지지 않게)
   if (releaseRemaining) _warRationLayDownBody(body);   // ★[T423] 집에 닿은 몸이 짐을 내려놓는다(풀려나기 전에 · 끔이면 0)
@@ -4002,6 +4107,7 @@ function tickWarBodies(now) {
       if (!body.defGroup && f.state !== 'engaged') {   // 수비가 없다 — 목표(마을 중심)에 닿으면 무저항 함락(war-core)
         const c = WL.centroid(f, 'A');
         if (c && Math.hypot(c.x - f.objective.x, c.y - f.objective.y) <= WL.WAR_ENGAGE_R * WL.M_PER_CELL) {
+          if (w.def && w.def._den) { _t476DenBattle(body); continue; }   // ★[T476] 소굴 — 지키는 마을 사람이 없는 게 아니라 도적이 있다(war-core 그 판)
           try { state.war._warWalkoverOutcome(w.atk, w.def, state.world.day, w.casus, w); } catch (_) { }   // ★[T466] w — 켬이면 곳간 몫을 몸이 옮긴다
           WL.settle(f, 'walkover', 'A');
           w._sortie = false; w.phase = 'return'; w.eta = state.world.day + (w.marchDays || 1);
@@ -4243,7 +4349,8 @@ function _openDayJobs(now) {
       state.econV2.tickWorldV2(state.world);
       // P1: 전쟁 econ 층 — tickWorldV2 직후 구동(오늘 세운 동원정지/봉쇄/원한제재가 내일 틱에 반영). phase='battle'는 skip(교전 중).
       //   ★[T284] 결단이 전쟁을 끝냈으면(항복·철수) 그 자리에서 실체를 정리·정산한다(_warAfterDaily).
-      if (state.war) { const _sb = (state.war.stats().surrender) || 0; state.war.daily(state.world.day); try { _warAfterDaily(_sb); } catch (e) { console.error(`[${state.zoneId}] ⚔️ 결단 뒤 정리 실패:`, e.message); } }
+      if (state.war) { const _sb = (state.war.stats().surrender) || 0; state.war.daily(state.world.day); try { _warAfterDaily(_sb); } catch (e) { console.error(`[${state.zoneId}] ⚔️ 결단 뒤 정리 실패:`, e.message); }
+        if (_t476On()) { try { _t476Decide(state.world.day); } catch (e) { console.error(`[${state.zoneId}] 🏴 [T476] 토벌 결단 실패:`, e.message); } } }   // ★[T476] 토벌 결단(끔이면 한 줄)
     } finally { console.log = _log; }
     // ★★[T60 ② 2026-09-03] **NPC 어획이 같은 물을 줄인다** — econ 틱 **직후**, 같은 하루 안에서.
     //   여기가 옳은 자리인 이유: `_fishOutLast` 는 방금 끝난 하루의 실적이고, 아래 `refreshFishSustain`
@@ -4490,6 +4597,7 @@ function __p3Bind(mock) {
     threatOf, _warWriteThreats, _warOutMul, _lifeJobSites, _lifeJobSiteOK, _warRoutePts, _warTreeCell, computeRoutePts,
     _econSameOf, _warEatBySpoil,   // ★[T458] 같은 물건 한 줄 · 상하는 것부터 — 하네스가 **이 함수**로 등가 표를 센다(사본 0)
     _warLootAccept, _warLootPickup,   // ★[T466] 약탈 = 행위 — 하네스가 운영과 같은 훅을 war-core 에 건다
+    _t476Decide, _t476DenVil,   // ★[T476] 토벌 결단 · 소굴 어댑터 — 하네스가 운영과 같은 결단을 부른다
     _warRationEat, _warRationCollect, _warRationLoad,   // ★[T423] 짐이 먹는다 — 하네스가 **이 함수들**을 war-core 에 건다(운영과 같은 두 훅)   // ★[T329] 위협 T·현장 반경 — 하네스가 **이 함수들**을 그대로 부른다(사본 0)
   };
 }

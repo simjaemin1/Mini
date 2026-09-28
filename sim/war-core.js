@@ -1042,7 +1042,9 @@ function createWar(opts) {
     const _capLDead = atkWin ? _defDead : _atkDead;
     const _capWSurv = atkWin ? Math.max(0, _res.atkSurv || 0) : Math.max(0, _res.defSurv || 0);
     const _capRoster = atkWin ? ((_spec && _spec._defComp && _spec._defComp.veteranRoster) || null) : (w._vetRoster || null);
-    const _cap = warCapture(_capLoserVil, _capWinnerVil, _capLDead, _capWSurv, J, day, _capRoster, st);
+    //   ★[T476] 목표가 도적 소굴(`w.def._den` — 호스트가 세운 어댑터)이면 포로 0 — 도적은 마을 명부로 안 들어가고, 마을 사람도 소굴 명부로 안 간다.
+    const _den = !!(w.def && w.def._den);
+    const _cap = _den ? { cand: 0, take: [], freed: 0 } : warCapture(_capLoserVil, _capWinnerVil, _capLDead, _capWSurv, J, day, _capRoster, st);
     const atkCas = warKill(A, atkWin ? _atkDead : Math.max(0, _atkDead - _cap.cand), rng), defCas = warKill(D, atkWin ? Math.max(0, _defDead - _cap.cand) : _defDead, rng);
     warCaptiveIntake(_capWinnerVil, _cap.take);
     { const _aSet = new Set(A.npcs); if (w._vetRoster) warVeteranGrowth(A, w._vetRoster.filter(it => _aSet.has(it.npc))); const _dSet = new Set(D.npcs), _dvet = (_spec._defComp && _spec._defComp.veteranRoster) || null; if (_dvet) warVeteranGrowth(D, _dvet.filter(it => _dSet.has(it.npc))); }
@@ -1056,14 +1058,14 @@ function createWar(opts) {
     let outcome = '격퇴';
     if (atkWin) {
       st.atkWin++; warAddTrauma(A, w.def.name, -0.4);
-      const loot = _warLootMove(precomputedRes ? w : null, D, A, Math.max(0, _feOf(D)) * (WAR_J_LOOT0 + WAR_J_LOOT1 * J), 'battle'); st.loot++;   // ★[T466] 실체 교전만(헤드리스 결판은 몸이 없다 — 종전)   // ★[T295 ③] outcome = '약탈곡물' + loot.toFixed(0) + '(J ' + J.toFixed(2) + ')';
+      const loot = _warLootMove((precomputedRes && (precomputedRes.res || precomputedRes.bodies)) ? w : null, D, A, Math.max(0, _feOf(D)) * (WAR_J_LOOT0 + WAR_J_LOOT1 * J), 'battle'); st.loot++;   // ★[T466] 실체 교전만(헤드리스 결판은 몸이 없다 — 종전)   // ★[T295 ③] outcome = '약탈곡물' + loot.toFixed(0) + '(J ' + J.toFixed(2) + ')';
       for (const pg of ['tigerhide', 'hide', 'bronze', 'jade']) { if (D.storage[pg] > 0) { const t = D.storage[pg] * WAR_LOOT_PREST * (WAR_J_PREST0 + WAR_J_PREST1 * J); D.storage[pg] -= t; A.storage[pg] = (A.storage[pg] || 0) + t; } }
       if (w.casus === 'feud') { warAddGrudge(A, w.def.name, -1); outcome += ' +원한해소'; }
       else if (w.casus === 'territory') { A._terrSat = day + 720; outcome += ' +경계양보(2년)'; }
       else if (w.casus === 'trade' && D.npcs.length > 4) { _addTribute(w.def, w.atk, day); outcome += ' +조공' + WAR_TRIB_YRS + '년'; }
       if (J < WAR_REP_TH) { A._warFatigue = (A._warFatigue || 0) + (WAR_REP_TH - J) * WAR_J_FAT; outcome += ' [불의전 피로]'; }
     } else { st.defWin++; warAddTrauma(A, w.def.name, WAR_TRAUMA_UP); A._warCaution = Math.min(1, (A._warCaution || 0) + 0.5); }
-    warThirdPartyRep(w.atk, w.def, J, day);
+    if (!_den) warThirdPartyRep(w.atk, w.def, J, day);   // ★[T476] 소굴 토벌엔 관전 마을의 평판 소문이 없다
     { const _ls = atkWin ? _res.defStart : _res.atkStart, _ld = atkWin ? _defDead : _atkDead; const _rn = atkWin ? (_res.routB || 0) : (_res.routA || 0), _rm = atkWin ? _res.routMrlB : _res.routMrlA; const _wf = warWeaponFlow(winnerE, loserE, _ls, _ld, _rn, _rm, st, (!atkWin && w._arms) ? w._arms : undefined); if (_wf) outcome += ' +노획' + _wf.gain.toFixed(1) + (_wf.qUp ? '·품질↑' + _wf.newQ.toFixed(2) : ''); }
     // ★[3파 포로] 화면 층 인계 스태시 — villages._warOnResolved가 패자측 사상 표본 pid 일부를 호송 실체로 전환(승자 마을 이관).
     if (_cap.take.length || _cap.freed) {
@@ -1072,6 +1074,7 @@ function createWar(opts) {
       log(day, '포로 ' + _cap.take.length + '명 ' + _capLoserVil.name + '→' + _capWinnerVil.name + (_cap.freed ? ' · 방면 ' + _cap.freed + '명(상한 초과 — 그 자리 해제·귀향)' : '') + ' — 승자 귀환에 호송(도보)');
     }
     log(day, '전투 ' + w.atk.name + ' vs ' + w.def.name + '[' + w.casus + '] → ' + (atkWin ? '공격승' : '방어승') + ' 사상 공' + atkCas + '·방' + defCas + ' [전술 공' + _res.atkStart + '→' + _res.atkSurv + ' 방' + _res.defStart + '→' + _res.defSurv + ' ' + _res.ticks + '틱] · ' + outcome);
+    return { winner: atkWin ? 'A' : 'B', atkCas, defCas, loot: st.loot };   // ★[T476] 호출측(소굴 토벌)이 표본 몸에 사상을 옮긴다 — 종전 호출은 반환을 안 읽는다
   }
 
 
