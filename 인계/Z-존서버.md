@@ -3,6 +3,11 @@
 > ★이 파일은 **영역 소유 세션만** 갱신한다. 다른 영역에 쓸 말이 생기면 `인계/회부.md` 에 한 줄.
 > 원문은 `_아카이브_2026-08_다음세션_인계.md` 에 그대로 동결돼 있다(족보 · 삭제 금지).
 > 이사할 때 **문장을 한 글자도 안 고쳤다** — 낡아 보이는 줄엔 `[낡음? 확인 필요]` 표만 붙였다.
+
+## T484. ★2026-09-28 — 존 기동 때 존 기후를 econ 에 얹는다(한 호출 · 정본은 `인계/K-달력온도.md` 3-연)
+
+* `zone.js` 맨 위 `SimVillages` 바로 뒤 — `weather.applyZoneClimate(ZONE_ID)`. 표(`server/climate-normals.js`)의 `apply` 인 존(중원북·닛폰)만 평년값을 얹는다. `T484_PALEO=1` 이면 청동기 Δ 를 더한다. 나머지 존 · 한반도는 무동작(비트 동일).
+* 기온의 시계는 `gameDayT(now)` 다(분수 게임일 + 세계 phase) — HUD `weatherNow` · 몸 `Body.tick` ctx `dayT`·`dayPh` 가 쓴다.
 ## T485. ★★2026-09-28 — 두 호스트(서울 central·한반도 + 도쿄 닛폰) · 안 도는 자리 1 = 안 문 비밀
 
 * 호스트가 갈리면 안 문(`internal-door` — 존↔central `/player`·`/tribe/*` · 존↔존 `/handoff_prepare`·`/handoff_ack`·`/ghost_sync`·`/cross_damage`·`/kick_player`)이 **사설 주소 폴백을 잃는다** → 404/401. `CENTRAL_SECRET` 을 **셋 다**(central · 한반도 · 닛폰) — 하나만 주면 서울 안에서도 401.

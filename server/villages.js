@@ -9065,6 +9065,8 @@ function __e2eForceDeed(vid, kind) {
 //     `|| 0` 로 뭉개면 "0 = 없음" 이 되어 첫날에 벽시계로 잘못 떨어진다(하네스에서 실제로 그랬다:
 //     달력이 "3402년 봄 1일" 로 떴다 — 에폭이 먼 과거라 벽시계 일수가 컸던 것이다).
 function econDay() { return (state.world && Number.isFinite(state.world.day)) ? (state.world.day | 0) : null; }
+// ★[T484 ①] 분수 게임일 — econ 의 날 D + 그 날의 경계(`econDayToMs(D)`)에서 흐른 몫. 경계를 넘었는데 econ 이 아직 D 에 있어도 1 을 넘어 **이어진다**(계단 0).
+function econDayT(now) { if (!state.world || !Number.isFinite(state.world.day) || !state.dayMs) return null; const D = state.world.day | 0; return D + (now - econDayToMs(D)) / state.dayMs; }
 
 // ★★[T7 2026-09-01] 소문 도달 지연 계측 훅 — **읽기 전용**(계측기도 사본 금지 · 검증 원칙 ㉒).
 //   대리 지표(51마을 도달 지연 분포)를 계측 스크립트가 **정본 표 그대로** 읽게 내준다.
@@ -9094,7 +9096,7 @@ module.exports = { fishPerf, woodPerf, foragePerf, farmPerf,   // ★[T316] `/pe
   _actDay, _actTake,   // ★[T334] 예산 장부 몸통(어부 전용 — T341 이 나무에서 걷어냈다) — 하네스가 규칙을 옮겨 적지 않게 내준다
   _t341TripsPerDay, _t341TreesPerLoad, _t398Cells,   // ★[T341] 하루 왕복 수·짐당 그루 — **걸음이 정한다**(하네스가 유도를 다시 계산해 대조한다) · ★[T398] 나무꾼 후보 셀(고리 · 자·하네스가 이 함수를 부른다)
  
-  init, onGameTick, invalidateTradeDistances, npcLifeTick, lifeDebug, econDay,
+  init, onGameTick, invalidateTradeDistances, npcLifeTick, lifeDebug, econDay, econDayT,
   tickPerf,   // ★[T1 §0] 일틱 단계별 소요 — zone.js `/perf` 가 소비(계측 전용)
   villagesBusy, villageWait,   // ★[T1 §2-②] "장부 마감 중" 큐 — zone.js 가 마을 요청만 이 문으로 보낸다
   dayNow: _dayNow,   // ★[T1] 마감 중이면 **경계의 순간**을 돌려준다 — 벽시계 적분(광맥 재생)이 조각 순서에 흔들리지 않게

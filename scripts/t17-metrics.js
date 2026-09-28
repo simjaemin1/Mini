@@ -55,6 +55,9 @@ const Z = process.env.T17_ZONE || 'hanbando', ZONE = ZONES[Z], SZ = P.SZ;
 if (!ZONE) { console.error(`[T17_ZONE] 모르는 존: ${Z}`); process.exit(2); }
 
 P.setZoneId(Z);
+// ★[T484] 존 기후 — 서버 존 기동과 **같은 한 호출**(`weather.applyZoneClimate`) · 표에 없거나 `apply: false` · `T484_PALEO` 끔이면 무동작(비트 동일).
+//   `T484_T17_NORMALS=1` 은 이 자만의 팔(평년값 `apply: false` 인 존 — 한반도 — 을 켰을 때의 3시드 표 · 켜기는 재민).
+{ const _c = R('server/weather').applyZoneClimate(Z, { forceNormals: process.env.T484_T17_NORMALS === '1' }); if (_c && _c.changed) console.log('[T484] 존 기후', JSON.stringify(_c.CLIMATE)); }
 const _inZone = (x, y) => !(x < 0 || y < 0 || x >= ZONE.zoneWidth || y >= ZONE.zoneHeight);
 // ★★[T407 2026-09-26] **해안선 띠** — 서버의 통행 정본(`zone.js isWaterTileLocal`)은 물을 **둘** 본다:
 //   해안선 띠(`WATER_TILES` = `chunk.generateCoastlineWaterTiles`)와 손그림 강·호수. 이 자는 여태 **뒤엣것만** 봤다.
