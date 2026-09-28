@@ -3,6 +3,13 @@
 > ★이 파일은 **영역 소유 세션만** 갱신한다. 다른 영역에 쓸 말이 생기면 `인계/회부.md` 에 한 줄.
 > 원문은 `_아카이브_2026-08_다음세션_인계.md` 에 그대로 동결돼 있다(족보 · 삭제 금지).
 > 이사할 때 **문장을 한 글자도 안 고쳤다** — 낡아 보이는 줄엔 `[낡음? 확인 필요]` 표만 붙였다.
+## T498. ★★2026-09-28 — 핸드오프 central 왕복을 길에서 뺀다(팔 `T498_HANDOFF_PAYLOAD` · 기본 끔)
+
+* 켜면 `fireHandoff` 가 떠나기 전 await 저장을 안 한다 — 도착 존이 페이로드로 몸을 세우고(원래 그랬다 · `getPlayer` 는 몸 없는 폴백) **접속 저장**이 성공의 한 번. 실패(ACK 3초 시한)면 떠나는 순간 쥔 행(`_savePatch`)을 `_saveSend`.
+* `savePlayer` = `canPersist` + `_saveSend(_savePatch(…))` — 몸통을 둘로 갈랐을 뿐.
+* 실측(`t498-clock.sh` · 존 → central 한 다리 왕복 150ms 지연 중계): 떠나는 존 인계 157.5 → **2.9ms** · e2e 46/0 두 팔 · 몸 T47 21/0 두 팔 · 게스트 재접속 40/0 두 팔 · 실패 쪽 최종 행 두 팔 같음(`t498-ack-timeout`).
+* ⚠ACK 시한 판의 마지막 저장은 소켓 닫힘 저장(`last_zone`=떠나는 존) — 끔에서도 그렇다. ⚠클라 `LATENCY_MS=150` 판 ⓡ2 `player_left` recover 두 팔 같음(재탄생 0 · 회부).
+
 ## T485. ★★2026-09-28 — 두 호스트(서울 central·한반도 + 도쿄 닛폰) · 안 도는 자리 1 = 안 문 비밀
 
 * 호스트가 갈리면 안 문(`internal-door` — 존↔central `/player`·`/tribe/*` · 존↔존 `/handoff_prepare`·`/handoff_ack`·`/ghost_sync`·`/cross_damage`·`/kick_player`)이 **사설 주소 폴백을 잃는다** → 404/401. `CENTRAL_SECRET` 을 **셋 다**(central · 한반도 · 닛폰) — 하나만 주면 서울 안에서도 401.
