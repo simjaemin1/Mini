@@ -5928,6 +5928,73 @@ function _t347PerLoad(unitsPerEntity) {
   const n = Math.floor(cap / kg);
   return n > 0 ? n : 1;
 }
+// ══ ★★★[T490 2026-09-28 · ④ⓑ · 팔 `T490_FORAGE_REACH` 기본 끔 · 값은 재민 #85] **원판이 비면 밖으로 걷는다** ═══════════════
+//
+// ★왜 — T475 가 남긴 9%(곳간 기준 걷은 ≠ 딴): 목록이 아니라 **세계**다. 원판(네모 R 30셀 = 도보 15초)에 선 군락이 2~5 개뿐인
+//   마을(어촌2 K4 · 농촌2 K5 · 임업6 K4 …)이 서 있는 것을 다 따도 그날 몫(채집꾼 15~22명)에 못 미친다 · 다 따면 게이트가 닫혀
+//   수식으로 돌아간다(군락 0 마을 1 → 18~26 · 마을·날 30%). 캐논(추상 없애기): 수식이 끝수를 도로 내는 게 아니라 **세계가 대게 한다** —
+//   채집꾼은 원판 밖으로 **걸어서** 더 딴다(고증: 농경 마을의 채집 영역은 도보 한 시간 · 보고 §0-ⓒ).
+// ★어디까지 — **하루 왕복 반경**. 새 수 0: 생활층 `_t341TripsPerDay` 가 이미 하루 왕복을 정한다
+//   (⌊낮 초 ÷ (2·거리 ÷ 걸음)⌋ ≥ 1) — 그 식을 거리로 풀면 반경 = 걸음 × 낮 초 ÷ 2. 하루가 길면 멀리, 짧으면 가까이(자의 60초 하루 = 42셀 ·
+//   실제 하루 24분 = 1,007셀 — 낮 1,008초가 부동소수로 1,007.99… 라 트립 식과 같은 칸에서 끊긴다). ⚠카드의 "몸 2.88km/일 ÷ 2" 는 게임일 전체(1,440초)다 —
+//   채집꾼은 **낮만** 일한다(트립 식의 `dayPhaseRatio` 0.7) ⇒ 1.44km 가 아니라 1.007km(그 밖 개체는 트립 0 이라 못 딴다 · 보고 §0-ⓓ).
+//   걸음은 **path-core 걸음**(`localPath` · 물 = 막힘 · 다리 = 통행 — 존 정본 `ta.isBlocked`)이고
+//   그 걸음 칸 수가 반경을 넘으면 못 간다(물 건너 다리 없는 군락은 직선이 가까워도 못 딴다).
+// ★얼마나 — **그날 몫만큼만**(T374 수요 문 · 원판에 서 있는 단위를 빼고 남은 만큼). 가까운 테두리부터 한 칸씩 넓혀 모자람이 찰 때 멈춘다.
+//   원판이 **아예 비었으면** 그날 몫이 0 이어도(게이트가 닫혀 수식이 내던 날) 한 포기를 찾아 게이트를 살린다 — 이튿날 수요가 선다.
+// ★무엇이 안 바뀌나 — 원판의 N·K(로지스틱 재생의 판)·w̄ · 헤드리스 한도식 · econ(한 글자도 안 만진다) · 밖에서 딴 개체는
+//   그 종의 제 주기(T122 `_stage`)로 돌아온다(`_t347Cut` 에 안 넣는다 — 원판 로지스틱이 남의 땅을 되살리지 않는다).
+// ⚠수요 문(`T374_DEMAND_STOP`)이 없으면 "그날 몫" 이 없다 — 팔은 아무것도 안 한다(끝없이 넓히지 않는다).
+function _t490ReachOn() { return typeof process !== 'undefined' && !!process.env && process.env.T490_FORAGE_REACH === '1'; }
+function _t490ReachCells() {
+  const sp = (state.deps && state.deps.moveSpeed) || 0;
+  const dayR = (state.deps && state.deps.dayPhaseRatio) || 0;
+  const dayS = (state.dayMs || 0) * dayR / 1000;                     // `_t341TripsPerDay` 의 낮 초 그대로
+  if (!(sp > 0) || !(dayS > 0)) return 0;
+  return Math.floor(sp * dayS / 2 / SZ);                            // 한 번 오갈 수 있는 가장 먼 칸(⌊…⌋ — 넘으면 왕복 0)
+}
+function _t490Reach(vil, board, R) {
+  const E = _lifeEcon();
+  const out = { cells: [], dbg: { need: 0, got: 0, n: 0, r: R, far: 0, wet: 0, reach: 0, us: 0 } };
+  const _t0 = process.hrtime.bigint();   // ★[계측 전용] 훑는 값(µs) — 실제 하루(반경 1,007셀)로 옮길 때의 비용을 재려고
+  if (!E.T374_DEMAND_STOP || !vil || !vil.econ || !state.deps.t347GrovesAtCell) return out;
+  const reach = _t490ReachCells(); out.dbg.reach = reach;
+  if (!(reach > R)) return out;
+  let S = 0;                                                        // 원판에 오늘 서 있는 걷는 단위
+  for (const c of board) { let a = null; try { a = state.deps.t347GrovesAtCell(c.cx, c.cy); } catch (e) { a = null; } if (a) for (const r of a) S += _lifeLootForage(r) || 0; }
+  const dem = E.forageDemandLeft(vil.econ);
+  let need = (dem === Infinity) ? 0 : dem - S;
+  const mustOne = board.length === 0;                               // 원판이 비었다 — 게이트를 살릴 한 포기
+  if (!(need > 0) && !mustOne) return out;
+  out.dbg.need = +Math.max(0, need).toFixed(4);
+  if (!PathCore) PathCore = require('../sim/path-core.js');
+  const ta = state.ta, sx = vil.ccx, sy = vil.ccy;
+  const blk = ta ? ((x, y) => ta.isBlocked(x, y)) : null;
+  const more = () => need > 0 || (mustOne && !out.cells.length);
+  for (let r = R + 1; r <= reach && more(); r++) {
+    for (let i = 0; i < 8 * r && more(); i++) {                     // 테두리 한 바퀴(네모 링 r · 결정론 차례)
+      const s = Math.floor(i / (2 * r)), t = i % (2 * r);
+      const dx = s === 0 ? -r + t : s === 1 ? r : s === 2 ? r - t : -r;
+      const dy = s === 0 ? -r : s === 1 ? -r + t : s === 2 ? r : r - t;
+      if (dx * dx + dy * dy > reach * reach) continue;              // 직선으로도 하루 왕복 밖
+      const tx = sx + dx, ty = sy + dy;
+      if (tx < 0 || ty < 0) continue;
+      let a = null; try { a = state.deps.t347GrovesAtCell(tx, ty); } catch (e) { a = null; }
+      if (!a || !a.length) continue;
+      //   걸음 — path-core(4방 걸음 · 물 = 막힘 · 다리 = 통행). 탐색 상자 여유 = 반경 − 직선(그보다 돌면 어차피 반경 밖)
+      let p = null;
+      if (blk) { try { p = PathCore.localPath(sx, sy, tx, ty, { blocked: blk, blockedStep: (fx, fy, x2, y2) => blk(x2, y2), radius: Math.max(1, reach - Math.ceil(Math.sqrt(dx * dx + dy * dy))) }); } catch (e) { p = null; } }
+      if (!p) { out.dbg.wet++; continue; }
+      const steps = p.length - 1;
+      if (steps > reach) { out.dbg.far++; continue; }
+      let u = 0; for (const e of a) u += _lifeLootForage(e) || 0;
+      out.cells.push({ cx: tx, cy: ty, x: tx * SZ + SZ / 2, y: ty * SZ + SZ / 2, n: a.length, ext: 1, d: steps, kinds: a.map((e) => e.type) });
+      need -= u; out.dbg.got = +(out.dbg.got + u).toFixed(4); out.dbg.n += a.length; out.dbg.r = r;
+    }
+  }
+  out.dbg.us = Number((process.hrtime.bigint() - _t0) / 1000n);
+  return out;
+}
 function _t347Scan(vil, day) {
   if (vil._t347Groves && vil._t347Groves.day === day) return vil._t347Groves.list;
   const cells = [];
@@ -5950,6 +6017,9 @@ function _t347Scan(vil, day) {
       }
     }
     if (_needK) { vil._t347K = K; vil._t347WBar = wN > 0 ? wSum / wN : 0; }
+    //   ★★★[T490 ④ⓑ] 원판이 (그날 몫에) 비면 **밖으로 걷는다** — 팔 `T490_FORAGE_REACH`(기본 끔 · 끄면 이 줄이 한 번도 안 돈다).
+    //     밖의 자리는 목록 **뒤에** 붙는다(원판 먼저 딴다) · N·K(로지스틱의 원판)는 그대로 원판이다.
+    if (_t490ReachOn()) { const ext = _t490Reach(vil, cells, R); for (const c of ext.cells) { cells.push(c); for (const t of c.kinds) _kinds.add(t); } vil._t490 = ext.dbg; }
     vil._t347Kinds = JOB_RES.forager.filter((k) => _kinds.has(k));   // ★[T475] 정본 차례 그대로 — 다 딴 종은 빠진다(그 품목은 수식이 낸다 · 게이트 문법의 종 판)
   }
   vil._t347Groves = { day, list: cells, N, K: vil._t347K || 0, wBar: vil._t347WBar || 0 };
@@ -5999,6 +6069,7 @@ function foragePerf() {
   let walkers = 0, hands = 0, handU = 0, cells = 0, deliv = 0, formula = 0, formulaAll = 0, act = 0, noGrove = 0;
   let groves = 0, popAll = 0, backAll = 0, kAll = 0, capAll = 0, pickDay = 0, formulaAct = 0;
   let granAll = 0;   // ★[T475 계측] 곳간에 실제로 든 몫(마을 누계의 합)
+  let reachAll = 0;  // ★[T490 계측] 원판 밖에서 찾은 개체(팔 켬 · 끄면 0)
   const rows = [];
   const keep = _t347ActItems() || [];
   for (const vil of state.villages || []) {
@@ -6011,7 +6082,9 @@ function foragePerf() {
     act++;
     cells += (e._t347Cells | 0);
     const _S = vil._t347Groves || {};
-    for (const c of (_S.list || [])) groves += (c.n | 0);
+    let vx = 0;   // ★[T490] 원판 밖(팔 켬)에서 찾은 개체 — 군락 합(원판)과 가른다(끄면 0 · 칸이 안 생긴다)
+    for (const c of (_S.list || [])) { if (c.ext) vx += (c.n | 0); else groves += (c.n | 0); }
+    reachAll += vx;
     const d = (vil._t347Deliv || 0);
     //   ★★[T347 등가의 분모] 수식 합 전체가 아니라 **걷은 몫**과 견준다 — 행위 층이 대신하는 것은
     //     믹스 전체가 아니라 실체가 대는 품목뿐이기 때문이다(결정 A). 그 몫은 econ 이 적어 둔다
@@ -6034,12 +6107,12 @@ function foragePerf() {
                 //   ★[T357 · 계측 전용 · 행동 무관] 땅값 셋 — 계측기가 채집 믹스를 **정본에 다시 물어**
                 //     품목별 몫(걷는 몫 · `berry→fruit` 판)을 마을마다 유도한다(하네스·계측기에 표 0).
                 land: { f: +(e.land && e.land.fertility || 0).toFixed(4), w: +(e.land && e.land.wood || 0).toFixed(4), s: +(e.land && e.land.stone || 0).toFixed(4) },
-                pop: (e.npcs || []).length, dbg: vil._t347Dbg || null,
+                pop: (e.npcs || []).length, dbg: vil._t347Dbg || null, x: vx, xr: vil._t490 || null,
                 //   ★[T475 계측] 곳간 누계(`g` — 수요에서 자른 뒤 실제로 든 몫) · 그 마을 걷는 목록(`it` — 없으면 세계 목록)
                 g: +(vil._t347Gran || 0).toFixed(4), it: Array.isArray(e._forageActItems) ? e._forageActItems.slice() : null });
   }
   return { villages: (state.villages || []).length, actVillages: act, noGroveVillages: noGrove,
-           cells, groves, popAll, K: kAll, back: backAll, cap: capAll, pickDay, items: keep.slice(), gran: +granAll.toFixed(4),
+           cells, groves, popAll, K: kAll, back: backAll, cap: capAll, pickDay, items: keep.slice(), gran: +granAll.toFixed(4), reach: reachAll,
            walkers, hands, handU: +handU.toFixed(4),
            delivered: +deliv.toFixed(4), formulaPerDay: +formula.toFixed(4),
            formulaActPerDay: +formulaAct.toFixed(4),   // ★[T347 등가의 분모] 믹스 전체가 아니라 **걷은 몫**
@@ -7696,8 +7769,9 @@ function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(�
         const sk = peek[0].seedKey || null;
         let loot = null; try { loot = state.deps.t347PickAt ? state.deps.t347PickAt(c.cx, c.cy) : null; } catch (e) { loot = null; }
         if (!loot) { vil._t347Dbg.noloot++; break; }        // ★`continue` 가 아니라 `break`(T334 의 단위 증발 교훈)
-        if (sk) (vil._t347Cut || (vil._t347Cut = [])).push(sk);
+        if (sk && !c.ext) (vil._t347Cut || (vil._t347Cut = [])).push(sk);   // ★[T490] 원판 밖에서 딴 것은 원판 로지스틱에 안 넣는다(그 종의 제 주기로 돌아온다)
         made++; vil._t347Dbg.pick++;
+        if (c.ext) vil._t347Dbg.xpick = (vil._t347Dbg.xpick | 0) + 1;   // ★[T490 계측] 원판 밖에서 딴 개체(끄면 칸이 안 생긴다)
         for (const it of _keep) for (const h of _t347HandsOf(it)) { const a = loot[h]; if (a > 0) { const g = _lifeEcon().forageToGranary(vil.econ, it, a) || 0; if (g > 0) vil._t347Gran = +((vil._t347Gran || 0) + g).toFixed(6); } }   // ★[T458] 덤불 berry → fruit · ★[T475 계측] 곳간에 든 몫
         vil._t347Deliv = +((vil._t347Deliv || 0) + u).toFixed(6);
       }
@@ -9014,6 +9088,9 @@ module.exports = { fishPerf, woodPerf, foragePerf, farmPerf,   // ★[T316] `/pe
     // ★[T475] 마을별 걷는 목록 · 두 시계 한 줄 — 같은 규약(최소 주입구 하나 · 정본 함수를 그대로 부른다 · 하네스가 목록을 다시 짜면 그게 사본이다).
     _t475Probe: { setDeps: (d) => { const k = state.deps; state.deps = d; return k; }, scan: (vil, day) => _t347Scan(vil, day), plant: (vil) => _t347PlantList(vil),
       itemsFor: (kinds) => _t347ItemsFor(kinds), keepOf: (vil) => _t347KeepOf(vil), handsIn: (vil) => _lifeHandsIn(vil) },
+    // ★[T490] 원판 밖 — 같은 규약(정본 함수를 그대로 부른다 · 상태는 `_t400Probe.setup` 으로 꽂는다)
+    _t490Probe: { on: () => _t490ReachOn(), reachCells: () => _t490ReachCells(), reach: (vil, board, R) => _t490Reach(vil, board, R), R: () => _t347R(),
+      trips: (vil, d, w) => _t341TripsPerDay(vil, d, w) },
     // ★[T449] 결산 문 하네스용 — 같은 규약(최소 주입구 하나). 하네스는 문·명부 규칙을 다시 적지 않는다 — 정본 `_t449Seen`·`_lifeDaily` 를 그대로 부른다.
     _t449Probe: { seen: (vil) => _t449Seen(vil), daily: (vil) => _lifeDaily(vil), get T449_BODY_DAY() { return T449_BODY_DAY; } },
     get VILLAGE_MAX() { return VILLAGE_MAX; },
