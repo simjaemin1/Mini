@@ -1284,7 +1284,7 @@ console.log('\n⑭ T421_SPATIAL_INC 격자 증분 — 조회 결과 비트 동�
       ZONE: { zoneWidth: W, zoneHeight: H }, T421_SPATIAL_INC: on };
     const keys = Object.keys(env);
     return new Function(...keys,
-      'let activeChunkKeys = new Set(), qtPlayers = null, qtMobs = null, qtBuildings = null, qtResources = null, qtColl = null, resourcesDirty = true, _lastResRebuild = 0;\n' +
+      'let activeChunkKeys = new Set(), qtPlayers = null, qtMobs = null, qtBuildings = null, qtResources = null, qtColl = null, resourcesDirty = true, _lastResRebuild = 0, _WW = null, _wwRes = null;\n' +   // ★[T461] 자원 문이 커널 목록을 적는다(끔 = null)
       SPDEF + '\n' + COLLDEF + '\n' + src + '\n' +
       'return { setKeys: (s) => { activeChunkKeys = s; }, rebuild: () => rebuildSpatialIndex(undefined), qt: () => ({ p: qtPlayers, m: qtMobs, b: qtBuildings }), S: _spInc };')(...keys.map((k) => env[k]));
   };
@@ -1716,6 +1716,139 @@ console.log('\n⑱ T474 — 캐러밴 시계 = 몸 걸음에서 유도(손잡이
      '★⑱ 자명 통과 금지 — 셀당 econ 을 빠뜨린 유도(2,880)는 ⑱-f 대조에서 **갈리고** · 끔 500 ↔ 켬 7,200 도 표본에서 갈린다(⑱-b 는 빈 대조가 아니다)',
      `2,880 과 갈린 표본 ${kid.bait}/${kid.n} · 500↔7,200 갈린 표본 ${diffOn}/${sample.length}`);
   console.log('    접점: NPC_SPEED · CARAVAN_DAY_SPEED · caravanWalkPerDay · ECON_PER_CELL · travelDaysForDistance · T474_CARAVAN_WALK · PX_PER_ECON · move-model · rumor.js');
+
+}
+
+console.log('\n⑳ T461 걸음 문 WASM 커널 — 1,000틱 뒤 전원 좌표 비트 동일(두 N) · 끔 = 옛 문 [T461]');
+{
+  // ★제품 글자를 뜬다: 이동 문(`movePlayerStep`) · 커널 앞문(`_wwPre`) · 뒷문(`_wwPost`) — 커널은 `server/walk-wasm.js`(제품 껍데기) 그대로.
+  const MV = body('movePlayerStep'), PRE = body('_wwPre'), POST = body('_wwPost');
+  ok(MV.length > 1000 && PRE.length > 300 && POST.length > 100, '⑳ [전제] 제품의 이동 문·커널 앞문·뒷문 글자를 떴다', `${MV.length}·${PRE.length}·${POST.length}자`);
+  // 합성 세계 — 셀의 순수 함수(주사위 0 · 해시) · 강 띠 둘 · 바위 점 · 벽 변 · 나무/바위/광맥/어린나무
+  const ZW = 32000, ZH = 32000, ICE = 1500;
+  const h32 = (a, b, c) => { let x = (a * 374761393 + b * 668265263 + c * 2147483647) >>> 0; x = (x ^ (x >>> 13)) >>> 0; x = Math.imul(x, 1274126177) >>> 0; return (x ^ (x >>> 16)) >>> 0; };
+  let jsTerrQ = 0;
+  const terr0 = (x, y) => { if (x < 0 || y < 0 || x >= ZW || y >= ZH) return false; const tx = Math.floor(x / 32), ty = Math.floor(y / 32);
+    if ((tx >= 300 && tx <= 303) || (ty >= 480 && ty <= 482 && tx !== 520)) return true; return (h32(tx, ty, 1) % 100) < 6; };
+  const terr = (x, y) => { jsTerrQ++; return terr0(x, y); };
+  const edge = (cx, cy, side) => (h32(cx, cy, side === 'E' ? 7 : 11) % 100) < 8;   // 변의 8% 에 벽
+  const wallJs = (nx, ny, ox, oy) => {   // 제품 `isBlockedByWall` 의 꼴(같은 셀 조기 반환 · 셀 추적 · 대각 L 두 길)
+    const ocx = Math.floor(ox / 32), ocy = Math.floor(oy / 32), ncx = Math.floor(nx / 32), ncy = Math.floor(ny / 32);
+    if (ocx === ncx && ocy === ncy) return false;
+    const eb = (cx, cy, sx, sy) => sx === 1 ? edge(cx, cy, 'E') : sx === -1 ? edge(cx - 1, cy, 'E') : sy === 1 ? edge(cx, cy + 1, 'N') : sy === -1 ? edge(cx, cy, 'N') : false;
+    let cx = ocx, cy = ocy, st = 0;
+    while (cx !== ncx || cy !== ncy) { if (++st > 64) return true; const sx = Math.sign(ncx - cx), sy = Math.sign(ncy - cy);
+      if (sx && sy) { const a = !eb(cx, cy, sx, 0) && !eb(cx + sx, cy, 0, sy), b = !eb(cx, cy, 0, sy) && !eb(cx, cy + sy, sx, 0); if (!a && !b) return true; cx += sx; cy += sy; }
+      else if (sx) { if (eb(cx, cy, sx, 0)) return true; cx += sx; } else { if (eb(cx, cy, 0, sy)) return true; cy += sy; } }
+    return false;
+  };
+  const RES = [];
+  for (let i = 0; i < 6000; i++) { const t = ['tree', 'tree', 'rock', 'ore', 'sapling', 'tree'][i % 6];
+    RES.push({ type: t, x: 300 + rnd() * (ZW - 600), y: 300 + rnd() * (ZH - 600), r: t === 'tree' ? [0, 4.5, 9, 14, 20][i % 5] : (t === 'sapling' ? 3 : undefined) }); }
+  // 가장자리·경계 바로 곁에 일부러 — 판정이 반올림 한 끝에서 갈리는 자리
+  for (let i = 0; i < 400; i++) { const b = RES[i]; RES.push({ type: 'rock', x: b.x + 20 * Math.cos(i), y: b.y + 20 * Math.sin(i) }); }
+  const treeJs = (x, y) => { for (const r of RES) {   // 제품 `treeBlockerAt` 의 판정(NPC 는 참/거짓만)
+      if (r.type === 'tree' && r.r) { if (Math.hypot(r.x - x, r.y - y) < Math.min(r.r, 9) + 6) return true; }
+      else if (r.type === 'rock' || r.type === 'ore') { if (Math.hypot(r.x - x, r.y - y) < 14 + 6) return true; } } return false; };
+  // 나무 판정은 격자로(느린 전수 대신 · 답은 같은 집합) — 64px 버킷
+  const TG = new Map(); for (const r of RES) { const k = Math.floor(r.x / 64) + ',' + Math.floor(r.y / 64); if (!TG.has(k)) TG.set(k, []); TG.get(k).push(r); }
+  const treeFast = (x, y) => { const gx = Math.floor(x / 64), gy = Math.floor(y / 64);
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) for (const r of (TG.get((gx + dx) + ',' + (gy + dy)) || [])) {
+      if (r.type === 'tree' && r.r) { if (Math.hypot(r.x - x, r.y - y) < Math.min(r.r, 9) + 6) return true; }
+      else if (r.type === 'rock' || r.type === 'ore') { if (Math.hypot(r.x - x, r.y - y) < 14 + 6) return true; } } return false; };
+  { let agree = 0; for (let i = 0; i < 3000; i++) { const x = rnd() * ZW, y = rnd() * ZH; if (treeJs(x, y) === treeFast(x, y)) agree++; } ok(agree === 3000, '⑳ [자] 나무 격자 = 전수(3,000점)', `${agree}/3000`); }
+  const stamps = [];
+  const Roads = { stampEntityPx: (p, x, y) => { stamps.push(p.pid, x, y); } };
+  const mkWalk = () => ({ steps: 0, ej: 0, ejQ: 0, ejFail: 0, terrQ: 0, waterQ: 0, wallQ: 0, cut: 0, ejPids: new Set() });
+  const ZONE = { zoneWidth: ZW, zoneHeight: ZH, worldOffsetX: 0, worldOffsetY: 0 };
+  const iceBand = (y) => (y < ICE) || (y > ZH - ICE);    // 북·남 이웃 없음(빙하 둘 다)
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  // 이동 문 — 정본 글자 · NPC 로만 부른다(입력 없음)
+  const mkMove = (W) => new Function('isTerrainBlockedLocal', 'isBlockedByWall', 'isBlockedByTree', 'treeBlockerAt', 'isInIceBand', 'Roads', 'clamp', 'ZONE',
+    'MOVE_SPEED', 'moveDt', '_walk', 'buildings', 'MoveModel', 'MOVE_PARAMS', 'findZoneAt', 'ZONE_ID', 'fireHandoff', 'HANDOFF_COMMIT',
+    MV + '\nreturn movePlayerStep;')(terr, (nx, ny, ox, oy) => wallJs(nx, ny, ox, oy), treeFast, null, iceBand, Roads, clamp, ZONE,
+    64, 1 / 30, W, new Map(), null, { slide: true }, () => null, 'test', () => {}, 256);
+  // 커널 — 제품 껍데기 · 제품 앞문/뒷문 글자
+  const WW = require(path.join(ROOT, 'server', 'walk-wasm.js')).create({ zw: ZW, zh: ZH, iceN: true, iceS: true, iceBand: ICE, speed: 64,
+    terrMiss: (x, y) => terr0(x, y), wallQ: (nx, ny, ox, oy) => wallJs(nx, ny, ox, oy) });
+  const mkPrePost = (players, W, resList) => new Function('players', '_t316WalkAlways', 'isPositionActive', 'qtResources', '_wwRes', '_wwList', '_wwSeq', '_wwCode', '_WW', '_walk', '_wwOn', '_wwStat',
+    'TRUNK_COLLIDER_MAX', 'PLAYER_BODY_R', 'ROCK_COLLIDER_R', 'Roads', PRE + '\n' + POST + '\nreturn { _wwPre, _wwPost };')(
+    players, () => true, () => true, {}, resList, [], [], [], WW, W, true, { ticks: 0, steps: 0 }, 9, 6, 14, Roads);
+  // 주민 — 뭍·물 안(탈출)·빙하 곁·존 끝(클램프)·길 배속
+  const mkNpcs = (N, seed) => { _s = seed; const a = []; for (let i = 0; i < N; i++) {
+    const k = i % 10; let x = 400 + rnd() * (ZW - 800), y = 1600 + rnd() * (ZH - 3200);
+    if (k === 1) { x = 300 * 32 + rnd() * 128; }                 // 강 띠 안 — 탈출
+    if (k === 2) { y = ICE + (rnd() - 0.5) * 40; }               // 북 빙하 곁
+    if (k === 3) { x = ZW - rnd() * 3; }                          // 동쪽 끝 — 클램프
+    if (k === 4) { y = rnd() * 2; x = 5000 + rnd() * 100; }       // 북쪽 끝(빙하 안)
+    a.push({ pid: 'n' + i, isNpc: true, x, y, vx: 0, vy: 0, _rdMul: [undefined, 1, 1.1, 1.15, 0][i % 5], floor: 0 }); } return a; };
+  const velOf = (i, t, p) => { const a = h32(i, t >> 5, 3) / 4294967296 * 2 * Math.PI, sp = 64 * [0.6, 1, 2.5][h32(i, t >> 7, 5) % 3];
+    return (i % 10 === 3) ? [sp, 0] : (i % 10 === 4) ? [0, -sp] : [Math.cos(a) * sp, Math.sin(a) * sp]; };
+  for (const N of [1329, 2656]) {
+    const A = mkNpcs(N, 12345 + N), B = mkNpcs(N, 12345 + N);
+    const WA = mkWalk(), WB = mkWalk();
+    const move = mkMove(WA);
+    const players = new Map(B.map((p) => [p.pid, p]));
+    const { _wwPre, _wwPost } = mkPrePost(players, WB, RES);
+    let tickBad = 0, stA = 0, stB = 0, ejA = 0;
+    for (let t = 0; t < 1000; t++) {
+      for (let i = 0; i < N; i++) { const v = velOf(i, t); A[i].vx = v[0]; A[i].vy = v[1]; B[i].vx = v[0]; B[i].vy = v[1]; }
+      stamps.length = 0;
+      for (const p of A) move(p);
+      stA += stamps.length; const sa = stamps.slice(); stamps.length = 0;
+      const n = _wwPre(1 / 30);
+      for (let i = 0; i < n; i++) _wwPost(B[i], i);
+      stB += stamps.length;
+      if (sa.length !== stamps.length || sa.some((v, j) => !Object.is(v, stamps[j]))) tickBad++;
+    }
+    let bad = 0, nd = 0, dirty = 0;
+    for (let i = 0; i < N; i++) {
+      if (!sameF64(A[i].x, B[i].x) || !sameF64(A[i].y, B[i].y) || !sameF64(A[i].vx, B[i].vx) || !sameF64(A[i].vy, B[i].vy)) bad++;
+      if (A[i].nextDecisionAt !== B[i].nextDecisionAt) nd++; if (!!A[i].dirty !== !!B[i].dirty) dirty++;
+    }
+    ok(bad === 0 && tickBad === 0 && nd === 0 && dirty === 0, `⑳-${N} ★1,000틱 뒤 ${N}명 x·y·vx·vy **비트 동일** · 답압 스탬프 차례·좌표 틱마다 같음 · 클램프·dirty 같음`,
+       `어긋남 ${bad} · 스탬프 틀린 틱 ${tickBad} · nextDecisionAt ${nd} · dirty ${dirty} · 스탬프 ${stA}/${stB}`);
+    ok(WA.steps === WB.steps && WA.ej === WB.ej && WA.ejQ === WB.ejQ && WA.ejFail === WB.ejFail && WA.ej > 0 && WA.ejFail >= 0,
+       `⑳-${N} 걸음·탈출 계수가 같다(커널이 센 것을 더한다 · 탈출 ${WA.ej}번은 실제로 일어났다)`);
+    const moved = A.filter((p, i) => p.x !== mkNpcs(N, 12345 + N)[i].x).length;
+    ok(moved > N * 0.8, `⑳-${N} [자명 통과 금지] 몸이 실제로 움직였다`, `${moved}/${N}`);
+  }
+  // 자명 통과 금지 — 커널 산술 한 끝을 비틀면 게이트가 문다(가짜 앞문: 길 배속을 1.1 → 1.1000000000000003)
+  {
+    const N = 500, A = mkNpcs(N, 777), B = mkNpcs(N, 777), WA = mkWalk(), WB = mkWalk(), move = mkMove(WA);
+    for (const p of B) if (p._rdMul === 1.1) p._rdMul = 1.1000000000000003;
+    const { _wwPre, _wwPost } = mkPrePost(new Map(B.map((p) => [p.pid, p])), WB, RES);
+    for (let t = 0; t < 200; t++) { for (let i = 0; i < N; i++) { const v = velOf(i, t); A[i].vx = B[i].vx = v[0]; A[i].vy = B[i].vy = v[1]; }
+      for (const p of A) move(p); const n = _wwPre(1 / 30); for (let i = 0; i < n; i++) _wwPost(B[i], i); }
+    let bad = 0; for (let i = 0; i < N; i++) if (!sameF64(A[i].x, B[i].x) || !sameF64(A[i].y, B[i].y)) bad++;
+    ok(bad > 0, '⑳ [자명 통과 금지] 한 비트 다른 길 배속(1.1 → 1.1000000000000003)을 넣으면 게이트가 **문다**', `어긋남 ${bad}`);
+  }
+  // V8 `Math.hypot` 을 커널이 비트 그대로 따르나 — 바위 반경 끝(R ± 1e-12) 1만 점 · 지형·벽 없는 세계 · 한 걸음(+x 1px)의 도착점이 그 점
+  {
+    const WH = require(path.join(ROOT, 'server', 'walk-wasm.js')).create({ zw: ZW, zh: ZH, iceN: false, iceS: false, iceBand: ICE, speed: 64, terrMiss: () => false, wallQ: () => false });
+    const RK = { type: 'rock', x: 16000.5, y: 16000.25 }, N = 10000, P = [], want = [];
+    for (let i = 0; i < N; i++) { const a = (rnd() - 0.5) * 2.6, d = 20 + (rnd() - 0.5) * 4e-12;   // |각| < 75° — 출발점(+1px)은 반경 밖
+      const qx = RK.x + d * Math.cos(a), qy = RK.y + d * Math.sin(a);
+      P.push({ pid: 'h' + i, isNpc: true, x: qx + 1, y: qy, vx: -30, vy: 0, floor: 0 });   // −30px/s × 1/30s = −1px(바깥에서 반경 끝으로)
+      want.push(!(Math.hypot(RK.x - qx, RK.y - qy) < 20)); }
+    const { _wwPre } = new Function('players', '_t316WalkAlways', 'isPositionActive', 'qtResources', '_wwRes', '_wwList', '_wwSeq', '_wwCode', '_WW', '_walk', '_wwOn', '_wwStat',
+      'TRUNK_COLLIDER_MAX', 'PLAYER_BODY_R', 'ROCK_COLLIDER_R', 'Roads', PRE + '\nreturn { _wwPre };')(
+      new Map(P.map((p) => [p.pid, p])), () => true, () => true, {}, [RK], [], [], [], WH, mkWalk(), true, { ticks: 0, steps: 0 }, 9, 6, 14, Roads);
+    const n = _wwPre(1 / 30);
+    let agree = 0, blockedN = 0, startOpen = 0;
+    for (let i = 0; i < n; i++) { const moved = WH.X[i] !== P[i].x; if (moved === want[i]) agree++; if (!want[i]) blockedN++;
+      if (!(Math.hypot(RK.x - P[i].x, RK.y - P[i].y) < 20)) startOpen++; }
+    ok(startOpen === N && agree === N && blockedN > N * 0.3 && blockedN < N * 0.7,
+       '⑳ ★반경 끝 1만 점에서 커널의 판정 = V8 `Math.hypot` 판정(카한 합 · 순서 그대로)', `${agree}/${N} · 막힘 ${blockedN} · 출발 열림 ${startOpen}`);
+  }
+  // 끔 = 옛 문 — 손잡이가 없으면 커널을 안 만들고, 이동 문의 옛 줄은 그대로다
+  const Zc = codeOnly(Z);
+  ok(/const _wwOn = T461_WALK_WASM === '1', _wwVerify = T461_WALK_WASM === 'verify';/.test(Zc) && /if \(\(_wwOn \|\| _wwVerify\) && !ZONE\.isOcean\)/.test(Zc),
+     '⑳ 끔(기본)이면 커널을 **만들지 않는다**(`_WW = null` · 앞문·뒷문·견줌 셋 다 `_WW` 없으면 무동작)');
+  ok(Z.includes("      if (!p.canadiaVillage && !_t316WalkAlways(p) && !isPositionActive(p.x, p.y)) continue; // dormant NPC skip\n      movePlayerStep(p);"),
+     '⑳ 이동 문의 옛 두 줄(거름 · `movePlayerStep(p)`)은 **한 글자도 안 바뀌었다**(자들의 닻 그대로)');
+  ok(fs.existsSync(path.join(ROOT, 'server', 'walk-wasm.wasm')) && fs.existsSync(path.join(ROOT, 'tools', 'walk-wasm', 'walk.c')), '⑳ 산출물 `server/walk-wasm.wasm` · 원문 `tools/walk-wasm/walk.c` 가 레포에 있다');
+  console.log('    접점: T461_WALK_WASM · movePlayerStep · _wwPre · _wwPost · walk-wasm · WebAssembly · Float64Array · SoA');
 }
 
 console.log(`\n=== 결과: ${pass} PASS / ${fail} FAIL ===\n`);

@@ -856,6 +856,9 @@ let qtColl;
 const COLL_TYPES = new Set(['wall', 'door', 'fence', 'floor', 'stair']);
 let resourcesDirty = true;  // 자원(나무·돌)은 static — 변경됐을 때만 quadtree 재구축
 let _lastResRebuild = 0;    // qtResources 전체 재구축 throttle (5Hz 상한)
+// ★[T461] 걸음 문 WASM 커널 — 선언만 여기(아래 `refreshDitchCells`·`_rebuildResources` 가 부른다) · 만드는 자리는 `isBlockedByTree` 뒤
+let _WW = null;             // 커널(끔이면 null — 아래 세 자리가 전부 무동작)
+let _wwRes = null;          // `qtResources` 가 **지금 든** 자원 목록(마지막 재구축 · 안에 든 것만) — 커널의 나무 열 원천
 // ★★★[T421 2026-09-26 · T371 회부 · T375 §4-4 · T385 §4-4 세 번 미룬 자리] **격자 증분.** `T421_SPATIAL_INC=1` 일 때만.
 //   ★왜 — T385 뒤 그 밖에서 두 번째로 큰 것이 `spatial`(0.206µs/사람)이다. 틱마다 나무 셋을 비우고 전수를 다시 넣는다.
 //   ★★무엇을 지키나 — **조회 결과가 비트 동일**해야 한다(무엇이 · **어떤 순서로** 나오나). 나무의 조회 순서는
@@ -957,6 +960,8 @@ function _rebuildResources(W, H) {   // ★[T421] 자원 나무 문 — 끔·켬
   if (!qtResources || (resourcesDirty && Date.now() - _lastResRebuild >= 200)) {
     qtResources = new Quadtree(0, 0, W, H);
     for (const r of resources.values()) qtResources.insert({ x: r.x, y: r.y, ref: r });
+    // ★[T461] 켬일 때만 — 나무에 **든** 것만(루트 칸 밖은 `insert` 가 거절한다 · 같은 술어) 적는다. 필드는 틱마다 지금 값을 읽는다.
+    if (_WW) { _wwRes = []; for (const r of resources.values()) if (r.x >= 0 && r.x < W && r.y >= 0 && r.y < H) _wwRes.push(r); }
     resourcesDirty = false;
     _lastResRebuild = Date.now();
   }
@@ -1243,6 +1248,8 @@ function walkPerf(reset) {
               ejPerStep: _walk.steps ? +(_walk.ej / _walk.steps).toFixed(4) : 0,
               terrPerStep: _walk.steps ? +(_walk.terrQ / _walk.steps).toFixed(2) : 0,
               wallPerStep: _walk.steps ? +(_walk.wallQ / _walk.steps).toFixed(2) : 0 };
+  if (_WW) { o.ww = { mode: T461_WALK_WASM, ticks: _wwStat.ticks, steps: _wwStat.steps, bad: _wwStat.bad, badTicks: _wwStat.badTicks, gateBad: _wwStat.gateBad, sample: _wwStat.sample.slice(), memMB: +(_WW.bytes() / 1048576).toFixed(2) };
+    if (reset) { _wwStat.ticks = 0; _wwStat.steps = 0; _wwStat.bad = 0; _wwStat.badTicks = 0; _wwStat.gateBad = 0; _wwStat.sample.length = 0; } }   // ★[T461]
   if (reset) { _walk.steps = 0; _walk.ej = 0; _walk.ejQ = 0; _walk.ejFail = 0; _walk.terrQ = 0; _walk.waterQ = 0; _walk.wallQ = 0; _walk.cut = 0; _walk.ejPids.clear(); }
   return o;
 }
@@ -1337,6 +1344,7 @@ function isDitchTileLocal(localX, localY) {
 function refreshDitchCells() {
   DITCH_CELLS.clear();
   if (_BLK_BITS) _BLK_BITS.fill(0);   // ★[T356 ②] 환호가 바뀌면 막힘 비트를 통째로 영점(유도값이라 다시 구우면 된다)
+  if (_WW) _WW.clearTerrain();        // ★[T461] 커널의 지형 비트도 같은 까닭으로 영점
   try {
     const flat = SimVillages.ditchCells ? SimVillages.ditchCells() : [];
     for (let i = 0; i + 1 < flat.length; i += 2) DITCH_CELLS.add(_cellKey(flat[i], flat[i + 1]));   // ★[T333] 정수 키
@@ -11852,6 +11860,91 @@ function treeBlockerAt(x, y) {
 }
 function isBlockedByTree(x, y) { return !!treeBlockerAt(x, y); }
 
+// ★★★[T461 2026-09-28 · #53 · T352 ⓒ 판을 제품에] **걸음 문 WASM 커널** — `T461_WALK_WASM=1` 켬 · `=verify` 견줌 · 없으면 끔(기본).
+//   ★무엇 — `movePlayerStep(p)` 의 **NPC 갈래**(1층 · 계단 밖 · 입력 없음)를 커널(`tools/walk-wasm/walk.c` → `server/walk-wasm.wasm`)이
+//     한 번에 돈다. 산술은 글자 그대로 옮겼고, 세계 술어는 정본을 쓴다:
+//       지형 = 커널이 타일 2비트로 굽되 처음 보는 타일은 `_terrBlocked0` 을 부른다 · 벽 = 셀을 넘을 때만 `isBlockedByWall` 을 부른다 ·
+//       나무 = `qtResources` 에 든 목록의 **지금 필드**를 틱마다 열로 넘긴다(NPC 는 참/거짓만 쓴다).
+//   ★차례가 세계다 — 커널은 이동 문 **앞에서** 몸을 옮기고, 이동 문은 원래 차례대로 돌며 커널 몸에서는 **뒷일만** 한다
+//     (답압 스탬프 · 클램프의 `nextDecisionAt` · 탈출의 `dirty`). 한 몸의 걸음은 다른 몸의 같은 틱 걸음을 안 읽는다
+//     (벽·나무·지형만 읽는다) ⇒ 먼저 옮겨도 같다. 스탬프는 차례가 있으니 원래 자리에서.
+//   ★`verify` — 커널을 돌리되 몸에 안 쓰고, JS 정본이 원래대로 옮긴 뒤 **전원 x·y·vx·vy 를 비트로** 견준다(`/perf` `walk.ww`).
+//   ⚠끄면(기본) 이 블록은 아무것도 안 만든다 — 이동 문은 한 글자도 안 바뀐 옛 문이다. 바다 존은 늘 끔.
+//   ⚠관측 계수(`/perf walk`)는 커널이 센 것을 더한다 — `waterQ` 만은 커널이 처음 보는 타일에서만 늘어난다(비트가 대신 답한다).
+const T461_WALK_WASM = (process.env.T461_WALK_WASM || '').trim();
+const _wwOn = T461_WALK_WASM === '1', _wwVerify = T461_WALK_WASM === 'verify';
+const _wwList = [];                     // 커널 몸(차례대로) — 열의 i 번째가 이 배열의 i 번째
+const _wwSeq = [], _wwCode = [];        // 이동 문 거름까지 온 주민 전부(차례대로)와 그 갈래: 0 잠(비활성 청크) · 1 커널 · 2 JS 정본(위층·계단)
+const _wwStat = { ticks: 0, steps: 0, bad: 0, badTicks: 0, sample: [], gateBad: 0 };
+if ((_wwOn || _wwVerify) && !ZONE.isOcean) {
+  _WW = require('./walk-wasm').create({ zw: ZONE.zoneWidth, zh: ZONE.zoneHeight, iceN: !NEIGHBOR.hasNorth, iceS: !NEIGHBOR.hasSouth,
+    iceBand: ICE_BAND_PX, speed: MOVE_SPEED,
+    terrMiss: (x, y) => _terrBlocked0(x, y), wallQ: (nx, ny, ox, oy) => isBlockedByWall(nx, ny, ox, oy, 0, null) });
+  console.log(`[${ZONE_ID}] 🦶 T461 걸음 커널 ${_wwOn ? '켬' : '견줌(verify)'} — WASM ${_WW.wasmBytes}B · 메모리 ${(_WW.bytes() / 1048576).toFixed(1)}MB`);
+}
+// 이동 문 **앞** — 이동 문과 같은 거름(순서 그대로)으로 커널 몸을 모으고 한 번에 옮긴다
+//   ★거름은 **한 번만** 한다 — 갈래를 적어 두고 이동 문은 그 적은 것을 읽는다(잠든 몸의 청크 물음을 두 번 안 한다 ·
+//     T461 첫 판이 26존 판에서 걷는 몸이 적을 때 **더 무거워진** 까닭이 그 두 번이었다 — 보고 §3).
+function _wwPre(moveDt) {
+  _wwList.length = 0; _wwSeq.length = 0; _wwCode.length = 0;
+  for (const p of players.values()) {
+    if (p.handingOff || !p.isNpc || p.simCaravan || p.simWar) continue;
+    let c = 1;
+    if (!p.canadiaVillage && !_t316WalkAlways(p) && !isPositionActive(p.x, p.y)) c = 0;   // 이동 문의 그 거름(몸이 안 움직인 자리에서)
+    else if (p.floor || p.onStairId) c = 2;                                                // 위층·계단 = JS 정본
+    _wwSeq.push(p); _wwCode.push(c);
+    if (c === 1) _wwList.push(p);
+  }
+  const n = _wwList.length;
+  _wwStat.ticks++; _wwStat.steps += n;
+  if (!n) return 0;                                                                        // 걷는 몸이 없으면 나무·커널도 안 부른다
+  const res = qtResources ? (_wwRes || []) : [];
+  _WW.ensure(n, res.length);
+  const X = _WW.X, Y = _WW.Y, VX = _WW.VX, VY = _WW.VY, RD = _WW.RD;
+  for (let i = 0; i < n; i++) {
+    const p = _wwList[i], m = p._rdMul;
+    X[i] = p.x; Y[i] = p.y; VX[i] = p.vx; VY[i] = p.vy; RD[i] = (m && m !== 1) ? m : 1;
+  }
+  let k = 0;
+  const RX = _WW.RX, RY = _WW.RY, RR = _WW.RR;
+  for (let j = 0; j < res.length; j++) {
+    const r = res[j]; let R;
+    if (r.type === 'tree' && r.r) R = Math.min(r.r, TRUNK_COLLIDER_MAX) + PLAYER_BODY_R;
+    else if (r.type === 'rock' || r.type === 'ore') R = ROCK_COLLIDER_R + PLAYER_BODY_R;
+    else continue;
+    RX[k] = r.x; RY[k] = r.y; RR[k] = R; k++;
+  }
+  _WW.trees(k);
+  _WW.step(n, moveDt);
+  if (_wwOn) {
+    const C = _WW.CNT;
+    _walk.steps += C[0]; _walk.ej += C[1]; _walk.ejQ += C[2]; _walk.ejFail += C[3]; _walk.terrQ += C[4]; _walk.wallQ += C[5];
+  }
+  return n;
+}
+// 이동 문 **안** — 커널 몸의 뒷일(원래 차례 그대로)
+function _wwPost(p, i) {
+  p.x = _WW.X[i]; p.y = _WW.Y[i];
+  const st = _WW.ST[i];
+  if (st < 2) { p.vx = 0; p.vy = 0; if (st === 1) p.dirty = true; if (p.pid) _walk.ejPids.add(p.pid); }
+  else if (st === 2) Roads.stampEntityPx(p, p.x, p.y);
+  else p.nextDecisionAt = 0;
+}
+// `verify` — JS 정본이 옮긴 뒤 비트로 견준다 · 앞문이 적은 갈래가 이동 문의 실제 거름과 같은가(걸음 수 = 갈래 1 + 2)도
+function _wwCheck(jsSteps) {
+  let bad = 0, want = 0;
+  for (let i = 0; i < _wwCode.length; i++) if (_wwCode[i]) want++;
+  if (jsSteps !== want) _wwStat.gateBad++;   // 사람 입력 걸음이 섞이면 늘어난다(견줌 판은 관측자만 — 사람 0)
+  for (let i = 0; i < _wwList.length; i++) {
+    const p = _wwList[i];
+    if (!Object.is(p.x, _WW.X[i]) || !Object.is(p.y, _WW.Y[i]) || !Object.is(p.vx, _WW.VX[i]) || !Object.is(p.vy, _WW.VY[i])) {
+      bad++;
+      if (_wwStat.sample.length < 8) _wwStat.sample.push({ pid: p.pid, js: [p.x, p.y, p.vx, p.vy], ww: [_WW.X[i], _WW.Y[i], _WW.VX[i], _WW.VY[i]], st: _WW.ST[i] });
+    }
+  }
+  _wwStat.bad += bad; if (bad) _wwStat.badTicks++;
+}
+
 // 인접 cell (cx,cy) → (cx+sx, cy+sy)로의 cardinal 한 칸 이동이 wall/door edge로 막히나
 function edgeBlockedStep(cx, cy, sx, sy, floor) {
   if (sx === 1)  return findEdgeWall(cx, cy, 'E', floor);
@@ -12389,6 +12482,10 @@ setInterval(() => {
     }
   } // ← movePlayerStep 함수 끝
 
+  // ★[T461] 걸음 커널(켬·견줌일 때만) — 이동 문 앞에서 한 번에
+  let _wwCur = 0, _wwK = 0;
+  if (_WW) _wwPre(moveDt);
+  const _wwSteps0 = _walk.steps;   // [T461 견줌] 이동 문이 실제로 부른 걸음 수(갈래 표와 견준다)
   // === 입력 큐 구동 — 사람: 입력 1개=1스텝(밀린 만큼 따라잡기), NPC: 틱당 1스텝 ===
   //   클라가 보낸 입력을 받은 순서대로 그대로 재생 → 서버 위치(seq=k) = 클라 예측(seq=k) → 리컨실리에이션 보정 0.
   //   빈 틱(입력 없음)엔 안 움직여 '유령 이동' 제거. GC로 밀린 입력은 틱당 최대 8개까지 흡수(catch-up).
@@ -12397,6 +12494,11 @@ setInterval(() => {
     if (p.isNpc) {
       if (p.simCaravan) continue; // §4-4 Stage 4B: 캐러밴 실체 NPC — 이동은 villages.js 페이싱(경로 보간+벽 판정)이 전담(이중 이동 방지)
       if (p.simWar) continue;     // §4-4 P3: 출정(징발) 병사 — 이동은 villages.js 실체 전쟁(행군 대형 페이싱·전투유닛 미러)이 전담(이중 이동 방지)
+      if (_wwOn && p === _wwSeq[_wwCur]) {   // ★[T461] 앞문이 적은 갈래 — 커널 몸은 뒷일만(차례 그대로) · 잠든 몸은 건너뜀 · 2 는 아래 정본 문으로
+        const _c = _wwCode[_wwCur++];
+        if (_c === 1) { _wwPost(p, _wwK++); continue; }
+        if (_c === 0) continue;
+      }
       // ★★★[T316 2026-09-19 · 캐논 ⓑ] **결정과 이동은 문이 둘이다.** 위 `npcStep` 게이트만 열면
       //   주민은 목표를 정하고 라벨('출근')까지 찍지만 **한 픽셀도 안 간다** — 실측이 그랬다:
       //   손잡이를 켜고 7 게임일을 돌렸는데 걷는 어부 0 · 입고 0 이었다(틱은 8배 무거워졌는데).
@@ -12440,6 +12542,7 @@ setInterval(() => {
       if (consumed === 0 && MOVE_PARAMS.model !== 'accel') { p.vx = 0; p.vy = 0; }
     }
   }
+  if (_wwVerify && _WW) _wwCheck(_walk.steps - _wwSteps0);   // ★[T461] 견줌 — JS 정본이 옮긴 몸을 커널 답과 비트로(분리 전 · 같은 자리)
   sepNpcs(dt);   // ★[생활 층 ①] NPC 상호 분리 — 이동 적용 직후(같은 틱 위치에 보정) 틱당 1회
 
   // === Phase 14.49-e: PZ식 다단 계단 — 3 cell 점유 + step별 z + walk-off로 floor 전환 ===

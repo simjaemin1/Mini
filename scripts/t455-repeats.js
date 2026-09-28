@@ -29,7 +29,7 @@ const LEAD_S = parseInt(process.env.T455_LEAD_S || '150', 10);
 fs.mkdirSync(DIR, { recursive: true });
 
 // ── 팔 정의 ──────────────────────────────────────────────────────────────
-const BASE = 'VILLAGE_NPC_CAP=999999,T312_FISH_ACT=1';   // T433 ③ #54 켬 팔 · T444 와 같은 설정(무제한 틀 · 어획 걸음)
+const BASE = process.env.T455_BASE || 'VILLAGE_NPC_CAP=999999,T312_FISH_ACT=1';   // ★[T461] `T455_BASE` — 다른 틀(몸 1,329 · 상한 기본)의 켬 팔   // T433 ③ #54 켬 팔 · T444 와 같은 설정(무제한 틀 · 어획 걸음)
 function clockAt(tpl, shiftDays) {
   const m = fs.statSync(tpl).mtimeMs;
   return (Math.floor(m / DAY) + 2 + (shiftDays || 0)) * DAY - LEAD_S * 1000;   // 템플릿 뒤 둘째 경계 앞 LEAD_S 초
@@ -47,7 +47,7 @@ const PLANS = {
 // ③ 손잡이 — 팔 다섯을 한 바퀴로 돌리고 바퀴를 n 번(흐름을 팔이 나눠 가진다)
 function knobPlan(rounds, clock, from, only) {
   let arms = [['on', BASE], ['t385off', BASE + ',T385_ONE_SWEEP=0'], ['t421off', BASE + ',T421_SPATIAL_INC=0'],
-    ['t394off', BASE + ',T394_WORK_TERRAIN=0'], ['t427on', BASE + ',T427_SITE_REACH=1']];
+    ['t394off', BASE + ',T394_WORK_TERRAIN=0'], ['t427on', BASE + ',T427_SITE_REACH=1'], ['ww', BASE + ',T461_WALK_WASM=1']];   // ★[T461] 걸음 커널 켬
   if (only) arms = arms.filter(([a]) => only.split('+').includes(a));   // 바퀴를 늘릴 때 — 작은 몫의 팔만(켬은 짝이라 늘 같이)
   const out = [];
   for (let i = from || 1; i <= rounds; i++) for (const [a, e] of arms) out.push({ tag: `k-${a}-${i}`, clock, hog: false, env: e, round: i });
@@ -170,8 +170,8 @@ function table() {
   const sPoolA = R.sd([...(groups.fixed || []), ...base].map((r) => r.pathMsTick));
   if (base.length) {
     console.log(`\n## ③ 손잡이 — 켬(기본) 팔 대 한 손잡이씩 · s(p50) = ${f2(sPool, 3)} · s(p95) = ${f2(sPool95, 3)} · s(A*) = ${f2(sPoolA, 3)} (fixed ∪ k-on · ${(groups.fixed || []).length + base.length}판)`);
-    const OLD = { 'k-t385off': 1.83, 'k-t421off': 0.41, 'k-t394off': -0.45, 'k-t427on': null };
-    for (const g of ['k-t385off', 'k-t421off', 'k-t394off', 'k-t427on']) {
+    const OLD = { 'k-t385off': 1.83, 'k-t421off': 0.41, 'k-t394off': -0.45, 'k-t427on': null, 'k-ww': null };
+    for (const g of ['k-t385off', 'k-t421off', 'k-t394off', 'k-t427on', 'k-ww']) {
       const rs = groups[g] || []; if (!rs.length) continue;
       const a = R.summarize(base.map((r) => r.p50)), b = R.summarize(rs.map((r) => r.p50));
       const d = b.med - a.med, w = R.RULE_REPEATS.width(sPool, a.n, b.n);
