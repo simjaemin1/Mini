@@ -108,6 +108,7 @@ async function sample(p, want) {
     console.log(`| ${r.tag} | ${M(r.mem.rss)}MB | ${M(r.mem.heapUsed)} · ${M(r.mem.heapTotal)}MB | ${M(r.mem.external)} · ${M(r.mem.arrayBuffers)}MB | ${M(code)}MB | ${k.res} · ${k.bld} · ${k.mobs} · ${k.act} · ${k.ringChunks} | ${r.gcMs} |`);
   }
   for (const r of recs) if (r.bandits) console.log(`  도적 창 ${r.tag}: ${JSON.stringify(r.bandits)}`);
+  for (const r of recs) if (r.coast) console.log(`  물타일 창 ${r.tag}: ${JSON.stringify(r.coast)}`);
   console.log(`\n| 시점 | GC 전 RSS(밖) | GC 뒤 RSS | 최고점 VmHWM | Anonymous | malloc_trim 뒤 RSS |`);
   console.log('|---|---:|---:|---:|---:|---:|');
   recs.forEach((r, i) => { const o = outside[i] || {}; const K = (x) => x ? (x / 1024).toFixed(1) + 'MB' : '-';

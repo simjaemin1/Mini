@@ -3606,6 +3606,7 @@ function warTreeCellBlocked(cellX, cellY) {
 }
 
 SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, isWaterTileLocal, isPositionActive, isBlockedByWall, anyViewerNear, perfMark,
+  waterTiles: WATER_TILES,   // ★[T480] 해안선 물타일 정본(위 1155줄) — 마을 세울 때 `seaDistPx` 가 이것을 읽는다(villages 쪽 사본 0)
   zoneAwake,   // ★[T410] 존이 이 틱에 몸을 걷게 하나 — 틱의 idle 문과 **같은 판정**(생활층 `_t368ZoneAwake` 가 이것만 본다 · 사본 0)
   // ★★[T333] 바위 술어도 넘긴다 — 생활층 지형 어댑터(`villages.js isRock`)가 여태 `terrain.isRockCellLocal` 을
   //   **직접** 불러 메모를 지나쳤다(T324 프로파일: 남은 지형 시간의 9.6%). 같은 양자화(셀 중심)라 답은 같다.
