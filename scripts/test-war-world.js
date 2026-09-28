@@ -423,7 +423,7 @@ function _run(opts) {
 
 (async () => {
   //   ★[T458] 절 하나만(개발 — 전 절은 7분) · WW_PART=ration,forage,berry
-  if (process.env.WW_PART) { const P = { ration: rationActPart, forage: forageMarchPart, berry: berryArrowPart, loot: lootActPart, punitive: punitivePart }; for (const k of process.env.WW_PART.split(',')) P[k](); say(`\n결과: ${pass} 통과 / ${fail} 실패`); process.exit(fail ? 1 : 0); }
+  if (process.env.WW_PART) { const P = { ration: rationActPart, forage: forageMarchPart, berry: berryArrowPart, loot: lootActPart, punitive: punitivePart, odds: oddsRealPart }; for (const k of process.env.WW_PART.split(',')) P[k](); say(`\n결과: ${pass} 통과 / ${fail} 실패`); process.exit(fail ? 1 : 0); }
   if (process.env.WW_ONLY) { const r = runScenario({ seed: parseInt(process.env.WW_SEED || '31', 10), viewer: false, scenario: process.env.WW_ONLY, trees: process.env.WW_TREES === '1', maxTicks: parseInt(process.env.WW_TICKS || '', 10) || 30 * 60 * 20 }); say(JSON.stringify({ ended: r.ended, counts: r.counts, stat: r.stat, fight: r.fightTicks, blocked: r.blockedTicks, box: [r._bx0, r._bx1, r._by0, r._by1] })); process.exit(0); }
   say('\n=== T284 실체 전쟁 — 좌표계 하나 · 장애물은 존의 것 · 연속 전투 ===');
 
@@ -600,6 +600,9 @@ function _run(opts) {
 
   // ── ⓩ 토벌도 원정이다(T476) ────────────────────────────────────────────
   punitivePart();
+
+  // ── ⓩ' 토벌 승산 해부 · 실제 편성 팔(T502) ─────────────────────────────
+  oddsRealPart();
 
   // ── ⓖ 서버 ───────────────────────────────────────────────────────────────
   if (process.env.WAR_WORLD_NO_SERVER === '1') { say('\n[ⓖ] 서버 절 건너뜀(WAR_WORLD_NO_SERVER=1)'); }
@@ -1247,6 +1250,49 @@ function punitivePart() {
   say(`      판: 결단 D${t.day}(약탈 ${t.raids} · 털린 ${t.lost} ≥ ${t.cost}) · 병력 ${on.book.bearers} · 행군 → 전투 D${t.battleDay} · 귀가 ${b.homeDay != null ? 'D' + b.homeDay : '-'} · 노획 ${(b.lootG + b.lootP).toFixed(1)}(${b.lootKg}kg) · 곳간 차(사슬 켬−끔) ${(on.fe.A - bare.fe.A).toFixed(1)}`);
   for (const [k, v] of keep) { if (v == null) delete process.env[k]; else process.env[k] = v; }
 }
+// ════════════════════════════════════════════════════════════════════════════
+// ★★[T502] ⓩ' — 토벌 승산이 3명 갱에도 31% 인 까닭 · 갱을 실제 편성으로 비추는 팔
+// ════════════════════════════════════════════════════════════════════════════
+function oddsRealPart() {
+  const KEYS = ['T423_RATION_ACT', 'T441_FORAGE_MARCH', 'T347_FORAGE_ACT', 'T466_LOOT_ACT', 'T476_PUNITIVE', 'T502_ODDS_REAL'];
+  const keep = KEYS.map(k => [k, process.env[k]]);
+  const env = (v) => { KEYS.forEach((k, i) => { if (v[i]) process.env[k] = '1'; else delete process.env[k]; }); };
+  const run = (v, o) => { env(v); groveReset(); try { return runScenario(o); } finally { env([0, 0, 0, 0, 0, 0]); } };
+  const O = (den) => ({ seed: 11, viewer: true, untilHome: true, econFood: true, maxTicks: 30 * 60 * 20, den });
+  say("\n[ⓩ'] 토벌 승산 해부 — 어느 항이 갱을 부풀리나 · 팔 `T502_ODDS_REAL`(갱 = 몸 n · 직업 bandit · 무기 0 · 비축)");
+  // ① 해부 — 같은 마을(비용 세계 `_mkCostWorld` 공격 마을 · 인구 30)이 같은 거리(160셀)에서 본 갱. 변형은 어댑터 필드만 바꾼다(식은 war-core 그대로).
+  Math.random = seeded(7);
+  const W = _mkCostWorld({}); Math.random = _origRandom;
+  const A = W.atk, war = W.war;
+  const den = (n, job, wep) => { const npcs = []; for (let i = 0; i < n; i++) npcs.push({ currentJob: job, age: 30 });
+    return { name: 'den', ccx: A.ccx + 160, ccy: A.ccy, _den: {}, _defPolicy: 'respond', econ: { name: 'den', npcs, counts: { [job]: n }, storage: { food: 100, fish: 0, meat: 0, cooked_food: 0, vegetable: 0, weapon: wep, armor: 0 } } }; };
+  const V = [['T476(전원 전사 · 한 사람 한 무기)', 'warrior', 1], ['무기만 0', 'warrior', 0], ['직업만 bandit', 'bandit', 1], ['팔(bandit · 무기 0)', 'bandit', 0]];
+  const tab = {};
+  for (const n of [3, 5, 9]) for (const [lab, job, w1] of V) { const p = war._warNpcMobPlan(A, den(n, job, w1 ? n : 0), 'feud', 160, W.world.day); (tab[lab] || (tab[lab] = [])).push(p); }
+  const pct = (p) => p.pWin != null ? (p.pWin * 100).toFixed(0) + '%' : '-';
+  for (const [lab] of V) say(`      ${lab}: ` + tab[lab].map((p, i) => `갱 ${[3, 5, 9][i]} → ${p.viable ? '간다' : '안 간다'} 병력 ${p.forceCount} 승산 ${pct(p)}`).join(' · '));
+  const T = tab[V[0][0]], Wo = tab[V[1][0]], Jb = tab[V[2][0]], Rl = tab[V[3][0]];
+  ok(T[1].pWin < Wo[1].pWin && Wo[1].pWin < Rl[1].pWin && T[2].viable === false && Wo[2].viable === true && Rl[2].viable === true && Rl[0].forceCount < T[0].forceCount,
+    "ⓩ'① 해부 — 무기(한 사람 한 무기 ×1.83)와 수(전원 전사 가중 1 · 마을 민병 0.25 = 머리당 ×4)가 갱을 부풀린다 · 둘 다 걷으면 승산이 오르고 병력(= 팩 비용)이 준다",
+    `갱 5: T476 ${pct(T[1])}/${T[1].forceCount}명 → 무기 0 ${pct(Wo[1])}/${Wo[1].forceCount} → 팔 ${pct(Rl[1])}/${Rl[1].forceCount} · 갱 9: T476 안 간다(${pct(T[2])})`);
+  ok(Rl.every(p => p.pWin === Rl[0].pWin) && Jb.every(p => p.pWin === Jb[0].pWin),
+    "ⓩ'① 해부 — 전사가 아닌 갱은 **크기가 안 보인다**(방어 교전수 = 전사 + 사냥꾼 + 나머지 25% · 효과 바닥 max(1, …)) — 3·5·9 명이 같은 승산", `팔 ${Rl.map(pct).join('/')} · 직업만 ${Jb.map(pct).join('/')}`);
+  // ② 팔 — 끔 동일 · 켬 결단·전투
+  const off = run([1, 0, 0, 1, 1, 0], O({ n: 5, food: 120, lost: 400 })), on = run([1, 0, 0, 1, 1, 1], O({ n: 5, food: 120, lost: 400 }));
+  const on9 = run([1, 0, 0, 1, 1, 1], O({ n: 9, food: 300, lost: 2000 })), off9 = run([1, 0, 0, 1, 1, 0], O({ n: 9, food: 300, lost: 2000 }));
+  const t0 = off.t476 || {}, t1 = on.t476 || {};
+  ok(!off.noWar && t0.real === 0 && t0.pWinOld === null && off.gangAfter.n === 1 && t0.atkCas === 2 && t0.defCas === 4,
+    "ⓩ'② ★끔 동일 — 팔 끔이면 T476 판 그대로(결단 · 병력 · 전투 사상 2/4 · 갱 1명 남음)", `승산 ${(t0.pWin * 100).toFixed(0)}% · 병력 ${off.book.bearers}`);
+  ok(!on.noWar && t1.real === 1 && t1.pWin > t1.pWinOld && n3x(t1.pWinOld, t0.pWin) && on.book.load < off.book.load && t1.winner === 'A',
+    "ⓩ'② 켬 — 같은 갱에 승산이 오르고(옛 비춤 승산도 같은 줄에) 병력·팩이 준다 · 이긴다", `승산 ${(t1.pWinOld * 100).toFixed(0)}% → ${(t1.pWin * 100).toFixed(0)}% · 팩 ${off.book.load} → ${on.book.load} · 사상 원정 ${t1.atkCas} · 도적 ${t1.defCas} · 갱 ${on.gangAfter.n}명 남음`);
+  ok(off9.noWar && !on9.noWar && on9.t476 && on9.t476.winner,
+    "ⓩ'② 켬 — T476 이 승산으로 거절하던 9명 갱에도 간다", `끔 ${JSON.stringify(off9.t476Stat).slice(0, 40)} · 켬 ${on9.t476.winner}승 · 사상 ${on9.t476.atkCas}/${on9.t476.defCas} · 갱 ${on9.gangAfter.n}명 남음`);
+  const VS = fs.readFileSync(path.join(ROOT, 'server/villages.js'), 'utf8');
+  ok((VS.match(/process\.env\.T502_ODDS_REAL === '1'/g) || []).length === 1 && !/T502/.test(fs.readFileSync(path.join(ROOT, 'sim/war-core.js'), 'utf8')),
+    "ⓩ' 정적 — 팔 하나(villages 소굴 어댑터 자리) · war-core 식 무접촉(해부는 입력만 바꾼다)");
+  for (const [k, v] of keep) { if (v == null) delete process.env[k]; else process.env[k] = v; }
+}
+function n3x(a, b) { return Math.abs((a || 0) - (b || 0)) <= 1e-6; }
 function forageMarchPart() {
   const keep = ['T423_RATION_ACT', 'T441_FORAGE_MARCH', 'T347_FORAGE_ACT'].map(k => [k, process.env[k]]);
   const env = (a, b, c) => { const set = (k, v) => { if (v) process.env[k] = '1'; else delete process.env[k]; }; set('T423_RATION_ACT', a); set('T441_FORAGE_MARCH', b); set('T347_FORAGE_ACT', c); };
