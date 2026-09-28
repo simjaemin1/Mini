@@ -29,6 +29,9 @@ const ROOT = path.join(__dirname, '..');
 const SHOTS = '/tmp/e2e-move-shots';
 fs.mkdirSync(SHOTS, { recursive: true });
 const CPORT = 3010, ZPORT = 3020;
+// ★[T474 ⓪] 한 걸음 = 몸 속도 ÷ 존 틱(서버 `TICK_HZ` · 클라 `PRED_STEP = 1/30` 이 같은 수) — 미끄러짐 "사실상 0" 의 자(새 수 0).
+//   글자는 존 정본에서 읽는다(하네스가 30 을 다시 안 적는다).
+const TICK_HZ = +((fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8').match(/^const TICK_HZ = (\d+);/m) || [])[1]);
 
 let pass = 0, fail = 0;
 const ok = (c, m, extra) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (extra !== undefined && extra !== '' ? `  ${extra}` : '')); };
@@ -152,13 +155,50 @@ async function runPhase(model, SPOT, deep) {
   const topD = await dbg();
   R.top = topD ? topD.speed : 0;
   R.series = series;
-  const posBefore = await me();
-  await page.keyboard.up('KeyD');
   // ── ② 키 뗌 → 미끄러짐 거리 ──────────────────────────────────────────────
+  // ★★[T474 ⓪ 2026-09-28] 미끄러짐의 **원점은 키를 뗀 그 순간**이고, **끝은 서버 권위 쉼 자리**다.
+  //   옛 자는 원점을 `page.evaluate` 로 떼기 **전에** 찍었다(아래 `posBefore` — 대리 지표로만 남긴다). 그 표본과 실제 떼기
+  //   (Playwright 왕복) 사이에 클라가 30Hz 고정 스텝으로 1~3걸음(한 걸음 = baseSpeed ÷ TICK_HZ = 2.13px)을 **더 걸었고**
+  //   그 걸음이 미끄러짐에 섞였다 — PM 실측 4.27 = 2걸음 · 6.40 = 3걸음. 값은 세계가 아니라 **표본 시각**이었다.
+  //   ⇒ 떼기 **이벤트 안에서**(창 캡처 단계 — 클라 `keyup` 처리보다 먼저 · 같은 JS 작업) 예측 자리를 찍는다.
+  //     클라는 떼기를 **다음 고정 스텝**에서 읽으므로(`keys.delete` → `worldKeysDir` 0) 찍힌 자리 = 마지막 입력 스텝의 자리다.
+  //   끝은 `__getSrvAbs`(서버 권위 · 족보 ㊹) — 예측 쉼 자리와의 차는 따로 잰다(권위 = 예측이면 둘 중 무엇으로 재도 같다).
+  await page.evaluate(() => {
+    window.__t474Rel = null;
+    const f = (e) => { if (e.code !== 'KeyD') return; const p = window.__getMyAbs(); window.__t474Rel = { x: p.x, y: p.y }; window.removeEventListener('keyup', f, true); };
+    window.addEventListener('keyup', f, true);
+  });
+  const posBefore = await me();                  // 옛 자의 원점(떼기 전 표본) — 대리 지표
+  await page.keyboard.up('KeyD');
   await sleep(600);
   const posAfter = await me();
-  R.slide = Math.hypot(posAfter.x - posBefore.x, posAfter.y - posBefore.y);
+  const srvAfter = await page.evaluate(() => (window.__getSrvAbs ? window.__getSrvAbs() : null));
+  const rel = await page.evaluate(() => window.__t474Rel);
+  R.rel = rel; R.srvOk = !!srvAfter;
+  R.stepPx = d0 && d0.cfg ? d0.cfg.baseSpeed / TICK_HZ : NaN;                                         // 한 걸음(px)
+  R.slide = (rel && srvAfter) ? Math.hypot(srvAfter.x - rel.x, srvAfter.y - rel.y) : NaN;             // ★권위 쉼 − 떼는 순간
+  R.slidePred = rel ? Math.hypot(posAfter.x - rel.x, posAfter.y - rel.y) : NaN;                       // 예측 쉼 − 떼는 순간
+  R.restGap = srvAfter ? Math.hypot(srvAfter.x - posAfter.x, srvAfter.y - posAfter.y) : NaN;          // 권위 쉼 ↔ 예측 쉼
+  R.slideOld = Math.hypot(posAfter.x - posBefore.x, posAfter.y - posBefore.y);                        // 옛 자(떼기 전 표본)
   R.restSpeed = (await dbg()).speed;
+  // ── ②-미끼 [T474 ⓪] 떼기를 **100ms 늦춘다**(표본 → 떼기 사이) — 옛 자는 그 사이 걸은 걸음(30Hz 면 3걸음 = 6.40px)만큼
+  //   커지고 새 자(원점 = 떼는 순간)는 **안 변한다**. PM 이 본 6.40 이 한 프레임이 아니라 **표본 시각**이라는 것을 판 안에서 보인다.
+  //   두 모델 판이 같은 각본을 밟는다(③ 짝 비교의 출발점도 같이 옮겨 간다).
+  await page.keyboard.down('KeyD'); await sleep(700);
+  await page.evaluate(() => {
+    window.__t474Rel = null;
+    const f = (e) => { if (e.code !== 'KeyD') return; const p = window.__getMyAbs(); window.__t474Rel = { x: p.x, y: p.y }; window.removeEventListener('keyup', f, true); };
+    window.addEventListener('keyup', f, true);
+  });
+  const pb2 = await me();
+  await sleep(100);
+  await page.keyboard.up('KeyD');
+  await sleep(600);
+  const pa2 = await me();
+  const sa2 = await page.evaluate(() => (window.__getSrvAbs ? window.__getSrvAbs() : null));
+  const rel2 = await page.evaluate(() => window.__t474Rel);
+  R.baitOld = Math.hypot(pa2.x - pb2.x, pa2.y - pb2.y);
+  R.baitNew = (rel2 && sa2) ? Math.hypot(sa2.x - rel2.x, sa2.y - rel2.y) : NaN;
   await snap(`mv-${model}-01-walk`);
 
   // ── ③ 대조 걸음 — 보정 짝 비교용 (legacy/accel 완전히 같은 각본) ───────────
@@ -290,8 +330,19 @@ async function runPhase(model, SPOT, deep) {
   }
 
   console.log('\n=== ② 키 뗌 → 미끄러짐 ===');
-  ok(L.slide < 4, `legacy 미끄러짐 ${L.slide.toFixed(2)}px (사실상 0 — 즉시 정지)`);
+  //   ★[T474 ⓪] 원점 = 키를 뗀 순간(떼기 이벤트 안) · 끝 = 서버 권위 쉼 자리 · "사실상 0" = **한 걸음 미만**(baseSpeed ÷ TICK_HZ)
+  ok(!!L.rel && !!A.rel && L.srvOk && A.srvOk && TICK_HZ > 0 && L.stepPx > 0,
+     '(전제) 두 판 다 **키를 뗀 순간**의 자리를 떼기 이벤트 안에서 찍었고 서버 권위 쉼 자리를 받았다 — 원점·끝이 둘 다 실물이다',
+     `한 걸음 ${L.stepPx.toFixed(3)}px = ${(L.stepPx * TICK_HZ).toFixed(0)}px/s ÷ TICK_HZ ${TICK_HZ}`);
+  ok(L.slide < L.stepPx, `legacy 미끄러짐 ${L.slide.toFixed(2)}px < 한 걸음 ${L.stepPx.toFixed(2)}px (사실상 0 — 즉시 정지)`);
   ok(A.slide > L.slide, `★accel 미끄러짐 ${A.slide.toFixed(2)}px > legacy ${L.slide.toFixed(2)}px — 반 발짝 미끄러진다`);
+  ok(L.baitOld - L.baitNew >= 2 * L.stepPx && A.baitOld - A.baitNew >= 2 * L.stepPx
+       && Math.abs(L.baitNew - L.slide) < L.stepPx && Math.abs(A.baitNew - A.slide) < L.stepPx,
+     '★자명 통과 금지 — 떼기를 100ms 늦추면 옛 자(떼기 전 표본)는 걸음만큼 커지고 새 자(떼는 순간)는 그대로다 — 6.40 은 한 프레임이 아니라 표본 시각이다',
+     `옛 자 legacy ${L.baitOld.toFixed(2)} · accel ${A.baitOld.toFixed(2)}px(${(L.baitOld / L.stepPx).toFixed(2)} · ${((A.baitOld - A.slide) / L.stepPx).toFixed(2)}걸음 더) · 새 자 ${L.baitNew.toFixed(2)} · ${A.baitNew.toFixed(2)}px`);
+  ok(Math.max(L.restGap, A.restGap) < L.stepPx && Math.abs(L.slidePred - L.slide) < L.stepPx && Math.abs(A.slidePred - A.slide) < L.stepPx,
+     '권위 쉼 자리 = 예측 쉼 자리(한 걸음 미만) — 예측으로 재도 권위로 재도 같은 미끄러짐이다',
+     `쉼 자리 차 legacy ${L.restGap.toFixed(2)} · accel ${A.restGap.toFixed(2)}px · 예측 미끄러짐 ${L.slidePred.toFixed(2)} · ${A.slidePred.toFixed(2)}px`);
   ok(A.restSpeed < 0.01, `놓은 뒤 속도 ${A.restSpeed.toFixed(4)}px/s = 완전 정지 (잔량 없음)`);
 
   console.log('\n=== ③ 보정 짝 비교 — accel 이 legacy 보다 나빠지면 안 된다 ===');
@@ -338,7 +389,8 @@ async function runPhase(model, SPOT, deep) {
 
   console.log('\n=== 대리 지표 ===');
   console.log(`    accel 정지→최고속 : ${A.series.filter(([t, v]) => v < 63.9 && t < 400).length} 표본 후 ${A.top.toFixed(2)}px/s`);
-  console.log(`    미끄러짐          : legacy ${L.slide.toFixed(2)}px · accel ${A.slide.toFixed(2)}px`);
+  console.log(`    미끄러짐          : legacy ${L.slide.toFixed(2)}px · accel ${A.slide.toFixed(2)}px (원점 = 떼는 순간 · 끝 = 권위)`);
+  console.log(`    옛 자(떼기 전 표본): legacy ${L.slideOld.toFixed(2)}px · accel ${A.slideOld.toFixed(2)}px — 떼기까지 더 걸은 걸음 legacy ${((L.slideOld - L.slide) / L.stepPx).toFixed(2)} · accel ${((A.slideOld - A.slide) / A.stepPx).toFixed(2)}걸음 [T474 ⓪]`);
   console.log(`    보정 짝           : legacy ${L.corrN}회/${L.corrLast}px · accel ${A.corrN}회/${A.corrLast}px`);
   console.log(`    조준 오프셋       : ${A.aimLook.toFixed(1)}px (상한 180) · 안개 이동 ${A.fogShift.toFixed(3)}px`);
   console.log(`    스크린샷          : ${SHOTS}`);
