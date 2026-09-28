@@ -34,8 +34,11 @@ const last = {};  // `${vilId}|${pid}` → { x, y, u, f, g, fv }
 let traceFd = null;
 function aggOf(k, job, vname, d) {
   const b = B[k] || (B[k] = { job, vil: vname, days: {} });
-  return b.days[d] || (b.days[d] = { n: 0, walk: 0, lab: {}, cutN: 0, cutU: 0, pickN: 0, pickU: 0, gran: 0, granS: 0, rest: 0, half: 0, hpMin: null,
+  //   ⚠`b.job` 은 처음 본 직업이다 — 몸의 직업은 econ 분포를 따라 바뀐다(`syncVillageJobs`) ⇒ 날마다 그날 본 직업을 `jobs` 에 센다(표본 수)
+  const a = b.days[d] || (b.days[d] = { n: 0, jobs: {}, walk: 0, lab: {}, cutN: 0, cutU: 0, pickN: 0, pickU: 0, gran: 0, granS: 0, rest: 0, half: 0, hpMin: null,
     handMax: 0, dusk: null, site: null, dHome: null, dCtr: null, dGran: null, task: {}, firstFv: null, lastDayFv: null });
+  a.jobs[job] = (a.jobs[job] || 0) + 1;
+  return a;
 }
 function forageHand(F, vil, p) {
   let u = 0; const keep = (F._t347KeepOf && F._t347KeepOf(vil)) || [];
