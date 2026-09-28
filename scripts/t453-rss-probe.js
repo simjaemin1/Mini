@@ -68,6 +68,8 @@ Module.prototype._compile = function (content, filename) {
 })();
 `;
   }
+  // ★[T480] 마을 모듈의 물타일 창(읽기만) — 존 판에서 헤드리스 대체 Set 이 **안** 생겼나(= 정본 `WATER_TILES` 를 읽었나)
+  if (filename.endsWith(path.join('server', 'villages.js'))) content += '\n;globalThis.__t480v = function () { return { headless: typeof _coastSetHeadless !== "undefined" && _coastSetHeadless ? _coastSetHeadless.size : null, oldCopy: typeof _coastTilesCache !== "undefined" && _coastTilesCache ? _coastTilesCache.length : null, injected: !!(state.deps && state.deps.waterTiles) }; };\n';
   // ★[T453 ③] 도적 모듈의 상태 창(읽기만) — 거리장·소굴이 고침 앞뒤로 같은가(비트 동일 게이트)
   if (filename.endsWith(path.join('server', 'bandits.js'))) content += '\n;globalThis.__t453bandits = function () { return S; };\nglobalThis.__t453brf = function () { S._routes = null; S.routeField = null; return ensureRouteField(); };\n';
   return _compile.call(this, content, filename);
@@ -82,6 +84,7 @@ function snapOnce(tag) {
     const spaces = {}; for (const s of v8.getHeapSpaceStatistics()) spaces[s.space_name] = { used: s.space_used_size, size: s.space_size };
     const hs = v8.getHeapStatistics();
     const counts = typeof globalThis.__t453counts === 'function' ? globalThis.__t453counts() : null;
+    let coast = null; try { coast = globalThis.__t480v ? globalThis.__t480v() : null; } catch (e) { coast = { err: String(e) }; }
     let bandits = null;
     try { const S = globalThis.__t453bandits && globalThis.__t453bandits(); if (S) { const h = require('crypto').createHash('sha256');
       const F = S.routeField; if (F) { h.update(Buffer.from(F.f.buffer, F.f.byteOffset, F.f.byteLength)); h.update(F.gw + ',' + F.gh + ',' + F.empty); }
@@ -98,7 +101,7 @@ function snapOnce(tag) {
       snap = v8.writeHeapSnapshot(`${OUT}.${tag}.heapsnapshot`);
       globalThis.__t453o = null;
     }
-    const rec = { tag, t: Date.now(), gcMs, mem: m, bandits, spaces, heap: { total: hs.total_heap_size, used: hs.used_heap_size, malloced: hs.malloced_memory, peakMalloced: hs.peak_malloced_memory, external: hs.external_memory }, counts, snap };
+    const rec = { tag, t: Date.now(), gcMs, mem: m, bandits, coast, spaces, heap: { total: hs.total_heap_size, used: hs.used_heap_size, malloced: hs.malloced_memory, peakMalloced: hs.peak_malloced_memory, external: hs.external_memory }, counts, snap };
     let all = []; try { all = JSON.parse(fs.readFileSync(OUT, 'utf8')); } catch (e) {}
     all.push(rec);
     fs.writeFileSync(OUT + '.tmp', JSON.stringify(all)); fs.renameSync(OUT + '.tmp', OUT);

@@ -359,28 +359,40 @@ let _oceanRectsCache = null;
 //   바닷가 마을도 이웃 존 경계까지는 수 km 다. 회부 §C 의 "바다까지 20px" 은 **그 띠까지**의 거리다.
 //   ⇒ 생성기(`chunk.generateCoastlineWaterTiles`)를 **그대로 불러** 그 타일 집합에 대고 잰다(사본 금지).
 //     읽기만 한다 — `server/chunk.js` 는 안 고친다(플레이어 층 무접촉).
-let _coastTilesCache = null, _coastTilesZone = null;
-function _coastTiles(zoneId) {
-  if (_coastTilesZone === zoneId && _coastTilesCache) return _coastTilesCache;
+// ★★[T480 2026-09-28 · 사본 0] 해안선 물타일의 **정본은 존의 `WATER_TILES` 하나**다(zone.js 가 굽고 `deps.waterTiles` 로 넘긴다).
+//   종전엔 여기서 생성기를 **한 번 더** 불러 `[x,y]` 배열로 들고 있었다(`_coastTilesCache` — 한반도 39만 칸 · 힙 28.5MB ·
+//   26존 675MB · T453 §1). 같은 생성기 · 같은 인자라 같은 집합이었고(`findZoneAt` 인자는 생성기가 안 읽는다),
+//   읽는 자리는 마을을 세울 때 이 함수 하나뿐이었다 ⇒ 사본을 지우고 정본 Set 을 그대로 훑는다.
+//   존 없이 villages 만 부르는 자(헤드리스 스크립트 · `t17-metrics`)만 생성기를 불러 **그 판의 하나**를 만든다(주입이 없으니 사본이 아니다).
+let _coastSetHeadless = null, _coastSetZone = null;
+function _coastSet(zoneId) {
+  const d = state.deps;
+  if (d && d.waterTiles && state.zoneId === zoneId) return d.waterTiles;
+  if (_coastSetZone === zoneId && _coastSetHeadless) return _coastSetHeadless;
   const { ZONES: _Z } = require('./zone-config');
   const Zn = _Z[zoneId];
-  if (!Zn) { _coastTilesZone = zoneId; return (_coastTilesCache = []); }
-  if (!_oceanRectsCache) _oceanRectsCache = _oceanRects();
   let set = new Set();
-  try { set = require('./chunk').generateCoastlineWaterTiles({ ...Zn, id: zoneId }, SZ, () => null, _oceanRectsCache) || new Set(); }
-  catch (e) { set = new Set(); }
-  const arr = [];
-  for (const k of set) { const i = k.indexOf('_'); arr.push([+k.slice(0, i), +k.slice(i + 1)]); }
-  _coastTilesZone = zoneId; _coastTilesCache = arr;
-  return arr;
+  if (Zn) {
+    if (!_oceanRectsCache) _oceanRectsCache = _oceanRects();
+    try { set = require('./chunk').generateCoastlineWaterTiles({ ...Zn, id: zoneId }, SZ, () => null, _oceanRectsCache) || new Set(); }
+    catch (e) { set = new Set(); }
+  }
+  _coastSetZone = zoneId; _coastSetHeadless = set;
+  return set;
 }
 // 셀 좌표(ccx,ccy) → 가장 가까운 **해안선 물타일**까지 px. 바다가 없으면 Infinity.
+//   키는 생성기 정본 꼴 `${tx}_${ty}`(tx·ty ≥ 0 정수 — `chunk.generateCoastlineWaterTiles` 의 두 겹 루프)라
+//   문자열을 새로 만들지 않고 글자로 읽는다. 순서는 Set 삽입 순서 = 종전 배열 순서(같은 Set 에서 만들었다) · 최솟값이라 순서와도 무관.
 function seaDistPx(zoneId, ccx, ccy) {
-  const tiles = _coastTiles(zoneId);
-  if (!tiles.length) return Infinity;
+  const tiles = _coastSet(zoneId);
+  if (!tiles.size) return Infinity;
   let best2 = Infinity;
-  for (let i = 0; i < tiles.length; i++) {
-    const dx = (tiles[i][0] - ccx), dy = (tiles[i][1] - ccy);
+  for (const k of tiles) {
+    let x = 0, y = 0, j = 0, c;
+    const n = k.length;
+    while ((c = k.charCodeAt(j++)) !== 95) x = x * 10 + (c - 48);   // 95 = '_'
+    while (j < n) y = y * 10 + (k.charCodeAt(j++) - 48);
+    const dx = (x - ccx), dy = (y - ccy);
     const d2 = dx * dx + dy * dy;
     if (d2 < best2) best2 = d2;
   }
