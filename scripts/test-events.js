@@ -562,9 +562,15 @@ if (REQ_CTX) {
 // ═════════════════════════════════════════════════════════════════════════════
 const Rumor = R('server/rumor');
 
-// 일렬 마을 배치 — i번 마을이 x = i*600. 이웃 간 600px = 1일, 0↔3 은 1800px = 4일.
+// 일렬 마을 배치 — 이웃 간 **1.2 소문일**(반올림 1일), 0↔3 은 3.6 소문일(반올림 4일).
 //   ⇒ **징검다리(1+1+1=3일)가 직행(4일)보다 빠르다.** 다단 전파가 진짜로 필요한 배치다.
-const CHAIN_PX = 600;
+// ★★[T496 2026-09-28] 픽스처 거리를 **소문 시계의 일 단위**로 짠다(종전 글자 600px = 1.2 × 500).
+//   소문 분리가 기본 켬이 되자(T489 · 소문 = 몸 7,200 econ/일) 600px 는 0.08일이 되어 모든 이웃이 하루 · 직행 = 징검다리가 되고,
+//   아래 ⑳e·㉑d·㊺a 전제가 **제대로** 빨개졌다(다단 전파·홉 갈림 상황이 사라졌다 — 자명 통과 금지 문이 운 것이다).
+//   이 절들은 전파 **기계**(Dijkstra · 홉 · 가시성)를 잰다 — 시계가 아니다(시계는 ⑲ 가 잰다). ⇒ 거리 = 일 × 그 시계.
+//   `DAY5` = 소문 하루의 5분의 1(정수 곱이라 두 시계 모두 정확): 종전 100px → CHAIN_PX 600 그대로 · 켬 1,440 → 8,640.
+const DAY5 = Rumor.CFG.SPEED / 5;
+const CHAIN_PX = 6 * DAY5;
 function chainGeo(n) {
   const ids = []; for (let i = 0; i < n; i++) ids.push(i);
   return { vids: () => ids, dist: (a, b) => Math.abs(a - b) * CHAIN_PX };
@@ -576,8 +582,9 @@ const mkLedgerGeo = (world, geo, cfg) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ⑲ econ 캐러밴 시계와의 **동기 계약** — 소문은 행상과 같은 속도로 걷는다
-//    ⚠자기 자신을 검사하지 않는다: econ 이 **실제로 띄운 캐러밴**의 travelDays 와 대조한다.
+// ⑲ 소문 시계의 **동기 계약** — ★[T496] 기본: 소문은 **몸**과 같은 속도로 걷는다(T489 소문 분리 기본 켬)
+//    · `T489_RUMOR_SPLIT=0`: 종전 — 소문은 행상과 같은 속도로 걷는다(econ 캐러밴 시계 거울)
+//    ⚠자기 자신을 검사하지 않는다: econ 이 **실제로 띄운 캐러밴**의 거리·travelDays 와 대조한다.
 // ─────────────────────────────────────────────────────────────────────────────
 {
   // 여러 시드에서 캐러밴을 모아 **거리 폭**을 넓힌다(한 판 5건으론 계약을 못 잰다).
@@ -598,16 +605,30 @@ const mkLedgerGeo = (world, geo, cfg) => {
     }
   }
   ok(cars.length > 0, '⑲a 전제: econ 이 실제로 캐러밴을 띄웠다(대조할 실물이 있다)', `caravans=${cars.length}`);
-  let bad = null, span = [Infinity, -Infinity], legOk = true;
+  // ★★[T496 2026-09-28] **소문 분리 기본 켬**(T489 · 소문 = 몸) — 이 계약의 **상대가 캐러밴에서 몸으로** 바뀌었다(한 줄 · 자리 그대로).
+  //   거울(소문 날 = 캐러밴 날)은 캐러밴이 옛 동기 수(500)에 남아 있는 한 켬에서 참일 수 없다 — 그 거울을 끊는 것이 T489 의 뜻이다.
+  //   ⇒ **같은 실물**(econ 이 실제로 띄운 캐러밴의 거리 전수)을 두고 소문 날 = **몸이 그 거리를 걷는 날**인지 잰다.
+  //     몸 하루 걸음은 여기서 정본 셋(move-model 표 `baseSpeed` × WORLD 하루 × 셀당 econ ÷ WORLD 칸)으로 **따로** 유도한다 —
+  //     econ 의 유도 함수도 rumor 의 시계도 안 부른다(자기 검사 금지). 그리고 소문이 캐러밴에서 **실제로 떨어졌는지**(날이 갈리는
+  //     캐러밴이 표본에 있다)를 같은 줄에 건다 — 거울로 되돌아가면 이 줄이 빨개진다.
+  //   `T489_RUMOR_SPLIT=0` 이면 종전 계약(소문 날 = 캐러밴 날 · T7)을 **글자 그대로** 잰다 — 한 줄 두 갈래.
+  const MMb = R('public/move-model'), WDb = R('server/zone-config').WORLD;
+  const bodyDay = MMb.DEFAULTS.baseSpeed * (WDb.dayLengthMs / 1000) * econV2.ECON_PER_CELL / WDb.tileSize;
+  const splitOn = process.env.T489_RUMOR_SPLIT !== '0';
+  const want = (c) => (splitOn ? Math.max(Rumor.CFG.MIN_DAYS, Math.round(c.distance / bodyDay)) : c.travelDays);
+  let bad = null, span = [Infinity, -Infinity], legOk = true, apart = 0;
   for (const c of cars) {
     span = [Math.min(span[0], c.distance), Math.max(span[1], c.distance)];
     if ((c.arriveDay - c.departDay) !== c.travelDays) legOk = false;     // 레코드 자체의 정합
-    if (Rumor.travelDaysOf(c.distance) !== c.travelDays) { bad = c; break; }
+    if (Rumor.travelDaysOf(c.distance) !== want(c)) { bad = c; break; }
+    if (Rumor.travelDaysOf(c.distance) !== c.travelDays) apart++;
   }
   ok(legOk, '⑲c 전제: 대조에 쓰는 레코드가 econ 안에서 정합하다(arriveDay−departDay = travelDays)');
-  ok(cars.length > 0 && !bad, '⑲ 소문 시계 = econ 캐러밴 시계(travelDaysForDistance 동기 계약)',
-    bad ? `dist=${bad.distance} econ=${bad.travelDays} rumor=${Rumor.travelDaysOf(bad.distance)}`
-        : `거리 ${span[0].toFixed(0)}~${span[1].toFixed(0)}px · ${cars.length}건 전수`);
+  ok(cars.length > 0 && !bad && (splitOn ? apart > 0 : apart === 0),
+    splitOn ? '⑲ 소문 시계 = **몸** 시계(T496 · T489 기본 켬 — econ 캐러밴의 거리 전수 · 몸 하루는 정본 셋에서 따로) · 그리고 캐러밴 날과 **실제로 갈린다**'
+            : '⑲ 소문 시계 = econ 캐러밴 시계(travelDaysForDistance 동기 계약 · `T489_RUMOR_SPLIT=0` 종전 갈래)',
+    bad ? `dist=${bad.distance} ${splitOn ? '몸' : 'econ'}=${want(bad)} rumor=${Rumor.travelDaysOf(bad.distance)}`
+        : `거리 ${span[0].toFixed(0)}~${span[1].toFixed(0)}px · ${cars.length}건 전수${splitOn ? ` · 몸 ${bodyDay} econ/일 · 캐러밴 날과 갈린 ${apart}건` : ''}`);
   // ★⑲d — **꺾이는 사건은 드물다**(5마을 240일 표본에서 실측 0건). 그래서 표본으로는 못 센다.
   //   대신 **수리가 소스에 남아 있는가**를 본다: 시계를 미는 두 자리가 `travelDays` 를 같이 갱신하는가.
   //   (`test-body ⑦` 과 같은 규약 — 표본이 안 밟는 갈래는 소스로 계약을 건다.)
@@ -1621,7 +1642,8 @@ const mkLedgerGeo = (world, geo, cfg) => {
   //     (실측: 1일↔1홉 · 2일↔1홉 · 3일↔2홉 · 4일↔2홉, 한 일수에 한 홉). 그래서 **일부러 고르지 않은**
   //     거리표를 하나 쓴다: 0–1–2 는 징검다리(2일 2홉)이고, 3 은 0 에서만 가깝다(2일 1홉).
   {
-    const D = [[0, 600, 1800, 1000], [600, 0, 600, 50000], [1800, 600, 0, 50000], [1000, 50000, 50000, 0]];
+    //   ★[T496] 거리는 소문 일(위 `DAY5` = 하루의 5분의 1) 단위 — 종전 글자 [600, 1800, 1000, 50000] 이 그대로 나온다(두 시계 모두 정확).
+    const D = [[0, 6, 18, 10], [6, 0, 6, 500], [18, 6, 0, 500], [10, 500, 500, 0]].map((r) => r.map((x) => x * DAY5));
     const ids = [0, 1, 2, 3];
     const LU = mkLedgerGeo(W, { vids: () => ids, dist: (a, b) => D[a][b] });
     const byDay = new Map();

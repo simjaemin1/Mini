@@ -24,6 +24,11 @@ const { spawn } = require('child_process');
 const FB = require('./fixture-boot');   // ★T349 기동 기다리기 정본(사본 0)
 
 const ROOT = path.join(__dirname, '..');
+// ★★[T496 2026-09-28] 이 배선 검사는 소문 시계를 **종전 거울(500)** 에 박는다 — 이 프로세스(아래 하한 `minDays`)와 존(env 상속) 둘 다.
+//   소문 분리가 기본 켬이 되자(T489 · 소문 = 몸 7,200 econ/일) 마을 사이 소문이 전부 **하루**라 ①("하루 만에 못 가는 쌍")이 안 서고,
+//   ④("얼린 순간엔 아직 없다" · 얼리기까지 ≤3일)의 창이 닫힌다. 이 검사가 재는 것은 **배선**(지도 거리행렬 · 서버 하루 경계 ·
+//   클라 왕복)이지 시계가 아니다 — 시계는 `test-events ⑲`(소문 = 몸)가 잰다.
+process.env.T489_RUMOR_SPLIT = '0';
 const Rumor = require(path.join(ROOT, 'server', 'rumor'));
 const SHOTS = '/tmp/e2e-shots';
 fs.mkdirSync(SHOTS, { recursive: true });
@@ -71,6 +76,7 @@ async function waitHttp(url, tries = 900) {
     VILLAGE_MAX: '3', VILLAGE_DAY_MS: '500',
     ENABLE_BANDITS: '0', ENABLE_ROADS: '0',
     E2E_GIVE: '1',
+    T489_RUMOR_SPLIT: '0',   // ★[T496] 종전 소문 시계(위 머리 — 배선 검사 · 시계는 test-events ⑲)
   });
   // ★★[T355 2026-09-22] 존 기동도 **아이의 입**으로 듣는다(정본 `fixture-boot.waitUp` · T344·T349).
   //   포트 응답은 증인이 아니다 — 앞 판 존이 포트를 쥔 채면 새 존은 `EADDRINUSE` 로 죽고 폴링은
