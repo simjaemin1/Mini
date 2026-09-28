@@ -909,6 +909,7 @@ function cropSprite(stage, crop) {
       if (!isWater && _st && _st.geo) {
         _gtPaintState(g, sx, sy, _st, _lcx, _lcy, _pat, _bio, gm); nState++;
         if (GT_ZONE_TINT > 0) _gtDiamond(g, sx, sy, zMeta.groundColor, GT_ZONE_TINT * 0.5, gm);
+        _gtDiamond(g, sx, sy, ICE_COLOR, _gtSnowAlpha(_st), gm);   // ★[T487] 적설 — 산터도 땅이다(10-r1-terrain 규칙 표)
         continue;
       }
       if (isWater) {
@@ -943,6 +944,10 @@ function cropSprite(stage, crop) {
         const isIce = distFromPole <= ICE_BAND_PX;
         if (GT_ZONE_TINT > 0) _gtDiamond(g, sx, sy, zMeta.groundColor, GT_ZONE_TINT, gm);
         _gtDiamond(g, sx, sy, isIce ? '#9bb5cc' : zMeta.tintColor, isIce ? 0.06 : 0.13, gm);
+        // ★[T487] 적설 — 틴트 **위**에 맨 마지막(규칙 표는 10-r1-terrain `_gtSnowAlpha`).
+        //   왜 위인가(실측 · e2e-snow 1판): 틴트 아래에 두면 적설 1 에서 텍스처가 다 덮인 흰 바탕 위로
+        //   반투명 틴트 두 겹의 **다이아몬드 이음새가 격자로** 드러났다. 맨 위 불투명 한 겹(α≥0.999 는 부풀림)은 그 이음새를 덮는다.
+        _gtDiamond(g, sx, sy, ICE_COLOR, _gtSnowAlpha(_st), gm);
       }
     }
     // ★잎 층 = (풀텍스처 − 평탄색) × 투과율 T. 이걸 매 프레임 가로 띠로 어긋나게 가산 blit 한다.

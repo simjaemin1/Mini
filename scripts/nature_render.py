@@ -246,6 +246,15 @@ def blade(base, heading, height, reach, width, mat, rng, fold=0.32, seg=7, name=
     return add_mesh(name, verts, faces, mat)
 
 
+# ★★[T487 2026-09-28] **겨울 판 = 잎이 없는 같은 나무** — `GHOST_LEAF` 가 켜져 있으면 수관(잎 카드 껍질·속 덩어리)을
+#   **짓기는 짓되 렌더에서만 숨긴다**(`hide_render`). 왜 안 짓는 게 아니라 숨기는가:
+#     ⓐ 난수 — 잎을 안 지으면 그 뒤 `rng` 가 어긋나 **가지가 다른 자리로 간다**(T129: "누구의 난수를 쓰는가까지가 결정론").
+#     ⓑ 틀 — `render_world_pass` 는 OBJS 의 정점으로 틀을 잡는다. 숨긴 잎도 정점은 있으니 **여름 판과 틀이 같다**
+#        ⇒ 같은 앵커·같은 크기로 배포되고, 클라가 그린 자리에서 줄기가 한 화소도 안 움직인다.
+#   ⇒ 모델은 한 자도 안 바뀐다(새 모델 0) — 같은 빌더·같은 씨앗·같은 인자. 켜는 것은 굽기 줄의 지시 `leafless` 하나다.
+GHOST_LEAF = False
+
+
 def leaf_shell(center, R, n, lw, ll, mat, rng, squash=1.0, droop=0.30, rmin=0.52,
                name="leaves", tilt=0.55):
     """★잎 카드 껍질 — 캐노피의 본체.
@@ -277,7 +286,10 @@ def leaf_shell(center, R, n, lw, ll, mat, rng, squash=1.0, droop=0.30, rmin=0.52
         verts.append(c + e1 * (l * 0.58))
         verts.append(c - e2 * (w * 0.5) - e1 * (l * 0.10) - e3 * (w * 0.22))
         faces.append([b, b + 1, b + 2, b + 3])
-    return add_mesh(name, verts, faces, mat)
+    ob = add_mesh(name, verts, faces, mat)
+    if GHOST_LEAF:
+        ob.hide_render = True                  # ★[T487] 겨울 판 — 틀은 지키고 그림에서만 뺀다(위 `GHOST_LEAF` 주석)
+    return ob
 
 
 def blob(loc, radius, mat, rng, squash=1.0, disp=0.22, sub=3, name="blob"):
@@ -300,6 +312,8 @@ def blob(loc, radius, mat, rng, squash=1.0, disp=0.22, sub=3, name="blob"):
         ob.data.polygons.foreach_set("use_smooth", [True] * len(ob.data.polygons))
     except Exception:
         pass
+    if GHOST_LEAF:
+        ob.hide_render = True                  # ★[T487] 겨울 판 — 수관 속 덩어리도 잎이다(틀만 남긴다)
     OBJS.append(ob)
     return ob
 
@@ -527,6 +541,7 @@ def tree_oak(seed, h=4.0, spread=2.1, autumn=False):
 #   "열매가 보이는가"는 가을 판을 혼자 봐서는 못 잰다(잎도 같이 노래졌으니까).
 #   같은 나무의 **열매 없는 가을 판**과 견줘야 열매 몫만 남는다(T97 이후 쓰는 대조군 문법).
 NOFRUIT = os.environ.get('T129_NOFRUIT') == '1'
+_NOFRUIT_ENV = NOFRUIT                     # ★[T487] 굽기 줄 지시 `nofruit` 가 줄마다 켜고 끈 뒤 **이 값으로 돌아온다**
 
 
 def _fruit_cluster(center, R_, fseed, kind='burr', n=None):
@@ -932,6 +947,27 @@ TREE_BUILD = [
     ("sap_hazel", sapling, dict(species='hazel', seed=239, h=0.66)),
     ("sap_mulberry", sapling, dict(species='mulberry', seed=241, h=0.76)),
     ("sap_grape", sapling, dict(species='grape', seed=251, h=0.54)),
+    # ═══ [T487] 철 판 — 활엽 성목판 그 줄 그대로(같은 빌더·씨앗·인자) · 가을 `_f`(가을 잎 · 열매 없음) · 겨울 `_w`(잎 숨김) ═══
+    # ★새 모델 0 · 새 색 0 — 아래 `_T487_EVERGREEN` 절이 **이 줄들이 활엽 성목판을 빠짐없이 덮는지** 굽기 때마다 잰다.
+    # ★버드나무는 가을 인자가 없다(가을 잎 재질 없음) ⇒ 겨울 판만. 침엽(소나무·잣)은 사철 그대로라 줄이 없다.
+    ("tree06_f", tree_oak, dict(seed=61, h=4.1, spread=2.15, autumn=True, nofruit=True, slot='sprites_autumn')),
+    ("tree06_w", tree_oak, dict(seed=61, h=4.1, spread=2.15, leafless=True, slot='sprites_winter')),
+    ("tree07_f", tree_oak, dict(seed=71, h=3.4, spread=1.85, autumn=True, nofruit=True, slot='sprites_autumn')),
+    ("tree07_w", tree_oak, dict(seed=71, h=3.4, spread=1.85, leafless=True, slot='sprites_winter')),
+    ("tree08_f", tree_oak, dict(seed=83, h=4.7, spread=2.45, autumn=True, nofruit=True, slot='sprites_autumn')),
+    ("tree08_w", tree_oak, dict(seed=83, h=4.7, spread=2.45, leafless=True, slot='sprites_winter')),
+    ("tree09_f", tree_chestnut, dict(seed=97, h=4.3, spread=1.90, autumn=True, nofruit=True, slot='sprites_autumn')),
+    ("tree09_w", tree_chestnut, dict(seed=97, h=4.3, spread=1.90, leafless=True, slot='sprites_winter')),
+    ("tree10_f", tree_chestnut, dict(seed=101, h=3.6, spread=1.62, autumn=True, nofruit=True, slot='sprites_autumn')),
+    ("tree10_w", tree_chestnut, dict(seed=101, h=3.6, spread=1.62, leafless=True, slot='sprites_winter')),
+    ("tree11_w", tree_willow, dict(seed=113, h=3.8, spread=2.00, leafless=True, slot='sprites_winter')),
+    ("tree12_w", tree_willow, dict(seed=127, h=3.2, spread=1.72, leafless=True, slot='sprites_winter')),
+    ("tree13_f", tree_hazel, dict(seed=137, h=2.8, spread=1.55, autumn=True, nofruit=True, slot='sprites_autumn')),
+    ("tree13_w", tree_hazel, dict(seed=137, h=2.8, spread=1.55, leafless=True, slot='sprites_winter')),
+    ("tree14_f", tree_mulberry, dict(seed=149, h=3.4, spread=1.90, autumn=True, nofruit=True, slot='sprites_autumn')),
+    ("tree14_w", tree_mulberry, dict(seed=149, h=3.4, spread=1.90, leafless=True, slot='sprites_winter')),
+    ("tree15_f", tree_grape, dict(seed=157, h=1.9, spread=1.75, autumn=True, nofruit=True, slot='sprites_autumn')),
+    ("tree15_w", tree_grape, dict(seed=157, h=1.9, spread=1.75, leafless=True, slot='sprites_winter')),
 ]
 
 
@@ -1301,11 +1337,51 @@ SPECIES = {
 #   (`slot`: 이 그림이 종 표의 어느 칸에 실리는가. 굽기 문법과 표의 뜻이 갈릴 때만 쓴다.
 #    ★[T175] `slot=None` 은 **어느 칸에도 안 싣는다** = 퇴역판. 세계에 없는 나무는 표에 없다.)
 TABLE_ONLY = ('slot',)
+# ★[T487] **굽기 지시 키** — 빌더 인자가 아니라 굽는 동안의 전역 스위치다(`_bake_flags` 가 켜고 끈다).
+#   `nofruit` : 열매를 안 단다(T129 대조군 손잡이 `T129_NOFRUIT` 의 **줄 단위** 판 · 같은 전역).
+#   `leafless`: 잎을 렌더에서 숨긴다(`GHOST_LEAF` · 틀과 난수는 그대로).
+BAKE_ONLY = ('nofruit', 'leafless')
 
 
 def BKW(kw):
-    """굽기에 넘길 인자만 남긴다 — 표 전용 지시를 빌더에 흘리면 `TypeError` 다."""
-    return {k: v for k, v in kw.items() if k not in TABLE_ONLY}
+    """굽기에 넘길 인자만 남긴다 — 표 전용·굽기 지시를 빌더에 흘리면 `TypeError` 다."""
+    return {k: v for k, v in kw.items() if k not in TABLE_ONLY and k not in BAKE_ONLY}
+
+
+def _bake_flags(kw):
+    """[T487] 굽기 지시를 전역 스위치로 옮긴다 — 줄마다 부르고, 지시가 없으면 **종전 값으로 되돌린다**."""
+    global NOFRUIT, GHOST_LEAF
+    NOFRUIT = _NOFRUIT_ENV or bool(kw.get('nofruit'))
+    GHOST_LEAF = bool(kw.get('leafless'))
+
+
+# ═══════════════ [T487] 철 판 — 활엽의 **가을 잎**(`_f` · 열매 없음) · **겨울 빈 가지**(`_w`) ═══════════════
+# ★재민 실기 09-28 *"겨울에도 전혀 티가 안 나서 겨울인지 직관적으로 안 느껴진다"* — 나무 잎 0 이 그 이유 중 하나였다.
+# ★★새 모델 0 · 새 색 0 — **성목판 그 줄**(빌더·씨앗·인자)을 그대로 한 번 더 굽는다(T481 문법):
+#   가을 = 이미 있는 가을 잎 재질(`lf_*_a` · T129/T141 가 지은 그 색)로 **열매만 뺀다**(`nofruit`)
+#   겨울 = 잎을 **숨긴다**(`leafless` · 위 `GHOST_LEAF` — 줄기·가지는 여름 판 그 자리 그대로)
+# ★종 표는 이 파일의 종 목록(`SPECIES`)에서 온다 — 침엽 둘만 **사철 그대로**다:
+#   소나무·잣나무(Pinus)는 상록이라 가을 판도 겨울 판도 없다(표에 그 칸이 안 생긴다 ⇒ 클라가 안 바꾼다).
+#   버드나무는 가을 잎 재질이 없다(가을 인자가 빌더에 없다) ⇒ 겨울 판만(가을엔 여름 잎 그대로 · 새 색 = 새 수라 안 짓는다).
+# ★대상 줄 = 활엽 종의 **성목판 기본 줄**(표 전용·열매 지시가 없는 줄)만 — 열매판·퇴역판·묘목은 안 건드린다.
+#   줄 자체는 `TREE_BUILD` 끝에 **글자로** 적혀 있다(굽는 표가 정본 · `test-props` 가 그 표를 센다) — 여기선 덮음만 잰다.
+# ⚠굽기는 새 키만 돈다(`--` 뒤 키 필터) — 기존 나무 PNG·앵커는 한 바이트도 안 바뀐다(후처리도 `--only`).
+_T487_EVERGREEN = ('tree_pine', 'tree_jat')
+# ★굽기 때마다 잰다 — 철 판 줄이 **활엽 성목판 기본 줄**(표 전용·열매 지시가 없는 줄)을 빠짐없이, 그리고 같은 인자로 덮는가.
+#   활엽 종이 늘거나 성목판 인자가 바뀌었는데 철 판을 안 따라 고치면 여기서 멈춘다(겨울에 한 그루만 잎이 남는 일 0).
+_T487_ROWS = [r for r in TREE_BUILD if r[0].endswith(('_f', '_w')) and r[2].get('slot') in ('sprites_autumn', 'sprites_winter')]
+_t487_want = {}
+for _k, _fn, _kw in TREE_BUILD:
+    _nm = getattr(_fn, '__name__', '')
+    if _nm not in SPECIES or _nm in _T487_EVERGREEN or set(_kw) - {'seed', 'h', 'spread'}:
+        continue                                   # 침엽 · 열매판(`autumn`·`summer`·`fruit`) · 퇴역판(`slot`) · 묘목은 성목 기본 줄이 아니다
+    if 'autumn' in _fn.__code__.co_varnames[:_fn.__code__.co_argcount]:
+        _t487_want[_k + '_f'] = (_fn, dict(_kw, autumn=True, nofruit=True, slot='sprites_autumn'))
+    _t487_want[_k + '_w'] = (_fn, dict(_kw, leafless=True, slot='sprites_winter'))
+_t487_have = {k: (fn, kw) for k, fn, kw in _T487_ROWS}
+if _t487_have != _t487_want:
+    raise SystemExit('[nat] ★T487 철 판 줄이 활엽 성목판과 어긋난다: '
+                     + str(sorted(set(_t487_want) ^ set(_t487_have)) or [k for k in _t487_want if _t487_want[k] != _t487_have.get(k)]))
 
 
 # ═══════════════ [T472] 군락 품목 아이콘 셋 — **세계 소품과 같은 부름** ═══════════════
@@ -1374,17 +1450,22 @@ def build_species_table():
         if any(e.get(k) for k in ('summer', 'autumn')):
             for k in ('summer', 'autumn'):
                 e.setdefault(k, [])
-        for k in ('sprites', 'summer', 'autumn'):
+        for k in ('sprites', 'sprites_autumn', 'sprites_winter', 'summer', 'autumn'):
             if k in e: e[k] = sorted(e[k])
     # ★칸 순서를 못 박는다 — 굽는 순서가 바뀌어도 파일이 안 흔들린다(diff 가 뜻을 갖는다).
-    _ORDER = ('ko', 'latin', 'sprites', 'summer', 'autumn', 'sapling')
+    # ★[T487] 철 판 두 칸은 `sprites` 바로 뒤 — 그 칸과 **줄 순서가 같다**(같은 자리 해시 = 같은 그루).
+    _ORDER = ('ko', 'latin', 'sprites', 'sprites_autumn', 'sprites_winter', 'summer', 'autumn', 'sapling')
     for sid, e in list(out.items()):
         out[sid] = {k: e[k] for k in _ORDER if k in e}
     return {
         '_뜻': '어느 그림이 어느 나무 종인가. **수치(성장·수확·벌목)는 서버/랩이 정본**이고 여기 없다.',
         '_유도': 'scripts/nature_render.py TREE_BUILD 에서 뽑는다 — 손으로 적지 마라(다시 구우면 덮인다).',
         '_그루터기': 'stump01 — 종 공통 하나. 벤 자리는 종을 안 묻는다.',
-        '_단계': '성목(sprites) · 열매판(summer·autumn) · 묘목(sapling) · 그루터기(공통).',
+        '_단계': '성목(sprites) · 철 판(sprites_autumn·sprites_winter) · 열매판(summer·autumn) · 묘목(sapling) · 그루터기(공통).',
+        '_철판': ('[T487] 성목판과 **같은 나무**의 철 모습이다 — `sprites_autumn` = 가을 잎(열매 없음 · `_f`) · '
+                  '`sprites_winter` = 잎 없는 가지(`_w`). 줄 순서가 `sprites` 와 같다(i 번째가 같은 그루). '
+                  '칸이 없는 종은 사철 그대로다(소나무·잣나무 = 상록 침엽 · 버드나무 가을 = 가을 잎 재질 없음). '
+                  '열매가 달린 날은 열매판이 먼저다. 클라는 손잡이 `T487_SNOW` 가 켜졌을 때(서버가 적설 칸을 보낼 때)만 이 칸을 읽는다.'),
         '_퇴역': sorted(retired),
         '_퇴역_뜻': ('구웠으나 **어느 칸에도 안 실리는** 그림이다 — 세계에 없으니 아무도 못 부른다. '
                      '파일과 잠금표에는 남는다(다시 굽지 않으려고). 배포 앵커에서도 빠진다 — '
@@ -1423,10 +1504,12 @@ if __name__ == '__main__':
 
   for key, fn, kw in TREE_BUILD:
       if ONLY and key not in ONLY: continue
+      _bake_flags(kw)                            # ★[T487] 줄 지시(`nofruit`·`leafless`) — 없으면 종전 값
       fn(**BKW(kw))
       anchors[key] = render(key, ss=4, margin=8)
       anchors[key]["kind"] = "tree"
       cleanup()
+  _bake_flags({})                                # 소품 굽기는 지시 없이(종전 그대로)
 
   for key, fn, kw in PROP_BUILD:
       if ONLY and key not in ONLY: continue
