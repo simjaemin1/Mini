@@ -25,6 +25,10 @@
 //     여기서도 `scripts/test-events.js` 가 **econ 이 실제로 띄운 캐러밴의 `travelDays`** 와
 //     이 함수의 값을 전 구간 대조한다(자기 검사가 아니라 교차 검사다).
 //   ★엔진이 NPC_SPEED 를 바꾸면 그 검사가 빨개진다. 그게 이 거울의 값이다.
+// ★★[T496 2026-09-28] 제2 규약의 **상대가 바뀌었다** — 시계는 **몸** 하나다. 소문은 이제 캐러밴이 아니라 몸 걸음을 탄다
+//   (`T489_RUMOR_SPLIT` **기본 켬** · 아래 `_t489Speed` 가 econ `rumorDaySpeed()` = `caravanWalkPerDay()` 를 **읽는다** — 거울이 아니다).
+//   캐러밴이 몸에서 유도되기 전(T474 끔 · 켜기 재민 #82)까지는 캐러밴(500)과 소문(7,200)이 갈라져 있다 — 그 어긋남의 주인은
+//   캐러밴(옛 동기 수)이다(보고/T474 · T489 · T496). `T489_RUMOR_SPLIT=0` 이면 위 옛 꼴(거울 500) 그대로다.
 //
 // ★제3 규약: **틱 비용 0.** 도달표는 사건이 날 때 **출발 마을당 한 번** 계산해 캐시하고,
 //   조회(브리핑·게시판·근황)는 그 표를 읽기만 한다. 하루 경계에도, 조회에도 그래프를 걷지 않는다.
@@ -40,19 +44,20 @@ const _num = (envName, def) => {
   return isFinite(x) ? x : def;
 };
 
-// ★★[T489 2026-09-28 · 기본 끔] **소문 분리 팔** — `T489_RUMOR_SPLIT` 이 켜지면(`1`·`day` — econ 과 **같은 술어**)
-//   아래 거울을 **끊고** 소문 시계 = 몸 하루 걸음(econ `rumorDaySpeed()` = `caravanWalkPerDay()` — 사람이 걸어서 옮긴다).
-//   값은 econ 이 낸다(사본 0). 끄면(미설정 · 그 밖의 값) 이 함수는 종전 거울 500 을 그대로 돌려준다 — 비트 동일 · require 0.
-//   ⚠켜면 캐러밴 시계와 **일부러** 갈라진다(시계 둘) — `test-events ⑲` 의 거울 계약이 깨지는 것이 이 팔의 전제다(보고/T489).
+// ★★[T489 2026-09-28 → ★T496 **기본 켬**] **소문 분리** — 소문 시계 = 몸 하루 걸음(econ `rumorDaySpeed()` = `caravanWalkPerDay()`
+//   7,200 econ/일 — 사람이 걸어서 옮긴다 · 값은 econ 이 낸다 · 사본 0). `T489_RUMOR_SPLIT=0`(econ 과 **같은 술어** — `0` 한 글자만 끔)이면
+//   종전 거울 500 을 그대로 돌려준다(위 제2 규약의 옛 꼴 · 비트 동일 · require 0).
+//   ⚠켬(기본)에선 캐러밴 시계(T474 끔이면 500)와 갈라진다 — 캐러밴이 옛 동기 수에 남은 탓이다. 그래서 `test-events ⑲` 는
+//     소문을 **몸**과 잰다(T496 · `=0` 이면 종전대로 캐러밴과 잰다).
 function _t489Speed() {
   const x = (typeof process !== 'undefined' && process.env) ? process.env.T489_RUMOR_SPLIT : undefined;
-  if (x !== '1' && x !== 'day') return 500;
+  if (x === '0') return 500;
   return require('../sim/economy-sim-v2').rumorDaySpeed();
 }
 
 const CFG = {
-  // ★★econ `NPC_SPEED` 의 거울(위 제2 규약). 손잡이로 열어 두되 **기본값이 곧 econ 값**이다.
-  //   ★[T489] 소문 분리 팔이 켜지면 거울 대신 몸 걸음(위 `_t489Speed`) · `RUMOR_SPEED` 가 여전히 가장 세다.
+  // ★★[T496] 기본 = 몸 하루 걸음(위 `_t489Speed` — econ 이 낸다) · `T489_RUMOR_SPLIT=0` 이면 econ `NPC_SPEED` 의 거울(제2 규약의 옛 꼴).
+  //   손잡이로 열어 두되 **기본값이 곧 econ 값**이다 · `RUMOR_SPEED` 가 여전히 가장 세다.
   SPEED: _num('RUMOR_SPEED', _t489Speed()),
   // ★같은 거울의 나머지 반쪽 — `max(1, ...)`. 같은 날 도착하는 이웃은 없다(하루는 걸린다).
   MIN_DAYS: _num('RUMOR_MIN_DAYS', 1),
@@ -61,9 +66,9 @@ const CFG = {
   OFF: _num('RUMOR_OFF', 0),
 };
 
-// ── 캐러밴 시계 거울 ──────────────────────────────────────────────────────────
-//   ⚠**이 두 줄이 econ 과의 동기 계약이다**(economy-sim-v2.js:234-236).
-//     `scripts/test-events.js ⑲` 가 econ 이 실제로 띄운 캐러밴과 대조한다.
+// ── 소문 시계(T496 기본 = 몸 · `=0` 이면 캐러밴 시계 거울) ───────────────────────
+//   ⚠**이 두 줄이 계약이다** — `scripts/test-events.js ⑲` 가 econ 이 실제로 띄운 캐러밴의 거리 전수에서
+//     소문 날 = **몸이 그 거리를 걷는 날**(move-model 표 · WORLD 에서 따로 유도)인지 잰다(`=0` 이면 종전대로 캐러밴 날과).
 function travelDaysOf(dist) {
   const d = Number(dist);
   if (!isFinite(d) || d < 0) return Infinity;

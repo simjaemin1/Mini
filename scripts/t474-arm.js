@@ -20,10 +20,11 @@
 //   · 눈금 둘 — 마을·일(살아 있는 마을 × 날) · 사람·일(날마다 인구 합)
 //   · 닿은 날 — 캐러밴이 떠나거나 닿은 (마을, 날)과 그 다음 날 · 값 사건(부족·글럿·값 오름·값 내림)이 그 날에 몰리는 몫
 //   · 소문 도달 — 사건마다 다른 마을에 닿는 날(정본 `server/rumor.js` 그래프 · 거리 = econ `villageDist`(이 자는 행렬이 없어 유클리드))
-//       두 속도로 센다: **코드 그대로**(`Rumor.CFG.SPEED` — 끔 500 거울 · T489 켬 = 몸) · **T7 이 요구하는 대로**(캐러밴 시계 = `CARAVAN_DAY_SPEED`)
+//       두 속도로 센다: **코드 그대로**(`Rumor.CFG.SPEED` — T496 기본 = 몸 · `T489_RUMOR_SPLIT=0` 이면 500 거울) · **T7 이 요구하는 대로**(캐러밴 시계 = `CARAVAN_DAY_SPEED`)
 //       `rumor` 칸은 T474 표와 같은 뜻(T7)이다 — `rumorCode` 가 코드 그대로다.
 //
-// 실행: [T474_CARAVAN_WALK=1] [T489_RUMOR_SPLIT=1|day] [T474_ARM_GEO=1] T17_JSON=<t17.json> node scripts/t474-arm.js <일수> <시드> <arm.json>
+// 실행: [T474_CARAVAN_WALK=1] [T496_CARAVAN_REST=1] [T489_RUMOR_SPLIT=0] [T474_ARM_GEO=1] T17_JSON=<t17.json> node scripts/t474-arm.js <일수> <시드> <arm.json>
+//   (★[T496] 소문 분리는 기본 켬 — `T489_RUMOR_SPLIT=0` 이 종전 거울 · 캐러밴 짐은 `T496_CARAVAN_REST`)
 'use strict';
 const path = require('path');
 const fs = require('fs');
@@ -45,6 +46,7 @@ const _cw = econV2.createWorldV2;
 econV2.createWorldV2 = function (...a) { const w = _cw.apply(this, a); W = w; return w; };
 // ⓑ 하루 끝 — 사람·일 · 새 캐러밴(관측만)
 let personDays = 0, villageDaysLive = 0, ticks = 0;
+const PDV = [];   // ★[T496] 마을별 사람·일(자리 = t17 vid) — 인구 분모 가름(마을마다 사건률 ↔ 평균 인구)
 const CAR = new Map();   // id → { c, from, to, dep }
 const vIdx = new Map();  // econ 마을 → t17 vid(= 배열 자리)
 const _tw = econV2.tickWorldV2;
@@ -53,7 +55,7 @@ econV2.tickWorldV2 = function (w, ...rest) {
   if (w === W) {
     ticks++;
     if (!vIdx.size) W.villages.forEach((v, i) => vIdx.set(v, i));
-    for (const v of W.villages) { const n = (v.npcs || []).length; personDays += n; if (n > 0) villageDaysLive++; }
+    W.villages.forEach((v, i) => { const n = (v.npcs || []).length; personDays += n; if (n > 0) villageDaysLive++; PDV[i] = (PDV[i] || 0) + n; });
     for (const c of (W.caravans || [])) {
       if (!c || c.id == null || CAR.has(c.id)) continue;
       CAR.set(c.id, { c, from: vIdx.get(c.from), to: vIdx.get(c.to), dep: c.departDay });
@@ -154,9 +156,15 @@ function reachAt(speed) {
 }
 const rumorT7 = reachAt(econV2.CARAVAN_DAY_SPEED);
 const rumorCode = (Rumor.CFG.SPEED === econV2.CARAVAN_DAY_SPEED) ? rumorT7 : reachAt(Rumor.CFG.SPEED);
-const T474 = econV2.CARAVAN_DAY_SPEED !== econV2.NPC_SPEED, T489 = econV2.T489_RUMOR_SPLIT;
-const arm = T489 ? (T474 ? (T489 === 'day' ? 'both-day' : 'both') : 'split') : (T474 ? 'walk' : 'off');
-const out = { seed: SEED, days: DAYS, arm, geo: GEO, clocks: { caravan: econV2.CARAVAN_DAY_SPEED, rumorCode: Rumor.CFG.SPEED, t489: T489 || null },
+// ★[T496] 팔 이름 — 소문 분리가 기본 켬이고(T489 · `=0` 이면 `-mirror` 꼬리) 캐러밴은 T474(몸) · T496(쉬는 짐꾼)이 가른다.
+//   (T489 판의 옛 이름 split·both·both-day 는 그 보고의 표 기계 `t489-table.js` 가 읽는다 — 이 파일은 새 판만 낸다)
+const T474 = econV2.CARAVAN_DAY_SPEED !== econV2.NPC_SPEED, T489 = !!econV2.T489_RUMOR_SPLIT, T496 = !!econV2.T496_CARAVAN_REST;
+const arm = (T474 ? (T496 ? 'rest' : 'walk') : 'off') + (T489 ? '' : '-mirror');
+// ★[T496] 마을별 — 평균 인구(사람·일 ÷ 날) · 사건(전체 · 값 유형) — 인구 분모 가름(단면 탄성)의 재료
+const perVillage = { name: W.villages.map((v) => v.name), meanPop: PDV.map((x) => +((x || 0) / Math.max(1, ticks)).toFixed(3)),
+  ev: W.villages.map(() => 0), evValue: W.villages.map(() => 0) };
+for (const [v, , t] of EV) { if (v >= 0 && v < perVillage.ev.length) { perVillage.ev[v]++; if (VALUE.has(TYPES[t])) perVillage.evValue[v]++; } }
+const out = { seed: SEED, days: DAYS, arm, geo: GEO, perVillage, clocks: { caravan: econV2.CARAVAN_DAY_SPEED, rumorCode: Rumor.CFG.SPEED, t489: T489, t496: T496 },
   caravan, rumor: rumorT7, rumorCode, ledger, typeItem, scale: { personDays, villageDaysLive, ticks }, touch: touchStat,
   // 장부 안 소문 그래프가 실제로 돌았나(지리 준 판) — 행 수·세대 · 없으면 null(지리 없는 판 = t17 그대로)
   ledgerRumor: LEDGER.hasRumor ? Object.assign({ speed: Rumor.CFG.SPEED }, JSON.parse(JSON.stringify(LEDGER.rumorStats || {}))) : null };

@@ -12,7 +12,8 @@
 //               = 2,880칸/일(연속 평보 · 전쟁실험실 `L_WALK × L_MINDAY` 와 같은 식) · 참고로 주민 평보 배수(`followNpcPath` 기본) · 낮 몫(`dayPhaseRatio`)
 //     캐러밴  — econ `travelDaysForDistance`(= max(1, round(거리 ÷ `CARAVAN_DAY_SPEED`))) · 거리는 econ 좌표(셀×2.5)
 //               · **존 캐러밴 몸은 이 날 수에 맞춰 걷는다**(`villages.js` `nomPxMs` — 몸이 시계를 따른다)
-//     소문    — `server/rumor.js` 도달 시각표(캐러밴 시계의 거울 · 마을을 징검다리로 건넌다 — Dijkstra)
+//     소문    — `server/rumor.js` 도달 시각표(마을을 징검다리로 건넌다 — Dijkstra) · 표의 '소문' 열 = 옛 캐러밴 거울(econ `NPC_SPEED`)
+//               ★[T496] 코드 그대로(`Rumor.CFG.SPEED` — 소문 분리 기본 켬 = 몸)는 `rumorPairs.code`·`rumorReach.code` 로 따로 낸다
 //     행군    — `sim/war-core.js` `WAR_MARCH` 칸/일 · `max(1, ceil(직선/WAR_MARCH))`
 //     도적 토벌대 — `server/bandits.js` `eta = max(1, ceil(직선/240))`(내보내지 않는 글자 — **소스에서 읽는다**)
 //   ★수는 전부 정본에서 읽는다(사본 0): 캐러밴 시계·유도 팔(`caravanWalkPerDay`)·셀당 econ 단위는 econ 이 내보낸 값,
@@ -56,7 +57,8 @@ const MARCH = WarCore.WAR_MARCH;                       // 1,440 칸/일
 const EPC = econV2.ECON_PER_CELL;                      // 2.5 — econ 좌표 = 셀×2.5(호스트 규약의 econ 쪽 거울)
 const CAR = econV2.CARAVAN_DAY_SPEED;                  // 500 econ/일(끔) — 이 판의 캐러밴 시계
 const WALK = econV2.caravanWalkPerDay();               // 7,200 econ/일 — 유도 팔(몸 하루 걸음)
-const RSPEED = Rumor.CFG.SPEED;                        // 500 — 소문 거울
+const RSPEED = econV2.NPC_SPEED;                       // 500 — 소문 거울(T7 · ★[T496] 이제 `T489_RUMOR_SPLIT=0` 의 종전 시계 — 표의 '소문' 열은 이 옛 꼴)
+const RCODE = Rumor.CFG.SPEED;                         // ★[T496] 소문 시계(코드 그대로) — 기본 = 몸 7,200(소문 분리 켬) · `=0` 이면 500
 const tdd = econV2.travelDaysForDistance;              // 캐러밴 시계(정본 함수)
 const walkDays = (d) => Math.max(1, Math.round(d / WALK));   // 유도 팔의 날 수 — 켬이면 `tdd` 가 내는 그 식(⑱ 이 켠 자식에서 대조)
 if (!(zoneMove === MOVE && npcWalk > 0 && BANDIT > 0 && INFO > 0 && CAR === econV2.NPC_SPEED && Math.abs(WALK - BODY_CELLS * EPC) < 1e-9)) {
@@ -136,7 +138,7 @@ const brMid = brsIn.length ? brsIn[Math.floor(brsIn.length / 2)] : (brs.length ?
 _log(`  유한 쌍 ${pairs.length}/${N * (N - 1) / 2} · 다리 쌍 ${brs.length}(다리를 빼면 못 닿음 ${brs.filter((p) => !isFinite(p.dN)).length} · 5 % 넘게 멀어짐 ${brs.filter((p) => isFinite(p.dN)).length})`);
 _log(`  교역이 서는 쌍(정보 반경 ${INFO} econ = ${INFO / EPC / 1000}km 안) ${inR.length} · 그중 다리 쌍 ${brsIn.length}`);
 
-const RB = rumorAt(MB, RSPEED), RW = rumorAt(MB, WALK);
+const RB = rumorAt(MB, RSPEED), RW = rumorAt(MB, WALK), RC = RCODE === WALK ? RW : rumorAt(MB, RCODE);
 // 존 캐러밴 몸이 내야 하는 속도(몸 걸음의 몇 배) — `villages.js` 페이싱: 길 px ÷ (날 수 × 하루 ms)(상한 = 명목 × 4 · MOVE_SPEED 상한 없음)
 //   길 px 는 거리행렬 × (칸 px ÷ 셀당 econ) — A* 실경로는 이보다 조금 다르다(표는 행렬 기준)
 const bodyMul = (d, days) => (d / EPC * TILE) / (days * DAY_S) / MOVE;
@@ -195,8 +197,11 @@ const reach = (RR) => {
   }
   return { allDay: dist5(allDay), in7: dist5(in7), in30: dist5(in30), medDelay: dist5(med) };
 };
+// ★[T496] 쌍 도달 날 분포(유한 쌍 전수 · 방향 무관 — 도달표가 대칭이다) · 한 주 안 몫
+const pairDelay = (RR) => { const ds = pairs.map((p) => RR.rows[p.i][p.j]).filter((d) => isFinite(d));
+  return Object.assign(dist5(ds), { n: ds.length, mean: +(ds.reduce((a, b) => a + b, 0) / Math.max(1, ds.length)).toFixed(3), within7: +(ds.filter((d) => d <= 7).length / Math.max(1, ds.length)).toFixed(3), oneDay: +(ds.filter((d) => d === 1).length / Math.max(1, ds.length)).toFixed(3) }); };
 const res = { at: new Date().toISOString(), zone: Z, N, bridges: BR.size, finitePairs: pairs.length, bridgePairs: brs.length,
-  consts: { MOVE, zoneMove, DAY_S, TILE, BODY_CELLS, npcWalk, DAYLIGHT, MARCH, BANDIT, EPC, CAR, WALK, RSPEED },
+  consts: { MOVE, zoneMove, DAY_S, TILE, BODY_CELLS, npcWalk, DAYLIGHT, MARCH, BANDIT, EPC, CAR, WALK, RSPEED, RCODE },
   econDay: { dayLengthMs: WORLD.dayLengthMs, realSecPerGameMin: WORLD.dayLengthMs / 1000 / 1440, where: 'server/villages.js state.dayMs = VILLAGE_DAY_MS(테스트 전용) || WORLD.dayLengthMs · 존이 게임일 경계마다 tickWorldV2 한 번' },
   kmDay, ratio, rows,
   infoRange: { econ: INFO, km: INFO / EPC / 1000, tradePairs: inR.length, bridgeTradePairs: brsIn.length },
@@ -206,7 +211,8 @@ const res = { at: new Date().toISOString(), zone: Z, N, bridges: BR.size, finite
     tradeOff: dist5(inMulOff), tradeWalk: dist5(inMulWalk), tradeWalkOverBody: +(inMulWalk.filter((m) => m > 1 + 1e-9).length / Math.max(1, inMulWalk.length)).toFixed(3),
     rerouteReturnMax: { econ: retMax, walkDays: walkDays(retMax), walkMul: retWalkMul } },
   t489,
-  rumorReach: { off: reach(RB), walk: reach(RW) },
+  rumorReach: { off: reach(RB), walk: reach(RW), code: reach(RC) },
+  rumorPairs: { mirror: pairDelay(RB), code: pairDelay(RC), codeSpeed: RCODE, mirrorSpeed: RSPEED },
   pathKm: { p10: +(q(pairs.map((p) => p.dB), 0.1) / EPC / 1000).toFixed(2), p50: +(q(pairs.map((p) => p.dB), 0.5) / EPC / 1000).toFixed(2), max: +(pairs[pairs.length - 1].dB / EPC / 1000).toFixed(2) } };
 fs.mkdirSync(path.dirname(OUT), { recursive: true });
 fs.writeFileSync(OUT, JSON.stringify(res, null, 1));
@@ -219,4 +225,5 @@ _log(`  ★교역이 서는 쌍(${inR.length}): 캐러밴 날 끔 ${JSON.stringi
 _log(`  재routing 뒤 귀환 구간 최대 ${retMax} econ → 유도 팔 ${walkDays(retMax)}일 · 몸의 ×${retWalkMul}(몸보다 빠를 수 있는 유일한 자리)`);
 for (const [mode, t] of Object.entries(t489)) _log(`  [T489 짐 진 몸 \`${mode}\`] 배수 ${t.mul} → ${t.speed} econ/일(${t.kmDay}km) · 교역 쌍 날 ${JSON.stringify(t.tradeDays)}(하루 ${t.tradeOneDay}) · 존 캐러밴 몸 ×${JSON.stringify(t.bodyMul)} · 몸보다 빠른 쌍 ${t.overBody} · 재routing 귀환 최대 ×${t.retMul}`);
 _log(`  소문 도달(출발 마을마다): 끔 전부 ${JSON.stringify(res.rumorReach.off.allDay)} · 7일 안 ${JSON.stringify(res.rumorReach.off.in7)} ↔ 유도 팔 전부 ${JSON.stringify(res.rumorReach.walk.allDay)} · 7일 안 ${JSON.stringify(res.rumorReach.walk.in7)}`);
+_log(`  [T496] 소문 쌍 도달 날: 거울 ${RSPEED} ${JSON.stringify(res.rumorPairs.mirror)} ↔ 코드(기본) ${RCODE} ${JSON.stringify(res.rumorPairs.code)} · 전 마을 ${JSON.stringify(res.rumorReach.code.allDay)} · 7일 안 ${JSON.stringify(res.rumorReach.code.in7)}`);
 _log(`  → ${OUT}`);
