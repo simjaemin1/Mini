@@ -207,8 +207,15 @@ async function waitHttp(u, n = 900) { for (let i = 0; i < n; i++) { try { const 
   //   ⇒ **아직 하나도 안 가진 품목**(과실)으로 옮기고, 상한 것만 준다. 선행 assert 가 그걸 못 박는다.
   const invPre = await inv();
   pre(!(invPre.berry > 0), '과실을 **아직 하나도 안 갖고** 있다(성한 게 섞일 여지 0)', String(invPre.berry));
-  const AGE_B = Math.ceil(Spoil.shelfOf('berry')) + 2;
-  pre(Spoil.freshnessOf('berry', AGE_B) === 0, '줄 과실이 **정말 상함**이다', `f=${Spoil.freshnessOf('berry', AGE_B)}`);
+  // ★★[T476 ⓪ 2026-09-28] **과실 나이도 노출로 역산한다**(① 과 같은 규약 · 곡선은 안 건드린다).
+  //   옛 줄 `ceil(shelf) + 2`(= 8일)는 **나이 = 노출**을 가정했다. 서버는 로트 단계를 노출(온도 결합 · 부패 2차)로 낸다 —
+  //   게임일 24분이라 계절이 벽시계로 몇 시간마다 돈다: 같은 8일 베리가 2026-09-27 14시(UTC)까지는 상함(노출 6.8 ≥ 6)이고
+  //   16시부터 시듦(5.98)이었다. 그래서 `8121ccb4`(초록이던 밤의 커밋)도 지금 돌리면 24/6 이다 — 코드 회귀가 아니라 자의 글자.
+  const berryStageAt = (a) => { const t = Spoil._day(Date.now() / DAY_MS);
+    return Spoil.stageOf(Spoil.freshnessOf('berry', Spoil.exposureOf({ d: t - a, n: 1, e: 0, t: t - a, m: 1, w: 0 }, t))); };
+  let AGE_B = null; for (let a = Math.ceil(Spoil.shelfOf('berry')); a <= Math.ceil(Spoil.shelfOf('berry')) * 12 && AGE_B == null; a++) if (berryStageAt(a) === 'spoiled') AGE_B = a;
+  if (AGE_B == null) AGE_B = Math.ceil(Spoil.shelfOf('berry')) * 12; else AGE_B += 1;   // 하루 여유(서버가 로트를 적는 순간까지 벽시계가 흐른다 · 나이가 많을수록 노출은 단조 증가)
+  pre(berryStageAt(AGE_B) === 'spoiled', '줄 과실이 **정말 상함**이다(오늘 노출로 · 서버와 같은 식)', `${AGE_B}일 → ${berryStageAt(AGE_B)}`);
   await give({ lots: { berry: [[AGE_B, 3]] } });
   const Lr = await lots();
   pre((Lr.berry || []).length > 0 && (Lr.berry || []).every((l) => l.stage === 'spoiled'),
