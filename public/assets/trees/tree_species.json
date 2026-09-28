@@ -2,7 +2,8 @@
  "_뜻": "어느 그림이 어느 나무 종인가. **수치(성장·수확·벌목)는 서버/랩이 정본**이고 여기 없다.",
  "_유도": "scripts/nature_render.py TREE_BUILD 에서 뽑는다 — 손으로 적지 마라(다시 구우면 덮인다).",
  "_그루터기": "stump01 — 종 공통 하나. 벤 자리는 종을 안 묻는다.",
- "_단계": "성목(sprites) · 열매판(summer·autumn) · 묘목(sapling) · 그루터기(공통).",
+ "_단계": "성목(sprites) · 철 판(sprites_autumn·sprites_winter) · 열매판(summer·autumn) · 묘목(sapling) · 그루터기(공통).",
+ "_철판": "[T487] 성목판과 **같은 나무**의 철 모습이다 — `sprites_autumn` = 가을 잎(열매 없음 · `_f`) · `sprites_winter` = 잎 없는 가지(`_w`). 줄 순서가 `sprites` 와 같다(i 번째가 같은 그루). 칸이 없는 종은 사철 그대로다(소나무·잣나무 = 상록 침엽 · 버드나무 가을 = 가을 잎 재질 없음). 열매가 달린 날은 열매판이 먼저다. 클라는 손잡이 `T487_SNOW` 가 켜졌을 때(서버가 적설 칸을 보낼 때)만 이 칸을 읽는다.",
  "_퇴역": [
   "tree14_a"
  ],
@@ -15,6 +16,14 @@
    "sprites": [
     "tree09",
     "tree10"
+   ],
+   "sprites_autumn": [
+    "tree09_f",
+    "tree10_f"
+   ],
+   "sprites_winter": [
+    "tree09_w",
+    "tree10_w"
    ],
    "summer": [],
    "autumn": [
@@ -29,6 +38,12 @@
    "sprites": [
     "tree15"
    ],
+   "sprites_autumn": [
+    "tree15_f"
+   ],
+   "sprites_winter": [
+    "tree15_w"
+   ],
    "summer": [],
    "autumn": [
     "tree15_a"
@@ -40,6 +55,12 @@
    "latin": "Corylus heterophylla",
    "sprites": [
     "tree13"
+   ],
+   "sprites_autumn": [
+    "tree13_f"
+   ],
+   "sprites_winter": [
+    "tree13_w"
    ],
    "summer": [],
    "autumn": [
@@ -62,6 +83,12 @@
    "sprites": [
     "tree14"
    ],
+   "sprites_autumn": [
+    "tree14_f"
+   ],
+   "sprites_winter": [
+    "tree14_w"
+   ],
    "summer": [
     "tree14_s"
    ],
@@ -75,6 +102,16 @@
     "tree06",
     "tree07",
     "tree08"
+   ],
+   "sprites_autumn": [
+    "tree06_f",
+    "tree07_f",
+    "tree08_f"
+   ],
+   "sprites_winter": [
+    "tree06_w",
+    "tree07_w",
+    "tree08_w"
    ],
    "summer": [],
    "autumn": [
@@ -100,6 +137,10 @@
    "sprites": [
     "tree11",
     "tree12"
+   ],
+   "sprites_winter": [
+    "tree11_w",
+    "tree12_w"
    ],
    "sapling": "sap_willow"
   }

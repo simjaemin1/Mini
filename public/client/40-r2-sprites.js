@@ -227,7 +227,26 @@
       }).catch(() => {});
     } catch (e) {}
   }
-  // 그 종의 **지금 판** — 열매가 달렸으면 열매판, 아니면 성목판. 판 번호는 자리 해시(종전 그대로).
+  // ★★[T487 2026-09-28] **철 판 — 활엽은 가을에 물들고 겨울에 잎을 잃는다**(재민 실기 "겨울 티가 안 난다").
+  //   그림은 굽기가 이미 구웠다(`nature_render.py` · 같은 나무 같은 씨앗 · 새 모델 0) — 가을 잎(열매 없음)·겨울 빈 가지.
+  //   ★종 목록·접미를 클라에 적지 않는다(T148-B) — 표의 칸 `sprites_autumn`·`sprites_winter` 가 **있는 종만** 바뀐다.
+  //     침엽(소나무·잣)은 표에 그 칸이 없다 = 사철 그대로. 칸의 줄 순서는 `sprites` 와 같다(같은 자리 해시 = 같은 그루).
+  //   ★철은 달력 정본(`myCalendar.season` — 밭 그림 `cropSeasonNow` 와 같은 자리)에서 읽는다(날짜→철 매핑 사본 0).
+  //   ★켬 = 서버가 적설 칸을 보낼 때(`myWeather.snow` 가 **있다** · 손잡이는 `T487_SNOW` 하나) — 끔이면 종전 길 그대로.
+  //   ★열매가 달렸으면 **열매판이 먼저**다(가을 잎 + 열매 = 종전 `_a`) — 철 판은 열매 없는 가을·겨울만 맡는다.
+  const _T487_SEASON_SLOT = { autumn: 'sprites_autumn', winter: 'sprites_winter' };
+  let _t487Preloaded = false;
+  function _seasonList(e) {
+    if (typeof myWeather === 'undefined' || !myWeather || myWeather.snow === undefined) return null;   // 끔 = 종전 그대로
+    if (!_t487Preloaded && TREE_SPECIES.ok) {        // 켠 뒤 첫 물음에 한 번 — 철이 바뀌는 날 빈 칸이 번쩍이지 않게
+      _t487Preloaded = true;
+      for (const x of Object.values(TREE_SPECIES.byId)) for (const k of Object.values(_T487_SEASON_SLOT)) for (const n of (x[k] || [])) _sprite(n);
+    }
+    const s = (typeof myCalendar !== 'undefined' && myCalendar) ? myCalendar.season : null;
+    const k = s ? _T487_SEASON_SLOT[s] : null;
+    return (k && Array.isArray(e[k]) && e[k].length) ? e[k] : null;
+  }
+  // 그 종의 **지금 판** — 열매가 달렸으면 열매판, 아니면 (켬이면) 철 판, 아니면 성목판. 판 번호는 자리 해시(종전 그대로).
   function _speciesImg(sp, hsh, fruitNow) {
     if (!TREE_SPECIES.ok || !sp) return null;
     const e = TREE_SPECIES.byId[sp];
@@ -236,6 +255,9 @@
     if (!grown.length) return null;
     const i = Math.min(grown.length - 1, (hsh * grown.length) | 0);
     if (fruitNow) { const fl = _fruitList(e); if (fl && fl[i]) return _sprite(fl[i]); }
+    // ★[T487] 철 판(켬 · 칸이 있는 종만). 아직 안 받은 그림이면 이번 프레임은 성목판(빈 칸 번쩍임 0).
+    const sl = _seasonList(e);
+    if (sl && sl[i]) { const im = _sprite(sl[i]); if (im.complete && im.naturalHeight) return im; }
     return _sprite(grown[i]);
   }
 

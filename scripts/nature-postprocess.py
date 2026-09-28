@@ -52,6 +52,20 @@ if os.path.exists(_spj):
     _gone = [k for k in _ret if k in out]
     for k in _gone: del out[k]
     if _gone: print("  [퇴역] 배포 앵커에서 내림:", " ".join(_gone))
+# ★★[T487] **철 판은 짝 성목판의 틀로 자른다** — 같은 나무이기 때문이다.
+#   겨울 판(`_w`)은 잎을 숨겨 알파 상자가 **줄기만큼 작아진다**. 제 상자로 자르면 배포 크기가 달라지고,
+#   클라는 나무를 **그림 높이로** 맞춰 그리므로(`h × 1.3 / naturalHeight`) 빈 가지가 수관 높이까지 **늘어난다**.
+#   ⇒ 굽기는 틀을 여름 판과 같게 잡았고(`GHOST_LEAF` — 숨긴 잎도 정점이 있다), 여기선 **여름 판의 알파 상자**로 자른다.
+#   짝은 종 표가 말한다(`sprites_autumn`·`sprites_winter` 의 i 번째 = `sprites` 의 i 번째 · 손으로 안 적는다).
+#   ⚠틀이 다르면(굽기가 어긋났으면) 조용히 넘어가지 않고 멈춘다 — 어긋난 그림을 배포하느니 안 하는 게 낫다.
+_twin = {}
+if os.path.exists(_spj):
+    try:
+        for _e in (json.load(open(_spj, encoding="utf-8")).get("species") or {}).values():
+            for _slot in ("sprites_autumn", "sprites_winter"):
+                for _i, _k in enumerate(_e.get(_slot) or []):
+                    if _i < len(_e.get("sprites") or []): _twin[_k] = _e["sprites"][_i]
+    except Exception: _twin = {}
 n_tree = n_prop = 0
 for key, a in sorted(raw.items()):
     if ONLY and key not in ONLY:
@@ -64,6 +78,17 @@ for key, a in sorted(raw.items()):
     bb = al.getbbox()
     if bb is None:
         print("  ! 빈 이미지:", key); continue
+    if key in _twin:
+        _b = _twin[key]; _ra = raw.get(_b); _bp = os.path.join(SRC, _b + ".png")
+        if not _ra or not os.path.exists(_bp):
+            raise SystemExit(f"[nat-post] ★{key}: 짝 성목판 {_b} 의 굽기 원본이 없다 — 틀을 못 맞춘다")
+        if any(_ra[_q] != a[_q] for _q in ("w", "h", "ox", "oy", "ppu")):
+            raise SystemExit(f"[nat-post] ★{key}: 굽기 틀이 짝 {_b} 와 다르다 {[(q, a[q], _ra[q]) for q in ('w','h','ox','oy')]}")
+        _bb = Image.open(_bp).convert("RGBA").getchannel("A").point(lambda v: 255 if v >= ALPHA_MIN else 0).getbbox()
+        if not (_bb[0] <= bb[0] and _bb[1] <= bb[1] and bb[2] <= _bb[2] and bb[3] <= _bb[3]):
+            raise SystemExit(f"[nat-post] ★{key}: 제 그림이 짝 {_b} 의 상자 밖으로 나간다 {bb} ⊄ {_bb}")
+        bb = _bb
+        print(f"  [철 판] {key} ← 틀 = {_b} {bb}")
     im2 = im.crop(bb)
     ox = a["ox"] - bb[0]
     oy = a["oy"] - bb[1]

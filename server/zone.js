@@ -5604,6 +5604,13 @@ function handlePlayerInput(player, raw) {
     for (const q of players.values()) q._shelter = null;
     send(player.ws, { type: 'notice', text: `🧪 시계 세움 — ${JSON.stringify(_e2eClock)} · ${JSON.stringify(weatherNow())}` });
   }
+  else if (E2E_GIVE && msg.type === '__e2e_snow') {
+    // ★[T487] 테스트 전용 — 적설을 세운다(0..1 · null = 세계 값으로 되돌림). 손잡이 끔이면 스냅에 칸이 없으니 **아무 일도 없다**.
+    //   사계 스크린샷 "겨울(적설 1)"·픽셀 하네스 눈 0/1 이 이 문을 쓴다(세계 값은 `snow.js` 곡선 표가 잰다).
+    _e2eSnow = (msg.snow === null || msg.snow === undefined) ? null : Math.max(0, Math.min(1, +msg.snow || 0));
+    _wxHint = { at: 0, v: null };   // 힌트 캐시를 즉시 무효화(`__e2e_clock` 과 같은 문법)
+    send(player.ws, { type: 'notice', text: `🧪 적설 세움 — ${JSON.stringify(_e2eSnow)} · ${JSON.stringify(weatherNow())}` });
+  }
   else if (E2E_GIVE && msg.type === '__e2e_day_freeze') {
     // ★테스트 전용(E2E_GIVE=1 일 때만 분기 존재) — 상호작용을 재는 동안 게임일을 얼린다.
     // ★★[2026-08-31] **플레이어 시계도 같이 얼린다** — 마을 날만 얼리던 게 반쪽이었다(위 주석).
@@ -7136,11 +7143,24 @@ let _e2eClock = null;
 //   ⚠몸 상태(무들)와 다른 것이다: 무들은 "내가 얼마나 추운가", 이건 "밖이 얼마나 추운가"다.
 //   ⚠클라가 날짜→온도 매핑을 **갖지 않는다**(달력과 같은 규약 — 사본 금지). 서버가 문장 재료를 준다.
 let _wxHint = { at: 0, v: null };
+// ★★[T487 2026-09-28] **적설 — 세계가 겨울을 안다**(재민 실기 "겨울에도 전혀 티가 안 난다").
+//   정본은 `server/snow.js` 하나다(쌓임 = 밤 강수·밤 기온 < 0℃ · 녹음 = 낮 기온 ℃ 비례 · 새 수 0 — 그 파일 머리 표).
+//   여기는 **스냅에 칸 하나**를 얹을 뿐이다(`welcome`·`gauges` 가 같은 이 함수를 탄다 — 사본 0).
+//   ★손잡이 하나 `T487_SNOW` · 기본 **끔** · 끔이면 아래 한 줄이 아무것도 안 한다 ⇒ 스냅 바이트 동일
+//     (클라는 `snow` 칸이 **있는가**로 켬을 안다 — 지면·수관·배지 ℃ 가 전부 그 한 칸을 본다).
+//   ⚠`weather.js`(T484 · 세션7) 무접촉 — 기온·강수는 **읽기만** 한다.
+const T487_SNOW = process.env.T487_SNOW === '1';
+let _e2eSnow = null;   // ★테스트 전용(`__e2e_snow` · E2E_GIVE) — 적설을 세운다. null = 세계 값 그대로
+function _snowNow(day) {
+  if (_e2eSnow !== null) return _e2eSnow;
+  try { return require('./snow').snowAt(day); } catch (e) { return 0; }
+}
 function weatherNow() {
   const now = Date.now();
   if (_wxHint.v && now - _wxHint.at < 1000) return _wxHint.v;
   let v = null;
   try { v = require('./weather').hintOf(gameDayNow(), bodyNight(now)); } catch (e) { v = null; }
+  if (T487_SNOW && v) v.snow = _snowNow(gameDayNow());   // ★[T487] 칸 하나(켬만)
   _wxHint = { at: now, v };
   return v;
 }
@@ -12139,6 +12159,9 @@ setInterval(() => {
   Roads.onGameTick(now);
   Soil.onGameTick(now);   // [배치 20 B] 토양치 게임일 1회 플러시 + tile_state 변경분 방송
   _fruitSeasonSweep();    // ★[T170] 철이 바뀌는 날 한 번 — 열매 비트 뒤집힘 방송(평시 낱말 비교 1회)
+  // ★[T487] 적설 결산 — 게임일 경계에서 한 걸음(평시 O(1) 날짜 비교 · 무인 존도 돈다 = 관측자 무관).
+  //   값은 절대 게임일의 순수 함수라 이 줄이 없어도 답은 같다 — 이 줄은 **하루 한 번**을 제 자리에 세울 뿐이다.
+  if (T487_SNOW) { try { require('./snow').at(gameDayNow()); } catch (e) {} }
 
   // === 14.49-e3-perf5: idle zone skip ===
   // 사람 player(isNpc=false) + observer 모두 0명이면 tick 풀 처리 skip.
