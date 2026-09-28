@@ -1324,6 +1324,21 @@ for _item, _spr in _T472_GROVE_ICONS:
     ICON_BUILD.append((_item, (lambda f=_fn, kw=_kw: f(**BKW(kw)))))
 
 
+# ═══════════════ [T481] 특산 갈래 대표 그림 둘 — **세계 소품 그 줄**을 아이콘 프리셋으로 ═══════════════
+# ★★새 형상 0 · 새 수 0 · 새 재질 0 — 위 T472 셋과 **같은 부름**이다(`TREE_BUILD`·`PROP_BUILD` 의 그 줄 그대로).
+#   임산물(`forest`) = 소나무 성목 `tree01` — 임산(林産)의 자리는 숲이고, 소나무는 목재 수율의 기준 종이다
+#                      (`server/trees.json` "소나무=1.00 상대 재적") · `TREE_BUILD` 첫 줄.
+#   향신료(`spice`)  = 약초 풀 `herb01` — 세계의 `herb` 자원이 그리는 소품(21 중 채취 16 = '야생 식물 채집') · 그 무리 첫 줄.
+# ★이 그림은 **품목이 아니다**(키 `grp_<갈래>`) — 제 그림 없는 특산 품목이 `icons.lock.json` `_갈래` 로 빌려 쓴다
+#   (라벨은 제 이름 · 클라 `43-i-icon.js` 한 줄). 대표를 바꾸려면 아래 짝 하나만 고쳐 다시 굽는다.
+# ⚠굽기 경로는 `NAT_ICONS=1` 갈래 하나뿐이다 — 세계 나무·소품 굽기는 한 줄도 안 지난다(배포 스프라이트 무변).
+_T481_GROUP_ICONS = (('grp_forest', 'tree01'), ('grp_spice', 'herb01'))
+_WORLD_ROW = {k: (fn, kw) for k, fn, kw in list(TREE_BUILD) + list(PROP_BUILD)}
+for _key, _row in _T481_GROUP_ICONS:
+    _fn, _kw = _WORLD_ROW[_row]
+    ICON_BUILD.append((_key, (lambda f=_fn, kw=_kw: f(**BKW(kw)))))
+
+
 def build_species_table():
     """`TREE_BUILD` 를 훑어 종 표를 만든다 — 사람이 적는 칸은 위 `SPECIES` 뿐이다."""
     out = {}
@@ -1385,7 +1400,7 @@ def build_species_table():
 # ═══════════════ 굽기 ═══════════════
 # ★[T101] `__main__` 가드 — 대조 하네스가 **빌더만** 꺼내 쓸 수 있어야 한다(편입 증명).
 if __name__ == '__main__':
- # ★[T156] 아이콘 갈래 — `NAT_ICONS=1` 이면 **아이콘만**(열매 넷 · [T472] 군락 품목 셋) 굽고 끝낸다.
+ # ★[T156] 아이콘 갈래 — `NAT_ICONS=1` 이면 **아이콘만**(열매 넷 · [T472] 군락 품목 셋 · [T481] 갈래 대표 둘) 굽고 끝낸다.
  #   나무·소품 굽기 경로는 한 줄도 안 지난다(배포본 무변의 근거).
  if os.environ.get('NAT_ICONS') == '1':
   os.makedirs(ICON_OUT, exist_ok=True)

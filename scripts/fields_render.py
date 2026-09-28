@@ -268,6 +268,23 @@ def bake_farmland_icon(out_dir):
     return p
 
 
+# ═══════════════ [T481] 농산물 갈래 대표 — **익은 곡물 밭**(세계 `grain_3` 과 같은 모델) ═══════════════
+# ★새 형상 0 · 새 수 0 — `build('grain', 3)` 그 부름을 아이콘 프리셋으로 한 번 더(바로 위 T95 와 같은 문법).
+#   곡물인 까닭: 클라 규약 "심긴 것을 모르면(빈 밭 · 마을 칸) **곡물**이다"(`00-const.js` `CROP_SPR`) — 무리를 모르는 밭의 기본 그림.
+#   익음(3)인 까닭: 갈은 흙(0)은 이미 `item_farmland` 이고, 거둘 것이 선 단계가 3 이다(`STAGES` 주석).
+# ★이 그림은 **품목이 아니다**(키 `grp_agri`) — 제 그림 없는 농산물 품목이 `icons.lock.json` `_갈래` 로 빌려 쓴다(라벨은 제 이름).
+def bake_agri_group_icon(out_dir):
+    """익은 곡물 밭 아이콘 — 세계 `grain_3` 과 같은 모델, 아이콘 프리셋으로 한 번 더."""
+    OBJS.clear()
+    build('grain', 3)
+    rc.bake_transforms()
+    p = os.path.join(out_dir, "grp_agri.png")
+    size = rc.render_icon_pass(OBJS, p)
+    rc.cleanup()
+    print(f"[fields] icon grp_agri: 512²  (bbox {size:.2f}m)")
+    return p
+
+
 # ═══════════════ 굽기 ═══════════════
 # ★★[T101] 세계 스프라이트는 **세계 패스**로 굽는다 — 여태 아이콘 패스였다(T97 §0-ⓒ).
 #   아이콘 패스는 시선이 `ISO_DIR`(1,−1,1.2)이고 z 압축·FLIP 이 없다. 그래서 나온 그림은
@@ -484,5 +501,8 @@ if __name__ == '__main__':
     print(f"[fields] 배치 -> {DEPLOY} ({len(anchors)}장 + 앵커)")
     if not ONLY or 'item_farmland' in ONLY:
         bake_farmland_icon(OUT)               # 512² — `icons-postprocess.js` 가 96px 로
+        n += 1
+    if not ONLY or 'grp_agri' in ONLY:        # [T481] 농산물 갈래 대표 — 위와 같은 길
+        bake_agri_group_icon(OUT)
         n += 1
     print("[fields] DONE ->", OUT, n, "장")
