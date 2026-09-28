@@ -993,8 +993,12 @@ function _hutStages() { if (_hutMod === undefined) { try { _hutMod = require('..
 function _villageLayoutMod() { if (_vlMod === undefined) { try { _vlMod = require('../server/village-layout'); } catch (e) { _vlMod = null; } } return _vlMod; }
 //   econ 재화만 남긴다 — 그 판정은 이 파일의 재화 목록(`RESOURCES`) 하나다(표 0 · 사본 0).
 function _econOnly(raw) { const o = {}; for (const k of Object.keys(raw || {})) if (RESOURCES.indexOf(k) >= 0) o[k] = raw[k]; return o; }
-function hutEconMaterials() { const H = _hutStages(); return H ? _econOnly(H.hutRaw()) : null; }        // 한 채
-function hutEconStage(i) { const H = _hutStages(); return H ? _econOnly(H.stageRaw(i)) : null; }        // 한 단계
+// ★[T497 2026-09-28] 집 단가 팔 — 값 = 고증 기둥 수(`hut-stages.js HUT_PILLARS_ATTESTED` 의 수만 · 그 밖의 값·빈값 = 끔 = 표 그대로 22).
+//   켬이면 econ 이 읽는 한 채·한 단계 원자재가 ② 기둥 수만 바뀐 표에서 나온다(기둥 2 → 통나무 10 · 4 → 16). 손잡이 한 자리.
+const T497_HUT_COST = (() => { const x = parseInt((typeof process !== 'undefined' && process.env && process.env.T497_HUT_COST) || '', 10); return Number.isFinite(x) ? x : 0; })();
+function hutPillarsArm() { const H = _hutStages(); return (H && H.HUT_PILLARS_ATTESTED && H.HUT_PILLARS_ATTESTED.indexOf(T497_HUT_COST) >= 0) ? T497_HUT_COST : 0; }
+function hutEconMaterials() { const H = _hutStages(); if (!H) return null; const n = hutPillarsArm(); return _econOnly(n ? H.hutRawPillars(n) : H.hutRaw()); }        // 한 채
+function hutEconStage(i) { const H = _hutStages(); if (!H) return null; const n = hutPillarsArm(); return _econOnly(n ? H.stageRawPillars(i, n) : H.stageRaw(i)); }        // 한 단계
 function hutStageCount() { const H = _hutStages(); return H ? H.HUT_STAGES.length : 0; }
 function hutCapPerHut() { const L = _villageLayoutMod(); return L ? L.HOUSE_CAP_PER_FLOOR * L.HOUSE_MAX_FLOORS : 0; }
 //   수용력 1인당 자재 단가 — 끔이면 종전 상수, 켬이면 표에서 유도(표를 못 읽으면 종전 — 게이트가 안 열린 것과 같다)
@@ -5520,7 +5524,7 @@ module.exports = {
   T443_SMELT_FUEL, smeltFuelOn, smeltFuelPerOre, smeltFuelTake,   // ★[T443] 제련 연료 — 하네스·계측기가 표를 옮겨 적지 않게
   T419_STONE_REAL, stoneRealPer, stoneRealOn,   // ★[T419] 돌 쓰는 실물 — 하네스·계측기가 표·유도를 옮겨 적지 않게 내준다
   T435_GRANARY_ACT, granaryEconMaterials,   // ★[T435] 곳간 증설 재료 — 생활층·하네스가 표를 옮겨 적지 않게
-  T400_BUILD_ACT, buildActOn, houseDayBuild, houseWoodShare, actFromGranary, hutEconMaterials, hutEconStage, hutStageCount, hutCapPerHut, houseCostPerCap,   // ★[T400] 집 행위 — 하네스·생활층이 표·유도를 옮겨 적지 않게 내준다
+  T400_BUILD_ACT, buildActOn, houseDayBuild, houseWoodShare, T497_HUT_COST, hutPillarsArm, actFromGranary, hutEconMaterials, hutEconStage, hutStageCount, hutCapPerHut, houseCostPerCap,   // ★[T400] 집 행위 — 하네스·생활층이 표·유도를 옮겨 적지 않게 내준다
   actToGranary, woodToGranary, woodActOn, woodRegrowR, woodRegrowPerDay, T325_WOOD_ACT,
   forageToGranary, forageActOn, forageActItemsOf, foragerYieldsFor, T347_FORAGE_ACT,   // ★[T347] 채집 행위 — 문 셋 + 믹스 정본 + 손잡이(하네스가 표를 옮겨 적지 않는다)
   actDemandLeft, actDemandCap, fishDemandLeft, woodDemandLeft, forageDemandLeft, T374_DEMAND_STOP,

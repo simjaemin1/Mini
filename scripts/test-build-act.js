@@ -230,5 +230,21 @@ setDay(6); Q.granAdd(vil); process.stdout.write(JSON.stringify({p:!!vil._granPen
   ok(off.p === false && off.gran === 2 && off.w === 100 && off.s === 20 && off.sum === null, '⑥ 미끼 — 끔이면 종전대로 날짜만 차면 재료 0 으로 선다(이 자가 문다)', JSON.stringify(off));
 }
 
+console.log('\n⑦ [T497] 집 단가 팔 — 고증 기둥 수(2 · 4)만 · 끔 = 표 그대로');
+{
+  const H = require(path.join(ROOT, 'server', 'hut-stages.js'));
+  ok(JSON.stringify(H.HUT_PILLARS_ATTESTED) === '[2,4]' && H.hutRawPillars(6).wood === H.hutRaw().wood, '⑦ 고증 기둥 수 표 둘(2 · 4) · 기둥 6 을 주면 원래 표와 같다(유도 함수가 표를 되돌린다)');
+  const js = `const E=require(${EP});process.stdout.write(JSON.stringify({m:E.hutEconMaterials(),s1:E.hutEconStage(1),s2:E.hutEconStage(2),c:E.houseCostPerCap('wood'),arm:E.hutPillarsArm()}));`;
+  const off = probe({ T400_BUILD_ACT: '1', T497_HUT_COST: '' }, js), a2 = probe({ T400_BUILD_ACT: '1', T497_HUT_COST: '2' }, js),
+        a4 = probe({ T400_BUILD_ACT: '1', T497_HUT_COST: '4' }, js), bad = probe({ T400_BUILD_ACT: '1', T497_HUT_COST: '3' }, js),
+        noB = probe({ T400_BUILD_ACT: '0', T497_HUT_COST: '2' }, js);
+  ok(off.m.wood === 22 && off.arm === 0, '⑦ ★끔 — 한 채 통나무 22(표 그대로)', JSON.stringify(off));
+  ok(a2.m.wood === 10 && a2.s1.wood === 6 && a2.s2.wood === off.s2.wood && Math.abs(a2.c - 10 / 6) < 1e-12, '⑦ 기둥 2 — 한 채 10 · ② 단계 6 · ③ 서까래 단계 무변 · 단가 10÷6', JSON.stringify(a2));
+  ok(a4.m.wood === 16 && a4.s1.wood === 12 && Math.abs(a4.c - 16 / 6) < 1e-12, '⑦ 기둥 4 — 한 채 16 · ② 단계 12 · 단가 16÷6', JSON.stringify(a4));
+  ok(bad.m.wood === 22 && bad.arm === 0, '⑦ 미끼 — 고증 표에 없는 수(3)는 끔과 같다(새 수 0)');
+  ok(noB.c === 1.5, '⑦ 집 행위(T400)가 끔이면 팔은 뜻이 없다(단가 종전 1.5)');
+  ok((SRC.match(/process\.env\.T497_HUT_COST/g) || []).length === 1 && !/T497_HUT_COST/.test(ZSRC) && !/T497_HUT_COST/.test(VSRC), '⑦ 손잡이 한 자리(econ) · 서버 공정(zone·villages) 무접촉');
+}
+
 console.log(`\n=== ${pass}/${pass + fail} ${fail ? '✗' : '✓'} ===`);
 process.exit(fail ? 1 : 0);

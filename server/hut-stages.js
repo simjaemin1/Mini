@@ -56,4 +56,21 @@ const hutRaw = () => {
   return out;
 };
 
-module.exports = { HUT_STAGES, HUT_RECIPES, PSITE_COST, rawOfNeed, stageRaw, hutRaw };
+// ── ★[T497 2026-09-28] 고증 기둥 수 — 송국리형 집자리 ─────────────────────────────────────────
+//   "바닥 중앙에 … 구덩이를 길게 파고 그 양쪽 끝 부분에 기둥구멍을 대칭으로 배치"(주기둥 **2**) · 구덩이 둘레에 **4** 기둥을 둔 형식도 있다
+//   (보고/T497 §ⓐ 출처 둘). ② 단계의 기둥 수만 이 값으로 바꾼 한 채 — 나머지 단계·레시피는 위 표 그대로(서까래·이엉 수는 출처를 못 찾았다).
+//   ⚠econ 단가 팔(`T497_HUT_COST` · 기본 끔)만 이것을 읽는다 — 서버 공정(`zone.js` 움집·의뢰 선납)은 위 표 그대로(값은 재민 #83).
+const HUT_PILLARS_ATTESTED = [2, 4];
+function stageNeedPillars(i, n) {
+  const need = Object.assign({}, (HUT_STAGES[i] || {}).need);
+  if (need.pillar != null) need.pillar = n;
+  return need;
+}
+const stageRawPillars = (i, n) => rawOfNeed(stageNeedPillars(i, n));
+const hutRawPillars = (n) => {
+  const out = {};
+  for (let i = 0; i < HUT_STAGES.length; i++) for (const [k, v] of Object.entries(stageRawPillars(i, n))) out[k] = (out[k] || 0) + v;
+  return out;
+};
+
+module.exports = { HUT_STAGES, HUT_RECIPES, PSITE_COST, rawOfNeed, stageRaw, hutRaw, HUT_PILLARS_ATTESTED, stageRawPillars, hutRawPillars };

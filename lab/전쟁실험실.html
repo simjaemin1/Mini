@@ -1350,7 +1350,24 @@ const hutRaw = () => {
   return out;
 };
 
-module.exports = { HUT_STAGES, HUT_RECIPES, PSITE_COST, rawOfNeed, stageRaw, hutRaw };
+// ── ★[T497 2026-09-28] 고증 기둥 수 — 송국리형 집자리 ─────────────────────────────────────────
+//   "바닥 중앙에 … 구덩이를 길게 파고 그 양쪽 끝 부분에 기둥구멍을 대칭으로 배치"(주기둥 **2**) · 구덩이 둘레에 **4** 기둥을 둔 형식도 있다
+//   (보고/T497 §ⓐ 출처 둘). ② 단계의 기둥 수만 이 값으로 바꾼 한 채 — 나머지 단계·레시피는 위 표 그대로(서까래·이엉 수는 출처를 못 찾았다).
+//   ⚠econ 단가 팔(`T497_HUT_COST` · 기본 끔)만 이것을 읽는다 — 서버 공정(`zone.js` 움집·의뢰 선납)은 위 표 그대로(값은 재민 #83).
+const HUT_PILLARS_ATTESTED = [2, 4];
+function stageNeedPillars(i, n) {
+  const need = Object.assign({}, (HUT_STAGES[i] || {}).need);
+  if (need.pillar != null) need.pillar = n;
+  return need;
+}
+const stageRawPillars = (i, n) => rawOfNeed(stageNeedPillars(i, n));
+const hutRawPillars = (n) => {
+  const out = {};
+  for (let i = 0; i < HUT_STAGES.length; i++) for (const [k, v] of Object.entries(stageRawPillars(i, n))) out[k] = (out[k] || 0) + v;
+  return out;
+};
+
+module.exports = { HUT_STAGES, HUT_RECIPES, PSITE_COST, rawOfNeed, stageRaw, hutRaw, HUT_PILLARS_ATTESTED, stageRawPillars, hutRawPillars };
 
 ;return module.exports;})();
   modules["stoneu"]=(function(){var module={exports:{}};var exports=module.exports;var require=req;
@@ -3538,8 +3555,12 @@ function _hutStages() { if (_hutMod === undefined) { try { _hutMod = require('..
 function _villageLayoutMod() { if (_vlMod === undefined) { try { _vlMod = require('../server/village-layout'); } catch (e) { _vlMod = null; } } return _vlMod; }
 //   econ 재화만 남긴다 — 그 판정은 이 파일의 재화 목록(`RESOURCES`) 하나다(표 0 · 사본 0).
 function _econOnly(raw) { const o = {}; for (const k of Object.keys(raw || {})) if (RESOURCES.indexOf(k) >= 0) o[k] = raw[k]; return o; }
-function hutEconMaterials() { const H = _hutStages(); return H ? _econOnly(H.hutRaw()) : null; }        // 한 채
-function hutEconStage(i) { const H = _hutStages(); return H ? _econOnly(H.stageRaw(i)) : null; }        // 한 단계
+// ★[T497 2026-09-28] 집 단가 팔 — 값 = 고증 기둥 수(`hut-stages.js HUT_PILLARS_ATTESTED` 의 수만 · 그 밖의 값·빈값 = 끔 = 표 그대로 22).
+//   켬이면 econ 이 읽는 한 채·한 단계 원자재가 ② 기둥 수만 바뀐 표에서 나온다(기둥 2 → 통나무 10 · 4 → 16). 손잡이 한 자리.
+const T497_HUT_COST = (() => { const x = parseInt((typeof process !== 'undefined' && process.env && process.env.T497_HUT_COST) || '', 10); return Number.isFinite(x) ? x : 0; })();
+function hutPillarsArm() { const H = _hutStages(); return (H && H.HUT_PILLARS_ATTESTED && H.HUT_PILLARS_ATTESTED.indexOf(T497_HUT_COST) >= 0) ? T497_HUT_COST : 0; }
+function hutEconMaterials() { const H = _hutStages(); if (!H) return null; const n = hutPillarsArm(); return _econOnly(n ? H.hutRawPillars(n) : H.hutRaw()); }        // 한 채
+function hutEconStage(i) { const H = _hutStages(); if (!H) return null; const n = hutPillarsArm(); return _econOnly(n ? H.stageRawPillars(i, n) : H.stageRaw(i)); }        // 한 단계
 function hutStageCount() { const H = _hutStages(); return H ? H.HUT_STAGES.length : 0; }
 function hutCapPerHut() { const L = _villageLayoutMod(); return L ? L.HOUSE_CAP_PER_FLOOR * L.HOUSE_MAX_FLOORS : 0; }
 //   수용력 1인당 자재 단가 — 끔이면 종전 상수, 켬이면 표에서 유도(표를 못 읽으면 종전 — 게이트가 안 열린 것과 같다)
@@ -8065,7 +8086,7 @@ module.exports = {
   T443_SMELT_FUEL, smeltFuelOn, smeltFuelPerOre, smeltFuelTake,   // ★[T443] 제련 연료 — 하네스·계측기가 표를 옮겨 적지 않게
   T419_STONE_REAL, stoneRealPer, stoneRealOn,   // ★[T419] 돌 쓰는 실물 — 하네스·계측기가 표·유도를 옮겨 적지 않게 내준다
   T435_GRANARY_ACT, granaryEconMaterials,   // ★[T435] 곳간 증설 재료 — 생활층·하네스가 표를 옮겨 적지 않게
-  T400_BUILD_ACT, buildActOn, houseDayBuild, houseWoodShare, actFromGranary, hutEconMaterials, hutEconStage, hutStageCount, hutCapPerHut, houseCostPerCap,   // ★[T400] 집 행위 — 하네스·생활층이 표·유도를 옮겨 적지 않게 내준다
+  T400_BUILD_ACT, buildActOn, houseDayBuild, houseWoodShare, T497_HUT_COST, hutPillarsArm, actFromGranary, hutEconMaterials, hutEconStage, hutStageCount, hutCapPerHut, houseCostPerCap,   // ★[T400] 집 행위 — 하네스·생활층이 표·유도를 옮겨 적지 않게 내준다
   actToGranary, woodToGranary, woodActOn, woodRegrowR, woodRegrowPerDay, T325_WOOD_ACT,
   forageToGranary, forageActOn, forageActItemsOf, foragerYieldsFor, T347_FORAGE_ACT,   // ★[T347] 채집 행위 — 문 셋 + 믹스 정본 + 손잡이(하네스가 표를 옮겨 적지 않는다)
   actDemandLeft, actDemandCap, fishDemandLeft, woodDemandLeft, forageDemandLeft, T374_DEMAND_STOP,
