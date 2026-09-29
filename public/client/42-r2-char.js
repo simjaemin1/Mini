@@ -16,6 +16,17 @@
   let _charMeta = null, _charMetaTried = false;
   const _charImg = new Map();        // key -> {img, ok}
   const _charAnim = new Map();       // pid -> {clip, t, one, oneT, lastAtk, lastT}
+  // ★★[T522 2026-09-29] **사람 하나를 3D 로** — 손잡이 `T522_CHAR_3D`(기본 끔). 서버 무접촉이라 env 가 아니라
+  //   **주소창 한 칸**이다(`?T522_CHAR_3D=1` · 비교용 `=overlay`). 끄면 아래 줄이 아무것도 안 싣는다 —
+  //   three.js·glb·`client3d/char3d.js` 요청 0 · `drawCharSprite` 첫 줄의 갈고리도 안 돈다(시트 경로 비트 동일).
+  //   three.js 는 **한 판 고정**(`public/vendor/three.0.186.1.min.js` · MIT · CDN 0) · 정본 규약 `인계/C3-클라3D.md`.
+  const T522_CHAR_3D = (() => { try { return new URLSearchParams(location.search).get('T522_CHAR_3D') || null; } catch (e) { return null; } })();
+  if (T522_CHAR_3D) {
+    const _t3 = document.createElement('script');
+    _t3.src = '/vendor/three.0.186.1.min.js';
+    _t3.onload = () => { const _c3 = document.createElement('script'); _c3.src = '/client3d/char3d.js'; document.head.appendChild(_c3); };
+    document.head.appendChild(_t3);
+  }
 
   function charMeta() {
     if (_charMeta || _charMetaTried) return _charMeta;
@@ -226,6 +237,7 @@
 
   /** 스프라이트로 그린다. 성공하면 true — 실패(시트 미로딩·플래그 OFF)면 false 로 도형 경로에 넘긴다. */
   function drawCharSprite(x, y, isMe, opts) {
+    if (T522_CHAR_3D && window.__char3d && window.__char3d.draw && window.__char3d.draw(x, y, isMe, opts)) return true;   // ★[T522] 3D 한 몸(손잡이 켬에서만)
     if (!uiCfg.charSprite) return false;
     const m = charMeta();
     if (!m) return false;

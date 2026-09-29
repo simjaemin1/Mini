@@ -51,6 +51,7 @@
 | **국립국악원 국악기 디지털 음원 — 「단음 다운로드」** | 실제 악기 녹음: 산조가야금(원본 21파일 → 조각 262) · 정악가야금 · 정악대금(5파일 → 조각 113) | `public/assets/audio/bgm/*.ogg`·`*.m4a` **13곡**(가야금 음 1574개 · 합성 대체 0) — 12곡이라 적혀 있던 것을 T257 이 고쳤다(`village_day_jeongak` 누락 · T246 발견) | **공공누리 제1유형(출처표시)** — 상업 이용 가능 · 변형 가능 | **문구**(§1 둘째 줄) | 배치 시절(2026-07-29~31) |
 | **npm 실행 의존성 다섯** | `express` 4 · `ws` 8 · `better-sqlite3` 12 · `pngjs` 7 · `acorn` 8 | 서버(`server/`) · 하네스 | 전부 **MIT** (각 패키지 `LICENSE` 실측) | 배포 시 라이선스 전문 동봉 | — |
 | **SQLite** | `better-sqlite3` 가 품고 있는 엔진 | 서버 DB | **퍼블릭 도메인** | 없음 | — |
+| **three.js** 0.186.1 | WebGL 3D 층(코어 + `GLTFLoader`·`SkeletonUtils` — esbuild 로 전역 `THREE` 한 파일) | `public/vendor/three.0.186.1.min.js` — 손잡이 `T522_CHAR_3D` 켬에서만 실린다(끔 = 요청 0) | **MIT**(전문 `public/vendor/three.LICENSE.txt` · 파일 머리에 저작권 줄) | 배포 시 라이선스 전문 동봉(동봉했다) | T522 |
 | **폰트** | `Noto Sans KR`·`IBM Plex Mono` 를 **이름으로만** 부른다 | `public/style.css` `--font`/`--mono` | — | **없음 — 파일을 배포하지 않는다** (`@font-face` 0 · 웹폰트 로드 0 · 없으면 시스템 글꼴로 떨어진다) | — |
 
 ### 그림은 전부 이 집에서 굽는다
@@ -204,7 +205,7 @@
 
 ## 5. 도구 — 배포하지 않는다
 
-Blender / `bpy` 5.0.1(굽기) · numpy · scipy(BGM 합성) · Pillow(광맥 파생) · Playwright/Chromium(하네스).
+Blender / `bpy` 5.0.1(굽기 · [T522] 동봉 `io_scene_gltf2` 5.0.21 로 glTF 내보내기) · numpy · scipy(BGM 합성) · Pillow(광맥 파생) · Playwright/Chromium(하네스) · esbuild 0.25.10(MIT · [T522] three.js 한 파일로 묶기 — `scripts/vendor-three.sh`).
 산출물은 이 프로젝트 것이고, 도구 자체는 배포물에 들어가지 않는다.
 
 ## 6. 아직 아닌 것
