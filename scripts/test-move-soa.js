@@ -1384,13 +1384,17 @@ console.log('\n⑮ T427 ① — 닿는 현장만(배정 순간 집 → 후보 ·
 {
   const V = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8');
   const bodyV = (name) => {
-    const i = V.indexOf('function ' + name + '(');
+    //   ★[T514 추신 · T523] 생성기(`function* 이름(`)도 뜬다 — T523 이 사냥꾼 하루를 쉼표 있는 몸통(`_huntHuntersSteps`)으로 옮겼다
+    let i = V.indexOf('function ' + name + '(');
+    if (i < 0) i = V.indexOf('function* ' + name + '(');
     if (i < 0) return '';
     let d = 0, j = V.indexOf('{', i);
     for (let k = j; k < V.length; k++) { if (V[k] === '{') d++; else if (V[k] === '}') { d--; if (!d) return V.slice(i, k + 1); } }
     return '';
   };
-  const onSrc = bodyV('_t427On'), homeSrc = bodyV('_t427HomeOf'), reachSrc = bodyV('_t427Reach'), siteSrc = bodyV('_t427Site'), huntSrc = bodyV('huntHunters');
+  //   ★[T514 추신 · T523] `huntHunters` 는 이제 정본 몸통 `_huntHuntersSteps`(생성기)를 끝까지 도는 한 줄이다 — **둘 다** 제품 글자 그대로 뜬다(사본 0)
+  const onSrc = bodyV('_t427On'), homeSrc = bodyV('_t427HomeOf'), reachSrc = bodyV('_t427Reach'), siteSrc = bodyV('_t427Site'),
+    huntSrc = bodyV('huntHunters') + (bodyV('_huntHuntersSteps') ? '\n' + bodyV('_huntHuntersSteps') : '');
   ok(onSrc.length > 40 && homeSrc.length > 60 && reachSrc.length > 200 && siteSrc.length > 100 && huntSrc.length > 1500,
      '⑮ [전제] 제품에서 **그 글자** 다섯을 떴다(켬 술어 · 집 · 도달 기억 · 현장 고르기 · 사냥꾼 하루 옮기기)',
      `${onSrc.length} · ${homeSrc.length} · ${reachSrc.length} · ${siteSrc.length} · ${huntSrc.length}자`);
