@@ -1071,8 +1071,12 @@ const T435_GRANARY_ACT = process.env.T435_GRANARY_ACT === '1';
 let _granMod;
 function _granaryStages() { if (_granMod === undefined) { try { _granMod = require('../server/granary-stages'); } catch (e) { _granMod = null; } } return _granMod; }
 function granaryEconMaterials() { const G = _granaryStages(); return G ? _econOnly(G.granaryRaw()) : null; }   // 한 동(econ 재화만)
+// ══ ★★[T527 2026-09-29] 다리도 행위다 — 정본 `server/bridge-stages.js`(테스트우드 청동기 다리 실측에서 유도) · 손잡이 기본 끔 ══
+//   켬이면 착공 후보(존 설정 `bridgeSites` — 계획기 v2 셀 그대로)를 그 섬 마을의 여유 크루가 이 곳간 출구로 자재를 꺼내 날라 짓는다
+//   (villages.js `_t527BridgeDay`). 끔 = 한 줄도 안 돈다 · 시딩 다리 비트 동일. econ 은 문만 연다(자재 표는 서버가 읽는다).
+const T527_BRIDGE_ACT = process.env.T527_BRIDGE_ACT === '1';
 function actFromGranary(v, item, units) {
-  if (!(T400_BUILD_ACT || T435_GRANARY_ACT) || !v || !v.storage) return 0;   // ★[T435] 곳간 증설 크루도 같은 출구를 쓴다(둘 다 끔 = 종전 그대로 0)
+  if (!(T400_BUILD_ACT || T435_GRANARY_ACT || T527_BRIDGE_ACT) || !v || !v.storage) return 0;   // ★[T527] 다리 크루도 같은 출구(셋 다 끔 = 종전 그대로 0)   // ★[T435] 곳간 증설 크루도 같은 출구를 쓴다(둘 다 끔 = 종전 그대로 0)
   const want = (typeof units === 'number' && units > 0) ? units : 0;
   const have = v.storage[item] || 0;
   const take = Math.min(want, have);
@@ -5548,7 +5552,7 @@ module.exports = {
   T443_SMELT_FUEL, smeltFuelOn, smeltFuelPerOre, smeltFuelTake,   // ★[T443] 제련 연료 — 하네스·계측기가 표를 옮겨 적지 않게
   T419_STONE_REAL, stoneRealPer, stoneRealOn,   // ★[T419] 돌 쓰는 실물 — 하네스·계측기가 표·유도를 옮겨 적지 않게 내준다
   T435_GRANARY_ACT, granaryEconMaterials,   // ★[T435] 곳간 증설 재료 — 생활층·하네스가 표를 옮겨 적지 않게
-  T400_BUILD_ACT, buildActOn, houseDayBuild, houseWoodShare, T497_HUT_COST, hutPillarsArm, T517_HUT_STONE, hutStoneUnits, actFromGranary, hutEconMaterials, hutEconStage, hutStageCount, hutCapPerHut, houseCostPerCap,   // ★[T400] 집 행위 — 하네스·생활층이 표·유도를 옮겨 적지 않게 내준다
+  T400_BUILD_ACT, T527_BRIDGE_ACT, buildActOn, houseDayBuild, houseWoodShare, T497_HUT_COST, hutPillarsArm, T517_HUT_STONE, hutStoneUnits, actFromGranary, hutEconMaterials, hutEconStage, hutStageCount, hutCapPerHut, houseCostPerCap,   // ★[T400] 집 행위 — 하네스·생활층이 표·유도를 옮겨 적지 않게 내준다
   actToGranary, woodToGranary, woodActOn, woodRegrowR, woodRegrowPerDay, T325_WOOD_ACT,
   forageToGranary, forageActOn, forageActItemsOf, foragerYieldsFor, T347_FORAGE_ACT,   // ★[T347] 채집 행위 — 문 셋 + 믹스 정본 + 손잡이(하네스가 표를 옮겨 적지 않는다)
   actDemandLeft, actDemandCap, fishDemandLeft, woodDemandLeft, forageDemandLeft, T374_DEMAND_STOP,

@@ -589,7 +589,9 @@ console.log('\n⑨ T385_ONE_SWEEP 순회 일곱 → 둘 — 켬/끔이 같은 �
   ok(POST.length > 8000 && /function _stairStepP\(p\)/.test(POST) && /function _gaugeStep\(p\)/.test(POST) && /if \(T385_ONE_SWEEP\) \{/.test(POST),
      '⑨ [전제] 제품에서 **뒤 묶음 글자 전부**를 떴다(단계 함수 다섯 · 끔 순회 · 켬 한 바퀴)', `${POST.length}자`);
   const KDEF = (ZSRC.match(/const _STAIR_K = \d+;/) || [''])[0];   // 키의 상수도 제품 글자 그대로
-  const LIFT = KDEF + '\n' + ['isPositionActive', '_needAct', '_stairKey', 'rebuildStairCellCache', 'findStairBuildingForCell', 'dirVecForCollider']
+  //   ★[T514 추신 · T484×T499] `_gaugeStep` 이 `gameDayT(now)`(T484 ① 기온 시계)를 부른다 — 그 함수도 **제품 글자 그대로** 뜬다(사본 0).
+  //     그 함수가 읽는 바깥 칸(`_e2eClock` · `worldPhase` · `SimVillages.econDayT` · `gameDayNow`)은 아래 판에 가짜로 둔다(시계만 읽는다 · 몸 0).
+  const LIFT = KDEF + '\n' + ['isPositionActive', '_needAct', '_stairKey', 'rebuildStairCellCache', 'findStairBuildingForCell', 'dirVecForCollider', 'gameDayT']
     .map((n) => body(n)).join('\n');
   ok(LIFT.length > 800, '⑨ [전제] 계단 캐시·키·활성 술어도 **제품 글자 그대로**', `${LIFT.length}자`);
 
@@ -648,7 +650,8 @@ console.log('\n⑨ T385_ONE_SWEEP 순회 일곱 → 둘 — 켬/끔이 같은 �
       getEquippedEquipment: (p) => (p.pid.charCodeAt(1) % 2 ? { attrs: { warmth: 1 } } : null),
       bodyNight: (t) => ((t / 1000) % 20) > 10, isNearCampfire: (p) => ((p.x / 800) | 0) % 5 === 0, isIndoorAt: (p) => (p.floor || 0) > 0,
       Carry: { effects: (p) => ({ ratio: ((p.x | 0) % 7) / 7 }), carrierWorking: (p) => (p.vp | 0) % 2 === 0, CARRIER_SLOT: 'back', reconcile: () => {}, payload: () => ({}) },
-      gameDayNow: () => 12, villageShelterOf: (p) => (p.simVillageId ? 0.5 : 0), elevKmAt: (p) => p.y / 1e5,
+      gameDayNow: () => 12, _e2eClock: null, worldPhase: (t) => ((t / 1000) % 20) / 20, SimVillages: { econDayT: null },   // ★[T514 추신] 정본 `gameDayT` 가 읽는 칸 — 시계만(밤 가짜 `bodyNight` 와 같은 20초 주기)
+      villageShelterOf: (p) => (p.simVillageId ? 0.5 : 0), elevKmAt: (p) => p.y / 1e5,
       windExposureOf: (p) => (p.x % 100) / 100, coverOf: (p) => (p.y % 50) / 50, seasonColdNow: () => 0.3,
       wearEquipment: (p, slot) => { p._wear = (p._wear || 0) + 1; },
       zoneGameDay: () => 12, Lots: { isLot: () => false, reconcile: () => {} },
@@ -1381,13 +1384,17 @@ console.log('\n⑮ T427 ① — 닿는 현장만(배정 순간 집 → 후보 ·
 {
   const V = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8');
   const bodyV = (name) => {
-    const i = V.indexOf('function ' + name + '(');
+    //   ★[T514 추신 · T523] 생성기(`function* 이름(`)도 뜬다 — T523 이 사냥꾼 하루를 쉼표 있는 몸통(`_huntHuntersSteps`)으로 옮겼다
+    let i = V.indexOf('function ' + name + '(');
+    if (i < 0) i = V.indexOf('function* ' + name + '(');
     if (i < 0) return '';
     let d = 0, j = V.indexOf('{', i);
     for (let k = j; k < V.length; k++) { if (V[k] === '{') d++; else if (V[k] === '}') { d--; if (!d) return V.slice(i, k + 1); } }
     return '';
   };
-  const onSrc = bodyV('_t427On'), homeSrc = bodyV('_t427HomeOf'), reachSrc = bodyV('_t427Reach'), siteSrc = bodyV('_t427Site'), huntSrc = bodyV('huntHunters');
+  //   ★[T514 추신 · T523] `huntHunters` 는 이제 정본 몸통 `_huntHuntersSteps`(생성기)를 끝까지 도는 한 줄이다 — **둘 다** 제품 글자 그대로 뜬다(사본 0)
+  const onSrc = bodyV('_t427On'), homeSrc = bodyV('_t427HomeOf'), reachSrc = bodyV('_t427Reach'), siteSrc = bodyV('_t427Site'),
+    huntSrc = bodyV('huntHunters') + (bodyV('_huntHuntersSteps') ? '\n' + bodyV('_huntHuntersSteps') : '');
   ok(onSrc.length > 40 && homeSrc.length > 60 && reachSrc.length > 200 && siteSrc.length > 100 && huntSrc.length > 1500,
      '⑮ [전제] 제품에서 **그 글자** 다섯을 떴다(켬 술어 · 집 · 도달 기억 · 현장 고르기 · 사냥꾼 하루 옮기기)',
      `${onSrc.length} · ${homeSrc.length} · ${reachSrc.length} · ${siteSrc.length} · ${huntSrc.length}자`);

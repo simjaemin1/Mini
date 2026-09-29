@@ -59,7 +59,10 @@ process.on('exit', () => { for (const p of procs) { try { p.kill('SIGKILL'); } c
       //   쉼터 실체는 그 청크가 켜질 때(= 내가 도착할 때) 서므로 방이 뒤따라 온다 ⇒ 게이지를 받은 뒤 방을 3초 더 기다린다.
       let wel = null, got = null; const roomCells = new Set();
       const eatRooms = (list) => { for (const r of (list || [])) if ((r.floor | 0) === 0) for (let i = 0; i + 1 < (r.cells || []).length; i += 2) roomCells.add(r.cells[i] + ',' + r.cells[i + 1]); };
-      const finish = () => { try { ws.close(); } catch (e) {} const cx = Math.floor(got.x / 32), cy = Math.floor(got.y / 32); res(Object.assign(got, { indoor: roomCells.has(cx + ',' + cy) })); };
+      //   ★[T526] 서버가 몸의 실내(`weather.indoor` — `isIndoorAt` 정본 · 손잡이 켬일 때만 오는 칸)를 보내면 **그것을** 쓴다(방 + 마을 발자국).
+      //     안 보내면(끔 · 옛 판) T520 규약 그대로 방 셀로 잰다.
+      const finish = () => { try { ws.close(); } catch (e) {} const cx = Math.floor(got.x / 32), cy = Math.floor(got.y / 32);
+        res(Object.assign(got, { indoor: (typeof got.srvIndoor === 'boolean') ? got.srvIndoor : roomCells.has(cx + ',' + cy), indoorRoom: roomCells.has(cx + ',' + cy) })); };
       const to = setTimeout(() => { if (got) finish(); else { try { ws.close(); } catch (e) {} res(null); } }, 20000);
       ws.on('message', (raw) => { let m; try { m = JSON.parse(String(raw)); } catch (e) { return; }
         if (m.type === 'welcome') { wel = m; eatRooms(m.rooms); }
@@ -67,7 +70,9 @@ process.on('exit', () => { for (const p of procs) { try { p.kill('SIGKILL'); } c
         if (m.type === 'gauges' && m.weather && Number.isFinite(m.weather.shelter) && wel && !got) {
           got = { x: wel.self && wel.self.x, y: wel.self && wel.self.y, shelter: m.weather.shelter, exp: m.weather.exp };
           clearTimeout(to); setTimeout(finish, 3000);
-        } });
+        }
+        // ★[T526] 실내 칸은 청크가 켜지고 쉼터 행이 선 **뒤의** 게이지가 참말이다 — 끝날 때까지 가장 늦은 값을 쥔다.
+        if (m.type === 'gauges' && m.weather && got && typeof m.weather.indoor === 'boolean') got.srvIndoor = m.weather.indoor; });
       ws.on('error', () => { clearTimeout(to); res(null); });
     });
     // ★[T520 ③] 촌장 인사 문 — 클라 `_evProximityTick` 은 마을 앵커(cx·SZ+16)에서 **260px**(`EV_BRIEF_PX`) 안이면 연다. 도착 자리의 거리를 적는다.

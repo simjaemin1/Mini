@@ -239,5 +239,34 @@ H('⑧ 층 분리 · 마을 건물 제외 · 상한');
   ok(roomOf(12, 12) === null, `${Rooms.MAX_ROOM_CELLS}칸을 넘는 영역은 실외로 확정된다(작업량 상한)`);
 }
 
+H('⑨ [T526] 지붕 아래 = 실내 — 방 + 마을 정형 건물 발자국(`underRoofAt` · 새 규칙 0)');
+{
+  // 마을 움집 한 채 — villages.js `_liveHut6x4` 와 같은 꼴: 6×4 바닥 전부에 `hut` 발자국 렉트 · 남벽 가운데 두 칸이 개구(문 개체 0)
+  reset();
+  const R = [30, 30, 35, 33];
+  const hut = rect(R[0], R[1], R[2], R[3]);
+  for (const [x, y] of hut) putFloor(x, y, 0, { hut: R.slice() });
+  encloseCells(hut, 0);
+  delEdge(32, 34, 'N', 0); delEdge(33, 34, 'N', 0);                 // 남벽 문 자리 두 칸 — 벽이 없다(개구)
+  recompute([[32, 33]]);
+  ok(roomOf(32, 33) === null, '검사 전제 — 마을 움집은 방이 아니다(태그 바닥 · 개구 — 종전 그대로)');
+  ok(hut.every(([x, y]) => Rooms.underRoofAt(x, y, 0)), `★★움집 발자국 ${hut.length}칸 전부 **지붕 아래**(발자국 렉트 = 태그가 이미 가진 좌표)`);
+  ok(!Rooms.underRoofAt(32, 34, 0) && !Rooms.underRoofAt(29, 31, 0) && !Rooms.underRoofAt(36, 31, 0),
+    '★문간(문 칸 · 바닥 없음)과 벽 바깥은 **바깥**이다 — 방의 "바닥 깔린 칸" 과 같은 경계');
+  ok(!Rooms.underRoofAt(32, 33, 1), '층이 다르면 바깥이다(바닥 조회가 층을 본다)');
+  // 큰집(`bld`)·곳간(`gran`) — 같은 술어
+  putFloor(50, 50, 0, { bld: [46, 46, 53, 53] }); putFloor(60, 60, 0, { gran: [58, 59, 62, 61] });
+  ok(Rooms.underRoofAt(50, 50, 0) && Rooms.underRoofAt(60, 60, 0), '큰집(`bld`)·곳간(`gran`) 발자국도 같은 술어로 지붕 아래다');
+  // 태그 없는 바닥(방이 아닌 마당·안 닫힌 집) — 지붕이 없다
+  putFloor(70, 70, 0, {});
+  ok(!Rooms.underRoofAt(70, 70, 0), '★태그 없는 바닥은 방이어야 실내다(울타리 마당 · 안 닫힌 집 — 종전 규칙 그대로)');
+  // 렉트 밖에 잘못 찍힌 태그 — 좌표를 믿지 않고 렉트를 본다
+  putFloor(80, 80, 0, { hut: [30, 30, 35, 33] });
+  ok(!Rooms.underRoofAt(80, 80, 0), '(자명 통과 금지) 태그 렉트 밖의 바닥은 바깥이다 — 술어가 실제로 렉트를 잰다');
+  // 플레이어 방은 종전 그대로 실내
+  const pr = rect(90, 90, 92, 91); build(pr); recompute([[91, 90]]);
+  ok(roomOf(91, 90) !== null && Rooms.underRoofAt(91, 90, 0), '플레이어 방은 그대로 실내다(`underRoofAt` = 방 ∪ 마을 발자국)');
+}
+
 console.log(`\n=== 방 판정 하네스: ${pass} 통과 / ${fail} 실패 ${fail ? '❌' : '✅'} ===`);
 process.exit(fail ? 1 : 0);

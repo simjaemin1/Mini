@@ -7434,6 +7434,110 @@ function _t435GranaryDay(vil) {
   for (const j of Object.keys(dbg.jobs)) S.jobs[j] = (S.jobs[j] || 0) + dbg.jobs[j];
   return dbg;
 }
+// ══ ★★[T527 2026-09-29] 다리도 행위다 — T400·T435 문법 그대로(손잡이 `T527_BRIDGE_ACT` 기본 끔 · econ 에 한 자리) ════════════
+//   착공 자리 = 존 설정 `bridgeSites`(계획기 v2 `bridgeSites 형` 줄 그대로 — 폭 2셀 · 축 4방 · 새 규칙 0). 짓는 이 = 그 섬 마을(`v`)의 여유 크루.
+//   공정·자재 = `server/bridge-stages.js`(테스트우드 청동기 다리 실측 → ① 말뚝(기둥) 물 1 m 당 6.5 · ② 널(판자) 다리 칸당 1) ·
+//     econ 재화로 풀 때는 움집·곳간 레시피 표 그대로(기둥 = 통나무 3 · 판자 2 = 통나무 1 · 사본 0).
+//   하루 — 곳간 출구(`actFromGranary`) → 손 → 걸음(`_t341TripsPerDay` · 짐 = `_t400PerLoad`) → 다리 터(`site.mat`) · 자재가 차면
+//     시공(한 사람 하루 `LIFE_STAGE_PDAY` 단계)이 단계를 올린다(T400 과 같은 순서) · 마지막 단계가 오르면 **그 순간 다리가 선다**:
+//     셀을 존 콜라이더에 더하고(`deps.addBridgeCells` — zone 단일 술어 `isTerrainBlockedLocal` 이 읽는 그 집합 · 클라 미러 방송) ·
+//     교역 거리·캐러밴 격자를 무효화한다(`invalidateTradeDistances` — 벽·울타리와 같은 훅).
+//   ★관측자 무관 · 주사위 0. 끔 = 이 절 전체가 안 돈다(`state._t527Sites` 가 안 선다 ⇒ 다리 셀 집합 비트 동일).
+//   ⚠완공 다리·진척의 **영속은 없다**(재기동하면 시딩 다리로 돌아간다 — 켜기 전 회부 · 보고/T527 §ⓓ).
+function _t527On() { return !!_lifeEcon().T527_BRIDGE_ACT; }
+let _brStMod;
+function _bridgeStages() { if (_brStMod === undefined) { try { _brStMod = require('./bridge-stages'); } catch (e) { _brStMod = null; } } return _brStMod; }
+function _t527Recipes() {
+  const o = {};
+  try { Object.assign(o, require('./hut-stages').HUT_RECIPES); } catch (e) {}
+  try { Object.assign(o, require('./granary-stages').GRANARY_RECIPES); } catch (e) {}
+  return o;
+}
+//   econ 재화만(econ 이 모르는 재화는 곳간에 없다 — `hutEconStage` 의 `_econOnly` 와 같은 뜻 · 목록은 econ `RESOURCES`)
+function _t527EconNeed(site, i) {
+  const B = _bridgeStages(); if (!B) return null;
+  const st = B.bridgeStages(site.span, site.cells.length / 2)[i]; if (!st) return null;
+  const raw = B.rawOfNeed(st.need, _t527Recipes());
+  const R = _lifeEcon().RESOURCES || null, o = {};
+  for (const k of Object.keys(raw)) if (!R || R.indexOf(k) >= 0) o[k] = raw[k];
+  return o;
+}
+function _t527StageCount(site) { const B = _bridgeStages(); return B ? B.bridgeStages(site.span, site.cells.length / 2).length : 0; }
+function _t527Sites() {
+  if (!_t527On()) return null;
+  if (state._t527Sites) return state._t527Sites;
+  const Z = require('./zone-config').ZONES[state.zoneId] || {};
+  state._t527Sites = (Z.bridgeSites || []).map((s, i) => ({ i, v: (s.v || []).slice(), span: s.span | 0, cells: (s.cells || []).slice(), stage: 0, mat: {}, done: false, day: null, adv: [] }));
+  return state._t527Sites;
+}
+function _t527Crew(vil) {   // 여유 크루 — 집 크루(T400 · 집터가 있으면)·곳간 크루(T435 · 곳간 터가 있으면)가 먼저 가져간 뒤의 둘
+  const E = _lifeEcon();
+  const skip = ((E.T400_BUILD_ACT && vil._site) ? LIFE_CREW : 0) + ((E.T435_GRANARY_ACT && vil._granPend) ? LIFE_CREW : 0);
+  const out = [], pl = state.deps && state.deps.players;
+  let i = 0;
+  for (const pid of (vil.npcPids || [])) { const p = pl && pl.get(pid); if (!p) continue; if (i++ < skip) continue; if (out.length >= LIFE_CREW) break; out.push(p); }
+  return out;
+}
+function _t527Complete(site, day) {
+  site.done = true; site.day = day;
+  let n = 0;
+  try { if (state.deps && state.deps.addBridgeCells) n = state.deps.addBridgeCells(site.cells) || 0; } catch (e) { console.error(`[${state.zoneId}] 🌉 다리 셀 반영 실패:`, e.message); }
+  try { invalidateTradeDistances(); } catch (e) {}
+  console.log(`[${state.zoneId}] 🌉 다리 완공 — ${site.v.join(',')} · 물 ${site.span}칸 · 다리 ${site.cells.length / 2}칸(새 셀 ${n}) · ${day}일`);
+  return n;
+}
+function _t527BridgeDay(vil) {
+  const E = _lifeEcon();
+  const sites = _t527Sites(); if (!sites || !vil.econ) return null;
+  const site = sites.find((s) => !s.done && s.v.indexOf(vil.name) >= 0); if (!site) return null;
+  const day = state.dayMs ? gameDayOf(_dayNow()) : 0;
+  const dbg = vil._t527Dbg = { day, site: site.i, crew: 0, trips: 0, took: 0, adv: 0, stall: 0, walkS: 0, jobs: {} };
+  const crew = _t527Crew(vil); if (!crew.length) return dbg;
+  dbg.crew = crew.length;
+  for (const c of crew) { const j = c.simJob || '-'; dbg.jobs[j] = (dbg.jobs[j] || 0) + 1; }
+  // 꺼내는 자리 = 다리 첫 칸(섬 쪽 착지 — 계획기가 섬 해안선에서 쏜 광선의 첫 칸)에 가장 가까운 곳간 사다리(없으면 회관)
+  const tx = site.cells[0] * SZ + SZ / 2, ty = site.cells[1] * SZ + SZ / 2;
+  let fromD = Infinity;
+  for (const g of (vil._granList || [])) { const L = _granLadder(g), d = Math.hypot(L.x - tx, L.y - ty); if (d < fromD) fromD = d; }
+  if (!(fromD < Infinity)) fromD = Math.hypot(vil.ccx * SZ + SZ / 2 - tx, vil.ccy * SZ + SZ / 2 - ty);
+  const sp = (state.deps && state.deps.moveSpeed) || 0;
+  const roundS = sp > 0 ? 2 * fromD / sp : 0;
+  const tripsEach = _t341TripsPerDay(vil, fromD, 1);
+  const left = crew.map(() => tripsEach);
+  let labor = crew.length * LIFE_STAGE_PDAY, rr = 0;
+  const nSt = _t527StageCount(site);
+  while (!site.done && labor > 0) {
+    const need = _t527EconNeed(site, site.stage) || {};
+    let short = false;
+    for (const k of Object.keys(need)) {
+      while ((site.mat[k] || 0) < need[k]) {
+        let ci = -1;
+        for (let q = 0; q < crew.length; q++) { const i = (rr + q) % crew.length; if (left[i] > 0) { ci = i; break; } }
+        if (ci < 0) { short = true; break; }                          // 오늘 걸음을 다 썼다
+        const want = Math.min(_t400PerLoad(k), need[k] - (site.mat[k] || 0));
+        const took = E.actFromGranary(vil.econ, k, want);             // ★곳간 → 손(econ 정본 한 함수)
+        if (!(took > 0)) { short = true; dbg.stall = 1; break; }      // 곳간이 비었다 — 기다린다
+        const c = crew[ci];
+        if (!c.inventory) c.inventory = {};
+        c.inventory[k] = (c.inventory[k] || 0) + took;                // 손에 든다
+        left[ci]--; rr = ci + 1; dbg.trips++; dbg.took += took; dbg.walkS += roundS;
+        c.inventory[k] = Math.max(0, (c.inventory[k] || 0) - took);   // 다리 터에 놓는다(손은 빈다)
+        site.mat[k] = (site.mat[k] || 0) + took;
+      }
+      if (short) break;
+    }
+    if (short) break;
+    for (const k of Object.keys(need)) site.mat[k] = (site.mat[k] || 0) - need[k];
+    labor--; dbg.adv++; site.stage++; site.adv.push(day);
+    if (site.stage >= nSt) _t527Complete(site, day);
+  }
+  dbg.walkS = +dbg.walkS.toFixed(3);
+  const S = vil._t527Sum || (vil._t527Sum = { days: 0, crewDays: 0, trips: 0, took: 0, walkS: 0, stallDays: 0, built: 0, jobs: {} });
+  S.days++; S.crewDays += dbg.crew; S.trips += dbg.trips; S.took = +(S.took + dbg.took).toFixed(4); S.walkS = +(S.walkS + dbg.walkS).toFixed(3); S.stallDays += dbg.stall;
+  if (site.done && site.day === day) S.built++;
+  for (const j of Object.keys(dbg.jobs)) S.jobs[j] = (S.jobs[j] || 0) + dbg.jobs[j];
+  return dbg;
+}
 const G_CAP = 2500, G_MAX = 8, G_BUILDD = 6;
 function _lifeGranAdd(vil) {
   if (!state.ta || !vil.econ || !vil._granList || !vil._terrSet || !vil._terrSet.size) return;
@@ -8124,6 +8228,8 @@ function* _lifeDailySteps(vil) {   // 게임일 경계: 크루·클레임 재대
   _sub('site');
   // ★★[T400] 집 — 자재를 나르는 크루의 하루(관측자 무관 · 이 줄은 아래 관측자 문 **앞**이다). 끔이면 한 줄도 안 돈다.
   if (_lifeEcon().T400_BUILD_ACT) { try { _t400BuildDay(vil); } catch (e) { console.error(`[${state.zoneId}] 생활층 집 행위 실패(${vil.name}):`, e.message); } _sub('site'); }
+  // ★★[T527] 다리 — 섬 마을 여유 크루의 하루(관측자 무관 · 같은 자리). 끔이면 한 줄도 안 돈다.
+  if (_t527On()) { try { _t527BridgeDay(vil); } catch (e) { console.error(`[${state.zoneId}] 생활층 다리 행위 실패(${vil.name}):`, e.message); } }
   // ★[헤드리스 결산] 관측자 없는 마을 = 랩 빨리감기 — 하루치 물리 결과 일괄 적산(관측 마을은 실걸음 크루 소유)
   //   ★★[T449 ⓐ] 끔 = 아래 옛 줄 그대로(수 셋 — 늘 거짓 ⇒ 모든 마을이 결산). 켬 = **관측 마을도 같은 함수를 부른다** —
   //     그 함수가 팔로 직업을 가른다(농부 T368 켬 = 몸 · 신축 T400 켬 = 크루 장부 · 꺼진 팔 = 일괄 그대로).
@@ -9488,6 +9594,7 @@ module.exports = { fishPerf, woodPerf, foragePerf, farmPerf,   // ★[T316] `/pe
     //   하네스가 "D − 오늘 − 손" 을 다시 적으면 그게 사본이다 — 정본 `_t374Done`·`_t374Held` 를 그대로 부른다.
     // ★[T400] 집 행위 하네스용 — 같은 규약(최소 주입구 하나). 하네스는 걸음·자재 규칙을 다시 적지 않는다 — 정본 함수를 그대로 부른다.
     _t435Probe: { granAdd: (vil) => _lifeGranAdd(vil), day: (vil) => _t435GranaryDay(vil), ready: (vil) => _t435Ready(vil), crew: (vil) => _t435Crew(vil).map((p) => p.pid) },   // ★[T435] 하네스가 같은 함수를 부른다
+    _t527Probe: { sites: () => _t527Sites(), reset: () => { state._t527Sites = null; }, day: (vil) => _t527BridgeDay(vil), crew: (vil) => _t527Crew(vil).map((p) => p.pid), need: (site, i) => _t527EconNeed(site, i), stages: (site) => _t527StageCount(site) },   // ★[T527] 하네스가 같은 함수를 부른다
     _t400Probe: { setup: (o) => { const k = { deps: state.deps, db: state.db, dayMs: state.dayMs, epoch: state.epoch, zoneId: state.zoneId };
         if (o) { if ('deps' in o) state.deps = o.deps; if ('db' in o) state.db = o.db; if ('dayMs' in o) state.dayMs = o.dayMs; if ('epoch' in o) state.epoch = o.epoch; if ('zoneId' in o) state.zoneId = o.zoneId; if ('tickCtx' in o) state.tickCtx = o.tickCtx; if ('ta' in o) state.ta = o.ta; if ('world' in o) state.world = o.world; } return k; },
       buildDay: (vil) => _t400BuildDay(vil), headlessDay: (vil) => _lifeHeadlessDay(vil), advance: (vil) => _lifeAdvanceSite(vil),
