@@ -158,14 +158,15 @@ const META = JSON.parse(fs.readFileSync(path.join(C3, 'char3d_meta.json'), 'utf8
   for (const r of cam.out) {
     const a = maskOf(r.sheet, cam.fw, cam.fh), b = maskOf(r.mesh, cam.fw, cam.fh);
     const sa = statOf(a, cam.fw, cam.fh), sb = statOf(b, cam.fw, cam.fh);
-    let inter = 0, uni = 0; for (let i = 0; i < a.length; i++) { if (a[i] && b[i]) inter++; if (a[i] || b[i]) uni++; }
+    let inter = 0, uni = 0, dc = 0; for (let i = 0; i < a.length; i++) { if (a[i] && b[i]) { inter++; dc += (Math.abs(r.sheet[i * 4] - r.mesh[i * 4]) + Math.abs(r.sheet[i * 4 + 1] - r.mesh[i * 4 + 1]) + Math.abs(r.sheet[i * 4 + 2] - r.mesh[i * 4 + 2])) / 3; } if (a[i] || b[i]) uni++; }
     const iou = uni ? inter / uni : 0;
-    const row = { d: r.d, dBottom: sb.y1 - sa.y1, dFeetX: +(sb.feetX - sa.feetX).toFixed(2), dTop: sb.y0 - sa.y0, iou: +iou.toFixed(3), nSheet: sa.n, nMesh: sb.n };
+    // 색 Δ(겹친 화소의 RGB 평균 차 · 0–255) — 적기만: 시트는 먹선 1px·셀 4단 후처리(`char_render.py` T96)를 거친 그림이고 3D 층엔 그 후처리가 없다(회부)
+    const row = { d: r.d, dBottom: sb.y1 - sa.y1, dFeetX: +(sb.feetX - sa.feetX).toFixed(2), dTop: sb.y0 - sa.y0, iou: +iou.toFixed(3), nSheet: sa.n, nMesh: sb.n, dRGB: inter ? +(dc / inter).toFixed(1) : null };
     REC.b.push(row);
     worstY = Math.max(worstY, Math.abs(row.dBottom)); worstX = Math.max(worstX, Math.abs(row.dFeetX)); minIoU = Math.min(minIoU, iou);
   }
-  console.log('    [표] 방향 · 발밑 줄 Δ(px) · 발 가운데 Δx(px) · 정수리 Δ · IoU · 화소(시트/메시)');
-  for (const r of REC.b) console.log(`      ${r.d} · ${r.dBottom} · ${r.dFeetX} · ${r.dTop} · ${r.iou} · ${r.nSheet}/${r.nMesh}`);
+  console.log('    [표] 방향 · 발밑 줄 Δ(px) · 발 가운데 Δx(px) · 정수리 Δ · IoU · 화소(시트/메시) · 색 Δ(적기만)');
+  for (const r of REC.b) console.log(`      ${r.d} · ${r.dBottom} · ${r.dFeetX} · ${r.dTop} · ${r.iou} · ${r.nSheet}/${r.nMesh} · ${r.dRGB}`);
   ok(worstY <= 1 && worstX <= 1, 'ⓑ ★발 위치 오차 ≤ 1px — 8방향 전부(같은 앵커 · 같은 투영)', `발밑 최대 ${worstY}px · 발 가운데 최대 ${worstX}px`);
   ok(minIoU >= 0.95, 'ⓑ 실루엣 IoU ≥ 0.95 — 8방향 전부(같은 각 · 같은 축척 · 같은 거울)', `최소 ${minIoU.toFixed(3)}`);
   { // ★자명 통과 금지 — 한 방향 어긋난 타일(45°)을 대면 문다
@@ -378,9 +379,9 @@ const META = JSON.parse(fs.readFileSync(path.join(C3, 'char3d_meta.json'), 'utf8
       .num{font-family:'Noto Sans Mono CJK KR',monospace}
     </style><div class="w">
       <h1>T522 — 사람 하나를 3D 로 (손잡이 <span class="num">?T522_CHAR_3D=1</span> · 끔이 기본)</h1>
-      <section><h2>① 걷기 — 한반도 마을 · 3D 한 몸이 시트 자리에서 걷는다 <b>(그린 자리 = 몸 자리 0.00px)</b></h2>
+      <section><h2>① 걷기 — 한반도 마을 · 3D 한 몸이 시트 자리에서 걷는다 <b>(그린 자리 ↔ 몸 자리 최대 ${REC.c.maxDrawVsPredPx.toFixed(2)}px)</b></h2>
         <div class="row">${im(walkP, 3, '× 3 · 가죽옷 · 방향은 8칸이 아니라 연속으로 돈다')}</div></section>
-      <section><h2>② 가림 — 같은 산 뒤 한 자리 · 흐림 겹(알파 ${OCC_A}) 아래인가 <b>시트 ○ · 3D 제 차례 ○ · 3D 덮개 ×</b></h2>
+      <section><h2>② 가림 — 같은 산 뒤 한 자리 · 흐림 겹(알파 ${OCC_A}) 아래인가 <b>시트 ${kOk(O.sheet) ? '○' : '×'} · 3D 제 차례 ${kOk(O.slot) ? '○' : '×'} · 3D 덮개 ${O.overlay && O.overlay.tint < 1 ? '×' : '○'}</b></h2>
         <div class="row">${O.sheet ? im(O.sheet.png, 3, `시트 — 대비 k ${cm2(O.sheet)} (기대 ${(1 - OCC_A).toFixed(2)})`) : ''}${O.slot ? im(O.slot.png, 3, `3D · 제 차례 — k ${cm2(O.slot)}`) : ''}${O.overlay ? im(O.overlay.png, 3, `3D · 위 캔버스 덮개 — 몸 화소 바뀐 양 ${O.overlay.tint}`) : ''}</div></section>
       <section><h2>③ 옷 한 벌(가죽) 메시 — 22.5° 걸음 16방향 <b>(시트 옷 층은 72장 · 메시는 한 벌)</b></h2>
         <div class="row">${im(tt, 2, '× 2 · 걷기 2판 · 윗줄 0°→157.5° · 아랫줄 180°→337.5° · 시트 8행 사이 방향도 선다')}</div></section>
