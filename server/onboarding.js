@@ -882,6 +882,17 @@ function daySummary(player) {
   if ((s.day_deliv | 0) > 0) parts.push(`납품 ${s.day_deliv | 0}`);
   return { day, fish, deliv: s.day_deliv | 0, text: parts.length ? `오늘: ${parts.join(' · ')}` : '' };
 }
+// 촌장의 첫 인사 한 통 — 근접 인사(`onboarding_greet`)와 촌장 몸(★[T529] `villages.js` 생활층)이 **같은 이 함수**를 부른다.
+//   ★`by` = 말하는 몸(NPC pid)이 있을 때만 싣는다 — 없으면 종전 바이트 그대로(클라는 `by` 가 있으면 그 사람 입에 말풍선을 건다 · T126 문법).
+function sendGreet(player, vid, by) {
+  if (!ready() || !player || !H.send || !player.ws || vid == null) return false;
+  const g = greetLines(vid, player.playerId);
+  const a = arrivalOf(vid);
+  H.send(player.ws, { type: 'onboarding_quest', vid, kind: 'greet', name: (a && a.name) || '',
+    day: (typeof H.gameDay === 'function') ? (H.gameDay() | 0) : 0,
+    lines: g.lines, quest: g.quest, state: publicState(player.playerId), ...(by != null ? { by } : {}) });
+  return true;
+}
 // zone.js `handleMessage` 가 한 줄로 넘긴다.
 function handleMsg(player, msg) {
   if (!ready() || !player || !msg || !H.send || !player.ws) return;
@@ -891,11 +902,11 @@ function handleMsg(player, msg) {
   } else if (t === 'onboarding_greet') {
     const vid = msg.vid != null ? (msg.vid | 0) : stateOf(player.playerId).start_vid;
     if (vid == null) return;
-    const g = greetLines(vid, player.playerId);
-    const a = arrivalOf(vid);
-    H.send(player.ws, { type: 'onboarding_quest', vid, kind: 'greet', name: (a && a.name) || '',
-      day: (typeof H.gameDay === 'function') ? (H.gameDay() | 0) : 0,
-      lines: g.lines, quest: g.quest, state: publicState(player.playerId) });
+    // ★★[T529] 이 사람의 인사를 **촌장 몸**이 맡았으면(손잡이 켬 · 도착 · 촌장 있음) 거리 문 인사는 안 보낸다 — 두 번 말하지 않는다.
+    //   손잡이 끔이면 촌장 줄이 없어 거짓이다(비트 동일).
+    //   ⚠클라는 한 번만 묻는다(`onbGreeted`) ⇒ 셋째 인자 `true` = "물었다"를 남긴다 — 촌장이 못 오고 끝나면 그때 이 한 통을 대신 보낸다.
+    if (H.chiefGreetHas && H.chiefGreetHas(player.pid, vid, true)) return;
+    sendGreet(player, vid);
   } else if (t === 'onboarding_day') {
     H.send(player.ws, { type: 'onboarding_day', summary: daySummary(player) });
   }
@@ -927,7 +938,7 @@ module.exports = {
   CFG, init, ready, invalidate,
   arrivals, arrivalOf, arriveFor, startGauges,
   startInfo, httpStartInfo, characterOf, worldSectors, SECTORS, CHARS, popBand, busyBand,
-  pickFirstQuest, greetLines, onDeliver, handleMsg, daySummary, __isPlayerVillage: _isPlayerVillage,
+  pickFirstQuest, greetLines, sendGreet, onDeliver, handleMsg, daySummary, __isPlayerVillage: _isPlayerVillage,
   noteVillage,   // ★[T19] 마을이 하나 늘었을 때 그 곳만 굽는다
   dirWord: _DIRWORD,   // ★[T56] 방위말 정본 — 쓰러짐의 외침이 촌장과 **같은 어휘**를 쓴다
 

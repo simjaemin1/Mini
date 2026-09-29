@@ -54,3 +54,34 @@ unshare -n bash -c "python3 lo_up.py && node scripts/e2e-first30.js --season spr
 node scripts/e2e-first30.js --table /tmp/t511/        # 표 넷(첫 일 분 · 첫 밥/잠자리/걸음/fps · 막힘 · 몸 1단계)
 node scripts/e2e-first30.js --shelters                # 한 존 전수 50곳 쉼터↔도착점 거리 표(걷지 않는다)
 ```
+
+## T529. ★★2026-09-29 — **촌장이 온다 — 인사는 거리 문이 아니라 몸이다**(세션9 · 손잡이 `T529_CHIEF_WALKS` · 기본 끔)
+
+> 전문 `보고/T529_2026-09-29.md`. 가지 `batch/chief-walks-0929`(승인 대기).
+
+* **촌장 몸 = 마을 명부 첫 사람**(`vil.npcPids[0]`) — 촌장 칸은 여전히 없다(T126). 쓰러졌으면 촌장 없음 ⇒ 아무 일도 없다(종전 인사 그대로).
+  ⚠"회관 첫 자리(기타직)"는 새 세계에서 0곳이다(50곳 전부 한 직업 8명 · econ 첫날).
+* **흐름:**
+  * 도착(`_onbArr`)하면 촌장 줄에 선다(`villages.chiefGreetAsk` · 손잡이를 읽는 곳 하나).
+  * 생활층 `npcLifeTick` 이 요양·취침 문 **뒤**에서 `_lifeTask{k:'greet'}` 로 그 사람에게 걷는다(잠자리면 제 마당 먼저).
+  * 촌장 **몸에서** 260px 안이면 `onboarding.sendGreet(player, vid, by)`(근접 인사와 같은 한 통 + `by`)를 보낸다. 클라는 그 사람 입에 여러 줄 말풍선을 건다.
+  * 곁 44px 에서 끝난다.
+* **놓는 문:**
+  * 정체(20초 · 6px).
+  * 깨어 걸은 시간이 낮 하나를 넘을 때.
+  * 들은 사람이 260 밖으로 나갈 때.
+  * 맡은 동안 거리 문 인사는 0통이다. 못 오고 끝나면 거리 문이 남고, 이미 물었으면 그때 대신 보낸다.
+* **표**(`scripts/t529-chief.js` · 50곳 · 쉼터 안 도착):
+
+  | 판 | 인사 받음 | 도착 → 인사 p50 / p90 |
+  |---|---:|---:|
+  | 낮 | **46/50** | 0.97 / 2.02분 |
+  | 밤 | **18/50** | 7.75분(잠 ≈ 6.3분 + 걸음 0.79분) |
+
+  밤 판 못 옴 29 는 전부 **침대 곁 정체**다(걸음 층 회부). 빈 판 날의 말은 50/50 이 *"지금은 급한 일이 없네. 마을 쉼터에서 쉬게."* 다.
+* **자:**
+  ```
+  node scripts/t529-chief.js --phase day|night [--cap-min 20] [--env K=V] [--out f.json]
+  # 밤을 당겨 재기(서버 무접촉 · T455 자)
+  NODE_OPTIONS="--require scripts/t455-clock.js" T455_CLOCK_PRE=1 T455_CLOCK_AT=<phase 0.56 의 ms> node scripts/t529-chief.js --phase night
+  ```

@@ -1661,7 +1661,10 @@
         ctx.globalAlpha = 1;
         const bubble = speechBubbles.get(item.pid);
         if (bubble && performance.now() < bubble.until) {
-          drawSpeechBubble(s.x, s.y - 32, bubble.text);
+          if (bubble.lines && bubble.lines.length > 1) {   // ★[T529] 촌장 몸의 인사는 여러 줄 — 마을 말풍선과 같은 쌓기(26px)
+            let by = s.y - 32;
+            for (let i = bubble.lines.length - 1; i >= 0; i--) { drawSpeechBubble(s.x, by, bubble.lines[i]); by -= 26; }
+          } else drawSpeechBubble(s.x, s.y - 32, bubble.text);
         }
       } else if (item.kind === 'building') {
         const s = toScreen(item.iso.x, item.iso.y);

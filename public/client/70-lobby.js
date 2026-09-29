@@ -331,9 +331,12 @@ function onbOnMessage(msg) {
       window.__onbState = onbState;
       // ★촌장의 말 — **기존 말풍선 그대로** 그린다(세계 안 · 새 패널 0). 통로만 온보딩 전용이다.
       if (msg.lines && msg.lines.length) {
-        villageBubbles.set(msg.vid, { lines: msg.lines.slice(0, 3), until: performance.now() + 11000 });
+        // ★★[T529] 말하는 몸(`by` — 걸어온 촌장)이 있으면 **그 사람 입에** 건다(T126 "사람에게 물은 답" 문법 · 같은 말풍선 통로).
+        //   없으면 종전 그대로 마을 중심 위다.
+        if (msg.by != null) speechBubbles.set(msg.by, { text: msg.lines[0], lines: msg.lines.slice(0, 3), until: performance.now() + 11000 });
+        else villageBubbles.set(msg.vid, { lines: msg.lines.slice(0, 3), until: performance.now() + 11000 });
         showNotice(`${msg.name || ''} 촌장 — ${msg.lines[0]}`, 6000);
-        window.__onbGreet = { vid: msg.vid, kind: msg.kind || '', lines: msg.lines.slice(0, 3) };
+        window.__onbGreet = { vid: msg.vid, kind: msg.kind || '', lines: msg.lines.slice(0, 3), ...(msg.by != null ? { by: msg.by } : {}) };
         needsRedraw = true;
       }
       updateHud();

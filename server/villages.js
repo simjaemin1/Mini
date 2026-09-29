@@ -5398,7 +5398,9 @@ function lifeDebug() {   // ★[직접 서버 디버깅 — 사용자 요청] zo
       psite: vil._psite ? { cx: vil._psite.cx, cy: vil._psite.cy, stage: vil._psite.stage, crew: vil._psiteCrew || 0, owner: vil._psite.owner } : null,   // ★[11차 T4] 플레이어 의뢰 집터(공정 단계·붙은 크루)
       pHouses: (vil._pHouses ? vil._pHouses.length : 0),   // 완공된 의뢰 집(마을 침대 명부 밖)
       t400: vil._t400Sum || null,
-      t449: vil._t449 || null,   // ★[T449] 결산 문 누계(끔이면 null) — 날 · 관측 날 · 관측 마을 일괄(농부·신축 — 팔 꺼짐) · 몸 명부로 넘긴 나무꾼·채집 날
+      t449: vil._t449 || null,
+      t529: vil._t529Log ? vil._t529Log.map((e) => ({ pid: e.pid, chief: e.chief, d0: e.d0, t0: e.t0, wAt: e.wAt, gAt: e.gAt, gD: e.gD || null, bAt: e.bAt, end: e.end, why: e.why || null, asked: e.asked || 0, late: e.late || 0,
+        now: e.end ? null : (() => { const c = state.deps.players.get(e.chief), q = state.deps.players.get(e.pid); return c ? { x: Math.round(c.x), y: Math.round(c.y), b: c.behavior || '', d: q ? Math.round(Math.hypot(c.x - q.x, c.y - q.y)) : null, path: c.path ? c.path.length : 0 } : null; })() })) : null,   // ★[T529] 촌장 줄(끔이면 null) · 열린 줄은 촌장의 지금 자리   // ★[T449] 결산 문 누계(끔이면 null) — 날 · 관측 날 · 관측 마을 일괄(농부·신축 — 팔 꺼짐) · 몸 명부로 넘긴 나무꾼·채집 날
       t435: vil._t435Sum || null,   // ★[T435] 곳간 증설 행위 누계(끔이면 null) — 크루·일 · 왕복 · 나른 재료 · 곳간 빈 날 · 선 동 수   // ★[T400] 집 행위 누계(끔이면 null) — 걸음초·낮초·왕복·나른 통나무·전진 단계·크루 직업
       mkt: (() => { if (!state.caravanBodies) return 0; for (const b of state.caravanBodies.values()) if (b.phase === 'linger' && state.byEcon.get(b.toV) === vil) return 1; return 0; })(),   // ★[10차 T4] 장마당 개장 여부(캐러밴 체류 중) — 라이브 확인용 계측
       ccx: vil.ccx, ccy: vil.ccy, acts, sample });
@@ -8210,7 +8212,9 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
   }
   // 기상 시차(랩 a._dOff): 개인 결정론 오프셋 0~하루 3%(43분) — 마을 일괄 기상의 프레임 스파이크 분산 + 유기적 출근 풍경
   if (npc._dOff === undefined) npc._dOff = ((_pidHash(npc.pid) % 997) / 997) * SCH_DOFF;
-  if (fv >= dayR || fv < npc._dOff) { npc._workT = null; _lifeGoHome(npc, '취침'); return true; }   // 밤·기상 전=취침(진행 작업 유지 — 아침 현장 재개, 노동 적산은 도착부터)
+  if (fv >= dayR || fv < npc._dOff) { npc._workT = null; _lifeGoHome(npc, '취침'); return true; }
+  // ★★[T529] 촌장이 온다 — 깨어 있을 때만(위 두 문 뒤) · 줄이 없으면(손잡이 끔) 이 줄은 아무것도 안 한다.
+  if ((vil._t529Q && vil._t529Q.length) || (npc._lifeTask && npc._lifeTask.k === 'greet')) { if (_t529Step(vil, npc, now)) return true; }   // 밤·기상 전=취침(진행 작업 유지 — 아침 현장 재개, 노동 적산은 도착부터)
   // 아침 추첨(랩 a._hd/_half 7984): econ 여유노동(_idleFrac) 비율 = 오늘 반일 근무 확률 — 여가→행복의 시각화(궁핍촌 idle 0=항상 종일)
   // ★[T350 · 주사위 0] 그날 '반일' 여부 — 하루 한 번 굴린다. 씨 = (신원 · 집 셀 · 게임일 · 0).
   //   틱을 안 넣는 이유: **하루 한 번**이라 날이 곧 그 굴림의 자리다(같은 날 다시 물어도 같은 답).
@@ -8596,6 +8600,122 @@ function _lifeOtherIndex(vil, npc) {
   }
   const v = vil._otIdx.get(npc.pid);
   return v === undefined ? (_pidHash(npc.pid) % 36) : v;
+}
+
+// ═══ ★★[T529 2026-09-29] 촌장이 온다 — 인사는 거리 문이 아니라 **몸**이다 ═══════════════════════
+//   ⓐ 촌장의 몸 = **마을 명부 첫 사람**(`vil.npcPids[0]` — 마을이 처음 들인 사람 · 순서는 명부 그대로 · 새 순서 0).
+//      T126 §0-ⓒ 실측대로 이 세계엔 "촌장" 필드가 없다 ⇒ 칸을 새로 짓지 않고 **명부 맨 앞**을 촌장으로 읽는다.
+//      ⚠1차는 "회관 첫 자리"(`_lifeOtherIndex` 0 — 기타직)였다. 실측: 새로 띄운 세계는 50곳 전부 **한 직업 8명**
+//        (econ 첫날 · 기타직 0)이라 촌장이 한 곳도 없었다 ⇒ 직업을 안 묻는 명부 첫 사람으로 고쳤다(보고 §0).
+//      그 사람이 쓰러졌으면(`isDown`·hp 0) 촌장은 **없다** — 아무 일도 안 일어난다(보조 · 종전 인사 그대로).
+//      죽으면 명부에서 빠지므로(`npcPids` 청소) 다음 사람이 맨 앞이 된다(새 규칙 아님 — 명부 순서 그대로).
+//   ⓑ 새 사람이 도착하면(존 `_onbArr`) 줄에 선다(`chiefGreetAsk`). 촌장은 **깨어 있는 동안**(아래 `npcLifeTick` 의
+//      요양·취침 문 **뒤**) 그 사람에게 걸어간다 — `_lifeTask` 문법(`k:'greet'` · 목표 = 그 사람의 지금 자리 · A* 는 존 이동이 한다).
+//      밤이면 자고, 아침에 간다(취침 문이 먼저 · 새 규칙 0).
+//   ⓒ 인사 문 = **촌장 몸에서** `EV_BRIEF_PX`(260) — 같은 `greetLines` · 같은 `onboarding_quest{kind:'greet'}`(새 메시지 0).
+//      곁(`d ≤ 44` — `_lifeTask` 도착 문턱 그대로)에 서면 할 일이 끝나고 일과로 돌아간다.
+//      못 닿으면 기타직 출근 정체 가드와 **같은 자**(`SCH_VG_STUCK` 20초 · 6px)로 놓는다.
+//   ★손잡이 `T529_CHIEF_WALKS`(기본 끔 · 부를 때 읽는다 · 읽는 곳은 `chiefGreetAsk` 한 곳). 끄면 줄이 안 생기고
+//     아래 갈래는 전부 `vil._t529Q` 가 없어서 안 돈다(비트 동일).
+const T529_BESIDE = 44;   // ★새 수 아님 — `_lifeTask` 도착 문턱(`d > 44` 이면 아직 걷는다) 그대로
+function _t529Chief(vil) {
+  if (!vil || !vil.npcPids) return null;
+  const pl = state.deps && state.deps.players;
+  if (!pl) return null;
+  for (const pid of vil.npcPids) {   // 명부 맨 앞(없는 pid 는 건너뛴다 — 청소 전 한 틱)
+    const p = pl.get(pid);
+    if (!p || !p.isNpc) continue;
+    return (p.isDown || !(p.hp > 0)) ? null : p;
+  }
+  return null;
+}
+/** 촌장 몸(없으면 null) — 하네스·관측용. */
+function chiefOf(vid) { const vil = state.byDbId && state.byDbId.get(vid | 0); return vil ? _t529Chief(vil) : null; }
+/** 새 사람 도착 → 촌장 줄에 선다. 손잡이 끔 · 촌장 없음 · 생활층이 안 도는 마을이면 false(종전 인사 그대로). */
+function chiefGreetAsk(vid, pid) {
+  if (process.env.T529_CHIEF_WALKS !== '1') return false;
+  const vil = state.byDbId && state.byDbId.get(vid | 0);
+  if (!LIFE_ON || !vil || !vil._terrSet || !vil._terrSet.size) return false;   // 생활층이 안 도는 마을엔 걸을 몸이 없다
+  const ch = _t529Chief(vil);
+  if (!ch) return false;
+  const p = state.deps.players.get(pid);
+  const e = { pid, t0: Date.now(), wAt: 0, gAt: 0, bAt: 0, end: '', chief: ch.pid,
+    d0: p ? Math.round(Math.hypot(ch.x - p.x, ch.y - p.y)) : null };
+  (vil._t529Q || (vil._t529Q = [])).push(e);
+  const L = vil._t529Log || (vil._t529Log = []);
+  L.push(e); if (L.length > 64) L.shift();
+  return true;
+}
+/** 이 사람의 인사를 촌장이 맡았나(기다리는 중이거나 이미 했나) — 온보딩이 근접 인사를 **두 번** 안 보내게. */
+function chiefGreetHas(pid, vid, ask) {
+  const vil = state.byDbId && state.byDbId.get(vid | 0);
+  const e = vil && vil._t529Log ? vil._t529Log.find((x) => x.pid === pid && (!x.end || x.gAt)) : null;   // 줄에 섰거나 이미 인사했다 — 못 오고 끝난 줄(정체·떠남)이면 거리 문 인사가 남는다
+  if (e && ask && !e.gAt) e.asked = 1;   // ★거리 문이 물었는데 촌장이 맡아 미뤘다 — 촌장이 못 오고 끝나면 그때 거리 문 인사를 대신 보낸다(클라는 한 번만 묻는다)
+  return !!e;
+}
+/** 존 이동 문(`_t316WalkAlways`) — 인사하러 가는 촌장은 **관측자와 무관하게** 걷는다. */
+function chiefWalking(npc) {
+  if (!npc || npc.simVillageId == null) return false;
+  const vil = state.byDbId && state.byDbId.get(npc.simVillageId);
+  return !!(vil && vil._t529Q && vil._t529Q.length && _t529Chief(vil) === npc);
+}
+function _t529Step(vil, npc, now) {
+  const mine = npc._lifeTask && npc._lifeTask.k === 'greet';
+  if (!vil._t529Q || !vil._t529Q.length || _t529Chief(vil) !== npc) { if (mine) npc._lifeTask = null; return false; }
+  const pl = state.deps.players;
+  let e = null;
+  while ((e = vil._t529Q[0])) {   // 떠난 사람은 줄에서 치운다
+    const q = pl.get(e.pid);
+    if (q && !q.isNpc && !q.handingOff) break;
+    e.end = 'gone'; vil._t529Q.shift();
+  }
+  if (!e) { if (mine) npc._lifeTask = null; return false; }
+  const p = pl.get(e.pid);
+  if (!mine || npc._lifeTask.pid !== e.pid) {
+    _lifeDropTask(vil, npc);
+    // ★잠자리에서 나서는 촌장은 **먼저 제 마당으로**(`npcHomeX/Y` — 휴식·대피가 쓰는 집 앞 개활지 · `_lifeGoHome` 의 그 자리) 나간다.
+    //   실측(밤 판 · 보고 §2): 침대에서 곧장 먼 손님을 겨누면 A*(주민 1,500칸 예산 · T399)가 집 벽을 못 돌아 `null` → 직선 → 벽에 붙어
+    //   31/50 이 한 걸음도 못 뗐다. 집 → 마당은 매일 밤 걷는 길의 거꾸로라 짧다. 새 자리 0 · 새 수 0(곁 44 = 침대 곁).
+    const _inBed = npc.npcBedX != null && npc.npcHomeX != null && Math.hypot(npc.x - npc.npcBedX, npc.y - npc.npcBedY) <= T529_BESIDE;
+    npc._lifeTask = { k: 'greet', pid: e.pid, px: p.x, py: p.y, viaHome: _inBed };
+    npc._t529X = npc.x; npc._t529Y = npc.y; npc._t529Since = now;
+  }
+  if (!e.wAt) e.wAt = now;
+  const t = npc._lifeTask; t.px = p.x; t.py = p.y;
+  if (t.viaHome && Math.hypot(npc.x - npc.npcHomeX, npc.y - npc.npcHomeY) <= T529_BESIDE) t.viaHome = false;
+  const d = Math.hypot(npc.x - p.x, npc.y - p.y);
+  if (!e.gAt && d <= EV_BRIEF_PX && (npc.floor || 0) === (p.floor || 0)) {
+    e.gAt = now; e.gD = Math.round(d);
+    try { if (state.deps.chiefGreet) state.deps.chiefGreet(p, vil.dbId, npc.pid); } catch (err) {}
+  }
+  // 정체 가드 — 기타직 출근 가드와 같은 자(20초 · 6px). ⚠"다가섬"(가장 가까운 거리)으로 재 봤더니 다리를 도는 우회까지 끊었다
+  //   (낮 판 46 → 40 · 보고 §2) ⇒ 종전 자(몸이 6px 움직였나)로 두고, 끝없는 헛걸음은 아래 **하루** 문이 끊는다.
+  if (Math.hypot(npc.x - npc._t529X, npc.y - npc._t529Y) > 6) { npc._t529X = npc.x; npc._t529Y = npc.y; npc._t529Since = now; }
+  // ★하루 일과 안에서 — 깨어 걸은 시간(잠든 밤은 안 센다 · 이 함수는 깨어 있을 때만 불린다)이 **낮 하나**(`dayMs × dayPhaseRatio`)를
+  //   넘도록 못 닿았으면 놓는다. 해질녘에 나선 걸음은 밤에 쉬고 아침에 잇는다(카드 "자는 밤이면 아침에"). 새 수 0.
+  { const gap = now - (e.lastAt || now); if (gap < SCH_VG_STUCK) e.awakeMs = (e.awakeMs || 0) + gap; e.lastAt = now; }
+  const _dayOver = (e.awakeMs || 0) > (state.dayMs || 600000) * (state.deps.dayPhaseRatio || 0.7);
+  const stuck = now - (npc._t529Since || now) > SCH_VG_STUCK || _dayOver;
+  // 인사를 들은 사람이 목소리 밖(`EV_BRIEF_PX`)으로 걸어 나가면 따라가지 않는다 — 할 말은 했다(새 수 0).
+  const left = !!e.gAt && d > EV_BRIEF_PX;
+  if ((e.gAt && d <= T529_BESIDE) || stuck || left) {
+    if (d <= T529_BESIDE) e.bAt = now;
+    e.end = (d <= T529_BESIDE) ? 'beside' : (left ? 'left' : (_dayOver ? 'day' : 'stuck'));
+    if (e.end !== 'beside' && e.end !== 'left') {   // ★관측 — 못 온 촌장이 **어디서** 멈췄나(침대·마당 거리 · 거기서 손님께 길이 있나: 존의 도달 술어 그대로 · 한 번)
+      let reach = null; try { reach = state.deps.npcCanReach ? !!state.deps.npcCanReach(npc.x, npc.y, p.x, p.y) : null; } catch (err) { reach = null; }
+      e.why = { x: Math.round(npc.x), y: Math.round(npc.y), d: Math.round(d),
+        dBed: npc.npcBedX != null ? Math.round(Math.hypot(npc.x - npc.npcBedX, npc.y - npc.npcBedY)) : null,
+        dHome: npc.npcHomeX != null ? Math.round(Math.hypot(npc.x - npc.npcHomeX, npc.y - npc.npcHomeY)) : null, reach };
+    }
+    vil._t529Q.shift(); npc._lifeTask = null;
+    if (!e.gAt && e.asked) { try { if (state.deps.chiefGreet) state.deps.chiefGreet(p, vil.dbId, null); } catch (err) {} e.late = 1; }   // 미뤄 둔 거리 문 인사(종전 한 통 · `by` 없음)
+    return false;   // 할 일 끝 — 이 틱부터 일과
+  }
+  npc._huntOn = 0; npc._huntSpd = 0;   // 사냥꾼이면 두뇌 주도권 반납(`_lifeGoHome` 과 같은 한 줄) — 두 층이 목표를 두고 싸우지 않게
+  npc.behavior = 'wander'; npc.gatherTarget = null;
+  if (t.viaHome) { npc.targetX = npc.npcHomeX; npc.targetY = npc.npcHomeY; } else { npc.targetX = p.x; npc.targetY = p.y; }
+  _lifeAct(npc, '');   // 라벨을 새로 안 짓는다(일 라벨만 지운다)
+  return true;
 }
 
 // =============================================================================
@@ -9275,6 +9395,7 @@ module.exports = { fishPerf, woodPerf, foragePerf, farmPerf,   // ★[T316] `/pe
   _t341TripsPerDay, _t341TreesPerLoad, _t398Cells,   // ★[T341] 하루 왕복 수·짐당 그루 — **걸음이 정한다**(하네스가 유도를 다시 계산해 대조한다) · ★[T398] 나무꾼 후보 셀(고리 · 자·하네스가 이 함수를 부른다)
  
   init, onGameTick, invalidateTradeDistances, npcLifeTick, lifeDebug, econDay, econDayT,
+  chiefOf, chiefGreetAsk, chiefGreetHas, chiefWalking,   // ★[T529] 촌장이 온다(손잡이 `T529_CHIEF_WALKS` · 읽는 곳 하나)
   tickPerf,   // ★[T1 §0] 일틱 단계별 소요 — zone.js `/perf` 가 소비(계측 전용)
   villagesBusy, villageWait,   // ★[T1 §2-②] "장부 마감 중" 큐 — zone.js 가 마을 요청만 이 문으로 보낸다
   dayNow: _dayNow,   // ★[T1] 마감 중이면 **경계의 순간**을 돌려준다 — 벽시계 적분(광맥 재생)이 조각 순서에 흔들리지 않게
