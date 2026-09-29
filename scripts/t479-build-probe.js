@@ -14,7 +14,7 @@ const V2 = require(path.join(R, 'sim', 'economy-sim-v2.js'));
 const E = require(path.join(R, 'sim', 'economy-sim.js'));
 const GRAIN = ['wheat', 'rice', 'barley', 'millet'];
 const S = new Map();   // 마을 이름 → 누계
-const st = (v) => { let s = S.get(v.name); if (!s) S.set(v.name, (s = { grainProd: 0, woodProd: 0, jobDays: {}, housing0: null, built: 0, act: {}, tin: {}, tout: {}, legsOut: 0, legsIn: 0 })); return s; };
+const st = (v) => { let s = S.get(v.name); if (!s) S.set(v.name, (s = { grainProd: 0, woodProd: 0, stoneProd: 0, jobDays: {}, housing0: null, built: 0, act: {}, tin: {}, tout: {}, legsOut: 0, legsIn: 0 })); return s; };
 const add = (o, k, n) => { if (n > 0) o[k] = (o[k] || 0) + n; };
 const origAct = E.actFromGranary;
 E.actFromGranary = function (v, item, units) { const t = origAct.apply(this, arguments); if (v && v.name && t > 0) add(st(v).act, item, t); return t; };
@@ -28,6 +28,7 @@ V2.tickWorldV2 = function (w) {
     const d = v.dailyProductionBuf || {};
     for (const g of GRAIN) s.grainProd += d[g] || 0;
     s.woodProd += d.wood || 0;
+    s.stoneProd += d.stone || 0;   // ★[T517] 돌 흐름(산출) — 칸만 더했다(읽기만)
     for (const j in (v.counts || {})) add(s.jobDays, j, v.counts[j] || 0);
     if (s.housing0 == null && v.housing != null) s.housing0 = v.housing;
     const hp = hPrev.get(v.name); if (hp != null && v.housing != null && v.housing > hp) s.built += v.housing - hp;
@@ -46,7 +47,7 @@ process.on('exit', () => {
   if (!process.env.T479_JSON || !W) return;
   const r1 = (o) => Object.fromEntries(Object.entries(o).map(([k, n]) => [k, +n.toFixed(1)]));
   const vs = W.villages.filter((v) => v && v.name).map((v) => { const s = st(v); return {
-    name: v.name, pop: (v.npcs && v.npcs.length) || 0, grainProd: +s.grainProd.toFixed(1), woodProd: +s.woodProd.toFixed(1), jobDays: s.jobDays,
+    name: v.name, pop: (v.npcs && v.npcs.length) || 0, grainProd: +s.grainProd.toFixed(1), woodProd: +s.woodProd.toFixed(1), stoneProd: +s.stoneProd.toFixed(1), stoneEnd: +(v.storage.stone || 0).toFixed(1), jobDays: s.jobDays,
     housing0: s.housing0 == null ? null : +s.housing0.toFixed(1), housing: v.housing == null ? null : +v.housing.toFixed(1), built: +s.built.toFixed(1), act: r1(s.act),
     grainEnd: +GRAIN.reduce((a, g) => a + (v.storage[g] || 0), 0).toFixed(1), wood: +(v.storage.wood || 0).toFixed(1), food: +(v.storage.food || 0).toFixed(1),
     smelted: +(v._smeltedTotal || 0).toFixed(1), kiln: v._kiln ? 1 : 0, live: v._t400Live ? 1 : 0,

@@ -246,5 +246,21 @@ console.log('\n⑦ [T497] 집 단가 팔 — 고증 기둥 수(2 · 4)만 · 끔
   ok((SRC.match(/process\.env\.T497_HUT_COST/g) || []).length === 1 && !/T497_HUT_COST/.test(ZSRC) && !/T497_HUT_COST/.test(VSRC), '⑦ 손잡이 한 자리(econ) · 서버 공정(zone·villages) 무접촉');
 }
 
+console.log('\n⑧ [T517] 주춧돌 팔 — 기둥 하나에 주춧돌 하나(대평리 실측 · 화강암 밀도) · 끔 = 석재 0(송국리형)');
+{
+  const H = require(path.join(ROOT, 'server', 'hut-stages.js'));
+  ok(H.HUT_PLINTH_SRC.cm.join(',') === '25,35' && H.HUT_PLINTH_SRC.hCm.join(',') === '8,10' && H.HUT_PLINTH_SRC.gcm3.join(',') === '2.65,2.75', '⑧ 출처의 수 — 25×35㎝ · 높이 8~10㎝ · 2.65~2.75 g/㎤');
+  ok(Math.abs(H.plinthKg() - 25 * 35 * 9 * 2.7 / 1000) < 1e-9 && H.stageStoneKg(0) === 0 && H.stageStoneKg(1) === 6 * H.plinthKg() && H.stageStoneKg(1, 2) === 2 * H.plinthKg(), '⑧ 주춧돌 kg = 가로×세로×높이(가운데)×밀도(가운데) · 기둥 서는 ② 단계에만 · 기둥 수만큼', H.plinthKg().toFixed(3));
+  ok(JSON.stringify(H.hutRaw()) === JSON.stringify({ wood: 22, fiber: 38 }), '⑧ 표 무변(석재 0 — 송국리형 고증과 같다)');
+  const js = `const E=require(${EP});process.stdout.write(JSON.stringify({m:E.hutEconMaterials(),s1:E.hutEconStage(1),s2:E.hutEconStage(2),c:E.houseCostPerCap('stone')}));`;
+  const off = probe({ T400_BUILD_ACT: '1', T517_HUT_STONE: '' }, js), on = probe({ T400_BUILD_ACT: '1', T517_HUT_STONE: '1' }, js),
+        on2 = probe({ T400_BUILD_ACT: '1', T517_HUT_STONE: '1', T497_HUT_COST: '2' }, js), noB = probe({ T400_BUILD_ACT: '0', T517_HUT_STONE: '1' }, js);
+  ok(off.m.stone === undefined && off.c === 0, '⑧ ★끔 — 석재 0(단가 0)', JSON.stringify(off));
+  ok(Math.abs(on.m.stone - 6 * H.plinthKg() / 4) < 1e-9 && on.s2.stone === undefined && Math.abs(on.c - 6 * H.plinthKg() / 4 / 6) < 1e-9, '⑧ 켬 — 기둥 6 · 주춧돌 6 = 돌 단위(석괴 4 kg) 31.89 · ③ 단계엔 돌 없음 · 단가 5.32/인', JSON.stringify(on));
+  ok(Math.abs(on2.m.stone - 2 * H.plinthKg() / 4) < 1e-9 && on2.m.wood === 10 && Math.abs(on2.c - 2 * H.plinthKg() / 4 / 6) < 1e-9, '⑧ T497 기둥 2 와 같이 — 주춧돌 2 · 돌 10.63 · 단가 1.77/인(옛 2.5)', JSON.stringify(on2));
+  ok(noB.c === 2.5, '⑧ 집 행위 끔이면 팔은 뜻이 없다(옛 단가 2.5)');
+  ok((SRC.match(/process\.env\.T517_HUT_STONE/g) || []).length === 1 && !/T517_HUT_STONE/.test(ZSRC) && !/T517_HUT_STONE/.test(VSRC), '⑧ 손잡이 한 자리(econ) · 서버 공정 무접촉');
+}
+
 console.log(`\n=== ${pass}/${pass + fail} ${fail ? '✗' : '✓'} ===`);
 process.exit(fail ? 1 : 0);
