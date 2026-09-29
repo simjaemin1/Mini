@@ -25,6 +25,14 @@
 * 실측(`t498-clock.sh` · 존 → central 한 다리 왕복 150ms 지연 중계): 떠나는 존 인계 157.5 → **2.9ms** · e2e 46/0 두 팔 · 몸 T47 21/0 두 팔 · 게스트 재접속 40/0 두 팔 · 실패 쪽 최종 행 두 팔 같음(`t498-ack-timeout`).
 * ⚠ACK 시한 판의 마지막 저장은 소켓 닫힘 저장(`last_zone`=떠나는 존) — 끔에서도 그렇다. ⚠클라 `LATENCY_MS=150` 판 ⓡ2 `player_left` recover 두 팔 같음(재탄생 0 · 회부).
 
+## T523. ★★2026-09-29 — 하루 경계 조각내기 **기본 켬** · 생활층 쉼표(`T523_LIFE_SLICE` · 기본 끔 · 결과 동일)
+
+* `T513_DAY_SLICE` 기본 켬(`!== '0'` · 되돌림 `=0` = 종전 econ 한 조각). 자 둘 3시드 800일 JSON main ↔ 가지 바이트 동일 · 서버 econ 지문 되돌림 ↔ 켬 50/50. `test-tick-slicer ⑨` 는 이제 **되돌림 팔(`=0`)** 과 기본(켬)을 견준다.
+* 남은 생활층 큰 조각(임업3 `gran` 99~137ms · 광산3 114ms)의 주인 = `_lifeGameDay` 안 **`huntHunters`** — 사냥꾼 8명이 차례로 옮길 자리를 띠 칸 전수로 찾는다(한 명 16~31ms). `_lifeSub` 에 `granAdd`·`cropDay` 칸을 따로 세워 `gran` = 사냥 하루만 남겼다.
+* 쪼갠 방식: `huntHunters`·`_lifeGameDay`·`_lifeDaily` 가 제너레이터(`_huntHuntersSteps` ⊂ `_lifeGameDaySteps` ⊂ `_lifeDailySteps` · 사냥꾼 한 명마다 `yield`)를 **끝까지 돌리는 껍데기**가 됐다 — 끔이면 종전과 같은 한 번의 호출. 켬(`T523_LIFE_SLICE=1`)이면 `_openDayJobs` 의 `life` 일이 한 걸음씩 밀고 `'retry'`(T85 문법) · 조각 이름 `life:쉼표` · 쉰 시간은 `_t523Pause` 로 `_lifeSub` 스톱워치에서 뺀다.
+* 실측(`test-tick-slicer ⑩`): 생활층 가장 큰 조각 156 → 46ms · 한 프레임 최대 82 → 31ms · econ 지문 동일 · 사냥 장부 지문(`scripts/t523-hunt-same.js` · `_gameRich`+사냥꾼 칸) 끔↔켬 다름 17 ≤ 끔↔끔 24(잡음 바닥 안).
+* ★사냥꾼 걸음 사이에 틱이 돈다 — 켬 판에선 한 마을의 사냥 정산이 여러 틱에 걸친다(그 사이 몸 이동·사냥이 끼어든다). 장부 A/B ≤ A/A 로 봤지만 켜기는 결정(회부).
+
 ## T513. ★★2026-09-29 — econ 하루 틱도 조각으로(`T513_DAY_SLICE` · 기본 끔 · 계산 동일)
 
 * 하루 경계의 가장 큰 조각은 **econ 한 조각**(T470 90하루 중 83 · 실제 날 새 세계 둘째 날 199ms) — T486 의 140ms 는 첫날 생활층 임업3 `gran`(곳간 증설·작물·사냥 하루)이었다.
