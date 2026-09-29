@@ -109,6 +109,46 @@ for (const [arm, env] of ARMS) {
   }
 }
 
+// ── ★[T526 2026-09-29] 마을 움집·쉼터 **안** — 완충(마을 한복판 1) + 실내(지붕 아래) 가 **같이** 걸리는 칸 ──
+//   T508 의 네 칸(야생 · 마을 · 실내 · 불 곁)은 한 가지씩만 걸었다. 몸의 실내가 마을 움집을 세지 않던 동안(T520: 0/50)
+//   "마을 안의 실내"는 세계에 없는 칸이었다 — `T526_VILLAGE_INDOOR` 를 켜면 쉼터에 선 몸이 바로 이 칸이다.
+//   ⚠열을 뒤에 붙인다(위 표의 줄은 T508 판과 글자 동일).
+{
+  out.t526 = {};
+  const INSIDE = { villageShelter: 1, windExposure: 0, indoor: true };
+  console.log(`\n  ── [T526] 마을 움집 안(완충 1 + 실내) · 야생·마을 칸과 같은 판 ──`);
+  for (const [arm, env] of ARMS) {
+    const B = load(env);
+    out.t526[arm] = [];
+    const row = TIERS.map(([name, w]) => { const r = years(B, Object.assign({ warmth: w }, INSIDE)); out.t526[arm].push({ tier: name, warmth: w, r }); return `${name}(${w}) ${cell(r)} · 목표점 중앙 ${r.tgtMed}`; });
+    console.log(`  ${arm}: ` + row.join(' | '));
+  }
+}
+// ── ★[T526 ③] 불 곁 × 실내가 겹칠 때 — **지금 순서 그대로**(판정 0) · 몸 정본 `coldTarget`·`tick` 이 낸 값 ──
+//   `coldTarget` 의 차례: ℃ 곡선(옷 ℃ 포함) → 바람 곱 → 마을 완충 곱 → **실내 곱(×COLD_INDOOR_MULT)** → **불 곁 상한(min COLD_FIRE_TARGET)**.
+//   그 밖의 자리(젖음 마름 · 비 · 더위 갈증 · 피로 · 옷 닳음)도 같은 두 술어를 읽는다 — 차례를 표로 적는다.
+{
+  const B = load({});
+  const day = WINTER, base = { day, night: true, wet: 0, warmth: 0, windExposure: 0 };
+  const cases = [['야생', {}], ['마을(완충 1)', { villageShelter: 1 }]];
+  const combos = [['—', {}], ['실내', { indoor: true }], ['불 곁', { nearFire: true }], ['실내 + 불 곁', { indoor: true, nearFire: true }]];
+  out.overlap = [];
+  console.log(`\n=== T526 ③ 불 곁 × 실내 — 한겨울 자정(doy ${WINTER} · 해 0) 맨몸 목표점 · 지금 순서 그대로 ===`);
+  console.log('  ' + pad('자리', 16) + combos.map(([c]) => pad(c, 16)).join(''));
+  for (const [cn, cc] of cases) {
+    const vals = combos.map(([, x]) => B.coldTarget(Object.assign({}, base, cc, x)));
+    out.overlap.push({ place: cn, vals });
+    console.log('  ' + pad(cn, 16) + vals.map((v) => pad(v.toFixed(4), 16)).join(''));
+  }
+  // 마름 빠르기(`_dryFactor` — 불 먼저 · 실내 다음) · 비(실내만 막는다) · 더위 갈증(실내 = 그늘) · 피로 회복(실내 ×2)
+  const dryOf = (x) => { const P = { hunger: 100, thirst: 100 }; B.ensure(P); B.ensure(P).wet = 1; B.wetStep(P, 60, Object.assign({ day: 180 }, x)); return +(1 - B.wetOf(P)).toFixed(5); };
+  const heatOf = (x) => B.heatThirstMult(Object.assign({ seasonCold: 0, night: false }, x));
+  console.log(`  마름(젖음 1 에서 60초에 마른 몫 · 여름 맑은 날): 없음 ${dryOf({})} · 실내 ${dryOf({ indoor: true })} · 불 곁 ${dryOf({ nearFire: true })} · 둘 다 ${dryOf({ indoor: true, nearFire: true })}`);
+  console.log(`  더위 갈증 배율(여름 낮): 없음 ${heatOf({})} · 실내 ${heatOf({ indoor: true })} · 불 곁 ${heatOf({ nearFire: true })} · 둘 다 ${heatOf({ indoor: true, nearFire: true })}`);
+  console.log(`  상수: COLD_INDOOR_MULT ${B.CFG.COLD_INDOOR_MULT} · COLD_FIRE_TARGET ${B.CFG.COLD_FIRE_TARGET} · COLD_VILLAGE_SHELTER ${B.CFG.COLD_VILLAGE_SHELTER} · FATIGUE_INDOOR_MULT ${B.CFG.FATIGUE_INDOOR_MULT}`);
+  out.dry = { none: dryOf({}), indoor: dryOf({ indoor: true }), fire: dryOf({ nearFire: true }), both: dryOf({ indoor: true, nearFire: true }) };
+}
+
 // ── ④ 디버프 표 — 지금 값 그대로(판정 0) ──
 {
   const B = load({});

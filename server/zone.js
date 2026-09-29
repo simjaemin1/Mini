@@ -7173,9 +7173,14 @@ function _placeKeyOfBuilding(b) {
 function _placeKeyOfGround(x, y, floor) {
   return isIndoorAt({ x, y, floor: floor || 0 }) ? 'indoor' : 'ground';
 }
+// ★★[T526 2026-09-29] 실내의 정본 하나 — 손잡이 `T526_VILLAGE_INDOOR`(기본 끔 · 끔이면 아래 종전 줄 **글자 그대로**).
+//   켜면 실내 = **지붕 아래**(`Rooms.underRoofAt` — 플레이어 방 + 마을 움집·쉼터·큰집 발자국). 이 함수를 부르는 자리
+//   (몸 틱의 `indoor` · 부패의 자리 판정 `chest_in`/`indoor`)가 전부 같은 말을 듣는다. 새 규칙 0(rooms.js 주석).
+const T526_VILLAGE_INDOOR = process.env.T526_VILLAGE_INDOOR === '1';
 function isIndoorAt(p) {
   try {
     const cx = Math.floor(p.x / 32), cy = Math.floor(p.y / 32);
+    if (T526_VILLAGE_INDOOR) return Rooms.underRoofAt(cx, cy, p.floor || 0);
     return !!Rooms.roomAt(cx, cy, p.floor || 0);
   } catch (e) { return false; }
 }
@@ -7366,8 +7371,10 @@ function weatherFor(p, now) {
   //   ⚠"얼마나 덜 젖는가"의 계수(`COVER_MAX`)는 여기서 안 곱한다 — 그건 몸의 축이 소유한다.
   //     화면은 "가려 주는 자리인가"만 말하면 되고, 젖음의 결과는 `wet` 이 이미 참말로 말한다.
   const cover = +coverOf(p).toFixed(4);
+  // ★[T526] 켜면 몸의 실내(정본 `isIndoorAt`)를 **전달만** 한다(마지막 인자) — 클라의 비·눈 층(`playerIsIndoors` · 방만 안다)과
+  //   계측기가 "몸이 지금 지붕 아래인가"를 서버의 말로 읽는다(사본 0). 끄면 `null` 이라 칸이 안 생긴다(페이로드 바이트 동일).
   return Object.assign({}, w, { shelter: sh, cut, insC: +insC.toFixed(2),
-    wind: +Wind.seasonWind(day).toFixed(3), exp: wexp, precip, wet: +wet.toFixed(4), cover });
+    wind: +Wind.seasonWind(day).toFixed(3), exp: wexp, precip, wet: +wet.toFixed(4), cover }, T526_VILLAGE_INDOOR ? { indoor: isIndoorAt(p) } : null);
 }
 // ★★[천장 해제 2026-08-31] 그 자리의 고도(km) — econ 기온 감률(−6.5℃/km)의 입력.
 //   ★★실측 보고(이 배치 §0): **지금은 언제나 0 이다. 그게 거짓말이 아니라 세계의 사실이다.**
