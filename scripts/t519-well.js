@@ -137,6 +137,15 @@ const DAY = FX.anchorDays().summer;
   await send({ type: 'well_advance', buildingId: site.id });
   await shoot('done', 'well', null);
   console.log('알림', JSON.stringify(await notices()));
+  // ③ 곁 — 우물 칸을 **살피면** 서버가 무엇이라 답하나(물 칸이면 `water` 가 실려 물 메뉴가 선다 · `46-h-verbs verbOpenWaterMenu`)
+  await page.evaluate(() => { try { const o = verbsOnLook; verbsOnLook = function (m) { window.__lastLook = m; return o(m); }; } catch (e) { } });
+  for (const [ox, oy, give] of [[0, 0, 0], [0, 0, 1]]) {
+    if (give) { await send({ type: '__e2e_give', items: { water_bottle: 1 } }); await sleep(800); }
+    await page.evaluate(() => { window.__lastLook = null; });
+    await send({ type: 'look', x: (at[0] + ox) * 32 + 16, y: (at[1] + oy) * 32 + 16 });
+    let L = null; for (let k = 0; k < 30 && !L; k++) { L = await page.evaluate(() => window.__lastLook); if (!L) await sleep(150); }
+    console.log(JSON.stringify({ look: '우물 칸', bottle: give, water: L && L.water, line: L && L.line }));
+  }
   await browser.close();
   // ── 2줄 × 3칸 — 윗줄 ×3(우물 둘레) · 아랫줄 1:1(같은 칸 크기의 마을 둘레) ──
   const { PNG } = require('pngjs');
