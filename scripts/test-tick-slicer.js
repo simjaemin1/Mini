@@ -264,8 +264,11 @@ async function arm(label, sliceMs, extraEnv) {
   //     조각내기가 그보다 더 갈리게 만들면 안 된다. (econ 엔진 자체의 비트 동일은
   //     `sim/` 무수정 + 번들 8/8 + 3시드 800일이 따로 증명한다 — 여긴 **서버 층**을 잰다.)
   const C2 = await arm('aa', 16);
-  // ★★[T513 2026-09-29] 다섯째 팔 — econ 하루 틱도 조각으로(`T513_DAY_SLICE=1`). 같은 스냅샷 · 같은 날 수.
-  const D2 = await arm('day', 16, { T513_DAY_SLICE: '1' });
+  // ★★[T513 2026-09-29 · T523 뒤집음] 다섯째 팔 — **되돌림 팔**(`T513_DAY_SLICE=0` = econ 한 조각). 같은 스냅샷 · 같은 날 수.
+  //   T523 이 econ 조각을 **기본 켬**으로 올려 위 네 팔이 이미 켬이다 ⇒ 이 팔이 끔(종전)이다.
+  const D2 = await arm('day0', 16, { T513_DAY_SLICE: '0' });
+  // ★★[T523 2026-09-29] 여섯째 팔 — 생활층 한 마을도 쉼표(사냥꾼 한 명)에서 나눈다(`T523_LIFE_SLICE=1`).
+  const L2 = await arm('life', 16, { T523_LIFE_SLICE: '1' });
   //   ★★대조는 **같은 마을 · 같은 날**끼리만 뜻이 있다. 저장은 1마을/틱으로 배수되므로 스냅샷 순간
   //     팔마다 어제치가 남은 마을 수가 다르다(실측: base 49곳이 526일 · head 50곳이 527일).
   //     그걸 섞어 세면 "쪼갰더니 세계가 갈렸다"는 **가짜 결론**이 나온다 — 첫 판이 정확히 그랬다.
@@ -322,30 +325,53 @@ async function arm(label, sliceMs, extraEnv) {
     ok(MB.dPopMax <= 3, '⑧ ★★마을 한 곳도 크게 안 갈렸다(≤3명)', `최대 차 ${MB.dPopMax}명`);
     ok(MB.fRel <= 0.02, '⑧ ★★곳간 식량 총량이 실질 동일(≤2%)', `${MB.f1.toFixed(0)} vs ${MB.f2.toFixed(0)} (${(MB.fRel * 100).toFixed(2)}%)`);
 
-    // ⑨ ★★[T513] **econ 하루 틱 조각**(`T513_DAY_SLICE=1`) — ⑧ 과 같은 자(경제의 크기)로 끈 뽑은 대조군과 견준다.
+    // ⑨ ★★[T513 · T523] **econ 하루 틱 조각**(기본 켬) ↔ 되돌림(`T513_DAY_SLICE=0` · econ 한 조각) — ⑧ 과 같은 자(경제의 크기).
     //   econ 정본 조각(`tickWorldV2Parts`)은 `tickWorldV2` 가 부르는 그 한 벌이라 조각 사이에 아무 일도 없으면 계산이 같다 —
     //   그 사이에 끼어드는 것은 ⑧ 이 적은 NPC 노동뿐이다(그래서 같은 문턱 · 0 이 아니라 크기).
-    console.log('\n  ⑨ econ 하루 틱 조각(`T513_DAY_SLICE=1`)');
-    const d9 = D2 && D2.econTick && D2.econTick.last;
-    ok(!!d9, '⑨ [전제] 켬 팔이 부팅·수확됐다', d9 ? `${d9.day}일` : '없음');
-    if (d9) {
-      const st = d9.stages || {}, parts = ['econ:head', 'econ:vil', 'econ:trade', 'econ:caravan', 'econ:tail'];
+    console.log('\n  ⑨ econ 하루 틱 조각(기본 켬) ↔ 되돌림(`T513_DAY_SLICE=0`)');
+    const d0 = D2 && D2.econTick && D2.econTick.last;
+    ok(!!d0, '⑨ [전제] 되돌림 팔이 부팅·수확됐다', d0 ? `${d0.day}일` : '없음');
+    if (d0) {
+      const st = b.stages || {}, parts = ['econ:head', 'econ:vil', 'econ:trade', 'econ:caravan', 'econ:tail'];
       const pmax = Math.max(0, ...parts.map((k) => st[k + '·max'] || 0));
       const pmaxAt = parts.reduce((m, k) => ((st[k + '·max'] || 0) > (st[m + '·max'] || 0) ? k : m), parts[0]);
-      console.log(`  · 켬 ${fmt(d9)}`);
-      console.log(`  · econ 조각 — ${parts.map((k) => `${k.slice(5)} 합 ${st[k] || 0}ms · 최대 ${st[k + '·max'] || 0}ms`).join(' / ')}`);
-      ok(st['econ:vil'] != null && d9.chunks >= b.chunks + d9.villages, '⑨ econ 이 **마을 수만큼** 더 나뉘었다', `조각 ${b.chunks} → ${d9.chunks}(마을 ${d9.villages})`);
-      ok(JSON.stringify(d9.order) === JSON.stringify(CANON), '⑨ 단계 순서가 정본과 같다(이름은 전부 `econ`)', JSON.stringify(d9.order));
-      ok(D2.econTick.days >= DAYS, `⑨ ${DAYS}일이 모두 마감됐다`, `${D2.econTick.days}일`);
-      const bEcon = (b.stages && b.stages.econ) || 0;
-      ok(pmax < bEcon, '⑨ ★econ 의 가장 큰 조각이 끔 팔의 econ 한 조각보다 작다', `${pmax}ms(${pmaxAt}) < ${bEcon}ms`);
-      const M9 = cmpMass('/tmp/slicer-base-z.db', '/tmp/slicer-day-z.db');
-      console.log(`  · A/B′(끈 뽑음 ↔ econ 조각) — 인구 ${M9.pop1} vs ${M9.pop2} · 식량 ${M9.f1.toFixed(0)} vs ${M9.f2.toFixed(0)} (${(M9.fRel * 100).toFixed(2)}%) · ${M9.n}곳`);
+      console.log(`  · 되돌림 ${fmt(d0)}`);
+      console.log(`  · 켬(조각내기 팔) econ 조각 — ${parts.map((k) => `${k.slice(5)} 합 ${st[k] || 0}ms · 최대 ${st[k + '·max'] || 0}ms`).join(' / ')}`);
+      ok(st['econ:vil'] != null && b.chunks >= d0.chunks + d0.villages, '⑨ 켬(기본)이 econ 을 **마을 수만큼** 더 나눴다', `조각 ${d0.chunks}(되돌림) → ${b.chunks}(마을 ${d0.villages})`);
+      ok(JSON.stringify(d0.order) === JSON.stringify(CANON), '⑨ 되돌림도 단계 순서가 정본과 같다', JSON.stringify(d0.order));
+      ok(D2.econTick.days >= DAYS, `⑨ 되돌림 ${DAYS}일이 모두 마감됐다`, `${D2.econTick.days}일`);
+      const bEcon = (d0.stages && d0.stages.econ) || 0;
+      ok(pmax < bEcon, '⑨ ★econ 의 가장 큰 조각(켬)이 되돌림의 econ 한 조각보다 작다', `${pmax}ms(${pmaxAt}) < ${bEcon}ms`);
+      const M9 = cmpMass('/tmp/slicer-day0-z.db', '/tmp/slicer-head-z.db');
+      console.log(`  · 되돌림 ↔ 켬 — 인구 ${M9.pop1} vs ${M9.pop2} · 식량 ${M9.f1.toFixed(0)} vs ${M9.f2.toFixed(0)} (${(M9.fRel * 100).toFixed(2)}%) · ${M9.n}곳`);
       ok(M9.n >= 10 && M9.dPop / Math.max(1, M9.pop1) <= 0.005, '⑨ ★★인구가 실질 동일(≤0.5%)', `${M9.pop1} vs ${M9.pop2}`);
       ok(M9.dPopMax <= 3, '⑨ ★★마을 한 곳도 크게 안 갈렸다(≤3명)', `최대 차 ${M9.dPopMax}명`);
       ok(M9.fRel <= 0.02, '⑨ ★★곳간 식량 총량이 실질 동일(≤2%)', `${(M9.fRel * 100).toFixed(2)}%`);
-      const B9 = cnt('/tmp/slicer-head-z.db', '/tmp/slicer-day-z.db');
-      console.log(`  · 바이트 일치(정보) — 조각내기 ↔ econ 조각 동일 ${B9.same}·다름 ${B9.diff}(건너뜀 ${B9.skip})`);
+      const B9 = cnt('/tmp/slicer-day0-z.db', '/tmp/slicer-head-z.db');
+      console.log(`  · 바이트 일치(정보) — 되돌림 ↔ 켬 동일 ${B9.same}·다름 ${B9.diff}(건너뜀 ${B9.skip})`);
+    }
+
+    // ⑩ ★★[T523] **생활층 쉼표**(`T523_LIFE_SLICE=1`) ↔ 조각내기 팔(끔) — ⑧ 과 같은 자(경제의 크기) · 창 전체의 가장 큰 생활층 조각.
+    console.log('\n  ⑩ 생활층 쉼표(`T523_LIFE_SLICE=1`) ↔ 조각내기(끔)');
+    const l0 = L2 && L2.econTick && L2.econTick.last;
+    ok(!!l0, '⑩ [전제] 쉼표 팔이 부팅·수확됐다', l0 ? `${l0.day}일` : '없음');
+    if (l0) {
+      const SB = (B.econTick && B.econTick.stages) || {}, SL = (L2.econTick && L2.econTick.stages) || {};
+      const lifeOff = (SB['1마을:life전체'] && SB['1마을:life전체'].max) || 0;
+      const stepMax = (SL['life:쉼표·max'] && SL['life:쉼표·max'].max) || 0;
+      console.log(`  · 쉼표 ${fmt(l0)}`);
+      console.log(`  · 창 전체 — 끔 한 마을 생활층 최대 ${lifeOff}ms(사냥 하루 ${(SB['1마을:gran'] && SB['1마을:gran'].max) || 0}ms) · 켬 쉼표 조각 최대 ${stepMax}ms · 켬 조각 ${l0.chunks}(끔 ${b.chunks})`);
+      ok(SL['life:쉼표'] != null && l0.chunks > b.chunks, '⑩ 생활층이 쉼표에서 더 나뉘었다(조각 수 증가)', `조각 ${b.chunks} → ${l0.chunks}`);
+      ok(JSON.stringify(l0.order) === JSON.stringify(CANON), '⑩ 단계 순서가 정본과 같다', JSON.stringify(l0.order));
+      ok(L2.econTick.days >= DAYS, `⑩ ${DAYS}일이 모두 마감됐다`, `${L2.econTick.days}일`);
+      ok(stepMax > 0 && stepMax <= lifeOff, '⑩ ★쉼표 조각 최대 ≤ 끔 한 마을 생활층 최대(창 전체)', `${stepMax}ms ≤ ${lifeOff}ms`);
+      const M10 = cmpMass('/tmp/slicer-head-z.db', '/tmp/slicer-life-z.db');
+      console.log(`  · 끔 ↔ 쉼표 — 인구 ${M10.pop1} vs ${M10.pop2} · 식량 ${M10.f1.toFixed(0)} vs ${M10.f2.toFixed(0)} (${(M10.fRel * 100).toFixed(2)}%) · ${M10.n}곳`);
+      ok(M10.n >= 10 && M10.dPop / Math.max(1, M10.pop1) <= 0.005, '⑩ ★★인구가 실질 동일(≤0.5%)', `${M10.pop1} vs ${M10.pop2}`);
+      ok(M10.dPopMax <= 3, '⑩ ★★마을 한 곳도 크게 안 갈렸다(≤3명)', `최대 차 ${M10.dPopMax}명`);
+      ok(M10.fRel <= 0.02, '⑩ ★★곳간 식량 총량이 실질 동일(≤2%)', `${(M10.fRel * 100).toFixed(2)}%`);
+      const B10 = cnt('/tmp/slicer-head-z.db', '/tmp/slicer-life-z.db');
+      console.log(`  · 바이트 일치(정보) — 끔 ↔ 쉼표 동일 ${B10.same}·다름 ${B10.diff}(건너뜀 ${B10.skip})`);
     }
   } catch (e) { ok(false, '⑧ 발산 대조 실패', e.message); }
 

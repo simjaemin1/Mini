@@ -35,7 +35,7 @@ async function run(arm) {
   if (FROM) cp(FROM, zdb); else rm(zdb);
   if (FROM_C) cp(FROM_C, cdb); else rm(cdb);
   const CP = PORT, ZP = PORT + 10;
-  const env = Object.assign({}, process.env); delete env.T513_DAY_SLICE; if (arm === 'on') env.T513_DAY_SLICE = '1';
+  const env = Object.assign({}, process.env); env.T513_DAY_SLICE = arm === 'on' ? '1' : '0';   // ★[T523] 기본 켬이 되어 끔 팔은 `=0` 을 적어서 준다
   const logf = fs.openSync(`${TMP}/an-${arm}.log`, 'w');
   const c = spawn(process.execPath, [path.join(ROOT, 'server/central.js')], { cwd: ROOT, stdio: 'ignore',
     env: Object.assign({}, env, { PORT: String(CP), DB_PATH: cdb, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando', CENTRAL_SECRET: SECRET }) });
