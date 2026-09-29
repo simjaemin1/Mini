@@ -14,7 +14,7 @@
 |---|---|---|---|
 | **`scripts/models_crops.py`** | 작물 수확물 14 + 씨앗 14 아이콘 [T79] | `crop_icon_renders/*.png` → `icons-postprocess.js` → `public/assets/icons/` | 없음(bbox 중심) |
 | **`scripts/render_common.py`** | ★렌더 **공용 정본** — 재질 문법·기하 헬퍼·씬·프리셋 둘·후처리. 그림은 안 만든다 | — | — |
-| `scripts/building_render.py` | 움집 4단계·지붕 · 회관 지붕 · 곳간 · 노 3단계+완공 · 숯가마 2단계 | `public/assets/buildings/*.png` | `building_anchors.json` (클라 `20-r2-visibility.js` 의 A표에 **손으로 옮겨 적혀 있다** — `test-building-anchor.js` 가 대조) |
+| `scripts/building_render.py` | 움집 4단계·지붕 · 회관 지붕 · 곳간 · 노 3단계+완공 · 숯가마 2단계 · **우물 셋(착공·쌓는 중·완성) + 아이콘 하나** [T519 · `BLD_ICONS=1`] | `public/assets/buildings/*.png` · 우물 아이콘 `building_renders/icons/` → `icons-postprocess.js` → `public/assets/icons/well.png` | `building_anchors.json` (클라 `20-r2-visibility.js` 의 A표에 **손으로 옮겨 적혀 있다** — `test-building-anchor.js` 가 대조) |
 | **`scripts/props_render.py`** ★T67 신규 · T72 확장 | **가구·시설 8종**(작업대·건조대·상자·모닥불·소금가마·벽·문·울타리) + **손도구·손에 드는 것 13종**(§9) | `public/assets/props/*.png` + `public/assets/icons/*.png` | `public/assets/props/props_anchors.json` — 클라가 **읽는다**(사본 없음) · 아이콘은 앵커 없음 |
 | `scripts/nature_render.py` | 나무·덤불·풀·갈대·부들·꽃·이끼바위 | `public/assets/nature/*.png` | `nature_anchors.json`(클라가 fetch) |
 | `scripts/icon_render.py` | 인벤 아이콘(자원·야금 사슬 등) · **공용 모듈 씀** | `icon_renders/*.png` → `icons-postprocess.js` → `public/assets/icons/` | 없음(bbox 중심) |
@@ -1953,3 +1953,29 @@ T103 이 "3분의 2" 라 적은 것을 여기서 더 좁힌다.
 
 ★**새 모델 0.** 종별 판은 `models_crops` 의 **그 종 아이콘 모델을 밭에 그대로 심은 것**이다 —
 군 판이 군 대표 하나를 심는 그 문법. 그래서 아이콘을 고치는 날 밭도 같이 움직인다(T67 캐논).
+
+## 25. T519 (2026-09-29) — 우물 그림 셋 · 아이콘 하나 (세션8)
+
+> 전문 `보고/T519_2026-09-29.md`. 가지 `batch/well-art-0929`(승인 대기). 서버 시설은 T509(`server/well-stages.js` · 손잡이 `T509_WELL` 기본 끔 — 끔이면 이 그림은 안 선다).
+
+| 항목 | 값 |
+|---|---|
+| 키 | `well_s1`(착공 구덩이) · `well_s2`(자갈 벽 쌓는 중) · `well`(완성) — 클라 `36-r2-building` 이 `well_s{stage}` · `well` 로 고른다 |
+| 틀·앵커 | 셋 다 **노 터·가마 구덩이와 같은 틀** — 2×2 · top 0.30 → 200×117 · 앵커 (100.0, 15.3) · 땅 위로 서는 것이 없다(돌 벽은 땅속 · 둔덕 0.28m) |
+| 수 | **서버 정본을 읽는다**(`_well_src` 가 `WELL_SRC` 정규식 · 사본 0): 아가리 110×79㎝ · 깊이 61㎝ · 2단 · 돌 10~20㎝ → 단 높이 30.5㎝ · 아랫단은 돌 한 켜(15㎝)만큼 좁다 · 단마다 자갈 ⌈π·94.5 ÷ 15⌉ = **20**(서버 `WELL_PEBBLES` 와 같은 식 — 그림 속 돌 40 = 서버가 먹는 자갈 40) |
+| 쌓는 중 | 아랫단 한 켜 20 + 윗단 **뒤쪽 반** 10(카메라 반대편부터) + 곁에 무더기 10 = 40 |
+| 파낸 흙 | 흙덩이 **19** = ⌈판 부피 0.302㎥ ÷ 흙덩이 평균 부피 0.0165㎥⌉ — 흙덩이는 가마 구덩이(`kiln_s1`) 것 그대로(r 0.13~0.19 · 눌림 1.3·1.3·0.55) · 뒤쪽 반에 두 줄(아가리를 안 가린다) · 완성엔 치웠다 |
+| 물 | **게임 물이 화면에 찍히는 색**(`10-r1-terrain` 물 셰이더 깊은 물 · 평평한 면 → 42·80·120)을 **방출**(세기 1 · Standard 뷰 = 화소가 그 색)로 · 수위 = 두 단의 경계 + 1㎝(서버에 수위 없음 — 그림의 선택 · 이 카메라 30°에서 물이 보이는 가장 깊은 자리) |
+| 아이콘 | `BLD_ICONS=1 python3 scripts/building_render.py` → `node scripts/icons-postprocess.js scripts/building_renders/icons public/assets/icons` · 키 = 건물 종류 `well`(품목이 아니라 시설 — `item_` 접두는 짓는 품목 몫) · `ICON_RENDERED` 에 올렸다 |
+| 잠금 | `icons.lock.json` buildings 셋 + icons 하나 — ★`asset-lock --write` 는 **있던 키만** 다시 쓴다(새 키를 몰래 안 더한다) ⇒ 새 키는 `lockValue` 로 먼저 넣고 `--write` 로 정렬 |
+| 하네스 | `scripts/test-well-art.js`(@regress 33) · 그림 `scripts/t519-well.js`(맥 `산그림/T519_우물.png`) |
+
+### ★땅속이 있는 첫 시설 — 가림막 지면(Holdout)
+렌더엔 지면이 없다(`film_transparent`) — 구덩이를 파면 **땅에 묻힌 벽의 바깥**이 그대로 보인다.
+⇒ 아가리만 뚫린 지면 고리(반지름 4m)를 **Holdout 셰이더**로 깐다: 땅속을 가리고 제 화소는 투명으로 나간다(게임 지면이 그 자리를 채운다).
+캐릭터 시트의 홀드아웃(몸이 도구를 가린다)과 같은 수법이다. 아이콘 굽기에선 이 고리를 **액자 bbox 에서만** 뺀다(그림에는 남아 땅속을 가린다).
+
+### ★1패스 육안 → 고친 것 셋
+* 파낸 흙 **둥근 둔덕 둘** = "빵 두 덩이"로 읽혔다 → 가마 구덩이의 흙덩이 문법으로 뒤쪽 반 두 줄(두 줄 사이 틈에 풀이 비치면 줄무늬가 된다 — 줄 간격을 좁혔다).
+* 돌을 단 **한가운데 높이**에 두르면 앞쪽 돌이 땅에 가려 **흰 구슬 한 줄**만 보였다 → 단의 **윗머리**에 두른다(윗단 켜 = 땅 높이 테두리 → 앞쪽 돌까지 보여 '돌 우물'로 읽힌다).
+* 물을 반사 재질(게임 물 기본색)로 두면 구덩이 그늘에 묻혀 **검은 구멍**이 된다 → 게임 물 화면색 방출.
