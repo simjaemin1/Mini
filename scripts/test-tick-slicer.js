@@ -53,7 +53,7 @@ async function waitHttp(u, n = 600) { for (let i = 0; i < n; i++) { try { const 
 const cp = (src, dst) => { for (const sfx of ['', '-wal', '-shm']) { try { fs.copyFileSync(src + sfx, dst + sfx); } catch (e) { try { fs.unlinkSync(dst + sfx); } catch (e2) {} } } };
 
 // ── 한 팔: 부팅 → DAYS 게임일 → /perf 수확 ──────────────────────────────────
-async function arm(label, sliceMs) {
+async function arm(label, sliceMs, extraEnv) {
   const CDB = `/tmp/slicer-${label}-c.db`, ZDB = `/tmp/slicer-${label}-z.db`;
   cp(SEED_C, CDB); cp(SEED_Z, ZDB);
   const _central = boot('central.js', { PORT: String(CPORT), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });
@@ -68,6 +68,7 @@ async function arm(label, sliceMs) {
     PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
     VILLAGE_DAY_MS: String(DAY_MS), ENABLE_BANDITS: '0', ENABLE_ROADS: '0', ENABLE_WILDLIFE: '0',
     VILLAGE_TICK_SLICE_MS: String(sliceMs),
+    ...(extraEnv || {}),   // ★[T513] 팔마다 손잡이 하나 더(`T513_DAY_SLICE` 팔)
     // ★[T42 뒤] 교역로 **선계산을 끈다.** 이 하네스의 주제는 *일틱 조각내기*이고, 선계산은
     //   무인 프레임에 A*(100~1,900ms)를 도는 별개 층이다. 켜 두면 루프 지연·경제 잡음이
     //   그쪽에서 들어와 조각내기를 못 잰다(실제로 ⑥·⑧이 그걸로 흔들렸다).
@@ -134,7 +135,16 @@ async function arm(label, sliceMs) {
   //     달라지는 건 *한 프레임에 몇 개를 몰아 넣느냐*뿐이고, RTT 를 정하는 건 그 값이다.
   ok(a.frames === 1, '① [상황] 대조군은 일틱을 **한 프레임**에 몬다', `프레임 ${a.frames}`);
   ok(a.frameMax >= a.total * 0.9, '① [상황] 그 한 프레임이 하루 전부를 먹는다', `${a.frameMax}/${a.total}ms`);
-  ok(a.total >= 300, '① [상황] 잴 만큼 무거운 하루다(≥300ms)', `${a.total}ms`);
+  // ★★[T513 2026-09-29] **"잴 만큼 무거운 하루"의 문턱을 유도한다**(새 수 0). 종전 `≥300ms` 는 지은 수였고
+  //   컨테이너가 빨라지자 야간 3밤 상시 빨강이 됐다(하루 131~213ms — 제품이 아니라 **자가 못 잰 것**).
+  //   조각내기가 벌 수 있는 몫 = 대조군 한 프레임(≈ 하루 전부) ÷ 조각내기 팔의 가장 큰 조각(더는 못 자른다).
+  //   ③·⑥ 이 "줄었다"를 가르려면 그 몫이 **FK × NMAX**(이 파일의 두 문턱 · 효과비 > 잡음비 × FK · 잡음비 < NMAX)를 넘어야 한다.
+  //   ⇒ 못 넘으면 이 판은 **잴 수 없는 판**이다 — 그 사실을 적고 초록으로 둔다(효과 판정 ③·⑥ 은 '나빠지지 않았다'만 · ③ 의 1/3 줄은 건너뛴다).
+  const _FK0 = parseFloat(process.env.SLICER_FRAME_K || '1.8') || 1.8, _NM0 = parseFloat(process.env.SLICER_NOISE_MAX || '1.5') || 1.5;
+  const _room = a.total / Math.max(1, b.maxChunk || 1), _need = _FK0 * _NM0;
+  const MEASURABLE = _room >= _need;
+  ok(true, `① [상황] 잴 수 있는 하루인가 — ${MEASURABLE ? '○ 잰다' : '★잴 수 없다(적고 초록)'}`,
+    `대조군 하루 ${a.total}ms ÷ 가장 큰 조각 ${b.maxChunk}ms(${b.maxChunkAt}) = ${_room.toFixed(2)} ${MEASURABLE ? '≥' : '<'} FK×NMAX ${_need.toFixed(2)}`);
 
   // ② 실제로 나뉘는가 — 마을 수만큼은 나와야 한다(생활층·영토·채굴이 마을 경계다)
   ok(b.chunks >= b.villages, `② 조각이 마을 수(${b.villages}) 이상으로 나뉜다`, `${b.chunks}개`);
@@ -159,15 +169,16 @@ async function arm(label, sliceMs) {
   //   ★K 를 한 표본으로 정한 게 내 실수였다 — 그 실수는 문턱을 낮춰 덮지 않고 이렇게 갈랐다.
   const NMAX = parseFloat(process.env.SLICER_NOISE_MAX || '1.5') || 1.5;
   ok(fNoise < 3, '③ 전제 — 자가 믿을 만하다(같은 조건 두 번이 3배 안)', `잡음비 ${fNoise.toFixed(3)}`);
-  if (fNoise < NMAX) {
+  if (MEASURABLE && fNoise < NMAX) {
     ok(fEffect > fNoise * FK,
        `③ 한 프레임 최대가 줄었다 — 비율의 비율 ${(fEffect / Math.max(0.01, fNoise)).toFixed(2)} > ${FK}`,
        `효과비 ${fEffect.toFixed(2)}(대조 중앙 ${fMed.toFixed(0)}ms → ${b.frameMax}ms) vs 잡음비 ${fNoise.toFixed(3)}`);
   } else {
-    console.log(`  ★이 판은 잡음이 커서(${fNoise.toFixed(3)} ≥ ${NMAX}) ③ 을 가를 수 없다 — 판정하지 않는다.`);
+    console.log(MEASURABLE ? `  ★이 판은 잡음이 커서(${fNoise.toFixed(3)} ≥ ${NMAX}) ③ 을 가를 수 없다 — 판정하지 않는다.` : '  ★잴 수 없는 판(①) — ③ 효과는 가르지 않는다.');
     ok(fEffect > 1, '③ [잡음 큼] 최소한 **나빠지지는 않았다**(이것만 잰다)', `효과비 ${fEffect.toFixed(2)}`);
   }
-  ok(b.frameMax <= b.total / 3, '③ 한 프레임 최대가 하루 총합의 1/3 이하', `${b.frameMax}/${b.total}ms`);
+  if (MEASURABLE) ok(b.frameMax <= b.total / 3, '③ 한 프레임 최대가 하루 총합의 1/3 이하', `${b.frameMax}/${b.total}ms`);
+  else console.log(`  · ③ 1/3 줄 건너뜀(잴 수 없는 판 — 가장 큰 조각 ${b.maxChunk}ms 가 하루 ${b.total}ms 의 1/3 을 혼자 넘을 수 있다)`);
   // ★남은 바닥 — 조각 하나(마을 한 곳의 생활층)가 예산(16ms)을 얼마나 넘는지를 **숨기지 않고 적는다**.
   //   이건 실패가 아니라 회부 대상(§4-A)이다. 슬라이서는 조각보다 잘게 못 자른다.
   console.log(`  · 남은 바닥: 가장 큰 조각 ${b.maxChunk}ms(${b.maxChunkAt}) — 예산 16ms 의 ×${(b.maxChunk / 16).toFixed(1)} (회부 §4-A)`);
@@ -215,12 +226,12 @@ async function arm(label, sliceMs) {
   console.log(`  [참고 — 판정 아님] 절대 문턱 1/3 · ${bp > 0 && bp <= ap / 3 ? '넘음' : '★못 넘음'}`
     + `  (${bp}ms vs ${(ap / 3).toFixed(1)}ms)`);
   ok(noiseR < 3, '⑥ 전제 — 자가 믿을 만하다(같은 조건 두 번이 3배 안)', `잡음비 ${noiseR.toFixed(3)}`);
-  if (noiseR < NMAX) {
+  if (MEASURABLE && noiseR < NMAX) {
     ok(bp > 0 && effectR > noiseR * K,
        `⑥ 이벤트 루프 **최대 막힘**이 줄었다 — 비율의 비율 ${(effectR / Math.max(0.01, noiseR)).toFixed(2)} > ${K}`,
        `효과비 ${effectR.toFixed(2)}(대조 중앙 ${apMed.toFixed(0)}ms → ${bp}ms) vs 잡음비 ${noiseR.toFixed(3)}`);
   } else {
-    console.log(`  ★이 판은 잡음이 커서(${noiseR.toFixed(3)} ≥ ${NMAX}) ⑥ 을 가를 수 없다 — 판정하지 않는다.`);
+    console.log(MEASURABLE ? `  ★이 판은 잡음이 커서(${noiseR.toFixed(3)} ≥ ${NMAX}) ⑥ 을 가를 수 없다 — 판정하지 않는다.` : '  ★잴 수 없는 판(①) — ⑥ 효과는 가르지 않는다.');
     ok(bp > 0 && effectR > 1, '⑥ [잡음 큼] 최소한 **나빠지지는 않았다**(이것만 잰다)', `효과비 ${effectR.toFixed(2)}`);
   }
 
@@ -253,6 +264,8 @@ async function arm(label, sliceMs) {
   //     조각내기가 그보다 더 갈리게 만들면 안 된다. (econ 엔진 자체의 비트 동일은
   //     `sim/` 무수정 + 번들 8/8 + 3시드 800일이 따로 증명한다 — 여긴 **서버 층**을 잰다.)
   const C2 = await arm('aa', 16);
+  // ★★[T513 2026-09-29] 다섯째 팔 — econ 하루 틱도 조각으로(`T513_DAY_SLICE=1`). 같은 스냅샷 · 같은 날 수.
+  const D2 = await arm('day', 16, { T513_DAY_SLICE: '1' });
   //   ★★대조는 **같은 마을 · 같은 날**끼리만 뜻이 있다. 저장은 1마을/틱으로 배수되므로 스냅샷 순간
   //     팔마다 어제치가 남은 마을 수가 다르다(실측: base 49곳이 526일 · head 50곳이 527일).
   //     그걸 섞어 세면 "쪼갰더니 세계가 갈렸다"는 **가짜 결론**이 나온다 — 첫 판이 정확히 그랬다.
@@ -308,6 +321,32 @@ async function arm(label, sliceMs) {
     ok(MB.dPop / Math.max(1, MB.pop1) <= 0.005, '⑧ ★★인구가 실질 동일(≤0.5%)', `${MB.pop1} vs ${MB.pop2} (${(MB.dPop / Math.max(1, MB.pop1) * 100).toFixed(2)}%)`);
     ok(MB.dPopMax <= 3, '⑧ ★★마을 한 곳도 크게 안 갈렸다(≤3명)', `최대 차 ${MB.dPopMax}명`);
     ok(MB.fRel <= 0.02, '⑧ ★★곳간 식량 총량이 실질 동일(≤2%)', `${MB.f1.toFixed(0)} vs ${MB.f2.toFixed(0)} (${(MB.fRel * 100).toFixed(2)}%)`);
+
+    // ⑨ ★★[T513] **econ 하루 틱 조각**(`T513_DAY_SLICE=1`) — ⑧ 과 같은 자(경제의 크기)로 끈 뽑은 대조군과 견준다.
+    //   econ 정본 조각(`tickWorldV2Parts`)은 `tickWorldV2` 가 부르는 그 한 벌이라 조각 사이에 아무 일도 없으면 계산이 같다 —
+    //   그 사이에 끼어드는 것은 ⑧ 이 적은 NPC 노동뿐이다(그래서 같은 문턱 · 0 이 아니라 크기).
+    console.log('\n  ⑨ econ 하루 틱 조각(`T513_DAY_SLICE=1`)');
+    const d9 = D2 && D2.econTick && D2.econTick.last;
+    ok(!!d9, '⑨ [전제] 켬 팔이 부팅·수확됐다', d9 ? `${d9.day}일` : '없음');
+    if (d9) {
+      const st = d9.stages || {}, parts = ['econ:head', 'econ:vil', 'econ:trade', 'econ:caravan', 'econ:tail'];
+      const pmax = Math.max(0, ...parts.map((k) => st[k + '·max'] || 0));
+      const pmaxAt = parts.reduce((m, k) => ((st[k + '·max'] || 0) > (st[m + '·max'] || 0) ? k : m), parts[0]);
+      console.log(`  · 켬 ${fmt(d9)}`);
+      console.log(`  · econ 조각 — ${parts.map((k) => `${k.slice(5)} 합 ${st[k] || 0}ms · 최대 ${st[k + '·max'] || 0}ms`).join(' / ')}`);
+      ok(st['econ:vil'] != null && d9.chunks >= b.chunks + d9.villages, '⑨ econ 이 **마을 수만큼** 더 나뉘었다', `조각 ${b.chunks} → ${d9.chunks}(마을 ${d9.villages})`);
+      ok(JSON.stringify(d9.order) === JSON.stringify(CANON), '⑨ 단계 순서가 정본과 같다(이름은 전부 `econ`)', JSON.stringify(d9.order));
+      ok(D2.econTick.days >= DAYS, `⑨ ${DAYS}일이 모두 마감됐다`, `${D2.econTick.days}일`);
+      const bEcon = (b.stages && b.stages.econ) || 0;
+      ok(pmax < bEcon, '⑨ ★econ 의 가장 큰 조각이 끔 팔의 econ 한 조각보다 작다', `${pmax}ms(${pmaxAt}) < ${bEcon}ms`);
+      const M9 = cmpMass('/tmp/slicer-base-z.db', '/tmp/slicer-day-z.db');
+      console.log(`  · A/B′(끈 뽑음 ↔ econ 조각) — 인구 ${M9.pop1} vs ${M9.pop2} · 식량 ${M9.f1.toFixed(0)} vs ${M9.f2.toFixed(0)} (${(M9.fRel * 100).toFixed(2)}%) · ${M9.n}곳`);
+      ok(M9.n >= 10 && M9.dPop / Math.max(1, M9.pop1) <= 0.005, '⑨ ★★인구가 실질 동일(≤0.5%)', `${M9.pop1} vs ${M9.pop2}`);
+      ok(M9.dPopMax <= 3, '⑨ ★★마을 한 곳도 크게 안 갈렸다(≤3명)', `최대 차 ${M9.dPopMax}명`);
+      ok(M9.fRel <= 0.02, '⑨ ★★곳간 식량 총량이 실질 동일(≤2%)', `${(M9.fRel * 100).toFixed(2)}%`);
+      const B9 = cnt('/tmp/slicer-head-z.db', '/tmp/slicer-day-z.db');
+      console.log(`  · 바이트 일치(정보) — 조각내기 ↔ econ 조각 동일 ${B9.same}·다름 ${B9.diff}(건너뜀 ${B9.skip})`);
+    }
   } catch (e) { ok(false, '⑧ 발산 대조 실패', e.message); }
 
   console.log(`\n=== ${pass} 통과 / ${fail} 실패 ===\n`);

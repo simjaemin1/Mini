@@ -1544,40 +1544,61 @@ function tickYearShock(world, day) {
 // =============================================================================
 // 5. world tick — v1 tickVillage 재사용, trade·caravan만 교체
 // =============================================================================
+// ★★[T513 2026-09-29] **하루 틱을 순서 그대로 나눈 조각** — econ 정본은 이 한 벌이다(사본 0).
+//   `tickWorldV2` 는 이 조각을 차례로 부른다(아래) — 조각 사이에 아무 일도 없으면 종전과 **글자 그대로 같은 계산**이다.
+//   서버(`server/villages.js _openDayJobs`)는 손잡이 `T513_DAY_SLICE` 를 켜면 이 조각을 **하루 마감 조각 목록**에 하나씩 얹어
+//   여러 프레임에 흘린다(마을 51곳의 결산이 한 덩어리 140~600ms 로 이벤트 루프를 잡던 자리 — T486 · T513).
+//   ⚠마을 간 결합(교역 · 캐러밴 · 회복)은 각각 **통째로 한 조각**이다(쪼개면 정합이 깨진다 — T1 규약).
+//   ⚠`village(v)` 는 그 마을만 만진다(전역 쓰기 0 — 날씨·해 흉풍은 `head` 에서 이미 정해졌다).
+function tickWorldV2Parts(world) {
+  let season = null, useSeason = false;
+  return {
+    head() {
+      world.day += 1;
+      v1.processEvents(world, world.day);
+      // DEBUG flags — 각 효과 on/off
+      if (world._dbg?.weather !== false) tickWeather(world, world.day);
+      if (world._dbg?.yearShock !== false) tickYearShock(world, world.day);
+      season = seasonOf(world.day);
+      useSeason = world._dbg?.season !== false;
+    },
+    village(v) {
+      if (world._dbg?.climate !== false) {
+        // ★기온(2026-07-12): 야간최저 기준 한랭 스트레스(0~1) — 의복 커버리지 페널티·연료 가중·마모 가중이 소비(v1).
+        const _elev = (v.land && v.land.elev) || 0;   // 호스트(지형층) 고도 주입 훅 — 미설치=0(해수면) 무해
+        v._tempDay = temperatureAt(world.day, null, _elev);
+        v._tempNight = v._tempDay - CLIMATE.diurnalAmp;
+        v._coldStress = Math.max(0, Math.min(1, (CLIMATE.coldRef - v._tempNight) / 15));
+      }
+      if (useSeason) applyLandModifiers(v, season, world);
+      v1.tickVillage(v, world.day);
+      if (useSeason) restoreLand(v);
+      v1.adjustGuildTax(v, world.day);
+      tickSubsistence(v, world.day);
+      if (world._dbg?.decay !== false) tickDecay(v);
+    },
+    trade() { tickTradeV2(world, world.day); },
+    caravans() { tickCaravansV2(world, world.day); },
+    tail() {
+      // v2 r7: 이주·강제소개 OFF — 사용자 명시 의도 (안정된 마을 7개로 서버 오픈).
+      //   대신 인구 회복 보장 (작은 마을 ghost town 방지).
+      // v1.tickMigration(world, world.day);  ← OFF
+      // tickForceEvacuation(world, world.day);  ← OFF
+      tickRecovery(world, world.day);
+      for (const v of world.villages) {
+        if (v.history.length > 500) v.history.splice(0, v.history.length - 500);
+      }
+      if (world.tradeLog.length > 5000) world.tradeLog.splice(0, world.tradeLog.length - 5000);
+    },
+  };
+}
 function tickWorldV2(world) {
-  world.day += 1;
-  v1.processEvents(world, world.day);
-  // DEBUG flags — 각 효과 on/off
-  if (world._dbg?.weather !== false) tickWeather(world, world.day);
-  if (world._dbg?.yearShock !== false) tickYearShock(world, world.day);
-  const season = seasonOf(world.day);
-  const useSeason = world._dbg?.season !== false;
-  for (const v of world.villages) {
-    if (world._dbg?.climate !== false) {
-      // ★기온(2026-07-12): 야간최저 기준 한랭 스트레스(0~1) — 의복 커버리지 페널티·연료 가중·마모 가중이 소비(v1).
-      const _elev = (v.land && v.land.elev) || 0;   // 호스트(지형층) 고도 주입 훅 — 미설치=0(해수면) 무해
-      v._tempDay = temperatureAt(world.day, null, _elev);
-      v._tempNight = v._tempDay - CLIMATE.diurnalAmp;
-      v._coldStress = Math.max(0, Math.min(1, (CLIMATE.coldRef - v._tempNight) / 15));
-    }
-    if (useSeason) applyLandModifiers(v, season, world);
-    v1.tickVillage(v, world.day);
-    if (useSeason) restoreLand(v);
-    v1.adjustGuildTax(v, world.day);
-    tickSubsistence(v, world.day);
-    if (world._dbg?.decay !== false) tickDecay(v);
-  }
-  tickTradeV2(world, world.day);
-  tickCaravansV2(world, world.day);
-  // v2 r7: 이주·강제소개 OFF — 사용자 명시 의도 (안정된 마을 7개로 서버 오픈).
-  //   대신 인구 회복 보장 (작은 마을 ghost town 방지).
-  // v1.tickMigration(world, world.day);  ← OFF
-  // tickForceEvacuation(world, world.day);  ← OFF
-  tickRecovery(world, world.day);
-  for (const v of world.villages) {
-    if (v.history.length > 500) v.history.splice(0, v.history.length - 500);
-  }
-  if (world.tradeLog.length > 5000) world.tradeLog.splice(0, world.tradeLog.length - 5000);
+  const P = tickWorldV2Parts(world);
+  P.head();
+  for (const v of world.villages) P.village(v);
+  P.trade();
+  P.caravans();
+  P.tail();
 }
 
 // =============================================================================
@@ -1919,7 +1940,7 @@ function subsGuard(r, who) {
 
 module.exports = {
   createWorldV2,
-  tickWorldV2,
+  tickWorldV2, tickWorldV2Parts,   // ★[T513] 하루 틱 조각(서버 하루 마감이 여러 프레임에 흘린다 · 정본 한 벌)
   computeShadowPrices,
   netExportValue, FORWARD_PRICE_MARGIN_NEV,   // ★배합↔교역 통합(2026-08-02c) — 하네스가 산술을 직접 재게 노출
   haulMul, HORSE_HAUL_MUL, TRANSPORT_COST_PER_1000,   // ★말 사역(2026-08-02e ⑥) — 시대 전/후 비트 동일 검증용
