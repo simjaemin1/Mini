@@ -41,6 +41,10 @@ const JOBS = {
   furnace: anchor(2, 2, 1.55),
   kiln_s1: anchor(2, 2, 0.30),
   charcoal_kiln: anchor(2, 2, 1.25),
+  // ★[T519] 우물 — 같은 2×2 · 셋 다 top 0.30(땅 위로 서는 게 없다 — 돌 벽은 땅속)
+  well_s1: anchor(2, 2, 0.30),
+  well_s2: anchor(2, 2, 0.30),
+  well: anchor(2, 2, 0.30),
   // ★[T136] 공용 쉼터 — 움집과 **같은 발자국·같은 용마루고**. 같아야 한다:
   //   클라가 지붕을 고정 오프셋으로 놓으므로 틀이 다르면 자리가 어긋난다(같은 값인지 아래 ④가 잰다).
   shelter_roof: anchor(6, 4, EAVE + 2.5 * SLOPE + 0.4),

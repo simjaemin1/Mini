@@ -28,6 +28,7 @@
 #
 # 실행:  python3 scripts/building_render.py        (pip `bpy` 5.0.1 — 굽는 기계 정본)
 #        BLD_ONLY=hut_roof,granary … 일부만
+#        BLD_ICONS=1 … 아이콘만([T519] 우물 — `ICON_BUILD` · 배치는 `icons-postprocess.js`)
 # 결과:  scripts/building_renders/*.png + building_anchors.json
 # 고증: 청동기 후기(송국리) — 지상 통나무 벽 + 맞배 이엉, 큰집 8×8 굴립주, 고상곳간 5×3(문 없음·사다리).
 
@@ -585,6 +586,244 @@ def charcoal_kiln():
         add(o, M['coal'])
 
 
+# =============================================================================
+# ★★[T519 2026-09-29] 우물 — 대구 동천동 1호(석조) · 발자국 2×2(노·숯가마와 **같은 앵커 계약** · 같은 틀).
+#   수는 **서버 정본** `server/well-stages.js WELL_SRC` 에서 읽는다(아래 `_well_src` — 사본 0):
+#     아가리 110×79㎝ · 깊이 61㎝ · 벽 2단(좁아진다) · 벽 자갈 10~20㎝.
+#   유도(새 수 0):
+#     · 단 높이 = 깊이 ÷ 단 수 · 아랫단은 **돌 한 켜(평균 15㎝)만큼** 좁다(벽이 돌 한 켜 두께로 안쪽에 선다)
+#     · 단마다 자갈 = ⌈π × 평균 지름 ÷ 돌 평균⌉ = 20 — 서버 `WELL_PEBBLES`(40 = 20 × 2단)와 **같은 식**
+#       (그림 속 돌이 곧 서버가 먹는 자갈 40이다: 쌓는 중 = 30 은 벽에 · 10 은 곁에 · 완성 = 40 이 벽에)
+#     · 파낸 흙 = 판 부피(두 단 타원기둥) — 둔덕 둘의 부피 합이 그 값이다
+#     · 물 높이 = 두 단의 경계(아랫단 = 물 나는 모래·자갈층 · 출토 보고 "물이 스며 나오는 모래 자갈돌까지") —
+#       ⓘ 서버에 수위는 없다(그림의 선택 · 이 카메라 30° 에선 바닥이 안 보여 경계보다 낮으면 물이 안 보인다).
+#     · 물 색 = 게임 물 셰이더의 깊은 물(`10-r1-terrain WATER_FS` r26 g64 b96 · sRGB → 선형)
+#     · 다진 바닥 = 노 터와 같은 반지름(`_furn_base` 0.80 — 시설 둘레를 다진 자리 문법)
+#   ★땅속이 있는 첫 시설이다 — 렌더엔 지면이 없어서 구덩이의 **바깥**(땅에 묻힌 벽 뒤)이 그대로 보인다.
+#     ⇒ **가림막 지면(Holdout)** 을 깐다: 아가리만 뚫린 지면 고리가 땅속을 가리고, 제 화소는 투명으로 나간다
+#       (게임 지면이 그 자리를 채운다). 캐릭터 시트의 홀드아웃(몸이 도구를 가린다)과 같은 수법이다.
+#   단계 = 서버 `well_site` stage + 완공 `well`(클라 `36-r2-building` 이 `well_s{stage}` · `well` 을 고른다).
+#     well_s1 착공 구덩이(두 단으로 판 흙벽 · 파낸 흙 둔덕) · well_s2 자갈 벽 쌓는 중(아랫단 20 + 윗단 뒤쪽 반 10 · 곁에 10)
+#     · well 완성(자갈 40 · 물). ⓘ 서버 공정은 둘이라(`WELL_STAGES` — 파기 · 벽 두르기 한 번) 지금 터는 stage 1 뿐이다.
+# =============================================================================
+def _well_src():
+    """서버 정본 `WELL_SRC` 를 **읽는다**(㎝ → m). 표를 옮겨 적지 않는다."""
+    import re
+    src = open(os.path.join(HERE, "..", "server", "well-stages.js"), encoding="utf-8").read()
+    def nums(pat):
+        m = re.search(pat, src)
+        if not m:
+            raise RuntimeError(f"well-stages.js 에서 못 읽었다: {pat}")
+        return [float(x) for x in m.groups()]
+    mouth = nums(r"mouthCm:\s*\[(\d+),\s*(\d+)\]")
+    depth = nums(r"depthCm:\s*(\d+)")[0]
+    tiers = int(nums(r"tiers:\s*(\d+)")[0])
+    stone = nums(r"stoneCm:\s*\[(\d+),\s*(\d+)\]")
+    return {"A": mouth[0] / 200.0, "B": mouth[1] / 200.0, "depth": depth / 100.0, "tiers": tiers,
+            "stone_min": stone[0] / 100.0, "stone_max": stone[1] / 100.0,
+            "mean_mouth": (mouth[0] + mouth[1]) / 200.0, "mean_stone": (stone[0] + stone[1]) / 200.0}
+
+
+WELL = None   # 굽기 때 채운다(모듈 적재만으로 서버 파일을 읽지 않게 — 대조 하네스가 빌더만 꺼내 쓴다)
+
+
+def _well():
+    global WELL
+    if WELL is None:
+        S = _well_src()
+        th = S["depth"] / S["tiers"]
+        per = int(math.ceil(math.pi * S["mean_mouth"] / S["mean_stone"]))       # 단마다 자갈(서버 WELL_PEBBLES 와 같은 식)
+        tiers = []
+        for k in range(S["tiers"]):                                              # 윗단 → 아랫단 · 단마다 돌 한 켜씩 좁다
+            tiers.append({"a": S["A"] - k * S["mean_stone"], "b": S["B"] - k * S["mean_stone"],
+                          "z0": -k * th, "z1": -(k + 1) * th})
+        vol = sum(math.pi * t["a"] * t["b"] * th for t in tiers)                  # 판 부피 = 파낸 흙
+        WELL = dict(S, n_tiers=S["tiers"], th=th, per=per, tiers=tiers, vol=vol)   # tiers = 단 목록(윗단 → 아랫단)
+    return WELL
+
+
+M['holdout'] = None   # 첫 우물 굽기에서 만든다(아래) — 다른 건물 굽기엔 안 생긴다
+# ★물 = **게임 물이 화면에 찍히는 그 색**(`10-r1-terrain` 물 셰이더 · 깊은 물 depth=1 · 평평한 면 diff = Ld.z 0.70):
+#     r = 26·(0.55+0.5·0.70)+118·0.16 = 42 · g = 64·(0.55+0.5·0.70)+140·0.16 = 80 · b = 96·(0.60+0.45·0.70)+160·0.20 = 120
+#   를 **방출**(세기 1 · Standard 뷰 = 화소가 그 색)로 낸다 — 강물과 **같은 물로 읽혀야** 우물이다.
+#   ⓘ 반사 재질로 두면 구덩이 그늘에 묻혀 검은 구멍이 된다(1패스 육안: 물이 안 읽혔다).
+WELL_WATER_SRGB = (42, 80, 120)
+
+
+def _well_water_mat():
+    if M.get('well_water') is None:
+        m = bpy.data.materials.new("well_water"); m.use_nodes = True
+        nt = m.node_tree
+        for n in list(nt.nodes):
+            nt.nodes.remove(n)
+        out = nt.nodes.new("ShaderNodeOutputMaterial"); em = nt.nodes.new("ShaderNodeEmission")
+        lin = tuple(((c / 255.0 + 0.055) / 1.055) ** 2.4 for c in WELL_WATER_SRGB)
+        em.inputs[0].default_value = (lin[0], lin[1], lin[2], 1.0)
+        em.inputs[1].default_value = 1.0
+        nt.links.new(em.outputs[0], out.inputs["Surface"])
+        M['well_water'] = m
+    return M['well_water']
+
+
+def _holdout_mat():
+    if M['holdout'] is None:
+        m = bpy.data.materials.new("holdout"); m.use_nodes = True
+        nt = m.node_tree
+        for n in list(nt.nodes):
+            nt.nodes.remove(n)
+        out = nt.nodes.new("ShaderNodeOutputMaterial"); ho = nt.nodes.new("ShaderNodeHoldout")
+        nt.links.new(ho.outputs[0], out.inputs["Surface"])
+        M['holdout'] = m
+    return M['holdout']
+
+
+def _mesh(name, verts, faces, mat):
+    me = bpy.data.meshes.new(name); me.from_pydata(verts, [], faces); me.update()
+    o = bpy.data.objects.new(name, me); scene.collection.objects.link(o)
+    for pgn in me.polygons:
+        pgn.use_smooth = False
+    return add(o, mat)
+
+
+def _ell(a, b, n, z, rr=None):
+    """타원(발자국 가운데) 위 n 점. rr 를 주면 원(반지름 rr)."""
+    out = []
+    for i in range(n):
+        t = 2 * math.pi * i / n
+        out.append((FCX + math.cos(t) * (rr if rr else a), FCY + math.sin(t) * (rr if rr else b), z))
+    return out
+
+
+def _ring_band(inner, outer, name, mat):
+    """같은 점 수의 두 고리 사이 띠(사각형 면) — 지면 고리·턱·벽에 쓴다."""
+    n = len(inner)
+    faces = [(i, (i + 1) % n, n + (i + 1) % n, n + i) for i in range(n)]
+    return _mesh(name, inner + outer, faces, mat)
+
+
+def _well_ground():
+    """지면 둘 — ⓐ 다진 바닥(보이는 흙 고리 · 아가리 ~ 노 터 반지름) ⓑ 그 바깥 가림막 지면(Holdout · 투명으로 나간다)."""
+    W_ = _well(); n = 48
+    mouth = _ell(W_["A"], W_["B"], n, 0.0)
+    _ring_band(mouth, _ell(0, 0, n, 0.0, rr=0.80), "well_yard", M['soil2'])     # 0.80 = `_furn_base` 다진 바닥
+    _ring_band(_ell(0, 0, n, 0.0, rr=0.80), _ell(0, 0, n, 0.0, rr=4.0), "well_holdout", _holdout_mat())
+
+
+def _well_pit():
+    """판 구덩이 — 단마다 흙벽(타원 띠) · 단 사이 턱 · 바닥(젖은 모래·자갈). 땅속이라 가림막 지면 안쪽만 보인다."""
+    W_ = _well(); n = 40
+    T = W_["tiers"]
+    for k, t in enumerate(T):
+        _ring_band(_ell(t["a"], t["b"], n, t["z0"]), _ell(t["a"], t["b"], n, t["z1"]), f"well_wall{k}", M['soil'])
+        if k + 1 < len(T):                                                       # 턱 — 윗단 바닥에서 아랫단 아가리까지
+            nx = T[k + 1]
+            _ring_band(_ell(t["a"], t["b"], n, t["z1"]), _ell(nx["a"], nx["b"], n, t["z1"]), f"well_ledge{k}", M['soil2'])
+    last = T[-1]
+    bot = _ell(last["a"], last["b"], n, last["z1"])
+    _mesh("well_bottom", [(FCX, FCY, last["z1"])] + bot,
+          [(0, 1 + i, 1 + (i + 1) % n) for i in range(n)], M['soil2'])
+
+
+def _well_stones(tier, count, seed, keep=None):
+    """한 단의 자갈 한 켜 — 돌 `count` 개를 그 단의 **윗머리**(그 단 아가리 높이) 타원 둘레에 두른다.
+    윗단 켜 = 땅 높이 테두리(아가리를 두른 돌 고리 — 이 카메라에서 앞쪽 돌까지 보여 '돌 우물'로 읽힌다) ·
+    아랫단 켜 = 턱 높이(완성 땐 물가). 서버 식이 단마다 **한 바퀴**(둘레 ÷ 돌 평균)라 그림도 단마다 한 켜다.
+    `keep(ang)` 이 거짓인 각도는 건너뛴다(쌓는 중) — 난수는 건너뛰어도 먼저 뽑아 남은 돌 자리가 안 움직인다."""
+    W_ = _well(); t = W_["tiers"][tier]
+    random.seed(seed)
+    placed = 0
+    for i in range(count):
+        ang = 2 * math.pi * i / count + random.uniform(-0.06, 0.06)
+        r = random.uniform(W_["stone_min"], W_["stone_max"]) / 2
+        rot = random.uniform(0, 3.14)
+        if keep and not keep(ang):
+            continue
+        x = FCX + math.cos(ang) * (t["a"] - r * 0.8)
+        y = FCY + math.sin(ang) * (t["b"] - r * 0.8)
+        bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=r, location=(x, y, t["z0"] - r * 0.25))
+        o = bpy.context.active_object
+        o.scale = (1.1, 1.1, 0.78); o.rotation_euler = (0, 0, rot)
+        add(o, M['stone'])
+        placed += 1
+    return placed
+
+
+CLOD_R = (0.13, 0.19)   # 흙덩이 반지름 — 가마 구덩이(`kiln_s1`) 둔덕 흙덩이와 같은 수 · 같은 눌림(1.3·1.3·0.55)
+
+
+def _well_spoil():
+    """파낸 흙 — 아가리 **뒤쪽 반**(화면 위 · 아가리를 안 가린다)에 흙덩이를 두 줄로 쌓은 둔덕.
+    흙덩이 수 = ⌈판 부피 ÷ 흙덩이 평균 부피⌉ (흙덩이 = 반지름 CLOD_R 균등 · 눌린 타원체 ⁴⁄₃π·1.3²·0.55·E[r³])."""
+    W_ = _well()
+    r0, r1 = CLOD_R
+    er3 = (r1 ** 4 - r0 ** 4) / (4 * (r1 - r0))                    # 균등분포 r 의 E[r³]
+    clod = 4.0 / 3.0 * math.pi * 1.3 * 1.3 * 0.55 * er3
+    n = int(math.ceil(W_["vol"] / clod))
+    random.seed(521)
+    top = W_["tiers"][0]
+    outer = (n * 2 + 2) // 3                                         # 바깥 줄 ⅔ · 안 줄(위에 얹힘) ⅓
+    for i in range(n):
+        row = 0 if i < outer else 1
+        m = outer if row == 0 else n - outer
+        j = i if row == 0 else i - outer
+        ang = math.radians(135 + 180 * (j + 0.5) / m) + random.uniform(-0.05, 0.05)   # 뒤쪽 반(−x−y 가 화면 위)
+        rr = random.uniform(r0, r1)
+        off = (0.42 if row == 0 else 0.28) + random.uniform(-0.03, 0.03)
+        x = FCX + math.cos(ang) * (top["a"] + off)
+        y = FCY + math.sin(ang) * (top["b"] + off)
+        bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=rr, location=(x, y, 0.05 + 0.07 * row))
+        o = bpy.context.active_object; o.scale = (1.3, 1.3, 0.55)
+        add(o, M['soil'])
+    return n
+
+
+def _well_pile(n, seed):
+    """곁에 부려 둔 자갈 `n` 개 — +x 쪽(화면 오른쪽) 다진 바닥 가장자리에 **무더기**로(아래 ⅗ · 가운데 ³⁄₁₀ · 꼭대기).
+    둔덕(뒤쪽 반)과 떨어지고 아가리 오른쪽 끝도 안 가리는 자리."""
+    W_ = _well()
+    random.seed(seed)
+    cx, cy = FCX + 0.85, FCY
+    for i in range(n):
+        r = random.uniform(W_["stone_min"], W_["stone_max"]) / 2
+        k = i / max(1, n)
+        lay, spread = (0, 0.15) if k < 0.6 else ((1, 0.08) if k < 0.9 else (2, 0.02))
+        bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=r,
+                                              location=(cx + random.uniform(-spread, spread), cy + random.uniform(-spread, spread),
+                                                        r * 0.7 + lay * 0.085))
+        o = bpy.context.active_object
+        o.scale = (1.1, 1.1, 0.78); o.rotation_euler = (0, 0, random.uniform(0, 3.14))
+        add(o, M['stone'])
+
+
+def well_s1():
+    """① 착공 구덩이 — 두 단으로 판 흙벽 + 파낸 흙 둔덕(자갈은 아직)."""
+    _well_ground(); _well_pit(); _well_spoil()
+
+
+def well_s2():
+    """② 자갈 벽 쌓는 중 — 아랫단 한 바퀴(20) + 윗단 뒤쪽 반(10 · 카메라 반대편부터) + 곁에 남은 자갈 10 = 40."""
+    W_ = _well()
+    _well_ground(); _well_pit(); _well_spoil()
+    per = W_["per"]
+    _well_stones(1, per, 531)
+    far = lambda ang: math.cos(ang - math.radians(225)) > 0          # 뒤쪽 반(−x−y 쪽 = 화면 위쪽)
+    placed = _well_stones(0, per, 533, keep=far)
+    _well_pile(W_["per"] * W_["n_tiers"] - per - placed, 537)
+
+
+def well():
+    """완성 우물 — 두 단 자갈 켜(20 × 2 = 40) + 두 단 경계까지 찬 물 · 파낸 흙은 치웠다.
+    물은 턱을 살짝 넘어(1㎝) 윗단 타원을 채운다 — 아랫단 켜는 물가에서 머리만 내민다."""
+    W_ = _well()
+    _well_ground(); _well_pit()
+    for k in range(W_["n_tiers"]):
+        _well_stones(k, W_["per"], 541 + k)
+    up = W_["tiers"][0]
+    wz = up["z1"] + 0.01                                                 # 물 높이 = 두 단의 경계(턱) + 1㎝
+    ring = _ell(up["a"], up["b"], 48, wz)
+    _mesh("well_water", [(FCX, FCY, wz)] + ring, [(0, 1 + i, 1 + (i + 1) % 48) for i in range(48)], _well_water_mat())
+
+
 JOBS = [
     ("hut_roof", hut_roof, 6.0, 4.0, EAVE_M + 2.5 * SLOPE + 0.4),
     # ★[T136] 공용 쉼터 — **움집과 같은 W·D·top**(그래야 틀 392×328 · 앵커 164.0/130.4 가 같다).
@@ -604,11 +843,40 @@ JOBS = [
     # ★숯가마 — 같은 2×2 계약, 2단계
     ("kiln_s1", kiln_s1, 2.0, 2.0, 0.30),
     ("charcoal_kiln", charcoal_kiln, 2.0, 2.0, 1.25),
+    # ★[T519] 우물 — 같은 2×2 계약 · 셋 다 **노 터·가마 구덩이와 같은 틀**(top 0.30 = 200×117 · 앵커 100.0/15.3).
+    #   땅 위로 서는 것이 없다(돌 벽은 땅속 · 둔덕 0.28m) — 그래서 높이도 착공 단계 둘과 같다.
+    ("well_s1", well_s1, 2.0, 2.0, 0.30),
+    ("well_s2", well_s2, 2.0, 2.0, 0.30),
+    ("well", well, 2.0, 2.0, 0.30),
 ]
+# ═══════════════ 아이콘 [T519] ═══════════════
+# ★`BLD_ICONS=1` 이면 **아이콘만** 굽고 끝낸다(`nature_render.py` 의 `NAT_ICONS` 문법) — 건물 스프라이트 경로는 한 줄도 안 지난다.
+#   모델은 스프라이트와 **같은 빌더**(새 형상 0) · 프리셋은 `render_icon_pass`(압축·FLIP 없음 · 아이콘 태양 · 512²).
+#   ⚠가림막 지면(Holdout)은 **액자 bbox 에서만 뺀다** — 반지름 4m 고리가 bbox 를 먹으면 우물이 점이 된다.
+#     그림에는 남는다(땅속 벽을 가리는 일은 아이콘에서도 같다).
+#   배치: `node scripts/icons-postprocess.js scripts/building_renders/icons public/assets/icons` → 96² · 키 = 건물 종류(`well`).
+ICON_OUT = os.path.join(OUTDIR, "icons")          # `scripts/building_renders/` 는 이미 gitignore(중간 산물)
+ICON_BUILD = [("well", well)]
+
+
 # ═══════════════ 굽기 ═══════════════
 # ★[T103] `__main__` 가드 — 대조 하네스가 **빌더만** 꺼내 쓸 수 있어야 한다(편입 증명 · T101 문법).
 if __name__ == '__main__':
   ONLY = [k for k in os.environ.get('BLD_ONLY', '').split(',') if k]
+  if os.environ.get('BLD_ICONS') == '1':
+      os.makedirs(ICON_OUT, exist_ok=True)
+      for (key, fn) in ICON_BUILD:
+          if ONLY and key not in ONLY:
+              continue
+          OBJS.clear()
+          fn()
+          rc.bake_transforms()                  # ⚠squash_z 는 안 먹인다 — 아이콘 프리셋은 압축이 없다
+          frame = [o for o in OBJS if not (o.data.materials and o.data.materials[0] is M['holdout'])]
+          size = rc.render_icon_pass(frame, os.path.join(ICON_OUT, key + ".png"))
+          print(f"[bld-icon] {key}: {rc.RES_ICON}^2 (size={size:.3f}m · 액자 {len(frame)}/{len(OBJS)})")
+          cleanup()
+      print("[bld-icon] DONE ->", ICON_OUT)
+      sys.exit(0)
   anchors = {}
   for (key, fn, W, D, top) in JOBS:
       if ONLY and key not in ONLY:
