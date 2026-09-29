@@ -31,11 +31,24 @@ function anchorDays() {
   return { summer: Math.round(a.summerMid), winter: Math.round(a.winterMid) };
 }
 
-/** 얼린 시계에서 **기대되는 수** — `outdoorCold`·`tempAt` 은 (day,night,elev) 의 순수 함수라
- *  부하·벽시계와 무관하다. 하네스는 이 값과 대조하면 되고, 문턱을 손으로 고르지 않아도 된다. */
+/** 얼린 시계에서 **기대되는 수** — `outdoorCold`·`tempAtT` 은 (day,night,elev) 의 순수 함수라
+ *  부하·벽시계와 무관하다. 하네스는 이 값과 대조하면 되고, 문턱을 손으로 고르지 않아도 된다.
+ *
+ *  ★★[T515 ⓪-a 2026-09-29] **서버가 얼린 시계를 재는 그 한 점**을 그대로 묻는다.
+ *   T484 ① 이 기온을 분수 게임일의 연속 함수로 바꾸면서 `zone.js gameDayT` 의 얼린 가지가
+ *   t = day + f · ph = f (f = 밤이면 `PH.midnight` 아니면 `PH.noon`)로 재게 됐다(`hintOf(day, night, 0, t, ph)`).
+ *   이 픽스처는 그대로 `tempAt(day, night)` = `tempAtT(day, 0, f)`(t = **정수** day)를 기대했다 —
+ *   시각(ph)은 같고 **연주기·편차·배율을 읽는 t 만 f 일 어긋난다**(0.35 · 0.85 일).
+ *   실측: 한 해 730 반날 가운데 545 곳에서 0.05℃ 문턱을 넘는다(315 밤 기대 −2.6 · 서버 −2.4 · 133 낮 29.2 · 29.1) ⇒
+ *   `e2e-breath` 24/1 · `e2e-frost` 31/2 · `e2e-cold ①` 이 **날이 아니라 이 한 점**에서 빨갰다(날은 이미 `anchors()` 에서 읽는다 · 리터럴 0).
+ *   ⇒ f 는 `Wx.PH`(세계 `dayPhaseRatio` 유도 · 새 수 0)에서 읽는다 — 서버 얼린 가지가 바뀌면 이 한 줄이 따라간다(`setClock` 이 빨강으로 알린다). */
+function frozenT(day, night) {
+  const f = night ? Wx.PH.midnight : Wx.PH.noon;
+  return { t: (day | 0) + f, ph: f };
+}
 function expectAt(day, night) {
-  const d = day | 0, n = !!night;
-  return { day: d, night: n, cold: Wx.outdoorCold(d, n, 0), tempC: +Wx.tempAt(d, n, 0).toFixed(1) };
+  const d = day | 0, n = !!night, z = frozenT(d, n);
+  return { day: d, night: n, cold: Wx.outdoorCold(d, n, 0, 0, z.t, z.ph), tempC: +Wx.tempAtT(z.t, 0, z.ph).toFixed(1) };
 }
 
 /** 시계를 세우고 **세계가 그렇게 말할 때까지 기다린다.**
@@ -123,4 +136,4 @@ async function waitInWorld(page, opts) {
   return { ok: false, waited: Date.now() - t0 };
 }
 
-module.exports = { anchorDays, expectAt, setClock, waitVillages, waitInWorld };
+module.exports = { anchorDays, frozenT, expectAt, setClock, waitVillages, waitInWorld };
