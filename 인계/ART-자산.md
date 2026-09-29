@@ -20,6 +20,7 @@
 | `scripts/icon_render.py` | 인벤 아이콘(자원·야금 사슬 등) · **공용 모듈 씀** | `icon_renders/*.png` → `icons-postprocess.js` → `public/assets/icons/` | 없음(bbox 중심) |
 | **`scripts/fields_render.py`** | 밭 세계 스프라이트 **8군 × 4단계**[T79c] | `field_renders/*.png` → `rc.downscale_png` 64px → `public/assets/crops/` | — |
 | `scripts/char_render.py` | 캐릭터 스프라이트시트 | `public/assets/char/` | 프레임 상자 메타 JSON |
+| **`scripts/char_export_gltf.py`** ★T522 신규 | 사람 한 벌 **glTF** — `char_render.py` 장면(소체·12본 리그·포즈 함수)을 그대로 세워 클립 셋(서기·걷기·조준) + 가죽옷 · 새 형상 0 | `public/assets/char3d/char_body.glb` + `char3d_meta.json` | 없음 — 시트 앵커(`char_meta.json` anchorX/Y)를 3D 카메라가 그대로 쓴다 · 잠금 `char3d.lock.json`(바이트 · 입력 지문) · 정본 `인계/C3-클라3D.md` |
 | `scripts/bridge_render.py` | 다리 | `public/assets/bridge/` | — |
 | `scripts/bake-mountain.py` · `pack-mountain.py` | 산 | `public/assets/mountains/` | `mountain_anchors.json` |
 
@@ -1979,3 +1980,23 @@ T103 이 "3분의 2" 라 적은 것을 여기서 더 좁힌다.
 * 파낸 흙 **둥근 둔덕 둘** = "빵 두 덩이"로 읽혔다 → 가마 구덩이의 흙덩이 문법으로 뒤쪽 반 두 줄(두 줄 사이 틈에 풀이 비치면 줄무늬가 된다 — 줄 간격을 좁혔다).
 * 돌을 단 **한가운데 높이**에 두르면 앞쪽 돌이 땅에 가려 **흰 구슬 한 줄**만 보였다 → 단의 **윗머리**에 두른다(윗단 켜 = 땅 높이 테두리 → 앞쪽 돌까지 보여 '돌 우물'로 읽힌다).
 * 물을 반사 재질(게임 물 기본색)로 두면 구덩이 그늘에 묻혀 **검은 구멍**이 된다 → 게임 물 화면색 방출.
+
+## 26. T522 (2026-09-29) — 사람 하나를 3D 로 · glTF 파이프 한 줄 (세션8)
+
+> 전문 `보고/T522_2026-09-29.md` · 정본 `인계/C3-클라3D.md`(새 파일 — 3D 층의 카메라·그리는 자리·가림·재는 자리는 거기). 가지 `batch/char-3d-0929`(승인 대기). §25 는 T519 가지(우물)의 몫이다.
+> 재민 확정(2026-09-29): 최종은 3D · **사람·동물만 3D** · 세계·시설은 2D · **시트 굽기 투자는 여기서 멈춘다**.
+
+| 항목 | 값 |
+|---|---|
+| 굽는 기계 | pip `bpy` 5.0.1 · 동봉 `io_scene_gltf2` 5.0.21 · `python3 scripts/char_export_gltf.py` |
+| 장면 | `char_render.py` 원문을 표지 줄 `# ═══ 공유 프레임 박스 ═══` **앞까지** 실행해 세운다(굽기·시트 저장 안 지남 · `--sheetdir=<임시>` 로 부른다 — 안 그러면 `assets-src/char_body.blend` 를 다시 쓴다) — 새 형상 0 |
+| 산물 | `char_body.glb` 356,768B(몸 7 · 가죽옷 5 · 뼈 12 · 클립 셋 NLA) · `char3d_meta.json`(클립 길이 = 판 ÷ fps: 서기 4.444s · 걷기 0.8s · 조준 1.0s · 메시 이름 · zsq · 태양·하늘) · `char3d.lock.json` |
+| 누르기 | ZSQ 는 **안 굽는다**(리그 스케일 1 = 참 3D) — 엔진이 부모 스케일 (1, zsq, −1)로 누르고 거울을 세운다(시트의 "포즈한 다음 누르기" 순서 · 좌우 뒤집기와 같은 그림) |
+| 열쇠 눈금 | 90fps — 클립 fps 셋(0.9·10·2)의 판이 전부 정수 프레임에 떨어지는 가장 작은 수(60 이면 서기가 4.433s 로 짧아졌다) |
+| 잠금 | 값 = sha1 앞 16자(glTF 는 화소가 아니라 **바이트**가 자산) · `_입력` = `char_render.py`·`poses.json`·내보내기 자신의 지문 — 하나라도 바뀌면 `e2e-char3d ⓐ` 가 빨갛다 ⇒ 다시 굽고 잠금을 같이 올린다 · 두 번 구워 바이트 동일(실측) |
+| three.js | `public/vendor/three.0.186.1.min.js`(코어 + GLTFLoader + SkeletonUtils → 전역 `THREE` · MIT 전문 동봉 · CDN 0) · `bash scripts/vendor-three.sh` · `CREDITS.md` §2·§5 |
+| 맞춤 | 8방향 서기 0판(몸 + 가죽옷): 발밑 줄 Δ 0(방향 2 만 +1px) · 발 가운데 ≤ 0.32px · IoU ≥ 0.983 — **시트 앵커 규약 그대로**(원점 = 발밑 = 타일 앵커) |
+| 옷 | 시트 옷 층 72장(재질 6 × 클립 12) 3,678KB ↔ 메시 한 벌 · 16방향 돌림판 16/16 다른 그림 |
+
+### ★시트와 3D 가 다른 것(적기만 — 재민 눈)
+시트는 굽고 나서 **먹선 1px · 셀 4단**(`char_render.py` T96 후처리)을 거친다. 3D 층엔 그 후처리가 없다 — 실루엣은 같고(IoU ≥ 0.983) 색·선이 다르다(`e2e-char3d ⓑ` 색 Δ 칸). 3D 쪽 "먹선·셀" 을 셰이더로 옮길지는 소체 품질 카드 몫(회부).
