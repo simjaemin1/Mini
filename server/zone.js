@@ -1408,6 +1408,26 @@ function isBridgeTileLocal(localX, localY) {
   if (!BRIDGE_CELLS.size) return false;
   return BRIDGE_CELLS.has(_cellKey(Math.floor(localX / 32), Math.floor(localY / 32)));
 }
+// ★★[T527 2026-09-29] **마을이 지은 다리** — 크루가 다리를 완공하면(villages.js `_t527BridgeDay` · 손잡이 `T527_BRIDGE_ACT` 기본 끔)
+//   그 셀을 **이 집합에 더한다**. 통행 판정은 여전히 위 단일 술어 하나(`isTerrainBlockedLocal` → `isBridgeTileLocal`)다 — 규약 신설 0.
+//   · 막힘 비트(T356)·커널 지형 비트(T461)는 유도값이라 환호와 같이 통째로 영점 · 클라엔 `bridges_add` 로 방송(클라 콜라이더 미러 · 렌더)
+//   · welcome 은 `bridgePayload()` — 지은 다리가 0 이면 **종전 그 배열 그대로**(`ZONE.bridges` 같은 참조 · 끔 = 비트 동일)
+//   ⚠영속 0(재기동하면 시딩 다리만 — 회부).
+const BRIDGE_BUILT = [];
+function addBridgeCells(flat) {
+  const add = [];
+  for (let i = 0; i + 1 < (flat || []).length; i += 2) {
+    const cx = flat[i] | 0, cy = flat[i + 1] | 0, k = _cellKey(cx, cy);
+    if (BRIDGE_CELLS.has(k)) continue;
+    BRIDGE_CELLS.add(k); BRIDGE_BUILT.push(cx, cy); add.push(cx, cy);
+  }
+  if (!add.length) return 0;
+  if (_BLK_BITS) _BLK_BITS.fill(0);
+  if (_WW) _WW.clearTerrain();
+  try { broadcast({ type: 'bridges_add', cells: add }); } catch (e) {}
+  return add.length / 2;
+}
+function bridgePayload() { return BRIDGE_BUILT.length ? (ZONE.bridges || []).concat(BRIDGE_BUILT) : (ZONE.bridges || null); }
 // ★★[11차 T3 환호] 도랑 셀 — **마을이 소유한 사물**(village_buildings 'ditch')이라 정적 ZONE 설정이 아니라
 //   SimVillages.init 직후 런타임으로 채운다(아래 refreshDitchCells). 다리와 같은 규약: 서버 단일 술어 한 곳만 고치면
 //   플레이어·NPC·A*·야생·전쟁 콜라이더가 동시에 반영된다(규약 신설 없음).
@@ -3762,6 +3782,7 @@ SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, is
   // ★[11차 실측] 교역 거리행렬의 코스 그리드(4셀 서브샘플)가 **폭 2셀 다리를 절반이나 못 본다**(28개 중 15개).
   //   다리 술어를 넘겨 주면 villages.js 가 코스 셀 안을 훑어 '이 블록에 다리가 지난다'를 살려낸다.
   isBridgeLocal: isBridgeTileLocal,
+  addBridgeCells,   // ★[T527] 마을 크루가 다리를 완공하면 그 셀을 존 콜라이더에 더한다(끔이면 안 불린다)
   // ★[11차 채광 재설계] NPC 광부가 **플레이어와 같은 광맥 장부**(minedCells)를 판다.
   //   villages.js 는 재고를 깎고 oFrac 을 읽기만 한다 — 산출 아이템은 econ 이 land.ore 로 계산(이중 계상 금지).
   //   ★[T1 2026-09-01] 시각은 `SimVillages.dayNow()` 로 읽는다 — **일틱 마감 중이면 경계의 순간**이다.
@@ -4832,7 +4853,7 @@ async function _acceptConnection(ws, req, C) {
       banditCamps: Bandits.clientCamps(), // §11 도적: 소굴·야영 마커 1종 — 이후 bandit_camps가 변경분 방송
       roads: Roads.clientRoads(), // §16 답압 길: 등급 셀 flat [cx,cy,lv,...] — 이후 road_cells가 변경분 방송
     soil: Soil.clientSoil(),    // [배치 20 B] 타일 상태: 기준선에서 벗어난 셀 flat [cx,cy,qv,geo,ore,...] — 이후 tile_state가 변경분 방송
-      bridges: (ZONE.bridges || null), // ★[다리 층] 통나무 널다리 셀 flat [cx,cy,...] — 정적(맵 사물)이라 welcome 1회
+      bridges: bridgePayload(), // ★[T527] 지은 다리 포함(0 이면 종전 그대로) · ★[다리 층] 통나무 널다리 셀 flat [cx,cy,...] — 정적(맵 사물)이라 welcome 1회
       ditches: ditchPayload(),         // ★[11차 T3 환호] 도랑 셀 flat [cx,cy,...] — 마을 소유 사물(부팅 후 불변)이라 welcome 1회
       buildings: activeChunkBuildings(),
       rooms: Rooms.allRooms().map(Rooms.wireRoom),   // ★[배치 18 ①] 방은 서버가 판정한다 — 클라는 받아 쓰기만(사본 방지)
@@ -5363,7 +5384,7 @@ async function _acceptConnection(ws, req, C) {
     banditCamps: Bandits.clientCamps(), // §11 도적: 소굴·야영 마커 1종 — 이후 bandit_camps가 변경분 방송
     roads: Roads.clientRoads(), // §16 답압 길: 등급 셀 flat [cx,cy,lv,...] — 이후 road_cells가 변경분 방송
     soil: Soil.clientSoil(),    // [배치 20 B] 타일 상태: 기준선에서 벗어난 셀 flat [cx,cy,qv,geo,ore,...] — 이후 tile_state가 변경분 방송
-    bridges: (ZONE.bridges || null), // ★[다리 층] 통나무 널다리 셀 flat [cx,cy,...] — 정적(맵 사물)이라 welcome 1회
+    bridges: bridgePayload(), // ★[T527] 지은 다리 포함(0 이면 종전 그대로) · ★[다리 층] 통나무 널다리 셀 flat [cx,cy,...] — 정적(맵 사물)이라 welcome 1회
     ditches: ditchPayload(),         // ★[11차 T3 환호] 도랑 셀 flat [cx,cy,...] — 마을 소유 사물(부팅 후 불변)이라 welcome 1회
     buildings: activeChunkBuildings(),
     rooms: Rooms.allRooms().map(Rooms.wireRoom),   // ★[배치 18 ①] 방은 서버가 판정한다 — 클라는 받아 쓰기만(사본 방지)
@@ -10521,6 +10542,7 @@ function __testBind() {
     tryFurnaceStart, tryFurnaceAdvance, tryFurnaceSmelt,
     tryKilnStart, tryKilnAdvance, tryKilnBurn,
     _furnaceClaimOf, _furnaceCanUse, isTerrainBlockedLocal, isWaterTileLocal,
+    isBridgeTileLocal, addBridgeCells, bridgePayload, bridgeCellCount: () => BRIDGE_CELLS.size,   // ★[T527] 지은 다리 하네스
     newClaimId: () => `c${nextClaimId++}`,
     // ── 채광·선광 E2E(test-mining.js §⑨ 다광종) ──
     mineOreCell, trySortOre, minedCells, ITEM_LABEL_SERVER,

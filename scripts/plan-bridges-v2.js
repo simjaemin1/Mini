@@ -159,5 +159,8 @@ const flat = [];
 for (const f of found) for (const c of f.cells) flat.push(c[0], c[1]);
 console.log(`추가할 flat 셀 ${flat.length / 2}개:`);
 console.log(JSON.stringify(flat));
-if (ocean.length) console.log(`\n항해 층 필요(다리 금지): ${ocean.map(o => o.villages.join(',') + `(${o.n.toLocaleString()}셀)`).join(' · ')}`);
+// ★[T527 2026-09-29] **착공 후보 형**(존 설정 `bridgeSites` 한 줄) — 위 셀을 **그대로** 섬별로 묶어 낸다(규칙 0줄 · 출력 모양만).
+//   마을 크루가 이 셀을 짓는다(손잡이 `T527_BRIDGE_ACT` · 끔이면 존이 이 줄을 안 읽는다). v = 그 섬의 마을(짓는 이) · span = 물 칸 수.
+console.log(`\nbridgeSites 형: ${JSON.stringify(found.map((f) => ({ v: f.villages, span: f.span.len, cells: [].concat(...f.cells) })))}`);
+if (ocean.length) console.log(`\n항해 층 필요(다리 금지):${ocean.map(o => o.villages.join(',') + `(${o.n.toLocaleString()}셀)`).join(' · ')}`);
 console.log(`총 ${Date.now() - t0}ms`);
