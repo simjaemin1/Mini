@@ -10010,7 +10010,8 @@ function tryKilnAdvance(player, buildingId) {
 const T509_WELL = process.env.T509_WELL === '1';
 const WellStages = require('./well-stages');
 const WELL_SPEC = { siteType: 'well_site', doneType: 'well', ko: '우물', icon: '🪣', stages: WellStages.WELL_STAGES, kind: 'well',
-                    doneHint: '우물가에서 E — 목을 축이고, 물병이 있으면 민물을 담는다' };
+                    // ★[T519 ③] 그릇 이름은 **이름표 정본**에서 — 물가 문구(`🏺 ${…[Salt.VESSEL]}이 있어야 물을 뜬다`)와 같은 문법(글자 무변 · 사본 0).
+                    doneHint: `우물가에서 E — 목을 축이고, ${ITEM_LABEL_SERVER[Salt.VESSEL]}이 있으면 민물을 담는다` };
 function tryWellStart(player, atX, atY) { if (!T509_WELL) return; return _siteStart(player, atX, atY, WELL_SPEC); }
 function tryWellAdvance(player, buildingId) {
   if (!T509_WELL) return;

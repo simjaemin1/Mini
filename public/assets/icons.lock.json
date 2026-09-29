@@ -40,7 +40,10 @@
   "hut_s2": "1bc2c5aaef267b11",
   "hut_s3": "0290a1f4f507fbf3",
   "kiln_s1": "d3eb0bf32df66605",
-  "shelter_roof": "c2c4068d82174beb"
+  "shelter_roof": "c2c4068d82174beb",
+  "well": "5683ecbcb23a077b",
+  "well_s1": "96072e97a0be928e",
+  "well_s2": "fc65916cd7b93e8a"
  },
  "crops": {
   "bean_0": "4d57da1550aebf79",
@@ -276,6 +279,7 @@
   "vegetable": "3006a3aeeeb446c6",
   "water_bottle": "9070687ded7a51c1",
   "water_dropwort": "d987a657d0efe101",
+  "well": "4c62824ed465b6a7",
   "wheat": "c35d563d58a18f0f",
   "wood": "cdbe862de0bb1384",
   "yam": "0bb3c0a5111393df"
@@ -860,11 +864,11 @@
  },
  "_상자": {
   "_": "이 잠금표를 마지막으로 다시 쓴 상자. 그림을 구운 상자가 아니다 [T260]. 같은 커밋인데 그림이 다르면 굽기 로그의 [box] 줄과 이 칸을 먼저 견준다.",
-  "cpu": "Intel(R) Xeon(R) Processor @ 2.80GHz",
+  "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
   "threads": 2,
   "simd": "fma avx avx2 avx512f avx512dq avx512bw avx512vl avx512_vnni",
   "node": "v22.22.2",
-  "commit": "68336c45",
+  "commit": "d8e0b108",
   "당시": "2026-09-29"
  }
 }

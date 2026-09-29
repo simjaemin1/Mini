@@ -143,7 +143,9 @@
                 hut_s1: [164.0, 20.2], hut_s2: [164.0, 81.1], hut_s3: [164.0, 129.1],
                 // ★노(爐)·숯가마 — 발자국 2×2, 서버 FURNACE_STAGES/CHARCOAL_KILN_STAGES 와 1:1
                 furn_s1: [100.0, 15.3], furn_s2: [100.0, 36.2], furn_s3: [100.0, 49.1], furnace: [100.0, 55.3],
-                kiln_s1: [100.0, 15.3], charcoal_kiln: [100.0, 46.0] };   // building_anchors.json 동기(scripts/test-building-anchor.js가 결정적 재계산으로 대조)
+                kiln_s1: [100.0, 15.3], charcoal_kiln: [100.0, 46.0],
+                // ★[T519] 우물(서버 `well_site`·`well` · 손잡이 `T509_WELL`) — 같은 2×2 계약 · 셋 다 노 터와 같은 틀(땅 위로 서는 게 없다)
+                well_s1: [100.0, 15.3], well_s2: [100.0, 15.3], well: [100.0, 15.3] };   // building_anchors.json 동기(scripts/test-building-anchor.js가 결정적 재계산으로 대조)
     for (const k in A) {
       const im = new Image();
       im.onload = () => { im._ox = A[k][0]; im._oy = A[k][1]; _bldSpr[k] = im; };

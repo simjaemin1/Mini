@@ -265,6 +265,29 @@
       ctx.textAlign = 'left';
       return;
     }
+    // ★★[T519] 우물 — 서버 `well_site`(stage) → 완공 `well`(`server/well-stages.js` · 손잡이 `T509_WELL`).
+    //   끔이면 이 두 종류가 서버에서 **안 온다** ⇒ 이 갈래를 안 지난다(끔 화소 동일).
+    //   노·숯가마와 **같은 2×2 앵커 계약**이라 같은 델타 변환이다. 터 = `well_s{stage}` · 완공 = `well`.
+    //   ⓘ 공정 수 `2` 는 `WELL_STAGES.length` 의 사본이다 — `test-well-art` 가 둘을 맞댄다.
+    //   ⓘ 라벨에 "(클릭=시공)" 을 **안** 붙인다: 우물 터를 누르는 배선이 클라에 아직 없다(회부) — 라벨이 거짓말을 안 하게.
+    if (type === 'well_site' || type === 'well') {
+      const st = (building?.data?.stage) | 0;
+      const done = type === 'well';
+      const _sp = _bldSpr[done ? 'well' : ('well_s' + st)], _d = building && building.data;
+      if (_sp && _d && _d.x0 != null) {
+        const _dx = (_d.x0 - 0.5) * CL_BUILDING_SIZE - building.x, _dy = (_d.y0 - 0.5) * CL_BUILDING_SIZE - building.y;
+        const _ax2 = x + (_dx - _dy), _ay2 = y + (_dx + _dy) * 0.5;
+        ctx.drawImage(_sp, _ax2 - _sp._ox, _ay2 - _sp._oy);
+      } else {   // 그림이 아직 안 왔다 — 터 점선 마름모만(다른 터의 폴백과 같은 결)
+        ctx.beginPath();
+        ctx.moveTo(x, y - 10); ctx.lineTo(x + 22, y); ctx.lineTo(x, y + 10); ctx.lineTo(x - 22, y); ctx.closePath();
+        ctx.setLineDash([4, 3]); ctx.strokeStyle = '#9a8464'; ctx.lineWidth = 1.2; ctx.stroke(); ctx.setLineDash([]);
+      }
+      ctx.font = 'bold 10px sans-serif'; ctx.fillStyle = '#e6d6b6'; ctx.textAlign = 'center';
+      ctx.fillText(done ? '우물 — E=마시기·병에 담기' : `우물 터 ${st}/2단계`, x, y - 30);
+      ctx.textAlign = 'left';
+      return;
+    }
     // ★★[2026-08-03e 배치 12 ①] 마을 회관 — 터(단계)와 완공. 노·숯가마 렌더와 같은 결(2×2 앵커+라벨).
     if (type === 'village_site' || type === 'village_hall' || type === 'shelter_site') {
       const _shel = type === 'shelter_site';   // ★[T62] 쉼터 터 — 회관 터와 같은 결(굴립주 앵커+라벨). 완공 실체는 움집 스킨이라 여기 안 온다.
