@@ -17,6 +17,15 @@
 * 실측(`t498-clock.sh` · 존 → central 한 다리 왕복 150ms 지연 중계): 떠나는 존 인계 157.5 → **2.9ms** · e2e 46/0 두 팔 · 몸 T47 21/0 두 팔 · 게스트 재접속 40/0 두 팔 · 실패 쪽 최종 행 두 팔 같음(`t498-ack-timeout`).
 * ⚠ACK 시한 판의 마지막 저장은 소켓 닫힘 저장(`last_zone`=떠나는 존) — 끔에서도 그렇다. ⚠클라 `LATENCY_MS=150` 판 ⓡ2 `player_left` recover 두 팔 같음(재탄생 0 · 회부).
 
+## T513. ★★2026-09-29 — econ 하루 틱도 조각으로(`T513_DAY_SLICE` · 기본 끔 · 계산 동일)
+
+* 하루 경계의 가장 큰 조각은 **econ 한 조각**(T470 90하루 중 83 · 실제 날 새 세계 둘째 날 199ms) — T486 의 140ms 는 첫날 생활층 임업3 `gran`(곳간 증설·작물·사냥 하루)이었다.
+* econ 정본을 **구조만** 나눴다: `sim/economy-sim-v2.js tickWorldV2Parts(world)` = `{head, village(v), trade, caravans, tail}` — `tickWorldV2` 가 이것을 차례로 부른다(사본 0 · 자 둘 3시드 800일 JSON 9/9 바이트 동일 · 번들 8/0 · 랩 재인라인).
+* 켜면 `_openDayJobs` 가 econ 을 `econ:head` → `econ:vil`×마을 → `econ:trade` → `econ:caravan` → `econ:tail` 로 얹는다(이름은 전부 `econ` — 단계 순서 캐논 무변 · `/perf` 칸만 더). 앞뒤 일은 끔·켬이 같은 함수(`_econDayFixture`·`_econDayWar`·`_econDayAfter`).
+* 실측: econ 최대 조각 77 → 16ms(교역) · 마을 결산 최대 10ms · 한 프레임 최대 77 → 45ms(`test-tick-slicer ⑨`) · 실제 날 199 → 66ms · 서버 지문 45/45 동일.
+* 남은 큰 조각(회부): 생활층 한 마을 `gran` 97~186ms(드문 날) · 교역 한 조각 12~76ms · `terr` 한 마을 ~45ms.
+* `test-tick-slicer ①` 의 `≥300ms`(지은 수)를 유도로 — 대조군 하루 ÷ 가장 큰 조각 ≥ FK×NMAX(2.7) 이면 잰다 · 아니면 "잴 수 없다" 초록.
+
 ## T486. ★★2026-09-28 — 렉·핑 튐을 가르는 도구 셋 · pong 셋(`T486_PONG_SPLIT` · 기본 끔) · 기준선 = econ 하루 경계 + 틱 밖 막힘
 
 * HUD 핑은 ws 왕복이고 pong 은 **존 이벤트 루프 안**에서 답한다 — 루프가 막힌 초에 온 ping 은 망이 멀쩡해도 그만큼 튄다(`/perf` 왕복 q 가 같은 줄을 기다린다 · 기준선 최대 92ms).
