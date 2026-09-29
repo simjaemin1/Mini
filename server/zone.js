@@ -5179,6 +5179,13 @@ async function _acceptConnection(ws, req, C) {
     //     좌표만으로는 등록 계정의 생애 첫 접속이 '이어하기'로 분류된다(T199 §0-ⓐ #4·#5).
     const _onbArr = Onboarding.arriveFor(url.searchParams.get('start_vid'), acct, ZONE_ID, playerId, _loadLastSeenDay);
     if (_onbArr) { sx = _onbArr.x; sy = _onbArr.y; const _g = Onboarding.startGauges(); initHunger = _g.hunger; initThirst = _g.thirst; }
+    // ★★[T520] 손잡이 `T520_ARRIVE_INDOOR`(기본 끔 · 부를 때 읽는다) — 켜면 도착은 그 마을 **공용 쉼터 안**(문간 안쪽 한 칸)이다.
+    //   자리는 죽음 캐논의 "마을 쉼터 문간"이 쓰는 **그 함수**(`SimVillages.shelterOf`)가 낸다 — 새 규약 0 · 좌표를 짓지 않는다.
+    //   쉼터가 아직 없으면(백필 전 · 유저 마을) 종전 어귀 그대로다. 끄면 이 줄은 아무것도 안 한다(비트 동일).
+    if (_onbArr && process.env.T520_ARRIVE_INDOOR === '1') {
+      let _sh = null; try { _sh = SimVillages.shelterOf ? SimVillages.shelterOf(_onbArr.vid) : null; } catch (e) { _sh = null; }
+      if (_sh && Number.isFinite(_sh.ix) && Number.isFinite(_sh.iy)) { sx = _sh.ix; sy = _sh.iy; }
+    }
     // Phase 5-G: spawn 좌표를 cell center에 정확히 snap (시각 NE 16px 치우침 fix)
     // cell center = cellTile * 32 + 16. 모든 entity가 cell 격자에 align되어 보임.
     sx = Math.floor(sx / 32) * 32 + 16;

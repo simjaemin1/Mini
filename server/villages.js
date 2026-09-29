@@ -6794,6 +6794,7 @@ function shelterOf(vid) {
   //     T43 이 `nearestVillageWake` 에서 이미 밟은 자리라, 같은 실수를 여기서 반복하지 않는다.
   return { vid: vid | 0, cx: c.cx, cy: c.cy,
     x: (c.cx - 2.5) * SZ, y: (c.cy - 0.5) * SZ,                       // 문 앞(설 자리)
+    ix: (c.cx - 2.5) * SZ, iy: (c.cy - 1.5) * SZ,                     // ★[T520] 문간 **안쪽** 한 칸(실체 맨 아랫줄 cy-2 · 문과 같은 열)
     bx: (c.cx - 2.5) * SZ, by: (c.cy - 3.5) * SZ };                   // 집채 중심(렌더·거리 판정용)
 }
 function hasShelter(vid) { return !!shelterOf(vid); }
