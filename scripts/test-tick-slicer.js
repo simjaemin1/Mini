@@ -267,8 +267,9 @@ async function arm(label, sliceMs, extraEnv) {
   // ★★[T513 2026-09-29 · T523 뒤집음] 다섯째 팔 — **되돌림 팔**(`T513_DAY_SLICE=0` = econ 한 조각). 같은 스냅샷 · 같은 날 수.
   //   T523 이 econ 조각을 **기본 켬**으로 올려 위 네 팔이 이미 켬이다 ⇒ 이 팔이 끔(종전)이다.
   const D2 = await arm('day0', 16, { T513_DAY_SLICE: '0' });
-  // ★★[T523 2026-09-29] 여섯째 팔 — 생활층 한 마을도 쉼표(사냥꾼 한 명)에서 나눈다(`T523_LIFE_SLICE=1`).
-  const L2 = await arm('life', 16, { T523_LIFE_SLICE: '1' });
+  // ★★[T523 2026-09-29 · T528 뒤집음] 여섯째 팔 — **생활층 되돌림 팔**(`T523_LIFE_SLICE=0` = 마을 하나 = 조각 하나).
+  //   T528 이 생활층 쉼표(사냥꾼 한 명 = 조각 하나)를 **기본 켬**으로 올려 위 다섯 팔이 이미 켬이다 ⇒ 이 팔이 끔(종전)이다.
+  const L2 = await arm('life0', 16, { T523_LIFE_SLICE: '0' });
   //   ★★대조는 **같은 마을 · 같은 날**끼리만 뜻이 있다. 저장은 1마을/틱으로 배수되므로 스냅샷 순간
   //     팔마다 어제치가 남은 마을 수가 다르다(실측: base 49곳이 526일 · head 50곳이 527일).
   //     그걸 섞어 세면 "쪼갰더니 세계가 갈렸다"는 **가짜 결론**이 나온다 — 첫 판이 정확히 그랬다.
@@ -351,27 +352,27 @@ async function arm(label, sliceMs, extraEnv) {
       console.log(`  · 바이트 일치(정보) — 되돌림 ↔ 켬 동일 ${B9.same}·다름 ${B9.diff}(건너뜀 ${B9.skip})`);
     }
 
-    // ⑩ ★★[T523] **생활층 쉼표**(`T523_LIFE_SLICE=1`) ↔ 조각내기 팔(끔) — ⑧ 과 같은 자(경제의 크기) · 창 전체의 가장 큰 생활층 조각.
-    console.log('\n  ⑩ 생활층 쉼표(`T523_LIFE_SLICE=1`) ↔ 조각내기(끔)');
+    // ⑩ ★★[T523 · T528] **생활층 쉼표**(기본 켬) ↔ 되돌림(`T523_LIFE_SLICE=0` · 마을 하나 = 조각 하나) — ⑧ 과 같은 자(경제의 크기) · 창 전체의 가장 큰 생활층 조각.
+    console.log('\n  ⑩ 생활층 쉼표(기본 켬) ↔ 되돌림(`T523_LIFE_SLICE=0`)');
     const l0 = L2 && L2.econTick && L2.econTick.last;
-    ok(!!l0, '⑩ [전제] 쉼표 팔이 부팅·수확됐다', l0 ? `${l0.day}일` : '없음');
+    ok(!!l0, '⑩ [전제] 되돌림 팔이 부팅·수확됐다', l0 ? `${l0.day}일` : '없음');
     if (l0) {
-      const SB = (B.econTick && B.econTick.stages) || {}, SL = (L2.econTick && L2.econTick.stages) || {};
+      const SB = (L2.econTick && L2.econTick.stages) || {}, SL = (B.econTick && B.econTick.stages) || {};   // SB = 되돌림(끔) · SL = 켬(조각내기 팔)
       const lifeOff = (SB['1마을:life전체'] && SB['1마을:life전체'].max) || 0;
       const stepMax = (SL['life:쉼표·max'] && SL['life:쉼표·max'].max) || 0;
-      console.log(`  · 쉼표 ${fmt(l0)}`);
-      console.log(`  · 창 전체 — 끔 한 마을 생활층 최대 ${lifeOff}ms(사냥 하루 ${(SB['1마을:gran'] && SB['1마을:gran'].max) || 0}ms) · 켬 쉼표 조각 최대 ${stepMax}ms · 켬 조각 ${l0.chunks}(끔 ${b.chunks})`);
-      ok(SL['life:쉼표'] != null && l0.chunks > b.chunks, '⑩ 생활층이 쉼표에서 더 나뉘었다(조각 수 증가)', `조각 ${b.chunks} → ${l0.chunks}`);
-      ok(JSON.stringify(l0.order) === JSON.stringify(CANON), '⑩ 단계 순서가 정본과 같다', JSON.stringify(l0.order));
-      ok(L2.econTick.days >= DAYS, `⑩ ${DAYS}일이 모두 마감됐다`, `${L2.econTick.days}일`);
-      ok(stepMax > 0 && stepMax <= lifeOff, '⑩ ★쉼표 조각 최대 ≤ 끔 한 마을 생활층 최대(창 전체)', `${stepMax}ms ≤ ${lifeOff}ms`);
-      const M10 = cmpMass('/tmp/slicer-head-z.db', '/tmp/slicer-life-z.db');
-      console.log(`  · 끔 ↔ 쉼표 — 인구 ${M10.pop1} vs ${M10.pop2} · 식량 ${M10.f1.toFixed(0)} vs ${M10.f2.toFixed(0)} (${(M10.fRel * 100).toFixed(2)}%) · ${M10.n}곳`);
+      console.log(`  · 되돌림 ${fmt(l0)}`);
+      console.log(`  · 창 전체 — 되돌림 한 마을 생활층 최대 ${lifeOff}ms(사냥 하루 ${(SB['1마을:gran'] && SB['1마을:gran'].max) || 0}ms) · 켬 쉼표 조각 최대 ${stepMax}ms · 켬 조각 ${b.chunks}(되돌림 ${l0.chunks})`);
+      ok(SL['life:쉼표'] != null && SB['life:쉼표'] == null && b.chunks > l0.chunks, '⑩ 켬(기본)이 생활층을 쉼표에서 더 나눴다 · 되돌림엔 쉼표 조각 0', `조각 ${l0.chunks}(되돌림) → ${b.chunks}`);
+      ok(JSON.stringify(l0.order) === JSON.stringify(CANON), '⑩ 되돌림도 단계 순서가 정본과 같다', JSON.stringify(l0.order));
+      ok(L2.econTick.days >= DAYS, `⑩ 되돌림 ${DAYS}일이 모두 마감됐다`, `${L2.econTick.days}일`);
+      ok(stepMax > 0 && stepMax <= lifeOff, '⑩ ★쉼표 조각 최대 ≤ 되돌림 한 마을 생활층 최대(창 전체)', `${stepMax}ms ≤ ${lifeOff}ms`);
+      const M10 = cmpMass('/tmp/slicer-life0-z.db', '/tmp/slicer-head-z.db');
+      console.log(`  · 되돌림 ↔ 켬 — 인구 ${M10.pop1} vs ${M10.pop2} · 식량 ${M10.f1.toFixed(0)} vs ${M10.f2.toFixed(0)} (${(M10.fRel * 100).toFixed(2)}%) · ${M10.n}곳`);
       ok(M10.n >= 10 && M10.dPop / Math.max(1, M10.pop1) <= 0.005, '⑩ ★★인구가 실질 동일(≤0.5%)', `${M10.pop1} vs ${M10.pop2}`);
       ok(M10.dPopMax <= 3, '⑩ ★★마을 한 곳도 크게 안 갈렸다(≤3명)', `최대 차 ${M10.dPopMax}명`);
       ok(M10.fRel <= 0.02, '⑩ ★★곳간 식량 총량이 실질 동일(≤2%)', `${(M10.fRel * 100).toFixed(2)}%`);
-      const B10 = cnt('/tmp/slicer-head-z.db', '/tmp/slicer-life-z.db');
-      console.log(`  · 바이트 일치(정보) — 끔 ↔ 쉼표 동일 ${B10.same}·다름 ${B10.diff}(건너뜀 ${B10.skip})`);
+      const B10 = cnt('/tmp/slicer-life0-z.db', '/tmp/slicer-head-z.db');
+      console.log(`  · 바이트 일치(정보) — 되돌림 ↔ 켬 동일 ${B10.same}·다름 ${B10.diff}(건너뜀 ${B10.skip})`);
     }
   } catch (e) { ok(false, '⑧ 발산 대조 실패', e.message); }
 
