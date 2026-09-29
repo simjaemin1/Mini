@@ -367,12 +367,18 @@ function diff(a, b, box) {
   //   없으면 아무 방향이나 골라 걷다가 못 빠져나온다 — 판정이 아니라 **탐색 반경이 낡았다.**
   //   (⑦ 이 이미 '±30셀 안에 안 가려지는 자리가 있다'를 보였으므로 빠져나갈 곳은 있다.)
   //   ⇒ 8방향 × 60셀까지 훑어 **가장 가까운 빈 자리**를 고르고, 걸으면서 매번 다시 고른다.
-  const pick = () => page.evaluate(() => {
+  // ★★[T515 ⓪-b 2026-09-29] **서버가 막은 길**은 빼고 고른다(`skip`) — 클라 지형이 모르는 벽이 있다.
+  //   5판 실측: 출발 셀(한반도 로컬 2147,1958)에서 'sa'(월드 +y) 한 셀 앞 (2147,1959)을 **서버는 바위**로, 클라는 빈 땅으로 본다 —
+  //   T408(존 경계 접합)이 서버 지형에 **이웃 닛폰 산맥**의 접합분을 더했고, 존 하나만 띄운 이 하네스의 클라는 닛폰 자료를 못 받는다.
+  //   그래서 'sa' 는 다섯 판 **전부** 0셀이었고, 판이 갈린 것은 여섯 걸음마다 다시 고른 방향이 'sa' 로 남느냐('wd' 로 바뀌느냐)였다(✗ 2 · ✓ 3).
+  //   ⇒ 걸어도 **한 셀도 안 간** 방향은 막힌 길이다 — 그 방향을 빼고 다시 고른다(판정 무변 · 새 수 0 · 셀 = 32px 격자).
+  const pick = (skip) => page.evaluate((sk) => {
     const me = window.__getMyAbs();
     const cand = [['s', 1, 1], ['d', 1, -1], ['a', -1, 1], ['w', -1, -1],
                   ['sd', 1, 0], ['sa', 0, 1], ['wd', 0, -1], ['wa', -1, 0]];
     let best = null;
     for (const [k, sx, sy] of cand) {
+      if (sk.indexOf(k) >= 0) continue;                          // 걸어 봤는데 한 셀도 못 간 길
       // ★★목표만 보고 고르면 안 된다 — **가는 길**이 뚫려 있어야 한다.
       //   바위 안은 아무것도 안 가리지만 갈 수가 없고(첫 함정), 목표가 뭍이어도 중간이
       //   막혀 있으면 못 간다(둘째 함정). 실측: 40번 걸어 11셀만 가고 벽에 붙어 미끄러졌다.
@@ -385,19 +391,27 @@ function diff(a, b, box) {
       }
     }
     return best;
-  });
-  const dir0 = await pick();
+  }, skip || []);
+  const cellNow = () => page.evaluate(() => { const m = window.__getMyAbs(); return [Math.round(m.x / 32), Math.round(m.y / 32)]; });
+  const stuck = [];                                             // ★[T515] 한 셀도 못 간 방향
+  const dir0 = await pick(stuck);
   const st = await page.evaluate(() => { const m = window.__getMyAbs(); return [Math.round(m.x / 32), Math.round(m.y / 32)]; });
   console.log('  [⑥ 탈출] ' + JSON.stringify(dir0) + ' · 출발 셀 ' + st);
   let far = null, dir = dir0 || { k: 's', d: 99 };
   for (let i = 0; i < 40; i++) {
+    const c0 = await cellNow();
     for (const kk of dir.k.split('')) await page.keyboard.down(kk);
     await sleep(1100);
     for (const kk of dir.k.split('')) await page.keyboard.up(kk);
     far = await page.evaluate(() => window.__mtOccDbg);
     if (far && far.n === 0 && far.fade < 0.2) break;
+    const c1 = await cellNow();
     // ★방향을 매번 다시 고르면 앞뒤로 **진동**한다(실측). 길이 막혔을 때만 바꾼다.
-    if (i % 6 === 5) { const nd = await pick(); if (nd) dir = nd; }
+    //   ★[T515] "막혔다"를 **걸음으로** 안다 — 한 셀도 못 갔으면 그 방향을 빼고 곧바로 다시 고른다.
+    if (c0[0] === c1[0] && c0[1] === c1[1]) {
+      if (stuck.indexOf(dir.k) < 0) stuck.push(dir.k);
+      const nd = await pick(stuck); if (nd) dir = nd;
+    } else if (i % 6 === 5) { const nd = await pick(stuck); if (nd) dir = nd; }
   }
   // ★두 판정이 어긋나는지 본다: 위치 탐색용 __mtOccAt 과 실제로 그려진 것 기준 __mtOccDbg
   const cross = await page.evaluate(() => {
@@ -407,7 +421,8 @@ function diff(a, b, box) {
   });
   console.log('  [⑥ 대조] __mtOccAt.n=' + cross.at + ' vs __mtOccDbg.n=' + cross.dbg +
               ' · 출발 ' + st + ' → 도착 ' + cross.me +
-              ' (이동 ' + Math.round(Math.hypot(cross.me[0] - st[0], cross.me[1] - st[1])) + '셀)');
+              ' (이동 ' + Math.round(Math.hypot(cross.me[0] - st[0], cross.me[1] - st[1])) + '셀)' +
+              ' · 막힌 길 ' + (stuck.length ? stuck.join(',') : '0'));
   ok('⑥ 벗어나면 반투명이 꺼진다 (상수 아님)', !!far && far.n === 0 && far.fade < 0.5,
     `'${dir.k}' 방향 이동 후 가린 산 ${far && far.n}장 · 반투명 진행도 ${far && far.fade}`);
 

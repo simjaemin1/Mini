@@ -115,7 +115,11 @@ const sampleBreath = (page, periods) => page.evaluate((k) => new Promise((res) =
   ok(A.inWorld, '입장(나)');
   const fx = await FX.setClock(A.page, { day: WN, night: true });
   ok(fx.ok && fx.got.tempC < 0, `겨울 밤에 세웠다 — 서버 기온 ${fx.got && fx.got.tempC}℃ (day ${WN} · 하늘은 한낮에 묶여 밝다)`);
-  await A.page.waitForFunction(() => !!(window.__charMeta && window.__charMeta.mouthScreen) && typeof window.__breathDbg === 'function', { timeout: 60000 }).catch(() => {});
+  // ★[T515 ⓪-a] 기다림은 **바라는 값**으로 — 내 몸이 시트로 선 판까지(`__charDbg[myPid].on`).
+  //   픽스처가 얼린 시계의 한 점을 맞추자 `setClock` 이 60초 헛기다림 → 1초로 앉았고, 그 60초가 가려 주던 경주가 드러났다:
+  //   시트 192장이 오기 전에 계기를 읽어 `sheet:false`(가지 1판 실측 · 도형 경로로 그린 판).
+  await A.page.waitForFunction(() => !!(window.__charMeta && window.__charMeta.mouthScreen) && typeof window.__breathDbg === 'function'
+    && !!(window.__charDbg && window.__charDbg[myPid] && window.__charDbg[myPid].on), { timeout: 60000 }).catch(() => {});
   const pre = await A.page.evaluate(() => ({ meta: !!(window.__charMeta && window.__charMeta.mouthScreen), on: window.__breathDbg().on, pid: myPid,
     room: window.__roomDbg(), sheet: !!(window.__charDbg && window.__charDbg[myPid] && window.__charDbg[myPid].on) }));
   ok(pre.meta && pre.on && pre.sheet, '★계기 — 메타에 입 자리 표가 있고 · 손잡이 켬 · 내 몸이 **시트로** 그려진다', JSON.stringify({ meta: pre.meta, on: pre.on, sheet: pre.sheet }));
