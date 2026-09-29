@@ -1356,6 +1356,40 @@ const isWildSpot = (x, y) =>
     clearPlayers();
   }
 
+  // ═══ ㉑ [T520] 도착 = 쉼터 **안** — 죽음 캐논의 그 함수(`shelterOf`)가 문간 안쪽 한 칸도 낸다 ═════════
+  say('\n㉑ [T520] 쉼터 안 도착 — 문간 안쪽 한 칸(같은 함수 · 새 규약 0)');
+  {
+    const SZc = H.BUILDING_SIZE;
+    const list = SimVillages.clientVillages() || [];
+    for (let k = 0; k < 12; k++) { const r = H._shelterBackfill(); if (!(r.left > 0)) break; await sleep(800); }
+    // ★행이 메모리에 있는 쉼터만 판정한다(⑯ 과 같은 이유 — 벽 행을 읽어야 문이 보인다)
+    const rows = [...H.buildings.values()];
+    let n = 0, okCells = 0, bad = [], indoorN = 0;
+    for (const v of list) {
+      const sh = SimVillages.shelterOf ? SimVillages.shelterOf(v.id) : null;
+      if (!sh || !Number.isFinite(sh.ix)) continue;
+      const door = H._hutDoorFrom(rows, sh.bx, sh.by, SZc * 6);
+      if (!door || !door.rect) continue;
+      n++;
+      const [x0, y0, x1, y1] = door.rect, icx = Math.floor(sh.ix / SZc), icy = Math.floor(sh.iy / SZc);
+      const inRect = icx >= x0 && icx <= x1 && icy >= y0 && icy <= y1;
+      const aboveDoor = icx === door.cell[0] && icy === door.cell[1] - 1;          // 문 칸 바로 위(안쪽) 한 칸
+      const noWall = !rows.some((b) => b.type === 'wall' && Math.floor(b.x / SZc) === icx && Math.floor(b.y / SZc) === icy);
+      if (inRect && aboveDoor && noWall) okCells++; else bad.push(`${v.name}:(${icx},${icy}) 렉트 ${door.rect} 문 ${door.cell}`);
+      if (H.isIndoorAt({ x: sh.ix, y: sh.iy, floor: 0 })) indoorN++;
+    }
+    pre(n > 0, '행이 메모리에 선 쉼터가 있다(문을 읽을 수 있다)', `${n}곳`);
+    ok(n > 0 && okCells === n, '★★㉑ⓐ `shelterOf` 의 안쪽 칸(`ix`·`iy`)은 **문 바로 안쪽 · 벽 없는 · 집채 안** 한 칸이다(전수)',
+      bad.length ? bad.slice(0, 3).join(' | ') : `${okCells}/${n}곳`);
+    // ★관측(판정 아님) — 몸의 실내 판정(`Rooms.roomAt`)은 마을 움집·쉼터를 방으로 안 센다(문 개체 0 · 마을 태그 바닥은 시드 제외 · rooms.js 머리글).
+    //   ⇒ 쉼터 안에 서도 `COLD_INDOOR_MULT` 가 **안 걸린다**. 캐논("쉼터 안 = 실내")과 세계가 갈리는 자리 — 보고 §4 회부.
+    say(`    관측: 쉼터 안쪽 칸이 몸에게 실내인 곳 ${indoorN}/${n}`);
+    const zsrcA = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
+    ok(/_onbArr && process\.env\.T520_ARRIVE_INDOOR === '1'/.test(zsrcA) && /SimVillages\.shelterOf\(_onbArr\.vid\)/.test(zsrcA) && /sx = _sh\.ix; sy = _sh\.iy;/.test(zsrcA)
+       && (zsrcA.match(/process\.env\.T520_ARRIVE_INDOOR/g) || []).length === 1,
+      '★㉑ⓑ 손잡이 `T520_ARRIVE_INDOOR` 는 **한 곳 · 부를 때 읽는다** · 켜면 도착이 `shelterOf` 의 안쪽 칸이다(끄면 그 줄은 아무것도 안 한다)');
+  }
+
   say(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
   for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
   process.exit(fail ? 1 : 0);
