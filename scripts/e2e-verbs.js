@@ -312,10 +312,22 @@ async function waitHttp(url, tries = 600) {
     await R.mouse.down({ button: 'right' });
     await R.mouse.up({ button: 'right' });
   };
+  // ★[T507] **빈 땅에도 메뉴가 뜬다**(걷기 · 살피기 · 씨앗이면 심기). 이 하네스는 **대상 위** 메뉴를 잰다 —
+  //   탭이 대상을 비껴 땅을 짚으면 T507 전엔 메뉴 0 이라 다시 두드렸고, 이제는 땅 메뉴가 뜬다.
+  //   그걸 대상 메뉴로 읽고 첫 줄(걷기)을 누르면 엉뚱한 곳으로 걸어간다(⑧-c "더 못 간다" · ⑬ "아무도 안 눌렸다"가 그랬다).
+  //   ⇒ 땅 메뉴는 **"못 짚었다"** 로 친다: 닫고 없던 것으로 돌려준다(T507 전과 같은 뜻 · 대상 메뉴엔 걷기·살피기가 없다).
   const menuLabels = () => R.evaluate(() => {
     const m = document.getElementById('ctxMenu');
-    return m ? [...m.children].map((el) => (el.textContent || '').trim()) : null;
+    if (!m) return null;
+    const l = [...m.children].map((el) => (el.textContent || '').trim());
+    if (l.includes('걷기') && l.includes('살피기') && l.every((x) => /^(걷기|살피기|심기 — )/.test(x))) {
+      if (typeof hideContextMenu === 'function') hideContextMenu();
+      return null;
+    }
+    return l;
   });
+  // 날것 — 걸러 내지 않는다(④⑤ 홀드 판: 홀드가 땅 메뉴를 **열면** 그건 결함이므로 가리면 안 된다)
+  const menuRaw = () => R.evaluate(() => { const m = document.getElementById('ctxMenu'); return m ? [...m.children].map((el) => (el.textContent || '').trim()) : null; });
   // ★★[초안이 여기서 틀렸다 — 진단 훅이 답을 줬다] 탭 뒤에 **400ms 고정**으로 자고 물어봤다.
   //   실패한 판의 훅이 `{held:328, tap:true, pick:{kind:'player',down:true}, verbs:3}` 이었다 —
   //   **탭도 대상도 동사도 다 맞았는데 DOM 에 메뉴가 없었다.** 셋이 붙어 렌더 루프가 밀리면
@@ -447,15 +459,15 @@ async function waitHttp(url, tries = 600) {
     await R.mouse.down({ button: 'right' });
     await sleep(500);                                  // 홀드
     const aimDuring = await R.evaluate(() => (window.__aimDbg ? window.__aimDbg().aiming : null));
-    const menuDuring = await menuLabels();
+    const menuDuring = await menuRaw();
     await R.mouse.up({ button: 'right' });
     await sleep(1200);   // ★"안 뜬다"는 **기다린 뒤**에 말해야 뜻이 있다(안 그러면 자명 초록이다)
     const aimAfter = await R.evaluate(() => (window.__aimDbg ? window.__aimDbg().aiming : null));
-    const menuAfter = await menuLabels();
+    const menuAfter = await menuRaw();
     ok(aimDuring === true, '★★④ 홀드 중 **조준이 켜진다**(종전 무변)', String(aimDuring));
     ok(menuDuring === null, '★★④ 홀드 중 **메뉴가 안 뜬다**', JSON.stringify(menuDuring));
     ok(aimAfter === false, '★④ 떼면 조준이 꺼진다(종전 무변)', String(aimAfter));
-    ok(menuAfter === null, '★★④ 떼고 나서도 메뉴가 안 뜬다 — 빈 땅엔 동사가 없다', JSON.stringify(menuAfter));
+    ok(menuAfter === null, '★★④ 떼고 나서도 메뉴가 안 뜬다 — 홀드는 조준이다(빈 땅 **탭**의 걷기·살피기는 T507 · `e2e-ui ⑯`)', JSON.stringify(menuAfter));
   }
 
   // ── ⑤ 쓰러진 사람 위에서 **홀드**하면 조준이다(메뉴가 조준을 안 잡아먹는다) ──
@@ -468,7 +480,7 @@ async function waitHttp(url, tries = 600) {
     const aimDuring = await R.evaluate(() => (window.__aimDbg ? window.__aimDbg().aiming : null));
     await R.mouse.up({ button: 'right' });
     await sleep(1200);   // ★같은 이유 — 기다린 뒤에 "안 뜬다"고 말한다
-    const menuAfter = await menuLabels();
+    const menuAfter = await menuRaw();
     ok(aimDuring === true, '★★⑤ 몸 위에서도 **홀드는 조준**이다', String(aimDuring));
     ok(menuAfter === null, '★★⑤ 그리고 그때는 **메뉴가 안 뜬다** — 조준 사수를 안 막는다', JSON.stringify(menuAfter));
   }
