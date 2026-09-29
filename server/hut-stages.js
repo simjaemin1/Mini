@@ -73,4 +73,22 @@ const hutRawPillars = (n) => {
   return out;
 };
 
-module.exports = { HUT_STAGES, HUT_RECIPES, PSITE_COST, rawOfNeed, stageRaw, hutRaw, HUT_PILLARS_ATTESTED, stageRawPillars, hutRawPillars };
+// ── ★[T517 2026-09-29] 돌 — 주춧돌(礎石) · 한 기둥에 하나 ─────────────────────────────────────────────
+//   고증(보고/T517 §ⓐ): **송국리형**은 기둥구멍에 기둥을 박는다(주춧돌 기재 0 · 중앙 구덩이는 화덕이 아니라는 견해) ⇒ 표의 석재 0 은
+//   송국리형에 맞다. 주춧돌·돌두름 화덕은 **가락동식** 집자리의 표지다(한국고고학사전). 청동기 주춧돌 실측은 진주 대평리 옥방5지구
+//   "가로 25㎝ 세로 35㎝ 높이 8∼10㎝" · 9개(한국일보 1998-08-06). 돌 밀도는 화강암 평균 2.65~2.75 g/㎤(출처 · 보고 §ⓐ).
+//   ⇒ 주춧돌 한 개 kg = 가로 × 세로 × 높이(가운데) × 밀도(가운데) — 출처의 수만 쓴다(새 수 0). econ 단가 팔(`T517_HUT_STONE`)만 읽는다.
+const HUT_PLINTH_SRC = { cm: [25, 35], hCm: [8, 10], gcm3: [2.65, 2.75] };
+function plinthKg() {
+  const S = HUT_PLINTH_SRC, mid = (r) => (r[0] + r[1]) / 2;
+  return S.cm[0] * S.cm[1] * mid(S.hCm) * mid(S.gcm3) / 1000;
+}
+//   단계 i 의 주춧돌 kg — 기둥이 서는 단계(② 굴립주)에만 · 기둥 n 개면 n 개(`n` 을 안 주면 표의 기둥 수).
+function stageStoneKg(i, n) {
+  const need = (HUT_STAGES[i] || {}).need || {};
+  if (need.pillar == null) return 0;
+  return (n == null ? need.pillar : n) * plinthKg();
+}
+
+module.exports = { HUT_STAGES, HUT_RECIPES, PSITE_COST, rawOfNeed, stageRaw, hutRaw, HUT_PILLARS_ATTESTED, stageRawPillars, hutRawPillars,
+  HUT_PLINTH_SRC, plinthKg, stageStoneKg };

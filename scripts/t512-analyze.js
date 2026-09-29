@@ -18,6 +18,12 @@ const r1 = (x) => x == null ? '-' : (+x).toFixed(1);
 for (const dir of process.argv.slice(2)) {
   const rd = (z) => { const f = path.join(dir, `probe-${z}.jsonl`); return fs.existsSync(f) ? fs.readFileSync(f, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)) : []; };
   const H = rd('hanbando'), N = rd('nippon');
+  // ★[T518] 판의 나이 공식 — 유령에 `ow` 가 실렸으면 T518 시계 없는 나이 · 아니고 `meta.json` 에 `cap` 이 있으면 T518 중간 판(울타리 · 버림) · 없으면 T512 판(max(0, now − t)).
+  const meta = (() => { try { return JSON.parse(fs.readFileSync(path.join(dir, 'meta.json'), 'utf8')); } catch (e) { return {}; } })();
+  const ageOf = (now, ts, recvAt, ow) => { if (typeof ow === 'number') return Math.min(1500, Math.max(0, now - recvAt) + ow) / 1000;   // ★[T518] 시계 없는 나이(zone.js 와 같은 줄)
+    if (typeof ts !== 'number') return 0;
+    if (meta.cap == null) return Math.min(1500, Math.max(0, now - ts)) / 1000;
+    const lo = Math.max(0, now - recvAt); return Math.min(1500, Math.max(lo, Math.min(now - ts, lo + meta.cap))) / 1000; };
   const truth = new Map();   // playerId → [[t,x,y,vx,vy]…]
   for (const o of H) if (o.k === 's') for (const [id, x, y, vx, vy] of o.me) { if (!truth.has(id)) truth.set(id, []); truth.get(id).push([o.t, x, y, vx, vy]); }
   const at = (arr, t) => { let lo = 0, hi = arr.length - 1; if (!arr.length || t < arr[0][0] || t > arr[hi][0]) return null;
@@ -28,11 +34,11 @@ for (const dir of process.argv.slice(2)) {
   let back = null, prevTs = null, nG = 0;
   for (const o of N) {
     if (o.k !== 's') continue;
-    for (const [id, ax, ay, vx, vy, recvAt, ts] of o.gh) {
+    for (const [id, ax, ay, vx, vy, recvAt, ts, ow] of o.gh) {
       const arr = truth.get(id); if (!arr) continue;
       const tr = at(arr, o.t); if (!tr) continue;
       const spd = Math.abs(tr[2]); if (spd < 1) continue;     // 서 있는 동안은 오차가 0 이라 판정이 자명 — 움직일 때만
-      const age = (typeof ts === 'number') ? Math.min(1500, Math.max(0, o.t - ts)) / 1000 : 0;
+      const age = ageOf(o.tn != null ? o.tn : o.t, ts, recvAt, ow);   // ★[T518] 받는 존이 믿는 시각(어긋남 판은 `tn`)으로 — 비교할 참 자리는 참 시계 `o.t`
       const gx = ax + vx * age, gy = ay + vy * age;
       const e = Math.hypot(gx - tr[0], gy - tr[1]);
       const lag = lagOf(arr, o.t, ax, ay);
@@ -47,10 +53,10 @@ for (const dir of process.argv.slice(2)) {
   const maxIn = Math.max(0, ...H.filter((o) => o.k === 'max').map((o) => o.maxIn));
   const fireH = H.filter((o) => o.k === 'fire').map((o) => o.ms), fireN = N.filter((o) => o.k === 'fire').map((o) => o.ms);
   const prepH = H.filter((o) => o.k === 'post' && o.p === '/handoff_prepare').map((o) => o.ms), prepN = N.filter((o) => o.k === 'post' && o.p === '/handoff_prepare').map((o) => o.ms);
-  console.log(`\n## ${path.basename(dir)} — 유령 표본 ${nG}`);
+  console.log(`\n## ${path.basename(dir)} — 유령 표본 ${nG}${meta.skew ? ' · 받는 존 시계 ' + (meta.skew > 0 ? '+' : '') + meta.skew + 'ms' : ''}${meta.mode === 'ow' ? ' · 나이 = 받은 뒤 + ow' : meta.cap != null ? ' · [중간 판 t 울타리] 한 방향 상한 ' + meta.cap + 'ms' : ''}`);
   for (const k of ['walk', 'run']) { const R2 = rows[k]; if (!R2.e.length) continue;
     const mm = R2.mis.reduce((a, b) => a + b, 0) / R2.mis.length;
     console.log(`| ${k === 'walk' ? '걷기 64px/s' : '달리기 160px/s'} | 오차 중앙 ${r1(q(R2.e, 0.5))} · p95 ${r1(q(R2.e, 0.95))} · 최대 ${r1(Math.max(...R2.e))}px | 유령 나이 중앙 ${r1(q(R2.lag, 0.5))} · p95 ${r1(q(R2.lag, 0.95))}ms | 화살 판정 어긋남 ${(mm * 100).toFixed(1)}% (p95 오차에서 ${(miss(q(R2.e, 0.95)) * 100).toFixed(1)}%) |`); }
-  console.log(`| 흐름 | /ghost_sync ms 중앙 ${r1(q(posts, 0.5))} · p95 ${r1(q(posts, 0.95))} · 날아가는 중 최대 ${maxIn} · 실패 ${fails} · 뒤로 튐 ${back == null ? '-(끔 판은 시각 없음)' : back} | 인계 한→닛 ${r1(q(fireH, 0.5))}ms(${fireH.length}) · 닛→한 ${r1(q(fireN, 0.5))}ms(${fireN.length}) · prepare 한→닛 ${r1(q(prepH, 0.5))} · 닛→한 ${r1(q(prepN, 0.5))}ms |`);
+  console.log(`| 흐름 | /ghost_sync ms 중앙 ${r1(q(posts, 0.5))} · p95 ${r1(q(posts, 0.95))} · 날아가는 중 최대 ${maxIn} · 실패 ${fails} · 뒤로 튐 ${back == null ? '-(보낸 시각이 안 실린 판 — 끔 · T518 시계 없는 나이)' : back} | 인계 한→닛 ${r1(q(fireH, 0.5))}ms(${fireH.length}) · 닛→한 ${r1(q(fireN, 0.5))}ms(${fireN.length}) · prepare 한→닛 ${r1(q(prepH, 0.5))} · 닛→한 ${r1(q(prepN, 0.5))}ms |`);
   fs.writeFileSync(path.join(dir, 'analysis.json'), JSON.stringify({ nG, rows: Object.fromEntries(Object.entries(rows).map(([k, v]) => [k, { n: v.e.length, e50: q(v.e, 0.5), e95: q(v.e, 0.95), lag50: q(v.lag, 0.5), lag95: q(v.lag, 0.95), mis: v.mis.length ? v.mis.reduce((a, b) => a + b, 0) / v.mis.length : null }])), posts: { n: posts.length, p50: q(posts, 0.5), p95: q(posts, 0.95), maxIn, fails, back }, fire: { h: q(fireH, 0.5), n: q(fireN, 0.5), nh: fireH.length, nn: fireN.length }, prep: { h: q(prepH, 0.5), n: q(prepN, 0.5) } }, null, 1));
 }

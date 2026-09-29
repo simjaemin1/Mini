@@ -3964,7 +3964,13 @@ function _t476DenRefresh(den) {   // 갱 → 어댑터(T476: n 명 전사 · 한
   e.counts = { [job]: n };
   e.storage.food = Math.max(0, g.food || 0); e.storage.fish = 0; e.storage.meat = 0; e.storage.cooked_food = 0; e.storage.vegetable = 0;
   e.storage.weapon = real ? 0 : n; e.storage.armor = 0;
+  //   ★★[T521 2026-09-29 · 캐논 "실물이 정본"] 팔 `T521_GANG_ARMS`(끔) — 무기·갑옷은 **단이 약탈한 실물**(bandits `g.arms`) 그대로:
+  //     곳간(소굴 저장) 전부를 어댑터에 싣는다 — 동원 계획은 무기율 = min(1, 무기 ÷ 교전수), 전투 편성은 한 사람 한 자루까지만 쥐여 준다
+  //     (= 손은 한 사람 한 무기 · 남는 것은 소굴에 그대로 · 쓰러지고 달아난 도적의 무기만 흘러 이긴 쪽이 줍는다 — war-core `warWeaponFlow` 그 문).
+  //     끔이면 T502/T476 그대로(비트 동일).
+  if (_t521On()) { const a = g.arms || {}; e.storage.weapon = Math.max(0, a.weapon || 0); e.storage.armor = Math.max(0, a.armor || 0); den._den.arms0 = { weapon: e.storage.weapon, armor: e.storage.armor }; }
 }
+function _t521On() { return typeof process !== 'undefined' && !!process.env && process.env.T521_GANG_ARMS === '1'; }
 function _t476GangLive(g) {   // bandits 가 준비되지 않은 세계(하네스)는 모른다 → 살아 있다고 본다
   let camps = null; try { const B = require('./bandits'); camps = B && B.clientCamps ? B.clientCamps() : null; } catch (_) { camps = null; }
   if (!camps || !g || !g.camp) return true;
@@ -3977,6 +3983,7 @@ function _t476DenSync(w) {   // 어댑터 → 갱(전투·노획 뒤)
   const g = den._den.gang, S2 = den.econ.storage;
   g.n = den.econ.npcs.length;
   g.food = Math.max(0, (S2.food || 0) + (S2.fish || 0) + (S2.meat || 0) + (S2.cooked_food || 0) + (S2.vegetable || 0));
+  if (_t521On() && den._den.arms0) { const a = g.arms || (g.arms = {}); a.weapon = +Math.max(0, S2.weapon || 0).toFixed(6); a.armor = +Math.max(0, S2.armor || 0).toFixed(6); }   // ★[T521] 싸운 뒤 남은(또는 얻은) 실물이 단의 짐
 }
 function _t476Gang(vil) {   // 그 마을 교역로에 선 갱 중 가장 가까운 것(bandits 길목 표)
   const W = state.world; if (!W || typeof W.banditGang !== 'function') return null;
@@ -4243,7 +4250,7 @@ function _warEvacVillage(vil, now) {
 //   `/perf` 가 그대로 내준다(zone.js). 아무 동작도 바꾸지 않는다.
 const _tickPerf = { last: null, ring: [] };   // ring: 최근 200 게임일
 // ★[T1 §0] `life` 단계가 일틱의 9할이라 **그 안**을 한 겹 더 갈라 본다(계측 전용).
-const _lifeSub = { crop: 0, hunter: 0, gran: 0, pids: 0, site: 0, near: 0, headless: 0, hp: 0 };
+const _lifeSub = { crop: 0, hunter: 0, granAdd: 0, cropDay: 0, gran: 0, pids: 0, site: 0, near: 0, headless: 0, hp: 0 };   // ★[T523] `gran` 을 셋으로(곳간 증설 · 작물 하루 · 사냥 하루) — 계측 전용
 // ★[T41 §0 2026-09-01 · 계측 전용] 조각 바닥 셋의 **원인 귀속**.
 //   ⓐ 집터 탐색이 하루 몇 번 돌고 몇 번 **빈손**인가 ⓑ 교역로 A* 콜드 미스가 몇 번·얼마인가
 //   ⓒ 광맥 셀 스캔(콜드)이 몇 번·얼마인가. 전부 세기만 한다.
@@ -4357,7 +4364,7 @@ function onGameTick(now) {
 //   ★`VILLAGE_TICK_SLICE_MS=0` = **양보 끈을 뽑는다**(전부 한 프레임에) — 종전 동작이자
 //     `e2e-rtt` 의 대조군이다. 대조군이 통과하면 그 하네스는 아무것도 안 재고 있는 것이다.
 const TICK_SLICE_MS = (() => { const v = parseInt(process.env.VILLAGE_TICK_SLICE_MS || '', 10); return Number.isFinite(v) && v >= 0 ? v : 16; })();
-// ★★[T513 2026-09-29] **econ 하루 틱도 조각으로** — 손잡이 `T513_DAY_SLICE`(기본 **끔** · 끔 = 종전 한 조각 그대로).
+// ★★[T513 2026-09-29] **econ 하루 틱도 조각으로** — 손잡이 `T513_DAY_SLICE`(T513 기본 끔 → **T523 기본 켬** · `=0` = 종전 한 조각 그대로).
 //   T1 은 econ(`tickWorldV2`)을 "마을 간 원자"라 통째로 한 조각에 두었다 — 그런데 원자인 것은 교역·캐러밴·회복뿐이고
 //   마을 51곳의 결산(`tickVillage` 등)은 마을마다 제 것만 만진다. 그 한 조각이 하루 경계 막힘의 주인이다
 //   (T470 30일 90하루 중 83하루의 최대 조각 · 평균 526ms · T486 기준선 틱 max 140ms).
@@ -4366,7 +4373,14 @@ const TICK_SLICE_MS = (() => { const v = parseInt(process.env.VILLAGE_TICK_SLICE
 //     `/perf` 칸은 `econ:head`·`econ:vil`·`econ:trade`·`econ:caravan`·`econ:tail` 로 더 적는다(켬일 때만).
 //   ⚠조각 사이에 **NPC 노동이 끼어든다**(T1 이 이미 적은 그 층 — 마감 중에도 몸은 걷고 손이 곳간을 만진다) —
 //     econ 한 조각 안에선 없던 틈이 마을 사이에 생긴다 ⇒ `test-tick-slicer ⑧`(경제의 크기 A/B ≤ 문턱)이 판정한다.
-const T513_DAY_SLICE = process.env.T513_DAY_SLICE === '1';
+//   ★★[T523 2026-09-29 · ★PM 승격] **기본 켬**(되돌림 `T513_DAY_SLICE=0` = 종전 econ 한 조각 그대로) — T513 이 끔↔켬 계산 동일(자 둘 3시드 9/9 · 서버 지문 45/45)을 보였다.
+const T513_DAY_SLICE = process.env.T513_DAY_SLICE !== '0';
+// ★★[T523 2026-09-29] **생활층 한 마을도 쉼표에서 나눈다** — 손잡이 `T523_LIFE_SLICE`(기본 **끔** · 끔 = 마을 하나 = 조각 하나 그대로).
+//   해부(T523 ②): 생활층 한 마을이 가장 큰 조각인 날(첫날 임업3 137ms · 씨앗 세계 광산3·임업3 114~137ms)의 주인은 사냥꾼 하루 정산
+//   (`huntHunters` — 사냥꾼 8명이 차례로 옮길 자리를 찾는다 · 한 명 최대 16~31ms)이다. 켜면 그 사냥꾼 한 명이 조각 하나다
+//   (같은 발생기를 끝까지 도는 것과 **같은 순서** — 사이에 끼는 것은 T1 이 적은 몸의 일뿐 · `test-tick-slicer ⑩` 이 크기로 판정).
+const T523_LIFE_SLICE = process.env.T523_LIFE_SLICE === '1';
+let _t523Pause = 0;   // 쉼표에서 다른 프레임에 넘겨 준 시간의 누계(생활층 스톱워치가 그만큼 뺀다 · 계측 전용)
 
 // ★[T513] econ 조각의 앞뒤 일 — 한 조각(끔)과 여러 조각(켬)이 **같은 함수**를 부른다(사본 0 · 몸통은 종전 econ 조각 그대로 옮겼다).
 function _econDayFixture() {
@@ -4511,7 +4525,17 @@ function _openDayJobs(now) {
   // ⑩ 생활층 — **일틱의 80%**. 마을 경계로 쪼갠다. 한 조각(마을 한 곳)이 중앙 227ms 라
   //   여전히 예산을 넘는다 — 그 사실은 `/perf` 가 그대로 말하고, 그 안의 수술은 회부다(§4).
   add('life', () => { for (const k in _lifeSub) _lifeSub[k] = 0; for (const k in _lifeSubMax) delete _lifeSubMax[k]; _lifeMax = 0; _lifeMaxName = ''; });
-  for (const vil of C.vils) add('life', () => {
+  if (T523_LIFE_SLICE) for (const vil of C.vils) {
+    //   ★[T523] 켬 — 한 마을의 하루를 발생기로 들고 쉼표마다 'retry'(T85 문법 — 같은 자리 맨 앞으로 · 같은 하루 안의 다음 조각)
+    let g = null, at = 0;
+    add('life', () => {
+      try {
+        if (!g) g = _lifeDailySteps(vil); else _t523Pause += Date.now() - at;
+        if (g.next().done) return;
+        at = Date.now(); return 'retry';
+      } catch (e) { console.error(`[${state.zoneId}] 생활층 일일 훅 실패(${vil.name}):`, e.message); }
+    }, 'life:쉼표');
+  } else for (const vil of C.vils) add('life', () => {
     try { _lifeDaily(vil); } catch (e) { console.error(`[${state.zoneId}] 생활층 일일 훅 실패(${vil.name}):`, e.message); }
   });
 
@@ -6777,6 +6801,7 @@ function shelterOf(vid) {
   //     T43 이 `nearestVillageWake` 에서 이미 밟은 자리라, 같은 실수를 여기서 반복하지 않는다.
   return { vid: vid | 0, cx: c.cx, cy: c.cy,
     x: (c.cx - 2.5) * SZ, y: (c.cy - 0.5) * SZ,                       // 문 앞(설 자리)
+    ix: (c.cx - 2.5) * SZ, iy: (c.cy - 1.5) * SZ,                     // ★[T520] 문간 **안쪽** 한 칸(실체 맨 아랫줄 cy-2 · 문과 같은 열)
     bx: (c.cx - 2.5) * SZ, by: (c.cy - 3.5) * SZ };                   // 집채 중심(렌더·거리 판정용)
 }
 function hasShelter(vid) { return !!shelterOf(vid); }
@@ -7679,7 +7704,11 @@ function gameRichAt(cx, cy) {
  *   `players` 는 `state.deps.players` 와 같은 모양의 Map(부팅 전이면 null — 그때는 뺄 사람이 없다).
  *   @returns {number} 오늘 실제로 빠진 마릿수 합
  */
-function huntHunters(vil, players, day) {
+// ★★[T523 2026-09-29] 사냥꾼 **한 명마다 쉼표**(`yield`) — `_huntHuntersSteps` 가 정본 몸통이고 `huntHunters` 는 그것을 쉬지 않고 끝까지 돈다(종전 호출·값 그대로).
+//   손잡이 `T523_LIFE_SLICE` 를 켜면 하루 마감이 그 쉼표에서 프레임을 넘긴다(아래 `_lifeDailySteps`) — T523 해부: 첫날·드문 날의 생활층 막힘(임업3 137ms)의
+//   주인이 이 함수였다(사냥꾼 8명 × 옮길 자리 찾기 — 한 명 최대 16~31ms).
+function huntHunters(vil, players, day) { const g = _huntHuntersSteps(vil, players, day); let r; do { r = g.next(); } while (!r.done); return r.value; }
+function* _huntHuntersSteps(vil, players, day) {
   const m = vil && vil._gameRich; if (!m) return 0;
   let took = 0;
   // ★랩 10825 — 다른 사냥꾼이 이미 쥔 자리(분산 사냥의 기준). 먼저 모은다.
@@ -7738,6 +7767,7 @@ function huntHunters(vil, players, day) {
         hw.push(p._huntWk);
       }
     }
+    yield;   // ★[T523] 사냥꾼 한 명 끝 — 쉼표(끔이면 부르는 쪽이 곧바로 다음으로 간다)
   }
   return took;
 }
@@ -7745,12 +7775,13 @@ function huntHunters(vil, players, day) {
  * ★하루 틱 — 회복(주 단위 로지스틱) · 사냥꾼 차감 · 14일마다 `land.game` 갱신 · 절멸 셀 재정착.
  *   전부 랩 `lifeDayAll` 의 그 줄들이다(라인은 위 머리말).
  */
-function _lifeGameDay(vil, day) {
+function _lifeGameDay(vil, day) { const g = _lifeGameDaySteps(vil, day); while (!g.next().done); }   // ★[T523] 정본 몸통은 아래 발생기(쉼표 = 사냥꾼 한 명)
+function* _lifeGameDaySteps(vil, day) {
   if (_t146() === 0) return;
   const m = _huntBandBuild(vil);
   if (!m) return;
   //   ① 사냥꾼 하루치 차감 — 정본 하나(하루 틱도 하네스도 이 문으로 들어온다)
-  huntHunters(vil, state.deps && state.deps.players, day);
+  yield* _huntHuntersSteps(vil, state.deps && state.deps.players, day);
   // ② 회복 — 주 단위 배치 로지스틱(랩 10760 그대로 · r 이 느려 1차 근사 동일)
   if (day % 7 === 0) for (const [k2, g2] of m) {
     if (g2 > 0 && g2 < L_GAMEMAX) { const ng = g2 + 7 * L_GAMER * g2 * (1 - g2 / L_GAMEMAX);
@@ -7824,14 +7855,17 @@ function _t491Crew(vil) {   // 그날 나무를 한 몸 — 명부 순서 · 주
 function _t491BodyDay(vil, distPx) {   // 나무꾼 **한 몸**이 하루에 곳간에 댈 수 있는 단 = 짐 수 × 한 짐(T400 크루와 같은 두 함수)
   return _t341TripsPerDay(vil, distPx, 1) * _t400PerLoad('wood');
 }
-function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(디스폰 누수 자가치유) + 신축 판단 + 작물 하루 성장
+// ★[T523] `_lifeDaily` 는 정본 몸통(`_lifeDailySteps` 발생기)을 쉬지 않고 끝까지 돈다 — 종전 호출·순서·값 그대로.
+//   쉼표는 사냥꾼 한 명마다 하나뿐이다(`_huntHuntersSteps`). 손잡이 `T523_LIFE_SLICE` 를 켜면 하루 마감(`_openDayJobs`)이 그 쉼표에서 프레임을 넘긴다.
+function _lifeDaily(vil) { const g = _lifeDailySteps(vil); while (!g.next().done); }
+function* _lifeDailySteps(vil) {   // 게임일 경계: 크루·클레임 재대사(디스폰 누수 자가치유) + 신축 판단 + 작물 하루 성장
   if (!LIFE_ON || !vil._terrSet || !vil._terrSet.size || !vil.econ) return;
   _lifeVL();
   // ★[T449] 결산 문 — 켬이면 이 마을이 오늘 관측 마을인가(끔이면 묻지 않는다 · 거짓 · 비트 동일)
   const _t449S = T449_BODY_DAY && _t449Seen(vil);
   const _t449T = T449_BODY_DAY ? (vil._t449 || (vil._t449 = { d: 0, seen: 0, hlFarm: 0, hlSite: 0, woodBody: 0, forageBody: 0 })) : null;   // 계측 전용 누계(켬만 · 회계 아님)
   if (_t449T) { _t449T.d++; if (_t449S) _t449T.seen++; }
-  let _lt = Date.now(); const _lt0 = _lt;   // ★[T1 §0] 하위 스톱워치(계측 전용)
+  let _lt = Date.now(); let _lt0 = _lt;   // ★[T1 §0] 하위 스톱워치(계측 전용) · ★[T523] 쉼표에서 쉰 시간은 빼 준다(아래 `_t523Pause`)
   const _sub = (nm) => { const t = Date.now(), d = t - _lt; _lt = t; _lifeSub[nm] += d; if (d > (_lifeSubMax[nm] || 0)) _lifeSubMax[nm] = d; };
   // ★[LIFE_* 튜닝 계측] 하루 누계를 '어제치'로 확정하고 리셋 — /lifedbg가 dCl/dSt/dTk로 노출한다.
   vil._dCl = vil._mCl || 0; vil._dSt = vil._mSt || 0; vil._dTk = vil._mTk || 0;
@@ -8049,13 +8083,15 @@ function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(�
   _lifeEconLink(vil, 'farmer');   // ★[T190] 시각 농부 ↔ econ 농부 — **같은 규칙**(수확이 그 농부의 배율을 쓴다 · 손잡이 끄면 배율이 1 이라 무해)
   _sub('hunter');
   try { _lifeGranAdd(vil); } catch (e) { console.error(`[${state.zoneId}] 생활층 곳간 증설 실패(${vil.name}):`, e.message); }   // ★[곳간 증설 런타임] 재고 비례 링 증설(랩 _granAdd)
+  _sub('granAdd');   // ★[T523] 계측 전용 — 종전 `gran` 의 첫 토막
   // 작물 하루 틱(랩 7920 동형): 김매기·물대기 놓치면 품질↓ · 병충해 발생(내일 방제 일감) — 상태·연출만(식량은 econ 소유)
   if (vil._crop && vil._crop.size) {
     const day = state.dayMs ? gameDayOf(_dayNow()) : 0;
     for (const [k, e] of vil._crop) cropDayTick(e, !vil._drySet.has(k), day, k);   // ★[T58b] 정본 하나(플레이어 농지도 이걸 재생한다)
   }
+  _sub('cropDay');   // ★[T523] 계측 전용 — 둘째 토막(아래 `gran` 은 이제 사냥 하루만)
   // ★[T146] 사냥 하루 정산 — 개체군 회복·차감·부존 갱신(랩 `lifeDayAll` 동형 · 값 그대로)
-  try { _lifeGameDay(vil, state.world.day | 0); } catch (e) { console.error(`[${state.zoneId}] 사냥 하루 틱 실패(${vil.name}):`, e.message); }
+  try { const _pz0 = _t523Pause; yield* _lifeGameDaySteps(vil, state.world.day | 0); const _pz = _t523Pause - _pz0; _lt += _pz; _lt0 += _pz; } catch (e) { console.error(`[${state.zoneId}] 사냥 하루 틱 실패(${vil.name}):`, e.message); }
   _sub('gran');
   vil._psiteCrew = 0;
   for (const pid of vil.npcPids) { const p = state.deps.players.get(pid); if (p && p._lifeTask) { if (p._lifeTask.k === 'clear') { vil._claim.add(p._lifeTask.cx + ',' + p._lifeTask.cy); vil._clearCrew++; } else if (p._lifeTask.k === 'build') { if (p._lifeTask.ps) vil._psiteCrew++; else vil._buildCrew++; } } }

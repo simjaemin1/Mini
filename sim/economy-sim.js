@@ -997,8 +997,32 @@ function _econOnly(raw) { const o = {}; for (const k of Object.keys(raw || {})) 
 //   켬이면 econ 이 읽는 한 채·한 단계 원자재가 ② 기둥 수만 바뀐 표에서 나온다(기둥 2 → 통나무 10 · 4 → 16). 손잡이 한 자리.
 const T497_HUT_COST = (() => { const x = parseInt((typeof process !== 'undefined' && process.env && process.env.T497_HUT_COST) || '', 10); return Number.isFinite(x) ? x : 0; })();
 function hutPillarsArm() { const H = _hutStages(); return (H && H.HUT_PILLARS_ATTESTED && H.HUT_PILLARS_ATTESTED.indexOf(T497_HUT_COST) >= 0) ? T497_HUT_COST : 0; }
-function hutEconMaterials() { const H = _hutStages(); if (!H) return null; const n = hutPillarsArm(); return _econOnly(n ? H.hutRawPillars(n) : H.hutRaw()); }        // 한 채
-function hutEconStage(i) { const H = _hutStages(); if (!H) return null; const n = hutPillarsArm(); return _econOnly(n ? H.stageRawPillars(i, n) : H.stageRaw(i)); }        // 한 단계
+// ★[T517 2026-09-29] 주춧돌 팔 — 켜면 기둥 하나에 주춧돌 하나(`hut-stages.js plinthKg` · 대평리 실측) · 돌 단위 = `weights.kgOf('stone')`(석괴 한 덩이).
+//   끔(기본) = 표 그대로(석재 0 · 송국리형 고증과 같다). 기둥 수는 T497 팔이 있으면 그 수 · 없으면 표의 수. 손잡이 한 자리.
+const T517_HUT_STONE = (typeof process !== 'undefined' && process.env && process.env.T517_HUT_STONE === '1');
+let _wtMod;
+function _weightsMod() { if (_wtMod === undefined) { try { _wtMod = require('../server/weights'); } catch (e) { _wtMod = null; } } return _wtMod; }
+function hutStoneUnits(i) {   // 단계 i 의 주춧돌(econ 돌 단위) — 팔이 꺼졌거나 표·무게를 못 읽으면 0
+  if (!T517_HUT_STONE) return 0;
+  const H = _hutStages(), W = _weightsMod();
+  const kg = (W && typeof W.kgOf === 'function') ? W.kgOf('stone') : null;
+  if (!H || !H.stageStoneKg || !(kg > 0)) return 0;
+  const n = hutPillarsArm();
+  return H.stageStoneKg(i, n || null) / kg;
+}
+function _withStone(o, units) { if (units > 0) o.stone = (o.stone || 0) + units; return o; }
+function hutEconMaterials() {        // 한 채
+  const H = _hutStages(); if (!H) return null; const n = hutPillarsArm();
+  const o = _econOnly(n ? H.hutRawPillars(n) : H.hutRaw());
+  if (!T517_HUT_STONE) return o;
+  let st = 0; for (let i = 0; i < H.HUT_STAGES.length; i++) st += hutStoneUnits(i);
+  return _withStone(o, st);
+}
+function hutEconStage(i) {        // 한 단계
+  const H = _hutStages(); if (!H) return null; const n = hutPillarsArm();
+  const o = _econOnly(n ? H.stageRawPillars(i, n) : H.stageRaw(i));
+  return T517_HUT_STONE ? _withStone(o, hutStoneUnits(i)) : o;
+}
 function hutStageCount() { const H = _hutStages(); return H ? H.HUT_STAGES.length : 0; }
 function hutCapPerHut() { const L = _villageLayoutMod(); return L ? L.HOUSE_CAP_PER_FLOOR * L.HOUSE_MAX_FLOORS : 0; }
 //   수용력 1인당 자재 단가 — 끔이면 종전 상수, 켬이면 표에서 유도(표를 못 읽으면 종전 — 게이트가 안 열린 것과 같다)
@@ -5524,7 +5548,7 @@ module.exports = {
   T443_SMELT_FUEL, smeltFuelOn, smeltFuelPerOre, smeltFuelTake,   // ★[T443] 제련 연료 — 하네스·계측기가 표를 옮겨 적지 않게
   T419_STONE_REAL, stoneRealPer, stoneRealOn,   // ★[T419] 돌 쓰는 실물 — 하네스·계측기가 표·유도를 옮겨 적지 않게 내준다
   T435_GRANARY_ACT, granaryEconMaterials,   // ★[T435] 곳간 증설 재료 — 생활층·하네스가 표를 옮겨 적지 않게
-  T400_BUILD_ACT, buildActOn, houseDayBuild, houseWoodShare, T497_HUT_COST, hutPillarsArm, actFromGranary, hutEconMaterials, hutEconStage, hutStageCount, hutCapPerHut, houseCostPerCap,   // ★[T400] 집 행위 — 하네스·생활층이 표·유도를 옮겨 적지 않게 내준다
+  T400_BUILD_ACT, buildActOn, houseDayBuild, houseWoodShare, T497_HUT_COST, hutPillarsArm, T517_HUT_STONE, hutStoneUnits, actFromGranary, hutEconMaterials, hutEconStage, hutStageCount, hutCapPerHut, houseCostPerCap,   // ★[T400] 집 행위 — 하네스·생활층이 표·유도를 옮겨 적지 않게 내준다
   actToGranary, woodToGranary, woodActOn, woodRegrowR, woodRegrowPerDay, T325_WOOD_ACT,
   forageToGranary, forageActOn, forageActItemsOf, foragerYieldsFor, T347_FORAGE_ACT,   // ★[T347] 채집 행위 — 문 셋 + 믹스 정본 + 손잡이(하네스가 표를 옮겨 적지 않는다)
   actDemandLeft, actDemandCap, fishDemandLeft, woodDemandLeft, forageDemandLeft, T374_DEMAND_STOP,

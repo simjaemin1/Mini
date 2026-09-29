@@ -26,22 +26,40 @@
 // ── 표 ────────────────────────────────────────────────────────────────────────
 //   ⚠**순서가 계약이다.** `zone.EQUIPMENT_RECIPES.clothes.accepts` 가 이 순서를 그대로 쓰고,
 //     `accepts[0]`(= 갖옷)이 재료를 안 주는 옛 호출부의 기본값이다(`zone.js` 마을 장인 진열).
+//   ★★[T516 2026-09-29] `clo` — 그 재질로 지은 **한 벌(몸통·팔·다리)의 겉옷 몫** 단열(clo · 출처의 값 · 새 수 0).
+//     규약: 겉옷이 **더한** 단열이다 — 속옷·바탕층을 입은 판에서 잰 값은 그 층을 뺐고(두 판의 차 — 공기층은 서로 지운다),
+//     한 점씩 잰 표(ASHRAE 55)는 옷 두 점의 합(ISO 9920 식 12)이다. 덮는 면적은 여섯 모두 **같은 한 벌**이라
+//     (ISO 9920 §4.6: 단열 ∝ 덮는 면적) 머리·손을 더 덮은 판(갖옷 모자·장갑)은 품목 값에 안 쓴다(보고 T516 §1).
+//     이 칸은 손잡이 `T516_WARMTH_CLO` 를 켰을 때만 방한을 정한다(아래 `warmthCloOf` · 끄면 **아무도 안 읽는다**).
 const CLOTHES = {
   fur: {
     ko: '갖옷', cap: null,
     note: '털가죽을 그대로 걸친 것. 바람을 막고 공기를 가둔다 — 청동기 한반도 겨울의 정답.',
+    //   Barker·Power·Schnell·Mahar 2025 *FACETS* 10(doi:10.1139/facets-2024-0100) 표 4 — 털 풀오버 파카 + 바람막이 바지(6번)
+    //   STIV 3.162 − 바탕층(BL) 1.251 = **1.911 clo**(서멀 마네킹 ASTM F1291). 모자·목도리·장갑까지(18번) 3.353 − 1.251 = 2.102 는
+    //   머리·손을 더 덮은 판이라 품목 값이 아니다(재민 #90 앵커 칸).
+    clo: 3.162 - 1.251,
   },
   ramie: {
     ko: '모시옷', cap: 26,
     note: '모시는 곱고 시원하다. 여름 옷감이라 잘 짜도 겨울엔 못 쓴다(천장).',
+    //   Son & Tasaka 1996 *Journal of Home Economics of Japan*(日本家政学会誌) 47(3) "Dry and Evaporative Heat Resistance of Hanbok" —
+    //   서멀 마네킹 모시 치마저고리 + 속옷 0.89 − 속옷 0.39 = **0.50 clo**("0.50 for ramie") ·
+    //   https://dl.ndl.go.jp/view/prepareDownload?itemId=info%3Andljp%2Fpid%2F10581147
+    clo: 0.89 - 0.39,
   },
   leather: {
     ko: '가죽옷', cap: null,
     note: '무두질한 가죽. 털은 없지만 바람은 막는다 — 사철 입는 물건.',
+    //   재질 이름을 단 실측이 없다 — 털 없는 **두꺼운 겉옷 한 벌**로 잰다: ASHRAE 55-2010 의복 표(Wikipedia *Clothing insulation* 표 2)
+    //   두꺼운 겹여밈 윗옷 0.48 + 두꺼운 바지 0.24 = **0.72 clo** · https://en.wikipedia.org/wiki/Clothing_insulation
+    clo: 0.48 + 0.24,
   },
   hide: {
     ko: '생가죽옷', cap: null,
     note: '무두질 전의 날가죽. 뻣뻣하고 무겁지만 없는 것보다 낫다.',
+    //   가죽옷과 같은 **두꺼운 겉옷 한 벌** 칸(날가죽만 따로 잰 값이 없다 — 가르면 지어낸 수다) · 0.48 + 0.24
+    clo: 0.48 + 0.24,
   },
   fiber: {
     ko: '풀 엮은 옷', cap: 26,
@@ -51,10 +69,15 @@ const CLOTHES = {
     //   ⇒ 값은 그대로 두고(비트 동일) **말없이 답하던 것에 이름만 준다.**
     grade: 0.6,
     note: '풀을 엮어 두른 것. 아무것도 없는 사람의 첫 옷 — 삼베와 같은 값이되 이유가 다르다.',
+    //   풀 엮은 옷을 잰 값은 없다 — **얇은 식물 섬유 한 벌** 칸(삼베와 같은 0.25 + 0.15) · 종전 규약("삼베와 같은 값") 그대로
+    clo: 0.25 + 0.15,
   },
   hemp: {
     ko: '삼베옷', cap: 26,
     note: '식물 섬유는 아무리 잘 짜도 바람을 못 막는다(T4 ⑤ · 천장의 근거).',
+    //   **얇은 한 벌** — ASHRAE 55-2010 의복 표: 긴소매 셔츠 0.25 + 얇은 곧은 바지 0.15 = **0.40 clo**
+    //   (같은 식물 섬유 모시의 실측 0.50 과 한 자리 · 삼베는 모시보다 성글다)
+    clo: 0.25 + 0.15,
   },
 };
 
@@ -81,10 +104,31 @@ function warmthOf(mat, level) {
   try { return require('./player-items').craftItem('clothes', level || 0, { [mat]: 3 }).attrs.warmth; }
   catch (e) { return null; }
 }
+// ── ★★[T516 2026-09-29 · #90 입력] 방한을 **재질 clo** 에서 유도한다 — 손잡이 `T516_WARMTH_CLO`(기본 끔) ─────
+//   끔 = 종전 `round(62 · qSkill · 등급)`(식물 섬유 천장 26) **바이트 동일** — 이 두 함수는 켰을 때만 불린다.
+//   켬 = 방한 = WARMTH_MIN + clo × (천장 − WARMTH_MIN) ÷ CLO_TOP — T508 이 방한 1점에 준 ℃ 의 **거꾸로**다:
+//     T508_CLO 를 같이 켜면 단열 ℃ = clo × CLO_C(1 clo ≈ 5.56℃) 가 그대로 나온다(천장·CLO_TOP 는 서로 지운다 · 반올림 ±½점).
+//   ★숙련은 방한에서 빠진다 — "솜씨가 좋아지면 곱고 질겨지지 따뜻해지지 않는다"(이 파일 삼베 천장의 근거와 같은 말).
+//     숙련은 `q`(내구·값·이름)에 그대로 남는다. 틈·마감(바람 통과 · 젖음)으로 옮기려면 몸 쪽에 새 항이 든다 ⇒ 표만(보고 §2-ⓒ).
+//   ★새 수 0 — clo 는 위 표(출처) · WARMTH_MIN·CLO_TOP 는 `body.js` · 천장은 옷 `attrScale`(player-items) — 셋 다 **읽는다**.
+const T516_WARMTH_CLO = process.env.T516_WARMTH_CLO === '1';
+/** 그 재질 한 벌의 clo(없으면 null). */
+function cloOf(mat) { const c = of(mat); return c && Number.isFinite(c.clo) ? c.clo : null; }
+/** clo 에서 유도한 방한(정수 — 카탈로그 규약). 재질을 모르거나 clo 가 없으면 null ⇒ 호출측이 종전 식을 쓴다. */
+function warmthCloOf(mat) {
+  const clo = cloOf(mat);
+  if (clo == null) return null;
+  let B = null, cap = null;
+  try { B = require('./body'); } catch (e) { B = null; }
+  try { cap = +require('./player-items').ITEM_TYPES.clothes.attrScale || null; } catch (e) { cap = null; }
+  if (!B || !B.CFG || !(cap > B.CFG.WARMTH_MIN) || !(B.CFG.CLO_TOP > 0)) return null;
+  return Math.round(B.CFG.WARMTH_MIN + clo * (cap - B.CFG.WARMTH_MIN) / B.CFG.CLO_TOP);
+}
 /** 클라·하네스에 그대로 내주는 표 — 화면이 표를 **다시 적지 않게**(아이콘·외형이 이걸 읽는다). */
 function payload() {
   return accepts().map((m) => ({ id: m, ko: CLOTHES[m].ko, cap: CLOTHES[m].cap == null ? null : CLOTHES[m].cap,
     kg: kgOf(m), note: CLOTHES[m].note }));
 }
 
-module.exports = { CLOTHES, accepts, has, of, koOf, capOf, gradeOf, noteOf, kgOf, warmthOf, payload };
+module.exports = { CLOTHES, accepts, has, of, koOf, capOf, gradeOf, noteOf, kgOf, warmthOf, payload,
+  T516_WARMTH_CLO, cloOf, warmthCloOf };   // ★[T516] 재질 clo → 방한(켰을 때만 `craftItem` 이 부른다)
