@@ -235,8 +235,16 @@ const Y = E.yearDaysOf();
     ok(jm && !/stump|sapling/.test(jm[1]),
       '★★⑤ **NPC 벌목꾼 현장에 그루터기·묘목이 없다** — 버킷이 `JOB_RES[j].includes(r.type)` 하나라 새 종류는 **자동으로 빠진다**',
       jm ? jm[1].trim() : '—');
-    ok(!/T122|regrow|stump|sapling/.test(vSrc),
-      '★★⑤ 그래서 `villages.js` 를 **한 글자도 안 만졌다**(랩 모듈 · 여덟 수가 움직일 이유가 없다)');
+    //   ★★[T510 2026-09-29 · 족보 434] 이 자는 **코드**를 문다 — 주석은 설명할 자유가 있다(파일 머리 `codeOnly` 규약).
+    //     원문을 물던 종전 판은 T490 이 `villages.js` 에 적은 **주석**("그 종의 제 주기(T122 `_stage`)")에 걸려 빨갰다(코드 0 · 자의 과잉).
+    //     ⇒ 코드만 본다 · 그리고 같은 줄에서 **미끼**를 문다: 코드에 `'stump'` 를 넣은 원문은 이 자가 실제로 잡는다(자명 통과 금지).
+    const REGROW_WORDS = /T122|regrow|stump|sapling/g;
+    const nOf = (t) => (String(t).match(REGROW_WORDS) || []).length;
+    const vCode = codeOnly(vSrc);
+    const baitN = nOf(codeOnly(vSrc + "\n;if (globalThis.__t510bait === 'stump') {}\n"));
+    ok(nOf(vCode) === 0 && baitN > 0,
+      '★★⑤ 그래서 `villages.js` **코드**를 한 글자도 안 만졌다(랩 모듈 · 여덟 수가 움직일 이유가 없다 · 주석 제외 · 미끼 — 코드에 `stump` 를 넣으면 문다)',
+      `코드 ${nOf(vCode)} · 주석 ${nOf(vSrc) - nOf(vCode)} · 미끼 ${baitN}`);
     const RV = require(path.join(ROOT, 'server', 'itemlabel.js')).RESOURCE_VERBS;
     ok(RV.sapling === '벌목', '★⑤ 묘목의 동사는 나무와 **같은 말**이다', RV.sapling);
     ok(!RV.stump, '★★⑤ 그루터기는 동사 표에 **없다** — 자연물 종류가 아니라 hp 0 으로 나는 그림이다');

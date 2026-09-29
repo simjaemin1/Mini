@@ -298,8 +298,8 @@ function deleteFishCell(key) { stmtDeleteFish.run(key); }
 // === ★★[T495 2026-09-28] 부분 수확 — 개체에 **남은 단위** ================================
 //   `fish_cells`·`mined_cells` 와 **같은 문법**: 온전한 개체는 적지 않는다(암묵적 온전) → 표가 작다.
 //   taken = 그 개체에서 이미 딴 단위(손 이름 → 수 · JSON). 다 따이면 행을 지우고 벤 장부(`harvested_seeds`)로 간다.
-//   ★표는 **처음 쓸 때** 짓는다 — 손잡이(`T495_PARTIAL_PICK`)가 꺼져 있으면 존이 이 문을 한 번도 안 부르므로
-//     DB 가 한 바이트도 안 바뀐다(끔 비트 동일 · 다른 표는 부팅에 짓는 게 규약이나 이 표는 켠 팔만의 것이다).
+//   ★표는 **처음 부를 때** 짓는다 — 손잡이(`T495_PARTIAL_PICK` · ★[T510] 기본 켬 → 켠 존은 부팅에 장부를 읽으며 짓는다)를
+//     끄면(`=0`) 존이 이 문을 한 번도 안 부르므로 DB 가 한 바이트도 안 바뀐다(끔 비트 동일 · 이 표는 켠 팔만의 것이다).
 let _pickedStmts = null;
 function _picked() {
   if (_pickedStmts) return _pickedStmts;

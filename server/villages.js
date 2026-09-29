@@ -6006,11 +6006,11 @@ function _lifeLootForage(r) {
   let u = 0; for (const k of keep) for (const h of _t347HandsOf(k)) { const a = l[h]; if (a > 0) u += a; }   // ★[T458] 손 이름으로 읽는다
   return u;
 }
-// ★★★[T495 2026-09-28 · 손잡이 `T495_PARTIAL_PICK` 기본 끔] **부분 수확 — 개체가 아니라 단위로 딴다**(존 `_t495PickAt` 이 정본 문).
+// ★★★[T495 2026-09-28 · 손잡이 `T495_PARTIAL_PICK` — ★[T510 2026-09-29] **기본 켬** · 되돌림 `=0`] **부분 수확 — 개체가 아니라 단위로 딴다**(존 `_t495PickAt` 이 정본 문).
 //   헤드리스 하루가 그날 몫만큼만 **품목 단위**(열매 한 알 · 나물 한 줌 · T458 berry = fruit)로 따고, 개체는 남은 단위를 들고 서 있다.
 //   빈 개체만 원판 로지스틱의 되살릴 목록(`_t347Cut`)에 든다 — 되살이는 **개체 수로 그대로**(N·K·r 무변).
-//   끄면 아래 둘이 한 번도 안 불린다(비트 동일).
-function _t495On() { return typeof process !== 'undefined' && !!process.env && process.env.T495_PARTIAL_PICK === '1'; }
+//   끄면(`=0`) 아래 둘이 한 번도 안 불린다(비트 동일).
+function _t495On() { return typeof process !== 'undefined' && !!process.env && process.env.T495_PARTIAL_PICK !== '0'; }   // ★[T510] 기본 켬 — `0` 만 끔(존 `_t495On` 과 같은 뜻)
 //   그 개체에 **남은** 걷는 단위(세계 목록) — `_lifeLootForage` 의 남은 판(전리품 = 존 정본 − 딴 것)
 function _t495Units(r) {
   let l = null; try { l = state.deps.t495RestOf ? state.deps.t495RestOf(r) : null; } catch (e) { l = null; }
@@ -6181,7 +6181,7 @@ function _t490Reach(vil, board, R) {
   const reach = _t490ReachCells(); out.dbg.reach = reach;
   if (!(reach > R)) return out;
   let S = 0;                                                        // 원판에 오늘 서 있는 걷는 단위
-  const _uOf = _t495On() ? _t495Units : _lifeLootForage;           // ★[T495] 켜면 **남은** 단위(부분 수확된 개체는 덜 든다)
+  const _uOf = (_t495On() && state.deps.t495RestOf) ? _t495Units : _lifeLootForage;   // ★[T495] 켜면 **남은** 단위(부분 수확된 개체는 덜 든다) · ★[T510] 존 문이 있을 때만(루프 `_t495` 게이트와 같은 짝 — 기본 켬이 드러냈다)
   for (const c of board) { let a = null; try { a = state.deps.t347GrovesAtCell(c.cx, c.cy); } catch (e) { a = null; } if (a) for (const r of a) S += _uOf(r) || 0; }
   const dem = E.forageDemandLeft(vil.econ);
   let need = (dem === Infinity) ? 0 : dem - S;
