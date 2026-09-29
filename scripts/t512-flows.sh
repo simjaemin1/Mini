@@ -8,7 +8,7 @@
 #     닛폰 → central  : 10.61.0.2:3010(안)  → 10.61.0.1:3010           (닛폰 `CENTRAL_HOST=10.61.0.2`)
 #   브라우저 → 닛폰은 central 이 내주는 10.61.0.2:3021(직접 · 클라 지연은 이 카드 밖 — `LATENCY_MS`).
 #   판마다: 존 넷을 새로 띄우고 → `t512-mover`(걷기 40s · 달리기 40s) → [e2e 판이면] `e2e-zone-cross` 외부 모드 → 끈다.
-# 실행: bash scripts/t512-flows.sh   (OUT=/tmp/t512 · 판 목록은 아래 RUNS)
+# 실행: bash scripts/t512-flows.sh   (OUT=/tmp/t512 · 판 목록은 아래 RUNS · `태그:한방향:유령팔:T498팔:e2e[:닛폰시계어긋남]`)
 set -uo pipefail
 cd "$(dirname "$0")/.."
 OUT=${OUT:-/tmp/t512}; rm -rf "$OUT"; mkdir -p "$OUT"
@@ -23,19 +23,23 @@ trap 'cleanup; ip netns del $NS 2>/dev/null; ip link del t512a 2>/dev/null' EXIT
 wait_h() { for i in $(seq 1 300); do curl -sf -m 2 "http://$1/health" >/dev/null 2>&1 && return 0; sleep 1; done; return 1; }
 PROBE="--require=$(pwd)/scripts/t512-probe.js"
 COMMON="ENABLE_VILLAGES=0 ENABLE_WILDLIFE=0 ENABLE_BANDITS=0 ENABLE_ROADS=0"
-run() {   # run <태그> <한 방향 ms> <유령 팔 0/1> <T498 팔 0/1> <e2e 0/1>
-  local tag=$1 D=$2 GX=$3 HP=$4 E2E=$5 d="$OUT/$1"; mkdir -p "$d"; local DB=/tmp/t512db-$tag; rm -rf "$DB"; mkdir -p "$DB"
+run() {   # run <태그> <한 방향 ms> <유령 팔 0/1/-> <T498 팔 0/1> <e2e 0/1> [닛폰 시계 어긋남 ms]   (- = 안 건넴 = 기본값 · T518 부터 켬)
+  local tag=$1 D=$2 GX=$3 HP=$4 E2E=$5 SKEW=${6:-0} d="$OUT/$1"; mkdir -p "$d"; local DB=/tmp/t512db-$tag; rm -rf "$DB"; mkdir -p "$DB"
+  # ★[T518] 판의 나이 공식을 분석기에 남긴다 — 이 코드(T518 뒤)는 시계 없는 나이(받은 뒤 + 보낸 존이 잰 한 방향 ow)다
+  echo "{\"mode\":\"ow\",\"skew\":$SKEW,\"gx\":\"$GX\"}" > "$d/meta.json"
   node scripts/t498-delay-proxy.js 127.0.0.2:3021 10.61.0.2:3021 "$D" > "$d/px1.log" 2>&1 & PIDS+=($!)
   ip netns exec $NS node scripts/t498-delay-proxy.js 10.61.0.2:3020 10.61.0.1:3020 "$D" > "$d/px2.log" 2>&1 & PIDS+=($!)
   ip netns exec $NS node scripts/t498-delay-proxy.js 10.61.0.2:3010 10.61.0.1:3010 "$D" > "$d/px3.log" 2>&1 & PIDS+=($!)
   env PORT=3010 DB_PATH=$DB/c.db PUBLIC_HOST=localhost ENABLED_ZONES=hanbando,nippon,jungwon_n ZONE_HOST_NIPPON=10.61.0.2 node server/central.js > "$d/central.log" 2>&1 & PIDS+=($!)
   sleep 2
-  local ZE="T512_GHOST_EXTRAP=$GX T498_HANDOFF_PAYLOAD=$HP T512_OUT=$d NODE_OPTIONS=$PROBE"
+  local ZE="T498_HANDOFF_PAYLOAD=$HP T512_OUT=$d NODE_OPTIONS=$PROBE"
+  [ "$GX" != "-" ] && ZE="$ZE T512_GHOST_EXTRAP=$GX"
+  local ZN="$ZE"; [ "$SKEW" != 0 ] && ZN="$ZE T518_SKEW_MS=$SKEW"   # ★[T518] 시계 어긋남은 닛폰(유령을 받는 존)만
   env $COMMON $ZE PORT=3020 ZONE_ID=hanbando DB_PATH=$DB/h.db CENTRAL_HOST=127.0.0.1 CENTRAL_PORT=3010 ZONE_HOST_NIPPON=127.0.0.2 PUBLIC_HOST=localhost \
     node server/zone.js > "$d/hanbando.log" 2>&1 & PIDS+=($!)
   env $COMMON $ZE PORT=3016 ZONE_ID=jungwon_n DB_PATH=$DB/j.db CENTRAL_HOST=127.0.0.1 CENTRAL_PORT=3010 ZONE_HOST_NIPPON=127.0.0.2 PUBLIC_HOST=localhost \
     node server/zone.js > "$d/jungwon_n.log" 2>&1 & PIDS+=($!)
-  ip netns exec $NS env $COMMON $ZE PORT=3021 ZONE_ID=nippon DB_PATH=$DB/n.db CENTRAL_HOST=10.61.0.2 CENTRAL_PORT=3010 ZONE_HOST_HANBANDO=10.61.0.2 ZONE_HOST_JUNGWON_N=10.61.0.1 PUBLIC_HOST=10.61.0.2 \
+  ip netns exec $NS env $COMMON $ZN PORT=3021 ZONE_ID=nippon DB_PATH=$DB/n.db CENTRAL_HOST=10.61.0.2 CENTRAL_PORT=3010 ZONE_HOST_HANBANDO=10.61.0.2 ZONE_HOST_JUNGWON_N=10.61.0.1 PUBLIC_HOST=10.61.0.2 \
     node server/zone.js > "$d/nippon.log" 2>&1 & PIDS+=($!)
   wait_h 127.0.0.1:3020; wait_h 127.0.0.1:3016; wait_h 10.61.0.2:3021
   # 다리 왕복 한 번씩(HTTP /health 는 바깥 문 — 중계를 지나는 한 번의 벽시계)
@@ -50,5 +54,5 @@ run() {   # run <태그> <한 방향 ms> <유령 팔 0/1> <T498 팔 0/1> <e2e 0/
   cleanup; sleep 2
 }
 RUNS=${RUNS:-"g0-off:0:0:0:0 g75-off:75:0:0:0 g75-on:75:1:0:0 g0-on:0:1:0:0 h75-o0:75:0:0:1 h75-o1:75:0:1:1"}
-for r in $RUNS; do IFS=: read a b c e f <<< "$r"; run "$a" "$b" "$c" "$e" "$f"; done
+for r in $RUNS; do IFS=: read a b c e f g <<< "$r"; run "$a" "$b" "$c" "$e" "$f" "${g:-0}"; done
 echo done >> "$OUT/summary.txt"
