@@ -1158,6 +1158,28 @@ T77 이 밝힌 것: 저장소 아이콘 31장이 **Blender 4.0.2 시대 굽기**
 | 후보 계측용 한 클립(idle) × 옷 여섯 | 6 | 3분 35초 |
 | 한 층 한 클립(+몸 마스크) | 1 | 1분 28초 |
 
+### 옷 티어 셋 — 화면 합성 자 · 갖옷 두 톤 [T515 2026-09-29]
+
+* **자를 화면에 댄다**: `e2e-charsprite ⓗ` 는 층 **단독**을 잰다 — 한쪽만 불투명한 화소(갖옷 털 둘레)가 투명(휘도 0)과 견줘져 차가 부푼다.
+  화면에 서는 것은 **몸 위에 옷 한 벌**(곧은 알파 위덮기)이다 ⇒ 같은 자(\|Δ휘도\| ≥ 14.7 또는 채널차 >16 화소 ≥ 50% · idle 첫 판)를 **합성**에 댄다 — `scripts/test-clothes-tiers.js` ③(8방향).
+  티어 셋 대표(삼베·가죽·모피) 세 쌍이 8방향 전부 갈려야 한다. 0톤(T81)에서 가죽↔모피가 13.01 · 19.6%(방향 2) · 3/8 로 못 갈렸다.
+* **갖옷 본천 = `CLOTH_FUR_T81` × `CLOTH_TRIM_K` ** `CLOTH_FUR_TONES`**(`render_common.py` · 지금 2톤 = (0.21675, 0.151725, 0.1047625)) —
+  T81 근거 "hide 보다 어둡고 붉다"를 한 톤씩 더 짙게(세 채널 같은 비 · 색조 무변) · 걸음 = 허리끈 비 0.85 · 멈춤 = 자(1톤 14.57 · 30.3% 7/8 ✗ · **2톤 16.17 · 52.8% 8/8**).
+  ⚠`test-icons ⑨` 가 표를 글자로 읽는다(`'fur': ((r, g, b), rough, spec)` 꼴) — 식으로 적지 말고 곱한 값을 적는다. 곱 = 표인지는 `test-clothes-tiers ④`.
+* **옷 한 층만 다시 굽는 법**(이 카드가 쓴 그대로):
+  메타 사본 폴더(`cp public/assets/char/char_meta.json <폴더>/` — 상자 못박기 `T107_BOXPIN` 이 그 메타를 읽는다) →
+  `python3 scripts/char_render.py -- --layer=clothes_fur --sheetdir=<폴더>`(12클립 × 8방향 + 몸 마스크 · 이 상자 29분 48초) → `clothes_fur_*.png` 12장만 배포 자리로 →
+  `char_sheets.lock.json` 그 12행만 `asset-lock.pixelHash`(test-charsheet ⑤ 의 자)로.
+  아이콘은 `SKIP_PROPS=1 ITEMS_ONLY=clothes_fur python3 scripts/props_render.py` → **그 한 장만** 임시 폴더로 옮겨 `node scripts/icons-postprocess.js <임시> <임시2>` → 배포 자리 → `node scripts/asset-lock.js --write`.
+  ⚠`scripts/props_icon_renders/` 를 통째로 후처리하지 마라 — 다른 판의 낡은 렌더(이 상자 45장)가 같이 배포된다.
+  ⚠**aim·swing 을 다시 구우면 EXR 되굽기 증명 두 칸도 간다**(`assets-src/char_repost_proof.json` · test-charsheet ⑧ⓓ — 파일 sha256):
+  몸+그 층의 aim·swing 을 `--rawexr` 로 다시 굽고 `python3 scripts/ink_repost.py -- aim swing --exr=<폴더>/char_raw --out=<폴더2>` → 배포 파일과 sha256 이 같으면 그 칸만 간다.
+  `--prove` 는 **표 전체를 그 판의 장수로 덮어쓴다**(28 → 4 · 문턱 14 아래) — 쓰지 마라.
+* **대조 굽기**: 안 바꾼 가죽을 같은 판에 같이 구우면 잠금과 **다르다**(시트 `clothes_leather_idle` 3,081화소 · 불투명 합집합 평균 채널차 0.07/255 · 셀 칸 경계를 넘은 33화소 · 알파 최대 2 · 아이콘 27화소 · 채널 최대 4) —
+  이 상자(Xeon 2.80GHz)가 잠금 상자(2.10GHz)와 달라 몬테카를로 잡음이 다르다(위 "기계가 바뀌면 여전히 다르다"). ⇒ **바꾼 층만** 굽는다(나머지 시트 180장 · 자산 잠금 624장 중 623장 무변).
+* **맨몸 = 삼베 그림**(클라 `clothLayerOf` "알몸 금지" — 이 카드 무변). 티어 표 · 그림 키 = `보고/T515` §②(새 필드 0 — 키는 품목 id · 방한 구간은 숙련 때문에 겹친다).
+* 네 장 재현: `node scripts/t515-clothes.js <out.png>`(하네스 아님 · 한겨울 낮 정오 위상 · 들판 (350,350)px · 윗줄 ×4 · 아랫줄 1:1).
+
 
 
 ## 14. T79b 배치 (2026-09-03) — 작물 아이콘 b · 빌더 넷
