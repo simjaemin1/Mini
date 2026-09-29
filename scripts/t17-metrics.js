@@ -36,6 +36,8 @@ const fs = require('fs');
 const R = (p) => require(path.join(__dirname, '..', p));
 const DAYS = parseInt(process.argv[2], 10) || 800;
 const SEED = parseInt(process.argv[3], 10) || 1020;
+// ★[T525 2026-09-29] `T17_ZONE=<존A>+<존B>` = 두 존을 **따로** 돌리며 하루마다 잇는 판(`scripts/t525-cross-zone.js two`) — 존 하나면 이 줄은 무동작(비트 동일).
+if (String(process.env.T17_ZONE || '').includes('+')) { require('./t525-cross-zone').orchestrateFromT17(DAYS, SEED); return; }
 
 const { ZONES } = R('server/zone-config');
 const T = R('server/terrain'); if (T.setZonesMeta) T.setZonesMeta(ZONES);
