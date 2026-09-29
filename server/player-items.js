@@ -179,6 +179,9 @@ function craftItem(type, skillLevel, materials) {
   if (type === 'clothes' && inst.mat) {
     const cap = _clothCap(inst.mat);
     if (cap != null) inst.attrs.warmth = Math.min(inst.attrs.warmth, cap);
+    // ★★[T516 2026-09-29] 켜면 방한은 **재질 한 벌의 clo** 에서 온다(`clothes.warmthCloOf` · 숙련·등급·천장 무관) —
+    //   `q`(내구·값·이름)는 위 그대로다. 끄면 이 줄은 안 돈다(카탈로그 바이트 동일 · `test-clothes ③` 전수).
+    if (Clothes.T516_WARMTH_CLO) { const w = Clothes.warmthCloOf(inst.mat); if (w != null) inst.attrs.warmth = w; }
   }
   if (def.durable) { inst.durMax = Math.round(def.baseDura * (1 + DURA_SPAN * q)); inst.dura = inst.durMax; }
   if (def.perishable) { inst.attrs.freshness = 100; inst.craftedAt = null; }   // craftedAt은 호출측이 게임시각 주입
