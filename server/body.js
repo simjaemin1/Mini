@@ -91,6 +91,20 @@ const CFG = {
   //     ⇒ 이 한 줄이 "첫 한 벌이 겨울을 지우는" 문제를 없앤다(재민 회부 B-2 그 자체).
   WARMTH_C_PER: _num('BODY_WARMTH_C_PER', 0.09),   // 방한 1점 → 체감 기온 +℃
   WARMTH_MIN: _num('BODY_WARMTH_MIN', 10),         // 이 아래는 단열 0(바람이 지나간다)
+  //   ★★[T508 ② 2026-09-29 재민 확정] **옷은 clo 에서 ℃ 로** — 손잡이 `T508_CLO`(기본 끔 · 끔이면 위 0.09 그대로).
+  //     켜면 방한 1점의 ℃ 를 **유도**한다(아래 `_t508CPer`): CLO_C(℃/clo) × CLO_TOP(clo) ÷ (방한 천장 − WARMTH_MIN).
+  //     두 수 모두 **출처의 값**이다(새 수 0 · 보고 T508 §2 · 값 판정은 재민):
+  //     · `CLO_C` — ASHRAE 어림 *"each change of 0.18 clo units compensates for a 1° C change in air temperature"*
+  //       (Low-tech Magazine 2011 인용 · https://solar.lowtechmagazine.com/2011/02/insulation-first-the-body-then-the-home/)
+  //       ⇒ 1 clo ≈ 1/0.18 = 5.56℃. 앉은 몸 쾌적 기준이라 **보수적인 읽기**다(물리식 58.2 W/m²·met × 0.155 m²K/W 면 1 met 에 9.0℃).
+  //     · `CLO_TOP` — 이 세계에서 가장 따뜻한 옷(갖옷 × 장인 = `attrScale` 62)을 **실측된 전통 모피 한 벌**에 건다:
+  //       Barker, Power, Schnell & Mahar 2025, *FACETS* 10 · doi:10.1139/facets-2024-0100 — 토착 모피 한 벌(털 풀오버 파카 ·
+  //       바람막이 바지 · 비버 모자·목도리 · 물범 털 벙어리장갑 — 표 4 의 18번) 서멀 마네킹(ASTM F1291) STIV **3.353 clo**.
+  //       STIV 는 몸 둘레 **공기층을 포함한** 값이고 그 논문이 공기층을 **0.5 clo** 로 표준화했다 ⇒ 옷의 몫 = 3.353 − 0.5 = **2.853 clo**
+  //       (맨몸과 옷 입은 몸의 차 — ASHRAE 어림이 재는 것과 같은 차다). ⚠북극 한 벌이라 청동기 갖옷보다 두꺼울 수 있다 —
+  //       같은 논문의 파카 한 벌(5번 2.118 − 0.5 = 1.62)과 함께 재민 회부.
+  CLO_C: _num('BODY_CLO_C', 1 / 0.18),             // ℃ / clo
+  CLO_TOP: _num('BODY_CLO_TOP', 3.353 - 0.5),      // clo — 방한 천장(갖옷 × 장인)이 뜻하는 한 벌(STIV − 공기층)
   //   ★★[겨울 난이도 2026-08-31 재민 확정] **마을 = 안전망 · 야생 = 위험.**
   //     마을 안은 바람이 죽고(집·담·나무), 어딘가 늘 불기운이 있고, 사람이 있다 —
   //     디에게틱 근거가 있는 **미기후**다. 목표점을 이 비율만큼 깎는다.
@@ -266,6 +280,79 @@ const CFG = {
   STAGE_HYST: _num('BODY_STAGE_HYST', 0.04),
   DIRTY_EPS: _num('BODY_DIRTY_EPS', 0.01),             // §8.3: Δ>0.01 이면 dirty
 };
+
+// ── ★★[T508 2026-09-29 재민 확정] 몸 층 두 팔 — **꼴**(선형→지수)과 **옷 ℃** 만. 문턱·속도·죽음 시간은 무변 ──
+//   재민 확정 둘: 시간 구조 불변(하루 24분 · 365일 · 몸 시계 실초) · 극단 HP 는 3단계 문턱 위 연속(무변).
+//   ① `T508_DECAY_EXP` — 허기·갈증 감쇠의 꼴. *"구간만 나뉘지 선형이잖아 · 지수함수 또는 유리함수여야"*.
+//      '1' = 지수 꼴(상태 비례) · 'rat' = 유리 꼴 · 그 밖(미설정 포함) = 끔 = 두 토막 선형 **글자 그대로**(비트 동일).
+//   ② `T508_CLO` — 옷 방한 1점의 ℃ 를 clo 출처에서 유도(위 `CLO_C`·`CLO_TOP`). '1' 만 켬.
+const T508_DECAY_EXP = (() => { const v = process.env.T508_DECAY_EXP; return (v === '1' || v === 'rat') ? v : ''; })();
+const T508_CLO = process.env.T508_CLO === '1';
+// ★감쇠의 꼴 — **새 수 0**: 종전 두 토막 선형이 지나는 **매듭 셋** (0, 100) · (TOP_FRAC·T, SPLIT·100) · (T, 0) 을 그대로 지난다.
+//   ⓐ 지수 꼴 dx/dt = −k·(x + b) — 상태에 비례하되 **상수 b 를 더한다**: 순수 −k·x 는 0 에 영영 안 닿아(총시간 ∞)
+//      "100→0 = `*_SEC`" 캐논을 못 지킨다. 두 수 (k, b) 를 두 매듭이 정한다:
+//        (100·SPLIT + b) = (100 + b)·e^(−k·TOP_FRAC·T)  ·  b = (100 + b)·e^(−k·T)
+//      기본값(SPLIT ½ · TOP_FRAC ⅓)이면 b² + 50b − 2500 = 0 ⇒ **b = 50/φ ≈ 30.90** · e^(−kT/3) = 1/φ ⇒ **k·T = 3·ln φ ≈ 1.4436**
+//      (φ = 황금비 — 고른 게 아니라 세 매듭이 낸 답이다). 허기 k = 1.4436/2880 = 5.01×10⁻⁴/초 · 갈증 1.00×10⁻³/초.
+//   ⓑ 유리 꼴 x(τ) = 100·(1 − τ)/(1 + c·τ) · τ = t/T — 같은 매듭에서 c = ((1 − TOP_FRAC)/SPLIT − 1)/TOP_FRAC(기본 **1**).
+//   ⚠매듭이 선형보다 **느려지는 쪽**(TOP_FRAC < 1 − SPLIT)일 때만 풀린다 — 아니면 `null`(끔과 같은 두 토막 선형으로 돈다).
+let _t508S;
+function _t508Shape() {
+  if (_t508S !== undefined) return _t508S;
+  const sp = Math.max(0.05, Math.min(0.95, CFG.DECAY_SPLIT));
+  const tf = Math.max(0.05, Math.min(0.95, CFG.DECAY_TOP_FRAC));
+  _t508S = null;
+  if (!(tf < 1 - sp)) return _t508S;
+  if (T508_DECAY_EXP === 'rat') {
+    _t508S = { form: 'rat', c: ((1 - tf) / sp - 1) / tf };
+  } else if (T508_DECAY_EXP) {
+    //   b 의 방정식 f(b) = ln((100·sp + b)/(100 + b)) − tf·ln(b/(100 + b)) = 0 — f(0⁺) = +∞ · f(∞) → 0⁻ ⇒ 근 하나.
+    //   기하 이분(수치 풀이의 틀일 뿐 — 세계의 수가 아니다) 200번이면 배정밀도 끝까지 간다.
+    const f = (b) => Math.log((100 * sp + b) / (100 + b)) - tf * Math.log(b / (100 + b));
+    let lo = 1e-9, hi = 1e9;
+    for (let i = 0; i < 200; i++) { const m = Math.sqrt(lo * hi); if (f(m) > 0) lo = m; else hi = m; }
+    const b = Math.sqrt(lo * hi);
+    _t508S = { form: 'exp', b, kT: Math.log((100 + b) / b) };
+  }
+  return _t508S;
+}
+/** ★감쇠 한 걸음 — 켠 꼴은 **정확 해**로 간다(dt 에 안 흔들린다 · 오일러면 1초 틱에 총시간이 0.03% 짧아진다).
+ *  g: 지금 게이지 · totalSec: 100→0 총시간 · dtEff: 흐른 초 × 배율(추위·짠물·여름). 끄면 종전 식과 같은 값. */
+function decayStep(g, totalSec, dtEff) {
+  const S = T508_DECAY_EXP ? _t508Shape() : null;
+  if (!S) return Math.max(0, g - decayRate(g, totalSec) * dtEff);
+  if (!(dtEff > 0)) return Math.max(0, g);
+  //   ⚠끝의 1e-9 는 부동소수 찌꺼기를 0 으로 붙이는 수치 틀이다(세계의 수가 아니다) — 안 붙이면 유리 꼴이
+  //     τ 를 거꾸로 푸는 사이 10⁻¹³ 이 남아 갈증 총시간이 한 틱(1,441초) 길어진다(실측).
+  let x;
+  if (S.form === 'exp') x = (g + S.b) * Math.exp(-S.kT * dtEff / totalSec) - S.b;
+  else {
+    //   유리 꼴 — x → τ(정확 역함수) → τ + dt/T → x
+    const tau = (100 - g) / (100 + S.c * g) + dtEff / totalSec;
+    x = tau >= 1 ? 0 : 100 * (1 - tau) / (1 + S.c * tau);
+  }
+  return x > 1e-9 ? x : 0;
+}
+// ★옷 ℃ — 방한 1점이 몇 ℃ 인가. 끄면 `CFG.WARMTH_C_PER` 그대로(호출부는 이 함수를 안 거친다 · 아래 `warmthInsC`).
+//   켜면 CLO_C × CLO_TOP ÷ (천장 − WARMTH_MIN). 천장 = 옷의 `attrScale`(player-items 정본 · 갖옷 × 장인 = 62).
+let _t508Top;
+function _t508Cap() {
+  if (_t508Top === undefined) {
+    try { _t508Top = +require('./player-items').ITEM_TYPES.clothes.attrScale || null; } catch (e) { _t508Top = null; }
+  }
+  return _t508Top;
+}
+function _t508CPer() {
+  const cap = _t508Cap();
+  if (!(cap > CFG.WARMTH_MIN)) return CFG.WARMTH_C_PER;
+  return CFG.CLO_C * CFG.CLO_TOP / (cap - CFG.WARMTH_MIN);
+}
+/** 계측·하네스용 — 두 팔의 지금 값(정본에서 바로 꺼낸다 · 사본 0). */
+function t508Info() {
+  const S = _t508Shape();
+  return { decay: T508_DECAY_EXP || '', clo: T508_CLO, shape: S ? Object.assign({}, S) : null,
+    cPer: T508_CLO ? _t508CPer() : CFG.WARMTH_C_PER, cPerOn: _t508CPer(), cap: _t508Cap() };
+}
 
 // ── 연속 효과 곡선 (piecewise linear · 제어점 4~6) ────────────────────────────
 // ★문턱 절벽 없음(§8.3). x = 그 축의 **심각도**(0 좋음 … 1 최악), y = 배율.
@@ -559,7 +646,8 @@ function stamina(p) { return ensure(p).stam; }
  */
 function warmthInsC(warmth, wet) {
   const w = Math.max(0, Number(warmth) || 0);
-  const dry = Math.max(0, w - CFG.WARMTH_MIN) * CFG.WARMTH_C_PER;
+  //   ★[T508 ②] 켜면 방한 1점의 ℃ 가 clo 출처에서 유도된 값(`_t508CPer`) — 끄면 종전 식 글자 그대로.
+  const dry = T508_CLO ? Math.max(0, w - CFG.WARMTH_MIN) * _t508CPer() : Math.max(0, w - CFG.WARMTH_MIN) * CFG.WARMTH_C_PER;
   // ★[T105] 젖음은 **곱 하나**다 — 새 식이 아니라 같은 단열에 붙는 배율이다.
   //   `wet` 을 안 주면 정확히 종전 값이다(옛 호출부·구 하네스 계약 보존 · 되돌림도 이 길로 온다).
   return dry * wetMult(wet);
@@ -715,6 +803,13 @@ function heatThirstMult(ctx) {
 }
 
 function decayRate(g, totalSec) {
+  //   ★[T508 ①] 켠 꼴이면 그 꼴의 **순간** 감쇠율(초당 게이지) — 적분은 `decayStep` 이 정확 해로 한다.
+  //     지수: k·(g + b) · 유리: (100 + c·g)² / (100·(1 + c)·T) — 둘 다 매듭 셋을 지나는 곡선의 기울기다.
+  if (T508_DECAY_EXP) {
+    const S = _t508Shape();
+    if (S && S.form === 'exp') return (S.kT / totalSec) * (g + S.b);
+    if (S && S.form === 'rat') return (100 + S.c * g) * (100 + S.c * g) / (100 * (1 + S.c) * totalSec);
+  }
   const sp = Math.max(0.05, Math.min(0.95, CFG.DECAY_SPLIT));
   const tf = Math.max(0.05, Math.min(0.95, CFG.DECAY_TOP_FRAC));
   const gate = sp * 100;
@@ -775,12 +870,13 @@ function tick(p, dtSec, ctx) {
   const cm = 1 + CFG.COLD_HUNGER_EXTRA * b.cold;   // 추우면 에너지를 더 쓴다(허기만)
   const h0 = (p.hunger == null ? 100 : p.hunger);
   const t0 = (p.thirst == null ? 100 : p.thirst);
-  p.hunger = Math.max(0, h0 - decayRate(h0, CFG.HUNGER_SEC) * dtSec * cm);
+  //   ★[T508 ①] 켠 꼴은 정확 해 한 걸음(`decayStep`) — 끄면 아래 종전 식 **글자 그대로**(비트 동일).
+  p.hunger = T508_DECAY_EXP ? decayStep(h0, CFG.HUNGER_SEC, dtSec * cm) : Math.max(0, h0 - decayRate(h0, CFG.HUNGER_SEC) * dtSec * cm);
   //   ★[바닷물] 짠물 기운이 남아 있으면 갈증이 **더 빨리** 준다(확정적 · 새 축 없음).
   //   ★★[여름 2026-09-03 · T64] 그리고 **여름 낮에도 더 빨리 준다** — 곱 하나가 더 붙는다.
   //     두 배율은 곱해진다: 여름 낮에 짠물을 마시면 둘 다 걸린다(각각이 독립된 사실이다).
   const bm = (brineActive(p, c.now) ? CFG.BRINE_MULT : 1) * heatThirstMult(c);
-  p.thirst = Math.max(0, t0 - decayRate(t0, CFG.THIRST_SEC) * dtSec * bm);
+  p.thirst = T508_DECAY_EXP ? decayStep(t0, CFG.THIRST_SEC, dtSec * bm) : Math.max(0, t0 - decayRate(t0, CFG.THIRST_SEC) * dtSec * bm);
 
   // ★★★[캐논 변경 2026-09-01 · T44] 극단이면 **HP 가 아주 천천히 깎인다.**
   //   여기서는 **쌓기만** 한다 — 실제 피해는 `zone.js` 가 정본 경로(`damagePlayer`)로 낸다.
@@ -900,6 +996,7 @@ module.exports = {
   CFG, CURVES, AXES, KO, EMO, STAGE_AT,
   lerpCurve, xWhereBelow, ensure, severity, effects, stageOf, moodles,
   RECOVER, EFFECT_AXES, RECOVER_AXES, recoverMult, recoverParts, canSprint, stamina, coldTarget, warmthInsC, decayRate,
+  decayStep, t508Info,       // ★[T508] 감쇠 꼴·옷 ℃ 두 팔 — 계측기·하네스가 **이것을** 부른다(사본 0)
   wetStep, wetOf, wetMult,   // ★[T105] 젖음 정본 — 하네스·`zone.js` 가 **이것을** 부른다(사본 0)
   coverMult,                 // ★[T114] 수관 차폐가 남기는 비의 몫 — 하네스가 **이것을** 부른다(사본 0)
   drinkBrine, brineActive,
