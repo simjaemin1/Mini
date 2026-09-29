@@ -4509,7 +4509,7 @@ const server = http.createServer((req, res) => {
       try {
         const data = JSON.parse(body);
         const now = Date.now();
-        for (const s of data.players || []) ghostPlayers.set(s.playerId, { ax: s.ax, ay: s.ay, vx: s.vx || 0, vy: s.vy || 0, name: s.name, srcZone: data.srcZone, recvAt: now });
+        for (const s of data.players || []) ghostPlayers.set(s.playerId, T512_GHOST_EXTRAP && typeof s.t === 'number' ? { ax: s.ax, ay: s.ay, vx: s.vx || 0, vy: s.vy || 0, name: s.name, srcZone: data.srcZone, recvAt: now, t: s.t } : { ax: s.ax, ay: s.ay, vx: s.vx || 0, vy: s.vy || 0, name: s.name, srcZone: data.srcZone, recvAt: now });
         // 건물 미러: 이 srcZone이 보낸 건물로 교체 (제거 반영 위해 prefix 클리어 후 재설정)
         if (Array.isArray(data.buildings)) {
           const prefix = data.srcZone + ':';
@@ -4754,6 +4754,8 @@ wss.on('connection', (ws, req) => {
 const E2E_HANDOFF_NO_BODY = (process.env.E2E_GIVE === '1') && process.env.E2E_HANDOFF_NO_BODY === '1';
 // ★[T498] 핸드오프 페이로드 정본 팔 — 켜면 떠나기 전 central 저장을 기다리지 않는다(`fireHandoff` 주석) · 기본 끔 = 종전 바이트 동일
 const T498_HANDOFF_PAYLOAD = process.env.T498_HANDOFF_PAYLOAD === '1';
+// ★[T512] 유령 앞으로 밀기 팔 — 켜면 유령 스냅샷에 보낸 시각을 싣고, 받는 존의 화살 판정이 그 나이만큼 속도로 민다 · 기본 끔 = 종전 바이트 동일
+const T512_GHOST_EXTRAP = process.env.T512_GHOST_EXTRAP === '1';
 const E2E_CONN_FAIL = (process.env.E2E_GIVE === '1') ? (process.env.E2E_CONN_FAIL || '') : '';
 const E2E_CONN_HANG = (process.env.E2E_GIVE === '1') ? (process.env.E2E_CONN_HANG || '') : '';
 function _connFailPoint(stage) {
@@ -10805,7 +10807,10 @@ function stepArrows(dt) {
     if (!hit) {
       const aax = ZONE.worldOffsetX + a.x, aay = ZONE.worldOffsetY + a.y;
       for (const [gid, g] of ghostPlayers) {
-        if (Math.hypot(g.ax - aax, g.ay - aay) < ARROW_HIT_R) {
+        // ★[T512 · 팔 `T512_GHOST_EXTRAP` · 기본 끔] 유령은 **보낸 순간의 자리**다 — 바다를 건너면 그 사이(한 방향 + 주기 100ms 의 나이) 몸은 이미 옮겼다.
+        //   켜면 보낸 순간(`g.t`) 부터 지금까지 **실린 속도 그대로**(`move-model` 이 낸 px/s) 앞으로 민다 — 새 수 0(나이는 유령 수명 `GHOST_TTL_MS` 안으로만).
+        const _ga = (T512_GHOST_EXTRAP && typeof g.t === 'number') ? Math.min(GHOST_TTL_MS, Math.max(0, Date.now() - g.t)) / 1000 : 0;
+        if (Math.hypot(g.ax + g.vx * _ga - aax, g.ay + g.vy * _ga - aay) < ARROW_HIT_R) {
           const tz = ZONES[g.srcZone];
           if (tz) postJSON(tz.host, tz.port, '/cross_damage', { targetId: gid, dmg: a.dmg, attackerId: a.ownerId }).catch(() => {});
           hit = true; break;
@@ -10831,7 +10836,9 @@ function syncGhostsToNeighbors() {
     if (p.y > zh - GHOST_REACH) near.push(findZoneAt(ox + p.x, oy + zh + 1));
     for (const tz of near) {
       if (!tz || tz.id === ZONE_ID || tz.isOcean) continue;
-      (byZone[tz.id] = byZone[tz.id] || []).push({ playerId: p.playerId, name: p.name, ax: ox + p.x, ay: oy + p.y, vx: p.vx, vy: p.vy });
+      const _gs = { playerId: p.playerId, name: p.name, ax: ox + p.x, ay: oy + p.y, vx: p.vx, vy: p.vy };
+      if (T512_GHOST_EXTRAP) _gs.t = Date.now();   // ★[T512] 이 자리의 벽시계(보낸 순간) — 받는 존이 그만큼 앞으로 민다
+      (byZone[tz.id] = byZone[tz.id] || []).push(_gs);
     }
   }
   // 경계 근처 벽/문/펜스를 이웃 zone에 (콜라이더 미러). 절대 cell + side.
