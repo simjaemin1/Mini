@@ -1168,6 +1168,13 @@
       const arr = msg.buildings || [];
       for (let i = 0; i < arr.length; i++) c.buildings.set(arr[i].id, arr[i]);
       clWallMapBuiltAt = 0; clStairCacheBuildAt = 0;   // wall/stair 캐시 재빌드 강제 (다음 프레임)
+    } else if (msg.type === 'bridges_add') {            // ★[T527] 마을 크루가 지은 다리 — welcome 과 같은 두 집합(렌더 `c.bridges` · 콜라이더 미러 `_bridgeAbs`)에 더한다
+      const z = c.meta || {}, cells = msg.cells || [];
+      if (!c.bridges) c.bridges = new Set();
+      for (let i = 0; i + 1 < cells.length; i += 2) {
+        c.bridges.add(cells[i] + ',' + cells[i + 1]);
+        _bridgeAbs.add(((z.worldOffsetX || 0) / CL_BUILDING_SIZE + cells[i]) + ',' + ((z.worldOffsetY || 0) / CL_BUILDING_SIZE + cells[i + 1]));
+      }
     } else if (msg.type === 'buildings_removed') {      // 배치 제거 — 청크 비활성화 (서버는 메모리 유지)
       const ids = msg.ids || [];
       for (let i = 0; i < ids.length; i++) c.buildings.delete(ids[i]);
