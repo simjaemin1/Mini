@@ -124,9 +124,10 @@ function sourceAt(x, y, ctx) {
   if (ctx.hasVessel) {
     for (const [dx, dy] of adj) {
       const wx = x + dx, wy = y + dy;
-      if (!ctx.isWater(wx, wy)) continue;
-      if (ctx.isSea && ctx.isSea(wx, wy)) continue;
-      return { kind: _Tidal().FRESH, key: null, where: '물가' };
+      const _well = !!(ctx.isWell && ctx.isWell(wx, wy));   // ★[T509] 우물 칸 — 민물(손잡이 끔이면 `isWell` 없음 = 종전)
+      if (!ctx.isWater(wx, wy) && !_well) continue;
+      if (!_well && ctx.isSea && ctx.isSea(wx, wy)) continue;
+      return { kind: _Tidal().FRESH, key: null, where: _well ? '우물' : '물가' };
     }
   }
 
