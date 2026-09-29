@@ -131,7 +131,29 @@ function dropRoom(id) {
   for (const k of r.cells) cellRoom.delete(`${k},${r.floor}`);
   rooms.delete(id); return true;
 }
+// ── ★★[T526 2026-09-29] 지붕 아래 — **실내의 정본 하나**(방 + 마을 정형 건물의 발자국) ─────────────
+//   T520 이 잰 것: 몸의 실내(`zone.isIndoorAt`)는 이 모듈의 `roomAt` 하나였고, 이 모듈은 마을 움집·쉼터·큰집을
+//   **일부러** 안 센다(위 머리글 "마을 건물은 이 경로를 안 탄다" — 문이 개구라 BFS 가 새고, 태그 바닥은 시드에서 뺀다).
+//   그 대신 쓰기로 했던 "현행 경로"(발자국 렉트)는 **클라 화면에만** 있었다(지붕 합성·컷어웨이 · `data.bld` 실내 게이트).
+//   ⇒ 쉼터 안에 서도 몸에게는 바깥이었다(T520: 0/50).
+//   ★새 규칙 0 — 방의 문법 그대로 **"바닥이 깔린 칸"** 을 본다: 그 칸의 바닥이 마을 정형 건물의 바닥
+//     (`isVillageTagged` — 같은 주입 술어)이고 그 발자국 렉트(`data.hut`·`bld`·`gran` — villages.js 가 전 행에 찍는 그것 ·
+//     클라 `_bakeRoof` 가 지붕을 얹는 앵커) 안이면 **지붕 아래**다. 렉트는 태그가 이미 갖고 있다(좌표를 짓지 않는다).
+//   ⚠문간(문 칸)은 바닥이 없어 바깥이다 — 방의 "바닥 다 깔린 칸" 과 같은 경계.
+/** 이 바닥 행이 마을 정형 건물의 바닥이고 (cx,cy) 가 그 발자국 안인가 — 술어의 몸통(바닥 조회와 떼어 하네스가 행으로 직접 잰다). */
+function villageRoofOf(b, cx, cy) {
+  if (!b || !D || !D.isVillageTagged || !D.isVillageTagged(b) || !b.data) return false;
+  const R = b.data.hut || b.data.bld || b.data.gran;
+  return Array.isArray(R) && R.length >= 4 && cx >= R[0] && cx <= R[2] && cy >= R[1] && cy <= R[3];
+}
+function villageRoofAt(cx, cy, floor) {
+  if (!D || !D.floorTileAt) return false;
+  return villageRoofOf(D.floorTileAt(cx, cy, floor), cx, cy);
+}
+/** 지붕 아래인가 — 방이거나 마을 정형 건물 발자국 안. 몸의 실내(`zone.isIndoorAt` · `T526_VILLAGE_INDOOR` 켬)가 이것을 부른다. */
+function underRoofAt(cx, cy, floor) { return !!roomAt(cx, cy, floor) || villageRoofAt(cx, cy, floor); }
 function stats() { return { rooms: rooms.size, cells: cellRoom.size }; }
 function _reset() { rooms.clear(); cellRoom.clear(); }
 
-module.exports = { init, computeRoomAt, recomputeAround, seedsForEdge, roomAt, roomIdAt, allRooms, wireRoom, dropRoom, stats, MAX_ROOM_CELLS, _reset };
+module.exports = { init, computeRoomAt, recomputeAround, seedsForEdge, roomAt, roomIdAt, allRooms, wireRoom, dropRoom, stats, MAX_ROOM_CELLS, _reset,
+  villageRoofOf, villageRoofAt, underRoofAt };   // ★[T526] 지붕 아래 = 실내(방 + 마을 발자국)
