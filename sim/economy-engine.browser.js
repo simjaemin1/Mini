@@ -8565,6 +8565,12 @@ function caravanWalkPerDay() {   // 몸 하루 걸음(econ 단위/일) — 켬�
 //     **읽는 곳이 없다**(소문이 번들에 없다 · 아래 `rumorDaySpeed()` 를 부르는 곳 0) — 부르면 몸 정본(move-model 표)이 번들에 없어 소리 내 던진다.
 //   ⚠T489 가 품었던 캐러밴 갈래(짐 배수 `1` 시속 비 · `day` 하루 비)는 **T496 이 뗐다** — 이 손잡이는 이제 소문만 가른다.
 //     캐러밴의 짐은 아래 `T496_CARAVAN_REST` 하나다(PM 이 T489 권고 ③ 에서 하루 비를 골랐다 · 시속 비는 표에만 남는다 — `cargoWalkMul('1')`).
+// ★★[T530 2026-09-29 · T521 발견 "캐러밴 283번 중 무기·갑옷·도구 0"] 팔 `T530_TRADE_ARMS`(끔 = 비트 동일).
+//   막던 문 = **한 수레 한 품목 · 총이익 최대**(아래 첫째 화물 고르기): 무기·도구는 잉여 문턱은 넘는데(시드 1020 · 800일 · 무기 33%의 마을-날)
+//   총이익에서 쌀·생선에 진다(무기 3,557 후보 중 3,377 번 짐 · 떠난 수레 8,832 중 무기 17 · 도구 8 · 갑옷 0).
+//   켬이면 잉여(있는 문턱)이고 이익이 나는(있는 관문 `_legProfitPerUnit × 수량 > 0`) 무기·갑옷·도구 다리가 있으면 그 다리를 첫째 화물로 싣는다.
+//   식량 끌기(위기 마을)·기회비용 관문은 그 뒤에 그대로 선다. 새 수 0.
+const T530_TRADE_ARMS = (typeof process !== 'undefined' && process.env) ? process.env.T530_TRADE_ARMS === '1' : false;
 const T489_RUMOR_SPLIT = (typeof process !== 'undefined' && process.env) ? process.env.T489_RUMOR_SPLIT !== '0' : false;
 const T468_PORTER = { kmh: [2.4, 3.2], kmDay: [19.3, 24.1] };   // ★T468 짐꾼 자(설계/고증_교역.md §②) — 계약 test-move-soa ⑲
 //   짐 배수(새 수 0 · 있는 짐꾼 자 T468 = `설계/고증_교역.md` §② · 보고/T468 §0-ⓑ):
@@ -9082,7 +9088,7 @@ function tickTradeV2(world, day) {
       const _crisisA = !!(a.v.surplusEMA && a.v.surplusEMA.food < 0);   // ★식량 pull 게이트(K L488과 동일 신호)
       const _fsMemo = new Map();   // ★P2: 목적지 식량 잉여 여부(4류 중 1이라도 출발게이트 통과) 메모
       const _destHasFood = (bd) => { if (_fsMemo.has(bd)) return _fsMemo.get(bd); const bn = bd.v.npcs.length; let ok = false; for (const fr in FOOD_CLASSES) { const bs = bd.v.storage[fr] || 0; const bt = Math.max((SUBSISTENCE_PER_NPC[fr] || 0) * bn * 30, bn * 0.3); if (bs > bt) { ok = true; break; } } _fsMemo.set(bd, ok); return ok; };
-      let best = null, bestF = null;
+      let best = null, bestF = null, bestArms = null;   // ★[T530] 무기·갑옷·도구 중 이익 최대 다리(끔이면 안 채운다)
       for (const cand of candidates) {
         for (const nb of a.v._near20) {   // ★모든 마을 → top-20 근처만
           const b = evToData.get(nb);
@@ -9148,6 +9154,9 @@ function tickTradeV2(world, day) {
               key,
             };
           }
+          if (T530_TRADE_ARMS && (WEAPONR[cand.res] || (CAPITAL[cand.res] && cand.res !== 'clothes')) && (!bestArms || totalProfit > bestArms.profit)) {
+            bestArms = { profit: totalProfit, profitPerUnit, cand, b, dist, N_units, pFrom, pTo, transportCostPerUnit, expectedLossRatio, key };
+          }
           // ★식량 pull(P2): 식량 잉여 목적지 중 최고 이익 병행 추적(위기 마을 한정)
           if (_crisisA && _destHasFood(b) && (!bestF || totalProfit > bestF.profit)) {
             bestF = { profit: totalProfit, profitPerUnit, cand, b, dist, N_units, pFrom, pTo, transportCostPerUnit, expectedLossRatio, key };
@@ -9155,6 +9164,7 @@ function tickTradeV2(world, day) {
         }
       }
       if (!best) break;
+      if (bestArms) best = bestArms;   // ★[T530] 잉여 무기·도구가 이익이 나면 그 다리가 첫째 화물(식량 끌기·기회비용 관문은 아래 그대로)
       // ★식량 pull(P2): 위기 마을은 이익 관용범위 내에서 '식량 잉여 목적지' 우선 — 175 전역가중(랭킹 곱)과 달리 크기 비왜곡, 게이트는 실이익.
       if (_crisisA && bestF && bestF !== best && bestF.profit >= best.profit * FOOD_PULL_TOL) best = bestF;
       // ★남는 시간 판정: 원정 이익 > 유효원정일수 × 기회비용일 때만. 아니면 생산이 나으니 중단.
