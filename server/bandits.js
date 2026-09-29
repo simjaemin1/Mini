@@ -62,7 +62,11 @@ const BDT_DEN_SEP = 250, BDT_DEN_DV = 200;                     // 소굴 이격 
 const BDT_DEN_CD0 = 30, BDT_DEN_CD1 = 60, BDT_DEN_SZ0 = 4, BDT_DEN_SZ1 = 6, BDT_DEN_FOOD = 30; // 재결성 30~60일·4~6명·비축 30/명
 // (BDT_BR_R 다리 가중·BDT_AMB_* 고립 습격은 1파 비대상 — 본체 다리 없음·실체 층은 2파)
 
-const FIXTURE = process.env.BANDIT_FIXTURE || ''; // 테스트 전용(헤더 주석) — 운영 무설정
+const FIXTURE = process.env.BANDIT_FIXTURE || '';
+// ★[T521] 단이 실물로 드는 품목 — econ 재화 이름 그대로(무기·갑옷·도구 셋 · 새 이름 0)
+const ARMS_RES = new Set(['weapon', 'armor', 'tool', 'iron_tool', 'bronze_tool']);
+function _t521On() { return typeof process !== 'undefined' && !!process.env && process.env.T521_GANG_ARMS === '1'; }
+function armsHeld(g) { const w = (g && g.arms && g.arms.weapon) || 0; return Math.min(Math.max(0, g ? g.n | 0 : 0), w); }   // 손 = 한 사람 한 무기 // 테스트 전용(헤더 주석) — 운영 무설정
 
 const S = {
   ready: false,
@@ -289,6 +293,17 @@ function installHooks() { // econ 계약 훅(★v2 주사위는 이미 서버 �
     const k = victim.name < other.name ? victim.name + '|' + other.name : other.name + '|' + victim.name;
     const gs = S.pairs.get(k);
     if (!gs || !gs.length) return;
+    // ★★[T521 2026-09-29 · 캐논 "실물이 정본"] 팔 `T521_GANG_ARMS`(끔) — 턴 무기·갑옷·도구는 **장물아비에게 안 넘긴다**:
+    //   실물 그대로 단의 짐(`g.arms` · 소굴 저장)에 든다. 손에 드는 것은 한 사람 한 무기(= min(인원, 무기) — 전쟁 계획·전투가 같은 규칙으로 읽는다).
+    //   식량·잡화는 종전 그대로 환산(`BDT_FENCE_*`). 끔이면 이 줄은 한 번도 안 돈다(비트 동일).
+    if (_t521On() && ARMS_RES.has(res)) {
+      for (const g of gs) { const a = g.arms || (g.arms = {}); a[res] = +((a[res] || 0) + amt / gs.length).toFixed(6); g.lootN++; g.lastLoot = day; }
+      victim._banditRisk = Math.min(0.6, (victim._banditRisk || 0) + BDT_RISK_UP);
+      other._banditRisk = Math.min(0.6, (other._banditRisk || 0) + BDT_RISK_UP * 0.5);
+      S.stats.loot++; S.stats.lootAmt += amt; S.stats.armsLoot = (S.stats.armsLoot || 0) + amt;
+      queueLog(day, `약탈 ${victim.name}→${other.name} ${res} ${amt.toFixed(1)} → 단#${gs.map(g => g.id).join('·')} 실물(무기 짐 — 장물아비 안 거침)`);
+      return;
+    }
     const foody = res === 'food' || res === 'fish' || res === 'meat' || res === 'cooked_food' || res === 'vegetable';
     const gain = amt * (foody ? BDT_FENCE_F : BDT_FENCE_G); // 장물아비 수수료 환산
     for (const g of gs) { g.food = Math.min(g.n * BDT_CAP, g.food + gain / gs.length); g.lootN++; g.lastLoot = day; }
@@ -468,7 +483,7 @@ function daily(day) { // 하루 1회(villages econ 틱 직후): 위기 추적→
 // =============================================================================
 function save(day) {
   try {
-    const gangs = S.GANGS.map(g => ({ id: g.id, camp: g.camp, n: g.n, food: g.food, zero: g.zero, born: g.born, home: g.home, why: g.why, lootN: g.lootN, lastLoot: g.lastLoot, den: g.den != null ? g.den : null, _sup: g._sup || null, _supKill: g._supKill || 0 }));
+    const gangs = S.GANGS.map(g => ({ id: g.id, camp: g.camp, n: g.n, food: g.food, zero: g.zero, born: g.born, home: g.home, why: g.why, lootN: g.lootN, lastLoot: g.lastLoot, den: g.den != null ? g.den : null, _sup: g._sup || null, _supKill: g._supKill || 0 , arms: g.arms || undefined }));
     S.db.upsertBanditState(S.zoneId, JSON.stringify({ seq: S.seq, denSeq: S.denSeq, dens: S.DENS, gangs, stats: { ...S.stats, log: undefined } }), day);
   } catch (e) {
     console.error(`[${S.zoneId}] 🏴 [도적] 저장 실패(다음 날 재시도):`, e.message);
@@ -600,11 +615,12 @@ function onGameTick() {
     broadcastCampsIfChanged();
     syncBodies();   // ★[2파] 소굴 배회 NPC 재동기(단 결성·해산·증감 반영 — 비영속·연출 전용)
     if (S.GANGS.length || S.stats.denClear) {
-      console.log(`[${S.zoneId}] 🏴 도적 day ${day}: 단 ${S.stats.gangs}(총원 ${S.stats.members}) · 소굴 ${S.stats.denOcc}/${S.stats.dens} 점유 · 약탈 누계 ${S.stats.loot} · 길목쌍 ${S.pairs.size} · ${Date.now() - t0}ms`);
+      const _arm = _t521On() ? ` · 무장 ${S.GANGS.reduce((a, g) => a + armsHeld(g), 0).toFixed(1)}/${S.stats.members}(무기 짐 ${S.GANGS.reduce((a, g) => a + ((g.arms && g.arms.weapon) || 0), 0).toFixed(1)} · 실물 약탈 ${(S.stats.armsLoot || 0).toFixed(1)})` : '';   // ★[T521] 무장률 곡선
+      console.log(`[${S.zoneId}] 🏴 도적 day ${day}: 단 ${S.stats.gangs}(총원 ${S.stats.members}) · 소굴 ${S.stats.denOcc}/${S.stats.dens} 점유 · 약탈 누계 ${S.stats.loot} · 길목쌍 ${S.pairs.size}${_arm} · ${Date.now() - t0}ms`);
     }
   } catch (e) {
     console.error(`[${S.zoneId}] 🏴 도적 데일리 실패(다음 경계 재시도):`, e.message);
   }
 }
 
-module.exports = { init, onGameTick, clientCamps, stats: () => S.stats };
+module.exports = { init, onGameTick, clientCamps, stats: () => S.stats, armsHeld, ARMS_RES };   // ★[T521] 손 규칙 하나(villages 소굴 어댑터가 같은 함수를 읽는다)
