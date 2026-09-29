@@ -167,5 +167,71 @@ say('\n⑥ 대리 지표 — 품목 × 숙련 × 단열');
   }
 }
 
+// ═══ ⑦ ★★[T516 2026-09-29 · #90 입력] 방한을 재질 clo 에서 유도 — `T516_WARMTH_CLO`(기본 끔) ═══════
+//   ★팔은 모듈 적재 때 읽힌다 ⇒ 켬 판은 env 를 주고 `clothes`·`player-items`(·`body`)를 **다시 올린다**
+//     (test-body ⑲ⓗ·㉑ 과 같은 규약 · 원래 인스턴스를 도로 꽂는다 — 뒤 검사 오염 금지).
+say('\n⑦ 재질 clo → 방한 (T516)');
+{
+  const mods = ['clothes.js', 'player-items.js', 'body.js'].map((f) => require.resolve(path.join(ROOT, 'server', f)));
+  const reload = (env) => {
+    const keepMods = mods.map((m) => require.cache[m]), keep = {};
+    for (const k of Object.keys(env)) keep[k] = process.env[k];
+    for (const m of mods) delete require.cache[m];
+    for (const [k, v] of Object.entries(env)) { if (v === undefined) delete process.env[k]; else process.env[k] = v; }
+    const _q = console.log; console.log = () => {};
+    try { const P2 = require(mods[1]); return { C: require(mods[0]), P: P2, B: require(mods[2]) }; } finally {
+      console.log = _q;
+      for (const m of mods) delete require.cache[m];
+      for (const [k, v] of Object.entries(keep)) { if (v === undefined) delete process.env[k]; else process.env[k] = v; }
+      mods.forEach((m, i) => { if (keepMods[i]) require.cache[m] = keepMods[i]; });
+    }
+  };
+  // ── ⓐ 끔 = 카탈로그 그대로 ──
+  ok(C.T516_WARMTH_CLO === false, '★★⑦ⓐ 기본은 **끔** — 방한은 종전 식(③ 이 여섯 × 열하나 전수 비트 동일로 못 박는다)');
+  const psrc = fs.readFileSync(path.join(ROOT, 'server', 'player-items.js'), 'utf8');
+  ok(/if \(Clothes\.T516_WARMTH_CLO\) \{ const w = Clothes\.warmthCloOf\(inst\.mat\); if \(w != null\) inst\.attrs\.warmth = w; \}/.test(psrc),
+    '★⑦ⓐ2 켬 갈래는 `craftItem` 한 줄 — 끄면 안 돈다(천장 줄 뒤 · `q`·내구 줄 무변)');
+  // ── ⓑ 재질 clo 표 — 여섯 다 값이 있고 출처가 있다 ──
+  const ids = C.accepts();
+  ok(ids.every((m) => Number.isFinite(C.cloOf(m)) && C.cloOf(m) > 0), '★★⑦ⓑ 품목 여섯 다 **한 벌 clo** 가 있다', ids.map((m) => `${m} ${C.cloOf(m).toFixed(3)}`).join(' · '));
+  const csrc = fs.readFileSync(path.join(ROOT, 'server', 'clothes.js'), 'utf8');
+  ok(/facets-2024-0100/.test(csrc) && /pid%2F10581147/.test(csrc) && /Clothing_insulation/.test(csrc),
+    '★⑦ⓑ2 clo 는 **출처의 값**이다 — Barker 2025(모피) · Son & Tasaka 1996(모시) · ASHRAE 55 의복 표(삼베·가죽)');
+  ok(C.cloOf('hemp') === C.cloOf('fiber') && C.cloOf('hemp') < C.cloOf('ramie') && C.cloOf('ramie') < C.cloOf('leather') &&
+     C.cloOf('leather') === C.cloOf('hide') && C.cloOf('leather') < C.cloOf('fur'),
+    '★★⑦ⓑ3 얇은 식물 섬유 < 모시 < 두꺼운 가죽 < 모피 — 단열은 재질 이름이 아니라 **두께**가 정한다');
+  // ── ⓒ 켬 — 방한 = WARMTH_MIN + clo × (천장 − WARMTH_MIN) ÷ CLO_TOP · 숙련 무관 ──
+  const On = reload({ T516_WARMTH_CLO: '1' });
+  const cap = On.P.ITEM_TYPES.clothes.attrScale;
+  const want = (m) => Math.round(On.B.CFG.WARMTH_MIN + On.C.cloOf(m) * (cap - On.B.CFG.WARMTH_MIN) / On.B.CFG.CLO_TOP);
+  const wOn = (m, l) => On.P.craftItem('clothes', l, { [m]: 3 }).attrs.warmth;
+  ok(On.C.T516_WARMTH_CLO === true && ids.every((m) => [0, 3, 5, 7, 10].every((l) => wOn(m, l) === want(m))),
+    '★★⑦ⓒ 켬: 방한 = 10 + clo × 52 ÷ CLO_TOP(T508 앵커) — 숙련 0~10 **어디서나 같은 값**', ids.map((m) => `${m} ${want(m)}`).join(' · '));
+  const iOff = P.craftItem('clothes', 7, { leather: 3 }), iOn = On.P.craftItem('clothes', 7, { leather: 3 });
+  ok(iOn.q === iOff.q && iOn.durMax === iOff.durMax && iOn.mat === iOff.mat,
+    '★⑦ⓒ2 숙련은 `q`(내구·값·이름)에 그대로 남는다 — 방한만 재질이 정한다', `q ${iOn.q} · 내구 ${iOn.durMax}`);
+  const band = (m) => [0, 10].map((l) => wOn(m, l));
+  ok(Math.max(...band('hemp'), ...band('ramie')) < Math.min(...band('leather')) && Math.max(...band('leather'), ...band('hide')) < Math.min(...band('fur')),
+    '★★⑦ⓒ3 티어 구간이 **안 겹친다**(끔: 삼베 15~26 · 가죽 16~53 · 모피 25~62 — T515 가 본 겹침)',
+    `삼베 ${band('hemp')} · 가죽 ${band('leather')} · 모피 ${band('fur')}`);
+  // ── ⓓ 두 팔 다 켬(T508_CLO + T516) — 단열 ℃ = clo × CLO_C(반올림 ±½점) ──
+  const Both = reload({ T516_WARMTH_CLO: '1', T508_CLO: '1' });
+  const cPer = Both.B.t508Info().cPer;
+  const bad = ids.filter((m) => Math.abs(Both.B.warmthInsC(Both.P.craftItem('clothes', 5, { [m]: 3 }).attrs.warmth) - Both.C.cloOf(m) * Both.B.CFG.CLO_C) > 0.5 * cPer + 1e-9);
+  ok(bad.length === 0, '★★⑦ⓓ 두 팔 다 켜면 옷의 ℃ = **clo × 5.56**(1 clo ≈ 5.56℃ — 천장·앵커는 서로 지운다)',
+    ids.map((m) => `${m} +${Both.B.warmthInsC(Both.P.craftItem('clothes', 5, { [m]: 3 }).attrs.warmth).toFixed(2)}℃`).join(' · '));
+  // ── ⓔ 미끼 — 삼베 clo 를 모피 값으로 바꾸면 ⓑ3·ⓒ3 이 뒤집힌다 ──
+  {
+    const keepClo = On.C.CLOTHES.hemp.clo; On.C.CLOTHES.hemp.clo = On.C.CLOTHES.fur.clo;
+    const flipped = !(wOn('hemp', 10) < wOn('leather', 0)); On.C.CLOTHES.hemp.clo = keepClo;
+    ok(flipped, '⑦ⓔ (미끼) 삼베 clo 를 모피 값으로 바꾸면 "삼베 < 가죽"이 무너진다 — 판정이 실제로 clo 를 읽는다');
+  }
+  // ── ⓕ 무접촉 — 화면으로 나가는 표(그림 키 `clothes_<id>` 가 읽는 것)는 무변 ──
+  const pl2 = On.C.payload();
+  ok(JSON.stringify(pl2) === JSON.stringify(C.payload()) && pl2.every((r) => !('clo' in r)),
+    '★⑦ⓕ `payload()` 무변 — clo 는 화면으로 안 나간다(T515 그림 키 `clothes_<id>` · 필드 0 추가)');
+  ok(C.T516_WARMTH_CLO === false && P.craftItem('clothes', 10, { hemp: 3 }).attrs.warmth === 26, '⑦ⓖ (오염 검사) 다시 올린 뒤에도 이 하네스의 정본은 끔(장인 삼베 26)');
+}
+
 say(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
 process.exit(fail ? 1 : 0);
