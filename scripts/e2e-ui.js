@@ -830,6 +830,230 @@ async function waitHttp(url, tries = 600) {
     await page.evaluate(() => showNotice('', 1, null));
   }
 
+  // ── ⑯ ★★[T507 2026-09-29] 첫 30분의 문법 — 우클릭이 언제나 무언가를 말한다 ─────────────
+  //   재민 실기: "바닥에 우클릭을 해봐도 아무것도 안 뜨고, 채집을 어떻게 해야 하는지도 모르겠고."
+  //   ★사람처럼 누른다: 빈 땅 · 물(민물·짠물) 우클릭 → 메뉴 · 살피기 한 줄 · 걷기 · 마시기(걸어가서) · 이름표 · 제작 창 회색.
+  //   ★손잡이 끔(`uiCfg.t507Verbs` 를 뗀다)이면 옛 화면 — 빈 땅 메뉴 0 · 이름표 0 · 제작 줄 옛 글자.
+  console.log('\n=== ⑯ ★★[T507] 첫 30분의 문법 — 우클릭이 언제나 무언가를 말한다 ===');
+  {
+    const clientPt = (wx, wy) => page.evaluate(([wx, wy]) => {
+      const sp = window.__w2s(wx, wy), cv = document.getElementById('canvas'), r = cv.getBoundingClientRect();
+      return { x: r.left + sp.px * (r.width / cv.width), y: r.top + sp.py * (r.height / cv.height) };
+    }, [wx, wy]);
+    const menuLabels = () => page.evaluate(() => { const m = document.getElementById('ctxMenu'); return m ? [...m.children].map((el) => (el.textContent || '').trim()) : null; });
+    const closeMenu = () => page.evaluate(() => { if (typeof hideContextMenu === 'function') hideContextMenu(); });
+    // 탭이 탭으로 읽힐 때까지(T214 문법 — 2코어에서 400ms 문턱을 넘기는 판이 있다) · 증인 = DOM 의 메뉴
+    const tapUntilMenu = async (pt, capMs) => {
+      const t0 = Date.now();
+      while (Date.now() - t0 < (capMs || 20000)) {
+        await closeMenu();
+        await page.mouse.move(pt.x, pt.y);
+        await page.mouse.down({ button: 'right' }); await page.mouse.up({ button: 'right' });
+        for (let i = 0; i < 25; i++) { const l = await menuLabels(); if (l) return l; await sleep(100); }
+      }
+      return null;
+    };
+    const clickMenu = (lb) => page.evaluate((lb) => {
+      const m = document.getElementById('ctxMenu'); if (!m) return false;
+      const it = [...m.children].find((el) => (el.textContent || '').trim().startsWith(lb)); if (!it) return false; it.click(); return true;
+    }, lb);
+    const me = () => page.evaluate(() => ({ x: myAbsPredicted.x, y: myAbsPredicted.y }));
+    // 존 로컬로 보낸다 — 오프셋은 `zonesMeta`(존 설정 거울)에서(연결의 `meta` 는 재접속 찰나에 비어 있을 수 있다)
+    const tele = async (ax, ay) => {
+      for (let i = 0; i < 20; i++) {
+        const sent = await page.evaluate(([ax, ay]) => { const zm = zonesMeta[primaryZoneId]; if (!zm) return false;
+          window.__sendPrimary({ type: 'teleport_debug', x: ax - (zm.worldOffsetX || 0), y: ay - (zm.worldOffsetY || 0) }); return true; }, [ax, ay]);
+        if (sent) break; await sleep(300);
+      }
+      await sleep(1500);
+    };
+    const lastNotice = () => page.evaluate(() => { const n = window.__notices || []; return n.length ? n[n.length - 1] : ''; });
+    await page.evaluate(() => { window.__notices && (window.__notices.length = 0); });
+    ok(await page.evaluate(() => !!(uiCfg && uiCfg.t507Verbs)), '★⑯ 전제 — 손잡이 `T507_VERBS` 기본 켬(welcome `uiCfg.t507Verbs`)');
+
+    // ⓐ 빈 땅 — 걷기 · 살피기(종전: 씨앗이 없으면 메뉴 0)
+    const spot = await page.evaluate(() => {
+      const m = myAbsPredicted;
+      for (let r = 3; r < 12; r++) for (const [dx, dy] of [[r, 0], [0, r], [-r, 0], [0, -r], [r, r], [-r, -r]]) {
+        const x = m.x + dx * 32, y = m.y + dy * 32;
+        const t = pickAt(x, y, { live: true });
+        if (t && t.kind === 'ground' && !isWaterAtAbs(x, y) && !(typeof isRockAtAbs === 'function' && isRockAtAbs(x, y))) return { x, y };
+      }
+      return null;
+    });
+    ok(!!spot, '★⑯ 상황 — 곁에 빈 땅 칸이 있다(물·바위·물건 없음)', JSON.stringify(spot));
+    let gl = null;
+    if (spot) gl = await tapUntilMenu(await clientPt(spot.x, spot.y));
+    ok(!!gl && gl.includes('걷기') && gl.includes('살피기'), '★★⑯ⓐ **빈 땅 우클릭에 메뉴가 뜬다** — 걷기 · 살피기', JSON.stringify(gl));
+    await snap('ui-16a-ground-menu');
+    if (gl) { await clickMenu('살피기'); for (let i = 0; i < 30 && !/^살피기 — /.test(await lastNotice()); i++) await sleep(100); }
+    const lookLine = await lastNotice();
+    ok(/^살피기 — .+ · (임자 없음|내 땅|.+의 (사유지|길드 영토))$/.test(lookLine), '★★⑯ⓑ 살피기 — 서버가 그 칸의 **지형·주울 것·임자**를 한 줄로 답한다', lookLine);
+    // ⓒ 걷기 — 키 없이 그 자리로 간다
+    if (spot) {
+      const d0 = await me();
+      await tapUntilMenu(await clientPt(spot.x, spot.y)); await clickMenu('걷기');
+      let d1 = d0; for (let i = 0; i < 40; i++) { await sleep(150); d1 = await me(); if (Math.hypot(d1.x - spot.x, d1.y - spot.y) < 12) break; }
+      ok(Math.hypot(d1.x - spot.x, d1.y - spot.y) < Math.hypot(d0.x - spot.x, d0.y - spot.y) - 40, '★★⑯ⓒ 걷기 — 손이 키를 안 쥐어도 **그 자리로 걸어간다**',
+         `${Math.round(Math.hypot(d0.x - spot.x, d0.y - spot.y))}px → ${Math.round(Math.hypot(d1.x - spot.x, d1.y - spot.y))}px`);
+      // 키를 누르면 그 순간 멈춘다
+      await tapUntilMenu(await clientPt(d1.x + 320, d1.y)); await clickMenu('걷기'); await sleep(250);
+      await page.keyboard.down('s'); await sleep(120); await page.keyboard.up('s');
+      const w = await page.evaluate(() => (typeof verbWalkDir === 'function') ? verbWalkDir() : 'none');
+      ok(w === null, '★⑯ⓒ2 키를 누르면 걷기가 **그 순간 멎는다**(손이 이긴다)', JSON.stringify(w));
+    }
+
+    // ⓓ 물 — 민물: 마시기(걸어가서) · 병이 있으면 담기 / 짠물: "짠물이다"
+    const water = await page.evaluate(() => {
+      const m = myAbsPredicted, z = clientFindZoneAt(m.x, m.y), coast = waterTilesByZone[z.id];
+      const out = { fresh: null, sea: null };
+      for (let r = 1; r < 400 && !(out.fresh && out.sea); r++) {
+        for (let k = -r; k <= r; k++) for (const [dx, dy] of [[k, -r], [k, r], [-r, k], [r, k]]) {
+          const x = m.x + dx * 32, y = m.y + dy * 32;
+          if (!isWaterAtAbs(x, y)) continue;
+          const tx = Math.floor((x - z.worldOffsetX) / 32), ty = Math.floor((y - (z.worldOffsetY || 0)) / 32);
+          const isCoast = !!(coast && coast.has(tx + '_' + ty));
+          // 뭍이 곁에 있는 물 칸(설 자리) — 하네스만 쓰는 찾기(제품 판정 아님)
+          let land = null;
+          for (const [ax, ay] of [[32, 0], [-32, 0], [0, 32], [0, -32]]) if (!isWaterAtAbs(x + ax, y + ay) && !(typeof isRockAtAbs === 'function' && isRockAtAbs(x + ax, y + ay))) { land = { x: x + ax, y: y + ay }; break; }
+          if (!land) continue;
+          const cx = z.worldOffsetX + tx * 32 + 16, cy = (z.worldOffsetY || 0) + ty * 32 + 16;
+          const lx = z.worldOffsetX + Math.floor((land.x - z.worldOffsetX) / 32) * 32 + 16, ly = (z.worldOffsetY || 0) + Math.floor((land.y - (z.worldOffsetY || 0)) / 32) * 32 + 16;
+          if (!isCoast && !out.fresh) out.fresh = { x: cx, y: cy, lx, ly };
+          if (isCoast && !out.sea) out.sea = { x: cx, y: cy, lx, ly };
+        }
+      }
+      return out;
+    });
+    ok(!!water.fresh, '★⑯ 상황 — 민물 칸과 곁의 뭍을 찾았다', JSON.stringify(water.fresh));
+    if (water.fresh) {
+      // 물가에서 서너 칸 떨어진 뭍에 선다 — 메뉴의 '마시기'가 **걸어가서** 마시는지 본다
+      //   ⚠뒤 칸이 서버에서 막혀 있으면(물·바위 — 클라 거울과 어긋나는 칸이 있다) 텔레포트가 거절된다 ⇒
+      //     세 칸 뒤 → 두 칸 → 한 칸 → 물가 칸 순으로 **받아들여질 때까지** 서 본다(하네스 찾기 · 증인 = 내 자리).
+      const cands = [3, 2, 1, 0].map((k) => ({ x: water.fresh.lx + Math.sign(water.fresh.lx - water.fresh.x) * 32 * k,
+                                               y: water.fresh.ly + Math.sign(water.fresh.ly - water.fresh.y) * 32 * k }));
+      let stand = null, err = null;
+      for (const cnd of cands) {
+        await tele(cnd.x, cnd.y);
+        const at = await me(); err = Math.round(Math.hypot(at.x - cnd.x, at.y - cnd.y));
+        if (err < 48) { stand = cnd; break; }
+      }
+      ok(!!stand, '★⑯ 상황 — 물가 뒤 뭍에 섰다(텔레포트가 받아들여졌다)', stand ? `물 칸에서 ${Math.round(Math.hypot(stand.x - water.fresh.x, stand.y - water.fresh.y))}px` : `오차 ${err}px`);
+      await page.evaluate(() => window.__sendPrimary({ type: '__e2e_body', quiet: true, thirst: 30 }));
+      await sleep(900);
+      const t0 = await page.evaluate(() => myThirst);
+      const wl = await tapUntilMenu(await clientPt(water.fresh.x, water.fresh.y));
+      ok(!!wl && wl[0] === '마시기' && wl.includes('걷기') && wl.includes('살피기') && !wl.some((l) => /담기/.test(l)),
+         '★★⑯ⓓ 민물 우클릭 = **마시기** · 걷기 · 살피기(병이 없으면 담기 0 — 서버 답으로 지은 메뉴)', JSON.stringify(wl));
+      await snap('ui-16d-water-menu');
+      if (wl) await clickMenu('마시기');
+      let t1 = t0; for (let i = 0; i < 60; i++) { await sleep(200); t1 = await page.evaluate(() => myThirst); if (t1 > t0 + 10) break; }
+      ok(t1 > t0 + 10, '★★⑯ⓓ2 마시기 — **걸어가서** 마신다(갈증이 오른다 · E 와 같은 몸통 `drinkFresh`)', `${Math.round(t0)} → ${Math.round(t1)}`);
+      // 병이 있으면 담기가 뜬다
+      await page.evaluate(() => window.__sendPrimary({ type: '__e2e_give', items: { water_bottle: 2 } }));
+      await sleep(900);
+      const wl2 = await tapUntilMenu(await clientPt(water.fresh.x, water.fresh.y));
+      ok(!!wl2 && wl2.some((l) => /^병에 담기 — .+ 2$/.test(l)), '★⑯ⓓ3 병이 있으면 **병에 담기**가 뜬다(그릇 키·수는 서버 답)', JSON.stringify(wl2));
+      if (wl2) await clickMenu('병에 담기');
+      let fw = 0; for (let i = 0; i < 30; i++) { await sleep(200); fw = await page.evaluate(() => (inventory.fresh_water || 0)); if (fw > 0) break; }
+      ok(fw > 0, '★⑯ⓓ4 담기 — 병 하나가 민물 한 되가 된다(E 의 채집 갈래 `tryForage` 그대로)', `fresh_water ${fw}`);
+      await closeMenu();
+    }
+    if (water.sea) {
+      await tele(water.sea.lx, water.sea.ly);
+      const sl = await tapUntilMenu(await clientPt(water.sea.x, water.sea.y));
+      ok(!!sl && sl[0] === '짠물이다' && !sl.includes('마시기'), '★★⑯ⓔ 바다 우클릭 = **짠물이다**(마시기 없음 — 판정은 서버 `isSeaTileLocal`)', JSON.stringify(sl));
+      await closeMenu();
+    } else {
+      // ★이 픽스처의 클라는 바다를 못 그린다(central `ENABLED_ZONES=hanbando` 하나 — 해안선은 바다 존이 zonesMeta 에 있어야 선다 · T473).
+      //   서버는 존 설정 전부로 해안선을 굽는다 ⇒ 바다 칸은 **서버 정본 생성기**(`chunk.generateCoastlineWaterTiles`)로 하네스가 찾는다.
+      //   그 칸 곁 뭍에 서서 ① 살피기 답(`look.water`)으로 메뉴를 짓고 ② 메뉴의 '마시기'가 짠물을 **안 마시는지**(벌 0) 본다.
+      const ZC = require(path.join(ROOT, 'server', 'zone-config')), Ch = require(path.join(ROOT, 'server', 'chunk')), Tr = require(path.join(ROOT, 'server', 'terrain'));
+      const Z = ZC.ZONES.hanbando;
+      const OR = Object.values(ZC.ZONES).filter((z) => z.isOcean).map((z) => ({ x0: z.worldOffsetX, y0: z.worldOffsetY, x1: z.worldOffsetX + z.zoneWidth, y1: z.worldOffsetY + z.zoneHeight }));
+      const coast = Ch.generateCoastlineWaterTiles(Object.assign({}, Z, { id: 'hanbando' }), 32, ZC.findZoneAt, OR);
+      const m0 = await me(), lx0 = m0.x - Z.worldOffsetX, ly0 = m0.y - (Z.worldOffsetY || 0);
+      let seaT = null, bd = 1e18;
+      const order = [...coast].map((k) => { const [tx, ty] = k.split('_').map(Number); return [Math.hypot(tx * 32 + 16 - lx0, ty * 32 + 16 - ly0), tx, ty]; }).sort((a, b) => a[0] - b[0]);
+      for (const [d0, tx, ty] of order) {
+        if (seaT) break;   // 가까운 순 — 첫 합격이 가장 가깝다
+        const cx = tx * 32 + 16, cy = ty * 32 + 16;
+        if (Tr.isWaterCellLocal && Tr.isWaterCellLocal('hanbando', cx, cy)) continue;   // 강어귀(민물)는 뺀다 — 서버 `isSeaTileLocal` 과 같은 차집합
+        let land = null;
+        for (const [ax, ay] of [[32, 0], [-32, 0], [0, 32], [0, -32]]) {
+          const nx = cx + ax, ny = cy + ay, nk = Math.floor(nx / 32) + '_' + Math.floor(ny / 32);
+          if (coast.has(nk) || (Tr.isWaterCellLocal && Tr.isWaterCellLocal('hanbando', nx, ny)) || (Tr.isRockCellLocal && Tr.isRockCellLocal('hanbando', nx, ny))) continue;
+          land = { x: nx, y: ny }; break;
+        }
+        if (!land) continue;
+        const d = d0;
+        if (d < bd) { bd = d; seaT = { x: Z.worldOffsetX + cx, y: (Z.worldOffsetY || 0) + cy, lx: Z.worldOffsetX + land.x, ly: (Z.worldOffsetY || 0) + land.y }; }
+      }
+      ok(!!seaT, '★⑯ 상황 — 서버 정본 생성기로 바다 칸과 곁의 뭍을 찾았다', seaT ? `${coast.size}칸 중 가장 가까운 것 ${Math.round(bd)}px` : `해안선 ${coast.size}칸`);
+      if (seaT) {
+        await tele(seaT.lx, seaT.ly);
+        await page.evaluate(() => window.__sendPrimary({ type: '__e2e_body', quiet: true, thirst: 50 }));
+        await sleep(900);
+        await page.evaluate(([x, y]) => verbLook(x, y, { cx: 640, cy: 400 }), [seaT.x, seaT.y]);
+        let sl = null; for (let i = 0; i < 30 && !sl; i++) { await sleep(100); sl = await menuLabels(); }
+        ok(!!sl && sl[0] === '짠물이다' && !sl.includes('마시기'), '★★⑯ⓔ 바다 = **짠물이다**(마시기 없음 — 메뉴는 서버 답 `look.water` 으로 짓는다 · 판정 `isSeaTileLocal`)', JSON.stringify(sl));
+        await snap('ui-16e-sea-menu');
+        await closeMenu();
+        const th0 = await page.evaluate(() => myThirst);
+        await page.evaluate(() => { window.__notices && (window.__notices.length = 0); window.__sendPrimary({ type: 'gather', water: 'drink' }); });
+        await sleep(1500);
+        const th1 = await page.evaluate(() => myThirst), nt = await lastNotice();
+        ok(/짠물이다 — 마실 수 없다/.test(nt) && th1 >= th0 - 1, '★⑯ⓔ2 메뉴의 마시기는 짠물을 **안 마신다**(벌 `drinkBrine` 0 · E 는 종전대로)', `${nt} · 갈증 ${Math.round(th0)} → ${Math.round(th1)}`);
+      }
+    }
+
+    // ⓕ 커서 이름표 — 나무 위에 커서를 올리면 이름 한 낱말
+    const tree = await page.evaluate(() => {
+      for (const c of conns.values()) { if (!c.resources) continue; const ox = c.meta.worldOffsetX || 0, oy = c.meta.worldOffsetY || 0;
+        let best = null, bd = 1e9;
+        for (const r of c.resources.values()) { if (r.type !== 'tree') continue; const d = Math.hypot(ox + r.x - myAbsPredicted.x, oy + r.y - myAbsPredicted.y); if (d < bd && d < 500) { bd = d; best = { x: ox + r.x, y: oy + r.y, sp: r.sp || null }; } }
+        if (best) return best; }
+      return null;
+    });
+    if (tree) {
+      const pt = await clientPt(tree.x, tree.y);
+      let tag = null;
+      for (let i = 0; i < 20 && !tag; i++) { await page.mouse.move(pt.x + (i % 2), pt.y); await sleep(120); tag = await page.evaluate(() => { const e = document.getElementById('cursorTag'); return e && !e.hidden ? e.textContent : null; }); }
+      ok(!!tag && /[가-힣]/.test(tag) && !/tree/.test(tag), '★★⑯ⓕ 커서 이름표 — 나무 위에 **이름 한 낱말**(종 표 · 영문 키 0)', `${tag} (sp ${tree.sp})`);
+    } else ok(false, '★⑯ⓕ 상황 — 곁에 나무가 없다', 'no tree');
+
+    // ⓖ 제작 창 — 전 레시피 · 모자란 재료가 회색(이름 + 가진/든)
+    await page.evaluate(() => { for (const k of Object.keys(inventory)) if (k !== 'fresh_water') delete inventory[k]; });
+    await page.evaluate(() => window.__sendPrimary({ type: '__e2e_give', items: { pebble: 1 } }));
+    await sleep(900);
+    await page.evaluate(() => { const b = document.querySelector('#sidebar .sb-icon[data-side="craft"]'); if (b) b.click(); });
+    await sleep(600);
+    const craft = await page.evaluate(() => {
+      const rows = [...document.querySelectorAll('.craft-recipe')];
+      const crude = rows.find((r) => /조잡한 돌도끼/.test(r.textContent || ''));
+      return { rows: rows.length, crude: crude ? crude.textContent.replace(/\s+/g, ' ').trim().slice(0, 160) : null,
+               miss: crude ? crude.querySelectorAll('.cr-miss').length : -1, need: crude ? ((crude.querySelector('.cr-need') || {}).textContent || '') : '' };
+    });
+    ok(craft.rows > 3 && !!craft.crude && /자갈 1\/2/.test(craft.crude) && craft.miss >= 2 && /^모자람 — /.test(craft.need),
+       '★★⑯ⓖ 제작 창 — 전 레시피 · 재료에 **이름과 가진/든** · 모자란 칸이 회색 · "모자람 — …" 한 줄', JSON.stringify(craft));
+    await snap('ui-16g-craft');
+    await page.keyboard.press('Escape'); await sleep(200);
+
+    // ⓗ 손잡이 끔 = 옛 화면(칸을 뗀다 — 서버 `T507_VERBS=0` 이 칸을 안 싣는 것과 같다)
+    await page.evaluate(() => { delete uiCfg.t507Verbs; });
+    let offMenu = 'none';
+    if (spot) {
+      const pt = await clientPt(spot.x, spot.y);
+      for (let i = 0; i < 4; i++) { await page.mouse.move(pt.x, pt.y); await page.mouse.down({ button: 'right' }); await page.mouse.up({ button: 'right' }); await sleep(400); }
+      offMenu = await menuLabels();
+    }
+    const offTag = await page.evaluate(() => { const e = document.getElementById('cursorTag'); return e && !e.hidden ? e.textContent : null; });
+    ok(offMenu === null && offTag === null, '★⑯ⓗ 손잡이 끔 — 빈 땅 메뉴 0 · 이름표 0(옛 화면)', `menu ${JSON.stringify(offMenu)} · tag ${offTag}`);
+    await page.evaluate(() => { uiCfg.t507Verbs = true; });
+    await closeMenu();
+    console.log('    접점: 46-h-verbs · pickAt · verbsFor · RMB_TAP · tryGather · isSeaTileLocal · isWaterTileLocal · fresh_water · water_bottle · craft · T507_VERBS');
+  }
+
   clearInterval(ntPoll);
   const jsErrs = errs.filter((e) => !/Failed to load resource/.test(e));
   ok(jsErrs.length === 0, '클라 JS 예외 0', jsErrs.slice(0, 2).join(' | '));

@@ -5413,6 +5413,7 @@ async function _acceptConnection(ws, req, C) {
       charWalkMin: parseFloat(process.env.CHAR_WALK_MIN || '') || 4,
       charRunMin: parseFloat(process.env.CHAR_RUN_MIN || '') || 102,
       ...(process.env.T492_SEASON_AMB === 'on' ? { seasonAmb: true } : {}),   // [T492] 계절 환경음 손잡이 — 끔이면 칸이 없다(welcome 바이트 동일)
+      ...(_t507On() ? { t507Verbs: true } : {}),   // [T507] 첫 30분의 문법(우클릭·이름표·회색) — 기본 켬 · `T507_VERBS=0` 이면 칸이 없다(옛 화면)
     },
     // ★★[이동 모델 2026-08-30] 손잡이 표를 **서버가 실어 보낸다** — 클라가 표를 들고 있으면
     //   그게 사본이고, env 를 서버에서만 바꾼 날 예측과 권위가 갈린다(itemWeights·uiCfg 와 같은 규약).
@@ -5541,7 +5542,8 @@ function handlePlayerInput(player, raw) {
   } else if (msg.type === 'verb') {
     Rescue.verb(player, msg);   // ★[T68] 대상 위 메뉴의 동사 하나 — 표는 `rescue.js` 가 갖는다(접점 1줄)
   } else if (msg.type === 'butcher') butcherCorpse(player, msg.cid);  // Phase 5-7
-  else if (msg.type === 'gather') tryGather(player, msg.resId);   // ★[T90] 지목(없으면 종전 최근접 — 하위 호환)
+  else if (msg.type === 'gather') tryGather(player, msg.resId, msg.water);   // ★[T90] 지목(없으면 종전 최근접 — 하위 호환) · [T507] `water` = 물 동사
+  else if (msg.type === 'look') tryLook(player, msg.x, msg.y);   // ★[T507] 살피기 — 새 메시지 하나(묻고 답하는 한 쌍)
   else if (msg.type === 'plant_tree') tryPlantTree(player, msg.x, msg.y, msg.item);   // ★[T124] 심기
   else if (msg.type === 'pick_fruit') tryPickFruit(player, msg.resId);   // ★[T135] 베는 것과 **따는 것**은 다른 일
   else if (msg.type === 'sort_ore') trySortOre(player);   // ★선광 — 캔 원석 덩이를 광석/맥석으로 가른다
@@ -8472,7 +8474,91 @@ function tryPickFruit(player, resId) {
   if (canPersist(player)) savePlayer(player);
 }
 
-function tryGather(player, resId) {
+// ★★[T507] **민물 마시기** — E 의 물가 갈래 몸통을 그대로 옮긴 것이다(글자 무변 · 부르는 곳 둘: E · 우클릭 '마시기').
+function drinkFresh(player) {
+  const before = player.thirst || 0;
+  player.thirst = Math.min(100, before + 30);
+  let msg = `💧 물 마심 (+${Math.round(player.thirst - before)})`;
+  // ★★[낚시 v2 · 재민 확정 2026-08-26] 여기 있던 **어업 동전 던지기를 걷어냈다.**
+  //   종전: 물 옆에서 E → `_dt() < 0.5` 로 어종 하나. 자리도 시간도 기술도 고갈도 없었다.
+  //   그게 정확히 §2 가 말한 "입력이 같고 결과가 확실한" 진행바다.
+  //   ⇒ 낚시는 이제 **제 동사**(Shift+F)를 갖는다: 자리를 고르고, 기다리고, 챔질하고, 놓친다.
+  //   E 는 목 축이는 것만 한다(그것도 세계의 일이다). 처음 오는 사람을 위해 한 줄로 알려 준다.
+  if (!player._fishHinted) { player._fishHinted = true; msg += ' · 🎣 낚시는 Shift+F'; }
+  send(player.ws, { type: 'notice', text: msg });
+  send(player.ws, { type: 'self_stat', thirst: Math.round(player.thirst) });
+  savePlayer(player);
+}
+// ★[T507] 손잡이 — 부를 때 읽는다(T124 문법). 기본 **켬** · `T507_VERBS=0` 이면 옛 화면·옛 서버 길.
+function _t507On() { return process.env.T507_VERBS !== '0'; }
+// ★★[T507] 물 동사 — **E 의 물가 갈래를 이름으로** 부른다(판정은 전부 정본 술어 · 새 규칙 0).
+//   · 물 바로 옆(E 와 같은 네 칸)이 아니면 거절한다 — 클라가 먼저 걸어온다(메뉴의 '걸어가서').
+//   · `drink` — 민물이면 `drinkFresh`(E 와 같은 몸통). **짠물은 메뉴로 안 마신다**: 메뉴는 "짠물이다"라고
+//     먼저 말한다 — 누른 사람이 벌(`drinkBrine`)을 받게 두지 않는다(E 는 종전대로 마시고 벌받는다).
+//   · `fill` — 그릇이 있어야 한다. 뜨는 일은 E 의 채집 갈래 그대로(`tryForage` → `Forage.sourceAt` 이 짠물·민물을 가른다).
+//     바다는 갯벌에서 짠물이 열릴 때만(`Forage.sourceAt` → `brine`) — 안 그러면 병을 들고 갈대를 벤다(E 가 이미 밟은 함정).
+function _waterVerb(player, act) {
+  let adj = null;
+  for (const [dx, dy] of [[32, 0], [-32, 0], [0, 32], [0, -32]]) {
+    if (isWaterTileLocal(player.x + dx, player.y + dy)) { adj = { x: player.x + dx, y: player.y + dy }; break; }
+  }
+  if (!adj) { send(player.ws, { type: 'notice', text: '물 바로 옆에 서야 한다', kind: 'gather' }); return; }
+  const sea = isSeaTileLocal(adj.x, adj.y);
+  if (act === 'drink') {
+    if (sea) { send(player.ws, { type: 'notice', text: '🌊 짠물이다 — 마실 수 없다 · 마실 물은 강·호수·샘에서', kind: 'gather' }); return; }
+    drinkFresh(player);
+    return;
+  }
+  if ((player.inventory[Salt.VESSEL] || 0) < 1) {
+    send(player.ws, { type: 'notice', text: `🏺 ${ITEM_LABEL_SERVER[Salt.VESSEL]}이 있어야 물을 뜬다`, kind: 'gather' }); return;
+  }
+  //   (그릇이 있으니 바다에서 열리는 것은 짠물 하나다 — `Forage.sourceAt` 이 갯벌이면 `brine` 을 낸다. 아니면 갈대가 나오므로 거절한다.)
+  const _src = sea ? Forage.sourceAt(player.x, player.y, _forageCtx(player)) : null;
+  if (sea && !(_src && _src.kind === Salt.BRINE)) {
+    send(player.ws, { type: 'notice', text: '🌊 여기선 짠물을 못 뜬다 — 갯벌에서 뜬다', kind: 'gather' }); return;
+  }
+  tryForage(player);
+}
+// ★★[T507] **살피기** — 그 칸의 지형 · 주울 것 · 임자를 한 줄로. 판정은 **전부 정본 술어**다:
+//   지형 = `isWaterTileLocal`·`isSeaTileLocal`·`isRockTileLocal`(Soil `kindAt` 가 쓰는 그 둘 + 바다),
+//   주울 것 = `Forage.sourceAt`(E 가 그 자리에서 줍는 것 · 그 사람의 그릇까지 본다),
+//   임자 = `foreignClaimAt`(심기가 쓰는 그 술어) · 덮는 땅이 있는데 남의 것이 아니면 내 땅(또는 우리 길드).
+//   ★답은 새 메시지 하나(`look` — 묻고 답하는 한 쌍). 물 칸이면 `water`('sea'|'fresh')를 실어
+//     클라가 물 메뉴를 **서버의 판정으로** 짓는다(짠물 술어를 클라에 옮겨 적지 않는다).
+function tryLook(player, x, y) {
+  if (!_t507On()) return;
+  x = +x; y = +y;
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+  const px = Math.floor(x / 32) * 32 + 16, py = Math.floor(y / 32) * 32 + 16;
+  const lab = (k) => ITEM_LABEL_SERVER[k] || (Forage.KO && Forage.KO[k]) || k;
+  const parts = [];
+  let water = null;
+  if (isWaterTileLocal(px, py)) {
+    water = isSeaTileLocal(px, py) ? 'sea' : 'fresh';
+    parts.push(water === 'sea' ? '바다 — 짠물' : '민물 — 강·호수');
+  } else if (isRockTileLocal(px, py)) {
+    parts.push('바위 — 지나갈 수 없다');
+  } else {
+    const src = Forage.sourceAt(px, py, _forageCtx(player));
+    parts.push(src ? `${src.where} — E 로 ${lab(src.kind)}` : '빈 땅 — 주울 것 없음');
+  }
+  const f = foreignClaimAt(player, px, py);
+  if (f) parts.push(`${f.ownerName || '남'}의 ${f.kind === 'guild' ? '길드 영토' : '사유지'}`);
+  else {
+    let covered = false;
+    for (const c of claims.values()) if (px >= c.x && px < c.x + c.w && py >= c.y && py < c.y + c.h) { covered = true; break; }
+    parts.push(covered ? '내 땅' : '임자 없음');
+  }
+  //   물 칸이면 그릇(품목 키 · 가진 수)도 싣는다 — "병에 담기"가 뜰지는 서버가 아는 그릇 표로 가른다(클라에 키를 안 적는다).
+  send(player.ws, { type: 'look', x, y, water, line: '살피기 — ' + parts.join(' · '),
+    say: water === 'sea' ? '🌊 짠물이다 — 마시면 목이 더 마른다 · 마실 물은 강·호수·샘에서' : null,
+    vessel: water ? Salt.VESSEL : null, bottles: water ? Math.floor(player.inventory[Salt.VESSEL] || 0) : 0 });
+}
+
+function tryGather(player, resId, water) {
+  // ★★[T507] **물 동사** — 우클릭 물 타일 메뉴가 E 의 물가 갈래를 **이름으로** 부른다(`_waterVerb` · 사본 0).
+  //   `water` 가 없으면(E 키·옛 클라) 이 줄은 지나간다 — 종전 그대로다.
+  if ((water === 'drink' || water === 'fill') && _t507On()) { _waterVerb(player, water); return; }
   // ★★[T90 2026-09-04 재민 확정 · T82 회부 ②] **지목**. 종전엔 인자가 없어 늘 최근접을 골랐고,
   //   그래서 T82 의 우클릭 메뉴는 "누른 것이 최근접일 때만" 동사를 냈다(정책이 아니라 임시였다).
   //   ⇒ `resId` 가 오면 **그 자연물**을 캔다. 없으면 종전 그대로다(E 키·옛 클라 무변).
@@ -8526,18 +8612,7 @@ function tryGather(player, resId) {
         return;
       }
       if ((player.thirst ?? THIRST_MAX) >= THIRST_MAX * 0.95) { tryForage(player); return; }
-      const before = player.thirst || 0;
-      player.thirst = Math.min(100, before + 30);
-      let msg = `💧 물 마심 (+${Math.round(player.thirst - before)})`;
-      // ★★[낚시 v2 · 재민 확정 2026-08-26] 여기 있던 **어업 동전 던지기를 걷어냈다.**
-      //   종전: 물 옆에서 E → `_dt() < 0.5` 로 어종 하나. 자리도 시간도 기술도 고갈도 없었다.
-      //   그게 정확히 §2 가 말한 "입력이 같고 결과가 확실한" 진행바다.
-      //   ⇒ 낚시는 이제 **제 동사**(Shift+F)를 갖는다: 자리를 고르고, 기다리고, 챔질하고, 놓친다.
-      //   E 는 목 축이는 것만 한다(그것도 세계의 일이다). 처음 오는 사람을 위해 한 줄로 알려 준다.
-      if (!player._fishHinted) { player._fishHinted = true; msg += ' · 🎣 낚시는 Shift+F'; }
-      send(player.ws, { type: 'notice', text: msg });
-      send(player.ws, { type: 'self_stat', thirst: Math.round(player.thirst) });
-      savePlayer(player);
+      drinkFresh(player);   // ★[T507] 몸통을 함수로 뺐다(우클릭 '마시기'가 같은 것을 부른다 · 한 줄도 안 바꿨다)
       return;
     }
   }

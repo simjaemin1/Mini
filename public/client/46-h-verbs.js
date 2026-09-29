@@ -167,6 +167,12 @@
         out.push({ label: `심기 — ${itemKo(k)}`,
           send: () => sendPrimary({ type: 'plant_tree', x: t.absX, y: t.absY, item: k }) });
       }
+      // ★★[T507] **빈 땅도 무언가를 말한다** — 걷기 · 살피기. 종전엔 씨앗이 없으면 메뉴 0(재민 실기 "아무것도 안 뜨고").
+      //   살피기의 답(지형·주울 것·임자)은 **서버 정본 술어**가 한 줄로 낸다(`look` · 클라는 받아 띄울 뿐).
+      if (t507On()) {
+        out.push({ label: '걷기', send: () => verbWalkTo(t.absX, t.absY) });
+        out.push({ label: '살피기', send: () => verbLook(t.absX, t.absY, null) });
+      }
       return out;
     }
     if (t.kind === 'nature') {
@@ -347,6 +353,9 @@
       if (e.button !== 2) return;
       _rmbAt = performance.now(); _rmbX = e.clientX; _rmbY = e.clientY;
     });
+    // ★★[T507] 커서 이름표 — 커서 밑(`pickAt` · 우클릭과 같은 층)의 이름 한 낱말. 새 패널 0 · 화면 규칙 B(먹선).
+    cv.addEventListener('mousemove', (e) => verbTagMove(e));
+    cv.addEventListener('mouseleave', () => verbTagHide());
     cv.addEventListener('auxclick', (e) => {
       if (e.button !== 2) return;
       if (placementMode) return;                       // 배치 회전은 `contextmenu` 몫(종전)
@@ -361,9 +370,146 @@
       const py = (e.clientY - rect.top) * (cv.height / rect.height);
       const w = screenToWorldAbs(px, py);
       const t = pickAt(w.wx, w.wy, { live: true });
+      // ★★[T507] **물 칸**이면 메뉴를 서버의 답으로 짓는다 — 민물이냐 짠물이냐는 서버 술어(`isSeaTileLocal`)가 가른다.
+      //   클라의 `isWaterAtAbs` 는 "물이냐"(그리기용 거울)까지만 묻는다 — 짠물 판정을 여기 옮겨 적지 않는다.
+      if (t && t.kind === 'ground' && t507On() && typeof isWaterAtAbs === 'function' && isWaterAtAbs(t.absX, t.absY)) {
+        verbLook(t.absX, t.absY, { cx: e.clientX, cy: e.clientY });
+        return;
+      }
       const verbs = verbsFor(t, null);
       if (!verbs.length) return;                       // 빈 땅·동사 없는 대상 = 메뉴 0(종전)
       _lastMenuX = e.clientX; _lastMenuY = e.clientY;
       showContextMenu(e.clientX, e.clientY, verbs.map((v) => ({ label: v.label, onClick: v.send })));
     });
   }
+
+  // ══ ★★[T507 2026-09-29] 첫 30분의 문법 — 우클릭이 언제나 무언가를 말한다 ══════════════
+  //   재민 실기: *"바닥에 우클릭을 해봐도 아무것도 안 뜨고, 채집을 어떻게 해야 하는지도 모르겠고."*
+  //   캐논 §9.5: 팝업 벽·퀘스트 화살표·무료 보상 **없이** 세계와 손이 말한다 —
+  //     빈 땅 = 걷기·살피기 · 물 = 마시기·담기(짠물이면 "짠물이다") · 커서 = 이름 한 낱말 · 제작 창 = 모자란 것이 회색.
+  //   ★손잡이 `T507_VERBS`(서버 env → welcome `uiCfg.t507Verbs` · 기본 **켬**). 끄면 칸이 없어 옛 화면이다.
+  //   ★판정은 한 줄도 여기서 안 짓는다: 살피기·물 종류는 서버 답(`look`), 이름은 서버 이름표(`itemKo`)·종 표.
+  function t507On() { return !!(typeof uiCfg !== 'undefined' && uiCfg && uiCfg.t507Verbs); }
+
+  // ── 걷기 — 키를 안 쥔 손이 그 자리로 걷는다(`31-m-move worldKeysDir` 가 묻는다) ──
+  //   ★서버에 새 것 0 — 보내는 것은 종전 `input` 그대로(방향만 이 함수가 준다 · 예측·권위 동일 적분).
+  //   ★멈추는 셋: 닿음(반경) · 키를 누름(`verbWalkCancel`) · 막힘(한동안 제자리 — 물가·바위·벽).
+  //   막혔는데 `then` 이 있으면(물가로 걸어가서 마시기) 거기서 부른다 — 물 칸은 밟을 수 없어 늘 막혀서 선다.
+  const WALK_ARRIVE_PX = 8;              // 걷기 — 셀 가운데에 거의 닿으면 선다
+  const WALK_ADJ_PX = 40;                // 물가 — 물 칸 가운데에서 한 칸(32) 남짓이면 E 의 네 칸 안이다
+  const WALK_STALL_MS = 700, WALK_STALL_PX = 4;   // 막힘 — 0.7초에 4px 도 못 가면(걸음 1초 ≈ 100px)
+  let _walk = null;
+  function verbWalkTo(x, y, r, then) {
+    _walk = { x, y, r: r || WALK_ARRIVE_PX, then: then || null, px: myAbsPredicted.x, py: myAbsPredicted.y, at: performance.now() };
+  }
+  function verbWalkCancel() { _walk = null; }
+  function verbWalkDir() {
+    if (!_walk) return null;
+    if (myIsDown || chatActive) { _walk = null; return null; }
+    const done = () => { const f = _walk.then; _walk = null; if (f) f(); return null; };
+    const dx = _walk.x - myAbsPredicted.x, dy = _walk.y - myAbsPredicted.y, d = Math.hypot(dx, dy);
+    if (d <= _walk.r) return done();
+    const now = performance.now();
+    if (now - _walk.at > WALK_STALL_MS) {
+      if (Math.hypot(myAbsPredicted.x - _walk.px, myAbsPredicted.y - _walk.py) < WALK_STALL_PX) {
+        if (_walk.then) return done();
+        _walk = null; showNotice('더 못 간다'); return null;
+      }
+      _walk.px = myAbsPredicted.x; _walk.py = myAbsPredicted.y; _walk.at = now;
+    }
+    return { wx: dx / d, wy: dy / d };
+  }
+
+  // ── 살피기 — 서버에 한 번 묻고(`look`), 답을 띄운다. 물 칸이면 그 답으로 메뉴를 짓는다 ──
+  //   좌표는 **주 존의 로컬**로 보낸다(서버 술어가 로컬을 받는다). 주 존 밖이면 묻지 않는다(그 존에 서 있지 않다).
+  const LOOK_WAIT_MS = 1500;
+  let _lookWait = null;   // { x, y, cx, cy, timer }
+  function verbLook(absX, absY, menuAt) {
+    const zm = (typeof zonesMeta !== 'undefined' && primaryZoneId) ? zonesMeta[primaryZoneId] : null;   // 오프셋은 존 설정 거울(연결 `meta` 는 재접속 찰나에 빈다)
+    if (!zm) { if (menuAt) verbOpenWaterMenu({ absX, absY, cx: menuAt.cx, cy: menuAt.cy }, null); return; }
+    const lx = absX - (zm.worldOffsetX || 0), ly = absY - (zm.worldOffsetY || 0);
+    if (lx < 0 || ly < 0 || lx >= (zm.zoneWidth || 0) || ly >= (zm.zoneHeight || 0)) { showNotice('경계 너머다 — 가서 살펴라'); return; }
+    if (_lookWait && _lookWait.timer) clearTimeout(_lookWait.timer);
+    _lookWait = { x: lx, y: ly, absX, absY, cx: menuAt ? menuAt.cx : null, cy: menuAt ? menuAt.cy : null, timer: null };
+    if (menuAt) {
+      // 답이 안 오면(끊김·옛 서버) 물 동사 없이 연다 — 메뉴가 **안 뜨는** 일은 없다.
+      const w = _lookWait;
+      w.timer = setTimeout(() => { if (_lookWait === w) { _lookWait = null; verbOpenWaterMenu(w, null); } }, LOOK_WAIT_MS);
+    }
+    sendPrimary({ type: 'look', x: lx, y: ly });
+  }
+  function verbsOnLook(msg) {
+    const w = _lookWait;
+    if (w && Math.abs(w.x - msg.x) < 0.5 && Math.abs(w.y - msg.y) < 0.5) {
+      _lookWait = null;
+      if (w.timer) clearTimeout(w.timer);
+      if (w.cx !== null) { verbOpenWaterMenu(w, msg); return; }
+    }
+    if (msg.line) showNotice(msg.line);
+  }
+  // 물 메뉴 — 마시기 / 담기(병이 있을 때만) · 짠물이면 "짠물이다". 누르면 **걸어가서** 한다(물가 네 칸 안에서 서버가 판정).
+  function verbOpenWaterMenu(w, msg) {
+    const z = (typeof clientFindZoneAt === 'function') ? clientFindZoneAt(w.absX, w.absY) : null;
+    const ox = z ? (z.worldOffsetX || 0) : 0, oy = z ? (z.worldOffsetY || 0) : 0;
+    const tx = ox + Math.floor((w.absX - ox) / 32) * 32 + 16, ty = oy + Math.floor((w.absY - oy) / 32) * 32 + 16;
+    const act = (name) => () => {
+      const go = () => sendPrimary({ type: 'gather', water: name });
+      if (Math.hypot(tx - myAbsPredicted.x, ty - myAbsPredicted.y) <= WALK_ADJ_PX) go();
+      else verbWalkTo(tx, ty, WALK_ADJ_PX, go);
+    };
+    const bottles = (msg && msg.bottles) || 0, vk = msg && msg.vessel;   // 그릇은 서버 답이 준다(품목 키 · 가진 수)
+    const items = [];
+    if (msg && msg.water === 'fresh') {
+      items.push({ label: '마시기', onClick: act('drink') });
+      if (bottles > 0 && vk) items.push({ label: `병에 담기 — ${itemKo(vk)} ${bottles}`, onClick: act('fill') });
+    } else if (msg && msg.water === 'sea') {
+      items.push({ label: '짠물이다', onClick: () => showNotice(msg.say || msg.line) });
+      if (bottles > 0 && vk) items.push({ label: `짠물 뜨기 — ${itemKo(vk)} ${bottles}`, onClick: act('fill') });
+    }
+    items.push({ label: '걷기', onClick: () => verbWalkTo(tx, ty, WALK_ADJ_PX) });
+    items.push({ label: '살피기', onClick: () => (msg && msg.line) ? showNotice(msg.line) : verbLook(w.absX, w.absY, null) });
+    _lastMenuX = w.cx; _lastMenuY = w.cy;
+    showContextMenu(w.cx, w.cy, items);
+  }
+
+  // ── 커서 이름표 — `pickAt`(우클릭과 같은 층)의 이름 한 낱말 ──
+  //   이름은 **서버 이름표**(`itemKo` · 없으면 안 띄운다 — 영문 키가 뜨느니 없는 게 낫다) · 나무는 종 표(`tree_species.json`)가 먼저.
+  const TAG_EVERY_MS = 80;
+  let _tagEl = null, _tagAt = 0;
+  function verbTagName(t) {
+    if (!t) return null;
+    const lab = (k) => { if (!k) return null; const v = itemKo(k); return (v && v !== k) ? v : null; };
+    if (t.kind === 'player') return (t.obj && t.obj.name) || null;
+    if (t.kind === 'nature') {
+      const r = t.obj || {};
+      if (r.type === 'tree' && r.sp && typeof TREE_SPECIES !== 'undefined' && TREE_SPECIES.ok
+          && TREE_SPECIES.byId[r.sp] && TREE_SPECIES.byId[r.sp].ko) return TREE_SPECIES.byId[r.sp].ko;
+      return lab(r.type);
+    }
+    if (t.kind === 'item') return lab(t.obj && (t.obj.item || t.obj.type));
+    if (t.kind === 'site' || t.kind === 'chest') return lab(t.obj && t.obj.type) || lab(t.obj && ('item_' + t.obj.type));
+    return null;
+  }
+  function verbTagHide() { if (_tagEl) _tagEl.hidden = true; }
+  function verbTagMove(e) {
+    if (!t507On()) { verbTagHide(); return; }
+    const now = performance.now();
+    if (now - _tagAt < TAG_EVERY_MS) return;
+    _tagAt = now;
+    const cv = canvas, rect = cv.getBoundingClientRect();
+    const w = screenToWorldAbs((e.clientX - rect.left) * (cv.width / rect.width), (e.clientY - rect.top) * (cv.height / rect.height));
+    const name = verbTagName(pickAt(w.wx, w.wy, { live: true }));
+    if (!name) { verbTagHide(); return; }
+    if (!_tagEl) {
+      _tagEl = document.createElement('div');
+      _tagEl.id = 'cursorTag';
+      _tagEl.style.cssText = 'position:fixed;pointer-events:none;z-index:99990;background:rgba(var(--pane-rgb), 0.92);'
+        + 'border:1px solid var(--line);color:var(--fg-strong);font:12px sans-serif;padding:2px 6px;white-space:nowrap';
+      document.body.appendChild(_tagEl);
+    }
+    _tagEl.textContent = name;
+    _tagEl.style.left = (e.clientX + 14) + 'px';
+    _tagEl.style.top = (e.clientY + 12) + 'px';
+    _tagEl.hidden = false;
+  }
+
