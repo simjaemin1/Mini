@@ -377,3 +377,17 @@ T55 가 정본을 실어 보내고 사본을 폴백으로 남겼다. T61 이 그
               `tribeName` 으로 찾는다. **거절 문장은 서버가 낸다**('마을 중심에서 너무 멀다').
   거래   → `openSide('trade')` — 종전 거래소 탭이다(새 패널 0 · 열면서 서버에 시세를 묻는 것도 종전).
 ```
+
+
+---
+
+## T507 (2026-09-29) — 첫 30분의 문법: 우클릭이 언제나 무언가를 말한다 (세션9)
+
+* **손잡이 `T507_VERBS`**(기본 켬 · 서버 env → welcome `uiCfg.t507Verbs`). 끄면 칸이 없어 옛 화면이고, 서버는 `look`·`gather{water}` 를 무시한다.
+* **빈 땅 우클릭** = 걷기 · 살피기(`verbsFor` ground). 걷기는 `verbWalkTo` → `31-m-move worldKeysDir` 가 키가 없을 때 `verbWalkDir()` 방향을 쓴다. 키를 누르면 `verbWalkCancel`, 막히면 멈춘다. 보내는 것은 종전 `input` 이다.
+* **살피기** = 새 메시지 `look {x,y}`(주 존 로컬) → 서버 `tryLook` 이 한 줄(지형 · `Forage.sourceAt` · `foreignClaimAt`)로 답하고, 물 칸이면 `water:'sea'|'fresh'`·`vessel`·`bottles` 도 싣는다. 클라 `verbsOnLook`(`30-n-net` 한 갈래)이 받는다.
+* **물 칸 우클릭**은 `auxclick` 에서 `isWaterAtAbs` 면 `verbLook(…, {cx,cy})` 로 가서 **서버 답으로 메뉴를 짓는다**(1.5초 안 오면 걷기·살피기만 연다). 짠물 판정을 클라에 적지 마라. 동사는 `gather {water:'drink'|'fill'}` → 서버 `_waterVerb`(물가 네 칸 · 민물 `drinkFresh` = E 몸통 · 담기 `tryForage` · 메뉴는 짠물을 안 마신다)다. 누르면 걸어가서 한다(`WALK_ADJ_PX`).
+* **커서 이름표** `#cursorTag` = `pickAt(live)` 이름 한 낱말(`itemKo` · 나무는 `TREE_SPECIES`). 이름표에 없으면 안 띄운다. 자연물 종류 이름은 `itemlabel.NO_CANON`(나무·바위·덤불·물웅덩이·운석)에 있다.
+* **제작 창**(`51-s-side renderCraftPanel2`) = 재료마다 이름 가진/든 · 모자란 칸 `.cr-miss` 회색 · 줄 아래 `.cr-need` "모자람 — …".
+* 하네스 `e2e-ui ⑯`(18줄 · 바다 칸은 서버 정본 생성기로 찾는다 — 픽스처 클라가 바다를 못 그린다) · 도구 `scripts/t507-arrival.js`(도착 50곳 × 계절 × 낮밤 맨몸 추위표).
+* 보고 `보고/T507_2026-09-29.md` · 그림 `~/Mini/산그림/T507_우클릭.png`.

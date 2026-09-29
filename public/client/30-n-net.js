@@ -1644,6 +1644,8 @@
       //   ★[T235] 다섯 문의 답 — 한 종류다. 기다리던 자리에 그대로 건네고 끝(새 화면 0).
       const r = _centralWait.get(msg.door);
       if (r) { _centralWait.delete(msg.door); r(msg.data || (msg.ok ? { ok: true } : { error: '실패' })); }
+    } else if (msg.type === 'look') {
+      if (typeof verbsOnLook === 'function') verbsOnLook(msg);   // ★[T507] 살피기의 답 — 물 메뉴도 이 답으로 짓는다(`46-h-verbs`)
     } else if (msg.type === 'notice') {
       // ★★[T110 2026-09-05] 외침 하나만 **자리**를 나른다 — 그 자리가 안개 위 방향 화살이 된다.
       //   새 메시지도 새 패널도 없다: `notice` 의 `kind` 와 `downed` 칸이 전부다(`server/rescue.js`).

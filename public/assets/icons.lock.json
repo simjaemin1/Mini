@@ -143,7 +143,7 @@
   "chestnut": "8a5ab06f7e3e7b3b",
   "chive": "b090cb2f21751d1c",
   "clothes_fiber": "09ad54b4fea3f109",
-  "clothes_fur": "7d43fca4e57a3605",
+  "clothes_fur": "313309fa377421c0",
   "clothes_hemp": "2a316d944a6fa4f6",
   "clothes_hide": "545f649dcb269f04",
   "clothes_leather": "f181289da460fe72",
@@ -860,11 +860,11 @@
  },
  "_상자": {
   "_": "이 잠금표를 마지막으로 다시 쓴 상자. 그림을 구운 상자가 아니다 [T260]. 같은 커밋인데 그림이 다르면 굽기 로그의 [box] 줄과 이 칸을 먼저 견준다.",
-  "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+  "cpu": "Intel(R) Xeon(R) Processor @ 2.80GHz",
   "threads": 2,
   "simd": "fma avx avx2 avx512f avx512dq avx512bw avx512vl avx512_vnni",
   "node": "v22.22.2",
-  "commit": "5391f076",
-  "당시": "2026-09-28"
+  "commit": "68336c45",
+  "당시": "2026-09-29"
  }
 }

@@ -736,7 +736,19 @@
             const hammerOK = !r.needHammer || hasToolAlive('hammer');
             const toolOK = !r.needTool || hasToolAlive(r.needTool);
             const canMake = costOK && hammerOK && toolOK;
-            const costStr = Object.entries(r.cost).map(([k,v]) => `${itemIconHtml(k, 16, itemKo(k))} ${v}`).join(' · ') || '-';
+            // ★★[T507] **모자란 재료가 회색으로 말한다** — 그림만 있고 이름이 없던 줄(`itemIconHtml` 셋째 인자는 무시된다 · T160)에
+            //   이름과 가진 수/든 수를 적고, 모자란 칸만 흐리게. 무엇을 더 구해야 하나를 화면이 말한다(새 패널 0 · 레시피 표는 서버 그대로).
+            const t5 = (typeof t507On === 'function') && t507On();
+            const costStr = t5
+              ? (Object.entries(r.cost).map(([k, v]) => {
+                  const h = inventory[k] || 0, cell = `${itemIconHtml(k, 16)} ${itemKo(k)} ${Math.min(h, v)}/${v}`;
+                  return h >= v ? cell : `<span class="cr-miss" style="color:var(--dim-2)">${cell}</span>`;
+                }).join(' · ') || '-')
+              : (Object.entries(r.cost).map(([k,v]) => `${itemIconHtml(k, 16, itemKo(k))} ${v}`).join(' · ') || '-');
+            const missStr = (t5 && !canMake) ? [
+              ...Object.entries(r.cost).filter(([k, v]) => (inventory[k] || 0) < v).map(([k, v]) => `${itemKo(k)} ${v - (inventory[k] || 0)}`),
+              ...(hammerOK ? [] : [itemKo('hammer')]), ...(toolOK ? [] : [itemKo(r.needTool)]),
+            ].join(' · ') : '';
             const flags = [];
             if (r.needHammer) flags.push('');
             if (r.needTool) flags.push(r.needTool);
@@ -752,7 +764,7 @@
               : '';
             return `<div class="craft-recipe ${canMake?'can-make':'cant-make'}">
               <div class="cr-icon">${r.icon}</div>
-              <div class="cr-info"><div class="cr-name">${r.name}${haveBadge}</div><div class="cr-cost">${costStr}${flags.length?' · '+flags.join(' · '):''}</div></div>
+              <div class="cr-info"><div class="cr-name">${r.name}${haveBadge}</div><div class="cr-cost">${costStr}${flags.length?' · '+flags.join(' · '):''}</div>${missStr ? `<div class="cr-need" style="color:var(--dim-2)">모자람 — ${missStr}</div>` : ''}</div>
               <button data-craft="${r.id}" data-msg="${r.msgType}" ${canMake?'':'disabled'}>제작</button>
             </div>`;
           }).join(''))}

@@ -68,6 +68,9 @@
     const s = keys.has('s') || keys.has('arrowdown');
     const a = keys.has('a') || keys.has('arrowleft');
     const d = keys.has('d') || keys.has('arrowright');
+    // ★[T507] 우클릭 '걷기' — 손이 키를 안 쥐고 있을 때만 그 자리로 걷는다(키를 누르면 그 순간 멈춘다 · `46-h-verbs`).
+    if (w || s || a || d) { if (typeof verbWalkCancel === 'function') verbWalkCancel(); }
+    else if (typeof verbWalkDir === 'function') { const v = verbWalkDir(); if (v) return v; }
     let wx = 0, wy = 0;
     // 각 키를 NW/NE/SE/SW 단위벡터로 더함
     if (w) { wx += -1; wy += -1; }

@@ -1694,6 +1694,94 @@ const codeOnly = require('./code-only.js');   // ★[T171] 주석 제거기 **�
     }
   }
 
+  // ═══ ㉑ ★★[T508 2026-09-29 재민 확정] 몸 층 두 팔 — 감쇠의 꼴 · 옷 ℃ ═════════════════════
+  //   ① `T508_DECAY_EXP` — 두 토막 선형 → 지수('1')·유리('rat') · 총시간·매듭 무변 · 정확 해
+  //   ② `T508_CLO` — 방한 1점의 ℃ 를 clo 출처(CLO_C · CLO_TOP)에서 유도
+  //   ★팔은 모듈 적재 때 읽힌다 ⇒ 켬 판은 env 를 주고 **다시 올린다**(⑲ⓗ 와 같은 규약 · 원래 인스턴스를 도로 꽂는다).
+  say('\n㉑ 몸 층 두 팔 (T508) — 감쇠의 꼴 · 옷 ℃');
+  {
+    const bp = require.resolve(path.join(ROOT, 'server', 'body.js'));
+    const reload = (env) => {
+      const keepMod = require.cache[bp], keep = {};
+      for (const k of Object.keys(env)) keep[k] = process.env[k];
+      delete require.cache[bp];
+      for (const [k, v] of Object.entries(env)) { if (v === undefined) delete process.env[k]; else process.env[k] = v; }
+      try { return require(bp); } finally {
+        delete require.cache[bp];
+        for (const [k, v] of Object.entries(keep)) { if (v === undefined) delete process.env[k]; else process.env[k] = v; }
+        require.cache[bp] = keepMod;
+      }
+    };
+    const PHI = (1 + Math.sqrt(5)) / 2;
+    // ── ⓐ 끔 = 종전 글자 그대로 ──
+    const I0 = B.t508Info();
+    ok(I0.decay === '' && I0.clo === false && I0.cPer === B.CFG.WARMTH_C_PER && I0.shape === null,
+      '★★㉑ⓐ 기본은 **두 팔 다 끔** — 꼴 없음(두 토막 선형) · 방한 1점 = `WARMTH_C_PER`', JSON.stringify({ d: I0.decay, c: I0.clo, cPer: I0.cPer }));
+    const bsrc = codeOnly(fs.readFileSync(bp, 'utf8'));
+    ok(/: Math\.max\(0, h0 - decayRate\(h0, CFG\.HUNGER_SEC\) \* dtSec \* cm\)/.test(bsrc) && /: Math\.max\(0, t0 - decayRate\(t0, CFG\.THIRST_SEC\) \* dtSec \* bm\)/.test(bsrc),
+      '★★㉑ⓐ2 끔 갈래는 종전 감쇠 식 **글자 그대로**(곱 순서까지 — 부동소수 비트 동일)');
+    ok(/: Math\.max\(0, w - CFG\.WARMTH_MIN\) \* CFG\.WARMTH_C_PER;/.test(bsrc), '★★㉑ⓐ3 끔 갈래는 종전 단열 식 **글자 그대로**');
+    // ── ⓑ 지수 꼴 ──
+    const BE = reload({ T508_DECAY_EXP: '1' });
+    const SE = BE.t508Info().shape;
+    ok(SE && SE.form === 'exp' && Math.abs(SE.b - 50 / PHI) < 1e-9 && Math.abs(SE.kT - 3 * Math.log(PHI)) < 1e-9,
+      '★★㉑ⓑ 지수 꼴의 두 수는 **매듭 셋이 낸다** — b = 50/φ · k·T = 3·ln φ (새 수 0)', SE && `b ${SE.b.toFixed(4)} · kT ${SE.kT.toFixed(4)}`);
+    const runOut = (M, key, sec, dt) => {
+      const P = { hunger: 100, thirst: 100 }; M.ensure(P);
+      let t = 0, knot = null;
+      while (P[key] > 0 && t < sec * 3) { M.tick(P, dt, {}); t += dt; if (knot === null && t >= sec * M.CFG.DECAY_TOP_FRAC - 1e-9) knot = P[key]; }
+      return { total: t, knot };
+    };
+    const eH = runOut(BE, 'hunger', BE.CFG.HUNGER_SEC, 1), eT = runOut(BE, 'thirst', BE.CFG.THIRST_SEC, 1);
+    ok(eH.total === BE.CFG.HUNGER_SEC && eT.total === BE.CFG.THIRST_SEC,
+      '★★㉑ⓑ2 **총시간 무변** — 허기 2,880초 · 갈증 1,440초(1초 틱에서 정확히)', `${eH.total} · ${eT.total}`);
+    ok(Math.abs(eH.knot - 50) < 1e-6 && Math.abs(eT.knot - 50) < 1e-6,
+      '★★㉑ⓑ3 ⅓ 지점 게이지 **50** — "위 절반이 전체의 1/3" 캐논이 곡선 위에 그대로 선다', `${eH.knot.toFixed(6)} · ${eT.knot.toFixed(6)}`);
+    const at = (M, dt, until) => { const P = { hunger: 100, thirst: 100 }; M.ensure(P); for (let t = 0; t < until - 1e-9; t += dt) M.tick(P, dt, {}); return P.hunger; };
+    const g1 = at(BE, 1, 1440), g60 = at(BE, 60, 1440);
+    ok(Math.abs(g1 - g60) < 1e-6, '★★㉑ⓑ4 정확 해 — 1초 틱과 60초 틱이 **같은 게이지**에 닿는다(dt 불변)', `${g1.toFixed(6)} · ${g60.toFixed(6)}`);
+    ok(Math.abs(BE.decayRate(100, 2880) / BE.decayRate(0, 2880) - (100 + SE.b) / SE.b) < 1e-9 &&
+       Math.abs((BE.decayRate(60, 2880) - BE.decayRate(40, 2880)) - (BE.decayRate(40, 2880) - BE.decayRate(20, 2880))) < 1e-12,
+      '★★㉑ⓑ5 감쇠율은 **상태 비례**(x + b 에 비례 — 게이지에 대해 직선)');
+    ok(BE.decayRate(100, 2880) > B.decayRate(100, 2880) && BE.decayRate(0, 2880) < B.decayRate(0, 2880),
+      '★㉑ⓑ6 배부를 땐 종전보다 빠르고 바닥에선 느리다(계단이 아니라 기울기)',
+      `100: ${BE.decayRate(100, 2880).toFixed(5)} > ${B.decayRate(100, 2880).toFixed(5)} · 0: ${BE.decayRate(0, 2880).toFixed(5)} < ${B.decayRate(0, 2880).toFixed(5)}`);
+    // ── ⓒ 유리 꼴 ──
+    const BR = reload({ T508_DECAY_EXP: 'rat' });
+    const SR = BR.t508Info().shape;
+    const rH = runOut(BR, 'hunger', BR.CFG.HUNGER_SEC, 1), rT = runOut(BR, 'thirst', BR.CFG.THIRST_SEC, 1);
+    ok(SR && SR.form === 'rat' && Math.abs(SR.c - 1) < 1e-9 && rH.total === 2880 && rT.total === 1440 && Math.abs(rH.knot - 50) < 1e-6,
+      '★★㉑ⓒ 유리 꼴 c = 1(같은 매듭에서) · 총시간 2,880/1,440 · ⅓ 지점 50', SR && `c ${SR.c} · ${rH.total}/${rT.total} · ${rH.knot.toFixed(4)}`);
+    // ── ⓓ 적분 — kcal 앵커(한 바퀴 평균 하루 50점)는 세 꼴 모두 그대로 ──
+    const Kc = require(path.join(ROOT, 'server', 'kcal.js'));
+    const perDay = (r) => 100 * 1440 / r.total;
+    const lH = runOut(B, 'hunger', B.CFG.HUNGER_SEC, 1);
+    ok([lH, eH, rH].every((r) => Math.abs(perDay(r) - Kc.dayHunger()) < 1e-9),
+      '★★㉑ⓓ 한 바퀴(100→0) 평균 = 하루 **50점 = 2,450 kcal** — 세 꼴 모두 `kcal.dayHunger()` 와 같다(적분 동일)', [lH, eH, rH].map(perDay).join(' · '));
+    ok(BE.CFG.EXTREME_HP_HUNGER === B.CFG.EXTREME_HP_HUNGER && BE.CFG.EXTREME_HP_THIRST === B.CFG.EXTREME_HP_THIRST && BE.STAGE_AT.hunger.join() === B.STAGE_AT.hunger.join(),
+      '★㉑ⓓ2 문턱·극단 감소율은 **무변**(꼴만 바뀐다 — 재민 확정)');
+    // ── ⓔ 옷 ℃ — clo 출처에서 유도 ──
+    const BC = reload({ T508_CLO: '1' });
+    const PIc = require(path.join(ROOT, 'server', 'player-items.js'));
+    const cap = PIc.ITEM_TYPES.clothes.attrScale;
+    const want = BC.CFG.CLO_C * BC.CFG.CLO_TOP / (cap - BC.CFG.WARMTH_MIN);
+    ok(BC.t508Info().cPer === want && Math.abs(BC.CFG.CLO_C - 1 / 0.18) < 1e-12 && Math.abs(BC.CFG.CLO_TOP - 2.853) < 1e-9,
+      '★★㉑ⓔ 켬: 방한 1점 = CLO_C(1/0.18 ℃/clo) × CLO_TOP(3.353 − 0.5 clo) ÷ (천장 62 − 10) — **출처의 수만**', `${want.toFixed(4)}℃/점`);
+    ok(Math.abs(BC.warmthInsC(cap) - BC.CFG.CLO_TOP * BC.CFG.CLO_C) < 1e-9, '★★㉑ⓔ2 가장 따뜻한 옷(갖옷 × 장인)의 ℃ = 실측 모피 한 벌의 clo × ℃/clo', `+${BC.warmthInsC(cap).toFixed(2)}℃`);
+    ok(BC.warmthInsC(BC.CFG.WARMTH_MIN) === 0 && Math.abs(BC.warmthInsC(43, 1) - BC.warmthInsC(43) * (1 - BC.CFG.WET_LOSS)) < 1e-12,
+      '★㉑ⓔ3 헐거운 옷 문턱(`WARMTH_MIN`)과 젖음 곱은 그대로 걸린다(식은 하나)');
+    const Wx5 = require(path.join(ROOT, 'server', 'weather.js'));
+    const c0 = Wx5.coldOfC(-4.2 + B.warmthInsC(50)), c1 = Wx5.coldOfC(-4.2 + BC.warmthInsC(50));
+    ok(c0 > B.STAGE_AT.cold[0] && c1 < B.STAGE_AT.cold[0],
+      '★★㉑ⓔ4 (카드의 예) 겨울밤 −4.2℃ · 옷 50점 — 끔 **0.87**(1단계 위) → 켬 **0.65 아래**(막는다)', `${c0.toFixed(3)} → ${c1.toFixed(3)}`);
+    {
+      const keep = BC.CFG.CLO_TOP; BC.CFG.CLO_TOP = 1.13;   // ★미끼 — ISO 섬유 털 작업복(1.13)으로 갈면 ⓔ4 가 뒤집힌다
+      const cm = Wx5.coldOfC(-4.2 + BC.warmthInsC(50)); BC.CFG.CLO_TOP = keep;
+      ok(cm > B.STAGE_AT.cold[0], '㉑ⓔ5 (미끼) 모피 한 벌을 1.13 clo 로 낮추면 ⓔ4 가 뒤집힌다 — 그 판정이 실제로 clo 를 재고 있다', cm.toFixed(3));
+    }
+    ok(B.t508Info().decay === '' && B.t508Info().clo === false, '㉑ⓕ (오염 검사) 다시 올린 뒤에도 이 하네스의 정본은 두 팔 다 끔');
+  }
+
   // ═══ ⑧ 픽스처 결백 ═════════════════════════════════════════════════════════
   say('\n⑧ 픽스처 결백(족보 ㊻)');
   // ★①(오프라인 불변)이 자명 통과하지 않으려면, 그 절이 **저장을 건드리지 않아야** 한다.

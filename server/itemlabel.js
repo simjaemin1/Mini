@@ -67,6 +67,10 @@ const NPC_VERBS = { talk: '말 걸기', trade: '거래' };
 // ★다른 정본이 없는 이름 — 여기 말고 갈 데가 있으면 거기로 옮겨라.
 const NO_CANON = {
   ore_chunk: '원석(kg·미확인)',   // 선광 전 미확인 덩이. `specialty` 는 무게만 알고 이름은 모른다.
+  // ★[T507] 자연물 **종류**의 이름(커서 이름표 한 낱말) — 동사 표(`RESOURCE_VERBS`)는 동사지 이름이 아니고,
+  //   다른 정본이 없다(`chunk.js RESOURCE_HP_TABLE` 는 키만 안다). 나무는 종이 있으면 종 이름(`tree_species.json`)이 먼저다.
+  //   `herb`·`ore` 는 품목 이름표에 이미 있다(덮지 않는다 — 제2 규약).
+  tree: '나무', rock: '바위', berry_bush: '덤불', water_pool: '물웅덩이', meteorite: '운석',
 };
 
 // 괄호 안 영문 꼬리를 뗀다 — `BUILDING_RECIPES.label` 은 '벽 (Wall)' 꼴이고 화면엔 '벽' 이 맞다.

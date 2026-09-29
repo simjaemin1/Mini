@@ -4509,7 +4509,7 @@ const server = http.createServer((req, res) => {
       try {
         const data = JSON.parse(body);
         const now = Date.now();
-        for (const s of data.players || []) ghostPlayers.set(s.playerId, { ax: s.ax, ay: s.ay, vx: s.vx || 0, vy: s.vy || 0, name: s.name, srcZone: data.srcZone, recvAt: now });
+        for (const s of data.players || []) ghostPlayers.set(s.playerId, T512_GHOST_EXTRAP && typeof s.t === 'number' ? { ax: s.ax, ay: s.ay, vx: s.vx || 0, vy: s.vy || 0, name: s.name, srcZone: data.srcZone, recvAt: now, t: s.t } : { ax: s.ax, ay: s.ay, vx: s.vx || 0, vy: s.vy || 0, name: s.name, srcZone: data.srcZone, recvAt: now });
         // 건물 미러: 이 srcZone이 보낸 건물로 교체 (제거 반영 위해 prefix 클리어 후 재설정)
         if (Array.isArray(data.buildings)) {
           const prefix = data.srcZone + ':';
@@ -4754,6 +4754,8 @@ wss.on('connection', (ws, req) => {
 const E2E_HANDOFF_NO_BODY = (process.env.E2E_GIVE === '1') && process.env.E2E_HANDOFF_NO_BODY === '1';
 // ★[T498] 핸드오프 페이로드 정본 팔 — 켜면 떠나기 전 central 저장을 기다리지 않는다(`fireHandoff` 주석) · 기본 끔 = 종전 바이트 동일
 const T498_HANDOFF_PAYLOAD = process.env.T498_HANDOFF_PAYLOAD === '1';
+// ★[T512] 유령 앞으로 밀기 팔 — 켜면 유령 스냅샷에 보낸 시각을 싣고, 받는 존의 화살 판정이 그 나이만큼 속도로 민다 · 기본 끔 = 종전 바이트 동일
+const T512_GHOST_EXTRAP = process.env.T512_GHOST_EXTRAP === '1';
 const E2E_CONN_FAIL = (process.env.E2E_GIVE === '1') ? (process.env.E2E_CONN_FAIL || '') : '';
 const E2E_CONN_HANG = (process.env.E2E_GIVE === '1') ? (process.env.E2E_CONN_HANG || '') : '';
 function _connFailPoint(stage) {
@@ -5411,6 +5413,7 @@ async function _acceptConnection(ws, req, C) {
       charWalkMin: parseFloat(process.env.CHAR_WALK_MIN || '') || 4,
       charRunMin: parseFloat(process.env.CHAR_RUN_MIN || '') || 102,
       ...(process.env.T492_SEASON_AMB === 'on' ? { seasonAmb: true } : {}),   // [T492] 계절 환경음 손잡이 — 끔이면 칸이 없다(welcome 바이트 동일)
+      ...(_t507On() ? { t507Verbs: true } : {}),   // [T507] 첫 30분의 문법(우클릭·이름표·회색) — 기본 켬 · `T507_VERBS=0` 이면 칸이 없다(옛 화면)
     },
     // ★★[이동 모델 2026-08-30] 손잡이 표를 **서버가 실어 보낸다** — 클라가 표를 들고 있으면
     //   그게 사본이고, env 를 서버에서만 바꾼 날 예측과 권위가 갈린다(itemWeights·uiCfg 와 같은 규약).
@@ -5539,7 +5542,8 @@ function handlePlayerInput(player, raw) {
   } else if (msg.type === 'verb') {
     Rescue.verb(player, msg);   // ★[T68] 대상 위 메뉴의 동사 하나 — 표는 `rescue.js` 가 갖는다(접점 1줄)
   } else if (msg.type === 'butcher') butcherCorpse(player, msg.cid);  // Phase 5-7
-  else if (msg.type === 'gather') tryGather(player, msg.resId);   // ★[T90] 지목(없으면 종전 최근접 — 하위 호환)
+  else if (msg.type === 'gather') tryGather(player, msg.resId, msg.water);   // ★[T90] 지목(없으면 종전 최근접 — 하위 호환) · [T507] `water` = 물 동사
+  else if (msg.type === 'look') tryLook(player, msg.x, msg.y);   // ★[T507] 살피기 — 새 메시지 하나(묻고 답하는 한 쌍)
   else if (msg.type === 'plant_tree') tryPlantTree(player, msg.x, msg.y, msg.item);   // ★[T124] 심기
   else if (msg.type === 'pick_fruit') tryPickFruit(player, msg.resId);   // ★[T135] 베는 것과 **따는 것**은 다른 일
   else if (msg.type === 'sort_ore') trySortOre(player);   // ★선광 — 캔 원석 덩이를 광석/맥석으로 가른다
@@ -5647,6 +5651,8 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'furnace_smelt') tryFurnaceSmelt(player, msg.buildingId);          // ★노 조업(철 정광+숯 → era.js 물리)
   else if (msg.type === 'kiln_start') tryKilnStart(player, +msg.atX, +msg.atY);            // ★숯가마 건설 ①(노와 같은 계약)
   else if (msg.type === 'kiln_advance') tryKilnAdvance(player, msg.buildingId);            // ★숯가마 건설 ②·완공
+  else if (msg.type === 'well_start') tryWellStart(player, +msg.atX, +msg.atY);            // ★[T509] 우물 ①(끔이면 즉시 반환)
+  else if (msg.type === 'well_advance') tryWellAdvance(player, msg.buildingId);            // ★[T509] 우물 ②·완공
   else if (msg.type === 'village_start') tryVillageStart(player, +msg.atX, +msg.atY);      // ★[배치 12] 마을 회관 착공 — 완공이 곧 마을 등록
   else if (msg.type === 'village_advance') tryVillageAdvance(player, msg.buildingId);      // ★[배치 12] 회관 ②③·완공
   else if (msg.type === 'shelter_start') tryShelterStart(player, +msg.atX, +msg.atY);      // ★[T62] 공용 쉼터 착공
@@ -8248,6 +8254,7 @@ function _forageCtx(player) {
     // ★[자염 배치] 갯벌 판정에 필요한 둘 — 술어는 정본을 **주입**한다(사본 금지 규약 그대로).
     isSea: (x, y) => isSeaTileLocal(x, y),
     hasVessel: (player.inventory && (player.inventory[Salt.VESSEL] || 0) >= 1),
+    isWell: T509_WELL ? (x, y) => _wellCellAt(x, y) : undefined,   // ★[T509] 우물 칸 민물 담기(끔이면 없음 = 종전)
   };
 }
 function tryForage(player) {
@@ -8467,7 +8474,91 @@ function tryPickFruit(player, resId) {
   if (canPersist(player)) savePlayer(player);
 }
 
-function tryGather(player, resId) {
+// ★★[T507] **민물 마시기** — E 의 물가 갈래 몸통을 그대로 옮긴 것이다(글자 무변 · 부르는 곳 둘: E · 우클릭 '마시기').
+function drinkFresh(player) {
+  const before = player.thirst || 0;
+  player.thirst = Math.min(100, before + 30);
+  let msg = `💧 물 마심 (+${Math.round(player.thirst - before)})`;
+  // ★★[낚시 v2 · 재민 확정 2026-08-26] 여기 있던 **어업 동전 던지기를 걷어냈다.**
+  //   종전: 물 옆에서 E → `_dt() < 0.5` 로 어종 하나. 자리도 시간도 기술도 고갈도 없었다.
+  //   그게 정확히 §2 가 말한 "입력이 같고 결과가 확실한" 진행바다.
+  //   ⇒ 낚시는 이제 **제 동사**(Shift+F)를 갖는다: 자리를 고르고, 기다리고, 챔질하고, 놓친다.
+  //   E 는 목 축이는 것만 한다(그것도 세계의 일이다). 처음 오는 사람을 위해 한 줄로 알려 준다.
+  if (!player._fishHinted) { player._fishHinted = true; msg += ' · 🎣 낚시는 Shift+F'; }
+  send(player.ws, { type: 'notice', text: msg });
+  send(player.ws, { type: 'self_stat', thirst: Math.round(player.thirst) });
+  savePlayer(player);
+}
+// ★[T507] 손잡이 — 부를 때 읽는다(T124 문법). 기본 **켬** · `T507_VERBS=0` 이면 옛 화면·옛 서버 길.
+function _t507On() { return process.env.T507_VERBS !== '0'; }
+// ★★[T507] 물 동사 — **E 의 물가 갈래를 이름으로** 부른다(판정은 전부 정본 술어 · 새 규칙 0).
+//   · 물 바로 옆(E 와 같은 네 칸)이 아니면 거절한다 — 클라가 먼저 걸어온다(메뉴의 '걸어가서').
+//   · `drink` — 민물이면 `drinkFresh`(E 와 같은 몸통). **짠물은 메뉴로 안 마신다**: 메뉴는 "짠물이다"라고
+//     먼저 말한다 — 누른 사람이 벌(`drinkBrine`)을 받게 두지 않는다(E 는 종전대로 마시고 벌받는다).
+//   · `fill` — 그릇이 있어야 한다. 뜨는 일은 E 의 채집 갈래 그대로(`tryForage` → `Forage.sourceAt` 이 짠물·민물을 가른다).
+//     바다는 갯벌에서 짠물이 열릴 때만(`Forage.sourceAt` → `brine`) — 안 그러면 병을 들고 갈대를 벤다(E 가 이미 밟은 함정).
+function _waterVerb(player, act) {
+  let adj = null;
+  for (const [dx, dy] of [[32, 0], [-32, 0], [0, 32], [0, -32]]) {
+    if (isWaterTileLocal(player.x + dx, player.y + dy)) { adj = { x: player.x + dx, y: player.y + dy }; break; }
+  }
+  if (!adj) { send(player.ws, { type: 'notice', text: '물 바로 옆에 서야 한다', kind: 'gather' }); return; }
+  const sea = isSeaTileLocal(adj.x, adj.y);
+  if (act === 'drink') {
+    if (sea) { send(player.ws, { type: 'notice', text: '🌊 짠물이다 — 마실 수 없다 · 마실 물은 강·호수·샘에서', kind: 'gather' }); return; }
+    drinkFresh(player);
+    return;
+  }
+  if ((player.inventory[Salt.VESSEL] || 0) < 1) {
+    send(player.ws, { type: 'notice', text: `🏺 ${ITEM_LABEL_SERVER[Salt.VESSEL]}이 있어야 물을 뜬다`, kind: 'gather' }); return;
+  }
+  //   (그릇이 있으니 바다에서 열리는 것은 짠물 하나다 — `Forage.sourceAt` 이 갯벌이면 `brine` 을 낸다. 아니면 갈대가 나오므로 거절한다.)
+  const _src = sea ? Forage.sourceAt(player.x, player.y, _forageCtx(player)) : null;
+  if (sea && !(_src && _src.kind === Salt.BRINE)) {
+    send(player.ws, { type: 'notice', text: '🌊 여기선 짠물을 못 뜬다 — 갯벌에서 뜬다', kind: 'gather' }); return;
+  }
+  tryForage(player);
+}
+// ★★[T507] **살피기** — 그 칸의 지형 · 주울 것 · 임자를 한 줄로. 판정은 **전부 정본 술어**다:
+//   지형 = `isWaterTileLocal`·`isSeaTileLocal`·`isRockTileLocal`(Soil `kindAt` 가 쓰는 그 둘 + 바다),
+//   주울 것 = `Forage.sourceAt`(E 가 그 자리에서 줍는 것 · 그 사람의 그릇까지 본다),
+//   임자 = `foreignClaimAt`(심기가 쓰는 그 술어) · 덮는 땅이 있는데 남의 것이 아니면 내 땅(또는 우리 길드).
+//   ★답은 새 메시지 하나(`look` — 묻고 답하는 한 쌍). 물 칸이면 `water`('sea'|'fresh')를 실어
+//     클라가 물 메뉴를 **서버의 판정으로** 짓는다(짠물 술어를 클라에 옮겨 적지 않는다).
+function tryLook(player, x, y) {
+  if (!_t507On()) return;
+  x = +x; y = +y;
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+  const px = Math.floor(x / 32) * 32 + 16, py = Math.floor(y / 32) * 32 + 16;
+  const lab = (k) => ITEM_LABEL_SERVER[k] || (Forage.KO && Forage.KO[k]) || k;
+  const parts = [];
+  let water = null;
+  if (isWaterTileLocal(px, py)) {
+    water = isSeaTileLocal(px, py) ? 'sea' : 'fresh';
+    parts.push(water === 'sea' ? '바다 — 짠물' : '민물 — 강·호수');
+  } else if (isRockTileLocal(px, py)) {
+    parts.push('바위 — 지나갈 수 없다');
+  } else {
+    const src = Forage.sourceAt(px, py, _forageCtx(player));
+    parts.push(src ? `${src.where} — E 로 ${lab(src.kind)}` : '빈 땅 — 주울 것 없음');
+  }
+  const f = foreignClaimAt(player, px, py);
+  if (f) parts.push(`${f.ownerName || '남'}의 ${f.kind === 'guild' ? '길드 영토' : '사유지'}`);
+  else {
+    let covered = false;
+    for (const c of claims.values()) if (px >= c.x && px < c.x + c.w && py >= c.y && py < c.y + c.h) { covered = true; break; }
+    parts.push(covered ? '내 땅' : '임자 없음');
+  }
+  //   물 칸이면 그릇(품목 키 · 가진 수)도 싣는다 — "병에 담기"가 뜰지는 서버가 아는 그릇 표로 가른다(클라에 키를 안 적는다).
+  send(player.ws, { type: 'look', x, y, water, line: '살피기 — ' + parts.join(' · '),
+    say: water === 'sea' ? '🌊 짠물이다 — 마시면 목이 더 마른다 · 마실 물은 강·호수·샘에서' : null,
+    vessel: water ? Salt.VESSEL : null, bottles: water ? Math.floor(player.inventory[Salt.VESSEL] || 0) : 0 });
+}
+
+function tryGather(player, resId, water) {
+  // ★★[T507] **물 동사** — 우클릭 물 타일 메뉴가 E 의 물가 갈래를 **이름으로** 부른다(`_waterVerb` · 사본 0).
+  //   `water` 가 없으면(E 키·옛 클라) 이 줄은 지나간다 — 종전 그대로다.
+  if ((water === 'drink' || water === 'fill') && _t507On()) { _waterVerb(player, water); return; }
   // ★★[T90 2026-09-04 재민 확정 · T82 회부 ②] **지목**. 종전엔 인자가 없어 늘 최근접을 골랐고,
   //   그래서 T82 의 우클릭 메뉴는 "누른 것이 최근접일 때만" 동사를 냈다(정책이 아니라 임시였다).
   //   ⇒ `resId` 가 오면 **그 자연물**을 캔다. 없으면 종전 그대로다(E 키·옛 클라 무변).
@@ -8488,7 +8579,7 @@ function tryGather(player, resId) {
   }
   // Phase 5-9: 물 채취 — 강/호수 인접 시 thirst 회복 + 어업 (Phase 5-11)
   for (const [dx, dy] of [[32, 0], [-32, 0], [0, 32], [0, -32]]) {
-    if (isWaterTileLocal(player.x + dx, player.y + dy)) {
+    if (isWaterTileLocal(player.x + dx, player.y + dy) || _wellCellAt(player.x + dx, player.y + dy)) {   // ★[T509] 우물 칸도 민물(끔이면 우물 칸 거짓 = 종전)
       // ★★[빈손 시작 2026-08-28] **목이 안 마르면 갈대를 벤다.**
       //   종전엔 여기가 막다른 길이었다(물만 마시고 끝). 물가에 선 사람이 할 일이 하나 더 있어야 한다 —
       //   재민 확정의 "갈대 군락 E = 섬유"가 이 자리다(새 개체 없이, 이미 있는 물가에 판정만 얹는다).
@@ -8521,18 +8612,7 @@ function tryGather(player, resId) {
         return;
       }
       if ((player.thirst ?? THIRST_MAX) >= THIRST_MAX * 0.95) { tryForage(player); return; }
-      const before = player.thirst || 0;
-      player.thirst = Math.min(100, before + 30);
-      let msg = `💧 물 마심 (+${Math.round(player.thirst - before)})`;
-      // ★★[낚시 v2 · 재민 확정 2026-08-26] 여기 있던 **어업 동전 던지기를 걷어냈다.**
-      //   종전: 물 옆에서 E → `_dt() < 0.5` 로 어종 하나. 자리도 시간도 기술도 고갈도 없었다.
-      //   그게 정확히 §2 가 말한 "입력이 같고 결과가 확실한" 진행바다.
-      //   ⇒ 낚시는 이제 **제 동사**(Shift+F)를 갖는다: 자리를 고르고, 기다리고, 챔질하고, 놓친다.
-      //   E 는 목 축이는 것만 한다(그것도 세계의 일이다). 처음 오는 사람을 위해 한 줄로 알려 준다.
-      if (!player._fishHinted) { player._fishHinted = true; msg += ' · 🎣 낚시는 Shift+F'; }
-      send(player.ws, { type: 'notice', text: msg });
-      send(player.ws, { type: 'self_stat', thirst: Math.round(player.thirst) });
-      savePlayer(player);
+      drinkFresh(player);   // ★[T507] 몸통을 함수로 뺐다(우클릭 '마시기'가 같은 것을 부른다 · 한 줄도 안 바꿨다)
       return;
     }
   }
@@ -9880,6 +9960,32 @@ function tryKilnAdvance(player, buildingId) {
   if (!b || b.type !== 'kiln_site') return;
   return _siteAdvance(player, b, KILN_SPEC);
 }
+// ★★[T509 2026-09-29] 우물 — 공정·재료 정본 `server/well-stages.js`(동천동 1호 실측에서 유도) · 손잡이 `T509_WELL`(기본 끔).
+//   끔이면 착공도 · 우물가 E(마시기·담기)도 안 열린다(아래 두 문이 끔에서 거짓·즉시 반환 = 비트 동일).
+//   노·숯가마와 **같은 2×2 사유지 착공 계약**(`_siteStart`/`_siteAdvance`) — 새 기구 0. 지하수 가용도는 재민 #88(이 판엔 문 없음).
+const T509_WELL = process.env.T509_WELL === '1';
+const WellStages = require('./well-stages');
+const WELL_SPEC = { siteType: 'well_site', doneType: 'well', ko: '우물', icon: '🪣', stages: WellStages.WELL_STAGES, kind: 'well',
+                    doneHint: '우물가에서 E — 목을 축이고, 물병이 있으면 민물을 담는다' };
+function tryWellStart(player, atX, atY) { if (!T509_WELL) return; return _siteStart(player, atX, atY, WELL_SPEC); }
+function tryWellAdvance(player, buildingId) {
+  if (!T509_WELL) return;
+  const b = buildings.get(buildingId);
+  if (!b || b.type !== 'well_site') return;
+  return _siteAdvance(player, b, WELL_SPEC);
+}
+// 우물 칸 — 완공 우물의 2×2 발자국 안 셀이면 참. 물가 E·민물 담기가 **민물 셀처럼** 묻는다(바다 술어는 우물 칸에 거짓 — 물 비트가 없다).
+function _wellCellAt(px, py) {
+  if (!T509_WELL) return false;
+  const tx = Math.floor(px / BUILDING_SIZE), ty = Math.floor(py / BUILDING_SIZE);
+  const near = qtBuildings ? qtBuildings.queryCircle(px, py, BUILDING_SIZE * 3) : Array.from(buildings.values());
+  for (const b of near) {
+    if (!b || b.type !== 'well' || !b.data) continue;
+    const x0 = b.data.x0, y0 = b.data.y0;
+    if (tx >= x0 && tx <= x0 + 1 && ty >= y0 && ty <= y0 + 1) return true;
+  }
+  return false;
+}
 
 // ═══ ★★[2026-08-03e 배치 12 ①] 마을 회관(村會館) — **마을을 세우는 건축** ═════════
 //   재민: *"플레이어가 마을 아무데나 세울 수 있는 시스템"*. 새 기구를 만들지 않는다 —
@@ -10479,6 +10585,7 @@ function __testBind() {
     // ★[T62 공용 쉼터 2026-09-03] 쉼터 경로를 **정본 그대로** 내준다 —
     //   하네스가 자리·재료·이송 좌표를 다시 짜면 그게 사본이다.
     tryShelterStart, tryShelterAdvance, SHELTER_SPEC, SHELTER_STAGES, _shelterBackfill,
+    tryWellStart, tryWellAdvance, WELL_SPEC, _wellCellAt, T509_WELL,   // ★[T509] 우물 — 하네스가 문 그대로 두드린다
     nearestVillageWake, resolveDowned, buildings, _liveBuildRow, isTerrainBlockedLocal,
     Claims, db, tryClaim, tryUnclaim, countMyClaims, listRespawnOptions,
     findGuildClaimContaining, _claimFootprint, Onboarding, CLAIM_COST,
@@ -10805,7 +10912,10 @@ function stepArrows(dt) {
     if (!hit) {
       const aax = ZONE.worldOffsetX + a.x, aay = ZONE.worldOffsetY + a.y;
       for (const [gid, g] of ghostPlayers) {
-        if (Math.hypot(g.ax - aax, g.ay - aay) < ARROW_HIT_R) {
+        // ★[T512 · 팔 `T512_GHOST_EXTRAP` · 기본 끔] 유령은 **보낸 순간의 자리**다 — 바다를 건너면 그 사이(한 방향 + 주기 100ms 의 나이) 몸은 이미 옮겼다.
+        //   켜면 보낸 순간(`g.t`) 부터 지금까지 **실린 속도 그대로**(`move-model` 이 낸 px/s) 앞으로 민다 — 새 수 0(나이는 유령 수명 `GHOST_TTL_MS` 안으로만).
+        const _ga = (T512_GHOST_EXTRAP && typeof g.t === 'number') ? Math.min(GHOST_TTL_MS, Math.max(0, Date.now() - g.t)) / 1000 : 0;
+        if (Math.hypot(g.ax + g.vx * _ga - aax, g.ay + g.vy * _ga - aay) < ARROW_HIT_R) {
           const tz = ZONES[g.srcZone];
           if (tz) postJSON(tz.host, tz.port, '/cross_damage', { targetId: gid, dmg: a.dmg, attackerId: a.ownerId }).catch(() => {});
           hit = true; break;
@@ -10831,7 +10941,9 @@ function syncGhostsToNeighbors() {
     if (p.y > zh - GHOST_REACH) near.push(findZoneAt(ox + p.x, oy + zh + 1));
     for (const tz of near) {
       if (!tz || tz.id === ZONE_ID || tz.isOcean) continue;
-      (byZone[tz.id] = byZone[tz.id] || []).push({ playerId: p.playerId, name: p.name, ax: ox + p.x, ay: oy + p.y, vx: p.vx, vy: p.vy });
+      const _gs = { playerId: p.playerId, name: p.name, ax: ox + p.x, ay: oy + p.y, vx: p.vx, vy: p.vy };
+      if (T512_GHOST_EXTRAP) _gs.t = Date.now();   // ★[T512] 이 자리의 벽시계(보낸 순간) — 받는 존이 그만큼 앞으로 민다
+      (byZone[tz.id] = byZone[tz.id] || []).push(_gs);
     }
   }
   // 경계 근처 벽/문/펜스를 이웃 zone에 (콜라이더 미러). 절대 cell + side.
