@@ -5647,6 +5647,8 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'furnace_smelt') tryFurnaceSmelt(player, msg.buildingId);          // ★노 조업(철 정광+숯 → era.js 물리)
   else if (msg.type === 'kiln_start') tryKilnStart(player, +msg.atX, +msg.atY);            // ★숯가마 건설 ①(노와 같은 계약)
   else if (msg.type === 'kiln_advance') tryKilnAdvance(player, msg.buildingId);            // ★숯가마 건설 ②·완공
+  else if (msg.type === 'well_start') tryWellStart(player, +msg.atX, +msg.atY);            // ★[T509] 우물 ①(끔이면 즉시 반환)
+  else if (msg.type === 'well_advance') tryWellAdvance(player, msg.buildingId);            // ★[T509] 우물 ②·완공
   else if (msg.type === 'village_start') tryVillageStart(player, +msg.atX, +msg.atY);      // ★[배치 12] 마을 회관 착공 — 완공이 곧 마을 등록
   else if (msg.type === 'village_advance') tryVillageAdvance(player, msg.buildingId);      // ★[배치 12] 회관 ②③·완공
   else if (msg.type === 'shelter_start') tryShelterStart(player, +msg.atX, +msg.atY);      // ★[T62] 공용 쉼터 착공
@@ -8248,6 +8250,7 @@ function _forageCtx(player) {
     // ★[자염 배치] 갯벌 판정에 필요한 둘 — 술어는 정본을 **주입**한다(사본 금지 규약 그대로).
     isSea: (x, y) => isSeaTileLocal(x, y),
     hasVessel: (player.inventory && (player.inventory[Salt.VESSEL] || 0) >= 1),
+    isWell: T509_WELL ? (x, y) => _wellCellAt(x, y) : undefined,   // ★[T509] 우물 칸 민물 담기(끔이면 없음 = 종전)
   };
 }
 function tryForage(player) {
@@ -8488,7 +8491,7 @@ function tryGather(player, resId) {
   }
   // Phase 5-9: 물 채취 — 강/호수 인접 시 thirst 회복 + 어업 (Phase 5-11)
   for (const [dx, dy] of [[32, 0], [-32, 0], [0, 32], [0, -32]]) {
-    if (isWaterTileLocal(player.x + dx, player.y + dy)) {
+    if (isWaterTileLocal(player.x + dx, player.y + dy) || _wellCellAt(player.x + dx, player.y + dy)) {   // ★[T509] 우물 칸도 민물(끔이면 우물 칸 거짓 = 종전)
       // ★★[빈손 시작 2026-08-28] **목이 안 마르면 갈대를 벤다.**
       //   종전엔 여기가 막다른 길이었다(물만 마시고 끝). 물가에 선 사람이 할 일이 하나 더 있어야 한다 —
       //   재민 확정의 "갈대 군락 E = 섬유"가 이 자리다(새 개체 없이, 이미 있는 물가에 판정만 얹는다).
@@ -9880,6 +9883,32 @@ function tryKilnAdvance(player, buildingId) {
   if (!b || b.type !== 'kiln_site') return;
   return _siteAdvance(player, b, KILN_SPEC);
 }
+// ★★[T509 2026-09-29] 우물 — 공정·재료 정본 `server/well-stages.js`(동천동 1호 실측에서 유도) · 손잡이 `T509_WELL`(기본 끔).
+//   끔이면 착공도 · 우물가 E(마시기·담기)도 안 열린다(아래 두 문이 끔에서 거짓·즉시 반환 = 비트 동일).
+//   노·숯가마와 **같은 2×2 사유지 착공 계약**(`_siteStart`/`_siteAdvance`) — 새 기구 0. 지하수 가용도는 재민 #88(이 판엔 문 없음).
+const T509_WELL = process.env.T509_WELL === '1';
+const WellStages = require('./well-stages');
+const WELL_SPEC = { siteType: 'well_site', doneType: 'well', ko: '우물', icon: '🪣', stages: WellStages.WELL_STAGES, kind: 'well',
+                    doneHint: '우물가에서 E — 목을 축이고, 물병이 있으면 민물을 담는다' };
+function tryWellStart(player, atX, atY) { if (!T509_WELL) return; return _siteStart(player, atX, atY, WELL_SPEC); }
+function tryWellAdvance(player, buildingId) {
+  if (!T509_WELL) return;
+  const b = buildings.get(buildingId);
+  if (!b || b.type !== 'well_site') return;
+  return _siteAdvance(player, b, WELL_SPEC);
+}
+// 우물 칸 — 완공 우물의 2×2 발자국 안 셀이면 참. 물가 E·민물 담기가 **민물 셀처럼** 묻는다(바다 술어는 우물 칸에 거짓 — 물 비트가 없다).
+function _wellCellAt(px, py) {
+  if (!T509_WELL) return false;
+  const tx = Math.floor(px / BUILDING_SIZE), ty = Math.floor(py / BUILDING_SIZE);
+  const near = qtBuildings ? qtBuildings.queryCircle(px, py, BUILDING_SIZE * 3) : Array.from(buildings.values());
+  for (const b of near) {
+    if (!b || b.type !== 'well' || !b.data) continue;
+    const x0 = b.data.x0, y0 = b.data.y0;
+    if (tx >= x0 && tx <= x0 + 1 && ty >= y0 && ty <= y0 + 1) return true;
+  }
+  return false;
+}
 
 // ═══ ★★[2026-08-03e 배치 12 ①] 마을 회관(村會館) — **마을을 세우는 건축** ═════════
 //   재민: *"플레이어가 마을 아무데나 세울 수 있는 시스템"*. 새 기구를 만들지 않는다 —
@@ -10479,6 +10508,7 @@ function __testBind() {
     // ★[T62 공용 쉼터 2026-09-03] 쉼터 경로를 **정본 그대로** 내준다 —
     //   하네스가 자리·재료·이송 좌표를 다시 짜면 그게 사본이다.
     tryShelterStart, tryShelterAdvance, SHELTER_SPEC, SHELTER_STAGES, _shelterBackfill,
+    tryWellStart, tryWellAdvance, WELL_SPEC, _wellCellAt, T509_WELL,   // ★[T509] 우물 — 하네스가 문 그대로 두드린다
     nearestVillageWake, resolveDowned, buildings, _liveBuildRow, isTerrainBlockedLocal,
     Claims, db, tryClaim, tryUnclaim, countMyClaims, listRespawnOptions,
     findGuildClaimContaining, _claimFootprint, Onboarding, CLAIM_COST,
