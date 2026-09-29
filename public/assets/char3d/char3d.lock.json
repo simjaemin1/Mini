@@ -1,0 +1,13 @@
+{
+ "_": "[T522] char3d 잠금 — 값 = 파일 sha1 앞 16자(글TF 는 바이트가 자산이다). 입력 지문이 바뀌면 다시 굽는다.",
+ "_기계": "pip bpy 5.0.1 · io_scene_gltf2 5.0.21",
+ "_입력": {
+  "assets-src/mocap/poses.json": "70130d263903c8e2",
+  "scripts/char_export_gltf.py": "bd67877ac142bc9c",
+  "scripts/char_render.py": "ec8ba1259fe207be"
+ },
+ "char3d": {
+  "char3d_meta.json": "85149c626e23c138",
+  "char_body.glb": "d20437d40a515679"
+ }
+}

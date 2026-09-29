@@ -1,0 +1,62 @@
+{
+ "_": "[T522] char_export_gltf.py 산물 — 엔진이 읽는 규약. 클라는 이 수를 하드코딩하지 않는다.",
+ "ambient": [
+  0.52,
+  0.56,
+  0.6
+ ],
+ "ambientStrength": 0.550000011920929,
+ "bpy": "5.0.1",
+ "clips": {
+  "aim": {
+   "duration": 1.0,
+   "fps": 2.0,
+   "frames": 2,
+   "loop": true
+  },
+  "idle": {
+   "duration": 4.444444,
+   "fps": 0.9,
+   "frames": 4,
+   "loop": true
+  },
+  "walk": {
+   "duration": 0.8,
+   "fps": 10.0,
+   "frames": 8,
+   "loop": true
+  }
+ },
+ "exporter": "io_scene_gltf2 5.0.21",
+ "facing": "방향 0 = 모델 +x(Blender) — 시트 행 0 과 같다 · 방향 d = d×45°(연속 회전은 atan2(fy,fx))",
+ "flip": "시트는 굽고 나서 좌우를 뒤집는다(_flip_png) — 엔진은 모델 좌표를 게임 좌표 그대로 놓고(거울 = 행렬식 −1) 같은 그림을 얻는다",
+ "glb": "char_body.glb",
+ "meshes": {
+  "body": [
+   "armL",
+   "armR",
+   "footL",
+   "footR",
+   "legL",
+   "legR",
+   "torso"
+  ],
+  "clothes": [
+   "belt",
+   "skirt",
+   "slvL",
+   "slvR",
+   "tunic"
+  ],
+  "clothesMat": "leather"
+ },
+ "sunDir": [
+  0.451984,
+  0.645501,
+  -0.615662
+ ],
+ "sunEnergy": 3.5999999046325684,
+ "units": "1 = 1m = 1셀(32 게임px)",
+ "zsq": 0.8164965809277261,
+ "zsqNote": "엔진이 부모 스케일로 누른다(포즈 뒤 누르기 = char_render.py ZSQ 절과 같은 순서)"
+}
