@@ -1850,7 +1850,10 @@ const mkLedgerGeo = (world, geo, cfg) => {
   // ── ㊻a 전제(소스 계약) — econ 틱에서 **캐시 갱신이 하역보다 먼저**다
   {
     const src = require('fs').readFileSync(path.join(__dirname, '..', 'sim', 'economy-sim-v2.js'), 'utf8');
-    const body = (src.match(/function tickWorldV2\(world\)[\s\S]*?\n\}/) || [''])[0];
+    //   ★[T530 ⓪] T513 이 하루를 조각으로 쪼갰다(`tickWorldV2` = `tickWorldV2Parts` 의 head→village→trade→caravans→tail 위임).
+    //     순서의 정본은 이제 조각 함수 본문이다 — 거기서 두 호출의 순서를 읽는다(뜻 그대로 · 위임 본문이면 조각 함수로 내려간다).
+    let body = (src.match(/function tickWorldV2\(world\)[\s\S]*?\n\}/) || [''])[0];
+    if (body.indexOf('tickTradeV2(world') < 0 && /tickWorldV2Parts\(world\)/.test(body)) body = (src.match(/function tickWorldV2Parts\(world\)[\s\S]*?\n\}/) || [''])[0];
     const iTrade = body.indexOf('tickTradeV2(world');
     const iCar = body.indexOf('tickCaravansV2(world');
     ok(iTrade > 0 && iCar > 0 && iTrade < iCar,
