@@ -3964,7 +3964,13 @@ function _t476DenRefresh(den) {   // 갱 → 어댑터(T476: n 명 전사 · 한
   e.counts = { [job]: n };
   e.storage.food = Math.max(0, g.food || 0); e.storage.fish = 0; e.storage.meat = 0; e.storage.cooked_food = 0; e.storage.vegetable = 0;
   e.storage.weapon = real ? 0 : n; e.storage.armor = 0;
+  //   ★★[T521 2026-09-29 · 캐논 "실물이 정본"] 팔 `T521_GANG_ARMS`(끔) — 무기·갑옷은 **단이 약탈한 실물**(bandits `g.arms`) 그대로:
+  //     곳간(소굴 저장) 전부를 어댑터에 싣는다 — 동원 계획은 무기율 = min(1, 무기 ÷ 교전수), 전투 편성은 한 사람 한 자루까지만 쥐여 준다
+  //     (= 손은 한 사람 한 무기 · 남는 것은 소굴에 그대로 · 쓰러지고 달아난 도적의 무기만 흘러 이긴 쪽이 줍는다 — war-core `warWeaponFlow` 그 문).
+  //     끔이면 T502/T476 그대로(비트 동일).
+  if (_t521On()) { const a = g.arms || {}; e.storage.weapon = Math.max(0, a.weapon || 0); e.storage.armor = Math.max(0, a.armor || 0); den._den.arms0 = { weapon: e.storage.weapon, armor: e.storage.armor }; }
 }
+function _t521On() { return typeof process !== 'undefined' && !!process.env && process.env.T521_GANG_ARMS === '1'; }
 function _t476GangLive(g) {   // bandits 가 준비되지 않은 세계(하네스)는 모른다 → 살아 있다고 본다
   let camps = null; try { const B = require('./bandits'); camps = B && B.clientCamps ? B.clientCamps() : null; } catch (_) { camps = null; }
   if (!camps || !g || !g.camp) return true;
@@ -3977,6 +3983,7 @@ function _t476DenSync(w) {   // 어댑터 → 갱(전투·노획 뒤)
   const g = den._den.gang, S2 = den.econ.storage;
   g.n = den.econ.npcs.length;
   g.food = Math.max(0, (S2.food || 0) + (S2.fish || 0) + (S2.meat || 0) + (S2.cooked_food || 0) + (S2.vegetable || 0));
+  if (_t521On() && den._den.arms0) { const a = g.arms || (g.arms = {}); a.weapon = +Math.max(0, S2.weapon || 0).toFixed(6); a.armor = +Math.max(0, S2.armor || 0).toFixed(6); }   // ★[T521] 싸운 뒤 남은(또는 얻은) 실물이 단의 짐
 }
 function _t476Gang(vil) {   // 그 마을 교역로에 선 갱 중 가장 가까운 것(bandits 길목 표)
   const W = state.world; if (!W || typeof W.banditGang !== 'function') return null;

@@ -195,7 +195,7 @@ function _run(opts) {
   let w = null;
   if (opts.den) {
     //   ★[T476] 토벌 판 — 전쟁을 손으로 세우지 않는다: 갱(길목 표) · 사건 장부(제 마을 약탈 · 들은 날) · 털린 양을 놓고 **운영 결단**(`_t476Decide`)을 부른다.
-    const D0 = opts.den, g = { id: 9, camp: { cx: B_C.cx + (D0.dx || 0), cy: B_C.cy + (D0.dy || 0) }, n: D0.n, food: D0.food, den: 1, lootN: 0 };
+    const D0 = opts.den, g = { id: 9, camp: { cx: B_C.cx + (D0.dx || 0), cy: B_C.cy + (D0.dy || 0) }, n: D0.n, food: D0.food, den: 1, lootN: 0, arms: D0.arms ? Object.assign({}, D0.arms) : undefined };
     tr0.gang = g;
     world.banditGang = (va, vb) => ((va === atk.econ || vb === atk.econ) ? g : null);
     H.state.ledger = { visibleEvents: (vid, o) => ({ rows: (D0.raids || [{ day: world.day - 1, heard: world.day }]).filter(r => vid === 1 && r.heard <= (o.today | 0)).map(r => ({ ev: { type: 'CARAVAN_RAIDED', vid: 1, day: r.day, mag: 1 }, heard: r.heard })) }) };
@@ -281,7 +281,8 @@ function _run(opts) {
   const st = war.stats();
   tr.counts = { resolve: counts.resolve, surrender: st.surrender || 0, battle: st.battle || 0 };
   tr.stat = Object.assign({}, H.state._warStat);
-  if (opts.den) { tr.t476 = JSON.parse(JSON.stringify(w._t476 || {})); tr.gangAfter = { n: tr0.gang.n, food: +(tr0.gang.food || 0).toFixed(6), supKill: tr0.gang._supKill || 0 }; delete tr.gang;
+  if (opts.den) { tr.t476 = JSON.parse(JSON.stringify(w._t476 || {})); tr.gangAfter = { n: tr0.gang.n, food: +(tr0.gang.food || 0).toFixed(6), supKill: tr0.gang._supKill || 0, arms: tr0.gang.arms ? JSON.parse(JSON.stringify(tr0.gang.arms)) : null }; delete tr.gang;
+    tr.weapA = +(atk.econ.storage.weapon || 0).toFixed(6);
     tr.warLog = war.stats().log.filter(l => /토벌|소굴|노획|내려놓|짐 장부/.test(l)); }
   tr.fe = { A: +econ.totalFoodEquivalent(atk.econ).toFixed(6), B: +econ.totalFoodEquivalent(def.econ).toFixed(6) };   // ★[T466] 두 곳간 식량등가(판 끝)
   tr.econ = { A: atk.econ.npcs.length, B: def.econ.npcs.length, foodA: +(atk.econ.storage.food || 0).toFixed(4), foodB: +(def.econ.storage.food || 0).toFixed(4) };
@@ -423,7 +424,7 @@ function _run(opts) {
 
 (async () => {
   //   ★[T458] 절 하나만(개발 — 전 절은 7분) · WW_PART=ration,forage,berry
-  if (process.env.WW_PART) { const P = { ration: rationActPart, forage: forageMarchPart, berry: berryArrowPart, loot: lootActPart, punitive: punitivePart, odds: oddsRealPart }; for (const k of process.env.WW_PART.split(',')) P[k](); say(`\n결과: ${pass} 통과 / ${fail} 실패`); process.exit(fail ? 1 : 0); }
+  if (process.env.WW_PART) { const P = { ration: rationActPart, forage: forageMarchPart, berry: berryArrowPart, loot: lootActPart, punitive: punitivePart, odds: oddsRealPart, arms: gangArmsPart }; for (const k of process.env.WW_PART.split(',')) P[k](); say(`\n결과: ${pass} 통과 / ${fail} 실패`); process.exit(fail ? 1 : 0); }
   if (process.env.WW_ONLY) { const r = runScenario({ seed: parseInt(process.env.WW_SEED || '31', 10), viewer: false, scenario: process.env.WW_ONLY, trees: process.env.WW_TREES === '1', maxTicks: parseInt(process.env.WW_TICKS || '', 10) || 30 * 60 * 20 }); say(JSON.stringify({ ended: r.ended, counts: r.counts, stat: r.stat, fight: r.fightTicks, blocked: r.blockedTicks, box: [r._bx0, r._bx1, r._by0, r._by1] })); process.exit(0); }
   say('\n=== T284 실체 전쟁 — 좌표계 하나 · 장애물은 존의 것 · 연속 전투 ===');
 
@@ -603,6 +604,9 @@ function _run(opts) {
 
   // ── ⓩ' 토벌 승산 해부 · 실제 편성 팔(T502) ─────────────────────────────
   oddsRealPart();
+
+  // ── ⓩ'' 갱의 무기는 노획한 실물(T521) ───────────────────────────────────
+  gangArmsPart();
 
   // ── ⓖ 서버 ───────────────────────────────────────────────────────────────
   if (process.env.WAR_WORLD_NO_SERVER === '1') { say('\n[ⓖ] 서버 절 건너뜀(WAR_WORLD_NO_SERVER=1)'); }
@@ -1290,6 +1294,47 @@ function oddsRealPart() {
   const VS = fs.readFileSync(path.join(ROOT, 'server/villages.js'), 'utf8');
   ok((VS.match(/process\.env\.T502_ODDS_REAL === '1'/g) || []).length === 1 && !/T502/.test(fs.readFileSync(path.join(ROOT, 'sim/war-core.js'), 'utf8')),
     "ⓩ' 정적 — 팔 하나(villages 소굴 어댑터 자리) · war-core 식 무접촉(해부는 입력만 바꾼다)");
+  for (const [k, v] of keep) { if (v == null) delete process.env[k]; else process.env[k] = v; }
+}
+// ════════════════════════════════════════════════════════════════════════════
+// ★★[T521] ⓩ'' — 갱의 무기는 노획한 실물이어야 한다(캐논 "실물이 정본")
+// ════════════════════════════════════════════════════════════════════════════
+function gangArmsPart() {
+  const KEYS = ['T423_RATION_ACT', 'T441_FORAGE_MARCH', 'T347_FORAGE_ACT', 'T466_LOOT_ACT', 'T476_PUNITIVE', 'T502_ODDS_REAL', 'T521_GANG_ARMS'];
+  const keep = KEYS.map(k => [k, process.env[k]]);
+  const env = (v) => { KEYS.forEach((k, i) => { if (v[i]) process.env[k] = '1'; else delete process.env[k]; }); };
+  const run = (v, o) => { env(v); groveReset(); try { return runScenario(o); } finally { env([0, 0, 0, 0, 0, 0, 0]); } };
+  const O = (den) => ({ seed: 11, viewer: true, untilHome: true, econFood: true, maxTicks: 30 * 60 * 20, den });
+  const B = R('server/bandits.js');
+  say("\n[ⓩ''] 갱의 무기는 노획한 실물 — 팔 `T521_GANG_ARMS`(턴 무기·갑옷·도구는 장물아비를 안 거치고 단의 짐 · 손 = 한 사람 한 무기) · 승산은 그 실물에서");
+  // 손 규칙 하나(bandits `armsHeld` — 무장률 곡선과 어댑터가 같은 것을 읽는다)
+  ok(B.armsHeld({ n: 5, arms: { weapon: 3 } }) === 3 && B.armsHeld({ n: 2, arms: { weapon: 7.5 } }) === 2 && B.armsHeld({ n: 4 }) === 0 && B.ARMS_RES.has('weapon') && B.ARMS_RES.has('tool') && !B.ARMS_RES.has('rice'),
+    "ⓩ''① 손 = min(인원, 무기 짐) · 실물로 드는 품목 = econ 이름 그대로(weapon·armor·tool·iron_tool·bronze_tool)", '5명·3자루 → 3 · 2명·7.5자루 → 2 · 무기 없음 → 0');
+  const T502 = [1, 0, 0, 1, 1, 1, 0], ON = [1, 0, 0, 1, 1, 1, 1];
+  const base = run(T502, O({ n: 5, food: 120, lost: 400, arms: { weapon: 5 } })), bare = run(ON, O({ n: 5, food: 120, lost: 400 }));
+  const t0 = base.t476 || {}, tb = bare.t476 || {};
+  ok(!base.noWar && !bare.noWar && tb.pWin === t0.pWin && tb.winner === t0.winner && tb.atkCas === t0.atkCas && tb.defCas === t0.defCas && bare.book.load === base.book.load,
+    "ⓩ''② ★끔 동일 / 무기 짐 0 이면 T502 그대로 — 팔 끔이면 단이 든 무기(5)를 안 본다 · 켬이라도 약탈한 무기가 없으면 같은 판", `T502 승산 ${(t0.pWin * 100).toFixed(0)}% · 사상 ${t0.atkCas}/${t0.defCas}`);
+  const rows = [];
+  for (const wpn of [0, 1, 3, 5]) { const r = run(ON, O({ n: 5, food: 120, lost: 2000, arms: { weapon: wpn } })); rows.push({ wpn, r }); }
+  say('      갱 5 · 무기 짐 → ' + rows.map(({ wpn, r }) => `${wpn}자루: ${r.noWar ? '안 간다' : `승산 ${(r.t476.pWin * 100).toFixed(0)}% · 병력 ${r.book ? r.book.bearers : '-'} · ${r.t476.winner}승 · 사상 ${r.t476.atkCas}/${r.t476.defCas} · 무기 짐 ${wpn}→${r.gangAfter.arms ? r.gangAfter.arms.weapon : 0}`}`).join(' | '));
+  const pw = rows.filter(x => !x.r.noWar).map(x => x.r.t476.pWin);
+  ok(rows[0].r.t476 && rows[3].r.t476 && rows[3].r.t476.pWin < rows[0].r.t476.pWin && pw.every((p, i) => i === 0 || p <= pw[i - 1] + 1e-9),
+    "ⓩ''③ 승산은 든 실물에서 — 약탈한 무기가 늘수록 승산이 내려간다(0 → 5자루 · 같은 5명)", pw.map(p => (p * 100).toFixed(0) + '%').join(' → '));
+  //   T502 없이(= T476 비춤 · 전원 전사) 실물 무기만 켜면 — 교전수가 4라 무기율이 한 자루씩 오른다(무장률 곡선이 승산에 그대로 보인다)
+  const WARR = [1, 0, 0, 1, 1, 0, 1], rowsW = [];
+  for (const wpn of [0, 1, 3, 5]) rowsW.push({ wpn, r: run(WARR, O({ n: 5, food: 120, lost: 2000, arms: { weapon: wpn } })) });
+  say('      (T476 비춤 + 실물) 갱 5 · 무기 짐 → ' + rowsW.map(({ wpn, r }) => `${wpn}자루: ${r.noWar ? '안 간다(' + JSON.stringify(r.t476Stat).slice(0, 30) + ')' : `승산 ${(r.t476.pWin * 100).toFixed(0)}% · 병력 ${r.book ? r.book.bearers : '-'} · ${r.t476.winner}승 · 사상 ${r.t476.atkCas}/${r.t476.defCas}`}`).join(' | '));
+  const pww = rowsW.filter(x => !x.r.noWar).map(x => x.r.t476.pWin);
+  ok(pww.length >= 3 && pww.every((p, i) => i === 0 || p <= pww[i - 1] + 1e-9) && pww[0] > pww[pww.length - 1],
+    "ⓩ''③ 전원 전사로 비추면(T502 끔) 무기 한 자루마다 승산이 내려간다 — 무장률이 곧 승산 항이다(T502 직업 팔 위에선 교전수 1이라 한 자루에 포화)", pww.map(p => (p * 100).toFixed(0) + '%').join(' → '));
+  const r5 = rows[3].r;
+  ok(r5.gangAfter.arms && r5.gangAfter.arms.weapon <= 5 && (r5.t476.winner !== 'A' || r5.weapA >= rows[0].r.weapA),
+    "ⓩ''③ 싸운 뒤 — 쓰러지고 달아난 도적의 무기만 흘러(war-core `warWeaponFlow`) 이긴 마을이 줍는다 · 남은 실물은 단의 짐으로 되비춘다", `무기 짐 5 → ${r5.gangAfter.arms.weapon} · 마을 무기 ${rows[0].r.weapA} → ${r5.weapA}`);
+  const BS = fs.readFileSync(path.join(ROOT, 'server/bandits.js'), 'utf8'), VS = fs.readFileSync(path.join(ROOT, 'server/villages.js'), 'utf8');
+  ok((BS.match(/process\.env\.T521_GANG_ARMS === '1'/g) || []).length === 1 && (VS.match(/process\.env\.T521_GANG_ARMS === '1'/g) || []).length === 1
+    && /if \(_t521On\(\) && ARMS_RES\.has\(res\)\)/.test(BS) && /BDT_FENCE_F : BDT_FENCE_G/.test(BS) && !/T521/.test(fs.readFileSync(path.join(ROOT, 'sim/war-core.js'), 'utf8')),
+    "ⓩ'' 정적 — 팔 하나(bandits 약탈 훅 + villages 소굴 어댑터 · 같은 이름) · 식량·잡화 환산은 그대로 · war-core 무접촉");
   for (const [k, v] of keep) { if (v == null) delete process.env[k]; else process.env[k] = v; }
 }
 function n3x(a, b) { return Math.abs((a || 0) - (b || 0)) <= 1e-6; }
