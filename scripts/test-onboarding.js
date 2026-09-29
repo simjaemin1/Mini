@@ -199,6 +199,7 @@ const FOOD = new Set(['berry', 'herb', 'meat_raw', 'meat_cooked', 'berry_jam', '
   'dried_fish', 'dried_fruit', 'smoked_meat', 'pickled_veg']);
 const fakePlayers = new Map();
 const sent = [];
+const _t529Has = new Set();   // ★[T529 ⑨] 촌장이 맡은 인사(pid:vid) — 존이 넘기는 `chiefGreetHas` 의 대역
 Onb.init({
   SimVillages: { eventLedger: L, __labProbe: P, clientVillages: () => list,
     lifeDebug: () => ({ villages: world.villages.map((v, i) => ({ name: v.name, econCounts: v.counts })) }) },
@@ -207,6 +208,7 @@ Onb.init({
   isTerrainBlockedLocal, isWaterTileLocal, isSeaTileLocal: () => false,
   foodItems: FOOD, gameDay: () => world.day | 0,
   warm: false,   // ★굽기는 이 하네스가 위에서 이미 했다(`computeArrivals`) — 두 번 굽지 않는다
+  chiefGreetHas: (pid, vid) => _t529Has.has(pid + ':' + vid),
 });
 Onb.__probe.setArrivals(arr);
 {
@@ -279,6 +281,43 @@ console.log('\n⑦ 재접속 — 대본 상태가 살아남는다');
   // 새 신원은 백지다(남의 진척을 물려받지 않는다)
   const fresh = Onb.publicState('test_onb_never_seen');
   ok(fresh.contrib === 0 && !fresh.lotOk && fresh.vid == null, `처음 보는 신원은 백지다`);
+}
+
+// ── ⑨ [T529] 촌장이 온다 — 인사 한 통의 집은 하나 · 끔 동일 ─────────────────
+console.log('\n⑨ [T529] 촌장 몸의 인사 = 근접 인사와 같은 한 통(`sendGreet`) · 맡았으면 두 번 안 보낸다');
+{
+  const v0 = list[0];
+  const ws = {};
+  const pl = { pid: 'p_t529', playerId: 'test_onb_t529', ws };
+  // ⓐ 거리 문 인사(종전 길) — 키 순서까지 종전 그대로(`by` 없음)
+  sent.length = 0;
+  Onb.handleMsg(pl, { type: 'onboarding_greet', vid: v0.id });
+  const m0 = sent[0];
+  ok(sent.length === 1 && m0 && m0.type === 'onboarding_quest' && m0.kind === 'greet', `ⓐ 근접 인사 한 통이 간다(종전 길)`);
+  ok(m0 && JSON.stringify(Object.keys(m0)) === JSON.stringify(['type', 'vid', 'kind', 'name', 'day', 'lines', 'quest', 'state']),
+    `ⓐ 끔 동일 — 키 순서가 종전 그대로이고 \`by\` 가 없다`, m0 ? Object.keys(m0).join(',') : '');
+  // ⓑ 촌장 몸이 보낸 인사 — 같은 함수 · 같은 줄 · `by` 한 칸만 더
+  sent.length = 0;
+  Onb.sendGreet(pl, v0.id, 777);
+  const m1 = sent[0];
+  ok(!!m1 && m1.by === 777 && JSON.stringify(m1.lines) === JSON.stringify(m0.lines) && Object.keys(m1).slice(0, 8).join() === Object.keys(m0).join(),
+    `ⓑ 촌장 몸의 인사 = 같은 줄 + \`by\`(말하는 몸) 한 칸`, m1 ? `by=${m1.by} · ${m1.lines.length}줄` : '');
+  // ⓒ 촌장이 맡은 사람이면 거리 문 인사는 안 간다(두 번 말하지 않는다) · 다른 마을이면 간다
+  _t529Has.add('p_t529:' + v0.id);
+  sent.length = 0;
+  Onb.handleMsg(pl, { type: 'onboarding_greet', vid: v0.id });
+  ok(sent.length === 0, `ⓒ 촌장이 맡은 인사면 거리 문 인사는 0통`, `${sent.length}통`);
+  sent.length = 0;
+  Onb.handleMsg(pl, { type: 'onboarding_greet', vid: list[1].id });
+  ok(sent.length === 1, `ⓒ 다른 마을의 거리 문 인사는 그대로 간다`);
+  _t529Has.clear();
+  // ⓓ 손잡이는 **한 곳**에서 부를 때 읽는다(제품 전체)
+  const srv = fs.readdirSync(path.join(__dirname, '..', 'server')).filter((f) => f.endsWith('.js'))
+    .map((f) => fs.readFileSync(path.join(__dirname, '..', 'server', f), 'utf8')).join('\n');
+  const nKnob = (srv.match(/process\.env\.T529_CHIEF_WALKS/g) || []).length;
+  const vsrc = fs.readFileSync(path.join(__dirname, '..', 'server', 'villages.js'), 'utf8');
+  ok(nKnob === 1 && /function chiefGreetAsk\([^)]*\) \{\s*if \(process\.env\.T529_CHIEF_WALKS !== '1'\) return false;/.test(vsrc),
+    `ⓓ 손잡이 \`T529_CHIEF_WALKS\` 는 \`chiefGreetAsk\` 첫 줄 한 곳에서 부를 때 읽는다`, `${nKnob}곳`);
 }
 
 // ── ⑧ ★검사기 자가 검사 ────────────────────────────────────────────────────

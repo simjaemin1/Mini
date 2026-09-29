@@ -3359,7 +3359,9 @@ let _t316Econ = null;
 function _t316WalkAlways(npc) {
   if (!npc || !npc.simVillageId) return false;
   if (_t316Econ === null) { try { _t316Econ = require('../sim/economy-sim'); } catch (e) { _t316Econ = false; } }
-  return !!(_t316Econ && (_t316Econ.T312_FISH_ACT || (_t316Econ.T368_FARM_ACT && npc.simJob === 'farmer')));
+  if (_t316Econ && (_t316Econ.T312_FISH_ACT || (_t316Econ.T368_FARM_ACT && npc.simJob === 'farmer'))) return true;
+  //   ★★[T529] 인사하러 가는 촌장도 — 줄은 손잡이 켬에서만 생긴다(끔이면 거짓 · 술어는 여전히 이 하나).
+  return !!(SimVillages.chiefWalking && SimVillages.chiefWalking(npc));
 }
 
 function npcStep(npc, dt, now) {
@@ -3760,6 +3762,7 @@ function warTreeCellBlocked(cellX, cellY) {
 }
 
 SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, isWaterTileLocal, isPositionActive, isBlockedByWall, anyViewerNear, perfMark,
+  chiefGreet: (p, vid, by) => { try { Onboarding.sendGreet(p, vid, by); } catch (err) {} },   // ★[T529] 촌장 몸이 곁에 와서 하는 인사 — 문장·메시지는 온보딩 정본
   waterTiles: WATER_TILES,   // ★[T480] 해안선 물타일 정본(위 1155줄) — 마을 세울 때 `seaDistPx` 가 이것을 읽는다(villages 쪽 사본 0)
   zoneAwake,   // ★[T410] 존이 이 틱에 몸을 걷게 하나 — 틱의 idle 문과 **같은 판정**(생활층 `_t368ZoneAwake` 가 이것만 본다 · 사본 0)
   // ★★[T333] 바위 술어도 넘긴다 — 생활층 지형 어댑터(`villages.js isRock`)가 여태 `terrain.isRockCellLocal` 을
@@ -3971,6 +3974,7 @@ Onboarding.init({ SimVillages, terrain: _terrain, ZONE, ZONE_ID, db: db.db, send
   },
   // ★[T62] 공용 쉼터 좌표 — **정본 하나를 부른다**(온보딩이 자리를 다시 고르지 않는다).
   shelterOf: (vid) => { try { return SimVillages.shelterOf ? SimVillages.shelterOf(vid) : null; } catch (e) { return null; } },
+  chiefGreetHas: (pid, vid, ask) => { try { return !!(SimVillages.chiefGreetHas && SimVillages.chiefGreetHas(pid, vid, ask)); } catch (e) { return false; } },   // ★[T529] 촌장이 맡은 인사면 근접 인사를 또 안 보낸다
   // ★[T115] 함께 도착 — 이름으로 물어 **vid → 벗 수**를 낸다. 세는 정본은 `friends.js` 하나다.
   //   ⚠못 물어보면 `null` 이고 시작 화면은 친구 칸 0 으로 그대로 뜬다(막지 않는다).
   friendVidsByName: (name) => Friends.nameVids(name),
@@ -4915,6 +4919,7 @@ async function _acceptConnection(ws, req, C) {
   //   같은 신원으로 새 소켓이 붙었는데 **옛 세션이 아직 이 존의 메모리에 서 있으면**,
   //   그 몸이 진실이다 — central 행이 아니라. 아래 중복 차단 루프가 여기에 담는다.
   let _takeover = null;
+  let _t529Vid = null;   // ★[T529] 이 접속이 **도착**(온보딩 `arriveFor`)이면 그 마을 — 몸이 선 뒤 촌장 줄에 세운다
 
   if (handoffToken && pendingHandoffs.has(handoffToken)) {
     const pending = pendingHandoffs.get(handoffToken);
@@ -5209,6 +5214,7 @@ async function _acceptConnection(ws, req, C) {
     //     좌표만으로는 등록 계정의 생애 첫 접속이 '이어하기'로 분류된다(T199 §0-ⓐ #4·#5).
     const _onbArr = Onboarding.arriveFor(url.searchParams.get('start_vid'), acct, ZONE_ID, playerId, _loadLastSeenDay);
     if (_onbArr) { sx = _onbArr.x; sy = _onbArr.y; const _g = Onboarding.startGauges(); initHunger = _g.hunger; initThirst = _g.thirst; }
+    if (_onbArr) _t529Vid = _onbArr.vid;
     // ★★[T520] 손잡이 `T520_ARRIVE_INDOOR`(기본 끔 · 부를 때 읽는다) — 켜면 도착은 그 마을 **공용 쉼터 안**(문간 안쪽 한 칸)이다.
     //   자리는 죽음 캐논의 "마을 쉼터 문간"이 쓰는 **그 함수**(`SimVillages.shelterOf`)가 낸다 — 새 규약 0 · 좌표를 짓지 않는다.
     //   쉼터가 아직 없으면(백필 전 · 유저 마을) 종전 어귀 그대로다. 끄면 이 줄은 아무것도 안 한다(비트 동일).
@@ -5328,6 +5334,9 @@ async function _acceptConnection(ws, req, C) {
   C.stage = 'spawn'; _connFailPoint('spawn');
   players.set(pid, player);
   C.pid = pid;   // ★뒤에서 던지면 이 반쪽 등록을 치워야 한다(안 치우면 유령 몸이 남는다)
+  // ★★[T529] 새 사람이 도착하면 촌장이 **걸어온다** — 줄에 세우는 것까지만 여기(판정·걸음은 `villages.js` 생활층 정본).
+  //   손잡이 `T529_CHIEF_WALKS` 는 `chiefGreetAsk` 가 부를 때 읽는다(끔 = false = 이 줄은 아무것도 안 한다).
+  if (_t529Vid != null) { try { if (SimVillages.chiefGreetAsk) SimVillages.chiefGreetAsk(_t529Vid, pid); } catch (e) {} }
   // ★★[T45 2026-09-02] **돌아오면 맡겨 둔 땅이 돌아온다.** `held` 는 전량, `pref` 는 아직 아무도
   //   안 가져간 것만 — 가져간 셀은 이미 주인이 바뀌어 이 순회에 안 잡히므로 **구조적으로 저절로** 그렇다.
   //   여기 두는 이유: 부재 배치는 30분에 한 번 도는데, 사람은 접속한 그 순간 자기 땅을 본다.
