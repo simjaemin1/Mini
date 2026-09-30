@@ -170,11 +170,15 @@ async function waitUp(p, url, tries = 300) {
   // ── ⓘ 부팅 = 랩 자 ─────────────────────────────────────────────────────────
   console.log('\n[ⓘ 부팅이 낸 수 = 정본 · 랩 자]');
   ok(!!mSeeded && +mSeeded[1] === (hard || []).length, 'ⓘ 부팅 후보 수 = 정본 칸 수', mSeeded ? `${mSeeded[1]} · 정본 ${(hard || []).length}` : '-');
-  ok(!!mSeeded && +mSeeded[2] === 12 && +mSeeded[3] === 11, 'ⓘ2 ★선별 12 → 시딩 11(품질 게이트 — `t407-nippon-isolation jungwon_n` 과 같은 수)',
+  //   ★[T559 2026-09-30 · 재민 #78] 게이트 K 0.278025 · 교역 게이트 기본 켬 ⇒ 선별 12 → **14** · 시딩 11 → **13**(창광산·태농촌 · `t559-gate-by-zone` 표 · T442 표의 0.278 행과 같은 수).
+  //     되돌림 `T436_GATE_TRADE=0` 이면 종전 12 → 11 이다(이 절은 기본만 본다).
+  const _gateOff = process.env.T436_GATE_TRADE === '0';
+  const [SEL, SEED] = _gateOff ? [12, 11] : [14, 13];
+  ok(!!mSeeded && +mSeeded[2] === SEL && +mSeeded[3] === SEED, `ⓘ2 ★선별 ${SEL} → 시딩 ${SEED}(품질 게이트${_gateOff ? '' : ' · T559 K 0.278025'})`,
     mSeeded ? `선별 ${mSeeded[2]} · 시딩 ${mSeeded[3]}` : '-');
-  ok(pairs === 55, 'ⓘ3 교역 쌍 55(시딩 11)', `${pairs}쌍`);
+  ok(pairs === SEED * (SEED - 1) / 2, `ⓘ3 교역 쌍 ${SEED * (SEED - 1) / 2}(시딩 ${SEED})`, `${pairs}쌍`);
   const lands = [...LOG.matchAll(/\[([^\]]+)\] 시딩: 중심[^\n]*land\(F([\d.]+)\/W([\d.]+)\/S([\d.]+)\/O([\d.]+)\//g)].map((m) => ({ name: m[1], ore: +m[5] }));
-  ok(lands.length === 11, 'ⓘ4 전제: 시딩 줄 11곳에서 땅 파라미터를 읽었다', `${lands.length}곳`);
+  ok(lands.length === SEED, `ⓘ4 전제: 시딩 줄 ${SEED}곳에서 땅 파라미터를 읽었다`, `${lands.length}곳`);
   const canonNames = new Set((hard || []).map((v) => v.name));
   ok(lands.every((v) => canonNames.has(v.name)), 'ⓘ5 시딩된 이름이 전부 정본 이름이다', lands.map((v) => v.name).join('·'));
   ok(lands.every((v) => v.ore >= 0.1), 'ⓘ6 광맥 값이 바닥(0.1) 아래로 안 내려간다',

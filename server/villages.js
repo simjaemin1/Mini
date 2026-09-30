@@ -94,7 +94,24 @@ const VILLAGE_MAX = Math.max(1, parseInt(process.env.VILLAGE_MAX || '20', 10)); 
 //   되돌림 = `VILLAGE_NPC_CAP=40`(종전 기본값 그대로 · 테스트 훅은 종전처럼 수를 준다).
 const NPC_CAP_PER_VILLAGE = process.env.VILLAGE_NPC_CAP ? Math.max(1, parseInt(process.env.VILLAGE_NPC_CAP, 10) || 40) : Infinity;
 const POP_SYNC_PER_DAY = 2; // 인구 반영은 완만: 게임일당 마을당 ±2명까지 (증가=스폰, 감소=최근 NPC부터)
-const MIN_SPACING_PX = 12000; // 마을 간 최소 간격 — pickSeedVillages 주석 참조
+// ★★[T559 ② 2026-09-30 · 재민 #78] **마을 간 최소 간격을 존마다 유도하는 식** — 손잡이 `T559_SPACING_DERIVE=1`(★기본 **끔** = 종전 12,000 그대로).
+//   12,000 은 옛 10곳 선별의 수였고, 한반도 후보 51의 **최근접 거리 분포에서 p80 자리**였다(T442 §0-ⓑ · 41/51 이 12,000 안에 이웃을 둔다).
+//   식 한 벌: 그 존 후보 전부의 최근접 거리를 정렬해 **p80(가까운 순위 ⌈0.8n⌉번째)** 을 그 존의 간격으로 쓴다(새 수 0).
+//   ⚠기본으로 못 올린 이유(실측 · 보고 T559 ②): ⓐ 한반도에서 이 식은 12,000 이 아니라 **10,770** 을 낸다
+//     (41번째 10,770 · 42번째 12,086 — 12,000 은 그 사이의 둥근 수였다 · 카드 게이트 "한반도 12,000 재현" ✗) ·
+//     ⓑ 닛폰 13,185 → 시딩 7 → **6**(`test-nippon-boot` ⓘ2·ⓘ3 빨강 · 40/42) · 중원북 16,088 → 선별 14 → 10. 어느 쪽을 택할지는 재민(#78).
+//   `T559_SPACING_PX=<px>` 는 고정 간격(모든 존 · 표 기계의 팔).
+const SEED_SPACING_PX = 12000;   // 종전 값(기본) — 위 식을 켜면 존마다 유도값이 대신한다
+function _seedSpacingPx(all) {
+  const env = (typeof process !== 'undefined' && process.env) || {};
+  const fx = parseFloat(env.T559_SPACING_PX);
+  if (Number.isFinite(fx) && fx > 0) return fx;
+  if (env.T559_SPACING_DERIVE !== '1') return SEED_SPACING_PX;
+  const c = (all || []).filter((v) => v && Number.isFinite(v.x) && Number.isFinite(v.y));
+  if (c.length < 2) return 0;
+  const nn = c.map((a) => { let m = Infinity; for (const b of c) if (b !== a) { const d = Math.hypot(a.x - b.x, a.y - b.y); if (d < m) m = d; } return m; }).sort((p, q) => p - q);
+  return nn[Math.max(0, Math.ceil(0.8 * nn.length) - 1)];
+}
 
 // --- Stage 4B: 캐러밴 실체화 상수 ---
 const PX_PER_ECON = SZ / 2.5;   // econ 좌표(셀×2.5) 1단위 = 12.8px — c.distance↔픽셀 환산(init의 ev.coord 스케일과 동일)
@@ -611,14 +628,16 @@ function pickSeedVillages(all, ta, opts) {
     _lpCache.set(v.name, lp); return lp;
   };
   const foodOf = (lp) => (lp.fertility || 0) * 1.5 + (lp.water || 0) * 1.2 + (lp.game || 0) * 0.7;   // ★[T436] 식 한 자리(아래 두 곳이 부른다)
-  // ★★[T436 2026-09-27 · ★PM #78 ⓐ · 손잡이 `T436_GATE_TRADE`(기본 끔)] **게이트가 교역을 본다.**
+  // ★★[T436 2026-09-27 · ★PM #78 ⓐ · 손잡이 `T436_GATE_TRADE`(T436 기본 끔 → ★T559 기본 켬)] **게이트가 교역을 본다.**
   //   T429: 이 하한은 후보 칸 한 점의 자급만 보고 교역을 한 글자도 안 봤다. 한반도(전수)가 이 문을 탔다면
   //   9곳이 떨어지는데, 그 9곳은 800일 3시드에서 전부 살며 먹은 것의 중앙 76.5% 를 교역으로 먹는다.
   //   ⇒ 하한에 **교역 잠재** 한 항: 캐러밴이 닿는 이웃 후보의 식량 잉여를 **캐러밴 시계**(`travelDaysForDistance`)로 나눈 합.
   //     `food + T436_K × 교역잠재 ≥ FOOD_FLOOR` 이면 통과(문턱 2.0 무변 · 점수 식 무변 — 통과 뒤 점수는 종전 그대로 `food` 로 매긴다).
   //   계수 `T436_K` 는 한반도에서 **유도**했다(보고/T436 §0-ⓐ): 탈락 9곳이 전부 통과하는 가장 작은 값 = 9곳의 (하한−food)/교역잠재 최댓값.
-  //   끔이면 이 줄은 아무것도 안 한다(`_tradeOf` null) — 세 존 시딩 비트 동일.
-  const _tradeOf = (ta && typeof process !== 'undefined' && process.env && process.env.T436_GATE_TRADE === '1')
+  //   끔(`=0`)이면 이 줄은 아무것도 안 한다(`_tradeOf` null) — T436 전 시딩 그대로.
+  //   ★★[T559 ① 2026-09-30] **기본 켬**(되돌림 `T436_GATE_TRADE=0`) — #78 이 K 값을 정했으니 이 문을 연다. 끄면 K 는 아무 데도 안 닿는다.
+  //     한반도는 전수 시딩(`seedAllVillages`)이라 이 문을 안 탄다 — 시딩 바이트 동일.
+  const _tradeOf = (ta && typeof process !== 'undefined' && process.env && process.env.T436_GATE_TRADE !== '0')
     ? _gateTradePotential(all, ta, (v) => { const lp = lpOf(v); return lp ? foodOf(lp) : 0; }, FOOD_FLOOR) : null;
   const landScore = (v) => {
     if (!ta) return 0;
@@ -639,7 +658,9 @@ function pickSeedVillages(all, ta, opts) {
   scored.sort((a, b) => b._score - a._score);
   if (opts && Array.isArray(opts._scoredOut)) for (const v of scored) opts._scoredOut.push(v);   // ★[T436] 관측 전용 — 표 기계가 하한 통과(`_land > 0`)를 정본에서 읽는다
   const picked = [];
-  const farEnough = (v) => picked.every(p => Math.hypot(p.x - v.x, p.y - v.y) >= MIN_SPACING_PX);
+  const SPACING = _seedSpacingPx(all);   // ★[T559 ②] 기본 12,000 · `T559_SPACING_DERIVE=1` 이면 존 후보 최근접 p80(위 함수)
+  if (opts && opts._spacingOut) opts._spacingOut.px = SPACING;   // 관측 전용(표 기계)
+  const farEnough = (v) => picked.every(p => Math.hypot(p.x - v.x, p.y - v.y) >= SPACING);
   // ⓪ ★부얼타운 — **먼저** 뽑는다. 나중에 뽑으면 남은 자리가 없어 예외가 사문이 된다.
   //   대상은 "하한 미달인데 광맥이 아주 실한" 자리뿐이다(하한을 넘는 광산은 어차피 정규 경로로 들어온다).
   if (ta && BOOMTOWN_MAX > 0) {
@@ -1496,7 +1517,12 @@ function foundPlayerVillage(opts) {
 const DIST_STEP = Math.max(1, parseInt(process.env.VILLAGE_DIST_STEP || '4', 10));
 // ★[T436] 게이트 교역 잠재의 계수 — **유도값**(보고/T436 §0-ⓐ · `scripts/t436-gate-trade.js` 가 다시 유도해 이 값과 견준다).
 //   한반도 후보 51 에서 하한 미달 9곳이 전부 통과하는 가장 작은 값 = max((하한−food)/교역잠재). 통과 42곳은 이 항과 무관(무변).
-const T436_K = 0.154081;   // = ceil₆(유도값 · 표 기계 kRaw) — 광산1(food 0.589 · 교역잠재 9.158)이 묶는 자리
+const T436_K_DERIVED = 0.154081;   // = ceil₆(유도값 · 표 기계 kRaw) — 광산1(food 0.589 · 교역잠재 9.158)이 묶는 자리(한반도 탈락 9/9 가 통과하는 최솟값)
+// ★★[T559 ① 2026-09-30 · 재민 #78] **K = 0.278025** — 값은 재민의 것(판정기록 09-30 #78 · 표는 T442 §0).
+//   0.278025 = 중원북 창광산이 통과하는 데 필요한 K(0.2780250 · T436 표)를 소수 여섯째에서 올린 수(T442 가 돌린 그 수 — "0.278" 로 자르면 창광산이 **안** 선다).
+//   T442: 0.154 는 두 존 무변 · 0.278 중원북 시딩 11 → 13(광산 1) · 닛폰 7 → 7 · 소멸 0 · 0.428 은 소멸 시작.
+//   되돌림 `T436_K_OVERRIDE=0.154081`(한반도 유도값) — 손잡이는 이 하나.
+const T436_K = (() => { const v = parseFloat(typeof process !== 'undefined' && process.env ? process.env.T436_K_OVERRIDE : ''); return Number.isFinite(v) && v >= 0 ? v : 0.278025; })();
 // ★[11차 실측 · 다리 구제] 코스 셀 1칸의 통행 판정 — **거리행렬과 캐러밴 A*가 같은 함수를 쓴다**(모듈 헤더 계약).
 //   중심 1점 샘플은 **폭 2셀 다리를 절반 확률로 못 본다**: 다리가 코스 셀 중심선(좌표 %STEP==half)에
 //   걸쳐야만 보이기 때문이다. 실측(한반도 다리 28개 · STEP 4): 13개만 보이고 **15개가 안 보였다**.
@@ -9749,7 +9775,7 @@ module.exports = { fishPerf, woodPerf, foragePerf, farmPerf,   // ★[T316] `/pe
   LAND_SCAN_R,   // ★[T135] 부존 스캔 반경 — 나무 층이 생활권 숲 셀 수를 유도할 때 읽는다(사본 0)
   __labProbe: {
     makeTerrainAdapter, extractLandParamsApprox, findOpenCenter, pickSeedVillages,
-    _gateTradePotential, get T436_K() { return T436_K; },   // ★[T436] 게이트 교역 잠재 — 표 기계가 **그 함수**를 부른다(사본 0)
+    _gateTradePotential, get T436_K() { return T436_K; }, T436_K_DERIVED, _seedSpacingPx,   // ★[T436] 게이트 교역 잠재 — 표 기계가 **그 함수**를 부른다(사본 0)
     setZoneId: (z) => { state.zoneId = z; },
     // ★[T146 2026-09-06] 사냥터 밴드 하네스용 — `_distProbe`·`_memberProbe` 와 **같은 규약**(최소 주입구 하나).
     //   왜: 밴드 구축은 지형을 훑는다. 예산에서 끊고 이어 짓는지 재려면 **지형을 하네스가 쥐어야** 한다.
