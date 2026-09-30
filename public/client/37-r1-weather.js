@@ -86,9 +86,13 @@
     if (_wxBreath.length || _wxBreathLast.length) { _wxBreathLast = _wxBreath; _wxBreath = []; }   // ★[T500] 입김은 몸 그리기(이 층보다 앞)에서 모인다 — 한 판이 여기서 닫힌다
     const w = wxState();
     const precip = Math.max(0, Math.min(1, w.precip || 0));
-    // ★지붕 아래선 안 그린다 — 실내 술어는 **방 정본**을 그대로 부른다(사본 금지).
-    //   `playerIsIndoors` 는 서버가 보낸 방을 꺼내 볼 뿐이다(`20-r2-visibility.js`).
-    const indoor = (typeof playerIsIndoors === 'function') ? !!playerIsIndoors() : false;
+    // ★지붕 아래선 안 그린다 — 실내 술어는 **서버가 판정한다**(사본 금지 · 클라는 판정하지 않는다).
+    //   ★★[T536 2026-09-30] 게이지 `weather.indoor`(몸의 실내 정본 `isIndoorAt` = 방 ∪ 마을 움집·쉼터 발자국 · T526)를 먼저 읽는다 —
+    //     방만 아는 `playerIsIndoors` 로는 마을 움집 안에서 몸은 안 젖는데 화면엔 비가 내렸다(T526 회부 1).
+    //     칸이 없으면(서버 끔 `T526_VILLAGE_INDOOR=0`) 종전 그대로 방 정본(`playerIsIndoors` — 서버가 보낸 방을 꺼내 볼 뿐 · `20-r2-visibility.js`).
+    //   아래 소리 훅 한 줄도 같은 이 값을 받는다(빗소리·바람 소리의 실내 배율).
+    const _wIn = (typeof myWeather !== 'undefined' && myWeather) ? myWeather.indoor : undefined;
+    const indoor = (typeof _wIn === 'boolean') ? _wIn : ((typeof playerIsIndoors === 'function') ? !!playerIsIndoors() : false);
     window.__sfx && window.__sfx.weather(w, indoor);   // ★[T261·T283] 소리 훅 한 줄(바람+비 · 세기→볼륨은 48-a-audio 가 표로 한다)
     if (!(precip > 0) || indoor) {
       _wxLast = { on: false, kind: null, n: 0, tilt: 0, indoor, precip };
