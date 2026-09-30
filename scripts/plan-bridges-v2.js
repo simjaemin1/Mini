@@ -164,3 +164,31 @@ console.log(JSON.stringify(flat));
 console.log(`\nbridgeSites 형: ${JSON.stringify(found.map((f) => ({ v: f.villages, span: f.span.len, cells: [].concat(...f.cells) })))}`);
 if (ocean.length) console.log(`\n항해 층 필요(다리 금지):${ocean.map(o => o.villages.join(',') + `(${o.n.toLocaleString()}셀)`).join(' · ')}`);
 console.log(`총 ${Date.now() - t0}ms`);
+
+// ══ ★★[T537 추신2 2026-09-30 · 재민 캐논 · ★PM] **지름길 규칙** — 손잡이 `T537_SHORTCUT=1` 일 때만(끔 = 위 섬 규칙만 · 출력 무변) ══════════
+//   규칙 문장(재민 09-30): "C 판(물 열림) 최단 경로가 건너는 물줄기마다 축 4방 최단 도하 · 후보 순위 = T436 교역 잠재".
+//   ★규칙의 몸은 **한 곳**이다 — `scripts/t527-bridge-want.js --shortcut`(교역 거리행렬 정본으로 창 밖 쌍 · C 판 길 · 가로지르는 최단 도하 ·
+//     하나씩 지어 본 창 안 쌍 · T436 식 잠재). 계획기는 그 답을 **존 설정 한 줄 형**으로 옮긴다(사본 0):
+//     · 넣는 후보 = 혼자 지어 창 밖 쌍을 하나라도 창 안으로 들이는 것(`inWin > 0`) · 순서 = 잠재 순위(`rankPot`)
+//     · 짓는 이(`v`) = 그 후보가 창 안으로 들이는 쌍의 두 끝 마을 중 다리 첫 칸에 가장 가까운 한 곳(크루가 곳간에서 날라 짓는다 — T527 문법)
+//   쓰는 법: `T537_SHORTCUT=1 node scripts/plan-bridges-v2.js hanbando [--from <want.json>]`(`--from` 이 없으면 자를 자식으로 돌린다 · 한반도 ~45분)
+if (process.env.T537_SHORTCUT === '1') {
+  const fi = process.argv.indexOf('--from');
+  let W = null;
+  if (fi > 0 && process.argv[fi + 1]) W = JSON.parse(require('fs').readFileSync(process.argv[fi + 1], 'utf8'));
+  else {
+    const tmp = `/tmp/plan-shortcut-${process.pid}.json`;
+    require('child_process').execFileSync(process.execPath, [path.join(__dirname, 't527-bridge-want.js'), ZID, tmp, '--shortcut'], { stdio: ['ignore', 'inherit', 'inherit'] });
+    W = JSON.parse(require('fs').readFileSync(tmp, 'utf8'));
+  }
+  const vs = W.vs || [], at = new Map(vs.map((v) => [v.name, v]));
+  const rows = ((W.shortcut && W.shortcut.cands) || []).filter((c) => c.inWin > 0).sort((a, b) => a.rankPot - b.rankPot);
+  const out = rows.map((c) => {
+    const ends = new Set(); for (const p of c.who) for (const n of p.split('–')) ends.add(n);
+    let best = null, bd = Infinity;
+    for (const n of ends) { const v = at.get(n); if (!v) continue; const d = Math.hypot(v.ccx - c.cells[0], v.ccy - c.cells[1]); if (d < bd) { bd = d; best = n; } }
+    return { v: best ? [best] : [], span: c.span, rank: c.rankPot, pot: c.pot, inWin: c.inWin, cells: c.cells };
+  });
+  console.log(`\n[지름길 · T537_SHORTCUT] 창 밖 ${W.shortcut ? W.shortcut.pushed : '?'}쌍 · 후보 ${(W.shortcut && W.shortcut.cands.length) || 0} · 넣는 후보(창 안 ≥1) ${out.length} · 순서 = T436 교역 잠재`);
+  console.log(`\nbridgeShortcuts 형: ${JSON.stringify(out)}`);
+}
