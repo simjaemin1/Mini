@@ -95,7 +95,7 @@ for i, r in enumerate(T.get('rivers', [])):
 # 갇힌 A~D · 물 없는 덩이
 for n, x in enumerate(big):
     X, Y = x['cx'] / K, x['cy'] / K
-    dr.ellipse([X - 12, Y - 12, X + 12, Y + 12], fill=(20, 20, 20)); dr.text((X - 6, Y - 12), 'ABCDEFGH'[n], fill=(255, 255, 255), font=font(16, True))
+    dr.ellipse([X - 12, Y - 12, X + 12, Y + 12], fill=(20, 20, 20)); dr.text((X - 6, Y - 12), (chr(65+n) if n<26 else 'Z'+str(n)), fill=(255, 255, 255), font=font(16, True))
 riv = [b for b in (J.get('dry') or {}).get('top', [])[:8]]
 for n, b in enumerate(riv):
     X, Y = ((b['x0'] + b['x1']) / 2) / K, ((b['y0'] + b['y1']) / 2) / K

@@ -32,7 +32,7 @@ def load_bin(d, z):
 def cutters(T, J, kind):
     """본토 밖 성분(1,000셀 이상)마다 — 그 둘레의 민물 셀이 어느 강 · 호수 것인가(셀 수). 문턱 0: 둘레에 닿은 물 셀 전부."""
     cb = J['_compB']; out = []
-    tags = 'ABCDEFGH'
+    tags = [chr(65+i) if i<26 else 'Z'+str(i) for i in range(400)]
     big = [c for c in J['compsB'] if c['cls'] != '본토' and c['area'] >= 1000]
     feats = [(r['name'], pts(r), 'river') for r in T.get('rivers', [])]
     for n, c in enumerate(big):
