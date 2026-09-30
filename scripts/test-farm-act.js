@@ -166,7 +166,11 @@ console.log('\n⑤ ⓑ 헤드리스 — 켜면 이 마을 밭은 **몸이 한다
     '⑤ ★[T410] `zoneAwake` — 문이 열려 있으면 **늘 참** · 닫혀 있으면 종전 두 명부(사람 · 비NPC player · 관측자)');
   ok((ZC2.match(/if \(!zoneAwake\(\)\) \{/g) || []).length === 1 && !/hasHuman|hasObserver/.test(ZC2.replace(/\/\/.*$/gm, '')),
     '⑤ ★[T410] 틱의 idle 문은 **그 함수 하나**를 본다(`if (!zoneAwake())` · 종전 지역 변수 둘은 코드에서 사라졌다 — 판정 둘 0)');
-  ok(/SimVillages\.init\(\{[^}]*\n\s*zoneAwake,/.test(ZC2), '⑤ ★[T410] 생활층에 **그 함수**를 주입한다(`deps.zoneAwake` · 새 문 0)');
+  //   ★[T540 ⓪] 글자 계약을 **init 인자 목록 안의 한 줄**로 좁힌다 — T529 가 인자에 `chiefGreet: … { try {…} }` 를 넣자
+  //     종전 식 `[^}]*` 가 그 중괄호에서 끊겼다(주입은 그대로였다). init 호출의 머리부터 `zoneAwake,` 줄까지 사이에 `SimVillages.init(` 가
+  //     한 번뿐이고, 그 줄이 인자 목록 안(닫는 `});` 앞)에 있으면 된다.
+  { const _i = ZC2.indexOf('SimVillages.init({'), _z = ZC2.indexOf('\n  zoneAwake,', _i), _e = ZC2.indexOf('\n});', _i);
+    ok(_i >= 0 && _z > _i && _e > _z && ZC2.indexOf('SimVillages.init({', _i + 1) < 0, '⑤ ★[T410] 생활층에 **그 함수**를 주입한다(`deps.zoneAwake` · 새 문 0)'); }
   //   정본 글자 그대로 돌린다(존을 안 띄운다) — 문 열림(기본)은 사람 0 · 관측자 0 에서도 참 · 닫힘(`=1`)은 종전 그대로
   {
     const run = (skip, humans, npcs, obs) => new Function('ZONE_IDLE_SKIP', 'players', 'observers', za + '\nreturn zoneAwake();')(
@@ -218,8 +222,10 @@ console.log('\n⑥ 손 — 거두는 순간 **손에**(`inventory[작물]`) · �
 console.log('\n⑦ 걷기 술어 — `_t316WalkAlways` 에 **농부 항 하나**');
 {
   const walk = bodyOf(ZC, '_t316WalkAlways');
-  ok(/return !!\(_t316Econ && \(_t316Econ\.T312_FISH_ACT \|\| \(_t316Econ\.T368_FARM_ACT && npc\.simJob === 'farmer'\)\)\);/.test(walk),
-    '⑦ ★★★술어는 **하나**이고 항은 둘 — T312(주민 전부) · ★T368(농부만 · 생활층이 심는 `simJob`)');
+  //   ★[T540 ⓪] T529 가 셋째 항(인사하러 가는 촌장)을 붙이며 몸통이 두 줄이 됐다 — 술어는 여전히 **하나**, 항은 **셋**이다.
+  ok(/if \(_t316Econ && \(_t316Econ\.T312_FISH_ACT \|\| \(_t316Econ\.T368_FARM_ACT && npc\.simJob === 'farmer'\)\)\) return true;/.test(walk)
+     && /return !!\(SimVillages\.chiefWalking && SimVillages\.chiefWalking\(npc\)\);/.test(walk) && (walk.match(/return /g) || []).length === 3,
+    '⑦ ★★★술어는 **하나**이고 항은 셋 — T312(주민 전부) · ★T368(농부만 · 생활층이 심는 `simJob`) · T529(인사하러 가는 촌장 · 손잡이 끔이면 거짓)');
   ok(!/T325_WOOD_ACT|T347_FORAGE_ACT/.test(walk), '⑦ 나무꾼·채집꾼 항은 **없다**(그 카드들의 빚은 그대로)');
   // ★[T499 ⓪] 넷째 글자는 **이동 문의 거울**이다 — T461 WASM 팔의 앞문(`_wwPre`)이 이동 문과 **같은 거름을 같은 차례로 먼저** 돌고
   //   켬이면 이동 문은 그 답(갈래 표)을 읽는다(같은 몸에 문이 둘이 되지 않는다 · 끔이면 `_WW` 가 없어 앞문 자체가 안 돈다).
