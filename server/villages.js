@@ -8135,6 +8135,9 @@ function _t491BodyDay(vil, distPx) {   // 나무꾼 **한 몸**이 하루에 곳
 //      ⓑ 짐이 차서 곳간 사다리에 가면 **통나무도 거기서 내린다**(캐논 "귀환하면 곳간에" · 그 다리 `_t325Deliver` · T368 볏단이 내리는 그 자리).
 //         옛 줄은 곡식 손만 내리고 통나무는 해 질 녘까지 들었다 ⇒ 몸 하루 = 짐 왕복 × 짐(T341 걸음 한도 그대로 · 짐 = carry `CAP_KG`).
 //         낮에 넣은 몸은 **그날 걸은 몸**이다(`_t325PreWalked` — T475 의 그 칸 · 몸 XOR 일괄 · 일괄이 같은 날 또 베지 않게).
+//      ⓒ 곳간이 없는 마을(틀 세계 13/50)은 **회관(마을 중심)**이 그 자리다 — T400 이 자재를 꺼내는 폴백(`_t400From`)과 같은 자리 ·
+//         같은 두 걸음(가서 `운반` · 머물러 `저장` · `G_STOREW`)으로 내린다. 옛 줄은 곳간이 없으면 짐 상한 없이 해 질 녘까지 들었다
+//         (옛 몸은 1그루에서 멈춰 드러나지 않았다 — 첫 실측 판이 이 구멍을 잡았다: 켬 · 수요 문 끔 · 어촌2 몸 셋이 하루 1,226단을 손에 들고 해 질 녘에).
 const T561_ROSTER_BODY = process.env.T561_ROSTER_BODY === '1';
 function _t561Fit(p) {   // 그날 나설 수 있는 몸인가 — 스케줄 게이트(`npcLifeTick` 요양 두 줄)의 그 칸·그 문턱
   if (!p || p.isDown) return false;                                           // 쓰러짐
@@ -8669,6 +8672,18 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
   //   ⚠현장은 `qtResources` 가 아니라 **색인**(`t325Trees` · T301)이 낸 셀이다 — 관측자와 무관하다.
   //   ⚠길·이동 문은 **손 안 댔다**(T324 정본) — 종전 `behavior='wander'` + 목표 좌표 그대로다.
   if (job === 'lumberjack' && vil.econ && _lifeEcon().woodActOn(vil.econ)) {
+    //   ★[T561 ②ⓒ] 회관으로 짐을 나르는 중(곳간 없는 마을 · 켠 팔만 서는 칸) — 사다리와 같은 두 걸음: 가서(`운반`) · 머물고(`저장` · `G_STOREW`) · 내린다(`_t561Ladder`)
+    if (npc._t561Hall) {
+      if (!((npc.inventory && npc.inventory.wood) > 0)) npc._t561Hall = null;   // 손이 비었다(해 질 녘에 이미 넣었다) — 그만
+      else {
+        const hx = vil.ccx * SZ + SZ / 2, hy = vil.ccy * SZ + SZ / 2;
+        if (Math.hypot(npc.x - hx, npc.y - hy) > 44) { npc.behavior = 'wander'; npc.targetX = hx; npc.targetY = hy; npc.gatherTarget = null; _lifeAct(npc, '운반'); return true; }
+        if (!npc._t561Hall.at) npc._t561Hall.at = now;
+        _lifeAct(npc, '저장');
+        if (now - npc._t561Hall.at < G_STOREW) return true;
+        _t561Ladder(vil, npc, now); npc._t561Hall = null; return true;
+      }
+    }
     const _JS = _lifeJobSites(vil, day);
     const _tr = (_JS && _JS.t325Trees) || [];
     if (!_tr.length) return false;                                   // 숲이 없다 — 레거시 폴스루
@@ -8715,6 +8730,9 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
     const _cap = (_cc && _cc.CFG && _cc.CFG.CAP_KG) || 0;
     const _kg = ((npc.inventory && npc.inventory.wood) || 0) * (_woodKg() || 0);
     if (_cap > 0 && _kg >= _cap && _granGo(vil, npc, false)) { npc._jobT = 0; return true; }
+    //   ★★[T561 ②ⓒ] 켬 — 곳간이 없는 마을(틀 세계 13/50)은 **회관(마을 중심)**이 그 자리다(T400 이 자재를 꺼내는 폴백 `_t400From` 과 같은 자리) —
+    //     짐이 차면 거기로 가서 내린다(`_t561Hall`). 끔 = 옛 줄(곳간이 없으면 짐 상한 없이 해 질 녘까지 든다 — 옛 몸은 1그루에서 멈춰 드러나지 않았다).
+    if (T561_ROSTER_BODY && _cap > 0 && _kg >= _cap && !(vil._granList && vil._granList.length)) { npc._t561Hall = { at: 0 }; npc._jobT = 0; return true; }
     return true;
   }
   if (job === 'lumberjack' || job === 'miner' || job === 'forager') {   // 벌목·채광·채집=자원 밀집 현장 출근 + 실물 채집(랩 7841·7844·7861 동형)
