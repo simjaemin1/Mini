@@ -150,7 +150,7 @@ function villageRoofAt(cx, cy, floor) {
   if (!D || !D.floorTileAt) return false;
   return villageRoofOf(D.floorTileAt(cx, cy, floor), cx, cy);
 }
-/** 지붕 아래인가 — 방이거나 마을 정형 건물 발자국 안. 몸의 실내(`zone.isIndoorAt` · `T526_VILLAGE_INDOOR` 켬)가 이것을 부른다. */
+/** 지붕 아래인가 — 방이거나 마을 정형 건물 발자국 안. 몸의 실내(`zone.isIndoorAt` · `T526_VILLAGE_INDOOR` 켬 — T536 부터 기본)가 이것을 부른다. */
 function underRoofAt(cx, cy, floor) { return !!roomAt(cx, cy, floor) || villageRoofAt(cx, cy, floor); }
 function stats() { return { rooms: rooms.size, cells: cellRoom.size }; }
 function _reset() { rooms.clear(); cellRoom.clear(); }

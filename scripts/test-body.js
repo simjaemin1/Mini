@@ -949,8 +949,16 @@ const codeOnly = require('./code-only.js');   // ★[T171] 주석 제거기 **�
           if (H.isWaterTileLocal(x + dx, y + dy) && !H.isSeaTileLocal(x + dx, y + dy)) { bank = [x, y]; break; }
         }
       }
-      ok(!!flat && !!bank, '★⑯㉧ (상황) 갯벌 자리와 민물 물가를 **찾았다**(둘 다 없으면 아래가 무의미)',
-        `갯벌 ${flat} · 민물 ${bank}`);
+      // ★★[T536 ⑥⓪ 2026-09-30] **물때를 못 박는다** — 물때는 벽시계의 순수 함수(`tidal.js` ①)라, 안 박으면
+      //   돌린 순간이 썰물(갯벌이 드러난 창 · 주기의 35%)일 때 이 자리의 E 가 **짠물 대신 해조 줍기**로 갈라져
+      //   아래 두 줄이 빨개진다(T526 실측: 15:46 324/0 → 15:51 322/2 · main 도 같은 시각 같은 두 줄).
+      //   ⇒ 픽스처 시각 = **만조**(위상 0.5 — `test-tidal ⓑ-2` 의 대조군과 같은 값). 정본의 시험 손잡이(`__setNow`)를 쓴다(사본 0).
+      //   ⚠건수는 그대로다(324) — 전제는 아래 (상황) 줄의 조건에 접었다(박음이 풀리면 그 줄이 빨개진다).
+      const Tidal2 = require(path.join(ROOT, 'server', 'tidal.js'));
+      const _tidePrev = Tidal2.__nowOverride();
+      Tidal2.__setNow(Tidal2.CFG.PERIOD_MS / 2);
+      ok(!!flat && !!bank && !Tidal2.isOpen(), '★⑯㉧ (상황) 갯벌 자리와 민물 물가를 **찾았다**(둘 다 없으면 아래가 무의미)',
+        `갯벌 ${flat} · 민물 ${bank} · 물때 ${Tidal2.tideKo()}(픽스처 시각 못 박음)`);
       const drinkAt = (xy) => {
         const P = mkPlayer('sea_' + xy[0]); P.x = xy[0]; P.y = xy[1];
         P.thirst = 40; B.ensure(P);
@@ -982,6 +990,7 @@ const codeOnly = require('./code-only.js');   // ★[T171] 주석 제거기 **�
         const seaFns = (zsrc.match(/function isSeaTileLocal/g) || []).length;
         ok(seaFns === 1, '★★⑯㉧ 바다 술어는 **하나뿐**이다(자염 정본 재사용 · 사본 금지)', `${seaFns}개`);
       }
+      Tidal2.__setNow(_tidePrev);   // ★반드시 되돌린다(`test-tidal` 규약 — 뒤 절이 이 값을 물려받으면 오염이다)
       // ★★[뒤집힘 · T44] 짠물 자체는 피를 안 깎지만 **갈증을 극단으로 몰아** 결국 깎는다
       const P2 = { hunger: 100, thirst: 100, hp: 71 };
       B.drinkBrine(P2, 0);

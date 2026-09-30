@@ -86,6 +86,8 @@ process.on('exit', () => { for (const p of procs) { try { p.kill('SIGKILL'); } c
   const W = require(path.join(ROOT, 'server', 'weather.js'));
   const E = require(path.join(ROOT, 'server', 'events.js'));
   const TH = Body.STAGE_AT.cold[0] + Body.CFG.STAGE_HYST;
+  const ZC = require(path.join(ROOT, 'server', 'zone-config.js'));
+  const NIGHT_SEC = Math.round((1 - ZC.WORLD.dayPhaseRatio) * ZC.WORLD.dayLengthMs / 1000);   // ★[T536 ④] 하룻밤 실초(`t508-winter-night` 과 같은 식 · 432)
   const yd = E.calendarOf(0).yearDays;
   const mids = {};
   for (let d = 0; d < yd; d++) { const s = E.seasonOf(d); (mids[s] = mids[s] || []).push(d); }
@@ -102,8 +104,19 @@ process.on('exit', () => { for (const p of procs) { try { p.kill('SIGKILL'); } c
     let sec = null;
     const cap = 24 * 60;   // 게임 하루 = 실시간 24분(WORLD.dayLengthMs) — 첫날 안에 서나
     for (let t = 1; t <= cap; t++) { Body.tick(p, 1, Object.assign({ moving: false, now: Date.now() + t * 1000 }, ctx)); if (Body.ensure(p).cold >= TH) { sec = t; break; } }
+    // ★[T536 ④] HP 손실 — 같은 몸·같은 맥락을 끝까지(하룻밤 = 밤 몫 실분 · 캡 = 24분) · 배고픔·갈증은 매 초 채운다(추위 몫만 · `takeHpDamage` 정본)
+    const q = { hunger: 100, thirst: 100, hp: 100, maxHp: 100 };
+    Body.ensure(q);
+    let hpNight = 0, hpCap = 0;
+    for (let t = 1; t <= cap; t++) {
+      q.hunger = 100; q.thirst = 100;
+      Body.tick(q, 1, Object.assign({ moving: false, now: Date.now() + t * 1000 }, ctx));
+      hpCap += Body.takeHpDamage(q);
+      if (t === NIGHT_SEC) hpNight = hpCap;
+    }
     table.push({ vid: a.vid, name: a.name, kind: a.kind, season: S.ko, night, tempC: +(W.tempAtT ? W.tempAtT(ctx.dayT, 0, ph) : NaN).toFixed(1),
-      shelter: a.shelter, exp: a.exp, indoor: !!a.indoor, dCenter: a.dCenter, target: tgt, targetIfIndoor: tgtIn, stage1At: +TH.toFixed(3), bites: tgt >= TH, firstDaySec: sec });
+      shelter: a.shelter, exp: a.exp, indoor: !!a.indoor, dCenter: a.dCenter, target: tgt, targetIfIndoor: tgtIn, stage1At: +TH.toFixed(3), bites: tgt >= TH, firstDaySec: sec,
+      hpNight, hpCap });
   }
   fs.writeFileSync(OUT, JSON.stringify({ at: new Date().toISOString(), threshold: TH, seasons, arrivals: got, table }, null, 1));
   // 요약 — 계절 × 낮밤마다: 도착 자리 몇 곳에서 무는가 · 목표점 범위 · 첫 무들까지 실시간(분)
@@ -114,7 +127,8 @@ process.on('exit', () => { for (const p of procs) { try { p.kill('SIGKILL'); } c
     const tg = r.map((t) => t.target);
     console.log(`${S.ko} ${night ? '밤' : '낮'} · 기온 ${r[0] && r[0].tempC}℃ · 목표점 ${Math.min(...tg).toFixed(3)}~${Math.max(...tg).toFixed(3)} · 문다 ${bite.length}/${r.length}`
       + ` · (실내라면 최대 ${Math.max(...r.map((t) => t.targetIfIndoor)).toFixed(3)})`
-      + (bite.length ? ` · 첫 무들 ${(Math.min(...bite.map((t) => t.firstDaySec)) / 60).toFixed(1)}~${(Math.max(...bite.map((t) => t.firstDaySec)) / 60).toFixed(1)}분` : ''));
+      + (bite.length ? ` · 첫 무들 ${(Math.min(...bite.map((t) => t.firstDaySec)) / 60).toFixed(1)}~${(Math.max(...bite.map((t) => t.firstDaySec)) / 60).toFixed(1)}분` : '')
+      + ` · HP 손실 하룻밤(${(NIGHT_SEC / 60).toFixed(1)}분) 최대 ${Math.max(...r.map((t) => t.hpNight)).toFixed(2)} · 24분 최대 ${Math.max(...r.map((t) => t.hpCap)).toFixed(2)}`);   // ★[T536 ④]
   }
   for (const f of [CDB, ZDB, CDB + '-wal', ZDB + '-wal', CDB + '-shm', ZDB + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
   process.exit(0);

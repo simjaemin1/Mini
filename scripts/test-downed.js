@@ -1385,7 +1385,9 @@ const isWildSpot = (x, y) =>
     //   ⇒ 쉼터 안에 서도 `COLD_INDOOR_MULT` 가 **안 걸린다**. 캐논("쉼터 안 = 실내")과 세계가 갈리는 자리 — 보고 §4 회부.
     say(`    관측: 쉼터 안쪽 칸이 몸에게 실내인 곳 ${indoorN}/${n}`);
     // ★★[T526 2026-09-29] 실내 정본 하나 — `Rooms.underRoofAt`(방 + 마을 발자국)이 **같은 칸들**을 지붕 아래로 센다.
-    //   손잡이 `T526_VILLAGE_INDOOR` 는 적재 때 읽힌다(이 하네스는 끔 부팅) ⇒ 술어의 몸통(`villageRoofOf`)을 **실제 바닥 행**에 대 본다.
+    //   손잡이 `T526_VILLAGE_INDOOR` 는 적재 때 읽힌다(T536 부터 기본 켬 · `=0` 판은 끔 부팅) ⇒ 술어의 몸통(`villageRoofOf`)을 **실제 바닥 행**에 대 본다.
+    //   ★[T536] 위 관측 줄(`H.isIndoorAt`)은 켬 판에서 **활성 청크의 쉼터만** 실내로 센다(바닥 조회가 활성 격자만 본다 — 아무도 안 선 쉼터는 꺼져 있다).
+    //     아래 상세 칸의 이름은 판에 따라 적는다 — 끔(=0) 판은 종전 글자 그대로(`끔 실내`).
     //   ⚠존의 바닥 조회(`findFloorTile`)는 **활성 청크**의 격자만 본다 — 사람이 선 자리는 늘 활성이라 몸에겐 그걸로 충분하지만,
     //     이 하네스는 쉼터 49곳에 아무도 안 서 있으므로 ㉑ⓐ 와 같이 메모리의 행(`rows`)에서 바닥을 찾는다(실기 판은 `t507-arrival`).
     {
@@ -1403,7 +1405,7 @@ const isWildSpot = (x, y) =>
       }
       ok(n > 0 && roofN === n && doorOut === n,
         '★★㉑ⓒ [T526] 쉼터 안쪽 칸은 **지붕 아래**(`Rooms.villageRoofOf` — 실제 바닥 행 · 발자국 렉트) · 문 칸은 바깥 — 켜면 몸의 실내가 된다(끔 관측 위 줄 그대로)',
-        `지붕 아래 ${roofN}/${n} · 문 칸 바깥 ${doorOut}/${n} · 끔 실내 ${indoorN}/${n}`);
+        `지붕 아래 ${roofN}/${n} · 문 칸 바깥 ${doorOut}/${n} · ${process.env.T526_VILLAGE_INDOOR === '0' ? '끔 실내' : '켬(기본) 몸 실내 — 활성 청크만'} ${indoorN}/${n}`);
       const zsrcB = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
       ok((zsrcB.match(/process\.env\.T526_VILLAGE_INDOOR/g) || []).length === 1 && /if \(T526_VILLAGE_INDOOR\) return Rooms\.underRoofAt\(cx, cy, p\.floor \|\| 0\);\n    return !!Rooms\.roomAt\(cx, cy, p\.floor \|\| 0\);/.test(zsrcB),
         '★㉑ⓓ [T526] 손잡이는 **한 곳**(`isIndoorAt`) · 끄면 종전 줄(`Rooms.roomAt`) 글자 그대로');
