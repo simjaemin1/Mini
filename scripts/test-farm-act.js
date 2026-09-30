@@ -322,7 +322,8 @@ console.log('\n⑫ [T449] 결산 문 — 켬이면 관측 마을은 팔 켜진 �
   }
   //   ② 정본 `_lifeDaily` 를 도는 판 — 나무꾼 둘(손이 빈 채 — 오늘 몸이 든 통나무 0) · 셀 12 × 3그루 · 관측자 = 마을 가운데 300px 사람
   const PX = JSON.stringify(path.join(ROOT, 'server/zone.js'));
-  const day = (env, o) => probe(Object.assign({ T325_WOOD_ACT: '1', T347_FORAGE_ACT: '', T449_BODY_DAY: '' }, env), `const E=require(${EP}); const V=require(${VP}); const fs=require('fs'); const P=V.__labProbe;
+  const day = (env, o) => probe(Object.assign({ T325_WOOD_ACT: '1', T347_FORAGE_ACT: '', T449_BODY_DAY: '', T374_DEMAND_STOP: '0' }, env),   // ★[T544 추신 ⓐ] 수요 문 기본 켬 — 이 판은 수요 문 없는 일괄을 잰다(끔 `'0'` 을 박는다)
+   `const E=require(${EP}); const V=require(${VP}); const fs=require('fs'); const P=V.__labProbe;
     const aSrc=(fs.readFileSync(${PX},'utf8').match(/function anyViewerNear\\(center, r\\) \\{[\\s\\S]*?\\n\\}/)||[''])[0];
     const SZ=32, ccx=400, ccy=400; const players=new Map(), observers=new Map();
     ${o.obs ? 'players.set("h",{isNpc:false,x:ccx*SZ+16+300,y:ccy*SZ+16});' : ''}

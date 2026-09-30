@@ -486,7 +486,8 @@ console.log('\n⑪ [T491] 일괄 = 몸의 하루 — 명부는 그날 일한 나
     '⑪ ★채집 절(T347)은 **무접촉**(T490 자리 — 같은 함수를 그 절에 앉히는 것은 뒤 카드)');
   //   ② 실행 — 정본 `_lifeDaily` 를 도는 판
   const VP = JSON.stringify(path.join(ROOT, 'server', 'villages.js'));
-  const run = (env, o) => probe(Object.assign({ T325_WOOD_ACT: '1', T347_FORAGE_ACT: '', T449_BODY_DAY: '', T491_BATCH_FROM_BODY: '' }, env), `const E=require(${EP}); const V=require(${VP}); const P=V.__labProbe;
+  const run = (env, o) => probe(Object.assign({ T325_WOOD_ACT: '1', T347_FORAGE_ACT: '', T449_BODY_DAY: '', T491_BATCH_FROM_BODY: '', T374_DEMAND_STOP: '0' }, env),   // ★[T544 추신 ⓐ] 수요 문 기본 켬 — 이 판은 수요 문 없는 한도식을 잰다(끔 `'0'` 을 박는다)
+   `const E=require(${EP}); const V=require(${VP}); const P=V.__labProbe;
     const SZ=32, ccx=400, ccy=400; const players=new Map(), observers=new Map();
     const b=(pid,x)=>Object.assign({pid,isNpc:true,simJob:'lumberjack',inventory:{}},x||{});
     players.set(1,b(1,${JSON.stringify(o.b1 || {})})); players.set(2,b(2,${JSON.stringify(o.b2 || {})}));
