@@ -573,6 +573,9 @@ function cropSprite(stage, crop) {
   let myDownedAt = 0;
   let myDownRescueWindowMs = 10000;
   let myRespawnOptions = [];      // [{ claimId, kind, x, y }]
+  let myDownWakeAt = 0;           // ★[T563] 깨어남이 정해진 뒤의 시각(performance.now 기준 · 0 = 아직 안 정해짐)
+  let myDownWakeName = null;      // ★[T563] 깨어날 자리 이름(서버 `down_wake`)
+  let myDownChosen = false;       // ★[T563] 버튼을 눌렀다(서버 답 전 — 다시 못 누른다)
   const downStates = new Map();    // pid -> true (다운된 다른 플레이어)
   // Phase 14.42-a: home zone (영구 부활 fallback)
   let myHomeZone = null;

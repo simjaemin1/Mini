@@ -1382,8 +1382,12 @@
         myDownedAt = performance.now();
         myDownRescueWindowMs = msg.rescueWindowMs || 10000;
         myRespawnOptions = msg.options || [];
+        myDownWakeAt = 0; myDownWakeName = null; myDownChosen = false;   // ★[T563] 새 쓰러짐 — 정해진 것 없음(재접속이면 뒤따르는 `down_wake` 가 다시 채운다)
         showDownPanel();
       }
+    } else if (msg.type === 'down_wake') {
+      // ★[T563] 깨어남이 정해졌다 — 남은 ms · 자리. 패널이 초를 센다(규칙 0 · 말만).
+      if (msg.pid === myPid && c.role === 'primary') downWake(msg);
     } else if (msg.type === 'player_down_state') {
       // 다른 사람 다운/일어남 상태 (시각용)
       if (msg.pid === myPid && c.role === 'primary') {   // ★[T397] 관전 연결의 p1 쓰러짐이 '나'로 읽혀 버려졌다(③)

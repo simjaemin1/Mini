@@ -459,14 +459,41 @@ function itemKo(k) {
   function hideDownPanel() {
     const panel = document.getElementById('downPanel');
     if (panel) panel.classList.add('hidden');
+    myDownWakeAt = 0; myDownWakeName = null; myDownChosen = false;   // ★[T563] 다음 쓰러짐은 처음부터
+  }
+  // ★★[T563 2026-09-30 · 재민 실기] **누른 뒤 패널이 기다림을 말한다.**
+  //   종전엔 누른 뒤에도 버튼이 그대로 살아 "자동 부활 없음 — 직접 선택해야 합니다" 를 띄웠다 —
+  //   깨어남은 서버가 정한 초(T88: 기본 + 거리 ÷ 이속) 뒤인데 화면은 **아직 안 골랐다**고 말한 셈이라 사람은 또 눌렀다.
+  //   ⇒ 누르면 버튼을 닫고, 서버의 `down_wake`(남은 ms · 자리 이름)가 오면 초를 센다. 규칙은 안 바꾼다(말만).
+  function _downWaitText() {
+    if (!myDownWakeAt) return myDownChosen ? '⏳ 골랐다 — 서버의 답을 기다린다…' : '';
+    const s = Math.max(0, Math.ceil((myDownWakeAt - performance.now()) / 1000));
+    return `⏳ 약 ${s}초 뒤 ${myDownWakeName || '고른 자리'}에서 깨어난다 — 기다리면 된다(다시 누를 것 없다)`;
+  }
+  function _renderDownWait() {
+    const optBox = document.getElementById('downOptions');
+    if (optBox) for (const b of optBox.querySelectorAll('button')) b.disabled = true;
+    const st = document.getElementById('downStatusText');
+    if (st) st.textContent = _downWaitText();
+    const hint = document.getElementById('downRescueHint');
+    if (hint) hint.style.display = 'none';            // 골랐으면 구조 창 초읽기는 더 뜻이 없다(기다리지 않기로 했다)
+  }
+  function downWake(msg) {
+    myDownWakeAt = performance.now() + Math.max(0, Number(msg.wakeInMs) || 0);
+    myDownWakeName = msg.name || (Number.isFinite(msg.x) ? `(${Math.round(msg.x)}, ${Math.round(msg.y)})` : null);
+    myDownChosen = true;
+    _renderDownWait();
   }
   function renderDownPanel() {
     const optBox = document.getElementById('downOptions');
     if (!optBox) return;
     optBox.innerHTML = '';
-    // 우선순위 정렬: personal > temporary > guild > home
-    const KIND_ORDER = { personal: 0, temporary: 1, guild: 2, home: 3 };
-    const KIND_LABEL = { personal: '개인', temporary: '임시', guild: '길드', home: '마을광장' };
+    const st0 = document.getElementById('downStatusText');
+    if (st0) st0.textContent = '쓰러졌다. 구조를 기다리거나, 기다리지 않고 깨어날 자리를 고른다.';
+    // ★[T563] 순서는 서버 사다리(T83 캐논) 그대로 — 길드 → 개인·임시 → 처음 고른 마을 → 귀향점 → 마을 쉼터.
+    //   종전 표는 개인을 길드 앞에 세웠고 `start`·`shelter` 가 없어 날말("shelter")이 떴다.
+    const KIND_ORDER = { guild: 0, personal: 1, temporary: 2, start: 3, home: 4, shelter: 5 };
+    const KIND_LABEL = { guild: '길드', personal: '개인', temporary: '임시', start: '처음 마을', home: '마을광장', shelter: '마을 쉼터' };
     const sorted = [...myRespawnOptions].sort((a, b) => (KIND_ORDER[a.kind] ?? 9) - (KIND_ORDER[b.kind] ?? 9));
     if (sorted.length === 0) {
       const none = document.createElement('div');
@@ -478,18 +505,27 @@ function itemKo(k) {
         const btn = document.createElement('button');
         btn.className = `down-opt ${o.kind}`;
         const kindLabel = KIND_LABEL[o.kind] || o.kind;
-        btn.innerHTML = `<span class="kind-badge">${kindLabel}</span> (${Math.round(o.x)}, ${Math.round(o.y)})에서 부활`;
-        btn.onclick = () => sendPrimary({ type: 'respawn_choice', kind: o.claimId });
+        btn.innerHTML = `<span class="kind-badge">${kindLabel}</span> ${o.vname ? o.vname + ' ' : ''}(${Math.round(o.x)}, ${Math.round(o.y)})에서 부활`;
+        btn.onclick = () => {
+          if (myDownChosen) return;                     // ★[T563] 한 번만 — 두 번째 누름은 서버도 무효지만 화면이 먼저 막는다
+          myDownChosen = true;
+          sendPrimary({ type: 'respawn_choice', kind: o.claimId });
+          _renderDownWait();
+        };
         optBox.appendChild(btn);
       }
     }
     // 첫 렌더 시 hint 초기화
     const hint = document.getElementById('downRescueHint');
-    if (hint) hint.classList.remove('expired');
+    //   ★[T563] 글을 매번 새로 쓴다 — 만료 문구가 `innerHTML` 로 초읽기 칸(`downTimer`)을 지워, 두 번째 쓰러짐부터는 초읽기가 없었다.
+    //     구조는 길드원만이 아니다(T43 — "다른 플레이어" 누구나).
+    if (hint) { hint.classList.remove('expired'); hint.style.display = ''; hint.innerHTML = '구조를 기다리는 중 — 누구든 R 키로 업어 일으킬 수 있다 (남은 시간: <b id="downTimer"></b>초)'; }
+    if (myDownChosen) _renderDownWait();
   }
   // 1초마다 타이머 업데이트 + 윈도우 만료 시 hint 회색
   setInterval(() => {
     if (!myIsDown) return;
+    if (myDownChosen) _renderDownWait();               // ★[T563] 정해졌으면 남은 초를 센다
     const elapsedMs = performance.now() - myDownedAt;
     const remainMs = Math.max(0, myDownRescueWindowMs - elapsedMs);
     const sec = Math.ceil(remainMs / 1000);
@@ -501,7 +537,7 @@ function itemKo(k) {
     } else {
       if (hint) {
         hint.classList.add('expired');
-        hint.innerHTML = '구조 가능 시간 지남. 사유지를 선택해 부활하세요.';
+        hint.innerHTML = '구조 가능 시간 지남 — 마을 안이면 쉼터로 옮겨지고, 야생이면 정신을 잃는다.';
       }
     }
   }, 500);

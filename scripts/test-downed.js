@@ -1416,6 +1416,94 @@ const isWildSpot = (x, y) =>
       '★㉑ⓑ 손잡이 `T520_ARRIVE_INDOOR` 는 **한 곳 · 부를 때 읽는다** · 켜면 도착이 `shelterOf` 의 안쪽 칸이다(끄면 그 줄은 아무것도 안 한다)');
   }
 
+  // ═══ ㉒ [T563] 부활 버튼 — 누르면 깨어난다 · 두 번째 누름은 값을 또 안 치른다 · 기다림을 말한다 ═════════
+  //   재민 실기(09-30 · 라이브): "(x, y)에서 부활 을 눌러도 부활이 안 된다" — 알림은 "구조를 기다리지 않기로 했다…" 뒤 침묵.
+  //   실클라(`e2e-respawn-choice`)가 잰 끊긴 자리 둘: ⓐ 누를 때마다 `resolveDowned` 가 **다시** 돌아 짐을 또 떨구고
+  //   깨어날 시각을 처음부터 다시 적었다(기다리다 누르는 사람은 영영 못 깨어난다) · ⓑ 몇 초 뒤·어디서를 아무도 말하지 않았다.
+  //   ★자리 — 사유지 0 · 길드 0 · 귀향점 0 인 사람(0 후보)의 마지막 보루는 **처음 고른 마을의 쉼터 문간**이다(T83 캐논 · ⑮ⓑ).
+  say('\n㉒ [T563] 부활 버튼 — 누르면 깨어난다 · 두 번째 누름은 무효 · 몇 초 뒤·어디서를 말한다');
+  {
+    clearPlayers();
+    for (const [id, c] of [...H.claims]) { if (c.dbId) { try { H.db.deleteClaim(c.dbId); } catch (e) {} } H.claims.delete(id); }
+    for (const k of Array.from(H.groundItems.keys())) H.groundItems.delete(k);
+    for (let k = 0; k < 12; k++) { const r = H._shelterBackfill(); if (!(r.left > 0)) break; await sleep(800); }
+    const list = SimVillages.clientVillages() || [];
+    const withSh = list.filter((v) => { try { return !!SimVillages.shelterOf(v.id); } catch (e) { return false; } });
+    //   야생 자리는 **쉼터 선 마을 곁**에서 찾는다(두 증인 · 기다림이 거리의 함수라 가까울수록 하네스가 짧다)
+    let wild = null, sv = null;
+    for (const v of withSh) {
+      const cx = v.cx * 32 + 16, cy = v.cy * 32 + 16;
+      for (const r of [VIL_SAFE_PX + 400, VIL_SAFE_PX + 1200, VIL_SAFE_PX + 2400]) {
+        for (let k = 0; k < 16 && !wild; k++) {
+          const a = (k / 16) * Math.PI * 2, x = Math.round(cx + Math.cos(a) * r), y = Math.round(cy + Math.sin(a) * r);
+          if (x > 500 && y > 500 && isWildSpot(x, y)) { wild = { x, y }; sv = v; }
+        }
+        if (wild) break;
+      }
+      if (wild) break;
+    }
+    pre(!!wild && !!sv, '쉼터 선 마을 곁의 야생 자리(두 증인)', wild ? `(${wild.x},${wild.y}) · 처음 고른 마을 ${sv.name}` : '못 찾음');
+    if (wild && sv) {
+      const p = mkPlayer('t563', wild.x, wild.y);
+      const st = H.Onboarding.stateOf(p.playerId); st.start_vid = sv.id; st.arrived = 1;
+      p.inventory.wood = 4; p.inventory.stone = 4; p.inventory.berry = 4;
+      H.damagePlayer(p, 200, 'fall');
+      pre(p.isDown === true, '정본 피해로 쓰러졌다');
+      const opts = H.listRespawnOptions(p);
+      const sh = SimVillages.shelterOf(sv.id);
+      ok(opts.length === 1 && opts[0].claimId === '__start__' && opts[0].vid === sv.id
+         && sh && Math.abs(opts[0].x - sh.x) < 1e-6 && Math.abs(opts[0].y - sh.y) < 1e-6,
+        '★★㉒ⓞ 0 후보(사유지·길드·귀향점 없음)의 버튼은 **하나 — 처음 고른 마을의 쉼터 문간**',
+        JSON.stringify(opts.map((o) => `${o.kind}:${o.vname}(${o.x | 0},${o.y | 0})`)));
+      // ⓐ 누른다
+      p.__msgs.length = 0;
+      const tClick = Date.now();
+      H.tryRespawnChoice(p, opts[0].claimId);
+      const until0 = p._deadUntil;
+      ok(until0 > tClick, '★★㉒ⓐ 누르면 **깨어날 시각이 정해진다**(포기 = 창 소진과 같은 값 · T43)', `${((until0 - tClick) / 1000).toFixed(1)}초 뒤`);
+      const n1 = p.__notices();
+      const said = n1.map((t) => { const m = String(t).match(/약 (\d+)초 뒤 (.+)에서 깨어난다/); return m ? { s: +m[1], where: m[2] } : null; }).find(Boolean);
+      ok(!!said && Math.abs(said.s - (until0 - tClick) / 1000) <= 1.5 && said.where === sv.name,
+        '★★㉒ⓐ 서버가 **몇 초 뒤 · 어디서** 깨어나는지 말한다(침묵 금지 · 자리 이름 = 처음 고른 마을)', JSON.stringify(n1));
+      const dw = p.__msgs.filter((m) => m.type === 'down_wake');
+      ok(dw.length === 1 && dw[0].pid === p.pid && Math.abs(dw[0].wakeInMs - (until0 - tClick)) <= 1500 && dw[0].name === sv.name,
+        '★㉒ⓐ 패널이 셀 재료(`down_wake` — 남은 ms · 자리)가 본인에게 한 번 간다', dw.length ? `${dw[0].wakeInMs}ms · ${dw[0].name}` : '없음');
+      const invOf = () => (p.inventory.wood || 0) + (p.inventory.stone || 0) + (p.inventory.berry || 0);
+      const bundlesOf = () => Array.from(H.groundItems.values()).filter((g) => g.keep).length;
+      const inv1 = invOf(), bun1 = bundlesOf();
+      pre(bun1 >= 1 && inv1 < 12, '야생 포기 — 짐 절반이 떨어졌다(창 소진과 같은 값)', `몸 ${inv1}/12 · 꾸러미 ${bun1}`);
+      // ⓑ 기다리다 또 누른다(버튼 셋 다 · 아무 자리나)
+      await sleep(1100);
+      p.__msgs.length = 0;
+      H.tryRespawnChoice(p, opts[0].claimId);
+      H.tryRespawnChoice(p, null);
+      ok(p._deadUntil === until0, '★★㉒ⓑ 두 번째 누름이 **시계를 되감지 않는다**(깨어날 시각 그대로)', `${until0} → ${p._deadUntil}`);
+      ok(invOf() === inv1 && bundlesOf() === bun1, '★★㉒ⓑ 두 번째 누름이 **짐을 또 떨구지 않는다**(값은 한 번)', `몸 ${inv1} → ${invOf()} · 꾸러미 ${bun1} → ${bundlesOf()}`);
+      const n2 = p.__notices();
+      ok(n2.length === 2 && n2.every((t) => /이미 정해졌다/.test(t) && /약 \d+초 뒤/.test(t)) && !n2.some((t) => /정신을 잃었다/.test(t)),
+        '★㉒ⓑ 대신 **남은 초**를 다시 말한다(다시 죽지 않는다)', JSON.stringify(n2));
+      // ⓒ 안 누른 사람 — 창이 끝나 정해질 때도 같은 말을 한다(두 길이 같은 문 `resolveDowned` 를 쓴다)
+      const q = mkPlayer('t563q', wild.x + 64, wild.y);
+      q.inventory.wood = 2;
+      H.damagePlayer(q, 200, 'fall');
+      // ⓓ 깨어난다 — 말한 그 초에 · 고른 자리(처음 고른 마을 쉼터 문간)에서
+      let qSaid = null;
+      const woke = await untilWake(p);
+      for (const t of q.__notices()) { const m = String(t).match(/약 (\d+)초 뒤 (.+)에서 깨어난다/); if (m) { qSaid = m; break; } }
+      ok(!!qSaid && q._deadUntil > 0, '★㉒ⓒ 안 누르고 창이 끝나 정해져도 **몇 초 뒤 · 어디서**를 말한다', qSaid ? qSaid[0] : JSON.stringify(q.__notices()));
+      const tWake = Date.now();
+      ok(woke && !p.isDown && p.hp > 0, '★★㉒ⓓ 그리고 **깨어난다**(`player_respawn`)', `hp ${Math.round(p.hp)} · ${p.__msgs.some((m) => m.type === 'player_respawn' && m.pid === p.pid) ? 'player_respawn ○' : 'player_respawn ✗'}`);
+      ok(tWake - until0 <= 2600, '★㉒ⓓ 정해진 시각에 깨어난다(틱 1초 · 하네스 1초 걸음 여유)', `정함 뒤 ${((tWake - until0) / 1000).toFixed(1)}초`);
+      ok(Math.abs(p.x - opts[0].x) < 1e-6 && Math.abs(p.y - opts[0].y) < 1e-6,
+        '★★㉒ⓓ 몸이 **고른 자리**(처음 고른 마을의 쉼터 문간)에 선다', `(${p.x | 0},${p.y | 0}) vs (${opts[0].x | 0},${opts[0].y | 0})`);
+      // ⓔ 깨어난 뒤 누름은 종전 그대로 "다운 상태가 아닙니다"
+      p.__msgs.length = 0;
+      H.tryRespawnChoice(p, null);
+      ok(p.__notices().length === 1 && /다운 상태가 아닙니다/.test(p.__notices()[0]) && !p.isDown, '★㉒ⓔ 깨어난 뒤 누름은 종전 그대로 무효(말 한 줄)');
+      clearPlayers();
+    }
+  }
+
   say(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
   for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
   process.exit(fail ? 1 : 0);
