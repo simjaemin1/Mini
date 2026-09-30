@@ -3537,11 +3537,53 @@ function _warDraftPids(vil, comp, seed, warId) {
   }
   return units.length ? { units, pids } : null;
 }
-// 대형 슬롯으로 즉시 스냅(인스턴스화 순간 그 자리 대형화). 막힌 슬롯이면 제자리.
+// 대형 슬롯으로 즉시 스냅(인스턴스화 순간 그 자리 대형화). 막힌 슬롯이면 **설 수 있는 가장 가까운 칸**(T541 ⓑ).
+//   ★★[T541 ② 원인] 종전은 "막힌 슬롯이면 제자리" 였다. 그런데 제자리 = 징발 순간 그 사람이 서 있던 자리(집·일터)이고,
+//     인스턴스화는 주둔 링(목표 앞)에서 일어난다 — 한 명이 **수백 칸 뒤 제 마을**에 남아 몸이 갈라졌다. 소굴엔 수비 몸이 없으니
+//     무저항·소굴 전투 문(공격 무게중심이 교전 반경 안)이 그 한 명을 끝까지 기다렸다(재현 판: 소굴 원정 10건 중 3건 · 3건 중 2건).
+//     나선은 존 정본 하나(`_standCellNear` · deps 주입 · 사본 0) · 술어는 전쟁 술어(`_warBlockedCell` — 발자국·지형·나무).
+//     나선이 못 찾거나(24칸 안이 전부 막힘) 술어 미주입(랩·구 존)이면 종전대로 제자리.
 function _warSnapToSlots(g) {
   if (!g || !g.units) return;
   const blocked = _warBlockedCell;
-  for (const u of g.units) { if (u.cmd) { u.x = g.cmd.cx; u.y = g.cmd.cy; continue; } const s = state.warLive._muSlotXY(g, u); if (!blocked(s[0], s[1])) { u.x = s[0]; u.y = s[1]; } }
+  for (const u of g.units) { if (u.cmd) { u.x = g.cmd.cx; u.y = g.cmd.cy; continue; } const s = state.warLive._muSlotXY(g, u);
+    if (!blocked(s[0], s[1])) { u.x = s[0]; u.y = s[1]; continue; }
+    const c = _warStandNear(s[0], s[1]); if (c) { u.x = c.cx; u.y = c.cy; } }
+}
+// ★[T541 ⓑ] 설 수 있는 가장 가까운 칸 — 존 정본 나선(`deps.standCellNear` = zone `_standCellNear` · px)을 전쟁 술어로 부른다.
+//   (cx,cy) = 셀(실수 · 셀 = m). 이미 설 수 있으면 그 자리, 못 찾거나 미주입이면 null.
+function _warStandNear(cx, cy) {
+  if (!_warBlockedCell(cx, cy)) return { cx, cy };
+  const f = state.deps && state.deps.standCellNear; if (!f) return null;
+  let c = null; try { c = f(cx * SZ, cy * SZ, (x, y) => _warBlockedCell(x / SZ, y / SZ)); } catch (_) { c = null; }
+  return c ? { cx: c.x / SZ, cy: c.y / SZ } : null;
+}
+// ★[T541 ⓐ] 곧은 걸음이 막혔을 때의 **걸음 경로** — path-core `localPath`(걸음 프리셋 · 4방 · 사본 0) · 술어 = `_warBlockedCell`.
+//   ★왜: 대형 추종(`_muStepFollow`)과 풀린 병사(`_warWorld.advance`)는 목표점으로 **곧게** 한 걸음씩 간다. 산 모서리를
+//     끼고 굽은 행군로에서 슬롯·길 투영점이 산 너머에 있으면 곧은 걸음·축 미끄럼이 다 막혀 그 자리에 선다(실측 T541 재현 판
+//     임업2 — 산 가장자리 964,1854 · T502 판 813셀 그 길). 그때만 걸음 탐색을 한다(시한 0 · 새 수 0 — 탐색 상한은 path-core 기본).
+//   병사별 기억(u._wpth): 그 길 위에 있는 동안은 다시 찾지 않는다(목표가 조금 움직여도). 길을 벗어났거나 끝났으면 다시.
+//   목표 칸이 막혔으면 설 수 있는 가장 가까운 칸으로(ⓑ 같은 술어). 서 있는 칸이 막혔으면 가장 가까운 열린 칸으로 한 걸음.
+//   못 찾으면 null — 호출측 종전 걸음.
+function _warPathNext(u, tx, ty) {
+  const MPC = state.warLive.M_PER_CELL;
+  const sx = Math.floor(u.x / MPC), sy = Math.floor(u.y / MPC);
+  let P = u._wpth;
+  if (P) { let k = -1; for (let j = P.i; j < Math.min(P.pts.length, P.i + Math.floor(state.warLive.MU.FOLLOW_CAP) + 2); j++) if (P.pts[j].x === sx && P.pts[j].y === sy) { k = j; break; }
+    if (k < 0 || k >= P.pts.length - 1) P = u._wpth = null; else P.i = k; }
+  if (!P) {
+    if (_warBlockedCell(sx, sy)) { const o = _warStandNear(sx + 0.5, sy + 0.5); return o ? { x: o.cx * MPC, y: o.cy * MPC } : null; }
+    const gl = _warStandNear(tx / MPC, ty / MPC); if (!gl) return null;
+    if (!PathCore) PathCore = require('../sim/path-core.js');
+    const blk = (x, y) => _warBlockedCell(x, y);
+    let pts = null; try { pts = PathCore.localPath(sx, sy, Math.floor(gl.cx), Math.floor(gl.cy), { blocked: blk, blockedStep: (fx, fy, x2, y2) => blk(x2, y2) }); } catch (_) { pts = null; }
+    if (!pts || pts.length < 2) return null;
+    P = u._wpth = { pts, i: 0 };
+  }
+  // 곧은 줄이 열린 데까지 몇 칸 앞을 겨눈다(대형 추종 한 걸음 상한 FOLLOW_CAP 칸까지 — 새 수 0) — 칸 하나씩 가면 추종 걸음이 1칸/틱으로 묶인다
+  let j = P.i + 1; const jMax = Math.min(P.pts.length - 1, P.i + Math.max(1, Math.floor(state.warLive.MU.FOLLOW_CAP)));
+  for (let k = jMax; k > j; k--) { const q = P.pts[k]; if (_warClearLine(u.x, u.y, (q.x + 0.5) * MPC, (q.y + 0.5) * MPC)) { j = k; break; } }
+  const n = P.pts[j]; return { x: (n.x + 0.5) * MPC, y: (n.y + 0.5) * MPC };
 }
 // 병사 메타·속도(클라 보간) 갱신 — 위치는 이미 player 에 있다(묶임). vx/vy = 이번 틱 이동 × TICK_HZ.
 function _warSyncMeta(g, side, rout) {
@@ -3620,7 +3662,7 @@ function _warRockCell(ix, iy) {   // 화살을 막는 지형 = 막힌 칸 중 �
 }
 // 대형 우회 — 막힌 병사를 몸의 행군로(px 폴리라인) 위로 목표 쪽 한 걸음 보낸다. 반환 = 셀 좌표 점(없으면 null).
 function _warDetourFor(body) {
-  return (u, tx, ty) => {
+  const det = (u, tx, ty) => {
     const WL = state.warLive, MPC = WL.M_PER_CELL, PXM = WL.PX_PER_M;
     if (!body._detPoly || body._detPts !== body.pts) { body._detPts = body.pts; body._detPoly = (body.pts && body.pts.length >= 2) ? _polyOf(body.pts.map(p => ({ x: p.x / PXM, y: p.y / PXM }))) : null; }
     const poly = body._detPoly; if (!poly) return null;
@@ -3631,9 +3673,14 @@ function _warDetourFor(body) {
     const s2 = su + Math.sign(st - su) * Math.min(ahead, Math.abs(st - su));
     const q = _polyAt(poly, s2);
     // 길 밖이면 먼저 길로(투영점)
-    const pr = _polyAt(poly, su); if (Math.hypot(pr.x - pu.x, pr.y - pu.y) > 2) return { x: pr.x / MPC, y: pr.y / MPC };
-    return { x: q.x / MPC, y: q.y / MPC };
+    const pr = _polyAt(poly, su); const w = Math.hypot(pr.x - pu.x, pr.y - pu.y) > 2 ? pr : q;
+    // ★[T541 ⓐ] 이 훅은 슬롯까지 곧은 줄이 막혔거나(`det.clear`) 곧은 걸음·축 미끄럼이 다 막혔을 때 불린다 — 길까지 곧은 줄도 막혔으면 걸어서 돌아간다
+    if (u._wpth || !_warClearLine(pu.x, pu.y, w.x, w.y)) { const pm = { x: pu.x, y: pu.y, _wpth: u._wpth || null }; const n = _warPathNext(pm, w.x, w.y); u._wpth = pm._wpth; if (n) return { x: n.x / MPC, y: n.y / MPC }; }
+    return { x: w.x / MPC, y: w.y / MPC };
   };
+  // ★[T541 ⓐ] 대형 추종이 먼저 묻는 술어 — 슬롯까지 곧은 줄이 열려 있나(`_warClearLine` 그대로 · 셀 = m × M_PER_CELL)
+  det.clear = (u, tx, ty) => { const MPC = state.warLive.M_PER_CELL; return _warClearLine(u.x * MPC, u.y * MPC, tx * MPC, ty * MPC); };
+  return det;
 }
 function _polyS(poly, p, memoObj, key) {   // 점 p(m)의 폴리라인 투영 호길이(메모 근처 선분만)
   const R = poly.pts, C = poly.cum;
@@ -3655,11 +3702,22 @@ function _polyAt(poly, sArc) {
   const seg = C[j + 1] - C[j], tt = seg > 1e-9 ? (s - C[j]) / seg : 0;
   return { x: R[j].x + (R[j + 1].x - R[j].x) * tt, y: R[j].y + (R[j + 1].y - R[j].y) * tt };
 }
-// 곧은 선이 열려 있나(1m 간격 · 최대 40m 앞까지 — 그 너머는 가면서 다시 본다).
+// 곧은 선이 열려 있나(최대 40m 앞까지 — 그 너머는 가면서 다시 본다).
+//   ★[T541 ⓐ] 1m 간격 표본 → **선이 지나는 칸 전부**(격자 순회 · 선 위 칸을 빠짐없이). 표본은 첫 1m 안에서 막힌 칸 모서리를
+//     스치는 선을 "열림" 이라 했고, 그 선으로 곧게 걷는 병사는 모서리 칸에 막혀 그 자리에 섰다(하네스 ⓩ'''③ 미끼 · 실서버 `_blk`).
+//     서 있는 칸은 안 본다(종전 i=1 부터와 같이) · 끝 칸은 본다(종전 끝 표본과 같이).
 function _warClearLine(x1, y1, x2, y2) {
   const MPC = state.warLive.M_PER_CELL, dx = x2 - x1, dy = y2 - y1, d = Math.hypot(dx, dy); if (d < 1) return true;
-  const L = Math.min(d, 40), n = Math.ceil(L);
-  for (let i = 1; i <= n; i++) { const s = (i / n) * (L / d); if (_warBlockedCell(Math.floor((x1 + dx * s) / MPC), Math.floor((y1 + dy * s) / MPC))) return false; }
+  const tEnd = Math.min(d, 40) / d;
+  let cx = Math.floor(x1 / MPC), cy = Math.floor(y1 / MPC);
+  const sx = dx > 0 ? 1 : -1, sy = dy > 0 ? 1 : -1;
+  const tdx = dx !== 0 ? MPC / Math.abs(dx) : Infinity, tdy = dy !== 0 ? MPC / Math.abs(dy) : Infinity;
+  let tx = dx !== 0 ? (sx > 0 ? (cx + 1) * MPC - x1 : x1 - cx * MPC) / Math.abs(dx) : Infinity;
+  let ty = dy !== 0 ? (sy > 0 ? (cy + 1) * MPC - y1 : y1 - cy * MPC) / Math.abs(dy) : Infinity;
+  for (;;) {
+    if (tx < ty) { if (tx > tEnd) break; cx += sx; tx += tdx; } else { if (ty > tEnd) break; cy += sy; ty += tdy; }
+    if (_warBlockedCell(cx, cy)) return false;
+  }
   return true;
 }
 // 폴리라인(m) 위 다음 목표점 — 병사를 가장 가까운 선분에 투영(병사별 기억 · 근처 선분만)하고, 투영점에서
@@ -3711,10 +3769,15 @@ function _warWorld(fight) {
       const T = (c && c.n) ? { x: c.x, y: c.y } : fight.objective; if (!T) return null;
       const r = dirTo(u.x, u.y, T.x, T.y); if (!r || r.d <= 1) return null;
       // 곧은 길이 막혔으면 행군로(존 A* 경로 — 캐러밴과 같은 길)를 따라간다. 판정은 0.5초에 한 번(병사별 메모).
-      if (u._cpT == null || fight.t - u._cpT >= 0.5) { u._cpT = fight.t; u._clear = _warClearLine(u.x, u.y, T.x, T.y); }
+      const memo = u._cpT == null || fight.t - u._cpT >= 0.5;
+      if (memo) { u._cpT = fight.t; u._clear = _warClearLine(u.x, u.y, T.x, T.y); }
       if (u._clear) return r;
       const wp = _warPolyWaypoint(_warRoutePoly(fight), u, u.side === 'A' ? 1 : -1, '_rk');   // 막혔으면 행군로를 따라
-      return wp ? (dirTo(u.x, u.y, wp.x, wp.y) || r) : r;
+      if (!wp) return r;
+      // ★[T541 ⓐ] 길 점까지의 곧은 줄도 막혔으면(길에서 벗어나 산·물 모서리에 걸림) 걸어서 돌아간다 — 판정은 같은 0.5초 메모
+      if (memo) u._wpBlk = !_warClearLine(u.x, u.y, wp.x, wp.y);
+      if (u._wpBlk) { const n = _warPathNext(u, wp.x, wp.y); if (n) return dirTo(u.x, u.y, n.x, n.y) || r; }
+      return dirTo(u.x, u.y, wp.x, wp.y) || r;
     },
     hold(ctx, u, e) { return fight.holder === u.side && !!e.ctl; },   // 추격 없음 — 물러나는(대형으로 돌아간) 적은 지키는 쪽이 쫓지 않는다
     flee(ctx, u) {      // 자기 마을 쪽 · 다 왔으면 적 본대 반대쪽
@@ -4563,26 +4626,34 @@ function _warSideCtl(f, side) { for (const u of f.ctx.units) if (u.side === side
 // 전진 행군 — 전진하는 쪽의 대형 원점을 행군로(공격→방어 폴리라인) 위로 걸음 상한씩 민다(공격=순방향 · 방어=역방향).
 //   풀림: 대형 무게중심에서 적 본대(없으면 목표)까지 곧은 길이 열려 있고 그 거리가 두 대형 접근 거리(WAR_ENGAGE_R) 이하.
 //   행군로 끝까지 가도 안 풀리면 진척이 멈춘 것 — n초 뒤 대치(stepFight 진척 시계).
+// ★[T541 ⓑ] 행군 대형을 풀어 줄 때 — **막힌 칸 안에 선 병사**는 설 수 있는 가장 가까운 칸으로 한 걸음 내려선다.
+//   왜: 지휘관은 대형 원점(행군로 위 점)으로 옮겨지는데 그 점이 나무·발자국 칸일 수 있다. 풀린 뒤 battle-core 몸 클램프는
+//   "이전 자리도 막힘" 이면 제자리라 그 칸에서 **영원히 못 나온다**(T295 후속 주석의 그 판 · 실서버 T530 W1 76셀 `_blk` 1 · 재생 D6~).
+//   나선·술어는 `_warSnapToSlots` 와 같은 것(`_warStandNear`) · 못 찾으면 그대로.
+function _warReleaseAdv(f, A, g) {
+  if (g && g.units) for (const u of g.units) { if (u.dead || !_warBlockedCell(u.x, u.y)) continue; const c = _warStandNear(u.x, u.y); if (c) { u.x = c.cx; u.y = c.cy; } }
+  A.released = true; state.warLive.setSideCtl(f, A.side, false);
+}
 function _warAdvanceMarch(body) {
   const f = body.fight, A = f && f.adv; if (!A || A.released) return;
   const WL = state.warLive, MPC = WL.M_PER_CELL;
   const g = A.side === 'A' ? body.atkGroup : body.defGroup;
-  if (!g || !g.units.length) { A.released = true; WL.setSideCtl(f, A.side, false); return; }
+  if (!g || !g.units.length) { _warReleaseAdv(f, A, g); return; }
   const other = A.side === 'A' ? 'B' : 'A';
   const gc = { cx: g.cmd.cx, cy: g.cmd.cy };   // 대형 원점(흩어진 병사의 무게중심보다 단단하다)
   const og = other === 'A' ? body.atkGroup : body.defGroup;
   const T = (og && og.units.length) ? { x: og.cmd.cx * MPC, y: og.cmd.cy * MPC } : f.objective;
   const gm = { x: gc.cx * MPC, y: gc.cy * MPC };
   const dist = Math.hypot(T.x - gm.x, T.y - gm.y);
-  if (dist <= WL.WAR_ENGAGE_R * MPC && _warClearLine(gm.x, gm.y, T.x, T.y)) { A.released = true; WL.setSideCtl(f, A.side, false); return; }
-  const poly = _warRoutePoly(f); if (!poly) { A.released = true; WL.setSideCtl(f, A.side, false); return; }
+  if (dist <= WL.WAR_ENGAGE_R * MPC && _warClearLine(gm.x, gm.y, T.x, T.y)) { _warReleaseAdv(f, A, g); return; }
+  const poly = _warRoutePoly(f); if (!poly) { _warReleaseAdv(f, A, g); return; }
   const C = poly.cum, L = C[C.length - 1];
   if (A.s == null) A.s = _polyS(poly, { x: g.cmd.cx * MPC, y: g.cmd.cy * MPC }, A, '_ks');
   // 행군로 위 목표 = 적 대형 원점(없으면 목표)을 행군로에 투영한 점 — 그 너머로는 안 간다. 거기서도 안 풀리면(곧은 길이 막힘) 진척이 멈춘다.
   A.sT = _polyS(poly, T, A, '_kt');
   const cap = _warWalkCap(g) * MPC;
   if (Math.abs(A.sT - A.s) <= cap) {   // 투영점 도착 — 곧은 길이 열렸으면 거리와 무관하게 풀어 준다
-    if (_warClearLine(gm.x, gm.y, T.x, T.y)) { A.released = true; WL.setSideCtl(f, A.side, false); return; }
+    if (_warClearLine(gm.x, gm.y, T.x, T.y)) { _warReleaseAdv(f, A, g); return; }
   }
   const sgn = A.sT > A.s ? 1 : -1;
   const ns = Math.abs(A.sT - A.s) <= cap ? A.sT : Math.max(0, Math.min(L, A.s + sgn * cap));
@@ -5085,6 +5156,7 @@ function __p3Bind(mock) {
     threatOf, _warWriteThreats, _warOutMul, _lifeJobSites, _lifeJobSiteOK, _warRoutePts, _warTreeCell, computeRoutePts,
     _econSameOf, _warEatBySpoil,   // ★[T458] 같은 물건 한 줄 · 상하는 것부터 — 하네스가 **이 함수**로 등가 표를 센다(사본 0)
     _warLootAccept, _warLootPickup,   // ★[T466] 약탈 = 행위 — 하네스가 운영과 같은 훅을 war-core 에 건다
+    _warSnapToSlots, _warStandNear, _warPathNext, _warReleaseAdv, _warDetourFor,   // ★[T541] 막힌 슬롯 → 설 수 있는 가장 가까운 칸 · 막힌 곧은 걸음 → 걸음 경로 — 하네스가 **이 함수들**을 부른다
     _t476Decide, _t476DenVil,   // ★[T476] 토벌 결단 · 소굴 어댑터 — 하네스가 운영과 같은 결단을 부른다
     _warRationEat, _warRationCollect, _warRationLoad,   // ★[T423] 짐이 먹는다 — 하네스가 **이 함수들**을 war-core 에 건다(운영과 같은 두 훅)   // ★[T329] 위협 T·현장 반경 — 하네스가 **이 함수들**을 그대로 부른다(사본 0)
   };

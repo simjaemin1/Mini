@@ -424,7 +424,7 @@ function _run(opts) {
 
 (async () => {
   //   ★[T458] 절 하나만(개발 — 전 절은 7분) · WW_PART=ration,forage,berry
-  if (process.env.WW_PART) { const P = { ration: rationActPart, forage: forageMarchPart, berry: berryArrowPart, loot: lootActPart, punitive: punitivePart, odds: oddsRealPart, arms: gangArmsPart }; for (const k of process.env.WW_PART.split(',')) P[k](); say(`\n결과: ${pass} 통과 / ${fail} 실패`); process.exit(fail ? 1 : 0); }
+  if (process.env.WW_PART) { const P = { ration: rationActPart, forage: forageMarchPart, berry: berryArrowPart, loot: lootActPart, punitive: punitivePart, odds: oddsRealPart, arms: gangArmsPart, march: marchStallPart }; for (const k of process.env.WW_PART.split(',')) P[k](); say(`\n결과: ${pass} 통과 / ${fail} 실패`); process.exit(fail ? 1 : 0); }
   if (process.env.WW_ONLY) { const r = runScenario({ seed: parseInt(process.env.WW_SEED || '31', 10), viewer: false, scenario: process.env.WW_ONLY, trees: process.env.WW_TREES === '1', maxTicks: parseInt(process.env.WW_TICKS || '', 10) || 30 * 60 * 20 }); say(JSON.stringify({ ended: r.ended, counts: r.counts, stat: r.stat, fight: r.fightTicks, blocked: r.blockedTicks, box: [r._bx0, r._bx1, r._by0, r._by1] })); process.exit(0); }
   say('\n=== T284 실체 전쟁 — 좌표계 하나 · 장애물은 존의 것 · 연속 전투 ===');
 
@@ -567,9 +567,11 @@ function _run(opts) {
     const _n = Date.now; Date.now = () => _n() + 3 * 30000 + 7777;   // 벽시계를 사흘 남짓 민다(판의 dayMs = 30초)
     let b; try { b = runScenario(base); } finally { Date.now = _n; }
     ok(sigU(a) === sigU(b), 'ⓤ 벽시계를 사흘 밀어도 한 글자 같은 판 — 태어나는 자리의 씨는 판의 날(`world.day`)', `hash ${a.posHash}/${b.posHash} · 교전 ${a.fightTicks}/${b.fightTicks}틱`);
-    const g = runScenario(Object.assign({}, base, { spawnDay: 406 }));
-    ok(g.posHash !== a.posHash, 'ⓤ ★미끼① — 날을 바꾸면 자리가 바뀐다(씨가 실제로 날을 본다 · 위 칸은 자명 통과가 아니다)', `날 400 hash ${a.posHash} · 날 406 hash ${g.posHash}`);
-    ok(g.ended && g.ended.why === 'rout' && g.bodyGoneAtEnd === true, 'ⓤ 전멸 판(날 406 — 공격 표본 생존 0)도 끝난다 — 몸이 같은 틱에 치워져도 그 몸의 기록으로 읽는다',
+    // ★[T541] 전멸 판의 날 406 → 417 — 막힌 곧은 걸음이 걸음 경로(path-core)로 돌고 곧은 줄이 지나는 칸을 전부 보자
+    //   406 판은 생존자가 남는 궤주가 됐다(판이 바뀐 것). 401~420 을 훑어 전멸 판(몸 치움 ○ · 옛 규칙 못 봄)은 417 하나 — 그 날을 쓴다(칸의 뜻은 그대로).
+    const g = runScenario(Object.assign({}, base, { spawnDay: 417 }));
+    ok(g.posHash !== a.posHash, 'ⓤ ★미끼① — 날을 바꾸면 자리가 바뀐다(씨가 실제로 날을 본다 · 위 칸은 자명 통과가 아니다)', `날 400 hash ${a.posHash} · 날 417 hash ${g.posHash}`);
+    ok(g.ended && g.ended.why === 'rout' && g.bodyGoneAtEnd === true, 'ⓤ 전멸 판(날 417 — 공격 표본 생존 0)도 끝난다 — 몸이 같은 틱에 치워져도 그 몸의 기록으로 읽는다',
       `끝 ${JSON.stringify(g.ended)} · 몸 치움 ${g.bodyGoneAtEnd} · 궤주 ${g.stat.rout} · w.phase ${g.phase}`);
     ok(!g.endedLive, 'ⓤ ★미끼② — 옛 규칙(살아 있는 몸에서만 읽기)은 이 판을 **못 본다**(ⓛ 간헐 빨강의 재현 · 뿌리 둘째)', `옛 규칙 끝 ${JSON.stringify(g.endedLive)}`);
     const cut = runScenario(Object.assign({}, base, { maxTicks: 300 }));
@@ -607,6 +609,7 @@ function _run(opts) {
 
   // ── ⓩ'' 갱의 무기는 노획한 실물(T521) ───────────────────────────────────
   gangArmsPart();
+  marchStallPart();
 
   // ── ⓖ 서버 ───────────────────────────────────────────────────────────────
   if (process.env.WAR_WORLD_NO_SERVER === '1') { say('\n[ⓖ] 서버 절 건너뜀(WAR_WORLD_NO_SERVER=1)'); }
@@ -1336,6 +1339,89 @@ function gangArmsPart() {
     && /if \(_t521On\(\) && ARMS_RES\.has\(res\)\)/.test(BS) && /BDT_FENCE_F : BDT_FENCE_G/.test(BS) && !/T521/.test(fs.readFileSync(path.join(ROOT, 'sim/war-core.js'), 'utf8')),
     "ⓩ'' 정적 — 팔 하나(bandits 약탈 훅 + villages 소굴 어댑터 · 같은 이름) · 식량·잡화 환산은 그대로 · war-core 무접촉");
   for (const [k, v] of keep) { if (v == null) delete process.env[k]; else process.env[k] = v; }
+}
+// ════════════════════════════════════════════════════════════════════════════
+// ★★[T541] ⓩ''' — 원정군이 목표 앞에서 멈춘다: 막힌 슬롯에 남은 한 명 · 막힌 곧은 걸음
+//   ① 인스턴스화 스냅 — 막힌 슬롯이면 **설 수 있는 가장 가까운 칸**(존 정본 나선 `_standCellNear` — 소스에서 꺼내 그대로 부른다 · 사본 0)
+//      미끼: 나선이 없으면(종전) 그 병사는 제자리 = 징발 순간 서 있던 집에 남는다
+//   ② 걸음 경로 — 곧은 줄이 벽에 막힌 병사가 path-core 걸음으로 돌아 목표 칸에 닿는다 · 미끼: 곧은 걸음 + 축 미끄럼은 벽 앞에 선다
+//   ③ 풀린 병사(battle-core 어댑터 `advance`) — 길 점까지 곧은 줄이 막혔으면 벽으로 밀지 않고 돌아간다(실제로 걸려 길에 닿는다)
+//   ④ 정적 — 시한 0 · 새 팔 0 · 존이 나선을 넘긴다
+// ════════════════════════════════════════════════════════════════════════════
+function _zoneStandCellNear() {   // zone.js `_standCellNear` 본문을 소스에서 꺼낸다(부팅 없이 · 글자 그대로)
+  const ZS = fs.readFileSync(path.join(ROOT, 'server/zone.js'), 'utf8');
+  const m = /function _standCellNear\(x0, y0, blocked\) \{[\s\S]*?\n\}/.exec(ZS); if (!m) return null;
+  return new Function('ZONE', '_BLOCKED_STAND', m[0] + '\nreturn _standCellNear;')({ zoneWidth: 1e7, zoneHeight: 1e7 }, () => false);
+}
+function marchStallPart() {
+  say("\n[ⓩ'''] 원정군이 목표 앞에서 멈춘다 — 막힌 슬롯에 남은 한 명(설 수 있는 가장 가까운 칸) · 막힌 곧은 걸음(걸음 경로) · 시한 0");
+  runScenario({ seed: 3, viewer: true, maxTicks: 1 });   // 모듈 상태를 판 하나로 묶는다(warLive · 술어 메모)
+  const H = SimVillages.__p3Bind({});   // 방금 판의 모듈 상태 그대로(운영 함수)
+  const S = H.state, keepDeps = S.deps, keepMemo = S._warTerrMemo, keepCells = S._warRectCells, keepRects = S._warRects;
+  const WALL = new Set(); for (let x = 100; x <= 104; x++) for (let y = 20; y <= 80; y++) WALL.add(x * 65536 + y);
+  const wallAt = (cx, cy) => WALL.has(Math.floor(cx) * 65536 + Math.floor(cy));
+  const stand = _zoneStandCellNear();
+  const bind = (withStand) => { S.deps = Object.assign({}, keepDeps, { isTerrainBlockedLocal: (px, py) => wallAt(px / SZ, py / SZ), treeCellBlocked: () => false, standCellNear: withStand ? stand : undefined });
+    S._warTerrMemo = new Map(); S._warRectCells = new Set(); S._warRects = []; };
+  try {
+    // ── ① 스냅 ── 슬롯을 벽 안으로 민다(대형이 굽은 길 모서리에서 산 안에 슬롯을 까는 그 판)
+    const mk = () => { const g = S.warLive.buildGroup([{ type: 'spear', pid: 'a' }, { type: 'spear', pid: 'b' }], 'line', { cx: 98.5, cy: 50.5 }, 0, 7);
+      g.units[0].x = 400; g.units[0].y = 400; g.units[1].x = 401; g.units[1].y = 402; g.units[1].slx = 3; g.units[1].sly = 0; return g; };
+    bind(true); const g1 = mk(); const sB = S.warLive._muSlotXY(g1, g1.units[1]); H._warSnapToSlots(g1); const u1 = g1.units[1];
+    bind(false); const g0 = mk(); H._warSnapToSlots(g0); const u0 = g0.units[1];
+    ok(typeof stand === 'function' && wallAt(sB[0], sB[1]) && !wallAt(u1.x, u1.y) && Math.hypot(u1.x - sB[0], u1.y - sB[1]) <= 2.5 && u0.x === 401 && u0.y === 402,
+      "ⓩ'''① 막힌 슬롯 → 설 수 있는 가장 가까운 칸(존 나선 정본) · ★미끼: 나선이 없으면(종전) 그 병사는 제자리 = 수백 칸 뒤 제 집",
+      `슬롯 ${sB.map(v => v.toFixed(1))} 막힘 → ${u1.x.toFixed(1)},${u1.y.toFixed(1)}(${Math.hypot(u1.x - sB[0], u1.y - sB[1]).toFixed(1)}칸) · 종전 ${u0.x},${u0.y}(집)`);
+    // ── ② 걸음 경로 ──
+    bind(true);
+    const walk = (u, tx, ty, useP) => { let n = 0, blk = 0; for (; n < 400; n++) { if (Math.floor(u.x) === Math.floor(tx) && Math.floor(u.y) === Math.floor(ty)) break;
+        let nx, ny; if (useP) { const q = H._warPathNext(u, tx, ty); if (!q) break; nx = q.x; ny = q.y; }
+        else { const dx = tx - u.x, dy = ty - u.y, d = Math.hypot(dx, dy); nx = u.x + dx / d; ny = u.y + dy / d; if (wallAt(nx, ny)) { if (!wallAt(nx, u.y)) ny = u.y; else if (!wallAt(u.x, ny)) nx = u.x; else { nx = u.x; ny = u.y; } } }
+        if (wallAt(nx, ny)) blk++; u.x = nx; u.y = ny; }
+      return { n, blk, at: [u.x, u.y] }; };
+    const pa = walk({ x: 98.5, y: 50.5 }, 108.5, 50.5, true), pg = walk({ x: 98.5, y: 50.5 }, 108.5, 50.5, false);
+    ok(Math.floor(pa.at[0]) === 108 && Math.floor(pa.at[1]) === 50 && pa.blk === 0 && pa.n < 200 && Math.floor(pg.at[0]) !== 108,
+      "ⓩ'''② 곧은 줄이 벽에 막힌 병사 — path-core 걸음(4방 · 술어 `_warBlockedCell`)으로 돌아 목표 칸에 닿는다 · ★미끼: 곧은 걸음 + 축 미끄럼은 벽 앞에 선다",
+      `걸음 경로 ${pa.n}걸음 → ${pa.at.map(v => v.toFixed(1))}(막힌 칸 ${pa.blk}) · 곧은 걸음 400걸음 → ${pg.at.map(v => v.toFixed(1))}`);
+    const tg = walk({ x: 98.5, y: 50.5 }, 102.5, 50.5, true);
+    ok(Math.hypot(tg.at[0] - 102.5, tg.at[1] - 50.5) <= 3 && !wallAt(tg.at[0], tg.at[1]) && tg.blk === 0,
+      "ⓩ'''② 목표 칸이 막혔으면(벽 안) 그 옆 설 수 있는 가장 가까운 칸까지 — ①과 같은 술어", `→ ${tg.at.map(v => v.toFixed(1))}`);
+    // ── ②' 대형 추종(war-live `_muStepFollow` 운영 함수) — 지휘관은 벽 너머 길 위, 병사는 벽 앞 ──
+    //   행군로 = 벽 북쪽 끝을 도는 길(ㄷ자). 슬롯은 지휘관 옆(벽 너머). 우회 훅 = 운영 `_warDetourFor`(몸의 행군로 px).
+    const routeC = [[96.5, 50.5], [96.5, 15.5], [108.5, 15.5], [108.5, 50.5]];
+    const bodyR = { pts: routeC.map(([x, y]) => ({ x: x * SZ, y: y * SZ })) };
+    const follow = (useDet) => { const gf = S.warLive.buildGroup([{ type: 'spear', pid: 'e' }, { type: 'spear', pid: 'f' }], 'line', { cx: 108.5, cy: 50.5 }, Math.PI / 2, 5);
+      gf.units[0].x = 108.5; gf.units[0].y = 50.5; gf.units[1].x = 97.5; gf.units[1].y = 49.5; gf.units[1].slx = 0; gf.units[1].sly = 1.5; gf.units[1].jx = 0; gf.units[1].jy = 0;
+      gf.detour = useDet ? H._warDetourFor(bodyR) : null; let blk = 0;
+      for (let i = 0; i < 900; i++) { S.warLive._muStepFollow(gf, S.warLive.MU.FOLLOW_CAP); if (wallAt(gf.units[1].x, gf.units[1].y)) blk++; }
+      const s2 = S.warLive._muSlotXY(gf, gf.units[1]); return { d: Math.hypot(gf.units[1].x - s2[0], gf.units[1].y - s2[1]), at: [gf.units[1].x, gf.units[1].y], blk }; };
+    const fD = follow(true), f0 = follow(false);
+    ok(fD.d <= 2 && fD.blk === 0 && f0.d > 5,
+      "ⓩ'''②' 대형 추종 — 슬롯까지 곧은 줄이 막혔으면(`detour.clear`) 곧게 안 가고 우회(행군로 → 막혔으면 걸음 경로)를 따라 벽 끝을 돌아 슬롯에 붙는다 · ★미끼: 우회 없이 한 걸음씩 곧게 + 미끄럼이면 벽 앞에 선다",
+      `우회 → 슬롯까지 ${fD.d.toFixed(1)}칸(${fD.at.map(v => v.toFixed(1))}) · 미끄럼만 → ${f0.d.toFixed(1)}칸(${f0.at.map(v => v.toFixed(1))})`);
+    // ── ①' 풀어 줄 때 — 막힌 칸 안에 선 병사(지휘관은 대형 원점 = 길 점으로 옮겨진다) ──
+    const gr = S.warLive.buildGroup([{ type: 'spear', pid: 'c' }, { type: 'spear', pid: 'd' }], 'line', { cx: 102.5, cy: 50.5 }, 0, 9);
+    gr.units[0].x = 102.5; gr.units[0].y = 50.5; gr.units[1].x = 97.5; gr.units[1].y = 50.5;
+    const Ar = { side: 'A', released: false }; H._warReleaseAdv({ ctx: { units: [] } }, Ar, gr);
+    ok(Ar.released && !wallAt(gr.units[0].x, gr.units[0].y) && Math.hypot(gr.units[0].x - 102.5, gr.units[0].y - 50.5) <= 3.5 && gr.units[1].x === 97.5,
+      "ⓩ'''①' 풀어 줄 때 막힌 칸 안에 선 병사는 설 수 있는 가장 가까운 칸으로 내려선다(battle-core 몸 클램프는 '이전 자리도 막힘' 이면 제자리 — 그 칸에 영원히 갇힌다) · 열린 칸의 병사는 그대로",
+      `벽 안 102.5,50.5 → ${gr.units[0].x.toFixed(1)},${gr.units[0].y.toFixed(1)} · 열린 칸 97.5 그대로`);
+    // ── ③ 풀린 병사(battle-core 어댑터) ──
+    const fight = { holder: 'B', objective: { x: 108.5, y: 5.5 }, route: [{ x: 108.5, y: 95.5 }, { x: 108.5, y: 5.5 }], t: 0 };
+    const Wd = H._warWorld(fight), ctx = { _cen: { A: { n: 0 }, B: { n: 0 } } };
+    const stepAdv = (u, n) => { let blk = 0, first = null; for (let i = 0; i < n; i++) { fight.t += 1 / 30; const d = Wd.advance(ctx, u); if (!d) break; if (!first) first = d;
+        const nx = u.x + d.dx * 0.5, ny = u.y + d.dy * 0.5; if (!Wd.blocked(nx, ny)) { u.x = nx; u.y = ny; } else blk++; if (Math.abs(u.x - 108.5) < 1 && u.y < 80) break; } return { first, blk, at: [u.x, u.y] }; };
+    const ra = stepAdv({ side: 'A', x: 97.5, y: 50.5 }, 600);
+    ok(ra.first && ra.blk === 0 && Math.abs(ra.at[0] - 108.5) < 1.5 && ra.at[1] < 20,
+      "ⓩ'''③ 풀린 병사(battle-core 어댑터 그대로) — 길 점까지 곧은 줄이 벽에 막혔으면 벽 끝을 돌아 행군로에 닿는다 · 막힌 걸음 0(벽 모서리를 스치는 곧은 줄도 막힘으로 본다)",
+      `첫 걸음 (${ra.first ? ra.first.dx.toFixed(2) + ',' + ra.first.dy.toFixed(2) : '-'}) · 도착 ${ra.at.map(v => v.toFixed(1))} · 막힌 걸음 ${ra.blk}`);
+  } finally { S.deps = keepDeps; S._warTerrMemo = keepMemo; S._warRectCells = keepCells; S._warRects = keepRects; }
+  // ── ④ 정적 ──
+  const VS = fs.readFileSync(path.join(ROOT, 'server/villages.js'), 'utf8'), ZS = fs.readFileSync(path.join(ROOT, 'server/zone.js'), 'utf8');
+  const fx = (name) => { const m = new RegExp('function ' + name + '\\([^)]*\\) \\{[\\s\\S]*?\\n\\}').exec(VS); return m ? m[0] : ''; };
+  const body = fx('_warSnapToSlots') + fx('_warStandNear') + fx('_warPathNext') + fx('_warReleaseAdv') + fx('_warDetourFor');
+  ok(/standCellNear: _standCellNear,/.test(ZS) && !/T541_/.test(VS) && !/Date\.now|setTimeout|_stallT|stuckT/.test(body) && /PathCore\.localPath\(/.test(fx('_warPathNext')),
+    "ⓩ''' 정적 — 존이 나선 정본을 넘긴다 · 새 팔 0 · 시한(타이머) 0 · 걸음은 path-core `localPath`");
 }
 function n3x(a, b) { return Math.abs((a || 0) - (b || 0)) <= 1e-6; }
 function forageMarchPart() {
