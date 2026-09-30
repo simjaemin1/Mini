@@ -135,9 +135,9 @@ def comps_fig(J, L, name, fn, A):
     for n, c in enumerate(big):
         nz = lambda v: '-' if v is None else v; br = f"다리 {c['bridge']}(강 {nz(c['bridgeFresh'])} · 바다 {nz(c['bridgeSea'])})" if c.get('bridge') is not None else '다리 -'
         line(f"{tag(n)}  {c['cls']} {c['area']:,}셀 · 둘레 바위 {c['rockB']} 바다 {c['seaB']} 민물 {c['freshB']}", 13)
-        line(f"     고개 {c['pass'] if c.get('pass') is not None else '-'}셀 · {br}셀 · 자리 {c.get('bridgeAt')}", 12, (90, 90, 90))
+        line(f"     고개 {c['pass'] if c.get('pass') is not None else '-'}셀 · {br}셀 · 자리 {c.get('bridgeAt') or c.get('passAt') or '-'}", 12, (90, 90, 90))
     rest = [c for c in off if c['area'] < 1000]
-    line(f"그 밖 {len(rest)}개 · {sum(c['area'] for c in rest):,}셀(흰색 · 1~582셀 모래톱·바위 틈)", 12, (90, 90, 90), 30)
+    line(f"그 밖 {len(rest)}개 · {sum(c['area'] for c in rest):,}셀(흰색 · 한 덩이 {min((c['area'] for c in rest), default=0)}~{max((c['area'] for c in rest), default=0)}셀)", 12, (90, 90, 90), 30)
     if riv:
         line('강 하나를 그으면(물 없는 덩이 큰 순)', 16, (20, 20, 20))
         for n, b in enumerate(riv):
@@ -151,6 +151,13 @@ sz = {}
 sz['n_dist'] = sheet(NP, LN, '닛폰', os.path.join(FIG, 'T524_닛폰_거리.png'))
 sz['h_dist'] = sheet(HB, LH, '한반도', os.path.join(FIG, 'T524_한반도_거리.png'))
 sz['n_comp'] = comps_fig(NP, LN, '닛폰', os.path.join(FIG, 'T524_닛폰_성분.png'), AN)
-json.dump(dict(TH=TH, nippon=AN, hanbando=AH, sizes=sz), open(OUTJ, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+# ★[T535] 셋째 존 — `T524_EXTRA=jungwon_n` 이면 같은 자로 그 존도(거리 넷 · 성분) · 표 JSON 에 한 칸 더. 안 주면 종전 그대로.
+EXTRA = {}
+for ez in [z for z in os.environ.get('T524_EXTRA', '').split(',') if z]:
+    EJ, EL = layers(ez); EA = audit(EJ, EL); EXTRA[ez] = EA
+    en = {'jungwon_n': '중원북'}.get(ez, ez)
+    sz[ez + '_dist'] = sheet(EJ, EL, en, os.path.join(FIG, f'T524_{en}_거리.png'))
+    sz[ez + '_comp'] = comps_fig(EJ, EL, en, os.path.join(FIG, f'T524_{en}_성분.png'), EA)
+json.dump(dict(TH=TH, nippon=AN, hanbando=AH, sizes=sz, **EXTRA), open(OUTJ, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
 print(json.dumps(dict(TH=TH, n_far=AN['far'], h_far=AH['far'], n_dry=[AN['dry']['n'], AN['dry']['area']], h_dry=[AH['dry']['n'], AH['dry']['area']],
                       n_des=[AN['desert']['n'], AN['desert']['area']], h_des=[AH['desert']['n'], AH['desert']['area']], sz=sz), ensure_ascii=False))
