@@ -426,13 +426,19 @@ console.log('\n⑬ [T359] 군락 지형 생성 (#58 ⓐ′ · 손잡이 기본 �
 }
 
 // ── ⑭ [T374] 채취는 수요가 멈춘다 — ⓐ D 에 닿으면 그날 0 ⓑ D=0 마을 0 ⓒ 나무·물고기 같은 규칙 ──
-console.log('\n⑭ [T374] 수요 멈춤 (손잡이 기본 끔)');
+console.log('\n⑭ [T374] 수요 멈춤 (★[T544 추신 ⓐ] 손잡이 기본 켬 · 되돌림 `=0`)');
 {
   const E = require(path.join(ROOT, 'sim', 'economy-sim.js'));
   const C = codeOf(SRC), VC = codeOf(VSRC);
-  ok(E.T374_DEMAND_STOP === false, '⑭ ★★손잡이 `T374_DEMAND_STOP` 이 **기본 끔**이다');
-  ok(E.actDemandLeft({}, 10, '_x') === Infinity && E.actDemandCap({}, 99, 10, '_x') === 99,
-    '⑭ ★끄면 자르는 문이 **아예 없다**(`Infinity` · 끈 팔 비트 동일)');
+  //   ★[T544 추신 ⓐ · 재민 #94] 기본 켬 — 키를 지워(`undefined`) 기본을 재고 `'0'` 으로 끈다(빈 문자열은 켬 — T510 `T495_PARTIAL_PICK` 과 같은 규약).
+  //     하네스 자신이 부른 econ(`E`)은 바깥 env 를 따르므로 여기서는 자식에서 잰다(바깥 env 가 새지 않게).
+  const d74 = probe({ T374_DEMAND_STOP: undefined }, `const E=require(${EP}); console.log(JSON.stringify({ on:E.T374_DEMAND_STOP }))`);
+  const e74 = probe({ T374_DEMAND_STOP: '' }, `const E=require(${EP}); console.log(JSON.stringify({ on:E.T374_DEMAND_STOP }))`);
+  const o74 = probe({ T374_DEMAND_STOP: '0' }, `const E=require(${EP}); console.log(JSON.stringify({ on:E.T374_DEMAND_STOP, inf:String(E.actDemandLeft({}, 10, '_x')), cap:E.actDemandCap({}, 99, 10, '_x') }))`);
+  ok(d74.on === true && e74.on === true && o74.on === false && /const T374_DEMAND_STOP = process\.env\.T374_DEMAND_STOP !== '0';/.test(C),
+    '⑭ ★★손잡이 `T374_DEMAND_STOP` 이 **기본 켬**이다(★[T544 추신 ⓐ] · 빈 문자열도 켬 · `0` 만 끔)', `기본 ${d74.on} · '' ${e74.on} · '0' ${o74.on}`);
+  ok(o74.inf === 'Infinity' && o74.cap === 99,
+    '⑭ ★끄면(`=0`) 자르는 문이 **아예 없다**(`Infinity` · 끈 팔 비트 동일)', `${o74.inf} · ${o74.cap}`);
   ok(/if \(!T374_DEMAND_STOP\) return Infinity;/.test(C),
     '⑭ ★그 폴백이 함수 **첫 줄**이다(손잡이 뒤에 전부)');
   //   ★상한이 **정본 관측 칸**인가 — 지어낸 수가 없어야 한다
@@ -517,7 +523,7 @@ console.log('\n⑭ [T374] 수요 멈춤 (손잡이 기본 끔)');
     `손 ${obs.hf}(${(obs.items || []).join('·')}) · ${obs.f1} → ${obs.f2}`);
   ok(obs.n1 === false && obs.n2 === false && obs.m === false,
     'ⓐ ★★[실행] 행위 층이 **안 켜진 마을**(셀 0 · D 0)은 안 막는다 · 광부도 무관 — `94db6dd8` 의 자리 결함이 없다');
-  const obsOff = probe({ T347_FORAGE_ACT: '1', T325_WOOD_ACT: '1' }, `const V=require(${VP}); const P=V.__labProbe._t374Probe;
+  const obsOff = probe({ T347_FORAGE_ACT: '1', T325_WOOD_ACT: '1', T374_DEMAND_STOP: '0' }, `const V=require(${VP}); const P=V.__labProbe._t374Probe;
     let calls=0; P.setDeps({ players: { get: () => { calls++; return { inventory: { wood: 99 } }; } } });
     const vil={ npcPids:[1,2,3], econ:{ storage:{}, _t325Cells:3, _woodOutLast:1, _t325InflowToday:4 } };
     console.log(JSON.stringify({ d: P.done(vil,'lumberjack'), calls }))`);
@@ -539,7 +545,7 @@ console.log('\n⑭ [T374] 수요 멈춤 (손잡이 기본 끔)');
     f.inventory.herb=0; const C=run(f);
     console.log(JSON.stringify({A,B,C}))`;
   const lifeOn = probe({ T374_DEMAND_STOP: '1', T347_FORAGE_ACT: '1', T325_WOOD_ACT: '1' }, lifeJs);
-  const lifeOff = probe({ T347_FORAGE_ACT: '1', T325_WOOD_ACT: '1' }, lifeJs);
+  const lifeOff = probe({ T347_FORAGE_ACT: '1', T325_WOOD_ACT: '1', T374_DEMAND_STOP: '0' }, lifeJs);   // ★[T544 추신 ⓐ] 끔 = `'0'`
   ok(lifeOn.A.join('|') === '||' && lifeOn.B[0] === '귀가' && lifeOn.B[1] === '귀가' && lifeOn.B[2] === '',
     'ⓐ ★★★[실행 · 정본 `npcLifeTick`] 수요가 남으면 일터 · **차면 채집꾼·나무꾼이 집으로 간다**(목표 = 집 · 라벨 `귀가`) · 광부 무관',
     `남음 [${lifeOn.A.map((x) => x || '일터').join(' · ')}] → 참 [${lifeOn.B.map((x) => x || '일터').join(' · ')}]`);
@@ -917,14 +923,15 @@ console.log('\n⑰ [T475] 걷는 목록은 마을마다 — 그 마을 원판에
     'ⓕ ★econ 문은 **목록을 고르기만** 한다(표 0 · 수 0 — 마을 목록이 없으면 종전 한 글자도 안 바뀐다)');
 }
 
-// ── ⑱ [T490] 원판이 비면 밖으로 걷는다 — 팔 `T490_FORAGE_REACH`(기본 끔) ─────────────────────────────
-//   ⓐ 손잡이 기본 끔 · 끄면 원판 그대로(밖 칸 0 · 칸 하나도 안 생긴다) · 켜면 원판 **뒤에** 붙는다
-//   ⓑ 반경 = 하루 왕복 — `_t341TripsPerDay` 를 거리로 푼 값(자의 60초 하루 · 실제 하루 둘 다 · 하네스가 정본 수로 다시 센다)
+// ── ⑱ [T490] 원판이 비면 밖으로 걷는다 — 팔 `T490_FORAGE_REACH`(★[T544 추신 ⓑ] 기본 켬 · 되돌림 `=0`) ─────────────────────────────
+//   ⓐ 손잡이 기본 켬(★[T544 추신 ⓑ] 재민 #85) · 끄면(`=0`) 원판 그대로(밖 칸 0 · 칸 하나도 안 생긴다) · 켜면 원판 **뒤에** 붙는다
+//   ⓑ 반경 = 하루 왕복 ∧ **도보 1시간**(★[T544 추신 ⓑ]) — `_t341TripsPerDay` 를 거리로 푼 값과 게임 1시간 걸음(정본 게임일) 중 가까운 쪽
+//      (자의 60초 하루 42셀 = 왕복 · 실제 하루 120셀 = 도보 1시간 · 240초 하루 120셀 · 하네스가 정본 수로 다시 센다)
 //   ⓒ 그날 몫만큼만 — 원판이 대면 0 · 모자라면 가까운 테두리부터 모자람이 찰 때까지 · 반경 밖은 안 본다
 //   ⓓ path-core 걸음 — 물 건너 다리 없는 군락은 못 딴다 · 다리가 서면 딴다 · ★미끼: 직선만 보면 물 건너를 딴다(이 검사가 문다)
 //   ⓔ 원판이 **비었으면** 그날 몫이 0 이어도 한 포기(게이트를 살린다) · ⓕ 수요 문이 없으면 아무것도 안 한다
 //   ⓖ 원판 로지스틱·econ 무접촉 — 밖에서 딴 것은 `_t347Cut` 에 안 든다 · N·K 는 원판 · `sim/` 에 T490 글자 0
-console.log('\n⑱ [T490] 원판이 비면 밖으로 걷는다 — 팔 `T490_FORAGE_REACH`(기본 끔)');
+console.log('\n⑱ [T490] 원판이 비면 밖으로 걷는다 — 팔 `T490_FORAGE_REACH`(★[T544 추신 ⓑ] 기본 켬 · 되돌림 `=0`)');
 {
   const VC = codeOf(VSRC), C = codeOf(SRC);
   const VP = JSON.stringify(path.join(ROOT, 'server', 'villages.js'));
@@ -941,23 +948,33 @@ console.log('\n⑱ [T490] 원판이 비면 밖으로 걷는다 — 팔 `T490_FOR
     const board=[{cx:110,cy:100,n:1}];`;
   const onEnv = { T347_FORAGE_ACT: '1', T374_DEMAND_STOP: '1', T490_FORAGE_REACH: '1' };
   // ⓐ 손잡이
-  const k0 = probe({ T347_FORAGE_ACT: '1', T374_DEMAND_STOP: '1', T490_FORAGE_REACH: '' }, `${world}
+  const k0 = probe({ T347_FORAGE_ACT: '1', T374_DEMAND_STOP: '1', T490_FORAGE_REACH: '0' }, `${world}
     const v=mk(7); const L=P75.scan(v,1); console.log(JSON.stringify({ on:P.on(), n:L.length, cells:v.econ._t347Cells, keys:Object.keys(v).filter((k)=>/_t490/.test(k)), list:L.map((c)=>c.cx+','+c.cy) }))`);
   const k1 = probe(onEnv, `${world}
     const v=mk(7); const L=P75.scan(v,1); console.log(JSON.stringify({ on:P.on(), n:L.length, cells:v.econ._t347Cells, ext:L.filter((c)=>c.ext).length, list:L.map((c)=>c.cx+','+c.cy), N:v._t347Groves.N, dbg:v._t490 }))`);
   ok(k0.on === false && k0.n === 1 && k0.cells === 1 && k0.keys.length === 0,
-    'ⓐ ★★끄면(기본) 원판 그대로 — 밖 칸 0 · `_t490` 칸도 안 생긴다(비트 동일)', `목록 ${k0.list.join(' ')}`);
+    'ⓐ ★★끄면(`=0`) 원판 그대로 — 밖 칸 0 · `_t490` 칸도 안 생긴다(비트 동일)', `목록 ${k0.list.join(' ')}`);
+  const kd = probe({ T347_FORAGE_ACT: '1', T374_DEMAND_STOP: '1', T490_FORAGE_REACH: undefined }, `${world}
+    const v=mk(7); const L=P75.scan(v,1); console.log(JSON.stringify({ on:P.on(), ext:L.filter((c)=>c.ext).length }))`);
+  const ke = probe({ T347_FORAGE_ACT: '1', T374_DEMAND_STOP: '1', T490_FORAGE_REACH: '' }, `${world} console.log(JSON.stringify({ on:P.on() }))`);
+  ok(kd.on === true && kd.ext === 1 && ke.on === true && /process\.env\.T490_FORAGE_REACH !== '0'/.test(VC),
+    'ⓐ ★★★[T544 추신 ⓑ] 손잡이 **기본 켬**(키 없음 · 빈 문자열 둘 다 켬 · `0` 만 끔) — 기본 판이 밖 한 자리를 붙인다', `기본 ${kd.on}(밖 ${kd.ext}) · '' ${ke.on}`);
   ok(k1.on === true && k1.n === 2 && k1.ext === 1 && k1.list[0] === k0.list[0] && k1.cells === 2 && k1.N === 1,
     'ⓐ ★켜면 밖 자리가 원판 **뒤에** 붙는다(원판 먼저 딴다) · 게이트 칸에 든다 · N 은 원판 그대로', `목록 ${k1.list.join(' ')} · N ${k1.N}`);
   ok(/if \(_t490ReachOn\(\)\) \{ const ext = _t490Reach\(vil, cells, R\);/.test(VC) && (VC.match(/_t490Reach\(vil, cells, R\)/g) || []).length === 1,
     'ⓐ 부르는 자리는 `_t347Scan` 한 곳 · 손잡이 뒤');
   // ⓑ 반경 = 하루 왕복(정본 수로 다시 센다)
   const rb = probe(onEnv, `${world}
-    const a=P.reachCells(); S.setup({ dayMs: ${WORLD.dayLengthMs} }); const b=P.reachCells(); S.setup({ dayMs: 60000 });
-    const v={ ccx:100, ccy:100 }; console.log(JSON.stringify({ a, b, t1:P.trips(v, a*32, 1), t2:P.trips(v, (a+1)*32, 1), R:P.R() }))`);
-  const want = (dms) => Math.floor(MOVE * (dms * WORLD.dayPhaseRatio / 1000) / 2 / 32);
-  ok(rb.a === want(60000) && rb.b === want(WORLD.dayLengthMs),
-    'ⓑ ★★반경 = 걸음 × 낮 초 ÷ 2 — 정본 수(존 걸음 · `WORLD.dayPhaseRatio` · 하루 길이)로 다시 센 값과 같다', `자의 하루 60초 ${rb.a}셀 · 실제 하루 ${rb.b}셀`);
+    const a=P.reachCells(); S.setup({ dayMs: ${WORLD.dayLengthMs} }); const b=P.reachCells(); S.setup({ dayMs: 240000 }); const c=P.reachCells(); S.setup({ dayMs: 60000 });
+    const v={ ccx:100, ccy:100 }; console.log(JSON.stringify({ a, b, c, t1:P.trips(v, a*32, 1), t2:P.trips(v, (a+1)*32, 1), R:P.R() }))`);
+  const trip = (dms) => Math.floor(MOVE * (dms * WORLD.dayPhaseRatio / 1000) / 2 / 32);
+  const hour = Math.floor(MOVE * (WORLD.dayLengthMs / 24 / 1000) / 32);   // ★[T544 추신 ⓑ] 도보 1시간 = 게임 1시간(정본 게임일 ÷ 24) × 걸음
+  const want = (dms) => Math.min(trip(dms), hour);
+  ok(rb.a === want(60000) && rb.b === want(WORLD.dayLengthMs) && rb.c === want(240000),
+    'ⓑ ★★반경 = min(하루 왕복 = 걸음 × 낮 초 ÷ 2 · 도보 1시간) — 정본 수(존 걸음 · `WORLD.dayPhaseRatio` · 정본 게임일)로 다시 센 값과 같다',
+    `자의 하루 60초 ${rb.a}셀(왕복 ${trip(60000)}) · 240초 ${rb.c}셀(왕복 ${trip(240000)}) · 실제 하루 ${rb.b}셀(왕복 ${trip(WORLD.dayLengthMs)} · 도보 1시간 ${hour})`);
+  ok(hour === 120 && rb.b === 120 && rb.c === 120 && trip(240000) > 120,
+    'ⓑ ★★[T544 추신 ⓑ · 재민 #85] 실제 하루의 반경은 **도보 1시간 = 120셀(120 m)** — 하루 왕복(1,007셀)이 아니다 · 시험 시계가 길어도 120 에서 묶인다', `도보 1시간 ${hour}셀`);
   ok(rb.t1 >= 1 && rb.t2 === 0, 'ⓑ ★그 반경이 `_t341TripsPerDay` 의 경계다 — 반경까지 하루 한 번 오가고, 한 칸 더면 0', `${rb.t1} → ${rb.t2}`);
   // ⓒ 그날 몫만큼만
   const rc = probe(onEnv, `${world}
@@ -982,7 +999,7 @@ console.log('\n⑱ [T490] 원판이 비면 밖으로 걷는다 — 팔 `T490_FOR
   const re = probe(onEnv, `${world}
     const r=P.reach(mk(0), [], P.R()); console.log(JSON.stringify({ n:r.cells.length, at:r.cells.map((c)=>c.cx+','+c.cy) }))`);
   ok(re.n === 1, 'ⓔ ★★원판이 **비었으면** 그날 몫이 0 이어도 한 포기를 찾는다(게이트를 살린다 — 이튿날 수요가 선다)', re.at.join(' '));
-  const rf = probe({ T347_FORAGE_ACT: '1', T374_DEMAND_STOP: '', T490_FORAGE_REACH: '1' }, `${world}
+  const rf = probe({ T347_FORAGE_ACT: '1', T374_DEMAND_STOP: '0', T490_FORAGE_REACH: '1' }, `${world}
     const r=P.reach(mk(30), board, P.R()); const e=P.reach(mk(0), [], P.R()); console.log(JSON.stringify({ n:r.cells.length, e:e.cells.length }))`);
   ok(rf.n === 0 && rf.e === 0, 'ⓕ ★수요 문(`T374_DEMAND_STOP`)이 없으면 **아무것도 안 한다** — "그날 몫" 이 없다(끝없이 넓히지 않는다)');
   // ⓖ 원판 로지스틱·econ 무접촉
@@ -1158,11 +1175,11 @@ console.log('\n⑳ [T544] 넘침의 행방 — 곳간이 안 받은 몫은 짐�
     'ⓔ ★★econ `actDemandLeft` — 오늘치 **음수**는 남은 몫에 더해진다(1 + 0.3) · 어부·나무꾼은 종전 그대로(1.5 · 2)', JSON.stringify(ec));
   ok(ec.neg === -0.3 && ec.pos === 0, 'ⓔ ★★econ 틱은 **양수만** 장부에 옮기고 비운다 — 미룬 몫(음수)은 이튿날로 넘어간다(새 칸 0)', `음수 ${ec.neg} · 양수 ${ec.pos}`);
   // ⓖ 수요 문 끔 — 미룸 0 · 짐 0
-  const off = probe({ T347_FORAGE_ACT: '1', T374_DEMAND_STOP: '', T495_PARTIAL_PICK: undefined }, `${world}
+  const off = probe({ T347_FORAGE_ACT: '1', T374_DEMAND_STOP: '0', T495_PARTIAL_PICK: undefined }, `${world}
     const v=mk(0.35); const h=P5.hold(v); const r1=P.visit(v,{cx:110,cy:100},{seedKey:'b0'},order,worth,keep);
     console.log(JSON.stringify({ h, n:r1.n, gran:+(v._t347Gran||0).toFixed(4), sum:P5.sum(v), inflow:v.econ._t347InflowToday }))`);
   ok(off.h === 0 && off.n === 3 && off.gran === 3 && off.sum.pk === 0,
-    'ⓖ ★수요 문 끔(`Infinity`) — 미룸 0 · 딴 3 이 **다** 곳간에(짐 0) · 끈 판 곳간 비트 동일', JSON.stringify(off));
+    'ⓖ ★수요 문 끔(`=0` · `Infinity`) — 미룸 0 · 딴 3 이 **다** 곳간에(짐 0) · 끈 판 곳간 비트 동일', JSON.stringify(off));
   // ⓗ 존 문 — 빈 개체가 들고 있던 목록 밖 손을 돌려준다(자식 존 · 정본 문)
   const TMP = `/tmp/t544-forage-${process.pid}.db`;
   const rm = () => { for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} } };

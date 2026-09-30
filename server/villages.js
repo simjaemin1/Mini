@@ -6212,7 +6212,7 @@ function _t347PerLoad(unitsPerEntity) {
   const n = Math.floor(cap / kg);
   return n > 0 ? n : 1;
 }
-// ══ ★★★[T490 2026-09-28 · ④ⓑ · 팔 `T490_FORAGE_REACH` 기본 끔 · 값은 재민 #85] **원판이 비면 밖으로 걷는다** ═══════════════
+// ══ ★★★[T490 2026-09-28 · ④ⓑ · 팔 `T490_FORAGE_REACH` · ★[T544 추신 ⓑ 2026-09-30 · 재민 #85] **기본 켬** · 되돌림 `=0` · 반경 = 도보 1시간] **원판이 비면 밖으로 걷는다** ═══════════════
 //
 // ★왜 — T475 가 남긴 9%(곳간 기준 걷은 ≠ 딴): 목록이 아니라 **세계**다. 원판(네모 R 30셀 = 도보 15초)에 선 군락이 2~5 개뿐인
 //   마을(어촌2 K4 · 농촌2 K5 · 임업6 K4 …)이 서 있는 것을 다 따도 그날 몫(채집꾼 15~22명)에 못 미친다 · 다 따면 게이트가 닫혀
@@ -6229,13 +6229,22 @@ function _t347PerLoad(unitsPerEntity) {
 // ★무엇이 안 바뀌나 — 원판의 N·K(로지스틱 재생의 판)·w̄ · 헤드리스 한도식 · econ(한 글자도 안 만진다) · 밖에서 딴 개체는
 //   그 종의 제 주기(T122 `_stage`)로 돌아온다(`_t347Cut` 에 안 넣는다 — 원판 로지스틱이 남의 땅을 되살리지 않는다).
 // ⚠수요 문(`T374_DEMAND_STOP`)이 없으면 "그날 몫" 이 없다 — 팔은 아무것도 안 한다(끝없이 넓히지 않는다).
-function _t490ReachOn() { return typeof process !== 'undefined' && !!process.env && process.env.T490_FORAGE_REACH === '1'; }
+// ★★[T544 추신 ⓑ] **기본 켬**(재민 #85 — T490 권고 그대로) · `0` 만 끔. 수요 문(T374 · 같은 추신 ⓐ 기본 켬)이 "그날 몫" 을 주므로 몫만큼만 걷는다.
+function _t490ReachOn() { return typeof process !== 'undefined' && !!process.env && process.env.T490_FORAGE_REACH !== '0'; }
+//   ★★[T544 추신 ⓑ · T490 권고 ③] 반경은 **하루 왕복**과 **도보 1시간** 중 가까운 쪽 — 채집 영역은 도보 한 시간(고증 · T490 §0-ⓒ).
+//     도보 1시간 = 게임 1시간(게임일 ÷ 24 · `CARAVAN_LINGER_DAY_FRAC` 의 "1게임시간" 과 같은 뜻) × 걸음(`moveSpeed`) —
+//     게임일은 **정본**(`WORLD.dayLengthMs` 24분 ⇒ 게임 1시간 = 실 60초)으로 잰다: 거리는 실척이라 시험 시계(`VILLAGE_DAY_MS`)가 바꾸지 않는다.
+//     ⇒ 실제 하루: 하루 왕복 1,007셀 · 도보 1시간 64 px/초 × 60초 ÷ 32 = **120셀(120 m)** → 120. 자의 60초 하루: 왕복 42 < 120 → 42(왕복 못 하는 칸은 못 딴다).
+//     새 수 0 — 24 는 하루의 시간 수(정의) · 나머지는 존 정본(걸음 · 게임일 · 낮 비).
 function _t490ReachCells() {
   const sp = (state.deps && state.deps.moveSpeed) || 0;
   const dayR = (state.deps && state.deps.dayPhaseRatio) || 0;
   const dayS = (state.dayMs || 0) * dayR / 1000;                     // `_t341TripsPerDay` 의 낮 초 그대로
   if (!(sp > 0) || !(dayS > 0)) return 0;
-  return Math.floor(sp * dayS / 2 / SZ);                            // 한 번 오갈 수 있는 가장 먼 칸(⌊…⌋ — 넘으면 왕복 0)
+  const trip = Math.floor(sp * dayS / 2 / SZ);                      // 한 번 오갈 수 있는 가장 먼 칸(⌊…⌋ — 넘으면 왕복 0)
+  const W = require('./zone-config').WORLD;                          // 정본 게임일(이 파일의 다른 자리처럼 그 자리에서 읽는다 · require 캐시)
+  const hour = Math.floor(sp * ((W && W.dayLengthMs) || 0) / 24 / 1000 / SZ);   // ★[T544 추신 ⓑ] 도보 1시간(정본 게임일)
+  return hour > 0 ? Math.min(trip, hour) : trip;
 }
 function _t490Reach(vil, board, R) {
   const E = _lifeEcon();
@@ -6302,7 +6311,7 @@ function _t347Scan(vil, day) {
       }
     }
     if (_needK) { vil._t347K = K; vil._t347WBar = wN > 0 ? wSum / wN : 0; }
-    //   ★★★[T490 ④ⓑ] 원판이 (그날 몫에) 비면 **밖으로 걷는다** — 팔 `T490_FORAGE_REACH`(기본 끔 · 끄면 이 줄이 한 번도 안 돈다).
+    //   ★★★[T490 ④ⓑ] 원판이 (그날 몫에) 비면 **밖으로 걷는다** — 팔 `T490_FORAGE_REACH`(★[T544 추신] 기본 켬 · `=0` 이면 이 줄이 한 번도 안 돈다).
     //     밖의 자리는 목록 **뒤에** 붙는다(원판 먼저 딴다) · N·K(로지스틱의 원판)는 그대로 원판이다.
     if (_t490ReachOn()) { const ext = _t490Reach(vil, cells, R); for (const c of ext.cells) { cells.push(c); for (const t of c.kinds) _kinds.add(t); } vil._t490 = ext.dbg; }
     vil._t347Kinds = JOB_RES.forager.filter((k) => _kinds.has(k));   // ★[T475] 정본 차례 그대로 — 다 딴 종은 빠진다(그 품목은 수식이 낸다 · 게이트 문법의 종 판)
