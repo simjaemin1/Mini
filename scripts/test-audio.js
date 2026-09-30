@@ -1189,6 +1189,10 @@ console.log('\n⑰ ★★[T412] 도구/작업 — 사건만 운다 · 서버가 
   const zsrc = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
   const layerCode = require('./code-only.js')(modCode);
   const fnOf = (line) => { const lines = zsrc.split('\n'); for (let i = line - 1; i >= 0; i--) { const m = /^(?:async )?function ([A-Za-z_0-9]+)\(/.exec(lines[i]); if (m) return m[1]; } return null; };
+  //   ★[T537 ⓪] ⑰c 는 최상위 `const 대문자 = ` 도 자리의 경계로 본다 — 터 계약 표(`SHELTER_SPEC` 등)의 `onDone` 안 지움이 그 위 **아무 함수**에 붙던 것을 끊는다
+  //     (T509 전엔 `tryKilnAdvance` 로, 뒤엔 `_wellCellAt` 으로 잘못 붙었다 — 우물 칸 술어는 건물을 안 지운다).
+  //     ⚠⑰a 에는 안 쓴다 — 쓰면 10분 청소(`setInterval` · 최상위)의 `ground_item_removed` 가 드러난다(보고/T537 ⓪ 회부 — 제품 무접촉).
+  const fnOfSpec = (line) => { const lines = zsrc.split('\n'); for (let i = line - 1; i >= 0; i--) { const m = /^(?:async )?function ([A-Za-z_0-9]+)\(/.exec(lines[i]) || /^const ([A-Z][A-Z_0-9]*) = /.exec(lines[i]); if (m) return m[1]; } return null; };
   const sitesOf = (type) => zsrc.split('\n').map((l, i) => (new RegExp(`type:\\s*'${type}'`).test(l) ? fnOf(i + 1) : null)).filter(Boolean);
   // ⑰a 줍기 — `ground_item_removed` 는 줍기 함수에서만 나간다(그래서 '누가 주웠다' 로 읽어도 된다)
   const gr = [...new Set(sitesOf('ground_item_removed'))];
@@ -1199,10 +1203,11 @@ console.log('\n⑰ ★★[T412] 도구/작업 — 사건만 운다 · 서버가 
   const cs = [...new Set(sitesOf('chest_state'))].sort();
   ok(JSON.stringify(cs) === JSON.stringify(['tryChestPut', 'tryChestTake']), '⑰b `chest_state` 는 궤에 넣기·꺼내기 뒤에만 나간다(= 사건)', cs.join(' '));
   // ⑰c 터 — 지워지는 자리가 **단계 오름**이면 조용(새 것이 선다)
-  const rmSites = [...new Set(sitesOf('building_removed'))].sort();
+  const rmSites = [...new Set(zsrc.split('\n').map((l, i) => (/type:\s*'building_removed'/.test(l) ? fnOfSpec(i + 1) : null)).filter(Boolean))].sort();
   const advance = rmSites.filter((f) => /Advance/.test(f));
   const Q = (man.buildRemoved || {})._조용 || [];
-  ok(advance.length >= 3 && ['hut_site', 'kiln_site', 'furnace_site', 'shelter_site'].every((x) => Q.includes(x)),
+  //   ★[T537 ⓪] 단계 오름 지움은 두 자리다 — 움집 `tryHutAdvance` · 나머지 터(노·숯가마·우물·회관·쉼터) 공용 `_siteAdvance`(옛 `tryKilnAdvance` 세기는 오귀속이었다)
+  ok(advance.includes('_siteAdvance') && advance.includes('tryHutAdvance') && !rmSites.includes('_wellCellAt') && ['hut_site', 'kiln_site', 'furnace_site', 'shelter_site'].every((x) => Q.includes(x)),
      '⑰c ★터가 다음 단계로 **바뀌는** 지움(`*Advance`)은 `build_break` 로 안 운다 — 터 타입이 `_조용` 에 있다', `지우는 자리 ${rmSites.join(' ')}`);
   // ⑰d 가장자리 규칙 — 표의 칸이 서버 코드에서 실제로 켜지고 꺼진다
   const E = man.buildEdge || [];
