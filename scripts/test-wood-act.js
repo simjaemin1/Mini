@@ -580,8 +580,10 @@ console.log('\n⑫ [T561] 명부가 몸의 그날을 본다 · 몸이 하루 1�
   const gs = fnOf('_lifeGranStep'), la = fnOf('_t561Ladder');
   ok(/if \(npc\.inventory && \(npc\.inventory\.wood \|\| 0\) > 0\) _t561Ladder\(vil, npc, now\);/.test(gs)
      && /if \(!T561_ROSTER_BODY \|\| !vil \|\| !vil\.econ\) return 0;/.test(la) && /const got = _t325Deliver\(vil, npc\);/.test(la)
-     && /vil\._t325PreWalked = \(vil\._t325PreWalked \| 0\) \+ 1;/.test(la),
-    '⑫ ★몸 ⓑ — 사다리 정산에서 **통나무를 든 몸만** 온다 · 끄면 첫 줄에서 돌아간다 · 다리는 해 질 녘의 그 다리(`_t325Deliver`) · 그날 걸은 몸으로 센다(몸 XOR 일괄)');
+     && /vil\._t325PreWalked = \(vil\._t325PreWalked \| 0\) \+ 1;/.test(la)
+     && /if \(T561_ROSTER_BODY && _cap > 0 && _kg >= _cap && !\(vil\._granList && vil\._granList\.length\)\) \{ npc\._t561Hall = \{ at: 0 \};/.test(tick)
+     && /_t561Ladder\(vil, npc, now\); npc\._t561Hall = null;/.test(tick),
+    '⑫ ★몸 ⓑ — 사다리 정산에서 **통나무를 든 몸만** 온다 · 끄면 첫 줄에서 돌아간다 · 다리는 해 질 녘의 그 다리(`_t325Deliver`) · 그날 걸은 몸으로 센다(몸 XOR 일괄) · ⓒ 곳간 없으면 회관(켬만 · 같은 다리)');
   //   ② 실행 — 일괄(정본 `_lifeDaily`) · ⑪ 의 판 그대로(숲 12셀 × 3그루 · 하루 60,000ms ⇒ 4짐 · 짐당 2그루)
   const VP = JSON.stringify(path.join(ROOT, 'server', 'villages.js'));
   const run = (env, o) => probe(Object.assign({ T325_WOOD_ACT: '1', T347_FORAGE_ACT: '', T449_BODY_DAY: '', T491_BATCH_FROM_BODY: '', T561_ROSTER_BODY: '', T374_DEMAND_STOP: '0' }, env),
@@ -634,7 +636,7 @@ console.log('\n⑫ [T561] 명부가 몸의 그날을 본다 · 몸이 하루 1�
   //   ③ 실행 — 몸(정본 `npcLifeTick` 을 1초씩 · 걸음 = 존 걸음 × 배회 0.6 — 몸이 걷는 그 속도 · 보고/T491 §2-ⓒ)
   //     숲 = 마을 동쪽 한 줄 8셀 × 1그루(한 그루 6단 = 18kg — 둘이면 짐 25kg 을 넘는다) · 곳간 사다리 = 마을 남쪽 · 낮 1,008초(실제 날의 낮)
   const MOVE = +((codeOf(ZSRC).match(/const MOVE_SPEED = (\d+);/) || [])[1]);
-  const body = (env) => probe(Object.assign({ T325_WOOD_ACT: '1', T347_FORAGE_ACT: '', T561_ROSTER_BODY: '', T374_DEMAND_STOP: '0' }, env),
+  const body = (env, o) => probe(Object.assign({ T325_WOOD_ACT: '1', T347_FORAGE_ACT: '', T561_ROSTER_BODY: '', T374_DEMAND_STOP: '0' }, env),
    `const E=require(${EP}); const V=require(${VP}); const P=V.__labProbe;
     const SZ=32, ccx=400, ccy=400, DAY=1440000, D=60, T0=D*DAY; const players=new Map();
     const trees=new Map(); for(let i=0;i<8;i++) trees.set((ccx+6+i)+','+ccy,1); let cut=0;
@@ -646,7 +648,7 @@ console.log('\n⑫ [T561] 명부가 몸의 그날을 본다 · 몸이 하루 1�
     const ev=E.createVillage({initialPop:0,name:'x',fertility:1}); ev._t325Cells=8; ev.counts=ev.counts||{}; ev.counts.lumberjack=1; const w0=(ev.storage.wood||0)+((ev.treasury&&ev.treasury.wood)||0);
     const list=[]; for (const [k,n] of trees) { const [cx,cy]=k.split(',').map(Number); list.push({cx,cy,x:cx*SZ+SZ/2,y:cy*SZ+SZ/2,n}); }
     const vil={dbId:7,name:'x',ccx,ccy,econ:ev,npcPids:[1],_terrSet:new Set([ccx+','+ccy]),_farmSet:new Set(),_drySet:new Set(),_potSet:new Set(),_crop:new Map(),_cropClaim:new Set(),_claim:new Set(),
-      _site:null,_houseCells:[],_granList:[{cx:ccx,cy:ccy+4}],_maxRPx:200,_clearCrew:0,_buildCrew:0,
+      _site:null,_houseCells:[],_granList:${o && o.noGran ? '[]' : '[{cx:ccx,cy:ccy+4}]'},_maxRPx:200,_clearCrew:0,_buildCrew:0,
       _t325Trees:{day:D,list,N:8,K:8,wBar:6},_jobSites:{day:D,tmul:1,lumberjack:[],miner:[],forager:[],hunter:[],fisher:[],t325Trees:list}};
     P._memberProbe.setup({},[vil]);
     const npc={pid:1,isNpc:true,simJob:'lumberjack',simVillageId:7,x:(ccx+6)*SZ+SZ/2,y:ccy*SZ+SZ/2,hp:100,maxHp:100,npcHomeX:ccx*SZ,npcHomeY:ccy*SZ,inventory:{},simLonOff:0};
@@ -655,11 +657,12 @@ console.log('\n⑫ [T561] 명부가 몸의 그날을 본다 · 몸이 하루 1�
     for (let s=0; s<1008; s++) { t+=1000;
       const had=npc._granTask?1:0; const r=V.npcLifeTick(npc,t); if(had && !npc._granTask) lad++;
       if (r===true && npc.targetX!=null) { const dx=npc.targetX-npc.x, dy=npc.targetY-npc.y, d=Math.hypot(dx,dy); if (d>0) { const k=Math.min(1,SP/d); npc.x+=dx*k; npc.y+=dy*k; } }
-      labs[npc._lifeAct||'-']=(labs[npc._lifeAct||'-']||0)+1; }
+      labs[npc._lifeAct||'-']=(labs[npc._lifeAct||'-']||0)+1; npc._hmx=Math.max(npc._hmx||0, npc.inventory.wood||0); }
     const hand=npc.inventory.wood||0, pre=vil._t325PreWalked||0; const g0=(ev.storage.wood||0)+((ev.treasury&&ev.treasury.wood)||0)-w0;
+    const handMaxRec=npc._hmx||0;
     P._t449Probe.daily(vil); const g1=(ev.storage.wood||0)+((ev.treasury&&ev.treasury.wood)||0)-w0;
     const home=Math.hypot(npc.x-npc.npcHomeX,npc.y-npc.npcHomeY);
-    console.log(JSON.stringify({cut,hand,pre,lad,dayIn:+g0.toFixed(4),afterDusk:+g1.toFixed(4),batch:(vil._t325Dbg&&vil._t325Dbg.cut)||0,walked:vil._t325Dbg&&vil._t325Dbg.walked,labs,site:npc._t325Site||null,act:npc._lifeAct||null,home:+home.toFixed(1)}))`);
+    console.log(JSON.stringify({cut,hand,pre,lad,dayIn:+g0.toFixed(4),afterDusk:+g1.toFixed(4),batch:(vil._t325Dbg&&vil._t325Dbg.cut)||0,walked:vil._t325Dbg&&vil._t325Dbg.walked,labs,site:npc._t325Site||null,act:npc._lifeAct||null,home:+home.toFixed(1),handMax:handMaxRec}))`);
   const bOff = body({}), bOn = body(ON);
   ok(bOff.cut === 1 && bOff.hand === 6 && bOff.dayIn === 0 && bOff.afterDusk > 0 && bOff.batch === 0,
     '⑫ ★★[실행 · 끔] 옛 몸은 **하루 1그루**에서 멈춘다 — 비운 셀을 다시 골라 해 질 녘까지 그 위에 선다(보고/T491 §2-ⓑ 의 657/848) · 통나무는 해 질 녘에 곳간으로', `${bOff.cut}그루 · 손 ${bOff.hand}단 · 라벨 ${JSON.stringify(bOff.labs)}`);
@@ -668,6 +671,11 @@ console.log('\n⑫ [T561] 명부가 몸의 그날을 본다 · 몸이 하루 1�
     `${bOn.cut}그루 · 낮에 든 ${bOn.dayIn}단 · 사다리 ${bOn.lad}번 · 손 ${bOn.hand} · 걸은 몸 ${bOn.pre}`);
   ok(bOn.batch === 0 && bOn.walked === 1 && bOn.afterDusk === bOn.dayIn,
     '⑫ ★★[실행 · 켬] 몸이 낮에 넣은 날은 **일괄이 안 돈다**(몸 XOR 일괄 — 같은 날 두 번 베지 않는다 · 해 질 녘 손은 0)', `일괄 ${bOn.batch}그루 · 걸은 몸 ${bOn.walked}`);
+  //   곳간 없는 마을(틀 세계 13/50) — 켬은 회관(마을 중심)에 내린다(T400 폴백 자리) · 끔은 옛 몸(1그루)
+  const gOff = body({}, { noGran: true }), gOn = body(ON, { noGran: true });
+  ok(gOff.cut === 1 && gOn.cut === 8 && gOn.dayIn === bOn.dayIn && gOn.hand === 0 && gOn.handMax <= 12 && (gOn.labs['저장'] || 0) > 0 && gOn.pre === 1,
+    '⑫ ★★[실행 · 켬] **곳간 없는 마을**은 회관(마을 중심 — T400 이 자재를 꺼내는 폴백)에 내린다 — 짐은 한 짐(≤ 12단)을 안 넘는다 · 끔은 옛 몸 1그루',
+    `끔 ${gOff.cut}그루 · 켬 ${gOn.cut}그루 · 낮에 든 ${gOn.dayIn}단 · 손 최대 ${gOn.handMax}단 · 저장 ${gOn.labs['저장'] || 0}초`);
   ok(bOn.site && bOn.site.none === 1 && bOn.act === '휴식' && bOn.home < 50,
     '⑫ [실행 · 켬] 그날 목록이 다 비면 **그날은 끝** — 집으로 간다(라벨 `휴식` · T374 의 그 한 줄) · 그날은 다시 안 묻는다', `${JSON.stringify(bOn.site)} · ${bOn.act} · 집까지 ${bOn.home}px`);
 }

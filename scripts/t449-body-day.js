@@ -40,7 +40,13 @@ const ENV = { off: Object.assign({ T449_BODY_DAY: '' }, ACTS), on: Object.assign
   //   ★[T491 ② 되물음] 몸이 안 멈추면(`scripts/t491-whatif-probe.js` 로 띄울 때만 뜻이 있다) — `wa` 빈 셀 건너기 · `wb` + 곳간 사다리에서 목재도 내림
   wa: Object.assign({ T449_BODY_DAY: '', T491_WHATIF: 'a' }, ACTS), wb: Object.assign({ T449_BODY_DAY: '', T491_WHATIF: 'b' }, ACTS),
   //   ★[T491 ④ 대조] 나무꾼이 앓은 날(`scripts/t491-injure-probe.js` 로 띄울 때만 뜻이 있다 · 마을은 `T491_INJURE_VIL`) — 끔 · T449 켬 · T491 켬
-  ioff: Object.assign({ T449_BODY_DAY: '' }, ACTS), ion: Object.assign({ T449_BODY_DAY: '1' }, ACTS), it491: Object.assign({ T449_BODY_DAY: '', T491_BATCH_FROM_BODY: '1' }, ACTS) };
+  ioff: Object.assign({ T449_BODY_DAY: '' }, ACTS), ion: Object.assign({ T449_BODY_DAY: '1' }, ACTS), it491: Object.assign({ T449_BODY_DAY: '', T491_BATCH_FROM_BODY: '1' }, ACTS),
+  //   ★[T561] 팔 셋 — `t561` = 명부가 몸의 그날을 본다 · 몸이 안 멈춘다(`T561_ROSTER_BODY=1`) · `t561b` = 한 번 더(A/A) · `it561` = 앓은 날 판의 켬
+  t561: Object.assign({ T449_BODY_DAY: '', T561_ROSTER_BODY: '1' }, ACTS), t561b: Object.assign({ T449_BODY_DAY: '', T561_ROSTER_BODY: '1' }, ACTS),
+  it561: Object.assign({ T449_BODY_DAY: '', T561_ROSTER_BODY: '1' }, ACTS),
+  //   ★[T561] 수요 문 끈 짝(`T374_DEMAND_STOP=0` — T491 판을 잰 때의 세계 · ★[T544 추신] 지금 기본은 켬) — 걸음 한도가 그대로 드러난다
+  offnd: Object.assign({ T449_BODY_DAY: '', T374_DEMAND_STOP: '0' }, ACTS), t561nd: Object.assign({ T449_BODY_DAY: '', T561_ROSTER_BODY: '1', T374_DEMAND_STOP: '0' }, ACTS),
+  ioffnd: Object.assign({ T449_BODY_DAY: '', T374_DEMAND_STOP: '0' }, ACTS), it561nd: Object.assign({ T449_BODY_DAY: '', T561_ROSTER_BODY: '1', T374_DEMAND_STOP: '0' }, ACTS) };
 //   ★[T491] 들여다보기 창 — 기본은 T449 의 그 창 · `T449_PROBE=scripts/t491-probe.js` 면 몸의 하루까지(그 창이 T449 창을 같이 싣는다)
 const PROBE = process.env.T449_PROBE || 'scripts/t449-probe.js';
 const TPL = process.env.T449_TPL || '';

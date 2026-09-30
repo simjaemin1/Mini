@@ -36,8 +36,9 @@ process.on('SIGUSR2', () => {
       const wd = v._t325Dbg || null, fd = v._t347Dbg || null;
       rows.push({ n: v.name, id: v.dbId, cx: v.ccx, cy: v.ccy, pop: e && e.npcs ? e.npcs.length : null, fe, food: r4(s.food || 0), wood: r4(s.wood || 0),
         sto: full ? sto : undefined, houses: v._houseCells ? v._houseCells.length : 0, gran: v._granList ? v._granList.length : 0,
-        t449: v._t449 || null, wd: wd ? { on: wd.on, walked: wd.walked, ln: wd.ln, cells: wd.cells, cap: wd.cap, cut: wd.cut, trips: wd.trips, perLoad: wd.perLoad, t491: wd.t491 || undefined } : null,   // ★[T491] 짐 수 · 한 짐 · 몸 명부 칸(켠 판만)
-        fd: fd ? { on: fd.on, walked: fd.walked, fg: fd.fg, cells: fd.cells, cap: fd.cap, pick: fd.pick } : null,
+        t449: v._t449 || null, wd: wd ? { on: wd.on, walked: wd.walked, ln: wd.ln, cells: wd.cells, cap: wd.cap, cut: wd.cut, trips: wd.trips, perLoad: wd.perLoad, t491: wd.t491 || undefined,   // ★[T491] 짐 수 · 한 짐 · 몸 명부 칸(켠 판만)
+          t561: wd.t561 || undefined, stop: wd.stop || 0, dem: wd.dem } : null,   // ★[T561] 나선 몸 · econ 수 · 사다리 누계(켠 판만) · 수요 문(T374)
+        fd: fd ? { on: fd.on, walked: fd.walked, fg: fd.fg, cells: fd.cells, cap: fd.cap, pick: fd.pick, t561: fd.t561 || undefined, stop: fd.stop || 0 } : null,
         hlB: v._t368HlBody || 0, hlX: v._t368HlBatch || 0,
         del: { fish: r4(v._t312Deliv || 0), wood: r4(v._t325Deliv || 0), forage: r4(v._t347Deliv || 0), farm: r4(v._t368Deliv || 0) },
         dCl: v._dCl || 0, dSt: v._dSt || 0, dTk: v._dTk || 0, mCl: v._mCl || 0, mSt: v._mSt || 0, mTk: v._mTk || 0 });
