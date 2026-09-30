@@ -5472,6 +5472,12 @@ async function _acceptConnection(ws, req, C) {
     if (typeof _takeover.thirst === 'number') player.thirst = _takeover.thirst;
     if (typeof _takeover.vp === 'number') player.vp = _takeover.vp;
     if (_takeover.isDown) { player.isDown = true; player.downedAt = _takeover.downedAt; }
+    //   ★★[T563] **정해진 깨어남도 몸을 따라온다.** 종전엔 `isDown`·`downedAt` 만 이어서, 포기(또는 창 소진) 뒤 다시 붙으면
+    //     `_deadUntil` 이 0 인 채 창은 이미 지나 있어 다음 틱이 `resolveDowned` 를 **또** 불렀다(짐 두 번 · 시계 되감김 — ⓐ 와 같은 구멍의 다른 문).
+    if (_takeover.isDown && _takeover._deadUntil) {
+      player._deadUntil = _takeover._deadUntil; player._wakeSpot = _takeover._wakeSpot || null;
+      player._wakeMsg = _takeover._wakeMsg || null; player._diedInWild = !!_takeover._diedInWild;
+    }
     sx = player.x; sy = player.y;   // 아래 저장·로그·welcome 이 같은 값을 봐야 한다
     console.log(`[${ZONE_ID}] ↻ 몸 승계: ${name} (${playerId}) @ (${sx.toFixed(0)}, ${sy.toFixed(0)}) — 저장본 대신 살아 있던 몸`);
   }
@@ -5640,6 +5646,7 @@ async function _acceptConnection(ws, req, C) {
     send(ws, { type: 'player_downed', pid: player.pid, rescueWindowMs: RESCUE_WINDOW_MS,
       options: listRespawnOptions(player), source: 'relogin' });
     broadcast({ type: 'player_down_state', pid: player.pid, isDown: true, why: 'relogin' });   // ★[T402] 재접속 복원 — 옆 `player_downed` 의 그 낱말
+    if (player._deadUntil) _sayWake(player, '⏳ 정해진 대로 —');   // ★[T563] 이미 정해진 몸이면 패널은 기다림을 말한다(버튼 아님)
   }
 
   // ★★[T139 2026-09-06] **부름 알림함** — 접속 중이 아니어도 부름은 남는다(T128 회부 2 · T115 와 같은 자리).
@@ -11765,8 +11772,26 @@ function wakeCellOf(spot) {
 //   ⇒ 화면(부활 패널)은 그대로 두되 **뜻을 바꾼다**: 고르는 것은 부활 지점이 아니라
 //     **"구조를 기다리지 않고 여기서 깨어나겠다"** 는 포기 선언이다. 대가는 창이 소진된 것과 **같다**:
 //     마을 반경 안이면 이송(짐 보존), 야생이면 사망(짐 낙하 · 후유증). 값을 치르는 자리가 하나다.
+//
+// ★★[T563 2026-09-30 · 재민 실기 라이브] "(x, y)에서 부활 을 눌러도 부활이 안 된다."
+//   실클라로 재면(`e2e-respawn-choice`) 문은 **닿는다** — 끊긴 것은 두 자리였다:
+//   ⓐ **누를 때마다 다시 죽었다.** 포기가 정해진 뒤(`_deadUntil`)에도 이 함수가 `resolveDowned` 를 또 불러
+//     짐을 한 번 더 떨구고(절반의 절반) 깨어날 시각을 **처음부터** 다시 적었다. 기다리다 다시 누르는 사람은
+//     누를 때마다 시계가 되감겨 **영영 못 깨어난다**. ⇒ 정해졌으면 **남은 초만 말하고 돌아간다**(값을 두 번 안 치른다).
+//   ⓑ **기다림을 말하지 않았다.** 깨어남은 T88 식(기본 + 거리 ÷ 이속 — 라이브 2분 + α)인데 알림은
+//     "구조를 기다리지 않기로 했다…" 한 줄 뒤 침묵이었다 ⇒ 정해진 순간 **몇 초 뒤 · 어디서**를 한 번 말한다(`_sayWake`).
+//   ★새 규칙 0 — 사슬(포기 → 이송|사망 → 깨어남) · 지연 식 · 사다리 순서는 그대로다. 바뀐 건 **두 번째 누름이 무효**라는 것과 말뿐.
+function _sayWake(p, lead) {
+  const left = Math.max(0, (p._deadUntil || 0) - Date.now());
+  const sp = p._wakeSpot;
+  const nm = sp && sp.name ? sp.name : null;
+  const where = nm || (sp ? `(${Math.round(sp.x)}, ${Math.round(sp.y)})` : '이 자리');
+  send(p.ws, { type: 'down_wake', pid: p.pid, wakeInMs: left, x: sp ? sp.x : null, y: sp ? sp.y : null, name: nm });
+  send(p.ws, { type: 'notice', text: `${lead} 약 ${Math.ceil(left / 1000)}초 뒤 ${where}에서 깨어난다` });
+}
 function tryRespawnChoice(player, claimId) {
   if (!player.isDown) { send(player.ws, { type: 'notice', text: '다운 상태가 아닙니다' }); return; }
+  if (player._deadUntil) { _sayWake(player, '⏳ 이미 정해졌다(다시 눌러도 앞당겨지지 않는다) —'); return; }   // ★[T563 ⓐ]
   const opts = listRespawnOptions(player);
   const target = opts.find(o => o.claimId === claimId) || opts[0];
   if (!target) {
@@ -11966,12 +11991,13 @@ function resolveDowned(p, wakeSpotOverride) {
   if (rescued) {
     // ── 마을 안 불사 — 죽지 않는다. 짐도 그대로다. 마을 사람이 쉼터로 옮긴다.
     p._deadUntil = Date.now() + delayMs;
-    p._wakeSpot = spot ? { x: spot.x, y: spot.y } : null;
-    p._wakeMsg = `🏘️ 마을 사람들이 당신을 쉼터로 옮겼다 — ${spot && spot.name ? spot.name + '에서 ' : ''}깨어났다`
+    p._wakeSpot = spot ? { x: spot.x, y: spot.y, name: spot.name || spot.vname || null } : null;   // ★[T563] 이름은 말(`_sayWake`)에만 쓴다
+    p._wakeMsg = `🏘️ 마을 사람들이 당신을 쉼터로 옮겼다 — ${spot && (spot.name || spot.vname) ? (spot.name || spot.vname) + '에서 ' : ''}깨어났다`
                + ((meal && meal.fed) ? ' · 마을 사람이 죽 한 그릇을 먹였다' : '');
     p._diedInWild = false;
     _noteRescueEvent(p, 'village');   // ★[T119] 사건 장부 접점 1줄 — 마을이 옮긴 것도 구조다
     send(p.ws, { type: 'notice', text: '🏘️ 마을 안이다 — 누군가 당신을 발견했다…' });
+    _sayWake(p, '🏘️ 쉼터로 옮겨진다 —');   // ★[T563 ⓑ]
     console.log(`[${ZONE_ID}] 🏘️ ${p.name} 마을 안 구제 — 쉼터 이송 대기`
       + ((meal && meal.fed) ? ` · 곳간 한 끼(${meal.item} ${meal.qty} · 남은 ${meal.stockAfter})` : ''));
     return;
@@ -11980,11 +12006,12 @@ function resolveDowned(p, wakeSpotOverride) {
   _deathDrop(p);
   Body.startAftermath(p, gameDayNow());
   p._deadUntil = Date.now() + delayMs;
-  p._wakeSpot = spot ? { x: spot.x, y: spot.y } : null;
-  p._wakeMsg = `⚰️ 얼마나 지났는지 모르겠다 — ${spot && spot.name ? spot.name + '에서 ' : ''}깨어났다.`
+  p._wakeSpot = spot ? { x: spot.x, y: spot.y, name: spot.name || spot.vname || null } : null;   // ★[T563] 이름은 말에만
+  p._wakeMsg = `⚰️ 얼마나 지났는지 모르겠다 — ${spot && (spot.name || spot.vname) ? (spot.name || spot.vname) + '에서 ' : ''}깨어났다.`
              + ` 짐은 쓰러진 자리에 두고 왔다 (며칠은 숨이 덜 붙는다)`;
   p._diedInWild = true;
   send(p.ws, { type: 'notice', text: '⚰️ 정신을 잃었다…' });
+  _sayWake(p, '⏳');   // ★[T563 ⓑ] 몇 초 뒤 · 어디서 — 침묵 대신
   console.log(`[${ZONE_ID}] ⚰️ ${p.name} 사망 @ (${p.x.toFixed(0)},${p.y.toFixed(0)}) — 짐 낙하 · 후유증`);
 }
 
