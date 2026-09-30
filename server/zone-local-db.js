@@ -365,6 +365,29 @@ const stmtInsertVillageBuilding = db.prepare(
   'INSERT INTO village_buildings (village_id, type, cx, cy, floors, data, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
 );
 const stmtGetVillageBuildings = db.prepare('SELECT * FROM village_buildings WHERE village_id = ?');
+// ★★[T538 2026-09-30] **부팅 로드를 경계 있게** — 서울 한반도 존이 부팅 중 힙 978MB 에서 죽었다(restart 272).
+//   8주 산 DB 의 `village_buildings` 154만 행 중 `terr` 120만(78%)을 마을마다 `SELECT *` 로 JS 객체로 올려
+//   50마을치를 실물화 끝까지 쥐고 있었다(`_bRows` · 사본 부팅 heapUsed 최고 1,1xx MB).
+//   ⇒ 읽는 자리만 나눈다(새 표 0 · 새 수 0 · 쓰기 0): 좌표 셋(`terr` · `nongzone` · 논밭)은 **배열 행으로 한 줄씩 흘려**
+//     Set 에 넣고(객체 0 · 쥐지 않는다) · 구조물 행(집·곳간·집터·의뢰집·도랑·쉼터·회관)만 종전 `SELECT *` 꼴로 쥔다 ·
+//     마당·광장·텃밭(부팅이 반지름 말고는 안 쓴다)은 SQL 이 반지름만 잰다.
+//   ★순서 — 종전 `SELECT * … WHERE village_id = ?` 는 존 안에서 `idx_village_buildings_vid` 를 타 **id 순**으로 나왔다
+//     (사본 부팅 실측: 논·밭이 섞인 `_farmSet` 의 삽입 순서가 id 순일 때만 종전과 같다 — type 순으로 뽑은 첫 판은 31마을이 순서만 달랐다).
+//     Set 의 삽입 순서가 뒤 계산(영토 후보의 동점 · 실물화 행 순서)에 닿으므로 새 조회는 `ORDER BY id` 로 그 순서를 **글자로** 박는다(계획기에 안 맡긴다).
+const T538_STRUCT_TYPES = "('granary','hall','house','housesite','phouse','psitework','ditch','shelter')";
+const stmtVbCells = {
+  terr: db.prepare("SELECT cx, cy FROM village_buildings WHERE village_id = ? AND type = 'terr' ORDER BY id"),
+  nongzone: db.prepare("SELECT cx, cy FROM village_buildings WHERE village_id = ? AND type = 'nongzone' ORDER BY id"),
+  farm: db.prepare("SELECT cx, cy, type FROM village_buildings WHERE village_id = ? AND type IN ('farmland','dryfield') ORDER BY id"),
+  //   도랑 계획(`_ditchPlan` · 부팅 자가치유 때만)이 막는 나머지 행 — 종전엔 `_bRows` 안에 있었다
+  other: db.prepare(`SELECT type, cx, cy FROM village_buildings WHERE village_id = ? AND type NOT IN ('terr','nongzone') AND type NOT IN ${T538_STRUCT_TYPES} ORDER BY id`),
+};
+for (const k in stmtVbCells) { try { stmtVbCells[k].setReturnArrays(true); } catch (e) { /* 옛 node — 객체 행(느리지만 같은 값) */ } }
+const stmtVbStruct = db.prepare(`SELECT * FROM village_buildings WHERE village_id = ? AND type IN ${T538_STRUCT_TYPES} ORDER BY id`);
+//   반지름 — 종전 부팅은 **모든 행**의 hypot 최대를 쟀다. 제곱 거리 최대(정수 · SQLite 가 C 에서)인 행만 돌려준다 → JS 가 같은 `Math.hypot` 을 잰다.
+const stmtVbFar = db.prepare(
+  'SELECT cx, cy FROM village_buildings WHERE village_id = ?1 AND ((cx - ?2) * (cx - ?2) + (cy - ?3) * (cy - ?3)) = ' +
+  '(SELECT MAX((cx - ?2) * (cx - ?2) + (cy - ?3) * (cy - ?3)) FROM village_buildings WHERE village_id = ?1)');
 // ★[T284] 발자국이 있는 행만(집·의뢰집·쉼터·곳간) — 전쟁 콜라이더 색인용. 마을 한 곳 전체 행(농지 포함 ~5천)을 읽으면
 //   51마을에 ~300ms 라 교전마다 틱이 멎는다(실측 · 보고/T284 §0-ⓓ). village_id 색인을 탄다.
 const stmtGetVillageStructRows = db.prepare("SELECT type, cx, cy FROM village_buildings WHERE village_id = ? AND type IN ('house','phouse','shelter','granary')");
@@ -609,6 +632,13 @@ function insertVillageBuilding(b) {
 }
 function getVillageBuildings(villageId) { return stmtGetVillageBuildings.all(villageId); }
 function getVillageStructRows(villageId) { return stmtGetVillageStructRows.all(villageId); }
+// ★[T538] 부팅 로드 — 좌표만 한 줄씩(`fn(cx, cy[, type])` · 배열 행 · 쥐지 않는다) · 구조물 행 · 가장 먼 행
+function eachVillageCell(villageId, kind, fn) {
+  const st = stmtVbCells[kind]; if (!st) throw new Error('eachVillageCell: 모르는 종류 ' + kind);
+  for (const r of st.iterate(villageId)) { if (Array.isArray(r)) fn(r[0], r[1], r[2]); else fn(r.cx, r.cy, r.type); }
+}
+function getVillageStructAll(villageId) { return stmtVbStruct.all(villageId); }
+function getVillageFarthest(villageId, ccx, ccy) { return stmtVbFar.all(villageId, ccx, ccy); }
 function getVillageFarmInCellRect(cx0, cx1, cy0, cy1) { return stmtGetVillageFarmInCellRect.all(cx0, cx1, cy0, cy1); }
 
 console.log(`[${ZONE_ID}/db] 로컬 zone DB 준비됨: ${DB_PATH}`);
@@ -626,6 +656,7 @@ module.exports = {
   // §4-4 마을 시뮬 (villages.js)
   getVillagesByZone, insertVillage, updateVillageState, insertVillageBuilding, getVillageBuildings,
   getVillageFarmInCellRect, getVillageStructRows,
+  eachVillageCell, getVillageStructAll, getVillageFarthest,   // ★[T538] 경계 있는 부팅 로드
   // [2026-08-25 사건 레이어] 사건 장부·게시판 (events.js / villages.js)
   insertVillageEvent, getVillageEventsSince, pruneVillageEvents,
   insertVillageChronicle, getVillageChronicle, countVillageChronicle,   // ★[T18] 연대기(prune 없음)

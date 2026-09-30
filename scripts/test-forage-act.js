@@ -866,7 +866,20 @@ console.log('\n⑰ [T475] 걷는 목록은 마을마다 — 그 마을 원판에
   const econJob = (VC.match(/add\('econ', \(\) => \{[\s\S]*?\n  \}\);/) || [''])[0];
   const iH = econJob.indexOf('for (const vil of C.vils) _lifeHandsIn(vil);'), iT = econJob.indexOf('state.econV2.tickWorldV2(state.world);');
   ok(iH > 0 && iT > iH, 'ⓔ ★★econ 일 조각 안에서 손이 **틱 앞에** 곳간에 든다(`_lifeHandsIn` → `tickWorldV2`) — 새 단계 0(조각 순서 캐논 무변)', `${iH} < ${iT}`);
-  ok((VC.match(/_lifeHandsIn\(vil\);/g) || []).length === 1, 'ⓔ 부르는 자리는 **한 곳**(econ 일 조각의 한 줄 · 하네스 문은 정본을 그대로 부른다)');
+  //   ★[T538 추신 ⓪] T513 이 econ 하루를 조각으로 갈라(`_econDayParts` · `econ:head`) 부르는 자리가 **둘**이 됐다 — 사본이 아니라 **갈래**다:
+  //     `_openDayJobs` 의 `if (T513_DAY_SLICE && …tickWorldV2Parts…) _econDayParts(C, add); else add('econ', …)` — 한 하루에 **둘 중 하나만** 돈다.
+  //     ⇒ 계약을 제품 글자 그대로: 자리 둘 · 하나는 `econ:head` 조각(머리 `P.head()` 앞) · 하나는 끔 갈래 조각(`tickWorldV2` 앞) · 둘을 가르는 것은 그 `if/else` 한 줄.
+  const nHands = (VC.match(/_lifeHandsIn\(vil\);/g) || []).length;
+  const headLine = (VC.match(/add\('econ', \(\) => \{[^\n]*\}, 'econ:head'\);/) || [''])[0];
+  const iHh = headLine.indexOf('_lifeHandsIn(vil);'), iHp = headLine.indexOf('P.head()');
+  const fork = /if \(T513_DAY_SLICE && [^\n]*tickWorldV2Parts[^\n]*\) _econDayParts\(C, add\);\s*\n\s*else add\('econ', \(\) => \{/.test(VC);
+  ok(nHands === 2 && iHh > 0 && iHp > iHh && fork,
+    'ⓔ 부르는 자리는 **둘 — 갈래**(T513 조각 켬 = `econ:head` 조각에서 머리 앞 · 끔 = econ 한 조각에서 틱 앞) · `if/else` 한 줄이 가른다 = 한 하루에 **하나만** 돈다',
+    `자리 ${nHands} · econ:head 안 손 ${iHh} < 머리 ${iHp} · 갈래 ${fork ? '○' : '✗'}`);
+  { // 미끼 — 갈래를 없앤 판(두 자리가 한 하루에 **둘 다** 도는 꼴: `else` 를 지운다)이면 위 검사가 문다
+    const bait = VC.replace(/(_econDayParts\(C, add\);\s*\n\s*)else (add\('econ')/, '$1$2');
+    const forkB = /if \(T513_DAY_SLICE && [^\n]*tickWorldV2Parts[^\n]*\) _econDayParts\(C, add\);\s*\n\s*else add\('econ', \(\) => \{/.test(bait);
+    ok(bait !== VC && !forkB, 'ⓔ [자명 통과 금지] `else` 를 지운 미끼(손이 하루에 두 번 든다)면 갈래 검사가 **문다**', forkB ? '안 문다' : '문다'); }
   const hiBody = (VC.match(/function _lifeHandsIn\(vil\) \{[\s\S]*?\n\}/) || [''])[0];
   ok(/_t347Deliver\(vil, p\)/.test(hiBody) && /_t325Deliver\(vil, p\)/.test(hiBody) && !/ToGranary\(/.test(hiBody),
     'ⓔ ★같은 두 다리(`_t347Deliver`·`_t325Deliver`)를 부른다 — 회계를 새로 안 적었다(사본 0)');
