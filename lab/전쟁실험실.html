@@ -8733,9 +8733,15 @@ function _legProfitPerUnit(pFrom, pTo, transportCostPerUnit, expectedLossRatio) 
 //   ★econ 은 존마다 그대로다(세계를 합치지 않는다 — 하루 틱·RNG·세계 공급 `_worldStockOf` 전부 제 존). 호스트(존 서버 · 자)가 꽂는 것:
 //     world.xzone = { zone, stubs: [xzoneStub(...)], dist(a, b) → econ 거리(걸음 · 두 존 합친 지형) | Infinity, out: [], inbox: [] }
 //   ★스텁 = **이웃 존 마을의 질의 캐시**(값·재고·인구 · 시효 하루) — 사본이 아니다: econ 은 스텁에 **쓰지 않는다**(값을 빌려 고를 뿐).
-//   ★몸은 넘긴다(순간이동 0): 스텁이 목적지인 캐러밴은 도착일에 `out` 에 'arrive' 기록(짐·호위·집 값표)을 남기고 기다린다
+//   ★몸은 넘긴다(순간이동 0): 스텁이 목적지인 캐러밴은 `out` 에 'arrive' 기록(짐·호위·집 값표)을 남기고 기다린다
 //     (state 'xzone' · 상인은 계속 묶여 있다). 이웃 존이 **같은 도착 함수**(`_caravanArrive`)로 제 마을에서 팔고 사고(우회도 그 존 안)
 //     'return' 기록을 돌려준다 → 이 존이 inbound 로 이어 받아 **종전 귀환 갈래**가 곳간에 넣는다(귀환 약탈도 종전 자리).
+//   ★★[T533 2026-09-30] **기록은 몸이 경계 칸에 선 날 넘어간다**(T525 뼈대는 도착일이었다 — 그러면 이웃 존에 몸이 없다).
+//     호스트가 `split(제 마을, 스텁)` 을 주면(합친 지형 정본 교역로 — 길 중 제 존 몫 `fLocal` · 경계 칸) 출발 때 넘는 날을 적는다
+//     (`_xzCross` = 출발일 + 여정 × fLocal · 몸이 걸을 하루는 있어야 하므로 1일 이상). 받는 존은 **남은 일수**를 제 날에 더해
+//     제 몫을 걷고(state 'outbound' · 도착일에 같은 도착 함수) → 팔고 산 뒤 돌아가는 길도 제 몫만큼 걸어(`_xzBack`)
+//     경계 칸에 선 날 'return' 을 돌려준다. 여정 전체 일수는 같은 존 교역과 같다(한 경계 늦게 닿는 날은 받는 쪽이 뺀다).
+//     `split` 이 없으면(호스트가 안 줌) T525 뼈대 그대로 — 도착일에 넘긴다.
 //   ⚠기록은 절대 날짜가 아니라 **남은 일수**를 싣는다 — 존마다 econ 하루 수가 다르다(기동 시각·재부팅).
 //   ⚠가는 길 약탈은 **도착 존 호스트**가 정한다(`banditGang(from, to)` 에 스텁이 든다 — 지금 호스트는 스텁 쌍에 갱 0 · 회부).
 const T525_CROSS_ZONE = (typeof process !== 'undefined' && process.env && process.env.T525_CROSS_ZONE === '1');
@@ -8784,6 +8790,25 @@ function _xzStubData(X, day, evToData) {
 // 약탈 사상 — 도착 존에서 **집 마을의 스텁**에 떨어지면 델타로 쌓아 집으로 보낸다(스텁엔 사람이 없다 · 쓰지 않는다).
 function _xzKillW(c, v, n) { if (v && v._xz) { c._xzEsc = (c._xzEsc || 0) + n; return; } _killWarriors(v, n); }
 function _xzKillT(c, v) { if (v && v._xz) { c._xzTraderDead = true; c._done = true; c._abandoned = true; return; } killTrader(c, v); }
+// ★[T533] 제 존 몫의 일수 — 여정 `days` 중 길 비 `f` 만큼(반올림) · 두 구간 다 몸이 걸을 하루는 있어야 하므로 [1, days−1]
+//   (1일 여정은 그 1일 — 받는 쪽 몫 0 · 한 경계 늦게 닿는 하루가 곧 그 몫이다).
+function _xzLeg(days, f) { return days >= 2 ? Math.min(days - 1, Math.max(1, Math.round(days * (f == null ? 1 : f)))) : days; }
+// ★[T533] 넘는 날 — `sp` = 호스트 `split(제 마을, 스텁)` 의 답({ fLocal, ptLocal, ptPeer }) · 경계 칸은 호스트가 몸을 세울 자리(econ 은 싣기만).
+function _xzCrossOf(day, days, sp) {
+  const leg = _xzLeg(days, sp.fLocal);
+  return { day: day + leg, leg, f: sp.fLocal, ptLocal: sp.ptLocal || null, ptPeer: sp.ptPeer || null };
+}
+// ★[T533] 이 존이 받은 오늘 스텁(같은 존·같은 이름 · 시효 하루) — 이웃 존 캐러밴의 집 값표를 도착일 것으로(질의 캐시 · 사본 0).
+//   공유 스텁에 쓰지 않도록 얕은 새 겉을 만든다(약탈 델타 `tradeStats` 는 이 캐러밴 것 그대로).
+function _xzFreshHome(world, c, day) {
+  const X = world.xzone; if (!X || !c.from || !c.from._xz) return;
+  for (const s of (X.stubs || [])) {
+    if (s && s._xz && s.zone === c.from.zone && s.name === c.from.name && day - (s._xzDay == null ? -99 : s._xzDay) <= 1) {
+      c.from = Object.assign({}, s, { tradeStats: c.from.tradeStats || s.tradeStats });
+      return;
+    }
+  }
+}
 // ═══ ★★★[T299 · ★재민 판정 2026-09-19 로 정정] 둘째 화물과 그 관문 — **기본 끔** ═══════════
 //
 // 이 절은 T299 가 "기본 켬"으로 앉혔던 자리다. **재민이 같은 날 끔으로 되돌렸다.** 근거는 T299 가 낸 표다:
@@ -9481,6 +9506,11 @@ function tickTradeV2(world, day) {
         state: 'outbound',
         travelDays,
       });
+      // ★★[T533] 목적지가 이웃 존 스텁 — **경계 칸에 서는 날**을 적는다(몸이 넘는 날 = 기록이 넘는 날). 호스트가 `split` 을 안 주면 적지 않는다(T525 뼈대 = 도착일).
+      if (_XZ && b.v._xz && typeof _XZ.split === 'function') {
+        const _sp = _XZ.split(a.v, b.v);
+        if (_sp) world.caravans[world.caravans.length - 1]._xzCross = _xzCrossOf(day, travelDays, _sp);
+      }
 
       // ★★[T206 2026-09-12 · **계측 전용 문** — 주입이 없으면 한 글자도 안 바뀐다] 출발 leg 한 건의 자.
       //   같은 벽을 두 번 만났다(T173 귀환 화물 · T200 출발 화물): **캐러밴 하나 = 품목 하나**이고,
@@ -9842,9 +9872,19 @@ function tickCaravansV2(world, day) {
   for (const c of world.caravans) {
     if (c._done) continue;
 
-    if (c.state === 'outbound' && day >= c.arriveDay) {
-      if (c._xzHome) _xzArriveLoop(world, c, day);   // ★[T525] 이웃 존 캐러밴이 이 존 안에서 우회한 구간의 도착
+    // ★★[T533] 경계 칸에 서는 날(스텁이 목적지) — 몸과 기록이 함께 넘어간다(`_xzCross` 가 없는 캐러밴은 이 갈래를 안 탄다 = 종전).
+    if (c._xzCross && c.state === 'outbound' && c.to && c.to._xz && day >= c._xzCross.day) {
+      if (_xzOn(world)) _xzHandOff(world, c, day); else _xzBounce(world, c, day);
+    }
+
+    else if (c.state === 'outbound' && day >= c.arriveDay) {
+      if (c._xzHome) _xzArriveLoop(world, c, day);   // ★[T525·T533] 이웃 존 캐러밴의 도착(이 존 몫을 걸어 왔다 · 우회 뒤 도착도 여기)
       else _caravanArrive(world, c, day);
+    }
+
+    // ★★[T533] 이웃 존 캐러밴의 귀환 구간 — 집은 스텁이라 이 존 곳간에 넣지 않는다: 제 몫을 걸어 경계 칸에 선 날 집 존으로 넘긴다.
+    else if (c._xzHome && c.state === 'inbound') {
+      if (c._xzBack && day >= c._xzBack.day) _xzHandBack(world, c, day, c._xzRow || null, c._xzBack.remain);
     }
 
     else if (c.state === 'inbound' && day >= c.returnArriveDay) {
@@ -9903,76 +9943,98 @@ function tickCaravansV2(world, day) {
 
 // ═══ ★★[T525] 존 경계 넘기 — 몸의 기록 둘('arrive' · 'return') · 전부 팔 켬 + 호스트가 `world.xzone` 을 꽂았을 때만 닿는다 ═══
 //   기록은 호스트가 옮긴다(존 서버 = 안 문 핸드오프 · 자 = 워커 사이 전달). econ 은 `out` 에 쓰고 `inbox` 에서 읽을 뿐이다.
-// 이 존 캐러밴이 스텁(이웃 존 마을)에 닿았다 — 몸을 넘긴다. 짐은 **출발 때 그대로**(약탈은 도착 존이 도착 때 정한다 · 같은 존과 같은 시점).
+// 이 존 캐러밴이 경계 칸에 섰다(`_xzCross`) 또는 스텁에 닿았다(T525 뼈대 · `split` 없음) — 몸을 넘긴다.
+//   짐은 **출발 때 그대로**(약탈은 도착 존이 도착 때 정한다 · 같은 존과 같은 시점). ★[T533] 남은 일수·돌아올 일수·경계 칸을 싣는다.
 function _xzHandOff(world, c, day) {
-  const X = world.xzone;
+  const X = world.xzone, xc = c._xzCross || null;
   X.out.push({
     kind: 'arrive', id: c.id, fromZone: X.zone, toZone: c.to.zone, to: c.to.name,
-    home: xzoneSnapshot(c.from, day, true),   // 집 값표 — 같은 존 도착이 그날 `computeShadowPrices(c.from)` 로 보는 그것
+    home: xzoneSnapshot(c.from, day, true),   // 집 값표 — 같은 존 도착이 그날 `computeShadowPrices(c.from)` 로 보는 그것(도착 존은 도착일 스텁이 있으면 그것을 쓴다)
     giveRes: c.giveRes, giveAmt: c.giveAmt, giveRes2: c.giveRes2 || null, giveAmt2: c.giveAmt2 || 0, pFrom2: c.pFrom2_at_depart || 0,
     pFrom: c.pFrom_at_depart, pTo: c.pTo_at_depart, returnRes: c.returnRes || null,
     distance: c.distance, travelDays: c.travelDays, escort: c.escort, rerouted: c._rerouted || 0,
+    remain: Math.max(0, c.arriveDay - day), returnDays: c.travelDays,   // ★[T533] 남은 일수만(받는 존이 제 날에 더한다) · 돌아오는 길(거리 대칭)
+    fHome: xc ? xc.f : null, ptPeer: xc ? xc.ptPeer : null,              // ★[T533] 길 중 집 존 몫 · 경계 칸(받는 존 로컬 px — 몸을 세울 자리)
+    ptHome: xc ? xc.ptLocal : null,                                      // ★[T533] 같은 경계 칸의 집 존 로컬 px(되짚어 돌아올 때 몸이 설 자리)
   });
   c.state = 'xzone'; c._xzSentDay = day;   // 상인은 계속 묶여 있다(`_tradingUntil` 무변) · 'return' 이 올 때까지 이 존은 이 몸을 안 건드린다
 }
 // 스텁이 목적지인데 넘길 문이 없다(팔 끔 · 호스트 없음) — 짐을 집으로 되돌린다(빈손 귀환과 같은 뜻 · 질량 보존).
+//   ★[T533] 경계까지 걸었으면 걸어 온 만큼 되걷는다(`_xzCross.leg`) · 아니면 여정 일수(T525 뼈대).
 function _xzBounce(world, c, day) {
   c._returningRes = c.giveRes; c._returningAmt = c.giveAmt;
   if (c.giveRes2 && c.giveAmt2 > 0) { c._returningRes2 = c.giveRes2; c._returningAmt2 = c.giveAmt2; }
   c._abandoned = true; c.state = 'inbound';
-  c.returnArriveDay = day + (c.travelDays || 1);
+  c.returnArriveDay = day + ((c._xzCross && c._xzCross.leg) || c.travelDays || 1);
 }
 // 이웃 존 캐러밴을 이 존에서 치렀다 — 몸을 집 존으로 돌려보낸다(되사 온 짐 · 도착 존의 델타 · 그 도착 행).
-function _xzHandBack(world, c, day, row) {
+//   ★[T533] `remain` = 경계 칸에서 집까지 남은 일수(없으면 이 마을→집 전 구간 = T525 뼈대).
+function _xzHandBack(world, c, day, row, remain) {
   const X = world.xzone;
   const d = c.to ? _xzDist(world, c.to, c.from) : Infinity;
   const dist = (typeof d === 'number' && isFinite(d)) ? d : (c.distance || 0);
+  const rem = (remain != null) ? remain : travelDaysForDistance(dist);
   X.out.push({
     kind: 'return', id: c._xzHome.id, fromZone: X.zone, toZone: c._xzHome.zone, lastTo: c.to ? c.to.name : null,
     returningRes: c._returningRes || null, returningAmt: c._returningAmt || 0,
     returningRes2: c._returningRes2 || null, returningAmt2: c._returningAmt2 || 0,
-    abandoned: !!c._abandoned, traderDead: !!c._xzTraderDead, escKilled: c._xzEsc || 0,
+    abandoned: !!c._abandoned, traderDead: !!c._xzTraderDead, escKilled: c._xzEsc || 0, rerouted: c._rerouted || 0,
     tradeStats: Object.assign({}, (c.from && c.from.tradeStats) || {}),
-    distance: dist, returnDays: travelDaysForDistance(dist), row: row ? Object.assign({}, row) : null,
+    distance: dist, returnDays: rem, remain: rem,   // ★[T533] 남은 일수만(집 존이 제 날에 더한다)
+    ptPeer: c._xzBack ? c._xzBack.ptPeer : null,   // ★[T533] 경계 칸(집 존 로컬 px — 몸을 세울 자리)
+    row: row ? Object.assign({}, row) : null,
   });
-  c._done = true;
+  c._done = true; c._xzHandedBack = true;
 }
-// 우회 뒤 이 존 안에서 다시 닿았다(이웃 존 캐러밴) — 같은 도착 함수 → 끝났으면 돌려보낸다.
+// 이웃 존 캐러밴이 이 존 마을에 닿았다(도착일 · 우회 뒤 도착도) — 같은 도착 함수 → 팔고 산 뒤 돌아가는 길을 적는다.
 function _xzArriveLoop(world, c, day) {
+  _xzFreshHome(world, c, day);   // ★[T533] 집 값표 = 도착일 스텁(있으면) — 같은 존 도착이 그날 집 값을 보는 것과 같게
   const n0 = world.tradeLog.length;
   _caravanArrive(world, c, day);
-  if (c.state === 'outbound' && !c._done) return;   // 또 우회
+  if (c.state === 'outbound' && !c._done) return;   // 우회 — 이 존 안에서 한 구간 더(몸은 이 존에 있다)
   const row = world.tradeLog.length > n0 ? world.tradeLog[world.tradeLog.length - 1] : null;
-  if (row) row.xzone = c._xzHome.zone;
-  _xzHandBack(world, c, day, row);
+  if (row) { row.xzone = c._xzHome.zone; c._xzRow = row; }
+  if (c._done) { _xzHandBack(world, c, day, row, 0); return; }   // 상인이 죽었다 — 짐 전손(같은 존 약탈과 같은 끝 · 걸을 몸이 없다)
+  // ★[T533] 돌아가는 길 — 이 마을→집 걸음 일수 중 이 존 몫을 걸어 경계 칸에 선 날 넘긴다(호스트 `split` 이 없으면 지금 = T525 뼈대).
+  //   합친 길이 없는 쌍(우회로 먼 마을에 닿았다 — 정본 A* 예산 밖)은 **넘어온 경계 칸으로 되짚는다**(몫 = 1 − 집 몫).
+  const R = travelDaysForDistance(_xzDist(world, c.to, c.from));
+  const X = world.xzone;
+  let sp = (X && typeof X.split === 'function') ? X.split(c.to, c.from) : null;
+  if (!sp && c._xzPt) sp = { fLocal: (c._xzFHome != null) ? 1 - c._xzFHome : null, ptLocal: c._xzPt, ptPeer: c._xzPtHome || null };
+  const leg = sp ? _xzLeg(R, sp.fLocal) : 0;
+  c._xzBack = { day: day + leg, leg, remain: R - leg, ptLocal: sp ? (sp.ptLocal || null) : null, ptPeer: sp ? (sp.ptPeer || null) : null };
+  c.returnArriveDay = c._xzBack.day;   // 이 존 안의 귀환 = 경계 칸까지(몸의 귀환 구간이 이 날에 닿는다)
+  if (leg === 0) _xzHandBack(world, c, day, row, c._xzBack.remain);
 }
-// 이웃 존 캐러밴이 이 존 마을에 닿았다('arrive') — 집 마을은 스텁(값표·델타), 목적지는 이 존의 진짜 마을.
+// 이웃 존 캐러밴이 넘어왔다('arrive') — 집 마을은 스텁(값표·델타), 목적지는 이 존의 진짜 마을.
+//   ★[T533] 남은 일수만큼 이 존 몫을 걷는다(state 'outbound' · 도착일에 `_xzArriveLoop`). 기록이 한 경계 늦게 닿았으니 하루를 뺀다.
+//   id 는 집 존 이름을 붙인 글자(`xz:<존>:<id>`) — 이 존의 캐러밴 번호와 안 겹친다(몸 표의 열쇠 · 호스트가 같은 열쇠로 몸을 세운다).
 function _xzArrive(world, r, day) {
   const to = world.villages.find((v) => v.name === r.to) || null;
   const from = xzoneStub(r.home, r.fromZone, { _xzDay: day });
+  const rem = Math.max(0, (r.remain != null ? r.remain : 0) - 1);
+  const ret = (r.returnDays != null ? r.returnDays : (r.travelDays || 0));
   const c = {
-    id: r.id, trader: null, from, to,
+    id: 'xz:' + r.fromZone + ':' + r.id, trader: null, from, to,
     giveRes: r.giveRes, giveAmt: r.giveAmt, giveRes2: r.giveRes2 || null, giveAmt2: r.giveAmt2 || 0, pFrom2_at_depart: r.pFrom2 || 0,
     pFrom_at_depart: r.pFrom, pTo_at_depart: r.pTo, returnRes: r.returnRes || null,
     distance: r.distance, escort: r.escort, travelDays: r.travelDays,
-    departDay: day - (r.travelDays || 0), arriveDay: day, returnArriveDay: day + (r.travelDays || 0),
+    departDay: day, arriveDay: day + rem, returnArriveDay: day + rem + ret,
     state: 'outbound', _rerouted: r.rerouted || 0, _xzHome: { zone: r.fromZone, id: r.id },
+    _xzPt: r.ptPeer || null, _xzPtHome: r.ptHome || null, _xzFHome: (r.fHome != null) ? r.fHome : null,   // 넘어온 경계 칸(이 존 · 집 존 px) · 길 중 집 몫
   };
-  if (!to || !to.npcs || to.npcs.length === 0) {   // 그 마을이 없다(사라졌다 · 인구 0) — 짐을 되돌린다
+  if (!to || !to.npcs || to.npcs.length === 0) {   // 그 마을이 없다(사라졌다 · 인구 0) — 경계에서 짐을 되돌린다(걸어 온 만큼 되걷는다)
     c._returningRes = c.giveRes; c._returningAmt = c.giveAmt;
     if (c.giveRes2 && c.giveAmt2 > 0) { c._returningRes2 = c.giveRes2; c._returningAmt2 = c.giveAmt2; }
     c._abandoned = true; c.state = 'inbound';
-    _xzHandBack(world, c, day, null);
+    c._xzBack = { day, leg: 0, remain: (r.remain != null) ? Math.max(0, ret - r.remain) : ret, ptLocal: r.ptPeer || null, ptPeer: r.ptHome || null };
+    _xzHandBack(world, c, day, null, c._xzBack.remain);
     return;
   }
-  const n0 = world.tradeLog.length;
-  _caravanArrive(world, c, day);
-  const row = world.tradeLog.length > n0 ? world.tradeLog[world.tradeLog.length - 1] : null;
-  if (row) row.xzone = r.fromZone;
-  if (c.state === 'outbound' && !c._done) { world.caravans.push(c); return; }   // 우회 — 이 존 안에서 한 구간 더(몸은 이 존에 있다)
-  _xzHandBack(world, c, day, row);
+  world.caravans.push(c);   // 이 존 몫을 걷는다 — 도착일(오늘이면 이 날 루프가 곧 치른다)
 }
 // 이 존 캐러밴이 돌아왔다('return') — 델타를 집에 들이고 inbound 로 이어 받는다(입금·귀환 약탈은 종전 갈래).
+//   ★[T533] 남은 일수에서 한 경계 늦게 닿은 하루를 뺀다(같은 존 교역과 같은 여정 길이).
 function _xzReturn(world, r, day) {
   let c = null;
   for (const x of (world.caravans || [])) if (x.id === r.id && x.state === 'xzone' && !x._done) { c = x; break; }
@@ -9984,8 +10046,10 @@ function _xzReturn(world, r, day) {
   c._returningRes = r.returningRes; c._returningAmt = r.returningAmt;
   if (r.returningRes2 && r.returningAmt2 > 0) { c._returningRes2 = r.returningRes2; c._returningAmt2 = r.returningAmt2; }
   if (r.abandoned) c._abandoned = true;
-  c.distance = r.distance; c.travelDays = r.returnDays;
-  c.state = 'inbound'; c.returnArriveDay = day + r.returnDays;
+  const rem = Math.max(0, (r.remain != null ? r.remain : r.returnDays) - 1);
+  c.distance = r.distance; c.travelDays = rem;
+  c.state = 'inbound'; c.returnArriveDay = day + rem;
+  c._xzBackPt = r.ptPeer || null;   // ★[T533] 몸이 넘어온 경계 칸(이 존 로컬 px) — 호스트가 몸을 세운 자리
 }
 function _xzInbox(world, day) {
   const recs = world.xzone.inbox.splice(0);
@@ -10549,6 +10613,7 @@ module.exports = {
   cargoTwoOn, cargoTwoGateOn, _legProfitPerUnit,
   // ★★[T525] 존 경계 넘기 뼈대 — 호스트(존 서버·자)가 **같은 두 함수**로 스텁을 만든다(답하는 쪽 스냅 · 받는 쪽 스텁 · 사본 0)
   T525_CROSS_ZONE, xzoneSnapshot, xzoneStub,
+  xzoneBounce: _xzBounce, xzoneLeg: _xzLeg,   // ★[T533] 서버 호스트가 부르는 둘 — 이웃 존이 안 받은 넘김을 경계에서 되돌림 · 제 존 몫 일수(몸이 되짚을 때) — 사본 0
 };
 
 ;return module.exports;})();
