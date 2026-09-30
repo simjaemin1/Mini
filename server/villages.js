@@ -5874,7 +5874,7 @@ function lifeDebug() {   // ★[직접 서버 디버깅 — 사용자 요청] zo
   let tN = 0, tAct = 0;
   for (const v of out) { tN += v.pop; tAct += v.actN; }
   return { t: new Date().toISOString(), phase: wpF ? +wpF(now).toFixed(3) : null, dayR, life: LIFE_ON,
-    totals: { pop: tN, actN: tAct, actPct: tN ? +(tAct / tN * 100).toFixed(1) : 0, vgStuck: _vgStuckN,
+    totals: { pop: tN, actN: tAct, actPct: tN ? +(tAct / tN * 100).toFixed(1) : 0, vgStuck: _vgStuckN, t562: _t562Stat,
               tkPday: _lifeTasksPerFarmerDay(), taskSec: LIFE_TASK_SEC,   // ★결산 정합 진단: 헤드리스가 쓰는 농부 1인 하루 작물 셀(날 길이 파생)
               dormant: out.filter(v => !v.terr).length, noFarmer: out.filter(v => !(v.jobs && v.jobs.farmer)).length },
     villages: out };
@@ -6903,10 +6903,41 @@ function _t427On() { return T427_SITE_REACH && !!(state.deps && typeof state.dep
 function _t427HomeOf(vil, npc) {   // 집(없으면 회관 중심) — 도달을 묻는 출발점이자 "현장이 없을 때의 현장"
   return (npc && npc.npcHomeX != null) ? { x: npc.npcHomeX, y: npc.npcHomeY } : { x: vil.ccx * SZ + SZ / 2, y: vil.ccy * SZ + SZ / 2 };
 }
-function _t427Reach(vil, npc, x, y, day) {
+// ★★[T562 2026-09-30 · 새벽 멎음 ⓐ④] **집마다 닿는 칸 집합.** 종전은 (집 셀 → 후보 셀) 한 쌍마다 `npcCanReach`(A* · 칸 예산 ∞)를 묻고
+//   그 답을 **하루** 기억했다 ⇒ 하루 경계(phase 0)에 기억이 비면 그날 첫 배정이 한꺼번에 다시 묻고, 안 닿는 후보는 반경 상자를 다 태웠다
+//   (T540: 틱 최대 22,988ms · 깬 주민 400/400 걸음 문 0 · 프로파일 88%).
+//   ⇒ 같은 집에서 묻는 답은 같다 — 집 셀에서 **한 번** 넓혀 둔 닿는 칸 집합(`deps.npcReachBegin/Step/Has` — 존이 `npcCanReach` 의
+//     **같은 술어·같은 반경**으로 만든다 · 판정 0)을 후보마다 조회한다. 기억의 도장은 날이 아니라 **그 상자의 벽·다리 세대**(`deps.collGenAround`)다.
+//   ★`stop` 이 있으면(결정 문 · `deps.decBudgetOver`) 넓히기를 예산 안에서만 하고 모자라면 `null`(= 아직 · 다음 틱에 이어서 — ④).
+//     없으면(하루 마감 쉼표 · 드리울 자리 거르기) 끝까지 넓힌다.
+//   ★`T562_VERIFY=1`(재는 자 · 제품 끔) — 같은 쌍을 종전 술어로도 물어 어긋남을 센다(표 · `lifedbg totals.t562`).
+const _T562_VERIFY = process.env.T562_VERIFY === '1';
+const _t562Stat = { sets: 0, reuse: 0, q: 0, pend: 0, vq: 0, vdiff: 0, vdiffs: [] };
+function _t562On() { const dp = state.deps; return !!(dp && typeof dp.npcReachBegin === 'function' && typeof dp.collGenAround === 'function'); }
+function _t562SliceStop() { const t = Date.now(), B = TICK_SLICE_MS || 16; return () => Date.now() - t > B; }   // 하루 마감 조각 안의 넓히기 예산(조각 예산 그 수)
+function _t427Set(vil, o, stop) {
+  const dp = state.deps;
+  const R = vil._t427R || (vil._t427R = new Map());
+  const key = Math.floor(o.x / SZ) + ',' + Math.floor(o.y / SZ), stamp = dp.collGenAround(o.x, o.y);
+  let e = R.get(key);
+  if (!e || e.stamp !== stamp) { e = { stamp, S: dp.npcReachBegin(o.x, o.y) }; R.set(key, e); _t562Stat.sets++; }
+  else if (e.S.done) _t562Stat.reuse++;
+  if (!e.S.done && !dp.npcReachStep(e.S, stop || null)) { _t562Stat.pend++; return null; }
+  if (e.S.q) e.S.q = null;   // 넓히기가 끝나면 줄은 버린다(집합만 남긴다 · 집 하나 16.6KB)
+  return e.S;
+}
+function _t427Reach(vil, npc, x, y, day, stop) {
   const o = _t427HomeOf(vil, npc);
+  if (_t562On()) {
+    const S = _t427Set(vil, o, stop);
+    if (!S) return null;   // 아직 — 다음 틱에 이어서
+    const M = S.memo || (S.memo = new Map()), gk = Math.floor(x / SZ) * 65536 + Math.floor(y / SZ);   // 같은 집합 · 같은 끝 칸 = 같은 답(직선 걷기도 한 번만)
+    let v = M.get(gk); if (v === undefined) { v = !!state.deps.npcReachHas(S, x, y); M.set(gk, v); } _t562Stat.q++;
+    if (_T562_VERIFY) { const v0 = !!state.deps.npcCanReach(o.x, o.y, x, y); _t562Stat.vq++; if (v0 !== v) { _t562Stat.vdiff++; if (_t562Stat.vdiffs.length < 20) _t562Stat.vdiffs.push([vil.name, Math.round(o.x), Math.round(o.y), Math.round(x), Math.round(y), v0, v]); } }
+    return v;
+  }
   let M = vil._t427Memo;
-  if (!M || M.day !== day) M = vil._t427Memo = { day, m: new Map() };   // 하루 기억(벽·집이 새로 서면 다음 날 다시 묻는다)
+  if (!M || M.day !== day) M = vil._t427Memo = { day, m: new Map() };   // 하루 기억(벽·집이 새로 서면 다음 날 다시 묻는다) — 존 밖(주입 없음)의 종전 길
   const k = Math.floor(o.x / SZ) + ',' + Math.floor(o.y / SZ) + '>' + Math.floor(x / SZ) + ',' + Math.floor(y / SZ);
   let v = M.m.get(k);
   if (v === undefined) { v = !!state.deps.npcCanReach(o.x, o.y, x, y); M.m.set(k, v); }
@@ -6914,8 +6945,8 @@ function _t427Reach(vil, npc, x, y, day) {
 }
 /** 종전 `sites[h % n]` 자리 — 거기서부터 한 칸씩 **닿는 첫 후보** · 전부 안 닿으면 집(`_t427HomeOf`). */
 function _t427Site(vil, npc, sites, h, day) {
-  const n = sites.length;
-  for (let i = 0; i < n; i++) { const s = sites[(h + i) % n]; if (_t427Reach(vil, npc, s.x, s.y, day)) return { x: s.x, y: s.y, day }; }
+  const n = sites.length, stop = (state.deps && state.deps.decBudgetOver) || null;   // ★[T562 ④] 결정 예산이 사람 안에서도 잰다
+  for (let i = 0; i < n; i++) { const s = sites[(h + i) % n]; const r = _t427Reach(vil, npc, s.x, s.y, day, stop); if (r === null) return null; if (r) return { x: s.x, y: s.y, day }; }
   const o = _t427HomeOf(vil, npc);
   return { x: o.x, y: o.y, day };
 }
@@ -8430,7 +8461,9 @@ function* _huntHuntersSteps(vil, players, day) {
         let _ok = null;
         for (const [kk] of [[b]].concat(_fr.sort((u, v) => v[1] - u[1]), _an.sort((u, v) => v[1] - u[1]))) {
           const q = _xy(kk);
-          if (_t427Reach(vil, p, q.x, q.y, day)) { _ok = kk; break; }
+          //   ★[T562 ④] 집의 닿는 칸 집합이 아직이면 조각 예산(`TICK_SLICE_MS`)만큼만 넓히고 **쉼표**(T523 문법) — 다음 조각에 이어서.
+          let _r; while ((_r = _t427Reach(vil, p, q.x, q.y, day, _t562SliceStop())) === null) yield;
+          if (_r) { _ok = kk; break; }
         }
         if (_ok) b = _ok; else _home = _t427HomeOf(vil, p);
       }
@@ -9162,7 +9195,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
     const sites = _lifeJobSites(vil, day)[job];
     if (!sites || !sites.length) return false;   // 생활권에 해당 자원 없음 → 레거시 폴스루
     const h = _pidHash(npc.pid);
-    if (!npc._workSite || npc._workSite.day !== day) npc._workSite = _t427On() ? _t427Site(vil, npc, sites, h, day) : { x: sites[h % sites.length].x, y: sites[h % sites.length].y, day };   // 분산 배정(랩 place %분산 동형) · ★[T427 ①] 켜면 닿는 후보만
+    if (!npc._workSite || npc._workSite.day !== day) { const _s = _t427On() ? _t427Site(vil, npc, sites, h, day) : { x: sites[h % sites.length].x, y: sites[h % sites.length].y, day }; if (!_s) return true; npc._workSite = _s; }   // ★[T562 ④] 아직(`null`)이면 이 틱은 제자리 — 다음 틱에 이어서   // 분산 배정(랩 place %분산 동형) · ★[T427 ①] 켜면 닿는 후보만
     const ws = npc._workSite;
     if (Math.hypot(npc.x - ws.x, npc.y - ws.y) > 240) { npc.behavior = 'wander'; npc.targetX = ws.x; npc.targetY = ws.y; npc.gatherTarget = null; _lifeAct(npc, '출근'); return true; }   // 출근
     if (npc._jobT && now < npc._jobT) return true;   // 작업 스윙 페이싱
@@ -9201,7 +9234,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
     const sites = _lifeJobSites(vil, day).fisher;
     if (!sites || !sites.length) return false;   // 내륙 마을 → 레거시 폴스루
     const h = _pidHash(npc.pid);
-    if (!npc._workSite || npc._workSite.day !== day) npc._workSite = _t427On() ? _t427Site(vil, npc, sites, h, day) : { x: sites[h % sites.length].x, y: sites[h % sites.length].y, day };   // ★[T427 ①] 켜면 닿는 물가만
+    if (!npc._workSite || npc._workSite.day !== day) { const _s = _t427On() ? _t427Site(vil, npc, sites, h, day) : { x: sites[h % sites.length].x, y: sites[h % sites.length].y, day }; if (!_s) return true; npc._workSite = _s; }   // ★[T562 ④] 아직(`null`)이면 이 틱은 제자리 — 다음 틱에 이어서   // ★[T427 ①] 켜면 닿는 물가만
     const ws = npc._workSite;
     if (Math.hypot(npc.x - ws.x, npc.y - ws.y) > 130) { npc.behavior = 'wander'; npc.targetX = ws.x; npc.targetY = ws.y; npc.gatherTarget = null; _lifeAct(npc, '출근'); return true; }
     // ★★★[T340 2026-09-21] **박자가 아니라 대본이다.** 종전 이 자리는 `now - _lastFishAt > 8000` —
@@ -9276,8 +9309,10 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
       const near = [];
       for (const s of sites) { if (Math.abs(s.x - ws.x) <= 128 && Math.abs(s.y - ws.y) <= 128) near.push(s); if (near.length >= 12) break; }
       //   ★[T427 ①] 켜면 드리울 자리도 **집에서 닿는** 물가만(좁은 강이면 128px 안 건너편 물가가 섞인다 — 같은 날 같은 쌍은 한 번만 묻는다).
-      const _nr = (_t427On() && near.length) ? near.filter((q) => _t427Reach(vil, npc, q.x, q.y, day)) : near;
-      const pick = _nr.length ? _nr[(h + ((now / 1000) | 0)) % _nr.length] : ws;
+      //   ★[T562 ④] 집의 닿는 칸 집합이 아직(예산 넘음)이면 이 틱은 거르지 않고 **앵커 그 자리**(물가 셀 · 집에서 닿는 것으로 배정된 자리)에 드리운다.
+      let _pend = false;
+      const _nr = (_t427On() && near.length) ? near.filter((q) => { if (_pend) return false; const r = _t427Reach(vil, npc, q.x, q.y, day, state.deps && state.deps.decBudgetOver); if (r === null) { _pend = true; return false; } return r; }) : near;
+      const pick = (!_pend && _nr.length) ? _nr[(h + ((now / 1000) | 0)) % _nr.length] : ws;
       npc._fishSpotX = pick.x; npc._fishSpotY = pick.y;
       npc._fishT = now + 9000 + (h % 5) * 2000;   // 9~17초 체류(결정론 분산 — 마을 전원이 동시에 안 움직인다)
     }
@@ -9288,7 +9323,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
   if (job === 'hunter') {   // 사냥꾼=사냥터 앵커 출근 + ★wildlife 두뇌 완전체(잠행·핏자국·활·근접·도살 — 랩 실행층·두뇌 동형)
     const sites = _lifeJobSites(vil, day).hunter;
     const h = _pidHash(npc.pid);
-    if ((!npc._workSite || npc._workSite.day !== day) && sites && sites.length) npc._workSite = _t427On() ? _t427Site(vil, npc, sites, h, day) : { x: sites[h % sites.length].x, y: sites[h % sites.length].y, day };   // ★[T427 ①] 켜면 닿는 사냥터만
+    if ((!npc._workSite || npc._workSite.day !== day) && sites && sites.length) { const _s = _t427On() ? _t427Site(vil, npc, sites, h, day) : { x: sites[h % sites.length].x, y: sites[h % sites.length].y, day }; if (!_s) return true; npc._workSite = _s; }   // ★[T562 ④]   // ★[T427 ①] 켜면 닿는 사냥터만
     if (!npc._workSite) { npc._huntOn = 0; return false; }   // 사냥감·앵커 전무 → 레거시 폴스루
     const ws = npc._workSite;
     // 뷰 안(활성 청크)=wildlife가 몹·핏자국·전투 전부 구동(LOD 계약): 여기는 마킹+주도권 소유만 —

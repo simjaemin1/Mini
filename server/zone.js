@@ -533,6 +533,7 @@ function updateActiveChunks() {
 //   ★`crop` 은 있는데 도장이 없는 행(T58a~T58b 사이에 심긴 것)은 **오늘을 심은 날로** 채운다.
 let _promotedFarms = 0, _promotedLogged = 0;
 let _lastFarmStageDay = -1;
+let _farmStageQ = null, _farmStageQi = 0, _farmStageQd = 0;   // ★[T562 ⑤] 하루 경계 밭 그림 갱신 대기열(틱마다 예산만큼)
 // ★[T108] 밭 단계 — **정본의 사영**이다(새 시계 0). 0갈은흙 · 1어린싹 · 2자람 · 3익음.
 //   빈 밭은 0, 심긴 밭은 `grownDays / growDays` 를 셋으로 나눈다(익으면 3).
 function _farmStageOf(d, today) {
@@ -1403,6 +1404,7 @@ function isRockTileLocal(localX, localY) {
 // ★[T333] 키가 정수다 — `cx * _WT_H + cy`(같은 격자 · 같은 집합 · 문자열 0). 다리 칸은 수백 개라 Set 이면 족하다.
 const _cellKey = (cx, cy) => cx * _WT_H + cy;
 const BRIDGE_CELLS = new Set();
+let _bridgeGen = 0;   // ★[T562] 다리 셀이 더해질 때마다 오른다(`addBridgeCells`) — 닿는 칸 기억의 도장 한 항
 {
   const bl = (ZONE && ZONE.bridges) || null;
   if (bl && bl.length) { for (let i = 0; i + 1 < bl.length; i += 2) BRIDGE_CELLS.add(_cellKey(bl[i], bl[i + 1])); }
@@ -1425,6 +1427,7 @@ function addBridgeCells(flat) {
     BRIDGE_CELLS.add(k); BRIDGE_BUILT.push(cx, cy); add.push(cx, cy);
   }
   if (!add.length) return 0;
+  _bridgeGen++;
   if (_BLK_BITS) _BLK_BITS.fill(0);
   if (_WW) _WW.clearTerrain();
   try { broadcast({ type: 'bridges_add', cells: add }); } catch (e) {}
@@ -3151,6 +3154,73 @@ function _pfRadius(isVil) { return isVil ? 64 : 24; }
 //   ⚠칸 예산은 안 준다(`Infinity`) — **반경 상자가 탐색의 끝을 낸다**(= "반경 안에서 실제로 닿는가"의 정확한 답 · 새 수 0).
 //     그래서 못 닿는 후보는 반경 상자 안의 닿는 땅을 다 돌고 멈춘다(T399 실측 평균 13,639칸 상자) — 값은 보고/T427 표.
 //   끝점이 막힌 칸이면 `findPath` 첫 줄이 거른다(T394 ③ · `null`). 새 탐색 함수 0 · 주사위 0.
+// ═══ ★★[T562 2026-09-30 · 새벽 멎음 ⓐ] 집마다 닿는 칸 집합 — `npcCanReach` 의 **같은 술어·같은 반경**을 한 번 BFS 로 ═══
+//   T540 이 쟀다: 하루 경계(phase 0)에 날 기억이 비면서 그날 첫 배정마다 집 → 후보를 `pfFindPath(maxCells ∞)` 로 다시 물었고,
+//   안 닿는 후보는 반경 상자를 다 태웠다(틱 최대 22,988ms · 깬 주민 400/400 걸음 문 0).
+//   ⇒ **같은 집(같은 시작 칸)에서 묻는 답은 같다** — 시작 칸에서 한 번 넓혀(4방 · 간선 = `findPath` 의 `blockedStep` 그대로:
+//     벽 변(`isBlockedByWall`) + 도착 칸 물·바위(`isTerrainBlockedLocal`)) 닿는 칸을 적어 두고 후보마다 조회한다.
+//   ★묻는 순서도 `npcCanReach` 그대로다: ① 직선이 깨끗하면 참 ② 맨해튼 64칸 밖이면 거짓(`findPath` 첫 거름) ③ 같은 칸이면 참 ④ 끝 칸이 막혔으면 거짓 ⑤ 집합.
+//   ★상자는 시작 칸 ± 반경(`_pfRadius(true)` = 64 · 수 사본 0). 넓히기는 **이어 갈 수 있다**(`npcReachStep(S, stopFn)`) — 결정 예산이 사람 안에서도 잰다(④).
+//   ★기억의 도장 = 그 상자에 걸친 청크들의 콜라이더 세대 합 + 다리 세대(`collGenAround`) — 벽·문·울타리·바닥·계단이 서거나 헐리거나
+//     문이 여닫히거나 벽이 부서지면 그 청크 세대가 오른다(아래 `_collBump`). 날이 바뀌어도 도장이 같으면 **다시 안 넓힌다**.
+const _collGen = new Map();   // 청크 키 → 콜라이더 세대(COLL_TYPES 건물이 서고·헐리고·문 여닫힘·부서짐)
+function _collBump(b) {
+  if (!b || !COLL_TYPES.has(b.type)) return;
+  const cs = chunkManager.chunkSize, k = chunkManager.keyOf(Math.floor(b.x / cs), Math.floor(b.y / cs));
+  _collGen.set(k, (_collGen.get(k) | 0) + 1);
+}
+{ const _ib = chunkManager.insertBuilding.bind(chunkManager), _rb = chunkManager.removeBuilding.bind(chunkManager);
+  chunkManager.insertBuilding = (b) => { _ib(b); _collBump(b); };
+  chunkManager.removeBuilding = (b) => { _rb(b); _collBump(b); }; }
+/** 상자(시작 칸 ± 반경)에 걸친 청크 세대 합 + 다리 세대 — 같으면 그 상자의 벽·다리가 안 바뀌었다. */
+function collGenAround(ax, ay) {
+  const R = _pfRadius(true) * BUILDING_SIZE, cs = chunkManager.chunkSize;
+  let g = _bridgeGen * 1000003;
+  for (let cx = Math.floor((ax - R) / cs); cx <= Math.floor((ax + R) / cs); cx++)
+    for (let cy = Math.floor((ay - R) / cs); cy <= Math.floor((ay + R) / cs); cy++) g += _collGen.get(chunkManager.keyOf(cx, cy)) | 0;
+  return g;
+}
+function npcReachBegin(ax, ay) {
+  const R = _pfRadius(true), sx = Math.floor(ax / BUILDING_SIZE), sy = Math.floor(ay / BUILDING_SIZE), W = 2 * R + 1;
+  const seen = new Uint8Array(W * W), q = new Int32Array(W * W);
+  seen[R * W + R] = 1; q[0] = R * W + R;
+  return { ax, ay, sx, sy, R, W, seen, q, qh: 0, qt: 1, done: false, n: 1 };
+}
+const _NR4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+/** 넓히기를 이어 간다 — `stop()` 이 참이면 그 자리에서 놓는다(다음에 이어 간다). 끝나면 true. */
+function npcReachStep(S, stop) {
+  if (S.done) return true;
+  const { R, W, seen, q, sx, sy } = S, C = BUILDING_SIZE, h = C / 2;
+  let k = 0;
+  while (S.qh < S.qt) {
+    if ((++k & 63) === 0 && stop && stop()) return false;
+    const i = q[S.qh++], lx = i % W, ly = (i / W) | 0, fx = sx + lx - R, fy = sy + ly - R;
+    for (let d = 0; d < 4; d++) {
+      const nlx = lx + _NR4[d][0], nly = ly + _NR4[d][1];
+      if (nlx < 0 || nly < 0 || nlx >= W || nly >= W) continue;
+      const j = nly * W + nlx; if (seen[j]) continue;
+      const tx = fx + _NR4[d][0], ty = fy + _NR4[d][1];
+      if (isBlockedByWall(tx * C + h, ty * C + h, fx * C + h, fy * C + h, 0)) continue;   // `findPath` blockedStep ① 벽 변
+      if (isTerrainBlockedLocal(tx * C + h, ty * C + h)) { seen[j] = 2; continue; }      // ② 도착 칸 물·바위(노드) — 막힌 칸으로 적어 두고 안 넓힌다
+      seen[j] = 1; q[S.qt++] = j; S.n++;
+    }
+  }
+  S.done = true;
+  return true;
+}
+/** `npcCanReach(S.ax, S.ay, bx, by)` 와 같은 답 — 넓히기가 끝난 집합으로. */
+function npcReachHas(S, bx, by) {
+  if (straightPathClear(S.ax, S.ay, bx, by, 0)) return true;
+  const gx = Math.floor(bx / BUILDING_SIZE), gy = Math.floor(by / BUILDING_SIZE);
+  if (gx === S.sx && gy === S.sy) return true;
+  if (Math.abs(gx - S.sx) + Math.abs(gy - S.sy) > S.R) return false;
+  if (isTerrainBlockedLocal(S.sx * BUILDING_SIZE + BUILDING_SIZE / 2, S.sy * BUILDING_SIZE + BUILDING_SIZE / 2)) return false;   // `localPath` 첫 줄 — 시작 칸이 막혔으면
+  const lx = gx - S.sx + S.R, ly = gy - S.sy + S.R;
+  return S.seen[ly * S.W + lx] === 1;
+}
+// ★[T562 ④] 결정 예산을 **사람 안에서도** 잰다 — 결정 문(아래 NPC 루프)이 틱 머리 시각을 적어 두고, 생활층 배정이 후보·넓히기 사이에서 묻는다.
+let _decT0 = 0;
+function decBudgetOver() { return _decT0 > 0 && (Date.now() - _decT0) > 15; }
 function npcCanReach(ax, ay, bx, by) {
   if (straightPathClear(ax, ay, bx, by, 0)) return true;
   return !!pfFindPath(ax, ay, bx, by, { floor: 0, isBlockedFn: isBlockedByWall, isWaterFn: isTerrainBlockedLocal, maxCells: Infinity, searchRadiusCells: _pfRadius(true) });
@@ -3786,6 +3856,7 @@ SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, is
   //   **직접** 불러 메모를 지나쳤다(T324 프로파일: 남은 지형 시간의 9.6%). 같은 양자화(셀 중심)라 답은 같다.
   isRockTileLocal,
   standCellNear: _standCellNear,   // ★[T541 ⓑ] 설 수 있는 가장 가까운 칸 — 나선은 한 자리(T83) · 전쟁 대형 슬롯이 막혔을 때 부른다(술어는 호출측)
+  npcReachBegin, npcReachStep, npcReachHas, collGenAround, decBudgetOver,   // ★★[T562] 집마다 닿는 칸 집합(같은 술어·같은 반경) · 그 기억의 도장 · 사람 안의 결정 예산
   npcCanReach,   // ★★[T427 ①] 현장 배정이 부르는 도달 술어(`computeNpcPath` 의 그 술어·그 반경 · 손잡이는 생활층 `T427_SITE_REACH`)
   tickHz: TICK_HZ,   // ★[T284] 실체 전쟁 교전 스텝 = 존 틱 한 번(dt = 1/TICK_HZ)
   // ★★[T295 후속 · T284 회부 "나무는 아직 안 본다" 닫기] 전쟁이 쓰는 **나무 술어**(셀 → 서 있는 나무 있나).
@@ -4514,7 +4585,7 @@ const server = http.createServer((req, res) => {
           act: p._lifeAct || null, beh: p.behavior || null, tgt: p.targetX != null ? [Math.round(p.targetX), Math.round(p.targetY)] : null,
           v: [+(p.vx || 0).toFixed(1), +(p.vy || 0).toFixed(1)], path: p.path ? p.path.length : 0, pi: p.pathIndex | 0,
           active: isPositionActive(p.x, p.y), chief: !!(SimVillages.chiefWalking && SimVillages.chiefWalking(p)), fl, stair: p.onStairId || null,
-          nextDec: Math.round((p.nextDecisionAt || 0) - now), stepAge: p._t540StepAt ? now - p._t540StepAt : null, decAge: p._t540DecAt ? now - p._t540DecAt : null, stuckN: p._stuckN | 0, task: p._lifeTask ? p._lifeTask.k : null, rest: p._rest | 0 };
+          ws: p._workSite ? [Math.round(p._workSite.x), Math.round(p._workSite.y), p._workSite.day] : null, nextDec: Math.round((p.nextDecisionAt || 0) - now), stepAge: p._t540StepAt ? now - p._t540StepAt : null, decAge: p._t540DecAt ? now - p._t540DecAt : null, stuckN: p._stuckN | 0, task: p._lifeTask ? p._lifeTask.k : null, rest: p._rest | 0 };
         if (bedOnly || onlyVid != null) {
           r.edges = { N: !!edgeBlockedStep(cx, cy, 0, -1, fl), E: !!edgeBlockedStep(cx, cy, 1, 0, fl), S: !!edgeBlockedStep(cx, cy, 0, 1, fl), W: !!edgeBlockedStep(cx, cy, -1, 0, fl) };
           r.terr = !!isTerrainBlockedLocal(cx * BUILDING_SIZE + BUILDING_SIZE / 2, cy * BUILDING_SIZE + BUILDING_SIZE / 2);
@@ -7011,6 +7082,7 @@ function doDoorToggle(player, buildingId) {
     send(player.ws, { type: 'notice', text: '문이 너무 멉니다' }); return;
   }
   b.data.open = !b.data.open;
+  _collBump(b);   // ★[T562] 문이 여닫히면 그 청크 콜라이더 세대가 오른다(닿는 칸 기억의 도장)
   db.updateBuildingData(b.dbId, JSON.stringify(b.data));
   broadcast({ type: 'building_updated', building: b });
   // ★[배치 18 ①] 여기에 방 재계산이 **없는 것이 맞다.** 열린 문도 방 경계라 여닫아도 방이 안 바뀐다.
@@ -9365,7 +9437,7 @@ function tryRepairBuilding(player) {
   const maxHp = BUILDING_MAX_HP[best.type] || 50;
   best.data = best.data || {};
   best.data.hp = Math.min(maxHp, (best.data.hp || 0) + 25);
-  if (best.data.hp >= maxHp / 2) best.data.damaged = false; // 절반 이상 회복 시 다시 작동
+  if (best.data.hp >= maxHp / 2) { if (best.data.damaged) _collBump(best); best.data.damaged = false; } // 절반 이상 회복 시 다시 작동 · ★[T562] 도장
   try { db.updateBuildingData(best.dbId, JSON.stringify(best.data)); } catch (e) {}
   sendInventory(player);
   send(player.ws, { type: 'notice', text: `🔧 ${best.type} 수리 (${best.data.hp}/${maxHp})${best.data.damaged ? '' : ' ✅ 복구'}` });
@@ -11272,6 +11344,7 @@ async function tryAttack(player) {
     bestWall.data.hp = (bestWall.data.hp ?? maxHp) - atk;
     if (bestWall.data.hp <= 0) {
       bestWall.data.damaged = true;
+      _collBump(bestWall);   // ★[T562] 부서진 벽은 통과 — 도장
       bestWall.data.hp = 0;
       send(player.ws, { type: 'notice', text: `💥 ${bestWall.type} 손상! 통과 가능 (수리하면 복구)` });
       // §4-4 Stage 4B(§5.5b): 벽류 파괴(손상=통과 가능) = 개통 → 교역 거리행렬·캐러밴 경로 무효화
@@ -12712,6 +12785,11 @@ setInterval(() => {
   //       켠 팔 어획 합을 전/후로 나란히 적는다.
   //     ⚠커서가 가리키던 주민이 사라지면(사망·핸드오프) 한 바퀴를 헛돌 수 있다 ⇒ 못 찾으면 그 틱 끝에 영점.
   let _curHit = (_npcCursor === null), _stopAt = null;
+  //   ★★[T562 ④ 2026-09-30] 결정 예산(15ms)을 **이 루프의 머리부터** 잰다(종전: 틱 머리 `now`). 수·커서·순서는 그대로다.
+  //     T562 자가 쟀다: 하루 마감 조각(`SimVillages.onGameTick` · 조각 예산 16ms)과 공간 색인이 이 루프 **앞**에서 15ms 를 다 쓰면
+  //     커서의 첫 사람에서 끊겨 **한 명도** 결정을 못 받는다 — 새벽(하루 경계) 조각이 도는 몇 초 동안 깬 주민 168~400 명이 걸음 문 0.
+  //     평소(앞쪽 일 < 15ms)엔 머리가 몇 ms 늦게 잡힐 뿐이다(틱이 그만큼 길어질 수 있다 — 표).
+  _decT0 = Date.now();   // ★[T562 ④] 생활층 배정도 같은 머리로 묻는다(`decBudgetOver`)
   for (const pid of npcs) {
     if (!_curHit) { if (pid !== _npcCursor) continue; _curHit = true; }   // 지난 틱에 **못 한** 그 사람부터 한다
     const npc = players.get(pid);
@@ -12726,10 +12804,11 @@ setInterval(() => {
     //     (:11255 `movePlayerStep` 루프) — 실측에서 틱의 대부분은 거기서 났다(p50 2.47 → 374.6ms · 152배).
     //     예산을 늘리지도, 새로 걸지도 않는다: 놓는 수가 곧 설계 판정이라 PM 몫이다(T316 §3 회부).
     if (!npc.canadiaVillage && !_t316WalkAlways(npc) && !isPositionActive(npc.x, npc.y)) { npc.vx = 0; npc.vy = 0; continue; }
-    if ((Date.now() - now) > 15) { _stopAt = pid; break; }   // ★[T324 ⓒ] 이 사람은 **아직 안 했다** — 다음 틱이 여기서 시작한다
+    if ((Date.now() - _decT0) > 15) { _stopAt = pid; break; }   // ★[T324 ⓒ] 이 사람은 **아직 안 했다** — 다음 틱이 여기서 시작한다 · ★[T562 ④] 머리 = 루프 머리
     npcStep(npc, dt, now);
   }
   _npcCursor = _curHit ? _stopAt : null;   // 한 바퀴를 다 돌았거나(=null) 커서가 사라졌으면 처음부터
+  _decT0 = 0;
   if (_stopAt !== null) _walk.cut++;       // ★[T324] 예산에 닿은 틱 수(관측 전용)
   // ★★[T108 2026-09-05] **벽시계 ready 마크 틱을 지우고, 게임일 경계 한 번으로 바꿨다.**
   //   여기가 **매 틱** 전 활성 청크의 밭을 훑어 `now >= readyAt` 으로 `ready` 를 켜던 자리다.
@@ -12738,20 +12817,32 @@ setInterval(() => {
   //   ★`farmStage` 는 **정본의 사영**이다(0갈은흙 1어린싹 2자람 3익음). 클라가 성장을 다시 세면
   //     그게 시계 둘이다 — 종전 클라가 `readyAt`·`plantedAt` 으로 그러고 있었고, 정본 밭엔 그 둘이
   //     없어서 **심자마자 "수확가능"** 으로 그려졌다(§0ⓐ 실측). 서버가 답을 실어 준다.
+  //   ★★[T562 ⑤ 2026-09-30] **하루 경계의 밭 그림 갱신을 틱에 나눠 흘린다.** T562 자가 쟀다: 새벽(phase 0) 틱 하나가 2,200ms —
+  //     그 80%가 여기 한 바퀴의 `broadcast`(밭 수 × 접속자 수만큼 소켓 쓰기)였다(손님 50 · 활성 청크 밭 전부가 한 틱에).
+  //     ⇒ 경계에서 **대상 목록만** 잡고, 틱마다 예산(15ms — 바로 위 결정 문의 그 수)만큼 흘린다. 메시지·내용·순서는 종전 그대로,
+  //       바뀌는 것은 **언제**뿐이다(마지막 밭이 몇 초 늦게 익어 보인다 · 정본 `_farmStageOf` 는 그대로 같은 날 `_gd` 로 센다).
   {
     const _gd = zoneGameDay();
     if (_gd !== _lastFarmStageDay) {
       _lastFarmStageDay = _gd;
+      _farmStageQ = []; _farmStageQi = 0; _farmStageQd = _gd;
       for (const k of activeChunkKeys) { const c = chunkManager.chunks.get(k); if (!c) continue;
-        for (const b of c.buildings.values()) {
-          if (b.type !== 'farmland' || !b.data) continue;
-          const st = _farmStageOf(b.data, _gd);
-          if (st !== b.data.farmStage) {
-            b.data.farmStage = st;
-            broadcast({ type: 'building_updated', building: { id: b.id, data: b.data } });   // 클라가 이미 아는 메시지
-          }
-        }
+        for (const b of c.buildings.values()) if (b.type === 'farmland' && b.data) _farmStageQ.push(b);
       }
+    }
+    if (_farmStageQ) {
+      const _t0 = Date.now(), _over = () => Date.now() - _t0 > 15;   // 틱 예산(결정 문의 그 15ms) — 밭 시계가 아니다(밭은 `_farmStageQd` 게임일로 센다)
+      while (_farmStageQi < _farmStageQ.length) {
+        const b = _farmStageQ[_farmStageQi++];
+        if (!b.data) continue;
+        const st = _farmStageOf(b.data, _farmStageQd);
+        if (st !== b.data.farmStage) {
+          b.data.farmStage = st;
+          broadcast({ type: 'building_updated', building: { id: b.id, data: b.data } });   // 클라가 이미 아는 메시지
+        }
+        if ((_farmStageQi & 15) === 0 && _over()) break;
+      }
+      if (_farmStageQi >= _farmStageQ.length) _farmStageQ = null;
     }
   }
 
