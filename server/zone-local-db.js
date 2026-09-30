@@ -454,6 +454,26 @@ function getSoilCells(zone) { return stmtGetSoilCells.all(zone); }
 function upsertSoilCell(zone, key, v, d, geo) { stmtUpsertSoilCell.run(zone, key | 0, v, d | 0, geo | 0); }
 function deleteSoilCell(zone, key) { stmtDeleteSoilCell.run(zone, key | 0); }
 
+// === ★[T537 2026-09-30] 마을이 짓는 다리(T527) — 착공 후보 한 줄당 한 행(진척 · 크루 누적 · 완공 셀) ===
+//   추가 전용 · CREATE TABLE IF NOT EXISTS(구DB 안전). 손잡이 `T527_BRIDGE_ACT` 끔이면 행 0(아무도 안 쓴다).
+//   state = JSON { v, span, cells, stage, mat, adv, sum, added } · sig = 후보 셀 서명(후보 줄이 바뀌면 진척을 안 이어 붙인다) ·
+//   done = 완공(존 부팅이 이 행의 `added` 셀을 다리 집합에 다시 올린다 — 재기동 뒤 같은 셀).
+db.exec(`
+  CREATE TABLE IF NOT EXISTS village_bridges (
+    zone   TEXT    NOT NULL,
+    site   INTEGER NOT NULL,
+    sig    TEXT    NOT NULL,
+    state  TEXT    NOT NULL,
+    done   INTEGER NOT NULL DEFAULT 0,
+    day    INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (zone, site)
+  );
+`);
+const stmtGetVillageBridges = db.prepare('SELECT site, sig, state, done, day FROM village_bridges WHERE zone = ? ORDER BY site');
+const stmtUpsertVillageBridge = db.prepare('INSERT INTO village_bridges (zone, site, sig, state, done, day) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(zone, site) DO UPDATE SET sig = excluded.sig, state = excluded.state, done = excluded.done, day = excluded.day');
+function getVillageBridges(zone) { return stmtGetVillageBridges.all(zone); }
+function upsertVillageBridge(zone, site, sig, stateJson, done, day) { stmtUpsertVillageBridge.run(zone, site | 0, String(sig), String(stateJson), done ? 1 : 0, day | 0); }
+
 // === [2026-08-25 사건 레이어] 사건 장부 · 게시판 의뢰 — 추가 전용 스키마 ===
 //   village_events   : 하루 경계 판정이 낸 사건. 마을당 EV_KEEP_DAYS 일치만 남기고 오래된 것부터 버린다.
 //   village_requests : 게시판에 걸려 있는 납품 의뢰. (zone,vid,item) 유일 — 동일 품목 중복 금지가 스키마 계약이다.
@@ -619,4 +639,6 @@ module.exports = {
   getSoilCells, upsertSoilCell, deleteSoilCell,
   // [T42] 교역로 캐시 영속 (villages.js getRoute)
   getTradeRoutes, upsertTradeRoute, clearTradeRoutes, countTradeRoutes,
+  // [T537] 마을이 짓는 다리 — 진척·완공 영속(villages `_t527*` · 존 부팅 복원)
+  getVillageBridges, upsertVillageBridge,
 };

@@ -1595,6 +1595,18 @@ function getHardcodedTerrainForZone() {
 // === 상태 ===
 const players = new Map();      // pid -> { ws, x, y, vx, vy, name, inventory, handingOff }
 const observers = new Map();    // ws -> { viewerX, viewerY, lastSeen }
+// ★[T537 2026-09-30] **지은 다리 복원** — 존 DB `village_bridges` 의 완공 행(`done`)이 세운 셀을 부팅 때 다시 올린다(같은 `addBridgeCells` · 새 길 0).
+//   손잡이와 무관하게 읽는다 — 다리는 이미 선 사물이다(행이 없으면 = 끔으로 한 번도 안 지은 존 = 종전 그대로 · 시딩 836셀).
+//   welcome(`bridgePayload`)이 시딩 뒤에 같은 셀을 붙이므로 새로 들어온 클라도 본다.
+{
+  let n = 0, rows = [];
+  try { rows = (db.getVillageBridges && db.getVillageBridges(ZONE_ID)) || []; } catch (e) { rows = []; }
+  for (const r of rows) {
+    if (!r || !r.done) continue;
+    try { const st = JSON.parse(r.state || '{}'); n += addBridgeCells(st.added && st.added.length ? st.added : (st.cells || [])); } catch (e) {}
+  }
+  if (n) console.log(`[${ZONE_ID}] 🌉 지은 다리 복원: ${n}셀(완공 ${rows.filter((r) => r && r.done).length}곳 · 시딩 ${(ZONE.bridges || []).length / 2} + 지은 것 ${BRIDGE_BUILT.length / 2})`);
+}
 const resources = new Map();
 const AOI_RADIUS = 800;         // 클라 VIEW_RADIUS(650) + 여유. 이 안의 player만 tick에 포함
 const claims = new Map();

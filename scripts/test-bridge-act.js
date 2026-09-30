@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다
-// === scripts/test-bridge-act.js — 다리도 행위다 (T527) · 표 · 착공 후보 · 크루 하루 · 존 콜라이더 · 클라 미러 ===========
+// === scripts/test-bridge-act.js — 다리도 행위다 (T527 · T537 잉여 식·영속) · 표 · 착공 후보 · 크루 하루 · 존 콜라이더 · 클라 미러 ===========
 //
 // ★이 하네스가 지키는 계약:
 //   ① 표 하나 — `server/bridge-stages.js` · 수는 출토 보고의 수(테스트우드 청동기 다리)에서 **유도**(말뚝 143 ÷ 22 m = 물 1 m 당 6.5 · 널 = 다리 칸당 판자 1 =
@@ -149,6 +149,70 @@ console.log('\n⑥ 클라 미러 — `bridges_add`');
   ok(i > 0 && /c\.bridges\.add\(cells\[i\] \+ ',' \+ cells\[i \+ 1\]\)/.test(blk) && /_bridgeAbs\.add\(/.test(blk), '⑥ 렌더 집합(`c.bridges`)과 콜라이더 미러(`_bridgeAbs`) 둘 다에 더한다(welcome 과 같은 키)');
   const W = C.slice(C.indexOf('c.bridges = new Set();'), C.indexOf('c.bridges = new Set();') + 600);
   ok(/msg\.zone\.worldOffsetX \/ CL_BUILDING_SIZE\) \+ msg\.bridges\[i\]/.test(W) && /worldOffsetX \|\| 0\) \/ CL_BUILDING_SIZE \+ cells\[i\]/.test(blk), '⑥ 절대 셀 = 존 오프셋 ÷ 셀 + 칸(welcome 과 같은 식)');
+}
+
+console.log('\n⑦ [T537] 잉여 식 — 다리 크루는 **숯가마와 같은 함수**(`woodSpare` = 재고 − 비축 − 집 몫)로만 꺼낸다');
+{
+  const E = require(path.join(ROOT, 'sim', 'economy-sim.js'));
+  const kb = ESRC.slice(ESRC.indexOf('function kilnDay('), ESRC.indexOf('function kilnDay(') + 1400);
+  ok(typeof E.woodSpare === 'function' && /const spare = woodSpare\(v\);/.test(kb) && !/const reserve = \(RESERVE_PC\.wood/.test(kb), '⑦ 숯가마 잉여가 함수 하나(`woodSpare`)로 — 옛 두 줄은 그 함수 속(사본 0 · 산술 순서 그대로)');
+  ok(/function woodSpare\(v\) \{[\s\S]{0,200}const reserve = \(RESERVE_PC\.wood \|\| 0\) \* N;\s*return \(v\.storage\.wood \|\| 0\) - reserve - houseWoodShare\(v\);/.test(ESRC), '⑦ 식 = 재고 − `RESERVE_PC.wood × 인구` − `houseWoodShare`(T488 그대로 · 새 상수 0)');
+  const body = VSRC.slice(VSRC.indexOf('function _t527BridgeDay('), VSRC.indexOf('function _t527BridgeDay(') + 4000);
+  ok(/const room = k === 'wood' \? Math\.max\(0, E\.woodSpare\(vil\.econ\)\) : Infinity;/.test(body) && /Math\.min\(_t400PerLoad\(k\), need\[k\] - \(site\.mat\[k\] \|\| 0\), room\)/.test(body), '⑦ 다리 크루의 한 짐 = min(짐 · 모자란 몫 · **잉여**) — 같은 함수를 부른다');
+  ok(/E\.woodSpare\(v\)/.test(rd('scripts/t527-bridge-demand.js')), '⑦ 800일 계측기도 같은 함수(생활층과 한 규칙)');
+  const sp = probe({ T527_BRIDGE_ACT: '1' }, WORLD({}) + `
+const vil=mk('어촌6',100); vil.econ.npcs=new Array(10).fill(0).map((_,i)=>({id:i}));
+const res=10*5; const s0=E.woodSpare(vil.econ);
+const d1=JSON.parse(JSON.stringify(Q.day(vil))); const m1=S0.mat.wood||0, w1=vil.econ.storage.wood;
+const d2=JSON.parse(JSON.stringify(Q.day(vil))); const w2=vil.econ.storage.wood;
+let low=Infinity; for(let i=0;i<400&&!S0.done;i++){ vil.econ.storage.wood+=60; Q.day(vil); low=Math.min(low,vil.econ.storage.wood); }
+process.stdout.write(JSON.stringify({s0,res,m1,w1,w2,d2stall:d2.stall,d2took:d2.took,low,done:S0.done,took:S0.sum&&S0.sum.took}));`);
+  ok(sp.s0 === 50 && sp.m1 === 50 && sp.w1 === 50, '⑦ ★첫날 — 재고 100 · 비축 50(5/인 × 10) ⇒ 꺼낸 것 50 · 곳간에 비축 50 이 남는다', JSON.stringify({ s0: sp.s0, m1: sp.m1, w1: sp.w1 }));
+  ok(sp.w2 === 50 && sp.d2took === 0 && sp.d2stall === 1, '⑦ ★둘째 날 — 잉여 0 이면 한 톨도 안 꺼내고 기다린다(곳간 바닥 0)', JSON.stringify({ w2: sp.w2, took: sp.d2took }));
+  ok(sp.low >= sp.res - 1e-9 && sp.done === true && Math.abs(sp.took - 885) < 1e-6, '⑦ 끝까지 — 곳간 최저가 비축 밑으로 안 내려가고 다리는 선다(통나무 885)', `최저 ${sp.low} · 비축 ${sp.res}`);
+}
+
+console.log('\n⑧ [T537] 영속 — 존 DB `village_bridges` · 재기동 뒤 같은 셀 · 진척 이어짐(자식 프로세스 셋 · 같은 DB)');
+{
+  const DB = `/tmp/test-bridge-persist-${process.pid}.db`;
+  for (const f of [DB, DB + '-wal', DB + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
+  const ZP = JSON.stringify(path.join(ROOT, 'server', 'zone.js')), DBP = JSON.stringify(path.join(ROOT, 'server', 'zone-local-db.js')), ZCP = JSON.stringify(path.join(ROOT, 'server', 'zone-config.js'));
+  const boot = (env, js) => probe(Object.assign({ ZONE_ID: 'hanbando', PORT: String(38900 + (process.pid % 90)), DB_PATH: DB, ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0' }, env), `
+const _l=console.log; const LOG=[]; console.log=(...a)=>LOG.push(a.join(' ')); console.warn=()=>{}; console.error=()=>{};
+const Z=require(${ZP}); const H=Z.__testBind(); const D=require(${DBP}); const {ZONES}=require(${ZCP}); const ZC=ZONES.hanbando;
+const V=require(${VP}), E=require(${EP}), P=V.__labProbe._t400Probe, Q=V.__labProbe._t527Probe;
+const players=new Map(); ['fisher','farmer'].forEach((j,i)=>players.set('n'+i,{pid:'n'+i,simJob:j,inventory:{}}));
+const DAY=600000; let now=DAY*10+1;
+P.setup({deps:{players,moveSpeed:120,dayPhaseRatio:0.7,broadcast(){},addBridgeCells:H.addBridgeCells,anyViewerNear:()=>false},db:D,dayMs:DAY,epoch:0,zoneId:'hanbando',tickCtx:{get now(){return now}}});
+P.setup({ta:{isBlocked:()=>false,isWater:()=>false},world:{day:0}});
+Q.reset(); const S0=(Q.sites()||[])[0]||null;
+const mk=(wood)=>({dbId:1,name:'어촌6',ccx:S0?S0.cells[0]:0,ccy:S0?S0.cells[1]+6:0,npcPids:[...players.keys()],econ:{storage:{wood}},_granList:[{cx:S0?S0.cells[0]+4:0,cy:S0?S0.cells[1]+4:0}],_site:null,_granPend:null});
+const px=(c)=>c*32+16; const hashOf=()=>{ const a=[]; for(let cx=0;cx<0;cx++); return 0; };
+const setSig=()=>{ const f=H.bridgePayload()||[]; const a=[]; for(let i=0;i+1<f.length;i+=2) a.push(f[i]+'_'+f[i+1]); a.sort(); return require('crypto').createHash('sha1').update(a.join(',')).digest('hex').slice(0,12); };
+` + js + `
+console.log=_l; setTimeout(()=>process.exit(0),10);`);
+  // A — 반쯤 짓고 끈다
+  const a = boot({ T527_BRIDGE_ACT: '1' }, `const vil=mk(300); Q.day(vil); const rows=D.getVillageBridges('hanbando');
+process.stdout.write(String.fromCharCode(10)+JSON.stringify({stage:S0.stage,mat:S0.mat.wood,rows:rows.length,done:rows[0]&&rows[0].done,cnt:H.bridgeCellCount()})+String.fromCharCode(10));`);
+  ok(a.rows === 1 && a.done === 0 && a.stage === 0 && a.mat === 300 && a.cnt === 836, '⑧ A — 반쯤(놓인 통나무 300 · 단계 0) · 행 1 · 존 다리 836 그대로', JSON.stringify(a));
+  // B — 재기동: 진척이 이어지고 끝까지 짓는다
+  const b = boot({ T527_BRIDGE_ACT: '1' }, `const r0={stage:S0.stage,mat:S0.mat.wood,sum:S0.sum&&S0.sum.took}; const vil=mk(0); let d=0; while(!S0.done&&d<60){ vil.econ.storage.wood+=100; now+=DAY; Q.day(vil); d++; }
+const rows=D.getVillageBridges('hanbando'); const st=JSON.parse(rows[0].state);
+process.stdout.write(String.fromCharCode(10)+JSON.stringify({r0,done:S0.done,rowDone:rows[0].done,added:(st.added||[]).length/2,cnt:H.bridgeCellCount(),took:st.sum.took,sig:setSig()})+String.fromCharCode(10));`);
+  ok(b.r0.stage === 0 && b.r0.mat === 300 && b.r0.sum === 300, '⑧ B ★재기동 뒤 **진척이 이어진다** — 놓인 통나무 300 · 크루 누적 300(DB 행에서)', JSON.stringify(b.r0));
+  ok(b.done === true && b.rowDone === 1 && b.added === 90 && b.cnt === 836 + 89 && Math.abs(b.took - 885) < 1e-6, '⑧ B 완공 — 행 done · 셀 90 기록 · 존 925(시딩 836 + 새 89) · 누적 885(두 판을 이은 합)', JSON.stringify({ cnt: b.cnt, took: b.took }));
+  // C — 재기동(손잡이 끔): 존 부팅이 지은 다리를 다시 올린다
+  const c = boot({ T527_BRIDGE_ACT: '' }, `let wet=null; for(let i=0;i+1<ZC.bridgeSites[0].cells.length;i+=2){ const x=px(ZC.bridgeSites[0].cells[i]),y=px(ZC.bridgeSites[0].cells[i+1]); if(H.isWaterTileLocal(x,y)&&!(ZC.bridges.join(',').includes(ZC.bridgeSites[0].cells[i]+','+ZC.bridgeSites[0].cells[i+1]))){ wet=[x,y]; break; } }
+process.stdout.write(String.fromCharCode(10)+JSON.stringify({cnt:H.bridgeCellCount(),pl:(H.bridgePayload()||[]).length/2,head:(H.bridgePayload()||[]).slice(0,ZC.bridges.length).join()===ZC.bridges.join(),blk:H.isTerrainBlockedLocal(wet[0],wet[1]),sig:setSig(),log:LOG.filter(l=>/지은 다리 복원/.test(l)).length,sites:Q.sites()})+String.fromCharCode(10));`);
+  ok(c.cnt === 925 && c.pl === 925 && c.head === true && c.blk === false && c.log === 1, '⑧ C ★재기동(끔) — 존 부팅이 **같은 셀**을 다시 올린다 · welcome 도 925(시딩 뒤에 붙음) · 물 칸 통행', JSON.stringify({ cnt: c.cnt, pl: c.pl, blk: c.blk }));
+  ok(c.sig === b.sig && c.sites === null, '⑧ C 다리 셀 집합 해시 = 완공 직후 판과 같다 · 끔이면 진척 표는 안 선다(지은 다리만 남는다)', `${c.sig}`);
+  const d = boot({ T527_BRIDGE_ACT: '1' }, `process.stdout.write(String.fromCharCode(10)+JSON.stringify({done:S0.done,stage:S0.stage,cnt:H.bridgeCellCount()})+String.fromCharCode(10));`);
+  ok(d.done === true && d.stage === 2 && d.cnt === 925, '⑧ D 재기동(켬) — 완공 후보는 완공으로 이어진다(다시 짓지 않는다)', JSON.stringify(d));
+  const e = probe({ ZONE_ID: 'hanbando', PORT: String(38995), DB_PATH: `/tmp/test-bridge-persist-e-${process.pid}.db`, ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0' }, `console.log=()=>{};console.warn=()=>{};console.error=()=>{};const H=require(${ZP}).__testBind(); const {ZONES}=require(${ZCP});
+process.stdout.write(String.fromCharCode(10)+JSON.stringify({cnt:H.bridgeCellCount(),same:H.bridgePayload()===ZONES.hanbando.bridges})+String.fromCharCode(10)); setTimeout(()=>process.exit(0),10);`);
+  ok(e.cnt === 836 && e.same === true, '⑧ 미끼 — 빈 DB 로 부팅하면 종전 그대로(836 · welcome 같은 참조)', JSON.stringify(e));
+  for (const f of [DB, DB + '-wal', DB + '-shm', `/tmp/test-bridge-persist-e-${process.pid}.db`]) { try { fs.unlinkSync(f); } catch (e2) {} }
+  ok(/CREATE TABLE IF NOT EXISTS village_bridges/.test(rd('server/zone-local-db.js')) && /db\.getVillageBridges\(ZONE_ID\)/.test(ZSRC) && /addBridgeCells\(st\.added/.test(ZSRC), '⑧ 스키마 추가 전용(구DB 안전) · 복원은 같은 `addBridgeCells`(새 길 0)');
 }
 
 console.log(`\n=== ${pass}/${pass + fail} ${fail ? '✗' : '✓'} ===`);

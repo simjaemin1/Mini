@@ -9,6 +9,7 @@
 //   · 착공 후보 = 존 설정 `bridgeSites`(`T17_ZONE` · 기본 한반도) · 짓는 마을 = 그 줄의 `v`
 //   · 단계 자재 = `bridge-stages.js bridgeStages(span, 칸 수)` 를 움집·곳간 레시피로 푼 econ 재화(생활층 `_t527EconNeed` 와 같은 식)
 //   · 하루 시공 = `LIFE_CREW × LIFE_STAGE_PDAY` 단계(villages.js 그 줄을 **글자로** 읽는다) · 자재가 다 놓여야 단계가 오른다
+//   · ★[T537] 통나무는 **잉여만** — econ `woodSpare`(재고 − 비축 − 집 몫 · 숯가마와 같은 함수)
 //   · 걸음 한도는 걸지 않는다(T435 계측기와 같다 — 크루 왕복 상한은 실서버 판에서만 · 보고에 적었다) ⇒ **가장 이른** 완공일이다
 // ★손잡이(이 파일 것): `T527_SIM=1` 이면 자재를 곳간에서 **실제로 뺀다**(켬 팔) · 없으면 세기만(끔 팔 = 기준선과 비트 동일이어야 한다) ·
 //   `T527_JSON=<경로>` 에 누계를 쓴다.
@@ -48,7 +49,8 @@ V2.tickWorldV2 = function (w) {
       const need = s.need[s.stage] || {};
       for (const [k, n] of Object.entries(need)) {
         const have = s.mat[k] || 0; if (have >= n) continue;
-        const take = Math.min(n - have, v.storage[k] || 0);
+        const room = k === 'wood' ? Math.max(0, E.woodSpare(v)) : Infinity;   // ★[T537] 통나무는 잉여만(생활층 `_t527BridgeDay` 와 같은 함수)
+        const take = Math.min(n - have, v.storage[k] || 0, room);
         if (take > 0) { s.mat[k] = have + take; s.took[k] = (s.took[k] || 0) + take; if (SIM) v.storage[k] -= take; }
         if ((s.mat[k] || 0) < n) short = true;
       }
