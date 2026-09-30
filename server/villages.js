@@ -2603,20 +2603,21 @@ const TERR_GROW_MAX_PER_DAY = 60;   // 마을당 하루 최대 확장 셀 — ec
 //   제 `growTerritory` 를 따로 갖는다. ⇒ **T221 의 함정(자·랩이 끈 세계를 잰다)이 여기엔 없다**:
 //   자·랩은 이 코드를 아예 안 돌리므로 뒤집어도 그쪽 표가 한 수도 안 움직인다(§0ⓐ 가 `cmp` 로 증명한다).
 const T230_TERR_HOUSING = process.env.T230_TERR_HOUSING !== '0';
-// ★★[T538 추신3 ⓐ 2026-09-30 · 재민 캐논 #93] **영토 상한 = 인구 × `LAND_NEED`** — 손잡이 `T538_TERR_CAP`(★기본 **끔** · 켬 `=1`).
-//   ⚠기본 켬으로 못 올린 이유(실측): 창설한 유저 마을은 인구 0 · 영토 반경 4(`PV_TERR_R`)로 선다 — 상한이 0 이라 영토가 **영영 안 자라**
-//     공용 쉼터 자리가 영토 안에 안 나온다 ⇒ `e2e-village` 42/7(T62 쉼터 넷 · T19 자격·시작 지도 셋) · 끔 49/0. 유저 마을을 어떻게 할지는 재민(#93 · 보고 T538 추신3 ⓐ).
+// ★★[T538 추신3 ⓐ 2026-09-30 · 재민 캐논 #93] **영토 상한 = 인구 × `LAND_NEED`** — 손잡이 `T538_TERR_CAP`.
+//   T538 에선 기본 끔이었다: 창설한 유저 마을은 인구 0 · 영토 반경 4(`PV_TERR_R`)로 서는데 상한이 0 이라 영토가 **영영 안 자라**
+//     공용 쉼터 자리가 영토 안에 안 나왔다(`e2e-village` 42/7).
+//   ★★[T559 ⓪ 2026-09-30 · PM] **NPC 마을만 상한 · 유저 마을(`econ.founder` — 사람이 세운 마을의 유일한 표지 · T19)은 상한 밖** ⇒ **기본 켬**(되돌림 `T538_TERR_CAP=0`).
 //   8주 산 서울 세계에서 영토가 마을당 최대 39,630셀(집 항 목표 50,100 — ⌈housing÷6⌉×600+1,500)까지 자라 행 수가 부팅을 죽였다(T538 §①).
 //   재민 답: 영토는 **사람이 쓰는 땅**만큼이다 — 인당 경작칸 `LAND_NEED`(`village-layout` 정본 · 12 · 새 수 0).
 //   ⇒ 목표(종전 식) 와 이 상한 중 **작은 쪽**까지만 더한다. 상한을 넘은 마을은 **자라지 않을 뿐 줄이지 않는다**(행을 지우지 않는다 · 세계를 줄이지 않는다).
 //   ⚠자·랩은 `_terrGrow` 를 안 탄다(위 T298 주석) — 3시드 자 무변. 무는 곳은 생활층(집터가 영토 안에서만 선다) — 보고 T538 추신3 ⓐ 표.
-const T538_TERR_CAP = process.env.T538_TERR_CAP === '1';
+const T538_TERR_CAP = process.env.T538_TERR_CAP !== '0';
 function _terrGrow(vil) {
   if (!state.ta || !vil || !vil._terrSet || !vil._terrSet.size) return 0;
   const land = vil.econ && vil.econ.land; if (!land || !land.size) return 0;
   const _tt = _lifeVL().territoryTarget(land.size, (vil.econ && vil.econ.housing) || 0);
   let target = T230_TERR_HOUSING ? _tt.target : _tt.econ;
-  if (T538_TERR_CAP) target = Math.min(target, ((vil.econ.npcs && vil.econ.npcs.length) || 0) * _lifeVL().LAND_NEED);
+  if (T538_TERR_CAP && !vil.econ.founder) target = Math.min(target, ((vil.econ.npcs && vil.econ.npcs.length) || 0) * _lifeVL().LAND_NEED);   // ★[T559 ⓪] 유저 마을은 상한 밖
   if (vil._terrSet.size >= target) return 0;
   const ta = state.ta, own = vil._terrSet, ccx = vil.ccx, ccy = vil.ccy;
   const fertW = 3.5, compactW = 0, distW = 0.1;
