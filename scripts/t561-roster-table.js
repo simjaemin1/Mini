@@ -62,17 +62,22 @@ for (const [tag, A] of Object.entries(R.arms)) {
   // ── ⓒ 배수 — 그날 나선 나무꾼 몸 한 사람이 댄 단 ↔ 일괄이 그 한 사람 몫으로 벨 단(그날 식)
   const ratio = [];
   const byDay = {};
-  for (const x of bodyDays) { const q = byDay[x.day] || (byDay[x.day] = { bodies: 0, worked: 0, cutU: 0, cutN: 0, rest: 0, stuck: 0, cutUns: 0 }); q.bodies++;
-    if (x.restMaj) q.rest++; else { q.worked++; q.cutU += x.cutU || 0; q.cutN += x.cutN || 0; if (x.stuck) q.stuck++; else q.cutUns += x.cutU || 0; } }
+  for (const x of bodyDays) { const q = byDay[x.day] || (byDay[x.day] = { bodies: 0, worked: 0, cutU: 0, cutN: 0, rest: 0, stuck: 0, cutUns: 0, cutNns: 0 }); q.bodies++;
+    if (x.restMaj) q.rest++; else { q.worked++; q.cutU += x.cutU || 0; q.cutN += x.cutN || 0; if (x.stuck) q.stuck++; else { q.cutUns += x.cutU || 0; q.cutNns += x.cutN || 0; } } }
   for (const [d, q] of Object.entries(byDay)) {
     const info = vilDay[d] || null;
     const per = info && info.trips != null ? info.trips * (info.treesPerLoad || 1) * (info.wBar || 0) : null;   // 옛 일괄의 한 사람 몫(단) = 짐 수 × 짐당 그루 × w̄
     const body491 = info && info.trips != null ? info.trips * (info.woodPerLoad || 0) : null;               // T491 의 몸 하루(단)
     const bodyU = q.worked > 0 ? q.cutU / q.worked : null;
     const nsN = q.worked - q.stuck, bodyUns = nsN > 0 ? q.cutUns / nsN : null;                                   // 멈춘 몸을 뺀 한 사람
+    //   ★그루 배수(곳간에 드는 목재로 견준다): 일괄 한 사람 몫 그루(짐 × 짐당 그루) ÷ 몸 한 사람이 벤 그루.
+    //     ⚠`cutU`(몸의 `_t325U`)는 econ 배율 `_t172mul` 이 붙은 계수기다 — 손에 드는 낱개(곳간 입고)는 배율 없는 전리품이다(일괄도 같다) ⇒ 입고로 견주려면 그루다.
+    const perT = info && info.trips != null ? info.trips * (info.treesPerLoad || 1) : null;
+    const bodyT = q.worked > 0 ? q.cutN / q.worked : null, bodyTns = nsN > 0 ? q.cutNns / nsN : null;
     ratio.push({ day: +d, bodies: q.bodies, worked: q.worked, rest: q.rest, stuck: q.stuck, bodyU: r2(bodyU), bodyTrees: q.worked ? r2(q.cutN / q.worked) : null,
       batchPer: r2(per), body491: r2(body491), trips: info && info.trips, wBar: info && info.wBar, dCtr: info && info.dCtr,
-      x: (bodyU > 0 && per != null) ? r2(per / bodyU) : null, bodyUns: r2(bodyUns), xns: (bodyUns > 0 && per != null) ? r2(per / bodyUns) : null });
+      x: (bodyU > 0 && per != null) ? r2(per / bodyU) : null, bodyUns: r2(bodyUns), xns: (bodyUns > 0 && per != null) ? r2(per / bodyUns) : null,
+      perT, bodyTns: r2(bodyTns), xT: (bodyT > 0 && perT != null) ? r2(perT / bodyT) : null, xTns: (bodyTns > 0 && perT != null) ? r2(perT / bodyTns) : null });
   }
   ratio.sort((a, b) => a.day - b.day);
   // ── ⓓ 나머지 마을(관측자 0) — 일괄 마을·날 · 그루 · 명부
@@ -113,7 +118,7 @@ for (const [tag, A] of Object.entries(R.arms)) {
       }
     }
   }
-  const med = (xs) => { if (!xs.length) return null; const s = xs.slice().sort((p, q) => p - q); return s[Math.floor(s.length / 2)]; };
+  const med = (xs) => { if (!xs.length) return null; const s = xs.slice().sort((p, q) => p - q); return s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2; };
   const sum = (xs) => xs.reduce((p, q) => p + q, 0);
   const world = { bodyDays: W.bd, hist: W.hist, cutUMed: r2(med(W.cutU)), cutUSum: r2(sum(W.cutU)), granMed: med(W.gran), handMaxGran: r2(W.handG), handMaxNoGran: r2(W.handNG),
     duskMax: r2(W.duskMax), duskSum: r2(W.duskSum), restBodyDays: W.restBD, stuck: W.stuck, rested: W.rested,
@@ -185,8 +190,10 @@ for (const [tag, O] of Object.entries(out.arms)) {
   console.log('  몸 × 날(나무꾼) — 게임일 | 몸 | 요양 몸 | 나선 몸 한 사람: 벤 그루 · 벤 단 | 옛 일괄 한 사람 몫 단(짐 × 짐당 그루 × w̄) | T491 몸 하루 | 배수');
   for (const x of O.ratio) console.log(`  ${x.day} | ${x.bodies} | ${x.rest} | ${fmt(x.bodyTrees)} · ${fmt(x.bodyU)} | ${fmt(x.batchPer)}(짐 ${fmt(x.trips)} · w̄ ${fmt(x.wBar)}) | ${fmt(x.body491)} | ${fmt(x.x)}` + (x.stuck ? ` (멈춘 몸 ${x.stuck} — 빼면 ${fmt(x.bodyUns)}단 · ${fmt(x.xns)})` : ''));
   { const xs = O.ratio.map((r) => r.x).filter((v) => v != null).sort((p, q) => p - q), xn = O.ratio.map((r) => r.xns).filter((v) => v != null).sort((p, q) => p - q);
-    const m = (a) => a.length ? a[Math.floor(a.length / 2)] : null;
-    if (xs.length) console.log(`  ⇒ 배수 중앙 ${m(xs)}(날 ${xs.length} · ${xs[0]}~${xs[xs.length - 1]}) · 멈춘 몸 뺀 중앙 ${fmt(m(xn))}`); }
+    const m = (a) => a.length ? r2(a.length % 2 ? a[(a.length - 1) / 2] : (a[a.length / 2 - 1] + a[a.length / 2]) / 2) : null;   // 가운데 값(짝수면 두 값의 평균)
+    if (xs.length) console.log(`  ⇒ 배수 중앙 ${m(xs)}(날 ${xs.length} · ${xs[0]}~${xs[xs.length - 1]}) · 멈춘 몸 뺀 중앙 ${fmt(m(xn))}`);
+    const ts = O.ratio.map((r) => r.xT).filter((v) => v != null).sort((p, q) => p - q), tn = O.ratio.map((r) => r.xTns).filter((v) => v != null).sort((p, q) => p - q);
+    if (ts.length) console.log(`  ⇒ 그루 배수 중앙 ${m(ts)}(날 ${ts.length} · ${ts[0]}~${ts[ts.length - 1]}) · 멈춘 몸 뺀 중앙 ${fmt(m(tn))}`); }
   const Rr = O.rest; console.log(`  나머지 마을: 일괄 마을·날 ${Rr.hlDays} · 그루 ${Rr.hlCut} · 단 ${Rr.hlUnits}` + (Rr.roster ? ` · 명부(마을·날 ${Rr.roster.rows}) econ ${Rr.roster.econ} ↔ 나선 몸 ${Rr.roster.body} · 나선 몸 0 인데 econ > 0 ${Rr.roster.zeroCrew}(econ ${Rr.roster.zeroCrewEcon})` : ''));
   const Wd = O.world, Fl = O.flow;
   console.log(`  세계 나무꾼 몸·날(요양 뺌) ${Wd.bodyDays} · 그루 분포 ${JSON.stringify(Wd.hist)} · 단 중앙 ${fmt(Wd.cutUMed)} · 합 ${fmt(Wd.cutUSum)} · 곳간행 중앙 ${fmt(Wd.granMed)} · 손 최대(곳간 있는 ${Wd.handMaxGran} · 없는 ${Wd.handMaxNoGran}) · 해 질 녘 손 최대 ${Wd.duskMax} · 합 ${Wd.duskSum} · 요양 몸·날 ${Wd.restBodyDays} · 멈춘 몸·날 ${Wd.stuck}(최장 연속 ${Wd.stuckLong.best}일 ${Wd.stuckLong.who || ''} · 3일 이상 몸 ${Wd.stuckLong.n3}) · 쉰 몸·날 ${Wd.rested}`);
