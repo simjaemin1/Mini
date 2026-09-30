@@ -822,7 +822,7 @@
     //   ⇒ 여기서 로직을 복제하지 않는다. 정본 버튼(.hud-actions[data-action])을 그대로 눌러 준다.
     {
       const list = document.getElementById('siteBuildList');
-      const src = document.querySelectorAll('.hud-actions [data-action="hut_start"], .hud-actions [data-action="furnace_start"], .hud-actions [data-action="kiln_start"], .hud-actions [data-action="village_start"]');
+      const src = document.querySelectorAll('.hud-actions [data-action="hut_start"], .hud-actions [data-action="furnace_start"], .hud-actions [data-action="kiln_start"], .hud-actions [data-action="well_start"], .hud-actions [data-action="village_start"]');
       for (const srcBtn of src) {
         if (srcBtn.style && srcBtn.style.display === 'none') continue;   // 시대 미해금(괴련로 등)은 정본 그대로 숨긴다
         const b = document.createElement('button');

@@ -81,7 +81,7 @@
         if (b.type !== 'hut_site' && b.type !== 'furnace_site' && b.type !== 'furnace'
             && b.type !== 'kiln_site' && b.type !== 'charcoal_kiln'
             && b.type !== 'village_site' && b.type !== 'village_hall'
-            && b.type !== 'shelter_site') continue;   // ★[T62 리베이스] 쉼터 터도 사슬에 있다
+            && b.type !== 'shelter_site' && b.type !== 'well_site') continue;   // ★[T62 리베이스] 쉼터 터도 사슬에 있다 · ★[T557] 우물 터
         const absX = ox + b.x, absY = oy + b.y;
         const rx = b.type === 'hut_site' ? 48 : 34, ry = b.type === 'hut_site' ? 40 : 34;
         if (Math.abs(absX - wx) <= rx && Math.abs(absY - wy) <= ry) {
@@ -241,6 +241,7 @@
         village_hall:  { label: '열기 — 마을 재고', type: 'village_inventory' },
         shelter_site:  { label: '시공',        type: 'shelter_advance' },   // ★[T62 리베이스] 공용 쉼터
         hut_site:      { label: '시공',        type: 'hut_advance' },
+        well_site:     { label: '시공',        type: 'well_advance' },   // ★[T557] 우물 터(완공 우물은 물 칸처럼 — 아래 물 메뉴)
       };
       const m = M[b.type] || M.hut_site;
       out.push({ label: m.label, send: () => {
@@ -372,7 +373,7 @@
       const t = pickAt(w.wx, w.wy, { live: true });
       // ★★[T507] **물 칸**이면 메뉴를 서버의 답으로 짓는다 — 민물이냐 짠물이냐는 서버 술어(`isSeaTileLocal`)가 가른다.
       //   클라의 `isWaterAtAbs` 는 "물이냐"(그리기용 거울)까지만 묻는다 — 짠물 판정을 여기 옮겨 적지 않는다.
-      if (t && t.kind === 'ground' && t507On() && typeof isWaterAtAbs === 'function' && isWaterAtAbs(t.absX, t.absY)) {
+      if (t && t.kind === 'ground' && t507On() && ((typeof isWaterAtAbs === 'function' && isWaterAtAbs(t.absX, t.absY)) || (typeof isWellAtAbs === 'function' && isWellAtAbs(t.absX, t.absY)))) {   // ★[T557] 우물 칸도 물 메뉴(서버 `look` 이 민물이라 답한다)
         verbLook(t.absX, t.absY, { cx: e.clientX, cy: e.clientY });
         return;
       }

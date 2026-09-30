@@ -1,4 +1,18 @@
 // @@split:36-r2-building — R2 — 그리기 헬퍼·계단 셀·건물 아이소메트릭 (T51 ⑤)
+  // ★[T557] 우물 칸 — 완공 우물(`well` · data x0·y0 · 2×2) 발자국 안인가. 서버 `_wellCellAt` 의 클라 거울이고,
+  //   쓰이는 자리는 하나다(우클릭이 물 메뉴를 열지 — 마실 수 있는지는 서버 `look` 이 답한다).
+  function isWellAtAbs(ax, ay) {
+    for (const c of conns.values()) {
+      if (!c.meta) continue;
+      const ox = c.meta.worldOffsetX || 0, oy = c.meta.worldOffsetY || 0;
+      const tx = Math.floor((ax - ox) / CL_BUILDING_SIZE), ty = Math.floor((ay - oy) / CL_BUILDING_SIZE);
+      for (const b of c.buildings.values()) {
+        if (b.type !== 'well' || !b.data) continue;
+        if (tx >= b.data.x0 && tx <= b.data.x0 + 1 && ty >= b.data.y0 && ty <= b.data.y0 + 1) return true;
+      }
+    }
+    return false;
+  }
   // === 그리기 헬퍼 ===
   function drawDiamond(cx, cy, size, color) {
     const hw = size;
@@ -268,8 +282,8 @@
     // ★★[T519] 우물 — 서버 `well_site`(stage) → 완공 `well`(`server/well-stages.js` · 손잡이 `T509_WELL`).
     //   끔이면 이 두 종류가 서버에서 **안 온다** ⇒ 이 갈래를 안 지난다(끔 화소 동일).
     //   노·숯가마와 **같은 2×2 앵커 계약**이라 같은 델타 변환이다. 터 = `well_s{stage}` · 완공 = `well`.
-    //   ⓘ 공정 수 `2` 는 `WELL_STAGES.length` 의 사본이다 — `test-well-art` 가 둘을 맞댄다.
-    //   ⓘ 라벨에 "(클릭=시공)" 을 **안** 붙인다: 우물 터를 누르는 배선이 클라에 아직 없다(회부) — 라벨이 거짓말을 안 하게.
+    //   ⓘ 공정 수 `3` 은 `WELL_STAGES.length` 의 사본이다 — `test-well-art` 가 둘을 맞댄다(T557 에서 벽을 단마다 갈라 3).
+    //   ⓘ ★[T557] 터를 누르는 배선이 섰다(`30-n-net` 좌클릭 · `46-h-verbs` 우클릭 → `well_advance`) — 라벨이 "(클릭=시공)" 을 약속한다.
     if (type === 'well_site' || type === 'well') {
       const st = (building?.data?.stage) | 0;
       const done = type === 'well';
@@ -284,7 +298,7 @@
         ctx.setLineDash([4, 3]); ctx.strokeStyle = '#9a8464'; ctx.lineWidth = 1.2; ctx.stroke(); ctx.setLineDash([]);
       }
       ctx.font = 'bold 10px sans-serif'; ctx.fillStyle = '#e6d6b6'; ctx.textAlign = 'center';
-      ctx.fillText(done ? '우물 — E=마시기·병에 담기' : `우물 터 ${st}/2단계`, x, y - 30);
+      ctx.fillText(done ? '우물 — E=마시기·병에 담기' : `우물 터 ${st}/3단계 (클릭=시공)`, x, y - 30);
       ctx.textAlign = 'left';
       return;
     }

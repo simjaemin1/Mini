@@ -21,13 +21,22 @@ const WELL_SRC = {
 // ── 유도 — 벽 자갈 수 = 단마다 둘레(타원 근사 π·평균지름) ÷ 돌 평균 크기 · 올림 × 단 수 ─────────────
 const _meanMouthCm = (WELL_SRC.mouthCm[0] + WELL_SRC.mouthCm[1]) / 2;
 const _meanStoneCm = (WELL_SRC.stoneCm[0] + WELL_SRC.stoneCm[1]) / 2;
-const WELL_PEBBLES = Math.ceil((Math.PI * _meanMouthCm) / _meanStoneCm) * WELL_SRC.tiers;   // = ceil(π·94.5/15) × 2 = 20 × 2 = 40
+const WELL_PEBBLES_PER_TIER = Math.ceil((Math.PI * _meanMouthCm) / _meanStoneCm);   // = ceil(π·94.5/15) = 20 — 한 단 둘레
+const WELL_PEBBLES = WELL_PEBBLES_PER_TIER * WELL_SRC.tiers;                             // = 20 × 2 = 40
 
-// 우물 파기 — 두 단계(착공 = 터파기 · 완공 = 벽 두르기). 착공은 곡괭이(움집 ① 수혈 굴착과 같은 도구 문법).
+// 우물 파기 — 세 단계(착공 = 터파기 · ② 1단 벽 · ③ 2단 벽 = 완공). 착공은 곡괭이(움집 ① 수혈 굴착과 같은 도구 문법).
+//   ★[T557 · T519 회부 1] 벽을 **단마다** 가른다 — 출토 벽이 2단으로 좁아지는 구조라 공정도 둘이다(그림 `well_s2` = 1단을 쌓은 터).
 const WELL_STAGES = [
-  { need: {},                          tool: 'pickaxe', wear: 3, label: `① 우물 파기(물 나는 모래·자갈층까지 — 깊이 ${WELL_SRC.depthCm}㎝)` },
-  { need: { pebble: WELL_PEBBLES },                              label: `② 자갈돌 벽 두르기(자갈 ${WELL_PEBBLES} — ${WELL_SRC.tiers}단)` },
+  { need: {},                                   tool: 'pickaxe', wear: 3, label: `① 우물 파기(물 나는 모래·자갈층까지 — 깊이 ${WELL_SRC.depthCm}㎝)` },
+  { need: { pebble: WELL_PEBBLES_PER_TIER },                              label: `② 자갈돌 벽 1단(자갈 ${WELL_PEBBLES_PER_TIER})` },
+  { need: { pebble: WELL_PEBBLES_PER_TIER },                              label: `③ 자갈돌 벽 2단 — 좁혀 쌓기(자갈 ${WELL_PEBBLES_PER_TIER})` },
 ];
 const WELL_COST = (() => { const o = {}; for (const st of WELL_STAGES) for (const [k, n] of Object.entries(st.need || {})) o[k] = (o[k] || 0) + n; return o; })();
 
-module.exports = { WELL_SRC, WELL_PEBBLES, WELL_STAGES, WELL_COST };
+// ── ★[T557 · 재민 #88 2026-09-30] **어디서 팔 수 있나 — 지하수 가용도** ─────────────────────────────────────────────
+//   판정기록 #88: "우물 켬 — p95 밖 임업4·농촌10·광산1·임업1"(T509 §ⓐ: 도착 자리에서 마실 자리까지 실걸음 p95 335 m 밖 둘 + p95 선 광산1 + 200 m 밖 임업1).
+//   이 표는 **데이터**다(재민 결정 값 그대로) — 우물은 이 마을들의 노동권(`sustain.LABOR_R` 셀 · 후보 자리 기준) 안에서만 판다.
+//   ⚠수위(마른 우물)는 없다(#88 — T519 회부 5). 표를 넓히면 그대로 따라온다(코드 0줄).
+const WELL_VILLAGES = ['임업4', '농촌10', '광산1', '임업1'];
+
+module.exports = { WELL_SRC, WELL_PEBBLES_PER_TIER, WELL_PEBBLES, WELL_STAGES, WELL_COST, WELL_VILLAGES };

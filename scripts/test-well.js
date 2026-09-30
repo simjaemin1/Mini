@@ -15,7 +15,7 @@ const fs = require('fs');
 const { execFileSync } = require('child_process');
 const ROOT = path.join(__dirname, '..');
 const OFF = process.argv[2] === '--off';
-if (!OFF) process.env.T509_WELL = '1'; else delete process.env.T509_WELL;
+if (!OFF) delete process.env.T509_WELL; else process.env.T509_WELL = '0';   // ★[T557] 기본 켬 — 켬 판은 손잡이 없이 · 끔 판은 되돌림 `=0`
 const TMP = `/tmp/test-well-${process.pid}.db`;
 for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
 process.env.ZONE_ID = 'hanbando';
@@ -40,8 +40,12 @@ function mkPlayer(name, opts = {}) {
     hunger: 100, thirst: opts.thirst == null ? 100 : opts.thirst, oreCarry: {}, lots: {}, notices, persistent: false };
 }
 // 물·바위 없는 6×6(발자국 2×2 + 둘레) — 게다가 둘레 3칸 안에 물이 없어야 미끼가 선다
-function findSpot() {
-  for (let cy = 300; cy < 1500; cy += 3) for (let cx = 300; cx < 1500; cx += 3) {
+//   ★[T557 · #88] 우물 마을(`WELL_VILLAGES`)의 노동권 안에서 찾는다 — 밖이면 착공이 거절된다(⑥이 잰다)
+function findSpot(inside = true) {
+  const g = (() => { for (let cy = 0; cy < 4200; cy += 25) for (let cx = 0; cx < 2300; cx += 25) { const r = H._wellGroundAt(cx, cy); if (r) return r; } return null; })();
+  const lo = inside ? { x: g.cx - 120, y: g.cy - 120 } : { x: 300, y: 300 }, hi = inside ? { x: g.cx + 120, y: g.cy + 120 } : { x: 1500, y: 1500 };
+  for (let cy = lo.y; cy < hi.y; cy += 3) for (let cx = lo.x; cx < hi.x; cx += 3) {
+    if (!!H._wellGroundAt(cx, cy) !== inside) continue;
     let clear = true;
     for (let x = cx - 4; x <= cx + 5 && clear; x++) for (let y = cy - 4; y <= cy + 5 && clear; y++) {
       if (H.isTerrainBlockedLocal(x * SZ + SZ / 2, y * SZ + SZ / 2) || H.isWaterTileLocal(x * SZ + SZ / 2, y * SZ + SZ / 2)) clear = false;
@@ -71,15 +75,15 @@ console.log('\n=== 우물 (T509) ===');
 console.log('\n① 표 하나 — `server/well-stages.js`');
 ok(WS.WELL_SRC.mouthCm.join(',') === '110,79' && WS.WELL_SRC.depthCm === 61 && WS.WELL_SRC.tiers === 2 && WS.WELL_SRC.stoneCm.join(',') === '10,20', '① 출토 보고의 수 — 동천동 1호 110×79㎝ · 깊이 61㎝ · 2단 · 자갈돌 10·20㎝');
 ok(WS.WELL_PEBBLES === Math.ceil(Math.PI * 94.5 / 15) * 2 && WS.WELL_PEBBLES === 40, '① 자갈 수는 **유도** — ⌈π × 평균지름 94.5 ÷ 돌 15⌉ × 2단 = 40', String(WS.WELL_PEBBLES));
-ok(WS.WELL_STAGES.length === 2 && WS.WELL_STAGES[0].tool === 'pickaxe' && JSON.stringify(WS.WELL_COST) === '{"pebble":40}', '① 공정 둘(파기 · 벽) · 재료 = 자갈 40');
+ok(WS.WELL_STAGES.length === 3 && WS.WELL_STAGES[0].tool === 'pickaxe' && WS.WELL_STAGES[1].need.pebble === 20 && WS.WELL_STAGES[2].need.pebble === 20 && WS.WELL_PEBBLES_PER_TIER === 20 && JSON.stringify(WS.WELL_COST) === '{"pebble":40}', '① ★[T557] 공정 셋(파기 · 벽 1단 · 벽 2단) · 단마다 자갈 20(= ⌈π·94.5 ÷ 15⌉ 한 단 둘레) · 합 40');
 const zsrc = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
 ok((zsrc.match(/process\.env\.T509_WELL/g) || []).length === 1 && /stages: WellStages\.WELL_STAGES/.test(zsrc), '① 손잡이 한 자리 · zone 은 표를 읽는다(사본 0)');
 const esrc = fs.readFileSync(path.join(ROOT, 'sim', 'economy-sim.js'), 'utf8');
 ok(!/T509|well-stages/.test(esrc), '① econ 무접촉');
 
-console.log('\n② 끔(기본) — 착공도 우물가도 안 열린다(자식 프로세스)');
+console.log('\n② 끔(되돌림 `T509_WELL=0`) — 착공도 우물가도 안 열린다(자식 프로세스)');
 {
-  const out = execFileSync(process.execPath, [__filename, '--off'], { env: Object.assign({}, process.env, { T509_WELL: '' }), stdio: ['ignore', 'pipe', 'pipe'] }).toString().trim().split('\n').pop();
+  const out = execFileSync(process.execPath, [__filename, '--off'], { env: Object.assign({}, process.env, { T509_WELL: '0' }), stdio: ['ignore', 'pipe', 'pipe'] }).toString().trim().split('\n').pop();
   const o = JSON.parse(out);
   ok(o.knob === false && o.sites === 0 && o.cell === false, '② ★끔 — 사유지·곡괭이·자갈이 다 있어도 터가 안 선다 · 우물 칸 술어 거짓', out);
   ok(o.tool === 100 && o.peb === 99, '② 끔 — 도구 내구·재료 무변');
@@ -95,10 +99,12 @@ layClaims(spot.cx, spot.cy, P);
 const site = H.tryWellStart(P, spot.cx * SZ + 1, spot.cy * SZ + 1);
 ok(site && site.type === 'well_site' && P.toolItems[0].d === 97, '③ 착공 — 곡괭이 내구 3 · 터가 선다', P.notices[P.notices.length - 1]);
 H.tryWellAdvance(P, site.id);
-ok(wells('well').length === 0 && P.notices.some((t) => /재료 부족/.test(t)), '③ 자갈 39 — 모자라면 안 선다');
-P.inventory.pebble = 40;
+ok(wells('well_site').length === 1 && site.data.stage === 2 && P.inventory.pebble === 19 && wells('well').length === 0, '③ ★[T557] 벽 1단 — 자갈 20 을 쌓으면 터가 **쌓는 중**(stage 2 · 그림 `well_s2`)으로 선다', `stage ${site.data.stage} · 남은 자갈 ${P.inventory.pebble}`);
+H.tryWellAdvance(P, site.id);
+ok(wells('well').length === 0 && P.notices.some((t) => /재료 부족/.test(t)), '③ 자갈 19 — 2단이 모자라면 안 선다');
+P.inventory.pebble = 20;
 const done = H.tryWellAdvance(P, site.id);
-ok(done && done.type === 'well' && (P.inventory.pebble || 0) === 0 && wells('well_site').length === 0, '③ 자갈 40 — 우물 완공(터는 걷힌다)', P.notices[P.notices.length - 1]);
+ok(done && done.type === 'well' && (P.inventory.pebble || 0) === 0 && wells('well_site').length === 0, '③ 자갈 20 더 — 2단 · 우물 완공(터는 걷힌다 · 합 40)', P.notices[P.notices.length - 1]);
 
 console.log('\n④ 우물가 E — 마시기 · 담기');
 const D = mkPlayer('목마른이', { thirst: 50 });
@@ -115,6 +121,50 @@ const F = mkPlayer('먼곳', { thirst: 50 });
 F.x = (spot.cx - 3) * SZ + SZ / 2; F.y = spot.cy * SZ + SZ / 2;
 H.tryGather(F);
 ok(F.thirst === 50, '⑤ 미끼 — 우물에서 두 칸 떨어지면 물가가 아니다', `50 → ${F.thirst}`);
+
+console.log('\n⑥ [T557 · #88] 기본 켬 · 지하수 가용도 — 우물 마을 노동권 밖이면 착공 거절');
+{
+  ok(H.T509_WELL === true && /const T509_WELL = process\.env\.T509_WELL !== '0';/.test(zsrc), '⑥ ★손잡이 없이 켬(되돌림 `=0`)');
+  ok(JSON.stringify(WS.WELL_VILLAGES) === JSON.stringify(['임업4', '농촌10', '광산1', '임업1']), '⑥ 우물 마을 = 재민 #88 그 넷(데이터)');
+  const far = findSpot(false);
+  const Q = mkPlayer('먼땅', { inv: { pebble: 40 }, tools: ['pickaxe'] });
+  layClaims(far.cx, far.cy, Q); Q.x = (far.cx + 1) * SZ; Q.y = (far.cy + 1) * SZ;
+  const n0 = wells('well_site').length;
+  H.tryWellStart(Q, far.cx * SZ + 1, far.cy * SZ + 1);
+  ok(wells('well_site').length === n0 && Q.toolItems[0].d === 100 && /물줄기가 없다/.test(Q.notices[Q.notices.length - 1] || ''), '⑥ ★노동권 밖 — 사유지·곡괭이·자갈이 다 있어도 거절(도구 무변) · 알림에 우물 마을', Q.notices[Q.notices.length - 1]);
+  ok(!!H._wellGroundAt(spot.cx, spot.cy) && !H._wellGroundAt(far.cx, far.cy), '⑥ 판정 = 후보 자리(`siteCandidates`)에서 `sustain.LABOR_R` 셀 안', `${H._wellGroundAt(spot.cx, spot.cy).name} · 밖 ${far.cx},${far.cy}`);
+}
+
+console.log('\n⑦ [T557 · T519 회부 3] 살피기·물 동사가 우물을 안다');
+{
+  const cellX = spot.cx * SZ + SZ / 2, cellY = spot.cy * SZ + SZ / 2;   // 완공 우물 발자국 칸
+  const L = mkPlayer('살피는이', { inv: { water_bottle: 2 } }); const msgs = [];
+  L.ws = { readyState: 1, send: (x) => { try { msgs.push(JSON.parse(x)); } catch (e) {} } };
+  process.env.T507_VERBS = process.env.T507_VERBS || '';
+  H.tryLook(L, cellX, cellY);
+  const lk = msgs.find((m) => m.type === 'look');
+  ok(!!lk && lk.water === 'fresh' && /우물 — 민물/.test(lk.line) && lk.bottles === 2, '⑦ 살피기 — 우물 칸 = "우물 — 민물" · 물 메뉴를 여는 `water: fresh` · 그릇 수', lk ? lk.line : '답 없음');
+  const Dk = mkPlayer('마시는이', { thirst: 40 }); Dk.x = (spot.cx - 1) * SZ + SZ / 2; Dk.y = spot.cy * SZ + SZ / 2;
+  H._waterVerb(Dk, 'drink');
+  ok(Dk.thirst === 70, '⑦ 우클릭 "마시기"(`gather water:drink`) — 우물가도 물가(+30)', `40 → ${Dk.thirst}`);
+  const Fk = mkPlayer('담는이', { thirst: 100, inv: { water_bottle: 1 } }); Fk.x = Dk.x; Fk.y = Dk.y;
+  H._waterVerb(Fk, 'fill');
+  ok((Fk.inventory.fresh_water || 0) === 1, '⑦ 우클릭 "병에 담기" — 우물에서 민물 한 되', JSON.stringify(Fk.inventory));
+}
+
+console.log('\n⑧ [T557] 화면 — 배치 버튼 · 터 클릭 · 우클릭 시공 · 물 메뉴 · 소리');
+{
+  const rdc = (f) => fs.readFileSync(path.join(ROOT, f), 'utf8');
+  const html = rdc('public/index.html'), main = rdc('public/client/99-main.js'), net = rdc('public/client/30-n-net.js'), verbs = rdc('public/client/46-h-verbs.js'), bld = rdc('public/client/36-r2-building.js'), side = rdc('public/client/51-s-side.js');
+  ok(/data-action="well_start"[^>]*style="display:none"/.test(html) && /uiCfg && uiCfg\.wellAct/.test(net) && /T509_WELL \? \{ wellAct: true \}/.test(zsrc), '⑧ 버튼 `우물 터 잡기` — 서버 손잡이가 켜야 보인다(welcome `uiCfg.wellAct`)');
+  ok(/a === 'well_start'\) \{ buildMode = true; placementMode = \{ special: 'well_site' \}/.test(main) && /_sp === 'well_site' \? 'well_start'/.test(net), '⑧ 배치 모드 → 클릭 자리로 `well_start`(노·숯가마와 같은 배치 계약)');
+  ok(/b\.type === 'well_site'\) sendPrimary\(\{ type: 'well_advance'/.test(net), '⑧ 터 좌클릭 = `well_advance`');
+  ok(/well_site:\s+\{ label: '시공',\s+type: 'well_advance' \}/.test(verbs) && /b\.type !== 'well_site'\) continue;/.test(verbs), '⑧ 우클릭 = 시공(터가 고르기 사슬에 있다 · 움집 갈래로 안 샌다)');
+  ok(/isWellAtAbs\(t\.absX, t\.absY\)/.test(verbs) && /function isWellAtAbs\(ax, ay\)/.test(bld), '⑧ 완공 우물 우클릭 = 물 메뉴(서버 `look` 이 민물이라 답한다)');
+  ok(/data-action="well_start"/.test(side), '⑧ 옆 패널 시설 목록에도 같은 버튼');
+  const man = JSON.parse(rdc('public/assets/sfx/manifest.json'));
+  ok((man.buildRemoved._조용 || []).includes('well_site'), '⑧ 소리 — 우물 터가 다음 단계로 바뀌는 지움은 `build_break` 로 안 운다(`_조용`)');
+}
 
 console.log(`\n=== ${pass}/${pass + fail} ${fail ? '✗' : '✓'} ===`);
 for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }

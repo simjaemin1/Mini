@@ -560,9 +560,9 @@
           // ★움집터·길드 곳간 — 커서 셀 기준 다중 셀 배치(검증·재료·배치는 서버 권위)
           const _sp = placementMode.special;
           const _mt = _sp === 'hut_site' ? 'hut_start' : (_sp === 'furnace_site' ? 'furnace_start'
-                    : (_sp === 'kiln_site' ? 'kiln_start' : (_sp === 'village_site' ? 'village_start'   // ★[배치 12] 마을 회관 착공
+                    : (_sp === 'kiln_site' ? 'kiln_start' : (_sp === 'well_site' ? 'well_start' : (_sp === 'village_site' ? 'village_start'   // ★[배치 12] 마을 회관 착공 · ★[T557] 우물
                     : (_sp === 'shelter_site' ? 'shelter_start'                                        // ★[T62] 공용 쉼터 착공
-                    : (_sp === 'psite' ? 'request_village_house' : 'build_guild_granary')))));
+                    : (_sp === 'psite' ? 'request_village_house' : 'build_guild_granary'))))));
           sendPrimaryAt({ type: _mt, atX: clickWx, atY: clickWy, kind: placementMode.kind || undefined });
           if (!e.shiftKey) { placementMode = null; showNotice('배치 요청'); }
           return;
@@ -624,6 +624,7 @@
         else if (b.type === 'furnace_site') sendPrimary({ type: 'furnace_advance', buildingId: b.id });
         else if (b.type === 'charcoal_kiln') sendPrimary({ type: 'kiln_burn', buildingId: b.id });   // ★숯가마 클릭 = 조업
         else if (b.type === 'kiln_site') sendPrimary({ type: 'kiln_advance', buildingId: b.id });
+        else if (b.type === 'well_site') sendPrimary({ type: 'well_advance', buildingId: b.id });   // ★[T557] 우물 터 시공
         else if (b.type === 'village_site') sendPrimary({ type: 'village_advance', buildingId: b.id });   // ★[배치 12] 회관 시공
         else if (b.type === 'shelter_site') sendPrimary({ type: 'shelter_advance', buildingId: b.id });   // ★[T62] 쉼터 시공
         else if (b.type === 'village_hall') { _pviHallId = b.id; sendPrimary({ type: 'village_inventory', buildingId: b.id }); } // ★[배치 12 ③] 완공 회관 클릭 = 마을 재고(권한은 서버가 본다)
@@ -906,6 +907,7 @@
         inventory = msg.inventory;
         myLedger = msg.ledger || {}; myLots = msg.lots || {};      // ★[원장 승격] 인벤과 같은 스냅샷
         if (msg.uiCfg) uiCfg = Object.assign(uiCfg, msg.uiCfg);    // ★클라 손잡이는 서버 env 가 정본
+        for (const _wb of document.querySelectorAll('[data-action="well_start"]')) _wb.style.display = (uiCfg && uiCfg.wellAct) ? '' : 'none';   // ★[T557] 우물 버튼 — 서버 손잡이(`T509_WELL`)가 정한다
         if (msg.tools) tools = msg.tools;
         if (Array.isArray(msg.toolItems)) toolItems = msg.toolItems;
         if (msg.equipped !== undefined) equipped = msg.equipped;

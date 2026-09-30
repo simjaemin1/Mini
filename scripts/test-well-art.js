@@ -143,9 +143,11 @@ console.log('\n⑥ 우물가 E 문구 = 물가 E 문구 (실서버 함수 왕복
     wat = { x: px - SZ, y: py2 };
   }
   ok(!!wat, '⑥ [상황] 민물 칸 옆 마른 땅', wat ? `${wat.x},${wat.y}` : 'null');
-  // 우물 — `test-well` 과 같은 자리 찾기(물·바위 없는 6×6)
+  // 우물 — `test-well` 과 같은 자리 찾기(물·바위 없는 6×6) · ★[T557 · #88] 우물 마을(`WELL_VILLAGES`) 노동권 안에서
   let spot = null;
-  for (let cy = 300; cy < 1500 && !spot; cy += 3) for (let cx = 300; cx < 1500 && !spot; cx += 3) {
+  const _gs = (() => { for (let cy = 0; cy < 4200; cy += 25) for (let cx = 0; cx < 2300; cx += 25) { const g = H._wellGroundAt(cx, cy); if (g) return g; } return null; })();
+  for (let cy = _gs.cy - 120; cy < _gs.cy + 120 && !spot; cy += 3) for (let cx = _gs.cx - 120; cx < _gs.cx + 120 && !spot; cx += 3) {
+    if (!H._wellGroundAt(cx, cy)) continue;
     let clear = true;
     for (let x = cx - 4; x <= cx + 5 && clear; x++) for (let y = cy - 4; y <= cy + 5 && clear; y++) {
       if (H.isTerrainBlockedLocal(x * SZ + SZ / 2, y * SZ + SZ / 2) || H.isWaterTileLocal(x * SZ + SZ / 2, y * SZ + SZ / 2)) clear = false;
@@ -159,7 +161,7 @@ console.log('\n⑥ 우물가 E 문구 = 물가 E 문구 (실서버 함수 왕복
   P.x = (spot.cx + 1) * SZ; P.y = (spot.cy + 1) * SZ;
   console.log = () => {};                                   // 착공·완공 로그 한 줄씩 — 판정 출력에 안 섞는다
   const site = H.tryWellStart(P, spot.cx * SZ + 1, spot.cy * SZ + 1);
-  const done = site && H.tryWellAdvance(P, site.id);
+  let done = null; for (let k = 0; k < 4 && site && !(done && done.type === 'well'); k++) done = H.tryWellAdvance(P, site.id);   // ★[T557] 벽 두 단(20 · 20)
   console.log = _l;
   ok(!!done && done.type === 'well', '⑥ [상황] 우물이 섰다(켬 · 사유지 · 곡괭이 · 자갈)');
   const well = { x: (spot.cx - 1) * SZ + SZ / 2, y: spot.cy * SZ + SZ / 2 };

@@ -5537,7 +5537,8 @@ async function _acceptConnection(ws, req, C) {
       charWalkMin: parseFloat(process.env.CHAR_WALK_MIN || '') || 4,
       charRunMin: parseFloat(process.env.CHAR_RUN_MIN || '') || 102,
       ...(process.env.T492_SEASON_AMB === 'on' ? { seasonAmb: true } : {}),   // [T492] 계절 환경음 손잡이 — 끔이면 칸이 없다(welcome 바이트 동일)
-      ...(_t507On() ? { t507Verbs: true } : {}),   // [T507] 첫 30분의 문법(우클릭·이름표·회색) — 기본 켬 · `T507_VERBS=0` 이면 칸이 없다(옛 화면)
+      ...(_t507On() ? { t507Verbs: true } : {}),
+      ...(T509_WELL ? { wellAct: true } : {}),   // [T557] 우물 터 잡기 버튼 — 기본 켬 · `T509_WELL=0` 이면 칸이 없어 버튼이 숨는다   // [T507] 첫 30분의 문법(우클릭·이름표·회색) — 기본 켬 · `T507_VERBS=0` 이면 칸이 없다(옛 화면)
     },
     // ★★[이동 모델 2026-08-30] 손잡이 표를 **서버가 실어 보낸다** — 클라가 표를 들고 있으면
     //   그게 사본이고, env 를 서버에서만 바꾼 날 예측과 권위가 갈린다(itemWeights·uiCfg 와 같은 규약).
@@ -8633,7 +8634,7 @@ function _t507On() { return process.env.T507_VERBS !== '0'; }
 function _waterVerb(player, act) {
   let adj = null;
   for (const [dx, dy] of [[32, 0], [-32, 0], [0, 32], [0, -32]]) {
-    if (isWaterTileLocal(player.x + dx, player.y + dy)) { adj = { x: player.x + dx, y: player.y + dy }; break; }
+    if (isWaterTileLocal(player.x + dx, player.y + dy) || _wellCellAt(player.x + dx, player.y + dy)) { adj = { x: player.x + dx, y: player.y + dy }; break; }   // ★[T557] 우물가도 물가(E 갈래와 같은 술어)
   }
   if (!adj) { send(player.ws, { type: 'notice', text: '물 바로 옆에 서야 한다', kind: 'gather' }); return; }
   const sea = isSeaTileLocal(adj.x, adj.y);
@@ -8669,6 +8670,9 @@ function tryLook(player, x, y) {
   if (isWaterTileLocal(px, py)) {
     water = isSeaTileLocal(px, py) ? 'sea' : 'fresh';
     parts.push(water === 'sea' ? '바다 — 짠물' : '민물 — 강·호수');
+  } else if (_wellCellAt(px, py)) {   // ★[T557 · T519 회부 3] 우물 칸 = 민물(물 메뉴가 열린다 · 끔이면 거짓 = 종전)
+    water = 'fresh';
+    parts.push('우물 — 민물');
   } else if (isRockTileLocal(px, py)) {
     parts.push('바위 — 지나갈 수 없다');
   } else {
@@ -10096,9 +10100,27 @@ function tryKilnAdvance(player, buildingId) {
 // ★★[T509 2026-09-29] 우물 — 공정·재료 정본 `server/well-stages.js`(동천동 1호 실측에서 유도) · 손잡이 `T509_WELL`(기본 끔).
 //   끔이면 착공도 · 우물가 E(마시기·담기)도 안 열린다(아래 두 문이 끔에서 거짓·즉시 반환 = 비트 동일).
 //   노·숯가마와 **같은 2×2 사유지 착공 계약**(`_siteStart`/`_siteAdvance`) — 새 기구 0. 지하수 가용도는 재민 #88(이 판엔 문 없음).
-const T509_WELL = process.env.T509_WELL === '1';
+const T509_WELL = process.env.T509_WELL !== '0';   // ★[T557 · 재민 #88 2026-09-30] 기본 켬 · 되돌림 `T509_WELL=0`(착공·우물가 E·살피기 전부 닫힘 = T509 전 그대로)
 const WellStages = require('./well-stages');
+// ★[T557 · #88] 지하수 가용도 — `WellStages.WELL_VILLAGES`(재민 결정 데이터)의 **후보 자리**(`terrain.siteCandidates` — 시딩이 부르는 문 하나)에서
+//   노동권(`sustain.LABOR_R` 셀) 안이면 판다. 바깥이면 사유지를 묻기 **전에** 거절한다(재료·도구 무변). 마을 이름은 알림에만.
+let _wellSpots = null;
+function _wellGroundAt(x0, y0) {
+  if (!_wellSpots) {
+    _wellSpots = [];
+    try {
+      const want = new Set(WellStages.WELL_VILLAGES || []);
+      for (const v of (_terrain.siteCandidates ? _terrain.siteCandidates(ZONE_ID) : []) || []) if (v && want.has(v.name)) _wellSpots.push({ name: v.name, cx: Math.round(v.x / BUILDING_SIZE), cy: Math.round(v.y / BUILDING_SIZE) });
+    } catch (e) { _wellSpots = []; }
+  }
+  const R = require('./sustain').LABOR_R;
+  for (const s of _wellSpots) if (Math.hypot(x0 - s.cx, y0 - s.cy) <= R) return s;
+  return null;
+}
 const WELL_SPEC = { siteType: 'well_site', doneType: 'well', ko: '우물', icon: '🪣', stages: WellStages.WELL_STAGES, kind: 'well',
+                    claim: (player, x0, y0, x1, y1) => _wellGroundAt(x0, y0)
+                      ? _claimFootprint(player, x0, y0, x1, y1)
+                      : { err: `이 땅엔 우물을 팔 물줄기가 없다 — ${(WellStages.WELL_VILLAGES || []).join('·')} 마을 땅에서 판다` },
                     // ★[T519 ③] 그릇 이름은 **이름표 정본**에서 — 물가 문구(`🏺 ${…[Salt.VESSEL]}이 있어야 물을 뜬다`)와 같은 문법(글자 무변 · 사본 0).
                     doneHint: `우물가에서 E — 목을 축이고, ${ITEM_LABEL_SERVER[Salt.VESSEL]}이 있으면 민물을 담는다` };
 function tryWellStart(player, atX, atY) { if (!T509_WELL) return; return _siteStart(player, atX, atY, WELL_SPEC); }
@@ -10720,7 +10742,7 @@ function __testBind() {
     // ★[T62 공용 쉼터 2026-09-03] 쉼터 경로를 **정본 그대로** 내준다 —
     //   하네스가 자리·재료·이송 좌표를 다시 짜면 그게 사본이다.
     tryShelterStart, tryShelterAdvance, SHELTER_SPEC, SHELTER_STAGES, _shelterBackfill,
-    tryWellStart, tryWellAdvance, WELL_SPEC, _wellCellAt, T509_WELL,   // ★[T509] 우물 — 하네스가 문 그대로 두드린다
+    tryWellStart, tryWellAdvance, WELL_SPEC, _wellCellAt, T509_WELL, _wellGroundAt, tryLook, _waterVerb,   // ★[T557] 지하수 가용도 · 살피기 · 물 동사   // ★[T509] 우물 — 하네스가 문 그대로 두드린다
     nearestVillageWake, resolveDowned, buildings, _liveBuildRow, isTerrainBlockedLocal,
     Claims, db, tryClaim, tryUnclaim, countMyClaims, listRespawnOptions,
     findGuildClaimContaining, _claimFootprint, Onboarding, CLAIM_COST,
