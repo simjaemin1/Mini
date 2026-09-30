@@ -7591,7 +7591,9 @@ function _t527Sites() {
   if (!_t527On()) return null;
   if (state._t527Sites) return state._t527Sites;
   const Z = require('./zone-config').ZONES[state.zoneId] || {};
-  state._t527Sites = (Z.bridgeSites || []).map((s, i) => ({ i, v: (s.v || []).slice(), span: s.span | 0, cells: (s.cells || []).slice(), stage: 0, mat: {}, done: false, day: null, adv: [], sum: null, added: null }));
+  //   ★[T537 추신2] 지름길 후보(`bridgeShortcuts` · 순서 = T436 교역 잠재)는 `T537_SHORTCUT` 켬일 때만 섬 후보 뒤에 붙는다(끄면 종전 목록 그대로 · 행 번호 무변).
+  const _list = (Z.bridgeSites || []).concat(_lifeEcon().T537_SHORTCUT ? (Z.bridgeShortcuts || []) : []);
+  state._t527Sites = _list.map((s, i) => ({ i, v: (s.v || []).slice(), span: s.span | 0, cells: (s.cells || []).slice(), stage: 0, mat: {}, done: false, day: null, adv: [], sum: null, added: null }));
   _t527Restore(state._t527Sites);
   return state._t527Sites;
 }
