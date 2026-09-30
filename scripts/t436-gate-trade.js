@@ -53,7 +53,7 @@ const SRC = fs.readFileSync(path.join(__dirname, '..', 'server', 'villages.js'),
 const FLOOR = +((SRC.match(/const FOOD_FLOOR = ([\d.]+)/) || [])[1]);
 const child = (Z, on) => {
   const env = { ...process.env, T436_CHILD: Z };
-  if (on) env.T436_GATE_TRADE = '1'; else delete env.T436_GATE_TRADE;
+  env.T436_GATE_TRADE = on ? '1' : '0';   // ★[T559] 기본이 켬이 되어 끔 팔은 `=0` 을 적어서 준다
   const s = execFileSync(process.execPath, [__filename], { env, maxBuffer: 64 << 20 }).toString();
   return JSON.parse(s.slice(s.lastIndexOf('\n@@') + 3));
 };
@@ -75,8 +75,10 @@ const need = fails.map((r) => ({ name: r.name, food: r.food, trade: r.trade, kNe
 const kRaw = Math.max(...need.map((x) => x.kNeed));
 const kStar = isFinite(kRaw) ? Math.ceil(kRaw * 1e6) / 1e6 : kRaw;   // 코드에 적는 값 = 유도값을 소수 여섯째 자리에서 올림(미달 9곳이 부동소수 오차로 떨어지지 않게)
 res.derive = { fails: need, passN: hb.length - fails.length, kRaw, kStar, exists: isFinite(kStar) };
-// 표: 각 존에서 K* 로 통과
-for (const Z of Object.keys(res.zones)) for (const r of res.zones[Z].rows) { r.passOff = r.food >= FLOOR; r.passOn = r.food >= FLOOR || (isFinite(kStar) && r.food + kStar * r.trade >= FLOOR); }
+// 표: 각 존에서 **코드가 쓰는 K**(T559 뒤 = 재민 #78 0.278025 · 유도값 K* 는 한반도 기록으로 남는다)로 통과
+const { __labProbe: _P0 } = R('server/villages'); const KCODE = _P0.T436_K, KDER = _P0.T436_K_DERIVED;
+res.kCode = KCODE; res.kDerivedConst = KDER;
+for (const Z of Object.keys(res.zones)) for (const r of res.zones[Z].rows) { r.passOff = r.food >= FLOOR; r.passOn = r.food >= FLOOR || (r.food + KCODE * r.trade >= FLOOR); }
 // ③ 정본 대조 — 자식(켬/끔)
 res.check = {};
 for (const Z of Object.keys(res.zones)) {
@@ -85,10 +87,10 @@ for (const Z of Object.keys(res.zones)) {
   res.check[Z] = { offSame: JSON.stringify(off.pass) === JSON.stringify(mine('passOff')), onSame: JSON.stringify(on.pass) === JSON.stringify(mine('passOn')),
     offN: off.pass.length, onN: on.pass.length, codeK: on.K };
 }
-res.kCodeEqual = Object.values(res.check).every((c) => c.codeK === kStar);
+res.kCodeEqual = KDER === kStar;   // ★[T559] 유도값 상수(`T436_K_DERIVED`)가 다시 유도한 값과 같은가 — 코드가 쓰는 K 는 재민 값(#78)
 fs.mkdirSync(path.dirname(OUT), { recursive: true });
 fs.writeFileSync(OUT, JSON.stringify(res, null, 1));
-console.log(`[T436] 하한 ${FLOOR} · 한반도 미달 ${fails.length} · 통과 ${res.derive.passN} · 유도 K* = ${kStar} (코드 상수 ${res.check.hanbando.codeK} · 같음 ${res.kCodeEqual})`);
+console.log(`[T436] 하한 ${FLOOR} · 한반도 미달 ${fails.length} · 통과 ${res.derive.passN} · 유도 K* = ${kStar} (유도 상수 ${KDER} · 같음 ${res.kCodeEqual}) · 코드가 쓰는 K ${res.check.hanbando.codeK}(재민 #78)`);
 for (const x of need.sort((a, b) => b.kNeed - a.kNeed)) console.log(`  ${x.name.padEnd(6)} food ${x.food.toFixed(3)} · 교역잠재 ${x.trade.toFixed(3)} · 필요 K ${x.kNeed.toFixed(4)}`);
 for (const Z of Object.keys(res.zones)) {
   const rows = res.zones[Z].rows, c = res.check[Z];
