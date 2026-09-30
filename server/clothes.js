@@ -104,14 +104,15 @@ function warmthOf(mat, level) {
   try { return require('./player-items').craftItem('clothes', level || 0, { [mat]: 3 }).attrs.warmth; }
   catch (e) { return null; }
 }
-// ── ★★[T516 2026-09-29 · #90 입력] 방한을 **재질 clo** 에서 유도한다 — 손잡이 `T516_WARMTH_CLO`(기본 끔) ─────
+// ── ★★[T516 2026-09-29 · #90 입력] 방한을 **재질 clo** 에서 유도한다 — 손잡이 `T516_WARMTH_CLO`(T536 추신부터 기본 켬 · `=0` 끔) ─────
 //   끔 = 종전 `round(62 · qSkill · 등급)`(식물 섬유 천장 26) **바이트 동일** — 이 두 함수는 켰을 때만 불린다.
 //   켬 = 방한 = WARMTH_MIN + clo × (천장 − WARMTH_MIN) ÷ CLO_TOP — T508 이 방한 1점에 준 ℃ 의 **거꾸로**다:
 //     T508_CLO 를 같이 켜면 단열 ℃ = clo × CLO_C(1 clo ≈ 5.56℃) 가 그대로 나온다(천장·CLO_TOP 는 서로 지운다 · 반올림 ±½점).
 //   ★숙련은 방한에서 빠진다 — "솜씨가 좋아지면 곱고 질겨지지 따뜻해지지 않는다"(이 파일 삼베 천장의 근거와 같은 말).
 //     숙련은 `q`(내구·값·이름)에 그대로 남는다. 틈·마감(바람 통과 · 젖음)으로 옮기려면 몸 쪽에 새 항이 든다 ⇒ 표만(보고 §2-ⓒ).
 //   ★새 수 0 — clo 는 위 표(출처) · WARMTH_MIN·CLO_TOP 는 `body.js` · 천장은 옷 `attrScale`(player-items) — 셋 다 **읽는다**.
-const T516_WARMTH_CLO = process.env.T516_WARMTH_CLO === '1';
+//   ★★[T536 추신 2026-09-30 · #90 · ★PM 승격] **기본 켬** — T508 두 팔(지수 꼴 · clo→℃)과 같이(옷 ℃ = clo × 5.56). 되돌림 `T516_WARMTH_CLO=0`.
+const T516_WARMTH_CLO = process.env.T516_WARMTH_CLO !== '0';
 /** 그 재질 한 벌의 clo(없으면 null). */
 function cloOf(mat) { const c = of(mat); return c && Number.isFinite(c.clo) ? c.clo : null; }
 /** clo 에서 유도한 방한(정수 — 카탈로그 규약). 재질을 모르거나 clo 가 없으면 null ⇒ 호출측이 종전 식을 쓴다. */

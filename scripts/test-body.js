@@ -58,6 +58,25 @@ const CALM = { night: false, nearFire: false, indoor: false, warmth: 0, seasonCo
 //     바람을 끄는 것과 **같은 자리**다(T98 족보: 새 층이 서면 옛 판정의 가정이 먼저 깨진다).
 //   ⚠감추는 게 아니라 자리를 나눈 것이다 — 젖은 밤이 실제로 더 위험하다는 것은 **⑲가 숫자로** 잰다.
 const DRY = (c) => Object.assign({ wet: 0 }, c);
+// ★★[T536 추신 2026-09-30 · #90 재민] **1단계·죽음 판** — 옷 ℃ 가 clo 에서 오면(`T508_CLO` 켬 · 기본) 베옷 캐논을 이 둘로 잰다
+//   ("늘 1단계 · 오래 있으면 죽는다" · 3단계 도달은 기록만). `t508-winter-night` 의 `night` 와 같은 판이다:
+//   24년 × 그날 자정 · 60분 · 배고픔·갈증은 매 초 채운다(추위 한 축) · 1단계 = 문턱 + 히스테리시스 · 죽음 = 극단 HP 누적 100.
+const s1Dead = (M, ctx, day) => {
+  const H = M.CFG.STAGE_HYST, at = M.STAGE_AT.cold; let s1 = 0, dead = 0; const dts = [];
+  for (let k = 0; k < 24; k++) {
+    const P = { hunger: 100, thirst: 100, hp: 100, maxHp: 100 }; M.ensure(P);
+    let one = false, lost = 0;
+    for (let s2 = 1; s2 <= 3600; s2++) {
+      P.hunger = 100; P.thirst = 100;
+      M.tick(P, 1, DRY(Object.assign({ day: day + 365 * k }, ctx)));
+      if (!one && M.ensure(P).cold >= at[0] + H) { one = true; s1++; }
+      lost += M.extremeHpRate(P).rate;
+      if (lost >= 100) { dead++; dts.push(s2); break; }
+    }
+  }
+  dts.sort((x, y) => x - y);
+  return { s1, dead, deadMed: dts.length ? +(dts[dts.length >> 1] / 60).toFixed(1) : null };
+};
 // ★★[T44] **긴 틱 픽스처는 스스로 굶는다.** 갈증은 게임 1일(=실시간 24분)에 바닥나므로
 //   30분을 도는 추위 픽스처는 도중에 **갈증이 극단**이 되어 추위와 무관한 HP 감소를 만든다.
 //   (초안이 실제로 그렇게 틀렸다 — 마을 대조군이 "추위로 깎였다"고 보고했는데 원인은 갈증이었다.)
@@ -688,7 +707,14 @@ const codeOnly = require('./code-only.js');   // ★[T171] 주석 제거기 **�
     const rLeat = years({ night: true, warmth: W_LEATHER });
     const rFur = years({ night: true, warmth: W_FUR });
     say(`     한겨울 자정 야생 24년 도달 — 맨몸 ${rBare.hit} · 삼베옷 ${rHemp.hit} · 가죽옷 ${rLeat.hit} · 갖옷 ${rFur.hit}`);
-    ok(rHemp.hit >= 12, '★★⑮㉣ **삼베옷은 한겨울 야생 밤을 못 막는다**(≥50%)', `${rHemp.hit}/24`);
+    // ★★[T536 추신 · #90 재민] 옷 ℃ 가 clo 에서 오면(`T508_CLO` 켬 · 기본) 베옷 캐논은 **1단계·죽음 기준**이다 — 3단계(종전 ≥50%)는 기록만.
+    //   끔(`T508_CLO=0`) 판은 종전 줄 글자 그대로.
+    if (B.t508Info().clo) {
+      const sd = s1Dead(B, { night: true, warmth: W_HEMP }, wd);
+      say(`     [#90] 삼베옷 3단계 도달 ${rHemp.hit}/24 — 기록만(판정은 1단계·죽음)`);
+      ok(sd.s1 === 24 && sd.dead >= 1, '★★⑮㉣ **삼베옷은 한겨울 야생 밤을 못 막는다** — 늘 1단계 · 오래 있으면 죽는다(#90 · 1단계·죽음 기준)',
+        `1단계 ${sd.s1}/24 · 죽음 ${sd.dead}/24(60분 판 · 중앙 ${sd.deadMed}분)`);
+    } else ok(rHemp.hit >= 12, '★★⑮㉣ **삼베옷은 한겨울 야생 밤을 못 막는다**(≥50%)', `${rHemp.hit}/24`);
     ok(rLeat.hit <= 2, '★★⑮㉣ **가죽옷이면 버틸 만하다**(≤10%)', `${rLeat.hit}/24`);
     ok(rFur.hit === 0, '★★⑮㉣ **갖옷이면 한겨울 밤이 안전하다**(≈0%)', `${rFur.hit}/24`);
     ok(rBare.hit >= rHemp.hit && rHemp.hit > rLeat.hit && rLeat.hit >= rFur.hit,
@@ -909,12 +935,24 @@ const codeOnly = require('./code-only.js');   // ★[T171] 주석 제거기 **�
     ok(hempMax < wOf('leather', 5),
       '★★⑯㉦ **아무리 잘 짜도 삼베옷은 가죽옷을 못 이긴다**(장인 베옷 하향 — 재민 확정 ⑤)',
       `삼베 최대 ${hempMax} < 가죽옷 ${wOf('leather', 5)}`);
+    // ★★[T536 추신 · #90] 방한이 재질 clo 에서 오면(`T516_WARMTH_CLO` 켬 · 기본) 숙련 천장이란 말이 없다 — 재질 한 벌이 한 값이다.
+    //   끔(`T516_WARMTH_CLO=0`) 판은 종전 두 줄 글자 그대로.
+    const Clo16 = require(path.join(ROOT, 'server', 'clothes.js'));
+    if (Clo16.T516_WARMTH_CLO) {
+      ok(ramieMax < wOf('leather', 5) && ramieMax >= hempMax,
+        '★★⑯㉦ 모시로 갈아타도 가죽옷은 못 넘는다 — 방한은 **재질 clo** 가 정한다(모시 0.50 < 가죽 0.72 · 숙련 무관 · T516)',
+        `모시 최대 ${ramieMax} < 가죽옷 ${wOf('leather', 5)}`);
+      ok(wOf('hemp', 0) === wOf('hemp', 10) && wOf('hemp', 0) === Clo16.warmthCloOf('hemp') && B.warmthInsC(wOf('hemp', 0)) > 0,
+        '★⑯㉦ 조잡 베옷도 장인 베옷도 **같은 한 값**(재질 clo 0.40 · 숙련은 `q`·내구에만)',
+        `${wOf('hemp', 0)} → +${B.warmthInsC(wOf('hemp', 0)).toFixed(2)}℃`);
+    } else {
     ok(ramieMax <= hempMax,
       '★★⑯㉦ 모시로 갈아타도 소용없다 — **식물 섬유는 같은 천장**을 받는다(구멍 막기)',
       `모시 최대 ${ramieMax}`);
     ok(wOf('hemp', 0) === 15 && B.warmthInsC(wOf('hemp', 0)) > 0,
       '★⑯㉦ 아랫칸은 그대로다 — 조잡 베옷 15 는 안 건드렸다(배율이 아니라 상한을 쓴 이유)',
       `${wOf('hemp', 0)} → +${B.warmthInsC(wOf('hemp', 0)).toFixed(2)}℃`);
+    }
     {
       let mono3 = true;
       for (const l of [0, 3, 5, 8, 10]) if (!(wOf('hemp', l) <= wOf('leather', l) && wOf('leather', l) < wOf('fur', l))) mono3 = false;
@@ -926,6 +964,13 @@ const codeOnly = require('./code-only.js');   // ★[T171] 주석 제거기 **�
       const rf = years2({ night: true, warmth: wOf('fur', 8), windExposure: 0 }, WD);
       const rhm = years2({ night: true, warmth: hempMax, windExposure: 0 }, WD);
       say(`     한겨울 자정 야생 평지 24년 — 조잡베옷 ${rh.hit} · **장인베옷 ${rhm.hit}** · 가죽옷 ${rl.hit} · 갖옷 ${rf.hit}`);
+      // ★★[T536 추신 · #90] clo ℃(`T508_CLO` 켬 · 기본)면 베옷 칸은 **1단계·죽음 기준**(⑮㉣ 와 같은 판) — 가죽·모피 칸(3단계)은 그대로.
+      if (B.t508Info().clo) {
+        const sdh = s1Dead(B, { night: true, warmth: wOf('hemp', 0), windExposure: 0 }, WD);
+        ok(sdh.s1 === 24 && sdh.dead >= 1 && rl.hit <= 2 && rf.hit === 0,
+          '★★⑯㉦ 계단이 선다 — 베옷 늘 1단계·죽음 있음(#90) · 가죽 ≤10% · 모피 ≈0%(3단계 · 평지 기준선)',
+          `베옷 1단계 ${sdh.s1}/24 · 죽음 ${sdh.dead}/24 · 3단계 ${rh.hit}/24(기록만) · 가죽 ${rl.hit}/24 · 모피 ${rf.hit}/24`);
+      } else
       ok(rh.hit >= 12 && rl.hit <= 2 && rf.hit === 0,
         '★★⑯㉦ 계단이 선다 — 베옷 ≥50% · 가죽 ≤10% · 모피 ≈0%(평지 기준선 불변)',
         `${rh.hit}/24 · ${rl.hit}/24 · ${rf.hit}/24`);
@@ -979,6 +1024,16 @@ const codeOnly = require('./code-only.js');   // ★[T171] 주석 제거기 **�
         const plainT = run(false), brineT = run(true);
         ok(brineT < plainT - 0.05, '★★⑯㉧ 짠물 뒤엔 **갈증이 더 빨리 준다**(같은 60초 A/B)',
           `보통 ${plainT.toFixed(3)} → 짠물 ${brineT.toFixed(3)}`);
+        // ★★[T536 추신 · #90] 감쇠가 곡선 꼴이면(`T508_DECAY_EXP` 켬 · 기본 지수) 배율은 **시간에 곱해진다** — 60초 게이지 차의 비는 배율이 아니다
+        //   (상태 의존). 같은 뜻의 정확한 판정: 짠물 60초 = 보통 60 × 배율 초(정확 해 · 두 토막 선형에서도 참). 끔(=0) 판은 종전 줄 그대로.
+        if (B.t508Info().decay) {
+          const mB = B.CFG.BRINE_MULT, secsB = 60 * mB;
+          const P3 = { hunger: 100, thirst: 80 }; B.ensure(P3);
+          for (let s2 = 0; s2 < Math.floor(secsB); s2++) B.tick(P3, 1, DRY({ day: WD, night: false, warmth: 0, now: s2 * 1000 }));
+          if (secsB % 1) B.tick(P3, secsB % 1, DRY({ day: WD, night: false, warmth: 0, now: Math.floor(secsB) * 1000 }));
+          ok(Math.abs(brineT - P3.thirst) < 1e-6, '★⑯㉧ 가속 배율이 손잡이 그대로다(숨은 상수 없음) — 곡선 꼴에선 **시간 배율**: 짠물 60초 = 보통 60×배율 초',
+            `짠물 60초 ${brineT.toFixed(4)} = 보통 ${secsB}초 ${P3.thirst.toFixed(4)} · ×${mB}`);
+        } else
         ok(Math.abs((80 - brineT) / Math.max(1e-9, 80 - plainT) - B.CFG.BRINE_MULT) < 0.02,
           '★⑯㉧ 가속 배율이 손잡이 그대로다(숨은 상수 없음)', `×${((80 - brineT) / (80 - plainT)).toFixed(3)}`);
         // 민물은 **종전 그대로** — 이 배치가 강·호수를 건드리지 않았다
@@ -1260,6 +1315,15 @@ const codeOnly = require('./code-only.js');   // ★[T171] 주석 제거기 **�
         };
         const a = step({ seasonCold: 1, night: false, indoor: false });
         const b = step({ seasonCold: 0, night: false, indoor: false });
+        // ★★[T536 추신 · #90] 곡선 꼴(`T508_DECAY_EXP` 켬 · 기본)이면 배율은 시간에 곱해진다 — 여름 낮 1초 = 겨울 (1+W)초(정확 해).
+        if (B.t508Info().decay) {
+          const P4 = { hunger: 100, thirst: 100 }; B.ensure(P4);
+          B.tick(P4, 1 + W, Object.assign({ day: 1, now: Date.now() }, { seasonCold: 1, night: false, indoor: false }));
+          const bw = 100 - P4.thirst;
+          ok(Math.abs(b - bw) < 1e-9,
+            '★★⑱㉢ **같은 상태에서 한 스텝** — 곡선 꼴에선 시간 배율 (1+W): 여름 낮 1초 = 겨울 (1+W)초(곱이 하나라는 증거)',
+            `${b.toFixed(6)} = ${bw.toFixed(6)} · 비 ${(b / a).toFixed(6)}(상태 의존이라 (1+W) 아님)`);
+        } else
         ok(Math.abs(b / a - (1 + W)) < 1e-9,
           '★★⑱㉢ **같은 상태에서 한 스텝의 비는 정확히 (1+W)** 다(곱이 하나라는 증거)',
           `${b.toFixed(6)} / ${a.toFixed(6)} = ${(b / a).toFixed(6)}`);
@@ -1722,10 +1786,17 @@ const codeOnly = require('./code-only.js');   // ★[T171] 주석 제거기 **�
       }
     };
     const PHI = (1 + Math.sqrt(5)) / 2;
+    // ★[T536 추신 · #90] 두 팔은 기본 켬이다 — 견줄 **끔 판**은 되돌림(`=0`)으로 다시 올려 쓴다(끔 판으로 이 하네스를 돌리면 B 와 같은 판).
+    const B0 = reload({ T508_DECAY_EXP: '0', T508_CLO: '0' });
     // ── ⓐ 끔 = 종전 글자 그대로 ──
     const I0 = B.t508Info();
+    if (!I0.decay && !I0.clo)
     ok(I0.decay === '' && I0.clo === false && I0.cPer === B.CFG.WARMTH_C_PER && I0.shape === null,
       '★★㉑ⓐ 기본은 **두 팔 다 끔** — 꼴 없음(두 토막 선형) · 방한 1점 = `WARMTH_C_PER`', JSON.stringify({ d: I0.decay, c: I0.clo, cPer: I0.cPer }));
+    else ok(I0.decay === '1' && I0.clo === true && I0.shape && I0.shape.form === 'exp' && I0.cPer === I0.cPerOn
+        && B0.t508Info().decay === '' && B0.t508Info().clo === false && B0.t508Info().cPer === B0.CFG.WARMTH_C_PER,
+      '★★㉑ⓐ 기본은 **두 팔 다 켬**(T536 추신 · #90 재민 "감쇠는 지수/유리 꼴") — 꼴 지수 · 방한 1점 = clo 유도 · 되돌림 `=0` 은 종전 두 토막 선형 · `WARMTH_C_PER`',
+      JSON.stringify({ d: I0.decay, c: I0.clo, cPer: +I0.cPer.toFixed(4), off: { d: B0.t508Info().decay, c: B0.t508Info().clo, cPer: B0.t508Info().cPer } }));
     const bsrc = codeOnly(fs.readFileSync(bp, 'utf8'));
     ok(/: Math\.max\(0, h0 - decayRate\(h0, CFG\.HUNGER_SEC\) \* dtSec \* cm\)/.test(bsrc) && /: Math\.max\(0, t0 - decayRate\(t0, CFG\.THIRST_SEC\) \* dtSec \* bm\)/.test(bsrc),
       '★★㉑ⓐ2 끔 갈래는 종전 감쇠 식 **글자 그대로**(곱 순서까지 — 부동소수 비트 동일)');
@@ -1752,9 +1823,9 @@ const codeOnly = require('./code-only.js');   // ★[T171] 주석 제거기 **�
     ok(Math.abs(BE.decayRate(100, 2880) / BE.decayRate(0, 2880) - (100 + SE.b) / SE.b) < 1e-9 &&
        Math.abs((BE.decayRate(60, 2880) - BE.decayRate(40, 2880)) - (BE.decayRate(40, 2880) - BE.decayRate(20, 2880))) < 1e-12,
       '★★㉑ⓑ5 감쇠율은 **상태 비례**(x + b 에 비례 — 게이지에 대해 직선)');
-    ok(BE.decayRate(100, 2880) > B.decayRate(100, 2880) && BE.decayRate(0, 2880) < B.decayRate(0, 2880),
+    ok(BE.decayRate(100, 2880) > B0.decayRate(100, 2880) && BE.decayRate(0, 2880) < B0.decayRate(0, 2880),
       '★㉑ⓑ6 배부를 땐 종전보다 빠르고 바닥에선 느리다(계단이 아니라 기울기)',
-      `100: ${BE.decayRate(100, 2880).toFixed(5)} > ${B.decayRate(100, 2880).toFixed(5)} · 0: ${BE.decayRate(0, 2880).toFixed(5)} < ${B.decayRate(0, 2880).toFixed(5)}`);
+      `100: ${BE.decayRate(100, 2880).toFixed(5)} > ${B0.decayRate(100, 2880).toFixed(5)} · 0: ${BE.decayRate(0, 2880).toFixed(5)} < ${B0.decayRate(0, 2880).toFixed(5)}`);
     // ── ⓒ 유리 꼴 ──
     const BR = reload({ T508_DECAY_EXP: 'rat' });
     const SR = BR.t508Info().shape;
@@ -1764,7 +1835,7 @@ const codeOnly = require('./code-only.js');   // ★[T171] 주석 제거기 **�
     // ── ⓓ 적분 — kcal 앵커(한 바퀴 평균 하루 50점)는 세 꼴 모두 그대로 ──
     const Kc = require(path.join(ROOT, 'server', 'kcal.js'));
     const perDay = (r) => 100 * 1440 / r.total;
-    const lH = runOut(B, 'hunger', B.CFG.HUNGER_SEC, 1);
+    const lH = runOut(B0, 'hunger', B0.CFG.HUNGER_SEC, 1);
     ok([lH, eH, rH].every((r) => Math.abs(perDay(r) - Kc.dayHunger()) < 1e-9),
       '★★㉑ⓓ 한 바퀴(100→0) 평균 = 하루 **50점 = 2,450 kcal** — 세 꼴 모두 `kcal.dayHunger()` 와 같다(적분 동일)', [lH, eH, rH].map(perDay).join(' · '));
     ok(BE.CFG.EXTREME_HP_HUNGER === B.CFG.EXTREME_HP_HUNGER && BE.CFG.EXTREME_HP_THIRST === B.CFG.EXTREME_HP_THIRST && BE.STAGE_AT.hunger.join() === B.STAGE_AT.hunger.join(),
@@ -1780,7 +1851,7 @@ const codeOnly = require('./code-only.js');   // ★[T171] 주석 제거기 **�
     ok(BC.warmthInsC(BC.CFG.WARMTH_MIN) === 0 && Math.abs(BC.warmthInsC(43, 1) - BC.warmthInsC(43) * (1 - BC.CFG.WET_LOSS)) < 1e-12,
       '★㉑ⓔ3 헐거운 옷 문턱(`WARMTH_MIN`)과 젖음 곱은 그대로 걸린다(식은 하나)');
     const Wx5 = require(path.join(ROOT, 'server', 'weather.js'));
-    const c0 = Wx5.coldOfC(-4.2 + B.warmthInsC(50)), c1 = Wx5.coldOfC(-4.2 + BC.warmthInsC(50));
+    const c0 = Wx5.coldOfC(-4.2 + B0.warmthInsC(50)), c1 = Wx5.coldOfC(-4.2 + BC.warmthInsC(50));
     ok(c0 > B.STAGE_AT.cold[0] && c1 < B.STAGE_AT.cold[0],
       '★★㉑ⓔ4 (카드의 예) 겨울밤 −4.2℃ · 옷 50점 — 끔 **0.87**(1단계 위) → 켬 **0.65 아래**(막는다)', `${c0.toFixed(3)} → ${c1.toFixed(3)}`);
     {
@@ -1788,7 +1859,9 @@ const codeOnly = require('./code-only.js');   // ★[T171] 주석 제거기 **�
       const cm = Wx5.coldOfC(-4.2 + BC.warmthInsC(50)); BC.CFG.CLO_TOP = keep;
       ok(cm > B.STAGE_AT.cold[0], '㉑ⓔ5 (미끼) 모피 한 벌을 1.13 clo 로 낮추면 ⓔ4 가 뒤집힌다 — 그 판정이 실제로 clo 를 재고 있다', cm.toFixed(3));
     }
+    if (!I0.decay && !I0.clo)
     ok(B.t508Info().decay === '' && B.t508Info().clo === false, '㉑ⓕ (오염 검사) 다시 올린 뒤에도 이 하네스의 정본은 두 팔 다 끔');
+    else ok(B.t508Info().decay === I0.decay && B.t508Info().clo === I0.clo, '㉑ⓕ (오염 검사) 다시 올린 뒤에도 이 하네스의 정본은 처음 그대로(두 팔 다 켬)');
   }
 
   // ═══ ⑧ 픽스처 결백 ═════════════════════════════════════════════════════════
