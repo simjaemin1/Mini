@@ -3965,7 +3965,9 @@ function actDemandLeft(v, D, todayKey, held) {
   if (!v) return 0;
   const target = (typeof D === 'number' && D > 0) ? D : 0;
   if (!(target > 0)) return 0;
-  const got = (todayKey && typeof v[todayKey] === 'number' && v[todayKey] > 0) ? v[todayKey] : 0;
+  //   ★[T544 ③] 오늘치가 **음수**면 그것은 미룬 몫이다(생활층이 한 단위 안 되는 몫을 안 따고 이 칸에 남긴다 · 틱은 양수만 장부에 옮기고 비운다)
+  //     ⇒ 남은 몫 = D − 오늘치 가 그만큼 커진다(내일 몫과 합친다 · 새 칸 0). 어부·나무꾼 칸은 음수가 된 적이 없다(무변).
+  const got = (todayKey && typeof v[todayKey] === 'number') ? v[todayKey] : 0;
   const hand = (typeof held === 'number' && held > 0) ? held : 0;
   const left = target - got - hand;
   return left > 0 ? left : 0;

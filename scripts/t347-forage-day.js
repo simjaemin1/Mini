@@ -20,6 +20,7 @@
 //   T347_KEEP_DB=<폴더> · T347_FROM=<폴더> … [T490] 틀을 한 번 구워 남기고(`DAYS=0` 이면 굽기만) 팔 여럿을 그 세계에서 짝으로(T334 자와 같은 꼴)
 //   T347_MAX_MIN(기본 60) … [T495] 켠 판 한 판의 벽시계 상한(분 · 긴 하루로 30일을 채울 때)
 //   T495_PARTIAL_PICK … [T495] 부분 수확 — ★[T510] **기본 켬**(`=0` 이 종전 개체째) · 켜면 행에 `units`(딴 단위)·`empt`(비운 개체)·`part`(서 있게 둔 개체)가 붙고 세계 비용은 단위로 센다(`=0` 이면 칸 0)
+//   [T544] 행에 짐(`pk`·`pko`) · 짐에서 든 몫(`pkIn`) · 미룬 날(`hold`) · 미룬 몫(`ow`)이 붙는다 — 딴 단위(`d`) = 곳간(`g`) + 짐 변화(`pk`) 항등을 `scripts/t544-overflow.js` 가 잰다
 'use strict';
 const path = require('path');
 const fs = require('fs');
@@ -160,7 +161,9 @@ const popOf = (p) => (p && p.forage && p.forage.popAll) || null;
           //   ★[T490] 원판 밖(팔 켬) — 목록에 붙은 개체(`x`) · 그날 훑기(`xr`: 모자람·찾은 단위·링·물/먼 칸·µs) · 밖에서 딴 개체(`xpick`)
           x: r.x, xr: r.xr, xpick: r.dbg ? r.dbg.xpick : null, cells: r.cells,
           //   ★[T495] 부분 수확(팔 켬) — 딴 단위(`units`) · 비운 개체(`empt`) · 서 있게 둔 개체(`part`) · `pick` 은 개체를 **들른** 수(끄면 칸이 안 생긴다)
-          units: r.dbg ? r.dbg.units : undefined, empt: r.dbg ? r.dbg.empt : undefined, part: r.dbg ? r.dbg.part : undefined })),
+          units: r.dbg ? r.dbg.units : undefined, empt: r.dbg ? r.dbg.empt : undefined, part: r.dbg ? r.dbg.part : undefined,
+          //   ★[T544] 짐(`pk` 곳간에 들 것 · `pko` 목록 밖 손) · 짐에서 든 몫(`pkIn`) · 작은 몫을 미룬 날(`hold`) · 미룬 몫(`ow`) — 항등 딴 = 든 + 짐
+          pk: r.pk, pko: r.pko, ow: r.ow, pkIn: r.dbg ? r.dbg.pkIn : undefined, hold: r.dbg ? r.dbg.hold : undefined })),
         gran: w.gran, reach: w.reach });
       if (!first) first = { day: dd, rows: w.rows, delivered: w.delivered, formula: w.formulaActPerDay, formulaAll: w.formulaPerDay, groves: w.groves, cells: w.cells, act: w.actVillages, noGrove: w.noGroveVillages };
       say(`  day ${dd} · 입고 ${w.delivered} / 수식(걷은 몫) ${w.formulaActPerDay}/${w.formulaPerDay} · 군락 ${w.groves}/${w.K} · 딴 ${w.pickDay} · 되살아난 ${w.back} · 한도 ${w.cap} · p50 ${t ? t.p50 : '?'}`);

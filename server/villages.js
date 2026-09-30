@@ -6023,6 +6023,58 @@ function _t495Units(r) {
   let u = 0; for (const k of keep) for (const h of _t347HandsOf(k)) { const a = l[h]; if (a > 0) u += a; }
   return u;
 }
+// ★★★[T544 2026-09-30] **곳간이 안 받은 몫은 짐에 남는다** — 캐논 "딴 것은 어딘가에"(순간이동·소멸 금지 · 실물이 정본).
+//   T510 회부 2·4: 곳간 입구(`forageToGranary` → `actDemandCap`)는 그날 몫까지만 받고 **나머지를 아무 데도 안 두었다** —
+//   헤드리스 두 갈래(단위로 · 개체째)는 딴 것을 그 자리에서 버렸고, 몸 갈래(`_t347Deliver`)는 손을 0 으로 비웠다(ⓒ 사라짐).
+//   수요 문 켠 실서버 25일(1020): 개체째 587단 따서 곳간 98.6단 · 단위로 422단 따서 205.8단 — 나머지가 **세계에서 없어졌다**.
+//   ⇒ ⓐ 헤드리스 하루의 짐 = 그 마을 채집꾼들의 짐 **하나**(`econ._t544Pack` · 손 이름 → 단위). 헤드리스는 몸이 안 걷는 일괄이라
+//     (T470 · 몸 0) 짐도 마을에 하나다. econ 마을 객체에 두는 것은 `econ_state` 에 같이 적혀 **재부팅에도 남게** 하려는 것뿐이다
+//     (econ 은 이 칸을 안 읽는다 · `_forageActItems` 와 같은 자리).
+//   ⇒ ⓑ 짐은 **이튿날** 채집 절 머리(따기 전)에 같은 입구로 곳간에 든다(`_t544PackIn`) — 그날 몫만큼만 들고 나머지는 또 짐에 남는다.
+//   ⇒ ⓒ 몸 갈래는 그 몸의 손에 남긴다(`_t347Deliver` — 넣은 만큼만 손에서 뺀다).
+//   ⚠새 수 0 · 새 문 0 — 입구는 econ 정본 한 함수(`forageToGranary`)이고 짐은 그 입구가 돌려준 `got` 의 나머지다. 바닥에 놓기는 안 만든다(회부).
+function _t544PackPut(vil, h, u) {
+  if (!(u > 1e-9) || !vil || !vil.econ || !h) return 0;
+  const P = vil.econ._t544Pack || (vil.econ._t544Pack = {});
+  P[h] = +((P[h] || 0) + u).toFixed(6);
+  return u;
+}
+//   짐을 곳간에 — 그 마을 걷는 목록의 손 이름 차례로 · 입구가 받은 만큼만 뺀다(나머지는 짐에 그대로). 받은 몫을 돌려준다.
+function _t544PackIn(vil, keep) {
+  const P = vil && vil.econ && vil.econ._t544Pack; if (!P || !keep) return 0;
+  let got = 0;
+  for (const it of keep) for (const h of _t347HandsOf(it)) {
+    const u = P[h] || 0; if (!(u > 0)) continue;
+    const g = _lifeEcon().forageToGranary(vil.econ, it, u) || 0;
+    if (!(g > 0)) continue;
+    got += g;
+    const r = +(u - g).toFixed(6);
+    if (r > 1e-9) P[h] = r; else delete P[h];
+  }
+  if (got > 0) vil._t347Gran = +((vil._t347Gran || 0) + got).toFixed(6);   // ★[T475 계측] 곳간에 든 몫(짐에서 든 것도 곳간이다)
+  return got;
+}
+//   짐 합(계측 전용 · 단위) — `/perf` 행 `pk`(세계 걷는 목록의 손 = 곳간에 들 수 있는 것) · `pko`(그 밖 — 섬유·씨앗)가 읽는다.
+function _t544PackSum(vil) {
+  const P = vil && vil.econ && vil.econ._t544Pack; if (!P) return { pk: 0, pko: 0 };
+  const wh = new Set(); for (const it of (_t347ActItems() || [])) for (const h of _t347HandsOf(it)) wh.add(h);
+  let pk = 0, pko = 0; for (const h in P) { const u = P[h] || 0; if (wh.has(h)) pk += u; else pko += u; }
+  return { pk: +pk.toFixed(6), pko: +pko.toFixed(6) };
+}
+// ★★★[T544 ③] **작은 몫은 오늘 안 따고 내일 몫과 합친다** — 부분 수확(`⌈남은 몫⌉`)은 실물 단위라 남긴다(한 알 · 한 줌).
+//   다만 그날 **따기 전** 남은 몫이 한 단위보다 작은 마을은 한 알을 따 대부분을 짐에 지고 오는 대신 **오늘은 안 딴다**.
+//   미룬 몫은 수요 문 정본 칸(`econ._t347InflowToday` · "오늘치")에 **음수로** 남긴다 — econ 틱은 양수만 장부에 옮기고 비우므로
+//   음수는 이튿날로 넘어가 `actDemandLeft`(D − 오늘치)가 그만큼 더 큰 남은 몫을 낸다 ⇒ 한 단위가 차면 딴다(새 칸 0 · 새 상수 0).
+//   ⚠수요 문이 꺼져 있으면(`Infinity`) 아무것도 안 한다(끈 판 비트 동일) · 부분 수확 갈래에만 건다(개체째는 종전 그대로 + 짐).
+//   돌려주는 것: 1 = 미뤘다(오늘 안 딴다) · 0 = 딴다.
+function _t544Hold(vil) {
+  const E = _lifeEcon();
+  if (!vil || !vil.econ) return 0;
+  const left = E.forageDemandLeft(vil.econ);
+  if (!(left > 0 && left < 1)) return 0;
+  vil.econ._t347InflowToday = +(-left).toFixed(6);   // 이튿날 남은 몫 = D′ + left(오늘치 음수 = 미룬 몫)
+  return 1;
+}
 //   ★★[T495] **한 개체 한 번** — 그날 남은 몫(⌈남은 수요⌉ 단위)까지만 · 그 마을 걷는 목록의 손 이름 차례로(`order`).
 //     개체가 비면 존 문이 세계에서 뺀다(벤 장부) — 원판 개체면 되살릴 목록에 든다(되살이는 개체 수로 그대로 · T490: 밖은 제 주기).
 //     안 비면 개체는 남은 단위를 들고 서 있다(내일 아침 N 에 그대로 센다). 곳간 다리·계측은 통째 따기 갈래와 같은 줄이다.
@@ -6038,7 +6090,11 @@ function _t495Visit(vil, c, e, order, worth, keep) {
   if (res.emptied && res.seedKey && !c.ext) (vil._t347Cut || (vil._t347Cut = [])).push(res.seedKey);
   const took = res.took || {};
   let n = 0;
-  for (const it of keep) for (const h of _t347HandsOf(it)) { const a = took[h]; if (a > 0) { n += a; const g = _lifeEcon().forageToGranary(vil.econ, it, a) || 0; if (g > 0) vil._t347Gran = +((vil._t347Gran || 0) + g).toFixed(6); } }   // ★[T458] berry → fruit · ★[T475 계측] 곳간에 든 몫
+  for (const it of keep) for (const h of _t347HandsOf(it)) { const a = took[h]; if (a > 0) { n += a; const g = _lifeEcon().forageToGranary(vil.econ, it, a) || 0; if (g > 0) vil._t347Gran = +((vil._t347Gran || 0) + g).toFixed(6); _t544PackPut(vil, h, a - g); } }   // ★[T458] berry → fruit · ★[T475 계측] 곳간에 든 몫 · ★[T544] 곳간이 안 받은 몫은 짐에
+  //   ★[T544] 목록 밖 손(개체째 문 `whole` 이 돌려준 섬유 등) · 빈 개체가 들고 있던 나머지(`extra`)도 짐에 — 딴 것은 어딘가에 있다
+  { const kh = new Set(); for (const it of keep) for (const h of _t347HandsOf(it)) kh.add(h);
+    for (const h in took) if (!kh.has(h) && took[h] > 0) _t544PackPut(vil, h, took[h]);
+    if (res.extra) for (const h in res.extra) _t544PackPut(vil, h, res.extra[h]); }
   const D = vil._t347Dbg;
   if (D) { D.pick++; D.units = (D.units || 0) + n; if (res.emptied) D.empt = (D.empt || 0) + 1; else D.part = (D.part || 0) + 1; if (c.ext) D.xpick = (D.xpick | 0) + 1; }
   vil._t347Deliv = +((vil._t347Deliv || 0) + n).toFixed(6);
@@ -6047,6 +6103,8 @@ function _t495Visit(vil, c, e, order, worth, keep) {
 // ★★[T347] **귀환하면 곳간에.** 회계는 econ 정본 한 함수(`forageToGranary` → `actToGranary`)가 한다.
 //   ⚠걷는 목록의 품목만 넣는다 — `fiber`·씨앗은 econ 재화가 아니라 **손에 남는다**(종전과 같다 · 보고 §회부).
 //   ⚠넣은 품목은 그때 손에서 비운다(이중 0 — 손과 곳간에 같이 있을 수 없다).
+//   ★★[T544] **넣은 만큼만** 뺀다 — 곳간 입구가 그날 몫까지만 받으면 나머지는 **손에 남는다**(내일 입고 · 종전은 손을 0 으로 비워
+//     곳간이 안 받은 몫이 세계에서 없어졌다 — 캐논 소멸 금지). 이중 0 은 그대로다(든 몫은 손에서 빠졌다).
 function _t347Deliver(vil, npc) {
   if (!npc || !npc.inventory) return 0;
   const keep = _t347KeepOf(vil); if (!keep || !keep.length) return 0;   // ★[T475] 그 마을이 걷는 품목만(수식이 안 걷어낸 품목은 손에 남는다)
@@ -6054,8 +6112,10 @@ function _t347Deliver(vil, npc) {
   for (const k of keep) for (const h of _t347HandsOf(k)) {   // ★[T458] 손의 `berry` 가 곳간의 `fruit` 로(같은 물건)
     const u = npc.inventory[h] || 0;
     if (!(u > 0)) continue;
-    got += _lifeEcon().forageToGranary(vil.econ, k, u) || 0;
-    npc.inventory[h] = 0;
+    const g = _lifeEcon().forageToGranary(vil.econ, k, u) || 0;
+    got += g;
+    const r = +(u - g).toFixed(6);                 // ★[T544] 곳간이 안 받은 몫 — 손에 남는다(econ 단위 그대로 · 곳간이 소수로 받으니 손도 소수가 남는다)
+    npc.inventory[h] = r > 1e-9 ? r : 0;
   }
   if (got > 0) vil._t347Deliv = +((vil._t347Deliv || 0) + got).toFixed(6);
   if (got > 0) vil._t347Gran = +((vil._t347Gran || 0) + got).toFixed(6);   // ★[T475 계측] 곳간에 실제로 든 몫(수요에서 자른 뒤) — 항등의 한쪽
@@ -6334,7 +6394,9 @@ function foragePerf() {
                 land: { f: +(e.land && e.land.fertility || 0).toFixed(4), w: +(e.land && e.land.wood || 0).toFixed(4), s: +(e.land && e.land.stone || 0).toFixed(4) },
                 pop: (e.npcs || []).length, dbg: vil._t347Dbg || null, x: vx, xr: vil._t490 || null,
                 //   ★[T475 계측] 곳간 누계(`g` — 수요에서 자른 뒤 실제로 든 몫) · 그 마을 걷는 목록(`it` — 없으면 세계 목록)
-                g: +(vil._t347Gran || 0).toFixed(4), it: Array.isArray(e._forageActItems) ? e._forageActItems.slice() : null });
+                g: +(vil._t347Gran || 0).toFixed(4), it: Array.isArray(e._forageActItems) ? e._forageActItems.slice() : null,
+                //   ★[T544 계측] 짐(`pk` 곳간에 들 것 · `pko` 목록 밖 손) · 미룬 몫(`ow` — 수요 문 오늘치가 음수면 그 크기)
+                ..._t544PackSum(vil), ow: (typeof e._t347InflowToday === 'number' && e._t347InflowToday < 0) ? +(-e._t347InflowToday).toFixed(4) : 0 });
   }
   return { villages: (state.villages || []).length, actVillages: act, noGroveVillages: noGrove,
            cells, groves, popAll, K: kAll, back: backAll, cap: capAll, pickDay, items: keep.slice(), gran: +granAll.toFixed(4), reach: reachAll,
@@ -8110,6 +8172,8 @@ function* _lifeDailySteps(vil) {   // 게임일 경계: 크루·클레임 재대
       let u = 0; for (const k of _keep) for (const h of _t347HandsOf(k)) u += p.inventory[h] || 0;   // ★[T458] 손 이름
       if (u > 0) { _t347Deliver(vil, p); _walked++; }
     }
+    //   ★★[T544] 어제 곳간이 안 받은 짐을 **오늘 먼저** 넣는다(따기 전 · 같은 입구 · 그날 몫만큼) — 게이트가 선 마을만.
+    const _pkIn = (_on && _keep.length) ? _t544PackIn(vil, _keep) : 0;
     //   ★[T449 ⓑ] 관측 마을(켬)의 채집꾼도 **몸 명부**(나무꾼 절과 같은 한 칸)
     const _fgE = (vil.econ.counts && vil.econ.counts.forager) || 0;
     const _fg = _t449S ? 0 : _fgE;
@@ -8119,7 +8183,9 @@ function* _lifeDailySteps(vil) {   // 게임일 경계: 크루·클레임 재대
       N: _S.N | 0, K: _S.K | 0, wBar: +(_S.wBar || 0).toFixed(3), cap: 0, trips: 0, perLoad: 0,
       pick: 0, noloot: 0, grow: 0, back: 0, items: _keep.length, stop: 0,
       //   ★[T374 계측 전용] 그날 남은 수요 — 0 이면 더 안 딴다(끈 판은 `Infinity` 라 -1 로 적는다)
-      dem: (() => { const d = _lifeEcon().forageDemandLeft(vil.econ); return d === Infinity ? -1 : +d.toFixed(4); })() };
+      dem: (() => { const d = _lifeEcon().forageDemandLeft(vil.econ); return d === Infinity ? -1 : +d.toFixed(4); })(),
+      //   ★[T544 계측] 짐에서 곳간에 든 몫(`pkIn`) · 작은 몫을 미룬 날(`hold`) — 끈 판(수요 문 끔)은 둘 다 0
+      pkIn: +(_pkIn || 0).toFixed(4), hold: 0 };
     //   ★★★[T495] 부분 수확 — 손잡이를 **하루 한 번** 읽는다 · 켜면 따는 차례(그 마을 걷는 목록의 손 이름)와 빈 개체 판정의 목록(세계 걷는 목록) ·
     //     계측 칸 셋(딴 단위 · 비운 개체 · 서 있게 둔 개체)이 생긴다(끄면 칸이 안 생긴다 — 끔 비트 동일).
     const _t495 = _t495On() && !!state.deps.t495PickAt;
@@ -8139,7 +8205,9 @@ function* _lifeDailySteps(vil) {   // 게임일 경계: 크루·클레임 재대
       const _perLoad = _t347PerLoad(_w);
       const _cap = _trips * _perLoad * _fg;
       vil._t347Dbg.trips = _trips; vil._t347Dbg.perLoad = _perLoad; vil._t347Dbg.cap = _cap;
-      let ci = 0, made = 0;
+      //   ★★[T544 ③] 부분 수확 갈래 — 따기 전 남은 몫이 한 단위보다 작으면 **오늘은 안 딴다**(미룬 몫은 수요 문 칸에 · 내일 몫과 합친다)
+      if (_t495 && _t544Hold(vil)) vil._t347Dbg.hold = 1;
+      let ci = vil._t347Dbg.hold ? _gv.length : 0, made = 0;
       for (let k = 0; k < _gv.length * 8 && ci < _gv.length && made < _cap; k++) {
         //   ★★[T374] **그날 마을이 쓸 만큼까지만 딴다** — 남은 수요가 0 이면 그날은 끝이다(귀가).
         //     상한은 새 수가 아니라 **수식이 그날 내겠다고 한 몫**이다(econ 정본 `forageDemandLeft`).
@@ -8164,7 +8232,9 @@ function* _lifeDailySteps(vil) {   // 게임일 경계: 크루·클레임 재대
         if (sk && !c.ext) (vil._t347Cut || (vil._t347Cut = [])).push(sk);   // ★[T490] 원판 밖에서 딴 것은 원판 로지스틱에 안 넣는다(그 종의 제 주기로 돌아온다)
         made++; vil._t347Dbg.pick++;
         if (c.ext) vil._t347Dbg.xpick = (vil._t347Dbg.xpick | 0) + 1;   // ★[T490 계측] 원판 밖에서 딴 개체(끄면 칸이 안 생긴다)
-        for (const it of _keep) for (const h of _t347HandsOf(it)) { const a = loot[h]; if (a > 0) { const g = _lifeEcon().forageToGranary(vil.econ, it, a) || 0; if (g > 0) vil._t347Gran = +((vil._t347Gran || 0) + g).toFixed(6); } }   // ★[T458] 덤불 berry → fruit · ★[T475 계측] 곳간에 든 몫
+        const _t544Seen = new Set();   // ★[T544] 곳간이 안 받은 몫 · 걷는 목록 밖 손(`fiber` 등)은 짐에 — 개체째 딴 것도 어딘가에 있다
+        for (const it of _keep) for (const h of _t347HandsOf(it)) { const a = loot[h]; if (a > 0) { _t544Seen.add(h); const g = _lifeEcon().forageToGranary(vil.econ, it, a) || 0; if (g > 0) vil._t347Gran = +((vil._t347Gran || 0) + g).toFixed(6); _t544PackPut(vil, h, a - g); } }   // ★[T458] 덤불 berry → fruit · ★[T475 계측] 곳간에 든 몫
+        for (const h in loot) if (!_t544Seen.has(h) && loot[h] > 0) _t544PackPut(vil, h, loot[h]);
         vil._t347Deliv = +((vil._t347Deliv || 0) + u).toFixed(6);
       }
     }
@@ -9611,6 +9681,7 @@ module.exports = { fishPerf, woodPerf, foragePerf, farmPerf,   // ★[T316] `/pe
       trips: (vil, d, w) => _t341TripsPerDay(vil, d, w) },
     // ★[T495] 부분 수확 — 같은 규약(정본 함수를 그대로 부른다 · 상태는 `_t400Probe.setup` 으로 꽂는다)
     _t495Probe: { on: () => _t495On(), units: (r) => _t495Units(r), visit: (vil, c, e, order, worth, keep) => _t495Visit(vil, c, e, order, worth, keep) },
+    _t544Probe: { put: (vil, h, u) => _t544PackPut(vil, h, u), packIn: (vil, keep) => _t544PackIn(vil, keep), sum: (vil) => _t544PackSum(vil), hold: (vil) => _t544Hold(vil), deliver: (vil, npc) => _t347Deliver(vil, npc) },
     // ★[T449] 결산 문 하네스용 — 같은 규약(최소 주입구 하나). 하네스는 문·명부 규칙을 다시 적지 않는다 — 정본 `_t449Seen`·`_lifeDaily` 를 그대로 부른다.
     _t449Probe: { seen: (vil) => _t449Seen(vil), daily: (vil) => _lifeDaily(vil), get T449_BODY_DAY() { return T449_BODY_DAY; } },
     // ★[T491] 일괄 = 몸의 하루 하네스용 — 같은 규약(최소 주입구 하나). 하네스는 명부·짐 규칙을 다시 적지 않는다 — 정본 `_t491Crew`·`_t491BodyDay` 를 그대로 부른다.

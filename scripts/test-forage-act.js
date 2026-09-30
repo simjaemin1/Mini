@@ -121,9 +121,10 @@ console.log('\n④ ⓓ 장부 = 손 — 넣으면 그 품목 손을 비운다');
   const VC = codeOf(VSRC);
   const d = VC.match(/function _t347Deliver\(vil, npc\)[\s\S]*?\n\}/)[0];
   //   ★[T458] 손의 이름(`h` — 덤불 `berry`)과 곳간의 이름(`k` — econ `fruit`)이 갈린다(같은 물건 · `_t347HandsOf`). 뜻은 그대로다.
-  ok(/for \(const k of keep\) for \(const h of _t347HandsOf\(k\)\)/.test(d) && /npc\.inventory\[h\] = 0;/.test(d),
-    '④ ★★걷는 목록의 품목만 넣고, 넣은 품목은 **그때 비운다**(이중 0)');
-  ok(/const u = npc\.inventory\[h\] \|\| 0;/.test(d) && /forageToGranary\(vil\.econ, k, u\)/.test(d),
+  //   ★[T544] 넣은 **만큼만** 뺀다 — 곳간 입구가 그날 몫까지만 받으면 나머지는 손에 남는다(종전 `= 0` 은 안 받은 몫을 세계에서 지웠다)
+  ok(/for \(const k of keep\) for \(const h of _t347HandsOf\(k\)\)/.test(d) && /const r = \+\(u - g\)\.toFixed\(6\);/.test(d) && /npc\.inventory\[h\] = r > 1e-9 \? r : 0;/.test(d) && !/npc\.inventory\[h\] = 0;/.test(d),
+    '④ ★★걷는 목록의 품목만 넣고, 넣은 **만큼** 손에서 뺀다(이중 0 · ★[T544] 곳간이 안 받은 몫은 손에 남는다)');
+  ok(/const u = npc\.inventory\[h\] \|\| 0;/.test(d) && /const g = _lifeEcon\(\)\.forageToGranary\(vil\.econ, k, u\)/.test(d),
     '④ ★★넣는 양이 **손에 든 그 수**다 — 군락 전리품의 낱개가 그대로 econ 단위다(환산식 0)');
   ok(!/npc\.inventory\.fiber|npc\.inventory\.seed_/.test(d),
     '④ ★`fiber`·씨앗은 **안 건드린다** — econ 재화가 아니다(손에 남는다 · 보고 §회부)');
@@ -900,8 +901,9 @@ console.log('\n⑰ [T475] 걷는 목록은 마을마다 — 그 마을 원판에
       return { picks, booked, D:+((v._forageOutLast||0)*(v._t347MixShare||0)).toFixed(4) }; };
     console.log(JSON.stringify({ old: run(false), now: run(true) }))`);
   const zeroDays = (a) => a.filter((x) => x === 0).length;
-  ok(clk.old.picks.length === 8 && zeroDays(clk.old.picks) >= 3 && clk.old.picks.every((x, i) => i === 0 || (x === 0) !== (clk.old.picks[i - 1] === 0)),
-    'ⓔ ★★★[정본 틱 · 종전 자리] 틱 **뒤**에 손을 넣으면 어제 딴 것이 오늘 수요를 먹는다 ⇒ **하루걸러** 딴다', `딴 수 ${clk.old.picks.join(',')} · 장부 ${clk.old.booked.join(',')}`);
+  //   ★[T544] 곳간이 안 받은 몫이 손에 남아 이월되므로 종전 자리의 병은 "하루걸러 0" 이 아니라 **장부가 D 와 어긋나는 날**로 보인다(딴 날 0 도 한 번 이상)
+  ok(clk.old.picks.length === 8 && zeroDays(clk.old.picks) >= 1 && clk.old.booked.slice(1).some((x) => Math.abs(x - clk.now.D) > 1e-6),
+    'ⓔ ★★★[정본 틱 · 종전 자리] 틱 **뒤**에 손을 넣으면 어제 딴 것이 오늘 수요를 먹는다 ⇒ 딴 날·장부가 D 와 **어긋난다**', `딴 수 ${clk.old.picks.join(',')} · 장부 ${clk.old.booked.join(',')}`);
   ok(zeroDays(clk.now.picks) === 0 && clk.now.booked.slice(1).every((x) => x > 0 && Math.abs(x - clk.now.D) < 1e-6),
     'ⓔ ★★★[정본 틱 · 이 카드] 틱 **앞**에 넣으면 **매일** 따고 매일 장부에 `D·share` 가 오른다(두 시계가 한 시계)', `딴 수 ${clk.now.picks.join(',')} · 장부 ${clk.now.booked.join(',')} · D ${clk.now.D}`);
   // ⓕ 끔 비트 동일 · 직렬화 · 랩
@@ -1036,7 +1038,7 @@ console.log('\n⑲ [T495] 부분 수확 — 개체가 아니라 단위로 딴다
     const x=mk(0.6); day(x); const r3=P.visit(x,{cx:112,cy:100},{seedKey:'h0'},['berry','twig'],worth,['fruit','twig']);
     console.log(JSON.stringify({ out, r2, cut2:(w._t347Cut||[]).length, dbg2:w._t347Dbg, r3, on:P.on() }))`);
   ok(rb.on === true && rb.out[0].r.n === 1 && rb.out[0].r.emptied === 0 && rb.out[0].cut.length === 0 && Math.abs(rb.out[0].g - 0.6) < 1e-9,
-    'ⓑ ★★몫 0.6 인 날 — **한 단위만** 딴다(열매 한 알 · 개체는 선 채) · 곳간엔 몫만큼(0.6 — 넘친 0.4 는 입구가 자른다)', JSON.stringify(rb.out[0]));
+    'ⓑ ★★몫 0.6 인 날 — **한 단위만** 딴다(열매 한 알 · 개체는 선 채) · 곳간엔 몫만큼(0.6 — 넘친 0.4 는 ★[T544] 짐에)', JSON.stringify(rb.out[0]));
   ok(rb.out[1].r.n === 1 && rb.out[1].r.emptied === 0 && rb.out[2].r.n === 1 && rb.out[2].r.emptied === 1 && rb.out[2].cut.join() === 'b0',
     'ⓒ ★★덤불 한 개체(걷는 단위 셋)가 **사흘**을 댄다 — 셋째 날 비어서야 되살릴 목록에 든다(되살이는 개체 수로 그대로)', rb.out.map((o) => `${o.r.n}${o.r.emptied ? '·빔' : ''}`).join(' → '));
   ok(rb.out[2].tw > 0 && rb.out[0].st > 0, 'ⓑ 차례는 **그 마을 목록 차례**(열매 먼저 · 잔가지는 열매가 다 한 뒤)', `열매 ${rb.out[2].st} · 잔가지 ${rb.out[2].tw}`);
@@ -1090,6 +1092,94 @@ console.log('\n⑲ [T495] 부분 수확 — 개체가 아니라 단위로 딴다
     'ⓔ ★플레이어 채집(`gatherResource`)·NPC 채집(걷는 몸) **두 자리 모두** 같은 문을 지난다(세계가 단위를 새로 만들지 않는다)');
   // ⓕ econ 무접촉
   ok(!/T495/.test(C), 'ⓕ ★econ(`sim/economy-sim.js`)에 T495 글자 **0** — 곳간 입구·수요 문·로지스틱 그대로(여덟 수가 움직일 자리가 없다)');
+}
+
+// ── ⑳ [T544] 넘침의 행방 — 곳간이 안 받은 몫은 짐에 · 작은 몫은 내일과 합친다 ──────────────────────
+//   ⓐ 정적 — 세 갈래(단위로 · 개체째 · 몸)가 곳간이 안 받은 몫을 **버리는 줄 0** · 바닥 떨굼 문 0
+//   ⓑ 단위로 딴 날 — 딴 = 곳간 + 짐(항등) · 목록 밖 손(`extra` · 섬유)도 짐에
+//   ⓒ 이튿날 짐이 먼저 든다(그날 몫만큼 · 나머지는 짐에)
+//   ⓓ 작은 몫 — 한 단위 안 되면 오늘 안 따고(`hold`) 수요 문 오늘치에 음수로 남긴다 ⇒ 내일 몫과 합친다
+//   ⓔ econ — 오늘치 음수는 남은 몫에 더해진다(채집만 · 어부·나무꾼 무변) · 틱은 음수를 안 비운다
+//   ⓕ 몸 갈래 — 넣은 만큼만 손에서 뺀다 · ⓖ 수요 문 끔 — 미룸 0 · 짐 0(다 든다) · ⓗ 존 문 — 빈 개체의 목록 밖 손을 돌려준다
+console.log('\n⑳ [T544] 넘침의 행방 — 곳간이 안 받은 몫은 짐에 · 작은 몫은 내일과 합친다');
+{
+  const VC = codeOf(VSRC), ZC = codeOf(ZSRC);
+  const VP = JSON.stringify(path.join(ROOT, 'server', 'villages.js'));
+  const body = (name) => (VC.match(new RegExp('function ' + name + '\\([^)]*\\) \\{[\\s\\S]*?\\n\\}')) || [''])[0];
+  const vis = body('_t495Visit'), del = body('_t347Deliver'), pin = body('_t544PackIn');
+  const hl = VC.slice(VC.indexOf('const _t544Seen = new Set();'), VC.indexOf('vil._t347Deliv = +((vil._t347Deliv || 0) + u).toFixed(6);'));
+  ok(/_t544PackPut\(vil, h, a - g\)/.test(vis) && /_t544PackPut\(vil, h, a - g\)/.test(hl) && /npc\.inventory\[h\] = r > 1e-9 \? r : 0;/.test(del),
+    'ⓐ ★★★세 갈래 모두 곳간이 안 받은 몫(`a − g`)을 **어딘가에** 둔다 — 단위로·개체째는 짐 · 몸은 손(종전: 버림 · 손 0)');
+  ok(!/Ground|Drop/.test(vis + del + pin + hl) && /if \(res\.extra\) for \(const h in res\.extra\) _t544PackPut\(vil, h, res\.extra\[h\]\)/.test(vis),
+    'ⓐ ★바닥에 놓는 문은 **안 불린다**(바닥 실물은 회부) · 빈 개체가 들고 있던 목록 밖 손(`extra`)도 짐에');
+  const world = `const V=require(${VP}); const P=V.__labProbe._t495Probe, P5=V.__labProbe._t544Probe, S=V.__labProbe._t400Probe;
+    const L={b0:{berry:2,fiber:1,twig:1}}; const taken={}; const gone=new Set();
+    const rest=(k)=>{ const o={}; for (const [h,n] of Object.entries(L[k])) { const r=n-((taken[k]||{})[h]||0); if (r>0) o[h]=r; } return o; };
+    const pickAt=(cx,cy,order,want,worth)=>{ const k='b0'; if (gone.has(k)) return null; const r=rest(k); const took={}; let n=0;
+      for (const h of order) { if (n>=want) break; const a=r[h]||0; if (!(a>0)) continue; const t=Math.min(a,want-n); took[h]=t; n+=t; }
+      let left=0; for (const h of worth) left+=Math.max(0,(r[h]||0)-(took[h]||0));
+      if (!(left>0)) { gone.add(k); const extra={}; for (const h in r) { const e=(r[h]||0)-(took[h]||0); if (e>0) extra[h]=e; } return { took, n, emptied:1, seedKey:k, extra }; }
+      taken[k]=taken[k]||{}; for (const h in took) taken[k][h]=(taken[k][h]||0)+took[h]; return { took, n, emptied:0, seedKey:k }; };
+    S.setup({ deps:{ t495RestOf:(e)=>rest(e.seedKey), t495PickAt:pickAt, t347LootOf:(e)=>(e.type==='herb'?{herb:2}:{berry:2,fiber:1,twig:1}) } });
+    V.__labProbe._t475Probe.itemsFor(['berry_bush','herb']);
+    const mk=(D)=>({ econ:{ storage:{}, _forageOutLast:D*2, _t347MixShare:0.5, _t347InflowToday:0 }, _t347Dbg:{ pick:0 } });
+    const order=['berry','twig','herb'], worth=['berry','twig','herb'], keep=['fruit','twig','herb'];`;
+  const on = { T347_FORAGE_ACT: '1', T374_DEMAND_STOP: '1', T495_PARTIAL_PICK: undefined };
+  const r = probe(on, `${world}
+    const v=mk(2.3); const r1=P.visit(v,{cx:110,cy:100},{seedKey:'b0'},order,worth,keep);
+    const d1={ took:r1.n, gran:+(v._t347Gran||0).toFixed(4), pack:JSON.parse(JSON.stringify(v.econ._t544Pack||{})), sum:P5.sum(v) };
+    v.econ._t347InflowToday=0; v.econ._forageOutLast=0.8;                      // 이튿날 — 틱이 양수 오늘치를 장부에 옮기고 비웠다 · 새 몫 0.4
+    const g2=P5.packIn(v,keep); const d2={ g2:+g2.toFixed(4), pack:JSON.parse(JSON.stringify(v.econ._t544Pack||{})), inflow:v.econ._t347InflowToday };
+    const w=mk(0.35); const h1=P5.hold(w); const i1=w.econ._t347InflowToday;   // 첫날 몫 0.35 — 미룬다
+    w.econ._forageOutLast=0.8; const l2=V.__labProbe._t544Probe && require(${EP}).forageDemandLeft(w.econ); const h2=P5.hold(w); const i2=w.econ._t347InflowToday;
+    const l3=require(${EP}).forageDemandLeft(w.econ); const h3=P5.hold(w);
+    const cap3=require(${EP}).forageToGranary(w.econ,'fruit',2);                   // 한 단위가 찼다 — 미룬 몫까지 곳간이 받는다
+    const npc={inventory:{berry:3,fiber:1}}; const b=mk(0.4); const gb=P5.deliver(b,npc);
+    console.log(JSON.stringify({ d1, d2, h1, i1, l2:+l2.toFixed(4), h2, i2, l3:+l3.toFixed(4), h3, cap3:+cap3.toFixed(4), gb:+gb.toFixed(4), inv:npc.inventory }))`);
+  ok(r.d1.took === 3 && Math.abs(r.d1.gran - 2.3) < 1e-9 && Math.abs(r.d1.sum.pk - 0.7) < 1e-9 && Math.abs(r.d1.took - r.d1.gran - r.d1.sum.pk) < 1e-9,
+    'ⓑ ★★★몫 2.3 — ⌈2.3⌉ = 3 단위를 따서 곳간 2.3 · **짐 0.7**(딴 = 곳간 + 짐 · 항등 · 종전은 0.7 이 사라졌다)', JSON.stringify(r.d1));
+  ok(r.d1.pack.fiber === 1 && r.d1.sum.pko === 1, 'ⓑ ★빈 개체의 목록 밖 손(섬유 1)도 짐에 — 곳간 재화가 아니라 안 든다(`pko`)', JSON.stringify(r.d1.sum));
+  ok(Math.abs(r.d2.g2 - 0.4) < 1e-9 && Math.abs(r.d2.pack.twig - 0.3) < 1e-9 && r.d2.pack.fiber === 1 && Math.abs(r.d2.inflow - 0.4) < 1e-9,
+    'ⓒ ★★이튿날 **짐이 먼저** 든다 — 그날 몫 0.4 만큼(잔가지 0.7 → 0.3) · 나머지는 짐에 그대로', JSON.stringify(r.d2));
+  ok(r.h1 === 1 && Math.abs(r.i1 + 0.35) < 1e-9 && Math.abs(r.l2 - 0.75) < 1e-9 && r.h2 === 1 && Math.abs(r.i2 + 0.75) < 1e-9,
+    'ⓓ ★★★몫 0.35 — 오늘 **안 딴다**(오늘치 −0.35) · 이튿날 몫 0.4 와 **합쳐** 0.75 — 또 안 딴다(−0.75)', `${r.h1} ${r.i1} → ${r.l2} ${r.h2} ${r.i2}`);
+  ok(Math.abs(r.l3 - 1.15) < 1e-9 && r.h3 === 0 && Math.abs(r.cap3 - 1.15) < 1e-9,
+    'ⓓ ★★셋째 날 1.15 — 한 단위가 차서 **딴다** · 곳간은 미룬 몫까지 받는다(1.15 · 새 상수 0)', `${r.l3} · 미룸 ${r.h3} · 곳간 ${r.cap3}`);
+  ok(Math.abs(r.gb - 0.4) < 1e-9 && Math.abs(r.inv.berry - 2.6) < 1e-9 && r.inv.fiber === 1,
+    'ⓕ ★★몸 갈래 — 손 열매 3 · 몫 0.4 → 곳간 0.4 · **손 2.6**(종전 0) · 목록 밖 섬유는 손에 그대로', JSON.stringify(r.inv));
+  // ⓔ econ — 오늘치 음수 · 어부·나무꾼 무변 · 틱은 음수를 안 비운다
+  const ec = probe(on, `const E=require(${EP});
+    const f=E.forageDemandLeft({_forageOutLast:2,_t347MixShare:0.5,_t347InflowToday:-0.3});
+    const fi=E.fishDemandLeft({_fishOutLast:2,_t312InflowToday:0.5}), wd=E.woodDemandLeft({_woodOutLast:2,_t325InflowToday:0});
+    const v=E.createVillage({initialPop:10,name:'픽스처',fertility:1.0}); v._t347InflowToday=-0.3; E.tickVillage(v,1); const neg=v._t347InflowToday;
+    const u=E.createVillage({initialPop:10,name:'픽스처2',fertility:1.0}); u._t347InflowToday=0.5; u._t347InByItem={fruit:0.5}; E.tickVillage(u,1); const pos=u._t347InflowToday;
+    console.log(JSON.stringify({ f:+f.toFixed(4), fi, wd, neg, pos }))`);
+  ok(Math.abs(ec.f - 1.3) < 1e-9 && ec.fi === 1.5 && ec.wd === 2,
+    'ⓔ ★★econ `actDemandLeft` — 오늘치 **음수**는 남은 몫에 더해진다(1 + 0.3) · 어부·나무꾼은 종전 그대로(1.5 · 2)', JSON.stringify(ec));
+  ok(ec.neg === -0.3 && ec.pos === 0, 'ⓔ ★★econ 틱은 **양수만** 장부에 옮기고 비운다 — 미룬 몫(음수)은 이튿날로 넘어간다(새 칸 0)', `음수 ${ec.neg} · 양수 ${ec.pos}`);
+  // ⓖ 수요 문 끔 — 미룸 0 · 짐 0
+  const off = probe({ T347_FORAGE_ACT: '1', T374_DEMAND_STOP: '', T495_PARTIAL_PICK: undefined }, `${world}
+    const v=mk(0.35); const h=P5.hold(v); const r1=P.visit(v,{cx:110,cy:100},{seedKey:'b0'},order,worth,keep);
+    console.log(JSON.stringify({ h, n:r1.n, gran:+(v._t347Gran||0).toFixed(4), sum:P5.sum(v), inflow:v.econ._t347InflowToday }))`);
+  ok(off.h === 0 && off.n === 3 && off.gran === 3 && off.sum.pk === 0,
+    'ⓖ ★수요 문 끔(`Infinity`) — 미룸 0 · 딴 3 이 **다** 곳간에(짐 0) · 끈 판 곳간 비트 동일', JSON.stringify(off));
+  // ⓗ 존 문 — 빈 개체가 들고 있던 목록 밖 손을 돌려준다(자식 존 · 정본 문)
+  const TMP = `/tmp/t544-forage-${process.pid}.db`;
+  const rm = () => { for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} } };
+  rm();
+  const ZP = JSON.stringify(path.join(ROOT, 'server', 'zone.js'));
+  let rz = null;
+  try {
+    const o = execFileSync(process.execPath, ['-e', `const _l=console.log; console.log=()=>{}; console.warn=()=>{}; const Z=require(${ZP}); const H=Z.__testBind(); console.log=_l;
+      let F=null; for (let y=1000; y<1400 && !F; y++) for (let x=500; x<900 && !F; x++) { const a=H._t347GrovesAtCell(x,y); if (a && a.length && a[0].type==='berry_bush') F={x,y,k:a[0].seedKey}; }
+      const O=['berry','twig','herb']; const full=H.lootOfResource(H._t347GrovesAtCell(F.x,F.y)[0],{day:0}); const p=H._t495PickAt(F.x,F.y,O,9,O);
+      process.stdout.write('\\n@@T544@@'+JSON.stringify({ full, took:p.took, extra:p.extra||null, emptied:p.emptied })+'\\n'); process.exit(0);`],
+      { env: Object.assign({}, process.env, { ZONE_ID: 'hanbando', DB_PATH: TMP, ENABLE_VILLAGES: '0', ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', PORT: String(39700 + (process.pid % 200)), T495_PARTIAL_PICK: undefined }), stdio: 'pipe' }).toString();
+    const i = o.lastIndexOf('@@T544@@'); rz = JSON.parse(o.slice(i + 8).split('\n')[0]);
+  } catch (e) { console.log('  · [상황] 존 자식 프로세스 실패: ' + String(e.message || e).slice(0, 200)); }
+  rm();
+  ok(!!rz && rz.emptied === 1 && rz.extra && rz.extra.fiber === 1 && Object.keys(rz.full).every((h) => ((rz.took[h] || 0) + ((rz.extra || {})[h] || 0)) === rz.full[h]),
+    'ⓗ ★★존 문 — 빈 개체의 **목록 밖 손**(섬유 · 씨앗)을 돌려준다 · 딴 것 + 돌려준 것 = 정본 전리품(개체와 같이 사라지는 손 0)', rz && JSON.stringify({ took: rz.took, extra: rz.extra }));
 }
 
 console.log('\n⑫ 접점 심볼');

@@ -403,7 +403,10 @@ function _t495PickAt(cellX, cellY, order, want, worth) {
     const px = (cellX | 0) * 32 + 16, py = (cellY | 0) * 32 + 16;
     if (resources.has(r.id)) _takeResourceEntity(r, anyViewerNear({ x: px, y: py }, AOI_RADIUS));
     else if (r.isSeed) _markHarvested(k, r.x, r.y);
-    return { took, n, emptied: 1, seedKey: k };
+    //   ★[T544] 빈 개체가 들고 있던 **걷는 목록 밖 손**(섬유·씨앗 — 곳간 재화가 아니다)도 개체와 같이 세계를 떠난다 —
+    //     사라지지 않게 문이 돌려준다(`extra` · 부르는 쪽이 짐에 넣는다 · 새 수 0 — 정본 전리품 − 딴 것).
+    const extra = {}; for (const h of Object.keys(rest)) { const e = (rest[h] || 0) - (took[h] || 0); if (e > 0) extra[h] = e; }
+    return { took, n, emptied: 1, seedKey: k, extra };
   }
   if (!(n > 0)) return { took, n: 0, emptied: 0, seedKey: k };
   const prev = pickedSeeds.get(k) || {};
