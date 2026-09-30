@@ -3768,6 +3768,7 @@ SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, is
   // ★★[T333] 바위 술어도 넘긴다 — 생활층 지형 어댑터(`villages.js isRock`)가 여태 `terrain.isRockCellLocal` 을
   //   **직접** 불러 메모를 지나쳤다(T324 프로파일: 남은 지형 시간의 9.6%). 같은 양자화(셀 중심)라 답은 같다.
   isRockTileLocal,
+  standCellNear: _standCellNear,   // ★[T541 ⓑ] 설 수 있는 가장 가까운 칸 — 나선은 한 자리(T83) · 전쟁 대형 슬롯이 막혔을 때 부른다(술어는 호출측)
   npcCanReach,   // ★★[T427 ①] 현장 배정이 부르는 도달 술어(`computeNpcPath` 의 그 술어·그 반경 · 손잡이는 생활층 `T427_SITE_REACH`)
   tickHz: TICK_HZ,   // ★[T284] 실체 전쟁 교전 스텝 = 존 틱 한 번(dt = 1/TICK_HZ)
   // ★★[T295 후속 · T284 회부 "나무는 아직 안 본다" 닫기] 전쟁이 쓰는 **나무 술어**(셀 → 서 있는 나무 있나).
