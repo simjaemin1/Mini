@@ -269,9 +269,14 @@ async function waitUp(p, url, tries = 300) {
   ok(!!mSeeded && +mSeeded[1] === (npHard || []).length,
     'ⓘ 부팅이 읽은 후보 수 = 정본 칸 수(절차 배치기를 다시 안 돈다)',
     mSeeded ? `부팅 후보 ${mSeeded[1]} · 정본 ${(npHard || []).length}` : '-');
-  ok(!!mSeeded && +mSeeded[3] === 7, 'ⓘ2 ★시딩 마을 수가 T348 과 같다(옮겨 적기가 세계를 안 움직였다)',
+  // ★[T549 ⓪-a 2026-09-30] 닛폰 폭 49,984 → 60,000(재민 확정) 은 옮겨 적기가 아니라 **세계를 바꾼 것**이다 — 해안선 띠가 동쪽으로
+  //   10,016 px 물러나 물 위 후보였던 이즈사키(T373 "플러드 0셀") 자리가 뭍이 되어 시딩 7 → 8 · 교역 쌍 21 → 28(8C2 · 전부 닿음 = ⓙ).
+  //   그래서 기대값은 **폭에 매단다**(옛 폭이면 옛 수 그대로 — 되돌리면 이 줄도 같이 옛 판을 잰다).
+  const _npW = require(path.join(ROOT, 'server', 'zone-config')).ZONES.nippon.zoneWidth;
+  const [_seedX, _pairX] = _npW === 60000 ? [8, 28] : [7, 21];
+  ok(!!mSeeded && +mSeeded[3] === _seedX, `ⓘ2 ★시딩 마을 수가 T348 과 같다(옮겨 적기가 세계를 안 움직였다 · 폭 ${_npW} 기대 ${_seedX})`,
     mSeeded ? `시딩 ${mSeeded[3]}곳` : '-');
-  ok(pairs === 21, 'ⓘ3 교역 쌍 수가 T348·T351 과 같다(마을 수가 안 움직였다)', `${pairs}쌍`);
+  ok(pairs === _pairX, `ⓘ3 교역 쌍 수가 T348·T351 과 같다(마을 수가 안 움직였다 · 폭 ${_npW} 기대 ${_pairX})`, `${pairs}쌍`);
 
   console.log('\n[ⓙ 닛폰이 한 덩어리다 — T360]');
   // ★★T348 계획기는 최대 덩어리를 "대양 분리(항해 층 필요)"라 답했다. T360 이 실측해 보니
