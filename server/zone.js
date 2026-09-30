@@ -1428,6 +1428,7 @@ function addBridgeCells(flat) {
   if (_BLK_BITS) _BLK_BITS.fill(0);
   if (_WW) _WW.clearTerrain();
   try { broadcast({ type: 'bridges_add', cells: add }); } catch (e) {}
+  _t565OnCells(add);   // ★[T565] 큰 지도 — 표본 셀만 다시 묻고 버전을 새로 낸다(클라는 `bridges_add` 를 보고 다시 받는다)
   return add.length / 2;
 }
 function bridgePayload() { return BRIDGE_BUILT.length ? (ZONE.bridges || []).concat(BRIDGE_BUILT) : (ZONE.bridges || null); }
@@ -1452,6 +1453,141 @@ function refreshDitchCells() {
 }
 function ditchPayload() {                 // welcome 페이로드(flat [cx,cy,…]) — 다리와 같은 규약
   try { return SimVillages.ditchCells ? SimVillages.ditchCells() : []; } catch (e) { return []; }
+}
+// ══ ★★[T565 2026-09-30] **큰 지도 = 셀 술어의 그림** — 재민 실기 09-30 ═══════════════════════════════
+//   큰 지도(80-bigmap)는 지형 json 의 **벡터**(산맥 띠 stroke · 강·호수·숲 타원 · 클라 거울의 광맥 원)를 그렸고,
+//   걷는 셀은 **위 술어**(바위 · 물 = 해안 띠 ∪ 강·호수 · 다리)가 판정한다 — 다른 함수라 지도가 땅과 어긋났다.
+//   자(`scripts/t565-map-audit.js` · 19존): 셀 물의 74.6% 가 지도에 없다(해안 띠를 안 그렸다) · 다리 100% 없음 ·
+//   광맥 90% 어긋남(클라 거울은 절차 광맥을 쥔다) · 새벌 동쪽 끝 산맥 띠 위의 **닛폰 고개 둘**(쇠재·한재 · T408 접합)은
+//   지도가 막힌 띠로 그렸는데 셀은 뭍이다 — "산맥 한가운데를 줌인하면 빈 셀"의 자리다.
+//   ⇒ 지도를 **이 술어들로** 굽는다(판정은 서버 하나 · 지도는 그 답의 그림 · 사본 0 · 새 판정 0):
+//     · 존 지도 `GET /bigmap.png` — 지도 픽셀 하나 = 4×4셀(표본 = 가운데 셀) · 부팅 뒤 배경에서 한 번 · 한 조각 4ms 까지만
+//       (`_t333Prebake` 와 같은 결 — 틱 예산 안에 얹는다) · 버전 = 구운 답의 해시(ETag).
+//     · 줌인 조각 `GET /bigmap.png?tile=TX,TY` — 1픽셀 = 1셀 · 64×64셀 · 부를 때 굽는다(같은 함수 ⇒ 표본 셀에서 존 지도와 같은 답).
+//     · 지은 다리(`addBridgeCells`)가 오면 표본 셀만 다시 묻고 버전을 새로 낸다(아래 `_t565OnCells`).
+//   ⚠굽는 동안 부르는 `isWaterTileLocal` 은 걷기 관측 수(`_walk.waterQ`)를 센다 — 지도는 걸음이 아니니 **조각마다 되돌린다**.
+//   ⚠값이 바뀌는 것 0: 술어 넷은 한 글자도 안 바뀌고, 지형 메모(`_TERR_CACHE`)가 표본 셀에서 미리 차는 것뿐이다(값 투명 · T333 과 같은 결).
+const BigmapBake = require('./bigmap-bake');
+const _BM_Q = {
+  rock: (x, y) => isRockTileLocal(x, y), water: (x, y) => isWaterTileLocal(x, y), bridge: (x, y) => isBridgeTileLocal(x, y),
+  ore: (x, y) => _terrain.isOreClusterAt(ZONE_ID, x, y), stone: (x, y) => _terrain.getStoneMultiplier(ZONE_ID, x, y),
+  forest: (x, y) => _terrain.getForestMultiplier(ZONE_ID, x, y),
+};
+const _bm = { bake: null, pal: null, png: null, ver: null, t0: 0, cpu: 0, ms: 0, encoding: false, again: false,
+              tiles: new Map(), tileWin: 0, tileWinN: 0, tileMs: 0, tileN: 0, served: 0, tileServed: 0, repainted: 0 };
+function _t565Pal() { return _bm.pal || (_bm.pal = BigmapBake.palette(ZONE.groundColor)); }
+function _t565Encode() {
+  if (_bm.encoding) { _bm.again = true; return; }
+  const b = _bm.bake; if (!b || !b.done()) return;
+  _bm.encoding = true;
+  const ver = BigmapBake.version(b.idx, _t565Pal());
+  BigmapBake.encodePng(b.bw, b.bh, b.idx, _t565Pal(), (err, buf) => {
+    _bm.encoding = false;
+    if (err) { console.error(`[${ZONE_ID}] 🗺️ 큰 지도 PNG 실패:`, err.message); return; }
+    if (_bm.again) { _bm.again = false; _t565Encode(); return; }   // 싸는 사이 답이 바뀌었다(지은 다리) — 낡은 판은 안 낸다
+    const first = !_bm.ms;
+    _bm.png = buf; _bm.ver = ver; _bm.tiles.clear();
+    if (first) { _bm.ms = Date.now() - _bm.t0;
+      console.log(`[${ZONE_ID}] 🗺️ 큰 지도 굽기 — ${b.bw}×${b.bh}(4×4셀 표본) · CPU ${_bm.cpu}ms · 벽시계 ${_bm.ms}ms · PNG ${(buf.length / 1024).toFixed(1)}KB · 버전 ${ver}`); }
+  });
+}
+function _t565Start() {
+  if (ZONE.isOcean || _bm.bake) return;
+  _bm.bake = BigmapBake.makeZoneBake(_BM_Q, _WT_W, _WT_H, BigmapBake.STEP);
+  _bm.t0 = Date.now();
+  const step = () => {
+    const b = _bm.bake, q0 = _walk.waterQ, t = Date.now();
+    try { do { b.bakeRow(); } while (!b.done() && Date.now() - t < 4); }
+    catch (e) { console.error(`[${ZONE_ID}] 🗺️ 큰 지도 굽기 실패:`, e.message); _walk.waterQ = q0; return; }
+    _walk.waterQ = q0;
+    _bm.cpu += Date.now() - t;
+    if (!b.done()) { setTimeout(step, 0); return; }
+    _t565Encode();
+  };
+  setTimeout(step, 0);
+}
+// 런타임에 바뀐 셀(지은 다리 · flat [cx,cy,…]) — 표본 셀만 다시 묻고, 조각은 버리고, 버전을 새로 낸다
+//   ⚠새 PNG 를 싸는 동안(zlib · 수십 ms) 옛 그림을 내주면 `bridges_add` 를 본 클라가 **옛 버전**을 다시 받아 간다 —
+//     그래서 옛 그림을 먼저 내린다(그 틈엔 503 · 클라는 옛 그림을 쥔 채 2초 뒤 다시 묻는다).
+function _t565OnCells(flat) {
+  _bm.tiles.clear();
+  const b = _bm.bake; if (!b) return;
+  const q0 = _walk.waterQ;
+  try { _bm.repainted += b.repaint(flat); } catch (e) {}
+  _walk.waterQ = q0;
+  if (b.done()) { _bm.png = null; _t565Encode(); }
+}
+const _BM_CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Expose-Headers': 'ETag, X-Bigmap-Ver, X-Bigmap-Step, X-Bigmap-Cells, X-Bigmap-Tile', 'Cache-Control': 'no-cache' };
+function _t565Http(req, res) {
+  if (ZONE.isOcean) { res.writeHead(404, _BM_CORS); res.end(); return; }
+  const qi = req.url.indexOf('?');
+  const tile = qi >= 0 ? new URLSearchParams(req.url.slice(qi + 1)).get('tile') : null;
+  const cells = _WT_W + 'x' + _WT_H;
+  if (tile != null) {
+    const m = /^(\d{1,4}),(\d{1,4})$/.exec(tile);
+    if (!m) { res.writeHead(400, _BM_CORS); res.end(); return; }
+    const key = (+m[1]) + ',' + (+m[2]);
+    let t = _bm.tiles.get(key);
+    if (!t) {
+      const now = Date.now();   // ★새로 굽는 조각은 초당 20장까지(조각 하나 = 4,096셀 · 메모가 식었으면 ~16ms ⇒ 최악 초당 0.3초)
+      if (now - _bm.tileWin > 1000) { _bm.tileWin = now; _bm.tileWinN = 0; }
+      if (++_bm.tileWinN > 20) { res.writeHead(429, Object.assign({ 'Retry-After': '1' }, _BM_CORS)); res.end(); return; }
+      const q0 = _walk.waterQ, t0 = Date.now();
+      const tb = BigmapBake.bakeTile(_BM_Q, _WT_W, _WT_H, +m[1], +m[2], BigmapBake.TILE);
+      _walk.waterQ = q0;
+      if (!tb) { res.writeHead(404, _BM_CORS); res.end(); return; }
+      t = { buf: BigmapBake.encodePngSync(tb.w, tb.h, tb.idx, _t565Pal()) };
+      _bm.tileMs += Date.now() - t0; _bm.tileN++;
+      if (_bm.tiles.size >= 512) _bm.tiles.clear();
+      _bm.tiles.set(key, t);
+    }
+    _bm.tileServed++;
+    res.writeHead(200, Object.assign({ 'Content-Type': 'image/png', 'X-Bigmap-Ver': _bm.ver || '', 'X-Bigmap-Step': '1',
+      'X-Bigmap-Tile': BigmapBake.TILE + ',' + key, 'X-Bigmap-Cells': cells }, _BM_CORS));
+    res.end(t.buf);
+    return;
+  }
+  if (!_bm.png) {
+    const b = _bm.bake;
+    res.writeHead(503, Object.assign({ 'Content-Type': 'application/json', 'Retry-After': '2' }, _BM_CORS));
+    res.end(JSON.stringify({ baking: !!b, rows: b ? b.rowsDone() : 0, of: b ? b.bh : 0 }));
+    return;
+  }
+  const etag = '"' + _bm.ver + '"';
+  const H = Object.assign({ ETag: etag, 'X-Bigmap-Ver': _bm.ver, 'X-Bigmap-Step': String(BigmapBake.STEP), 'X-Bigmap-Cells': cells }, _BM_CORS);
+  if (req.headers['if-none-match'] === etag) { res.writeHead(304, H); res.end(); return; }
+  _bm.served++;
+  res.writeHead(200, Object.assign({ 'Content-Type': 'image/png', 'Content-Length': _bm.png.length }, H));
+  res.end(_bm.png);
+}
+function bigmapStat() {
+  const b = _bm.bake;
+  return { ver: _bm.ver, bytes: _bm.png ? _bm.png.length : 0, w: b ? b.bw : 0, h: b ? b.bh : 0, rows: b ? b.rowsDone() : 0,
+           cpuMs: _bm.cpu, wallMs: _bm.ms, tiles: _bm.tiles.size, tileN: _bm.tileN, tileMs: _bm.tileMs, served: _bm.served,
+           tileServed: _bm.tileServed, repainted: _bm.repainted, live: T565_MAP_LIVE };
+}
+// ── ★[T565 ③] 지도의 실시간 점 — 팔 `T565_MAP_LIVE`(기본 켬 · 재민 요청 · 되돌림 `=0`) ──────────────
+//   틱의 `players`(남의 몸)는 **보이는 반경** 안만 간다. 지도는 존 전체라 그걸로는 안 된다 ⇒
+//   지도가 열려 있는 동안 클라가 1초에 한 번 `map_players` 를 묻고, 존이 **존 안 사람 전부의 자리**를 한 묶음으로 답한다
+//   (새 메시지 하나 · 묻고 답하는 한 쌍 — T507 `look` 의 문법). 이름·존·자리만 싣는다.
+//   · 주민(NPC)은 뺀다(사람 자리다) · 넘어가는 몸(`handingOff`)은 뺀다(도착 존이 낸다 — 두 번 안 찍힌다)
+//   · 이웃 존의 유령(T512 `ghostPlayers`)은 이 목록에 **없다**(다른 Map · 그 사람은 제 존이 답한다)
+//   · 묻는 사람 자신은 뺀다(클라가 제 예측 자리로 다른 색 점을 그린다)
+//   ⚠손님(게스트)에게도 보인다 — 디버그 팔이다. 손님에게 보일지는 재민 몫(회부).
+const T565_MAP_LIVE = process.env.T565_MAP_LIVE !== '0';
+const _t565Asked = new WeakMap();   // ws → 마지막으로 답한 시각
+function _t565MapPlayers(ws, selfPid) {
+  if (!ws || ws.readyState !== 1) return;
+  const now = Date.now();
+  if (now - (_t565Asked.get(ws) || 0) < 500) return;   // 1초에 한 번 묻는다 — 더 자주 와도 0.5초에 한 번만 답한다
+  _t565Asked.set(ws, now);
+  if (!T565_MAP_LIVE) { send(ws, { type: 'map_players', zone: ZONE_ID, off: 1 }); return; }
+  const out = [];
+  for (const p of players.values()) {
+    if (p.isNpc || p.handingOff || p.pid === selfPid) continue;
+    out.push({ pid: p.pid, name: p.name || '?', x: Math.round(p.x), y: Math.round(p.y) });
+  }
+  send(ws, { type: 'map_players', zone: ZONE_ID, t: now, players: out });
 }
 // ★★★[T356 ② 2026-09-23 · SoA 1층 — 지형 = 셀당 비트] `T356_SOA=1` 일 때만.
 //   T356 ① 이 해부해 보니 이 술어가 **걸음당 6.2회**(T324 계수) 불리고, 한 번이 술어 **넷**(바위·환호·물·다리)
@@ -4487,6 +4623,8 @@ const server = http.createServer((req, res) => {
   //     문의 정책은 문에서 정하고, 온보딩은 제 일(시작 화면 조립)만 한다.
   //   ⚠부를 때 읽는다(T88·T121 자리) — 모듈 상수면 손잡이 하나에 존을 한 판 더 띄워야 한다.
   if (req.url && req.url.startsWith('/startinfo') && req.method === 'GET') return Onboarding.httpStartInfo(_devAsGate(req), res);
+  // ★[T565] 큰 지도 — 존 술어로 구운 그림(공개 · 지형은 클라도 이미 가진 공개 정보 · CORS *)
+  if (req.url && (req.url === '/bigmap.png' || req.url.startsWith('/bigmap.png?')) && req.method === 'GET') return _t565Http(req, res);
   // ★[T540] 주민 걸음 관측창(안 문) — 침대 곁 아침 정체를 **서버 값으로** 가른다. 읽기만(`&astar=1` 이면 A* 를 한 번 더 묻는다 · 목표 불변).
   //   `?bed=1` = 침대 곁(≤12px) 주민만 · `?vid=<n>` = 한 마을 · 기본 = 마을 주민 전부(가벼운 칸만).
   if (req.url && req.url.startsWith('/walkdbg') && req.method === 'GET') {
@@ -5689,6 +5827,7 @@ function handlePlayerInput(player, raw) {
     //   손잡이가 꺼져 있으면 `_farRequest` 가 첫 줄에서 되돌아간다(방송 0).
     _farRequest(player, msg);
   }
+  else if (msg.type === 'map_players') _t565MapPlayers(ws, player.pid);   // ★[T565 ③] 지도의 실시간 점 — 읽기만(세계 무변)
   else if (msg.type === 'teleport_debug') {
     // 디버그: zone-local 좌표로 워프. zone 안 + water cell 아닌 곳만 허용.
     const tx = Math.max(0, Math.min(ZONE.zoneWidth  - 1, msg.x | 0));
@@ -6671,6 +6810,7 @@ function handleObserverMessage(ws, raw) {
     const d = observers.get(ws); if (d) d.lastSeen = Date.now();
     send(ws, _t486Pong(msg.t, _t486In));
   }
+  else if (msg.type === 'map_players') _t565MapPlayers(ws, null);   // ★[T565 ③] 관측 소켓(이웃 존)도 제 존 사람을 답한다
   else if (msg.type === 'viewport_update') {
     const data = observers.get(ws);
     if (!data) return;
@@ -10622,6 +10762,7 @@ function __testBind() {
     tryKilnStart, tryKilnAdvance, tryKilnBurn,
     _furnaceClaimOf, _furnaceCanUse, isTerrainBlockedLocal, isWaterTileLocal,
     isBridgeTileLocal, addBridgeCells, bridgePayload, bridgeCellCount: () => BRIDGE_CELLS.size,   // ★[T527] 지은 다리 하네스
+    bigmapStat, bigmapClassAt: (cx, cy) => { const b = _bm.bake; const p = b ? b.pixelOf(cx, cy) : -1; return p >= 0 ? b.idx[p] : null; },   // ★[T565] 큰 지도 하네스(읽기만)
     newClaimId: () => `c${nextClaimId++}`,
     // ── 채광·선광 E2E(test-mining.js §⑨ 다광종) ──
     mineOreCell, trySortOre, minedCells, ITEM_LABEL_SERVER,
@@ -13911,6 +14052,7 @@ function zonePublicMeta() {
 
 server.listen(PORT, () => {
   _t333Prebake();   // ★[T333] 기동을 막지 않고 배경으로 굽는다(위 주석)
+  _t565Start();     // ★[T565] 큰 지도도 같은 결 — 배경에서 한 번(한 조각 4ms 까지)
   console.log(`[${ZONE_ID}] 🌏 zone server up on :${PORT}  latency=${LATENCY_MS}ms (RTT≈${LATENCY_MS*2}ms)  [netcode=K19 입력1개=1스텝]`);
   console.log(`        biome=${ZONE.biome}  rect=(${ZONE.worldOffsetX},${ZONE.worldOffsetY},${ZONE.zoneWidth}x${ZONE.zoneHeight})  neighbors=W:${NEIGHBOR.hasWest?'✓':'∅'} E:${NEIGHBOR.hasEast?'✓':'∅'} N:${NEIGHBOR.hasNorth?'✓':'∅'} S:${NEIGHBOR.hasSouth?'✓':'∅'}`);
 });
