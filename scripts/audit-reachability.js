@@ -8,13 +8,21 @@
 //   출력: 마을별 [다리 전 / 다리 후] 도달 여부 + 요약
 const path = require('path');
 const terrain = require(path.join(__dirname, '..', 'server', 'terrain'));
-const { ZONES } = require(path.join(__dirname, '..', 'server', 'zone-config'));
+const { ZONES, findZoneAt } = require(path.join(__dirname, '..', 'server', 'zone-config'));
 if (terrain.setZonesMeta) terrain.setZonesMeta(ZONES);
 
 const ZID = process.argv[2] || 'hanbando';
 const Z = ZONES[ZID], SZ = 32;
 const NX = Math.floor(Z.zoneWidth / SZ), NY = Math.floor(Z.zoneHeight / SZ);
 const N = NX * NY;
+
+// ★[T535 ⓪] 해안선 띠(서버 `WATER_TILES` = `chunk.generateCoastlineWaterTiles`)도 물이다 — `zone.js isTerrainBlockedLocal` 과 같은 뜻.
+//   종전엔 강·호수만 물로 봐서 바다 위 마을 자리(닛폰 이즈사키 · 히마쿠)를 "닿음"으로 셌다(T407 회부 ② · T524 회부 ④).
+//   `REACH_NO_BAND=1` 이면 종전 판(띠 없이) — 두 판을 견줄 때만.
+const BAND = process.env.REACH_NO_BAND === '1' ? new Set() : (() => {
+  const OR = Object.values(ZONES).filter((z) => z.isOcean).map((z) => ({ x0: z.worldOffsetX, y0: z.worldOffsetY, x1: z.worldOffsetX + z.zoneWidth, y1: z.worldOffsetY + z.zoneHeight }));
+  return require(path.join(__dirname, '..', 'server', 'chunk')).generateCoastlineWaterTiles({ ...Z, id: ZID }, SZ, findZoneAt, OR);
+})();
 
 const BRIDGE = new Set();
 { const b = Z.bridges || []; for (let i = 0; i + 1 < b.length; i += 2) BRIDGE.add(b[i] + '_' + b[i + 1]); }
@@ -25,7 +33,7 @@ function kind(cx, cy) {
   const i = cy * NX + cx; let v = memo[i];
   if (v) return v;
   const x = cx * SZ + SZ / 2, y = cy * SZ + SZ / 2;
-  v = terrain.isWaterCellLocal(ZID, x, y) ? 2 : (terrain.isRockCellLocal(ZID, x, y) ? 3 : 1);
+  v = (BAND.has(cx + '_' + cy) || terrain.isWaterCellLocal(ZID, x, y)) ? 2 : (terrain.isRockCellLocal(ZID, x, y) ? 3 : 1);
   memo[i] = v; return v;
 }
 // zone.js isTerrainBlockedLocal 동형
@@ -72,7 +80,7 @@ function villageReached(seen, cx, cy, R) {
 
 const sx = Math.round(Z.mainSquare.x / SZ), sy = Math.round(Z.mainSquare.y / SZ);
 const vs = terrain.getZoneVillages(ZID) || [];
-console.log(`[도달성 감사] ${ZID} ${NX}×${NY}셀(${N.toLocaleString()}) · 마을 ${vs.length} · 다리 셀 ${BRIDGE.size}`);
+console.log(`[도달성 감사] ${ZID} ${NX}×${NY}셀(${N.toLocaleString()}) · 마을 ${vs.length} · 다리 셀 ${BRIDGE.size} · 해안선 띠 ${BAND.size}${process.env.REACH_NO_BAND === '1' ? '(REACH_NO_BAND — 종전 판)' : ''}`);
 console.log(`스폰 (${sx},${sy})`);
 
 let t0 = Date.now();
