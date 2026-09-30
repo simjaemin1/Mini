@@ -3,6 +3,18 @@
 > ★이 파일은 **영역 소유 세션만** 갱신한다. 다른 영역에 쓸 말이 생기면 `인계/회부.md` 에 한 줄.
 > 원문은 `_아카이브_2026-08_다음세션_인계.md` 에 그대로 동결돼 있다(족보 · 삭제 금지).
 > 이사할 때 **문장을 한 글자도 안 고쳤다** — 낡아 보이는 줄엔 `[낡음? 확인 필요]` 표만 붙였다.
+## T533. ★★2026-09-30 — **캐러밴이 존을 넘는다** — 경계 호스트 · `/handoff_prepare` 의 `kind` · 몸 경계 칸 이어 걷기(팔 `T525_CROSS_ZONE` 기본 끔 · 승인 대기 · 보고/T533_2026-09-30.md)
+
+* ★PM 결정 #456: 문 = `/handoff_prepare` 에 **`kind`**(`player`|`caravan`|`snap`|`army` · 없으면 `player` = **종전 글자 그대로** — 토큰·5초 대기) · **새 라우트 0** · 안 문(`InternalDoor` · `CENTRAL_SECRET`)·호스트 표(`ZONE_HOSTS`) 그대로. `caravan`·`snap` = `SimVillages.xzoneReceive`(토큰 0 · central 왕복 0) · `army` = `{ok:false}`(칸만 · 셋째 카드) · 모르는 종류 = 400.
+* 미는 쪽 = 존 deps `xzonePost(zoneId, payload)` = 사람 짐과 **같은** `postJSON(ZONES[id].host, .port, '/handoff_prepare')`. 관측 = `/perf` 의 `xzone` 칸(끔이면 null · 안 문).
+* 호스트 `server/xzone.js`: 이웃 = `publicZoneMap` 동서남북(켜진 존 · 바다 제외 · 새 표 0 — 한 변에 이웃 하나만 본다 · 회부) · 기동 때 명부(`rosterOnly`)를 밀고, 이웃 명부가 오면 **합친 걸음표를 워커 스레드**로(`server/xzone-geo.js` · 두 존이 이름 순서 A<B 로 같은 한 벌 · 해안선 띠 켬 = 존 서버 통행 정본) — 한반도+닛폰 쌍 408 · 2km 안 53(합친 길 없음 0) · BFS 12~44s · 길 42~118s(경합 따라) · 표가 오기 전엔 `world.xzone` 을 안 꽂는다(= 끔). 답을 받으면 워커를 닫는다(메모리).
+* 하루 두 조각(팔 켬 + 호스트일 때만 · 끔 = 조각 목록 무변): econ **앞** `xzone`(지난 경계에 이웃이 민 스텁 · 지난 경계까지 받은 기록 → inbox) · econ **뒤** `xzone`(나간 기록을 민다 · 경계 마을 스냅 + 명부를 민다). 경계 `g` = 절대 게임일(두 존 같은 수) — 기록은 **보낸 경계 다음 경계**에 econ 에 든다(두 존 마감 순서에 안 달린다 · 자 판의 하루 늦음과 같다).
+* 넘김 실패: 'arrive' 에 **답이 왔는데** 안 받는다(걸음표 아직 · 그 마을 비었음 · 이웃 아님) → 경계에서 짐을 되돌린다(`econV2.xzoneBounce` · 몸은 돌아선다) · **답이 없다**(끊김 · 5초) → 다음 경계에 한 번 더(받는 쪽은 `존:종류:id` 로 한 번만 센다 · `dup`) · 'return' 실패 = 몸은 경계 칸에 선 채 다음 경계에 다시. 받는 존 재기동이면 기록·캐러밴은 비영속(종전 캐러밴과 같다 · 회부).
+* ⚠클램프(`zone.js:12814` "NPC는 zone 핸드오프 안 함")는 무접촉 — 캐러밴 몸은 `movePlayerStep` 에 안 든다(`:12853` `simCaravan` 건너뜀) ⇒ 몸의 존 넘김은 이 기록 문 하나가 한다.
+* 서버 켬 판(3시드 800일 · 마을 하루 4초 · 조각 끔): 넘음 611·622·587 · 경계 교역 583·600·552(자 판과 같은 크기) · 같은 경계 두 존 계수 맞음(차 ≤ 2 = 문 위) · 잃음 0 · 되돌림 7(전부 `no-village`) · 건너뜀 = 시딩 첫날뿐.
+* 자: `scripts/e2e-xzone-caravan.js`(실서버 셋 · **26/0** · 러너 밖 — 기동 ≈3분) · `scripts/t533-xzone-server.js run|table`(서버 켬 판 · 러너 밖 · T514 문법 적재 순간 창) · `scripts/t525-cross-zone.js two`(자 판 — 존 서버와 **같은 핵심** `createCore`).
+* 켜지 않는다(기준선 회부 #91 · 세션7 T534).
+
 ## T537-다리영속. ★★2026-09-30 — **마을이 지은 다리가 재기동을 넘는다**(승인 대기 · 보고/T537_2026-09-30.md · F 절과 짝)
 
 * 존 DB `village_bridges(zone, site, sig, state, done, day)` — 추가 전용(`CREATE TABLE IF NOT EXISTS`). 쓰는 이 = villages `_t527Save`(크루 하루마다 · 손잡이 `T527_BRIDGE_ACT` 켬일 때만). 읽는 이 둘 — ① `zone.js` 부팅(`observers` 선언 뒤 블록): `done` 행의 셀을 **`addBridgeCells`** 로 다시 올린다(손잡이 무관 · 선 다리는 사물) → 단일 술어 `isTerrainBlockedLocal` 의 다리 집합 · welcome `bridgePayload()` 가 시딩 뒤에 붙인다. ② villages `_t527Restore`(켬 · 후보 서명 `v|span|cells` 가 같을 때만 진척을 이어받음).
