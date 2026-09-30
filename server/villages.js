@@ -7432,7 +7432,7 @@ function _lifeGranStep(vil, npc, now) {
   //   서버는 상태가 없고 스케줄 게이트를 매 틱 재평가하므로, 도장이 없으면
   //   퇴근 훅이 저장(짐>0)↔인출(빈손)을 무한 왕복시킨다 — 집에 못 간다.
   if (t.draw) { const q = Math.min(G_DRAW, _granStockOf(vil, g)); _granStockAdd(vil, g, -q); _handAdd(npc, q); npc._granD = state.dayMs ? gameDayOf(now) : 0; }
-  else { _granStockAdd(vil, g, _handOf(npc)); _handSet(npc, 0); if (npc._t368H) _t368Deliver(vil, npc, 'gran'); }   // ③ 정산(물리 장부만 — econ 무접촉 · ★[T316] 손은 `inventory`) · ★[T368] 켠 팔은 **이 귀환이 곳간 입고**다(손의 작물 → `_farmGranary`)
+  else { _granStockAdd(vil, g, _handOf(npc)); _handSet(npc, 0); if (npc._t368H) _t368Deliver(vil, npc, 'gran'); if (npc.inventory && (npc.inventory.wood || 0) > 0) _t561Ladder(vil, npc, now); }   // ③ 정산(물리 장부만 — econ 무접촉 · ★[T316] 손은 `inventory`) · ★[T368] 켠 팔은 **이 귀환이 곳간 입고**다(손의 작물 → `_farmGranary`) · ★[T561 ②ⓑ] 켠 팔은 통나무도(끄면 `_t561Ladder` 첫 줄에서 돌아간다)
   npc._granTask = null;
   return false;                                                      // 소유권 반납 → 이번 틱부터 평소 일과
 }
@@ -8117,6 +8117,72 @@ function _t491Crew(vil) {   // 그날 나무를 한 몸 — 명부 순서 · 주
 function _t491BodyDay(vil, distPx) {   // 나무꾼 **한 몸**이 하루에 곳간에 댈 수 있는 단 = 짐 수 × 한 짐(T400 크루와 같은 두 함수)
   return _t341TripsPerDay(vil, distPx, 1) * _t400PerLoad('wood');
 }
+// ★★★[T561 2026-09-30 · #86 재민 "일괄 = 몸" · T491 판을 닫는 카드] **명부가 몸의 그날을 본다 · 몸이 하루 1그루에서 안 멈춘다.**
+//   T491 이 잰 25배의 주인 둘: ① 명부가 몸의 그날을 안 본다(앓은 날에도 econ 수만큼 성한 걸음 — 앓힌 판 끔 하루 66그루 ↔ 몸 0)
+//   ② 몸이 하루 1그루에서 멈춘다(그날 목록 하루 캐시에서 방금 비운 셀을 해 질 녘까지 다시 고른다 — 몸·날 848 중 657 이 정확히 1그루).
+//   손잡이 `T561_ROSTER_BODY`(기본 **끔** · 끔 = 아래 세 자리의 옛 줄 그대로 — `_lnE`·`_fgE` 는 econ 수 · 몸 갈래는 옛 고르기 · 사다리는 곡식 손만).
+//   ① 일괄 명부 — 나무꾼·채집 두 절(`_lifeDaily` 헤드리스 갈래 · 손은 `_lifeHandsIn`)의 명부 = 그날 **나설 수 있는** 그 직업 몸(`_t561Crew`).
+//      몸이 이미 가진 칸만 읽는다(새 상태 0 · 새 수 0 · 주사위 0): 쓰러짐(`isDown`) · 죽음(hp 0) · 요양(`_rest`) ·
+//      요양 문턱 아래(hp < maxHp × `SCH_REST_IN` — `npcLifeTick` 이 다음 결정에 침상으로 보내는 그 문턱 · 헤드리스 몸은 결정을 안 해서 칸이 늦게 선다) ·
+//      시공 과업 · 집 크루(T400 — 그 몸은 그날 집터에 있었다 · T491 명부와 같은 두 줄).
+//      ⚠굶음·잠은 몸을 세우지 않는다 — NPC 허기·갈증은 존이 매 틱 채운다(`zone.js` isNpc 한 줄) · 몸 정본(`body.js` 효과 표)에서도 허기·갈증은
+//        작업 배율 1 이고 극단이면 hp 가 깎여 위 요양 문턱이 잡는다 · 잠은 밤의 것이고 명부는 낮의 명부다(보고/T561 §1 표).
+//      ⚠부상(hp 60~100%)은 명부에 든다 — 몸은 그날 나선다(스케줄 게이트는 60% 에서만 세운다 · 걸음·스윙 무변).
+//        econ `_laborMul`(0.6~1.0)은 수식 생산 줄의 것이다 — 일괄은 몸의 거울이라 안 곱한다.
+//   ② 몸의 하루(나무꾼 몸 갈래 · 두 자리):
+//      ⓐ 자리를 고를 때 **서 있는 그루가 없는 셀은 건넌다** — 일괄 절이 셀마다 먼저 묻는 그 문(`t325TreesAtCell` · 사본 0).
+//         첫 고르기는 옛 줄 그대로(같은 순서 · 같은 동점 규칙) — 그 셀에 그루가 서 있으면 옛 몸과 같은 자리다.
+//      ⓑ 짐이 차서 곳간 사다리에 가면 **통나무도 거기서 내린다**(캐논 "귀환하면 곳간에" · 그 다리 `_t325Deliver` · T368 볏단이 내리는 그 자리).
+//         옛 줄은 곡식 손만 내리고 통나무는 해 질 녘까지 들었다 ⇒ 몸 하루 = 짐 왕복 × 짐(T341 걸음 한도 그대로 · 짐 = carry `CAP_KG`).
+//         낮에 넣은 몸은 **그날 걸은 몸**이다(`_t325PreWalked` — T475 의 그 칸 · 몸 XOR 일괄 · 일괄이 같은 날 또 베지 않게).
+const T561_ROSTER_BODY = process.env.T561_ROSTER_BODY === '1';
+function _t561Fit(p) {   // 그날 나설 수 있는 몸인가 — 스케줄 게이트(`npcLifeTick` 요양 두 줄)의 그 칸·그 문턱
+  if (!p || p.isDown) return false;                                           // 쓰러짐
+  if (p.hp != null && !(p.hp > 0)) return false;                               // 죽음(NPC 부활 대기)
+  if (p._rest) return false;                                                   // 요양 — 침상(만피에 풀린다)
+  if (p.hp != null && p.hp < (p.maxHp || 100) * SCH_REST_IN) return false;     // 요양 문턱 아래 — 다음 결정에 침상으로 간다
+  return true;
+}
+function _t561Crew(vil, job) {   // 그날 그 직업을 한 몸 — 명부 순서 · 주사위 0
+  const out = [], pl = state.deps && state.deps.players, t4 = vil._t400Crew || null;
+  for (const pid of (vil.npcPids || [])) {
+    const p = pl && pl.get(pid); if (!p || p.simJob !== job) continue;
+    if (!_t561Fit(p)) continue;
+    if (p._lifeTask && p._lifeTask.k === 'build') continue;            // 시공 — 그 몸은 그날 집터에 있었다(T491 명부 그대로)
+    if (t4 && t4.indexOf(pid) >= 0) continue;                          // 집 크루(T400) — 그 몸은 그날 자재를 날랐다(T491 명부 그대로)
+    out.push(p);
+  }
+  return out;
+}
+// ★[T561 ②ⓐ] 첫 고르기(옛 줄의 셀)에 그루가 없으면 **다음으로 가까운** 셀 — 옛 줄과 같은 순서(`(i + h) % n`)·같은 동점 규칙(먼저 본 것)으로 한 칸씩 건넌다.
+//   반환: 그루가 서 있는 셀 · 그날 목록 전부가 비었으면 null(호출측 — 그날은 끝이다: 퇴근 `_lifeGoHome(npc, '휴식')` · T374 가 "그날 쓸 만큼 찼으면" 쓰는 그 한 줄 ·
+//     레거시 폴스루(`return false` — 존의 "가까운 자원 채집")가 아닌 까닭도 T374 의 그것이다: 그 갈래는 아무 자원이나 딴다 · 그날 다시 안 묻는다).
+function _t561Standing(tr, npc, h, first) {
+  const peek = (t) => { let a = null; try { a = state.deps.t325TreesAtCell ? state.deps.t325TreesAtCell(t.cx, t.cy) : null; } catch (e) { a = null; } return !!(a && a.length); };
+  if (peek(first)) return first;
+  const skip = new Set([first]);
+  for (;;) {
+    let best = null, bd = Infinity;
+    for (let i = 0; i < tr.length; i++) {
+      const t = tr[(i + h) % tr.length]; if (skip.has(t)) continue;
+      const d2 = (t.x - npc.x) * (t.x - npc.x) + (t.y - npc.y) * (t.y - npc.y);
+      if (d2 < bd) { bd = d2; best = t; }
+    }
+    if (!best) return null;
+    if (peek(best)) return best;
+    skip.add(best);
+  }
+}
+// ★[T561 ②ⓑ] 곳간 사다리 정산(`_lifeGranStep` ③)에서 부른다 — 통나무를 든 몸만 온다(끄면 첫 줄에서 돌아간다 · 옛 줄 그대로).
+function _t561Ladder(vil, npc, now) {
+  if (!T561_ROSTER_BODY || !vil || !vil.econ) return 0;
+  const E = _lifeEcon(); if (!E.T325_WOOD_ACT || !E.woodActOn(vil.econ)) return 0;
+  const got = _t325Deliver(vil, npc);
+  const d = state.dayMs ? gameDayOf(now) : 0;                                                     // 몸의 날(`npcLifeTick` 이 쓰는 그 날)
+  if (npc._t561Wd !== d) { npc._t561Wd = d; vil._t325PreWalked = (vil._t325PreWalked | 0) + 1; }   // 그날 걸은 몸 — 한 몸 한 번(사람 수 · T475 규약)
+  vil._t561Lad = +((vil._t561Lad || 0) + got).toFixed(6);                                        // 계측 전용 누계(사다리에서 든 단 · 켠 판에만 선다)
+  return got;
+}
 // ★[T523] `_lifeDaily` 는 정본 몸통(`_lifeDailySteps` 발생기)을 쉬지 않고 끝까지 돈다 — 종전 호출·순서·값 그대로.
 //   쉼표는 사냥꾼 한 명마다 하나뿐이다(`_huntHuntersSteps`). 손잡이 `T523_LIFE_SLICE` 를 켜면 하루 마감(`_openDayJobs`)이 그 쉼표에서 프레임을 넘긴다.
 function _lifeDaily(vil) { const g = _lifeDailySteps(vil); while (!g.next().done); }
@@ -8175,7 +8241,10 @@ function* _lifeDailySteps(vil) {   // 게임일 경계: 크루·클레임 재대
     //   ★[T449 ⓑ] 관측 마을(켬)의 나무꾼은 **몸 명부** — 일괄 명부에서 빠진다(T423 문법 · 끔이면 종전 명부 그대로)
     //   ★★[T491 ⓐ] 켬이면 명부 = 그날 일한 **나무꾼 몸**(`_t491Crew`) · 끔 = econ 나무꾼 수(옛 줄 그대로)
     const _t491C = T491_BATCH_FROM_BODY ? _t491Crew(vil) : null;
-    const _lnE = _t491C ? _t491C.length : ((vil.econ.counts && vil.econ.counts.lumberjack) || 0);
+    //   ★★[T561 ①] 켬이면 명부 = 그날 **나설 수 있는** 나무꾼 몸(`_t561Crew` — 쓰러짐·요양·요양 문턱·시공·집 크루가 빠진다) · 끔 = 옛 줄(T491 명부 또는 econ 수)
+    //     한도의 꼴(그루 · 단)은 T491 손잡이가 그대로 정한다 — 이 손잡이는 **누가** 나섰는지만 바꾼다.
+    const _t561W = T561_ROSTER_BODY ? _t561Crew(vil, 'lumberjack') : null;
+    const _lnE = _t561W ? _t561W.length : (_t491C ? _t491C.length : ((vil.econ.counts && vil.econ.counts.lumberjack) || 0));
     const _ln = _t449S ? 0 : _lnE;
     if (_t449S && _on && _walked === 0 && _lnE > 0 && _tr.length) _t449T.woodBody++;   // 계측 — 종전이면 일괄이 돌았을 날
     const _S = vil._t325Trees || {};
@@ -8183,6 +8252,7 @@ function* _lifeDailySteps(vil) {   // 게임일 경계: 크루·클레임 재대
     vil._t325Dbg = { on: _on ? 1 : 0, walked: _walked, ln: _ln, cells: _tr.length,
       N: _S.N | 0, K: _S.K | 0, wBar: +(_S.wBar || 0).toFixed(3), cap: 0, trips: 0, perLoad: 0, cut: 0, noloot: 0, grow: 0, back: 0, stop: 0,
       dem: (() => { const d = _lifeEcon().woodDemandLeft(vil.econ); return d === Infinity ? -1 : +d.toFixed(4); })() };
+    if (_t561W) vil._t325Dbg.t561 = { crew: _t561W.length, econ: (vil.econ.counts && vil.econ.counts.lumberjack) || 0, lad: +(vil._t561Lad || 0).toFixed(4) };   // ★[T561 계측 전용] 켠 판에만 서는 칸(나선 몸 · econ 수 · 사다리에서 든 단 누계)
     if (_on && _walked === 0 && _ln > 0 && _tr.length) {
       //   ⓐ 하루 한도 — **걸음**이 정한다. 거리는 가장 가까운 나무 셀까지(색인 순서 첫 칸이 아니라 실제 최근접).
       let _best = _tr[0], _bd = Infinity;
@@ -8267,7 +8337,9 @@ function* _lifeDailySteps(vil) {   // 게임일 경계: 크루·클레임 재대
     //   ★★[T544] 어제 곳간이 안 받은 짐을 **오늘 먼저** 넣는다(따기 전 · 같은 입구 · 그날 몫만큼) — 게이트가 선 마을만.
     const _pkIn = (_on && _keep.length) ? _t544PackIn(vil, _keep) : 0;
     //   ★[T449 ⓑ] 관측 마을(켬)의 채집꾼도 **몸 명부**(나무꾼 절과 같은 한 칸)
-    const _fgE = (vil.econ.counts && vil.econ.counts.forager) || 0;
+    //   ★★[T561 ①] 켬이면 명부 = 그날 **나설 수 있는** 채집꾼 몸(나무꾼 절과 같은 한 함수 · 새 수 0) · 끔 = econ 수(옛 줄)
+    const _t561F = T561_ROSTER_BODY ? _t561Crew(vil, 'forager') : null;
+    const _fgE = _t561F ? _t561F.length : ((vil.econ.counts && vil.econ.counts.forager) || 0);
     const _fg = _t449S ? 0 : _fgE;
     if (_t449S && _on && _walked === 0 && _fgE > 0 && _gv.length && _keep.length) _t449T.forageBody++;   // 계측 — 종전이면 일괄이 돌았을 날
     const _S = vil._t347Groves || {};
@@ -8278,6 +8350,7 @@ function* _lifeDailySteps(vil) {   // 게임일 경계: 크루·클레임 재대
       dem: (() => { const d = _lifeEcon().forageDemandLeft(vil.econ); return d === Infinity ? -1 : +d.toFixed(4); })(),
       //   ★[T544 계측] 짐에서 곳간에 든 몫(`pkIn`) · 작은 몫을 미룬 날(`hold`) — 끈 판(수요 문 끔)은 둘 다 0
       pkIn: +(_pkIn || 0).toFixed(4), hold: 0 };
+    if (_t561F) vil._t347Dbg.t561 = { crew: _t561F.length, econ: (vil.econ.counts && vil.econ.counts.forager) || 0 };   // ★[T561 계측 전용] 켠 판에만 서는 칸(나선 몸 · econ 수)
     //   ★★★[T495] 부분 수확 — 손잡이를 **하루 한 번** 읽는다 · 켜면 따는 차례(그 마을 걷는 목록의 손 이름)와 빈 개체 판정의 목록(세계 걷는 목록) ·
     //     계측 칸 셋(딴 단위 · 비운 개체 · 서 있게 둔 개체)이 생긴다(끄면 칸이 안 생긴다 — 끔 비트 동일).
     const _t495 = _t495On() && !!state.deps.t495PickAt;
@@ -8601,6 +8674,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
     if (!_tr.length) return false;                                   // 숲이 없다 — 레거시 폴스루
     const h = _pidHash(npc.pid);
     //   ⓐ 어느 나무로 가나 — **가장 가까운 나무 셀**(같은 셀에 여럿이 몰리지 않게 사람마다 시작점을 흘린다)
+    if (npc._t325Site && npc._t325Site.day === day && npc._t325Site.none) { _lifeGoHome(npc, '휴식'); return true; }   // ★[T561 ②ⓐ] 그날 목록이 다 비었다(켠 팔만 서는 칸) — 그날은 끝(퇴근 · T374 의 그 한 줄)
     if (!npc._t325Site || npc._t325Site.day !== day) {
       let best = null, bd = Infinity;
       for (let i = 0; i < _tr.length; i++) {
@@ -8608,6 +8682,8 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
         const d2 = (t.x - npc.x) * (t.x - npc.x) + (t.y - npc.y) * (t.y - npc.y);
         if (d2 < bd) { bd = d2; best = t; }
       }
+      //   ★★[T561 ②ⓐ] 켬 — 그 셀에 서 있는 그루가 없으면 다음으로 가까운 셀(같은 순서 · 같은 동점 규칙 · 일괄 절의 그 문) · 끔 = 옛 줄(빈 셀에 선다)
+      if (T561_ROSTER_BODY) { best = _t561Standing(_tr, npc, h, best); if (!best) { npc._t325Site = { none: 1, day }; _lifeGoHome(npc, '휴식'); return true; } }
       npc._t325Site = { cx: best.cx, cy: best.cy, x: best.x, y: best.y, day };
     }
     const ts = npc._t325Site;
@@ -9783,6 +9859,10 @@ module.exports = { fishPerf, woodPerf, foragePerf, farmPerf,   // ★[T316] `/pe
     _t449Probe: { seen: (vil) => _t449Seen(vil), daily: (vil) => _lifeDaily(vil), get T449_BODY_DAY() { return T449_BODY_DAY; } },
     // ★[T491] 일괄 = 몸의 하루 하네스용 — 같은 규약(최소 주입구 하나). 하네스는 명부·짐 규칙을 다시 적지 않는다 — 정본 `_t491Crew`·`_t491BodyDay` 를 그대로 부른다.
     _t491Probe: { crew: (vil) => _t491Crew(vil).map((p) => p.pid), bodyDay: (vil, d) => _t491BodyDay(vil, d), get T491_BATCH_FROM_BODY() { return T491_BATCH_FROM_BODY; } },
+    // ★[T561] 명부가 몸의 그날을 본다 · 몸이 안 멈춘다 — 같은 규약(최소 주입구 하나 · 정본 함수를 그대로 부른다 · 하네스가 문턱을 다시 적으면 그게 사본이다).
+    _t561Probe: { fit: (p) => _t561Fit(p), crew: (vil, job) => _t561Crew(vil, job).map((p) => p.pid), standing: (tr, npc, h, first) => _t561Standing(tr, npc, h, first),
+      ladder: (vil, npc, now) => _t561Ladder(vil, npc, now), granStep: (vil, npc, now) => _lifeGranStep(vil, npc, now), life: (npc, now) => npcLifeTick(npc, now),
+      get T561_ROSTER_BODY() { return T561_ROSTER_BODY; }, get SCH_REST_IN() { return SCH_REST_IN; } },
     get VILLAGE_MAX() { return VILLAGE_MAX; },
     get INITIAL_POP() { return INITIAL_POP; },
     get SZ() { return SZ; },
