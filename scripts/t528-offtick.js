@@ -41,10 +41,32 @@ if (process.env.T528_CHILD) {
     if (ms >= 2) { cbRing.push([t0, t1, label]); if (cbRing.length > 4000) cbRing.splice(0, 1000); }
     let o = cbMin.get(label); if (!o) cbMin.set(label, o = { n: 0, sum: 0, max: 0 }); o.n++; o.sum += ms; if (ms > o.max) o.max = ms;
   };
+  // ★[T538 추신2 ⓑ] `T528_TICKPARTS=1` — 틱 콜백(등록 자리 `T528_TICK`) 안에서 불린 **server/ 모듈 내보낸 함수**를 맨 윗단만 잰다(분마다 이름 → 합 ms)
+  const TICKLBL = process.env.T528_TICK || 'I server/zone.js:12520';
+  const TP = !!process.env.T528_TICKPARTS; let inTick = 0, tpDepth = 0; const tpMin = new Map();
   const wrap = (fn, label) => {
     if (typeof fn !== 'function') return fn;
-    return function (...a) { const t0 = now(); try { return fn.apply(this, a); } finally { noteCb(label, t0, now()); } };
+    const isTick = label === TICKLBL;
+    return function (...a) { const t0 = now(); if (isTick) inTick++; try { return fn.apply(this, a); } finally { if (isTick) inTick--; noteCb(label, t0, now()); } };
   };
+  if (TP) {
+    const Module = require('module'); const _load = Module._load; const seen = new WeakSet();
+    const SRV = path.join(ROOTDIR, 'server') + path.sep;
+    Module._load = function (req, parent, isMain) {
+      const ex = _load.apply(this, arguments);
+      try {
+        const fn = Module._resolveFilename(req, parent, isMain);
+        if (typeof fn === 'string' && fn.startsWith(SRV) && ex && typeof ex === 'object' && !seen.has(ex)) {
+          seen.add(ex); const mod = path.basename(fn, '.js');
+          for (const k of Object.keys(ex)) { const f = ex[k]; if (typeof f !== 'function' || /^class\s/.test(Function.prototype.toString.call(f))) continue;
+            const name = mod + '.' + k;
+            try { ex[k] = function (...a) { if (!inTick || tpDepth) return f.apply(this, a); tpDepth++; const t0 = now(); try { return f.apply(this, a); } finally { tpDepth--; const d = now() - t0; const o = tpMin.get(name) || { n: 0, sum: 0 }; o.n++; o.sum += d; tpMin.set(name, o); } }; } catch (e) {}
+          }
+        }
+      } catch (e) {}
+      return ex;
+    };
+  }
   const _st = global.setTimeout, _si = global.setInterval, _sim = global.setImmediate;
   const PROBE = Symbol('probe');
   global.setTimeout = function (fn, ...r) { if (fn && fn[PROBE]) return _st(fn, ...r); return _st(wrap(fn, 'T ' + site()), ...r); };
@@ -118,6 +140,19 @@ if (process.env.T528_CHILD) {
       }
       const fname = (n) => { const cf = n.callFrame; return `${cf.functionName || '(anon)'} ${short(cf.url || '')}${cf.url ? ':' + (cf.lineNumber + 1) : ''}`; };
       const firstOurs = (id) => { let x = id; while (x != null) { const n = nodes.get(x); if (!n) break; const u = n.callFrame.url || ''; if (/\/(server|sim|shared)\//.test(u) && !u.endsWith('t528-offtick.js')) return fname(n); x = nodes._parent.get(x); } return null; };
+      // ★[T538 추신2 ⓑ] `T528_PROF_ALL=1` — 그 분의 **모든** 표본을 서버 첫 틀로 모은다(막힘 창만이 아니라) · 하루 경계 전/후 "어느 틀이 늘었나"
+      let profAll = null;
+      if (prof && process.env.T528_PROF_ALL) {
+        const memo = new Map(); const agg = new Map();
+        for (const id of prof.samples) { let f = memo.get(id); if (f === undefined) { const nd = nodes.get(id); f = firstOurs(id) || (nd ? '(서버 틀 없음) ' + fname(nd) : '?'); memo.set(id, f); } agg.set(f, (agg.get(f) || 0) + 1); }
+        //   틱 콜백 안의 표본만 따로 — 틱 틀(`T528_TICK` 의 파일:줄 · 이름 없는 함수)이 스택에 있으면 틱 몫이다(틱 ms 와 같은 자로 견준다)
+        const tm = TICKLBL.match(/^I (.+):(\d+)$/); const tUrl = tm ? tm[1] : '', tLine = tm ? +tm[2] : -1;
+        const inT = new Map(); const tAgg = new Map(); let tickS = 0;
+        const isTickNode = (nd) => nd && (nd.callFrame.url || '').endsWith(tUrl) && nd.callFrame.lineNumber + 1 === tLine;
+        const underTick = (id) => { if (inT.has(id)) return inT.get(id); let x = id, r = false; while (x != null) { const nd = nodes.get(x); if (!nd) break; if (isTickNode(nd)) { r = true; break; } x = nodes._parent.get(x); } inT.set(id, r); return r; };
+        for (const id of prof.samples) if (tUrl && underTick(id)) { tickS++; const f = memo.get(id); tAgg.set(f, (tAgg.get(f) || 0) + 1); }
+        profAll = { n: prof.samples.length, top: [...agg].sort((x, y) => y[1] - x[1]).slice(0, 80), tickS, tickTop: [...tAgg].sort((x, y) => y[1] - x[1]).slice(0, 60) };
+      }
       const newEps = eps.slice(epsDone); epsDone = eps.length;
       const lines = [];
       for (const e of newEps) {
@@ -143,8 +178,8 @@ if (process.env.T528_CHILD) {
       const io = ioRing.splice(0); const ioSum = io.reduce((s, r) => s + r[1], 0), ioMax = io.reduce((m, r) => Math.max(m, r[1]), 0);
       const mu = process.memoryUsage();
       fs.appendFileSync(path.join(OUT, 'min.jsonl'), JSON.stringify({ wall: Date.now(), eps: newEps.length, gc: { n: gcMin.n, sum: +gcMin.sum.toFixed(1), max: +gcMin.max.toFixed(1), kinds: gcMin.kinds },
-        cbs, sqls, io: { sum: ioSum, max: ioMax }, heap: Math.round(mu.heapUsed / 1e6), rss: Math.round(mu.rss / 1e6) }) + '\n');
-      cbMin.clear(); sqlMin.clear(); gcMin.n = 0; gcMin.sum = 0; gcMin.max = 0; gcMin.kinds = {};
+        cbs, sqls, io: { sum: ioSum, max: ioMax }, profAll, tickParts: TP ? [...tpMin].sort((x, y) => y[1].sum - x[1].sum).slice(0, 30).map(([k, o]) => [k, o.n, +o.sum.toFixed(1)]) : undefined, heap: Math.round(mu.heapUsed / 1e6), rss: Math.round(mu.rss / 1e6) }) + '\n');
+      cbMin.clear(); sqlMin.clear(); tpMin.clear(); gcMin.n = 0; gcMin.sum = 0; gcMin.max = 0; gcMin.kinds = {};
       selfRing.push([fl0, now()]); if (selfRing.length > 200) selfRing.shift();
     });
   };

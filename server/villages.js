@@ -27,7 +27,7 @@
 // 테스트 훅(운영 기본값은 전부 무설정):
 //   VILLAGE_DAY_MS  — 게임일 길이 오버라이드(ms). 일일 틱 스모크용(예: 2000).
 //   VILLAGE_MAX     — 시딩 마을 수(기본 10).
-//   VILLAGE_NPC_CAP — 마을당 가시 NPC 상한(기본 40) — econ 인구는 무제한(시뮬 진실),
+//   VILLAGE_NPC_CAP — 마을당 가시 NPC 상한(★[T538 추신3] 기본 **무제한** · 종전 기본 40 = 되돌림 `=40`) — econ 인구는 무제한(시뮬 진실),
 //                     스폰 NPC만 캡. dormant NPC 총량 안전선(zone.js 997행, ~1000명) 고려.
 //
 // Stage 4A (이번 단계 — 마을 실물화):
@@ -89,7 +89,10 @@ const _shOfNpc = (n) => (n._sh !== undefined ? n._sh : (n._sh = _pidHash(n.pid |
 const SZ = 32; // 셀 크기(px) — zone.js BUILDING_SIZE(436행)·zone-config 셀과 동일
 const INITIAL_POP = 8; // econ createVillage 초기 인구 기본값(economy-sim.js 697행)과 일치
 const VILLAGE_MAX = Math.max(1, parseInt(process.env.VILLAGE_MAX || '20', 10));   // ★기본 20(사용자 밀도 캐논 §2.4·§3b: 한반도 존 마을 12~20 — 10은 1착륙 보수값이었음). 성능 확정은 Stage 5 실측
-const NPC_CAP_PER_VILLAGE = Math.max(1, parseInt(process.env.VILLAGE_NPC_CAP || '40', 10));
+// ★★[T538 추신3 ⓑ 2026-09-30 · 재민 캐논 #54] **몸 수 상한 무제한** — econ 인구가 곧 몸이다(추상 없애기).
+//   T376(답 예 · 몸 2,515 = econ 전부) → T433 켬 팔(규약 다섯 · 낮 p50 22.0 · p95 28.5ms · 36/36 조각 예산 안 · drop 0 · 소멸 0)을 **기본으로** 올린다.
+//   되돌림 = `VILLAGE_NPC_CAP=40`(종전 기본값 그대로 · 테스트 훅은 종전처럼 수를 준다).
+const NPC_CAP_PER_VILLAGE = process.env.VILLAGE_NPC_CAP ? Math.max(1, parseInt(process.env.VILLAGE_NPC_CAP, 10) || 40) : Infinity;
 const POP_SYNC_PER_DAY = 2; // 인구 반영은 완만: 게임일당 마을당 ±2명까지 (증가=스폰, 감소=최근 NPC부터)
 const MIN_SPACING_PX = 12000; // 마을 간 최소 간격 — pickSeedVillages 주석 참조
 
@@ -2589,11 +2592,20 @@ const TERR_GROW_MAX_PER_DAY = 60;   // 마을당 하루 최대 확장 셀 — ec
 //   제 `growTerritory` 를 따로 갖는다. ⇒ **T221 의 함정(자·랩이 끈 세계를 잰다)이 여기엔 없다**:
 //   자·랩은 이 코드를 아예 안 돌리므로 뒤집어도 그쪽 표가 한 수도 안 움직인다(§0ⓐ 가 `cmp` 로 증명한다).
 const T230_TERR_HOUSING = process.env.T230_TERR_HOUSING !== '0';
+// ★★[T538 추신3 ⓐ 2026-09-30 · 재민 캐논 #93] **영토 상한 = 인구 × `LAND_NEED`** — 손잡이 `T538_TERR_CAP`(★기본 **끔** · 켬 `=1`).
+//   ⚠기본 켬으로 못 올린 이유(실측): 창설한 유저 마을은 인구 0 · 영토 반경 4(`PV_TERR_R`)로 선다 — 상한이 0 이라 영토가 **영영 안 자라**
+//     공용 쉼터 자리가 영토 안에 안 나온다 ⇒ `e2e-village` 42/7(T62 쉼터 넷 · T19 자격·시작 지도 셋) · 끔 49/0. 유저 마을을 어떻게 할지는 재민(#93 · 보고 T538 추신3 ⓐ).
+//   8주 산 서울 세계에서 영토가 마을당 최대 39,630셀(집 항 목표 50,100 — ⌈housing÷6⌉×600+1,500)까지 자라 행 수가 부팅을 죽였다(T538 §①).
+//   재민 답: 영토는 **사람이 쓰는 땅**만큼이다 — 인당 경작칸 `LAND_NEED`(`village-layout` 정본 · 12 · 새 수 0).
+//   ⇒ 목표(종전 식) 와 이 상한 중 **작은 쪽**까지만 더한다. 상한을 넘은 마을은 **자라지 않을 뿐 줄이지 않는다**(행을 지우지 않는다 · 세계를 줄이지 않는다).
+//   ⚠자·랩은 `_terrGrow` 를 안 탄다(위 T298 주석) — 3시드 자 무변. 무는 곳은 생활층(집터가 영토 안에서만 선다) — 보고 T538 추신3 ⓐ 표.
+const T538_TERR_CAP = process.env.T538_TERR_CAP === '1';
 function _terrGrow(vil) {
   if (!state.ta || !vil || !vil._terrSet || !vil._terrSet.size) return 0;
   const land = vil.econ && vil.econ.land; if (!land || !land.size) return 0;
   const _tt = _lifeVL().territoryTarget(land.size, (vil.econ && vil.econ.housing) || 0);
-  const target = T230_TERR_HOUSING ? _tt.target : _tt.econ;
+  let target = T230_TERR_HOUSING ? _tt.target : _tt.econ;
+  if (T538_TERR_CAP) target = Math.min(target, ((vil.econ.npcs && vil.econ.npcs.length) || 0) * _lifeVL().LAND_NEED);
   if (vil._terrSet.size >= target) return 0;
   const ta = state.ta, own = vil._terrSet, ccx = vil.ccx, ccy = vil.ccy;
   const fertW = 3.5, compactW = 0, distW = 0.1;
@@ -2627,12 +2639,22 @@ function _terrGrow(vil) {
   //   ⇒ 집·곳간·환호가 이미 쓰는 **그 길** 그대로 남긴다(새 문법 0 · 새 수 0). 읽는 자리는 이미 있다
   //     (`:2584` — 부팅이 `terr` 행을 그대로 `_terrSet` 에 넣는다. 그래서 읽기는 손댈 게 없다).
   //   ⚠쓰기가 실패해도 하루 틱을 죽이지 않는다(이 파일의 다른 영속 자리와 같은 규약).
+  //   ★★[T538 추신2 ⓐ 2026-09-30] **마을 하나 = 거래 하나** — 종전엔 한 행 = 자동 커밋 한 번이라 하루 끝 영토 행 3,050개가
+  //     WAL 에 거래 3,050개(쪽 여럿씩)를 썼다(T528 ② 실측 · 하루 경계 분 디스크 79MB · 초 54MB). 같은 행을 **같은 순서**로 넣고
+  //     마을 하나를 `SAVEPOINT` 로 묶는다(바깥 거래가 열려 있어도 안전 — 그때는 그 거래 안의 한 칸이 된다).
+  //     크래시 원자성 = 마을 단위(한 마을의 오늘 확장분이 다 들어가거나 하나도 안 든다 — 종전엔 한 행씩 반쯤 들 수 있었다).
+  //     ⚠실패하면 그 마을의 오늘 몫 전부를 되돌린다(종전은 실패 앞의 행만 남았다). 메모리 `_terrSet` 은 종전처럼 이미 자랐다 — 다음 부팅은 DB 를 믿는다.
+  const _tdb = state.db && state.db.db;
   try {
-    if (state.db && state.db.insertVillageBuilding && vil.dbId != null) {
-      for (const k of added) {
-        const ci2 = k.indexOf(','), ax = +k.slice(0, ci2), ay = +k.slice(ci2 + 1);
-        state.db.insertVillageBuilding({ village_id: vil.dbId, type: 'terr', cx: ax, cy: ay, floors: 0, data: null });
-      }
+    if (state.db && state.db.insertVillageBuilding && vil.dbId != null && added.size) {
+      if (_tdb) _tdb.exec('SAVEPOINT t538_terr');
+      try {
+        for (const k of added) {
+          const ci2 = k.indexOf(','), ax = +k.slice(0, ci2), ay = +k.slice(ci2 + 1);
+          state.db.insertVillageBuilding({ village_id: vil.dbId, type: 'terr', cx: ax, cy: ay, floors: 0, data: null });
+        }
+        if (_tdb) _tdb.exec('RELEASE t538_terr');
+      } catch (e) { if (_tdb) { try { _tdb.exec('ROLLBACK TO t538_terr'); _tdb.exec('RELEASE t538_terr'); } catch (_) {} } throw e; }
     }
   } catch (e) { console.error(`[${state.zoneId}] 🏘️ 영토 영속 실패(${vil.name}):`, e.message); }
   _probe.terrGrowDays++; _probe.terrGrowCells += added.size;   // ★[T41 §0] 영토가 **매일** 바뀌는가 — 표지(dirty) 접근의 성패가 여기 달렸다
@@ -2779,14 +2801,29 @@ function init(deps) {
       maxDay = Math.max(maxDay, row.day | 0);
 
       // NPC 집 위치 — village_buildings의 house 셀(복원 시에도 동일 소스)
-      const bRows = db.getVillageBuildings(row.id);
+      //   ★★[T538 2026-09-30] **경계 있는 로드** — 종전 `db.getVillageBuildings(row.id)`(= `SELECT *` 전 행)는 8주 산 DB 에서
+      //     마을당 4~5만 행(78%가 `terr`)을 JS 객체로 올렸고, 아래 `_bRows` 가 50마을치를 실물화 끝까지 쥐었다 →
+      //     서울 부팅 힙 OOM(978MB · restart 272). 이제 좌표 셋은 한 줄씩 흘려 Set 에만 넣고(`eachVillageCell`),
+      //     구조물 행만 종전 꼴로 쥐고(`getVillageStructAll`), 반지름은 가장 먼 행만 받아 같은 `Math.hypot` 으로 잰다.
+      //     ⇒ 만드는 상태(아래 집합·목록·반지름)는 종전과 **같은 값 · 같은 순서**(`test-village-boot-mem` 이 종전 판과 대조한다).
+      //   ⚠옛 배선(`eachVillageCell` 없는 db — 픽스처)이면 종전 경로 그대로.
+      const _bLite = typeof db.eachVillageCell === 'function';
+      const bRows = _bLite ? db.getVillageStructAll(row.id) : db.getVillageBuildings(row.id);
       const housesPx = [];
       // ★[생활 층] 부팅 시 상태 집합 재구성 — terr/nongzone(시딩 영속) + 개간 실상태(farm/dry) + 집·곳간 셀
       const terrSet = new Set(), potSet = new Set(), farmSet = new Set(), drySet = new Set(), granList = [], houseCells = [], siteRows = [], ditchCells = [], pHouseRows = [], pSiteRows = [];
       let farmN = 0, dryN = 0, hallData = null, maxCellR = 4, shelterCell = null;
+      if (_bLite) {   // ★[T538] 좌표 셋 — 종전 루프의 그 갈래들을 같은 순서(id)로
+        for (const f of db.getVillageFarthest(row.id, row.cx, row.cy)) { const r = Math.hypot(f.cx - row.cx, f.cy - row.cy); if (r > maxCellR) maxCellR = r; }
+        db.eachVillageCell(row.id, 'farm', (cx, cy, ty) => {
+          if (ty === 'farmland') { farmN++; farmSet.add(cx + ',' + cy); }
+          else { dryN++; farmSet.add(cx + ',' + cy); drySet.add(cx + ',' + cy); }
+        });
+        db.eachVillageCell(row.id, 'nongzone', (cx, cy) => { potSet.add(cx + ',' + cy); });
+        db.eachVillageCell(row.id, 'terr', (cx, cy) => { terrSet.add(cx + ',' + cy); });
+      }
       for (const b of bRows) {
-        const r = Math.hypot(b.cx - row.cx, b.cy - row.cy);
-        if (r > maxCellR) maxCellR = r;
+        if (!_bLite) { const r = Math.hypot(b.cx - row.cx, b.cy - row.cy); if (r > maxCellR) maxCellR = r; }
         if (b.type === 'house') { housesPx.push({ x: b.cx * SZ + SZ / 2, y: b.cy * SZ + SZ / 2 }); houseCells.push({ cx: b.cx, cy: b.cy }); }
         else if (b.type === 'farmland') { farmN++; farmSet.add(b.cx + ',' + b.cy); }
         else if (b.type === 'dryfield') { dryN++; farmSet.add(b.cx + ',' + b.cy); drySet.add(b.cx + ',' + b.cy); }   // ★[생활 층 100% ③] 밭 셀 구분(논=물대기 대상, 밭=아님 — 랩 field 동형)
@@ -5215,6 +5252,9 @@ function _ditchPlan(vil, VL) {
     if (b.type === 'granary') { for (let x = b.cx - 2; x <= b.cx + 2; x++) for (let y = b.cy - 1; y <= b.cy + 1; y++) block.add(x + ',' + y); continue; }
     block.add(b.cx + ',' + b.cy);
   }
+  //   ★[T538] 부팅 로드가 경계를 갖게 되어 `_bRows` 는 구조물 행만 쥔다 — 종전 `_bRows` 에 같이 있던 나머지 행(논밭·마당·광장·텃밭 …)은
+  //     여기서 DB 에게 한 줄씩 받는다(`_bRows` 가 있는 부팅 동안만 — 종전도 부팅 뒤엔 `_bRows` 가 없어 이 칸들이 비었다 · 같은 집합).
+  if (vil._bRows && state.db && typeof state.db.eachVillageCell === 'function') state.db.eachVillageCell(vil.dbId, 'other', (cx, cy) => { block.add(cx + ',' + cy); });
   const houses = (vil._houseCells || []).map(h => ({ cx: h.cx, cy: h.cy }));
   const axis = VL.axisAt(state.ta, vil.ccx, vil.ccy);
   const r = VL.ditchRing(vil.ccx, vil.ccy, { houses, terrain: state.ta, axis, skip: (x, y) => block.has(x + ',' + y) });

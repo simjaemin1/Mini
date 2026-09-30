@@ -3,6 +3,27 @@
 > ★이 파일은 **영역 소유 세션만** 갱신한다. 다른 영역에 쓸 말이 생기면 `인계/회부.md` 에 한 줄.
 > 원문은 `_아카이브_2026-08_다음세션_인계.md` 에 그대로 동결돼 있다(족보 · 삭제 금지).
 > 이사할 때 **문장을 한 글자도 안 고쳤다** — 낡아 보이는 줄엔 `[낡음? 확인 필요]` 표만 붙였다.
+## T538. ★★2026-09-30 — 부팅이 살아 있는 DB 를 통째로 삼키지 않는다(서울 한반도 힙 OOM restart 272 · 경계 있는 로드 · 가지 `batch/boot-mem-0930` · 승인 대기)
+
+* 서울 DB 사본(`~/Mini/_db/hanbando-0930.db`)으로 재현했다. 종전 코드는 힙 1000MB 에서 마을 47/50 을 올리다 죽는다.
+  * 3000MB 로 띄우면 heapUsed 최고 1,443MB · RSS 1.9GB 다.
+  * 원인: 마을마다 `SELECT *` 전 행(154만 · `terr` 78%)을 JS 객체로 올려 `_bRows` 가 50마을치를 실물화 끝까지 쥐었다.
+* 가지는 heapUsed 최고 **379MB** · RSS 547MB 다. 마을 적재 구간이 +1,036 → +170MB 로 줄었다(영토 문자열 Set 몫).
+  * `zone-local-db.js`: `eachVillageCell`(배열 행 · `iterate` · 쥐지 않는다) · `getVillageStructAll`(구조물 8종만) · `getVillageFarthest`(반지름 = 가장 먼 행만).
+  * ★전부 `ORDER BY id` 다 — 종전 `SELECT *` 가 존 안에서 id 순이었다. Set 넣은 순서까지 같게 했다(type 순으로 뽑은 첫 판은 논·밭 섞인 `_farmSet` 순서가 31마을에서 달랐다).
+* 자:
+  * `scripts/t538-boot-mem.js --rows <db>`(표별 · type 별 · 마을별 terr × 반지름 · 중복)
+  * `--boot <db|new> <heapMB>`(preload 가 부팅 로그 줄마다 heapUsed · `T538_DUMP=1` 이면 마을 상태 집합 지문)
+* 하네스 `test-village-boot-mem`(@regress · 신설):
+  * 살찐 DB(씨앗 + 영토 행 · 124만 행)를 힙 1000MB 로 띄운다 · heapUsed < 600MB · 상태 집합이 **하네스 안 종전 루프 대조군**과 같다.
+  * `T538_DB=<사본>` 이면 서울 사본도 돈다.
+* `_terrGrow` 영토 행은 마을 하나 = `SAVEPOINT` 하나다(추신 2 ⓐ). 첫날 하루 끝 디스크 79 → 19MB.
+* 하루 경계 뒤 틱 합 +52~64% 의 주인은 `zone.js` 틱 본문이다(모듈 함수 +35ms/분). 표본으로 이름이 선 것은 공간 색인 **전수 재구축** 0 → 12/분 · 틱 본문 자기 몫 · GC 다(추신 2 ⓑ · 회부).
+* 중복 2행(마을 45 dryfield)은 원인이 아니다. `scripts/t538-dedupe.js <db>` 로 지운다(`.bak` 먼저 · 멱등 · 재민 손 · 존 부팅은 안 부른다).
+* 서울 재배포: `RUN_ZONES=hanbando bash scripts/redeploy-light.sh` — 힙 옵션 없이 뜨는지가 게이트다.
+* ★추신 3 ⓑ(#54): 몸 상한 기본 **무제한**(되돌림 `VILLAGE_NPC_CAP=40`). 서울 사본 몸 9,760 · 틱 p50 ~7 · p95 ~10ms · drop 0 · heap 376MB.
+  * ⚠부팅 뒤 첫 하루 마감 한 조각 **7.8초**(`life:쉼표`) · 둘째 5.7초 · 셋째부터 ≤173ms(`=40` 은 첫날 619ms) — 생활층 첫날 해부 전엔 배포 첫 두 경계에 멈춤이 한 번씩 있다.
+
 ## T546. ★★2026-09-30 — 길드 절: central 이 드는 길드 칸 26 · 금고는 곳간의 사본이고 넷 길로 어긋난다 (표만 · 코드 0)
 
 * 칸 26 = `tribes` 12 · `players.tribe_id` 1 · `tribe_invites` 3 · `wars` 10 → **존 밖 19**(이름 · 명부 · 길드장 · 초대 · 규칙 · 선포 사실) · **내릴 수 있음 6**(`vp` · `vp_updated_at` · `loot_rate` · `damage_rate` · `aggressor_vp_gain` · `tier`) · **사본 1**(`treasury_json` = Σ 존 곳간).
