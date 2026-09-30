@@ -20,6 +20,10 @@ OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.expanduser('~/Mini/_terrain'
 os.makedirs(OUT, exist_ok=True)
 HC = json.load(open(os.path.join(ROOT, 'server', 'hanbando-terrain.json'), encoding='utf-8'))
 NOW = HC['nippon']
+# ★[T549 갱신 ⓪-a] 동해안 x 는 zone-config 에서 읽는다(폭 49,984 → 60,000 · 하구가 옛 해안 49,950 에 박혀 있으면 새 폭에선 뭍 한가운데서 끝난다)
+import subprocess
+ZW = int(subprocess.check_output(['node', '-e', "process.stdout.write(String(require('./server/zone-config.js').ZONES.nippon.zoneWidth))"], cwd=ROOT))
+EAST = ZW - 50   # 하구 끝 = 동쪽 가장자리 50 px 안(옛 49,950 = 49,984 − 34 와 같은 뜻 · 띠 바다 한가운데)
 
 def strip(f):   # 캐시 칸(_bbox · _segIdx)은 지운다 — 모양이 바뀌면 틀린 상자가 된다
     return {k: v for k, v in f.items() if k not in ('_bbox', '_segIdx')}
@@ -92,6 +96,18 @@ def x_on(f, y):
         if (y0 - y) * (y1 - y) <= 0 and y0 != y1: return round(x0 + (x1 - x0) * (y - y0) / (y1 - y0))
     return None
 
+def extend_mouth(f, ctrl, w_end):
+    """하구(폭 넓은 끝)에서 `ctrl` 을 지나 이어 긋는다 — 옛 해안에 박힌 하구를 새 해안까지(폭은 하구 폭 → w_end)."""
+    P = f['path']; at_start = P[0]['width'] > P[-1]['width']
+    m = P[0] if at_start else P[-1]
+    pts = catmull([m['pos']] + ctrl)[1:]
+    L = [0.0]; prev = m['pos']
+    for q in pts: L.append(L[-1] + math.hypot(q[0] - prev[0], q[1] - prev[1])); prev = q
+    T = L[-1] or 1
+    ext = [{'pos': q, 'width': round(m['width'] + (w_end - m['width']) * (l / T))} for q, l in zip(pts, L[1:])]
+    f['path'] = (list(reversed(ext)) + P) if at_start else (P + ext)
+    return len(ext)
+
 def base():
     T = copy.deepcopy(NOW)
     for k in ('rivers', 'lakes', 'ridges', 'passes', 'valleys'):
@@ -112,9 +128,28 @@ def plan_A():
     T['rivers'].append(river('니시가와', [[sw, 48500], [16300, 56000], [13600, 64000], [11000, 71800], [9300, 77600], [8750, 79300], [8650, 81500], [8450, 85000], [8378, 87700]], 120, 560))
     notes.append(f'강 니시가와: 등뼈 서쪽 몸 끝({sw},48500) → 아카호 → 토오가와 합류(8378,87700) — 물 없는 덩이 1')
     se = ridge_edge([g for g in T['ridges'] if g['name'] in ('닛폰척량', '츠키야마')], 96800, +1)
-    T['rivers'].append(river('미나미가와', [[se, 96800], [31500, 98300], [36500, 99000], [42000, 100300], [46500, 101200], [49950, 101800]], 120, 480))
-    notes.append(f'강 미나미가와: 츠키야마 동쪽 몸 끝({se},96800) → 동해안(49950,101800) — 물 없는 덩이 2')
-    for nm in ('니시가와', '미나미가와'):   # 새 강마다 가운데 한 목 — 산에 닿는 강은 뭍을 가른다(없으면 강 한 줄이 평원을 둘로 나눈다)
+    T['rivers'].append(river('미나미가와', [[se, 96800], [31500, 98300], [36500, 99000], [42000, 100300], [47000, 101200], [53500, 101900], [EAST, 102400]], 120, 520))
+    notes.append(f'강 미나미가와: 츠키야마 동쪽 몸 끝({se},96800) → 동해안({EAST},102400) — 물 없는 덩이 2')
+    # ★[T549 갱신 ⓪-a] 폭 60,000 에서 옛 해안(49,984)에 하구가 박힌 강 다섯이 뭍 한가운데서 끝난다 — 새 해안까지 잇는다(최소 손질 = 선은 두고 하구만)
+    R = lambda nm: byname(T['rivers'], nm)
+    ext = [('하야가와', [[53500, 115200], [EAST, 115900]], 680), ('후카가와', [[53000, 82300], [56500, 83000], [EAST, 83400]], 1300),
+           ('카제가와', [[53000, 6300], [EAST, 5900]], 320), ('모리가와', [[48600, 25700], [53500, 27400], [EAST, 28300]], 460),
+           ('츠키가와', [[44600, 20000], [46300, 20400]], 460)]
+    for nm, c, w in ext:
+        notes.append(f'{nm} 하구 이음 +{extend_mouth(R(nm), c, w)}점 → {c[-1]}')
+    notes.append('츠키가와 는 새 해안 대신 모리가와 에 든다(곧장 동쪽이면 모리가와를 가로지른다)')
+    # 새로 생긴 동쪽 뭍(옛 띠 자리 · 물 없는 덩이 3) — 후카가와 동쪽 갈래 하나 · 등뼈 동쪽 몸에서 후카가와로 드는 지류 하나(물 없는 덩이 4)
+    fk = R('후카가와'); fx = x_on(fk, 50500)
+    T['rivers'].append(river('후카가와갈래', [[fx, 50500], [fx + 3500, 51600], [fx + 8000, 52600], [EAST, 53600]], 300, 560))
+    notes.append(f'갈래 후카가와갈래: 후카가와({fx},50500) → 동해안({EAST},53600) — 새 동쪽 뭍(옛 띠 자리)')
+    he = ridge_edge([g for g in T['ridges'] if g['name'] in ('닛폰척량', '유키야마')], 60000, +1)
+    fx2 = x_on(fk, 64500)
+    T['rivers'].append(river('히가시가와', [[he, 60000], [he + round((fx2 - he) * 0.4), 61800], [he + round((fx2 - he) * 0.75), 63400], [fx2, 64500]], 120, 380))
+    notes.append(f'지류 히가시가와: 등뼈 동쪽 몸 끝({he},60000) → 후카가와({fx2},64500) — 등뼈와 후카가와 사이 물 없는 덩이')
+    for nm in ('하야가와', '후카가와', '카제가와', '모리가와'):   # 이은 강이 뭍을 가두지 않게 — 원래 몸 가운데 한 목(하야가와·후카가와 는 위 여울이 있으니 모리가와·카제가와 만 새로)
+        if nm in ('하야가와', '후카가와'): continue
+        f = R(nm); P = f['path']; notes.append(f'{nm} 여울 꼭짓점 {ford(f, P[len(P) // 2]["pos"], span=1)}')
+    for nm in ('니시가와', '미나미가와', '후카가와갈래', '히가시가와'):   # 새 강마다 가운데 한 목 — 산에 닿는 강은 뭍을 가른다(없으면 강 한 줄이 평원을 둘로 나눈다)
         f = byname(T['rivers'], nm); P = f['path']; m = P[len(P) // 2]['pos']
         notes.append(f'{nm} 여울 꼭짓점 {ford(f, m, span=1)}')
     T['_t549'] = {'plan': 'A', 'notes': notes}
@@ -155,15 +190,15 @@ def plan_B():
         for ch in nm + str(k): h = (h * 131 + ord(ch)) % 1000003
         return round(((h % 2001) / 1000 - 1) * a)
     for nm, y0 in EN:
-        sx = ridge_edge([spine], y0, +1); span = 49950 - sx
+        sx = ridge_edge([spine], y0, +1); span = EAST - sx
         keepR.append(river(nm, [[sx, y0], [sx + round(span * 0.2), y0 + 700 + jit(nm, 1, 900)], [sx + round(span * 0.45), y0 + jit(nm, 2, 1400)],
-                                [sx + round(span * 0.7), y0 + 900 + jit(nm, 3, 1600)], [49950, y0 + 1400 + jit(nm, 4, 1800)]], 130, 500 + jit(nm, 5, 120)))
+                                [sx + round(span * 0.7), y0 + 900 + jit(nm, 3, 1600)], [EAST, y0 + 1400 + jit(nm, 4, 1800)]], 130, 560 + jit(nm, 5, 120)))
     notes.append('동쪽 강 ' + str(len(EN)) + ': ' + ' · '.join(n for n, _ in EN) + ' — 등뼈 동쪽 몸 끝 → 동해 곧장(해안 따라 흐르던 후카가와 3,112셀 · 하야가와 1,189셀 대신)')
     # 북 — 닛폰북령 북쪽 골(서 평원 밖)을 북 경계(베링)로 · 남동 — 등뼈 남쪽 끝 동쪽을 남해로
     sx = ridge_edge([spine], 9000, -1)
     keepR.append(river('키타가와', [[sx, 9000], [sx - 4000, 7600], [sx - 8000, 5200], [sx - 11000, 2600], [sx - 12500, -200]], 120, 420)); notes.append('북 키타가와: 등뼈 서쪽 몸 끝(y 9,000) → 북 경계(베링) — 닛폰북령 북쪽 골')
     sx = ridge_edge([spine], 115500, +1)
-    keepR.append(river('우미가와', [[sx, 115500], [29000, 118500], [35500, 121200], [41000, 124800], [44500, 130400]], 130, 520)); notes.append('남동 우미가와: 등뼈 남쪽 끝 동쪽 → 남해')
+    keepR.append(river('우미가와', [[sx, 115500], [29000, 118500], [36000, 121200], [43000, 124800], [48000, 130400]], 130, 560)); notes.append('남동 우미가와: 등뼈 남쪽 끝 동쪽 → 남해')
     # 남쪽 — 등뼈 남쪽 발치 토오호에서 남해로
     keepR.append(river('하야가와', [[21410, 121995], [22600, 125000], [23600, 128000], [24200, 130400]], 380, 620)); notes.append('남 하야가와: 토오호 → 남해(동쪽 해안 따라 돌던 1,189셀 대신 · B 를 안 가른다)')
     T['rivers'] = keepR
