@@ -95,6 +95,7 @@ for (const [tag, A] of Object.entries(R.arms)) {
   const stuckOf = (a) => (a.cutN || 0) === 0 && ((a.lab && a.lab['출근']) || 0) >= 800 && (a.walk || 0) < 8000;
   const restedOf = (a) => (a.cutN || 0) === 0 && ((a.lab && a.lab['휴식']) || 0) >= 800;
   const sickVD = new Map();   // `${vil}|${d}` → 그날 요양 표본이 있는 나무꾼 몸 수
+  const outZeroVD = new Map(); // `${vil}|${d}` → 그날 `출근` 하고도 0그루인 나무꾼 몸 수
   if (BJ && BJ.bodies) {
     for (const [bk, b] of Object.entries(BJ.bodies)) {
       for (const [d, a] of Object.entries(b.days || {})) {
@@ -103,6 +104,7 @@ for (const [tag, A] of Object.entries(R.arms)) {
         if (a.rest > 0) { W.restBD++; const k = `${b.vil}|${d}`; sickVD.set(k, (sickVD.get(k) || 0) + 1); continue; }
         W.bd++; const c = a.cutN || 0;
         if (stuckOf(a)) { W.stuck++; (W.stuckRun[`${b.vil}|${bk}`] || (W.stuckRun[`${b.vil}|${bk}`] = [])).push(+d); }
+        if ((a.cutN || 0) === 0 && ((a.lab && a.lab['출근']) || 0) > 0) outZeroVD.set(`${b.vil}|${d}`, (outZeroVD.get(`${b.vil}|${d}`) || 0) + 1);   // 나섰는데 0그루(ⓓ 가 "그날 걸은 몸"으로 세는 몸)
         if (restedOf(a)) W.rested++;
         W.hist[c === 0 ? '0' : c === 1 ? '1' : c === 2 ? '2' : c < 10 ? '3-9' : '10+']++;
         W.cutU.push(a.cutU || 0); W.gran.push(a.gran || 0);
@@ -121,6 +123,7 @@ for (const [tag, A] of Object.entries(R.arms)) {
   let delW = 0, delF = 0, bW = { vd: 0, cut: 0 }, bF = { vd: 0, pick: 0 }, sick = { vd: 0, batchVd: 0, batchCut: 0, rosterSick: 0 }, fRoster = { rows: 0, econ: 0, body: 0 };
   const stuckVD = new Map(); for (const [k, ds] of Object.entries(W.stuckRun)) { const vn = k.split('|')[0]; for (const d of ds) stuckVD.set(`${vn}|${d}`, (stuckVD.get(`${vn}|${d}`) || 0) + 1); }
   const stuckB = { vd: 0, cut: 0 };   // 멈춘 몸이 있던 마을·날에 일괄이 돈 날(그 몸도 명부에 든다 — 성한 몸이다)
+  const outZB = { vd: 0, cut: 0 };    // 나섰는데 0그루인 몸이 있던 마을·날에 일괄이 돈 날 — ⓓ 뒤라면 켠 팔에선 0 이다(그 몸이 그날 걸은 몸)
   if (days.length > 1) {
     const first = new Map((days[0].rows || []).map((x) => [x.n, x])), lastR = days[days.length - 1].rows || [];
     for (const b of lastR) { const a = first.get(b.n); if (!a) continue; delW += (b.del && b.del.wood || 0) - (a.del && a.del.wood || 0); delF += (b.del && b.del.forage || 0) - (a.del && a.del.forage || 0); }
@@ -133,12 +136,14 @@ for (const [tag, A] of Object.entries(R.arms)) {
         if (fd.t561) { fRoster.rows++; fRoster.econ += fd.t561.econ || 0; fRoster.body += fd.t561.crew || 0; }
         const st = stuckVD.get(`${b.n}|${of}`) || 0;
         if (st > 0 && (wd.cut || 0) > 0) { stuckB.vd++; stuckB.cut += wd.cut; }
+        const oz = outZeroVD.get(`${b.n}|${of}`) || 0;
+        if (oz > 0 && (wd.cut || 0) > 0) { outZB.vd++; outZB.cut += wd.cut; }
         const s = sickVD.get(`${b.n}|${of}`) || 0;
         if (s > 0) { sick.vd++; if ((wd.cut || 0) > 0) { sick.batchVd++; sick.batchCut += wd.cut; sick.rosterSick += Math.min(s, wd.ln || 0); } }
       }
     }
   }
-  const flow = { delWood: r2(delW), delForage: r2(delF), batchWood: bW, batchForage: bF, sick, stuckBatch: stuckB, forageRoster: fRoster.rows ? fRoster : null };
+  const flow = { delWood: r2(delW), delForage: r2(delF), batchWood: bW, batchForage: bF, sick, stuckBatch: stuckB, outZeroBatch: outZB, forageRoster: fRoster.rows ? fRoster : null };
   //   일괄 단(어림) = 그루 × 그날 그 마을 w̄(`vils` 칸 · 정본 `_t325Trees.wBar`) — `del.wood` 는 몸·일괄 합이라 일괄 몫을 따로 셀 수 없다
   let bU = 0;
   const wbOf = (vname, d) => { if (!BJ) return 0; for (const v of Object.values(BJ.vils || {})) if (v.name === vname) { const x = (v.days || {})[d]; return (x && x.wBar) || 0; } return 0; };
@@ -185,7 +190,7 @@ for (const [tag, O] of Object.entries(out.arms)) {
   const Rr = O.rest; console.log(`  나머지 마을: 일괄 마을·날 ${Rr.hlDays} · 그루 ${Rr.hlCut} · 단 ${Rr.hlUnits}` + (Rr.roster ? ` · 명부(마을·날 ${Rr.roster.rows}) econ ${Rr.roster.econ} ↔ 나선 몸 ${Rr.roster.body} · 나선 몸 0 인데 econ > 0 ${Rr.roster.zeroCrew}(econ ${Rr.roster.zeroCrewEcon})` : ''));
   const Wd = O.world, Fl = O.flow;
   console.log(`  세계 나무꾼 몸·날(요양 뺌) ${Wd.bodyDays} · 그루 분포 ${JSON.stringify(Wd.hist)} · 단 중앙 ${fmt(Wd.cutUMed)} · 합 ${fmt(Wd.cutUSum)} · 곳간행 중앙 ${fmt(Wd.granMed)} · 손 최대(곳간 있는 ${Wd.handMaxGran} · 없는 ${Wd.handMaxNoGran}) · 해 질 녘 손 최대 ${Wd.duskMax} · 합 ${Wd.duskSum} · 요양 몸·날 ${Wd.restBodyDays} · 멈춘 몸·날 ${Wd.stuck}(최장 연속 ${Wd.stuckLong.best}일 ${Wd.stuckLong.who || ''} · 3일 이상 몸 ${Wd.stuckLong.n3}) · 쉰 몸·날 ${Wd.rested}`);
-  console.log(`  세계 입고 목재 ${Fl.delWood} · 채집 ${Fl.delForage} · 일괄 나무 마을·날 ${Fl.batchWood.vd} · ${Fl.batchWood.cut}그루(≈ ${Fl.batchWood.unitsEst}단) · 일괄 채집 마을·날 ${Fl.batchForage.vd} · ${Fl.batchForage.pick} · 앓은 마을·날 ${Fl.sick.vd}(그 가운데 일괄 ${Fl.sick.batchVd} · ${Fl.sick.batchCut}그루 · 명부에 든 앓은 몸 ${Fl.sick.rosterSick}) · 멈춘 몸 있던 마을·날의 일괄 ${Fl.stuckBatch.vd} · ${Fl.stuckBatch.cut}그루` + (Fl.forageRoster ? ` · 채집 명부 econ ${Fl.forageRoster.econ} ↔ 나선 몸 ${Fl.forageRoster.body}(마을·날 ${Fl.forageRoster.rows})` : ''));
+  console.log(`  세계 입고 목재 ${Fl.delWood} · 채집 ${Fl.delForage} · 일괄 나무 마을·날 ${Fl.batchWood.vd} · ${Fl.batchWood.cut}그루(≈ ${Fl.batchWood.unitsEst}단) · 일괄 채집 마을·날 ${Fl.batchForage.vd} · ${Fl.batchForage.pick} · 앓은 마을·날 ${Fl.sick.vd}(그 가운데 일괄 ${Fl.sick.batchVd} · ${Fl.sick.batchCut}그루 · 명부에 든 앓은 몸 ${Fl.sick.rosterSick}) · 멈춘 몸 있던 마을·날의 일괄 ${Fl.stuckBatch.vd} · ${Fl.stuckBatch.cut}그루 · 나섰는데 0그루 몸 있던 마을·날의 일괄 ${Fl.outZeroBatch.vd} · ${Fl.outZeroBatch.cut}그루` + (Fl.forageRoster ? ` · 채집 명부 econ ${Fl.forageRoster.econ} ↔ 나선 몸 ${Fl.forageRoster.body}(마을·날 ${Fl.forageRoster.rows})` : ''));
   console.log(`  끝 인구 ${O.end.pop} · 식량등가 ${O.end.fe} · 목재 ${O.end.wood} · 집 ${O.end.houses} · 반일 나무꾼 몸·날 ${O.halfBD} · 숲 있는 마을 ${O.n0.withK} 중 N = 0: 첫 날 ${O.n0.first} → 끝 날 ${O.n0.last}`);
 }
 for (const [k, P] of Object.entries(out.pairs || {})) console.log(`\n[짝 ${k}] 마을 ${P.n} · 인구 다른 ${P.popDiff} · 식량등가 다른 ${P.feDiff}(평균 |Δ| ${P.feMeanAbs} · 최대 ${P.feMaxAbs}) · 목재 다른 ${P.woodDiff}(최대 ${P.woodMaxAbs}) · 집 다른 ${P.housesDiff}`);
