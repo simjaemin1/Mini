@@ -276,12 +276,22 @@
       }
       imgs.push(img);
     }
-    const row = charDirRow(opts.fvx, opts.fvy);
+    let row = charDirRow(opts.fvx, opts.fvy);
     // ★그리는 순서는 몸→옷→도구로 **고정**이다. 깊이는 시트를 구울 때 홀드아웃이 이미 잡았다
     //   (`scripts/char_render.py` 의 set_visible 주석). 한때 메타의 순서표를 프레임마다 읽어
     //   뒤집었는데(2026-08-31 오전), 그건 부분해였고 3차에서 홀드아웃으로 대체됐다.
     const fw = m.frameW, fh = m.frameH;
-    const sx = stt.frame * fw, sy = row * fh;
+    // ★★[T539 ①] 3D 몸 — **몸마다 모드 하나**(손잡이 켬에서만 · 나·남의 몸·주민이 같은 문). 고르면 'body' 층 자리에
+    //   3D 타일이 서고 나머지 층은 **타일의 판·행**으로 시트 그대로 얹는다(재질 슬롯은 자리만 · `client3d/char3d.js` 머리).
+    //   끄면 `_b3` 가 null 이라 아래 판·행·층은 종전 그대로다(시트 경로 비트 동일).
+    let _b3 = (T522_CHAR_3D && window.__char3d && window.__char3d.body) ? window.__char3d.body(opts.pid, isMe, layers, stt, row, opts, x, y) : null;
+    let _clip = stt.clip, _frame = stt.frame;
+    if (_b3 && _b3.clip !== stt.clip) {               // 타일은 한 판 늦다 — 그 판의 클립이 다르면 시트 층도 그 클립으로
+      const _im = layers.map((L) => charSheet(L + '_' + _b3.clip));
+      if (_im.every(Boolean)) { for (let _i = 0; _i < _im.length; _i++) imgs[_i] = _im[_i]; } else _b3 = null;
+    }
+    if (_b3) { _clip = _b3.clip; _frame = _b3.frame; row = _b3.row; }
+    const sx = _frame * fw, sy = row * fh;
     // ★★[T137 ②] **업힌 사람은 업는 사람의 등으로 옮겨 그린다** — 오프셋은 메타가 준다
     //   (`carryOffset[방향]` · `char_render.py` 가 두 포즈의 **척추 끝**을 맞대 실측한 값).
     //   ⚠클라는 이 수를 하나도 하드코딩하지 않는다 — 포즈를 고치면 굽기가 새 값을 적어 온다.
@@ -290,7 +300,7 @@
       ox = m.carryOffset[row][0]; oy = m.carryOffset[row][1];
     }
     const dx = Math.round(x + ox - m.anchorX), dy = Math.round(y + oy - m.anchorY);
-    _charAnim.get(opts.pid).drawn = [stt.clip, stt.frame, row];   // ★[T500] 이 몸이 이번에 그린 판 — 입 자리(`charMouthOffset`)가 읽는다
+    _charAnim.get(opts.pid).drawn = [_clip, _frame, row];   // ★[T500] 이 몸이 이번에 그린 판 — 입 자리(`charMouthOffset`)가 읽는다
     // 발밑 그림자 — 도형 경로와 같은 자리·같은 크기(시트가 바뀌어도 접지감은 유지)
     //   ★업힌 사람은 땅에 안 닿는다 ⇒ 그림자 없음(업는 사람의 것 하나만 남는다).
     // ★[T143] 궤주 반투명 — 도형 경로와 **같은 상수**. 몸을 그리는 동안만 걸고 바로 되돌린다
@@ -301,14 +311,17 @@
     // ★[T143] 병종 띠 한 장만 **물들여** 그린다 — 색은 도형 경로가 쓰던 그 팔레트다(새 수 0).
     const _bandCol = opts.war ? (WAR_BT_COL[opts.bt | 0] || null) : null;
     for (let _i = 0; _i < imgs.length; _i++) {
-      if (layers[_i] === 'band' && _bandCol) ctx.drawImage(tintFrame(imgs[_i], sx, sy, fw, fh, _bandCol), dx, dy);
+      if (_b3 && layers[_i] === 'body') window.__char3d.blit(ctx, _b3, dx, dy, !!isMe);   // ★[T539] 몸 = 3D 타일
+      else if (_b3 && _b3.full && window.__char3d.meshLayer(layers[_i])) continue;          // 온 메시 — 옷이 타일에 들었다
+      else if (layers[_i] === 'band' && _bandCol) ctx.drawImage(tintFrame(imgs[_i], sx, sy, fw, fh, _bandCol), dx, dy);
       else ctx.drawImage(imgs[_i], sx, sy, fw, fh, dx, dy, fw, fh);
     }
     ctx.globalAlpha = _aSave;
     // ★진단 훅은 **pid 별**이다 — 마지막에 그린 하나만 남기면 "타 플레이어도 같은 애니"를 못 잰다.
     if (!window.__charDbg) window.__charDbg = {};
-    window.__charDbg[opts.pid] = { on: true, clip: stt.clip, frame: stt.frame, row,
+    window.__charDbg[opts.pid] = { on: true, clip: _clip, frame: _frame, row,
                          layers: layers.slice(),
+                         ...(T522_CHAR_3D ? { mesh: !!_b3, meshFull: !!(_b3 && _b3.full) } : null),   // ★[T539] 3D 몸(손잡이 켬에서만 싣는다) — 온 메시면 옷까지 타일
                          job: opts.job || null,      // ★[T13] NPC 직업 — 하네스가 표식을 판정하는 재료
                          clothes: opts.clothes || null,   // ★[T125] 서버가 실어 온 옷 재질(주민은 마을 곳간)
                          carrier: !!opts.carrier,        // ★[T134] 서버가 실어 온 지게 1비트(주민은 진 짐)
