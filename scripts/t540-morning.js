@@ -68,18 +68,21 @@ async function untilPhase(target) {   // 세계 phase 가 target 을 지날 때�
   say(`손님 ${socks.filter((w) => w.readyState === 1).length}명 · phase ${ph().toFixed(3)}`);
   // ⓐ 해 뜨기 전 명부
   await untilPhase(0.965);
+  await jget(`http://localhost:${ZPORT}/perf?reset=1`);   // ★[T562] 새벽 창의 틱 히스토그램을 여기서 영점 조정
   const pre = await jget(`http://localhost:${ZPORT}/walkdbg`);
   const inBed = new Map();
   for (const n of (pre && pre.npcs) || []) if (n.dBed != null && n.dBed <= 12) inBed.set(n.pid, { ...n, bx: n.x, by: n.y, wakeAt: null, maxD: 0, d60: null, samples: 0 });
   say(`주민 ${pre ? pre.n : '?'} · 침대 곁 ${inBed.size} · 활성 ${[...inBed.values()].filter((n) => n.active).length}`);
   // ⓑ 새벽 걸음 — 3초마다 전수(가벼운 칸)
-  const t0 = Date.now(); const FZ = [];
+  const t0 = Date.now(); const FZ = []; const WSITE = {};
   while (Date.now() - t0 < 6.5 * 60000) {
     await sleep(3000);
     const d = await jget(`http://localhost:${ZPORT}/walkdbg`); if (!d || !d.npcs) continue;
+    for (const n of d.npcs) WSITE[n.pid] = n.ws;   // ★[T562] 배정 결과(현장) — 전/후 같은가(`_workSite`)
     const now = d.t;
     { const aw = d.npcs.filter((n) => n.fv != null && n.dOff != null && n.fv >= n.dOff && n.fv < 0.7);   // ★멎음 — 깬 주민 가운데 5초 넘게 걸음 문을 못 받은 수(`stepAge`)
-      const fr = aw.filter((n) => (n.stepAge || 0) > 5000); FZ.push({ ph: d.phase, awake: aw.length, frozen: fr.length, maxAge: Math.max(0, ...aw.map((n) => n.stepAge || 0)), cursor: d.cursor, cut: d.cut }); }
+      // ★[T562] 활성 청크의 몸만(비활성 몸은 원래 안 걷는다 — 멎음이 아니다)
+      const fr = aw.filter((n) => n.active && (n.stepAge || 0) > 5000); FZ.push({ t: Date.now(), ph: d.phase, awake: aw.length, fp: fr.slice(0, 5).map((n) => [n.pid, n.stepAge, n.job, n.act]), frozen: fr.length, maxAge: Math.max(0, ...aw.map((n) => n.stepAge || 0)), cursor: d.cursor, cut: d.cut }); }
     for (const n of d.npcs) {
       const r = inBed.get(n.pid); if (!r) continue;
       const awake = n.fv != null && n.dOff != null && n.fv >= n.dOff && n.fv < 0.7;
@@ -87,11 +90,13 @@ async function untilPhase(target) {   // 세계 phase 가 target 을 지날 때�
       const dd = Math.hypot(n.x - r.bx, n.y - r.by);
       if (r.wakeAt != null && now - r.wakeAt <= 60000) { r.maxD = Math.max(r.maxD, dd); r.samples++; if (now - r.wakeAt >= 55000 && r.d60 == null) r.d60 = Math.round(dd); }
       r.last = { x: n.x, y: n.y, act: n.act, beh: n.beh, tgt: n.tgt, active: n.active, task: n.task };
+      WSITE[n.pid] = n.ws;
     }
     const woke = [...inBed.values()].filter((r) => r.wakeAt != null && Date.now() - r.wakeAt > 60000).length;
     if (woke === inBed.size && inBed.size) break;
   }
   // ⓒ 못 뗀 주민의 자리 — 존 술어 그대로(A* 포함 · 한 번)
+  const perf = await jget(`http://localhost:${ZPORT}/perf`);   // ★[T562] 새벽 창 틱 최대 · 틈(`_tickMsStats` 정본)
   const diag = await jget(`http://localhost:${ZPORT}/walkdbg?bed=1&astar=1`);
   const dg = new Map(((diag && diag.npcs) || []).map((n) => [n.pid, n]));
   clearInterval(pinger);
@@ -102,13 +107,15 @@ async function untilPhase(target) {   // 세계 phase 가 target 을 지날 때�
   const woke = L.filter((r) => r.woke), stuck = woke.filter((r) => r.stuck);
   const by = (arr, k) => arr.reduce((o, r) => { const key = String(r[k]); o[key] = (o[key] || 0) + 1; return o; }, {});
   const sum = { residents: pre ? pre.n : null, inBed: L.length, woke: woke.length, activeWoke: woke.filter((r) => r.active).length,
+    tickMax: perf && perf.tick && perf.tick.ms ? perf.tick.ms.max : null, tickP99: perf && perf.tick && perf.tick.ms ? perf.tick.ms.p99 || null : null,
+    maxGap: perf && perf.tick ? perf.tick.maxGap : null, pollGapMax: (() => { let g = 0; for (let i = 1; i < FZ.length; i++) g = Math.max(g, FZ[i].t - FZ[i - 1].t); return g; })(),
     frozenPeak: Math.max(0, ...FZ.map((f) => f.frozen)), stepAgeMax: Math.max(0, ...FZ.map((f) => f.maxAge)), frozenPolls: FZ.filter((f) => f.frozen > 0).length,
     stuck: stuck.length, stuckActive: stuck.filter((r) => r.active).length,
     bySlotAll: by(woke, 'slot'), bySlotStuck: by(stuck, 'slot'), byHkAll: by(woke, 'hk'), byHkStuck: by(stuck, 'hk'),
     stuckEdges: by(stuck.map((r) => ({ e: r.diag && r.diag.edges ? Object.entries(r.diag.edges).filter(([, b]) => b).map(([k]) => k).join('') || '-' : '?' })), 'e'),
     stuckAstar: by(stuck.map((r) => ({ a: r.diag && r.diag.astar ? `b1500:${r.diag.astar.b1500 != null ? 'y' : 'n'}·inf:${r.diag.astar.inf != null ? 'y' : 'n'}·home:${r.diag.astar.home != null ? 'y' : 'n'}` : (r.diag ? 'noTgt' : 'left') })), 'a'),
     stuckTask: by(stuck.map((r) => ({ t: r.diag ? `${r.diag.act || '·'}/${r.diag.beh}/${r.diag.task || '-'}` : 'left' })), 't') };
-  fs.writeFileSync(OUT, JSON.stringify({ at: new Date().toISOString(), env: ZENV, sum, frozen: FZ, list: L }, null, 1));
+  fs.writeFileSync(OUT, JSON.stringify({ at: new Date().toISOString(), env: ZENV, sum, frozen: FZ, workSites: WSITE, list: L }, null, 1));
   say(JSON.stringify(sum, null, 1));
   for (const f of [CDB, ZDB, CDB + '-wal', ZDB + '-wal', CDB + '-shm', ZDB + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
   process.exit(0);
