@@ -19,6 +19,7 @@
 // 실행: node scripts/e2e-zone-cross.js [--headed] [--shots <dir>]
 //   ★[T469] `ZX_EXTERNAL=http://<host>:3010` — 띄우지 않고 **이미 떠 있는** central·존 셋(배포 리허설의 도커 셋)에 붙는다.
 //     그때 존 로그는 `ZX_DOCKER=1` 이면 `docker logs durango-zone-<id>` 로 읽는다. 없으면(기본) 종전 그대로 제가 띄운다.
+//   ★[T564] `ZX_ZONES=hanbando,nippon` — 존 둘만(서쪽 중원북 절을 건너뛴다 · 기본은 셋 = 종전 46건).
 'use strict';
 const path = require('path');
 const fs = require('fs');
@@ -36,7 +37,9 @@ const T = require(path.join(ROOT, 'server', 'terrain')); if (T.setZonesMeta) T.s
 const CH = require(path.join(ROOT, 'server', 'chunk'));
 const CS = CH.CHUNK_SIZE;
 const CPORT = 3010;
-const ZIDS = ['hanbando', 'nippon', 'jungwon_n'];
+// ★[T564] `ZX_ZONES=hanbando,nippon` — 존 둘만(라이브 두 호스트에 중원북이 안 떠 있다 · 09-30 GET 3016 무응답). 기본 셋 = 종전 그대로.
+const ZIDS = (process.env.ZX_ZONES || 'hanbando,nippon,jungwon_n').split(',').map((z) => z.trim()).filter(Boolean);
+const HAS_W = ZIDS.includes('jungwon_n');
 const HB = ZONES.hanbando;
 
 let pass = 0, fail = 0;
@@ -111,11 +114,11 @@ function corridor(dir) {
   ok(/const PEEK_THRESHOLD = NAT_VIEW_PAD;/.test(MV), 'ⓢ 이웃 관측 문턱 = 렌더 반경 상수(`NAT_VIEW_PAD` 1,500 — 새 수 0)',
     (MV.match(/const PEEK_THRESHOLD = [^;]+;/) || ['(없음)'])[0]);
 
-  const VE = viewSpot(+1), VW = viewSpot(-1), CE = corridor(+1), CW = corridor(-1);
+  const VE = viewSpot(+1), VW = HAS_W ? viewSpot(-1) : null, CE = corridor(+1), CW = HAS_W ? corridor(-1) : null;
   ok(!!VE && VE.n > 0, 'ⓒ 전제: 동쪽 선 자리 화면 상자의 닛폰 띠에 닛폰 시더 나무가 **있다**(0 이면 ⓐ 가 공짜다)', VE ? `${VE.n}그루 · 한반도 로컬 y ${VE.wy - HB.worldOffsetY}` : '-');
-  ok(!!VW && VW.n > 0, 'ⓒ 전제: 서쪽 선 자리 화면 상자의 중원북 띠에 중원북 나무가 있다', VW ? `${VW.n}그루 · y ${VW.wy - HB.worldOffsetY}` : '-');
+  if (HAS_W) ok(!!VW && VW.n > 0, 'ⓒ 전제: 서쪽 선 자리 화면 상자의 중원북 띠에 중원북 나무가 있다', VW ? `${VW.n}그루 · y ${VW.wy - HB.worldOffsetY}` : '-');
   ok(STAND > PEEK_OLD && STAND < VIEW, `ⓒ 전제: 선 자리(경계에서 ${STAND}px)는 옛 문턱 ${PEEK_OLD} 밖 · 화면 ${VIEW} 안이다(그 띠를 잰다)`);
-  ok(!!CE && !!CW, 'ⓒ 전제: 동·서 경계에 걸을 길(물·바위·개체 없는 가로줄)이 있다', `${CE ? 'E y' + (CE.wy - HB.worldOffsetY) : 'E 없음'} · ${CW ? 'W y' + (CW.wy - HB.worldOffsetY) : 'W 없음'}`);
+  ok(!!CE && (!!CW || !HAS_W), 'ⓒ 전제: 동·서 경계에 걸을 길(물·바위·개체 없는 가로줄)이 있다', `${CE ? 'E y' + (CE.wy - HB.worldOffsetY) : 'E 없음'} · ${CW ? 'W y' + (CW.wy - HB.worldOffsetY) : 'W 없음'}`);
 
   // ── 기동 ─────────────────────────────────────────────────────────────────
   const EXT = process.env.ZX_EXTERNAL || '';

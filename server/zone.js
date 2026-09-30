@@ -2140,6 +2140,14 @@ const PLAYER_ATTACK_COOLDOWN_MS = 500;
 let nextMid = 1;
 const pendingHandoffs = new Map(); // token -> { source_zone, name, x, y, vx, vy, inventory, createdAt } (수신측)
 const outgoingHandoffs = new Map(); // token -> { pid, timeoutHandle } (송신측 — ACK 대기 중)
+// ★★[T564 2026-09-30] **존↔존 인계 규약 판** — `/handoff_prepare` 요청·응답에 한 칸씩 싣는다(새 문 0 · 칸 하나).
+//   두 존이 **다른 판**이면(한쪽만 재배포 · 두 호스트) 넘기를 하지 않고 사람에게 까닭을 말한다(조용히 튕기지 않는다).
+//   ⚠판 번호는 인계 페이로드·토큰·승격·ACK 의 **뜻**이 바뀔 때만 올린다(칸을 더하는 것만으로는 안 올린다 — 옛 존이 모르는 칸은 무시된다).
+//   판 1 = T47 몸 페이로드 · T245 안 문 · T498 · T518 까지(68336c45 ~ main 09-30 은 같은 뜻 — T564 로컬 재현 V3 에서 옛 서울 ↔ 새 도쿄가 넘었다).
+//   상대가 칸을 안 실으면(T564 전 판) "판 모름" — 넘기는 종전대로 하되 로그에 한 줄 남긴다(롤링 배포 창).
+const T564_HOLD = process.env.T564_HOLD_AT_SEAM !== '0';   // ★[T564] 넘기 실패 2초 창 동안 선(겹침 띠 끝)에 세워 둔다 · 되돌림 =0
+const HANDOFF_PROTO = (process.env.E2E_GIVE === '1' && process.env.E2E_HANDOFF_PROTO) ? (+process.env.E2E_HANDOFF_PROTO || 1) : 1;
+const _t564Warned = new Set();   // 존별 "판 모름" 로그는 한 번만
 let nextPid = 1;
 let nextRid = 1;
 // nextBid 제거: 건물 id는 dbId 기반 결정값('b'+dbId)로 통일 (lazy-load materialize와 dedupe·재활성 안정).
@@ -4709,7 +4717,12 @@ const server = http.createServer((req, res) => {
   //     새 라우트 0 · 안 문(아래 `InternalDoor` · `CENTRAL_SECRET`)·호스트 표(`ZONE_HOSTS`)는 사람 짐과 **같은 문**을 쓴다.
   if (req.url === '/handoff_prepare' && req.method === 'POST') {
     //   ★★[T245] 안 문 — 존↔존. 바깥에서 **입장 토큰을 위조**할 수 있었다(그 토큰으로 붙으면 그 사람이 된다).
-    if (!InternalDoor.isInternal(req)) return InternalDoor.denyOutside(res);   // ★[T245] 안 문
+    //   ★[T564] 거절을 **로그 한 줄로 말한다** — 두 호스트에서 비밀이 어긋나면 이 문이 조용히 404 를 냈고, 보낸 쪽은 그걸 성공으로 읽었다.
+    //     응답은 종전 그대로(404 · 존재를 안 알린다) — 로그에만 까닭(비밀 값은 안 찍는다 · 헤더가 있었나/출발지 주소만).
+    if (!InternalDoor.isInternal(req)) {
+      console.warn(`[${ZONE_ID}] ✗ handoff_prepare 안 문 거절 — 비밀 헤더 ${req.headers[InternalDoor.HEADER] ? '다름' : '없음'} · 이 존 비밀 ${InternalDoor.SECRET_SET ? '있음' : '없음(사설 주소만 받음)'} · 출발지 ${String((req.socket && req.socket.remoteAddress) || '?').replace(/^::ffff:/, '')}`);
+      return InternalDoor.denyOutside(res);
+    }
     let body = '';
     req.on('data', (chunk) => body += chunk);
     req.on('end', () => {
@@ -4725,6 +4738,12 @@ const server = http.createServer((req, res) => {
           return;
         }
         if (!data.token) { res.writeHead(400); res.end('no token'); return; }
+        //   ★[T564] 규약 판이 다르면 토큰을 안 받는다(409 · 까닭과 이 존 판을 싣는다 — 보낸 쪽이 사람에게 말한다)
+        if (data.proto != null && +data.proto !== HANDOFF_PROTO) {
+          console.warn(`[${ZONE_ID}] ✗ handoff_prepare 규약 판 다름 — ${data.source_zone || '?'} 판 ${data.proto} ≠ 이 존 판 ${HANDOFF_PROTO} · 토큰 안 받음(${String(data.name || '').slice(0, 16)})`);
+          res.writeHead(409, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: false, why: 'proto', proto: HANDOFF_PROTO })); return;
+        }
+        if (data.proto == null && !_t564Warned.has('in:' + (data.source_zone || '?'))) { _t564Warned.add('in:' + (data.source_zone || '?')); console.warn(`[${ZONE_ID}] · handoff_prepare 규약 판 모름 — ${data.source_zone || '?'} 가 T564 전 판(칸 없음) · 넘기는 종전대로`); }
         metrics.handoffs_in++;
         pendingHandoffs.set(data.token, {
           source_zone: data.source_zone || null,
@@ -4752,7 +4771,7 @@ const server = http.createServer((req, res) => {
         setTimeout(() => pendingHandoffs.delete(data.token), 5000);
         console.log(`[${ZONE_ID}] ⇐ handoff_prepare token=${data.token.slice(0,8)} for ${data.name}`);
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ ok: true }));
+        res.end(JSON.stringify({ ok: true, proto: HANDOFF_PROTO }));   // ★[T564] 이 존 규약 판
       } catch (e) {
         res.writeHead(500); res.end(String(e));
       }
@@ -6774,6 +6793,11 @@ function handleObserverMessage(ws, raw) {
     data.viewerX = Math.max(0, Math.min(ZONE.zoneWidth, +msg.x || 0));
     data.viewerY = Math.max(0, Math.min(ZONE.zoneHeight, +msg.y || 0));
     data.lastSeen = Date.now();
+  }
+  else if (msg.type === 'promote_to_primary' && msg.token && !pendingHandoffs.has(msg.token)) {
+    //   ★[T564] 모르는 토큰 — 종전엔 **말없이** 버렸다(클라는 주 존이 바뀐 줄 알고 몸 없이 걷는다). 이제 한 줄 로그 + 그 소켓에 알림.
+    console.warn(`[${ZONE_ID}] ✗ promote 토큰 모름 token=${String(msg.token).slice(0, 8)} — handoff_prepare 가 안 왔거나(안 문 · 주소) 5초가 지났다`);
+    send(ws, { type: 'notice', text: `${ZONE.displayName || ZONE_ID} 쪽이 이 넘기를 모른다 — 경계를 못 넘었다(서버 사이 연결 문제)` });
   }
   else if (msg.type === 'promote_to_primary' && msg.token && pendingHandoffs.has(msg.token)) {
     // === Observer→Primary in-place 승격 ===
@@ -13024,7 +13048,13 @@ setInterval(() => {
       const absExitY = ZONE.worldOffsetY + ny;
       const target = findZoneAt(absExitX, absExitY);
       if (target && target.id !== ZONE_ID && !target.isOcean) {
-        if (maxOut > HANDOFF_COMMIT) {
+        if (maxOut > HANDOFF_COMMIT && T564_HOLD && p.lastHandoffFailAt && Date.now() - p.lastHandoffFailAt < 2000) {
+          // ★★[T564] 막 넘기에 실패했다(2초 창 · `fireHandoff` 가 다시 안 쏜다) — 종전엔 이 창 동안 **이 존 좌표로 선 너머를 계속 걸었다가**
+          //   다음 시도의 실패에서 선으로 되끌려 왔다(256px · "넘어가면 튕겨 나온다"). 이제 겹침 띠 끝(선 + COMMIT)에 세워 둔다 — 벽처럼 · 튕김 0.
+          //   되돌림 `T564_HOLD_AT_SEAM=0` = 종전 바이트 동일.
+          p.x = clamp(nx, -HANDOFF_COMMIT, ZONE.zoneWidth + HANDOFF_COMMIT);
+          p.y = clamp(ny, -HANDOFF_COMMIT, ZONE.zoneHeight + HANDOFF_COMMIT);
+        } else if (maxOut > HANDOFF_COMMIT) {
           // 확실히 넘어감 → 핸드오프. 진입 좌표 = 실제 abs 위치(경계에서 COMMIT 안쪽이라 즉시 되넘김 불가).
           p.x = nx; p.y = ny;
           const HM = 80;
@@ -13907,6 +13937,7 @@ async function fireHandoff(player, targetZoneId, newX, newY) {
   player.handingOff = true;
   player.vx = 0;
   player.vy = 0;
+  player._t564Pre = { x: player.x, y: player.y };   // ★[T564] 실패하면 이 자리(겹침 띠 안)로 돌려놓는다 — 선으로 되끌지 않는다
   player.x = Math.max(0, Math.min(ZONE.zoneWidth, player.x));
   player.y = Math.max(0, Math.min(ZONE.zoneHeight, player.y));
   // ★★[T47] **저장을 기다린다.** 종전엔 fire-and-forget 이라 도착 존이 central 을 읽을 때
@@ -13926,9 +13957,11 @@ async function fireHandoff(player, targetZoneId, newX, newY) {
     catch (e) { console.warn(`[${ZONE_ID}] 핸드오프 직전 저장 실패(페이로드로 계속):`, e.message); }
   }
   const token = generateToken();
+  let _prep = null;   // ★[T564] 받는 존 응답(규약 판)
   try {
-    await postJSON(target.host, target.port, '/handoff_prepare', {
+    _prep = await postJSON(target.host, target.port, '/handoff_prepare', {
       token,
+      proto: HANDOFF_PROTO,   // ★[T564] 이 존 규약 판 — 받는 존이 다르면 409
       source_zone: ZONE_ID,
       player_id: player.playerId,
       // ★[2026-08-03g 배치 14 ②] 이 신원이 영속인가 — 존을 넘어도 몸이 저장돼야 한다.
@@ -13957,11 +13990,11 @@ async function fireHandoff(player, targetZoneId, newX, newY) {
       home_y: typeof player._homeY === 'number' ? player._homeY : null,
     });
   } catch (e) {
-    console.error(`[${ZONE_ID}] handoff_prepare → ${targetZoneId} 실패:`, e.message);
-    player.handingOff = false;
-    player.lastHandoffFailAt = Date.now();
-    return;
+    return _t564HandoffFail(player, targetZoneId, target, e);
   }
+  //   ★[T564] 받는 존의 규약 판 — 다르면 넘기지 않는다(토큰은 받는 쪽이 이미 409 로 버렸다 · 여기는 받는 쪽이 T564 판인데 판만 다른 드문 창)
+  if (_prep && _prep.proto != null && +_prep.proto !== HANDOFF_PROTO) return _t564HandoffFail(player, targetZoneId, target, Object.assign(new Error('proto'), { status: 409, body: _prep }));
+  if (_prep && _prep.proto == null && !_t564Warned.has('out:' + targetZoneId)) { _t564Warned.add('out:' + targetZoneId); console.warn(`[${ZONE_ID}] · handoff_prepare → ${targetZoneId} 규약 판 모름(상대가 T564 전 판) · 넘기는 종전대로`); }
   send(player.ws, { type: 'handoff', targetZone: targetZoneId, token });
   console.log(`[${ZONE_ID}] ⇒ handoff ${player.name} (${player.pid}) → ${targetZoneId} token=${token.slice(0,8)}`);
 
@@ -13986,6 +14019,34 @@ async function fireHandoff(player, targetZoneId, newX, newY) {
   metrics.handoffs_out++;
 }
 
+// ★★[T564] 넘기 실패 — **까닭을 한 줄로 말하고(로그) 사람에게도 말한다**(알림 · 10초에 한 번). 종전엔 로그 한 줄뿐이고 사람은
+//   경계에서 말없이 되밀렸다("넘어가면 튕겨 나온다" · 재민 실기 09-30). 판정·자리는 종전 그대로(몸은 이 존에 남고 2초 뒤 다시 시도).
+//   까닭 표(로그 `까닭=`): 문(안 문 404 — 비밀이 어긋남) · 규약(판 다름) · 주소(이름 못 찾음) · 거절(포트 닫힘) · 시간(5초 무응답) · 그 밖(응답 코드).
+function _t564HandoffWhy(e) {
+  const m = String((e && (e.code || e.message)) || '');
+  if (e && e.status === 404) return { k: '문', say: '서버 사이 안 문이 닫혀 있다(비밀 어긋남)' };
+  if (e && e.status === 409) return { k: '규약', say: `서버 판이 다르다(이 존 ${HANDOFF_PROTO} · 저쪽 ${(e.body && e.body.proto) != null ? e.body.proto : '?'}) — 재배포가 필요하다` };
+  if (/ENOTFOUND|EAI_AGAIN/.test(m)) return { k: '주소', say: '저쪽 서버 주소를 못 찾았다' };
+  if (/ECONNREFUSED/.test(m)) return { k: '거절', say: '저쪽 서버가 연결을 받지 않는다' };
+  if (/timeout|ETIMEDOUT|ESOCKETTIMEDOUT/i.test(m)) return { k: '시간', say: '저쪽 서버가 응답하지 않는다' };
+  if (e && e.status) return { k: String(e.status), say: `저쪽 서버가 거절했다(${e.status})` };
+  return { k: '그 밖', say: '저쪽 서버와 이야기하지 못했다' };
+}
+function _t564HandoffFail(player, targetZoneId, target, e) {
+  const w = _t564HandoffWhy(e);
+  console.error(`[${ZONE_ID}] ✗ 넘기 실패 → ${targetZoneId} (${target && target.host}:${target && target.port}) 까닭=${w.k} · ${(e && (e.code || e.message)) || ''}${e && e.status ? ' · 응답 ' + e.status : ''} · 이 존 규약 판 ${HANDOFF_PROTO}`);
+  player.handingOff = false;
+  player.lastHandoffFailAt = Date.now();
+  //   ★[T564] 되끌지 않는다 — 떠나기 직전 자리(겹침 띠 끝까지)로 돌려놓는다. 종전엔 위 clamp 가 선으로 256px 되끌었다(= 튕김).
+  if (T564_HOLD && player._t564Pre) { player.x = clamp(player._t564Pre.x, -HANDOFF_COMMIT, ZONE.zoneWidth + HANDOFF_COMMIT); player.y = clamp(player._t564Pre.y, -HANDOFF_COMMIT, ZONE.zoneHeight + HANDOFF_COMMIT); }
+  player._t564Pre = null;
+  if (!player._t564SaidAt || Date.now() - player._t564SaidAt > 10000) {
+    player._t564SaidAt = Date.now();
+    const nm = (ZONES[targetZoneId] && ZONES[targetZoneId].displayName) || targetZoneId;
+    send(player.ws, { type: 'notice', text: `${nm}(으)로 못 넘어간다 — ${w.say}` });
+  }
+}
+
 const https = require('https');
 function postJSON(host, port, path, data) {
   return new Promise((resolve, reject) => {
@@ -14006,7 +14067,12 @@ function postJSON(host, port, path, data) {
       let buf = '';
       res.on('data', (chunk) => buf += chunk);
       res.on('end', () => {
-        try { resolve(JSON.parse(buf)); } catch (e) { reject(e); }
+        //   ★★[T564] **응답 코드를 본다.** 종전엔 몸만 JSON 이면 성공으로 읽었다 — 안 문이 404 `{"error":"not found"}` 를 내도
+        //     `handoff_prepare` 가 성공한 줄 알고 사람에게 넘어가라 했다(받는 존은 토큰을 모른다 → 3초 뒤 ACK 없음 · 몸 없는 유령 · T564 V1).
+        let j = null; try { j = JSON.parse(buf); } catch (e) { j = null; }
+        if (res.statusCode >= 400) { const er = new Error(`HTTP ${res.statusCode}`); er.status = res.statusCode; er.body = j; return reject(er); }
+        if (j === null) return reject(new Error('not json'));
+        resolve(j);
       });
     });
     req.on('error', reject);
