@@ -776,6 +776,17 @@ function _t394WorkSite(vil, cxPx, cyPx, wAng, wR) {
   _t394Stat.yard++;
   return { x: vil.ccx * SZ + SZ / 2, y: (vil.ccy + 6) * SZ + SZ / 2 };   // 남문 앞 마당 — 아래 집 폴백과 같은 점(사본 아님 · 같은 식)
 }
+// ★[T540 관측] 이 주민의 침대가 어느 집 몇 번 슬롯인가 — 태어날 때 쓴 **그 식**(`home + BED_SLOTS[i]·SZ`)을 거꾸로 푼다(저장 칸 0).
+//   집이 없던 마을은 폴백 자리(큰집 남쪽 `(ccx, ccy+6)`)가 '집'이다 — 그 경우 `hk:'fallback'`.
+function bedSlotOf(npc) {
+  const vil = npc && state.byDbId && state.byDbId.get(npc.simVillageId);
+  if (!vil || npc.npcBedX == null) return null;
+  const houses = vil.housesPx.length ? vil.housesPx.map((h) => [h, 'house']) : [[{ x: vil.ccx * SZ + SZ / 2, y: (vil.ccy + 6) * SZ + SZ / 2 }, 'fallback']];
+  for (const [h, hk] of houses) for (let i = 0; i < BED_SLOTS.length; i++) {
+    if (Math.abs(h.x + BED_SLOTS[i][0] * SZ - npc.npcBedX) < 1 && Math.abs(h.y + BED_SLOTS[i][1] * SZ - npc.npcBedY) < 1) return { slot: i, hk, hx: h.x, hy: h.y };
+  }
+  return { slot: -1, hk: vil.housesPx.length ? 'house?' : 'fallback?' };
+}
 function spawnOneNpc(vil) {
   const houses = vil.housesPx.length ? vil.housesPx : [{ x: vil.ccx * SZ + SZ / 2, y: (vil.ccy + 6) * SZ + SZ / 2 }];   // ★폴백도 큰집 벽 안(중심 셀) 금지 — 남문 앞 마당
   const home = houses[vil.npcPids.length % houses.length];
@@ -8815,7 +8826,7 @@ function _t529Step(vil, npc, now) {
     //   31/50 이 한 걸음도 못 뗐다. 집 → 마당은 매일 밤 걷는 길의 거꾸로라 짧다. 새 자리 0 · 새 수 0(곁 44 = 침대 곁).
     const _inBed = npc.npcBedX != null && npc.npcHomeX != null && Math.hypot(npc.x - npc.npcBedX, npc.y - npc.npcBedY) <= T529_BESIDE;
     npc._lifeTask = { k: 'greet', pid: e.pid, px: p.x, py: p.y, viaHome: _inBed };
-    npc._t529X = npc.x; npc._t529Y = npc.y; npc._t529Since = now;
+    npc._t529X = npc.x; npc._t529Y = npc.y; npc._t529Since = now; npc._t529StepAt = now;
   }
   if (!e.wAt) e.wAt = now;
   const t = npc._lifeTask; t.px = p.x; t.py = p.y;
@@ -8827,6 +8838,10 @@ function _t529Step(vil, npc, now) {
   }
   // 정체 가드 — 기타직 출근 가드와 같은 자(20초 · 6px). ⚠"다가섬"(가장 가까운 거리)으로 재 봤더니 다리를 도는 우회까지 끊었다
   //   (낮 판 46 → 40 · 보고 §2) ⇒ 종전 자(몸이 6px 움직였나)로 두고, 끝없는 헛걸음은 아래 **하루** 문이 끊는다.
+  //   ★★[T540] 정체 시계는 **이 몸이 실제로 결정을 받은 동안만** 간다 — 결정 간격(`nextDecisionAt` = 500 + 0~1000ms)보다 긴 틈은
+  //     몸이 멎어 있던 때(새벽 하루 경계의 결정 문 멎음 · T540 ②)라 몸 탓이 아니다. 새벽에 막 나선 촌장 29/50 이 그 틈에 "정체"로 끊겼다.
+  { const gap = now - (npc._t529StepAt || now); npc._t529StepAt = now;
+    if (gap > 1500) npc._t529Since = (npc._t529Since || now) + gap; }   // 멎어 있던 틈만큼 창을 민다(1500 = 결정 간격 상한 500+1000)
   if (Math.hypot(npc.x - npc._t529X, npc.y - npc._t529Y) > 6) { npc._t529X = npc.x; npc._t529Y = npc.y; npc._t529Since = now; }
   // ★하루 일과 안에서 — 깨어 걸은 시간(잠든 밤은 안 센다 · 이 함수는 깨어 있을 때만 불린다)이 **낮 하나**(`dayMs × dayPhaseRatio`)를
   //   넘도록 못 닿았으면 놓는다. 해질녘에 나선 걸음은 밤에 쉬고 아침에 잇는다(카드 "자는 밤이면 아침에"). 새 수 0.
@@ -9532,7 +9547,8 @@ module.exports = { fishPerf, woodPerf, foragePerf, farmPerf,   // ★[T316] `/pe
   _t341TripsPerDay, _t341TreesPerLoad, _t398Cells,   // ★[T341] 하루 왕복 수·짐당 그루 — **걸음이 정한다**(하네스가 유도를 다시 계산해 대조한다) · ★[T398] 나무꾼 후보 셀(고리 · 자·하네스가 이 함수를 부른다)
  
   init, onGameTick, invalidateTradeDistances, npcLifeTick, lifeDebug, econDay, econDayT,
-  chiefOf, chiefGreetAsk, chiefGreetHas, chiefWalking,   // ★[T529] 촌장이 온다(손잡이 `T529_CHIEF_WALKS` · 읽는 곳 하나)
+  chiefOf, chiefGreetAsk, chiefGreetHas, chiefWalking,
+  bedSlotOf,   // ★[T540] 관측 — 침대 슬롯·집(`/walkdbg`)   // ★[T529] 촌장이 온다(손잡이 `T529_CHIEF_WALKS` · 읽는 곳 하나)
   tickPerf,   // ★[T1 §0] 일틱 단계별 소요 — zone.js `/perf` 가 소비(계측 전용)
   villagesBusy, villageWait,   // ★[T1 §2-②] "장부 마감 중" 큐 — zone.js 가 마을 요청만 이 문으로 보낸다
   dayNow: _dayNow,   // ★[T1] 마감 중이면 **경계의 순간**을 돌려준다 — 벽시계 적분(광맥 재생)이 조각 순서에 흔들리지 않게

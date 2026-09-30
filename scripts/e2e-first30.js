@@ -987,6 +987,20 @@ async function sampleOnce() {
       w = await walkTo(standAround(anc.x, anc.y, 200 - k * 30).filter((g) => !blockedCell(g.x, g.y)), 20);
       for (let i = 0; i < 16 && !greet; i++) { const s = await state(); if (s.greet && s.greet.lines) { greet = s.greet; quest = s.quest; } else await sleep(500); }
     }
+    // ★★[T540 ④ · T529 회부 5] 촌장이 **걸어오는** 판(`T529_CHIEF_WALKS=1`)이면 인사는 마을 중심이 아니라 **촌장이 닿는 때** 온다
+    //   (T529 판: 84.6초 · 자는 60초에 "안 옴"으로 넘어갔다). ⇒ 여기서 선 채 기다린다 — 존의 촌장 줄(`/lifedbg` t529)이
+    //   이 사람 몫을 **닫을 때까지**(곁 · 정체 · 하루 문 · 떠남). 닫혔는데 인사가 없으면 그때 막힘이다. 끔 판은 이 갈래를 안 탄다.
+    if (!greet && ENV0.T529_CHIEF_WALKS === '1' && !timeUp()) {
+      const myPid = await ev(() => (window.__evDbg && window.__evDbg.pid) || null);
+      const tw = Date.now(); let open = true, lastEnd = null;
+      while (!greet && open && !timeUp()) {
+        for (let i = 0; i < 5 && !greet; i++) { const s2 = await state(); if (s2.greet && s2.greet.lines) { greet = s2.greet; quest = s2.quest; } else await sleep(1000); }
+        const ld = await jget(`http://localhost:${ZPORT}/lifedbg`);
+        const e = ld ? [].concat(...(ld.villages || []).map((v) => v.t529 || [])).find((x) => x.pid === myPid) : null;
+        open = !!(e && !e.end); lastEnd = e ? (e.end || 'open') : 'none';
+      }
+      R.chiefWait = { sec: +((Date.now() - tw) / 1000).toFixed(1), end: lastEnd, greeted: !!greet };
+    }
     R.legs.push({ t: tSec(), kind: 'toChief', ok: !!(w && w.ok), reason: w && w.reason || null, sec: +((Date.now() - t0) / 1000).toFixed(1) });
     if (greet) { mark('촌장 인사', { lines: (greet.lines || []).slice(0, 3) }); } else block('촌장', '마을 중심에 가도 인사가 안 왔다');
     await sleep(2500);

@@ -2964,6 +2964,7 @@ function decideNpcBehavior(npc, now) {
     return;
   }
   if (now < npc.nextDecisionAt) return;
+  npc._t540DecAt = now;    // ★[T540 관측] 마지막 결정(`/walkdbg decAge`)
   // ★★★[T350 2026-09-22 · 주사위 0] 이 함수가 걸음마다 굴리던 **15개의 `Math.random`** 을 여기서 한 번
   //   씨 뿌린 흐름으로 바꾼다. 씨 = `(신원 · 셀 · 게임일 · 틱)` — 카드가 정한 그 다섯이다.
   //   ⚠**순수 함수다**: 같은 다섯이면 같은 열다섯 수가 나온다 ⇒ 주민을 **어떤 순서로 돌려도** 같은 세계다.
@@ -3377,6 +3378,7 @@ function _t316WalkAlways(npc) {
 }
 
 function npcStep(npc, dt, now) {
+  npc._t540StepAt = now;   // ★[T540 관측] 이 몸이 마지막으로 걸음 문을 받은 때(`/walkdbg stepAge` — 새벽 멎음을 이것으로 잡았다)
   decideNpcBehavior(npc, now);
 
   // ★[§15 2파·비전투원 대피] 전투·긴급 소집 중 마을 주민(villages.js가 simEvacUntil 소프트 TTL 설정) —
@@ -4482,6 +4484,49 @@ const server = http.createServer((req, res) => {
   //     문의 정책은 문에서 정하고, 온보딩은 제 일(시작 화면 조립)만 한다.
   //   ⚠부를 때 읽는다(T88·T121 자리) — 모듈 상수면 손잡이 하나에 존을 한 판 더 띄워야 한다.
   if (req.url && req.url.startsWith('/startinfo') && req.method === 'GET') return Onboarding.httpStartInfo(_devAsGate(req), res);
+  // ★[T540] 주민 걸음 관측창(안 문) — 침대 곁 아침 정체를 **서버 값으로** 가른다. 읽기만(`&astar=1` 이면 A* 를 한 번 더 묻는다 · 목표 불변).
+  //   `?bed=1` = 침대 곁(≤12px) 주민만 · `?vid=<n>` = 한 마을 · 기본 = 마을 주민 전부(가벼운 칸만).
+  if (req.url && req.url.startsWith('/walkdbg') && req.method === 'GET') {
+    if (!InternalDoor.isInternal(req)) return InternalDoor.denyOutside(res);
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    try {
+      const q = String(req.url).split('?')[1] || '', has = (k) => new RegExp('(?:^|&)' + k + '=1(?:&|$)').test(q);
+      const mv = /(?:^|&)vid=(\d+)/.exec(q), onlyVid = mv ? +mv[1] : null, bedOnly = has('bed'), astar = has('astar');
+      const now = Date.now(), out = [];
+      for (const p of players.values()) {
+        if (!p.isNpc || p.simVillageId == null || (onlyVid != null && p.simVillageId !== onlyVid)) continue;
+        const dBed = p.npcBedX != null ? Math.hypot(p.x - p.npcBedX, p.y - p.npcBedY) : null;
+        if (bedOnly && !(dBed != null && dBed <= 12)) continue;
+        const cx = Math.floor(p.x / BUILDING_SIZE), cy = Math.floor(p.y / BUILDING_SIZE), fl = p.floor || 0;
+        const b = SimVillages.bedSlotOf ? SimVillages.bedSlotOf(p) : null;
+        const r = { pid: p.pid, vid: p.simVillageId, job: p.simJob || null, slot: b ? b.slot : null, hk: b ? b.hk : null,
+          x: Math.round(p.x), y: Math.round(p.y), dBed: dBed == null ? null : Math.round(dBed),
+          dHome: p.npcHomeX != null ? Math.round(Math.hypot(p.x - p.npcHomeX, p.y - p.npcHomeY)) : null,
+          fv: p.simLonOff != null ? +(((worldPhase(now) + p.simLonOff) % 1)).toFixed(4) : null, dOff: p._dOff != null ? +p._dOff.toFixed(4) : null,
+          act: p._lifeAct || null, beh: p.behavior || null, tgt: p.targetX != null ? [Math.round(p.targetX), Math.round(p.targetY)] : null,
+          v: [+(p.vx || 0).toFixed(1), +(p.vy || 0).toFixed(1)], path: p.path ? p.path.length : 0, pi: p.pathIndex | 0,
+          active: isPositionActive(p.x, p.y), chief: !!(SimVillages.chiefWalking && SimVillages.chiefWalking(p)), fl, stair: p.onStairId || null,
+          nextDec: Math.round((p.nextDecisionAt || 0) - now), stepAge: p._t540StepAt ? now - p._t540StepAt : null, decAge: p._t540DecAt ? now - p._t540DecAt : null, stuckN: p._stuckN | 0, task: p._lifeTask ? p._lifeTask.k : null, rest: p._rest | 0 };
+        if (bedOnly || onlyVid != null) {
+          r.edges = { N: !!edgeBlockedStep(cx, cy, 0, -1, fl), E: !!edgeBlockedStep(cx, cy, 1, 0, fl), S: !!edgeBlockedStep(cx, cy, 0, 1, fl), W: !!edgeBlockedStep(cx, cy, -1, 0, fl) };
+          r.terr = !!isTerrainBlockedLocal(cx * BUILDING_SIZE + BUILDING_SIZE / 2, cy * BUILDING_SIZE + BUILDING_SIZE / 2);
+          r.fence = !!findCellFence(cx, cy, fl);
+          if (p.targetX != null) r.straight = !!straightPathClear(p.x, p.y, p.targetX, p.targetY, fl);
+          if (p.path && p.path.length) { const w = p.path[Math.min(p.pathIndex | 0, p.path.length - 1)]; r.wp = [Math.round(w.x), Math.round(w.y)]; }
+          if (astar && p.targetX != null) {
+            const o = { floor: fl, isBlockedFn: isBlockedByWall, isWaterFn: isTerrainBlockedLocal, searchRadiusCells: _pfRadius(true) };
+            const a1 = pfFindPath(p.x, p.y, p.targetX, p.targetY, Object.assign({ maxCells: 1500 }, o));
+            const a2 = pfFindPath(p.x, p.y, p.targetX, p.targetY, Object.assign({ maxCells: Infinity }, o));
+            r.astar = { b1500: a1 ? a1.length : null, inf: a2 ? a2.length : null };
+            if (p.npcHomeX != null) { const a3 = pfFindPath(p.x, p.y, p.npcHomeX, p.npcHomeY, Object.assign({ maxCells: 1500 }, o)); r.astar.home = a3 ? a3.length : null; }
+          }
+        }
+        out.push(r);
+      }
+      res.end(JSON.stringify({ t: now, phase: +worldPhase(now).toFixed(4), cut: _walk.cut, cursor: _npcCursor, npcsN: npcs.size != null ? npcs.size : npcs.length, n: out.length, npcs: out }));
+    } catch (e) { res.end(JSON.stringify({ err: e.message, stack: String(e.stack).slice(0, 400) })); }
+    return;
+  }
   if (req.url && req.url.startsWith('/lifedbg') && req.method === 'GET') {
     if (!InternalDoor.isInternal(req)) return InternalDoor.denyOutside(res);   // ★[T225] 관측창은 안 문
     // ★[직접 서버 디버깅 — 사용자 "네가 직접 서버에서 디버깅하는 방법은 없어?"] 생활 층 내부 상태 읽기 전용 JSON.
