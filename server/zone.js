@@ -3803,6 +3803,9 @@ SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, is
   //   다리 술어를 넘겨 주면 villages.js 가 코스 셀 안을 훑어 '이 블록에 다리가 지난다'를 살려낸다.
   isBridgeLocal: isBridgeTileLocal,
   addBridgeCells,   // ★[T527] 마을 크루가 다리를 완공하면 그 셀을 존 콜라이더에 더한다(끔이면 안 불린다)
+  // ★★[T533] 존 경계 — 이웃 존 `/handoff_prepare` 에 `kind` 짐(caravan·snap)을 **민다**(사람 짐과 같은 `postJSON` · 안 문 열쇠 그 자리 · 호스트 표 `ZONES[id].host`).
+  //   팔 `T525_CROSS_ZONE` 끔이면 villages.js 가 이 문을 안 부른다(호스트가 안 선다).
+  xzonePost: (zoneId, payload) => { const t = ZONES[zoneId]; if (!t) return Promise.reject(new Error('no zone ' + zoneId)); return postJSON(t.host, t.port, '/handoff_prepare', payload); },
   // ★[11차 채광 재설계] NPC 광부가 **플레이어와 같은 광맥 장부**(minedCells)를 판다.
   //   villages.js 는 재고를 깎고 oFrac 을 읽기만 한다 — 산출 아이템은 econ 이 land.ore 로 계산(이중 계상 금지).
   //   ★[T1 2026-09-01] 시각은 `SimVillages.dayNow()` 로 읽는다 — **일틱 마감 중이면 경계의 순간**이다.
@@ -4296,6 +4299,7 @@ const server = http.createServer((req, res) => {
       wood: (() => { try { return SimVillages.woodPerf ? SimVillages.woodPerf() : null; } catch (e) { return null; } })(),   // ★[T325] 나무꾼 관측(끔이면 null)
       forage: (() => { try { return SimVillages.foragePerf ? SimVillages.foragePerf() : null; } catch (e) { return null; } })(),   // ★[T347] 채집 관측(끔이면 null)
       farm: (() => { try { return SimVillages.farmPerf ? SimVillages.farmPerf() : null; } catch (e) { return null; } })(),   // ★[T368] 농부 관측(끔이면 null)
+      xzone: (() => { try { return SimVillages.xzonePerf ? SimVillages.xzonePerf() : null; } catch (e) { return null; } })(),   // ★[T533] 존 경계 관측(팔 끔이면 null)
       tick: Object.assign({}, _tick, { ms: _tickMsStats(_rst), on: TICK_DEBT_ON, dtMax: DT_MAX, debtMax: TICK_DEBT_MAX,
         lagPct: _tick.wall > 0 ? +(100 * (_tick.wall - _tick.sim) / _tick.wall).toFixed(3) : null }) }));
     return;
@@ -4627,6 +4631,10 @@ const server = http.createServer((req, res) => {
   // === 다른 zone 서버가 보내는 핸드오프 준비 요청 ===
   // POST /handoff_prepare { token, name, x, y, vx, vy, inventory }
   // target 서버는 토큰을 받아두고, 클라가 그 토큰으로 접속하면 그 상태로 플레이어 생성.
+  //   ★★[T533 · ★PM 결정 #456] **짐의 종류** `kind` — 없음(또는 'player') = 사람 = 아래 종전 그대로(글자 무변 · 토큰·5초 대기).
+  //     'caravan'(캐러밴 몸 기록 'arrive'/'return') · 'snap'(경계 마을 스냅 + 명부 · 하루 한 번) = 마을 시뮬 경계 호스트(`villages.js xzoneReceive`)가
+  //     받은 그 자리에서 세운다 — 토큰 0 · 클라 5초 대기 0 · central 왕복 0. 'army' = 칸만(셋째 카드) · 모르는 종류 = 400.
+  //     새 라우트 0 · 안 문(아래 `InternalDoor` · `CENTRAL_SECRET`)·호스트 표(`ZONE_HOSTS`)는 사람 짐과 **같은 문**을 쓴다.
   if (req.url === '/handoff_prepare' && req.method === 'POST') {
     //   ★★[T245] 안 문 — 존↔존. 바깥에서 **입장 토큰을 위조**할 수 있었다(그 토큰으로 붙으면 그 사람이 된다).
     if (!InternalDoor.isInternal(req)) return InternalDoor.denyOutside(res);   // ★[T245] 안 문
@@ -4635,6 +4643,15 @@ const server = http.createServer((req, res) => {
     req.on('end', () => {
       try {
         const data = JSON.parse(body);
+        if (data && data.kind != null && data.kind !== 'player') {   // ★[T533] 사람 아닌 짐 — 종전 갈래(아래)는 한 글자도 안 탄다
+          let st = 200, out;
+          if (data.kind === 'caravan' || data.kind === 'snap') out = SimVillages.xzoneReceive ? SimVillages.xzoneReceive(data) : null;
+          else if (data.kind === 'army') out = { ok: false, why: 'army — 칸만 예약(셋째 카드)' };
+          else { st = 400; out = { ok: false, why: 'unknown kind' }; }
+          res.writeHead(st, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify(out || { ok: false, why: 'no-host' }));
+          return;
+        }
         if (!data.token) { res.writeHead(400); res.end('no token'); return; }
         metrics.handoffs_in++;
         pendingHandoffs.set(data.token, {

@@ -142,6 +142,7 @@ const state = {
   lastGameDay: -1,
   // Stage 4B — 캐러밴 실체화
   caravanBodies: null, // Map<caravanId, body> — body = { pid, c(econ 캐러밴 ref), phase, pts, cum, len, prog, ... }
+  xzone: null,         // ★[T533] 존 경계 호스트(팔 `T525_CROSS_ZONE` 켬 + 이웃 존 문 — 끔이면 null · `_xzInit`)
   routeCache: null,    // Map<'aDbId_bDbId', pts|null> — 마을쌍 경로 캐시(랩 _tradePaths 동형). invalidate가 비움.
   pathfind: null,      // require('./pathfind') — init lazy(플래그 off면 로드 없음)
   _route: null,        // 코스 그리드 A* 스크래치(ensureRouteGrid)
@@ -2164,7 +2165,44 @@ function despawnCaravanNpc(body) { // canadia 검증 패턴(players/npcs delete 
     }
   }
 }
+// ★[T533] 상인 한 명 + 호위(시각 상한 5 — 랩 동형) — 종전 `spawnCaravanBody` 안 두 덩이를 이름만 올렸다(사본 0).
+//   같은 존 출발은 제 마을 이름표(`simvil_<id>`)로 · 이웃 존에서 넘어온 몸은 그 존 이름표로(이 존 마을이 아니다 — `simVid` 없음).
+function _caravanNpcs(c, x, y, tribeId, tribeName, simVid) {
+  const p = state.deps.spawnNpc({
+    x, y,
+    name: `상단·${c.giveRes}`,
+    villageId: tribeId, villageName: tribeName,
+    skipHouse: true,
+  });
+  state.deps.npcs.delete(p.pid); // 일반 NPC AI(npcStep 루프)에서 제외 — 이동은 tickCaravanBodies가 전담(빙의)
+  p.simJob = 'caravan';          // 클라 이모지 🐂 (npcPids 밖이라 syncVillageJobs가 안 건드림)
+  p.simCaravan = true;           // zone.js 이동 루프(movePlayerStep) 제외 플래그 — 이중 이동 방지
+  p.simVillageId = simVid;
+  // ★[convoy 물리 행군 — 랩 dispatchTrades 동형(2026-07-16)] 호위 전사 실체 스폰: econ이 위험인지 pooling으로 산정한
+  //   c.escort만큼(시각 상한 5 — 랩 동형) 몸체를 상단 뒤 종대로 동행시킨다. econ 무접촉(전사 counts는 econ 소유 —
+  //   몸체는 아바타. 상인 빙의(Phase 4d-10)와 동일 패턴). 포식자 배선(host.getCaravans().escorts) 전제 몸체이기도 함.
+  //   평화 마을=escort 0=단독(현행 무변) · 위협 마을=대열(창발). 이동은 tickCaravanBodies._escortMarch(경로 추종 종대).
+  const escorts = [];
+  {
+    const escN = Math.min(5, Math.max(0, c.escort | 0));
+    for (let ei = 0; ei < escN; ei++) {
+      const ep = state.deps.spawnNpc({
+        x, y,
+        name: '호위·전사',
+        villageId: tribeId, villageName: tribeName,
+        skipHouse: true,
+      });
+      state.deps.npcs.delete(ep.pid); // 일반 NPC AI 제외(빙의 — 상인 동형)
+      ep.simJob = 'warrior';          // 클라 표기(§4A simJob 메타)
+      ep.simCaravan = true;           // zone 이동루프 제외 — 이중 이동 방지(상인 동형)
+      ep.simVillageId = simVid;
+      escorts.push({ pid: ep.pid, segIdx: 0, pinH: ep.hunger, pinT: ep.thirst });
+    }
+  }
+  return { p, escorts };
+}
 function spawnCaravanBody(c, now, budgetMs) {
+  if (state.xzone && ((c.to && c.to._xz) || (c.from && c.from._xz))) return _xzSpawnBody(c, now);   // ★★[T533] 이웃 존이 낀 캐러밴(팔 켬 + 호스트 — 끔이면 이 줄 무동작)
   const fromVil = state.byEcon.get(c.from), toVil = state.byEcon.get(c.to);
   if (!fromVil || !toVil) return false;
   const outbound = c.state === 'outbound'; // (통상 outbound — inbound 스폰은 상한 이월분 방어)
@@ -2176,16 +2214,9 @@ function spawnCaravanBody(c, now, budgetMs) {
   if (!rr.done) { _probe.pathWait++; return 'wait'; }
   const pts = rr.pts;
   if (!pts) return false;
-  const p = state.deps.spawnNpc({
-    x: legA.ccx * SZ + SZ / 2, y: legA.ccy * SZ + SZ / 2,
-    name: `상단·${c.giveRes}`,
-    villageId: `simvil_${fromVil.dbId}`, villageName: fromVil.name,
-    skipHouse: true,
-  });
-  state.deps.npcs.delete(p.pid); // 일반 NPC AI(npcStep 루프)에서 제외 — 이동은 tickCaravanBodies가 전담(빙의)
-  p.simJob = 'caravan';          // 클라 이모지 🐂 (npcPids 밖이라 syncVillageJobs가 안 건드림)
-  p.simCaravan = true;           // zone.js 이동 루프(movePlayerStep) 제외 플래그 — 이중 이동 방지
-  p.simVillageId = fromVil.dbId;
+  // ★[T533] 상인·호위 몸 세우기를 이름만 올렸다(`_caravanNpcs` — 이웃 존에서 넘어온 몸도 같은 함수 · 부르는 차례 그대로: 상인 → 호위).
+  const N = _caravanNpcs(c, legA.ccx * SZ + SZ / 2, legA.ccy * SZ + SZ / 2, `simvil_${fromVil.dbId}`, fromVil.name, fromVil.dbId);
+  const p = N.p;
   const legDays = Math.max(1, outbound ? (c.arriveDay - c.departDay) : (c.returnArriveDay - c.arriveDay));
   const body = {
     id: c.id, pid: p.pid, c, phase: outbound ? 'outbound' : 'inbound', toV: c.to,
@@ -2197,33 +2228,14 @@ function spawnCaravanBody(c, now, budgetMs) {
   body.arriveAt = Math.max(now + 1, econDayToMs(outbound ? c.arriveDay : c.returnArriveDay));
   body.pxPerDay = body.len / legDays;                        // 지연 환산용 명목 속도(이 캐러밴의 일정에서 역산)
   body.nomPxMs = body.len / Math.max(1, body.arriveAt - now); // 페이싱 상한(×4)의 기준
-  // ★[convoy 물리 행군 — 랩 dispatchTrades 동형(2026-07-16)] 호위 전사 실체 스폰: econ이 위험인지 pooling으로 산정한
-  //   c.escort만큼(시각 상한 5 — 랩 동형) 몸체를 상단 뒤 종대로 동행시킨다. econ 무접촉(전사 counts는 econ 소유 —
-  //   몸체는 아바타. 상인 빙의(Phase 4d-10)와 동일 패턴). 포식자 배선(host.getCaravans().escorts) 전제 몸체이기도 함.
-  //   평화 마을=escort 0=단독(현행 무변) · 위협 마을=대열(창발). 이동은 tickCaravanBodies._escortMarch(경로 추종 종대).
-  body.escorts = [];
-  {
-    const escN = Math.min(5, Math.max(0, c.escort | 0));
-    for (let ei = 0; ei < escN; ei++) {
-      const ep = state.deps.spawnNpc({
-        x: legA.ccx * SZ + SZ / 2, y: legA.ccy * SZ + SZ / 2,
-        name: '호위·전사',
-        villageId: `simvil_${fromVil.dbId}`, villageName: fromVil.name,
-        skipHouse: true,
-      });
-      state.deps.npcs.delete(ep.pid); // 일반 NPC AI 제외(빙의 — 상인 동형)
-      ep.simJob = 'warrior';          // 클라 표기(§4A simJob 메타)
-      ep.simCaravan = true;           // zone 이동루프 제외 — 이중 이동 방지(상인 동형)
-      ep.simVillageId = fromVil.dbId;
-      body.escorts.push({ pid: ep.pid, segIdx: 0, pinH: ep.hunger, pinT: ep.thirst });
-    }
-  }
+  body.escorts = N.escorts;   // ★[convoy 물리 행군] 호위 전사 실체(위 `_caravanNpcs` 가 상인 뒤에 세웠다 — 주석은 그 자리에)
   state.caravanBodies.set(c.id, body);
   console.log(`[${state.zoneId}] 🐂 캐러밴#${c.id} 출발: ${c.from.name}→${c.to.name} ${c.giveRes}×${Math.round(c.giveAmt)} 호위${c.escort}(실체 ${body.escorts.length}) — 경로 ${pts.length}정점 ${Math.round(body.len)}px ${legDays}게임일(econ d${c.departDay}→d${c.arriveDay})`);
   return true;
 }
 function startReturnLeg(body, now) { // 도착 머묾(linger) 종료 → 귀환 출발
   const c = body.c;
+  if (body._xz && c && c._xzHome) return _xzStartReturnLeg(body, now);   // ★★[T533] 이웃 존 캐러밴 — 집은 경계 너머다(경계 칸까지 걷는다 · 끔이면 이 줄 무동작)
   const homeVil = state.byEcon.get(c.from), hereVil = state.byEcon.get(c.to);
   let pts = (homeVil && hereVil) ? getRoute(hereVil, homeVil) : null;
   if (!pts) { // 폴백: 걸어온 정점 역순(경로 캐시가 비었어도 귀환 보장)
@@ -2244,6 +2256,10 @@ function startReturnLeg(body, now) { // 도착 머묾(linger) 종료 → 귀환 
 //   유일하게 통행이 보장된 길 = 걸어온 역경로. (벽 인지 행렬은 Stage 5 정밀화 인계 — 모듈 헤더 참조)
 function isolateCaravanReturn(body, p, now) {
   const c = body.c, world = state.world;
+  // ★★[T533] 이웃 존이 낀 몸(팔 켬 + 호스트 — 끔이면 두 줄 다 안 닿는다) — 받은 몸은 기록이 아직 econ 에 안 들었다(다음 경계에 든다 · 여기선 안 가른다) ·
+  //   이웃 존 캐러밴은 집이 경계 너머라 이 존 곳간으로 못 돌린다 ⇒ 넘어온 경계 칸으로 되짚어 집 존에 돌려준다(`_xzIsolate`).
+  if (c && c._xzPending) { body.repairFailN = 0; return; }
+  if (c && c._xzHome) return _xzIsolate(body, p, now);
   c._returningRes = c.giveRes;
   c._returningAmt = c.giveAmt;   // 화물 보존(아직 미도착 — 매도 전량 회수)
   c._abandoned = true;
@@ -2415,6 +2431,10 @@ function _caravanSyncOne(now, c, S, budgetMs) {
     if (c._done) return;
     seen.add(c.id);
     const body = bodies.get(c.id);
+    // ★★[T533] 이웃 존이 낀 캐러밴(팔 켬 + 호스트 — 끔이면 두 줄 다 안 닿는다):
+    //   받은 몸(기록이 econ 에 들기 전에 경계 칸에 선 몸)이 제 기록을 만나면 잇는다 · 이웃 존에 가 있는 캐러밴은 몸도 거기다(이 존은 안 세운다).
+    if (body && body.c !== c && body.c && body.c._xzPending && c.state !== 'xzone') body.c = c;
+    if (c.state === 'xzone') return;
     if (!body) {
       if (bodies.size < CARAVAN_BODY_MAX) {
         const r = spawnCaravanBody(c, now, _pb);
@@ -2467,6 +2487,7 @@ function _caravanSyncSweep(S) {
   const bodies = state.caravanBodies, seen = S.seen;
   for (const [id, body] of [...bodies]) {
     if (seen.has(id)) continue;
+    if (body._xzHanding || (body.c && body.c._xzPending)) continue;   // ★[T533] 경계 문 앞(이웃 존 답을 기다린다) · 받은 몸(기록이 다음 경계에 든다) — 끔이면 없다
     const c = body.c;
     const killed = c && c.trader && c.from && Array.isArray(c.from.npcs) && c.from.npcs.indexOf(c.trader) < 0;
     despawnCaravanNpc(body);
@@ -2483,6 +2504,292 @@ function syncCaravanBodies(now) {
   const S = _caravanSyncNew();
   for (const c of state.world.caravans) _caravanSyncOne(now, c, S, 0);   // 예산 0 = 무제한 ⇒ `'retry'` 가 안 난다
   return _caravanSyncSweep(S);
+}
+
+// =============================================================================
+// ★★[T533 2026-09-30 · 세션3 · ★PM 결정 #456] **캐러밴이 존을 넘는다 — 서버 호스트 조각 1**
+//   팔 `T525_CROSS_ZONE`(econ 이 정본 · 기본 끔)이 켜졌을 때만 `state.xzone` 이 선다 — **끔이면 이 절은 한 줄도 안 돈다**
+//   (`state.xzone` null · 몸 층의 T533 줄들은 전부 그 칸이나 `_xz*` 칸이 있을 때만 닿는다).
+//   호스트 = `server/xzone.js`(핵심은 자와 같은 한 벌) · 문 = zone.js `/handoff_prepare` 의 `kind`(`caravan`·`snap` · 새 라우트 0).
+//   ★몸은 **경계 칸에서 이어 걷는다**(순간이동 0): 집 존 몸은 합친 길의 제 존 몫(`split.ptsLocal`)을 걸어 경계 칸에 서고,
+//     econ 이 그날 기록('arrive')을 내면 문으로 민다 → 받는 존이 **같은 자리**(경계 칸 · 제 존 로컬 px)에 몸을 세워 제 몫을 걷는다 →
+//     보낸 쪽은 받았다는 답을 듣고서야 몸을 지운다(답이 없으면 경계에서 짐을 되돌린다 — 몸은 돌아선다 · 질량 보존).
+//     기록은 **받은 그 자리에서** 줄에 서고 econ 은 보낸 경계 **다음** 경계에 읽는다(두 존 마감 순서에 안 달린다) —
+//     몸은 받는 즉시 걷는다(도착 = 보낸 경계 + max(1, 남은 일수) — econ 이 세울 그 날).
+//   ★클램프(`zone.js` "NPC는 zone 핸드오프 안 함 — 항상 클램프")는 안 건드린다 — 캐러밴 몸은 그 이동 문에 **안 든다**
+//     (`simCaravan` 은 `movePlayerStep` 앞에서 건너뛴다) ⇒ 넘김은 이 기록 문 하나가 한다(짐 `kind` 만 예외 = 이 문).
+//   ★새 수 0: 경계 칸 = 존 사각(합친 길이 사각을 나가는 자리) · 시효 = econ 하루 · 걸음 = 정본 BFS · 몸 속도 = 남은 거리 ÷ 남은 시간(Stage 4B 규약 그대로).
+// =============================================================================
+const _xzSamePt = (a, b) => !!(a && b && Math.abs(a.x - b.x) <= 1 && Math.abs(a.y - b.y) <= 1);
+const _xzLog = (s) => console.log(`[${state.zoneId}] 🌐 [T533] ${s}`);
+const _xzLater = (fn) => { if (!villageWait(fn)) fn(); };   // 마감 중이면 마감 뒤에(장부가 반쯤 넘어간 창을 안 건드린다 — T1 큐 그대로)
+function _xzInit(zoneId) {
+  const XZ = require('./xzone');
+  const core = XZ.createCore({ zone: zoneId, world: state.world, econV2: state.econV2, infoR: state.world.infoRange });
+  const host = XZ.createHost({ zone: zoneId, core,
+    rosterOf: () => (state.villages || []).map((v) => ({ name: v.name, cx: v.ccx, cy: v.ccy })),
+    post: (peer, payload) => state.deps.xzonePost(peer, payload), log: _xzLog });
+  state.xzone = { core, host, retry: [], seen: new Set(), seenQ: [], trace: [], track: new Map(),
+    st: { sent: 0, sentOk: 0, sentFail: 0, bounced: 0, retried: 0, dup: 0, bodyOut: 0, bodyIn: 0, bodyInSkip: 0, crossArrive: 0, crossReturn: 0, soldOk: 0, deposited: 0, lost: 0 } };
+  _xzLog(`경계 호스트 — 이웃 ${host.peers.join('·') || '없음'}(zone-config 동서남북 · 바다 제외) · 정보 반경 ${state.world.infoRange}(econ) · 걸음표는 이웃 명부가 오면 워커로(그 전엔 스텁 0 = 끔과 같다)`);
+  // 기동 명부 한 번 — 이웃이 걸음표를 잴 재료(zone.js 적재가 끝난 뒤 · 안 받으면 하루 뒤 경계에 다시 민다)
+  setTimeout(() => { try { host.pushRoster(state.lastGameDay); } catch (e) {} }, 0);
+}
+function _xzTrace(kind, o) {
+  const X = state.xzone; if (!X) return;
+  X.trace.push(Object.assign({ k: kind, day: state.world ? state.world.day : null, g: state.lastGameDay }, o));
+  if (X.trace.length > 400) X.trace.splice(0, X.trace.length - 400);
+}
+// 몸 하나 세우기 — 같은 존 출발과 같은 함수(`_caravanNpcs`)로 상인·호위를 세우고 길 첫 점(경계 칸이거나 제 마을)에 둔다.
+function _xzMakeBody(key, c, pts, phase, now, arriveAt, toV, who) {
+  const N = _caravanNpcs(c, pts[0].x, pts[0].y, who.tribeId, who.tribeName, who.simVid == null ? null : who.simVid);
+  const legDays = Math.max(1, Math.round((arriveAt - now) / state.dayMs));
+  const body = { id: key, pid: N.p.pid, c, phase, toV, delayedDays: 0, repairFailN: 0, lastRepairAt: 0,
+    pinHunger: N.p.hunger, pinThirst: N.p.thirst, _xz: true };
+  setBodyPts(body, pts);
+  body.departAt = now;
+  body.arriveAt = Math.max(now + 1, arriveAt);
+  body.pxPerDay = body.len / legDays;
+  body.nomPxMs = body.len / Math.max(1, body.arriveAt - now);
+  body.escorts = N.escorts;
+  state.caravanBodies.set(key, body);
+  //   spawnNpc 는 존 가장자리에서 안쪽으로 당겨 세운다(클레임 크기) — 길이 위치의 진실이라 첫 점으로 되돌린다(다음 틱 스냅과 같은 뜻 · 한 틱 앞당김).
+  N.p.x = pts[0].x; N.p.y = pts[0].y;
+  for (const e of N.escorts) { const E = state.deps.players.get(e.pid); if (E) { E.x = pts[0].x; E.y = pts[0].y; } }
+  return body;
+}
+// 집 존 출발 — 스텁이 목적지인 캐러밴은 합친 길의 **제 존 몫**만 걷는다(경계 칸에 서는 날 = econ `_xzCross.day`).
+//   `_xzCross` 가 없는 기록(합친 길 A* 가 예산 안에 못 찾은 쌍 — 2km 안에는 0)은 몸 없이 econ 만 간다
+//   (같은 존의 "경로 실패 → 실체 생략, econ 은 계속"과 같은 뜻). 이웃 존에서 온 몸은 받을 때 세운다(여기 아님).
+function _xzSpawnBody(c, now) {
+  const X = state.xzone;
+  if (!X || !(c.to && c.to._xz) || c.state !== 'outbound' || !c._xzCross) return false;
+  const fromVil = state.byEcon.get(c.from); if (!fromVil) return false;
+  const sp = X.core.splitNames(fromVil.name, c.to.zone, c.to.name);
+  if (!sp || !_xzSamePt(sp.ptLocal, c._xzCross.ptLocal)) return false;
+  const b = _xzMakeBody(c.id, c, sp.ptsLocal.slice(), 'outbound', now, econDayToMs(c._xzCross.day), c.to,
+    { tribeId: `simvil_${fromVil.dbId}`, tribeName: fromVil.name, simVid: fromVil.dbId });
+  console.log(`[${state.zoneId}] 🐂 캐러밴#${c.id} 출발(경계 너머): ${fromVil.name}→${c.to.name}@${c.to.zone} ${c.giveRes}×${Math.round(c.giveAmt)} 호위${c.escort}(실체 ${b.escorts.length}) — 경계 칸까지 ${Math.round(b.len)}px ${c._xzCross.leg}게임일(econ d${c.departDay} → 넘는 날 d${c._xzCross.day} · 도착 d${c.arriveDay})`);
+  return true;
+}
+// 이웃 존 캐러밴의 귀환 구간 — 이 마을 → 경계 칸(econ `_xzBack` 이 정한 그 칸). 합친 길이 없는 쌍이면 **넘어온 길을 되짚는다**.
+function _xzStartReturnLeg(body, now) {
+  const c = body.c, X = state.xzone, back = c._xzBack || null;
+  let pts = null;
+  const hereVil = state.byEcon.get(c.to);
+  if (X && back && back.ptLocal && hereVil) {
+    const sp = X.core.splitNames(hereVil.name, c._xzHome.zone, c.from && c.from.name);
+    if (sp && _xzSamePt(sp.ptLocal, back.ptLocal)) pts = sp.ptsLocal.slice();
+  }
+  if (!pts) {   // 되짚는다 — 지금 길(우회했으면 우회한 길)을 거꾸로 · 이어서 넘어온 길을 거꾸로(끝 = 넘어온 경계 칸)
+    pts = [];
+    for (let i = body.pts.length - 1; i >= 0; i--) pts.push(body.pts[i]);
+    if (body._xzInPts && body._xzInPts !== body.pts) for (let i = body._xzInPts.length - 1; i >= 0; i--) pts.push(body._xzInPts[i]);
+  }
+  setBodyPts(body, pts);
+  body.phase = 'inbound';
+  const legDays = Math.max(1, c.returnArriveDay - state.world.day);
+  body.departAt = now;
+  body.arriveAt = Math.max(now + 1, econDayToMs(c.returnArriveDay));
+  body.pxPerDay = body.len / legDays;
+  body.nomPxMs = body.len / Math.max(1, body.arriveAt - now);
+  console.log(`[${state.zoneId}] 🐂 캐러밴#${c.id} 귀환 출발(경계로): ${c.to.name}→경계 칸(집 ${c.from && c.from.name}@${c._xzHome.zone})${c._returningRes ? ` ${c._returningRes}×${Math.round(c._returningAmt || 0)}` : ' (빈손)'} — econ d${c.returnArriveDay} 경계`);
+}
+// 이웃 존 캐러밴이 이 존 안에서 완전히 막혔다 — 판 것 없이(짐 보존) 넘어온 경계 칸으로 되짚어 집 존에 돌려준다.
+function _xzIsolate(body, p, now) {
+  const c = body.c, world = state.world;
+  c._returningRes = c.giveRes; c._returningAmt = c.giveAmt;
+  if (c.giveRes2 && c.giveAmt2 > 0) { c._returningRes2 = c.giveRes2; c._returningAmt2 = c.giveAmt2; }
+  c._abandoned = true; c.state = 'inbound';
+  const rev = [{ x: p.x, y: p.y }];
+  for (let i = Math.min(body.segIdx, body.pts.length - 1); i >= 0; i--) rev.push(body.pts[i]);
+  if (body._xzInPts && body._xzInPts !== body.pts) for (let i = body._xzInPts.length - 1; i >= 0; i--) rev.push(body._xzInPts[i]);
+  setBodyPts(body, rev);
+  const days = Math.max(1, Math.ceil(body.len / Math.max(1, body.pxPerDay)));
+  c._xzBack = { day: world.day + days, leg: days, remain: state.econV2.xzoneLeg(c.travelDays || days, c._xzFHome), ptLocal: c._xzPt, ptPeer: c._xzPtHome };
+  c.returnArriveDay = c._xzBack.day;
+  body.phase = 'inbound'; body.departAt = now;
+  body.arriveAt = Math.max(now + 1, econDayToMs(c.returnArriveDay));
+  body.nomPxMs = body.len / Math.max(1, body.arriveAt - now);
+  body.repairFailN = 0;
+  console.log(`[${state.zoneId}] 🐂 캐러밴#${c.id} 완전 고립 → 짐 보존 · 넘어온 경계 칸으로 되짚는다(${days}일 · 집 ${c._xzHome.zone})`);
+}
+// econ 앞 — 지난 경계에 이웃이 민 스텁 · 지난 경계까지 받은 기록을 꽂는다(받은 몸이 기다리며 밀린 날은 그 기록의 남은 일수에).
+function _xzDayIn() {
+  const X = state.xzone; if (!X) return;
+  X.core.dayIn(state.lastGameDay, (rec) => {
+    const key = rec.kind === 'arrive' ? ('xz:' + rec.fromZone + ':' + rec.id) : rec.id;
+    const b = state.caravanBodies.get(key);
+    if (b && b.c && b.c._xzPending && b.c._push > 0) { rec.remain = (rec.remain || 0) + b.c._push; b.c._push = 0; }
+  });
+}
+// econ 뒤 — 나간 기록(몸 넘김) · 못 받은 귀환 다시 · 경계 마을 스냅 · 표(오늘 경계 교역 · 곳간에 든 귀환)
+function _xzDayOut() {
+  const X = state.xzone; if (!X) return;
+  const g = state.lastGameDay;
+  const o = X.core.dayOut(g);
+  if (X.retry.length) { const R = X.retry.splice(0); for (const q of R) { X.st.retried++; _xzSend(q.r, g, q.tries); } }
+  for (const r of o.recs) _xzSend(r, g, 0);
+  X.host.pushSnaps(g, o.snaps);
+  // 표 — 넘어갔다 돌아와 곳간에 든 이 존 캐러밴(econ 귀환 갈래가 끝냈다 · 상인이 살아 있다 = 입금 · 아니면 잃음)
+  for (const [id, t] of X.track) {
+    const c = t.c;
+    if (!c._done) continue;
+    X.track.delete(id);
+    //   입금 = econ 귀환 갈래가 끝냈다(이웃 존에서 상인이 죽은 기록이면 `killTrader` 로 끝난 것 — 잃음). 스텁 쌍 귀환엔 길목 갱이 없다(`banditGang` 이름표 쌍).
+    if (t.back && !t.back.dead) { X.st.deposited++; _xzTrace('home', { id, res: c._returningRes || null, amt: c._returningAmt || 0, res2: c._returningRes2 || null, amt2: c._returningAmt2 || 0, abandoned: !!c._abandoned, backAmt: t.back.amt }); }
+    else { X.st.lost++; _xzTrace('gone', { id, back: !!t.back, dead: !!(t.back && t.back.dead) }); }
+  }
+}
+// 미는 문 — 받았다는 답을 듣고서야 몸을 지운다(그 사이 몸은 경계 칸에 선다 · 쓸기가 안 치운다).
+function _xzSend(r, g, tries) {
+  const X = state.xzone;
+  const key = (r.kind === 'arrive') ? r.id : ('xz:' + r.toZone + ':' + r.id);
+  const body = state.caravanBodies.get(key) || null;
+  if (body) body._xzHanding = true;
+  X.st.sent++;
+  const payload = { kind: 'caravan', zone: state.zoneId, gday: g, rec: r };
+  let pr; try { pr = Promise.resolve(state.deps.xzonePost(r.toZone, payload)); } catch (e) { pr = Promise.reject(e); }
+  //   답을 받았는가(받는 존이 "안 받는다"고 말했다 = 확실) · 못 받았는가(끊김·시간 넘김 = 받았는지 모른다 — 받는 쪽은 같은 기록을 한 번만 센다)
+  pr.then((res) => _xzLater(() => _xzAfterSend(r, key, !!(res && res.ok), res && res.why, true, tries | 0)),
+    (e) => _xzLater(() => _xzAfterSend(r, key, false, (e && e.message) || String(e), false, tries | 0)));
+}
+function _xzAfterSend(r, key, ok, why, answered, tries) {
+  const X = state.xzone; if (!X) return;
+  const body = state.caravanBodies.get(key) || null;
+  if (ok) {
+    X.st.sentOk++;
+    let at = null;
+    if (body) { const P = state.deps.players.get(body.pid); at = P ? { x: Math.round(P.x), y: Math.round(P.y) } : null; despawnCaravanNpc(body); state.caravanBodies.delete(key); X.st.bodyOut++; }
+    if (r.kind === 'arrive') {
+      X.st.crossArrive++;
+      const c = (state.world.caravans || []).find((x) => x.id === r.id && x.state === 'xzone' && !x._done) || null;
+      if (c) X.track.set(r.id, { c, res: r.giveRes, amt: r.giveAmt, sentDay: state.world.day });
+      _xzTrace('out', { id: r.id, to: r.to, toZone: r.toZone, res: r.giveRes, amt: r.giveAmt, res2: r.giveRes2 || null, amt2: r.giveAmt2 || 0, remain: r.remain, at, pt: r.ptHome || null, body: !!body });
+    } else {
+      X.st.crossReturn++;
+      if (r.row && !r.abandoned && !r.traderDead && !r.row.rerouted) X.st.soldOk++;   // 경계 교역 성사(이 존이 팔고 산 것 — T525 §4 '도착 존이 판 것')
+      _xzTrace('back', { id: r.id, toZone: r.toZone, lastTo: r.lastTo, res: r.returningRes, amt: r.returningAmt, res2: r.returningRes2 || null, amt2: r.returningAmt2 || 0,
+        abandoned: !!r.abandoned, traderDead: !!r.traderDead, sold: r.row && r.row.sent ? r.row.sent : null, bought: r.row && r.row.bought ? r.row.bought : null, remain: r.remain, at, body: !!body });
+    }
+    return;
+  }
+  X.st.sentFail++;
+  if (r.kind === 'arrive' && !answered && !(tries > 0)) {
+    //   답을 못 들었다 — 받았는지 모른다. 몸은 경계 칸에 선 채 다음 경계에 **한 번** 다시 민다(받는 쪽이 이미 받았으면 `dup` 으로 답한다 — 짐이 둘이 되지 않는다).
+    X.retry.push({ r, tries: 1 });
+    _xzLog(`⚠ 넘김 답 없음 #${r.id} → ${r.toZone}(${why}) — 다음 경계에 한 번 더`);
+    return;
+  }
+  if (r.kind === 'arrive') {
+    //   이웃 존이 안 받았다(꺼졌다 · 걸음표가 아직 · 그 마을이 비었다) — 경계에서 짐을 되돌린다(빈손 귀환과 같은 뜻 · 질량 보존 · 회부 §4)
+    const c = (state.world.caravans || []).find((x) => x.id === r.id && x.state === 'xzone' && !x._done) || null;
+    if (c) {
+      state.econV2.xzoneBounce(state.world, c, state.world.day);
+      X.st.bounced++;
+      const t = X.track.get(r.id); if (t) t.back = { amt: c._returningAmt, bounced: true };
+      if (body) {
+        body._xzHanding = false;
+        const rev = []; for (let i = body.pts.length - 1; i >= 0; i--) rev.push(body.pts[i]);
+        setBodyPts(body, rev);
+        body.phase = 'inbound'; body.departAt = Date.now();
+        body.arriveAt = Math.max(body.departAt + 1, econDayToMs(c.returnArriveDay));
+        body.pxPerDay = body.len / Math.max(1, c.returnArriveDay - state.world.day);
+        body.nomPxMs = body.len / Math.max(1, body.arriveAt - body.departAt);
+      }
+    } else if (body) { despawnCaravanNpc(body); state.caravanBodies.delete(key); }
+    _xzTrace('bounce', { id: r.id, toZone: r.toZone, why: String(why || '') });
+    _xzLog(`⚠ 넘김 못 함 #${r.id} → ${r.toZone}(${why}) — 경계에서 짐을 되돌린다`);
+  } else {
+    //   집 존이 안 받았다 — 몸은 경계 칸에 선 채 다음 경계에 다시 민다(짐은 기록에 있다 · 질량 보존)
+    X.retry.push({ r, tries: (tries | 0) + 1 });
+    _xzLog(`⚠ 돌려보냄 못 함 #${r.id} → ${r.toZone}(${why}) — 다음 경계에 다시`);
+  }
+}
+// 받는 문 — zone.js `/handoff_prepare` 의 `kind` 갈래(`caravan`·`snap`)가 부른다. 토큰 0 · 클라 대기 0 · central 왕복 0.
+function xzoneReceive(data) {
+  const X = state.xzone;
+  if (!X || !state.ready) return { ok: false, why: 'no-host' };
+  if (!data || typeof data !== 'object') return { ok: false, why: 'bad' };
+  if (data.kind === 'snap') return X.host.onSnapMsg(data);
+  if (data.kind === 'caravan') return _xzReceiveCaravan(data);
+  return { ok: false, why: 'kind' };
+}
+function _xzReceiveCaravan(data) {
+  const X = state.xzone, r = data.rec, g = Math.floor(+data.gday || 0), peer = data.zone;
+  if (!r || (r.kind !== 'arrive' && r.kind !== 'return') || r.toZone !== state.zoneId || !X.host.peers.includes(peer)) return { ok: false, why: 'bad-rec' };
+  const sk = `${peer}:${r.kind}:${r.id}`;
+  if (X.seen.has(sk)) { X.st.dup++; return { ok: true, dup: true }; }   // 같은 기록을 두 번 받았다(답이 늦어 다시 민 것) — 한 번만 센다
+  if (!X.core.G.has(peer)) return { ok: false, why: 'geo' };           // 걸음표가 아직 — 보낸 쪽이 되돌린다('arrive') · 다시 민다('return')
+  if (r.kind === 'arrive') {
+    const vil = (state.villages || []).find((v) => v.name === r.to) || null;
+    if (!vil || !vil.econ || !(vil.econ.npcs && vil.econ.npcs.length)) return { ok: false, why: 'no-village' };
+  }
+  X.core.onRecord(data);
+  X.seen.add(sk); X.seenQ.push(sk); if (X.seenQ.length > 5000) X.seen.delete(X.seenQ.shift());
+  if (r.kind === 'return') { const t = X.track.get(r.id); if (t) t.back = { amt: r.returningAmt || 0, res: r.returningRes || null, dead: !!r.traderDead }; }   // 표 — 돌아온 짐(몸이 없어도)
+  try { _xzBodyIn(r, g, peer); } catch (e) { _xzLog(`받은 몸 세우기 실패(#${r.id}): ${e.message}`); }
+  return { ok: true };
+}
+// 받은 몸 — 보낸 쪽이 지운 **그 자리**(경계 칸 · 이 존 로컬 px)에 세워 이 존 몫을 걷게 한다.
+//   도착 시각 = 보낸 경계 + max(1, 남은 일수) — 이 존 econ 이 다음 경계에 기록을 세우며 잡는 그 날과 같다.
+//   기록이 econ 에 들기 전(다음 경계까지)엔 몸이 가짜 짝(`_xzPending`)을 들고 걷는다 — 동기(`_caravanSyncOne`)가 진짜를 만나면 잇는다.
+function _xzBodyIn(r, g, peer) {
+  const X = state.xzone;
+  if (r.kind === 'return' && r.traderDead) return;   // 상인이 그쪽에서 죽었다 — 넘어올 몸이 없다
+  if (!r.ptPeer) { X.st.bodyInSkip++; return; }        // 경계 칸이 없는 기록(합친 길 없음 · T525 뼈대) — 몸 없이 econ 만
+  if (state.caravanBodies.size >= CARAVAN_BODY_MAX) { X.st.bodyInSkip++; return; }
+  const now = Date.now();
+  const arriveAt = state.epoch + (g + Math.max(1, r.remain || 0)) * state.dayMs;
+  const center = (vil) => ({ x: vil.ccx * SZ + SZ / 2, y: vil.ccy * SZ + SZ / 2 });
+  if (r.kind === 'arrive') {
+    const key = 'xz:' + r.fromZone + ':' + r.id;
+    if (state.caravanBodies.has(key)) return;
+    const vil = (state.villages || []).find((v) => v.name === r.to); if (!vil) return;
+    const homeName = r.home && r.home.name;
+    const sp = X.core.splitNames(vil.name, peer, homeName);
+    const pts = (sp && _xzSamePt(sp.ptLocal, r.ptPeer)) ? sp.ptsLocal.slice().reverse() : [r.ptPeer, center(vil)];
+    const proxy = { id: key, _xzPending: true, _push: 0, giveRes: r.giveRes, giveAmt: r.giveAmt, escort: r.escort, state: 'outbound',
+      from: { name: homeName, zone: peer, _xz: true }, to: vil.econ };
+    const b = _xzMakeBody(key, proxy, pts, 'outbound', now, arriveAt, vil.econ, { tribeId: `xz_${peer}`, tribeName: homeName || peer });
+    b._xzInPts = b.pts;
+    X.st.bodyIn++;
+    _xzTrace('in', { key, from: homeName, fromZone: peer, to: vil.name, res: r.giveRes, amt: r.giveAmt, remain: r.remain, pt: r.ptPeer, len: Math.round(b.len) });
+    console.log(`[${state.zoneId}] 🐂 캐러밴 ${key} 넘어옴: ${homeName}@${peer}→${vil.name} ${r.giveRes}×${Math.round(r.giveAmt)} — 경계 칸 (${Math.round(r.ptPeer.x)},${Math.round(r.ptPeer.y)})에서 이어 걷는다 ${Math.round(b.len)}px · 남은 ${r.remain}일`);
+  } else {
+    const key = r.id;
+    if (state.caravanBodies.has(key)) return;
+    const hc = (state.world.caravans || []).find((x) => x.id === r.id && x.state === 'xzone' && !x._done); if (!hc) return;
+    const vil = state.byEcon.get(hc.from); if (!vil) return;
+    let sp = r.lastTo ? X.core.splitNames(vil.name, peer, r.lastTo) : null;
+    if (!(sp && _xzSamePt(sp.ptLocal, r.ptPeer))) sp = X.core.splitNames(vil.name, peer, hc.to && hc.to.name);
+    const pts = (sp && _xzSamePt(sp.ptLocal, r.ptPeer)) ? sp.ptsLocal.slice().reverse() : [r.ptPeer, center(vil)];
+    const proxy = { id: key, _xzPending: true, _push: 0, giveRes: hc.giveRes, giveAmt: hc.giveAmt, escort: Math.max(0, (hc.escort | 0) - (r.escKilled | 0)), state: 'inbound', from: hc.from, to: hc.to };
+    const b = _xzMakeBody(key, proxy, pts, 'inbound', now, arriveAt, hc.to, { tribeId: `simvil_${vil.dbId}`, tribeName: vil.name, simVid: vil.dbId });
+    X.st.bodyIn++;
+    _xzTrace('in', { key, back: true, to: vil.name, res: r.returningRes, amt: r.returningAmt, remain: r.remain, pt: r.ptPeer, len: Math.round(b.len) });
+    console.log(`[${state.zoneId}] 🐂 캐러밴#${key} 돌아옴: ${r.lastTo || '?'}@${peer}→${vil.name}${r.returningRes ? ` ${r.returningRes}×${Math.round(r.returningAmt || 0)}` : ' (빈손)'} — 경계 칸 (${Math.round(r.ptPeer.x)},${Math.round(r.ptPeer.y)})에서 이어 걷는다 · 남은 ${r.remain}일`);
+  }
+}
+// 관측 — zone.js `/perf` 의 `xzone` 칸(안 문 · 끔이면 null)
+function xzonePerf() {
+  const X = state.xzone; if (!X) return null;
+  const bodies = [];
+  for (const [k, b] of state.caravanBodies || []) if (b._xz) {
+    const P = state.deps.players.get(b.pid);
+    bodies.push({ key: k, phase: b.phase, pending: !!(b.c && b.c._xzPending), handing: !!b._xzHanding, x: P ? Math.round(P.x) : null, y: P ? Math.round(P.y) : null,
+      len: Math.round(b.len), prog: Math.round(b.prog), end: b.pts && b.pts.length ? { x: Math.round(b.pts[b.pts.length - 1].x), y: Math.round(b.pts[b.pts.length - 1].y) } : null,
+      departAt: b.departAt, arriveAt: b.arriveAt, nomPxMs: b.nomPxMs });
+  }
+  const cars = [];
+  for (const c of (state.world.caravans || [])) if (c._xzCross || c._xzHome || c.state === 'xzone') {
+    cars.push({ id: c.id, state: c.state, from: c.from && c.from.name, to: c.to && c.to.name, toZone: c.to && c.to._xz ? c.to.zone : null, home: c._xzHome || null,
+      res: c.giveRes, amt: c.giveAmt, ret: c._returningRes || null, retAmt: c._returningAmt || 0,
+      depart: c.departDay, arrive: c.arriveDay, back: c.returnArriveDay, cross: c._xzCross ? c._xzCross.day : null, xback: c._xzBack ? c._xzBack.day : null });
+  }
+  return { zone: state.zoneId, day: state.world.day, g: state.lastGameDay, dayMs: state.dayMs, epoch: state.epoch, peers: X.host.peers, ready: X.core.peersReady(),
+    geo: X.host.hs.geo, host: X.host.hs, core: X.core.st, st: X.st, stubs: (X.core.X.stubs || []).map((s) => s.name), retry: X.retry.length,
+    bodies, caravans: cars, trace: X.trace.slice(-200) };
 }
 
 // =============================================================================
@@ -3053,6 +3360,9 @@ function init(deps) {
     }
 
     state.lastGameDay = gameDayOf(Date.now()); // 다음 경계부터 틱 (재기동 따라잡기 없음 — 실시간 앵커)
+    // ★★[T533] 존 경계 호스트 — 팔 `T525_CROSS_ZONE`(econ 정본) 켬 + 존이 미는 문을 줬을 때만(끔 = 이 줄 무동작 · 조각 목록·몸 층 무변).
+    //   실패해도 존 부팅은 계속한다(경계가 닫힌 채 = 끔과 같다).
+    if (econV2.T525_CROSS_ZONE && deps.xzonePost) { try { _xzInit(ZONE_ID); } catch (e) { state.xzone = null; console.error(`[${ZONE_ID}] 🌐 [T533] 경계 호스트 실패(경계 닫힌 채 계속):`, e.message); } }
     if (state._routeWarmPending) { state._routeWarmPending = false; try { _routeWarmBuild(); } catch (e) {} }   // ★[T42 ①ⓑ]
     state.ready = true;
     console.log(`[${ZONE_ID}] 🏘️ 마을 시뮬 준비: 마을 ${state.villages.length}, econ 인구 ${world.villages.reduce((s, v) => s + v.npcs.length, 0)}, 스폰 NPC ${npcTotal}, econ day ${world.day}, 게임일 ${state.dayMs / 1000}s${process.env.VILLAGE_DAY_MS ? ' (VILLAGE_DAY_MS 테스트 오버라이드)' : ''}`);
@@ -4522,6 +4832,8 @@ function _openDayJobs(now) {
   const J = [];
   const add = (n, f, sub) => J.push(sub ? { n, f, s: sub } : { n, f });   // ★[T513] `s` = 조각 속 이름(켬일 때만 · `/perf` 칸)
 
+  // ⓪ ★★[T533] 존 경계(팔 켬 + 호스트 — 끔이면 이 줄과 econ 뒤 한 줄 무동작 · 조각 목록 무변): econ **앞** = 지난 경계에 이웃이 민 스텁·기록을 꽂는다.
+  if (state.xzone) add('xzone', () => _xzDayIn());
   // ① econ 1일 틱 — **마을 간 원자**(교역·캐러밴 정산). 쪼개지 않는다. 실측 99ms(p95 163ms).
   //   ★[T513] 손잡이 켬이면 아래 `_econDayParts` 가 같은 일을 조각 여럿으로 얹는다(끔 = 이 한 조각 그대로).
   if (T513_DAY_SLICE && state.econV2 && typeof state.econV2.tickWorldV2Parts === 'function') _econDayParts(C, add);
@@ -4539,6 +4851,8 @@ function _openDayJobs(now) {
     } finally { console.log = _log; }
     _econDayAfter();
   });
+  // ⓪' ★★[T533] econ **뒤** = 나간 기록(경계 칸에 선 몸을 민다) · 경계 마을 스냅(끔이면 무동작).
+  if (state.xzone) add('xzone', () => _xzDayOut());
 
   // ② 인구·직업 재동기 — 실측 1ms. 마을별로 쪼갤 값어치가 없다(조각 오버헤드가 더 크다).
   add('pop', () => {
@@ -9524,13 +9838,17 @@ const FISH_BK = 24;   // 랩 `L_FISHBK` — 어장 한 곳의 단위. 새 수가
 //     `travelDays` 를 그 지연만큼 **같이 민다**. 거리 재계산이 아니라 **경과일의 동기**다.
 function _clockPush(c, days, phase) {
   if (!c || !(days > 0)) return;
+  // ★★[T533] 받은 몸 — 기록이 아직 econ 에 안 들었다: 밀린 날을 쥐고 있다가 다음 경계에 그 기록의 남은 일수에 더한다(`_xzDayIn`).
+  if (c._xzPending) { c._push = (c._push || 0) + days; return; }
   if (phase === 'outbound') {
     c.arriveDay += days; c.returnArriveDay += days;
     // 가는 구간이 늘었다 = 그 구간 일수가 늘었다. 셋이 다시 맞는다.
     if (Number.isFinite(c.travelDays)) c.travelDays += days;
+    if (c._xzCross) c._xzCross.day += days;   // ★[T533] 경계 칸에 서는 날도 같이 민다(몸이 늦으면 넘는 날도 늦다 · 끔이면 없는 칸)
   } else {
     c.returnArriveDay += days;
     // 돌아오는 구간의 지연은 `arriveDay − departDay`(가는 구간)를 안 건드린다 — 그래서 travelDays 도 그대로.
+    if (c._xzBack) c._xzBack.day += days;     // ★[T533] 이웃 존 캐러밴의 귀환 구간 끝(경계 칸)도 같이
   }
 }
 
@@ -9698,6 +10016,7 @@ module.exports = { fishPerf, woodPerf, foragePerf, farmPerf,   // ★[T316] `/pe
   chiefOf, chiefGreetAsk, chiefGreetHas, chiefWalking,
   bedSlotOf,   // ★[T540] 관측 — 침대 슬롯·집(`/walkdbg`)   // ★[T529] 촌장이 온다(손잡이 `T529_CHIEF_WALKS` · 읽는 곳 하나)
   tickPerf,   // ★[T1 §0] 일틱 단계별 소요 — zone.js `/perf` 가 소비(계측 전용)
+  xzoneReceive, xzonePerf,   // ★[T533] 존 경계 — `/handoff_prepare` 의 `kind`(caravan·snap) 받는 문 · `/perf` 의 `xzone` 칸(끔이면 null)
   villagesBusy, villageWait,   // ★[T1 §2-②] "장부 마감 중" 큐 — zone.js 가 마을 요청만 이 문으로 보낸다
   dayNow: _dayNow,   // ★[T1] 마감 중이면 **경계의 순간**을 돌려준다 — 벽시계 적분(광맥 재생)이 조각 순서에 흔들리지 않게
   routeDebug,   // ★[T42] 교역로 캐시 관측·감사 — zone.js `/routedbg` 가 E2E_GIVE 로 게이트
@@ -9869,6 +10188,12 @@ module.exports = { fishPerf, woodPerf, foragePerf, farmPerf,   // ★[T316] `/pe
       compute: (reason, opts) => computeAndInjectDistMatrix(reason, opts),
       setup: (ta, ZONE, world, econ) => { state._distCtx = { ta, ZONE }; state.world = world; state.econ = econ; },
       get DIST_STEP() { return DIST_STEP; },
+    },
+    // ★[T533 2026-09-30] 두 존 합친 격자의 교역로 — `server/xzone-geo.js` 가 경계 칸·두 구간 길을 낸다.
+    //   정본 A\*(`computeRoutePts`) 그대로(사본 0) · `_distProbe.setup` 이 꽂은 어댑터 위에서 · reset = 격자 캐시·재개 슬롯 비움.
+    _routeProbe: {
+      pts: (x0, y0, x1, y1) => computeRoutePts(x0, y0, x1, y1),
+      reset: () => { state._route = null; _pathJob = null; },
     },
     // ★[T100 2026-09-05] 개간 하네스용 — `_distProbe`·`_memberProbe` 와 **같은 규약**(최소 주입구 하나).
     //   econ 랩(`scripts/t100-fieldbase.js`)이 800일을 도는 동안 **밭이 자라야** 산출 식을 잴 수 있다.
