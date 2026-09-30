@@ -1,0 +1,1067 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>듀랑고 미니 — 지형 에디터</title>
+<style>
+  :root { --bg:#11161b; --panel:#1b232b; --panel2:#232d37; --line:#33414e; --txt:#dfe7ee; --mut:#8a98a6; --accent:#4aa6e8; --accent2:#ffd070; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; background:var(--bg); color:var(--txt); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; font-size:13px; }
+  #app { display:flex; height:100vh; }
+  #left { width:208px; background:var(--panel); border-right:1px solid var(--line); padding:10px; overflow-y:auto; flex:none; }
+  #center { flex:1; position:relative; overflow:hidden; }
+  #right { width:230px; background:var(--panel); border-left:1px solid var(--line); padding:10px; overflow-y:auto; flex:none; }
+  h2 { font-size:12px; letter-spacing:.04em; color:var(--mut); margin:14px 0 6px; text-transform:uppercase; }
+  h2:first-child { margin-top:0; }
+  canvas { display:block; cursor:crosshair; }
+  .tool { display:flex; flex-wrap:wrap; gap:5px; }
+  .tool button { flex:1 1 44%; padding:7px 4px; background:var(--panel2); color:var(--txt); border:1px solid var(--line); border-radius:6px; cursor:pointer; font-size:12px; }
+  .tool button.on { background:var(--accent); border-color:var(--accent); color:#06121c; font-weight:600; }
+  .row { display:flex; align-items:center; gap:6px; margin:6px 0; }
+  .row label { color:var(--mut); flex:none; width:54px; }
+  .row input[type=range] { flex:1; }
+  .row input[type=text], .row select { flex:1; background:var(--panel2); color:var(--txt); border:1px solid var(--line); border-radius:5px; padding:4px 6px; }
+  .row .val { width:46px; text-align:right; color:var(--accent2); font-variant-numeric:tabular-nums; }
+  .btn { width:100%; padding:8px; margin-top:6px; background:var(--panel2); color:var(--txt); border:1px solid var(--line); border-radius:6px; cursor:pointer; }
+  .btn.primary { background:var(--accent); color:#06121c; border-color:var(--accent); font-weight:600; }
+  .btn.warn { color:#ff9b9b; }
+  .chk { display:flex; align-items:center; gap:5px; color:var(--mut); margin:3px 0; }
+  #flist { display:flex; flex-direction:column; gap:3px; }
+  .fitem { display:flex; align-items:center; gap:6px; padding:5px 6px; background:var(--panel2); border:1px solid var(--line); border-radius:5px; cursor:pointer; }
+  .fitem.sel { border-color:var(--accent); }
+  .fitem .dot { width:9px; height:9px; border-radius:50%; flex:none; }
+  .fitem .nm { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .fitem .x { color:var(--mut); cursor:pointer; padding:0 3px; }
+  .hint { color:var(--mut); font-size:11px; line-height:1.5; margin-top:4px; }
+  #hud { position:absolute; left:10px; bottom:10px; background:rgba(10,14,18,.78); border:1px solid var(--line); border-radius:6px; padding:5px 9px; font-variant-numeric:tabular-nums; color:var(--mut); pointer-events:none; }
+  #toast { position:absolute; left:50%; top:14px; transform:translateX(-50%); background:var(--accent); color:#06121c; font-weight:600; padding:7px 14px; border-radius:7px; opacity:0; transition:opacity .25s; pointer-events:none; }
+  #modal { position:fixed; inset:0; background:rgba(0,0,0,.6); display:none; align-items:center; justify-content:center; }
+  #modal .box { width:min(720px,92vw); height:min(80vh,640px); background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px; display:flex; flex-direction:column; }
+  #modal textarea { flex:1; width:100%; background:#0d1217; color:#cfe; border:1px solid var(--line); border-radius:6px; font-family:ui-monospace,Menlo,monospace; font-size:12px; padding:8px; resize:none; }
+  #modal .mrow { display:flex; gap:8px; margin-top:8px; }
+  kbd { background:var(--panel2); border:1px solid var(--line); border-radius:4px; padding:0 5px; font-size:11px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="left">
+    <h2>존</h2>
+    <label class="chk"><input type="checkbox" id="multiToggle"> 전체 월드 모드 — 26존 한 번에, 경계 넘어 그리기</label>
+    <div class="row"><select id="zoneSel"></select></div>
+    <div class="hint" id="zoneInfo"></div>
+
+    <h2>도구</h2>
+    <div class="tool" id="tools">
+      <button data-t="river">🌊 강</button>
+      <button data-t="ridge">⛰ 산맥</button>
+      <button data-t="forest">🌲 숲</button>
+      <button data-t="lake">💧 호수</button>
+      <button data-t="pass">🏞 고개</button>
+      <button data-t="valley">🏔 계곡</button>
+      <button data-t="ore">⛏ 광맥</button>
+      <button data-t="village">🏘 마을</button>
+      <button data-t="select">✋ 선택/이동</button>
+    </div>
+    <div class="hint" id="toolHint"></div>
+    <label class="chk"><input type="checkbox" id="smoothToggle" checked> 곡선 미리보기(스무딩)</label>
+    <label class="chk"><input type="checkbox" id="cellToggle"> 🔳 셀 미리보기 (인게임 실제 셀 — 호수 wobble·경계 연속)</label>
+    <div class="row" style="display:flex;gap:6px;align-items:center;margin-top:2px">
+      <label style="white-space:nowrap;font-size:11px;color:var(--mut)">셀 원본</label>
+      <select id="cellSrc" style="flex:1;min-width:0">
+        <option value="edit">편집 피처(내가 그리는 것)</option>
+        <option value="ref">참조 지형 — 다리가 계획된 그 지형</option>
+      </select>
+    </div>
+
+    <h2>속성</h2>
+    <div class="row"><label>이름</label><input type="text" id="nameIn" placeholder="자동"></div>
+    <div class="row" id="widthRow"><label>폭</label><input type="range" id="widthIn" min="80" max="3200" step="20" value="400"><span class="val" id="widthVal">400</span></div>
+    <div class="row" id="radiusRow"><label>반경</label><input type="range" id="radiusIn" min="400" max="3500" step="50" value="1500"><span class="val" id="radiusVal">1500</span></div>
+    <div class="row" id="rxRow"><label>가로</label><input type="range" id="rxIn" min="200" max="16000" step="100" value="7000"><span class="val" id="rxVal">7000</span></div>
+    <div class="row" id="ryRow"><label>세로</label><input type="range" id="ryIn" min="200" max="16000" step="100" value="5500"><span class="val" id="ryVal">5500</span></div>
+    <div class="row" id="denRow"><label>밀도</label><input type="range" id="denIn" min="1" max="3.5" step="0.1" value="2"><span class="val" id="denVal">2.0</span></div>
+    <div id="ridgeFlags">
+      <label class="chk"><input type="checkbox" id="fNoFit"> noFit (경계고정·강회피X)</label>
+      <label class="chk"><input type="checkbox" id="fNoValley"> noValley (자동계곡X)</label>
+      <label class="chk"><input type="checkbox" id="fPinStart"> pinStart (첫점 본줄기부착)</label>
+    </div>
+    <button class="btn primary" id="finishBtn">✓ 선(강/산맥) 완료 <kbd>Enter</kbd></button>
+    <button class="btn" id="undoBtn">↶ 마지막 점 취소 <kbd>Esc</kbd></button>
+
+    <h2>작업</h2>
+    <div class="tool">
+      <button id="undoOpBtn">⟲ 실행취소</button>
+      <button id="redoOpBtn">⟳ 다시실행</button>
+    </div>
+    <div class="hint">단축키: <kbd>Ctrl/⌘+Z</kbd> 실행취소, <kbd>Ctrl/⌘+Y</kbd> 다시실행. 자동저장됨(브라우저).</div>
+    <button class="btn" id="saveWorkBtn">💾 작업 저장(.json)</button>
+    <button class="btn" id="loadWorkBtn">📂 작업 불러오기(.json)</button>
+    <button class="btn" id="loadBakedBtn" style="background:#1f6f4a;border-color:#2c9a68">🔄 내장 최신 작업 불러오기</button>
+    <div id="stampInfo" style="font-size:11px;color:#8aa;margin-top:4px"></div>
+    <input type="file" id="workFile" accept=".json" style="display:none">
+
+    <h2>파일</h2>
+    <button class="btn" id="loadRefBtn">참조 지형 불러오기(JSON)</button>
+    <input type="file" id="refFile" accept=".json" style="display:none">
+    <label class="chk"><input type="checkbox" id="refToggle" checked> 참조 지형 표시</label>
+    <label class="chk"><input type="checkbox" id="bridgeToggle" checked> 🌉 다리 표시(읽기 전용 · 셀 단위) — 축 직선 아니면 빨강 경고</label>
+    <div class="row" style="display:flex;gap:6px;align-items:center;margin-top:2px">
+      <select id="bridgeJump" style="flex:1;min-width:0"><option value="">🌉 다리로 이동…</option></select>
+      <button class="btn" id="bridgeJumpBtn" style="width:auto;padding:4px 10px">이동</button>
+    </div>
+    <button class="btn" id="loadEditBtn">✎ 편집용으로 불러오기(JSON)</button>
+    <input type="file" id="editFile" accept=".json" style="display:none">
+    <button class="btn primary" id="exportBtn">⬇ Export JSON</button>
+    <button class="btn warn" id="clearBtn">전체 지우기</button>
+  </div>
+
+  <div id="center">
+    <canvas id="cv"></canvas>
+    <div id="hud">—</div>
+    <div id="toast"></div>
+  </div>
+
+  <div id="right">
+    <h2>피처 목록 (<span id="fcount">0</span>)</h2>
+    <div id="flist"></div>
+    <h2>사용법</h2>
+    <div class="hint">
+      • 강/산맥: <b>클릭</b>으로 점 추가 → <kbd>Enter</kbd>/더블클릭 완료, 또는 <b>드래그</b>로 자유곡선(놓으면 완료). 곡선 미리보기 ON이면 휘어 보이고, 빌드가 한 번 더 매끄럽게 해. 점마다 <b>폭</b> 슬라이더가 적용돼 하구로 갈수록 두껍게.<br>
+      • 숲/호수/고개: 클릭 한 번으로 배치.<br>
+      • <b>이어 긋기</b>: 강/산맥/계곡 도구로 기존 선의 <b>끝점(흰 원)</b>을 누르면 그 선에 이어진다(끝이면 뒤에 · 시작이면 앞에 · 폭은 그 끝점 폭). 긋는 중 커서를 캔버스 가장자리로 가져가면 화면이 흐른다. <kbd>Esc</kbd>=마지막 점만 취소.<br>
+      • 선택/이동: 점·피처를 드래그. 잡힌 선 위 클릭 = 점 삽입 · 점 잡고 <kbd>Del</kbd> = 점 삭제(점 안 잡으면 지형째) · 점 잡고 폭 슬라이더 = 그 점 폭 · 끝점을 다른 선 끝점에 끌어 놓으면 <b>잇기</b>(삼거리·고리는 안 잇는다).<br>
+      • 휠=줌, 우클릭 드래그/스페이스+드래그=이동.<br>
+      • 좌표는 존 로컬(좌상단 0,0 · y는 북→남), 빌드가 먹는 형식 그대로 Export돼.
+    </div>
+  </div>
+</div>
+
+<div id="modal">
+  <div class="box">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <b>Export — 빌드 파이프라인 입력용 JSON</b><span class="hint">이 내용을 저장하거나 그대로 전달하세요.</span>
+    </div>
+    <textarea id="exportTa" spellcheck="false"></textarea>
+    <div class="mrow">
+      <button class="btn primary" id="copyBtn">복사</button>
+      <button class="btn" id="downloadBtn">다운로드(.json)</button>
+      <button class="btn" id="closeModal">닫기</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+// ===== 존 프리셋 (zone-config 기준 size) =====
+const ZONES = {
+  hanbando:[70016,130016], jungwon_n:[100000,130016], jungwon_s:[100000,60000],
+  nippon:[49984,130016], bering:[160000,49984], sibara:[160000,49984],
+  europa:[89984,130016], kongra:[89984,140000], sahar:[89984,60000],
+  centaria:[60000,130016], nubiano:[109984,130016], canadia:[109984,49984],
+};
+const TYPE_COLOR = { river:'#4aa6e8', ridge:'#b07a44', valley:'#8fd08a', forest:'#46a23c', lake:'#2e8fd0', pass:'#ffd070', ore:'#d99030', village:'#ff6b6b' };
+
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+const S = {
+  zone:'hanbando', ZW:70016, ZH:130016,
+  tool:'river', features:[], draft:null, sel:null, ref:null, showRef:true, showBridges:true, cellSrc:'edit',
+  width:400, radius:1500, rx:7000, ry:5500, den:2.0,
+  flags:{noFit:false,noValley:false,pinStart:false},
+  view:{scale:1, ox:0, oy:0}, pan:null, drag:null, nextId:1, smooth:true, stroke:null,
+  multi:false, mf:[],
+};
+
+// ===== 좌표 변환 (모델좌표→화면. 단일=존로컬, 멀티=월드) =====
+const w2sx = x => x*S.view.scale + S.view.ox;
+const w2sy = y => y*S.view.scale + S.view.oy;
+const s2wx = sx => (sx - S.view.ox)/S.view.scale;
+const s2wy = sy => (sy - S.view.oy)/S.view.scale;
+
+// ===== 멀티존(월드좌표) =====
+const WZONES = {
+  canadia:{off:[0,0],size:[109984,49984],fill:'#3a4a3a'},
+  atlantic:{off:[109984,0],size:[50016,380000],fill:'#16384f'},
+  nordan:{off:[160000,0],size:[89984,49984],fill:'#46504a'},
+  sibara:{off:[249984,0],size:[160000,49984],fill:'#3c3a33'},
+  bering:{off:[409984,0],size:[160000,49984],fill:'#3a3a44'},
+  pacific_arctic:{off:[569984,0],size:[40000,49984],fill:'#1c3a4a'},
+  nubiano:{off:[0,49984],size:[109984,130016],fill:'#5a4a2a'},
+  europa:{off:[160000,49984],size:[89984,130016],fill:'#4a5a3a'},
+  centaria:{off:[249984,49984],size:[60000,130016],fill:'#5a4d30'},
+  jungwon_n:{off:[309984,49984],size:[100000,130016],fill:'#4a3a1c'},
+  hanbando:{off:[409984,49984],size:[70016,130016],fill:'#2f4a36'},
+  nippon:{off:[480000,49984],size:[49984,130016],fill:'#2f4636'},
+  pacific:{off:[529984,49984],size:[80000,330016],fill:'#143246'},
+  mayan:{off:[0,180000],size:[109984,60000],fill:'#3f5a32'},
+  sahar:{off:[160000,180000],size:[89984,60000],fill:'#6b5a2e'},
+  hindgang:{off:[249984,180000],size:[60000,60000],fill:'#5a4a30'},
+  jungwon_s:{off:[309984,180000],size:[100000,60000],fill:'#56431f'},
+  east_sea_s:{off:[409984,180000],size:[70016,60000],fill:'#16384f'},
+  japan_pacific:{off:[480000,180000],size:[49984,129984],fill:'#163a50'},
+  amazonia:{off:[0,240000],size:[109984,69984],fill:'#2f4a2c'},
+  kongra:{off:[160000,240000],size:[89984,140000],fill:'#2c4428'},
+  indoyang:{off:[249984,240000],size:[60000,140000],fill:'#15384a'},
+  nanyang:{off:[309984,240000],size:[100000,69984],fill:'#194a5e'},
+  oseania:{off:[409984,240000],size:[70016,69984],fill:'#1a4258'},
+  patagona:{off:[0,309984],size:[109984,70016],fill:'#4a5240'},
+  nambingyang:{off:[309984,309984],size:[220000,70016],fill:'#122d40'},
+};
+const MZ = Object.keys(WZONES);
+function feats(){ return S.multi ? S.mf : S.features; }
+function setFeats(a){ if(S.multi) S.mf=a; else S.features=a; }
+function zoneAt(x,y){ for(const z of MZ){ const o=WZONES[z].off,s=WZONES[z].size; if(x>=o[0]&&x<o[0]+s[0]&&y>=o[1]&&y<o[1]+s[1]) return z; } return null; }
+function worldBounds(){ let a=[1e15,1e15,-1e15,-1e15]; for(const z of MZ){ const o=WZONES[z].off,s=WZONES[z].size; a[0]=Math.min(a[0],o[0]);a[1]=Math.min(a[1],o[1]);a[2]=Math.max(a[2],o[0]+s[0]);a[3]=Math.max(a[3],o[1]+s[1]); } return a; }
+
+// ===== 히스토리(실행취소/다시실행) + 저장 =====
+let HIST=[], HPOS=-1;
+function snap(){ return JSON.stringify(feats()); }
+function pushHist(){ HIST=HIST.slice(0,HPOS+1); HIST.push(snap()); if(HIST.length>80) HIST.shift(); HPOS=HIST.length-1; saveLocal(); updHistBtns(); }
+function resetHist(){ HIST=[snap()]; HPOS=0; updHistBtns(); }
+function applyHist(){ setFeats(JSON.parse(HIST[HPOS])); S.sel=null; S.selPt=null; S.draft=null; S.cont=null; refresh(); }
+function doUndo(){ if(HPOS>0){ HPOS--; applyHist(); } }
+function doRedo(){ if(HPOS<HIST.length-1){ HPOS++; applyHist(); } }
+function updHistBtns(){ const u=document.getElementById('undoOpBtn'),r=document.getElementById('redoOpBtn'); if(u)u.disabled=HPOS<=0; if(r)r.disabled=HPOS>=HIST.length-1; }
+function saveLocal(){ try{ localStorage.setItem('durango_editor_v1', JSON.stringify({features:S.features, mf:S.mf, zone:S.zone, multi:S.multi, stamp:S.stamp||''})); }catch(e){} }
+function loadLocal(){ try{ const s=localStorage.getItem('durango_editor_v1'); if(!s) return false; const d=JSON.parse(s); S.features=d.features||[]; S.mf=d.mf||[]; S.stamp=d.stamp||''; return (S.features.length||S.mf.length)>0; }catch(e){ return false; } }
+function saveWork(){ const blob=new Blob([JSON.stringify({editorWork:true, features:S.features, mf:S.mf, zone:S.zone})],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='editor-work.json'; a.click(); toast('작업 파일 저장됨'); }
+function loadWork(json){ if(json && json.editorWork){ S.features=json.features||[]; S.mf=json.mf||[]; S.stamp=json.stamp||''; if(json.zone && ZONES[json.zone]){ S.zone=json.zone; [S.ZW,S.ZH]=ZONES[json.zone]; const zs=document.getElementById('zoneSel'); if(zs) zs.value=json.zone; } S.sel=null; S.selPt=null; S.draft=null; S.cont=null; resetHist(); fitView(); refresh(); const nv=S.features.filter(f=>f.type==='village').length; toast('작업 불러옴'+(nv?(' · 마을 '+nv+'개'):'')); if(typeof showStamp==='function') showStamp(); saveLocal(); } else { loadEditable(json); resetHist(); } }
+
+function resize(){ const r = document.getElementById('center').getBoundingClientRect(); cv.width = r.width; cv.height = r.height; render(); }
+function fitView(){
+  const m=20;
+  let bx0=0,by0=0,bw=S.ZW,bh=S.ZH;
+  if(S.multi){ const b=worldBounds(); bx0=b[0]; by0=b[1]; bw=b[2]-b[0]; bh=b[3]-b[1]; }
+  const s = Math.min((cv.width-2*m)/bw, (cv.height-2*m)/bh);
+  S.view.scale = s;
+  S.view.ox = (cv.width - bw*s)/2 - bx0*s;
+  S.view.oy = (cv.height - bh*s)/2 - by0*s;
+}
+
+// ===== 셀 미리보기 (인게임과 동일한 셀 판정 — 월드좌표·존무관) =====
+function _ptSeg(px,py,x1,y1,x2,y2){
+  const dx=x2-x1,dy=y2-y1,L=dx*dx+dy*dy;
+  if(L<1e-4) return {d:Math.hypot(px-x1,py-y1),t:0};
+  let t=((px-x1)*dx+(py-y1)*dy)/L; t=t<0?0:t>1?1:t;
+  return {d:Math.hypot(px-(x1+t*dx),py-(y1+t*dy)),t};
+}
+function _ptInPrep(x,y,o){ // o={path:[{x,y,w}], bb:[x0,y0,x1,y1]}
+  const bb=o.bb; if(x<bb[0]||x>bb[2]||y<bb[1]||y>bb[3]) return false;
+  const p=o.path;
+  for(let i=0;i<p.length-1;i++){ const a=p[i],b=p[i+1];
+    const r=_ptSeg(x,y,a.x,a.y,b.x,b.y);
+    const aw=a.w||300, bw=b.w||300, hw=(aw+(bw-aw)*r.t)/2;
+    if(r.d<hw) return true; }
+  return false;
+}
+function _lakeWob(cx,cy,ang){ // 게임 _lakeWobble과 동일 — 존-로컬 center 시드(게임이 로컬좌표 사용)
+  let s;
+  if(S.multi){ const z=zoneAt(cx,cy); if(z){ const o=WZONES[z].off; s=(cx-o[0])*0.0131+(cy-o[1])*0.0237; } else s=cx*0.0131+cy*0.0237; }
+  else s=cx*0.0131+cy*0.0237; // 단일존 모드 = 이미 로컬좌표
+  return 1+0.13*Math.sin(ang*3+s)+0.08*Math.sin(ang*5-s*1.7)+0.05*Math.sin(ang*7+s*0.6);
+}
+function _ptInLake(x,y,f){
+  const cx=f.center.x, cy=f.center.y, dx=x-cx, dy=y-cy;
+  const rx=(f.rx??f.radius??600), ry=(f.ry??f.radius??600);
+  const R=Math.max(rx,ry)*1.3; if(dx<-R||dx>R||dy<-R||dy>R) return false;
+  const w=_lakeWob(cx,cy,Math.atan2(dy,dx));
+  return (dx*dx)/(rx*rx)+(dy*dy)/(ry*ry) < w*w;
+}
+function _ptInForest(x,y,f){
+  const cx=f.center.x,cy=f.center.y, rx=f.rx||4000, ry=f.ry||3000;
+  const dx=(x-cx)/rx, dy=(y-cy)/ry; return dx*dx+dy*dy<=1;
+}
+// ★★[11차 4차] 셀 미리보기의 **원본**을 고른다 — 이게 이번 혼란의 진짜 원인이었다.
+//   다리는 zone-config(=빌드된 세계)에서 오는데 셀 미리보기는 편집 피처(=지금 그리는 세계)를 래스터화한다.
+//   두 세계를 한 캔버스에 겹쳐 놓고 구분해 주지 않으니, 편집으로 강이 넓어지면 **다리가 강을 못 건너는 것처럼** 보인다.
+//   (실측: 빌드 지형 기준으로는 7개 다리 전부 양 끝이 뭍이고 다리 밖으로 이어지는 물이 0칸이다.)
+//   → 참조 지형을 셀 원본으로 쓰면 다리와 물이 같은 세계에서 나와 화면이 자기모순을 일으키지 않는다.
+function refAsFeats(zd, ox, oy){
+  if(!zd) return [];
+  ox = ox || 0; oy = oy || 0;
+  const out = [];
+  const mk = p => ({ x:(p.pos?p.pos[0]:p[0]) + ox, y:(p.pos?p.pos[1]:p[1]) + oy, w:(p.width||p[2]||300) });
+  for(const r of (zd.rivers||[])) out.push({ type:'river', path:(r.path||[]).map(mk) });
+  for(const r of (zd.ridges||[])) out.push({ type:'ridge', path:(r.path||[]).map(mk) });
+  for(const r of (zd.valleys||[])) out.push({ type:'valley', path:(r.path||[]).map(mk) });   // ★[11차] 계곡 = 산맥을 가로지르는 선형 통로
+  for(const f of (zd.forests||[])) if(f.center) out.push({ type:'forest', center:{x:f.center[0]+ox,y:f.center[1]+oy}, rx:f.rx, ry:f.ry, density:(f.densityMult||1.5) });
+  for(const l of (zd.lakes||[])) if(l.center) out.push({ type:'lake', center:{x:l.center[0]+ox,y:l.center[1]+oy}, rx:l.rx||l.radius||500, ry:l.ry||l.radius||500, radius:l.radius });
+  return out;
+}
+function refZoneData(){ if(!S.ref) return null; return S.multi ? (S.ref[S.zone]||null) : (S.ref[S.zone]||S.ref); }
+function cellPreviewSrc(){
+  if(S.cellSrc !== 'ref') return feats();
+  if(!S.ref) return [];                                   // 참조 미로드 — 조용히 빈 화면 대신 호출측이 안내한다
+  if(S.multi){ const out=[]; for(const z of MZ){ if(!S.ref[z]||!WZONES[z]) continue; out.push(...refAsFeats(S.ref[z], WZONES[z].off[0], WZONES[z].off[1])); } return out; }
+  return refAsFeats(S.ref[S.zone] || S.ref, 0, 0);
+}
+function drawCellPreview(srcFeats){
+  // 피처 1회 준비 (스무딩 path + bbox) — 인게임 빌드와 동일하게 smooth 적용
+  // ★[11차 4차] 단, 참조 원본이 `smooth:false`를 명시하면 **깎지 않는다**.
+  //   게임 terrain.js `_isPointInRiver`는 경로를 그대로 쓴다. 이미 빌드된 지형을 에디터가 한 번 더 chaikin으로
+  //   깎으면 강이 부풀어 "인게임 실제 셀"이라는 라벨이 거짓이 된다(11차 실측: 게임 28칸 vs 에디터 50칸).
+  const noSmooth = (S.cellSrc==='ref') && !!(refZoneData() && refZoneData().smooth === false);
+  const rivers=[], ridges=[], lakes=[], forests=[], valleys=[];
+  for(const f of (srcFeats || feats())){
+    if(f.type==='river'||f.type==='ridge'||f.type==='valley'||f.type==='valley'){
+      const path=(S.smooth && !noSmooth && f.path.length>=3)?chaikinPts(f.path,2):f.path;
+      let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9,mw=0;
+      for(const p of path){ if(p.x<x0)x0=p.x; if(p.x>x1)x1=p.x; if(p.y<y0)y0=p.y; if(p.y>y1)y1=p.y; if((p.w||300)>mw)mw=p.w||300; }
+      const m=mw/2+1; (f.type==='river'?rivers:(f.type==='valley'?valleys:ridges)).push({path,bb:[x0-m,y0-m,x1+m,y1+m]});
+    } else if(f.type==='lake') lakes.push(f);
+    else if(f.type==='forest' && (f.density||2)>1.5) forests.push(f);
+  }
+  const sc=S.view.scale;
+  // 화면 보이는 월드 범위
+  const wx0=(-S.view.ox)/sc, wy0=(-S.view.oy)/sc;
+  const wx1=(cv.width-S.view.ox)/sc, wy1=(cv.height-S.view.oy)/sc;
+  // 블록이 화면 ≥4px 되도록 step 자동 조정 → 줌과 무관하게 블록 수 제한(고줌은 32px 정확 셀)
+  let step=32; while(step*sc < 4) step+=32;
+  const spx=Math.max(1, step*sc)+1;
+  const COL=['', '#2e6fa8','#6e6356','#2f7a3a']; // [_, water, rock, forest]
+  for(let wy=Math.floor(wy0/step)*step; wy<wy1; wy+=step){
+    const sy=w2sy(wy);
+    for(let wx=Math.floor(wx0/step)*step; wx<wx1; wx+=step){
+      const cx=wx+step/2, cy=wy+step/2;
+      let t=0;
+      for(const o of rivers){ if(_ptInPrep(cx,cy,o)){ t=1; break; } }
+      if(!t) for(const f of lakes){ if(_ptInLake(cx,cy,f)){ t=1; break; } }
+      // ★계곡은 바위를 지운다 — 서버 terrain.js isRockCellLocal 과 같은 우선순위(계곡·고개 > 물 > 바위)
+      if(!t) for(const o of ridges){ if(_ptInPrep(cx,cy,o)){ t=2; break; } }
+      if(t===2) for(const o of valleys){ if(_ptInPrep(cx,cy,o)){ t=0; break; } }
+      if(!t) for(const f of forests){ if(_ptInForest(cx,cy,f)){ t=3; break; } }
+      if(!t) continue; // plain — 배경 비침
+      ctx.fillStyle=COL[t];
+      ctx.fillRect(w2sx(wx), sy, spx, spx);
+    }
+  }
+}
+
+// ===== 렌더 =====
+function render(){
+  ctx.clearRect(0,0,cv.width,cv.height);
+  if(S.multi) drawBgMulti(); else drawBgSingle();
+  if(S.showRef && S.ref){ if(S.multi) drawRefMulti(); else drawSet((S.ref[S.zone]||S.ref), true); }
+  if(S.cellPreview){ drawCellPreview(cellPreviewSrc()); drawSet({features:feats()}, true); }
+  else drawSet({features:feats()}, false);
+  if(S.draft) drawFeature(S.draft, false, true);
+  // ★★[11차 3차 — 실화면 교정] 다리는 **맨 마지막에** 그린다.
+  //   앞서 참조 지형 바로 뒤에 그렸더니 편집 피처(사용자가 그리는 강)가 그 위를 덮어 다리가 강 밑으로 사라졌다.
+  //   다리는 편집 대상이 아니라 **읽기 전용 오버레이**라, 무엇을 그리든 그 위에 보여야 조회 도구 구실을 한다.
+  //   (참조 JSON이 없어도 내장 스냅샷으로 그린다 — 다리는 맵에 박힌 사물이지 불러오는 데이터가 아니다.)
+  if(S.showBridges){ if(S.multi){ for(const z of MZ){ if(!WZONES[z]) continue; drawBridges(S.ref&&S.ref[z], WZONES[z].off, z); } } else drawBridges(S.ref&&(S.ref[S.zone]||S.ref), null, S.zone); }
+  drawEndpoints(); refreshHud();
+}
+// ★[T553 ①] 끝점은 늘 작은 원으로 보이고(선 도구면 그 타입 · 선택 도구면 선 전부) 가까이 가면 굵어진다 — 이어 긋기·잇기의 과녁
+function drawEndpoints(){
+  const lineTool = S.tool==='river'||S.tool==='ridge'||S.tool==='valley';
+  if(!lineTool && S.tool!=='select') return;
+  ctx.save();
+  for(const f of feats()){
+    if(!f.path || !f.path.length || !(f.type==='river'||f.type==='ridge'||f.type==='valley')) continue;
+    if(lineTool && f.type!==S.tool) continue;
+    for(const end of ['start','end']){ const q = end==='start'?f.path[0]:f.path[f.path.length-1], X=w2sx(q.x), Y=w2sy(q.y);
+      if(X<-20||Y<-20||X>cv.width+20||Y>cv.height+20) continue;
+      const hot = S.hover && S.hover.f===f && S.hover.end===end;
+      ctx.beginPath(); ctx.arc(X,Y,hot?7:3.5,0,7); ctx.fillStyle=hot?'#ffd070':'rgba(255,255,255,.85)'; ctx.fill();
+      ctx.lineWidth=hot?2.5:1; ctx.strokeStyle=hot?'#1a1a1a':'rgba(0,0,0,.6)'; ctx.stroke(); }
+  }
+  if(S.sel && S.selPt!=null && S.sel.path && S.sel.path[S.selPt]){ const q=S.sel.path[S.selPt]; ctx.beginPath(); ctx.arc(w2sx(q.x),w2sy(q.y),6,0,7); ctx.fillStyle='#ff6b6b'; ctx.fill(); ctx.lineWidth=2; ctx.strokeStyle='#fff'; ctx.stroke(); }
+  ctx.restore();
+}
+// ===== 🌉 다리 오버레이(읽기 전용) — export-for-editor.js가 실어 보낸 zone-config 다리 셀 =====
+//   ★셀 좌표가 정본이라 가공하지 않는다: 셀 (cx,cy) → 월드 px (cx*32, cy*32), 한 변 32px 정사각.
+//   ★불변식(사용자 확정): 다리는 동서남북 4방(축 직선)으로만 이어진다. 4방 이웃이 하나도 없는 셀
+//     (대각으로만 이어졌거나 고립)은 **데이터 오류**이므로 빨강으로 칠하고 개수를 표시한다.
+//   지형 편집 동작에는 관여하지 않는다(그리기 전용 — 히트테스트·Export 대상 아님).
+// ★[11차] 커서 밑의 지형 이름 — 참조(=게임 로드본)에서 강·산맥·숲·호수·고개를 역조회한다.
+//   정본 v3가 altName(백두대간 등 v2 시절 지명)을 실어 보내므로 있으면 괄호로 병기한다.
+function refFeatureAt(zd, x, y){
+  if(!zd) return null;
+  const wOf = (p)=> (p.width!=null? p.width : 300);
+  const seg = (a,b,wa,wb)=>{
+    const vx=b[0]-a[0], vy=b[1]-a[1], L2=vx*vx+vy*vy||1;
+    let t=((x-a[0])*vx+(y-a[1])*vy)/L2; t=Math.max(0,Math.min(1,t));
+    const w=(wa+(wb-wa)*t)/2;
+    return Math.hypot(x-(a[0]+vx*t), y-(a[1]+vy*t)) <= w;
+  };
+  for(const [key,icon] of [['rivers','~'],['ridges','^'],['valleys','v']]){
+    for(const o of (zd[key]||[])){
+      const p=o.path||[];
+      for(let i=0;i<p.length-1;i++){
+        const A=p[i], B=p[i+1];
+        const ap=A.pos||[A.x,A.y], bp=B.pos||[B.x,B.y];
+        if(seg(ap,bp,wOf(A),wOf(B))) return icon+' '+o.name+(o.altName?' ('+o.altName+')':'');
+      }
+    }
+  }
+  for(const [key,icon] of [['lakes','o'],['forests','T'],['passes','^']]){
+    for(const o of (zd[key]||[])){
+      const c=o.center||o.pos; if(!c) continue;
+      const rx=o.rx||o.radius||0, ry=o.ry||o.radius||0;
+      if(!rx||!ry) continue;
+      const dx=(x-c[0])/rx, dy=(y-c[1])/ry;
+      if(dx*dx+dy*dy<=1) return icon+' '+o.name+(o.altName?' ('+o.altName+')':'');
+    }
+  }
+  return null;
+}
+// ★[11차] 선택한 강·산맥의 **점간격**을 HUD에 바로 띄운다 — 재민이 "간격 차이 난다"를 눈으로
+//   따지지 않고 숫자로 확인할 수 있게. 균등하면 편차 1.0x 근처로 뜬다.
+function selSpacing(){
+  const f=S.sel; if(!f||!(f.type==='river'||f.type==='ridge'||f.type==='valley')||!f.path||f.path.length<2) return '';
+  const ds=[]; for(let i=0;i<f.path.length-1;i++){const a=f.path[i],b=f.path[i+1];ds.push(Math.hypot(b.x-a.x,b.y-a.y));}
+  ds.sort((x,y)=>x-y);
+  const mn=ds[0], md=ds[ds.length>>1], mx=ds[ds.length-1];
+  const dev=(mx/Math.max(1,mn));
+  const col = dev<1.5?'#7bd88f':(dev<3?'#ffd166':'#ff6b6b');
+  return `   |  ✎ ${f.name} · 점 ${f.path.length} · 간격 ${Math.round(mn)}~${Math.round(mx)}(중앙 ${Math.round(md)}) · 편차 ${dev.toFixed(2)}x`;
+}
+const BR_CELL = 32;
+// ★★[11차 2차] 다리 셀 **내장 스냅샷** — zone-config에서 뽑은 정적 데이터(한반도 294셀, ~2.8KB).
+//   이유: 다리는 사용자가 편집하는 대상이 아니라 맵에 박힌 사물인데, 참조 지형 JSON을 매 세션 다시
+//   불러와야만 보였다(참조는 브라우저 자동저장 대상이 아님). 실제로 "다리가 하나도 안 보인다"가
+//   그것 때문이었다 — 안 보이는 게 기본값인 데이터는 없느니만 못하다. 그래서 파일에 박아 둔다.
+//   참조 JSON에 bridges가 있으면 **그쪽이 우선**(최신 데이터 존중), 없으면 이 스냅샷으로 그린다.
+let WORK_BAKED = null; // @inline-work — 레포 판은 비어 있다(아래 bootBaked 가 `map-editor-baked.json` 을 fetch) · 맥 사본(file://)은 `scripts/build-map-editor.js` 가 이 줄에 작업을 박는다
+// ★[11차] 최신 작업을 HTML에 통째로 내장한다. 이유:
+//   에디터는 작업을 localStorage 에 자동저장하고 **시작할 때 되살린다**. 그래서 파일을 새로 받아도
+//   새로고침만 해서는 옛 작업이 그대로 뜬다 — 재민이 두 번 당한 함정이 정확히 이것이다.
+//   내장해 두면 버튼 한 번으로 최신이 되고, 되살린 작업이 낡았으면 배너로 알린다.
+let BR_BAKED = {}; // @inline-bridges — 위와 같다(다리 셀 스냅샷)
+function brCellsOf(zoneKey, zd){
+  const fromRef = (zd && zd.bridges) || null;
+  if(fromRef && fromRef.length) return { arr: fromRef, src: 'ref' };
+  const bk = BR_BAKED[zoneKey];
+  return bk && bk.length ? { arr: bk, src: 'baked' } : { arr: [], src: null };
+}
+// ★[11차] 다리 셀 → "몇 번 다리인지" 인덱스(4연결 성분 라벨링). HUD가 커서 아래 셀을 즉답하는 데 쓴다.
+//   다리 데이터는 정적(zone-config)이라 존별 1회 계산 후 캐시. 셀 좌표가 정본이라 여기서도 가공하지 않는다.
+const _brIdxCache = {};
+function bridgeIndex(zoneKey, zd){
+  const got = brCellsOf(zoneKey, zd);
+  const ck = zoneKey + '|' + got.src + '|' + got.arr.length;
+  if(_brIdxCache[ck]) return _brIdxCache[ck];
+  const arr = got.arr;
+  const set = new Set(); for(let i=0;i+1<arr.length;i+=2) set.add(arr[i]+','+arr[i+1]);
+  const label = new Map(), meta = []; let n = 0;
+  for(const k of set){
+    if(label.has(k)) continue;
+    n++; const g=[k]; label.set(k,n); const st=[k];
+    while(st.length){ const c=st.pop(), i=c.indexOf(','), x=+c.slice(0,i), y=+c.slice(i+1);
+      for(const d of [[1,0],[-1,0],[0,1],[0,-1]]){ const nk=(x+d[0])+','+(y+d[1]);
+        if(set.has(nk) && !label.has(nk)){ label.set(nk,n); st.push(nk); g.push(nk); } } }
+    const xs=g.map(k2=>+k2.slice(0,k2.indexOf(','))), ys=g.map(k2=>+k2.slice(k2.indexOf(',')+1));
+    const x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys);
+    const w=x1-x0+1, h=y1-y0+1;
+    meta.push({ n, cells:g.length, x0,x1,y0,y1, axis:(w>=h?'동서':'남북'), len:Math.max(w,h), wid:Math.min(w,h) });
+  }
+  return (_brIdxCache[ck] = { label, meta, total:set.size, src:got.src });
+}
+function drawBridges(zd, off, zoneKey){
+  const arr = brCellsOf(zoneKey || S.zone, zd).arr; if(!arr.length) return;
+  const ox = (off && off[0]) || 0, oy = (off && off[1]) || 0, sc = S.view.scale;
+  const set = new Set(); for(let i=0;i+1<arr.length;i+=2) set.add(arr[i]+','+arr[i+1]);
+  const wpx = BR_CELL*sc, W = Math.max(2, wpx);   // 축소 시에도 최소 2px — 전역 뷰에서 다리를 놓치지 않게
+  let bad = 0, badX = 0, badY = 0;
+  ctx.save();
+  for(let i=0;i+1<arr.length;i+=2){
+    const cx = arr[i], cy = arr[i+1];
+    let orth = 0;
+    for(const d of [[1,0],[-1,0],[0,1],[0,-1]]) if(set.has((cx+d[0])+','+(cy+d[1]))) orth++;
+    const isBad = orth === 0;                       // 대각 전용 연결 or 고립 = 축 직선 위반
+    const X = w2sx(ox+cx*BR_CELL), Y = w2sy(oy+cy*BR_CELL);
+    ctx.fillStyle = isBad ? 'rgba(255,64,64,.9)' : 'rgba(198,152,88,.92)';
+    ctx.fillRect(X, Y, W, W);
+    if(wpx >= 5){ ctx.strokeStyle = isBad ? 'rgba(255,225,225,.95)' : 'rgba(84,56,26,.8)'; ctx.lineWidth = 1; ctx.strokeRect(X+0.5, Y+0.5, W-1, W-1); }
+    if(isBad){ bad++; badX = X; badY = Y; }
+  }
+  if(bad){
+    ctx.fillStyle = '#ff5555'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText('⚠ 다리 축 직선 위반 '+bad+'셀(대각 연결·고립)', badX+8, badY-6);
+  }
+  ctx.restore();
+}
+function drawBgSingle(){
+  ctx.fillStyle = '#2f4a36';
+  ctx.fillRect(w2sx(0),w2sy(0),S.ZW*S.view.scale,S.ZH*S.view.scale);
+  ctx.strokeStyle = 'rgba(255,255,255,.06)'; ctx.lineWidth=1;
+  for(let x=0;x<=S.ZW;x+=10000){ ctx.beginPath(); ctx.moveTo(w2sx(x),w2sy(0)); ctx.lineTo(w2sx(x),w2sy(S.ZH)); ctx.stroke(); }
+  for(let y=0;y<=S.ZH;y+=10000){ ctx.beginPath(); ctx.moveTo(w2sx(0),w2sy(y)); ctx.lineTo(w2sx(S.ZW),w2sy(y)); ctx.stroke(); }
+  ctx.strokeStyle='rgba(255,255,255,.35)'; ctx.setLineDash([5,4]); ctx.strokeRect(w2sx(0),w2sy(0),S.ZW*S.view.scale,S.ZH*S.view.scale); ctx.setLineDash([]);
+  ctx.fillStyle='#7f8c99'; ctx.font='11px sans-serif'; ctx.textAlign='center';
+  ctx.fillText('N (북, y=0)', w2sx(S.ZW/2), w2sy(0)-6);
+  ctx.fillText('S (남, y='+S.ZH+')', w2sx(S.ZW/2), w2sy(S.ZH)+14);
+  ctx.save(); ctx.translate(w2sx(0)-8, w2sy(S.ZH/2)); ctx.rotate(-Math.PI/2); ctx.fillText('W (서)',0,0); ctx.restore();
+  ctx.save(); ctx.translate(w2sx(S.ZW)+8, w2sy(S.ZH/2)); ctx.rotate(Math.PI/2); ctx.fillText('E (동)',0,0); ctx.restore();
+}
+function drawBgMulti(){
+  for(const z of MZ){ const o=WZONES[z].off,s=WZONES[z].size; ctx.fillStyle=WZONES[z].fill; ctx.fillRect(w2sx(o[0]),w2sy(o[1]),s[0]*S.view.scale,s[1]*S.view.scale); }
+  ctx.strokeStyle='rgba(255,255,255,.32)'; ctx.setLineDash([5,4]); ctx.lineWidth=1;
+  for(const z of MZ){ const o=WZONES[z].off,s=WZONES[z].size; ctx.strokeRect(w2sx(o[0]),w2sy(o[1]),s[0]*S.view.scale,s[1]*S.view.scale); }
+  ctx.setLineDash([]);
+  ctx.fillStyle='#cdd6df'; ctx.font='bold 11px sans-serif'; ctx.textAlign='center';
+  for(const z of MZ){ const o=WZONES[z].off,s=WZONES[z].size; if(s[0]*S.view.scale<42) continue; ctx.fillText(z, w2sx(o[0]+s[0]/2), w2sy(o[1])+15); }
+}
+function drawRefMulti(){ for(const z in S.ref){ if(!WZONES[z]) continue; drawSetOff(S.ref[z], WZONES[z].off); } }
+// ★[11차 재민 지시] **물이 산 위**다. 그리는 순서 = 숲 → 산맥 → 계곡 → 호수 → 강.
+//   판정(terrain.js isRockCellLocal)이 물 우선인데 그림만 산이 덮으면, 에디터가 게임과 다른 말을 한다.
+//   강을 먼저 그리고 산맥을 나중에 그리면 산맥이 강을 덮어 버린다 — 그게 지금까지의 순서였다.
+function drawSetOff(zd, off){
+  const ox=off[0], oy=off[1];
+  for(const f of (zd.forests||[])){ drawEllipse(f.center[0]+ox,f.center[1]+oy,f.rx,f.ry,true); }
+  for(const r of (zd.ridges||[])){ drawPoly((r.path||[]).map(p=>({x:(p.pos?p.pos[0]:p[0])+ox,y:(p.pos?p.pos[1]:p[1])+oy,w:p.width||p[2]||300})),'ridge',true,false); }
+  for(const r of (zd.valleys||[])){ drawPoly((r.path||[]).map(p=>({x:(p.pos?p.pos[0]:p[0])+ox,y:(p.pos?p.pos[1]:p[1])+oy,w:p.width||p[2]||300})),'valley',true,false); }
+  for(const l of (zd.lakes||[])){ if(l.center) drawEllipse(l.center[0]+ox,l.center[1]+oy,l.rx||l.radius||500,l.ry||l.radius||500,true,null,'46,143,208'); }
+  for(const r of (zd.rivers||[])){ drawPoly((r.path||[]).map(p=>({x:(p.pos?p.pos[0]:p[0])+ox,y:(p.pos?p.pos[1]:p[1])+oy,w:p.width||p[2]||300})),'river',true,false); }
+}
+// 피처 그리는 층 — 숫자가 클수록 위. ★물(호수·강)이 산맥보다 위여야 한다.
+const ZORD = { forest:0, ore:1, ridge:2, valley:3, pass:4, lake:5, river:6, village:7 };
+function drawSet(set, faint){
+  const list = (set.features || []).slice().sort((a,b)=>(ZORD[a.type]??9)-(ZORD[b.type]??9));
+  for(const f of list) drawFeature(f, faint, false);
+  // ref(JSON) 형식 지원 — 같은 순서
+  if(set.forests){ for(const f of set.forests) drawEllipse(f.center[0],f.center[1],f.rx,f.ry,faint); }
+  if(set.ridges){ for(const r of set.ridges) drawPathFeature(r,'ridge',faint); }
+  if(set.valleys){ for(const r of set.valleys) drawPathFeature(r,'valley',faint); }
+  if(set.lakes){ for(const l of set.lakes) if(l.center) drawEllipse(l.center[0],l.center[1],l.rx||l.radius||500,l.ry||l.radius||500,faint,null,'46,143,208'); }
+  if(set.rivers){ for(const r of set.rivers) drawPathFeature(r,'river',faint); }
+}
+function drawPathFeature(r, type, faint){
+  const pts=(r.path||[]).map(p=>({x:p.pos?p.pos[0]:p[0], y:p.pos?p.pos[1]:p[1], w:p.width||p[2]||300}));
+  drawPoly(pts, type, faint, false);
+}
+function drawFeature(f, faint, draft){
+  if(f.type==='river'||f.type==='ridge'||f.type==='valley'){ drawPoly(f.path, f.type, faint, draft && false);
+    if(f.name && !faint && f.path && f.path.length){ const mid=f.path[Math.floor(f.path.length/2)]; ctx.fillStyle=f.type==='river'?'#bfe6ff':(f.type==='valley'?'#d6f0d2':'#e8c79a'); ctx.font='10px sans-serif'; ctx.textAlign='center'; ctx.lineWidth=2.5; ctx.strokeStyle='#0d1217'; ctx.strokeText(f.name,w2sx(mid.x),w2sy(mid.y)-3); ctx.fillText(f.name,w2sx(mid.x),w2sy(mid.y)-3); } }
+  else if(f.type==='forest') drawEllipse(f.center.x,f.center.y,f.rx,f.ry,faint,f.name);
+  else if(f.type==='lake') drawEllipse(f.center.x,f.center.y,f.rx??f.radius,f.ry??f.radius,faint,f.name,'46,143,208');
+  else if(f.type==='pass') drawCircle(f.center.x,f.center.y,f.radius,'#ffd070',faint,f.name,true);
+  else if(f.type==='ore') drawCircle(f.center.x,f.center.y,f.radius,'#d99030',faint,f.name,true);
+  else if(f.type==='village'){
+    const sx=w2sx(f.center.x), sy=w2sy(f.center.y);
+    const VC={'광산':'#e23b3b','어촌':'#15b8c9','임업':'#1f7a2e','농촌':'#e0b020'};
+    const t=(f.name||'').replace(/[0-9]/g,''); const col=VC[t]||'#ff6b6b';
+    ctx.fillStyle=faint?'rgba(255,107,107,.45)':col; ctx.strokeStyle='#fff'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.arc(sx,sy,6,0,7); ctx.fill(); ctx.stroke();
+    if(f.name && !faint){ ctx.font='10px sans-serif'; ctx.textAlign='center'; ctx.lineWidth=3; ctx.strokeStyle='#0d1217'; ctx.strokeText(f.name,sx,sy-9); ctx.fillStyle='#fff'; ctx.fillText(f.name,sx,sy-9); }
+  }
+  if(draft && (f.type==='river'||f.type==='ridge'||f.type==='valley')){
+    for(const p of f.path){ ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(w2sx(p.x),w2sy(p.y),3,0,7); ctx.fill(); }
+  }
+  if(S.sel===f && (f.type==='river'||f.type==='ridge'||f.type==='valley')){
+    for(const p of f.path){ ctx.strokeStyle='#ffd070'; ctx.lineWidth=1.5; ctx.beginPath(); ctx.arc(w2sx(p.x),w2sy(p.y),4,0,7); ctx.stroke(); }
+  }
+  if(S.sel===f && (f.type==='forest'||f.type==='lake')){ const rx=f.rx??f.radius, ry=f.ry??f.radius; drawHandle(f.center.x+rx, f.center.y); drawHandle(f.center.x, f.center.y+ry); }
+  if(S.sel===f && (f.type==='pass'||f.type==='ore'||f.type==='village')){ drawHandle(f.center.x+f.radius, f.center.y); }
+}
+function drawHandle(wx,wy){ const x=w2sx(wx),y=w2sy(wy); ctx.fillStyle='#ffd070'; ctx.strokeStyle='#1a1a1a'; ctx.lineWidth=1; ctx.fillRect(x-4,y-4,8,8); ctx.strokeRect(x-4,y-4,8,8); }
+function syncSel(f){ if(!f)return; const set=(id,val)=>{ const e=document.getElementById(id); if(!e)return; e.value=val; const v=document.getElementById(id.replace('In','Val')); if(v)v.textContent=(id==='denIn'?(+val).toFixed(1):Math.round(val)); };
+  if(f.type==='forest'){ set('rxIn',f.rx); set('ryIn',f.ry); set('denIn',f.density); S.rx=f.rx; S.ry=f.ry; S.den=f.density; }
+  else if(f.type==='lake'){ if(f.rx==null){ f.rx=f.radius; f.ry=f.radius; } set('rxIn',f.rx); set('ryIn',f.ry); S.rx=f.rx; S.ry=f.ry; }
+  else if(f.type==='pass'||f.type==='ore'||f.type==='village'){ set('radiusIn',f.radius); S.radius=f.radius; } }
+function chaikinPts(pts, rounds){
+  if(!pts || pts.length<3) return pts;
+  let c=pts;
+  for(let r=0;r<rounds;r++){
+    const o=[c[0]];
+    for(let i=0;i<c.length-1;i++){ const a=c[i],b=c[i+1];
+      o.push({x:a.x*0.75+b.x*0.25, y:a.y*0.75+b.y*0.25, w:a.w*0.75+b.w*0.25});
+      o.push({x:a.x*0.25+b.x*0.75, y:a.y*0.25+b.y*0.75, w:a.w*0.25+b.w*0.75}); }
+    o.push(c[c.length-1]); c=o;
+  }
+  return c;
+}
+function drawPoly(pts, type, faint, draft){
+  if(!pts||pts.length<1) return;
+  const col = type==='river' ? '#4aa6e8' : (type==='valley' ? '#8fd08a' : '#6e5436');
+  ctx.lineCap='round'; ctx.lineJoin='round';
+  const sm = (S.smooth && pts.length>=3) ? chaikinPts(pts,2) : pts;
+  for(let i=0;i<sm.length-1;i++){
+    const a=sm[i],b=sm[i+1];
+    const wpx = Math.max(1.2, ((a.w+b.w)/2)*S.view.scale);
+    ctx.strokeStyle = faint? (type==='river'?'rgba(74,166,232,.35)':(type==='valley'?'rgba(143,208,138,.45)':'rgba(110,84,54,.4)')) : col;
+    ctx.lineWidth = wpx;
+    ctx.beginPath(); ctx.moveTo(w2sx(a.x),w2sy(a.y)); ctx.lineTo(w2sx(b.x),w2sy(b.y)); ctx.stroke();
+    if(type==='ridge' && !faint){ // 능선 안쪽 옅은 띠
+      ctx.strokeStyle='#a98a64'; ctx.lineWidth=Math.max(0.6,wpx*0.42);
+      ctx.beginPath(); ctx.moveTo(w2sx(a.x),w2sy(a.y)); ctx.lineTo(w2sx(b.x),w2sy(b.y)); ctx.stroke();
+    }
+  }
+}
+function drawEllipse(cx,cy,rx,ry,faint,name,rgb){
+  const c = rgb||'56,150,52';
+  ctx.fillStyle = faint?`rgba(${c},.22)`:`rgba(${c},.45)`;
+  ctx.beginPath(); ctx.ellipse(w2sx(cx),w2sy(cy),rx*S.view.scale,ry*S.view.scale,0,0,7); ctx.fill();
+  if(name && !faint){ ctx.fillStyle=rgb?'#dde9f2':'#cfe8c0'; ctx.font='10px sans-serif'; ctx.textAlign='center'; ctx.fillText(name,w2sx(cx),w2sy(cy)); }
+}
+function drawCircle(cx,cy,r,col,faint,name,dash){
+  ctx.strokeStyle=col; ctx.lineWidth=1.5; if(dash)ctx.setLineDash([4,3]);
+  if(!dash){ ctx.fillStyle = faint?'rgba(46,143,208,.3)':'rgba(46,143,208,.6)'; ctx.beginPath(); ctx.arc(w2sx(cx),w2sy(cy),r*S.view.scale,0,7); ctx.fill(); }
+  else { ctx.beginPath(); ctx.arc(w2sx(cx),w2sy(cy),r*S.view.scale,0,7); ctx.stroke(); }
+  ctx.setLineDash([]);
+  if(name && !faint){ ctx.fillStyle='#fff'; ctx.font='10px sans-serif'; ctx.textAlign='center'; ctx.fillText(name,w2sx(cx),w2sy(cy)+3); }
+}
+
+// ===== 입력 =====
+function evWorld(e){ const r=cv.getBoundingClientRect(); return { x:s2wx(e.clientX-r.left), y:s2wy(e.clientY-r.top), sx:e.clientX-r.left, sy:e.clientY-r.top }; }
+cv.addEventListener('mousedown', e=>{
+  const p = evWorld(e);
+  if(e.button===2 || e.button===1 || S.space){ S.pan={x:e.clientX,y:e.clientY,ox:S.view.ox,oy:S.view.oy}; return; }
+  if(S.tool==='select'){ pickForDrag(p); return; }
+  if(S.tool==='river'||S.tool==='ridge'||S.tool==='valley'){
+    // ★[T553 ①] 이어 긋기 — 긋는 중이 아닐 때 **같은 타입 기존 지형의 끝점**(화면 12px 안)을 누르면 새 feature 가 아니라 그 지형을 잇는다.
+    //   (종전: draft 가 없으면 무조건 새 feature → 마우스 한계로 한 번 떼면 다음 획이 딴 강이 됐다 · 뒤에 merge-split-rivers 가 땜질)
+    if(!S.draft || S.draft.type!==S.tool || !S.draft.path.length){
+      const hit = endpointAt(p.sx, p.sy, S.tool, null);
+      if(hit){ beginContinue(hit.f, hit.end); S.stroke={ dragged:false, lx:p.x, ly:p.y }; render(); return; }
+    }
+    if(!S.draft || S.draft.type!==S.tool){ S.draft={ id:S.nextId++, type:S.tool, name:'', path:[], flags:{...S.flags} }; S.cont=null; }
+    addDraftPt(p.x, p.y);
+    S.stroke={ dragged:false, lx:p.x, ly:p.y };
+    render();
+  } else if(S.tool==='forest'){
+    const f={id:S.nextId++,type:'forest',name:nm('숲'),center:{x:Math.round(p.x),y:Math.round(p.y)},rx:400,ry:400,density:S.den};
+    feats().push(f); S.sel=f; S.drag={kind:'rxy',f,creating:true}; S.dragMoved=false; render();
+  } else if(S.tool==='lake'){
+    const f={id:S.nextId++,type:'lake',name:nm('호수'),center:{x:Math.round(p.x),y:Math.round(p.y)},rx:300,ry:300};
+    feats().push(f); S.sel=f; S.drag={kind:'rxy',f,creating:true}; S.dragMoved=false; render();
+  } else if(S.tool==='pass'){
+    const f={id:S.nextId++,type:'pass',name:nm('고개'),center:{x:Math.round(p.x),y:Math.round(p.y)},radius:400};
+    feats().push(f); S.sel=f; S.drag={kind:'radius',f,creating:true}; S.dragMoved=false; render();
+  } else if(S.tool==='ore'){
+    const f={id:S.nextId++,type:'ore',name:nm('광맥'),center:{x:Math.round(p.x),y:Math.round(p.y)},radius:700};
+    feats().push(f); S.sel=f; S.drag={kind:'radius',f,creating:true}; S.dragMoved=false; render();
+  } else if(S.tool==='village'){
+    const f={id:S.nextId++,type:'village',name:nm('마을'),center:{x:Math.round(p.x),y:Math.round(p.y)},radius:500};
+    feats().push(f); S.sel=f; S.drag={kind:'center',f,creating:true}; S.dragMoved=false; render();
+  }
+});
+cv.addEventListener('mousemove', e=>{
+  const p = evWorld(e);
+  // ★[11차] px만 보여 주면 셀 번호를 매번 32로 나눠야 한다 → 셀 좌표를 같이 띄우고,
+  //   커서가 다리 셀 위면 **몇 번 다리·규모·범위**까지 즉답한다(읽기 전용 조회 — 편집 동작 무관).
+  {
+    let lx = p.x, ly = p.y, zoneKey = S.zone;
+    if(S.multi){ const z = zoneAt ? zoneAt(p.x, p.y) : null; if(z && WZONES[z]){ lx = p.x - WZONES[z].off[0]; ly = p.y - WZONES[z].off[1]; zoneKey = z; } }
+    const cx = Math.floor(lx/BR_CELL), cy = Math.floor(ly/BR_CELL);
+    let br = '';
+    const zd = S.ref ? (S.ref[zoneKey] || (S.multi ? null : S.ref)) : null;
+    if(S.showBridges){
+      const idx = bridgeIndex(zoneKey, zd), n = idx.label.get(cx+','+cy);
+      const tail = idx.src === 'baked' ? '(내장)' : '';
+      if(n){ const m = idx.meta[n-1];
+        br = `   |  🌉 다리#${n} (${m.axis} 길이${m.len}·폭${m.wid} · ${m.cells}셀 · x ${m.x0}~${m.x1} y ${m.y0}~${m.y1})`; }
+      else if(idx.meta.length) br = `   |  🌉 ${idx.meta.length}개·${idx.total}셀${tail}`;
+    }
+    { const rz0 = S.multi ? zd : refZoneData();
+      const nm = refFeatureAt(rz0, lx, ly);
+      if(nm) br += `   |  ${nm}`; }
+    if(S.cellPreview){
+      const rz = refZoneData();
+      const tag = S.cellSrc==='ref' ? (S.ref ? ('참조' + (rz && rz.smooth===false ? '·게임판정' : '·스무딩')) : '참조 — 미로드!') : '편집';
+      br += `   ·  셀원본 ${tag}`;
+    }
+    S.hudBase =
+      `셀 ${cx}, ${cy}   ·   px ${Math.round(lx)}, ${Math.round(ly)}${S.multi?' ('+zoneKey+')':''}   |  zoom ${(S.view.scale*1000).toFixed(2)}‰${br}` + selSpacing();
+    refreshHud();
+  }
+  S.mouse={ sx:p.sx, sy:p.sy, inside:true };
+  if(S.pan){ S.view.ox=S.pan.ox+(e.clientX-S.pan.x); S.view.oy=S.pan.oy+(e.clientY-S.pan.y); render(); return; }
+  if(S.stroke && S.draft){ strokeTo(p); edgePanKick(); return; }
+  if(S.draft) edgePanKick();
+  // 끝점 가까이 가면 굵어진다(선 도구 · 선택 도구 둘 다) — 바뀔 때만 다시 그린다
+  { const lineTool = S.tool==='river'||S.tool==='ridge'||S.tool==='valley';
+    const h = (S.drag && S.drag.kind==='vertex') ? S.drag.snap : ((lineTool && (!S.draft || !S.draft.path.length)) ? endpointAt(p.sx,p.sy,S.tool,null) : (S.tool==='select' ? endpointAt(p.sx,p.sy,null,null) : null));
+    const k = h ? (h.f.id+':'+h.end) : '';
+    if(k !== (S.hoverKey||'')){ S.hover=h; S.hoverKey=k; if(!S.drag) render(); } }
+  if(S.drag){ const t=S.drag;
+    if(t.kind==='vertex'){ t.f.path[t.i].x=Math.round(p.x); t.f.path[t.i].y=Math.round(p.y);
+      // ★[T553 ③] 끝점을 다른 지형 끝점 위로 끌면 잇기 후보를 보인다(놓으면 잇는다 — mouseup)
+      t.snap = (t.i===0 || t.i===t.f.path.length-1) ? endpointAt(p.sx,p.sy,t.f.type,t.f) : null;
+      S.hover=t.snap; S.hoverKey=t.snap?(t.snap.f.id+':'+t.snap.end):''; }
+    else if(t.kind==='rx'){ t.f.rx=Math.max(200,Math.round(Math.abs(p.x-t.f.center.x))); }
+    else if(t.kind==='ry'){ t.f.ry=Math.max(200,Math.round(Math.abs(p.y-t.f.center.y))); }
+    else if(t.kind==='radius'){ t.f.radius=Math.max(200,Math.round(Math.hypot(p.x-t.f.center.x,p.y-t.f.center.y))); }
+    else if(t.kind==='rxy'){ t.f.rx=Math.max(150,Math.round(Math.abs(p.x-t.f.center.x))); t.f.ry=Math.max(150,Math.round(Math.abs(p.y-t.f.center.y))); }
+    else { t.f.center.x=Math.round(p.x); t.f.center.y=Math.round(p.y); }
+    S.dragMoved=true; render(); }
+});
+window.addEventListener('mouseup', ()=>{
+  if(S.stroke){ if(S.stroke.dragged) finishDraft(); S.stroke=null; }
+  if(S.drag && S.drag.kind==='vertex' && S.drag.snap && S.dragMoved){
+    const d=S.drag, why=joinEnds(d.f, d.i===0?'start':'end', d.snap.f, d.snap.end);
+    S.hover=null; S.hoverKey=''; S.drag=null; S.dragMoved=false; S.pan=null;
+    if(why){ toast('잇지 않음 — '+why); pushHist(); refresh(); }   // 끈 것(점 이동)은 그대로 남는다
+    return;
+  }
+  if(S.drag){
+    if(S.drag.creating && !S.dragMoved){ const f=S.drag.f; if(f.type==='forest'){ f.rx=S.rx; f.ry=S.ry; } else if(f.type==='lake'){ f.rx=900; f.ry=700; } else if(f.radius!=null){ f.radius=S.radius; } }
+    if(S.drag.creating || S.dragMoved){ pushHist(); refresh(); }
+  }
+  S.dragMoved=false; S.pan=null; S.drag=null;
+});
+cv.addEventListener('contextmenu', e=>e.preventDefault());
+cv.addEventListener('mouseleave', ()=>{ if(S.mouse) S.mouse.inside=false; });
+cv.addEventListener('dblclick', ()=>finishDraft());
+cv.addEventListener('wheel', e=>{
+  e.preventDefault();
+  const r=cv.getBoundingClientRect(), mx=e.clientX-r.left, my=e.clientY-r.top;
+  const wx=s2wx(mx), wy=s2wy(my);
+  const f = e.deltaY<0 ? 1.12 : 1/1.12;
+  S.view.scale*=f; S.view.ox=mx-wx*S.view.scale; S.view.oy=my-wy*S.view.scale; render();
+},{passive:false});
+window.addEventListener('keydown', e=>{
+  if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA') return;
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){ e.preventDefault(); if(e.shiftKey)doRedo(); else doUndo(); return; }
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='y'){ e.preventDefault(); doRedo(); return; }
+  if(e.code==='Space'){ S.space=true; cv.style.cursor='grab'; }
+  if(e.key==='Enter') finishDraft();
+  if(e.key==='Escape'){ popDraftPt(); }
+  if(e.key==='Delete'||e.key==='Backspace'){
+    e.preventDefault();
+    // ★[T553 ③] 점이 잡혀 있으면 **그 점만** 지운다(선이 2점 밑으로 줄면 안 지운다) · 아니면 종전대로 지형째
+    if(S.sel && S.selPt!=null && S.sel.path){ if(S.sel.path.length<=2){ toast('점이 둘뿐 — 지형째 지우려면 점 선택을 풀고 Del'); return; }
+      S.sel.path.splice(S.selPt,1); S.selPt=null; pushHist(); refresh(); return; }
+    if(S.sel){ setFeats(feats().filter(f=>f!==S.sel)); S.sel=null; S.selPt=null; pushHist(); refresh(); } }
+});
+window.addEventListener('keyup', e=>{ if(e.code==='Space'){ S.space=false; cv.style.cursor='crosshair'; } });
+
+function pickForDrag(p){
+  const tol=10/S.view.scale;
+  if(S.sel){ const f=S.sel;
+    if(f.type==='forest'||f.type==='lake'){ const rx=f.rx??f.radius, ry=f.ry??f.radius; if(Math.hypot((f.center.x+rx)-p.x,f.center.y-p.y)<tol){ S.drag={kind:'rx',f}; return; } if(Math.hypot(f.center.x-p.x,(f.center.y+ry)-p.y)<tol){ S.drag={kind:'ry',f}; return; } }
+    else if(f.type==='pass'||f.type==='ore'||f.type==='village'){ if(Math.hypot((f.center.x+f.radius)-p.x,f.center.y-p.y)<tol){ S.drag={kind:'radius',f}; return; } }
+  }
+  // ★[T553 ③] 점 고치기 — 잡힌 지형의 점을 먼저 본다(겹친 지형 사이에서 손에 쥔 것을 놓치지 않게) → 그 선분 위 = 점 삽입 → 나머지 지형
+  const isLine = f => f.type==='river'||f.type==='ridge'||f.type==='valley';
+  const order = S.sel && isLine(S.sel) ? [S.sel, ...feats().filter(f=>f!==S.sel)] : feats();
+  for(const f of order){
+    if(isLine(f)){ for(let i=0;i<f.path.length;i++){ if(Math.hypot(f.path[i].x-p.x,f.path[i].y-p.y)<tol){ S.sel=f; S.selPt=i; S.drag={kind:'vertex',f,i}; syncSel(f); syncPtWidth(); refresh(); return; } }
+      if(f===S.sel){ const ins=segmentAt(f,p,tol); if(ins){ insertPt(f,ins.i,ins.x,ins.y); S.selPt=ins.i+1; S.drag={kind:'vertex',f,i:ins.i+1,creating:true}; S.dragMoved=false; syncPtWidth(); refresh(); return; } } }
+    else { if(Math.hypot(f.center.x-p.x,f.center.y-p.y)<(f.radius||f.rx||3000)){ S.sel=f; S.selPt=null; S.drag={kind:'center',f}; syncSel(f); refresh(); return; } }
+  }
+  // 잡힌 게 없을 때 선분 위(어느 지형이든) = 그 지형을 잡는다(점은 아직 안 넣는다 — 한 번 더 누르면 넣는다)
+  for(const f of feats()){ if(isLine(f) && segmentAt(f,p,tol)){ S.sel=f; S.selPt=null; syncSel(f); refresh(); return; } }
+  S.sel=null; S.selPt=null; refresh();
+}
+function finishDraft(){
+  // ★[T553 ①] 이어 긋던 것은 이미 목록에 있다 — 다시 넣지 않고 이력만 남긴다
+  if(S.cont){ const c=S.cont, added=c.f.path.length-c.len0; S.cont=null; S.draft=null; document.getElementById('nameIn').value=''; if(added>0){ pushHist(); toast(c.f.name+' 이어 긋기 +'+added+'점'); } refresh(); return; }
+  if(S.draft && S.draft.path.length>=2){ S.draft.name = (document.getElementById('nameIn').value.trim()) || nm(S.draft.type==='river'?'강':'산맥'); feats().push(S.draft); S.draft=null; document.getElementById('nameIn').value=''; pushHist(); refresh(); return; }
+  S.draft=null; document.getElementById('nameIn').value=''; refresh();
+}
+
+// ===== [T553] 이어 긋기 · 자동 팬 · 점 고치기 · 잇기 =====
+const END_PX = 12;          // 끝점 잡는 반경(화면 px) — 카드 ①
+const EDGE_PX = 24;         // 가장자리 자동 팬 띠(화면 px) — 카드 ②
+const JOIN_TAPER = 6;       // 잇기 폭 되돌림 점 수 — merge-split-rivers.js TAPER 와 같다
+const JOIN_LOOP_CELLS = 60; // 반대쪽 끝끼리도 이만큼 가까우면 고리 — merge-split-rivers.js LOOP_CELLS 와 같다
+// 화면 (sx,sy) 에서 END_PX 안의 끝점 — type 이 있으면 그 타입만 · skip 은 뺀다 · 가장 가까운 것
+function endpointAt(sx, sy, type, skip){
+  let best=null, bd=END_PX;
+  for(const f of feats()){
+    if(f===skip || !f.path || f.path.length<1) continue;
+    if(type ? f.type!==type : !(f.type==='river'||f.type==='ridge'||f.type==='valley')) continue;
+    for(const end of ['start','end']){ const q = end==='start' ? f.path[0] : f.path[f.path.length-1];
+      const d=Math.hypot(w2sx(q.x)-sx, w2sy(q.y)-sy); if(d<=bd){ bd=d; best={f,end,d}; } }
+  }
+  return best;
+}
+function beginContinue(f, end){
+  S.draft=f; S.cont={ f, end, len0:f.path.length };
+  const q = end==='start' ? f.path[0] : f.path[f.path.length-1];
+  S.width=q.w||S.width; const wi=document.getElementById('widthIn'); wi.value=S.width; document.getElementById('widthVal').textContent=Math.round(S.width);
+  S.sel=null; S.selPt=null; S.hover=null; S.hoverKey='';
+  toast((f.name||'(이름 없음)')+' 이어 긋는 중('+(end==='start'?'시작':'끝')+')');
+  refreshHud();
+}
+function addDraftPt(x, y){
+  const q={x:Math.round(x), y:Math.round(y), w:S.width};
+  if(S.cont && S.cont.end==='start') S.draft.path.unshift(q); else S.draft.path.push(q);   // 시작이면 앞에 — 경로 뒤집기 없이
+}
+function popDraftPt(){
+  if(!S.draft || !S.draft.path.length) return;
+  if(S.cont){ // 이어 긋기: 원래 점은 안 건드린다 — 더한 점이 없으면 이어 긋기만 닫는다
+    if(S.draft.path.length<=S.cont.len0){ S.cont=null; S.draft=null; toast('이어 긋기 닫음'); render(); return; }
+    if(S.cont.end==='start') S.draft.path.shift(); else S.draft.path.pop(); render(); return; }
+  S.draft.path.pop(); if(!S.draft.path.length) S.draft=null; render();
+}
+function strokeTo(p){
+  const step=9/S.view.scale;
+  if(Math.hypot(p.x-S.stroke.lx,p.y-S.stroke.ly)>step){ addDraftPt(p.x,p.y); S.stroke.lx=p.x; S.stroke.ly=p.y; S.stroke.dragged=true; render(); }
+}
+function draftTag(){
+  if(!S.draft) return '';
+  if(S.cont) return `   |  ✎ ${S.cont.f.name||'(이름 없음)'} 이어 긋는 중(${S.cont.end==='start'?'시작':'끝'}) +${S.draft.path.length-S.cont.len0}점`;
+  return `   |  ✎ 새 ${S.draft.type==='river'?'강':(S.draft.type==='valley'?'계곡':'산맥')} 긋는 중 ${S.draft.path.length}점`;
+}
+function ptTag(){ return (S.sel && S.selPt!=null && S.sel.path && S.sel.path[S.selPt]) ? `   |  ● 점 ${S.selPt+1}/${S.sel.path.length} 폭 ${Math.round(S.sel.path[S.selPt].w)}` : ''; }
+function refreshHud(){ const el=document.getElementById('hud'); if(el) el.textContent=(S.hudBase||'—')+draftTag()+ptTag(); }
+// ② 가장자리 자동 팬 — 긋는 중 커서가 캔버스 가장자리 EDGE_PX 안이면 초당 화면 폭 ½ 만큼 흐른다(끌며 긋는 중이면 흐른 만큼 점도 붙는다)
+let _edgeRaf=0, _edgeT=0;
+function edgeDir(){
+  const m=S.mouse; if(!S.draft || !m || !m.inside || S.pan) return null;
+  const dx = m.sx<EDGE_PX ? 1 : (m.sx>cv.width-EDGE_PX ? -1 : 0), dy = m.sy<EDGE_PX ? 1 : (m.sy>cv.height-EDGE_PX ? -1 : 0);
+  return (dx||dy) ? {dx,dy} : null;
+}
+function edgePanKick(){ if(!_edgeRaf && edgeDir()){ _edgeT=performance.now(); _edgeRaf=requestAnimationFrame(edgePanTick); } }
+function edgePanTick(t){
+  const d=edgeDir(); if(!d){ _edgeRaf=0; return; }
+  const dt=Math.min(0.1, Math.max(0,(t-_edgeT)/1000)); _edgeT=t;
+  S.view.ox += d.dx*cv.width*0.5*dt; S.view.oy += d.dy*cv.width*0.5*dt;
+  if(S.stroke && S.draft) strokeTo({x:s2wx(S.mouse.sx), y:s2wy(S.mouse.sy)}); else render();
+  _edgeRaf=requestAnimationFrame(edgePanTick);
+}
+// ③ 점 고치기
+function segmentAt(f, p, tol){
+  let best=null, bd=tol;
+  for(let i=0;i<f.path.length-1;i++){ const a=f.path[i], b=f.path[i+1]; const r=_ptSeg(p.x,p.y,a.x,a.y,b.x,b.y);
+    if(r.d<=bd && r.t>0.02 && r.t<0.98){ bd=r.d; best={i, t:r.t, x:a.x+(b.x-a.x)*r.t, y:a.y+(b.y-a.y)*r.t}; } }
+  return best;
+}
+function insertPt(f, i, x, y){ const a=f.path[i], b=f.path[i+1], L=Math.hypot(b.x-a.x,b.y-a.y)||1, t=Math.hypot(x-a.x,y-a.y)/L;
+  f.path.splice(i+1, 0, {x:Math.round(x), y:Math.round(y), w:Math.round(a.w+(b.w-a.w)*t)}); }
+function syncPtWidth(){ if(S.sel && S.selPt!=null && S.sel.path[S.selPt]){ const w=S.sel.path[S.selPt].w; document.getElementById('widthIn').value=w; document.getElementById('widthVal').textContent=Math.round(w); show('widthRow',true); } refreshHud(); }
+// 잇기 — merge-split-rivers.js 규칙 그대로: 끝점끼리만 · 삼거리(놓는 자리 끝점에 다른 지형 끝점도 붙어 있음)는 안 잇는다 · 고리 안 잇는다 ·
+//   이음매 양쪽 폭을 넓은 쪽으로 맞추고 앞뒤 JOIN_TAPER 점에 걸쳐 되돌린다 · 대표 이름 = 긴 쪽. 성공이면 '' · 아니면 까닭.
+function joinEnds(fa, ea, fb, eb){
+  if(fa===fb) return '같은 지형';
+  if(fa.type!==fb.type) return '타입이 다르다';
+  const P=(f,e)=> e==='start'?f.path[0]:f.path[f.path.length-1], Q=(f,e)=> e==='start'?f.path[f.path.length-1]:f.path[0];
+  const at=P(fb,eb), tolW=END_PX/S.view.scale;
+  const others = feats().filter(g=>g!==fa && g!==fb && g.path && g.path.length && g.type===fa.type &&
+    (Math.hypot(g.path[0].x-at.x,g.path[0].y-at.y)<=tolW || Math.hypot(g.path[g.path.length-1].x-at.x,g.path[g.path.length-1].y-at.y)<=tolW));
+  if(others.length) return '삼거리(합류) — '+others.map(g=>g.name).join('·')+' 끝점도 거기 있다';
+  const fa2=Q(fa,ea), fb2=Q(fb,eb);
+  if(Math.hypot(fa2.x-fb2.x,fa2.y-fb2.y) < JOIN_LOOP_CELLS*32) return '고리 — 반대쪽 끝도 '+Math.round(Math.hypot(fa2.x-fb2.x,fa2.y-fb2.y)/32)+'셀';
+  // 방향 맞춤: A 는 이음매가 꼬리 · B 는 이음매가 머리
+  const A = ea==='end' ? fa.path.slice() : fa.path.slice().reverse();
+  const B = eb==='start' ? fb.path.slice() : fb.path.slice().reverse();
+  const Lof = f=>{ let L=0; for(let i=0;i<f.path.length-1;i++) L+=Math.hypot(f.path[i+1].x-f.path[i].x,f.path[i+1].y-f.path[i].y); return L; };
+  const path = A.concat(B.slice(1)).map(q=>({x:q.x,y:q.y,w:q.w}));   // 이음매 겹치는 첫 점은 버린다(같은 자리 두 점 = 얼룩)
+  const si=A.length-1;                                                 // 이음매 = path[si](붙인 점) ↔ path[si+1] — merge-split-rivers 의 seamIdx 와 같은 자리
+  path[si].x=B[0].x; path[si].y=B[0].y; path[si].w=Math.max(A[si].w, B[0].w);   // 끌어다 놓은 끝점은 받는 쪽 끝점 자리로 · 버린 B 첫 점의 폭도 넓은 쪽으로 남긴다
+  if(si>=0){ const target=Math.max(path[si].w, path[si+1].w);
+    for(let k=0;k<=JOIN_TAPER;k++){ const g=k/(JOIN_TAPER+1), iL=si-k, iR=si+1+k;
+      if(iL>=0) path[iL].w=Math.round(path[iL].w+(target-path[iL].w)*(1-g)); if(iR<path.length) path[iR].w=Math.round(path[iR].w+(target-path[iR].w)*(1-g)); } }
+  const keep = Lof(fa)>=Lof(fb) ? fa : fb, drop = keep===fa ? fb : fa;
+  keep.path=path; setFeats(feats().filter(g=>g!==drop)); S.sel=keep; S.selPt=null;
+  pushHist(); refresh(); toast('잇기: '+fa.name+' + '+fb.name+' → '+keep.name+' · 점 '+path.length);
+  return '';
+}
+function add(f){ feats().push(f); pushHist(); refresh(); }
+function nm(base){ let i=1; const names=feats().map(f=>f.name); while(names.includes(base+i)) i++; return base+i; }
+
+// ===== UI =====
+function refresh(){ renderList(); render(); }
+function renderList(){
+  const el=document.getElementById('flist'); el.innerHTML='';
+  document.getElementById('fcount').textContent=feats().length;
+  feats().forEach(f=>{
+    const d=document.createElement('div'); d.className='fitem'+(S.sel===f?' sel':'');
+    d.innerHTML=`<span class="dot" style="background:${TYPE_COLOR[f.type]}"></span><span class="nm">${f.name||'(이름)'}</span><span class="x">✕</span>`;
+    d.onclick=ev=>{ if(ev.target.classList.contains('x')){ setFeats(feats().filter(x=>x!==f)); if(S.sel===f){S.sel=null;S.selPt=null;} pushHist(); refresh(); } else { S.sel=f; S.selPt=null; document.getElementById('nameIn').value=f.name||''; syncSel(f); refresh(); } };
+    el.appendChild(d);
+  });
+}
+function setTool(t){ S.tool=t; document.querySelectorAll('#tools button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
+  const hints={river:'클릭으로 강 점 추가 → Enter 완료. 하구로 갈수록 폭↑ · 기존 강 끝점(흰 원)을 누르면 그 강을 이어 긋는다 · 가장자리로 가면 화면이 흐른다 · Esc=마지막 점만 취소',ridge:'클릭으로 산맥 점 추가 → Enter 완료. 기존 산맥 끝점(흰 원)을 누르면 이어 긋는다.',valley:'클릭으로 계곡 점 추가 → Enter 완료. 산맥을 **가로질러** 그린다(양끝은 산 밖). 폭 320px=10셀 권장',forest:'드래그로 숲 타원 배치(가로·세로). 핸들로 크기조절.',lake:'드래그로 호수 타원 배치(가로·세로). 핸들로 크기조절.',pass:'클릭으로 고개 배치(반경).',select:'점·피처 드래그로 이동. 잡힌 선 위 클릭 = 점 삽입 · 점 잡고 Del = 그 점 삭제(점 안 잡으면 지형째) · 점 잡고 폭 슬라이더 = 그 점 폭 · 끝점을 다른 선 끝점 위로 끌어 놓으면 잇기. 숲/호수/고개는 선택 후 노란 핸들 드래그로 크기조절.'};
+  document.getElementById('toolHint').textContent=hints[t]||'';
+  // 속성 행 토글
+  show('widthRow', t==='river'||t==='ridge'||t==='valley'||(t==='select'&&S.selPt!=null)); show('radiusRow', t==='pass');
+  show('rxRow', t==='forest'||t==='lake'); show('ryRow', t==='forest'||t==='lake'); show('denRow', t==='forest');
+  show('ridgeFlags', t==='ridge');
+}
+function show(id,on){ document.getElementById(id).style.display=on?'':'none'; }
+document.querySelectorAll('#tools button').forEach(b=> b.onclick=()=>setTool(b.dataset.t));
+
+// 슬라이더 바인딩
+function bind(id,valId,key,fmt){ const i=document.getElementById(id),v=document.getElementById(valId); i.oninput=()=>{ S[key]=parseFloat(i.value); v.textContent=fmt?fmt(S[key]):S[key]; if(S.sel){ if(key==='radius'&&(S.sel.radius!=null))S.sel.radius=S[key]; if(key==='rx'&&S.sel.rx!=null)S.sel.rx=S[key]; if(key==='ry'&&S.sel.ry!=null)S.sel.ry=S[key]; if(key==='den'&&S.sel.density!=null)S.sel.density=S[key]; if(key==='width'&&S.selPt!=null&&S.sel.path&&S.sel.path[S.selPt]){ S.sel.path[S.selPt].w=S[key]; refreshHud(); } render(); } };
+  // ★[T553 ③] 점 폭은 놓을 때 한 번 이력에 남긴다(끄는 동안 매 틱 쌓지 않게)
+  i.onchange=()=>{ if(key==='width'&&S.sel&&S.selPt!=null&&S.sel.path&&S.sel.path[S.selPt]) pushHist(); }; }
+bind('widthIn','widthVal','width'); bind('radiusIn','radiusVal','radius');
+bind('rxIn','rxVal','rx'); bind('ryIn','ryVal','ry'); bind('denIn','denVal','den',x=>x.toFixed(1));
+['fNoFit','fNoValley','fPinStart'].forEach(id=>{ document.getElementById(id).onchange=e=>{ const k=id==='fNoFit'?'noFit':id==='fNoValley'?'noValley':'pinStart'; S.flags[k]=e.target.checked; if(S.draft)S.draft.flags[k]=e.target.checked; }; });
+document.getElementById('nameIn').oninput=e=>{ if(S.sel){ S.sel.name=e.target.value; renderList(); } };
+document.getElementById('finishBtn').onclick=finishDraft;
+document.getElementById('undoBtn').onclick=()=>popDraftPt();
+document.getElementById('clearBtn').onclick=()=>{ if(confirm('그린 피처를 전부 지울까요? (참조 지형은 유지)')){ setFeats([]); S.draft=null; S.cont=null; S.sel=null; S.selPt=null; pushHist(); refresh(); } };
+document.getElementById('undoOpBtn').onclick=doUndo;
+document.getElementById('redoOpBtn').onclick=doRedo;
+document.getElementById('saveWorkBtn').onclick=saveWork;
+document.getElementById('loadWorkBtn').onclick=()=>document.getElementById('workFile').click();
+document.getElementById('workFile').onchange=e=>{ const f=e.target.files[0]; if(!f)return; const rd=new FileReader(); rd.onload=()=>{ try{ loadWork(JSON.parse(rd.result)); }catch(err){ alert('파싱 실패: '+err.message); } }; rd.readAsText(f); };
+document.getElementById('refToggle').onchange=e=>{ S.showRef=e.target.checked; render(); };
+document.getElementById('bridgeToggle').onchange=e=>{ S.showBridges=e.target.checked; render(); };
+document.getElementById('cellSrc').onchange=e=>{
+  S.cellSrc = e.target.value;
+  if(S.cellSrc==='ref' && !S.ref) toast('참조 지형을 먼저 불러오세요 — 「참조 지형 불러오기(JSON)」');
+  else if(S.cellSrc==='ref') toast('셀 원본 = 참조 지형(다리가 계획된 그 지형)');
+  else toast('셀 원본 = 편집 피처');
+  if(!S.cellPreview){ S.cellPreview=true; document.getElementById('cellToggle').checked=true; }
+  render();
+};
+// ★[11차 2차] 다리로 이동 — 294셀을 눈으로 찾아다니게 두지 않는다(실제로 "하나도 안 보인다"의 절반은 이것이었다).
+//   선택하면 그 다리가 화면 가운데 오고 **전체가 한눈에 들어오는 줌**으로 맞춘다(길이+여유 40%).
+function refreshBridgeJump(){
+  const sel = document.getElementById('bridgeJump'); if(!sel) return;
+  const zd = S.ref && (S.ref[S.zone] || (S.multi ? null : S.ref));
+  const idx = bridgeIndex(S.zone, zd);
+  const keep = sel.value;
+  sel.innerHTML = '<option value="">🌉 다리로 이동…</option>' + idx.meta.map(m =>
+    `<option value="${m.n}">#${m.n} ${m.axis} 길이${m.len} · x ${m.x0} y ${m.y0}${m.bad?' ⚠':''}</option>`).join('');
+  if(keep) sel.value = keep;
+  sel.title = idx.meta.length ? `${idx.meta.length}개 · ${idx.total}셀${idx.src==='baked'?' (내장 스냅샷)':' (참조 JSON)'}` : '다리 없음';
+}
+function jumpToBridge(n){
+  const zd = S.ref && (S.ref[S.zone] || (S.multi ? null : S.ref));
+  const idx = bridgeIndex(S.zone, zd), m = idx.meta[n-1]; if(!m) return;
+  const cx = (m.x0 + m.x1 + 1) / 2 * BR_CELL, cy = (m.y0 + m.y1 + 1) / 2 * BR_CELL;   // 셀 범위 중심(월드 px)
+  const spanPx = Math.max(m.x1 - m.x0 + 1, m.y1 - m.y0 + 1) * BR_CELL * 1.4;          // 다리 전체 + 여유 40%
+  const box = Math.min(cv.width, cv.height);
+  let ox = cx, oy = cy;
+  if(S.multi && WZONES[S.zone]){ ox += WZONES[S.zone].off[0]; oy += WZONES[S.zone].off[1]; }
+  S.view.scale = Math.max(0.02, Math.min(4, box / spanPx));
+  S.view.ox = cv.width / 2 - ox * S.view.scale;
+  S.view.oy = cv.height / 2 - oy * S.view.scale;
+  if(!S.showBridges){ S.showBridges = true; document.getElementById('bridgeToggle').checked = true; }
+  render();
+  toast(`🌉 다리#${m.n} — ${m.axis} 길이${m.len}·폭${m.wid} · ${m.cells}셀 · x ${m.x0}~${m.x1} y ${m.y0}~${m.y1}`);
+}
+document.getElementById('bridgeJump').onchange=e=>{ if(e.target.value) jumpToBridge(+e.target.value); };
+document.getElementById('bridgeJumpBtn').onclick=()=>{ const v=document.getElementById('bridgeJump').value; if(v) jumpToBridge(+v); else toast('이동할 다리를 고르세요'); };
+document.getElementById('smoothToggle').onchange=e=>{ S.smooth=e.target.checked; render(); };
+document.getElementById('cellToggle').onchange=e=>{ S.cellPreview=e.target.checked; render(); };
+document.getElementById('multiToggle').onchange=e=>{ S.multi=e.target.checked; S.draft=null; S.cont=null; S.sel=null; S.selPt=null; document.getElementById('zoneSel').disabled=S.multi; document.getElementById('zoneInfo').textContent = S.multi ? '전체 월드(26존) 월드좌표. 휠=줌, 우클릭드래그=이동. 경계 넘는 강/산맥 한 번에 → Export 시 존별 자동 분할.' : ('크기 '+S.ZW+' × '+S.ZH+' px (로컬좌표)'); fitView(); refresh(); resetHist(); };
+
+// 존 선택
+const zoneSel=document.getElementById('zoneSel');
+Object.keys(ZONES).forEach(z=>{ const o=document.createElement('option'); o.value=z; o.textContent=z+'  ('+ZONES[z][0]+'×'+ZONES[z][1]+')'; zoneSel.appendChild(o); });
+zoneSel.value='hanbando';
+zoneSel.onchange=()=>{ S.zone=zoneSel.value; [S.ZW,S.ZH]=ZONES[S.zone]; document.getElementById('zoneInfo').textContent='크기 '+S.ZW+' × '+S.ZH+' px (로컬좌표)'; fitView(); refreshBridgeJump(); render(); };
+
+// 참조 불러오기
+document.getElementById('loadRefBtn').onclick=()=>document.getElementById('refFile').click();
+document.getElementById('refFile').onchange=e=>{ const f=e.target.files[0]; if(!f)return; const rd=new FileReader(); rd.onload=()=>{ try{ const j=JSON.parse(rd.result); S.ref = (j.multi&&j.zones)?j.zones : j; toast('참조 지형 로드됨'); refreshBridgeJump(); render(); }catch(err){ alert('JSON 파싱 실패: '+err.message); } }; rd.readAsText(f); };
+document.getElementById('loadEditBtn').onclick=()=>document.getElementById('editFile').click();
+document.getElementById('editFile').onchange=e=>{ const f=e.target.files[0]; if(!f)return; const rd=new FileReader(); rd.onload=()=>{ try{ loadEditable(JSON.parse(rd.result)); }catch(err){ alert('파싱 실패: '+err.message); } }; rd.readAsText(f); };
+
+// ===== 편집용 불러오기 (이미 만든 지형을 편집 가능하게) =====
+function mkPoly(type, r, off){ return { id:S.nextId++, type, name:r.name||'', flags:{noFit:!!r.noFit,noValley:!!r.noValley,pinStart:!!r.pinStart}, path:(r.path||[]).map(p=>({ x:(p.pos?p.pos[0]:p[0])+off[0], y:(p.pos?p.pos[1]:p[1])+off[1], w:p.width||p[2]||300 })) }; }
+function loadEditable(json){
+  let zmap;
+  if(json.multi && json.zones) zmap=json.zones;
+  else if(json.zone && (json.rivers||json.ridges||json.valleys||json.forests||json.lakes||json.passes)) zmap={[json.zone]:json};
+  else zmap=json; // 빌드 산출물(존별 키) 형식
+  const out=[]; let loadedZones=[];
+  for(const z in zmap){ const zd=zmap[z]; if(!zd||typeof zd!=='object'||Array.isArray(zd)) continue;
+    if(!S.multi && z!==S.zone) continue;            // 단일 모드: 선택 존만
+    const off = S.multi ? (WZONES[z]?WZONES[z].off:[0,0]) : [0,0];
+    if(S.multi && !WZONES[z]) continue;
+    loadedZones.push(z);
+    for(const r of (zd.rivers||[])){ if(r._mirroredFrom)continue; out.push(mkPoly('river',r,off)); }
+    for(const r of (zd.ridges||[])){ if(r._mirroredFrom)continue; out.push(mkPoly('ridge',r,off)); }
+    for(const r of (zd.valleys||[])){ if(r._mirroredFrom)continue; out.push(mkPoly('valley',r,off)); }
+    for(const f of (zd.forests||[])){ if(!f.center)continue; out.push({id:S.nextId++,type:'forest',name:f.name||'',center:{x:f.center[0]+off[0],y:f.center[1]+off[1]},rx:f.rx||6000,ry:f.ry||5000,density:f.densityMult||2}); }
+    for(const l of (zd.lakes||[])){ if(!l.center||l._mirroredFrom)continue; out.push({id:S.nextId++,type:'lake',name:l.name||'',center:{x:l.center[0]+off[0],y:l.center[1]+off[1]},rx:(l.rx||l.radius||800),ry:(l.ry||l.radius||800)}); }
+    for(const p of (zd.passes||[])){ if(!p.pos||p._mirroredFrom)continue; out.push({id:S.nextId++,type:'pass',name:p.name||'',center:{x:p.pos[0]+off[0],y:p.pos[1]+off[1]},radius:p.radius||1200}); }
+  }
+  setFeats(out); S.sel=null; S.selPt=null; S.draft=null; S.cont=null; refresh(); resetHist();
+  toast('편집용 로드: '+out.length+'개 피처 ('+loadedZones.join(',')+')');
+}
+// ===== Export =====
+function buildExport(){
+  const R=v=>Math.round(v);
+  const out={ zone:S.zone, size:[S.ZW,S.ZH], rivers:[], ridges:[], valleys:[], forests:[], lakes:[], passes:[], ores:[], villages:[] };
+  for(const f of S.features){
+    if(f.type==='river') out.rivers.push({ name:f.name, path:f.path.map(p=>({pos:[R(p.x),R(p.y)],width:R(p.w)})) });
+    else if(f.type==='ridge'){ const o={ name:f.name, path:f.path.map(p=>({pos:[R(p.x),R(p.y)],width:R(p.w)})) }; if(f.flags){ if(f.flags.noFit)o.noFit=true; if(f.flags.noValley)o.noValley=true; if(f.flags.pinStart)o.pinStart=true; } out.ridges.push(o); }
+    else if(f.type==='valley') out.valleys.push({ name:f.name, path:f.path.map(p=>({pos:[R(p.x),R(p.y)],width:R(p.w)})) });
+    else if(f.type==='forest') out.forests.push({ name:f.name, center:[R(f.center.x),R(f.center.y)], rx:R(f.rx), ry:R(f.ry), densityMult:+f.density.toFixed(2) });
+    else if(f.type==='lake'){ const rx=f.rx??f.radius, ry=f.ry??f.radius; out.lakes.push({ name:f.name, center:[R(f.center.x),R(f.center.y)], rx:R(rx), ry:R(ry), radius:R((rx+ry)/2) }); }
+    else if(f.type==='pass') out.passes.push({ name:f.name, pos:[R(f.center.x),R(f.center.y)], radius:R(f.radius) });
+    else if(f.type==='ore') out.ores.push({ name:f.name, center:[R(f.center.x),R(f.center.y)], radius:R(f.radius) });
+    else if(f.type==='village') out.villages.push({ name:f.name, center:[R(f.center.x),R(f.center.y)] });
+  }
+  return out;
+}
+function splitByZone(path){
+  const dense=[];
+  for(let i=0;i<path.length-1;i++){ const a=path[i],b=path[i+1]; const d=Math.hypot(b.x-a.x,b.y-a.y); const n=Math.max(1,Math.ceil(d/400));
+    for(let k=0;k<n;k++){ const t=k/n; dense.push({x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t,w:a.w+(b.w-a.w)*t}); } }
+  dense.push(path[path.length-1]);
+  const runs=[]; let cur=null;
+  for(const p of dense){ const z=zoneAt(p.x,p.y); if(!cur||cur.zone!==z){ cur={zone:z,pts:[p]}; runs.push(cur); } else cur.pts.push(p); }
+  return runs;
+}
+function buildExportMulti(){
+  const R=v=>Math.round(v);
+  const Zs={}; const ens=z=>{ if(!Zs[z])Zs[z]={zone:z,size:WZONES[z].size,rivers:[],ridges:[],valleys:[],forests:[],lakes:[],passes:[]}; return Zs[z]; };
+  for(const f of S.mf){
+    if(f.type==='river'||f.type==='ridge'||f.type==='valley'){
+      for(const run of splitByZone(f.path)){ const z=run.zone; if(!z||!WZONES[z]||run.pts.length<2) continue; const o=WZONES[z].off;
+        const path=run.pts.map(p=>({pos:[R(p.x-o[0]),R(p.y-o[1])],width:R(p.w)}));
+        const fe={name:f.name, path}; if(f.type==='ridge'&&f.flags){ if(f.flags.noFit)fe.noFit=true; if(f.flags.noValley)fe.noValley=true; if(f.flags.pinStart)fe.pinStart=true; }
+        ens(z)[f.type==='river'?'rivers':(f.type==='valley'?'valleys':'ridges')].push(fe);
+      }
+    } else { const z=zoneAt(f.center.x,f.center.y); if(!z||!WZONES[z]) continue; const o=WZONES[z].off;
+      if(f.type==='forest') ens(z).forests.push({name:f.name,center:[R(f.center.x-o[0]),R(f.center.y-o[1])],rx:R(f.rx),ry:R(f.ry),densityMult:+f.density.toFixed(2)});
+      else if(f.type==='lake'){ const rx=f.rx??f.radius, ry=f.ry??f.radius; ens(z).lakes.push({name:f.name,center:[R(f.center.x-o[0]),R(f.center.y-o[1])],rx:R(rx),ry:R(ry),radius:R((rx+ry)/2)}); }
+      else if(f.type==='pass') ens(z).passes.push({name:f.name,pos:[R(f.center.x-o[0]),R(f.center.y-o[1])],radius:R(f.radius)});
+    }
+  }
+  return { multi:true, zones:Zs };
+}
+document.getElementById('exportBtn').onclick=()=>{ finishDraft(); const j=JSON.stringify(S.multi?buildExportMulti():buildExport(),null,2); document.getElementById('exportTa').value=j; document.getElementById('modal').style.display='flex'; };
+document.getElementById('closeModal').onclick=()=>document.getElementById('modal').style.display='none';
+document.getElementById('copyBtn').onclick=()=>{ const ta=document.getElementById('exportTa'); ta.select(); document.execCommand('copy'); toast('복사됨'); };
+document.getElementById('downloadBtn').onclick=()=>{ const blob=new Blob([document.getElementById('exportTa').value],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download = S.multi ? 'terrain-region.json' : ('terrain-'+S.zone+'.json'); a.click(); };
+
+let toastT;
+function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.style.opacity=1; clearTimeout(toastT); toastT=setTimeout(()=>t.style.opacity=0,1400); }
+
+// ===== init =====
+window.addEventListener('resize', resize);
+document.getElementById('zoneInfo').textContent='크기 '+S.ZW+' × '+S.ZH+' px (로컬좌표)';
+// ★[T553 ④] 내장 작업·다리는 **두 길**로 온다 — ⓐ 맥 사본(file://)은 `scripts/build-map-editor.js` 가 위 두 줄에 박는다(fetch 불요)
+//   ⓑ 레포 판(`lab/map-editor.html`)은 같은 폴더의 `map-editor-baked.json` 을 fetch 한다. file:// 이라 fetch 가 막히고 박힌 것도 없으면
+//   내장 없이 뜬다(작업 불러오기 · 자동저장 복원은 그대로 — 두 판 다 열린다). 받은 뒤에 한 번만 시작한다.
+function bootBaked(){
+  if(WORK_BAKED) return Promise.resolve('inline');
+  let p; try{ p = fetch('map-editor-baked.json'); }catch(e){ return Promise.resolve('none'); }
+  return p.then(r=>{ if(!r.ok) throw new Error(r.status); return r.json(); })
+    .then(j=>{ WORK_BAKED=j.work||null; BR_BAKED=j.bridges||{}; for(const k in _brIdxCache) delete _brIdxCache[k]; return 'fetch'; })
+    .catch(()=>'none');
+}
+function bootEditor(src){
+  S.bakedSrc = src;
+  const _restored=loadLocal(); if(!_restored && WORK_BAKED){ S.features=WORK_BAKED.features.slice(); S.mf=WORK_BAKED.mf.slice(); S.stamp=WORK_BAKED.stamp; } setTool('river'); resize(); fitView(); refreshBridgeJump(); render(); renderList(); resetHist(); if(_restored) toast('이전 작업 복원됨');
+  showStamp();
+  S.booted = true;
+}
+// ★작업 판본 표시 — "지금 뜬 게 언제 것인가"를 화면이 스스로 말한다
+function showStamp(){
+  const el=document.getElementById('stampInfo'); if(!el) return;
+  const cur=S.stamp||'(없음)', latest=(WORK_BAKED&&WORK_BAKED.stamp)||'?';
+  if(!WORK_BAKED){ el.innerHTML='작업 판본 <b>'+cur+'</b> · 내장 없음(map-editor-baked.json 을 못 읽었다 — 작업 불러오기로 연다)'; return; }
+  const same = cur===latest;
+  el.innerHTML = '작업 판본 <b style="color:'+(same?'#7bd88f':'#ff9f43')+'">'+cur+'</b>'
+    + (same? ' · 최신' : ' · <span style="color:#ff6b6b">낡음! 최신 '+latest+'</span>');
+  let b=document.getElementById('staleBanner');
+  if(!same){
+    if(!b){ b=document.createElement('div'); b.id='staleBanner';
+      b.style.cssText='position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:50;'
+        +'background:#7a2b1e;border:1px solid #ff6b6b;color:#ffd9d3;padding:8px 14px;border-radius:8px;'
+        +'font:13px system-ui;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.5)';
+      b.textContent='⚠ 지금 보이는 작업은 옛 판본입니다 — 눌러서 최신으로 갱신';
+      b.onclick=()=>{ loadWork(WORK_BAKED); };
+      document.body.appendChild(b); }
+  } else if(b) b.remove();
+}
+document.getElementById('loadBakedBtn').onclick=()=>{ if(!WORK_BAKED){ toast('내장 작업 없음 — map-editor-baked.json 을 못 읽었다'); return; } loadWork(WORK_BAKED); toast('내장 최신 작업 불러옴 · '+WORK_BAKED.stamp); };
+bootBaked().then(bootEditor);
+
+</script>
+</body>
+</html>
