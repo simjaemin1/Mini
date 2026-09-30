@@ -45,7 +45,8 @@ ok(/qtBuildings\.insert\(e\); S\.bld\.push\(e\); if \(COLL_TYPES\.has\(b\.type\)
 //   ★되돌림 판(T421 끔 — 매 틱 통째로)은 **옛 몸통 그대로** — 벽 질의도 옛 격자다(새 격자를 매 틱 한 번 더 세우는 값이 절약을 먹는다 · 보고 §3-ⓓ)
 ok(/for \(const b of c\.buildings\.values\(\)\) qtBuildings\.insert\(\{ x: b\.x, y: b\.y, ref: b \}\); \}\n\s*qtColl = qtBuildings;/.test(RS) && !/COLL_TYPES/.test(codeOnly(RS)),
   '① ★되돌림 판(`T421_SPATIAL_INC=0`)은 옛 몸통 한 글자도 안 바뀐 채 · 벽 질의 격자 = 옛 격자(`qtColl = qtBuildings` 한 줄)');
-ok((codeOnly(Z).match(/qtBuildings\.queryCircle\(/g) || []).length === 10, '① `qtBuildings` 를 묻는 자리는 그대로 **열**(자리 검사 다섯·공격·모닥불·농지 셋 — 마을 땅엔 못 짓는다는 그 격자)',
+//   ★[T537 ⓪] 열한째 = 우물 칸(`_wellCellAt` · T509 — 완공 우물 발자국을 **건물 격자**에서 찾는다 · 벽 질의가 아니다 ⇒ `qtColl` 넷과 무관).
+ok((codeOnly(Z).match(/qtBuildings\.queryCircle\(/g) || []).length === 11 && /function _wellCellAt\([^)]*\) \{[\s\S]{0,300}qtBuildings\.queryCircle\(/.test(codeOnly(Z)), '① `qtBuildings` 를 묻는 자리는 **열하나**(자리 검사 다섯·공격·모닥불·농지 셋 + 우물 칸 `_wellCellAt`(T509) — 마을 땅엔 못 짓는다는 그 격자)',
   `${(codeOnly(Z).match(/qtBuildings\.queryCircle\(/g) || []).length}곳`);
 
 // ── 판 — 마을 셋(움집: 벽 사각 + 문 한 칸 · 바닥 · 2층 바닥 + 계단 · 울타리) + 그 둘레 밭·마당 타일(한 칸 하나) ──────────
@@ -131,7 +132,8 @@ console.log('\n③ 증분(T421) — 켬(그대로 두기 · 통째로) ↔ 끔(�
   ok(src.length > 3000 && SPDEF.length > 50, '③ [전제] 제품의 격자 글자 넷 + 상태 한 줄을 떴다');
   const CS = 512;
   const mk = (on, w, twist) => new Function('players', 'mobs', 'resources', 'chunkManager', 'Quadtree', 'QuadtreeInc', 'ZONE', 'T421_SPATIAL_INC', '_inputTOStep',
-    'let activeChunkKeys = new Set(), qtPlayers = null, qtMobs = null, qtBuildings = null, qtResources = null, qtColl = null, resourcesDirty = true, _lastResRebuild = 0;\n' +
+    'let activeChunkKeys = new Set(), qtPlayers = null, qtMobs = null, qtBuildings = null, qtResources = null, qtColl = null, resourcesDirty = true, _lastResRebuild = 0, _WW = null, _wwRes = null;\n' +   // ★[T537 ⓪] T461 커널 두 칸(끔 = null — 제품 선언 그대로 · `_rebuildResources` 가 읽는다)
+    
     SPDEF + '\n' + COLLDEF[0] + '\n' + (twist ? src.replace('S.bld.push(e); if (COLL_TYPES.has(b.type)) qtColl.insert({ x: b.x, y: b.y, ref: b });', 'S.bld.push(e);') : src) + '\nreturn { setKeys: (s) => { activeChunkKeys = s; }, rebuild: () => rebuildSpatialIndex(undefined), coll: () => qtColl, bld: () => qtBuildings, S: _spInc };')(
     new Map(), new Map(), new Map(), w.cm, Quadtree, QuadtreeInc, { zoneWidth: W, zoneHeight: H }, on, () => {});
   const w = { cm: { chunkSize: CS, keyOf: (cx, cy) => `${cx}_${cy}`, chunks: new Map() } };
