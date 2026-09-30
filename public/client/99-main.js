@@ -387,6 +387,7 @@
         buildMode = true; placementMode = { special: 'furnace_site', kind };
         showNotice(`${kind === 'bloomery' ? '괴련로' : '노(爐)'} 터 배치 — 내 사유지/길드 사유지 안 2×2 (B=취소)`);
       }
+      else if (a === 'well_start') { buildMode = true; placementMode = { special: 'well_site' }; showNotice('우물 터 배치 — 내 사유지 2×2 (곡괭이 · 자갈 20·20 · 임업4·농촌10·광산1·임업1 마을 땅 · B=취소)'); }   // ★[T557] 우물(노·숯가마와 같은 계약)
       else if (a === 'kiln_start') { buildMode = true; placementMode = { special: 'kiln_site' }; showNotice('숯가마 터 배치 — 내 사유지/길드 사유지 안 2×2 (돌 4·곡괭이 · B=취소)'); }   // ★숯가마(노와 같은 계약)
       // ★★[2026-08-03e 배치 12 ①] 마을 회관 — 노·숯가마와 **완전히 같은 배치 계약**(2×2·사유지·단계).
       //   다른 건 완공이 곧 마을 등록이라는 것뿐이다. 자리 가능 여부는 서버가 착공 전에 판정한다.

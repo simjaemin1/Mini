@@ -142,6 +142,7 @@
    "furnace_site",
    "shelter_site",
    "village_site",
+   "well_site",
    "vtile",
    "farmland"
   ],
