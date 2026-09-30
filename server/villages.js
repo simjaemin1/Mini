@@ -8478,6 +8478,9 @@ function _t491BodyDay(vil, distPx) {   // 나무꾼 **한 몸**이 하루에 곳
 //      ⓒ 곳간이 없는 마을(틀 세계 13/50)은 **회관(마을 중심)**이 그 자리다 — T400 이 자재를 꺼내는 폴백(`_t400From`)과 같은 자리 ·
 //         같은 두 걸음(가서 `운반` · 머물러 `저장` · `G_STOREW`)으로 내린다. 옛 줄은 곳간이 없으면 짐 상한 없이 해 질 녘까지 들었다
 //         (옛 몸은 1그루에서 멈춰 드러나지 않았다 — 첫 실측 판이 이 구멍을 잡았다: 켬 · 수요 문 끔 · 어촌2 몸 셋이 하루 1,226단을 손에 들고 해 질 녘에).
+//      ⓓ 현장을 잡아 **나선** 몸도 그날 걸은 몸이다(`_t561Walked` — ⓑ 와 같은 도장). 닿지 못한 셀(강 건너 · A* 1,500칸 예산 — T399 회부) 앞에서
+//         하루를 선 몸은 0그루인데, 옛 XOR(해 질 녘 손)은 그 날을 "아무도 안 걸었다"로 읽어 일괄이 성한 몸 명부 × 걸음 한도를 벴다
+//         (30일 판 · 켬 · 수요 문 끔 — 보고/T561 §3). 몸이 나선 날은 일괄이 안 돈다.
 const T561_ROSTER_BODY = process.env.T561_ROSTER_BODY === '1';
 function _t561Fit(p) {   // 그날 나설 수 있는 몸인가 — 스케줄 게이트(`npcLifeTick` 요양 두 줄)의 그 칸·그 문턱
   if (!p || p.isDown) return false;                                           // 쓰러짐
@@ -8521,10 +8524,17 @@ function _t561Ladder(vil, npc, now) {
   if (!T561_ROSTER_BODY || !vil || !vil.econ) return 0;
   const E = _lifeEcon(); if (!E.T325_WOOD_ACT || !E.woodActOn(vil.econ)) return 0;
   const got = _t325Deliver(vil, npc);
-  const d = state.dayMs ? gameDayOf(now) : 0;                                                     // 몸의 날(`npcLifeTick` 이 쓰는 그 날)
-  if (npc._t561Wd !== d) { npc._t561Wd = d; vil._t325PreWalked = (vil._t325PreWalked | 0) + 1; }   // 그날 걸은 몸 — 한 몸 한 번(사람 수 · T475 규약)
+  _t561Walked(vil, npc, now);
   vil._t561Lad = +((vil._t561Lad || 0) + got).toFixed(6);                                        // 계측 전용 누계(사다리에서 든 단 · 켠 판에만 선다)
   return got;
+}
+// ★[T561 ②ⓑⓓ] **그날 나선 몸** — 한 몸 한 번(사람 수 · T475 `_t325PreWalked` 규약 · 새 칸 0 — 도장은 몸의 `_t561Wd` 하나).
+//   ⓑ 사다리·회관에서 통나무를 내린 몸 · ⓓ 그날 현장(나무 셀)을 잡아 **나선** 몸 — 닿지 못해(강 건너 · A* 칸 예산) 0그루인 날도
+//   그 몸의 하루는 있었다 ⇒ 일괄이 그 몸 몫으로 걸음 한도를 대신 베지 않는다(캐논 "일괄은 몸을 대신할 뿐 몸보다 많이 내지 않는다").
+//   ⚠켜진 팔만 부른다(부르는 두 자리 모두 `T561_ROSTER_BODY` 뒤) — 끔 = 옛 XOR(해 질 녘 손만).
+function _t561Walked(vil, npc, now) {
+  const d = state.dayMs ? gameDayOf(now) : 0;                                                     // 몸의 날(`npcLifeTick` 이 쓰는 그 날)
+  if (npc._t561Wd !== d) { npc._t561Wd = d; vil._t325PreWalked = (vil._t325PreWalked | 0) + 1; }
 }
 // ★[T523] `_lifeDaily` 는 정본 몸통(`_lifeDailySteps` 발생기)을 쉬지 않고 끝까지 돈다 — 종전 호출·순서·값 그대로.
 //   쉼표는 사냥꾼 한 명마다 하나뿐이다(`_huntHuntersSteps`). 손잡이 `T523_LIFE_SLICE` 를 켜면 하루 마감(`_openDayJobs`)이 그 쉼표에서 프레임을 넘긴다.
@@ -9040,6 +9050,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
       //   ★★[T561 ②ⓐ] 켬 — 그 셀에 서 있는 그루가 없으면 다음으로 가까운 셀(같은 순서 · 같은 동점 규칙 · 일괄 절의 그 문) · 끔 = 옛 줄(빈 셀에 선다)
       if (T561_ROSTER_BODY) { best = _t561Standing(_tr, npc, h, best); if (!best) { npc._t325Site = { none: 1, day }; _lifeGoHome(npc, '휴식'); return true; } }
       npc._t325Site = { cx: best.cx, cy: best.cy, x: best.x, y: best.y, day };
+      if (T561_ROSTER_BODY) _t561Walked(vil, npc, now);   // ★[T561 ②ⓓ] 현장으로 나선 몸은 그날 걸은 몸 — 닿지 못해 0그루여도 일괄이 그 몸 몫을 대신 안 벤다
     }
     const ts = npc._t325Site;
     if (Math.hypot(npc.x - ts.x, npc.y - ts.y) > 44) {
