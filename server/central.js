@@ -1505,7 +1505,7 @@ const server = http.createServer(async (req, res) => {
 
     // 정적 파일 — index.html, client.js, style.css (dispatcher가 하던 일)
     if (req.method === 'GET') {
-      let urlPath = req.url === '/' ? '/index.html' : req.url;
+      let urlPath = req.url.split('?')[0] === '/' ? '/index.html' : req.url;   // ★[T539 ⓪] 쿼리를 뗀 길이 `/` 여도 index(`/?T522_CHAR_3D=1` 404 였다 · `/index.html?…` 무변)
       // Phase 5-G: cache busting query string (?v=xxx) 제거 — 파일 경로에 포함되면 404
       const qIdx = urlPath.indexOf('?');
       if (qIdx !== -1) urlPath = urlPath.substring(0, qIdx);

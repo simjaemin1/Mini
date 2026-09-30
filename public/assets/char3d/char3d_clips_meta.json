@@ -1,0 +1,90 @@
+{
+ "_": "[T539] char_export_clips.py 산물 — `char_body.glb` 몸에 **뼈 이름으로** 거는 액션(메시 0). 클라는 수를 하드코딩하지 않는다.",
+ "baseClips": [
+  "aim",
+  "idle",
+  "walk"
+ ],
+ "bpy": "5.0.1",
+ "clips": {
+  "aim2": {
+   "duration": 1.0,
+   "fps": 2.0,
+   "frames": 2,
+   "ground": false,
+   "loop": true,
+   "span": 2
+  },
+  "captive_idle": {
+   "duration": 0.0,
+   "fps": 1.0,
+   "frames": 1,
+   "ground": false,
+   "loop": false,
+   "span": 0
+  },
+  "captive_walk": {
+   "duration": 0.8,
+   "fps": 10.0,
+   "frames": 8,
+   "ground": false,
+   "loop": true,
+   "span": 8
+  },
+  "carry": {
+   "duration": 0.0,
+   "fps": 1.0,
+   "frames": 1,
+   "ground": true,
+   "loop": false,
+   "span": 0
+  },
+  "down": {
+   "duration": 0.0,
+   "fps": 1.0,
+   "frames": 1,
+   "ground": true,
+   "loop": false,
+   "span": 0
+  },
+  "idle2": {
+   "duration": 4.444444,
+   "fps": 0.9,
+   "frames": 4,
+   "ground": false,
+   "loop": true,
+   "span": 4
+  },
+  "run": {
+   "duration": 0.571429,
+   "fps": 14.0,
+   "frames": 8,
+   "ground": false,
+   "loop": true,
+   "span": 8
+  },
+  "swing": {
+   "duration": 0.357143,
+   "fps": 14.0,
+   "frames": 6,
+   "ground": false,
+   "loop": false,
+   "span": 5
+  },
+  "swing2": {
+   "duration": 0.357143,
+   "fps": 14.0,
+   "frames": 6,
+   "ground": false,
+   "loop": false,
+   "span": 5
+  }
+ },
+ "exporter": "io_scene_gltf2 5.0.21",
+ "for": "char_body.glb",
+ "glb": "char_clips.glb",
+ "groundNote": "쓰러짐·업기의 내림은 root 뼈 위치(참 3D · 엔진 부모 스케일 zsq 로 눌린다) — 시트 굽기가 전 층으로 잰 그 값",
+ "timeNote": "이 파일의 액션 시각 = 판 번호(판 k 의 열쇠가 시각 k) · 엔진: 파일 시각 = 초 × fps — 몸 파일(char_body.glb)은 초 단위",
+ "timeUnit": "frame",
+ "zsq": 0.8164965809277261
+}
