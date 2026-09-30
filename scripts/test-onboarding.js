@@ -199,7 +199,8 @@ const FOOD = new Set(['berry', 'herb', 'meat_raw', 'meat_cooked', 'berry_jam', '
   'dried_fish', 'dried_fruit', 'smoked_meat', 'pickled_veg']);
 const fakePlayers = new Map();
 const sent = [];
-const _t529Has = new Set();   // ★[T529 ⑨] 촌장이 맡은 인사(pid:vid) — 존이 넘기는 `chiefGreetHas` 의 대역
+const _t529Has = new Set();
+const _t540Sh = new Map();    // ★[T540 추신2 ⑩] 쉼터 좌표 대역(vid → {cx,cy}) — 비어 있으면 종전(쉼터 없음)과 같다   // ★[T529 ⑨] 촌장이 맡은 인사(pid:vid) — 존이 넘기는 `chiefGreetHas` 의 대역
 Onb.init({
   SimVillages: { eventLedger: L, __labProbe: P, clientVillages: () => list,
     lifeDebug: () => ({ villages: world.villages.map((v, i) => ({ name: v.name, econCounts: v.counts })) }) },
@@ -209,6 +210,7 @@ Onb.init({
   foodItems: FOOD, gameDay: () => world.day | 0,
   warm: false,   // ★굽기는 이 하네스가 위에서 이미 했다(`computeArrivals`) — 두 번 굽지 않는다
   chiefGreetHas: (pid, vid) => _t529Has.has(pid + ':' + vid),
+  shelterOf: (vid) => _t540Sh.get(vid) || null,
 });
 Onb.__probe.setArrivals(arr);
 {
@@ -318,6 +320,24 @@ console.log('\n⑨ [T529] 촌장 몸의 인사 = 근접 인사와 같은 한 통
   const vsrc = fs.readFileSync(path.join(__dirname, '..', 'server', 'villages.js'), 'utf8');
   ok(nKnob === 1 && /function chiefGreetAsk\([^)]*\) \{\s*if \(process\.env\.T529_CHIEF_WALKS !== '1'\) return false;/.test(vsrc),
     `ⓓ 손잡이 \`T529_CHIEF_WALKS\` 는 \`chiefGreetAsk\` 첫 줄 한 곳에서 부를 때 읽는다`, `${nKnob}곳`);
+}
+
+// ── ⑩ [T540 추신2] 빈 판 날 쉼터 안에 선 사람에게는 근황 한 줄 ─────────────────
+console.log('\n⑩ [T540 추신2 · 재민] 빈 판 · 쉼터 안이면 "쉼터에서 쉬게" 대신 근황 한 줄(시작 화면 근황과 같은 줄)');
+{
+  const v = list.find((x) => !Onb.pickFirstQuest(x.id));
+  ok(!!v, '⑩ (상황) 첫 의뢰가 빈 판인 마을이 있다', v ? v.name : '');
+  if (v) {
+    _t540Sh.set(v.id, { cx: v.cx, cy: v.cy });
+    const inside = { x: (v.cx - 2.5) * 32, y: (v.cy - 1.5) * 32 }, outside = { x: (v.cx - 2.5) * 32, y: (v.cy + 3.5) * 32 };
+    const gi = Onb.greetLines(v.id, 'test_onb_t540', inside), go = Onb.greetLines(v.id, 'test_onb_t540', outside), gn = Onb.greetLines(v.id, 'test_onb_t540');
+    const si = Onb.startInfo({}), row = si && (si.villages || []).find((x) => x.vid === v.id);
+    ok(go.lines[1] === '지금은 급한 일이 없네. 마을 쉼터에서 쉬게.' && gn.lines[1] === go.lines[1], '⑩ 쉼터 밖(·자리 모름)은 종전 줄 그대로', go.lines[1]);
+    ok(!!row && gi.lines[1] === row.news && gi.lines[1] !== go.lines[1], '⑩ 쉼터 안이면 둘째 줄 = 시작 화면 근황 줄(`_newsLine` · 새 문장 0)', gi.lines[1]);
+    _t540Sh.clear();
+    const g0 = Onb.greetLines(v.id, 'test_onb_t540', inside);
+    ok(g0.lines[1] === '지금은 급한 일이 없네. 모닥불 곁에서 쉬게.', '⑩ 쉼터가 없으면 종전(모닥불) 그대로', g0.lines[1]);
+  }
 }
 
 // ── ⑧ ★검사기 자가 검사 ────────────────────────────────────────────────────

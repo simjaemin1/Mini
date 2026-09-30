@@ -461,6 +461,14 @@ function noteVillage(vid) {
   return a;
 }
 
+// ★근황 한 줄 — 사건 장부 최신 1건을 촌장 브리핑과 같은 생성기(`Events.briefLine`)로. 없으면 브리핑의 그 폴백 줄.
+//   ★[T540 추신2] 시작 화면 근황과 **촌장 첫 인사**(빈 판 · 쉼터 안)가 이 한 곳을 부른다(문장 사본 0).
+function _newsLine(vid, ledger) {
+  const L = ledger || (H && H.SimVillages && H.SimVillages.eventLedger) || null;
+  let news = '';
+  if (L) { try { const evs = L.recent(vid, 1); if (evs && evs.length) news = H.Events.briefLine(evs[0]) || ''; } catch (e) {} }
+  return news || '별일 없네. 자네도 몸 성히 지내게.';
+}
 // ═══ ② 시작 화면이 읽을 마을 목록 ════════════════════════════════════════════
 //
 // ★근황 한 줄이 곧 "세계가 살아있다"의 첫 증명(§9.1) — 사건 장부 최신 1건을
@@ -578,15 +586,9 @@ function startInfo(opts) {
     //     로비가 몇 초 뒤 다시 물으면 채워져 있다(`warming` 플래그가 그 신호다).
     const a = _arrCache.get(v.id) || null;
     const ch = characterOf(counts.get(v.name), world);
-    let news = '', board = 0;
-    if (ledger) {
-      try {
-        const evs = ledger.recent(v.id, 1);
-        if (evs && evs.length) news = H.Events.briefLine(evs[0]) || '';
-        board = (ledger.board(v.id) || []).length;
-      } catch (e) {}
-    }
-    if (!news) news = '별일 없네. 자네도 몸 성히 지내게.';
+    let board = 0;
+    if (ledger) { try { board = (ledger.board(v.id) || []).length; } catch (e) {} }
+    const news = _newsLine(v.id, ledger);
     const busy = near.get(v.id) || 0;
     // ★★[T19 2026-09-02] **유저 마을은 "이방인 받기"를 켠 곳만 지도에 오른다.**
     //   §9.3: *"유저 마을도 시작지 등록 가능 — 시작 지도가 곧 길드 모집 채널."*
@@ -762,7 +764,7 @@ function _isPlayerVillage(vid) {
     return !!(v && v.player);
   } catch (e) { return false; }
 }
-function greetLines(vid, playerId) {
+function greetLines(vid, playerId, pos) {
   const a = arrivalOf(vid);
   const q = pickFirstQuest(vid);
   const s = stateOf(playerId);
@@ -790,7 +792,14 @@ function greetLines(vid, playerId) {
   } else {
     // ★[T62] 쉼터가 서 있으면 그것을 가리킨다 — 모닥불은 쉼터가 없던 시절의 말이다.
     let _sh0 = null; try { _sh0 = H.shelterOf ? H.shelterOf(vid) : null; } catch (e) { _sh0 = null; }
-    lines.push(_sh0 ? '지금은 급한 일이 없네. 마을 쉼터에서 쉬게.' : '지금은 급한 일이 없네. 모닥불 곁에서 쉬게.');
+    // ★★[T540 추신2 · 재민 09-30] **이미 쉼터 안에 선 사람**에게 "쉼터에서 쉬게"는 헛말이다 ⇒ 그 자리엔 마을 근황 한 줄
+    //   (`_newsLine` — 시작 화면 근황 · 촌장 브리핑과 같은 생성기 · 새 문장 0). 쉼터 밖이면 종전 그대로(방향을 준다).
+    //   안인가 = 쉼터 발자국 [cx−5..cx]×[cy−5..cy−2](`_vbFootprint('shelter')` 그 렉트 · T520 도착 칸이 여기다).
+    const _inSh = !!(_sh0 && pos && Number.isFinite(pos.x) && Number.isFinite(pos.y) && (() => {
+      const px = Math.floor(pos.x / SZ), py = Math.floor(pos.y / SZ);
+      return px >= _sh0.cx - 5 && px <= _sh0.cx && py >= _sh0.cy - 5 && py <= _sh0.cy - 2; })());
+    if (_inSh) lines.push(_newsLine(vid));
+    else lines.push(_sh0 ? '지금은 급한 일이 없네. 마을 쉼터에서 쉬게.' : '지금은 급한 일이 없네. 모닥불 곁에서 쉬게.');
   }
   return { lines, quest: q, arrive: a ? { kind: a.kind } : null };
 }
@@ -886,7 +895,7 @@ function daySummary(player) {
 //   ★`by` = 말하는 몸(NPC pid)이 있을 때만 싣는다 — 없으면 종전 바이트 그대로(클라는 `by` 가 있으면 그 사람 입에 말풍선을 건다 · T126 문법).
 function sendGreet(player, vid, by) {
   if (!ready() || !player || !H.send || !player.ws || vid == null) return false;
-  const g = greetLines(vid, player.playerId);
+  const g = greetLines(vid, player.playerId, { x: player.x, y: player.y });   // ★[T540 추신2] 선 자리(쉼터 안이면 근황 한 줄)
   const a = arrivalOf(vid);
   H.send(player.ws, { type: 'onboarding_quest', vid, kind: 'greet', name: (a && a.name) || '',
     day: (typeof H.gameDay === 'function') ? (H.gameDay() | 0) : 0,
