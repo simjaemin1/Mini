@@ -6,7 +6,7 @@
 //   꼴이 바뀌어도 총시간이 같으면 한 바퀴 평균은 같다. 다른 것은 **어느 띠에서 사느냐**다 — 그 띠마다 하루 몇 점·몇 kcal 을 쓰는지 잰다.
 //
 // ★사본 0 — 곡선은 전부 `server/body.js` 정본(`tick` · `decayStep` · `decayRate` · `t508Info`)에서 나온다.
-//   꼴마다 env(`T508_DECAY_EXP` = '' · '1' · 'rat')를 주고 모듈을 **다시 올린다**(test-body ⑲ⓗ 와 같은 규약).
+//   꼴마다 env(`T508_DECAY_EXP` = '0'(두 토막 선형 · 표의 '' 칸) · '1' · 'rat')를 주고 모듈을 **다시 올린다**(test-body ⑲ⓗ 와 같은 규약).
 //
 // 실행: node scripts/t508-decay-table.js [--json <파일>]
 'use strict';
@@ -19,7 +19,7 @@ const K = require(path.join(ROOT, 'server', 'kcal.js'));
 function load(form) {
   const keep = process.env.T508_DECAY_EXP;
   delete require.cache[BP];
-  if (form) process.env.T508_DECAY_EXP = form; else delete process.env.T508_DECAY_EXP;
+  process.env.T508_DECAY_EXP = form || '0';   // ★[T536 추신] 기본이 지수 꼴이라 두 토막 선형은 `'0'` 으로 부른다(미설정 = 지수)
   try { return require(BP); } finally {
     delete require.cache[BP];
     if (keep === undefined) delete process.env.T508_DECAY_EXP; else process.env.T508_DECAY_EXP = keep;

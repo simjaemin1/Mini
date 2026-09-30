@@ -70,7 +70,7 @@ const TIERS = [['맨몸', 0], ['삼베(조잡)', PI.craftItem('clothes', 0, { he
   ['갖옷', PI.craftItem('clothes', 8, { fur: 3 }).attrs.warmth]];
 const PLACES = [['야생', { windExposure: 0 }], ['마을', { villageShelter: 1, windExposure: 0 }], ['실내', { indoor: true }], ['불 곁', { nearFire: true }]];
 
-const ARMS = [['끔', { T508_CLO: undefined }], ['켬', { T508_CLO: '1' }]];
+const ARMS = [['끔', { T508_CLO: '0' }], ['켬', { T508_CLO: '1' }]];   // ★[T536 추신] 기본이 켬이라 끔 팔은 `'0'` 으로 부른다(미설정 = 켬)
 const out = { WINTER, NIGHT_MIN, years: YEARS, arms: {} };
 const cell = (r) => {
   const f = (x) => x.n ? `${x.n}/${YEARS} ${(x.med / 60).toFixed(1)}` : `0/${YEARS} —`;
