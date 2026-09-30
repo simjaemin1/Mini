@@ -3739,7 +3739,7 @@ const T347_FORAGE_ACT = process.env.T347_FORAGE_ACT === '1';
 //   ② 서버가 크루로 **실제로** 나르는 마을(`v._t400Live` — 생활층이 날마다 적는다)에서는 여기서 자재를 **안 뺀다** —
 //      크루가 곳간에서 꺼낼 때(`actFromGranary`) 빠진다. 두 번 빼면 그게 유령이다.
 //   켜기는 재민 — 이 카드는 값을 안 정한다.
-const T400_BUILD_ACT = process.env.T400_BUILD_ACT === '1';
+const T400_BUILD_ACT = process.env.T400_BUILD_ACT !== '0';   // ★[T537 추신2 · 재민 캐논 09-30] 기본 켬(집 = 행위) · 되돌림 `T400_BUILD_ACT=0` = 넷째 판-c 비트 동일
 let _hutMod, _vlMod;
 function _hutStages() { if (_hutMod === undefined) { try { _hutMod = require('../server/hut-stages'); } catch (e) { _hutMod = null; } } return _hutMod; }
 function _villageLayoutMod() { if (_vlMod === undefined) { try { _vlMod = require('../server/village-layout'); } catch (e) { _vlMod = null; } } return _vlMod; }
@@ -3747,7 +3747,8 @@ function _villageLayoutMod() { if (_vlMod === undefined) { try { _vlMod = requir
 function _econOnly(raw) { const o = {}; for (const k of Object.keys(raw || {})) if (RESOURCES.indexOf(k) >= 0) o[k] = raw[k]; return o; }
 // ★[T497 2026-09-28] 집 단가 팔 — 값 = 고증 기둥 수(`hut-stages.js HUT_PILLARS_ATTESTED` 의 수만 · 그 밖의 값·빈값 = 끔 = 표 그대로 22).
 //   켬이면 econ 이 읽는 한 채·한 단계 원자재가 ② 기둥 수만 바뀐 표에서 나온다(기둥 2 → 통나무 10 · 4 → 16). 손잡이 한 자리.
-const T497_HUT_COST = (() => { const x = parseInt((typeof process !== 'undefined' && process.env && process.env.T497_HUT_COST) || '', 10); return Number.isFinite(x) ? x : 0; })();
+//   ★[T537 추신2 · 재민 캐논 09-30] 기본 = 기둥 2(통나무 10 · 송국리형) · 되돌림 `T497_HUT_COST=0`(표 그대로 22) · 4 = 둘레 4기둥 판
+const T497_HUT_COST = (() => { const raw = (typeof process !== 'undefined' && process.env && process.env.T497_HUT_COST); const x = parseInt(raw === undefined || raw === '' ? '2' : raw, 10); return Number.isFinite(x) ? x : 0; })();
 function hutPillarsArm() { const H = _hutStages(); return (H && H.HUT_PILLARS_ATTESTED && H.HUT_PILLARS_ATTESTED.indexOf(T497_HUT_COST) >= 0) ? T497_HUT_COST : 0; }
 // ★[T517 2026-09-29] 주춧돌 팔 — 켜면 기둥 하나에 주춧돌 하나(`hut-stages.js plinthKg` · 대평리 실측) · 돌 단위 = `weights.kgOf('stone')`(석괴 한 덩이).
 //   끔(기본) = 표 그대로(석재 0 · 송국리형 고증과 같다). 기둥 수는 T497 팔이 있으면 그 수 · 없으면 표의 수. 손잡이 한 자리.

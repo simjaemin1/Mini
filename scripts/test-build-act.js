@@ -21,6 +21,10 @@
 // 실행: node scripts/test-build-act.js
 'use strict';
 process.env.ENABLE_VILLAGES = process.env.ENABLE_VILLAGES || '0';
+// ★[T537 추신2] 집 켬이 **기본**이 됐다(`T400_BUILD_ACT` 켬 · `T497_HUT_COST` 2). 이 하네스의 ①~⑥은 **되돌림 판**(끔 · 표 22)을 기준으로 계약을 잰다 —
+//   부모와 자식 모두 되돌림 값을 명시한다(자식은 필요한 판에서만 켠다). 새 기본값 자체는 ⑨가 잰다.
+const _DEF = { T400: process.env.T400_BUILD_ACT, T497: process.env.T497_HUT_COST };
+process.env.T400_BUILD_ACT = '0'; process.env.T497_HUT_COST = '0';
 const path = require('path');
 const fs = require('fs');
 const ROOT = path.join(__dirname, '..');
@@ -235,10 +239,10 @@ console.log('\n⑦ [T497] 집 단가 팔 — 고증 기둥 수(2 · 4)만 · 끔
   const H = require(path.join(ROOT, 'server', 'hut-stages.js'));
   ok(JSON.stringify(H.HUT_PILLARS_ATTESTED) === '[2,4]' && H.hutRawPillars(6).wood === H.hutRaw().wood, '⑦ 고증 기둥 수 표 둘(2 · 4) · 기둥 6 을 주면 원래 표와 같다(유도 함수가 표를 되돌린다)');
   const js = `const E=require(${EP});process.stdout.write(JSON.stringify({m:E.hutEconMaterials(),s1:E.hutEconStage(1),s2:E.hutEconStage(2),c:E.houseCostPerCap('wood'),arm:E.hutPillarsArm()}));`;
-  const off = probe({ T400_BUILD_ACT: '1', T497_HUT_COST: '' }, js), a2 = probe({ T400_BUILD_ACT: '1', T497_HUT_COST: '2' }, js),
+  const off = probe({ T400_BUILD_ACT: '1', T497_HUT_COST: '0' }, js), a2 = probe({ T400_BUILD_ACT: '1', T497_HUT_COST: '2' }, js),
         a4 = probe({ T400_BUILD_ACT: '1', T497_HUT_COST: '4' }, js), bad = probe({ T400_BUILD_ACT: '1', T497_HUT_COST: '3' }, js),
         noB = probe({ T400_BUILD_ACT: '0', T497_HUT_COST: '2' }, js);
-  ok(off.m.wood === 22 && off.arm === 0, '⑦ ★끔 — 한 채 통나무 22(표 그대로)', JSON.stringify(off));
+  ok(off.m.wood === 22 && off.arm === 0, '⑦ ★되돌림(`T497_HUT_COST=0`) — 한 채 통나무 22(표 그대로)', JSON.stringify(off));
   ok(a2.m.wood === 10 && a2.s1.wood === 6 && a2.s2.wood === off.s2.wood && Math.abs(a2.c - 10 / 6) < 1e-12, '⑦ 기둥 2 — 한 채 10 · ② 단계 6 · ③ 서까래 단계 무변 · 단가 10÷6', JSON.stringify(a2));
   ok(a4.m.wood === 16 && a4.s1.wood === 12 && Math.abs(a4.c - 16 / 6) < 1e-12, '⑦ 기둥 4 — 한 채 16 · ② 단계 12 · 단가 16÷6', JSON.stringify(a4));
   ok(bad.m.wood === 22 && bad.arm === 0, '⑦ 미끼 — 고증 표에 없는 수(3)는 끔과 같다(새 수 0)');
@@ -253,13 +257,26 @@ console.log('\n⑧ [T517] 주춧돌 팔 — 기둥 하나에 주춧돌 하나(�
   ok(Math.abs(H.plinthKg() - 25 * 35 * 9 * 2.7 / 1000) < 1e-9 && H.stageStoneKg(0) === 0 && H.stageStoneKg(1) === 6 * H.plinthKg() && H.stageStoneKg(1, 2) === 2 * H.plinthKg(), '⑧ 주춧돌 kg = 가로×세로×높이(가운데)×밀도(가운데) · 기둥 서는 ② 단계에만 · 기둥 수만큼', H.plinthKg().toFixed(3));
   ok(JSON.stringify(H.hutRaw()) === JSON.stringify({ wood: 22, fiber: 38 }), '⑧ 표 무변(석재 0 — 송국리형 고증과 같다)');
   const js = `const E=require(${EP});process.stdout.write(JSON.stringify({m:E.hutEconMaterials(),s1:E.hutEconStage(1),s2:E.hutEconStage(2),c:E.houseCostPerCap('stone')}));`;
-  const off = probe({ T400_BUILD_ACT: '1', T517_HUT_STONE: '' }, js), on = probe({ T400_BUILD_ACT: '1', T517_HUT_STONE: '1' }, js),
+  const off = probe({ T400_BUILD_ACT: '1', T517_HUT_STONE: '' }, js), on = probe({ T400_BUILD_ACT: '1', T517_HUT_STONE: '1', T497_HUT_COST: '0' }, js),
         on2 = probe({ T400_BUILD_ACT: '1', T517_HUT_STONE: '1', T497_HUT_COST: '2' }, js), noB = probe({ T400_BUILD_ACT: '0', T517_HUT_STONE: '1' }, js);
   ok(off.m.stone === undefined && off.c === 0, '⑧ ★끔 — 석재 0(단가 0)', JSON.stringify(off));
   ok(Math.abs(on.m.stone - 6 * H.plinthKg() / 4) < 1e-9 && on.s2.stone === undefined && Math.abs(on.c - 6 * H.plinthKg() / 4 / 6) < 1e-9, '⑧ 켬 — 기둥 6 · 주춧돌 6 = 돌 단위(석괴 4 kg) 31.89 · ③ 단계엔 돌 없음 · 단가 5.32/인', JSON.stringify(on));
   ok(Math.abs(on2.m.stone - 2 * H.plinthKg() / 4) < 1e-9 && on2.m.wood === 10 && Math.abs(on2.c - 2 * H.plinthKg() / 4 / 6) < 1e-9, '⑧ T497 기둥 2 와 같이 — 주춧돌 2 · 돌 10.63 · 단가 1.77/인(옛 2.5)', JSON.stringify(on2));
   ok(noB.c === 2.5, '⑧ 집 행위 끔이면 팔은 뜻이 없다(옛 단가 2.5)');
   ok((SRC.match(/process\.env\.T517_HUT_STONE/g) || []).length === 1 && !/T517_HUT_STONE/.test(ZSRC) && !/T517_HUT_STONE/.test(VSRC), '⑧ 손잡이 한 자리(econ) · 서버 공정 무접촉');
+}
+
+console.log('\n⑨ [T537 추신2] 새 기본값 — 집 켬(`T400_BUILD_ACT`) · 기둥 2(`T497_HUT_COST`) · 석재 0(`T517_HUT_STONE` 끔) · 되돌림 둘');
+{
+  const js = `const E=require(${EP});process.stdout.write(JSON.stringify({k:E.T400_BUILD_ACT,arm:E.hutPillarsArm(),m:E.hutEconMaterials(),c:E.houseCostPerCap('wood'),st:E.houseCostPerCap('stone'),out:E.actFromGranary({storage:{wood:9}},'wood',3)}));`;
+  const envNo = Object.assign({}, process.env); delete envNo.T400_BUILD_ACT; delete envNo.T497_HUT_COST; delete envNo.T517_HUT_STONE;
+  const def = JSON.parse(execFileSync(process.execPath, ['-e', js], { env: envNo, stdio: ['ignore', 'pipe', 'pipe'] }).toString().split('\n').filter((l) => l.startsWith('{')).pop());
+  ok(def.k === true && def.arm === 2 && JSON.stringify(def.m) === '{"wood":10}' && Math.abs(def.c - 10 / 6) < 1e-12 && def.st === 0 && def.out === 3, '⑨ ★★손잡이 없이(기본) — 집 켬 · 기둥 2 = 통나무 10/채 · 단가 10÷6 · 석재 0 · 곳간 출구 열림', JSON.stringify(def));
+  const rev = probe({ T400_BUILD_ACT: '0', T497_HUT_COST: '0' }, js);
+  ok(rev.k === false && rev.arm === 0 && rev.c === 1.5 && rev.st === 2.5 && rev.out === 0, '⑨ 되돌림 `T400_BUILD_ACT=0` — 넷째 판-c 단가(1.5 · 2.5) · 곳간 출구 닫힘', JSON.stringify(rev));
+  const r22 = probe({ T400_BUILD_ACT: '1', T497_HUT_COST: '0' }, js);
+  ok(r22.arm === 0 && JSON.stringify(r22.m) === '{"wood":22}', '⑨ 되돌림 `T497_HUT_COST=0` — 표 그대로 22');
+  ok(/const T400_BUILD_ACT = process\.env\.T400_BUILD_ACT !== '0';/.test(SRC) && /raw === undefined \|\| raw === '' \? '2' : raw/.test(SRC), '⑨ 손잡이 글자 — 켬 기본(`!== \'0\'`) · 기둥 기본 2(빈값 = 2)');
 }
 
 console.log(`\n=== ${pass}/${pass + fail} ${fail ? '✗' : '✓'} ===`);
