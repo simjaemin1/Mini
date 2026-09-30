@@ -154,8 +154,10 @@ console.log('\n⑦ [T316] 관측자 없는 마을도 걷는다');
   ok(/function _t316WalkAlways\(npc\)/.test(Z), '⑦ 걷기 술어가 존에 **하나** 있다(`_t316WalkAlways`)');
   //   ★[T368 2026-09-25] 둘째 항이 붙었다 — **농부만**(`T368_FARM_ACT && simJob === 'farmer'`). 첫 항(주민 전부)은 그대로 `T312_FISH_ACT` 다.
   //     T316 이 지킨 뜻("술어는 하나 · 둘째 **술어**를 안 만든다")은 그대로다 — 항은 T368 카드가 붙였고 이름으로 못 박는다.
-  ok(/return !!\(_t316Econ && \(_t316Econ\.T312_FISH_ACT \|\| \(_t316Econ\.T368_FARM_ACT && npc\.simJob === 'farmer'\)\)\)/.test(Z),
-     '⑦ ★★그 술어의 첫 항이 **`T312_FISH_ACT`**(주민 전부)이고, 둘째 항은 ★T368 **농부만**이다 — 둘째 술어는 없다');
+  //   ★[T540 ⓪] T529 가 셋째 항(인사하러 가는 촌장 · `SimVillages.chiefWalking`)을 붙였다 — 몸통은 두 줄, 술어는 여전히 하나.
+  ok(/if \(_t316Econ && \(_t316Econ\.T312_FISH_ACT \|\| \(_t316Econ\.T368_FARM_ACT && npc\.simJob === 'farmer'\)\)\) return true;/.test(Z)
+     && /return !!\(SimVillages\.chiefWalking && SimVillages\.chiefWalking\(npc\)\);/.test(Z),
+     '⑦ ★★그 술어의 첫 항이 **`T312_FISH_ACT`**(주민 전부)이고, 둘째 항은 ★T368 **농부만**, 셋째 항은 ★T529 **인사하러 가는 촌장**이다 — 둘째 술어는 없다');
   ok(!/T316_[A-Z_]+/.test(Z + V + SRC), '⑦ ★레포 어디에도 `T316_*` 라는 **새 손잡이가 없다**');
   ok(/if \(!npc\.canadiaVillage && !_t316WalkAlways\(npc\) && !isPositionActive\(npc\.x, npc\.y\)\)/.test(Z),
      '⑦ ★★결정 게이트 **그 한 줄**에 끼워 넣었다(루프 사본 0 · 새 루프 0)');
@@ -163,8 +165,10 @@ console.log('\n⑦ [T316] 관측자 없는 마을도 걷는다');
   //   (켠 팔 7 게임일: 걷는 어부 0 · 입고 0 · 틱만 8배). 이동 문까지 같은 술어로 열어야 한다.
   ok(/if \(!p\.canadiaVillage && !_t316WalkAlways\(p\) && !isPositionActive\(p\.x, p\.y\)\) continue; \/\/ dormant NPC skip/.test(ZSRC),
      '⑦ ★★**이동 문**(`movePlayerStep` 앞)도 같은 술어로 연다 — 결정만 열면 한 픽셀도 안 간다');
-  ok((Z.match(/_t316WalkAlways\(/g) || []).length === 3,
-     '⑦ 그 술어를 부르는 자리가 **둘**이다(정의 1 + 호출 2) — 셋째 문은 안 열었다',
+  //   ★[T540 ⓪ · T534 추신 2 알림] T461(T499 기본 켬) 뒤로 이동 문의 **거울**(`_wwPre` — 같은 거름 식 글자 그대로)이 하나 더 있다 ⇒ 정의 1 + 호출 3.
+  //     문은 여전히 둘(결정 · 이동)이고 거울은 이동 문의 앞문이다(`test-farm-act ⑦` 이 거울을 글자로 건다).
+  ok((Z.match(/_t316WalkAlways\(/g) || []).length === 4,
+     '⑦ 그 술어를 부르는 자리는 정의 1 + 호출 3(결정 · 이동 · 이동의 거울 `_wwPre`) — 셋째 **문**은 안 열었다',
      String((Z.match(/_t316WalkAlways\(/g) || []).length));
   ok(/if \(!npc \|\| !npc\.simVillageId\) return false;/.test(Z),
      '⑦ 마을 소속 NPC 만 해당된다(야생·도적 NPC 는 종전 그대로 — 범위가 마을이다)');
