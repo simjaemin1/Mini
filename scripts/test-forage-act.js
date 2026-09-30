@@ -1212,6 +1212,53 @@ console.log('\n⑳ [T544] 넘침의 행방 — 곳간이 안 받은 몫은 짐�
     'ⓗ ★★존 문 — 빈 개체의 **목록 밖 손**(섬유 · 씨앗)을 돌려준다 · 딴 것 + 돌려준 것 = 정본 전리품(개체와 같이 사라지는 손 0)', rz && JSON.stringify({ took: rz.took, extra: rz.extra }));
 }
 
+// ── ㉑ [T561] 채집 일괄의 명부도 몸의 그날을 본다 — 손잡이 `T561_ROSTER_BODY`(기본 끔 · 끔 = econ 채집꾼 수 · 옛 줄) ──────────────
+//   나무꾼 절과 **같은 한 함수**(`_t561Crew`) · 몸의 칸만(쓰러짐 · 죽음 · 요양 · 요양 문턱 · 시공 · 집 크루) · 한도의 꼴(짐 × 짐당 개체)은 그대로.
+//   [실행] 정본 `_lifeDaily` 채집 절 — 군락 40 포기(마을에서 25셀 · 하루 60,000ms ⇒ 1짐 · 짐당 13개체 — 한도가 군락보다 작은 판)
+console.log('\n㉑ [T561] 채집 일괄의 명부도 몸의 그날을 본다(나무꾼 절과 같은 한 함수 · 기본 끔)');
+{
+  const VC = codeOf(VSRC);
+  const daily = (VC.match(/function _lifeDaily\(vil\) \{[\s\S]*?\n\}/) || [''])[0];
+  ok(/const _t561F = T561_ROSTER_BODY \? _t561Crew\(vil, 'forager'\) : null;/.test(daily)
+     && /const _fgE = _t561F \? _t561F\.length : \(\(vil\.econ\.counts && vil\.econ\.counts\.forager\) \|\| 0\);/.test(daily)
+     && /const _fg = _t449S \? 0 : _fgE;/.test(daily) && /const _cap = _trips \* _perLoad \* _fg;/.test(daily),
+    '㉑ ★★끔 = econ 채집꾼 수(옛 줄) · 켬 = 그날 **나설 수 있는** 채집꾼 몸 — 관측 마을 줄(T449) · 한도의 꼴(짐 × 짐당 개체 × 명부) 무변');
+  const VP = JSON.stringify(path.join(ROOT, 'server', 'villages.js'));
+  const run = (env, o) => probe(Object.assign({ T347_FORAGE_ACT: '1', T325_WOOD_ACT: '', T561_ROSTER_BODY: '', T374_DEMAND_STOP: '0', T490_FORAGE_REACH: '0', T449_BODY_DAY: '' }, env),
+   `const E=require(${EP}); const V=require(${VP}); const P=V.__labProbe;
+    const ccx=100, ccy=100; const players=new Map();
+    const b=(pid,x)=>Object.assign({pid,isNpc:true,simJob:'forager',hp:100,maxHp:100,inventory:{}},x||{});
+    players.set(1,b(1,${JSON.stringify(o.b1 || {})})); players.set(2,b(2,${JSON.stringify(o.b2 || {})}));
+    const now={}; for (let i=0;i<40;i++) now[(ccx+25)+','+(ccy-20+i)]=[{type:'berry_bush',seedKey:'b'+i}];
+    let picks=0;
+    const deps={players,broadcast(){},moveSpeed:64,dayPhaseRatio:0.7,worldPhase:()=>0.3,anyViewerNear:()=>false,
+      t347LootOf:()=>({berry:3,fiber:1,twig:1}), t347GrovesAtCell:(x,y,raw)=>now[x+','+y]||null,
+      t347PickAt:(cx,cy)=>{const k=cx+','+cy; const a=now[k]; if(!a||!a.length) return null; a.pop(); if(!a.length) delete now[k]; picks++; return {berry:3,fiber:1,twig:1};},
+      t341Unharvest:()=>0};
+    P._t400Probe.setup({deps,db:{insertVillageBuilding:()=>1},dayMs:60000,epoch:0,zoneId:'t561f',tickCtx:{now:60*60000}});   // 시계 고정(게임일 60)
+    const ev=E.createVillage({initialPop:0,name:'x',fertility:1}); ev.counts=ev.counts||{}; ev.counts.forager=${o.fgE == null ? 2 : o.fgE};
+    const terr=new Set(); for(let dx=-3;dx<=3;dx++) for(let dy=-3;dy<=3;dy++) terr.add((ccx+dx)+','+(ccy+dy));
+    const vil={dbId:7,name:'x',ccx,ccy,econ:ev,npcPids:[1,2],_terrSet:terr,_farmSet:new Set(),_drySet:new Set(),_potSet:new Set(),_crop:new Map(),_cropClaim:new Set(),_claim:new Set(),_site:null,_houseCells:[],_granList:[],_maxRPx:200};
+    const crew=P._t561Probe.crew(vil,'forager');
+    P._t449Probe.daily(vil);
+    const D=vil._t347Dbg||{};
+    console.log(JSON.stringify({knob:P._t561Probe.T561_ROSTER_BODY,crew,picks,fg:D.fg,cap:D.cap,trips:D.trips,perLoad:D.perLoad,pick:D.pick,t561:D.t561||null}))`);
+  const ON = { T561_ROSTER_BODY: '1' };
+  const off = run({}, {}), on = run(ON, {});
+  ok(off.knob === false && on.knob === true && off.trips === 1 && off.perLoad > 0 && off.cap === 2 * off.perLoad && off.pick === off.cap && off.pick < 40 && off.t561 === null,
+    '㉑ [전제 · 자명 통과 금지] 판이 한도에 걸린다 — 1짐 × 짐당 개체 × econ 2 < 군락 40 · 끔은 T561 칸이 안 선다', `짐 ${off.trips} · 짐당 ${off.perLoad} · 한도 ${off.cap} · 딴 ${off.pick}`);
+  ok(on.crew.join() === '1,2' && on.fg === 2 && on.pick === off.pick && on.t561 && on.t561.crew === 2 && on.t561.econ === 2,
+    '㉑ [실행] 성한 몸 둘이면 켬·끔 같은 한도(명부 2)', `끔 ${off.pick} · 켬 ${on.pick}`);
+  const sick1 = run(ON, { b2: { _rest: 1, hp: 30 } }), sick2 = run(ON, { b1: { _rest: 1, hp: 30 }, b2: { _rest: 1, hp: 30 } }), sick2off = run({}, { b1: { _rest: 1, hp: 30 }, b2: { _rest: 1, hp: 30 } });
+  ok(sick1.fg === 1 && sick1.pick === off.perLoad && sick2.fg === 0 && sick2.pick === 0 && sick2off.pick === off.pick,
+    '㉑ ★★★[실행] 채집꾼 하나 앓으면 명부 1 · **다 앓은 날은 일괄 0** — 끔은 그날도 econ 수만큼 딴다', `켬 ${sick1.pick} · ${sick2.pick} ↔ 끔 ${sick2off.pick}`);
+  const lag = run(ON, { b1: { hp: 50 } }), down = run(ON, { b1: { isDown: true } }), hurt = run(ON, { b1: { hp: 70 } });
+  ok(lag.fg === 1 && down.fg === 1 && hurt.fg === 2,
+    '㉑ [실행] 요양 문턱 아래(hp 50) · 쓰러짐은 빠지고 · 부상(hp 70)은 든다(나무꾼 절과 같은 한 함수)', `${lag.fg} · ${down.fg} · ${hurt.fg}`);
+  const e0on = run(ON, { fgE: 0 }), e0off = run({}, { fgE: 0 });
+  ok(e0on.pick === off.pick && e0off.pick === 0, '㉑ ★[실행] 켬 명부는 **몸**이다 — econ 채집꾼 0 · 몸 2: 켬은 딴다 · 끔은 안 딴다', `${e0on.pick} · ${e0off.pick}`);
+}
+
 console.log('\n⑫ 접점 심볼');
 {
   const all = SRC + VSRC + ZSRC;
