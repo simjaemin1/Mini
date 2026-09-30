@@ -3724,6 +3724,14 @@ function houseWoodShare(v) {
   const N = v.npcs.length;
   return houseDayBuild(v, N, totalFoodEquivalent(v)) * houseCostPerCap('wood');
 }
+// ★[T537 2026-09-30] 통나무 **잉여** — T488 숯가마 식을 함수 하나로 뺐다(재고 − 비축 `RESERVE_PC.wood × 인구` − 집 몫 `houseWoodShare`).
+//   숯가마(`kilnDay`)와 다리 크루(villages `_t527BridgeDay`)가 **같은 함수**를 부른다 — 사본 0 · 새 상수 0 · 숯가마 산술 불변(같은 순서의 같은 뺄셈).
+function woodSpare(v) {
+  if (!v || !v.storage) return 0;
+  const N = (v.npcs && v.npcs.length) || 0;
+  const reserve = (RESERVE_PC.wood || 0) * N;
+  return (v.storage.wood || 0) - reserve - houseWoodShare(v);
+}
 //   ★곳간 **출구** — `actToGranary` 의 역. 크루가 집터로 들고 가는 자재가 여기서 빠진다(있는 만큼만 · 세금 없음 — 마을 제 것이다).
 //     흐름 EMA 는 종전 주거 갈래가 찍던 **그 칸**(`_cons(v, 'wood', …)`)에 찍는다 — 수요 신호가 같은 자리에서 나온다.
 // ══ ★★[T419 2026-09-26] 돌 쓰는 실물 — econ 이 같은 물건을 만드는 세 자리의 단가를 서버 표에서 유도(손잡이 기본 끔) ══
@@ -4966,8 +4974,7 @@ function kilnDay(v) {
     v._kiln = { built: (v._day || 0) };
     return { built: 1 };
   }
-  const reserve = (RESERVE_PC.wood || 0) * N;
-  const spare = (v.storage.wood || 0) - reserve - houseWoodShare(v);   // ★[T488] 잉여 = 재고 − 비축 − **집 몫**(집이 끔이면 0 · 순서 집 → 숯가마 무변)
+  const spare = woodSpare(v);   // ★[T488] 잉여 = 재고 − 비축 − **집 몫**(집이 끔이면 0 · 순서 집 → 숯가마 무변) · ★[T537] 식은 한 함수(다리 크루도 부른다)
   const target = furnaceCharcoalTarget(v);   // ★[T463] 식 한 곳 — 파생수요(`derivedInputTarget`)가 같은 함수를 부른다(산술 불변)
   const gap = target - (v.storage.charcoal || 0);
   if (!(spare >= S.CHARCOAL_KILN_WOOD) || !(gap > 0)) return { batches: 0 };
@@ -8227,7 +8234,7 @@ module.exports = {
   T443_SMELT_FUEL, smeltFuelOn, smeltFuelPerOre, smeltFuelTake,   // ★[T443] 제련 연료 — 하네스·계측기가 표를 옮겨 적지 않게
   T419_STONE_REAL, stoneRealPer, stoneRealOn,   // ★[T419] 돌 쓰는 실물 — 하네스·계측기가 표·유도를 옮겨 적지 않게 내준다
   T435_GRANARY_ACT, granaryEconMaterials,   // ★[T435] 곳간 증설 재료 — 생활층·하네스가 표를 옮겨 적지 않게
-  T400_BUILD_ACT, T527_BRIDGE_ACT, buildActOn, houseDayBuild, houseWoodShare, T497_HUT_COST, hutPillarsArm, T517_HUT_STONE, hutStoneUnits, actFromGranary, hutEconMaterials, hutEconStage, hutStageCount, hutCapPerHut, houseCostPerCap,   // ★[T400] 집 행위 — 하네스·생활층이 표·유도를 옮겨 적지 않게 내준다
+  T400_BUILD_ACT, T527_BRIDGE_ACT, buildActOn, houseDayBuild, houseWoodShare, woodSpare, T497_HUT_COST, hutPillarsArm, T517_HUT_STONE, hutStoneUnits, actFromGranary, hutEconMaterials, hutEconStage, hutStageCount, hutCapPerHut, houseCostPerCap,   // ★[T400] 집 행위 — 하네스·생활층이 표·유도를 옮겨 적지 않게 내준다
   actToGranary, woodToGranary, woodActOn, woodRegrowR, woodRegrowPerDay, T325_WOOD_ACT,
   forageToGranary, forageActOn, forageActItemsOf, foragerYieldsFor, T347_FORAGE_ACT,   // ★[T347] 채집 행위 — 문 셋 + 믹스 정본 + 손잡이(하네스가 표를 옮겨 적지 않는다)
   actDemandLeft, actDemandCap, fishDemandLeft, woodDemandLeft, forageDemandLeft, T374_DEMAND_STOP,
