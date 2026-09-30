@@ -43,8 +43,9 @@ function setup(mode) {
   // 다리 칸 — A·D 만(서버 `isBridgeTileLocal` 과 같은 키 · 셀 좌표)
   const br = new Set();
   const addFlat = (f) => { for (let i = 0; i + 1 < (f || []).length; i += 2) br.add(f[i] + '_' + f[i + 1]); };
-  if (mode === 'A' || mode === 'D') addFlat(ZONE.bridges);
+  if (mode === 'A' || mode === 'D' || mode === 'E') addFlat(ZONE.bridges);
   if (mode === 'D') for (const s of (ZONE.bridgeSites || [])) addFlat(s.cells);
+  if (mode === 'E' && process.env.T527_EXTRA_FILE) addFlat(JSON.parse(fs.readFileSync(process.env.T527_EXTRA_FILE, 'utf8')));   // ★[T537] 지름길 후보 셀(표만)
   const isBridgeLocal = (x, y) => br.has(Math.floor(x / SZ) + '_' + Math.floor(y / SZ));
   const blockedFn = mode === 'C'
     ? (x, y) => !_inZone(x, y) || isRockTileLocal(x, y)
@@ -55,6 +56,80 @@ function setup(mode) {
   return { T, P, ta, ZONE, SZ, isWaterTileLocal, isRockTileLocal, brN: br.size };
 }
 
+// ══ ★[T537 ③] 지름길 후보 — **표만**(규칙 0 · 제품 무접촉 · 계획기 v2 무접촉). 재민 #92 자료. ══════════════════════════════
+//   규칙 문장 후보(이 표가 재는 것): "창 밖 쌍마다 **C 판(물 열림) 최단 경로**가 건너는 물줄기마다, 그 물줄기에서 축 4방 최단 도하(폭 2 · 착지 포함)".
+//   · C 판 길 = 교역 거리행렬과 같은 코스 격자(4셀) · 8방(10/14) · 코너 절단 금지 · 열림 = 코스 셀 중심이 막히지 않음(C 판엔 다리가 없어 `coarseOpen` 과 같다)
+//   · 물줄기 = 그 길의 코스 노드 중 중심 칸이 물(존 물 술어 — 해안 띠 포함 여부는 자와 같은 `T17_COAST`)인 연속 구간
+//   · 도하 = 그 구간 노드 중심 칸마다 가로·세로 두 축으로 물을 건너 양쪽 뭍(물·바위 아님)까지 — 물 칸 수 최소(상한 200 = 계획기 `MAX_SPAN`) ·
+//     단 **가로지르는** 것만(한 끝이 길이 물에 든 뭍에, 다른 끝이 나온 뭍에 더 가깝다 — 물줄기를 따라 옆으로 건너는 도하는 길을 안 줄인다) ·
+//     셀 = 계획기 v2 와 같은 모양(k = 0..len+1 · 폭 2) — 모양만 같고 계획기 코드는 안 부른다(계획기는 끊긴 섬만 본다)
+if (process.env.T527_WANT_CHILD === 'P') {
+  const { P, ta, ZONE, SZ, isWaterTileLocal, isRockTileLocal } = setup('C');
+  const IN = JSON.parse(fs.readFileSync(process.env.T527_PAIRS_FILE, 'utf8'));   // { vs, pairs:[{i,j}] }
+  const STEP = P._distProbe.DIST_STEP, half = STEP >> 1;
+  const W = Math.ceil(ZONE.zoneWidth / SZ), Hh = Math.ceil(ZONE.zoneHeight / SZ), gw = Math.ceil(W / STEP), gh = Math.ceil(Hh / STEP);
+  const px = (c) => c * SZ + SZ / 2;
+  const wet = (cx, cy) => cx >= 0 && cy >= 0 && cx < W && cy < Hh && isWaterTileLocal(px(cx), px(cy));
+  const land = (cx, cy) => cx >= 0 && cy >= 0 && cx < W && cy < Hh && !isWaterTileLocal(px(cx), px(cy)) && !isRockTileLocal(px(cx), px(cy));
+  const openMemo = new Int8Array(gw * gh);
+  const open = (gx, gy) => { if (gx < 0 || gy < 0 || gx >= gw || gy >= gh) return false; const i = gy * gw + gx; if (!openMemo[i]) openMemo[i] = ta.isBlocked(gx * STEP + half, gy * STEP + half) ? 2 : 1; return openMemo[i] === 1; };
+  const snap = (v) => {   // 거리행렬 `srcNode` 와 같은 나선(반경 6노드 · 16방)
+    const gx0 = Math.min(gw - 1, Math.max(0, Math.round(v.ccx / STEP))), gy0 = Math.min(gh - 1, Math.max(0, Math.round(v.ccy / STEP)));
+    if (open(gx0, gy0)) return gy0 * gw + gx0;
+    for (let r = 1; r <= 6; r++) for (let a = 0; a < 16; a++) { const nx = Math.round(gx0 + Math.cos(a / 16 * 2 * Math.PI) * r), ny = Math.round(gy0 + Math.sin(a / 16 * 2 * Math.PI) * r); if (open(nx, ny)) return ny * gw + nx; }
+    return -1;
+  };
+  const DIRS = [[1, 0, 10], [-1, 0, 10], [0, 1, 10], [0, -1, 10], [1, 1, 14], [1, -1, 14], [-1, 1, 14], [-1, -1, 14]];
+  const dist = new Int32Array(gw * gh), prev = new Int32Array(gw * gh);
+  function pathOf(s, t) {
+    dist.fill(-1); prev.fill(-1); dist[s] = 0; const B = [[s]];
+    for (let c = 0; c < B.length; c++) { const q = B[c]; if (!q) continue;
+      for (let h = 0; h < q.length; h++) { const i = q[h]; if (dist[i] !== c) continue; if (i === t) { const out = []; for (let k = t; k >= 0; k = prev[k]) out.push(k); return out.reverse(); }
+        const x = i % gw, y = (i / gw) | 0;
+        for (const [dx, dy, w] of DIRS) { const nx = x + dx, ny = y + dy; if (!open(nx, ny)) continue; if (dx && dy && (!open(x + dx, y) || !open(x, y + dy))) continue;
+          const ni = ny * gw + nx, nc = c + w; if (dist[ni] < 0 || nc < dist[ni]) { dist[ni] = nc; prev[ni] = i; (B[nc] || (B[nc] = [])).push(ni); } } }
+      B[c] = null; }
+    return null;
+  }
+  function crossingAt(cx, cy, E0, X0) {   // 한 칸에서 두 축 — 물 칸 수 최소 도하(양끝 뭍 · 한 끝은 길이 물에 든 쪽, 다른 끝은 나온 쪽에 더 가깝다)
+    let best = null;
+    for (const [ax, ay] of [[1, 0], [0, 1]]) {
+      let a = 0; while (a < 200 && wet(cx - ax * (a + 1), cy - ay * (a + 1))) a++;
+      let b = 0; while (b < 200 && wet(cx + ax * (b + 1), cy + ay * (b + 1))) b++;
+      const len = a + b + 1; if (len > 200) continue;
+      const x0 = cx - ax * (a + 1), y0 = cy - ay * (a + 1), x1 = cx + ax * (b + 1), y1 = cy + ay * (b + 1);
+      if (!land(x0, y0) || !land(x1, y1)) continue;
+      const d = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1]);
+      const side = (d([x0, y0], E0) < d([x0, y0], X0) && d([x1, y1], X0) < d([x1, y1], E0)) || (d([x0, y0], X0) < d([x0, y0], E0) && d([x1, y1], E0) < d([x1, y1], X0));
+      if (!side) continue;   // 물줄기를 **가로지르는** 도하만(길이 든 뭍 ↔ 나온 뭍) — 물줄기를 따라 옆으로 건너는 도하는 길을 안 줄인다
+      if (!best || len < best.len) best = { len, x0, y0, dx: ax, dy: ay };
+    }
+    return best;
+  }
+  const cand = new Map(); const pairOut = [];
+  for (const pr of IN.pairs) {
+    const s = snap(IN.vs[pr.i]), t = snap(IN.vs[pr.j]);
+    const path = (s >= 0 && t >= 0) ? pathOf(s, t) : null;
+    const runs = []; let cur = null, lastLand = null;
+    for (const n of (path || [])) { const cx = (n % gw) * STEP + half, cy = ((n / gw) | 0) * STEP + half;
+      if (wet(cx, cy)) { if (!cur) cur = { E0: lastLand || [cx, cy], cells: [] }; cur.cells.push([cx, cy]); }
+      else { if (cur) { cur.X0 = [cx, cy]; runs.push(cur); cur = null; } lastLand = [cx, cy]; } }
+    if (cur) { cur.X0 = cur.cells[cur.cells.length - 1]; runs.push(cur); }
+    const keys = []; let noCross = 0;
+    for (const run of runs) {
+      let best = null; for (const [cx, cy] of run.cells) { const c = crossingAt(cx, cy, run.E0, run.X0); if (c && (!best || c.len < best.len)) best = c; }
+      if (!best) { noCross++; continue; }
+      const key = `${best.dx ? 'x' : 'y'}:${best.x0},${best.y0}`;
+      if (!cand.has(key)) { const perp = best.dx ? [0, 1] : [1, 0], cells = [];
+        for (let k = 0; k <= best.len + 1; k++) { const bx = best.x0 + best.dx * k, by = best.y0 + best.dy * k; for (let w = 0; w < 2; w++) cells.push(bx + perp[0] * w, by + perp[1] * w); }
+        cand.set(key, { key, span: best.len, cells, pairs: [] }); }
+      cand.get(key).pairs.push(`${IN.vs[pr.i].name}–${IN.vs[pr.j].name}`); keys.push(key);
+    }
+    pairOut.push({ a: IN.vs[pr.i].name, b: IN.vs[pr.j].name, pathN: path ? path.length : null, runs: runs.length, noCross, keys });
+  }
+  process.stdout.write('\n@@' + JSON.stringify({ cands: [...cand.values()], pairs: pairOut }) + '\n');
+  process.exit(0);
+}
 if (process.env.T527_WANT_CHILD) {
   const mode = process.env.T527_WANT_CHILD;
   const { T, P, ta, ZONE, SZ, brN } = setup(mode);
@@ -107,4 +182,44 @@ const res = { zone: Z, n, pairsTotal: n * (n - 1) / 2, capA: +capA.toFixed(2), b
 if (OUT) fs.writeFileSync(OUT, JSON.stringify(res, null, 1));
 console.log(`[t527 ①] ${Z} · 마을 ${n} · 쌍 ${res.pairsTotal} · 창 ${res.capA} · ${JSON.stringify(cnt)}`);
 for (const p of pairs.slice(0, 25)) console.log(`  ${p.a}–${p.b}  A ${p.A} · B ${p.B} · C ${p.C} · D ${p.D} · ×${p.ratio}${p.cut ? ' [끊김]' : ''}${p.pushed ? ' [창 밖]' : ''}`);
+if (process.argv.includes('--shortcut')) {
+  // ★[T537 ③] 지름길 후보 표 — 창 밖 쌍마다 도하 후보 → 전부 지었을 때(E) · 하나씩 지었을 때(E_k) 창 안으로 드는 쌍 · 교역 잠재 순위
+  const tmp = (n) => `/tmp/t527w-${process.pid}-${n}.json`;
+  const idx = new Map(vs.map((v, i) => [v.name, i]));
+  const pushed = pairs.filter((p) => p.pushed).map((p) => ({ i: idx.get(p.a), j: idx.get(p.b) }));
+  fs.writeFileSync(tmp('pairs'), JSON.stringify({ vs, pairs: pushed }));
+  const runEnv = (m, extra) => { const out = execFileSync(process.execPath, [__filename, Z], { env: Object.assign({}, process.env, { T527_WANT_CHILD: m }, extra || {}), maxBuffer: 1 << 28, stdio: ['ignore', 'pipe', 'inherit'] }).toString(); return JSON.parse(out.slice(out.lastIndexOf('\n@@') + 3)); };
+  const PC = runEnv('P', { T527_PAIRS_FILE: tmp('pairs') });
+  const cands = PC.cands;
+  console.log(`[③] 창 밖 ${pushed.length}쌍 → 도하 후보 ${cands.length}곳 · ${((Date.now() - t0) / 1000).toFixed(0)}초`);
+  const inWin = (mat) => { let n = 0; const who = []; for (const p of pushed) { const d = mat[p.i][p.j]; if (d != null && d <= capA) { n++; who.push(`${vs[p.i].name}–${vs[p.j].name}`); } } return { n, who }; };
+  const all = [].concat(...cands.map((c) => c.cells));
+  fs.writeFileSync(tmp('all'), JSON.stringify(all));
+  const EA = runEnv('E', { T527_EXTRA_FILE: tmp('all') });
+  const allIn = inWin(EA.mat);
+  // 교역 잠재(T436 식 — 이웃의 식량 잉여 ÷ 캐러밴 시계) · 거리만 교역 거리(D_k)로 · 창 안 쌍만 센다
+  const Pv = R('server/villages').__labProbe; Pv.setZoneId(Z);
+  const { ta: taB } = setup('B'); const SRC = fs.readFileSync(path.join(__dirname, '..', 'server', 'villages.js'), 'utf8');
+  const FLOOR = +((SRC.match(/const FOOD_FLOOR = ([\d.]+)/) || [])[1]);
+  const v2 = R('sim/economy-sim-v2');
+  const food = vs.map((v) => { let lp = null; try { lp = Pv.extractLandParamsApprox(taB, v.ccx, v.ccy, { territory: [] }); } catch (e) {} return lp ? (lp.fertility || 0) * 1.5 + (lp.water || 0) * 1.2 + (lp.game || 0) * 0.7 : 0; });   // ★정본 `foodOf` 한 줄 옮겨 적음(t436-gate-trade 와 같은 규약)
+  const val = (i, j, d) => (Math.max(0, food[j] - FLOOR) + Math.max(0, food[i] - FLOOR)) / v2.travelDaysForDistance(d);
+  const B0 = require(path.join(__dirname, '..', 'server', 'bridge-stages.js'));
+  const REC = Object.assign({}, R('server/hut-stages').HUT_RECIPES, R('server/granary-stages').GRANARY_RECIPES);
+  const rows = [];
+  for (let k = 0; k < cands.length; k++) {
+    const c = cands[k]; fs.writeFileSync(tmp('k'), JSON.stringify(c.cells));
+    const Ek = runEnv('E', { T527_EXTRA_FILE: tmp('k') });
+    const w = inWin(Ek.mat); let pot = 0; for (const p of pushed) { const d = Ek.mat[p.i][p.j]; if (d != null && d <= capA) pot += val(p.i, p.j, d); }
+    const st = B0.bridgeStages(c.span, c.cells.length / 2), raw = B0.bridgeRaw(c.span, c.cells.length / 2, REC);
+    rows.push({ key: c.key, span: c.span, n: c.cells.length / 2, pillar: st[0].need.pillar, plank: st[1].need.plank, wood: raw.wood || 0, pairsAsked: c.pairs.length, inWin: w.n, who: w.who, pot: +pot.toFixed(3), potPerWood: raw.wood ? +(pot / raw.wood * 100).toFixed(4) : 0, cells: c.cells });
+    console.log(`  [${k + 1}/${cands.length}] ${c.key} 물 ${c.span} · 통나무 ${raw.wood} · 창 안 ${w.n} · 잠재 ${pot.toFixed(2)} · ${((Date.now() - t0) / 1000).toFixed(0)}초`);
+  }
+  const byShort = rows.slice().sort((a, b) => a.span - b.span || b.inWin - a.inWin), byPot = rows.slice().sort((a, b) => b.pot - a.pot || a.wood - b.wood);
+  rows.forEach((r) => { r.rankShort = byShort.indexOf(r) + 1; r.rankPot = byPot.indexOf(r) + 1; });
+  res.shortcut = { pushed: pushed.length, cands: rows, allIn: allIn.n, allWood: rows.reduce((a, r) => a + r.wood, 0), pairsPath: PC.pairs, floor: FLOOR };
+  if (OUT) fs.writeFileSync(OUT, JSON.stringify(res, null, 1));
+  for (const f of ['pairs', 'all', 'k']) { try { fs.unlinkSync(tmp(f)); } catch (e) {} }
+  console.log(`[③] 후보 ${rows.length} · 전부 지으면 창 안 ${allIn.n}/${pushed.length} · 통나무 합 ${res.shortcut.allWood}`);
+}
 process.exit(0);

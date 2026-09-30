@@ -33,6 +33,7 @@ const SITES = (ZONES[ZID].bridgeSites || []).map((s, i) => {
   return { i, v: s.v.slice(), span: s.span, n: s.cells.length / 2, need: st.map((x) => econOnly(B.rawOfNeed(x.need, REC))), stage: 0, mat: {}, took: {}, done: null, stall: 0, adv: [], wood0: null, woodMin: null };
 });
 const SIM = process.env.T527_SIM === '1';
+const OLD = process.env.T527_OLD === '1';   // ★[T537] 계측기 전용 견줌 — T527 판 규칙(잉여 식 없이 곳간 바닥까지). 제품엔 이 갈래가 없다.
 const V2 = require(path.join(ROOT, 'sim', 'economy-sim-v2.js'));
 const orig = V2.tickWorldV2;
 let day = 0;
@@ -40,16 +41,17 @@ V2.tickWorldV2 = function (w) {
   const r = orig.apply(this, arguments);
   day++;
   for (const s of SITES) {
-    if (s.done != null) continue;
     const v = (w.villages || []).find((x) => x && s.v.indexOf(x.name) >= 0 && x.storage && x.npcs && x.npcs.length);
     if (!v) continue;
+    { const wv0 = v.storage.wood || 0; if (s.woodMin800 == null || wv0 < s.woodMin800) s.woodMin800 = wv0; if (wv0 <= 1e-9) s.zeroDays = (s.zeroDays || 0) + 1; }   // ★[T537] 곳간 통나무 — 800일 전체 최저 · 바닥(0) 날 수(짓기 전·후 모두)
+    if (s.done != null) continue;
     if (s.wood0 == null) s.wood0 = v.storage.wood || 0;
     let labor = LABOR, short = false;
     while (labor > 0 && s.done == null) {
       const need = s.need[s.stage] || {};
       for (const [k, n] of Object.entries(need)) {
         const have = s.mat[k] || 0; if (have >= n) continue;
-        const room = k === 'wood' ? Math.max(0, E.woodSpare(v)) : Infinity;   // ★[T537] 통나무는 잉여만(생활층 `_t527BridgeDay` 와 같은 함수)
+        const room = (k === 'wood' && !OLD) ? Math.max(0, E.woodSpare(v)) : Infinity;   // ★[T537] 통나무는 잉여만(생활층 `_t527BridgeDay` 와 같은 함수) · `T527_OLD=1` = T527 판(바닥까지 — 견줌 전용)
         const take = Math.min(n - have, v.storage[k] || 0, room);
         if (take > 0) { s.mat[k] = have + take; s.took[k] = (s.took[k] || 0) + take; if (SIM) v.storage[k] -= take; }
         if ((s.mat[k] || 0) < n) short = true;
@@ -67,5 +69,5 @@ V2.tickWorldV2 = function (w) {
 process.on('exit', () => {
   if (!process.env.T527_JSON) return;
   fs.writeFileSync(process.env.T527_JSON, JSON.stringify({ zone: ZID, sim: SIM, days: day, labor: LABOR,
-    sites: SITES.map((s) => ({ v: s.v, span: s.span, n: s.n, need: s.need, stage: s.stage, done: s.done, adv: s.adv, stall: s.stall, took: s.took, wood0: s.wood0, woodMin: s.woodMin })) }));
+    sites: SITES.map((s) => ({ v: s.v, span: s.span, n: s.n, need: s.need, stage: s.stage, done: s.done, adv: s.adv, stall: s.stall, took: s.took, wood0: s.wood0, woodMin: s.woodMin, woodMin800: s.woodMin800, zeroDays: s.zeroDays || 0 })) }));
 });
