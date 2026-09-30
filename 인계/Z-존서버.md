@@ -3,6 +3,11 @@
 > ★이 파일은 **영역 소유 세션만** 갱신한다. 다른 영역에 쓸 말이 생기면 `인계/회부.md` 에 한 줄.
 > 원문은 `_아카이브_2026-08_다음세션_인계.md` 에 그대로 동결돼 있다(족보 · 삭제 금지).
 > 이사할 때 **문장을 한 글자도 안 고쳤다** — 낡아 보이는 줄엔 `[낡음? 확인 필요]` 표만 붙였다.
+## T537-다리영속. ★★2026-09-30 — **마을이 지은 다리가 재기동을 넘는다**(승인 대기 · 보고/T537_2026-09-30.md · F 절과 짝)
+
+* 존 DB `village_bridges(zone, site, sig, state, done, day)` — 추가 전용(`CREATE TABLE IF NOT EXISTS`). 쓰는 이 = villages `_t527Save`(크루 하루마다 · 손잡이 `T527_BRIDGE_ACT` 켬일 때만). 읽는 이 둘 — ① `zone.js` 부팅(`observers` 선언 뒤 블록): `done` 행의 셀을 **`addBridgeCells`** 로 다시 올린다(손잡이 무관 · 선 다리는 사물) → 단일 술어 `isTerrainBlockedLocal` 의 다리 집합 · welcome `bridgePayload()` 가 시딩 뒤에 붙인다. ② villages `_t527Restore`(켬 · 후보 서명 `v|span|cells` 가 같을 때만 진척을 이어받음).
+* 행 0 = 종전 그대로(시딩 836 · welcome 같은 참조). 재기동 판(`test-bridge-act ⑧`): 반쯤 → 재기동 → 300 에서 이어 완공 → 재기동(끔) 925 · 해시 `ec20bdecbed4` 같음.
+
 ## T546. ★★2026-09-30 — 길드 절: central 이 드는 길드 칸 26 · 금고는 곳간의 사본이고 넷 길로 어긋난다 (표만 · 코드 0)
 
 * 칸 26 = `tribes` 12 · `players.tribe_id` 1 · `tribe_invites` 3 · `wars` 10 → **존 밖 19**(이름 · 명부 · 길드장 · 초대 · 규칙 · 선포 사실) · **내릴 수 있음 6**(`vp` · `vp_updated_at` · `loot_rate` · `damage_rate` · `aggressor_vp_gain` · `tier`) · **사본 1**(`treasury_json` = Σ 존 곳간).
