@@ -1891,3 +1891,18 @@ T89 첫 판이 39/44 표본에서만 사람을 봤고, 그걸 정책 탓으로 �
 `device_stage_files` → 검사·갱신(`node sim/inline-path.js`) → `device_commit_files` 를 절차에 넣어라.
 ★실행 대조(T89 §1): 갱신 **전** 랩도 동기 문 답은 **40/40 동일**이었다 —
 랩이 다른 길을 판 것이 아니라 **새 문(`routePathBegin`/`pathStep`)이 없었을 뿐**이다.
+
+## Z-새벽. ★★[T562 2026-09-30] 하루 경계(새벽)에 존이 멎지 않는다 — 닿는 칸 집합 · 결정 예산 머리 · 밭 그림 나눔
+
+> 보고 `보고/T562_2026-09-30.md`. 새 세계 새벽 틱 최대 19,236 → 119ms · 걸음 문 0 깬 주민 400 → 0 · 서울 사본 부팅 뒤 첫 하루 마감 가장 큰 조각 8,137 → 223ms. 새 수 0.
+
+* **`npcReachBegin(ax, ay)` / `npcReachStep(S, stop)` / `npcReachHas(S, bx, by)`**(`npcCanReach` 바로 위) — 집 칸에서 4방 BFS(간선 = `findPath` 의 `blockedStep`: 벽 변 `isBlockedByWall` + 도착 칸 `isTerrainBlockedLocal`) · 상자 = 시작 칸 ± `_pfRadius(true)`(64). `npcReachHas` 는 `npcCanReach` 와 같은 답을 낸다(조회 순서 그대로). `stop()` 은 64칸마다 묻는다.
+* **`collGenAround(ax, ay)`** = 상자에 걸친 청크 콜라이더 세대 합 + `_bridgeGen × 1000003`. 세대(`_collGen` · `_collBump(b)` · COLL_TYPES 만)는 넷에서 오른다:
+  * `chunkManager.insertBuilding/removeBuilding`(감쌌다)
+  * 문 여닫힘(`doDoorToggle`)
+  * 벽 부서짐(`tryAttack`)·회복(`tryRepairBuilding`)
+  * `addBridgeCells`(`_bridgeGen++`)
+  * ⚠`b.data` 만 바꿔 콜라이더 뜻이 바뀌는 새 자리를 만들면 `_collBump(b)` 한 줄을 같이 넣어라(안 넣으면 닿는 칸 기억이 낡는다). `_wallGen` 은 없다.
+* **결정 예산 머리 = 결정 루프 머리**(`_decT0`). NPC 결정 루프의 15ms 는 루프 머리부터 잰다(종전: 틱 머리). 하루 마감 조각(`onGameTick` 16ms)과 공간 색인이 루프 앞에서 15ms 를 다 쓰면 한 명도 결정을 못 받던 자리다. `decBudgetOver()` 는 같은 머리로 생활층 안에서 묻는다(루프 밖 = 거짓).
+* **하루 경계 밭 그림**(`_farmStageQ`) — 경계에서 대상만 잡고 틱마다 15ms 만큼 `building_updated` 를 흘린다(메시지·내용 종전 · 날은 `_farmStageQd`). 총 소켓 쓰기량은 같다.
+* `/walkdbg` 에 `ws`(배정 칸 `[x, y, day]`). 자: `scripts/t540-morning.js`(새벽 창 · `/perf` 영점 · 활성 몸만 멎음) · `scripts/t562-seoul.js --db <사본>`(부팅 뒤 하루 마감 조각).
