@@ -1,0 +1,994 @@
+{
+ "features": [
+  {
+   "kind": "rivers",
+   "from": "강25",
+   "to": "아오가와",
+   "size": 560
+  },
+  {
+   "kind": "rivers",
+   "from": "강48",
+   "to": "아라가와",
+   "size": 487
+  },
+  {
+   "kind": "rivers",
+   "from": "강14",
+   "to": "나가가와",
+   "size": 450
+  },
+  {
+   "kind": "rivers",
+   "from": "강23",
+   "to": "히로가와",
+   "size": 441
+  },
+  {
+   "kind": "rivers",
+   "from": "강49",
+   "to": "오오가와",
+   "size": 412
+  },
+  {
+   "kind": "rivers",
+   "from": "강21",
+   "to": "코가가와",
+   "size": 408
+  },
+  {
+   "kind": "rivers",
+   "from": "강53",
+   "to": "유키가와",
+   "size": 355
+  },
+  {
+   "kind": "rivers",
+   "from": "강1",
+   "to": "우미가와",
+   "size": 325
+  },
+  {
+   "kind": "rivers",
+   "from": "강2",
+   "to": "이즈가와",
+   "size": 309
+  },
+  {
+   "kind": "rivers",
+   "from": "강32",
+   "to": "노노가와",
+   "size": 273
+  },
+  {
+   "kind": "rivers",
+   "from": "강64",
+   "to": "후유가와",
+   "size": 269
+  },
+  {
+   "kind": "rivers",
+   "from": "강17",
+   "to": "하루가와",
+   "size": 267
+  },
+  {
+   "kind": "rivers",
+   "from": "강55",
+   "to": "아키가와",
+   "size": 241
+  },
+  {
+   "kind": "rivers",
+   "from": "강61",
+   "to": "소라가와",
+   "size": 221
+  },
+  {
+   "kind": "rivers",
+   "from": "강26",
+   "to": "마츠가와",
+   "size": 219
+  },
+  {
+   "kind": "rivers",
+   "from": "강46",
+   "to": "스미가와",
+   "size": 213
+  },
+  {
+   "kind": "rivers",
+   "from": "강42",
+   "to": "아카시로가와",
+   "size": 213
+  },
+  {
+   "kind": "rivers",
+   "from": "강37",
+   "to": "아카쿠로가와",
+   "size": 210
+  },
+  {
+   "kind": "rivers",
+   "from": "강3",
+   "to": "아카아오가와",
+   "size": 204
+  },
+  {
+   "kind": "rivers",
+   "from": "강30",
+   "to": "아카미도리가와",
+   "size": 185
+  },
+  {
+   "kind": "rivers",
+   "from": "강6",
+   "to": "아카하야가와",
+   "size": 177
+  },
+  {
+   "kind": "rivers",
+   "from": "강47",
+   "to": "아카토오가와",
+   "size": 176
+  },
+  {
+   "kind": "rivers",
+   "from": "강34",
+   "to": "아카사키가와",
+   "size": 165
+  },
+  {
+   "kind": "rivers",
+   "from": "강16",
+   "to": "아카후카가와",
+   "size": 159
+  },
+  {
+   "kind": "rivers",
+   "from": "강43",
+   "to": "아카아라가와",
+   "size": 140
+  },
+  {
+   "kind": "rivers",
+   "from": "강13",
+   "to": "아카키요가와",
+   "size": 139
+  },
+  {
+   "kind": "rivers",
+   "from": "강29",
+   "to": "아카나가가와",
+   "size": 134
+  },
+  {
+   "kind": "rivers",
+   "from": "강38",
+   "to": "아카히로가와",
+   "size": 125
+  },
+  {
+   "kind": "rivers",
+   "from": "강33",
+   "to": "아카오오가와",
+   "size": 123
+  },
+  {
+   "kind": "rivers",
+   "from": "강27",
+   "to": "아카코가가와",
+   "size": 121
+  },
+  {
+   "kind": "rivers",
+   "from": "강9",
+   "to": "아카유키가와",
+   "size": 118
+  },
+  {
+   "kind": "rivers",
+   "from": "강58",
+   "to": "아카츠키가와",
+   "size": 118
+  },
+  {
+   "kind": "rivers",
+   "from": "강59",
+   "to": "아카모리가와",
+   "size": 114
+  },
+  {
+   "kind": "rivers",
+   "from": "강22",
+   "to": "아카카제가와",
+   "size": 114
+  },
+  {
+   "kind": "rivers",
+   "from": "강7",
+   "to": "아카우미가와",
+   "size": 112
+  },
+  {
+   "kind": "rivers",
+   "from": "강5",
+   "to": "아카호시가와",
+   "size": 111
+  },
+  {
+   "kind": "rivers",
+   "from": "강12",
+   "to": "아카이즈가와",
+   "size": 108
+  },
+  {
+   "kind": "rivers",
+   "from": "강31",
+   "to": "아카노노가와",
+   "size": 98
+  },
+  {
+   "kind": "rivers",
+   "from": "강41",
+   "to": "아카후유가와",
+   "size": 93
+  },
+  {
+   "kind": "rivers",
+   "from": "강8",
+   "to": "아카하루가와",
+   "size": 91
+  },
+  {
+   "kind": "rivers",
+   "from": "강60",
+   "to": "아카아키가와",
+   "size": 89
+  },
+  {
+   "kind": "rivers",
+   "from": "강35",
+   "to": "아카소라가와",
+   "size": 85
+  },
+  {
+   "kind": "rivers",
+   "from": "강51",
+   "to": "아카마츠가와",
+   "size": 83
+  },
+  {
+   "kind": "rivers",
+   "from": "강50",
+   "to": "아카스미가와",
+   "size": 82
+  },
+  {
+   "kind": "rivers",
+   "from": "강11",
+   "to": "시로아카가와",
+   "size": 81
+  },
+  {
+   "kind": "rivers",
+   "from": "강56",
+   "to": "시로쿠로가와",
+   "size": 74
+  },
+  {
+   "kind": "rivers",
+   "from": "강45",
+   "to": "시로아오가와",
+   "size": 70
+  },
+  {
+   "kind": "rivers",
+   "from": "강36",
+   "to": "시로미도리가와",
+   "size": 67
+  },
+  {
+   "kind": "rivers",
+   "from": "강54",
+   "to": "시로하야가와",
+   "size": 66
+  },
+  {
+   "kind": "rivers",
+   "from": "강44",
+   "to": "시로토오가와",
+   "size": 61
+  },
+  {
+   "kind": "rivers",
+   "from": "강52",
+   "to": "시로사키가와",
+   "size": 60
+  },
+  {
+   "kind": "rivers",
+   "from": "강20",
+   "to": "시로후카가와",
+   "size": 55
+  },
+  {
+   "kind": "rivers",
+   "from": "강40",
+   "to": "시로아라가와",
+   "size": 50
+  },
+  {
+   "kind": "rivers",
+   "from": "강63",
+   "to": "시로키요가와",
+   "size": 43
+  },
+  {
+   "kind": "rivers",
+   "from": "강4",
+   "to": "시로나가가와",
+   "size": 40
+  },
+  {
+   "kind": "rivers",
+   "from": "강57",
+   "to": "시로히로가와",
+   "size": 39
+  },
+  {
+   "kind": "rivers",
+   "from": "강19",
+   "to": "시로오오가와",
+   "size": 37
+  },
+  {
+   "kind": "rivers",
+   "from": "강39",
+   "to": "시로코가가와",
+   "size": 35
+  },
+  {
+   "kind": "rivers",
+   "from": "강62",
+   "to": "시로유키가와",
+   "size": 35
+  },
+  {
+   "kind": "rivers",
+   "from": "강28",
+   "to": "시로츠키가와",
+   "size": 34
+  },
+  {
+   "kind": "rivers",
+   "from": "강18",
+   "to": "시로모리가와",
+   "size": 17
+  },
+  {
+   "kind": "ridges",
+   "from": "산맥7",
+   "to": "아카야마",
+   "size": 770
+  },
+  {
+   "kind": "ridges",
+   "from": "산맥8",
+   "to": "시로야마",
+   "size": 761
+  },
+  {
+   "kind": "ridges",
+   "from": "산맥16",
+   "to": "아오야마",
+   "size": 594
+  },
+  {
+   "kind": "ridges",
+   "from": "산맥23",
+   "to": "미도리야마",
+   "size": 400
+  },
+  {
+   "kind": "ridges",
+   "from": "산맥5",
+   "to": "하야야마",
+   "size": 384
+  },
+  {
+   "kind": "ridges",
+   "from": "산맥1",
+   "to": "토오야마",
+   "size": 381
+  },
+  {
+   "kind": "ridges",
+   "from": "산맥3",
+   "to": "사키야마",
+   "size": 377
+  },
+  {
+   "kind": "ridges",
+   "from": "산맥12",
+   "to": "후카야마",
+   "size": 357
+  },
+  {
+   "kind": "ridges",
+   "from": "산맥17",
+   "to": "키요야마",
+   "size": 320
+  },
+  {
+   "kind": "ridges",
+   "from": "산맥2",
+   "to": "나가야마",
+   "size": 315
+  },
+  {
+   "kind": "ridges",
+   "from": "산맥22",
+   "to": "히로야마",
+   "size": 265
+  },
+  {
+   "kind": "ridges",
+   "from": "산맥15",
+   "to": "오오야마",
+   "size": 241
+  },
+  {
+   "kind": "ridges",
+   "from": "산맥9",
+   "to": "코가야마",
+   "size": 190
+  },
+  {
+   "kind": "ridges",
+   "from": "산맥4",
+   "to": "모리야마",
+   "size": 182
+  },
+  {
+   "kind": "ridges",
+   "from": "산맥6",
+   "to": "카제야마",
+   "size": 135
+  },
+  {
+   "kind": "ridges",
+   "from": "산맥24",
+   "to": "우미야마",
+   "size": 134
+  },
+  {
+   "kind": "ridges",
+   "from": "산맥11",
+   "to": "호시야마",
+   "size": 131
+  },
+  {
+   "kind": "ridges",
+   "from": "산맥20",
+   "to": "이즈야마",
+   "size": 109
+  },
+  {
+   "kind": "ridges",
+   "from": "산맥10",
+   "to": "노노야마",
+   "size": 94
+  },
+  {
+   "kind": "ridges",
+   "from": "산맥13",
+   "to": "후유야마",
+   "size": 92
+  },
+  {
+   "kind": "ridges",
+   "from": "산맥21",
+   "to": "하루야마",
+   "size": 79
+  },
+  {
+   "kind": "ridges",
+   "from": "산맥14",
+   "to": "아키야마",
+   "size": 76
+  },
+  {
+   "kind": "ridges",
+   "from": "산맥19",
+   "to": "소라야마",
+   "size": 64
+  },
+  {
+   "kind": "ridges",
+   "from": "산맥18",
+   "to": "마츠야마",
+   "size": 64
+  },
+  {
+   "kind": "lakes",
+   "from": "호수7",
+   "to": "아카호",
+   "size": 8565246
+  },
+  {
+   "kind": "lakes",
+   "from": "호수5",
+   "to": "시로호",
+   "size": 1696794
+  },
+  {
+   "kind": "lakes",
+   "from": "호수4",
+   "to": "쿠로호",
+   "size": 1497504
+  },
+  {
+   "kind": "lakes",
+   "from": "호수2",
+   "to": "아오호",
+   "size": 1483216
+  },
+  {
+   "kind": "lakes",
+   "from": "호수9",
+   "to": "미도리호",
+   "size": 1163970
+  },
+  {
+   "kind": "lakes",
+   "from": "호수8",
+   "to": "하야호",
+   "size": 714450
+  },
+  {
+   "kind": "lakes",
+   "from": "호수1",
+   "to": "사키호",
+   "size": 653600
+  },
+  {
+   "kind": "lakes",
+   "from": "호수22",
+   "to": "후카호",
+   "size": 649026
+  },
+  {
+   "kind": "lakes",
+   "from": "호수13",
+   "to": "아라호",
+   "size": 604824
+  },
+  {
+   "kind": "lakes",
+   "from": "호수6",
+   "to": "키요호",
+   "size": 604082
+  },
+  {
+   "kind": "lakes",
+   "from": "호수12",
+   "to": "나가호",
+   "size": 564340
+  },
+  {
+   "kind": "lakes",
+   "from": "호수15",
+   "to": "히로호",
+   "size": 504600
+  },
+  {
+   "kind": "lakes",
+   "from": "호수17",
+   "to": "오오호",
+   "size": 479661
+  },
+  {
+   "kind": "lakes",
+   "from": "호수23",
+   "to": "코가호",
+   "size": 463386
+  },
+  {
+   "kind": "lakes",
+   "from": "호수10",
+   "to": "츠키호",
+   "size": 435987
+  },
+  {
+   "kind": "lakes",
+   "from": "호수19",
+   "to": "모리호",
+   "size": 435987
+  },
+  {
+   "kind": "lakes",
+   "from": "호수21",
+   "to": "카제호",
+   "size": 391314
+  },
+  {
+   "kind": "lakes",
+   "from": "호수16",
+   "to": "우미호",
+   "size": 349856
+  },
+  {
+   "kind": "lakes",
+   "from": "호수3",
+   "to": "호시호",
+   "size": 332880
+  },
+  {
+   "kind": "lakes",
+   "from": "호수14",
+   "to": "이즈호",
+   "size": 302180
+  },
+  {
+   "kind": "lakes",
+   "from": "호수11",
+   "to": "노노호",
+   "size": 296032
+  },
+  {
+   "kind": "lakes",
+   "from": "호수18",
+   "to": "후유호",
+   "size": 271962
+  },
+  {
+   "kind": "lakes",
+   "from": "호수20",
+   "to": "하루호",
+   "size": 242382
+  },
+  {
+   "kind": "forests",
+   "from": "숲1",
+   "to": "아카모리",
+   "size": 8218872
+  },
+  {
+   "kind": "forests",
+   "from": "숲12",
+   "to": "시로모리",
+   "size": 3977232
+  },
+  {
+   "kind": "forests",
+   "from": "숲11",
+   "to": "쿠로모리",
+   "size": 3522876
+  },
+  {
+   "kind": "forests",
+   "from": "숲5",
+   "to": "하야모리",
+   "size": 3120198
+  },
+  {
+   "kind": "forests",
+   "from": "숲17",
+   "to": "토오모리",
+   "size": 2878500
+  },
+  {
+   "kind": "forests",
+   "from": "숲8",
+   "to": "사키모리",
+   "size": 2599740
+  },
+  {
+   "kind": "forests",
+   "from": "숲7",
+   "to": "키요모리",
+   "size": 1980099
+  },
+  {
+   "kind": "forests",
+   "from": "숲21",
+   "to": "나가모리",
+   "size": 1552494
+  },
+  {
+   "kind": "forests",
+   "from": "숲16",
+   "to": "코가모리",
+   "size": 1532160
+  },
+  {
+   "kind": "forests",
+   "from": "숲15",
+   "to": "유키모리",
+   "size": 1517268
+  },
+  {
+   "kind": "forests",
+   "from": "숲18",
+   "to": "츠키모리",
+   "size": 1372909
+  },
+  {
+   "kind": "forests",
+   "from": "숲33",
+   "to": "카제모리",
+   "size": 1269331
+  },
+  {
+   "kind": "forests",
+   "from": "숲24",
+   "to": "우미모리",
+   "size": 1254912
+  },
+  {
+   "kind": "forests",
+   "from": "숲9",
+   "to": "호시모리",
+   "size": 1213422
+  },
+  {
+   "kind": "forests",
+   "from": "숲10",
+   "to": "이즈모리",
+   "size": 1150372
+  },
+  {
+   "kind": "forests",
+   "from": "숲14",
+   "to": "스미모리",
+   "size": 1150256
+  },
+  {
+   "kind": "forests",
+   "from": "숲2",
+   "to": "아카시로모리",
+   "size": 1011986
+  },
+  {
+   "kind": "forests",
+   "from": "숲19",
+   "to": "아카쿠로모리",
+   "size": 955099
+  },
+  {
+   "kind": "forests",
+   "from": "숲4",
+   "to": "아카아오모리",
+   "size": 909872
+  },
+  {
+   "kind": "forests",
+   "from": "숲20",
+   "to": "아카미도리모리",
+   "size": 796092
+  },
+  {
+   "kind": "forests",
+   "from": "숲13",
+   "to": "아카하야모리",
+   "size": 761640
+  },
+  {
+   "kind": "forests",
+   "from": "숲30",
+   "to": "아카토오모리",
+   "size": 743444
+  },
+  {
+   "kind": "forests",
+   "from": "숲28",
+   "to": "아카사키모리",
+   "size": 683774
+  },
+  {
+   "kind": "forests",
+   "from": "숲6",
+   "to": "아카후카모리",
+   "size": 455715
+  },
+  {
+   "kind": "forests",
+   "from": "숲23",
+   "to": "아카아라모리",
+   "size": 437568
+  },
+  {
+   "kind": "forests",
+   "from": "숲3",
+   "to": "아카키요모리",
+   "size": 418275
+  },
+  {
+   "kind": "forests",
+   "from": "숲27",
+   "to": "아카나가모리",
+   "size": 380292
+  },
+  {
+   "kind": "forests",
+   "from": "숲32",
+   "to": "아카히로모리",
+   "size": 349392
+  },
+  {
+   "kind": "forests",
+   "from": "숲29",
+   "to": "아카오오모리",
+   "size": 268540
+  },
+  {
+   "kind": "forests",
+   "from": "숲22",
+   "to": "아카코가모리",
+   "size": 265364
+  },
+  {
+   "kind": "forests",
+   "from": "숲26",
+   "to": "아카유키모리",
+   "size": 211718
+  },
+  {
+   "kind": "forests",
+   "from": "숲34",
+   "to": "아카츠키모리",
+   "size": 181656
+  },
+  {
+   "kind": "forests",
+   "from": "숲25",
+   "to": "아카카제모리",
+   "size": 104748
+  },
+  {
+   "kind": "forests",
+   "from": "숲31",
+   "to": "아카우미모리",
+   "size": 104400
+  }
+ ],
+ "valleys": [
+  {
+   "from": "강2협곡1",
+   "to": "이즈가와협곡1"
+  },
+  {
+   "from": "강14협곡1",
+   "to": "나가가와협곡1"
+  },
+  {
+   "from": "강25협곡1",
+   "to": "아오가와협곡1"
+  },
+  {
+   "from": "2고개1",
+   "to": "나가야마고개1"
+  },
+  {
+   "from": "6고개1",
+   "to": "카제야마고개1"
+  },
+  {
+   "from": "9고개1",
+   "to": "코가야마고개1"
+  },
+  {
+   "from": "10고개1",
+   "to": "노노야마고개1"
+  },
+  {
+   "from": "11고개1",
+   "to": "호시야마고개1"
+  },
+  {
+   "from": "13고개1",
+   "to": "후유야마고개1"
+  },
+  {
+   "from": "15고개1",
+   "to": "오오야마고개1"
+  },
+  {
+   "from": "17고개1",
+   "to": "키요야마고개1"
+  },
+  {
+   "from": "18고개1",
+   "to": "마츠야마고개1"
+  },
+  {
+   "from": "20고개1",
+   "to": "이즈야마고개1"
+  },
+  {
+   "from": "21고개1",
+   "to": "하루야마고개1"
+  },
+  {
+   "from": "22고개1",
+   "to": "히로야마고개1"
+  },
+  {
+   "from": "24고개1",
+   "to": "우미야마고개1"
+  }
+ ],
+ "villages": [
+  {
+   "from": "새후보1",
+   "to": "아카어촌",
+   "type": "riverside"
+  },
+  {
+   "from": "새후보2",
+   "to": "시로농촌",
+   "type": "plain"
+  },
+  {
+   "from": "새후보3",
+   "to": "쿠로어촌",
+   "type": "riverside"
+  },
+  {
+   "from": "새후보4",
+   "to": "아오어촌",
+   "type": "riverside"
+  },
+  {
+   "from": "새후보5",
+   "to": "미도리광산",
+   "type": "mining"
+  },
+  {
+   "from": "새후보6",
+   "to": "하야어촌",
+   "type": "riverside"
+  },
+  {
+   "from": "새후보7",
+   "to": "토오광산",
+   "type": "mining"
+  },
+  {
+   "from": "새후보8",
+   "to": "사키농촌",
+   "type": "plain"
+  },
+  {
+   "from": "새후보9",
+   "to": "후카임업",
+   "type": "forest"
+  },
+  {
+   "from": "새후보10",
+   "to": "아라광산",
+   "type": "mining"
+  },
+  {
+   "from": "새후보11",
+   "to": "키요어촌",
+   "type": "riverside"
+  },
+  {
+   "from": "새후보12",
+   "to": "나가임업",
+   "type": "forest"
+  },
+  {
+   "from": "새후보13",
+   "to": "히로농촌",
+   "type": "plain"
+  },
+  {
+   "from": "새후보14",
+   "to": "오오임업",
+   "type": "forest"
+  }
+ ]
+}

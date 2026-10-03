@@ -25,7 +25,9 @@ const SPACING = parseFloat(val('--spacing', '600'));
 const MINSEP = parseFloat(val('--minsep', '250'));
 const WCELL = parseFloat(val('--width', '10'));
 const CELL = 32, EXT = 3, MAXLEN = 200;
-const ZW = 2188, ZH = 4063;
+// ★[T550] 존 셀 크기는 zone-config 에서(닛폰 1562 · 종전 한반도 2188 박힘 — `--zone nippon` 이면 경계 판정이 어긋났다)
+const { ZONES: _ZC } = require(path.join(__dirname, '..', 'server', 'zone-config'));
+const ZW = Math.floor(_ZC[ZID].zoneWidth / 32), ZH = Math.floor(_ZC[ZID].zoneHeight / 32);
 
 const GAME = path.join(__dirname, '..', 'server', 'hanbando-terrain.json');
 const world = require(GAME);           // ★terrain.js와 같은 객체를 공유해야 판정이 현재 상태를 본다
@@ -175,5 +177,9 @@ for (const r of ridges) {
 console.log('\n새 계곡 ' + made.length + '개 · 합계 ' + d.valleys.length + '개');
 if (!APPLY) { console.log('계산만 — 쓰려면 --apply'); process.exit(0); }
 fs.copyFileSync(GAME, GAME + '.bak');
-fs.writeFileSync(GAME, JSON.stringify(world));
+// ★[T550] 쓰는 판은 파일에서 새로 읽은 것에 **이 존 계곡만** 얹는다 — `world` 는 require 객체라 terrain.js 의 캐시 칸(`_bbox`·`_segIdx`)이
+//   붙어 있다(그대로 쓰면 다시 읽을 때 `idx.at is not a function` · 다른 존 절도 캐시로 바뀐다 · plan-ore-clusters T409 와 같은 병).
+const _fresh = JSON.parse(fs.readFileSync(GAME, 'utf8'));
+_fresh[ZID].valleys = (world[ZID].valleys || []).map((v) => Object.fromEntries(Object.entries(v).filter(([k]) => k !== '_bbox' && k !== '_segIdx')));
+fs.writeFileSync(GAME, JSON.stringify(_fresh));
 console.log('★기록 완료 (백업 .bak) — 도달성 감사를 이어서 돌릴 것');

@@ -28,7 +28,9 @@ const CELL = 32;
 const EXT = 3;          // 바위 밖으로 더 물리는 여유(셀) — 끝이 절벽에 딱 붙어 끝나지 않게
 const MAXLEN = 200;     // 이보다 길면 그건 고갯길이 아니라 산맥을 세로로 훑은 것
 const SKIP = (val('--skip', '') || '').split(',').filter(Boolean);   // 손으로 놓을 것(자동 이동이 엉뚱한 경우)
-const ZW = 2188, ZH = 4063;   // 존 셀 크기 — 산맥이 존 끝까지 뻗은 자리(쇠재·한재)는 **경계에서 끝나도 된다**
+// ★[T550] 존 셀 크기는 zone-config 에서(닛폰 1562 · 종전 한반도 2188 박힘 — `--zone nippon` 이면 경계 판정이 어긋났다)
+const { ZONES: _ZC } = require(path.join(__dirname, '..', 'server', 'zone-config'));
+const ZW = Math.floor(_ZC[ZID].zoneWidth / 32), ZH = Math.floor(_ZC[ZID].zoneHeight / 32);   // 존 셀 크기 — 산맥이 존 끝까지 뻗은 자리(쇠재·한재)는 **경계에서 끝나도 된다**
 //   그쪽 이웃 존은 바다다. 즉 바다로 열리는 골짜기 — 실제 동해안 고개들이 하는 일과 같다.
 
 const GAME = path.join(__dirname, '..', 'server', 'hanbando-terrain.json');
