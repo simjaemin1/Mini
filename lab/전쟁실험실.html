@@ -52,7 +52,7 @@
     <div style="font-size:11px;color:#7a8494;margin-top:2px">🔍 휠=확대/축소 · 드래그=이동 · 더블클릭=리셋</div>
     <div class="row"><label>마을 수</label><input type="number" id="nvil" min="1" max="12" value="8" style="width:48px"> <span style="color:#7a8494">생활 시뮬 동시 마을(§3e: 8~12)</span></div>
     <div class="row" style="margin-top:6px"><button onclick="gToggle()" id="gBtn">▶ 성장 시뮬</button> <button onclick="lifeToggle()" id="lBtn">▶ 생활 시뮬</button> <button onclick="psiteToggle()" id="psBtn" title="생활 시뮬 중 마을 영토를 클릭하면 그 마을 크루가 지어 줄 집터가 지정된다">🏠 집터 지정</button>
-      <label style="color:#aeb8c4">속도 <select id="simSpeed"><option value="1">실전 1×(시계 1분/초)</option><option value="12">관찰 12×</option><option value="80" selected>보통 80×</option><option value="800">빠름 800×</option><option value="12000">초고속 12000×</option></select></label></div>
+      <label style="color:#aeb8c4">속도 <select id="simSpeed"><option value="1">실전 1×(시계 1분/초)</option><option value="12">관찰 12×</option><option value="80" selected>보통 80×</option><option value="800">빠름 800×</option><option value="12000">초고속 12000×</option></select></label> <label style="color:#aeb8c4" title="[T594] 작물 성장일을 농사로 고증 기간으로(벼 136일 · 보리·밀·마늘은 겨울 지난 3월 1일부터) — 끔 = 랩 종전 그대로 · 켠 뒤 새로 심는 밭부터 · URL ?cropcal=1"><input type="checkbox" id="cropCal" onchange="L_CROPCAL=this.checked">작물 철 고증</label></div>
     <div class="stat" id="gstat" style="background:#161f2a;border-color:#2a3a4a">▶ 눌러서 마을이 자라는 걸 관찰 — 인구 K로 차오름 → 붐비면 확장 → R_max에서 정지. 겨울엔 곳간 소진.</div>
     <div class="stat" id="jobstat" style="background:#141d28;border-color:#2a3a4a;font-size:11px;line-height:1.5"></div>
     <div class="stat" id="stat"></div>
@@ -12213,7 +12213,7 @@ function draw(){
   if(life&&life.oreRich){for(const[k,r]of life.oreRich){const t=r/L_OREMAX;if(t<0.04)continue;const c=k.split(',');const _p=(TR&&TR.oreP)?TR.oreP[idx(+c[0],+c[1])]:0.3;ctx.fillStyle=`rgba(${96+_p*140|0},${84+t*10|0},${120+t*30|0},${(0.25+t*0.5).toFixed(2)})`;ctx.fillRect(+c[0]*CELL,+c[1]*CELL,CELL,CELL);}}   // ★광맥: 진하기=잔여 재고, 붉은기=품위 p(캐면 옅어져 맨바위)
   if(life&&life.forageRich){for(const[k,e]of life.forageRich){if(e.K<=0)continue;const t=e.F/e.K;if(t<0.05)continue;const c=k.split(',');ctx.globalAlpha=0.2+t*0.5;ctx.fillStyle='#b6d95e';ctx.fillRect(+c[0]*CELL+CELL*0.32,+c[1]*CELL+CELL*0.32,CELL*0.36,CELL*0.36);}ctx.globalAlpha=1;}   // ★임연부 채집=연둣빛 점(F/K 높을수록 진함)
   if(life&&life.crop&&life.crop.size){const day=life.day;   // 작물=셀별 상태: 새싹→초록→황금, 병충해=붉음, 방치=칙칙
-    for(const e of life.crop.values()){const age=day-e.planted,grow=e.crop.grow;let R,G,B;
+    for(const e of life.crop.values()){const age=day-e.planted,grow=(e.g||e.crop.grow);let R,G,B;
       if(age>=grow){R=224;G=190;B=86;}
       else{const pr=age/grow;if(pr<0.08){R=120;G=145;B=72;}else{R=90+pr*80|0;G=156-pr*12|0;B=66;}}
       if(e.pest){R=Math.min(255,R+75);G=Math.max(40,G-55);B=Math.max(40,B-25);}
@@ -12472,6 +12472,11 @@ const CROPS=[
  {id:'배추',field:'밭',plantMo:[3,4,6,7,8],grow:48,yieldC:10},{id:'무',field:'밭',plantMo:[3,4,6,7,8],grow:36,yieldC:10},{id:'오이',field:'밭',plantMo:[3,4,5],grow:32,yieldC:9},{id:'가지',field:'밭',plantMo:[3,4],grow:44,yieldC:9},{id:'상추',field:'밭',plantMo:[2,3,4,7,8],grow:24,yieldC:7},{id:'아욱',field:'밭',plantMo:[2,3,4,5,7],grow:40,yieldC:9},{id:'순무',field:'밭',plantMo:[3,4,6,7,8],grow:50,yieldC:10},{id:'부추',field:'밭',plantMo:[2,3],grow:55,yieldC:7},
  {id:'대파',field:'밭',plantMo:[2,3,8],grow:52,yieldC:9},{id:'마늘',field:'밭',plantMo:[8,9],grow:210,yieldC:10},{id:'생강',field:'밭',plantMo:[3,4],grow:82,yieldC:9},
  {id:'참외',field:'밭',plantMo:[3,4],grow:56,yieldC:10},{id:'박',field:'밭',plantMo:[3,4],grow:70,yieldC:10}];
+// ▼T594-CROPCAL (생성물 — node scripts/t594-lab-cropcal.js · 손으로 고치지 마라 · 정본 server/crop-cal.js → crops.calDaysOf)
+const L_CROPCAL_T={'벼':{g:136},'보리':{g:91,v:1},'밀':{g:104,v:1},'조':{g:122},'메밀':{g:71},'콩':{g:133},'팥':{g:112},'녹두':{g:86},'참깨':{g:97},'들깨':{g:102},'생강':{g:173},'마늘':{g:101,v:1},'배추':{g:61},'무':{g:66},'아욱':{g:45},'상추':{g:71}};   // ★[T594] 작물 철 고증 활동일(농사로 1차 · 파종창 가운데날 → 수확창 가운데날) · v:1 = 월동(겨울 지난 3월 1일부터 센다 — 서버 T99 춘화)
+let L_CROPCAL=false;try{if(typeof location!=='undefined'&&new URLSearchParams(location.search).get('cropcal')==='1')L_CROPCAL=true;}catch(e){}try{const _el=(typeof document!=='undefined')&&document.getElementById('cropCal');if(_el)_el.checked=L_CROPCAL;}catch(e){}   // 손잡이(끔 기본 = 랩 종전 그대로) · 패널 '작물 철 고증' · URL ?cropcal=1
+function cropGrowAt(cr,day){const t=L_CROPCAL&&L_CROPCAL_T[cr.id];if(!t)return cr.grow;if(!t.v)return t.g;const y=Math.floor(day/L_YEAR),doy=day-y*L_YEAR,m3=L_MOSTART[2];return (doy<m3?y*L_YEAR+m3:(y+1)*L_YEAR+m3)-day+t.g;}   // 심는 날 → 익기까지 달력일(끔 = cr.grow 그대로) · 월동 = 다음 3월 1일까지 + 활동일
+// ▲T594-CROPCAL
 const L_MAXSK=8,L_CONSUME=1.0,L_FISH=35,L_FORAGE=0.10,L_BIRTH=0.0001,L_STARVE=0.004,L_YIELD=1.0,L_STOREMAX=300;   // L_BIRTH=하루당 출산. L_YIELD=수확스케일(평균비옥도서 K~50). L_STOREMAX=1인당 곳간 저장한계(성장기 잉여 폭발 방지, 고정농지라 안전)
 const L_SKP=0.00015,L_SKH=0.00025,L_SKT=0.00005,L_SKYR=0,L_RES=50,L_TILE=5,L_CAP=28,L_SPOIL=20,L_FARMSHARE=0.6,L_CULT=18;  // 숙련=행위당 아주 미세(파종·수확·김매기) → 평생 숙달. L_RES=곳간배수
 const L_TENDOK=2,L_PESTP=0.008,L_QW=0.05,L_QP=0.05,L_QMIN=0.25,L_QREC=0.5,L_WEEDS=[0.10,0.24,0.38,0.52,0.66,0.80];  // 병충해확률·품질감소·김매기 차례(생장 10~80%, 6벌 — 생육기 내내 밭일 → 유휴↓)
@@ -14776,18 +14781,18 @@ function lifeDayAll(doBulk){   // 하루: econ world 한 번 틱(전 마을 경�
   }
   if(VILS.length)_bxDayGM=Math.max(_bxDayGM,VILS[0].day*L_MINDAY);bxTick();   // ★[T599 ← T590] 몸의 시계를 하루 넘김에 맞추고 누운 몸·걷는 몸을 그만큼(빨리감기·하네스 — 관찰은 lifeLoop 매 프레임)
   if(VILS.length){life=VILS[lifeFocal];V=life.V;}else{lifeOn=false;}}   // 다 죽으면 시뮬 정지
-function cropRipe(e,day){return day-e.planted>=e.crop.grow;}
+function cropRipe(e,day){return day-e.planted>=(e.g||e.crop.grow);}
 // 셀의 할 일 우선순위: 4수확 3병충해 2파종 1돌봄(오늘 안 돌본 자라는 셀) 0없음
 function cellTask(plot,c,day){const e=life.crop.get(ckey(c));
   if(!e)return villageCropFor(plot.field,lMonth(day),plot.cx+plot.cy)?2:0;   // ★economy-sim이 인구·식량 담당 → 옛 인구조절 캡(pop×L_LANDNEED/비옥도²) 제거. 제철이면 빈 농지를 노동 한도껏 모두 파종(농부 수가 자연스러운 한계). 비수기/파종창 밖이면 villageCropFor=null이라 안 심음.
-  if(cropRipe(e,day))return 5;if(e.pest)return 4;if(plot.field==='논'&&day-(e.watered||e.planted)>=L_WATERGAP)return 3;const wd=e.weeds||0;if(wd<L_WEEDS.length&&(day-e.planted)/e.crop.grow>=L_WEEDS[wd])return 1;return 0;}   // 우선순위 5수확 4방제 3물대기(논) 2파종 1김매기
+  if(cropRipe(e,day))return 5;if(e.pest)return 4;if(plot.field==='논'&&day-(e.watered||e.planted)>=L_WATERGAP)return 3;const wd=e.weeds||0;if(wd<L_WEEDS.length&&(day-e.planted)/(e.g||e.crop.grow)>=L_WEEDS[wd])return 1;return 0;}   // 우선순위 5수확 4방제 3물대기(논) 2파종 1김매기
 const taskName=p=>['','김매기','파종','물대기','방제','수확'][p]||'';
 function doTask(a,c,day){const k=ckey(c),s=life,e=s.crop.get(k);   // 도착한 셀 처리, 성공시 true
-  if(!e){const cr=villageCropFor(a.plot.field,lMonth(day),a.plot.cx+a.plot.cy);if(!cr)return false;s.crop.set(k,{crop:cr,planted:day,tended:day,watered:day,weeds:0,pest:0,q:1,cx:c.cx,cy:c.cy});a.skill=Math.min(L_MAXSK+0.5,a.skill+L_SKP);a.action=a.plot.field==='논'?'모내기':'파종';return true;}   // 파종/모내기
+  if(!e){const cr=villageCropFor(a.plot.field,lMonth(day),a.plot.cx+a.plot.cy);if(!cr)return false;s.crop.set(k,{crop:cr,planted:day,tended:day,watered:day,weeds:0,pest:0,q:1,cx:c.cx,cy:c.cy,g:cropGrowAt(cr,day)});a.skill=Math.min(L_MAXSK+0.5,a.skill+L_SKP);a.action=a.plot.field==='논'?'모내기':'파종';return true;}   // 파종/모내기
   if(cropRipe(e,day)){const lvl=Math.min(L_MAXSK,Math.floor(a.skill));const _y=e.crop.yieldC*L_YIELD*(1+lvl*0.09)*a.fert*(V.fert*V.fert||0.25)*e.q*(0.8+0.4*Math.random());s.food+=_y;a.carry=(a.carry||0)+_y;/*★곳간② — 회계(s.food)는 원문 그대로. 같은 양을 '지금 이 사람이 들고 있는 짐'으로만 기록해 운반 물리를 만든다(이중 계상 아님)*/a.skill=Math.min(L_MAXSK+0.5,a.skill+L_SKH);s.crop.delete(k);a.action='수확';return true;}   // 수확 ∝ 비옥도² → 극적 차이(비교우위·교역 유인)
   if(e.pest){e.pest=0;e.tended=day;e.q=Math.min(1,e.q+L_QREC);a.skill=Math.min(L_MAXSK+0.5,a.skill+L_SKT);a.action='방제';return true;}   // 병충해 방제
   if(a.plot.field==='논'&&day-(e.watered||e.planted)>=L_WATERGAP){e.watered=day;e.q=Math.min(1,e.q+L_QREC);a.skill=Math.min(L_MAXSK+0.5,a.skill+L_SKT);a.action='물대기';return true;}   // 논 물대기(논만)
-  const wd=e.weeds||0;if(wd<L_WEEDS.length&&(day-e.planted)/e.crop.grow>=L_WEEDS[wd]){e.weeds=wd+1;e.tended=day;e.q=Math.min(1,e.q+L_QREC);a.skill=Math.min(L_MAXSK+0.5,a.skill+L_SKT);a.action=(L_WEEDNM[wd]||'김')+(a.plot.field==='논'?' 논매기':' 김매기');return true;}   // 김매기/논매기
+  const wd=e.weeds||0;if(wd<L_WEEDS.length&&(day-e.planted)/(e.g||e.crop.grow)>=L_WEEDS[wd]){e.weeds=wd+1;e.tended=day;e.q=Math.min(1,e.q+L_QREC);a.skill=Math.min(L_MAXSK+0.5,a.skill+L_SKT);a.action=(L_WEEDNM[wd]||'김')+(a.plot.field==='논'?' 논매기':' 김매기');return true;}   // 김매기/논매기
   return false;}
 function nextTask(a,day){if(!a.plot)return null;let best=null,bp=0,bd=1e9;   // 현재 구역에서 우선순위 높고 가장 가까운 할 일
   for(const c of a.plot.cells){const p=cellTask(a.plot,c,day);if(p===0)continue;const d=(c.cx-a.px)*(c.cx-a.px)+(c.cy-a.py)*(c.cy-a.py);if(p>bp||(p===bp&&d<bd)){bp=p;bd=d;best=c;}}return best;}
@@ -15045,8 +15050,8 @@ function lifeDay(doBulk){const s=life;if(!s)return;s.day++;const day=s.day;
   }
   if(day%L_YEAR===0)for(const a of s.agents)if(a.job==='farmer')a.skill=Math.min(L_MAXSK+0.5,a.skill+L_SKYR);   // 매년 경험 누적(평생 숙달, ~15년 만렙)
   let sp=0;for(const[k,e]of s.crop){   // 1) 셀별 작물 진화: 방치→잡초·품질↓, 병충해 발생, 너무 익으면 썩음
-    if(cropRipe(e,day)){if(day-e.planted>=e.crop.grow+L_SPOIL){s.crop.delete(k);sp++;}}
-    else{const wd=e.weeds||0,gf=(day-e.planted)/e.crop.grow;if(e.pest)e.q-=L_QP;else if(wd<L_WEEDS.length&&gf>=L_WEEDS[wd]+0.06)e.q-=L_QW;if(e.crop.field==='논'&&day-(e.watered||e.planted)>=L_WATERGAP+8)e.q-=L_QW;if(!e.pest&&Math.random()<L_PESTP)e.pest=1;if(e.q<L_QMIN)e.q=L_QMIN;}}   // 김매기/물대기 놓치면 품질↓
+    if(cropRipe(e,day)){if(day-e.planted>=(e.g||e.crop.grow)+L_SPOIL){s.crop.delete(k);sp++;}}
+    else{const wd=e.weeds||0,gf=(day-e.planted)/(e.g||e.crop.grow);if(e.pest)e.q-=L_QP;else if(wd<L_WEEDS.length&&gf>=L_WEEDS[wd]+0.06)e.q-=L_QW;if(e.crop.field==='논'&&day-(e.watered||e.planted)>=L_WATERGAP+8)e.q-=L_QW;if(!e.pest&&Math.random()<L_PESTP)e.pest=1;if(e.q<L_QMIN)e.q=L_QMIN;}}   // 김매기/물대기 놓치면 품질↓
   s.spoiled=sp;
   s.workPlots=s.plots.filter(p=>plotHasWork(p,day));   // 오늘 일감 있는 구역 목록(검색 비용↓)
   for(const a of s.agents){if(a.job!=='farmer')continue;   // 2) 노동: 초고속은 여기서 일괄, 저속은 걷는 농부가 직접 처리(밭이 눈앞에서 변함)
