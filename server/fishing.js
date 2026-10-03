@@ -67,6 +67,16 @@ const CFG = {
   REACH_PX:   _num('FISH_REACH_PX', 96),     // 물가에서 이만큼 안이면 던질 수 있다
 };
 
+// ★★[T593 2026-10-03] **바다낚시 손잡이** — 기본 켬 · 되돌림 `T593_SEA=0`(바다 갈래·물마다 종·철 거름·NPC 바다 표 전부 닫힘 = T593 전 그대로).
+//   켜면: 존이 `spotAt` 에 바다 술어를 넘기고(바다 칸 = `kind: 'sea'`) · 낚은 종을 **물이 고른다**(민물 `freshfish` · 바다 `seafish` ·
+//   철은 두 표의 `seasons` 를 달력으로) · NPC 어부도 바다 칸 물가면 바다 표(`villages.js _t340Try`) · 말리기 입력에 두 표의 종이 든다.
+//   ⚠econ 무접촉 — 종은 몸 층(손에 든 낱개)이고 econ 은 여전히 `fish` 단위와 `fishSustain` 만 본다.
+const T593_SEA = process.env.T593_SEA !== '0';
+//   ★[T593 ②] 곁가지 손잡이 `T593_KG`(기본 켬 · 켬은 `T593_SEA` 안에서만) — 플레이어 물고기 무게의 중앙값을 **그 종의 kg**(표)로 둔다
+//     (`plan` 다섯째 인자 · NPC T340 "창 = 그 종의 kg" 와 같은 결 · 미꾸라지 2kg 이 안 나온다). 큰 종이 많은 물은 창이 짧아진다(보고 T593 §2 표).
+//     `T593_KG=0` 이면 종은 물이 고르되 무게는 종전 전체 중앙값(`SIZE_MU`)이다 — 창의 어려움이 T593 전과 같다(재민 판정 몫).
+const T593_KG = T593_SEA && process.env.T593_KG !== '0';
+
 // ── 게임일(재생 적분의 시간축) — 호출자가 주입한다(존마다 다를 수 있다) ─────────
 let DAY_MS = 24 * 60 * 1000;
 function setDayMs(ms) { if (ms > 0) DAY_MS = ms; }
@@ -120,7 +130,10 @@ function _lakeR(x, y, lake) {
 //     flow01  물길 안 1, 반폭 2배에서 0        → 흐름의 세기(클라 셰이더와 같은 식)
 //     seam01  u≈1 둘레(흐름 경계)에서 1        → **입질 빈도**
 //     conflu  물길 안(u≤1.2)인 강이 둘 이상    → 합류부. 최고의 명당.
-function spotAt(T, zoneId, x, y) {
+//   ★★[T593] 다섯째 인자 `sea` = 바다 갈래 술어(존이 넘긴다 · 손잡이 `T593_SEA` 켬일 때만) — 주면 바다 칸이 `kind: 'sea'` 다(아래 `_seaSpot`).
+//     안 주면(끔 · 하네스의 네 인자 호출) 이 함수는 **한 글자도 안 바뀐다** — 바다 칸은 종전대로 `water: false`(강·호수 술어가 바다를 모른다).
+function spotAt(T, zoneId, x, y, sea) {
+  if (sea && sea.isSea(x, y)) return _seaSpot(sea, x, y);
   const t = (T.ZONE_TERRAIN || {})[zoneId];
   const out = { water: false, kind: 'none', u: Infinity, depth01: 0, flow01: 0, seam01: 0, conflu: 0, halfWidth: 0 };
   if (!t) return out;
@@ -148,12 +161,75 @@ function spotAt(T, zoneId, x, y) {
     // 흐름 경계 — u=1 둘레 BAND 폭에서 1, 멀어지면 0
     out.seam01 = Math.max(0, 1 - Math.abs(bestU - 1) / Math.max(1e-6, CFG.SEAM_BAND));
     if (inLake) out.conflu = 1;
+    // ★[T593] 강어귀 — 강 칸 둘레 사거리 원 안에 바다 칸이 있으면 민물이 바다에 드는 자리다(바다 갈래 'mouth' 의 거울 ·
+    //   강×호수 하구가 합류부인 것과 같은 규칙). 민물 표는 여기서 **하류** 갈래를 쓴다(존 `_t593Water`). 술어가 없으면(끔) 안 본다.
+    if (sea && _nearSea(sea, x, y)) { out.estuary = 1; out.conflu = 1; }
   } else {
     out.kind = 'lake';
     out.flow01 = CFG.LAKE_FLOW;
     out.depth01 = Math.max(0, Math.min(1, 1 - Math.min(1, lakeR)));
     out.seam01 = 0;
   }
+  return out;
+}
+
+// ★★[T593 ①] **바다 자리** — 바다도 지형에서 읽는다(새 층 0 · 새 수 0). 술어 셋은 존이 넘긴다(사본 0):
+//     `isSea`   = 존 `isSeaTileLocal`(해안선 띠 ∖ 강·호수 — `look`·자염·갯벌이 이미 쓰는 그 술어)
+//     `isWater` = 존 `isWaterTileLocal`(바다 ∪ 강·호수) — 그 부정이 뭍(바위 벼랑도 뭍이다)
+//     `cell`    = 셀 한 변(존 `BUILDING_SIZE`)
+//   ⓐ **깊이** = 가장 가까운 뭍 칸까지의 거리(셀 중심 사이 유클리드 × 셀) — 마을 `seaDistPx`(뭍 → 바다)와 **같은 자를 거꾸로** 댄 것.
+//      배가 없으니 던질 수 있는 바다는 **해안에서 사거리 안**뿐이다(`_castTargetFor` 가 사람 둘레 `REACH_PX` 만 훑는다 — 사거리 무변).
+//      그래서 눈금도 사거리다: 뭍에 붙은 칸 ≈ 1/3 · 사거리 끝 = 1(그보다 먼 바다는 애초에 못 닿는다).
+//   ⓑ **흐름 경계** = 해안 굴곡 — 가장 가까운 뭍 칸 둘레 사거리 원 안의 **뭍 몫**. 곧은 해안이면 절반(반평면 · 기하)이고,
+//      곶 끝·만 입구의 갑(岬)이면 절반보다 적다(물이 둘러싼다 — 조류가 서는 자리). 경계 = 1 − 2 × 뭍 몫(0..1 로 자른다).
+//      만 안쪽(뭍이 감싼다)은 절반보다 많아 0 이다 — 잔잔한 물(호수와 같은 자리).
+//      해안선 술어에서 읽으므로 **해안 꼴이 바뀌면(T588) 같이 바뀐다**.
+//   ⓒ **합류** = 사거리 원 안에 민물 칸(강·호수)이 있으면 강어귀 — 민물이 바다에 드는 자리(강의 합류부와 같은 명당 · 자리 'mouth').
+//   ⚠흐름(`flow01`)은 경계와 같은 값을 싣는다 — 곶 끝에서 물살이 선다(점수는 `seam01` 만 읽는다 · 힌트 글자는 `kind`·`spot`).
+const _reachCells = (C) => Math.max(1, Math.round(CFG.REACH_PX / C));   // 사거리를 셀로(96px ÷ 32 = 3) — 새 수 0 · 바다 자리·강어귀가 같이 쓴다
+// 사거리 원 안에 바다 칸이 있나(강 칸 → 강어귀). 원은 `_seaSpot` 과 같은 원이다.
+function _nearSea(sea, x, y) {
+  const C = sea.cell, R = _reachCells(C);
+  const cx = Math.floor(x / C), cy = Math.floor(y / C);
+  for (let dy = -R; dy <= R; dy++) {
+    for (let dx = -R; dx <= R; dx++) {
+      if (dx * dx + dy * dy > R * R) continue;
+      if (sea.isSea((cx + dx) * C + C / 2, (cy + dy) * C + C / 2)) return true;
+    }
+  }
+  return false;
+}
+function _seaSpot(sea, x, y) {
+  const C = sea.cell;
+  const R = _reachCells(C);
+  const cx = Math.floor(x / C), cy = Math.floor(y / C);
+  const at = (ix, iy) => [ix * C + C / 2, iy * C + C / 2];
+  let d2 = Infinity, lx = 0, ly = 0, fresh = false;
+  for (let dy = -R; dy <= R; dy++) {
+    for (let dx = -R; dx <= R; dx++) {
+      const q = dx * dx + dy * dy;
+      if (q > R * R) continue;
+      const [px, py] = at(cx + dx, cy + dy);
+      if (!sea.isWater(px, py)) { if (q < d2) { d2 = q; lx = cx + dx; ly = cy + dy; } }
+      else if (!fresh && !sea.isSea(px, py)) fresh = true;
+    }
+  }
+  const out = { water: true, kind: 'sea', spot: fresh ? 'mouth' : 'coast', u: Infinity,
+                depth01: 1, flow01: 0, seam01: 0, conflu: fresh ? 1 : 0, halfWidth: 0, shorePx: Infinity };
+  if (!Number.isFinite(d2)) return out;                   // 사거리 안에 뭍이 없다 = 사거리보다 깊다(눈금 끝)
+  out.shorePx = Math.sqrt(d2) * C;
+  out.depth01 = Math.min(1, out.shorePx / CFG.REACH_PX);
+  let land = 0, n = 0;
+  for (let dy = -R; dy <= R; dy++) {
+    for (let dx = -R; dx <= R; dx++) {
+      if (dx * dx + dy * dy > R * R) continue;
+      n++;
+      const [px, py] = at(lx + dx, ly + dy);
+      if (!sea.isWater(px, py)) land++;
+    }
+  }
+  out.seam01 = Math.max(0, Math.min(1, 1 - 2 * land / n));
+  out.flow01 = out.seam01;
   return out;
 }
 
@@ -333,13 +409,16 @@ function windowMsFor(kg) {
 
 // 던짐 한 번의 대본. rng 는 주입(하네스가 씨를 고정해 분포를 잰다).
 //   stock01 = 그 자리 재고 비율 → 빈 자리는 **덜 문다**(고갈이 손에 잡힌다).
-function plan(sp, stock01, now, rng) {
+//   ★[T593 ②] 다섯째 인자 `kg0` = **그 종의 kg**(표 정본 — 민물 `freshfish` · 바다 `seafish`) — 주면 로그정규의 중앙값이 그 종이다
+//     (전체 중앙값 `SIZE_MU` 자리에 ln(kg0) — 산포 σ·자리 크기 배수·상한은 그대로 · 새 수 0). 미꾸라지(15g)가 2kg 으로 낚이지 않는다.
+//     NPC 어부(T340 "창 = 그 종의 kg")와 같은 결이다. 안 주면(끔 · 하네스) 이 함수는 한 글자도 안 바뀐다.
+function plan(sp, stock01, now, rng, kg0) {
   const sc = spotScore(sp);
   const rate = Math.max(0.08, sc.rate * Math.max(0.05, stock01));
   // 대기 = 지수분포(무기억) — "이제 슬슬 올 때가 됐다"가 성립하지 않는다.
   const raw = CFG.WAIT_BASE_MS / rate * (-Math.log(Math.max(1e-9, rng())) * CFG.WAIT_JIT + (1 - CFG.WAIT_JIT));
   const waitMs = Math.max(CFG.WAIT_MIN_MS, Math.min(CFG.WAIT_MAX_MS, Math.round(raw)));
-  let kg = _lognormal(rng, CFG.SIZE_MU + Math.log(sc.size), CFG.SIZE_SIGMA);
+  let kg = _lognormal(rng, (kg0 > 0 ? Math.log(kg0) : CFG.SIZE_MU) + Math.log(sc.size), CFG.SIZE_SIGMA);
   kg = Math.min(CFG.SIZE_MAX, +kg.toFixed(3));
   return { biteAt: now + waitMs, waitMs, kg, windowMs: windowMsFor(kg) };
 }
@@ -374,13 +453,18 @@ const ALL_SPECIES = (() => {
 //   왜 남기나: 곳간에서 꺼내거나 게시판 보상으로 받으면 진짜로 `fish` 가 손에 온다.
 //   ⚠갯벌 산출(굴·해조)은 뺀다 — 그건 T54 의 제 레시피가 따로 있다(같은 것을 두 줄로 만들지 않는다).
 const _NOT_FISH = new Set(['oyster', 'seaweed']);
-const FISH_ITEMS = ['fish', ...ALL_SPECIES.filter((k) => !_NOT_FISH.has(k))];
+// ★[T593] 켜면 낚시가 두 표(민물 `freshfish` · 바다 `seafish`)에서 종을 낸다 ⇒ 말리기 입력도 그 종을 안다(뒤에 붙인다 — 끔이면 빈 배열 = 종전 목록 그대로).
+//   ⚠목록 정본은 두 표다(여기 옮겨 적지 않는다 — `ids()` 를 부른다). 바다 표 열 종은 이미 위 목록에 있어 실제로 붙는 것은 민물 아홉이다.
+const T593_EXTRA = T593_SEA
+  ? [...new Set([...require('./freshfish').ids(), ...require('./seafish').ids()])].filter((k) => ALL_SPECIES.indexOf(k) < 0 && !_NOT_FISH.has(k)).sort()
+  : [];
+const FISH_ITEMS = ['fish', ...ALL_SPECIES.filter((k) => !_NOT_FISH.has(k)), ...T593_EXTRA];
 function isFish(item) { return FISH_ITEMS.indexOf(item) >= 0; }
 
 module.exports = {
-  CFG, fishCells, setDayMs,
+  CFG, fishCells, setDayMs, T593_SEA, T593_KG,
   SPECIES_BY_BIOME, ALL_SPECIES, FISH_ITEMS, speciesFor, isFish,
-  spotAt, spotScore, _riverU, _lakeR,
+  spotAt, spotScore, _riverU, _lakeR, _seaSpot,
   regen, rec, stockRatioAt, drawStock, deficitStock, deficitBy, stockToEcon, diffuse,
   plan, windowMsFor, _lognormal,
   get DAY_MS() { return DAY_MS; },

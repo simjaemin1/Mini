@@ -357,6 +357,162 @@ function scanSpots(step, cap) {
   ok(F.CFG.KG_PER_STOCK > 0 && F.CFG.CELL_K > 0, '★⑦ 손잡이가 전부 살아 있다(env 미설정 = 채택값)',
     `KG_PER_STOCK ${F.CFG.KG_PER_STOCK} · CELL_K ${F.CFG.CELL_K}`);
 
+  // ═══ ⑧ [T593] 바다 자리 · 물마다 종 · 철 ═══════════════════════════════════
+  //   ★정본 함수만 부른다 — 자리(`spotAt` 바다 갈래) · 던질 자리(`_castTargetFor`) · 던짐/챔질(`tryFishCast`/`tryFishStrike`) ·
+  //     표(`freshfish`·`seafish`). 하네스는 종 목록을 옮겨 적지 않는다(표에게 묻는다).
+  say('\n⑧ [T593] 바다 자리 · 물마다 종 · 철(달력)');
+  {
+    const Fresh = require(path.join(ROOT, 'server', 'freshfish.js'));
+    const Sea = require(path.join(ROOT, 'server', 'seafish.js'));
+    ok(F.T593_SEA === true && F.T593_KG === true, '★⑧ 손잡이 `T593_SEA` 기본 **켬** · 곁가지 `T593_KG`(무게 = 그 종 kg) 기본 켬', `${F.T593_SEA} · ${F.T593_KG}`);
+    const SEA = { isSea: H.isSeaTileLocal, isWater: H.isWaterTileLocal, cell: H.BUILDING_SIZE };
+    // ⓐ 해안 물가 표본 — 정본 해안선 집합(`WATER_TILES`)에서 뭍 칸 곁의 바다 칸을 찾는다(지형을 하네스가 다시 짓지 않는다)
+    const W = H.WATER_TILES, shoreSea = [], shoreLand = [];
+    const each = (fn) => { if (typeof W.forEachTile === 'function') W.forEachTile(fn); else for (const k of W) { const [a, b] = k.split('_').map(Number); fn(a, b); } };
+    let nSeen = 0;
+    each((tx, ty) => {
+      if (shoreSea.length >= 300 || (nSeen++ % 11)) return;
+      const sx = tx * 32 + 16, sy = ty * 32 + 16;
+      if (!H.isSeaTileLocal(sx, sy)) return;
+      for (const [dx, dy] of [[32, 0], [-32, 0], [0, 32], [0, -32]]) {
+        const lx = sx + dx, ly = sy + dy;
+        if (lx < 0 || ly < 0 || lx >= ZONE.zoneWidth || ly >= ZONE.zoneHeight) continue;
+        if (H.isWaterTileLocal(lx, ly) || H.isRockTileLocal(lx, ly)) continue;
+        shoreSea.push([sx, sy]); shoreLand.push([lx, ly]); break;
+      }
+    });
+    ok(shoreSea.length >= 100, '★전제 — 실지도에 뭍과 맞닿은 바다 칸이 충분하다(자명 통과 금지)', `${shoreSea.length}곳`);
+    // ⓑ 끔과 같은 자리 — 바다 술어를 안 넘기면 종전 그대로(바다 칸 = 물 아님)
+    const off = shoreSea.filter(([x, y]) => F.spotAt(T, Z, x, y).water).length;
+    ok(off === 0, '★★⑧ⓑ 바다 술어 없이 부르면(끔 · 네 인자) 바다 칸은 **종전 그대로 물이 아니다**', `${off}/${shoreSea.length}`);
+    // ⓒ 켬 — 바다 칸은 `kind: 'sea'` · 깊이·경계는 0..1 · 깊이는 해안 거리(뭍에 붙은 칸이 사거리 끝보다 얕다)
+    const sps = shoreSea.map(([x, y]) => F.spotAt(T, Z, x, y, SEA));
+    ok(sps.every((s) => s.water && s.kind === 'sea'), '★★⑧ⓒ 바다 칸이 **바다 자리**다(`water` · `kind: sea`)', `${sps.filter((s) => s.kind === 'sea').length}/${sps.length}`);
+    ok(sps.every((s) => s.depth01 > 0 && s.depth01 <= 1 && s.seam01 >= 0 && s.seam01 <= 1), '⑧ⓒ 깊이·경계가 0..1 안이다');
+    const adj = sps.filter((s) => s.shorePx <= 32 + 1e-9).length;
+    ok(adj > 0 && sps.every((s) => s.shorePx > 0), '★⑧ⓒ 깊이 = 가장 가까운 뭍까지 — 뭍에 붙은 칸은 한 칸 거리', `한 칸 ${adj}/${sps.length}`);
+    // 사거리 끝 바다 칸은 더 깊다 — 같은 해안에서 바다 쪽으로 사거리만큼 나간 칸(뭍 칸 → 바다 칸 방향)
+    let deeper = 0, cmp = 0;
+    for (let i = 0; i < shoreSea.length; i++) {
+      const [sx, sy] = shoreSea[i], [lx, ly] = shoreLand[i];
+      const ux = Math.sign(sx - lx), uy = Math.sign(sy - ly);
+      const fx = sx + ux * (F.CFG.REACH_PX - 32), fy = sy + uy * (F.CFG.REACH_PX - 32);
+      if (!H.isSeaTileLocal(fx, fy)) continue;
+      cmp++; if (F.spotAt(T, Z, fx, fy, SEA).depth01 > sps[i].depth01) deeper++;
+    }
+    ok(cmp > 20 && deeper / cmp > 0.8, '★★⑧ⓒ 바다 쪽으로 나갈수록 **깊다**(해안 거리 = 깊이)', `${deeper}/${cmp}`);
+    const seamy = sps.filter((s) => s.seam01 > 0).length;
+    ok(seamy > 0 && seamy < sps.length, '★⑧ⓒ 경계(해안 굴곡)가 **어떤 자리엔 있고 어떤 자리엔 없다**(상수가 아니다)', `${seamy}/${sps.length}`);
+    // ⓓ 던질 자리 — 해안 물가 사람은 바다를 고를 수 있다(배 없음 — 사거리 그대로)
+    const casts = shoreLand.slice(0, 80).map(([x, y]) => { const p = mkPlayer('sea' + x); p.x = x; p.y = y; return H._castTargetFor(p); });
+    const seaT = casts.filter((c) => c && c.sp.kind === 'sea');
+    ok(seaT.length > 0, '★★⑧ⓓ 해안에 선 사람의 던질 자리가 **바다**다', `${seaT.length}/${casts.length}`);
+    ok(seaT.every((c) => Math.hypot(c.x - shoreLand[casts.indexOf(c)][0], c.y - shoreLand[casts.indexOf(c)][1]) <= F.CFG.REACH_PX + 1e-9),
+      '⑧ⓓ 바다 자리도 **사거리 안**이다(배 없음 — 던지기 사거리 무변)', `REACH ${F.CFG.REACH_PX}px`);
+    // ⓔ 물마다 종 — 바다에서 던지면 바다 표 · 강·호수는 민물 표(같은 굴림 하나 · 서버가 정한다)
+    const catchAt = (x, y, tag) => {
+      F.fishCells.clear();
+      const p = mkPlayer(tag); p.x = x; p.y = y;
+      H.tryFishCast(p);
+      if (!p._fish) return null;
+      p._fish.biteAt = Date.now() - 50; p._fish.bit = true;
+      const kind = p._fish.sp.kind, est = !!p._fish.sp.estuary, day = p._fish.day, cast = p._fish.species, planKg = p._fish.kg;
+      H.tryFishStrike(p);
+      const c = p.__last('fish_catch');
+      return c ? { item: c.item, kind, est, day, cast, planKg, kg: c.kg } : null;
+    };
+    const seaGot = [], seaKinds = {};
+    for (let i = 0; i < shoreLand.length && seaGot.length < 60; i++) {
+      const r = catchAt(shoreLand[i][0], shoreLand[i][1], 'sc' + i);
+      if (r && r.kind === 'sea') { seaGot.push(r.item); seaKinds[r.item] = (seaKinds[r.item] || 0) + 1; }
+    }
+    ok(seaGot.length >= 20, '★전제 — 바다에서 실제로 여러 번 낚았다', `${seaGot.length}마리`);
+    ok(seaGot.every((it) => Sea.isFish(it)), '★★⑧ⓔ 바다에서 낚은 것은 **전부 바닷물고기 표**의 종이다', JSON.stringify(seaKinds));
+    ok(!seaGot.some((it) => Fresh.isFish(it)), '★★⑧ⓔ 바다에서 **민물고기가 안 나온다**(종전: 바다에서 잉어)');
+    const rivers2 = spots.filter((s) => s.sp.kind === 'river').slice(0, 40), lakes2 = spots.filter((s) => s.sp.kind === 'lake').slice(0, 40);
+    const freshGot = [], lakeGot = [];
+    for (const s of rivers2) { const r = catchAt(s.x, s.y, 'rv' + s.x); if (r && r.kind === 'river') freshGot.push(r.item); }
+    for (const s of lakes2) { const r = catchAt(s.x, s.y, 'lk' + s.x); if (r && r.kind === 'lake') lakeGot.push(r.item); }
+    ok(freshGot.length >= 10 && lakeGot.length >= 5, '★전제 — 강·호수에서도 실제로 낚았다', `강 ${freshGot.length} · 호수 ${lakeGot.length}`);
+    ok(freshGot.every((it) => Fresh.isFish(it)) && lakeGot.every((it) => Fresh.isFish(it)),
+      '★★⑧ⓔ 강·호수에서 낚은 것은 **전부 민물고기 표**(NPC 와 같은 표)의 종이다', `${[...new Set(freshGot)].join(' ')} / ${[...new Set(lakeGot)].join(' ')}`);
+    ok(!freshGot.concat(lakeGot).some((it) => Sea.isFish(it)), '★★⑧ⓔ 강에서 **바닷물고기(명태)가 안 나온다**(종전: 강에서 명태)');
+    const lakePool = new Set(Fresh.poolOf('lake', H.gameDayNow()).map((s) => s.id));
+    ok(lakeGot.every((it) => lakePool.has(it)), '⑧ⓔ 호수 칸은 민물 표의 **호소** 갈래에서 뽑는다', [...lakePool].join(' '));
+    // ★뽑기가 한 종에 갇히지 않는다 — 풀이 짝수(둘)일 때 굴림의 아랫비트가 비면 하루 내내 한 종만 나온다(1차 판이 그랬다)
+    ok(lakePool.size < 2 || new Set(lakeGot).size >= 2, '★⑧ⓔ 풀이 둘 이상이면 **실제로 여러 종**이 나온다(뽑기가 한 종에 갇히지 않는다)',
+      `호수 풀 ${lakePool.size} · 나온 종 ${new Set(lakeGot).size} · 강 나온 종 ${new Set(freshGot).size}`);
+    // ⓕ 연어는 강어귀 바다에서만(표 `spots: ['mouth']`) — 표가 그 자리를 실제로 가른다
+    ok(Sea.poolOf(Sea.areaOfZone(Z), 'coast', 0).every((s) => s.id !== 'salmon') && Sea.poolOf(Sea.areaOfZone(Z), 'mouth', 0).some((s) => s.id === 'salmon'),
+      '★⑧ⓕ 연어는 **강어귀** 자리 풀에만 든다(해안 풀엔 없다)');
+    ok(!seaGot.includes('salmon') || sps.some((s) => s.spot === 'mouth'), '⑧ⓕ 해안 자리에서 연어가 나왔다면 강어귀 자리가 있어야 한다');
+    // ⓕ' 강어귀(민물 쪽) — 해안선 띠 안의 강 칸(바다 곁)은 `estuary`(합류부) · 민물 표의 **하류** 갈래(카드 "민물 = 강·호수·하구")
+    const estCells = [];
+    { let k = 0;
+      each((tx, ty) => {
+        if (estCells.length >= 40 || (k++ % 3)) return;
+        if (!H.isSeaTileLocal(tx * 32 + 16, ty * 32 + 16)) return;   // 그 띠 칸이 바다여야 곁의 강 칸이 강어귀다
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const fx = (tx + dx) * 32 + 16, fy = (ty + dy) * 32 + 16;
+          if (!H.isWaterTileLocal(fx, fy) || H.isSeaTileLocal(fx, fy)) continue;
+          const sp = F.spotAt(T, Z, fx, fy, SEA);
+          if (sp.kind === 'river') { estCells.push([fx, fy, sp]); break; }
+        }
+      }); }
+    ok(estCells.length > 0, '★전제 — 실지도에 바다와 맞닿은 강 칸(강어귀)이 있다', `${estCells.length}곳`);
+    ok(estCells.every(([, , sp]) => sp.estuary === 1 && sp.conflu === 1), '★★⑧ⓕ\' 바다 곁 강 칸은 **강어귀** — 합류부(강×호수 하구와 같은 규칙)',
+      `${estCells.filter(([, , sp]) => sp.estuary === 1).length}/${estCells.length}`);
+    ok(estCells.every(([fx, fy]) => F.spotAt(T, Z, fx, fy).estuary === undefined), '⑧ⓕ\' 바다 술어 없이 부르면(끔) 강어귀 표식이 없다(종전 자리 그대로)');
+    // 서버가 고르는 자리는 사거리 안의 **가장 좋은 칸**이다 — 강어귀 곁엔 더 깊은 바다(역시 합류부 'mouth')가 있어 대개 그쪽을 고른다.
+    //   그래서 강어귀 강 칸이 **실제로 골라지는** 선 자리를 찾는다(강어귀 둘레 뭍 칸에서 던져 본다 — 서버 판정 그대로).
+    const estGot = [];
+    let estStand = 0;
+    for (const [fx, fy] of estCells) {
+      if (estGot.length >= 12) break;
+      for (let dy = -96; dy <= 96 && estGot.length < 12; dy += 32) for (let dx = -96; dx <= 96; dx += 32) {
+        const sx = fx + dx, sy = fy + dy;
+        if (H.isWaterTileLocal(sx, sy) || H.isRockTileLocal(sx, sy)) continue;
+        const tg = H._castTargetFor(Object.assign(mkPlayer('et'), { x: sx, y: sy }));
+        if (!tg || tg.sp.kind !== 'river' || !tg.sp.estuary) continue;
+        estStand++;
+        const r = catchAt(sx, sy, 'es' + sx + '_' + sy);
+        if (r && r.kind === 'river' && r.est) estGot.push(r);
+        break;
+      }
+    }
+    ok(estGot.length > 0, '★전제 — 서버가 강어귀 강 칸을 실제로 고른 선 자리에서 낚았다', `선 자리 ${estStand} · ${estGot.length}마리`);
+    ok(estGot.length > 0 && estGot.every((r) => Fresh.poolOf('lower', r.day).some((s) => s.id === r.item)),
+      '★★⑧ⓕ\' 강어귀에서 낚은 민물고기는 **하류** 갈래의 종이다', `${estGot.length}마리 · ${[...new Set(estGot.map((r) => r.item))].join(' ')}`);
+    // ⓖ 철 — 달력 정본으로 거른다: 겨울 중류엔 사철 종만, 여름엔 여름 종도(표 `seasons` 그대로)
+    const sum = Fresh.poolOf('mid', 120).map((s) => s.id), win = Fresh.poolOf('mid', 300).map((s) => s.id);
+    ok(Fresh.seasonOf(120) === 'summer' && Fresh.seasonOf(300) === 'winter', '⑧ⓖ 전제 — 게임일 120 = 여름 · 300 = 겨울(달력 정본)', `${Fresh.seasonOf(120)} · ${Fresh.seasonOf(300)}`);
+    //   무는 종은 **던질 때** 정한다(존 `_t593Pick` — 그 종의 kg 가 무게 중앙값) ⇒ 철은 그 함수에 날을 넣어 잰다(같은 함수 · 같은 자리).
+    const rv = rivers2[0];
+    const rvSp = rv ? F.spotAt(T, Z, rv.x, rv.y, SEA) : null;
+    const SR = require(path.join(ROOT, 'server', 'seed-rand.js'));
+    const pickN = (day, n) => { const out = []; for (let i = 1; i <= n; i++) { const s = H._t593Pick(rvSp, rv.x, rv.y, SR.seedOf(i, 0, 0, day, i), day); if (s) out.push(s.id); } return out; };
+    const wGot = rv ? pickN(300, 200) : [], sGot = rv ? pickN(120, 200) : [];
+    ok(wGot.length === 200 && wGot.every((it) => win.includes(it)), '★★⑧ⓖ 겨울 날 강에서 무는 종은 **겨울 종뿐**이다(철 거름)', `${[...new Set(wGot)].join(' ')} ⊂ {${win.join(' ')}}`);
+    ok(new Set(sGot).size === sum.length && sGot.every((it) => sum.includes(it)), '★⑧ⓖ 여름 날엔 여름 풀 전부가 문다(풀이 실제로 넓어진다)', `${new Set(sGot).size}/${sum.length}종`);
+    ok(sum.length > win.length, '⑧ⓖ 여름 풀이 겨울 풀보다 넓다(철이 실제로 거른다 — 자명 통과 금지)', `여름 ${sum.length} · 겨울 ${win.length}`);
+    // ⓖ' 던질 때 정한 종 = 낚인 종 · 그 종 kg 가 무게의 중앙값(미꾸라지가 2kg 으로 낚이지 않는다)
+    const recs = [];
+    for (let i = 0; i < shoreLand.length && recs.length < 40; i += 3) { const r = catchAt(shoreLand[i][0], shoreLand[i][1], 'kw' + i); if (r) recs.push(r); }
+    for (const s of rivers2.concat(lakes2)) { if (recs.length >= 120) break; const r = catchAt(s.x, s.y, 'kr' + s.x); if (r) recs.push(r); }
+    ok(recs.length >= 40 && recs.every((r) => r.cast && r.item === r.cast), '★★⑧ⓖ\' 낚인 종 = **던질 때 정한 그 종**이다', `${recs.length}마리`);
+    const anchor = (id) => (Sea.isFish(id) ? Sea.kgOf(id) : Fresh.kgOf(id));
+    const ratios = recs.map((r) => r.planKg / anchor(r.item)).sort((a, b) => a - b);
+    const medR = ratios[Math.floor(ratios.length / 2)];
+    ok(medR > 0.5 && medR < 2.5, '★★⑧ⓖ\' 무게의 중앙값이 **그 종의 kg**(표)다 — 무게 ÷ 종 kg 의 중앙 ≈ 자리 크기 배수(1~1.85)', `중앙 ${medR.toFixed(2)} · 표본 ${ratios.length}`);
+    const small = recs.filter((r) => anchor(r.item) <= 0.1), big = recs.filter((r) => anchor(r.item) >= 1.5);
+    const med = (a) => { const s = a.map((r) => r.planKg).sort((x, y) => x - y); return s.length ? s[Math.floor(s.length / 2)] : null; };
+    ok(small.length > 0 && big.length > 0 && med(small) < med(big), '⑧ⓖ\' 작은 종(표 ≤ 0.1kg)이 큰 종(≥ 1.5kg)보다 가볍게 낚인다', `중앙 ${med(small)} < ${med(big)} (${small.length} · ${big.length}마리)`);
+    // ⓗ 손에 든 종이 이름표·말리기 입력에 있다(낚아서 말리는 길이 안 끊긴다)
+    const got = [...new Set(seaGot.concat(freshGot, lakeGot))];
+    ok(got.every((it) => F.isFish(it)), '★⑧ⓗ 낚은 종이 전부 **말리기 입력**(`FISH_ITEMS`)에 든다', got.join(' '));
+    ok(got.every((it) => H.ITEM_LABEL_SERVER[it] && H.ITEM_LABEL_SERVER[it] !== it), '★⑧ⓗ 낚은 종이 전부 **한글 이름표**가 있다', got.map((it) => H.ITEM_LABEL_SERVER[it]).join(' '));
+  }
+
   say(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
   for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
   process.exit(fail ? 1 : 0);

@@ -1405,6 +1405,73 @@ function territoryBoundary(territory, ccx, ccy) {
 }
 
 // =============================================================================
+// ★★[T593 ⑤ 2026-10-03] **마을 이름표 = 땅이 말하는 직업** — 손잡이 `T593_LABEL`(기본 끔 · 켬 = '1' · 끔 = 옛 이름 그대로).
+//   지금 이름의 꼬리표("농촌n/어촌n/광산n/임업n" · 닛폰 "…농촌" 꼴)는 **후보 칸의 꼬리표**(`hanbando-terrain.json` 의 `type` —
+//   시딩 동률 깨기 ×0.3 · 다양성 한 자리)일 뿐이고, 직업은 땅에서 나온다(`village-layout` 농부 몫·어부 몫).
+//   ⇒ 초기화 시딩에서 꼬리표를 땅에 맞춰 다시 붙인다. **새 수 0** — 문턱은 전부 정본의 그 선이다:
+//     ① 판정 둘 — `village-layout.typeBranch`(typeLabel 문턱 그대로): 'riverside' → 어촌 · 'plain' → 농촌
+//     ② 광산 — econ **광맥 점수** ≥ `BOOM_VEIN_MIN`(시딩 광맥 슬롯·부얼타운이 쓰는 그 선 · "실측 분포의 자연 절단선")
+//        임업 — **숲 몫**(노동권 숲 칸 비율 = `livelihood` 임업 부존의 역 · (wood − 바닥) ÷ 이득) > typeLabel 어촌 줄(`TYPE_LINES.fishHi`)
+//        — 광맥·숲은 village-layout 몫에 없는 직업(그 밖 0.18 에 들어 있다)이라 **점수 하나 · 선 하나** 의 같은 문법으로 잰다
+//     ③ 판정이 없으면(섞임 'mixed' · 기본 'none') **옛 꼬리표를 땅이 받쳐 주는지** 본다 — 받쳐 주면 그대로:
+//        농촌·어촌 ← 섞임(농·어 둘 다 굵다) · 농촌 ← 기본(typeLabel 기본값이 'plain') · 광산 ← 광맥 선 · 임업 ← 숲 선
+//     ④ 못 받쳐 주면 땅이 가리키는 쪽: 광맥 선 → 광산 · 숲 선 → 임업 · 섞임 → 농·어 몫 큰 쪽 · 기본 → 농촌(typeLabel 기본값)
+//   이름은 **낱말만** 바꾼다: "농촌12" 꼴은 새 낱말의 다음 번호(후보 전체의 가장 큰 번호 + 1 — 겹침 0) · "시로농촌" 꼴은 꼬리만 ·
+//   꼬리표가 없는 이름(이즈사키)은 그대로 둔다(갈래만 hall 데이터에 남는다).
+//   ⚠**이름은 econ 입력이다** — `economy-sim _warlikeMult` 가 마을 이름 해시로 호전 마을을 고른다(보고 T593 §⑤).
+//     그래서 기본 끔이다: 켜면 바뀐 마을의 그 한 비트가 따라 바뀐다(자 `t17-metrics`·`t176-ab` 도 같은 손잡이로 같은 이름을 쓴다).
+//   ⚠초기화(빈 villages 테이블) 때만 돈다 — 살아 있는 세계의 이름은 DB 그대로다.
+const T593_LABEL = process.env.T593_LABEL === '1';
+const _T593_WORD = Object.freeze({ plain: '농촌', riverside: '어촌', mining: '광산', forest: '임업' });   // 후보 `type` ↔ 이름 낱말(지금 이름이 이미 쓰는 그 넷)
+function _t593Kind(tag, why, lp, fShare, hShare) {
+  if (why === 'riverside' || why === 'plain') return why;                       // ① typeLabel 판정 그대로
+  const E = require('../sim/economy-sim'), LV = require('./livelihood'), VL = _lifeVL();
+  const vein = !!lp && E.veinScore(lp) >= E.BOOM_VEIN_MIN;                     // ② 광맥 선
+  const wood = !!lp && ((lp.wood || 0) - LV.FLOOR.wood) / LV.GAIN.wood > VL.TYPE_LINES.fishHi;   // ② 숲 선
+  if ((tag === 'plain' || tag === 'riverside') && why === 'mixed') return tag;   // ③ 받쳐 준다
+  if (tag === 'plain' && why === 'none') return tag;
+  if (tag === 'mining' && vein) return tag;
+  if (tag === 'forest' && wood) return tag;
+  if (vein) return 'mining';                                                   // ④ 땅이 가리키는 쪽
+  if (wood) return 'forest';
+  if (why === 'mixed') return (fShare >= hShare) ? 'plain' : 'riverside';
+  return 'plain';
+}
+// 후보 목록 하나에 이름 짓는 이 하나 — 번호는 **후보 전체**에서 이어 센다(시딩 순서대로 · 결정론).
+function _t593Namer(all) {
+  const WORDS = Object.values(_T593_WORD);
+  const taken = new Set((all || []).map((v) => v.name));
+  const top = {};
+  const parse = (name) => {
+    for (const w of WORDS) {
+      const i = String(name).lastIndexOf(w);
+      if (i < 0) continue;
+      const rest = String(name).slice(i + w.length);
+      if (rest === '') return { word: w, stem: String(name).slice(0, i), num: null };
+      if (i === 0 && /^\d+$/.test(rest)) return { word: w, stem: '', num: +rest };
+    }
+    return null;
+  };
+  for (const v of all || []) { const p = parse(v.name); if (p && p.num != null) top[p.word] = Math.max(top[p.word] || 0, p.num); }
+  return {
+    label(hv, layout, lp) {
+      const tag = hv.type;
+      const why = layout ? (layout.typeWhy || layout.type) : null;   // 옛 캐시(typeWhy 없음)면 typeLabel 로(기본값·판정 'plain' 을 못 가른다)
+      const kind = layout ? _t593Kind(tag, why, lp, layout.fShare, layout.hShare) : tag;
+      const p = parse(hv.name);
+      let name = hv.name;
+      if (kind !== tag && p && _T593_WORD[kind]) {
+        const w = _T593_WORD[kind];
+        if (p.num != null) { top[w] = (top[w] || 0) + 1; name = w + top[w]; } else name = p.stem + w;
+        if (taken.has(name)) { let k = 2; while (taken.has(name + k)) k++; name = name + k; }
+        taken.add(name);
+      }
+      return { name, kind, from: tag, why, renamed: name !== hv.name };
+    },
+  };
+}
+
+// =============================================================================
 // Stage 2 — 시딩 (villages 테이블 비었을 때 1회, 트랜잭션 원자성으로 idempotent)
 // =============================================================================
 function seedVillages(db, terrain, ta, ZONE) {
@@ -1420,6 +1487,7 @@ function seedVillages(db, terrain, ta, ZONE) {
   console.log(`[${state.zoneId}] 🏘️ 마을 시딩 시작 — 후보 ${hard.length} → 선별 ${picked.length} (${_maxStr})`);
   const rows = [];
   const VillageLayout = require('./village-layout');
+  const _t593 = T593_LABEL ? _t593Namer(hard) : null;   // ★[T593 ⑤] 켬만(끔 = 옛 이름 · 이 줄 null)
   db.db.exec('BEGIN');
   try {
     for (const hv of picked) {
@@ -1439,14 +1507,20 @@ function seedVillages(db, terrain, ta, ZONE) {
         continue;
       }
       const lp = extractLandParamsApprox(ta, c.ccx, c.ccy, layout);
+      // ★[T593 ⑤] 켬이면 이름표를 땅에 맞춘다(위 `_t593Namer`) — 끔이면 `vName` = 후보 이름 그대로(비트 동일).
+      const _lab = _t593 ? _t593.label(hv, layout, lp) : null;
+      const vName = _lab ? _lab.name : hv.name;
+      if (_lab && (_lab.renamed || _lab.kind !== hv.type)) console.log(`[${state.zoneId}] 🏷️ [T593] ${hv.name} → ${vName} (꼬리표 ${hv.type} → ${_lab.kind} · 갈래 ${_lab.why})`);
       const dbId = db.insertVillage({
-        zone: state.zoneId, name: hv.name, cx: c.ccx, cy: c.ccy,
+        zone: state.zoneId, name: vName, cx: c.ccx, cy: c.ccy,
         population: 0, econ_state: null, day: 0, // econ은 아래 init 본문에서 생성 후 update
       });
       db.insertVillageBuilding({
         village_id: dbId, type: 'hall', cx: c.ccx, cy: c.ccy, floors: 1,
         // Stage 4A: bnd = 영토 경계 셀(중심 상대 [dx,dy,mask] flat) — 클라 영토 렌더용 영속(전체 2850셀 아님)
-        data: JSON.stringify({ typeLabel: layout.type, dock: layout.dock || null, land: lp, seedType: hv.type, bnd: territoryBoundary(layout.territory, c.ccx, c.ccy) }),
+        //   ★[T593] 켬이면 후보 이름·새 꼬리표를 같이 남긴다(`seedName`·`t593` — 이름으로 묶인 옛 자료를 되짚는 실). 끔이면 종전 다섯 칸 그대로.
+        data: JSON.stringify(_lab ? { typeLabel: layout.type, dock: layout.dock || null, land: lp, seedType: hv.type, bnd: territoryBoundary(layout.territory, c.ccx, c.ccy), seedName: hv.name, t593: _lab.kind }
+          : { typeLabel: layout.type, dock: layout.dock || null, land: lp, seedType: hv.type, bnd: territoryBoundary(layout.territory, c.ccx, c.ccy) }),
       });
       for (const h of layout.houses) db.insertVillageBuilding({ village_id: dbId, type: 'house', cx: h.cx, cy: h.cy, floors: h.floors || 1, data: null });
       for (const f of layout.farmland) db.insertVillageBuilding({ village_id: dbId, type: 'farmland', cx: f.cx, cy: f.cy, floors: 0, data: null });
@@ -1490,7 +1564,7 @@ function seedVillages(db, terrain, ta, ZONE) {
           console.log(`[${state.zoneId}] 🏘️ [${hv.name}] 생활층 영속: 영토 ${tn}셀 · 미개간 논존닝 ${zn}셀`);
         }
       }
-      rows.push({ dbId, name: hv.name, ccx: c.ccx, ccy: c.ccy, landParams: lp, layout });
+      rows.push({ dbId, name: vName, ccx: c.ccx, ccy: c.ccy, landParams: lp, layout });
       console.log(`[${state.zoneId}] 🏘️ [${hv.name}] 시딩: 중심 셀(${c.ccx},${c.ccy}) 집 ${layout.houses.length} 논 ${layout.farmland.length} 밭 ${(layout.dryfield || []).length} 영토 ${layout.territory.length}셀 land(F${lp.fertility}/W${lp.water}/S${lp.stone}/O${lp.ore}/우드${lp.wood}) ${Date.now() - t0}ms`);
     }
     db.db.exec('COMMIT');
@@ -3733,6 +3807,8 @@ function init(deps) {
       //   ★[T203] 창설자 이름도 되살린다 — 읽는 자리가 `econ` 이므로 `econ` 에 얹는다(`_tribeId` 와 같은 짝).
       //     ⚠**있을 때만** 얹는다: NPC 마을엔 이 칸이 아예 없고, 그래서 랩·기준선은 한 비트도 안 움직인다.
       if (hallData && hallData.founderName) ev.founderName = String(hallData.founderName);
+      //   ★[T593 ⑤] 이름표를 바꿔 심은 판이면 후보 이름을 곁에 둔다(레거시 디듀프가 후보 이름으로 묻는다 · 없으면 칸 자체를 안 만든다).
+      if (hallData && hallData.seedName) state.villages[state.villages.length - 1]._seedName = String(hallData.seedName);
       _fieldBridge({ econ: ev, _farmSet: farmSet, _potSet: potSet, _drySet: drySet });   // ★[T100] 밭 브리지 초기값(영속 행에서 — 개간 전에도 밭은 있다) · ★[T198] 두 칸도 같은 줄에서
       // ★[11차 재민 확정] 마을 안엔 숲이 없다 — 영토 셀의 나무를 벤다(개간).
       //   부팅 때마다 부르지만 이미 벤 나무는 harvestedSeeds 에 있어 다시 생성되지 않는다(멱등).
@@ -3749,6 +3825,7 @@ function init(deps) {
     state.byDbId = new Map(state.villages.map(v => [v.dbId, v]));
     state.byEcon = new Map(state.villages.map(v => [v.econ, v])); // Stage 4B: econ 마을 객체 → 공간 마을(캐러밴 from/to 해석)
     state.claimedNames = new Set(state.villages.map(v => v.name)); // 레거시 디듀프 대상(이름 유니크 — 50곳 검증됨)
+    for (const v of state.villages) if (v._seedName) state.claimedNames.add(v._seedName);   // ★[T593 ⑤] 이름표를 바꾼 마을은 후보 이름으로도 차지한다(레거시 실체가 같은 자리에 또 서지 않게)
     _initLedger();   // ★[2026-08-25 사건 레이어] 사건 장부 — byEcon/byDbId 가 선 뒤에(vid 해석에 필요)
     // Stage 4B: 캐러밴 실체 상태 — world.caravans는 비영속(재부팅 시 빈 배열)이라 복원 불필요
     state.caravanBodies = new Map();
@@ -5875,6 +5952,7 @@ function _t312Deliver(vil, npc) {
   if (!(u > 0)) { npc._t312U = 0; npc._t312Kg = 0; return 0; }
   const got = _lifeEcon().fishToGranary(vil.econ, u) || 0;
   if (npc.inventory) for (const id of _fresh().ids()) if (npc.inventory[id]) npc.inventory[id] = 0;
+  if (npc.inventory && _t593SeaHand()) for (const id of _seaTbl().ids()) if (npc.inventory[id]) npc.inventory[id] = 0;   // ★[T593 ④] 바다 표 종도 손에서 비운다(켬만)
   npc._t312U = 0; npc._t312Kg = 0;
   vil._t312Deliv = +((vil._t312Deliv || 0) + got).toFixed(6);
   return got;
@@ -5894,6 +5972,25 @@ function _t312Deliver(vil, npc) {
 //     창이 닫힐 때까지 그 자리에 **없으면**(자리를 옮겼다·낮이 끝났다·곳간에 갔다) 못 챈다. 그게 전부다.
 let _tMod = null;
 const _terrainMod = () => _tMod || (_tMod = require('./terrain'));   // ★[T340] 지형 정본 — `spotAt` 이 요구하는 그 모듈
+// ★★[T593 ④] **NPC 어부도 같은 물** — 그 어부가 선 물가 칸(4방)에 **바다 칸**이 있으면 바다 표다.
+//   술어는 존이 넘긴 정본 그대로다(`deps.isSeaTileLocal` = 플레이어 `look`·자염이 쓰는 그것 · `deps.isWaterTileLocal`).
+//   ⓐ 끔(`T593_SEA=0`) · 술어가 안 넘어온 배선(헤드리스 자 · 옛 하네스) → null = 종전 민물 줄 그대로(비트 동일)
+//   ⓑ 바다 곁인데 민물 칸도 곁에 있으면 강어귀('mouth' — 연어 자리 · 플레이어 `spotAt` 바다 갈래와 같은 이름) · 아니면 'coast'
+//   ⚠econ 은 그대로다 — 장부 값은 여전히 `econUnitsOf('fish', 1, 그 종 kg)` · `fishSustain` 무접촉(종은 몸 층).
+let _sfMod = null;
+const _seaTbl = () => _sfMod || (_sfMod = require('./seafish'));
+function _t593SeaBank(cx, cy) {
+  const F = _fishingMod(), d = state.deps;
+  if (!F || !F.T593_SEA || !d || typeof d.isSeaTileLocal !== 'function' || typeof d.isWaterTileLocal !== 'function') return null;
+  const x = cx * SZ + SZ / 2, y = cy * SZ + SZ / 2;
+  let sea = false, fresh = false;
+  for (const [dx, dy] of [[SZ, 0], [-SZ, 0], [0, SZ], [0, -SZ]]) {
+    if (d.isSeaTileLocal(x + dx, y + dy)) sea = true;
+    else if (d.isWaterTileLocal(x + dx, y + dy)) fresh = true;
+  }
+  return sea ? (fresh ? 'mouth' : 'coast') : null;
+}
+function _t593SeaHand() { const F = _fishingMod(); return !!(F && F.T593_SEA); }
 // ★[T350] `_t340Rng` 정의는 `server/seed-rand.js` 로 옮겼다(머리에서 require · 사본 0).
 // 한 시도 — 상태는 `npc._t340` 하나(던진 자리·입질 시각·창·그 종). 자리를 옮기면 버린다(안 물림).
 function _t340Try(vil, npc, now, day, h, ws) {
@@ -5913,7 +6010,10 @@ function _t340Try(vil, npc, now, day, h, ws) {
     // ★[T574] 존 특산 프로필 + 경계 혼용(정본 `region-profiles`) — 켬일 때만 고르는 함수를 넘긴다(끄면 옛 줄 그대로).
     const _RP = _regionMod();
     const _ch = (_RP && _RP.on()) ? (ids, u) => _RP.chooseSpecies('fishFresh', state.zoneId, cx * SZ + SZ / 2, cy * SZ + SZ / 2, u, null, ids) : undefined;
-    const _sp = _fresh().pick(_t312Water(vil), day, h ^ cx ^ Math.imul(cy, 0x85ebca6b), _ch);
+    // ★[T593 ④] 바다 칸 물가에 섰으면 바다 표(플레이어와 같은 표 · 해역은 바이옴) — 아니면 종전 민물 줄 그대로(끔이면 `_sea` 는 늘 null).
+    const _sea = _t593SeaBank(cx, cy);
+    const _sp = _sea ? _seaTbl().pick(_seaTbl().areaOfZone(state.zoneId), _sea, day, h ^ cx ^ Math.imul(cy, 0x85ebca6b))
+      : _fresh().pick(_t312Water(vil), day, h ^ cx ^ Math.imul(cy, 0x85ebca6b), _ch);
     if (!_sp) return 'none';   // 그 물·그 철엔 사는 종이 없다(종전 `!_sp` 자리 — 라벨 '드리움')
     const n = (npc._t340N = (npc._t340N || 0) + 1);
     const pl = F.plan(sp, stock01, now, _t340Rng(h ^ Math.imul(n, 0x9e3779b9) ^ Math.imul(day, 0x85ebca6b)));
@@ -10873,6 +10973,8 @@ module.exports = { fishPerf, woodPerf, foragePerf, farmPerf,   // ★[T316] `/pe
   LAND_SCAN_R,   // ★[T135] 부존 스캔 반경 — 나무 층이 생활권 숲 셀 수를 유도할 때 읽는다(사본 0)
   __labProbe: {
     makeTerrainAdapter, extractLandParamsApprox, findOpenCenter, pickSeedVillages,
+    t593Namer: _t593Namer, t593Kind: _t593Kind, get T593_LABEL() { return T593_LABEL; },   // ★[T593 ⑤] 자·표 기계가 **그 함수**로 이름을 짓는다(사본 0)
+    t593SeaBank: (cx, cy) => _t593SeaBank(cx, cy),   // ★[T593 ④] NPC 어부 물가 판정 — 하네스가 같은 함수를 부른다(술어는 `_t374Probe.setDeps` 로 꽂는다)
     _gateTradePotential, get T436_K() { return T436_K; }, T436_K_DERIVED, _seedSpacingPx,   // ★[T436] 게이트 교역 잠재 — 표 기계가 **그 함수**를 부른다(사본 0)
     setZoneId: (z) => { state.zoneId = z; },
     // ★[T146 2026-09-06] 사냥터 밴드 하네스용 — `_distProbe`·`_memberProbe` 와 **같은 규약**(최소 주입구 하나).

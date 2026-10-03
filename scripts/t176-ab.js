@@ -251,16 +251,20 @@ const ta = P.makeTerrainAdapter(T, ZONE, { isTerrainBlockedLocal, isWaterTileLoc
 let seeds = null;
 if (CACHE && fs.existsSync(CACHE)) { try { seeds = JSON.parse(fs.readFileSync(CACHE, 'utf8')); } catch (e) { seeds = null; } }
 if (seeds && !(seeds[0] && seeds[0].layout)) { console.error('⚠캐시에 layout 이 없다 — 생활층을 못 세운다. `farm-metrics.js` 규약 캐시를 써라.'); process.exit(2); }
+// ★[T593 ⑤] 이름표 손잡이(`T593_LABEL=1`)는 이름을 바꾼다 — 캐시는 이름까지 담으므로 **손잡이가 다른 캐시는 안 쓴다**(켠 판만 `t593` 표식).
+if (seeds && !!(seeds[0] && seeds[0].t593) !== !!P.T593_LABEL) { console.log(`  ⚠[T593] 캐시(${CACHE})의 이름표 손잡이가 지금과 다르다 — 다시 굽는다`); seeds = null; }
 if (!seeds) {
   const hard = T.getZoneVillages(Z) || [];
   const picked = P.pickSeedVillages(hard, ta, { seedAll: !!ZONE.seedAllVillages, max: ZONE.villageMax || 0 });
+  const _t593 = P.T593_LABEL ? P.t593Namer(hard) : null;   // ★[T593 ⑤] 서버 시딩과 **같은 함수 · 같은 순서**로 이름을 짓는다(끔 = null = 후보 이름 그대로)
   seeds = [];
   for (const hv of picked) {
     const c = P.findOpenCenter(ta, Math.round(hv.x / SZ), Math.round(hv.y / SZ));
     if (!c) continue;
     let layout;
     try { if (ta.prepareFert) ta.prepareFert(c.ccx, c.ccy, 62); layout = VillageLayout.generate(ta, c.ccx, c.ccy, P.INITIAL_POP, {}); } catch (e) { continue; }
-    seeds.push({ name: hv.name, ccx: c.ccx, ccy: c.ccy, layout, lp: P.extractLandParamsApprox(ta, c.ccx, c.ccy, layout) });
+    const lp = P.extractLandParamsApprox(ta, c.ccx, c.ccy, layout);
+    seeds.push({ name: _t593 ? _t593.label(hv, layout, lp).name : hv.name, ccx: c.ccx, ccy: c.ccy, layout, lp, ...(_t593 ? { t593: 1 } : {}) });
   }
   if (CACHE) { try { fs.mkdirSync(path.dirname(CACHE), { recursive: true }); fs.writeFileSync(CACHE, JSON.stringify(seeds)); } catch (e) {} }
 }

@@ -134,6 +134,19 @@
     return { toWater: { x: -gx / gl, y: -gy / gl }, toHill: { x: gx / gl, y: gy / gl } };
   }
 
+  // ★[T593] 직업 몫(농부 fShare · 어부 hShare)의 **갈래** — `generate` 의 typeLabel 문턱 그대로(값·순서 무변).
+  //   'riverside' 어부 몫이 굵고 농부 몫이 얇다 · 'plain' 농부 몫이 굵고 어부 몫이 얇다 · 'mixed' 둘 다 굵다 ·
+  //   'none' 위 셋 어디에도 안 든다(typeLabel 은 그때 **기본값** 'plain' 을 낸다 — 판정이 아니라 기본값).
+  //   T593 마을 이름표(`villages.js _t593Kind`)가 이 갈래를 읽는다 — 판정 둘('riverside'·'plain')과 기본값을 가른다.
+  //   문턱 다섯은 이름으로 올렸을 뿐 값은 그대로다(`TYPE_LINES` — 이름표의 "숲 몫" 줄이 어촌 줄 `fishHi` 를 읽는다).
+  const TYPE_LINES = Object.freeze({ fishHi: 0.42, farmLo: 0.20, farmHi: 0.40, fishLo: 0.15, both: 0.18 });
+  function typeBranch(fShare, hShare) {
+    const L = TYPE_LINES;
+    return (hShare > L.fishHi && fShare < L.farmLo) ? 'riverside'
+      : (fShare > L.farmHi && hShare < L.fishLo) ? 'plain'
+      : (fShare > L.both && hShare > L.both) ? 'mixed' : 'none';
+  }
+
   function generate(terrain, ccx, ccy, pop, opts) {
     opts = opts || {};
     const t = terrain;
@@ -167,9 +180,9 @@
     const wSum = wFarm + wFish + wOther;
     const fShare = wFarm / wSum, hShare = wFish / wSum;
     const farmers = Math.round(pop * fShare), fishers = Math.round(pop * hShare);
-    const typeLabel = (hShare > 0.42 && fShare < 0.20) ? 'riverside'
-      : (fShare > 0.40 && hShare < 0.15) ? 'plain'
-      : (fShare > 0.18 && hShare > 0.18) ? 'mixed' : 'plain';
+    // ★[T593] 문턱은 모듈 함수 `typeBranch` 한 자리로 옮겼다(값·순서 그대로 — 이름표 갈래도 같은 함수를 부른다 · 사본 0).
+    const typeWhy = typeBranch(fShare, hShare);
+    const typeLabel = typeWhy === 'none' ? 'plain' : typeWhy;
     const layout = (hShare > 0.55) ? 'shore' : 'cluster';
     const settlement = opts.settlement === 'dispersed' ? 'dispersed' : 'nucleated';
     const HOUSE_GAP = opts.houseGap != null ? opts.houseGap : (layout === 'shore' ? 18 : 22);   // ★부지 원(r6.5) 비겹침: d≥13이면 충분 — 18/22는 집 사이 골목 여유 포함(랩 동기)
@@ -306,7 +319,7 @@
     for (const h of houses) for (const [dx, dy] of LOT_CELLS) if (!t.isBlocked(h.cx + dx, h.cy + dy)) own.add(key(h.cx + dx, h.cy + dy));   // 집 부지 원판 영토 포함
     const territory = [...own].map(k => k.split(',').map(Number));
     const coreCells = [...core].map(k => k.split(',').map(Number));
-    return { center: { cx: ccx, cy: ccy }, hall: { cx: ccx, cy: ccy }, axis, type: typeLabel, fert: +fert.toFixed(2), water: +water.toFixed(2), farmers, fishers, fShare: +fShare.toFixed(2), hShare: +hShare.toFixed(2), fertScore: +fertScore.toFixed(2), houses, floors, farmland, dryfield, nongZone, territory, core: coreCells, dock, bank };
+    return { center: { cx: ccx, cy: ccy }, hall: { cx: ccx, cy: ccy }, axis, type: typeLabel, typeWhy, fert: +fert.toFixed(2), water: +water.toFixed(2), farmers, fishers, fShare: +fShare.toFixed(2), hShare: +hShare.toFixed(2), fertScore: +fertScore.toFixed(2), houses, floors, farmland, dryfield, nongZone, territory, core: coreCells, dock, bank };
   }
 
   // 강가(land 인접 water) 셀 — 어부 작업장
@@ -431,7 +444,7 @@
   }
 
   const API = { LAND_NEED, LOT_PER_HEAD, houseSiteWant, territoryTarget, HOUSE_MAX_FLOORS, TERR_PER_SIZE, TERR_PER_LOT, TERR_CORE,   // ★[T100 4판] 정본 — 밖(villages.js·계측기·하네스)이 이 값을 읽는다
-    generate, footprintLand, axisAt, nearestBank, waterEDT, maskEDT, HOUSE_HALF, HOUSE_CAP: HOUSE_CAP_PER_FLOOR, HOUSE_CAP_PER_FLOOR, LAND_PER_HOUSE, landNeedPer, HALL_YARD, LOT_R, FARM_GAP, ALLEY_R, HALL_CLEAR, inDisc, LOT_CELLS, LOT_GUARD, YARD_CELLS, houseFarmBlock, hallFarmBlock,
+    generate, typeBranch, TYPE_LINES, footprintLand, axisAt, nearestBank, waterEDT, maskEDT, HOUSE_HALF, HOUSE_CAP: HOUSE_CAP_PER_FLOOR, HOUSE_CAP_PER_FLOOR, LAND_PER_HOUSE, landNeedPer, HALL_YARD, LOT_R, FARM_GAP, ALLEY_R, HALL_CLEAR, inDisc, LOT_CELLS, LOT_GUARD, YARD_CELLS, houseFarmBlock, hallFarmBlock,
     AISLE, LIFE_HOUSE_GAP, LIFE_HOUSE_GAP_AISLE,   // ★[T315] 집 간격 유도 — 값이 아니라 식(사본 0) · ★[T326] 기본 = `LIFE_HOUSE_GAP`(15 · PM #52) · 되돌림 = `LIFE_HOUSE_GAP_AISLE`(18)
     ditchRing, ditchConnectivity, DITCH_W, DITCH_AXIS_RATIO, DITCH_GATE_HALF, DITCH_MARGIN };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
