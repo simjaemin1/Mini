@@ -2192,6 +2192,57 @@ const mkLedgerGeo = (world, geo, cfg) => {
   }
 }
 
+// ── ㊾ ★[T572 2026-10-03] 사람 줄어듦의 끝 — 해체(`DISSOLVED`) · 빈 마을(`EMPTIED`)
+//   라이브 사본(day 3341) 11곳이 비어 있는데 연표에 그날이 없었다: 빈 마을은 스캔 루프가 건너뛰고(`deeds` 0회),
+//   `POP_COLLAPSE` 는 `POP_MIN` 아래에서 래치를 푼다. 두 유형 다 **이미 있는 일의 에지**다(해체 = 도적 층의 `_banditized`).
+{
+  const W = makeWorld(30, 7);
+  const L9 = mkLedger(W);
+  const vi = W.villages.findIndex((v) => v.npcs.length >= 3 && !v._banditized);
+  ok(vi >= 0, '㊾a 전제: 사람이 셋 넘고 해체 안 된 마을이 있다', vi >= 0 ? `${W.villages[vi].npcs.length}명` : '');
+  const v = W.villages[vi];
+  const mine = (d, t) => L9.scanDay(W, d, {}).filter((e) => e.vid === vi && e.type === t);
+  ok(mine(W.day + 1, 'DISSOLVED').length === 0 && mine(W.day + 2, 'EMPTIED').length === 0,
+    '㊾b 아무 일 없으면 해체·빈 마을 0건(랩엔 도적 층이 없다 — 구조적으로 0)');
+  // ⓐ 해체 — 도적 층이 econ 에 세우는 그 두 칸만 흉내 낸다(`bandits.js` daily 의 `_bdtPeak`·`_banditized`)
+  const n0 = v.npcs.length;
+  v._bdtPeak = n0 * 3; v._banditized = 1;
+  const d1 = mine(W.day + 3, 'DISSOLVED');
+  ok(d1.length === 1 && Math.abs(d1[0].mag - n0 / (n0 * 3)) < 1e-3,
+    '㊾ ★해체가 선 날 `DISSOLVED` 1건 · mag = 남은 사람 ÷ 최고치(관측 ÷ 기준 문법)', d1[0] ? `mag=${d1[0].mag} (${n0}/${n0 * 3})` : '0건');
+  ok(mine(W.day + 4, 'DISSOLVED').length === 0, '㊾c 다음 날 또 나지 않는다(에지 — `_banditized` 는 다시 안 내린다)');
+  // ⓑ 빈 마을 — 어제 있던 사람이 오늘 0
+  const keep = v.npcs.splice(0, v.npcs.length);
+  const e1 = mine(W.day + 5, 'EMPTIED');
+  ok(e1.length === 1 && e1[0].mag === 1 && e1[0].meta && e1[0].meta.was === n0,
+    '㊾ ★마지막 사람이 사라진 날 `EMPTIED` 1건(mag 1 — 이상이 아니라 일 · meta.was = 어제 인원)', e1[0] ? `was=${e1[0].meta.was}` : '0건');
+  ok(mine(W.day + 6, 'EMPTIED').length === 0, '㊾d 빈 채로 하루 더 — 또 나지 않는다(빈 마을엔 소식이 없다 · 그 하루만)');
+  // ⓒ 연표에 남는다(일 유형 — sev 문턱 면제) · 문장은 다섯 필드로(㉝)
+  const yr = Events.calendarOf(W.day + 6).year;
+  const items = [];
+  for (const b of L9.chronicle(vi, { year: yr, today: W.day + 6 }).seasons) for (const it of b.items) if (it.from == null) items.push(it);
+  const got = new Set(items.filter((it) => it.type === 'DISSOLVED' || it.type === 'EMPTIED').map((it) => it.type));
+  ok(got.has('DISSOLVED') && got.has('EMPTIED'), '㊾ ★두 일이 그 마을 **연표**에 남는다', [...got].join(','));
+  const lineD = Events.briefLine({ vid: vi, day: 1, type: 'DISSOLVED', item: null, mag: 0.33 });
+  const lineE = Events.briefLine({ vid: vi, day: 1, type: 'EMPTIED', item: null, mag: 1 });
+  ok(/도적/.test(lineD) && /사람이 하나도/.test(lineE), '㊾e 문장 — meta 없이 나온다(㉝ 계약)', `${lineD} / ${lineE}`);
+  ok(Events.DEED_TYPES.includes('DISSOLVED') && Events.DEED_TYPES.includes('EMPTIED')
+     && Events.DEED_FOREIGN.includes('DISSOLVED') && Events.DEED_FOREIGN.includes('EMPTIED'),
+    '㊾f 둘 다 "일" 유형이고 **이웃에 회자된다**(마을이 사라지는 것은 큰 사건 — 캐논)');
+  // ⓓ 부팅 때 이미 빈/해체된 마을은 배경이다(프라이밍 — 재기동 잡음 금지)
+  const L10 = mkLedger(W);
+  const z = L10.scanDay(W, W.day + 7, {}).filter((e) => e.vid === vi && (e.type === 'DISSOLVED' || e.type === 'EMPTIED'));
+  ok(z.length === 0, '㊾g 재기동 직후 이미 빈·해체된 마을은 사건이 아니다(프라이밍)', `${z.length}건`);
+  // ⓔ 돌연변이 — 일 끔(`DEEDS_OFF`)이면 둘 다 0(검출기가 실제로 그 문을 지난다)
+  v.npcs.push(...keep); v._banditized = 0;
+  const L11 = mkLedger(W, { DEEDS_OFF: 1 });
+  v._banditized = 1; L11.scanDay(W, W.day + 8, {});
+  v.npcs.length = 0;
+  const off = L11.scanDay(W, W.day + 9, {}).filter((e) => e.vid === vi && (e.type === 'DISSOLVED' || e.type === 'EMPTIED'));
+  ok(off.length === 0, '㊾h 일 끔(A/B) 판은 둘 다 0건', `${off.length}건`);
+  v.npcs.push(...keep);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
 try { require('fs').unlinkSync(process.env.DB_PATH); } catch (e) {}

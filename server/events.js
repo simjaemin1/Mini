@@ -86,6 +86,8 @@
 //                     ⇒ 늦게 살아났을수록 작고 |ln(mag)| 가 커진다 — 계절 연표에서 **구사일생이 먼저 선다**.
 //                       마을 이송은 창이 다 지난 뒤라 바닥값(0.01)이고, 그래서 제일 무겁다.
 //     WINTER_SHORT    mag = 같은 달성률 (<1)
+//     DISSOLVED       mag = 남은 인구 ÷ 그 마을 인구 최고치(`_bdtPeak`)  [T572] — 도적 층이 econ 에 세우는 `_banditized` 의 에지
+//     EMPTIED         mag = 1 (이상이 아니라 일 — 마지막 사람이 사라진 날)  [T572]
 //   ⚠**sev 로만 정렬하면 이 일곱은 영원히 안 보인다.** 흉년은 sev 0.36 이고 소금값 9배는 2.2 라,
 //     한 자로 재면 촌장은 흉년 대신 소금값을 말한다. 그게 T18 회부 A-1 의 내용이고 이 배치가 온 이유다.
 //   ⇒ 정렬·연표 자격은 **`heavier()` 하나**를 통한다: 일이 먼저 서고, 그 안에서 sev 로 견준다.
@@ -203,11 +205,16 @@ const TYPES = ['STOCK_SHORTAGE', 'STOCK_GLUT', 'PRICE_SPIKE', 'PRICE_DROP', 'CAR
   'WINTER_KEPT', 'WINTER_SHORT',
   // ★[T119 2026-09-05] **구조** — 쓰러진 사람이 살아난 그 순간. 원천 둘 다 실데이터다(§0-ⓐ):
   //   `zone.js` `resolveDowned`(마을 이송) · `tickDowned`(사람이 업어 일으킴). 각본 0.
-  'RESCUED'];
+  'RESCUED',
+  // ★[T572 2026-10-03] **사람 줄어듦의 끝** — 라이브 50곳 중 11곳이 비었는데 연표에 한 줄도 없었다(언제·왜를 DB 가 모른다).
+  //   둘 다 **이미 세계에 있는 일**의 에지를 읽는다(각본 0 · 새 수 0):
+  //   `DISSOLVED` = 도적 층(`server/bandits.js` 해체 전환)이 econ 에 세우는 `_banditized` 가 선 날 — 남은 사람들이 마을을 버리고 도적단이 됐다.
+  //   `EMPTIED`   = econ 인구(`npcs`)가 0 이 된 날 — 어제까지 사람이 있었고 오늘 없다(죽음이든 떠남이든 끝은 하나다).
+  'DISSOLVED', 'EMPTIED'];
 // ★★[T50] **"일" 유형** — 값의 이탈이 아니라 일어난 일. 정렬에서 먼저 서고, 연표 sev 문턱을 면제받는다.
 //   면제의 근거는 **드묾**이다(실측 3.3%). 이 목록에 흔한 유형을 넣으면 그 순간 연표가 그것으로 덮인다.
 const DEED_TYPES = String(process.env.EV_DEED_TYPES
-  || 'HARVEST_BOON,HARVEST_BLIGHT,WEATHER,POP_COLLAPSE,CARAVAN_RAIDED,TRADER_KILLED,BUILT,FIRST_GOODS,WINTER_KEPT,WINTER_SHORT,RESCUED')
+  || 'HARVEST_BOON,HARVEST_BLIGHT,WEATHER,POP_COLLAPSE,CARAVAN_RAIDED,TRADER_KILLED,BUILT,FIRST_GOODS,WINTER_KEPT,WINTER_SHORT,RESCUED,DISSOLVED,EMPTIED')
   .split(',').map((x) => x.trim()).filter(Boolean);
 // ★이웃 마을에서 **여기까지 회자되는** 일. 날씨(573건 — 국지적이고 일주일이면 끝난다)·완공(남의 집)·
 //   첫 물건(남의 곳간)은 빠진다. 남는 것은 그 마을의 운과 사람과 길의 안부다.
@@ -216,7 +223,7 @@ const DEED_TYPES = String(process.env.EV_DEED_TYPES
 //     한 사람이 하루 살아난 일이 아니다(`POP_COLLAPSE` 가 여기 있는 것은 마을이 죽어 가서다).
 //     이 목록은 짧아야 한다: 흔한 유형이 들어오는 순간 이웃 연표가 그것으로 덮인다.
 const DEED_FOREIGN = String(process.env.EV_DEED_FOREIGN
-  || 'HARVEST_BOON,HARVEST_BLIGHT,POP_COLLAPSE,CARAVAN_RAIDED,TRADER_KILLED')
+  || 'HARVEST_BOON,HARVEST_BLIGHT,POP_COLLAPSE,CARAVAN_RAIDED,TRADER_KILLED,DISSOLVED,EMPTIED')
   .split(',').map((x) => x.trim()).filter(Boolean);
 
 // ★게시판이 다루는 품목은 **플레이어가 실제로 낼 수 있는 것**뿐이다.
@@ -482,6 +489,8 @@ function createLedger(opts) {
     const n = (v.npcs || []).length;
     s.popEma = n >= cfg.POP_MIN ? n : null;
     s.popLow = false;
+    s.lastN = n;                       // ★[T572] 비었나의 기준 — 부팅 때 이미 빈 마을은 사건이 아니라 배경이다
+    s.bdz = !!v._banditized;           // ★[T572] 해체의 기준 — 같은 이유
   }
   // 이 마을이 **가진 적 있는** 재화 — "처음 들어왔다"의 기준.
   //   ★영속을 새로 만들지 않는다: 현재 곳간 ∪ 연표에 남은 지난 `FIRST_GOODS`.
@@ -546,6 +555,17 @@ function createLedger(opts) {
         s.popEma = s.popEma * (1 - 1 / cfg.POP_WIN) + n * (1 / cfg.POP_WIN);
       }
     } else { s.popEma = null; s.popLow = false; }
+    // ③-b ★[T572] **해체** — 도적 층이 econ 에 세운 표(`_banditized`)의 에지. 장부는 해체를 판정하지 않는다(문턱은 `bandits.js` 의 것).
+    //   `s.bdz === false` 일 때만 — 프라이밍을 못 본 마을(뒤에 생긴 마을)은 첫날 기준만 심는다(잡음 금지).
+    {
+      const bz = !!v._banditized;
+      if (bz && s.bdz === false) {
+        mine.push({ day, vid: s.vid, type: 'DISSOLVED', item: null,
+          mag: +(n / Math.max(1, +v._bdtPeak || n)).toFixed(4), meta: { pop: n, peak: +v._bdtPeak || n } });
+      }
+      s.bdz = bz;
+    }
+    s.lastN = n;                       // ★[T572] 비었나의 기준(아래 `emptied`)
     // ④ 캐러밴 약탈 — econ 이 도적 갱과의 실전투 끝에 올리는 누계의 **증분**.
     //    ★행상 사망은 **별도 유형**이다. 같은 유형 안에서 `meta.dead` 로 갈랐더니 연표가 재기동
     //      뒤에 그 갈래를 잃었다(meta 미영속) — 그리고 물건을 잃은 것과 사람이 죽은 것은
@@ -584,6 +604,19 @@ function createLedger(opts) {
     g.add(res);
     commit(s, [{ day, vid, type: 'FIRST_GOODS', item: res, mag: 1,
       meta: { amt: +(+amt).toFixed(2) } }], out);
+  }
+
+  // ★★[T572 2026-10-03] **마을이 빈 날** — 어제까지 사람이 있었고(`s.lastN > 0`) 오늘 econ 인구가 0 이다.
+  //   라이브 사본(day 3341)에서 11곳이 비어 있었는데 연표·장부 어디에도 그날이 없었다 — 빈 마을은 위 루프가 건너뛰어
+  //   `deeds` 가 아예 안 돌았기 때문이다(`POP_COLLAPSE` 도 `POP_MIN` 아래로 내려가면 래치를 푼다). 그 건너뛰기는 그대로 두고
+  //   **에지 한 번**만 적는다. 상태를 새로 만들지 않는다(본 적 없는 마을 — `byVid` 에 없으면 사건도 없다).
+  function emptied(vid, day, out) {
+    const s = byVid.get(vid);
+    if (!s) return;
+    const was = s.lastN | 0;
+    s.lastN = 0;
+    if (cfg.DEEDS_OFF || !(was > 0)) return;
+    commit(s, [{ day, vid, type: 'EMPTIED', item: null, mag: 1, meta: { was } }], out);
   }
 
   // ── 프라이밍: 지금 상태를 래치에 **소리 없이** 심는다 ───────────────────────
@@ -649,7 +682,7 @@ function createLedger(opts) {
     world.villages.forEach((v, i) => {
       const vid = vidOf(v, i);
       if (vid == null) return;
-      if (!v.npcs || v.npcs.length === 0) return;   // 사람이 없는 마을엔 소식이 없다
+      if (!v.npcs || v.npcs.length === 0) { emptied(vid, day, out); return; }   // 사람이 없는 마을엔 소식이 없다 — ★[T572] 비던 그날 한 줄만
       const s = st(vid);
       const mine = [];
       const prices = priceView(v, day);      // ★★[T133] 하역 뒤의 값 — 위 주석
@@ -1298,6 +1331,10 @@ const LINES = {
   //   ⚠㉝ 계약 — `vid·day·type·item·mag` 다섯 필드로만 만든다. 그래서 **이름은 `item` 한 칸**이다:
   //     `'village'` 면 마을이 옮긴 것이고, 그 밖이면 그 글자가 **일으킨 사람의 이름**이다.
   //     쓰러진 사람의 이름은 안 싣는다 — 칸이 하나뿐이고, 연표에 남을 이름은 **한 이를 살린 이**다.
+  // ── ★[T572 2026-10-03] 사람 줄어듦의 끝 ─────────────────────────────────────
+  //   ⚠㉝ 계약 — 다섯 필드로만. 남은 수·최고치는 `meta` 라 못 쓴다(그래서 수를 안 읊는다 — §3.2 톤과도 같다).
+  DISSOLVED: () => '굶주림 끝에 남은 이들이 마을을 버리고 도적이 되었다네.',
+  EMPTIED: () => '마을에 사람이 하나도 안 남았다네. 빈 움집만 서 있어.',
   RESCUED: (ev) => {
     const who = String(ev.item || '');
     if (!who || who === 'village') return '쓰러진 이를 마을 사람들이 쉼터로 옮겼다네.';
