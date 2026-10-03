@@ -72,11 +72,14 @@ const yearOf = (d) => calOf(d).year;
 // 공표일에서 본 마감 = **그 가을이 끝나는 날** = 겨울 첫날.
 const deadlineFrom = (announceDay) => (announceDay | 0) + calOf(announceDay).seasonDays;
 // 오늘 기준 **가장 최근 겨울 첫날**. 그 해 마지막 날은 언제나 겨울이므로 거기서 계절 머리를 되짚는다.
+//   ★[T570] 그해 마지막 날 = `c.yearEnd`(켬: 12월 31일 — 그날의 겨울 머리 = 12월 1일 · 끔: 옛 `year × 한 해 + 한 해 − 1` 와 같은 값) ·
+//     그보다 앞이면 **지난해 마지막 날의 겨울 머리**(켬: 1·2월은 전해 12월 1일에 시작한 그 겨울이다). 끔은 옛 `wThis − 한 해` 글자 그대로.
 function lastWinterStart(d) {
   const c = calOf(d);
   const yd = c.yearDays;
-  const wThis = Events.seasonStartOf(c.year * yd + yd - 1);
-  return (d | 0) >= wThis ? wThis : (wThis - yd);
+  const wThis = Events.seasonStartOf(c.yearEnd);
+  if ((d | 0) >= wThis) return wThis;
+  return require('./calendar').ON ? Events.seasonStartOf(c.yearStart - 1) : (wThis - yd);
 }
 
 // ── 목표 품목 — 서버가 고른다(게시판 문법). **표를 새로 적지 않는다** ────────

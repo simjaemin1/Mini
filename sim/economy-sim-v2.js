@@ -209,13 +209,11 @@ const SEASON_MULT = {
   autumn: { fertility: 1.15, water: 0.95, game: 1.0, wood: 1.0, stone: 1.0, ore: 1.0 },
   winter: { fertility: 0.80, water: 0.85, game: 0.90, wood: 0.90, stone: 0.95, ore: 0.95 },
 };
-function seasonOf(day) {
-  const d = day % 365;
-  if (d < 90) return 'spring';
-  if (d < 180) return 'summer';
-  if (d < 270) return 'autumn';
-  return 'winter';
-}
+// ★★[T570 재민 10-02] 계절 = **달력 정본** `server/calendar.js` 의 달(기상청 봄 3~5 · 여름 6~8 · 가을 9~11 · 겨울 12~2 ·
+//   게임일 0 = 1년 3월 1일 · 윤년 4/100/400) — 이 줄 하나가 econ 의 계절이다(사본 0 · `events.seasonOf` 도 같은 함수를 부른다).
+//   되돌림 `T570_CALENDAR=0` = 옛 줄(`day % 365` · 경계 90/180/270) 글자 그대로(`calendar.legacySeasonOf`).
+const CAL = require('../server/calendar');
+function seasonOf(day) { return CAL.seasonOf(day); }
 
 // === 기온 모델(2026-07-12 — 의복·겨울) ===
 //   실축(1셀=1m, 존 1.6km)에서 존 *내부* 기온차는 위도가 아니라 고도가 지배(감률 −6.5℃/km) —
@@ -223,9 +221,18 @@ function seasonOf(day) {
 //   최한 = 동절 중간(doy 315; seasonOf winter=270~365) · 연교차 ±annualAmp · 일교차 ±diurnalAmp.
 //   econ(일 틱)은 일평균·야간최저만 소비 — 시간 곡선(hourFrac: 0=자정 최저, 0.5=정오 최고)은 생활층(밤낮) 인계용 노출.
 const CLIMATE = { zoneLatBase: 12, annualAmp: 12, diurnalAmp: 5, lapsePerKm: 6.5, coldRef: 5 };
+//   ★[T570] 켬: 연주기 위상 = 달력 `solarFrac`(그해 1월 1일 기점 0..1 · 윤년에도 하루씩 안 밀린다).
+//     최한 = `CLIMATE.coldFrac`(존 평년값이 있으면 `weather.applyZoneClimate` 가 1차 조화에서 얹는다) · 없으면 **옛 최한일 doy 315 의
+//     달력 자리** `solarFrac(315)`(= 2년 1월 10일 → 평년에선 옛 곡선과 같은 위상 · 새 수 0). 끔은 옛 두 줄 그대로.
 function temperatureAt(day, hourFrac, elevKm) {
-  const doy = ((day % 365) + 365) % 365;
-  const annual = -Math.cos(2 * Math.PI * (doy - 315) / 365);   // doy315=−1(최한) · doy~132=+1(최난)
+  let annual;
+  if (CAL.ON) {
+    const cold = (CLIMATE.coldFrac != null) ? CLIMATE.coldFrac : CAL.solarFrac(315);
+    annual = -Math.cos(2 * Math.PI * (CAL.solarFrac(day) - cold));
+  } else {
+    const doy = ((day % 365) + 365) % 365;
+    annual = -Math.cos(2 * Math.PI * (doy - 315) / 365);   // doy315=−1(최한) · doy~132=+1(최난)
+  }
   const diurnal = hourFrac == null ? 0 : -Math.cos(2 * Math.PI * hourFrac);
   return CLIMATE.zoneLatBase + CLIMATE.annualAmp * annual + CLIMATE.diurnalAmp * diurnal - CLIMATE.lapsePerKm * (elevKm || 0);
 }
@@ -1780,14 +1787,15 @@ function tickWeather(world, day) {
 // === 풍년/흉년 (계절 시작 시 random 마을) ===
 function tickYearShock(world, day) {
   // 가을 시작 (day%365==180)에 풍년/흉년 결정
-  if (day % 365 !== 180) return;
+  if (CAL.ON ? !(seasonOf(day) === 'autumn' && seasonOf(day - 1) !== 'autumn') : (day % 365 !== 180)) return;   // ★[T570] 켬 = 가을 첫날(9월 1일)
+  const _shockDays = CAL.ON ? CAL.seasonLen(day) : 90;   // ★[T570] 그 가을의 길이(켬 91 · 끔 = 옛 90 글자 그대로)
   for (const v of world.villages) {
     const roll = v1.srand();
     if (roll < 0.15) {
-      v._yearShock = { name: '🌾풍년', mult: { fertility: 1.3, game: 1.15 }, untilDay: day + 90 };
+      v._yearShock = { name: '🌾풍년', mult: { fertility: 1.3, game: 1.15 }, untilDay: day + _shockDays };
       console.log(`  🌾 Day ${day}: ${v.name} 풍년 (가을~겨울)`);
     } else if (roll < 0.27) {
-      v._yearShock = { name: '☠️흉년', mult: { fertility: 0.7, game: 0.85 }, untilDay: day + 90 };
+      v._yearShock = { name: '☠️흉년', mult: { fertility: 0.7, game: 0.85 }, untilDay: day + _shockDays };
       console.log(`  ☠️ Day ${day}: ${v.name} 흉년 (가을~겨울)`);
     }
   }
@@ -2208,7 +2216,7 @@ module.exports = {
   // 시장 충격 정산 헬퍼(1b) — 프로브·자가검증용 노출
   _priceParamsV2, _impactSegs, _impactF, _impactBuyV2, _impactSellV2,
   // 기온 모델(2026-07-12) — 생활층(밤낮 시간 곡선)·프로브용 노출
-  temperatureAt, CLIMATE,
+  temperatureAt, CLIMATE, seasonOf,   // ★[T570] seasonOf = 달력 정본 위임(events·test-calendar ④ 가 이걸 견준다)
   // ★[2026-08-03e 배치 12 ②] 인구 유입 문턱 — 하네스·길드 재고 UI 가 **같은 함수**를 부른다(사본 금지)
   tickRecovery, recoveryFoodThreshold, recoveryFoodHave,
   // ★[T299] 둘째 화물·관문의 문 — 하네스와 `lab-wiring-check [H]` 가 엔진 **기본이 끔인지** 실측한다(사본 0)

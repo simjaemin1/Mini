@@ -22,6 +22,8 @@
 //   **하루 = 실시간 24분 · 1년 = 365 게임일.** *"시간은 절대 바꾸면 안 돼.
 //   차라리 겨울 버티는 난이도를 수정."* 겨울이 짧게 느껴지면 **곡선과 완충**을 고치지,
 //   1년을 늘리지 않는다. 이 세계의 공전은 정확히 365일이다(그 365도 econ 정본이 갖고 있다).
+//   ★[T570 재민 10-02] 해는 **실제 해**다 — 그레고리력(평년 365 · 윤년 366 · 4/100/400 · 게임일 0 = 1년 3월 1일). 하루 24분은 그대로.
+//     연주기 위상은 달력 `solarFrac`(그해 1월 1일 기점 0..1)이라 윤년에도 계절이 밀리지 않는다(`server/calendar.js`).
 //
 // ★★"매년 7월 1일이 같으면 안 된다" — [재민 확정 2026-08-31]
 //   날씨 편차는 **절대 게임일**을 먹는다(`day % 365` 가 아니다). 그래서 3년차 7월 1일은
@@ -215,7 +217,8 @@ function devCOf(day) { return _fbm(CFG.SEED, day) * CFG.DEV_C; }
 const PRECIP_DAYS = [6.9, 5.8, 7.6, 7.9, 7.9, 9.3, 14.7, 13.5, 8.7, 5.9, 8.4, 8.9];   // 1월…12월 (연 105.5일)
 // 그레고리력 달 길이 — **앵커가 아니라 달력**이다(평년 30년에 윤년이 여덟 번이라 2월은 28.27;
 //   28.25 로 써도 p 가 0.0001 안에서 같다 — 실측). 이걸로 "며칠"을 "얼마나 자주"로 옮긴다.
-//   ⚠게임 달의 길이는 이것과 다르다(겨울 31·32·32 — `crops.monthOf` 가 겨울 95일을 셋으로 나눈다).
+//   ★[T570] 켬: 게임 달 = **진짜 달**(달력 정본 · 윤년이면 2월 29일)이라 이 표와 길이가 같다.
+//   ⚠끔(`T570_CALENDAR=0`): 게임 달의 길이는 이것과 다르다(겨울 31·32·32 — 옛 `crops.monthOf` 가 겨울 95일을 셋으로 나눈다).
 //     그래도 p 는 **하루가 비 올 확률**이라 옳다 — 게임 2월이 32일이면 비 오는 날이 6.6일로 늘 뿐이다.
 //     그래서 하네스는 "며칠"이 아니라 **비율**을 잰다.
 const _MONTH_DAYS = [31, 28.25, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
@@ -356,7 +359,8 @@ function hintOf(day, night, elevKm, dayT, phase) {
 //     연평균   = 월평균 열둘의 평균(기상청·CMA·JMA 표의 "Year" 칸과 같은 정의)
 //     연진폭·위상 = 월평균 열둘의 **1차 조화**(달 한가운데 = (k+½)/12 해) — 진폭 = √(a²+b²) · 최난 = atan2(b, a) · 최한 = 최난 + ½ 해
 //     일교차   = (월평균최고 − 월평균최저)/2 의 열둘 평균(econ 의 ±diurnalAmp 코사인과 같은 뜻 — 하루 폭의 반)
-//   ⚠최한 위상은 **표만**이다 — econ 식에 doy 315 가 글자로 박혀 있어(`sim/` 무수정) 얹을 자리가 없다(보고 ② · 회부).
+//   ⚠최한 위상: 끔(`T570_CALENDAR=0`)은 **표만**이다 — econ 식에 doy 315 가 글자로 박혀 있다. ★[T570] 켬이면 econ 연주기가 달력 `solarFrac`
+//     (1월 1일 기점)을 읽으므로 `coldFrac` 을 `applyZoneClimate` 가 얹는다(`apply: true` 존만 — 한반도는 `apply: false` 그대로).
 function deriveClimate(n) {
   if (!n || !Array.isArray(n.mean) || n.mean.length !== 12) return null;
   const K = 12;
@@ -414,6 +418,9 @@ function applyZoneClimate(zoneId, opts) {
   const D = use ? deriveClimate(N) : null;
   if (!D && !_paleo.on) return { zoneId, changed: false };
   if (D) { E.CLIMATE.zoneLatBase = D.zoneLatBase; E.CLIMATE.annualAmp = D.annualAmp; E.CLIMATE.diurnalAmp = D.diurnalAmp; }
+  // ★[T570] 켬: 최한 위상도 얹는다 — econ 연주기가 달력 `solarFrac`(그해 1월 1일 기점 0..1)을 읽으니 1차 조화의 `coldFrac`(같은 기점)을
+  //   **그대로** 꽂을 자리가 생겼다(T484 ② 회부 "최한 위상은 표만" 이 닫힌다). 끔이면 econ 이 이 필드를 안 읽는다(비트 동일).
+  if (D && require('./calendar').ON) E.CLIMATE.coldFrac = D.coldFrac;
   if (_paleo.on) E.CLIMATE.zoneLatBase += _paleo.dC;
   _anch = null; _oc = { k: null, v: null }; _pc = null;
   return { zoneId, changed: true, normals: !!D, paleo: _paleo.on, CLIMATE: Object.assign({}, E.CLIMATE) };

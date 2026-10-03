@@ -130,9 +130,122 @@ console.log = _l;
     //   ⇒ 4.5일은 **정상값**이다. 여기서 어긋남을 보고하지 않는다 — 겨울의 난이도는
     //     온도 곡선(`server/weather.js`)·추위 시정수·마을 완충이 정한다(`test-body ⑭`·`cold-matrix`).
     say('     ⇒ ★시간 구조 불변 캐논: 하루 24분 · 한 해 365 게임일 — **둘 다 절대 불변**(재민 확정 2026-08-31).');
+    say('       ★[T570 재민 10-02] 한 해 = 그레고리력(평년 365 · 윤년 366) — 여기 YD 는 1년 3월 1일 → 2년 3월 1일(평년 365)을 정본에서 찾은 값.');
     say('       (옛 "2~3주차" 목표는 폐기됐다. 겨울 난이도는 온도·완충으로 조정한다.)');
     // 캐논이 실제로 그대로인지 못 박는다 — 누가 조용히 늘리면 여기서 걸린다.
     ok(YD === 365, '★★⑤ 한 해가 **365 게임일** 그대로다(시간 구조 불변 캐논)', `${YD}일`);
+  }
+
+  // ══ ★★[T570 재민 10-02] 달력 정본 `server/calendar.js` — 그레고리력 · 게임일 0 = 1년 3월 1일 · 윤년 4/100/400 · 계절 = 달 ══
+  const Cal = require(path.join(ROOT, 'server', 'calendar.js'));
+  say(`\n⑥ [T570] 달력 정본 — 손잡이 ${Cal.ON ? '켬(기본)' : '끔(T570_CALENDAR=0)'}`);
+  {
+    const D = (y, m, d) => Cal.dayOf(y, m, d);
+    ok(D(1, 3, 1) === 0, '★★⑥ 1년 3월 1일 = 게임일 0', D(1, 3, 1));
+    ok(D(1, 12, 31) === 305, '★★⑥ 1년 12월 31일 = 305(1년은 3~12월 306일)', D(1, 12, 31));
+    ok(D(2, 1, 1) === 306, '★★⑥ 2년 1월 1일 = 306', D(2, 1, 1));
+    ok(D(1, 1, 1) === -59, '⑥ 1년 1월 1일 = −59(기점 앞 — 화면엔 안 나온다 · 회부: 1년 1~2월 없음)', D(1, 1, 1));
+    const feb29 = (y) => { const t = Cal.dateOf(D(y, 2, 28) + 1); return t.month === 2 && t.dom === 29; };
+    ok(feb29(4) && Cal.isLeap(4), '★★⑥ 4년 2월 29일이 있다(첫 윤일)', Cal.dateOf(D(4, 2, 28) + 1));
+    ok(!feb29(1) && !feb29(2) && !feb29(3), '⑥ 1~3년엔 2월 29일이 없다');
+    ok(!feb29(100) && !Cal.isLeap(100), '★★⑥ 100년 2월 29일은 없다(100 은 윤년 아님)', JSON.stringify(Cal.dateOf(D(100, 2, 28) + 1)));
+    ok(feb29(400) && Cal.isLeap(400), '★★⑥ 400년 2월 29일은 있다(400 은 윤년)');
+    ok(Cal.yearLen(4) === 366 && Cal.yearLen(5) === 365 && Cal.yearLen(1900) === 365 && Cal.yearLen(2000) === 366, '⑥ 한 해 길이 365|366(4/100/400)');
+    let bad = 0, first = null;
+    for (let d = 0; d <= 2000000; d++) { const t = Cal.dateOf(d); if (Cal.dayOf(t.year, t.month, t.dom) !== d) { bad++; if (first == null) first = d; } }
+    ok(bad === 0, '★★⑥ 왕복 dayOf(dateOf(d)) = d — 0~200만 전수', bad ? `첫 어긋남 ${first}` : '어긋남 0');
+    // 400년 = 146,097일(윤년 97번) — 규칙의 귀결을 날수로 확인
+    ok(D(401, 3, 1) - D(1, 3, 1) === 146097, '⑥ 400년 = 146,097일(윤일 97번)', D(401, 3, 1));
+    // 날짜 연속 — 하루 뒤는 언제나 다음 날이다
+    let jump = 0;
+    for (let d = 0; d < 40000; d++) {
+      const a = Cal.dateOf(d), b = Cal.dateOf(d + 1);
+      const nextOk = (b.dom === a.dom + 1 && b.month === a.month && b.year === a.year)
+        || (b.dom === 1 && a.dom === Cal.monthLen(a.year, a.month) && ((b.month === a.month + 1 && b.year === a.year) || (a.month === 12 && b.month === 1 && b.year === a.year + 1)));
+      if (!nextOk) jump++;
+    }
+    ok(jump === 0, '⑥ 4만 일 — 하루 뒤는 언제나 그다음 날(달 끝·해 끝 넘김 포함)', `어긋남 ${jump}`);
+  }
+  say('\n⑦ [T570] 계절 = 달(기상청 봄 3~5 · 여름 6~8 · 가을 9~11 · 겨울 12~2)');
+  if (Cal.ON) {
+    const D = (y, m, d) => Cal.dayOf(y, m, d);
+    const cases = [[D(1, 3, 1), 'spring'], [D(1, 5, 31), 'spring'], [D(1, 6, 1), 'summer'], [D(1, 8, 31), 'summer'], [D(1, 9, 1), 'autumn'],
+      [D(1, 11, 30), 'autumn'], [D(1, 12, 1), 'winter'], [D(2, 2, 28), 'winter'], [D(2, 3, 1), 'spring'], [D(4, 2, 29), 'winter'], [D(4, 3, 1), 'spring']];
+    const miss = cases.filter(([d, s0]) => Cal.seasonOf(d) !== s0 || E3.seasonOf(d) !== s0 || V2.seasonOf(d) !== s0);
+    ok(miss.length === 0, `★★⑦ 경계 ${cases.length}곳 — 정본 = events = econ 이 같은 계절을 말한다`, miss.length ? JSON.stringify(miss) : '어긋남 0');
+    const lens = [0, D(1, 6, 1), D(1, 9, 1), D(1, 12, 1), D(3, 12, 1)].map((d) => Cal.seasonLen(d));
+    ok(lens.join(',') === '92,92,91,90,91', '★★⑦ 계절 길이 92·92·91·90 · 윤년 겨울 91', lens.join('·'));
+    ok(D(1, 12, 1) === 275, '★⑦ 첫 겨울 = 275일(옛 270 → 275)', D(1, 12, 1));
+    ok(Cal.seasonStart(D(2, 1, 15)) === D(1, 12, 1), '⑦ 1·2월 겨울의 첫날 = 전해 12월 1일');
+    const c0 = E3.calendarOf(0);
+    ok(c0.label === '1년 3월 1일 (봄)' && c0.year === 1 && c0.month === 3 && c0.dom === 1, '★★⑦ 화면 한 줄 = "1년 3월 1일 (봄)"(서버가 만든다 · 클라는 그대로 쓴다)', c0.label);
+    const cJ = E3.calendarOf(D(2, 1, 1));
+    ok(cJ.year === 2 && cJ.dayOfYear === 0 && cJ.yearDays === 365 && cJ.season === 'winter' && cJ.dayOfSeason === 32 && cJ.seasonDays === 90,
+      '⑦ 2년 1월 1일 — 연 2 · 연중 1일째 · 겨울 32일째 / 90일', cJ.label);
+    const cL = E3.calendarOf(D(4, 2, 29));
+    ok(cL.isLeap && cL.yearDays === 366 && cL.dayOfYear === 59 && cL.seasonDays === 91, '⑦ 4년 2월 29일 — 윤년 366일 · 겨울 91일', cL.label);
+    ok(E3.yearOf(D(2, 1, 1)) === 2 && E3.springYearOf(D(2, 1, 1)) === 1 && E3.springYearOf(D(2, 3, 1)) === 2,
+      '⑦ 달력 연도(1월 1일) · 봄 기점 해(3월 1일) — 둘 다 정본에서');
+    const sp = E3.yearSpanOf(2);
+    ok(sp[0] === 306 && sp[1] === 670, '⑦ 2년 = 게임일 306~670', sp.join('~'));
+  } else {
+    ok(Cal.seasonOf(89) === 'spring' && Cal.seasonOf(90) === 'summer' && Cal.seasonOf(270) === 'winter' && Cal.seasonOf(365) === 'spring',
+      '★★⑦ 끔 — 옛 경계 90/180/270 · 한 해 365 그대로');
+    ok(E3.calendarOf(0).label === '0년 봄 1일', '⑦ 끔 — 옛 글자 "0년 봄 1일"', E3.calendarOf(0).label);
+  }
+  say('\n⑧ [T570] solarFrac — 해 안 위치가 끊기지 않는다');
+  {
+    const D = (y, m, d) => Cal.dayOf(y, m, d);
+    const sf = Cal.solarFrac;
+    const step = (a, b) => { let x = sf(b) - sf(a); if (x < -0.5) x += 1; return x; };
+    const s1 = step(D(1, 12, 31), D(2, 1, 1)), s2 = step(D(4, 2, 28), D(4, 2, 29)), s3 = step(D(4, 2, 29), D(4, 3, 1)), s4 = step(D(1, 2, 28) + 365, D(2, 3, 1));
+    ok(Math.abs(s1 - 1 / 365) < 1e-12, '★★⑧ 12/31 → 1/1 은 한 칸(1 → 0 은 해의 같은 자리)', s1.toFixed(6));
+    ok(Math.abs(s2 - 1 / 366) < 1e-12 && Math.abs(s3 - 1 / 366) < 1e-12, '★★⑧ 윤년 2/28 → 2/29 → 3/1 도 한 칸씩(1/366)', `${s2.toFixed(6)} · ${s3.toFixed(6)}`);
+    ok(Math.abs(s4 - 1 / 365) < 1e-12, '⑧ 평년 2/28 → 3/1 은 한 칸', s4.toFixed(6));
+    let mx = 0; for (let d = 0; d < 3000; d += 0.25) { const x = Math.abs(step(d, d + 0.25)); if (x > mx) mx = x; }
+    ok(mx < 0.25 / 364, '⑧ 0.25일 간격으로 훑어도 튐 없음(weather 앵커가 이렇게 훑는다 · 윤년 끝 12/31 → 1/1 만 1/366 ↔ 1/365 이음매)', mx.toFixed(7));
+    ok(Math.abs(sf(D(1, 3, 1)) - sf(D(5, 3, 1))) < 0.003, '⑧ 윤년을 지나도 3월 1일은 해의 같은 자리(하루씩 안 밀린다)', `${sf(D(1, 3, 1)).toFixed(4)} vs ${sf(D(5, 3, 1)).toFixed(4)}`);
+    if (Cal.ON) {
+      const T = (d) => V2.temperatureAt(d, null, 0);
+      let lo = 0; for (let d = 0; d < 366; d++) if (T(d) < T(lo)) lo = d;
+      const t = Cal.dateOf(lo);
+      ok(t.month === 1 && t.dom >= 9 && t.dom <= 11, '★⑧ 최한일 = 1월 10일 언저리(옛 doy 315 의 달력 자리 · 새 수 0)', `${t.month}/${t.dom} (day ${lo})`);
+    }
+  }
+  say('\n⑨ [T570] 끔 손잡이 — `T570_CALENDAR=0` 은 옛 달력 글자 그대로(다른 프로세스로 띄워 본다)');
+  {
+    const cp = require('child_process');
+    const code = "const E=require('./server/events.js');const C=require('./server/crops.js');const V=require('./sim/economy-sim-v2.js');"
+      + "process.stdout.write(JSON.stringify({on:require('./server/calendar.js').ON,s:[89,90,179,180,269,270,364,365].map(E.seasonOf),v:[89,90,269,270].map(V.seasonOf),l:E.calendarOf(400).label,m:[0,32,95,300].map(C.monthOf),yd:E.yearDaysOf(),t:V.temperatureAt(100,null,0)}))";
+    let out = null;
+    try { out = JSON.parse(cp.execFileSync(process.execPath, ['-e', code], { cwd: ROOT, env: Object.assign({}, process.env, { T570_CALENDAR: '0' }), stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim().split('\n').pop()); } catch (e) { out = null; }
+    ok(!!out && out.on === false, '(상황) 끔 프로세스를 띄웠다', out ? 'ON=false' : '실패');
+    if (out) {
+      ok(out.s.join(',') === 'spring,summer,summer,autumn,autumn,winter,winter,spring' && out.v.join(',') === 'spring,summer,autumn,winter',
+        '★★⑨ 끔 — events·econ 계절이 옛 경계 그대로', out.s.join(','));
+      ok(out.l === '1년 봄 36일' && out.yd === 365, '⑨ 끔 — 옛 화면 글자(day 400 = "1년 봄 36일")', out.l);
+      ok(out.m.join(',') === '3,4,6,12', '⑨ 끔 — 옛 달(계절 셋 쪼개기 + 앵커 3)', out.m.join(','));
+      const old = 12 + 12 * -Math.cos(2 * Math.PI * (100 - 315) / 365);
+      ok(Math.abs(out.t - old) < 1e-12, '⑨ 끔 — 옛 기온 식 그대로(doy 315 코사인)', `${out.t.toFixed(4)} = ${old.toFixed(4)}`);
+    }
+  }
+  say('\n⑩ [T570] 사본 0 — 계절 산수가 달력 정본 밖에 다시 적히지 않았다');
+  {
+    const files = ['sim/economy-sim-v2.js', 'server/events.js', 'server/crops.js', 'server/freshfish.js', 'server/trees.js', 'server/winter.js', 'server/weather.js', 'server/zone.js', 'server/villages.js', 'server/chunk.js'];
+    const hits = [];
+    for (const f of files) {
+      const src = codeOnly(fs.readFileSync(path.join(ROOT, f), 'utf8'));
+      // 끔 갈래의 옛 글자 두 줄(econ 기온 `doy` · events 옛 거울)만 허용 — 그 밖은 사본이다.
+      const LEGACY = [/const doy = \(\(day % 365\) \+ 365\) % 365;/, /const d = \(\(day % 365\) \+ 365\) % 365;/];
+      src.split('\n').forEach((ln, i) => { if (/%\s*36[05]\b/.test(ln) && !/T570_CALENDAR|CAL\.ON|Cal\.ON|_Cal\.ON/.test(ln) && !LEGACY.some((r) => r.test(ln))) hits.push(`${f}:${i + 1}`); });
+    }
+    // 끔 갈래(옛 글자)는 같은 줄의 손잡이 갈래 안에 있다 — 그 밖의 `% 365`·`% 360` 은 사본이다.
+    const evSrc = codeOnly(fs.readFileSync(path.join(ROOT, 'server', 'events.js'), 'utf8'));
+    const evLegacy = (evSrc.match(/%\s*365/g) || []).length;
+    ok(hits.length === 0, '★★⑩ econ·작물·물고기·열매·겨울·존 — 손잡이 밖 `% 365`/`% 360` 0곳', hits.join(' ') || '0곳');
+    ok(evLegacy <= 2, '⑩ events.js 의 `% 365` 는 끔 갈래(옛 거울 한 줄)뿐', `${evLegacy}회`);
+    const bsrc = fs.readFileSync(path.join(ROOT, 'sim', 'build-econ-bundle.js'), 'utf8');
+    ok(/server\/calendar\.js/.test(bsrc) && /modules\.cal/.test(bsrc), '★⑩ econ 번들이 달력 정본을 같이 싣는다(랩 인라인도 같은 소스)');
   }
 
   say(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);

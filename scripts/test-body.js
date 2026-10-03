@@ -619,7 +619,10 @@ const codeOnly = require('./code-only.js');   // ★[T171] 주석 제거기 **�
     ok(/dayLengthMs:\s*24\s*\*\s*60\s*\*\s*1000/.test(cfgSrc),
       '★★⑭㉧ **하루 = 24분** 그대로다(시간 구조 불변 캐논 — 겨울 난이도는 시간이 아니라 곡선·완충으로 고친다)');
     const esrc = fs.readFileSync(path.join(ROOT, 'sim', 'economy-sim-v2.js'), 'utf8');
-    ok(/const d = day % 365;/.test(esrc) && /CLIMATE = \{ zoneLatBase: 12, annualAmp: 12, diurnalAmp: 5/.test(esrc),
+    // ★[T570] 계절은 이제 달력 정본(`server/calendar.js`)이 갖는다 — econ 은 위임 한 줄 · 옛 365일 4분기 글자는 그 파일의 끔 갈래에 그대로다.
+    const calSrc = fs.readFileSync(path.join(ROOT, 'server', 'calendar.js'), 'utf8');
+    const seasonCanon = (/const d = day % 365;/.test(esrc)) || (/CAL\.seasonOf\(day\)/.test(esrc) && /const d = day % 365;/.test(calSrc));
+    ok(seasonCanon && /CLIMATE = \{ zoneLatBase: 12, annualAmp: 12, diurnalAmp: 5/.test(esrc),
       '★★⑭㉧ **econ 무수정** — `seasonOf` 365일 4분기도, `CLIMATE` 도 정본 그대로다');
   }
 
@@ -758,7 +761,8 @@ const codeOnly = require('./code-only.js');   // ★[T171] 주석 제거기 **�
         `2km ${hi.a}HP ≥ 평지 ${lo.a}HP`);
     }
     const esrc2 = fs.readFileSync(path.join(ROOT, 'sim', 'economy-sim-v2.js'), 'utf8');
-    ok(/CLIMATE = \{ zoneLatBase: 12, annualAmp: 12, diurnalAmp: 5/.test(esrc2) && /const d = day % 365;/.test(esrc2),
+    const calSrc2 = fs.readFileSync(path.join(ROOT, 'server', 'calendar.js'), 'utf8');   // ★[T570] 계절 = 달력 정본(옛 글자는 끔 갈래)
+    ok(/CLIMATE = \{ zoneLatBase: 12, annualAmp: 12, diurnalAmp: 5/.test(esrc2) && (/const d = day % 365;/.test(esrc2) || (/CAL\.seasonOf\(day\)/.test(esrc2) && /const d = day % 365;/.test(calSrc2))),
       '★★⑮㉦ **econ 무수정** — 기온 모델도 계절도 정본 그대로');
 
     // ── ㉧ 옷 이름 = 재료(고증) · 장인 구매도 재료를 따른다 ──────────────────

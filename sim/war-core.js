@@ -30,7 +30,11 @@ function hash2(a, b) { let h = (Math.imul((a >>> 0), 374761393) + Math.imul((b >
 
 // ═══════════ 달력(lab L_YEAR/lMonth 복사 — 농번기 억제 게이트용) ═══════════
 const L_YEAR = 365, L_MOSTART = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
-function lMonth(d) { const y = ((d % L_YEAR) + L_YEAR) % L_YEAR; for (let m = 11; m >= 0; m--) if (y >= L_MOSTART[m]) return m; return 0; }
+// ★★[T570 재민 10-02] 켬 = 달력 정본(`server/calendar.js` — 게임일 0 = 1년 3월 1일)의 **진짜 달**(0 기점: 0 = 1월).
+//   옛 줄은 랩 달력 사본이라 게임일 0 을 **1월 1일**로 읽었다 ⇒ 농번기 억제(5~9월)가 게임 달력보다 두 달 늦게 걸렸다(3월 = 옛 lMonth 0).
+//   끔(`T570_CALENDAR=0`)은 옛 줄 글자 그대로.
+const _CalW = (typeof require === 'function') ? (() => { try { return require('../server/calendar'); } catch (e) { return null; } })() : null;
+function lMonth(d) { if (_CalW && _CalW.ON) return _CalW.dateOf(d).month - 1; const y = ((d % L_YEAR) + L_YEAR) % L_YEAR; for (let m = 11; m >= 0; m--) if (y >= L_MOSTART[m]) return m; return 0; }
 
 // ═══════════ WAR_* 상수 (전쟁실험실.html 5961~6034 verbatim) ═══════════
 // WAR_MINDAY 는 테스트 전용 오버라이드(BANDIT_MINDAY 관례 — 운영 무설정=365 그대로)

@@ -375,7 +375,11 @@ function wildSeedAt(cx, cy, day, chance) {
 //   랩의 **0-based `plantMo`**(랩 주석 7929: *"plantMo=0=1월"*)를 1-based 로 읽고 있었다
 //   ⇒ NPC 가 카탈로그보다 **한 달 일찍**, 그리고 봄 작물을 **겨울에** 심고 있었다. 그 표를 지운다.
 const MONTHS_PER_YEAR = 12;
-const ANCHOR_MONTH = _num('CROP_ANCHOR_MONTH', 3);      // 게임일 0 의 실제 달(유도값 · 위 주석)
+// ★★[T570 재민 10-02] 달은 이제 **진짜 달**이다 — 달력 정본 `server/calendar.js`(그레고리력 · 게임일 0 = 1년 3월 1일).
+//   앵커 3 은 손으로 적은 수가 아니라 달력의 기점에서 **읽는다**(`dateOf(0).month`) — 위 역산(위반 0 인 유일 오프셋)이 그 기점을 고른 근거다.
+//   되돌림 `T570_CALENDAR=0` = 옛 셈(계절을 셋으로 쪼갠 30~32일 "달" + `CROP_ANCHOR_MONTH`) 글자 그대로.
+const _CAL = require('./calendar');
+const ANCHOR_MONTH = _CAL.ON ? _CAL.dateOf(0).month : _num('CROP_ANCHOR_MONTH', 3);   // 게임일 0 의 실제 달(유도값 · 위 주석)
 const _MO_SEASON_IX = { spring: 0, summer: 1, autumn: 2, winter: 3 };
 // ★★달을 **계절 정본에서** 센다(해 길이 365 도, 경계 90/180/270 도 여기 안 적는다).
 //   `events.calendarOf` 가 주는 (계절 · 계절 안 며칠 · 그 계절 길이)를 셋으로 나눈 것이 달이다.
@@ -384,6 +388,7 @@ function monthOf(day) {
   let cal = null;
   try { cal = _events().calendarOf(_day(day)); } catch (e) {}
   if (!cal) return ANCHOR_MONTH;
+  if (cal.month) return cal.month;                 // ★[T570] 켬 — 달력 정본의 달(끔이면 `calendarOf` 에 month 가 없다 → 아래 옛 셈)
   const six = _MO_SEASON_IX[cal.season] || 0;
   const len = Math.max(1, cal.seasonDays | 0);
   const third = Math.min(2, Math.floor((Math.max(1, cal.dayOfSeason) - 1) / len * 3));

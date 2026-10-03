@@ -257,7 +257,11 @@ function payableQty(stock, frac) {
 
 // ── 계절 — econ 정본 함수를 그대로 부른다(사본 금지) ──────────────────────────
 let _econV2 = null;
+// ★★[T570 재민 10-02] 달력 정본 `server/calendar.js`(그레고리력 · 게임일 0 = 1년 3월 1일 · 윤년 · 계절 = 달) — econ `seasonOf` 도
+//   같은 함수에 위임한다(이제 거울이 아니라 **같은 함수 하나**다). 되돌림 `T570_CALENDAR=0` 이면 아래 옛 줄 그대로.
+const Cal = require('./calendar');
 function seasonOf(day) {
+  if (Cal.ON) return Cal.seasonOf(day);
   if (!_econV2) _econV2 = require(path.join(__dirname, '..', 'sim', 'economy-sim-v2'));
   // economy-sim-v2 는 seasonOf 를 export 하지 않는다 — 대신 SEASON 경계와 **같은 산수**를
   // 쓰는 대신, 공개된 temperatureAt 로 우회하지 않고 여기 한 줄로 둔다.
@@ -286,6 +290,7 @@ function yearDaysOf() {
 const _sStartCache = new Map();
 function seasonStartOf(day) {
   const key = day | 0;
+  if (Cal.ON) return Cal.seasonStart(key);        // ★[T570] 달력 정본(겨울 1·2월이면 전해 12월 1일 · 음수 날도 정확)
   if (_sStartCache.has(key)) return _sStartCache.get(key);
   const s = seasonOf(key);
   let d = key;
@@ -295,22 +300,57 @@ function seasonStartOf(day) {
   return d;
 }
 // 화면이 그릴 것 — "0년 여름 42일" 의 재료. **클라는 이걸 받아 쓰기만 한다**(매핑 사본 금지).
+//   ★[T570] 켬: 연 = **달력 연도**(1년부터) · 월·일·윤년 · `dayOfYear`/`yearDays` = 그해 1월 1일 기점·그해 길이(365|366) ·
+//     `yearStart`/`yearEnd` = 그해 1월 1일·12월 31일의 게임일(1년은 3월 1일 = 0 앞이라 음수) · `label` = "1년 3월 1일 (봄)".
+//     끔: 옛 필드 그대로 + `yearStart`/`yearEnd`/`label`(옛 글자 "0년 여름 42일") — 부르는 쪽이 한 갈래로 읽게.
 function calendarOf(day) {
   const d = Math.max(0, day | 0);
+  if (Cal.ON) {
+    const t = Cal.dateOf(d), season = Cal.seasonOfMonth(t.month), ys = Cal.dayOf(t.year, 1, 1);
+    return {
+      day: d, year: t.year, month: t.month, dom: t.dom, isLeap: t.isLeap,
+      dayOfYear: t.doy, yearDays: t.yearLen, yearStart: ys, yearEnd: ys + t.yearLen - 1,
+      season, seasonKo: KO_SEASON[season] || season,
+      dayOfSeason: d - Cal.seasonStart(d) + 1, seasonDays: Cal.seasonLen(d),
+      label: Cal.labelOf(d),
+    };
+  }
   const yd = yearDaysOf();
   const season = seasonOf(d);
   const start = seasonStartOf(d);
   let end = start;
   while (end < start + yd && seasonOf(end) === season) end++;
+  const year = Math.floor(d / yd);
   return {
     day: d,
-    year: Math.floor(d / yd),
+    year,
     dayOfYear: d % yd,
     yearDays: yd,
+    yearStart: year * yd, yearEnd: year * yd + yd - 1,
     season, seasonKo: KO_SEASON[season] || season,
     dayOfSeason: d - start + 1,
     seasonDays: end - start,
+    label: `${year}년 ${KO_SEASON[season] || season} ${d - start + 1}일`,
   };
+}
+// ★[T570] 그 날의 **연도**(켬 = 달력 연도 · 끔 = 옛 `day ÷ 한 해`). 해마다 한 번 도는 장부(열매·채집 예산·연표)가 이걸 열쇠로 쓴다
+//   — `Math.floor(d / 365)` 로 나누면 윤일마다 하루씩 경계가 밀린다(해 길이로 나누던 자리를 여기 하나로).
+function yearOf(day) {
+  if (Cal.ON) return Cal.dateOf(day).year;
+  return Math.floor((day | 0) / yearDaysOf());
+}
+// ★[T570] 봄 기점 해(3월 1일에 바뀐다 · 1년 = 게임일 0~364) — 겨울에 비우고 봄 뒤에 다시 차는 해마다의 장부(열매·채집 예산)의 열쇠.
+//   끔: 옛 `day ÷ 한 해` 그대로(옛 해도 봄 첫날에 바뀌었다 — 뜻이 같다).
+function springYearOf(day) {
+  if (Cal.ON) return Cal.springYearOf(day);
+  return Math.floor((day | 0) / yearDaysOf());
+}
+// 그해 첫날·끝날(게임일) — 연표가 "한 해" 칸을 짓는다. 켬 1년은 1월 1일이 기점(0) 앞이라 음수다(부르는 쪽이 0 에서 자른다).
+function yearSpanOf(year) {
+  const y = year | 0;
+  if (Cal.ON) { const a = Cal.dayOf(y, 1, 1); return [a, a + Cal.yearLen(y) - 1]; }
+  const yd = yearDaysOf();
+  return [y * yd, y * yd + yd - 1];
 }
 
 // ── 가격 — econ 정본 함수/캐시를 그대로 읽는다 ────────────────────────────────
@@ -1106,14 +1146,18 @@ function createLedger(opts) {
     }
     const t0 = process.hrtime.bigint();
     const yd = cal.yearDays;
-    const yStart = year * yd, yEnd = yStart + yd - 1;
+    // ★[T570] 그해의 칸 = 달력의 그해(켬: 1월 1일~12월 31일 · 1년은 기점 0 에서 자른다 · 끔: 옛 `year × 한 해` 그대로)
+    const _sp = yearSpanOf(year);
+    const yStart = Math.max(0, _sp[0]), yEnd = _sp[1];
     // 계절 칸을 미리 만든다 — 빈 계절도 자리를 지킨다(연표에 구멍이 있으면 그것도 정보다).
     const buckets = new Map();
     const rows = [];
     for (let d = yStart; d <= Math.min(yEnd, today); ) {
       const c = calendarOf(d);
-      const b = { season: c.season, seasonKo: c.seasonKo, start: d, days: c.seasonDays, items: [] };
-      buckets.set(c.season + '@' + c.year, b); rows.push(b);
+      // ★[T570] 칸 열쇠 = 그 계절의 **첫날**(켬이면 겨울이 해를 넘는다 — 1·2월 겨울과 12월 겨울이 같은 해에 둘이다) ·
+      //   칸 길이 = 이 해 안에 든 몫(끔이면 언제나 계절 전부 — 옛 값 그대로)
+      const b = { season: c.season, seasonKo: c.seasonKo, start: d, days: Math.min(c.seasonDays - (c.dayOfSeason - 1), yEnd - d + 1), items: [] };
+      buckets.set(c.season + '@' + (d - (c.dayOfSeason - 1)), b); rows.push(b);
       d += c.seasonDays - (c.dayOfSeason - 1);
     }
     if (rows.length) {
@@ -1130,7 +1174,7 @@ function createLedger(opts) {
           if (heard > yEnd) break;            // chron 은 day 오름차순 ⇒ 이후는 전부 범위 밖
           if (heard > today) break;           // 아직 안 들었다 — 없는 것과 같다
           const c = calendarOf(heard);
-          const b = buckets.get(c.season + '@' + c.year);
+          const b = buckets.get(c.season + '@' + (heard - (c.dayOfSeason - 1)));
           if (!b) continue;
           const foreign = (ev.vid !== vid);
           const sv = sev(ev);
@@ -1427,5 +1471,5 @@ function deliverToVillage(a) {
 
 module.exports = { createLedger, CFG, TYPES, DEED_TYPES, DEED_FOREIGN, briefLine, boardLine, koRes, josa, seasonOf, KO_SEASON,
   blurMag,   // ★[T127] 뭉갬 정본 — 하네스·계측기가 **이 함수**를 부른다(사본 금지)
-  yearDaysOf, seasonStartOf, calendarOf,
+  yearDaysOf, seasonStartOf, calendarOf, yearOf, yearSpanOf, springYearOf,
   buildDeliverable, deliverToVillage, pricesOf, pricesFresh, payableQty };
