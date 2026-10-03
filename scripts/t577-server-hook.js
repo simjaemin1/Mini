@@ -56,7 +56,7 @@ function finish(world, L, day) {
     seed: SEED || null, days: day, villages: V.length,
     env: { T315_MAPBEDS: process.env.T315_MAPBEDS || null, VILLAGE_DAY_MS: process.env.VILLAGE_DAY_MS || null,
            VILLAGE_NPC_CAP: process.env.VILLAGE_NPC_CAP || null, ENABLE_BANDITS: process.env.ENABLE_BANDITS || null,
-           cand: Object.fromEntries(Object.entries(process.env).filter(([k]) => /^T577_CAND_/.test(k))) },
+           cand: Object.fromEntries(Object.entries(process.env).filter(([k]) => /^(T577_(?!SEED$|DAYS$|OUT$|DIR$|PAR$|TAG$)|VILLAGE_LIFE$|ENABLE_BANDITS$|VILLAGE_CARAVAN_MAX$|T513_DAY_SLICE$|WAR_MINDAY$)/.test(k))) },
     eight: { pop, dead, ever, weapQ: +weapQ.toFixed(0), expand, board: S.reqOpened || 0,
              toolQ: +toolQ.toFixed(1), preserve: +presStock.toFixed(1), grain: +grain.toFixed(1) },
     dissolved: bdtDay.filter((x) => x != null).length,
