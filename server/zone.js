@@ -1970,7 +1970,37 @@ const observers = new Map();    // ws -> { viewerX, viewerY, lastSeen }
 const resources = new Map();
 const AOI_RADIUS = 800;         // 클라 VIEW_RADIUS(650) + 여유. 이 안의 player만 tick에 포함
 const claims = new Map();
-const buildings = new Map();    // id -> { id, dbId, type, ownerId, ownerName, x, y, data }
+// ★★[T621 2026-10-04 · T605 §4-6] `buildings` = Map 그대로 + **경계 띠 색인** — `syncGhostsToNeighbors` 가 100ms 마다 건물 **전부**를 훑던 것을
+//   띠 안 후보만 훑게 한다(관측자 0 에서 부름당 0.59ms = 틱 비용의 23% · 최대 8ms — T605 타이머 팔).
+//   ⓐ 후보 = 그 함수가 보내는 종류(벽·문·울타리) **이면서** 경계 띠(`GHOST_REACH` 안) — 그 함수의 거름 줄 그대로(`_ghostBandOf`).
+//      부서짐(`data.damaged`)·이웃 존·바다 거름은 바뀌는 값이라 색인에 안 싣고 그 함수가 매 부름 그대로 본다.
+//   ⓑ 넣고 빼는 자리 = 이 Map 의 set · delete · clear **한 자리**. 만드는 자리(13곳)·지우는 자리(villages.js 포함 13곳)를 하나씩 고치면
+//      빠뜨린 자리에서 조용히 갈린다 — 그래서 Map 자체가 색인을 같이 든다. 건물은 안 움직인다(x·y·type 은 만든 뒤 안 바뀐다 · 넣을 때 한 번 본다).
+//   ⓒ 색인 순서 = `buildings` 순서 ⇒ 보내는 목록이 **바이트 같다**: 새 키는 둘 다 끝에 붙는다 · 같은 키를 덮어써 후보가 새로 되면
+//      (Map 은 옛 자리를 지킨다) 색인을 통째로 다시 센다(드묾 — 지금 덮어쓰는 자리 0). 게이트 = `scripts/test-ghost-band.js`.
+const GHOST_REACH = 1200;   // 경계에서 유령을 보내는 폭(px) — `syncGhostsToNeighbors` 가 쓰던 그 수(새 수 0 · 함수 안에서 여기로 옮겼다)
+function _ghostBandOf(b) {   // 색인 후보 — `syncGhostsToNeighbors` 건물 거름의 종류·띠 줄 그대로
+  if (!b || (b.type !== 'wall' && b.type !== 'door' && b.type !== 'fence')) return false;
+  const zw = ZONE.zoneWidth, zh = ZONE.zoneHeight;
+  return b.x < GHOST_REACH || b.x > zw - GHOST_REACH || b.y < GHOST_REACH || b.y > zh - GHOST_REACH;
+}
+class _BuildingMap extends Map {
+  #band = new Map();
+  constructor() { super(); }   // 이터러블을 받지 않는다(Map 생성자가 set 을 부르면 색인이 아직 없다)
+  set(k, v) {
+    const had = super.has(k);
+    super.set(k, v);
+    const gb = this.#band;
+    if (_ghostBandOf(v)) { if (!had || gb.has(k)) gb.set(k, v); else this.#rebuild(); }
+    else gb.delete(k);
+    return this;
+  }
+  delete(k) { this.#band.delete(k); return super.delete(k); }
+  clear() { this.#band.clear(); super.clear(); }
+  ghostBand() { return this.#band.values(); }   // 띠 후보(순서 = `buildings` 순서)
+  #rebuild() { const gb = this.#band; gb.clear(); for (const [k, v] of super.entries()) if (_ghostBandOf(v)) gb.set(k, v); }
+}
+const buildings = new _BuildingMap();    // id -> { id, dbId, type, ownerId, ownerName, x, y, data }
 const mobs = new Map();         // mid -> { mid, type, x, y, vx, vy, hp, maxHp, aggroTarget, lastAttackAt, wanderUntil }
 // §4-4 P2 LOD 결판(근처만 실체화): 방어 마을권에 '관측자'(사람 player 또는 스펙테이터)가 반경 r(px) 안에 있나.
 //   villages.js 가 eta 도달 전쟁을 physical(battle-core 실시간) XOR headless 로 분기하는 판정자. center·r 모두 px(player 좌표계).
@@ -11689,7 +11719,7 @@ function stepArrows(dt) {
 // 이웃 zone에 보낼 ghost 스냅샷 (경계 AOI 안 player) — 주기 송신
 function syncGhostsToNeighbors() {
   // 경계에서 GHOST_REACH 안에 있는 자기 player를 이웃 zone에 절대좌표로 송신
-  const GHOST_REACH = 1200;
+  // ★[T621] `GHOST_REACH` 는 모듈 상수(같은 1200 — 건물 색인과 한 수)
   const ox = ZONE.worldOffsetX, oy = ZONE.worldOffsetY, zw = ZONE.zoneWidth, zh = ZONE.zoneHeight;
   const byZone = {}; // targetZoneId -> [snap]
   for (const p of players.values()) {
@@ -11706,7 +11736,7 @@ function syncGhostsToNeighbors() {
   }
   // 경계 근처 벽/문/펜스를 이웃 zone에 (콜라이더 미러). 절대 cell + side.
   const bByZone = {};
-  for (const b of buildings.values()) {
+  for (const b of buildings.ghostBand()) {   // ★[T621] 경계 띠 색인(종류·띠 후보만 · `buildings` 순서) — 아래 거름 줄은 그대로 다시 본다
     if (b.type !== 'wall' && b.type !== 'door' && b.type !== 'fence') continue;
     if (b.data?.damaged) continue;
     const near = [];
