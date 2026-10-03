@@ -87,7 +87,8 @@ const _dl = _diceLife.next, _dv = _diceVil.next;
 const _shOfNpc = (n) => (n._sh !== undefined ? n._sh : (n._sh = _pidHash(n.pid || n.playerId || n.id || '')));
 
 const SZ = 32; // 셀 크기(px) — zone.js BUILDING_SIZE(436행)·zone-config 셀과 동일
-const INITIAL_POP = 8; // econ createVillage 초기 인구 기본값(economy-sim.js 697행)과 일치
+// ★[T577 ⓑ] `T577_CAND_SEEDPOP=<n>` — 시딩 인구 후보 판(기본 끔 = 8 · 종전 그대로). 판정 0 — 보고/T577 §3-ⓑ.
+const INITIAL_POP = parseInt(process.env.T577_CAND_SEEDPOP || '', 10) || 8; // econ createVillage 초기 인구 기본값(economy-sim.js 697행)과 일치
 const VILLAGE_MAX = Math.max(1, parseInt(process.env.VILLAGE_MAX || '20', 10));   // ★기본 20(사용자 밀도 캐논 §2.4·§3b: 한반도 존 마을 12~20 — 10은 1착륙 보수값이었음). 성능 확정은 Stage 5 실측
 // ★★[T538 추신3 ⓑ 2026-09-30 · 재민 캐논 #54] **몸 수 상한 무제한** — econ 인구가 곧 몸이다(추상 없애기).
 //   T376(답 예 · 몸 2,515 = econ 전부) → T433 켬 팔(규약 다섯 · 낮 p50 22.0 · p95 28.5ms · 36/36 조각 예산 안 · drop 0 · 소멸 0)을 **기본으로** 올린다.
@@ -713,12 +714,28 @@ const SERIALIZE_SKIP = new Set([
   '_forageActItems',   // ★[T475] 마을별 걷는 목록 — 생활층이 원판 종에서 **세는** 값(사본 0 · 세계 목록 `forageActItems` 처럼 하루 경계에서 다시 심는다)
 ]);
 const _serializeWarned = new Set();
+// ★★[T577 ④ 2026-10-03] **마지막 교역일은 서버 길에서 적는다** — econ 이 만든 칸(`lastTradeDay: 0`)은 sim/ 어디서도
+//   쓰이지도 읽히지도 않아 라이브 50/50 이 0 이었다(T572 회부 6). econ 객체는 **안 건드린다**: 서버가 곁(WeakMap)에
+//   쥐고 있다가 저장 줄(`serializeEcon`)에서만 그 칸을 덮는다 ⇒ econ 하루는 바이트 그대로 · DB 행에는 날이 남는다.
+const _ltd = new WeakMap();
+function _noteTradeDays(world) {
+  const TL = world && world.tradeLog; if (!TL || !TL.length) return;
+  const day = world.day | 0;
+  if (!state._ltdByName) state._ltdByName = new Map();
+  if (state._ltdByName.size !== state.villages.length) { state._ltdByName.clear(); for (const vil of state.villages) if (vil.econ) state._ltdByName.set(vil.econ.name, vil.econ); }
+  for (let i = TL.length - 1; i >= 0; i--) {
+    const t = TL[i]; if ((t.day | 0) !== day) { if ((t.day | 0) < day) break; continue; }
+    if (t.abandoned) continue;   // 빈손 귀환은 교역이 아니다(장부 FIRST_GOODS 와 같은 규약)
+    for (const nm of [t.from, t.to]) { const e = state._ltdByName.get(nm); if (e) _ltd.set(e, day); }
+  }
+}
 function serializeEcon(v) {
   const out = {};
   for (const k of Object.keys(v)) {
     if (SERIALIZE_SKIP.has(k) || typeof v[k] === 'function') continue;
     out[k] = v[k];
   }
+  if (_ltd.has(v)) out.lastTradeDay = _ltd.get(v);   // ★[T577 ④] 저장 줄에서만(위 주석)
   out.history = (v.history || []).slice(-50);
   try {
     return JSON.stringify(out);
@@ -9744,6 +9761,7 @@ function _rescuesToday() { const out = _evRescues.slice(); _evRescues.length = 0
 function _scanEventsDaily() {
   if (!state.ledger) return;
   const t0 = Date.now();
+  try { _noteTradeDays(state.world); } catch (e) {}   // ★[T577 ④] 마지막 교역일 — 장부와 같은 하루 경계
   const evs = state.ledger.scanDay(state.world, state.world.day, { caravanDelays: _caravanDelaysToday(), builds: _buildsToday(),
     rescues: _rescuesToday(),                                      // ★[T119] 구조 — 완공과 같은 자리
     winter: Winter.dailyExtra(state.world.day, state.villages) });   // ★[T20] 겨울나기 — 공표(가을 첫날)·판정(겨울 첫날)
