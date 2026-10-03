@@ -88,6 +88,10 @@ async function run(label, extraEnv, fresh) {
     PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB,
     CENTRAL_PORT: String(CPORT), CENTRAL_HOST: 'localhost',
     VILLAGE_DAY_MS: String(DAY_MS), ENABLE_BANDITS: '0', ENABLE_ROADS: '0', ENABLE_WILDLIFE: '0',
+    //   ★[T569 · T559 ⓪ 뒤] NPC 영토 상한(인구 × 12 · `T538_TERR_CAP` 기본 켬)이 새 세계(인구 8 · 상한 96 < 시딩 3,450)의 영토를 **한 칸도 안 키운다**
+    //     ⇒ 이 하네스의 전제 ①(자란 마을이 있다)이 main 에서 빨갰다(T559 ⓪ 이 남긴 것). 이 하네스가 재는 것은 **자란 땅의 영속**이지 상한이 아니다 —
+    //     상한을 끈 판에서 잰다(상한은 `test-terr-overlap`·T538 판이 잰다).
+    T538_TERR_CAP: '0',
   }, extraEnv || {}));
   // ★★[T355 2026-09-22] 존 기동도 **아이의 입**으로 듣는다(정본 `fixture-boot.waitUp` · T344·T349).
   //   포트 응답은 증인이 아니다 — 앞 판 존이 포트를 쥔 채면 새 존은 `EADDRINUSE` 로 죽고 폴링은
