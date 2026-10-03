@@ -1696,6 +1696,131 @@ const T436_K = (() => { const v = parseFloat(typeof process !== 'undefined' && p
 //   구제는 **중심이 막혔을 때만** 코스 셀 안(STEP×STEP)을 훑어 '다리이면서 통행 가능한 칸'을 찾는다.
 //   물·바위 일반에는 적용하지 않는다 — 좁은 물목을 임의로 뚫으면 거리 근사가 아니라 거짓말이 된다.
 //   반환 0=차단 1=중심이 열림 2=다리로 구제.
+// ═══ ★★[T598 2026-10-03 · T573 회부 4 · T578 회부 1] 교역로 비용에 **숲·광맥·집채** — 손잡이 `T598_ROUTE_COST`(★기본 끔 = main 바이트) ═══
+//   T578 이 교역로 A* 에 "코스 칸 안 열린 비율의 역수"를 걸었다(물·바위만). 이 판은 같은 식에 **몸을 막는 것**을 더 센다:
+//     ⓐ 숲 — 숲 그리드의 셀당 나무 수(`chunk.forestTreesPerCell(forestMult)` · 숲 그리드가 깔리는 `FOREST_MIN_COV` 위에서만)
+//     ⓑ 광맥 — 광맥 무리 청크의 셀당 광물 노드 수(`chunk.oreNodesPerCell(stoneMult)` · 생성 루프의 그 두 수)
+//     ⓒ 집채 — 마을 집채(큰집 8×8 · 움집·쉼터 6×4 · 곳간 5×3 — `_vbFootprint`) 발자국 칸은 막힌 칸(벽이 둘렀다 — 지나가지 못한다)
+//   ★"걸음 몸이 실제로 느려지는 값"이다: 걷는 몸(T578 `_walkResume`)은 나무 선 칸·막힌 칸을 돌아간다 ⇒ 코스 칸 하나를 지나는 값 =
+//     그 칸 안에서 열린 몫의 역수(T578 의 그 식 · 칸 하나에 나무 하나 = 칸 하나 막힘 — 걷기 술어 `treeCellBlocked` 와 같은 칸 규칙). 새 수 0.
+//   ★밑바닥(숲 밖 흩어진 나무·바위 — `scatterTreesPerCell`)은 어디나 같아서 길 모양을 안 바꾸고 모든 거리에 같은 배수만 얹는다 ⇒ 안 센다.
+//   ★`남의` 영토가 아니라 **모든 마을의 집채**다 — 거리행렬은 출발 하나에서 모든 목적지로 한 번에 재는(Dijkstra) 대칭 행렬이라
+//     쌍마다 "끝점 마을 빼고"를 못 건다. 집채는 제 마을이든 남의 마을이든 몸을 막는다(밭·마당은 안 막는다 — 실물 그대로).
+//   ★켜면 **두 곳이 같은 비용**을 본다 — 교역 거리행렬(econ 운송비 · `computeAndInjectDistMatrix`)과 교역로 A*(`_routeBegin`).
+//     열림·막힘(닿는 쌍의 집합)은 종전 `coarseOpen` 그대로다. 3시드 두 자는 거리행렬을 안 세운다(econ 이 유클리드로 잰다) — 보고 §③.
+const T598_ROUTE_COST = process.env.T598_ROUTE_COST === '1';
+//   ★[T598 ④ · T578 회부 2] 코스 이웃 잇기 — 두 노드 **가운데 칸**이 열렸어도 그 사이가 다리 없는 가는 물줄기면 몸은 못 건넌다.
+//     손잡이 `T598_ROUTE_EDGE`(★기본 끔): 켜면 이웃 두 노드의 가운데 칸 사이를 두 코스 칸 안에서 4방으로 이어 볼 수 있을 때만 잇는다
+//     (곧은 선이 막힌 칸을 안 밟으면 바로 잇는다 — 거의 다 · 밟으면 두 칸 안 BFS). 거리행렬·교역로 A* 둘 다(같은 그래프).
+const T598_ROUTE_EDGE = process.env.T598_ROUTE_EDGE === '1';
+let _t598C = null, _t598T = null;   // chunk.js · terrain.js 지연 적재(순환 회피)
+function _t598Chunk() { return _t598C || (_t598C = require('./chunk')); }
+function _t598FootBuild() {
+  const F = new Set();
+  const add = (R) => { if (!R) return; for (let y = R[1]; y <= R[3]; y++) for (let x = R[0]; x <= R[2]; x++) F.add(y * 65536 + x); };
+  for (const vil of state.villages || []) {
+    add(_vbFootprint('hall', vil.ccx, vil.ccy));
+    for (const b of vil._bRows || []) add(_vbFootprint(b.type, b.cx, b.cy));
+  }
+  state._t598Foot = F;
+  if (state._t598Mul) state._t598Mul.fill(0);
+}
+// 코스 칸(gx,gy)을 지나는 값의 배수 — 칸 안 셀마다 열린 몫(물·바위 막힘 0 · 집채 0 · 그 밖 1 − 나무 − 광물)의 평균의 역수.
+function _t598CellMul(ta, gx, gy, gw) {
+  const M = state._t598Mul;
+  const i = gy * gw + gx;
+  if (M && M[i] > 0) return M[i];
+  const C = _t598Chunk(), Z = state.zoneId, F = state._t598Foot;
+  const bx = gx * DIST_STEP, by = gy * DIST_STEP, half = DIST_STEP >> 1;
+  //   숲 밀도·광맥은 코스 칸 **가운데 칸** 한 번만 묻는다(둘 다 큰 다각형·원이라 4칸 안에서 거의 안 바뀐다 · 칸마다 물으면 지도 전체 거리행렬이 4분 걸렸다).
+  //   물·바위(메모 비트)·집채(집합)는 칸마다 본다.
+  let blk = 0;
+  { const fm = ta.forestMult ? ta.forestMult(bx + half, by + half) : 1;
+    if (fm > C.FOREST_MIN_COV) blk += C.forestTreesPerCell(fm, SZ);
+    const T = _t598T || (_t598T = require('./terrain')), px = (bx + half) * SZ + SZ / 2, py = (by + half) * SZ + SZ / 2;
+    if (T.isOreClusterAt && T.isOreClusterAt(Z, px, py)) blk += C.oreNodesPerCell(T.getStoneMultiplier ? T.getStoneMultiplier(Z, px, py) : 1, SZ); }
+  const per = Math.max(0, 1 - blk);
+  let open = 0;
+  for (let dy = 0; dy < DIST_STEP; dy++) for (let dx = 0; dx < DIST_STEP; dx++) {
+    const x = bx + dx, y = by + dy;
+    if (ta.isBlocked(x, y)) continue;
+    if (F && F.has(y * 65536 + x)) continue;
+    open += per;
+  }
+  //   ★바닥 = 한 칸(T578 `terrMul` 의 `max(1, n)` 과 같은 자) — 지나는 노드면 몸 칸이 적어도 하나다. 집채가 코스 칸을 다 덮어도 배수 ≤ 16/몫.
+  //   (바닥 없이 1e-6 이면 배수가 1,600만 → Dial 버킷 배열이 그만큼 늘어 50마을 거리행렬이 4분 걸렸다.)
+  const m = (DIST_STEP * DIST_STEP) / Math.max(per, open);
+  if (M) M[i] = m;
+  return m;
+}
+// 무효화 훅의 T598 몫 — 벽·울타리 한 칸(cx,cy · 셀)이면 그 코스 칸 배수와 둘레 3×3 노드의 이웃 잇기 메모만 버린다
+//   (지도 전체 칸 배수를 다시 세면 거리행렬 한 번에 칸 900만 번을 다시 묻는다 · 이웃 잇기 상자는 두 코스 칸이라 3×3 이면 다 덮는다).
+//   칸을 안 주면 전부 버린다(종전 T578 메모와 같은 뜻).
+function _t598Forget(cx, cy) {
+  const M = state._t598Mul, E = state._t598Edge;
+  if (!M && !E) return;
+  const gw = state._t598Gw | 0;
+  if (!(Number.isFinite(cx) && Number.isFinite(cy)) || !gw) { if (M) M.fill(0); if (E) { E.done.fill(0); E.ok.fill(0); } return; }
+  const gx = Math.floor(cx / DIST_STEP), gy = Math.floor(cy / DIST_STEP), gh = (M ? M.length : E.done.length) / gw;
+  if (M && gx >= 0 && gy >= 0 && gx < gw && gy < gh) M[gy * gw + gx] = 0;
+  if (E) for (let y = gy - 1; y <= gy + 1; y++) for (let x = gx - 1; x <= gx + 1; x++) {
+    if (x < 0 || y < 0 || x >= gw || y >= gh) continue;
+    E.done[y * gw + x] = 0; E.ok[y * gw + x] = 0;
+  }
+}
+// 재는 판 전용(`T598_DIST_DUMP`) — 칸 배수 분포 · 이웃 잇기 판정 수/끊은 수(비트 셈).
+function _t598Stats() {
+  const out = {}, M = state._t598Mul, E = state._t598Edge;
+  if (M) { const v = []; for (let i = 0; i < M.length; i++) if (M[i] > 0) v.push(M[i]); v.sort((a, b) => a - b);
+    const q = (p) => (v.length ? +v[Math.floor(p * (v.length - 1))].toFixed(3) : null);
+    out.mul = { n: v.length, p10: q(0.1), p50: q(0.5), p90: q(0.9), p99: q(0.99), max: q(1), ge2: v.filter((x) => x >= 2).length }; }
+  if (E) { let chk = 0, ok = 0; const pc = (b) => { let c = 0; while (b) { c += b & 1; b >>= 1; } return c; };
+    for (let i = 0; i < E.done.length; i++) { if (E.done[i]) { chk += pc(E.done[i]); ok += pc(E.ok[i]); } }
+    out.edge = { checked: chk, cut: chk - ok }; }
+  return out;
+}
+function _t598Arrays(gw, gh) {
+  state._t598Gw = gw;
+  if (!state._t598Mul || state._t598Mul.length !== gw * gh) state._t598Mul = new Float32Array(gw * gh);
+  if (!state._t598Edge || state._t598Edge.done.length !== gw * gh) state._t598Edge = { done: new Uint16Array(gw * gh), ok: new Uint16Array(gw * gh) };
+}
+// 코스 노드의 몸 칸 — 가운데 칸이 열렸으면 그 칸 · 아니면(다리 구제 노드) 칸 안 첫 열린 칸(다리 칸).
+function _t598Anchor(ta, gx, gy) {
+  const half = DIST_STEP >> 1, bx = gx * DIST_STEP, by = gy * DIST_STEP;
+  if (!ta.isBlocked(bx + half, by + half)) return [bx + half, by + half];
+  for (let dy = 0; dy < DIST_STEP; dy++) for (let dx = 0; dx < DIST_STEP; dx++) if (!ta.isBlocked(bx + dx, by + dy)) return [bx + dx, by + dy];
+  return [bx + half, by + half];
+}
+// ★[T598 ④] 이웃 두 코스 노드(가운데 칸)를 몸이 이을 수 있나 — 곧은 선이 막힌 칸을 안 밟으면 참 · 아니면 두 코스 칸(합친 상자) 안 4방 BFS.
+//   메모 = 노드마다 8방 2비트(판정함·답).
+function _t598EdgeOk(ta, gx, gy, dx, dy, gw) {
+  const E = state._t598Edge;
+  const d = (dx + 1) * 3 + (dy + 1), bit = 1 << d;   // 0..8 (가운데 4 안 씀)
+  const i = gy * gw + gx;
+  if (E && (E.done[i] & bit)) return !!(E.ok[i] & bit);
+  const [ax, ay] = _t598Anchor(ta, gx, gy), [bx, by] = _t598Anchor(ta, gx + dx, gy + dy);
+  let ok = true;
+  { const n = Math.max(Math.abs(bx - ax), Math.abs(by - ay)) * 4;
+    for (let k = 0; k <= n && ok; k++) { const x = Math.floor(ax + 0.5 + (bx - ax) * k / n), y = Math.floor(ay + 0.5 + (by - ay) * k / n); if (ta.isBlocked(x, y)) ok = false; } }
+  if (!ok) {   // 두 코스 칸 합친 상자 안 BFS
+    const x0 = Math.min(gx, gx + dx) * DIST_STEP, y0 = Math.min(gy, gy + dy) * DIST_STEP;
+    const x1 = (Math.max(gx, gx + dx) + 1) * DIST_STEP - 1, y1 = (Math.max(gy, gy + dy) + 1) * DIST_STEP - 1;
+    const seen = new Set([ay * 65536 + ax]), q = [[ax, ay]];
+    for (let h = 0; h < q.length && !ok; h++) {
+      const [x, y] = q[h];
+      for (const [sx, sy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + sx, ny = y + sy;
+        if (nx < x0 || ny < y0 || nx > x1 || ny > y1) continue;
+        const k = ny * 65536 + nx; if (seen.has(k)) continue; seen.add(k);
+        if (ta.isBlocked(nx, ny)) continue;
+        if (nx === bx && ny === by) { ok = true; break; }
+        q.push([nx, ny]);
+      }
+    }
+  }
+  if (E) { E.done[i] |= bit; if (ok) E.ok[i] |= bit; }
+  return ok;
+}
 function coarseOpen(ta, gx, gy, brSet) {
   const half = DIST_STEP >> 1, bx = gx * DIST_STEP, by = gy * DIST_STEP;
   if (!ta.isBlocked(bx + half, by + half)) return 1;
@@ -1835,6 +1960,7 @@ function computeAndInjectDistMatrix(reason, opts) {
   const mat = []; for (let i = 0; i < M; i++) { const row = new Array(M).fill(Infinity); row[i] = 0; mat.push(row); }
   if (_prev) for (let i = 0; i < INCR; i++) for (let j = 0; j < INCR; j++) mat[i][j] = _prev[i][j];
   const dist = new Int32Array(gw * gh);
+  if (T598_ROUTE_COST || T598_ROUTE_EDGE) _t598Arrays(gw, gh);
   const DIRS = [[1, 0, 10], [-1, 0, 10], [0, 1, 10], [0, -1, 10], [1, 1, 14], [1, -1, 14], [-1, 1, 14], [-1, -1, 14]];
   let _srcRuns = 0;
   for (let s = (_prev ? INCR : 0); s < M; s++) {
@@ -1866,11 +1992,14 @@ function computeAndInjectDistMatrix(reason, opts) {
           if (!remaining) break;
         }
         const x = i % gw, y = (i / gw) | 0;
+        const _m0 = T598_ROUTE_COST ? _t598CellMul(ta, x, y, gw) : 0;   // ★[T598] 이 노드 배수(간선마다 다시 안 묻는다)
         for (const [dx, dy, w] of DIRS) {
           const nx = x + dx, ny = y + dy;
           if (isBlk(nx, ny)) continue;
           if (dx && dy && (isBlk(x + dx, y) || isBlk(x, y + dy))) continue; // 대각 코너 절단 금지(랩 tradePath 3937행과 동일)
-          const ni = ny * gw + nx, nc = c + w;
+          if (T598_ROUTE_EDGE && !_t598EdgeOk(ta, x, y, dx, dy, gw)) continue;   // ★[T598 ④] 몸이 못 잇는 이웃(가는 물줄기) — 끔이면 이 줄 무동작
+          //   ★[T598] 간선 값 = 두 끝 코스 칸 배수의 평균 × 걸음(대칭 — 누가 출발이든 같은 거리 · 증분 계산의 근거 그대로) · 끔이면 종전 `w`
+          const ni = ny * gw + nx, nc = c + (T598_ROUTE_COST ? Math.round(w * (_m0 + _t598CellMul(ta, nx, ny, gw)) / 2) : w);
           if (dist[ni] < 0 || nc < dist[ni]) { dist[ni] = nc; (buckets[nc] || (buckets[nc] = [])).push(ni); }
         }
       }
@@ -1879,6 +2008,8 @@ function computeAndInjectDistMatrix(reason, opts) {
   }
   // 주입 + 로그(유클리드 대비 증가율 — 강·산 우회가 잡히면 일부 쌍이 1.0×보다 커야 함)
   state.econ.setDistMatrix(world, mat);
+  //   ★[T598 자] 거리행렬을 파일로 남긴다(`T598_DIST_DUMP=<경로>` · 재는 판 전용 · 안 주면 이 줄 무동작) — 끔/켬 운송비 바뀐 쌍을 센다.
+  if (process.env.T598_DIST_DUMP) { try { require('fs').writeFileSync(process.env.T598_DIST_DUMP, JSON.stringify({ names: villages.map((v) => v.name), mat: mat.map((r) => r.map((d) => (isFinite(d) ? +d.toFixed(3) : null))), ms: Date.now() - t0, t598: _t598Stats() })); } catch (e) {} }
   // ★[T7] 거리가 바뀌면 소문 도달표도 거짓이 된다 — 마을이 하나 늘어도 마찬가지다(행 크기가 바뀐다).
   //   캐시를 비우는 것뿐이라 비용 0이고, 다음 사건이 알아서 다시 데운다.
   try { if (state.ledger && state.ledger.rumorInvalidate) state.ledger.rumorInvalidate(); } catch (e) {}
@@ -1978,6 +2109,7 @@ function _routeBegin(x0, y0, x1, y1, extraBlk, plain) {
   if (!PathCore) PathCore = require('../sim/path-core.js');
   if (!R.sc) R.sc = { w: gw, h: gh, g: R.g, came: R.came, stamp: R.stamp, gen: R.gen | 0 };
   const RD = state.roads;   // §16 답압 길 A* 스텝 할인(코스 그리드 coarse 등급 — 길 없으면 전부 ×1 = 기존 경로 그대로)
+  if (T598_ROUTE_COST || T598_ROUTE_EDGE) _t598Arrays(gw, gh);
   const NN = DIST_STEP * DIST_STEP;
   const terrMul = (gx, gy) => {   // ★[T578 ③] 코스 칸 안 열린 셀 비율의 역수(같은 `ta.isBlocked` · 다리 칸은 열림)
     const i = gy * gw + gx;
@@ -1997,7 +2129,11 @@ function _routeBegin(x0, y0, x1, y1, extraBlk, plain) {
     scratch: R.sc,
   } : {
     blocked: isBlk,
-    costMul: RD ? ((x, y) => RD.courseCostMul(x, y) * terrMul(x, y)) : terrMul,
+    //   ★[T598 ④] 손잡이 켬이면 몸이 못 잇는 이웃(가는 물줄기)을 안 잇는다 — 거리행렬과 같은 간선 규칙(끔이면 null = 종전)
+    stepBlocked: T598_ROUTE_EDGE ? ((fx, fy, tx, ty) => isBlk(tx, ty) || !_t598EdgeOk(ta, fx, fy, tx - fx, ty - fy, gw)) : null,
+    //   ★[T598] 손잡이 켬이면 칸 값 = 숲·광맥·집채까지 센 열린 몫의 역수(거리행렬과 같은 `_t598CellMul`) · 끔이면 T578 의 물·바위 몫(종전)
+    costMul: T598_ROUTE_COST ? (RD ? ((x, y) => RD.courseCostMul(x, y) * _t598CellMul(ta, x, y, gw)) : ((x, y) => _t598CellMul(ta, x, y, gw)))
+      : (RD ? ((x, y) => RD.courseCostMul(x, y) * terrMul(x, y)) : terrMul),
     hScale: (RD && RD.courseCostMin && RD.isReady && RD.isReady()) ? RD.courseCostMin() : 1,   // 길이 안 섰으면(헤드리스) 할인도 없다 — h 그대로
     maxPops: 250000,
     scratch: R.sc,
@@ -2091,6 +2227,8 @@ function _routeSig() {
   // ★★[T578 ①] 길 규칙 판(版) — 규칙이 바뀌면 이 글자를 올린다. 옛 판으로 판 길은 서명이 달라 통째로 버리고 다시 판다
   //   (T573: 답압 할인 0 · 가운데 한 칸 규칙으로 판 1,219쌍이 영속돼 있었다).
   parts.push('route:T578');
+  if (T598_ROUTE_COST) parts.push('cost:T598');   // ★[T598] 켬 판은 다른 길 — 끔 서명은 종전 글자 그대로(바이트)
+  if (T598_ROUTE_EDGE) parts.push('edge:T598');
   return parts.join('|');
 }
 // ★★[T42 ①ⓑ 2026-09-01] **부팅 직후 선계산** — 콜드를 게임일 경계에서 떼어 낸다.
@@ -3589,7 +3727,8 @@ function invalidateTradeDistances(cx, cy) { // eslint-disable-line no-unused-var
   if (state.ready) { try { _routeWarmBuild(); } catch (e) {} }   // ★[T42 ①ⓑ] 다 버렸으니 다시 데울 목록을 세운다
   lifeSiteResetAll();   // ★[T41 ①] 지형이 바뀌면 옛 거부가 뒤집힐 수 있다 — 표지 + 거부 캐시 파기(셋째).
   if (state._route) { state._route.blk.fill(0); if (state._route.openN) state._route.openN.fill(-1); }   // ★[T578 ③] 칸 안 열린 수 메모도
-  if (state._walkSegFar) state._walkSegFar.clear();   // ★[T578 ②] 넓혀서 푼 걷기 구간도(벽이 서면 돌아갈 길이 바뀐다)
+  if (state._walkSegFar) state._walkSegFar.clear();
+  _t598Forget(cx, cy);   // ★[T598] 칸 배수 · 이웃 잇기 메모도(벽이 서면 바뀐다 — 벽 칸을 주면 그 코스 칸 둘레만 · 손잡이 끔이면 배열이 없어 무동작)
   if (state._distBlk) state._distBlk.fill(0);   // ★[배치 12] 교역 거리행렬 코스 격자도 같은 훅에서 비운다(캐러밴 A* 격자와 동형)
   state._distIncrFrom = -1;   // ★[배치 12] 지형이 바뀌면 **옛 쌍도 썩는다** — 증분 취소, 다음 재계산은 전쌍
 }
@@ -3865,6 +4004,7 @@ function init(deps) {
       const cells = state.villages.reduce((s, v) => s + (v._bnd ? v._bnd.length / 3 : 0), 0);
       console.log(`[${ZONE_ID}] 🏘️ Stage4A 영토: 경계 ${bndN}/${state.villages.length}곳(셀 ${cells}, ≈${(JSON.stringify(state.clientPayload).length / 1024).toFixed(0)}KB — welcome 1회) · 원근사 폴백 ${state.villages.length - bndN}곳`);
     }
+    if (T598_ROUTE_COST) _t598FootBuild();   // ★[T598] 집채 발자국 칸(교역로·거리행렬 비용 — 손잡이 켬에서만 · 끔이면 이 줄 무동작)
     for (const vil of state.villages) delete vil._bRows; // 수만 행 재참조 방지(메모리)
 
     // --- 교역 거리 행렬(BFS·지형) 계산·주입 — 시딩·복원 공통(지형 정적, 부팅 1회. 소요는 로그에) ---

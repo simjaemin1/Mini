@@ -588,6 +588,17 @@ function scatterRocksPerCell(biome, cellPx, chunkPx) {
   return RESOURCES_PER_CHUNK * rockShareOf(biome) / cellsPerChunk;
 }
 
+// ★[T598] 광맥 무리 청크의 **광물 노드** — 아래 생성 루프가 쓰던 두 수(더하는 노드 3 · 광물 몫 70%)를 이름으로 올렸다(행동 무변).
+//   교역로 비용(`villages.js` `_t598CellMul`)이 "광맥 칸에 몸을 막는 광물이 몇 개인가"를 같은 수로 묻는다(사본 0).
+const ORE_CLUSTER_EXTRA = 3, ORE_CLUSTER_SHARE = 0.7;
+/** 광맥 무리 청크의 32px 셀 하나에 서는 광물 노드 수(기댓값) — 청크당 (기본 수 × 산 배율 + 더함) × 광물 몫 ÷ 청크 셀 수. 새 수 0. */
+function oreNodesPerCell(stoneMult, cellPx, chunkPx) {
+  const c = Number.isFinite(cellPx) ? cellPx : 32;
+  const cp = Number.isFinite(chunkPx) ? chunkPx : CHUNK_SIZE;
+  const base = Math.round(RESOURCES_PER_CHUNK * Math.max(Number.isFinite(stoneMult) ? stoneMult : 1, 1.0));
+  return (base + ORE_CLUSTER_EXTRA) * ORE_CLUSTER_SHARE / ((cp / c) * (cp / c));
+}
+
 // 청크 안 자원 시드 생성. harvestedSet에 있는 건 제외.
 // 청크당 자원 N개 (기본 5개) — 청크 면적 256² = 65536. zone 4096이면 16×16=256 청크. 총 자원 1280.
 // Phase 5-1: terrain (forest·mountain·ore·water) 반영.
@@ -650,7 +661,7 @@ function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet, 
   const oreCluster = terrain.isOreClusterAt(zoneId, sampleX, sampleY);
   // 일반 자원 수 = base × max(mountain, 1). 숲 밀도는 아래 전용 나무 그리드가 담당.
   const baseCount = Math.round(RESOURCES_PER_CHUNK * Math.max(stoneMult, 1.0));
-  const count = oreCluster ? baseCount + 3 : baseCount;  // ore cluster: 광물 노드 추가
+  const count = oreCluster ? baseCount + ORE_CLUSTER_EXTRA : baseCount;  // ore cluster: 광물 노드 추가
   for (let n = 0; n < count; n++) {
     const seedKey = `${cx}_${cy}_${n}`;
     const _cut = !!(harvestedSet && harvestedSet.has(seedKey));
@@ -668,7 +679,7 @@ function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet, 
     //   mountain 영역 → stone 우세
     //   (숲 나무는 아래 전용 그리드에서 빽빽하게 깔림 — 여기선 일반 biome 배경만)
     let type;
-    if (oreCluster && r3 < 0.7) {
+    if (oreCluster && r3 < ORE_CLUSTER_SHARE) {
       type = 'ore';   // ore cluster: 70% 광물 (이전 'stone'은 loot 핸들러가 없어 산출 0이던 버그)
     } else if (stoneMult > 1.5 && r3 < 0.5) {
       type = 'rock';  // mountain: 50% 바위(돌 산출) (이전 'stone' 깡통 버그 수정)
@@ -1317,4 +1328,4 @@ function generateCoastlineWaterTiles(zone, tileSize, findZoneAtFn, oceanRects) {
 
 // ★[T108 2026-09-05] `RESOURCE_HP_TABLE` 을 **내준다** — `zone.js` 가 같은 표를 한 벌 더
 //   들고 있었고(운석이 빠져 3대에 깨졌다 · T90 회부), 그걸 지우려면 정본이 나가야 한다.
-module.exports = { Chunk, ChunkManager, CHUNK_SIZE, generateChunkResources, resourceAt, resourcesAtCell, cellChunksOf, treeBlockerAt, overflowInto, seedGenChunkOf, regrowStageOf, REGROW, GROVE, WILD, WILD_HAB, _wildClass, FORAGE_RING, forageKinds, seedRand, forestSpacing, forestTreesPerCell, forestTreesPerCellMean, scatterTreesPerCell, treeShareOf, scatterRocksPerCell, rockShareOf, FOREST_MIN_COV, RESOURCES_PER_CHUNK, generateVillagesForZone, makeVillageName, generateCoastlineWaterTiles, RESOURCE_HP_TABLE, GROVE_KINDS };
+module.exports = { Chunk, ChunkManager, CHUNK_SIZE, generateChunkResources, resourceAt, resourcesAtCell, cellChunksOf, treeBlockerAt, overflowInto, seedGenChunkOf, regrowStageOf, REGROW, GROVE, WILD, WILD_HAB, _wildClass, FORAGE_RING, forageKinds, seedRand, forestSpacing, forestTreesPerCell, forestTreesPerCellMean, oreNodesPerCell, scatterTreesPerCell, treeShareOf, scatterRocksPerCell, rockShareOf, FOREST_MIN_COV, RESOURCES_PER_CHUNK, generateVillagesForZone, makeVillageName, generateCoastlineWaterTiles, RESOURCE_HP_TABLE, GROVE_KINDS };
