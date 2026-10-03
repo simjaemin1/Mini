@@ -358,7 +358,8 @@ if (process.env.T574_NEW_ITEMS === '1') {
 //       · 볼락 `rockfish` · 전갱이 `horse_mackerel`(0.1~0.3kg → 0.2) = 청어 `herring`(0.3kg · 값 1.5)
 //       · 고등어 `mackerel`                    (0.3~0.5kg → 0.4)      = 청어 `herring`
 //   ⚠econ 거래 표(v1 RESERVE_PC · v2 ELASTICITY/BASE_VALUE_V2/UTILITY)에는 **줄을 안 세운다**(T574 새 품목과 같다) — 품목표에만 선다.
-//     그래도 v2 는 이 품목표를 통째로 TRADABLE 로 읽는다(224 → 231) — 켜면 잡는 사람이 없어도 econ 이 움직인다(보고 T602 §2 켬 판).
+//     v2 는 이 품목표를 통째로 TRADABLE 로 읽는다(224 → 231) — 그래도 econ 에 이 일곱을 내는 생산·재고가 없어(낚시 산출은 econ 에선
+//     `fish` 단위) 켬 판 t17 3시드가 끔 판과 **바이트 동일**이었다(보고 T602 §2 켬 판 — 생산이 생기면 다시 잰다).
 //   ⚠열량은 `kcal.js`(같은 손잡이 · T592 수) · 낚이는 자리·해역·철·kg 는 `seafish.js`(같은 손잡이) — 여기 안 적는다.
 if (process.env.T602_NEW_FISH === '1') {
   RESOURCES.red_seabream = { ...RESOURCES.salmon, ko: '참돔' };
