@@ -41,7 +41,7 @@ function run(A) {
   const t0 = Date.now();
   let set;
   if (A === 'old') {   // 지금 식 — 정본 `chunk.generateCoastlineWaterTiles`(끔) 를 같은 시험 해안에 그대로
-    delete process.env.T588_COAST;
+    process.env.T588_COAST = '0';   // ★[T604 추신3] 끔 = '0'(없음 = 기본 b)
     set = require(path.join(__dirname, '..', 'server', 'chunk')).generateCoastlineWaterTiles(Object.assign({ id: 'land' }, zones.land), 32, null, ocean);
   } else {
     const opts = { sections: [{ id: 't', ko: '시험', zone: 'land', side: 'S', from: 0, to: 1 }],

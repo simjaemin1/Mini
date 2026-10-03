@@ -207,6 +207,7 @@ function cropSprite(stage, crop) {
   // Phase 5-2-mini: 미니맵 IIFE에서 access 가능하게 노출
   window.__getZonesMeta = () => zonesMeta;
   let marketplaceUrl = '';
+  let handoffCommit = 0;   // ★[T604 추신3] 핸드오프 겹침 띠(px) — `/zones` 의 `handoffCommit`(서버 zone-config 정본) · 해안 평행이동의 경계 앞 바다 지킴이 읽는다(0 = 지킴 없음)
   let myName = '여행자';
   let myUsername = '';
   // ★★[2026-08-03f 배치 13] **내 영속 신원.** 서버가 welcome 으로 알려 준다(등록 계정이면 username,
@@ -322,7 +323,8 @@ function cropSprite(stage, crop) {
   // ★[정비 배치] 클라 손잡이 — welcome 의 `uiCfg` 가 덮어쓴다(정본은 서버 env · `carryCfg` 와 같은 규약).
   let uiCfg = { vignetteTint: true, moodleShowMax: 3, ghostStallMs: 5000, ghostReconnectMs: 10000,
                 charSprite: false, charWalkMin: 4, charRunMin: 102,     // ★[캐릭 시트] 기본 OFF
-                charMocap2: false };   // ★[T155] 모션 둘째 판 — 기본 OFF · 서버 env 키는 아직 없다(회부)
+                charMocap2: false,   // ★[T155] 모션 둘째 판 — 기본 OFF · 서버 env 키는 아직 없다(회부)
+                coast588: 'b' };     // ★[T604 추신3] 해안 기본 b — 서버 기본과 같게(부트 `/zones` 굽기가 welcome 전에 돈다 · 다르면 welcome 에서 다시 굽는다)
   // ★비네트 색조 — **축 계열**. 새 아트를 만들지 않고 색만 바꾼다(§8.3 아날로그 채널은 최소로).
   //   갈증=청 · 허기=황 · 추위=창백한 하늘색 · 피로=보라 · 부상=적 · 과적=흙빛.
   const VIGNETTE_RGB = {
@@ -667,22 +669,23 @@ function cropSprite(stage, crop) {
     if (zone.isOcean) return waterTiles;
     const oceanRects = Object.values(zonesMeta).filter(z => z.isOcean).map(z => ({ x0: z.worldOffsetX, y0: z.worldOffsetY, x1: z.worldOffsetX + z.zoneWidth, y1: z.worldOffsetY + z.zoneHeight }));
     if (!oceanRects.length) return waterTiles;
-    // ★[T588] 해안 구간 성격 — 서버 손잡이 `T588_COAST`(welcome `uiCfg.coast588` = 'a'|'b')가 켜져 있으면 서버와 **같은 파일**
+    // ★[T588] 해안 구간 성격 — 서버 손잡이 `T588_COAST`(welcome `uiCfg.coast588` = 'a'|'b' · ★T604 추신3 기본 'b' · '0' = 지금 식)가 켜져 있으면 서버와 **같은 파일**
     //   (`public/coast-shape.js` — 서버 `chunk.js` 도 이 파일을 부른다 · 사본 0)로 굽는다. 지금 식은 함수로 넘긴다(아래 깊이 한 줄과 같은 식).
-    //   끔(칸 없음)이면 아래 지금 식 그대로.
+    //   끔('0' · 칸 없음)이면 아래 지금 식 그대로(★추신3 — 평행이동도 안 먹는다 · 끔 = 지금 바이트).
     const _c588 = (uiCfg && uiCfg.coast588) || '';
     if ((_c588 === 'a' || _c588 === 'b') && typeof CoastShape !== 'undefined') {
       const _mx = COASTLINE_BASE + COASTLINE_NOISE;
       return CoastShape.generate(zone, tileSize, oceanRects, zonesMeta, COASTLINE_BASE, COASTLINE_NOISE,
         (bnx, bny) => COASTLINE_BASE + _coastSmoothNoise2D(bnx, bny) * COASTLINE_NOISE,
         { variant: _c588, bandK: (z, ax, ay) => _coastBandKAt(z, _coastBandKOf(z), ax, ay, oceanRects, _mx),
-          bandShift: (z, ax, ay) => _coastShiftAt(z, _coastShiftOf(z), ax, ay, oceanRects, _mx, tileSize) });   // ★[T588 추신2] T591 배수 위에 · ★[T604 추신2] 평행이동
+          bandShift: (z, ax, ay) => _coastShiftAt(z, _coastShiftOf(z), ax, ay, oceanRects, _mx, tileSize),   // ★[T588 추신2] T591 배수 위에 · ★[T604 추신2] 평행이동
+          keepPx: handoffCommit });   // ★[T604 추신3] 경계 앞 바다 지킴 폭 = 서버가 준 핸드오프 겹침 띠(박힌 수 0)
     }
     const cols = Math.ceil(zone.zoneWidth / tileSize);
     const rows = Math.ceil(zone.zoneHeight / tileSize);
     const maxDist = COASTLINE_BASE + COASTLINE_NOISE, maxDist2 = maxDist * maxDist;
     // ★[T591] 존별 띠 배수(서버 chunk.js 와 같은 식 · 뭍 이웃 변에서 1 로 돌아감) — 칸이 없으면 1(종전)
-    const _bandK = _coastBandKOf(zone), _shift = _coastShiftOf(zone);   // ★[T588 추신2] 식은 위 `_coastBandKAt` 한 자리(비트 동일) · ★[T604 추신2] 평행이동
+    const _bandK = _coastBandKOf(zone);   // ★[T588 추신2] 식은 위 `_coastBandKAt` 한 자리(비트 동일) · ★[T604 추신3] 끔(이 줄)은 평행이동을 안 먹는다 — 끔 = 지금 바이트
     for (let ty = 0; ty < rows; ty++) {
       const absY = zone.worldOffsetY + ty * tileSize;
       const wty = Math.floor(absY / tileSize);
@@ -706,8 +709,7 @@ function cropSprite(stage, crop) {
         const dist = Math.sqrt(bd2);
         const depth = COASTLINE_BASE + _coastSmoothNoise2D(bnx, bny) * COASTLINE_NOISE; // 바다점 월드좌표 2D 노이즈 → 솔기 없음
         const _k = _coastBandKAt(zone, _bandK, ax, ay, oceanRects, maxDist);
-        const _s = _coastShiftAt(zone, _shift, ax, ay, oceanRects, maxDist, tileSize);
-        if (dist < (_s === 0 ? depth * _k : Math.max(0, depth * _k - _s))) waterTiles.add(`${tx}_${ty}`);
+        if (dist < depth * _k) waterTiles.add(`${tx}_${ty}`);
       }
     }
     return waterTiles;

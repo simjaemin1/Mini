@@ -25,7 +25,7 @@ const _clockReady = (() => {
 
 const WebSocket = require('ws');
 const http = require('http');
-const { ZONES, WORLD, isNight, worldPhase, darknessLevel, findZoneAt, worldDistance, worldDeltaX } = require('./zone-config');
+const { ZONES, WORLD, isNight, worldPhase, darknessLevel, findZoneAt, worldDistance, worldDeltaX, HANDOFF_COMMIT } = require('./zone-config');   // ★[T604 추신3] HANDOFF_COMMIT 정본 = zone-config(해안 지킴과 한 자리)
 const db = require('./zone-local-db'); // 로컬 zone DB — players 없음
 const SimVillages = require('./villages'); // §4-4 NPC 마을 시뮬 — top-level은 상수뿐(실작업은 아래 init 호출, ENABLE_VILLAGES=0이면 완전 no-op)
 // ★[T484 ②③] 존 기후 — 이 존의 평년값(`server/climate-normals.js` · `apply` 인 존만)과 청동기 Δ(`T484_PALEO` 켬만)를 econ `CLIMATE` 에 얹는다.
@@ -2011,10 +2011,8 @@ const ARROW_HIT_R = 40;
 const ARROW_DMG = 25;
 const ARROW_TTL_MS = 4000;
 const GHOST_TTL_MS = 1500;      // 이 시간 넘게 갱신 안 된 ghost 제거
-// Phase 5-K2: 경계 핸드오프 히스테리시스. 경계를 살짝 스치는 정도(0~COMMIT)로는 안 넘김.
-// 이웃 zone으로 COMMIT px 이상 확실히 들어갔을 때만 핸드오프 → 경계에서 왔다갔다 해도
-// 핑퐁 안 남(시간 쿨다운 불필요). 도착도 경계에서 이만큼 안쪽이라 즉시 되넘김 불가.
-const HANDOFF_COMMIT = 256;     // px — 경계 양쪽 이 거리의 "겹침 띠"는 자유 이동
+// Phase 5-K2: 경계 핸드오프 히스테리시스 `HANDOFF_COMMIT`(px — 경계 양쪽 이 거리의 "겹침 띠"는 자유 이동) — ★[T604 추신3] 정본은 `zone-config.js`
+//   (값 그대로 · 해안 평행이동의 경계 앞 바다 지킴이 같은 수를 읽는다) · 위 `require('./zone-config')` 에서 받는다.
 
 // Phase 5-7: 동물 사체 + 도살 시스템
 const corpses = new Map();      // cid -> { cid, mobType, x, y, drops, spawnTime, killerPid }
@@ -6059,7 +6057,7 @@ async function _acceptConnection(ws, req, C) {
       ...(_t507On() ? { t507Verbs: true } : {}),
       ...(_streamOn() ? { streams: Streams.wireOf(ZONE_ID) ? Streams.wireOf(ZONE_ID).ver : true, streamSlow: Streams.STREAM_SLOW0 } : {}),   // [T585] 개울 — 클라가 `/streams.bin` 을 받아 그리고 걸음 예측에 쓴다(배율도 서버 정본 수)
       ...(T509_WELL ? { wellAct: true } : {}),   // [T557] 우물 터 잡기 버튼 — 기본 켬 · `T509_WELL=0` 이면 칸이 없어 버튼이 숨는다   // [T507] 첫 30분의 문법(우클릭·이름표·회색) — 기본 켬 · `T507_VERBS=0` 이면 칸이 없다(옛 화면)
-      ...(((v) => ((v === '1' || v === 'a' || v === 'b') ? { coast588: v === 'a' ? 'a' : 'b' } : {}))(process.env.T588_COAST)),   // [T588] 해안 구간 성격 — 클라가 같은 파일(`public/coast-shape.js`)로 굽는다 · 끔이면 칸이 없다(welcome 바이트 동일)
+      coast588: ((v) => (v === '0' ? '0' : (v === 'a' ? 'a' : 'b')))(process.env.T588_COAST),   // [T588 · ★T604 추신3 기본 b] 해안 — 클라가 같은 파일(`public/coast-shape.js`)로 굽는다 · 칸은 늘 실린다('0' = 지금 식 · 클라 `uiCfg` 기본도 'b' — 다르면 welcome 에서 다시 굽는다)
     },
     // ★★[이동 모델 2026-08-30] 손잡이 표를 **서버가 실어 보낸다** — 클라가 표를 들고 있으면
     //   그게 사본이고, env 를 서버에서만 바꾼 날 예측과 권위가 갈린다(itemWeights·uiCfg 와 같은 규약).
