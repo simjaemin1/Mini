@@ -2010,3 +2010,10 @@ T89 첫 판이 39/44 표본에서만 사람을 봤고, 그걸 정책 탓으로 �
 - 자잘 광맥은 아직 0이다. 넣는 한 줄은 `node scripts/t586-minor-ores.js --count <재민 수> --apply`다.
   - 자리 · 크기 · 이름만 넣고 광종 칸은 비운다. 그 뒤 `t580-bake-nippon.js`(T574 bakeOre)로 굽는다.
 - ⚠`plan-ore-clusters`는 해안선 띠를 못 본다. 닛폰 자잘의 26~28%가 바다 띠 위에 놓인다(보고/T586 §③ 회부).
+
+## Z-경계셈. [T598 추신 2026-10-03] 받은 기록이 선 칸 — `core.live()`
+
+> 보고 `보고/T598_추신_2026-10-03.md`. `e2e-xzone-caravan` ⓔ 한 대 어긋남은 잃음이 아니라 자가 못 보던 칸(판 끝 관측 360번 · 종전 셈 어긋남 218 · 새 셈 0).
+
+* 받은 기록의 길: 줄 `pend`(onRecord) → 인박스 `X.inbox`(dayIn → econ 캐러밴 조각) → econ 캐러밴 → 나간 귀환 `X.out`(econ → dayOut) → `st.returnOut`. 하루 마감이 조각이라 `/perf` 가 그 사이에 닿는다.
+* `createCore().live()` = 줄·인박스·나간 기록 종류별 지금 값(읽기만 · `/perf` xzone `live`). `st.pend` 는 dayIn 순간 값(두 종류 합) — 셈에는 `live` 를 써라.

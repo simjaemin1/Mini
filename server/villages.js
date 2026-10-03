@@ -3321,7 +3321,7 @@ function xzonePerf() {
       depart: c.departDay, arrive: c.arriveDay, back: c.returnArriveDay, cross: c._xzCross ? c._xzCross.day : null, xback: c._xzBack ? c._xzBack.day : null });
   }
   return { zone: state.zoneId, day: state.world.day, g: state.lastGameDay, dayMs: state.dayMs, epoch: state.epoch, peers: X.host.peers, ready: X.core.peersReady(),
-    geo: X.host.hs.geo, host: X.host.hs, core: X.core.st, st: X.st, stubs: (X.core.X.stubs || []).map((s) => s.name), retry: X.retry.length,
+    geo: X.host.hs.geo, host: X.host.hs, core: X.core.st, live: X.core.live ? X.core.live() : null, st: X.st, stubs: (X.core.X.stubs || []).map((s) => s.name), retry: X.retry.length,
     bodies, caravans: cars, trace: X.trace.slice(-200) };
 }
 

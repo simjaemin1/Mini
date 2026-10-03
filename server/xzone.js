@@ -112,7 +112,18 @@ function createCore(o) {
     }
     return { recs, snaps };
   }
-  return { X, G, SN, pend, st, setGeo, onSnap, onRecord, dayIn, dayOut, distNames, splitNames,
+  // ★[T598 추신 2026-10-03] **관측 칸** — 기록이 지금 어느 칸에 서 있나(종류별). 값은 안 고친다(읽기만 · 제품 동작 0).
+  //   받은 기록의 길: `pend`(onRecord) → `X.inbox`(dayIn · econ 캐러밴 조각이 읽기 전) → econ 캐러밴 → `X.out`(econ 이 적고 dayOut 이 세기 전) → `st.*Out`.
+  //   하루 마감은 조각으로 여러 프레임에 걸치므로 `/perf` 가 dayIn 과 econ 사이 · econ 과 dayOut 사이에 닿을 수 있다 — 그 두 칸을 센다.
+  //   (`st.pend` 는 dayIn 순간의 값이라 그 뒤 받은 기록을 못 본다 — 여기 `pendArrive/pendReturn` 은 지금 값.)
+  function live() {
+    const o = { pendArrive: 0, pendReturn: 0, inboxArrive: 0, inboxReturn: 0, outArrive: 0, outReturn: 0 };
+    for (const p of pend) if (p.rec.kind === 'arrive') o.pendArrive++; else o.pendReturn++;
+    for (const r of X.inbox) if (r.kind === 'arrive') o.inboxArrive++; else if (r.kind === 'return') o.inboxReturn++;
+    for (const r of X.out) if (r.kind === 'arrive') o.outArrive++; else if (r.kind === 'return') o.outReturn++;
+    return o;
+  }
+  return { X, G, SN, pend, st, live, setGeo, onSnap, onRecord, dayIn, dayOut, distNames, splitNames,
     ready: () => G.size > 0, peersReady: () => [...G.keys()] };
 }
 
