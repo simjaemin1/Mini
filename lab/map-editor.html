@@ -64,6 +64,12 @@
       <button data-t="select">✋ 선택/이동</button>
     </div>
     <div class="hint" id="toolHint"></div>
+    <div id="viewBox" style="margin:6px 0 4px;padding:6px;border:1px solid #2a3540;border-radius:6px">
+      <div style="font-size:11px;color:var(--mut);margin-bottom:4px">보기 — 종류마다 보임 · 이름 (작업 저장에는 영향 없음)</div>
+      <div id="viewGrid" style="display:grid;grid-template-columns:1fr auto auto;gap:2px 8px;font-size:12px;align-items:center"></div>
+      <label class="chk" style="margin-top:4px"><input type="checkbox" id="autoLabToggle" checked> 작게 보이는 것은 이름 자동 숨김(화면 14px 미만)</label>
+      <div style="display:flex;gap:4px;margin-top:4px"><button class="btn" id="viewAllBtn" style="padding:3px 6px">전부 보임</button><button class="btn" id="viewTerrBtn" style="padding:3px 6px">지형만(광맥·마을 숨김)</button></div>
+    </div>
     <label class="chk"><input type="checkbox" id="smoothToggle" checked> 곡선 미리보기(스무딩)</label>
     <label class="chk"><input type="checkbox" id="cellToggle"> 🔳 셀 미리보기 (인게임 실제 셀 — 호수 wobble·경계 연속)</label>
     <div class="row" style="display:flex;gap:6px;align-items:center;margin-top:2px">
@@ -170,6 +176,10 @@ const S = {
   flags:{noFit:false,noValley:false,pinStart:false},
   view:{scale:1, ox:0, oy:0}, pan:null, drag:null, nextId:1, smooth:true, stroke:null,
   multi:false, mf:[],
+  // ★[PM 10-03 · 재민 "자잘광맥 때문에 글자로 빽빽해서 하나도 안 보인다"] 보기 토글 — 그리기·고르기만 바꾼다(작업 데이터 무변)
+  vis:{ river:true, ridge:true, valley:true, forest:true, lake:true, pass:true, ore:true, village:true },
+  lab:{ river:true, ridge:true, valley:true, forest:true, lake:true, pass:true, ore:false, village:true },
+  autoLab:true,
 };
 
 // ===== 좌표 변환 (모델좌표→화면. 단일=존로컬, 멀티=월드) =====
@@ -507,13 +517,39 @@ function drawRefMulti(){ for(const z in S.ref){ if(!WZONES[z]) continue; drawSet
 // ★[11차 재민 지시] **물이 산 위**다. 그리는 순서 = 숲 → 산맥 → 계곡 → 호수 → 강.
 //   판정(terrain.js isRockCellLocal)이 물 우선인데 그림만 산이 덮으면, 에디터가 게임과 다른 말을 한다.
 //   강을 먼저 그리고 산맥을 나중에 그리면 산맥이 강을 덮어 버린다 — 그게 지금까지의 순서였다.
+const VIEW_KO = { river:'강', ridge:'산맥', valley:'계곡', forest:'숲', lake:'호수', pass:'고개', ore:'광맥', village:'마을' };
+const visOK = t => S.vis[t] !== false;
+function labOn(f){
+  if(!f || !f.name || !S.lab[f.type]) return false;
+  if(!S.autoLab) return true;
+  let px = Infinity;
+  if(f.type==='ore'||f.type==='pass') px = (f.radius||0)*2*S.view.scale;
+  else if(f.type==='forest'||f.type==='lake') px = Math.max(f.rx??f.radius??0, f.ry??f.radius??0)*2*S.view.scale;
+  return px >= 14;
+}
+function saveView(){ try{ localStorage.setItem('durango_editor_view', JSON.stringify({vis:S.vis, lab:S.lab, autoLab:S.autoLab})); }catch(e){} }
+function loadView(){ try{ const v=JSON.parse(localStorage.getItem('durango_editor_view')||'null'); if(v){ Object.assign(S.vis, v.vis||{}); Object.assign(S.lab, v.lab||{}); if(typeof v.autoLab==='boolean') S.autoLab=v.autoLab; } }catch(e){} }
+function buildViewGrid(){
+  const g=document.getElementById('viewGrid'); if(!g) return; g.innerHTML='';
+  const head=(t)=>{ const d=document.createElement('div'); d.textContent=t; d.style.color='var(--mut)'; d.style.fontSize='10px'; return d; };
+  g.appendChild(head('')); g.appendChild(head('보임')); g.appendChild(head('이름'));
+  for(const t of Object.keys(VIEW_KO)){
+    const nmEl=document.createElement('div'); nmEl.innerHTML=`<span class="dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${TYPE_COLOR[t]};margin-right:5px"></span>${VIEW_KO[t]}`;
+    const a=document.createElement('input'); a.type='checkbox'; a.checked=S.vis[t]!==false; a.onchange=()=>{ S.vis[t]=a.checked; if(!a.checked && S.sel && S.sel.type===t){ S.sel=null; S.selPt=null; } saveView(); refresh(); };
+    const b=document.createElement('input'); b.type='checkbox'; b.checked=!!S.lab[t]; b.onchange=()=>{ S.lab[t]=b.checked; saveView(); render(); };
+    g.appendChild(nmEl); g.appendChild(a); g.appendChild(b);
+  }
+  const al=document.getElementById('autoLabToggle'); if(al){ al.checked=S.autoLab; al.onchange=()=>{ S.autoLab=al.checked; saveView(); render(); }; }
+  const all=document.getElementById('viewAllBtn'); if(all) all.onclick=()=>{ for(const t in S.vis) S.vis[t]=true; saveView(); buildViewGrid(); refresh(); };
+  const tr=document.getElementById('viewTerrBtn'); if(tr) tr.onclick=()=>{ for(const t in S.vis) S.vis[t]=true; S.vis.ore=false; S.vis.village=false; saveView(); buildViewGrid(); refresh(); };
+}
 function drawSetOff(zd, off){
   const ox=off[0], oy=off[1];
-  for(const f of (zd.forests||[])){ drawEllipse(f.center[0]+ox,f.center[1]+oy,f.rx,f.ry,true); }
-  for(const r of (zd.ridges||[])){ drawPoly((r.path||[]).map(p=>({x:(p.pos?p.pos[0]:p[0])+ox,y:(p.pos?p.pos[1]:p[1])+oy,w:p.width||p[2]||300})),'ridge',true,false); }
-  for(const r of (zd.valleys||[])){ drawPoly((r.path||[]).map(p=>({x:(p.pos?p.pos[0]:p[0])+ox,y:(p.pos?p.pos[1]:p[1])+oy,w:p.width||p[2]||300})),'valley',true,false); }
-  for(const l of (zd.lakes||[])){ if(l.center) drawEllipse(l.center[0]+ox,l.center[1]+oy,l.rx||l.radius||500,l.ry||l.radius||500,true,null,'46,143,208'); }
-  for(const r of (zd.rivers||[])){ drawPoly((r.path||[]).map(p=>({x:(p.pos?p.pos[0]:p[0])+ox,y:(p.pos?p.pos[1]:p[1])+oy,w:p.width||p[2]||300})),'river',true,false); }
+  if(visOK('forest')) for(const f of (zd.forests||[])){ drawEllipse(f.center[0]+ox,f.center[1]+oy,f.rx,f.ry,true); }
+  if(visOK('ridge')) for(const r of (zd.ridges||[])){ drawPoly((r.path||[]).map(p=>({x:(p.pos?p.pos[0]:p[0])+ox,y:(p.pos?p.pos[1]:p[1])+oy,w:p.width||p[2]||300})),'ridge',true,false); }
+  if(visOK('valley')) for(const r of (zd.valleys||[])){ drawPoly((r.path||[]).map(p=>({x:(p.pos?p.pos[0]:p[0])+ox,y:(p.pos?p.pos[1]:p[1])+oy,w:p.width||p[2]||300})),'valley',true,false); }
+  if(visOK('lake')) for(const l of (zd.lakes||[])){ if(l.center) drawEllipse(l.center[0]+ox,l.center[1]+oy,l.rx||l.radius||500,l.ry||l.radius||500,true,null,'46,143,208'); }
+  if(visOK('river')) for(const r of (zd.rivers||[])){ drawPoly((r.path||[]).map(p=>({x:(p.pos?p.pos[0]:p[0])+ox,y:(p.pos?p.pos[1]:p[1])+oy,w:p.width||p[2]||300})),'river',true,false); }
 }
 // 피처 그리는 층 — 숫자가 클수록 위. ★물(호수·강)이 산맥보다 위여야 한다.
 const ZORD = { forest:0, ore:1, ridge:2, valley:3, pass:4, lake:5, river:6, village:7 };
@@ -521,30 +557,31 @@ function drawSet(set, faint){
   const list = (set.features || []).slice().sort((a,b)=>(ZORD[a.type]??9)-(ZORD[b.type]??9));
   for(const f of list) drawFeature(f, faint, false);
   // ref(JSON) 형식 지원 — 같은 순서
-  if(set.forests){ for(const f of set.forests) drawEllipse(f.center[0],f.center[1],f.rx,f.ry,faint); }
-  if(set.ridges){ for(const r of set.ridges) drawPathFeature(r,'ridge',faint); }
-  if(set.valleys){ for(const r of set.valleys) drawPathFeature(r,'valley',faint); }
-  if(set.lakes){ for(const l of set.lakes) if(l.center) drawEllipse(l.center[0],l.center[1],l.rx||l.radius||500,l.ry||l.radius||500,faint,null,'46,143,208'); }
-  if(set.rivers){ for(const r of set.rivers) drawPathFeature(r,'river',faint); }
+  if(set.forests && visOK('forest')){ for(const f of set.forests) drawEllipse(f.center[0],f.center[1],f.rx,f.ry,faint); }
+  if(set.ridges && visOK('ridge')){ for(const r of set.ridges) drawPathFeature(r,'ridge',faint); }
+  if(set.valleys && visOK('valley')){ for(const r of set.valleys) drawPathFeature(r,'valley',faint); }
+  if(set.lakes && visOK('lake')){ for(const l of set.lakes) if(l.center) drawEllipse(l.center[0],l.center[1],l.rx||l.radius||500,l.ry||l.radius||500,faint,null,'46,143,208'); }
+  if(set.rivers && visOK('river')){ for(const r of set.rivers) drawPathFeature(r,'river',faint); }
 }
 function drawPathFeature(r, type, faint){
   const pts=(r.path||[]).map(p=>({x:p.pos?p.pos[0]:p[0], y:p.pos?p.pos[1]:p[1], w:p.width||p[2]||300}));
   drawPoly(pts, type, faint, false);
 }
 function drawFeature(f, faint, draft){
+  if(!draft && !visOK(f.type)) return;
   if(f.type==='river'||f.type==='ridge'||f.type==='valley'){ drawPoly(f.path, f.type, faint, draft && false);
-    if(f.name && !faint && f.path && f.path.length){ const mid=f.path[Math.floor(f.path.length/2)]; ctx.fillStyle=f.type==='river'?'#bfe6ff':(f.type==='valley'?'#d6f0d2':'#e8c79a'); ctx.font='10px sans-serif'; ctx.textAlign='center'; ctx.lineWidth=2.5; ctx.strokeStyle='#0d1217'; ctx.strokeText(f.name,w2sx(mid.x),w2sy(mid.y)-3); ctx.fillText(f.name,w2sx(mid.x),w2sy(mid.y)-3); } }
-  else if(f.type==='forest') drawEllipse(f.center.x,f.center.y,f.rx,f.ry,faint,f.name);
-  else if(f.type==='lake') drawEllipse(f.center.x,f.center.y,f.rx??f.radius,f.ry??f.radius,faint,f.name,'46,143,208');
-  else if(f.type==='pass') drawCircle(f.center.x,f.center.y,f.radius,'#ffd070',faint,f.name,true);
-  else if(f.type==='ore') drawCircle(f.center.x,f.center.y,f.radius,'#d99030',faint,f.name,true);
+    if(f.name && !faint && labOn(f) && f.path && f.path.length){ const mid=f.path[Math.floor(f.path.length/2)]; ctx.fillStyle=f.type==='river'?'#bfe6ff':(f.type==='valley'?'#d6f0d2':'#e8c79a'); ctx.font='10px sans-serif'; ctx.textAlign='center'; ctx.lineWidth=2.5; ctx.strokeStyle='#0d1217'; ctx.strokeText(f.name,w2sx(mid.x),w2sy(mid.y)-3); ctx.fillText(f.name,w2sx(mid.x),w2sy(mid.y)-3); } }
+  else if(f.type==='forest') drawEllipse(f.center.x,f.center.y,f.rx,f.ry,faint,labOn(f)?f.name:null);
+  else if(f.type==='lake') drawEllipse(f.center.x,f.center.y,f.rx??f.radius,f.ry??f.radius,faint,labOn(f)?f.name:null,'46,143,208');
+  else if(f.type==='pass') drawCircle(f.center.x,f.center.y,f.radius,'#ffd070',faint,labOn(f)?f.name:null,true);
+  else if(f.type==='ore') drawCircle(f.center.x,f.center.y,f.radius,'#d99030',faint,labOn(f)?f.name:null,true);
   else if(f.type==='village'){
     const sx=w2sx(f.center.x), sy=w2sy(f.center.y);
     const VC={'광산':'#e23b3b','어촌':'#15b8c9','임업':'#1f7a2e','농촌':'#e0b020'};
     const t=(f.name||'').replace(/[0-9]/g,''); const col=VC[t]||'#ff6b6b';
     ctx.fillStyle=faint?'rgba(255,107,107,.45)':col; ctx.strokeStyle='#fff'; ctx.lineWidth=1.5;
     ctx.beginPath(); ctx.arc(sx,sy,6,0,7); ctx.fill(); ctx.stroke();
-    if(f.name && !faint){ ctx.font='10px sans-serif'; ctx.textAlign='center'; ctx.lineWidth=3; ctx.strokeStyle='#0d1217'; ctx.strokeText(f.name,sx,sy-9); ctx.fillStyle='#fff'; ctx.fillText(f.name,sx,sy-9); }
+    if(f.name && !faint && labOn(f)){ ctx.font='10px sans-serif'; ctx.textAlign='center'; ctx.lineWidth=3; ctx.strokeStyle='#0d1217'; ctx.strokeText(f.name,sx,sy-9); ctx.fillStyle='#fff'; ctx.fillText(f.name,sx,sy-9); }
   }
   if(draft && (f.type==='river'||f.type==='ridge'||f.type==='valley')){
     for(const p of f.path){ ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(w2sx(p.x),w2sy(p.y),3,0,7); ctx.fill(); }
@@ -735,14 +772,14 @@ function pickForDrag(p){
   }
   // ★[T553 ③] 점 고치기 — 잡힌 지형의 점을 먼저 본다(겹친 지형 사이에서 손에 쥔 것을 놓치지 않게) → 그 선분 위 = 점 삽입 → 나머지 지형
   const isLine = f => f.type==='river'||f.type==='ridge'||f.type==='valley';
-  const order = S.sel && isLine(S.sel) ? [S.sel, ...feats().filter(f=>f!==S.sel)] : feats();
+  const order = (S.sel && isLine(S.sel) ? [S.sel, ...feats().filter(f=>f!==S.sel)] : feats()).filter(f=>visOK(f.type));
   for(const f of order){
     if(isLine(f)){ for(let i=0;i<f.path.length;i++){ if(Math.hypot(f.path[i].x-p.x,f.path[i].y-p.y)<tol){ S.sel=f; S.selPt=i; S.drag={kind:'vertex',f,i}; syncSel(f); syncPtWidth(); refresh(); return; } }
       if(f===S.sel){ const ins=segmentAt(f,p,tol); if(ins){ insertPt(f,ins.i,ins.x,ins.y); S.selPt=ins.i+1; S.drag={kind:'vertex',f,i:ins.i+1,creating:true}; S.dragMoved=false; syncPtWidth(); refresh(); return; } } }
     else { if(Math.hypot(f.center.x-p.x,f.center.y-p.y)<(f.radius||f.rx||3000)){ S.sel=f; S.selPt=null; S.drag={kind:'center',f}; syncSel(f); refresh(); return; } }
   }
   // 잡힌 게 없을 때 선분 위(어느 지형이든) = 그 지형을 잡는다(점은 아직 안 넣는다 — 한 번 더 누르면 넣는다)
-  for(const f of feats()){ if(isLine(f) && segmentAt(f,p,tol)){ S.sel=f; S.selPt=null; syncSel(f); refresh(); return; } }
+  for(const f of feats()){ if(visOK(f.type) && isLine(f) && segmentAt(f,p,tol)){ S.sel=f; S.selPt=null; syncSel(f); refresh(); return; } }
   S.sel=null; S.selPt=null; refresh();
 }
 function finishDraft(){
@@ -858,7 +895,7 @@ function refresh(){ renderList(); render(); }
 function renderList(){
   const el=document.getElementById('flist'); el.innerHTML='';
   document.getElementById('fcount').textContent=feats().length;
-  feats().forEach(f=>{
+  feats().filter(f=>visOK(f.type)).forEach(f=>{
     const d=document.createElement('div'); d.className='fitem'+(S.sel===f?' sel':'');
     d.innerHTML=`<span class="dot" style="background:${TYPE_COLOR[f.type]}"></span><span class="nm">${f.name||'(이름)'}</span><span class="x">✕</span>`;
     d.onclick=ev=>{ if(ev.target.classList.contains('x')){ setFeats(feats().filter(x=>x!==f)); if(S.sel===f){S.sel=null;S.selPt=null;} pushHist(); refresh(); } else { S.sel=f; S.selPt=null; document.getElementById('nameIn').value=f.name||''; syncSel(f); refresh(); } };
@@ -1036,6 +1073,7 @@ function bootBaked(){
 }
 function bootEditor(src){
   S.bakedSrc = src;
+  loadView(); buildViewGrid();
   const _restored=loadLocal(); if(!_restored && WORK_BAKED){ S.features=WORK_BAKED.features.slice(); S.mf=WORK_BAKED.mf.slice(); S.stamp=WORK_BAKED.stamp; } setTool('river'); resize(); fitView(); refreshBridgeJump(); render(); renderList(); resetHist(); if(_restored) toast('이전 작업 복원됨');
   showStamp();
   S.booted = true;
