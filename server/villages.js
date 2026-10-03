@@ -2945,6 +2945,22 @@ const T230_TERR_HOUSING = process.env.T230_TERR_HOUSING !== '0';
 //   ⇒ 목표(종전 식) 와 이 상한 중 **작은 쪽**까지만 더한다. 상한을 넘은 마을은 **자라지 않을 뿐 줄이지 않는다**(행을 지우지 않는다 · 세계를 줄이지 않는다).
 //   ⚠자·랩은 `_terrGrow` 를 안 탄다(위 T298 주석) — 3시드 자 무변. 무는 곳은 생활층(집터가 영토 안에서만 선다) — 보고 T538 추신3 ⓐ 표.
 const T538_TERR_CAP = process.env.T538_TERR_CAP !== '0';
+// ★★[T579 2026-10-03 · T569 ④ · PM 안] **상한은 밭 + 집 부지다** — 인당 `LAND_NEED`(12) + `LOT_PER_HEAD`(부지 124 ÷ 정원 6 = 20.67) ≈ 32.67.
+//   T569 ④: 인당 12 는 밭만 센다 — 시딩 땅(3,450)이 다 차는 인구(약 100) 위에서 모든 NPC 마을이 집터를 못 찾는다(하한 3시드 929~958채 · 서울 1,507채).
+//   새 수 0(이미 있는 두 수의 합) · 되돌림 `T579_CAP_HOUSE=0`(= 인당 12 · 종전 판 바이트 그대로 — `ceil` 은 정수에 무변).
+//   마당(회관 마당 원판 316셀)은 안 센다 — 시딩 영토(3,450) 안에 이미 있고 상한은 영토를 줄이지 않는다(땅 = max(시딩, 상한)).
+const T579_CAP_HOUSE = process.env.T579_CAP_HOUSE !== '0';
+function _terrCap(vil) {
+  const VL = _lifeVL(), pop = (vil.econ && vil.econ.npcs && vil.econ.npcs.length) || 0;
+  return Math.ceil(pop * (VL.LAND_NEED + (T579_CAP_HOUSE ? VL.LOT_PER_HEAD : 0)));
+}
+//   상한이 지금 영토를 묶고 있나(계측 전용 — 집터 빈손을 "상한 탓"으로 가르는 데만 쓴다 · 판정 0)
+function _terrCapBound(vil) {
+  if (!T538_TERR_CAP || !vil || !vil.econ || vil.econ.founder || !vil._terrSet) return false;
+  const land = vil.econ.land; if (!land || !land.size) return false;
+  const tt = _lifeVL().territoryTarget(land.size, vil.econ.housing || 0), target = T230_TERR_HOUSING ? tt.target : tt.econ, cap = _terrCap(vil);
+  return cap < target && vil._terrSet.size >= cap;
+}
 // ★★[T569 2026-10-02 · 재민 "어촌2랑 임업6이 겹쳐 있다 · 인접하면 상대 영토로는 확장 못 하고 반대쪽으로 자라겠지?"] **마을 땅은 한 마을 것.**
 //   서울 사본(day 3341): 두 마을 이상이 가진 영토 셀 38,032(쌍 8) · 다른 마을 집 부지와 겹친 집 82쌍 — `_terrGrow` 후보가 `own`·`isBlocked` 만 보고
 //   남의 `_terrSet` 을 안 봤고, 집터 술어는 제 마을 집 간격만 봤다.
@@ -2999,7 +3015,7 @@ function _terrGrow(vil) {
   const land = vil.econ && vil.econ.land; if (!land || !land.size) return 0;
   const _tt = _lifeVL().territoryTarget(land.size, (vil.econ && vil.econ.housing) || 0);
   let target = T230_TERR_HOUSING ? _tt.target : _tt.econ;
-  if (T538_TERR_CAP && !vil.econ.founder) target = Math.min(target, ((vil.econ.npcs && vil.econ.npcs.length) || 0) * _lifeVL().LAND_NEED);   // ★[T559 ⓪] 유저 마을은 상한 밖
+  if (T538_TERR_CAP && !vil.econ.founder) target = Math.min(target, _terrCap(vil));   // ★[T559 ⓪] 유저 마을은 상한 밖 · ★[T579] 상한 = 인구 × (밭 + 집 부지)
   if (vil._terrSet.size >= target) return 0;
   const ta = state.ta, own = vil._terrSet, ccx = vil.ccx, ccy = vil.ccy;
   const fertW = 3.5, compactW = 0, distW = 0.1;
@@ -4773,7 +4789,7 @@ const _lifeSub = { crop: 0, hunter: 0, granAdd: 0, cropDay: 0, gran: 0, pids: 0,
 //   ⓐ 집터 탐색이 하루 몇 번 돌고 몇 번 **빈손**인가 ⓑ 교역로 A* 콜드 미스가 몇 번·얼마인가
 //   ⓒ 광맥 셀 스캔(콜드)이 몇 번·얼마인가. 전부 세기만 한다.
 const _probe = { siteLog: [], auditN: 0, auditBad: 0, auditFirst: '', siteCall: 0, siteHit: 0, siteSkip: 0, siteMs: 0, siteMax: 0, siteVils: new Set(),
-                 terrGrowDays: 0, terrGrowCells: 0, siteCand: 0, siteScan: 0, siteReason: {},
+                 terrGrowDays: 0, terrGrowCells: 0, siteCand: 0, siteScan: 0, siteReason: {}, siteMissCap: 0, siteMissFree: 0,   // ★[T579] 빈손을 상한 탓 / 아님으로 가른다(계측 전용)
                  routeCold: 0, routeColdPrimed: 0, routeMs: 0, routeMax: 0, routeHit: 0, routeClear: 0,
                  // ★[T85] 재개형 A* — 판 횟수 · **한 조각 최댓값**(이게 예산 안에 드는지가 이 카드의 수다) ·
                  //   슬롯을 빼앗겨 버린 중간 상태 수 · 캐러밴이 길을 기다린 조각 수.
@@ -4781,7 +4797,7 @@ const _probe = { siteLog: [], auditN: 0, auditBad: 0, auditFirst: '', siteCall: 
                  oreCold: 0, oreMs: 0, oreMax: 0,
                  fishDrawn: 0, fishDrawDays: 0 };   // ★[T60 ②] NPC 어획이 실제로 깎은 stock 누계(계측)
 function probeStats() { return { siteLog: _probe.siteLog.slice(-400), auditN: _probe.auditN, auditBad: _probe.auditBad, auditFirst: _probe.auditFirst, siteMemo: LIFE_SITE_MEMO, siteRescanDays: LIFE_SITE_RESCAN_DAYS, siteSkip: _probe.siteSkip, terrGrowDays: _probe.terrGrowDays, terrGrowCells: _probe.terrGrowCells,
-  siteCand: _probe.siteCand, siteScan: _probe.siteScan, siteReason: _probe.siteReason, siteCall: _probe.siteCall, siteHit: _probe.siteHit, siteMiss: _probe.siteCall - _probe.siteHit,
+  siteCand: _probe.siteCand, siteScan: _probe.siteScan, siteReason: _probe.siteReason, siteCall: _probe.siteCall, siteHit: _probe.siteHit, siteMiss: _probe.siteCall - _probe.siteHit, siteMissCap: _probe.siteMissCap, siteMissFree: _probe.siteMissFree, capHouse: T579_CAP_HOUSE,
   siteMs: _probe.siteMs, siteMax: _probe.siteMax, siteVils: _probe.siteVils.size,
   routeCold: _probe.routeCold, routeColdPrimed: _probe.routeColdPrimed, routeMs: _probe.routeMs, routeMax: _probe.routeMax, routeHit: _probe.routeHit, routeClear: _probe.routeClear,
   pathJobs: _probe.pathJobs, pathSliceMax: _probe.pathSliceMax, pathChunkMax: _probe.pathChunkMax, pathDrop: _probe.pathDrop, pathWait: _probe.pathWait, pathStepNodes: PATH_STEP_NODES,
@@ -5916,6 +5932,7 @@ function lifeDebug() {   // ★[직접 서버 디버깅 — 사용자 요청] zo
       //   econCounts=econ이 정한 직업 수(simJob의 원천 — 여기가 농부 0이면 생활층 문제가 아니라 econ 결과),
       //   actN/actPct=액션 라벨 가시성.
       terr: vil._terrSet ? vil._terrSet.size : 0, terrBf: vil._terrBackfilled ? 1 : 0,
+      houses: vil._houseCells ? vil._houseCells.length : 0, econPop: (vil.econ && vil.econ.npcs) ? vil.econ.npcs.length : 0, terrCap: (vil.econ && !vil.econ.founder) ? _terrCap(vil) : null, capBound: _terrCapBound(vil) ? 1 : 0,   // ★[T579] 계측 전용
       pot: vil._potSet ? vil._potSet.size : 0, gran: vil._granList ? vil._granList.length : 0,
       granStock: vil._granStock ? [...vil._granStock.values()].reduce((a, b) => a + b, 0) : 0,   // ★곳간② 물리 장부 합(회계 아님)
       // ★[LIFE_* 튜닝 계측] 오늘 진행분(m*)과 어제 확정치(d*) — 개간 셀·건설 단계·작물 태스크.
@@ -7663,7 +7680,7 @@ function _lifeAddHouseSite(vil) {   // 랩 addHouseSite 동형(서버판): 2패�
   finally {
     const d = Date.now() - _pt0; _probe.siteMs += d; if (d > _probe.siteMax) _probe.siteMax = d;
     vil._siteDirty = false;
-    if (vil._site) { _probe.siteHit++; vil._siteMissDay = null; } else { vil._siteMissDay = _day; }
+    if (vil._site) { _probe.siteHit++; vil._siteMissDay = null; } else { vil._siteMissDay = _day; if (_terrCapBound(vil)) _probe.siteMissCap++; else _probe.siteMissFree++; }
   }
 }
 function _lifeAddHouseSiteInner(vil) {
