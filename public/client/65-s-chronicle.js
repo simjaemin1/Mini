@@ -67,6 +67,8 @@ const CHRON_TYPE_EMO = {
   RESCUED: 'hand',
   // ★[T572 2026-10-03] 사람 줄어듦의 끝 — 해체(도적이 됐다) · 빈 마을. 아직 임자 없는 두 그림(④ — 겹치면 같은 얼굴).
   DISSOLVED: 'warn', EMPTIED: 'close',
+  // ★[T590 2026-10-03] 굶어 죽음 — 사람 한 몸(`body`). 아직 임자 없는 그림(④ — `people` 은 POP_COLLAPSE · `heart` 는 TRADER_KILLED).
+  STARVED: 'body',
 };
 function chronIcon(it) { return uiIcon((it && CHRON_TYPE_EMO[it.type]) || 'scroll', 16); }
 

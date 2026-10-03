@@ -865,32 +865,179 @@ function spawnOneNpc(vil) {
   vil.npcPids.push(p.pid);
   return p;
 }
-function removeOneNpc(vil) {
-  const { players, npcs, broadcast } = state.deps;
-  // 가장 최근 스폰부터(완만 감소). ★[P3 삼중 코히런스] 출정(징발·_muster) 중 병사는 인구감소 대상에서 제외 —
-  //   캐러밴(simCaravan) 동형: 전쟁 실체가 소유한 pid는 syncVillagePop이 안 건드림(사상 despawn은 _warEndFight가
-  //   샘플 타겟, 생존은 귀환 그룹이 해제). war 종결 후 syncVillagePop이 econ 진실로 재수렴.
-  for (let i = vil.npcPids.length - 1; i >= 0; i--) {
-    const pid = vil.npcPids[i];
-    if (!players.has(pid)) { vil.npcPids.splice(i, 1); continue; } // stale(핸드오프 등) 청소
-    const p = players.get(pid);
-    if (p && p._muster) continue; // ★출정 병사 보호(위 주석)
-    vil.npcPids.splice(i, 1);
-    players.delete(pid);
-    npcs.delete(pid);
-    broadcast({ type: 'player_left', pid });
-    return true;
+// ═══ ★★★[T590 2026-10-03 · 세션3 · 일관성 캐논 "순간 소멸·추상 금지"] **몸이 econ 수의 그림자가 아니다** ═══════════════
+//   종전: econ 인구가 줄면 `removeOneNpc` 가 **가장 최근에 선 몸**을 그 자리에서 지웠다(`player_left` · 시체 0 · 그 사람이 아닐 수 있다).
+//   굶어 죽든 · 늙어 죽든 · 도적이 되어 떠나든 · 길에서 죽든 다 같은 한 줄이었다(T577 §2-2 · 회부 4).
+//   이제 몸 수가 econ 수를 따라갈 때 **사람이 왜 줄었나**(까닭 줄 `vil._bxQ`)를 보고 몸이 **몸으로** 줄어든다:
+//     ⓐ 그 자리에서 죽음(`died`) — econ 인구식이 뺀 사람(`_deadTot` 증분 · 읽기만). 기근 날(`villageFamine` = econ 의 `_dpDebug.hunger < 0` ·
+//        T159 그 술어)이면 `starve`, 아니면 `old`(늙음·병·추위·붐빔 — 인구식의 나머지 항). 죽는 몸 = 명부 **맨 앞**(가장 먼저 선 몸 —
+//        econ 이 죽는 사람을 **가장 늙은 이부터** 고르는 그 규칙의 몸 쪽 거울 · 새 규칙 0). ⚠"가장 굶은 몸"은 몸 층에 없다 —
+//        NPC 허기·갈증은 존이 매 틱 채운다(`zone.js _gaugeStep` "NPC 전면 면제 — 식량은 econ 소유") ⇒ 몸에 굶음의 차이가 없다(보고 §2).
+//        몸은 **선 그 칸에서** 멈추고(AI 끔) · 짐 절반을 그 자리에 떨군다(플레이어 죽음 캐논의 낙하 · zone `_deathDrop` 그 문) ·
+//        쓰러진 몸 그림(`isDown` · `player_down_state` — 쓰러짐의 그 그림 · 새 메시지 0)으로 **한동안 누워 있다**.
+//        얼마나 — 사람 시신 문법이 없다(플레이어는 깨어난다) ⇒ 짐승 시신의 그 값(zone `CORPSE_DECAY_MS` · deps `corpseMs`)을 빌린다 · **값은 회부**.
+//        구조 창은 0(`downedAt` 0 — `tryRescue` 가 "구조 가능 시간이 지났습니다"로 막는다) · 굶어 죽음은 장부에 한 줄(`STARVED` · 아래 `noteStarved`).
+//     ⓑ 걸어서 나감(`walk`) — 도적 전환(`bandit` · `formGang`) · 절망 이탈(`desert`) · [T577 ⓐ 후보 `move`]. 떠나는 몸 = 명부 **맨 뒤**(종전 그 몸 —
+//        econ 은 무작위로 뽑는다 · 몸과 사람의 짝은 없다). 몸은 **은거지(그 단의 `camp`)까지 걷는다** — 캐러밴 몸 문법 그대로:
+//        길 = 코스 A*(`computeRoutePts` — 교역로·전쟁 행군이 쓰는 그 문) · 폴리라인 = `setBodyPts`/`caravanPointAt` · 존 이동 루프 제외 = `simCaravan`
+//        (단일 작성자 계약) · 걸음 = 존 `moveSpeed`(T341 짐 수의 그 걸음). 닿으면 단 안으로 든다(회수 — 캐러밴 완주 회수 그 문법 · 단의 몸은 bandits 가 세운다).
+//     ⓒ 그 밖(`other`) — 집 밖에서 잃은 사람: 토벌 원정 전사(`expedition` → 그 소굴로) · 행상 피살(`road` · `tradersKilled` 증분) ·
+//        까닭을 모르는 몫(`unknown` — 호위 전사 · 전쟁 표본 밖 · 포로). 그 사람은 집에 없었다(캐러밴·원정은 몸이 따로 있다 = 이중 표현) ⇒
+//        집에 서 있던 몸은 **마을 밖으로 걸어 나간다**(목적지가 있으면 거기 · 없으면 마을 가장자리 `_maxRPx` 너머) — 순간 소멸 0 · 이중 표현은 회부.
+//   ⚠까닭 줄은 **그날 몸이 따라잡을 몫만큼만** 쓴다 — 몸이 econ 에 닿으면(출생과 상쇄) 남은 까닭은 버린다. 하루 상한(`POP_SYNC_PER_DAY`)은 그대로.
+//   ⚠econ 무접촉(읽기만 — `_deadTot` · `tradeStats.tradersKilled` · `_dpDebug`) · 새 수 0 · 주사위 0 · 늘 때(`spawnOneNpc`)는 무변.
+//   ⚠출정 병사(`_muster`)는 종전처럼 건너뛴다 — 전쟁 실체가 그 몸을 쥔다(전사 표본은 `_warDespawnPid` 가 전장에서 거둔다 · 표 §1).
+const BX_CAT = { starve: 'died', old: 'died', bandit: 'walk', desert: 'walk', move: 'walk', expedition: 'other', road: 'other', unknown: 'other' };
+const _bx = { died: { starve: 0, old: 0 }, walk: { bandit: 0, desert: 0, move: 0 }, other: { expedition: 0, road: 0, unknown: 0 },
+              rot: 0, arrive: 0, straight: 0, lost: 0, vanish: 0, noted: 0, trimmed: 0 };
+function _bxMap() { return state.bodyExits || (state.bodyExits = new Map()); }
+// 까닭 한 줄 — 도적 층(`bandits.js` — 호스트 `noteBodyExit`)과 아래 관측이 같은 줄에 쓴다. `toCell` = 은거지 칸 · `toVil` = 옮겨 갈 마을(T577 ⓐ).
+function noteBodyExit(vil, kind, n, toCell, toVil) {
+  if (!vil || !(n > 0) || !BX_CAT[kind]) return;
+  const q = vil._bxQ || (vil._bxQ = []);
+  const note = { k: kind, n: n | 0 };
+  if (toCell && toCell.cx != null) note.to = { x: toCell.cx * SZ + SZ / 2, y: toCell.cy * SZ + SZ / 2 };
+  if (toVil && toVil.econ) note.vil = toVil;
+  q.push(note);
+  _bx.noted += n | 0;
+}
+// econ 이 지난번 뒤로 뺀 사람 — 인구식 죽음(`_deadTot`)과 행상 피살(`tradersKilled`)의 **증분**(읽기만). 처음 보는 마을은 기준만 심는다.
+function _bxObserve(vil) {
+  const e = vil && vil.econ; if (!e) return;
+  const dead = +e._deadTot || 0, kill = +((e.tradeStats && e.tradeStats.tradersKilled) || 0);
+  if (!vil._bxSeen) { vil._bxSeen = { dead, kill }; return; }
+  const dd = dead - vil._bxSeen.dead, dk = kill - vil._bxSeen.kill;
+  if (dd > 0) noteBodyExit(vil, villageFamine(vil) ? 'starve' : 'old', dd);
+  if (dk > 0) noteBodyExit(vil, 'road', dk);
+  vil._bxSeen.dead = dead; vil._bxSeen.kill = kill;
+}
+function _bxTake(vil) {   // 까닭 줄 머리에서 한 사람 몫(없으면 `unknown`)
+  const q = vil._bxQ;
+  if (!q || !q.length) return { k: 'unknown' };
+  const h = q[0];
+  if (--h.n <= 0) q.shift();
+  return { k: h.k, to: h.to || null, vil: h.vil || null };
+}
+// 떠나는 몸이 갈 곳 — 은거지 · 옮겨 갈 마을 · 그 밖은 마을 가장자리(회관 → 몸 방향 · 몸이 회관 위면 가장 가까운 이웃 마을 쪽).
+function _bxDest(vil, p, w) {
+  if (w.to) return { x: w.to.x, y: w.to.y };
+  const cx = vil.ccx * SZ + SZ / 2, cy = vil.ccy * SZ + SZ / 2;
+  if (w.vil) return { x: w.vil.ccx * SZ + SZ / 2, y: w.vil.ccy * SZ + SZ / 2, vil: w.vil };
+  let dx = p.x - cx, dy = p.y - cy, d = Math.hypot(dx, dy);
+  if (d < 1) {
+    let best = null, bd = Infinity;
+    for (const o of state.villages) { if (o === vil) continue; const od = Math.hypot(o.ccx - vil.ccx, o.ccy - vil.ccy); if (od < bd) { bd = od; best = o; } }
+    if (best) { dx = best.ccx - vil.ccx; dy = best.ccy - vil.ccy; d = Math.hypot(dx, dy); }
+    if (!(d > 0)) { dx = 0; dy = 1; d = 1; }
   }
-  return false;
+  const R = vil._maxRPx || Math.round((PV_TERR_R + 3) * SZ);
+  return { x: cx + dx / d * R, y: cy + dy / d * R };
+}
+function _bxQuiet(p) {   // 생활층·사냥의 손을 놓게 한다(그 몸은 이제 일하지 않는다)
+  p._lifeTask = null; p._granTask = null; p._huntOn = false; p._workT = null;
+  p.vx = 0; p.vy = 0;
+}
+// ⓐ 그 자리에서 죽는다
+function _bxDie(vil, p, w) {
+  const { npcs, broadcast } = state.deps;
+  const now = Date.now();
+  npcs.delete(p.pid);                    // 결정 문을 닫는다(AI 끔)
+  _bxQuiet(p);
+  p.simCaravan = true;                   // 이동 문도 닫는다(단일 작성자 — 누운 몸은 안 움직인다)
+  try { if (state.deps.deathDrop) state.deps.deathDrop(p); } catch (e) {}   // 낙하 — 플레이어 죽음 캐논의 그 문(짐 kg 절반 · 입은 것은 몸에)
+  p.hp = 0;
+  p.isDown = true; p.downedAt = 0;       // 쓰러진 몸 그림 · 구조 창 0
+  p._bxExit = 'died';
+  try { broadcast({ type: 'player_down_state', pid: p.pid, isDown: true, why: 'down' }); } catch (e) {}
+  const ms = Math.max(0, +(state.deps.corpseMs || 0));
+  _bxMap().set(p.pid, { pid: p.pid, vid: vil.dbId, k: w.k, cat: 'died', t0: now, until: now + ms });
+  _bx.died[w.k]++;
+  if (w.k === 'starve') noteStarved(vil);
+}
+// ⓑⓒ 걸어서 나간다
+function _bxWalk(vil, p, w) {
+  const { npcs } = state.deps;
+  const now = Date.now();
+  npcs.delete(p.pid);
+  _bxQuiet(p);
+  p.simCaravan = true;                   // 존 이동 루프 제외 — 위치는 아래 걸음이 쓴다(캐러밴 몸 문법)
+  const dst = _bxDest(vil, p, w);
+  let pts = null;
+  if (dst.vil) { try { const r = getRoute(vil, dst.vil); if (r && r.length) pts = [{ x: p.x, y: p.y }, ...r]; } catch (e) { pts = null; } }
+  else { try { pts = computeRoutePts(p.x, p.y, dst.x, dst.y); } catch (e) { pts = null; } }
+  if (!pts || pts.length < 2) { pts = [{ x: p.x, y: p.y }, { x: dst.x, y: dst.y }]; _bx.straight++; }   // 길을 못 찾았다 — 직선(캐러밴 경로 실패 폴백 그 문법)
+  const cat = BX_CAT[w.k] || 'other';
+  const rec = { pid: p.pid, vid: vil.dbId, k: w.k, cat, t0: now };
+  setBodyPts(rec, pts);
+  p._bxExit = cat;
+  _bxMap().set(p.pid, rec);
+  _bx[cat][w.k]++;
+}
+function _bxGone(rec, p) {   // 다 누웠다 · 다 걸었다 — 회수(캐러밴 완주 회수 그 문법)
+  const { players, npcs, broadcast } = state.deps;
+  if (p && players.has(rec.pid)) { players.delete(rec.pid); npcs.delete(rec.pid); try { broadcast({ type: 'player_left', pid: rec.pid }); } catch (e) {} }
+  if (state.bodyExits) state.bodyExits.delete(rec.pid);
+}
+// 30Hz — 누운 몸의 시간 · 걷는 몸의 걸음(캐러밴 실체 틱 곁 · 마감 중엔 같이 멈춘다)
+function tickBodyExits(now) {
+  const M = state.bodyExits;
+  const dtMs = Math.min(500, Math.max(1, now - (state._bxTickAt || now)));
+  state._bxTickAt = now;
+  if (!M || !M.size) return;
+  const players = state.deps.players;
+  const sp = ((state.deps && state.deps.moveSpeed) || 0) / 1000;   // px/ms — 존 걸음 정본
+  for (const [pid, r] of [...M]) {
+    const p = players.get(pid);
+    if (!p) { M.delete(pid); _bx.lost++; continue; }               // 다른 문이 거뒀다(핸드오프 등)
+    if (r.cat === 'died') { if (now >= r.until) { _bxGone(r, p); _bx.rot++; } continue; }
+    if (!(sp > 0)) continue;                                       // 걸음 정본이 없는 판(하네스 목) — 서 있는다
+    if (!(p.hp > 0)) { p.vx = 0; p.vy = 0; continue; }             // 길에서 늑대 등에 쓰러졌다 — 깨면 폴리라인으로 돌아온다(캐러밴 그 줄)
+    const remain = r.len - r.prog;
+    if (remain <= 0.5) { _bxGone(r, p); _bx.arrive++; continue; }
+    const step = Math.min(remain, sp * dtMs);
+    const next = caravanPointAt(r, r.prog + step);
+    r.prog += step;
+    p.vx = (next.x - p.x) / dtMs * 1000; p.vy = (next.y - p.y) / dtMs * 1000;
+    p.x = next.x; p.y = next.y;
+  }
+}
+function bodyExitStats() {
+  let lying = 0, walking = 0;
+  if (state.bodyExits) for (const r of state.bodyExits.values()) { if (r.cat === 'died') lying++; else walking++; }
+  return JSON.parse(JSON.stringify(Object.assign({}, _bx, { lying, walking })));
+}
+// 몸 하나를 줄인다 — 까닭 `why`(`_bxTake` 한 몫 · 없으면 `unknown`)에 따라 그 자리에서 죽거나 걸어서 나간다.
+//   ★[P3 삼중 코히런스] 출정(징발·_muster) 중 병사는 대상에서 제외 — 전쟁 실체가 그 pid 를 쥔다(종전 그대로).
+function removeOneNpc(vil, why) {
+  const { players } = state.deps;
+  const w = (why && BX_CAT[why.k]) ? why : { k: 'unknown' };
+  const front = BX_CAT[w.k] === 'died';
+  let idx = -1;
+  for (let j = 0; j < vil.npcPids.length; j++) {
+    const i = front ? j : vil.npcPids.length - 1 - j;
+    const pid = vil.npcPids[i];
+    const p = players.get(pid);
+    if (!p || p._muster || p._bxExit) continue;
+    idx = i; break;
+  }
+  if (idx < 0) { vil.npcPids = vil.npcPids.filter((pid) => players.has(pid)); return false; }   // 남은 게 전부 출정 — 종전처럼 멈춘다(stale 청소 포함)
+  const pid = vil.npcPids[idx];
+  vil.npcPids.splice(idx, 1);
+  const p = players.get(pid);
+  if (BX_CAT[w.k] === 'died') _bxDie(vil, p, w); else _bxWalk(vil, p, w);
+  return true;
 }
 function syncVillagePop(vil, maxDelta) {
   // stale 청소 — ★_muster(출정 중) pid는 players 에 남아 있어 필터 통과(제외 안 됨). 감소(removeOneNpc)도 _muster 스킵.
   //   목표 인구는 econ.npcs.length(진실) 추종: 출정 병사도 npcPids 에 남아 카운트되므로 전쟁 중 스폰 폭주 없음.
   vil.npcPids = vil.npcPids.filter(pid => state.deps.players.has(pid));
+  _bxObserve(vil);   // ★[T590] econ 이 줄인 까닭(읽기만)
   const target = Math.min(vil.econ.npcs.length, NPC_CAP_PER_VILLAGE);
   let delta = target - vil.npcPids.length;
   if (delta > 0) for (let i = 0; i < Math.min(delta, maxDelta); i++) spawnOneNpc(vil);
-  else if (delta < 0) for (let i = 0; i < Math.min(-delta, maxDelta); i++) { if (!removeOneNpc(vil)) break; } // 남은 게 전부 _muster면 중단(reconverge는 종전 후)
+  else if (delta < 0) for (let i = 0; i < Math.min(-delta, maxDelta); i++) { if (!removeOneNpc(vil, _bxTake(vil))) break; } // 남은 게 전부 _muster면 중단(reconverge는 종전 후)
+  // ★[T590] 몸이 econ 에 닿았으면 남은 까닭은 출생과 상쇄된 몫이다 — 버린다(내일 다른 몸에 붙지 않게).
+  if (vil._bxQ && vil._bxQ.length && vil.npcPids.length <= target) { for (const h of vil._bxQ) _bx.trimmed += h.n; vil._bxQ.length = 0; }
 }
 
 // =============================================================================
@@ -5154,6 +5301,8 @@ function onGameTick(now) {
     // Stage 4B: 캐러밴 실체 30Hz 전진 — zone.js idle 존 스킵보다 앞(호출 위치)이라 무인 존에서도 econ과 동행.
     //   도착 임박 가드가 아래 경계 econ 틱보다 먼저 돌아 'econ이 몸을 앞지르는' 순서 역전이 없다.
     try { tickCaravanBodies(now); } catch (e) { console.error(`[${state.zoneId}] 🐂 캐러밴 실체 틱 실패:`, e.message); }
+    // ★[T590] 줄어드는 몸 — 누운 몸의 시간 · 걸어 나가는 몸의 걸음(캐러밴 곁 · 같은 마감 정지)
+    try { tickBodyExits(now); } catch (e) { console.error(`[${state.zoneId}] 🪦 줄어드는 몸 틱 실패:`, e.message); }
     // P2: 실체 전투 30Hz 스텝 — 캐러밴 직후(설계 위치). 무인 존에서도 진행 중 전투 완주(idle 스킵보다 앞).
     try { tickWarBodies(now); } catch (e) { console.error(`[${state.zoneId}] ⚔️ 실체 전투 틱 실패:`, e.message); }
   }
@@ -5540,6 +5689,7 @@ function __p3Bind(mock) {
   Object.assign(state, mock);
   return {
     state, tickWarBodies, warThreats, syncVillagePop, removeOneNpc, spawnOneNpc,
+    noteBodyExit, tickBodyExits, bodyExitStats, _starvedToday,   // ★[T590] 줄어드는 몸 — 하네스(`test-body-exit`)가 운영과 같은 문을 부른다
     _warEngage, _warAfterDaily, _warEndFight, _warBuildRectIndex, _warBlockedCell, _warWorld, warPerf, _warOrderFallback, _warToStandoff,
     _warDraftPids, _warReleasePid, econDayToMs, _warEnsureBody, _warSampleComp, _vbFootprint,
     threatOf, _warWriteThreats, _warOutMul, _lifeJobSites, _lifeJobSiteOK, _warRoutePts, _warTreeCell, computeRoutePts,
@@ -5571,6 +5721,7 @@ function banditHost() {
     spawnNpc: state.deps && state.deps.spawnNpc,
     players: state.deps && state.deps.players,
     npcs: state.deps && state.deps.npcs,
+    noteBodyExit,                                    // ★[T590] 사람이 줄어든 까닭 — 해체·이탈·원정 전사(몸이 걸어 나갈 곳 · 위 T590 머리글)
     seed: state.villageSeed || 1020,
     cellsW: ZONE ? Math.ceil(ZONE.zoneWidth / SZ) : 0,
     cellsH: ZONE ? Math.ceil(ZONE.zoneHeight / SZ) : 0,
@@ -10069,12 +10220,23 @@ function noteRescue(vid, by, magRemain) {
 }
 function _rescuesToday() { const out = _evRescues.slice(); _evRescues.length = 0; return out; }
 
+// ★★[T590 2026-10-03] **굶어 죽음** — 구조와 **같은 자리·같은 문법**이다. 장부는 굶음도 죽음도 모른다;
+//   몸 층이 기근 날(`villageFamine`) 그 자리에서 죽은 몸을 여기 한 줄 남기고 하루 경계에 장부가 가져간다.
+//   ⚠몸 하나마다 넘긴다 — 연표에 몇 줄을 남길지(에지)는 **장부가** 정한다(검출기 상태는 장부 안에만 산다 · events.js 제1 규약).
+const _evStarved = [];
+function noteStarved(vil) {
+  if (!vil || vil.dbId == null) return;
+  if (_evStarved.length < 256) _evStarved.push({ vid: vil.dbId | 0 });
+}
+function _starvedToday() { const out = _evStarved.slice(); _evStarved.length = 0; return out; }
+
 function _scanEventsDaily() {
   if (!state.ledger) return;
   const t0 = Date.now();
   try { _noteTradeDays(state.world); } catch (e) {}   // ★[T577 ④] 마지막 교역일 — 장부와 같은 하루 경계
   const evs = state.ledger.scanDay(state.world, state.world.day, { caravanDelays: _caravanDelaysToday(), builds: _buildsToday(),
     rescues: _rescuesToday(),                                      // ★[T119] 구조 — 완공과 같은 자리
+    starved: _starvedToday(),                                      // ★[T590] 굶어 죽음 — 구조와 같은 자리
     winter: Winter.dailyExtra(state.world.day, state.villages) });   // ★[T20] 겨울나기 — 공표(가을 첫날)·판정(겨울 첫날)
   // 의뢰 진척 저장은 납품 시점에 한다(여기선 게시/철회만 — onRequest 훅이 이미 했다).
   if (state.world.day % 30 === 0) {
@@ -10662,6 +10824,7 @@ module.exports = { fishPerf, woodPerf, foragePerf, farmPerf,   // ★[T316] `/pe
   shelterOf, hasShelter, addShelter, ensureShelter, pickShelterSpot, villageOfCell,   // ★[T62] 공용 쉼터 — 좌표 정본 하나
   cropAtCell,   // ★[T91 · T79c 회부 1] 그 칸의 작물 — claim 페이로드가 이걸 싣는다(사본 0)
   playerVillageWithdraw, playerVillageWithdrawStock, villageWithdrawGate,   // ★[T11] 곳간 인출 — 납품의 역연산(같은 표·같은 환산율)
+  bodyExitStats, noteBodyExit, tickBodyExits,   // ★[T590] 줄어드는 몸 — 판 자(`t577-server-hook`)가 까닭별 수를 읽는다 · 하네스가 같은 문을 부른다
   villageFamine, playerVillageDepositMap,   // ★[T159] 기근 판정(엔진 판단을 읽는다) · 품목→재화 대응표
   playerVillageWithdrawStockFoodEq, _countsAsFoodEq,   // ★[T20-ⓑ] 한도의 밑변 = econ 식량 등가(보존식 포함)
   // ★[2026-08-25 사건 레이어] 촌장 브리핑 · 게시판 · 납품 — zone.js 핸들러가 소비

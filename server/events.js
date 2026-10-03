@@ -88,6 +88,7 @@
 //     WINTER_SHORT    mag = 같은 달성률 (<1)
 //     DISSOLVED       mag = 남은 인구 ÷ 그 마을 인구 최고치(`_bdtPeak`)  [T572] — 도적 층이 econ 에 세우는 `_banditized` 의 에지
 //     EMPTIED         mag = 1 (이상이 아니라 일 — 마지막 사람이 사라진 날)  [T572]
+//     STARVED         mag = 1 (이상이 아니라 일 — 그 계절 그 마을에서 처음 굶어 죽은 몸)  [T590] — 몸 층이 넘긴 것만
 //   ⚠**sev 로만 정렬하면 이 일곱은 영원히 안 보인다.** 흉년은 sev 0.36 이고 소금값 9배는 2.2 라,
 //     한 자로 재면 촌장은 흉년 대신 소금값을 말한다. 그게 T18 회부 A-1 의 내용이고 이 배치가 온 이유다.
 //   ⇒ 정렬·연표 자격은 **`heavier()` 하나**를 통한다: 일이 먼저 서고, 그 안에서 sev 로 견준다.
@@ -210,11 +211,16 @@ const TYPES = ['STOCK_SHORTAGE', 'STOCK_GLUT', 'PRICE_SPIKE', 'PRICE_DROP', 'CAR
   //   둘 다 **이미 세계에 있는 일**의 에지를 읽는다(각본 0 · 새 수 0):
   //   `DISSOLVED` = 도적 층(`server/bandits.js` 해체 전환)이 econ 에 세우는 `_banditized` 가 선 날 — 남은 사람들이 마을을 버리고 도적단이 됐다.
   //   `EMPTIED`   = econ 인구(`npcs`)가 0 이 된 날 — 어제까지 사람이 있었고 오늘 없다(죽음이든 떠남이든 끝은 하나다).
-  'DISSOLVED', 'EMPTIED'];
+  'DISSOLVED', 'EMPTIED',
+  // ★[T590 2026-10-03] **굶어 죽음** — 몸 층(`villages.js` T590)이 기근 날(`villageFamine` = econ `_dpDebug.hunger < 0`) 그 자리에서 죽은 몸을 넘긴다.
+  //   구조(`RESCUED`)와 같은 자리·같은 문법(호스트가 넘긴 것만 · 랩엔 몸이 없어 구조적으로 0 건 — 각본 0).
+  //   ★에지 = **그 마을 그 계절의 첫 몸 하나**(계절 = 연표의 축 · 새 수 0). 몸마다 적으면 기근 한 철이 연표 다섯 칸을 덮어
+  //     같은 철의 `EMPTIED`·`DISSOLVED` 가 잘린다(`CHRON_PER_SEASON` · 일 유형은 sev 로 견준다 — 보고/T590 §2).
+  'STARVED'];
 // ★★[T50] **"일" 유형** — 값의 이탈이 아니라 일어난 일. 정렬에서 먼저 서고, 연표 sev 문턱을 면제받는다.
 //   면제의 근거는 **드묾**이다(실측 3.3%). 이 목록에 흔한 유형을 넣으면 그 순간 연표가 그것으로 덮인다.
 const DEED_TYPES = String(process.env.EV_DEED_TYPES
-  || 'HARVEST_BOON,HARVEST_BLIGHT,WEATHER,POP_COLLAPSE,CARAVAN_RAIDED,TRADER_KILLED,BUILT,FIRST_GOODS,WINTER_KEPT,WINTER_SHORT,RESCUED,DISSOLVED,EMPTIED')
+  || 'HARVEST_BOON,HARVEST_BLIGHT,WEATHER,POP_COLLAPSE,CARAVAN_RAIDED,TRADER_KILLED,BUILT,FIRST_GOODS,WINTER_KEPT,WINTER_SHORT,RESCUED,DISSOLVED,EMPTIED,STARVED')
   .split(',').map((x) => x.trim()).filter(Boolean);
 // ★이웃 마을에서 **여기까지 회자되는** 일. 날씨(573건 — 국지적이고 일주일이면 끝난다)·완공(남의 집)·
 //   첫 물건(남의 곳간)은 빠진다. 남는 것은 그 마을의 운과 사람과 길의 안부다.
@@ -822,6 +828,17 @@ function createLedger(opts) {
         mag: Math.max(0.01, Math.min(1, +r.mag || 0.01)), meta: null }], out);
     }
 
+    // ⑫ ★[T590] **굶어 죽음** — 호스트가 넘긴 것만(구조와 **같은 자리·같은 문법**). 장부는 굶음도 죽음도 판정하지 않는다 —
+    //    몸 층이 기근 날 그 자리에서 죽은 몸을 하나씩 넘길 뿐이다. ★에지는 여기서: 그 마을 그 계절의 **첫 몸만** 적는다
+    //    (계절 칸 열쇠 = 그 계절 첫날 — `chronicle` 이 묶는 그 칸 · 검출기 상태는 이 모듈 안 `s.starvK`).
+    for (const r of ((!cfg.DEEDS_OFF && extra && extra.starved) || [])) {
+      if (r == null || r.vid == null) continue;
+      const s = st(r.vid), c = calendarOf(day), k = day - (c.dayOfSeason - 1);
+      if (s.starvK === k) continue;
+      s.starvK = k;
+      commit(s, [{ day, vid: r.vid | 0, type: 'STARVED', item: null, mag: 1, meta: null }], out);
+    }
+
     // ⑦ 의뢰 — 부족 **래치**가 서 있으면 걸려 있고, 회복하면 거둔다(사건 에지가 아니라 상태)
     syncRequests(world, day);
 
@@ -1379,6 +1396,8 @@ const LINES = {
   //   ⚠㉝ 계약 — 다섯 필드로만. 남은 수·최고치는 `meta` 라 못 쓴다(그래서 수를 안 읊는다 — §3.2 톤과도 같다).
   DISSOLVED: () => '굶주림 끝에 남은 이들이 마을을 버리고 도적이 되었다네.',
   EMPTIED: () => '마을에 사람이 하나도 안 남았다네. 빈 움집만 서 있어.',
+  // ── ★[T590 2026-10-03] 굶어 죽음 — 다섯 필드로만(㉝) · 누가 몇이 아니라 일이 났다는 것(그 철 첫 몸)
+  STARVED: () => '끝내 굶어 죽은 이가 나왔다네.',
   RESCUED: (ev) => {
     const who = String(ev.item || '');
     if (!who || who === 'village') return '쓰러진 이를 마을 사람들이 쉼터로 옮겼다네.';

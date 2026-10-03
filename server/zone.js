@@ -4273,6 +4273,9 @@ SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, is
   // ★[T341] 재생 문 하나 + 걸음 속도 정본(하루 왕복 수를 생활층이 **유도**한다 · 64 를 옮겨 적지 않는다)
   t341Unharvest: (k) => _t341Unharvest(k),
   moveSpeed: MOVE_SPEED,
+  // ★★[T590] 줄어드는 몸 — 그 자리에서 죽는 주민이 짐을 떨구는 문(플레이어 죽음 캐논의 낙하 그 함수 · 사본 0) ·
+  //   누운 몸이 남는 시간(사람 시신 문법이 없어 짐승 시신의 그 값을 빌린다 — 값은 회부 · 보고/T590).
+  deathDrop: (p) => _deathDrop(p), corpseMs: CORPSE_DECAY_MS,
   t325CutTreeAt: (cx, cy) => _t325CutTreeAt(cx, cy),
   // ★[T325] 전리품 표는 존이 쥔다 — 생활층은 "이 그루가 목재 몇 낱개냐"만 묻는다(사본 0)
   t325LootOf: (r) => lootOfResource(r),
