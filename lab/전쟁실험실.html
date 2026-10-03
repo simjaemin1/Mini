@@ -793,6 +793,24 @@ if (process.env.T135_TREES !== '0') {
   RESOURCES.mulberry_fruit = { ...RESOURCES.fruit_berries, ko: '오디' };
 }
 
+// ══ ★★[T574 추신1 · 2026-10-03] **새 품목 후보 셋 — 기본 끔**(`T574_NEW_ITEMS=1` 일 때만 선다 · 재민이 값을 본 뒤 켬) ══════
+//   왜 손잡이 안인가: 위 T135 문단 그대로 — 품목표가 늘면 생산이 없어도 값과 교역이 움직인다. 끄면 이 셋은 **아예 없다**
+//   (끔 = 지금 글자 · 두 자 바이트 동일). 존 프로필(`region-profiles.js`)도 품목이 여기 없으면 굽지 않는다.
+//   ★값은 짓지 않는다 — T135 문법대로 **이미 있는 형제 항목을 편다**(추신1 "비슷한 기존 품목에서 끌어온다"). 다만 그 고름이
+//     새 판정이라 **재민 값**이다(보고 표 · 출처 한 줄씩):
+//       · 진사 `cinnabar`     = 수은 `mercury` 그대로(진사 = 수은의 원광 HgS · 무게 4.5 · 값 50 · 기여 production 0.3)
+//                               — 붉은 안료 쓰임(와카스기야마 · 야요이 무덤 칠)은 레시피 몫이라 여기 안 적는다(회부)
+//       · 사철 `iron_sand`    = 철 `iron` 그대로(철의 원광 — 정광 품위 비율은 이번 판 출처 미열람 · 1 로 둔다 · 약)
+//       · 조개 팔찌감 `shell_bangle` = 자색고둥 `murex_shell`(바다 · 낚시로 얻는 장신구·안료 원료 껍데기 · 무게 0.5)에
+//                               값·기여만 호박 원석 `amber_raw`(값 60 · prestige 0.8 — "옥 원석(80) 아래" 장신구 원석)
+//   ⚠econ 거래 표(v1 RESERVE_PC · v2 ELASTICITY/BASE_VALUE_V2/UTILITY/ORNAMENTAL)에는 **안 넣는다** — 옥처럼 econ 이 사고팔려면
+//     그 표들에 줄이 서야 한다(T574 보고 회부). 지금은 품목표에만 선다.
+if (process.env.T574_NEW_ITEMS === '1') {
+  RESOURCES.cinnabar = { ...RESOURCES.mercury, ko: '진사', emoji: '🔴' };
+  RESOURCES.iron_sand = { ...RESOURCES.iron, ko: '사철' };
+  RESOURCES.shell_bangle = { ...RESOURCES.murex_shell, ko: '조개 팔찌감', baseValue: RESOURCES.amber_raw.baseValue, contributes: { ...RESOURCES.amber_raw.contributes } };
+}
+
 // 카테고리별 통계 (확인용)
 function _summary() {
   const cats = {};
