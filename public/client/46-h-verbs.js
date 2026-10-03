@@ -373,7 +373,7 @@
       const t = pickAt(w.wx, w.wy, { live: true });
       // ★★[T507] **물 칸**이면 메뉴를 서버의 답으로 짓는다 — 민물이냐 짠물이냐는 서버 술어(`isSeaTileLocal`)가 가른다.
       //   클라의 `isWaterAtAbs` 는 "물이냐"(그리기용 거울)까지만 묻는다 — 짠물 판정을 여기 옮겨 적지 않는다.
-      if (t && t.kind === 'ground' && t507On() && ((typeof isWaterAtAbs === 'function' && isWaterAtAbs(t.absX, t.absY)) || (typeof isWellAtAbs === 'function' && isWellAtAbs(t.absX, t.absY)))) {   // ★[T557] 우물 칸도 물 메뉴(서버 `look` 이 민물이라 답한다)
+      if (t && t.kind === 'ground' && t507On() && ((typeof isWaterAtAbs === 'function' && isWaterAtAbs(t.absX, t.absY)) || (typeof isWellAtAbs === 'function' && isWellAtAbs(t.absX, t.absY)) || (typeof isStreamAtAbs === 'function' && isStreamAtAbs(t.absX, t.absY)))) {   // ★[T585] 개울 칸도 물 메뉴   // ★[T557] 우물 칸도 물 메뉴(서버 `look` 이 민물이라 답한다)
         verbLook(t.absX, t.absY, { cx: e.clientX, cy: e.clientY });
         return;
       }

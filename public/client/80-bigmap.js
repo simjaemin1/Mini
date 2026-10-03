@@ -53,6 +53,7 @@
     ore:      '#c4682a', // 큰 광맥(주인이 큰 광맥인 칸) — ★★자잘 광맥은 지도에 안 그린다(재민 확정 · 규칙과 말은 `server/bigmap-bake.js classAt`)
     mountain: '#8a8a8a', // 절차 존의 산(돌 배수 > 1.5)
     forest:   '#2a5a2a', // 숲(숲 배수 > 1.5)
+    stream:   '#80bee8', // ★[T585] 개울(건너는 얕은 물 · 랩 색) — 줌인 조각(1칸 = 1픽셀)에서 줄로 보인다 · 존 그림은 4×4 표본이라 점선
   };
   const OCEAN_COLOR = '#1a3a6a';
   const RIVER_LINE = 'rgba(120,176,232,0.9)';   // 강 중심선 — 물 칸 색과 **다른** 옅은 선(칸이 아니라 표식이다)
@@ -492,10 +493,10 @@
 
       // ★[T565] 범례 — 그림의 색이 무엇의 답인지(서버 팔레트) · 실시간 점 상태
       {
-        const items = [['바위', TILE_COLORS.rock], ['물', TILE_COLORS.water], ['다리', TILE_COLORS.bridge], ['광맥', TILE_COLORS.ore], ['숲', TILE_COLORS.forest], ['산', TILE_COLORS.mountain]];
+        const items = [['바위', TILE_COLORS.rock], ['물', TILE_COLORS.water], ['다리', TILE_COLORS.bridge], ['광맥', TILE_COLORS.ore], ['숲', TILE_COLORS.forest], ['산', TILE_COLORS.mountain], ['개울', TILE_COLORS.stream]];
         ctx.font = '11px sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
         let lx = 8; const ly = canvas.height - 12;
-        ctx.fillStyle = 'rgba(10,14,20,0.7)'; ctx.fillRect(4, ly - 10, 330, 20);
+        ctx.fillStyle = 'rgba(10,14,20,0.7)'; ctx.fillRect(4, ly - 10, 380, 20);
         for (const [n, c] of items) { ctx.fillStyle = c; ctx.fillRect(lx, ly - 5, 10, 10); ctx.fillStyle = '#dde'; ctx.fillText(n, lx + 13, ly); lx += 22 + ctx.measureText(n).width; }
         let nLive = 0, anyOff = false, anyOn = false;
         for (const L of _live.values()) { if (L.off) anyOff = true; else if (performance.now() - L.at <= LIVE_STALE_MS) { anyOn = true; nLive += L.players.length; } }

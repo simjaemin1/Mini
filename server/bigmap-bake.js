@@ -29,11 +29,11 @@
 const zlib = require('zlib');
 const crypto = require('crypto');
 
-const CLS = ['plain', 'water', 'rock', 'bridge', 'ore', 'mountain', 'forest'];
-const K = { plain: 0, water: 1, rock: 2, bridge: 3, ore: 4, mountain: 5, forest: 6 };
+const CLS = ['plain', 'water', 'rock', 'bridge', 'ore', 'mountain', 'forest', 'stream'];
+const K = { plain: 0, water: 1, rock: 2, bridge: 3, ore: 4, mountain: 5, forest: 6, stream: 7 };   // ★[T585] 개울 = 8번째(끝에 붙여 옛 번호 무변)
 // 색 = 종전 지도(80-bigmap `TILE_COLORS`) 그대로. 다리만 새 색이다(종전 지도는 다리를 안 그렸다).
 //   뭍 = 존 바탕색(`groundColor` — 종전 지도의 바탕 그대로).
-const COLORS = { water: '#1a3a6a', rock: '#6e6356', bridge: '#f2d492', ore: '#c4682a', mountain: '#8a8a8a', forest: '#2a5a2a' };
+const COLORS = { water: '#1a3a6a', rock: '#6e6356', bridge: '#f2d492', ore: '#c4682a', mountain: '#8a8a8a', forest: '#2a5a2a', stream: '#80bee8' };   // ★[T585] 개울 = 랩 rgb(128,190,232) — 큰 물(#1a3a6a)과 다른 연한 파랑
 const STEP = 4;
 const TILE = 64;
 const CELL = 32;
@@ -42,6 +42,7 @@ function classAt(q, tx, ty) {
   const x = tx * CELL + 16, y = ty * CELL + 16;
   if (q.rock(x, y)) return K.rock;
   if (q.water(x, y)) return q.bridge(x, y) ? K.bridge : K.water;
+  if (q.stream && q.stream(x, y)) return K.stream;   // ★[T585] 개울(건너는 물) — 바위·큰 물 다음 · 광맥·산·숲보다 앞(그 칸의 겉은 물이다). 술어가 없으면(개울 끔) 종전 그대로
   const o = q.ore(x, y);
   if (o && !o.minor) return K.ore;
   if (q.stone(x, y) > 1.5) return K.mountain;

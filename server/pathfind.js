@@ -13,7 +13,7 @@ const CELL = 32; // BUILDING_SIZE와 동일
 const PathCore = require('../sim/path-core.js');
 
 // A* — startX/Y, endX/Y는 픽셀 좌표
-// opts: { floor, isBlockedFn(oldX,oldY,newX,newY,floor), isWaterFn(x,y), isBridgeFn(x,y)?, maxCells=4096, searchRadiusCells=64 }
+// opts: { floor, isBlockedFn(oldX,oldY,newX,newY,floor), isWaterFn(x,y), isBridgeFn(x,y)?, costFn(x,y)?, maxCells=4096, searchRadiusCells=64 }
 // 반환: 성공 시 [{x,y}] 배열 (waypoint 픽셀 좌표), 실패 시 null
 function findPath(startX, startY, endX, endY, opts = {}) {
   const isBlocked = opts.isBlockedFn || (() => false);
@@ -47,6 +47,7 @@ function findPath(startX, startY, endX, endY, opts = {}) {
     blocked: nodeBlocked,   // ★[T394 ③] 끝점이 막혔으면 탐색 전에 null(`routePath` 첫 줄과 같은 규칙)
     blockedStep, maxNodes: maxCells, radius: searchRadius,
     prefer: preferFn ? ((x, y) => preferFn(cpx(x), cpx(y))) : null,
+    costMul: opts.costFn ? ((x, y) => opts.costFn(cpx(x), cpx(y))) : null,   // ★[T585] 칸 비용 배율(px 술어 · 개울 칸 2) — 미주입 = 종전 그대로
   });
   if (!nodes) return null; // 못 찾음
 
