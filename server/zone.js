@@ -6015,6 +6015,7 @@ async function _acceptConnection(ws, req, C) {
       ...(process.env.T492_SEASON_AMB === 'on' ? { seasonAmb: true } : {}),   // [T492] 계절 환경음 손잡이 — 끔이면 칸이 없다(welcome 바이트 동일)
       ...(_t507On() ? { t507Verbs: true } : {}),
       ...(T509_WELL ? { wellAct: true } : {}),   // [T557] 우물 터 잡기 버튼 — 기본 켬 · `T509_WELL=0` 이면 칸이 없어 버튼이 숨는다   // [T507] 첫 30분의 문법(우클릭·이름표·회색) — 기본 켬 · `T507_VERBS=0` 이면 칸이 없다(옛 화면)
+      ...(((v) => ((v === '1' || v === 'a' || v === 'b') ? { coast588: v === 'b' ? 'b' : 'a' } : {}))(process.env.T588_COAST)),   // [T588] 해안 구간 성격 — 클라가 같은 파일(`public/coast-shape.js`)로 굽는다 · 끔이면 칸이 없다(welcome 바이트 동일)
     },
     // ★★[이동 모델 2026-08-30] 손잡이 표를 **서버가 실어 보낸다** — 클라가 표를 들고 있으면
     //   그게 사본이고, env 를 서버에서만 바꾼 날 예측과 권위가 갈린다(itemWeights·uiCfg 와 같은 규약).
