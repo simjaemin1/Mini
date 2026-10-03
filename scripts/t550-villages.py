@@ -26,6 +26,8 @@ SZ = 32
 land = kind == 1; L = int(land.sum())
 HB_LAND = H['counts']['land'] if 'counts' in H and 'land' in H['counts'] else int(H['dist']['fresh']['n'])
 TARGET = round(len(HC['hanbando']['villages']) * L / HB_LAND)
+# ★[T616] 카드가 수를 따로 셈한 판(51 × 닛폰 뭍 ÷ 한반도 뭍 · 바다 띠 밖 셀)이면 `--target <수>` 로 준다(없으면 위 식 그대로)
+if '--target' in sys.argv: TARGET = int(sys.argv[sys.argv.index('--target') + 1])
 P50F, P95O, P50FO = H['dist']['fresh']['p50'], H['dist']['ore']['p95'], H['dist']['forest']['p50']
 hv = HC['hanbando']['villages']
 nn = sorted(min(math.hypot(a['x'] - b['x'], a['y'] - b['y']) for b in hv if b is not a) for a in hv)
@@ -51,6 +53,8 @@ okcomp = np.isin(cb, [cid for cid, a in comp_area.items() if a >= share])
 yy, xx = np.mgrid[0:NY, 0:NX]
 inner = (xx * SZ >= 600) & ((xx + 1) * SZ <= NX * SZ - 600) & (yy * SZ >= 900) & ((yy + 1) * SZ <= NY * SZ - 900)
 allow = land & (D['fresh'] <= P50F) & okcomp & inner
+# ★[T616] 새 후보를 존의 한쪽에만(`--min-x <px>` · 닛폰 동쪽 = 40,000 = 세계 520,000) — 카드 "차이만큼 동쪽에"(없으면 존 전체 · 종전 그대로)
+if '--min-x' in sys.argv: allow &= (xx * SZ >= float(sys.argv[sys.argv.index('--min-x') + 1]))
 ay, ax = np.nonzero(allow)
 APX = np.stack([ax * SZ + SZ / 2, ay * SZ + SZ / 2], 1)
 def nearest_allowed(x, y):
