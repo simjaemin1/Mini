@@ -49,7 +49,7 @@ say('\n① 정본 하나 — 산법 = 랩 STREAM-CORE 같은 글자 · 값 = 랩
   const L = cut(lab), V = cut(srv);
   ok(!!L && !!V && L.length > 3000, '(상황) 두 블록을 도려냈다', `랩 ${L ? L.length : 0}자 · 서버 ${V ? V.length : 0}자`);
   ok(!!L && L === V, '★★① 서버 `server/streams.js` 의 산법 블록 = 랩 STREAM-CORE(글자 그대로 · 사본 0 — 랩이 바뀌면 빨개진다)');
-  const m = /const L_STREAM_A0=(\d+), L_STREAM_SLOW0=([\d.]+);/.exec(lab);
+  const m = /const L_STREAM_A0=(\d+), L_STREAM_SLOW0=([\d.]+)[,;]/.exec(lab);   // ★[PM 10-03] T584 가 같은 줄 끝에 L_STREAM_GUARD0 을 붙였다
   ok(!!m && +m[1] === S.STREAM_A0 && +m[2] === S.STREAM_SLOW0, '★① 문턱·느려짐 = 랩 기본값(재민 확정 1,500 · ×0.5)', m ? `${m[1]} · ${m[2]}` : '못 찾음');
   ok(S.MODE === 'foot', '① 바위 구간 = 기슭(지형 무변 · 계곡은 재민 판정 칸)', S.MODE);
 }

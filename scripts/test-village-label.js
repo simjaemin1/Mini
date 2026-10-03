@@ -44,8 +44,10 @@ console.log('\n① 손잡이 — 기본 끔');
 // ── ② 문턱 = typeLabel 그대로 ──────────────────────────────────────────────────
 console.log('\n② 문턱 — typeLabel 그대로(랩 사본의 옛 줄과 격자 전수 대조)');
 {
-  const LAB = fs.readFileSync(path.join(ROOT, 'sim', 'economy-engine.browser.js'), 'utf8');
-  const m = LAB.match(/const typeLabel = (\(hShare[\s\S]*?: 'plain');/);
+  // ★[PM 10-03] 기준 줄을 econ 번들이 아니라 **랩 자체 배치 사본**(`lab/마을실험실.html` 의 압축된 옛 줄)에서 읽는다 —
+  //   번들은 `server/village-layout.js` 를 그대로 묶으므로 T593 을 다시 묶는 순간 옛 줄이 사라진다(착지 때 번들 재생성으로 빨강).
+  const LAB = fs.readFileSync(path.join(ROOT, 'lab', '마을실험실.html'), 'utf8');
+  const m = LAB.match(/const typeLabel ?= ?(\(hShare[\s\S]*?: ?'plain');/);
   ok(!!m, '② [상황] 랩 사본에서 옛 typeLabel 줄을 읽었다(그 줄이 기준이다 — 하네스가 문턱을 옮겨 적지 않는다)', m ? `${m[1].replace(/\s+/g, ' ').length}자` : '못 찾음');
   if (m) {
     const old = new Function('fShare', 'hShare', `return ${m[1]};`);
