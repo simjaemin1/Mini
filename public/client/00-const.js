@@ -207,6 +207,7 @@ function cropSprite(stage, crop) {
   // Phase 5-2-mini: 미니맵 IIFE에서 access 가능하게 노출
   window.__getZonesMeta = () => zonesMeta;
   let marketplaceUrl = '';
+  let handoffCommit = 0;   // ★[T604 추신3] 핸드오프 겹침 띠(px) — `/zones` 의 `handoffCommit`(서버 zone-config 정본) · 해안 평행이동의 경계 앞 바다 지킴이 읽는다(0 = 지킴 없음)
   let myName = '여행자';
   let myUsername = '';
   // ★★[2026-08-03f 배치 13] **내 영속 신원.** 서버가 welcome 으로 알려 준다(등록 계정이면 username,
@@ -322,7 +323,8 @@ function cropSprite(stage, crop) {
   // ★[정비 배치] 클라 손잡이 — welcome 의 `uiCfg` 가 덮어쓴다(정본은 서버 env · `carryCfg` 와 같은 규약).
   let uiCfg = { vignetteTint: true, moodleShowMax: 3, ghostStallMs: 5000, ghostReconnectMs: 10000,
                 charSprite: false, charWalkMin: 4, charRunMin: 102,     // ★[캐릭 시트] 기본 OFF
-                charMocap2: false };   // ★[T155] 모션 둘째 판 — 기본 OFF · 서버 env 키는 아직 없다(회부)
+                charMocap2: false,   // ★[T155] 모션 둘째 판 — 기본 OFF · 서버 env 키는 아직 없다(회부)
+                coast588: 'b' };     // ★[T604 추신3] 해안 기본 b — 서버 기본과 같게(부트 `/zones` 굽기가 welcome 전에 돈다 · 다르면 welcome 에서 다시 굽는다)
   // ★비네트 색조 — **축 계열**. 새 아트를 만들지 않고 색만 바꾼다(§8.3 아날로그 채널은 최소로).
   //   갈증=청 · 허기=황 · 추위=창백한 하늘색 · 피로=보라 · 부상=적 · 과적=흙빛.
   const VIGNETTE_RGB = {
@@ -642,36 +644,48 @@ function cropSprite(stage, crop) {
   //   손잡이 켬 길(CoastShape)도 이 함수를 받아 같은 배수 위에 구간 성격을 얹는다.
   function _coastBandKOf(zone) { return (typeof zone.coastBandK === 'number' && zone.coastBandK > 0 && zone.coastBandK !== 1) ? zone.coastBandK : 1; }
   function _coastInOcean(oceanRects, x, y) { for (let oi = 0; oi < oceanRects.length; oi++) { const O = oceanRects[oi]; if (x >= O.x0 && x < O.x1 && y >= O.y0 && y < O.y1) return true; } return false; }
-  function _coastBandKAt(zone, bandK, ax, ay, oceanRects, maxDist) {
-    if (bandK === 1) return 1;
+  function _coastLandRamp(zone, ax, ay, oceanRects, maxDist) {
     const zx0 = zone.worldOffsetX, zy0 = zone.worldOffsetY, zx1 = zx0 + zone.zoneWidth, zy1 = zy0 + zone.zoneHeight;
     let d = Infinity;
     if (!_coastInOcean(oceanRects, zx0 - 1, ay)) d = Math.min(d, ax - zx0);
     if (!_coastInOcean(oceanRects, zx1 + 1, ay)) d = Math.min(d, zx1 - ax);
     if (!_coastInOcean(oceanRects, ax, zy0 - 1)) d = Math.min(d, ay - zy0);
     if (!_coastInOcean(oceanRects, ax, zy1 + 1)) d = Math.min(d, zy1 - ay);
-    return 1 + (bandK - 1) * Math.min(1, d / maxDist);
+    return Math.min(1, d / maxDist);
+  }
+  function _coastBandKAt(zone, bandK, ax, ay, oceanRects, maxDist) {
+    if (bandK === 1) return 1;
+    return 1 + (bandK - 1) * _coastLandRamp(zone, ax, ay, oceanRects, maxDist);
+  }
+  // ★[T604 추신2 · 서버 chunk.js `_coastShiftAt` 미러] 존별 해안 평행이동 `coastShift`(셀 · 기본 0) — 같은 비탈로 이웃 뭍 변에서 0
+  function _coastShiftOf(zone) { return (typeof zone.coastShift === 'number' && zone.coastShift > 0) ? zone.coastShift : 0; }
+  function _coastShiftAt(zone, shiftCells, ax, ay, oceanRects, maxDist, tileSize) {
+    if (shiftCells === 0) return 0;
+    const S = shiftCells * tileSize;
+    return S * _coastLandRamp(zone, ax, ay, oceanRects, S);   // = min(S, 뭍 이웃 변까지 거리) — 경계에서 0 · 이동만큼 들어가면 다(45°) · maxDist 는 안 쓴다
   }
   function computeCoastlineWaterTiles(zone, tileSize) {
     const waterTiles = new Set();
     if (zone.isOcean) return waterTiles;
     const oceanRects = Object.values(zonesMeta).filter(z => z.isOcean).map(z => ({ x0: z.worldOffsetX, y0: z.worldOffsetY, x1: z.worldOffsetX + z.zoneWidth, y1: z.worldOffsetY + z.zoneHeight }));
     if (!oceanRects.length) return waterTiles;
-    // ★[T588] 해안 구간 성격 — 서버 손잡이 `T588_COAST`(welcome `uiCfg.coast588` = 'a'|'b')가 켜져 있으면 서버와 **같은 파일**
+    // ★[T588] 해안 구간 성격 — 서버 손잡이 `T588_COAST`(welcome `uiCfg.coast588` = 'a'|'b' · ★T604 추신3 기본 'b' · '0' = 지금 식)가 켜져 있으면 서버와 **같은 파일**
     //   (`public/coast-shape.js` — 서버 `chunk.js` 도 이 파일을 부른다 · 사본 0)로 굽는다. 지금 식은 함수로 넘긴다(아래 깊이 한 줄과 같은 식).
-    //   끔(칸 없음)이면 아래 지금 식 그대로.
+    //   끔('0' · 칸 없음)이면 아래 지금 식 그대로(★추신3 — 평행이동도 안 먹는다 · 끔 = 지금 바이트).
     const _c588 = (uiCfg && uiCfg.coast588) || '';
     if ((_c588 === 'a' || _c588 === 'b') && typeof CoastShape !== 'undefined') {
       const _mx = COASTLINE_BASE + COASTLINE_NOISE;
       return CoastShape.generate(zone, tileSize, oceanRects, zonesMeta, COASTLINE_BASE, COASTLINE_NOISE,
         (bnx, bny) => COASTLINE_BASE + _coastSmoothNoise2D(bnx, bny) * COASTLINE_NOISE,
-        { variant: _c588, bandK: (z, ax, ay) => _coastBandKAt(z, _coastBandKOf(z), ax, ay, oceanRects, _mx) });   // ★[T588 추신2] T591 배수 위에
+        { variant: _c588, bandK: (z, ax, ay) => _coastBandKAt(z, _coastBandKOf(z), ax, ay, oceanRects, _mx),
+          bandShift: (z, ax, ay) => _coastShiftAt(z, _coastShiftOf(z), ax, ay, oceanRects, _mx, tileSize),   // ★[T588 추신2] T591 배수 위에 · ★[T604 추신2] 평행이동
+          keepPx: handoffCommit });   // ★[T604 추신3] 경계 앞 바다 지킴 폭 = 서버가 준 핸드오프 겹침 띠(박힌 수 0)
     }
     const cols = Math.ceil(zone.zoneWidth / tileSize);
     const rows = Math.ceil(zone.zoneHeight / tileSize);
     const maxDist = COASTLINE_BASE + COASTLINE_NOISE, maxDist2 = maxDist * maxDist;
     // ★[T591] 존별 띠 배수(서버 chunk.js 와 같은 식 · 뭍 이웃 변에서 1 로 돌아감) — 칸이 없으면 1(종전)
-    const _bandK = _coastBandKOf(zone);   // ★[T588 추신2] 식은 위 `_coastBandKAt` 한 자리(비트 동일)
+    const _bandK = _coastBandKOf(zone);   // ★[T588 추신2] 식은 위 `_coastBandKAt` 한 자리(비트 동일) · ★[T604 추신3] 끔(이 줄)은 평행이동을 안 먹는다 — 끔 = 지금 바이트
     for (let ty = 0; ty < rows; ty++) {
       const absY = zone.worldOffsetY + ty * tileSize;
       const wty = Math.floor(absY / tileSize);

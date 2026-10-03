@@ -26,7 +26,8 @@ const ZC = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
 const codeOf = (s) => s.split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n');
 const bodyOf = (code, name) => (code.match(new RegExp('function ' + name + '\\([^)]*\\) \\{[\\s\\S]*?\\n\\}')) || [''])[0];
 const { ChunkManager } = require(path.join(ROOT, 'server', 'chunk.js'));
-const constOf = (name) => { const m = ZC.match(new RegExp('^const ' + name + ' = (\\d+);', 'm')); return m ? +m[1] : null; };
+const ZCFG = fs.readFileSync(path.join(ROOT, 'server', 'zone-config.js'), 'utf8');   // ★[T604 추신3] HANDOFF_COMMIT 정본이 zone-config 로 갔다(zone.js 는 거기서 받는다)
+const constOf = (name) => { for (const src of [ZC, ZCFG]) { const m = src.match(new RegExp('^const ' + name + ' = (\\d+);', 'm')); if (m) return +m[1]; } return null; };
 
 console.log('\n① 손잡이 · 주민 · 겹침 띠 — 새 술어 0 · 새 수 0');
 const UAC = bodyOf(ZC, 'updateActiveChunks');

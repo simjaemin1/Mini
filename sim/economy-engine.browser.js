@@ -1985,6 +1985,13 @@ const ZONES_BASE = {
 
   // === c5: 한반도 컬럼 (7000w) ===
   hanbando: {
+    // ★[T604 추신3 2026-10-03 · 재민이 고른 값] **해안 평행이동** `coastShift` 90셀(2,880px · `chunk.js _coastShiftAt` · 클라 미러 같은 함수) —
+    //   띠 깊이에서 그만큼 빼 해안을 바다 쪽(남)으로 민다 · 뭍 이웃 변(서 = 중원북 · 동 = 닛폰)에서는 0 에서 시작해 이동만큼 들어가면 다(45° · 솔기 0) ·
+    //   이동이 바다 존 경계 앞 바다를 핸드오프 겹침 띠 폭(이 파일 `HANDOFF_COMMIT` · 8셀)보다 얇게 깎는 열은 8셀에서 멈춘다(`CoastShape.shiftDepth`) ·
+    //   끔(`T588_COAST=0`)은 이동을 안 먹는다(끔 = 지금 바이트).
+    //   바다 위에 남는 강·마을·광맥은 지우지 않는다(재민이 에디터에서 고친다 · 목록 `보고/T604_추신3_2026-10-03.md`). 닛폰·중원북은 재민 ○ 뒤.
+    //   ⚠econ 번들에 든다(`publicZoneMap`) — 값을 바꾸면 `node sim/build-econ-bundle.js && node sim/inline-engine.js`.
+    coastShift: 90,
     port: 3020, biome: 'forest', displayName: '새벌',
     groundColor: '#9a9670', tintColor: '#7a8a4a',
     worldOffsetX: 41000, worldOffsetY: 5000, zoneWidth: 7000, zoneHeight: 13000, // ← BASE(×10): 실제 70016×130016px ≈ 2188×4063셀 ≈ 8.9M셀
@@ -2247,6 +2254,13 @@ const ZONES_BASE = {
 };
 
 // ── Phase 5-3: world scale ────────────────────────────────────────
+// Phase 5-K2: 경계 핸드오프 히스테리시스. 경계를 살짝 스치는 정도(0~COMMIT)로는 안 넘김.
+// 이웃 zone으로 COMMIT px 이상 확실히 들어갔을 때만 핸드오프 → 경계에서 왔다갔다 해도
+// 핑퐁 안 남(시간 쿨다운 불필요). 도착도 경계에서 이만큼 안쪽이라 즉시 되넘김 불가.
+// ★[T604 추신3 2026-10-03] 정본을 `zone.js` 에서 여기로 옮겼다(값 그대로) — 해안 평행이동의 **경계 앞 바다 지킴**이 같은 수를 읽는다
+//   ("박힌 수 0 — HANDOFF_COMMIT 를 읽는다" · 서버 `chunk.js` · 클라는 `/zones` 의 `handoffCommit`). `zone.js` 는 여기서 받는다.
+const HANDOFF_COMMIT = 256;     // px — 경계 양쪽 이 거리의 "겹침 띠"는 자유 이동
+
 // 좌표·크기 일괄 배율. SCALE=1이면 옛 크기, SCALE=10이면 가로세로 10배 (면적 100배, PZ급).
 // 환경변수 WORLD_SCALE로 운영 중 변경 가능.
 const WORLD_SCALE = parseFloat(process.env.WORLD_SCALE || '10');
@@ -2408,6 +2422,7 @@ function publicZoneMap(fallbackHost = 'localhost') {
       mainSquare: z.mainSquare || null,
       isOcean: !!z.isOcean,
       ...(z.coastBandK ? { coastBandK: z.coastBandK } : {}),   // ★[T591] 존별 해안 띠 배수 — 클라 `computeCoastlineWaterTiles` 가 서버와 같은 띠를 그린다(없으면 칸 자체가 안 실림 = 종전 바이트)
+      ...(z.coastShift ? { coastShift: z.coastShift } : {}),   // ★[T604 추신2] 존별 해안 평행이동(셀 · 없으면 칸 자체가 안 실림 = 종전 바이트) — 클라가 서버와 같은 띠를 그린다
       north: _findNeighborSide(id, 'N'),
       south: _findNeighborSide(id, 'S'),
       east:  _findNeighborSide(id, 'E'),
@@ -2435,6 +2450,7 @@ module.exports = {
   ZONES, WORLD, ZONE_ORDER, CENTRAL, WS_PROTO, HTTP_PROTO,
   publicZoneMap, worldPhase, isNight, darknessLevel,
   findZoneAt, worldDistance, worldDeltaX, WRAP_X,
+  HANDOFF_COMMIT,   // ★[T604 추신3] 핸드오프 겹침 띠(px) — zone.js · 해안 지킴(chunk.js · /zones handoffCommit)
 };
 
 ;return module.exports;})();
@@ -4482,6 +4498,21 @@ const SHIELD_DAYS = 365;
 //     전 마을이 day 0 생성이라 나이 == 달력이기 때문이다. 즉 **측정된 위험이 0**이고,
 //     값은 전적으로 라이브의 구멍(세계 900일째에 선 마을이 보호 0일)을 메우는 데 있다.
 const SHIELD_AGE_ON = !(typeof process !== 'undefined' && process.env && process.env.SHIELD_AGE === '0');
+// ★★[T597 2026-10-03] **기근 보호막 끝도 마을마다 편다** — 손잡이 `T597_SHIELD_RAMP`(기본 **끔** · 끄면 종전 바이트).
+//   T577: 도적 보호기(`BDT_MIN_DAY`)와 이 보호막이 **같은 날**(365) 걷혀 첫해 겨울 끝 굶는 마을이 한 주에 무너졌다.
+//   도적 쪽은 `T577_RAMP`(기본 켬 · `server/bandits.js`)가 이미 편다 — 이건 둘째 절벽이다.
+//   퍼짐 = 365 + 해시 × 365(T577 ⓓ 와 같은 폭 · 같은 결정론 해시 문법 — 이름 해시를 `denRng` 섞개에 넣는다 · RNG 흐름을 안 먹는다).
+//   ⚠소금(두 번째 인자)이 도적 쪽(577)과 **다르다**(597) — 같으면 한 마을의 두 절벽이 다시 같은 날이 된다.
+//   새 수 0 — 폭은 보호막 그 자체(`SHIELD_DAYS`). 켬은 econ 3사본(정본·번들·랩)이라 3시드가 움직인다 ⇒ 켜는 건 PM(판정 0).
+const T597_SHIELD_RAMP = (typeof process !== 'undefined' && process.env && process.env.T597_SHIELD_RAMP === '1');
+function _t597ShieldExtra(v) {   // 이 마을 보호막이 SHIELD_DAYS 뒤로 더 가는 날 수(0 ~ SHIELD_DAYS−1)
+  let h0 = 0; const s = String((v && v.name) || '');
+  for (let i = 0; i < s.length; i++) h0 = (Math.imul(h0, 31) + s.charCodeAt(i)) | 0;
+  const a = (h0 >>> 0) % 100003, b = 597;
+  let h = (1 ^ Math.imul(a + 1, 2654435761) ^ Math.imul(b + 101, 40503)) >>> 0;   // bandits.js denRng 와 같은 섞개(씨 1)
+  h ^= h >>> 13; h = Math.imul(h, 1274126177) >>> 0; h ^= h >>> 16;
+  return Math.floor(((h >>> 0) / 4294967296) * SHIELD_DAYS);
+}
 // ★SHIELD_SOFT — 삼키지 말고 **감쇠**. 보호기간엔 음수 누적을 ×k 로 줄인다(지우지 않는다).
 //   압력이 새어나가 보호기간에도 사망이 조금씩 일어나고 → 인구가 K 를 크게 못 넘고 → 절벽이 경사가 된다.
 //   ★★기본 ON = **채택**(2026-08-02d).
@@ -6785,7 +6816,8 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
   v._shieldAte = 0; v._deathsToday = 0;
   // 보호 잔여 판정 — 기본은 달력(day), SHIELD_AGE 면 **마을 나이**(day − 창설일).
   //   `_bornDay` 가 없으면(옛 DB·랩 초기 마을) 0 → 달력과 동일 = 회귀 무영향.
-  const _shieldT = SHIELD_AGE_ON ? (day - (v._bornDay || 0)) : day;
+  //   ★[T597] 펴기는 나이에서 그 마을 몫을 뺀다(= 보호막이 그만큼 늦게 걷힌다) — 아래 보호 조건 줄은 한 글자도 안 바뀐다(`test-frontier-iron ③` 계약).
+  const _shieldT = (SHIELD_AGE_ON ? (day - (v._bornDay || 0)) : day) - (T597_SHIELD_RAMP ? _t597ShieldExtra(v) : 0);
   // ★★[2026-08-03d 배치 11 — 필멸 배선] **플레이어가 세운 마을은 보호막을 받지 않는다.**
   //   재민 확정: "플레이어 마을은 망해도 돼". 보호막은 소멸 0 원칙의 장치이고, 그 원칙은
   //   **NPC 가 자기 자리를 못 고르기 때문에** 세운 것이다. 자리를 고른 자에게 365일 무적을 주면
@@ -10775,5 +10807,5 @@ module.exports = {
 
 ;return module.exports;})();
 
-  root.EconEngine=Object.assign({},modules.v1,modules.v2); root.EconEngine.Era=modules.era;
+  root.EconEngine=Object.assign({},modules.v1,modules.v2); root.EconEngine.Era=modules.era; root.EconEngine.Calendar=modules.cal; root.EconEngine.Layout=modules.vlayout;
 })(typeof window!=='undefined'?window:globalThis);

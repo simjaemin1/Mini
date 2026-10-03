@@ -52,7 +52,7 @@
     <div style="font-size:11px;color:#7a8494;margin-top:2px">🔍 휠=확대/축소 · 드래그=이동 · 더블클릭=리셋</div>
     <div class="row"><label>마을 수</label><input type="number" id="nvil" min="1" max="12" value="8" style="width:48px"> <span style="color:#7a8494">생활 시뮬 동시 마을(§3e: 8~12)</span></div>
     <div class="row" style="margin-top:6px"><button onclick="gToggle()" id="gBtn">▶ 성장 시뮬</button> <button onclick="lifeToggle()" id="lBtn">▶ 생활 시뮬</button> <button onclick="psiteToggle()" id="psBtn" title="생활 시뮬 중 마을 영토를 클릭하면 그 마을 크루가 지어 줄 집터가 지정된다">🏠 집터 지정</button>
-      <label style="color:#aeb8c4">속도 <select id="simSpeed"><option value="1">실전 1×(시계 1분/초)</option><option value="12">관찰 12×</option><option value="80" selected>보통 80×</option><option value="800">빠름 800×</option><option value="12000">초고속 12000×</option></select></label></div>
+      <label style="color:#aeb8c4">속도 <select id="simSpeed"><option value="1">실전 1×(시계 1분/초)</option><option value="12">관찰 12×</option><option value="80" selected>보통 80×</option><option value="800">빠름 800×</option><option value="12000">초고속 12000×</option></select></label> <label style="color:#aeb8c4" title="[T594] 작물 성장일을 농사로 고증 기간으로(벼 136일 · 보리·밀·마늘은 겨울 지난 3월 1일부터) — 끔 = 랩 종전 그대로 · 켠 뒤 새로 심는 밭부터 · URL ?cropcal=1"><input type="checkbox" id="cropCal" onchange="L_CROPCAL=this.checked">작물 철 고증</label></div>
     <div class="stat" id="gstat" style="background:#161f2a;border-color:#2a3a4a">▶ 눌러서 마을이 자라는 걸 관찰 — 인구 K로 차오름 → 붐비면 확장 → R_max에서 정지. 겨울엔 곳간 소진.</div>
     <div class="stat" id="jobstat" style="background:#141d28;border-color:#2a3a4a;font-size:11px;line-height:1.5"></div>
     <div class="stat" id="stat"></div>
@@ -2062,6 +2062,13 @@ const ZONES_BASE = {
 
   // === c5: 한반도 컬럼 (7000w) ===
   hanbando: {
+    // ★[T604 추신3 2026-10-03 · 재민이 고른 값] **해안 평행이동** `coastShift` 90셀(2,880px · `chunk.js _coastShiftAt` · 클라 미러 같은 함수) —
+    //   띠 깊이에서 그만큼 빼 해안을 바다 쪽(남)으로 민다 · 뭍 이웃 변(서 = 중원북 · 동 = 닛폰)에서는 0 에서 시작해 이동만큼 들어가면 다(45° · 솔기 0) ·
+    //   이동이 바다 존 경계 앞 바다를 핸드오프 겹침 띠 폭(이 파일 `HANDOFF_COMMIT` · 8셀)보다 얇게 깎는 열은 8셀에서 멈춘다(`CoastShape.shiftDepth`) ·
+    //   끔(`T588_COAST=0`)은 이동을 안 먹는다(끔 = 지금 바이트).
+    //   바다 위에 남는 강·마을·광맥은 지우지 않는다(재민이 에디터에서 고친다 · 목록 `보고/T604_추신3_2026-10-03.md`). 닛폰·중원북은 재민 ○ 뒤.
+    //   ⚠econ 번들에 든다(`publicZoneMap`) — 값을 바꾸면 `node sim/build-econ-bundle.js && node sim/inline-engine.js`.
+    coastShift: 90,
     port: 3020, biome: 'forest', displayName: '새벌',
     groundColor: '#9a9670', tintColor: '#7a8a4a',
     worldOffsetX: 41000, worldOffsetY: 5000, zoneWidth: 7000, zoneHeight: 13000, // ← BASE(×10): 실제 70016×130016px ≈ 2188×4063셀 ≈ 8.9M셀
@@ -2324,6 +2331,13 @@ const ZONES_BASE = {
 };
 
 // ── Phase 5-3: world scale ────────────────────────────────────────
+// Phase 5-K2: 경계 핸드오프 히스테리시스. 경계를 살짝 스치는 정도(0~COMMIT)로는 안 넘김.
+// 이웃 zone으로 COMMIT px 이상 확실히 들어갔을 때만 핸드오프 → 경계에서 왔다갔다 해도
+// 핑퐁 안 남(시간 쿨다운 불필요). 도착도 경계에서 이만큼 안쪽이라 즉시 되넘김 불가.
+// ★[T604 추신3 2026-10-03] 정본을 `zone.js` 에서 여기로 옮겼다(값 그대로) — 해안 평행이동의 **경계 앞 바다 지킴**이 같은 수를 읽는다
+//   ("박힌 수 0 — HANDOFF_COMMIT 를 읽는다" · 서버 `chunk.js` · 클라는 `/zones` 의 `handoffCommit`). `zone.js` 는 여기서 받는다.
+const HANDOFF_COMMIT = 256;     // px — 경계 양쪽 이 거리의 "겹침 띠"는 자유 이동
+
 // 좌표·크기 일괄 배율. SCALE=1이면 옛 크기, SCALE=10이면 가로세로 10배 (면적 100배, PZ급).
 // 환경변수 WORLD_SCALE로 운영 중 변경 가능.
 const WORLD_SCALE = parseFloat(process.env.WORLD_SCALE || '10');
@@ -2485,6 +2499,7 @@ function publicZoneMap(fallbackHost = 'localhost') {
       mainSquare: z.mainSquare || null,
       isOcean: !!z.isOcean,
       ...(z.coastBandK ? { coastBandK: z.coastBandK } : {}),   // ★[T591] 존별 해안 띠 배수 — 클라 `computeCoastlineWaterTiles` 가 서버와 같은 띠를 그린다(없으면 칸 자체가 안 실림 = 종전 바이트)
+      ...(z.coastShift ? { coastShift: z.coastShift } : {}),   // ★[T604 추신2] 존별 해안 평행이동(셀 · 없으면 칸 자체가 안 실림 = 종전 바이트) — 클라가 서버와 같은 띠를 그린다
       north: _findNeighborSide(id, 'N'),
       south: _findNeighborSide(id, 'S'),
       east:  _findNeighborSide(id, 'E'),
@@ -2512,6 +2527,7 @@ module.exports = {
   ZONES, WORLD, ZONE_ORDER, CENTRAL, WS_PROTO, HTTP_PROTO,
   publicZoneMap, worldPhase, isNight, darknessLevel,
   findZoneAt, worldDistance, worldDeltaX, WRAP_X,
+  HANDOFF_COMMIT,   // ★[T604 추신3] 핸드오프 겹침 띠(px) — zone.js · 해안 지킴(chunk.js · /zones handoffCommit)
 };
 
 ;return module.exports;})();
@@ -4559,6 +4575,21 @@ const SHIELD_DAYS = 365;
 //     전 마을이 day 0 생성이라 나이 == 달력이기 때문이다. 즉 **측정된 위험이 0**이고,
 //     값은 전적으로 라이브의 구멍(세계 900일째에 선 마을이 보호 0일)을 메우는 데 있다.
 const SHIELD_AGE_ON = !(typeof process !== 'undefined' && process.env && process.env.SHIELD_AGE === '0');
+// ★★[T597 2026-10-03] **기근 보호막 끝도 마을마다 편다** — 손잡이 `T597_SHIELD_RAMP`(기본 **끔** · 끄면 종전 바이트).
+//   T577: 도적 보호기(`BDT_MIN_DAY`)와 이 보호막이 **같은 날**(365) 걷혀 첫해 겨울 끝 굶는 마을이 한 주에 무너졌다.
+//   도적 쪽은 `T577_RAMP`(기본 켬 · `server/bandits.js`)가 이미 편다 — 이건 둘째 절벽이다.
+//   퍼짐 = 365 + 해시 × 365(T577 ⓓ 와 같은 폭 · 같은 결정론 해시 문법 — 이름 해시를 `denRng` 섞개에 넣는다 · RNG 흐름을 안 먹는다).
+//   ⚠소금(두 번째 인자)이 도적 쪽(577)과 **다르다**(597) — 같으면 한 마을의 두 절벽이 다시 같은 날이 된다.
+//   새 수 0 — 폭은 보호막 그 자체(`SHIELD_DAYS`). 켬은 econ 3사본(정본·번들·랩)이라 3시드가 움직인다 ⇒ 켜는 건 PM(판정 0).
+const T597_SHIELD_RAMP = (typeof process !== 'undefined' && process.env && process.env.T597_SHIELD_RAMP === '1');
+function _t597ShieldExtra(v) {   // 이 마을 보호막이 SHIELD_DAYS 뒤로 더 가는 날 수(0 ~ SHIELD_DAYS−1)
+  let h0 = 0; const s = String((v && v.name) || '');
+  for (let i = 0; i < s.length; i++) h0 = (Math.imul(h0, 31) + s.charCodeAt(i)) | 0;
+  const a = (h0 >>> 0) % 100003, b = 597;
+  let h = (1 ^ Math.imul(a + 1, 2654435761) ^ Math.imul(b + 101, 40503)) >>> 0;   // bandits.js denRng 와 같은 섞개(씨 1)
+  h ^= h >>> 13; h = Math.imul(h, 1274126177) >>> 0; h ^= h >>> 16;
+  return Math.floor(((h >>> 0) / 4294967296) * SHIELD_DAYS);
+}
 // ★SHIELD_SOFT — 삼키지 말고 **감쇠**. 보호기간엔 음수 누적을 ×k 로 줄인다(지우지 않는다).
 //   압력이 새어나가 보호기간에도 사망이 조금씩 일어나고 → 인구가 K 를 크게 못 넘고 → 절벽이 경사가 된다.
 //   ★★기본 ON = **채택**(2026-08-02d).
@@ -6862,7 +6893,8 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
   v._shieldAte = 0; v._deathsToday = 0;
   // 보호 잔여 판정 — 기본은 달력(day), SHIELD_AGE 면 **마을 나이**(day − 창설일).
   //   `_bornDay` 가 없으면(옛 DB·랩 초기 마을) 0 → 달력과 동일 = 회귀 무영향.
-  const _shieldT = SHIELD_AGE_ON ? (day - (v._bornDay || 0)) : day;
+  //   ★[T597] 펴기는 나이에서 그 마을 몫을 뺀다(= 보호막이 그만큼 늦게 걷힌다) — 아래 보호 조건 줄은 한 글자도 안 바뀐다(`test-frontier-iron ③` 계약).
+  const _shieldT = (SHIELD_AGE_ON ? (day - (v._bornDay || 0)) : day) - (T597_SHIELD_RAMP ? _t597ShieldExtra(v) : 0);
   // ★★[2026-08-03d 배치 11 — 필멸 배선] **플레이어가 세운 마을은 보호막을 받지 않는다.**
   //   재민 확정: "플레이어 마을은 망해도 돼". 보호막은 소멸 0 원칙의 장치이고, 그 원칙은
   //   **NPC 가 자기 자리를 못 고르기 때문에** 세운 것이다. 자리를 고른 자에게 365일 무적을 주면
@@ -10852,7 +10884,7 @@ module.exports = {
 
 ;return module.exports;})();
 
-  root.EconEngine=Object.assign({},modules.v1,modules.v2); root.EconEngine.Era=modules.era;
+  root.EconEngine=Object.assign({},modules.v1,modules.v2); root.EconEngine.Era=modules.era; root.EconEngine.Calendar=modules.cal; root.EconEngine.Layout=modules.vlayout;
 })(typeof window!=='undefined'?window:globalThis);
 
 </script>
@@ -11885,7 +11917,7 @@ function localPath(sx, sy, gx, gy, opts) {
 function _routeOpts(opts) {
   return {
     dirs: DIRS8, octile: true, biasW: BIAS_ROUTE,
-    stepBlocked: null,   // 노드 차단만 → 커널이 nodeBlocked 직행(성능)
+    stepBlocked: opts.stepBlocked || null,   // 노드 차단만 → 커널이 nodeBlocked 직행(성능) · ★[T598] 호출측이 간선 술어를 주면 그것(목표 노드 막힘도 그 술어가 본다 · 안 주면 null = 종전)
     nodeBlocked: opts.blocked || (() => false),
     costMul: opts.costMul || null, prefer: null, hScale: opts.hScale || 1,   // ★[T578] 호출측이 costMul 최저값을 준다(안 주면 1 = 종전)
     maxPops: opts.maxPops || 250000, radius: 0, scratch: opts.scratch || null,
@@ -11968,17 +12000,24 @@ const L_ROAD_T1=8, L_ROAD_T2=28;        // v≥8=흙길 · v≥28=다져진 길(
 const L_ROAD_MAX=120, L_ROAD_DK=0.995;  // 강도 상한(무한증가 방지: 폐도로 소멸도 유한 — 120→8 ~540일) · 일 감쇠(반감 ~138일)
 const L_ROAD_SPD=[1,1.10,1.15], L_ROAD_COST=[1,0.93,0.87];   // 등급별 보행 배속 · 교역 A* 스텝비용 할인
 const _roadDay=()=>(typeof lifeGM==='number')?Math.floor(lifeGM/1440):0;   // 전역 게임일(1일=1440분 — L_MINDAY 계약. 마을별 s.day와 무관한 단일 시계)
+// ★★[T599 ← T578 ④ 서버 `roads.coarseGen()`] 등급 지도 세대 — 칸 등급이 오르거나(답압) 내려앉은(감쇠·풀 복귀) 횟수. 교역로를 다시 팔 때를 정한다(아래 `tpRedigDaily`).
+//   ⚠등급 식은 종전 두 자리(`roadLevel`·`roadStamp` 반환)의 그 식 그대로 한 자리로 모았다(`_roadLv` — 값 무변).
+let _roadGen=0;
+function _roadLv(v){return v>=L_ROAD_T2?2:(v>=L_ROAD_T1?1:0);}
 function _roadGet(k){ const r=ROADS.get(k); if(!r)return null;   // 접근 시 게으른 감쇠 + 등급 미달 프룬
-  const t=_roadDay(); if(t>r.d){ r.v*=Math.pow(L_ROAD_DK,t-r.d); r.d=t;
+  const t=_roadDay(); if(t>r.d){ const _l0=_roadLv(r.v); r.v*=Math.pow(L_ROAD_DK,t-r.d); r.d=t;
+    if(_roadLv(r.v)!==_l0)_roadGen++;   // ★[T599 ← T578 ④] 등급이 내려앉았다 = 등급 지도가 바뀌었다
     if(r.v<1){ ROADS.delete(k); _roadCells.delete(k); return null; }   // 풀로 복귀(희소성 유지)
     if(r.v<L_ROAD_T1)_roadCells.delete(k); }
   return r; }
-function roadLevel(x,y){ if(x<0||y<0||x>=N||y>=N)return 0; const r=_roadGet(x*N+y); return r?(r.v>=L_ROAD_T2?2:(r.v>=L_ROAD_T1?1:0)):0; }   // 0=풀 1=흙길 2=다져진 길(게으른 감쇠 내장)
+function roadLevel(x,y){ if(x<0||y<0||x>=N||y>=N)return 0; const r=_roadGet(x*N+y); return r?_roadLv(r.v):0; }   // 0=풀 1=흙길 2=다져진 길(게으른 감쇠 내장)
 function roadStamp(x,y,amt){ if(x<0||y<0||x>=N||y>=N)return 0; const k=x*N+y, t=_roadDay(); const r=ROADS.get(k);   // +amt(기본1) 답압, 등급 반환 — amt는 그림자 스탬핑(보행 등가 일괄)용
-  if(!r){ ROADS.set(k,{v:Math.min(L_ROAD_MAX,amt||1),d:t}); return 0; }
+  if(!r){ const v0=Math.min(L_ROAD_MAX,amt||1); ROADS.set(k,{v:v0,d:t}); if(_roadLv(v0)>0)_roadGen++; return 0; }   // ★[T599 ← T578 ④] 첫 스탬프가 이미 등급이면(그림자 스탬핑 왕복×인원) 지도가 바뀌었다 — 반환값은 종전 그대로(0)
+  const _l0=_roadLv(r.v);
   if(t>r.d){ r.v*=Math.pow(L_ROAD_DK,t-r.d); r.d=t; }
   r.v=Math.min(L_ROAD_MAX,r.v+(amt||1)); if(r.v>=L_ROAD_T1)_roadCells.add(k);
-  return r.v>=L_ROAD_T2?2:(r.v>=L_ROAD_T1?1:0); }
+  const _l1=_roadLv(r.v); if(_l1!==_l0)_roadGen++;   // ★[T599 ← T578 ④] 서버 `stamp` 의 `if (lv > o) coarseGen++` 그 자리
+  return _l1; }
 function tradePath(sx,sy,gx,gy){   // ★[경로 통일 2026-07-17] 탐색 본체=PathCore.routePath(서버 computeRoutePts와 동일 정본 — 직선 편향·코너컷 금지·대각 1.40 정수화[구 √2 — 동률 해소 수준 차이]).
   //   물=22배 costMul: 최협 지점 도하 → getTradePath가 그 자리를 다리로 개통(절차 지형의 월드젠 = "다리는 맵에 만들어두는 사물" 규칙의 랩 구현). 개통된 다리 칸=1배(만든 다리로 다님). 바위=차단(산 우회).
   if(!TR||!TR.rock)return null;
@@ -11987,15 +12026,44 @@ function tradePath(sx,sy,gx,gy){   // ★[경로 통일 2026-07-17] 탐색 본�
   const costMul=(x,y)=>(water[idx(x,y)]===1&&!(bridge&&bridge[idx(x,y)]))?22:((typeof L_ROAD_COST!=='undefined'&&typeof roadLevel==='function')?L_ROAD_COST[roadLevel(x,y)]:1);   // 물=22배(좁은 목 최소 횡단→다리 짧게)·다리=1 · ★답압 길 할인(0.93/0.87 = 보행 배속 1.10/1.15의 시간 환산 — 구 전쟁랩 5451 승계, 통일 시 유실→복구. 길 시스템 없는 랩=1 무변)
   if(blocked(sx,sy)||blocked(gx,gy))return null;
   if(!TR._tpSc)TR._tpSc={w:N,h:N,g:new Int32Array(N*N),came:new Int32Array(N*N),stamp:new Int32Array(N*N),gen:0};   // 재사용 버퍼(구 구현은 호출마다 N² 배열 할당 — 이젠 세계당 1회. gen-스탬프=서버 동형)
-  return PathCore.routePath(sx,sy,gx,gy,{blocked,costMul,maxPops:2000000,scratch:TR._tpSc});
+  // ★★[T599 ← T578 ④ 서버 `hScale: courseCostMin()` · `_routePlainRetry`] h 를 스텝 비용의 최저값만큼 줄인다 — 답압 할인 칸에서 h 가 실제 비용을 넘지 않게(일관 휴리스틱 ⇒ 길을 따라 붙는다).
+  //   길이 한 번도 안 섰으면(`_roadGen` 0 — 등급 칸이 생긴 적 없다) 스텝 비용 최저값은 1 이다 ⇒ h 그대로(서버: 길 층이 안 섰으면 할인도 없다 — h 그대로).
+  //   ⇒ 세계 시작(lifeInit)의 전쌍 교역로·econ 거리 행렬(`setDistMatrix`)은 종전 바이트 그대로다(econ 무접촉 — 서버 거리행렬도 길 모양과 무관).
+  //   새 규칙이 탐색 상한(maxPops)에 걸려 못 끝냈을 때만 종전 규칙(h 무축소)으로 다시 판다 — 쌍을 잃지 않는다(못 닿는 쌍은 종전처럼 null).
+  const hS=(typeof L_ROAD_COST!=='undefined'&&typeof _roadGen!=='undefined'&&_roadGen>0)?Math.min.apply(null,L_ROAD_COST):1;
+  if(hS>=1)return PathCore.routePath(sx,sy,gx,gy,{blocked,costMul,maxPops:2000000,scratch:TR._tpSc});
+  const S=PathCore.routePathBegin(sx,sy,gx,gy,{blocked,costMul,maxPops:2000000,scratch:TR._tpSc,hScale:hS});
+  const p=S?PathCore.pathStep(S,0).path:null;
+  if(!p&&S&&!S.found&&S.pops>S.maxPops){_tpStat.plain++;return PathCore.routePath(sx,sy,gx,gy,{blocked,costMul,maxPops:2000000,scratch:TR._tpSc});}
+  return p;
 }
+function _tpKey(a,b){const ka=a.cx*N+a.cy, kb=b.cx*N+b.cy;return Math.min(ka,kb)+'_'+Math.max(ka,kb);}   // 무방향 쌍 키(한 자리 — getTradePath·tpUse)
+function _tpBridge(p){if(p)for(const pt of p)if(TR.water[idx(pt.x,pt.y)]===1&&!TR.bridge[idx(pt.x,pt.y)]){TR.bridge[idx(pt.x,pt.y)]=1;_bridgeCells.push(pt);}}   // 경로가 강 건너는 곳 = 다리(한 자리 — 처음 판 길·다시 판 길)
 function getTradePath(a,b){   // a,b = {cx,cy} 마을 중심. 무방향 쌍 캐시.
-  const ka=a.cx*N+a.cy, kb=b.cx*N+b.cy, key=Math.min(ka,kb)+'_'+Math.max(ka,kb);
+  const key=_tpKey(a,b);
   if(_tradePaths[key]!==undefined)return _tradePaths[key];
   const p=tradePath(a.cx,a.cy,b.cx,b.cy);
-  if(p)for(const pt of p)if(TR.water[idx(pt.x,pt.y)]===1&&!TR.bridge[idx(pt.x,pt.y)]){TR.bridge[idx(pt.x,pt.y)]=1;_bridgeCells.push(pt);}   // 경로가 강 건너는 곳 = 다리
+  _tpBridge(p);
   _tradePaths[key]=p||null;
   return _tradePaths[key];
+}
+// ═══ ★★★[T599 ← T578 ④ 서버 `_routeRedigStep` · 손잡이 없음] **길이 자라면 교역로를 다시 판다** — 쌍마다 따로 판 길이 서로 붙게 ═══
+//   종전 랩: `_tradePaths` 는 쌍마다 한 번 파면 끝이었다(지형 고정) ⇒ 답압 할인(`L_ROAD_COST`)이 걸려도 **처음 판 날의 길**만 봤다.
+//   이제 서버 그 문법: 등급 지도 세대(`_roadGen`)가 지난 바퀴 뒤로 바뀌었으면, **지난 바퀴 뒤로 캐러밴이 실제로 다닌 쌍**(`_tpUsed` — 출발 `dispatchTrades` ·
+//   빨리감기 그림자 `roadShadowDaily`)만 한 바퀴 다시 판다 · 한 바퀴는 하루에 한 번까지(`lifeDayAll`) · 다시 판 길이 없으면 옛 길 그대로(쌍을 잃지 않는다).
+//   가는 중인 캐러밴은 제 길을 그대로 간다(몸의 path 는 출발 때 받은 것) — 새 길은 다음 출발부터. 다시 판 길이 물을 건너면 처음 판 길과 같은 줄로 다리를 놓는다(`_tpBridge`).
+//   ⚠econ 거리 행렬은 lifeInit 에 한 번 셌고 다시 안 센다(서버도 길 모양은 econ 과 무관 — 종전 그대로).
+let _tpUsed=new Set(),_tpRedigGen=0,_tpStat={pass:0,redig:0,changed:0,plain:0};
+function tpUse(a,b){if(a&&b)_tpUsed.add(_tpKey(a,b));}
+function tpRedigDaily(){
+  if(_roadGen===_tpRedigGen||!_tpUsed.size)return;   // 등급 지도가 그대로거나 다닌 쌍이 없다(세대는 그대로 둔다 — 다닌 쌍이 생기는 날 판다)
+  _tpRedigGen=_roadGen;_tpStat.pass++;
+  const keys=[..._tpUsed];_tpUsed.clear();
+  for(const key of keys){const old=_tradePaths[key];if(!old||old.length<2)continue;   // 캐시에 길이 있는 쌍만(못 닿는 쌍은 다시 파도 못 닿는다)
+    const a=old[0],b=old[old.length-1],p=tradePath(a.x,a.y,b.x,b.y);_tpStat.redig++;
+    if(!p||p.length<2)continue;
+    if(p.length===old.length&&p.every((q,i)=>q.x===old[i].x&&q.y===old[i].y))continue;
+    _tpBridge(p);_tradePaths[key]=p;_tpStat.changed++;}
 }
 // ===== NPC (농부·어부만) =====
 function initNPCs(){
@@ -12072,14 +12140,14 @@ function dispatchTrades(){
     const hall=vil.center,oh=dst.center,home=cand.home||hall;
     const yd=_hallYard(hall);   // ★[마당 스테이징 — 고증 ①] 집합·거래 앵커=큰집 문 앞 마당(실내 앵커가 상인·호위를 건물 안으로 끌어들이던 것 제거)
     const p0=bfsPath(Math.round(cand.px),Math.round(cand.py),yd.x,yd.y)||[{x:yd.x,y:yd.y}];   // 자리→마당
-    const tp=getTradePath(hall,oh);    // 회관→상대회관(다리·산우회 최단) — ★캐시·답압쌍(bdtSyncPairs) 불변: 걷는 경로만 아래서 마당 접합
+    const tp=getTradePath(hall,oh);tpUse(hall,oh);    // ★[T599 ← T578 ④] 다닌 쌍(다시 파기 대상) · 회관→상대회관(다리·산우회 최단) — ★캐시·답압쌍(bdtSyncPairs) 불변: 걷는 경로만 아래서 마당 접합
     let _rt=(tp&&tp.length>1)?((tp[0].x===hall.cx&&tp[0].y===hall.cy)?tp.slice():tp.slice().reverse()):[{x:hall.cx,y:hall.cy},{x:oh.cx,y:oh.cy}];
     const _inH8=(h,p)=>p.x>=h.cx-4.5&&p.x<=h.cx+3.5&&p.y>=h.cy-4.5&&p.y<=h.cy+3.5;
     while(_rt.length>1&&_inH8(hall,_rt[0]))_rt=_rt.slice(1);   // ★큰집 실내 웨이포인트 절단 — 경로가 회관 벽을 유령 통과하던 잠복 결함 제거(양끝 모두)
     while(_rt.length>1&&_inH8(oh,_rt[_rt.length-1]))_rt=_rt.slice(0,-1);
     const jn0=bfsPath(yd.x,yd.y,Math.round(_rt[0].x),Math.round(_rt[0].y))||[{x:_rt[0].x,y:_rt[0].y}];   // 마당→경로 시작(벽 인지 — 건물 바깥으로 돌아감)
-    const _sj0=_smoothWalk(jn0), _srtM=_smoothWalk(_rt);
-    V=dst.V; const ydD=_hallYard(oh), jn1=bfsPath(Math.round(_rt[_rt.length-1].x),Math.round(_rt[_rt.length-1].y),ydD.x,ydD.y)||[{x:ydD.x,y:ydD.y}]; const _sj1=_smoothWalk(jn1); V=vil.V;   // 상대 접합은 상대 마을 벽 기준(문·벽 존중)
+    const _sj0=_smoothCaravan(jn0), _srtM=_smoothCaravan(_rt);   // ★[T599 ← T578 ②] 교역 다리(마당→길·길·길→상대 마당) = 캐러밴 걸음 검사(1/16칸) — 자리→마당·마당→집은 주민 걸음 그대로
+    V=dst.V; const ydD=_hallYard(oh), jn1=bfsPath(Math.round(_rt[_rt.length-1].x),Math.round(_rt[_rt.length-1].y),ydD.x,ydD.y)||[{x:ydD.x,y:ydD.y}]; const _sj1=_smoothCaravan(jn1); V=vil.V;   // 상대 접합은 상대 마을 벽 기준(문·벽 존중)
     const _srt=[].concat(_sj0,_srtM.slice(1),_sj1.slice(1));   // 마당→상대 마당(복귀=역순, 왕복 대칭 유지)
     const ph=bfsPath(yd.x,yd.y,home.cx,home.cy)||[{x:home.cx,y:home.cy}];   // 마당→집
     const _sp0=_smoothWalk(p0), _sph=_smoothWalk(ph);   // ★직선화: 구간별 병합
@@ -12161,7 +12229,7 @@ function draw(){
   if(life&&life.oreRich){for(const[k,r]of life.oreRich){const t=r/L_OREMAX;if(t<0.04)continue;const c=k.split(',');const _p=(TR&&TR.oreP)?TR.oreP[idx(+c[0],+c[1])]:0.3;ctx.fillStyle=`rgba(${96+_p*140|0},${84+t*10|0},${120+t*30|0},${(0.25+t*0.5).toFixed(2)})`;ctx.fillRect(+c[0]*CELL,+c[1]*CELL,CELL,CELL);}}   // ★광맥: 진하기=잔여 재고, 붉은기=품위 p(캐면 옅어져 맨바위)
   if(life&&life.forageRich){for(const[k,e]of life.forageRich){if(e.K<=0)continue;const t=e.F/e.K;if(t<0.05)continue;const c=k.split(',');ctx.globalAlpha=0.2+t*0.5;ctx.fillStyle='#b6d95e';ctx.fillRect(+c[0]*CELL+CELL*0.32,+c[1]*CELL+CELL*0.32,CELL*0.36,CELL*0.36);}ctx.globalAlpha=1;}   // ★임연부 채집=연둣빛 점(F/K 높을수록 진함)
   if(life&&life.crop&&life.crop.size){const day=life.day;   // 작물=셀별 상태: 새싹→초록→황금, 병충해=붉음, 방치=칙칙
-    for(const e of life.crop.values()){const age=day-e.planted,grow=e.crop.grow;let R,G,B;
+    for(const e of life.crop.values()){const age=day-e.planted,grow=(e.g||e.crop.grow);let R,G,B;
       if(age>=grow){R=224;G=190;B=86;}
       else{const pr=age/grow;if(pr<0.08){R=120;G=145;B=72;}else{R=90+pr*80|0;G=156-pr*12|0;B=66;}}
       if(e.pest){R=Math.min(255,R+75);G=Math.max(40,G-55);B=Math.max(40,B-25);}
@@ -12249,6 +12317,10 @@ function draw(){
     for(const n of ppl){if(!n.action||n._muster)continue;const sx=(n.px*CELL+CELL/2)*view.z+view.ox,sy=(n.py*CELL)*view.z+view.oy;if(sx<-30||sx>790||sy<-10||sy>790)continue;const tx=n.px*CELL+CELL/2,ty=n.py*CELL-CELL*0.7;const lbl=(n.state==='build'&&n._site)?'🪵'+n.action:n.action;ctx.strokeStyle='rgba(0,0,0,0.75)';ctx.strokeText(lbl,tx,ty);ctx.fillStyle='#fff';ctx.fillText(lbl,tx,ty);}   // ★건축자=🪵 운반 연출 (★S3: 출정 agent는 제외 — 그룹 라벨(drawMarchGroup/drawLiveBattle)이 대표 표시, 병사별 교전/출정 라벨 난립 방지)
     ctx.textAlign='left';}
   }   // ★S6: 마을 렌더 순회 끝
+  if(BODY_EXITS.length){const Rb=Math.max(CELL*NPC_BODY_R,1.6/view.z);   // ★[T599 ← T590] 줄어드는 몸 — 누운 몸(납작 타원 · 짐승 사체 그 그림) · 걸어 나가는 몸(그 사람 색 점)
+    for(const a of BODY_EXITS){const X=a.px*CELL+CELL/2,Y=a.py*CELL+CELL/2;
+      if(a._bx.cat==='died'){ctx.globalAlpha=0.85;ctx.beginPath();ctx.ellipse(X,Y,Rb*1.6,Rb*0.7,0.35,0,7);ctx.fillStyle='#6b5a4c';ctx.fill();ctx.globalAlpha=1;}
+      else{ctx.fillStyle=a.col||'#7ac77a';ctx.beginPath();ctx.arc(X,Y,Rb,0,7);ctx.fill();ctx.strokeStyle='rgba(0,0,0,0.5)';ctx.lineWidth=Math.min(CELL*0.12,0.8/view.z);ctx.stroke();}}}
   if(VILS&&VILS.length){life=VILS[lifeFocal];V=life.V;drawCaravans();drawMarkets();}   // ★[10차 T4] 장마당 좌판   // 행상(교역) 이동 + life/V를 초점 마을로 복원(정지 중에도)
   if(typeof DENS!=='undefined'&&DENS.length){const _d0=(VILS&&VILS.length)?VILS[0].day:0;   // ★원천③ 소굴 렌더: 진한 대형 막사+🏕️(창발 은거지 🏴와 구분 표식) — 철거된 터=옅은 잔해 30일 후 소멸
     for(const dn of DENS){const X=dn.cx*CELL+CELL/2,Y=dn.cy*CELL+CELL/2;
@@ -12398,8 +12470,12 @@ function gStats(K,prod,cons,si,r,terrCells){
   el.innerHTML=`<b>${yr}년 ${mo}월(${SEASON_KO[si]})</b> · 인구 <b>${s.N.toFixed(0)}</b> · 영토 <b>${Math.round(terrCells).toLocaleString()}</b>셀 r${r.toFixed(0)}/${R_MAX_CELLS}${terrCells>=MAX_CELLS-1?'<span style="color:#e0c060">●캡(층↑)</span>':''} · 곳간 <b>${s.storage.toFixed(0)}</b><br>K=${K.toFixed(0)} · 생산${prod.toFixed(1)}/소비${cons.toFixed(1)} ${prod>=cons?'<span style="color:#8ec99a">잉여</span>':'<span style="color:#e08a8a">적자→곳간소진</span>'}`;
 }
 // ===== 생활 시뮬: 셀별 작물 + 농부 노동(파종·수확)=산출 → 식량 → 인구 =====
-const L_YEAR=365, L_MOSTART=[0,31,59,90,120,151,181,212,243,273,304,334], L_SEASONS=['봄','여름','가을','겨울'], L_START=120;   // 마을은 5월(파종철)에 세움
-const lMonth=d=>{const y=((d%L_YEAR)+L_YEAR)%L_YEAR;for(let m=11;m>=0;m--)if(y>=L_MOSTART[m])return m;return 0;};
+const L_YEAR=365, L_MOSTART=[0,31,59,90,120,151,181,212,243,273,304,334], L_SEASONS=['봄','여름','가을','겨울'], L_START=120;   // ★[T599] L_START = 랩 날과 econ 날의 자리 차(마을 세운 날 = econ 날 0 = 1년 3월 1일)
+// ★★[T599 ← T570 · 서버 `server/calendar.js` 정본(번들 안 `EconEngine.Calendar` · 사본 0) · 손잡이 없음(서버 기본 켬)] 랩 달력 = 그레고리력
+//   (게임일 0 = 1년 3월 1일 · 윤년 4/100/400 · 계절 = 달 — 봄 3~5 · 여름 6~8 · 가을 9~11 · 겨울 12~2). 랩 날 d 의 달 = `dateOf(d − L_START)`.
+//   종전 랩 달력(365일 · 1월 1일 기점 · 윤년 없음 · `L_START` 120 = 5월)은 같은 econ 날에 서버 날짜보다 **두 달 앞섰다** — 서버 NPC 작물(`crops.monthOf`)·
+//   전쟁 농번기(`war-core lMonth`)는 T570 에 이미 정본으로 갔다. `L_YEAR`·`L_MOSTART` 는 옛 줄을 읽는 데만 남는다(아래 `lMonth` 는 안 쓴다).
+const lMonth=d=>EconEngine.Calendar.dateOf(d-L_START).month-1;   // 0=1월 — 서버 `war-core lMonth`(`dateOf(day).month − 1`) 그 식(랩 날 → econ 날)
 const lSeason=d=>{const m=lMonth(d);return(m<=1||m===11)?3:m<=4?0:m<=7?1:2;};   // 봄3~5·여름6~8·가을9~11·겨울12~2월
 // 작물: 파종월(0=1월), 성장일, 셀당수확. 논·밭 모두 이모작(여름곡식 + 가을 파종 겨울나기 곡식).
 // 고대 한반도 식량작물 30종(카탈로그 연동). plantMo=0=1월. grow=달력일(월동 보리·밀·마늘은 ~210=초여름 수확). yieldC≈수확량×1.7
@@ -12412,6 +12488,11 @@ const CROPS=[
  {id:'배추',field:'밭',plantMo:[3,4,6,7,8],grow:48,yieldC:10},{id:'무',field:'밭',plantMo:[3,4,6,7,8],grow:36,yieldC:10},{id:'오이',field:'밭',plantMo:[3,4,5],grow:32,yieldC:9},{id:'가지',field:'밭',plantMo:[3,4],grow:44,yieldC:9},{id:'상추',field:'밭',plantMo:[2,3,4,7,8],grow:24,yieldC:7},{id:'아욱',field:'밭',plantMo:[2,3,4,5,7],grow:40,yieldC:9},{id:'순무',field:'밭',plantMo:[3,4,6,7,8],grow:50,yieldC:10},{id:'부추',field:'밭',plantMo:[2,3],grow:55,yieldC:7},
  {id:'대파',field:'밭',plantMo:[2,3,8],grow:52,yieldC:9},{id:'마늘',field:'밭',plantMo:[8,9],grow:210,yieldC:10},{id:'생강',field:'밭',plantMo:[3,4],grow:82,yieldC:9},
  {id:'참외',field:'밭',plantMo:[3,4],grow:56,yieldC:10},{id:'박',field:'밭',plantMo:[3,4],grow:70,yieldC:10}];
+// ▼T594-CROPCAL (생성물 — node scripts/t594-lab-cropcal.js · 손으로 고치지 마라 · 정본 server/crop-cal.js → crops.calDaysOf)
+const L_CROPCAL_T={'벼':{g:136},'보리':{g:91,v:1},'밀':{g:104,v:1},'조':{g:122},'메밀':{g:71},'콩':{g:133},'팥':{g:112},'녹두':{g:86},'참깨':{g:97},'들깨':{g:102},'생강':{g:173},'마늘':{g:101,v:1},'배추':{g:61},'무':{g:66},'아욱':{g:45},'상추':{g:71}};   // ★[T594] 작물 철 고증 활동일(농사로 1차 · 파종창 가운데날 → 수확창 가운데날) · v:1 = 월동(겨울 지난 3월 1일부터 센다 — 서버 T99 춘화)
+let L_CROPCAL=false;try{if(typeof location!=='undefined'&&new URLSearchParams(location.search).get('cropcal')==='1')L_CROPCAL=true;}catch(e){}try{const _el=(typeof document!=='undefined')&&document.getElementById('cropCal');if(_el)_el.checked=L_CROPCAL;}catch(e){}   // 손잡이(끔 기본 = 랩 종전 그대로) · 패널 '작물 철 고증' · URL ?cropcal=1
+function cropGrowAt(cr,day){const t=L_CROPCAL&&L_CROPCAL_T[cr.id];if(!t)return cr.grow;if(!t.v)return t.g;const y=Math.floor(day/L_YEAR),doy=day-y*L_YEAR,m3=L_MOSTART[2];return (doy<m3?y*L_YEAR+m3:(y+1)*L_YEAR+m3)-day+t.g;}   // 심는 날 → 익기까지 달력일(끔 = cr.grow 그대로) · 월동 = 다음 3월 1일까지 + 활동일
+// ▲T594-CROPCAL
 const L_MAXSK=8,L_CONSUME=1.0,L_FISH=35,L_FORAGE=0.10,L_BIRTH=0.0001,L_STARVE=0.004,L_YIELD=1.0,L_STOREMAX=300;   // L_BIRTH=하루당 출산. L_YIELD=수확스케일(평균비옥도서 K~50). L_STOREMAX=1인당 곳간 저장한계(성장기 잉여 폭발 방지, 고정농지라 안전)
 const L_SKP=0.00015,L_SKH=0.00025,L_SKT=0.00005,L_SKYR=0,L_RES=50,L_TILE=5,L_CAP=28,L_SPOIL=20,L_FARMSHARE=0.6,L_CULT=18;  // 숙련=행위당 아주 미세(파종·수확·김매기) → 평생 숙달. L_RES=곳간배수
 const L_TENDOK=2,L_PESTP=0.008,L_QW=0.05,L_QP=0.05,L_QMIN=0.25,L_QREC=0.5,L_WEEDS=[0.10,0.24,0.38,0.52,0.66,0.80];  // 병충해확률·품질감소·김매기 차례(생장 10~80%, 6벌 — 생육기 내내 밭일 → 유휴↓)
@@ -12510,6 +12591,14 @@ function _granAdd(s){
 // 집터 추가: 마을 둘레에 빈 자리 찾아 새 집(층0,진행0). 없으면 완공집 2층 증축. 개간/농지 상태는 안 건드림.
 // ★[10차 T3] 집터 하드 필터 — 마을 자동 배치(addHouseSite)와 플레이어 지정(placePlayerSite)이 **같은 코드**를 쓴다.
 //   (해석안 §3-1: 플레이어 배치도 같은 필터를 통과해야 마을 기하가 안 깨진다 — 필터를 복제하지 않고 추출만 했다)
+// ★★[T599 ← T569 ② · 서버 `_lifeSiteFilters.reject` '남의 마을' 두 줄 · 손잡이 없음] 집터가 **남의 집을 본다** — 다른 마을 집의 부지 원판과
+//   맞닿으면(부지 원판 차집합 D = {a−b : a,b ∈ LOT_CELLS} — 서버 `_t569LotsTouch` 그 집합 · 거리 문턱이 아니다) · 부지 칸이 남의 영토면 넘긴다.
+let _T569D=null;
+function _t569LotsTouch(dx,dy){if(!_T569D){_T569D=new Set();const L=VillageLayout.LOT_CELLS;for(const a of L)for(const b of L)_T569D.add((a[0]-b[0])+','+(a[1]-b[1]));}return _T569D.has(dx+','+dy);}
+function _t569Foreign(s,x,y){
+  for(const v of VILS){if(v===s||!v.houses)continue;for(const h of v.houses)if(_t569LotsTouch(Math.round(h.cx)-x,Math.round(h.cy)-y))return true;}
+  for(const[dx,dy]of VillageLayout.LOT_CELLS){const o=_claimedAll.get((x+dx)+','+(y+dy));if(o&&o!==s)return true;}
+  return false;}
 function siteFilters(s){
   if(!s._ownSet&&s.V&&s.V.territory)s._ownSet=new Set(s.V.territory.map(c=>c[0]+','+c[1]));   // 영토 집합(growTerritory가 유지)
   const own=s._ownSet;
@@ -12539,6 +12628,7 @@ function addHouseSite(s){
   cand.sort((a,b)=>a[2]-b[2]);   // 1패스=중심 가까운 순(안쪽 조밀) · 2패스=중심거리+잠식비용
   for(const c of cand){const x=c[0],y=c[1];
     let gap=true; for(const h of s.houses)if(Math.hypot(h.cx-x,h.cy-y)<L_HGAP){gap=false;break;} if(!gap)continue;   // 기존 집 간격
+    if(_t569Foreign(s,x,y))continue;   // ★[T599 ← T569 ②] 남의 마을(서버 '남의 마을' 사유)
     if(!fpOk(x,y,strict)||!farWater(x,y)||!granClear(x,y))continue;
     const nh={cx:x,cy:y,floors:1,builtFloors:0,built:0};s.houses.push(nh);if(s.V)s.V.houses=s.houses;if(!strict&&s.potSet){for(const[dx,dy]of VillageLayout.LOT_CELLS)s.potSet.delete(pkey(x+dx,y+dy));}/*★선점한 부지는 잠재농지에서 제거(농부가 나중에 집 위를 개간 못 하게)*/deforestArea(s,x,y,L_DEFOREST_H);return nh;   // ★집터=동네 벌채(±5)
   }
@@ -12559,6 +12649,7 @@ function placePlayerSite(s,x,y){
   if(Math.hypot(x-s.center.cx,y-s.center.cy)<VillageLayout.HALL_CLEAR)return {err:'큰집 마당 침범(r<'+VillageLayout.HALL_CLEAR+')'};
   if(F.isFarm(x,y,false))return {err:'개간 농지 위'};
   for(const h of s.houses)if(Math.hypot(h.cx-x,h.cy-y)<L_HGAP)return {err:'기존 집과 너무 가까움(<'+L_HGAP+')'};
+  if(_t569Foreign(s,x,y))return {err:'남의 마을'};   // ★[T599 ← T569 ②] 서버 플레이어 집터(`lifeRequestPlayerSite` → `_lifeSiteFilters.reject`)와 같은 사유
   if(!F.fpOk(x,y,false))return {err:'부지 불가(물·바위·영토밖·농지·길)'};
   if(!F.farWater(x,y))return {err:'물가 완충 침범(침수)'};
   if(!F.granClear(x,y))return {err:'곳간과 겹침'};
@@ -12573,13 +12664,18 @@ function placePlayerSite(s,x,y){
 //   집·농지는 그 안에서 생김(집이 영토를 바꾸는 게 아니라 영토가 먼저 충분히 확장됨). 한 번에 ~한 링만(점진).
 //   land.size는 lifeInit서 1회 고정 → 경제 영향 0(렌더/정착 경계만). 지형(물·바위)은 건너뜀.
 const L_N4T=[[1,0],[-1,0],[0,1],[0,-1]];
+// ★★[T599 ← T579 추신 · T538 · T230 · 서버 `_terrGrow`·`_terrCap` 그 식 · 손잡이 없음(서버 기본 그대로)] 영토 목표와 상한 — 정본 `territoryTarget`
+//   (번들 안 `server/village-layout.js` = `EconEngine.Layout` · 사본 0). 목표 = max(econ 압력 round(land.size×25), 집 압력 ⌈housing÷6⌉×600+1,500) ·
+//   상한 = **인구의 집 압력** ⌈인구÷6⌉×600+1,500(`territoryTarget(0, 인구).house` — 서버 `T579_CAP_HOUSE` 기본 '2' · NPC 마을). 종전 랩은 상한이 `MAX_CELLS` 뿐이었다.
+function _terrCapOf(s){return EconEngine.Layout.territoryTarget(0,s.econ.npcs.length).house;}
+function _terrTargetOf(s){return Math.min(EconEngine.Layout.territoryTarget(s.econ.land.size,s.econ.housing||0).target,_terrCapOf(s));}
 function growTerritory(s){
   if(!s.V||!s.V.territory||!s.center)return;
   if(!s._ownSet)s._ownSet=new Set(s.V.territory.map(c=>c[0]+','+c[1]));   // 항상 유지(addHouseSite가 영토 제약에 사용)
   // ★영토 목표 = econ land.size×25 — 확장은 엔진의 MB/MC 투자결정이 유일한 원천(pop 공식은 econ 없을 때 폴백).
   //   MAX_CELLS는 비상 백스톱으로만 잔존(실질 정지는 MB/MC·프론티어 고갈이 먼저 옴 → 사실상 dead).
-  const _hLots=s.econ?Math.ceil(((s.econ.housing||0))/(L_FLOORCAP*L_MAXFL))*600+1500:0;   // ★주택 압력 → 영토: 필요 부지 수(수용력÷채당 L_FLOORCAP×L_MAXFL명 — 정본 파생이라 용량 변경 자동 연동)×실효 600셀 + 코어 — 경작 수요(MB/MC)만 듣던 확장이 '집 지을 땅'엔 무반응이라, 완공 계약 도입 후 인구가 소수 부지에 영구 결박되던 병목
-  const target=Math.min(Math.max(s.econ?s.econ.land.size*25:((1500+Math.ceil(s.pop/(L_FLOORCAP*L_MAXFL))*VillageLayout.LAND_PER_HOUSE)*(s._sizeMul||1.5)), _hLots), MAX_CELLS);
+  //   ★[T599 ← T579 추신] 목표·상한은 위 두 함수(정본 `territoryTarget`) — 종전 줄(`_hLots` = 집 압력을 여기 옮겨 적은 식 · 상한 없음)은 걷었다.
+  const target=s.econ?Math.min(_terrTargetOf(s),MAX_CELLS):Math.min((1500+Math.ceil(s.pop/(L_FLOORCAP*L_MAXFL))*VillageLayout.LAND_PER_HOUSE)*(s._sizeMul||1.5),MAX_CELLS);   // econ 없으면 옛 폴백
   if(s.V.territory.length>=target)return;   // 목표 도달 → no-op(저렴). econ 확장 시 target↑ → 다시 성장.
   const own=s._ownSet, cx=s.center.cx, cy=s.center.cy;
   // ★_terrFrontier로 분리 — 옛 코드는 s._frontier를 개간 캐시(getFrontier, 배열)와 공유 → 개간이 배열로 덮으면
@@ -12591,6 +12687,7 @@ function growTerritory(s){
   const fr=[...s._terrFrontier.entries()].sort((a,b)=>a[1]-b[1]);   // 중심 가까운 순 → 원형·연결 성장(구멍 없음)
   for(let i=0;i<fr.length&&budget>0;i++){
     const kk=fr[i][0]; if(!s._terrFrontier.has(kk))continue; s._terrFrontier.delete(kk); if(own.has(kk))continue;
+    {const _o=_claimedAll.get(kk);if(_o&&_o!==s)continue;}   // ★[T599 ← T569 ①] 줄 세울 때 비었어도 그새 이웃이 가졌으면 안 든다(서버 `_terrGrow` — 남의 영토 칸은 후보가 아니다)
     const c=kk.split(',');const x=+c[0],y=+c[1];
     own.add(kk); _claimedAll.set(kk,s); s.V.territory.push([x,y]); budget--;
     for(const[dx,dy]of L_N4T)pushFr(x+dx,y+dy);   // 새 경계 추가
@@ -12621,7 +12718,8 @@ function relayoutVillage(s,np){
   if(!s.center||!s.V)return;
   const compactW=+document.getElementById('compactW').value, settlement=document.getElementById('settType').value;
   const bs=new Map(); for(const h of s.houses)bs.set(Math.round(h.cx)+','+Math.round(h.cy),h);   // 기존 집 건설상태 백업(위치별)
-  const V2=VillageLayout.generate(TR.terrain,s.center.cx,s.center.cy,np,{fert:s.fert,water:s.water,compactW,sizeMul:s._sizeMul||1.5,settlement,maxCells:MAX_CELLS,targetCells:s.econ?Math.round(s.econ.land.size*25):undefined,existingHouses:s.houses.filter(h=>!h.player),/*★[10차 T3 — 실측으로 잡은 결함] 플레이어 의뢰 집을 existingHouses로 넘기면 레이아웃이 그것을 '이미 있는 마을 집'으로 세어 신규 배치를 한 채 덜 만든다 → 마을이 영구히 1~2층 손해(A/B −2층의 진범, 자리와 무관하게 재현). 아래 구제 루프가 플레이어 집을 되붙인다*/existingFarmland:s.farmland,existingDryfield:s.dryfield});   // ★영토 목표=econ size(MB/MC)
+  const _tOwn=Object.assign({},TR.terrain,{isBlocked:(x,y)=>{if(TR.terrain.isBlocked(x,y))return true;const o=_claimedAll.get(x+','+y);return !!o&&o!==s;}});   // ★[T599 ← T569 ①] 재배치도 남의 영토를 막힌 땅으로 본다(서버는 영토를 다시 짓지 않는다 — 랩 재배치가 ① 을 지키게)
+  const V2=VillageLayout.generate(_tOwn,s.center.cx,s.center.cy,np,{fert:s.fert,water:s.water,compactW,sizeMul:s._sizeMul||1.5,settlement,maxCells:MAX_CELLS,targetCells:s.econ?Math.min(Math.round(s.econ.land.size*25),_terrCapOf(s)):undefined,existingHouses:s.houses.filter(h=>!h.player),/*★[10차 T3 — 실측으로 잡은 결함] 플레이어 의뢰 집을 existingHouses로 넘기면 레이아웃이 그것을 '이미 있는 마을 집'으로 세어 신규 배치를 한 채 덜 만든다 → 마을이 영구히 1~2층 손해(A/B −2층의 진범, 자리와 무관하게 재현). 아래 구제 루프가 플레이어 집을 되붙인다*/existingFarmland:s.farmland,existingDryfield:s.dryfield});   // ★영토 목표=econ size(MB/MC)
   if(s.V&&s.V.territory){const tset=new Set(V2.territory.map(c=>c[0]+','+c[1]));for(const c of s.V.territory){const k=c[0]+','+c[1];if(!tset.has(k)){tset.add(k);V2.territory.push(c);}}}   // ★영토 불수축(폐경지 유지 — 한 번 연 땅은 영토)
   for(const h of V2.houses){const old=bs.get(Math.round(h.cx)+','+Math.round(h.cy));if(old){h.builtFloors=old.builtFloors;h.built=old.built;if(old.player){h.player=true;h.cost=old.cost;h._crewTot=old._crewTot;h._stage=old._stage;h._pday=old._pday;}/*★[10차 T3] 플레이어 표식은 재배치를 건너 살아남는다(generate는 {cx,cy,floors}만 복제)*/}else{h.builtFloors=0;h.built=0;}}   // 기존 집=유지, 새 집=집터(미완공→건설)
   for(const[_k,_old]of bs){if(!_old.player)continue;if(!V2.houses.some(h=>Math.round(h.cx)+','+Math.round(h.cy)===_k))V2.houses.push(_old);}   // ★[10차 T3] 재배치가 플레이어 자산을 지우지 않는다(레이아웃이 떨궈도 되살림)
@@ -12630,7 +12728,7 @@ function relayoutVillage(s,np){
   s.potFarm=(V2.nongZone||[]).slice(); s.potDry=[];   // ★논 존닝만 잠재 메뉴 갱신(밭=창발) — V2.farmland은 개간 실상태(잠금분)라 potFarm 아님
   s.potSet=new Map();for(const c of s.potFarm){if(roadLevel(c.cx,c.cy)>=1)continue;s.potSet.set(pkey(c.cx,c.cy),'논');}/*파셀 ·★답압 길 셀 제외(생활 동맥 보호). ★밭은 potSet 밖 — 개간 창발(_batEligible)*/
   s._ownSet=new Set(V2.territory.map(c=>c[0]+','+c[1]));   // 영토 = 레이아웃 territory(슬라이더와 동일)
-  for(const k of s._ownSet)_claimedAll.set(k,s);   // ★전역 소유 등록(이웃 성장이 이 영토를 회피)
+  for(const k of s._ownSet){const _o=_claimedAll.get(k);if(!_o||_o===s)_claimedAll.set(k,s);}   // ★[T599 ← T569 ①] 남이 가진 칸은 안 빼앗는다 · ★전역 소유 등록(이웃 성장이 이 영토를 회피)
   s._frontier=null;   // 개간 프론티어 무효화(다음 needLand서 재계산)
   s._terrFrontier=null;   // 영토 프론티어도 무효화(영토가 재생성됨)
   updateLiveLand(s);   // ★영토 변화 → 지력·한계지 실측 갱신
@@ -12679,7 +12777,7 @@ function fruitSettle(s,x,y,day){                       // 그 칸의 열매 재�
   if(!s.fruitRich)s.fruitRich=new Map();
   const T=treeOf(x,y); if(!T||!T.fruit)return 0;
   const k=_fruitKey(x,y); let e=s.fruitRich.get(k);
-  const yr=Math.floor(day/L_YEAR), se=lSeason(day);
+  const yr=EconEngine.Calendar.springYearOf(day-L_START), se=lSeason(day);   // ★[T599 ← T570] 열매 해 = 봄 기점 해(서버 `trees.js` 그 열쇠 — 달력 해로 세면 1월 1일 겨울 비움이 새 해 열쇠를 먼저 잡아 봄에 다시 안 찬다)
   if(!e){e={n:0,yr:-1};s.fruitRich.set(k,e);}
   if(se===3){ if(e.yr!==yr||e.n>0){e.n=0;e.yr=yr;} return 0; }   // ★겨울 = 소멸(남은 것은 사라진다)
   if(se===T.fs&&e.yr!==yr){                                       // ★그 철 들어서면 한 번 채운다
@@ -12841,6 +12939,86 @@ function _mobView(){const v=(typeof view!=='undefined')?view:{z:1,ox:0,oy:0},c=(
      ⚠제품(`sim/`·`server/`)은 한 글자도 안 만졌다 — 맹수는 랩에만 있으니 이 결함도 랩에만 있다.
        (다만 `tickForceEvacuation` 의 "counts 재계산은 다음 tick에서 jobCounts가 알아서 함" 주석은
         제품 쪽에도 있고 **사실이 아니다** — `jobCounts` 는 `return v.counts` 뿐이다. 회부 §4.) */
+// ═══ ★★★[T599 ← T590 · 서버 `server/villages.js` `removeOneNpc`·`syncVillagePop`·`_bxDie`·`_bxWalk`·`tickBodyExits` + `syncVillageJobs` 그 문법 · 손잡이 없음] ═══
+//   **몸이 econ 수의 그림자가 아니다.** 종전 랩: econ 인구가 줄면 `lifeSync` 가 그 직업 칸 **맨 뒤 몸**을 지웠다(시체 0 · 순간 소멸) ·
+//   직업만 바뀌어도 그 몸을 지우고 침대에 새 몸을 세웠다. 이제 —
+//   ⓐ 몸이 econ 보다 많으면(사람이 줄었다) **까닭 줄**(`s._bxQ`)을 본다 — econ 인구식 죽음(`_deadTot` 증분) · 행상 피살(`tradersKilled` 증분)은 읽고,
+//      도적 층(해체·절망 이탈·토벌 원정 전사)은 econ 에서 사람을 뺀 그 줄 곁 `bxNote` 한 줄로 적는다(서버 `noteBodyExit` 그 자리).
+//      · 죽음(기근 날 = `_dpDebug.hunger < 0` 이면 굶음 · 아니면 늙음/병) = 남는 직업 칸 **맨 앞 몸**(가장 먼저 선 몸 — econ 의 가장 늙은 이부터 규칙의 몸 쪽 거울)이
+//        **그 자리에 눕는다**(`L_CORPSE` 뒤 거둔다 · 납작 타원 = 짐승 사체 그 그림).
+//      · 도적 전환·절망 이탈 = 맨 뒤 몸이 **그 단의 은거지까지 걷는다** · 그 밖(원정 전사·행상·까닭 모름) = **마을 밖**(영토 가장자리 + 2칸 — 서버 `_maxRPx` 그 식)으로
+//        걸어 나간다. 걸음 = 랩 걸음 문 그대로(`bfsPath` → 못 찾으면 `bxRoute`(물 막힘 · 다리 열림 — 서버 코스 격자 규칙) → 직선 · `_smoothWalk` · `moveNPC` · `L_WALK`) · 닿으면 거둔다.
+//      · 전장에서 이미 쓰러진 몸(`_bdead` — 전쟁 층이 숨긴 몸)이 있으면 그 몸부터(그 사람은 전장에 누웠다 · 전쟁 층 몫).
+//   ⓑ 직업 칸끼리 남고 모자란 몫은 **이름표만** 바꾼다(서버 `syncVillageJobs` — 몸은 그대로 · 일터만 다시 받는다).
+//   ⓒ 그래도 모자란 칸 = 출생 — 종전처럼 침대에서 선다(서버 `spawnOneNpc` 무변).
+//   ⚠출정(`_muster`) · 교역 나간 몸(`trading` — 랩의 캐러밴 몸)은 건너뛴다(남은 게 그뿐이면 서버처럼 멈춘다). 하루 상한(서버 ±2)은 없다 — 랩은 그날 다 맞춘다(종전 그대로).
+//   ⚠랩엔 바닥 물건 층이 없어 짐 낙하(서버 `_deathDrop`)가 없고, 사건 장부가 없어 `STARVED` 줄도 없다(계수 `_bxStat.died.starve` 만).
+const BX_CAT={starve:'died',old:'died',bandit:'walk',desert:'walk',move:'walk',expedition:'other',road:'other',unknown:'other'};   // 서버 `BX_CAT` 그 표
+const BX_COL={fisher:'#6db3e0',hunter:'#c9824a',forager:'#9ccf5e',lumberjack:'#4f8a36',miner:'#b2b2c0',villager:'#d8a85a'};   // 직업 색 — `lifeSync` 의 `grow` 가 쓰는 그 표(한 자리 · 이름표 바꿀 때도 이 표)
+const L_CORPSE=5*60;   // 누운 몸이 남는 게임분 = 서버 `CORPSE_DECAY_MS` 5분(실시간) ÷ 서버 시계(하루 24분 = 1,440게임분 ⇒ 실 1분 = 60게임분) — 값 자체는 T590 회부 1(재민)
+let BODY_EXITS=[], _bxDayGM=0, _bxStat=null;
+function bxStatNew(){return {died:{starve:0,old:0},walk:{bandit:0,desert:0,move:0},other:{expedition:0,road:0,unknown:0},warDead:0,relabel:0,rot:0,arrive:0,straight:0,trimmed:0,noted:0,vanish:0};}
+function bxNow(){return Math.max(typeof lifeGM==='number'?lifeGM:0,_bxDayGM);}   // 몸의 시계 — 생활 시계(관찰) · 하루 넘김(빨리감기·하네스 — lifeGM 이 안 가는 판)
+function bxNote(vil,kind,n,toCell){if(!vil||!(n>0)||!BX_CAT[kind])return;const q=vil._bxQ||(vil._bxQ=[]);const note={k:kind,n:n|0};if(toCell&&toCell.cx!=null)note.to={x:toCell.cx,y:toCell.cy};q.push(note);if(_bxStat)_bxStat.noted+=n|0;}
+function bxObserve(s){const e=s&&s.econ;if(!e)return;const dead=+e._deadTot||0,kill=+((e.tradeStats&&e.tradeStats.tradersKilled)||0);   // 서버 `_bxObserve` 그 두 증분(읽기만)
+  if(!s._bxSeen){s._bxSeen={dead,kill};return;}
+  const dd=dead-s._bxSeen.dead,dk=kill-s._bxSeen.kill;
+  if(dd>0)bxNote(s,(e._dpDebug&&e._dpDebug.hunger<0)?'starve':'old',dd);   // 기근 날 = 서버 `villageFamine` 그 술어
+  if(dk>0)bxNote(s,'road',dk);
+  s._bxSeen.dead=dead;s._bxSeen.kill=kill;}
+function bxTake(s){const q=s._bxQ;if(!q||!q.length)return {k:'unknown'};const h=q[0];if(--h.n<=0)q.shift();return {k:h.k,to:h.to||null};}
+function bxPick(arr,front){for(let j=0;j<arr.length;j++){const i=front?j:arr.length-1-j,a=arr[i];if(a._muster||a._bdead||a.state==='trading'||a._bx)continue;return i;}return -1;}
+function bxEdge(s,a){   // 마을 밖 — 회관 → 몸 방향으로 영토 가장자리 + 2칸(서버 `_maxRPx` = 경계 최대 반경 + 2칸 그 식) · 몸이 회관 위면 가장 가까운 이웃 마을 쪽
+  const cx=s.center.cx,cy=s.center.cy;let R=0;if(s.V&&s.V.territory)for(const c of s.V.territory){const d=Math.hypot(c[0]-cx,c[1]-cy);if(d>R)R=d;}R+=2;
+  let dx=a.px-cx,dy=a.py-cy,d=Math.hypot(dx,dy);
+  if(d<1){let best=null,bd=1e18;for(const o of VILS){if(o===s||!o.center)continue;const od=Math.hypot(o.center.cx-cx,o.center.cy-cy);if(od<bd){bd=od;best=o;}}if(best){dx=best.center.cx-cx;dy=best.center.cy-cy;d=Math.hypot(dx,dy);}if(!(d>0)){dx=0;dy=1;d=1;}}
+  for(let r=R;r>=0;r-=1){const x=Math.max(0,Math.min(N-1,Math.round(cx+dx/d*r))),y=Math.max(0,Math.min(N-1,Math.round(cy+dy/d*r)));if(!bxBlk(x,y))return {x,y};}   // ★가장자리 칸이 물·바위면 회관 쪽으로 첫 뭍 칸(서버는 끝점을 열린 칸으로 스냅한다 — `_routeBegin` snap · `_walkNodeCell`)
+  return {x:Math.round(cx),y:Math.round(cy)};}
+function bxBlk(x,y){return TR.terrain.isBlocked(x,y)&&!(TR.bridge&&TR.bridge[idx(x,y)]);}   // 몸이 못 서는 칸 = 물·바위(다리 열림) — `bfsPath` 의 그 술어
+function bxRoute(sx,sy,gx,gy){   // `bfsPath`(4방 · 65,536노드)가 못 찾은 먼 길 — 도로 프리셋(8방 · 코너컷 금지) · **물은 막힘 · 다리 칸 열림 · 바위 막힘**(서버 몸 걸음 `computeRoutePts` 의 코스 격자 `coarseOpen` 그 규칙)
+  //   종전(T599 첫 판)은 `tradePath`(물 22배 — 교역로가 다리를 놓는 규칙)를 빌려 몸이 다리 없는 물 위를 걸을 수 있었다. 탐색 상한·버퍼는 `tradePath` 의 그것.
+  if(!TR._tpSc)TR._tpSc={w:N,h:N,g:new Int32Array(N*N),came:new Int32Array(N*N),stamp:new Int32Array(N*N),gen:0};
+  return PathCore.routePath(sx,sy,gx,gy,{blocked:(x,y)=>!inG(x,y)||bxBlk(x,y),maxPops:2000000,scratch:TR._tpSc});}
+function bxExit(s,a,w){   // 몸 하나가 줄어든다 — 그 자리에 눕거나 걸어 나간다(서버 `_bxDie`·`_bxWalk`)
+  if(!_bxStat)_bxStat=bxStatNew();
+  const cat=BX_CAT[w.k]||'other';a.path=null;a.pi=0;a.target=null;a.cpath=null;a.dwell=0;a._rmul=1;a._gran=null;
+  if(cat==='died'){a._bx={cat,k:w.k,until:bxNow()+L_CORPSE};a.hp=0;a.action='';a.state='dead';}
+  else{const dst=w.to||bxEdge(s,a),sx=Math.round(a.px),sy=Math.round(a.py);
+    let p=bfsPath(sx,sy,dst.x,dst.y);if(!p||p.length<2)p=bxRoute(sx,sy,dst.x,dst.y);
+    if(!p||p.length<2){p=[{x:dst.x,y:dst.y}];_bxStat.straight++;}else p=_smoothWalk(p);
+    a.path=p;a.pi=0;a.state='leave';a.action='떠남';a._bx={cat,k:w.k,t:bxNow()};}
+  BODY_EXITS.push(a);_bxStat[cat][w.k]++;}
+function bxRelabel(a,job,baseSk){   // 이름표만(서버 `syncVillageJobs`) — 몸·자리·체력은 그대로, 일터는 `lifeSync` 가 새 직업으로 다시 준다
+  a.job=job;a.state='home';a.path=null;a.pi=0;a.dwell=0;a.target=null;a.cpath=null;a.action='';a._gran=null;
+  delete a.work;delete a.area;delete a.plot;delete a._mp;delete a.role;delete a._esk;
+  if(job==='farmer'){delete a.col;if(a.skill==null)a.skill=baseSk;if(a.fert==null)a.fert=0.85+Math.random()*0.3;a.acts=L_CAP;a.wi=0;}
+  else a.col=BX_COL[job];}
+function bxSync(s,G,baseSk,E){   // `lifeSync` 의 줄이는 쪽 — G = [[칸 배열, econ 수, 직업]…]
+  if(!E)return;   // econ 없는 미리보기 — 옛 줄 그대로
+  if(!_bxStat)_bxStat=bxStatNew();
+  bxObserve(s);
+  let have=0,want=0;for(const g of G){have+=g[0].length;want+=g[1];}
+  let exits=Math.max(0,have-want);
+  for(const g of G){const arr=g[0];for(let i=arr.length-1;i>=0&&exits>0&&arr.length>g[1];i--)if(arr[i]._bdead){arr.splice(i,1);exits--;_bxStat.warDead++;}}
+  while(exits>0){const w=bxTake(s),front=BX_CAT[w.k]==='died';let done=false;
+    for(const g of G){const arr=g[0];if(arr.length<=g[1])continue;const i=bxPick(arr,front);if(i<0)continue;bxExit(s,arr.splice(i,1)[0],w);done=true;break;}
+    if(!done)break;exits--;}
+  const spare=[];for(const g of G){const arr=g[0];while(arr.length>g[1]){const i=bxPick(arr,false);if(i<0)break;spare.push([arr.splice(i,1)[0],arr]);}}
+  for(const g of G)while(g[0].length<g[1]&&spare.length){const sp=spare.shift();bxRelabel(sp[0],g[2],baseSk);g[0].push(sp[0]);_bxStat.relabel++;}
+  for(const sp of spare)sp[1].push(sp[0]);   // 갈 칸이 없다(출정·교역에 걸려 몸이 econ 보다 많은 채) — 제 칸으로(서버: 남은 게 전부 출정이면 멈춘다)
+  if(exits===0&&s._bxQ&&s._bxQ.length){for(const h of s._bxQ)_bxStat.trimmed+=h.n;s._bxQ.length=0;}}   // 몸이 econ 에 닿았다 — 남은 까닭은 출생과 상쇄된 몫(버린다)
+function bxEmptied(vil){   // 마을이 비는 날 — 남은 몸이 다 줄어든다(마을이 지도에서 지워지기 **전**에)
+  if(!_bxStat)_bxStat=bxStatNew();
+  bxObserve(vil);const arr=vil.agents||[];
+  while(arr.length){const w=bxTake(vil),i=bxPick(arr,BX_CAT[w.k]==='died');if(i<0)break;bxExit(vil,arr.splice(i,1)[0],w);}
+  for(const a of arr){if(a._bdead)_bxStat.warDead++;else _bxStat.vanish++;}   // 출정·교역 몸만 남았다 — 종전처럼 마을과 함께 지워진다(셈만)
+  vil.agents=[];}
+function bxTick(){   // 누운 몸의 시간 · 걷는 몸의 걸음(관찰은 매 프레임 · 빨리감기·하네스는 하루 넘김마다 — 몸의 시계 `bxNow`)
+  if(!BODY_EXITS.length)return;const now=bxNow();
+  for(let i=BODY_EXITS.length-1;i>=0;i--){const a=BODY_EXITS[i],b=a._bx;
+    if(b.cat==='died'){if(now>=b.until){BODY_EXITS.splice(i,1);_bxStat.rot++;}continue;}
+    const dt=now-b.t;b.t=now;if(dt>0&&a.path)moveNPC(a,L_WALK*dt);
+    if(!a.path||a.pi>=a.path.length){BODY_EXITS.splice(i,1);_bxStat.arrive++;}}}
 function reapDead(s){if(!s._anyDead)return;s._anyDead=0;   // ★사망 처리: agent 제거 + econ.npcs 하나 제거(진짜 인구감소 — 리싱크 부활 방지). 인구 0 마을은 lifeDayAll이 소멸시킴.
   for(let i=s.agents.length-1;i>=0;i--){const a=s.agents[i];if(!a._dead)continue;s.agents.splice(i,1);
     if(s.econ&&s.econ.npcs&&s.econ.npcs.length){let k=-1;for(let j=0;j<s.econ.npcs.length;j++)if(s.econ.npcs[j].currentJob===a.job){k=j;break;}if(k<0)k=(Math.random()*s.econ.npcs.length)|0;const _rd=s.econ.npcs.splice(k,1)[0];if(s.econ.counts&&_rd&&_rd.currentJob)s.econ.counts[_rd.currentJob]=Math.max(0,(s.econ.counts[_rd.currentJob]||0)-1);}   // 같은 직업 우선 제거(직업분포 유지) · ★★[T311] counts 증분 캐시 동기 — 같은 랩의 다른 자리 전부(전쟁실험실 여섯 · 마을실험실 넷 — killTrader·도적 둘·원정·향리·이주·warKill)가 이미 쓰는 그 밑짝(사본 0). 이 한 조각만 빠지자 숫자가 사람보다 많아졌다
@@ -13211,6 +13389,11 @@ function bdtCampSpot(ocx,ocy){   // 은거지 탐색: 옛 마을 터 기준 나�
     if(sc>bs){bs=sc;best={cx:x,cy:y};}}
   return best;}
 function bdtDenRng(a,b){let h=(_denSeed^Math.imul(a+1,2654435761)^Math.imul(b+101,40503))>>>0;h^=h>>>13;h=Math.imul(h,1274126177)>>>0;h^=h>>>16;return (h>>>0)/4294967296;}   // ★원천③ 결정론 RNG(시드+소굴id+세대 해시 — Math.random 불사용: 결성 시점·규모가 시드만의 함수)
+// ★★[T599 ← T577 추신 · 서버 `server/bandits.js` `_t577Hash`·`_bdtOpenDay` 그 식 · 손잡이 없음(서버 기본 켬 그대로)] 도적 보호기 끝 = 마을마다 다른 날
+//   = BDT_MIN_DAY + ⌊bdtDenRng(이름 해시 % 100003, 577) × BDT_MIN_DAY⌋(둘째 해 안 · 새 수 0 — 퍼짐 폭은 보호기 그 자체). 잰 날 = **econ 날**(`ECON_WORLD.day` —
+//   서버 `world.day` 그 날). 종전 랩은 랩 날(econ 날 + `L_START`)로 재서 보호기가 econ 245일에 끝났다(서버 365).
+function _t577Hash(name){let h=0;const s=String(name||'');for(let i=0;i<s.length;i++)h=(Math.imul(h,31)+s.charCodeAt(i))|0;return h>>>0;}
+function _bdtOpenDay(vil){return BDT_MIN_DAY+Math.floor(bdtDenRng(_t577Hash(vil&&vil.name)%100003,577)*BDT_MIN_DAY);}
 function bdtDenScan(){   // ★원천③ 배치(lifeInit 1회): 오지 스코어=전 마을 최소거리(멀수록↑, 캡500)+교역로 최소거리(멀수록↑, 캡400×0.7 — bdtCampSpot '길목'과 정반대 부호)+숲 엄폐. 상위 후보에서 서로 250m+ 이격 2~3곳.
   DENS=[];_denSeq=1;_denSeed=((+document.getElementById('seed').value)||0)>>>0;
   if(!VILS.length||!TR)return;
@@ -13283,6 +13466,7 @@ function bdtFormGang(vil,size,day,why){   // 소멸 해체 전환: econ 인구�
   vil.pop=e.npcs.length;
   const g={id:_bdtSeq++,camp,n:size,food:size*6,zero:0,born:day,home:vil.name,why,members:[],lootN:0,lastLoot:day,_supFlash:0};
   BANDITS.push(g);const st=bdtStats();if(st){st.conv+=size;if(BANDITS.length>st.peak)st.peak=BANDITS.length;}
+  bxNote(vil,'bandit',size,camp);   // ★[T599 ← T590] 몸은 은거지까지 걷는다(서버 `noteBodyExit` 그 자리)
   bdtLog(day,vil.name+' '+why+' → 도적단#'+g.id+' '+size+'명 결성(은거지 '+camp.cx+','+camp.cy+')');
   return g;}
 function banditDaily(day){   // 하루 1회(lifeDayAll — 빨리감기·하네스에서도 동작): 위기 추적→전환/이탈, 유지비, 토벌, econ 훅 테이블 동기
@@ -13291,10 +13475,11 @@ function banditDaily(day){   // 하루 1회(lifeDayAll — 빨리감기·하네�
     vil._bdtPeak=Math.max(vil._bdtPeak||0,n);
     const S=e.storage||{},fe=(S.food||0)+(S.fish||0)+(S.meat||0)+(S.cooked_food||0);
     const hap=e.lastStats?e.lastStats.happiness:0.5;
-    vil._bdtCri=(day>=BDT_MIN_DAY&&hap<BDT_CRI_HAP&&fe<n*BDT_CRI_FOOD)?(vil._bdtCri||0)+1:(vil._bdtCri||0)*0.95;   // 새는 양동이(플랩 내성) — 정착 보호기(<365일)엔 감쇠만
+    const _eday=ECON_WORLD.day,_open=_bdtOpenDay(vil);   // ★[T599 ← T577 추신] 이 마을 보호기 끝(econ 날)
+    vil._bdtCri=(_eday>=_open&&hap<BDT_CRI_HAP&&fe<n*BDT_CRI_FOOD)?(vil._bdtCri||0)+1:(vil._bdtCri||0)*0.95;   // 새는 양동이(플랩 내성) — 정착 보호기(<365일)엔 감쇠만
     if(vil._bdtLastN!=null){if(n<vil._bdtLastN)vil._bdtFall=(vil._bdtFall||0)+1;else if(n>vil._bdtLastN)vil._bdtFall=Math.max(0,(vil._bdtFall||0)-2);}   // 순감 일수(회복 시 두 배로 차감 — 정체·출렁임은 0 근방)
     vil._bdtLastN=n;
-    if(day>=BDT_MIN_DAY&&!vil._banditized&&(vil._bdtFall||0)>=BDT_DIS_FALL&&fe<n*BDT_DIS_FOOD&&n>=BDT_GMIN&&n<=Math.max(4,Math.min(20,(vil._bdtPeak||n)*0.55))){   // 죽어가는 미끄럼 + 곳간 바닥 + 잔존 소수 = 해체
+    if(_eday>=_open&&!vil._banditized&&(vil._bdtFall||0)>=BDT_DIS_FALL&&fe<n*BDT_DIS_FOOD&&n>=BDT_GMIN&&n<=Math.max(4,Math.min(20,(vil._bdtPeak||n)*0.55))){   // 죽어가는 미끄럼 + 곳간 바닥 + 잔존 소수 = 해체
       const size=Math.min(n,Math.max(BDT_GMIN,Math.min(BDT_GMAX,Math.round(n*BDT_CONV))));   // 잔존 40%(3~8) — 잔존 3~4면 사실상 전원(마을은 곧 소멸=해체)
       if(bdtFormGang(vil,size,day,'해체(순감 '+(vil._bdtFall||0)+'일·잔존 '+n+'명·피크 '+(vil._bdtPeak||n)+')'))vil._banditized=1;}
     else if(BANDITS.length&&vil._bdtCri>=BDT_EXO_D&&day-(vil._bdtExoAt||-999)>=BDT_EXO_GAP&&n>BDT_GMIN){   // 이탈은 *기존 단 합류*만 — 정보범위 밖이면 안 떠남
@@ -13302,6 +13487,7 @@ function banditDaily(day){   // 하루 1회(lifeDayAll — 빨리감기·하네�
       for(const g of BANDITS){const d=Math.hypot(g.camp.cx-vil.center.cx,g.camp.cy-vil.center.cy);if(d<bd){bd=d;bg=g;}}
       if(bg&&bd<=infoR){const k=(Math.random()*e.npcs.length)|0,npc=e.npcs.splice(k,1)[0];if(e.counts&&npc&&npc.currentJob)e.counts[npc.currentJob]=Math.max(0,(e.counts[npc.currentJob]||0)-1);
         vil.pop=e.npcs.length;bg.n++;vil._bdtExoAt=day;if(st)st.exo++;
+        bxNote(vil,'desert',1,bg.camp);   // ★[T599 ← T590] 떠나는 몸은 그 단 은거지까지 걷는다
         bdtLog(day,vil.name+' 절망 이탈 1명 → 도적단#'+bg.id+'('+bg.n+'명)');}}
     if(e._banditRisk)e._banditRisk=e._banditRisk<0.005?0:e._banditRisk*BDT_RISK_DK;}   // 위험 기억 감쇠(EMA — huntRisk 동형)
   for(const dn of DENS){if(dn.cleared)continue;   // ── ③원천 소굴 재결성: 비면 카운트다운(30~60일, 시드 해시) → 4~6명. 이후 행동·유지비·약탈·학습·토벌은 기존 로직 공용(분기는 해산 원인 판정뿐) ──
@@ -13327,7 +13513,8 @@ function banditDaily(day){   // 하루 1회(lifeDayAll — 빨리감기·하네�
       const kills=(g.n|0)-_B.filter(h=>h>0).length,_ed=Math.max(1,F.force)-_A.filter(h=>h>0).length;   // 도적 사살수·원정 전사수(실전투 결과)
       g.n=Math.max(0,g.n-kills);g._supKill=g.n<BDT_GMIN?1:0;g._supFlash=90;if(st)st.sup++;   // ★_supKill: 이 교전이 3명 미만으로 깎았는가(소굴 철거 인과)
       let vd='';const _ev=F.vil.econ;
-      for(let z=0;z<_ed&&_ev&&_ev.npcs.length>3;z++){const k=(Math.random()*_ev.npcs.length)|0,npc=_ev.npcs.splice(k,1)[0];if(_ev.counts&&npc&&npc.currentJob)_ev.counts[npc.currentJob]=Math.max(0,(_ev.counts[npc.currentJob]||0)-1);F.vil.pop=_ev.npcs.length;if(st)st.supDead=(st.supDead||0)+1;}   // 원정 전사 = 실제 사상만큼 마을 NPC 사망
+      let _gone=0;for(let z=0;z<_ed&&_ev&&_ev.npcs.length>3;z++){const k=(Math.random()*_ev.npcs.length)|0,npc=_ev.npcs.splice(k,1)[0];if(_ev.counts&&npc&&npc.currentJob)_ev.counts[npc.currentJob]=Math.max(0,(_ev.counts[npc.currentJob]||0)-1);F.vil.pop=_ev.npcs.length;if(st)st.supDead=(st.supDead||0)+1;_gone++;}
+      if(_gone)bxNote(F.vil,'expedition',_gone,g.camp);   // ★[T599 ← T590] 원정은 추상(몸이 안 나갔다) — 집에 선 몸이 그 소굴 쪽으로 걸어 나간다(그 밖)   // 원정 전사 = 실제 사상만큼 마을 NPC 사망
       if(_ed>0)vd=' · 원정 '+_ed+'명 전사';
       if(F.vil.econ)F.vil.econ._banditRisk=Math.max(0,(F.vil.econ._banditRisk||0)*0.4);   // 토벌 후 안도(위험 인식 완화)
       bdtLog(day,'토벌⚔: '+F.vil.name+' 원정대('+F.force+'명) vs 도적단#'+g.id+' → '+kills+'명 사살'+vd+'('+Math.max(0,g.n)+'명 잔존)');
@@ -14039,7 +14226,7 @@ function warDaily(day){
     else if(w.phase==='battle'){ /* ★맵 전투 진행 중 — 상태머신(stepLiveBattles)이 판정·귀환 전환. warDaily는 관여 안 함(day 경과해도 대기). */ }
     else{const e=w.atk.econ;if(e){e._warMobUntil=0;e._warMobFrac=0;}if(w._mg&&typeof window!=='undefined'&&typeof window._muReleaseAgents==='function'){window._muReleaseAgents(w._mg);w._mg=null;}WARS.splice(i,1);}}
   if(typeof window!=='undefined'&&typeof window._warSweepOrphans==='function')window._warSweepOrphans();   // ★[종전 재설계·안전망] 고아 소탕: 어떤 컨테이너(행군·전투·귀환그룹)에도 안 실린 _muster 잔류 agent 제자리 강제 해제(1일 1회 — 귀환 그룹 유실 대비). 헤드리스(전쟁 UI 블록 미로드)엔 가드로 무시.
-  if(day<WAR_MIN_DAY){if(st)st.active=WARS.length;return;}
+  if(day-L_START<WAR_MIN_DAY){if(st)st.active=WARS.length;return;}   // ★[T599 ← T570] 정착 보호기는 econ 날로(서버 `war-core` 가 `world.day` 로 잰다 — 종전 랩은 랩 날이라 econ 245일에 끝났다)
   const mo=(typeof lMonth==='function')?lMonth(day):1,seasonMul=(mo>=4&&mo<=8)?0.12:1;   // 3) 개전 명분 평가 — 농번기(4~8월)엔 억제(추수 후 겨울 원정 고증+밸런스)
   for(const V of VILS){const e=V.econ;if(!e||e.npcs.length<6||day<(V._warCd||0)||WARS.some(w=>w.atk===V)||(V._warFatigue||0)>WAR_FAT_GATE)continue;
     const c=e.counts||{},warriors=Math.round(c.warrior||0),NV=e.npcs.length,fdV=warFE(e)/NV,prV=(e.lastStats&&e.lastStats.prestige)||0;
@@ -14210,10 +14397,12 @@ function lifeSync(sv){const s=sv||life,V2=(s&&s.V)||V,H=V2.houses;/*★다마을
   const wantOt=E?Math.max(0,Math.round(s.pop)-wantF-wantFi-wantHu-wantFg-wantLj-wantMi):0;   // 탐사·대장·무공·갑공·요리·상인·전사
   const baseSk=fa.length?Math.max(1.5,fa.reduce((x,a)=>x+a.skill,0)/fa.length*0.7):3.5;   // 세대 전수
   const popND=arr=>{ for(let i=arr.length-1;i>=0;i--)if(!arr[i]._muster){arr.splice(i,1);return;} arr.pop(); };   // ★출정 주민은 보존하고 비출정부터 제거(선발 agent가 lifeSync 재구성에 유실되지 않게)
+  // ★[T599 ← T590] 줄이는 쪽은 `bxSync` — 사람이 줄면 그 자리에 눕거나 걸어 나가고 · 직업만 바뀐 몫은 이름표만(위 머리글). 아래 옛 지우기 줄은 econ 없는 미리보기에만 남는다.
+  bxSync(s,[[fa,wantF,'farmer'],[fi,wantFi,'fisher'],[hu,wantHu,'hunter'],[fg,wantFg,'forager'],[lj,wantLj,'lumberjack'],[mi,wantMi,'miner'],[ot,wantOt,'villager']],baseSk,E);
   while(fa.length<wantF)fa.push({job:'farmer',skill:baseSk,fert:0.85+Math.random()*0.3,px:0,py:0,state:'home',path:null,pi:0,dwell:0,acts:L_CAP,target:null,cpath:null,wi:0});
-  while(fa.length>wantF)popND(fa);
-  const grow=(arr,want,job,col)=>{while(arr.length<want)arr.push({job,col,px:0,py:0,state:'home',path:null,pi:0,dwell:0});while(arr.length>want)popND(arr);};
-  grow(fi,wantFi,'fisher','#6db3e0');grow(hu,wantHu,'hunter','#c9824a');grow(fg,wantFg,'forager','#9ccf5e');grow(lj,wantLj,'lumberjack','#4f8a36');grow(mi,wantMi,'miner','#b2b2c0');grow(ot,wantOt,'villager','#d8a85a');
+  if(!E)while(fa.length>wantF)popND(fa);
+  const grow=(arr,want,job,col)=>{while(arr.length<want)arr.push({job,col,px:0,py:0,state:'home',path:null,pi:0,dwell:0});if(!E)while(arr.length>want)popND(arr);};
+  grow(fi,wantFi,'fisher',BX_COL.fisher);grow(hu,wantHu,'hunter',BX_COL.hunter);grow(fg,wantFg,'forager',BX_COL.forager);grow(lj,wantLj,'lumberjack',BX_COL.lumberjack);grow(mi,wantMi,'miner',BX_COL.miner);grow(ot,wantOt,'villager',BX_COL.villager);
   for(let i=0;i<fa.length;i++){const a=fa[i];a.home=homeOf();a.plot=s.plots.length?s.plots[Math.min(i,s.plots.length-1)]:null;a.cpath=null;if(!a.px){a.px=a.home.cx;a.py=a.home.cy;}}   // 고유 plot, 취침=자기 침대
   const bank=(V2.bank&&V2.bank.length)?V2.bank:[V2.center],hall=V2.hall||V2.center;
   const place=(arr,cells)=>{const src=(cells&&cells.length)?cells:[hall];for(let i=0;i<arr.length;i++){const a=arr[i],w=src[i%src.length];a.home=homeOf();if(!a.work)a.work={cx:w.cx,cy:w.cy};a.area=src;if(!a.px){a.px=a.home.cx;a.py=a.home.cy;}}};   // 자원 작업셀에 분산(없으면 회관). a.work 유지=resourceTick이 풍부한 셀로 옮김.
@@ -14525,7 +14714,7 @@ let VILS=[],ECON_WORLD=null,lifeFocal=0,_claimedAll=new Map();   // ★다마을
 function lifeInit(){
   const p0=Math.max(8,+document.getElementById('pop').value),seed=((+document.getElementById('seed').value)||0)>>>0;
   const NV=Math.max(1,Math.min(12,+((document.getElementById('nvil')||{}).value)||8));   // 동시 마을 수(★상한 6→12·기본 3→8, §3e)
-  _vcf={};VILS=[];lifeFocal=0;_tradePaths={};_bridgeCells=[];_traffic=new Map();ROADS=new Map();_roadCells=new Set();_claimedAll=new Map();   // 교역로·다리·길(발자국+답압 길)·영토소유 캐시 초기화(지형 새로 생성)
+  _vcf={};VILS=[];lifeFocal=0;_tradePaths={};_bridgeCells=[];_traffic=new Map();ROADS=new Map();_roadCells=new Set();_roadGen=0;_tpUsed=new Set();_tpRedigGen=0;_tpStat={pass:0,redig:0,changed:0,plain:0};_claimedAll=new Map();BODY_EXITS=[];_bxStat=bxStatNew();_bxDayGM=0;   // 교역로·다리·길(발자국+답압 길)·영토소유 캐시 초기화(지형 새로 생성)
   BANDITS=[];_bdtSeq=1;_bdtPairs=new Map();_bdtSig='';_bdtRoutes=null;DENS=[];_denSeq=1;   // ★도적 상태 초기화(새 세계 — 소굴은 마을·교역로 확정 후 bdtDenScan이 재배치)
   WARS=[];_warSeq=1;TRIBUTES=[];   // ★전쟁 상태 초기화(새 세계). 원한·피로·목책은 마을(vil)에 붙어 재생성과 함께 리셋
   const centers=pickCenters(NV,275),M=centers.length;   // ★마을 간격 128→275(§3b 게임필 확정값, 도보 2.3분 — R_MAX 135×2=270<275라 영토 비겹침 보장)
@@ -14580,6 +14769,7 @@ function roadShadowDaily(){   // ★[fast=가속 shadow 원칙 — "수개월 �
     if(c._roadShadowed)continue;c._roadShadowed=1;
     const va=e2v.get(c.from),vb=e2v.get(c.to);if(!va||!vb)continue;
     const p=getTradePath(va.center,vb.center);if(!p||p.length<2)continue;
+    tpUse(va.center,vb.center);   // ★[T599 ← T578 ④] 빨리감기 날의 캐러밴(그림자 보행)도 다닌 쌍이다
     const n=2*(1+Math.min(5,c.escort|0));   // 왕복 × (상인+호위) 보행 등가 — 밀집 경로(다리·길목과 동일 원본)에 찍음
     for(let i=0;i<p.length;i++)roadStamp(p[i].x,p[i].y,n);
   }
@@ -14596,27 +14786,29 @@ function lifeDayAll(doBulk){   // 하루: econ world 한 번 틱(전 마을 경�
   for(const vil of VILS){ if(vil.econ)warTickWeaponSkills(vil.econ); }
   for(const vil of VILS){life=vil;V=vil.V;lifeDay(doBulk);}
   banditDaily(VILS.length?VILS[0].day:0);   // ★도적 일일 틱(소멸 필터 *앞* — 해체 전환은 잔존자가 있는 순간에만 가능. 전환이 인구 0을 만들면 바로 아래서 소멸 처리)
-  if(doBulk)roadShadowDaily();   // ★[fast=가속 shadow] 빨리감기 날의 교역 답압 그림자(슬로우 날은 실보행 스탬핑 — 이중계상 금지 게이트)
+  if(doBulk)roadShadowDaily();tpRedigDaily();   // ★[T599 ← T578 ④] 등급 지도가 바뀐 날 다닌 쌍의 교역로를 다시 판다(하루 한 번) · ★[fast=가속 shadow] 빨리감기 날의 교역 답압 그림자(슬로우 날은 실보행 스탬핑 — 이중계상 금지 게이트)
   warDaily(VILS.length?VILS[0].day:0);   // ★전쟁 일일 틱(도적 옆 — 전쟁 사상→마을 쇠퇴→도적 전환이 다음날 banditDaily에 자동 연쇄)
   // ★마을 소멸: econ 인구 0이면 지도에서 제거(VILS·econ world 동기). 척박지엔 마을이 안 남음.
+  for(const vil of VILS)if(vil.econ&&vil.econ.npcs.length===0&&vil.agents&&vil.agents.length)bxEmptied(vil);   // ★[T599 ← T590] 비는 마을의 남은 몸 — 지도에서 지우기 전에 눕거나 걸어 나간다
   if(VILS.some(vil=>vil.econ&&vil.econ.npcs.length===0)){
     VILS=VILS.filter(vil=>!vil.econ||vil.econ.npcs.length>0);
     if(ECON_WORLD)ECON_WORLD.villages=ECON_WORLD.villages.filter(ev=>ev.npcs.length>0);
     if(lifeFocal>=VILS.length)lifeFocal=Math.max(0,VILS.length-1);
   }
+  if(VILS.length)_bxDayGM=Math.max(_bxDayGM,VILS[0].day*L_MINDAY);bxTick();   // ★[T599 ← T590] 몸의 시계를 하루 넘김에 맞추고 누운 몸·걷는 몸을 그만큼(빨리감기·하네스 — 관찰은 lifeLoop 매 프레임)
   if(VILS.length){life=VILS[lifeFocal];V=life.V;}else{lifeOn=false;}}   // 다 죽으면 시뮬 정지
-function cropRipe(e,day){return day-e.planted>=e.crop.grow;}
+function cropRipe(e,day){return day-e.planted>=(e.g||e.crop.grow);}
 // 셀의 할 일 우선순위: 4수확 3병충해 2파종 1돌봄(오늘 안 돌본 자라는 셀) 0없음
 function cellTask(plot,c,day){const e=life.crop.get(ckey(c));
   if(!e)return villageCropFor(plot.field,lMonth(day),plot.cx+plot.cy)?2:0;   // ★economy-sim이 인구·식량 담당 → 옛 인구조절 캡(pop×L_LANDNEED/비옥도²) 제거. 제철이면 빈 농지를 노동 한도껏 모두 파종(농부 수가 자연스러운 한계). 비수기/파종창 밖이면 villageCropFor=null이라 안 심음.
-  if(cropRipe(e,day))return 5;if(e.pest)return 4;if(plot.field==='논'&&day-(e.watered||e.planted)>=L_WATERGAP)return 3;const wd=e.weeds||0;if(wd<L_WEEDS.length&&(day-e.planted)/e.crop.grow>=L_WEEDS[wd])return 1;return 0;}   // 우선순위 5수확 4방제 3물대기(논) 2파종 1김매기
+  if(cropRipe(e,day))return 5;if(e.pest)return 4;if(plot.field==='논'&&day-(e.watered||e.planted)>=L_WATERGAP)return 3;const wd=e.weeds||0;if(wd<L_WEEDS.length&&(day-e.planted)/(e.g||e.crop.grow)>=L_WEEDS[wd])return 1;return 0;}   // 우선순위 5수확 4방제 3물대기(논) 2파종 1김매기
 const taskName=p=>['','김매기','파종','물대기','방제','수확'][p]||'';
 function doTask(a,c,day){const k=ckey(c),s=life,e=s.crop.get(k);   // 도착한 셀 처리, 성공시 true
-  if(!e){const cr=villageCropFor(a.plot.field,lMonth(day),a.plot.cx+a.plot.cy);if(!cr)return false;s.crop.set(k,{crop:cr,planted:day,tended:day,watered:day,weeds:0,pest:0,q:1,cx:c.cx,cy:c.cy});a.skill=Math.min(L_MAXSK+0.5,a.skill+L_SKP);a.action=a.plot.field==='논'?'모내기':'파종';return true;}   // 파종/모내기
+  if(!e){const cr=villageCropFor(a.plot.field,lMonth(day),a.plot.cx+a.plot.cy);if(!cr)return false;s.crop.set(k,{crop:cr,planted:day,tended:day,watered:day,weeds:0,pest:0,q:1,cx:c.cx,cy:c.cy,g:cropGrowAt(cr,day)});a.skill=Math.min(L_MAXSK+0.5,a.skill+L_SKP);a.action=a.plot.field==='논'?'모내기':'파종';return true;}   // 파종/모내기
   if(cropRipe(e,day)){const lvl=Math.min(L_MAXSK,Math.floor(a.skill));const _y=e.crop.yieldC*L_YIELD*(1+lvl*0.09)*a.fert*(V.fert*V.fert||0.25)*e.q*(0.8+0.4*Math.random());s.food+=_y;a.carry=(a.carry||0)+_y;/*★곳간② — 회계(s.food)는 원문 그대로. 같은 양을 '지금 이 사람이 들고 있는 짐'으로만 기록해 운반 물리를 만든다(이중 계상 아님)*/a.skill=Math.min(L_MAXSK+0.5,a.skill+L_SKH);s.crop.delete(k);a.action='수확';return true;}   // 수확 ∝ 비옥도² → 극적 차이(비교우위·교역 유인)
   if(e.pest){e.pest=0;e.tended=day;e.q=Math.min(1,e.q+L_QREC);a.skill=Math.min(L_MAXSK+0.5,a.skill+L_SKT);a.action='방제';return true;}   // 병충해 방제
   if(a.plot.field==='논'&&day-(e.watered||e.planted)>=L_WATERGAP){e.watered=day;e.q=Math.min(1,e.q+L_QREC);a.skill=Math.min(L_MAXSK+0.5,a.skill+L_SKT);a.action='물대기';return true;}   // 논 물대기(논만)
-  const wd=e.weeds||0;if(wd<L_WEEDS.length&&(day-e.planted)/e.crop.grow>=L_WEEDS[wd]){e.weeds=wd+1;e.tended=day;e.q=Math.min(1,e.q+L_QREC);a.skill=Math.min(L_MAXSK+0.5,a.skill+L_SKT);a.action=(L_WEEDNM[wd]||'김')+(a.plot.field==='논'?' 논매기':' 김매기');return true;}   // 김매기/논매기
+  const wd=e.weeds||0;if(wd<L_WEEDS.length&&(day-e.planted)/(e.g||e.crop.grow)>=L_WEEDS[wd]){e.weeds=wd+1;e.tended=day;e.q=Math.min(1,e.q+L_QREC);a.skill=Math.min(L_MAXSK+0.5,a.skill+L_SKT);a.action=(L_WEEDNM[wd]||'김')+(a.plot.field==='논'?' 논매기':' 김매기');return true;}   // 김매기/논매기
   return false;}
 function nextTask(a,day){if(!a.plot)return null;let best=null,bp=0,bd=1e9;   // 현재 구역에서 우선순위 높고 가장 가까운 할 일
   for(const c of a.plot.cells){const p=cellTask(a.plot,c,day);if(p===0)continue;const d=(c.cx-a.px)*(c.cx-a.px)+(c.cy-a.py)*(c.cy-a.py);if(p>bp||(p===bp&&d<bd)){bp=p;bd=d;best=c;}}return best;}
@@ -14659,6 +14851,23 @@ function clearCell(a,c,amt){const s=life,k=pkey(c.cx,c.cy)/*파셀*/;a.action='�
     s.clearing.delete(k);s._frontier=null;return true;}   // 완료 → 프론티어 재계산
   s.clearing.set(k,p);return false;}
 function lineClear(x0,y0,x1,y1){if(_wallXSeg(V&&V.walls,x0,y0,x1,y1))return false;const n=Math.max(Math.abs(x1-x0),Math.abs(y1-y0))|0;for(let i=1;i<=n;i++){const x=Math.round(x0+(x1-x0)*i/n),y=Math.round(y0+(y1-y0)*i/n);if(TR.terrain.isBlocked(x,y)&&!(TR.bridge&&TR.bridge[idx(x,y)]))return false;}return true;}   // 직선이 물·바위·★벽 변(사용자 지시 "무조건 벽 검사" — 문 변으로만 통과) 지나면 false — 다리 칸은 통행
+function _walkLineClear(x0,y0,x1,y1){   // ★★[T599 ← T578 ② 서버 `_walkLineClear` · 손잡이 없음] 캐러밴·호위 걸음의 직선 검사 — **1/16칸 보폭 · 모서리를 스치는 칸도 본다**
+  //   종전: 캐러밴도 `lineClear`(칸 하나 보폭 반올림 — 대각이 물·바위 모서리를 스쳐도 통과)로 병합했다 ⇒ 걷는 선이 막힌 칸을 밟았다(T599 ③ 표 '직선 비율').
+  //   서버 캐러밴 걸음(T578 ②)과 같은 검사: 점을 칸의 1/16 보폭으로 찍어 닿는 칸 전부를 본다. 랩 좌표 = 칸 중심(서버 px = 칸×SZ+SZ/2 ⇒ floor(px/SZ) = floor(x+0.5)).
+  //   막힘 = 지형(물·바위) · 다리 칸 열림(서버 지형 어댑터 그 규칙) + 랩 벽 변(`lineClear` 첫 줄 그대로). ⚠서버의 나무 술어는 랩에 없다(랩 숲 = 밀도장 · 나무 개체 0 — 대조표).
+  //   일반 주민 걸음(`_smoothWalk`)은 종전 그대로다 — 서버도 주민 걸음은 `straightPathClear`(칸 보폭)이고 이 검사는 캐러밴 걸음에만 쓴다.
+  if(_wallXSeg(V&&V.walls,x0,y0,x1,y1))return false;
+  const dx=x1-x0,dy=y1-y0,L=Math.hypot(dx,dy),n=Math.max(1,Math.ceil(L*16));let lk=-1;
+  for(let i=0;i<=n;i++){const x=x0+dx*i/n,y=y0+dy*i/n,cx=Math.floor(x+0.5),cy=Math.floor(y+0.5),k=cx*65536+cy;
+    if(k===lk)continue;lk=k;
+    if(TR.terrain.isBlocked(cx,cy)&&!(TR.bridge&&TR.bridge[idx(cx,cy)]))return false;}
+  return true;}
+function _smoothCaravan(p){   // ★[T599 ← T578 ②] 캐러밴·호위의 걷는 길 — 스트링 풀링·길 칸 앵커는 `_smoothWalk` 그대로, 직선 검사만 위 `_walkLineClear`(서버 `_walkResume` 의 `smoothPath(…, _walkLineClear, {keep})` 그 꼴)
+  //   ⚠서버는 64칸 창(`WALK_SMOOTH_SPAN` = DIST_STEP³)마다 끊어 병합한다 — 틱 예산을 지키려는 조각 장치다. 랩은 한 번에 병합한다(랩이 목표 — 대조표).
+  if(!p||p.length<3||typeof PathCore==='undefined'||!PathCore.smoothPath)return p;
+  const keep=(typeof roadLevel==='function')?((x,y)=>roadLevel(x,y)>0):null;
+  return PathCore.smoothPath(p,_walkLineClear,{keep});
+}
 function _smoothWalk(p){   // ★[이동 직선화 — 사용자 지적 "계단으로 걷는 거 아냐"] 걷기 경로만 스트링 풀링(PathCore.smoothPath).
   //   탐색·다리개통·답압쌍(bdtSyncPairs)은 밀집 경로 원본을 그대로 쓰고, 에이전트 path만 병합 — 열린 구간=진짜 사선 벡터.
   //   길 칸(roadLevel≥1)은 앵커로 전부 경유 → 배속 ×1.10/1.15·답압 강화 루프 유지(길은 길 모양대로 걷는다). 왕복 대칭 유지(정규화 병합).
@@ -14828,7 +15037,7 @@ function lifeDay(doBulk){const s=life;if(!s)return;s.day++;const day=s.day;
   resourceTick(s,day);   // ★자원 셀 재생·고갈·결합
   // ★집·영토 배치: 관찰(slow, doBulk=false)=슬라이더와 *동일 알고리즘*(relayout으로 exact 매치), 빨리감기(fast, doBulk=true)=가벼운 근사(빠름).
   //   relayout이 무거워(~수백ms) fast엔 안 씀 → 빨리감기·회귀 빠름 유지. slow는 인구가 느리게 늘어 relayout이 드물게(끊김 가끔) → 볼 땐 슬라이더와 일치.
-  if(!doBulk && s.center && s.V){const np=Math.max(2,Math.round(s.pop));const needT=s.econ&&s.V.territory&&s.econ.land.size*25>s.V.territory.length+120;if(Math.abs(np-(s._laidPop||0))>=4||needT){relayoutVillage(s,np);s._laidPop=np;}}   // ★[1셀 크립 도입] 관찰 모드 영토 성장은 lifeLoop 6시간 크립이 담당 — relayout은 pop 점프·비상 괴리(120+, 예: 전후 급변)만. 구 needT 50은 일괄 점프의 원인이었음
+  if(!doBulk && s.center && s.V){const np=Math.max(2,Math.round(s.pop));const needT=s.econ&&s.V.territory&&Math.min(s.econ.land.size*25,_terrCapOf(s))>s.V.territory.length+120;if(Math.abs(np-(s._laidPop||0))>=4||needT){relayoutVillage(s,np);s._laidPop=np;}}   // ★[1셀 크립 도입] 관찰 모드 영토 성장은 lifeLoop 6시간 크립이 담당 — relayout은 pop 점프·비상 괴리(120+, 예: 전후 급변)만. 구 needT 50은 일괄 점프의 원인이었음
   else{growTerritory(s);}   // 빨리감기: 영토만 점진 확장(집은 아래 addHouseSite 근사)
   s._clearTarget=Math.round(s.pop*VillageLayout.landNeedPer((s.fert!=null?s.fert:(s.V?s.V.fert:null)),L_LANDNEED));   // ★개간 목표 = 인구×인당 필요칸(보즈럽 비옥도 반비례 — _needArea와 동일 기준 유지)
   // ★공간 논비중 → econ(논=벼 고수확 반영). ★안정식: 논 존닝(potSet, 물접근 고정)÷수요(인구×8) — 밭 창발로 potDry 지정이 소멸해 재정식화하되 "개간 실측 피드백 금지(출렁+피드백 → econ 카오스, 소멸5 참사)" 원칙은 그대로 승계.
@@ -14857,8 +15066,8 @@ function lifeDay(doBulk){const s=life;if(!s)return;s.day++;const day=s.day;
   }
   if(day%L_YEAR===0)for(const a of s.agents)if(a.job==='farmer')a.skill=Math.min(L_MAXSK+0.5,a.skill+L_SKYR);   // 매년 경험 누적(평생 숙달, ~15년 만렙)
   let sp=0;for(const[k,e]of s.crop){   // 1) 셀별 작물 진화: 방치→잡초·품질↓, 병충해 발생, 너무 익으면 썩음
-    if(cropRipe(e,day)){if(day-e.planted>=e.crop.grow+L_SPOIL){s.crop.delete(k);sp++;}}
-    else{const wd=e.weeds||0,gf=(day-e.planted)/e.crop.grow;if(e.pest)e.q-=L_QP;else if(wd<L_WEEDS.length&&gf>=L_WEEDS[wd]+0.06)e.q-=L_QW;if(e.crop.field==='논'&&day-(e.watered||e.planted)>=L_WATERGAP+8)e.q-=L_QW;if(!e.pest&&Math.random()<L_PESTP)e.pest=1;if(e.q<L_QMIN)e.q=L_QMIN;}}   // 김매기/물대기 놓치면 품질↓
+    if(cropRipe(e,day)){if(day-e.planted>=(e.g||e.crop.grow)+L_SPOIL){s.crop.delete(k);sp++;}}
+    else{const wd=e.weeds||0,gf=(day-e.planted)/(e.g||e.crop.grow);if(e.pest)e.q-=L_QP;else if(wd<L_WEEDS.length&&gf>=L_WEEDS[wd]+0.06)e.q-=L_QW;if(e.crop.field==='논'&&day-(e.watered||e.planted)>=L_WATERGAP+8)e.q-=L_QW;if(!e.pest&&Math.random()<L_PESTP)e.pest=1;if(e.q<L_QMIN)e.q=L_QMIN;}}   // 김매기/물대기 놓치면 품질↓
   s.spoiled=sp;
   s.workPlots=s.plots.filter(p=>plotHasWork(p,day));   // 오늘 일감 있는 구역 목록(검색 비용↓)
   for(const a of s.agents){if(a.job!=='farmer')continue;   // 2) 노동: 초고속은 여기서 일괄, 저속은 걷는 농부가 직접 처리(밭이 눈앞에서 변함)
@@ -15036,6 +15245,7 @@ function lifeLoop(now){if(!lifeOn)return;   // 통합 게임시계: 농부 이�
   if(slow)for(const v8 of VILS){if(v8._tGrow===undefined)v8._tGrow=lifeGM;if(lifeGM-v8._tGrow>=360){v8._tGrow=lifeGM;growTerritory(v8,1);}}   // ★[사용자 요청: 1셀씩 자주] 관찰 모드 영토 = 6시간마다 1셀 크립(주 1슬롯 econ 승인분 25셀 ≈ 하루 3.6셀과 정합 — 경계가 스멀스멀 자람). econ 심사·비용은 불변, 실물화만 연속화
   if(slow)for(const _v of VILS)updateMobs(_v,dGM);   // ★뷰 내 *모든* 마을 몹 갱신(LOD는 updateMobs 안 inV가 처리 — 뷰 밖 마을은 spawn 0). 빨리감기엔 필드만.
   if(slow)updateBandits(dGM);   // ★도적 실체(관찰 모드): 배회·요격·고립 습격 — 빨리감기의 경제 효과는 banditDaily(econ 주사위)가 전담
+  bxTick();   // ★[T599 ← T590] 누운 몸·걸어 나가는 몸(매 프레임 — 관찰·빨리감기 모두)
   decayTraffic();   // ★길 실시간 감쇠(프레임당) — 빨리감기와 무관하게 일정(econ-일 단위면 빨리감기서 급소멸)
   lifeStats();draw();requestAnimationFrame(lifeLoop);}
 function lifeToggle(){
@@ -15043,7 +15253,7 @@ function lifeToggle(){
   if(gTimer)gToggle();if(playing)togglePlay();   // 정적 NPC루프 끄고 생활시계가 NPC 구동
   lifeInit();lifeGM=L_START*L_MINDAY;lifeOn=true;lifeLast=performance.now();document.getElementById('lBtn').textContent='⏸ 생활 정지';requestAnimationFrame(lifeLoop);}
 function lifeStats(){const s=life,el=document.getElementById('gstat');if(!el)return;
-  const day=s.day,yr=Math.floor(day/L_YEAR)+1,mo=lMonth(day),se=lSeason(day),dInMo=(day%L_YEAR)-L_MOSTART[mo]+1;
+  const day=s.day,mo=lMonth(day),se=lSeason(day),_dLbl=EconEngine.Calendar.labelOf(day-L_START);   // ★[T599 ← T570] 화면 날짜 = 서버 화면과 같은 글자(`labelOf` — "1년 3월 1일 (봄)")
   const farmers=s.agents.filter(a=>a.job==='farmer'),avgSk=farmers.length?farmers.reduce((x,a)=>x+a.skill,0)/farmers.length:0;
   let planted=0,ripe=0,pest=0,qs=0;for(const e of s.crop.values()){planted++;if(cropRipe(e,day))ripe++;if(e.pest)pest++;qs+=e.q;}
   const avgQ=planted?qs/planted:1,fieldCells=s.farmland.length+(s.dryfield?s.dryfield.length:0);
@@ -15058,7 +15268,7 @@ function lifeStats(){const s=life,el=document.getElementById('gstat');if(!el)ret
     if(s.econ&&s.econ._banditRisk)wl+=` · <span style="color:#c99">도적위험 ${(s.econ._banditRisk*100|0)}%</span>`;}
   if(typeof DENS!=='undefined'&&DENS.length){const dA=DENS.filter(d=>!d.cleared),dO=dA.filter(d=>BANDITS.some(g=>g.den===d.id)).length,dC=DENS.length-dA.length;   // ★원천③ 소굴 요약(항상 표시 — 상시 존재가 기능의 요지)
     wl+=` · <span style="color:#c9a27a">🏕️소굴 ${dA.length}곳(주둔 ${dO}${dC?'·정리 '+dC:''})</span>`;}
-  el.innerHTML=vsum+`<b>${yr}년 ${mo+1}월 ${dInMo}일</b> ${L_SEASONS[se]} <b>${HH}:${MM}</b> ${phase} · 인구 <b>${s.pop.toFixed(0)}</b> · 곳간 <b>${s.food.toFixed(0)}</b>${wl}<br>농부 <b>${farmers.length}</b> · 경작 <b>${planted}</b>/${fieldCells}셀 · 수확대기 ${ripe} · 작물건강 <b>${(avgQ*100|0)}%</b>${pest?` · <span style="color:#e08a6a">병충해 ${pest}</span>`:''}${s.spoiled?` · <span style="color:#e0a060">썩음 ${s.spoiled}</span>`:''} · 농사Lv <b>${avgSk.toFixed(1)}</b><br>이달 파종 — 논:<b>${nong?nong.id:'–'}</b> · 밭:<b>${batIds.join('·')||'–'}</b>`;
+  el.innerHTML=vsum+`<b>${_dLbl}</b> <b>${HH}:${MM}</b> ${phase} · 인구 <b>${s.pop.toFixed(0)}</b> · 곳간 <b>${s.food.toFixed(0)}</b>${wl}<br>농부 <b>${farmers.length}</b> · 경작 <b>${planted}</b>/${fieldCells}셀 · 수확대기 ${ripe} · 작물건강 <b>${(avgQ*100|0)}%</b>${pest?` · <span style="color:#e08a6a">병충해 ${pest}</span>`:''}${s.spoiled?` · <span style="color:#e0a060">썩음 ${s.spoiled}</span>`:''} · 농사Lv <b>${avgSk.toFixed(1)}</b><br>이달 파종 — 논:<b>${nong?nong.id:'–'}</b> · 밭:<b>${batIds.join('·')||'–'}</b>`;
   // ★3마을 직업 분포 패널(오른쪽)
   const je=document.getElementById('jobstat');
   if(je&&typeof VILS!=='undefined'&&VILS.length){

@@ -21,7 +21,7 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const { DatabaseSync } = require('node:sqlite');
-const { ZONES, publicZoneMap } = require('./zone-config');
+const { ZONES, publicZoneMap, HANDOFF_COMMIT } = require('./zone-config');
 const httpClient = require('http');
 const economy = require('../sim/economy-sim');
 const economyV2 = require('../sim/economy-sim-v2');  // Phase 4d-13: canadia world 전용 — 진짜 부분균형 시장 모델
@@ -785,6 +785,7 @@ const server = http.createServer(async (req, res) => {
       return jsonResp(res, 200, {
         zones,
         central: `${PUBLIC_HOST}:${PORT}`,
+        handoffCommit: HANDOFF_COMMIT,   // ★[T604 추신3] 핸드오프 겹침 띠(px) — 클라 해안 평행이동의 경계 앞 바다 지킴이 읽는다(서버 chunk.js 와 같은 수 · 박힌 수 0)
       });
     }
     // === 인증 ===

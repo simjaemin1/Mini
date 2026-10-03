@@ -4,6 +4,7 @@
 //   기본 판은 개울을 모른다(= 3시드 동일 판). 실서버 시딩(초기화 판)은 존이 `isStreamLocal` 을 넘기므로 개울이 집터·논밭을 바꾼다.
 //   그 차이가 econ 의 땅 셈(`extractLandParamsApprox`)에 닿는지 보려고 이 훅이 deps 에 **같은 술어**(`server/streams.js`)를 끼운다.
 //   쓰는 법: node -r ./scripts/t585-ruler-streams.js scripts/t17-metrics.js 800 <seed>
+//   ★[T601 ④] 이제 두 자가 **기본으로** 같은 술어를 받는다(`streams.rulerDeps` · 끔 `T601_RULER_STREAMS=0`) — 이 훅은 같은 판을 한 번 더 끼울 뿐(값 같음 · 옛 줄 호환용).
 'use strict';
 const path = require('path');
 const S = require(path.join(__dirname, '..', 'server', 'streams.js'));

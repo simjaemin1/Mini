@@ -69,6 +69,7 @@
     const data = await res.json();
     zonesMeta = data.zones;
     marketplaceUrl = data.marketplaceUrl || '';
+    handoffCommit = (typeof data.handoffCommit === 'number' && data.handoffCommit > 0) ? data.handoffCommit : 0;   // ★[T604 추신3] 해안 경계 앞 바다 지킴 폭(서버 정본 · 아래 굽기 전에)
     // Phase 14.46-b-mini: 모든 zone water tiles 사전 계산 (~수만 tiles, ~100ms)
     try { precomputeAllWaterTiles(); } catch (e) { console.warn('water tile compute fail:', e); }
 
@@ -907,7 +908,7 @@
         inventory = msg.inventory;
         myLedger = msg.ledger || {}; myLots = msg.lots || {};      // ★[원장 승격] 인벤과 같은 스냅샷
         if (msg.uiCfg) uiCfg = Object.assign(uiCfg, msg.uiCfg);    // ★클라 손잡이는 서버 env 가 정본
-        if (((uiCfg && uiCfg.coast588) || '') !== _coast588At) { try { precomputeAllWaterTiles(); } catch (e) { console.warn('water tile recompute fail:', e); } }   // ★[T588] 해안 손잡이가 부트 때와 다르면 같은 파일로 다시 굽는다(끔이면 칸이 없어 무동작)
+        if (((uiCfg && uiCfg.coast588) || '') !== _coast588At) { try { precomputeAllWaterTiles(); } catch (e) { console.warn('water tile recompute fail:', e); } }   // ★[T588] 해안 손잡이가 부트 때와 다르면 같은 파일로 다시 굽는다(★T604 추신3 — 클라 기본 'b' = 서버 기본이라 보통 무동작 · 서버 '0' 이면 지금 식으로)
         if (msg.uiCfg && msg.uiCfg.streams) { try { loadStreams(); } catch (e) {} }   // ★[T585] 개울 래스터(존마다 한 번)
         for (const _wb of document.querySelectorAll('[data-action="well_start"]')) _wb.style.display = (uiCfg && uiCfg.wellAct) ? '' : 'none';   // ★[T557] 우물 버튼 — 서버 손잡이(`T509_WELL`)가 정한다
         if (msg.tools) tools = msg.tools;

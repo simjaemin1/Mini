@@ -26,7 +26,7 @@ const COAST_PX = (() => { const v = parseFloat(process.env.T17_COAST_PX || ''); 
 const OR = Object.values(ZONES).filter((z) => z.isOcean).map((z) => ({ x0: z.worldOffsetX, y0: z.worldOffsetY, x1: z.worldOffsetX + z.zoneWidth, y1: z.worldOffsetY + z.zoneHeight }));
 function band(arm) {
   const prev = process.env.T588_COAST;
-  if (arm) process.env.T588_COAST = arm; else delete process.env.T588_COAST;
+  process.env.T588_COAST = arm || '0';   // ★[T604 추신3] 안 없음 = 끔('0' — 없음은 이제 기본 b)
   const s = chunk.generateCoastlineWaterTiles(ZONE, SZ, findZoneAt, OR);
   if (prev === undefined) delete process.env.T588_COAST; else process.env.T588_COAST = prev;
   const M = new Uint8Array(NX * NY);

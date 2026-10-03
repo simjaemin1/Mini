@@ -588,6 +588,17 @@ function scatterRocksPerCell(biome, cellPx, chunkPx) {
   return RESOURCES_PER_CHUNK * rockShareOf(biome) / cellsPerChunk;
 }
 
+// ★[T598] 광맥 무리 청크의 **광물 노드** — 아래 생성 루프가 쓰던 두 수(더하는 노드 3 · 광물 몫 70%)를 이름으로 올렸다(행동 무변).
+//   교역로 비용(`villages.js` `_t598CellMul`)이 "광맥 칸에 몸을 막는 광물이 몇 개인가"를 같은 수로 묻는다(사본 0).
+const ORE_CLUSTER_EXTRA = 3, ORE_CLUSTER_SHARE = 0.7;
+/** 광맥 무리 청크의 32px 셀 하나에 서는 광물 노드 수(기댓값) — 청크당 (기본 수 × 산 배율 + 더함) × 광물 몫 ÷ 청크 셀 수. 새 수 0. */
+function oreNodesPerCell(stoneMult, cellPx, chunkPx) {
+  const c = Number.isFinite(cellPx) ? cellPx : 32;
+  const cp = Number.isFinite(chunkPx) ? chunkPx : CHUNK_SIZE;
+  const base = Math.round(RESOURCES_PER_CHUNK * Math.max(Number.isFinite(stoneMult) ? stoneMult : 1, 1.0));
+  return (base + ORE_CLUSTER_EXTRA) * ORE_CLUSTER_SHARE / ((cp / c) * (cp / c));
+}
+
 // 청크 안 자원 시드 생성. harvestedSet에 있는 건 제외.
 // 청크당 자원 N개 (기본 5개) — 청크 면적 256² = 65536. zone 4096이면 16×16=256 청크. 총 자원 1280.
 // Phase 5-1: terrain (forest·mountain·ore·water) 반영.
@@ -650,7 +661,7 @@ function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet, 
   const oreCluster = terrain.isOreClusterAt(zoneId, sampleX, sampleY);
   // 일반 자원 수 = base × max(mountain, 1). 숲 밀도는 아래 전용 나무 그리드가 담당.
   const baseCount = Math.round(RESOURCES_PER_CHUNK * Math.max(stoneMult, 1.0));
-  const count = oreCluster ? baseCount + 3 : baseCount;  // ore cluster: 광물 노드 추가
+  const count = oreCluster ? baseCount + ORE_CLUSTER_EXTRA : baseCount;  // ore cluster: 광물 노드 추가
   for (let n = 0; n < count; n++) {
     const seedKey = `${cx}_${cy}_${n}`;
     const _cut = !!(harvestedSet && harvestedSet.has(seedKey));
@@ -668,7 +679,7 @@ function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet, 
     //   mountain 영역 → stone 우세
     //   (숲 나무는 아래 전용 그리드에서 빽빽하게 깔림 — 여기선 일반 biome 배경만)
     let type;
-    if (oreCluster && r3 < 0.7) {
+    if (oreCluster && r3 < ORE_CLUSTER_SHARE) {
       type = 'ore';   // ore cluster: 70% 광물 (이전 'stone'은 loot 핸들러가 없어 산출 0이던 버그)
     } else if (stoneMult > 1.5 && r3 < 0.5) {
       type = 'rock';  // mountain: 50% 바위(돌 산출) (이전 'stone' 깡통 버그 수정)
@@ -1251,16 +1262,34 @@ function _coastSmoothNoise2D(x, y) { return (_coastFbm2D(x, y) - 0.5) * 2; }
 //   (`public/coast-shape.js`)도 이 함수를 받아 **같은 배수 위에** 구간 성격을 얹는다(사본 0 · 클라 `00-const.js` 는 T591 미러 그대로).
 function _coastBandKOf(zone) { return (typeof zone.coastBandK === 'number' && zone.coastBandK > 0 && zone.coastBandK !== 1) ? zone.coastBandK : 1; }
 function _coastInOcean(oceanRects, x, y) { for (let oi = 0; oi < oceanRects.length; oi++) { const O = oceanRects[oi]; if (x >= O.x0 && x < O.x1 && y >= O.y0 && y < O.y1) return true; } return false; }
-// 셀 자리 (ax, ay) 의 배수 — 그 존의 뭍 이웃 변(바로 바깥 점이 바다 사각에 안 드는 변)에서 1 · 거리 maxDist 이상이면 bandK(선형)
-function _coastBandKAt(zone, bandK, ax, ay, oceanRects, maxDist) {
-  if (bandK === 1) return 1;
+// 뭍 이웃 변 비탈 r ∈ [0, 1] — 그 존의 뭍 이웃 변(바로 바깥 점이 바다 사각에 안 드는 변)에서 0 · 거리 maxDist 이상이면 1(선형) ·
+//   뭍 이웃 변이 없으면 1. 배수(T591)와 평행이동(T604 추신2)이 **같은 비탈**을 쓴다 — 이웃 뭍 존과의 경계에서 둘 다 0 몫이라 솔기 계단 0.
+function _coastLandRamp(zone, ax, ay, oceanRects, maxDist) {
   const zx0 = zone.worldOffsetX, zy0 = zone.worldOffsetY, zx1 = zx0 + zone.zoneWidth, zy1 = zy0 + zone.zoneHeight;
   let d = Infinity;
   if (!_coastInOcean(oceanRects, zx0 - 1, ay)) d = Math.min(d, ax - zx0);
   if (!_coastInOcean(oceanRects, zx1 + 1, ay)) d = Math.min(d, zx1 - ax);
   if (!_coastInOcean(oceanRects, ax, zy0 - 1)) d = Math.min(d, ay - zy0);
   if (!_coastInOcean(oceanRects, ax, zy1 + 1)) d = Math.min(d, zy1 - ay);
-  return 1 + (bandK - 1) * Math.min(1, d / maxDist);
+  return Math.min(1, d / maxDist);
+}
+// 셀 자리 (ax, ay) 의 배수 — 비탈 0 에서 1 · 비탈 1 에서 bandK
+function _coastBandKAt(zone, bandK, ax, ay, oceanRects, maxDist) {
+  if (bandK === 1) return 1;
+  return 1 + (bandK - 1) * _coastLandRamp(zone, ax, ay, oceanRects, maxDist);
+}
+// ★[T604 추신2 2026-10-03] 존별 **해안 평행이동** `zone.coastShift`(셀 · 기본 0 = 종전 바이트) — 띠 깊이에서 그만큼(px = 셀 × 칸 크기)
+//   빼고 0 아래는 0(재민 10-03 "해안선을 조금 남쪽으로"). 뭍 이웃 변에서는 같은 비탈 함수로 0 까지 — 비탈 길이 = 이동 그 값(새 수 0)이라
+//   이동 = min(이동, 뭍 이웃 변까지 거리): 경계에서 0 · 이동만큼 들어가면 다 이동(45° 꺾임 · 이웃 존 띠와 계단 0 · 존 몸통은 꼭 그만큼).
+//   켬(`T588_COAST` a·b) 길이 이 함수 하나로 뺀다(생성기 `opts.bandShift` · 사본 0 · 클라 `00-const.js` 미러 · ★추신3 — 끔은 안 먹는다).
+//   ★[T604 추신3 2026-10-03] **경계 앞 바다 지킴** — 이동은 바다 존 경계 앞 바다를 핸드오프 겹침 띠 폭(`HANDOFF_COMMIT` — 정본 zone-config · 8셀)보다
+//   얇게 만들지 않는다(그 열은 8셀에서 멈춘다 · 재민 10-03) — 식은 `public/coast-shape.js shiftDepth` 한 자리 · 폭은 zone-config 값을 넘긴다(박힌 수 0).
+//   ★끔(`T588_COAST=0`)은 이동을 안 먹는다 — 끔 = 지금 바이트(되돌림 한 손잡이 · 추신3 카드) ⇒ 이동은 켬 길(생성기)에서만 · 아래 지금 식 줄은 main 그대로.
+function _coastShiftOf(zone) { return (typeof zone.coastShift === 'number' && zone.coastShift > 0) ? zone.coastShift : 0; }
+function _coastShiftAt(zone, shiftCells, ax, ay, oceanRects, maxDist, tileSize) {
+  if (shiftCells === 0) return 0;
+  const S = shiftCells * tileSize;
+  return S * _coastLandRamp(zone, ax, ay, oceanRects, S);   // = min(S, 뭍 이웃 변까지 거리) — 경계에서 0 · 이동만큼 들어가면 다(45°) · maxDist 는 안 쓴다
 }
 
 // zone: { id, isOcean, worldOffsetX, worldOffsetY, zoneWidth, zoneHeight }
@@ -1271,21 +1300,23 @@ function generateCoastlineWaterTiles(zone, tileSize, findZoneAtFn, oceanRects) {
   const waterTiles = new Set();
   if (zone.isOcean) return waterTiles; // ocean zone은 전체 물 — 별도 처리
   if (!oceanRects || !oceanRects.length) return waterTiles;
-  // ★★[T588 2026-10-03] 해안 **구간 성격** — 손잡이 `T588_COAST`(기본 끔 = 아래 지금 식 바이트 그대로).
+  // ★★[T588 2026-10-03] 해안 **구간 성격** — 손잡이 `T588_COAST`(★T604 추신3 기본 b · `0` = 아래 지금 식 바이트 그대로).
   //   켬이면 구간 표(굴곡 차원 D · 굴곡 진폭 · 깊이 · 섬 — T589 고증 수)를 읽는 2차원 등고선 생성기가 깎는다:
   //   `public/coast-shape.js`(서버·클라 공용 1부 — 클라 `00-const.js` 도 같은 파일을 부른다 · 사본 0).
   //   지금 식은 그 생성기에 **함수로 넘긴다**(구간 밖 · 구간 끝 섞임 몫) — 아래 깊이 한 줄과 같은 식 · 같은 연산 차례.
   //   존 사각·띠 배수는 zone-config 에서(박힌 수 0) · 구간 표가 비면 켬도 지금 바이트(하네스 `test-coast-shape`).
-  //   값: `a`(= `1`) 진폭 = 지금 식 진폭 · `b` 구간 D(고증)를 게임 자로 맞춘 진폭 — 굴곡 진폭이 미확인이라 두 안(재민이 고른다).
+  //   값: `a` 진폭 = 지금 식 진폭 · `b`(= `1` = 없음 — ★T604 추신3 재민 10-03 기본 b) 구간 D(고증)를 게임 자로 맞춘 진폭 · `0` = 지금 식(되돌림).
   //   ★[T588 추신2] T591 띠 배수 **위에** 얹는다 — 배수 함수(`_coastBandKAt` · 아래 지금 식과 같은 함수)를 넘기면 생성기가
   //     셀을 품은 존의 배수를 깊이 전체(지금 식 몫 · 구간 몫)에 곱한다(지금 식이 깊이 전체에 곱하듯) ⇒ 켬 + 빈 표 = 끔(배수 존 포함).
   const _t588 = process.env.T588_COAST;
-  if (_t588 === '1' || _t588 === 'a' || _t588 === 'b') {
+  if (_t588 !== '0') {   // ★T604 추신3 — 기본 켬(b) · `0` 만 지금 식
     if (!_ZC) { try { _ZC = require('./zone-config'); } catch (e) { _ZC = { ZONES: {} }; } }
     const _mx = COASTLINE_BASE + COASTLINE_NOISE;
     return require('../public/coast-shape.js').generate(zone, tileSize, oceanRects, _ZC.ZONES || {}, COASTLINE_BASE, COASTLINE_NOISE,
       (bnx, bny) => COASTLINE_BASE + _coastSmoothNoise2D(bnx, bny) * COASTLINE_NOISE,
-      { variant: _t588 === 'b' ? 'b' : 'a', bandK: (z, ax, ay) => _coastBandKAt(z, _coastBandKOf(z), ax, ay, oceanRects, _mx) });
+      { variant: _t588 === 'a' ? 'a' : 'b', bandK: (z, ax, ay) => _coastBandKAt(z, _coastBandKOf(z), ax, ay, oceanRects, _mx),
+        bandShift: (z, ax, ay) => _coastShiftAt(z, _coastShiftOf(z), ax, ay, oceanRects, _mx, tileSize),   // ★T604 추신2 평행이동(같은 함수)
+        keepPx: _ZC.HANDOFF_COMMIT });   // ★T604 추신3 경계 앞 바다 지킴 폭 = 핸드오프 겹침 띠(zone-config 정본 · 박힌 수 0)
   }
   // Phase 5-1 fix: inland water (강·호수)는 zone start 시 pre-compute 안 함.
   //   PZ급 zone에서 수백만 cell × 검사 = 수십 초 → healthcheck timeout.
@@ -1302,7 +1333,7 @@ function generateCoastlineWaterTiles(zone, tileSize, findZoneAtFn, oceanRects) {
   //   돌아간다 — 거리 0 에서 1, 띠 최대 깊이(maxDist) 이상이면 배수 그대로(선형). 이웃 존의 띠(배수 1)와 경계에서 깊이가 같아야 솔기가 안 생긴다.
   //   뭍 이웃 판정은 `oceanRects` 로만 한다(변 바로 바깥 점이 바다 사각에 안 들면 뭍) — `findZoneAtFn` 을 안 넘기는 호출부(villages)와 같은 답.
   //   ★[T588 추신2] 식은 위 `_coastBandKAt` 한 자리(같은 연산 · 같은 차례 — 비트 동일).
-  const _bandK = _coastBandKOf(zone);
+  const _bandK = _coastBandKOf(zone);   // ★[T604 추신3] 이 줄(끔)은 평행이동을 안 먹는다 — 끔 = 지금 바이트
 
   for (let ty = 0; ty < rows; ty++) {
     const absY = zone.worldOffsetY + ty * tileSize;
@@ -1341,4 +1372,4 @@ function generateCoastlineWaterTiles(zone, tileSize, findZoneAtFn, oceanRects) {
 
 // ★[T108 2026-09-05] `RESOURCE_HP_TABLE` 을 **내준다** — `zone.js` 가 같은 표를 한 벌 더
 //   들고 있었고(운석이 빠져 3대에 깨졌다 · T90 회부), 그걸 지우려면 정본이 나가야 한다.
-module.exports = { Chunk, ChunkManager, CHUNK_SIZE, generateChunkResources, resourceAt, resourcesAtCell, cellChunksOf, treeBlockerAt, overflowInto, seedGenChunkOf, regrowStageOf, REGROW, GROVE, WILD, WILD_HAB, _wildClass, FORAGE_RING, forageKinds, seedRand, forestSpacing, forestTreesPerCell, forestTreesPerCellMean, scatterTreesPerCell, treeShareOf, scatterRocksPerCell, rockShareOf, FOREST_MIN_COV, RESOURCES_PER_CHUNK, generateVillagesForZone, makeVillageName, generateCoastlineWaterTiles, RESOURCE_HP_TABLE, GROVE_KINDS };
+module.exports = { Chunk, ChunkManager, CHUNK_SIZE, generateChunkResources, resourceAt, resourcesAtCell, cellChunksOf, treeBlockerAt, overflowInto, seedGenChunkOf, regrowStageOf, REGROW, GROVE, WILD, WILD_HAB, _wildClass, FORAGE_RING, forageKinds, seedRand, forestSpacing, forestTreesPerCell, forestTreesPerCellMean, oreNodesPerCell, scatterTreesPerCell, treeShareOf, scatterRocksPerCell, rockShareOf, FOREST_MIN_COV, RESOURCES_PER_CHUNK, generateVillagesForZone, makeVillageName, generateCoastlineWaterTiles, RESOURCE_HP_TABLE, GROVE_KINDS };
