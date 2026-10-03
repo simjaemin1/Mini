@@ -65,6 +65,8 @@ const CHRON_TYPE_EMO = {
   // ★[T119 2026-09-05] 구조 — 손을 내미는 그림. `heart`(TRADER_KILLED)·`people`(POP_COLLAPSE) 와
   //   겹치면 두 사건이 같은 얼굴이 된다(④ 가 그걸 잡는다) ⇒ 아직 임자 없는 `hand` 를 쓴다.
   RESCUED: 'hand',
+  // ★[T572 2026-10-03] 사람 줄어듦의 끝 — 해체(도적이 됐다) · 빈 마을. 아직 임자 없는 두 그림(④ — 겹치면 같은 얼굴).
+  DISSOLVED: 'warn', EMPTIED: 'close',
 };
 function chronIcon(it) { return uiIcon((it && CHRON_TYPE_EMO[it.type]) || 'scroll', 16); }
 
