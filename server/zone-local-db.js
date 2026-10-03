@@ -638,6 +638,13 @@ function eachVillageCell(villageId, kind, fn) {
   for (const r of st.iterate(villageId)) { if (Array.isArray(r)) fn(r[0], r[1], r[2]); else fn(r.cx, r.cy, r.type); }
 }
 function getVillageStructAll(villageId) { return stmtVbStruct.all(villageId); }
+// ★[T569 ① 부팅] 두 마을 이상이 가진 영토 셀 — 셀마다 **먼저 가진**(그 셀 `terr` 행 id 가 가장 작은) 마을 하나
+let _stmtTerrContest = null;
+function getTerrContestOwners() {
+  if (!_stmtTerrContest) _stmtTerrContest = db.prepare(
+    "SELECT cx, cy, village_id FROM village_buildings WHERE id IN (SELECT MIN(id) FROM village_buildings WHERE type = 'terr' GROUP BY cx, cy HAVING COUNT(DISTINCT village_id) > 1)");
+  return _stmtTerrContest.all();
+}
 function getVillageFarthest(villageId, ccx, ccy) { return stmtVbFar.all(villageId, ccx, ccy); }
 function getVillageFarmInCellRect(cx0, cx1, cy0, cy1) { return stmtGetVillageFarmInCellRect.all(cx0, cx1, cy0, cy1); }
 
@@ -656,7 +663,7 @@ module.exports = {
   // §4-4 마을 시뮬 (villages.js)
   getVillagesByZone, insertVillage, updateVillageState, insertVillageBuilding, getVillageBuildings,
   getVillageFarmInCellRect, getVillageStructRows,
-  eachVillageCell, getVillageStructAll, getVillageFarthest,   // ★[T538] 경계 있는 부팅 로드
+  eachVillageCell, getVillageStructAll, getVillageFarthest, getTerrContestOwners,   // ★[T538] 경계 있는 부팅 로드
   // [2026-08-25 사건 레이어] 사건 장부·게시판 (events.js / villages.js)
   insertVillageEvent, getVillageEventsSince, pruneVillageEvents,
   insertVillageChronicle, getVillageChronicle, countVillageChronicle,   // ★[T18] 연대기(prune 없음)

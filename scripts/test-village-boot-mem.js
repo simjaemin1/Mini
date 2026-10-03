@@ -38,7 +38,7 @@ function legacyLoad(dbPath) {
   const db = new DatabaseSync(dbPath);
   const rowsOf = db.prepare('SELECT * FROM village_buildings WHERE village_id = ?');   // 종전 `stmtGetVillageBuildings` 글자 그대로
   const vils = db.prepare("SELECT * FROM villages WHERE zone = ? ORDER BY id").all('hanbando');
-  const out = [];
+  const out = [], raw = [];
   for (const row of vils) {
     const bRows = rowsOf.all(row.id);
     const housesPx = [];
@@ -65,10 +65,19 @@ function legacyLoad(dbPath) {
     let maxRPx = (maxCellR + 3) * SZ;
     if (bnd) { let m = 0; for (let i = 0; i < bnd.length; i += 3) { const d = Math.hypot(bnd[i], bnd[i + 1]); if (d > m) m = d; } maxRPx = Math.max(maxRPx, (m + 2) * SZ); }
     const _pendSite = siteRows.find(s3 => !houseCells.some(h => h.cx === s3.cx && h.cy === s3.cy)) || null;
-    out.push(fingerprint({ dbId: row.id, name: row.name, housesPx, _terrSet: terrSet, _potSet: potSet, _farmSet: farmSet, _drySet: drySet, _granList: granList, _houseCells: houseCells,
+    raw.push(({ dbId: row.id, name: row.name, housesPx, _terrSet: terrSet, _potSet: potSet, _farmSet: farmSet, _drySet: drySet, _granList: granList, _houseCells: houseCells,
       _ditch: ditchCells, _pHouses: pHouseRows, _pSiteRows: pSiteRows, _pendSite, _shelter: shelterCell, _farmN: farmN, _dryN: dryN, _maxRPx: Math.round(maxRPx), _bnd: bnd,
       _tribeId: (hallData && hallData.tribeId != null) ? hallData.tribeId : null }));
   }
+  //   ★[T569] 종전 로드 뒤 **겹친 영토 셀 정리**(존이 부팅 때 하는 일 — 이 대조군도 같은 규칙을 글자로 갖는다: 셀마다 `terr` 행 id 가 가장 작은 마을에 남긴다)
+  //     `T569_OVERLAP=0` 이면 종전 그대로(정리 0).
+  if (process.env.T569_OVERLAP !== '0') {
+    const owners = db.prepare("SELECT cx, cy, village_id FROM village_buildings WHERE id IN (SELECT MIN(id) FROM village_buildings WHERE type = 'terr' GROUP BY cx, cy HAVING COUNT(DISTINCT village_id) > 1)").all();
+    for (const o of owners) { const k = o.cx + ',' + o.cy; for (const v of raw) if (v.dbId !== o.village_id) v._terrSet.delete(k); }
+    raw._contested = owners.length;
+  }
+  for (const v of raw) out.push(fingerprint(v));
+  out._contested = raw._contested || 0;
   db.close();
   return out;
 }
@@ -147,7 +156,7 @@ function checkCase(label, dbPath) {
   ok(B.heapMax > 0 && B.heapMax < HEAP_GATE, `${label} — 부팅 heapUsed 최고 < ${HEAP_GATE}MB`, `${B.heapMax}MB(마지막 줄: ${String(B.heapMaxAt).slice(0, 60)}) · RSS ${B.rssMax}MB`);
   const C = cmpDump(ref, B.dump);
   const tot = ref.reduce((s, v) => s + v.terr, 0);
-  ok(ref.length >= 10 && C.n === 0, `${label} — 마을 ${ref.length}곳 상태 집합이 **종전 로드와 같다**(모인 것 · 넣은 순서 · 반지름 · 경계 …)`, C.n === 0 ? `terr 합 ${tot}` : C.diff.join(' / '));
+  ok(ref.length >= 10 && C.n === 0, `${label} — 마을 ${ref.length}곳 상태 집합이 **종전 로드와 같다**(모인 것 · 넣은 순서 · 반지름 · 경계 …)`, C.n === 0 ? `terr 합 ${tot} · 겹친 셀 정리 ${ref._contested || 0}(T569)` : C.diff.join(' / '));
   for (const s of ['', '-wal', '-shm']) { try { fs.unlinkSync(work + s); } catch (e) {} }
   return { ref, B };
 }

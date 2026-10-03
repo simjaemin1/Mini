@@ -2945,6 +2945,55 @@ const T230_TERR_HOUSING = process.env.T230_TERR_HOUSING !== '0';
 //   ⇒ 목표(종전 식) 와 이 상한 중 **작은 쪽**까지만 더한다. 상한을 넘은 마을은 **자라지 않을 뿐 줄이지 않는다**(행을 지우지 않는다 · 세계를 줄이지 않는다).
 //   ⚠자·랩은 `_terrGrow` 를 안 탄다(위 T298 주석) — 3시드 자 무변. 무는 곳은 생활층(집터가 영토 안에서만 선다) — 보고 T538 추신3 ⓐ 표.
 const T538_TERR_CAP = process.env.T538_TERR_CAP !== '0';
+// ★★[T569 2026-10-02 · 재민 "어촌2랑 임업6이 겹쳐 있다 · 인접하면 상대 영토로는 확장 못 하고 반대쪽으로 자라겠지?"] **마을 땅은 한 마을 것.**
+//   서울 사본(day 3341): 두 마을 이상이 가진 영토 셀 38,032(쌍 8) · 다른 마을 집 부지와 겹친 집 82쌍 — `_terrGrow` 후보가 `own`·`isBlocked` 만 보고
+//   남의 `_terrSet` 을 안 봤고, 집터 술어는 제 마을 집 간격만 봤다.
+//   ⇒ ① 영토는 남의 영토 셀로 안 자란다(후보에서 뺀다 · 점수식 그대로 — 막힌 쪽 대신 다른 쪽이 뽑힌다 · 같은 날 두 마을이 같은 셀을 노리면 먼저 도는 마을)
+//     ② 집터 부지 원판이 남의 영토 셀 · 다른 마을 집 부지(같은 124셀 원판)에 닿으면 거부(사유 `남의 마을`)
+//     ③ 부팅 — 옛 DB 의 겹친 셀은 **먼저 가진 마을**(그 셀 `terr` 행 id 가 작은 쪽)에 남기고 다른 마을 메모리에서 뺀다(행은 그대로 · 다음 부팅도 같은 답).
+//   손잡이 `T569_OVERLAP`(기본 켬 · 되돌림 `=0` = 종전 그대로) · 새 수 0.
+const T569_OVERLAP = process.env.T569_OVERLAP !== '0';
+//   이웃 마을 — 중심 거리가 두 마을의 **실제 최대 반지름**(영토 셀 · 집 부지 끝) 합 + 2 안인 마을만 본다(50곳 전수 대조를 피한다 · 값이 아니라 거르기).
+//     반지름은 상한(넘지 않는다): 영토 크기가 기억한 크기와 다르면 다시 잰다(O(영토) · 드묾) · `_terrGrow` 는 더한 셀로 바로 늘린다.
+function _t569Rad(v) {
+  const s = v._terrSet;
+  if (v._t569RN !== s.size) {
+    let m = 0;
+    for (const k of s) { const ci = k.indexOf(','), d = Math.hypot(+k.slice(0, ci) - v.ccx, +k.slice(ci + 1) - v.ccy); if (d > m) m = d; }
+    v._t569R = m; v._t569RN = s.size;
+  }
+  let r = v._t569R;
+  const LR = _lifeVL().LOT_R + 1;
+  for (const h of v._houseCells || []) { const d = Math.hypot(h.cx - v.ccx, h.cy - v.ccy) + LR; if (d > r) r = d; }
+  for (const h of [v._shelter, v._site, v._psite]) if (h) { const d = Math.hypot(h.cx - v.ccx, h.cy - v.ccy) + LR; if (d > r) r = d; }
+  return r;
+}
+function _t569Near(vil) {
+  const out = [];
+  const r0 = _t569Rad(vil);
+  for (const v of state.villages || []) {
+    if (v === vil || !v._terrSet || !v._terrSet.size) continue;
+    if (Math.hypot(v.ccx - vil.ccx, v.ccy - vil.ccy) <= r0 + _t569Rad(v) + 2) out.push(v);
+  }
+  return out;
+}
+const _t569OwnedBy = (near, k) => { for (const v of near) if (v._terrSet.has(k)) return v; return null; };
+//   부지 원판 둘이 한 셀이라도 같이 밟는가 — 같은 `LOT_CELLS` 원판의 민코프스키 차(중심 차가 이 집합에 있으면 겹친다 · 원판 술어 하나 · 사본 0)
+let _t569LotDiff = null;
+function _t569LotsTouch(dx, dy) {
+  if (!_t569LotDiff) { const L = _lifeVL().LOT_CELLS; _t569LotDiff = new Set(); for (const [ax, ay] of L) for (const [bx, by] of L) _t569LotDiff.add((ax - bx) + ',' + (ay - by)); }
+  return _t569LotDiff.has(dx + ',' + dy);
+}
+//   부팅 정리 — `owners` = 겹친 셀마다 먼저 가진 마을 [{cx, cy, village_id}] · 그 밖의 마을 `_terrSet` 에서 뺀다 · 뺀 셀 수를 돌려준다
+function _t569Resolve(owners) {
+  if (!owners || !owners.length) return 0;
+  let n = 0;
+  for (const o of owners) {
+    const k = o.cx + ',' + o.cy;
+    for (const v of state.villages) if (v.dbId !== o.village_id && v._terrSet && v._terrSet.delete(k)) { n++; v._t569RN = -1; }
+  }
+  return n;
+}
 function _terrGrow(vil) {
   if (!state.ta || !vil || !vil._terrSet || !vil._terrSet.size) return 0;
   const land = vil.econ && vil.econ.land; if (!land || !land.size) return 0;
@@ -2961,12 +3010,14 @@ function _terrGrow(vil) {
   const score = (x, y) => fertW * fertOf(x, y) + compactW * nbCount(x, y) - distW * Math.hypot(x - ccx, y - ccy);
   // 경계 후보 수집(영토에 인접한 미소유·비차단 셀)
   const cand = new Map();
+  const near = T569_OVERLAP ? _t569Near(vil) : null;   // ★[T569 ①] 남의 영토 셀은 후보가 아니다
   for (const k of own) {
     const ci = k.indexOf(','), x = +k.slice(0, ci), y = +k.slice(ci + 1);
     for (const [dx, dy] of N4) {
       const nx = x + dx, ny = y + dy, nk = K(nx, ny);
       if (own.has(nk) || cand.has(nk)) continue;
       if (ta.isBlocked(nx, ny)) continue;
+      if (near && near.length && _t569OwnedBy(near, nk)) continue;
       cand.set(nk, score(nx, ny));
     }
   }
@@ -2975,7 +3026,12 @@ function _terrGrow(vil) {
   const picked = [...cand.entries()].sort((a, b) => b[1] - a[1]).slice(0, want).map((e) => e[0]);
   if (!picked.length) return 0;
   const added = new Set();
+  const _rn0 = own.size;
   for (const k of picked) { own.add(k); added.add(k); }
+  if (vil._t569RN === _rn0) {   // ★[T569] 이웃 거르기 반지름 — 더한 셀로 바로 늘린다(다시 재지 않는다)
+    for (const k of picked) { const ci = k.indexOf(','), d = Math.hypot(+k.slice(0, ci) - ccx, +k.slice(ci + 1) - ccy); if (d > vil._t569R) vil._t569R = d; }
+    vil._t569RN = own.size;
+  }
   // ★★[T278 2026-09-13 재민 확정] **늘린 땅을 남긴다.**
   //   종전엔 이 함수에 DB 쓰기가 **한 줄도 없었다** — 영토는 메모리에서만 자라고 재부팅하면 사라졌다.
   //   실측(T267 · 실서버 200일 50마을 · 세 짝): `village_buildings` 의 `terr` 행이 끔·켬 **둘 다 172,500** ·
@@ -3208,6 +3264,12 @@ function init(deps) {
       // ★[11차 재민 확정] 마을 안엔 숲이 없다 — 영토 셀의 나무를 벤다(개간).
       //   부팅 때마다 부르지만 이미 벤 나무는 harvestedSeeds 에 있어 다시 생성되지 않는다(멱등).
       try { if (state.deps.clearTreesInCells) { const n2 = state.deps.clearTreesInCells(terrSet); if (n2) console.log(`[${state.zoneId}] 🏘️ ${row.name} 영토 개간 — 나무 ${n2}그루`); } } catch (e) {}   // ★[생활 층] 런타임 상태(구DB=terr 0셀 → 생활층 휴면). _crop=작물 상태머신(랩 life.crop 동형 — 인메모리 관용: 재부팅=재파종)
+    }
+    // ★[T569 ③] 옛 DB 의 겹친 영토 셀 — 먼저 가진 마을(그 셀 `terr` 행 id 가 작은 쪽)에 남기고 다른 마을 메모리에서 뺀다(행은 그대로)
+    if (T569_OVERLAP && typeof db.getTerrContestOwners === 'function') {
+      try { const _own = db.getTerrContestOwners(); const _n = _t569Resolve(_own);
+        if (_n) console.log(`[${ZONE_ID}] 🏘️ [T569] 두 마을이 가진 영토 셀 ${_own.length} — 먼저 가진 마을에 남기고 다른 마을에서 ${_n}셀 뺐다(메모리 · 행 그대로)`); }
+      catch (e) { console.error(`[${ZONE_ID}] 🏘️ [T569] 겹친 영토 정리 실패(겹친 채로 계속):`, e.message); }
     }
     world.day = maxDay;
     state.world = world;
@@ -7064,6 +7126,7 @@ function _lifeSiteFilters(vil) {
   const W_PEN_K = 2000, HG = T315_HOUSE_GAP === '0' ? _lifeVL().LIFE_HOUSE_GAP_AISLE : _lifeVL().LIFE_HOUSE_GAP;
   const wnd = (x, y) => { const v = vil._wf.at(x, y); return v >= 999 ? 99 : Math.max(1, v - _lifeVL().LOT_R); };
   const farmAt = (x, y, strict) => (strict && vil._potSet.has(x + ',' + y)) || vil._farmSet.has(x + ',' + y);
+  const near = T569_OVERLAP ? _t569Near(vil) : null;   // ★[T569 ②] 이웃 마을(술어를 만들 때 한 번)
   // reject(x,y,strict) → 사유 문자열(불가) 또는 null(가능). 자동 배치는 사유를 버리고 continue만 한다.
   const reject = (x, y, strict) => {
     for (const h of vil._houseCells) if (Math.hypot(h.cx - x, h.cy - y) < HG) return `기존 집과 너무 가까움(<${HG})`;
@@ -7072,8 +7135,14 @@ function _lifeSiteFilters(vil) {
     if (vil._shelter && Math.hypot(vil._shelter.cx - x, vil._shelter.cy - y) < HG) return `쉼터와 너무 가까움(<${HG})`;
     if (vil._site && Math.hypot(vil._site.cx - x, vil._site.cy - y) < HG) return '공사 중인 마을 집터와 너무 가까움';
     if (vil._psite && Math.hypot(vil._psite.cx - x, vil._psite.cy - y) < HG) return '다른 의뢰 집터와 너무 가까움';
+    //   ★[T569 ②] 다른 마을 집·쉼터·집터의 부지 원판과 한 셀이라도 겹치면 거부 — 같은 124셀 원판 술어
+    if (near) for (const v of near) {
+      for (const h of v._houseCells || []) if (_t569LotsTouch(h.cx - x, h.cy - y)) return '남의 마을';
+      for (const h of [v._shelter, v._site, v._psite]) if (h && _t569LotsTouch(h.cx - x, h.cy - y)) return '남의 마을';
+    }
     for (const [dx, dy] of _lifeVL().LOT_CELLS) {
       const xx = x + dx, yy = y + dy;
+      if (near && near.length && _t569OwnedBy(near, xx + ',' + yy)) return '남의 마을';   // ★[T569 ②] 남의 영토 셀
       if (!vil._terrSet.has(xx + ',' + yy)) return '마을 영토 밖';
       if (state.ta.isBlocked(xx, yy)) return '부지 불가(물·바위)';
       if (farmAt(xx, yy, strict)) return '개간 농지 위';
@@ -10344,6 +10413,11 @@ module.exports = { fishPerf, woodPerf, foragePerf, farmPerf,   // ★[T316] `/pe
     _t561Probe: { fit: (p) => _t561Fit(p), crew: (vil, job) => _t561Crew(vil, job).map((p) => p.pid), standing: (tr, npc, h, first) => _t561Standing(tr, npc, h, first),
       ladder: (vil, npc, now) => _t561Ladder(vil, npc, now), granStep: (vil, npc, now) => _lifeGranStep(vil, npc, now), life: (npc, now) => npcLifeTick(npc, now),
       get T561_ROSTER_BODY() { return T561_ROSTER_BODY; }, get SCH_REST_IN() { return SCH_REST_IN; } },
+    // ★[T569] 겹침 하네스용 — 같은 규약(최소 주입구 하나 · 정본 함수를 그대로 부른다)
+    _t569Probe: { setup: (o) => { const k = { ta: state.ta, villages: state.villages, db: state.db };
+        if (o) { if ('ta' in o) state.ta = o.ta; if ('villages' in o) state.villages = o.villages; if ('db' in o) state.db = o.db; } return k; },
+      grow: (vil) => _terrGrow(vil), reject: (vil, x, y, strict) => _lifeSiteFilters(vil).reject(x, y, !!strict), resolve: (owners) => _t569Resolve(owners),
+      near: (vil) => _t569Near(vil).map((v) => v.name), lotsTouch: (dx, dy) => _t569LotsTouch(dx, dy), get on() { return T569_OVERLAP; } },
     get VILLAGE_MAX() { return VILLAGE_MAX; },
     get INITIAL_POP() { return INITIAL_POP; },
     get SZ() { return SZ; },
