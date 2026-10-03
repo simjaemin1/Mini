@@ -260,7 +260,9 @@ async function waitUp(p, url, tries = 300) {
     `${oreOk.length}/${lands.length}곳 — ${oreOk.map((v) => `${v.name} O${v.ore}`).join(' · ') || '(없음)'}`);
   // ★한반도도 같은 비율이다(T348 §0-ⓒ 실측 16%) — "전 마을에 광맥"은 이 세계의 규약이 아니다.
   //   그래서 상한이 아니라 **하한 1곳**만 건다. 전부 바닥이면 그건 광맥 정본이 없다는 뜻이다.
-  ok(lands.every((v) => v.ore >= 0.1), 'ⓖ2 광맥 값이 바닥 아래로는 안 내려간다(0.1 = 바닥)',
+  // ★[PM 10-03 · T550 회부 ⓖ2] 코드의 바닥은 0.05 다(`villages.js` `Math.max(0.05, LV.ore × gradeMult)` — 금 마을은 gradeMult 0.37~0.41).
+  //   0.1 은 그 전 문구였다 — 정본은 코드다. 그래서 자를 코드 값에 맞춘다(세계 무변).
+  ok(lands.every((v) => v.ore >= 0.05), 'ⓖ2 광맥 값이 바닥 아래로는 안 내려간다(0.05 = 코드 바닥)',
     lands.map((v) => v.ore).sort((a, b) => a - b)[0] + ' ~ ' + lands.map((v) => v.ore).sort((a, b) => b - a)[0]);
 
   console.log('\n[ⓘ 정본으로 옮겨 적어도 세계가 같다 — T351]');
