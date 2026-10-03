@@ -48,6 +48,20 @@ function table(outs) {
       + ` | ${o.dissolved} | ${o.empty} | ${o.firstEmpty ?? '—'} | ${early} | ${o.deadTot} | ${o.tradersKilled}`
       + ` | ${o.bandit ? o.bandit.conv : '—'} | ${o.bandit ? o.bandit.exo : '—'} | ${hit.length}${hit.length ? ' (' + hit.join('·') + ')' : ''} |`);
   }
+  // ★[T590] 줄어든 몸 — 판 JSON 에 `bodyExit` 이 있을 때만(T590 전 판은 이 표가 없다)
+  const bx = outs.filter((o) => o.bodyExit);
+  if (bx.length) {
+    console.log('\n| 판 | 시드 | 몸 상한 | 줄어든 몸 | 그 자리 죽음(굶음·늙음) | 걸어 나감(도적·이탈·이주) | 그 밖(원정·행상·모름) | 순간 소멸 | 누운 채 · 걷는 중(끝 날) | 다 누움 · 다 걸음 | 직선 폴백 | 버린 까닭 |');
+    console.log('|---|---|---|---|---|---|---|---|---|---|---|---|');
+    for (const o of bx) {
+      const B = o.bodyExit, sum = (x) => Object.values(x || {}).reduce((a, v) => a + v, 0);
+      const d = sum(B.died), w = sum(B.walk), t = sum(B.other), n = d + w + t;
+      const pc = (x) => (n ? (100 * x / n).toFixed(1) + '%' : '—');
+      const cand = Object.keys((o.env && o.env.cand) || {}).map((k) => `${k.replace(/^T577_/, '')}=${o.env.cand[k]}`).join(' ') || '기준';
+      console.log(`| ${cand} | ${o.seed} | ${(o.env && o.env.VILLAGE_NPC_CAP) || '∞'} | ${n} | ${d} (${pc(d)} · ${B.died.starve}·${B.died.old}) | ${w} (${pc(w)} · ${B.walk.bandit}·${B.walk.desert}·${B.walk.move})`
+        + ` | ${t} (${pc(t)} · ${B.other.expedition}·${B.other.road}·${B.other.unknown}) | ${B.vanish} | ${B.lying} · ${B.walking} | ${B.rot} · ${B.arrive} | ${B.straight} | ${B.trimmed} |`);
+    }
+  }
 }
 
 if (process.argv.includes('--table')) {

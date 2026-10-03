@@ -52,6 +52,8 @@ function finish(world, L, day) {
   const bdtDay = firstOf((r, i) => r[2][i] === 1);
   const emptyDay = names.map((_, i) => { let had = false; for (const r of rows) { if (r[1][i] > 0) had = true; else if (had) return r[0]; } return null; });
   let B = null; try { B = require(path.join(ROOT, 'server', 'bandits')).stats(); } catch (e) { B = null; }
+  // ★[T590] 줄어든 몸 — 까닭별(그 자리 죽음 · 걸어 나감 · 그 밖) · 누운 몸 · 걷는 몸 · 순간 소멸(읽기만 · 몸 층 계수기)
+  let BX = null; try { const V = require(path.join(ROOT, 'server', 'villages')); BX = V.bodyExitStats ? V.bodyExitStats() : null; } catch (e) { BX = null; }
   const out = {
     seed: SEED || null, days: day, villages: V.length,
     env: { T315_MAPBEDS: process.env.T315_MAPBEDS || null, VILLAGE_DAY_MS: process.env.VILLAGE_DAY_MS || null,
@@ -65,6 +67,7 @@ function finish(world, L, day) {
     deadTot: V.reduce((a, v) => a + (v._deadTot || 0), 0),
     tradersKilled: V.reduce((a, v) => a + ((v.tradeStats && v.tradeStats.tradersKilled) || 0), 0),
     bandit: B ? { conv: B.conv, exo: B.exo, starve: B.starve, disband: B.disband, denForm: B.denForm, loot: B.loot, peak: B.peak } : null,
+    bodyExit: BX,
     names, bdtDay, emptyDay,
     seedPop: rows.length ? rows[0][1] : null,
     diag365,
