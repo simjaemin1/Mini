@@ -10,6 +10,8 @@
 //   --match-old-sd: 지금 식(끔)의 해안선 표준편차를 같은 시험 해안에서 재고, 같은 표준편차가 나오는 A 를 찾는다(참고 안 · 유도값)
 //   --match-d     : 그 성격으로 깎은 시험 해안을 T549 자(상자 2~128셀)로 잰 D 가 고증 D 가 되는 A 를 찾는다(안 ⓑ 의 진폭 · 유도값)
 //                   ⚠할선법의 첫 두 점(5,000 · 그 두 배/반)과 상·하한(500~80,000px)은 찾는 길일 뿐 — 답은 D 가 정한다
+//   --k <K>       : ★[T588 추신2] T591 띠 배수 K 를 시험 해안에 건다(존 `coastBandK` = K · 배수 함수 = K 고르게 — 닛폰 몸통 자리 ·
+//                   뭍 이웃 변 비탈은 몸통 밖이라 뺀다) — 배수 위 같은 성격이 같은 자로 몇 D 인지 · 바닥에 얼마나 닿는지
 // =============================================================================
 'use strict';
 const path = require('path');
@@ -19,18 +21,19 @@ const D = +process.argv[2], LMAX = +process.argv[3], AS = String(process.argv[4]
 const LMIN = process.argv[6] ? +process.argv[6] : null;
 fs.mkdirSync(OUT, { recursive: true });
 const BASE = 6000, NOISE = 5000;   // chunk.js COASTLINE_BASE · COASTLINE_NOISE(같은 수 · 대조는 t588-coast-mask.js 가 한다)
-const NX = 8192, NY = 1200, X0 = 4000000, Y0 = 4000000;   // 세계 밖 빈 자리(실존 존과 안 겹친다 — 잡음은 세계 좌표 함수라 자리만 다른 같은 성격)
-const zones = { land: { worldOffsetX: X0, worldOffsetY: Y0, zoneWidth: NX * 32, zoneHeight: NY * 32 },
+const NX = 8192, NY = 1200, X0 = 4000000, Y0 = 4000000;
+const KARG = (() => { const i = process.argv.indexOf('--k'); return i > 0 ? +process.argv[i + 1] : 1; })();   // 세계 밖 빈 자리(실존 존과 안 겹친다 — 잡음은 세계 좌표 함수라 자리만 다른 같은 성격)
+const zones = { land: Object.assign({ worldOffsetX: X0, worldOffsetY: Y0, zoneWidth: NX * 32, zoneHeight: NY * 32 }, KARG !== 1 ? { coastBandK: KARG } : {}),
   sea: { worldOffsetX: X0, worldOffsetY: Y0 + NY * 32, zoneWidth: NX * 32, zoneHeight: 4000 * 32, isOcean: true } };
 const ocean = [{ x0: X0, y0: Y0 + NY * 32, x1: X0 + NX * 32, y1: Y0 + (NY + 4000) * 32 }];
 const pxPerKm = (1000 / CS.SCALE.mPerCell) * 32;
-const out = { D, lmax: LMAX, lmin: LMIN || CS.FINE_PX, NX, NY, runs: [] };
+const out = { D, lmax: LMAX, lmin: LMIN || CS.FINE_PX, NX, NY, k: KARG, runs: [] };
 // 해안선 깊이(열마다 가장 남쪽 뭍 셀 → 바다 존까지) — 평균 · 표준편차 · 바닥(2m = 2,000px) 안 몫
 function stats(set) {
   const M = new Uint8Array(NX * NY);
   for (const k of set) { const u = k.indexOf('_'); M[+k.slice(u + 1) * NX + +k.slice(0, u)] = 1; }
   let s1 = 0, s2 = 0, nf = 0;
-  for (let x = 0; x < NX; x++) { let y = NY - 1; while (y >= 0 && M[y * NX + x]) y--; const d = (NY - 1 - y) * 32; s1 += d; s2 += d * d; if (d <= 2 * (BASE - NOISE)) nf++; }
+  for (let x = 0; x < NX; x++) { let y = NY - 1; while (y >= 0 && M[y * NX + x]) y--; const d = (NY - 1 - y) * 32; s1 += d; s2 += d * d; if (d <= 2 * (BASE - NOISE) * KARG) nf++; }
   const mean = s1 / NX, sd = Math.sqrt(Math.max(0, s2 / NX - mean * mean));
   return { M, mean, sd, nf };
 }
@@ -43,6 +46,7 @@ function run(A) {
   } else {
     const opts = { sections: [{ id: 't', ko: '시험', zone: 'land', side: 'S', from: 0, to: 1 }],
       chars: { t: { D, rulerKm: [(LMIN || CS.FINE_PX) / pxPerKm, LMAX / pxPerKm], ampKm: A / pxPerKm } }, fine: LMIN || undefined };
+    if (KARG !== 1) opts.bandK = () => KARG;
     set = CS.generate(Object.assign({ id: 'land' }, zones.land), 32, ocean, zones, BASE, NOISE, () => BASE, opts);
   }
   const st = stats(set);

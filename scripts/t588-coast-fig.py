@@ -2,11 +2,12 @@
 # (@regress 없음 — 러너 밖 · T588 ⑤ 그림 · 판정 0 · 표만)
 # =============================================================================
 # 해안 전후 그림 — 존 셋(한반도 · 닛폰 · 중원북) · **같은 축척**(전경 1셀 = 0.5px · 확대 1셀 = 1.5px) · 구간 이름·경계 표시.
-#   띠 = `t588-coast-mask.js` 가 정본 생성기로 떨군 u8(끔 · 켬 a · 켬 b · 닛폰은 참고치 판도) — 그림은 그 칸을 그대로 칠한다(손 0).
+#   띠 = `t588-coast-mask.js` 가 정본 생성기로 떨군 u8(끔 · 켬 a · 켬 b) — 그림은 그 칸을 그대로 칠한다(손 0).
+#   ★[T588 추신2] T591 폭 7000 · 띠 배수 위 · 닛폰 구간 셋(서·남 = 빌려 씀 · 동 = 참고치)이 켬 판에 들어간다(참고치 판 따로 없음).
 #   지형 겹침(옅게) = 정본 지형 json(`server/hanbando-terrain.json`) 의 강 길 · 호수 원 · 마을 후보(점) — 위치 맥락만.
 #   표 = `t588-coast-measure.py`(T549 자를 부른 모양 자) · `t588-coast-impact.js`(잃는 뭍 · 후보 · 강 하구) 결과 그대로.
 # 쓰는 법: python3 scripts/t588-coast-fig.py <out_dir> <root_masks> <measure.json> <impact_dir>
-#   <root_masks>/{m0,ma,mb,mar,mbr}/<zone>.{u8,json}
+#   <root_masks>/{m0,ma,mb}/<zone>.{u8,json}
 #   ① 지금 그림: python3 scripts/t588-coast-fig.py <out_dir> - - - --now <measure_all.json> <끔 마스크 디렉터리(전 뭍 존)>
 # =============================================================================
 import json, os, sys
@@ -20,8 +21,11 @@ M = json.load(open(MEAS, encoding='utf-8')) if MEAS != '-' else {}
 FONT = '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc'; BOLD = '/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc'
 def font(sz, b=False): return ImageFont.truetype(BOLD if b else FONT, sz, index=1)
 LAND = (222, 214, 186); SEA = (35, 50, 80); OCEAN = (28, 40, 66); RIVER = (70, 130, 205); INK = (30, 30, 30); GREY = (110, 110, 110)
-SECCOL = {'kr_w': (230, 120, 40), 'kr_s': (200, 60, 120), 'kr_e': (40, 150, 120), 'jp_e': (120, 90, 200), 'jw_e': (150, 150, 40)}
+SECCOL = {'kr_w': (230, 120, 40), 'kr_s': (200, 60, 120), 'kr_e': (40, 150, 120), 'jp_w': (40, 150, 120), 'jp_s': (200, 60, 120), 'jp_e': (120, 90, 200), 'jw_e': (150, 150, 40)}
 VAR = [('m0', '지금(끔)'), ('ma', '켬 · 안 ⓐ (진폭 = 지금 식 진폭 5,000px · 구간마다 기울기 H = 2 − D)'), ('mb', '켬 · 안 ⓑ (구간 D 맞춤 진폭 — 서 6,904 · 남 7,406 · 동 3,849px)')]
+def borrow_ko(s):
+    b = s.get('borrow')
+    return {'kr_e': '빌려 씀 ← 한반도 동', 'kr_s': '빌려 씀 ← 한반도 남', 'kr_w': '빌려 씀 ← 한반도 서'}.get(b, '') if b else ('참고치 · 약' if s.get('id') == 'jp_e' else '')
 SO, SZ_ZOOM = 0.5, 1.5   # 전경 · 확대 축척(px/셀)
 
 def load(var, zone):
@@ -91,7 +95,7 @@ def fig_hanbando():
     im = Image.new('RGB', (max(W, 1420), H), (250, 250, 247)); dr = ImageDraw.Draw(im)
     dr.text((20, 12), 'T588 해안 — 한반도(새벌) 전후 · 남변 하나가 바다(동창해)에 닿는다', font=font(22, True), fill=INK)
     dr.text((20, 44), '같은 축척: 전경 1셀 = 0.5px · 확대 1셀 = 1.5px · 뭍 모래 · 띠 바다 남색 · 바다 존 짙은 남 · 강·호수 파랑 · 마을 후보 흰 점 · 구간 경계 점선(섞임 폭 = 띠 깊이 6,000px)', font=font(13), fill=GREY)
-    dr.text((20, 64), '구간 성격 = T589(세션11 · 가지 59628c5d) D — 서 1.241 · 남 1.273 · 동 1.037(KINPR 40-4 BC법) · 굴곡 진폭·섬 밀도·갯벌 폭·자 범위 = 미확인(지어내지 않음)', font=font(13), fill=GREY)
+    dr.text((20, 64), '구간 성격 = T589(main · 설계/고증_해안선.md) D — 서 1.241 · 남 1.273 · 동 1.037(KINPR 40-4 BC법) · 굴곡 진폭·섬 밀도·갯벌 폭·자 범위(km) = 미확인(지어내지 않음)', font=font(13), fill=GREY)
     dr.text((20, 84), '구간 경계 = 남변을 같은 길이 셋으로(구간별 해안 길이 미확인 — 고를 자리) · 해안 차례: 중원(황해) → 서 → 남 → 동 → 닛폰 서(대한해협)', font=font(13), fill=GREY)
     y = 112
     for var, lab in VAR:
@@ -162,37 +166,81 @@ def fig_nippon():
     zone = 'nippon'
     meta0, _ = load('m0', zone)
     NX, NY = meta0['NX'], meta0['NY']
-    V = [('m0', '지금(끔)'), ('ma', '켬 · 안 ⓐ(표 그대로 — 닛폰 구간 미확인 → 지금 식)'), ('mar', '참고치 판 ⓐ — 동 D 1.2336(우와지마 · 확실도 약 · 기본 적재 안 함)'), ('mbr', '참고치 판 ⓑ — 동 D 맞춤 진폭 6,813px')]
+    secs = [s for s in load('ma', zone)[0]['secs'] if s['zone'] == zone]
+    imp = json.load(open(os.path.join(IMP, zone + '.json'), encoding='utf-8'))
+    VARN = [VAR[0], VAR[1], ('mb', '켬 · 안 ⓑ (D 맞춤 진폭 — 서 3,849(← 한반도 동) · 남 7,406(← 한반도 남) · 동 6,813px(참고치))')]   # 닛폰은 빌린 구간 값
     pw = int((NX + 40) * SO); ph = int((NY + 40) * SO)
-    W = 20 + len(V) * (pw + 24); H = 130 + ph + 60 + int(180 * SZ_ZOOM) + 200
+    W = 20 + len(VARN) * (pw + 24); H = 150 + ph + 60 + len(secs) * (int(180 * SZ_ZOOM) + 40) + 230
     im = Image.new('RGB', (W, H), (250, 250, 247)); dr = ImageDraw.Draw(im)
-    dr.text((20, 12), 'T588 해안 — 닛폰(아사기 열도) 전후 · 남변(남창해) · 동변(큰바다)', font=font(22, True), fill=INK)
-    dr.text((20, 44), '같은 축척: 전경 1셀 = 0.5px · 확대 1셀 = 1.5px · T589: 일본 동해쪽·세토내해·규슈서쪽 = 미확인 · 태평양쪽 = 참고치(산리쿠 아님 · 고교 보고서)만 → 켬 판은 닛폰 해안을 지금 식 그대로 둔다', font=font(13), fill=GREY)
-    dr.text((20, 64), '⚠닛폰 폭은 T591(세션5)이 바꾼다(1,562 → 2,188셀) — 이 그림은 지금 폭 · T591 착지 뒤 같은 자로 다시 굽는다(추신)', font=font(13), fill=GREY)
+    dr.text((20, 12), 'T588 추신2 해안 — 닛폰(아사기 열도) 전후 · 폭 7000(T591 · 2,187셀) · 띠 배수 0.298 위 · 남변(남창해) · 동변(큰바다)', font=font(22, True), fill=INK)
+    dr.text((20, 44), '같은 축척: 전경 1셀 = 0.5px · 확대 1셀 = 1.5px · 구간 경계 점선 · T589: 일본 동해쪽·세토·규슈서쪽 = 미확인 → 추신2 짝으로 빌려 씀(서 ← 한반도 동 1.037 · 남 ← 한반도 남 1.273) · 태평양쪽 = 참고치 1.2336(우와지마 · 고교 보고서 · 약)', font=font(13), fill=GREY)
+    dr.text((20, 64), '배수 0.298 은 띠 깊이 전체(바탕 · 잡음 · 바닥)에 곱한다(T591 지금 식과 같은 자리) — 그래서 같은 성격이라도 닛폰 굴곡은 한반도보다 얕다(띠 몫 = 한반도 몫 4.43%)', font=font(13), fill=GREY)
     y = 96
     x = 20
-    for var, lab in V:
+    for var, lab in VARN:
         _, sea = load(var, zone)
         a = np.zeros((NY + 40, NX + 40), np.uint8); a[:NY, :NX] = sea; a[NY:, :] = 2; a[:, NX:] = 2
         tile = to_img(colorize(a), SO)
         overlay_terrain(ImageDraw.Draw(tile), zone, 0, 0, SO, 0, 0, tile.width, tile.height)   # 그림 칸 안에서만(잘림)
         im.paste(tile, (x, y + 30))
-        dr.text((x, y), lab, font=font(12, True), fill=INK)
+        dr.text((x, y), lab.split(' (')[0], font=font(13, True), fill=INK)
+        if len(lab.split(' (')) > 1: dr.text((x, y + 14), '(' + lab.split(' (', 1)[1], font=font(10), fill=GREY)
+        for s in secs:   # 구간 경계(점선) · 이름
+            if s.get('side') == 'S':
+                for xw in (s['ax'], s['bx']):
+                    xc = (xw - meta0['x0']) / 32
+                    if 0 < xc < NX:
+                        X = x + xc * SO
+                        for yy in range(y + 30 + int((NY - 300) * SO), y + 30 + int(NY * SO), 8): dr.line([(X, yy), (X, yy + 4)], fill=(255, 255, 255), width=1)
+                if var == 'm0':
+                    xm = ((s['ax'] + s['bx']) / 2 - meta0['x0']) / 32
+                    dr.text((x + xm * SO - 90, y + 30 + int((NY - 330) * SO)), f"{s['ko']} · D {2 - s['H']:.3f}", font=font(12, True), fill=SECCOL.get(s['id'], INK))
+                    dr.text((x + xm * SO - 90, y + 30 + int((NY - 300) * SO)), borrow_ko(s), font=font(11), fill=SECCOL.get(s['id'], INK))
+            elif s.get('side') == 'E' and var == 'm0':
+                dr.text((x + (NX - 330) * SO, y + 30 + int(NY * SO / 2)), f"{s['ko']} · D {2 - s['H']:.3f}", font=font(12, True), fill=SECCOL.get(s['id'], INK))
+                dr.text((x + (NX - 330) * SO, y + 30 + int(NY * SO / 2) + 16), borrow_ko(s), font=font(11), fill=SECCOL.get(s['id'], INK))
         x += pw + 24
-    y += ph + 40
-    # 확대 — 동해안 가운데 · 남해안 가운데
-    dr.text((20, y), '확대(1셀 = 1.5px) — 동변 가운데 220×180셀(왼쪽부터 지금 · 켬 ⓐ · 참고 ⓐ · 참고 ⓑ)', font=font(14, True), fill=INK); y += 24
-    x = 20
-    for var, lab in V:
-        _, sea = load(var, zone)
-        y0 = NY // 2 - 90; tile = to_img(colorize(sea[y0:y0 + 180, NX - 220:NX].astype(np.uint8)), SZ_ZOOM); im.paste(tile, (x, y))
-        dr.rectangle([x - 1, y - 1, x + tile.width, y + tile.height], outline=(150, 150, 150)); x += tile.width + 20
-    y += int(180 * SZ_ZOOM) + 16
-    rows = {v: sec_rows(f'{v}_nippon') for v, _ in V}
-    for v, lab in V:
-        rs = rows[v]; s = '  '.join(f"{k}: D {fmt(r, 'D')}({fmt(r, 'Dsmall', 2)}·{fmt(r, 'Dlarge', 2)}) · 1셀 돌기 {r['spikeLand'] + r['spikeSea']} · 줄 점프≥5 {(r['jumpS'] if k.startswith(('S', 'N')) else r['jumpE'])['ge5']}" for k, r in rs.items())
-        dr.text((20, y), f"{lab.split(' — ')[0].split('(')[0]} — {s}", font=font(12), fill=INK); y += 18
-    dr.text((20, H - 26), 'T588 · 참고치 판은 `--with-ref`(자 안에서만) — 정본 켬 판에는 안 들어간다 · 판정 0', font=font(12), fill=GREY)
+    y += ph + 44
+    # 확대 — 구간마다 몸통 가운데 220×180셀(남변: 해안선이 든 줄 · 동변: 동쪽 끝 220셀 · 가운데 줄)
+    dr.text((20, y), '확대(1셀 = 1.5px) — 구간 몸통 가운데 220×180셀 · 왼쪽부터 지금 · 안 ⓐ · 안 ⓑ', font=font(14, True), fill=INK); y += 26
+    _, sea0 = load('m0', zone)
+    for s in secs:
+        if s.get('side') == 'S':
+            xm = int(((s['ax'] + s['bx']) / 2 - meta0['x0']) / 32) - 110
+            col = sea0[:, xm + 110]; yc = NY - 1
+            while yc > 0 and col[yc]: yc -= 1
+            y0 = max(0, min(NY - 180, yc - 90)); x0c = xm
+        else:
+            y0 = max(0, int(((s['ay'] + s['by']) / 2 - meta0['y0']) / 32) - 90); x0c = NX - 220
+        x = 20
+        dr.text((x, y), f"{s['ko']} · {borrow_ko(s)}  (셀 x {x0c}~{x0c + 220} · y {y0}~{y0 + 180})", font=font(13, True), fill=SECCOL.get(s['id'], INK))
+        for var, lab in VARN:
+            _, sea = load(var, zone)
+            tile = to_img(colorize(sea[y0:y0 + 180, x0c:x0c + 220].astype(np.uint8)), SZ_ZOOM); im.paste(tile, (x, y + 20))
+            dr.rectangle([x - 1, y + 19, x + tile.width, y + 20 + tile.height], outline=(150, 150, 150))
+            x += tile.width + 20
+        y += int(180 * SZ_ZOOM) + 40
+    # 표 — 구간 몸통 모양(T549 자) · 바뀌는 것
+    rows = {v: sec_rows(f'{v}_nippon') for v, _ in VARN}
+    dr.text((20, y), '구간 몸통(섞임 폭 뗀 곳)의 모양 — T549 자 그대로 · D = 박스 카운팅 상자 2~128셀(잔 2~16 · 큰 16~128)', font=font(13, True), fill=INK); y += 22
+    hdr = ['구간', '쓴 D', '지금 D(잔·큰)', 'ⓐ D(잔·큰)', 'ⓑ D(잔·큰)', '1셀 돌기 지금→ⓐ→ⓑ', '곶 r5/8/13 지금→ⓑ']
+    xs = [20, 330, 400, 560, 720, 880, 1080]
+    for i, h_ in enumerate(hdr): dr.text((xs[i], y), h_, font=font(12, True), fill=INK)
+    y += 18
+    for s in secs:
+        key = s['side'] + ':' + s['id']; r0, ra, rb = rows['m0'].get(key), rows['ma'].get(key), rows['mb'].get(key)
+        D = lambda r: f"{fmt(r, 'D')}({fmt(r, 'Dsmall', 2)}·{fmt(r, 'Dlarge', 2)})"
+        sp = lambda r: (r['spikeLand'] + r['spikeSea']) if r else '—'
+        cp = lambda r: '/'.join(str(r['capes'][str(k)]) for k in (5, 8, 13)) if r else '—'
+        vals = [f"{s['ko']} · {borrow_ko(s)}", f"{2 - s['H']:.3f}", D(r0), D(ra), D(rb), f"{sp(r0)}→{sp(ra)}→{sp(rb)}", f"{cp(r0)}→{cp(rb)}"]
+        for i, v in enumerate(vals): dr.text((xs[i], y), str(v), font=font(12), fill=SECCOL.get(s['id'], INK) if i == 0 else INK)
+        y += 18
+    A = imp['arms']
+    for k, lab in (('a', '안 ⓐ'), ('b', '안 ⓑ')):
+        t = A[k]
+        dr.text((20, y), f"{lab}: 띠 {A['off']['bandPct']}% → {t['bandPct']}% · 바다가 되는 뭍 {t['lost']:,}셀(숲 {t['lostForest']} · 광맥 {t['lostOre']} · 민물 {t['lostFresh']}) · 뭍이 되는 띠 {t['gained']:,}셀 · "
+                          f"바닷가 후보 {len(A['off']['vilCoastal'])}→{len(t['vilCoastal'])} · 후보 바다 위 {len(t['vilSea'])} · 광맥 중심 바다 {len(A['off']['oreSea'])}→{len(t['oreSea'])} · 하구가 바다 {len(A['off']['mouthToSea'])}→{len(t['mouthToSea'])}/{len(t['rivers'])}", font=font(12), fill=INK); y += 18
+    dr.text((20, H - 26), 'T588 추신2 · t588-coast-mask.js → t588-coast-measure.py(T549 자) · t588-coast-impact.js → t588-coast-fig.py · 판정 0 — 고르는 건 재민', font=font(12), fill=GREY)
     return im
 
 # ════════════════════════ 중원북 ════════════════════════
@@ -203,7 +251,7 @@ def fig_jungwon():
     im = Image.new('RGB', (W, H), (250, 250, 247)); dr = ImageDraw.Draw(im)
     dr.text((20, 12), 'T588 해안 — 중원북(하란 북부) 전후 · 남동 꼭짓점 하나로만 바다(동창해)에 닿는다', font=font(22, True), fill=INK)
     dr.text((20, 44), '같은 축척: 1셀 = 0.5px · 창 = 꼭짓점 둘레 700×700셀(왼쪽 위 중원북 · 오른쪽 위 한반도 · 왼쪽 아래 중원남 · 오른쪽 아래 동창해)', font=font(13), fill=GREY)
-    dr.text((20, 64), '중원 동해안(황해 쪽 — 중원남 동변 + 중원북 꼭짓점) = T589 미확인 → 지금 식 · 한반도 서(서해) 구간의 섞임 폭(6,000px)이 꼭짓점까지 닿아 사분원 끝이 조금 바뀐다', font=font(13), fill=GREY)
+    dr.text((20, 64), '중원 동해안(황해 쪽 — 중원남 동변 + 중원북 꼭짓점) = T589 미확인 · 빌려 쓰기 짝 없음(추신2 는 열도만) → 지금 식 · 한반도 서(서해) 구간의 섞임 폭(6,000px)이 꼭짓점까지 닿아 사분원 끝이 조금 바뀐다', font=font(13), fill=GREY)
     y = 96; x = 20
     for var, lab in VAR:
         a, _ = world_mosaic(var, ('jungwon_n', 'hanbando', 'jungwon_s'), CX - R, CY - R, 2 * R, 2 * R)
@@ -257,7 +305,7 @@ def fig_now(meas_all_path, mask_dir):
                          f"{v['islands']}({v['islandMax']})" if r is v['sides'][0] else ''])
     H = 120 + wim.height + 40 + 22 * (len(rows) + 2) + 80
     im = Image.new('RGB', (max(wim.width + 40, 1500), H), (250, 250, 247)); dr = ImageDraw.Draw(im)
-    dr.text((20, 12), 'T588 ① 지금 해안선 — 26존 공통 식(직사각 바다 변 거리 < 6,000 ± 5,000px × 값 잡음 3200/960/320px) · 바다 변마다 잰 표', font=font(20, True), fill=INK)
+    dr.text((20, 12), 'T588 ① 지금 해안선 — 26존 공통 식(직사각 바다 변 거리 < (6,000 ± 5,000px × 값 잡음 3200/960/320px) × 존 띠 배수 — 닛폰 0.298 · T591) · 바다 변마다 잰 표', font=font(19, True), fill=INK)
     dr.text((20, 44), '세계 그림 1픽셀 = 16셀(띠가 칸의 반 넘으면 남색) · 표 = T549 자(t549-coast-shape.py) 를 변(바다 존과 맞닿은 구간)마다 잘라 부른 값 · 섬 = 본토에 안 붙은 뭍 덩이(4방)', font=font(13), fill=GREY)
     dr.text((20, 64), '1셀 돌기 = 뭍 셀인데 4방 셋 이상이 바다(곶 끝) + 바다 셀인데 셋 이상이 뭍 · D = 박스 카운팅(상자 2~128셀 · 잔 2~16 · 큰 16~128) · 줄 점프 = 해안이 옆 줄과 5셀 넘게 뛴 곳(톱니)', font=font(13), fill=GREY)
     im.paste(wim, (20, 92)); y = 92 + wim.height + 24

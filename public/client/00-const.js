@@ -638,6 +638,20 @@ function cropSprite(stage, crop) {
     }
     return null;
   }
+  // ★[T591 · 식 — 서버 chunk.js `_coastBandKAt` 미러] 존별 띠 배수 — ★[T588 추신2] 함수 한 자리로 뺐다(연산·차례 그대로 · 비트 동일) ·
+  //   손잡이 켬 길(CoastShape)도 이 함수를 받아 같은 배수 위에 구간 성격을 얹는다.
+  function _coastBandKOf(zone) { return (typeof zone.coastBandK === 'number' && zone.coastBandK > 0 && zone.coastBandK !== 1) ? zone.coastBandK : 1; }
+  function _coastInOcean(oceanRects, x, y) { for (let oi = 0; oi < oceanRects.length; oi++) { const O = oceanRects[oi]; if (x >= O.x0 && x < O.x1 && y >= O.y0 && y < O.y1) return true; } return false; }
+  function _coastBandKAt(zone, bandK, ax, ay, oceanRects, maxDist) {
+    if (bandK === 1) return 1;
+    const zx0 = zone.worldOffsetX, zy0 = zone.worldOffsetY, zx1 = zx0 + zone.zoneWidth, zy1 = zy0 + zone.zoneHeight;
+    let d = Infinity;
+    if (!_coastInOcean(oceanRects, zx0 - 1, ay)) d = Math.min(d, ax - zx0);
+    if (!_coastInOcean(oceanRects, zx1 + 1, ay)) d = Math.min(d, zx1 - ax);
+    if (!_coastInOcean(oceanRects, ax, zy0 - 1)) d = Math.min(d, ay - zy0);
+    if (!_coastInOcean(oceanRects, ax, zy1 + 1)) d = Math.min(d, zy1 - ay);
+    return 1 + (bandK - 1) * Math.min(1, d / maxDist);
+  }
   function computeCoastlineWaterTiles(zone, tileSize) {
     const waterTiles = new Set();
     if (zone.isOcean) return waterTiles;
@@ -648,24 +662,16 @@ function cropSprite(stage, crop) {
     //   끔(칸 없음)이면 아래 지금 식 그대로.
     const _c588 = (uiCfg && uiCfg.coast588) || '';
     if ((_c588 === 'a' || _c588 === 'b') && typeof CoastShape !== 'undefined') {
+      const _mx = COASTLINE_BASE + COASTLINE_NOISE;
       return CoastShape.generate(zone, tileSize, oceanRects, zonesMeta, COASTLINE_BASE, COASTLINE_NOISE,
-        (bnx, bny) => COASTLINE_BASE + _coastSmoothNoise2D(bnx, bny) * COASTLINE_NOISE, { variant: _c588 });
+        (bnx, bny) => COASTLINE_BASE + _coastSmoothNoise2D(bnx, bny) * COASTLINE_NOISE,
+        { variant: _c588, bandK: (z, ax, ay) => _coastBandKAt(z, _coastBandKOf(z), ax, ay, oceanRects, _mx) });   // ★[T588 추신2] T591 배수 위에
     }
     const cols = Math.ceil(zone.zoneWidth / tileSize);
     const rows = Math.ceil(zone.zoneHeight / tileSize);
     const maxDist = COASTLINE_BASE + COASTLINE_NOISE, maxDist2 = maxDist * maxDist;
     // ★[T591] 존별 띠 배수(서버 chunk.js 와 같은 식 · 뭍 이웃 변에서 1 로 돌아감) — 칸이 없으면 1(종전)
-    const _bandK = (typeof zone.coastBandK === 'number' && zone.coastBandK > 0 && zone.coastBandK !== 1) ? zone.coastBandK : 1;
-    const _inOcean = (x, y) => { for (let oi = 0; oi < oceanRects.length; oi++) { const O = oceanRects[oi]; if (x >= O.x0 && x < O.x1 && y >= O.y0 && y < O.y1) return true; } return false; };
-    const _zx0 = zone.worldOffsetX, _zy0 = zone.worldOffsetY, _zx1 = _zx0 + zone.zoneWidth, _zy1 = _zy0 + zone.zoneHeight;
-    const _landSideDist = (ax, ay) => {
-      let d = Infinity;
-      if (!_inOcean(_zx0 - 1, ay)) d = Math.min(d, ax - _zx0);
-      if (!_inOcean(_zx1 + 1, ay)) d = Math.min(d, _zx1 - ax);
-      if (!_inOcean(ax, _zy0 - 1)) d = Math.min(d, ay - _zy0);
-      if (!_inOcean(ax, _zy1 + 1)) d = Math.min(d, _zy1 - ay);
-      return d;
-    };
+    const _bandK = _coastBandKOf(zone);   // ★[T588 추신2] 식은 위 `_coastBandKAt` 한 자리(비트 동일)
     for (let ty = 0; ty < rows; ty++) {
       const absY = zone.worldOffsetY + ty * tileSize;
       const wty = Math.floor(absY / tileSize);
@@ -688,7 +694,7 @@ function cropSprite(stage, crop) {
         if (!hit) continue;
         const dist = Math.sqrt(bd2);
         const depth = COASTLINE_BASE + _coastSmoothNoise2D(bnx, bny) * COASTLINE_NOISE; // 바다점 월드좌표 2D 노이즈 → 솔기 없음
-        const _k = _bandK === 1 ? 1 : 1 + (_bandK - 1) * Math.min(1, _landSideDist(ax, ay) / maxDist);
+        const _k = _coastBandKAt(zone, _bandK, ax, ay, oceanRects, maxDist);
         if (dist < depth * _k) waterTiles.add(`${tx}_${ty}`);
       }
     }

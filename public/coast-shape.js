@@ -25,6 +25,14 @@
 //   (존 밖 칸도 같은 식), 갇힌 바다 메우기는 "존 테두리에 닿는 덩이는 둔다"라서 두 존이 같은 답을 낸다(T408 접합).
 // ★새 수 0: 성격 수는 T589(세션11 · `설계/고증_해안선.md`) · 축척은 T589 축척 메모 · 그 밖은 지금 상수(`COASTLINE_BASE` ·
 //   `COASTLINE_NOISE`)와 유도식이다. 표의 null = 미확인(지어내지 않는다) → 그 구간은 지금 식.
+// ★★[T588 추신2 2026-10-03] **T591 띠 배수(`coastBandK` — 닛폰 0.298) 위에 얹는다**: 부르는 쪽이 배수 함수(`opts.bandK(존, x, y)` —
+//   `chunk.js _coastBandKAt` · 클라 미러)를 넘기면, 칸을 품은 존의 배수 k 를 — 지금 식 몫엔 깊이 전체(지금 식 그대로 ⇒ 켬 + 빈 표 = 끔이
+//   배수 존에서도 선다) · 구간 몫엔 **띠 바탕(+ 이동)과 바닥에만** 곱하고 굴곡(옥타브 잡음 · 진폭 A)은 **그 위에 그대로 얹는다**(카드 문구).
+//   띠 몫은 바탕이 정한다(잡음 평균 0 — 닛폰 켬 띠 몫 ≈ T591 몫) · 굴곡 크기는 성격이 정한다(빌린 구간 D 가 닛폰에서도 큰 상자 자로 읽힌다).
+//   (진폭까지 k 를 곱하면 닛폰 굴곡이 표준편차 6~11셀로 눌려 큰 상자 D 가 배수 1 판보다 0.11~0.16 낮다 · 대신 바닥 닿음 0 — 보고 ③-라 ·
+//   이 판의 값은 바닥 닿음: 곶 끝이 k × 1,000px(닛폰 9셀) 바닥에 눌린 열 — 구간 몸통 0~29%.) 배수 존이 있는데 함수가 안 오면 던진다.
+//   열도 구간은 T589 미확인 → **빌려 씀**(추신2 · 표 `borrow`): 닛폰 서 ← 한반도 동(동해 매끈 ↔ 열도 동해 쪽) · 닛폰 남 ← 한반도 남
+//   (남해 다도해 ↔ 규슈 서쪽) · 닛폰 동 = T589 참고치 1.2336(우와지마 · 확실도 약). 중원 동해안은 미확인 그대로(지금 식).
 // =============================================================================
 (function (root) {
   'use strict';
@@ -44,7 +52,8 @@
   //     shiftKm 청동기 해안 이동(km) — ★T589 ② 방향만 있고 그 시점 수치 없음 ⇒ 0(지금 해안 · 재민 칸)
   //     isl     섬 뿌리기 { perKm2, bins: [[넓이 lo km², hi km², 몫], …] } — ★섬 **수**만 있다(동 169 · 남 2,244 · 서 892) ·
   //             구간 해안 길이·넓이 분포가 미확인이라 밀도로 못 옮긴다 ⇒ 없음(섬 뿌리기 0 · 등고선이 내는 섬만)
-  //     ref     참고치(확실도 '약') — **기본 적재 안 함**(`opts.withRef` 로만 · 안 그림에서)
+  //     ref     참고치(확실도 '약') — **기본 적재 안 함**(`opts.withRef` 로만 · 안 그림에서) · ★추신2 부터 쓰는 줄 0(닛폰 동 참고치는 적재)
+  //     borrow  ★추신2 — 그 구간 T589 수가 비어 **다른 구간 성격을 빌려 쓴다**(D · ⓑ 진폭이 빌린 구간 것) · why = 빌린 까닭(카드 문구)
   //     표에만(생성기가 안 읽는 칸): type 해안 종류 · islands 섬 수 · tidalKm2 갯벌 면적 · tideM 조차 · src · conf
   //   ★구간 경계(한반도 남변 서·남·동 · 닛폰 남변 서·남)는 **같은 길이로 나눴다** — 구간별 해안 길이(직선)가 T589 에서 미확인이라
   //     나눌 근거가 없다(재민이 고를 자리 · 보고 회부).
@@ -68,8 +77,11 @@
       src: KINPR + ' · 위키백과 「한국의 해안」 · 해양환경정보포털 「한국의 갯벌」 — ' + T589, conf: '확실' },
     kr_e: { D: 1.037, type: '이수(융기) 해안 · 사빈 · 사주·석호(강릉 이남)', islands: 169,
       src: KINPR + ' · 위키백과 「한국의 해안」 — ' + T589, conf: '확실' },
-    jp_e: { D: 1.2336, ref: true, type: '리아스식(우와지마 — 산리쿠 아님)',
-      src: '우와지마히가시고 과학탐구보고서(uwajimahigashi-h.esnet.ed.jp/uploads/h292nen16.pdf · 고교 보고서) — ' + T589, conf: '약(참고)' },
+    // ★추신2 — 열도: T589 D 는 태평양쪽 참고치 하나 · 동해쪽·세토·규슈서쪽은 미확인 → 카드가 정한 짝으로 **빌려 씀**(지어내지 않는다)
+    jp_w: { borrow: 'kr_e', why: '동해 매끈 ↔ 열도 동해 쪽(추신2)', type: '미확인(T589 — 일본 동해쪽 원문 못 엶)', conf: '빌려 씀(한반도 동)' },
+    jp_s: { borrow: 'kr_s', why: '남해 다도해 ↔ 규슈 서쪽(추신2)', type: '미확인(T589 — 세토 내해 개황만 · 규슈 서쪽 미확인)', conf: '빌려 씀(한반도 남)' },
+    jp_e: { D: 1.2336, type: '리아스식(우와지마 — 산리쿠 아님)',
+      src: '우와지마히가시고 과학탐구보고서(uwajimahigashi-h.esnet.ed.jp/uploads/h292nen16.pdf · 고교 보고서) — ' + T589, conf: '약(참고치 · 고교 보고서)' },
   };
   // 축척(T589 ③ 게임 축척 메모 · 계산만): 한반도 동서 약 300km(영문 위키 「Geography of Korea」) ÷ 2,188셀 = 1셀 ≈ 137.1m
   //   — km 칸(ampKm·shiftKm·isl)을 px 로 옮길 때만 쓴다(지금 표엔 그런 칸이 없다). ⚠"32px = 1m"(zone.js 걸음) 과 137배 어긋남 — 재민 칸.
@@ -81,7 +93,7 @@
   //   ⓑ "D 맞춤": 그 구간 성격(H · 옥타브 범위)으로 깎은 **긴 시험 해안**(8,192셀)을 T549 자로 잰 큰 상자 D(16~128셀)가 **고증 D** 가 되는 진폭
   //      — `scripts/t588-coast-fit.js <D> 3200 0 <dir> 320 --match-d` 의 할선법 값(유도값 · 보고 §②):
   //        서 1.241 → 6,904 · 남 1.273 → 7,406 · 동 1.037 → 3,849 · (참고 동 1.2336 → 6,813) — D 가 바뀌면 그 자로 다시 잰다
-  var AMP_B = { kr_w: 6904, kr_s: 7406, kr_e: 3849, jp_e: 6813 };   // jp_e = 참고치 판(--with-ref)에서만
+  var AMP_B = { kr_w: 6904, kr_s: 7406, kr_e: 3849, jp_e: 6813 };   // 빌려 쓴 구간은 빌린 구간 값(배수 1 틀 — 배수 k 가 띠째 줄인다)
 
   // ── 결정적 수학 ──────────────────────────────────────────────────────────────
   var _SQ = null;   // _SQ[j] = 2^(2^-j)
@@ -138,15 +150,18 @@
     var pxPerKm = scale && scale.mPerCell > 0 ? (1000 / scale.mPerCell) * 32 : 0;
     var secs = [], lamMax = 0, lamMin = Infinity;
     for (var i = 0; i < table.length; i++) {
-      var s = table[i], ch = chars[s.as || s.id], z = zones[s.zone];
+      var s = table[i], key0 = s.as || s.id, ch0 = chars[key0], z = zones[s.zone];
+      // 빌려 씀(추신2): 성격 수(D · ⓑ 진폭)는 빌린 구간 것 · 자리는 이 구간
+      var ch = ch0 && ch0.borrow ? chars[ch0.borrow] : ch0, ampKey = ch0 && ch0.borrow ? ch0.borrow : key0;
       if (!z || z.isOcean || !_active(s, ch, opts)) continue;
       // 옥타브 범위: 자 범위(km)가 있으면 그것 · 없으면(T589 ③ 미확인) 구간 길이 ~ FINE_PX
       var hasRuler = ch.rulerKm && ch.rulerKm[0] > 0 && ch.rulerKm[1] > ch.rulerKm[0] && pxPerKm > 0;
       var H = 2 - ch.D, l0 = hasRuler ? ch.rulerKm[0] * pxPerKm : (opts.fine || FINE_PX), l1 = hasRuler ? ch.rulerKm[1] * pxPerKm : (opts.coarse || COARSE_PX);
       lamMax = Math.max(lamMax, l1); lamMin = Math.min(lamMin, l0);
       secs.push({ id: s.id, ko: s.ko, zone: s.zone, side: s.side, corner: s.corner, from: s.from, to: s.to, H: H, l0: l0, l1: l1,
+        borrow: ch0 && ch0.borrow ? ch0.borrow : null, D: ch.D,
         A: (typeof ch.ampKm === 'number' && pxPerKm > 0 ? ch.ampKm * pxPerKm
-          : (opts.variant === 'b' && (opts.ampB || AMP_B)[s.as || s.id] > 0 ? (opts.ampB || AMP_B)[s.as || s.id] : noise)),
+          : (opts.variant === 'b' && (opts.ampB || AMP_B)[ampKey] > 0 ? (opts.ampB || AMP_B)[ampKey] : noise)),
         shift: (typeof ch.shiftKm === 'number' && pxPerKm > 0 ? ch.shiftKm * pxPerKm : 0), isl: (pxPerKm > 0 && ch.isl) || null });
     }
     // 옥타브 사다리 — **모든 구간 공용 · 바닥에 못 박는다**: λₖ = fine·2^k(k = 0 이 가장 잔 것). 무게로 섞으려면 같은 잡음장이어야 하고,
@@ -164,7 +179,8 @@
       S.amp = amp;
       // 구간 상자(세계 px): 변을 따라 [from, to) · 안쪽으로 띠 최대 깊이 + 섞임 폭
       var z2 = zones[S.zone], x0 = z2.worldOffsetX, y0 = z2.worldOffsetY, x1 = x0 + z2.zoneWidth, y1 = y0 + z2.zoneHeight;
-      var reach = base * (z2.coastBandK || 1) + S.shift + S.A + base;   // 이만큼 안쪽까지 무게(띠가 닿는 끝 + 섞임 폭)
+      // 이만큼 안쪽까지 무게(띠가 닿는 끝 + 섞임 폭) — 배수 k 는 1 과 그 존 배수 사이(T591 비탈)라 큰 쪽으로 잡는다
+      var reach = Math.max(1, _kOf(z2)) * (base + S.shift + S.A) + base;
       if (S.corner) {   // 꼭짓점 구간 — 그 꼭짓점을 가운데 둔 정사각(반변 = reach)
         var cx = S.corner.indexOf('E') >= 0 ? x1 : x0, cy = S.corner.indexOf('S') >= 0 ? y1 : y0;
         S.ax = cx - reach; S.bx = cx + reach; S.ay = cy - reach; S.by = cy + reach;
@@ -177,7 +193,7 @@
       }
     }
     var maxD = base + noise;
-    for (var m = 0; m < secs.length; m++) maxD = Math.max(maxD, base * (zones[secs[m].zone].coastBandK || 1) + secs[m].shift + secs[m].A);
+    for (var m = 0; m < secs.length; m++) maxD = Math.max(maxD, Math.max(1, _kOf(zones[secs[m].zone])) * (base + secs[m].shift + secs[m].A));
     // 가장 얕은 바다 폭 = 지금 식이 지키는 그 폭(base − noise = 1,000px) — 곶이 바다 존 경계에 닿아 직선으로 잘리지 않게 매끈한 바닥(`_floor`)
     // 섬 뿌리기 — 구간 isl = { perKm2: 띠 바다 1km² 당 섬 수, bins: [[넓이 lo km², hi km², 몫], …] }(T589 섬 수 · 넓이 구간)
     //   공용 격자 G(세계 px): 가장 큰 섬 지름의 두 배 — 한 칸에 섬 하나(있을 확률 = 밀도 × G²) · 1 을 넘으면 칸을 줄인다(밀도의 역수 제곱근).
@@ -195,8 +211,9 @@
       var g = 4 * rmx, gD = 1 / Math.sqrt(secs[ii].isl.dens); if (gD < g) g = gD;
       G = G === 0 ? g : Math.min(G, g);
     }
-    var hasK = false; for (var zid in zones) if (!zones[zid].isOcean && zones[zid].coastBandK && zones[zid].coastBandK !== 1) hasK = true;
-    var C = { secs: secs, lams: lams, T: base, base: base, noise: noise, maxD: maxD, zones: zones, m: base - noise, hasK: hasK, G: G, rMax: rMaxAll };
+    // 배수 존(T591 `coastBandK` ≠ 1 인 뭍 존) — 칸을 품은 존을 찾아 부르는 쪽 배수 함수에 넘긴다(세계 좌표 함수 · 솔기 0)
+    var kz = []; for (var zid in zones) { var zk = zones[zid]; if (!zk.isOcean && _kOf(zk) !== 1) kz.push(zk); }
+    var C = { secs: secs, lams: lams, T: base, base: base, noise: noise, maxD: maxD, zones: zones, m: base - noise, kz: kz, G: G, rMax: rMaxAll };
     _cache.key = key; _cache.C = C;
     return C;
   }
@@ -212,17 +229,15 @@
     }
     return sum;
   }
-  // 띠 존 배수(T591 · zone-config 칸 — 존 경계에서 계단이 안 서게 이웃 존과 섞는다 · 없으면 1)
-  function bandKAt(C, x, y) {
-    var zs = C.zones, num = 0, den = 0, T = C.T;
-    for (var id in zs) {
-      var z = zs[id]; if (z.isOcean) continue;
-      var k = z.coastBandK || 1;
-      var sx = smooth01((x - z.worldOffsetX + T / 2) / T) * (1 - smooth01((x - z.worldOffsetX - z.zoneWidth + T / 2) / T));
-      var sy = smooth01((y - z.worldOffsetY + T / 2) / T) * (1 - smooth01((y - z.worldOffsetY - z.zoneHeight + T / 2) / T));
-      var m = sx * sy; num += m * k; den += m;
+  // 띠 배수(T591 · ★추신2) — 칸 (x, y)를 품은 뭍 존의 배수. 식은 부르는 쪽 함수(`chunk.js _coastBandKAt` · 클라 미러 — 사본 0) ·
+  //   존 찾기는 세계 좌표만으로(존 사각은 겹치지 않는다) ⇒ 존 밖 이웃 칸(1셀 돌기 뒤집기)도 그 칸 존의 배수 — 두 존이 같은 답.
+  function _kOf(z) { return (z && typeof z.coastBandK === 'number' && z.coastBandK > 0 && z.coastBandK !== 1) ? z.coastBandK : 1; }
+  function kAt(C, x, y) {
+    for (var i = 0; i < C.kz.length; i++) {
+      var z = C.kz[i];
+      if (x >= z.worldOffsetX && x < z.worldOffsetX + z.zoneWidth && y >= z.worldOffsetY && y < z.worldOffsetY + z.zoneHeight) return C.bandK(z, x, y);
     }
-    return den > 0 ? num / den : 1;
+    return 1;
   }
 
   // ── 칸 하나의 날 답(세계 좌표만의 함수) ─────────────────────────────────────────
@@ -240,24 +255,27 @@
     if (!hit) return 0;
     var dist = Math.sqrt(bd2);
     var ws = weightsAt(C, ax, ay, w);
-    if (ws <= 0) return dist < oldDepth(bnx, bny) ? 1 : 0;   // 구간 밖 — 지금 식 그대로(같은 d · 같은 바다점)
-    var norm = ws > 1 ? ws : 1, w0 = ws < 1 ? 1 - ws : 0;
-    var kb = C.hasK ? bandKAt(C, ax, ay) : 1, nAmp = 0;
-    // 잡음 없이 가르는 두 경계(속도 — 답은 같다): 지금 식 깊이 ∈ [base−noise, base+noise] · 새 깊이 ∈ [m, 띠+이동+A]
+    // T591 배수(★추신2) k — 지금 식 몫은 깊이 전체 × k(지금 식 그대로) · 구간 몫은 **띠 바탕(+ 이동)·바닥만 × k, 굴곡(옥타브 잡음)은 그 위에 그대로**
+    //   (카드: "이 깊이 위에 구간 성격만 얹는다") — 띠 몫은 바탕이 정하고(잡음 평균 0) 굴곡 크기는 성격이 정한다. k = 1 이면 × 1 = 비트 그대로.
+    var kb = C.kz.length ? kAt(C, ax, ay) : 1;
+    if (ws <= 0) return (bd2 < C.mx2 && dist < oldDepth(bnx, bny) * kb) ? 1 : 0;   // 구간 밖 — 지금 식 그대로(같은 d · 같은 바다점 · 같은 거르기 · 같은 곱)
+    var norm = ws > 1 ? ws : 1, w0 = ws < 1 ? 1 - ws : 0, nAmp = 0, mk = kb * C.m;
+    // 잡음 없이 가르는 두 경계(속도 — 답은 같다): 지금 식 깊이 ∈ k·[base−noise, base+noise] · 새 깊이 ∈ [k·m, k·(띠+이동) + A]
     var hiN = 0;
-    for (var h = 0; h < C.secs.length; h++) if (w[h] > 0) hiN += (w[h] / norm) * (C.base * kb + C.secs[h].shift + C.secs[h].A);
-    var hiNew = hiN / (1 - w0); if (hiNew < C.m) hiNew = C.m;
-    if (dist >= w0 * (C.base + C.noise) + (1 - w0) * hiNew) return 3;
-    if (dist < w0 * (C.base - C.noise) + (1 - w0) * C.m) return islandAt(C, ax, ay, dist, w, norm) ? 3 : 2;
-    var depth = w0 > 0 ? w0 * oldDepth(bnx, bny) : 0;
-    var dNew = 0;
-    for (var i = 0; i < C.secs.length; i++) if (w[i] > 0) dNew += (w[i] / norm) * (C.base * kb + C.secs[i].shift);
+    for (var h = 0; h < C.secs.length; h++) if (w[h] > 0) hiN += (w[h] / norm) * (kb * (C.base + C.secs[h].shift) + C.secs[h].A);
+    var hiNew = hiN / (1 - w0); if (hiNew < mk) hiNew = mk;
+    if (dist >= w0 * kb * (C.base + C.noise) + (1 - w0) * hiNew) return 3;
+    if (dist < w0 * kb * (C.base - C.noise) + (1 - w0) * mk) return islandAt(C, ax, ay, dist, w, norm) ? 3 : 2;
+    var depth = w0 > 0 ? w0 * (oldDepth(bnx, bny) * kb) : 0;
+    var dB = 0;
+    for (var i = 0; i < C.secs.length; i++) if (w[i] > 0) dB += (w[i] / norm) * (C.base + C.secs[i].shift);
+    var dNew = kb * dB;
     for (var k = 0; k < C.lams.length; k++) {
       var a = 0;
       for (var j = 0; j < C.secs.length; j++) if (w[j] > 0) a += (w[j] / norm) * C.secs[j].amp[k];
       if (a > 0) { dNew += a * octave(ax, ay, C.lams[k], k); nAmp += a; }
     }
-    depth += (1 - w0) * _floor(dNew / (1 - w0), C.m);
+    depth += (1 - w0) * _floor(dNew / (1 - w0), mk);
     var sea = dist < depth;
     if (sea && islandAt(C, ax, ay, dist, w, norm)) sea = false;
     return sea ? 2 : 3;
@@ -321,7 +339,8 @@
     var out = new Set();
     if (zone.isOcean || !oceanRects || !oceanRects.length) return out;
     var C = compile(zones, base, noise, opts);
-    C.oceans = oceanRects; C.isl = null;
+    C.oceans = oceanRects; C.isl = null; C.bandK = (opts && opts.bandK) || null; C.mx2 = (base + noise) * (base + noise);
+    if (C.kz.length && !C.bandK) throw new Error('coast-shape: 배수 존(coastBandK) ' + C.kz.map(function (z) { return z.id || '?'; }).join(',') + ' — opts.bandK(T591 배수 함수)를 넘겨야 한다');
     var cols = Math.ceil(zone.zoneWidth / tileSize), rows = Math.ceil(zone.zoneHeight / tileSize);
     var W = cols + 2, Hh = rows + 2;                 // 한 칸 테두리(존 밖 이웃) 포함
     var raw = new Uint8Array(W * Hh);
@@ -381,7 +400,7 @@
   }
 
   var API = { SECTIONS: SECTIONS, CHAR: CHAR, SCALE: SCALE, FINE_PX: FINE_PX, COARSE_PX: COARSE_PX, AMP_B: AMP_B, generate: generate, compile: compile, pow2: pow2, hash: hash, gnoise: gnoise,
-    weightsAt: weightsAt, bandKAt: bandKAt, _active: _active };
+    weightsAt: weightsAt, kOf: _kOf, _active: _active };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   else root.CoastShape = API;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

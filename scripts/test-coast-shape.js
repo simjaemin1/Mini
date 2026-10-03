@@ -8,8 +8,10 @@
 //   ② 결정적 — 같은 입력 두 번 = 같은 칸 · 엔진 무관 수학(√ 사슬 2^x 가 정확한 자리에서 정확)
 //   ③ 솔기 0 — 두 존 경계에 걸친 **가짜 존**으로 구워도 두 존이 따로 구운 칸과 같다(칸의 답이 세계 좌표만의 함수) · 두 안(a·b)
 //   ④ 클라 쌍둥이 — 클라 `00-const.js computeCoastlineWaterTiles` 를 소스에서 떼어 돌리면 서버와 같은 칸(a·b)
-//   ⑤ 성격이 실제로 먹는다 — 켬이면 한반도 남해안이 바뀌고(구간 몸통 1셀 돌기 0) · 표에 없는 구간(닛폰 동)은 몸통이 그대로
+//   ⑤ 성격이 실제로 먹는다 — 켬이면 한반도 남해안이 바뀌고(구간 몸통 1셀 돌기 0) · 표에 수가 없는 구간(중원 동해안)은 몸통이 그대로
 //   ⑥ 자명 통과 금지 — 세계 좌표가 아닌 것(존 자리)을 잡음에 섞은 돌연변이를 ③ 이 **문다** · 표를 바꾸면 ⑤ 가 바뀜을 본다
+//   ⑦ ★[T588 추신2] T591 띠 배수 위 — 닛폰(배수 0.298) 켬 판의 띠 몫이 끔(T591) 판 몫 근처다(배수가 구간 띠 바탕에도 곱해진다 · 굴곡은 그 위) ·
+//      배수를 빼먹은 돌연변이(배수 함수 = 1)는 이 자가 **문다** · 빌려 쓴 구간(닛폰 서·남)은 켬이면 바뀐다 · 배수 존에 배수 함수가 안 오면 던진다
 // 실행: node scripts/test-coast-shape.js
 'use strict';
 const path = require('path');
@@ -39,21 +41,23 @@ console.log('\n① 켬이어도 구간 표가 비면 지금 식 그대로(칸·�
   for (const [id, z] of Object.entries(ZONES)) {
     if (z.isOcean) continue; n++;
     const off = gen(id);
-    const onEmpty = CS.generate({ ...z, id }, 32, OR, ZONES, BASE, NOISE, _oldDepth(), empty);   // 정본 생성기 · 정본 지금 식 함수 · 빈 표
+    const onEmpty = CS.generate({ ...z, id }, 32, OR, ZONES, BASE, NOISE, _oldDepth(), Object.assign({ bandK: _bandK() }, empty));   // 정본 생성기 · 정본 지금 식 함수 · 정본 배수 함수 · 빈 표
     cells += off.size;
     if (!same(off, onEmpty)) bad.push(id);
   }
   ok(n >= 18 && bad.length === 0, '① ★끔 판 = 켬 + 빈 표 판 — 같은 칸 · 같은 순서(지금 식 몫이 정본 식 그대로)', `${n}존 · ${cells.toLocaleString()}칸 · 다른 존 ${bad.join(',') || 0}`);
 }
-// 지금 식의 깊이 함수 — chunk.js 가 생성기에 넘기는 바로 그 함수(정본에서 가져온다: 손잡이 켬 길이 생성기를 부르는 인자를 엿본다)
-function _oldDepth() {
-  if (_oldDepth.f) return _oldDepth.f;
+// 지금 식의 깊이 함수 · T591 배수 함수 — chunk.js 가 생성기에 넘기는 바로 그 함수들(정본에서 가져온다: 손잡이 켬 길이 생성기를 부르는 인자를 엿본다)
+function _chunkArgs() {
+  if (_chunkArgs.v) return _chunkArgs.v;
   const g = CS.generate; let got = null;
-  CS.generate = function (zone, ts, ors, zones, base, noise, old, opts) { got = old; return new Set(); };
+  CS.generate = function (zone, ts, ors, zones, base, noise, old, opts) { got = { old, bandK: opts && opts.bandK }; return new Set(); };
   try { process.env.T588_COAST = 'a'; chunk.generateCoastlineWaterTiles({ ...ZONES.hanbando, id: 'hanbando' }, 32, findZoneAt, OR); }
   finally { CS.generate = g; delete process.env.T588_COAST; }
-  _oldDepth.f = got; return got;
+  _chunkArgs.v = got; return got;
 }
+function _oldDepth() { return _chunkArgs().old; }
+function _bandK() { return _chunkArgs().bandK; }
 
 // ── ② 결정적 · 엔진 무관 수학 ─────────────────────────────────────────────────────────
 console.log('\n② 결정적 — 같은 입력 두 번 = 같은 칸 · 2^x √ 사슬');
@@ -85,7 +89,7 @@ function seamCheck(variant, gen2) {
   }
   return { cmp, bad };
 }
-const genV = (variant) => (zone) => CS.generate(zone, 32, OR, ZONES, BASE, NOISE, _oldDepth(), { variant });
+const genV = (variant) => (zone) => CS.generate(zone, 32, OR, ZONES, BASE, NOISE, _oldDepth(), { variant, bandK: _bandK() });
 for (const v of ['a', 'b']) { const r = seamCheck(v, genV(v)); ok(r.cmp > 100000 && r.bad === 0, `③ ★안 ${v} — 경계에 걸친 가짜 존 = 두 존 따로(칸마다)`, `${r.cmp.toLocaleString()}칸 대조 · 다름 ${r.bad}`); }
 
 // ── ④ 클라 쌍둥이 — 00-const.js 를 소스에서 떼어 돌린다 ─────────────────────────────────
@@ -105,7 +109,7 @@ console.log('\n④ 클라 쌍둥이 — 00-const.js computeCoastlineWaterTiles =
 }
 
 // ── ⑤ 성격이 실제로 먹는다 · 표에 없는 구간은 그대로 ─────────────────────────────────────
-console.log('\n⑤ 켬이면 한반도 남해안이 바뀐다 · 구간 몸통 1셀 돌기 0 · 표에 없는 닛폰 동해안 몸통은 그대로');
+console.log('\n⑤ 켬이면 한반도 남해안이 바뀐다 · 구간 몸통 1셀 돌기 0 · 표에 수가 없는 중원 동해안 몸통은 그대로');
 {
   const off = gen('hanbando'), on = gen('hanbando', 'a');
   ok(diffN(off, on) > 1000, '⑤ 켬(a) — 한반도 띠가 실제로 바뀐다', `${diffN(off, on).toLocaleString()}칸`);
@@ -115,24 +119,45 @@ console.log('\n⑤ 켬이면 한반도 남해안이 바뀐다 · 구간 몸통 1
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (sea(s, x + dx, y + dy) !== v) k++; if (k >= 3) n++; } return n; };
   const T = Math.ceil(BASE / 2 / 32);   // 구간 몸통 = 섞임 폭 반(T/2)을 뗀 곳
   ok(spikes(on, T, NX - T) === 0, '⑤b ★켬 — 구간 몸통에 1셀 돌기(4방 셋 이상이 반대편) 0', `지금 식 ${spikes(off, T, NX - T)}곳 → ${spikes(on, T, NX - T)}`);
-  const offN = gen('nippon'), onN = gen('nippon', 'a');
-  const NXn = Math.ceil(ZONES.nippon.zoneWidth / 32);
-  let eastDiff = 0; for (const k of offN) { const [x, y] = k.split('_').map(Number); if (x > NXn - 400 && y < 3000 && !onN.has(k)) eastDiff++; }
-  for (const k of onN) { const [x, y] = k.split('_').map(Number); if (x > NXn - 400 && y < 3000 && !offN.has(k)) eastDiff++; }
-  ok(eastDiff === 0, '⑤c 표에 성격 수가 없는 구간(닛폰 동 — T589 참고치만)은 켬이어도 몸통이 그대로', `다름 ${eastDiff}`);
+  // 중원남 동변(jw_e — T589 미확인 · 빌려 쓰기 짝 없음) — 존 통째로 켬 = 끔(이웃 구간 섞임이 닿는 자리도 없다)
+  const offJ = gen('jungwon_s'), onJ = gen('jungwon_s', 'a');
+  ok(offJ.size > 1000 && diffN(offJ, onJ) === 0, '⑤c 표에 성격 수가 없는 구간(중원 동해안 — T589 미확인)은 켬이어도 그대로', `${offJ.size.toLocaleString()}칸 · 다름 ${diffN(offJ, onJ)}`);
 }
 
 // ── ⑥ 자명 통과 금지 ───────────────────────────────────────────────────────────────
 console.log('\n⑥ 자명 통과 금지 — 존 자리에 기대는 돌연변이를 ③ 이 문다 · 표를 바꾸면 칸이 바뀐다');
 {
   // 돌연변이: 깊이 잡음에 **존 자리**(세계 좌표가 아닌 것)를 섞는다 — 두 존이 같은 칸에 다른 답을 내야 한다
-  const mut = (zone) => CS.generate(zone, 32, OR, ZONES, BASE, NOISE, (x, y) => _oldDepth()(x, y) + (zone.worldOffsetX % 7) * 300, { chars: {} });
+  const mut = (zone) => CS.generate(zone, 32, OR, ZONES, BASE, NOISE, (x, y) => _oldDepth()(x, y) + (zone.worldOffsetX % 7) * 300, { chars: {}, bandK: _bandK() });
   const r = seamCheck('mut', mut);
   ok(r.bad > 0, '⑥ ★존 자리를 섞은 돌연변이 → ③ 솔기 자가 **문다**(잡을 수 있는 자다)', `다름 ${r.bad.toLocaleString()}칸`);
   const alt = JSON.parse(JSON.stringify(CS.CHAR)); alt.kr_e.D = 1.3;
-  const a = CS.generate({ ...ZONES.hanbando, id: 'hanbando' }, 32, OR, ZONES, BASE, NOISE, _oldDepth(), { variant: 'a' });
-  const b = CS.generate({ ...ZONES.hanbando, id: 'hanbando' }, 32, OR, ZONES, BASE, NOISE, _oldDepth(), { variant: 'a', chars: alt });
+  const a = CS.generate({ ...ZONES.hanbando, id: 'hanbando' }, 32, OR, ZONES, BASE, NOISE, _oldDepth(), { variant: 'a', bandK: _bandK() });
+  const b = CS.generate({ ...ZONES.hanbando, id: 'hanbando' }, 32, OR, ZONES, BASE, NOISE, _oldDepth(), { variant: 'a', chars: alt, bandK: _bandK() });
   ok(diffN(a, b) > 0, '⑥b 표의 D 한 칸(한반도 동 1.037 → 1.3)을 바꾸면 칸이 바뀐다(표를 실제로 읽는다)', `${diffN(a, b).toLocaleString()}칸`);
+}
+
+// ── ⑦ T591 띠 배수 위(★추신2) ─────────────────────────────────────────────────────────
+console.log('\n⑦ T591 띠 배수 위 — 닛폰 켬 띠 몫 ≈ 끔(T591) 몫 · 배수 빼먹은 돌연변이를 문다 · 빌려 쓴 구간이 먹는다 · 배수 함수 없으면 던진다');
+{
+  const K = CS.kOf(ZONES.nippon);
+  ok(K > 0 && K < 1, '⑦ 전제: 닛폰에 T591 배수가 있다(zone-config `coastBandK`)', `${K}`);
+  const NC = Math.ceil(ZONES.nippon.zoneWidth / 32) * Math.ceil(ZONES.nippon.zoneHeight / 32);
+  const off = gen('nippon'), on = gen('nippon', 'a');
+  const r = on.size / off.size;
+  ok(r > 0.8 && r < 1.25, '⑦b ★닛폰 켬(a) 띠 몫이 끔(T591 배수 판) 몫의 0.8~1.25배 — 배수가 구간 띠 바탕에도 곱해진다(굴곡은 그 위)', `끔 ${(100 * off.size / NC).toFixed(2)}% · 켬 ${(100 * on.size / NC).toFixed(2)}% (×${r.toFixed(3)})`);
+  const mut = CS.generate({ ...ZONES.nippon, id: 'nippon' }, 32, OR, ZONES, BASE, NOISE, _oldDepth(), { variant: 'a', bandK: () => 1 });
+  const rm = mut.size / off.size;
+  ok(!(rm > 0.8 && rm < 1.25), '⑦c 배수를 빼먹은 돌연변이(배수 함수 = 1) → ⑦b 자가 **문다**', `돌연변이 ${(100 * mut.size / NC).toFixed(2)}% (×${rm.toFixed(3)})`);
+  // 빌려 쓴 구간(닛폰 서·남 — 남변) 몸통이 켬이면 바뀐다 · 표에서 빌림을 지우면(미확인) 남변 몸통은 끔과 같다
+  const NXn = Math.ceil(ZONES.nippon.zoneWidth / 32), NYn = Math.ceil(ZONES.nippon.zoneHeight / 32), Tn = Math.ceil(BASE / 2 / 32) + 2;
+  const southBody = (s) => { const o = new Set(); for (const k of s) { const [x, y] = k.split('_').map(Number); if (y > NYn - 400 && x > Tn && x < NXn - 700) o.add(k); } return o; };
+  const ch2 = JSON.parse(JSON.stringify(CS.CHAR)); delete ch2.jp_w; delete ch2.jp_s;
+  const noBorrow = CS.generate({ ...ZONES.nippon, id: 'nippon' }, 32, OR, ZONES, BASE, NOISE, _oldDepth(), { variant: 'a', chars: ch2, bandK: _bandK() });
+  ok(diffN(southBody(off), southBody(on)) > 100, '⑦d 빌려 쓴 구간(닛폰 남변 — 서 ← 한반도 동 · 남 ← 한반도 남)이 켬이면 바뀐다', `${diffN(southBody(off), southBody(on)).toLocaleString()}칸`);
+  ok(diffN(southBody(off), southBody(noBorrow)) === 0, '⑦e 빌림을 지우면(미확인) 닛폰 남변 몸통 = 끔(빌림만이 남변을 바꾼다)', `다름 ${diffN(southBody(off), southBody(noBorrow))}`);
+  let threw = false; try { CS.generate({ ...ZONES.nippon, id: 'nippon' }, 32, OR, ZONES, BASE, NOISE, _oldDepth(), { variant: 'a' }); } catch (e) { threw = /bandK/.test(String(e && e.message)); }
+  ok(threw, '⑦f 배수 존이 있는데 배수 함수가 안 오면 던진다(조용히 어긋나지 않는다)');
 }
 
 console.log(`\n=== PASS ${pass} / FAIL ${fail} ===`);

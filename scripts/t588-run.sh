@@ -1,27 +1,32 @@
 #!/usr/bin/env bash
 # (@regress 없음 — 러너 밖 · T588 ④⑤ 한 번에 · 관측 전용 · 세계 무변)
 # =============================================================================
-# 해안 손잡이 끔 · 켬 a · 켬 b(+ 닛폰 참고치 판)로 띠를 굽고 → 모양 자(T549) · 바뀌는 것(t588-coast-impact) · 갇힌 땅(T524 자) ·
-#   다리 계획(plan-bridges-v2) · 그림(t588-coast-fig) 을 차례로 낸다. **T591(닛폰 폭) 착지 뒤 같은 줄로 다시 돈다**(추신).
-#   T549 모양 자 = `scripts/t549-coast-shape.py`(T591 이 main 에 다시 얹는다) — 없으면 env T549_SHAPE 로 경로를 준다.
-# 쓰는 법: bash scripts/t588-run.sh <out_dir> [단계…=mask,measure,impact,t524,bridge,fig]
+# 해안 손잡이 끔 · 켬 a · 켬 b 로 띠를 굽고 → 모양 자(T549) · 바뀌는 것(t588-coast-impact) · 갇힌 땅(T524 자) ·
+#   다리 계획(plan-bridges-v2) · 그림(t588-coast-fig) 을 차례로 낸다. (T591 착지 뒤 판 = 추신2 — 참고치 판 mar/mbr 은 없앴다:
+#   닛폰 구간 셋이 켬 판에 들어간다.) `now` = ① 지금(끔) 전 뭍 존 띠 · 모양 표 · 세계 그림.
+#   T549 모양 자 = `scripts/t549-coast-shape.py`(main) — 다른 판을 쓰려면 env T549_SHAPE.
+# 쓰는 법: bash scripts/t588-run.sh <out_dir> [단계…=now,mask,measure,impact,t524,bridge,fig]
 # =============================================================================
 set -uo pipefail
 cd "$(dirname "$0")/.."
-OUT="${1:-/tmp/t588}"; STEPS="${2:-mask,measure,impact,t524,bridge,fig}"
+OUT="${1:-/tmp/t588}"; STEPS="${2:-now,mask,measure,impact,t524,bridge,fig}"
 mkdir -p "$OUT"
 has() { [[ ",$STEPS," == *",$1,"* ]]; }
 ZS="hanbando nippon jungwon_n"
-arm() { case "$1" in m0) echo '' ;; ma|mar) echo a ;; mb|mbr) echo b ;; esac; }
+arm() { case "$1" in m0) echo '' ;; ma) echo a ;; mb) echo b ;; esac; }
+if has now; then
+  mkdir -p "$OUT/now"; LZ=$(node -e "const {ZONES}=require('./server/zone-config');console.log(Object.keys(ZONES).filter(k=>!ZONES[k].isOcean).join(' '))")
+  args=""; for z in $LZ; do env -u T588_COAST node scripts/t588-coast-mask.js $z "$OUT/now/$z.u8" "$OUT/now/$z.json" > /dev/null || exit 1; args="$args $z=$OUT/now/$z.u8:$OUT/now/$z.json"; done
+  python3 scripts/t588-coast-measure.py $args > "$OUT/now/measure_all.json" 2> "$OUT/now/measure_all.log" || { echo '[t588-run] now measure 실패'; tail -3 "$OUT/now/measure_all.log"; exit 1; }
+  mkdir -p "$OUT/fig"; python3 scripts/t588-coast-fig.py "$OUT/fig" - - - --now "$OUT/now/measure_all.json" "$OUT/now"
+fi
 if has mask; then
   for v in m0 ma mb; do mkdir -p "$OUT/$v"; for z in $ZS jungwon_s; do
     a=$(arm $v); if [ -n "$a" ]; then T588_COAST=$a node scripts/t588-coast-mask.js $z "$OUT/$v/$z.u8" "$OUT/$v/$z.json"; else env -u T588_COAST node scripts/t588-coast-mask.js $z "$OUT/$v/$z.u8" "$OUT/$v/$z.json"; fi
   done; done
-  for v in mar mbr; do mkdir -p "$OUT/$v"; T588_COAST=$(arm $v) node scripts/t588-coast-mask.js nippon "$OUT/$v/nippon.u8" "$OUT/$v/nippon.json" --with-ref; done
 fi
 if has measure; then
   args=""; for v in m0 ma mb; do for z in $ZS; do args="$args ${v}_$z=$OUT/$v/$z.u8:$OUT/$v/$z.json"; done; done
-  for v in mar mbr; do args="$args ${v}_nippon=$OUT/$v/nippon.u8:$OUT/$v/nippon.json"; done
   python3 scripts/t588-coast-measure.py $args > "$OUT/measure.json" 2> "$OUT/measure.log" || { echo '[t588-run] measure 실패'; tail -3 "$OUT/measure.log"; exit 1; }
 fi
 if has impact; then mkdir -p "$OUT/imp"; for z in $ZS; do node scripts/t588-coast-impact.js $z "$OUT/imp/$z.json" a,b | cut -c1-400; done; fi

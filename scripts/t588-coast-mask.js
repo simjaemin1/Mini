@@ -63,7 +63,8 @@ try {
   const CS = R('public/coast-shape.js');
   const C = CS.compile(ZONES, 6000, 5000, Object.assign({}, TABLE ? { chars: TABLE.chars || CS.CHAR, scale: TABLE.scale || CS.SCALE, sections: TABLE.sections || CS.SECTIONS } : {}, WITH_REF ? { withRef: true } : {},
     process.env.T588_COAST === 'b' ? { variant: 'b' } : {}));
-  secs = C.secs.map((q) => ({ id: q.id, ko: q.ko, zone: q.zone, side: q.side || null, corner: q.corner || null, ax: q.ax, bx: q.bx, ay: q.ay, by: q.by, T: C.T, H: q.H, A: q.A, amp: q.amp }));
+  secs = C.secs.map((q) => ({ id: q.id, ko: q.ko, zone: q.zone, side: q.side || null, corner: q.corner || null, ax: q.ax, bx: q.bx, ay: q.ay, by: q.by, T: C.T, H: q.H, A: q.A, amp: q.amp,
+    borrow: q.borrow || null, D: q.D }));   // ★추신2 — 빌림(그림·표가 '빌려 씀'을 적는다)
   // ⚠6000/5000 은 chunk.js COASTLINE_BASE·NOISE 를 읽어 대조한다(아래) — 다르면 자를 고쳐라
   const src = fs.readFileSync(path.join(__dirname, '..', 'server', 'chunk.js'), 'utf8');
   if (!/const COASTLINE_BASE = 6000;/.test(src) || !/const COASTLINE_NOISE = 5000;/.test(src)) { console.error('[T588 mask] chunk.js 띠 상수가 6000/5000 이 아니다 — 자를 고쳐라'); process.exit(3); }
