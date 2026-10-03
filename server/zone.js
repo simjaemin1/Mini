@@ -2836,7 +2836,12 @@ function spawnMob(type, opts = {}) {
   // DB에서 기존 mob 로드 — 없으면 바이옴별 신규 스폰
   const existing = db.getMobs();
   if (existing.length > 0) {
+    // ★[T622 · 손잡이 `T622_ZONE_FAUNA` 기본 끔] 켬이면 이 존에서 '없음'인 종(animals.js 존 칸 · 닛폰 호랑이)의 행은 **안 싣는다** —
+    //   행은 DB 에 그대로 둔다(지우지 않는다 · 끄면 돌아온다). 길들인 개체는 거르지 않는다. 끔이면 이 줄은 늘 false(옛 줄 그대로).
+    const { faunaOut } = require('./animals');
+    let _t622skip = 0;
     for (const row of existing) {
+      if (!row.tame_owner && faunaOut(row.type, ZONE_ID)) { _t622skip++; continue; }
       spawnMob(row.type, {
         dbId: row.id, x: row.x, y: row.y, hp: row.hp,
         tameOwner: row.tame_owner || null,
@@ -2844,6 +2849,7 @@ function spawnMob(type, opts = {}) {
       });
     }
     console.log(`[${ZONE_ID}] DB에서 mob ${existing.length}마리 로드`);
+    if (_t622skip) console.log(`[${ZONE_ID}] 🗾 T622 존 칸 — 이 존에서 없음인 종 ${_t622skip}마리는 안 실었다(DB 행은 그대로)`);
   } else if (ZONE.isOcean) {
     // 14.46-a: 해양 zone — mob 생성 안 함 (사슴/늑대 바다에 떠있으면 이상함).
     // 14.46-b에서 fish 추가 예정.
@@ -2853,8 +2859,11 @@ function spawnMob(type, opts = {}) {
     console.log(`[${ZONE_ID}] 🧹 cleanZone — mob spawn skip`);
   } else {
     // Phase 5-6b: zone biome 따라 huntableInBiome 활용. 사냥감 36종 다 활성.
-    const { huntableInBiome } = require('./animals');
-    const huntable = huntableInBiome(ZONE.biome);
+    //   ★[T622] 존을 같이 넘긴다 — 켬이면 이 존에서 '없음'인 종(닛폰 호랑이)이 목록에서 빠진다 · 끔이면 같은 배열(옛 줄 그대로)
+    const { huntableInBiome, faunaOn } = require('./animals');
+    const huntable = huntableInBiome(ZONE.biome, ZONE_ID);
+    if (faunaOn()) { const _out = huntableInBiome(ZONE.biome).filter((id) => huntable.indexOf(id) < 0);
+      if (_out.length) console.log(`[${ZONE_ID}] 🗾 T622 존 칸 — 이 존에서 없음: ${_out.map((id) => ANIMALS[id].ko + '(' + id + ')').join(' · ')} — 안 낳는다`); }
     const peaceful = huntable.filter(id => !ANIMALS[id].aggressive);
     const aggressive = huntable.filter(id => ANIMALS[id].aggressive);
     const TOTAL_PEACEFUL = 300;

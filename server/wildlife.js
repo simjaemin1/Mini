@@ -379,6 +379,7 @@ const ENABLED = process.env.ENABLE_WILDLIFE !== '0';   // 기본 켜짐. '0'만 
 // hp 스케일: 랩 hp ×10 ≈ 카탈로그 hp (사슴 3→30, 토끼 1→10, 멧돼지 6→60, 늑대 4→40, 호랑이 14→140≈130).
 const MAIN_TYPE = { '🦌': 'deer', '🐇': 'arctic_hare', '🐗': 'wild_boar', '🐺': 'wolf', '🐯': 'tiger' };
 const HP_SCALE = 10;
+const Animals = require('./animals');   // ★[T622] 존 짐승 칸(`faunaOn`·`faunaOut`) — 아래 5a 가 부른다
 
 const H = {};                       // zone.js 주입(호스트)
 let _ready = false;
@@ -735,6 +736,18 @@ function tick(now) {
   }
   // 5) ★블록 구동 — dt = 1/TICK_HZ 유닛/틱 (30Hz × 1/30 = 1유닛/초 = 환산 계수 1)
   updateMobs(S, 1 / H.TICK_HZ);
+  // 5a) ★[T622 · 손잡이 `T622_ZONE_FAUNA` 기본 끔] 존 짐승 칸 — 이 존에서 '없음'인 본체 종으로 비치는 랩 종(닛폰 🐯 → tiger)이
+  //   이번 틱에 섰으면 **그림자를 짓기 전에**(아래 6) 거둔다 · 블록(B)은 무수정 — 블록의 디스폰과 같은 꼴(rot=-1 · 목록에서 뺀다).
+  //   판정은 `animals.js faunaOut` 하나(스폰 목록 · DB 적재와 같은 함수 · 사본 0). 끔이면 이 줄은 아무것도 안 한다(굴림 0 · 바이트 동일).
+  if (Animals.faunaOn()) {
+    let cut = 0;
+    for (const lm of S.mobs) if (Animals.faunaOut(MAIN_TYPE[lm.type] || 'deer', H.ZONE_ID)) { lm._t622 = 1; lm.rot = -1; cut++; }
+    if (cut) {
+      for (const lm of S.mobs) if (lm._t622 && lm._shadow) _dropShadow(lm);
+      S.mobs = S.mobs.filter((lm) => !lm._t622);
+      _stats.t622 = (_stats.t622 || 0) + cut;
+    }
+  }
   // 5b) ★화살 이펙트 브로드캐스트 — 실행층이 이번 틱에 만든 사격(S._fx 신규 항목)만 1회 발신.
   //   랩 좌표(m) → 존 로컬 px(×32). 비행시간 T는 실초 단위(dt 환산 계수 1) → ms로 전달해
   //   클라가 서버와 같은 속도로 보간한다(유도탄 금지 원칙 유지 — 화살은 조준점까지 직선).
