@@ -63,6 +63,38 @@ const BDT_DEN_CD0 = 30, BDT_DEN_CD1 = 60, BDT_DEN_SZ0 = 4, BDT_DEN_SZ1 = 6, BDT_
 // (BDT_BR_R 다리 가중·BDT_AMB_* 고립 습격은 1파 비대상 — 본체 다리 없음·실체 층은 2파)
 
 const FIXTURE = process.env.BANDIT_FIXTURE || '';
+// ★★[T577 2026-10-03] **고칠 자리 후보 둘 — 손잡이(기본 끔 · 끄면 종전 글자 그대로)** — 판정 0 · 재민이 고른다(보고/T577 §3).
+//   빈 11곳(서울 사본)은 11/11 이 해체 표를 달았고, 셋 이상 마지막 날이 보호기(365) 끝난 그 달에 몰렸다(T572).
+//   ⓐ `T577_CAND_WALK=1` — 해체 때 단이 되지 않은 **남은 사람이 가장 가까운 산 마을로 옮긴다**(지금은 그 자리에 남아 굶어 죽는다).
+//      ⚠econ 몫만이다: 사람(npc 항목)을 그 마을 econ 으로 넘긴다 — 몸이 걸어가는 길은 없다(보고 §3-ⓐ 가 그 줄 수를 센다).
+//   ⓓ `T577_CAND_RAMP=1` — 보호기 끝을 **마을마다 다른 날**로 편다: 365 + 시드 해시 × 365(둘째 해 안에 고르게).
+//      새 수 0 — 퍼짐 폭은 보호기 그 자체(`BDT_MIN_DAY`)이고 해시는 이 파일의 결정론 RNG(`denRng`)다.
+const T577_WALK = process.env.T577_CAND_WALK === '1';
+const T577_RAMP = process.env.T577_CAND_RAMP === '1';
+function _t577Hash(name) { let h = 0; const s = String(name || ''); for (let i = 0; i < s.length; i++) h = (Math.imul(h, 31) + s.charCodeAt(i)) | 0; return h >>> 0; }
+function _bdtOpenDay(vil) {   // 이 마을의 보호기가 끝나는 날(끔이면 모두 BDT_MIN_DAY — 종전)
+  if (!T577_RAMP) return BDT_MIN_DAY;
+  return BDT_MIN_DAY + Math.floor(denRng(_t577Hash(vil && vil.name) % 100003, 577) * BDT_MIN_DAY);
+}
+function _t577Walk(vil, day) {   // ⓐ 남은 사람 → 가장 가까운 산 마을(해체 표 없는 곳 우선) · econ 항목 이동
+  const e = vil.econ; if (!e || !e.npcs.length) return 0;
+  let best = null, bd = 1e18;
+  for (const v of S.host.villages) {
+    if (v === vil || !v.econ || !v.econ.npcs.length || v.econ._banditized) continue;
+    const d = Math.hypot(v.ccx - vil.ccx, v.ccy - vil.ccy);
+    if (d < bd) { bd = d; best = v; }
+  }
+  if (!best) return 0;
+  const moved = e.npcs.splice(0, e.npcs.length);
+  for (const npc of moved) {
+    if (e.counts && npc && npc.currentJob) e.counts[npc.currentJob] = Math.max(0, (e.counts[npc.currentJob] || 0) - 1);
+    best.econ.npcs.push(npc);
+    if (best.econ.counts && npc && npc.currentJob) best.econ.counts[npc.currentJob] = (best.econ.counts[npc.currentJob] || 0) + 1;
+  }
+  S.stats.t577Walk = (S.stats.t577Walk || 0) + moved.length;
+  log(day, `${vil.name} 해체 뒤 남은 ${moved.length}명 → ${best.name}(${Math.round(bd)}셀) [T577 ⓐ]`);
+  return moved.length;
+}
 // ★[T521] 단이 실물로 드는 품목 — econ 재화 이름 그대로(무기·갑옷·도구 셋 · 새 이름 0)
 const ARMS_RES = new Set(['weapon', 'armor', 'tool', 'iron_tool', 'bronze_tool']);
 function _t521On() { return typeof process !== 'undefined' && !!process.env && process.env.T521_GANG_ARMS === '1'; }
@@ -364,16 +396,20 @@ function daily(day) { // 하루 1회(villages econ 틱 직후): 위기 추적→
     e._bdtPeak = Math.max(e._bdtPeak || 0, n);
     const St = e.storage || {}, fe = (St.food || 0) + (St.fish || 0) + (St.meat || 0) + (St.cooked_food || 0);
     const hap = e.lastStats ? e.lastStats.happiness : 0.5;
-    e._bdtCri = (day >= BDT_MIN_DAY && hap < BDT_CRI_HAP && fe < n * BDT_CRI_FOOD) ? (e._bdtCri || 0) + 1 : (e._bdtCri || 0) * 0.95; // 새는 양동이
+    const _open = _bdtOpenDay(vil);   // ★[T577 ⓓ] 끔이면 BDT_MIN_DAY 그대로
+    e._bdtCri = (day >= _open && hap < BDT_CRI_HAP && fe < n * BDT_CRI_FOOD) ? (e._bdtCri || 0) + 1 : (e._bdtCri || 0) * 0.95; // 새는 양동이
     if (e._bdtLastN != null) {
       if (n < e._bdtLastN) e._bdtFall = (e._bdtFall || 0) + 1;
       else if (n > e._bdtLastN) e._bdtFall = Math.max(0, (e._bdtFall || 0) - 2); // 회복 시 두 배 차감
     }
     e._bdtLastN = n;
-    if (day >= BDT_MIN_DAY && !e._banditized && (e._bdtFall || 0) >= BDT_DIS_FALL && fe < n * BDT_DIS_FOOD
+    if (day >= _open && !e._banditized && (e._bdtFall || 0) >= BDT_DIS_FALL && fe < n * BDT_DIS_FOOD
         && n >= BDT_GMIN && n <= Math.max(4, Math.min(20, (e._bdtPeak || n) * 0.55))) { // 죽어가는 미끄럼+곳간 바닥+잔존 소수 = 해체
       const size = Math.min(n, Math.max(BDT_GMIN, Math.min(BDT_GMAX, Math.round(n * BDT_CONV))));
-      if (formGang(vil, size, day, `해체(순감 ${e._bdtFall || 0}일·잔존 ${n}명·피크 ${e._bdtPeak || n})`)) e._banditized = 1;
+      if (formGang(vil, size, day, `해체(순감 ${e._bdtFall || 0}일·잔존 ${n}명·피크 ${e._bdtPeak || n})`)) {
+        e._banditized = 1;
+        if (T577_WALK) _t577Walk(vil, day);   // ★[T577 ⓐ] 끔이면 종전 그대로(남은 사람은 그 자리에)
+      }
     } else if (S.GANGS.length && e._bdtCri >= BDT_EXO_D && day - (e._bdtExoAt || -999) >= BDT_EXO_GAP && n > BDT_GMIN) {
       const infoR = (host.world.infoRange || 400) / 2.5; // 이탈은 *기존 단 합류*만 — 정보범위 밖이면 안 떠남
       let bg = null, bd = 1e18;
