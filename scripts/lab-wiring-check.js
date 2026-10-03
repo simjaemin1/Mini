@@ -20,6 +20,7 @@
 //   E. CLI      — sim/economy-sim.js main() 이 picker·priceFn·priceBase 를 갖췄는가
 //   F. 번들     — economy-engine.browser.js 가 엔진 소스와 같은가(손으로 기웠는지 포함)
 //   G. 인라인   — 랩 HTML 의 인라인 엔진이 그 번들과 같은가
+//   K. 대조     — 서버에만 있던 여섯(T569·T570·T577 추신·T578·T579 추신·T590)이 랩에도 같은 식으로 섰나(T599)
 //
 // 실행: node scripts/lab-wiring-check.js [랩HTML...]
 //   HTML 을 안 주면 lab/마을실험실.html · lab/전쟁실험실.html 을 잰다(랩은 2026-09-05 레포 안으로 들어왔다).
@@ -536,13 +537,15 @@ console.log('\n[I] 집터 방아쇠 — 정본 하나(T230)');
       else if (a !== b) bad(`랩 ${f} LIFE_HOUSE_GAP 식이 정본과 다르다 — 손으로 맞춰라`);
       else ok(`랩 ${f} 인라인 \`LIFE_HOUSE_GAP\` 식이 정본과 한 글자도 안 다르다(\`${a}\` = ${VL.LIFE_HOUSE_GAP})`);
     }
-    // 영토 목표 — 랩이 쓰는 세 수가 정본과 같나(T230 손잡이가 켜질 때 이 셋이 그 값이어야 한다)
-    const pl = H.match(/\)\s*\)\s*\*\s*(\d+)\s*\+\s*(\d+)/);
-    const hl = H.match(/_hLots\s*=[^;]*?\*\s*(\d+)\s*\+\s*(\d+)/);
-    if (!hl) wrn(`랩 ${f} growTerritory 의 주택 압력 두 수를 못 찾았다`);
-    else if (+hl[1] !== VL.TERR_PER_LOT || +hl[2] !== VL.TERR_CORE)
-      bad(`랩 ${f} 주택 압력 ${hl[1]}·${hl[2]} ≠ 정본 TERR_PER_LOT ${VL.TERR_PER_LOT}·TERR_CORE ${VL.TERR_CORE}`);
-    else ok(`랩 ${f} 주택 압력 ${hl[1]}·${hl[2]} = 정본 territoryTarget 의 그 수`);
+    // 영토 목표 — ★★[T599 ← T579 추신] 랩은 이제 목표·상한을 **정본 `territoryTarget` 호출**로 낸다(번들이 내놓는 `EconEngine.Layout` — 손 사본 0).
+    //   종전엔 랩 줄(`_hLots` — 집 압력 두 수를 옮겨 적은 식)이 정본의 두 수와 같은지만 핀했다. 그 줄은 걷혔다 — 남아 있으면 사본 둘이다.
+    if (/_hLots\s*=/.test(H)) bad(`랩 ${f} growTerritory 에 옛 집 압력 줄(_hLots)이 남아 있다 — 정본 territoryTarget 과 사본 둘(T599)`);
+    else ok(`랩 ${f} growTerritory 에 옛 집 압력 줄(_hLots)이 없다 — 사본 0(T599)`);
+    {
+      const tt = (H.match(/EconEngine\.Layout\.territoryTarget\(/g) || []).length;
+      if (tt < 2) bad(`랩 ${f} 영토 목표·상한이 정본 territoryTarget 을 안 부른다(${tt}곳 — 목표·상한 둘이어야 한다 · T599)`);
+      else ok(`랩 ${f} 영토 목표·상한 = 정본 \`EconEngine.Layout.territoryTarget\` 호출 ${tt}곳(서버 \`_terrCap\` '2' = 집 압력 항 · T599)`);
+    }
   }
   // ★판정 동등 — 옛 랩 수식과 정본 함수가 **모든 점에서 같은 답**인가(호출로 바꾼 것이 행동을 안 바꿨다)
   const oldRule = (pop, housing, builtFl, sites) => {
@@ -671,6 +674,84 @@ console.log('\n[J] 집 간격 유도 — 값이 아니라 식(T315)');
       }
       try { fs.unlinkSync(tmp); } catch (e) {}
     }
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// [K] ★★[T599 2026-10-03] 랩 ↔ 서버 대조 — **서버에만 있던 여섯이 랩에도 같은 식으로 섰나**
+// ══════════════════════════════════════════════════════════════════════════════
+//   재민 캐논(09-03): "랩에서 만든 것이 목표 · 서버가 랩보다 얕으면 결함". 10-03 착지분 여섯이 서버에만 있었다 —
+//   T599 가 랩으로 옮겼다(대조표 = `lab/README.md` '랩 ↔ 서버 대조' 절). 이 절은 그 '같다' 줄이 **계속 같은지** 기계로 본다.
+//   묻는 것: ⓐ 번들이 두 정본(달력·마을 꼴)을 랩에 내놓나 ⓑ 식을 손으로 옮긴 곳은 서버 본문과 한 글자도 안 다른가
+//            ⓒ 랩 생활층이 그 문을 실제로 부르나(부르는 자리 수) ⓓ [자명 통과 금지] 본문 비교가 실제로 문다.
+console.log('\n[K] 랩 ↔ 서버 대조 — 서버에만 있던 여섯(T599)');
+{
+  const strip = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '').replace(/\s+/g, '');
+  const fnBody = (src, sig) => {   // `function <sig>(...){...}` 한 덩이(중괄호 짝) — 공백·주석 제거
+    const i = src.indexOf(sig); if (i < 0) return null;
+    const j = src.indexOf('{', i); if (j < 0) return null;
+    let d = 0, k = j;
+    for (; k < src.length; k++) { const c = src[k]; if (c === '{') d++; else if (c === '}') { d--; if (d === 0) break; } }
+    return strip(src.slice(j, k + 1));
+  };
+  // ⓐ 번들 — 이미 실려 있던 두 모듈을 그대로 내놓는다(사본 0)
+  const B = rd('sim/economy-engine.browser.js');
+  if (/root\.EconEngine\.Calendar=modules\.cal;/.test(B) && /root\.EconEngine\.Layout=modules\.vlayout;/.test(B))
+    ok('ⓐ 번들이 `EconEngine.Calendar`(= server/calendar.js) · `EconEngine.Layout`(= server/village-layout.js)을 내놓는다');
+  else bad('ⓐ 번들이 달력·마을 꼴 정본을 안 내놓는다 — 랩이 다시 손으로 옮겨 적게 된다(sim/build-econ-bundle.js)');
+  const BAN = rd('server/bandits.js'), VIL = rd('server/villages.js');
+  // 서버 쪽 본문(비교 기준)
+  const sHash = fnBody(BAN, 'function _t577Hash(');
+  const sRng = fnBody(BAN, 'function denRng(');
+  const sCat = (VIL.match(/const BX_CAT\s*=\s*(\{[^}]*\})/) || [])[1];
+  if (!sHash || !sRng || !sCat) bad('서버 쪽 비교 기준을 못 찾았다(_t577Hash · denRng · BX_CAT) — 검사기가 낡았다');
+  const catOf = (lit) => { try { return JSON.stringify(Function('return ' + lit)()); } catch (e) { return null; } };
+  for (const f of ['lab/마을실험실.html', 'lab/전쟁실험실.html']) {
+    const H = rd(f), war = /전쟁/.test(f);
+    // T577 추신 — 보호기 끝 = 마을마다 다른 날(해시·결정론 RNG 본문이 서버와 같다)
+    const lHash = fnBody(H, 'function _t577Hash(');
+    const lRng = fnBody(H, 'function bdtDenRng(');
+    if (!lHash) bad(`${f} [T577] _t577Hash 가 없다`);
+    else if (lHash !== sHash) bad(`${f} [T577] _t577Hash 본문이 서버와 다르다 — 손으로 맞춰라`);
+    else ok(`${f} [T577] _t577Hash 본문 = 서버 bandits.js 와 한 글자도 안 다르다`);
+    if (!lRng || lRng.replace('_denSeed', 'S.denSeed') !== sRng) bad(`${f} [T577] bdtDenRng 본문이 서버 denRng 와 다르다(시드 변수 이름만 다를 수 있다)`);
+    else ok(`${f} [T577] bdtDenRng 본문 = 서버 denRng(시드 변수 이름만 다르다)`);
+    if (!/_eday>=_open/.test(H) || !/_open=_bdtOpenDay\(vil\)/.test(H)) bad(`${f} [T577] banditDaily 가 마을별 보호기 끝(_bdtOpenDay)을 안 본다`);
+    else ok(`${f} [T577] banditDaily 결성 문 = econ 날 ≥ 마을별 보호기 끝(_bdtOpenDay)`);
+    // T569 — 영토가 남의 영토로 안 자람 · 집터가 남의 집·영토를 봄
+    const fo = (H.match(/if\(_t569Foreign\(s,x,y\)\)/g) || []).length;
+    if (fo < (war ? 2 : 1)) bad(`${f} [T569] 집터 거름(_t569Foreign) 부르는 자리 ${fo} — ${war ? '마을 집터·플레이어 집터 둘' : '마을 집터 하나'}이어야 한다`);
+    else ok(`${f} [T569] 집터가 남의 집·영토를 본다(_t569Foreign ${fo}곳 · 서버 '남의 마을' 거부 그 꼴)`);
+    if (!/const _o=_claimedAll\.get\(kk\);if\(_o&&_o!==s\)continue;/.test(H)) bad(`${f} [T569] growTerritory 가 남의 영토 칸을 후보에서 안 뺀다`);
+    else ok(`${f} [T569] growTerritory — 남의 영토 칸은 후보가 아니다(서버 _terrGrow 그 줄)`);
+    // T570 — 달력 정본 호출
+    const cl = (H.match(/EconEngine\.Calendar\.(labelOf|dateOf|springYearOf)\(/g) || []).length;
+    if (cl < 2) bad(`${f} [T570] 화면 날짜가 달력 정본을 안 부른다(${cl}곳)`);
+    else ok(`${f} [T570] 화면 날짜·달·해 = 달력 정본 호출 ${cl}곳(EconEngine.Calendar)`);
+    // T590 — 줄어드는 몸(까닭 표가 서버와 같다 · lifeSync 가 그 문을 부른다)
+    const lCat = (H.match(/const BX_CAT\s*=\s*(\{[^}]*\})/) || [])[1];
+    if (!lCat || catOf(lCat) !== catOf(sCat)) bad(`${f} [T590] BX_CAT 표가 서버와 다르다`);
+    else ok(`${f} [T590] BX_CAT 표 = 서버 villages.js(까닭 여덟 → 죽음·걸음·그 밖)`);
+    if ((H.match(/\bbxSync\(s,\[/g) || []).length < 1 || (H.match(/\)bxEmptied\(vil\);/g) || []).length < 1) bad(`${f} [T590] lifeSync·마을 소멸이 몸 문(bxSync·bxEmptied)을 안 부른다`);
+    else ok(`${f} [T590] lifeSync → bxSync · 비는 마을 → bxEmptied(몸이 econ 수의 그림자가 아니다)`);
+    // T578 — 캐러밴 걸음(1/16칸 직선 검사) · 다시 파기(전쟁실험실 — 답압 길 층이 있는 랩)
+    const wl = fnBody(H, 'function _walkLineClear(');
+    if (!wl || !/Math\.ceil\(L\*16\)/.test(wl)) bad(`${f} [T578] 캐러밴 직선 검사(_walkLineClear · 1/16칸 보폭)가 없다`);
+    else ok(`${f} [T578] 캐러밴 직선 검사 = 1/16칸 보폭(서버 _walkLineClear 그 보폭)`);
+    const sc = (H.match(/_smoothCaravan\(jn[01]\)|_smoothCaravan\(_rt\)/g) || []).length;
+    if (sc < 3) bad(`${f} [T578] dispatchTrades 교역 다리가 캐러밴 걸음 검사를 안 쓴다(${sc}곳 — 셋이어야 한다)`);
+    else ok(`${f} [T578] dispatchTrades 교역 다리 세 토막 = _smoothCaravan`);
+    if (war) {
+      if (!/roadShadowDaily\(\);tpRedigDaily\(\);/.test(H) || !/hScale:hS/.test(H)) bad(`${f} [T578 ④] 교역로 다시 파기(tpRedigDaily) · h 축소(hScale)가 없다`);
+      else ok(`${f} [T578 ④] 등급 지도가 바뀐 날 다닌 쌍을 다시 판다(tpRedigDaily) · h = 스텝 비용 최저값(hScale)`);
+    }
+  }
+  // ⓓ 자명 통과 금지 — 본문 비교가 실제로 문다(서버 해시의 곱수를 비틀면 갈린다)
+  {
+    const mut = sHash ? sHash.replace('Math.imul(h,31)', 'Math.imul(h,37)') : null;
+    const lab = fnBody(rd('lab/전쟁실험실.html'), 'function _t577Hash(');
+    if (mut && mut !== sHash && lab && lab !== mut) ok('ⓓ [자명 통과 금지] 서버 해시 곱수 31→37 로 비틀면 랩 본문과 갈린다 — 비교가 실제로 문다');
+    else bad('ⓓ [자명 통과 금지] 비틀어도 같은 답 — 본문 비교가 죽었다');
   }
 }
 
