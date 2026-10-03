@@ -112,6 +112,7 @@
     <input type="file" id="refFile" accept=".json" style="display:none">
     <label class="chk"><input type="checkbox" id="refToggle" checked> 참조 지형 표시</label>
     <label class="chk"><input type="checkbox" id="bridgeToggle" checked> 🌉 다리 표시(읽기 전용 · 셀 단위) — 축 직선 아니면 빨강 경고</label>
+    <label class="chk"><input type="checkbox" id="coastToggle" checked> 🌊 해안 바다 띠(읽기 전용 · 1셀) — <span id="coastStamp">없음</span></label>
     <div class="row" style="display:flex;gap:6px;align-items:center;margin-top:2px">
       <select id="bridgeJump" style="flex:1;min-width:0"><option value="">🌉 다리로 이동…</option></select>
       <button class="btn" id="bridgeJumpBtn" style="width:auto;padding:4px 10px">이동</button>
@@ -171,7 +172,7 @@ const TYPE_COLOR = { river:'#4aa6e8', ridge:'#b07a44', valley:'#8fd08a', forest:
 const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
 const S = {
   zone:'hanbando', ZW:70016, ZH:130016,
-  tool:'river', features:[], draft:null, sel:null, ref:null, showRef:true, showBridges:true, cellSrc:'edit',
+  tool:'river', features:[], draft:null, sel:null, ref:null, showRef:true, showBridges:true, showCoast:true, cellSrc:'edit',
   width:400, radius:1500, rx:7000, ry:5500, den:2.0,
   flags:{noFit:false,noValley:false,pinStart:false},
   view:{scale:1, ox:0, oy:0}, pan:null, drag:null, nextId:1, smooth:true, stroke:null,
@@ -351,6 +352,7 @@ function drawCellPreview(srcFeats){
 function render(){
   ctx.clearRect(0,0,cv.width,cv.height);
   if(S.multi) drawBgMulti(); else drawBgSingle();
+  drawCoast();
   if(S.showRef && S.ref){ if(S.multi) drawRefMulti(); else drawSet((S.ref[S.zone]||S.ref), true); }
   if(S.cellPreview){ drawCellPreview(cellPreviewSrc()); drawSet({features:feats()}, true); }
   else drawSet({features:feats()}, false);
@@ -438,6 +440,7 @@ let WORK_BAKED = null; // @inline-work — 레포 판은 비어 있다(아래 bo
 //   에디터는 작업을 localStorage 에 자동저장하고 **시작할 때 되살린다**. 그래서 파일을 새로 받아도
 //   새로고침만 해서는 옛 작업이 그대로 뜬다 — 재민이 두 번 당한 함정이 정확히 이것이다.
 //   내장해 두면 버튼 한 번으로 최신이 되고, 되살린 작업이 낡았으면 배너로 알린다.
+let COAST_BAKED = null; // @inline-coast — 해안 바다 띠(맥 사본은 build-map-editor 가 박는다 · 레포 판은 map-editor-coast.json 을 fetch)
 let BR_BAKED = {}; // @inline-bridges — 위와 같다(다리 셀 스냅샷)
 function brCellsOf(zoneKey, zd){
   const fromRef = (zd && zd.bridges) || null;
@@ -512,6 +515,26 @@ function drawBgMulti(){
   ctx.setLineDash([]);
   ctx.fillStyle='#cdd6df'; ctx.font='bold 11px sans-serif'; ctx.textAlign='center';
   for(const z of MZ){ const o=WZONES[z].off,s=WZONES[z].size; if(s[0]*S.view.scale<42) continue; ctx.fillText(z, w2sx(o[0]+s[0]/2), w2sy(o[1])+15); }
+}
+// ★[PM 2026-10-03 · 재민 "에디터에서 해안선이 적용된 판으로 봐야"] 해안 바다 띠 — 서버 정본 `generateCoastlineWaterTiles`(T588 b) 마스크 ·
+//   한반도는 남쪽 90셀 평행이동(족보 564). 읽기 전용 오버레이 · 1px = 1셀(32px) · 굽기 = `scripts/editor-coast-bake.py`.
+//   정본 굽기(T604 추신3 coastShift)가 들어오면 같은 스크립트로 다시 굽는다. 바다 위 피처(마을·광맥·강 끝)를 보고 지형을 고치라고 있는 층.
+const _coastImg = {};
+function coastImg(z){
+  if(!COAST_BAKED || !COAST_BAKED.zones || !COAST_BAKED.zones[z]) return null;
+  if(!_coastImg[z]){ const im=new Image(); im.onload=()=>render(); im.src=COAST_BAKED.zones[z].png; _coastImg[z]=im; }
+  return _coastImg[z].complete ? _coastImg[z] : null;
+}
+function drawCoastZone(z, off){
+  const im=coastImg(z); if(!im) return; const d=COAST_BAKED.zones[z];
+  ctx.save(); ctx.imageSmoothingEnabled=false; ctx.globalAlpha=0.92;
+  ctx.drawImage(im, w2sx(off[0]), w2sy(off[1]), d.nx*32*S.view.scale, d.ny*32*S.view.scale);
+  ctx.restore();
+}
+function drawCoast(){
+  if(!S.showCoast || !COAST_BAKED) return;
+  if(S.multi){ for(const z of MZ){ if(WZONES[z]) drawCoastZone(z, WZONES[z].off); } }
+  else drawCoastZone(S.zone, [0,0]);
 }
 function drawRefMulti(){ for(const z in S.ref){ if(!WZONES[z]) continue; drawSetOff(S.ref[z], WZONES[z].off); } }
 // ★[11차 재민 지시] **물이 산 위**다. 그리는 순서 = 숲 → 산맥 → 계곡 → 호수 → 강.
@@ -931,6 +954,7 @@ document.getElementById('loadWorkBtn').onclick=()=>document.getElementById('work
 document.getElementById('workFile').onchange=e=>{ const f=e.target.files[0]; if(!f)return; const rd=new FileReader(); rd.onload=()=>{ try{ loadWork(JSON.parse(rd.result)); }catch(err){ alert('파싱 실패: '+err.message); } }; rd.readAsText(f); };
 document.getElementById('refToggle').onchange=e=>{ S.showRef=e.target.checked; render(); };
 document.getElementById('bridgeToggle').onchange=e=>{ S.showBridges=e.target.checked; render(); };
+document.getElementById('coastToggle').onchange=e=>{ S.showCoast=e.target.checked; render(); };
 document.getElementById('cellSrc').onchange=e=>{
   S.cellSrc = e.target.value;
   if(S.cellSrc==='ref' && !S.ref) toast('참조 지형을 먼저 불러오세요 — 「참조 지형 불러오기(JSON)」');
@@ -1064,6 +1088,12 @@ document.getElementById('zoneInfo').textContent='크기 '+S.ZW+' × '+S.ZH+' px 
 // ★[T553 ④] 내장 작업·다리는 **두 길**로 온다 — ⓐ 맥 사본(file://)은 `scripts/build-map-editor.js` 가 위 두 줄에 박는다(fetch 불요)
 //   ⓑ 레포 판(`lab/map-editor.html`)은 같은 폴더의 `map-editor-baked.json` 을 fetch 한다. file:// 이라 fetch 가 막히고 박힌 것도 없으면
 //   내장 없이 뜬다(작업 불러오기 · 자동저장 복원은 그대로 — 두 판 다 열린다). 받은 뒤에 한 번만 시작한다.
+function bootCoast(){
+  if(COAST_BAKED) return Promise.resolve();
+  let p; try{ p = fetch('map-editor-coast.json'); }catch(e){ return Promise.resolve(); }
+  return p.then(r=>{ if(!r.ok) throw new Error(r.status); return r.json(); }).then(j=>{ COAST_BAKED=j; }).catch(()=>{});
+}
+function showCoastStamp(){ const el=document.getElementById('coastStamp'); if(el) el.textContent = COAST_BAKED ? (COAST_BAKED.stamp||'?') : '없음(map-editor-coast.json 을 못 읽었다)'; }
 function bootBaked(){
   if(WORK_BAKED) return Promise.resolve('inline');
   let p; try{ p = fetch('map-editor-baked.json'); }catch(e){ return Promise.resolve('none'); }
@@ -1098,7 +1128,7 @@ function showStamp(){
   } else if(b) b.remove();
 }
 document.getElementById('loadBakedBtn').onclick=()=>{ if(!WORK_BAKED){ toast('내장 작업 없음 — map-editor-baked.json 을 못 읽었다'); return; } loadWork(WORK_BAKED); toast('내장 최신 작업 불러옴 · '+WORK_BAKED.stamp); };
-bootBaked().then(bootEditor);
+bootCoast().then(showCoastStamp).then(bootBaked).then(bootEditor);
 
 </script>
 </body>
