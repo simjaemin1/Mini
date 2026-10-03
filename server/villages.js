@@ -3515,17 +3515,33 @@ const ORE_LABOR_R = 150;             // 광부 노동권(셀) — 랩 R=150 동�
 const ORE_CELL_CAP = 6000;           // 마을당 추적 광맥 셀 상한(대형 광맥이면 수만 셀 — 표본으로 충분)
 const ORE_FLOOR = 0.4;               // land.ore 바닥 40% — ★이주가 없으므로 마을은 안 떠나고 광부만 다른 직업으로 빠진다
 // 마을 생활권의 광맥 셀 목록(일 캐시). p(광석확률)까지 들고 있어 품위 높은 자리부터 판다.
+// ★★[T620 ② 2026-10-04] **식은 광맥은 미리 굽는다** — T605 §4-4: 닛폰 하루 마감의 큰 조각 `ore` 51ms(이 판 75ms)는 전부
+//   **첫 하루**의 식은 캐시였다(마을마다 R=150 원판 7만 칸을 한 조각에서 훑는다 · 광부 0 인 마을도 oFrac 표본 때문에 훑는다).
+//   이 목록의 입력은 **정적 지형뿐**이다 — `ta.isOre`(큰 광맥 · 지형 정본) · `ta.isWater` · `ta.isRock`(지형 메모) · `deps.oreProbAt`
+//   (`oreProbMajorAt` · 지형 정본) · 마을 중심(`ccx·ccy` — 안 움직인다). 그리고 한 번 만들면 **다시 안 만든다**(무효화 문 0 — 종전 그대로).
+//   ⇒ 언제 만들어도 같은 배열이다 ⇒ 부팅 뒤 배경에서 **한 번에 한 줄씩**(T333 지형 미리 굽기와 같은 꼴 · `setTimeout 0` · 새 수 0) 굽는다.
+//   ⚠줄 순서·상한(`ORE_CELL_CAP`)·정렬은 종전 이중 루프 그대로다(커서가 `dy` 하나 · 줄 안은 한 번에) — 미리 굽기가 다 못 끝낸 마을은
+//     마감이 **같은 커서에서 이어** 끝까지 돈다(종전 비용 그대로 · 값 같음). `T620_ORE_AUDIT=1`(검사용)이면 구운 배열을 한 번에 다시 만들어 맞대 본다.
 function _oreCellsOf(vil) {
   if (vil._oreCells) return vil._oreCells;
   const _pt0 = Date.now(); _probe.oreCold++;
   try { return _oreCellsOfInner(vil); } finally { const d = Date.now() - _pt0; _probe.oreMs += d; if (d > _probe.oreMax) _probe.oreMax = d; }
 }
 function _oreCellsOfInner(vil) {
-  const ta = state.ta, out = [];
-  if (!ta || !ta.isOre) return (vil._oreCells = out);
+  while (!_oreScanRow(vil)) {}   // 미리 굽기가 남긴 커서가 있으면 거기서 · 없으면 처음부터 — 끝까지
+  return vil._oreCells;
+}
+// 한 줄(`dy` 하나) — 끝나면 `vil._oreCells` 를 세우고 true. 종전 이중 루프의 바깥 한 바퀴 그대로.
+function _oreScanRow(vil) {
+  if (vil._oreCells) return true;
+  const ta = state.ta;
+  if (!ta || !ta.isOre) { vil._oreScan = null; vil._oreCells = []; return true; }
   const R = ORE_LABOR_R, R2 = R * R;
-  const pf = state.deps && state.deps.oreProbAt;
-  for (let dy = -R; dy <= R && out.length < ORE_CELL_CAP; dy++) {
+  const st = vil._oreScan || (vil._oreScan = { dy: -R, out: [] });
+  const out = st.out;
+  if (st.dy <= R && out.length < ORE_CELL_CAP) {
+    const pf = state.deps && state.deps.oreProbAt;
+    const dy = st.dy;
     for (let dx = -R; dx <= R; dx++) {
       if (dx * dx + dy * dy > R2) continue;
       const cx = vil.ccx + dx, cy = vil.ccy + dy;
@@ -3534,9 +3550,55 @@ function _oreCellsOfInner(vil) {
       out.push({ cx, cy, p: pf ? pf(cx * SZ + SZ / 2, cy * SZ + SZ / 2) : 0.3 });
       if (out.length >= ORE_CELL_CAP) break;
     }
+    st.dy++;
+    if (st.dy <= R && out.length < ORE_CELL_CAP) return false;
   }
   out.sort((a, b) => b.p - a.p);   // 품위 높은 자리부터 — 광부는 좋은 노두를 먼저 판다
-  return (vil._oreCells = out);
+  vil._oreScan = null;
+  vil._oreCells = out;
+  return true;
+}
+// ★[T620 ②] 배경 미리 굽기 — 마을 목록 순서로 한 줄씩. 마감 중에는 손을 뗀다(그 프레임은 마감 것이다 · 다음 타이머에 이어서).
+const T620_ORE_AUDIT = process.env.T620_ORE_AUDIT === '1';
+function _oreWarmStart() {
+  if (state._oreWarm) return;
+  const W = state._oreWarm = { i: 0, rows: 0, vils: 0, t0: Date.now() };
+  const step = () => {
+    const vs = state.villages || [];
+    if (state.tickJobs) { setTimeout(step, 0); return; }
+    while (W.i < vs.length && vs[W.i]._oreCells) W.i++;
+    if (W.i >= vs.length) {
+      if (!W.oreDone) {
+        W.oreDone = true; _probe.oreWarmVils = W.vils; _probe.oreWarmRows = W.rows; _probe.oreWarmMs = Date.now() - W.t0;
+        console.log(`[${state.zoneId}] ⛏ 광맥 셀 미리 굽기 — 마을 ${W.vils}곳 · ${W.rows}줄 · ${Date.now() - W.t0}ms(기동 뒤 배경 · 한 번에 한 줄)`);
+      }
+      //   ★[T620 ①] 이어서 집터 찾기의 첫날 몫 둘 — 마을 하나씩(한 타이머에 하나):
+      //     · 영토 반경(`_t569Rad` — 영토 크기가 열쇠인 캐시 · 첫 집터 찾기가 이웃 50곳 몫을 한꺼번에 세던 것 · 같은 값)
+      //     · 물거리 EDT(`_t620Wf` — 지금 영토 상자로 · 쓸 때 상자가 같으면 쓰고 다르면 버린다)
+      if (W.j == null) W.j = 0;
+      while (W.j < vs.length && (vs[W.j]._wf || vs[W.j]._t620Wf || !vs[W.j]._terrSet || !vs[W.j]._terrSet.size)) { try { if (vs[W.j]._terrSet && vs[W.j]._terrSet.size) _t569Rad(vs[W.j]); } catch (e) {} W.j++; }
+      if (W.j >= vs.length) { _probe.t620Prewarm = Date.now() - W.t0; return; }
+      const v = vs[W.j++];
+      try { _t569Rad(v); const b = _t620WfBox(v); v._t620Wf = { b, wf: _lifeVL().waterEDT(state.ta, b[0] - 32, b[1] - 32, b[2] + 32, b[3] + 32) }; } catch (e) { v._t620Wf = null; }
+      setTimeout(step, 0);
+      return;
+    }
+    const v = vs[W.i];
+    let fin = false;
+    try { fin = _oreScanRow(v); W.rows++; } catch (e) { fin = true; v._oreScan = null; }   // 실패하면 그 마을은 마감이 종전대로 만든다
+    if (fin && v._oreCells) {
+      W.vils++; _probe.oreWarm = (_probe.oreWarm | 0) + 1;
+      if (T620_ORE_AUDIT) {   // 검사용 — 같은 함수를 커서 없이 한 번에 다시 돌려 맞대 본다(세계에 안 쓴다)
+        const keep = v._oreCells; v._oreCells = null; v._oreScan = null;
+        while (!_oreScanRow(v)) {}
+        const again = v._oreCells; v._oreCells = keep;
+        _probe.oreAuditN = (_probe.oreAuditN | 0) + 1;
+        if (JSON.stringify(again) !== JSON.stringify(keep)) _probe.oreAuditBad = (_probe.oreAuditBad | 0) + 1;
+      }
+    }
+    setTimeout(step, 0);
+  };
+  setTimeout(step, 0);
 }
 // 하루치 채굴 정산. 반환: { cells, consumed, oFrac }
 function _oreMineDaily(vil) {
@@ -5493,6 +5555,9 @@ function probeStats() { return { siteLog: _probe.siteLog.slice(-400), auditN: _p
   pathJobs: _probe.pathJobs, pathSliceMax: _probe.pathSliceMax, pathChunkMax: _probe.pathChunkMax, pathDrop: _probe.pathDrop, pathWait: _probe.pathWait, pathStepNodes: PATH_STEP_NODES,
   routePlain: _probe.routePlain | 0, routeRedigPass: _probe.routeRedigPass | 0, routeRedig: _probe.routeRedig | 0, routeRedigChanged: _probe.routeRedigChanged | 0, walkBuilt: _probe.walkBuilt | 0, walkStraight: _probe.walkStraight | 0, walkFar: _probe.walkFar | 0,   // ★[T578]
   oreCold: _probe.oreCold, oreMs: _probe.oreMs, oreMax: _probe.oreMax,
+  t620MemoN: _probe.t620MemoN | 0, t620MemoBad: _probe.t620MemoBad | 0, t620MemoFirst: _probe.t620MemoFirst || '',   // ★[T620 ①] 검사용
+  t620WfHit: _probe.t620WfHit | 0, t620WfN: _probe.t620WfN | 0, t620WfBad: _probe.t620WfBad | 0, t620Prewarm: _probe.t620Prewarm | 0,
+  oreWarm: _probe.oreWarm | 0, oreWarmRows: _probe.oreWarmRows | 0, oreWarmMs: _probe.oreWarmMs | 0, oreAuditN: _probe.oreAuditN | 0, oreAuditBad: _probe.oreAuditBad | 0,   // ★[T620 ②]
   fishDrawn: +_probe.fishDrawn.toFixed(3), fishDrawDays: _probe.fishDrawDays, fish2way: FISH2WAY }; }
 const _lifeSubMax = {};   // 같은 항목의 **마을 한 곳 최댓값** — 조각 예산은 합이 아니라 최댓값이 정한다
 let _lifeMax = 0, _lifeMaxName = '';   // ★[T1 §0] 마을 한 곳의 최댓값 — '마을 경계 조각'이 예산에 드는지의 직답
@@ -5523,6 +5588,7 @@ function tickPerf() {
 // =============================================================================
 function onGameTick(now) {
   if (!state.ready) return; // 플래그 off·비대상 존·init 실패 전부 여기서 차단
+  if (!state._oreWarm && state.villages && state.villages.length) _oreWarmStart();   // ★[T620 ②] 광맥 셀 미리 굽기(배경 · 한 번)
   // ★★[T1 2026-09-01] **마감 중에는 실체 30Hz 를 멈춘다.**
   //   조각내기 전엔 하루가 한 프레임에 끝났으므로, 그 하루의 모든 단계가 **같은 순간의 실체**를 봤다.
   //   쪼갠 뒤 실체를 계속 굴리면 뒤 단계(캐러밴 동기·사건 장부)는 **몇 초 더 간 몸**을 보게 되고,
@@ -7857,18 +7923,43 @@ function _lifeLiveFarmTile(vil, cx, cy, type) {   // 개간 완료 실체화: �
 //   랩 10차 siteFilters 규약의 서버 이식본. 필터를 복제하면 두 경로가 갈라져 마을 기하가 깨진다(랩에서 이미 겪은 교훈).
 const _t585Rej = { lot: 0, guard: 0 };   // ★[T585] 개울 때문에 거부된 집터 자리 수(사유 '개울' · '개울 완충') — `/perf streams` 로 본다(관측만)
 function streamStat() { return { day: state.world ? state.world.day : null, rejLot: _t585Rej.lot, rejGuard: _t585Rej.guard, on: !!(state.ta && state.ta.isStream) }; }
-function _lifeSiteFilters(vil) {
-  if (!vil._wf) {   // 물거리 EDT 캐시(마을당 1회 — 영토 bbox±32, 랩 s._wf 동형)
-    let bx0 = 1e9, by0 = 1e9, bx1 = -1e9, by1 = -1e9;
-    for (const k of vil._terrSet) { const ci = k.indexOf(','), x = +k.slice(0, ci), y = +k.slice(ci + 1); if (x < bx0) bx0 = x; if (x > bx1) bx1 = x; if (y < by0) by0 = y; if (y > by1) by1 = y; }
-    vil._wf = _lifeVL().waterEDT(state.ta, bx0 - 32, by0 - 32, bx1 + 32, by1 + 32);
+// ★[T620 ①] 물거리 EDT — 종전 두 자리(`_lifeSiteFilters` · 자동 집터 찾기)의 같은 블록을 한 곳으로(식 · 상자 그대로).
+//   상자는 **그 순간의 영토** 테두리 ±32 다. 배경 미리 굽기(`_oreWarmStart` 뒤꼬리)가 같은 상자로 미리 만든 것이 있으면 그것을 쓴다 —
+//   상자가 다르면(그 사이 영토가 바뀌었다) 버리고 종전처럼 지금 만든다. EDT 는 정적 지형(`ta.isWater`)과 상자만의 함수라 같은 값이다.
+function _t620WfBox(vil) {
+  let bx0 = 1e9, by0 = 1e9, bx1 = -1e9, by1 = -1e9;
+  for (const k of vil._terrSet) { const ci = k.indexOf(','), x = +k.slice(0, ci), y = +k.slice(ci + 1); if (x < bx0) bx0 = x; if (x > bx1) bx1 = x; if (y < by0) by0 = y; if (y > by1) by1 = y; }
+  return [bx0, by0, bx1, by1];
+}
+function _t620Wf(vil) {
+  const b = _t620WfBox(vil), pre = vil._t620Wf; vil._t620Wf = null;
+  if (pre && pre.b[0] === b[0] && pre.b[1] === b[1] && pre.b[2] === b[2] && pre.b[3] === b[3]) {
+    vil._wf = pre.wf; _probe.t620WfHit = (_probe.t620WfHit | 0) + 1;
+    if (T620_SITE_AUDIT || T620_ORE_AUDIT) {   // 검사용 — 지금 다시 만들어 상자 전 칸을 맞대 본다(미리 굽기 검사 손잡이 둘 다)
+      const fresh = _lifeVL().waterEDT(state.ta, b[0] - 32, b[1] - 32, b[2] + 32, b[3] + 32);
+      for (let y = b[1] - 32; y <= b[3] + 32; y++) for (let x = b[0] - 32; x <= b[2] + 32; x++) { _probe.t620WfN = (_probe.t620WfN | 0) + 1; if (fresh.at(x, y) !== pre.wf.at(x, y)) _probe.t620WfBad = (_probe.t620WfBad | 0) + 1; }
+    }
   }
+  else vil._wf = _lifeVL().waterEDT(state.ta, b[0] - 32, b[1] - 32, b[2] + 32, b[3] + 32);
+  return vil._wf;
+}
+function _lifeSiteFilters(vil, M) {   // ★[T620 ①] `M` = 한 번의 집터 찾기 동안만 사는 셀 술어 메모(`_t620SiteMemo`) — 없으면 종전 그대로
+  if (!vil._wf) _t620Wf(vil);   // 물거리 EDT 캐시(마을당 1회 — 영토 bbox±32, 랩 s._wf 동형 · ★[T620] 몸통은 위 `_t620Wf` 한 곳)
   // ★★[T315→T326] `HG` 는 **식**이고, 그 식의 기본은 이제 통로 항을 뺀 `LIFE_HOUSE_GAP`(15 · PM #52)다.
   //   되돌림은 문 하나(`T315_HOUSE_GAP=0`) → `LIFE_HOUSE_GAP_AISLE`(18) = 종전 판. 값은 둘 다 레이아웃 정본이 갖는다.
   const W_PEN_K = 2000, HG = T315_HOUSE_GAP === '0' ? _lifeVL().LIFE_HOUSE_GAP_AISLE : _lifeVL().LIFE_HOUSE_GAP;
   const wnd = (x, y) => { const v = vil._wf.at(x, y); return v >= 999 ? 99 : Math.max(1, v - _lifeVL().LOT_R); };
-  const farmAt = (x, y, strict) => (strict && vil._potSet.has(x + ',' + y)) || vil._farmSet.has(x + ',' + y);
   const near = T569_OVERLAP ? _t569Near(vil) : null;   // ★[T569 ②] 이웃 마을(술어를 만들 때 한 번)
+  //   ★[T620 ①] 칸 술어 일곱(잠재농지 · 농지 · 남의 영토 · 내 영토 · 막힘 · 물 · 개울) — 메모가 있으면 메모(같은 술어를 칸마다 **한 번만** 묻는다 · 값 같음), 없으면 종전 식 그대로.
+  if (M) M.bind(vil, near);
+  const pot = M ? M.pot : (x, y) => vil._potSet.has(x + ',' + y);
+  const farm = M ? M.farm : (x, y) => vil._farmSet.has(x + ',' + y);
+  const owned = M ? M.own : (x, y) => _t569OwnedBy(near, x + ',' + y);
+  const inTerr = M ? M.terr : (x, y) => vil._terrSet.has(x + ',' + y);
+  const blocked = M ? M.blk : (x, y) => state.ta.isBlocked(x, y);
+  const water = M ? M.wat : (x, y) => state.ta.isWater(x, y);
+  const taS = M ? M.taS : state.ta;   // 개울 원판 술어에 넘기는 지형(메모면 `isStream` 하나만 메모로)
+  const farmAt = (x, y, strict) => (strict && pot(x, y)) || farm(x, y);
   // reject(x,y,strict) → 사유 문자열(불가) 또는 null(가능). 자동 배치는 사유를 버리고 continue만 한다.
   const reject = (x, y, strict) => {
     for (const h of vil._houseCells) if (Math.hypot(h.cx - x, h.cy - y) < HG) return `기존 집과 너무 가까움(<${HG})`;
@@ -7884,16 +7975,16 @@ function _lifeSiteFilters(vil) {
     }
     for (const [dx, dy] of _lifeVL().LOT_CELLS) {
       const xx = x + dx, yy = y + dy;
-      if (near && near.length && _t569OwnedBy(near, xx + ',' + yy)) return '남의 마을';   // ★[T569 ②] 남의 영토 셀
-      if (!vil._terrSet.has(xx + ',' + yy)) return '마을 영토 밖';
-      if (state.ta.isBlocked(xx, yy)) return '부지 불가(물·바위)';
+      if (near && near.length && owned(xx, yy)) return '남의 마을';   // ★[T569 ②] 남의 영토 셀
+      if (!inTerr(xx, yy)) return '마을 영토 밖';
+      if (blocked(xx, yy)) return '부지 불가(물·바위)';
       if (farmAt(xx, yy, strict)) return '개간 농지 위';
     }
-    for (const [dx, dy] of _lifeVL().LOT_GUARD) if (state.ta.isWater && state.ta.isWater(x + dx, y + dy)) return '물가 완충 침범(침수)';
+    for (const [dx, dy] of _lifeVL().LOT_GUARD) if (state.ta.isWater && water(x + dx, y + dy)) return '물가 완충 침범(침수)';
     // ★★[T585] 개울 — 부지 원판에 개울 셀이면 '개울' · 그 밖 완충 원(`LOT_GUARD` · T584 기본 `guard`)이면 '개울 완충'(랩 사유 두 갈래 그대로 · 술어 한 자리)
     if (state.ta.isStream) {
-      if (_lifeVL().discHitsStream(state.ta, x, y, _lifeVL().LOT_CELLS)) { _t585Rej.lot++; return '개울'; }
-      if (_lifeVL().discHitsStream(state.ta, x, y, _lifeVL().streamLotCells())) { _t585Rej.guard++; return '개울 완충'; }
+      if (_lifeVL().discHitsStream(taS, x, y, _lifeVL().LOT_CELLS)) { _t585Rej.lot++; return '개울'; }
+      if (_lifeVL().discHitsStream(taS, x, y, _lifeVL().streamLotCells())) { _t585Rej.guard++; return '개울 완충'; }
     }
     for (const g2 of vil._granList) {
       if (g2.cx + 2 >= x - 6 && g2.cx - 2 <= x + 1 && g2.cy + 1 >= y - 6 && g2.cy - 1 <= y - 1) return '곳간과 겹침';
@@ -7907,7 +7998,74 @@ function _lifeSiteFilters(vil) {
     }
     return null;
   };
-  return { W_PEN_K, HG, wnd, farmAt, reject };
+  const potCount = M ? M.potCount : (x, y) => { let c = 0; for (const [dx, dy] of _lifeVL().LOT_CELLS) if (pot(x + dx, y + dy)) c++; return c; };
+  return { W_PEN_K, HG, wnd, farmAt, reject, pot, potCount };
+}
+// ★★[T620 ① 2026-10-04] **집터 찾기의 셀 술어 메모** — T605 §4-4 의 `life:쉼표` 75ms 를 이 판(빠른 시계 · 두 존)에서 잘라 보니
+//   주인은 사람 묶음이 아니라 **집터 찾기 한 번**(`_lifeAddHouseSite` · 셋째 날 첫 신축 62~64ms)이었다. 그 안에서 시간을 먹는 것은
+//   ⓐ 둘째 패스 후보 모으기(짝수 칸 ~700 × 부지 원판 124칸 `_potSet` 조회 = 16~46ms) ⓑ 거부 판정(후보마다 원판 124칸 × 남의 영토 · 내 영토 ·
+//   막힘 · 농지 + 완충 원판의 물 · 개울 — 칸 하나를 **이웃 후보 수십 개가 다시** 묻는다). 원판끼리 겹치므로 같은 칸을 30번 남짓 같은 술어로 묻는다.
+//   ⇒ 한 번의 찾기(동기 · 한 조각 안 · 끝나기 전에 아무도 집합을 안 바꾼다) 동안만 셀마다 첫 답을 적어 둔다. **술어도 순서도 그대로** —
+//   달라지는 것은 같은 질문을 몇 번 하느냐뿐이다(쉼표를 더하지 않는다 → 조각 사이에 끼는 몸의 일도 종전 그대로).
+//   ⚠찾기가 끝나면 버린다(다음 찾기는 새 메모 — 날 사이에 집합이 바뀐다). 집터를 고른 뒤 `_potSet` 을 지우는 줄은 그 찾기의 마지막 일이다(곧 돌아간다).
+//   ⚠상자 밖 셀은 메모 없이 종전 식으로 묻는다(상자 = 영토 테두리 + 부지 반경 여유).
+//   `T620_SITE_AUDIT=1`(검사용)이면 메모가 답할 때마다 종전 식을 **다시 물어** 맞대 본다(어긋남 = 찾기 도중 집합이 바뀐 것 — 있으면 이 메모가 틀렸다).
+const T620_SITE_AUDIT = process.env.T620_SITE_AUDIT === '1';
+function _t620SiteMemo() {
+  const M = { x0: 0, y0: 0, w: 0, h: 0, potA: null, bind: null, pot: null, farm: null, own: null, terr: null, blk: null, potCount: null };
+  M.bind = (vil, near) => {
+    let bx0 = 1e9, by0 = 1e9, bx1 = -1e9, by1 = -1e9;
+    for (const k of vil._terrSet) { const ci = k.indexOf(','), x = +k.slice(0, ci), y = +k.slice(ci + 1); if (x < bx0) bx0 = x; if (x > bx1) bx1 = x; if (y < by0) by0 = y; if (y > by1) by1 = y; }
+    let PAD = 1; for (const cs of [_lifeVL().LOT_CELLS, _lifeVL().LOT_GUARD, _lifeVL().streamLotCells()]) for (const o of cs) PAD = Math.max(PAD, Math.abs(o[0]) + 1, Math.abs(o[1]) + 1);   // 원판들의 가장 먼 칸까지
+    const x0 = M.x0 = bx0 - PAD, y0 = M.y0 = by0 - PAD;
+    const w = M.w = Math.max(0, bx1 - bx0 + 1 + 2 * PAD), h = M.h = Math.max(0, by1 - by0 + 1 + 2 * PAD);
+    const n = w * h;
+    //   ⓐ `_potSet` — 상자 안을 **한 번에** 칸 지도로(2패스 후보마다 원판 124칸을 세는 그 질문 · 참 = 1). 상자 밖은 종전 식.
+    const potA = M.potA = new Uint8Array(n);
+    for (const k of vil._potSet) { const ci = k.indexOf(','), x = +k.slice(0, ci) - x0, y = +k.slice(ci + 1) - y0; if (x >= 0 && y >= 0 && x < w && y < h) potA[y * w + x] = 1; }
+    const potRaw = (x, y) => vil._potSet.has(x + ',' + y);
+    M.pot = (x, y) => {
+      const ix = x - x0, iy = y - y0;
+      if (ix < 0 || iy < 0 || ix >= w || iy >= h) return potRaw(x, y);
+      const r = potA[iy * w + ix] === 1;
+      if (T620_SITE_AUDIT) _t620Audit(vil, 'pot', x, y, r, potRaw(x, y));
+      return r;
+    };
+    //   원판 개수 — 종전 `for (const [dx, dy] of LOT_CELLS) if (_potSet.has(...)) nong++` 와 같은 수(원판이 상자 안이면 칸 지도 · 아니면 한 칸씩 위 술어)
+    const LOT = _lifeVL().LOT_CELLS;
+    M.potCount = (x, y) => {
+      let c = 0;
+      const ix = x - x0, iy = y - y0;
+      if (ix - PAD >= 0 && iy - PAD >= 0 && ix + PAD < w && iy + PAD < h && !T620_SITE_AUDIT) {
+        for (let q = 0; q < LOT.length; q++) { const o = LOT[q]; c += potA[(iy + o[1]) * w + ix + o[0]]; }
+        return c;
+      }
+      for (const [dx, dy] of LOT) if (M.pot(x + dx, y + dy)) c++;
+      return c;
+    };
+    //   ⓑ 거부 판정의 칸 술어 여섯 — 처음 물을 때 종전 식으로 답하고 적어 둔다(0 = 아직 · 1 = 거짓 · 2 = 참).
+    const lazy = (nm, raw) => {
+      const arr = new Uint8Array(n);
+      return (x, y) => {
+        const ix = x - x0, iy = y - y0;
+        if (ix < 0 || iy < 0 || ix >= w || iy >= h) return raw(x, y);
+        const i = iy * w + ix, v = arr[i];
+        if (v !== 0) { if (T620_SITE_AUDIT) _t620Audit(vil, nm, x, y, v === 2, raw(x, y)); return v === 2; }
+        const r = raw(x, y); arr[i] = r ? 2 : 1; return r;
+      };
+    };
+    M.farm = lazy('farm', (x, y) => vil._farmSet.has(x + ',' + y));
+    M.own = lazy('own', (x, y) => !!_t569OwnedBy(near, x + ',' + y));
+    M.terr = lazy('terr', (x, y) => vil._terrSet.has(x + ',' + y));
+    M.blk = lazy('blk', (x, y) => !!state.ta.isBlocked(x, y));
+    M.wat = lazy('wat', (x, y) => !!state.ta.isWater(x, y));
+    M.taS = state.ta.isStream ? { isStream: lazy('str', (x, y) => !!state.ta.isStream(x, y)) } : state.ta;
+  };
+  return M;
+}
+function _t620Audit(vil, nm, x, y, memo, raw) {   // 검사용 — 메모의 답 ↔ 종전 식의 답
+  _probe.t620MemoN = (_probe.t620MemoN | 0) + 1;
+  if (memo !== raw) { _probe.t620MemoBad = (_probe.t620MemoBad | 0) + 1; _probe.t620MemoFirst = _probe.t620MemoFirst || `${vil.name} ${nm} ${x},${y}`; }
 }
 
 // ★★[11차 T4 — 랩 B안 서버 이식] 플레이어가 마을 영토 안에 집터를 지정하면 그 마을 NPC 크루가 지어 준다.
@@ -8411,12 +8569,8 @@ function _lifeAddHouseSite(vil) {   // 랩 addHouseSite 동형(서버판): 2패�
   }
 }
 function _lifeAddHouseSiteInner(vil) {
-  if (!vil._wf) {   // 물거리 EDT 캐시(마을당 1회 — 영토 bbox±32, 랩 s._wf 동형)
-    let bx0 = 1e9, by0 = 1e9, bx1 = -1e9, by1 = -1e9;
-    for (const k of vil._terrSet) { const ci = k.indexOf(','), x = +k.slice(0, ci), y = +k.slice(ci + 1); if (x < bx0) bx0 = x; if (x > bx1) bx1 = x; if (y < by0) by0 = y; if (y > by1) by1 = y; }
-    vil._wf = _lifeVL().waterEDT(state.ta, bx0 - 32, by0 - 32, bx1 + 32, by1 + 32);
-  }
-  const F = _lifeSiteFilters(vil);
+  if (!vil._wf) _t620Wf(vil);   // 물거리 EDT 캐시(마을당 1회 — 영토 bbox±32, 랩 s._wf 동형 · ★[T620] 몸통은 `_t620Wf` 한 곳)
+  const F = _lifeSiteFilters(vil, _t620SiteMemo());   // ★[T620 ①] 이 찾기 동안만 사는 셀 술어 메모(값 같음 · 위 주석)
   const W_PEN_K = F.W_PEN_K, wnd = F.wnd, farmAt = F.farmAt;
   for (const strict of [true, false]) {
     // ★★[T41 ①] **거부 캐시** — 한 번 거부된 셀은 위 단조성 논증에 따라 계속 거부된다.
@@ -8441,7 +8595,7 @@ function _lifeAddHouseSiteInner(vil) {
       const r = Math.hypot(x - vil.ccx, y - vil.ccy); if (r < _lifeVL().HALL_CLEAR) continue;
       if (farmAt(x, y, strict)) continue;
       const wd = wnd(x, y); let sc = r + (wd < 99 ? W_PEN_K / (wd * wd) : 0);  // 물가 연속 페널티 K/d²
-      if (!strict) { let nong = 0; for (const [dx, dy] of _lifeVL().LOT_CELLS) if (vil._potSet.has((x + dx) + ',' + (y + dy))) nong++; sc += nong * 6; }   // 2패스 잠식 비용
+      if (!strict) { const nong = F.potCount(x, y); sc += nong * 6; }   // 2패스 잠식 비용(★[T620] 같은 수 — 부지 원판 안 잠재농지 칸 수 · 칸 지도)
       cand.push([x, y, sc]);
     }
     _probe.siteScan += vil._terrSet.size; _probe.siteCand += cand.length;   // ★[T41 §0]
