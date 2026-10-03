@@ -67,10 +67,13 @@ const FIXTURE = process.env.BANDIT_FIXTURE || '';
 //   빈 11곳(서울 사본)은 11/11 이 해체 표를 달았고, 셋 이상 마지막 날이 보호기(365) 끝난 그 달에 몰렸다(T572).
 //   ⓐ `T577_CAND_WALK=1` — 해체 때 단이 되지 않은 **남은 사람이 가장 가까운 산 마을로 옮긴다**(지금은 그 자리에 남아 굶어 죽는다).
 //      ⚠econ 몫만이다: 사람(npc 항목)을 그 마을 econ 으로 넘긴다 — 몸이 걸어가는 길은 없다(보고 §3-ⓐ 가 그 줄 수를 센다).
-//   ⓓ `T577_CAND_RAMP=1` — 보호기 끝을 **마을마다 다른 날**로 편다: 365 + 시드 해시 × 365(둘째 해 안에 고르게).
+//   ⓓ `T577_RAMP` — 보호기 끝을 **마을마다 다른 날**로 편다: 365 + 시드 해시 × 365(둘째 해 안에 고르게).
 //      새 수 0 — 퍼짐 폭은 보호기 그 자체(`BDT_MIN_DAY`)이고 해시는 이 파일의 결정론 RNG(`denRng`)다.
+//      ★★[T577 추신 2026-10-03 · ★PM 결정 족보 537 · 재민 거부권] **정식 손잡이 · 기본 켬** — 끄는 것은 명시 `T577_RAMP=0`(= 종전 바이트).
+//        이유(보고/T577 §2-3 · §3-ⓓ): econ 기아 보호막(`SHIELD_DAYS` 365)과 도적 보호기가 **같은 날** 걷혀 첫해 겨울 끝 굶는 마을이
+//        한 주에 해체됐다(3시드 해체 51 중 39 가 day 375~394). 끔 판 빈 13 → 켬 판 1(시드 1020 · 800일).
 const T577_WALK = process.env.T577_CAND_WALK === '1';
-const T577_RAMP = process.env.T577_CAND_RAMP === '1';
+const T577_RAMP = process.env.T577_RAMP !== '0';   // ★[T577 추신] 기본 켬
 function _t577Hash(name) { let h = 0; const s = String(name || ''); for (let i = 0; i < s.length; i++) h = (Math.imul(h, 31) + s.charCodeAt(i)) | 0; return h >>> 0; }
 function _bdtOpenDay(vil) {   // 이 마을의 보호기가 끝나는 날(끔이면 모두 BDT_MIN_DAY — 종전)
   if (!T577_RAMP) return BDT_MIN_DAY;
