@@ -6170,7 +6170,7 @@ function _t340Try(vil, npc, now, day, h, ws) {
     const _sea = _t593SeaBank(cx, cy);
     //   ★[T602] 해역 = 그 물가 칸의 해안 구간(`areaAt` — 플레이어와 같은 함수 · 끔이면 T593 그대로 바이옴)
     const _sp = _sea ? _seaTbl().pick(_seaTbl().areaAt(state.zoneId, cx * SZ + SZ / 2, cy * SZ + SZ / 2), _sea, day, h ^ cx ^ Math.imul(cy, 0x85ebca6b))
-      : _fresh().pick(_t312Water(vil), day, h ^ cx ^ Math.imul(cy, 0x85ebca6b), _ch);
+      : _fresh().pick(_t312Water(vil), day, h ^ cx ^ Math.imul(cy, 0x85ebca6b), _ch, state.zoneId);   // ★[T609] 존(민물 표 켬이면 열도 가물치 뺌)
     if (!_sp) return 'none';   // 그 물·그 철엔 사는 종이 없다(종전 `!_sp` 자리 — 라벨 '드리움')
     const n = (npc._t340N = (npc._t340N || 0) + 1);
     const pl = F.plan(sp, stock01, now, _t340Rng(h ^ Math.imul(n, 0x9e3779b9) ^ Math.imul(day, 0x85ebca6b)));

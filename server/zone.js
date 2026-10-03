@@ -8432,7 +8432,7 @@ function _t593Water(sp) { return (sp && (sp.kind === 'lake' || sp.kind === 'mout
 // ★[T602] 해역 = 그 자리의 해안 구간(`Sea.areaAt` — 끔이면 T593 그대로 `areaOfZone`) · 그래서 자리(x, y)를 같이 넘긴다.
 function _t593Pool(sp, day, x, y) {
   if (sp && sp.kind === 'sea') return Sea.poolOf(Sea.areaAt(ZONE_ID, x, y), sp.spot || 'coast', day);
-  return Fresh.poolOf(_t593Water(sp), day);
+  return Fresh.poolOf(_t593Water(sp), day, ZONE_ID);   // ★[T609] 존 — 민물 표 켬이면 그 존에서 안 나는 종을 뺀다(끔이면 안 읽는다)
 }
 // 무는 종 하나 — **던질 때** 고른다(그 종의 kg 가 무게의 중앙값이라 입질 창도 그 종을 따른다 · `Fishing.plan` 다섯째 인자).
 //   `h` = 던짐 씨(사람 · 셀 · 게임일 · 던짐 횟수 — 대본 씨와 같은 다섯)를 정본 한 걸음으로 섞은 것 — 주사위 0 · 결정론.
@@ -8441,7 +8441,7 @@ function _t593Pick(sp, x, y, h, day) {
   if (sp && sp.kind === 'sea') return Sea.pick(Sea.areaAt(ZONE_ID, x, y), sp.spot || 'coast', day, h);
   // 민물 — NPC 어부와 같은 특산 혼용 칸(`fishFresh` · 빈칸이면 고르게와 같아 null → 옛 줄)
   const _ch = RegionProfiles.on() ? (ids, uu) => RegionProfiles.chooseSpecies('fishFresh', ZONE_ID, x, y, uu, null, ids) : undefined;
-  return Fresh.pick(_t593Water(sp), day, h, _ch);
+  return Fresh.pick(_t593Water(sp), day, h, _ch, ZONE_ID);   // ★[T609] 존(위와 같다)
 }
 // 던질 자리 — 플레이어 주변에서 **가장 좋은 물 칸**을 서버가 고른다(클라가 자리를 못 속인다).
 function _castTargetFor(player) {
@@ -8476,6 +8476,8 @@ function tryFishCast(player) {
   if (cur && cur.state === 'wait') {   // 이미 던져 놨다 → 이건 **챔질**이다
     return tryFishStrike(player);
   }
+  // ★[T609 ②] 끌어올리는 중(싸움 단계 — 손잡이 `T609_BIG_WINDOW` a·b 켬만 생긴다) — 새로 던지지 않는다.
+  if (cur && cur.state === 'fight') { send(player.ws, { type: 'notice', text: '🎣 끌어올리는 중이다 — 조금만' }); return; }
   const tgt = _castTargetFor(player);
   if (!tgt) { send(player.ws, { type: 'notice', text: '🎣 여기선 물에 닿지 않는다 — 물가로 더 가까이' }); return; }
   // ★[T593 ③] 그 물·그 철에 사는 종이 없으면 던지지 않는다(NPC 어부의 `'none'` 과 같은 자리 — 빈 바늘을 만들지 않는다).
@@ -8498,6 +8500,7 @@ function tryFishCast(player) {
     biteAt: pl.biteAt, kg: pl.kg, windowMs: pl.windowMs, castAt: now, stock01,
   };
   if (_spc) { player._fish.day = _day; player._fish.species = _spc.id; }   // ★[T593] 던질 때 정한 그 종 · 그날(철)
+  if (pl.fightMs > 0) player._fish.fightMs = pl.fightMs;   // ★[T609 ②] 싸움 길이(켬만 — 끔이면 `plan` 이 이 칸을 안 낸다)
   _fishStats(player).casts++;
   // ★[T593] 힌트 — 켬이면 고른 그 자리(`tgt.sp` · 바다면 '바다'/'강어귀') · 끔이면 종전 그 식 그대로(네 인자 `spotAt` 재질의).
   const _hk = Fishing.T593_SEA ? tgt.sp : Fishing.spotAt(_terrain, ZONE_ID, tgt.x, tgt.y);
@@ -8533,6 +8536,19 @@ function tryFishStrike(player) {
   }
   // ── 걸었다 ──────────────────────────────────────────────────────────────
   Body.onLabor(player, 0.6);   // ★[신체 상태] 챔질도 노동이다(채광보다 가볍다)
+  // ★[T609 ②] 싸움 단계(손잡이 a·b 켬만 — `fightMs` 가 있을 때) — 걸었다 · 끌어올린다. 그 시간이 지나면 `_fishPoll` 이 손에 들린다
+  //   (그 사이 줄을 거두면 놓친다 — `fish_reel`). 끔이면 이 갈래를 안 타고 아래 그대로(같은 순서 · 같은 줄).
+  if (f.fightMs > 0) {
+    player._fish = Object.assign({}, f, { state: 'fight', landAt: now + f.fightMs });
+    send(player.ws, { type: 'fish_state', state: 'fight', x: f.x, y: f.y, landAt: player._fish.landAt, srvNow: now });
+    send(player.ws, { type: 'notice', text: `🎣 걸었다! 끌어올린다 — ${(f.fightMs / 1000).toFixed(1)}초` });
+    return;
+  }
+  return _fishLand(player, f, now);
+}
+// ★[T609 ②] 손에 든다 — 챔질이 걸린 그 순간(끔) 또는 싸움이 끝난 순간(켬 · `_fishPoll`). 몸통은 종전 줄 글자 그대로다.
+function _fishLand(player, f, now) {
+  const st = _fishStats(player);
   const kg = f.kg;
   // ★어장에서 **실제로 뺀 만큼만** 준다 — 없는 물고기를 주사위로 만들지 않는다.
   //   재고가 모자라면 잡히는 양도 그만큼 준다(빈 자리는 빈 바늘로 답한다).
@@ -14355,6 +14371,7 @@ const _fishStats2 = { bites: 0, expired: 0 };
 function _fishPoll(now) {
   for (const [, p] of players) {
     const f = p._fish;
+    if (f && f.state === 'fight') { if (now >= f.landAt) _fishLand(p, f, now); continue; }   // ★[T609 ②] 싸움 끝 = 손에 든다(켬만 생긴다)
     if (!f || f.state !== 'wait') continue;
     if (!f.bit && now >= f.biteAt) {
       f.bit = true; _fishStats2.bites++;

@@ -412,6 +412,33 @@ function windowMsFor(kg) {
 //   ★[T593 ②] 다섯째 인자 `kg0` = **그 종의 kg**(표 정본 — 민물 `freshfish` · 바다 `seafish`) — 주면 로그정규의 중앙값이 그 종이다
 //     (전체 중앙값 `SIZE_MU` 자리에 ln(kg0) — 산포 σ·자리 크기 배수·상한은 그대로 · 새 수 0). 미꾸라지(15g)가 2kg 으로 낚이지 않는다.
 //     NPC 어부(T340 "창 = 그 종의 kg")와 같은 결이다. 안 주면(끔 · 하네스) 이 함수는 한 글자도 안 바뀐다.
+// ══ ★★[T609 ②] 큰 종 창 — 손잡이 `T609_BIG_WINDOW`(기본 **끔** = 위 지금 식) · 값 `a` | `b` | `c`(고르는 안은 재민) ══════════
+//   지금 식(위)은 큰 고기일수록 채기 창이 하한(90ms)으로 간다 — T602 표: 연어 81% · 참돔·농어 60.6% · 잉어 50.8% 가 하한에 붙어
+//   반응 300ms 부터 거의 놓치기만 한다. 실제 낚시는 큰 고기일수록 **채기 창은 비슷하고 끌어올리는 싸움이 길다**(카드 T609).
+//   세 안 — 전부 **지금 상수의 재배치**(`WIN_AT_1KG` 350 · `WIN_POW` 1.25 · 종 kg 표 · 새 수 0):
+//   `a` 1kg 기준점에서 창이 멈춘다 — 1kg 아래는 지금 식 그대로 · 1kg 위는 `WIN_AT_1KG`(창 곡선의 기준점) · 넘는 무게는 **싸움**
+//       `WIN_AT_1KG × (kg^WIN_POW − 1)` ms(창이 줄던 그 곡선을 뒤집어 싸움 길이로 — 1kg 에서 0 으로 이어진다)
+//   `b` 창은 무게와 무관한 한 값 `WIN_AT_1KG`(T602 표 KG=0 판 중앙 346ms 곁의 지금 상수 — 표본 통계는 상수로 안 박는다) ·
+//       무게는 싸움에만 `WIN_AT_1KG × kg^WIN_POW` ms
+//   `c` 창은 **그 종의 보통 크기에 견준 몸집**(kg ÷ 종 kg — `plan` 다섯째 인자)으로 지금 식 그대로 — 그 종의 월척일수록 짧다 · 싸움 없음.
+//       종 kg 가 없으면(`T593_KG=0` · 하네스의 네 인자) 지금 식.
+//   ⚠싸움 단계는 존이 돈다(`zone.tryFishStrike` → `_fishPoll`): 건 뒤 `fightMs` 동안 끌어올리고 그 뒤 손에 든다 · 그 사이 줄을 거두면 놓친다.
+//   ⚠NPC 어부의 창은 그대로다(어부의 놓침은 반사신경이 아니라 자리 비움 — T340 · 보고 회부).
+const T609_BIG_WINDOW = (() => { const v = process.env.T609_BIG_WINDOW; return (v === 'a' || v === 'b' || v === 'c') ? v : null; })();
+function windowFor(kg, kg0, mode) {
+  const m = mode === undefined ? T609_BIG_WINDOW : mode;
+  if (m === 'a') return windowMsFor(Math.min(kg, 1));
+  if (m === 'b') return Math.max(CFG.WIN_MIN_MS, Math.min(CFG.WIN_BASE_MS, CFG.WIN_AT_1KG));
+  if (m === 'c') return windowMsFor(kg0 > 0 ? kg / kg0 : kg);
+  return windowMsFor(kg);
+}
+function fightMsFor(kg, mode) {
+  const m = mode === undefined ? T609_BIG_WINDOW : mode;
+  const k = Math.max(0, +kg || 0);
+  if (m === 'a') return k > 1 ? Math.round(CFG.WIN_AT_1KG * (Math.pow(k, CFG.WIN_POW) - 1)) : 0;
+  if (m === 'b') return Math.round(CFG.WIN_AT_1KG * Math.pow(k, CFG.WIN_POW));
+  return 0;
+}
 function plan(sp, stock01, now, rng, kg0) {
   const sc = spotScore(sp);
   const rate = Math.max(0.08, sc.rate * Math.max(0.05, stock01));
@@ -420,7 +447,8 @@ function plan(sp, stock01, now, rng, kg0) {
   const waitMs = Math.max(CFG.WAIT_MIN_MS, Math.min(CFG.WAIT_MAX_MS, Math.round(raw)));
   let kg = _lognormal(rng, (kg0 > 0 ? Math.log(kg0) : CFG.SIZE_MU) + Math.log(sc.size), CFG.SIZE_SIGMA);
   kg = Math.min(CFG.SIZE_MAX, +kg.toFixed(3));
-  return { biteAt: now + waitMs, waitMs, kg, windowMs: windowMsFor(kg) };
+  if (!T609_BIG_WINDOW) return { biteAt: now + waitMs, waitMs, kg, windowMs: windowMsFor(kg) };
+  return { biteAt: now + waitMs, waitMs, kg, windowMs: windowFor(kg, kg0), fightMs: fightMsFor(kg) };   // ★[T609 ②] 켬만
 }
 
 // ── ★★[T59 2026-09-03] **어종 표는 여기가 정본이다.** ─────────────────────────
@@ -468,5 +496,6 @@ module.exports = {
   spotAt, spotScore, _riverU, _lakeR, _seaSpot,
   regen, rec, stockRatioAt, drawStock, deficitStock, deficitBy, stockToEcon, diffuse,
   plan, windowMsFor, _lognormal,
+  T609_BIG_WINDOW, windowFor, fightMsFor,   // ★[T609 ②] 큰 종 창 안 셋 — 표 기계(`t602-windows.js`)가 같은 함수로 잰다
   get DAY_MS() { return DAY_MS; },
 };
