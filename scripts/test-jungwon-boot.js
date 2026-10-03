@@ -190,7 +190,7 @@ async function waitUp(p, url, tries = 300) {
   ok(((ZONES.hanbando.bridges || []).length / 2) === 836, 'ⓗ2 한반도 다리 836셀', `${(ZONES.hanbando.bridges || []).length / 2}`);
   // ★[PM 10-03] T550 이 닛폰 정본을 바꿨다(광맥 55 → 490 · 다리 208 → 449셀 · 후보 16 → 30) — 이 줄은 "중원북 작업이 닛폰을 안 건드렸나" 의 자라 새 정본 수로 옮긴다.
   // ★[T580 10-03] 사람 없는 덩이 A·B·C 를 이은 다리 98셀이 더해졌다(449 → 547) · ★[PM 10-03] 광맥은 T550 추신이 옛 55 로 되돌렸다(T574 추신4 다시 굽기 전).
-  ok((J.nippon.ores || []).length === 55 && ((ZONES.nippon.bridges || []).length / 2) === 547, 'ⓗ3 닛폰 광맥 55(T550 추신) · 다리 547셀(T550 정본 + T580 덩이)');
+  ok((J.nippon.ores || []).length === 55 && ((ZONES.nippon.bridges || []).length / 2) === 416, 'ⓗ3 닛폰 광맥 55(T550 추신) · 다리 416셀(T550 정본 + T580 덩이 547 − T595 ② 뭍 위에 남은 131 · 폭 7000 으로 띠가 물러나 밑이 뭍이 됐다)');
   ok((J.hanbando.villages || []).length === 51 && (J.nippon.villages || []).length === 30, 'ⓗ4 한반도 후보 51 · 닛폰 30 그대로(T550 정본)');
 
   shutdown();

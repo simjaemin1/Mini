@@ -272,9 +272,15 @@ async function waitUp(p, url, tries = 300) {
     'ⓘ 부팅이 읽은 후보 수 = 정본 칸 수(절차 배치기를 다시 안 돈다)',
     mSeeded ? `부팅 후보 ${mSeeded[1]} · 정본 ${(npHard || []).length}` : '-');
   // ★[T550 2026-10-03] 후보 정본이 16 → 30 으로 바뀌었다(재민 v1 + 마을 후보 기계) — 시딩 상한 20 · 쌍 20C2 = 190. 수만 새 값(T348 7 · 21).
-  ok(!!mSeeded && +mSeeded[3] === 20, 'ⓘ2 ★시딩 마을 수가 T348 과 같다(옮겨 적기가 세계를 안 움직였다)',
+  // ★[T595 ④ 2026-10-03] 닛폰 `villageMax` 30(T586 추신 · 후보 수) — 품질 게이트(간격 12,000px · 식량 하한)가 그대로라 **24곳**이 선다
+  //   (떨어지는 6곳 = 이즈사키 · 지옹로 · 지옹다 · 후지다 · 아라광산 — 간격 · 지옹사키 — 식량 하한(간격 안이기도) · 보고/T595 ④). 24C2 = 276.
+  //   존 설정 `seedAllVillages`(한반도 정본 길 · 게이트 우회)가 켜지면 30곳 · 435쌍(실측 · 도달 435/435) — 자는 설정을 읽는다(판정은 PM).
+  //   env `SEED_ALL=1` 로 돌려도 같은 갈래(전수)다.
+  const _np = ZONES[ZID] || {}, _all = !!_np.seedAllVillages || process.env.SEED_ALL === '1';
+  const _wantSeed = _all ? (npHard || []).length : 24;
+  ok(!!mSeeded && +mSeeded[3] === _wantSeed, `ⓘ2 ★시딩 마을 수 ${_wantSeed}(${_all ? '전수' : '상한 ' + (_np.villageMax || 20) + ' · 게이트'} · T595)`,
     mSeeded ? `시딩 ${mSeeded[3]}곳` : '-');
-  ok(pairs === 190, 'ⓘ3 교역 쌍 수가 T348·T351 과 같다(마을 수가 안 움직였다)', `${pairs}쌍`);
+  ok(pairs === _wantSeed * (_wantSeed - 1) / 2, `ⓘ3 교역 쌍 ${_wantSeed * (_wantSeed - 1) / 2}(시딩 ${_wantSeed})`, `${pairs}쌍`);
 
   console.log('\n[ⓙ 닛폰이 한 덩어리다 — T360]');
   // ★★T348 계획기는 최대 덩어리를 "대양 분리(항해 층 필요)"라 답했다. T360 이 실측해 보니
