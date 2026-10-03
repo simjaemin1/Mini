@@ -79,7 +79,11 @@ const isWaterTileLocal = (x, y) => {
 };
 const isRockTileLocal = (x, y) => { if (!_inZone(x, y)) return false; try { return !!T.isRockCellLocal(Z, x, y); } catch { return false; } };
 const isTerrainBlockedLocal = (x, y) => (!_inZone(x, y)) ? true : (isRockTileLocal(x, y) || isWaterTileLocal(x, y));
-const ta = P.makeTerrainAdapter(T, ZONE, { isTerrainBlockedLocal, isWaterTileLocal });
+// ★★[T601 ④] **개울 술어를 기본으로** — 실서버 시딩(= 초기화 세계)은 존이 `isStreamLocal` 을 넘겨 집터·논밭이 개울을 본다(T585).
+//   두 자가 같은 술어(`server/streams.js` 래스터 · 사본 0)를 deps 에 끼워야 게이트가 초기화 세계를 잰다 = 일곱째 판(족보 560).
+//   손잡이 `T601_RULER_STREAMS=0` = 옛 정의(개울 없는 자 판 · 바이트 그대로). 씨앗 캐시는 래스터 지문 표식(`t601s`)이 다르면 버린다.
+const _t601 = R('server/streams').rulerDeps(Z, { isTerrainBlockedLocal, isWaterTileLocal });
+const ta = P.makeTerrainAdapter(T, ZONE, _t601.deps);
 
 // ★[T100 2026-09-05 · 순전한 계측 편의 · 값 무변] 51곳 `VillageLayout.generate` 는 전수 ~10분이다.
 //   결정론이라 캐시할 수 있다. **손잡이가 없으면 종전 루프 그대로**(기본값 무변 — 이 파일은 기준선의 자다).
@@ -89,6 +93,7 @@ let seeds = null;
 if (_SEEDCACHE && fs.existsSync(_SEEDCACHE)) { try { seeds = JSON.parse(fs.readFileSync(_SEEDCACHE, 'utf8')); } catch (e) { seeds = null; } }
 // ★[T593 ⑤] 이름표 손잡이(`T593_LABEL=1`)는 이름을 바꾼다 — 캐시는 이름까지 담으므로 **손잡이가 다른 캐시는 안 쓴다**(켠 판만 `t593` 표식).
 if (seeds && !!(seeds[0] && seeds[0].t593) !== !!P.T593_LABEL) { console.log(`  ⚠[T593] 캐시(${_SEEDCACHE})의 이름표 손잡이가 지금과 다르다 — 다시 굽는다`); seeds = null; }
+if (seeds && ((seeds[0] && seeds[0].t601s) || '') !== _t601.sig) { console.log(`  ⚠[T601] 캐시(${_SEEDCACHE})의 개울 표식이 지금과 다르다 — 다시 굽는다`); seeds = null; }
 if (!seeds) {
   const hard = T.getZoneVillages(Z) || [];
   const picked = P.pickSeedVillages(hard, ta, { seedAll: !!ZONE.seedAllVillages, max: ZONE.villageMax || 0 });
@@ -102,7 +107,7 @@ if (!seeds) {
     const lp = P.extractLandParamsApprox(ta, c.ccx, c.ccy, layout);
     seeds.push({ name: _t593 ? _t593.label(hv, layout, lp).name : hv.name, ccx: c.ccx, ccy: c.ccy, lp,
       layout: { farmland: layout.farmland, dryfield: layout.dryfield, nongZone: layout.nongZone, territory: layout.territory,
-                houses: (layout.houses || []).map((h) => ({ cx: h.cx, cy: h.cy })) }, ...(_t593 ? { t593: 1 } : {}) });
+                houses: (layout.houses || []).map((h) => ({ cx: h.cx, cy: h.cy })) }, ...(_t593 ? { t593: 1 } : {}), ...(_t601.sig ? { t601s: _t601.sig } : {}) });
   }
   if (_SEEDCACHE) { try { fs.mkdirSync(path.dirname(_SEEDCACHE), { recursive: true }); fs.writeFileSync(_SEEDCACHE, JSON.stringify(seeds)); } catch (e) {} }
 }
