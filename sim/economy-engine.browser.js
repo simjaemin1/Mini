@@ -1985,6 +1985,13 @@ const ZONES_BASE = {
 
   // === c5: 한반도 컬럼 (7000w) ===
   hanbando: {
+    // ★[T604 추신3 2026-10-03 · 재민이 고른 값] **해안 평행이동** `coastShift` 90셀(2,880px · `chunk.js _coastShiftAt` · 클라 미러 같은 함수) —
+    //   띠 깊이에서 그만큼 빼 해안을 바다 쪽(남)으로 민다 · 뭍 이웃 변(서 = 중원북 · 동 = 닛폰)에서는 0 에서 시작해 이동만큼 들어가면 다(45° · 솔기 0) ·
+    //   이동이 바다 존 경계 앞 바다를 핸드오프 겹침 띠 폭(이 파일 `HANDOFF_COMMIT` · 8셀)보다 얇게 깎는 열은 8셀에서 멈춘다(`CoastShape.shiftDepth`) ·
+    //   끔(`T588_COAST=0`)은 이동을 안 먹는다(끔 = 지금 바이트).
+    //   바다 위에 남는 강·마을·광맥은 지우지 않는다(재민이 에디터에서 고친다 · 목록 `보고/T604_추신3_2026-10-03.md`). 닛폰·중원북은 재민 ○ 뒤.
+    //   ⚠econ 번들에 든다(`publicZoneMap`) — 값을 바꾸면 `node sim/build-econ-bundle.js && node sim/inline-engine.js`.
+    coastShift: 90,
     port: 3020, biome: 'forest', displayName: '새벌',
     groundColor: '#9a9670', tintColor: '#7a8a4a',
     worldOffsetX: 41000, worldOffsetY: 5000, zoneWidth: 7000, zoneHeight: 13000, // ← BASE(×10): 실제 70016×130016px ≈ 2188×4063셀 ≈ 8.9M셀
@@ -2247,6 +2254,13 @@ const ZONES_BASE = {
 };
 
 // ── Phase 5-3: world scale ────────────────────────────────────────
+// Phase 5-K2: 경계 핸드오프 히스테리시스. 경계를 살짝 스치는 정도(0~COMMIT)로는 안 넘김.
+// 이웃 zone으로 COMMIT px 이상 확실히 들어갔을 때만 핸드오프 → 경계에서 왔다갔다 해도
+// 핑퐁 안 남(시간 쿨다운 불필요). 도착도 경계에서 이만큼 안쪽이라 즉시 되넘김 불가.
+// ★[T604 추신3 2026-10-03] 정본을 `zone.js` 에서 여기로 옮겼다(값 그대로) — 해안 평행이동의 **경계 앞 바다 지킴**이 같은 수를 읽는다
+//   ("박힌 수 0 — HANDOFF_COMMIT 를 읽는다" · 서버 `chunk.js` · 클라는 `/zones` 의 `handoffCommit`). `zone.js` 는 여기서 받는다.
+const HANDOFF_COMMIT = 256;     // px — 경계 양쪽 이 거리의 "겹침 띠"는 자유 이동
+
 // 좌표·크기 일괄 배율. SCALE=1이면 옛 크기, SCALE=10이면 가로세로 10배 (면적 100배, PZ급).
 // 환경변수 WORLD_SCALE로 운영 중 변경 가능.
 const WORLD_SCALE = parseFloat(process.env.WORLD_SCALE || '10');
@@ -2436,6 +2450,7 @@ module.exports = {
   ZONES, WORLD, ZONE_ORDER, CENTRAL, WS_PROTO, HTTP_PROTO,
   publicZoneMap, worldPhase, isNight, darknessLevel,
   findZoneAt, worldDistance, worldDeltaX, WRAP_X,
+  HANDOFF_COMMIT,   // ★[T604 추신3] 핸드오프 겹침 띠(px) — zone.js · 해안 지킴(chunk.js · /zones handoffCommit)
 };
 
 ;return module.exports;})();
