@@ -36,6 +36,7 @@ const S = {
   sent: new Map(),       // k → 마지막 broadcast 등급(변경분 diff)
   epoch: 0, dayMs: 1,
   lastDay: -1,
+  coarseGen: 0,          // ★[T578 ④] 코스 등급 지도가 바뀐 횟수(일 1회 재구축에서 다르면 +1)
   stats: { stamped: 0, cellsTotal: 0, graded: 0 },
 };
 
@@ -64,7 +65,10 @@ function stampCell(cx, cy) { // +1 답압(랩 roadStamp verbatim) — 등급 반
   if (t > r.d) { r.v *= Math.pow(DK, t - r.d); r.d = t; }
   r.v = Math.min(VMAX, r.v + 1); S.dirty.add(k); S.stats.stamped++;
   const lv = r.v >= T2 ? 2 : (r.v >= T1 ? 1 : 0);
-  if (lv >= 1) S.coarse.set(((cy / COARSE) | 0) * S.gw + ((cx / COARSE) | 0), Math.max(lv, S.coarse.get(((cy / COARSE) | 0) * S.gw + ((cx / COARSE) | 0)) || 0));
+  if (lv >= 1) {
+    const ck = ((cy / COARSE) | 0) * S.gw + ((cx / COARSE) | 0), o = S.coarse.get(ck) || 0;
+    if (lv > o) { S.coarse.set(ck, lv); S.coarseGen++; }   // ★[T578 ④] 코스 칸 등급이 오른 순간도 '지도가 바뀌었다'(종전: 같은 값을 다시 적었다 — 값 무변)
+  }
   return lv;
 }
 // 이동 개체 편승 스탬프 — 셀 변경 시에만(개체 캐시 ent._rdK) + 보행 배속 캐시(ent._rdMul)
@@ -82,7 +86,8 @@ function courseCostMul(gx, gy) {
   return COST[S.coarse.get(gy * S.gw + gx) || 0];
 }
 function _rebuildCoarse(t) { // 일 1회 재구축(감쇠 강등 반영 — graded 소수라 저렴)
-  S.coarse.clear();
+  const prev = S.coarse;   // ★[T578 ④] 등급 지도가 바뀌었나 — 바뀌면 `coarseGen` 이 오른다(교역로를 다시 팔 때를 정한다)
+  S.coarse = new Map();
   let graded = 0;
   for (const [k, r] of S.cells) {
     const v = (t > r.d) ? r.v * Math.pow(DK, t - r.d) : r.v;   // 조회 전용 감쇠(쓰기는 접근 경로 소유)
@@ -94,7 +99,13 @@ function _rebuildCoarse(t) { // 일 1회 재구축(감쇠 강등 반영 — grad
     if ((S.coarse.get(ck) || 0) < lv) S.coarse.set(ck, lv);
   }
   S.stats.graded = graded;
+  let same = prev.size === S.coarse.size;
+  if (same) for (const [k, lv] of S.coarse) { if (prev.get(k) !== lv) { same = false; break; } }
+  if (!same) S.coarseGen++;
 }
+// ★[T578 ④] 교역로 A* 가 h 를 줄일 몫 — 스텝 비용 할인의 최저값(`COST` 의 가장 작은 값 · 수 사본 0).
+function courseCostMin() { return (S.ready && S.coarse.size) ? Math.min(...COST) : 1; }   // 등급 칸이 하나도 없으면 할인도 없다(h 그대로)
+function coarseGen() { return S.coarseGen; }
 function clientRoads() { // welcome 1회 — 등급 셀 flat [cx,cy,lv,...] (밟힌 전체가 아니라 등급만 — 소형)
   if (!S.ready) return null;
   const t = dayNow(), out = [];
@@ -163,4 +174,4 @@ function onGameTick(now) {
   } catch (e) { console.error(`[${S.zoneId}] 🛤️ 답압 길 데일리 실패:`, e.message); }
 }
 
-module.exports = { init, onGameTick, stampCell, stampEntityPx, speedMulOf, levelOf, courseCostMul, clientRoads, ENABLED, _S: S };
+module.exports = { init, onGameTick, stampCell, stampEntityPx, speedMulOf, levelOf, courseCostMul, courseCostMin, coarseGen, isReady: () => S.ready, clientRoads, ENABLED, _S: S };

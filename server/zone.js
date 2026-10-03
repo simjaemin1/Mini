@@ -3992,6 +3992,10 @@ function warTreeCellBlocked(cellX, cellY) {
   return _warTreeCells.has(cellX * 65536 + cellY);
 }
 
+// §16 답압 길 4파 — 존 셀 치수·게임일 시계로 독립 부팅(villages와 무관 — 스탬프는 이동 루프 편승).
+//   ★★[T578 ① 2026-10-03] **교역로를 파는 누구보다 먼저** 선다. 종전엔 `Bandits.init()`(도적 교역로 표본 = 유한 쌍 전부 `getRoute`)
+//     뒤에 있어서 1,219쌍이 전부 길이 아직 안 선 세계(`courseCostMul` = 1)에서 파이고 그대로 영속됐다 — 답압 할인(§16)이 한 번도 안 걸렸다(T573 §②).
+Roads.init({ zoneId: ZONE_ID, cellsW: Math.ceil(ZONE.zoneWidth / 32), cellsH: Math.ceil(ZONE.zoneHeight / 32), epoch: WORLD.worldEpoch || 0, dayMs: parseInt(process.env.VILLAGE_DAY_MS || '', 10) || WORLD.dayLengthMs, broadcast });
 SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, isWaterTileLocal, isPositionActive, isBlockedByWall, anyViewerNear, perfMark,
   chiefGreet: (p, vid, by) => { try { Onboarding.sendGreet(p, vid, by); } catch (err) {} },   // ★[T529] 촌장 몸이 곁에 와서 하는 인사 — 문장·메시지는 온보딩 정본
   waterTiles: WATER_TILES,   // ★[T480] 해안선 물타일 정본(위 1155줄) — 마을 세울 때 `seaDistPx` 가 이것을 읽는다(villages 쪽 사본 0)
@@ -4103,8 +4107,7 @@ function _t333Prebake() {
 }
 // §11 도적 1파 — SimVillages.init 직후(banditHost 준비 시점): 소굴 스캔/복원 + econ 훅(banditRouteRisk/onBanditLoot) 배선.
 Bandits.init();
-// §16 답압 길 4파 — 존 셀 치수·게임일 시계로 독립 부팅(villages와 무관 — 스탬프는 이동 루프 편승).
-Roads.init({ zoneId: ZONE_ID, cellsW: Math.ceil(ZONE.zoneWidth / 32), cellsH: Math.ceil(ZONE.zoneHeight / 32), epoch: WORLD.worldEpoch || 0, dayMs: parseInt(process.env.VILLAGE_DAY_MS || '', 10) || WORLD.dayLengthMs, broadcast });
+// §16 답압 길 4파 — ★[T578 ①] 부팅 자리는 `SimVillages.init` **앞**으로 옮겼다(아래 그 줄 바로 위).
 // ★[배치 20 B] Soil.init 은 여기가 아니라 **minedCells 적재 뒤**(3900+)에 있다 —
 //   채굴 거울 씨앗이 minedCells 를 읽는데 그 const 선언이 아래라 TDZ 다(2027 의 Specialty 와 같은 함정).
 // §4-4 마지막 조각: 동물 AI 블록(마을실험실 야생 5종 🦌🐇🐗🐺🐯) — server/wildlife.js.
