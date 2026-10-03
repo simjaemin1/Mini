@@ -44,6 +44,7 @@ const CELL = 32;
 // ── 참: 존 술어를 셀 중심에서 ───────────────────────────────────────────────
 const OCEAN_RECTS = Object.values(zc.ZONES).filter((z) => z.isOcean).map((z) => ({ x0: z.worldOffsetX, y0: z.worldOffsetY, x1: z.worldOffsetX + z.zoneWidth, y1: z.worldOffsetY + z.zoneHeight }));
 const _truthCache = new Map();
+const _Streams = require(path.join(__dirname, '..', 'server', 'streams.js'));
 function truth(zid) {
   if (_truthCache.has(zid)) return _truthCache.get(zid);
   const Z = zc.ZONES[zid];
@@ -62,6 +63,7 @@ function truth(zid) {
     ore: (x, y) => terrain.isOreClusterAt(zid, x, y),
     stone: (x, y) => terrain.getStoneMultiplier(zid, x, y),
     forest: (x, y) => terrain.getForestMultiplier(zid, x, y),
+    ...(_Streams.ON && _Streams.load(zid) ? { stream: (x, y) => _Streams.isStreamLocal(zid, x, y) } : {}),   // ★[T585] 존과 같은 술어(같은 래스터 파일)
   };
   const cache = new Map();   // 셀 → 종류(한 셀을 두 번 안 묻는다)
   const at = (tx, ty) => { const k = ty * W + tx; let v = cache.get(k); if (v === undefined) { v = BB.classAt(q, tx, ty); cache.set(k, v); } return v; };

@@ -1650,10 +1650,40 @@ function ditchPayload() {                 // welcome 페이로드(flat [cx,cy,�
 //   ⚠굽는 동안 부르는 `isWaterTileLocal` 은 걷기 관측 수(`_walk.waterQ`)를 센다 — 지도는 걸음이 아니니 **조각마다 되돌린다**.
 //   ⚠값이 바뀌는 것 0: 술어 넷은 한 글자도 안 바뀌고, 지형 메모(`_TERR_CACHE`)가 표본 셀에서 미리 차는 것뿐이다(값 투명 · T333 과 같은 결).
 const BigmapBake = require('./bigmap-bake');
+// ★★[T585] 개울 정본(`server/streams.js` — 존마다 구운 1비트 래스터 · 술어 하나 `isStreamCell`). 끔(`T585_STREAMS=0`) · 파일 없음 · 지문 어긋남이면 개울 0.
+const Streams = require('./streams');
+function isStreamLocal(x, y) { return Streams.isStreamLocal(ZONE_ID, x, y); }
+let _stOn = null;
+function _streamOn() { if (_stOn === null) _stOn = !!(Streams.ON && Streams.load(ZONE_ID)); return _stOn; }   // 래스터가 실제로 실렸나(파일·지문) — 한 번
+function _streamDrinkAt(x, y) { return _streamOn() && Streams.isStreamLocal(ZONE_ID, x, y); }   // ★[T585] 마시기 문 — 큰 물과 같은 문에 개울 칸을 더한다(낚시 문은 안 본다)
+// ★[T585] 걸음 관측 — `T585_WALK_STAT=1` 일 때만(실서버 판 자). 답압 길(`_rdMul`) 밖 사람 몸의 걸음당 거리를 개울 칸 위·밖으로 나눠 센다(행동 무변).
+const T585_WALK_STAT = process.env.T585_WALK_STAT === '1';
+const _t585W = { onN: 0, onPx: 0, offN: 0, offPx: 0 };
+function _t585WalkCount(p, dx, dy) {
+  if ((p._rdMul && p._rdMul !== 1) || p.simJob === 'bandit') return;
+  const d = Math.hypot(dx, dy); if (!(d > 0)) return;
+  if (p._stMul === Streams.STREAM_SLOW0) { _t585W.onN++; _t585W.onPx += d; } else { _t585W.offN++; _t585W.offPx += d; }
+}
+function streamPerf() {
+  const on = _t585W.onN ? _t585W.onPx / _t585W.onN : 0, off = _t585W.offN ? _t585W.offPx / _t585W.offN : 0;
+  let v = null; try { v = SimVillages.streamStat ? SimVillages.streamStat() : null; } catch (e) { v = null; }
+  return { on: _streamOn(), stats: Streams.stats(ZONE_ID), walk: T585_WALK_STAT ? { onN: _t585W.onN, offN: _t585W.offN, onPxPerStep: +on.toFixed(4), offPxPerStep: +off.toFixed(4), ratio: off ? +(on / off).toFixed(4) : null } : null, villages: v };
+}
+function _streamCost(x, y) { return Streams.isStreamLocal(ZONE_ID, x, y) ? 1 / Streams.STREAM_SLOW0 : 1; }   // ★[T585] 길찾기 칸 비용(개울 2)
+// ★★[T585] 걸음 배율 — 사람 몸(플레이어·마을 NPC)이 개울 칸 위면 ×`STREAM_SLOW0`(0.5). 몹은 이 문을 안 탄다 · 도적(`simJob 'bandit'`)은 그대로(T571 회부 6 · 카드 ③).
+//   칸이 바뀔 때만 다시 묻는다(답압 길 `_rdMul` 과 같은 문법) · 개울 끔이면 늘 1.
+function _streamWalkMul(p) {
+  if (!Streams.ON || (p.isNpc && p.simJob === 'bandit')) return 1;
+  const cx = Math.floor(p.x / 32), cy = Math.floor(p.y / 32);
+  if (p._stCx === cx && p._stCy === cy) return p._stMul;
+  p._stCx = cx; p._stCy = cy; p._stMul = Streams.isStreamCell(ZONE_ID, cx, cy) ? Streams.STREAM_SLOW0 : 1;
+  return p._stMul;
+}
 const _BM_Q = {
   rock: (x, y) => isRockTileLocal(x, y), water: (x, y) => isWaterTileLocal(x, y), bridge: (x, y) => isBridgeTileLocal(x, y),
   ore: (x, y) => _terrain.isOreClusterAt(ZONE_ID, x, y), stone: (x, y) => _terrain.getStoneMultiplier(ZONE_ID, x, y),
   forest: (x, y) => _terrain.getForestMultiplier(ZONE_ID, x, y),
+  ...(Streams.ON && Streams.load(ZONE_ID) ? { stream: (x, y) => isStreamLocal(x, y) } : {}),   // ★[T585] 개울도 지도에(끔이면 키가 없다 = 종전 그림)
 };
 const _bm = { bake: null, pal: null, png: null, ver: null, t0: 0, cpu: 0, ms: 0, encoding: false, again: false,
               tiles: new Map(), tileWin: 0, tileWinN: 0, tileMs: 0, tileN: 0, served: 0, tileServed: 0, repainted: 0 };
@@ -1700,6 +1730,15 @@ function _t565OnCells(flat) {
   if (b.done()) { _bm.png = null; _t565Encode(); }
 }
 const _BM_CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Expose-Headers': 'ETag, X-Bigmap-Ver, X-Bigmap-Step, X-Bigmap-Cells, X-Bigmap-Tile', 'Cache-Control': 'no-cache' };
+// ★★[T585] 개울 래스터를 클라에 — 머리 16바이트('STRM' · NX · NY · 셀 수) + 1비트/셀(행 우선 · 바이트 안 낮은 비트부터) · gzip 한 번 굽고 재사용.
+//   클라(`00-const.js isStreamAtAbs`)가 이 비트로 그림(연한 파랑)과 걸음 예측(×0.5)을 낸다 — 서버 `Streams.isStreamCell` 과 같은 비트다(사본 0).
+function _t585Http(req, res) {
+  const w = (!ZONE.isOcean && _streamOn()) ? Streams.wireOf(ZONE_ID) : null;
+  if (!w) { res.writeHead(404, _BM_CORS); res.end(); return; }
+  res.writeHead(200, Object.assign({}, _BM_CORS, { 'Content-Type': 'application/octet-stream', 'Content-Encoding': 'gzip', 'Cache-Control': 'public, max-age=3600', 'X-Streams-Ver': w.ver,
+    'Access-Control-Expose-Headers': 'X-Streams-Ver' }));
+  res.end(w.gz);
+}
 function _t565Http(req, res) {
   if (ZONE.isOcean) { res.writeHead(404, _BM_CORS); res.end(); return; }
   const qi = req.url.indexOf('?');
@@ -3613,6 +3652,7 @@ function computeNpcPath(npc, now) {
     maxCells: T399_CELL_CAP ? Math.ceil(Math.PI * _pfR * _pfR / 2) : (isVil ? 1500 : 200),   // 끔=종전(주민 1500 · 비주민 200) · 켬=반원(6,434 · 905)
     searchRadiusCells: _pfR,
     preferFn: isVil ? _roadPrefer : undefined,   // ★답압 수렴(랩 bfsPath prefer 동형): 등거리 동률이 길로 스냅
+    costFn: (_streamOn() && npc.simJob !== 'bandit') ? _streamCost : undefined,   // ★[T585] 개울 칸 비용 ×2(= 걸음 ×0.5 의 역 · 새 수 0) · 도적은 그대로
   });
   if (!wp || wp.length < 3 || !isVil) return wp;
   const fl = npc.floor || 0;   // ★스트링 풀링(랩 _smoothWalk 동형): canPass=직선 통행(동일 게이트) · keep=길 칸 앵커
@@ -4210,6 +4250,7 @@ function warTreeCellBlocked(cellX, cellY) {
 }
 
 SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, isWaterTileLocal, isPositionActive, isBlockedByWall, anyViewerNear, perfMark,
+  ...(Streams.ON && Streams.load(ZONE_ID) ? { isStreamLocal } : {}),   // ★★[T585] 개울 술어 — 생활층 지형 어댑터가 `ta.isStream` 으로 묻는다(집터·밭·곳간·큰집 마당 · 시딩 `generate`). 끔이면 키 자체가 없다(종전 그대로)
   chiefGreet: (p, vid, by) => { try { Onboarding.sendGreet(p, vid, by); } catch (err) {} },   // ★[T529] 촌장 몸이 곁에 와서 하는 인사 — 문장·메시지는 온보딩 정본
   waterTiles: WATER_TILES,   // ★[T480] 해안선 물타일 정본(위 1155줄) — 마을 세울 때 `seaDistPx` 가 이것을 읽는다(villages 쪽 사본 0)
   zoneAwake,   // ★[T410] 존이 이 틱에 몸을 걷게 하나 — 틱의 idle 문과 **같은 판정**(생활층 `_t368ZoneAwake` 가 이것만 본다 · 사본 0)
@@ -4745,6 +4786,7 @@ const server = http.createServer((req, res) => {
       war: (SimVillages.warPerf ? (() => { const w = SimVillages.warPerf(); if (_rst && SimVillages.warPerfReset) SimVillages.warPerfReset(); return w; })() : null),   // ★[T284 ④]
       // ★[T316] 어부 관측 — 손잡이가 꺼져 있으면 `null`(끈 팔 페이로드 무변).
       fish: (() => { try { return SimVillages.fishPerf ? SimVillages.fishPerf() : null; } catch (e) { return null; } })(),
+      streams: (() => { try { return streamPerf(); } catch (e) { return null; } })(),   // ★[T585] 개울 — 래스터 · 집터 거부 · 걸음 관측
       // ★[T324] 걷는 몸 관측 — 두 팔이 같은 창으로 보인다(손잡이 뒤가 아니다 · `?reset=1` 이 영점 조정).
       walk: walkPerf(_rst),
       wood: (() => { try { return SimVillages.woodPerf ? SimVillages.woodPerf() : null; } catch (e) { return null; } })(),   // ★[T325] 나무꾼 관측(끔이면 null)
@@ -4944,6 +4986,7 @@ const server = http.createServer((req, res) => {
   if (req.url && req.url.startsWith('/startinfo') && req.method === 'GET') return Onboarding.httpStartInfo(_devAsGate(req), res);
   // ★[T565] 큰 지도 — 존 술어로 구운 그림(공개 · 지형은 클라도 이미 가진 공개 정보 · CORS *)
   if (req.url && (req.url === '/bigmap.png' || req.url.startsWith('/bigmap.png?')) && req.method === 'GET') return _t565Http(req, res);
+  if (req.url === '/streams.bin' && req.method === 'GET') return _t585Http(req, res);   // ★[T585] 개울 래스터(1비트/셀 · gzip) — 클라 그림·걸음 예측이 같은 칸을 본다
   // ★[T540] 주민 걸음 관측창(안 문) — 침대 곁 아침 정체를 **서버 값으로** 가른다. 읽기만(`&astar=1` 이면 A* 를 한 번 더 묻는다 · 목표 불변).
   //   `?bed=1` = 침대 곁(≤12px) 주민만 · `?vid=<n>` = 한 마을 · 기본 = 마을 주민 전부(가벼운 칸만).
   if (req.url && req.url.startsWith('/walkdbg') && req.method === 'GET') {
@@ -6007,6 +6050,7 @@ async function _acceptConnection(ws, req, C) {
       charRunMin: parseFloat(process.env.CHAR_RUN_MIN || '') || 102,
       ...(process.env.T492_SEASON_AMB === 'on' ? { seasonAmb: true } : {}),   // [T492] 계절 환경음 손잡이 — 끔이면 칸이 없다(welcome 바이트 동일)
       ...(_t507On() ? { t507Verbs: true } : {}),
+      ...(_streamOn() ? { streams: Streams.wireOf(ZONE_ID) ? Streams.wireOf(ZONE_ID).ver : true, streamSlow: Streams.STREAM_SLOW0 } : {}),   // [T585] 개울 — 클라가 `/streams.bin` 을 받아 그리고 걸음 예측에 쓴다(배율도 서버 정본 수)
       ...(T509_WELL ? { wellAct: true } : {}),   // [T557] 우물 터 잡기 버튼 — 기본 켬 · `T509_WELL=0` 이면 칸이 없어 버튼이 숨는다   // [T507] 첫 30분의 문법(우클릭·이름표·회색) — 기본 켬 · `T507_VERBS=0` 이면 칸이 없다(옛 화면)
     },
     // ★★[이동 모델 2026-08-30] 손잡이 표를 **서버가 실어 보낸다** — 클라가 표를 들고 있으면
@@ -8880,6 +8924,7 @@ function _forageCtx(player) {
     isSea: (x, y) => isSeaTileLocal(x, y),
     hasVessel: (player.inventory && (player.inventory[Salt.VESSEL] || 0) >= 1),
     isWell: T509_WELL ? (x, y) => _wellCellAt(x, y) : undefined,   // ★[T509] 우물 칸 민물 담기(끔이면 없음 = 종전)
+    isStream: _streamOn() ? (x, y) => isStreamLocal(x, y) : undefined,   // ★[T585] 개울 칸 민물 담기(개울 없으면 없음 = 종전 · 갈대·자갈·낚시는 큰 물만)
   };
 }
 function tryForage(player) {
@@ -9125,8 +9170,9 @@ function _t507On() { return process.env.T507_VERBS !== '0'; }
 function _waterVerb(player, act) {
   let adj = null;
   for (const [dx, dy] of [[32, 0], [-32, 0], [0, 32], [0, -32]]) {
-    if (isWaterTileLocal(player.x + dx, player.y + dy) || _wellCellAt(player.x + dx, player.y + dy)) { adj = { x: player.x + dx, y: player.y + dy }; break; }   // ★[T557] 우물가도 물가(E 갈래와 같은 술어)
+    if (isWaterTileLocal(player.x + dx, player.y + dy) || _wellCellAt(player.x + dx, player.y + dy) || _streamDrinkAt(player.x + dx, player.y + dy)) { adj = { x: player.x + dx, y: player.y + dy }; break; }   // ★[T557] 우물가도 물가(E 갈래와 같은 술어) · ★[T585] 개울 칸도
   }
+  if (!adj && _streamDrinkAt(player.x, player.y)) adj = { x: player.x, y: player.y };   // ★[T585] 개울 칸 위에 서 있어도(건너는 물 — 발밑이 물이다)
   if (!adj) { send(player.ws, { type: 'notice', text: '물 바로 옆에 서야 한다', kind: 'gather' }); return; }
   const sea = isSeaTileLocal(adj.x, adj.y);
   if (act === 'drink') {
@@ -9164,6 +9210,9 @@ function tryLook(player, x, y) {
   } else if (_wellCellAt(px, py)) {   // ★[T557 · T519 회부 3] 우물 칸 = 민물(물 메뉴가 열린다 · 끔이면 거짓 = 종전)
     water = 'fresh';
     parts.push('우물 — 민물');
+  } else if (_streamDrinkAt(px, py)) {   // ★[T585] 개울 칸 = 민물(물 메뉴가 열린다 · 건너는 얕은 물 · 낚시 없음)
+    water = 'fresh';
+    parts.push('개울 — 민물 · 건널 수 있다(걸음 느려짐)');
   } else if (isRockTileLocal(px, py)) {
     parts.push('바위 — 지나갈 수 없다');
   } else {
@@ -9207,7 +9256,7 @@ function tryGather(player, resId, water) {
   }
   // Phase 5-9: 물 채취 — 강/호수 인접 시 thirst 회복 + 어업 (Phase 5-11)
   for (const [dx, dy] of [[32, 0], [-32, 0], [0, 32], [0, -32]]) {
-    if (isWaterTileLocal(player.x + dx, player.y + dy) || _wellCellAt(player.x + dx, player.y + dy)) {   // ★[T509] 우물 칸도 민물(끔이면 우물 칸 거짓 = 종전)
+    if (isWaterTileLocal(player.x + dx, player.y + dy) || _wellCellAt(player.x + dx, player.y + dy) || _streamDrinkAt(player.x + dx, player.y + dy)) {   // ★[T509] 우물 칸도 민물(끔이면 우물 칸 거짓 = 종전) · ★[T585] 개울 칸도(바다 아님 — 아래 짠물 갈래는 안 탄다)
       // ★★[빈손 시작 2026-08-28] **목이 안 마르면 갈대를 벤다.**
       //   종전엔 여기가 막다른 길이었다(물만 마시고 끝). 물가에 선 사람이 할 일이 하나 더 있어야 한다 —
       //   재민 확정의 "갈대 군락 E = 섬유"가 이 자리다(새 개체 없이, 이미 있는 물가에 판정만 얹는다).
@@ -11236,6 +11285,7 @@ function __testBind() {
     // ★[T62 공용 쉼터 2026-09-03] 쉼터 경로를 **정본 그대로** 내준다 —
     //   하네스가 자리·재료·이송 좌표를 다시 짜면 그게 사본이다.
     tryShelterStart, tryShelterAdvance, SHELTER_SPEC, SHELTER_STAGES, _shelterBackfill,
+    _streamWalkMul, _streamDrinkAt, _streamCost, isStreamLocal, _t585Http, _BM_Q, MOVE_PARAMS, tryGather,   // ★[T585] 개울 — 걸음 배율 · 마시기 문 · 길 비용 · 술어 · 클라 래스터 · 지도 술어 · 이동 모델
     tryWellStart, tryWellAdvance, WELL_SPEC, _wellCellAt, T509_WELL, _wellGroundAt, tryLook, _waterVerb,   // ★[T557] 지하수 가용도 · 살피기 · 물 동사   // ★[T509] 우물 — 하네스가 문 그대로 두드린다
     nearestVillageWake, resolveDowned, buildings, _liveBuildRow, isTerrainBlockedLocal,
     Claims, db, tryClaim, tryUnclaim, countMyClaims, listRespawnOptions,
@@ -12858,7 +12908,7 @@ function _wwPre(moveDt) {
   const X = _WW.X, Y = _WW.Y, VX = _WW.VX, VY = _WW.VY, RD = _WW.RD;
   for (let i = 0; i < n; i++) {
     const p = _wwList[i], m = p._rdMul;
-    X[i] = p.x; Y[i] = p.y; VX[i] = p.vx; VY[i] = p.vy; RD[i] = (m && m !== 1) ? m : 1;
+    X[i] = p.x; Y[i] = p.y; VX[i] = p.vx; VY[i] = p.vy; RD[i] = ((m && m !== 1) ? m : 1) * _streamWalkMul(p);   // ★[T585] 커널도 같은 배율(길 × 개울)
   }
   let k = 0;
   const RX = _WW.RX, RY = _WW.RY, RR = _WW.RR;
@@ -12879,6 +12929,7 @@ function _wwPre(moveDt) {
 }
 // 이동 문 **안** — 커널 몸의 뒷일(원래 차례 그대로)
 function _wwPost(p, i) {
+  if (T585_WALK_STAT) _t585WalkCount(p, _WW.X[i] - p.x, _WW.Y[i] - p.y);   // ★[T585] 관측(손잡이 켤 때만) — 개울 칸 위·밖 걸음당 거리
   p.x = _WW.X[i]; p.y = _WW.Y[i];
   const st = _WW.ST[i];
   if (st < 2) { p.vx = 0; p.vy = 0; if (st === 1) p.dirty = true; if (p.pid) _walk.ejPids.add(p.pid); }
@@ -13329,7 +13380,8 @@ setInterval(() => {
     let stepVx = p.vx, stepVy = p.vy;
     // §16 답압 길: NPC 보행 배속 ×1.10/1.15(셀 변경 시 캐시 p._rdMul — 스탬프가 갱신). ★플레이어 제외(의도적 차이):
     //   클라 이동 예측이 길 배속을 모름 → 서버만 빨리 가면 리컨실리에이션 러버밴딩. 랩은 전 개체 — 본체 클라 예측 제약.
-    if (p.isNpc && p._rdMul && p._rdMul !== 1) { stepVx *= p._rdMul; stepVy *= p._rdMul; }
+    //   ★[T585] 개울 칸 위 사람 NPC 도 ×0.5(같은 자리에 곱한다 · 도적은 그대로 — `_streamWalkMul`). 개울이 없으면 곱이 종전 `_rdMul` 그대로다.
+    if (p.isNpc) { const _m = (p._rdMul || 1) * _streamWalkMul(p); if (_m !== 1) { stepVx *= _m; stepVy *= _m; } }
     if (p.onStairId) {
       const stair = buildings.get(p.onStairId);
       if (stair) {
@@ -13511,7 +13563,7 @@ setInterval(() => {
         //   legacy 모드의 이 두 줄은 옛 식과 **글자 그대로 같다**(비트 동일 — `test-move` ④ 가 못 박는다).
         const _mv = MoveModel.stepMove(
           { vx: p.vx, vy: p.vy },
-          { wx: inp.vx, wy: inp.vy, sprint: p.sprint, bodyMult: bodyMult, aim: !!inp.aim },
+          { wx: inp.vx, wy: inp.vy, sprint: p.sprint, bodyMult: bodyMult, aim: !!inp.aim, groundMult: _streamWalkMul(p) },   // ★[T585] 개울 칸 ×0.5 — 클라 예측이 같은 칸에서 같은 수
           moveDt, MOVE_PARAMS);
         p.vx = _mv.vx; p.vy = _mv.vy;
         p.lastInputSeq = inp.seq;

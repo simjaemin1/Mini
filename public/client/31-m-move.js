@@ -183,7 +183,8 @@
                    : ((myBody && typeof myBody.moveMult === 'number') ? myBody.moveMult : 1);
     // ★★적분 — 공유 모듈. 서버 zone.js 가 **같은 함수를 같은 인자로** 부른다.
     const _mv = window.MoveModel.stepMove(
-      myVel, { wx: wx, wy: wy, sprint: canSprintClient, bodyMult: bodyMult, aim: !!aim },
+      myVel, { wx: wx, wy: wy, sprint: canSprintClient, bodyMult: bodyMult, aim: !!aim,
+               groundMult: (typeof streamWalkMultAt === 'function') ? streamWalkMultAt(myAbsPredicted.x, myAbsPredicted.y) : 1 },   // ★[T585] 개울 칸 ×0.5 — 서버와 같은 칸(내 몸이 선 칸)·같은 수
       dt, _moveParams);
     myVel.vx = _mv.vx; myVel.vy = _mv.vy;
     let stepVx = _mv.vx, stepVy = _mv.vy;

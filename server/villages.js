@@ -333,18 +333,27 @@ function makeTerrainAdapter(terrain, ZONE, deps) {
     const oreDist = _a0 > 0 ? +((_ad / _a0) / SZ).toFixed(1) : 0;   // px → 셀
     return { mix, gradeMult, oreP, oreDist };
   };
-  return { isBlocked, isWater, isRock, isOre, isBridgeCell, oreMinerals, oreMix, forestMult, fert, elev, nearestWaterDist, prepareFert, fertField: () => _FF };
+  // ★★[T585] 개울 — 술어 하나(`server/streams.js isStreamCell` · 존이 `deps.isStreamLocal` 로 넘긴다). 안 넘어오면(자 · 옛 배선) **없다**(키 자체가 없다 → 개울을 보는 자리 전부 무변).
+  //   개울은 통행(`isBlocked` 무변 · 건넌다)이고 물(`isWater` 무변 — 둑·논 존닝·물거리장·낚시는 큰 물만 본다)도 아니다.
+  const _ta = { isBlocked, isWater, isRock, isOre, isBridgeCell, oreMinerals, oreMix, forestMult, fert, elev, nearestWaterDist, prepareFert, fertField: () => _FF };
+  if (deps.isStreamLocal) _ta.isStream = (cx, cy) => { const x = px(cx), y = px(cy); if (x < 0 || y < 0 || x >= W || y >= H) return false; return !!deps.isStreamLocal(x, y); };
+  return _ta;
 }
 
 // 마을 중심이 물/바위 위면 근처 열린 셀로 스냅(에디터 좌표가 강폭 확장 등으로 물에 잠긴 경우 구제).
 function findOpenCenter(ta, ccx, ccy) {
-  const ok = (x, y) => !ta.isBlocked(x, y) && !ta.isBlocked(x + 1, y) && !ta.isBlocked(x - 1, y) && !ta.isBlocked(x, y + 1) && !ta.isBlocked(x, y - 1);
-  if (ok(ccx, ccy)) return { ccx, ccy };
-  for (let r = 1; r <= 24; r++) {
-    for (let a = 0; a < 16; a++) {
-      const cx = Math.round(ccx + Math.cos(a / 16 * 2 * Math.PI) * r);
-      const cy = Math.round(ccy + Math.sin(a / 16 * 2 * Math.PI) * r);
-      if (ok(cx, cy)) return { ccx: cx, ccy: cy };
+  // ★★[T585 · 랩 T571 `pickCenter`] 큰집 마당 원판(`YARD_CELLS` r10)에 개울 셀 X — 개울이 마당을 지나면 같은 고리 탐색으로 가장 가까운 나은 자리로 옮긴다.
+  //   지형에 개울이 없으면(`ta.isStream` 없음 — 자·옛 배선) 첫 판이 곧 종전 판이다. 24셀 안에 개울 없는 마당이 없으면 종전 판(개울 무시)으로 — 마을을 버리지 않는다.
+  const open = (x, y) => !ta.isBlocked(x, y) && !ta.isBlocked(x + 1, y) && !ta.isBlocked(x - 1, y) && !ta.isBlocked(x, y + 1) && !ta.isBlocked(x, y - 1);
+  const passes = ta.isStream ? [(x, y) => open(x, y) && !_lifeVL().discHitsStream(ta, x, y, _lifeVL().YARD_CELLS), open] : [open];
+  for (const ok of passes) {
+    if (ok(ccx, ccy)) return { ccx, ccy };
+    for (let r = 1; r <= 24; r++) {
+      for (let a = 0; a < 16; a++) {
+        const cx = Math.round(ccx + Math.cos(a / 16 * 2 * Math.PI) * r);
+        const cy = Math.round(ccy + Math.sin(a / 16 * 2 * Math.PI) * r);
+        if (ok(cx, cy)) return { ccx: cx, ccy: cy };
+      }
     }
   }
   return null; // 구제 불가 — 이 마을은 스킵
@@ -1092,6 +1101,7 @@ function pickGranarySpot(ta, layout) {
     for (let dx = -2; dx <= 2; dx++) for (let dy = -1; dy <= 1; dy++) {
       const x = cx + dx, y = cy + dy;
       if (ta.isBlocked(x, y) || !own.has(x + ',' + y) || farm.has(x + ',' + y)) return false;
+      if (ta.isStream && ta.isStream(x, y)) return false;   // ★[T585] 곳간 5×3 도 개울 셀 X(랩 `_granAdd` · T571 회부 7 — 집채와 같은 문법)
     }
     // ★[사용자 스샷 농촌17] 집채([-5..0]×[-5..-2])+1버퍼·텃밭([+1..+4]²)과 곳간 5×3 비겹침 —
     //   집 앵커는 r≥HALL_CLEAR(16.5)지만 집채가 회관 쪽으로 r≈10.1까지 뻗어 링 r11~15와 교차,
@@ -7116,6 +7126,7 @@ function _lifeBatEligible(vil, x, y) {   // 랩 _batEligible 동형(길 답압 �
   if (!vil._terrSet.has(x + ',' + y)) return false;
   if (_lifeVL().hallFarmBlock(vil.ccx, vil.ccy, x, y)) return false;
   if (!state.ta || state.ta.isBlocked(x, y)) return false;
+  if (state.ta.isStream && state.ta.isStream(x, y)) return false;   // ★[T585] 개울 셀엔 밭이 안 선다(옆은 된다 · 랩 `_batEligible`)
   let n = 0; const A2 = _lifeVL().ALLEY_R * _lifeVL().ALLEY_R;
   for (const h of vil._houseCells) { const dx = h.cx - x, dy = h.cy - y; if (dx * dx + dy * dy < A2) { n++; if (n >= 2) return false; } }   // 골목 배제(집 2채 r12.5)
   return true;
@@ -7154,6 +7165,8 @@ function _lifeLiveFarmTile(vil, cx, cy, type) {   // 개간 완료 실체화: �
 }
 // ★★[11차 T4] 집터 하드 필터 — 마을 자동 배치(_lifeAddHouseSite)와 플레이어 의뢰(lifeRequestPlayerSite)가 **같은 코드**를 쓴다.
 //   랩 10차 siteFilters 규약의 서버 이식본. 필터를 복제하면 두 경로가 갈라져 마을 기하가 깨진다(랩에서 이미 겪은 교훈).
+const _t585Rej = { lot: 0, guard: 0 };   // ★[T585] 개울 때문에 거부된 집터 자리 수(사유 '개울' · '개울 완충') — `/perf streams` 로 본다(관측만)
+function streamStat() { return { day: state.world ? state.world.day : null, rejLot: _t585Rej.lot, rejGuard: _t585Rej.guard, on: !!(state.ta && state.ta.isStream) }; }
 function _lifeSiteFilters(vil) {
   if (!vil._wf) {   // 물거리 EDT 캐시(마을당 1회 — 영토 bbox±32, 랩 s._wf 동형)
     let bx0 = 1e9, by0 = 1e9, bx1 = -1e9, by1 = -1e9;
@@ -7187,6 +7200,11 @@ function _lifeSiteFilters(vil) {
       if (farmAt(xx, yy, strict)) return '개간 농지 위';
     }
     for (const [dx, dy] of _lifeVL().LOT_GUARD) if (state.ta.isWater && state.ta.isWater(x + dx, y + dy)) return '물가 완충 침범(침수)';
+    // ★★[T585] 개울 — 부지 원판에 개울 셀이면 '개울' · 그 밖 완충 원(`LOT_GUARD` · T584 기본 `guard`)이면 '개울 완충'(랩 사유 두 갈래 그대로 · 술어 한 자리)
+    if (state.ta.isStream) {
+      if (_lifeVL().discHitsStream(state.ta, x, y, _lifeVL().LOT_CELLS)) { _t585Rej.lot++; return '개울'; }
+      if (_lifeVL().discHitsStream(state.ta, x, y, _lifeVL().streamLotCells())) { _t585Rej.guard++; return '개울 완충'; }
+    }
     for (const g2 of vil._granList) {
       if (g2.cx + 2 >= x - 6 && g2.cx - 2 <= x + 1 && g2.cy + 1 >= y - 6 && g2.cy - 1 <= y - 1) return '곳간과 겹침';
       if (g2.cx + 2 >= x + 1 && g2.cx - 2 <= x + 4 && g2.cy + 1 >= y + 1 && g2.cy - 1 <= y + 4) return '곳간과 겹침';
@@ -10329,7 +10347,7 @@ function __rumorProbe() {
     rumor: Object.assign({}, L.rumorStats) };
 }
 
-module.exports = { fishPerf, woodPerf, foragePerf, farmPerf,   // ★[T316] `/perf` 가 내주는 어부 관측(손잡이 끔이면 null) · ★[T325] 나무꾼 · ★[T347] 채집도 같은 꼴 · ★[T368] 농부
+module.exports = { streamStat, fishPerf, woodPerf, foragePerf, farmPerf,   // ★[T316] `/perf` 가 내주는 어부 관측(손잡이 끔이면 null) · ★[T325] 나무꾼 · ★[T347] 채집도 같은 꼴 · ★[T368] 농부
   _t400BuildDay, _t400PerLoad, _t400Crew, _t400From,   // ★[T400] 집 행위 1층 — 하네스가 같은 함수를 부른다(사본 0)
   _t347ActItems, _t347PerLoad,   // ★[T347] 걷는 목록·짐당 개체 — 하네스가 표·유도를 옮겨 적지 않게 내준다(사본 금지)
   _lifeLootForage,   // ★[T462] 개체 하나가 내는 걷는 단위 — 자·하네스가 "세는 것 = 따는 것"을 이 함수로 잰다(사본 0)
