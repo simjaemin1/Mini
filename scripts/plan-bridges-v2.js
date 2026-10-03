@@ -110,6 +110,24 @@ for (const v of cut) {
   tag++;
 }
 
+// ★[T580 2026-10-03 · T550 회부] **사람 없는 뭍 덩이도 섬으로 친다** — 손잡이 `T580_EMPTY_MIN=<셀>`(기본 끔 = 위 후보 섬만 · 출력 무변).
+//   캐논 "닛폰은 전부 뭍으로 이어진다(재민 09-23 · 배 없음)"는 사람이 사는 곳만의 말이 아니다. 후보 섬을 다 칠한 뒤
+//   아직 안 칠한(0) 다닐 수 있는 뭍을 플러드해 그 넓이가 손잡이 값 이상이면 섬 목록에 넣는다 — 도하 규격(축 4방 · 폭 2 · 상한 200)은 그대로.
+//   값은 자에서 온다: `t549-terrain-check` 가 이름(A·B·C…)을 붙이는 본토 밖 성분 문턱 1,000셀(T550 은 그 값으로 돌렸다).
+if (process.env.T580_EMPTY_MIN) {
+  const MINE = +process.env.T580_EMPTY_MIN; let small = 0;
+  for (let i = 0; i < N; i++) {
+    if (label[i]) continue;
+    const cx = i % NX, cy = (i / NX) | 0;
+    if (blocked(cx, cy)) continue;
+    if (tag > 250) { console.log('  ⚠빈 덩이 라벨이 모자란다 — 멈춘다'); break; }
+    const f = flood(cx, cy, tag, label);
+    if (f.n >= MINE) { islands.push({ tag, villages: ['(빈 덩이)'], n: f.n, cells: Array.from(f.cells), anchor: [cx, cy] }); console.log(`  빈 덩이 #${tag} ${f.n.toLocaleString()}셀 · 중심 근처 (${cx},${cy})`); tag++; }
+    else { for (const c of f.cells) label[c] = 255; small++; }   // 작은 것은 255 로만 남긴다(다시 안 칠한다 · 섬 태그와 안 겹친다)
+  }
+  console.log(`빈 덩이(≥${MINE}셀) ${islands.filter((x) => x.villages[0] === '(빈 덩이)').length} · 그보다 작은 덩이 ${small}(안 잇는다)`);
+}
+
 // 섬별 최단 도하 — 해안선 전수 × 4방
 function findSpan(isl) {
   let best = null;
