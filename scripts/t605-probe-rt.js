@@ -37,7 +37,8 @@ const T = {
     T.dump();
   },
   _a(name) { return T.acc[name] || (T.acc[name] = { n: 0, ms: 0, max: 0, over: 0 }); },
-  add(name, ms) { const a = T._a(name); a.n++; a.ms += ms; if (ms > a.max) a.max = ms; if (ms > SLICE) a.over++; },
+  winMax: Object.create(null),
+  add(name, ms) { const a = T._a(name); a.n++; a.ms += ms; if (ms > a.max) a.max = ms; if (ms > SLICE) a.over++; if (!(T.winMax[name] >= ms)) T.winMax[name] = ms; },
   wrap(name, fn) {
     if (typeof fn !== 'function') return fn;
     const w = function () { const s = now(); try { return fn.apply(this, arguments); } finally { T.add(name, now() - s); } };
@@ -47,7 +48,8 @@ const T = {
   snapAcc() { const o = {}; for (const k in T.acc) { const a = T.acc[k]; o[k] = { n: a.n, ms: +a.ms.toFixed(2), max: +a.max.toFixed(2), over: a.over }; } return o; },
   roll() {
     const cur = T.snapAcc(), d = {};
-    for (const k in cur) { const p = T.winAcc[k] || { n: 0, ms: 0, over: 0 }; d[k] = { n: cur[k].n - p.n, ms: +(cur[k].ms - p.ms).toFixed(2), over: cur[k].over - p.over }; }
+    for (const k in cur) { const p = T.winAcc[k] || { n: 0, ms: 0, over: 0 }; d[k] = { n: cur[k].n - p.n, ms: +(cur[k].ms - p.ms).toFixed(2), over: cur[k].over - p.over, max: +(T.winMax[k] || 0).toFixed(2) }; }
+    T.winMax = Object.create(null);
     T.winAcc = cur;
     let extra = null; try { extra = T.sample ? T.sample() : null; } catch (e) {}
     T.wins.push({ tS: Math.round((Date.now() - T.t0) / 1000), tick: hSum(T.win), acc: d, extra, heapMB: +(process.memoryUsage().heapUsed / 1048576).toFixed(1), rssMB: +(process.memoryUsage().rss / 1048576).toFixed(1) });
@@ -61,6 +63,29 @@ const T = {
 };
 { const P = 200000, a = now(); let x = 0; for (let i = 0; i < P; i++) x += now(); T.clockNs = +((now() - a) * 1e6 / P).toFixed(1); if (x < 0) console.log(x); }
 globalThis.__T605 = T;
+// ⓔ `T605_TIMERS=1` — 루프를 잡는 것이 틱 밖에 있나: 존이 거는 타이머(setInterval·setTimeout·setImmediate)의 콜백을
+//   **건 자리**(server/ 아래 첫 줄 · 파일:줄)마다 잰다 — `timer:<파일:줄>` 몫. 틱 자체(setInterval 하나)도 여기 한 줄로 나온다.
+//   건 자리를 찾느라 거는 순간마다 스택을 한 번 읽는다(값을 바꾸지 않는다 · 콜백은 그대로 같은 인자로 부른다).
+if (process.env.T605_TIMERS === '1') {
+  const where = () => { const st = String(new Error().stack).split('\n'); for (const l of st) { const m = l.match(/[\/\\]server[\/\\]([\w.-]+\.js):(\d+)/); if (m) return m[1] + ':' + m[2]; } return null; };
+  for (const nm of ['setInterval', 'setTimeout', 'setImmediate']) {
+    const orig = global[nm];
+    global[nm] = function (fn, ...rest) {
+      if (typeof fn !== 'function') return orig.call(this, fn, ...rest);
+      const w = where();
+      if (!w) return orig.call(this, fn, ...rest);
+      const key = 'timer:' + w;
+      const wrapped = function () { const s = now(); try { return fn.apply(this, arguments); } finally { T.add(key, now() - s); } };
+      return orig.call(this, wrapped, ...rest);
+    };
+  }
+}
 T.mark('preload');
+// ⓕ GC 정지 — 틱·타이머 밖에서 루프를 잡는 것의 하나(`gc:<종류>` 몫 · perf_hooks 관측 · 값 무변)
+try {
+  const { PerformanceObserver, constants: C } = require('perf_hooks');
+  const KN = { [C.NODE_PERFORMANCE_GC_MAJOR]: 'major', [C.NODE_PERFORMANCE_GC_MINOR]: 'minor', [C.NODE_PERFORMANCE_GC_INCREMENTAL]: 'incr', [C.NODE_PERFORMANCE_GC_WEAKCB]: 'weak' };
+  new PerformanceObserver((l) => { for (const e of l.getEntries()) T.add('gc:' + (KN[(e.detail && e.detail.kind) || e.kind] || 'other'), e.duration); }).observe({ entryTypes: ['gc'] });
+} catch (e) {}
 if (WIN_S > 0) setInterval(() => T.roll(), WIN_S * 1000).unref();
 process.on('exit', () => T.dump());
