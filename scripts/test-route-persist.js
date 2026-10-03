@@ -17,7 +17,7 @@
 //   ② ★★재기동하면 **DB 에서 복원**된다 — 메모리 캐시가 부팅 직후부터 차 있다
 //   ③ ★★감사 — 캐시 경로가 재계산과 **비트 동일**
 //   ④ 무효화가 **메모리와 DB 를 둘 다** 비운다(한쪽만 지우면 다음 부팅에 썩은 길이 살아난다)
-//   ⑤ 세계 서명이 바뀌면 통째로 버린다(지형·존 설정 교체 — 파일 mtime 을 건드려 시늉한다)
+//   ⑤ 세계 서명 = 교역로 입력 내용 해시(T619) — mtime·다른 칸은 남고 · 서명이 다르면 통째로 버린다
 //   ⑥ 선계산이 사람 없을 때 완주하고, 그 뒤 경계에서 거의 안 판다
 //   ⑦ ★★[T42-b] 선계산이 **루프를 놓아 준다** — 유예(사람이 나간 뒤)와 간격(걸음 사이)이 실제로 지켜진다
 //
@@ -200,26 +200,56 @@ async function runDays(n) {
   ok(after.db === 0, '④ ★★무효화가 **DB 도** 비운다(한쪽만 지우면 다음 부팅에 썩은 길이 살아난다)', `${before.db} → ${after.db}`);
   await down();
 
-  // ── ⑤ 세계 서명 — 지형 파일이 바뀌면 통째로 버린다 ──────────────────────
+  // ── ⑤ 세계 서명 — ★[T619 ②] 교역로 입력의 **내용 해시** · 다른 칸·mtime 은 안 버린다 · 입력이 다르면 통째로 버린다 ──
+  //   종전(T42): 서명 = 두 파일 크기·mtime → mtime 만 밀어도 "한 쌍도 안 물려받는다"가 판정이었다. 이제 그건 **물려받아야** 맞다.
+  //   ⓐ 순수 함수 — 다른 존 지형 절 · 후보 마을 이름 · 다른 존 설정을 바꿔도 같은 서명 / 다리 한 칸 · 호수 한 점 · 해안 물 한 칸이면 다른 서명
+  {
+    const V = require(path.join(ROOT, 'server', 'villages.js'));
+    const terr = JSON.parse(fs.readFileSync(path.join(ROOT, 'server', 'hanbando-terrain.json'), 'utf8'));
+    const ZC = require(path.join(ROOT, 'server', 'zone-config')).ZONES;
+    const zc = JSON.parse(JSON.stringify(ZC.hanbando));
+    const water = (tiles) => ({ size: tiles.length, forEachTile: (fn) => { for (const [x, y] of tiles) fn(x, y); } });
+    const W0 = water([[1, 2], [3, 4]]), base = V.routeWorldSig('hanbando', terr, zc, W0);
+    const t1 = JSON.parse(JSON.stringify(terr));
+    for (const z of Object.keys(t1)) if (z !== 'hanbando') t1[z] = { changed: true };   // 다른 존 지형 절
+    if (Array.isArray(t1.hanbando.villages) && t1.hanbando.villages[0]) t1.hanbando.villages[0].name = '바뀐이름';   // 후보 마을 이름
+    const z1 = Object.assign({}, zc, { name: '바뀐 존 이름' });   // 이 존의 교역로 밖 칸
+    ok(V.routeWorldSig('hanbando', t1, z1, W0) === base, '⑤ ★[T619] 다른 존 지형 · 후보 이름 · 존 이름을 바꿔도 **서명이 같다**(교역로가 남는다)', base);
+    const z2 = Object.assign({}, zc, { bridges: (zc.bridges || []).concat([1, 1]) });
+    const t2 = JSON.parse(JSON.stringify(terr)); const lk = t2.hanbando.lakes && t2.hanbando.lakes[0];
+    if (lk) t2.hanbando.lakes[0] = JSON.parse(JSON.stringify(lk).replace(/(\d+)(\.\d+)?/, (m) => String(+m + 1)));
+    const diff = [V.routeWorldSig('hanbando', terr, z2, W0) !== base, !lk || V.routeWorldSig('hanbando', t2, zc, W0) !== base,
+      V.routeWorldSig('hanbando', terr, zc, water([[1, 2], [3, 5]])) !== base];
+    ok(diff.every(Boolean), '⑤ ★[T619] 다리 한 칸 · 호수 한 점 · 해안 물 한 칸을 바꾸면 **서명이 다르다**', diff.map((d) => (d ? '다름' : '같음')).join(' · '));
+  }
   if (!await up()) { console.log('  ✗ 3판 기동 실패'); process.exit(1); }
   await runDays(2);
   const R3 = await jget(`http://localhost:${ZPORT}/routedbg`);
   ok(R3.db > 0, '⑤ [상황] 서명 검사 전에 캐시가 다시 쌓였다', `DB ${R3.db}`);
   await down();
-  const TF = path.join(ROOT, 'server', 'hanbando-terrain.json');
-  const st0 = fs.statSync(TF);
-  fs.utimesSync(TF, st0.atime, new Date(st0.mtimeMs + 60000));   // ★내용은 그대로 — **mtime 만** 민다(지형 교체 시늉)
+  const TF = path.join(ROOT, 'server', 'hanbando-terrain.json'), CF = path.join(ROOT, 'server', 'zone-config.js');
+  const st0 = fs.statSync(TF), sc0 = fs.statSync(CF);
+  fs.utimesSync(TF, st0.atime, new Date(st0.mtimeMs + 60000));   // ★내용은 그대로 — **mtime 만** 민다(종전 서명이면 통째로 버리던 일)
+  fs.utimesSync(CF, sc0.atime, new Date(sc0.mtimeMs + 60000));
   try {
     if (!await up()) { console.log('  ✗ 4판 기동 실패'); process.exit(1); }
     const R4 = await jget(`http://localhost:${ZPORT}/routedbg`);
-    console.log(`  4판(서명 바뀜)  물려받은 ${R4.primed} · 캐시 메모리 ${R4.mem} · 서명 ${String(R4.sig).slice(0, 60)}…`);
-    // ★메모리 크기로는 못 잰다 — 부팅 뒤 몇 초 사이에 교역이 새 길을 판다. **물려받은 수**가 답이다.
-    ok(R4.primed === 0, '⑤ ★★세계 서명이 다르면 옛 경로를 **한 쌍도 안 물려받는다**', `물려받은 ${R4.primed}쌍`);
+    console.log(`  4판(mtime 만 바뀜)  물려받은 ${R4.primed} · 마을 칸 달라 버린 ${R4.stale} · 서명 ${String(R4.sig).slice(0, 60)}…`);
+    ok(R4.primed === R3.db && R4.sig === R3.sig, '⑤ ★★[T619] 파일 mtime 만 바뀌면 옛 경로를 **다 물려받는다**(내용 해시)', `물려받은 ${R4.primed}/${R3.db}쌍`);
     await down();
   } finally {
     fs.utimesSync(TF, st0.atime, st0.mtime);   // ★원상 복구 — 레포 파일을 바꾼 채로 두지 않는다
+    fs.utimesSync(CF, sc0.atime, sc0.mtime);
   }
-  ok(Math.round(fs.statSync(TF).mtimeMs) === Math.round(st0.mtimeMs), '⑤ [정리] 지형 파일 mtime 을 되돌렸다');
+  ok(Math.round(fs.statSync(TF).mtimeMs) === Math.round(st0.mtimeMs) && Math.round(fs.statSync(CF).mtimeMs) === Math.round(sc0.mtimeMs), '⑤ [정리] 두 파일 mtime 을 되돌렸다');
+  //   ⓒ 서명이 다르면(길 규칙 판이 다른 판 — `T619_LOCAL_H` 켬은 서명에 `h:T619` 를 붙인다) 한 쌍도 안 물려받는다(종전 ⑤ 의 뜻 그대로)
+  {
+    if (!await up(false, { T619_LOCAL_H: '1' })) { console.log('  ✗ 4b판 기동 실패'); process.exit(1); }
+    const R5 = await jget(`http://localhost:${ZPORT}/routedbg`);
+    console.log(`  4b판(서명 바뀜)  물려받은 ${R5.primed} · 서명 ${String(R5.sig).slice(0, 60)}…`);
+    ok(R5.primed === 0 && R5.sig !== R3.sig, '⑤ ★★세계 서명이 다르면 옛 경로를 **한 쌍도 안 물려받는다**', `물려받은 ${R5.primed}쌍`);
+    await down();
+  }
 
   // ── ⑥⑦ 선계산 — 사람이 없을 때 스스로 데우되, **루프를 놓아 가며** 데운다 ──
   // ★간격은 줄여서(60ms) 완주를 재고, **유예는 오히려 넉넉히**(90초) 잡는다.
