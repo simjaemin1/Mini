@@ -41,10 +41,20 @@ function poolOf(water, day) {
   return SPECIES.filter((s) => s.waters.indexOf(w) >= 0 && s.seasons.indexOf(se) >= 0);
 }
 // 결정론 추첨 — **주사위 금지**(공통 §1). 셀·날·순번 해시로 고른다(같은 입력 = 같은 종).
-function pick(water, day, h) {
+// ★[T574 2026-10-03] `choose(ids, u)` 를 주면(존 특산 프로필 + 경계 혼용 — `region-profiles.chooseSpecies`) 같은 해시 x 를
+//   씨 해시 정본(`seed-rand` 의 `step` 두 번 → `out`)으로 섞은 u 로 넘겨 **가중**으로 고른다(x 는 아랫자리만 움직일 수 있어
+//   x ÷ 2³² 를 바로 쓰면 u 가 한쪽에 몰린다 — 하네스가 실제로 그걸 잡았다). 그쪽이 null(고르게와 같다)이면 옛 줄 그대로 —
+//   안 주면 이 함수는 한 글자도 안 바뀐다.
+let _SR = null;
+function pick(water, day, h, choose) {
   const pool = poolOf(water, day);
   if (!pool.length) return null;
   const x = ((h | 0) ^ Math.imul(day | 0, 0x9e3779b1)) >>> 0;
+  if (choose) {
+    const SR = _SR || (_SR = require('./seed-rand'));
+    const id = choose(pool.map((s) => s.id), SR.out(SR.step(SR.step(x))));
+    const s = id ? BY_ID.get(id) : null; if (s) return s;
+  }
   return pool[x % pool.length];
 }
 function kgOf(id) { const s = BY_ID.get(id); return s ? s.kg : 0; }

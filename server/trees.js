@@ -91,10 +91,19 @@ function _zoneSeed(zoneId) {
   for (let i = 0; i < s.length; i++) h = (Math.imul(h, 31) + s.charCodeAt(i)) | 0;
   return h >>> 0;
 }
+// ★★[T574 2026-10-03] **존 특산 프로필 + 경계 혼용 띠** — 정본 `server/region-profiles.js`(사본 0).
+//   켬(`T574_REGION` = 띠 반폭 D 셀)이고 그 자리의 섞인 가중이 **고르게가 아닐 때만** 가중으로 고른다
+//   (u = 같은 자리 해시 ÷ 2³² — 자리의 함수 · 주사위 0 · 멱등 그대로). 고르게면(한반도 안쪽 — 두 존 다 '보통')
+//   옛 줄(`h % 8`)이 그대로 낸다 ⇒ 끔은 물론 켬에서도 한반도 안쪽 숲은 비트 동일이다.
+let _RP = undefined;
+function _rp() { if (_RP === undefined) { try { _RP = require('./region-profiles'); } catch (e) { _RP = null; } } return _RP; }
 /** 그 자리에 선 나무의 **종**. 셀 좌표(32px 격자)와 존 씨의 함수 — 주사위 0 · 멱등. */
 function speciesAt(zoneId, cx, cy) {
   if (!ON()) return IDS[0];                       // 되돌림: 종 축이 없던 세계 = 한 종
-  return IDS[_h32(cx | 0, cy | 0, _zoneSeed(zoneId)) % IDS.length];
+  const h = _h32(cx | 0, cy | 0, _zoneSeed(zoneId));
+  const RP = _rp();
+  if (RP && RP.on()) { const s = RP.chooseSpecies('tree', zoneId, (cx | 0) * 32 + 16, (cy | 0) * 32 + 16, h / 4294967296, null, IDS); if (s) return s; }
+  return IDS[h % IDS.length];
 }
 
 // ── ★재생 시계 — T122 의 단계 판정을 **종별 햇수**와 결합한다 ────────────────

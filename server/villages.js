@@ -5432,7 +5432,10 @@ function _t340Try(vil, npc, now, day, h, ws) {
     try { sp = F.spotAt(_terrainMod(), state.zoneId, cx * SZ + SZ / 2, cy * SZ + SZ / 2); } catch (e) { sp = null; }
     try { stock01 = F.stockRatioAt(cx, cy, now); } catch (e) { stock01 = 1; }
     if (!sp) return 'wait';
-    const _sp = _fresh().pick(_t312Water(vil), day, h ^ cx ^ Math.imul(cy, 0x85ebca6b));
+    // ★[T574] 존 특산 프로필 + 경계 혼용(정본 `region-profiles`) — 켬일 때만 고르는 함수를 넘긴다(끄면 옛 줄 그대로).
+    const _RP = _regionMod();
+    const _ch = (_RP && _RP.on()) ? (ids, u) => _RP.chooseSpecies('fishFresh', state.zoneId, cx * SZ + SZ / 2, cy * SZ + SZ / 2, u, null, ids) : undefined;
+    const _sp = _fresh().pick(_t312Water(vil), day, h ^ cx ^ Math.imul(cy, 0x85ebca6b), _ch);
     if (!_sp) return 'none';   // 그 물·그 철엔 사는 종이 없다(종전 `!_sp` 자리 — 라벨 '드리움')
     const n = (npc._t340N = (npc._t340N || 0) + 1);
     const pl = F.plan(sp, stock01, now, _t340Rng(h ^ Math.imul(n, 0x9e3779b9) ^ Math.imul(day, 0x85ebca6b)));
@@ -10044,6 +10047,9 @@ function __e2eDayFreeze(on) {
 // ★결손 → econ 환산은 `sustain.js` 정본 계수 그대로다(`Fishing.stockToEcon`). 사본 금지.
 //   모든 셀이 만땅이면 결손 0 → 값이 **씨딩 때와 정확히 같다** = 헤드리스 기준선 불변.
 function _fishingMod() { try { return require('./fishing'); } catch (e) { return null; } }
+// ★[T574] 존 특산 프로필 + 경계 혼용 띠 정본 — 민물 몸의 종 뽑기가 부른다(손잡이 `T574_REGION` · 끄면 안 부른다)
+let _rgMod = undefined;
+function _regionMod() { if (_rgMod === undefined) { try { _rgMod = require('./region-profiles'); } catch (e) { _rgMod = null; } } return _rgMod; }
 
 // 이 물 좌표(px)를 자기 어장으로 치는 마을 — 노동권(sustain.LABOR_R 셀) 안에서 가장 가까운 곳.
 function waterVillageAt(px, py) {

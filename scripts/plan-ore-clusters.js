@@ -140,6 +140,12 @@ const boxAvg = (A, x0, y0, x1, y1) => {
 //   존 조건으로 읽은 자리다. 한반도는 종전에도 켜져 있었으므로 **한 칸도 안 바뀐다**.
 let HB_MIN = null;
 try { HB_MIN = require(path.join(__dirname, '..', 'server', 'hanbando-minerals')); } catch (e) { }
+// ★★[T574 2026-10-03] 광종은 **존 특산 프로필 + 경계 넘는 꼬리**(`server/region-profiles.js` 정본 · 사본 0)에서 굽는다 —
+//   손잡이 `T574_REGION`(꼬리 길이 L 셀)을 켜고 프로필이 있는 존(한반도·닛폰)일 때만. 끄면 아래 두 자리는 종전 글자 그대로다.
+//   u 는 종전 그 씨(731)의 좌표 해시 그대로 — 바뀌는 것은 가중뿐이다(T550 추신2 "계획기는 region-profiles 의 혼용 몫으로").
+const RP = require(path.join(__dirname, '..', 'server', 'region-profiles'));
+const RP_ON = RP.on() && RP.has(ZID);
+if (RP_ON) console.log('  ★T574 광종 = 존 프로필 + 꼬리(L ' + RP.L() + '셀 · s₀ ' + RP.S0() + (RP.newOn() ? ' · 새 품목 켬' : '') + ') · 재민 08-01 굽기 규칙 셋');
 const hash2 = (ix, iy, s) => { let h = (ix | 0) * 374761393 + (iy | 0) * 668265263 + (s | 0) * 1274126177; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967295; };
 
 // 기존 클러스터를 placed 로 선점 — 새 것이 위를 덮지 않게
@@ -329,7 +335,11 @@ for (const [cnt, R0, pk0] of tiers) {
         // ★[재민 확정] 광종은 **지역 무관 전역 풀**(hanbando-minerals)에서 뽑는다.
     //   (한때 실제 산지 지도를 입혔다가 기각 — 지형이 가상인데 광물만 실지리를 따르면 어긋난다.)
     //   씨앗 731 은 품위 지터(500)와 **분리**한다 — 광종과 품위가 상관되면 안 된다.
-    const mineral = FORCE_MINERAL || (HB_MIN
+    // ★[T574] 켬이면 존 프로필 혼용으로 **굽는다**(`bakeOre` — 재민 08-01 규칙 셋: 주요엔 철 없음 · 은 단독 없음 · 다광종)
+    const _rb = (RP_ON && !FORCE_MINERAL) ? RP.bakeOre(ZID, center[0], center[1], hash2(best.cx, best.cy, 731), !(R0 <= 12 || ROCK_FILL)) : null;
+    const mineral = FORCE_MINERAL || (_rb
+      ? _rb.mineral
+      : HB_MIN
       ? HB_MIN.mineralAt(0, 0, hash2(best.cx, best.cy, 731))
       : Specialty.pickMineral(Z.biome, Math.round(center[0] * 0.131 + center[1] * 0.237)));
     if (FORCE_MINERAL && APART > 0) SAME_MIN.push([best.cx, best.cy]);   // ★새로 놓은 것도 즉시 밀어내기 대상
@@ -340,6 +350,7 @@ for (const [cnt, R0, pk0] of tiers) {
     //   (terrain.isMajorOreAt · villages isOre/oreMinerals · zone _findNearestTerrainCluster/villageProduction · chunk 마을타입)
     const o = { name: '광맥' + (nextIdx++), center, radius: Reff * CELL, mineral, pk };
     if (R0 <= 12 || ROCK_FILL) o.minor = 1;   // ★산속 채움도 플레이어 전용(NPC 는 산을 못 부순다)
+    if (_rb && _rb.minerals) o.minerals = _rb.minerals;   // ★[T574] 다광종(켬일 때만 — 끄면 이 칸이 안 선다)
     { const _p = { cx: best.cx, cy: best.cy, r: Reff }; placed.push(_p); pbAdd(_p); }
     added.push(Object.assign({}, o, { _lf: +best.lf.toFixed(3), _rf: +best.rf.toFixed(3) }));
     made++;
@@ -392,6 +403,10 @@ let _pkFilled = 0, _pkKept = 0;
 for (const o of d.ores) {
   // ★기존 광맥은 JSON에 mineral 이 없다 — zone.js 가 **부팅 때** pickMineral(biome, 위치해시)로 정한다(3486행).
   //   여기서 같은 식을 재현해 JSON에 못 박는다(값은 동일 = 무변경). 안 그러면 전부 'iron' 폴백으로 잘못 매긴다.
+  if (!o.mineral && RP_ON) {   // ★[T574] 켬이면 존 프로필 혼용으로 굽는다(같은 씨 731 · 주요/자잘은 그 광맥의 minor 칸)
+    const _rb = RP.bakeOre(ZID, o.center[0], o.center[1], hash2(Math.floor(o.center[0] / CELL), Math.floor(o.center[1] / CELL), 731), !o.minor);
+    if (_rb) { o.mineral = _rb.mineral; if (_rb.minerals) o.minerals = _rb.minerals; }
+  }
   if (!o.mineral) o.mineral = HB_MIN
     ? HB_MIN.mineralAt(0, 0, hash2(Math.floor(o.center[0] / CELL), Math.floor(o.center[1] / CELL), 731))
     : Specialty.pickMineral(Z.biome, Math.round(o.center[0] * 0.131 + o.center[1] * 0.237));
@@ -406,7 +421,7 @@ for (const o of d.ores) {
 console.log('기존 p_peak: 유지 ' + _pkKept + '개 · 새로 채움 ' + _pkFilled + '개');
 
 if (!APPLY) { console.log('\n★계산만 — 쓰려면 --apply'); process.exit(0); }
-for (const o of added) { const e = { name: o.name, center: o.center, radius: o.radius, mineral: o.mineral, pk: o.pk }; if (o.minor) e.minor = 1; d.ores.push(e); }
+for (const o of added) { const e = { name: o.name, center: o.center, radius: o.radius, mineral: o.mineral, pk: o.pk }; if (o.minor) e.minor = 1; if (o.minerals) e.minerals = o.minerals; d.ores.push(e); }   // ★[T574] minerals 는 켬 굽기만 단다
 // ★[T348] **정본 파일의 꼴을 그대로 돌려준다.** 종전엔 무조건 `indent 1` 로 다시 썼는데,
 //   레포의 정본은 **한 줄(minify)** 이라 광맥 몇 개를 더한 판이 `127,281줄 삽입 / 1줄 삭제` 로 나왔다.
 //   diff 가 그 꼴이면 무엇이 바뀌었는지 아무도 못 본다 — 검토를 통과하는 것과 읽히는 것은 다르다.
