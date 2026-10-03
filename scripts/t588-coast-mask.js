@@ -7,7 +7,8 @@
 // 내는 것:
 //   <out.u8>       NY×NX 바이트(1 = 띠 바다 · 0 = 뭍) — T549 `t549-coast-shape.py` 가 먹는 꼴 그대로
 //   <out.json>     존 기하(셀) · 바다 변(어느 바다 존의 어느 변이 이 존 어디에 닿나) · 띠 칸 수 · 걸린 ms
-// 쓰는 법: [T588_COAST=a|b] node scripts/t588-coast-mask.js <zoneId> <out.u8> [out.json] [--table <안.json>] [--with-ref]
+// 쓰는 법: [T588_COAST=a|b] node scripts/t588-coast-mask.js <zoneId> <out.u8> [out.json] [--table <안.json>] [--with-ref] [--shift <셀>]
+//   --shift: ★[T604 추신2] 그 존의 해안 평행이동 `coastShift`(셀)를 **이 자 안에서만** 건다(zone-config 정본 값 대신 · 제품 무변 — 값은 재민이 고른다)
 //   --table: **자 안에서만** 구간 성격을 갈아 끼운다({ scale, chars, sections? } — `public/coast-shape.js` 의 SCALE·CHAR·SECTIONS 꼴) ·
 //            정본 표는 그 파일 하나다(이 손잡이는 T549 `--a3` 처럼 안을 재는 자리 · 제품 무변 · T588_COAST 켬 판에서만 뜻이 있다).
 // =============================================================================
@@ -19,6 +20,8 @@ const R = (p) => require(path.join(__dirname, '..', p));
 const Z = process.argv[2] || 'hanbando', OUT = process.argv[3] || '/tmp/band.u8', META = (process.argv[4] && !process.argv[4].startsWith('--')) ? process.argv[4] : '';
 const { ZONES, findZoneAt } = R('server/zone-config');
 const chunk = R('server/chunk');
+const SHI = process.argv.indexOf('--shift');
+if (SHI > 0 && ZONES[Z]) { const v = +process.argv[SHI + 1]; if (v > 0) ZONES[Z].coastShift = v; else delete ZONES[Z].coastShift; }   // 생성기의 세계 좌표 존 찾기도 같은 ZONES 를 본다
 const SZ = 32, ZONE = { ...ZONES[Z], id: Z };
 if (!ZONES[Z] || ZONES[Z].isOcean) { console.error(`[T588 mask] 뭍 존이 아니다: ${Z}`); process.exit(2); }
 const OCEAN = Object.entries(ZONES).filter(([, z]) => z.isOcean)
@@ -69,7 +72,7 @@ try {
   const src = fs.readFileSync(path.join(__dirname, '..', 'server', 'chunk.js'), 'utf8');
   if (!/const COASTLINE_BASE = 6000;/.test(src) || !/const COASTLINE_NOISE = 5000;/.test(src)) { console.error('[T588 mask] chunk.js 띠 상수가 6000/5000 이 아니다 — 자를 고쳐라'); process.exit(3); }
 } catch (e) { if (e && e.code !== 'MODULE_NOT_FOUND') throw e; }
-const meta = { zone: Z, name: ZONES[Z].displayName, NX, NY, x0: zx0, y0: zy0, w: ZONE.zoneWidth, h: ZONE.zoneHeight, knob: process.env.T588_COAST || '',
+const meta = { zone: Z, name: ZONES[Z].displayName, NX, NY, x0: zx0, y0: zy0, w: ZONE.zoneWidth, h: ZONE.zoneHeight, knob: process.env.T588_COAST || '', shift: ZONES[Z].coastShift || 0,
   withRef: WITH_REF, band: n, bandPct: 100 * n / (NX * NY), ms, sides, ocean: OCEAN, secs };
 if (META) fs.writeFileSync(META, JSON.stringify(meta));
 console.log(JSON.stringify({ zone: Z, NX, NY, band: n, bandPct: +meta.bandPct.toFixed(3), ms, sides: sides.map((s) => s.side === 'corner' ? `corner:${s.corner}:${s.ocean}` : `${s.side}:${s.ocean}[${s.a},${s.b})`) }));

@@ -1251,16 +1251,31 @@ function _coastSmoothNoise2D(x, y) { return (_coastFbm2D(x, y) - 0.5) * 2; }
 //   (`public/coast-shape.js`)도 이 함수를 받아 **같은 배수 위에** 구간 성격을 얹는다(사본 0 · 클라 `00-const.js` 는 T591 미러 그대로).
 function _coastBandKOf(zone) { return (typeof zone.coastBandK === 'number' && zone.coastBandK > 0 && zone.coastBandK !== 1) ? zone.coastBandK : 1; }
 function _coastInOcean(oceanRects, x, y) { for (let oi = 0; oi < oceanRects.length; oi++) { const O = oceanRects[oi]; if (x >= O.x0 && x < O.x1 && y >= O.y0 && y < O.y1) return true; } return false; }
-// 셀 자리 (ax, ay) 의 배수 — 그 존의 뭍 이웃 변(바로 바깥 점이 바다 사각에 안 드는 변)에서 1 · 거리 maxDist 이상이면 bandK(선형)
-function _coastBandKAt(zone, bandK, ax, ay, oceanRects, maxDist) {
-  if (bandK === 1) return 1;
+// 뭍 이웃 변 비탈 r ∈ [0, 1] — 그 존의 뭍 이웃 변(바로 바깥 점이 바다 사각에 안 드는 변)에서 0 · 거리 maxDist 이상이면 1(선형) ·
+//   뭍 이웃 변이 없으면 1. 배수(T591)와 평행이동(T604 추신2)이 **같은 비탈**을 쓴다 — 이웃 뭍 존과의 경계에서 둘 다 0 몫이라 솔기 계단 0.
+function _coastLandRamp(zone, ax, ay, oceanRects, maxDist) {
   const zx0 = zone.worldOffsetX, zy0 = zone.worldOffsetY, zx1 = zx0 + zone.zoneWidth, zy1 = zy0 + zone.zoneHeight;
   let d = Infinity;
   if (!_coastInOcean(oceanRects, zx0 - 1, ay)) d = Math.min(d, ax - zx0);
   if (!_coastInOcean(oceanRects, zx1 + 1, ay)) d = Math.min(d, zx1 - ax);
   if (!_coastInOcean(oceanRects, ax, zy0 - 1)) d = Math.min(d, ay - zy0);
   if (!_coastInOcean(oceanRects, ax, zy1 + 1)) d = Math.min(d, zy1 - ay);
-  return 1 + (bandK - 1) * Math.min(1, d / maxDist);
+  return Math.min(1, d / maxDist);
+}
+// 셀 자리 (ax, ay) 의 배수 — 비탈 0 에서 1 · 비탈 1 에서 bandK
+function _coastBandKAt(zone, bandK, ax, ay, oceanRects, maxDist) {
+  if (bandK === 1) return 1;
+  return 1 + (bandK - 1) * _coastLandRamp(zone, ax, ay, oceanRects, maxDist);
+}
+// ★[T604 추신2 2026-10-03] 존별 **해안 평행이동** `zone.coastShift`(셀 · 기본 0 = 종전 바이트) — 띠 깊이에서 그만큼(px = 셀 × 칸 크기)
+//   빼고 0 아래는 0(재민 10-03 "해안선을 조금 남쪽으로"). 뭍 이웃 변에서는 같은 비탈 함수로 0 까지 — 비탈 길이 = 이동 그 값(새 수 0)이라
+//   이동 = min(이동, 뭍 이웃 변까지 거리): 경계에서 0 · 이동만큼 들어가면 다 이동(45° 꺾임 · 이웃 존 띠와 계단 0 · 존 몸통은 꼭 그만큼).
+//   끔(지금 식) · 켬(`T588_COAST` a·b) 모두 이 함수 하나로 같은 자리에서 뺀다(사본 0 · 클라 `00-const.js` 미러).
+function _coastShiftOf(zone) { return (typeof zone.coastShift === 'number' && zone.coastShift > 0) ? zone.coastShift : 0; }
+function _coastShiftAt(zone, shiftCells, ax, ay, oceanRects, maxDist, tileSize) {
+  if (shiftCells === 0) return 0;
+  const S = shiftCells * tileSize;
+  return S * _coastLandRamp(zone, ax, ay, oceanRects, S);   // = min(S, 뭍 이웃 변까지 거리) — 경계에서 0 · 이동만큼 들어가면 다(45°) · maxDist 는 안 쓴다
 }
 
 // zone: { id, isOcean, worldOffsetX, worldOffsetY, zoneWidth, zoneHeight }
@@ -1276,7 +1291,7 @@ function generateCoastlineWaterTiles(zone, tileSize, findZoneAtFn, oceanRects) {
   //   `public/coast-shape.js`(서버·클라 공용 1부 — 클라 `00-const.js` 도 같은 파일을 부른다 · 사본 0).
   //   지금 식은 그 생성기에 **함수로 넘긴다**(구간 밖 · 구간 끝 섞임 몫) — 아래 깊이 한 줄과 같은 식 · 같은 연산 차례.
   //   존 사각·띠 배수는 zone-config 에서(박힌 수 0) · 구간 표가 비면 켬도 지금 바이트(하네스 `test-coast-shape`).
-  //   값: `a`(= `1`) 진폭 = 지금 식 진폭 · `b` 구간 D(고증)를 게임 자로 맞춘 진폭 — 굴곡 진폭이 미확인이라 두 안(재민이 고른다).
+  //   값: `a` 진폭 = 지금 식 진폭 · `b`(= `1` — ★T604 추신2 재민 10-03 "b 가 낫다" · 기본 후보) 구간 D(고증)를 게임 자로 맞춘 진폭.
   //   ★[T588 추신2] T591 띠 배수 **위에** 얹는다 — 배수 함수(`_coastBandKAt` · 아래 지금 식과 같은 함수)를 넘기면 생성기가
   //     셀을 품은 존의 배수를 깊이 전체(지금 식 몫 · 구간 몫)에 곱한다(지금 식이 깊이 전체에 곱하듯) ⇒ 켬 + 빈 표 = 끔(배수 존 포함).
   const _t588 = process.env.T588_COAST;
@@ -1285,7 +1300,8 @@ function generateCoastlineWaterTiles(zone, tileSize, findZoneAtFn, oceanRects) {
     const _mx = COASTLINE_BASE + COASTLINE_NOISE;
     return require('../public/coast-shape.js').generate(zone, tileSize, oceanRects, _ZC.ZONES || {}, COASTLINE_BASE, COASTLINE_NOISE,
       (bnx, bny) => COASTLINE_BASE + _coastSmoothNoise2D(bnx, bny) * COASTLINE_NOISE,
-      { variant: _t588 === 'b' ? 'b' : 'a', bandK: (z, ax, ay) => _coastBandKAt(z, _coastBandKOf(z), ax, ay, oceanRects, _mx) });
+      { variant: _t588 === 'a' ? 'a' : 'b', bandK: (z, ax, ay) => _coastBandKAt(z, _coastBandKOf(z), ax, ay, oceanRects, _mx),
+        bandShift: (z, ax, ay) => _coastShiftAt(z, _coastShiftOf(z), ax, ay, oceanRects, _mx, tileSize) });   // ★T604 추신2 평행이동(같은 함수)
   }
   // Phase 5-1 fix: inland water (강·호수)는 zone start 시 pre-compute 안 함.
   //   PZ급 zone에서 수백만 cell × 검사 = 수십 초 → healthcheck timeout.
@@ -1302,7 +1318,7 @@ function generateCoastlineWaterTiles(zone, tileSize, findZoneAtFn, oceanRects) {
   //   돌아간다 — 거리 0 에서 1, 띠 최대 깊이(maxDist) 이상이면 배수 그대로(선형). 이웃 존의 띠(배수 1)와 경계에서 깊이가 같아야 솔기가 안 생긴다.
   //   뭍 이웃 판정은 `oceanRects` 로만 한다(변 바로 바깥 점이 바다 사각에 안 들면 뭍) — `findZoneAtFn` 을 안 넘기는 호출부(villages)와 같은 답.
   //   ★[T588 추신2] 식은 위 `_coastBandKAt` 한 자리(같은 연산 · 같은 차례 — 비트 동일).
-  const _bandK = _coastBandKOf(zone);
+  const _bandK = _coastBandKOf(zone), _shift = _coastShiftOf(zone);   // ★[T604 추신2] 평행이동(셀 · 기본 0 = 비트 동일)
 
   for (let ty = 0; ty < rows; ty++) {
     const absY = zone.worldOffsetY + ty * tileSize;
@@ -1333,7 +1349,8 @@ function generateCoastlineWaterTiles(zone, tileSize, findZoneAtFn, oceanRects) {
       // 깊이 노이즈를 "가장 가까운 바다 경계점(bnx,bny)" 월드좌표에서 샘플 → 변·꼭짓점·존경계 솔기 없음.
       const depth = COASTLINE_BASE + _coastSmoothNoise2D(bnx, bny) * COASTLINE_NOISE;
       const _k = _coastBandKAt(zone, _bandK, ax, ay, oceanRects, maxDist);
-      if (dist < depth * _k) waterTiles.add(`${tx}_${ty}`);
+      const _s = _coastShiftAt(zone, _shift, ax, ay, oceanRects, maxDist, tileSize);
+      if (dist < (_s === 0 ? depth * _k : Math.max(0, depth * _k - _s))) waterTiles.add(`${tx}_${ty}`);
     }
   }
   return waterTiles;
