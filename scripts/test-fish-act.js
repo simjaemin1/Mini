@@ -262,5 +262,57 @@ console.log('\n⑨ [T340] 낚시 창 — 던짐 → 기다림 → 걸림/놓침'
      '⑨ ★★[T321] 결말 낱말 셋이 **그대로** 있다(소리 층 무접촉 — 나는 시점만 흐름을 탄다)');
 }
 
+// ── ⑩ [T593 ④] NPC 어부도 같은 물 — 바다 칸 물가면 바다 표 · 강가면 민물 표 ──────────────────
+//   ★플레이어와 **같은 표**를 부르는가(사본 0) · 물가 판정이 **존이 넘긴 정본 술어**인가 · 끄면(손잡이 · 술어 없음) 종전 줄인가.
+console.log('\n⑩ [T593] NPC 어부도 같은 물 — 바다 칸 물가 = 바다 표');
+{
+  const V = codeOf(VSRC), Z = codeOf(ZSRC);
+  const blk = (V.match(/function _t340Try\(vil, npc, now, day, h, ws\)[\s\S]*?\n\}/) || [''])[0];
+  ok(/const _sea = _t593SeaBank\(cx, cy\);/.test(blk), '⑩ ★시도 함수가 그 물가의 물 종류를 묻는다(`_t593SeaBank` — 한 갈래)');
+  ok(/_sea \? _seaTbl\(\)\.pick\(_seaTbl\(\)\.areaOfZone\(state\.zoneId\), _sea, day, h \^ cx \^ Math\.imul\(cy, 0x85ebca6b\)\)/.test(blk.replace(/\s+/g, ' '))
+     && /: _fresh\(\)\.pick\(_t312Water\(vil\), day, h \^ cx \^ Math\.imul\(cy, 0x85ebca6b\), _ch\);/.test(blk.replace(/\s+/g, ' ')),
+     '⑩ ★★바다면 **바닷물고기 표**(`seafish.pick` — 플레이어가 쓰는 그 표) · 아니면 **종전 민물 줄 글자 그대로**(같은 해시 씨)');
+  ok(/isSeaTileLocal,/.test(Z) && /SimVillages\.init\(\{[\s\S]*?isSeaTileLocal,[\s\S]*?\}\);/.test(Z),
+     '⑩ ★바다 술어는 **존이 넘긴다**(`isSeaTileLocal` — look·자염·갯벌이 쓰는 그것 · 생활층 사본 0)');
+  ok(/if \(npc\.inventory && _t593SeaHand\(\)\) for \(const id of _seaTbl\(\)\.ids\(\)\) if \(npc\.inventory\[id\]\) npc\.inventory\[id\] = 0;/.test(V),
+     '⑩ ★곳간에 넣으면 바다 표 종도 **손에서 비운다**(이중 0 — 켬만)');
+  // 물가 판정 — 정본 함수에 술어를 꽂아 묻는다(하네스가 판정을 다시 짜지 않는다)
+  const SV = require(path.join(ROOT, 'server', 'villages.js'));
+  const P = SV.__labProbe;
+  const sea = new Set(['11,10']), fresh = new Set(['10,11']);   // (10,10) 물가의 동쪽 = 바다 · 남쪽 = 민물
+  const key = (x, y) => Math.floor(x / 32) + ',' + Math.floor(y / 32);
+  const deps = { isSeaTileLocal: (x, y) => sea.has(key(x, y)), isWaterTileLocal: (x, y) => sea.has(key(x, y)) || fresh.has(key(x, y)) };
+  const keep = P._t374Probe.setDeps(deps);
+  const a = P.t593SeaBank(10, 10);       // 바다 + 민물 곁 = 강어귀
+  sea.clear(); sea.add('9,10');
+  const b = P.t593SeaBank(10, 10);       // 바다 + 민물 곁(남쪽 민물은 그대로) = 강어귀
+  fresh.clear();
+  const c = P.t593SeaBank(10, 10);       // 바다만 곁 = 해안
+  sea.clear();
+  const d = P.t593SeaBank(10, 10);       // 바다 없음 = null(민물 줄)
+  P._t374Probe.setDeps({ isWaterTileLocal: deps.isWaterTileLocal });
+  const e = P.t593SeaBank(10, 10);       // 바다 술어가 안 넘어온 배선(헤드리스 자 · 옛 하네스) = null
+  P._t374Probe.setDeps(keep);
+  ok(a === 'mouth' && b === 'mouth' && c === 'coast', '★★⑩ 바다 칸 곁 = 바다 표 자리(민물도 곁이면 강어귀 · 아니면 해안)', `${a} · ${b} · ${c}`);
+  ok(d === null && e === null, '★⑩ 바다가 곁에 없거나 술어가 안 넘어오면 **null = 종전 민물 줄**', `${d} · ${e}`);
+  // 같은 표 — 바다 표의 종은 플레이어 낚시가 주는 그 품목 id 다(새 품목 0) · kg 은 정본(무게 표)에서
+  const Sea = require(path.join(ROOT, 'server', 'seafish.js'));
+  const W = require(path.join(ROOT, 'server', 'weights.js'));
+  ok(Sea.ids().every((id) => W.kgOf(id) > 0 && Sea.kgOf(id) === W.kgOf(id)), '★⑩ 바다 표의 kg 은 **무게 정본 그대로**다(옮겨 적지 않았다)',
+     Sea.ids().map((id) => `${id} ${Sea.kgOf(id)}`).join(' · '));
+  ok(!/kg:\s*[0-9]/.test(codeOf(fs.readFileSync(path.join(ROOT, 'server', 'seafish.js'), 'utf8'))), '★⑩ 바다 표 파일에 **kg 수가 없다**(사본 0)');
+  ok(Sea.ids().every((id) => !require(path.join(ROOT, 'server', 'freshfish.js')).isFish(id)), '⑩ 두 표가 겹치지 않는다(바다 열 종 ∩ 민물 열 종 = ∅)');
+  // 끄면 — 손잡이 `T593_SEA=0` 이면 물가 판정이 술어를 줘도 null(종전 민물 줄)
+  const offProbe = probe({ T593_SEA: '0' },
+    `const P=require(${JSON.stringify(path.join(ROOT, 'server', 'villages.js'))}).__labProbe;` +
+    `P._t374Probe.setDeps({isSeaTileLocal:()=>true,isWaterTileLocal:()=>true});` +
+    `const F=require(${JSON.stringify(path.join(ROOT, 'server', 'fishing.js'))});` +
+    `process.stdout.write(JSON.stringify({bank:P.t593SeaBank(10,10),knob:F.T593_SEA,items:F.FISH_ITEMS}));`);
+  ok(offProbe.knob === false && offProbe.bank === null, '★★⑩ 끄면(`T593_SEA=0`) 바다 곁이어도 **null = 종전 민물 줄**(비트 동일)', `${offProbe.bank}`);
+  const F = require(path.join(ROOT, 'server', 'fishing.js'));
+  ok(JSON.stringify(offProbe.items) === JSON.stringify(F.FISH_ITEMS.slice(0, offProbe.items.length)) && offProbe.items.length < F.FISH_ITEMS.length,
+     '⑩ 끄면 말리기 입력 목록이 **종전 그대로**이고 켜면 그 뒤에 민물 종만 붙는다', `${offProbe.items.length} → ${F.FISH_ITEMS.length}`);
+}
+
 console.log(`\n=== 결과: ${pass} PASS / ${fail} FAIL ===\n`);
 process.exit(fail ? 1 : 0);

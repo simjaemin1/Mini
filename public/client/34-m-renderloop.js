@@ -397,6 +397,44 @@
       window.__wfBuildMs = 0; window.__wfBuildMax = 0; window.__wfBuildN = 0; window.__wfBuildSum = 0;
       window.__wfFirstMs = 0; window.__wfSteadyN = 0; window.__wfSteadySum = 0;
     };
+    // === 1-c) ★★[T585] 개울 — 얕은 물(연한 파랑 · 랩 `rgb(128,190,232)` 그대로) ===
+    //   큰 물(진한 파랑 #2a5a8a + 물결 셰이더 · 가장 가는 강도 3셀)과 **다르게** 보이게: 색이 연하고 물결·둑·프리즘이 없다(건너는 얕은 물).
+    //   지면 뒤 · 엔티티 앞(사람이 개울을 밟고 선다). 칸 = 서버 래스터 비트(`isStreamAtAbs`) — 화면에 걸친 칸만 훑는다.
+    let _nStream = 0;
+    if (typeof isStreamAtAbs === 'function' && _streamZ.size) {
+      let mnx = Infinity, mxx = -Infinity, mny = Infinity, mxy = -Infinity;
+      for (const [ix2, iy2] of [[camX - W / 2, camY - H / 2], [camX + W / 2, camY - H / 2], [camX - W / 2, camY + H / 2], [camX + W / 2, camY + H / 2]]) {
+        const wx2 = (2 * iy2 + ix2) / 2, wy2 = (2 * iy2 - ix2) / 2;
+        if (wx2 < mnx) mnx = wx2; if (wx2 > mxx) mxx = wx2; if (wy2 < mny) mny = wy2; if (wy2 > mxy) mxy = wy2;
+      }
+      const c0 = Math.floor(mnx / 32) - 1, c1 = Math.ceil(mxx / 32) + 1, r0 = Math.floor(mny / 32) - 1, r1 = Math.ceil(mxy / 32) + 1;
+      if ((c1 - c0) * (r1 - r0) < 250000) {
+        ctx.save(); ctx.beginPath();
+        for (let cy = r0; cy <= r1; cy++) for (let cx = c0; cx <= c1; cx++) {
+          const wx = cx * 32, wy = cy * 32;
+          if (!isStreamAtAbs(wx + 16, wy + 16)) continue;
+          const a = toScreen(wx - wy, (wx + wy) / 2), b = toScreen(wx + 32 - wy, (wx + 32 + wy) / 2),
+                c = toScreen(wx + 32 - wy - 32, (wx + wy + 64) / 2), d = toScreen(wx - wy - 32, (wx + wy + 32) / 2);
+          ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(c.x, c.y); ctx.lineTo(d.x, d.y); ctx.closePath();
+          _nStream++;
+        }
+        ctx.fillStyle = 'rgb(128,190,232)'; ctx.fill();
+        // 대각으로만 이어진 칸(8방 흐름)은 iso 에서 꼭짓점 하나로만 닿아 점선처럼 보인다 — 두 칸 가운데를 잇는 띠를 같은 색으로 덧칠한다(칸은 그대로 · 그림만)
+        ctx.beginPath();
+        for (let cy = r0; cy <= r1; cy++) for (let cx = c0; cx <= c1; cx++) {
+          const wx = cx * 32 + 16, wy = cy * 32 + 16;
+          if (!isStreamAtAbs(wx, wy)) continue;
+          for (const [ddx, ddy] of [[1, 1], [1, -1]]) {
+            if (!isStreamAtAbs(wx + ddx * 32, wy + ddy * 32) || isStreamAtAbs(wx + ddx * 32, wy) || isStreamAtAbs(wx, wy + ddy * 32)) continue;
+            const a = toScreen(wx - wy, (wx + wy) / 2), b = toScreen(wx + ddx * 32 - wy - ddy * 32, (wx + ddx * 32 + wy + ddy * 32) / 2);
+            ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+          }
+        }
+        ctx.strokeStyle = 'rgb(128,190,232)'; ctx.lineWidth = 16; ctx.lineCap = 'round'; ctx.stroke();
+        ctx.restore();
+      }
+    }
+    window.__streamDrawn = _nStream;
     // === 2) 엔티티 수집 (depth sort용) ===
     const renderables = [];
     const renderT = performance.now() - INTERP_DELAY_MS;

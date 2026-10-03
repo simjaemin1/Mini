@@ -76,13 +76,17 @@
 
   // === 한 스텝 ===
   //   state : { vx, vy }  — accel 모드에서만 의미가 있다(호출자가 보관·복원한다)
-  //   input : { wx, wy, sprint, bodyMult, aim }   wx,wy 는 **정규화된 월드 방향**(정지=0,0)
+  //   input : { wx, wy, sprint, bodyMult, aim, groundMult }   wx,wy 는 **정규화된 월드 방향**(정지=0,0) · groundMult = 땅 배율(개울 · 없으면 1)
   //   dt    : 초
   //   반환  : { vx, vy, dx, dy }  — dx,dy 는 콜라이더 **통과 전** 위치 델타
   function stepMove(state, input, dt, params) {
     var P = params || DEFAULTS;
     var wx = num(input && input.wx, 0), wy = num(input && input.wy, 0);
     var bodyMult = num(input && input.bodyMult, 1);
+    // ★★[T585] 땅 배율 — 개울 칸 위 사람 걸음 ×0.5(`server/streams.js STREAM_SLOW0` · 서버 `zone.js` 와 클라 `31-m-move.js` 가 같은 칸에서 같은 수를 넘긴다).
+    //   몸 배율과 **같은 자리**에 곱한다(최고속·가속 둘 다 — 개울에 들면 굼떠지고 나오면 다시 붙는다). 1 이면 곱하지 않는다(종전 비트 그대로).
+    var groundMult = num(input && input.groundMult, 1);
+    if (groundMult !== 1) bodyMult = bodyMult * groundMult;
     var sprint = !!(input && input.sprint), aim = !!(input && input.aim);
     var hyp = Math.hypot(wx, wy), len = hyp || 1;
     var vmax = maxSpeedOf(P, sprint, bodyMult, aim);

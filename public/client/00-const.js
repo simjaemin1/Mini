@@ -719,6 +719,7 @@ function cropSprite(stage, crop) {
     for (const z of Object.values(zonesMeta)) {
       waterTilesByZone[z.id] = computeCoastlineWaterTiles(z, TS);
     }
+    try { loadStreams(); } catch (e) {}   // ★[T585] 존 목록이 바뀌면 새 존의 개울도(이미 받은 존은 건너뛴다)
   }
   // 절대 좌표에서 물 여부 판정 (콜라이더 + 렌더용)
   // perf fix: 셀 단위 캐시 — 타일 루프가 매 프레임 ~9천 타일 × hardcoded 강 251 세그먼트
@@ -745,6 +746,39 @@ function cropSprite(stage, crop) {
     _waterCellCache.set(key, v);
     return v;
   }
+  // ★★[T585] 개울 — 존이 구운 1비트 래스터(`GET <존>/streams.bin` · 서버 `server/streams.js isStreamCell` 과 같은 비트 · 사본 0).
+  //   그림(연한 파랑 · 큰 물과 다른 얕은 물)과 걸음 예측(개울 칸 ×`uiCfg.streamSlow` — 서버 `move-model groundMult` 와 같은 칸·같은 수)이 이것만 본다.
+  //   welcome `uiCfg.streams` 가 오면 아는 뭍 존마다 한 번 받는다(없는 존은 404 → 개울 0). 받기 전엔 개울 없음(= 종전 그대로).
+  const _streamZ = new Map();   // zid → { st:'loading'|'ok'|'none', NX, NY, bits }
+  function loadStreams() {
+    if (!(typeof uiCfg !== 'undefined' && uiCfg && uiCfg.streams)) return;
+    for (const z of Object.values(zonesMeta || {})) {
+      if (!z || z.isOcean || !z.wsUrl || _streamZ.has(z.id)) continue;
+      const r = { st: 'loading' }; _streamZ.set(z.id, r);
+      const base = String(z.wsUrl).replace(/^wss:/, 'https:').replace(/^ws:/, 'http:').replace(/\/+$/, '');
+      fetch(base + '/streams.bin').then((res) => (res.ok ? res.arrayBuffer() : null)).then((ab) => {
+        if (!ab || ab.byteLength < 16) { r.st = 'none'; return; }
+        const dv = new DataView(ab), NX = dv.getUint32(4, true), NY = dv.getUint32(8, true);
+        const bits = new Uint8Array(ab, 16);
+        if (bits.length < ((NX * NY + 7) >> 3)) { r.st = 'none'; return; }
+        Object.assign(r, { st: 'ok', NX, NY, bits, n: dv.getUint32(12, true) });
+        if (window.__bigmapDirty) window.__bigmapDirty();
+      }).catch(() => { r.st = 'none'; });
+    }
+  }
+  function isStreamAtAbs(absX, absY, zHint) {
+    if (!_streamZ.size) return false;
+    const z = zHint || clientFindZoneAt(absX, absY);
+    if (!z) return false;
+    const r = _streamZ.get(z.id); if (!r || r.st !== 'ok') return false;
+    const tx = Math.floor((absX - z.worldOffsetX) / 32), ty = Math.floor((absY - z.worldOffsetY) / 32);
+    if (tx < 0 || ty < 0 || tx >= r.NX || ty >= r.NY) return false;
+    const i = ty * r.NX + tx;
+    return (r.bits[i >> 3] & (1 << (i & 7))) !== 0;
+  }
+  // 걸음 배율 — 내 몸이 선 칸(예측 좌표)이 개울이면 서버가 준 배율(기본 1 = 종전)
+  function streamWalkMultAt(absX, absY) { return isStreamAtAbs(absX, absY) ? (+uiCfg.streamSlow || 1) : 1; }
+  window.__streamDbg = () => { const o = {}; for (const [k, v] of _streamZ) o[k] = { st: v.st, NX: v.NX || 0, NY: v.NY || 0, n: v.n || 0 }; return o; };
   // Phase 5-H: 산맥 바위 셀 — 통행 불가 + 회색 렌더. 물과 동일 구조 (셀 캐시).
   const _rockCellCache = new Map();
   function isRockAtAbs(absX, absY, zHint) {
