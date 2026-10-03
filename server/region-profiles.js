@@ -433,5 +433,6 @@ module.exports = {
   regionMix, mixAt, borderDistCells, biomeOf,
   pickOre, bakeOre, NO_MAJOR, oreMixAt, chooseSpecies, veinU,
   L_DEFAULT, rebakeKeep, restoreBakeOff,
+  pickBy: _pick,   // ★[T602] 가중에서 u 로 하나 — 바닷물고기 표(`seafish.js` 해역 흔함)가 **같은 뽑기**를 부른다(사본 0 · 이 파일 동작 무변)
   _resetGeo: () => { _geo.clear(); _biome.clear(); },   // 하네스용(존 표를 다시 지을 때)
 };

@@ -455,6 +455,7 @@ const ALL_SPECIES = (() => {
 const _NOT_FISH = new Set(['oyster', 'seaweed']);
 // ★[T593] 켜면 낚시가 두 표(민물 `freshfish` · 바다 `seafish`)에서 종을 낸다 ⇒ 말리기 입력도 그 종을 안다(뒤에 붙인다 — 끔이면 빈 배열 = 종전 목록 그대로).
 //   ⚠목록 정본은 두 표다(여기 옮겨 적지 않는다 — `ids()` 를 부른다). 바다 표 열 종은 이미 위 목록에 있어 실제로 붙는 것은 민물 아홉이다.
+//   ★[T602] 바다 표는 이제 해안 표(배 필요 뺀 8종 — 전부 위 목록에 있다)다 · 새 해안 어종 일곱(`T602_NEW_FISH=1`)이면 그 일곱도 여기 붙는다.
 const T593_EXTRA = T593_SEA
   ? [...new Set([...require('./freshfish').ids(), ...require('./seafish').ids()])].filter((k) => ALL_SPECIES.indexOf(k) < 0 && !_NOT_FISH.has(k)).sort()
   : [];

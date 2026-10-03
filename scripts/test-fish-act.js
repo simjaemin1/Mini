@@ -269,7 +269,8 @@ console.log('\n⑩ [T593] NPC 어부도 같은 물 — 바다 칸 물가 = 바�
   const V = codeOf(VSRC), Z = codeOf(ZSRC);
   const blk = (V.match(/function _t340Try\(vil, npc, now, day, h, ws\)[\s\S]*?\n\}/) || [''])[0];
   ok(/const _sea = _t593SeaBank\(cx, cy\);/.test(blk), '⑩ ★시도 함수가 그 물가의 물 종류를 묻는다(`_t593SeaBank` — 한 갈래)');
-  ok(/_sea \? _seaTbl\(\)\.pick\(_seaTbl\(\)\.areaOfZone\(state\.zoneId\), _sea, day, h \^ cx \^ Math\.imul\(cy, 0x85ebca6b\)\)/.test(blk.replace(/\s+/g, ' '))
+  // ★[T602] 해역 열쇠 = 그 물가 칸의 해안 구간(`areaAt` — 플레이어 `_t593Pick` 과 같은 함수 · 끄면 T593 그대로 바이옴)
+  ok(/_sea \? _seaTbl\(\)\.pick\(_seaTbl\(\)\.areaAt\(state\.zoneId, cx \* SZ \+ SZ \/ 2, cy \* SZ \+ SZ \/ 2\), _sea, day, h \^ cx \^ Math\.imul\(cy, 0x85ebca6b\)\)/.test(blk.replace(/\s+/g, ' '))
      && /: _fresh\(\)\.pick\(_t312Water\(vil\), day, h \^ cx \^ Math\.imul\(cy, 0x85ebca6b\), _ch\);/.test(blk.replace(/\s+/g, ' ')),
      '⑩ ★★바다면 **바닷물고기 표**(`seafish.pick` — 플레이어가 쓰는 그 표) · 아니면 **종전 민물 줄 글자 그대로**(같은 해시 씨)');
   ok(/isSeaTileLocal,/.test(Z) && /SimVillages\.init\(\{[\s\S]*?isSeaTileLocal,[\s\S]*?\}\);/.test(Z),
@@ -298,10 +299,20 @@ console.log('\n⑩ [T593] NPC 어부도 같은 물 — 바다 칸 물가 = 바�
   // 같은 표 — 바다 표의 종은 플레이어 낚시가 주는 그 품목 id 다(새 품목 0) · kg 은 정본(무게 표)에서
   const Sea = require(path.join(ROOT, 'server', 'seafish.js'));
   const W = require(path.join(ROOT, 'server', 'weights.js'));
-  ok(Sea.ids().every((id) => W.kgOf(id) > 0 && Sea.kgOf(id) === W.kgOf(id)), '★⑩ 바다 표의 kg 은 **무게 정본 그대로**다(옮겨 적지 않았다)',
-     Sea.ids().map((id) => `${id} ${Sea.kgOf(id)}`).join(' · '));
-  ok(!/kg:\s*[0-9]/.test(codeOf(fs.readFileSync(path.join(ROOT, 'server', 'seafish.js'), 'utf8'))), '★⑩ 바다 표 파일에 **kg 수가 없다**(사본 0)');
-  ok(Sea.ids().every((id) => !require(path.join(ROOT, 'server', 'freshfish.js')).isFish(id)), '⑩ 두 표가 겹치지 않는다(바다 열 종 ∩ 민물 열 종 = ∅)');
+  // ★[T602] 켬(기본): kg = T592 고증 표의 **보통 구간 중앙**(민물 표 규약) · 끔(`T602_SEA_TABLE=0`): T593 그대로 **무게 정본**
+  ok(Sea.T602_SEA_TABLE && Sea.ids().every((id) => { const r = Sea.rowOf(id); return r && r.kg && Math.abs(Sea.kgOf(id) - (r.kg[0] + r.kg[1]) / 2) < 1e-9; }),
+     '★⑩ [T602] 바다 표의 kg = **T592 보통 구간의 중앙**(표 한 줄 · 중앙은 계산)', Sea.ids().map((id) => `${id} ${Sea.kgOf(id)}`).join(' · '));
+  const off602 = probe({ T602_SEA_TABLE: '0' },
+    `const S=require(${JSON.stringify(path.join(ROOT, 'server', 'seafish.js'))}),W=require(${JSON.stringify(path.join(ROOT, 'server', 'weights.js'))});` +
+    `process.stdout.write(JSON.stringify({ids:S.ids(),kg:S.ids().map((i)=>[S.kgOf(i),W.kgOf(i)]),area:S.areaAt('hanbando',100,100)}));`);
+  ok(off602.ids.length === 10 && off602.kg.every(([a, b]) => b > 0 && a === b) && off602.area === 'forest',
+     '★⑩ [T602] 끄면 바다 표 = **T593 열 종 · kg = 무게 정본 그대로 · 해역 열쇠 = 바이옴**(글자 그대로)', `${off602.ids.join(' ')} · ${off602.area}`);
+  ok(!/\bkg:\s*[0-9]/.test(codeOf(fs.readFileSync(path.join(ROOT, 'server', 'seafish.js'), 'utf8'))),
+     '⑩ 바다 표 파일의 kg 는 **구간으로만** 적었다(T592 "보통" 칸 그대로 — 중앙값을 손으로 옮겨 적지 않는다)');
+  ok(Sea.ids().every((id) => !require(path.join(ROOT, 'server', 'freshfish.js')).isFish(id)), '⑩ 두 표가 겹치지 않는다(바다 표 종 ∩ 민물 열 종 = ∅)');
+  // ★[T602] NPC 도 플레이어와 같은 해안 표 — 배가 있어야 잡히는 종(명태·대구·바닷가재·가다랑어)은 바다 물가 어부에게도 안 문다
+  const boat = Sea.TABLE.filter((r) => r.gear === 'boat').map((r) => r.id);
+  ok(boat.length >= 4 && boat.every((id) => !Sea.isFish(id)), '★⑩ [T602] **배 필요** 종은 어부 손에도 안 든다(같은 해안 표 · 캐논 "배 없음")', boat.join(' '));
   // 끄면 — 손잡이 `T593_SEA=0` 이면 물가 판정이 술어를 줘도 null(종전 민물 줄)
   const offProbe = probe({ T593_SEA: '0' },
     `const P=require(${JSON.stringify(path.join(ROOT, 'server', 'villages.js'))}).__labProbe;` +
