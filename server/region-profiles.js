@@ -424,6 +424,14 @@ function tvTable() {
     const ids = ['mushroom_patch', 'beehive', 'greens_patch', 'wild_vine'];
     out.forage = +tv(weightsOf('forage', 'hanbando', ids) || {}, weightsOf('forage', 'nippon', ids) || {}).toFixed(4);
   }
+  {   // ★[T622] 짐승 — 존마다 첫 스폰 목록(`animals.js huntableInBiome(존 biome, 존)` · 존 칸 손잡이 `T622_ZONE_FAUNA` 를 그대로 먹는다) 위 고르게.
+    //   낚시 줄과 같은 꼴(목록이 biome 마다 다르다 · 표 단계 '있음' = 보통 = 고르게). 표는 animals.js 하나(사본 0) — 여기는 읽기만.
+    let A = null; try { A = require('./animals'); } catch (e) { A = null; }
+    if (A && A.huntableInBiome) {
+      const flat = (z) => { const ids = A.huntableInBiome(biomeOf(z), z), o = {}; for (const id of ids) o[id] = 1 / ids.length; return o; };
+      out.fauna = +tv(flat('hanbando'), flat('nippon')).toFixed(4);
+    }
+  }
   return out;
 }
 

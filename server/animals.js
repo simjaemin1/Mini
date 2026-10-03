@@ -304,6 +304,60 @@ const ANIMALS = {
   },
 };
 
+// ═══════════════════════════════════════════════════════════════════════
+// 🗾 [T622 · 2026-10-04] 존 칸 — T607 짐승 표(`설계/고증_짐승.md` ① · 세션11) 그대로
+// ═══════════════════════════════════════════════════════════════════════
+// ★왜 [재민 "한반도와 닛폰 특산 차이가 크게"] 위 카탈로그는 존 구분이 없다(biome 만 본다) — 그래서 열도(닛폰 · mountain)에도
+//   호랑이가 났다. T607 이 두 존의 있음/드묾/없음을 출처로 적었다 → 그 칸을 여기 옮긴다(T602 바다 · T609 민물과 같은 꼴).
+// ★손잡이 `T622_ZONE_FAUNA` — **부를 때 읽는다**(`WILD.ON` 규약). 기본 끔(= main 바이트 · 존 구분 없는 옛 줄 그대로).
+//   켬('1')이면 그 존에서 **없음 = 안 남** — 세 자리가 같은 함수(`faunaOut`)를 부른다:
+//     ① 부팅 첫 스폰 목록(zone.js `huntableInBiome(ZONE.biome, ZONE_ID)`)  ② DB 적재(이 존에서 없음인 행은 안 싣는다 — 행은 그대로 · 끄면 돌아온다)
+//     ③ 야생 블록(wildlife.js — 🐯 는 본체 tiger 로 비친다 · 블록 무수정 · 다리에서 그림자 짓기 전에 거둔다)
+//   드묾 = 지금 출현 몫에 T607 이 준 비가 있으면 그 비 — **T607 은 비를 하나도 주지 않았다** ⇒ 표시만(몫 무변 · 보고에 줄).
+// ★표 줄 = T607 ① 표에 **게임 id 짝이 하나로 정해지는** 종만(8). 칸 글자는 T607 그대로 · 확실도도 그대로.
+//   표에 줄이 없는 종 = **지금 값**(존 구분 없이 biome 대로 · 카드 캐논 "표에 없는 칸은 지금 값"):
+//     · 곰(bear) — T607 은 반달가슴곰(있음/있음)과 불곰(드묾~없음/없음) 두 줄이다 · 게임 '곰' 하나가 어느 짝인지 미정 → 재민 칸
+//     · 아이벡스(ibex) — T607 이 재민 칸으로 넘겼다("산양 자리로 쓰인 것으로 보이나 판정 0")
+//     · 범위 밖(한대·툰드라·열대·사막 종 · 가축) — T607 이 "깊은 출처 조사를 안 했다"고 적은 줄(표 밖) → 재민 칸
+// ⚠새 수 0 · 사본 0 — 무게·떼·철은 이 카드에서 **안 고친다**(카탈로그 hp·pack 그대로). 클라 사본(`public/animals.js`)은 위 ANIMALS 만 읽는다(무접촉).
+const FAUNA_ZONES = Object.freeze({ hanbando: 'hb', nippon: 'np' });   // region-profiles `COLS` 와 같은 열 이름
+const ZONE_FAUNA = Object.freeze([
+  { id: 'tiger',     t607: '호랑이(시베리아/아무르)', hb: '있음', np: '없음', st: '확실',
+    ev: '한반도: 역사적 전역(현재 멸종) · 열도: 화석까지 재검토 — 열도 "호랑이" 화석은 동굴사자(2026 PNAS)' },
+  { id: 'leopard',   t607: '표범(아무르)',            hb: '있음', np: '없음', st: '확실', ev: '한반도: 역사적 전역(1970 마지막 포획) · 열도: 없음' },
+  { id: 'wolf',      t607: '늑대',                    hb: '있음', np: '있음', st: '확실', ev: '열도: 일본늑대(1905 나라현 포획이 마지막 — 혼슈·시코쿠·규슈)' },
+  { id: 'wild_boar', t607: '멧돼지',                  hb: '있음', np: '있음', st: '확실', ev: '열도: 조몬 주요 수렵대상' },
+  { id: 'deer',      t607: '사슴(꽃사슴/시카디어)',   hb: '있음', np: '있음', st: '확실', ev: '동삼동패총(부산) · 이치하라 유적군(치바) 출토' },
+  { id: 'red_fox',   t607: '여우',                    hb: '있음', np: '있음', st: '확실', ev: '열도: 고유 아종 V. v. japonica' },
+  { id: 'pheasant',  t607: '꿩',                      hb: '있음', np: '있음', st: '확실', diff: true, ev: '열도: 다른 종 — 일본 고유 녹색꿩 P. versicolor("없음"이 아니다)' },
+  { id: 'quail',     t607: '메추라기',                hb: '있음', np: '있음', st: '약',   ev: '두 존 다 "있음(추정)" — 통설 수준(전용 1차 출처 못 엶)' },
+]);
+// T607 ① 표에서 **게임에 짝이 없는** 줄 — 켬에서도 안 넣는다(그림·드롭이 없다 → 재민 판정 칸 · 보고 "새 종 후보")
+const FAUNA_NEW = Object.freeze([
+  { t607: '스라소니',              hb: '있음', np: '없음' },
+  { t607: '노루',                  hb: '있음', np: '없음' },
+  { t607: '고라니(물사슴)',        hb: '있음', np: '없음' },
+  { t607: '수달',                  hb: '있음', np: '없음', note: '열도 일본수달은 별도 아종·이미 멸종 — 청동기 당시 서식은 미확인' },
+  { t607: '일본원숭이',            hb: '없음', np: '있음' },
+  { t607: '너구리',                hb: '있음', np: '있음', diff: true, note: '다른 종(대륙 N. procyonoides ↔ 일본 N. viverrinus)' },
+  { t607: '오소리',                hb: '있음', np: '있음', diff: true, note: '다른 종(대륙 M. leucurus ↔ 일본 M. anakuma)' },
+  { t607: '산양 / 일본산양(세로우)', hb: '있음', np: '있음', diff: true, note: '다른 종 · 게임 ibex 자리인지는 T607 재민 칸' },
+]);
+// 게임 '곰' 하나에 T607 두 줄 — 짝 미정(재민 칸 · 표에 줄 없음 = 지금 값)
+const FAUNA_BEAR = Object.freeze([
+  { t607: '반달가슴곰', hb: '있음', np: '있음' },
+  { t607: '불곰',       hb: '드묾', np: '없음', note: '한반도 "드묾~없음"(중북부 역사적 · 현재 절멸 추정) · 열도는 홋카이도만' },
+]);
+const _FBY = new Map(ZONE_FAUNA.map((r) => [r.id, r]));
+function faunaOn() { return typeof process !== 'undefined' && !!process.env && process.env.T622_ZONE_FAUNA === '1'; }
+/** 그 종의 그 존 칸('있음'·'드묾'·'없음') — 표에 줄이 없거나 프로필 없는 존이면 null(= 지금 값). 손잡이와 무관(표 읽기). */
+function faunaCell(id, zone) {
+  const col = FAUNA_ZONES[zone]; if (!col) return null;
+  const r = _FBY.get(id); return r ? (r[col] || null) : null;
+}
+/** 켬이고 그 존 칸이 '없음'이면 true — 스폰 목록 · DB 적재 · 야생 블록이 같은 이 함수를 부른다(끔이면 늘 false). */
+function faunaOut(id, zone) { return faunaOn() && faunaCell(id, zone) === '없음'; }
+
 // === helpers ===
 function _summary() {
   let wild = 0, dom = 0;
@@ -315,14 +369,16 @@ function _summary() {
 }
 
 // biome → 가능한 사냥감 list
-function huntableInBiome(biome) {
+//   ★[T622] `zone` 을 주면 존 칸이 거른다 — 켬이면 그 존에서 '없음'인 종이 빠진다(끔이면 옛 줄 그대로 · 같은 배열)
+function huntableInBiome(biome, zone) {
   return Object.entries(ANIMALS)
-    .filter(([id, m]) => !m.breeding && m.spawn_biome.includes(biome))
+    .filter(([id, m]) => !m.breeding && m.spawn_biome.includes(biome) && !(zone && faunaOut(id, zone)))
     .map(([id]) => id);
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { ANIMALS, _summary, huntableInBiome };
+  module.exports = { ANIMALS, _summary, huntableInBiome,
+    FAUNA_ZONES, ZONE_FAUNA, FAUNA_NEW, FAUNA_BEAR, faunaOn, faunaCell, faunaOut };
 }
 if (typeof window !== 'undefined') {
   window.Animals = { ANIMALS };
