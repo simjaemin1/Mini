@@ -8090,6 +8090,9 @@ const Weights = require('./weights');
 const Carry = require('./carry');
 const Lots = require('./lots');
 const Fishing = require('./fishing');
+// ★★[T574 2026-10-03] 존 특산 프로필 + 경계 혼용 띠(정본 `server/region-profiles.js`) — 낚시 종 · 부팅 광종 채움이 부른다.
+//   손잡이 `T574_REGION`(띠 반폭 D 셀) — 끄면 두 자리 모두 옛 글자 그대로(주사위·해시 소비도 같다).
+const RegionProfiles = require('./region-profiles');
 Fishing.setDayMs(parseInt(process.env.VILLAGE_DAY_MS || '', 10) || (WORLD && WORLD.dayLengthMs) || 24 * 60 * 1000);
 { // 부팅: 파인 어장 셀 로드(만땅 셀은 애초에 저장 안 됨 — mined_cells 와 같은 문법)
   try {
@@ -8218,7 +8221,11 @@ function tryFishStrike(player) {
   //   이제 **개수는 1, 무게는 그 물고기의 실제 kg** 이고, 그 kg 가 인벤 무게·거래 환산에 그대로 쓰인다.
   const n = 1;
   const species = _fishSpeciesFor(ZONE.biome);
-  const sp = species[Math.floor(_dt() * species.length)];
+  // ★[T574] 주사위는 **한 번 그대로** 굴린다 — 혼용이 켜지고 그 물 자리의 섞인 분포가 옛 목록의 고르게와 다를 때만
+  //   그 같은 u 로 가중 뽑기(경계 띠에선 이웃 존 biome 목록이 섞인다). 그 밖은 옛 줄 그대로.
+  const _fu = _dt();
+  const sp = RegionProfiles.chooseSpecies('fishRod', ZONE_ID, f.x, f.y, _fu, (z) => _fishSpeciesFor(RegionProfiles.biomeOf(z) || ZONE.biome), species)
+    || species[Math.floor(_fu * species.length)];
   player.inventory[sp] = (player.inventory[sp] || 0) + n;
   Carry.noteInstance(player, sp, gotKg, zoneGameDay());        // ★개체 kg 원장 — 취득일도 같이(펼친 줄이 신선도를 말한다)
   Lots.note(player, sp, n, zoneGameDay());                     // 식품 로트(취득일)
@@ -8244,6 +8251,12 @@ function tryFishStrike(player) {
   const t = _terrain.ZONE_TERRAIN[ZONE_ID];
   if (t && t.ores && t.ores.length) {
     for (const o of t.ores) {
+      // ★[T574] 켬이고 프로필 있는 존(한반도·닛폰)이면 존 프로필 혼용으로 굽는다(계획기와 같은 함수·같은 씨 731 · 재민 08-01 규칙 셋) — 끄면 옛 줄.
+      //   ⚠구운 `mineral` 은 안 건드린다(빈 칸만) — 광종 혼용은 구울 때 한 번이다(region-profiles 머리).
+      if (!o.mineral && RegionProfiles.on()) {
+        const _rb = RegionProfiles.bakeOre(ZONE_ID, o.center[0], o.center[1], RegionProfiles.veinU(o.center[0], o.center[1]), !o.minor);
+        if (_rb) { o.mineral = _rb.mineral; if (_rb.minerals && !o.minerals) o.minerals = _rb.minerals; }
+      }
       if (!o.mineral) o.mineral = Specialty.pickMineral(ZONE.biome, Math.round(o.center[0]*0.131 + o.center[1]*0.237));
     }
     console.log(`[${ZONE_ID}] 광맥 ${t.ores.length}개 — ${t.ores.map(o=>o.mineral).join(', ')}`);

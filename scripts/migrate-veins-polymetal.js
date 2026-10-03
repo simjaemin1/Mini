@@ -54,11 +54,8 @@ ironMajors.forEach(({ o, d }, i) => {
 });
 
 // ── ②③ 다광종 분포 ───────────────────────────────────────────────────────────
-const POLY = {
-  lead:   { lead: 0.85, silver: 0.15 },
-  copper: { copper: 0.90, gold: 0.05, silver: 0.05 },
-  gold:   { gold: 0.80, silver: 0.20 },
-};
+// ★[T574 2026-10-03] 표는 `server/hanbando-minerals.js` POLY 로 옮겼다(값 그대로 · 존 프로필 굽기도 같은 표를 읽는다 · 사본 0)
+const POLY = require(path.join(__dirname, '..', 'server', 'hanbando-minerals')).POLY;
 // ★★pk 재산출 — 광종이 바뀌면 품위도 그 광종의 눈금을 따라야 한다.
 //   pk 는 좌표 결정론이다: orePeakFor(광종, 0.30, hash2(cx, cy, 500)) [plan-ore-clusters.js:396 정본].
 //   철(가치 4)→주석(가치 4)은 우연히 눈금이 같지만, 은(가치 30)→납(가치 4)은 pk 가 약 5배 뛴다 —

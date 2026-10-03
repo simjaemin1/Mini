@@ -455,6 +455,14 @@ const WILD = {
   FOREST: 2.0,              // ★`decideVillageType` 깊은 숲 문턱 그대로(사본 — 하네스가 그 줄과 맞대 본다)
 };
 const WILD_HAB = { forest: ['mushroom_patch', 'beehive'], edge: ['greens_patch'], riverside: ['wild_vine'] };
+// ★★[T574 2026-10-03] 야생 군락 종 — 존 특산 프로필 + 경계 혼용 띠(정본 `server/region-profiles.js` · 사본 0).
+//   끔(`T574_REGION` 없음)이거나 그 자리 분포가 옛 서식 목록의 고르게와 같으면 null — 옛 줄(같은 씨 `WILD.SEED + 1`)이 낸다.
+let _RGP = undefined;
+function _wildKindOf(zoneId, x, y, u, kinds) {
+  if (_RGP === undefined) { try { _RGP = require('./region-profiles'); } catch (e) { _RGP = null; } }
+  if (!_RGP || !_RGP.on()) return null;
+  return _RGP.chooseSpecies('forage', zoneId, x, y, u, null, kinds);
+}
 const WILD_P = {}; let WILD_PMAX = 0;
 for (const _c of Object.keys(WILD.D)) { const [_n, _cells] = WILD.D[_c]; WILD_P[_c] = _cells > 0 ? _n / _cells : 0; if (WILD_P[_c] > WILD_PMAX) WILD_PMAX = WILD_P[_c]; }
 
@@ -915,7 +923,9 @@ function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet, 
         for (const r of _ringW) if ((px - r[0]) * (px - r[0]) + (py - r[1]) * (py - r[1]) < r[2] * r[2]) { clash = true; break; }
         if (clash) continue;
         const kinds = WILD_HAB[hab];
-        const kind = kinds[Math.min(kinds.length - 1, Math.floor(seedRand(zoneId, gx, gy, WILD.SEED + 1) * kinds.length))];
+        //   ★[T574] 존 특산 프로필 + 경계 혼용(정본 `region-profiles`) — 켬이고 그 자리 분포가 고르게가 아닐 때만 같은 씨로 가중 뽑기
+        const _ku = seedRand(zoneId, gx, gy, WILD.SEED + 1);
+        const kind = _wildKindOf(zoneId, px, py, _ku, kinds) || kinds[Math.min(kinds.length - 1, Math.floor(_ku * kinds.length))];
         for (let i = 0; i < WILD.N; i++) {
           const uu = seedRand(zoneId, gx, gy, WILD.SEED + 2 + i * 2);
           const a = seedRand(zoneId, gx, gy, WILD.SEED + 3 + i * 2) * Math.PI * 2;
