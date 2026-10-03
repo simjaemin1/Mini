@@ -27,10 +27,12 @@ const R = (p) => require(path.join(__dirname, '..', p));
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
 const has = (k) => process.argv.includes(k);
 const GAME = path.join(__dirname, '..', 'server', 'hanbando-terrain.json');
+// ⚠손잡이는 specialty 를 싣기 **전에** — 새 품목 셋은 specialty 가 실릴 때 품목표에 서고, 프로필은 품목표에 없는 품목을 안 굽는다
+//   (뒤에 켜면 `--new` 가 아무것도 안 바꾼다 · 10-03 ③ 다시 잼에서 잡음)
+if (has('--new')) process.env.T574_NEW_ITEMS = '1';
 const SP = R('server/specialty');
 const HB = R('server/hanbando-minerals');
 const say = (s) => process.stdout.write(s + '\n');
-if (has('--new')) process.env.T574_NEW_ITEMS = '1';
 const RP = R('server/region-profiles');
 
 const doc = JSON.parse(fs.readFileSync(GAME, 'utf8'));
