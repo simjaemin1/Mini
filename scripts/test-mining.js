@@ -220,6 +220,15 @@ ok(T.oreProbAt('hanbando', cl.center[0] + 3000 * 32, cl.center[1]) === 0, '광�
   //   지역 전문화가 강하면 어느 마을은 특정 광종을 영영 못 만진다.
   //   ⇒ 여기서 지키는 것: ①저장 광물 ≡ 전역 풀  ②구역별 광종 비율이 **순수 무작위와 구분 안 됨**
   const HM = require(path.join(__dirname, '..', 'server', 'hanbando-minerals'));
+  // ★★[T574 추신4 · 재민 10-03] 정본 광맥을 꼬리 L 500 으로 구웠다(한반도 121/787 — 옥은 닛폰 고유 · 꼬리 · 추신2 "'존 안은 골고루'
+  //   원칙 없어도 돼"). 아래 세 계약(①풀 ②지역 무관 ③청동기 여섯)은 **옛 판(끔 = 여섯째 판)**의 계약이다 —
+  //   `T574_REGION=0` 이면 terrain 이 되돌리는 그 광맥(`region-profiles.restoreBakeOff`)으로 그대로 잰다.
+  //   켬(기본) 판은 갈래마다 새 캐논으로 잰다(굽힌 광맥 자체는 `test-region-profiles` ⓘ 가 굽기 함수와 바이트로 맞댄다).
+  const RP = require(path.join(__dirname, '..', 'server', 'region-profiles'));
+  const dOff = (() => { const o = process.env.T574_REGION; process.env.T574_REGION = '0';
+    try { const c = JSON.parse(JSON.stringify(require(path.join(__dirname, '..', 'server', 'hanbando-terrain.json')))); RP.restoreBakeOff(c); return c.hanbando; }
+    finally { if (o == null) delete process.env.T574_REGION; else process.env.T574_REGION = o; } })();
+  const baked = new Set(); try { for (const e of require(path.join(__dirname, '..', 'server', 'region-bake-off.json')).zones.hanbando) baked.add(e.c[0] + ',' + e.c[1]); } catch (e) {}
   const h2 = (ix, iy, sd) => { let h = (ix|0)*374761393 + (iy|0)*668265263 + (sd|0)*1274126177; h = Math.imul(h ^ (h>>>13), 1274126177); return ((h ^ (h>>>16))>>>0)/4294967295; };
   {
     // ①저장 광물 ≡ 풀 (대·중·소는 최소보장 보정이 걸리므로 자잘만 엄격히 본다)
@@ -228,9 +237,12 @@ ok(T.oreProbAt('hanbando', cl.center[0] + 3000 * 32, cl.center[1]) === 0, '광�
     //   (자연에 은 단독 광상은 거의 없다 — 고대 은은 방연석에서 회취법으로 나왔다).
     //   그래서 기대값에도 같은 변환을 적용한다: 풀 추첨이 silver 면 저장본은 lead 여야 한다.
     const MIGRATE = (m) => (m === 'silver' ? 'lead' : m);
-    for (const o of d0.ores) { if (!o.minor) continue; n++;
-      if (o.mineral !== MIGRATE(HM.mineralAt(0, 0, h2(Math.floor(o.center[0]/32), Math.floor(o.center[1]/32), 731)))) bad++; }
-    ok(bad === 0, '★자잘 광맥의 광종 ≡ 전역 풀 + 마이그레이션 규칙 (' + bad + '/' + n + ' 불일치)');
+    const want = (o) => MIGRATE(HM.mineralAt(0, 0, h2(Math.floor(o.center[0]/32), Math.floor(o.center[1]/32), 731)));
+    for (const o of dOff.ores) { if (!o.minor) continue; n++; if (o.mineral !== want(o)) bad++; }
+    ok(bad === 0, '★자잘 광맥의 광종 ≡ 전역 풀 + 마이그레이션 규칙 — 끔 판(여섯째 판) (' + bad + '/' + n + ' 불일치)');
+    let bad2 = 0, n2 = 0;
+    for (const o of d0.ores) { if (!o.minor || baked.has(o.center[0] + ',' + o.center[1])) continue; n2++; if (o.mineral !== want(o)) bad2++; }
+    ok(bad2 === 0 && baked.size > 0, '★켬 판 — 굽기 밖 자잘(옛 기록에 없는 것)은 전역 풀 그대로 · 굽힌 ' + baked.size + '개는 test-region-profiles ⓘ (' + bad2 + '/' + n2 + ' 불일치)');
   }
   {
     // ②지역 무관 — 구역별 광종 비율의 산포가 **이항분포 기대치와 같아야** 한다.
@@ -243,7 +255,7 @@ ok(T.oreProbAt('hanbando', cl.center[0] + 3000 * 32, cl.center[1]) === 0, '광�
     const nB = Math.max(4, Math.min(120, Math.round(d0.ores.length / 40)));
     const GY = Math.max(2, Math.round(Math.sqrt(nB * (H / W)))), GX = Math.max(2, Math.round(nB / GY));
     const grid = {}, cnt = {};
-    for (const o of d0.ores) {
+    for (const o of dOff.ores) {   // ★[T574 추신4] 끔 판의 계약 — 켬 판은 재민 10-03 "'존 안은 골고루' 원칙 없어도 돼"(추신2)로 걷혔다(쏠림 방지 = 추신3 접근성 자)
       cnt[o.mineral] = (cnt[o.mineral] || 0) + 1;
       const gx = Math.min(GX-1, Math.floor(o.center[0]/32/W*GX)), gy = Math.min(GY-1, Math.floor(o.center[1]/32/H*GY));
       const b = gy*GX + gx; (grid[b] = grid[b] || {})[o.mineral] = ((grid[b]||{})[o.mineral] || 0) + 1;
@@ -262,7 +274,7 @@ ok(T.oreProbAt('hanbando', cl.center[0] + 3000 * 32, cl.center[1]) === 0, '광�
       if (r > worst) { worst = r; wm = m; }
       console.log('      ' + m.padEnd(10) + '비중 ' + (mu*100).toFixed(1).padStart(5) + '%  비 ' + r.toFixed(2));
     }
-    ok(worst < 1.35, '★광종에 **지역 편중이 없다** — 어느 구역을 떼도 비율이 같다(최대 비 ' + worst.toFixed(2) + ', 1.0 = 순수 무작위)');
+    ok(worst < 1.35, '★광종에 **지역 편중이 없다** — 끔 판(여섯째 판) · 어느 구역을 떼도 비율이 같다(최대 비 ' + worst.toFixed(2) + ', 1.0 = 순수 무작위)');
   }
   {
     // ③NPC 시야(대·중·소)의 광종 커버리지 — [재민 확정 2026-08-01 시대 설계로 기준이 바뀌었다]
@@ -270,14 +282,21 @@ ok(T.oreProbAt('hanbando', cl.center[0] + 3000 * 32, cl.center[1]) === 0, '광�
     //     자잘 광맥(플레이어 전용)에만 있다. 여기 철이 다시 나타나면 그게 회귀다.
     //   · 은: 지배 광종으로는 0 이지만 **다광종 비중**(연은 .15 · 구리 부산 .05 · 일렉트럼 .20)으로 존재한다.
     //   · 나머지 여섯(구리·주석·납·금·옥·흑요석)은 지배 광종으로 MIN_MAJOR 이상.
-    const mc = {}, sh = {};
+    const mc = {}, sh = {}, mcOff = {};
+    for (const o of dOff.ores) if (!o.minor) mcOff[o.mineral] = (mcOff[o.mineral] || 0) + 1;
     for (const o of d0.ores) { if (o.minor) continue; mc[o.mineral] = (mc[o.mineral] || 0) + 1;
       const dist = o.minerals || { [o.mineral]: 1 };
       for (const m in dist) sh[m] = (sh[m] || 0) + dist[m] * (o.pk || 0); }
     console.log('      대·중·소 지배광종: ' + Object.keys(HM.POOL).map((m) => m + ' ' + (mc[m]||0)).join(' · '));
     const NEED = ['copper', 'tin', 'lead', 'gold', 'jade_raw', 'obsidian'];
-    const miss = NEED.filter((m) => (mc[m] || 0) < HM.MIN_MAJOR);
-    ok(miss.length === 0, '★청동기 광종 여섯이 주요 광맥에 다 있다 (최소 ' + HM.MIN_MAJOR + '개씩)' + (miss.length ? ' — 빠짐: ' + miss.join(',') : ''));
+    const miss = NEED.filter((m) => (mcOff[m] || 0) < HM.MIN_MAJOR);
+    ok(miss.length === 0, '★청동기 광종 여섯이 주요 광맥에 다 있다 — 끔 판(여섯째 판) (최소 ' + HM.MIN_MAJOR + '개씩)' + (miss.length ? ' — 빠짐: ' + miss.join(',') : ''));
+    // ★[T574 추신4] 켬 판 — 옥은 닛폰 고유(추신1 · 재민 10-03 "닛폰에서만 나는 건 한반도에서 지워도 돼") — 한반도엔 꼬리로만.
+    //   나머지 다섯(한반도 프로필의 제 품목 중 주요에 설 수 있는 것)은 그대로 MIN_MAJOR 이상.
+    const own = RP.weightsOf('ore', 'hanbando') || {};
+    const NEED_ON = NEED.filter((m) => own[m] > 0);
+    const missOn = NEED_ON.filter((m) => (mc[m] || 0) < HM.MIN_MAJOR);
+    ok(missOn.length === 0 && !NEED_ON.includes('jade_raw'), '★켬 판 — 한반도 제 품목 다섯(' + NEED_ON.join('·') + ')이 주요에 다 있다 · 옥은 닛폰 고유(꼬리로만)' + (missOn.length ? ' — 빠짐: ' + missOn.join(',') : ''));
     ok((mc.iron || 0) === 0, '★주요 광맥에 철이 없다 — 철은 플레이어 탐험 전용(자잘)이다 [재민 확정]');
     ok((sh.silver || 0) > 0, '★은이 다광종 비중으로 존재한다 (연은·부산·일렉트럼 — 은 단독 광맥은 폐지)');
   }

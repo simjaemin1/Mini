@@ -28,13 +28,18 @@
 //      `pickMineral` 런타임 채움(zone.js 부팅 — `mineral` 이 빈 광맥만) · 채집 군락 종(chunk.js 야생 군락) ·
 //      물고기 종(zone.js 낚시 · villages.js 민물 몸) · 나무 종(trees.js `speciesAt`).
 //      ⚠이미 구운 정본 광맥(`hanbando-terrain.json` 의 `mineral`)은 런타임에 **다시 뽑지 않는다** —
-//        광종의 혼용은 구울 때 한 번이다(카드 ② "정본 json 의 mineral 칸"). 한반도 정본 광맥 787 을 이 프로필로
-//        다시 구울지는 재민 몫(정본 데이터) — `scripts/t574-ore-table.js` 가 미리보기만 낸다.
+//        광종의 혼용은 구울 때 한 번이다(카드 ② "정본 json 의 mineral 칸").
+//      ★[추신4 · 재민 10-03 "꼬리 폭은 네 의견대로" — L = 500셀] 두 존 정본 광맥을 L 500 으로 **구웠다**
+//        (`scripts/t574-bake.js` — 한반도 787 = 덜 흔드는 굽기 `rebakeKeep` · 닛폰 55 = T580 의 `t580-bake-nippon.js` 다 굽기).
+//        자리(좌표·크기·이름)는 그대로 · 광종 칸(`mineral`·`minerals`·`pk`)만 바뀌었다. 바뀐 광맥의 옛 기록(여섯째 판)은
+//        `server/region-bake-off.json` 에 통째로 있다 — `T574_REGION=0` 이면 `restoreBakeOff` 가 정본을 실을 때 되돌린다.
 //      ★굽기(`bakeOre`)는 땅속 뽑기(`pickOre` — 지질)에 재민 확정 굽기 규칙 셋(2026-08-01 — 주요 광맥 철 없음 ·
 //        은 단독 없음 · 다광종 POLY)을 그대로 얹는다 — 표는 `hanbando-minerals.js` POLY 하나(사본 0).
 //
 // ★손잡이 — 부를 때 읽는다(`WILD.ON` 규약):
-//   `T574_REGION`    = 꼬리 길이 L(셀). 0·없음 = **끔** — 다섯 자리가 옛 글자 그대로 돈다(하네스 ⓐ · 두 자 바이트 동일).
+//   `T574_REGION`    = 꼬리 길이 L(셀). ★없음 = **500**(재민 10-03 · 추신4 — 켬이 기본). `0` = **끔** — 다섯 자리가 옛 글자
+//                      그대로 돌고 구운 정본 광종이 여섯째 판 칸으로 되돌아간다(하네스 ⓐ · 두 자 바이트 동일).
+//                      ⚠구운 정본은 L 500 한 판이다 — 다른 L 은 런타임 자리(나무·낚시·계획기 새 광맥)에만 든다.
 //   `T574_S0`        = 경계에서의 꼬리 계수 s₀(기본 0.5 = ★PM 기본 "제 존 비중의 0.5").
 //   `T574_NEW_ITEMS` = 1 이면 새 품목 셋(진사·사철·조개 팔찌감)의 줄이 표에 든다 — 기본 끔(재민이 값을 본 뒤 켬).
 //                      ⚠그 품목이 `specialty.js RESOURCES` 에 없으면 켜도 안 든다(없는 품목을 굽지 않는다).
@@ -140,7 +145,12 @@ const NOTES = Object.freeze([
 ]);
 
 // ── 손잡이 ───────────────────────────────────────────────────────────────────────────
-function L() { const v = parseFloat(process.env.T574_REGION); return Number.isFinite(v) && v > 0 ? v : 0; }
+const L_DEFAULT = 500;   // ★재민 10-03 "꼬리 폭은 네 의견대로"(추신4 · PM 안 500) — 재민 값(새 수 아님) · 정본 광맥도 이 값으로 구웠다
+function L() {
+  const s = process.env.T574_REGION;
+  if (s == null || s === '') return L_DEFAULT;
+  const v = parseFloat(s); return Number.isFinite(v) && v > 0 ? v : 0;
+}
 function S0() { const v = parseFloat(process.env.T574_S0); return Number.isFinite(v) && v >= 0 ? v : 0.5; }
 function on() { return L() > 0; }
 function newOn() { return process.env.T574_NEW_ITEMS === '1'; }
@@ -302,10 +312,13 @@ function pickOre(zone, x, y, u, Lc) {
  * @returns {{mineral: string, minerals: object|null}|null} 프로필 없는 존이면 null(부르는 쪽이 옛 길로)
  */
 const NO_MAJOR = Object.freeze(['iron', 'iron_sand']);
-function bakeOre(zone, x, y, u, isMajor, Lc) {
+function bakeOre(zone, x, y, u, isMajor, Lc, only) {
   const m = mixAt('ore', zone, x, y, null, null, Lc);
   if (!m) return null;
   const p = Object.assign({}, m.p);
+  // ★[추신4] `only` — 'tail' = 이웃 고유 품목(꼬리)에서만 · 'own' = 이 존 품목에서만(덜 흔드는 굽기 `rebakeKeep` 의 두 갈래).
+  //   없으면 옛 글자 그대로(섞인 가중 전부). 뽑기·규칙 셋은 같은 줄을 지난다(사본 0).
+  if (only) { const own = weightsOf('ore', zone) || {}; for (const k of Object.keys(p)) if ((only === 'tail') === (own[k] > 0)) delete p[k]; }
   if (isMajor) for (const k of NO_MAJOR) delete p[k];
   let k = _pick(m.order, p, u);
   if (!k) return null;
@@ -339,10 +352,55 @@ function chooseSpecies(kind, zone, x, y, u, listOf, legacy) {
 }
 // 광맥 자리의 u — 계획기 `plan-ore-clusters.js` 의 hash2(셀x, 셀y, 731)와 **같은 식**(광종 씨 731 · 품위 씨 500 과 분리).
 //   ⚠좌표 해시 식은 terrain.js `_oHash` · 계획기 `hash2` · `rebalance-ore-minerals.js H2` 와 같다(그쪽이 정본 — 여기는 그 값을 재현만).
-function veinU(cx, cy) {
-  let h = (Math.floor(cx / CELL) | 0) * 374761393 + (Math.floor(cy / CELL) | 0) * 668265263 + 731 * 1274126177;
+//   ★[추신4] 씨 인자 — 없으면 731(옛 글자). 덜 흔드는 굽기의 꼬리 씨 732 · 뽑기 씨 733 · 품위(pk) 씨 500 이 같은 식을 쓴다.
+function veinU(cx, cy, seed) {
+  const sd = seed == null ? 731 : (seed | 0);
+  let h = (Math.floor(cx / CELL) | 0) * 374761393 + (Math.floor(cy / CELL) | 0) * 668265263 + sd * 1274126177;
   h = Math.imul(h ^ (h >>> 13), 1274126177);
   return ((h ^ (h >>> 16)) >>> 0) / 4294967295;
+}
+/**
+ * ★[추신4] **덜 흔드는 굽기**(R2 · 한반도 정본 787 — 재민 v9 + 마을 배정을 될 수 있는 대로 둔다) — 정본 광맥 하나:
+ *   ① 꼬리 — 자리 해시(씨 732) < 그 자리 꼬리 몫 T 이면 **이웃 고유 품목에서** 굽는다(뽑기 씨 733 · 규칙 셋) — 닛폰 고유는 한반도에 꼬리 몫만
+ *   ② 이 존에서 '없음'이 된 광종(한반도 옥)이면 **이 존 품목에서** 다시 굽는다(뽑기 씨 733 · 규칙 셋)
+ *   ③ 그 밖은 null — 정본 그대로
+ *   (`scripts/t574-ore-table.js` 미리보기 R2 도 이 함수를 부른다 — 굽기는 `bakeOre` 한 줄을 지난다 · 사본 0)
+ * @returns {{mineral:string, minerals:object|null, why:'tail'|'redraw'}|null}
+ */
+function rebakeKeep(zone, o, Lc) {
+  const x = o.center[0], y = o.center[1];
+  const m = mixAt('ore', zone, x, y, null, null, Lc);
+  if (!m) return null;
+  // ⚠뽑기 씨는 733 — 정본 광종을 낸 그 u(씨 731 · 전역 풀 추첨)를 다시 쓰면 고르는 광맥이 **그 u 구간**에 몰려 있어서
+  //   한 품목으로 쏠린다(③ 미리보기에서 옥 98 중 90 이 납이 됐다 — 씨 상관). 꼬리 여부(732)·뽑기(733)·옛 광종(731)은 서로 독립.
+  const uPick = veinU(x, y, 733);
+  let b = null, why = null;
+  if (m.tail > 0 && veinU(x, y, 732) < m.tail) { b = bakeOre(zone, x, y, uPick, !o.minor, Lc, 'tail'); why = 'tail'; }
+  if (!b) { const own = weightsOf('ore', zone) || {}; if (!(own[o.mineral] > 0)) { b = bakeOre(zone, x, y, uPick, !o.minor, Lc, 'own'); why = 'redraw'; } }
+  return b ? Object.assign(b, { why }) : null;
+}
+/**
+ * ★[추신4] **끔이면 구운 정본 광종을 여섯째 판 칸으로 되돌린다** — `server/region-bake-off.json`(굽기 스크립트가 적은 옛 기록).
+ *   켬(기본)이면 아무것도 안 한다. 자리(center)로 찾고, 지금 광종이 그 굽기가 적은 광종(`now`)일 때만 옛 기록을 **통째로**
+ *   되살린다(키 차례까지 — 사람이 뒤에 고친 칸은 안 건드린다). terrain.js `_getHardcoded` 가 정본을 실을 때 한 번 부른다.
+ * @returns {number} 되돌린 광맥 수
+ */
+function restoreBakeOff(hc) {
+  if (on() || !hc) return 0;
+  let off = null; try { off = require('./region-bake-off.json'); } catch (e) { off = null; }
+  if (!off || !off.zones) return 0;
+  let n = 0;
+  for (const zone of Object.keys(off.zones)) {
+    const ores = hc[zone] && hc[zone].ores; if (!Array.isArray(ores)) continue;
+    const idx = new Map();
+    ores.forEach((o, i) => { if (o && Array.isArray(o.center)) idx.set(o.center[0] + ',' + o.center[1], i); });
+    for (const e of off.zones[zone]) {
+      const i = idx.get(e.c[0] + ',' + e.c[1]);
+      if (i == null || ores[i].mineral !== e.now) continue;
+      ores[i] = JSON.parse(JSON.stringify(e.was)); n++;
+    }
+  }
+  return n;
 }
 /** 한 존에만 나는 품목(이웃 존 가중 0) — 그 존 가중 순. 꼬리 표·접근성 자가 부른다. */
 function uniqueOf(kind, zone, other, cands) {
@@ -374,5 +432,6 @@ module.exports = {
   L, S0, on, newOn, has, levelOf, weightsOf, tv, tvTable, uniqueOf,
   regionMix, mixAt, borderDistCells, biomeOf,
   pickOre, bakeOre, NO_MAJOR, oreMixAt, chooseSpecies, veinU,
+  L_DEFAULT, rebakeKeep, restoreBakeOff,
   _resetGeo: () => { _geo.clear(); _biome.clear(); },   // 하네스용(존 표를 다시 지을 때)
 };
