@@ -1,0 +1,4056 @@
+{
+ "at": "2026-10-03T14:10:52.191Z",
+ "SZ": 32,
+ "yard": true,
+ "rule": {
+  "cap": "⌈pop/6⌉×600+1500",
+  "capDiv": 6,
+  "perLot": 600,
+  "core": 1500,
+  "yardR": 10,
+  "maxMove": 240
+ },
+ "seeds": [
+  {
+   "seed": 1020,
+   "sum": 8279
+  },
+  {
+   "seed": 7,
+   "sum": 8258
+  },
+  {
+   "seed": 42,
+   "sum": 8591
+  }
+ ],
+ "zones": {
+  "hanbando": {
+   "NX": 2188,
+   "NY": 4063,
+   "n": 51,
+   "seedAll": true,
+   "picked": [
+    "광산1",
+    "광산2",
+    "광산3",
+    "광산4",
+    "어촌1",
+    "광산5",
+    "광산6",
+    "광산7",
+    "어촌2",
+    "임업1",
+    "임업2",
+    "임업3",
+    "농촌1",
+    "임업4",
+    "임업5",
+    "어촌3",
+    "임업6",
+    "농촌2",
+    "농촌3",
+    "어촌4",
+    "농촌4",
+    "농촌5",
+    "어촌5",
+    "어촌6",
+    "어촌7",
+    "어촌8",
+    "어촌9",
+    "어촌10",
+    "어촌11",
+    "어촌12",
+    "어촌13",
+    "어촌14",
+    "어촌15",
+    "농촌6",
+    "어촌16",
+    "농촌7",
+    "농촌8",
+    "농촌9",
+    "농촌10",
+    "농촌11",
+    "농촌12",
+    "농촌13",
+    "농촌14",
+    "농촌15",
+    "농촌16",
+    "농촌17",
+    "농촌18",
+    "농촌19",
+    "농촌20",
+    "농촌21",
+    "농촌22"
+   ],
+   "pairs0": [
+    {
+     "a": "어촌2",
+     "b": "임업6",
+     "d": 120.2,
+     "need": 218.3
+    },
+    {
+     "a": "농촌4",
+     "b": "어촌16",
+     "d": 100.7,
+     "need": 161.2
+    },
+    {
+     "a": "광산5",
+     "b": "임업2",
+     "d": 157.5,
+     "need": 200
+    }
+   ],
+   "pairsPicked0": 3,
+   "left": [],
+   "rows": [
+    {
+     "name": "광산1",
+     "type": "mining",
+     "from": {
+      "cx": 2120,
+      "cy": 2117
+     },
+     "to": {
+      "cx": 2120,
+      "cy": 2117
+     },
+     "moved": 0,
+     "reasons": [],
+     "noSpot": false,
+     "pop": 99,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 11700,
+     "r": 61,
+     "land0": 0,
+     "land1": 0,
+     "yard0": null,
+     "label0": {
+      "kind": "plain",
+      "why": "none",
+      "fShare": 0.3,
+      "hShare": 0.05
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "none",
+      "fShare": 0.3,
+      "hShare": 0.05
+     },
+     "picked": true
+    },
+    {
+     "name": "광산2",
+     "type": "mining",
+     "from": {
+      "cx": 2007,
+      "cy": 218
+     },
+     "to": {
+      "cx": 2007,
+      "cy": 218
+     },
+     "moved": 0,
+     "reasons": [],
+     "noSpot": false,
+     "pop": 189,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 20700,
+     "r": 81.2,
+     "land0": 4.673,
+     "land1": 4.673,
+     "yard0": null,
+     "label0": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.41,
+      "hShare": 0.31
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.41,
+      "hShare": 0.31
+     },
+     "picked": true
+    },
+    {
+     "name": "광산3",
+     "type": "mining",
+     "from": {
+      "cx": 1425,
+      "cy": 794
+     },
+     "to": {
+      "cx": 1425,
+      "cy": 794
+     },
+     "moved": 0,
+     "reasons": [],
+     "noSpot": false,
+     "pop": 113,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 12900,
+     "r": 64.1,
+     "land0": 0,
+     "land1": 0,
+     "yard0": null,
+     "label0": {
+      "kind": "plain",
+      "why": "none",
+      "fShare": 0.3,
+      "hShare": 0.05
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "none",
+      "fShare": 0.3,
+      "hShare": 0.05
+     },
+     "picked": true
+    },
+    {
+     "name": "광산4",
+     "type": "mining",
+     "from": {
+      "cx": 1285,
+      "cy": 1330
+     },
+     "to": {
+      "cx": 1285,
+      "cy": 1330
+     },
+     "moved": 0,
+     "reasons": [],
+     "noSpot": false,
+     "pop": 130,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 14700,
+     "r": 68.4,
+     "land0": 5.211,
+     "land1": 5.211,
+     "yard0": null,
+     "label0": {
+      "kind": "mining",
+      "why": "mixed",
+      "fShare": 0.42,
+      "hShare": 0.32
+     },
+     "label1": {
+      "kind": "mining",
+      "why": "mixed",
+      "fShare": 0.42,
+      "hShare": 0.32
+     },
+     "picked": true
+    },
+    {
+     "name": "어촌1",
+     "type": "riverside",
+     "from": {
+      "cx": 1296,
+      "cy": 2357
+     },
+     "to": {
+      "cx": 1296,
+      "cy": 2361
+     },
+     "moved": 4,
+     "reasons": [
+      "마당 물"
+     ],
+     "noSpot": false,
+     "pop": 127,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 14700,
+     "r": 68.4,
+     "land0": 5.324,
+     "land1": 5.166,
+     "yard0": "물",
+     "label0": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.42,
+      "hShare": 0.33
+     },
+     "label1": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.42,
+      "hShare": 0.33
+     },
+     "picked": true
+    },
+    {
+     "name": "광산5",
+     "type": "mining",
+     "from": {
+      "cx": 1129,
+      "cy": 2948
+     },
+     "to": {
+      "cx": 1119,
+      "cy": 2910
+     },
+     "moved": 39.3,
+     "reasons": [
+      "겹침(임업2 161 < 200)"
+     ],
+     "noSpot": false,
+     "pop": 194,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 21300,
+     "r": 82.3,
+     "land0": 3.825,
+     "land1": 3.31,
+     "yard0": null,
+     "label0": {
+      "kind": "mining",
+      "why": "mixed",
+      "fShare": 0.29,
+      "hShare": 0.25
+     },
+     "label1": {
+      "kind": "mining",
+      "why": "mixed",
+      "fShare": 0.33,
+      "hShare": 0.21
+     },
+     "picked": true
+    },
+    {
+     "name": "광산6",
+     "type": "mining",
+     "from": {
+      "cx": 227,
+      "cy": 3078
+     },
+     "to": {
+      "cx": 227,
+      "cy": 3078
+     },
+     "moved": 0,
+     "reasons": [],
+     "noSpot": false,
+     "pop": 78,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 9300,
+     "r": 54.4,
+     "land0": 4.244,
+     "land1": 4.244,
+     "yard0": null,
+     "label0": {
+      "kind": "mining",
+      "why": "mixed",
+      "fShare": 0.4,
+      "hShare": 0.29
+     },
+     "label1": {
+      "kind": "mining",
+      "why": "mixed",
+      "fShare": 0.4,
+      "hShare": 0.29
+     },
+     "picked": true
+    },
+    {
+     "name": "광산7",
+     "type": "mining",
+     "from": {
+      "cx": 2034,
+      "cy": 3099
+     },
+     "to": {
+      "cx": 2038,
+      "cy": 3099
+     },
+     "moved": 4,
+     "reasons": [
+      "마당 개울"
+     ],
+     "noSpot": false,
+     "pop": 114,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 12900,
+     "r": 64.1,
+     "land0": 0,
+     "land1": 0,
+     "yard0": "개울",
+     "label0": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.23,
+      "hShare": 0.26
+     },
+     "label1": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.23,
+      "hShare": 0.26
+     },
+     "picked": true
+    },
+    {
+     "name": "어촌2",
+     "type": "riverside",
+     "from": {
+      "cx": 1643,
+      "cy": 393
+     },
+     "to": {
+      "cx": 1655,
+      "cy": 375
+     },
+     "moved": 21.6,
+     "reasons": [
+      "마당 물"
+     ],
+     "noSpot": false,
+     "pop": 393,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 41100,
+     "r": 114.4,
+     "land0": 8.109,
+     "land1": 7.835,
+     "yard0": "물",
+     "label0": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.48,
+      "hShare": 0.3
+     },
+     "label1": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.47,
+      "hShare": 0.3
+     },
+     "picked": true
+    },
+    {
+     "name": "임업1",
+     "type": "forest",
+     "from": {
+      "cx": 891,
+      "cy": 3516
+     },
+     "to": {
+      "cx": 891,
+      "cy": 3516
+     },
+     "moved": 0,
+     "reasons": [],
+     "noSpot": false,
+     "pop": 233,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 24900,
+     "r": 89,
+     "land0": 3.024,
+     "land1": 3.024,
+     "yard0": null,
+     "label0": {
+      "kind": "forest",
+      "why": "none",
+      "fShare": 0.35,
+      "hShare": 0.04
+     },
+     "label1": {
+      "kind": "forest",
+      "why": "none",
+      "fShare": 0.35,
+      "hShare": 0.04
+     },
+     "picked": true
+    },
+    {
+     "name": "임업2",
+     "type": "forest",
+     "from": {
+      "cx": 1188,
+      "cy": 3094
+     },
+     "to": {
+      "cx": 1188,
+      "cy": 3098
+     },
+     "moved": 4,
+     "reasons": [
+      "마당 개울"
+     ],
+     "noSpot": false,
+     "pop": 418,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 43500,
+     "r": 117.7,
+     "land0": 6.696,
+     "land1": 6.719,
+     "yard0": "개울",
+     "label0": {
+      "kind": "forest",
+      "why": "mixed",
+      "fShare": 0.46,
+      "hShare": 0.28
+     },
+     "label1": {
+      "kind": "forest",
+      "why": "mixed",
+      "fShare": 0.46,
+      "hShare": 0.28
+     },
+     "picked": true
+    },
+    {
+     "name": "임업3",
+     "type": "forest",
+     "from": {
+      "cx": 1793,
+      "cy": 1910
+     },
+     "to": {
+      "cx": 1793,
+      "cy": 1910
+     },
+     "moved": 0,
+     "reasons": [],
+     "noSpot": false,
+     "pop": 312,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 32700,
+     "r": 102,
+     "land0": 6.048,
+     "land1": 6.048,
+     "yard0": null,
+     "label0": {
+      "kind": "forest",
+      "why": "mixed",
+      "fShare": 0.47,
+      "hShare": 0.23
+     },
+     "label1": {
+      "kind": "forest",
+      "why": "mixed",
+      "fShare": 0.47,
+      "hShare": 0.23
+     },
+     "picked": true
+    },
+    {
+     "name": "농촌1",
+     "type": "plain",
+     "from": {
+      "cx": 438,
+      "cy": 2438
+     },
+     "to": {
+      "cx": 438,
+      "cy": 2438
+     },
+     "moved": 0,
+     "reasons": [],
+     "noSpot": false,
+     "pop": 246,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 26100,
+     "r": 91.1,
+     "land0": 5.351,
+     "land1": 5.351,
+     "yard0": null,
+     "label0": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.46,
+      "hShare": 0.2
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.46,
+      "hShare": 0.2
+     },
+     "picked": true
+    },
+    {
+     "name": "임업4",
+     "type": "forest",
+     "from": {
+      "cx": 326,
+      "cy": 1304
+     },
+     "to": {
+      "cx": 326,
+      "cy": 1304
+     },
+     "moved": 0,
+     "reasons": [],
+     "noSpot": false,
+     "pop": 184,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 20100,
+     "r": 80,
+     "land0": 0,
+     "land1": 0,
+     "yard0": null,
+     "label0": {
+      "kind": "plain",
+      "why": "plain",
+      "fShare": 0.44,
+      "hShare": 0.04
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "plain",
+      "fShare": 0.44,
+      "hShare": 0.04
+     },
+     "picked": true
+    },
+    {
+     "name": "임업5",
+     "type": "forest",
+     "from": {
+      "cx": 980,
+      "cy": 690
+     },
+     "to": {
+      "cx": 982,
+      "cy": 684
+     },
+     "moved": 6.3,
+     "reasons": [
+      "마당 바위"
+     ],
+     "noSpot": false,
+     "pop": 263,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 27900,
+     "r": 94.2,
+     "land0": 4.443,
+     "land1": 4.396,
+     "yard0": "바위",
+     "label0": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.38,
+      "hShare": 0.26
+     },
+     "label1": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.23,
+      "hShare": 0.32
+     },
+     "picked": true
+    },
+    {
+     "name": "어촌3",
+     "type": "riverside",
+     "from": {
+      "cx": 566,
+      "cy": 2616
+     },
+     "to": {
+      "cx": 572,
+      "cy": 2612
+     },
+     "moved": 7.2,
+     "reasons": [
+      "마당 물"
+     ],
+     "noSpot": false,
+     "pop": 205,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 22500,
+     "r": 84.6,
+     "land0": 2.896,
+     "land1": 2.764,
+     "yard0": "물",
+     "label0": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "label1": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "picked": true
+    },
+    {
+     "name": "임업6",
+     "type": "forest",
+     "from": {
+      "cx": 1581,
+      "cy": 496
+     },
+     "to": {
+      "cx": 1539,
+      "cy": 560
+     },
+     "moved": 76.6,
+     "reasons": [
+      "마당 물",
+      "겹침(어촌2 160 < 218)"
+     ],
+     "noSpot": false,
+     "pop": 321,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 33900,
+     "r": 103.9,
+     "land0": 7.368,
+     "land1": 4.565,
+     "yard0": "물",
+     "label0": {
+      "kind": "forest",
+      "why": "mixed",
+      "fShare": 0.47,
+      "hShare": 0.3
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.44,
+      "hShare": 0.29
+     },
+     "picked": true
+    },
+    {
+     "name": "농촌2",
+     "type": "plain",
+     "from": {
+      "cx": 621,
+      "cy": 3449
+     },
+     "to": {
+      "cx": 625,
+      "cy": 3441
+     },
+     "moved": 8.9,
+     "reasons": [
+      "마당 물"
+     ],
+     "noSpot": false,
+     "pop": 231,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 24900,
+     "r": 89,
+     "land0": 4.466,
+     "land1": 4.416,
+     "yard0": "물",
+     "label0": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "picked": true
+    },
+    {
+     "name": "농촌3",
+     "type": "plain",
+     "from": {
+      "cx": 2011,
+      "cy": 3574
+     },
+     "to": {
+      "cx": 2013,
+      "cy": 3576
+     },
+     "moved": 2.8,
+     "reasons": [
+      "마당 물"
+     ],
+     "noSpot": false,
+     "pop": 129,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 14700,
+     "r": 68.4,
+     "land0": 2.04,
+     "land1": 2,
+     "yard0": "물",
+     "label0": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "picked": true
+    },
+    {
+     "name": "어촌4",
+     "type": "riverside",
+     "from": {
+      "cx": 683,
+      "cy": 724
+     },
+     "to": {
+      "cx": 685,
+      "cy": 732
+     },
+     "moved": 8.2,
+     "reasons": [
+      "마당 물"
+     ],
+     "noSpot": false,
+     "pop": 187,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 20700,
+     "r": 81.2,
+     "land0": 3.31,
+     "land1": 3.197,
+     "yard0": "물",
+     "label0": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "label1": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "picked": true
+    },
+    {
+     "name": "농촌4",
+     "type": "plain",
+     "from": {
+      "cx": 78,
+      "cy": 518
+     },
+     "to": {
+      "cx": 84,
+      "cy": 510
+     },
+     "moved": 10,
+     "reasons": [
+      "마당 물"
+     ],
+     "noSpot": false,
+     "pop": 186,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 20100,
+     "r": 80,
+     "land0": 2.059,
+     "land1": 1.962,
+     "yard0": "물",
+     "label0": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "picked": true
+    },
+    {
+     "name": "농촌5",
+     "type": "plain",
+     "from": {
+      "cx": 1378,
+      "cy": 2085
+     },
+     "to": {
+      "cx": 1378,
+      "cy": 2091
+     },
+     "moved": 6,
+     "reasons": [
+      "마당 개울"
+     ],
+     "noSpot": false,
+     "pop": 141,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 15900,
+     "r": 71.1,
+     "land0": 1.948,
+     "land1": 1.943,
+     "yard0": "개울",
+     "label0": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "picked": true
+    },
+    {
+     "name": "어촌5",
+     "type": "riverside",
+     "from": {
+      "cx": 196,
+      "cy": 2119
+     },
+     "to": {
+      "cx": 198,
+      "cy": 2125
+     },
+     "moved": 6.3,
+     "reasons": [
+      "마당 물"
+     ],
+     "noSpot": false,
+     "pop": 195,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 21300,
+     "r": 82.3,
+     "land0": 2.419,
+     "land1": 2.278,
+     "yard0": "물",
+     "label0": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "label1": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "picked": true
+    },
+    {
+     "name": "어촌6",
+     "type": "riverside",
+     "from": {
+      "cx": 2034,
+      "cy": 3952
+     },
+     "to": {
+      "cx": 2036,
+      "cy": 3886
+     },
+     "moved": 66,
+     "reasons": [
+      "마당 중심 물"
+     ],
+     "noSpot": false,
+     "pop": 208,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 22500,
+     "r": 84.6,
+     "land0": 2.079,
+     "land1": 1.981,
+     "yard0": "중심 물",
+     "label0": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.32,
+      "hShare": 0.4
+     },
+     "label1": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.46,
+      "hShare": 0.31
+     },
+     "picked": true
+    },
+    {
+     "name": "어촌7",
+     "type": "riverside",
+     "from": {
+      "cx": 1509,
+      "cy": 173
+     },
+     "to": {
+      "cx": 1517,
+      "cy": 173
+     },
+     "moved": 8,
+     "reasons": [
+      "마당 물"
+     ],
+     "noSpot": false,
+     "pop": 223,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 24300,
+     "r": 87.9,
+     "land0": 3.357,
+     "land1": 3.247,
+     "yard0": "물",
+     "label0": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "label1": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "picked": true
+    },
+    {
+     "name": "어촌8",
+     "type": "riverside",
+     "from": {
+      "cx": 51,
+      "cy": 1793
+     },
+     "to": {
+      "cx": 61,
+      "cy": 1797
+     },
+     "moved": 10.8,
+     "reasons": [
+      "마당 개울"
+     ],
+     "noSpot": false,
+     "pop": 190,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 20700,
+     "r": 81.2,
+     "land0": 2.034,
+     "land1": 1.962,
+     "yard0": "개울",
+     "label0": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "label1": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "picked": true
+    },
+    {
+     "name": "어촌9",
+     "type": "riverside",
+     "from": {
+      "cx": 804,
+      "cy": 549
+     },
+     "to": {
+      "cx": 796,
+      "cy": 543
+     },
+     "moved": 10,
+     "reasons": [
+      "마당 중심 물"
+     ],
+     "noSpot": false,
+     "pop": 222,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 23700,
+     "r": 86.9,
+     "land0": 4.707,
+     "land1": 4.02,
+     "yard0": "중심 물",
+     "label0": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.32
+     },
+     "label1": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "picked": true
+    },
+    {
+     "name": "어촌10",
+     "type": "riverside",
+     "from": {
+      "cx": 848,
+      "cy": 895
+     },
+     "to": {
+      "cx": 854,
+      "cy": 899
+     },
+     "moved": 7.2,
+     "reasons": [
+      "마당 물"
+     ],
+     "noSpot": false,
+     "pop": 154,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 17100,
+     "r": 73.8,
+     "land0": 2.034,
+     "land1": 1.948,
+     "yard0": "물",
+     "label0": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "label1": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "picked": true
+    },
+    {
+     "name": "어촌11",
+     "type": "riverside",
+     "from": {
+      "cx": 1722,
+      "cy": 2734
+     },
+     "to": {
+      "cx": 1722,
+      "cy": 2742
+     },
+     "moved": 8,
+     "reasons": [
+      "마당 물"
+     ],
+     "noSpot": false,
+     "pop": 188,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 20700,
+     "r": 81.2,
+     "land0": 2.059,
+     "land1": 1.962,
+     "yard0": "물",
+     "label0": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "label1": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "picked": true
+    },
+    {
+     "name": "어촌12",
+     "type": "riverside",
+     "from": {
+      "cx": 738,
+      "cy": 3274
+     },
+     "to": {
+      "cx": 744,
+      "cy": 3274
+     },
+     "moved": 6,
+     "reasons": [
+      "마당 물"
+     ],
+     "noSpot": false,
+     "pop": 202,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 21900,
+     "r": 83.5,
+     "land0": 2.988,
+     "land1": 2.919,
+     "yard0": "물",
+     "label0": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "label1": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "picked": true
+    },
+    {
+     "name": "어촌13",
+     "type": "riverside",
+     "from": {
+      "cx": 399,
+      "cy": 3318
+     },
+     "to": {
+      "cx": 405,
+      "cy": 3316
+     },
+     "moved": 6.3,
+     "reasons": [
+      "마당 물"
+     ],
+     "noSpot": false,
+     "pop": 182,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 20100,
+     "r": 80,
+     "land0": 2.034,
+     "land1": 1.962,
+     "yard0": "물",
+     "label0": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "label1": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "picked": true
+    },
+    {
+     "name": "어촌14",
+     "type": "riverside",
+     "from": {
+      "cx": 1797,
+      "cy": 648
+     },
+     "to": {
+      "cx": 1797,
+      "cy": 654
+     },
+     "moved": 6,
+     "reasons": [
+      "마당 물"
+     ],
+     "noSpot": false,
+     "pop": 219,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 23700,
+     "r": 86.9,
+     "land0": 2.923,
+     "land1": 3.157,
+     "yard0": "물",
+     "label0": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.46,
+      "hShare": 0.31
+     },
+     "label1": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "picked": true
+    },
+    {
+     "name": "어촌15",
+     "type": "riverside",
+     "from": {
+      "cx": 326,
+      "cy": 775
+     },
+     "to": {
+      "cx": 334,
+      "cy": 781
+     },
+     "moved": 10,
+     "reasons": [
+      "마당 물"
+     ],
+     "noSpot": false,
+     "pop": 195,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 21300,
+     "r": 82.3,
+     "land0": 2.079,
+     "land1": 1.974,
+     "yard0": "물",
+     "label0": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.32
+     },
+     "label1": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "picked": true
+    },
+    {
+     "name": "농촌6",
+     "type": "plain",
+     "from": {
+      "cx": 161,
+      "cy": 210
+     },
+     "to": {
+      "cx": 153,
+      "cy": 202
+     },
+     "moved": 11.3,
+     "reasons": [
+      "마당 개울"
+     ],
+     "noSpot": false,
+     "pop": 144,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 15900,
+     "r": 71.1,
+     "land0": 1.871,
+     "land1": 1.752,
+     "yard0": "개울",
+     "label0": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.43,
+      "hShare": 0.28
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.43,
+      "hShare": 0.26
+     },
+     "picked": true
+    },
+    {
+     "name": "어촌16",
+     "type": "riverside",
+     "from": {
+      "cx": 161,
+      "cy": 575
+     },
+     "to": {
+      "cx": 205,
+      "cy": 617
+     },
+     "moved": 60.8,
+     "reasons": [
+      "마당 물",
+      "겹침(농촌4 103 < 161)"
+     ],
+     "noSpot": false,
+     "pop": 188,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 20700,
+     "r": 81.2,
+     "land0": 2.073,
+     "land1": 1.929,
+     "yard0": "물",
+     "label0": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.32
+     },
+     "label1": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "picked": true
+    },
+    {
+     "name": "농촌7",
+     "type": "plain",
+     "from": {
+      "cx": 161,
+      "cy": 939
+     },
+     "to": {
+      "cx": 159,
+      "cy": 933
+     },
+     "moved": 6.3,
+     "reasons": [
+      "마당 개울"
+     ],
+     "noSpot": false,
+     "pop": 132,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 14700,
+     "r": 68.4,
+     "land0": 1.68,
+     "land1": 1.531,
+     "yard0": "개울",
+     "label0": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.43,
+      "hShare": 0.28
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.44,
+      "hShare": 0.27
+     },
+     "picked": true
+    },
+    {
+     "name": "농촌8",
+     "type": "plain",
+     "from": {
+      "cx": 161,
+      "cy": 1667
+     },
+     "to": {
+      "cx": 161,
+      "cy": 1667
+     },
+     "moved": 0,
+     "reasons": [],
+     "noSpot": false,
+     "pop": 124,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 14100,
+     "r": 67,
+     "land0": 1.471,
+     "land1": 1.471,
+     "yard0": null,
+     "label0": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.43,
+      "hShare": 0.26
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.43,
+      "hShare": 0.26
+     },
+     "picked": true
+    },
+    {
+     "name": "농촌9",
+     "type": "plain",
+     "from": {
+      "cx": 161,
+      "cy": 2396
+     },
+     "to": {
+      "cx": 161,
+      "cy": 2390
+     },
+     "moved": 6,
+     "reasons": [
+      "마당 개울"
+     ],
+     "noSpot": false,
+     "pop": 126,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 14100,
+     "r": 67,
+     "land0": 0,
+     "land1": 0,
+     "yard0": "개울",
+     "label0": {
+      "kind": "plain",
+      "why": "none",
+      "fShare": 0.38,
+      "hShare": 0.04
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "none",
+      "fShare": 0.38,
+      "hShare": 0.04
+     },
+     "picked": true
+    },
+    {
+     "name": "농촌10",
+     "type": "plain",
+     "from": {
+      "cx": 161,
+      "cy": 2760
+     },
+     "to": {
+      "cx": 161,
+      "cy": 2760
+     },
+     "moved": 0,
+     "reasons": [],
+     "noSpot": false,
+     "pop": 94,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 11100,
+     "r": 59.4,
+     "land0": 0,
+     "land1": 0,
+     "yard0": null,
+     "label0": {
+      "kind": "plain",
+      "why": "none",
+      "fShare": 0.38,
+      "hShare": 0.04
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "none",
+      "fShare": 0.38,
+      "hShare": 0.04
+     },
+     "picked": true
+    },
+    {
+     "name": "농촌11",
+     "type": "plain",
+     "from": {
+      "cx": 161,
+      "cy": 3489
+     },
+     "to": {
+      "cx": 161,
+      "cy": 3499
+     },
+     "moved": 10,
+     "reasons": [
+      "마당 개울"
+     ],
+     "noSpot": false,
+     "pop": 149,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 16500,
+     "r": 72.5,
+     "land0": 2.145,
+     "land1": 2.137,
+     "yard0": "개울",
+     "label0": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.43,
+      "hShare": 0.28
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.43,
+      "hShare": 0.28
+     },
+     "picked": true
+    },
+    {
+     "name": "농촌12",
+     "type": "plain",
+     "from": {
+      "cx": 161,
+      "cy": 3853
+     },
+     "to": {
+      "cx": 167,
+      "cy": 3853
+     },
+     "moved": 6,
+     "reasons": [
+      "마당 개울"
+     ],
+     "noSpot": false,
+     "pop": 138,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 15300,
+     "r": 69.8,
+     "land0": 3.248,
+     "land1": 3.211,
+     "yard0": "개울",
+     "label0": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.47,
+      "hShare": 0.29
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.47,
+      "hShare": 0.29
+     },
+     "picked": true
+    },
+    {
+     "name": "농촌13",
+     "type": "plain",
+     "from": {
+      "cx": 428,
+      "cy": 210
+     },
+     "to": {
+      "cx": 428,
+      "cy": 210
+     },
+     "moved": 0,
+     "reasons": [],
+     "noSpot": false,
+     "pop": 143,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 15900,
+     "r": 71.1,
+     "land0": 2.02,
+     "land1": 2.02,
+     "yard0": null,
+     "label0": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.42,
+      "hShare": 0.24
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.42,
+      "hShare": 0.24
+     },
+     "picked": true
+    },
+    {
+     "name": "농촌14",
+     "type": "plain",
+     "from": {
+      "cx": 428,
+      "cy": 575
+     },
+     "to": {
+      "cx": 424,
+      "cy": 581
+     },
+     "moved": 7.2,
+     "reasons": [
+      "마당 개울"
+     ],
+     "noSpot": false,
+     "pop": 88,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 10500,
+     "r": 57.8,
+     "land0": 1.034,
+     "land1": 1.092,
+     "yard0": "개울",
+     "label0": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.31,
+      "hShare": 0.23
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.3,
+      "hShare": 0.24
+     },
+     "picked": true
+    },
+    {
+     "name": "농촌15",
+     "type": "plain",
+     "from": {
+      "cx": 428,
+      "cy": 939
+     },
+     "to": {
+      "cx": 428,
+      "cy": 939
+     },
+     "moved": 0,
+     "reasons": [],
+     "noSpot": false,
+     "pop": 105,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 12300,
+     "r": 62.6,
+     "land0": 0,
+     "land1": 0,
+     "yard0": null,
+     "label0": {
+      "kind": "plain",
+      "why": "none",
+      "fShare": 0.38,
+      "hShare": 0.04
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "none",
+      "fShare": 0.38,
+      "hShare": 0.04
+     },
+     "picked": true
+    },
+    {
+     "name": "농촌16",
+     "type": "plain",
+     "from": {
+      "cx": 428,
+      "cy": 1667
+     },
+     "to": {
+      "cx": 428,
+      "cy": 1667
+     },
+     "moved": 0,
+     "reasons": [],
+     "noSpot": false,
+     "pop": 134,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 15300,
+     "r": 69.8,
+     "land0": 1.59,
+     "land1": 1.59,
+     "yard0": null,
+     "label0": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.42,
+      "hShare": 0.22
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.42,
+      "hShare": 0.22
+     },
+     "picked": true
+    },
+    {
+     "name": "농촌17",
+     "type": "plain",
+     "from": {
+      "cx": 428,
+      "cy": 2032
+     },
+     "to": {
+      "cx": 428,
+      "cy": 2032
+     },
+     "moved": 0,
+     "reasons": [],
+     "noSpot": false,
+     "pop": 172,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 18900,
+     "r": 77.6,
+     "land0": 1.876,
+     "land1": 1.876,
+     "yard0": null,
+     "label0": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.3
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.3
+     },
+     "picked": true
+    },
+    {
+     "name": "농촌18",
+     "type": "plain",
+     "from": {
+      "cx": 428,
+      "cy": 2760
+     },
+     "to": {
+      "cx": 428,
+      "cy": 2760
+     },
+     "moved": 0,
+     "reasons": [],
+     "noSpot": false,
+     "pop": 105,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 12300,
+     "r": 62.6,
+     "land0": 0,
+     "land1": 0,
+     "yard0": null,
+     "label0": {
+      "kind": "plain",
+      "why": "none",
+      "fShare": 0.35,
+      "hShare": 0.12
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "none",
+      "fShare": 0.35,
+      "hShare": 0.12
+     },
+     "picked": true
+    },
+    {
+     "name": "농촌19",
+     "type": "plain",
+     "from": {
+      "cx": 428,
+      "cy": 3124
+     },
+     "to": {
+      "cx": 428,
+      "cy": 3124
+     },
+     "moved": 0,
+     "reasons": [],
+     "noSpot": false,
+     "pop": 140,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 15900,
+     "r": 71.1,
+     "land0": 1.549,
+     "land1": 1.549,
+     "yard0": null,
+     "label0": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.43,
+      "hShare": 0.28
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.43,
+      "hShare": 0.28
+     },
+     "picked": true
+    },
+    {
+     "name": "농촌20",
+     "type": "plain",
+     "from": {
+      "cx": 428,
+      "cy": 3489
+     },
+     "to": {
+      "cx": 428,
+      "cy": 3489
+     },
+     "moved": 0,
+     "reasons": [],
+     "noSpot": false,
+     "pop": 117,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 13500,
+     "r": 65.6,
+     "land0": 0,
+     "land1": 0,
+     "yard0": null,
+     "label0": {
+      "kind": "plain",
+      "why": "none",
+      "fShare": 0.34,
+      "hShare": 0.16
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "none",
+      "fShare": 0.34,
+      "hShare": 0.16
+     },
+     "picked": true
+    },
+    {
+     "name": "농촌21",
+     "type": "plain",
+     "from": {
+      "cx": 428,
+      "cy": 3853
+     },
+     "to": {
+      "cx": 428,
+      "cy": 3853
+     },
+     "moved": 0,
+     "reasons": [],
+     "noSpot": false,
+     "pop": 142,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 15900,
+     "r": 71.1,
+     "land0": 2.097,
+     "land1": 2.097,
+     "yard0": null,
+     "label0": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.44,
+      "hShare": 0.3
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.44,
+      "hShare": 0.3
+     },
+     "picked": true
+    },
+    {
+     "name": "농촌22",
+     "type": "plain",
+     "from": {
+      "cx": 964,
+      "cy": 1864
+     },
+     "to": {
+      "cx": 964,
+      "cy": 1864
+     },
+     "moved": 0,
+     "reasons": [],
+     "noSpot": false,
+     "pop": 126,
+     "popSrc": "그 마을 3시드 최대",
+     "cap": 14100,
+     "r": 67,
+     "land0": 1.962,
+     "land1": 1.962,
+     "yard0": null,
+     "label0": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "picked": true
+    }
+   ],
+   "streams": "server/streams {\"zoneId\":\"hanbando\",\"NX\":2188,\"NY\":4063,\"cells\":69048,\"hash\":\"58527d2fa2375b4a\"}",
+   "ms": 74130,
+   "raster": {
+    "file": "hanbando.u8",
+    "K": 4,
+    "W": 547,
+    "H": 1016
+   }
+  },
+  "nippon": {
+   "NX": 2187,
+   "NY": 4063,
+   "n": 30,
+   "seedAll": false,
+   "picked": [
+    "타카쿠",
+    "이즈이",
+    "마트노",
+    "카토쿠",
+    "히마쿠",
+    "네코로",
+    "사키농촌",
+    "쿠라마",
+    "타카노",
+    "후카임업",
+    "후지로",
+    "토오광산",
+    "쿠로어촌",
+    "미도리광산",
+    "노라마",
+    "쿠라다",
+    "하야어촌",
+    "키요어촌",
+    "아오어촌",
+    "시로농촌"
+   ],
+   "pairs0": [
+    {
+     "a": "후지다",
+     "b": "이즈이",
+     "d": 162.6,
+     "need": 205.5
+    }
+   ],
+   "pairsPicked0": 0,
+   "left": [],
+   "rows": [
+    {
+     "name": "이즈사키",
+     "type": "plain",
+     "from": {
+      "cx": 1374,
+      "cy": 299
+     },
+     "to": {
+      "cx": 1372,
+      "cy": 307
+     },
+     "moved": 8.2,
+     "reasons": [
+      "마당 물"
+     ],
+     "noSpot": false,
+     "pop": 246,
+     "popSrc": "한반도 plain 최대",
+     "cap": 26100,
+     "r": 91.1,
+     "land0": 2.073,
+     "land1": 1.981,
+     "yard0": "물",
+     "label0": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.32
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "picked": false
+    },
+    {
+     "name": "지옹로",
+     "type": "riverside",
+     "from": {
+      "cx": 408,
+      "cy": 652
+     },
+     "to": {
+      "cx": 406,
+      "cy": 660
+     },
+     "moved": 8.2,
+     "reasons": [
+      "마당 물"
+     ],
+     "noSpot": false,
+     "pop": 393,
+     "popSrc": "한반도 riverside 최대",
+     "cap": 41100,
+     "r": 114.4,
+     "land0": 2.073,
+     "land1": 2.163,
+     "yard0": "물",
+     "label0": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.32
+     },
+     "label1": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "picked": false
+    },
+    {
+     "name": "네코로",
+     "type": "plain",
+     "from": {
+      "cx": 262,
+      "cy": 2390
+     },
+     "to": {
+      "cx": 266,
+      "cy": 2390
+     },
+     "moved": 4,
+     "reasons": [
+      "마당 개울"
+     ],
+     "noSpot": false,
+     "pop": 246,
+     "popSrc": "한반도 plain 최대",
+     "cap": 26100,
+     "r": 91.1,
+     "land0": 4.082,
+     "land1": 3.906,
+     "yard0": "개울",
+     "label0": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.43,
+      "hShare": 0.25
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.44,
+      "hShare": 0.23
+     },
+     "picked": true
+    },
+    {
+     "name": "후지로",
+     "type": "mining",
+     "from": {
+      "cx": 726,
+      "cy": 2302
+     },
+     "to": {
+      "cx": 722,
+      "cy": 2306
+     },
+     "moved": 5.7,
+     "reasons": [
+      "마당 바위"
+     ],
+     "noSpot": false,
+     "pop": 194,
+     "popSrc": "한반도 mining 최대",
+     "cap": 21300,
+     "r": 82.3,
+     "land0": 0,
+     "land1": 0,
+     "yard0": "바위",
+     "label0": {
+      "kind": "plain",
+      "why": "none",
+      "fShare": 0.15,
+      "hShare": 0.34
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "none",
+      "fShare": 0.17,
+      "hShare": 0.32
+     },
+     "picked": true
+    },
+    {
+     "name": "카토쿠",
+     "type": "mining",
+     "from": {
+      "cx": 790,
+      "cy": 805
+     },
+     "to": {
+      "cx": 794,
+      "cy": 801
+     },
+     "moved": 5.7,
+     "reasons": [
+      "마당 물"
+     ],
+     "noSpot": false,
+     "pop": 194,
+     "popSrc": "한반도 mining 최대",
+     "cap": 21300,
+     "r": 82.3,
+     "land0": 5.203,
+     "land1": 5.473,
+     "yard0": "물",
+     "label0": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "picked": true
+    },
+    {
+     "name": "지옹다",
+     "type": "mining",
+     "from": {
+      "cx": 813,
+      "cy": 3265
+     },
+     "to": {
+      "cx": 813,
+      "cy": 3265
+     },
+     "moved": 0,
+     "reasons": [],
+     "noSpot": false,
+     "pop": 194,
+     "popSrc": "한반도 mining 최대",
+     "cap": 21300,
+     "r": 82.3,
+     "land0": 3.118,
+     "land1": 3.118,
+     "yard0": null,
+     "label0": {
+      "kind": "mining",
+      "why": "mixed",
+      "fShare": 0.42,
+      "hShare": 0.23
+     },
+     "label1": {
+      "kind": "mining",
+      "why": "mixed",
+      "fShare": 0.42,
+      "hShare": 0.23
+     },
+     "picked": false
+    },
+    {
+     "name": "노라마",
+     "type": "riverside",
+     "from": {
+      "cx": 258,
+      "cy": 1448
+     },
+     "to": {
+      "cx": 238,
+      "cy": 1448
+     },
+     "moved": 20,
+     "reasons": [
+      "마당 중심 물"
+     ],
+     "noSpot": false,
+     "pop": 393,
+     "popSrc": "한반도 riverside 최대",
+     "cap": 41100,
+     "r": 114.4,
+     "land0": 2.225,
+     "land1": 2.206,
+     "yard0": "중심 물",
+     "label0": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.46,
+      "hShare": 0.31
+     },
+     "label1": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "picked": true
+    },
+    {
+     "name": "후지다",
+     "type": "plain",
+     "from": {
+      "cx": 1262,
+      "cy": 661
+     },
+     "to": {
+      "cx": 1284,
+      "cy": 697
+     },
+     "moved": 42.2,
+     "reasons": [
+      "겹침(이즈이 164 < 206)"
+     ],
+     "noSpot": false,
+     "pop": 246,
+     "popSrc": "한반도 plain 최대",
+     "cap": 26100,
+     "r": 91.1,
+     "land0": 3.882,
+     "land1": 3.819,
+     "yard0": null,
+     "label0": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.38,
+      "hShare": 0.26
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.42,
+      "hShare": 0.25
+     },
+     "picked": false
+    },
+    {
+     "name": "이즈이",
+     "type": "riverside",
+     "from": {
+      "cx": 1158,
+      "cy": 536
+     },
+     "to": {
+      "cx": 1164,
+      "cy": 530
+     },
+     "moved": 8.5,
+     "reasons": [
+      "마당 물"
+     ],
+     "noSpot": false,
+     "pop": 393,
+     "popSrc": "한반도 riverside 최대",
+     "cap": 41100,
+     "r": 114.4,
+     "land0": 5.784,
+     "land1": 5.565,
+     "yard0": "물",
+     "label0": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.32
+     },
+     "label1": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "picked": true
+    },
+    {
+     "name": "쿠라마",
+     "type": "plain",
+     "from": {
+      "cx": 70,
+      "cy": 702
+     },
+     "to": {
+      "cx": 76,
+      "cy": 692
+     },
+     "moved": 11.7,
+     "reasons": [
+      "마당 개울"
+     ],
+     "noSpot": false,
+     "pop": 246,
+     "popSrc": "한반도 plain 최대",
+     "cap": 26100,
+     "r": 91.1,
+     "land0": 3.137,
+     "land1": 3.348,
+     "yard0": "개울",
+     "label0": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.28,
+      "hShare": 0.29
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.28,
+      "hShare": 0.3
+     },
+     "picked": true
+    },
+    {
+     "name": "지옹사키",
+     "type": "mining",
+     "from": {
+      "cx": 648,
+      "cy": 2039
+     },
+     "to": {
+      "cx": 648,
+      "cy": 2039
+     },
+     "moved": 0,
+     "reasons": [],
+     "noSpot": false,
+     "pop": 194,
+     "popSrc": "한반도 mining 최대",
+     "cap": 21300,
+     "r": 82.3,
+     "land0": 0,
+     "land1": 0,
+     "yard0": null,
+     "label0": {
+      "kind": "plain",
+      "why": "none",
+      "fShare": 0.25,
+      "hShare": 0.05
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "none",
+      "fShare": 0.25,
+      "hShare": 0.05
+     },
+     "picked": false
+    },
+    {
+     "name": "마트노",
+     "type": "forest",
+     "from": {
+      "cx": 499,
+      "cy": 43
+     },
+     "to": {
+      "cx": 499,
+      "cy": 43
+     },
+     "moved": 0,
+     "reasons": [],
+     "noSpot": false,
+     "pop": 418,
+     "popSrc": "한반도 forest 최대",
+     "cap": 43500,
+     "r": 117.7,
+     "land0": 4.56,
+     "land1": 4.56,
+     "yard0": null,
+     "label0": {
+      "kind": "forest",
+      "why": "mixed",
+      "fShare": 0.34,
+      "hShare": 0.26
+     },
+     "label1": {
+      "kind": "forest",
+      "why": "mixed",
+      "fShare": 0.34,
+      "hShare": 0.26
+     },
+     "picked": true
+    },
+    {
+     "name": "쿠라다",
+     "type": "riverside",
+     "from": {
+      "cx": 657,
+      "cy": 3425
+     },
+     "to": {
+      "cx": 657,
+      "cy": 3425
+     },
+     "moved": 0,
+     "reasons": [],
+     "noSpot": false,
+     "pop": 393,
+     "popSrc": "한반도 riverside 최대",
+     "cap": 41100,
+     "r": 114.4,
+     "land0": 0,
+     "land1": 0,
+     "yard0": null,
+     "label0": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.2,
+      "hShare": 0.21
+     },
+     "label1": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.2,
+      "hShare": 0.21
+     },
+     "picked": true
+    },
+    {
+     "name": "히마쿠",
+     "type": "plain",
+     "from": {
+      "cx": 1398,
+      "cy": 1740
+     },
+     "to": {
+      "cx": 1398,
+      "cy": 1740
+     },
+     "moved": 0,
+     "reasons": [],
+     "noSpot": false,
+     "pop": 246,
+     "popSrc": "한반도 plain 최대",
+     "cap": 26100,
+     "r": 91.1,
+     "land0": 4.343,
+     "land1": 4.343,
+     "yard0": null,
+     "label0": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.41,
+      "hShare": 0.28
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.41,
+      "hShare": 0.28
+     },
+     "picked": true
+    },
+    {
+     "name": "타카쿠",
+     "type": "plain",
+     "from": {
+      "cx": 313,
+      "cy": 1015
+     },
+     "to": {
+      "cx": 323,
+      "cy": 1011
+     },
+     "moved": 10.8,
+     "reasons": [
+      "마당 중심 바위"
+     ],
+     "noSpot": false,
+     "pop": 246,
+     "popSrc": "한반도 plain 최대",
+     "cap": 26100,
+     "r": 91.1,
+     "land0": 4.919,
+     "land1": 4.91,
+     "yard0": "중심 바위",
+     "label0": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.39,
+      "hShare": 0.33
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.4,
+      "hShare": 0.33
+     },
+     "picked": true
+    },
+    {
+     "name": "타카노",
+     "type": "plain",
+     "from": {
+      "cx": 1178,
+      "cy": 3181
+     },
+     "to": {
+      "cx": 1178,
+      "cy": 3181
+     },
+     "moved": 0,
+     "reasons": [],
+     "noSpot": false,
+     "pop": 246,
+     "popSrc": "한반도 plain 최대",
+     "cap": 26100,
+     "r": 91.1,
+     "land0": 3.114,
+     "land1": 3.114,
+     "yard0": null,
+     "label0": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.43,
+      "hShare": 0.28
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.43,
+      "hShare": 0.28
+     },
+     "picked": true
+    },
+    {
+     "name": "아카어촌",
+     "type": "riverside",
+     "from": {
+      "cx": 1202,
+      "cy": 3930
+     },
+     "to": {
+      "cx": 1202,
+      "cy": 3930
+     },
+     "moved": 0,
+     "reasons": [],
+     "noSpot": false,
+     "pop": 393,
+     "popSrc": "한반도 riverside 최대",
+     "cap": 41100,
+     "r": 114.4,
+     "land0": 1.294,
+     "land1": 1.294,
+     "yard0": null,
+     "label0": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.43,
+      "hShare": 0.24
+     },
+     "label1": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.43,
+      "hShare": 0.24
+     },
+     "picked": false
+    },
+    {
+     "name": "시로농촌",
+     "type": "plain",
+     "from": {
+      "cx": 20,
+      "cy": 3076
+     },
+     "to": {
+      "cx": 20,
+      "cy": 3076
+     },
+     "moved": 0,
+     "reasons": [],
+     "noSpot": false,
+     "pop": 246,
+     "popSrc": "한반도 plain 최대",
+     "cap": 26100,
+     "r": 91.1,
+     "land0": 1.652,
+     "land1": 1.652,
+     "yard0": null,
+     "label0": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.28,
+      "hShare": 0.31
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.28,
+      "hShare": 0.31
+     },
+     "picked": true
+    },
+    {
+     "name": "쿠로어촌",
+     "type": "riverside",
+     "from": {
+      "cx": 1379,
+      "cy": 2539
+     },
+     "to": {
+      "cx": 1377,
+      "cy": 2533
+     },
+     "moved": 6.3,
+     "reasons": [
+      "마당 물"
+     ],
+     "noSpot": false,
+     "pop": 393,
+     "popSrc": "한반도 riverside 최대",
+     "cap": 41100,
+     "r": 114.4,
+     "land0": 2.358,
+     "land1": 2.358,
+     "yard0": "물",
+     "label0": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "label1": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "picked": true
+    },
+    {
+     "name": "아오어촌",
+     "type": "riverside",
+     "from": {
+      "cx": 69,
+      "cy": 3744
+     },
+     "to": {
+      "cx": 69,
+      "cy": 3744
+     },
+     "moved": 0,
+     "reasons": [],
+     "noSpot": false,
+     "pop": 393,
+     "popSrc": "한반도 riverside 최대",
+     "cap": 41100,
+     "r": 114.4,
+     "land0": 1.723,
+     "land1": 1.723,
+     "yard0": null,
+     "label0": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.42,
+      "hShare": 0.23
+     },
+     "label1": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.42,
+      "hShare": 0.23
+     },
+     "picked": true
+    },
+    {
+     "name": "미도리광산",
+     "type": "mining",
+     "from": {
+      "cx": 866,
+      "cy": 1448
+     },
+     "to": {
+      "cx": 866,
+      "cy": 1448
+     },
+     "moved": 0,
+     "reasons": [],
+     "noSpot": false,
+     "pop": 194,
+     "popSrc": "한반도 mining 최대",
+     "cap": 21300,
+     "r": 82.3,
+     "land0": 0,
+     "land1": 0,
+     "yard0": null,
+     "label0": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.24,
+      "hShare": 0.26
+     },
+     "label1": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.24,
+      "hShare": 0.26
+     },
+     "picked": true
+    },
+    {
+     "name": "하야어촌",
+     "type": "riverside",
+     "from": {
+      "cx": 1342,
+      "cy": 1194
+     },
+     "to": {
+      "cx": 1342,
+      "cy": 1194
+     },
+     "moved": 0,
+     "reasons": [],
+     "noSpot": false,
+     "pop": 393,
+     "popSrc": "한반도 riverside 최대",
+     "cap": 41100,
+     "r": 114.4,
+     "land0": 1.896,
+     "land1": 1.896,
+     "yard0": null,
+     "label0": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.3
+     },
+     "label1": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.3
+     },
+     "picked": true
+    },
+    {
+     "name": "토오광산",
+     "type": "mining",
+     "from": {
+      "cx": 580,
+      "cy": 2802
+     },
+     "to": {
+      "cx": 580,
+      "cy": 2802
+     },
+     "moved": 0,
+     "reasons": [],
+     "noSpot": false,
+     "pop": 194,
+     "popSrc": "한반도 mining 최대",
+     "cap": 21300,
+     "r": 82.3,
+     "land0": 0,
+     "land1": 0,
+     "yard0": null,
+     "label0": {
+      "kind": "plain",
+      "why": "none",
+      "fShare": 0.46,
+      "hShare": 0.18
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "none",
+      "fShare": 0.46,
+      "hShare": 0.18
+     },
+     "picked": true
+    },
+    {
+     "name": "사키농촌",
+     "type": "plain",
+     "from": {
+      "cx": 87,
+      "cy": 1920
+     },
+     "to": {
+      "cx": 87,
+      "cy": 1920
+     },
+     "moved": 0,
+     "reasons": [],
+     "noSpot": false,
+     "pop": 246,
+     "popSrc": "한반도 plain 최대",
+     "cap": 26100,
+     "r": 91.1,
+     "land0": 3.577,
+     "land1": 3.577,
+     "yard0": null,
+     "label0": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.4,
+      "hShare": 0.26
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.4,
+      "hShare": 0.26
+     },
+     "picked": true
+    },
+    {
+     "name": "후카임업",
+     "type": "forest",
+     "from": {
+      "cx": 20,
+      "cy": 175
+     },
+     "to": {
+      "cx": 20,
+      "cy": 175
+     },
+     "moved": 0,
+     "reasons": [],
+     "noSpot": false,
+     "pop": 418,
+     "popSrc": "한반도 forest 최대",
+     "cap": 43500,
+     "r": 117.7,
+     "land0": 3.017,
+     "land1": 3.017,
+     "yard0": null,
+     "label0": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.28,
+      "hShare": 0.24
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.28,
+      "hShare": 0.24
+     },
+     "picked": true
+    },
+    {
+     "name": "아라광산",
+     "type": "mining",
+     "from": {
+      "cx": 835,
+      "cy": 56
+     },
+     "to": {
+      "cx": 835,
+      "cy": 56
+     },
+     "moved": 0,
+     "reasons": [],
+     "noSpot": false,
+     "pop": 194,
+     "popSrc": "한반도 mining 최대",
+     "cap": 21300,
+     "r": 82.3,
+     "land0": 0,
+     "land1": 0,
+     "yard0": null,
+     "label0": {
+      "kind": "plain",
+      "why": "none",
+      "fShare": 0.3,
+      "hShare": 0.05
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "none",
+      "fShare": 0.3,
+      "hShare": 0.05
+     },
+     "picked": false
+    },
+    {
+     "name": "키요어촌",
+     "type": "riverside",
+     "from": {
+      "cx": 742,
+      "cy": 3881
+     },
+     "to": {
+      "cx": 742,
+      "cy": 3881
+     },
+     "moved": 0,
+     "reasons": [],
+     "noSpot": false,
+     "pop": 393,
+     "popSrc": "한반도 riverside 최대",
+     "cap": 41100,
+     "r": 114.4,
+     "land0": 1.766,
+     "land1": 1.766,
+     "yard0": null,
+     "label0": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.44,
+      "hShare": 0.29
+     },
+     "label1": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.44,
+      "hShare": 0.29
+     },
+     "picked": true
+    },
+    {
+     "name": "나가임업",
+     "type": "forest",
+     "from": {
+      "cx": 1157,
+      "cy": 2134
+     },
+     "to": {
+      "cx": 1157,
+      "cy": 2134
+     },
+     "moved": 0,
+     "reasons": [],
+     "noSpot": false,
+     "pop": 418,
+     "popSrc": "한반도 forest 최대",
+     "cap": 43500,
+     "r": 117.7,
+     "land0": 1.269,
+     "land1": 1.269,
+     "yard0": null,
+     "label0": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.41,
+      "hShare": 0.23
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.41,
+      "hShare": 0.23
+     },
+     "picked": false
+    },
+    {
+     "name": "히로농촌",
+     "type": "plain",
+     "from": {
+      "cx": 1015,
+      "cy": 2778
+     },
+     "to": {
+      "cx": 1015,
+      "cy": 2778
+     },
+     "moved": 0,
+     "reasons": [],
+     "noSpot": false,
+     "pop": 246,
+     "popSrc": "한반도 plain 최대",
+     "cap": 26100,
+     "r": 91.1,
+     "land0": 1.491,
+     "land1": 1.491,
+     "yard0": null,
+     "label0": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.43,
+      "hShare": 0.26
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.43,
+      "hShare": 0.26
+     },
+     "picked": false
+    },
+    {
+     "name": "오오임업",
+     "type": "forest",
+     "from": {
+      "cx": 715,
+      "cy": 388
+     },
+     "to": {
+      "cx": 715,
+      "cy": 388
+     },
+     "moved": 0,
+     "reasons": [],
+     "noSpot": false,
+     "pop": 418,
+     "popSrc": "한반도 forest 최대",
+     "cap": 43500,
+     "r": 117.7,
+     "land0": 1.678,
+     "land1": 1.678,
+     "yard0": null,
+     "label0": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.31,
+      "hShare": 0.23
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.31,
+      "hShare": 0.23
+     },
+     "picked": false
+    }
+   ],
+   "streams": "server/streams {\"zoneId\":\"nippon\",\"NX\":2187,\"NY\":4063,\"cells\":80261,\"hash\":\"dbcb25bbe65d4139\"}",
+   "ms": 59267,
+   "raster": {
+    "file": "nippon.u8",
+    "K": 4,
+    "W": 547,
+    "H": 1016
+   }
+  },
+  "jungwon_n": {
+   "NX": 3125,
+   "NY": 4063,
+   "n": 25,
+   "seedAll": false,
+   "picked": [
+    "소농촌",
+    "화어촌",
+    "창광산",
+    "무어촌",
+    "형어촌",
+    "민어촌",
+    "연어촌",
+    "벽어촌",
+    "상어촌",
+    "운어촌",
+    "려농촌",
+    "진어촌",
+    "태농촌",
+    "적농촌"
+   ],
+   "pairs0": [
+    {
+     "a": "무어촌",
+     "b": "강어촌",
+     "d": 94.5,
+     "need": 228.8
+    },
+    {
+     "a": "청농촌",
+     "b": "상어촌",
+     "d": 121,
+     "need": 205.5
+    },
+    {
+     "a": "운어촌",
+     "b": "명농촌",
+     "d": 131.1,
+     "need": 205.5
+    },
+    {
+     "a": "적농촌",
+     "b": "조농촌",
+     "d": 133.1,
+     "need": 182.3
+    }
+   ],
+   "pairsPicked0": 0,
+   "left": [],
+   "rows": [
+    {
+     "name": "적농촌",
+     "type": "plain",
+     "from": {
+      "cx": 1004,
+      "cy": 3721
+     },
+     "to": {
+      "cx": 1004,
+      "cy": 3721
+     },
+     "moved": 0,
+     "reasons": [],
+     "noSpot": false,
+     "pop": 246,
+     "popSrc": "한반도 plain 최대",
+     "cap": 26100,
+     "r": 91.1,
+     "land0": 1.145,
+     "land1": 1.145,
+     "yard0": null,
+     "label0": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.43,
+      "hShare": 0.21
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.43,
+      "hShare": 0.21
+     },
+     "picked": true
+    },
+    {
+     "name": "창광산",
+     "type": "mining",
+     "from": {
+      "cx": 3019,
+      "cy": 1453
+     },
+     "to": {
+      "cx": 3019,
+      "cy": 1453
+     },
+     "moved": 0,
+     "reasons": [],
+     "noSpot": false,
+     "pop": 194,
+     "popSrc": "한반도 mining 최대",
+     "cap": 21300,
+     "r": 82.3,
+     "land0": 0,
+     "land1": 0,
+     "yard0": null,
+     "label0": {
+      "kind": "plain",
+      "why": "none",
+      "fShare": 0.38,
+      "hShare": 0.04
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "none",
+      "fShare": 0.38,
+      "hShare": 0.04
+     },
+     "picked": true
+    },
+    {
+     "name": "운어촌",
+     "type": "riverside",
+     "from": {
+      "cx": 2342,
+      "cy": 1283
+     },
+     "to": {
+      "cx": 2368,
+      "cy": 1213
+     },
+     "moved": 74.7,
+     "reasons": [
+      "마당 물",
+      "겹침(명농촌 131 < 206)"
+     ],
+     "noSpot": false,
+     "pop": 393,
+     "popSrc": "한반도 riverside 최대",
+     "cap": 41100,
+     "r": 114.4,
+     "land0": 2.04,
+     "land1": 1.386,
+     "yard0": "물",
+     "label0": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "label1": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.43,
+      "hShare": 0.25
+     },
+     "picked": true
+    },
+    {
+     "name": "청농촌",
+     "type": "plain",
+     "from": {
+      "cx": 2761,
+      "cy": 856
+     },
+     "to": {
+      "cx": 2815,
+      "cy": 912
+     },
+     "moved": 77.8,
+     "reasons": [
+      "겹침(상어촌 128 < 206)"
+     ],
+     "noSpot": false,
+     "pop": 246,
+     "popSrc": "한반도 plain 최대",
+     "cap": 26100,
+     "r": 91.1,
+     "land0": 1.654,
+     "land1": 1,
+     "yard0": null,
+     "label0": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.43,
+      "hShare": 0.29
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.31,
+      "hShare": 0.21
+     },
+     "picked": false
+    },
+    {
+     "name": "화어촌",
+     "type": "riverside",
+     "from": {
+      "cx": 2697,
+      "cy": 3942
+     },
+     "to": {
+      "cx": 2701,
+      "cy": 3968
+     },
+     "moved": 26.3,
+     "reasons": [
+      "마당 중심 물"
+     ],
+     "noSpot": false,
+     "pop": 393,
+     "popSrc": "한반도 riverside 최대",
+     "cap": 41100,
+     "r": 114.4,
+     "land0": 2.079,
+     "land1": 1.981,
+     "yard0": "중심 물",
+     "label0": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.32,
+      "hShare": 0.4
+     },
+     "label1": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "picked": true
+    },
+    {
+     "name": "양농촌",
+     "type": "plain",
+     "from": {
+      "cx": 868,
+      "cy": 1009
+     },
+     "to": {
+      "cx": 868,
+      "cy": 1009
+     },
+     "moved": 0,
+     "reasons": [],
+     "noSpot": false,
+     "pop": 246,
+     "popSrc": "한반도 plain 최대",
+     "cap": 26100,
+     "r": 91.1,
+     "land0": 0,
+     "land1": 0,
+     "yard0": null,
+     "label0": {
+      "kind": "plain",
+      "why": "none",
+      "fShare": 0.38,
+      "hShare": 0.04
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "none",
+      "fShare": 0.38,
+      "hShare": 0.04
+     },
+     "picked": false
+    },
+    {
+     "name": "려농촌",
+     "type": "plain",
+     "from": {
+      "cx": 688,
+      "cy": 3357
+     },
+     "to": {
+      "cx": 686,
+      "cy": 3357
+     },
+     "moved": 2,
+     "reasons": [
+      "마당 물"
+     ],
+     "noSpot": false,
+     "pop": 246,
+     "popSrc": "한반도 plain 최대",
+     "cap": 26100,
+     "r": 91.1,
+     "land0": 2.001,
+     "land1": 1.962,
+     "yard0": "물",
+     "label0": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "picked": true
+    },
+    {
+     "name": "무어촌",
+     "type": "riverside",
+     "from": {
+      "cx": 2384,
+      "cy": 1943
+     },
+     "to": {
+      "cx": 2500,
+      "cy": 1941
+     },
+     "moved": 116,
+     "reasons": [
+      "마당 중심 물",
+      "겹침(강어촌 114 < 229)"
+     ],
+     "noSpot": false,
+     "pop": 393,
+     "popSrc": "한반도 riverside 최대",
+     "cap": 41100,
+     "r": 114.4,
+     "land0": 2.079,
+     "land1": 1.962,
+     "yard0": "중심 물",
+     "label0": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.46,
+      "hShare": 0.31
+     },
+     "label1": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "picked": true
+    },
+    {
+     "name": "천농촌",
+     "type": "plain",
+     "from": {
+      "cx": 232,
+      "cy": 2399
+     },
+     "to": {
+      "cx": 232,
+      "cy": 2399
+     },
+     "moved": 0,
+     "reasons": [],
+     "noSpot": false,
+     "pop": 246,
+     "popSrc": "한반도 plain 최대",
+     "cap": 26100,
+     "r": 91.1,
+     "land0": 0,
+     "land1": 0,
+     "yard0": null,
+     "label0": {
+      "kind": "plain",
+      "why": "none",
+      "fShare": 0.38,
+      "hShare": 0.04
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "none",
+      "fShare": 0.38,
+      "hShare": 0.04
+     },
+     "picked": false
+    },
+    {
+     "name": "태농촌",
+     "type": "plain",
+     "from": {
+      "cx": 3041,
+      "cy": 163
+     },
+     "to": {
+      "cx": 3041,
+      "cy": 165
+     },
+     "moved": 2,
+     "reasons": [
+      "마당 개울"
+     ],
+     "noSpot": false,
+     "pop": 246,
+     "popSrc": "한반도 plain 최대",
+     "cap": 26100,
+     "r": 91.1,
+     "land0": 0,
+     "land1": 0,
+     "yard0": "개울",
+     "label0": {
+      "kind": "plain",
+      "why": "none",
+      "fShare": 0.38,
+      "hShare": 0.04
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "none",
+      "fShare": 0.38,
+      "hShare": 0.04
+     },
+     "picked": true
+    },
+    {
+     "name": "형어촌",
+     "type": "riverside",
+     "from": {
+      "cx": 376,
+      "cy": 1775
+     },
+     "to": {
+      "cx": 394,
+      "cy": 1775
+     },
+     "moved": 18,
+     "reasons": [
+      "마당 중심 물"
+     ],
+     "noSpot": false,
+     "pop": 393,
+     "popSrc": "한반도 riverside 최대",
+     "cap": 41100,
+     "r": 114.4,
+     "land0": 2.079,
+     "land1": 1.962,
+     "yard0": "중심 물",
+     "label0": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.46,
+      "hShare": 0.31
+     },
+     "label1": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "picked": true
+    },
+    {
+     "name": "진어촌",
+     "type": "riverside",
+     "from": {
+      "cx": 2014,
+      "cy": 907
+     },
+     "to": {
+      "cx": 2014,
+      "cy": 911
+     },
+     "moved": 4,
+     "reasons": [
+      "마당 물"
+     ],
+     "noSpot": false,
+     "pop": 393,
+     "popSrc": "한반도 riverside 최대",
+     "cap": 41100,
+     "r": 114.4,
+     "land0": 2.007,
+     "land1": 1.962,
+     "yard0": "물",
+     "label0": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "label1": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "picked": true
+    },
+    {
+     "name": "초농촌",
+     "type": "plain",
+     "from": {
+      "cx": 509,
+      "cy": 2624
+     },
+     "to": {
+      "cx": 509,
+      "cy": 2624
+     },
+     "moved": 0,
+     "reasons": [],
+     "noSpot": false,
+     "pop": 246,
+     "popSrc": "한반도 plain 최대",
+     "cap": 26100,
+     "r": 91.1,
+     "land0": 0,
+     "land1": 0,
+     "yard0": null,
+     "label0": {
+      "kind": "plain",
+      "why": "none",
+      "fShare": 0.38,
+      "hShare": 0.04
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "none",
+      "fShare": 0.38,
+      "hShare": 0.04
+     },
+     "picked": false
+    },
+    {
+     "name": "조농촌",
+     "type": "plain",
+     "from": {
+      "cx": 1130,
+      "cy": 3764
+     },
+     "to": {
+      "cx": 1176,
+      "cy": 3782
+     },
+     "moved": 49.4,
+     "reasons": [
+      "겹침(적농촌 133 < 182)"
+     ],
+     "noSpot": false,
+     "pop": 246,
+     "popSrc": "한반도 plain 최대",
+     "cap": 26100,
+     "r": 91.1,
+     "land0": 0,
+     "land1": 0,
+     "yard0": null,
+     "label0": {
+      "kind": "plain",
+      "why": "none",
+      "fShare": 0.38,
+      "hShare": 0.04
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "none",
+      "fShare": 0.38,
+      "hShare": 0.04
+     },
+     "picked": false
+    },
+    {
+     "name": "촉농촌",
+     "type": "plain",
+     "from": {
+      "cx": 2197,
+      "cy": 3999
+     },
+     "to": {
+      "cx": 2197,
+      "cy": 3999
+     },
+     "moved": 0,
+     "reasons": [],
+     "noSpot": false,
+     "pop": 246,
+     "popSrc": "한반도 plain 최대",
+     "cap": 26100,
+     "r": 91.1,
+     "land0": 0,
+     "land1": 0,
+     "yard0": null,
+     "label0": {
+      "kind": "plain",
+      "why": "none",
+      "fShare": 0.38,
+      "hShare": 0.04
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "none",
+      "fShare": 0.38,
+      "hShare": 0.04
+     },
+     "picked": false
+    },
+    {
+     "name": "월농촌",
+     "type": "plain",
+     "from": {
+      "cx": 59,
+      "cy": 1656
+     },
+     "to": {
+      "cx": 59,
+      "cy": 1656
+     },
+     "moved": 0,
+     "reasons": [],
+     "noSpot": false,
+     "pop": 246,
+     "popSrc": "한반도 plain 최대",
+     "cap": 26100,
+     "r": 91.1,
+     "land0": 1.006,
+     "land1": 1.006,
+     "yard0": null,
+     "label0": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.31,
+      "hShare": 0.22
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.31,
+      "hShare": 0.22
+     },
+     "picked": false
+    },
+    {
+     "name": "상어촌",
+     "type": "riverside",
+     "from": {
+      "cx": 2678,
+      "cy": 768
+     },
+     "to": {
+      "cx": 2670,
+      "cy": 766
+     },
+     "moved": 8.2,
+     "reasons": [
+      "마당 물"
+     ],
+     "noSpot": false,
+     "pop": 393,
+     "popSrc": "한반도 riverside 최대",
+     "cap": 41100,
+     "r": 114.4,
+     "land0": 2.073,
+     "land1": 1.981,
+     "yard0": "물",
+     "label0": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.32
+     },
+     "label1": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "picked": true
+    },
+    {
+     "name": "민어촌",
+     "type": "riverside",
+     "from": {
+      "cx": 404,
+      "cy": 257
+     },
+     "to": {
+      "cx": 416,
+      "cy": 253
+     },
+     "moved": 12.6,
+     "reasons": [
+      "마당 중심 물"
+     ],
+     "noSpot": false,
+     "pop": 393,
+     "popSrc": "한반도 riverside 최대",
+     "cap": 41100,
+     "r": 114.4,
+     "land0": 2.079,
+     "land1": 1.962,
+     "yard0": "중심 물",
+     "label0": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.46,
+      "hShare": 0.32
+     },
+     "label1": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "picked": true
+    },
+    {
+     "name": "연어촌",
+     "type": "riverside",
+     "from": {
+      "cx": 3044,
+      "cy": 623
+     },
+     "to": {
+      "cx": 3014,
+      "cy": 679
+     },
+     "moved": 63.5,
+     "reasons": [
+      "마당 중심 물"
+     ],
+     "noSpot": false,
+     "pop": 393,
+     "popSrc": "한반도 riverside 최대",
+     "cap": 41100,
+     "r": 114.4,
+     "land0": 2.079,
+     "land1": 1.981,
+     "yard0": "중심 물",
+     "label0": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.32,
+      "hShare": 0.4
+     },
+     "label1": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "picked": true
+    },
+    {
+     "name": "벽어촌",
+     "type": "riverside",
+     "from": {
+      "cx": 2247,
+      "cy": 2536
+     },
+     "to": {
+      "cx": 2235,
+      "cy": 2548
+     },
+     "moved": 17,
+     "reasons": [
+      "마당 중심 물"
+     ],
+     "noSpot": false,
+     "pop": 393,
+     "popSrc": "한반도 riverside 최대",
+     "cap": 41100,
+     "r": 114.4,
+     "land0": 2.079,
+     "land1": 1.962,
+     "yard0": "중심 물",
+     "label0": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.46,
+      "hShare": 0.31
+     },
+     "label1": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "picked": true
+    },
+    {
+     "name": "단광산",
+     "type": "mining",
+     "from": {
+      "cx": 45,
+      "cy": 3235
+     },
+     "to": {
+      "cx": 45,
+      "cy": 3235
+     },
+     "moved": 0,
+     "reasons": [],
+     "noSpot": false,
+     "pop": 194,
+     "popSrc": "한반도 mining 최대",
+     "cap": 21300,
+     "r": 82.3,
+     "land0": 0,
+     "land1": 0,
+     "yard0": null,
+     "label0": {
+      "kind": "mining",
+      "why": "mixed",
+      "fShare": 0.22,
+      "hShare": 0.26
+     },
+     "label1": {
+      "kind": "mining",
+      "why": "mixed",
+      "fShare": 0.22,
+      "hShare": 0.26
+     },
+     "picked": false
+    },
+    {
+     "name": "강어촌",
+     "type": "riverside",
+     "from": {
+      "cx": 2290,
+      "cy": 1933
+     },
+     "to": {
+      "cx": 2270,
+      "cy": 1927
+     },
+     "moved": 20.9,
+     "reasons": [
+      "마당 물"
+     ],
+     "noSpot": false,
+     "pop": 393,
+     "popSrc": "한반도 riverside 최대",
+     "cap": 41100,
+     "r": 114.4,
+     "land0": 2.034,
+     "land1": 1.981,
+     "yard0": "물",
+     "label0": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.46,
+      "hShare": 0.31
+     },
+     "label1": {
+      "kind": "riverside",
+      "why": "mixed",
+      "fShare": 0.45,
+      "hShare": 0.31
+     },
+     "picked": false
+    },
+    {
+     "name": "소농촌",
+     "type": "plain",
+     "from": {
+      "cx": 1035,
+      "cy": 873
+     },
+     "to": {
+      "cx": 1035,
+      "cy": 873
+     },
+     "moved": 0,
+     "reasons": [],
+     "noSpot": false,
+     "pop": 246,
+     "popSrc": "한반도 plain 최대",
+     "cap": 26100,
+     "r": 91.1,
+     "land0": 7.195,
+     "land1": 7.195,
+     "yard0": null,
+     "label0": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.47,
+      "hShare": 0.29
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.47,
+      "hShare": 0.29
+     },
+     "picked": true
+    },
+    {
+     "name": "명농촌",
+     "type": "plain",
+     "from": {
+      "cx": 2294,
+      "cy": 1405
+     },
+     "to": {
+      "cx": 2294,
+      "cy": 1405
+     },
+     "moved": 0,
+     "reasons": [],
+     "noSpot": false,
+     "pop": 246,
+     "popSrc": "한반도 plain 최대",
+     "cap": 26100,
+     "r": 91.1,
+     "land0": 1.053,
+     "land1": 1.053,
+     "yard0": null,
+     "label0": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.31,
+      "hShare": 0.23
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "mixed",
+      "fShare": 0.31,
+      "hShare": 0.23
+     },
+     "picked": false
+    },
+    {
+     "name": "옥농촌",
+     "type": "plain",
+     "from": {
+      "cx": 357,
+      "cy": 3837
+     },
+     "to": {
+      "cx": 347,
+      "cy": 3827
+     },
+     "moved": 14.1,
+     "reasons": [
+      "마당 개울"
+     ],
+     "noSpot": false,
+     "pop": 246,
+     "popSrc": "한반도 plain 최대",
+     "cap": 26100,
+     "r": 91.1,
+     "land0": 0,
+     "land1": 0,
+     "yard0": "개울",
+     "label0": {
+      "kind": "plain",
+      "why": "none",
+      "fShare": 0.38,
+      "hShare": 0.04
+     },
+     "label1": {
+      "kind": "plain",
+      "why": "none",
+      "fShare": 0.38,
+      "hShare": 0.04
+     },
+     "picked": false
+    }
+   ],
+   "streams": "server/streams {\"zoneId\":\"jungwon_n\",\"NX\":3125,\"NY\":4063,\"cells\":129121,\"hash\":\"ce42b095e472e256\"}",
+   "ms": 53080,
+   "raster": {
+    "file": "jungwon_n.u8",
+    "K": 4,
+    "W": 782,
+    "H": 1016
+   }
+  }
+ }
+}
