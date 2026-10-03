@@ -162,15 +162,35 @@ const dist = (a, b) => (a && b) ? Math.hypot(a.x - b.x, a.y - b.y) : Infinity;
   console.log("\n[ⓔ 'arrive' = 'return' (양 방향 · 판 끝 이동 중 포함)]");
   //   한반도가 넘긴 수 = 닛폰이 받은 수 · 닛폰이 받은 수 = 닛폰이 돌려보낸 수 + 지금 닛폰에 있는 수(econ 캐러밴 + 다음 경계를 기다리는 기록 줄)
   //   ⚠관측이 하루 마감 한가운데(조각 사이)나 문 왕복 사이에 걸리면 한 쪽만 셌을 수 있다 — 같아질 때까지 몇 번 다시 본다(값을 고치지 않는다).
+  //   ★[T598 추신] "지금 그 존에 있는 것" = econ 캐러밴 + 기록이 선 세 칸(`core.live()` · 종류별 · 지금 값):
+  //     받은 'arrive' 가 아직 줄에(`pendArrive`) · econ 이 읽기 전 인박스에(`inboxArrive` — dayIn 과 econ 캐러밴 조각 사이) ·
+  //     econ 이 치러 'return' 을 적었으나 dayOut 이 아직 안 셌다(`outReturn` — econ 과 dayOut 사이). 종전 셈은 앞 둘을 `st.pend`(dayIn 순간 값 ·
+  //     두 종류 합)로만 봤고 셋째를 못 봤다 — 하루 마감이 조각으로 여러 프레임에 걸치면 `/perf` 가 그 사이에 닿는다.
+  const inZ = (P, home) => (P.caravans || []).filter((x) => x.home && x.home.zone === home).length;
+  const slotOf = (P) => { const L = P.live || {}; return (L.pendArrive | 0) + (L.inboxArrive | 0) + (L.outReturn | 0); };
   let E = null;
   for (let i = 0; i < 20; i++) {
     H = await perf('hanbando'); N = await perf('nippon');
-    const inN = (N.caravans || []).filter((x) => x.home && x.home.zone === 'hanbando').length, inH = (H.caravans || []).filter((x) => x.home && x.home.zone === 'nippon').length;
-    E = { inN, inH, pendN: N.core.pend, pendH: H.core.pend,
-      e1: H.st.crossArrive === N.core.arriveIn, e2: N.core.arriveIn === N.core.returnOut + inN + N.core.pend,
-      e3: N.st.crossArrive === H.core.arriveIn, e4: H.core.arriveIn === H.core.returnOut + inH + H.core.pend };
+    const inN = inZ(N, 'hanbando'), inH = inZ(H, 'nippon');
+    E = { inN, inH, LN: N.live || {}, LH: H.live || {},
+      e1: H.st.crossArrive === N.core.arriveIn, e2: N.core.arriveIn === N.core.returnOut + inN + slotOf(N),
+      e3: N.st.crossArrive === H.core.arriveIn, e4: H.core.arriveIn === H.core.returnOut + inH + slotOf(H) };
     if (E.e1 && E.e2 && E.e3 && E.e4) break;
     await sleep(300);
+  }
+  //   ★[T598 추신 ①] 확인 표 — 판 끝에 `/perf` 를 촘촘히(60번 · 100ms) 보며 종전 셈(`st.pend`)과 새 셈(세 칸)이 각각 몇 번 어긋나는지 ·
+  //     종전 셈이 어긋난 순간 기록이 어느 칸에 있었는지 센다(값은 안 고친다 · 자의 셈만).
+  const PR = { n: 0, oldBad: 0, newBad: 0, inbox: 0, out: 0, pendLate: 0 };
+  for (let i = 0; i < 60; i++) {
+    const h = await perf('hanbando'), nn = await perf('nippon');
+    for (const [P, home] of [[nn, 'hanbando'], [h, 'nippon']]) {
+      PR.n++;
+      const inC = inZ(P, home), L = P.live || {};
+      const oldOk = P.core.arriveIn === P.core.returnOut + inC + P.core.pend, newOk = P.core.arriveIn === P.core.returnOut + inC + slotOf(P);
+      if (!oldOk) { PR.oldBad++; if (L.inboxArrive) PR.inbox++; if (L.outReturn) PR.out++; if ((L.pendArrive | 0) !== (P.core.pend | 0)) PR.pendLate++; }
+      if (!newOk) PR.newBad++;
+    }
+    await sleep(100);
   }
   if (!(E.e1 && E.e2 && E.e3 && E.e4)) {   // ★[T578 추신] 셈이 안 맞으면 그 순간의 두 존 줄을 남긴다(이동 중을 놓친 자리를 표로 — 값은 안 고친다)
     const dumpZ = (z, P) => { console.log(`  · [ⓔ 진단 ${z}] core ${JSON.stringify(P.core)} · st ${JSON.stringify(P.st)}`);
@@ -178,11 +198,13 @@ const dist = (a, b) => (a && b) ? Math.hypot(a.x - b.x, a.y - b.y) : Infinity;
       console.log(`  · [ⓔ 진단 ${z}] 몸 ${JSON.stringify((P.bodies || []).map((b) => [b.key, b.phase, b.pending, b.handing]))}`);
       console.log(`  · [ⓔ 진단 ${z}] 흔적 끝 ${JSON.stringify((P.trace || []).slice(-30).map((t) => [t.k, t.id || t.key, t.g, t.day, t.toZone || t.fromZone || null]))}`); };
     dumpZ('hanbando', H); dumpZ('nippon', N);
+    console.log(`  · [ⓔ 진단] 칸(지금) 한반도 ${JSON.stringify(H.live)} · 닛폰 ${JSON.stringify(N.live)}`);
   }
   ok(E.e1, "ⓔ1 한반도가 넘긴 'arrive' = 닛폰이 받은 'arrive'", `${H.st.crossArrive} = ${N.core.arriveIn}`);
-  ok(E.e2, "ⓔ2 ★닛폰이 받은 'arrive' = 돌려보낸 'return' + 지금 닛폰에 있는 것", `${N.core.arriveIn} = ${N.core.returnOut} + 이동 중(캐러밴 ${E.inN} · 기록 줄 ${E.pendN})`);
+  ok(E.e2, "ⓔ2 ★닛폰이 받은 'arrive' = 돌려보낸 'return' + 지금 닛폰에 있는 것", `${N.core.arriveIn} = ${N.core.returnOut} + 이동 중(캐러밴 ${E.inN} · 줄 ${E.LN.pendArrive | 0} · 인박스 ${E.LN.inboxArrive | 0} · 셀 귀환 ${E.LN.outReturn | 0})`);
   ok(E.e3, "ⓔ3 닛폰이 넘긴 'arrive' = 한반도가 받은 'arrive'(반대 방향)", `${N.st.crossArrive} = ${H.core.arriveIn}`);
-  ok(E.e4, "ⓔ4 한반도가 받은 'arrive' = 돌려보낸 'return' + 지금 한반도에 있는 것", `${H.core.arriveIn} = ${H.core.returnOut} + 이동 중(캐러밴 ${E.inH} · 기록 줄 ${E.pendH})`);
+  ok(E.e4, "ⓔ4 한반도가 받은 'arrive' = 돌려보낸 'return' + 지금 한반도에 있는 것", `${H.core.arriveIn} = ${H.core.returnOut} + 이동 중(캐러밴 ${E.inH} · 줄 ${E.LH.pendArrive | 0} · 인박스 ${E.LH.inboxArrive | 0} · 셀 귀환 ${E.LH.outReturn | 0})`);
+  console.log(`  · [표 · T598 추신] 판 끝 관측 ${PR.n}번(두 존 × 60) — 종전 셈(st.pend) 어긋남 ${PR.oldBad} · 새 셈(세 칸) 어긋남 ${PR.newBad} · 종전 어긋남 때 기록이 인박스에 ${PR.inbox} · 셀 귀환(out)에 ${PR.out} · 줄 값이 늦음(st.pend ≠ 지금 줄) ${PR.pendLate}`);
   ok(H.st.sentFail === 0 && N.st.sentFail === 0 && H.st.bounced === 0 && N.st.bounced === 0, 'ⓔ5 문이 다 받았다(되돌림 0 · 못 보냄 0)', `한반도 ${H.st.sentOk}/${H.st.sent} · 닛폰 ${N.st.sentOk}/${N.st.sent}`);
   console.log(`  · [표] 한반도 넘김 ${H.st.crossArrive} · 돌려보냄 ${H.st.crossReturn}(경계 교역 성사 ${H.st.soldOk}) · 곳간 ${H.st.deposited} · 잃음 ${H.st.lost} · 몸 넘김 ${H.st.bodyOut} · 받은 몸 ${H.st.bodyIn} · econ 날 ${H.day}`);
   console.log(`  · [표 · T578 추신] 경계 칸까지 걸어간 뒤 넘김 — 한반도 ${H.st.walkWait | 0}(하루 넘겨 그 자리 ${H.st.walkWaitLate | 0}) · 닛폰 ${N.st.walkWait | 0}(${N.st.walkWaitLate | 0})`);
