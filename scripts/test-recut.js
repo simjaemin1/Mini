@@ -24,6 +24,13 @@
 //        시계를 다음 재생 창으로 한 번 더 당긴다 · 끝까지 안 자란 마을이 0 이면 "창 안에서 전부 자란다"고 적고
 //        전제를 **자란 날 앞/뒤**로 세운다(자란 날 전엔 다시 선 그루가 그대로 · 자란 날에 0)
 //
+// ★★[T566 2026-09-30] **재생 술어**(`zone.js regrowBlockedAt` — 영토 ∪ 다져진 길 둘레)가 이 하네스의 셋을 바꾼다(손잡이 `T566_REGROW_BLOCK` · 기본 켬):
+//   ④ 심은 묘목 — 켬이면 **안 벤다**(카드 ④: 심은 나무는 재생이 아니라 심은 것 — 영토 안이어도 자란다 · PM #74 를 이 카드가 뒤집는다) · 끔이면 종전(벤다)
+//   ⑤⑦ 정적 — 개간이 장부를 보는 자리는 T566 ③ 한 줄(막힌 셀의 T426 갈래 건너뛰기)뿐이다 · 되살림의 몸은 `_t341UnharvestBody` ·
+//      영토가 자란 날은 늘어난 셀(`added`)도 같이 넘긴다(켬이면 그 셀만 · 끔이면 영토 전체)
+//   ⑧ 런타임 다시 훑기 — 켬이면 영토 안 재생이 0 이라 전제(다시 선 그루)가 없다 ⇒ 자식을 **끔**(`T566_REGROW_BLOCK=0`)으로 띄워 T440 갈래 그대로를 잰다
+//      (되돌림 팔이 산다는 증명 · 켬의 답은 `test-regrow-block` 이 잰다)
+//   ①②③⑥ 은 마을·길이 없는 세계라 술어가 늘 거짓이다 — 그대로 산다.
 // ⚠존을 **이 프로세스 안에서** 띄운다(`test-ghost-tree` 문법 · `Zone.__testBind`). 가짜 플레이어는 **`players` 에 안 넣는다**
 //   (관측자 0 — 넣으면 그 자리 청크가 켜져 색인 대신 개체 갈래를 탄다). 시계 손잡이(`__e2e_clock`)는 객체를 직접 받는다.
 // 실행: node scripts/test-recut.js        (내부: --grow <out.json> — ⑧ 의 자식)
@@ -143,8 +150,13 @@ if (process.argv[2] === '--grow') { growChild().then(() => process.exit(0), (e) 
     pre(!!(t && t.type === 'sapling' && t.dbId), '④ 묘목을 심었다(DB 나무)', t ? `#${t.dbId} @${Math.floor(t.x / 32)},${Math.floor(t.y / 32)}` : '못 심었다');
     if (t) {
       const n = H.clearTreesInCells(new Set([Math.floor(t.x / 32) + ',' + Math.floor(t.y / 32)]));
-      ok(n === 1 && !H.resources.has(t.id) && !H.db.getResources().some((r) => r.id === t.dbId),
-        '★④ **심은 묘목**도 벤다 — 종·단계 무관(PM #74) · 세계·DB 에서 빠졌다', `${n}그루`);
+      if (H._t566On) {
+        ok(n === 0 && H.resources.has(t.id) && H.db.getResources().some((r) => r.id === t.dbId),
+          '★④ [T566 켬] **심은 묘목**은 개간이 안 벤다 — 재생이 아니라 심은 것(카드 ④ · PM #74 를 뒤집는다) · 세계·DB 에 그대로', `${n}그루`);
+      } else {
+        ok(n === 1 && !H.resources.has(t.id) && !H.db.getResources().some((r) => r.id === t.dbId),
+          '★④ **심은 묘목**도 벤다 — 종·단계 무관(PM #74) · 세계·DB 에서 빠졌다', `${n}그루`);
+      }
     }
   }
   // ── ⑤ 정적 — 문법·문 하나·집합 하나 ──────────────────────────────────────
@@ -157,7 +169,10 @@ if (process.argv[2] === '--grow') { growChild().then(() => process.exit(0), (e) 
     const body = (name) => { const i = ZS.indexOf(`function ${name}(`); if (i < 0) return ''; const j = ZS.indexOf('\nfunction ', i + 10); return ZS.slice(i, j < 0 ? undefined : j); };
     const clr = body('clearTreesInCells'), boot = body('_recutBootOnce');
     ok(/const _T378_TREE = _T325_TYPES;/.test(ZS), '★⑤ 벨 종류 = 나무꾼이 보는 **그 집합**(`_T325_TYPES` · 서 있는 나무 — 사본 0)');
-    ok(!/harvestedSeeds\.has\(/.test(clr), '★⑤ 개간이 장부를 보고 **건너뛰지 않는다**(서 있나는 색인 단계가 답한다)');
+    //   ★[T566 ③] 장부를 보는 줄은 **하나** — 켬일 때 막힌 셀의 T426 갈래를 건너뛰는 줄(그 줄을 빼고 보면 종전 계약 그대로)
+    const clrNo566 = clr.split('\n').filter((l) => !/_T566_ON && harvestedSeeds\.has\(e\.seedKey\) && regrowBlockedAt\(cx, cy\)/.test(l)).join('\n');
+    ok(!/harvestedSeeds\.has\(/.test(clrNo566) && (clr.match(/harvestedSeeds\.has\(/g) || []).length <= 1,
+      '★⑤ 개간이 장부를 보고 **건너뛰지 않는다**(서 있나는 색인 단계가 답한다 · T566 ③ 의 막힌 셀 한 줄만 예외)');
     ok(/if \(!Number\.isFinite\(_gd\)\) \{/.test(clr) && /setImmediate\(_recutBootOnce\)/.test(clr),
       '★★⑤ 부팅 갈래(날 모름)는 그 셀을 적어 두고 **시계가 선 뒤 한 번 더** 훑는다');
     ok(/_promoteHarvestOnce\(\);/.test(boot) && /clearTreesInCells\(cells\)/.test(boot),
@@ -238,7 +253,8 @@ if (process.argv[2] === '--grow') { growChild().then(() => process.exit(0), (e) 
     const VS = codeOnly(fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8'));
     const bodyIn = (src, name) => { const i = src.indexOf(`function ${name}(`); if (i < 0) return ''; const j = src.indexOf('\nfunction ', i + 10); return src.slice(i, j < 0 ? undefined : j); };
     const act = bodyIn(ZS, '_actEntitiesAtCell'), clr = bodyIn(ZS, 'clearTreesInCells'), idx = bodyIn(ZS, '_idxAtCell');
-    const mark = bodyIn(ZS, '_markHarvested'), unh = bodyIn(ZS, '_t341Unharvest'), prom = bodyIn(ZS, '_promoteHarvestOnce');
+    //   ★[T566] 되살림의 몸은 `_t341UnharvestBody`(문 `_t341Unharvest` 는 막힌 셀을 거른 뒤 그 몸을 부른다)
+    const mark = bodyIn(ZS, '_markHarvested'), unh = bodyIn(ZS, '_t341UnharvestBody') || bodyIn(ZS, '_t341Unharvest'), prom = bodyIn(ZS, '_promoteHarvestOnce');
     const rac = bodyIn(CS, 'resourcesAtCell'), tg = bodyIn(VS, '_terrGrow');
     ok(/_idxAtCell\(/.test(act) && /_idxAtCell\(cx, cy, false, _gd\)/.test(clr) && !/resourcesAtCell\(/.test(act + clr),
       '★⑦ 셀 색인의 문은 **하나**(`_idxAtCell`) — 나무꾼·채집(`_actEntitiesAtCell`)과 개간(`clearTreesInCells`)이 같은 판을 본다');
@@ -246,8 +262,10 @@ if (process.argv[2] === '--grow') { growChild().then(() => process.exit(0), (e) 
       '★⑦ 셀에 닿는 청크 목록은 색인과 **같은 함수**(`chunk.js cellChunksOf`) — 차례까지 같다(사본 0)');
     ok(/_ringBump\(seedKey, x, y\)/.test(mark) && /_ringBump\(seedKey\)/.test(unh) && /_ringCache\.clear\(\)/.test(prom),
       '★⑦ 판이 낡는 사건 셋 — 벰(`_markHarvested`) · 되살림(`_t341Unharvest`) · 옛 행 승격(`_promoteHarvestOnce`)이 판을 새로 한다');
-    ok(/state\.deps\.clearTreesInCells\(own\)/.test(tg) && !/clearTreesInCells\(added\)/.test(tg),
-      '★⑦ 영토가 자란 날(`_terrGrow`) — 그 마을 영토 **전체**를 같은 문으로 훑는다(새 셀만이 아니다)');
+    //   ★[T566 ②] 영토 전체(`own`)와 그날 늘어난 셀(`added`)을 같이 넘긴다 — 존이 켬이면 늘어난 셀만 · 끔이면 전체(T440 그대로)
+    ok(/state\.deps\.clearTreesInCells\(own, added\)/.test(tg) && !/clearTreesInCells\(added\)/.test(tg)
+       && /if \(_T566_ON && onlyNew\) \{[^}]*cellKeys = onlyNew;/.test(clr),
+      '★⑦ 영토가 자란 날(`_terrGrow`) — 같은 문에 영토 전체와 **늘어난 셀**을 같이 넘긴다(T566 켬 = 늘어난 셀만 · 끔 = 영토 전체 · T440)');
   }
   // ── ⑧ ★[T440] 런타임 다시 훑기 — 자식 프로세스(마을 켬 · 새 세계) ─────────────────────
   //   ★[T450 ⓪] 창 = 영토 편입 사건(하루 마감 경계마다 마을 영토가 늘었나) — 벽시계에 안 묶인다(자식 주석)
@@ -256,11 +274,12 @@ if (process.argv[2] === '--grow') { growChild().then(() => process.exit(0), (e) 
     try { fs.unlinkSync(OUTG); } catch (e) {}
     const { spawnSync } = require('child_process');
     const t0 = Date.now();
-    spawnSync(process.execPath, [__filename, '--grow', OUTG], { cwd: ROOT, stdio: 'ignore', timeout: 600000, env: process.env });
+    //   ★[T566] 자식은 **끔**으로 띄운다 — 켬이면 영토 안 재생이 0 이라 이 절의 전제(다시 선 그루)가 없다(그 답은 `test-regrow-block` 이 잰다)
+    spawnSync(process.execPath, [__filename, '--grow', OUTG], { cwd: ROOT, stdio: 'ignore', timeout: 600000, env: Object.assign({}, process.env, { T566_REGROW_BLOCK: '0' }) });
     let G = null; try { G = JSON.parse(fs.readFileSync(OUTG, 'utf8')); } catch (e) { G = { err: 'no json' }; }
     try { fs.unlinkSync(OUTG); } catch (e) {}
     //   자식은 하루마다 중간 결과를 적는다 — 끝을 못 봤으면(시간 초과) 그 줄까지를 말한다
-    pre(!G.err && G.done, `⑧ 자식 — 새 세계 · 마을 ${G.vils || 0} · 첫 창 시계 ${G.day0} · 하루 마감 ${G.steps || 0}번(econ ${G.econ ? G.econ.join('→') : '?'}) · 시계 당김 ${G.pulls || 0}번 · ${((Date.now() - t0) / 1000).toFixed(0)}초`
+    pre(!G.err && G.done, `⑧ 자식(T566 끔 — T440 갈래) — 새 세계 · 마을 ${G.vils || 0} · 첫 창 시계 ${G.day0} · 하루 마감 ${G.steps || 0}번(econ ${G.econ ? G.econ.join('→') : '?'}) · 시계 당김 ${G.pulls || 0}번 · ${((Date.now() - t0) / 1000).toFixed(0)}초`
       + (G.done ? '' : ' · ★끝을 못 봤다(상한 · 시간 초과)'), G.err ? String(G.err).slice(0, 200) : '');
     if (!G.err && G.rows) {
       const gS = G.rows.filter((r) => r.grew && r.before > 0), sS = G.rows.filter((r) => !r.grew && r.before > 0);

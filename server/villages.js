@@ -3075,8 +3075,10 @@ function _terrGrow(vil) {
   //     새 셀만 훑으면 옛 영토에 다시 선 그루(색인이 서 있는 단계로 내는 씨 · 첫 묘목 실일 10.3일)는 다음 부팅(T426 다시 훑기)까지 선다.
   //     주기는 새 수가 아니라 **이 사건**(영토 편입 · 그날 시계)이고, 문은 같다(`clearTreesInCells` — T426 부팅 갈래가
   //     부르는 그 함수 · 사본 0 · 새 셀은 `own` 안에 있다). 영토가 안 자란 날·안 자라는 마을은 종전 그대로(여기 안 온다).
+  //   ★★[T566 ② 2026-09-30] 그날 **늘어난 셀**(`added`)도 같이 넘긴다 — 존의 재생 술어가 켜져 있으면(기본) 그 셀만 훑는다
+  //     (영토의 재생은 술어가 막으므로 옛 영토를 다시 볼 일이 없다 · 끄면 존이 둘째 인자를 안 보고 종전처럼 영토 전체를 훑는다).
   let cut = 0;
-  try { if (state.deps.clearTreesInCells) cut = state.deps.clearTreesInCells(own) || 0; } catch (e) {}
+  try { if (state.deps.clearTreesInCells) cut = state.deps.clearTreesInCells(own, added) || 0; } catch (e) {}
   // ★★[T237 2026-09-13 재민 확정] **비옥도는 안 덮는다.**
   //   종전엔 여기서 `land.fertility = (Σ fert / n) × 1.4` 로 다시 적었다(`6412516a` 2026-07-30 ·
   //   "영토 확장 실동" · 뜻은 리카도였다 — 한계지를 삼키면 평균 지력이 내려간다).

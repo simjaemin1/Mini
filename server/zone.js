@@ -177,6 +177,7 @@ function _markHarvested(seedKey, x, y) {
   //   ⇒ 날을 모르면 **이미 있는 계약**대로 적는다: `-1`(모름)로 적고 옛 행 승격 문(T122 ·
   //     `_promoteHarvestOnce` · 첫 청크 활성화 때 한 번)을 연다 — 승격일이 벤 날이 된다. 새 수 0.
   let d; try { d = gameDayNow(); } catch (e) { d = undefined; }
+  if (!harvestedSeeds.has(seedKey)) _t566LedVer++;   // ★[T566] 장부 키 집합이 바뀌었다(새 키) — 장부가 든 청크 표를 다음에 다시 센다
   harvestedSeeds.set(seedKey, Number.isFinite(d) ? Math.floor(d) : -1);
   _t495Forget(seedKey);   // ★[T495] 빈 개체는 벤 장부로 — 남은 단위 줄은 지운다(장부가 비어 있으면 아무 일도 안 한다)
   _farBump(seedKey);   // ★[T380] 원경 캐시 무효화 — **장부가 바뀐 청크만**(문 하나를 지나므로 새는 길이 없다)
@@ -196,14 +197,20 @@ function _markHarvested(seedKey, x, y) {
 //   심은 묘목을 플레이어 채집·이 문으로 빼고 성목이 되는 날까지 시계를 돌리자 그 id 가 **한 번씩** 다시 왔다
 //   (대조 — 안 뺀 묘목은 그날 한 번 온다). ⇒ 줄은 **여기 하나**다. 플레이어 채집(`gatherResource`)과
 //   개간(`clearTreesInCells`)이 제 몸을 따로 적고 있었다 — 둘 다 이 문을 부르게 했다(사본 0).
-function _takeResourceEntity(r, notify) {
+// ★★[T566 2026-09-30] 문은 그대로 하나 — 인자 둘만 넓혔다(종전 호출부는 글자 그대로 같은 일을 한다):
+//   · `notify` 가 **배열**이면 방송하지 않고 id 를 거기 모은다 — 부르는 쪽이 한 번에 `resources_removed`(묶음)로 보낸다.
+//     세계가 땅을 정해 걷는 것(T566 — 영토 · 다져진 길)은 "베기"가 아니다: 클라 소리 훅은 단건 `resource_removed` 에만 운다
+//     (`48-a-audio.js recv`) ⇒ 묶음 낱말은 소리 0 · 그 낱말은 청크가 내려놓을 때 쓰는 그것이다(새 낱말 0).
+//   · `keepCut` — 이미 장부에 있는 씨(그루터기·다시 자라던 묘목)는 **벤 날을 다시 안 적는다**(T566 "장부 씨는 그대로").
+function _takeResourceEntity(r, notify, keepCut) {
   if (!r) return;
   resources.delete(r.id);
   chunkManager.removeResource(r);
   resourcesDirty = true;
-  if (r.isSeed && r.seedKey) _markHarvested(r.seedKey, r.x, r.y);   // ★[T122] 벤 게임일까지 적는다 — 재생의 입력
+  if (r.isSeed && r.seedKey) { if (!(keepCut && harvestedSeeds.has(r.seedKey))) _markHarvested(r.seedKey, r.x, r.y); }   // ★[T122] 벤 게임일까지 적는다 — 재생의 입력
   else if (r.dbId) { resourcesByDbId.delete(r.dbId); try { db.deleteResource(r.dbId); } catch (e) {} }   // ★[T393] 표에서도
-  if (notify) broadcast({ type: 'resource_removed', id: r.id });
+  if (Array.isArray(notify)) notify.push(r.id);
+  else if (notify) broadcast({ type: 'resource_removed', id: r.id });
 }
 // ★[T325] 그 셀에 **서 있는 나무**(그루터기·묘목 제외는 안 한다 — 묘목도 목재를 낸다)를 색인으로 묻는다.
 //   규칙 표(T301 §0ⓐ)를 그대로 지킨다: 활성 청크가 있으면 `qtResources` 가 정본이고,
@@ -319,6 +326,166 @@ function _ringBump(seedKey, x, y) {
   if (got.length) hit.cells.set(_cellNum(cx, cy), got); else hit.cells.delete(_cellNum(cx, cy));
   _ringStat.patch++;
 }
+// ══ ★★★[T566 2026-09-30 · 재민 · 추신 · 추신2] **재생 술어 하나 — 영토 셀과 다져진 길 둘레엔 나무가 돌아오지 않는다** ══════════
+//   ★왜 — 종전은 거꾸로였다: 벤 자리가 T122 시계대로 돌아오고(묘목 ~10일 · 성목 ~24일) 그걸 **뒤에서** 베러 다녔다
+//     (T378 부팅 전부 · T426 다시 벰 · T440 영토가 **자란** 날 영토 전체) ⇒ 영토가 멎은 마을(40일 판 20/50곳)은 다음 부팅까지
+//     마을 안 숲이었다(T440 회부 1). 마을 땅은 사람이 밟고 쓰는 땅이라 묘목이 서면 뽑힌다 — 그걸 몸으로 베게 하는 건 실물이 아니라 낭비다.
+//   ★술어 `regrowBlockedAt(cx, cy)` = ⓐ **어느 마을이든 영토**(`SimVillages.villageOfCell` — `vil._terrSet` 정본 · 유저 마을 포함)
+//     ∪ ⓑ **다져진 길(등급 2 · `roads.js` T2=28 · ★PM 값 · 재민 거부권)의 체비쇼프 2셀 안**(5×5 · 재민 값 · `Roads.pavedNear`).
+//     새 수 0 — 문턱·폭·햇수가 전부 있는 값이다.
+//   ★막힌 셀의 답 = **`'gone'`**(`regrowStageOf` 가 이미 내는 값 · 새 상태 0) — 장부 씨는 그대로 두고 **답만** 막는다. 그루터기도 안 선다.
+//     답 넷이 **같은 술어**를 본다(사본 0): ① 청크 시더의 벤 자리 갈래(`chunk.js` 나무 두 갈래 — 장부가 들고 가는 `regrowGate`) ·
+//     ② 색인(`_idxAtCell` — 같은 생성기 · 같은 장부라 같은 답) · ③ 되살림(`_t341Unharvest` — 막힌 셀은 장부를 안 지운다) ·
+//     ④ 심은 것(`_shapeRegrown`) — 예외다: 심은 나무는 재생이 아니라 심은 것이라 술어를 **안 묻는다**(영토 안이어도 자란다 · 카드 ④).
+//   ★영토 — 부팅 개간(T378)이 서 있는 것을 한 번 걷고(그 뒤로는 술어가 막는다) · 영토가 자란 날은 **그날 늘어난 셀만**(카드 ②).
+//   ★다져진 길 — 셀이 등급 2 로 **오르는 그 호출**(`roads.js stampCell`)에 그 셀의 나무·묘목·그루터기를 걷는다(통나무 0 · 곳간 무접촉 ·
+//     소리 0 — 묶음 `resources_removed`) · 둘레 25셀은 **리젠만** 막는다(서 있는 나무는 그대로) · 등급 2 아래로 내려가면(감쇠 · 하루 한 번)
+//     그 셀과 둘레가 풀린다 — 장부 씨의 벤 날을 **풀린 날**로 적는다(`_markHarvested` 문 그대로) ⇒ 그루터기부터 T122 시계.
+//   ★손잡이 `T566_REGROW_BLOCK` — **기본 켬** · `=0` 이면 술어가 늘 거짓이고 아래 갈래가 하나도 안 선다(종전 T426·T440 그대로 · 비트 동일).
+const _T566_ON = process.env.T566_REGROW_BLOCK !== '0';
+const _T566_R = 2;   // ★[T566 추신2 ②] 둘레 = 체비쇼프 2셀(5×5 = 25셀) — 재민 값(추신의 3셀 → 2셀)
+const _t566Stat = { q: 0, gone: 0, unharvestNo: 0, paved: 0, pavedCut: 0, ringNew: 0, ringKeep: 0, ringDrop: 0, ringLive: 0,
+  unpaved: 0, released: 0, relSeeds: 0, relPend: 0, sweepCalls: 0, sweepCells: 0, stumpDrop: 0, growCalls: 0, growOwn: 0, growNew: 0,
+  t426Skip: 0, recutSkip: 0, plantedKeep: 0, bootPaved: 0, bootPavedCut: 0, bootUnpaved: 0, cellPatch: 0, relFlushMs: 0, relFlushTicks: 0, bootPavedMs: 0, relEmpty: 0 };
+function regrowBlockedAt(cx, cy) {
+  if (!_T566_ON) return false;
+  try { if (SimVillages.villageOfCell && SimVillages.villageOfCell(cx | 0, cy | 0)) return true; } catch (e) {}
+  try { if (Roads.pavedNear && Roads.pavedNear(cx | 0, cy | 0, _T566_R)) return true; } catch (e) {}
+  return false;
+}
+//   ★장부가 술어를 **들고 간다** — 청크 시더는 장부(`harvestedSet`)를 받는 그 자리에서 이것을 묻는다(인자 0 · 호출부 0 · 사본 0).
+//     장부를 넘기는 자리(청크 켜기 · 넘침 · 색인 판 · 원경 · 전쟁 나무 칸)가 전부 같은 답을 받는다. 남이 지은 장부(하네스의 `new Map()`)는 안 든다.
+if (_T566_ON) harvestedSeeds.regrowGate = (cx, cy) => { _t566Stat.q++; if (regrowBlockedAt(cx, cy)) { _t566Stat.gone++; return true; } return false; };
+//   셀 하나의 답이 바뀌었다(술어가 그 셀을 새로 막았다) — 오늘 판이면 그 셀만 다시 낳는다(`_ringBump` 와 같은 꼴 · 그 셀에 닿는 청크 전부) ·
+//   날을 모르면(부팅) 판을 안 건드린다(그 판은 장부 씨를 아예 안 낸다 · 장부를 적는 문이 제 셀을 고친다) · 원경 캐시는 버전을 올린다.
+function _t566CellChanged(cx, cy, dayIn) {
+  let day = dayIn;
+  if (day === undefined) { try { day = gameDayNow(); } catch (e) { day = undefined; } }   // ⚠부르는 쪽이 날을 알면 넘긴다(부팅 TDZ 예외를 셀마다 던지지 않게)
+  if (!Number.isFinite(day)) return;
+  const cs = chunkManager.chunkSize, c = _cellNum(cx, cy);
+  //   ⚠색인 문(`cellChunksOf` · 생성기)이 던지면 판을 통째로 버리고 **한 번** 이름을 붙인다(T393 — 조용한 0 금지 · 다음 물음이 새로 낳는다)
+  try {
+    const q = cellChunksOf(cx, cy, cs);
+    for (let i = 0; i < q.length; i += 2) {
+      const key = chunkManager.keyOf(q[i], q[i + 1]);
+      const hit = _ringCache.get(key);
+      if (hit) {
+        if (hit.day !== day) { _ringCache.delete(key); _ringStat.drop++; }
+        else {
+          const got = generateChunkResources(ZONE_ID, ZONE.biome, q[i], q[i + 1], cs, harvestedSeeds, day, { cx, cy });
+          if (got.length) hit.cells.set(c, got); else hit.cells.delete(c);
+          _ringStat.patch++; _t566Stat.cellPatch++;
+        }
+      }
+      if (T380_FAR_TREES) _farVer.set(key, (_farVer.get(key) || 0) + 1);
+    }
+  } catch (e) { _ringCache.clear(); _ringStat.drop++; _idxWarnOnce('T566 판 갱신', e, '청크 판을 통째로 버렸다'); }
+}
+//   씨 하나의 셀 — 그 씨를 **낳은 청크**(`seedGenChunkOf` · T317 정본)의 원시 판(교란 전 · 버리지 않는 판)에서 찾는다(새 꼴 풀기 0).
+//   군락 키(`gv…` — 청크를 모른다)는 null · 나무가 아닌 씨면 `tree: false`.
+function _t566SeedCell(seedKey) {
+  const g = seedGenChunkOf(seedKey, NaN, NaN, chunkManager.chunkSize);
+  if (!Number.isFinite(g.cx) || !Number.isFinite(g.cy)) return null;
+  for (const a of _ringTable(g.cx, g.cy, true).values()) for (let i = 0; i < a.length; i++) {
+    const e = a[i];
+    if (e.seedKey === seedKey) return { cx: Math.floor(e.x / 32), cy: Math.floor(e.y / 32), tree: e.type === 'tree' };
+  }
+  return null;
+}
+//   길 셀 키 = cy·폭 + cx(`roads.js kOf` — 존이 `Roads.init` 에 넘긴 그 폭) · ⚠함수다: `ZONE` 은 이 파일 아래(1,300줄대)에서 서므로 여기서 읽으면 TDZ
+const _t566W = () => Math.ceil(ZONE.zoneWidth / 32);
+//   ★장부가 든 청크 — 셀에 장부 씨가 **있을 수 있나**를 원시 판 없이 거른다(풀림·둘레가 장부 없는 셀의 청크 판을 안 낳게).
+//     씨 키의 앞 두 수 = 그 씨를 낳은 청크(`seedGenChunkOf` 와 같은 꼴 · 군락 `gv…` 은 청크를 모른다 — 나무가 아니다) ·
+//     셀에 닿는 청크(`cellChunksOf`) 중 하나라도 장부에 있으면 그 셀을 본다. 표는 장부 키가 늘거나 줄 때만 다시 센다.
+let _t566LedVer = 0, _t566LedChunks = null, _t566LedChunksVer = -1;
+function _t566CellMayHaveLedger(x, y) {
+  if (!harvestedSeeds.size) return false;
+  if (!_t566LedChunks || _t566LedChunksVer !== _t566LedVer) {
+    _t566LedChunks = new Set();
+    for (const k of harvestedSeeds.keys()) { const i = k.indexOf('_'); if (i <= 0) continue; const j = k.indexOf('_', i + 1); if (j > i) _t566LedChunks.add(k.slice(0, j)); }
+    _t566LedChunksVer = _t566LedVer;
+  }
+  const q = cellChunksOf(x, y, chunkManager.chunkSize);
+  for (let i = 0; i < q.length; i += 2) if (_t566LedChunks.has(q[i] + '_' + q[i + 1])) return true;
+  return false;
+}
+//   ★[T566 추신2 ①②] 셀이 등급 2 로 오르는 **그 호출**(`roads.js stampCell`) — ① 그 셀은 걷는다 ② 둘레는 새로 막힌 셀만 리젠을 막는다.
+//     ⓐ 걷기 = 개간과 **같은 문**(`clearTreesInCells` — 나무·묘목·그루터기 · 안 벤 씨는 장부에 · 장부 씨는 그대로 · 심은 것은 ④ 예외 · 소리 0)
+//     ⓑ 둘레 — 그 전에 이미 막혀 있던 셀(영토 · 다른 다져진 길의 둘레)은 할 일이 없다. 새로 막힌 셀은:
+//        · 안 벤 나무(장부에 없다) — 무접촉(서 있는 나무는 그대로)
+//        · 장부 씨 중 지금 T122 단계가 **성목**인 것 — 이미 다 자라 서 있는 나무다 ⇒ 장부에서 지운다(T341 되살림 문 그대로 · 서 있던 나무 그대로)
+//        · 장부 씨 중 그루터기·묘목(자라던 자리) — 답이 'gone' 이 된다(리젠을 막는다) · 켜진 청크에 서 있으면 그 개체를 내린다(묶음 · 소리 0)
+//     ⚠"막힘이 오는 날의 성목"은 이 사건에서만 가린다 — 부팅은 둘레를 안 걷고 안 가린다(추신2 ⑤): 막힌 동안 자란 장부 씨는 단계가 성목이어도 'gone' 이다.
+function _t566OnPaved(cx, cy) {
+  _t566Stat.paved++;
+  let day; try { day = gameDayNow(); } catch (e) { day = undefined; }
+  _t566Stat.pavedCut += clearTreesInCells(new Set([cx + ',' + cy]));
+  const kP = cy * _t566W() + cx, R = _T566_R, ids = [];
+  for (let y = cy - R; y <= cy + R; y++) for (let x = cx - R; x <= cx + R; x++) {
+    if (x < 0 || y < 0 || (x === cx && y === cy)) continue;
+    let before = false;
+    try { before = !!(SimVillages.villageOfCell && SimVillages.villageOfCell(x, y)) || !!Roads.pavedNear(x, y, R, kP); } catch (e) { before = true; }
+    if (before) continue;
+    _t566Stat.ringNew++;
+    if (Number.isFinite(day) && _t566CellMayHaveLedger(x, y)) {
+      let raw = []; try { raw = _idxAtCell(x, y, true); } catch (e) { raw = []; _idxWarnOnce('T566 길 둘레', e, '그 셀은 술어만 막는다'); }
+      for (const e of raw) {
+        if (e.type !== 'tree' || !e.isSeed || !e.seedKey || !harvestedSeeds.has(e.seedKey)) continue;
+        const cd = harvestedSeeds.get(e.seedKey);
+        const st = (Number.isFinite(cd) && cd >= 0) ? regrowStageOf('tree', day - cd, e.sp || null) : null;
+        if (st === 'mature') { _t341UnharvestBody(e.seedKey); _t566Stat.ringKeep++; } else _t566Stat.ringDrop++;
+      }
+    }
+    if (qtResources) {
+      for (const r of qtResources.queryCircle(x * 32 + 16, y * 32 + 16, 24)) {
+        if (Math.floor(r.x / 32) !== x || Math.floor(r.y / 32) !== y) continue;
+        if (!r.isSeed || !r.seedKey || !(r.type === 'stump' || r.type === 'sapling') || !harvestedSeeds.has(r.seedKey)) continue;
+        _takeResourceEntity(r, ids, true); _t566Stat.ringLive++;
+      }
+    }
+    _t566CellChanged(x, y);
+  }
+  if (ids.length) broadcast({ type: 'resources_removed', ids });
+}
+//   ★[T566 추신2 ③] 다져진 길이 **등급 2 아래로** 내려갔다(`roads.js` 하루 한 번 · 게으른 감쇠) — 그 셀과 둘레 중 **이제 안 막힌** 셀의
+//     장부 씨(나무)의 벤 날을 **풀린 날**로 적는다(`_markHarvested` — 메모리·DB·판 · 문 하나) ⇒ 그루터기부터 T122 시계(종전 그대로).
+//     날을 모르면(부팅 · 꺼진 사이 풀린 셀) 줄에 두고 시계가 선 첫 틱에 푼다(그날이 풀린 날 — 세계가 그때 안다).
+const _t566RelPend = [];
+function _t566OnUnpaved(cx, cy) {
+  _t566Stat.unpaved++;
+  let day; try { day = gameDayNow(); } catch (e) { day = undefined; }
+  if (!Number.isFinite(day)) { _t566RelPend.push(cx, cy); _t566Stat.relPend++; return; }
+  _t566Release(cx, cy);
+}
+function _t566Release(cx, cy) {
+  const R = _T566_R;
+  for (let y = cy - R; y <= cy + R; y++) for (let x = cx - R; x <= cx + R; x++) {
+    if (x < 0 || y < 0) continue;
+    if (!_t566CellMayHaveLedger(x, y)) { _t566Stat.relEmpty++; continue; }   // 장부 씨가 있을 수 없는 셀 — 풀려도 할 일이 없다(술어도 원시 판도 안 묻는다)
+    if (regrowBlockedAt(x, y)) continue;                     // 아직 막혔다(영토 · 다른 다져진 길의 둘레)
+    _t566Stat.released++;
+    let raw = []; try { raw = _idxAtCell(x, y, true); } catch (e) { raw = []; _idxWarnOnce('T566 길 풀림', e, '그 셀은 종전 시계로 돌아간다'); }
+    for (const e of raw) {
+      if (e.type !== 'tree' || !e.isSeed || !e.seedKey || !harvestedSeeds.has(e.seedKey)) continue;
+      _markHarvested(e.seedKey, e.x, e.y);
+      _t566Stat.relSeeds++;
+    }
+  }
+}
+function _t566FlushRel() {
+  if (!_t566RelPend.length) return;
+  let day; try { day = gameDayNow(); } catch (e) { day = undefined; }
+  if (!Number.isFinite(day)) return;
+  _promoteHarvestOnce();   // −1(부팅에 적은 행) 먼저 오늘로(T426 다시 훑기와 같은 차례)
+  //   ★한 틱에 다 하지 않는다 — 틱 예산(1000/TICK_HZ ms)의 절반까지만 풀고 나머지는 다음 틱(T333 미리 굽기 "한 번에 한 줄"과 같은 꼴 · 새 수 0).
+  //     꺼진 사이가 길면 수만 셀이 한꺼번에 온다(서울 사본 3.7일 = 64,237셀 · 한 번에 풀면 6.4초 멎는다).
+  const t0 = Date.now(), budget = 1000 / TICK_HZ / 2;
+  let i = 0;
+  for (; i + 1 < _t566RelPend.length && Date.now() - t0 < budget; i += 2) _t566Release(_t566RelPend[i], _t566RelPend[i + 1]);
+  _t566RelPend.splice(0, i);
+  _t566Stat.relFlushMs += Date.now() - t0; _t566Stat.relFlushTicks++;
+  if (!_t566RelPend.length) console.log(`[${ZONE_ID}] ★[T566] 꺼진 사이 풀린 길 — 둘레를 다 풀었다(${_t566Stat.relFlushTicks}틱 · 합 ${_t566Stat.relFlushMs}ms · 장부 씨 벤 날 = 그날 ${_t566Stat.relSeeds}개)`);
+}
 const _T325_TYPES = { tree: 1, sapling: 1 };
 function _t325TreesAtCell(cellX, cellY, raw) { return _actEntitiesAtCell(cellX, cellY, _T325_TYPES, raw); }
 // ★★[T347] **군락 개체** — 채집꾼의 현장이다(군락은 `chunk.js` 가 `groves`·지형·야생으로 심는다).
@@ -338,9 +505,21 @@ function _t347GrovesAtCell(cellX, cellY, raw) { return _actEntitiesAtCell(cellX,
 //   ⚠활성 청크에 이미 없어진 개체를 **되살려 넣지는 않는다**: 다음 활성화 때 색인이 다시 낳는다
 //     (개체를 손으로 만들면 그게 색인과 청크 두 벌이 된다 — T301 이 금한 그것).
 //   ⚠방송도 안 한다(T324 ⓐ — 관측자가 보고 있으면 다음 활성화에서 보인다 · 회부).
+//   ★★[T566 ③ 되살림] **막힌 셀의 씨는 되살리지 않는다** — 장부를 지우면 그 자리에 성목이 선다(술어가 막은 답을 이 문이 뒤집는다).
+//     씨의 셀은 그 씨를 낳은 청크의 원시 판에서 찾는다(`_t566SeedCell`) · 나무 씨만 묻는다(군락 — 채집 실물은 무접촉 · 카드 ④).
+//     막혔으면 0(장부 그대로 · 부르는 쪽 `vil._t341Cut` 은 그 키를 이미 꺼냈다 — 풀리면 T122 시계가 그 씨를 다시 세운다).
 function _t341Unharvest(seedKey) {
   if (!seedKey || !harvestedSeeds.has(seedKey)) return 0;
+  if (_T566_ON) {
+    const c = _t566SeedCell(seedKey);
+    if (c && c.tree && regrowBlockedAt(c.cx, c.cy)) { _t566Stat.unharvestNo++; return 0; }
+  }
+  return _t341UnharvestBody(seedKey);
+}
+function _t341UnharvestBody(seedKey) {
+  if (!seedKey || !harvestedSeeds.has(seedKey)) return 0;
   harvestedSeeds.delete(seedKey);
+  _t566LedVer++;   // ★[T566] 장부 키 집합이 바뀌었다
   _t495Forget(seedKey);   // ★[T495] 되살아난 개체는 온전하다(방어 · 빈 개체는 이미 줄이 없다)
   _ringBump(seedKey);   // ★[T440] 청크 판 — 자리를 모른다(키만 온다) ⇒ 그 씨를 낳은 청크 판을 버린다
   try { db.deleteHarvestedSeed(seedKey); } catch (e) {}
@@ -2443,6 +2622,8 @@ function _liveResourceRow(row) {
 //   벤 자리는 "벤 날부터 그루터기", 심은 자리는 "심은 날부터 **묘목**"이라 축이 하나 다르다:
 //   심기는 그루터기 단계를 건너뛴다(씨앗을 묻었지 나무를 벤 게 아니다). ⇒ 경과일에
 //   그루터기 기간을 **더해서** 같은 함수에 묻는다 — 새 표도, 새 분기도 만들지 않는다.
+// ★★[T566 ④] 재생 술어(`regrowBlockedAt` — 영토 ∪ 다져진 길 둘레)를 **여기서는 묻지 않는다** — 심은 나무는 재생이 아니라 심은 것이다
+//   (사람·마을이 심었다) ⇒ 영토 안이어도 자란다(카드 ④ · 자 ⓓ). 답 넷 중 이 자리의 답이 "예외"다(술어 사본 0 · 갈래 0).
 function _shapeRegrown(r) {
   if (!r || r.plantedDay == null) return r;
   const Y = _regrowYearDays();
@@ -3884,8 +4065,19 @@ function _recutBootOnce() {
   const n = clearTreesInCells(cells);
   console.log(`[${ZONE_ID}] ★[T426] 부팅 개간 다시 훑기 — 영토 ${cells.size}칸 · 서 있어 다시 벤 ${n}그루(게임일 ${Math.floor(d)})`);
 }
-function clearTreesInCells(cellKeys) {
+// ★★★[T566 2026-09-30] **이 문이 하는 일이 줄었다**(손잡이 `T566_REGROW_BLOCK` 켬 · 기본) — 위 T566 머리말의 술어가 막힌 셀의 재생을 막으므로:
+//   ⓐ 서 있는 것을 **한 번** 걷는다 — 나무·묘목·**그루터기**(추신 — 막힌 셀엔 그루터기도 없다) · 안 벤 씨는 장부에 적고(술어가 'gone' 을 낸다)
+//      장부 씨는 **벤 날을 다시 안 적는다**(장부 씨는 그대로 · 답만 막는다) · 켜진 개체는 내리고 **묶음으로 한 번** 방송한다(소리 0 · 통나무 0 · 곳간 무접촉)
+//   ⓑ ★카드 ④ — **심은 나무**(`plantedDay` · 사람이 심은 것)는 걷지 않는다 — 재생이 아니라 심은 것이라 영토 안이어도 자란다
+//      (★T426 PM #74 "심은 묘목도 벤다"를 이 카드가 뒤집는다 · 끔이면 종전 그대로)
+//   ⓒ ★카드 ② — 영토가 자란 날 부르는 쪽(`villages.js _terrGrow`)이 **그날 늘어난 셀**(`onlyNew`)을 같이 넘긴다 ⇒ 그 셀만 훑는다
+//      (T440 "영토 전체"는 술어가 대신한다 · 부팅 T378 전부 걷기는 그대로 — 옛 DB·옛 세계 한 번)
+//   ⓓ ★카드 ③ — T426 다시 벰 갈래(장부 씨인데 서 있는 것)는 지우지 않고 **막힌 셀은 건너뛴다** — 술어가 'gone' 을 내므로 올 일이 없다
+//      (`_t566Stat.t426Skip` 이 0 을 잰다 · 0 이면 다음 카드에서 걷는다 — 회부) · 부팅 다시 훑기(`_recutBoot`)도 막힌 셀은 안 적는다
+function clearTreesInCells(cellKeys, onlyNew) {
+  if (_T566_ON && onlyNew) { _t566Stat.growCalls++; _t566Stat.growOwn += cellKeys ? cellKeys.size : 0; _t566Stat.growNew += onlyNew.size; cellKeys = onlyNew; }
   if (!cellKeys || !cellKeys.size) return 0;
+  if (_T566_ON) { _t566Stat.sweepCalls++; _t566Stat.sweepCells += cellKeys.size; }
   let cleared = 0, ledger = 0;
   // ★★[T378] **부팅 땐 게임 시계를 물을 수 없다.** `gameDayNow()` 가 `_e2eClock`(`let` · 이 파일 뒤쪽)을
   //   읽는데 부팅 개간(`SimVillages.init` → `villages.js` 부팅 복원의 "영토 개간" 줄)은 그 선언보다 **먼저** 돈다 ⇒
@@ -3895,8 +4087,18 @@ function clearTreesInCells(cellKeys) {
   let _gd; try { _gd = gameDayNow(); } catch (e) { _gd = undefined; }
   //   ★[T426] 날을 모르면(부팅) 이 셀들을 적어 두고 시계가 선 뒤 **한 번 더** 훑는다 — 장부 씨의 단계는 날이 있어야 보인다.
   if (!Number.isFinite(_gd)) {
-    if (!_recutBoot) { _recutBoot = new Set(); setImmediate(_recutBootOnce); }
-    for (const k of cellKeys) _recutBoot.add(k);
+    //   ★[T566 ③] 넘어온 집합이 **그 마을의 영토 집합 그 자체**(`vil._terrSet` — 부팅 복원·백필·창설이 넘기는 그 객체)면 전부 영토다
+    //     ⇒ 셀마다 술어를 다시 묻지 않는다(서울 사본 영토 117만 칸에서 셀마다 물으면 부팅 +4초 · 답은 같다). 아니면 셀마다 묻는다.
+    let _allTerr = false;
+    if (_T566_ON) {
+      const it = cellKeys.values().next();
+      if (!it.done) { const k0 = it.value, c0 = k0.indexOf(','); let v0 = null; try { v0 = SimVillages.villageOfCell(+k0.slice(0, c0), +k0.slice(c0 + 1)); } catch (e) {} _allTerr = !!(v0 && v0._terrSet === cellKeys); }
+    }
+    for (const k of cellKeys) {
+      if (_T566_ON) { const ci0 = k.indexOf(','); if (_allTerr || regrowBlockedAt(+k.slice(0, ci0), +k.slice(ci0 + 1))) { _t566Stat.recutSkip++; continue; } }   // ★[T566 ③]
+      if (!_recutBoot) { _recutBoot = new Set(); setImmediate(_recutBootOnce); }
+      _recutBoot.add(k);
+    }
   }
   // ⓐ′ ★[T378] **부팅엔 `qtResources` 가 아직 없다** — 틱이 처음 만든다(최상위 `let` 이라 그때 `undefined`).
   //    그래서 DB 나무(`r.dbId` · 심은 나무 — 청크와 무관하게 부팅 최상위에서 `resources` 에 올라온다)가
@@ -3908,6 +4110,7 @@ function clearTreesInCells(cellKeys) {
     _dbAt = new Map();
     for (const r of resources.values()) {
       if (!_T378_TREE[r.type] || r.isSeed || !r.dbId) continue;   // ★[T426] 서 있는 나무 — 심은 묘목도(단계 무관)
+      if (_T566_ON && r.plantedDay != null) continue;              // ★[T566 ④] 심은 것은 걷지 않는다(아래 갈래가 센다)
       const kk = Math.floor(r.x / 32) + ',' + Math.floor(r.y / 32);
       if (!cellKeys.has(kk)) continue;
       let a = _dbAt.get(kk); if (!a) _dbAt.set(kk, a = []); a.push(r);
@@ -3915,16 +4118,25 @@ function clearTreesInCells(cellKeys) {
   }
 
   const seen = new Set();
+  const _ids = _T566_ON ? [] : null;   // ★[T566] 내린 개체 id — 끝에 묶음 한 번(소리 0)
   for (const k of cellKeys) {
     const ci = k.indexOf(','), cx = +k.slice(0, ci), cy = +k.slice(ci + 1);
     const px = cx * 32 + 16, py = cy * 32 + 16;
     // ⓐ 종전 갈래 — 지금 서 있는 개체(활성 청크 · DB 나무 포함). 부팅엔 ⓐ′ 가 추린 DB 나무.
     const near = qtResources ? qtResources.queryCircle(px, py, 24) : ((_dbAt && _dbAt.get(k)) || []);
     for (const r of near) {
-      if (!_T378_TREE[r.type] || seen.has(r.id)) continue;   // ★[T426] 서 있는 나무(성목·묘목) — 그루터기는 안 선 것
+      //   ★[T426] 서 있는 나무(성목·묘목) — 그루터기는 안 선 것 · ★[T566 추신] 켬이면 씨 그루터기도 걷는다(막힌 셀엔 그루터기도 없다)
+      const _stumpT566 = _T566_ON && r.type === 'stump' && r.isSeed;
+      if ((!_T378_TREE[r.type] && !_stumpT566) || seen.has(r.id)) continue;
       if (Math.floor(r.x / 32) !== cx || Math.floor(r.y / 32) !== cy) continue;   // 이 셀 것만
       seen.add(r.id);
-      _takeResourceEntity(r, true);   // ★[T393] 빼는 몸은 문 하나(장부·DB·중복 적재 표·방송) — 종전처럼 늘 방송한다
+      if (_T566_ON) {
+        if (r.plantedDay != null) { _t566Stat.plantedKeep++; continue; }   // ★[T566 ④] 심은 나무는 영토 안이어도 자란다
+        _takeResourceEntity(r, _ids, true);   // 같은 문 — 장부 씨는 벤 날 그대로 · 묶음 방송(소리 0)
+        if (_stumpT566) { _t566Stat.stumpDrop++; continue; }   // 그루터기는 '그루'로 안 센다(로그 수 = 서 있던 나무)
+      } else {
+        _takeResourceEntity(r, true);   // ★[T393] 빼는 몸은 문 하나(장부·DB·중복 적재 표·방송) — 종전처럼 늘 방송한다
+      }
       cleared++;
     }
     // ⓑ ★[T378] 색인 갈래 — **관측자가 없어도** 그 셀의 씨 나무를 찾아 장부에 적는다.
@@ -3947,11 +4159,16 @@ function clearTreesInCells(cellKeys) {
       seen.add(e.id);
       //   ★[T426] 장부에 있어도 **서 있으면**(색인이 묘목·성목으로 냈다) 다시 적는다 — 날이 "마지막으로 벤 날"로 간다.
       //     그루터기는 위 종류 거르개에서 이미 빠졌다(서 있지 않다) ⇒ 이미 벤 자리를 헛되이 다시 적지는 않는다.
+      //   ★[T566 ③] 막힌 셀의 장부 씨는 건너뛴다(술어가 'gone' 을 내므로 색인에 안 선다 — 오면 그게 결함이다 · 자가 0 을 잰다)
+      if (_T566_ON && harvestedSeeds.has(e.seedKey) && regrowBlockedAt(cx, cy)) { _t566Stat.t426Skip++; continue; }
       _markHarvested(e.seedKey, e.x, e.y);
       ledger++;
     }
+    //   ★[T566] 술어가 이 셀을 막았다 — 장부 씨(그루터기·자라던 묘목)의 답이 'gone' 이 됐다 ⇒ 오늘 판은 그 셀만 다시(부팅이면 할 일 없음)
+    if (_T566_ON) _t566CellChanged(cx, cy, Number.isFinite(_gd) ? _gd : null);
   }
-  if (cleared || ledger) resourcesDirty = true;
+  if (_ids && _ids.length) broadcast({ type: 'resources_removed', ids: _ids });
+  if (cleared || ledger || (_ids && _ids.length)) resourcesDirty = true;
   return cleared + ledger;
 }
 const _simNow = () => { try { return (SimVillages.dayNow && SimVillages.dayNow()) || Date.now(); } catch (e) { return Date.now(); } };
@@ -4104,7 +4321,25 @@ function _t333Prebake() {
 // §11 도적 1파 — SimVillages.init 직후(banditHost 준비 시점): 소굴 스캔/복원 + econ 훅(banditRouteRisk/onBanditLoot) 배선.
 Bandits.init();
 // §16 답압 길 4파 — 존 셀 치수·게임일 시계로 독립 부팅(villages와 무관 — 스탬프는 이동 루프 편승).
-Roads.init({ zoneId: ZONE_ID, cellsW: Math.ceil(ZONE.zoneWidth / 32), cellsH: Math.ceil(ZONE.zoneHeight / 32), epoch: WORLD.worldEpoch || 0, dayMs: parseInt(process.env.VILLAGE_DAY_MS || '', 10) || WORLD.dayLengthMs, broadcast });
+Roads.init({ zoneId: ZONE_ID, cellsW: Math.ceil(ZONE.zoneWidth / 32), cellsH: Math.ceil(ZONE.zoneHeight / 32), epoch: WORLD.worldEpoch || 0, dayMs: parseInt(process.env.VILLAGE_DAY_MS || '', 10) || WORLD.dayLengthMs, broadcast,
+  // ★[T566 추신2] 다져진 길의 오름·내림 — 존이 나무를 걷고(그 셀) 리젠을 막고(둘레) 푼다(끔이면 안 넘긴다 = 길은 종전 그대로)
+  onPaved: _T566_ON ? _t566OnPaved : null, onUnpaved: _T566_ON ? _t566OnUnpaved : null });
+// ★★[T566 추신2 ⑤] **부팅** — 등급 2 인 셀 **자체**는 걷는다(옛 DB 의 다져진 길 위 나무 — 오름 사건과 같은 답) · 둘레는 안 걷는다(리젠만 막는다).
+//   꺼진 사이 등급 2 아래로 내려간 셀(`roads.js` 가 부팅에 안다)은 시계가 선 첫 틱에 푼다(그날이 풀린 날).
+if (_T566_ON && Roads.pavedCount && Roads.pavedCount()) {
+  const _pk = new Set();
+  { const W = _t566W(); for (const k of Roads.pavedKeys()) _pk.add((k % W) + ',' + ((k / W) | 0)); }
+  _t566Stat.bootPaved = _pk.size;
+  const _t0 = Date.now();
+  _t566Stat.bootPavedCut = clearTreesInCells(_pk);
+  _t566Stat.bootPavedMs = Date.now() - _t0;
+  console.log(`[${ZONE_ID}] ★[T566] 부팅 — 다져진 길 ${_pk.size}셀 위 나무 ${_t566Stat.bootPavedCut}그루를 걷었다(둘레는 안 걷는다 · 리젠만 막는다 · ${_t566Stat.bootPavedMs}ms)`);
+}
+if (_T566_ON && Roads._S && Roads._S.bootUnpaved && Roads._S.bootUnpaved.length) {
+  { const W = _t566W(); for (const k of Roads._S.bootUnpaved) _t566RelPend.push(k % W, (k / W) | 0); }
+  _t566Stat.bootUnpaved = Roads._S.bootUnpaved.length;
+  console.log(`[${ZONE_ID}] ★[T566] 부팅 — 꺼진 사이 등급 2 아래로 내려간 길 ${_t566Stat.bootUnpaved}셀 — 시계가 서면 둘레를 푼다`);
+}
 // ★[배치 20 B] Soil.init 은 여기가 아니라 **minedCells 적재 뒤**(3900+)에 있다 —
 //   채굴 거울 씨앗이 minedCells 를 읽는데 그 const 선언이 아래라 TDZ 다(2027 의 Specialty 와 같은 함정).
 // §4-4 마지막 조각: 동물 AI 블록(마을실험실 야생 5종 🦌🐇🐗🐺🐯) — server/wildlife.js.
@@ -10981,6 +11216,8 @@ function __testBind() {
     // ★[T440] 청크 한 판 — 자·하네스가 **그 문**(`_idxAtCell`)과 판(`_ringCache`)·부하 표(`_ringStat`)를 그대로 본다 ·
     //   장부(`harvestedSeeds` — 읽기만)와 장부를 바꾸는 문 둘(벰 `_t325CutTreeAt` · 되살림 `_t341Unharvest`)도 그대로 두드린다
     _idxAtCell, _ringCache, _ringStat, harvestedSeeds, _t325CutTreeAt, _t341Unharvest,
+    // ★[T566] 재생 술어 — 자(`test-regrow-block`)가 **그 술어·그 문**을 그대로 묻고 두드린다(길 오름은 `Roads.stampCell` 그대로 · 사본 0)
+    regrowBlockedAt, _t566Stat, _t566On: _T566_ON, _t566R: _T566_R, _t566SeedCell, _t566FlushRel, _t566RelPend, Roads,
     // ★[T495] 부분 수확 — 하네스가 **문 그대로** 두드린다(단위로 따기 · 남은 전리품 · 장부 · 군락 색인 · 통째 따기 · 플레이어 채집)
     _t495PickAt, _t495RestOf, _t495Rest, pickedSeeds, _t347GrovesAtCell, _t347PickAt, gatherResource,
     // ── 빈손 시작(2026-08-28) ── 줍기·제작·도구 표를 **정본 그대로** 내준다
@@ -12948,6 +13185,7 @@ setInterval(() => {
   Bandits.onGameTick(now);
   // §16 답압 길 — 게임일 경계 dirty 플러시·coarse 재구축·클라 변경분(평시 O(1) 비교)
   Roads.onGameTick(now);
+  if (_t566RelPend.length) _t566FlushRel();   // ★[T566] 날을 모른 채 풀린 길(부팅 · 꺼진 사이) — 시계가 선 첫 틱에 둘레를 푼다(평시 길이 0 비교 1회)
   Soil.onGameTick(now);   // [배치 20 B] 토양치 게임일 1회 플러시 + tile_state 변경분 방송
   _fruitSeasonSweep();    // ★[T170] 철이 바뀌는 날 한 번 — 열매 비트 뒤집힘 방송(평시 낱말 비교 1회)
   // ★[T487] 적설 결산 — 게임일 경계에서 한 걸음(평시 O(1) 날짜 비교 · 무인 존도 돈다 = 관측자 무관).
