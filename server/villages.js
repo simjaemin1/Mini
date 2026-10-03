@@ -2177,6 +2177,17 @@ function _t619Region(ax, ay, bx, by, pad) {
   const r = (cmin < 1 ? Math.ceil(L * (1 - cmin) / (2 * k * cmin)) : 0) + (pad | 0);
   return [Math.min(ax, bx) - r, Math.min(ay, by) - r, Math.max(ax, bx) + r, Math.max(ay, by) + r];
 }
+// ★[T619] 다시 파기 거르개 — 쌍 키 목록 중 바뀐 코스 칸([gx, gy])이 그 쌍 둘레(`_t619Region` · 마을 칸에서 재니 스냅 반경만큼 더)에 든 것만.
+function _t619RedigKeep(keys, chg) {
+  const g = (c) => Math.round((c * SZ + SZ / 2) / SZ / DIST_STEP);   // `_routeBegin` 스냅의 첫 칸과 같은 식
+  return keys.filter((k) => {
+    const ids = k.split('_'), A = state.byDbId.get(+ids[0]), B = state.byDbId.get(+ids[1]);
+    if (!A || !B) return false;
+    const [x0, y0, x1, y1] = _t619Region(g(A.ccx), g(A.ccy), g(B.ccx), g(B.ccy), ROUTE_SNAP_R);
+    for (const [x, y] of chg) if (x >= x0 && x <= x1 && y >= y0 && y <= y1) return true;
+    return false;
+  });
+}
 function _routeBegin(x0, y0, x1, y1, extraBlk, plain) {
   // ★★[T85 · §0-ⓐ 실측의 직접 귀결] **격자 scratch 는 하나다.** 새 탐색이 시작되면 `sc.gen` 이 오르고,
   //   그 순간 세워 둔 탐색의 g 는 전부 "낡은 세대"가 되어 `Infinity` 로 읽힌다(`came` 는 스탬프도 없다).
@@ -2494,14 +2505,7 @@ function _routeRedigStep() {
     //     둘레 밖 칸은 그 쌍의 h 도 비용 하한도 안 바꾼다. 끔이면 이 절 무동작(종전 = 다닌 쌍 전부).
     if (T619_LOCAL_H && RD.takeCoarseChanges) {
       const chg = RD.takeCoarseChanges(), before = state.routeRedigQ.length;
-      const g = (c) => Math.round((c * SZ + SZ / 2) / SZ / DIST_STEP);   // `_routeBegin` 스냅의 첫 칸과 같은 식
-      state.routeRedigQ = state.routeRedigQ.filter((k) => {
-        const ids = k.split('_'), A = state.byDbId.get(+ids[0]), B = state.byDbId.get(+ids[1]);
-        if (!A || !B) return false;
-        const [x0, y0, x1, y1] = _t619Region(g(A.ccx), g(A.ccy), g(B.ccx), g(B.ccy), ROUTE_SNAP_R);
-        for (const [x, y] of chg) if (x >= x0 && x <= x1 && y >= y0 && y <= y1) return true;
-        return false;
-      });
+      state.routeRedigQ = _t619RedigKeep(state.routeRedigQ, chg);
       _probe.routeRedigCand = (_probe.routeRedigCand || 0) + before;
       _probe.routeRedigKept = (_probe.routeRedigKept || 0) + state.routeRedigQ.length;
     }
@@ -5990,6 +5994,7 @@ function __p3Bind(mock) {
     _warEngage, _warAfterDaily, _warEndFight, _warBuildRectIndex, _warBlockedCell, _warWorld, warPerf, _warOrderFallback, _warToStandoff,
     _warDraftPids, _warReleasePid, econDayToMs, _warEnsureBody, _warSampleComp, _vbFootprint,
     threatOf, _warWriteThreats, _warOutMul, _lifeJobSites, _lifeJobSiteOK, _warRoutePts, _warTreeCell, computeRoutePts,
+    _t619Region, _t619RedigKeep,   // ★[T619] 쌍 둘레 · 다시 파기 거르개 — 자(`t619-h-audit`)가 **이 함수**로 센다(사본 0)
     _econSameOf, _warEatBySpoil,   // ★[T458] 같은 물건 한 줄 · 상하는 것부터 — 하네스가 **이 함수**로 등가 표를 센다(사본 0)
     _warLootAccept, _warLootPickup,   // ★[T466] 약탈 = 행위 — 하네스가 운영과 같은 훅을 war-core 에 건다
     _warSnapToSlots, _warStandNear, _warPathNext, _warReleaseAdv, _warDetourFor,   // ★[T541] 막힌 슬롯 → 설 수 있는 가장 가까운 칸 · 막힌 곧은 걸음 → 걸음 경로 — 하네스가 **이 함수들**을 부른다
