@@ -26,6 +26,7 @@
 //   localPath(sx,sy,gx,gy,opts)  — 걸음 프리셋(4방 균일비용). 마을 내 일상 이동.
 //     opts.blockedStep(fx,fy,tx,ty) — 이동(간선) 차단 판정. 셀 차단만 있으면 (f,t)→cellBlocked(tx,ty)로 감싸 전달.
 //     opts.maxNodes(기본 16384) · opts.radius(시작·목표 박스 밖 탐색 금지, 기본 무제한)
+//     opts.costMul(x,y) — ★[T585] 스텝 비용 배율(개울 칸 2 = 걸음 ×0.5 의 역 · ≥ 1 이라 h 가 허용적으로 남는다 · 기본 없음)
 //     opts.prefer(x,y) — ★답압 수렴(전쟁실험실 "평행길 교정" 승계): >0(길)이면 진입비 99/100 → 등거리 대안이
 //                        길로 스냅(h는 100/스텝이라 허용적 유지 = 최단 보존·우회 불가). 우선순위 = 길 > 직선 편향 > 임의.
 //   routePath(sx,sy,gx,gy,opts) — 도로 프리셋(8방 100/140). 마을 간 교역로.
@@ -191,7 +192,7 @@ function localPath(sx, sy, gx, gy, opts) {
   return _search(sx, sy, gx, gy, {
     dirs: DIRS4, octile: false, biasW: BIAS_LOCAL,
     stepBlocked: opts.blockedStep || (() => false),
-    nodeBlocked: null, costMul: null,
+    nodeBlocked: null, costMul: opts.costMul || null,   // ★[T585] 셀 비용 술어 한 자리(개울 칸 ×2 = 걸음 ×0.5 의 역) — 안 넘기면 null(종전 비트 그대로)
     prefer: opts.prefer || null,
     maxPops: opts.maxNodes || 16384, radius: opts.radius || 0, scratch: null,
   });

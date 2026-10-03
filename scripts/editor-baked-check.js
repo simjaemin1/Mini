@@ -22,5 +22,5 @@ if (cur === fresh) { console.log('[editor-baked] 정본과 같다 ✅ ' + work.s
 let old = {}; try { old = JSON.parse(cur); } catch (e) {}
 console.log('[editor-baked] **정본과 다르다** ❌ 내장 ' + ((old.work && old.work.stamp) || '?') + ' ↔ 정본 ' + work.stamp
   + ' · 다리 ' + Object.keys(bridges).map((k) => k + ' ' + ((old.bridges && old.bridges[k] || []).length / 2) + '→' + bridges[k].length / 2).join(' ')
-  + ' — `node scripts/editor-baked-check.js --write` 뒤 `node scripts/build-map-editor.js ~/Mini/map-editor.html`(맥 사본)');
+  + ' — `node scripts/editor-baked-check.js --write` → `MAPED_UPDATE_PINS=1 node scripts/test-map-editor.js`(export 고정값) → `node scripts/build-map-editor.js ~/Mini/map-editor.html`(맥 사본)');
 process.exit(1);

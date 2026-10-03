@@ -30,10 +30,16 @@ const sha = (s) => crypto.createHash('sha256').update(s).digest('hex');
 //   — 종전 판(2026-07-31 · f2863/m3353/92a6c76911)은 T550 닛폰 정본 · T580 다리 · 자잘 광맥 전부가 빠진 옛 판이었다(재민 10-03 "최종본이 완전 옛날 거").
 //   수(스탬프 · 피처 수 · 다리 값 수)는 baked json 에서 읽는다 · export sha256 은 이 판으로 다시 박는다(에디터 코드가 export 를 바꾸지 않았나를 지키는 자).
 const _BK = JSON.parse(fs.readFileSync(path.join(ROOT, 'lab', 'map-editor-baked.json'), 'utf8'));
+// ★[PM 10-03] export sha256 고정값은 `lab/map-editor-pins.json`(내장 스탬프 → sha 두 개)에서 읽는다 — 내장 작업을 정본에서 다시 뽑으면
+//   (`scripts/editor-baked-check.js --write`) 스탬프가 바뀌고, `MAPED_UPDATE_PINS=1 node scripts/test-map-editor.js` 한 판이 새 스탬프의 sha 를 적는다.
+//   스탬프가 같으면 sha 가 같아야 한다 = 에디터 코드가 export 를 안 바꿨다(이 자가 지키는 것).
+const _PINF = path.join(ROOT, 'lab', 'map-editor-pins.json');
+const _PINS = fs.existsSync(_PINF) ? JSON.parse(fs.readFileSync(_PINF, 'utf8')) : {};
+const _UPD = process.env.MAPED_UPDATE_PINS === '1';
 const PIN = { stamp: _BK.work.stamp, nf: _BK.work.features.length, nm: _BK.work.mf.length, br: (_BK.bridges.hanbando || []).length,
-  single: 'ecb42d59a79cb4ce4fdb7aac6c61a05e0fb3782ee54d1c5f1a592741a0b8921f',
-  // ★[T591 10-03] 전체 월드 export 는 존 사각(WZONES)으로 피처를 나눈다 — 닛폰 7000 · 베링 +1000 · 바다 존 넷이 바뀌어 값이 바뀐다(단일 판 무변 · 코드 무변).
-  multi: '78abd472bc934eb00172b9a7f1d788ced32c25c604e89b2f1a921815cd08b390' };
+  single: (_PINS[_BK.work.stamp] || {}).single || null, multi: (_PINS[_BK.work.stamp] || {}).multi || null };
+const _seen = {};
+
 
 (async () => {
   const { chromium } = require('playwright');
@@ -85,8 +91,9 @@ const PIN = { stamp: _BK.work.stamp, nf: _BK.work.features.length, nm: _BK.work.
   }
   for (const [nm, pg] of [['맥 사본', pInline], ['레포 판+fetch', pFetch]]) {
     const a = sha(await exportText(pg)); await pg.check('#multiToggle'); const b = sha(await exportText(pg)); await pg.uncheck('#multiToggle');
-    ok(a === pin.single, `${nm} — 단일(한반도) export sha256 = 종전`, a.slice(0, 16));
-    ok(b === pin.multi, `${nm} — 전체 월드 export sha256 = 종전`, b.slice(0, 16));
+    if (_UPD) { _seen.single = _seen.single || a; _seen.multi = _seen.multi || b; }
+    ok(_UPD ? a === _seen.single : a === pin.single, `${nm} — 단일(한반도) export sha256 = 종전`, a.slice(0, 16));
+    ok(_UPD ? b === _seen.multi : b === pin.multi, `${nm} — 전체 월드 export sha256 = 종전`, b.slice(0, 16));
   }
 
   console.log('\n[ⓒ 옛 작업 파일(world v10 = 내장 작업) 불러오기]');
@@ -98,7 +105,7 @@ const PIN = { stamp: _BK.work.stamp, nf: _BK.work.features.length, nm: _BK.work.
     r = await pFetch.evaluate(() => ({ nf: S.features.length, nm: S.mf.length, stamp: S.stamp }));
     const a = sha(await exportText(pFetch));
     ok(r.nf === PIN.nf && r.nm === PIN.nm && r.stamp === PIN.stamp, '작업 파일 입력으로 불러옴 — 강·산맥·마을 수 그대로', JSON.stringify(r));
-    ok(a === pin.single, '불러온 작업의 export = 종전', a.slice(0, 16));
+    ok(_UPD ? a === _seen.single : a === pin.single, '불러온 작업의 export = 종전', a.slice(0, 16));
   }
   await pInline.close(); await pFetch.close();
 
@@ -222,6 +229,7 @@ const PIN = { stamp: _BK.work.stamp, nf: _BK.work.features.length, nm: _BK.work.
     r = await pg.evaluate(() => S.features.length); ok(r === 2, '고리(반대쪽 끝도 가깝다) — 안 잇는다', `${r}개`); }
   ok(pg._errs.length === 0, '페이지 오류 0', pg._errs.join(' | '));
   await pg.close(); await browser.close(); srv.close();
+  if (_UPD && !fail && _seen.single) { _PINS[_BK.work.stamp] = { single: _seen.single, multi: _seen.multi }; fs.writeFileSync(_PINF, JSON.stringify(_PINS, null, 1) + '\n'); console.log('  [pins] ' + _BK.work.stamp + ' 적음'); }
   console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===`);
   process.exit(fail ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(2); });

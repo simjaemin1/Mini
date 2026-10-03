@@ -1265,6 +1265,18 @@ function generateCoastlineWaterTiles(zone, tileSize, findZoneAtFn, oceanRects) {
   const waterTiles = new Set();
   if (zone.isOcean) return waterTiles; // ocean zone은 전체 물 — 별도 처리
   if (!oceanRects || !oceanRects.length) return waterTiles;
+  // ★★[T588 2026-10-03] 해안 **구간 성격** — 손잡이 `T588_COAST`(기본 끔 = 아래 지금 식 바이트 그대로).
+  //   켬이면 구간 표(굴곡 차원 D · 굴곡 진폭 · 깊이 · 섬 — T589 고증 수)를 읽는 2차원 등고선 생성기가 깎는다:
+  //   `public/coast-shape.js`(서버·클라 공용 1부 — 클라 `00-const.js` 도 같은 파일을 부른다 · 사본 0).
+  //   지금 식은 그 생성기에 **함수로 넘긴다**(구간 밖 · 구간 끝 섞임 몫) — 아래 깊이 한 줄과 같은 식 · 같은 연산 차례.
+  //   존 사각·띠 배수는 zone-config 에서(박힌 수 0) · 구간 표가 비면 켬도 지금 바이트(하네스 `test-coast-shape`).
+  //   값: `a`(= `1`) 진폭 = 지금 식 진폭 · `b` 구간 D(고증)를 게임 자로 맞춘 진폭 — 굴곡 진폭이 미확인이라 두 안(재민이 고른다).
+  const _t588 = process.env.T588_COAST;
+  if (_t588 === '1' || _t588 === 'a' || _t588 === 'b') {
+    if (!_ZC) { try { _ZC = require('./zone-config'); } catch (e) { _ZC = { ZONES: {} }; } }
+    return require('../public/coast-shape.js').generate(zone, tileSize, oceanRects, _ZC.ZONES || {}, COASTLINE_BASE, COASTLINE_NOISE,
+      (bnx, bny) => COASTLINE_BASE + _coastSmoothNoise2D(bnx, bny) * COASTLINE_NOISE, { variant: _t588 === 'b' ? 'b' : 'a' });
+  }
   // Phase 5-1 fix: inland water (강·호수)는 zone start 시 pre-compute 안 함.
   //   PZ급 zone에서 수백만 cell × 검사 = 수십 초 → healthcheck timeout.
   //   대신 isWaterTileLocal 동적 호출 시 terrain.isWaterCellLocal로 검사 (콜라이더용).

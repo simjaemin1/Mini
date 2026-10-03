@@ -2542,7 +2542,9 @@ module.exports = {
   const HALL_YARD = 10, LOT_R = 6.5, FARM_GAP = 2, ALLEY_R = 12.5, HALL_CLEAR = HALL_YARD + LOT_R;   // ★구역 기하 정본[사용자 확정 "전부 원으로 통일"]: 마당 원 r10·부지 원 r6.5·완충=부지 기준 정확 2타일 등방·골목 r12.5·HALL_CLEAR=마당 원과 부지 원이 셀 하나도 안 겹치는 최소 중심거리[사용자 지시 "초기 두 채 침범 금지"]
   const inDisc = (cx, cy, R, x, y) => { const ax = x + 0.5 - cx, ay = y + 0.5 - cy; return ax * ax + ay * ay < R * R; };   // 셀 중심(x+.5,y+.5)이 격자점(cx,cy) 반경 R 안(엄격<) — 전 구역 판정의 단일 원식(렌더도 같은 셀 집합=판정과 픽셀 일치)
   const discCells = (R) => { const o = [], B = Math.ceil(R); for (let dx = -B; dx < B; dx++) for (let dy = -B; dy < B; dy++) if ((dx + 0.5) * (dx + 0.5) + (dy + 0.5) * (dy + 0.5) < R * R) o.push([dx, dy]); return o; };
-  const LOT_CELLS = discCells(LOT_R), LOT_GUARD = discCells(LOT_R + FARM_GAP), YARD_CELLS = discCells(HALL_YARD);   // 부지 원판(124셀 — 구 12×12 등적·적도폭 12), 부지+2 침수·완충 원판, 큰집 마당 원판(316셀)
+  const LOT_CELLS = discCells(LOT_R), LOT_GUARD = discCells(LOT_R + FARM_GAP), YARD_CELLS = discCells(HALL_YARD);
+  // ★[재민 10-03] 개울 완충 = 부지 + **3칸**(물가세 없이) — 큰 물 완충(`FARM_GAP` 2)과 따로 둔 한 수(재민 값 · T584 표 뒤).
+  const STREAM_GAP = 3, STREAM_GUARD = discCells(LOT_R + STREAM_GAP);   // 부지 원판(124셀 — 구 12×12 등적·적도폭 12), 부지+2 침수·완충 원판, 큰집 마당 원판(316셀)
   // ★★[T579 2026-10-03 · T569 ④] **집 부지 인당** = 부지 원판 셀 수 ÷ 집 한 채 정원(층당 정원 × 층 상한) — 식이다(새 수 0 · 124 ÷ 6 = 20.67).
   //   영토 상한(T538 · NPC 마을)이 밭(`LAND_NEED`)만 세고 집 부지를 안 세서, 인구 약 100 위에서 집터가 영토에 안 들었다.
   const LOT_PER_HEAD = LOT_CELLS.length / (HOUSE_CAP_PER_FLOOR * HOUSE_MAX_FLOORS);
@@ -2615,12 +2617,30 @@ module.exports = {
   };
 
   function footprintLand(terrain, cx, cy) { for (const [dx, dy] of LOT_CELLS) if (terrain.isBlocked(cx + dx, cy + dy)) return false; return true; }   // 부지=원판
+  // ★★[T585 · 랩 T571 `discHitsStream` 그대로] 개울 — 원판(부지 `LOT_CELLS` · 완충 `LOT_GUARD` · 큰집 마당 `YARD_CELLS`)에 개울 셀이 하나라도 있으면 그 자리 불가.
+  //   **술어 한 자리** — generate·생활층 집터(`villages._lifeSiteFilters`)·큰집 자리(`findOpenCenter`)가 이것만 부른다. 지형에 `isStream` 이 없으면 false(무변).
+  //   어느 원판을 쓰나 = `streamLotCells()`(T584 손잡이 · 기본 `guard` = 큰 물과 같은 부지 + 2칸 완충 원 · `lot` = 부지 원판만 — T571 판).
+  const discHitsStream = (t, cx, cy, cells) => { if (!t || !t.isStream) return false; for (const [dx, dy] of cells) if (t.isStream(cx + dx, cy + dy)) return true; return false; };
+  const streamLotCells = () => ((typeof process !== 'undefined' && process.env && process.env.T585_STREAM_GUARD === 'lot') ? LOT_CELLS : STREAM_GUARD);
 
   function axisAt(terrain, cx, cy) {
     const gx = terrain.elev(cx + 1, cy) - terrain.elev(cx - 1, cy);
     const gy = terrain.elev(cx, cy + 1) - terrain.elev(cx, cy - 1);
     const gl = Math.hypot(gx, gy) || 1;
     return { toWater: { x: -gx / gl, y: -gy / gl }, toHill: { x: gx / gl, y: gy / gl } };
+  }
+
+  // ★[T593] 직업 몫(농부 fShare · 어부 hShare)의 **갈래** — `generate` 의 typeLabel 문턱 그대로(값·순서 무변).
+  //   'riverside' 어부 몫이 굵고 농부 몫이 얇다 · 'plain' 농부 몫이 굵고 어부 몫이 얇다 · 'mixed' 둘 다 굵다 ·
+  //   'none' 위 셋 어디에도 안 든다(typeLabel 은 그때 **기본값** 'plain' 을 낸다 — 판정이 아니라 기본값).
+  //   T593 마을 이름표(`villages.js _t593Kind`)가 이 갈래를 읽는다 — 판정 둘('riverside'·'plain')과 기본값을 가른다.
+  //   문턱 다섯은 이름으로 올렸을 뿐 값은 그대로다(`TYPE_LINES` — 이름표의 "숲 몫" 줄이 어촌 줄 `fishHi` 를 읽는다).
+  const TYPE_LINES = Object.freeze({ fishHi: 0.42, farmLo: 0.20, farmHi: 0.40, fishLo: 0.15, both: 0.18 });
+  function typeBranch(fShare, hShare) {
+    const L = TYPE_LINES;
+    return (hShare > L.fishHi && fShare < L.farmLo) ? 'riverside'
+      : (fShare > L.farmHi && hShare < L.fishLo) ? 'plain'
+      : (fShare > L.both && hShare > L.both) ? 'mixed' : 'none';
   }
 
   function generate(terrain, ccx, ccy, pop, opts) {
@@ -2656,9 +2676,9 @@ module.exports = {
     const wSum = wFarm + wFish + wOther;
     const fShare = wFarm / wSum, hShare = wFish / wSum;
     const farmers = Math.round(pop * fShare), fishers = Math.round(pop * hShare);
-    const typeLabel = (hShare > 0.42 && fShare < 0.20) ? 'riverside'
-      : (fShare > 0.40 && hShare < 0.15) ? 'plain'
-      : (fShare > 0.18 && hShare > 0.18) ? 'mixed' : 'plain';
+    // ★[T593] 문턱은 모듈 함수 `typeBranch` 한 자리로 옮겼다(값·순서 그대로 — 이름표 갈래도 같은 함수를 부른다 · 사본 0).
+    const typeWhy = typeBranch(fShare, hShare);
+    const typeLabel = typeWhy === 'none' ? 'plain' : typeWhy;
     const layout = (hShare > 0.55) ? 'shore' : 'cluster';
     const settlement = opts.settlement === 'dispersed' ? 'dispersed' : 'nucleated';
     const HOUSE_GAP = opts.houseGap != null ? opts.houseGap : (layout === 'shore' ? 18 : 22);   // ★부지 원(r6.5) 비겹침: d≥13이면 충분 — 18/22는 집 사이 골목 여유 포함(랩 동기)
@@ -2703,13 +2723,17 @@ module.exports = {
     const CAP = HOUSE_CAP_PER_FLOOR, MAX_FLOORS = HOUSE_MAX_FLOORS, SPACE_MIN = 20;   // 단층 6명 — 수용 압력은 전부 집터 확산·영토 확장으로 (★[T230] 층 상한은 모듈 정본 `HOUSE_MAX_FLOORS`)
     const fpInTerr = (cx, cy) => { for (const [dx, dy] of LOT_CELLS) if (t.isBlocked(cx + dx, cy + dy) || !own.has(key(cx + dx, cy + dy))) return false; return true; };
     const farFromWater = (cx, cy) => { for (const [dx, dy] of LOT_GUARD) if (t.isWater && t.isWater(cx + dx, cy + dy)) return false; return true; };   // ★부지 원+2 완충 원 물 X(침수 회피, 자연제방 고증)
+    // ★[T585] 개울 — 부지(+완충) 원판에 개울 셀 X · 넘긴 자리를 센다(`streamRej` · 랩 T571 계수기와 같은 뜻). 개울 없으면 늘 true(무변).
+    const _stCells = streamLotCells(), streamRej = new Set();
+    const stOk = (cx, cy) => { if (!t.isStream) return true; if (discHitsStream(t, cx, cy, _stCells)) { streamRej.add(key(cx, cy)); return false; } return true; };
+    const stCell = (x, y) => !!(t.isStream && t.isStream(x, y));   // 논·밭 = 셀(옆은 된다 · 띄우는 거리 0)
     const W_PEN_K = 2000;   // 물가 페널티 강도(랩 verbatim)
     const WF = waterEDT(t, ccx - WR, ccy - WR, ccx + WR, ccy + WR);   // 유클리드 물거리장(박스=dw BFS와 동일 범위)
     const wDist = (x, y) => { const v = WF.at(x, y); return v >= 999 ? 99 : Math.max(1, v - LOT_R); };   // ★물가세 거리=정확 유클리드 EDT 조회(랩 동기[사용자 #15 사례] — ±14 박스 무과세 문턱 폐지, 전 영토 연속 과세+O(1))
 
     // ── 2. 농지: 논=지형 존닝(물가 7줄 스트립), 밭=창발(여기선 균형해가 초기 기경지만) — 집보다 먼저(집이 논 피함)
     const farmCand = [], bank = [];
-    for (const k of own) { const [x, y] = k.split(',').map(Number); const d = dwOf(x, y); if (d <= 1) { bank.push({ cx: x, cy: y }); continue; } if (hallFarmBlock(ccx, ccy, x, y)) continue; if (hasWater && d <= dNong) farmCand.push([x, y, d]); }   // 회관 마당 원(r10)+완충 2타일=r12 제외(유일 정본)
+    for (const k of own) { const [x, y] = k.split(',').map(Number); const d = dwOf(x, y); if (d <= 1) { bank.push({ cx: x, cy: y }); continue; } if (hallFarmBlock(ccx, ccy, x, y)) continue; if (stCell(x, y)) continue; if (hasWater && d <= dNong) farmCand.push([x, y, d]); }   // 회관 마당 원(r10)+완충 2타일=r12 제외(유일 정본)
     farmCand.sort((a, b) => a[2] - b[2]);   // 논: 물 가까운 순
     // 농지 stateful: 기존 논·밭 잠금 — 인구 늘어도 절대 안 줄어듦
     const lockNong = new Set((opts.existingFarmland || []).filter(f => own.has(key(f.cx, f.cy))).map(f => key(f.cx, f.cy)));
@@ -2727,7 +2751,7 @@ module.exports = {
     const shrink = () => { while (houses.length > 2 && cap() - houses[houses.length - 1].floors * CAP >= pop) houses.pop(); };
     if (layout === 'shore') {
       const cand = [];
-      for (const k of own) { const [x, y] = k.split(',').map(Number); if (Math.hypot(x - ccx, y - ccy) < HALL_CLEAR) continue; /*★HALL_CLEAR: 부지 원이 마당 원 침범 불가*/ if (!fpInTerr(x, y)) continue; const inland = Math.abs((x - ccx) * w.x + (y - ccy) * w.y), along = Math.abs((x - ccx) * perp.x + (y - ccy) * perp.y); const wdv = wDist(x, y); cand.push({ cx: x, cy: y, d: inland * 3 + along + (wdv < 99 ? W_PEN_K / (wdv * wdv) : 0) }); }
+      for (const k of own) { const [x, y] = k.split(',').map(Number); if (Math.hypot(x - ccx, y - ccy) < HALL_CLEAR) continue; /*★HALL_CLEAR: 부지 원이 마당 원 침범 불가*/ if (!fpInTerr(x, y) || !stOk(x, y)) continue; const inland = Math.abs((x - ccx) * w.x + (y - ccy) * w.y), along = Math.abs((x - ccx) * perp.x + (y - ccy) * perp.y); const wdv = wDist(x, y); cand.push({ cx: x, cy: y, d: inland * 3 + along + (wdv < 99 ? W_PEN_K / (wdv * wdv) : 0) }); }
       cand.sort((a, b) => a.d - b.d);
       for (const h of (opts.existingHouses || [])) houses.push({ cx: h.cx, cy: h.cy, floors: h.floors || 1 });
       let ci = 0, guard = 0;
@@ -2743,7 +2767,7 @@ module.exports = {
       for (const k of own) { const [x, y] = k.split(',').map(Number); let edge = false; for (const [dx, dy] of N4) if (!own.has(key(x + dx, y + dy))) { edge = true; break; } if (edge || nongSet.has(k)) { DF.set(k, 0); dq.push([x, y]); } }
       let dh = 0; while (dh < dq.length) { const [x, y] = dq[dh++]; const d = DF.get(key(x, y)) + 1; for (const [dx, dy] of N4) { const kk = key(x + dx, y + dy); if (own.has(kk) && !DF.has(kk)) { DF.set(kk, d); dq.push([x + dx, y + dy]); } } }
       const hc = [];
-      for (const k of own) { const [x, y] = k.split(',').map(Number); if ((x & 1) || (y & 1)) continue; if (onField(x, y) || Math.hypot(x - ccx, y - ccy) < HALL_CLEAR) continue; if (!fpInTerr(x, y) || !farFromWater(x, y)) continue; hc.push([x, y]); }   // ★HALL_CLEAR=16.5: 마당 원과 부지 원 비침범[사용자 지시 "초기 두 채 침범 금지"]
+      for (const k of own) { const [x, y] = k.split(',').map(Number); if ((x & 1) || (y & 1)) continue; if (onField(x, y) || Math.hypot(x - ccx, y - ccy) < HALL_CLEAR) continue; if (!fpInTerr(x, y) || !farFromWater(x, y) || !stOk(x, y)) continue; hc.push([x, y]); }   // ★HALL_CLEAR=16.5: 마당 원과 부지 원 비침범[사용자 지시 "초기 두 채 침범 금지"]
       const hdist = new Map(hc.map(p => [key(p[0], p[1]), Infinity]));
       const bump = (hx, hy) => { for (const p of hc) { const k2 = key(p[0], p[1]), e = Math.hypot(p[0] - hx, p[1] - hy); if (e < hdist.get(k2)) hdist.set(k2, e); } };
       for (const h of (opts.existingHouses || [])) { if (fpInTerr(h.cx, h.cy)) { houses.push({ cx: h.cx, cy: h.cy, floors: h.floors || 1 }); bump(h.cx, h.cy); } }
@@ -2759,7 +2783,7 @@ module.exports = {
       // 집촌(集村): 회관 가까운 순 + 물가 K/d² 연속 페널티
       const SETT_GAP = opts.settGap != null ? opts.settGap : 18;   // ★부지 원(r6.5) 비겹침 d≥13+골목 여유(랩 동기)
       const hc = [];
-      for (const k of own) { const [x, y] = k.split(',').map(Number); if ((x & 1) || (y & 1)) continue; const r = Math.hypot(x - ccx, y - ccy); if (r < HALL_CLEAR) continue; if (onField(x, y) || !fpInTerr(x, y) || !farFromWater(x, y)) continue; const wdv = wDist(x, y); hc.push([x, y, r + (wdv < 99 ? W_PEN_K / (wdv * wdv) : 0)]); }   // ★HALL_CLEAR=16.5 비침범 + 물가 연속 페널티
+      for (const k of own) { const [x, y] = k.split(',').map(Number); if ((x & 1) || (y & 1)) continue; const r = Math.hypot(x - ccx, y - ccy); if (r < HALL_CLEAR) continue; if (onField(x, y) || !fpInTerr(x, y) || !farFromWater(x, y) || !stOk(x, y)) continue; const wdv = wDist(x, y); hc.push([x, y, r + (wdv < 99 ? W_PEN_K / (wdv * wdv) : 0)]); }   // ★HALL_CLEAR=16.5 비침범 + 물가 연속 페널티
       hc.sort((a, b) => a[2] - b[2]);
       const spaced = (x, y) => { for (const h of houses) if (Math.hypot(h.cx - x, h.cy - y) < SETT_GAP) return false; return true; };
       for (const h of (opts.existingHouses || [])) if (fpInTerr(h.cx, h.cy)) houses.push({ cx: h.cx, cy: h.cy, floors: h.floors || 1 });
@@ -2784,7 +2808,7 @@ module.exports = {
       if (farmland.length + dryfield.length < want) {
         const candN = []; for (const k of nongSet) { if (lockNong.has(k)) continue; const [x, y] = k.split(',').map(Number); candN.push([k, x, y, Math.hypot(x - ccx, y - ccy)]); }
         candN.sort((a, b) => a[3] - b[3]);   // 논: 중심 가까운 기둥부터 강 따라 길이 성장
-        const candB = []; for (const k of own) { if (nongSet.has(k) || batSet.has(k)) continue; const [x, y] = k.split(',').map(Number); const r2 = (x - ccx) * (x - ccx) + (y - ccy) * (y - ccy); if (hallFarmBlock(ccx, ccy, x, y) || tooCloseH(x, y) || squeezed(x, y)) continue; const d = dwOf(x, y); if (hasWater && d <= dNong) continue; candB.push([k, x, y, ((hasWater && d <= dBat) ? Math.sqrt(r2) : (1e5 + Math.min(d, 999) * 1000 + Math.sqrt(r2)))]); }
+        const candB = []; for (const k of own) { if (nongSet.has(k) || batSet.has(k)) continue; const [x, y] = k.split(',').map(Number); const r2 = (x - ccx) * (x - ccx) + (y - ccy) * (y - ccy); if (hallFarmBlock(ccx, ccy, x, y) || tooCloseH(x, y) || squeezed(x, y) || stCell(x, y)) continue; const d = dwOf(x, y); if (hasWater && d <= dNong) continue; candB.push([k, x, y, ((hasWater && d <= dBat) ? Math.sqrt(r2) : (1e5 + Math.min(d, 999) * 1000 + Math.sqrt(r2)))]); }
         candB.sort((a, b) => a[3] - b[3]);   // 밭: 1순위=논 뒤 7줄 밀착 → 2순위=행 단위 증층
         const wantNong = Math.max(farmland.length, Math.min(Math.round(want * riceShare), farmland.length + candN.length));   // 유형 몫=riceShare
         for (const c of candN) { if (farmland.length >= wantNong) break; farmland.push({ cx: c[1], cy: c[2] }); }
@@ -2795,7 +2819,7 @@ module.exports = {
     for (const h of houses) for (const [dx, dy] of LOT_CELLS) if (!t.isBlocked(h.cx + dx, h.cy + dy)) own.add(key(h.cx + dx, h.cy + dy));   // 집 부지 원판 영토 포함
     const territory = [...own].map(k => k.split(',').map(Number));
     const coreCells = [...core].map(k => k.split(',').map(Number));
-    return { center: { cx: ccx, cy: ccy }, hall: { cx: ccx, cy: ccy }, axis, type: typeLabel, fert: +fert.toFixed(2), water: +water.toFixed(2), farmers, fishers, fShare: +fShare.toFixed(2), hShare: +hShare.toFixed(2), fertScore: +fertScore.toFixed(2), houses, floors, farmland, dryfield, nongZone, territory, core: coreCells, dock, bank };
+    return { center: { cx: ccx, cy: ccy }, hall: { cx: ccx, cy: ccy }, axis, type: typeLabel, typeWhy, fert: +fert.toFixed(2), water: +water.toFixed(2), farmers, fishers, fShare: +fShare.toFixed(2), hShare: +hShare.toFixed(2), fertScore: +fertScore.toFixed(2), houses, floors, farmland, dryfield, nongZone, territory, core: coreCells, dock, bank, ...(t.isStream ? { streamRej: streamRej.size } : {}) };
   }
 
   // 강가(land 인접 water) 셀 — 어부 작업장
@@ -2920,7 +2944,7 @@ module.exports = {
   }
 
   const API = { LAND_NEED, LOT_PER_HEAD, houseSiteWant, territoryTarget, HOUSE_MAX_FLOORS, TERR_PER_SIZE, TERR_PER_LOT, TERR_CORE,   // ★[T100 4판] 정본 — 밖(villages.js·계측기·하네스)이 이 값을 읽는다
-    generate, footprintLand, axisAt, nearestBank, waterEDT, maskEDT, HOUSE_HALF, HOUSE_CAP: HOUSE_CAP_PER_FLOOR, HOUSE_CAP_PER_FLOOR, LAND_PER_HOUSE, landNeedPer, HALL_YARD, LOT_R, FARM_GAP, ALLEY_R, HALL_CLEAR, inDisc, LOT_CELLS, LOT_GUARD, YARD_CELLS, houseFarmBlock, hallFarmBlock,
+    generate, STREAM_GAP, STREAM_GUARD, typeBranch, TYPE_LINES, footprintLand, axisAt, nearestBank, waterEDT, maskEDT, HOUSE_HALF, HOUSE_CAP: HOUSE_CAP_PER_FLOOR, HOUSE_CAP_PER_FLOOR, LAND_PER_HOUSE, landNeedPer, HALL_YARD, LOT_R, FARM_GAP, ALLEY_R, HALL_CLEAR, inDisc, LOT_CELLS, LOT_GUARD, YARD_CELLS, houseFarmBlock, hallFarmBlock, discHitsStream, streamLotCells,
     AISLE, LIFE_HOUSE_GAP, LIFE_HOUSE_GAP_AISLE,   // ★[T315] 집 간격 유도 — 값이 아니라 식(사본 0) · ★[T326] 기본 = `LIFE_HOUSE_GAP`(15 · PM #52) · 되돌림 = `LIFE_HOUSE_GAP_AISLE`(18)
     ditchRing, ditchConnectivity, DITCH_W, DITCH_AXIS_RATIO, DITCH_GATE_HALF, DITCH_MARGIN };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
@@ -11654,6 +11678,7 @@ function pickCenter(){ // 강 둑 좋은 land 셀
 //   localPath(sx,sy,gx,gy,opts)  — 걸음 프리셋(4방 균일비용). 마을 내 일상 이동.
 //     opts.blockedStep(fx,fy,tx,ty) — 이동(간선) 차단 판정. 셀 차단만 있으면 (f,t)→cellBlocked(tx,ty)로 감싸 전달.
 //     opts.maxNodes(기본 16384) · opts.radius(시작·목표 박스 밖 탐색 금지, 기본 무제한)
+//     opts.costMul(x,y) — ★[T585] 스텝 비용 배율(개울 칸 2 = 걸음 ×0.5 의 역 · ≥ 1 이라 h 가 허용적으로 남는다 · 기본 없음)
 //     opts.prefer(x,y) — ★답압 수렴(전쟁실험실 "평행길 교정" 승계): >0(길)이면 진입비 99/100 → 등거리 대안이
 //                        길로 스냅(h는 100/스텝이라 허용적 유지 = 최단 보존·우회 불가). 우선순위 = 길 > 직선 편향 > 임의.
 //   routePath(sx,sy,gx,gy,opts) — 도로 프리셋(8방 100/140). 마을 간 교역로.
@@ -11819,7 +11844,7 @@ function localPath(sx, sy, gx, gy, opts) {
   return _search(sx, sy, gx, gy, {
     dirs: DIRS4, octile: false, biasW: BIAS_LOCAL,
     stepBlocked: opts.blockedStep || (() => false),
-    nodeBlocked: null, costMul: null,
+    nodeBlocked: null, costMul: opts.costMul || null,   // ★[T585] 셀 비용 술어 한 자리(개울 칸 ×2 = 걸음 ×0.5 의 역) — 안 넘기면 null(종전 비트 그대로)
     prefer: opts.prefer || null,
     maxPops: opts.maxNodes || 16384, radius: opts.radius || 0, scratch: null,
   });

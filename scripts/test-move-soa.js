@@ -1805,15 +1805,15 @@ console.log('\n⑳ T461 걸음 문 WASM 커널 — 1,000틱 뒤 전원 좌표 �
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
   // 이동 문 — 정본 글자 · NPC 로만 부른다(입력 없음)
   const mkMove = (W) => new Function('isTerrainBlockedLocal', 'isBlockedByWall', 'isBlockedByTree', 'treeBlockerAt', 'isInIceBand', 'Roads', 'clamp', 'ZONE',
-    'MOVE_SPEED', 'moveDt', '_walk', 'buildings', 'MoveModel', 'MOVE_PARAMS', 'findZoneAt', 'ZONE_ID', 'fireHandoff', 'HANDOFF_COMMIT',
+    'MOVE_SPEED', 'moveDt', '_walk', 'buildings', 'MoveModel', 'MOVE_PARAMS', 'findZoneAt', 'ZONE_ID', 'fireHandoff', 'HANDOFF_COMMIT', '_streamWalkMul',
     MV + '\nreturn movePlayerStep;')(terr, (nx, ny, ox, oy) => wallJs(nx, ny, ox, oy), treeFast, null, iceBand, Roads, clamp, ZONE,
-    64, 1 / 30, W, new Map(), null, { slide: true }, () => null, 'test', () => {}, 256);
+    64, 1 / 30, W, new Map(), null, { slide: true }, () => null, 'test', () => {}, 256, () => 1);   // ★[T585] 개울 걸음 배율 — 이 판엔 개울이 없다(×1 · 커널 앞문과 같은 수)
   // 커널 — 제품 껍데기 · 제품 앞문/뒷문 글자
   const WW = require(path.join(ROOT, 'server', 'walk-wasm.js')).create({ zw: ZW, zh: ZH, iceN: true, iceS: true, iceBand: ICE, speed: 64,
     terrMiss: (x, y) => terr0(x, y), wallQ: (nx, ny, ox, oy) => wallJs(nx, ny, ox, oy) });
   const mkPrePost = (players, W, resList) => new Function('players', '_t316WalkAlways', 'isPositionActive', 'qtResources', '_wwRes', '_wwList', '_wwSeq', '_wwCode', '_WW', '_walk', '_wwOn', '_wwStat',
-    'TRUNK_COLLIDER_MAX', 'PLAYER_BODY_R', 'ROCK_COLLIDER_R', 'Roads', PRE + '\n' + POST + '\nreturn { _wwPre, _wwPost };')(
-    players, () => true, () => true, {}, resList, [], [], [], WW, W, true, { ticks: 0, steps: 0 }, 9, 6, 14, Roads);
+    'TRUNK_COLLIDER_MAX', 'PLAYER_BODY_R', 'ROCK_COLLIDER_R', 'Roads', '_streamWalkMul', 'T585_WALK_STAT', '_t585WalkCount', PRE + '\n' + POST + '\nreturn { _wwPre, _wwPost };')(
+    players, () => true, () => true, {}, resList, [], [], [], WW, W, true, { ticks: 0, steps: 0 }, 9, 6, 14, Roads, () => 1, false, () => {});   // ★[T585] 개울 ×1 · 걸음 관측 끔
   // 주민 — 뭍·물 안(탈출)·빙하 곁·존 끝(클램프)·길 배속
   const mkNpcs = (N, seed) => { _s = seed; const a = []; for (let i = 0; i < N; i++) {
     const k = i % 10; let x = 400 + rnd() * (ZW - 800), y = 1600 + rnd() * (ZH - 3200);
@@ -1872,8 +1872,8 @@ console.log('\n⑳ T461 걸음 문 WASM 커널 — 1,000틱 뒤 전원 좌표 �
       P.push({ pid: 'h' + i, isNpc: true, x: qx + 1, y: qy, vx: -30, vy: 0, floor: 0 });   // −30px/s × 1/30s = −1px(바깥에서 반경 끝으로)
       want.push(!(Math.hypot(RK.x - qx, RK.y - qy) < 20)); }
     const { _wwPre } = new Function('players', '_t316WalkAlways', 'isPositionActive', 'qtResources', '_wwRes', '_wwList', '_wwSeq', '_wwCode', '_WW', '_walk', '_wwOn', '_wwStat',
-      'TRUNK_COLLIDER_MAX', 'PLAYER_BODY_R', 'ROCK_COLLIDER_R', 'Roads', PRE + '\nreturn { _wwPre };')(
-      new Map(P.map((p) => [p.pid, p])), () => true, () => true, {}, [RK], [], [], [], WH, mkWalk(), true, { ticks: 0, steps: 0 }, 9, 6, 14, Roads);
+      'TRUNK_COLLIDER_MAX', 'PLAYER_BODY_R', 'ROCK_COLLIDER_R', 'Roads', '_streamWalkMul', PRE + '\nreturn { _wwPre };')(
+      new Map(P.map((p) => [p.pid, p])), () => true, () => true, {}, [RK], [], [], [], WH, mkWalk(), true, { ticks: 0, steps: 0 }, 9, 6, 14, Roads, () => 1);   // ★[T585] 개울 ×1
     const n = _wwPre(1 / 30);
     let agree = 0, blockedN = 0, startOpen = 0;
     for (let i = 0; i < n; i++) { const moved = WH.X[i] !== P[i].x; if (moved === want[i]) agree++; if (!want[i]) blockedN++;
