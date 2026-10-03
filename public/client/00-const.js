@@ -643,6 +643,14 @@ function cropSprite(stage, crop) {
     if (zone.isOcean) return waterTiles;
     const oceanRects = Object.values(zonesMeta).filter(z => z.isOcean).map(z => ({ x0: z.worldOffsetX, y0: z.worldOffsetY, x1: z.worldOffsetX + z.zoneWidth, y1: z.worldOffsetY + z.zoneHeight }));
     if (!oceanRects.length) return waterTiles;
+    // ★[T588] 해안 구간 성격 — 서버 손잡이 `T588_COAST`(welcome `uiCfg.coast588` = 'a'|'b')가 켜져 있으면 서버와 **같은 파일**
+    //   (`public/coast-shape.js` — 서버 `chunk.js` 도 이 파일을 부른다 · 사본 0)로 굽는다. 지금 식은 함수로 넘긴다(아래 깊이 한 줄과 같은 식).
+    //   끔(칸 없음)이면 아래 지금 식 그대로.
+    const _c588 = (uiCfg && uiCfg.coast588) || '';
+    if ((_c588 === 'a' || _c588 === 'b') && typeof CoastShape !== 'undefined') {
+      return CoastShape.generate(zone, tileSize, oceanRects, zonesMeta, COASTLINE_BASE, COASTLINE_NOISE,
+        (bnx, bny) => COASTLINE_BASE + _coastSmoothNoise2D(bnx, bny) * COASTLINE_NOISE, { variant: _c588 });
+    }
     const cols = Math.ceil(zone.zoneWidth / tileSize);
     const rows = Math.ceil(zone.zoneHeight / tileSize);
     const maxDist = COASTLINE_BASE + COASTLINE_NOISE, maxDist2 = maxDist * maxDist;
@@ -675,6 +683,7 @@ function cropSprite(stage, crop) {
   }
   // zonesMeta 받으면 모든 zone water tiles 미리 계산. zonesMeta 갱신 시 다시 호출.
   const waterTilesByZone = {}; // { zoneId: Set("tx_ty") }
+  let _coast588At = '';         // ★[T588] 지금 물칸을 구운 손잡이 값 — welcome `uiCfg.coast588` 이 다르면 다시 굽는다(30-n-net)
   const _waterCellCache = new Map(); // "zid_tx_ty" → bool (isWaterAtAbs perf 캐시)
   const _terrainAppliedZones = new Set(); // Phase 5-K: hardcoded terrain 이미 적용한 zone — welcome 재적용/캐시클리어 스킵
   // Phase 5-G+: 전체 hardcoded terrain 선로딩 — welcome은 접속 zone 것만 줘서
@@ -687,6 +696,7 @@ function cropSprite(stage, crop) {
     _shoreTiles.clear();
     _rockCellCache.clear();
     _groundTiles.clear();   // ★[배치 19] 지면 베이크도 함께
+    _coast588At = (uiCfg && uiCfg.coast588) || '';
     for (const z of Object.values(zonesMeta)) {
       waterTilesByZone[z.id] = computeCoastlineWaterTiles(z, TS);
     }
