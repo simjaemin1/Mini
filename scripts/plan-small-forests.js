@@ -39,7 +39,8 @@ const MIN_COMP = 40;             // 이보다 작은 소외 덩이는 무시(격
 const { ZONES } = require(path.join(__dirname, '..', 'server', 'zone-config'));
 const terrain = require(path.join(__dirname, '..', 'server', 'terrain'));
 if (terrain.setZonesMeta) terrain.setZonesMeta(ZONES);
-const GAME = path.join(__dirname, '..', 'server', ZID + '-terrain.json');
+// ★[T550 추신 ②] 정본 지형 파일은 **하나**다(안이 존 맵) — `plan-ore-clusters` T348 처방 그대로. 종전 `ZID + '-terrain.json'` 은 닛폰에서 파일 없음으로 즉사.
+const GAME = path.join(__dirname, '..', 'server', 'hanbando-terrain.json');
 const doc = require(GAME);
 const d = doc[ZID];
 const Z = ZONES[ZID];
@@ -166,6 +167,11 @@ if (sk.length) console.log('건너뜀 ' + sk.reduce((s, e) => s + e[1], 0) + ': 
 
 if (!APPLY) { console.log('\n★계산만 — 쓰려면 --apply'); process.exit(0); }
 for (const a of added) d.forests.push({ name: a.name, center: a.center, rx: a.rx, ry: a.ry, densityMult: a.densityMult });
-fs.writeFileSync(GAME, JSON.stringify(doc, null, 1));
+// ★[T550 추신 ②] 쓰는 판은 **파일에서 새로 읽은 것**이다 — `doc` 는 terrain.js 가 캐시(`_bbox`·`_segIdx`)를 다는 같은 객체라
+//   통째로 쓰면 다른 존 절까지 새어 든다(T409 · plan-ore-clusters 처방 그대로). 이 존 숲 칸만 갈아 끼우고, 원본이 한 줄이면 한 줄로.
+const _strip = (v) => Array.isArray(v) ? v.map(_strip) : (v && typeof v === 'object') ? Object.fromEntries(Object.entries(v).filter(([k]) => k !== '_bbox' && k !== '_segIdx').map(([k, x]) => [k, _strip(x)])) : v;
+const _raw = fs.readFileSync(GAME, 'utf8'), _fresh = JSON.parse(_raw);
+_fresh[ZID].forests = _strip(d.forests);
+fs.writeFileSync(GAME, _raw.includes('\n') ? JSON.stringify(_fresh, null, 1) : JSON.stringify(_fresh));
 console.log('\n★적용됨 → ' + GAME + ' (숲 ' + d.forests.length + '개)');
 console.log('  다음: audit-neglect 재측정 → audit-terrain-quality → 셀맵·에디터 재빌드');

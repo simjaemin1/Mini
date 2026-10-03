@@ -45,13 +45,18 @@
 
 | 항목 | 무엇을 | 어디에 들어갔나 | 라이선스 | 요구 | 카드 |
 |---|---|---|---|---|---|
-| **CMU Graphics Lab Motion Capture Database** | 모션 캡처 다섯 클립(07_01 walk · 09_01 run · 80_71 chopping wood · 113_24 Throw · 77_02 standing) | `assets-src/mocap/*.bvh` → 리타깃 포즈표 → `public/assets/char/` 시트 192장 | 연구 자유 · **상업 제품에 포함 가능** · **데이터 자체의 재판매 금지**(변환본도) | **문구**(§1 첫 줄) | T96 · T155 |
+| **CMU Graphics Lab Motion Capture Database** | 모션 캡처 다섯 클립(07_01 walk · 09_01 run · 80_71 chopping wood · 113_24 Throw · 77_02 standing) | `assets-src/mocap/*.bvh` → 리타깃 포즈표 → `public/assets/char/` 시트 192장 · [T545] 같은 다섯을 MPFB 리그(`cmu_mb`)로 리타깃 → `public/assets/char3d/char_body.glb` 클립 다섯 × 몸 둘 | 연구 자유 · **상업 제품에 포함 가능** · **데이터 자체의 재판매 금지**(변환본도) | **문구**(§1 첫 줄) | T96 · T155 |
 | **cgspeed BVH 변환본** (Bruce Hahne, 2010 "Motionbuilder-friendly BVH conversion release") | 위 CMU 원본(ASF/AMC)을 BVH 로 옮긴 판 | 같은 파일 | 변환자가 **추가 제한을 두지 않는다**("I (Bruce) place no additional restrictions on the use of this particular BVH conversion") | 없음 — CMU 문구로 충분 | T96 |
 | **una-dinosauria/cmu-mocap** (미러) | 위 변환본을 담은 GitHub 사본 — 이 저장소가 실제로 받은 자리(커밋 `09a07f54`) | 같은 파일 | 미러 · 위 둘을 따른다 | 없음 | T96 |
 | **국립국악원 국악기 디지털 음원 — 「단음 다운로드」** | 실제 악기 녹음: 산조가야금(원본 21파일 → 조각 262) · 정악가야금 · 정악대금(5파일 → 조각 113) | `public/assets/audio/bgm/*.ogg`·`*.m4a` **13곡**(가야금 음 1574개 · 합성 대체 0) — 12곡이라 적혀 있던 것을 T257 이 고쳤다(`village_day_jeongak` 누락 · T246 발견) | **공공누리 제1유형(출처표시)** — 상업 이용 가능 · 변형 가능 | **문구**(§1 둘째 줄) | 배치 시절(2026-07-29~31) |
 | **npm 실행 의존성 다섯** | `express` 4 · `ws` 8 · `better-sqlite3` 12 · `pngjs` 7 · `acorn` 8 | 서버(`server/`) · 하네스 | 전부 **MIT** (각 패키지 `LICENSE` 실측) | 배포 시 라이선스 전문 동봉 | — |
 | **SQLite** | `better-sqlite3` 가 품고 있는 엔진 | 서버 DB | **퍼블릭 도메인** | 없음 | — |
 | **three.js** 0.186.1 | WebGL 3D 층(코어 + `GLTFLoader`·`SkeletonUtils` — esbuild 로 전역 `THREE` 한 파일) | `public/vendor/three.0.186.1.min.js` — 손잡이 `T522_CHAR_3D` 켬에서만 실린다(끔 = 요청 0) | **MIT**(전문 `public/vendor/three.LICENSE.txt` · 파일 머리에 저작권 줄) | 배포 시 라이선스 전문 동봉(동봉했다) | T522 |
+| **MakeHuman / MPFB 2.0.17** (Data Collection AB · Joel Palmius · Jonas Hauquier) | [T545] 사람 소체 — 기본 메시(`base.obj`)·매크로 타깃(성별 · 인종 asian)·저폴리 프록시(`male1591`·`female1605`)·눈(`low-poly` · `brown_eye.png`)·눈썹(`eyebrow001`)·머리(`ponytail01`·`braid01`)·옷 기하(`male_casualsuit04`·`female_elegantsuit01`)·피부(`young_asian_male`·`young_asian_female` 의 `young_lightskinned_*_diffuse3.png`)·리그 `cmu_mb`(무게표 `license: CC0`) | `public/assets/char3d/char_body.glb`(몸 둘 · 몸마다 메시 하나) · `public/assets/char3d/tex/{m,f}_*`(아틀라스 칸) | 자산 **CC0** — 파일마다 머리 줄 "This asset was explicitly released as CC0 in september 2020"(원판 `makehuman_system_assets_cc0.zip` · MPFB 동봉 `base.obj`·타깃 같은 줄) · MPFB 코드는 **GPL-3.0-or-later** — 굽는 도구로만 돈다(§5 · 저장소·배포물에 코드 0) | 없음(CC0) — 고마움 표시만 | T545 |
+| **ambientCG** `Fabric061` | [T545] 삼베옷 결 — 1K 색 사진의 **밝기만**(색은 시트 정본 `render_common.CLOTH_MATS`) | `public/assets/char3d/tex/{m,f}_hemp.jpg` 옷 칸 | **CC0** | 없음 | T545 |
+| **ambientCG** `Fabric036` | [T545] 모시옷 결(밝기만) | `public/assets/char3d/tex/{m,f}_ramie.jpg` 옷 칸 | **CC0** | 없음 | T545 |
+| **ambientCG** `Leather028` | [T545] 가죽옷 결(밝기만) | `public/assets/char3d/tex/{m,f}_leather.jpg` 옷 칸 | **CC0** | 없음 | T545 |
+| **ambientCG** `Carpet016` | [T545] 갖옷 결(밝기만 — 털 결) | `public/assets/char3d/tex/{m,f}_fur.jpg` 옷 칸 | **CC0** | 없음 | T545 |
 | **폰트** | `Noto Sans KR`·`IBM Plex Mono` 를 **이름으로만** 부른다 | `public/style.css` `--font`/`--mono` | — | **없음 — 파일을 배포하지 않는다** (`@font-face` 0 · 웹폰트 로드 0 · 없으면 시스템 글꼴로 떨어진다) | — |
 
 ### 그림은 전부 이 집에서 굽는다
@@ -60,6 +65,8 @@
 있다(`public/assets/icons.lock.json` 419키 + `char/char_sheets.lock.json` 192키). 남은 한 장은
 `public/assets/char/probeall_walk.png` — 탐침이 남긴 부스러기다(그림 자산이 아니다).
 ⇒ **지금 배포되는 그림 중 밖에서 온 것은 없다.**
+★[T545] 예외 하나 — 3D 층(손잡이 `T522_CHAR_3D` 켬에서만 실린다)의 **무늬 10장**(`public/assets/char3d/tex/` · 잠금 `char3d.lock.json`)은
+이 집에서 굽되 **원판이 밖에서 왔다**: MakeHuman 피부·눈·눈썹·머리(CC0) + ambientCG 결 넷(CC0). 원판은 저장소 밖(`~/Mini/_3d_in/`).
 
 ---
 
@@ -205,12 +212,13 @@
 
 ## 5. 도구 — 배포하지 않는다
 
-Blender / `bpy` 5.0.1(굽기 · [T522] 동봉 `io_scene_gltf2` 5.0.21 로 glTF 내보내기) · numpy · scipy(BGM 합성) · Pillow(광맥 파생) · Playwright/Chromium(하네스) · esbuild 0.25.10(MIT · [T522] three.js 한 파일로 묶기 — `scripts/vendor-three.sh`).
+Blender / `bpy` 5.0.1(굽기 · [T522] 동봉 `io_scene_gltf2` 5.0.21 로 glTF 내보내기) · numpy · scipy(BGM 합성) · Pillow(광맥 파생 · [T545] 아틀라스) · Playwright/Chromium(하네스) · esbuild 0.25.10(MIT · [T522] three.js 한 파일로 묶기 — `scripts/vendor-three.sh`) ·
+MPFB 2.0.17(GPL-3.0-or-later · [T545] 소체 뽑기 — 블렌더 확장 · `extensions.blender.org` 판 zip 을 저장소 밖 `~/Mini/_3d_in/` 에 두고 굽는 동안만 푼다).
 산출물은 이 프로젝트 것이고, 도구 자체는 배포물에 들어가지 않는다.
 
 ## 6. 아직 아닌 것
 
-* **MPFB / MakeHuman** — 소체 후보로 **재 보기만 했다**(T111 · 배포 0). 채택 판정이 나면 그때 §2 에 넣는다.
+* ~~**MPFB / MakeHuman** — 소체 후보로 재 보기만 했다(T111 · 배포 0)~~ → **[T545] 채택**(재민 확정 2026-09-30 · 실사풍 저폴리) — §2 로 옮겼다.
 
 ---
 
@@ -224,6 +232,7 @@ Blender / `bpy` 5.0.1(굽기 · [T522] 동봉 `io_scene_gltf2` 5.0.21 로 glTF �
 | 국립생물자원관(`crickets` · T501) | 공공누리 1유형 = 출처표시 | §1 아래 줄(게임 크레딧 화면 회부) | ✅ 상업·변형 모두 허용 · ⚠표시는 `/크레딧` 묶음이 설 때 |
 | npm 다섯 | MIT = 라이선스·저작권 표시 동봉 | 지금은 `node_modules` 안에만 있다 | ⚠ 바이너리로 묶어 팔면 **전문 동봉**이 필요하다(소스 배포면 그대로 따라간다) |
 | 폰트 | — | 파일을 안 배포한다 | ✅ 의무 없음 |
+| MPFB(T545) | 코드 GPL-3.0-or-later | 굽는 도구로만 돈다(저장소·배포물에 코드 0) · 배포하는 메시·무늬는 CC0 자산(MakeHuman · ambientCG)에서 나온다 | ✅ 의무 없음(CC0) · 코드를 고쳐 배포하면 GPL — 하지 않는다 |
 | 효과음 둘(§2-b) | 퍼블릭 도메인 = 조건 없음 | `public/assets/sfx/` 에 배포한다 | ✅ 상업·변형 모두 허용 · 표시 의무 없음 |
 | 출처 미상 둘(§3) | 알 수 없다 | 배포 이미지에는 안 들어간다 | ⚠ 저장소 공개 전 정리 — 재민 |
 
@@ -254,3 +263,5 @@ Blender / `bpy` 5.0.1(굽기 · [T522] 동봉 `io_scene_gltf2` 5.0.21 로 glTF �
 * 미러 — https://github.com/una-dinosauria/cmu-mocap
 * 국립국악원 국악기 디지털 음원 — https://www.gugak.go.kr/digitaleum
 * 공공누리 이용조건 — https://www.kogl.or.kr/info/license.do
+* MakeHuman 커뮤니티 — http://www.makehumancommunity.org · MPFB — https://extensions.blender.org/add-ons/mpfb/ · 시스템 자산(CC0) — http://files.makehumancommunity.org
+* ambientCG(CC0) — https://ambientcg.com/view?id=Fabric061 · Fabric036 · Leather028 · Carpet016

@@ -38,6 +38,14 @@ const S = {
   lastDay: -1,
   coarseGen: 0,          // ★[T578 ④] 코스 등급 지도가 바뀐 횟수(일 1회 재구축에서 다르면 +1)
   stats: { stamped: 0, cellsTotal: 0, graded: 0 },
+  // ★★[T566 추신2 2026-09-30 · 재민] **다져진 길(등급 2) 셀 집합** — 재생 술어(`zone.js regrowBlockedAt`)의 길 항이 읽는 **셀 집합 하나**.
+  //   새 표 0 · 새 수 0: 등급 문턱은 위 `T2` 그대로이고, 값은 `cells` 의 v 그대로다(이 집합은 "지금 등급 2 인 키"의 색인일 뿐).
+  //   오름(→2)은 `stampCell` 이 **그 호출 안에서** 안다(v 가 오르는 자리는 거기 하나) · 내림(2→아래)은 감쇠라
+  //   하루 한 번 `_rebuildCoarse`(이미 도는 조회 전용 감쇠 — 게으른 감쇠 그대로)가 잰다.
+  //   ⚠부르는 쪽 둘(`onPaved`·`onUnpaved`)은 존이 넘길 때만 선다(`init` deps) — 안 넘기면 이 집합은 색인일 뿐 아무 일도 안 일으킨다.
+  paved: new Set(),
+  onPaved: null, onUnpaved: null,
+  bootUnpaved: [],   // 저장 땐 v ≥ T2 였는데 꺼진 사이 감쇠로 등급 2 아래가 된 셀(부팅이 안다 · 풀린 날은 부르는 쪽이 정한다)
 };
 
 function dayNow() { return Math.floor((Date.now() - S.epoch) / S.dayMs); }
@@ -69,7 +77,27 @@ function stampCell(cx, cy) { // +1 답압(랩 roadStamp verbatim) — 등급 반
     const ck = ((cy / COARSE) | 0) * S.gw + ((cx / COARSE) | 0), o = S.coarse.get(ck) || 0;
     if (lv > o) { S.coarse.set(ck, lv); S.coarseGen++; }   // ★[T578 ④] 코스 칸 등급이 오른 순간도 '지도가 바뀌었다'(종전: 같은 값을 다시 적었다 — 값 무변)
   }
+  // ★[T566 추신2 ①] 등급이 **2 로 오르는 그 호출** — 집합에 넣고 존에 알린다(나무 파괴 · 둘레 리젠 막음은 존의 일)
+  if (lv === 2 && !S.paved.has(k)) { S.paved.add(k); if (S.onPaved) { try { S.onPaved(cx, cy); } catch (e) { } } }
   return lv;
+}
+// ★[T566] 다져진 길이 (cx,cy) 의 체비쇼프 R 셀 안에 있나 — 재생 술어의 길 항(`zone.js regrowBlockedAt`).
+//   코스 오버레이(그리드당 최대 등급 · 등급 2 오름은 `stampCell` 이 · 내림은 `_rebuildCoarse` 가 집합과 **같은 자리**에서 고친다)로
+//   먼저 거른다 — 둘레(5×5)는 코스 칸 2×2 안에 든다. `except` = 이 키 하나는 빼고 본다(오름 사건이 "그 전에도 막혔나"를 물을 때).
+function pavedNear(cx, cy, R, except) {
+  if (!S.ready || !S.paved.size) return false;
+  const x0 = Math.max(0, cx - R), x1 = Math.min(S.cellsW - 1, cx + R);
+  const y0 = Math.max(0, cy - R), y1 = Math.min(S.cellsH - 1, cy + R);
+  if (x0 > x1 || y0 > y1) return false;
+  let any = false;
+  for (let gy = (y0 / COARSE) | 0; gy <= ((y1 / COARSE) | 0) && !any; gy++)
+    for (let gx = (x0 / COARSE) | 0; gx <= ((x1 / COARSE) | 0); gx++) if ((S.coarse.get(gy * S.gw + gx) || 0) >= 2) { any = true; break; }
+  if (!any) return false;
+  for (let y = y0; y <= y1; y++) {
+    const row = y * S.cellsW;
+    for (let x = x0; x <= x1; x++) { const k = row + x; if (k !== except && S.paved.has(k)) return true; }
+  }
+  return false;
 }
 // 이동 개체 편승 스탬프 — 셀 변경 시에만(개체 캐시 ent._rdK) + 보행 배속 캐시(ent._rdMul)
 function stampEntityPx(ent, x, y) {
@@ -102,6 +130,18 @@ function _rebuildCoarse(t) { // 일 1회 재구축(감쇠 강등 반영 — grad
   let same = prev.size === S.coarse.size;
   if (same) for (const [k, lv] of S.coarse) { if (prev.get(k) !== lv) { same = false; break; } }
   if (!same) S.coarseGen++;
+  // ★[T566 추신2 ③] 다져진 길이 **등급 2 아래로** 내려갔나 — 위와 같은 조회 전용 감쇠(같은 식 · 같은 날)로 잰다.
+  //   내려간 셀은 집합에서 빼고 존에 알린다(그 셀과 둘레의 막힘이 풀린다 — 시계는 존이 다시 잰다). 코스는 위에서 이미 강등됐다.
+  if (S.paved.size) {
+    const rel = [];
+    for (const k of S.paved) {
+      const r = S.cells.get(k);
+      const v = r ? ((t > r.d) ? r.v * Math.pow(DK, t - r.d) : r.v) : 0;
+      if (v < T2) rel.push(k);
+    }
+    for (const k of rel) S.paved.delete(k);   // 먼저 다 뺀다 — 같은 날 함께 내려간 이웃이 서로의 둘레를 막은 채로 남지 않게
+    if (S.onUnpaved) for (const k of rel) { try { S.onUnpaved(k % S.cellsW, (k / S.cellsW) | 0); } catch (e) { } }
+  }
 }
 // ★[T578 ④] 교역로 A* 가 h 를 줄일 몫 — 스텝 비용 할인의 최저값(`COST` 의 가장 작은 값 · 수 사본 0).
 function courseCostMin() { return (S.ready && S.coarse.size) ? Math.min(...COST) : 1; }   // 등급 칸이 하나도 없으면 할인도 없다(h 그대로)
@@ -154,6 +194,14 @@ function init(deps) { // deps: { zoneId, cellsW, cellsH, epoch, dayMs, broadcast
     const _tNow = Math.floor((Date.now() - (deps.epoch || 0)) / (deps.dayMs || 600000));
     for (const r of rows) S.cells.set(r.cell_key | 0, { v: r.v, d: Math.min(r.d | 0, _tNow) });   // ★미래 일번호 방어: dayLengthMs 변경(예: 10분→24분)으로 절대 일번호가 뒤로 점프하면 저장된 d가 미래가 되어 감쇠 정지 — 오늘로 클램프(1회성 이행)
     S.lastDay = dayNow();
+    // ★[T566] 다져진 길 집합 — 코스와 **같은 날·같은 식**으로 세운다(아래 `_rebuildCoarse` 가 같은 날로 다시 재도 아무도 안 빠진다).
+    //   저장 v 는 T2 이상인데 오늘 감쇠로 아래면 — 꺼진 사이 풀린 셀이다(부르는 쪽이 시계가 선 뒤 풀어 준다).
+    S.onPaved = deps.onPaved || null; S.onUnpaved = deps.onUnpaved || null;
+    S.paved.clear(); S.bootUnpaved = [];
+    for (const [k, r] of S.cells) {
+      const v = (S.lastDay > r.d) ? r.v * Math.pow(DK, S.lastDay - r.d) : r.v;
+      if (v >= T2) S.paved.add(k); else if (r.v >= T2) S.bootUnpaved.push(k);
+    }
     _rebuildCoarse(S.lastDay);
     S.stats.cellsTotal = S.cells.size;
     S.ready = true;
@@ -174,4 +222,7 @@ function onGameTick(now) {
   } catch (e) { console.error(`[${S.zoneId}] 🛤️ 답압 길 데일리 실패:`, e.message); }
 }
 
-module.exports = { init, onGameTick, stampCell, stampEntityPx, speedMulOf, levelOf, courseCostMul, courseCostMin, coarseGen, isReady: () => S.ready, clientRoads, ENABLED, _S: S };
+// ★[T566] 다져진 길 셀 수 · 키(읽기만 — 존의 부팅 걷기 · 자)
+function pavedCount() { return S.ready ? S.paved.size : 0; }
+function pavedKeys() { return S.ready ? [...S.paved] : []; }
+module.exports = { init, onGameTick, stampCell, stampEntityPx, speedMulOf, levelOf, courseCostMul, courseCostMin, coarseGen, isReady: () => S.ready, clientRoads, pavedNear, pavedCount, pavedKeys, ENABLED, _S: S };

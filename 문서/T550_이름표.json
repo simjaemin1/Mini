@@ -851,6 +851,27 @@
    "from": "숲31",
    "to": "아카우미모리",
    "size": 104400
+  },
+  {
+   "kind": "forests",
+   "from": "숲101",
+   "to": "아카호시모리",
+   "size": 7798784,
+   "note": "추신② 자잘 숲(plan-small-forests 이름 숯골·떡갈숲·물푸레숲 → 닛폰 풀)"
+  },
+  {
+   "kind": "forests",
+   "from": "숲102",
+   "to": "아카이즈모리",
+   "size": 2920448,
+   "note": "추신② 자잘 숲(plan-small-forests 이름 숯골·떡갈숲·물푸레숲 → 닛폰 풀)"
+  },
+  {
+   "kind": "forests",
+   "from": "숲103",
+   "to": "아카노노모리",
+   "size": 1637376,
+   "note": "추신② 자잘 숲(plan-small-forests 이름 숯골·떡갈숲·물푸레숲 → 닛폰 풀)"
   }
  ],
  "valleys": [

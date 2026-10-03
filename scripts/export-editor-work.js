@@ -25,8 +25,10 @@ const path = require('path');
 const V3 = path.join(__dirname, '..', '..', 'hanbando_terrain_v3.json');
 const GAME = path.join(__dirname, '..', 'server', 'hanbando-terrain.json');
 const SRC = fs.existsSync(V3) ? V3 : GAME;
-const OUT = path.join(__dirname, '..', '..', 'world v10.json');
-const MAIN = 'hanbando';
+// ★[T580] 존과 출력은 손잡이로 고른다(기본 = 종전 그대로 · 한반도 · world v10.json) — 닛폰 후보 30 작업 파일(`EW_ZONE=nippon EW_OUT=…`).
+//   EW_OUT 을 주면 에디터 내장 스니펫(work-baked.js)은 안 쓴다(한반도 내장본을 닛폰으로 덮지 않게).
+const OUT = process.env.EW_OUT || path.join(__dirname, '..', '..', 'world v10.json');
+const MAIN = process.env.EW_ZONE || 'hanbando';
 const R = Math.round;
 
 const all = JSON.parse(fs.readFileSync(SRC, 'utf8'));
@@ -99,7 +101,7 @@ const stamp = 'f' + features.length + '/m' + mf.length + '/'
 const work = { editorWork: true, stamp, features, mf, zone: MAIN };
 fs.writeFileSync(OUT, JSON.stringify(work));
 // 에디터 내장용 스니펫 — map-editor.html 의 `const WORK_BAKED = {...};` 를 이걸로 갈아끼운다
-fs.writeFileSync(path.join(__dirname, '..', '..', 'work-baked.js'), 'const WORK_BAKED = ' + JSON.stringify(work) + ';');
+if (!process.env.EW_OUT) fs.writeFileSync(path.join(__dirname, '..', '..', 'work-baked.js'), 'const WORK_BAKED = ' + JSON.stringify(work) + ';');
 console.log('  스탬프 ' + stamp);
 
 const count = (a) => a.reduce((m, f) => (m[f.type] = (m[f.type] || 0) + 1, m), {});
