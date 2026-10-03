@@ -3,7 +3,8 @@
 // === scripts/test-region-profiles.js — T574 존 특산 프로필 + 경계 넘는 꼬리 하네스 ==================
 //
 // 지키는 것:
-//   ⓐ 끔 = 옛 글자 — `T574_REGION` 없음이면 다섯 자리(계획기 · 부팅 채움 · 군락 · 낚시/민물 · 나무)가 옛 줄 그대로
+//   ⓐ 끔 = 옛 글자 — `T574_REGION=0` 이면 다섯 자리(계획기 · 부팅 채움 · 군락 · 낚시/민물 · 나무)가 옛 줄 그대로
+//      (★추신4: 손잡이 없음 = 켬 L 500 — 재민 10-03 · 끔은 `0` 이다)
 //   ⓑ 꼬리 셈(추신2 ②) — 이웃 고유 품목 몫(d) = s₀ · (그 존 비중) · e^(−d/L) 그대로 · 합 1 · 제 존 품목은 (1 − T) 로 줄 뿐 ·
 //      두 존 다 있는 품목은 꼬리가 없다 · 대칭(한반도 고유 → 닛폰 서쪽) · 바다·프로필 없는 이웃(중원북·베링)은 꼬리가 없다 ·
 //      s₀ 손잡이 · d 에 단조
@@ -16,12 +17,15 @@
 //      식료 빈칸(민물·군락)은 켬에서도 같다(자명 통과 금지 — 표 한 칸을 채우면 바뀐다)
 //   ⓗ 굽기 — 재민 08-01 규칙 셋(주요 광맥 철 없음 · 은 단독 없음 · 다광종 POLY) · POLY 정본 하나
 //   ⓖ 광맥 u 는 계획기 hash2(…, 731) 와 같은 식이다
+//   ⓘ 추신4 — L 500 으로 구운 정본: 자리 칸은 그대로(광종 칸만) · 정본 = 굽기(옛 기록) 자기일치(한반도 덜 흔드는 굽기 ·
+//      닛폰 다 굽기) · 재민 08-01 규칙 셋 위반 0(두 존) · 끔이면 옛 기록으로 통째 되돌림 · 켬이면 그대로
 'use strict';
 const path = require('path');
 const fs = require('fs');
 const ROOT = path.resolve(__dirname, '..');
 const S = (p) => require(path.join(ROOT, 'server', p));
-delete process.env.T574_REGION; delete process.env.T574_NEW_ITEMS;
+delete process.env.T574_NEW_ITEMS;
+process.env.T574_REGION = '0';   // ★추신4: 손잡이 없음 = 켬(L 500) — 이 하네스의 바탕은 끔(`0`)이고 켬은 칸마다 withEnv 로 준다
 const RP = S('region-profiles');
 const HB = S('hanbando-minerals');
 const Trees = S('trees');
@@ -43,9 +47,11 @@ const IDS = Trees.ids();
 const oldTree = (z, cx, cy) => IDS[C.h32(cx | 0, cy | 0, zs(z)) % IDS.length];
 
 // ── ⓐ 끔 = 옛 글자 ─────────────────────────────────────────────────────────────
-sec('ⓐ 끔(T574_REGION 없음) = 옛 글자');
-ok(RP.L() === 0 && !RP.on(), '손잡이 없음 = 끔', `L=${RP.L()}`);
-withEnv({ T574_REGION: '0' }, () => ok(!RP.on(), 'T574_REGION=0 도 끔'));
+sec('ⓐ 끔(T574_REGION=0) = 옛 글자');
+ok(RP.L() === 0 && !RP.on(), 'T574_REGION=0 = 끔', `L=${RP.L()}`);
+withEnv({ T574_REGION: null }, () => ok(RP.L() === 500 && RP.on() && RP.L_DEFAULT === 500, '★손잡이 없음 = 켬 L 500(재민 10-03 · 추신4)', `L=${RP.L()}`));
+withEnv({ T574_REGION: '' }, () => ok(RP.L() === 500, '빈 손잡이도 기본 500'));
+withEnv({ T574_REGION: '250' }, () => ok(RP.L() === 250, '다른 L 은 그 값(런타임 자리만 — 구운 정본은 L 500 한 판)'));
 {
   let diff = 0, n = 0;
   for (const z of ['hanbando', 'nippon']) for (let cy = 0; cy < 4063; cy += 37) for (let cx = 0; cx < (z === 'nippon' ? 1562 : 2188); cx += 29) { n++; if (Trees.speciesAt(z, cx, cy) !== oldTree(z, cx, cy)) diff++; }
@@ -76,7 +82,7 @@ sec('ⓑ 꼬리 셈 — 이웃 고유 품목 몫(d) = s₀ · 그 존 비중 · 
   const Lc = 500, s0 = RP.S0();
   const wh = RP.weightsOf('ore', 'hanbando'), wn = RP.weightsOf('ore', 'nippon');
   ok(s0 === 0.5, 's₀ 기본 = 0.5(★PM 기본 "제 존 비중의 0.5")', String(s0));
-  ok(Object.keys(RP.regionMix('hanbando', HW - 16, 60000)).length === 0, '끔(L 없음)이면 꼬리 계수 없음');
+  ok(Object.keys(RP.regionMix('hanbando', HW - 16, 60000)).length === 0, '끔(T574_REGION=0)이면 꼬리 계수 없음');
   const f0 = RP.regionMix('hanbando', HW, 60000, Lc).nippon, fL = RP.regionMix('hanbando', HW - Lc * 32, 60000, Lc).nippon;
   ok(near(f0, s0, 1e-12) && near(fL, s0 / Math.E, 1e-12), '꼬리 계수 = s₀ · e^(−d/L)(경계 s₀ · d = L 에서 s₀/e)', `${f0} · ${fL.toFixed(6)}`);
   let bad = 0, worst = 0;
@@ -234,6 +240,70 @@ sec('ⓖ 광맥 자리 u = 계획기 hash2(셀, 731)');
   ok(bad === 0, 'veinU = hash2(⌊x/32⌋, ⌊y/32⌋, 731) — 300 표본');
   const src = fs.readFileSync(path.join(ROOT, 'server', 'region-profiles.js'), 'utf8').replace(/\/\/[^\n]*/g, '');
   ok(!/Math\.random/.test(src), '주사위 0 — region-profiles 에 Math.random 없음');
+}
+
+// ── ⓘ 추신4 — L 500 으로 구운 정본 ─────────────────────────────────────────────
+sec('ⓘ 추신4 — L 500 으로 구운 정본(자리 그대로 · 자기일치 · 규칙 셋 · 끔 되돌림)');
+{
+  const raw = fs.readFileSync(path.join(ROOT, 'server', 'hanbando-terrain.json'), 'utf8');
+  const doc = JSON.parse(raw);
+  const off = JSON.parse(fs.readFileSync(path.join(ROOT, 'server', 'region-bake-off.json'), 'utf8'));
+  const POS = ['name', 'center', 'radius', 'minor'], MIN = ['mineral', 'minerals', 'pk'];
+  const key = (c) => c[0] + ',' + c[1];
+  ok(off.L === 500 && off.L === RP.L_DEFAULT && off.s0 === RP.S0(), '옛 기록의 L = 기본 L = 500 · s₀ 같다', `L ${off.L} · s₀ ${off.s0}`);
+  // ① 자리 칸 그대로 — 옛 기록과 지금 정본이 광종 칸(mineral·minerals·pk)에서만 다르다
+  let posBad = 0, nowBad = 0, miss = 0, same = 0; const by = {};
+  for (const z of ['hanbando', 'nippon']) {
+    const idx = new Map(doc[z].ores.map((o) => [key(o.center), o]));
+    by[z] = new Map();
+    for (const e of off.zones[z]) {
+      const o = idx.get(key(e.c)); if (!o) { miss++; continue; }
+      by[z].set(key(e.c), e.was);
+      if (o.mineral !== e.now) nowBad++;
+      if (JSON.stringify(o) === JSON.stringify(e.was)) same++;
+      const keys = new Set(Object.keys(o).concat(Object.keys(e.was)));
+      for (const k of keys) if (!MIN.includes(k) && JSON.stringify(o[k]) !== JSON.stringify(e.was[k])) posBad++;
+      for (const k of POS) if (JSON.stringify(o[k]) !== JSON.stringify(e.was[k])) posBad++;
+    }
+  }
+  ok(miss === 0 && nowBad === 0 && same === 0, '옛 기록 줄마다 — 그 자리 광맥이 있고 · 지금 광종 = now · 실제로 다르다', `없음 ${miss} · now 다름 ${nowBad} · 같은 줄 ${same}`);
+  ok(posBad === 0, '자리(이름·좌표·반경·주요/자잘)는 그대로 — 바뀐 칸은 광종 칸뿐', `다른 자리 칸 ${posBad}`);
+  ok(off.zones.hanbando.length === 119 && off.zones.nippon.length === 54, '바뀐 광맥 — 한반도 119/787 · 닛폰 54/55', `${off.zones.hanbando.length} · ${off.zones.nippon.length}`);
+  // ② 정본 = 굽기(옛 기록) — 한반도는 덜 흔드는 굽기(rebakeKeep) · 닛폰은 다 굽기(bakeOre — T580 기계와 같은 줄)
+  const expect = (z, old) => {
+    const b = z === 'hanbando' ? RP.rebakeKeep(z, old, 500) : RP.bakeOre(z, old.center[0], old.center[1], RP.veinU(old.center[0], old.center[1]), !old.minor, 500);
+    if (!b || b.mineral === old.mineral) return old;
+    const e = Object.assign({}, old, { mineral: b.mineral, pk: SP.orePeakFor(b.mineral, 0.30, RP.veinU(old.center[0], old.center[1], 500)) });
+    if (b.minerals) e.minerals = b.minerals; else delete e.minerals;
+    return e;
+  };
+  let selfBad = 0, n = 0;
+  for (const z of ['hanbando', 'nippon']) for (const o of doc[z].ores) { n++; const old = by[z].get(key(o.center)) || o; if (JSON.stringify(expect(z, old)) !== JSON.stringify(o)) selfBad++; }
+  ok(selfBad === 0, '정본 = 굽기(옛 기록) — 두 존 광맥 하나하나 바이트 같다(굽기 함수가 정본을 낸다)', `${n}개 중 다름 ${selfBad}`);
+  // ③ 재민 08-01 규칙 셋 — 두 존 정본 위반 0
+  let iron = 0, silver = 0, poly = 0;
+  for (const z of ['hanbando', 'nippon']) for (const o of doc[z].ores) {
+    if (!o.minor && RP.NO_MAJOR.includes(o.mineral)) iron++;
+    if (o.mineral === 'silver') silver++;
+    if (JSON.stringify(o.minerals || null) !== JSON.stringify(HB.POLY[o.mineral] || null)) poly++;
+  }
+  ok(iron + silver + poly === 0, '재민 08-01 규칙 셋 위반 0 — 주요 철·사철 · 은 단독 · 납·구리·금 POLY(두 존 정본 842)', `철 ${iron} · 은 ${silver} · POLY ${poly}`);
+  // ④ 닛폰 고유 품목은 한반도에 꼬리로만 든다
+  const npU = RP.uniqueOf('ore', 'nippon', 'hanbando');
+  let notTail = 0, nU = 0;
+  for (const o of doc.hanbando.ores) if (npU.includes(o.mineral)) { nU++; const old = by.hanbando.get(key(o.center)) || o; const b = RP.rebakeKeep('hanbando', old, 500); if (!b || b.why !== 'tail' || b.mineral !== o.mineral) notTail++; }
+  ok(nU > 0 && notTail === 0, '닛폰 고유 품목(옥·유황)은 한반도에 꼬리(씨 732 < T)로만 들었다', `${nU}개 · 꼬리 아님 ${notTail}`);
+  // ④′ 뽑기 씨 독립 — 다시 뽑힌 옥 광맥이 한 품목으로 쏠리지 않는다(옛 광종을 낸 u 를 다시 쓰면 98 중 90 이 납이었다)
+  { const rd = {}; let nr = 0;
+    for (const e of off.zones.hanbando) { const b = RP.rebakeKeep('hanbando', e.was, 500); if (b && b.why === 'redraw') { nr++; rd[b.mineral] = (rd[b.mineral] || 0) + 1; } }
+    const top = Math.max(...Object.values(rd)); ok(nr > 0 && top / nr < 0.5 && Object.keys(rd).length >= 4, '다시 뽑기(옥 → 한반도 품목)는 한 품목에 몰리지 않는다(뽑기 씨 733 ⟂ 옛 광종 씨 731)', JSON.stringify(rd)); }
+  // ⑤ 끔이면 통째 되돌림 · 켬이면 그대로
+  const cp = JSON.parse(raw), nOff = RP.restoreBakeOff(cp);
+  let back = 0;
+  for (const z of ['hanbando', 'nippon']) for (const o of cp[z].ores) { const w = by[z].get(key(o.center)); if (w && JSON.stringify(w) === JSON.stringify(o)) back++; }
+  ok(nOff === 173 && back === 173, '끔(T574_REGION=0) — 정본을 실을 때 바뀐 173 광맥이 옛 기록 그대로(키 차례까지) 돌아온다', `${nOff} · 같은 ${back}`);
+  withEnv({ T574_REGION: null }, () => { const c2 = JSON.parse(raw); ok(RP.restoreBakeOff(c2) === 0 && JSON.stringify(c2) === raw, '켬(기본)이면 되돌림 0 — 구운 정본 그대로'); });
+  ok(/require\('\.\/region-profiles'\)\.restoreBakeOff\(_hardcodedCache\)/.test(fs.readFileSync(path.join(ROOT, 'server', 'terrain.js'), 'utf8')), 'terrain.js 가 정본을 실을 때 되돌림 문을 지난다(한 줄)');
 }
 
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===`);

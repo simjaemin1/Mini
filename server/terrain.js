@@ -36,6 +36,9 @@ function _getHardcoded() {
   if (_hardcodedCache !== null) return _hardcodedCache;
   try { _hardcodedCache = require('./hanbando-terrain.json') || {}; }
   catch { _hardcodedCache = {}; }
+  // ★[T574 추신4] 끔(`T574_REGION=0`)이면 L 500 으로 구운 광맥 광종을 여섯째 판 칸으로 되돌린다
+  //   (켬 = 기본 = 구운 그대로 · 아무것도 안 한다 · 옛 기록 `region-bake-off.json` · 정본 하나 `region-profiles.restoreBakeOff`)
+  try { require('./region-profiles').restoreBakeOff(_hardcodedCache); } catch (e) { /* 프로필 없음 = 옛 길 */ }
   return _hardcodedCache;
 }
 
