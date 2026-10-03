@@ -54,6 +54,9 @@
   const inDisc = (cx, cy, R, x, y) => { const ax = x + 0.5 - cx, ay = y + 0.5 - cy; return ax * ax + ay * ay < R * R; };   // 셀 중심(x+.5,y+.5)이 격자점(cx,cy) 반경 R 안(엄격<) — 전 구역 판정의 단일 원식(렌더도 같은 셀 집합=판정과 픽셀 일치)
   const discCells = (R) => { const o = [], B = Math.ceil(R); for (let dx = -B; dx < B; dx++) for (let dy = -B; dy < B; dy++) if ((dx + 0.5) * (dx + 0.5) + (dy + 0.5) * (dy + 0.5) < R * R) o.push([dx, dy]); return o; };
   const LOT_CELLS = discCells(LOT_R), LOT_GUARD = discCells(LOT_R + FARM_GAP), YARD_CELLS = discCells(HALL_YARD);   // 부지 원판(124셀 — 구 12×12 등적·적도폭 12), 부지+2 침수·완충 원판, 큰집 마당 원판(316셀)
+  // ★★[T579 2026-10-03 · T569 ④] **집 부지 인당** = 부지 원판 셀 수 ÷ 집 한 채 정원(층당 정원 × 층 상한) — 식이다(새 수 0 · 124 ÷ 6 = 20.67).
+  //   영토 상한(T538 · NPC 마을)이 밭(`LAND_NEED`)만 세고 집 부지를 안 세서, 인구 약 100 위에서 집터가 영토에 안 들었다.
+  const LOT_PER_HEAD = LOT_CELLS.length / (HOUSE_CAP_PER_FLOOR * HOUSE_MAX_FLOORS);
   const houseFarmBlock = (hx, hy, x, y) => inDisc(hx, hy, LOT_R + FARM_GAP, x, y), hallFarmBlock = (hx, hy, x, y) => inDisc(hx, hy, HALL_YARD + FARM_GAP, x, y);
   // ★★[T315 2026-09-19 재민 #22] **집 간격은 값이 아니라 유도다** — 새 수 0 · 배수 0.
   //   T298 이 켠 세계에서 집터 거부 사유의 65.8~66.2% 가 `집 간격 18` 이었다. 그 `18` 은 `villages.js` `HG` 와
@@ -427,7 +430,7 @@
     return { ok: diagOnly === 0, comps, diagOnly };
   }
 
-  const API = { LAND_NEED, houseSiteWant, territoryTarget, HOUSE_MAX_FLOORS, TERR_PER_SIZE, TERR_PER_LOT, TERR_CORE,   // ★[T100 4판] 정본 — 밖(villages.js·계측기·하네스)이 이 값을 읽는다
+  const API = { LAND_NEED, LOT_PER_HEAD, houseSiteWant, territoryTarget, HOUSE_MAX_FLOORS, TERR_PER_SIZE, TERR_PER_LOT, TERR_CORE,   // ★[T100 4판] 정본 — 밖(villages.js·계측기·하네스)이 이 값을 읽는다
     generate, footprintLand, axisAt, nearestBank, waterEDT, maskEDT, HOUSE_HALF, HOUSE_CAP: HOUSE_CAP_PER_FLOOR, HOUSE_CAP_PER_FLOOR, LAND_PER_HOUSE, landNeedPer, HALL_YARD, LOT_R, FARM_GAP, ALLEY_R, HALL_CLEAR, inDisc, LOT_CELLS, LOT_GUARD, YARD_CELLS, houseFarmBlock, hallFarmBlock,
     AISLE, LIFE_HOUSE_GAP, LIFE_HOUSE_GAP_AISLE,   // ★[T315] 집 간격 유도 — 값이 아니라 식(사본 0) · ★[T326] 기본 = `LIFE_HOUSE_GAP`(15 · PM #52) · 되돌림 = `LIFE_HOUSE_GAP_AISLE`(18)
     ditchRing, ditchConnectivity, DITCH_W, DITCH_AXIS_RATIO, DITCH_GATE_HALF, DITCH_MARGIN };
