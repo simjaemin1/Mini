@@ -1986,3 +1986,6 @@ T89 첫 판이 39/44 표본에서만 사람을 봤고, 그걸 정책 탓으로 �
 - zone-config가 econ 번들에 실린다. 다리를 바꾸면 `node sim/build-econ-bundle.js && node sim/inline-engine.js`를 같이 돌린다.
 - `test-jungwon-boot` ⓗ3의 닛폰 다리 수도 같이 고친다.
 - 닛폰 광종 다시 굽기는 `scripts/t580-bake-nippon.js --L <값> --apply`다(T574 `bakeOre`를 부르기만 한다). 재민이 L을 고른 뒤 돌린다.
+- ★[T580 · T550 추신 반영] 닛폰 숲이 50 → **53**이 됐다(자잘 숲 3 · `plan-small-forests --zone nippon` · 이름은 닛폰 풀). 자잘 광맥 406은 그 **뒤에** 다시 놓았다(소외 격자 6,192 → 2,894).
+- 군락(`plan-village-forage --zone nippon`)은 후보 승인 뒤 `--apply`다. 계산상 후보 23곳 · 군락 43이다.
+- `plan-small-forests` · `plan-village-forage` 둘 다 정본 경로를 `hanbando-terrain.json` 하나로 고쳤다. 종전 `<존>-terrain.json`은 닛폰에서 즉사했다.
