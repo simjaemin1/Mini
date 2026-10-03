@@ -13,7 +13,9 @@
 //   상한ⓐ 카드 "지금 창 식 그대로 · kg 상한만 종 표에서"의 한 읽기 — 꼬리 절단 `SIZE_MAX`(12kg) 자리에 T592 "큰 것" kg(있는 종만)
 //   상한ⓑ 같은 문장의 다른 읽기 — 그 자리에 T592 "보통" 구간의 위 끝
 //   (두 상한은 이 표에서만 잰다 — 서버 코드엔 없다 · 고른 쪽이 생기면 `plan` 한 줄)
-// 실행: node scripts/t602-windows.js [--md] [--json 파일]   (존: ZONE_ID=nippon)
+// ★[T609 ②] `--t609` — 큰 종 창 안 셋(`fishing.windowFor`·`fightMsFor` 의 모드 a·b·c — 손잡이 `T609_BIG_WINDOW` 가 고르는 그 함수)을
+//   **같은 무게 굴림**에 대 본다(팔 = 이 가지 기본 kg 앵커 · 지금 식 / a / b / c · 싸움 길이 중앙). 표 기계는 그대로다.
+// 실행: node scripts/t602-windows.js [--md] [--json 파일] [--t609]   (존: ZONE_ID=nippon)
 'use strict';
 const path = require('path'), fs = require('fs');
 const ROOT = path.join(__dirname, '..');
@@ -24,6 +26,7 @@ process.env.ENABLE_VILLAGES = '0'; process.env.ENABLE_WILDLIFE = '0'; process.en
 process.env.FISH_TICK_MS = '999000';
 if (process.env.T602_NEW_FISH == null) process.env.T602_NEW_FISH = '1';   // 새 어종 일곱도 줄로 낸다(그 종의 자리만 — 다른 종은 무변)
 const MD = process.argv.includes('--md');
+const T609 = process.argv.includes('--t609');
 const JI = process.argv.indexOf('--json'), JOUT = JI > 0 ? process.argv[JI + 1] : null;
 const _l = console.log; console.log = () => {}; console.warn = () => {}; console.error = () => {};
 const Zone = require(path.join(ROOT, 'server', 'zone.js'));
@@ -121,6 +124,38 @@ for (const id of ids) {
   const A = armsOf(id), out = { id, ko: isSea(id) ? Sea.koOf(id) : Fresh.koOf(id), sea: isSea(id), spots: spl.length, waters: [...new Set(spl.map((s) => s.water))].join('·') };
   for (const k of Object.keys(A)) out[k] = A[k] ? Object.assign({ kg0: A[k].kg0 == null ? null : +(+A[k].kg0).toFixed(4), cap: A[k].cap || null }, sample(spl, A[k], N)) : null;
   rows.push(out);
+}
+// ★[T609 ②] 안 셋 — 같은 굴림(무게)에 창 함수 넷(지금 · a · b · c)을 대고 싸움 길이를 같이 잰다
+const MODES = [null, 'a', 'b', 'c'];
+function sample609(spl, kg0, n) {
+  const rng = lcg(20260826), per = MODES.map(() => ({ win: [], fight: [] }));
+  for (let i = 0; i < n; i++) {
+    const p = F.plan(spl[i % spl.length].sp, 1, 0, rng, kg0);
+    MODES.forEach((m, j) => { per[j].win.push(F.windowFor(p.kg, kg0, m)); per[j].fight.push(F.fightMsFor(p.kg, m)); });
+  }
+  return MODES.map((m, j) => {
+    const ws = per[j].win.slice().sort((a, b) => a - b), fs = per[j].fight.slice().sort((a, b) => a - b);
+    return { mode: m || '지금', winMed: ws[Math.floor(n / 2)], floor: +(ws.filter((w) => w <= WMIN).length / n * 100).toFixed(1),
+      miss: REACT.map((r) => +(ws.filter((w) => w + LAT < r).length / n * 100).toFixed(1)), fightMed: fs[Math.floor(n / 2)], fightP95: fs[Math.floor(n * 0.95)] };
+  });
+}
+if (T609) {
+  const rows9 = [];
+  for (const id of ids) {
+    const spl = spots.filter((s) => s.cand.has(id)); if (!spl.length) continue;
+    const A = armsOf(id), kg0 = A.t602.kg0;
+    rows9.push({ id, ko: isSea(id) ? Sea.koOf(id) : Fresh.koOf(id), sea: isSea(id), isNew: !!(Sea.rowOf(id) && Sea.rowOf(id).isNew), waters: [...new Set(spl.map((s) => s.water))].join("·"), kg0: kg0 == null ? null : +(+kg0).toFixed(4), arms: sample609(spl, kg0, N) });
+  }
+  if (JOUT) fs.writeFileSync(JOUT, JSON.stringify({ zone: ZID, N, react: REACT, rows: rows9 }, null, 1));
+  if (MD) {
+    console.log(`#### ${ZID} — 큰 종 창 안 셋(T609 ②) · 종마다 ${N}번(같은 무게 굴림) · 칸 = 창 중앙 ms · 하한 붙음 % · 놓침 % @200/300/400/500ms(창 + ${LAT}ms < 반응) · 싸움 중앙 ms\n`);
+    console.log('| 종 | 물 | kg 앵커 | 지금 식 | 안 a — 1kg 에서 창 멈춤 + 싸움 | 안 b — 창 한 값 + 싸움 | 안 c — 종 크기에 견준 몸집 |');
+    console.log('|---|---|---|---|---|---|---|');
+    const cell = (a, fight) => `${a.winMed} · ${a.floor}% · ${a.miss.join('/')}` + (fight ? ` · 싸움 ${a.fightMed}` : '');
+    for (const r of rows9) console.log(`| ${r.ko}${r.isNew ? '(새·끔)' : ''} | ${r.waters} | ${r.kg0} | ${cell(r.arms[0])} | ${cell(r.arms[1], true)} | ${cell(r.arms[2], true)} | ${cell(r.arms[3])} |`);
+  } else for (const r of rows9) console.log(JSON.stringify(r));
+  for (const p of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(p); } catch (e) {} }
+  process.exit(0);
 }
 const meta = { zone: ZID, stands: stands.length, spots: spots.length, bySea: spots.filter((s) => s.water === 'sea').length, N, react: REACT, winMin: WMIN, lat: LAT,
   winAt1kg: F.CFG.WIN_AT_1KG, winPow: F.CFG.WIN_POW, sizeMax: F.CFG.SIZE_MAX, sigma: F.CFG.SIZE_SIGMA };

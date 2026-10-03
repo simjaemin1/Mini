@@ -271,7 +271,7 @@ console.log('\n⑩ [T593] NPC 어부도 같은 물 — 바다 칸 물가 = 바�
   ok(/const _sea = _t593SeaBank\(cx, cy\);/.test(blk), '⑩ ★시도 함수가 그 물가의 물 종류를 묻는다(`_t593SeaBank` — 한 갈래)');
   // ★[T602] 해역 열쇠 = 그 물가 칸의 해안 구간(`areaAt` — 플레이어 `_t593Pick` 과 같은 함수 · 끄면 T593 그대로 바이옴)
   ok(/_sea \? _seaTbl\(\)\.pick\(_seaTbl\(\)\.areaAt\(state\.zoneId, cx \* SZ \+ SZ \/ 2, cy \* SZ \+ SZ \/ 2\), _sea, day, h \^ cx \^ Math\.imul\(cy, 0x85ebca6b\)\)/.test(blk.replace(/\s+/g, ' '))
-     && /: _fresh\(\)\.pick\(_t312Water\(vil\), day, h \^ cx \^ Math\.imul\(cy, 0x85ebca6b\), _ch\);/.test(blk.replace(/\s+/g, ' ')),
+     && /: _fresh\(\)\.pick\(_t312Water\(vil\), day, h \^ cx \^ Math\.imul\(cy, 0x85ebca6b\), _ch, state\.zoneId\);/.test(blk.replace(/\s+/g, ' ')),   // ★[T609] 다섯째 = 존(민물 표 끔이면 안 읽는다)
      '⑩ ★★바다면 **바닷물고기 표**(`seafish.pick` — 플레이어가 쓰는 그 표) · 아니면 **종전 민물 줄 글자 그대로**(같은 해시 씨)');
   ok(/isSeaTileLocal,/.test(Z) && /SimVillages\.init\(\{[\s\S]*?isSeaTileLocal,[\s\S]*?\}\);/.test(Z),
      '⑩ ★바다 술어는 **존이 넘긴다**(`isSeaTileLocal` — look·자염·갯벌이 쓰는 그것 · 생활층 사본 0)');

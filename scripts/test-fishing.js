@@ -77,6 +77,35 @@ function scanSpots(step, cap) {
   return out;
 }
 
+// ═══ [T609 ②] 하위 판 — 손잡이를 켠 채 **같은 서버**를 띄워 싸움 단계를 묻는다(본 판 ⑩ 이 `T609_SUB=fight` 로 부른다) ═══
+if (process.env.T609_SUB === 'fight') {
+  const out = { knob: F.T609_BIG_WINDOW };
+  const sp0 = scanSpots(97, 400).filter((s) => s.sp.kind === 'river' || s.sp.kind === 'lake');
+  let p = null;
+  for (const s of sp0) { const q = mkPlayer('fg' + s.x); q.x = s.x; q.y = s.y; H.tryFishCast(q); if (q._fish) { p = q; break; } }
+  out.cast = !!p;
+  if (p) {
+    H.players.set(p.ws, p);   // `_fishPoll` 은 존의 사람 목록을 돈다 — 하네스 사람을 그 목록에 올린다
+    p._fish.biteAt = Date.now() - 50; p._fish.bit = true; p._fish.kg = 3; p._fish.fightMs = F.fightMsFor(3);
+    out.fightMs = p._fish.fightMs; out.windowMs = p._fish.windowMs; out.planHasFight = true;
+    H.tryFishStrike(p);
+    out.state = p._fish && p._fish.state;
+    out.fightNotice = p.__notices().some((t) => /끌어올린다/.test(t));
+    out.fightState = (p.__last('fish_state') || {}).state;
+    H.tryFishCast(p);   // 싸움 중 다시 던지기 — 막혀야 한다
+    out.busy = p.__notices().some((t) => /끌어올리는 중/.test(t)) && !!p._fish && p._fish.state === 'fight';
+    const land = p._fish ? p._fish.landAt : 0, inv0 = Object.values(p.inventory).reduce((a, b) => a + b, 0);
+    H._fishPoll(land - 1); out.early = !!p.__last('fish_catch');
+    H._fishPoll(land + 1);
+    const c = p.__last('fish_catch'); out.caught = !!c; out.item = c && c.item; out.kg = c && c.kg; out.after = p._fish;
+    out.inv = Object.values(p.inventory).reduce((a, b) => a + b, 0) - inv0;
+    H.players.delete(p.ws);
+  }
+  process.stdout.write('@@' + JSON.stringify(out));
+  for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
+  process.exit(0);
+}
+
 (async () => {
   say('\n=== 낚시 v2 — 판단·위험·손맛 (서버 정본 E2E) ===');
 
@@ -615,6 +644,60 @@ function scanSpots(step, cap) {
       { env: Object.assign({}, process.env, { T602_SEA_TABLE: '0' }), stdio: 'pipe' }).toString());
     ok(off602.knob === false && off602.ids.join(' ') === 'pollock cod herring sardine anchovy salmon octopus squid crab shrimp' && off602.area === 'forest' && off602.mouthWinter.length === 10,
       '★★⑨ⓗ 끄면 T593 표 그대로 — 열 종(명태·대구 포함) · 해역 열쇠 = 바이옴 · 철 빈칸(겨울 강어귀에도 열 종)', `${off602.ids.length}종 · ${off602.area}`);
+  }
+
+  // ═══ ⑩ [T609] 민물 표 = T603(손잡이 끔) · 큰 종 창 안 셋(손잡이 끔) ═══
+  say('\n⑩ [T609] 민물 표 = T603 · 큰 종 창 안(둘 다 손잡이 · 기본 끔 = main 그대로)');
+  {
+    const { execFileSync } = require('child_process');
+    const Fresh = require(path.join(ROOT, 'server', 'freshfish.js'));
+    ok(Fresh.T609_FRESH_TABLE === false && F.T609_BIG_WINDOW === null, '★⑩ 손잡이 둘 기본 **끔** — `T609_FRESH_TABLE` · `T609_BIG_WINDOW`', `${Fresh.T609_FRESH_TABLE} · ${F.T609_BIG_WINDOW}`);
+    // ⓐ 끔 = 지금 표 글자 그대로 — 존을 넘겨도 안 읽는다 · 계획에 싸움 칸이 없다 · 창 = 지금 식
+    const offPool = Fresh.poolOf('lake', 120, 'nippon').map((s) => s.id).join(' ');
+    ok(offPool === Fresh.poolOf('lake', 120).map((s) => s.id).join(' ') && offPool.includes('snakehead'), '⑩ⓐ 끄면 존을 넘겨도 풀이 같다(열도 가물치 그대로 · 옛 줄)', offPool);
+    const rr = (() => { let k = 7; return () => { k = (k * 1103515245 + 12345) & 0x7fffffff; return k / 0x7fffffff; }; })();
+    const pls = [0.05, 0.3, 1, 2, 3.5, 9].map((k0) => F.plan({ water: true, kind: 'lake', depth01: 0.6, seam01: 0, flow01: 0, conflu: 0 }, 1, 0, rr, k0));
+    ok(pls.every((q) => !('fightMs' in q) && q.windowMs === F.windowMsFor(q.kg)) && [0.02, 0.5, 1, 2.9, 7].every((k) => F.windowFor(k, 2) === F.windowMsFor(k)),
+      '★⑩ⓐ 끄면 창 = 지금 식(`windowMsFor`) · 계획에 싸움 칸 없음', pls.map((q) => `${q.kg}kg ${q.windowMs}`).join(' · '));
+    // ⓑ T603 표(켬 판 정의) — 바뀐 칸은 구간 넷 + 열도 가물치뿐 · 철·kg 은 한 글자도 안 바뀐다 · 새 후보는 표만
+    const S0 = new Map(Fresh.SPECIES.map((s) => [s.id, s])), S9 = Fresh.SPECIES_T609;
+    const chg = S9.filter((s) => JSON.stringify(s.waters) !== JSON.stringify(S0.get(s.id).waters)).map((s) => s.id).sort();
+    ok(JSON.stringify(chg) === JSON.stringify(['barbel', 'catfish', 'minnow', 'snakehead']) && S9.every((s) => s.t603),
+      '★⑩ⓑ 켬 판 표 — 구간이 바뀐 종 = 메기·가물치·누치·피라미(T603 이 채운 8/10 중 넷) · 열 종 전부 T603 칸 표시', chg.join(' '));
+    ok(S9.every((s) => s.kg === S0.get(s.id).kg && JSON.stringify(s.seasons) === JSON.stringify(S0.get(s.id).seasons)),
+      '⑩ⓑ 철·kg 은 **바뀜 0**(T603: 일치 셋 · 산란기만 둘 · 금어기 · 미확인 — kg 은 길이만)');
+    ok(S9.filter((s) => s.noZones).map((s) => s.id + ':' + s.noZones.join(',')).join(' ') === 'snakehead:nippon', '★⑩ⓑ 열도(닛폰)에서 빠지는 종 = 가물치 하나(근대 도입 — T603 §3 확실)');
+    ok(Fresh.CANDIDATES.length === 5 && Fresh.CANDIDATES.every((c) => !Fresh.isFish(c.id) || c.id === 'trout') && Fresh.ids().length === 10,
+      '⑩ⓑ 새 후보 다섯은 **표만**(민물 풀·품목 0 — 송어는 특산 품목이 이미 있다)', Fresh.CANDIDATES.map((c) => c.ko).join(' · '));
+    const on = JSON.parse(execFileSync(process.execPath, ['-e',
+      `const F=require(${JSON.stringify(path.join(ROOT, 'server', 'freshfish.js'))});const P=(w,d,z)=>F.poolOf(w,d,z).map((s)=>s.id);` +
+      `let sn=0;for(let i=0;i<3000;i++){const s=F.pick('lake',120,(Math.imul(i+1,0x9e3779b1)^0x5bd1e995)>>>0,undefined,'nippon');if(s&&s.id==='snakehead')sn++;}` +
+      `process.stdout.write(JSON.stringify({k:F.T609_FRESH_TABLE,lakeN:P('lake',120,'nippon'),lakeH:P('lake',120,'hanbando'),midH:P('mid',120,'hanbando'),lowH:P('lower',120,'hanbando'),winter:P('mid',300,'hanbando'),sn}));`],
+      { env: Object.assign({}, process.env, { T609_FRESH_TABLE: '1' }), stdio: 'pipe' }).toString());
+    ok(on.k === true && !on.lakeN.includes('snakehead') && on.lakeH.includes('snakehead') && on.sn === 0,
+      '★★⑩ⓒ 켜면 **닛폰 호수엔 가물치가 없다**(풀 · 뽑기 3000번 0) · 한반도엔 그대로', `닛폰 ${on.lakeN.join(' ')} / 한반도 ${on.lakeH.join(' ')}`);
+    ok(on.lakeH.includes('catfish') && on.midH.includes('snakehead') && on.lowH.includes('minnow') && JSON.stringify(on.winter) === JSON.stringify(['crucian']),
+      '⑩ⓒ 켜면 메기가 호수에 · 가물치가 강(중류)에 · 피라미가 하류(강어귀)에 든다 · 겨울 강은 그대로 붕어만', `호수 ${on.lakeH.join(' ')} · 하류 ${on.lowH.join(' ')}`);
+    // ⓓ 큰 종 창 안 셋(같은 함수 · 모드를 넘겨 잰다) — 하한 붙음 · 싸움 길이
+    const kgs = [0.015, 0.2, 0.75, 1, 1.5, 2.5, 3.5, 6, 12];
+    const floorOf = (m) => kgs.filter((k) => F.windowFor(k, 2.5, m) <= F.CFG.WIN_MIN_MS).length;
+    ok(floorOf(null) > 0 && floorOf('a') === 0 && floorOf('b') === 0, '★★⑩ⓓ 안 a·b 는 **하한(90ms) 붙음 0**(지금 식은 큰 종이 붙는다)', `지금 ${floorOf(null)} · a ${floorOf('a')} · b ${floorOf('b')} · c ${floorOf('c')} (/${kgs.length})`);
+    ok(kgs.every((k) => F.windowFor(k, 2.5, 'a') === F.windowMsFor(Math.min(k, 1)) && F.fightMsFor(k, 'a') === (k > 1 ? Math.round(F.CFG.WIN_AT_1KG * (Math.pow(k, F.CFG.WIN_POW) - 1)) : 0)),
+      '⑩ⓓ 안 a — 1kg 위는 창이 기준점(350ms)에서 멈추고 넘는 무게는 싸움(`WIN_AT_1KG × (kg^WIN_POW − 1)` · 1kg 에서 0)', kgs.map((k) => `${k}:${F.windowFor(k, 2.5, 'a')}/${F.fightMsFor(k, 'a')}`).join(' '));
+    ok(kgs.every((k) => F.windowFor(k, 2.5, 'b') === F.CFG.WIN_AT_1KG && F.fightMsFor(k, 'b') === Math.round(F.CFG.WIN_AT_1KG * Math.pow(k, F.CFG.WIN_POW))),
+      '⑩ⓓ 안 b — 창은 무게와 무관한 `WIN_AT_1KG` · 무게는 싸움에만(`WIN_AT_1KG × kg^WIN_POW`)');
+    ok(kgs.every((k) => F.windowFor(k, 2.5, 'c') === F.windowMsFor(k / 2.5) && F.fightMsFor(k, 'c') === 0) && F.windowFor(3, undefined, 'c') === F.windowMsFor(3),
+      '⑩ⓓ 안 c — 창 = 그 종의 보통 크기에 견준 몸집(kg ÷ 종 kg)으로 지금 식 · 싸움 없음 · 종 kg 없으면 지금 식');
+    // ⓔ 싸움 단계 — 손잡이 a 로 같은 서버를 띄워 건다 → 끌어올린다 → 손에 든다(하위 판 · 같은 하네스 파일)
+    let sub = null;
+    try {
+      const raw = execFileSync(process.execPath, [__filename], { env: Object.assign({}, process.env, { T609_BIG_WINDOW: 'a', T609_SUB: 'fight' }), stdio: 'pipe', timeout: 240000 }).toString();
+      sub = JSON.parse(raw.slice(raw.lastIndexOf('@@') + 2));
+    } catch (e) { sub = { err: String(e.message || e).slice(0, 200) }; }
+    ok(sub && sub.knob === 'a' && sub.cast && sub.state === 'fight' && sub.fightState === 'fight' && sub.fightNotice && sub.fightMs === F.fightMsFor(3, 'a'),
+      '★★⑩ⓔ 켜면(a) 창 안에 채도 바로 안 들고 **싸움 단계**로 간다(3kg → 끌어올리기 ' + (sub && sub.fightMs) + 'ms)', JSON.stringify(sub && { state: sub.state, fightMs: sub.fightMs, windowMs: sub.windowMs, err: sub.err }));
+    ok(sub && sub.busy && !sub.early && sub.caught && sub.after === null && sub.inv === 1,
+      '★⑩ⓔ 싸움 중엔 새로 못 던지고 · 끝나기 전엔 안 들고 · 끝나면 **손에 든다**(인벤 +1 · 상태 비움)', JSON.stringify(sub && { busy: sub.busy, early: sub.early, item: sub.item, kg: sub.kg }));
   }
 
   say(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);

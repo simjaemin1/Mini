@@ -1837,7 +1837,7 @@
       const nowMs = performance.now();
       const p0 = w2i(fishState.x, fishState.y), sp = toScreen(p0.x, p0.y);
       if (!(sp.x < -80 || sp.y < -80 || sp.x > canvas.width + 80 || sp.y > canvas.height + 80)) {
-        const bite = fishState.state === 'bite';
+        const bite = fishState.state === 'bite' || fishState.state === 'fight';   // ★[T609 ②] 싸움 단계(서버 손잡이 켬만)도 찌가 잠긴다
         const t = (nowMs - fishState.since) / 1000;
         // 대기: 느린 상하 1px. 입질: 빠르게 흔들리며 아래로 잠긴다(잠김 깊이가 남은 시간을 말한다).
         const bob = bite ? Math.sin(t * 26) * 3 + Math.min(7, t * 14) : Math.sin(t * 2.2) * 1.2;
