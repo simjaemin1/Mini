@@ -203,8 +203,8 @@ function bake(NX, NY, kind, opts) {
 const GROUP = ['jungwon_n', 'hanbando', 'nippon'];
 let _TJ = null;
 // 지문 — 묶음 존들의 지형 json 절 + 존 사각 + 바다 존 목록 + 산법 판(굽기 입력이 바뀌면 바뀐다 · 이웃 존 지형도 내 개울을 바꾼다)
-/** 해안 꼴 손잡이 — `server/chunk.js` generateCoastlineWaterTiles 와 같은 읽기('1'·'a' → a · 'b' → b · 그 밖 = 끔) */
-function coastVariant() { const v = process.env.T588_COAST; return (v === '1' || v === 'a') ? 'a' : (v === 'b' ? 'b' : 0); }
+/** 해안 꼴 손잡이 — `server/chunk.js` generateCoastlineWaterTiles 와 같은 읽기(★T604 추신3: '0' → 지금 식 · 'a' → a · 그 밖(없음·'1'·'b') → b) */
+function coastVariant() { const v = process.env.T588_COAST; return v === '0' ? 0 : (v === 'a' ? 'a' : 'b'); }   // ★[PM 착지 T604 추신3] chunk.js 와 같은 읽기 — 없음·1·b·그 밖 = b · a · 0 = 지금 식
 function sourceHash(zoneId) {
   const ZC = require('./zone-config');
   // ⚠`require` 캐시가 아니라 **파일 글자**에서 읽는다 — terrain.js 가 적재 뒤 그 객체에 손을 대서(파생 필드) 같은 지형인데 지문이 갈렸다(첫 판 실측).

@@ -242,7 +242,8 @@ say('\n⑩ [T601] 지문이 해안 입력을 본다 · 두 자 deps 의 개울 �
   const run = (env, code) => { try { return execFileSync(process.execPath, ['-e', code], { cwd: ROOT, env: Object.assign({}, process.env, env), encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim().split('\n').pop(); } catch (e) { return null; } };
   const hc = "process.stdout.write(require('./server/streams.js').sourceHash('hanbando'))";
   const off = run({ T588_COAST: '' }, hc), a = run({ T588_COAST: 'a' }, hc), one = run({ T588_COAST: '1' }, hc), b = run({ T588_COAST: 'b' }, hc), zero = run({ T588_COAST: '0' }, hc);
-  ok(off && a && b && off !== a && a !== b && a === one && off === zero, '★⑩ 해안 꼴 손잡이가 지문에 든다 — 끔(빈·0) · a(=1) · b 셋이 갈린다(chunk.js 와 같은 읽기)', `${off} · ${a} · ${b}`);
+  // ★[PM 착지 T604 추신3] 기본 b — 빈 = '1' = 'b' · '0' = 지금 식 · 'a' 따로(chunk.js 읽기)
+  ok(off && a && b && zero && off === b && one === b && zero !== b && a !== b && a !== zero, '★⑩ 해안 꼴 손잡이가 지문에 든다 — 기본 b(빈·1·b) · a · 지금 식(0) 셋이 갈린다(chunk.js 와 같은 읽기 · T604 추신3)', `${off} · ${a} · ${zero}`);
   // ★지문의 해안 읽기 = chunk.js 의 해안 읽기 — 손잡이 값마다 **띠 자체**를 굽어 견준다(T604 가 기본값을 b 로 바꾸면 여기가 빨강 → coastVariant 를 따라 고친다)
   const bandCode = "const ZC=require('./server/zone-config'),ch=require('./server/chunk'),S=require('./server/streams.js');const Z={...ZC.ZONES.hanbando,id:'hanbando'};"
     + "const OR=Object.values(ZC.ZONES).filter(z=>z.isOcean).map(z=>({x0:z.worldOffsetX,y0:z.worldOffsetY,x1:z.worldOffsetX+z.zoneWidth,y1:z.worldOffsetY+z.zoneHeight}));"
@@ -255,7 +256,7 @@ say('\n⑩ [T601] 지문이 해안 입력을 본다 · 두 자 deps 의 개울 �
   ok(agree, '★⑩ 지문의 해안 읽기 = chunk.js 의 해안 읽기 — 손잡이 값마다 띠가 같으면 지문 갈래도 같고, 다르면 다르다(T604 가 기본값을 바꾸면 여기서 잡힌다)',
     bands.map((b, i) => `${vals[i] || '빈'}:${b ? b.v + '/' + b.n : '?'}`).join(' · '));
   const fileHash = S.decodeFile(fs.readFileSync(S.fileOf('hanbando'))).hash;
-  ok(fileHash === off, '⑩ 굽힌 파일 지문 = 해안 끔 판(지금 정본 · 켜면 그 존 개울을 끄고 경고)', fileHash);
+  ok(fileHash === off, '⑩ 굽힌 파일 지문 = 기본 해안 판(지금 정본 b · 손잡이를 바꾸면 그 존 개울을 끄고 경고)', fileHash);
   const rd = "const S=require('./server/streams.js');const r=S.rulerDeps('hanbando',{a:1});process.stdout.write(JSON.stringify({k:Object.keys(r.deps),sig:r.sig,st:r.deps.isStreamLocal?r.deps.isStreamLocal(" + globalThis.__st.cx + "*32+16," + globalThis.__st.cy + "*32+16):null}))";
   const on1 = JSON.parse(run({}, rd) || 'null'), off1 = JSON.parse(run({ T601_RULER_STREAMS: '0' }, rd) || 'null');
   ok(on1 && on1.k.includes('isStreamLocal') && on1.st === true && on1.sig === fileHash && off1 && off1.k.join() === 'a' && off1.sig === '',
