@@ -42,7 +42,7 @@ if (argv[0] === '--apply') {
     const vs = J[zid] && J[zid].villages; if (!vs) continue;
     for (const r of Z.rows) if (r.moved > 0) {
       const v = vs.find((q) => q.name === r.name); if (!v) continue;
-      v.x = r.to.cx * SZ + SZ / 2; v.y = r.to.cy * SZ + SZ / 2; n++;   // 셀 중심 px(정본 후보 좌표는 px)
+      v.x = r.to.cx * SZ; v.y = r.to.cy * SZ; n++;   // ★[T611] 읽는 쪽이 `Math.round(x / SZ)` 다 — 셀×SZ 로 써야 그 셀로 읽힌다(T596 판은 +SZ/2 라 한 칸씩(+1,+1) 밀려 읽혔다)
     }
   }
   fs.writeFileSync(F, JSON.stringify(J));
