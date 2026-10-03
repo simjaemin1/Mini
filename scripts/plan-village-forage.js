@@ -63,7 +63,8 @@ const CH = require(path.join(ROOT, 'server', 'chunk'));
 // ★[T14] 임수 판정 정본 — 감사와 같은 함수(사본 금지). 감사가 재는 것을 처방이 다르게 재면 처방이 못 맞춘다.
 const IMSU = require(path.join(__dirname, 'imsu-core')).create({ ZID, ZONES, terrain: T, chunk: CH });
 
-const GAMEJSON = path.join(ROOT, 'server', ZID + '-terrain.json');
+// ★[T580 · T550 추신 ④] 정본 지형 파일은 **하나**다(안이 존 맵 · `plan-ore-clusters` T348 처방 그대로) — 종전 `<존>-terrain.json` 은 닛폰에서 파일 없음으로 즉사.
+const GAMEJSON = path.join(ROOT, 'server', 'hanbando-terrain.json');
 const doc = JSON.parse(fs.readFileSync(GAMEJSON, 'utf8'));
 const d = doc[ZID];
 
