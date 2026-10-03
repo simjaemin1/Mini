@@ -313,6 +313,7 @@
     for (let _i = 0; _i < imgs.length; _i++) {
       if (_b3 && layers[_i] === 'body') window.__char3d.blit(ctx, _b3, dx, dy, !!isMe);   // ★[T539] 몸 = 3D 타일
       else if (_b3 && _b3.full && window.__char3d.meshLayer(layers[_i])) continue;          // 온 메시 — 옷이 타일에 들었다
+      else if (_b3 && _b3.hand && layers[_i].startsWith('tool_')) ctx.drawImage(imgs[_i], sx, sy, fw, fh, dx + _b3.hand[0], dy + _b3.hand[1], fw, fh);   // ★[T545] 도구는 3D 오른 손목을 따른다(시트 `handR` 에 묶인 강체)
       else if (layers[_i] === 'band' && _bandCol) ctx.drawImage(tintFrame(imgs[_i], sx, sy, fw, fh, _bandCol), dx, dy);
       else ctx.drawImage(imgs[_i], sx, sy, fw, fh, dx, dy, fw, fh);
     }
@@ -321,7 +322,7 @@
     if (!window.__charDbg) window.__charDbg = {};
     window.__charDbg[opts.pid] = { on: true, clip: _clip, frame: _frame, row,
                          layers: layers.slice(),
-                         ...(T522_CHAR_3D ? { mesh: !!_b3, meshFull: !!(_b3 && _b3.full) } : null),   // ★[T539] 3D 몸(손잡이 켬에서만 싣는다) — 온 메시면 옷까지 타일
+                         ...(T522_CHAR_3D ? { mesh: !!_b3, meshFull: !!(_b3 && _b3.full), hand: _b3 ? _b3.hand : null } : null),   // ★[T539] 3D 몸(손잡이 켬에서만 싣는다) — 온 메시면 옷까지 타일 · [T545] 도구 층 옮김(px)
                          job: opts.job || null,      // ★[T13] NPC 직업 — 하네스가 표식을 판정하는 재료
                          clothes: opts.clothes || null,   // ★[T125] 서버가 실어 온 옷 재질(주민은 마을 곳간)
                          carrier: !!opts.carrier,        // ★[T134] 서버가 실어 온 지게 1비트(주민은 진 짐)

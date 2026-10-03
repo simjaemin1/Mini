@@ -1,61 +1,260 @@
 {
- "_": "[T522] char_export_gltf.py 산물 — 엔진이 읽는 규약. 클라는 이 수를 하드코딩하지 않는다.",
- "ambient": [
+ "_": "[T545] char_export_gltf.py 산물 — 엔진이 읽는 규약. 클라는 이 수를 하드코딩하지 않는다.",
+ "alphaTest": 0.5,
+ "atlas": {
+  "cells": {
+   "brows": [
+    0,
+    768,
+    384,
+    256
+   ],
+   "cloth": [
+    768,
+    0,
+    256,
+    512
+   ],
+   "eyes": [
+    384,
+    768,
+    256,
+    256
+   ],
+   "hair": [
+    768,
+    512,
+    256,
+    512
+   ],
+   "skin": [
+    0,
+    0,
+    768,
+    768
+   ]
+  },
+  "pad": 4,
+  "size": 1024
+ },
+ "bodies": {
+  "F": {
+   "bones": 31,
+   "mesh": "F_body",
+   "node": "F",
+   "parts": {
+    "brows": "eyebrows/eyebrow001/eyebrow001.mhclo",
+    "clothes": "clothes/female_elegantsuit01/female_elegantsuit01.mhclo",
+    "eyes": "eyes/low-poly/low-poly.mhclo",
+    "hair": "hair/braid01/braid01.mhclo",
+    "proxy": "proxymeshes/female1605/female1605.proxy",
+    "skin": "skins/young_asian_female/young_lightskinned_female_diffuse3.png"
+   },
+   "scale": 1.070004,
+   "tris": 6000,
+   "trisParts": {
+    "brows": 192,
+    "cloth": 1552,
+    "eyes": 172,
+    "hair": 1552,
+    "skin": 2532
+   }
+  },
+  "M": {
+   "bones": 31,
+   "mesh": "M_body",
+   "node": "M",
+   "parts": {
+    "brows": "eyebrows/eyebrow001/eyebrow001.mhclo",
+    "clothes": "clothes/male_casualsuit04/male_casualsuit04.mhclo",
+    "eyes": "eyes/low-poly/low-poly.mhclo",
+    "hair": "hair/ponytail01/ponytail01.mhclo",
+    "proxy": "proxymeshes/male1591/male1591.proxy",
+    "skin": "skins/young_asian_male/young_lightskinned_male_diffuse3.png"
+   },
+   "scale": 0.982668,
+   "tris": 6000,
+   "trisParts": {
+    "brows": 192,
+    "cloth": 1589,
+    "eyes": 172,
+    "hair": 1591,
+    "skin": 2456
+   }
+  }
+ },
+ "body": "MPFB 2.0.17 · MakeHuman 시스템 자산(CC0)",
+ "bpy": "5.0.1",
+ "clipAlias": {
+  "aim": "aim2",
+  "idle": "idle2",
+  "swing": "swing2"
+ },
+ "clipNames": "glTF 애니메이션 이름 = '<몸>.<클립>'(M.walk · F.walk …)",
+ "clips": {
+  "aim2": {
+   "center": "feet",
+   "duration": 1.0,
+   "fps": 2.0,
+   "frames": 2,
+   "keys": 8,
+   "label": "CMU 113_24 (Subject #113 · Throw)",
+   "loop": true,
+   "rule": "reach",
+   "sheet": [
+    2,
+    true,
+    2.0
+   ],
+   "span": 8,
+   "src": "cmu_113_24_throw.bvh",
+   "window": [
+    2,
+    120
+   ]
+  },
+  "idle2": {
+   "center": "feet",
+   "duration": 4.444444,
+   "fps": 0.9,
+   "frames": 4,
+   "keys": 16,
+   "label": "CMU 77_02 (Subject #77 · standing)",
+   "loop": true,
+   "rule": "still",
+   "sheet": [
+    4,
+    true,
+    0.9
+   ],
+   "span": 16,
+   "src": "cmu_77_02_stand.bvh",
+   "window": [
+    376,
+    533
+   ]
+  },
+  "run": {
+   "center": "hips",
+   "duration": 0.571429,
+   "fps": 14.0,
+   "frames": 8,
+   "keys": 32,
+   "label": "CMU 09_01 (Subject #9 · run)",
+   "loop": true,
+   "rule": "cycle",
+   "sheet": [
+    8,
+    true,
+    14.0
+   ],
+   "span": 32,
+   "src": "cmu_09_01_run.bvh",
+   "window": [
+    15,
+    87
+   ]
+  },
+  "swing2": {
+   "center": "feet",
+   "duration": 0.357143,
+   "fps": 14.0,
+   "frames": 6,
+   "keys": 21,
+   "label": "CMU 80_71 (Subject #80 · chopping wood)",
+   "loop": false,
+   "rule": "beat",
+   "sheet": [
+    6,
+    false,
+    14.0
+   ],
+   "span": 20,
+   "src": "cmu_80_71_chop.bvh",
+   "window": [
+    474,
+    98
+   ]
+  },
+  "walk": {
+   "center": "hips",
+   "duration": 0.8,
+   "fps": 10.0,
+   "frames": 8,
+   "keys": 32,
+   "label": "CMU 07_01 (Subject #7 · walk)",
+   "loop": true,
+   "rule": "cycle",
+   "sheet": [
+    8,
+    true,
+    10.0
+   ],
+   "span": 32,
+   "src": "cmu_07_01_walk.bvh",
+   "window": [
+    105,
+    129
+   ]
+  }
+ },
+ "clothKinds": [
+  "hemp",
+  "ramie",
+  "leather",
+  "fur"
+ ],
+ "defaultBody": "M",
+ "exporter": "io_scene_gltf2 5.0.21",
+ "fabric": {
+  "fur": "Carpet016",
+  "hemp": "Fabric061",
+  "leather": "Leather028",
+  "ramie": "Fabric036"
+ },
+ "facing": "방향 0 = 모델 +x(Blender) — 시트 행 0 과 같다 · 방향 d = d×45°(연속 회전은 atan2(fy,fx))",
+ "flip": "시트는 굽고 나서 좌우를 뒤집는다(_flip_png) — 엔진은 모델 좌표를 게임 좌표 그대로 놓고(거울 = 행렬식 −1) 같은 그림을 얻는다",
+ "glb": "char_body.glb",
+ "height": 1.6,
+ "keysPerFrame": 4,
+ "mpfb": "2.0.17",
+ "rig": "MPFB cmu_mb(31뼈 · CMU BVH 관절 이름) — 뼈 이름 앞에 몸 머리('M_'·'F_')",
+ "roughness": {
+  "fur": 0.97,
+  "hemp": 0.9,
+  "leather": 0.75,
+  "ramie": 0.88
+ },
+ "sky": [
   0.52,
   0.56,
   0.6
  ],
- "ambientStrength": 0.550000011920929,
- "bpy": "5.0.1",
- "clips": {
-  "aim": {
-   "duration": 1.0,
-   "fps": 2.0,
-   "frames": 2,
-   "loop": true
-  },
-  "idle": {
-   "duration": 4.444444,
-   "fps": 0.9,
-   "frames": 4,
-   "loop": true
-  },
-  "walk": {
-   "duration": 0.8,
-   "fps": 10.0,
-   "frames": 8,
-   "loop": true
-  }
- },
- "exporter": "io_scene_gltf2 5.0.21",
- "facing": "방향 0 = 모델 +x(Blender) — 시트 행 0 과 같다 · 방향 d = d×45°(연속 회전은 atan2(fy,fx))",
- "flip": "시트는 굽고 나서 좌우를 뒤집는다(_flip_png) — 엔진은 모델 좌표를 게임 좌표 그대로 놓고(거울 = 행렬식 −1) 같은 그림을 얻는다",
- "glb": "char_body.glb",
- "meshes": {
-  "body": [
-   "armL",
-   "armR",
-   "footL",
-   "footR",
-   "legL",
-   "legR",
-   "torso"
-  ],
-  "clothes": [
-   "belt",
-   "skirt",
-   "slvL",
-   "slvR",
-   "tunic"
-  ],
-  "clothesMat": "leather"
- },
+ "skyStrength": 0.55,
  "sunDir": [
   0.451984,
-  0.645501,
+  0.6455,
   -0.615662
  ],
- "sunEnergy": 3.5999999046325684,
+ "sunEnergy": 3.6,
+ "textures": {
+  "F": {
+   "alpha": "tex/f_alpha.png",
+   "fur": "tex/f_fur.jpg",
+   "hemp": "tex/f_hemp.jpg",
+   "leather": "tex/f_leather.jpg",
+   "ramie": "tex/f_ramie.jpg"
+  },
+  "M": {
+   "alpha": "tex/m_alpha.png",
+   "fur": "tex/m_fur.jpg",
+   "hemp": "tex/m_hemp.jpg",
+   "leather": "tex/m_leather.jpg",
+   "ramie": "tex/m_ramie.jpg"
+  }
+ },
+ "timeNote": "액션 시각 = 열쇠 번호(열쇠 k 가 시각 k) · 시트 판 k = 열쇠 keysPerFrame×k · 루프는 끝에 0번 열쇠가 한 번 더",
+ "timeUnit": "key",
  "units": "1 = 1m = 1셀(32 게임px)",
  "zsq": 0.8164965809277261,
  "zsqNote": "엔진이 부모 스케일로 누른다(포즈 뒤 누르기 = char_render.py ZSQ 절과 같은 순서)"
