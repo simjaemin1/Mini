@@ -15,6 +15,7 @@
 //   ⓔ 긋는 중 우클릭 팬 · 스페이스 팬 · 휠 줌이 draft 를 안 건드린다 · 가장자리 자동 팬(초당 화면 폭 ½)
 //   ⓕ 점 고치기 — 끌기 · 선분 위 삽입(폭 보간) · Del 점 삭제 · 점 폭 슬라이더 · 전부 undo
 //   ⓖ 잇기 — 끝점을 끝점에 끌어 놓으면 하나(점 = 합 − 1 · 넓은 폭으로 맞춤 · 긴 쪽 이름) · 삼거리 · 고리는 안 잇는다 · undo
+//   ⓗ [T601 추신2] 바다 위 피처 — 해안 바다 띠 셀 위 마을·광맥·숲(중심)·강(꼭짓점 · 끝) · 수 = 서버 정본 마스크로 센 수 · 빨간 테두리 · 목록 칸 · export 무변
 'use strict';
 const path = require('path');
 const fs = require('fs');
@@ -107,6 +108,13 @@ const _seen = {};
     ok(r.nf === PIN.nf && r.nm === PIN.nm && r.stamp === PIN.stamp, '작업 파일 입력으로 불러옴 — 강·산맥·마을 수 그대로', JSON.stringify(r));
     ok(_UPD ? a === _seen.single : a === pin.single, '불러온 작업의 export = 종전', a.slice(0, 16));
   }
+  // ★[T601 추신2 ⓒ] 해안 바다 띠 층 두 줄 — 데이터 셋 존 · 맥 사본 박음 줄 하나
+  { const CJ = JSON.parse(fs.readFileSync(path.join(LAB, 'map-editor-coast.json'), 'utf8'));
+    const ci = await pInline.evaluate(() => ({ z: COAST_BAKED ? Object.keys(COAST_BAKED.zones).sort().join(',') : '', st: COAST_BAKED && COAST_BAKED.stamp }));
+    const cf = await pFetch.evaluate(() => ({ z: COAST_BAKED ? Object.keys(COAST_BAKED.zones).sort().join(',') : '' }));
+    ok(ci.z === 'hanbando,jungwon_n,nippon' && cf.z === ci.z && ci.st === CJ.stamp, '[T601 추신2] 해안 층 데이터 = 셋 존(한반도 · 닛폰 · 중원북) — 맥 사본(박음)·레포 판(fetch) 같은 도장', JSON.stringify({ ...ci, fetch: cf.z }));
+    const lines = fs.readFileSync(inline, 'utf8').split('\n').filter((l) => /\/\/ @inline-coast/.test(l));
+    ok(lines.length === 1 && lines[0].startsWith('let COAST_BAKED = {'), '[T601 추신2] 맥 사본에 해안 박음 줄 하나(`@inline-coast` · 빈 null 이 아니다)', lines.length + '줄'); }
   await pInline.close(); await pFetch.close();
 
   // ── 편집 동작은 레포 판(http)에서 ─────────────────────────────────────
@@ -227,6 +235,48 @@ const _seen = {};
   { const a = await scr(pg, 6000, 2000), b = await scr(pg, 6300, 2100);
     await pg.mouse.move(a.x, a.y); await pg.mouse.down(); await pg.mouse.move(b.x, b.y, { steps: 6 }); await pg.mouse.up();
     r = await pg.evaluate(() => S.features.length); ok(r === 2, '고리(반대쪽 끝도 가깝다) — 안 잇는다', `${r}개`); }
+  console.log('\n[ⓗ 바다 위 피처(T601 추신2) — 해안 바다 띠 셀 위 마을·광맥·숲·강 끝 · 빨간 테두리 · 목록 칸]');
+  {
+    // 기대값 = **서버 정본 마스크**(`t588-coast-mask.js` · 층과 같은 손잡이 b) + 층 데이터가 적은 이동 칸 — PNG 를 거치지 않은 셈
+    const CJ = JSON.parse(fs.readFileSync(path.join(LAB, 'map-editor-coast.json'), 'utf8'));
+    const z = CJ.zones.hanbando, NX = z.nx, NY = z.ny, sh = z.shift || 0;
+    const mf = path.join(tmp, 'cm_hanbando.u8');
+    execFileSync(process.execPath, [path.join(__dirname, 't588-coast-mask.js'), 'hanbando', mf], { env: { ...process.env, T588_COAST: process.env.T588_COAST || 'b' }, stdio: 'ignore' });
+    const M0 = fs.readFileSync(mf), M = new Uint8Array(NX * NY); for (let y = sh; y < NY; y++) M.set(M0.subarray((y - sh) * NX, (y - sh) * NX + NX), y * NX);
+    const sea = (x, y) => { const cx = Math.floor(x / 32), cy = Math.floor(y / 32); return cx >= 0 && cy >= 0 && cx < NX && cy < NY && M[cy * NX + cx] === 1; };
+    const W = _BK.work.features; let rv = 0, rp = 0, re = 0; const cnt = { village: 0, ore: 0, forest: 0 };
+    for (const f of W) {
+      if (f.type === 'river') { const k = f.path.filter((q) => sea(q.x, q.y)).length; if (k) { rv++; rp += k; } const a = f.path[0], b = f.path[f.path.length - 1]; if (sea(a.x, a.y) || (f.path.length > 1 && sea(b.x, b.y))) re++; }
+      else if (cnt[f.type] !== undefined && f.center && sea(f.center.x, f.center.y)) cnt[f.type]++;
+    }
+    const want = `강 ${rv}줄 ${rp}점(끝이 바다 ${re}) · 마을 ${cnt.village} · 광맥 ${cnt.ore} · 숲 ${cnt.forest}`;
+    const pc = await open(`http://127.0.0.1:${PORT}/map-editor.html`);
+    await pc.evaluate(() => { S.multi = false; S.zone = 'hanbando'; [S.ZW, S.ZH] = ZONES.hanbando; S.features = WORK_BAKED.features.slice(); S.mf = WORK_BAKED.mf.slice(); for (const k in S.vis) S.vis[k] = true; S.showCoast = true; document.getElementById('coastToggle').checked = true; fitView(); refresh(); });
+    await pc.waitForFunction(() => !!coastMask('hanbando'), null, { timeout: 15000 });
+    await pc.evaluate(() => render());
+    r = await pc.evaluate(() => ({ sum: document.getElementById('seaSum').textContent, n: +document.getElementById('seaCount').textContent, rows: document.querySelectorAll('#seaList .fitem').length,
+      a: seaAt(35000, 129900), b: seaAt(35000, 65000), mw: (() => { S.multi = true; const v = seaAt(409984 + 35000, 49984 + 129900); S.multi = false; return v; })() }));
+    ok(r.a === true && r.b === false && r.mw === true, '바다 셀 술어 — 한반도 남쪽 끝 바다 · 한가운데 뭍 · 전체 월드(세계 좌표)도 같은 칸', JSON.stringify({ a: r.a, b: r.b, mw: r.mw }));
+    ok(r.sum.startsWith(want), `목록 칸 머리 = 서버 정본 마스크로 센 수(작업 피처 · 강 점 = 꼭짓점 · 마을·광맥·숲 = 중심)`, r.sum);
+    ok(r.n === r.rows && r.n >= rv + cnt.village + cnt.ore + cnt.forest,
+      '목록 줄 수 = 바다 위 피처 수(강은 꼭짓점이 뭍이어도 줄기가 바다를 지나면 든다)', `${r.n} · 줄 ${r.rows}`);
+    // 빨간 테두리 — 남해안을 화면에 넣고 켬/끔 화소
+    const red = async () => pc.evaluate(() => { const d = ctx.getImageData(0, 0, cv.width, cv.height).data; let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i] > 230 && d[i + 1] < 70 && d[i + 2] < 70) n++; return n; });
+    await pc.evaluate(() => { S.view.scale = 0.03; S.view.ox = 20; S.view.oy = cv.height - 130016 * 0.03 - 20; render(); });
+    const on = await red();
+    await pc.click('#coastToggle'); await pc.waitForTimeout(100);
+    const off = await red(); const offTxt = await pc.evaluate(() => document.getElementById('seaCount').textContent);
+    ok(on > 200 && off === 0 && offTxt === '–', '층 켬 = 바다 위 빨간 테두리 · 끔 = 테두리 0 · 목록 비움', JSON.stringify({ on, off, offTxt }));
+    await pc.click('#coastToggle'); await pc.waitForTimeout(100);
+    // 목록 줄을 누르면 그 피처로 간다(선택 · 화면 가운데가 바다 위 자리)
+    r = await pc.evaluate(() => { const it = document.querySelector('#seaList .fitem[data-sea=river]'); if (!it) return null; it.click();
+      const cx = s2wx(cv.width / 2), cy = s2wy(cv.height / 2); return { sel: S.sel && S.sel.type, name: S.sel && S.sel.name, sea: seaAt(cx, cy) }; });
+    ok(!!r && r.sel === 'river' && r.sea === true, '목록 줄 누름 = 그 강 선택 · 화면 가운데가 그 강의 바다 위 자리', JSON.stringify(r));
+    const ex = sha(await exportText(pc));
+    ok(ex === (_UPD ? _seen.single : pin.single), '표시를 켜고 끄고 눌러도 단일 export sha256 = 고정값(읽기 전용)', ex.slice(0, 16));
+    ok(pc._errs.length === 0, '바다 위 표시 — 페이지 오류 0', pc._errs.join(' | '));
+    await pc.close();
+  }
   ok(pg._errs.length === 0, '페이지 오류 0', pg._errs.join(' | '));
   await pg.close(); await browser.close(); srv.close();
   if (_UPD && !fail && _seen.single) { _PINS[_BK.work.stamp] = { single: _seen.single, multi: _seen.multi }; fs.writeFileSync(_PINF, JSON.stringify(_PINS, null, 1) + '\n'); console.log('  [pins] ' + _BK.work.stamp + ' 적음'); }

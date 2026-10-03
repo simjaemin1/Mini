@@ -130,6 +130,9 @@
   </div>
 
   <div id="right">
+    <h2>🌊 바다 위 (<span id="seaCount">0</span>)</h2>
+    <div class="hint" id="seaSum" style="margin-bottom:4px">해안 바다 띠를 켜면 바다 셀 위에 놓인 마을·광맥·숲·강 끝을 여기 적는다(누르면 그 자리로)</div>
+    <div id="seaList" style="max-height:220px;overflow:auto;margin-bottom:8px"></div>
     <h2>피처 목록 (<span id="fcount">0</span>)</h2>
     <div id="flist"></div>
     <h2>사용법</h2>
@@ -354,8 +357,12 @@ function render(){
   if(S.multi) drawBgMulti(); else drawBgSingle();
   drawCoast();
   if(S.showRef && S.ref){ if(S.multi) drawRefMulti(); else drawSet((S.ref[S.zone]||S.ref), true); }
+  const _sea = seaMarks();                // [T601 추신2] 바다 위 피처 — 강 구간은 밑에 빨간 테두리 · 점·원·강 끝은 위에 고리
+  if(_sea) drawSeaMarks(_sea, true);
   if(S.cellPreview){ drawCellPreview(cellPreviewSrc()); drawSet({features:feats()}, true); }
   else drawSet({features:feats()}, false);
+  if(_sea) drawSeaMarks(_sea, false);
+  renderSeaList(_sea);
   if(S.draft) drawFeature(S.draft, false, true);
   // ★★[11차 3차 — 실화면 교정] 다리는 **맨 마지막에** 그린다.
   //   앞서 참조 지형 바로 뒤에 그렸더니 편집 피처(사용자가 그리는 강)가 그 위를 덮어 다리가 강 밑으로 사라졌다.
@@ -522,7 +529,7 @@ function drawBgMulti(){
 const _coastImg = {};
 function coastImg(z){
   if(!COAST_BAKED || !COAST_BAKED.zones || !COAST_BAKED.zones[z]) return null;
-  if(!_coastImg[z]){ const im=new Image(); im.onload=()=>render(); im.src=COAST_BAKED.zones[z].png; _coastImg[z]=im; }
+  if(!_coastImg[z]){ const im=new Image(); im.onload=()=>{ _seaGen++; render(); }; im.src=COAST_BAKED.zones[z].png; _coastImg[z]=im; }
   return _coastImg[z].complete ? _coastImg[z] : null;
 }
 function drawCoastZone(z, off){
@@ -535,6 +542,93 @@ function drawCoast(){
   if(!S.showCoast || !COAST_BAKED) return;
   if(S.multi){ for(const z of MZ){ if(WZONES[z]) drawCoastZone(z, WZONES[z].off); } }
   else drawCoastZone(S.zone, [0,0]);
+}
+// ★[T601 추신2] **바다 위 피처** — 해안 바다 띠 셀(위 층과 같은 PNG · 1px = 1셀) 위에 놓인 마을·광맥·숲(중심)과 강(줄기 점 · 끝)을 빨갛게.
+//   재민이 이 층을 보며 지형을 고친다(족보 563·564 — 바다 위 정본은 지우거나 옮기지 않는다 · 목록만). 읽기 전용 — 작업 데이터 무변.
+//   강: 꼭짓점이 바다 셀 위면 "바다 위 점"(T604 추신3 셈과 같은 자 — 강 n줄 m점) · 줄기를 32px(1셀)마다 짚어 바다 위 구간은 빨간 테두리 · 끝점이 바다면 끝에 빨간 고리.
+let _seaGen = 0;              // 마스크가 새로 풀릴 때마다 +1(메모 무효)
+const _coastMask = {};
+function coastMask(z){
+  if(_coastMask[z]) return _coastMask[z];
+  const im = coastImg(z); if(!im) return null;
+  const d = COAST_BAKED.zones[z], oc = document.createElement('canvas'); oc.width = d.nx; oc.height = d.ny;
+  const g = oc.getContext('2d'); g.drawImage(im, 0, 0);
+  const px = g.getImageData(0, 0, d.nx, d.ny).data, M = new Uint8Array(d.nx * d.ny);
+  for(let i = 0; i < M.length; i++) M[i] = px[i*4+3] > 0 ? 1 : 0;   // 팔레트 0 = 투명(뭍) · 1 = 바다
+  return (_coastMask[z] = { M, nx: d.nx, ny: d.ny });
+}
+function seaAt(x, y){   // 모델 좌표(단일 = 존 로컬 · 전체 월드 = 세계)
+  let z = S.zone, lx = x, ly = y;
+  if(S.multi){ z = zoneAt(x, y); if(!z) return false; lx = x - WZONES[z].off[0]; ly = y - WZONES[z].off[1]; }
+  const c = coastMask(z); if(!c) return false;
+  const cx = Math.floor(lx / 32), cy = Math.floor(ly / 32);
+  return cx >= 0 && cy >= 0 && cx < c.nx && cy < c.ny && c.M[cy * c.nx + cx] === 1;
+}
+const SEA_T = { river:'강', village:'마을', ore:'광맥', forest:'숲' };
+const _seaMemo = new WeakMap();
+function seaOf(f){
+  if(!SEA_T[f.type]) return null;
+  let sig = S.multi + '|' + S.zone + '|' + _seaGen + '|';
+  if(f.path){ let a = f.path.length; for(const p of f.path) a += p.x * 3 + p.y * 7 + (p.w || 0); sig += a; } else if(f.center) sig += f.center.x + ',' + f.center.y;
+  const m = _seaMemo.get(f); if(m && m.sig === sig) return m.v;
+  let v = null;
+  if(f.type === 'river' && f.path && f.path.length){
+    let pts = 0; const segs = [];
+    for(const p of f.path) if(seaAt(p.x, p.y)) pts++;
+    for(let i = 0; i < f.path.length - 1; i++){ const a = f.path[i], b = f.path[i+1];
+      const n = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / 32)); let run = -1;
+      for(let t = 0; t <= n; t++){ const on = seaAt(a.x + (b.x - a.x) * t / n, a.y + (b.y - a.y) * t / n);
+        if(on && run < 0) run = t; if((!on || t === n) && run >= 0){ const e = on ? t : t - 1; segs.push([a.x + (b.x-a.x)*run/n, a.y + (b.y-a.y)*run/n, a.x + (b.x-a.x)*e/n, a.y + (b.y-a.y)*e/n, ((a.w||300) + (b.w||300)) / 2]); run = -1; } } }
+    const p0 = f.path[0], p1 = f.path[f.path.length - 1];
+    const e0 = seaAt(p0.x, p0.y), e1 = f.path.length > 1 && seaAt(p1.x, p1.y);
+    if(pts || segs.length) v = { pts, segs, ends: [e0 ? p0 : null, e1 ? p1 : null].filter(Boolean) };
+  } else if(f.center && seaAt(f.center.x, f.center.y)) v = { pts: 1 };
+  _seaMemo.set(f, { sig, v }); return v;
+}
+function seaMarks(){
+  if(!S.showCoast || !COAST_BAKED) return null;
+  const out = []; for(const f of feats()){ if(!visOK(f.type)) continue; const v = seaOf(f); if(v) out.push([f, v]); }
+  return out;
+}
+function drawSeaMarks(list, under){
+  ctx.save(); ctx.strokeStyle = '#ff2a2a'; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  for(const [f, v] of list){
+    if(f.type === 'river'){
+      if(under){ for(const g of v.segs){ ctx.lineWidth = Math.max(1.2, g[4] * S.view.scale) + 5; ctx.beginPath(); ctx.moveTo(w2sx(g[0]), w2sy(g[1])); ctx.lineTo(w2sx(g[2]), w2sy(g[3])); ctx.stroke(); } }
+      else { ctx.lineWidth = 3; for(const p of v.ends){ ctx.beginPath(); ctx.arc(w2sx(p.x), w2sy(p.y), 8, 0, 7); ctx.stroke(); } }
+    } else if(!under){
+      if(f.type === 'village'){ ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(w2sx(f.center.x), w2sy(f.center.y), 10, 0, 7); ctx.stroke(); }
+      else { const rx = (f.rx ?? f.radius ?? 0) * S.view.scale, ry = (f.ry ?? f.radius ?? 0) * S.view.scale;
+        ctx.lineWidth = 2.5; ctx.beginPath(); ctx.ellipse(w2sx(f.center.x), w2sy(f.center.y), Math.max(6, rx), Math.max(6, ry), 0, 0, 7); ctx.stroke(); }
+    }
+  }
+  ctx.restore();
+}
+let _seaListKey = '';
+function renderSeaList(list){
+  const cnt = document.getElementById('seaCount'), sum = document.getElementById('seaSum'), el = document.getElementById('seaList'); if(!el) return;
+  const key = list ? list.map(([f, v]) => f.id + ':' + v.pts + ':' + (v.ends ? v.ends.length : 0)).join(',') + '|' + (S.sel && S.sel.id) : 'off';
+  if(key === _seaListKey) return; _seaListKey = key;
+  el.innerHTML = '';
+  if(!list){ cnt.textContent = '–'; sum.textContent = COAST_BAKED ? '해안 바다 띠가 꺼져 있다' : '해안 층 없음(map-editor-coast.json 을 못 읽었다)'; return; }
+  const by = { river: [], village: [], ore: [], forest: [] }; for(const r of list) by[r[0].type].push(r);
+  const rv = by.river.filter(([, v]) => v.pts > 0), rpts = rv.reduce((a, [, v]) => a + v.pts, 0), rend = by.river.filter(([, v]) => v.ends.length).length;
+  cnt.textContent = list.length;
+  sum.textContent = `강 ${rv.length}줄 ${rpts}점(끝이 바다 ${rend}) · 마을 ${by.village.length} · 광맥 ${by.ore.length} · 숲 ${by.forest.length}` + (COAST_BAKED.stamp ? ' · 해안 ' + COAST_BAKED.stamp : '');
+  for(const t of ['village', 'river', 'ore', 'forest']) for(const [f, v] of by[t]){
+    const d = document.createElement('div'); d.className = 'fitem' + (S.sel === f ? ' sel' : ''); d.dataset.sea = t;
+    const extra = t === 'river' ? ` — 점 ${v.pts}${v.ends.length ? ' · 끝 ' + v.ends.length : ''}` : '';
+    d.innerHTML = `<span class="dot" style="background:#ff2a2a"></span><span class="nm">${SEA_T[t]} ${f.name || '(이름)'}${extra}</span>`;
+    d.onclick = () => seaJump(f, v);
+    el.appendChild(d);
+  }
+}
+function seaJump(f, v){
+  let p = f.center;
+  if(f.type === 'river'){ p = (v.ends && v.ends[0]) || f.path.find(q => seaAt(q.x, q.y)) || (v.segs[0] ? { x: v.segs[0][0], y: v.segs[0][1] } : f.path[0]); }
+  S.view.scale = Math.max(S.view.scale, 0.06);
+  S.view.ox = cv.width / 2 - p.x * S.view.scale; S.view.oy = cv.height / 2 - p.y * S.view.scale;
+  S.sel = f; S.selPt = null; refresh();
 }
 function drawRefMulti(){ for(const z in S.ref){ if(!WZONES[z]) continue; drawSetOff(S.ref[z], WZONES[z].off); } }
 // ★[11차 재민 지시] **물이 산 위**다. 그리는 순서 = 숲 → 산맥 → 계곡 → 호수 → 강.

@@ -245,7 +245,11 @@ const isWaterTileLocal = (x, y) => {
 };
 const isRockTileLocal = (x, y) => { if (!_inZone(x, y)) return false; try { return !!T.isRockCellLocal(Z, x, y); } catch { return false; } };
 const isTerrainBlockedLocal = (x, y) => (!_inZone(x, y)) ? true : (isRockTileLocal(x, y) || isWaterTileLocal(x, y));
-const ta = P.makeTerrainAdapter(T, ZONE, { isTerrainBlockedLocal, isWaterTileLocal });
+// ★★[T601 ④] **개울 술어를 기본으로** — 실서버 시딩(= 초기화 세계)은 존이 `isStreamLocal` 을 넘겨 집터·논밭이 개울을 본다(T585).
+//   두 자가 같은 술어(`server/streams.js` 래스터 · 사본 0)를 deps 에 끼워야 게이트가 초기화 세계를 잰다 = 일곱째 판(족보 560).
+//   손잡이 `T601_RULER_STREAMS=0` = 옛 정의(개울 없는 자 판 · 바이트 그대로). 씨앗 캐시는 래스터 지문 표식(`t601s`)이 다르면 버린다.
+const _t601 = R('server/streams').rulerDeps(Z, { isTerrainBlockedLocal, isWaterTileLocal });
+const ta = P.makeTerrainAdapter(T, ZONE, _t601.deps);
 
 // ★씨앗 캐시는 `farm-metrics.js` 것과 **같은 모양**이다(`layout` 을 담는다 — 생활층이 그걸 먹는다).
 let seeds = null;
@@ -253,6 +257,7 @@ if (CACHE && fs.existsSync(CACHE)) { try { seeds = JSON.parse(fs.readFileSync(CA
 if (seeds && !(seeds[0] && seeds[0].layout)) { console.error('⚠캐시에 layout 이 없다 — 생활층을 못 세운다. `farm-metrics.js` 규약 캐시를 써라.'); process.exit(2); }
 // ★[T593 ⑤] 이름표 손잡이(`T593_LABEL=1`)는 이름을 바꾼다 — 캐시는 이름까지 담으므로 **손잡이가 다른 캐시는 안 쓴다**(켠 판만 `t593` 표식).
 if (seeds && !!(seeds[0] && seeds[0].t593) !== !!P.T593_LABEL) { console.log(`  ⚠[T593] 캐시(${CACHE})의 이름표 손잡이가 지금과 다르다 — 다시 굽는다`); seeds = null; }
+if (seeds && ((seeds[0] && seeds[0].t601s) || '') !== _t601.sig) { console.log(`  ⚠[T601] 캐시(${CACHE})의 개울 표식이 지금과 다르다 — 다시 굽는다`); seeds = null; }
 if (!seeds) {
   const hard = T.getZoneVillages(Z) || [];
   const picked = P.pickSeedVillages(hard, ta, { seedAll: !!ZONE.seedAllVillages, max: ZONE.villageMax || 0 });
@@ -264,7 +269,7 @@ if (!seeds) {
     let layout;
     try { if (ta.prepareFert) ta.prepareFert(c.ccx, c.ccy, 62); layout = VillageLayout.generate(ta, c.ccx, c.ccy, P.INITIAL_POP, {}); } catch (e) { continue; }
     const lp = P.extractLandParamsApprox(ta, c.ccx, c.ccy, layout);
-    seeds.push({ name: _t593 ? _t593.label(hv, layout, lp).name : hv.name, ccx: c.ccx, ccy: c.ccy, layout, lp, ...(_t593 ? { t593: 1 } : {}) });
+    seeds.push({ name: _t593 ? _t593.label(hv, layout, lp).name : hv.name, ccx: c.ccx, ccy: c.ccy, layout, lp, ...(_t593 ? { t593: 1 } : {}), ...(_t601.sig ? { t601s: _t601.sig } : {}) });
   }
   if (CACHE) { try { fs.mkdirSync(path.dirname(CACHE), { recursive: true }); fs.writeFileSync(CACHE, JSON.stringify(seeds)); } catch (e) {} }
 }
