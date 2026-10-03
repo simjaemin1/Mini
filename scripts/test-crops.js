@@ -726,7 +726,9 @@ function dayOfSeason(season) {
       const gid = 'garlic';
       let p = null; for (let d = 0; d < 400; d++) if (Crops.canSowOn(gid, d) && Crops.sowMonthsOf(gid).includes(Crops.monthOf(d))) { p = d; break; }
       const oldReady = p + Crops.growDaysOf(gid);            // T91 이 내던 날(활동일만 셌을 때)
-      pre(Crops.seasonOfDay(oldReady) === 'winter', 'T91 이 내던 마늘 수확일은 겨울이었다(자명 통과 금지)',
+      // ★[T570] 켬(진짜 달력): 9월 1일 + 90 = **11월 30일**(가을 끝날 · 겨울 문턱) — 옛 달력(가을 90일)에선 겨울 첫날(12월)이었다.
+      const _CAL_ON = require('../server/calendar').ON;
+      pre(_CAL_ON ? Crops.monthOf(oldReady) >= 11 : Crops.seasonOfDay(oldReady) === 'winter', _CAL_ON ? 'T91 이 내던 마늘 수확일은 겨울 문턱(11월 말)이었다(자명 통과 금지)' : 'T91 이 내던 마늘 수확일은 겨울이었다(자명 통과 금지)',
         `게임일 ${oldReady} · ${Crops.monthOf(oldReady)}월`);
       ok(!Crops.isReady(gid, p, oldReady), '★★★⑫ⓒ 마늘이 **12월에 안 익는다** — 겨울을 못 지났으니', `게임일 ${oldReady}`);
       ok(Crops.monthOf(Crops.readyDay(gid, p)) >= 5, '★★⑫ⓒ 대신 초여름에 익는다', `${Crops.monthOf(Crops.readyDay(gid, p))}월`);
@@ -814,8 +816,8 @@ function dayOfSeason(season) {
       // ① 되돌림 셋 = 0 ⇒ T91 값 그대로 (마늘이 12월에 익는다)
       const rd0 = Number(runWith({ T99_VERNAL: '0', T99_CARE_PAUSE: '0', T99_PERENNIAL_DORMANT: '0' },
         `C.readyDay('garlic',${GARLIC_P})`));
-      ok(rd0 === GARLIC_P + Crops.growDaysOf('garlic') && Crops.seasonOfDay(rd0) === 'winter',
-        '★★★⑫ⓗ 되돌림(env 셋 = 0) ⇒ **T91 값이 그대로 재현된다**(마늘 12월)',
+      ok(rd0 === GARLIC_P + Crops.growDaysOf('garlic') && (require('../server/calendar').ON ? Crops.monthOf(rd0) >= 11 : Crops.seasonOfDay(rd0) === 'winter'),
+        '★★★⑫ⓗ 되돌림(env 셋 = 0) ⇒ **T91 값이 그대로 재현된다**(마늘 — 옛 달력 12월 · 켬 11월 30일)',
         `게임일 ${rd0} · ${Crops.monthOf(rd0)}월`);
       ok(Crops.readyDay('garlic', GARLIC_P) !== rd0,
         '★★⑫ⓗ 그리고 켠 판은 그 값이 **아니다**(되돌림이 실제로 무언가를 되돌린다)',

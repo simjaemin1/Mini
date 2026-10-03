@@ -99,11 +99,14 @@ console.log('\n=== 사건 장부 하네스 ===');
 {
   // 엔진의 계절은 export 되지 않으므로 **관측 가능한 대리**로 검사한다:
   //   SEASON_MULT 는 겨울에만 fertility 0.80 이다 → applyLandModifiers 가 밟는 날을 되짚는다.
-  const bounds = [0, 89, 90, 179, 180, 269, 270, 364, 365, 730];
+  // ★[T570] 켬(기본) = 달력 정본(그레고리력 · 1년 3월 1일 = 0 · 봄 92 · 여름 92 · 가을 91 · 겨울 90|91) ·
+  //   끔(`T570_CALENDAR=0`) = 옛 경계 90/180/270. 어느 쪽이든 events 와 econ 이 **같은 함수 하나**(`server/calendar.js`)를 본다.
+  const CAL_ON = require('../server/calendar').ON;
+  const bounds = CAL_ON ? [0, 91, 92, 183, 184, 274, 275, 364, 365, 730] : [0, 89, 90, 179, 180, 269, 270, 364, 365, 730];
   const expect = ['spring', 'spring', 'summer', 'summer', 'autumn', 'autumn', 'winter', 'winter', 'spring', 'spring'];
   let all = true;
-  bounds.forEach((d, i) => { if (Events.seasonOf(d) !== expect[i]) all = false; });
-  ok(all, '⓪ 계절 경계 4분기(90/180/270)·연 순환 일치');
+  bounds.forEach((d, i) => { if (Events.seasonOf(d) !== expect[i] || econV2.seasonOf(d) !== expect[i]) all = false; });
+  ok(all, CAL_ON ? '⓪ 계절 경계(달 — 92/184/275)·연 순환 일치 · events = econ' : '⓪ 계절 경계 4분기(90/180/270)·연 순환 일치');
   // 그리고 엔진이 실제로 그 경계에서 fertility 를 꺾는지 — 대리가 아니라 실물로 한 번 확인
   const w = makeWorld(0, 3);
   const v0 = w.villages[0];
@@ -402,14 +405,16 @@ if (REQ_CTX) {
 {
   const world = makeWorld(60, 6);
   const L = mkLedger(world);
-  world.day = 88;
-  L.scanDay(world, 88, {});                                  // 봄(래치 정렬)
-  const e89 = L.scanDay(world, 89, {}).filter((e) => e.type === 'SEASON_CHANGE');
-  const e90 = L.scanDay(world, 90, {}).filter((e) => e.type === 'SEASON_CHANGE');
-  const e91 = L.scanDay(world, 91, {}).filter((e) => e.type === 'SEASON_CHANGE');
+  // ★[T570] 전환일을 **정본에서 찾는다**(켬 = 6월 1일 = 92 · 끔 = 옛 90) — 90 을 박으면 달력이 바뀐 날 하네스가 거짓말한다.
+  let T = 1; while (Events.seasonOf(T) === Events.seasonOf(T - 1)) T++;
+  world.day = T - 2;
+  L.scanDay(world, T - 2, {});                               // 봄(래치 정렬)
+  const e89 = L.scanDay(world, T - 1, {}).filter((e) => e.type === 'SEASON_CHANGE');
+  const e90 = L.scanDay(world, T, {}).filter((e) => e.type === 'SEASON_CHANGE');
+  const e91 = L.scanDay(world, T + 1, {}).filter((e) => e.type === 'SEASON_CHANGE');
   const live = world.villages.filter((v) => v.npcs.length > 0).length;
   ok(e89.length === 0, '⑨a 전환일이 아닌 날엔 계절 사건 0건');
-  ok(e90.length === live && live > 0, '⑨ 전환일(90)에 마을당 1건', `${e90.length}건 / 인구있는 마을 ${live}`);
+  ok(e90.length === live && live > 0, `⑨ 전환일(${T})에 마을당 1건`, `${e90.length}건 / 인구있는 마을 ${live}`);
   ok(e91.length === 0, '⑨b 전환 다음 날 0건');
   ok(e90[0] && e90[0].meta.season === 'summer', '⑨c 계절 이름이 맞다', e90[0] ? e90[0].meta.season : '');
 }
@@ -919,7 +924,9 @@ const mkLedgerGeo = (world, geo, cfg) => {
   ok(c1.seasons.every((b) => Events.calendarOf(b.start).season === b.season && Events.calendarOf(b.start).dayOfSeason === 1),
     '㉗b 각 계절 칸의 시작일이 정본 달력의 계절 첫날이다');
   const yd2 = c1.seasons.reduce((a, b) => a + b.days, 0);
-  ok(yd2 === c1.yearDays, '㉗c 계절 길이의 합 = 한 해의 길이(상수를 안 적고 정본에서 유도)', `${yd2} = ${c1.yearDays}`);
+  // ★[T570] 한 해의 칸 = 정본 `yearSpanOf`(켬: 1년은 3월 1일~12월 31일 306일 — 1·2월이 기점 앞이다 · 끔: 옛 한 해 365)
+  const _sp1 = Events.yearSpanOf(1), _yLen1 = _sp1[1] - Math.max(0, _sp1[0]) + 1;
+  ok(yd2 === _yLen1, '㉗c 계절 길이의 합 = 그 해의 길이(상수를 안 적고 정본에서 유도)', `${yd2} = ${_yLen1}`);
 
   // ── ㉘ 결정론 + 잘림 뒤 복구 — 같은 표를 다시 심으면 같은 연표가 나온다
   const L2 = Events.createLedger({ econV2, vidOf, depositMap: Villages.playerVillageDepositMap(), geo: chainGeo(N) });

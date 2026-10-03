@@ -79,7 +79,7 @@ function renderChroniclePanel(el) {
   // ── 연도 줄 — 접힘/펼침이 아니라 **해를 고르는 줄**이다(연표 한 화면 = 한 해).
   const years = c.years || [c.year];
   let h = `<div class="hint" style="margin-bottom:6px"><b>${c.name}</b> 연표 — `
-        + `지금은 ${c.cal ? `${c.cal.year}년 ${c.cal.seasonKo} ${c.cal.dayOfSeason}일` : `${c.today}일`}</div>`;
+        + `지금은 ${c.cal ? (c.cal.label || `${c.cal.year}년 ${c.cal.seasonKo} ${c.cal.dayOfSeason}일`) : `${c.today}일`}</div>`;
   h += '<div class="cr-cost" style="margin-bottom:8px">'
      + years.map((y) => `<button data-chyear="${y}" style="margin:1px 3px 1px 0;${y === c.year ? 'outline:1px solid var(--stam)' : ''}">${y}년</button>`).join('')
      + '</div>';

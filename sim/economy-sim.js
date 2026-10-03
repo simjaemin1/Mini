@@ -464,7 +464,8 @@ const PRESERVE_FOOD_FACTOR = 1 / PRESERVE_YIELD;   // 2.5 — 새 수가 아니�
 const SALT_DAILY_PC = 0.01;
 // ★[T60 ① 후보ⓑ] 흐름 눈금 손잡이 — 지리 눈금(ⓐⓒ)은 `server/sustain.js` 가 갖는다(사본 금지).
 const MSY_MODE_EMA = process.env.T60_MSY_MODE === 'ema';
-const MSY_EMA_LOCK_DAYS = 90;                        // econ 계절 경계(seasonOf d<90) — 새 수 아님
+// ★[T570] 첫 계절의 길이 = 달력 정본(켬: 1년 봄 3~5월 92일 · 끔 `T570_CALENDAR=0`: 옛 경계 90 글자 그대로).
+const MSY_EMA_LOCK_DAYS = (() => { const C = require('../server/calendar'); return C.ON ? C.seasonLen(0) : 90; })();   // econ 계절 경계 — 새 수 아님
 const MSY_HEADROOM = (() => { const v = parseFloat(process.env.T60_MSY_HEADROOM || ''); return (isFinite(v) && v > 0) ? v : 2; })();
 // ★★[T73 ECON 수술 2-a 2026-09-03 · 재민 확정] **곳간의 생곡은 식량이다.**
 //   나온 자리: T60 §0-ⓔ' — 소멸한 광산1 은 **밀 21 · 쌀 12 를 두고 굶어 죽었다**.

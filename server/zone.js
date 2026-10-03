@@ -8812,7 +8812,7 @@ let _fruitSeason = null;
 function _fruitSeasonSweep() {
   const T = Trees; if (!T || !T.ON()) return;
   const d = gameDayNow();
-  const se = Math.floor(d / T.yearDays()) + ':' + T.seasonOfDay(d);
+  const se = (T.yearOfDay ? T.yearOfDay(d) : Math.floor(d / T.yearDays())) + ':' + T.seasonOfDay(d);   // ★[T570] 연도 = 달력 정본
   if (se === _fruitSeason) return;                     // 평시 O(1)
   _fruitSeason = se;
   const changed = [];

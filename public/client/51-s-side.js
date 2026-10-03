@@ -881,7 +881,7 @@
       //   재민 목격 "몇 초마다 day 5씩"의 정체: 이 서버의 하루 길이(`VILLAGE_DAY_MS`)가 짧으면
       //   econ 일이 그만큼 빨리 흐른다 — 표기 버그가 아니라 **그 서버의 시계**다.
       //   그래서 날짜 옆에 **달력을 같이** 적는다. HUD 배지와 같은 값이면 시계가 하나라는 증거다.
-      + (myCalendar ? `<span style="color:var(--dim-2)"> · ${myCalendar.year}년 ${myCalendar.seasonKo} ${myCalendar.dayOfSeason}일</span>` : '')
+      + (myCalendar ? `<span style="color:var(--dim-2)"> · ${myCalendar.label || `${myCalendar.year}년 ${myCalendar.seasonKo} ${myCalendar.dayOfSeason}일`}</span>` : '')
       + `</div>`;
     h += `<div style="padding:0 10px 8px">식량 환산 <b>${inv.foodEquiv}</b>`
       + (inv.pop > 0 ? ` <span style="color:var(--dim-2)">(1인 ${inv.foodDays}일치)</span>` : '') + `</div>`;

@@ -17,7 +17,10 @@
 const WATERS = ['upper', 'mid', 'lower', 'lake', 'paddy'];
 
 // 계절 — econ 정본과 같은 경계(d<90 봄 · <180 여름 · <270 가을 · 그 밖 겨울). 새 수 0.
-function seasonOf(day) { const d = ((day | 0) % 360 + 360) % 360; return d < 90 ? 'spring' : d < 180 ? 'summer' : d < 270 ? 'autumn' : 'winter'; }
+// ★[T570] 켬 = 달력 정본(`server/calendar.js` — econ·events 와 같은 함수 하나). 옛 줄은 `% 360` 이라 econ(365)과 해마다 닷새씩
+//   어긋나던 **사본**이었다 — 끔(`T570_CALENDAR=0`)에서만 글자 그대로 남는다.
+const _Cal = require('./calendar');
+function seasonOf(day) { if (_Cal.ON) return _Cal.seasonOf(day | 0); const d = ((day | 0) % 360 + 360) % 360; return d < 90 ? 'spring' : d < 180 ? 'summer' : d < 270 ? 'autumn' : 'winter'; }
 
 // 종 표 — 설계_민물고기.md §1 그대로(이름·kg·사는 물·나는 계절).
 const SPECIES = [

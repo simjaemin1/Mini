@@ -29,6 +29,10 @@ let _Events = null;
 function _events() { if (!_Events) _Events = require('./events'); return _Events; }
 function seasonOfDay(day) { return _events().seasonOf(_day(day)); }
 function yearDays() { try { const y = _events().yearDaysOf && _events().yearDaysOf(); return y > 0 ? y : 365; } catch (e) { return 365; } }
+// ★[T570] 해마다 한 번 도는 장부의 **연도 열쇠** = 달력 정본의 **봄 기점 해**(`events.springYearOf` — 켬: 3월 1일에 바뀐다 · 끔: 옛 `day ÷ 한 해` 그대로).
+//   `Math.floor(d / yearDays())` 로 나누면 윤일마다 경계가 하루씩 밀린다 — 해 길이로 나누던 두 자리(열매·채집 예산)를 이걸로.
+//   ⚠달력 연도(1월 1일)로 세면 안 된다 — 겨울 비움이 1월에 새 해 열쇠를 먼저 잡아, 그해 가을 열매·봄 채집 예산이 다시 안 찬다.
+function yearOfDay(day) { try { const E = _events(); if (E && E.springYearOf) return E.springYearOf(day); } catch (e) {} return Math.floor(day / yearDays()); }
 
 // ── 되돌림 손잡이 ────────────────────────────────────────────────────────────
 // `T135_TREES=0` 이면 이 층 전체가 잠든다 — 종 축·열매·부등식·채집 실체가 전부 꺼지고
@@ -125,8 +129,8 @@ function stageYearsOf(id, t122StumpY, t122FullY) {
 function fruitSettle(store, key, id, day, size) {
   if (!ON()) return 0;
   const t = get(id); if (!t || !t.fruit) return 0;
-  const d = _day(day), Y = yearDays();
-  const yr = Math.floor(d / Y), se = seasonOfDay(d);
+  const d = _day(day);
+  const yr = yearOfDay(d), se = seasonOfDay(d);
   let e = store.get(key);
   if (!e) { e = { n: 0, yr: -1 }; store.set(key, e); }
   if (se === 'winter') { if (e.yr !== yr || e.n > 0) { e.n = 0; e.yr = yr; } return 0; }   // 겨울 = 소멸
@@ -241,7 +245,7 @@ function forageTake(v, want, day) {
   const out = {};
   if (!ON() || !(want > 0)) return out;
   const d = _day(day != null ? day : (v._world && v._world.day) || 0);
-  const Y = yearDays(), yr = Math.floor(d / Y), se = seasonOfDay(d);
+  const yr = yearOfDay(d), se = seasonOfDay(d);
   let st = v._t135;
   if (!st) { st = v._t135 = { yr: -1, left: {} }; }
   if (se === 'winter') { if (st.yr !== yr || Object.keys(st.left).length) { st.yr = yr; st.left = {}; } return out; }
@@ -278,7 +282,7 @@ function attachToWorld(world) {
 module.exports = {
   attachToWorld, forageTake, annualFruitBudget, treeCountOf, SIZE_MEAN,
   ON, get, ids, fruitIds, koOf, koSourceSize, woodOf, charOf, fruitOf, fruitYieldOf, isFruitTree,
-  matureYearsOf, fruitItems, fruitSeasonOf, seasonOfDay, yearDays,
+  matureYearsOf, fruitItems, fruitSeasonOf, seasonOfDay, yearDays, yearOfDay,
   speciesAt, stageYearsOf, fruitSettle, fruitTake, fellOK,
   MATURE_MODE, _axes: DATA._axes,
 };

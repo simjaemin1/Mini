@@ -310,9 +310,9 @@
     const cb = document.getElementById('calBadge');
     if (cb) {
       if (myCalendar) {
-        cb.textContent = `${myCalendar.year}년 ${myCalendar.seasonKo} ${myCalendar.dayOfSeason}일`;
+        cb.textContent = myCalendar.label || `${myCalendar.year}년 ${myCalendar.seasonKo} ${myCalendar.dayOfSeason}일`;   // ★[T570] 서버 달력 정본의 한 줄("1년 3월 1일 (봄)")
         cb.title = `econ 게임일 ${myCalendar.day} · 연중 ${myCalendar.dayOfYear + 1}/${myCalendar.yearDays}일`
-          + ` · 이 계절 ${myCalendar.seasonDays}일`;
+          + ` · ${myCalendar.seasonKo} ${myCalendar.dayOfSeason}/${myCalendar.seasonDays}일` + (myCalendar.isLeap ? ' · 윤년' : '');
         cb.hidden = false;
       } else cb.hidden = true;
     }
