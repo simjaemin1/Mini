@@ -10,7 +10,7 @@
 #   본토 = 존 테두리 중 **바다가 아닌 변**(이웃 뭍 존으로 이어지는 변)에 닿는 덩이 + 가장 큰 덩이.
 #   ⚠1셀 = 32px · 4방 = 서버 통행(`isWaterTileLocal` 4방 걸음)과 같은 이웃.
 # 쓰는 법: python3 scripts/t588-coast-measure.py <이름=mask.u8:meta.json> ... > out.json
-#   env T549_SHAPE = T549 모양 자 경로(기본 scripts/t549-coast-shape.py — T591 이 main 에 다시 얹는다)
+#   env T549_SHAPE = T549 모양 자 경로(기본 scripts/t549-coast-shape.py — T591 과 함께 main 에 들어왔다 · 추신2)
 # =============================================================================
 import json, os, subprocess, sys, tempfile
 import numpy as np
@@ -19,7 +19,7 @@ from scipy import ndimage as ndi
 HERE = os.path.dirname(os.path.abspath(__file__))
 SHAPE = os.environ.get('T549_SHAPE') or os.path.join(HERE, 't549-coast-shape.py')
 if not os.path.exists(SHAPE):
-    sys.exit(f'[T588 measure] T549 모양 자가 없다: {SHAPE} — 세션5 가지 3c5a5a91(T591 이 main 에 다시 얹는다) · env T549_SHAPE 로 경로를 줘라')
+    sys.exit(f'[T588 measure] T549 모양 자가 없다: {SHAPE} — main 의 scripts/t549-coast-shape.py · 다른 판은 env T549_SHAPE')
 BINS = [(1, 1), (2, 9), (10, 99), (100, 999), (1000, 9999), (10000, None)]
 BIN_KO = ['1', '2~9', '10~99', '100~999', '1천~1만', '1만+']
 N4 = np.array([[0, 1, 0], [1, 1, 1], [0, 1, 0]], bool)

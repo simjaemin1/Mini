@@ -73,12 +73,15 @@ function armTable(a) {
   { const sea2 = (i) => m[i] === 1 && !(K[i] & 1);
     let tf = 0; const per = {};
     const CSx = R('public/coast-shape.js'); const Cc = CSx.compile(ZONES, 6000, 5000, a === 'b' ? { variant: 'b' } : {});
-    const secs = Cc.secs.filter((q) => q.zone === Z && q.side);
+    // ★[추신2] 구간 가르기 = 그 칸에서 **구간 무게가 가장 큰 구간**(생성기 `weightsAt` 그대로) — 변이 둘(닛폰 남·동)인 존에서 변 축 범위로만 가르면 겹쳐 센다
+    const wv = new Float64Array(Cc.secs.length + 1);
     for (let y = 1; y < NY - 1; y++) for (let x = 1; x < NX - 1; x++) { const i = y * NX + x; if (m[i] || (K[i] & 1) || !roi[i]) continue;
       let t = false; for (let dy = -1; dy <= 1 && !t; dy++) for (let dx = -1; dx <= 1; dx++) { if (!dx && !dy) continue; if (sea2(i + dy * NX + dx)) { t = true; break; } }
       if (!t) continue; tf++;
       const wx = ZONE.worldOffsetX + x * SZ + SZ / 2, wy = ZONE.worldOffsetY + y * SZ + SZ / 2;
-      for (const q of secs) { const inside = (q.side === 'S' || q.side === 'N') ? (wx >= q.ax && wx < q.bx) : (wy >= q.ay && wy < q.by); if (inside) per[q.id] = (per[q.id] || 0) + 1; } }
+      if (CSx.weightsAt(Cc, wx, wy, wv) <= 0) { per['(구간 밖)'] = (per['(구간 밖)'] || 0) + 1; continue; }
+      let bi = 0; for (let q = 1; q < Cc.secs.length; q++) if (wv[q] > wv[bi]) bi = q;
+      const id = Cc.secs[bi].id; per[id] = (per[id] || 0) + 1; }
     o.tidal = tf; o.tidalBySec = per; }
   // ⓑ 마을 후보
   o.villages = (T.getZoneVillages(Z) || TT.villages || []).map((v) => ({ name: v.name, sea: seaAt(m, v.x, v.y), coastal: seaDist(m, v.x, v.y, Math.ceil(COAST_PX / SZ) + 1) <= COAST_PX }));
