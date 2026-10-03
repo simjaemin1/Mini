@@ -85,9 +85,13 @@ function _searchBegin(sx, sy, gx, gy, o) {
   const minX = radius ? Math.min(sx, gx) - radius : -Infinity, maxX = radius ? Math.max(sx, gx) + radius : Infinity;
   const minY = radius ? Math.min(sy, gy) - radius : -Infinity, maxY = radius ? Math.max(sy, gy) + radius : Infinity;
   const invLen = 1 / Math.max(1, Math.hypot(gx - sx, gy - sy));
+  // ★[T578] `hScale` — 스텝 비용이 1 보다 싸질 수 있는 호출(답압 할인 `costMul` 최저 0.87)이 h 를 그만큼 줄여 일관성을 지킨다.
+  //   안 주면 1 = 종전 h 그대로(비트 동일 · 랩 사본·걸음 프리셋 무변). 줄이지 않으면 할인 칸에서 h 가 실제 비용을 넘어
+  //   같은 노드를 몇 번씩 다시 열고 `maxPops` 에 걸린다(T573 §② ⓑ: 1,219쌍 중 280쌍 `null` · 꺼낸 노드 45만~500만+).
+  const hs = (o.hScale > 0 && o.hScale < 1) ? o.hScale : 1;
   const H = o.octile
-    ? (x, y) => { const dx = Math.abs(x - gx), dy = Math.abs(y - gy); return (dx > dy ? ORTHO * (dx - dy) + DIAG * dy : ORTHO * (dy - dx) + DIAG * dx) + _perp(x, y, sx, sy, gx, gy, invLen) * o.biasW * ORTHO; }
-    : (x, y) => (Math.abs(x - gx) + Math.abs(y - gy)) * ORTHO + _perp(x, y, sx, sy, gx, gy, invLen) * o.biasW * ORTHO;
+    ? (x, y) => { const dx = Math.abs(x - gx), dy = Math.abs(y - gy); return ((dx > dy ? ORTHO * (dx - dy) + DIAG * dy : ORTHO * (dy - dx) + DIAG * dx) + _perp(x, y, sx, sy, gx, gy, invLen) * o.biasW * ORTHO) * hs; }
+    : (x, y) => ((Math.abs(x - gx) + Math.abs(y - gy)) * ORTHO + _perp(x, y, sx, sy, gx, gy, invLen) * o.biasW * ORTHO) * hs;
   // 저장 백엔드: scratch(gen-스탬프 타이프트 — 대격자·좌표 [0,w)×[0,h) 전제) 또는 Map(소규모·좌표 무제한)
   let gGet, gSet, cameGet, cameSet, W2 = 0;
   const sc = o.scratch || null;
@@ -201,7 +205,7 @@ function _routeOpts(opts) {
     dirs: DIRS8, octile: true, biasW: BIAS_ROUTE,
     stepBlocked: null,   // 노드 차단만 → 커널이 nodeBlocked 직행(성능)
     nodeBlocked: opts.blocked || (() => false),
-    costMul: opts.costMul || null, prefer: null,
+    costMul: opts.costMul || null, prefer: null, hScale: opts.hScale || 1,   // ★[T578] 호출측이 costMul 최저값을 준다(안 주면 1 = 종전)
     maxPops: opts.maxPops || 250000, radius: 0, scratch: opts.scratch || null,
   };
 }

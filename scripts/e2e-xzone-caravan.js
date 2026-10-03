@@ -147,12 +147,14 @@ const dist = (a, b) => (a && b) ? Math.hypot(a.x - b.x, a.y - b.y) : Infinity;
   ok(!!back, 'ⓓ1 닛폰이 그 캐러밴을 치르고 돌려보냈다(도착 행 · 되사 온 짐)', back ? `${back.lastTo} · 판 ${back.sold ? `${back.sold.res}×${back.sold.amt}` : '없음(빈손)'} · 산 ${back.bought ? `${back.bought.res}×${back.bought.amt}` : '-'} · 남은 ${back.remain}일` : '-');
   const soldOk = back && (back.abandoned ? (back.res === pick.res && Math.abs(back.amt - pick.amt) < 1e-6) : (back.sold && back.sold.res === pick.res && Math.abs(back.sold.amt - pick.amt) < 0.01));
   ok(!!soldOk, 'ⓓ2 ★넘긴 짐 = 닛폰 도착 행이 판 짐(빈손이면 그대로 되가져옴 · 약탈 0)', back ? `넘김 ${pick.res}×${pick.amt.toFixed(2)} · ${back.abandoned ? `되가져옴 ${back.res}×${(back.amt || 0).toFixed(2)}` : `판 ${back.sold && back.sold.res}×${back.sold && back.sold.amt}`}` : '-');
-  const boughtOk = back && (back.abandoned || (back.bought && back.bought.res === back.res && Math.abs(back.bought.amt - back.amt) < 0.01));
+  //   ★[T578 추신] 도착 행이 아무것도 안 샀으면(살 것이 없었다 · 판 값만 남는다) 돌려보낸 짐도 없다 — 그것도 같은 뜻이다(질량은 ⓓ5 가 잰다).
+  const boughtOk = back && (back.abandoned || (back.bought && back.bought.res === back.res && Math.abs(back.bought.amt - back.amt) < 0.01)
+    || (!back.bought && !back.res && !((back.amt || 0) > 0)));
   ok(!!boughtOk, 'ⓓ3 돌려보낸 짐 = 도착 행이 산 짐', back ? `${back.res}×${(back.amt || 0).toFixed(2)} · 행 ${back.bought ? `${back.bought.res}×${back.bought.amt}` : '-'}` : '-');
   const hin = pick ? H.trace.find((t) => t.k === 'in' && t.back && t.key === pick.id) : null;
   const aBackN = back && back.at ? abs('nippon', back.at) : null, aBackH = hin ? abs('hanbando', hin.pt) : null;
   ok(!!hin && (!back || !back.body || dist(aBackN, aBackH) <= 2 + 1e-9), 'ⓓ4 돌아오는 몸도 경계 칸에서 이어 걷는다(닛폰이 지운 자리 = 한반도가 세운 자리)',
-    hin ? `닛폰 ${aBackN ? `(${aBackN.x},${aBackN.y})` : '(몸 없음)'} · 한반도 (${aBackH.x},${aBackH.y}) · 차 ${aBackN ? dist(aBackN, aBackH).toFixed(1) : '-'}px` : '한반도 받은 몸 없음');
+    hin ? `닛폰 ${aBackN ? `(${aBackN.x},${aBackN.y})` : '(몸 없음)'} · 한반도 (${aBackH.x},${aBackH.y}) · 차 ${aBackN ? dist(aBackN, aBackH).toFixed(1) : '-'}px · 경계까지 걸음 ${(back && back.walked) || '바로'}` : '한반도 받은 몸 없음');
   ok(!!done && back && done.res === back.res && Math.abs(done.amt - back.amt) < 1e-9, 'ⓓ5 ★★한반도 곳간에 들었다 — econ 귀환 갈래가 돌려보낸 짐 그대로(질량 보존)',
     done ? `#${pick.id} ${done.res}×${(done.amt || 0).toFixed(2)}${done.abandoned ? ' (빈손 귀환)' : ''} · 기다림 ${((Date.now() - tW) / 1000).toFixed(0)}s` : `기다림 ${((Date.now() - tW) / 1000).toFixed(0)}s 안에 안 끝났다`);
 
@@ -170,12 +172,20 @@ const dist = (a, b) => (a && b) ? Math.hypot(a.x - b.x, a.y - b.y) : Infinity;
     if (E.e1 && E.e2 && E.e3 && E.e4) break;
     await sleep(300);
   }
+  if (!(E.e1 && E.e2 && E.e3 && E.e4)) {   // ★[T578 추신] 셈이 안 맞으면 그 순간의 두 존 줄을 남긴다(이동 중을 놓친 자리를 표로 — 값은 안 고친다)
+    const dumpZ = (z, P) => { console.log(`  · [ⓔ 진단 ${z}] core ${JSON.stringify(P.core)} · st ${JSON.stringify(P.st)}`);
+      console.log(`  · [ⓔ 진단 ${z}] 캐러밴 ${JSON.stringify((P.caravans || []).filter((x) => x.home).map((x) => [x.id, x.state, x.to, x.home && x.home.zone, x.back, x.xback]))}`);
+      console.log(`  · [ⓔ 진단 ${z}] 몸 ${JSON.stringify((P.bodies || []).map((b) => [b.key, b.phase, b.pending, b.handing]))}`);
+      console.log(`  · [ⓔ 진단 ${z}] 흔적 끝 ${JSON.stringify((P.trace || []).slice(-30).map((t) => [t.k, t.id || t.key, t.g, t.day, t.toZone || t.fromZone || null]))}`); };
+    dumpZ('hanbando', H); dumpZ('nippon', N);
+  }
   ok(E.e1, "ⓔ1 한반도가 넘긴 'arrive' = 닛폰이 받은 'arrive'", `${H.st.crossArrive} = ${N.core.arriveIn}`);
   ok(E.e2, "ⓔ2 ★닛폰이 받은 'arrive' = 돌려보낸 'return' + 지금 닛폰에 있는 것", `${N.core.arriveIn} = ${N.core.returnOut} + 이동 중(캐러밴 ${E.inN} · 기록 줄 ${E.pendN})`);
   ok(E.e3, "ⓔ3 닛폰이 넘긴 'arrive' = 한반도가 받은 'arrive'(반대 방향)", `${N.st.crossArrive} = ${H.core.arriveIn}`);
   ok(E.e4, "ⓔ4 한반도가 받은 'arrive' = 돌려보낸 'return' + 지금 한반도에 있는 것", `${H.core.arriveIn} = ${H.core.returnOut} + 이동 중(캐러밴 ${E.inH} · 기록 줄 ${E.pendH})`);
   ok(H.st.sentFail === 0 && N.st.sentFail === 0 && H.st.bounced === 0 && N.st.bounced === 0, 'ⓔ5 문이 다 받았다(되돌림 0 · 못 보냄 0)', `한반도 ${H.st.sentOk}/${H.st.sent} · 닛폰 ${N.st.sentOk}/${N.st.sent}`);
   console.log(`  · [표] 한반도 넘김 ${H.st.crossArrive} · 돌려보냄 ${H.st.crossReturn}(경계 교역 성사 ${H.st.soldOk}) · 곳간 ${H.st.deposited} · 잃음 ${H.st.lost} · 몸 넘김 ${H.st.bodyOut} · 받은 몸 ${H.st.bodyIn} · econ 날 ${H.day}`);
+  console.log(`  · [표 · T578 추신] 경계 칸까지 걸어간 뒤 넘김 — 한반도 ${H.st.walkWait | 0}(하루 넘겨 그 자리 ${H.st.walkWaitLate | 0}) · 닛폰 ${N.st.walkWait | 0}(${N.st.walkWaitLate | 0})`);
   console.log(`  · [표] 닛폰 넘김 ${N.st.crossArrive} · 돌려보냄 ${N.st.crossReturn}(경계 교역 성사 ${N.st.soldOk}) · 곳간 ${N.st.deposited} · 잃음 ${N.st.lost} · 몸 넘김 ${N.st.bodyOut} · 받은 몸 ${N.st.bodyIn} · econ 날 ${N.day}`);
 
   // ── ⓕ 오류 ─────────────────────────────────────────────────────────────────
