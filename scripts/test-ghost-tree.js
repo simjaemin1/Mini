@@ -139,7 +139,15 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   }
 
   // ── ④ 개간 — 서 있는 나무를 벤다(★T426: 묘목까지 · 종전 T378 은 성목만) ⇒ 여기선 ③ 에서 자란 성목으로 잰다 ──
-  {
+  //   ★[T566 ④] 재생 술어가 켜져 있으면(기본) 개간은 **심은 나무를 안 뺀다**(재생이 아니라 심은 것 — 영토 안이어도 자란다) ⇒
+  //     이 문으로는 유령이 설 자리가 없다: 그대로 서 있고 표에도 있음을 잰다 · 끄면(`T566_REGROW_BLOCK=0`) 종전 판 그대로
+  if (H._t566On) {
+    const t = T.c;
+    pre(t.type === 'tree', `ⓒ 개간 대상은 성목이다 — ③ 에서 자랐다(${t.type})`);
+    const n0 = H.clearTreesInCells(new Set([Math.floor(t.x / 32) + ',' + Math.floor(t.y / 32)]));
+    ok(n0 === 0 && H.resources.has(t.id) && H.resourcesByDbId.has(t.dbId),
+      '★★ⓒ [T566 켬] 개간은 **심은 나무를 안 뺀다**(카드 ④) — 세계·표에 그대로(이 문으로는 유령이 설 자리가 없다)', `${n0}그루`);
+  } else {
     const t = T.c;
     pre(t.type === 'tree', `ⓒ 개간 대상은 성목이다 — ③ 에서 자랐다(${t.type})`);
     const cell = Math.floor(t.x / 32) + ',' + Math.floor(t.y / 32);

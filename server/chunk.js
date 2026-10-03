@@ -619,6 +619,16 @@ function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet, 
     if (!Number.isFinite(cd)) return null;
     return regrowStageOf(type, gameDay - cd, sp);
   };
+  // ★★[T566 2026-09-30] **나무 벤 자리의 재생 술어** — 장부가 들고 오는 `regrowGate(cx, cy)`(존 `regrowBlockedAt` — 영토 ∪ 다져진 길 둘레)가
+  //   참이면 그 셀의 벤 자리는 **`'gone'`**(위 `regrowStageOf` 가 내는 그 값 · 새 상태 0)이다 — 그루터기도 안 선다.
+  //   ⚠장부 씨에만 묻는다(안 벤 나무는 술어와 무관하게 선다 — 서 있는 나무는 그대로) · 나무 두 갈래(흩뿌림 · 숲 격자)만 —
+  //     덤불·풀·군락(채집 실물)은 무접촉(카드 ④) · 장부에 술어가 없으면(`Set`·하네스의 `new Map()`·끔) 종전과 **한 바이트도** 다르지 않다.
+  const _gate = (harvestedSet && typeof harvestedSet.regrowGate === 'function') ? harvestedSet.regrowGate : null;
+  const _treeStage = (k, sp, x, y) => {
+    const st = _stage(k, 'tree', sp);
+    if (st !== null && st !== 'gone' && _gate && _gate(Math.floor(x / 32), Math.floor(y / 32))) return 'gone';
+    return st;
+  };
   // ★[T135] 그 자리의 **종** — 자리 × 존의 함수(주사위 0 · 멱등).
   //   ⚠`seedKey` 가 아니라 **좌표**로 묻는다: 키는 그리드 인덱스라 간격이 바뀌면 같은 나무의 종이
   //     바뀐다. 자리로 물으면 지도가 그대로인 한 종도 그대로다(작물 야생채종과 같은 계약).
@@ -661,7 +671,7 @@ function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet, 
     //   "무엇이 다시 나는가"가 흔들리지 않는다 — 벤 나무 자리엔 나무가 난다.
     let stage = null;
     if (_cut) {
-      stage = _stage(seedKey, type, type === 'tree' ? _spAt(x, y) : null);
+      stage = type === 'tree' ? _treeStage(seedKey, _spAt(x, y), x, y) : _stage(seedKey, type, null);   // ★[T566] 나무만 술어를 묻는다
       if (stage === null || stage === 'gone') continue;     // 종전 그대로 빠진다
     }
     let outType = type, maxHp = RESOURCE_HP_TABLE[type] || 3;
@@ -801,7 +811,7 @@ function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet, 
         //   위 일반 자원 갈래와 **같은 판정 함수**를 쓴다(사본 0).
         let fstage = null;
         if (harvestedSet && harvestedSet.has(seedKey)) {
-          fstage = _stage(seedKey, 'tree', fsp);
+          fstage = _treeStage(seedKey, fsp, x, y);                // ★[T566] 막힌 셀이면 'gone'
           if (fstage === null || fstage === 'gone') continue;
         }
         const sz = seedRand(zoneId, cx, cy, 91000000 + gi);  // 크기(0~1) — 위치와 독립

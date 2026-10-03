@@ -152,7 +152,8 @@ console.log('\n⑤ ⓑ 낙하 — 죽은 나무꾼 손의 통나무는 그 자�
 console.log('\n⑥ ⓐ 관측자 무관 · ⓕ 벤 그루는 없어지고 벤 날이 남는다');
 {
   const ZC = codeOf(ZSRC);
-  ok(/function _takeResourceEntity\(r, notify\)/.test(ZC),
+  //   ★[T566] 문은 그대로 하나 — 인자 하나(`keepCut` · 장부 씨는 벤 날을 다시 안 적는다)만 늘었다
+  ok(/function _takeResourceEntity\(r, notify(?:, keepCut)?\)/.test(ZC),
     '⑥ ★★개체를 세계에서 빼는 문이 **하나**다(채집 갈래와 벌목이 같은 줄을 쓴다)');
   ok(/_takeResourceEntity\(r, true\);/.test(ZC), '⑥ ★채집 갈래는 `notify=true` — 종전과 **글자 그대로** 같은 일을 한다');
   ok(/if \(r\.isSeed && r\.seedKey\) _markHarvested\(r\.seedKey, r\.x, r\.y\);/.test(ZC),
