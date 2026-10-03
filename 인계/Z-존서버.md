@@ -1989,3 +1989,12 @@ T89 첫 판이 39/44 표본에서만 사람을 봤고, 그걸 정책 탓으로 �
 - ★[T580 · T550 추신 반영] 닛폰 숲이 50 → **53**이 됐다(자잘 숲 3 · `plan-small-forests --zone nippon` · 이름은 닛폰 풀). 자잘 광맥 406은 그 **뒤에** 다시 놓았다(소외 격자 6,192 → 2,894).
 - 군락(`plan-village-forage --zone nippon`)은 후보 승인 뒤 `--apply`다. 계산상 후보 23곳 · 군락 43이다.
 - `plan-small-forests` · `plan-village-forage` 둘 다 정본 경로를 `hanbando-terrain.json` 하나로 고쳤다. 종전 `<존>-terrain.json`은 닛폰에서 즉사했다.
+
+## Z-닛폰 T586. 수동 군락 43 · 자잘 광맥 적재기 (2026-10-03 · 세션5)
+
+- 닛폰 `groves`가 처음 생겼다: **43**(덤불 20 · 둠벙 21 · 자갈밭 2 · 후보 23곳).
+  - 한반도 53과 같은 계획기다(`plan-village-forage --zone nippon` · 마을 어귀 부족분 처방 · 덧붙이기만 · seedKey 불변).
+  - 후보를 지우면 군락이 줄어든다. 그때는 `--allow-shrink`가 필요하다(seedKey가 밀린다는 경고 — 계획기 머리말).
+- 자잘 광맥은 아직 0이다. 넣는 한 줄은 `node scripts/t586-minor-ores.js --count <재민 수> --apply`다.
+  - 자리 · 크기 · 이름만 넣고 광종 칸은 비운다. 그 뒤 `t580-bake-nippon.js`(T574 bakeOre)로 굽는다.
+- ⚠`plan-ore-clusters`는 해안선 띠를 못 본다. 닛폰 자잘의 26~28%가 바다 띠 위에 놓인다(보고/T586 §③ 회부).
