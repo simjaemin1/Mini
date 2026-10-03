@@ -26,10 +26,10 @@ const DESIGN_SVG  = path.join(__dirname, '..', '..', 'hanbando_full.svg');
 // zone offset/size — zone-config와 동일 (스냅 후 값)
 const ZONES = {
   hanbando:  { off: [409984, 49984], size: [70016, 130016] },
-  bering:    { off: [409984, 0],      size: [160000, 49984] },
+  bering:    { off: [409984, 0],      size: [170016, 49984] },
   sibara:    { off: [249984, 0],      size: [160000, 49984] },
   jungwon_n: { off: [309984, 49984],  size: [100000, 130016] },
-  nippon:    { off: [480000, 49984],  size: [60000, 130016] },
+  nippon:    { off: [480000, 49984],  size: [69984, 130016] },
   // east_sea_s 등 ocean zone은 전체가 물이라 미러링 대상 아님
 };
 const MIRROR_MARGIN = 3000; // 경계에서 이 거리 안의 feature는 이웃에도 복제
