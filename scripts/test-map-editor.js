@@ -32,7 +32,8 @@ const sha = (s) => crypto.createHash('sha256').update(s).digest('hex');
 const _BK = JSON.parse(fs.readFileSync(path.join(ROOT, 'lab', 'map-editor-baked.json'), 'utf8'));
 const PIN = { stamp: _BK.work.stamp, nf: _BK.work.features.length, nm: _BK.work.mf.length, br: (_BK.bridges.hanbando || []).length,
   single: 'ecb42d59a79cb4ce4fdb7aac6c61a05e0fb3782ee54d1c5f1a592741a0b8921f',
-  multi: '041338c7985abfe10751d80393095ad116f0b3630b4930975e2ee2ffcf41e34c' };
+  // ★[T591 10-03] 전체 월드 export 는 존 사각(WZONES)으로 피처를 나눈다 — 닛폰 7000 · 베링 +1000 · 바다 존 넷이 바뀌어 값이 바뀐다(단일 판 무변 · 코드 무변).
+  multi: '78abd472bc934eb00172b9a7f1d788ced32c25c604e89b2f1a921815cd08b390' };
 
 (async () => {
   const { chromium } = require('playwright');
