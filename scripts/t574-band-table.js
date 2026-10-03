@@ -9,7 +9,7 @@
 //   몫 = `region-profiles.mixAt('ore', …)` 의 이웃 고유 품목 몫 그대로(뽑기·굽기가 쓰는 그 함수 · 사본 0).
 //   뭍 = T524 의 뜻 그대로 — 실셀(32px) 종류: 바다 띠(`chunk.generateCoastlineWaterTiles`) · 민물(`isWaterCellLocal`) ·
 //        바위(`isRockCellLocal`) · 나머지 = 뭍(같은 세 술어를 같은 차례로 부른다).
-//   마을 = 정본 후보(`terrain.getZoneVillages` — 한반도 51 · 닛폰 16) · `--seeds <dir>`(t525 시드 캐시 `seeds-<존>.json`)가 있으면 시딩 마을도.
+//   마을 = 정본 후보(`terrain.getZoneVillages` — 정본이 쥔 수 그대로 · 10-03 T550 뒤 한반도 51 · 닛폰 30) · `--seeds <dir>`(t525 시드 캐시 `seeds-<존>.json`)가 있으면 시딩 마을도.
 //
 // 쓰는 법: node scripts/t574-band-table.js [--out f.json] [--grid <dir>] [--seeds <dir>]
 //   --grid <dir> : 그림용 낮춘 격자(8셀 칸 · 뭍 셀 수 · 섞이는 경계까지 거리)를 존마다 <dir>/<존>.grid.json 으로
@@ -28,6 +28,7 @@ const T = R('server/terrain'); if (T.setZonesMeta) T.setZonesMeta(ZONES);
 const RP = R('server/region-profiles');
 const SZ = 32;
 const LS = [250, 500, 1000];
+const DS = [200, 400, 800];   // (옛) 카드 ② 원문의 띠 폭 D — 추신2 가 꼬리로 바꿨다 · 기록으로만 센다(같은 거리 함수 · 새 수 0)
 const ZS = Object.keys(RP.COLS);
 const OTHER = { hanbando: 'nippon', nippon: 'hanbando' };
 const OR = Object.values(ZONES).filter((z) => z.isOcean).map((z) => ({ x0: z.worldOffsetX, y0: z.worldOffsetY, x1: z.worldOffsetX + z.zoneWidth, y1: z.worldOffsetY + z.zoneHeight }));
@@ -66,7 +67,7 @@ for (const Z of ZS) {
   const BAND = R('server/chunk').generateCoastlineWaterTiles({ ...ZONE, id: Z }, SZ, findZoneAt, OR);
   const NX = Math.floor(ZONE.zoneWidth / SZ), NY = Math.floor(ZONE.zoneHeight / SZ);
   let land = 0, rock = 0, fresh = 0, sea = 0;
-  const over1 = LS.map(() => 0), mass = LS.map(() => 0);
+  const over1 = LS.map(() => 0), mass = LS.map(() => 0), inBand = DS.map(() => 0);
   const G = 8, GX = Math.ceil(NX / G), GY = Math.ceil(NY / G);
   const gl = GRID ? new Uint16Array(GX * GY) : null, gd = GRID ? new Float32Array(GX * GY).fill(Infinity) : null;
   // 이웃 고유 몫은 경계까지 거리 d 만의 함수다(이웃이 한 존) — d(셀 정수) → 몫 표를 L 마다 한 번 만든다
@@ -80,6 +81,7 @@ for (const Z of ZS) {
     const d = RP.borderDistCells(Z, x, y);
     if (gl) { const gi = ((cy / G) | 0) * GX + ((cx / G) | 0); if (k === 1) gl[gi]++; if (d < gd[gi]) gd[gi] = d; }
     if (k !== 1 || !isFinite(d)) continue;
+    for (let j = 0; j < DS.length; j++) if (d <= DS[j]) inBand[j]++;
     const di = Math.floor(d);
     for (let i = 0; i < LS.length; i++) {
       let s = tab[i][di];
@@ -92,6 +94,9 @@ for (const Z of ZS) {
   if (SEEDS) { try { const s = JSON.parse(fs.readFileSync(path.join(SEEDS, `seeds-${Z}.json`), 'utf8')); seeded = s.map((v) => ({ name: v.name, x: v.ccx * SZ + SZ / 2, y: v.ccy * SZ + SZ / 2 })); } catch (e) { seeded = null; } }
   const row = {
     cells: NX * NY, land, rock, fresh, sea, nx: NX, ny: NY, ms: Date.now() - t0,
+    byD: DS.map((D, j) => ({ D, land: inBand[j], pct: +(inBand[j] / land * 100).toFixed(2),
+      villages: vil.filter((v) => v.d <= D).map((v) => `${v.name}(${Math.round(v.d)})`),
+      seeded: seeded ? seeded.filter((v) => RP.borderDistCells(Z, v.x, v.y) <= D).map((v) => v.name) : null })),
     byL: LS.map((Lc, i) => {
       const vs = vil.map((v) => ({ name: v.name, s: tailShare(Z, v.x, v.y, Lc).tot })).filter((v) => v.s >= 0.01).sort((a, b) => b.s - a.s);
       const ss = seeded ? seeded.map((v) => ({ name: v.name, s: tailShare(Z, v.x, v.y, Lc).tot })).filter((v) => v.s >= 0.01) : null;
@@ -105,7 +110,7 @@ for (const Z of ZS) {
   say(`\n${Z}: 셀 ${row.cells.toLocaleString()} · 뭍 ${land.toLocaleString()} · 바위 ${rock.toLocaleString()} · 민물 ${fresh.toLocaleString()} · 바다 띠 ${sea.toLocaleString()} · ${(row.ms / 1000).toFixed(0)}초`);
 }
 say('\n## ⓒⓓ 뭍 · 마을 — 이웃 고유 품목 몫 ≥ 1% 인 땅 · 뭍 평균 몫 · 그런 마을(후보)');
-say('| L(셀) | 한반도 뭍 중 ≥1% · 평균 | 닛폰 뭍 중 ≥1% · 평균 | **두 존 뭍 중 ≥1%** | ≥1% 마을(한반도 + 닛폰 / 후보 67) |');
+say(`| L(셀) | 한반도 뭍 중 ≥1% · 평균 | 닛폰 뭍 중 ≥1% · 평균 | **두 존 뭍 중 ≥1%** | ≥1% 마을(한반도 + 닛폰 / 후보 ${res.zones.hanbando.villagesTotal + res.zones.nippon.villagesTotal}) |`);
 say('|---:|---|---|---:|---|');
 const Hz = res.zones.hanbando, Nz = res.zones.nippon;
 res.both = [];
@@ -117,4 +122,16 @@ LS.forEach((Lc, i) => {
 });
 say('');
 for (const Z of ZS) for (const r of res.zones[Z].byL) say(`  ${Z} L ${r.L}: ${r.villages.join(' · ') || '없음'}` + (r.seeded ? ` | 시딩 ${r.seeded.join(' · ') || '없음'}` : ''));
+// ── (옛) 띠 D — 카드 ② 원문의 표: 경계까지 거리 d ≤ D 인 뭍 · 마을(추신2 가 띠를 꼬리로 바꿨다 · 기록)
+say('\n## (옛) 띠 D — 경계까지 거리 ≤ D 인 뭍 · 마을(카드 ② 원문 · 기록으로만)');
+say(`| D(셀) | 한반도 뭍 중 띠 | 닛폰 뭍 중 띠 | **두 존 뭍 중 띠** | 띠 안 마을(후보 · 한반도 + 닛폰 / ${Hz.villagesTotal + Nz.villagesTotal})` + (Hz.seededTotal != null ? ` · 시딩 마을(/ ${Hz.seededTotal + Nz.seededTotal})` : '') + ' |');
+say('|---:|---:|---:|---:|---|' + (Hz.seededTotal != null ? '---|' : ''));
+res.bothD = [];
+DS.forEach((D, j) => {
+  const a = Hz.byD[j], b = Nz.byD[j];
+  const bothPct = +((a.land + b.land) / (Hz.land + Nz.land) * 100).toFixed(2);
+  res.bothD.push({ D, bothPct, villages: a.villages.length + b.villages.length, seeded: a.seeded ? a.seeded.length + b.seeded.length : null });
+  say(`| ${D} | ${a.land.toLocaleString()}셀 = ${a.pct}% | ${b.land.toLocaleString()}셀 = ${b.pct}% | **${bothPct}%** | ${a.villages.length} + ${b.villages.length} = **${a.villages.length + b.villages.length}** |` + (a.seeded ? ` ${a.seeded.length} + ${b.seeded.length} = **${a.seeded.length + b.seeded.length}** |` : ''));
+});
+for (const Z of ZS) for (const r of res.zones[Z].byD) say(`  ${Z} D ${r.D}: ${r.villages.join(' · ') || '없음'}`);
 if (OUT) { fs.writeFileSync(OUT, JSON.stringify(res, null, 1)); say('→ ' + OUT); }
