@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # (@regress 없음 — 러너 밖 · T601 초기화 굽기 한 줄 · 기본 = 예행(레포 정본 무변))
 # =============================================================================
-# 초기화 전 지형 굽기를 **정해진 차례로** 한 줄에 — 폭 → 해안 꼴 → 동쪽 채우기 → 마을 자리 → 광맥·숲·군락 → 다리 → 개울 → 에디터 내장 정본.
+# 초기화 전 지형 굽기를 **정해진 차례로** 한 줄에 — (0 작업 파일 → 정본) → 폭 → 해안 꼴 → 동쪽 채우기 → 마을 자리 → 광맥·숲·군락 → 다리 → 개울 → 에디터 내장 정본.
 #   차례가 틀리면 앞 단계가 뒤 단계를 깬다(해안이 바뀌면 마을·광맥이 물에 잠기고 개울 지문이 어긋난다 · 족보 541).
 #   각 단계는 **이미 있는 스크립트를 부르기만** 한다(사본 0) · 단계마다 게이트 · 한 단계라도 빨강이면 거기서 멈춘다.
 #   재민 값이 안 정해진 단계(손잡이가 비었다)는 **지금 정본 그대로 통과**한다 — 그래서 지금 정본의 예행은 바뀜 0 이어야 한다(멱등).
@@ -15,6 +15,7 @@
 #             --rulers(끝에 3시드 t17 — 일곱째 판 값과 바이트 비교) · --keep(예행 사본을 안 지운다) · --log <dir>
 #             --keep-going(예행 전용 — 빨강에서 안 멈추고 끝까지 돌려 "켜면 무엇이 바뀌나" 표를 낸다 · 적용엔 안 먹는다)
 # 재민 칸(손잡이 — 비면 그 단계는 지금 정본 그대로):
+#   T601_WORK=<작업 파일>   [T624] 0 단계 — 에디터 작업 파일(mf 세계 판)을 정본 존 절로(`work-to-canon.js` · 왕복 게이트) · 비면 0 단계 통과
 #   T588_COAST=a|b          해안 꼴(T588 · 끔 = 지금 해안) — ★존 env 에도 같은 값을 실어야 한다(굽기 + 실행 둘 다 · 절차서 §1 #21)
 #   T601_EAST=1             닛폰 동쪽 채우기 안 ○(T595 — 적재 줄은 그 카드 착지 뒤)
 #   T601_VILLAGES=1         마을 자리 승인(T596 `scripts/plan-villages-reset.js --apply`)
@@ -35,9 +36,12 @@ CANON=(server/hanbando-terrain.json server/zone-config.js server/region-bake-off
        server/streams/jungwon_n.bin server/streams/hanbando.bin server/streams/nippon.bin
        lab/map-editor-baked.json lab/map-editor-pins.json lab/map-editor-coast.json)
 ORE_L="${T601_ORE_L:-500}"
+WORKF=""; if [ -n "${T601_WORK:-}" ]; then case "$T601_WORK" in /*) WORKF="$T601_WORK" ;; *) WORKF="$ROOT/$T601_WORK" ;; esac
+  [ -f "$WORKF" ] || { echo "✗ T601_WORK 파일이 없다: $T601_WORK"; exit 2; }; fi
 COAST="${T588_COAST:-}"; case "$COAST" in 1|a|b) ;; *) COAST="" ;; esac
 
 TABLE_ROWS=(
+"0|작업 파일 → 정본(T624)|T601_WORK=<작업 파일>(재민 손질본)|work-to-canon.js(id 로 짝 · export-editor-work.js 를 부르기만)|hanbando-terrain.json(바뀐 존 절만)|왕복 같음(정본 → export → mf = 작업 mf)"
 "1|폭(T591)|zone-config 존 폭 — 재민 10-03 닛폰 7000 · 착지|(부름 0 — 폭은 코드)|—|test-seam"
 "2|해안 꼴(T588)|T588_COAST=a·b(재민)|(부름 0 — 실행 env · 아래 단계가 그 env 로 굽는다)|— (존 env)|test-coast-shape(켬일 때)"
 "3|동쪽 채우기(T595)|T601_EAST=1(재민 ○)|T595 적재 줄(착지 뒤)|hanbando-terrain.json nippon|그 줄의 게이트"
@@ -65,7 +69,7 @@ else
   W="$ROOT"
 fi
 cd "$W"
-SHA0="$LOG/sha0.txt"
+SHA0="$LOG/sha-base.txt"   # 출발 판(단계 0 의 sha 는 sha0.txt)
 if command -v sha256sum >/dev/null; then SHA="sha256sum"; else SHA="shasum -a 256"; fi
 sha_canon() { for f in "${CANON[@]}"; do if [ -f "$f" ]; then $SHA "$f"; else echo "없음  $f"; fi; done; }
 sha_canon > "$SHA0"
@@ -80,15 +84,26 @@ say() { echo "$*" | tee -a "$LOG/run.txt"; }
 stage() {  # stage <번호> <이름> <입력> <부른 것> <게이트 결과 ✓/✗/통과> — 바뀐 정본은 sha 로
   local n="$1" name="$2" in="$3" called="$4" gate="$5" ch
   sha_canon > "$LOG/sha$n.txt"
-  ch=$(diff <(cat "$LOG/sha$((n-1)).txt" 2>/dev/null || cat "$SHA0") "$LOG/sha$n.txt" | awk '/^>/{print $NF}' | sed 's#.*/##' | sort -u | paste -sd' ' -)
+  local prev="$LOG/sha$((n-1)).txt"; [ "$n" = 0 ] && prev="$SHA0"
+  ch=$(diff <(cat "$prev" 2>/dev/null || cat "$SHA0") "$LOG/sha$n.txt" | awk '/^>/{print $NF}' | sed 's#.*/##' | sort -u | paste -sd' ' -)
   [ -n "$ch" ] && UP=1
-  [ -n "$ch" ] && [ "$n" -ge 2 ] && [ "$n" -le 4 ] && UPV=1
+  [ -n "$ch" ] && { [ "$n" = 0 ] || { [ "$n" -ge 2 ] && [ "$n" -le 4 ]; }; } && UPV=1   # 0 단계(작업 파일)도 물·마을을 바꾼다
   RES+=("| $n | $name | $in | $called | ${ch:-0} | $gate |")
   say "[$n $name] 부름: $called · 바뀐 정본: ${ch:-0} · 게이트: $gate"
   case "$gate" in ✗*) [ $GOON = 1 ] && RED="$RED $n" || STOP=1 ;; esac
 }
 runlog() { local tag="$1"; shift; "$@" > "$LOG/$tag.log" 2>&1; }
-say "== 초기화 굽기 한 줄 — $( [ $MODE = dry ] && echo "예행(사본 $W)" || echo "적용(레포)" ) · 베이스 $(git -C "$ROOT" rev-parse --short HEAD) · 해안 ${COAST:-끔} · L $ORE_L"
+say "== 초기화 굽기 한 줄 — $( [ $MODE = dry ] && echo "예행(사본 $W)" || echo "적용(레포)" ) · 베이스 $(git -C "$ROOT" rev-parse --short HEAD) · 작업 파일 ${T601_WORK:-없음} · 해안 ${COAST:-끔} · L $ORE_L"
+
+# ── 0 작업 파일 → 정본(T624) ─────────────────────────────────────────────────
+if [ -n "$WORKF" ]; then
+  if runlog 0-work node scripts/work-to-canon.js "$WORKF" --apply --json "$LOG/0-work.json"; then
+    g="✓ 왕복 같음 · $(grep -oE '같음 [0-9]+ · 기하 바뀜 [0-9]+ · 이름 바뀜 [0-9]+ · 존 옮김 [0-9]+ · 뺌 [0-9]+ · 새로 [0-9]+' "$LOG/0-work.log" | head -1)"
+  else g="✗ work-to-canon — $(grep -m1 -E '왕복|멈춘다|아니다' "$LOG/0-work.log" | sed 's/^ *//' | cut -c1-120)(로그 $LOG/0-work.log)"; fi
+  stage 0 "작업 파일 → 정본" "T601_WORK=${T601_WORK}" "work-to-canon.js --apply" "$g"
+else
+  sha_canon > "$LOG/sha0.txt"
+fi
 
 # ── 1 폭 ─────────────────────────────────────────────────────────────────────
 W1=$(node -e "const Z=require('./server/zone-config').ZONES;console.log(['hanbando','nippon','jungwon_n','bering'].map(k=>k+' '+Math.floor(Z[k].zoneWidth/32)).join(' · '))")
@@ -163,9 +178,15 @@ if [ $STOP = 0 ]; then
   for z in hanbando nippon jungwon_n; do
     if [ $z = nippon ]; then E="T580_EMPTY_MIN=1000"; else E=""; fi
     env $E node scripts/plan-bridges-v2.js $z > "$LOG/6-bridge-$z.log" 2>&1
-    isl=$(grep -oE '^\[섬 #[0-9]+\] [^ ]+ \([0-9,]+셀\) 최단 도하' "$LOG/6-bridge-$z.log" | awk '{print $3}' | sort -u)
+    # ★[T624] 섬 이름에 빈칸이 있을 수 있다("(빈 덩이)" — T580_EMPTY_MIN) — 줄째로 읽고 · 판정은 "다리 가능 N섬" 수로 한다(이름 못 읽어도 안 새게)
     n=$(grep -oE '다리 가능 [0-9]+섬' "$LOG/6-bridge-$z.log" | grep -oE '[0-9]+')
-    for v in $isl; do case " $KNOWN " in *" $z:$v "*) notes+=("$z $v(알려진 예외)") ;; *) bad="$bad $z:$v" ;; esac; done
+    known=0
+    while IFS= read -r line; do
+      v=$(printf '%s' "$line" | sed -E 's/^\[섬 #([0-9]+)\] (.*) \(([0-9,]+)셀\) 최단 도하 ([0-9]+)셀.*/\2#\1 \3셀 도하 \4/')
+      nm=${v%%#*}
+      case " $KNOWN " in *" $z:$nm "*) notes+=("$z $nm(알려진 예외)"); known=$((known+1)) ;; *) bad="$bad $z:${v// /_}" ;; esac
+    done < <(grep -E '^\[섬 #[0-9]+\] .* \([0-9,]+셀\) 최단 도하' "$LOG/6-bridge-$z.log")
+    [ -n "$n" ] && [ "$n" -gt "$known" ] && ! printf '%s' "$bad" | grep -q " $z:" && bad="$bad $z:(다리 가능 $n섬 · 이름 못 읽음)"
     [ -z "$n" ] && bad="$bad $z:(계획기 출력 없음)"
   done
   if [ -n "$bad" ]; then g="✗ 새로 놓을 다리 —$bad(zone-config 다리 줄 · 손)"; else g="✓ 놓을 다리 0${notes:+ · ${notes[*]}}"; fi

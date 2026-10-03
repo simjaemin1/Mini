@@ -265,10 +265,38 @@ say('\n⑩ [T601] 지문이 해안 입력을 본다 · 두 자 deps 의 개울 �
   const wired = (src) => /rulerDeps\(Z, \{ isTerrainBlockedLocal, isWaterTileLocal \}\)/.test(src) && /makeTerrainAdapter\(T, ZONE, _t601\.deps\)/.test(src) && /seeds\[0\]\.t601s/.test(src);
   ok(wired(t17) && wired(t176), '⑩ t17 · t176 둘 다 같은 한 줄(`streams.rulerDeps`)로 deps 를 받고 씨앗 캐시가 표식을 본다');
   const sh = fs.readFileSync(path.join(ROOT, 'scripts', 'reset-bake-all.sh'), 'utf8');
-  const order = ['# ── 1 폭', '# ── 2 해안 꼴', '# ── 3 동쪽', '# ── 4 마을 자리', '# ── 5 광맥', '# ── 6 다리', '# ── 7 개울', '# ── 8 에디터'].map((k) => sh.indexOf(k));
-  ok(order.every((v, i) => v > 0 && (i === 0 || v > order[i - 1])), '⑩ 굽기 한 줄 차례 = 폭 → 해안 → 동쪽 → 마을 → 광맥·숲·군락 → 다리 → 개울 → 에디터(족보 541)', order.join(','));
-  const calls = ['scripts/bake-streams.js', 'scripts/t574-bake.js', 'scripts/t580-bake-nippon.js', 'scripts/t586-minor-ores.js', 'scripts/plan-village-forage.js', 'scripts/plan-bridges-v2.js', 'scripts/editor-baked-check.js', 'scripts/test-map-editor.js', 'scripts/plan-villages-reset.js', 'scripts/editor-coast-bake.py'];
+  const order = ['# ── 0 작업 파일', '# ── 1 폭', '# ── 2 해안 꼴', '# ── 3 동쪽', '# ── 4 마을 자리', '# ── 5 광맥', '# ── 6 다리', '# ── 7 개울', '# ── 8 에디터'].map((k) => sh.indexOf(k));
+  ok(order.every((v, i) => v > 0 && (i === 0 || v > order[i - 1])), '⑩ 굽기 한 줄 차례 = (0 작업 파일 → 정본 · T624) → 폭 → 해안 → 동쪽 → 마을 → 광맥·숲·군락 → 다리 → 개울 → 에디터(족보 541)', order.join(','));
+  const calls = ['scripts/bake-streams.js', 'scripts/t574-bake.js', 'scripts/t580-bake-nippon.js', 'scripts/t586-minor-ores.js', 'scripts/plan-village-forage.js', 'scripts/plan-bridges-v2.js', 'scripts/editor-baked-check.js', 'scripts/test-map-editor.js', 'scripts/plan-villages-reset.js', 'scripts/editor-coast-bake.py', 'scripts/work-to-canon.js'];
   ok(calls.every((c) => sh.includes(c)) && !/writeFileSync|appendFileSync/.test(sh), '⑩ 단계는 있는 스크립트를 **부르기만**(사본 0 — 셸이 정본을 직접 쓰지 않는다 · node 한 줄은 읽기만)');
+  // [T624] 0 단계 — 작업 파일 → 정본(work-to-canon.js): ① 지금 정본을 뽑은 작업 = 바뀜 0 · 왕복 같음 ② 손질 넷(옮김·이름·뺌·새 타원 호수) = 그 넷만 · 왕복 같음
+  {
+    const os = require('os'), tmpd = fs.mkdtempSync(path.join(os.tmpdir(), 't624-'));
+    const wf = path.join(tmpd, 'w.json');
+    execFileSync(process.execPath, [path.join(ROOT, 'scripts', 'export-editor-work.js')], { cwd: ROOT, env: { ...process.env, EW_ZONE: 'hanbando', EW_OUT: wf }, stdio: 'ignore' });
+    const w2c = (f, extra) => { try { return { rc: 0, out: execFileSync(process.execPath, [path.join(ROOT, 'scripts', 'work-to-canon.js'), f, ...(extra || [])], { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }) }; } catch (e) { return { rc: e.status, out: String(e.stdout || '') }; } };
+    const r0 = w2c(wf);
+    ok(r0.rc === 0 && /같음 \d+ · 기하 바뀜 0 · 이름 바뀜 0 · 존 옮김 0 · 뺌 0 · 새로 0/.test(r0.out) && /바뀐 존 절: 0/.test(r0.out) && /왕복.*같음 ✓/.test(r0.out),
+      '★⑩ [T624] 0 단계 — 지금 정본을 뽑은 작업 파일을 넣으면 바뀜 0 · 왕복 같음', (r0.out.match(/같음 \d+/) || [''])[0]);
+    const W = JSON.parse(fs.readFileSync(wf, 'utf8'));
+    const fo = W.mf.find((f) => f.type === 'forest' && f.center.x > 490000 && f.center.x < 540000 && f.center.y > 60000 && f.center.y < 170000);   // 닛폰 한가운데 숲 하나 옮김
+    const rv = W.mf.find((f) => f.type === 'river' && f.center === undefined && f.path[0].x > 409984 && f.path[0].x < 480000);   // 한반도 강 이름
+    const gone = W.mf.find((f) => f.type === 'ridge' && f.path[0].x > 480000);   // 동쪽 산맥 하나 뺌(정본 절은 한반도일 수도 — 경계 넘는 선)
+    fo.center.x += 640; const oldName = rv.name; rv.name = rv.name + '_t'; W.mf = W.mf.filter((f) => f !== gone);
+    W.mf.push({ id: 1, type: 'lake', name: '시험호', center: { x: 500000, y: 100000 }, rx: 900, ry: 600 });
+    const wf2 = path.join(tmpd, 'w2.json'), cf = path.join(tmpd, 'c.json'); fs.writeFileSync(wf2, JSON.stringify(W));
+    const r1 = w2c(wf2, ['--out', cf]);
+    const C0 = JSON.parse(fs.readFileSync(path.join(ROOT, 'server', 'hanbando-terrain.json'), 'utf8')), C1 = fs.existsSync(cf) ? JSON.parse(fs.readFileSync(cf, 'utf8')) : {};
+    const others = Object.keys(C0).filter((z) => z !== 'nippon' && z !== 'hanbando').every((z) => JSON.stringify(C0[z]) === JSON.stringify(C1[z]));
+    const nl = (C1.nippon && C1.nippon.lakes || []).find((l) => l.name === '시험호');
+    const oresSame = JSON.stringify(C0.nippon.ores) === JSON.stringify(C1.nippon && C1.nippon.ores) && JSON.stringify(C0.hanbando.ores) === JSON.stringify(C1.hanbando && C1.hanbando.ores);
+    ok(r1.rc === 0 && /기하 바뀜 1 · 이름 바뀜 1 · 존 옮김 0 · 뺌 1 · 새로 1/.test(r1.out) && /왕복.*같음 ✓/.test(r1.out) && others && oresSame
+      && nl && nl.shape === 'ellipse' && nl.rx === 900 && nl.ry === 600 && nl.center[0] === 500000 - 480000 && (C1.hanbando.rivers || []).some((x) => x.name === oldName + '_t')
+      && C1.nippon.ridges.length + C1.hanbando.ridges.length === C0.nippon.ridges.length + C0.hanbando.ridges.length - 1,
+      '★⑩ [T624] 손질 넷(숲 옮김 · 강 이름 · 산맥 뺌 · 새 타원 호수) = 그 넷만 정본에 · 다른 존·광맥 칸 바이트 그대로 · 세계 → 존 좌표 · 왕복 같음',
+      (r1.out.match(/같음 \d+ · [^\n]*/) || [''])[0]);
+    try { fs.rmSync(tmpd, { recursive: true, force: true }); } catch (e) {}
+  }
 }
 for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
 say(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
