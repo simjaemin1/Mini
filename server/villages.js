@@ -2966,10 +2966,15 @@ const T538_TERR_CAP = process.env.T538_TERR_CAP !== '0';
 //   T569 ④: 인당 12 는 밭만 센다 — 시딩 땅(3,450)이 다 차는 인구(약 100) 위에서 모든 NPC 마을이 집터를 못 찾는다(하한 3시드 929~958채 · 서울 1,507채).
 //   새 수 0(이미 있는 두 수의 합) · 되돌림 `T579_CAP_HOUSE=0`(= 인당 12 · 종전 판 바이트 그대로 — `ceil` 은 정수에 무변).
 //   마당(회관 마당 원판 316셀)은 안 센다 — 시딩 영토(3,450) 안에 이미 있고 상한은 영토를 줄이지 않는다(땅 = max(시딩, 상한)).
-const T579_CAP_HOUSE = process.env.T579_CAP_HOUSE !== '0';
+//   ★★[T579 추신 2026-10-03 · PM 결정 족보 538 · 재민 거부권] **상한 = 랩의 집 압력 항을 인구로** — ⌈인구 ÷ 집 한 채 정원⌉ × `TERR_PER_LOT`(600) + `TERR_CORE`(1,500).
+//     T579 ②ⓑ: 인당 32.67 은 인구 106 에서야 시딩 땅(3,450)을 넘는데 시딩 땅은 집 약 6채 · 36명에서 찬다 → 상한이 영영 안 풀렸다.
+//     랩 정본(`territoryTarget` 의 집 압력 항)이 이미 쓰는 두 수 — 새 수 0. housing 대신 **인구**로 센다(상한이 집을 기다리면 닭과 달걀).
+//   손잡이 셋: `T579_CAP_HOUSE=0` 인당 12(종전) · `=1` 인당 32.67(T579 착지) · **`=2`(미설정 · 기본) 집 압력 항**.
+const T579_CAP_HOUSE = ['0', '1', '2'].includes(String(process.env.T579_CAP_HOUSE)) ? String(process.env.T579_CAP_HOUSE) : '2';
 function _terrCap(vil) {
   const VL = _lifeVL(), pop = (vil.econ && vil.econ.npcs && vil.econ.npcs.length) || 0;
-  return Math.ceil(pop * (VL.LAND_NEED + (T579_CAP_HOUSE ? VL.LOT_PER_HEAD : 0)));
+  if (T579_CAP_HOUSE === '2') return Math.ceil(pop / (VL.HOUSE_CAP_PER_FLOOR * VL.HOUSE_MAX_FLOORS)) * VL.TERR_PER_LOT + VL.TERR_CORE;
+  return Math.ceil(pop * (VL.LAND_NEED + (T579_CAP_HOUSE === '1' ? VL.LOT_PER_HEAD : 0)));
 }
 //   상한이 지금 영토를 묶고 있나(계측 전용 — 집터 빈손을 "상한 탓"으로 가르는 데만 쓴다 · 판정 0)
 function _terrCapBound(vil) {
