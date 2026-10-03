@@ -26,10 +26,13 @@ const LAB = path.join(ROOT, 'lab');
 let pass = 0, fail = 0;
 const ok = (c, m, extra) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (extra != null ? `  ${extra}` : '')); };
 const sha = (s) => crypto.createHash('sha256').update(s).digest('hex');
-// 종전 에디터(맥 ~/Mini/map-editor.html · 2026-07-31 판 · 내장 작업 f2863/m3353/92a6c76911)로 뽑은 export 의 sha256
-const PIN = { stamp: 'f2863/m3353/92a6c76911',
-  single: '41171e716d096b226d20c59755eb8977ddb16b4bde690c2b4e6199e3032944fa',
-  multi: '06bac3c7814c47d3e27757651b4d54b64c79d5190bb6d6c082c7d0f241eaafe5' };
+// ★[PM 10-03] 내장 작업을 정본(server/hanbando-terrain.json · zone-config 다리)에서 다시 뽑았다(`EW_ZONE=hanbando EW_OUT=… node scripts/export-editor-work.js` → lab/map-editor-baked.json)
+//   — 종전 판(2026-07-31 · f2863/m3353/92a6c76911)은 T550 닛폰 정본 · T580 다리 · 자잘 광맥 전부가 빠진 옛 판이었다(재민 10-03 "최종본이 완전 옛날 거").
+//   수(스탬프 · 피처 수 · 다리 값 수)는 baked json 에서 읽는다 · export sha256 은 이 판으로 다시 박는다(에디터 코드가 export 를 바꾸지 않았나를 지키는 자).
+const _BK = JSON.parse(fs.readFileSync(path.join(ROOT, 'lab', 'map-editor-baked.json'), 'utf8'));
+const PIN = { stamp: _BK.work.stamp, nf: _BK.work.features.length, nm: _BK.work.mf.length, br: (_BK.bridges.hanbando || []).length,
+  single: 'ecb42d59a79cb4ce4fdb7aac6c61a05e0fb3782ee54d1c5f1a592741a0b8921f',
+  multi: '041338c7985abfe10751d80393095ad116f0b3630b4930975e2ee2ffcf41e34c' };
 
 (async () => {
   const { chromium } = require('playwright');
@@ -63,10 +66,10 @@ const PIN = { stamp: 'f2863/m3353/92a6c76911',
   console.log('\n[ⓐ 여는 길 셋]');
   const pInline = await open('file://' + inline);
   let r = await pInline.evaluate(() => ({ src: S.bakedSrc, stamp: S.stamp, nf: S.features.length, nm: S.mf.length }));
-  ok(r.src === 'inline' && r.stamp === PIN.stamp && r.nf === 2863 && r.nm === 3353, '맥 사본(박은 한 파일 · file://) — 내장 작업으로 뜬다', JSON.stringify(r));
+  ok(r.src === 'inline' && r.stamp === PIN.stamp && r.nf === PIN.nf && r.nm === PIN.nm, '맥 사본(박은 한 파일 · file://) — 내장 작업으로 뜬다', JSON.stringify(r));
   const pFetch = await open(`http://127.0.0.1:${PORT}/map-editor.html`);
   r = await pFetch.evaluate(() => ({ src: S.bakedSrc, stamp: S.stamp, nf: S.features.length, br: (BR_BAKED.hanbando || []).length }));
-  ok(r.src === 'fetch' && r.stamp === PIN.stamp && r.nf === 2863 && r.br === 1572, '레포 판 + map-editor-baked.json fetch — 같은 작업 · 다리 1,572값', JSON.stringify(r));
+  ok(r.src === 'fetch' && r.stamp === PIN.stamp && r.nf === PIN.nf && r.br === PIN.br, `레포 판 + map-editor-baked.json fetch — 같은 작업 · 다리 ${PIN.br}값`, JSON.stringify(r));
   const pBare = await open('file://' + path.join(LAB, 'map-editor.html'));
   r = await pBare.evaluate(() => ({ src: S.bakedSrc, nf: S.features.length }));
   ok(r.src === 'none' && pBare._errs.length === 0, '레포 판 file://(fetch 막힘) — 내장 없이 오류 0 으로 뜬다(작업 불러오기로 연다)', JSON.stringify(r) + ' 오류 ' + pBare._errs.length);
@@ -93,7 +96,7 @@ const PIN = { stamp: 'f2863/m3353/92a6c76911',
     await pFetch.setInputFiles('#workFile', wf); await pFetch.waitForFunction(() => S.features.length > 0);
     r = await pFetch.evaluate(() => ({ nf: S.features.length, nm: S.mf.length, stamp: S.stamp }));
     const a = sha(await exportText(pFetch));
-    ok(r.nf === 2863 && r.nm === 3353 && r.stamp === PIN.stamp, '작업 파일 입력으로 불러옴 — 강·산맥·마을 수 그대로', JSON.stringify(r));
+    ok(r.nf === PIN.nf && r.nm === PIN.nm && r.stamp === PIN.stamp, '작업 파일 입력으로 불러옴 — 강·산맥·마을 수 그대로', JSON.stringify(r));
     ok(a === pin.single, '불러온 작업의 export = 종전', a.slice(0, 16));
   }
   await pInline.close(); await pFetch.close();
