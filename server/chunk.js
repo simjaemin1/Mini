@@ -1263,6 +1263,22 @@ function generateCoastlineWaterTiles(zone, tileSize, findZoneAtFn, oceanRects) {
   const rows = Math.ceil(zone.zoneHeight / tileSize);
   const maxDist = COASTLINE_BASE + COASTLINE_NOISE;
   const maxDist2 = maxDist * maxDist;
+  // ★[T591 2026-10-03] **존별 띠 깊이 배수** `zone.coastBandK`(기본 1 = 종전 식 그대로 · 다른 존 바이트 동일).
+  //   띠는 전 존 공통 상수(6000 ± 5000 px)라 좁은 존일수록 칸의 큰 몫을 먹는다(닛폰 16% · 한반도 4.4%). 배수는 그 몫을
+  //   한반도와 같게 맞춘 유도값이다(zone-config 주석). ⚠뭍 이웃 존과 맞닿은 변(닛폰 서 = 한반도 · 북 = 베링)에서는 배수가 1 로
+  //   돌아간다 — 거리 0 에서 1, 띠 최대 깊이(maxDist) 이상이면 배수 그대로(선형). 이웃 존의 띠(배수 1)와 경계에서 깊이가 같아야 솔기가 안 생긴다.
+  //   뭍 이웃 판정은 `oceanRects` 로만 한다(변 바로 바깥 점이 바다 사각에 안 들면 뭍) — `findZoneAtFn` 을 안 넘기는 호출부(villages)와 같은 답.
+  const _bandK = (typeof zone.coastBandK === 'number' && zone.coastBandK > 0 && zone.coastBandK !== 1) ? zone.coastBandK : 1;
+  const _inOcean = (x, y) => { for (let oi = 0; oi < oceanRects.length; oi++) { const O = oceanRects[oi]; if (x >= O.x0 && x < O.x1 && y >= O.y0 && y < O.y1) return true; } return false; };
+  const _zx0 = zone.worldOffsetX, _zy0 = zone.worldOffsetY, _zx1 = _zx0 + zone.zoneWidth, _zy1 = _zy0 + zone.zoneHeight;
+  const _landSideDist = (ax, ay) => {
+    let d = Infinity;
+    if (!_inOcean(_zx0 - 1, ay)) d = Math.min(d, ax - _zx0);
+    if (!_inOcean(_zx1 + 1, ay)) d = Math.min(d, _zx1 - ax);
+    if (!_inOcean(ax, _zy0 - 1)) d = Math.min(d, ay - _zy0);
+    if (!_inOcean(ax, _zy1 + 1)) d = Math.min(d, _zy1 - ay);
+    return d;
+  };
 
   for (let ty = 0; ty < rows; ty++) {
     const absY = zone.worldOffsetY + ty * tileSize;
@@ -1292,7 +1308,8 @@ function generateCoastlineWaterTiles(zone, tileSize, findZoneAtFn, oceanRects) {
       const dist = Math.sqrt(bd2);
       // 깊이 노이즈를 "가장 가까운 바다 경계점(bnx,bny)" 월드좌표에서 샘플 → 변·꼭짓점·존경계 솔기 없음.
       const depth = COASTLINE_BASE + _coastSmoothNoise2D(bnx, bny) * COASTLINE_NOISE;
-      if (dist < depth) waterTiles.add(`${tx}_${ty}`);
+      const _k = _bandK === 1 ? 1 : 1 + (_bandK - 1) * Math.min(1, _landSideDist(ax, ay) / maxDist);
+      if (dist < depth * _k) waterTiles.add(`${tx}_${ty}`);
     }
   }
   return waterTiles;

@@ -596,6 +596,7 @@ function publicZoneMap(fallbackHost = 'localhost') {
       simulatedLatencyMs: z.simulatedLatencyMs || 0,
       mainSquare: z.mainSquare || null,
       isOcean: !!z.isOcean,
+      ...(z.coastBandK ? { coastBandK: z.coastBandK } : {}),   // ★[T591] 존별 해안 띠 배수 — 클라 `computeCoastlineWaterTiles` 가 서버와 같은 띠를 그린다(없으면 칸 자체가 안 실림 = 종전 바이트)
       north: _findNeighborSide(id, 'N'),
       south: _findNeighborSide(id, 'S'),
       east:  _findNeighborSide(id, 'E'),
