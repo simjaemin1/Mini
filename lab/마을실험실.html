@@ -812,6 +812,30 @@ if (process.env.T574_NEW_ITEMS === '1') {
   RESOURCES.shell_bangle = { ...RESOURCES.murex_shell, ko: '조개 팔찌감', baseValue: RESOURCES.amber_raw.baseValue, contributes: { ...RESOURCES.amber_raw.contributes } };
 }
 
+// ══ ★★[T602 · 2026-10-03] **해안 새 어종 일곱 — 기본 끔**(`T602_NEW_FISH=1` 일 때만 선다 · 재민이 값을 본 뒤 켬) ══════════════
+//   왜 손잡이 안인가: 위 T135·T574 문단 그대로 — 품목표가 늘면 잡는 사람이 없어도 econ 의 값과 교역이 움직인다. 끄면 일곱이 **아예 없다**.
+//   종 = T592 고증 표(`설계/고증_바닷물고기.md` ⓑ)의 해안 후보 중 **배 없이** 잡히는 일곱(가다랑어는 배 필요라 뺐다 — 캐논 "배 없음").
+//   ★값은 짓지 않는다 — T574 문법대로 **이미 있는 형제 항목을 편다**(무게·값·효용·기여 전부 그 형제 그대로). 형제 고르기 규칙(하나):
+//     지금 세계의 **바닷물고기**(명태·연어·대구·청어·정어리·멸치) 중 무게(`weight`)가 T592 "보통" kg 구간의 중앙에 **가장 가까운**(로그 비) 것 ·
+//     같으면 이 표 차례. 그 고름이 새 판정이라 **재민 값**이다(보고 T602 표):
+//       · 참돔 `red_seabream` · 농어 `sea_bass`  (보통 1~3kg → 2)     = 연어 `salmon`(1.5kg · 값 3)  — 대구와 같은 거리 · 표 차례
+//       · 숭어 `mullet` · 감성돔 `black_porgy`  (0.5~1.5kg → 1)      = 명태 `pollock`(0.8kg · 값 2)
+//       · 볼락 `rockfish` · 전갱이 `horse_mackerel`(0.1~0.3kg → 0.2) = 청어 `herring`(0.3kg · 값 1.5)
+//       · 고등어 `mackerel`                    (0.3~0.5kg → 0.4)      = 청어 `herring`
+//   ⚠econ 거래 표(v1 RESERVE_PC · v2 ELASTICITY/BASE_VALUE_V2/UTILITY)에는 **줄을 안 세운다**(T574 새 품목과 같다) — 품목표에만 선다.
+//     v2 는 이 품목표를 통째로 TRADABLE 로 읽는다(224 → 231) — 그래도 econ 에 이 일곱을 내는 생산·재고가 없어(낚시 산출은 econ 에선
+//     `fish` 단위) 켬 판 t17 3시드가 끔 판과 **바이트 동일**이었다(보고 T602 §2 켬 판 — 생산이 생기면 다시 잰다).
+//   ⚠열량은 `kcal.js`(같은 손잡이 · T592 수) · 낚이는 자리·해역·철·kg 는 `seafish.js`(같은 손잡이) — 여기 안 적는다.
+if (process.env.T602_NEW_FISH === '1') {
+  RESOURCES.red_seabream = { ...RESOURCES.salmon, ko: '참돔' };
+  RESOURCES.sea_bass = { ...RESOURCES.salmon, ko: '농어' };
+  RESOURCES.mullet = { ...RESOURCES.pollock, ko: '숭어' };
+  RESOURCES.black_porgy = { ...RESOURCES.pollock, ko: '감성돔' };
+  RESOURCES.rockfish = { ...RESOURCES.herring, ko: '볼락' };
+  RESOURCES.horse_mackerel = { ...RESOURCES.herring, ko: '전갱이' };
+  RESOURCES.mackerel = { ...RESOURCES.herring, ko: '고등어' };
+}
+
 // 카테고리별 통계 (확인용)
 function _summary() {
   const cats = {};
