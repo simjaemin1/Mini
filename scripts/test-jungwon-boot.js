@@ -188,8 +188,9 @@ async function waitUp(p, url, tries = 300) {
   console.log('\n[ⓗ 한반도·닛폰 무변 — 자료 쪽]');
   ok((J.hanbando.ores || []).length === 787, 'ⓗ 한반도 정본 광맥 787', `${(J.hanbando.ores || []).length}`);
   ok(((ZONES.hanbando.bridges || []).length / 2) === 836, 'ⓗ2 한반도 다리 836셀', `${(ZONES.hanbando.bridges || []).length / 2}`);
-  ok((J.nippon.ores || []).length === 55 && ((ZONES.nippon.bridges || []).length / 2) === 208, 'ⓗ3 닛폰 광맥 55 · 다리 208셀');
-  ok((J.hanbando.villages || []).length === 51 && (J.nippon.villages || []).length === 16, 'ⓗ4 한반도 후보 51 · 닛폰 16 그대로');
+  // ★[PM 10-03] T550 이 닛폰 정본을 바꿨다(광맥 55 → 490 · 다리 208 → 449셀 · 후보 16 → 30) — 이 줄은 "중원북 작업이 닛폰을 안 건드렸나" 의 자라 새 정본 수로 옮긴다.
+  ok((J.nippon.ores || []).length === 490 && ((ZONES.nippon.bridges || []).length / 2) === 449, 'ⓗ3 닛폰 광맥 490 · 다리 449셀(T550 정본)');
+  ok((J.hanbando.villages || []).length === 51 && (J.nippon.villages || []).length === 30, 'ⓗ4 한반도 후보 51 · 닛폰 30 그대로(T550 정본)');
 
   shutdown();
   for (const f of [CDB, ZDB, CDB + '-wal', ZDB + '-wal', CDB + '-shm', ZDB + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
