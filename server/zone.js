@@ -8422,15 +8422,16 @@ function _fishSea() { return Fishing.T593_SEA ? (_fishSeaCtx || (_fishSeaCtx = {
 const Fresh = require('./freshfish');
 const Sea = require('./seafish');
 function _t593Water(sp) { return (sp && (sp.kind === 'lake' || sp.kind === 'mouth')) ? 'lake' : (sp && sp.estuary ? 'lower' : 'mid'); }
-function _t593Pool(sp, day) {
-  if (sp && sp.kind === 'sea') return Sea.poolOf(Sea.areaOfZone(ZONE_ID), sp.spot || 'coast', day);
+// ★[T602] 해역 = 그 자리의 해안 구간(`Sea.areaAt` — 끔이면 T593 그대로 `areaOfZone`) · 그래서 자리(x, y)를 같이 넘긴다.
+function _t593Pool(sp, day, x, y) {
+  if (sp && sp.kind === 'sea') return Sea.poolOf(Sea.areaAt(ZONE_ID, x, y), sp.spot || 'coast', day);
   return Fresh.poolOf(_t593Water(sp), day);
 }
 // 무는 종 하나 — **던질 때** 고른다(그 종의 kg 가 무게의 중앙값이라 입질 창도 그 종을 따른다 · `Fishing.plan` 다섯째 인자).
 //   `h` = 던짐 씨(사람 · 셀 · 게임일 · 던짐 횟수 — 대본 씨와 같은 다섯)를 정본 한 걸음으로 섞은 것 — 주사위 0 · 결정론.
 //   ⚠24비트 굴림(`_dt()` 의 `u`)을 2³² 로 늘려 쓰면 아랫 8비트가 비어 짝수 풀에서 한 종만 나온다(1차 판에서 실측으로 잡았다) — 그래서 씨 해시다.
 function _t593Pick(sp, x, y, h, day) {
-  if (sp && sp.kind === 'sea') return Sea.pick(Sea.areaOfZone(ZONE_ID), sp.spot || 'coast', day, h);
+  if (sp && sp.kind === 'sea') return Sea.pick(Sea.areaAt(ZONE_ID, x, y), sp.spot || 'coast', day, h);
   // 민물 — NPC 어부와 같은 특산 혼용 칸(`fishFresh` · 빈칸이면 고르게와 같아 null → 옛 줄)
   const _ch = RegionProfiles.on() ? (ids, uu) => RegionProfiles.chooseSpecies('fishFresh', ZONE_ID, x, y, uu, null, ids) : undefined;
   return Fresh.pick(_t593Water(sp), day, h, _ch);
@@ -8472,7 +8473,7 @@ function tryFishCast(player) {
   if (!tgt) { send(player.ws, { type: 'notice', text: '🎣 여기선 물에 닿지 않는다 — 물가로 더 가까이' }); return; }
   // ★[T593 ③] 그 물·그 철에 사는 종이 없으면 던지지 않는다(NPC 어부의 `'none'` 과 같은 자리 — 빈 바늘을 만들지 않는다).
   const _day = Fishing.T593_SEA ? gameDayNow() : null;
-  if (Fishing.T593_SEA && !_t593Pool(tgt.sp, _day).length) {
+  if (Fishing.T593_SEA && !_t593Pool(tgt.sp, _day, tgt.x, tgt.y).length) {
     send(player.ws, { type: 'notice', text: `🎣 이 철엔 ${tgt.sp.kind === 'sea' ? '이 바다' : '이 물'}에서 무는 게 없다` }); return;
   }
   const cx = Math.floor(tgt.x / 32), cy = Math.floor(tgt.y / 32);

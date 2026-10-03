@@ -443,8 +443,13 @@ function scanSpots(step, cap) {
     ok(lakePool.size < 2 || new Set(lakeGot).size >= 2, '★⑧ⓔ 풀이 둘 이상이면 **실제로 여러 종**이 나온다(뽑기가 한 종에 갇히지 않는다)',
       `호수 풀 ${lakePool.size} · 나온 종 ${new Set(lakeGot).size} · 강 나온 종 ${new Set(freshGot).size}`);
     // ⓕ 연어는 강어귀 바다에서만(표 `spots: ['mouth']`) — 표가 그 자리를 실제로 가른다
-    ok(Sea.poolOf(Sea.areaOfZone(Z), 'coast', 0).every((s) => s.id !== 'salmon') && Sea.poolOf(Sea.areaOfZone(Z), 'mouth', 0).some((s) => s.id === 'salmon'),
-      '★⑧ⓕ 연어는 **강어귀** 자리 풀에만 든다(해안 풀엔 없다)');
+    //   ★[T602] 표에 연어 철(9~11월 회귀)이 섰다 — 그 철 안의 날로 묻는다 · 해역 열쇠는 그 자리 구간(`areaAt` · 끄면 바이옴)
+    const Cal = require(path.join(ROOT, 'server', 'calendar.js'));
+    const _salR = Sea.rowOf ? Sea.rowOf('salmon') : null;
+    const _sd = (Sea.T602_SEA_TABLE && _salR && _salR.months) ? Cal.dayOf(1, _salR.months[0], 15) : 0;
+    const _sa = Sea.areaAt ? Sea.areaAt(Z, shoreLand[0][0], shoreLand[0][1]) : Sea.areaOfZone(Z);
+    ok(Sea.poolOf(_sa, 'coast', _sd).every((s) => s.id !== 'salmon') && Sea.poolOf(_sa, 'mouth', _sd).some((s) => s.id === 'salmon'),
+      '★⑧ⓕ 연어는 **강어귀** 자리 풀에만 든다(해안 풀엔 없다)', `게임일 ${_sd}`);
     ok(!seaGot.includes('salmon') || sps.some((s) => s.spot === 'mouth'), '⑧ⓕ 해안 자리에서 연어가 나왔다면 강어귀 자리가 있어야 한다');
     // ⓕ' 강어귀(민물 쪽) — 해안선 띠 안의 강 칸(바다 곁)은 `estuary`(합류부) · 민물 표의 **하류** 갈래(카드 "민물 = 강·호수·하구")
     const estCells = [];
@@ -511,6 +516,105 @@ function scanSpots(step, cap) {
     const got = [...new Set(seaGot.concat(freshGot, lakeGot))];
     ok(got.every((it) => F.isFish(it)), '★⑧ⓗ 낚은 종이 전부 **말리기 입력**(`FISH_ITEMS`)에 든다', got.join(' '));
     ok(got.every((it) => H.ITEM_LABEL_SERVER[it] && H.ITEM_LABEL_SERVER[it] !== it), '★⑧ⓗ 낚은 종이 전부 **한글 이름표**가 있다', got.map((it) => H.ITEM_LABEL_SERVER[it]).join(' '));
+
+    // ═══ ⑨ [T602] 바다 표 = T592 고증 — 배 필요 종은 해안 표 밖 · 해역(해안 구간)·달·kg · 새 어종 일곱(기본 끔) ═══
+    //   ★하네스는 표를 옮겨 적지 않는다 — 고증 문서(`설계/고증_바닷물고기.md`)의 줄을 **읽어** 코드 표(`seafish.TABLE`)와 맞댄다.
+    say('\n⑨ [T602] 바다 표 = T592 고증(배 필요 뺌 · 해역 · 달 · kg · 새 어종 끔)');
+    const { execFileSync } = require('child_process');
+    const SP = require(path.join(ROOT, 'server', 'specialty.js'));
+    const RP = require(path.join(ROOT, 'server', 'region-profiles.js'));
+    ok(Sea.T602_SEA_TABLE === true && Sea.T602_GRADE === true && Sea.T602_NEW_FISH === false,
+      '★⑨ 손잡이 — 표 `T602_SEA_TABLE` 기본 **켬** · 흔함 가중 `T602_GRADE` 켬 · 새 어종 `T602_NEW_FISH` 기본 **끔**', `${Sea.T602_SEA_TABLE} · ${Sea.T602_GRADE} · ${Sea.T602_NEW_FISH}`);
+    // ⓐ 고증 문서 대조 — 줄마다 kg(보통 구간 · 큰 것) · 철(월) · kcal/100g
+    const DOC = fs.readFileSync(path.join(ROOT, '설계', '고증_바닷물고기.md'), 'utf8').split('\n');
+    const docRow = (r) => DOC.find((l) => l.startsWith(`| ${r.id} |`) || (r.ko && l.startsWith(`| **${r.ko}** |`)));
+    const monthsOf = (cell) => {
+      const out = new Set();
+      for (const m of cell.matchAll(/(\d+)~(\d+)월/g)) { let a = +m[1]; const b = +m[2]; for (let k = 0; k < 12; k++) { out.add(a); if (a === b) break; a = a % 12 + 1; } }
+      for (const m of cell.matchAll(/(\d+(?:,\d+)+)월/g)) for (const x of m[1].split(',')) out.add(+x);
+      return out.size ? [...out].sort((a, b) => a - b) : null;
+    };
+    const asSet = (a) => (a ? a.slice().sort((x, y) => x - y).join(',') : '');
+    let docN = 0, docBad = [];
+    for (const r of Sea.TABLE) {
+      const line = docRow(r); if (!line) { docBad.push(`${r.id}:줄 없음`); continue; }
+      docN++;
+      const c = line.split('|').map((x) => x.trim());
+      const off = c[1].startsWith('**') ? 0 : 1;   // ⓐ 줄은 id·ko 두 칸 · ⓑ 줄은 이름 한 칸
+      const kgCell = c[2 + off], monCell = c[5 + off] || '', kcCell = c[6 + off] || '';
+      const km = /(\d+(?:\.\d+)?)~(\d+(?:\.\d+)?)/.exec(kgCell), bm = /·(\d+(?:\.\d+)?)\+?\(큰 것/.exec(kgCell);
+      const kg = km ? [+km[1], +km[2]] : null, big = bm ? +bm[1] : null;
+      if (JSON.stringify(kg) !== JSON.stringify(r.kg)) docBad.push(`${r.id} kg ${JSON.stringify(kg)}≠${JSON.stringify(r.kg)}`);
+      if (big !== r.big) docBad.push(`${r.id} 큰 것 ${big}≠${r.big}`);
+      if (asSet(monthsOf(monCell)) !== asSet(r.months)) docBad.push(`${r.id} 철 ${asSet(monthsOf(monCell))}≠${asSet(r.months)}`);
+      const kc = /\*\*~?(\d+)\*\*/.exec(kcCell);
+      if ((kc ? +kc[1] : null) !== r.kcal100) docBad.push(`${r.id} kcal ${kc ? kc[1] : null}≠${r.kcal100}`);
+    }
+    ok(Sea.TABLE.length === 25 && docN === 25 && docBad.length === 0, '★★⑨ⓐ 코드 표 25줄 = 고증 문서 25줄 — kg(보통 구간·큰 것)·철(월)·kcal/100g 이 **글자 그대로**', docBad.join(' / ') || `${docN}줄`);
+    const marine = Object.keys(SP.RESOURCES).filter((k) => SP.RESOURCES[k].category === 'marine').sort();
+    const tblOld = Sea.TABLE.filter((r) => !r.ko).map((r) => r.id).sort();
+    ok(JSON.stringify(marine) === JSON.stringify(tblOld), '⑨ⓐ 표의 ⓐ 17줄 = 지금 세계의 marine 품목 그대로(빠짐·덤 0)', `${tblOld.length}줄`);
+    ok(Sea.TABLE.every((r) => !r.areas || Object.values(r.areas).every((g) => g === null || Sea.GRADES.includes(g))), '⑨ⓐ 해역 칸은 T592 단계 낱말(많음·있음·드묾)이나 미확인(null)뿐이다');
+    // ⓑ 해안 표 — 배 필요 종은 빠진다(품목은 그대로) · 손 채집·민물 겹침·미확인도 낚싯대 표 밖
+    const boat = Sea.TABLE.filter((r) => r.gear === 'boat').map((r) => r.id);
+    ok(['pollock', 'cod', 'lobster', 'skipjack'].every((id) => boat.includes(id)) && boat.every((id) => !Sea.isFish(id)),
+      '★★⑨ⓑ **배 필요** 종(명태·대구·바닷가재·가다랑어)은 해안 표 밖이다(캐논 "배 없음")', boat.join(' '));
+    ok(['pollock', 'cod', 'lobster'].every((id) => SP.RESOURCES[id]), '⑨ⓑ 그 품목은 **그대로 있다**(거래·곳간으로는 돈다)');
+    ok(Sea.ids().every((id) => Sea.rowOf(id).gear === 'rod') && !Sea.ids().some((id) => ['oyster', 'abalone', 'seaweed', 'trout', 'carp', 'murex_shell'].includes(id)),
+      '⑨ⓑ 해안 표 = 낚싯대 줄(`rod`)뿐 — 손 채집(갯벌)·민물 겹침·미확인은 안 든다', Sea.ids().join(' '));
+    ok(Sea.ids().length === 8 && !Sea.ids().some((id) => Sea.NEW_IDS.includes(id)), '★⑨ⓑ 기본 해안 표 **8종**(T593 열 종 − 배 필요 둘) · 새 어종 0', `${Sea.ids().length}종`);
+    const seaCatch = seaGot.length;
+    ok(seaCatch >= 20 && !seaGot.some((it) => boat.includes(it)), '★★⑨ⓑ 실제로 해안에서 낚아도 **명태·대구가 안 나온다**(서버 던짐 그대로)', `${seaCatch}마리 · ${JSON.stringify(seaKinds)}`);
+    // ⓒ 해역 = 해안 구간(T588 정본 `SECTIONS`) — 한반도 남변 세 몫 = 서·남·동해 · 닛폰 남변 두 몫·동변 · 중원 = 표 밖
+    const ZC = require(path.join(ROOT, 'server', 'zone-config.js')).ZONES;
+    const at = (z, fx, fy) => Sea.areaAt(z, ZC[z].zoneWidth * fx, ZC[z].zoneHeight * fy);
+    const secs = [at('hanbando', 1 / 6, 0.999), at('hanbando', 0.5, 0.999), at('hanbando', 5 / 6, 0.999), at('nippon', 0.25, 0.999), at('nippon', 0.75, 0.999), at('nippon', 0.999, 0.4), at('jungwon_s', 0.999, 0.5)];
+    ok(JSON.stringify(secs) === JSON.stringify([['W'], ['S'], ['E'], ['K', 'E'], ['T'], ['P'], null]),
+      '★★⑨ⓒ 해역 = 그 자리의 해안 구간 — 한반도 서·남·동해 · 닛폰 대한해협·동해 쪽 / 세토 / 태평양 쪽 · 중원(황해) = 표 밖', JSON.stringify(secs));
+    ok(seaGot.length > 0 && shoreLand.slice(0, 60).every(([x, y]) => Array.isArray(Sea.areaAt(Z, x, y))), '⑨ⓒ 한반도 해안 물가는 전부 해역이 있다(구간 밖 0)');
+    // ⓓ 흔함 — 단계 = 존 특산 프로필의 단계 수(LV) · 고르게면 옛 해시 그대로
+    const SA = at('hanbando', 0.5, 0.999), WA = at('hanbando', 1 / 6, 0.999), d0 = H.gameDayNow();
+    const share = (area, id, n) => { let k = 0; for (let i = 0; i < n; i++) { const s = Sea.pick(area, 'coast', d0, (Math.imul(i + 1, 0x9e3779b1) ^ 0x51ed27) >>> 0); if (s && s.id === id) k++; } return k / n; };
+    const poolS = Sea.poolOf(SA, 'coast', d0), wS = poolS.map((s) => Sea.weightOf(s, SA)), expA = RP.LV['많음'] / wS.reduce((a, b) => a + b, 0);
+    const gotA = share(SA, 'anchovy', 20000);
+    ok(Sea.gradeOf(poolS.find((s) => s.id === 'anchovy'), SA) === '많음' && Math.abs(gotA - expA) < 0.02,
+      '★★⑨ⓓ 남해 해안에선 **멸치(많음)** 가 단계 수만큼 더 문다(많음 26 · 있음 = 보통 12.5 — region-profiles LV)', `멸치 몫 ${(gotA * 100).toFixed(1)}% · 기대 ${(expA * 100).toFixed(1)}% · 풀 ${poolS.length}`);
+    let same = 0; const poolW = Sea.poolOf(WA, 'coast', d0);
+    for (let i = 0; i < 2000; i++) { const h = (Math.imul(i + 7, 0x85ebca6b) ^ 0x1234) >>> 0, a = Sea.pick(WA, 'coast', d0, h), b = Fresh.pickFrom(poolW, d0, h, undefined, (id) => poolW.find((s) => s.id === id)); if (a && b && a.id === b.id) same++; }
+    ok(same === 2000, '★⑨ⓓ 서해 해안(풀이 다 "보통")은 **옛 해시 그대로** — 가중이 고르게면 고르게 뽑기와 같은 종(2000/2000)', `${same}/2000`);
+    const flat = JSON.parse(execFileSync(process.execPath, ['-e',
+      `const S=require(${JSON.stringify(path.join(ROOT, 'server', 'seafish.js'))});const a=${JSON.stringify(SA)};let k=0;for(let i=0;i<20000;i++){const s=S.pick(a,'coast',${d0},(Math.imul(i+1,0x9e3779b1)^0x51ed27)>>>0);if(s&&s.id==='anchovy')k++;}process.stdout.write(JSON.stringify({g:S.T602_GRADE,k:k/20000,n:S.poolOf(a,'coast',${d0}).length}));`],
+      { env: Object.assign({}, process.env, { T602_GRADE: '0' }), stdio: 'pipe' }).toString());
+    ok(flat.g === false && Math.abs(flat.k - 1 / flat.n) < 0.02, '⑨ⓓ 곁가지 `T602_GRADE=0` 이면 남해도 **고르게**', `멸치 ${(flat.k * 100).toFixed(1)}% ≈ 1/${flat.n}`);
+    // ⓔ 철 = 달(달력 정본) — 연어는 9~11월 강어귀에만
+    const salMonths = []; for (let m = 1; m <= 12; m++) { const d = Cal.dayOf(1, m, 15); if (Sea.poolOf(SA, 'mouth', d).some((s) => s.id === 'salmon')) salMonths.push(m); }
+    ok(JSON.stringify(salMonths) === JSON.stringify(Sea.rowOf('salmon').months.slice().sort((a, b) => a - b)), '★⑨ⓔ 연어가 무는 달 = 표의 철(9~11월 회귀 · 달력 정본 `dateOf`)', salMonths.join(','));
+    ok([1, 4, 7, 10].every((m) => Sea.poolOf(SA, 'coast', Cal.dayOf(1, m, 15)).length > 0), '⑨ⓔ 어느 달이든 해안 풀이 빈 적 없다(철이 미확인인 종은 사철)');
+    // ⓕ kg = 보통 구간의 중앙(민물 표 규약) — 그 kg 가 무게의 중앙값(⑧ⓖ' 가 같은 표로 잰다)
+    ok(Sea.ids().every((id) => { const r = Sea.rowOf(id); return Math.abs(Sea.kgOf(id) - (r.kg[0] + r.kg[1]) / 2) < 1e-9; }), '⑨ⓕ kg = T592 "보통" 구간의 중앙', Sea.ids().map((id) => `${id} ${Sea.kgOf(id)}`).join(' · '));
+    // ⓖ 새 어종 일곱 — 기본 끔이면 **아무 데도 없다** · 켜면 품목(형제 펴기)·이름표·열량·해안 표·말리기 입력에 같이 선다
+    const K = require(path.join(ROOT, 'server', 'kcal.js'));
+    ok(Sea.NEW_IDS.length === 7 && Sea.NEW_IDS.every((id) => !SP.RESOURCES[id] && !(id in K.KCAL_PER_KG) && !F.isFish(id) && !Sea.isFish(id)),
+      '★★⑨ⓖ 끔(기본) — 새 어종 일곱은 품목표·열량표·말리기 입력·해안 표 어디에도 없다', Sea.NEW_IDS.join(' '));
+    const on = JSON.parse(execFileSync(process.execPath, ['-e',
+      `const R=(p)=>require(${JSON.stringify(ROOT)}+'/server/'+p);const SP=R('specialty'),K=R('kcal'),S=R('seafish'),F=R('fishing'),W=R('weights'),IL=R('itemlabel');const L=IL.itemLabels({},{});` +
+      `process.stdout.write(JSON.stringify(S.NEW_IDS.map((id)=>({id,res:SP.RESOURCES[id]||null,kc:K.KCAL_PER_KG[id]||0,kg:W.kgOf(id),fish:F.isFish(id),sea:S.isFish(id),label:L[id]||null,seaKg:S.kgOf(id)}))));`],
+      { env: Object.assign({}, process.env, { T602_NEW_FISH: '1' }), stdio: 'pipe' }).toString());
+    const SIB = { red_seabream: 'salmon', sea_bass: 'salmon', mullet: 'pollock', black_porgy: 'pollock', rockfish: 'herring', horse_mackerel: 'herring', mackerel: 'herring' };
+    ok(on.length === 7 && on.every((o) => o.res && o.res.ko === Sea.rowOf(o.id).ko && ['weight', 'baseValue', 'utility', 'category', 'harvest'].every((k) => o.res[k] === SP.RESOURCES[SIB[o.id]][k])
+      && JSON.stringify(o.res.contributes) === JSON.stringify(SP.RESOURCES[SIB[o.id]].contributes)),
+      '★★⑨ⓖ 켜면 일곱이 **품목**으로 선다 — 무게·값·효용·기여 = 형제 그대로(T574 문법 · 새 수 0 · 재민 판정 표)', on.map((o) => `${o.res && o.res.ko}=${SIB[o.id]}`).join(' '));
+    const kcExp = (o) => { const r = Sea.rowOf(o.id); return r.kcal100 ? Math.round(r.kcal100 * 10 * 0.55) : K.KCAL_PER_KG[SIB[o.id]]; };
+    ok(on.every((o) => o.kc === kcExp(o)) && Math.round(900 * 0.55) === K.KCAL_PER_KG.fish,
+      '★⑨ⓖ 켜면 열량 줄 = T592 살 kcal/100g × 10 × 가식부 0.55(일반 생선 줄 `fish` 495 = 900 × 0.55 · 미확인 감성돔 = 형제 줄)', on.map((o) => `${o.id} ${o.kc}`).join(' · '));
+    ok(on.every((o) => o.fish && o.sea && o.label === Sea.rowOf(o.id).ko && Math.abs(o.seaKg - (Sea.rowOf(o.id).kg[0] + Sea.rowOf(o.id).kg[1]) / 2) < 1e-9),
+      '⑨ⓖ 켜면 해안 표·말리기 입력·한글 이름표에 같이 들고 kg = T592 보통 구간 중앙', on.map((o) => `${o.label} ${o.seaKg}`).join(' · '));
+    // ⓗ 끄면(`T602_SEA_TABLE=0`) T593 표 글자 그대로
+    const off602 = JSON.parse(execFileSync(process.execPath, ['-e',
+      `const S=require(${JSON.stringify(path.join(ROOT, 'server', 'seafish.js'))});process.stdout.write(JSON.stringify({ids:S.ids(),area:S.areaAt('hanbando',10,10),knob:S.T602_SEA_TABLE,mouthWinter:S.poolOf(S.areaAt('hanbando',10,10),'mouth',300).map((s)=>s.id)}));`],
+      { env: Object.assign({}, process.env, { T602_SEA_TABLE: '0' }), stdio: 'pipe' }).toString());
+    ok(off602.knob === false && off602.ids.join(' ') === 'pollock cod herring sardine anchovy salmon octopus squid crab shrimp' && off602.area === 'forest' && off602.mouthWinter.length === 10,
+      '★★⑨ⓗ 끄면 T593 표 그대로 — 열 종(명태·대구 포함) · 해역 열쇠 = 바이옴 · 철 빈칸(겨울 강어귀에도 열 종)', `${off602.ids.length}종 · ${off602.area}`);
   }
 
   say(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
