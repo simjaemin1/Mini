@@ -4,6 +4,7 @@
 // ★왜(PM 10-03 · 재민 "맵 에디터 최종본이 완전 옛날 거"): 내장 작업은 07-31 판에서 한 번도 다시 안 뽑혔다 —
 //   T550(닛폰 정본) · T580(다리) · 자잘 광맥이 정본에 들어가도 에디터는 옛 세계를 "최신"이라 띄웠다.
 //   에디터의 "낡음" 배너는 로컬 작업 ↔ 내장 작업만 견준다 — 내장 ↔ 정본은 아무도 안 봤다. 이 자가 그 칸이다.
+// ★[T601 추신] 해안 띠 층(`coast`)도 같이 굽고 견준다 — 굽기 한 줄(`reset-bake-all.sh`) 8단계가 해안 env 를 넘겨 부른다.
 // 쓰는 법: node scripts/editor-baked-check.js          → 같으면 0 · 다르면 1(무엇이 다른지)
 //          node scripts/editor-baked-check.js --write  → 정본에서 다시 뽑아 lab/map-editor-baked.json 을 덮는다
 'use strict';
@@ -15,12 +16,17 @@ execFileSync(process.execPath, [path.join(__dirname, 'export-editor-work.js')], 
 const work = JSON.parse(fs.readFileSync(tmp, 'utf8'));
 const Z = require(path.join(ROOT, 'server', 'zone-config.js')); const zs = Z.ZONES_BASE || Z.ZONES || Z;
 const bridges = {}; for (const k of Object.keys(zs)) if (zs[k] && zs[k].bridges && zs[k].bridges.length) bridges[k] = zs[k].bridges;
-const fresh = JSON.stringify({ work, bridges }) + '\n';
+// ★[T601 추신] 해안 띠 층 — 존마다 서버 정본 마스크(`t588-coast-mask.js` · 지금 env 의 해안 손잡이 그대로)를 낮춰 싣는다(`editor-coast-layer.js`).
+//   이 자가 띠도 견준다 — 해안이 바뀌면(T604 · T588_COAST) 내장 정본이 낡았다고 말한다.
+const coast = require('./editor-coast-layer').build();
+const fresh = JSON.stringify({ work, bridges, coast }) + '\n';
 if (process.argv.includes('--write')) { fs.writeFileSync(BAKED, fresh); console.log('[editor-baked] 다시 뽑음 · ' + work.stamp); process.exit(0); }
 const cur = fs.existsSync(BAKED) ? fs.readFileSync(BAKED, 'utf8') : '';
 if (cur === fresh) { console.log('[editor-baked] 정본과 같다 ✅ ' + work.stamp); process.exit(0); }
 let old = {}; try { old = JSON.parse(cur); } catch (e) {}
 console.log('[editor-baked] **정본과 다르다** ❌ 내장 ' + ((old.work && old.work.stamp) || '?') + ' ↔ 정본 ' + work.stamp
+  + ' · 해안 띠 ' + (old.coast ? (old.coast.knob || '끔') + ' ' + Object.keys(old.coast.zones || {}).length + '존' : '없음') + '→' + (coast.knob || '끔') + ' ' + Object.keys(coast.zones).length + '존'
+  + (old.coast && JSON.stringify(old.coast) !== JSON.stringify(coast) ? '(띠 다름)' : '')
   + ' · 다리 ' + Object.keys(bridges).map((k) => k + ' ' + ((old.bridges && old.bridges[k] || []).length / 2) + '→' + bridges[k].length / 2).join(' ')
   + ' — `node scripts/editor-baked-check.js --write` → `MAPED_UPDATE_PINS=1 node scripts/test-map-editor.js`(export 고정값) → `node scripts/build-map-editor.js ~/Mini/map-editor.html`(맥 사본)');
 process.exit(1);

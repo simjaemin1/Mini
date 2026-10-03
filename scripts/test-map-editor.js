@@ -15,6 +15,7 @@
 //   ⓔ 긋는 중 우클릭 팬 · 스페이스 팬 · 휠 줌이 draft 를 안 건드린다 · 가장자리 자동 팬(초당 화면 폭 ½)
 //   ⓕ 점 고치기 — 끌기 · 선분 위 삽입(폭 보간) · Del 점 삭제 · 점 폭 슬라이더 · 전부 undo
 //   ⓖ 잇기 — 끝점을 끝점에 끌어 놓으면 하나(점 = 합 − 1 · 넓은 폭으로 맞춤 · 긴 쪽 이름) · 삼거리 · 고리는 안 잇는다 · undo
+//   ⓗ [T601 추신] 해안 띠 층 — 내장 정본(뭍 존 전부) · 보기 토글 기본 켬 · 띠 술어 · "바다 위" 수 = 노드 셈 · 빨간 테두리 · export 무변
 'use strict';
 const path = require('path');
 const fs = require('fs');
@@ -107,6 +108,8 @@ const _seen = {};
     ok(r.nf === PIN.nf && r.nm === PIN.nm && r.stamp === PIN.stamp, '작업 파일 입력으로 불러옴 — 강·산맥·마을 수 그대로', JSON.stringify(r));
     ok(_UPD ? a === _seen.single : a === pin.single, '불러온 작업의 export = 종전', a.slice(0, 16));
   }
+  { const ci = await pInline.evaluate(() => ({ has: !!COAST_BAKED, n: COAST_BAKED ? Object.keys(COAST_BAKED.zones).length : 0, sea: seaAt(35000, 129900) }));
+    ok(ci.has && ci.n === Object.keys((_BK.coast || {}).zones || {}).length && ci.sea === true, '[T601 추신] 맥 사본(박은 한 파일)에도 해안 띠 층이 박힌다(`@inline-coast`)', JSON.stringify(ci)); }
   await pInline.close(); await pFetch.close();
 
   // ── 편집 동작은 레포 판(http)에서 ─────────────────────────────────────
@@ -227,6 +230,47 @@ const _seen = {};
   { const a = await scr(pg, 6000, 2000), b = await scr(pg, 6300, 2100);
     await pg.mouse.move(a.x, a.y); await pg.mouse.down(); await pg.mouse.move(b.x, b.y, { steps: 6 }); await pg.mouse.up();
     r = await pg.evaluate(() => S.features.length); ok(r === 2, '고리(반대쪽 끝도 가깝다) — 안 잇는다', `${r}개`); }
+  console.log('\n[ⓗ 해안 띠 층(T601 추신) — 내장 정본 · 보기 토글 · 바다 위 빨간 테두리]');
+  {
+    const CL = require('./editor-coast-layer.js');
+    const C = _BK.coast;
+    const zs = C ? Object.keys(C.zones) : [];
+    const { ZONES: ZC } = require('../server/zone-config');
+    const land = Object.keys(ZC).filter((k) => !ZC[k].isOcean);
+    ok(!!C && C.cell === 4 && zs.length === land.length && land.every((k) => C.zones[k] && C.zones[k].w === Math.ceil(Math.ceil(ZC[k].zoneWidth / 32) / 4)),
+      `내장 정본에 해안 띠 층 — 뭍 존 ${land.length} 전부 · 4셀 = 1화소 · 해안 손잡이 '${C && (C.knob || '끔')}'`, zs.length + '존');
+    // 노드에서 같은 규칙으로 센 "바다 위"(작업 피처 · 선은 128px 마다 · 점·원은 중심) — 에디터 글자와 맞아야 한다
+    const mk = (z) => { const c = C.zones[z]; return { P: CL.unrle(c.rle, c.w * c.h), w: c.w, h: c.h, k: C.cell * 32 }; };
+    const H = mk('hanbando');
+    const sea = (c, x, y) => { const px = Math.floor(x / c.k), py = Math.floor(y / c.k); return px >= 0 && py >= 0 && px < c.w && py < c.h && c.P[py * c.w + px] === 1; };
+    const onSea = (f, c) => { if (f.path && f.path.length) { for (let i = 0; i < f.path.length; i++) { const a = f.path[i], b = f.path[i + 1] || a; const n = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / 128)); for (let t = 0; t < n; t++) if (sea(c, a.x + (b.x - a.x) * t / n, a.y + (b.y - a.y) * t / n)) return true; } return false; } return f.center ? sea(c, f.center.x, f.center.y) : false; };
+    const want = {}; for (const f of _BK.work.features) if (onSea(f, H)) want[f.type] = (want[f.type] || 0) + 1;
+    const pc = await open(`http://127.0.0.1:${PORT}/map-editor.html`);
+    await pc.evaluate(() => { S.multi = false; S.zone = 'hanbando'; [S.ZW, S.ZH] = ZONES.hanbando; S.features = WORK_BAKED.features.slice(); S.mf = WORK_BAKED.mf.slice(); for (const k in S.vis) S.vis[k] = true; S.showCoast = true; document.getElementById('coastToggle').checked = true; fitView(); refresh(); render(); });
+    r = await pc.evaluate(() => ({ on: document.getElementById('coastToggle').checked, has: !!COAST_BAKED, info: document.getElementById('coastInfo').textContent,
+      sea: seaAt(35000, 129900), land: seaAt(35000, 65000), mSea: (() => { S.multi = true; const v = seaAt(480000 + 69000, 49984 + 65000); S.multi = false; return v; })() }));
+    ok(r.on && r.has, '보기 패널 "해안 띠" 토글 — 기본 켬 · 레포 판 fetch 로 층이 실린다');
+    ok(r.sea === true && r.land === false && r.mSea === true, '띠 술어 — 한반도 남쪽 끝은 바다 · 한가운데는 뭍 · 전체 월드(세계 좌표) 닛폰 동쪽 끝도 바다', JSON.stringify({ sea: r.sea, land: r.land, mSea: r.mSea }));
+    const NM = { river: '강', ridge: '산맥', valley: '계곡', forest: '숲', lake: '호수', pass: '고개', ore: '광맥', village: '마을' };
+    const wantTxt = Object.keys(NM).filter((t) => want[t]).map((t) => NM[t] + ' ' + want[t]).join(' · ');
+    ok(r.info.startsWith('바다 위: ' + wantTxt + ' ·') && want.river === 8 && want.village === 1,
+      `"바다 위" 수 = 노드에서 같은 규칙으로 센 수(PM 실측 족보 562 — 남해안 강 8줄 · 어촌6 · 숲 1)`, r.info);
+    // 화면 — 띠 화소(옅은 파랑)와 빨간 테두리 화소가 켬에서만 있다
+    const px = async () => pc.evaluate(() => { const d = ctx.getImageData(0, 0, cv.width, cv.height).data; let red = 0, blue = 0;
+      for (let i = 0; i < d.length; i += 4) { if (d[i] > 230 && d[i + 1] < 70 && d[i + 2] < 70) red++; if (d[i + 2] > d[i] + 25 && d[i + 2] > 90 && d[i + 1] > 70) blue++; } return { red, blue }; });
+    await pc.evaluate(() => { S.view.scale = 0.012; S.view.ox = 20; S.view.oy = cv.height - 130016 * 0.012 - 20; render(); });
+    const a = await px();
+    await pc.click('#coastToggle'); await pc.waitForTimeout(100);
+    const b = await px();
+    const kept = await pc.evaluate(() => JSON.parse(localStorage.getItem('durango_editor_view') || '{}').showCoast);
+    ok(a.red > 50 && b.red < a.red / 10 && a.blue > b.blue, '켬 = 띠(옅은 파랑) + 바다 위 피처 빨간 테두리 · 끔 = 둘 다 사라진다(작업 데이터 무변)', JSON.stringify({ on: a, off: b }));
+    ok(kept === false, '토글은 보기 설정에 남는다(작업 파일·export 에는 안 든다)');
+    await pc.click('#coastToggle');
+    const ex = sha(await exportText(pc));
+    ok(ex === (_UPD ? _seen.single : pin.single), '층을 켜고 끄고도 단일 export sha256 = 고정값(층은 읽기 전용)', ex.slice(0, 16));
+    ok(pc._errs.length === 0, '해안 층 — 페이지 오류 0', pc._errs.join(' | '));
+    await pc.close();
+  }
   ok(pg._errs.length === 0, '페이지 오류 0', pg._errs.join(' | '));
   await pg.close(); await browser.close(); srv.close();
   if (_UPD && !fail && _seen.single) { _PINS[_BK.work.stamp] = { single: _seen.single, multi: _seen.multi }; fs.writeFileSync(_PINF, JSON.stringify(_PINS, null, 1) + '\n'); console.log('  [pins] ' + _BK.work.stamp + ' 적음'); }

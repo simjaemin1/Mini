@@ -68,6 +68,8 @@
       <div style="font-size:11px;color:var(--mut);margin-bottom:4px">보기 — 종류마다 보임 · 이름 (작업 저장에는 영향 없음)</div>
       <div id="viewGrid" style="display:grid;grid-template-columns:1fr auto auto;gap:2px 8px;font-size:12px;align-items:center"></div>
       <label class="chk" style="margin-top:4px"><input type="checkbox" id="autoLabToggle" checked> 작게 보이는 것은 이름 자동 숨김(화면 14px 미만)</label>
+      <label class="chk" style="margin-top:4px"><input type="checkbox" id="coastToggle" checked> 🌊 해안 띠(서버 정본 · 읽기 전용) — 바다 위에 걸친 피처는 빨간 테두리</label>
+      <div class="hint" id="coastInfo" style="margin-top:2px"></div>
       <div style="display:flex;gap:4px;margin-top:4px"><button class="btn" id="viewAllBtn" style="padding:3px 6px">전부 보임</button><button class="btn" id="viewTerrBtn" style="padding:3px 6px">지형만(광맥·마을 숨김)</button></div>
     </div>
     <label class="chk"><input type="checkbox" id="smoothToggle" checked> 곡선 미리보기(스무딩)</label>
@@ -171,7 +173,7 @@ const TYPE_COLOR = { river:'#4aa6e8', ridge:'#b07a44', valley:'#8fd08a', forest:
 const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
 const S = {
   zone:'hanbando', ZW:70016, ZH:130016,
-  tool:'river', features:[], draft:null, sel:null, ref:null, showRef:true, showBridges:true, cellSrc:'edit',
+  tool:'river', features:[], draft:null, sel:null, ref:null, showRef:true, showBridges:true, showCoast:true, cellSrc:'edit',
   width:400, radius:1500, rx:7000, ry:5500, den:2.0,
   flags:{noFit:false,noValley:false,pinStart:false},
   view:{scale:1, ox:0, oy:0}, pan:null, drag:null, nextId:1, smooth:true, stroke:null,
@@ -351,9 +353,13 @@ function drawCellPreview(srcFeats){
 function render(){
   ctx.clearRect(0,0,cv.width,cv.height);
   if(S.multi) drawBgMulti(); else drawBgSingle();
+  if(S.showCoast) drawCoast();   // [T601 추신] 해안 띠 — 바탕 바로 위(참조·피처 아래)
   if(S.showRef && S.ref){ if(S.multi) drawRefMulti(); else drawSet((S.ref[S.zone]||S.ref), true); }
+  const _sea = S.showCoast ? seaMarks() : null;
+  if(_sea) drawSeaMarks(_sea, true);    // 강·산맥·계곡·마을 — 밑에 빨간 테두리(피처가 그 위에 그려진다)
   if(S.cellPreview){ drawCellPreview(cellPreviewSrc()); drawSet({features:feats()}, true); }
   else drawSet({features:feats()}, false);
+  if(_sea) drawSeaMarks(_sea, false);   // 숲·호수·광맥·고개 — 둘레에 빨간 테두리(위에)
   if(S.draft) drawFeature(S.draft, false, true);
   // ★★[11차 3차 — 실화면 교정] 다리는 **맨 마지막에** 그린다.
   //   앞서 참조 지형 바로 뒤에 그렸더니 편집 피처(사용자가 그리는 강)가 그 위를 덮어 다리가 강 밑으로 사라졌다.
@@ -439,6 +445,82 @@ let WORK_BAKED = null; // @inline-work — 레포 판은 비어 있다(아래 bo
 //   새로고침만 해서는 옛 작업이 그대로 뜬다 — 재민이 두 번 당한 함정이 정확히 이것이다.
 //   내장해 두면 버튼 한 번으로 최신이 되고, 되살린 작업이 낡았으면 배너로 알린다.
 let BR_BAKED = {}; // @inline-bridges — 위와 같다(다리 셀 스냅샷)
+let COAST_BAKED = null; // @inline-coast — 위와 같다(해안 띠 층 · T601 추신 · `scripts/editor-coast-layer.js` 가 굽고 `editor-baked-check.js` 가 견준다)
+// ===== 🌊 해안 띠 층(읽기 전용) — 재민 10-03 "에디터에서 해안선도 잘려 있는 모양으로 보이게" =====
+//   서버 정본 마스크(`chunk.generateCoastlineWaterTiles` — 굽기 때의 해안 손잡이 그대로)를 존마다 4셀 = 1화소로 낮춘 것.
+//   화소 = 그 칸 셀의 절반 이상이 띠. 그리기는 옅은 파랑 · 피처가 띠 위면 빨간 테두리("바다 위") — 작업 데이터는 안 바뀐다.
+const _coastZ = {};   // 존 → { P, w, h, k, off, cv }
+function coastZone(z){
+  if(!COAST_BAKED || !COAST_BAKED.zones || !COAST_BAKED.zones[z]) return null;
+  if(_coastZ[z]) return _coastZ[z];
+  const L = COAST_BAKED.zones[z], n = L.w*L.h, P = new Uint8Array(n);
+  let i = 0, v = 0; for(const t of L.rle.split(',')){ const r = parseInt(t, 36); if(v) P.fill(1, i, i+r); i += r; v ^= 1; }
+  return (_coastZ[z] = { P, w:L.w, h:L.h, k:(COAST_BAKED.cell||4)*32, off:L.off, cv:null });
+}
+function coastCanvas(c){
+  if(c.cv) return c.cv;
+  const oc = document.createElement('canvas'); oc.width = c.w; oc.height = c.h;
+  const g = oc.getContext('2d'), im = g.createImageData(c.w, c.h);
+  for(let i=0;i<c.P.length;i++) if(c.P[i]){ im.data[i*4]=140; im.data[i*4+1]=200; im.data[i*4+2]=255; im.data[i*4+3]=115; }
+  g.putImageData(im, 0, 0); return (c.cv = oc);
+}
+function drawCoast(){
+  const zs = S.multi ? MZ : [S.zone];
+  ctx.save(); ctx.imageSmoothingEnabled = false;
+  for(const z of zs){ const c = coastZone(z); if(!c) continue;
+    const ox = S.multi ? c.off[0] : 0, oy = S.multi ? c.off[1] : 0;
+    ctx.drawImage(coastCanvas(c), w2sx(ox), w2sy(oy), c.w*c.k*S.view.scale, c.h*c.k*S.view.scale); }
+  ctx.restore();
+}
+// 모델 좌표(단일 = 존 로컬 · 멀티 = 세계)가 띠 위인가
+function seaAt(x, y){
+  let z = S.zone, lx = x, ly = y;
+  if(S.multi){ z = zoneAt(x, y); if(!z) return false; const c0 = coastZone(z); if(!c0) return false; lx = x - c0.off[0]; ly = y - c0.off[1]; }
+  const c = coastZone(z); if(!c) return false;
+  const px = Math.floor(lx / c.k), py = Math.floor(ly / c.k);
+  return px >= 0 && py >= 0 && px < c.w && py < c.h && c.P[py*c.w + px] === 1;
+}
+// 피처가 바다 위인가 — 선(강·산맥·계곡)은 줄기를 128px 마다 짚어 한 곳이라도 · 점·원(마을·광맥·고개·숲·호수)은 중심
+const _seaMemo = new WeakMap();
+function featSig(f){ if(f.path){ let s = f.path.length; for(const p of f.path) s += p.x*3 + p.y*7; return 'p'+s; } return f.center ? ('c'+f.center.x+','+f.center.y) : ''; }
+function featOnSea(f){
+  const sig = featSig(f) + '|' + S.multi + '|' + S.zone, m = _seaMemo.get(f);
+  if(m && m.sig === sig) return m.v;
+  let v = false;
+  if(f.path && f.path.length){
+    for(let i=0;i<f.path.length && !v;i++){ const a = f.path[i], b = f.path[i+1] || a;
+      const n = Math.max(1, Math.ceil(Math.hypot(b.x-a.x, b.y-a.y) / 128));
+      for(let t=0;t<n && !v;t++) v = seaAt(a.x + (b.x-a.x)*t/n, a.y + (b.y-a.y)*t/n); }
+  } else if(f.center) v = seaAt(f.center.x, f.center.y);
+  _seaMemo.set(f, { sig, v }); return v;
+}
+const SEA_NAME = { river:'강', ridge:'산맥', valley:'계곡', forest:'숲', lake:'호수', pass:'고개', ore:'광맥', village:'마을' };
+function seaMarks(){
+  if(!COAST_BAKED) { coastInfo(null); return null; }
+  const out = []; const cnt = {};
+  for(const f of feats()){ if(!visOK(f.type)) continue; if(featOnSea(f)){ out.push(f); cnt[f.type] = (cnt[f.type]||0) + 1; } }
+  coastInfo(cnt); return out;
+}
+function coastInfo(cnt){
+  const el = document.getElementById('coastInfo'); if(!el) return;
+  if(!COAST_BAKED){ el.textContent = '해안 띠 층 없음(내장 정본에 coast 칸이 없다)'; return; }
+  const parts = Object.keys(SEA_NAME).filter(t => cnt && cnt[t]).map(t => SEA_NAME[t] + ' ' + cnt[t]);
+  el.textContent = '바다 위: ' + (parts.length ? parts.join(' · ') : '0') + ' · 해안 ' + (COAST_BAKED.knob || '끔') + ' · ' + (COAST_BAKED.cell||4) + '셀 = 1화소';
+}
+function drawSeaMarks(list, under){
+  ctx.save(); ctx.strokeStyle = '#ff3030'; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  for(const f of list){
+    if(under && f.path){ const sm = (S.smooth && f.path.length>=3) ? chaikinPts(f.path,2) : f.path;
+      for(let i=0;i<sm.length-1;i++){ const a=sm[i], b=sm[i+1]; ctx.lineWidth = Math.max(1.2, ((a.w+b.w)/2)*S.view.scale) + 5;
+        ctx.beginPath(); ctx.moveTo(w2sx(a.x),w2sy(a.y)); ctx.lineTo(w2sx(b.x),w2sy(b.y)); ctx.stroke(); }
+      if(sm.length===1){ ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(w2sx(sm[0].x), w2sy(sm[0].y), 6, 0, 7); ctx.stroke(); } }
+    else if(under && f.type==='village'){ ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(w2sx(f.center.x), w2sy(f.center.y), 9, 0, 7); ctx.stroke(); }
+    else if(!under && !f.path && f.type!=='village' && f.center){
+      const rx = (f.rx ?? f.radius ?? 0) * S.view.scale, ry = (f.ry ?? f.radius ?? 0) * S.view.scale;
+      ctx.lineWidth = 2.5; ctx.beginPath(); ctx.ellipse(w2sx(f.center.x), w2sy(f.center.y), Math.max(5, rx), Math.max(5, ry), 0, 0, 7); ctx.stroke(); }
+  }
+  ctx.restore();
+}
 function brCellsOf(zoneKey, zd){
   const fromRef = (zd && zd.bridges) || null;
   if(fromRef && fromRef.length) return { arr: fromRef, src: 'ref' };
@@ -527,8 +609,8 @@ function labOn(f){
   else if(f.type==='forest'||f.type==='lake') px = Math.max(f.rx??f.radius??0, f.ry??f.radius??0)*2*S.view.scale;
   return px >= 14;
 }
-function saveView(){ try{ localStorage.setItem('durango_editor_view', JSON.stringify({vis:S.vis, lab:S.lab, autoLab:S.autoLab})); }catch(e){} }
-function loadView(){ try{ const v=JSON.parse(localStorage.getItem('durango_editor_view')||'null'); if(v){ Object.assign(S.vis, v.vis||{}); Object.assign(S.lab, v.lab||{}); if(typeof v.autoLab==='boolean') S.autoLab=v.autoLab; } }catch(e){} }
+function saveView(){ try{ localStorage.setItem('durango_editor_view', JSON.stringify({vis:S.vis, lab:S.lab, autoLab:S.autoLab, showCoast:S.showCoast})); }catch(e){} }
+function loadView(){ try{ const v=JSON.parse(localStorage.getItem('durango_editor_view')||'null'); if(v){ Object.assign(S.vis, v.vis||{}); Object.assign(S.lab, v.lab||{}); if(typeof v.autoLab==='boolean') S.autoLab=v.autoLab; if(typeof v.showCoast==='boolean') S.showCoast=v.showCoast; } }catch(e){} }
 function buildViewGrid(){
   const g=document.getElementById('viewGrid'); if(!g) return; g.innerHTML='';
   const head=(t)=>{ const d=document.createElement('div'); d.textContent=t; d.style.color='var(--mut)'; d.style.fontSize='10px'; return d; };
@@ -931,6 +1013,7 @@ document.getElementById('loadWorkBtn').onclick=()=>document.getElementById('work
 document.getElementById('workFile').onchange=e=>{ const f=e.target.files[0]; if(!f)return; const rd=new FileReader(); rd.onload=()=>{ try{ loadWork(JSON.parse(rd.result)); }catch(err){ alert('파싱 실패: '+err.message); } }; rd.readAsText(f); };
 document.getElementById('refToggle').onchange=e=>{ S.showRef=e.target.checked; render(); };
 document.getElementById('bridgeToggle').onchange=e=>{ S.showBridges=e.target.checked; render(); };
+document.getElementById('coastToggle').onchange=e=>{ S.showCoast=e.target.checked; saveView(); if(!S.showCoast){ const el=document.getElementById('coastInfo'); if(el) el.textContent=''; } render(); };
 document.getElementById('cellSrc').onchange=e=>{
   S.cellSrc = e.target.value;
   if(S.cellSrc==='ref' && !S.ref) toast('참조 지형을 먼저 불러오세요 — 「참조 지형 불러오기(JSON)」');
@@ -1068,12 +1151,12 @@ function bootBaked(){
   if(WORK_BAKED) return Promise.resolve('inline');
   let p; try{ p = fetch('map-editor-baked.json'); }catch(e){ return Promise.resolve('none'); }
   return p.then(r=>{ if(!r.ok) throw new Error(r.status); return r.json(); })
-    .then(j=>{ WORK_BAKED=j.work||null; BR_BAKED=j.bridges||{}; for(const k in _brIdxCache) delete _brIdxCache[k]; return 'fetch'; })
+    .then(j=>{ WORK_BAKED=j.work||null; BR_BAKED=j.bridges||{}; COAST_BAKED=j.coast||null; for(const k in _brIdxCache) delete _brIdxCache[k]; for(const k in _coastZ) delete _coastZ[k]; return 'fetch'; })
     .catch(()=>'none');
 }
 function bootEditor(src){
   S.bakedSrc = src;
-  loadView(); buildViewGrid();
+  loadView(); buildViewGrid(); { const ct=document.getElementById('coastToggle'); if(ct) ct.checked = S.showCoast; }
   const _restored=loadLocal(); if(!_restored && WORK_BAKED){ S.features=WORK_BAKED.features.slice(); S.mf=WORK_BAKED.mf.slice(); S.stamp=WORK_BAKED.stamp; } setTool('river'); resize(); fitView(); refreshBridgeJump(); render(); renderList(); resetHist(); if(_restored) toast('이전 작업 복원됨');
   showStamp();
   S.booted = true;

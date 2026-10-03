@@ -15,6 +15,7 @@
 //   ⑦ 마시기 — 개울 칸 살피기 = 민물(물 메뉴) · 개울 옆 '마시기' = +갈증 · 낚시·갈대는 큰 물만
 //   ⑧ 큰 지도 — 개울 칸 = `stream` 종류(연한 파랑) · 클라 래스터(`/streams.bin`) = 서버 비트
 //   ⑨ 끔 — `T585_STREAMS=0` 이면 개울 0(자식 프로세스)
+//   ⑩ [T601] 지문 = 해안 꼴 손잡이·띠 배수까지 · 두 자 deps 개울 술어(`T601_RULER_STREAMS`) · 굽기 한 줄 차례·부르기만
 // 실행: node scripts/test-streams.js
 'use strict';
 const path = require('path');
@@ -235,6 +236,38 @@ say('\n⑨ 끔 — `T585_STREAMS=0` 이면 개울 0');
   const code = "const S=require('./server/streams.js');process.stdout.write(JSON.stringify({on:S.ON,a:S.isStreamCell('hanbando'," + globalThis.__st.cx + "," + globalThis.__st.cy + "),l:S.load('hanbando')}))";
   let out = null; try { out = JSON.parse(execFileSync(process.execPath, ['-e', code], { cwd: ROOT, env: Object.assign({}, process.env, { T585_STREAMS: '0' }), encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim().split('\n').pop()); } catch (e) { out = null; }
   ok(!!out && out.on === false && out.a === false && out.l === null, '★⑨ 끔 — 개울 칸이 개울이 아니다 · 래스터 안 실림(종전 세계)');
+}
+say('\n⑩ [T601] 지문이 해안 입력을 본다 · 두 자 deps 의 개울 술어 · 굽기 한 줄은 부르기만');
+{
+  const run = (env, code) => { try { return execFileSync(process.execPath, ['-e', code], { cwd: ROOT, env: Object.assign({}, process.env, env), encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim().split('\n').pop(); } catch (e) { return null; } };
+  const hc = "process.stdout.write(require('./server/streams.js').sourceHash('hanbando'))";
+  const off = run({ T588_COAST: '' }, hc), a = run({ T588_COAST: 'a' }, hc), one = run({ T588_COAST: '1' }, hc), b = run({ T588_COAST: 'b' }, hc), zero = run({ T588_COAST: '0' }, hc);
+  ok(off && a && b && off !== a && a !== b && a === one && off === zero, '★⑩ 해안 꼴 손잡이가 지문에 든다 — 끔(빈·0) · a(=1) · b 셋이 갈린다(chunk.js 와 같은 읽기)', `${off} · ${a} · ${b}`);
+  // ★지문의 해안 읽기 = chunk.js 의 해안 읽기 — 손잡이 값마다 **띠 자체**를 굽어 견준다(T604 가 기본값을 b 로 바꾸면 여기가 빨강 → coastVariant 를 따라 고친다)
+  const bandCode = "const ZC=require('./server/zone-config'),ch=require('./server/chunk'),S=require('./server/streams.js');const Z={...ZC.ZONES.hanbando,id:'hanbando'};"
+    + "const OR=Object.values(ZC.ZONES).filter(z=>z.isOcean).map(z=>({x0:z.worldOffsetX,y0:z.worldOffsetY,x1:z.worldOffsetX+z.zoneWidth,y1:z.worldOffsetY+z.zoneHeight}));"
+    + "const t=ch.generateCoastlineWaterTiles(Z,32,ZC.findZoneAt,OR);let h=0;for(const k of t){for(let i=0;i<k.length;i++)h=(h*31+k.charCodeAt(i))|0;}process.stdout.write(JSON.stringify({n:t.size,h,v:S.coastVariant()}))";
+  const vals = ['', '0', '1', 'a', 'b', 'x'];
+  const bands = vals.map((v) => { const o = run(v === '' ? { T588_COAST: '' } : { T588_COAST: v }, bandCode); return o ? JSON.parse(o) : null; });
+  const same = (i, j) => bands[i].n === bands[j].n && (bands[i].h ^ bands[j].h) === 0;   // 순서 무관 합이 아니라 문자열 차례 합 — 같은 함수·같은 인자면 차례도 같다
+  let agree = bands.every(Boolean);
+  if (agree) for (let i = 0; i < vals.length; i++) for (let j = 0; j < vals.length; j++) if (same(i, j) !== (bands[i].v === bands[j].v)) agree = false;
+  ok(agree, '★⑩ 지문의 해안 읽기 = chunk.js 의 해안 읽기 — 손잡이 값마다 띠가 같으면 지문 갈래도 같고, 다르면 다르다(T604 가 기본값을 바꾸면 여기서 잡힌다)',
+    bands.map((b, i) => `${vals[i] || '빈'}:${b ? b.v + '/' + b.n : '?'}`).join(' · '));
+  const fileHash = S.decodeFile(fs.readFileSync(S.fileOf('hanbando'))).hash;
+  ok(fileHash === off, '⑩ 굽힌 파일 지문 = 해안 끔 판(지금 정본 · 켜면 그 존 개울을 끄고 경고)', fileHash);
+  const rd = "const S=require('./server/streams.js');const r=S.rulerDeps('hanbando',{a:1});process.stdout.write(JSON.stringify({k:Object.keys(r.deps),sig:r.sig,st:r.deps.isStreamLocal?r.deps.isStreamLocal(" + globalThis.__st.cx + "*32+16," + globalThis.__st.cy + "*32+16):null}))";
+  const on1 = JSON.parse(run({}, rd) || 'null'), off1 = JSON.parse(run({ T601_RULER_STREAMS: '0' }, rd) || 'null');
+  ok(on1 && on1.k.includes('isStreamLocal') && on1.st === true && on1.sig === fileHash && off1 && off1.k.join() === 'a' && off1.sig === '',
+    '★⑩ 두 자 deps — 기본 = 같은 술어(개울 칸 참 · 캐시 표식 = 래스터 지문) · `T601_RULER_STREAMS=0` = deps 그대로(옛 정의)', JSON.stringify({ on: on1 && on1.k, off: off1 && off1.k }));
+  const t17 = fs.readFileSync(path.join(ROOT, 'scripts', 't17-metrics.js'), 'utf8'), t176 = fs.readFileSync(path.join(ROOT, 'scripts', 't176-ab.js'), 'utf8');
+  const wired = (src) => /rulerDeps\(Z, \{ isTerrainBlockedLocal, isWaterTileLocal \}\)/.test(src) && /makeTerrainAdapter\(T, ZONE, _t601\.deps\)/.test(src) && /seeds\[0\]\.t601s/.test(src);
+  ok(wired(t17) && wired(t176), '⑩ t17 · t176 둘 다 같은 한 줄(`streams.rulerDeps`)로 deps 를 받고 씨앗 캐시가 표식을 본다');
+  const sh = fs.readFileSync(path.join(ROOT, 'scripts', 'reset-bake-all.sh'), 'utf8');
+  const order = ['# ── 1 폭', '# ── 2 해안 꼴', '# ── 3 동쪽', '# ── 4 마을 자리', '# ── 5 광맥', '# ── 6 다리', '# ── 7 개울', '# ── 8 에디터'].map((k) => sh.indexOf(k));
+  ok(order.every((v, i) => v > 0 && (i === 0 || v > order[i - 1])), '⑩ 굽기 한 줄 차례 = 폭 → 해안 → 동쪽 → 마을 → 광맥·숲·군락 → 다리 → 개울 → 에디터(족보 541)', order.join(','));
+  const calls = ['scripts/bake-streams.js', 'scripts/t574-bake.js', 'scripts/t580-bake-nippon.js', 'scripts/t586-minor-ores.js', 'scripts/plan-village-forage.js', 'scripts/plan-bridges-v2.js', 'scripts/editor-baked-check.js', 'scripts/test-map-editor.js', 'scripts/plan-villages-reset.js'];
+  ok(calls.every((c) => sh.includes(c)) && !/writeFileSync|appendFileSync/.test(sh), '⑩ 단계는 있는 스크립트를 **부르기만**(사본 0 — 셸이 정본을 직접 쓰지 않는다 · node 한 줄은 읽기만)');
 }
 for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
 say(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
