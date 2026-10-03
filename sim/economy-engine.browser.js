@@ -2408,6 +2408,7 @@ function publicZoneMap(fallbackHost = 'localhost') {
       mainSquare: z.mainSquare || null,
       isOcean: !!z.isOcean,
       ...(z.coastBandK ? { coastBandK: z.coastBandK } : {}),   // ★[T591] 존별 해안 띠 배수 — 클라 `computeCoastlineWaterTiles` 가 서버와 같은 띠를 그린다(없으면 칸 자체가 안 실림 = 종전 바이트)
+      ...(z.coastShift ? { coastShift: z.coastShift } : {}),   // ★[T604 추신2] 존별 해안 평행이동(셀 · 없으면 칸 자체가 안 실림 = 종전 바이트) — 클라가 서버와 같은 띠를 그린다
       north: _findNeighborSide(id, 'N'),
       south: _findNeighborSide(id, 'S'),
       east:  _findNeighborSide(id, 'E'),

@@ -12,6 +12,8 @@
 //   ⑥ 자명 통과 금지 — 세계 좌표가 아닌 것(존 자리)을 잡음에 섞은 돌연변이를 ③ 이 **문다** · 표를 바꾸면 ⑤ 가 바뀜을 본다
 //   ⑦ ★[T588 추신2] T591 띠 배수 위 — 닛폰(배수 0.298) 켬 판의 띠 몫이 끔(T591) 판 몫 근처다(배수가 구간 띠 바탕에도 곱해진다 · 굴곡은 그 위) ·
 //      배수를 빼먹은 돌연변이(배수 함수 = 1)는 이 자가 **문다** · 빌려 쓴 구간(닛폰 서·남)은 켬이면 바뀐다 · 배수 존에 배수 함수가 안 오면 던진다
+//   ⑧ ★[T604 추신2] 존별 평행이동 `coastShift` — 이동 0 = 비트 그대로 · 이동하면 띠가 줄기만 한다(부분집합) · 켬 + 빈 표 + 이동 = 끔 + 이동(같은 자리) ·
+//      솔기 0(이동 다른 두 존 경계) · 뭍 이웃 경계에서 계단 없음(비탈) — 비탈 뺀 돌연변이를 이 자가 **문다** · 클라 = 서버(이동) · 함수 없으면 던진다
 // 실행: node scripts/test-coast-shape.js
 'use strict';
 const path = require('path');
@@ -51,13 +53,14 @@ console.log('\n① 켬이어도 구간 표가 비면 지금 식 그대로(칸·�
 function _chunkArgs() {
   if (_chunkArgs.v) return _chunkArgs.v;
   const g = CS.generate; let got = null;
-  CS.generate = function (zone, ts, ors, zones, base, noise, old, opts) { got = { old, bandK: opts && opts.bandK }; return new Set(); };
+  CS.generate = function (zone, ts, ors, zones, base, noise, old, opts) { got = { old, bandK: opts && opts.bandK, bandShift: opts && opts.bandShift }; return new Set(); };
   try { process.env.T588_COAST = 'a'; chunk.generateCoastlineWaterTiles({ ...ZONES.hanbando, id: 'hanbando' }, 32, findZoneAt, OR); }
   finally { CS.generate = g; delete process.env.T588_COAST; }
   _chunkArgs.v = got; return got;
 }
 function _oldDepth() { return _chunkArgs().old; }
 function _bandK() { return _chunkArgs().bandK; }
+function _bandShift() { return _chunkArgs().bandShift; }
 
 // ── ② 결정적 · 엔진 무관 수학 ─────────────────────────────────────────────────────────
 console.log('\n② 결정적 — 같은 입력 두 번 = 같은 칸 · 2^x √ 사슬');
@@ -158,6 +161,53 @@ console.log('\n⑦ T591 띠 배수 위 — 닛폰 켬 띠 몫 ≈ 끔(T591) 몫 
   ok(diffN(southBody(off), southBody(noBorrow)) === 0, '⑦e 빌림을 지우면(미확인) 닛폰 남변 몸통 = 끔(빌림만이 남변을 바꾼다)', `다름 ${diffN(southBody(off), southBody(noBorrow))}`);
   let threw = false; try { CS.generate({ ...ZONES.nippon, id: 'nippon' }, 32, OR, ZONES, BASE, NOISE, _oldDepth(), { variant: 'a' }); } catch (e) { threw = /bandK/.test(String(e && e.message)); }
   ok(threw, '⑦f 배수 존이 있는데 배수 함수가 안 오면 던진다(조용히 어긋나지 않는다)');
+}
+
+// ── ⑧ 존별 평행이동(★T604 추신2) ─────────────────────────────────────────────────────
+console.log('\n⑧ 존별 평행이동 coastShift — 0 = 그대로 · 줄기만 · 같은 자리 · 솔기 0 · 경계 계단 없음 · 클라 = 서버 · 던짐');
+{
+  const SH = 60;   // 셀(재민 표의 PM 안 — 자 값일 뿐 · 기본은 0)
+  const subset = (a, b) => { for (const k of a) if (!b.has(k)) return false; return true; };
+  const off0 = gen('hanbando'), b0 = gen('hanbando', 'b');
+  ZONES.hanbando.coastShift = SH;
+  try {
+    const off1 = gen('hanbando'), b1 = gen('hanbando', 'b');
+    ok(off1.size < off0.size && subset(off1, off0) && b1.size < b0.size && subset(b1, b0), `⑧ 이동 ${SH}셀 — 끔·b 둘 다 띠가 줄기만 한다(이동 뒤 바다 ⊂ 이동 앞 바다)`,
+      `끔 ${off0.size.toLocaleString()} → ${off1.size.toLocaleString()} · b ${b0.size.toLocaleString()} → ${b1.size.toLocaleString()}`);
+    // 띠 깊이(열마다 바다 변에서 첫 뭍까지 · 셀) — 존 몸통(뭍 이웃 변 비탈 밖)에서 꼭 이동만큼 줄어드는 열이 대부분
+    const NX = Math.ceil(ZONES.hanbando.zoneWidth / 32), NY = Math.ceil(ZONES.hanbando.zoneHeight / 32), R = Math.ceil((BASE + NOISE) / 32) + 2;
+    const depthCol = (set, x) => { let y = NY - 1; while (y >= 0 && set.has(`${x}_${y}`)) y--; return NY - 1 - y; };
+    let exact = 0, n = 0; for (let x = R; x < NX - R; x += 7) { n++; const d0 = depthCol(off0, x), d1 = depthCol(off1, x); if (Math.abs((d0 - d1) - SH) <= 1) exact++; }
+    ok(exact / n > 0.9, `⑧b 끔 · 몸통 열의 띠 깊이가 이동만큼(±1셀) 준다`, `${exact}/${n}열`);
+    const empty = { chars: {} };
+    const eq = (zid) => same(gen(zid), CS.generate({ ...ZONES[zid], id: zid }, 32, OR, ZONES, BASE, NOISE, _oldDepth(), Object.assign({ bandK: _bandK(), bandShift: _bandShift() }, empty)));
+    ok(eq('hanbando') && eq('nippon') && eq('jungwon_n'), '⑧c ★켬 + 빈 표 + 이동 = 끔 + 이동(한반도 · 닛폰 · 중원북 칸·순서) — 평행이동이 같은 자리에서 빠진다');
+    // ⚠갇힌 바다 메우기는 존 사각을 본다("존 테두리에 닿는 덩이는 둔다") — 가짜 존 테두리가 덩이를 자르면 그 덩이만 다르다(실제 이웃 두 존은 경계에 걸친 덩이를
+    //   둘 다 두니 같다). 이동하면 그런 덩이가 가짜 존 테두리에 걸린다(606칸 — 실측) ⇒ 이 자는 메우기를 끄고(keepPockets · 자 전용) 세계 좌표 몫만 견준다.
+    const genS = (v) => (zone) => CS.generate(zone, 32, OR, ZONES, BASE, NOISE, _oldDepth(), { variant: v, bandK: _bandK(), bandShift: _bandShift(), keepPockets: true });
+    const r = seamCheck('b', genS('b'));
+    ok(r.cmp > 100000 && r.bad === 0, '⑧d ★솔기 0 — 한반도만 이동(닛폰 0)인 경계에 걸친 가짜 존 = 두 존 따로(b · 메우기 뺀 세계 좌표 몫)', `${r.cmp.toLocaleString()}칸 · 다름 ${r.bad}`);
+    // 경계 계단: 한반도|닛폰 경계(x 480000) 양옆 열의 띠 깊이 — 비탈이 있으면 거의 같고, 비탈을 뺀 돌연변이는 이동만큼 뛴다
+    const nip = gen('nippon', 'b'), han = gen('hanbando', 'b');
+    const NXh = NX, NYn = Math.ceil(ZONES.nippon.zoneHeight / 32);
+    const dEdgeH = depthCol(han, NXh - 1), dEdgeN = (() => { let y = NYn - 1; while (y >= 0 && nip.has(`0_${y}`)) y--; return NYn - 1 - y; })();
+    ok(Math.abs(dEdgeH - dEdgeN) <= 3, '⑧e ★뭍 이웃 경계에서 계단 없음 — 한반도 끝 열 · 닛폰 첫 열 띠 깊이(이동 60 · 비탈)', `${dEdgeH} · ${dEdgeN}셀`);
+    const mut = CS.generate({ ...ZONES.hanbando, id: 'hanbando' }, 32, OR, ZONES, BASE, NOISE, _oldDepth(), { variant: 'b', bandK: _bandK(), bandShift: (z) => (z.coastShift || 0) * 32 });
+    const dMut = depthCol(mut, NXh - 1);
+    ok(Math.abs(dMut - dEdgeN) > 30, '⑧f 비탈을 뺀 돌연변이(평행이동 고르게) → ⑧e 자가 **문다**(경계에서 이동만큼 계단)', `${dMut} · ${dEdgeN}셀`);
+    // 클라 쌍둥이(이동 칸이 /zones 로 실려 간다)
+    const src = fs.readFileSync(path.join(ROOT, 'public', 'client', '00-const.js'), 'utf8');
+    const a = src.indexOf('const COASTLINE_BASE = 6000, COASTLINE_NOISE = 5000;'), bb = src.indexOf('// zonesMeta 받으면 모든 zone water tiles 미리 계산');
+    const make = new Function('zonesMeta', 'uiCfg', 'CoastShape', src.slice(a, bb) + '\nreturn computeCoastlineWaterTiles;');
+    const zm = publicZoneMap('localhost');
+    ok(zm.hanbando && zm.hanbando.coastShift === SH, '⑧g 전제: /zones 에 이동 칸이 실린다(있을 때만)', String(zm.hanbando && zm.hanbando.coastShift));
+    let badC = [];
+    for (const v of ['', 'b']) { const f = make(zm, v ? { coast588: v } : {}, CS); if (!same(f(zm.hanbando, 32), gen('hanbando', v || undefined))) badC.push(v || '끔'); }
+    ok(badC.length === 0, '⑧h ★클라 = 서버 — 이동 60(끔 · b · 한반도 칸·순서)', badC.join(',') || '둘 다 같음');
+    let threw = false; try { CS.generate({ ...ZONES.hanbando, id: 'hanbando' }, 32, OR, ZONES, BASE, NOISE, _oldDepth(), { variant: 'b', bandK: _bandK() }); } catch (e) { threw = /bandShift/.test(String(e && e.message)); }
+    ok(threw, '⑧i 이동 존이 있는데 평행이동 함수가 안 오면 던진다');
+  } finally { delete ZONES.hanbando.coastShift; }
+  ok(same(gen('hanbando'), off0) && publicZoneMap('localhost').hanbando.coastShift === undefined, '⑧j 이동을 지우면(기본 0) 끔 칸 그대로 · /zones 에 칸 없음(종전 바이트)');
 }
 
 console.log(`\n=== PASS ${pass} / FAIL ${fail} ===`);

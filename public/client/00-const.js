@@ -642,15 +642,25 @@ function cropSprite(stage, crop) {
   //   손잡이 켬 길(CoastShape)도 이 함수를 받아 같은 배수 위에 구간 성격을 얹는다.
   function _coastBandKOf(zone) { return (typeof zone.coastBandK === 'number' && zone.coastBandK > 0 && zone.coastBandK !== 1) ? zone.coastBandK : 1; }
   function _coastInOcean(oceanRects, x, y) { for (let oi = 0; oi < oceanRects.length; oi++) { const O = oceanRects[oi]; if (x >= O.x0 && x < O.x1 && y >= O.y0 && y < O.y1) return true; } return false; }
-  function _coastBandKAt(zone, bandK, ax, ay, oceanRects, maxDist) {
-    if (bandK === 1) return 1;
+  function _coastLandRamp(zone, ax, ay, oceanRects, maxDist) {
     const zx0 = zone.worldOffsetX, zy0 = zone.worldOffsetY, zx1 = zx0 + zone.zoneWidth, zy1 = zy0 + zone.zoneHeight;
     let d = Infinity;
     if (!_coastInOcean(oceanRects, zx0 - 1, ay)) d = Math.min(d, ax - zx0);
     if (!_coastInOcean(oceanRects, zx1 + 1, ay)) d = Math.min(d, zx1 - ax);
     if (!_coastInOcean(oceanRects, ax, zy0 - 1)) d = Math.min(d, ay - zy0);
     if (!_coastInOcean(oceanRects, ax, zy1 + 1)) d = Math.min(d, zy1 - ay);
-    return 1 + (bandK - 1) * Math.min(1, d / maxDist);
+    return Math.min(1, d / maxDist);
+  }
+  function _coastBandKAt(zone, bandK, ax, ay, oceanRects, maxDist) {
+    if (bandK === 1) return 1;
+    return 1 + (bandK - 1) * _coastLandRamp(zone, ax, ay, oceanRects, maxDist);
+  }
+  // ★[T604 추신2 · 서버 chunk.js `_coastShiftAt` 미러] 존별 해안 평행이동 `coastShift`(셀 · 기본 0) — 같은 비탈로 이웃 뭍 변에서 0
+  function _coastShiftOf(zone) { return (typeof zone.coastShift === 'number' && zone.coastShift > 0) ? zone.coastShift : 0; }
+  function _coastShiftAt(zone, shiftCells, ax, ay, oceanRects, maxDist, tileSize) {
+    if (shiftCells === 0) return 0;
+    const S = shiftCells * tileSize;
+    return S * _coastLandRamp(zone, ax, ay, oceanRects, S);   // = min(S, 뭍 이웃 변까지 거리) — 경계에서 0 · 이동만큼 들어가면 다(45°) · maxDist 는 안 쓴다
   }
   function computeCoastlineWaterTiles(zone, tileSize) {
     const waterTiles = new Set();
@@ -665,13 +675,14 @@ function cropSprite(stage, crop) {
       const _mx = COASTLINE_BASE + COASTLINE_NOISE;
       return CoastShape.generate(zone, tileSize, oceanRects, zonesMeta, COASTLINE_BASE, COASTLINE_NOISE,
         (bnx, bny) => COASTLINE_BASE + _coastSmoothNoise2D(bnx, bny) * COASTLINE_NOISE,
-        { variant: _c588, bandK: (z, ax, ay) => _coastBandKAt(z, _coastBandKOf(z), ax, ay, oceanRects, _mx) });   // ★[T588 추신2] T591 배수 위에
+        { variant: _c588, bandK: (z, ax, ay) => _coastBandKAt(z, _coastBandKOf(z), ax, ay, oceanRects, _mx),
+          bandShift: (z, ax, ay) => _coastShiftAt(z, _coastShiftOf(z), ax, ay, oceanRects, _mx, tileSize) });   // ★[T588 추신2] T591 배수 위에 · ★[T604 추신2] 평행이동
     }
     const cols = Math.ceil(zone.zoneWidth / tileSize);
     const rows = Math.ceil(zone.zoneHeight / tileSize);
     const maxDist = COASTLINE_BASE + COASTLINE_NOISE, maxDist2 = maxDist * maxDist;
     // ★[T591] 존별 띠 배수(서버 chunk.js 와 같은 식 · 뭍 이웃 변에서 1 로 돌아감) — 칸이 없으면 1(종전)
-    const _bandK = _coastBandKOf(zone);   // ★[T588 추신2] 식은 위 `_coastBandKAt` 한 자리(비트 동일)
+    const _bandK = _coastBandKOf(zone), _shift = _coastShiftOf(zone);   // ★[T588 추신2] 식은 위 `_coastBandKAt` 한 자리(비트 동일) · ★[T604 추신2] 평행이동
     for (let ty = 0; ty < rows; ty++) {
       const absY = zone.worldOffsetY + ty * tileSize;
       const wty = Math.floor(absY / tileSize);
@@ -695,7 +706,8 @@ function cropSprite(stage, crop) {
         const dist = Math.sqrt(bd2);
         const depth = COASTLINE_BASE + _coastSmoothNoise2D(bnx, bny) * COASTLINE_NOISE; // 바다점 월드좌표 2D 노이즈 → 솔기 없음
         const _k = _coastBandKAt(zone, _bandK, ax, ay, oceanRects, maxDist);
-        if (dist < depth * _k) waterTiles.add(`${tx}_${ty}`);
+        const _s = _coastShiftAt(zone, _shift, ax, ay, oceanRects, maxDist, tileSize);
+        if (dist < (_s === 0 ? depth * _k : Math.max(0, depth * _k - _s))) waterTiles.add(`${tx}_${ty}`);
       }
     }
     return waterTiles;
