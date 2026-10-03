@@ -49,18 +49,21 @@ function poolOf(water, day) {
 //   x ÷ 2³² 를 바로 쓰면 u 가 한쪽에 몰린다 — 하네스가 실제로 그걸 잡았다). 그쪽이 null(고르게와 같다)이면 옛 줄 그대로 —
 //   안 주면 이 함수는 한 글자도 안 바뀐다.
 let _SR = null;
-function pick(water, day, h, choose) {
-  const pool = poolOf(water, day);
-  if (!pool.length) return null;
+// ★[T593] 뽑기 몸통을 한 자리로 뺐다 — 바닷물고기 표(`seafish.js`)가 **같은 뽑기**를 부른다(사본 0 · 이 파일의 동작은 한 글자도 안 바뀐다).
+//   `pool` 은 그 물·그 철에 사는 종(배열) · `byId` 는 그 표의 id → 종(고른 id 를 종으로 되돌린다) · 나머지 셋은 아래 `pick` 과 같다.
+function pickFrom(pool, day, h, choose, byId) {
+  if (!pool || !pool.length) return null;
   const x = ((h | 0) ^ Math.imul(day | 0, 0x9e3779b1)) >>> 0;
   if (choose) {
     const SR = _SR || (_SR = require('./seed-rand'));
     const id = choose(pool.map((s) => s.id), SR.out(SR.step(SR.step(x))));
-    const s = id ? BY_ID.get(id) : null; if (s) return s;
+    const s = id ? byId(id) : null; if (s) return s;
   }
   return pool[x % pool.length];
 }
+const _byId = (id) => BY_ID.get(id);
+function pick(water, day, h, choose) { return pickFrom(poolOf(water, day), day, h, choose, _byId); }
 function kgOf(id) { const s = BY_ID.get(id); return s ? s.kg : 0; }
 function koOf(id) { const s = BY_ID.get(id); return s ? s.ko : id; }
 function isFish(id) { return BY_ID.has(id); }
-module.exports = { WATERS, SPECIES, seasonOf, poolOf, pick, kgOf, koOf, isFish, ids: () => SPECIES.map((s) => s.id) };
+module.exports = { WATERS, SPECIES, seasonOf, poolOf, pick, pickFrom, kgOf, koOf, isFish, ids: () => SPECIES.map((s) => s.id) };
