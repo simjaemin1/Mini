@@ -646,6 +646,18 @@ function cropSprite(stage, crop) {
     const cols = Math.ceil(zone.zoneWidth / tileSize);
     const rows = Math.ceil(zone.zoneHeight / tileSize);
     const maxDist = COASTLINE_BASE + COASTLINE_NOISE, maxDist2 = maxDist * maxDist;
+    // ★[T591] 존별 띠 배수(서버 chunk.js 와 같은 식 · 뭍 이웃 변에서 1 로 돌아감) — 칸이 없으면 1(종전)
+    const _bandK = (typeof zone.coastBandK === 'number' && zone.coastBandK > 0 && zone.coastBandK !== 1) ? zone.coastBandK : 1;
+    const _inOcean = (x, y) => { for (let oi = 0; oi < oceanRects.length; oi++) { const O = oceanRects[oi]; if (x >= O.x0 && x < O.x1 && y >= O.y0 && y < O.y1) return true; } return false; };
+    const _zx0 = zone.worldOffsetX, _zy0 = zone.worldOffsetY, _zx1 = _zx0 + zone.zoneWidth, _zy1 = _zy0 + zone.zoneHeight;
+    const _landSideDist = (ax, ay) => {
+      let d = Infinity;
+      if (!_inOcean(_zx0 - 1, ay)) d = Math.min(d, ax - _zx0);
+      if (!_inOcean(_zx1 + 1, ay)) d = Math.min(d, _zx1 - ax);
+      if (!_inOcean(ax, _zy0 - 1)) d = Math.min(d, ay - _zy0);
+      if (!_inOcean(ax, _zy1 + 1)) d = Math.min(d, _zy1 - ay);
+      return d;
+    };
     for (let ty = 0; ty < rows; ty++) {
       const absY = zone.worldOffsetY + ty * tileSize;
       const wty = Math.floor(absY / tileSize);
@@ -668,7 +680,8 @@ function cropSprite(stage, crop) {
         if (!hit) continue;
         const dist = Math.sqrt(bd2);
         const depth = COASTLINE_BASE + _coastSmoothNoise2D(bnx, bny) * COASTLINE_NOISE; // 바다점 월드좌표 2D 노이즈 → 솔기 없음
-        if (dist < depth) waterTiles.add(`${tx}_${ty}`);
+        const _k = _bandK === 1 ? 1 : 1 + (_bandK - 1) * Math.min(1, _landSideDist(ax, ay) / maxDist);
+        if (dist < depth * _k) waterTiles.add(`${tx}_${ty}`);
       }
     }
     return waterTiles;
