@@ -37,6 +37,7 @@ const S = {
   epoch: 0, dayMs: 1,
   lastDay: -1,
   coarseGen: 0,          // ★[T578 ④] 코스 등급 지도가 바뀐 횟수(일 1회 재구축에서 다르면 +1)
+  chgOn: false, chg: null,   // ★[T619] 바뀐 코스 칸 키(교역로 다시 파기가 켰을 때만 모은다 · `takeCoarseChanges`)
   stats: { stamped: 0, cellsTotal: 0, graded: 0 },
   // ★★[T566 추신2 2026-09-30 · 재민] **다져진 길(등급 2) 셀 집합** — 재생 술어(`zone.js regrowBlockedAt`)의 길 항이 읽는 **셀 집합 하나**.
   //   새 표 0 · 새 수 0: 등급 문턱은 위 `T2` 그대로이고, 값은 `cells` 의 v 그대로다(이 집합은 "지금 등급 2 인 키"의 색인일 뿐).
@@ -75,7 +76,7 @@ function stampCell(cx, cy) { // +1 답압(랩 roadStamp verbatim) — 등급 반
   const lv = r.v >= T2 ? 2 : (r.v >= T1 ? 1 : 0);
   if (lv >= 1) {
     const ck = ((cy / COARSE) | 0) * S.gw + ((cx / COARSE) | 0), o = S.coarse.get(ck) || 0;
-    if (lv > o) { S.coarse.set(ck, lv); S.coarseGen++; }   // ★[T578 ④] 코스 칸 등급이 오른 순간도 '지도가 바뀌었다'(종전: 같은 값을 다시 적었다 — 값 무변)
+    if (lv > o) { S.coarse.set(ck, lv); S.coarseGen++; if (S.chgOn) S.chg.add(ck); }   // ★[T619] 바뀐 칸 기록(읽는 쪽이 켰을 때만) · ★[T578 ④] 코스 칸 등급이 오른 순간도 '지도가 바뀌었다'(종전: 같은 값을 다시 적었다 — 값 무변)
   }
   // ★[T566 추신2 ①] 등급이 **2 로 오르는 그 호출** — 집합에 넣고 존에 알린다(나무 파괴 · 둘레 리젠 막음은 존의 일)
   if (lv === 2 && !S.paved.has(k)) { S.paved.add(k); if (S.onPaved) { try { S.onPaved(cx, cy); } catch (e) { } } }
@@ -130,6 +131,10 @@ function _rebuildCoarse(t) { // 일 1회 재구축(감쇠 강등 반영 — grad
   let same = prev.size === S.coarse.size;
   if (same) for (const [k, lv] of S.coarse) { if (prev.get(k) !== lv) { same = false; break; } }
   if (!same) S.coarseGen++;
+  if (!same && S.chgOn) {   // ★[T619] 등급이 바뀐 코스 칸(오름·내림·사라짐) — 읽는 쪽(`takeCoarseChanges`)이 켰을 때만 모은다
+    for (const [k, lv] of S.coarse) if (prev.get(k) !== lv) S.chg.add(k);
+    for (const k of prev.keys()) if (!S.coarse.has(k)) S.chg.add(k);
+  }
   // ★[T566 추신2 ③] 다져진 길이 **등급 2 아래로** 내려갔나 — 위와 같은 조회 전용 감쇠(같은 식 · 같은 날)로 잰다.
   //   내려간 셀은 집합에서 빼고 존에 알린다(그 셀과 둘레의 막힘이 풀린다 — 시계는 존이 다시 잰다). 코스는 위에서 이미 강등됐다.
   if (S.paved.size) {
@@ -146,6 +151,25 @@ function _rebuildCoarse(t) { // 일 1회 재구축(감쇠 강등 반영 — grad
 // ★[T578 ④] 교역로 A* 가 h 를 줄일 몫 — 스텝 비용 할인의 최저값(`COST` 의 가장 작은 값 · 수 사본 0).
 function courseCostMin() { return (S.ready && S.coarse.size) ? Math.min(...COST) : 1; }   // 등급 칸이 하나도 없으면 할인도 없다(h 그대로)
 function coarseGen() { return S.coarseGen; }
+// ★★[T619 2026-10-04] 상자 안 할인 최저값 — 코스 칸 상자 [gx0..gx1]×[gy0..gy1] 안에 등급 칸이 있으면 그 칸들의 `COST` 최저 · 없으면 1.
+//   교역로 A* 가 h 를 줄일 몫을 **그 쌍 둘레에서만** 본다(전역 `courseCostMin` 은 지도 어디든 칸 하나면 모든 쌍의 h 를 바꾼다 — T605 §2).
+//   등급 칸은 소수라(일 1회 재구축이 세는 그것) 지도 전체를 훑지 않고 칸 목록만 본다.
+function courseCostMinIn(gx0, gy0, gx1, gy1) {
+  if (!S.ready || !S.coarse.size) return 1;
+  let m = 1;
+  for (const [k, lv] of S.coarse) {
+    if (!lv) continue;
+    const x = k % S.gw, y = (k / S.gw) | 0;
+    if (x < gx0 || x > gx1 || y < gy0 || y > gy1) continue;
+    if (COST[lv] < m) m = COST[lv];
+  }
+  return m;
+}
+// ★[T619] 바뀐 코스 칸([gx, gy])을 내주고 비운다. 처음 부르는 순간부터 모으기 시작한다(안 부르면 모으지 않는다 = 종전 그대로).
+function takeCoarseChanges() {
+  if (!S.chgOn) { S.chgOn = true; S.chg = new Set(); return []; }
+  const a = [...S.chg].map((k) => [k % S.gw, (k / S.gw) | 0]); S.chg.clear(); return a;   // [gx, gy] 코스 칸
+}
 function clientRoads() { // welcome 1회 — 등급 셀 flat [cx,cy,lv,...] (밟힌 전체가 아니라 등급만 — 소형)
   if (!S.ready) return null;
   const t = dayNow(), out = [];
@@ -225,4 +249,4 @@ function onGameTick(now) {
 // ★[T566] 다져진 길 셀 수 · 키(읽기만 — 존의 부팅 걷기 · 자)
 function pavedCount() { return S.ready ? S.paved.size : 0; }
 function pavedKeys() { return S.ready ? [...S.paved] : []; }
-module.exports = { init, onGameTick, stampCell, stampEntityPx, speedMulOf, levelOf, courseCostMul, courseCostMin, coarseGen, isReady: () => S.ready, clientRoads, pavedNear, pavedCount, pavedKeys, ENABLED, _S: S };
+module.exports = { init, onGameTick, stampCell, stampEntityPx, speedMulOf, levelOf, courseCostMul, courseCostMin, courseCostMinIn, takeCoarseChanges, coarseGen, isReady: () => S.ready, clientRoads, pavedNear, pavedCount, pavedKeys, ENABLED, _S: S };
