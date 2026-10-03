@@ -53,7 +53,9 @@
   const HALL_YARD = 10, LOT_R = 6.5, FARM_GAP = 2, ALLEY_R = 12.5, HALL_CLEAR = HALL_YARD + LOT_R;   // ★구역 기하 정본[사용자 확정 "전부 원으로 통일"]: 마당 원 r10·부지 원 r6.5·완충=부지 기준 정확 2타일 등방·골목 r12.5·HALL_CLEAR=마당 원과 부지 원이 셀 하나도 안 겹치는 최소 중심거리[사용자 지시 "초기 두 채 침범 금지"]
   const inDisc = (cx, cy, R, x, y) => { const ax = x + 0.5 - cx, ay = y + 0.5 - cy; return ax * ax + ay * ay < R * R; };   // 셀 중심(x+.5,y+.5)이 격자점(cx,cy) 반경 R 안(엄격<) — 전 구역 판정의 단일 원식(렌더도 같은 셀 집합=판정과 픽셀 일치)
   const discCells = (R) => { const o = [], B = Math.ceil(R); for (let dx = -B; dx < B; dx++) for (let dy = -B; dy < B; dy++) if ((dx + 0.5) * (dx + 0.5) + (dy + 0.5) * (dy + 0.5) < R * R) o.push([dx, dy]); return o; };
-  const LOT_CELLS = discCells(LOT_R), LOT_GUARD = discCells(LOT_R + FARM_GAP), YARD_CELLS = discCells(HALL_YARD);   // 부지 원판(124셀 — 구 12×12 등적·적도폭 12), 부지+2 침수·완충 원판, 큰집 마당 원판(316셀)
+  const LOT_CELLS = discCells(LOT_R), LOT_GUARD = discCells(LOT_R + FARM_GAP), YARD_CELLS = discCells(HALL_YARD);
+  // ★[재민 10-03] 개울 완충 = 부지 + **3칸**(물가세 없이) — 큰 물 완충(`FARM_GAP` 2)과 따로 둔 한 수(재민 값 · T584 표 뒤).
+  const STREAM_GAP = 3, STREAM_GUARD = discCells(LOT_R + STREAM_GAP);   // 부지 원판(124셀 — 구 12×12 등적·적도폭 12), 부지+2 침수·완충 원판, 큰집 마당 원판(316셀)
   // ★★[T579 2026-10-03 · T569 ④] **집 부지 인당** = 부지 원판 셀 수 ÷ 집 한 채 정원(층당 정원 × 층 상한) — 식이다(새 수 0 · 124 ÷ 6 = 20.67).
   //   영토 상한(T538 · NPC 마을)이 밭(`LAND_NEED`)만 세고 집 부지를 안 세서, 인구 약 100 위에서 집터가 영토에 안 들었다.
   const LOT_PER_HEAD = LOT_CELLS.length / (HOUSE_CAP_PER_FLOOR * HOUSE_MAX_FLOORS);
@@ -130,7 +132,7 @@
   //   **술어 한 자리** — generate·생활층 집터(`villages._lifeSiteFilters`)·큰집 자리(`findOpenCenter`)가 이것만 부른다. 지형에 `isStream` 이 없으면 false(무변).
   //   어느 원판을 쓰나 = `streamLotCells()`(T584 손잡이 · 기본 `guard` = 큰 물과 같은 부지 + 2칸 완충 원 · `lot` = 부지 원판만 — T571 판).
   const discHitsStream = (t, cx, cy, cells) => { if (!t || !t.isStream) return false; for (const [dx, dy] of cells) if (t.isStream(cx + dx, cy + dy)) return true; return false; };
-  const streamLotCells = () => ((typeof process !== 'undefined' && process.env && process.env.T585_STREAM_GUARD === 'lot') ? LOT_CELLS : LOT_GUARD);
+  const streamLotCells = () => ((typeof process !== 'undefined' && process.env && process.env.T585_STREAM_GUARD === 'lot') ? LOT_CELLS : STREAM_GUARD);
 
   function axisAt(terrain, cx, cy) {
     const gx = terrain.elev(cx + 1, cy) - terrain.elev(cx - 1, cy);
@@ -453,7 +455,7 @@
   }
 
   const API = { LAND_NEED, LOT_PER_HEAD, houseSiteWant, territoryTarget, HOUSE_MAX_FLOORS, TERR_PER_SIZE, TERR_PER_LOT, TERR_CORE,   // ★[T100 4판] 정본 — 밖(villages.js·계측기·하네스)이 이 값을 읽는다
-    generate, typeBranch, TYPE_LINES, footprintLand, axisAt, nearestBank, waterEDT, maskEDT, HOUSE_HALF, HOUSE_CAP: HOUSE_CAP_PER_FLOOR, HOUSE_CAP_PER_FLOOR, LAND_PER_HOUSE, landNeedPer, HALL_YARD, LOT_R, FARM_GAP, ALLEY_R, HALL_CLEAR, inDisc, LOT_CELLS, LOT_GUARD, YARD_CELLS, houseFarmBlock, hallFarmBlock, discHitsStream, streamLotCells,
+    generate, STREAM_GAP, STREAM_GUARD, typeBranch, TYPE_LINES, footprintLand, axisAt, nearestBank, waterEDT, maskEDT, HOUSE_HALF, HOUSE_CAP: HOUSE_CAP_PER_FLOOR, HOUSE_CAP_PER_FLOOR, LAND_PER_HOUSE, landNeedPer, HALL_YARD, LOT_R, FARM_GAP, ALLEY_R, HALL_CLEAR, inDisc, LOT_CELLS, LOT_GUARD, YARD_CELLS, houseFarmBlock, hallFarmBlock, discHitsStream, streamLotCells,
     AISLE, LIFE_HOUSE_GAP, LIFE_HOUSE_GAP_AISLE,   // ★[T315] 집 간격 유도 — 값이 아니라 식(사본 0) · ★[T326] 기본 = `LIFE_HOUSE_GAP`(15 · PM #52) · 되돌림 = `LIFE_HOUSE_GAP_AISLE`(18)
     ditchRing, ditchConnectivity, DITCH_W, DITCH_AXIS_RATIO, DITCH_GATE_HALF, DITCH_MARGIN };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
