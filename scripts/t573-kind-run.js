@@ -5,7 +5,7 @@
 //   ⇒ 새 세계(시딩 · 관측자 0 = 산 서버 대부분의 시간)를 `VILLAGE_DAY_MS` 로 N 일 돌리고, 적재 순간 계수기
 //     (`scripts/t573-stamp-kind.js` · 존 코드 0)가 도장마다 부른 쪽을 센다. 끝에 존의 `roads` 표(같은 세계의 길)와 겹친다.
 // ★재기만 한다 — 제품 코드 0 · 러너 밖.
-// 실행: node scripts/t573-kind-run.js [--days 30] [--day-ms 20000] [--out /tmp/t573-kind.json]
+// 실행: node scripts/t573-kind-run.js [--days 30] [--day-ms 20000] [--out /tmp/t573-kind.json] [--keep-db /tmp/x.db]
 'use strict';
 const path = require('path');
 const fs = require('fs');
@@ -15,6 +15,7 @@ const ROOT = path.join(__dirname, '..');
 const argv = process.argv.slice(2);
 const val = (f, d) => { const i = argv.indexOf(f); return i >= 0 ? argv[i + 1] : d; };
 const DAYS = +val('--days', '30'), DAYMS = val('--day-ms', '20000'), OUT = val('--out', '/tmp/t573-kind.json');
+const KEEP = val('--keep-db', null);   // ★[T578] 끝난 존 DB 를 남긴다(길·교역로 표를 `t578-road-measure` 로 잰다)
 const CPORT = +val('--cport', '3717'), ZPORT = +val('--zport', '3727');
 const ZDB = `/tmp/t573k-zone-${process.pid}.db`, CDB = `/tmp/t573k-central-${process.pid}.db`;
 const STAMP = OUT.replace(/\.json$/, '') + '.stamp.json';
@@ -61,6 +62,7 @@ const jget = async (u) => { try { return await (await fetch(u, { signal: AbortSi
   const res = { at: new Date().toISOString(), days: last - d0, dayMs: +DAYMS, kinds: K.kinds, roads: share };
   fs.writeFileSync(OUT, JSON.stringify(res, null, 1));
   console.log(JSON.stringify(res));
+  if (KEEP) { for (const suf of ['', '-wal', '-shm']) { try { fs.copyFileSync(ZDB + suf, KEEP + suf); } catch (e) {} } console.log('존 DB →', KEEP); }
   for (const f of [ZDB, CDB]) for (const suf of ['', '-wal', '-shm']) { try { fs.unlinkSync(f + suf); } catch (e) {} }
   process.exit(0);
 })().catch((e) => { console.error(e); process.exit(1); });

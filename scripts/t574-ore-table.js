@@ -10,8 +10,8 @@
 //      · 닛폰 = **다 굽기**(R1) — 광맥 55 전부를 `region-profiles.bakeOre`(계획기·부팅이 부르는 그 함수 · 같은 씨 731)로.
 //        옛 55 의 광종은 카드 머리대로 "큰 광맥 셋이 우연히 받은 것"이고, T550 이 새 광맥을 같은 함수로 굽는다.
 //      · 한반도 = **덜 흔드는 굽기**(R2) — 정본 787(재민 v9 + 마을 배정)을 될 수 있는 대로 둔다:
-//          ① 꼬리 — 씨 732 의 자리 해시 < 그 자리 꼬리 몫 T 이면 이웃 고유 품목(닛폰 옥·유황 …)으로(어느 것인지는 씨 731)
-//          ② 이 존에서 '없음'이 된 정본 광종(한반도 옥)은 이 존 가중에서 다시 뽑는다(씨 731)
+//          ① 꼬리 — 씨 732 의 자리 해시 < 그 자리 꼬리 몫 T 이면 이웃 고유 품목(닛폰 옥·유황 …)으로(어느 것인지는 뽑기 씨 733)
+//          ② 이 존에서 '없음'이 된 정본 광종(한반도 옥)은 이 존 가중에서 다시 뽑는다(뽑기 씨 733 — 옛 광종을 낸 731 과 독립 · 추신4 에서 고침)
 //          ③ 나머지는 정본 그대로
 //        (①② 다 재민 08-01 굽기 규칙 셋을 얹는다 — 주요엔 철 없음 · 은 단독 없음 · 다광종)
 //      `--write <파일> --L 500` 을 주면 그 미리보기 json 을 **그 파일에만** 쓴다 — ③ 자 판의 입력.
@@ -27,10 +27,12 @@ const R = (p) => require(path.join(__dirname, '..', p));
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
 const has = (k) => process.argv.includes(k);
 const GAME = path.join(__dirname, '..', 'server', 'hanbando-terrain.json');
+// ⚠손잡이는 specialty 를 싣기 **전에** — 새 품목 셋은 specialty 가 실릴 때 품목표에 서고, 프로필은 품목표에 없는 품목을 안 굽는다
+//   (뒤에 켜면 `--new` 가 아무것도 안 바꾼다 · 10-03 ③ 다시 잼에서 잡음)
+if (has('--new')) process.env.T574_NEW_ITEMS = '1';
 const SP = R('server/specialty');
 const HB = R('server/hanbando-minerals');
 const say = (s) => process.stdout.write(s + '\n');
-if (has('--new')) process.env.T574_NEW_ITEMS = '1';
 const RP = R('server/region-profiles');
 
 const doc = JSON.parse(fs.readFileSync(GAME, 'utf8'));
@@ -51,18 +53,8 @@ function dist(ores, comp, majOnly) {
 }
 const fmt = (d) => Object.entries(d).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${(v * 100).toFixed(1)}`).join(' · ');
 const u731 = (o) => hash2(Math.floor(o.center[0] / 32), Math.floor(o.center[1] / 32), 731);
-const u732 = (o) => hash2(Math.floor(o.center[0] / 32), Math.floor(o.center[1] / 32), 732);
 const repk = (e, m) => { e.pk = SP.orePeakFor(m, 0.30, hash2(Math.floor(e.center[0] / 32), Math.floor(e.center[1] / 32), 500)); };
 const setMin = (e, b) => { e.mineral = b.mineral; repk(e, b.mineral); if (b.minerals) e.minerals = b.minerals; else delete e.minerals; };
-// 재민 08-01 굽기 규칙 셋(region-profiles.bakeOre 와 같은 셋 — 거기 NO_MAJOR·POLY 를 읽는다 · 사본 0)
-function rules(order, p, u, isMajor) {
-  const q = Object.assign({}, p); if (isMajor) for (const k of RP.NO_MAJOR) delete q[k];
-  let s = 0; for (const k of order) s += q[k] || 0; if (!(s > 0)) return null;
-  let r = Math.max(0, Math.min(1 - 1e-12, u)) * s, k = null;
-  for (const id of order) { const w = q[id] || 0; if (!(w > 0)) continue; k = id; r -= w; if (r < 0) break; }
-  if (k === 'silver') k = 'lead';
-  const poly = HB.POLY[k]; return { mineral: k, minerals: poly ? Object.assign({}, poly) : null };
-}
 // R1 — 다 굽기
 function rebakeAll(zone, ores, Lc) {
   let changed = 0, chMaj = 0;
@@ -74,20 +66,15 @@ function rebakeAll(zone, ores, Lc) {
   });
   return { ores: out, changed, chMaj };
 }
-// R2 — 덜 흔드는 굽기
+// R2 — 덜 흔드는 굽기 = `region-profiles.rebakeKeep`(추신4 정본 굽기와 같은 함수 · 사본 0 — 꼬리 732 · 뽑기 733)
 function rebakeKeep(zone, ores, Lc) {
-  const own = RP.weightsOf('ore', zone), ownOrder = Object.keys(own);
   let changed = 0, chMaj = 0, toTail = 0, redraw = 0; const majList = [];
   const out = ores.map((o) => {
     const e = Object.assign({}, o);
-    const m = RP.mixAt('ore', zone, o.center[0], o.center[1], null, null, Lc);
-    const tailIds = m.order.filter((k) => !(own[k] > 0));
-    let b = null, why = '';
-    if (tailIds.length && u732(o) < m.tail) { const tp = {}; for (const k of tailIds) tp[k] = m.p[k]; b = rules(tailIds, tp, u731(o), !o.minor); why = '꼬리'; }
-    if (!b && !(own[o.mineral] > 0)) { b = rules(ownOrder, own, u731(o), !o.minor); why = '없음→다시'; }
+    const b = RP.rebakeKeep(zone, o, Lc);
     if (b && b.mineral !== o.mineral) {
-      changed++; if (why === '꼬리') toTail++; else redraw++;
-      if (!o.minor) { chMaj++; majList.push(`${o.name} ${o.mineral}→${b.mineral}(${why})`); }
+      changed++; if (b.why === 'tail') toTail++; else redraw++;
+      if (!o.minor) { chMaj++; majList.push(`${o.name} ${o.mineral}→${b.mineral}(${b.why === 'tail' ? '꼬리' : '없음→다시'})`); }
       setMin(e, b);
     }
     return e;

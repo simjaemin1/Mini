@@ -1975,6 +1975,18 @@ T89 첫 판이 39/44 표본에서만 사람을 봤고, 그걸 정책 탓으로 �
 - 도쿄 닛폰 존 재배포 = 재민 손이다. 단 **광맥까지 들어간 마지막 판 뒤**다(추신2 · 초기화 같이).
 - 서울 한반도는 무변이다(3시드 두 자 동일 · seam gate 한반도 0청크).
 
+## Z-길걸음. ★★[T578 2026-10-03] 캐러밴·호위가 땅 위를 걷는다 · 길이 교역로보다 먼저 선다 · 경계는 걸어서 넘긴다
+
+> 보고 `보고/T578_2026-10-03.md`. 새 세계 30일: 길 셀 중 교역로 직선 위 100 → 38.7% · 다리 아닌 물 272 → 24 · 사본으로 다시 판 교역로 선 합집합 −60%. 3시드 동일.
+
+* **기동 순서**: `Roads.init()` 은 `SimVillages.init()` 앞이다(교역로를 파는 누구 — 도적 표본 `Bandits.init` 포함 — 보다 먼저). 교역로 캐시 서명에 규칙 판 `route:T578` 이 붙는다 — 길 규칙을 바꾸면 이 글자를 올려라(옛 판 통째로 버림).
+* **교역로 A\***(`_routeBegin`): 스텝 비용 = `roads.courseCostMul` × 코스 칸 안 열린 비율의 역수(`R.openN` 메모 · invalidate 가 리셋). h 는 `roads.courseCostMin()` 만큼 준다(`path-core` `hScale` — 안 주면 1). 상한에 걸리면 `plain`(종전 규칙)으로 다시 판다 — 쌍을 잃지 않는다. 열림·막힘은 종전 `coarseOpen`(거리행렬과 같은 그래프 · econ 무접촉).
+* **걷는 길**(`_walkResume`/`_walkFor`): 노드 사이 `localPath`(지형 `isBlocked` + `treeCellBlocked` · 길 스냅) → 창 64칸 `smoothPath`. 쌍마다 `state.walkCache`. 출발은 예산(`'wait'`), 귀환은 낡은 길이라도 그대로(한 번에 파지 않는다). 막힌 구간은 재개형 돌아가기(`routePathBegin` · scratch 없이) · 끝내 안 되면 그 구간만 직선(여울 · `walkStraight`).
+  * ⚠`routePathBegin` 을 `_routeBegin` 밖에서 열 때는 **scratch 를 넘기지 마라**(격자 scratch 는 하나 — `test-route-persist ⑩`).
+* **다시 파기**(`_routeRedigStep`): `roads.coarseGen()` 이 바뀐 날, 지난 바퀴 뒤로 다닌 쌍(`state._routeUsed`)만 하루 한 바퀴. 데우기와 같은 문·간격.
+* **경계 넘김**(`_xzSend`): 몸이 기록의 경계 칸(`r.ptPeer` → 이 존 로컬)에 없으면 걷게 하고 닿은 틱에 민다(`_xzSendWait` · 상한 = 닿을 시각 + 하루 · `st.walkWait`·`walkWaitLate` · 흔적 `walked`). 'arrive'·'return' 같은 문.
+* 자: `scripts/t578-road-measure.js --db <zone.db>`(길 셀 · 직선 위 비율 · 지형 · 단면 가닥 · 마을 둘레 가닥 · 교역로 겹침) · `scripts/t573-kind-run.js --keep-db`.
+
 ## Z-닛폰 T580. 사람 없는 덩이도 잇는다 — 다리 547셀 (2026-10-03 · 세션5)
 
 - zone-config nippon `bridges`는 449 → **547셀**이다.
@@ -1986,3 +1998,15 @@ T89 첫 판이 39/44 표본에서만 사람을 봤고, 그걸 정책 탓으로 �
 - zone-config가 econ 번들에 실린다. 다리를 바꾸면 `node sim/build-econ-bundle.js && node sim/inline-engine.js`를 같이 돌린다.
 - `test-jungwon-boot` ⓗ3의 닛폰 다리 수도 같이 고친다.
 - 닛폰 광종 다시 굽기는 `scripts/t580-bake-nippon.js --L <값> --apply`다(T574 `bakeOre`를 부르기만 한다). 재민이 L을 고른 뒤 돌린다.
+- ★[T580 · T550 추신 반영] 닛폰 숲이 50 → **53**이 됐다(자잘 숲 3 · `plan-small-forests --zone nippon` · 이름은 닛폰 풀). 자잘 광맥 406은 그 **뒤에** 다시 놓았다(소외 격자 6,192 → 2,894).
+- 군락(`plan-village-forage --zone nippon`)은 후보 승인 뒤 `--apply`다. 계산상 후보 23곳 · 군락 43이다.
+- `plan-small-forests` · `plan-village-forage` 둘 다 정본 경로를 `hanbando-terrain.json` 하나로 고쳤다. 종전 `<존>-terrain.json`은 닛폰에서 즉사했다.
+
+## Z-닛폰 T586. 수동 군락 43 · 자잘 광맥 적재기 (2026-10-03 · 세션5)
+
+- 닛폰 `groves`가 처음 생겼다: **43**(덤불 20 · 둠벙 21 · 자갈밭 2 · 후보 23곳).
+  - 한반도 53과 같은 계획기다(`plan-village-forage --zone nippon` · 마을 어귀 부족분 처방 · 덧붙이기만 · seedKey 불변).
+  - 후보를 지우면 군락이 줄어든다. 그때는 `--allow-shrink`가 필요하다(seedKey가 밀린다는 경고 — 계획기 머리말).
+- 자잘 광맥은 아직 0이다. 넣는 한 줄은 `node scripts/t586-minor-ores.js --count <재민 수> --apply`다.
+  - 자리 · 크기 · 이름만 넣고 광종 칸은 비운다. 그 뒤 `t580-bake-nippon.js`(T574 bakeOre)로 굽는다.
+- ⚠`plan-ore-clusters`는 해안선 띠를 못 본다. 닛폰 자잘의 26~28%가 바다 띠 위에 놓인다(보고/T586 §③ 회부).

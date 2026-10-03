@@ -481,10 +481,14 @@ async function runDays(n) {
     ok(slots === 1, '⑩ ★재개형 슬롯이 **하나**다(`_pathJob`)', `선언 ${slots}개`);
     //   ★[T458 ⓪] 서명은 T364(`d6081024`)가 `extraBlk`(행군로가 숲을 본다) 하나를 늘렸다 — 자의 글자만 따라간다.
     //     버리는 한 줄 검사는 그대로다(그 줄을 지우면 이 칸이 빨개진다).
-    ok(/_routeBegin\(x0, y0, x1, y1, extraBlk\) \{[\s\S]{0,900}?if \(_pathJob\) \{ _probe\.pathDrop\+\+; _pathJob = null; \}/.test(src),
+    //   ★[T578] 서명이 `plain`(새 규칙이 상한에 걸리면 종전 규칙으로 다시 판다) 하나를 늘렸다 — 글자만 따라간다.
+    ok(/_routeBegin\(x0, y0, x1, y1, extraBlk(?:, plain)?\) \{[\s\S]{0,900}?if \(_pathJob\) \{ _probe\.pathDrop\+\+; _pathJob = null; \}/.test(src),
       '★★⑩ **새 탐색이 시작되면 세워 둔 것을 버린다** — 동기 문(전쟁·귀환·감사)이 30Hz 로 끼어들어도 안 섞인다');
-    ok(!/PathCore\.routePathBegin/.test(src.replace(/function _routeBegin[\s\S]*?\n\}/, '')),
-      '⑩ 재개형 문을 여는 자리가 `_routeBegin` **하나**다(사본 0)');
+    //   ★[T578] 격자 scratch 를 쓰는 재개형 문만 하나여야 한다 — 캐러밴 걷기의 '다리까지 돌아가기'(`_walkResume`)는 scratch 없이
+    //     Map 백엔드로 연다(상태가 그 탐색 안에만 있어 번갈아 돌려도 안전 — path-core 머리 주석). 그래서 밖의 호출은 `scratch` 를 못 넘긴다.
+    const _outside = src.replace(/function _routeBegin[\s\S]*?\n\}/, '').match(/PathCore\.routePathBegin\([^)]*\)/g) || [];
+    ok(_outside.every((c) => !/scratch/.test(c)),
+      '⑩ 재개형 문을 여는 자리가 `_routeBegin` **하나**다(사본 0 · 격자 scratch 를 쓰는 문)', `밖의 scratch 없는 문 ${_outside.length}`);
   }
   await down();
 

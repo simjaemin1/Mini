@@ -178,7 +178,7 @@ const ZONES_BASE = {
   bering: {
     port: 3015, biome: 'tundra', displayName: '눈벌 동토',
     groundColor: '#7a8a8a', tintColor: '#5a6a6a',
-    worldOffsetX: 41000, worldOffsetY: 0, zoneWidth: 16000, zoneHeight: 5000,
+    worldOffsetX: 41000, worldOffsetY: 0, zoneWidth: 17000, zoneHeight: 5000,
     villageSeed: 1015, villageCount: 4,
     mainSquare: { x: 8000, y: 2500, name: '아나딜 광장' },
   },
@@ -357,11 +357,19 @@ const ZONES_BASE = {
     mainSquare: { x: 3500, y: 3500, name: '시디니 광장' },
   },
 
-  // === c6: 닛폰 컬럼 (5000w) ===
+  // === c6: 닛폰 컬럼 (7000w) ===
+  // ★★[T591 추신 2026-10-03 재민 확정 "그냥 7000 으로 · 위쪽 베링도 오른쪽으로 1000"] 폭 6000 → 7000(69,984 px · 2,187셀 ≈ 한반도 2,188셀) ·
+  //   같은 기둥(japan_pacific) 7000 · nambingyang 24000 · pacific 55000~61000(6000) · bering 17000(41000~58000) · pacific_arctic 58000~61000(3000) — 세계 폭 61,000 그대로.
+  // ★[T549 ⓪-a 2026-09-30 재민 확정 "조금만 늘리자"] 폭 5000 → 6000(49,984 → 60,000 px · 1,562 → 1,875셀) — 큰바다에서 1000 을 떼어 왔다.
+  //   기존 지형 좌표(존 local px)는 그대로 · 동쪽으로 땅이 늘 뿐 · 같이 움직인 칸: japan_pacific 폭 · nambingyang 폭 · pacific offsetX·폭.
   nippon: {
+    // ★[T591 2026-10-03] **해안 띠 깊이 배수**(`chunk.generateCoastlineWaterTiles` · 클라 미러 같은 식) — 띠는 전 존 공통 상수(6000 ± 5000 px)라
+    //   폭 2,187셀 닛폰에서는 존 칸의 12.7%를 먹는다(한반도 4.43%). 배수 = 닛폰 띠 % 가 한반도 % 와 같아지는 값(이분 · `scripts/t591-band.js --find` · 새 수 0).
+    //   뭍 이웃 변(서 = 한반도 · 북 = 베링)에서는 배수가 1 로 돌아가 솔기가 없다. T588(해안 성격)은 이 배수 위에 구간 성격을 얹는다.
+    coastBandK: 0.298,
     port: 3021, biome: 'mountain', displayName: '아사기 열도',
     groundColor: '#7a8a5a', tintColor: '#5a6a3a',
-    worldOffsetX: 48000, worldOffsetY: 5000, zoneWidth: 5000, zoneHeight: 13000,
+    worldOffsetX: 48000, worldOffsetY: 5000, zoneWidth: 7000, zoneHeight: 13000,
     villageSeed: 1021, villageCount: 16,
     mainSquare: { x: 2500, y: 6500, name: '도가이 광장' },
     // ★★[T348 2026-09-21] **다리 — 한반도와 같은 계획기가 뽑았다**(`scripts/plan-bridges-v2.js nippon`).
@@ -397,9 +405,9 @@ const ZONES_BASE = {
   japan_pacific: {
     port: 3028, biome: 'ocean', displayName: '남창해',
     groundColor: '#2a5a8a', tintColor: '#1a4a7a',
-    worldOffsetX: 48000, worldOffsetY: 18000, zoneWidth: 5000, zoneHeight: 13000,
+    worldOffsetX: 48000, worldOffsetY: 18000, zoneWidth: 7000, zoneHeight: 13000,
     villageSeed: 0, villageCount: 0,
-    mainSquare: { x: 2500, y: 6500, name: '남창해 중심' },
+    mainSquare: { x: 3500, y: 6500, name: '남창해 중심' },
     isOcean: true,
   },
 
@@ -407,28 +415,28 @@ const ZONES_BASE = {
   nambingyang: {
     port: 3019, biome: 'ocean', displayName: '남얼음바다',
     groundColor: '#3a6a9a', tintColor: '#2a5a8a',
-    worldOffsetX: 31000, worldOffsetY: 31000, zoneWidth: 22000, zoneHeight: 7000,
+    worldOffsetX: 31000, worldOffsetY: 31000, zoneWidth: 24000, zoneHeight: 7000,
     villageSeed: 0, villageCount: 0,
-    mainSquare: { x: 11000, y: 3500, name: '남얼음바다 중심' },
+    mainSquare: { x: 12000, y: 3500, name: '남얼음바다 중심' },
     isOcean: true,
   },
 
-  // === c7: 태평양 (8000w) ===
-  // bering이 c7 절반(53000~57000) row 0 차지. pacific_arctic은 동쪽 corner 작은 ocean.
+  // === c7: 태평양 (6000w · T549 ⓪-a 8000 → 7000 · T591 추신 7000 → 6000 · 서쪽 끝 53000 → 55000) ===
+  // bering이 c7 서쪽(55000~58000) row 0 차지. pacific_arctic은 동쪽 corner 작은 ocean.
   pacific_arctic: {
     port: 3027, biome: 'ocean', displayName: '북큰바다 모서리',
     groundColor: '#1a3a7a', tintColor: '#0a2a5a',
-    worldOffsetX: 57000, worldOffsetY: 0, zoneWidth: 4000, zoneHeight: 5000,
+    worldOffsetX: 58000, worldOffsetY: 0, zoneWidth: 3000, zoneHeight: 5000,
     villageSeed: 0, villageCount: 0,
-    mainSquare: { x: 2000, y: 2500, name: '북큰바다 모서리' },
+    mainSquare: { x: 1500, y: 2500, name: '북큰바다 모서리' },
     isOcean: true,
   },
   pacific: {
     port: 3024, biome: 'ocean', displayName: '큰바다',
     groundColor: '#1a3a7a', tintColor: '#0a2a5a',
-    worldOffsetX: 53000, worldOffsetY: 5000, zoneWidth: 8000, zoneHeight: 33000,
+    worldOffsetX: 55000, worldOffsetY: 5000, zoneWidth: 6000, zoneHeight: 33000,
     villageSeed: 0, villageCount: 0,
-    mainSquare: { x: 4000, y: 16500, name: '큰바다 중심' },
+    mainSquare: { x: 3000, y: 16500, name: '큰바다 중심' },
     isOcean: true,
   },
 };
@@ -594,6 +602,7 @@ function publicZoneMap(fallbackHost = 'localhost') {
       simulatedLatencyMs: z.simulatedLatencyMs || 0,
       mainSquare: z.mainSquare || null,
       isOcean: !!z.isOcean,
+      ...(z.coastBandK ? { coastBandK: z.coastBandK } : {}),   // ★[T591] 존별 해안 띠 배수 — 클라 `computeCoastlineWaterTiles` 가 서버와 같은 띠를 그린다(없으면 칸 자체가 안 실림 = 종전 바이트)
       north: _findNeighborSide(id, 'N'),
       south: _findNeighborSide(id, 'S'),
       east:  _findNeighborSide(id, 'E'),

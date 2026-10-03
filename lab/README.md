@@ -77,3 +77,7 @@
 * 화면: 연한 파랑 = 개울(1셀 줄기 · 넓힘 칸 조금 짙게) · 바위와 뭍 사이 빛 = 계곡 바닥 · 빨강 점선 고리 = 개울 때문에 넘긴 집터 ·
   노랑 고리 = 1셀 틈으로 10셀 넘게 나란한 두 개울 · 왼아래 계수기 · 오른쪽 판 숫자(ⓐ 개울 위 집·논·밭·마당 · ⓑ 개울 건너 집 · ⓒ 거부 집터 · ⓓ 개울 없는 판 표 · ④ 물길 점검 자).
 * 물길 점검 자 = `streamAudit` = `scripts/t568-streams.py` 의 audit(한 정의 · 두 언어 · 같은 답). 하네스 `scripts/t571-lab-streams.js audit|sweep|pics|xval` · 보고 `보고/T571_2026-10-03.md`.
+* **개울 완충**(T584 · 기본 `guard` = PM 안 · 고르는 건 재민) — 패널 "개울 완충" · URL `streamGuard=off|guard|guard+tax`(`+` 는 `%2B` · 그냥 `+`·`tax` 도 받는다).
+  `off` = 부지 원판만 피함(T571) · `guard` = 부지 +2 원(큰 물 `farFromWater` 의 `LOT_GUARD` 를 개울에도 — 부지 가장자리와 개울 사이 2칸) · `guard+tax` = 완충 + 물가세 물거리장에 개울(비교용).
+  사유 한 자리 `VillageLayout.streamSiteWhy`('개울' 빨강 점선 · '개울 완충' 주황 점선) · 물가세 판 `streamTaxTerrain` · 패널 ⑤ 개울-집 사이 칸·못 앉힌 사람·집 반경.
+  자 `node scripts/t571-lab-streams.js guard|guardpic` · 보고 `보고/T584_2026-10-03.md` · 맥 `~/Mini/랩/개울보기.html` 은 `guard` 로 연다.

@@ -162,7 +162,7 @@
 // ===== 존 프리셋 (zone-config 기준 size) =====
 const ZONES = {
   hanbando:[70016,130016], jungwon_n:[100000,130016], jungwon_s:[100000,60000],
-  nippon:[49984,130016], bering:[160000,49984], sibara:[160000,49984],
+  nippon:[69984,130016], bering:[170016,49984], sibara:[160000,49984],
   europa:[89984,130016], kongra:[89984,140000], sahar:[89984,60000],
   centaria:[60000,130016], nubiano:[109984,130016], canadia:[109984,49984],
 };
@@ -194,28 +194,28 @@ const WZONES = {
   atlantic:{off:[109984,0],size:[50016,380000],fill:'#16384f'},
   nordan:{off:[160000,0],size:[89984,49984],fill:'#46504a'},
   sibara:{off:[249984,0],size:[160000,49984],fill:'#3c3a33'},
-  bering:{off:[409984,0],size:[160000,49984],fill:'#3a3a44'},
-  pacific_arctic:{off:[569984,0],size:[40000,49984],fill:'#1c3a4a'},
+  bering:{off:[409984,0],size:[170016,49984],fill:'#3a3a44'},   // ★[T591 추신] +1000
+  pacific_arctic:{off:[580000,0],size:[29984,49984],fill:'#1c3a4a'},
   nubiano:{off:[0,49984],size:[109984,130016],fill:'#5a4a2a'},
   europa:{off:[160000,49984],size:[89984,130016],fill:'#4a5a3a'},
   centaria:{off:[249984,49984],size:[60000,130016],fill:'#5a4d30'},
   jungwon_n:{off:[309984,49984],size:[100000,130016],fill:'#4a3a1c'},
   hanbando:{off:[409984,49984],size:[70016,130016],fill:'#2f4a36'},
-  nippon:{off:[480000,49984],size:[49984,130016],fill:'#2f4636'},
-  pacific:{off:[529984,49984],size:[80000,330016],fill:'#143246'},
+  nippon:{off:[480000,49984],size:[69984,130016],fill:'#2f4636'},   // ★[T591 추신] 폭 7000(재민 10-03 · zone-config 와 같게)
+  pacific:{off:[549984,49984],size:[60000,330016],fill:'#143246'},
   mayan:{off:[0,180000],size:[109984,60000],fill:'#3f5a32'},
   sahar:{off:[160000,180000],size:[89984,60000],fill:'#6b5a2e'},
   hindgang:{off:[249984,180000],size:[60000,60000],fill:'#5a4a30'},
   jungwon_s:{off:[309984,180000],size:[100000,60000],fill:'#56431f'},
   east_sea_s:{off:[409984,180000],size:[70016,60000],fill:'#16384f'},
-  japan_pacific:{off:[480000,180000],size:[49984,129984],fill:'#163a50'},
+  japan_pacific:{off:[480000,180000],size:[69984,129984],fill:'#163a50'},
   amazonia:{off:[0,240000],size:[109984,69984],fill:'#2f4a2c'},
   kongra:{off:[160000,240000],size:[89984,140000],fill:'#2c4428'},
   indoyang:{off:[249984,240000],size:[60000,140000],fill:'#15384a'},
   nanyang:{off:[309984,240000],size:[100000,69984],fill:'#194a5e'},
   oseania:{off:[409984,240000],size:[70016,69984],fill:'#1a4258'},
   patagona:{off:[0,309984],size:[109984,70016],fill:'#4a5240'},
-  nambingyang:{off:[309984,309984],size:[220000,70016],fill:'#122d40'},
+  nambingyang:{off:[309984,309984],size:[240000,70016],fill:'#122d40'},
 };
 const MZ = Object.keys(WZONES);
 function feats(){ return S.multi ? S.mf : S.features; }

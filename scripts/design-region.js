@@ -23,9 +23,9 @@ const OUT_SVG = path.join(__dirname, '..', '..', 'region_design.svg');
 // === 존 배치 (build-terrain-v3.js의 ZONES와 동일; sibara 제외) ===
 const ZONES = {
   hanbando:  { off: [409984, 49984], size: [70016, 130016] },
-  bering:    { off: [409984, 0],     size: [160000, 49984] }, // 북
+  bering:    { off: [409984, 0],     size: [170016, 49984] }, // 북
   jungwon_n: { off: [309984, 49984], size: [100000, 130016] }, // 서
-  nippon:    { off: [480000, 49984], size: [49984, 130016] },  // 동
+  nippon:    { off: [480000, 49984], size: [69984, 130016] },  // 동
   sibara:    { off: [249984, 0],     size: [160000, 49984] },  // 북서 (베링 서쪽)
   jungwon_s: { off: [309984, 180000], size: [100000, 60000] }, // 남서 (중원북 아래)
 };
@@ -190,7 +190,7 @@ const design = { jungwon_n: { rivers: [], ridges: [], forests: [] }, nippon: { r
 
 // ---- nippon (동). hanbando E변(x≈ZW)에 닿는 feature와 연결 ----
 {
-  const Z = 'nippon'; const [zw, zh] = ZONES[Z].size; // [49984, 130016]
+  const Z = 'nippon'; const [zw, zh] = ZONES[Z].size; // [69984, 130016] (T591 추신 7000 · T549 ⓪-a 60000 · 옛 49984)
   // hanbando E변(x≈70016) ↔ nippon x≈0.
   // 1) 들말강 end (70544,0 w448) → nippon으로 잇는 강
   const daema = riverEnds.find(e => e.name === '들말강' && e.tag === 'end');
@@ -229,7 +229,7 @@ const design = { jungwon_n: { rivers: [], ridges: [], forests: [] }, nippon: { r
 
 // ---- bering (북). hanbando N변(y≈0)에 닿는 feature와 연결 ----
 {
-  const Z = 'bering'; const [zw, zh] = ZONES[Z].size; // [160000, 49984]
+  const Z = 'bering'; const [zw, zh] = ZONES[Z].size; // [170016, 49984] (T591 추신 +1000)
   // hanbando N변(y≈0, off [409984,49984]) ↔ bering(off [409984,0]) 하단(y≈zh=49984).
   //   hanbando local x → bering local x (off_x 동일). hanbando y=0 ↔ bering y=zh.
   // 1) 한울대간 start (54400,1500 w1187, 바깥 dy<0 = 북향) → bering으로 이어지는 산줄기 (대륙 척량)
@@ -301,9 +301,9 @@ const design = { jungwon_n: { rivers: [], ridges: [], forests: [] }, nippon: { r
 // =====================================================================
 // 3) 멀티존 SVG 렌더 — 월드 좌표 그대로, 한 캔버스에 배치
 // =====================================================================
-// 전체 영역 world bbox: x[309984, 529984] y[0, 205000]
+// 전체 영역 world bbox: x[309984, 580000] y[0, 205000]  (T591 추신 닛폰 7000 · 베링 동끝 580000 · 옛 529984)
 // 뷰 범위는 원래대로(화면 크기·스케일 유지). 시바라(서)·중원남(남)은 가장자리에서 일부만 보임.
-const WX0 = 309984, WX1 = 529984;            // 폭 220000
+const WX0 = 309984, WX1 = 580000;            // 폭 270016
 const WY0 = 0, WY1 = 205000;
 const WW = WX1 - WX0, WH = WY1 - WY0;
 const SCALE = 1 / 220;                         // world → svg px (≈1000x932)

@@ -2250,6 +2250,36 @@ const mkLedgerGeo = (world, geo, cfg) => {
   v.npcs.push(...keep);
 }
 
+// ── ㊿ ★[T590 2026-10-03] 굶어 죽음(`STARVED`) — 몸 층이 넘긴 것만(구조 ㊹ 와 같은 자리·같은 문법)
+//   장부는 굶음도 죽음도 판정하지 않는다. 몸 층(`villages.js` T590)이 기근 날 그 자리에서 죽은 몸을 하나씩 넘기고,
+//   **에지는 장부가** 정한다: 그 마을 그 계절의 첫 몸 하나(계절 = 연표의 축 · 새 수 0).
+{
+  const W = makeWorld(30, 7);
+  const L12 = mkLedger(W);
+  const vi = 0, vj = 1;
+  const st = (d, extra) => L12.scanDay(W, d, extra || {}).filter((e) => e.type === 'STARVED');
+  const d0 = W.day + 1;
+  ok(st(d0).length === 0, '㊿a 넘긴 것이 없으면 0건(랩엔 몸이 없다 — 구조적으로 0 · 각본 0)');
+  const a = st(d0 + 1, { starved: [{ vid: vi }, { vid: vi }, { vid: vj }] });
+  ok(a.filter((e) => e.vid === vi).length === 1 && a.filter((e) => e.vid === vj).length === 1,
+    '㊿ ★같은 날 두 몸 → 그 마을 1건 · 다른 마을은 따로 1건(에지는 마을마다)', `${a.length}건`);
+  ok(a[0] && a[0].mag === 1 && a[0].item === null && a[0].meta === null, '㊿b mag 1 · item 없음(이상이 아니라 일 · 누가가 아니라 일이 났다)');
+  const c0 = Events.calendarOf(d0 + 1), rest = c0.seasonDays - c0.dayOfSeason;   // 이 계절에 남은 날
+  ok(st(d0 + 1 + Math.max(0, rest), { starved: [{ vid: vi }] }).length === 0, '㊿c 같은 계절 마지막 날까지 또 넘겨도 0건(그 철 첫 몸만)');
+  const nx = d0 + 1 + rest + 1;
+  ok(Events.calendarOf(nx).season !== c0.season && st(nx, { starved: [{ vid: vi }] }).length === 1, '㊿d 다음 계절 첫날 첫 몸은 1건', Events.calendarOf(nx).seasonKo || '');
+  const yr = Events.calendarOf(d0 + 1).year;
+  const mineIt = [], abroadIt = [];
+  for (const b of L12.chronicle(vi, { year: yr, today: nx }).seasons) for (const it of b.items) (it.from == null ? mineIt : abroadIt).push(it);
+  ok(mineIt.some((it) => it.type === 'STARVED' && it.deed === true), '㊿e ★그 마을 **연표**에 일 유형으로 남는다(sev 문턱 면제)');
+  ok(!abroadIt.some((it) => it.type === 'STARVED') && !Events.DEED_FOREIGN.includes('STARVED'),
+    '㊿f 이웃 연표에는 안 간다(구조처럼 — 한 사람의 죽음은 이웃의 소식이 아니다 · 마을이 죽어 가면 `POP_COLLAPSE`·`EMPTIED` 가 간다)');
+  const line = Events.briefLine({ vid: vi, day: 1, type: 'STARVED', item: null, mag: 1 });
+  ok(/굶어 죽은/.test(line), '㊿g 문장 — 다섯 필드로(㉝ 계약)', line);
+  const L13 = mkLedger(W, { DEEDS_OFF: 1 });
+  ok(L13.scanDay(W, d0 + 2, { starved: [{ vid: vi }] }).filter((e) => e.type === 'STARVED').length === 0, '㊿h 일 끔(A/B) 판은 0건 — 검출기가 실제로 그 문을 지난다');
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
 try { require('fs').unlinkSync(process.env.DB_PATH); } catch (e) {}

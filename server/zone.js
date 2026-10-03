@@ -4209,6 +4209,12 @@ function warTreeCellBlocked(cellX, cellY) {
   return _warTreeCells.has(cellX * 65536 + cellY);
 }
 
+// §16 답압 길 4파 — 존 셀 치수·게임일 시계로 독립 부팅(villages와 무관 — 스탬프는 이동 루프 편승).
+//   ★★[T578 ① 2026-10-03] **교역로를 파는 누구보다 먼저** 선다. 종전엔 `Bandits.init()`(도적 교역로 표본 = 유한 쌍 전부 `getRoute`)
+//     뒤에 있어서 1,219쌍이 전부 길이 아직 안 선 세계(`courseCostMul` = 1)에서 파이고 그대로 영속됐다 — 답압 할인(§16)이 한 번도 안 걸렸다(T573 §②).
+Roads.init({ zoneId: ZONE_ID, cellsW: Math.ceil(ZONE.zoneWidth / 32), cellsH: Math.ceil(ZONE.zoneHeight / 32), epoch: WORLD.worldEpoch || 0, dayMs: parseInt(process.env.VILLAGE_DAY_MS || '', 10) || WORLD.dayLengthMs, broadcast,
+  // ★[T566 추신2] 다져진 길의 오름·내림 — 존이 나무를 걷고(그 셀) 리젠을 막고(둘레) 푼다(끔이면 안 넘긴다 = 길은 종전 그대로)
+  onPaved: _T566_ON ? _t566OnPaved : null, onUnpaved: _T566_ON ? _t566OnUnpaved : null });
 SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, isWaterTileLocal, isPositionActive, isBlockedByWall, anyViewerNear, perfMark,
   chiefGreet: (p, vid, by) => { try { Onboarding.sendGreet(p, vid, by); } catch (err) {} },   // ★[T529] 촌장 몸이 곁에 와서 하는 인사 — 문장·메시지는 온보딩 정본
   waterTiles: WATER_TILES,   // ★[T480] 해안선 물타일 정본(위 1155줄) — 마을 세울 때 `seaDistPx` 가 이것을 읽는다(villages 쪽 사본 0)
@@ -4267,6 +4273,9 @@ SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, is
   // ★[T341] 재생 문 하나 + 걸음 속도 정본(하루 왕복 수를 생활층이 **유도**한다 · 64 를 옮겨 적지 않는다)
   t341Unharvest: (k) => _t341Unharvest(k),
   moveSpeed: MOVE_SPEED,
+  // ★★[T590] 줄어드는 몸 — 그 자리에서 죽는 주민이 짐을 떨구는 문(플레이어 죽음 캐논의 낙하 그 함수 · 사본 0) ·
+  //   누운 몸이 남는 시간(사람 시신 문법이 없어 짐승 시신의 그 값을 빌린다 — 값은 회부 · 보고/T590).
+  deathDrop: (p) => _deathDrop(p), corpseMs: CORPSE_DECAY_MS,
   t325CutTreeAt: (cx, cy) => _t325CutTreeAt(cx, cy),
   // ★[T325] 전리품 표는 존이 쥔다 — 생활층은 "이 그루가 목재 몇 낱개냐"만 묻는다(사본 0)
   t325LootOf: (r) => lootOfResource(r),
@@ -4320,10 +4329,7 @@ function _t333Prebake() {
 }
 // §11 도적 1파 — SimVillages.init 직후(banditHost 준비 시점): 소굴 스캔/복원 + econ 훅(banditRouteRisk/onBanditLoot) 배선.
 Bandits.init();
-// §16 답압 길 4파 — 존 셀 치수·게임일 시계로 독립 부팅(villages와 무관 — 스탬프는 이동 루프 편승).
-Roads.init({ zoneId: ZONE_ID, cellsW: Math.ceil(ZONE.zoneWidth / 32), cellsH: Math.ceil(ZONE.zoneHeight / 32), epoch: WORLD.worldEpoch || 0, dayMs: parseInt(process.env.VILLAGE_DAY_MS || '', 10) || WORLD.dayLengthMs, broadcast,
-  // ★[T566 추신2] 다져진 길의 오름·내림 — 존이 나무를 걷고(그 셀) 리젠을 막고(둘레) 푼다(끔이면 안 넘긴다 = 길은 종전 그대로)
-  onPaved: _T566_ON ? _t566OnPaved : null, onUnpaved: _T566_ON ? _t566OnUnpaved : null });
+// §16 답압 길 4파 — ★[T578 ①] 부팅 자리는 `SimVillages.init` **앞**으로 옮겼다(아래 그 줄 바로 위).
 // ★★[T566 추신2 ⑤] **부팅** — 등급 2 인 셀 **자체**는 걷는다(옛 DB 의 다져진 길 위 나무 — 오름 사건과 같은 답) · 둘레는 안 걷는다(리젠만 막는다).
 //   꺼진 사이 등급 2 아래로 내려간 셀(`roads.js` 가 부팅에 안다)은 시계가 선 첫 틱에 푼다(그날이 풀린 날).
 if (_T566_ON && Roads.pavedCount && Roads.pavedCount()) {

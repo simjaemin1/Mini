@@ -23,10 +23,10 @@ const OUT_SVG  = path.join(__dirname, '..', '..', 'hanbando_full_v2.svg');
 
 const ZONES = {
   hanbando:  { off: [409984, 49984], size: [70016, 130016] },
-  bering:    { off: [409984, 0],      size: [160000, 49984] },
+  bering:    { off: [409984, 0],      size: [170016, 49984] },
   sibara:    { off: [249984, 0],      size: [160000, 49984] },
   jungwon_n: { off: [309984, 49984],  size: [100000, 130016] },
-  nippon:    { off: [480000, 49984],  size: [49984, 130016] },
+  nippon:    { off: [480000, 49984],  size: [69984, 130016] },
 };
 const MIRROR_MARGIN = 3000;
 const AVOID_W = 400;   // 능선이 피해야 하는 지류 폭 상한

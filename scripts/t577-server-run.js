@@ -15,12 +15,18 @@
 //     (도적을 꺼도 굶어 비운다 — 시계의 잡음). 끄면 econ 자기 주거(`housing`)로 큰다 = 라이브가 비던 8월의 세계.
 //   · `VILLAGE_NPC_CAP=1` — 가시 몸만 줄인다(econ 인구는 무제한 · 시뮬 진실). 몸 5천을 30Hz 로 굴리면 빠른 시계를 못 버틴다.
 //   · 시드 = econ 시드(`createWorldV2({seed})` 한 칸 — t17 이 시드를 바꾸는 그 자리). 지도·소굴·전쟁 시드는 그대로.
+//   ⚠★★[T577 추신 2026-10-03] **이 조건의 왜곡 하나 — 집이 공짜다.** 생활층 집 행위(`T400_BUILD_ACT` 기본 켬)가 서는 마을은
+//     econ 이 집 목재 제약을 크루에게 넘긴다(`economy-sim.js buildActOn` · `_t400Live`). 빠른 시계에선 크루가 걷지 못하고
+//     `T315_MAPBEDS=0` 이 지은 침상 상한까지 떼어 econ 주거가 **목재 없이** 는다 ⇒ 작은 마을이 첫해 ~60(t17 ~20)까지 컸다 겨울에 굶는다.
+//     `T400_BUILD_ACT=0` 이면 t17 과 같은 궤적(작은 무리 첫해 최고 21 · 보고/T577_추신 §3). 어느 조건을 기준선으로 둘지는 PM.
 //   ⚠서버 판은 **바이트 결정론이 아니다**(하루 마감 조각 · 캐러밴 몸 타이밍이 벽시계에 기댄다) — 같은 시드도 판마다 조금 갈린다.
 //     그래서 판정하지 않는다: 이 자의 ok() 는 "판이 끝까지 돌았다 · 시딩이 섰다"뿐이고 수는 **표**다(기준선은 PM 이 착지 때 선언).
 //
 // 실행:
 //   node scripts/t577-server-run.js [일수=800] [시드=1020,7,42]          # 판 셋(동시 T577_PAR · 기본 min(3, 코어))
 //   T577_CAND_WALK=1 node scripts/t577-server-run.js 800 1020            # 후보 손잡이(env 는 아이에게 그대로 간다)
+//   T577_RAMP=0 node scripts/t577-server-run.js                          # ★[T577 추신] 보호기 펴기 끔 판(종전 · 기준선 첫째)
+//   VILLAGE_LIFE=0 node scripts/t577-server-run.js 400 1020              # 층 끄기 판(생활층 · ENABLE_BANDITS · VILLAGE_CARAVAN_MAX · T513_DAY_SLICE · WAR_MINDAY)
 //   node scripts/t577-server-run.js --table <dir>                        # 판 JSON 만 읽어 표(세계를 안 세운다)
 //   T577_DIR=/tmp/t577/runs  판 JSON · 아이 로그 자리(기본 /tmp/t577-<pid>)
 'use strict';
@@ -40,13 +46,27 @@ function table(outs) {
   console.log('\n| 판 | 시드 | 일 | 인구 | 소멸 | 무기Q | 확장셀 | 게시 | 도구Q | 보존식 | 생곡 | 해체 | 빈 마을 | 첫 빈 날 | 해체 day≤400 | 죽음 누계 | 행상 피살 | 도적 전환 | 절망 이탈 | 서울 빈 11 중 빈 곳 |');
   console.log('|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|');
   for (const o of outs) {
-    const e = o.eight, cand = Object.keys((o.env && o.env.cand) || {}).map((k) => `${k.replace(/^T577_/, '')}=${o.env.cand[k]}`).join(' ') || '기준';
+    const e = o.eight, cand = Object.keys((o.env && o.env.cand) || {}).map((k) => `${k.replace(/^T577_(CAND_)?/, '')}=${o.env.cand[k]}`).join(' ') || '기준(켬)';
     const early = (o.bdtDay || []).filter((d) => d != null && d <= 400).length;
     const last = o.rows && o.rows.length ? o.rows[o.rows.length - 1][1] : [];
     const hit = (o.names || []).map((n, i) => (E11.includes(n) && last[i] === 0 ? n : null)).filter(Boolean);
     console.log(`| ${cand} | ${o.seed} | ${o.days} | ${e.pop} | ${e.dead}/${e.ever} | ${e.weapQ} | ${e.expand} | ${e.board} | ${e.toolQ} | ${e.preserve} | ${e.grain}`
       + ` | ${o.dissolved} | ${o.empty} | ${o.firstEmpty ?? '—'} | ${early} | ${o.deadTot} | ${o.tradersKilled}`
       + ` | ${o.bandit ? o.bandit.conv : '—'} | ${o.bandit ? o.bandit.exo : '—'} | ${hit.length}${hit.length ? ' (' + hit.join('·') + ')' : ''} |`);
+  }
+  // ★[T590] 줄어든 몸 — 판 JSON 에 `bodyExit` 이 있을 때만(T590 전 판은 이 표가 없다)
+  const bx = outs.filter((o) => o.bodyExit);
+  if (bx.length) {
+    console.log('\n| 판 | 시드 | 몸 상한 | 줄어든 몸 | 그 자리 죽음(굶음·늙음) | 걸어 나감(도적·이탈·이주) | 그 밖(원정·행상·모름) | 순간 소멸 | 누운 채 · 걷는 중(끝 날) | 다 누움 · 다 걸음 | 직선 폴백 | 버린 까닭 |');
+    console.log('|---|---|---|---|---|---|---|---|---|---|---|---|');
+    for (const o of bx) {
+      const B = o.bodyExit, sum = (x) => Object.values(x || {}).reduce((a, v) => a + v, 0);
+      const d = sum(B.died), w = sum(B.walk), t = sum(B.other), n = d + w + t;
+      const pc = (x) => (n ? (100 * x / n).toFixed(1) + '%' : '—');
+      const cand = Object.keys((o.env && o.env.cand) || {}).map((k) => `${k.replace(/^T577_/, '')}=${o.env.cand[k]}`).join(' ') || '기준';
+      console.log(`| ${cand} | ${o.seed} | ${(o.env && o.env.VILLAGE_NPC_CAP) || '∞'} | ${n} | ${d} (${pc(d)} · ${B.died.starve}·${B.died.old}) | ${w} (${pc(w)} · ${B.walk.bandit}·${B.walk.desert}·${B.walk.move})`
+        + ` | ${t} (${pc(t)} · ${B.other.expedition}·${B.other.road}·${B.other.unknown}) | ${B.vanish} | ${B.lying} · ${B.walking} | ${B.rot} · ${B.arrive} | ${B.straight} | ${B.trimmed} |`);
+    }
   }
 }
 
@@ -62,7 +82,8 @@ const SEEDS = String(process.argv[3] || '1020,7,42').split(',').map((s) => parse
 const PAR = parseInt(process.env.T577_PAR || '', 10) || Math.max(1, Math.min(3, os.cpus().length));
 const DIR = process.env.T577_DIR || `/tmp/t577-${process.pid}`;
 fs.mkdirSync(DIR, { recursive: true });
-const TAG = Object.keys(process.env).filter((k) => /^T577_CAND_/.test(k)).map((k) => `${k.replace(/^T577_CAND_/, '').toLowerCase()}${process.env[k]}`).join('-') || 'base';
+// ★[T577 추신] 판 이름 — 판을 가르는 손잡이(후보 · 층 끄기)만 이름에 싣는다(`T577_TAG` 로 덮을 수 있다)
+const TAG = process.env.T577_TAG || Object.keys(process.env).filter((k) => /^(T577_(?!SEED$|DAYS$|OUT$|DIR$|PAR$|TAG$)|VILLAGE_LIFE$|ENABLE_BANDITS$|VILLAGE_CARAVAN_MAX$|T513_DAY_SLICE$|WAR_MINDAY$)/.test(k)).sort().map((k) => `${k.replace(/^T577_(CAND_)?/, '').toLowerCase()}${process.env[k]}`).join('-') || 'base';
 
 function runOne(seed, k) {
   return new Promise((resolve) => {

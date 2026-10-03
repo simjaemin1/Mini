@@ -41,6 +41,7 @@
     <div class="row"><label>크기배율</label><input type="range" id="sizeMul" min="0.5" max="2.5" step="0.1" value="1.5" oninput="gen()"><b id="smv">1.5</b>× <span style="color:#7a8494">타입 비율 유지</span></div>
     <div class="row"><label>개울</label><select id="stMode" onchange="stUI()"><option value="off">끔</option><option value="gorge">켬 · 계곡(산을 깎아 잇기)</option><option value="foot">켬 · 기슭(산에서 시작)</option></select> <label style="width:auto;color:#aeb8c4"><input type="checkbox" id="stBoard" onchange="stUI(2)">나란히</label> <button onclick="stShow()">개울 판 보기</button></div>
     <div class="row"><label>집수 문턱</label><input type="number" id="stA" min="100" step="100" style="width:70px" onchange="stUI()">셀 · <span style="color:#9aa4b2">건널 때</span> ×<input type="number" id="stSlow" min="0.05" max="1" step="0.05" style="width:56px" onchange="stUI(1)"> <span style="color:#7a8494">T571 랩 · 재민 값</span></div>
+    <div class="row"><label>개울 완충</label><select id="stGuard" onchange="stUI(3)"><option value="off">끔 — 부지만 피함(T571)</option><option value="guard" selected>2칸 — 큰 물과 같은 완충</option><option value="guard+tax">2칸 + 물가세(비교)</option></select> <span style="color:#7a8494">T584 · 고르는 건 재민</span></div>
     <div class="stat" id="ststat" style="display:none;background:#132029;border-color:#2a4352;font-size:11.5px;line-height:1.5"></div>
     <div class="row"><button id="playBtn" onclick="togglePlay()">▶ NPC 재생</button> <button onclick="step1()">▷ 한 틱</button></div>
     <div class="row"><label>표시</label>
@@ -2031,7 +2032,7 @@ const ZONES_BASE = {
   bering: {
     port: 3015, biome: 'tundra', displayName: '눈벌 동토',
     groundColor: '#7a8a8a', tintColor: '#5a6a6a',
-    worldOffsetX: 41000, worldOffsetY: 0, zoneWidth: 16000, zoneHeight: 5000,
+    worldOffsetX: 41000, worldOffsetY: 0, zoneWidth: 17000, zoneHeight: 5000,
     villageSeed: 1015, villageCount: 4,
     mainSquare: { x: 8000, y: 2500, name: '아나딜 광장' },
   },
@@ -2210,11 +2211,19 @@ const ZONES_BASE = {
     mainSquare: { x: 3500, y: 3500, name: '시디니 광장' },
   },
 
-  // === c6: 닛폰 컬럼 (5000w) ===
+  // === c6: 닛폰 컬럼 (7000w) ===
+  // ★★[T591 추신 2026-10-03 재민 확정 "그냥 7000 으로 · 위쪽 베링도 오른쪽으로 1000"] 폭 6000 → 7000(69,984 px · 2,187셀 ≈ 한반도 2,188셀) ·
+  //   같은 기둥(japan_pacific) 7000 · nambingyang 24000 · pacific 55000~61000(6000) · bering 17000(41000~58000) · pacific_arctic 58000~61000(3000) — 세계 폭 61,000 그대로.
+  // ★[T549 ⓪-a 2026-09-30 재민 확정 "조금만 늘리자"] 폭 5000 → 6000(49,984 → 60,000 px · 1,562 → 1,875셀) — 큰바다에서 1000 을 떼어 왔다.
+  //   기존 지형 좌표(존 local px)는 그대로 · 동쪽으로 땅이 늘 뿐 · 같이 움직인 칸: japan_pacific 폭 · nambingyang 폭 · pacific offsetX·폭.
   nippon: {
+    // ★[T591 2026-10-03] **해안 띠 깊이 배수**(`chunk.generateCoastlineWaterTiles` · 클라 미러 같은 식) — 띠는 전 존 공통 상수(6000 ± 5000 px)라
+    //   폭 2,187셀 닛폰에서는 존 칸의 12.7%를 먹는다(한반도 4.43%). 배수 = 닛폰 띠 % 가 한반도 % 와 같아지는 값(이분 · `scripts/t591-band.js --find` · 새 수 0).
+    //   뭍 이웃 변(서 = 한반도 · 북 = 베링)에서는 배수가 1 로 돌아가 솔기가 없다. T588(해안 성격)은 이 배수 위에 구간 성격을 얹는다.
+    coastBandK: 0.298,
     port: 3021, biome: 'mountain', displayName: '아사기 열도',
     groundColor: '#7a8a5a', tintColor: '#5a6a3a',
-    worldOffsetX: 48000, worldOffsetY: 5000, zoneWidth: 5000, zoneHeight: 13000,
+    worldOffsetX: 48000, worldOffsetY: 5000, zoneWidth: 7000, zoneHeight: 13000,
     villageSeed: 1021, villageCount: 16,
     mainSquare: { x: 2500, y: 6500, name: '도가이 광장' },
     // ★★[T348 2026-09-21] **다리 — 한반도와 같은 계획기가 뽑았다**(`scripts/plan-bridges-v2.js nippon`).
@@ -2250,9 +2259,9 @@ const ZONES_BASE = {
   japan_pacific: {
     port: 3028, biome: 'ocean', displayName: '남창해',
     groundColor: '#2a5a8a', tintColor: '#1a4a7a',
-    worldOffsetX: 48000, worldOffsetY: 18000, zoneWidth: 5000, zoneHeight: 13000,
+    worldOffsetX: 48000, worldOffsetY: 18000, zoneWidth: 7000, zoneHeight: 13000,
     villageSeed: 0, villageCount: 0,
-    mainSquare: { x: 2500, y: 6500, name: '남창해 중심' },
+    mainSquare: { x: 3500, y: 6500, name: '남창해 중심' },
     isOcean: true,
   },
 
@@ -2260,28 +2269,28 @@ const ZONES_BASE = {
   nambingyang: {
     port: 3019, biome: 'ocean', displayName: '남얼음바다',
     groundColor: '#3a6a9a', tintColor: '#2a5a8a',
-    worldOffsetX: 31000, worldOffsetY: 31000, zoneWidth: 22000, zoneHeight: 7000,
+    worldOffsetX: 31000, worldOffsetY: 31000, zoneWidth: 24000, zoneHeight: 7000,
     villageSeed: 0, villageCount: 0,
-    mainSquare: { x: 11000, y: 3500, name: '남얼음바다 중심' },
+    mainSquare: { x: 12000, y: 3500, name: '남얼음바다 중심' },
     isOcean: true,
   },
 
-  // === c7: 태평양 (8000w) ===
-  // bering이 c7 절반(53000~57000) row 0 차지. pacific_arctic은 동쪽 corner 작은 ocean.
+  // === c7: 태평양 (6000w · T549 ⓪-a 8000 → 7000 · T591 추신 7000 → 6000 · 서쪽 끝 53000 → 55000) ===
+  // bering이 c7 서쪽(55000~58000) row 0 차지. pacific_arctic은 동쪽 corner 작은 ocean.
   pacific_arctic: {
     port: 3027, biome: 'ocean', displayName: '북큰바다 모서리',
     groundColor: '#1a3a7a', tintColor: '#0a2a5a',
-    worldOffsetX: 57000, worldOffsetY: 0, zoneWidth: 4000, zoneHeight: 5000,
+    worldOffsetX: 58000, worldOffsetY: 0, zoneWidth: 3000, zoneHeight: 5000,
     villageSeed: 0, villageCount: 0,
-    mainSquare: { x: 2000, y: 2500, name: '북큰바다 모서리' },
+    mainSquare: { x: 1500, y: 2500, name: '북큰바다 모서리' },
     isOcean: true,
   },
   pacific: {
     port: 3024, biome: 'ocean', displayName: '큰바다',
     groundColor: '#1a3a7a', tintColor: '#0a2a5a',
-    worldOffsetX: 53000, worldOffsetY: 5000, zoneWidth: 8000, zoneHeight: 33000,
+    worldOffsetX: 55000, worldOffsetY: 5000, zoneWidth: 6000, zoneHeight: 33000,
     villageSeed: 0, villageCount: 0,
-    mainSquare: { x: 4000, y: 16500, name: '큰바다 중심' },
+    mainSquare: { x: 3000, y: 16500, name: '큰바다 중심' },
     isOcean: true,
   },
 };
@@ -2447,6 +2456,7 @@ function publicZoneMap(fallbackHost = 'localhost') {
       simulatedLatencyMs: z.simulatedLatencyMs || 0,
       mainSquare: z.mainSquare || null,
       isOcean: !!z.isOcean,
+      ...(z.coastBandK ? { coastBandK: z.coastBandK } : {}),   // ★[T591] 존별 해안 띠 배수 — 클라 `computeCoastlineWaterTiles` 가 서버와 같은 띠를 그린다(없으면 칸 자체가 안 실림 = 종전 바이트)
       north: _findNeighborSide(id, 'N'),
       south: _findNeighborSide(id, 'S'),
       east:  _findNeighborSide(id, 'E'),
@@ -10819,6 +10829,8 @@ const VillageLayout=(function(){
   const landNeedPer=(fv,base)=>base*Math.max(0.6,Math.min(2.5,0.55/Math.max(0.05,(fv!=null?fv:0.55))));   // ★보즈럽 조방화[사용자 확정 — "저비옥인데 쉬면서 굶는" 구멍 해소]: 인당 경작칸 = 기준×(기준비옥 0.55/마을 비옥도), ×0.6~×2.5 클램프 — 저비옥=남는 노동으로 넓게 갈아 만회(조방), 고비옥=좁게(집약). 기준 0.55에선 현행 8칸 그대로(유일 정본)   // ★실축(§3b)+[고증 v2·전쟁랩 동기]: 집 부지 12×12 — 집채 6×4+마당, 단층 6명(송국리 장방형 발굴 추정 5~6명 상단 — 침대 6개 1인 1침대). LAND_PER_HOUSE=채당 영토 배분 400셀(부지 144+농지·공유지 몫 — 구 '인당 50셀'은 8명/채 시절의 400/채와 동치): 영토 공식의 유일 정본 — 채당 수용이 바뀌면 영토가 자동 연동돼 취락:영토 비율 불변
   function footprintLand(t,cx,cy){for(const[dx,dy]of LOT_CELLS)if(t.isBlocked(cx+dx,cy+dy))return false;return true;}   // 부지=원판
   const discHitsStream=(t,cx,cy,cells)=>{if(!t||!t.isStream)return false;for(const[dx,dy]of cells)if(t.isStream(cx+dx,cy+dy))return true;return false;};   // ★★[T571 랩 · 2026-10-03] 개울 — 원판(부지 LOT_CELLS = 집·마당 · 큰집 마당 YARD_CELLS)에 개울 셀이 하나라도 있으면 그 자리 불가(사유 '개울' · 옆은 된다 · 띄우는 거리 0). **술어 한 자리** — generate·생활층 addHouseSite·pickCenter(s) 가 이것만 부른다. 지형에 isStream 이 없으면 false(무변 · 서버 사본엔 아직 없다 — 이식은 재민이 랩을 본 뒤 카드)
+  const streamSiteWhy=(t,cx,cy)=>{if(!t||!t.isStream)return null;if(discHitsStream(t,cx,cy,LOT_CELLS))return '개울';if(t.streamGuard&&t.streamGuard!=='off'&&discHitsStream(t,cx,cy,LOT_GUARD))return '개울 완충';return null;};   // ★★[T584 랩 · 2026-10-03] 집터가 개울 때문에 안 되는 **사유 한 자리** — '개울'(부지 원판에 개울 셀) · '개울 완충'(부지 +2 원 = 큰 물 `farFromWater` 의 `LOT_GUARD` 를 개울에도 — 지형의 `streamGuard` 가 'guard'·'guard+tax' 일 때) · null = 된다. 새 수 0(원은 큰 물 것 그대로)
+  const streamTaxTerrain=(t)=>(t&&t.isStream&&t.streamGuard==='guard+tax')?Object.assign({},t,{isWater:(x,y)=>t.isWater(x,y)||t.isStream(x,y)}):t;   // ★[T584] 'guard+tax' 비교 판 — 물가세(wDist · K/d²)의 물거리장에 개울 셀을 넣은 지형(물거리장 사본 0 — waterEDT 그대로 · 큰 물 막기·논 존닝은 무변)
   function axisAt(t,cx,cy){const gx=t.elev(cx+1,cy)-t.elev(cx-1,cy),gy=t.elev(cx,cy+1)-t.elev(cx,cy-1),gl=Math.hypot(gx,gy)||1;return{toWater:{x:-gx/gl,y:-gy/gl},toHill:{x:gx/gl,y:gy/gl}};}
   function generate(t,ccx,ccy,pop,opts){opts=opts||{};
     const axis=axisAt(t,ccx,ccy);
@@ -10865,9 +10877,9 @@ const VillageLayout=(function(){
     const dNong=hasWater?Math.min(dMax,8):999, dBat=dNong+7;   // ★두께 고정 7줄[사용자 확정 "논밭 모두 기본 두께 7"]: 논=물가 7줄(물거리 2~8 — 구 존닝 원래 폭 복원)·밭=바로 뒤 7줄(9~15, 논에 밀착) — 성장은 강을 따라 길이로, 길이 한계 후에만 밭이 행 단위 증층(16줄~)
     const CAP=HOUSE_CAP_PER_FLOOR, MAX_FLOORS=1, SPACE_MIN=20;   // ★[고증 v2·전쟁랩 동기] 움집=단층(다층 폐지) — 수용 압력은 전부 집터 확산. SPACE_MIN=새 집 임계(부지 12×12 비겹침 하한 17+여유)
     const fpInTerr=(cx,cy)=>{for(const[dx,dy]of LOT_CELLS)if(t.isBlocked(cx+dx,cy+dy)||!own.has(key(cx+dx,cy+dy)))return false;return true;};
-    const _isSt=t.isStream||null, stLot=(cx,cy)=>discHitsStream(t,cx,cy,LOT_CELLS), stRej=new Set();   // ★[T571] 개울: 부지 원판 술어(위 한 자리) · 논·밭은 셀 · stRej = 배치 순서에서 뽑혔으나 개울에 걸린 자리(고유 — 걸러 낸 판과 배치는 같다)
+    const _isSt=t.isStream||null, stWhy=(cx,cy)=>streamSiteWhy(t,cx,cy), stRej=new Set(), stRejG=new Set(), stAdd=(why,k)=>(why==='개울'?stRej:stRejG).add(k);   // ★[T584] 사유 둘 — stRej '개울' · stRejG '개울 완충'   // ★[T571] 개울: 부지 원판 술어(위 한 자리) · 논·밭은 셀 · stRej = 배치 순서에서 뽑혔으나 개울에 걸린 자리(고유 — 걸러 낸 판과 배치는 같다)
     const farFromWater=(cx,cy)=>{for(const[dx,dy]of LOT_GUARD)if(t.isWater&&t.isWater(cx+dx,cy+dy))return false;return true;};  // ★부지 원+2 완충 원 물 X(침수 회피 — 구판은 완충 없이 부지만 봐서 전쟁랩과 어긋나 있었음, 이번에 동형화)
-    const WF=waterEDT(t,ccx-WR,ccy-WR,ccx+WR,ccy+WR);   // 유클리드 물거리장(박스=dw BFS와 동일 범위)
+    const WF=waterEDT(streamTaxTerrain(t),ccx-WR,ccy-WR,ccx+WR,ccy+WR);   // 유클리드 물거리장(박스=dw BFS와 동일 범위) · ★[T584] guard+tax 판이면 개울 셀도 물(그 밖엔 t 그대로)
     const wDist=(x,y)=>{const v=WF.at(x,y);return v>=999?99:Math.max(1,v-LOT_R);};   // ★물가세 거리=정확 유클리드 물거리장 조회[사용자 #15 사례] — 구 ±14 박스 무과세 문턱 폐지, 전 영토 연속 과세+O(1). 전쟁랩·신축 s._wf 동형
     // 농지: 논(무논,물가 띠 dwOf 2..dMax) + 밭(밭농사,내륙 dwOf>dMax). 물 접근↑→논↑. 집보다 먼저(집이 논 피함).
     const farmCand=[], bank=[];
@@ -10892,7 +10904,7 @@ const VillageLayout=(function(){
       const cand=[];for(const k of own){const[x,y]=k.split(',').map(Number);if(Math.hypot(x-ccx,y-ccy)<HALL_CLEAR)continue;/*★HALL_CLEAR: 부지 원이 마당 원 침범 불가(구 체비 9는 부지가 마당 깊숙이 파고듦)*/if(!fpInTerr(x,y))continue;const inl=Math.abs((x-ccx)*w.x+(y-ccy)*w.y),al=Math.abs((x-ccx)*perp.x+(y-ccy)*perp.y);const wdv=wDist(x,y);cand.push({cx:x,cy:y,d:inl*3+al+(wdv<99?W_PEN_K/(wdv*wdv):0)});}   // ★shore K/d² 페널티 — 전쟁랩과 동형화(구판 누락)
       cand.sort((a,b)=>a.d-b.d);
       for(const h of (opts.existingHouses||[]))houses.push({cx:h.cx,cy:h.cy,floors:h.floors||1});
-      let ci=0,g=0;while((cap()<pop||houses.length<2)&&g++<400){let placed=false;while(ci<cand.length){const s=cand[ci++];let ok=true;for(const h of houses)if(Math.hypot(h.cx-s.cx,h.cy-s.cy)<HOUSE_GAP){ok=false;break;}if(ok){if(stLot(s.cx,s.cy)){stRej.add(key(s.cx,s.cy));continue;}houses.push({cx:s.cx,cy:s.cy,floors:1});placed=true;break;}}if(!placed&&!densify())break;}
+      let ci=0,g=0;while((cap()<pop||houses.length<2)&&g++<400){let placed=false;while(ci<cand.length){const s=cand[ci++];let ok=true;for(const h of houses)if(Math.hypot(h.cx-s.cx,h.cy-s.cy)<HOUSE_GAP){ok=false;break;}if(ok){const why=_isSt&&stWhy(s.cx,s.cy);if(why){stAdd(why,key(s.cx,s.cy));continue;}houses.push({cx:s.cx,cy:s.cy,floors:1});placed=true;break;}}if(!placed&&!densify())break;}
       shrink();
     } else if(settlement==='dispersed'){
       // 산촌(散村): maximin 분산 — 각 농가가 영토 곳곳에 흩어져 제 둘레 땅 경작.
@@ -10903,8 +10915,8 @@ const VillageLayout=(function(){
       const hdist=new Map(hc.map(p=>[key(p[0],p[1]),Infinity]));
       const bump=(hx,hy)=>{for(const p of hc){const k2=key(p[0],p[1]),e=Math.hypot(p[0]-hx,p[1]-hy);if(e<hdist.get(k2))hdist.set(k2,e);}};
       for(const h of (opts.existingHouses||[])){if(fpInTerr(h.cx,h.cy)){houses.push({cx:h.cx,cy:h.cy,floors:h.floors||1});bump(h.cx,h.cy);}}
-      let g=0;while((cap()<pop||houses.length<2)&&g++<400){let best=null,bs=-1,bi=-1,stc=null,pi=-1;for(const p of hc){pi++;const df=DF.get(key(p[0],p[1]));if(df==null)continue;const sc=Math.min(df,hdist.get(key(p[0],p[1])));if(sc>bs){if(_isSt&&stLot(p[0],p[1])){(stc||(stc=[])).push([p,sc,pi]);continue;}bs=sc;best=p;bi=pi;}}
-        if(stc)for(const[q,sq,qi]of stc)if((!best||sq>bs||(sq===bs&&qi<bi))&&(sq>=SPACE_MIN||houses.length<2))stRej.add(key(q[0],q[1]));   // ★[T571] 뽑힌 자리보다 앞섰으나(개울만 아니면 먼저 뽑혔을) 개울에 걸린 자리 — 집촌·어촌 판과 같은 셈
+      let g=0;while((cap()<pop||houses.length<2)&&g++<400){let best=null,bs=-1,bi=-1,stc=null,pi=-1;for(const p of hc){pi++;const df=DF.get(key(p[0],p[1]));if(df==null)continue;const sc=Math.min(df,hdist.get(key(p[0],p[1])));if(sc>bs){const why=_isSt&&stWhy(p[0],p[1]);if(why){(stc||(stc=[])).push([p,sc,pi,why]);continue;}bs=sc;best=p;bi=pi;}}
+        if(stc)for(const[q,sq,qi,why]of stc)if((!best||sq>bs||(sq===bs&&qi<bi))&&(sq>=SPACE_MIN||houses.length<2))stAdd(why,key(q[0],q[1]));   // ★[T571] 뽑힌 자리보다 앞섰으나(개울만 아니면 먼저 뽑혔을) 개울에 걸린 자리 — 집촌·어촌 판과 같은 셈
         if(best&&(bs>=SPACE_MIN||houses.length<2)){houses.push({cx:best[0],cy:best[1],floors:1});bump(best[0],best[1]);}else if(!densify())break;}
       shrink();
     } else {
@@ -10914,7 +10926,7 @@ const VillageLayout=(function(){
       hc.sort((a,b)=>a[2]-b[2]);
       const spaced=(x,y)=>{for(const h of houses)if(Math.hypot(h.cx-x,h.cy-y)<SETT_GAP)return false;return true;};
       for(const h of (opts.existingHouses||[]))if(fpInTerr(h.cx,h.cy))houses.push({cx:h.cx,cy:h.cy,floors:h.floors||1});   // 기존집 유지
-      let g=0;while((cap()<pop||houses.length<2)&&g++<800){let placed=false;for(const p of hc){if(spaced(p[0],p[1])){const kk=key(p[0],p[1]);if(_isSt&&(stRej.has(kk)||stLot(p[0],p[1]))){stRej.add(kk);continue;}houses.push({cx:p[0],cy:p[1],floors:1});placed=true;break;}}if(!placed&&!densify())break;}
+      let g=0;while((cap()<pop||houses.length<2)&&g++<800){let placed=false;for(const p of hc){if(spaced(p[0],p[1])){const kk=key(p[0],p[1]);if(_isSt){if(stRej.has(kk)||stRejG.has(kk))continue;const why=stWhy(p[0],p[1]);if(why){stAdd(why,kk);continue;}}houses.push({cx:p[0],cy:p[1],floors:1});placed=true;break;}}if(!placed&&!densify())break;}
       shrink();
     }
     if(!houses.length)houses.push({cx:ccx,cy:ccy,floors:1});
@@ -10943,10 +10955,10 @@ const VillageLayout=(function(){
     const dock=(fishers>=Math.max(1,Math.round(pop*0.12)))?nearestBank(t,ccx,ccy,30):null;
     for(const h of houses)for(const[dx,dy]of LOT_CELLS)if(!t.isBlocked(h.cx+dx,h.cy+dy))own.add(key(h.cx+dx,h.cy+dy));  // 집 부지 원판 영토 포함
     const territory=[...own].map(k=>k.split(',').map(Number)), coreCells=[...core].map(k=>k.split(',').map(Number));
-    return{center:{cx:ccx,cy:ccy},hall:{cx:ccx,cy:ccy},axis,type:typeLabel,fert:+fert.toFixed(2),water:+water.toFixed(2),farmers,fishers,fShare:+fShare.toFixed(2),hShare:+hShare.toFixed(2),fertScore:+fertScore.toFixed(2),houses,floors,farmland,dryfield,nongZone,territory,core:coreCells,dock,bank,streamRej:stRej.size,streamRejSites:[...stRej]};
+    return{center:{cx:ccx,cy:ccy},hall:{cx:ccx,cy:ccy},axis,type:typeLabel,fert:+fert.toFixed(2),water:+water.toFixed(2),farmers,fishers,fShare:+fShare.toFixed(2),hShare:+hShare.toFixed(2),fertScore:+fertScore.toFixed(2),houses,floors,farmland,dryfield,nongZone,territory,core:coreCells,dock,bank,streamRej:stRej.size,streamRejSites:[...stRej],streamGuardRej:stRejG.size,streamGuardRejSites:[...stRejG]};
   }
   function nearestBank(t,cx,cy,maxR){let best=null,bd=Infinity,R=maxR||24;for(let dy=-R;dy<=R;dy++)for(let dx=-R;dx<=R;dx++){const x=cx+dx,y=cy+dy;if(t.isBlocked(x,y))continue;let aw=false;for(const[ax,ay]of[[1,0],[-1,0],[0,1],[0,-1]])if(t.isWater(x+ax,y+ay)){aw=true;break;}if(!aw)continue;const d=dx*dx+dy*dy;if(d<bd){bd=d;best={cx:x,cy:y};}}return best;}
-  return{generate,footprintLand,axisAt,nearestBank,waterEDT,HOUSE_CAP:HOUSE_CAP_PER_FLOOR,houseSiteWant,LAND_PER_HOUSE,landNeedPer,HALL_YARD,LOT_R,FARM_GAP,ALLEY_R,HALL_CLEAR,inDisc,LOT_CELLS,LOT_GUARD,YARD_CELLS,houseFarmBlock,hallFarmBlock,AISLE,LIFE_HOUSE_GAP,LIFE_HOUSE_GAP_AISLE,discHitsStream};   // ★채당 수용·채당 영토·인당 경작칸(보즈럽) = 전 파일 유일 정본(밖의 L_FLOORCAP·영토·개간 공식이 전부 여기서 파생)
+  return{generate,footprintLand,axisAt,nearestBank,waterEDT,HOUSE_CAP:HOUSE_CAP_PER_FLOOR,houseSiteWant,LAND_PER_HOUSE,landNeedPer,HALL_YARD,LOT_R,FARM_GAP,ALLEY_R,HALL_CLEAR,inDisc,LOT_CELLS,LOT_GUARD,YARD_CELLS,houseFarmBlock,hallFarmBlock,AISLE,LIFE_HOUSE_GAP,LIFE_HOUSE_GAP_AISLE,discHitsStream,streamSiteWhy,streamTaxTerrain};   // ★채당 수용·채당 영토·인당 경작칸(보즈럽) = 전 파일 유일 정본(밖의 L_FLOORCAP·영토·개간 공식이 전부 여기서 파생)
 })();
 // ===================== 실험실 =====================
 function hash2(ix,iy,s){let h=ix*374761393+iy*668265263+s*1274126177;h=(h^(h>>>13))*1274126177;return((h^(h>>>16))>>>0)/4294967295;}
@@ -11212,19 +11224,21 @@ function streamAudit(NX, NY, mask, water, F, opts) {
 //   ★개울을 보는 술어(한 원천 `TR.stream`): 정적 배치 `VillageLayout.generate`(부지 원판 = 집·마당 · 논 존닝 · 밭) · `pickCenter`/`pickCenters`(큰집 마당 원판) ·
 //     생활층 `addHouseSite`(부지 원판)·`_batEligible`(밭)·`_granAdd`(곳간) — 원판 판정은 `VillageLayout.discHitsStream` 한 자리 · 걸음 `tickNPC`/`moveNPC`(개울 칸에서 ×느려짐).
 //   ★영토는 개울을 넘어 자란다(통행 가능 — isBlocked 무변) · 영토 상한은 개울 셀도 센다(예외 없음 — 재민 10-03 "PM 안대로" · 족보 513 · 판정 닫힘).
-//   ★URL 손잡이: `?stream=gorge|foot&streamA=1500&streamSlow=0.5&board=1&pop=100&seed=7&terr=river`(재민 북마크 · 하네스 `scripts/t571-lab-streams.js`).
-const L_STREAM_A0=1500, L_STREAM_SLOW0=0.5;   // ★기본 = PM 미리보기 값(T568) = 재민 10-03 "PM 안대로"(족보 513 — 집수 1,500 · 느려짐 ×0.5) — 새 수 0 · 랩에서 다시 고칠 수 있다
+//   ★URL 손잡이: `?stream=gorge|foot&streamA=1500&streamSlow=0.5&streamGuard=off|guard|guard+tax&board=1&pop=100&seed=7&terr=river`(재민 북마크 · 하네스 `scripts/t571-lab-streams.js`).
+//   ★[T584] 개울 완충 `streamGuard` — off = 부지 원판만 피함(T571) · guard(기본 · PM 안) = 부지 +2 원(큰 물 `farFromWater` 의 `LOT_GUARD`)도 피함 ·
+//     guard+tax = 완충 + 물가세 물거리장에 개울(비교용). 사유는 `VillageLayout.streamSiteWhy` 한 자리 · 물가세 판은 `streamTaxTerrain`. 고르는 건 재민(판정 0).
+const L_STREAM_A0=1500, L_STREAM_SLOW0=0.5, L_STREAM_GUARD0='guard';   // ★기본 = PM 미리보기 값(T568) = 재민 10-03 "PM 안대로"(족보 513 — 집수 1,500 · 느려짐 ×0.5) — 새 수 0 · 랩에서 다시 고칠 수 있다
 let _stSide=false, _stCv0=null, _stCtx0=null, _stOffc0=null, _stOctx0=null, _stOff0Sig='', _stIdN=0;
-let _stRejAcc=new Set(), _stRejSig='', _stRejPop=0;   // ⓒ 거부 집터 — gen 래칫과 같은 문법(설정 바뀜·인구↓ = 리셋 · 인구↑ = 누적)
+let _stRejAcc=new Set(), _stRejAccG=new Set(), _stRejSig='', _stRejPop=0;   // ⓒ 거부 집터 — gen 래칫과 같은 문법(설정 바뀜·인구↓ = 리셋 · 인구↑ = 누적)
 let _s0={sig:'',houses:null,farm:null,dry:null,pop:0}, _stV0=null, _stC0=null, _stM1=null, _stM0=null;   // ⓓ 개울 없는 판(같은 시드 · 같은 인구 길 — 두 판이 같은 때 리셋)
 function _stEl(id){return (typeof document!=='undefined'&&document.getElementById)?document.getElementById(id):null;}
-function _stCfg(){const m=_stEl('stMode'),a=_stEl('stA'),s=_stEl('stSlow');
-  return {mode:(m&&m.value)||'off', A:(a&&+a.value>0)?Math.round(+a.value):L_STREAM_A0, slow:(s&&+s.value>0)?Math.min(1,+s.value):L_STREAM_SLOW0};}
-function _stSig(){const c=_stCfg();return c.mode==='off'?'off':(c.mode+','+c.A);}   // 배치에 닿는 것만(느려짐은 배치와 무관 — 바꿔도 래칫 안 지움)
+function _stCfg(){const m=_stEl('stMode'),a=_stEl('stA'),s=_stEl('stSlow'),g=_stEl('stGuard');
+  return {mode:(m&&m.value)||'off', A:(a&&+a.value>0)?Math.round(+a.value):L_STREAM_A0, slow:(s&&+s.value>0)?Math.min(1,+s.value):L_STREAM_SLOW0, guard:(g&&g.value)||L_STREAM_GUARD0};}
+function _stSig(){const c=_stCfg();return c.mode==='off'?'off':(c.mode+','+c.A+','+c.guard);}   // 배치에 닿는 것만(느려짐은 배치와 무관 — 바꿔도 래칫 안 지움)
 function _stApply(){   // 지형 TR 위에 개울을 얹는다(끔이면 걷어 낸다)
   if(!TR)return;const c=_stCfg();if(!TR._stId)TR._stId=++_stIdN;
   if(!TR.rockOrig)TR.rockOrig=Uint8Array.from(TR.rock);else TR.rock.set(TR.rockOrig);   // 깎은 바위 되돌림(같은 배열)
-  TR.stream=null;TR.carve=null;TR.streamMode='off';TR.streamSlow=1;TR.streamInfo=null;TR.streamAudit=null;TR.terrain.isStream=undefined;
+  TR.stream=null;TR.carve=null;TR.streamMode='off';TR.streamSlow=1;TR.streamInfo=null;TR.streamAudit=null;TR.terrain.isStream=undefined;TR.terrain.streamGuard=undefined;TR.streamGuard=undefined;
   if(c.mode==='off')return;
   if(!TR._stF){const W=TR.water;TR._stF=streamFlow(N,N,i=>W[i]===1,TR.elev);}   // 흐름은 지형당 한 번(문턱·판·느려짐이 바뀌어도 같다)
   const M=streamMask(N,N,TR._stF,TR.water,TR.rockOrig,c.A,c.mode);
@@ -11233,6 +11247,7 @@ function _stApply(){   // 지형 TR 위에 개울을 얹는다(끔이면 걷어 
   TR.stream=S;TR.carve=(c.mode==='gorge')?M.carve:null;TR.streamMode=c.mode;TR.streamA=c.A;TR.streamSlow=c.slow;
   TR.streamInfo={n1:M.n1,n2:M.n2,nc:M.nc,land,onRock};
   TR.terrain.isStream=(x,y)=>inG(x,y)&&S[idx(x,y)]!==0;
+  TR.terrain.streamGuard=c.guard;TR.streamGuard=c.guard;   // ★[T584] 개울 완충 — 지형이 갖고 배치·생활층이 같은 자리(streamSiteWhy)에서 읽는다
   TR.streamAudit=streamAudit(N,N,S,TR.water,TR._stF,{});
 }
 function _stOffWorld(fn){   // 개울 없는 판에서 fn — 깎은 바위를 잠깐 되돌리고 개울 술어를 뗀다(같은 배열 · 사본 0)
@@ -11241,8 +11256,8 @@ function _stOffWorld(fn){   // 개울 없는 판에서 fn — 깎은 바위를 �
   try{return fn();}finally{if(cv)for(let i=0;i<rk.length;i++)if(cv[i])rk[i]=0;T.isStream=sv;TR.stream=sm;}
 }
 function _stAfterGen(c,pop,o,sig){   // gen() 끝 — ⓒ 거부 집터 누적 · ⓓ 개울 없는 판(같은 시드·같은 인구 길) · 판 숫자
-  if(sig!==_stRejSig||pop<_stRejPop)_stRejAcc=new Set();
-  _stRejSig=sig;_stRejPop=pop;for(const k of (V.streamRejSites||[]))_stRejAcc.add(k);
+  if(sig!==_stRejSig||pop<_stRejPop){_stRejAcc=new Set();_stRejAccG=new Set();}
+  _stRejSig=sig;_stRejPop=pop;for(const k of (V.streamRejSites||[]))_stRejAcc.add(k);for(const k of (V.streamGuardRejSites||[]))_stRejAccG.add(k);
   if(!TR.stream){_s0.sig='';_stV0=null;_stPanel();return;}
   if(sig!==_s0.sig||pop<_s0.pop)_s0={sig,houses:null,farm:null,dry:null,pop:0};
   _s0.pop=pop;
@@ -11262,15 +11277,21 @@ function _stMeasure(VV,T){   // 한 판의 숫자 — ⓐ 개울 위 집·밭·�
   let yard=0,yardSt=0;for(const[dx,dy]of VillageLayout.YARD_CELLS){yard++;if(isSt&&isSt(H.cx+dx,H.cy+dy))yardSt++;}
   let nongSt=0,batSt=0;if(isSt){for(const f of VV.farmland)if(isSt(f.cx,f.cy))nongSt++;for(const f of (VV.dryfield||[]))if(isSt(f.cx,f.cy))batSt++;}
   let terrSt=0;if(isSt)for(const c of VV.territory)if(isSt(c[0],c[1]))terrSt++;
-  return {houses:VV.houses.length,lot,lotSt,houseSt,adj,across,yard,yardSt,nong:VV.farmland.length,bat:(VV.dryfield||[]).length,nongSt,batSt,terr:VV.territory.length,terrSt,cx:H.cx,cy:H.cy,rej:VV.streamRej||0};
+  // ★[T584] 개울-집 사이 칸(부지 원 가장자리 ~ 가장 가까운 개울 칸 · 0 = 맞닿음 · 2 이상 = 완충 2칸 지킴 · 99 = 18칸 안에 개울 없음) · 못 앉힌 사람 · 집 반경(큰집 → 집 중심)
+  const gaps=[];let rMax=0,rSum=0,cap=0;
+  for(const h of VV.houses){const r=Math.hypot(h.cx-H.cx,h.cy-H.cy);if(r>rMax)rMax=r;rSum+=r;cap+=(h.floors||1)*VillageLayout.HOUSE_CAP;
+    if(isSt){let d2=1e9;for(let dy=-18;dy<18;dy++)for(let dx=-18;dx<18;dx++){if(!isSt(h.cx+dx,h.cy+dy))continue;const q=(dx+0.5)*(dx+0.5)+(dy+0.5)*(dy+0.5);if(q<d2)d2=q;}gaps.push(d2>=1e9?99:Math.max(0,Math.floor(Math.sqrt(d2)-VillageLayout.LOT_R)));}}
+  gaps.sort((a,b)=>a-b);const gh={g0:0,g1:0,g2:0,g3_5:0,g6_10:0,gFar:0};for(const g of gaps){if(g===0)gh.g0++;else if(g===1)gh.g1++;else if(g===2)gh.g2++;else if(g<=5)gh.g3_5++;else if(g<=10)gh.g6_10++;else gh.gFar++;}
+  return {houses:VV.houses.length,lot,lotSt,houseSt,adj,across,yard,yardSt,nong:VV.farmland.length,bat:(VV.dryfield||[]).length,nongSt,batSt,terr:VV.territory.length,terrSt,cx:H.cx,cy:H.cy,rej:VV.streamRej||0,rejG:VV.streamGuardRej||0,
+    gapMin:gaps.length?gaps[0]:99,gapMed:gaps.length?gaps[gaps.length>>1]:99,gh,unseated:Math.max(0,(VV.pop||0)-cap),rMax:+rMax.toFixed(1),rMean:VV.houses.length?+(rSum/VV.houses.length).toFixed(1):0};
 }
 function _stLifeCounts(){   // 생활 시뮬 판 — 전 마을 합(거부 집터는 addHouseSite 가 센 것)
-  const T=TR.terrain,isSt=T.isStream;let rej=0,hs=0,fs=0,ys=0;
-  for(const s of VILS){if(s._stRej)rej+=s._stRej.size;
+  const T=TR.terrain,isSt=T.isStream;let rej=0,rejG=0,hs=0,fs=0,ys=0;
+  for(const s of VILS){if(s._stRej)rej+=s._stRej.size;if(s._stRejG)rejG+=s._stRejG.size;
     for(const h of (s.houses||[]))if(VillageLayout.discHitsStream(T,h.cx,h.cy,VillageLayout.LOT_CELLS))hs++;
     for(const f of (s.farmland||[]))if(isSt(f.cx,f.cy))fs++;for(const f of (s.dryfield||[]))if(isSt(f.cx,f.cy))fs++;
     const H=s.V&&(s.V.hall||s.V.center);if(H&&VillageLayout.discHitsStream(T,H.cx,H.cy,VillageLayout.YARD_CELLS))ys++;}
-  return {rej,hs,fs,ys};}
+  return {rej,rejG,hs,fs,ys};}
 function _stPanel(){   // 오른쪽 판 숫자(개울 켰을 때만)
   const el=_stEl('ststat');if(!el)return;
   if(!TR||!TR.stream){el.style.display='none';el.innerHTML='';_stM1=_stM0=null;return;}
@@ -11278,11 +11299,13 @@ function _stPanel(){   // 오른쪽 판 숫자(개울 켰을 때만)
   const I=TR.streamInfo,A=TR.streamAudit,MN={gorge:'켬 · 계곡',foot:'켬 · 기슭'},f=n=>n.toLocaleString();
   _stM1=V?_stMeasure(V,TR.terrain):null;_stM0=_stV0?_stMeasure(_stV0,null):null;
   const m1=_stM1,m0=_stM0;
-  let h=`<b style="color:#8cc8f0">개울</b> ${MN[TR.streamMode]||TR.streamMode} · 집수 문턱 <b>${f(TR.streamA)}</b>셀 · 느려짐 ×<b>${TR.streamSlow}</b><br>`
+  const GN={off:'끔(부지만)',guard:'2칸','guard+tax':'2칸 + 물가세'};
+  let h=`<b style="color:#8cc8f0">개울</b> ${MN[TR.streamMode]||TR.streamMode} · 집수 문턱 <b>${f(TR.streamA)}</b>셀 · 느려짐 ×<b>${TR.streamSlow}</b> · 완충 <b>${GN[TR.streamGuard]||TR.streamGuard}</b><br>`
     +`개울 셀 <b>${f(I.n1+I.n2)}</b>(줄기 ${f(I.n1)} · 넓힘 ${f(I.n2)}) = 뭍의 <b>${(100*(I.n1+I.n2-I.onRock)/I.land).toFixed(2)}%</b>${I.onRock?` · 바위 위 ${f(I.onRock)}`:''}${I.nc?` · 계곡 깎음 ${f(I.nc)}`:''}<br>`;
   if(m1)h+=`ⓐ 개울 위 — 집 <b>${m1.houseSt}</b> · 논 <b>${m1.nongSt}</b> · 밭 <b>${m1.batSt}</b> · 마당 <b>${m1.lotSt+m1.yardSt}</b>(큰집 마당 ${m1.yardSt})<br>`
     +`ⓑ 큰집에서 개울 건너 집 <b>${m1.across}</b>/${m1.houses}채 · 개울에 맞닿은 집 ${m1.adj}채(띄우는 거리 0)<br>`
-    +`ⓒ 개울 때문에 거부된 집터 <b>${_stRejAcc.size}</b>(사유 '개울' · 이번 인구 길 누적)<br>`;
+    +`ⓒ 개울 때문에 거부된 집터 — 사유 '개울' <b>${_stRejAcc.size}</b> · '개울 완충' <b>${_stRejAccG.size}</b>(이번 인구 길 누적)<br>`
+    +`⑤ 개울-집 사이 칸(부지 가장자리부터) 최소 <b>${m1.gapMin>=99?'–':m1.gapMin}</b> · 가운데 ${m1.gapMed>=99?'–':m1.gapMed} · 0칸 ${m1.gh.g0} · 1칸 ${m1.gh.g1} · 2칸 ${m1.gh.g2} · 3~5칸 ${m1.gh.g3_5} · 6~10칸 ${m1.gh.g6_10} · 그 넘어 ${m1.gh.gFar}채 · 못 앉힌 사람 <b>${m1.unseated}</b> · 집 반경 최대 ${m1.rMax}(평균 ${m1.rMean})<br>`;
   if(m1&&m0){const row=(n,a,b)=>`<tr><td>${n}</td><td style="text-align:right">${a}</td><td style="text-align:right">${b}</td></tr>`;
     h+=`ⓓ <table style="border-collapse:collapse;font-size:11px;margin:2px 0 2px 14px"><tr style="color:#9aa4b2"><td></td><td style="padding:0 8px">개울 없음</td><td style="padding:0 8px">개울 ${MN[TR.streamMode]||''}</td></tr>`
       +row('집(채)',m0.houses,m1.houses)+row('논 셀',f(m0.nong),f(m1.nong))+row('밭 셀',f(m0.bat),f(m1.bat))+row('마당 셀(부지+큰집)',f(m0.lot+m0.yard),f(m1.lot+m1.yard))
@@ -11310,20 +11333,24 @@ function _stOverlay(){   // draw() 끝 — 거부 집터 고리(빨강 점선 ·
   if(on&&!lifeV&&_stRejAcc.size){ctx.setTransform(view.z,0,0,view.z,view.ox,view.oy);ctx.strokeStyle='rgba(235,64,52,0.95)';ctx.lineWidth=1.3/view.z;ctx.setLineDash([4/view.z,3/view.z]);
     for(const k of _stRejAcc){const i=k.indexOf(','),x=+k.slice(0,i),y=+k.slice(i+1);ctx.beginPath();ctx.arc(x*CELL,y*CELL,VillageLayout.LOT_R*CELL,0,7);ctx.stroke();}
     ctx.setLineDash([]);}
+  if(on&&!lifeV&&_stRejAccG.size){ctx.setTransform(view.z,0,0,view.z,view.ox,view.oy);ctx.strokeStyle='rgba(245,160,40,0.95)';ctx.lineWidth=1.3/view.z;ctx.setLineDash([2/view.z,3/view.z]);   // ★[T584] 주황 점선 = '개울 완충' 으로 넘긴 집터(부지는 개울 밖인데 +2 원에 개울)
+    for(const k of _stRejAccG){const i=k.indexOf(','),x=+k.slice(0,i),y=+k.slice(i+1);ctx.beginPath();ctx.arc(x*CELL,y*CELL,VillageLayout.LOT_R*CELL,0,7);ctx.stroke();}
+    ctx.setLineDash([]);}
   if(on&&TR.streamAudit&&TR.streamAudit.parSites&&TR.streamAudit.parSites.length){ctx.setTransform(view.z,0,0,view.z,view.ox,view.oy);ctx.strokeStyle='rgba(255,214,64,0.95)';ctx.lineWidth=1.6/view.z;   // 노랑 고리 = 1셀 틈으로 10셀 넘게 나란한 두 개울(점검 자 ④ — 재민이 찾아보게)
     for(const q of TR.streamAudit.parSites){ctx.beginPath();ctx.arc((q[0]+0.5)*CELL,(q[1]+0.5)*CELL,Math.max(8*CELL,5/view.z),0,7);ctx.stroke();}}
   ctx.setTransform(1,0,0,1,0,0);
   const lines=[];
-  if(on){if(lifeV){const L=_stLifeCounts();lines.push('개울 때문에 거부된 집터 '+L.rej+' (생활 시뮬 · 전 마을)','개울 위 집 '+L.hs+' · 밭 '+L.fs+' · 큰집 마당 '+L.ys);}
-    else if(_stM1){lines.push('개울 때문에 거부된 집터 '+_stRejAcc.size+' (빨강 점선 = 그 자리)','개울 위 집 '+_stM1.houseSt+' · 논밭 '+(_stM1.nongSt+_stM1.batSt)+' · 마당 '+(_stM1.lotSt+_stM1.yardSt));}}
+  if(on){if(lifeV){const L=_stLifeCounts();lines.push('개울 때문에 거부된 집터 '+L.rej+' · 완충 '+L.rejG+' (생활 시뮬 · 전 마을)','개울 위 집 '+L.hs+' · 밭 '+L.fs+' · 큰집 마당 '+L.ys);}
+    else if(_stM1){lines.push('개울 때문에 거부된 집터 '+_stRejAcc.size+' (빨강 점선) · 개울 완충 '+_stRejAccG.size+' (주황 점선)','개울 위 집 '+_stM1.houseSt+' · 논밭 '+(_stM1.nongSt+_stM1.batSt)+' · 마당 '+(_stM1.lotSt+_stM1.yardSt)+' · 개울-집 최소 '+(_stM1.gapMin>=99?'–':_stM1.gapMin+'칸')+' · 못 앉힌 사람 '+_stM1.unseated);}}
   ctx.font='bold 13px sans-serif';ctx.textBaseline='alphabetic';ctx.textAlign='left';
   for(let k=0;k<lines.length;k++){const y=760-12-(lines.length-1-k)*18,w2=ctx.measureText(lines[k]).width;ctx.fillStyle='rgba(10,14,20,0.72)';ctx.fillRect(8,y-14,w2+12,18);ctx.fillStyle=k===0?'#ffb3a8':'#cfe8ff';ctx.fillText(lines[k],14,y);}
-  if(board){const MN={gorge:'개울 켬 · 계곡',foot:'개울 켬 · 기슭'},lb=_stSide?'개울 없음 — 같은 시드 · 같은 인구':(MN[TR.streamMode]||'개울 끔');
+  if(board){const MN={gorge:'개울 켬 · 계곡',foot:'개울 켬 · 기슭'},GN={off:' · 완충 끔',guard:' · 완충 2칸','guard+tax':' · 완충 2칸 + 물가세'},lb=_stSide?'개울 없음 — 같은 시드 · 같은 인구':((MN[TR.streamMode]||'개울 끔')+(TR.stream?(GN[TR.streamGuard]||''):''));
     ctx.font='bold 15px sans-serif';const w2=ctx.measureText(lb).width;ctx.fillStyle='rgba(10,14,20,0.75)';ctx.fillRect(8,8,w2+14,24);ctx.fillStyle=_stSide?'#e6e0c8':'#8cc8f0';ctx.fillText(lb,15,26);}
   ctx.restore();
 }
-function stUI(kind){   // 손잡이 — kind 없음 = 판이 바뀜(개울 다시 · 그림 · 배치) · 1 = 느려짐만 · 2 = 나란히만
+function stUI(kind){   // 손잡이 — kind 없음 = 판이 바뀜(개울 다시 · 그림 · 배치) · 1 = 느려짐만 · 2 = 나란히만 · 3 = 완충만(배치 다시 · 개울 판 그대로)
   if(!TR)return;
+  if(kind===3){const c=_stCfg();if(TR.stream){TR.terrain.streamGuard=c.guard;TR.streamGuard=c.guard;}gen();return;}
   if(kind===1){const c=_stCfg();if(TR.stream)TR.streamSlow=c.slow;_stPanel();draw();return;}
   if(kind===2){draw();return;}
   _stApply();renderTerrain();_stOff0Sig='';gen();
@@ -11333,7 +11360,8 @@ function _stInit(){   // 손잡이 기본값 · URL 손잡이(재민 북마크 �
   const a=_stEl('stA'),s=_stEl('stSlow');if(a&&!a.value)a.value=L_STREAM_A0;if(s&&!s.value)s.value=L_STREAM_SLOW0;
   let q=null;try{q=new URLSearchParams(location.search);}catch(e){q=null;}if(!q)return;
   const set=(id,k)=>{const e=_stEl(id),v=q.get(k);if(e&&v!=null&&v!=='')e.value=v;};
-  set('stMode','stream');set('stA','streamA');set('stSlow','streamSlow');set('pop','pop');set('seed','seed');set('terrMode','terr');
+  set('stMode','stream');set('stA','streamA');set('stSlow','streamSlow');set('stGuard','streamGuard');
+  {const e=_stEl('stGuard'),v=q.get('streamGuard');if(e&&v&&/tax/.test(v))e.value='guard+tax';}   // ★[T584] URL 의 '+' 는 빈칸으로 읽힌다 — `guard+tax`·`guard%2Btax`·`tax` 다 받는다set('pop','pop');set('seed','seed');set('terrMode','terr');
   if(q.get('board')==='1'){const b=_stEl('stBoard');if(b)b.checked=true;}
 }
 // ===================== ★[T571] 개울 층 접착 끝 =====================
@@ -11448,9 +11476,13 @@ function _searchBegin(sx, sy, gx, gy, o) {
   const minX = radius ? Math.min(sx, gx) - radius : -Infinity, maxX = radius ? Math.max(sx, gx) + radius : Infinity;
   const minY = radius ? Math.min(sy, gy) - radius : -Infinity, maxY = radius ? Math.max(sy, gy) + radius : Infinity;
   const invLen = 1 / Math.max(1, Math.hypot(gx - sx, gy - sy));
+  // ★[T578] `hScale` — 스텝 비용이 1 보다 싸질 수 있는 호출(답압 할인 `costMul` 최저 0.87)이 h 를 그만큼 줄여 일관성을 지킨다.
+  //   안 주면 1 = 종전 h 그대로(비트 동일 · 랩 사본·걸음 프리셋 무변). 줄이지 않으면 할인 칸에서 h 가 실제 비용을 넘어
+  //   같은 노드를 몇 번씩 다시 열고 `maxPops` 에 걸린다(T573 §② ⓑ: 1,219쌍 중 280쌍 `null` · 꺼낸 노드 45만~500만+).
+  const hs = (o.hScale > 0 && o.hScale < 1) ? o.hScale : 1;
   const H = o.octile
-    ? (x, y) => { const dx = Math.abs(x - gx), dy = Math.abs(y - gy); return (dx > dy ? ORTHO * (dx - dy) + DIAG * dy : ORTHO * (dy - dx) + DIAG * dx) + _perp(x, y, sx, sy, gx, gy, invLen) * o.biasW * ORTHO; }
-    : (x, y) => (Math.abs(x - gx) + Math.abs(y - gy)) * ORTHO + _perp(x, y, sx, sy, gx, gy, invLen) * o.biasW * ORTHO;
+    ? (x, y) => { const dx = Math.abs(x - gx), dy = Math.abs(y - gy); return ((dx > dy ? ORTHO * (dx - dy) + DIAG * dy : ORTHO * (dy - dx) + DIAG * dx) + _perp(x, y, sx, sy, gx, gy, invLen) * o.biasW * ORTHO) * hs; }
+    : (x, y) => ((Math.abs(x - gx) + Math.abs(y - gy)) * ORTHO + _perp(x, y, sx, sy, gx, gy, invLen) * o.biasW * ORTHO) * hs;
   // 저장 백엔드: scratch(gen-스탬프 타이프트 — 대격자·좌표 [0,w)×[0,h) 전제) 또는 Map(소규모·좌표 무제한)
   let gGet, gSet, cameGet, cameSet, W2 = 0;
   const sc = o.scratch || null;
@@ -11564,7 +11596,7 @@ function _routeOpts(opts) {
     dirs: DIRS8, octile: true, biasW: BIAS_ROUTE,
     stepBlocked: null,   // 노드 차단만 → 커널이 nodeBlocked 직행(성능)
     nodeBlocked: opts.blocked || (() => false),
-    costMul: opts.costMul || null, prefer: null,
+    costMul: opts.costMul || null, prefer: null, hScale: opts.hScale || 1,   // ★[T578] 호출측이 costMul 최저값을 준다(안 주면 1 = 종전)
     maxPops: opts.maxPops || 250000, radius: 0, scratch: opts.scratch || null,
   };
 }
@@ -12053,8 +12085,8 @@ function addHouseSite(s){
   const granClear=(x,y)=>{for(const g of (s.gran||[])){if(g.cx+2>=x-6&&g.cx-2<=x+1&&g.cy+1>=y-6&&g.cy-1<=y-1)return false;if(g.cx+2>=x+1&&g.cx-2<=x+4&&g.cy+1>=y+1&&g.cy-1<=y+4)return false;}return true;};   // ★신축 집채+1버퍼·텃밭이 기존 곳간 5×3과 비겹침 — 곳간→집채 회피(_granAdd)와 양방향 대칭[사용자 스샷]. 마당(부지 원 잔여)에 곳간이 걸치는 건 관용(큰집 마당가 의도와 동일 — 창고는 집 곁 고증)
   const fpOk=(x,y,strict)=>{for(const[dx,dy]of VillageLayout.LOT_CELLS){const xx=x+dx,yy=y+dy;const kk=xx+','+yy;if(!inG(xx,yy)||TR.water[idx(xx,yy)]||TR.rock[idx(xx,yy)]||(own&&!own.has(kk))||isFarm(xx,yy,strict))return false;}return true;};   // ★부지=원판(LOT_CELLS 정본)
   const farWater=(x,y)=>{for(const[dx,dy]of VillageLayout.LOT_GUARD)if(inG(x+dx,y+dy)&&TR.water[idx(x+dx,y+dy)])return false;return true;};   // ★부지 원+2 완충 원 물 X(전쟁랩 동형화 — 구판은 부지만 봄)
-  const stLot=(x,y)=>VillageLayout.discHitsStream(TR.terrain,x,y,VillageLayout.LOT_CELLS);   // ★[T571] 개울 — 부지 원판 술어 한 자리(VillageLayout.discHitsStream)
-  if(!s._wf){let bx0=1e9,by0=1e9,bx1=-1e9,by1=-1e9;for(const c of s.V.territory){if(c[0]<bx0)bx0=c[0];if(c[0]>bx1)bx1=c[0];if(c[1]<by0)by0=c[1];if(c[1]>by1)by1=c[1];}s._wf=VillageLayout.waterEDT(TR.terrain,bx0-32,by0-32,bx1+32,by1+32);}   // ★마을당 1회 정확 유클리드 물거리장(EDT) 캐시 — 물=정적 지형이라 영구, 생성기 wDist와 동형
+  const stWhy=(x,y)=>VillageLayout.streamSiteWhy(TR.terrain,x,y);   // ★[T571·T584] 개울 — 집터 사유 한 자리(VillageLayout.streamSiteWhy: '개울' · '개울 완충')
+  if(!s._wf){let bx0=1e9,by0=1e9,bx1=-1e9,by1=-1e9;for(const c of s.V.territory){if(c[0]<bx0)bx0=c[0];if(c[0]>bx1)bx1=c[0];if(c[1]<by0)by0=c[1];if(c[1]>by1)by1=c[1];}s._wf=VillageLayout.waterEDT(VillageLayout.streamTaxTerrain(TR.terrain),bx0-32,by0-32,bx1+32,by1+32);}   // ★마을당 1회 정확 유클리드 물거리장(EDT) 캐시 — 물=정적 지형이라 영구, 생성기 wDist와 동형
   const waterNearD=(x,y)=>{const v=s._wf.at(x,y);return v>=999?99:Math.max(1,v-VillageLayout.LOT_R);};   // ★물가세 거리=EDT 조회(구 ±14 박스의 무과세 문턱 폐지[사용자 #15 사례], 후보당 841셀 스캔→O(1))
   for(const strict of [true,false]){   // ★2패스: 1순위=잠재농지도 피함 → 자리 없으면 2순위=미개간 잠재농지 선점(실경작·개간지는 항상 보호)
   const cand=[];
@@ -12068,7 +12100,7 @@ function addHouseSite(s){
   for(const c of cand){const x=c[0],y=c[1];
     let gap=true; for(const h of s.houses)if(Math.hypot(h.cx-x,h.cy-y)<L_HGAP){gap=false;break;} if(!gap)continue;   // 기존 집 간격
     if(!fpOk(x,y,strict)||!farWater(x,y)||!granClear(x,y))continue;
-    if(stLot(x,y)){(s._stRej||(s._stRej=new Set())).add(x+','+y);continue;}   // ★[T571] 개울 셀 든 부지 X — 사유 '개울' 계수(걸러 낸 판과 배치 같다)
+    {const why=stWhy(x,y);if(why){(why==='개울'?(s._stRej||(s._stRej=new Set())):(s._stRejG||(s._stRejG=new Set()))).add(x+','+y);continue;}}   // ★[T571·T584] 개울 셀 든 부지 · 완충 원에 개울 — 사유별 계수(걸러 낸 판과 배치 같다)
     const nh={cx:x,cy:y,floors:1,builtFloors:0,built:0};s.houses.push(nh);if(s.V)s.V.houses=s.houses;if(!strict&&s.potSet){for(const[dx,dy]of VillageLayout.LOT_CELLS)s.potSet.delete(pkey(x+dx,y+dy));}/*★선점한 부지는 잠재농지에서 제거(농부가 나중에 집 위를 개간 못 하게)*/deforestArea(s,x,y,L_DEFOREST_H);return nh;   // ★집터=동네 벌채(±5)
   }
   }

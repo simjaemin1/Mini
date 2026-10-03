@@ -15,7 +15,7 @@ const path = require('path');
 
 const Z = process.argv[2] || 'hanbando';
 const MODFILE = (Z === 'hanbando') ? 'terrain-data-hanbando-v2.js' : ('terrain-data-' + Z + '.js');
-const SIZES = { hanbando:[70016,130016], jungwon_n:[100000,130016], jungwon_s:[100000,60000], nippon:[49984,130016], bering:[160000,49984], sibara:[160000,49984] };
+const SIZES = { hanbando:[70016,130016], jungwon_n:[100000,130016], jungwon_s:[100000,60000], nippon:[69984,130016], bering:[170016,49984], sibara:[160000,49984] };
 
 let mod;
 try { mod = require(path.join(__dirname, MODFILE)); }

@@ -67,10 +67,13 @@ const FIXTURE = process.env.BANDIT_FIXTURE || '';
 //   빈 11곳(서울 사본)은 11/11 이 해체 표를 달았고, 셋 이상 마지막 날이 보호기(365) 끝난 그 달에 몰렸다(T572).
 //   ⓐ `T577_CAND_WALK=1` — 해체 때 단이 되지 않은 **남은 사람이 가장 가까운 산 마을로 옮긴다**(지금은 그 자리에 남아 굶어 죽는다).
 //      ⚠econ 몫만이다: 사람(npc 항목)을 그 마을 econ 으로 넘긴다 — 몸이 걸어가는 길은 없다(보고 §3-ⓐ 가 그 줄 수를 센다).
-//   ⓓ `T577_CAND_RAMP=1` — 보호기 끝을 **마을마다 다른 날**로 편다: 365 + 시드 해시 × 365(둘째 해 안에 고르게).
+//   ⓓ `T577_RAMP` — 보호기 끝을 **마을마다 다른 날**로 편다: 365 + 시드 해시 × 365(둘째 해 안에 고르게).
 //      새 수 0 — 퍼짐 폭은 보호기 그 자체(`BDT_MIN_DAY`)이고 해시는 이 파일의 결정론 RNG(`denRng`)다.
+//      ★★[T577 추신 2026-10-03 · ★PM 결정 족보 537 · 재민 거부권] **정식 손잡이 · 기본 켬** — 끄는 것은 명시 `T577_RAMP=0`(= 종전 바이트).
+//        이유(보고/T577 §2-3 · §3-ⓓ): econ 기아 보호막(`SHIELD_DAYS` 365)과 도적 보호기가 **같은 날** 걷혀 첫해 겨울 끝 굶는 마을이
+//        한 주에 해체됐다(3시드 해체 51 중 39 가 day 375~394). 끔 판 빈 13 → 켬 판 1(시드 1020 · 800일).
 const T577_WALK = process.env.T577_CAND_WALK === '1';
-const T577_RAMP = process.env.T577_CAND_RAMP === '1';
+const T577_RAMP = process.env.T577_RAMP !== '0';   // ★[T577 추신] 기본 켬
 function _t577Hash(name) { let h = 0; const s = String(name || ''); for (let i = 0; i < s.length; i++) h = (Math.imul(h, 31) + s.charCodeAt(i)) | 0; return h >>> 0; }
 function _bdtOpenDay(vil) {   // 이 마을의 보호기가 끝나는 날(끔이면 모두 BDT_MIN_DAY — 종전)
   if (!T577_RAMP) return BDT_MIN_DAY;
@@ -92,6 +95,7 @@ function _t577Walk(vil, day) {   // ⓐ 남은 사람 → 가장 가까운 산 �
     if (best.econ.counts && npc && npc.currentJob) best.econ.counts[npc.currentJob] = (best.econ.counts[npc.currentJob] || 0) + 1;
   }
   S.stats.t577Walk = (S.stats.t577Walk || 0) + moved.length;
+  if (S.host.noteBodyExit) S.host.noteBodyExit(vil, 'move', moved.length, null, best);   // ★[T590] 몸은 그 마을까지 걷는다(도착 몸은 그 마을 출생이 세운다 — 회부)
   log(day, `${vil.name} 해체 뒤 남은 ${moved.length}명 → ${best.name}(${Math.round(bd)}셀) [T577 ⓐ]`);
   return moved.length;
 }
@@ -362,6 +366,7 @@ function formGang(vil, size, day, why) { // econ 인구에서 *살아있는* siz
   }
   const g = { id: S.seq++, camp, n: size, food: size * 6, zero: 0, born: day, home: vil.name, why, lootN: 0, lastLoot: day, den: null, _sup: null, _supKill: 0 };
   S.GANGS.push(g);
+  if (S.host.noteBodyExit) S.host.noteBodyExit(vil, 'bandit', size, camp);   // ★[T590] 몸은 은거지까지 걷는다(몸 층 · econ 무접촉)
   S.stats.conv += size;
   if (S.GANGS.length > S.stats.peak) S.stats.peak = S.GANGS.length;
   log(day, `${vil.name} ${why} → 도적단#${g.id} ${size}명 결성(은거지 ${camp.cx},${camp.cy})`);
@@ -419,6 +424,7 @@ function daily(day) { // 하루 1회(villages econ 틱 직후): 위기 추적→
         const npc = e.npcs.splice(k, 1)[0];
         if (e.counts && npc && npc.currentJob) e.counts[npc.currentJob] = Math.max(0, (e.counts[npc.currentJob] || 0) - 1);
         bg.n++; e._bdtExoAt = day; S.stats.exo++;
+        if (host.noteBodyExit) host.noteBodyExit(vil, 'desert', 1, bg.camp);   // ★[T590] 떠나는 몸은 그 단의 은거지까지 걷는다
         log(day, `${vil.name} 절망 이탈 1명 → 도적단#${bg.id}(${bg.n}명)`);
       }
     }
@@ -467,12 +473,14 @@ function daily(day) { // 하루 1회(villages econ 틱 직후): 위기 추적→
       let vd = '';
       if (fvil) {
         const ev = fvil.econ;
+        let _gone = 0;   // ★[T590] 실제로 빠진 수(마을 3명 하한에 걸리면 _ed 보다 적다)
         for (let z = 0; z < _ed && ev && ev.npcs.length > 3; z++) { // 원정 전사 = 실제 사상만큼 마을 NPC 사망
           const k = (_rb() * ev.npcs.length) | 0;
           const npc = ev.npcs.splice(k, 1)[0];
           if (ev.counts && npc && npc.currentJob) ev.counts[npc.currentJob] = Math.max(0, (ev.counts[npc.currentJob] || 0) - 1);
-          S.stats.supDead++;
+          S.stats.supDead++; _gone++;
         }
+        if (_gone && host.noteBodyExit) host.noteBodyExit(fvil, 'expedition', _gone, g.camp);   // ★[T590] 원정은 추상(몸이 안 나갔다) — 집에 선 몸이 그 소굴 쪽으로 걸어 나간다(그 밖 · 회부)
         if (_ed > 0) vd = ` · 원정 ${_ed}명 전사`;
       }
       if (fvil && fvil.econ) fvil.econ._banditRisk = Math.max(0, (fvil.econ._banditRisk || 0) * 0.4); // 토벌 후 안도

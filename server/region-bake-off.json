@@ -1,0 +1,3132 @@
+{
+ "T574": "추신4 — L 500 굽기 전(여섯째 판)의 광맥 기록. T574_REGION=0 이면 terrain.js 가 region-profiles.restoreBakeOff 로 되돌린다(자리로 찾고 지금 광종이 now 일 때만).",
+ "L": 500,
+ "s0": 0.5,
+ "zones": {
+  "hanbando": [
+   {
+    "c": [
+     64220,
+     6973
+    ],
+    "now": "lead",
+    "was": {
+     "name": "광맥2",
+     "center": [
+      64220,
+      6973
+     ],
+     "radius": 700,
+     "mineral": "jade_raw",
+     "pk": 0.0549
+    }
+   },
+   {
+    "c": [
+     41464,
+     75424
+    ],
+    "now": "copper",
+    "was": {
+     "name": "광맥5",
+     "center": [
+      41464,
+      75424
+     ],
+     "radius": 700,
+     "mineral": "jade_raw",
+     "pk": 0.0395
+    }
+   },
+   {
+    "c": [
+     58512,
+     95376
+    ],
+    "now": "jade_raw",
+    "was": {
+     "name": "광맥10",
+     "center": [
+      58512,
+      95376
+     ],
+     "radius": 2880,
+     "mineral": "obsidian",
+     "pk": 0.2624
+    }
+   },
+   {
+    "c": [
+     64656,
+     21648
+    ],
+    "now": "lead",
+    "was": {
+     "name": "광맥12",
+     "center": [
+      64656,
+      21648
+     ],
+     "radius": 2880,
+     "mineral": "jade_raw",
+     "pk": 0.0262
+    }
+   },
+   {
+    "c": [
+     64784,
+     86288
+    ],
+    "now": "copper",
+    "was": {
+     "name": "광맥24",
+     "center": [
+      64784,
+      86288
+     ],
+     "radius": 1600,
+     "mineral": "jade_raw",
+     "pk": 0.0143
+    }
+   },
+   {
+    "c": [
+     26640,
+     75792
+    ],
+    "now": "lead",
+    "was": {
+     "name": "광맥42",
+     "center": [
+      26640,
+      75792
+     ],
+     "radius": 832,
+     "mineral": "jade_raw",
+     "pk": 0.0103
+    }
+   },
+   {
+    "c": [
+     37904,
+     45072
+    ],
+    "now": "copper",
+    "was": {
+     "name": "광맥52",
+     "center": [
+      37904,
+      45072
+     ],
+     "radius": 832,
+     "mineral": "jade_raw",
+     "pk": 0.0099
+    }
+   },
+   {
+    "c": [
+     67600,
+     65424
+    ],
+    "now": "sulfur",
+    "was": {
+     "name": "광맥60",
+     "center": [
+      67600,
+      65424
+     ],
+     "radius": 1600,
+     "mineral": "lead",
+     "pk": 0.4637,
+     "minerals": {
+      "lead": 0.85,
+      "silver": 0.15
+     }
+    }
+   },
+   {
+    "c": [
+     45968,
+     102032
+    ],
+    "now": "obsidian",
+    "was": {
+     "name": "광맥75",
+     "center": [
+      45968,
+      102032
+     ],
+     "radius": 320,
+     "mineral": "jade_raw",
+     "pk": 0.0276,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     11664,
+     6160
+    ],
+    "now": "gold",
+    "was": {
+     "name": "광맥98",
+     "center": [
+      11664,
+      6160
+     ],
+     "radius": 256,
+     "mineral": "jade_raw",
+     "pk": 0.015,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     63632,
+     107536
+    ],
+    "now": "tin",
+    "was": {
+     "name": "광맥101",
+     "center": [
+      63632,
+      107536
+     ],
+     "radius": 288,
+     "mineral": "jade_raw",
+     "pk": 0.0135,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     13328,
+     33936
+    ],
+    "now": "copper",
+    "was": {
+     "name": "광맥108",
+     "center": [
+      13328,
+      33936
+     ],
+     "radius": 192,
+     "mineral": "jade_raw",
+     "pk": 0.0593,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     61072,
+     81424
+    ],
+    "now": "iron",
+    "was": {
+     "name": "광맥112",
+     "center": [
+      61072,
+      81424
+     ],
+     "radius": 160,
+     "mineral": "jade_raw",
+     "pk": 0.0245,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     60176,
+     70416
+    ],
+    "now": "gold",
+    "was": {
+     "name": "광맥120",
+     "center": [
+      60176,
+      70416
+     ],
+     "radius": 224,
+     "mineral": "jade_raw",
+     "pk": 0.0546,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     30352,
+     16528
+    ],
+    "now": "copper",
+    "was": {
+     "name": "광맥124",
+     "center": [
+      30352,
+      16528
+     ],
+     "radius": 224,
+     "mineral": "jade_raw",
+     "pk": 0.0417,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     65040,
+     39184
+    ],
+    "now": "copper",
+    "was": {
+     "name": "광맥126",
+     "center": [
+      65040,
+      39184
+     ],
+     "radius": 192,
+     "mineral": "jade_raw",
+     "pk": 0.0232,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     69392,
+     19088
+    ],
+    "now": "copper",
+    "was": {
+     "name": "광맥129",
+     "center": [
+      69392,
+      19088
+     ],
+     "radius": 192,
+     "mineral": "jade_raw",
+     "pk": 0.0199,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     12048,
+     49424
+    ],
+    "now": "iron",
+    "was": {
+     "name": "광맥139",
+     "center": [
+      12048,
+      49424
+     ],
+     "radius": 160,
+     "mineral": "jade_raw",
+     "pk": 0.012,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     47504,
+     129040
+    ],
+    "now": "tin",
+    "was": {
+     "name": "광맥140",
+     "center": [
+      47504,
+      129040
+     ],
+     "radius": 288,
+     "mineral": "jade_raw",
+     "pk": 0.051,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     5904,
+     14736
+    ],
+    "now": "copper",
+    "was": {
+     "name": "광맥145",
+     "center": [
+      5904,
+      14736
+     ],
+     "radius": 224,
+     "mineral": "jade_raw",
+     "pk": 0.0191,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     40848,
+     23440
+    ],
+    "now": "iron",
+    "was": {
+     "name": "광맥150",
+     "center": [
+      40848,
+      23440
+     ],
+     "radius": 160,
+     "mineral": "jade_raw",
+     "pk": 0.0302,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     28304,
+     93584
+    ],
+    "now": "sulfur",
+    "was": {
+     "name": "광맥159",
+     "center": [
+      28304,
+      93584
+     ],
+     "radius": 320,
+     "mineral": "lead",
+     "pk": 0.2622,
+     "minor": 1,
+     "minerals": {
+      "lead": 0.85,
+      "silver": 0.15
+     }
+    }
+   },
+   {
+    "c": [
+     21648,
+     125968
+    ],
+    "now": "gold",
+    "was": {
+     "name": "광맥161",
+     "center": [
+      21648,
+      125968
+     ],
+     "radius": 224,
+     "mineral": "jade_raw",
+     "pk": 0.0178,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     55440,
+     104080
+    ],
+    "now": "copper",
+    "was": {
+     "name": "광맥164",
+     "center": [
+      55440,
+      104080
+     ],
+     "radius": 224,
+     "mineral": "jade_raw",
+     "pk": 0.0178,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     10512,
+     53264
+    ],
+    "now": "iron",
+    "was": {
+     "name": "광맥165",
+     "center": [
+      10512,
+      53264
+     ],
+     "radius": 160,
+     "mineral": "jade_raw",
+     "pk": 0.0114,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     48912,
+     61968
+    ],
+    "now": "iron",
+    "was": {
+     "name": "광맥170",
+     "center": [
+      48912,
+      61968
+     ],
+     "radius": 160,
+     "mineral": "jade_raw",
+     "pk": 0.0228,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     46992,
+     128272
+    ],
+    "now": "copper",
+    "was": {
+     "name": "광맥174",
+     "center": [
+      46992,
+      128272
+     ],
+     "radius": 224,
+     "mineral": "jade_raw",
+     "pk": 0.0386,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     67216,
+     116112
+    ],
+    "now": "sulfur",
+    "was": {
+     "name": "광맥182",
+     "center": [
+      67216,
+      116112
+     ],
+     "radius": 256,
+     "mineral": "iron",
+     "pk": 0.1193,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     23952,
+     2704
+    ],
+    "now": "copper",
+    "was": {
+     "name": "광맥187",
+     "center": [
+      23952,
+      2704
+     ],
+     "radius": 192,
+     "mineral": "jade_raw",
+     "pk": 0.018,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     59792,
+     12432
+    ],
+    "now": "gold",
+    "was": {
+     "name": "광맥192",
+     "center": [
+      59792,
+      12432
+     ],
+     "radius": 256,
+     "mineral": "jade_raw",
+     "pk": 0.0341,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     38032,
+     73616
+    ],
+    "now": "iron",
+    "was": {
+     "name": "광맥196",
+     "center": [
+      38032,
+      73616
+     ],
+     "radius": 192,
+     "mineral": "jade_raw",
+     "pk": 0.0228,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     64784,
+     123536
+    ],
+    "now": "sulfur",
+    "was": {
+     "name": "광맥208",
+     "center": [
+      64784,
+      123536
+     ],
+     "radius": 288,
+     "mineral": "gold",
+     "pk": 0.0239,
+     "minor": 1,
+     "minerals": {
+      "gold": 0.8,
+      "silver": 0.2
+     }
+    }
+   },
+   {
+    "c": [
+     25744,
+     89488
+    ],
+    "now": "gold",
+    "was": {
+     "name": "광맥214",
+     "center": [
+      25744,
+      89488
+     ],
+     "radius": 256,
+     "mineral": "jade_raw",
+     "pk": 0.0173,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     8976,
+     123792
+    ],
+    "now": "copper",
+    "was": {
+     "name": "광맥216",
+     "center": [
+      8976,
+      123792
+     ],
+     "radius": 192,
+     "mineral": "jade_raw",
+     "pk": 0.1546,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     38544,
+     82192
+    ],
+    "now": "lead",
+    "was": {
+     "name": "광맥222",
+     "center": [
+      38544,
+      82192
+     ],
+     "radius": 256,
+     "mineral": "jade_raw",
+     "pk": 0.0131,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     68880,
+     88592
+    ],
+    "now": "sulfur",
+    "was": {
+     "name": "광맥227",
+     "center": [
+      68880,
+      88592
+     ],
+     "radius": 288,
+     "mineral": "copper",
+     "pk": 0.3164,
+     "minor": 1,
+     "minerals": {
+      "copper": 0.9,
+      "gold": 0.05,
+      "silver": 0.05
+     }
+    }
+   },
+   {
+    "c": [
+     37520,
+     56336
+    ],
+    "now": "lead",
+    "was": {
+     "name": "광맥233",
+     "center": [
+      37520,
+      56336
+     ],
+     "radius": 288,
+     "mineral": "jade_raw",
+     "pk": 0.0373,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     48912,
+     36240
+    ],
+    "now": "sulfur",
+    "was": {
+     "name": "광맥236",
+     "center": [
+      48912,
+      36240
+     ],
+     "radius": 320,
+     "mineral": "jade_raw",
+     "pk": 0.0298,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     59920,
+     119568
+    ],
+    "now": "copper",
+    "was": {
+     "name": "광맥237",
+     "center": [
+      59920,
+      119568
+     ],
+     "radius": 224,
+     "mineral": "jade_raw",
+     "pk": 0.0511,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     12688,
+     82320
+    ],
+    "now": "sulfur",
+    "was": {
+     "name": "광맥243",
+     "center": [
+      12688,
+      82320
+     ],
+     "radius": 320,
+     "mineral": "gold",
+     "pk": 0.0262,
+     "minor": 1,
+     "minerals": {
+      "gold": 0.8,
+      "silver": 0.2
+     }
+    }
+   },
+   {
+    "c": [
+     40720,
+     89104
+    ],
+    "now": "gold",
+    "was": {
+     "name": "광맥248",
+     "center": [
+      40720,
+      89104
+     ],
+     "radius": 256,
+     "mineral": "jade_raw",
+     "pk": 0.013,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     24336,
+     73104
+    ],
+    "now": "copper",
+    "was": {
+     "name": "광맥251",
+     "center": [
+      24336,
+      73104
+     ],
+     "radius": 192,
+     "mineral": "jade_raw",
+     "pk": 0.0236,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     53008,
+     52624
+    ],
+    "now": "iron",
+    "was": {
+     "name": "광맥267",
+     "center": [
+      53008,
+      52624
+     ],
+     "radius": 192,
+     "mineral": "jade_raw",
+     "pk": 0.01,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     66832,
+     11792
+    ],
+    "now": "copper",
+    "was": {
+     "name": "광맥281",
+     "center": [
+      66832,
+      11792
+     ],
+     "radius": 192,
+     "mineral": "jade_raw",
+     "pk": 0.0336,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     15632,
+     51728
+    ],
+    "now": "iron",
+    "was": {
+     "name": "광맥283",
+     "center": [
+      15632,
+      51728
+     ],
+     "radius": 160,
+     "mineral": "jade_raw",
+     "pk": 0.0225,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     66960,
+     7824
+    ],
+    "now": "jade_raw",
+    "was": {
+     "name": "광맥289",
+     "center": [
+      66960,
+      7824
+     ],
+     "radius": 160,
+     "mineral": "lead",
+     "pk": 0.2362,
+     "minor": 1,
+     "minerals": {
+      "lead": 0.85,
+      "silver": 0.15
+     }
+    }
+   },
+   {
+    "c": [
+     17680,
+     90384
+    ],
+    "now": "obsidian",
+    "was": {
+     "name": "광맥303",
+     "center": [
+      17680,
+      90384
+     ],
+     "radius": 320,
+     "mineral": "jade_raw",
+     "pk": 0.1546,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     15888,
+     72848
+    ],
+    "now": "copper",
+    "was": {
+     "name": "광맥306",
+     "center": [
+      15888,
+      72848
+     ],
+     "radius": 224,
+     "mineral": "jade_raw",
+     "pk": 0.0501,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     47376,
+     3344
+    ],
+    "now": "gold",
+    "was": {
+     "name": "광맥310",
+     "center": [
+      47376,
+      3344
+     ],
+     "radius": 256,
+     "mineral": "jade_raw",
+     "pk": 0.0263,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     25744,
+     114960
+    ],
+    "now": "sulfur",
+    "was": {
+     "name": "광맥313",
+     "center": [
+      25744,
+      114960
+     ],
+     "radius": 256,
+     "mineral": "copper",
+     "pk": 0.2681,
+     "minor": 1,
+     "minerals": {
+      "copper": 0.9,
+      "gold": 0.05,
+      "silver": 0.05
+     }
+    }
+   },
+   {
+    "c": [
+     57744,
+     22544
+    ],
+    "now": "iron",
+    "was": {
+     "name": "광맥328",
+     "center": [
+      57744,
+      22544
+     ],
+     "radius": 160,
+     "mineral": "jade_raw",
+     "pk": 0.0134,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     68368,
+     109456
+    ],
+    "now": "jade_raw",
+    "was": {
+     "name": "광맥334",
+     "center": [
+      68368,
+      109456
+     ],
+     "radius": 192,
+     "mineral": "gold",
+     "pk": 0.0186,
+     "minor": 1,
+     "minerals": {
+      "gold": 0.8,
+      "silver": 0.2
+     }
+    }
+   },
+   {
+    "c": [
+     44304,
+     63760
+    ],
+    "now": "gold",
+    "was": {
+     "name": "광맥348",
+     "center": [
+      44304,
+      63760
+     ],
+     "radius": 256,
+     "mineral": "jade_raw",
+     "pk": 0.0297,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     656,
+     104336
+    ],
+    "now": "lead",
+    "was": {
+     "name": "광맥350",
+     "center": [
+      656,
+      104336
+     ],
+     "radius": 256,
+     "mineral": "jade_raw",
+     "pk": 0.1128,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     54288,
+     72464
+    ],
+    "now": "iron",
+    "was": {
+     "name": "광맥353",
+     "center": [
+      54288,
+      72464
+     ],
+     "radius": 160,
+     "mineral": "jade_raw",
+     "pk": 0.0596,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     61840,
+     17680
+    ],
+    "now": "jade_raw",
+    "was": {
+     "name": "광맥362",
+     "center": [
+      61840,
+      17680
+     ],
+     "radius": 224,
+     "mineral": "copper",
+     "pk": 0.1551,
+     "minor": 1,
+     "minerals": {
+      "copper": 0.9,
+      "gold": 0.05,
+      "silver": 0.05
+     }
+    }
+   },
+   {
+    "c": [
+     43536,
+     104336
+    ],
+    "now": "sulfur",
+    "was": {
+     "name": "광맥363",
+     "center": [
+      43536,
+      104336
+     ],
+     "radius": 288,
+     "mineral": "lead",
+     "pk": 0.5456,
+     "minor": 1,
+     "minerals": {
+      "lead": 0.85,
+      "silver": 0.15
+     }
+    }
+   },
+   {
+    "c": [
+     31632,
+     79888
+    ],
+    "now": "gold",
+    "was": {
+     "name": "광맥366",
+     "center": [
+      31632,
+      79888
+     ],
+     "radius": 224,
+     "mineral": "jade_raw",
+     "pk": 0.0247,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     45200,
+     24592
+    ],
+    "now": "iron",
+    "was": {
+     "name": "광맥383",
+     "center": [
+      45200,
+      24592
+     ],
+     "radius": 160,
+     "mineral": "jade_raw",
+     "pk": 0.09,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     13456,
+     101904
+    ],
+    "now": "gold",
+    "was": {
+     "name": "광맥384",
+     "center": [
+      13456,
+      101904
+     ],
+     "radius": 224,
+     "mineral": "jade_raw",
+     "pk": 0.0389,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     1040,
+     85008
+    ],
+    "now": "lead",
+    "was": {
+     "name": "광맥387",
+     "center": [
+      1040,
+      85008
+     ],
+     "radius": 256,
+     "mineral": "jade_raw",
+     "pk": 0.0244,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     34960,
+     119952
+    ],
+    "now": "sulfur",
+    "was": {
+     "name": "광맥402",
+     "center": [
+      34960,
+      119952
+     ],
+     "radius": 288,
+     "mineral": "jade_raw",
+     "pk": 0.0149,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     57104,
+     35728
+    ],
+    "now": "lead",
+    "was": {
+     "name": "광맥414",
+     "center": [
+      57104,
+      35728
+     ],
+     "radius": 288,
+     "mineral": "jade_raw",
+     "pk": 0.0629,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     68624,
+     63376
+    ],
+    "now": "copper",
+    "was": {
+     "name": "광맥416",
+     "center": [
+      68624,
+      63376
+     ],
+     "radius": 192,
+     "mineral": "jade_raw",
+     "pk": 0.0059,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     33552,
+     103440
+    ],
+    "now": "copper",
+    "was": {
+     "name": "광맥418",
+     "center": [
+      33552,
+      103440
+     ],
+     "radius": 192,
+     "mineral": "jade_raw",
+     "pk": 0.0421,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     59920,
+     45456
+    ],
+    "now": "obsidian",
+    "was": {
+     "name": "광맥419",
+     "center": [
+      59920,
+      45456
+     ],
+     "radius": 320,
+     "mineral": "jade_raw",
+     "pk": 0.0246,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     38160,
+     75920
+    ],
+    "now": "sulfur",
+    "was": {
+     "name": "광맥429",
+     "center": [
+      38160,
+      75920
+     ],
+     "radius": 288,
+     "mineral": "lead",
+     "pk": 0.1398,
+     "minor": 1,
+     "minerals": {
+      "lead": 0.85,
+      "silver": 0.15
+     }
+    }
+   },
+   {
+    "c": [
+     34704,
+     54416
+    ],
+    "now": "sulfur",
+    "was": {
+     "name": "광맥432",
+     "center": [
+      34704,
+      54416
+     ],
+     "radius": 320,
+     "mineral": "lead",
+     "pk": 0.4936,
+     "minor": 1,
+     "minerals": {
+      "lead": 0.85,
+      "silver": 0.15
+     }
+    }
+   },
+   {
+    "c": [
+     6160,
+     97808
+    ],
+    "now": "copper",
+    "was": {
+     "name": "광맥439",
+     "center": [
+      6160,
+      97808
+     ],
+     "radius": 224,
+     "mineral": "jade_raw",
+     "pk": 0.0855,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     16656,
+     72976
+    ],
+    "now": "tin",
+    "was": {
+     "name": "광맥450",
+     "center": [
+      16656,
+      72976
+     ],
+     "radius": 288,
+     "mineral": "jade_raw",
+     "pk": 0.0068,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     14608,
+     116880
+    ],
+    "now": "iron",
+    "was": {
+     "name": "광맥457",
+     "center": [
+      14608,
+      116880
+     ],
+     "radius": 160,
+     "mineral": "jade_raw",
+     "pk": 0.0167,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     45456,
+     57360
+    ],
+    "now": "gold",
+    "was": {
+     "name": "광맥466",
+     "center": [
+      45456,
+      57360
+     ],
+     "radius": 224,
+     "mineral": "jade_raw",
+     "pk": 0.0184,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     64400,
+     62608
+    ],
+    "now": "gold",
+    "was": {
+     "name": "광맥471",
+     "center": [
+      64400,
+      62608
+     ],
+     "radius": 224,
+     "mineral": "jade_raw",
+     "pk": 0.0252,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     14096,
+     84624
+    ],
+    "now": "lead",
+    "was": {
+     "name": "광맥476",
+     "center": [
+      14096,
+      84624
+     ],
+     "radius": 256,
+     "mineral": "jade_raw",
+     "pk": 0.0496,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     10640,
+     67344
+    ],
+    "now": "tin",
+    "was": {
+     "name": "광맥479",
+     "center": [
+      10640,
+      67344
+     ],
+     "radius": 288,
+     "mineral": "jade_raw",
+     "pk": 0.0483,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     30352,
+     69776
+    ],
+    "now": "lead",
+    "was": {
+     "name": "광맥484",
+     "center": [
+      30352,
+      69776
+     ],
+     "radius": 288,
+     "mineral": "jade_raw",
+     "pk": 0.0205,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     7824,
+     97936
+    ],
+    "now": "copper",
+    "was": {
+     "name": "광맥494",
+     "center": [
+      7824,
+      97936
+     ],
+     "radius": 192,
+     "mineral": "jade_raw",
+     "pk": 0.0235,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     53904,
+     56208
+    ],
+    "now": "jade_raw",
+    "was": {
+     "name": "광맥500",
+     "center": [
+      53904,
+      56208
+     ],
+     "radius": 160,
+     "mineral": "iron",
+     "pk": 0.3537,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     66192,
+     52112
+    ],
+    "now": "jade_raw",
+    "was": {
+     "name": "광맥508",
+     "center": [
+      66192,
+      52112
+     ],
+     "radius": 160,
+     "mineral": "copper",
+     "pk": 0.1715,
+     "minor": 1,
+     "minerals": {
+      "copper": 0.9,
+      "gold": 0.05,
+      "silver": 0.05
+     }
+    }
+   },
+   {
+    "c": [
+     46480,
+     69904
+    ],
+    "now": "copper",
+    "was": {
+     "name": "광맥518",
+     "center": [
+      46480,
+      69904
+     ],
+     "radius": 192,
+     "mineral": "jade_raw",
+     "pk": 0.016,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     14480,
+     95760
+    ],
+    "now": "copper",
+    "was": {
+     "name": "광맥528",
+     "center": [
+      14480,
+      95760
+     ],
+     "radius": 192,
+     "mineral": "jade_raw",
+     "pk": 0.0051,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     34576,
+     87696
+    ],
+    "now": "obsidian",
+    "was": {
+     "name": "광맥536",
+     "center": [
+      34576,
+      87696
+     ],
+     "radius": 320,
+     "mineral": "jade_raw",
+     "pk": 0.0111,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     19856,
+     128144
+    ],
+    "now": "obsidian",
+    "was": {
+     "name": "광맥538",
+     "center": [
+      19856,
+      128144
+     ],
+     "radius": 320,
+     "mineral": "jade_raw",
+     "pk": 0.0209,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     45968,
+     72208
+    ],
+    "now": "copper",
+    "was": {
+     "name": "광맥552",
+     "center": [
+      45968,
+      72208
+     ],
+     "radius": 192,
+     "mineral": "jade_raw",
+     "pk": 0.0156,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     46736,
+     59664
+    ],
+    "now": "sulfur",
+    "was": {
+     "name": "광맥555",
+     "center": [
+      46736,
+      59664
+     ],
+     "radius": 256,
+     "mineral": "iron",
+     "pk": 0.2256,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     53136,
+     41360
+    ],
+    "now": "jade_raw",
+    "was": {
+     "name": "광맥558",
+     "center": [
+      53136,
+      41360
+     ],
+     "radius": 192,
+     "mineral": "copper",
+     "pk": 0.6895,
+     "minor": 1,
+     "minerals": {
+      "copper": 0.9,
+      "gold": 0.05,
+      "silver": 0.05
+     }
+    }
+   },
+   {
+    "c": [
+     56208,
+     25232
+    ],
+    "now": "gold",
+    "was": {
+     "name": "광맥561",
+     "center": [
+      56208,
+      25232
+     ],
+     "radius": 224,
+     "mineral": "jade_raw",
+     "pk": 0.1032,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     67216,
+     105488
+    ],
+    "now": "sulfur",
+    "was": {
+     "name": "광맥567",
+     "center": [
+      67216,
+      105488
+     ],
+     "radius": 256,
+     "mineral": "lead",
+     "pk": 0.16,
+     "minor": 1,
+     "minerals": {
+      "lead": 0.85,
+      "silver": 0.15
+     }
+    }
+   },
+   {
+    "c": [
+     30736,
+     24720
+    ],
+    "now": "copper",
+    "was": {
+     "name": "광맥582",
+     "center": [
+      30736,
+      24720
+     ],
+     "radius": 224,
+     "mineral": "jade_raw",
+     "pk": 0.0281,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     22544,
+     89360
+    ],
+    "now": "obsidian",
+    "was": {
+     "name": "광맥591",
+     "center": [
+      22544,
+      89360
+     ],
+     "radius": 320,
+     "mineral": "jade_raw",
+     "pk": 0.094,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     62992,
+     38416
+    ],
+    "now": "jade_raw",
+    "was": {
+     "name": "광맥592",
+     "center": [
+      62992,
+      38416
+     ],
+     "radius": 224,
+     "mineral": "tin",
+     "pk": 0.4625,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     68112,
+     43792
+    ],
+    "now": "lead",
+    "was": {
+     "name": "광맥597",
+     "center": [
+      68112,
+      43792
+     ],
+     "radius": 288,
+     "mineral": "jade_raw",
+     "pk": 0.0113,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     8592,
+     38544
+    ],
+    "now": "iron",
+    "was": {
+     "name": "광맥600",
+     "center": [
+      8592,
+      38544
+     ],
+     "radius": 160,
+     "mineral": "jade_raw",
+     "pk": 0.0168,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     6544,
+     18192
+    ],
+    "now": "lead",
+    "was": {
+     "name": "광맥603",
+     "center": [
+      6544,
+      18192
+     ],
+     "radius": 288,
+     "mineral": "jade_raw",
+     "pk": 0.0193,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     54288,
+     90512
+    ],
+    "now": "obsidian",
+    "was": {
+     "name": "광맥604",
+     "center": [
+      54288,
+      90512
+     ],
+     "radius": 320,
+     "mineral": "jade_raw",
+     "pk": 0.0342,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     16656,
+     4880
+    ],
+    "now": "copper",
+    "was": {
+     "name": "광맥619",
+     "center": [
+      16656,
+      4880
+     ],
+     "radius": 224,
+     "mineral": "jade_raw",
+     "pk": 0.0166,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     31376,
+     128784
+    ],
+    "now": "gold",
+    "was": {
+     "name": "광맥627",
+     "center": [
+      31376,
+      128784
+     ],
+     "radius": 224,
+     "mineral": "jade_raw",
+     "pk": 0.0123,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     33296,
+     114320
+    ],
+    "now": "iron",
+    "was": {
+     "name": "광맥635",
+     "center": [
+      33296,
+      114320
+     ],
+     "radius": 128,
+     "mineral": "jade_raw",
+     "pk": 0.085,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     63760,
+     67856
+    ],
+    "now": "jade_raw",
+    "was": {
+     "name": "광맥649",
+     "center": [
+      63760,
+      67856
+     ],
+     "radius": 128,
+     "mineral": "gold",
+     "pk": 0.012,
+     "minor": 1,
+     "minerals": {
+      "gold": 0.8,
+      "silver": 0.2
+     }
+    }
+   },
+   {
+    "c": [
+     24336,
+     82960
+    ],
+    "now": "gold",
+    "was": {
+     "name": "광맥654",
+     "center": [
+      24336,
+      82960
+     ],
+     "radius": 224,
+     "mineral": "jade_raw",
+     "pk": 0.0059,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     63760,
+     31376
+    ],
+    "now": "iron",
+    "was": {
+     "name": "광맥655",
+     "center": [
+      63760,
+      31376
+     ],
+     "radius": 160,
+     "mineral": "jade_raw",
+     "pk": 0.0405,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     13456,
+     43792
+    ],
+    "now": "lead",
+    "was": {
+     "name": "광맥660",
+     "center": [
+      13456,
+      43792
+     ],
+     "radius": 256,
+     "mineral": "jade_raw",
+     "pk": 0.0197,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     62608,
+     84112
+    ],
+    "now": "obsidian",
+    "was": {
+     "name": "광맥667",
+     "center": [
+      62608,
+      84112
+     ],
+     "radius": 320,
+     "mineral": "jade_raw",
+     "pk": 0.0099,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     11024,
+     74128
+    ],
+    "now": "copper",
+    "was": {
+     "name": "광맥683",
+     "center": [
+      11024,
+      74128
+     ],
+     "radius": 192,
+     "mineral": "jade_raw",
+     "pk": 0.0289,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     44176,
+     100112
+    ],
+    "now": "sulfur",
+    "was": {
+     "name": "광맥685",
+     "center": [
+      44176,
+      100112
+     ],
+     "radius": 256,
+     "mineral": "jade_raw",
+     "pk": 0.0364,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     49552,
+     47888
+    ],
+    "now": "obsidian",
+    "was": {
+     "name": "광맥707",
+     "center": [
+      49552,
+      47888
+     ],
+     "radius": 320,
+     "mineral": "jade_raw",
+     "pk": 0.0604,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     38416,
+     89232
+    ],
+    "now": "iron",
+    "was": {
+     "name": "광맥714",
+     "center": [
+      38416,
+      89232
+     ],
+     "radius": 128,
+     "mineral": "jade_raw",
+     "pk": 0.0518,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     31248,
+     125712
+    ],
+    "now": "copper",
+    "was": {
+     "name": "광맥716",
+     "center": [
+      31248,
+      125712
+     ],
+     "radius": 192,
+     "mineral": "jade_raw",
+     "pk": 0.0186,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     50192,
+     67728
+    ],
+    "now": "copper",
+    "was": {
+     "name": "광맥725",
+     "center": [
+      50192,
+      67728
+     ],
+     "radius": 224,
+     "mineral": "jade_raw",
+     "pk": 0.0382,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     2832,
+     122640
+    ],
+    "now": "iron",
+    "was": {
+     "name": "광맥737",
+     "center": [
+      2832,
+      122640
+     ],
+     "radius": 160,
+     "mineral": "jade_raw",
+     "pk": 0.0528,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     33936,
+     83088
+    ],
+    "now": "jade_raw",
+    "was": {
+     "name": "광맥743",
+     "center": [
+      33936,
+      83088
+     ],
+     "radius": 192,
+     "mineral": "iron",
+     "pk": 0.4481,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     8848,
+     116752
+    ],
+    "now": "copper",
+    "was": {
+     "name": "광맥745",
+     "center": [
+      8848,
+      116752
+     ],
+     "radius": 224,
+     "mineral": "jade_raw",
+     "pk": 0.0185,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     16784,
+     30992
+    ],
+    "now": "obsidian",
+    "was": {
+     "name": "광맥752",
+     "center": [
+      16784,
+      30992
+     ],
+     "radius": 320,
+     "mineral": "jade_raw",
+     "pk": 0.0116,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     7440,
+     89232
+    ],
+    "now": "gold",
+    "was": {
+     "name": "광맥756",
+     "center": [
+      7440,
+      89232
+     ],
+     "radius": 256,
+     "mineral": "jade_raw",
+     "pk": 0.0325,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     25488,
+     20624
+    ],
+    "now": "gold",
+    "was": {
+     "name": "광맥772",
+     "center": [
+      25488,
+      20624
+     ],
+     "radius": 288,
+     "mineral": "jade_raw",
+     "pk": 0.034,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     53776,
+     26896
+    ],
+    "now": "gold",
+    "was": {
+     "name": "광맥777",
+     "center": [
+      53776,
+      26896
+     ],
+     "radius": 320,
+     "mineral": "jade_raw",
+     "pk": 0.0272,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     47504,
+     75792
+    ],
+    "now": "gold",
+    "was": {
+     "name": "광맥782",
+     "center": [
+      47504,
+      75792
+     ],
+     "radius": 320,
+     "mineral": "jade_raw",
+     "pk": 0.0335,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     39056,
+     96144
+    ],
+    "now": "copper",
+    "was": {
+     "name": "광맥783",
+     "center": [
+      39056,
+      96144
+     ],
+     "radius": 256,
+     "mineral": "jade_raw",
+     "pk": 0.0601,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     57616,
+     41488
+    ],
+    "now": "sulfur",
+    "was": {
+     "name": "광맥787",
+     "center": [
+      57616,
+      41488
+     ],
+     "radius": 384,
+     "mineral": "iron",
+     "pk": 0.0426,
+     "minor": 1
+    }
+   }
+  ],
+  "nippon": [
+   {
+    "c": [
+     14010,
+     13537
+    ],
+    "now": "lead",
+    "was": {
+     "name": "광맥9",
+     "center": [
+      14010,
+      13537
+     ],
+     "radius": 700,
+     "mineral": "gold",
+     "pk": 0.0511
+    }
+   },
+   {
+    "c": [
+     18143,
+     76294
+    ],
+    "now": "copper",
+    "was": {
+     "name": "광맥10",
+     "center": [
+      18143,
+      76294
+     ],
+     "radius": 700,
+     "mineral": "iron",
+     "pk": 0.0931
+    }
+   },
+   {
+    "c": [
+     26735,
+     1795
+    ],
+    "now": "copper",
+    "was": {
+     "name": "광맥20",
+     "center": [
+      26735,
+      1795
+     ],
+     "radius": 700,
+     "mineral": "iron",
+     "pk": 0.2115
+    }
+   },
+   {
+    "c": [
+     23501,
+     42742
+    ],
+    "now": "sulfur",
+    "was": {
+     "name": "광맥38",
+     "center": [
+      23501,
+      42742
+     ],
+     "radius": 700,
+     "mineral": "obsidian",
+     "pk": 0.0365
+    }
+   },
+   {
+    "c": [
+     22646,
+     98658
+    ],
+    "now": "jade_raw",
+    "was": {
+     "name": "광맥39",
+     "center": [
+      22646,
+      98658
+     ],
+     "radius": 700,
+     "mineral": "lead",
+     "pk": 0.1706
+    }
+   },
+   {
+    "c": [
+     22672,
+     76944
+    ],
+    "now": "obsidian",
+    "was": {
+     "name": "광맥6",
+     "center": [
+      22672,
+      76944
+     ],
+     "radius": 4160,
+     "mineral": "jade_raw",
+     "pk": 0.0439
+    }
+   },
+   {
+    "c": [
+     25744,
+     106640
+    ],
+    "now": "obsidian",
+    "was": {
+     "name": "광맥7",
+     "center": [
+      25744,
+      106640
+     ],
+     "radius": 4160,
+     "mineral": "jade_raw",
+     "pk": 0.0632
+    }
+   },
+   {
+    "c": [
+     25744,
+     61584
+    ],
+    "now": "obsidian",
+    "was": {
+     "name": "광맥8",
+     "center": [
+      25744,
+      61584
+     ],
+     "radius": 4160,
+     "mineral": "jade_raw",
+     "pk": 0.0533
+    }
+   },
+   {
+    "c": [
+     25872,
+     57616
+    ],
+    "now": "jade_raw",
+    "was": {
+     "name": "광맥9",
+     "center": [
+      25872,
+      57616
+     ],
+     "radius": 2240,
+     "mineral": "lead",
+     "pk": 0.1256
+    }
+   },
+   {
+    "c": [
+     24848,
+     47376
+    ],
+    "now": "jade_raw",
+    "was": {
+     "name": "광맥10",
+     "center": [
+      24848,
+      47376
+     ],
+     "radius": 2240,
+     "mineral": "lead",
+     "pk": 0.7013
+    }
+   },
+   {
+    "c": [
+     24848,
+     37136
+    ],
+    "now": "jade_raw",
+    "was": {
+     "name": "광맥11",
+     "center": [
+      24848,
+      37136
+     ],
+     "radius": 2240,
+     "mineral": "lead",
+     "pk": 0.0601
+    }
+   },
+   {
+    "c": [
+     24848,
+     102672
+    ],
+    "now": "jade_raw",
+    "was": {
+     "name": "광맥12",
+     "center": [
+      24848,
+      102672
+     ],
+     "radius": 2240,
+     "mineral": "lead",
+     "pk": 0.624
+    }
+   },
+   {
+    "c": [
+     21776,
+     81168
+    ],
+    "now": "copper",
+    "was": {
+     "name": "광맥13",
+     "center": [
+      21776,
+      81168
+     ],
+     "radius": 2240,
+     "mineral": "iron",
+     "pk": 0.2295
+    }
+   },
+   {
+    "c": [
+     23824,
+     109840
+    ],
+    "now": "lead",
+    "was": {
+     "name": "광맥15",
+     "center": [
+      23824,
+      109840
+     ],
+     "radius": 2240,
+     "mineral": "copper",
+     "pk": 0.3139
+    }
+   },
+   {
+    "c": [
+     26896,
+     34064
+    ],
+    "now": "obsidian",
+    "was": {
+     "name": "광맥16",
+     "center": [
+      26896,
+      34064
+     ],
+     "radius": 2240,
+     "mineral": "jade_raw",
+     "pk": 0.0161
+    }
+   },
+   {
+    "c": [
+     24848,
+     54544
+    ],
+    "now": "sulfur",
+    "was": {
+     "name": "광맥17",
+     "center": [
+      24848,
+      54544
+     ],
+     "radius": 2240,
+     "mineral": "silver",
+     "pk": 0.0571
+    }
+   },
+   {
+    "c": [
+     21776,
+     89360
+    ],
+    "now": "sulfur",
+    "was": {
+     "name": "광맥18",
+     "center": [
+      21776,
+      89360
+     ],
+     "radius": 2240,
+     "mineral": "obsidian",
+     "pk": 0.0888
+    }
+   },
+   {
+    "c": [
+     21776,
+     92432
+    ],
+    "now": "gold",
+    "was": {
+     "name": "광맥19",
+     "center": [
+      21776,
+      92432
+     ],
+     "radius": 2240,
+     "mineral": "iron",
+     "pk": 0.9
+    }
+   },
+   {
+    "c": [
+     22800,
+     65808
+    ],
+    "now": "lead",
+    "was": {
+     "name": "광맥20",
+     "center": [
+      22800,
+      65808
+     ],
+     "radius": 2240,
+     "mineral": "gold",
+     "pk": 0.037
+    }
+   },
+   {
+    "c": [
+     1040,
+     35856
+    ],
+    "now": "sulfur",
+    "was": {
+     "name": "광맥21",
+     "center": [
+      1040,
+      35856
+     ],
+     "radius": 1024,
+     "mineral": "tin",
+     "pk": 0.7834
+    }
+   },
+   {
+    "c": [
+     22544,
+     104464
+    ],
+    "now": "gold",
+    "was": {
+     "name": "광맥22",
+     "center": [
+      22544,
+      104464
+     ],
+     "radius": 1024,
+     "mineral": "copper",
+     "pk": 0.2467
+    }
+   },
+   {
+    "c": [
+     1040,
+     70672
+    ],
+    "now": "tin",
+    "was": {
+     "name": "광맥23",
+     "center": [
+      1040,
+      70672
+     ],
+     "radius": 1024,
+     "mineral": "gold",
+     "pk": 0.0059
+    }
+   },
+   {
+    "c": [
+     26640,
+     31760
+    ],
+    "now": "copper",
+    "was": {
+     "name": "광맥24",
+     "center": [
+      26640,
+      31760
+     ],
+     "radius": 1024,
+     "mineral": "iron",
+     "pk": 0.437
+    }
+   },
+   {
+    "c": [
+     1040,
+     54288
+    ],
+    "now": "jade_raw",
+    "was": {
+     "name": "광맥25",
+     "center": [
+      1040,
+      54288
+     ],
+     "radius": 1024,
+     "mineral": "lead",
+     "pk": 0.2809
+    }
+   },
+   {
+    "c": [
+     1040,
+     73744
+    ],
+    "now": "lead",
+    "was": {
+     "name": "광맥26",
+     "center": [
+      1040,
+      73744
+     ],
+     "radius": 1024,
+     "mineral": "gold",
+     "pk": 0.0099
+    }
+   },
+   {
+    "c": [
+     19472,
+     75792
+    ],
+    "now": "sulfur",
+    "was": {
+     "name": "광맥27",
+     "center": [
+      19472,
+      75792
+     ],
+     "radius": 1024,
+     "mineral": "silver",
+     "pk": 0.0582
+    }
+   },
+   {
+    "c": [
+     20496,
+     69648
+    ],
+    "now": "gold",
+    "was": {
+     "name": "광맥28",
+     "center": [
+      20496,
+      69648
+     ],
+     "radius": 1024,
+     "mineral": "iron",
+     "pk": 0.1358
+    }
+   },
+   {
+    "c": [
+     25616,
+     43024
+    ],
+    "now": "lead",
+    "was": {
+     "name": "광맥29",
+     "center": [
+      25616,
+      43024
+     ],
+     "radius": 1024,
+     "mineral": "gold",
+     "pk": 0.0281
+    }
+   },
+   {
+    "c": [
+     26640,
+     37904
+    ],
+    "now": "obsidian",
+    "was": {
+     "name": "광맥30",
+     "center": [
+      26640,
+      37904
+     ],
+     "radius": 1024,
+     "mineral": "silver",
+     "pk": 0.1859
+    }
+   },
+   {
+    "c": [
+     1040,
+     33808
+    ],
+    "now": "obsidian",
+    "was": {
+     "name": "광맥31",
+     "center": [
+      1040,
+      33808
+     ],
+     "radius": 1024,
+     "mineral": "silver",
+     "pk": 0.2727
+    }
+   },
+   {
+    "c": [
+     24592,
+     56336
+    ],
+    "now": "obsidian",
+    "was": {
+     "name": "광맥32",
+     "center": [
+      24592,
+      56336
+     ],
+     "radius": 1024,
+     "mineral": "silver",
+     "pk": 0.1712
+    }
+   },
+   {
+    "c": [
+     22544,
+     94224
+    ],
+    "now": "copper",
+    "was": {
+     "name": "광맥33",
+     "center": [
+      22544,
+      94224
+     ],
+     "radius": 1024,
+     "mineral": "iron",
+     "pk": 0.6842
+    }
+   },
+   {
+    "c": [
+     19472,
+     78864
+    ],
+    "now": "jade_raw",
+    "was": {
+     "name": "광맥34",
+     "center": [
+      19472,
+      78864
+     ],
+     "radius": 1024,
+     "mineral": "lead",
+     "pk": 0.4728
+    }
+   },
+   {
+    "c": [
+     25616,
+     32784
+    ],
+    "now": "obsidian",
+    "was": {
+     "name": "광맥35",
+     "center": [
+      25616,
+      32784
+     ],
+     "radius": 1024,
+     "mineral": "silver",
+     "pk": 0.0829
+    }
+   },
+   {
+    "c": [
+     25616,
+     25616
+    ],
+    "now": "lead",
+    "was": {
+     "name": "광맥36",
+     "center": [
+      25616,
+      25616
+     ],
+     "radius": 1024,
+     "mineral": "copper",
+     "pk": 0.3588
+    }
+   },
+   {
+    "c": [
+     22544,
+     18448
+    ],
+    "now": "gold",
+    "was": {
+     "name": "광맥37",
+     "center": [
+      22544,
+      18448
+     ],
+     "radius": 1024,
+     "mineral": "iron",
+     "pk": 0.0762
+    }
+   },
+   {
+    "c": [
+     23568,
+     95248
+    ],
+    "now": "gold",
+    "was": {
+     "name": "광맥38",
+     "center": [
+      23568,
+      95248
+     ],
+     "radius": 1024,
+     "mineral": "iron",
+     "pk": 0.1696
+    }
+   },
+   {
+    "c": [
+     1040,
+     56336
+    ],
+    "now": "sulfur",
+    "was": {
+     "name": "광맥39",
+     "center": [
+      1040,
+      56336
+     ],
+     "radius": 1024,
+     "mineral": "obsidian",
+     "pk": 0.0665
+    }
+   },
+   {
+    "c": [
+     19472,
+     16400
+    ],
+    "now": "lead",
+    "was": {
+     "name": "광맥40",
+     "center": [
+      19472,
+      16400
+     ],
+     "radius": 1024,
+     "mineral": "copper",
+     "pk": 0.4432
+    }
+   },
+   {
+    "c": [
+     1040,
+     68624
+    ],
+    "now": "sulfur",
+    "was": {
+     "name": "광맥41",
+     "center": [
+      1040,
+      68624
+     ],
+     "radius": 1024,
+     "mineral": "silver",
+     "pk": 0.0208
+    }
+   },
+   {
+    "c": [
+     1040,
+     50192
+    ],
+    "now": "lead",
+    "was": {
+     "name": "광맥42",
+     "center": [
+      1040,
+      50192
+     ],
+     "radius": 1024,
+     "mineral": "gold",
+     "pk": 0.0477
+    }
+   },
+   {
+    "c": [
+     1040,
+     66576
+    ],
+    "now": "copper",
+    "was": {
+     "name": "광맥43",
+     "center": [
+      1040,
+      66576
+     ],
+     "radius": 1024,
+     "mineral": "iron",
+     "pk": 0.1338
+    }
+   },
+   {
+    "c": [
+     1040,
+     48144
+    ],
+    "now": "gold",
+    "was": {
+     "name": "광맥44",
+     "center": [
+      1040,
+      48144
+     ],
+     "radius": 1024,
+     "mineral": "iron",
+     "pk": 0.1809
+    }
+   },
+   {
+    "c": [
+     23568,
+     20496
+    ],
+    "now": "obsidian",
+    "was": {
+     "name": "광맥45",
+     "center": [
+      23568,
+      20496
+     ],
+     "radius": 1024,
+     "mineral": "jade_raw",
+     "pk": 0.0203
+    }
+   },
+   {
+    "c": [
+     1040,
+     31760
+    ],
+    "now": "jade_raw",
+    "was": {
+     "name": "광맥46",
+     "center": [
+      1040,
+      31760
+     ],
+     "radius": 1024,
+     "mineral": "lead",
+     "pk": 0.0749
+    }
+   },
+   {
+    "c": [
+     5136,
+     9232
+    ],
+    "now": "lead",
+    "was": {
+     "name": "광맥47",
+     "center": [
+      5136,
+      9232
+     ],
+     "radius": 1024,
+     "mineral": "gold",
+     "pk": 0.0763
+    }
+   },
+   {
+    "c": [
+     23568,
+     93200
+    ],
+    "now": "sulfur",
+    "was": {
+     "name": "광맥48",
+     "center": [
+      23568,
+      93200
+     ],
+     "radius": 1024,
+     "mineral": "obsidian",
+     "pk": 0.1241
+    }
+   },
+   {
+    "c": [
+     22544,
+     63504
+    ],
+    "now": "gold",
+    "was": {
+     "name": "광맥49",
+     "center": [
+      22544,
+      63504
+     ],
+     "radius": 1024,
+     "mineral": "copper",
+     "pk": 0.9
+    }
+   },
+   {
+    "c": [
+     18448,
+     15376
+    ],
+    "now": "tin",
+    "was": {
+     "name": "광맥50",
+     "center": [
+      18448,
+      15376
+     ],
+     "radius": 1024,
+     "mineral": "gold",
+     "pk": 0.0297
+    }
+   },
+   {
+    "c": [
+     26640,
+     35856
+    ],
+    "now": "obsidian",
+    "was": {
+     "name": "광맥51",
+     "center": [
+      26640,
+      35856
+     ],
+     "radius": 1024,
+     "mineral": "jade_raw",
+     "pk": 0.0298
+    }
+   },
+   {
+    "c": [
+     24592,
+     45072
+    ],
+    "now": "obsidian",
+    "was": {
+     "name": "광맥52",
+     "center": [
+      24592,
+      45072
+     ],
+     "radius": 1024,
+     "mineral": "jade_raw",
+     "pk": 0.0273
+    }
+   },
+   {
+    "c": [
+     14352,
+     12304
+    ],
+    "now": "lead",
+    "was": {
+     "name": "광맥53",
+     "center": [
+      14352,
+      12304
+     ],
+     "radius": 1024,
+     "mineral": "gold",
+     "pk": 0.0222
+    }
+   },
+   {
+    "c": [
+     22544,
+     102416
+    ],
+    "now": "copper",
+    "was": {
+     "name": "광맥54",
+     "center": [
+      22544,
+      102416
+     ],
+     "radius": 1024,
+     "mineral": "iron",
+     "pk": 0.8255
+    }
+   },
+   {
+    "c": [
+     23568,
+     59408
+    ],
+    "now": "copper",
+    "was": {
+     "name": "광맥55",
+     "center": [
+      23568,
+      59408
+     ],
+     "radius": 1024,
+     "mineral": "iron",
+     "pk": 0.0838
+    }
+   }
+  ]
+ }
+}

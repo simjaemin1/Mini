@@ -7,6 +7,10 @@
 //     node scripts/t571-lab-streams.js pics  [outDir]     — 산그림 `T571_랩_개울.png`(인구 30·100·200 × 개울 끔·켬 두 판) · `T571_계곡_기슭.png`(산 바위 구간 세 판)
 //     T568_DIR=… node scripts/t571-lab-streams.js xval    — 교차 검증(라이브 사본): ① 랩 streamFlow = `t568-flow.js` 출력(acc·down 전 칸) ② 랩 streamAudit = `t568-streams.py` audit(판 셋)
 //         (먼저: t568-live-map.py → t571-live-cost.py → t568-flow.js … acc.u32 down.i32 → T571_MODES=land,foot,gorge python3 scripts/t568-streams.py 1500)
+//     node scripts/t571-lab-streams.js guard [out.json]   — ★T584 개울 완충 셋(off · guard · guard+tax) × 아홉 판(시드 7 · 강·호수·해안 · 집촌·산촌 · 계곡 + 집촌 기슭) · 인구 4→200 한 칸씩
+//         집 수 · 거부 집터(사유 '개울'·'개울 완충') · 못 앉힌 사람 · 집 반경 · 논밭 셀 · 개울-집 사이 칸 분포(나눠 돌리기: `T584_SHARD=0/2` · 판 고르기 `T584_BOARDS=auto:nucleated:gorge,…`)
+//     node scripts/t571-lab-streams.js guardpic [outDir]  — ★T584 산그림 `T584_개울완충.png`(같은 마을 · 인구 100 · 완충 셋 나란히 + 나란한 두 개울 한 칸)
+//   ★T571 의 sweep·pics 는 `streamGuard=off`(T571 판 — 그때는 완충이 없었다)로 고정해 그 보고 숫자를 다시 낸다.
 //   ★자(산법·점검)는 랩 HTML 의 `STREAM-CORE-START … STREAM-CORE-END` 를 **그대로 떼어** 돈다(사본 0) — 지형도 랩의 `buildTerrain` 을 떼어 쓴다.
 //   ★sweep·pics 는 랩 페이지를 그대로 띄운다(URL 손잡이 `?stream=…&seed=…&terr=…&pop=…`) — 재민이 보는 판과 같은 코드.
 'use strict';
@@ -104,7 +108,7 @@ async function sweep(out) {
       { seed: 7, terr: 'auto', sett: 'dispersed' }];
   const res = [];
   for (const c of CONF) for (const mode of (process.env.T571_SWEEP_MODES || 'gorge,foot').split(',')) {
-    const { b, p, errs } = await openLab(`?stream=${mode}&seed=${c.seed}&terr=${c.terr}&pop=4`);
+    const { b, p, errs } = await openLab(`?stream=${mode}&seed=${c.seed}&terr=${c.terr}&pop=4&streamGuard=off`);
     const r = await p.evaluate((sett) => {
       const el = document.getElementById('settType'); el.value = sett;
       const rows = [], keep = [4, 10, 20, 30, 50, 75, 100, 125, 150, 175, 200];
@@ -138,7 +142,7 @@ async function pics(outDir) {
   const W = 260, POPS = [30, 100, 200];
   const shots = {};   // key → dataURL
   for (const mode of ['gorge', 'foot']) {
-    const { b, p, errs } = await openLab(`?stream=${mode}&seed=7&terr=auto&pop=4&board=1`);
+    const { b, p, errs } = await openLab(`?stream=${mode}&seed=7&terr=auto&pop=4&board=1&streamGuard=off`);
     await p.addScriptTag({ content: SNAP });
     for (let pop = 4; pop <= 200; pop++) {
       const want = POPS.includes(pop);
@@ -183,7 +187,7 @@ async function pics(outDir) {
   console.log('그림', f1);
   // 산 바위 구간 세 판 — land(PM 미리보기: 뭍에만 · 끊김) · foot(기슭에서 시작) · gorge(계곡으로 잇기)
   {
-    const { b, p, errs } = await openLab('?stream=gorge&seed=7&terr=auto&pop=4');
+    const { b, p, errs } = await openLab('?stream=gorge&seed=7&terr=auto&pop=4&streamGuard=off');
     await p.addScriptTag({ content: SNAP });
     const r = await p.evaluate(() => {
       // 자리 고르기 — PM 판(land)에서 물에 안 닿는 조각 셀이 가장 많은 300×300 창(바위 구간 끊김이 잘 보이는 곳)
@@ -239,11 +243,102 @@ async function pics(outDir) {
   }
 }
 
+// ── T584 개울 완충 ─────────────────────────────────────────────────────────
+const GUARDS = ['off', 'guard', 'guard+tax'];
+async function guardSweep(out) {
+  let boards = process.env.T584_BOARDS
+    ? process.env.T584_BOARDS.split(',').map((t) => { const [terr, sett, mode] = t.split(':'); return { terr, sett, mode }; })
+    : [['auto', 'nucleated', 'gorge'], ['lake', 'nucleated', 'gorge'], ['coast', 'nucleated', 'gorge'], ['auto', 'dispersed', 'gorge'], ['lake', 'dispersed', 'gorge'], ['coast', 'dispersed', 'gorge'],
+       ['auto', 'nucleated', 'foot'], ['lake', 'nucleated', 'foot'], ['coast', 'nucleated', 'foot']].map(([terr, sett, mode]) => ({ terr, sett, mode }));
+  if (process.env.T584_SHARD) { const [k, n] = process.env.T584_SHARD.split('/').map(Number); boards = boards.filter((_, i) => i % n === k); }
+  const res = [];
+  for (const bd of boards) {
+    const { b, p, errs } = await openLab(`?stream=${bd.mode}&seed=7&terr=${bd.terr}&pop=4`);
+    const r = await p.evaluate(([sett, GUARDS]) => {
+      document.getElementById('settType').value = sett;
+      const out = {}, keep = [30, 100, 200];
+      for (const g of GUARDS) {
+        document.getElementById('stGuard').value = g; stUI(3);   // 완충 바꿈 → 서명이 바뀌어 래칫 리셋
+        const rows = []; const worst = { houseSt: 0, nongSt: 0, batSt: 0, yardSt: 0, lotSt: 0, unseated: 0, unseated0: 0 }; let gapMinPath = 99;
+        for (let pop = 4; pop <= 200; pop++) {
+          document.getElementById('pop').value = pop; gen();
+          const m = _stM1, m0 = _stM0;
+          for (const k of ['houseSt', 'nongSt', 'batSt', 'yardSt', 'lotSt', 'unseated']) worst[k] = Math.max(worst[k], m[k]);
+          worst.unseated0 = Math.max(worst.unseated0, m0.unseated); if (m.houses) gapMinPath = Math.min(gapMinPath, m.gapMin);
+          if (keep.includes(pop)) rows.push({ pop, houses: m.houses, houses0: m0.houses, rej: _stRejAcc.size, rejG: _stRejAccG.size, unseated: m.unseated, unseated0: m0.unseated,
+            rMax: m.rMax, rMean: m.rMean, rMax0: m0.rMax, rMean0: m0.rMean, fields: m.nong + m.bat, fields0: m0.nong + m0.bat, gapMin: m.gapMin, gapMed: m.gapMed, gh: m.gh,
+            adj: m.adj, across: m.across, terr: m.terr, terrSt: m.terrSt, c1: m.cx + ',' + m.cy, c0: m0.cx + ',' + m0.cy });
+        }
+        out[g] = { rows, worst, gapMinPath, guardSel: TR.streamGuard };
+      }
+      return out;
+    }, [bd.sett, GUARDS]);
+    res.push({ ...bd, seed: 7, byGuard: r, errors: errs.slice() });
+    const line = GUARDS.map((g) => { const z = r[g].rows.find((x) => x.pop === 100); return `${g}: 집 ${z.houses} · 거부 ${z.rej}/${z.rejG} · 못앉힘 ${z.unseated} · 반경 ${z.rMax} · 최소칸 ${z.gapMin >= 99 ? '–' : z.gapMin}`; }).join(' | ');
+    console.log(`${bd.terr}/${bd.sett}/${bd.mode} 인구100 — ${line} | 오류 ${errs.length}`);
+    await b.close();
+  }
+  if (out) fs.writeFileSync(out, JSON.stringify(res, null, 1));
+  return res;
+}
+async function guardPic(outDir) {
+  outDir = outDir || '/tmp';
+  fs.mkdirSync(outDir, { recursive: true });
+  const W = 230, POP = 100, shots = {};
+  const { b, p, errs } = await openLab('?stream=gorge&seed=7&terr=auto&pop=4');
+  await p.addScriptTag({ content: SNAP });
+  for (const g of GUARDS) {
+    shots[g] = await p.evaluate(([g, POP, W]) => {
+      document.getElementById('stGuard').value = g; stUI(3);
+      for (let pop = 4; pop <= POP; pop++) { document.getElementById('pop').value = pop; gen(); }
+      const m = _stM1; return { img: __snap('main', m.cx, m.cy, W), m, rej: _stRejAcc.size, rejG: _stRejAccG.size };
+    }, [g, POP, W]);
+  }
+  // ⑤ 나란한 두 개울(1셀 틈 ≥10셀) — 가장 긴 쌍 자리 확대
+  shots.par = await p.evaluate(() => {
+    const ps = (TR.streamAudit.parSites || []).slice().sort((a, b) => b[2] - a[2]); const q = ps[0];
+    _stM1 = null; _stRejAcc = new Set(); _stRejAccG = new Set();   // 마을 계수기는 이 칸에서 뺀다
+    return { img: __snap('main', q[0], q[1], 70), q, n: ps.length };
+  });
+  await b.close();
+  const { b: b2, p: p2 } = await openLab('?stream=off&pop=4');
+  const png = await p2.evaluate(([shots, GUARDS, W, POP]) => new Promise((done) => {
+    const S = 520, PAD = 14, TOP = 128, L0 = 14, NAME = { off: '완충 끔 — 부지만 피함(T571)', guard: '완충 2칸 — 큰 물과 같은 원(PM 안 · 기본)', 'guard+tax': '완충 2칸 + 물가세(비교)' };
+    const cols = GUARDS.concat(['par']);
+    const cv = document.createElement('canvas'); cv.width = L0 + cols.length * (S + PAD); cv.height = TOP + S + 92;
+    const g = cv.getContext('2d'); g.fillStyle = '#15181d'; g.fillRect(0, 0, cv.width, cv.height);
+    g.fillStyle = '#e8eef5'; g.font = 'bold 22px sans-serif'; g.fillText(`T584 개울 완충 — 같은 마을(시드 7 · 강 · 집촌 · 계곡) · 인구 ${POP}(4→${POP} 한 칸씩) · 칸 = 큰집을 가운데 둔 ${W}×${W}셀`, L0, 34);
+    g.font = '15px sans-serif'; g.fillStyle = '#9aa4b2'; g.fillText('빨강 점선 = 부지에 개울이 들어 넘긴 집터(사유 개울) · 주황 점선 = 부지 +2칸 원에 개울이 들어 넘긴 집터(사유 개울 완충) · 개울-집 사이 칸 = 부지 가장자리부터 가장 가까운 개울 칸까지 빈 칸 수', L0, 60);
+    g.fillText('넷째 칸 = 나란한 두 개울(1셀 틈으로 10셀 넘게 — T571 회부 8 · 랩 노랑 고리) 가운데 가장 긴 쌍 · 70×70셀', L0, 82);
+    let pending = 0;
+    cols.forEach((k, ci) => {
+      const s = shots[k], x0 = L0 + ci * (S + PAD); pending++;
+      g.fillStyle = '#cfd6e0'; g.font = 'bold 16px sans-serif'; g.fillText(k === 'par' ? `나란한 두 개울 — 가장 긴 쌍(${s.q[2]}칸 · ${s.q[0]},${s.q[1]}) · 전 지도 ${s.n}쌍` : NAME[k], x0, TOP - 8);
+      const im = new Image(); im.onload = () => {
+        g.drawImage(im, x0, TOP, S, S); g.fillStyle = '#cfd6e0'; g.font = '14px sans-serif';
+        if (k !== 'par') { const m = s.m, gh = m.gh;
+          g.fillText(`집 ${m.houses}채 · 거부 집터 개울 ${s.rej} · 개울 완충 ${s.rejG} · 못 앉힌 사람 ${m.unseated}`, x0, TOP + S + 22);
+          g.fillText(`집 반경 최대 ${m.rMax}(평균 ${m.rMean}) · 논밭 ${(m.nong + m.bat).toLocaleString()}셀`, x0, TOP + S + 42);
+          g.fillText(`개울-집 사이 칸 최소 ${m.gapMin >= 99 ? '–' : m.gapMin} · 0칸 ${gh.g0} · 1칸 ${gh.g1} · 2칸 ${gh.g2} · 3~5 ${gh.g3_5} · 6~10 ${gh.g6_10} · 그 넘어 ${gh.gFar}`, x0, TOP + S + 62); }
+        else g.fillText('두 가지가 합류 직전 1셀 틈으로 붙어 흐른다 — 어색하면 처방(새 규칙 = 재민 판정)', x0, TOP + S + 22);
+        if (--pending === 0) done(cv.toDataURL('image/png'));
+      }; im.src = s.img;
+    });
+  }), [shots, GUARDS, W, POP]);
+  await b2.close();
+  const f = path.join(outDir, 'T584_개울완충.png');
+  fs.writeFileSync(f, Buffer.from(png.split(',')[1], 'base64'));
+  console.log('그림', f, '나란한 쌍', shots.par.q, '/', shots.par.n);
+  if (errs.length) console.log('오류', errs);
+}
+
 const cmd = process.argv[2] || 'audit';
 (async () => {
   if (cmd === 'audit') audit(process.argv[3]);
   else if (cmd === 'sweep') await sweep(process.argv[3]);
   else if (cmd === 'pics') await pics(process.argv[3]);
   else if (cmd === 'xval') xval();
-  else { console.log('쓰임: audit|sweep|pics|xval'); process.exit(2); }
+  else if (cmd === 'guard') await guardSweep(process.argv[3]);
+  else if (cmd === 'guardpic') await guardPic(process.argv[3]);
+  else { console.log('쓰임: audit|sweep|pics|xval|guard|guardpic'); process.exit(2); }
 })().catch((e) => { console.error(e); process.exit(1); });
