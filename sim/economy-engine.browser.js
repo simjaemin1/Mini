@@ -4453,6 +4453,21 @@ const SHIELD_DAYS = 365;
 //     전 마을이 day 0 생성이라 나이 == 달력이기 때문이다. 즉 **측정된 위험이 0**이고,
 //     값은 전적으로 라이브의 구멍(세계 900일째에 선 마을이 보호 0일)을 메우는 데 있다.
 const SHIELD_AGE_ON = !(typeof process !== 'undefined' && process.env && process.env.SHIELD_AGE === '0');
+// ★★[T597 2026-10-03] **기근 보호막 끝도 마을마다 편다** — 손잡이 `T597_SHIELD_RAMP`(기본 **끔** · 끄면 종전 바이트).
+//   T577: 도적 보호기(`BDT_MIN_DAY`)와 이 보호막이 **같은 날**(365) 걷혀 첫해 겨울 끝 굶는 마을이 한 주에 무너졌다.
+//   도적 쪽은 `T577_RAMP`(기본 켬 · `server/bandits.js`)가 이미 편다 — 이건 둘째 절벽이다.
+//   퍼짐 = 365 + 해시 × 365(T577 ⓓ 와 같은 폭 · 같은 결정론 해시 문법 — 이름 해시를 `denRng` 섞개에 넣는다 · RNG 흐름을 안 먹는다).
+//   ⚠소금(두 번째 인자)이 도적 쪽(577)과 **다르다**(597) — 같으면 한 마을의 두 절벽이 다시 같은 날이 된다.
+//   새 수 0 — 폭은 보호막 그 자체(`SHIELD_DAYS`). 켬은 econ 3사본(정본·번들·랩)이라 3시드가 움직인다 ⇒ 켜는 건 PM(판정 0).
+const T597_SHIELD_RAMP = (typeof process !== 'undefined' && process.env && process.env.T597_SHIELD_RAMP === '1');
+function _t597ShieldExtra(v) {   // 이 마을 보호막이 SHIELD_DAYS 뒤로 더 가는 날 수(0 ~ SHIELD_DAYS−1)
+  let h0 = 0; const s = String((v && v.name) || '');
+  for (let i = 0; i < s.length; i++) h0 = (Math.imul(h0, 31) + s.charCodeAt(i)) | 0;
+  const a = (h0 >>> 0) % 100003, b = 597;
+  let h = (1 ^ Math.imul(a + 1, 2654435761) ^ Math.imul(b + 101, 40503)) >>> 0;   // bandits.js denRng 와 같은 섞개(씨 1)
+  h ^= h >>> 13; h = Math.imul(h, 1274126177) >>> 0; h ^= h >>> 16;
+  return Math.floor(((h >>> 0) / 4294967296) * SHIELD_DAYS);
+}
 // ★SHIELD_SOFT — 삼키지 말고 **감쇠**. 보호기간엔 음수 누적을 ×k 로 줄인다(지우지 않는다).
 //   압력이 새어나가 보호기간에도 사망이 조금씩 일어나고 → 인구가 K 를 크게 못 넘고 → 절벽이 경사가 된다.
 //   ★★기본 ON = **채택**(2026-08-02d).
@@ -6756,7 +6771,8 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
   v._shieldAte = 0; v._deathsToday = 0;
   // 보호 잔여 판정 — 기본은 달력(day), SHIELD_AGE 면 **마을 나이**(day − 창설일).
   //   `_bornDay` 가 없으면(옛 DB·랩 초기 마을) 0 → 달력과 동일 = 회귀 무영향.
-  const _shieldT = SHIELD_AGE_ON ? (day - (v._bornDay || 0)) : day;
+  //   ★[T597] 펴기는 나이에서 그 마을 몫을 뺀다(= 보호막이 그만큼 늦게 걷힌다) — 아래 보호 조건 줄은 한 글자도 안 바뀐다(`test-frontier-iron ③` 계약).
+  const _shieldT = (SHIELD_AGE_ON ? (day - (v._bornDay || 0)) : day) - (T597_SHIELD_RAMP ? _t597ShieldExtra(v) : 0);
   // ★★[2026-08-03d 배치 11 — 필멸 배선] **플레이어가 세운 마을은 보호막을 받지 않는다.**
   //   재민 확정: "플레이어 마을은 망해도 돼". 보호막은 소멸 0 원칙의 장치이고, 그 원칙은
   //   **NPC 가 자기 자리를 못 고르기 때문에** 세운 것이다. 자리를 고른 자에게 365일 무적을 주면
