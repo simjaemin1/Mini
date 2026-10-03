@@ -204,7 +204,7 @@ function localPath(sx, sy, gx, gy, opts) {
 function _routeOpts(opts) {
   return {
     dirs: DIRS8, octile: true, biasW: BIAS_ROUTE,
-    stepBlocked: null,   // 노드 차단만 → 커널이 nodeBlocked 직행(성능)
+    stepBlocked: opts.stepBlocked || null,   // 노드 차단만 → 커널이 nodeBlocked 직행(성능) · ★[T598] 호출측이 간선 술어를 주면 그것(목표 노드 막힘도 그 술어가 본다 · 안 주면 null = 종전)
     nodeBlocked: opts.blocked || (() => false),
     costMul: opts.costMul || null, prefer: null, hScale: opts.hScale || 1,   // ★[T578] 호출측이 costMul 최저값을 준다(안 주면 1 = 종전)
     maxPops: opts.maxPops || 250000, radius: 0, scratch: opts.scratch || null,
