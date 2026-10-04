@@ -115,7 +115,10 @@ function hungerOf(id) {
   return K.hungerOf(id);
 }
 function tastyOf(id) { const c = get(id); return !!c && c.taste >= TASTE_MORALE_AT; }
-// ── ★★★[T594 2026-10-03] 작물 철 고증 — 손잡이 `T594_CROP_CAL`(끔 기본 · 끔 = 카탈로그 그대로 비트 동일) ──
+// ── ★★★[T594 2026-10-03] 작물 철 고증 — 손잡이 `T594_CROP_CAL` ──────────────────────────────────────────
+//   ★★[T634 2026-10-04 · 재민 10-04 "작물 철 고증은 켜도 돼"] **기본 켬** — 손잡이 없음 = 켬 · `T594_CROP_CAL=0` = 옛 판
+//     (카탈로그 성장일 그대로 · T594 착지 판과 비트 동일 — 되돌림 한 손잡이) · T604 추신3 해안 손잡이(`T588_COAST`)와 같은 꼴.
+//     붕괴 셋(econ 3시드 바이트 · 서버 판 400일 빈 마을·첫해 겨울 굶음 · 플레이어 첫 수확) — 보고/T634.
 //   달력(T570)이 드러낸 것: 카탈로그 `성장일(활동)` 이 실제 파종→수확 기간보다 짧다(벼 78일 → 7월 18일 수확 ↔ 실제 10월).
 //   켜면 성장일을 **고증 표**(`server/crop-cal.js` — 농사로 1차 원문 · 새 수 0)에서 **유도**한다:
 //     "파종창 가운데날에 심은 밭이 수확창 가운데날에 익는 활동일" — 셈은 이 파일의 휴면·춘화 규칙(T99) 그대로다
@@ -124,7 +127,7 @@ function tastyOf(id) { const c = get(id); return !!c && c.taste >= TASTE_MORALE_
 //   ⚠표에 없는 작물(다년생 · 시설 작형만 · 출처 없음)은 켜도 카탈로그 그대로다(`crop-cal.js` 머리 · 보고 §1).
 //   ⚠파종창은 안 바꾼다(재민 xlsx) · 달력 끔(`T570_CALENDAR=0`)이면 날짜가 뜻이 없으니 이 갈래도 끈다.
 //   ★econ 무접촉 — econ 은 `T100_FIELD_YIELD` 를 켠 팔에서만 작물 시계를 읽는다(`seedFoodDays`) · 기본 판 바이트 그대로.
-const T594_CROP_CAL = _num('T594_CROP_CAL', 0) !== 0;
+const T594_CROP_CAL = process.env.T594_CROP_CAL !== '0';   // ★[T634] 없음·1·그 밖 = 켬 · '0' 만 옛 판(카탈로그)
 let _CropCal;
 function _cropCal() { if (_CropCal === undefined) { try { _CropCal = require('./crop-cal'); } catch (e) { _CropCal = null; } } return _CropCal; }
 const _calDaysCache = new Map();

@@ -5,8 +5,10 @@
 // ★잰다: ① 34종이 표(고증 16) + 빠진 까닭(18)으로 빈틈없이 덮이나 ② 표에 원문 글자만 있나(새 수 0)
 //   ③ 순(旬) 글자 → 날 ④ **정의 — 파종창 가운데날에 심으면 수확창 가운데날에 익는다**(켬 · 월동은 T99 셈 그대로)
 //   ⑤ 끔 = 카탈로그 그대로(34종 · 클라 페이로드까지) ⑥ 켬 = 고증 표만 바뀐다 ⑦ 달력 끔이면 갈래도 꺼진다
-//   ⑧ 재민 문장 — "벼 10월 · 보리·밀은 겨울을 나서 5~6월" ⑨ 랩 두 벌 거울(구운 블록 = 정본 · 같은 날 익는다 · 끔 = 랩 그대로)
-//   ⑩ 돌연변이 셋 — 손잡이 무시 · 춘화 빼고 셈 · 표 한 칸 바꿈 ⇒ 빨강이어야 한다(이빨)
+//   ⑧ 재민 문장 — "벼 10월 · 보리·밀은 겨울을 나서 5~6월" ⑨ 랩 두 벌 거울(구운 블록 = 정본 · 기본 켬 · 같은 날 익는다 · 끔 = 랩 그대로)
+//   ⑩ 돌연변이 넷 — 손잡이 무시 · 춘화 빼고 셈 · 표 한 칸 바꿈 · 기본을 끔으로 되돌림 ⇒ 빨강이어야 한다(이빨)
+// ★★[T634 2026-10-04] **기본 켬** — ⓪ 손잡이 없음 = 켬 · `T594_CROP_CAL=0` = 옛 판(카탈로그) · `1` = 켬(기본과 같은 수).
+//   그래서 끔 통제군은 이제 `{T594_CROP_CAL:'0'}` 이고, 켬 쪽은 **기본 env**(`{}`)로 잰다(배포가 실제로 받는 판).
 //
 // ★손잡이는 로드 때 한 번 읽힌다 ⇒ 켬/끔은 **자식 프로세스**로 정본을 통째로 다시 싣는다(test-crops ⑫ⓗ 와 같은 규약 —
 //   모듈 밖에서 export 를 갈아 끼우는 건 통제군이 아니다).
@@ -23,7 +25,7 @@ const pre = (c, m, x) => { if (!c) { fail++; console.log('  ✗ [상황] ' + m +
 
 const CROPS_JS = path.join(ROOT, 'server', 'crops.js');
 const CAL_JS = path.join(ROOT, 'server', 'crop-cal.js');
-const Crops = require(CROPS_JS);           // 이 프로세스 = 기본 env(손잡이 끔)
+const Crops = require(CROPS_JS);           // 이 프로세스 = 부른 env 그대로 — 여기선 손잡이와 무관한 칸만 읽는다(켬/끔은 자식 프로세스)
 const CC = require(CAL_JS);
 const Cal = require(path.join(ROOT, 'server', 'calendar'));
 const CATALOG = require(path.join(ROOT, 'server', 'crops.json')).crops;
@@ -45,7 +47,17 @@ const fmt = (d) => { if (d == null) return '—'; const t = Cal.dateOf(d); retur
 
 console.log('\n=== T594 작물 철 고증 — 표 · 유도 · 손잡이 · 랩 거울 ===');
 pre(Cal.ON, '달력 정본 켬(T570 · 게임일 0 = 1년 3월 1일)', `dateOf(0) = ${fmt(0)}`);
-pre(Crops.T594_CROP_CAL === false, '이 프로세스는 손잡이 끔(기본 env)');
+
+// ── ⓪ 기본 = 켬(T634) ────────────────────────────────────────────────────────────────────
+console.log('\n⓪ 기본 = 켬(T634) — 손잡이 없음 = 켬 · `0` = 옛 판 · `1` = 켬');
+{
+  const Q = `({flag:C.T594_CROP_CAL,g:C.IDS.map(id=>[id,C.growDaysOf(id)])})`;
+  const DEF = child({}, Q), ZERO = child({ T594_CROP_CAL: '0' }, Q), ONE = child({ T594_CROP_CAL: '1' }, Q);
+  ok(DEF.flag === true, '★★⓪ 손잡이 없음 = **켬**(T634 기본)', `flag ${DEF.flag}`);
+  ok(ZERO.flag === false && ONE.flag === true, '★⓪ `T594_CROP_CAL=0` = 끔(옛 판 · 되돌림 한 손잡이) · `1` = 켬');
+  ok(JSON.stringify(DEF.g) === JSON.stringify(ONE.g), '⓪ 기본 판 성장일 = `1` 판(34종 같은 수)', DEF.g.length);
+  ok(JSON.stringify(DEF.g) !== JSON.stringify(ZERO.g), '⓪ 기본 판 ≠ `0` 판(되돌림이 실제로 무언가를 되돌린다)');
+}
 
 // ── ① 덮개 ─────────────────────────────────────────────────────────────────────────────
 console.log('\n① 34종 = 고증 표 + 빠진 까닭');
@@ -89,10 +101,10 @@ console.log('\n③ 순(旬) 글자 → 날');
 }
 
 // ── ④ 정의 ─────────────────────────────────────────────────────────────────────────────
-console.log('\n④ 정의 — 파종창 가운데날에 심으면 수확창 가운데날에 익는다(켬)');
-const ON = child({ T594_CROP_CAL: '1' }, `CC.ids().map(id=>{const sp=CC.spanOf(CC.rowOf(id));return {id,s:sp.sDay,h:sp.hDay,rd:C.readyDay(id,sp.sDay),g:C.growDaysOf(id),cal:C.calDaysOf(id),w:C.isWinterCrop(id)};})`);
+console.log('\n④ 정의 — 파종창 가운데날에 심으면 수확창 가운데날에 익는다(켬 = 기본)');
+const ON = child({}, `CC.ids().map(id=>{const sp=CC.spanOf(CC.rowOf(id));return {id,s:sp.sDay,h:sp.hDay,rd:C.readyDay(id,sp.sDay),g:C.growDaysOf(id),cal:C.calDaysOf(id),w:C.isWinterCrop(id)};})`);
 {
-  pre(ON.length === CC.ids().length, '켬 자식 프로세스가 16줄을 돌려줬다', ON.length);
+  pre(ON.length === CC.ids().length, '기본(켬) 자식 프로세스가 16줄을 돌려줬다', ON.length);
   const bad = ON.filter((r) => r.rd !== r.h);
   ok(bad.length === 0, '★★④ 16종 전부 readyDay(가운데 파종) = 가운데 수확', bad.map((r) => `${r.id} ${fmt(r.rd)}≠${fmt(r.h)}`).join(' · '));
   const W = ON.filter((r) => r.w);
@@ -103,12 +115,12 @@ const ON = child({ T594_CROP_CAL: '1' }, `CC.ids().map(id=>{const sp=CC.spanOf(C
 }
 
 // ── ⑤ 끔 = 카탈로그 ─────────────────────────────────────────────────────────────────────
-console.log('\n⑤ 끔 = 카탈로그 그대로');
-const OFF = child({}, `({flag:C.T594_CROP_CAL,g:C.IDS.map(id=>[id,C.growDaysOf(id)]),pay:C.payload().map(p=>[p.id,p.growDays]),cal:C.IDS.map(id=>[id,C.calDaysOf(id)])})`);
+console.log('\n⑤ 끔(`T594_CROP_CAL=0`) = 카탈로그 그대로');
+const OFF = child({ T594_CROP_CAL: '0' }, `({flag:C.T594_CROP_CAL,g:C.IDS.map(id=>[id,C.growDaysOf(id)]),pay:C.payload().map(p=>[p.id,p.growDays]),cal:C.IDS.map(id=>[id,C.calDaysOf(id)])})`);
 {
   const scale = parseFloat(process.env.CROP_GROW_SCALE); const S = Number.isFinite(scale) ? scale : 1;
   const want = (id) => Math.max(1, Math.round(CATALOG[id].growDays * S));
-  pre(OFF.flag === false, '끔 자식 프로세스의 손잡이 = 거짓');
+  pre(OFF.flag === false, '끔(`0`) 자식 프로세스의 손잡이 = 거짓');
   ok(OFF.g.every(([id, g]) => g === want(id)), '★★⑤ 34종 성장일 = 카탈로그 그대로(비트 동일 갈래)', OFF.g.length);
   ok(OFF.pay.every(([id, g]) => g === want(id)), '⑤ 클라 페이로드 growDays 도 카탈로그 그대로');
   const onCal = new Map(ON.map((r) => [r.id, r.cal]));
@@ -116,10 +128,10 @@ const OFF = child({}, `({flag:C.T594_CROP_CAL,g:C.IDS.map(id=>[id,C.growDaysOf(i
 }
 
 // ── ⑥ 켬 ────────────────────────────────────────────────────────────────────────────────
-console.log('\n⑥ 켬 = 고증 표만 바뀐다');
-const ONALL = child({ T594_CROP_CAL: '1' }, `({flag:C.T594_CROP_CAL,g:C.IDS.map(id=>[id,C.growDaysOf(id),C.calDaysOf(id)]),pay:C.payload().filter(p=>p.id==='rice').map(p=>p.growDays)[0]})`);
+console.log('\n⑥ 켬(기본) = 고증 표만 바뀐다');
+const ONALL = child({}, `({flag:C.T594_CROP_CAL,g:C.IDS.map(id=>[id,C.growDaysOf(id),C.calDaysOf(id)]),pay:C.payload().filter(p=>p.id==='rice').map(p=>p.growDays)[0]})`);
 {
-  pre(ONALL.flag === true, '켬 자식 프로세스의 손잡이 = 참');
+  pre(ONALL.flag === true, '기본(켬) 자식 프로세스의 손잡이 = 참');
   const inT = new Set(CC.ids());
   ok(ONALL.g.every(([id, g, c]) => (inT.has(id) ? g === c : g === CATALOG[id].growDays)), '★⑥ 표 16종 = 유도값 · 나머지 18종 = 카탈로그', ONALL.g.filter(([id]) => inT.has(id)).map(([id, g]) => `${id} ${g}`).join(' · '));
   ok(ONALL.g.filter(([id]) => inT.has(id)).every(([id, g]) => g !== CATALOG[id].growDays), '⑥ 표 16종은 전부 카탈로그와 다르다(고친 작물 16)');
@@ -127,9 +139,9 @@ const ONALL = child({ T594_CROP_CAL: '1' }, `({flag:C.T594_CROP_CAL,g:C.IDS.map(
 }
 
 // ── ⑦ 달력 끔 ───────────────────────────────────────────────────────────────────────────
-console.log('\n⑦ 달력 끔(T570_CALENDAR=0) + 켬 ⇒ 갈래 꺼짐');
+console.log('\n⑦ 달력 끔(T570_CALENDAR=0) + 켬(기본) ⇒ 갈래 꺼짐');
 {
-  const r = child({ T594_CROP_CAL: '1', T570_CALENDAR: '0' }, `C.IDS.map(id=>[id,C.growDaysOf(id),C.calDaysOf(id)])`);
+  const r = child({ T570_CALENDAR: '0' }, `C.IDS.map(id=>[id,C.growDaysOf(id),C.calDaysOf(id)])`);
   ok(r.every(([id, g, c]) => g === CATALOG[id].growDays && c === null), '★⑦ 날짜가 뜻이 없는 판에서는 34종 카탈로그 그대로 · 유도 null');
 }
 
@@ -137,17 +149,17 @@ console.log('\n⑦ 달력 끔(T570_CALENDAR=0) + 켬 ⇒ 갈래 꺼짐');
 console.log('\n⑧ 재민 문장 — "벼 10월 · 보리·밀은 겨울을 나서 5~6월"');
 {
   const Q = `['rice','barley','wheat','garlic'].map(id=>{const p=id==='rice'?Cal.dayOf(1,6,1):Cal.dayOf(1,10,1);const r=C.readyDay(id,p);const t=Cal.dateOf(r);return [id,t.month,t.dom];})`;
-  const on = child({ T594_CROP_CAL: '1' }, Q), off = child({}, Q);
+  const on = child({}, Q), off = child({ T594_CROP_CAL: '0' }, Q);   // ★[T634] 켬 = 기본 · 끔 = `0`
   const m = (a, id) => a.find((x) => x[0] === id);
-  ok(m(on, 'rice')[1] === 10, '★★⑧ 켬: 벼 6월 1일 심기 → 10월에 익는다', `${m(on, 'rice')[1]}/${m(on, 'rice')[2]}`);
-  ok(m(off, 'rice')[1] === 8, '⑧ 끔(통제군): 같은 벼가 8월에 익는다', `${m(off, 'rice')[1]}/${m(off, 'rice')[2]}`);
+  ok(m(on, 'rice')[1] === 10, '★★⑧ 켬(기본): 벼 6월 1일 심기 → 10월에 익는다', `${m(on, 'rice')[1]}/${m(on, 'rice')[2]}`);
+  ok(m(off, 'rice')[1] === 8, '⑧ 끔(`0` · 통제군): 같은 벼가 8월에 익는다', `${m(off, 'rice')[1]}/${m(off, 'rice')[2]}`);
   ok([5, 6].includes(m(on, 'barley')[1]) && [5, 6].includes(m(on, 'wheat')[1]), '★⑧ 켬: 보리·밀 10월 1일 심기 → 5~6월', `보리 ${m(on, 'barley')[1]}/${m(on, 'barley')[2]} · 밀 ${m(on, 'wheat')[1]}/${m(on, 'wheat')[2]}`);
   ok(m(off, 'barley')[1] === 5 && m(off, 'wheat')[1] === 5, '⑧ 끔도 보리·밀은 이미 5월(T99 춘화 — T583 표의 12월은 춘화를 안 센 식)', `보리 ${m(off, 'barley')[1]}/${m(off, 'barley')[2]} · 밀 ${m(off, 'wheat')[1]}/${m(off, 'wheat')[2]}`);
   ok(m(on, 'wheat')[1] === 6 && m(on, 'wheat')[2] >= 5 && m(on, 'wheat')[2] <= 20, '⑧ 켬: 밀은 원문 수확창(6.5~6.20) 안', `${m(on, 'wheat')[1]}/${m(on, 'wheat')[2]}`);
 }
 
 // ── ⑨ 랩 거울 ───────────────────────────────────────────────────────────────────────────
-console.log('\n⑨ 랩 두 벌 — 구운 블록 = 정본 · 같은 날 익는다 · 끔 = 랩 그대로');
+console.log('\n⑨ 랩 두 벌 — 구운 블록 = 정본 · 기본 켬 · 같은 날 익는다 · 끔 = 랩 그대로');
 {
   let chk = 0;
   try { execFileSync(process.execPath, [path.join(ROOT, 'scripts', 't594-lab-cropcal.js'), '--check'], { stdio: 'pipe' }); } catch (e) { chk = e.status || 1; }
@@ -159,8 +171,14 @@ console.log('\n⑨ 랩 두 벌 — 구운 블록 = 정본 · 같은 날 익는�
     const ci = H.indexOf('const CROPS=['), cj = H.indexOf('];', ci);
     pre(!!yl && a > 0 && b > a && ci > 0, `${path.basename(f)}: 랩 달력 줄 · T594 블록 · CROPS 표를 찾았다`);
     if (!(yl && a > 0 && b > a && ci > 0)) continue;
-    const mkL = (blk) => new Function('EconEngine', `${yl}\n${H.slice(ci, cj + 2)}\n${blk}\nreturn {L_START,CROPS,L_CROPCAL_T,cropGrowAt,set:(v)=>{L_CROPCAL=v;}};`)({ Calendar: Cal });   // 랩이 부르는 달력 = 번들 `EconEngine.Calendar` = server/calendar.js
-    const L = mkL(H.slice(a, b));
+    const mkL = (blk, loc) => new Function('EconEngine', 'location', `${yl}\n${H.slice(ci, cj + 2)}\n${blk}\nreturn {L_START,CROPS,L_CROPCAL_T,cropGrowAt,get:()=>L_CROPCAL,set:(v)=>{L_CROPCAL=v;}};`)({ Calendar: Cal }, loc);   // 랩이 부르는 달력 = 번들 정본(T641) · location = URL 손잡이(T634)
+    const mk = (loc) => mkL(H.slice(a, b), loc);
+    const L = mk(undefined);
+    // ★[T634] 기본 켬 — URL 없음 = 켬 · `?cropcal=0` = 끔 · 패널 칸이 처음부터 체크(블록 기본과 칸이 같은 말)
+    ok(L.get() === true && mk({ search: '' }).get() === true, `★★⑨ ${path.basename(f)}: 랩 손잡이 **기본 켬**(URL 없음 · 빈 URL)`);
+    ok(mk({ search: '?cropcal=0' }).get() === false && mk({ search: '?cropcal=1' }).get() === true, `⑨ ${path.basename(f)}: \`?cropcal=0\` = 끔 · \`?cropcal=1\` = 켬(기본과 같다)`);
+    const box = (H.match(/<input type="checkbox" id="cropCal"[^>]*>/g) || []);
+    ok(box.length === 1 && / checked[ >]/.test(box[0]), `⑨ ${path.basename(f)}: 패널 '작물 철 고증' 칸이 처음부터 체크(기본 켬)`, box.join(''));
     // 끔: 랩 표 그대로
     L.set(false);
     ok(L.CROPS.every((c) => [0, 100, 300].every((d) => L.cropGrowAt(c, d) === c.grow)), `⑨ ${path.basename(f)}: 끔 = 랩 표 grow 그대로(30종)`);
@@ -195,19 +213,23 @@ console.log('\n⑨ 랩 두 벌 — 구운 블록 = 정본 · 같은 날 익는�
 }
 
 // ── ⑩ 돌연변이 ─────────────────────────────────────────────────────────────────────────
-console.log('\n⑩ 돌연변이 셋 — 빨강이어야 한다');
+console.log('\n⑩ 돌연변이 넷 — 빨강이어야 한다');
 {
+  const KNOB = "const T594_CROP_CAL = process.env.T594_CROP_CAL !== '0';";   // ★[T634] 기본 켬 줄(정본 글자 그대로 — 바뀌면 MUT_MISS 로 빨강)
   // ⓐ 손잡이를 무시(늘 켬) ⇒ ⑤ 가 빨개진다
-  const a = child({}, `C.growDaysOf('rice')`, mutate(CROPS_JS, "const T594_CROP_CAL = _num('T594_CROP_CAL', 0) !== 0;", 'const T594_CROP_CAL = true;'));
-  ok(a !== CATALOG.rice.growDays, '★★⑩ⓐ 손잡이 무시(늘 켬) ⇒ 끈 판 벼가 카탈로그가 아니다 = ⑤ 에 이빨이 있다', `벼 ${a}`);
+  const a = child({ T594_CROP_CAL: '0' }, `C.growDaysOf('rice')`, mutate(CROPS_JS, KNOB, 'const T594_CROP_CAL = true;'));
+  ok(a !== CATALOG.rice.growDays, '★★⑩ⓐ 손잡이 무시(늘 켬) ⇒ `0` 판 벼가 카탈로그가 아니다 = ⑤ 에 이빨이 있다', `벼 ${a}`);
   // ⓑ 유도에서 춘화를 뺀다(심은 날부터 센다) ⇒ ④ 월동이 빨개진다
-  const b = child({ T594_CROP_CAL: '1' }, `(()=>{const sp=CC.spanOf(CC.rowOf('barley'));return [C.readyDay('barley',sp.sDay),sp.hDay];})()`,
+  const b = child({}, `(()=>{const sp=CC.spanOf(CC.rowOf('barley'));return [C.readyDay('barley',sp.sDay),sp.hDay];})()`,
     mutate(CROPS_JS, 'const a = vernalDay(id, sp.sDay), b = sp.hDay;', 'const a = sp.sDay, b = sp.hDay;'));
   ok(b[0] !== b[1], '★★⑩ⓑ 유도에서 춘화를 빼면 ⇒ 보리가 가운데날에 안 익는다 = ④ 에 이빨이 있다', `${fmt(b[0])} ≠ ${fmt(b[1])}`);
   // ⓒ 표 한 칸(벼 수확창)을 9월로 ⇒ ⑧ 이 빨개진다
-  const c = child({ T594_CROP_CAL: '1' }, `Cal.dateOf(C.readyDay('rice',Cal.dayOf(1,6,1))).month`,
+  const c = child({}, `Cal.dateOf(C.readyDay('rice',Cal.dayOf(1,6,1))).month`,
     mutate(CAL_JS, "harvest: '10월 상순~10월 중순', src: [WS(30697), RICE_HARVEST]", "harvest: '9월 상순~9월 중순', src: [WS(30697), RICE_HARVEST]"));
   ok(c !== 10, '★★⑩ⓒ 표의 벼 수확창을 9월로 바꾸면 ⇒ 벼가 10월에 안 익는다 = ⑧ 에 이빨이 있다', `${c}월`);
+  // ⓓ ★[T634] 기본을 끔으로 되돌림(T594 착지 때의 읽기 — `1` 이어야만 켬) ⇒ ⓪ 이 빨개진다
+  const d = child({}, `C.T594_CROP_CAL`, mutate(CROPS_JS, KNOB, "const T594_CROP_CAL = process.env.T594_CROP_CAL === '1';"));
+  ok(d === false, '★★⑩ⓓ 기본을 끔으로 되돌리면 ⇒ 손잡이 없는 판이 끔 = ⓪ 에 이빨이 있다', `flag ${d}`);
 }
 
 console.log(`\n=== 결과: ${pass} PASS / ${fail} FAIL ===`);

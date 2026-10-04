@@ -35,7 +35,7 @@ process.stdout.write('@@'+JSON.stringify(out));
 def data(on):
     env = dict(os.environ)
     env.pop('T594_CROP_CAL', None)
-    if on: env['T594_CROP_CAL'] = '1'
+    if not on: env['T594_CROP_CAL'] = '0'          # ★[T634] 기본 켬 — 끔 판은 `0` 을 건다(없음 = 켬)
     o = subprocess.run(['node', '-e', JS, ROOT], env=env, capture_output=True, text=True, check=True).stdout
     return json.loads(o[o.rindex('@@') + 2:])
 
@@ -71,7 +71,7 @@ def mon_in(mo, a, b):   # 달 mo 가 [a, b] (dateOf) 범위와 겹치나 — 해
         if len(seq) > 12: break
     return mo in seq
 
-for pi, (title, rows) in enumerate((('끔(카탈로그 성장일)', OFF), ('켬 T594_CROP_CAL=1(고증 성장일)', ON))):
+for pi, (title, rows) in enumerate((('끔 T594_CROP_CAL=0(카탈로그 성장일)', OFF), ('켬 = 기본(T634 · 고증 성장일)', ON))):
     x0 = 20 + pi * (PW + GAP)
     dr.text((x0, 74), title, font=f18, fill=(140, 200, 240) if pi else (230, 224, 200))
     for k, mo in enumerate(MONTHS):
