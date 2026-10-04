@@ -154,16 +154,33 @@ function coarseGen() { return S.coarseGen; }
 // ★★[T619 2026-10-04] 상자 안 할인 최저값 — 코스 칸 상자 [gx0..gx1]×[gy0..gy1] 안에 등급 칸이 있으면 그 칸들의 `COST` 최저 · 없으면 1.
 //   교역로 A* 가 h 를 줄일 몫을 **그 쌍 둘레에서만** 본다(전역 `courseCostMin` 은 지도 어디든 칸 하나면 모든 쌍의 h 를 바꾼다 — T605 §2).
 //   등급 칸은 소수라(일 1회 재구축이 세는 그것) 지도 전체를 훑지 않고 칸 목록만 본다.
-function courseCostMinIn(gx0, gy0, gx1, gy1) {
-  if (!S.ready || !S.coarse.size) return 1;
+function _minIn(C, gx0, gy0, gx1, gy1) {
   let m = 1;
-  for (const [k, lv] of S.coarse) {
+  for (const [k, lv] of C) {
     if (!lv) continue;
     const x = k % S.gw, y = (k / S.gw) | 0;
     if (x < gx0 || x > gx1 || y < gy0 || y > gy1) continue;
     if (COST[lv] < m) m = COST[lv];
   }
   return m;
+}
+function courseCostMinIn(gx0, gy0, gx1, gy1) {
+  if (!S.ready || !S.coarse.size) return 1;
+  return _minIn(S.coarse, gx0, gy0, gx1, gy1);
+}
+// ★★[T640 2026-10-04] **얼린 길 보기** — 지금 코스 등급 지도의 사본 위에 교역로 A* 가 묻는 넷(`isReady`·`courseCostMul`·`courseCostMin`·`courseCostMinIn`)을
+//   같은 식으로 낸다. 새 세계 첫 부팅의 도적 교역로 표본을 틱마다 조각으로 파는 동안(`T640_BOOT_SLICE`) 사람이 와서 칸이 등급을 받아도
+//   표본은 부팅 순간 지도만 본다 ⇒ 부팅 때 한 번에 판 길(종전)과 바이트가 같다. 사본은 등급 칸뿐이라 작다(새 세계는 빈 지도).
+function frozenView() {
+  const C = new Map(S.coarse), ready = S.ready;
+  return {
+    frozen: true,
+    isReady: () => ready,
+    courseCostMul: (gx, gy) => ((!ready || !C.size) ? 1 : COST[C.get(gy * S.gw + gx) || 0]),
+    courseCostMin: () => ((ready && C.size) ? Math.min(...COST) : 1),
+    courseCostMinIn: (gx0, gy0, gx1, gy1) => ((!ready || !C.size) ? 1 : _minIn(C, gx0, gy0, gx1, gy1)),
+    size: C.size,
+  };
 }
 // ★[T619] 바뀐 코스 칸([gx, gy])을 내주고 비운다. 처음 부르는 순간부터 모으기 시작한다(안 부르면 모으지 않는다 = 종전 그대로).
 function takeCoarseChanges() {
@@ -249,4 +266,4 @@ function onGameTick(now) {
 // ★[T566] 다져진 길 셀 수 · 키(읽기만 — 존의 부팅 걷기 · 자)
 function pavedCount() { return S.ready ? S.paved.size : 0; }
 function pavedKeys() { return S.ready ? [...S.paved] : []; }
-module.exports = { init, onGameTick, stampCell, stampEntityPx, speedMulOf, levelOf, courseCostMul, courseCostMin, courseCostMinIn, takeCoarseChanges, coarseGen, isReady: () => S.ready, clientRoads, pavedNear, pavedCount, pavedKeys, ENABLED, _S: S };
+module.exports = { init, onGameTick, stampCell, stampEntityPx, speedMulOf, levelOf, courseCostMul, courseCostMin, courseCostMinIn, takeCoarseChanges, frozenView, coarseGen, isReady: () => S.ready, clientRoads, pavedNear, pavedCount, pavedKeys, ENABLED, _S: S };

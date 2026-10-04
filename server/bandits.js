@@ -155,9 +155,10 @@ function _bSeed(a, b) { _bTick = (_bTick + 1) >>> 0; _diceB.seed(_SEED.seedOf((S
 //   유한쌍(거리행렬 finite)만 getRoute — 도달불능쌍은 A* 낭비·의미 둘 다 없음(교역 자체가 없음).
 //   거리 조회는 4셀 그리드 2패스 L1 변환(맨해튼 — 랩의 맨해튼 근사와 동형) → O(1).
 // =============================================================================
+function _routeSig(host) { return host.villages.map(v => v.name).join(','); }
 function routePts() {
   const host = S.host;
-  const sig = host.villages.map(v => v.name).join(',');
+  const sig = _routeSig(host);
   if (S._routes && S._routes.sig === sig) return S._routes;
   const mat = host.world._distMatrix;
   const pts = [];
@@ -628,15 +629,68 @@ function bindHost() {
   if (row && row.data) {
     try { restore(row); } catch (e) { console.error(`[${S.zoneId}] 🏴 [도적] 복원 실패 — 신규 스캔:`, e.message); S.DENS = []; S.GANGS = []; }
   }
-  if (!S.DENS.length && !S.GANGS.length) denScan(host.world.day); // 신규 존(or 복원 실패) — lifeInit 1회 동형
+  if (!S.DENS.length && !S.GANGS.length) {
+    //   ★★[T640] 손잡이 켬 + 표본을 아직 안 모았다 ⇒ 전 쌍 A* 를 부팅에서 하지 않고 **listen 뒤 틱마다 조각으로** 판다(`_bootSliceStep`).
+    //     표본이 끝나면 그 자리에서 아래 줄들(소굴 배치 · 훅 · 저장 · 실체)을 부팅 날 그대로 잇는다. 끔이면 종전 그대로(이 갈래 무동작).
+    if (T640_BOOT_SLICE && host.routeSampleStep && host.routeBootFreeze && !(S._routes && S._routes.sig === _routeSig(host))) return _bootSliceBegin(host);
+    denScan(host.world.day); // 신규 존(or 복원 실패) — lifeInit 1회 동형
+  }
+  return _bindRest(host, host.world.day);
+}
+function _bindRest(host, day0) {
   installHooks();
   pairSync();
-  S.lastDay = host.world.day; // 다음 econ 경계부터 데일리(재부팅 당일 이중 실행 방지)
+  S.lastDay = day0; // 다음 econ 경계부터 데일리(재부팅 당일 이중 실행 방지) · ★[T640] 조각 판이면 부팅 날(그 사이 넘긴 경계는 다음 틱이 잇는다)
   S.ready = true;
-  save(host.world.day);
+  save(day0);
   syncBodies();   // ★[2파] 부팅 실체화(복원 단 포함 — pid 비영속이라 여기서 재스폰)
-  console.log(`[${S.zoneId}] 🏴 도적 시뮬 준비(§11 1파: 경제·수명주기): 소굴 ${S.DENS.filter(d => !d.cleared).length}곳 · 도적단 ${S.GANGS.length} · econ 훅(banditRouteRisk/onBanditLoot) 설치 · day ${host.world.day}${FIXTURE ? ` [FIXTURE=${FIXTURE}]` : ''}${BDT_MIN_DAY !== 365 ? ` [MINDAY=${BDT_MIN_DAY}]` : ''}`);
+  console.log(`[${S.zoneId}] 🏴 도적 시뮬 준비(§11 1파: 경제·수명주기): 소굴 ${S.DENS.filter(d => !d.cleared).length}곳 · 도적단 ${S.GANGS.length} · econ 훅(banditRouteRisk/onBanditLoot) 설치 · day ${day0}${FIXTURE ? ` [FIXTURE=${FIXTURE}]` : ''}${BDT_MIN_DAY !== 365 ? ` [MINDAY=${BDT_MIN_DAY}]` : ''}`);
   return true;
+}
+// ═══ ★★[T640 2026-10-04 · T605 §4-1] 새 세계 첫 부팅 — 교역로 표본을 **조각으로**(손잡이 `T640_BOOT_SLICE` · ★기본 끔 = main 바이트) ═══
+//   종전: `bindHost` → `denScan` → `routePts` 가 유한 쌍 전부를 **부팅 안에서** 동기 A*(한반도 1,225쌍 · 72초 · 그동안 listen 못 함).
+//   켬: 부팅은 표본 없이 끝난다(소굴 0 · 단 0 · 훅 없음 = 도적 층이 아직 안 선 존). listen 뒤 게임 틱마다 슬라이서 예산(`sliceMs` —
+//     마을 하루 조각과 같은 그 예산)만큼 같은 순서(i<j · 유한 쌍)로 판다 — 문은 재개형(`routeSampleStep` → `getRouteResumable` · T85 비트 동일).
+//   ★얼린 길: 판이 도는 동안 교역로 A* 는 부팅 순간 코스 지도(`roads.frozenView`)를 본다 — 그 사이 사람이 와서 칸이 등급을 받아도
+//     종전(부팅 순간 한 번에 판 길)과 같은 바이트다. 끝나면 얼림을 풀고 `denScan` · 훅 · 저장 · 실체를 **부팅 날 그대로** 잇는다.
+//   ⚠그 사이 도적은 없다 — 새 세계는 원래 단 0 · 결성은 `BDT_MIN_DAY` 뒤(기본 365일)라 econ 쪽 위험(`banditRouteRisk`)도 종전과 같이 0 이다.
+const T640_BOOT_SLICE = typeof process !== 'undefined' && !!process.env && process.env.T640_BOOT_SLICE === '1';
+function _bootSliceBegin(host) {
+  host.routeBootFreeze(true);
+  S._boot = { day0: host.world.day, sig: _routeSig(host), i: 0, j: 1, pts: [], pairs: 0, slices: 0, busy: 0, workMs: 0, t0: Date.now() };
+  console.log(`[${S.zoneId}] 🏴 [도적] 부팅 표본을 조각으로 판다(T640) — 마을 ${host.villages.length}곳 · 얼린 길(부팅 순간 코스 지도) · 조각 예산 ${host.sliceMs}ms`);
+  return false;
+}
+function _bootSliceStep() {
+  const B = S._boot, host = S.host, V = host.villages, mat = host.world._distMatrix;
+  if (B.sig !== _routeSig(host)) { B.i = 0; B.j = 1; B.pts = []; B.pairs = 0; B.sig = _routeSig(host); }   // 마을 구성이 바뀌면 처음부터(종전 서명과 같은 뜻)
+  const t0 = Date.now(), budget = host.sliceMs > 0 ? host.sliceMs : 0;
+  B.slices++;
+  while (B.i < V.length) {
+    if (B.j >= V.length) { B.i++; B.j = B.i + 1; continue; }
+    const i = B.i, j = B.j;
+    if (!(mat && mat[i] && !isFinite(mat[i][j]))) {   // 도달불능쌍은 종전대로 건너뛴다
+      const r = host.routeSampleStep(V[i], V[j], budget > 0 ? Math.max(1, budget - (Date.now() - t0)) : 0);
+      if (r.busy) { B.busy++; break; }                 // 캐러밴이 다른 쌍을 파는 중 — 그쪽이 끝나면 이어 간다
+      if (!r.done) break;                              // 이 쌍을 파는 중 — 다음 틱에 이어 간다
+      if (r.pts) for (let k = 0; k < r.pts.length; k++) B.pts.push({ x: r.pts[k].x / SZ, y: r.pts[k].y / SZ });
+      B.pairs++;
+    }
+    B.j++;
+    if (budget > 0 && Date.now() - t0 >= budget) break;
+  }
+  B.workMs += Date.now() - t0;
+  if (B.i < V.length) return;
+  // 끝 — 표본을 종전 `routePts` 가 만드는 그 꼴로 두고, 얼림을 풀고, 부팅 날 그대로 잇는다
+  S._routes = { sig: B.sig, pts: B.pts };
+  S.routeField = null;
+  host.routeBootFreeze(false);
+  S._boot = null;
+  const wall = Date.now() - B.t0, dayMs = host.dayMs || 0;
+  console.log(`[${S.zoneId}] 🏴 [도적] 부팅 표본 끝(T640) — 쌍 ${B.pairs} · 조각 ${B.slices}(양보 ${B.busy}) · 일 ${B.workMs}ms · 벽시계 ${(wall / 1000).toFixed(1)}s${dayMs ? ` = 게임 ${(wall / dayMs * 1440).toFixed(0)}분` : ''} · day ${B.day0} → ${host.world.day}`);
+  S.bootSlice = { pairs: B.pairs, slices: B.slices, busy: B.busy, workMs: B.workMs, wallMs: wall, gameMin: dayMs ? +(wall / dayMs * 1440).toFixed(1) : null, day0: B.day0, day1: host.world.day };
+  denScan(B.day0);
+  _bindRest(host, B.day0);
 }
 function init() {
   if (!ENABLED) { console.log(`[${process.env.ZONE_ID || 'zone'}] 🏴 bandits: ENABLE_BANDITS=0 — 비활성(no-op)`); return; }
@@ -644,6 +698,7 @@ function init() {
 }
 function onGameTick() {
   if (!ENABLED) return;
+  if (S._boot) { try { _bootSliceStep(); } catch (e) { console.error(`[${S.zoneId}] 🏴 [도적] 부팅 표본 조각 실패(다음 틱 재시도):`, e.message); } return; }   // ★[T640]
   if (!S.ready) { // villages가 늦게 준비되는 경우 — 가벼운 재시도(10초에 1회 수준, 평시 O(1))
     S._bindTried = (S._bindTried || 0) + 1;
     if (S._bindTried === 1 || S._bindTried % 300 === 0) { try { bindHost(); } catch (_) { } }
@@ -667,4 +722,4 @@ function onGameTick() {
   }
 }
 
-module.exports = { init, onGameTick, clientCamps, stats: () => S.stats, armsHeld, ARMS_RES };   // ★[T521] 손 규칙 하나(villages 소굴 어댑터가 같은 함수를 읽는다)
+module.exports = { init, onGameTick, clientCamps, stats: () => S.stats, armsHeld, ARMS_RES, bootSlice: () => (S._boot ? { running: true, pairs: S._boot.pairs, slices: S._boot.slices, i: S._boot.i } : (S.bootSlice || null)) };   // ★[T521] 손 규칙 하나(villages 소굴 어댑터가 같은 함수를 읽는다)

@@ -2222,7 +2222,8 @@ function _routeBegin(x0, y0, x1, y1, extraBlk, plain) {
   //   gen-스탬프 재사용 버퍼(R의 g/came/stamp를 scratch로 그대로 공유) · maxPops 250000 예산 가드.
   if (!PathCore) PathCore = require('../sim/path-core.js');
   if (!R.sc) R.sc = { w: gw, h: gh, g: R.g, came: R.came, stamp: R.stamp, gen: R.gen | 0 };
-  const RD = state.roads;   // §16 답압 길 A* 스텝 할인(코스 그리드 coarse 등급 — 길 없으면 전부 ×1 = 기존 경로 그대로)
+  //   ★[T640] 부팅 표본을 조각으로 파는 동안은 **얼린 길 보기**(`roads.frozenView` — 부팅 순간 지도)를 본다 · 끔이면 늘 지금 길(종전)
+  const RD = state._routeFrozenRD || state.roads;   // §16 답압 길 A* 스텝 할인(코스 그리드 coarse 등급 — 길 없으면 전부 ×1 = 기존 경로 그대로)
   if (T598_ROUTE_COST || T598_ROUTE_EDGE) _t598Arrays(gw, gh);
   const NN = DIST_STEP * DIST_STEP;
   const terrMul = (gx, gy) => {   // ★[T578 ③] 코스 칸 안 열린 셀 비율의 역수(같은 `ta.isBlocked` · 다리 칸은 열림)
@@ -2450,6 +2451,7 @@ function _routeWarmBuild() {
 function _routeWarmStep() {
   const q = state.routeWarmQ;
   if (!ROUTE_WARM || !q || !q.length) return;
+  if (state._routeFrozenOn) return;   // ★[T640] 부팅 표본이 전 쌍을 파는 중 — 선계산은 그 뒤(같은 쌍을 두 문이 번갈아 파며 서로 버리지 않게)
   const now = Date.now();
   const d = state.deps || {};
   //   ⓐ **날아가는 쓰기·처리 중인 접속이 있으면 손을 뗀다**(zone.js `ioBusy`).
@@ -2482,6 +2484,7 @@ function _routeRedigStep() {
   const RD = state.roads;
   if (!ROUTE_WARM || !RD || !RD.coarseGen || !state.routeCache || !state.byDbId) return;
   if (state.routeWarmQ && state.routeWarmQ.length) return;   // 데우기가 먼저
+  if (state._routeFrozenOn) return;   // ★[T640] 부팅 표본(얼린 길)이 끝난 뒤에 다시 파기를 시작한다
   if (state._routeRedigGen === undefined) {   // 부팅 때 판 길은 그날 길로 팠다
     state._routeRedigGen = RD.coarseGen();
     if (T619_LOCAL_H && RD.takeCoarseChanges) RD.takeCoarseChanges();   // ★[T619] 이때부터 바뀐 코스 칸을 모은다
@@ -6015,6 +6018,19 @@ function __p3Bind(mock) {
 //   동일 코스그리드·캐시 공유)·존 시드. villages 준비 전엔 null(도적은 lazy 대기).
 //   ENABLE_VILLAGES=0 → state.ready=false → 항상 null = 도적 자동 휴면(마을 없이 도적 정의 불가).
 // =============================================================================
+// ★★[T640 2026-10-04] 도적 부팅 표본을 조각으로 — `bandits.js` 가 부른다(손잡이 `T640_BOOT_SLICE` · 끔이면 아무도 안 부른다).
+//   얼림: 표본이 도는 동안 모든 교역로 A* 가 부팅 순간 지도(`roads.frozenView`)를 본다 — 종전엔 그 순간 전 쌍을 한 번에 팠으니
+//     같은 지도 · 같은 문(`getRouteResumable` → `_routeResume` · 재개형은 동기 문과 비트 동일 · T85) ⇒ 같은 바이트.
+function routeBootFreeze(on) {
+  if (on) { const RD = state.roads; state._routeFrozenRD = (RD && RD.frozenView) ? RD.frozenView() : null; state._routeFrozenOn = true; }
+  else { state._routeFrozenRD = null; state._routeFrozenOn = false; }
+}
+//   한 조각 — 다른 쌍의 재개형 일이 떠 있으면(캐러밴이 판다) 손을 뗀다(`busy`) · 그쪽이 끝나면 이어 간다(일을 서로 버리지 않게).
+function routeSampleStep(A, B, budgetMs) {
+  const { key } = _routeKey(A, B);
+  if (_pathJob && _pathJob.key !== key && state.routeCache.get(key) === undefined) return { done: false, busy: true };
+  return getRouteResumable(A, B, budgetMs);
+}
 function banditHost() {
   if (!state.ready) return null;
   const ZONE = state._distCtx && state._distCtx.ZONE;
@@ -6024,6 +6040,8 @@ function banditHost() {
     world: state.world,                              // econ world — banditRouteRisk/onBanditLoot 설치 대상(_distMatrix 조회)
     ta: state._distCtx && state._distCtx.ta,         // 지형 어댑터(isBlocked/forestMult — 셀 단위)
     getRoute,                                        // 마을쌍 경로 pts(px) — 캐러밴 A*·캐시 재사용(랩 getTradePath 동형)
+    routeSampleStep, routeBootFreeze, sliceMs: TICK_SLICE_MS,   // ★[T640] 부팅 표본 조각 · 얼린 길 · 조각 예산(슬라이서 그 예산)
+    dayMs: state.dayMs,
     broadcast: state.deps && state.deps.broadcast,
     // ★[2파 도적 실체] 소굴 배회 NPC용 — 기존 스폰/제거 경로 재사용(발명 금지·캐러밴 관례)
     spawnNpc: state.deps && state.deps.spawnNpc,
