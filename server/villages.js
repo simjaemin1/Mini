@@ -1764,6 +1764,7 @@ function foundPlayerVillage(opts) {
 //     전 마을 상호 고립이면 경고 로그(지형 병리 — 교역 전무).
 // =============================================================================
 const DIST_STEP = Math.max(1, parseInt(process.env.VILLAGE_DIST_STEP || '4', 10));
+const ROUTE_SNAP_R = 6;   // ★[T619] 마을 칸 → 코스 노드 스냅 나선 반경(거리행렬·교역로 스냅 셋이 쓰던 리터럴 6 을 이름으로 — 값 무변)
 // ★[T436] 게이트 교역 잠재의 계수 — **유도값**(보고/T436 §0-ⓐ · `scripts/t436-gate-trade.js` 가 다시 유도해 이 값과 견준다).
 //   한반도 후보 51 에서 하한 미달 9곳이 전부 통과하는 가장 작은 값 = max((하한−food)/교역잠재). 통과 42곳은 이 항과 무관(무변).
 const T436_K_DERIVED = 0.154081;   // = ceil₆(유도값 · 표 기계 kRaw) — 광산1(food 0.589 · 교역잠재 9.158)이 묶는 자리(한반도 탈락 9/9 가 통과하는 최솟값)
@@ -1780,6 +1781,131 @@ const T436_K = (() => { const v = parseFloat(typeof process !== 'undefined' && p
 //   구제는 **중심이 막혔을 때만** 코스 셀 안(STEP×STEP)을 훑어 '다리이면서 통행 가능한 칸'을 찾는다.
 //   물·바위 일반에는 적용하지 않는다 — 좁은 물목을 임의로 뚫으면 거리 근사가 아니라 거짓말이 된다.
 //   반환 0=차단 1=중심이 열림 2=다리로 구제.
+// ═══ ★★[T598 2026-10-03 · T573 회부 4 · T578 회부 1] 교역로 비용에 **숲·광맥·집채** — 손잡이 `T598_ROUTE_COST`(★기본 끔 = main 바이트) ═══
+//   T578 이 교역로 A* 에 "코스 칸 안 열린 비율의 역수"를 걸었다(물·바위만). 이 판은 같은 식에 **몸을 막는 것**을 더 센다:
+//     ⓐ 숲 — 숲 그리드의 셀당 나무 수(`chunk.forestTreesPerCell(forestMult)` · 숲 그리드가 깔리는 `FOREST_MIN_COV` 위에서만)
+//     ⓑ 광맥 — 광맥 무리 청크의 셀당 광물 노드 수(`chunk.oreNodesPerCell(stoneMult)` · 생성 루프의 그 두 수)
+//     ⓒ 집채 — 마을 집채(큰집 8×8 · 움집·쉼터 6×4 · 곳간 5×3 — `_vbFootprint`) 발자국 칸은 막힌 칸(벽이 둘렀다 — 지나가지 못한다)
+//   ★"걸음 몸이 실제로 느려지는 값"이다: 걷는 몸(T578 `_walkResume`)은 나무 선 칸·막힌 칸을 돌아간다 ⇒ 코스 칸 하나를 지나는 값 =
+//     그 칸 안에서 열린 몫의 역수(T578 의 그 식 · 칸 하나에 나무 하나 = 칸 하나 막힘 — 걷기 술어 `treeCellBlocked` 와 같은 칸 규칙). 새 수 0.
+//   ★밑바닥(숲 밖 흩어진 나무·바위 — `scatterTreesPerCell`)은 어디나 같아서 길 모양을 안 바꾸고 모든 거리에 같은 배수만 얹는다 ⇒ 안 센다.
+//   ★`남의` 영토가 아니라 **모든 마을의 집채**다 — 거리행렬은 출발 하나에서 모든 목적지로 한 번에 재는(Dijkstra) 대칭 행렬이라
+//     쌍마다 "끝점 마을 빼고"를 못 건다. 집채는 제 마을이든 남의 마을이든 몸을 막는다(밭·마당은 안 막는다 — 실물 그대로).
+//   ★켜면 **두 곳이 같은 비용**을 본다 — 교역 거리행렬(econ 운송비 · `computeAndInjectDistMatrix`)과 교역로 A*(`_routeBegin`).
+//     열림·막힘(닿는 쌍의 집합)은 종전 `coarseOpen` 그대로다. 3시드 두 자는 거리행렬을 안 세운다(econ 이 유클리드로 잰다) — 보고 §③.
+const T598_ROUTE_COST = process.env.T598_ROUTE_COST === '1';
+//   ★[T598 ④ · T578 회부 2] 코스 이웃 잇기 — 두 노드 **가운데 칸**이 열렸어도 그 사이가 다리 없는 가는 물줄기면 몸은 못 건넌다.
+//     손잡이 `T598_ROUTE_EDGE`(★기본 끔): 켜면 이웃 두 노드의 가운데 칸 사이를 두 코스 칸 안에서 4방으로 이어 볼 수 있을 때만 잇는다
+//     (곧은 선이 막힌 칸을 안 밟으면 바로 잇는다 — 거의 다 · 밟으면 두 칸 안 BFS). 거리행렬·교역로 A* 둘 다(같은 그래프).
+const T598_ROUTE_EDGE = process.env.T598_ROUTE_EDGE === '1';
+let _t598C = null, _t598T = null;   // chunk.js · terrain.js 지연 적재(순환 회피)
+function _t598Chunk() { return _t598C || (_t598C = require('./chunk')); }
+function _t598FootBuild() {
+  const F = new Set();
+  const add = (R) => { if (!R) return; for (let y = R[1]; y <= R[3]; y++) for (let x = R[0]; x <= R[2]; x++) F.add(y * 65536 + x); };
+  for (const vil of state.villages || []) {
+    add(_vbFootprint('hall', vil.ccx, vil.ccy));
+    for (const b of vil._bRows || []) add(_vbFootprint(b.type, b.cx, b.cy));
+  }
+  state._t598Foot = F;
+  if (state._t598Mul) state._t598Mul.fill(0);
+}
+// 코스 칸(gx,gy)을 지나는 값의 배수 — 칸 안 셀마다 열린 몫(물·바위 막힘 0 · 집채 0 · 그 밖 1 − 나무 − 광물)의 평균의 역수.
+function _t598CellMul(ta, gx, gy, gw) {
+  const M = state._t598Mul;
+  const i = gy * gw + gx;
+  if (M && M[i] > 0) return M[i];
+  const C = _t598Chunk(), Z = state.zoneId, F = state._t598Foot;
+  const bx = gx * DIST_STEP, by = gy * DIST_STEP, half = DIST_STEP >> 1;
+  //   숲 밀도·광맥은 코스 칸 **가운데 칸** 한 번만 묻는다(둘 다 큰 다각형·원이라 4칸 안에서 거의 안 바뀐다 · 칸마다 물으면 지도 전체 거리행렬이 4분 걸렸다).
+  //   물·바위(메모 비트)·집채(집합)는 칸마다 본다.
+  let blk = 0;
+  { const fm = ta.forestMult ? ta.forestMult(bx + half, by + half) : 1;
+    if (fm > C.FOREST_MIN_COV) blk += C.forestTreesPerCell(fm, SZ);
+    const T = _t598T || (_t598T = require('./terrain')), px = (bx + half) * SZ + SZ / 2, py = (by + half) * SZ + SZ / 2;
+    if (T.isOreClusterAt && T.isOreClusterAt(Z, px, py)) blk += C.oreNodesPerCell(T.getStoneMultiplier ? T.getStoneMultiplier(Z, px, py) : 1, SZ); }
+  const per = Math.max(0, 1 - blk);
+  let open = 0;
+  for (let dy = 0; dy < DIST_STEP; dy++) for (let dx = 0; dx < DIST_STEP; dx++) {
+    const x = bx + dx, y = by + dy;
+    if (ta.isBlocked(x, y)) continue;
+    if (F && F.has(y * 65536 + x)) continue;
+    open += per;
+  }
+  //   ★바닥 = 한 칸(T578 `terrMul` 의 `max(1, n)` 과 같은 자) — 지나는 노드면 몸 칸이 적어도 하나다. 집채가 코스 칸을 다 덮어도 배수 ≤ 16/몫.
+  //   (바닥 없이 1e-6 이면 배수가 1,600만 → Dial 버킷 배열이 그만큼 늘어 50마을 거리행렬이 4분 걸렸다.)
+  const m = (DIST_STEP * DIST_STEP) / Math.max(per, open);
+  if (M) M[i] = m;
+  return m;
+}
+// 무효화 훅의 T598 몫 — 벽·울타리 한 칸(cx,cy · 셀)이면 그 코스 칸 배수와 둘레 3×3 노드의 이웃 잇기 메모만 버린다
+//   (지도 전체 칸 배수를 다시 세면 거리행렬 한 번에 칸 900만 번을 다시 묻는다 · 이웃 잇기 상자는 두 코스 칸이라 3×3 이면 다 덮는다).
+//   칸을 안 주면 전부 버린다(종전 T578 메모와 같은 뜻).
+function _t598Forget(cx, cy) {
+  const M = state._t598Mul, E = state._t598Edge;
+  if (!M && !E) return;
+  const gw = state._t598Gw | 0;
+  if (!(Number.isFinite(cx) && Number.isFinite(cy)) || !gw) { if (M) M.fill(0); if (E) { E.done.fill(0); E.ok.fill(0); } return; }
+  const gx = Math.floor(cx / DIST_STEP), gy = Math.floor(cy / DIST_STEP), gh = (M ? M.length : E.done.length) / gw;
+  if (M && gx >= 0 && gy >= 0 && gx < gw && gy < gh) M[gy * gw + gx] = 0;
+  if (E) for (let y = gy - 1; y <= gy + 1; y++) for (let x = gx - 1; x <= gx + 1; x++) {
+    if (x < 0 || y < 0 || x >= gw || y >= gh) continue;
+    E.done[y * gw + x] = 0; E.ok[y * gw + x] = 0;
+  }
+}
+// 재는 판 전용(`T598_DIST_DUMP`) — 칸 배수 분포 · 이웃 잇기 판정 수/끊은 수(비트 셈).
+function _t598Stats() {
+  const out = {}, M = state._t598Mul, E = state._t598Edge;
+  if (M) { const v = []; for (let i = 0; i < M.length; i++) if (M[i] > 0) v.push(M[i]); v.sort((a, b) => a - b);
+    const q = (p) => (v.length ? +v[Math.floor(p * (v.length - 1))].toFixed(3) : null);
+    out.mul = { n: v.length, p10: q(0.1), p50: q(0.5), p90: q(0.9), p99: q(0.99), max: q(1), ge2: v.filter((x) => x >= 2).length }; }
+  if (E) { let chk = 0, ok = 0; const pc = (b) => { let c = 0; while (b) { c += b & 1; b >>= 1; } return c; };
+    for (let i = 0; i < E.done.length; i++) { if (E.done[i]) { chk += pc(E.done[i]); ok += pc(E.ok[i]); } }
+    out.edge = { checked: chk, cut: chk - ok }; }
+  return out;
+}
+function _t598Arrays(gw, gh) {
+  state._t598Gw = gw;
+  if (!state._t598Mul || state._t598Mul.length !== gw * gh) state._t598Mul = new Float32Array(gw * gh);
+  if (!state._t598Edge || state._t598Edge.done.length !== gw * gh) state._t598Edge = { done: new Uint16Array(gw * gh), ok: new Uint16Array(gw * gh) };
+}
+// 코스 노드의 몸 칸 — 가운데 칸이 열렸으면 그 칸 · 아니면(다리 구제 노드) 칸 안 첫 열린 칸(다리 칸).
+function _t598Anchor(ta, gx, gy) {
+  const half = DIST_STEP >> 1, bx = gx * DIST_STEP, by = gy * DIST_STEP;
+  if (!ta.isBlocked(bx + half, by + half)) return [bx + half, by + half];
+  for (let dy = 0; dy < DIST_STEP; dy++) for (let dx = 0; dx < DIST_STEP; dx++) if (!ta.isBlocked(bx + dx, by + dy)) return [bx + dx, by + dy];
+  return [bx + half, by + half];
+}
+// ★[T598 ④] 이웃 두 코스 노드(가운데 칸)를 몸이 이을 수 있나 — 곧은 선이 막힌 칸을 안 밟으면 참 · 아니면 두 코스 칸(합친 상자) 안 4방 BFS.
+//   메모 = 노드마다 8방 2비트(판정함·답).
+function _t598EdgeOk(ta, gx, gy, dx, dy, gw) {
+  const E = state._t598Edge;
+  const d = (dx + 1) * 3 + (dy + 1), bit = 1 << d;   // 0..8 (가운데 4 안 씀)
+  const i = gy * gw + gx;
+  if (E && (E.done[i] & bit)) return !!(E.ok[i] & bit);
+  const [ax, ay] = _t598Anchor(ta, gx, gy), [bx, by] = _t598Anchor(ta, gx + dx, gy + dy);
+  let ok = true;
+  { const n = Math.max(Math.abs(bx - ax), Math.abs(by - ay)) * 4;
+    for (let k = 0; k <= n && ok; k++) { const x = Math.floor(ax + 0.5 + (bx - ax) * k / n), y = Math.floor(ay + 0.5 + (by - ay) * k / n); if (ta.isBlocked(x, y)) ok = false; } }
+  if (!ok) {   // 두 코스 칸 합친 상자 안 BFS
+    const x0 = Math.min(gx, gx + dx) * DIST_STEP, y0 = Math.min(gy, gy + dy) * DIST_STEP;
+    const x1 = (Math.max(gx, gx + dx) + 1) * DIST_STEP - 1, y1 = (Math.max(gy, gy + dy) + 1) * DIST_STEP - 1;
+    const seen = new Set([ay * 65536 + ax]), q = [[ax, ay]];
+    for (let h = 0; h < q.length && !ok; h++) {
+      const [x, y] = q[h];
+      for (const [sx, sy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + sx, ny = y + sy;
+        if (nx < x0 || ny < y0 || nx > x1 || ny > y1) continue;
+        const k = ny * 65536 + nx; if (seen.has(k)) continue; seen.add(k);
+        if (ta.isBlocked(nx, ny)) continue;
+        if (nx === bx && ny === by) { ok = true; break; }
+        q.push([nx, ny]);
+      }
+    }
+  }
+  if (E) { E.done[i] |= bit; if (ok) E.ok[i] |= bit; }
+  return ok;
+}
 function coarseOpen(ta, gx, gy, brSet) {
   const half = DIST_STEP >> 1, bx = gx * DIST_STEP, by = gy * DIST_STEP;
   if (!ta.isBlocked(bx + half, by + half)) return 1;
@@ -1821,7 +1947,7 @@ function _gateTradePotential(all, ta, foodFn, floor) {
   const snap = (v) => {
     const gx0 = Math.max(0, Math.round(v.x / SZ / DIST_STEP)), gy0 = Math.max(0, Math.round(v.y / SZ / DIST_STEP));
     if (isOpen(gx0, gy0)) return [gx0, gy0];
-    for (let r = 1; r <= 6; r++) for (let a = 0; a < 16; a++) {
+    for (let r = 1; r <= ROUTE_SNAP_R; r++) for (let a = 0; a < 16; a++) {
       const nx = Math.round(gx0 + Math.cos(a / 16 * 2 * Math.PI) * r), ny = Math.round(gy0 + Math.sin(a / 16 * 2 * Math.PI) * r);
       if (nx >= 0 && ny >= 0 && isOpen(nx, ny)) return [nx, ny];
     }
@@ -1905,7 +2031,7 @@ function computeAndInjectDistMatrix(reason, opts) {
     const gx0 = Math.min(gw - 1, Math.max(0, Math.round(v.coord.x / 2.5 / DIST_STEP)));
     const gy0 = Math.min(gh - 1, Math.max(0, Math.round(v.coord.y / 2.5 / DIST_STEP)));
     if (!isBlk(gx0, gy0)) return gy0 * gw + gx0;
-    for (let r = 1; r <= 6; r++) for (let a = 0; a < 16; a++) {
+    for (let r = 1; r <= ROUTE_SNAP_R; r++) for (let a = 0; a < 16; a++) {
       const nx = Math.round(gx0 + Math.cos(a / 16 * 2 * Math.PI) * r), ny = Math.round(gy0 + Math.sin(a / 16 * 2 * Math.PI) * r);
       if (nx >= 0 && ny >= 0 && nx < gw && ny < gh && !isBlk(nx, ny)) return ny * gw + nx;
     }
@@ -1919,6 +2045,7 @@ function computeAndInjectDistMatrix(reason, opts) {
   const mat = []; for (let i = 0; i < M; i++) { const row = new Array(M).fill(Infinity); row[i] = 0; mat.push(row); }
   if (_prev) for (let i = 0; i < INCR; i++) for (let j = 0; j < INCR; j++) mat[i][j] = _prev[i][j];
   const dist = new Int32Array(gw * gh);
+  if (T598_ROUTE_COST || T598_ROUTE_EDGE) _t598Arrays(gw, gh);
   const DIRS = [[1, 0, 10], [-1, 0, 10], [0, 1, 10], [0, -1, 10], [1, 1, 14], [1, -1, 14], [-1, 1, 14], [-1, -1, 14]];
   let _srcRuns = 0;
   for (let s = (_prev ? INCR : 0); s < M; s++) {
@@ -1950,11 +2077,14 @@ function computeAndInjectDistMatrix(reason, opts) {
           if (!remaining) break;
         }
         const x = i % gw, y = (i / gw) | 0;
+        const _m0 = T598_ROUTE_COST ? _t598CellMul(ta, x, y, gw) : 0;   // ★[T598] 이 노드 배수(간선마다 다시 안 묻는다)
         for (const [dx, dy, w] of DIRS) {
           const nx = x + dx, ny = y + dy;
           if (isBlk(nx, ny)) continue;
           if (dx && dy && (isBlk(x + dx, y) || isBlk(x, y + dy))) continue; // 대각 코너 절단 금지(랩 tradePath 3937행과 동일)
-          const ni = ny * gw + nx, nc = c + w;
+          if (T598_ROUTE_EDGE && !_t598EdgeOk(ta, x, y, dx, dy, gw)) continue;   // ★[T598 ④] 몸이 못 잇는 이웃(가는 물줄기) — 끔이면 이 줄 무동작
+          //   ★[T598] 간선 값 = 두 끝 코스 칸 배수의 평균 × 걸음(대칭 — 누가 출발이든 같은 거리 · 증분 계산의 근거 그대로) · 끔이면 종전 `w`
+          const ni = ny * gw + nx, nc = c + (T598_ROUTE_COST ? Math.round(w * (_m0 + _t598CellMul(ta, nx, ny, gw)) / 2) : w);
           if (dist[ni] < 0 || nc < dist[ni]) { dist[ni] = nc; (buckets[nc] || (buckets[nc] = [])).push(ni); }
         }
       }
@@ -1963,6 +2093,8 @@ function computeAndInjectDistMatrix(reason, opts) {
   }
   // 주입 + 로그(유클리드 대비 증가율 — 강·산 우회가 잡히면 일부 쌍이 1.0×보다 커야 함)
   state.econ.setDistMatrix(world, mat);
+  //   ★[T598 자] 거리행렬을 파일로 남긴다(`T598_DIST_DUMP=<경로>` · 재는 판 전용 · 안 주면 이 줄 무동작) — 끔/켬 운송비 바뀐 쌍을 센다.
+  if (process.env.T598_DIST_DUMP) { try { require('fs').writeFileSync(process.env.T598_DIST_DUMP, JSON.stringify({ names: villages.map((v) => v.name), mat: mat.map((r) => r.map((d) => (isFinite(d) ? +d.toFixed(3) : null))), ms: Date.now() - t0, t598: _t598Stats() })); } catch (e) {} }
   // ★[T7] 거리가 바뀌면 소문 도달표도 거짓이 된다 — 마을이 하나 늘어도 마찬가지다(행 크기가 바뀐다).
   //   캐시를 비우는 것뿐이라 비용 0이고, 다음 사건이 알아서 다시 데운다.
   try { if (state.ledger && state.ledger.rumorInvalidate) state.ledger.rumorInvalidate(); } catch (e) {}
@@ -2027,6 +2159,35 @@ let _pathJob = null;   // { key, S, x0, y0, x1, y1, gw, half, workMs, sliceMax }
 //     바뀌는 것은 길의 **모양**뿐이다: 물 반쪽인 칸은 두 배 비싸고, 다 열린 칸은 종전 값이다(새 수 0 — 칸 수에서 나온다).
 //     h 는 스텝 비용의 최저값(`roads.courseCostMin()` = 0.87)만큼 줄인다 — 안 줄이면 할인 칸에서 탐색이 터진다(T573 §② ⓑ).
 //   `plain` = 종전에 실제로 판 규칙(할인·비율 없음 · h 무변) — 새 규칙이 `maxPops` 에 걸렸을 때만 다시 판다(쌍을 잃지 않게 · 아래 `_routePlainRetry`).
+// ═══ ★★[T619 2026-10-04 · T605 §2·§4-2] 할인 h 를 **그 쌍 둘레**에서만 — 손잡이 `T619_LOCAL_H`(★기본 끔 = main 바이트) ═══
+//   종전: `hScale = roads.courseCostMin()` 은 **지도 어디든** 등급 칸이 하나면 0.87 이다 ⇒ 관측자 하나가 칸 하나를 다지자
+//     1,225쌍 중 982쌍의 경로 바이트가 바뀌었다(T605 §2 · 관측자 0 대조군 0). h 만 바뀌어도 같은 값 길 사이의 고름이 달라진다.
+//   켬: 그 쌍의 시작–끝 코스 상자 ± 여유 안에 등급 칸이 있을 때만 그 상자 안 최저 할인(`roads.courseCostMinIn`) · 없으면 1(h 그대로).
+//   ★여유 = 상자 밖 할인 칸을 지나는 길이 곧은 하한(할인 없는 octile)보다 싸질 수 없는 거리 — 새 수 0:
+//     상자 밖으로 d 칸 나갔다 오는 길은 octile 이 적어도 2·d·k 걸음 늘고(k = (DIAG−ORTHO)/ORTHO), 할인은 걸음마다 최저 `cmin`(전역 COST 최저)
+//     이므로 cmin·(L + 2·d·k) ≥ L ⇔ d ≥ L·(1 − cmin) / (2·k·cmin)  (L = 그 쌍 octile 걸음).
+//   `pad` = 둘레를 더 넓힐 칸(다시 파기가 마을 칸에서 잴 때 스냅 반경 `ROUTE_SNAP_R` — 이미 있는 여유).
+const T619_LOCAL_H = process.env.T619_LOCAL_H === '1';
+function _t619Region(ax, ay, bx, by, pad) {
+  const RD = state.roads;
+  const cmin = (RD && RD.courseCostMin) ? RD.courseCostMin() : 1;
+  if (!PathCore) PathCore = require('../sim/path-core.js');
+  const dx = Math.abs(bx - ax), dy = Math.abs(by - ay), k = (PathCore.DIAG - PathCore.ORTHO) / PathCore.ORTHO;
+  const L = Math.max(dx, dy) + k * Math.min(dx, dy);
+  const r = (cmin < 1 ? Math.ceil(L * (1 - cmin) / (2 * k * cmin)) : 0) + (pad | 0);
+  return [Math.min(ax, bx) - r, Math.min(ay, by) - r, Math.max(ax, bx) + r, Math.max(ay, by) + r];
+}
+// ★[T619] 다시 파기 거르개 — 쌍 키 목록 중 바뀐 코스 칸([gx, gy])이 그 쌍 둘레(`_t619Region` · 마을 칸에서 재니 스냅 반경만큼 더)에 든 것만.
+function _t619RedigKeep(keys, chg) {
+  const g = (c) => Math.round((c * SZ + SZ / 2) / SZ / DIST_STEP);   // `_routeBegin` 스냅의 첫 칸과 같은 식
+  return keys.filter((k) => {
+    const ids = k.split('_'), A = state.byDbId.get(+ids[0]), B = state.byDbId.get(+ids[1]);
+    if (!A || !B) return false;
+    const [x0, y0, x1, y1] = _t619Region(g(A.ccx), g(A.ccy), g(B.ccx), g(B.ccy), ROUTE_SNAP_R);
+    for (const [x, y] of chg) if (x >= x0 && x <= x1 && y >= y0 && y <= y1) return true;
+    return false;
+  });
+}
 function _routeBegin(x0, y0, x1, y1, extraBlk, plain) {
   // ★★[T85 · §0-ⓐ 실측의 직접 귀결] **격자 scratch 는 하나다.** 새 탐색이 시작되면 `sc.gen` 이 오르고,
   //   그 순간 세워 둔 탐색의 g 는 전부 "낡은 세대"가 되어 `Infinity` 로 읽힌다(`came` 는 스탬프도 없다).
@@ -2048,7 +2209,7 @@ function _routeBegin(x0, y0, x1, y1, extraBlk, plain) {
     const gx0 = Math.min(gw - 1, Math.max(0, Math.round(px / SZ / DIST_STEP)));
     const gy0 = Math.min(gh - 1, Math.max(0, Math.round(py / SZ / DIST_STEP)));
     if (!isBlk(gx0, gy0)) return gy0 * gw + gx0;
-    for (let r = 1; r <= 6; r++) for (let a = 0; a < 16; a++) {
+    for (let r = 1; r <= ROUTE_SNAP_R; r++) for (let a = 0; a < 16; a++) {
       const nx = Math.round(gx0 + Math.cos(a / 16 * 2 * Math.PI) * r), ny = Math.round(gy0 + Math.sin(a / 16 * 2 * Math.PI) * r);
       if (nx >= 0 && ny >= 0 && nx < gw && ny < gh && !isBlk(nx, ny)) return ny * gw + nx;
     }
@@ -2062,6 +2223,7 @@ function _routeBegin(x0, y0, x1, y1, extraBlk, plain) {
   if (!PathCore) PathCore = require('../sim/path-core.js');
   if (!R.sc) R.sc = { w: gw, h: gh, g: R.g, came: R.came, stamp: R.stamp, gen: R.gen | 0 };
   const RD = state.roads;   // §16 답압 길 A* 스텝 할인(코스 그리드 coarse 등급 — 길 없으면 전부 ×1 = 기존 경로 그대로)
+  if (T598_ROUTE_COST || T598_ROUTE_EDGE) _t598Arrays(gw, gh);
   const NN = DIST_STEP * DIST_STEP;
   const terrMul = (gx, gy) => {   // ★[T578 ③] 코스 칸 안 열린 셀 비율의 역수(같은 `ta.isBlocked` · 다리 칸은 열림)
     const i = gy * gw + gx;
@@ -2081,8 +2243,14 @@ function _routeBegin(x0, y0, x1, y1, extraBlk, plain) {
     scratch: R.sc,
   } : {
     blocked: isBlk,
-    costMul: RD ? ((x, y) => RD.courseCostMul(x, y) * terrMul(x, y)) : terrMul,
-    hScale: (RD && RD.courseCostMin && RD.isReady && RD.isReady()) ? RD.courseCostMin() : 1,   // 길이 안 섰으면(헤드리스) 할인도 없다 — h 그대로
+    //   ★[T598 ④] 손잡이 켬이면 몸이 못 잇는 이웃(가는 물줄기)을 안 잇는다 — 거리행렬과 같은 간선 규칙(끔이면 null = 종전)
+    stepBlocked: T598_ROUTE_EDGE ? ((fx, fy, tx, ty) => isBlk(tx, ty) || !_t598EdgeOk(ta, fx, fy, tx - fx, ty - fy, gw)) : null,
+    //   ★[T598] 손잡이 켬이면 칸 값 = 숲·광맥·집채까지 센 열린 몫의 역수(거리행렬과 같은 `_t598CellMul`) · 끔이면 T578 의 물·바위 몫(종전)
+    costMul: T598_ROUTE_COST ? (RD ? ((x, y) => RD.courseCostMul(x, y) * _t598CellMul(ta, x, y, gw)) : ((x, y) => _t598CellMul(ta, x, y, gw)))
+      : (RD ? ((x, y) => RD.courseCostMul(x, y) * terrMul(x, y)) : terrMul),
+    hScale: (RD && RD.courseCostMin && RD.isReady && RD.isReady())
+      ? ((T619_LOCAL_H && RD.courseCostMinIn) ? RD.courseCostMinIn(..._t619Region(si % gw, (si / gw) | 0, ti % gw, (ti / gw) | 0, 0)) : RD.courseCostMin())   // ★[T619] 켬 = 그 쌍 둘레의 최저 할인
+      : 1,   // 길이 안 섰으면(헤드리스) 할인도 없다 — h 그대로
     maxPops: 250000,
     scratch: R.sc,
   });
@@ -2165,16 +2333,41 @@ const _routeWarned = new Set();
 //     ① 런타임(벽·울타리 설치/철거) — `invalidateTradeDistances` 가 메모리 캐시와 **이 표를 같이** 비운다.
 //     ② 재기동 사이(지형 데이터·존 설정 파일 교체) — **세계 서명**이 다르면 표를 통째로 버린다.
 //       벽은 존 DB 에서 그대로 복원되므로 종료 시점과 동일하다(그래서 서명에 안 넣는다).
+// ★★[T619 ② 2026-10-04 · T605 §4-7] 세계 서명 = **교역로 입력의 내용 해시**(손잡이 없음).
+//   종전: 두 파일(`hanbando-terrain.json` · `zone-config.js`)의 크기·mtime — 다른 존·다른 칸(이름·해안 줄·카드 문구)을 고치거나
+//     파일을 만지기만 해도 교역로를 전부 버렸다(T605 §4-7). 교역로가 실제로 읽는 것만 센다:
+//     ⓐ 이 존 지형 절(`hanbando-terrain.json[zone]` — 강·호수·능선·고개·숲·광맥·골짜기·군락 · 후보 `villages` 줄만 뺀다: 이름·자리는 ⓓ 가 본다)
+//     ⓑ 이 존 다리 줄 · 크기 · 바다 여부(`zone-config` ZONES[zone] 의 그 칸들)
+//     ⓒ 이 존 해안선 물 칸(`deps.waterTiles` — 해안 띠 · 이웃 바다 존이 낳는 물 · 존이 구운 그 집합)
+//     ⓓ 마을 칸은 **쌍마다** 본다(`_routePrime` — 행의 첫·끝 점 = 두 마을 가운데 칸) — 마을 하나가 서거나 옮겨도 그 쌍만 버린다.
+//   벽·환호는 종전대로 안 넣는다(존 DB 에서 그대로 복원된다 · 런타임은 `invalidateTradeDistances`).
+//   ⚠서명 꼴이 바뀌었으므로 **처음 한 번은** 옛 행을 통째로 버리고 다시 판다(보고 T619).
+function routeWorldSig(zoneId, terrainAll, zoneCfg, water) {
+  const h = require('crypto').createHash('sha1');
+  const T = (terrainAll && terrainAll[zoneId]) || {};
+  for (const k of Object.keys(T).sort()) { if (k === 'villages') continue; h.update(k + '=' + JSON.stringify(T[k]) + '\n'); }
+  const Z = zoneCfg || {};
+  h.update(`dim=${Z.zoneWidth}x${Z.zoneHeight}:${Z.isOcean ? 1 : 0}\nbridges=${JSON.stringify(Z.bridges || [])}\n`);
+  if (water && typeof water.forEachTile === 'function') {
+    const buf = new Int32Array(8192); let n = 0;
+    h.update(`water=${water.size | 0}:`);
+    water.forEachTile((tx, ty) => { buf[n++] = tx; buf[n++] = ty; if (n === buf.length) { h.update(Buffer.from(buf.buffer)); n = 0; } });
+    if (n) h.update(Buffer.from(buf.buffer, 0, n * 4));
+  } else h.update('water=none');
+  return h.digest('hex').slice(0, 20);
+}
 function _routeSig() {
-  const fs = require('fs'), pathm = require('path');
   const parts = [];
-  for (const f of ['hanbando-terrain.json', 'zone-config.js']) {
-    try { const st = fs.statSync(pathm.join(__dirname, f)); parts.push(`${f}:${st.size}:${Math.round(st.mtimeMs)}`); }
-    catch (e) { parts.push(`${f}:none`); }
-  }
+  let terr = null, zc = null;
+  try { terr = require('./hanbando-terrain.json'); } catch (e) {}
+  try { zc = require('./zone-config').ZONES[state.zoneId]; } catch (e) {}
+  parts.push('world:' + routeWorldSig(state.zoneId, terr, zc, state.deps && state.deps.waterTiles));
   // ★★[T578 ①] 길 규칙 판(版) — 규칙이 바뀌면 이 글자를 올린다. 옛 판으로 판 길은 서명이 달라 통째로 버리고 다시 판다
   //   (T573: 답압 할인 0 · 가운데 한 칸 규칙으로 판 1,219쌍이 영속돼 있었다).
   parts.push('route:T578');
+  if (T598_ROUTE_COST) parts.push('cost:T598');   // ★[T598] 켬 판은 다른 길 — 끔 서명은 종전 글자 그대로(바이트)
+  if (T598_ROUTE_EDGE) parts.push('edge:T598');
+  if (T619_LOCAL_H) parts.push('h:T619');   // ★[T619] 켬 판은 h 가 달라 다른 길 — 끔 서명엔 안 붙는다
   return parts.join('|');
 }
 // ★★[T42 ①ⓑ 2026-09-01] **부팅 직후 선계산** — 콜드를 게임일 경계에서 떼어 낸다.
@@ -2289,7 +2482,11 @@ function _routeRedigStep() {
   const RD = state.roads;
   if (!ROUTE_WARM || !RD || !RD.coarseGen || !state.routeCache || !state.byDbId) return;
   if (state.routeWarmQ && state.routeWarmQ.length) return;   // 데우기가 먼저
-  if (state._routeRedigGen === undefined) { state._routeRedigGen = RD.coarseGen(); return; }   // 부팅 때 판 길은 그날 길로 팠다
+  if (state._routeRedigGen === undefined) {   // 부팅 때 판 길은 그날 길로 팠다
+    state._routeRedigGen = RD.coarseGen();
+    if (T619_LOCAL_H && RD.takeCoarseChanges) RD.takeCoarseChanges();   // ★[T619] 이때부터 바뀐 코스 칸을 모은다
+    return;
+  }
   const now = Date.now();
   const d = state.deps || {};
   if (d.ioBusy && d.ioBusy()) return;
@@ -2304,6 +2501,14 @@ function _routeRedigStep() {
     state.routeRedigQ = [];
     for (const k of state._routeUsed) if (state.routeCache.get(k)) state.routeRedigQ.push(k);
     state._routeUsed.clear();
+    //   ★[T619] 켬: 바뀐 코스 칸이 그 쌍 둘레(h 와 같은 상자 ± 여유 · 마을 칸에서 재니 스냅 반경만큼 더)에 든 쌍만 다시 판다 —
+    //     둘레 밖 칸은 그 쌍의 h 도 비용 하한도 안 바꾼다. 끔이면 이 절 무동작(종전 = 다닌 쌍 전부).
+    if (T619_LOCAL_H && RD.takeCoarseChanges) {
+      const chg = RD.takeCoarseChanges(), before = state.routeRedigQ.length;
+      state.routeRedigQ = _t619RedigKeep(state.routeRedigQ, chg);
+      _probe.routeRedigCand = (_probe.routeRedigCand || 0) + before;
+      _probe.routeRedigKept = (_probe.routeRedigKept || 0) + state.routeRedigQ.length;
+    }
     _probe.routeRedigPass = (_probe.routeRedigPass || 0) + 1;
     if (!state.routeRedigQ.length) return;
   }
@@ -2338,14 +2543,20 @@ function _routePrime() {
   }
   let ok = 0;
   state._routePrimedKeys = new Set();
+  let stale = 0;
   for (const r of rows) {
     let pts = null;
     if (r.pts) { try { pts = JSON.parse(r.pts); } catch (e) { continue; } }
+    //   ★[T619 ②ⓓ] 마을 칸은 쌍마다 — 행의 첫·끝 점이 지금 두 마을 가운데 칸이 아니면(마을이 없어졌거나 옮겼다) 그 쌍만 안 물려받는다.
+    { const ids = String(r.pair).split('_'), A = state.byDbId && state.byDbId.get(+ids[0]), B = state.byDbId && state.byDbId.get(+ids[1]);
+      const at = (p, v) => p && v && p.x === v.ccx * SZ + SZ / 2 && p.y === v.ccy * SZ + SZ / 2;
+      if (!A || !B || (pts && !(at(pts[0], A) && at(pts[pts.length - 1], B)))) { stale++; continue; } }
     state.routeCache.set(r.pair, pts);
     state._routePrimedKeys.add(r.pair);
     ok++;
   }
   state._routePrimed = ok;   // ★[T42] **부팅 때 몇 쌍을 물려받았나** — 하네스의 판정 기준(시각에 안 흔들린다)
+  state._routeStale = stale;   // ★[T619] 마을 칸이 달라 안 물려받은 쌍
   if (ok) console.log(`[${state.zoneId}] 🐂 교역로 캐시 복원: ${ok}쌍 (A* 를 그만큼 안 돈다)`);
 }
 // ★[T42 테스트 전용 관측·감사 — zone.js `/routedbg` 가 `E2E_GIVE` 로 게이트한다]
@@ -2371,6 +2582,7 @@ function routeDebug(opts) {
                 humans: (() => { let n = 0; const pl = state.deps && state.deps.players;
                   if (pl) for (const p of pl.values()) if (!p.isNpc) n++; return n; })(),
                 primed: state._routePrimed | 0, coldPrimed: _probe.routeColdPrimed | 0,
+                stale: state._routeStale | 0,   // ★[T619] 마을 칸이 달라 안 물려받은 쌍
                 db: (state.db && state.db.countTradeRoutes) ? state.db.countTradeRoutes(state.zoneId) : -1 };
   // ★★[T85] **재개형 감사** — 캐시에 든 길(동기 문이 판 것)과 **재개형으로 다시 판 길**이 비트 동일인가.
   //   ★왜 이 자리인가: 579쌍은 **정본 시드 세계의 실제 쌍**이다(선계산 큐가 세운 그것) —
@@ -2536,13 +2748,19 @@ function _walkResume(key, coarse, budgetMs) {
   const over = () => budgetMs > 0 && Date.now() - t0 >= budgetMs;
   while (J.i < N.length - 1) {
     if (over()) return { done: false };   // 구간을 시작하기 **전**에 잰다(구간 하나는 작다 — 넓은 돌아가기만 아래에서 조각낸다)
-    const a = N[J.i] || (N[J.i] = _walkNodeCell(coarse[J.i].x, coarse[J.i].y)), b = N[J.i + 1] || (N[J.i + 1] = _walkNodeCell(coarse[J.i + 1].x, coarse[J.i + 1].y));
+    // ★[T617 ①] 노드 칸 잡기(`_walkNodeCell` — 처음 닿는 칸은 나무 술어가 청크를 낳는다)와 가까운 길(`localPath`) **사이에도** 잰다.
+    //   멈춘 자리는 일(J)에 남는다 — 잡은 노드 칸은 `N` 에, 다음에 볼 반경은 `J.ri` 에. 다음 부름은 거기서 잇는다(다시 하는 일 0 · 같은 순서).
+    //   T605 실측: 이 부름의 35%가 16ms 를 넘었다(최대 30~41ms) — 넘은 몫이 이 셋(노드 칸 둘 · 반경 둘)에 몰려 있었다.
+    if (!N[J.i]) { N[J.i] = _walkNodeCell(coarse[J.i].x, coarse[J.i].y); if (over()) return { done: false }; }
+    if (!N[J.i + 1]) { N[J.i + 1] = _walkNodeCell(coarse[J.i + 1].x, coarse[J.i + 1].y); if (over()) return { done: false }; }
+    const a = N[J.i], b = N[J.i + 1];
     if (!J.cells.length) J.cells.push(a);
     if (a.x !== b.x || a.y !== b.y) {
       const sk = a.x * 65536 + a.y + '>' + (b.x * 65536 + b.y);
       let seg = state._walkSegFar && state._walkSegFar.has(sk) ? state._walkSegFar.get(sk) : undefined;   // 넓혀서 푼 구간은 쌍을 건너 한 번만
       if (seg === undefined && !J.farS) {
-        for (let ri = 0; ri < WALK_NEAR_RS.length && !seg; ri++) {
+        for (let ri = J.ri | 0; ri < WALK_NEAR_RS.length && !seg; ri++) {
+          if (ri > (J.ri | 0) && over()) { J.ri = ri; return { done: false }; }   // ★[T617 ①] 반경 사이 — 못 푼 반경은 다시 안 판다(`J.ri` 부터)
           const r = WALK_NEAR_RS[ri], side = Math.max(Math.abs(b.x - a.x), Math.abs(b.y - a.y)) + 2 * r + 1;
           seg = PathCore.localPath(a.x, a.y, b.x, b.y, { blockedStep, prefer, radius: r, maxNodes: side * side });
         }
@@ -2553,7 +2771,7 @@ function _walkResume(key, coarse, budgetMs) {
       }
       if (J.farS) {
         for (;;) {
-          const r = PathCore.pathStep(J.farS, 512);
+          const r = PathCore.pathStep(J.farS, PATH_STEP_NODES);   // ★[T617 ①] 512 → 교역로 재개형과 같은 알갱이(32) — 512 한 걸음이 최대 40~52ms 였다(나무 술어가 청크를 낳는 칸). 양보는 반복 사이에서만(path-core 보증 · 같은 길)
           if (r.done) { seg = r.path; J.farS = null; (state._walkSegFar || (state._walkSegFar = new Map())).set(sk, seg || null); if (seg) J.far++; break; }
           if (over()) return { done: false };
         }
@@ -2561,7 +2779,7 @@ function _walkResume(key, coarse, budgetMs) {
       if (seg && seg.length) { for (let k = 1; k < seg.length; k++) J.cells.push(seg[k]); }
       else { J.cells.push(b); J.straight++; }
     }
-    J.i++;
+    J.i++; J.ri = 0;   // ★[T617 ①] 다음 구간은 첫 반경부터
   }
   // 셀 → px(셀 중심) · 끝점은 교역로의 그 px(회관 중심) 그대로
   if (!J.px) {
@@ -3321,7 +3539,7 @@ function xzonePerf() {
       depart: c.departDay, arrive: c.arriveDay, back: c.returnArriveDay, cross: c._xzCross ? c._xzCross.day : null, xback: c._xzBack ? c._xzBack.day : null });
   }
   return { zone: state.zoneId, day: state.world.day, g: state.lastGameDay, dayMs: state.dayMs, epoch: state.epoch, peers: X.host.peers, ready: X.core.peersReady(),
-    geo: X.host.hs.geo, host: X.host.hs, core: X.core.st, st: X.st, stubs: (X.core.X.stubs || []).map((s) => s.name), retry: X.retry.length,
+    geo: X.host.hs.geo, host: X.host.hs, core: X.core.st, live: X.core.live ? X.core.live() : null, st: X.st, stubs: (X.core.X.stubs || []).map((s) => s.name), retry: X.retry.length,
     bodies, caravans: cars, trace: X.trace.slice(-200) };
 }
 
@@ -3673,7 +3891,8 @@ function invalidateTradeDistances(cx, cy) { // eslint-disable-line no-unused-var
   if (state.ready) { try { _routeWarmBuild(); } catch (e) {} }   // ★[T42 ①ⓑ] 다 버렸으니 다시 데울 목록을 세운다
   lifeSiteResetAll();   // ★[T41 ①] 지형이 바뀌면 옛 거부가 뒤집힐 수 있다 — 표지 + 거부 캐시 파기(셋째).
   if (state._route) { state._route.blk.fill(0); if (state._route.openN) state._route.openN.fill(-1); }   // ★[T578 ③] 칸 안 열린 수 메모도
-  if (state._walkSegFar) state._walkSegFar.clear();   // ★[T578 ②] 넓혀서 푼 걷기 구간도(벽이 서면 돌아갈 길이 바뀐다)
+  if (state._walkSegFar) state._walkSegFar.clear();
+  _t598Forget(cx, cy);   // ★[T598] 칸 배수 · 이웃 잇기 메모도(벽이 서면 바뀐다 — 벽 칸을 주면 그 코스 칸 둘레만 · 손잡이 끔이면 배열이 없어 무동작)
   if (state._distBlk) state._distBlk.fill(0);   // ★[배치 12] 교역 거리행렬 코스 격자도 같은 훅에서 비운다(캐러밴 A* 격자와 동형)
   state._distIncrFrom = -1;   // ★[배치 12] 지형이 바뀌면 **옛 쌍도 썩는다** — 증분 취소, 다음 재계산은 전쌍
 }
@@ -3952,6 +4171,7 @@ function init(deps) {
       const cells = state.villages.reduce((s, v) => s + (v._bnd ? v._bnd.length / 3 : 0), 0);
       console.log(`[${ZONE_ID}] 🏘️ Stage4A 영토: 경계 ${bndN}/${state.villages.length}곳(셀 ${cells}, ≈${(JSON.stringify(state.clientPayload).length / 1024).toFixed(0)}KB — welcome 1회) · 원근사 폴백 ${state.villages.length - bndN}곳`);
     }
+    if (T598_ROUTE_COST) _t598FootBuild();   // ★[T598] 집채 발자국 칸(교역로·거리행렬 비용 — 손잡이 켬에서만 · 끔이면 이 줄 무동작)
     for (const vil of state.villages) delete vil._bRows; // 수만 행 재참조 방지(메모리)
 
     // --- 교역 거리 행렬(BFS·지형) 계산·주입 — 시딩·복원 공통(지형 정적, 부팅 1회. 소요는 로그에) ---
@@ -5780,6 +6000,7 @@ function __p3Bind(mock) {
     _warEngage, _warAfterDaily, _warEndFight, _warBuildRectIndex, _warBlockedCell, _warWorld, warPerf, _warOrderFallback, _warToStandoff,
     _warDraftPids, _warReleasePid, econDayToMs, _warEnsureBody, _warSampleComp, _vbFootprint,
     threatOf, _warWriteThreats, _warOutMul, _lifeJobSites, _lifeJobSiteOK, _warRoutePts, _warTreeCell, computeRoutePts,
+    _t619Region, _t619RedigKeep,   // ★[T619] 쌍 둘레 · 다시 파기 거르개 — 자(`t619-h-audit`)가 **이 함수**로 센다(사본 0)
     _econSameOf, _warEatBySpoil,   // ★[T458] 같은 물건 한 줄 · 상하는 것부터 — 하네스가 **이 함수**로 등가 표를 센다(사본 0)
     _warLootAccept, _warLootPickup,   // ★[T466] 약탈 = 행위 — 하네스가 운영과 같은 훅을 war-core 에 건다
     _warSnapToSlots, _warStandNear, _warPathNext, _warReleaseAdv, _warDetourFor,   // ★[T541] 막힌 슬롯 → 설 수 있는 가장 가까운 칸 · 막힌 곧은 걸음 → 걸음 경로 — 하네스가 **이 함수들**을 부른다
@@ -6022,8 +6243,9 @@ function _t340Try(vil, npc, now, day, h, ws) {
     const _ch = (_RP && _RP.on()) ? (ids, u) => _RP.chooseSpecies('fishFresh', state.zoneId, cx * SZ + SZ / 2, cy * SZ + SZ / 2, u, null, ids) : undefined;
     // ★[T593 ④] 바다 칸 물가에 섰으면 바다 표(플레이어와 같은 표 · 해역은 바이옴) — 아니면 종전 민물 줄 그대로(끔이면 `_sea` 는 늘 null).
     const _sea = _t593SeaBank(cx, cy);
-    const _sp = _sea ? _seaTbl().pick(_seaTbl().areaOfZone(state.zoneId), _sea, day, h ^ cx ^ Math.imul(cy, 0x85ebca6b))
-      : _fresh().pick(_t312Water(vil), day, h ^ cx ^ Math.imul(cy, 0x85ebca6b), _ch);
+    //   ★[T602] 해역 = 그 물가 칸의 해안 구간(`areaAt` — 플레이어와 같은 함수 · 끔이면 T593 그대로 바이옴)
+    const _sp = _sea ? _seaTbl().pick(_seaTbl().areaAt(state.zoneId, cx * SZ + SZ / 2, cy * SZ + SZ / 2), _sea, day, h ^ cx ^ Math.imul(cy, 0x85ebca6b))
+      : _fresh().pick(_t312Water(vil), day, h ^ cx ^ Math.imul(cy, 0x85ebca6b), _ch, state.zoneId);   // ★[T609] 존(민물 표 켬이면 열도 가물치 뺌)
     if (!_sp) return 'none';   // 그 물·그 철엔 사는 종이 없다(종전 `!_sp` 자리 — 라벨 '드리움')
     const n = (npc._t340N = (npc._t340N || 0) + 1);
     const pl = F.plan(sp, stock01, now, _t340Rng(h ^ Math.imul(n, 0x9e3779b9) ^ Math.imul(day, 0x85ebca6b)));
@@ -10916,6 +11138,7 @@ module.exports = { streamStat, fishPerf, woodPerf, foragePerf, farmPerf,   // �
   villagesBusy, villageWait,   // ★[T1 §2-②] "장부 마감 중" 큐 — zone.js 가 마을 요청만 이 문으로 보낸다
   dayNow: _dayNow,   // ★[T1] 마감 중이면 **경계의 순간**을 돌려준다 — 벽시계 적분(광맥 재생)이 조각 순서에 흔들리지 않게
   routeDebug,   // ★[T42] 교역로 캐시 관측·감사 — zone.js `/routedbg` 가 E2E_GIVE 로 게이트
+  routeWorldSig,   // ★[T619 ②] 세계 서명(교역로 입력 내용 해시) — 하네스가 '다른 칸은 안 바꾼다'를 순수 함수로 잰다
   tickSliceMs: () => TICK_SLICE_MS,   // ★[T1] `/perf` 가 '지금 어떤 예산으로 도는가'를 그대로 말하게(대조군 판별)
   // Stage 4A — zone.js 소비: 농지 lazy 실물화 / welcome 영토 페이로드 / 레거시 디듀프 판정
   farmTilesInRect, clientVillages, isLegacyVillageClaimed,

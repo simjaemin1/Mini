@@ -112,6 +112,7 @@
     <input type="file" id="refFile" accept=".json" style="display:none">
     <label class="chk"><input type="checkbox" id="refToggle" checked> 참조 지형 표시</label>
     <label class="chk"><input type="checkbox" id="bridgeToggle" checked> 🌉 다리 표시(읽기 전용 · 셀 단위) — 축 직선 아니면 빨강 경고</label>
+    <label class="chk"><input type="checkbox" id="coastToggle" checked> 🌊 해안 바다 띠(읽기 전용 · 1셀) — <span id="coastStamp">없음</span></label>
     <div class="row" style="display:flex;gap:6px;align-items:center;margin-top:2px">
       <select id="bridgeJump" style="flex:1;min-width:0"><option value="">🌉 다리로 이동…</option></select>
       <button class="btn" id="bridgeJumpBtn" style="width:auto;padding:4px 10px">이동</button>
@@ -129,6 +130,9 @@
   </div>
 
   <div id="right">
+    <h2>🌊 바다 위 (<span id="seaCount">0</span>)</h2>
+    <div class="hint" id="seaSum" style="margin-bottom:4px">해안 바다 띠를 켜면 바다 셀 위에 놓인 마을·광맥·숲·강 끝을 여기 적는다(누르면 그 자리로)</div>
+    <div id="seaList" style="max-height:220px;overflow:auto;margin-bottom:8px"></div>
     <h2>피처 목록 (<span id="fcount">0</span>)</h2>
     <div id="flist"></div>
     <h2>사용법</h2>
@@ -171,7 +175,7 @@ const TYPE_COLOR = { river:'#4aa6e8', ridge:'#b07a44', valley:'#8fd08a', forest:
 const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
 const S = {
   zone:'hanbando', ZW:70016, ZH:130016,
-  tool:'river', features:[], draft:null, sel:null, ref:null, showRef:true, showBridges:true, cellSrc:'edit',
+  tool:'river', features:[], draft:null, sel:null, ref:null, showRef:true, showBridges:true, showCoast:true, cellSrc:'edit',
   width:400, radius:1500, rx:7000, ry:5500, den:2.0,
   flags:{noFit:false,noValley:false,pinStart:false},
   view:{scale:1, ox:0, oy:0}, pan:null, drag:null, nextId:1, smooth:true, stroke:null,
@@ -351,9 +355,14 @@ function drawCellPreview(srcFeats){
 function render(){
   ctx.clearRect(0,0,cv.width,cv.height);
   if(S.multi) drawBgMulti(); else drawBgSingle();
+  drawCoast();
   if(S.showRef && S.ref){ if(S.multi) drawRefMulti(); else drawSet((S.ref[S.zone]||S.ref), true); }
+  const _sea = seaMarks();                // [T601 추신2] 바다 위 피처 — 강 구간은 밑에 빨간 테두리 · 점·원·강 끝은 위에 고리
+  if(_sea) drawSeaMarks(_sea, true);
   if(S.cellPreview){ drawCellPreview(cellPreviewSrc()); drawSet({features:feats()}, true); }
   else drawSet({features:feats()}, false);
+  if(_sea) drawSeaMarks(_sea, false);
+  renderSeaList(_sea);
   if(S.draft) drawFeature(S.draft, false, true);
   // ★★[11차 3차 — 실화면 교정] 다리는 **맨 마지막에** 그린다.
   //   앞서 참조 지형 바로 뒤에 그렸더니 편집 피처(사용자가 그리는 강)가 그 위를 덮어 다리가 강 밑으로 사라졌다.
@@ -438,6 +447,7 @@ let WORK_BAKED = null; // @inline-work — 레포 판은 비어 있다(아래 bo
 //   에디터는 작업을 localStorage 에 자동저장하고 **시작할 때 되살린다**. 그래서 파일을 새로 받아도
 //   새로고침만 해서는 옛 작업이 그대로 뜬다 — 재민이 두 번 당한 함정이 정확히 이것이다.
 //   내장해 두면 버튼 한 번으로 최신이 되고, 되살린 작업이 낡았으면 배너로 알린다.
+let COAST_BAKED = null; // @inline-coast — 해안 바다 띠(맥 사본은 build-map-editor 가 박는다 · 레포 판은 map-editor-coast.json 을 fetch)
 let BR_BAKED = {}; // @inline-bridges — 위와 같다(다리 셀 스냅샷)
 function brCellsOf(zoneKey, zd){
   const fromRef = (zd && zd.bridges) || null;
@@ -512,6 +522,113 @@ function drawBgMulti(){
   ctx.setLineDash([]);
   ctx.fillStyle='#cdd6df'; ctx.font='bold 11px sans-serif'; ctx.textAlign='center';
   for(const z of MZ){ const o=WZONES[z].off,s=WZONES[z].size; if(s[0]*S.view.scale<42) continue; ctx.fillText(z, w2sx(o[0]+s[0]/2), w2sy(o[1])+15); }
+}
+// ★[PM 2026-10-03 · 재민 "에디터에서 해안선이 적용된 판으로 봐야"] 해안 바다 띠 — 서버 정본 `generateCoastlineWaterTiles`(T588 b) 마스크 ·
+//   한반도는 남쪽 90셀 평행이동(족보 564). 읽기 전용 오버레이 · 1px = 1셀(32px) · 굽기 = `scripts/editor-coast-bake.py`.
+//   정본 굽기(T604 추신3 coastShift)가 들어오면 같은 스크립트로 다시 굽는다. 바다 위 피처(마을·광맥·강 끝)를 보고 지형을 고치라고 있는 층.
+const _coastImg = {};
+function coastImg(z){
+  if(!COAST_BAKED || !COAST_BAKED.zones || !COAST_BAKED.zones[z]) return null;
+  if(!_coastImg[z]){ const im=new Image(); im.onload=()=>{ _seaGen++; render(); }; im.src=COAST_BAKED.zones[z].png; _coastImg[z]=im; }
+  return _coastImg[z].complete ? _coastImg[z] : null;
+}
+function drawCoastZone(z, off){
+  const im=coastImg(z); if(!im) return; const d=COAST_BAKED.zones[z];
+  ctx.save(); ctx.imageSmoothingEnabled=false; ctx.globalAlpha=0.92;
+  ctx.drawImage(im, w2sx(off[0]), w2sy(off[1]), d.nx*32*S.view.scale, d.ny*32*S.view.scale);
+  ctx.restore();
+}
+function drawCoast(){
+  if(!S.showCoast || !COAST_BAKED) return;
+  if(S.multi){ for(const z of MZ){ if(WZONES[z]) drawCoastZone(z, WZONES[z].off); } }
+  else drawCoastZone(S.zone, [0,0]);
+}
+// ★[T601 추신2] **바다 위 피처** — 해안 바다 띠 셀(위 층과 같은 PNG · 1px = 1셀) 위에 놓인 마을·광맥·숲(중심)과 강(줄기 점 · 끝)을 빨갛게.
+//   재민이 이 층을 보며 지형을 고친다(족보 563·564 — 바다 위 정본은 지우거나 옮기지 않는다 · 목록만). 읽기 전용 — 작업 데이터 무변.
+//   강: 꼭짓점이 바다 셀 위면 "바다 위 점"(T604 추신3 셈과 같은 자 — 강 n줄 m점) · 줄기를 32px(1셀)마다 짚어 바다 위 구간은 빨간 테두리 · 끝점이 바다면 끝에 빨간 고리.
+let _seaGen = 0;              // 마스크가 새로 풀릴 때마다 +1(메모 무효)
+const _coastMask = {};
+function coastMask(z){
+  if(_coastMask[z]) return _coastMask[z];
+  const im = coastImg(z); if(!im) return null;
+  const d = COAST_BAKED.zones[z], oc = document.createElement('canvas'); oc.width = d.nx; oc.height = d.ny;
+  const g = oc.getContext('2d'); g.drawImage(im, 0, 0);
+  const px = g.getImageData(0, 0, d.nx, d.ny).data, M = new Uint8Array(d.nx * d.ny);
+  for(let i = 0; i < M.length; i++) M[i] = px[i*4+3] > 0 ? 1 : 0;   // 팔레트 0 = 투명(뭍) · 1 = 바다
+  return (_coastMask[z] = { M, nx: d.nx, ny: d.ny });
+}
+function seaAt(x, y){   // 모델 좌표(단일 = 존 로컬 · 전체 월드 = 세계)
+  let z = S.zone, lx = x, ly = y;
+  if(S.multi){ z = zoneAt(x, y); if(!z) return false; lx = x - WZONES[z].off[0]; ly = y - WZONES[z].off[1]; }
+  const c = coastMask(z); if(!c) return false;
+  const cx = Math.floor(lx / 32), cy = Math.floor(ly / 32);
+  return cx >= 0 && cy >= 0 && cx < c.nx && cy < c.ny && c.M[cy * c.nx + cx] === 1;
+}
+const SEA_T = { river:'강', village:'마을', ore:'광맥', forest:'숲' };
+const _seaMemo = new WeakMap();
+function seaOf(f){
+  if(!SEA_T[f.type]) return null;
+  let sig = S.multi + '|' + S.zone + '|' + _seaGen + '|';
+  if(f.path){ let a = f.path.length; for(const p of f.path) a += p.x * 3 + p.y * 7 + (p.w || 0); sig += a; } else if(f.center) sig += f.center.x + ',' + f.center.y;
+  const m = _seaMemo.get(f); if(m && m.sig === sig) return m.v;
+  let v = null;
+  if(f.type === 'river' && f.path && f.path.length){
+    let pts = 0; const segs = [];
+    for(const p of f.path) if(seaAt(p.x, p.y)) pts++;
+    for(let i = 0; i < f.path.length - 1; i++){ const a = f.path[i], b = f.path[i+1];
+      const n = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / 32)); let run = -1;
+      for(let t = 0; t <= n; t++){ const on = seaAt(a.x + (b.x - a.x) * t / n, a.y + (b.y - a.y) * t / n);
+        if(on && run < 0) run = t; if((!on || t === n) && run >= 0){ const e = on ? t : t - 1; segs.push([a.x + (b.x-a.x)*run/n, a.y + (b.y-a.y)*run/n, a.x + (b.x-a.x)*e/n, a.y + (b.y-a.y)*e/n, ((a.w||300) + (b.w||300)) / 2]); run = -1; } } }
+    const p0 = f.path[0], p1 = f.path[f.path.length - 1];
+    const e0 = seaAt(p0.x, p0.y), e1 = f.path.length > 1 && seaAt(p1.x, p1.y);
+    if(pts || segs.length) v = { pts, segs, ends: [e0 ? p0 : null, e1 ? p1 : null].filter(Boolean) };
+  } else if(f.center && seaAt(f.center.x, f.center.y)) v = { pts: 1 };
+  _seaMemo.set(f, { sig, v }); return v;
+}
+function seaMarks(){
+  if(!S.showCoast || !COAST_BAKED) return null;
+  const out = []; for(const f of feats()){ if(!visOK(f.type)) continue; const v = seaOf(f); if(v) out.push([f, v]); }
+  return out;
+}
+function drawSeaMarks(list, under){
+  ctx.save(); ctx.strokeStyle = '#ff2a2a'; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  for(const [f, v] of list){
+    if(f.type === 'river'){
+      if(under){ for(const g of v.segs){ ctx.lineWidth = Math.max(1.2, g[4] * S.view.scale) + 5; ctx.beginPath(); ctx.moveTo(w2sx(g[0]), w2sy(g[1])); ctx.lineTo(w2sx(g[2]), w2sy(g[3])); ctx.stroke(); } }
+      else { ctx.lineWidth = 3; for(const p of v.ends){ ctx.beginPath(); ctx.arc(w2sx(p.x), w2sy(p.y), 8, 0, 7); ctx.stroke(); } }
+    } else if(!under){
+      if(f.type === 'village'){ ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(w2sx(f.center.x), w2sy(f.center.y), 10, 0, 7); ctx.stroke(); }
+      else { const rx = (f.rx ?? f.radius ?? 0) * S.view.scale, ry = (f.ry ?? f.radius ?? 0) * S.view.scale;
+        ctx.lineWidth = 2.5; ctx.beginPath(); ctx.ellipse(w2sx(f.center.x), w2sy(f.center.y), Math.max(6, rx), Math.max(6, ry), 0, 0, 7); ctx.stroke(); }
+    }
+  }
+  ctx.restore();
+}
+let _seaListKey = '';
+function renderSeaList(list){
+  const cnt = document.getElementById('seaCount'), sum = document.getElementById('seaSum'), el = document.getElementById('seaList'); if(!el) return;
+  const key = list ? list.map(([f, v]) => f.id + ':' + v.pts + ':' + (v.ends ? v.ends.length : 0)).join(',') + '|' + (S.sel && S.sel.id) : 'off';
+  if(key === _seaListKey) return; _seaListKey = key;
+  el.innerHTML = '';
+  if(!list){ cnt.textContent = '–'; sum.textContent = COAST_BAKED ? '해안 바다 띠가 꺼져 있다' : '해안 층 없음(map-editor-coast.json 을 못 읽었다)'; return; }
+  const by = { river: [], village: [], ore: [], forest: [] }; for(const r of list) by[r[0].type].push(r);
+  const rv = by.river.filter(([, v]) => v.pts > 0), rpts = rv.reduce((a, [, v]) => a + v.pts, 0), rend = by.river.filter(([, v]) => v.ends.length).length;
+  cnt.textContent = list.length;
+  sum.textContent = `강 ${rv.length}줄 ${rpts}점(끝이 바다 ${rend}) · 마을 ${by.village.length} · 광맥 ${by.ore.length} · 숲 ${by.forest.length}` + (COAST_BAKED.stamp ? ' · 해안 ' + COAST_BAKED.stamp : '');
+  for(const t of ['village', 'river', 'ore', 'forest']) for(const [f, v] of by[t]){
+    const d = document.createElement('div'); d.className = 'fitem' + (S.sel === f ? ' sel' : ''); d.dataset.sea = t;
+    const extra = t === 'river' ? ` — 점 ${v.pts}${v.ends.length ? ' · 끝 ' + v.ends.length : ''}` : '';
+    d.innerHTML = `<span class="dot" style="background:#ff2a2a"></span><span class="nm">${SEA_T[t]} ${f.name || '(이름)'}${extra}</span>`;
+    d.onclick = () => seaJump(f, v);
+    el.appendChild(d);
+  }
+}
+function seaJump(f, v){
+  let p = f.center;
+  if(f.type === 'river'){ p = (v.ends && v.ends[0]) || f.path.find(q => seaAt(q.x, q.y)) || (v.segs[0] ? { x: v.segs[0][0], y: v.segs[0][1] } : f.path[0]); }
+  S.view.scale = Math.max(S.view.scale, 0.06);
+  S.view.ox = cv.width / 2 - p.x * S.view.scale; S.view.oy = cv.height / 2 - p.y * S.view.scale;
+  S.sel = f; S.selPt = null; refresh();
 }
 function drawRefMulti(){ for(const z in S.ref){ if(!WZONES[z]) continue; drawSetOff(S.ref[z], WZONES[z].off); } }
 // ★[11차 재민 지시] **물이 산 위**다. 그리는 순서 = 숲 → 산맥 → 계곡 → 호수 → 강.
@@ -931,6 +1048,7 @@ document.getElementById('loadWorkBtn').onclick=()=>document.getElementById('work
 document.getElementById('workFile').onchange=e=>{ const f=e.target.files[0]; if(!f)return; const rd=new FileReader(); rd.onload=()=>{ try{ loadWork(JSON.parse(rd.result)); }catch(err){ alert('파싱 실패: '+err.message); } }; rd.readAsText(f); };
 document.getElementById('refToggle').onchange=e=>{ S.showRef=e.target.checked; render(); };
 document.getElementById('bridgeToggle').onchange=e=>{ S.showBridges=e.target.checked; render(); };
+document.getElementById('coastToggle').onchange=e=>{ S.showCoast=e.target.checked; render(); };
 document.getElementById('cellSrc').onchange=e=>{
   S.cellSrc = e.target.value;
   if(S.cellSrc==='ref' && !S.ref) toast('참조 지형을 먼저 불러오세요 — 「참조 지형 불러오기(JSON)」');
@@ -1064,6 +1182,12 @@ document.getElementById('zoneInfo').textContent='크기 '+S.ZW+' × '+S.ZH+' px 
 // ★[T553 ④] 내장 작업·다리는 **두 길**로 온다 — ⓐ 맥 사본(file://)은 `scripts/build-map-editor.js` 가 위 두 줄에 박는다(fetch 불요)
 //   ⓑ 레포 판(`lab/map-editor.html`)은 같은 폴더의 `map-editor-baked.json` 을 fetch 한다. file:// 이라 fetch 가 막히고 박힌 것도 없으면
 //   내장 없이 뜬다(작업 불러오기 · 자동저장 복원은 그대로 — 두 판 다 열린다). 받은 뒤에 한 번만 시작한다.
+function bootCoast(){
+  if(COAST_BAKED) return Promise.resolve();
+  let p; try{ p = fetch('map-editor-coast.json'); }catch(e){ return Promise.resolve(); }
+  return p.then(r=>{ if(!r.ok) throw new Error(r.status); return r.json(); }).then(j=>{ COAST_BAKED=j; }).catch(()=>{});
+}
+function showCoastStamp(){ const el=document.getElementById('coastStamp'); if(el) el.textContent = COAST_BAKED ? (COAST_BAKED.stamp||'?') : '없음(map-editor-coast.json 을 못 읽었다)'; }
 function bootBaked(){
   if(WORK_BAKED) return Promise.resolve('inline');
   let p; try{ p = fetch('map-editor-baked.json'); }catch(e){ return Promise.resolve('none'); }
@@ -1098,7 +1222,7 @@ function showStamp(){
   } else if(b) b.remove();
 }
 document.getElementById('loadBakedBtn').onclick=()=>{ if(!WORK_BAKED){ toast('내장 작업 없음 — map-editor-baked.json 을 못 읽었다'); return; } loadWork(WORK_BAKED); toast('내장 최신 작업 불러옴 · '+WORK_BAKED.stamp); };
-bootBaked().then(bootEditor);
+bootCoast().then(showCoastStamp).then(bootBaked).then(bootEditor);
 
 </script>
 </body>

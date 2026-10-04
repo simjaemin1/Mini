@@ -46,6 +46,20 @@ const d = doc[ZID];
 const Z = ZONES[ZID];
 const CELL = 32;
 const W = Math.round(Z.zoneWidth / CELL), H = Math.round(Z.zoneHeight / CELL);
+// ★★[T595 ③ 2026-10-03] **물이 두 층이다 — 이 계획기도 한 층만 보고 있었다**(T348 이 `plan-bridges-v2` 에서 고친 그 병).
+//   서버 통행 정본(`zone.js isTerrainBlockedLocal`)의 물 = ⓐ 해안선 띠(`chunk.generateCoastlineWaterTiles` = `WATER_TILES`) ∪ ⓑ 손그림 강·호수
+//   (`terrain.isWaterCellLocal`). 이 계획기는 ⓑ만 봐서 닛폰 7000 임시 판 자잘 504 개 중 **28%가 바다 띠 위**에 앉았다(보고/T586 · T595 ③).
+//   ⇒ 표본(4셀 격자)의 물 판정을 두 층 합으로 바꾼다 — 조합은 `plan-bridges-v2.js` 의 그 줄 그대로(새 규칙 0 · 사본 — #31 회부 그대로).
+//   끔(`T595_BAND=0`)이면 ⓑ만 본다 = 종전 계획 바이트 그대로.
+const _BAND_ON = process.env.T595_BAND !== '0';
+const _BAND = _BAND_ON ? (() => {
+  const _oceanRects = Object.values(ZONES).filter((z) => z.isOcean)
+    .map((z) => ({ x0: z.worldOffsetX, y0: z.worldOffsetY, x1: z.worldOffsetX + z.zoneWidth, y1: z.worldOffsetY + z.zoneHeight }));
+  return require(path.join(__dirname, '..', 'server', 'chunk'))
+    .generateCoastlineWaterTiles(Object.assign({ id: ZID }, Z), CELL, require(path.join(__dirname, '..', 'server', 'zone-config')).findZoneAt, _oceanRects);
+})() : null;
+if (_BAND) console.log(`[T595] 해안선 띠 ${_BAND.size.toLocaleString()}칸 (존의 ${(_BAND.size / (W * H) * 100).toFixed(1)}%) — 서버와 같은 물을 본다`);
+const isWaterAt = (px, py) => (_BAND !== null && _BAND.has(`${Math.floor(px / CELL)}_${Math.floor(py / CELL)}`)) || terrain.isWaterCellLocal(ZID, px, py);
 
 // 대중소 50 + (옵션) 자잘. [개수, 반경(셀), p_peak 기준]
 // ★[재민 확정] 등급은 **크기와 무관**하다 — pk0 는 이제 orePeakFor 가 무시한다(ORE_TIER_BASE 고정).
@@ -95,7 +109,7 @@ for (let gy = 0; gy < gh; gy++) {
   for (let gx = 0; gx < gw; gx++) {
     const px = (gx * S + (S >> 1)) * CELL + 16, py = (gy * S + (S >> 1)) * CELL + 16;
     const i = gy * gw + gx;
-    if (terrain.isWaterCellLocal(ZID, px, py)) water[i] = 1;
+    if (isWaterAt(px, py)) water[i] = 1;
     else if (terrain.isRockCellLocal(ZID, px, py)) rock[i] = 1;
   }
   if (gy % 200 === 0) process.stdout.write('  y ' + gy + '/' + gh + '\r');
@@ -109,7 +123,7 @@ if (MINOR) {
   const kind = new Uint8Array(gw * gh);
   for (let gy = 0; gy < gh; gy++) for (let gx = 0; gx < gw; gx++) {
     const x = gx * S + (S >> 1), y = gy * S + (S >> 1), px = x * CELL + 16, py = y * CELL + 16;
-    kind[gy * gw + gx] = terrain.isWaterCellLocal(ZID, px, py) ? 1
+    kind[gy * gw + gx] = isWaterAt(px, py) ? 1
       : (terrain.isRockCellLocal(ZID, px, py) ? 2 : (terrain.getForestMultiplier(ZID, px, py) > 1.2 ? 3 : 0));
   }
   const cham = (pred) => {

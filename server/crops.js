@@ -115,7 +115,40 @@ function hungerOf(id) {
   return K.hungerOf(id);
 }
 function tastyOf(id) { const c = get(id); return !!c && c.taste >= TASTE_MORALE_AT; }
-function growDaysOf(id) { const c = get(id); return c ? Math.max(1, Math.round(c.growDays * GROW_SCALE)) : 0; }
+// ── ★★★[T594 2026-10-03] 작물 철 고증 — 손잡이 `T594_CROP_CAL`(끔 기본 · 끔 = 카탈로그 그대로 비트 동일) ──
+//   달력(T570)이 드러낸 것: 카탈로그 `성장일(활동)` 이 실제 파종→수확 기간보다 짧다(벼 78일 → 7월 18일 수확 ↔ 실제 10월).
+//   켜면 성장일을 **고증 표**(`server/crop-cal.js` — 농사로 1차 원문 · 새 수 0)에서 **유도**한다:
+//     "파종창 가운데날에 심은 밭이 수확창 가운데날에 익는 활동일" — 셈은 이 파일의 휴면·춘화 규칙(T99) 그대로다
+//     (`vernalDay` · `_dormant`). 그래서 월동 작물도 같은 한 줄이고, 휴면 모델이 바뀌면 유도값이 같이 움직여
+//     수확은 실제 가운데날에 그대로 떨어진다(값을 여기 옮겨 적지 않는 까닭).
+//   ⚠표에 없는 작물(다년생 · 시설 작형만 · 출처 없음)은 켜도 카탈로그 그대로다(`crop-cal.js` 머리 · 보고 §1).
+//   ⚠파종창은 안 바꾼다(재민 xlsx) · 달력 끔(`T570_CALENDAR=0`)이면 날짜가 뜻이 없으니 이 갈래도 끈다.
+//   ★econ 무접촉 — econ 은 `T100_FIELD_YIELD` 를 켠 팔에서만 작물 시계를 읽는다(`seedFoodDays`) · 기본 판 바이트 그대로.
+const T594_CROP_CAL = _num('T594_CROP_CAL', 0) !== 0;
+let _CropCal;
+function _cropCal() { if (_CropCal === undefined) { try { _CropCal = require('./crop-cal'); } catch (e) { _CropCal = null; } } return _CropCal; }
+const _calDaysCache = new Map();
+// 고증 활동일 — **손잡이와 무관한 순수 유도**(랩 거울·하네스가 끈 판에서도 같은 수를 읽는다). 표에 없으면 null.
+function calDaysOf(id) {
+  if (_calDaysCache.has(id)) return _calDaysCache.get(id);
+  let v = null;
+  const M = _cropCal(), row = M && M.rowOf(id);
+  if (row && get(id) && require('./calendar').ON) {
+    const sp = M.spanOf(row);
+    const a = vernalDay(id, sp.sDay), b = sp.hDay;   // 월동이면 겨울 지난 다음 날부터(T99) · 1년생이면 심은 날 그대로
+    let n = 0;
+    for (let d = a; d < b; d++) if (!_dormant(id, d)) n++;
+    v = Math.max(1, n);
+  }
+  _calDaysCache.set(id, v);
+  return v;
+}
+function _growDaysRaw(id) {
+  const c = get(id); if (!c) return 0;
+  const g = T594_CROP_CAL ? calDaysOf(id) : null;
+  return g != null ? g : c.growDays;
+}
+function growDaysOf(id) { const c = get(id); return c ? Math.max(1, Math.round(_growDaysRaw(id) * GROW_SCALE)) : 0; }
 function kgOf(id) {
   const c = get(id); if (!c) return null;
   const sp = Specialty && Specialty.RESOURCES && Specialty.RESOURCES[id];
@@ -465,6 +498,7 @@ module.exports = {
   DATA, CROPS, IDS, SEED_PREFIX, _day, SEED_KG, KEEP_DAYS, GROUP_KG, GROUP_EMOJI, NON_FOOD_GROUPS,
   get, list, isCrop, isSeed, seedOf, cropOfSeed, isFood, kcalOf,
   keepDaysOf, seedKeepDaysOf, hungerOf, tastyOf, growDaysOf, kgOf, koOf, emojiOf,
+  T594_CROP_CAL, calDaysOf,   // ★[T594] 작물 철 고증 — 손잡이 · 고증 활동일(순수 유도 · 표에 없으면 null)
   seasonOfDay, sowSeasons, canSowOn, sowableIn, sowableOn, wildSeedAt, WILD_SEED_CHANCE,
   monthOf, sowMonthsOf, fitsField, sowableMonth, h32, MONTHS_PER_YEAR, ANCHOR_MONTH,
   lifecycleOf, isPerennial, isWinterCrop, LC_WINTER, LC_PERENNIAL,

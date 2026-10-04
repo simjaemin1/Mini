@@ -1970,7 +1970,37 @@ const observers = new Map();    // ws -> { viewerX, viewerY, lastSeen }
 const resources = new Map();
 const AOI_RADIUS = 800;         // 클라 VIEW_RADIUS(650) + 여유. 이 안의 player만 tick에 포함
 const claims = new Map();
-const buildings = new Map();    // id -> { id, dbId, type, ownerId, ownerName, x, y, data }
+// ★★[T621 2026-10-04 · T605 §4-6] `buildings` = Map 그대로 + **경계 띠 색인** — `syncGhostsToNeighbors` 가 100ms 마다 건물 **전부**를 훑던 것을
+//   띠 안 후보만 훑게 한다(관측자 0 에서 부름당 0.59ms = 틱 비용의 23% · 최대 8ms — T605 타이머 팔).
+//   ⓐ 후보 = 그 함수가 보내는 종류(벽·문·울타리) **이면서** 경계 띠(`GHOST_REACH` 안) — 그 함수의 거름 줄 그대로(`_ghostBandOf`).
+//      부서짐(`data.damaged`)·이웃 존·바다 거름은 바뀌는 값이라 색인에 안 싣고 그 함수가 매 부름 그대로 본다.
+//   ⓑ 넣고 빼는 자리 = 이 Map 의 set · delete · clear **한 자리**. 만드는 자리(13곳)·지우는 자리(villages.js 포함 13곳)를 하나씩 고치면
+//      빠뜨린 자리에서 조용히 갈린다 — 그래서 Map 자체가 색인을 같이 든다. 건물은 안 움직인다(x·y·type 은 만든 뒤 안 바뀐다 · 넣을 때 한 번 본다).
+//   ⓒ 색인 순서 = `buildings` 순서 ⇒ 보내는 목록이 **바이트 같다**: 새 키는 둘 다 끝에 붙는다 · 같은 키를 덮어써 후보가 새로 되면
+//      (Map 은 옛 자리를 지킨다) 색인을 통째로 다시 센다(드묾 — 지금 덮어쓰는 자리 0). 게이트 = `scripts/test-ghost-band.js`.
+const GHOST_REACH = 1200;   // 경계에서 유령을 보내는 폭(px) — `syncGhostsToNeighbors` 가 쓰던 그 수(새 수 0 · 함수 안에서 여기로 옮겼다)
+function _ghostBandOf(b) {   // 색인 후보 — `syncGhostsToNeighbors` 건물 거름의 종류·띠 줄 그대로
+  if (!b || (b.type !== 'wall' && b.type !== 'door' && b.type !== 'fence')) return false;
+  const zw = ZONE.zoneWidth, zh = ZONE.zoneHeight;
+  return b.x < GHOST_REACH || b.x > zw - GHOST_REACH || b.y < GHOST_REACH || b.y > zh - GHOST_REACH;
+}
+class _BuildingMap extends Map {
+  #band = new Map();
+  constructor() { super(); }   // 이터러블을 받지 않는다(Map 생성자가 set 을 부르면 색인이 아직 없다)
+  set(k, v) {
+    const had = super.has(k);
+    super.set(k, v);
+    const gb = this.#band;
+    if (_ghostBandOf(v)) { if (!had || gb.has(k)) gb.set(k, v); else this.#rebuild(); }
+    else gb.delete(k);
+    return this;
+  }
+  delete(k) { this.#band.delete(k); return super.delete(k); }
+  clear() { this.#band.clear(); super.clear(); }
+  ghostBand() { return this.#band.values(); }   // 띠 후보(순서 = `buildings` 순서)
+  #rebuild() { const gb = this.#band; gb.clear(); for (const [k, v] of super.entries()) if (_ghostBandOf(v)) gb.set(k, v); }
+}
+const buildings = new _BuildingMap();    // id -> { id, dbId, type, ownerId, ownerName, x, y, data }
 const mobs = new Map();         // mid -> { mid, type, x, y, vx, vy, hp, maxHp, aggroTarget, lastAttackAt, wanderUntil }
 // §4-4 P2 LOD 결판(근처만 실체화): 방어 마을권에 '관측자'(사람 player 또는 스펙테이터)가 반경 r(px) 안에 있나.
 //   villages.js 가 eta 도달 전쟁을 physical(battle-core 실시간) XOR headless 로 분기하는 판정자. center·r 모두 px(player 좌표계).
@@ -2836,7 +2866,12 @@ function spawnMob(type, opts = {}) {
   // DB에서 기존 mob 로드 — 없으면 바이옴별 신규 스폰
   const existing = db.getMobs();
   if (existing.length > 0) {
+    // ★[T622 · 손잡이 `T622_ZONE_FAUNA` 기본 끔] 켬이면 이 존에서 '없음'인 종(animals.js 존 칸 · 닛폰 호랑이)의 행은 **안 싣는다** —
+    //   행은 DB 에 그대로 둔다(지우지 않는다 · 끄면 돌아온다). 길들인 개체는 거르지 않는다. 끔이면 이 줄은 늘 false(옛 줄 그대로).
+    const { faunaOut } = require('./animals');
+    let _t622skip = 0;
     for (const row of existing) {
+      if (!row.tame_owner && faunaOut(row.type, ZONE_ID)) { _t622skip++; continue; }
       spawnMob(row.type, {
         dbId: row.id, x: row.x, y: row.y, hp: row.hp,
         tameOwner: row.tame_owner || null,
@@ -2844,6 +2879,7 @@ function spawnMob(type, opts = {}) {
       });
     }
     console.log(`[${ZONE_ID}] DB에서 mob ${existing.length}마리 로드`);
+    if (_t622skip) console.log(`[${ZONE_ID}] 🗾 T622 존 칸 — 이 존에서 없음인 종 ${_t622skip}마리는 안 실었다(DB 행은 그대로)`);
   } else if (ZONE.isOcean) {
     // 14.46-a: 해양 zone — mob 생성 안 함 (사슴/늑대 바다에 떠있으면 이상함).
     // 14.46-b에서 fish 추가 예정.
@@ -2853,8 +2889,11 @@ function spawnMob(type, opts = {}) {
     console.log(`[${ZONE_ID}] 🧹 cleanZone — mob spawn skip`);
   } else {
     // Phase 5-6b: zone biome 따라 huntableInBiome 활용. 사냥감 36종 다 활성.
-    const { huntableInBiome } = require('./animals');
-    const huntable = huntableInBiome(ZONE.biome);
+    //   ★[T622] 존을 같이 넘긴다 — 켬이면 이 존에서 '없음'인 종(닛폰 호랑이)이 목록에서 빠진다 · 끔이면 같은 배열(옛 줄 그대로)
+    const { huntableInBiome, faunaOn } = require('./animals');
+    const huntable = huntableInBiome(ZONE.biome, ZONE_ID);
+    if (faunaOn()) { const _out = huntableInBiome(ZONE.biome).filter((id) => huntable.indexOf(id) < 0);
+      if (_out.length) console.log(`[${ZONE_ID}] 🗾 T622 존 칸 — 이 존에서 없음: ${_out.map((id) => ANIMALS[id].ko + '(' + id + ')').join(' · ')} — 안 낳는다`); }
     const peaceful = huntable.filter(id => !ANIMALS[id].aggressive);
     const aggressive = huntable.filter(id => ANIMALS[id].aggressive);
     const TOTAL_PEACEFUL = 300;
@@ -8420,18 +8459,19 @@ function _fishSea() { return Fishing.T593_SEA ? (_fishSeaCtx || (_fishSeaCtx = {
 const Fresh = require('./freshfish');
 const Sea = require('./seafish');
 function _t593Water(sp) { return (sp && (sp.kind === 'lake' || sp.kind === 'mouth')) ? 'lake' : (sp && sp.estuary ? 'lower' : 'mid'); }
-function _t593Pool(sp, day) {
-  if (sp && sp.kind === 'sea') return Sea.poolOf(Sea.areaOfZone(ZONE_ID), sp.spot || 'coast', day);
-  return Fresh.poolOf(_t593Water(sp), day);
+// ★[T602] 해역 = 그 자리의 해안 구간(`Sea.areaAt` — 끔이면 T593 그대로 `areaOfZone`) · 그래서 자리(x, y)를 같이 넘긴다.
+function _t593Pool(sp, day, x, y) {
+  if (sp && sp.kind === 'sea') return Sea.poolOf(Sea.areaAt(ZONE_ID, x, y), sp.spot || 'coast', day);
+  return Fresh.poolOf(_t593Water(sp), day, ZONE_ID);   // ★[T609] 존 — 민물 표 켬이면 그 존에서 안 나는 종을 뺀다(끔이면 안 읽는다)
 }
 // 무는 종 하나 — **던질 때** 고른다(그 종의 kg 가 무게의 중앙값이라 입질 창도 그 종을 따른다 · `Fishing.plan` 다섯째 인자).
 //   `h` = 던짐 씨(사람 · 셀 · 게임일 · 던짐 횟수 — 대본 씨와 같은 다섯)를 정본 한 걸음으로 섞은 것 — 주사위 0 · 결정론.
 //   ⚠24비트 굴림(`_dt()` 의 `u`)을 2³² 로 늘려 쓰면 아랫 8비트가 비어 짝수 풀에서 한 종만 나온다(1차 판에서 실측으로 잡았다) — 그래서 씨 해시다.
 function _t593Pick(sp, x, y, h, day) {
-  if (sp && sp.kind === 'sea') return Sea.pick(Sea.areaOfZone(ZONE_ID), sp.spot || 'coast', day, h);
+  if (sp && sp.kind === 'sea') return Sea.pick(Sea.areaAt(ZONE_ID, x, y), sp.spot || 'coast', day, h);
   // 민물 — NPC 어부와 같은 특산 혼용 칸(`fishFresh` · 빈칸이면 고르게와 같아 null → 옛 줄)
   const _ch = RegionProfiles.on() ? (ids, uu) => RegionProfiles.chooseSpecies('fishFresh', ZONE_ID, x, y, uu, null, ids) : undefined;
-  return Fresh.pick(_t593Water(sp), day, h, _ch);
+  return Fresh.pick(_t593Water(sp), day, h, _ch, ZONE_ID);   // ★[T609] 존(위와 같다)
 }
 // 던질 자리 — 플레이어 주변에서 **가장 좋은 물 칸**을 서버가 고른다(클라가 자리를 못 속인다).
 function _castTargetFor(player) {
@@ -8466,11 +8506,13 @@ function tryFishCast(player) {
   if (cur && cur.state === 'wait') {   // 이미 던져 놨다 → 이건 **챔질**이다
     return tryFishStrike(player);
   }
+  // ★[T609 ②] 끌어올리는 중(싸움 단계 — 손잡이 `T609_BIG_WINDOW` a·b 켬만 생긴다) — 새로 던지지 않는다.
+  if (cur && cur.state === 'fight') { send(player.ws, { type: 'notice', text: '🎣 끌어올리는 중이다 — 조금만' }); return; }
   const tgt = _castTargetFor(player);
   if (!tgt) { send(player.ws, { type: 'notice', text: '🎣 여기선 물에 닿지 않는다 — 물가로 더 가까이' }); return; }
   // ★[T593 ③] 그 물·그 철에 사는 종이 없으면 던지지 않는다(NPC 어부의 `'none'` 과 같은 자리 — 빈 바늘을 만들지 않는다).
   const _day = Fishing.T593_SEA ? gameDayNow() : null;
-  if (Fishing.T593_SEA && !_t593Pool(tgt.sp, _day).length) {
+  if (Fishing.T593_SEA && !_t593Pool(tgt.sp, _day, tgt.x, tgt.y).length) {
     send(player.ws, { type: 'notice', text: `🎣 이 철엔 ${tgt.sp.kind === 'sea' ? '이 바다' : '이 물'}에서 무는 게 없다` }); return;
   }
   const cx = Math.floor(tgt.x / 32), cy = Math.floor(tgt.y / 32);
@@ -8488,6 +8530,7 @@ function tryFishCast(player) {
     biteAt: pl.biteAt, kg: pl.kg, windowMs: pl.windowMs, castAt: now, stock01,
   };
   if (_spc) { player._fish.day = _day; player._fish.species = _spc.id; }   // ★[T593] 던질 때 정한 그 종 · 그날(철)
+  if (pl.fightMs > 0) player._fish.fightMs = pl.fightMs;   // ★[T609 ②] 싸움 길이(켬만 — 끔이면 `plan` 이 이 칸을 안 낸다)
   _fishStats(player).casts++;
   // ★[T593] 힌트 — 켬이면 고른 그 자리(`tgt.sp` · 바다면 '바다'/'강어귀') · 끔이면 종전 그 식 그대로(네 인자 `spotAt` 재질의).
   const _hk = Fishing.T593_SEA ? tgt.sp : Fishing.spotAt(_terrain, ZONE_ID, tgt.x, tgt.y);
@@ -8523,6 +8566,19 @@ function tryFishStrike(player) {
   }
   // ── 걸었다 ──────────────────────────────────────────────────────────────
   Body.onLabor(player, 0.6);   // ★[신체 상태] 챔질도 노동이다(채광보다 가볍다)
+  // ★[T609 ②] 싸움 단계(손잡이 a·b 켬만 — `fightMs` 가 있을 때) — 걸었다 · 끌어올린다. 그 시간이 지나면 `_fishPoll` 이 손에 들린다
+  //   (그 사이 줄을 거두면 놓친다 — `fish_reel`). 끔이면 이 갈래를 안 타고 아래 그대로(같은 순서 · 같은 줄).
+  if (f.fightMs > 0) {
+    player._fish = Object.assign({}, f, { state: 'fight', landAt: now + f.fightMs });
+    send(player.ws, { type: 'fish_state', state: 'fight', x: f.x, y: f.y, landAt: player._fish.landAt, srvNow: now });
+    send(player.ws, { type: 'notice', text: `🎣 걸었다! 끌어올린다 — ${(f.fightMs / 1000).toFixed(1)}초` });
+    return;
+  }
+  return _fishLand(player, f, now);
+}
+// ★[T609 ②] 손에 든다 — 챔질이 걸린 그 순간(끔) 또는 싸움이 끝난 순간(켬 · `_fishPoll`). 몸통은 종전 줄 글자 그대로다.
+function _fishLand(player, f, now) {
+  const st = _fishStats(player);
   const kg = f.kg;
   // ★어장에서 **실제로 뺀 만큼만** 준다 — 없는 물고기를 주사위로 만들지 않는다.
   //   재고가 모자라면 잡히는 양도 그만큼 준다(빈 자리는 빈 바늘로 답한다).
@@ -11688,7 +11744,7 @@ function stepArrows(dt) {
 // 이웃 zone에 보낼 ghost 스냅샷 (경계 AOI 안 player) — 주기 송신
 function syncGhostsToNeighbors() {
   // 경계에서 GHOST_REACH 안에 있는 자기 player를 이웃 zone에 절대좌표로 송신
-  const GHOST_REACH = 1200;
+  // ★[T621] `GHOST_REACH` 는 모듈 상수(같은 1200 — 건물 색인과 한 수)
   const ox = ZONE.worldOffsetX, oy = ZONE.worldOffsetY, zw = ZONE.zoneWidth, zh = ZONE.zoneHeight;
   const byZone = {}; // targetZoneId -> [snap]
   for (const p of players.values()) {
@@ -11705,7 +11761,7 @@ function syncGhostsToNeighbors() {
   }
   // 경계 근처 벽/문/펜스를 이웃 zone에 (콜라이더 미러). 절대 cell + side.
   const bByZone = {};
-  for (const b of buildings.values()) {
+  for (const b of buildings.ghostBand()) {   // ★[T621] 경계 띠 색인(종류·띠 후보만 · `buildings` 순서) — 아래 거름 줄은 그대로 다시 본다
     if (b.type !== 'wall' && b.type !== 'door' && b.type !== 'fence') continue;
     if (b.data?.damaged) continue;
     const near = [];
@@ -14345,6 +14401,7 @@ const _fishStats2 = { bites: 0, expired: 0 };
 function _fishPoll(now) {
   for (const [, p] of players) {
     const f = p._fish;
+    if (f && f.state === 'fight') { if (now >= f.landAt) _fishLand(p, f, now); continue; }   // ★[T609 ②] 싸움 끝 = 손에 든다(켬만 생긴다)
     if (!f || f.state !== 'wait') continue;
     if (!f.bit && now >= f.biteAt) {
       f.bit = true; _fishStats2.bites++;

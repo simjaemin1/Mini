@@ -14,6 +14,7 @@ const path = require('path');
 const ROOT = path.join(__dirname, '..');
 const SRC = path.join(ROOT, 'lab', 'map-editor.html');
 const BAKED = path.join(ROOT, 'lab', 'map-editor-baked.json');
+const COAST = path.join(ROOT, 'lab', 'map-editor-coast.json');   // ★[PM 10-03] 해안 바다 띠(scripts/editor-coast-bake.py)
 const argv = process.argv.slice(2);
 
 if (argv[0] === '--extract') {
@@ -28,12 +29,14 @@ const out = argv[0];
 if (!out) { console.error('쓰는 법: node scripts/build-map-editor.js <out.html>'); process.exit(2); }
 const src = fs.readFileSync(SRC, 'utf8').split('\n');
 const B = JSON.parse(fs.readFileSync(BAKED, 'utf8'));
-let nw = 0, nb = 0;
+let nw = 0, nb = 0, nc = 0;
+const C = fs.existsSync(COAST) ? JSON.parse(fs.readFileSync(COAST, 'utf8')) : null;
 const res = src.map((l) => {
   if (/^let WORK_BAKED = null; \/\/ @inline-work/.test(l)) { nw++; return 'let WORK_BAKED = ' + JSON.stringify(B.work) + '; // @inline-work (박음 · scripts/build-map-editor.js)'; }
   if (/^let BR_BAKED = \{\}; \/\/ @inline-bridges/.test(l)) { nb++; return 'let BR_BAKED = ' + JSON.stringify(B.bridges) + '; // @inline-bridges (박음)'; }
+  if (/^let COAST_BAKED = null; \/\/ @inline-coast/.test(l)) { nc++; return C ? 'let COAST_BAKED = ' + JSON.stringify(C) + '; // @inline-coast (박음)' : l; }
   return l;
 });
-if (nw !== 1 || nb !== 1) { console.error('[build-map-editor] 표시 줄이 하나씩이 아니다(work ' + nw + ' · bridges ' + nb + ') — 멈춘다'); process.exit(3); }
+if (nw !== 1 || nb !== 1 || nc !== 1) { console.error('[build-map-editor] 표시 줄이 하나씩이 아니다(work ' + nw + ' · bridges ' + nb + ' · coast ' + nc + ') — 멈춘다'); process.exit(3); }
 fs.writeFileSync(out, res.join('\n'));
 console.log('[build-map-editor] ' + out + ' · ' + fs.statSync(out).size + ' B · 작업 ' + (B.work && B.work.stamp));

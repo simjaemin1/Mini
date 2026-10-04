@@ -226,8 +226,13 @@ for (const f of ['test-lab-market.js', 'test-lab-mining.js', 'test-lab-psite.js'
         // 크기 비례 — 절반 크기 칸
         const s3 = { forestRich: new Map([[x + ',' + y, K / 2]]), fruitRich: new Map() };
         const nHalf = fruitSettle(s3, x, y, d0);
-        Object.assign(out, { sp, fy: T.fy, fs: T.fs, n0, half, n1, nW, n2, nWood, nHalf, K,
-          seasonD0: lSeason(d0), seasonDW: lSeason(dW), yearD0: Math.floor(d0 / L_YEAR), yearD2: Math.floor(d2 / L_YEAR) });
+        // ★[T599 2026-10-03] 해 = 랩 `fruitSettle` 이 쓰는 해 열쇠 그대로. 랩 달력이 정본(`EconEngine.Calendar` — 봄 기점 해
+        //   `springYearOf(d − L_START)`)이 된 뒤로 옛 손 달력 식(`floor(d / L_YEAR)` — 랩 날 0 = 1월 1일)은 랩이 쓰는 해가 아니다
+        //   (랩 날 0 = econ −120일 = 0년 11월 1일). 정본 문이 없는 옛 랩이면 옛 식 — 두 판을 같은 자로 잰다.
+        const yearOf = (d) => (typeof EconEngine !== 'undefined' && EconEngine.Calendar && EconEngine.Calendar.springYearOf)
+          ? EconEngine.Calendar.springYearOf(d - L_START) : Math.floor(d / L_YEAR);
+        Object.assign(out, { sp, fy: T.fy, fs: T.fs, n0, half, n1, nW, n2, nWood, nHalf, K, d0, dW, d2,
+          seasonD0: lSeason(d0), seasonDW: lSeason(dW), yearD0: yearOf(d0), yearD2: yearOf(d2) });
       } catch (err) { out.err = String(err.message).slice(0, 300); }
       return out;
     });

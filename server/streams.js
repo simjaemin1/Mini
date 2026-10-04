@@ -203,15 +203,25 @@ function bake(NX, NY, kind, opts) {
 const GROUP = ['jungwon_n', 'hanbando', 'nippon'];
 let _TJ = null;
 // 지문 — 묶음 존들의 지형 json 절 + 존 사각 + 바다 존 목록 + 산법 판(굽기 입력이 바뀌면 바뀐다 · 이웃 존 지형도 내 개울을 바꾼다)
+/** 해안 꼴 손잡이 — `server/chunk.js` generateCoastlineWaterTiles 와 같은 읽기(★T604 추신3: '0' → 지금 식 · 'a' → a · 그 밖(없음·'1'·'b') → b) */
+function coastVariant() { const v = process.env.T588_COAST; return v === '0' ? 0 : (v === 'a' ? 'a' : 'b'); }   // ★[PM 착지 T604 추신3] chunk.js 와 같은 읽기 — 없음·1·b·그 밖 = b · a · 0 = 지금 식
 function sourceHash(zoneId) {
   const ZC = require('./zone-config');
   // ⚠`require` 캐시가 아니라 **파일 글자**에서 읽는다 — terrain.js 가 적재 뒤 그 객체에 손을 대서(파생 필드) 같은 지형인데 지문이 갈렸다(첫 판 실측).
   if (!_TJ) { try { _TJ = JSON.parse(fs.readFileSync(path.join(__dirname, 'hanbando-terrain.json'), 'utf8')) || {}; } catch (e) { _TJ = {}; } }
   const TJ = _TJ;
   const grp = GROUP.includes(zoneId) ? GROUP : [zoneId];
-  const zs = grp.map((id) => { const Z = ZC.ZONES[id] || {}; return [id, Z.worldOffsetX, Z.worldOffsetY, Z.zoneWidth, Z.zoneHeight, TJ[id] || null]; });
+  // ★[T601] 지형 절에서 굽기 입력이 아닌 칸(광맥 · 마을 후보 · 군락 · 숲 — 물·바위 술어가 안 읽는다)은 뺀다:
+  //   광맥 적재(굽기 한 줄 5단계)가 개울 파일 머리를 괜히 갈지 않게(비트는 늘 같았다). 모르는 새 칸은 그대로 든다(보수).
+  const _NOT_KIND = ['ores', 'villages', 'groves', 'forests'];
+  const kindPart = (t) => { if (!t) return null; const o = {}; for (const k of Object.keys(t)) if (!_NOT_KIND.includes(k)) o[k] = t[k]; return o; };
+  const zs = grp.map((id) => { const Z = ZC.ZONES[id] || {}; return [id, Z.worldOffsetX, Z.worldOffsetY, Z.zoneWidth, Z.zoneHeight, kindPart(TJ[id])]; });
   const oceans = Object.values(ZC.ZONES).filter((z) => z.isOcean).map((z) => [z.worldOffsetX, z.worldOffsetY, z.zoneWidth, z.zoneHeight]);
-  return crypto.createHash('sha1').update(JSON.stringify([FILE_VER, STREAM_A0, MODE, RIP_SEED, RIP_SC, COST_DR, COST_KR, COST_KN, zoneId, zs, oceans])).digest('hex').slice(0, 16);
+  // ★[T601] 해안 띠(굽기 입력 kind 2)를 바꾸는 입력도 지문에 — 존 해안 칸(`coastBandK` T591 · `coastShift` T604 … zone-config) · 해안 꼴 손잡이 `T588_COAST`(env · chunk.js 와 같은 읽기 — test-streams ⑩ 이 띠로 견준다).
+  //   둘 다 json 글자 밖이라 옛 지문이 못 봤다 — 해안 꼴을 켠 존이 끈 판 래스터를 그대로 쓰는 길을 막는다(어긋나면 그 존 개울을 끄고 경고).
+  //   존 칸은 이름이 `coast` 로 시작하는 것 전부(띠 배수 `coastBandK` · T604 평행이동 `coastShift` …) — 새 해안 칸이 생겨도 따라온다.
+  const coast = [grp.map((id) => { const Z = ZC.ZONES[id] || {}; return Object.keys(Z).filter((k) => /^coast/.test(k)).sort().map((k) => [k, Z[k]]); }), coastVariant()];
+  return crypto.createHash('sha1').update(JSON.stringify([FILE_VER, STREAM_A0, MODE, RIP_SEED, RIP_SC, COST_DR, COST_KR, COST_KN, zoneId, zs, oceans, coast])).digest('hex').slice(0, 16);
 }
 // 파일 — 머리 32바이트('STRM' · 판 · NX · NY · 문턱 · 셀 수 · 지문 8바이트) + deflate(1비트/셀 · 행 우선 · 바이트 안 낮은 비트부터)
 function pack(mask, NX, NY) { const bits = new Uint8Array((NX * NY + 7) >> 3); let n = 0; for (let i = 0; i < NX * NY; i++) if (mask[i]) { bits[i >> 3] |= 1 << (i & 7); n++; } return { bits, n }; }
@@ -269,11 +279,20 @@ function wireOf(zoneId) {
   _wire.set(zoneId, w);
   return w;
 }
+/** ★[T601 ④] 두 자(t17·t176) 지형 어댑터 deps 에 **같은 술어**를 기본으로 — 초기화 세계(존이 `isStreamLocal` 을 넘겨 시딩이 개울을 본다)를 잰다.
+ *  손잡이 `T601_RULER_STREAMS`(기본 켬 · `0` = 옛 정의 = 여섯째·일곱째 판 "개울 없는 자" 판 · 바이트 그대로). 개울 자체가 꺼졌으면(`T585_STREAMS=0`) 끈 판.
+ *  돌려주는 `sig` = 씨앗 캐시 표식(래스터 지문 — 끈 판 '' · 다시 구우면 캐시를 버린다). */
+function rulerDeps(zoneId, deps) {
+  if (process.env.T601_RULER_STREAMS === '0' || !ON) return { deps, sig: '' };
+  const st = stats(zoneId);
+  if (!st) return { deps, sig: '' };
+  return { deps: Object.assign({}, deps, { isStreamLocal: (x, y) => isStreamLocal(zoneId, x, y) }), sig: st.hash };
+}
 function _reset() { _Z.clear(); _wire = new Map(); }   // 하네스 전용
 
 module.exports = {
   ON, GUARD, STREAM_A0, STREAM_SLOW0, MODE, FILE_VER, GROUP,
   streamFlow, streamMask, streamAudit,
   ripple, heightProxy, bake, sourceHash, pack, encodeFile, decodeFile, fileOf,
-  load, isStreamCell, isStreamLocal, walkMultAt, stats, wireOf, _reset,
+  load, isStreamCell, isStreamLocal, walkMultAt, stats, wireOf, rulerDeps, coastVariant, _reset,
 };
