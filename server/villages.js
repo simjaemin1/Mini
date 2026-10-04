@@ -489,7 +489,38 @@ function extractLandParamsApprox(ta, ccx, ccy, layout) {
     //     (`fishSustain` 이 그렇게 사장됐다 — `회부_MSY상한_사장.md`).
     coastal: seaDistPx(state.zoneId || 'hanbando', ccx, ccy) <= SALT_COAST_PX,
     _seaDistPx: Math.round(seaDistPx(state.zoneId || 'hanbando', ccx, ccy)),   // 계측용(엔진은 안 읽는다)
+    ..._t635Land(ccx, ccy),   // ★[T635] 켠 판에만 서는 칸 둘(끔 = 빈 객체 — 키 0 · 종전 바이트)
   };
+}
+// ★★[T635 2026-10-04] 새 품목 수요의 땅 칸 둘 — 손잡이 둘 다 기본 끔(끄면 `{}` · 이 함수는 아무것도 안 묻는다).
+//   ① `T635_SHELL_ORNAMENT=1` · 조개 팔찌감 산지 단계 `shellBangle` — 존 특산 표(`region-profiles` NOTES 의 그 줄 · T574 "남방 조개" 칸)의
+//      그 존 단계 ÷ '많음'(0~1 — 옥 `land.jade` 와 같은 눈금) · **바다가 어장권(140셀) 안인 마을만** · 표 줄이 그 존에 없으면 0.
+//   ② `T635_SEA_SPECIES=1` · 같은 바다 마을의 해안 종 비 `seaMix` — T602 해안 표(`seafish.poolOf` — 그 자리 구간의 해역 · 갯가 자리 · 철 무시)의
+//      흔함 가중(`seafish.weightOf` — region-profiles 단계 수 · 새 수 0)을 합 1 로. 해역을 모르면(표 밖 구간) 고르게(그 파일 규약).
+function _t635Land(ccx, ccy) {
+  const shellOn = process.env.T635_SHELL_ORNAMENT === '1', seaOn = process.env.T635_SEA_SPECIES === '1';
+  if (!shellOn && !seaOn) return {};
+  const zid = state.zoneId || 'hanbando';
+  if (!(seaDistPx(zid, ccx, ccy) <= LAND_SCAN_R * SZ)) return {};   // 바다가 **어장권** 안(물 감쇠 · 자원권과 같은 140셀) — 자염 문턱(30셀)이면 닛폰 0곳
+  const out = {};
+  const px = ccx * SZ + SZ / 2, py = ccy * SZ + SZ / 2;
+  if (shellOn) {
+    const RP = require('./region-profiles'), col = RP.COLS[zid];
+    const row = RP.NOTES.find((r) => r.id === 'shell_bangle');
+    const lv = (row && col && row[col]) ? (RP.LV[row[col]] || 0) : 0;
+    if (lv > 0) out.shellBangle = +(lv / RP.LV['많음']).toFixed(6);
+  }
+  if (seaOn) {
+    const SF = require('./seafish');
+    if (SF.T602_SEA_TABLE) {
+      const area = SF.areaAt(zid, px, py);
+      const pool = SF.poolOf(area, 'coast', null);
+      let tot = 0; const w = {};
+      for (const sp of pool) { const x = SF.weightOf(sp, area) || 0; if (x > 0) { w[sp.id] = x; tot += x; } }
+      if (tot > 0) { const m = {}; for (const id of Object.keys(w)) m[id] = +(w[id] / tot).toFixed(6); out.seaMix = m; }
+    }
+  }
+  return out;
 }
 
 // ★[11차 재민 지시 "한 번에 다 해"] 랩 공간 자원 층의 econ 접점 — server/sustain.js 가 정본.
