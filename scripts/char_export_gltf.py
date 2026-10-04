@@ -7,16 +7,21 @@
 #   ① 소체 = MPFB 2.0.17(MakeHuman Plugin For Blender · 플러그인 GPL · **산출 메시·텍스처 CC0**) 을 pip `bpy` 안에서 돌린다.
 #      매크로는 MPFB 기본값 그대로(나이·근육·체중·비율 0.5)에 성별 둘 · 인종 asian 1.0 — 프록시(저폴리 몸)는 MakeHuman
 #      시스템 자산의 `male1591`·`female1605` · 눈 `low-poly` · 눈썹 `eyebrow001` · 머리 `ponytail01`(남)·`braid01`(여) ·
-#      옷 기하 `male_casualsuit04`(긴소매 웃옷 + 바지)·`female_elegantsuit01`(긴소매 웃옷 + 치마) — 옷의 **기하만** 쓴다(무늬는 ③).
+#      ★[T604 ②] 옷 기하 = **청동기 옷**(`char_clothes_mhclo.py` — 시트 `char_render.py` 의 링 표를 3D 몸에 입혀 MPFB `mhclo` 로 묶는다 ·
+#      남 = 시트 그대로(옷자락 단 · 반팔 · 허리띠) · 여 = 무릎 단 · 긴팔 · 허리띠) — 옷 기하 둘(본 = 삼베·모시·가죽 · 갖옷 = 털 두께).
+#      T545 의 CC0 현대 옷(`male_casualsuit04`·`female_elegantsuit01`)은 더 안 읽는다.
 #      키 = 1.60m(카드 "키 160cm 안팎" · 하네스 "사람 1.6m ↔ px") — 몸 맨 위(정수리)를 1.60m 에 맞추는 등배 한 번.
-#      삼각형 = 한 몸 6,000 안(카드 "2~6k") — 살·눈·눈썹은 그대로 두고 남는 몫을 옷과 머리에 반씩(넘치면 축약 `Decimate`).
+#      삼각형 = 한 몸 6,000 안(카드 "2~6k") — 살·눈·눈썹은 그대로 · [T604] 옷은 지은 그대로(링 표가 정한 수 · 남는 몫의 반 안이어야 한다) ·
+#      나머지를 머리에(넘치면 축약 `Decimate` — 본 몸·갖옷 몸이 같은 머리).
 #   ② 리그 = MPFB 기본 리그 `cmu_mb`(31뼈 · 이름이 CMU BVH 관절과 같다) · 모션 = **CMU 모캡 리타깃**(코드 흔들기 0):
 #      원본·창 규칙은 시트 굽기와 **같은 것**을 읽는다(`assets-src/mocap/*.bvh` · `mocap_retarget.py` 의 CLIPS·window_of — 사본 0).
 #      리타깃 = 관절 월드 회전(BVH **0번 판**(변환기가 넣은 T자 보정 판) 대비) + **쉼 자세 보정**(팔다리만 — BVH 는 T자 · MPFB 는 A자) ·
 #      제자리(걷기·달리기 = 엉덩이 원점 · 서서 하는 클립 = 열쇠마다 두 발목 가운데 원점) · 접지(발 관절의 가장 낮은 높이 = 쉼 자세의 그 높이).
-#   ③ 무늬 = 아틀라스 한 장(1024² 이하 · 카드) — 몸마다 **메시 하나 · 재질 하나**(족보 487 "몸마다 메시 하나·재질 아틀라스"):
+#   ③ 무늬 = 아틀라스 한 장(1024² 이하 · 카드) — 몸마다 **그리는 메시 하나 · 재질 하나**(족보 487 "몸마다 메시 하나·재질 아틀라스"):
+#      ★[T604] 몸마다 메시 둘(`<몸>_body` = 본 옷 · `<몸>_fur` = 갖옷) — 살·눈·눈썹·머리는 같은 것 · 엔진은 옷에 맞는 하나만 켠다(그리기 호출 = 몸 수).
 #      피부 = MakeHuman `young_asian_*`(CC0) · 눈 `brown` · 눈썹 · 머리(밝기 = 원판 · 빛깔 = 시트 정본 `char_render.py` 'hair') ·
-#      옷 넷(삼베·모시·가죽·갖옷) = ambientCG(CC0) 사진의 결 × MakeHuman 옷의 AO × `render_common.CLOTH_MATS` 의 본천 색.
+#      옷 넷(삼베·모시·가죽·갖옷) = ambientCG(CC0) 사진의 결 × `render_common.CLOTH_MATS` 의 본천 색 ·
+#      ★[T604] 허리띠 섬(옷 칸 안 가로 띠)만 본천 × `CLOTH_TRIM_K`(시트 허리끈 `hemp2` 와 같은 비).
 #      알파(머리·눈썹)는 몸마다 따로 한 장 — 엔진이 `alphaMap` 으로 건다.
 #   ④ 빛은 엔진이 건다(방향광 + 반구광 · 게임 시각·날씨) — 이 파일은 시트 굽기의 태양·하늘 정본(`render_common`)만 메타에 적는다.
 #
@@ -26,6 +31,7 @@
 #
 # 실행:  python3 scripts/char_export_gltf.py [--src=<원본 폴더>]        (pip `bpy` 5.0.1 · 동봉 `io_scene_gltf2`)
 # 결과:  public/assets/char3d/char_body.glb · char3d_meta.json · char3d.lock.json · tex/{m,f}_{hemp,ramie,leather,fur}.jpg · tex/{m,f}_alpha.png
+#        (옷 `mhclo` 는 중간 산물 — 원본 자리 안 `.work/t604/` · 저장소 밖 · 지문은 메타 `bodies.<몸>.clothes`)
 # 잠금:  `char3d.lock.json` = 산물 sha1 앞 16자 + 굽는 기계 + 입력 지문(원본 파일마다) — 두 번 구워 바이트 동일 · `e2e-char3d` ⓐ 가 잰다.
 # =============================================================================
 import os, sys, json, math, hashlib, re, zipfile, shutil
@@ -46,15 +52,16 @@ MPFB_ZIP = os.path.join(SRCD, "add-on-mpfb-v2.0.17.zip")
 MH = os.path.join(SRCD, "makehuman_system_assets")
 ACG = os.path.join(SRCD, "ambientcg")
 USER_RES = os.path.join(SRCD, ".blender_user")
+WORK = os.path.join(SRCD, ".work", "t604")             # ★[T604] 옷 `mhclo`·`obj`(중간 산물 — 저장소 밖 · 굽기마다 다시 짓는다)
 
 H_PERSON = 1.60          # 카드 ①: 키 160cm 안팎 — 하네스 ⑤ "키 = 셀 규약(사람 1.6m ↔ px)" 와 같은 수
 TRI_BUDGET = 6000        # 카드 ①: 폴리곤 2~6k 삼각형 — 한 몸(살·옷·머리·눈·눈썹 합) 상한
 KEYS_PER_FRAME = 4       # 시트 한 판 사이에 열쇠 넷(시트 판 k = 열쇠 4k — 시트 층을 얹는 판이 정확히 열쇠에 선다)
 BODIES = {
     "M": {"gender": 1.0, "proxy": "proxymeshes/male1591/male1591.proxy", "skin": "skins/young_asian_male/young_lightskinned_male_diffuse3.png",
-          "hair": "hair/ponytail01/ponytail01.mhclo", "clothes": "clothes/male_casualsuit04/male_casualsuit04.mhclo"},
+          "hair": "hair/ponytail01/ponytail01.mhclo"},
     "F": {"gender": 0.0, "proxy": "proxymeshes/female1605/female1605.proxy", "skin": "skins/young_asian_female/young_lightskinned_female_diffuse3.png",
-          "hair": "hair/braid01/braid01.mhclo", "clothes": "clothes/female_elegantsuit01/female_elegantsuit01.mhclo"},
+          "hair": "hair/braid01/braid01.mhclo"},
 }
 COMMON = {"eyes": "eyes/low-poly/low-poly.mhclo", "eyetex": "eyes/materials/brown_eye.png", "brows": "eyebrows/eyebrow001/eyebrow001.mhclo"}
 CLOTH_KINDS = ("hemp", "ramie", "leather", "fur")     # 카드 ③: 옷 넷(삼베·모시·가죽·갖옷) — 다섯째부터는 회부
@@ -107,6 +114,7 @@ import numpy as np                                     # noqa: E402
 from PIL import Image                                  # noqa: E402
 sys.path.insert(0, HERE)
 import render_common as rc                             # noqa: E402  — 옷 색·태양·하늘 정본(읽기만)
+import char_clothes_mhclo as CM                        # noqa: E402  — ★[T604] 청동기 옷 기하(시트 링 표 → mhclo)
 import mocap_retarget as MR                            # noqa: E402  — BVH 파서·창 규칙·클립 표 정본(읽기만)
 
 for o in list(bpy.data.objects):                       # 시작 장면(정육면체·빛·카메라) 비우기
@@ -124,6 +132,7 @@ def _svc(pkg, key):
 
 
 HS = _svc("mpfb.services.humanservice", "HumanService")
+CS = _svc("mpfb.services.clothesservice", "ClothesService")
 TS = _svc("mpfb.services.targetservice", "TargetService")
 MPFB_VER = re.search(r'^version\s*=\s*"([^"]+)"', open(os.path.join(EXT, "blender_manifest.toml")).read(), re.M).group(1)   # schema_version 말고 version
 INPUTS = {}                                            # 원본 지문 — 잠금 `_입력`
@@ -165,7 +174,7 @@ def decimate(o, target):
     return tris(o)
 
 
-# ── ① 소체 — MPFB 로 몸 하나 · 프록시 · 눈 · 눈썹 · 머리 · 옷(기하) ──────────────────────────────
+# ── ① 소체 — MPFB 로 몸 하나 · 프록시 · 눈 · 눈썹 · 머리 · 옷(기하 둘 — T604 청동기 옷) ──────────────────────
 def build(sex):
     spec = BODIES[sex]
     macro = dict(TS.get_default_macro_info_dict())     # ★MPFB 기본값 그대로(새 수 0) — 성별·인종만 바꾼다
@@ -173,35 +182,39 @@ def build(sex):
     macro["race"] = {"asian": 1.0, "caucasian": 0.0, "african": 0.0}
     base = HS.create_human(macro_detail_dict=macro)
     rig = HS.add_builtin_rig(base, "cmu_mb")
+    # ★[T604 ②] 옷 = 시트 링 표 → 이 몸 → MPFB mhclo(본 · 갖옷) — 기본 메시(뼈 무게 · 보조 기하)를 읽어 짓는다(무리는 잠깐 세웠다 걷는다)
+    cl = CM.make(sex, base, rig, WORK, CELLS["cloth"][2:], PAD, CS, log=print)
     prox = HS.add_mhclo_asset(src(spec["proxy"]), base, asset_type="Proxymeshes", subdiv_levels=0, material_type="NONE")
     parts = {"skin": prox}
     parts["eyes"] = HS.add_mhclo_asset(src(COMMON["eyes"]), base, asset_type="eyes", subdiv_levels=0, material_type="NONE")
     parts["brows"] = HS.add_mhclo_asset(src(COMMON["brows"]), base, asset_type="eyebrows", subdiv_levels=0, material_type="NONE")
     parts["hair"] = HS.add_mhclo_asset(src(spec["hair"]), base, asset_type="hair", subdiv_levels=0, material_type="NONE")
-    parts["cloth"] = HS.add_mhclo_asset(src(spec["clothes"]), base, asset_type="clothes", subdiv_levels=0, material_type="NONE")
-    for o in parts.values():                           # 옷 밑 살 지우기(MASK) 등 — 적용해서 굳힌다
+    parts["cloth"] = HS.add_mhclo_asset(cl["base"], base, asset_type="clothes", subdiv_levels=0, material_type="NONE")
+    fur = HS.add_mhclo_asset(cl["fur"], base, asset_type="clothes", subdiv_levels=0, material_type="NONE")
+    for o in list(parts.values()) + [fur]:             # 모디파이어(무게 밖)는 적용해서 굳힌다 · 옷은 살을 안 지운다(delete_verts 0 — 어깨·단에서 살 구멍 0)
         apply_mods(o)
-        for g in [g for g in o.vertex_groups if g.name not in rig.data.bones]:   # 뼈가 아닌 묶음(`Delete.<옷>` 등 — 지우기 표시)은 굳힌 뒤 버린다
+        for g in [g for g in o.vertex_groups if g.name not in rig.data.bones]:   # 뼈가 아닌 묶음은 버린다
             o.vertex_groups.remove(g)
     bpy.data.objects.remove(base, do_unlink=True)      # 기본 메시(고폴리)는 버린다 — 프록시가 몸이다
-    for o in [rig] + list(parts.values()):
+    for o in [rig, fur] + list(parts.values()):
         if o.matrix_world != Matrix.Identity(4):
             raise SystemExit(f"[char3d] ★{o.name} 의 오브젝트 변환이 단위가 아니다 — 데이터 변환 전제가 깨졌다")
-    # 삼각형 예산: 살·눈·눈썹은 그대로 · 남는 몫을 옷·머리에 반씩
+    # 삼각형 예산: 살·눈·눈썹은 그대로 · 옷은 지은 그대로(링 표가 정한다 — 줄이지 않는다) · 남는 몫을 머리에
     fixed = tris(parts["skin"]) + tris(parts["eyes"]) + tris(parts["brows"])
     left = TRI_BUDGET - fixed
     tri = {k: tris(o) for k, o in parts.items()}
-    tri["cloth"] = decimate(parts["cloth"], max(1, left // 2))
+    if tris(fur) != tri["cloth"] or tri["cloth"] > left // 2:
+        raise SystemExit(f"[char3d] ★{sex} 옷 삼각형이 예산을 넘거나 본·갖옷이 다르다: 본 {tri['cloth']} · 갖옷 {tris(fur)} · 몫 {left // 2}")
     tri["hair"] = decimate(parts["hair"], max(1, left - tri["cloth"]))
     # 축·키: MPFB(−y 앞 · +x 왼쪽) → 엔진 규약(+x 앞 · +y 왼쪽 · T522 "방향 0 = +x") · 정수리 = 1.60m
     top = max(v.co.z for v in parts["skin"].data.vertices)
     s = H_PERSON / top
     M = Matrix.Rotation(math.pi / 2, 4, "Z") @ Matrix.Scale(s, 4)
     rig.data.transform(M)
-    for o in parts.values():
+    for o in list(parts.values()) + [fur]:
         o.data.transform(M)
     bpy.context.view_layer.update()
-    return rig, parts, {"scale": round(s, 6), "topM": round(top, 6), "tris": tri}
+    return rig, parts, fur, cl, {"scale": round(s, 6), "topM": round(top, 6), "tris": tri}
 
 
 # ── ③ 아틀라스 — 칸마다 원본 무늬를 붙이고 UV 를 그 칸으로 옮긴다 ─────────────────────────────────
@@ -274,7 +287,7 @@ def fabric_detail(kind, size):
     return full.resize(size, Image.LANCZOS)
 
 
-def build_atlases(sex):
+def build_atlases(sex, trim_v):
     spec = BODIES[sex]
     rgb = Image.new("RGB", (ATLAS, ATLAS), (0, 0, 0))
     alpha = Image.new("L", (ATLAS, ATLAS), 255)
@@ -295,16 +308,24 @@ def build_atlases(sex):
     # 옷 — 칸은 옷마다 다른 그림(4장) · 알파는 한 장(옷은 불투명)
     #   ★옷의 AO 그림은 안 쓴다: 안감·허리띠 안쪽이 검게 구워져 있어(가려진 면) 자세를 잡거나 축약하면 검은 조각으로 드러났다(T545 첫 굽기 실측).
     #     그늘은 엔진의 빛이 준다 — 옷 칸 = ambientCG 결(평균 1) × 본천 색(`CLOTH_MATS`) 뿐.
+    #   ★[T604] 허리띠 섬(옷 칸 안 가로 띠 · `char_clothes_mhclo` 가 준 v 범위)만 본천 × `CLOTH_TRIM_K`(시트 허리끈 `hemp2` 의 비) — 한 PAD 넓혀 칠한다
+    c = CELLS["cloth"]
+    ih = c[3] - 2 * PAD
+    y0 = c[1] + PAD + max(0, int(math.floor((1.0 - trim_v[1]) * ih)) - PAD)
+    y1 = c[1] + PAD + min(ih, int(math.ceil((1.0 - trim_v[0]) * ih)) + PAD)
     out = {}
     for kind in CLOTH_KINDS:
         col, _rough, _spec = rc.CLOTH_MATS[kind]
         det = np.asarray(fabric_detail(kind, (1024, 1024)), dtype=np.float64) / 255.0
         det = det / max(1e-6, det.mean())
-        srgb = np.array([_lin2srgb(c) for c in col]) * 255.0
-        im = np.clip(det[..., None] * srgb[None, None, :], 0, 255).astype(np.uint8)
         a = rgb.copy()
-        c = CELLS["cloth"]
-        a.paste(_fit(Image.fromarray(im, "RGB"), c), (c[0], c[1]))
+        for cc, rows in ((col, None), (tuple(x * rc.CLOTH_TRIM_K for x in col), (y0, y1))):
+            srgb = np.array([_lin2srgb(x) for x in cc]) * 255.0
+            im = _fit(Image.fromarray(np.clip(det[..., None] * srgb[None, None, :], 0, 255).astype(np.uint8), "RGB"), c)
+            if rows is None:
+                a.paste(im, (c[0], c[1]))
+            else:
+                a.paste(im.crop((0, rows[0] - c[1], c[2], rows[1] - c[1])), (c[0], rows[0]))
         out[kind] = a
     return out, alpha
 
@@ -537,23 +558,39 @@ scene.render.fps = 1                                   # ★열쇠 시각 = 판 
 scene.render.fps_base = 1.0
 os.makedirs(TEXD, exist_ok=True)
 built = {}
+
+
+def _join(objs, name):
+    bpy.ops.object.select_all(action="DESELECT")
+    for o in objs:
+        o.select_set(True)
+    bpy.context.view_layer.objects.active = objs[0]
+    bpy.ops.object.join()
+    b = objs[0]
+    b.name = b.data.name = name
+    b.data.materials.clear()                           # 재질은 엔진이 건다(아틀라스 넷 · 알파 하나) — 프리미티브 하나
+    return b
+
+
 for sex in ("M", "F"):
-    rig, parts, info = build(sex)
-    atl, alpha = build_atlases(sex)
+    rig, parts, fur, cl, info = build(sex)
+    atl, alpha = build_atlases(sex, cl["info"]["trimV"])
     for kind, o in parts.items():
         remap_uv(o, CELLS[kind])
-    bpy.ops.object.select_all(action="DESELECT")
-    for o in parts.values():
-        o.select_set(True)
-    bpy.context.view_layer.objects.active = parts["skin"]
-    bpy.ops.object.join()
-    body = parts["skin"]
-    body.name = body.data.name = f"{sex}_body"
-    body.data.materials.clear()                        # 재질은 엔진이 건다(아틀라스 넷 · 알파 하나) — 프리미티브 하나
+    remap_uv(fur, CELLS["cloth"])
+    # ★[T604] 갖옷 몸 = 살·눈·눈썹·머리(데이터 사본 — 같은 것) + 갖옷 · 본 몸 = 같은 넷 + 본 옷
+    twins = []
+    for k in ("skin", "eyes", "brows", "hair"):
+        o2 = parts[k].copy()
+        o2.data = parts[k].data.copy()
+        bpy.context.scene.collection.objects.link(o2)
+        twins.append(o2)
+    body = _join([parts["skin"], parts["eyes"], parts["brows"], parts["hair"], parts["cloth"]], f"{sex}_body")
+    bfur = _join(twins + [fur], f"{sex}_fur")
     for b in rig.data.bones:                           # 뼈 이름에 몸 머리(두 몸이 한 파일 · 이름이 겹치지 않게) — 무게 묶음도 따라 바뀐다
         b.name = f"{sex}_{b.name}"
     rig.name = rig.data.name = sex
-    missing = [g.name for g in body.vertex_groups if g.name not in rig.data.bones]
+    missing = [g.name for o in (body, bfur) for g in o.vertex_groups if g.name not in rig.data.bones]
     if missing:
         raise SystemExit(f"[char3d] ★뼈 이름을 바꾼 뒤 무게 묶음이 안 따라왔다: {missing[:5]}")
     clips = {}
@@ -563,14 +600,15 @@ for sex in ("M", "F"):
         im.save(os.path.join(TEXD, f"{sex.lower()}_{kind}.jpg"), quality=88, optimize=False, progressive=False, subsampling=0)
     alpha.save(os.path.join(TEXD, f"{sex.lower()}_alpha.png"), optimize=False, compress_level=9)
     info["trisTotal"] = tris(body)
+    info["trisFur"] = tris(bfur)
     info["bones"] = len(rig.data.bones)
-    built[sex] = {"rig": rig, "body": body, "info": info, "clips": clips}
-    print(f"[char3d] {sex}: 삼각형 {info['trisTotal']}({info['tris']}) · 뼈 {info['bones']} · 등배 {info['scale']} · 클립 {list(clips)}")
+    built[sex] = {"rig": rig, "body": body, "fur": bfur, "info": info, "clips": clips, "cl": cl}
+    print(f"[char3d] {sex}: 삼각형 본 {info['trisTotal']} · 갖옷 {info['trisFur']}({info['tris']}) · 뼈 {info['bones']} · 등배 {info['scale']} · 클립 {list(clips)}")
 
 # ── ④ 내보내기 — GLB 하나(두 몸) ────────────────────────────────────────────────────────────
 bpy.ops.object.select_all(action="DESELECT")
 for v in built.values():
-    v["rig"].select_set(True); v["body"].select_set(True)
+    v["rig"].select_set(True); v["body"].select_set(True); v["fur"].select_set(True)
 bpy.context.view_layer.objects.active = built["M"]["rig"]
 opts = dict(filepath=GLB, export_format="GLB", use_selection=True, export_yup=True, export_apply=False,
             export_animations=True, export_animation_mode="NLA_TRACKS", export_force_sampling=False,
@@ -585,11 +623,11 @@ bpy.ops.export_scene.gltf(**{k: v for k, v in opts.items() if k in known})
 # ── ⑤ 메타 — 엔진이 읽는 규약(클라는 수를 안 박는다) ──────────────────────────────────────────
 import io_scene_gltf2                                  # noqa: E402
 sun_dir = Matrix.Rotation(rc.SUN_WORLD[2], 3, "Z") @ Matrix.Rotation(rc.SUN_WORLD[1], 3, "Y") @ Matrix.Rotation(rc.SUN_WORLD[0], 3, "X") @ Vector((0, 0, -1))
-for k in ("render_common.py", "mocap_retarget.py"):
+for k in ("render_common.py", "mocap_retarget.py", "char_clothes_mhclo.py", "char_render.py"):
     INPUTS["scripts/" + k] = sha16(os.path.join(HERE, k))
 INPUTS["add-on-mpfb-v2.0.17.zip"] = _zip_sha
 meta = {
-    "_": "[T545] char_export_gltf.py 산물 — 엔진이 읽는 규약. 클라는 이 수를 하드코딩하지 않는다.",
+    "_": "[T545 · T604] char_export_gltf.py 산물 — 엔진이 읽는 규약. 클라는 이 수를 하드코딩하지 않는다(옷 → 메시는 `bodies.<몸>.meshOf`).",
     "glb": "char_body.glb",
     "units": "1 = 1m = 1셀(32 게임px)",
     "facing": "방향 0 = 모델 +x(Blender) — 시트 행 0 과 같다 · 방향 d = d×45°(연속 회전은 atan2(fy,fx))",
@@ -599,9 +637,13 @@ meta = {
     "height": H_PERSON,
     "body": "MPFB " + MPFB_VER + " · MakeHuman 시스템 자산(CC0)",
     "bodies": {sex: {"node": sex, "mesh": f"{sex}_body", "tris": v["info"]["trisTotal"], "trisParts": v["info"]["tris"],
+                     "meshOf": {k: (f"{sex}_fur" if k == "fur" else f"{sex}_body") for k in CLOTH_KINDS},
+                     "trisFur": v["info"]["trisFur"],
                      "bones": v["info"]["bones"], "scale": v["info"]["scale"],
                      "parts": {"proxy": BODIES[sex]["proxy"], "skin": BODIES[sex]["skin"], "hair": BODIES[sex]["hair"],
-                               "clothes": BODIES[sex]["clothes"], "eyes": COMMON["eyes"], "brows": COMMON["brows"]}}
+                               "eyes": COMMON["eyes"], "brows": COMMON["brows"]},
+                     "clothes": dict(v["cl"]["info"], src="scripts/char_clothes_mhclo.py",
+                                     mhclo={vr: {"mhclo": sha16(v["cl"][vr]), "obj": sha16(v["cl"][vr][:-6] + ".obj")} for vr in CM.VARIANTS})}
                for sex, v in built.items()},
     "defaultBody": "M",
     "rig": "MPFB cmu_mb(31뼈 · CMU BVH 관절 이름) — 뼈 이름 앞에 몸 머리('M_'·'F_')",
@@ -633,7 +675,7 @@ outs = {"char_body.glb": sha16(GLB), "char3d_meta.json": sha16(META)}
 for fn in sorted(os.listdir(TEXD)):
     outs["tex/" + fn] = sha16(os.path.join(TEXD, fn))
 lock = {
-    "_": "[T545] char3d 잠금 — 값 = 파일 sha1 앞 16자(바이트가 자산). 입력 지문이 바뀌면 다시 굽는다. 원본은 저장소 밖(`~/Mini/_3d_in/`).",
+    "_": "[T545 · T604] char3d 잠금 — 값 = 파일 sha1 앞 16자(바이트가 자산). 입력 지문이 바뀌면 다시 굽는다. 원본은 저장소 밖(`~/Mini/_3d_in/`).",
     "_기계": f"pip bpy {bpy.app.version_string} · {meta['exporter']} · MPFB {MPFB_VER}",
     "_입력": dict(sorted(INPUTS.items())),
     "char3d": outs,

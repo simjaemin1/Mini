@@ -3,6 +3,7 @@
 // ★이 파일은 손잡이 `T522_CHAR_3D` 가 켜졌을 때만 실린다(`42-r2-char.js` 가 주소창 한 칸을 보고 three.js 뒤에 붙인다).
 //   끄면(기본) 요청조차 안 간다 — 시트 경로 비트 동일 · 화소 동일.
 // ★[T545] 소체 = MPFB(MakeHuman · CC0) 실사풍 저폴리 몸 — 몸마다 **메시 하나 · 재질 하나**(옷까지 한 메시 · 아틀라스 한 장).
+//   [T604] 옷 기하 = 청동기 옷(시트 링 표 → `char_clothes_mhclo.py`) — 몸마다 메시 둘(본 옷 · 갖옷 털 두께) · 옷에 맞는 하나만 켠다(`meshOf`).
 //   몸 파일 하나(`char_body.glb`)에 몸 둘(M·F) · 몸마다 클립 다섯(CMU 모캡 리타깃) — 메타가 규약이다(`char3d_meta.json`).
 //   재질 = 아틀라스(옷 넷 — 삼베·모시·가죽·갖옷 · 몸마다 넉 장) + 알파 한 장(머리·눈썹 · `alphaMap`) · 빛은 이 파일이 건다(④).
 // ★그리는 자리 = **시트가 그리던 그 자리**다 — `drawCharSprite` 의 층 고리에서 'body' 층 자리에 3D 타일 한 장을 찍는다
@@ -65,12 +66,21 @@
     const model = T.SkeletonUtils.clone(gltf.scene.getObjectByName(sex));   // 그 몸의 뼈대 + 메시 하나만(다른 몸의 뼈는 안 센다)
     model.scale.set(1, meta.zsq, -1);                         // 누르기(포즈 뒤) · 거울(행렬식 −1)
     root.add(model);
-    const mesh = model.getObjectByName(meta.bodies[sex].mesh);
-    mesh.frustumCulled = false;                               // 타일 칸으로 옮겨 놓는 몸 — 자르기 판정은 카메라 한 장이 이미 덮는다
+    // ★[T604] 옷 → 메시(`bodies.<몸>.meshOf` — 본 옷 = `<몸>_body` · 갖옷 = `<몸>_fur`) · 한 판에 하나만 켠다(그리기 호출 = 몸 수)
+    const of = meta.bodies[sex].meshOf || {};
+    const meshes = {}, uniq = [];
+    for (const k of meta.clothKinds) {
+      const m = model.getObjectByName(of[k] || meta.bodies[sex].mesh);
+      m.frustumCulled = false;                                // 타일 칸으로 옮겨 놓는 몸 — 자르기 판정은 카메라 한 장이 이미 덮는다
+      meshes[k] = m;
+      if (!uniq.includes(m)) uniq.push(m);
+    }
+    const mesh = meshes[meta.clothKinds[0]];
+    for (const m of uniq) m.visible = m === mesh;
     const hand = model.getObjectByName(sex + '_RightHand');   // 오른 손목(시트 `handR` 머리와 같은 관절 — 도구 층이 따른다)
     const mixer = new T.AnimationMixer(model);
     root.visible = false;
-    return { root, model, mesh, hand, mixer, sex, acts: {}, clip: null, yaw: null, lastT: 0, seen: 0, pid: null };
+    return { root, model, mesh, meshes, uniq, hand, mixer, sex, acts: {}, clip: null, yaw: null, lastT: 0, seen: 0, pid: null };
   }
   function bodyFor(pid, sex) {
     let b = pool.get(pid);
@@ -101,7 +111,9 @@
   // ── 자세 — 클립 · 시각 · 방향 · 옷 ──────────────────────────────────────────────────────────
   //   r.key = 시트 판(ⓑ 시트 층과 붙는 몸) 이면 그 판의 열쇠 · 아니면(ⓐ) 연속 시각 r.t(초) → 판(실수) → 열쇠
   function pose(b, r, now) {
-    b.mesh.material = MAT[b.sex][r.kind];
+    const m = b.meshes[r.kind] || b.mesh;
+    if (m !== b.mesh) { for (const x of b.uniq) x.visible = x === m; b.mesh = m; }
+    m.material = MAT[b.sex][r.kind];
     if (r.rest) {                                             // 쉼 자세(하네스 키 재기) — 액션을 다 멈추면 뼈가 묶기 자세로 돌아간다
       for (const k in b.acts) b.acts[k].stop();
       b.mixer.update(0); b.clip = null;
