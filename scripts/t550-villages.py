@@ -55,6 +55,7 @@ inner = (xx * SZ >= 600) & ((xx + 1) * SZ <= NX * SZ - 600) & (yy * SZ >= 900) &
 allow = land & (D['fresh'] <= P50F) & okcomp & inner
 # ★[T616] 새 후보를 존의 한쪽에만(`--min-x <px>` · 닛폰 동쪽 = 40,000 = 세계 520,000) — 카드 "차이만큼 동쪽에"(없으면 존 전체 · 종전 그대로)
 if '--min-x' in sys.argv: allow &= (xx * SZ >= float(sys.argv[sys.argv.index('--min-x') + 1]))
+if '--max-x' in sys.argv: allow &= ((xx + 1) * SZ <= float(sys.argv[sys.argv.index('--max-x') + 1]))   # ★[T638] 반대쪽(서쪽)만
 ay, ax = np.nonzero(allow)
 APX = np.stack([ax * SZ + SZ / 2, ay * SZ + SZ / 2], 1)
 def nearest_allowed(x, y):
