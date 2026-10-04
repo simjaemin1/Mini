@@ -12,7 +12,7 @@
 //   ⑥ 자명 통과 금지 — 세계 좌표가 아닌 것(존 자리)을 잡음에 섞은 돌연변이를 ③ 이 **문다** · 표를 바꾸면 ⑤ 가 바뀜을 본다
 //   ⑦ ★[T588 추신2] T591 띠 배수 위 — 닛폰(배수 0.298) 켬 판의 띠 몫이 끔(T591) 판 몫 근처다(배수가 구간 띠 바탕에도 곱해진다 · 굴곡은 그 위) ·
 //      배수를 빼먹은 돌연변이(배수 함수 = 1)는 이 자가 **문다** · 빌려 쓴 구간(닛폰 서·남)은 켬이면 바뀐다 · 배수 존에 배수 함수가 안 오면 던진다
-//   ⑧ ★[T604 추신2] 존별 평행이동 `coastShift` — 이동 0 = 비트 그대로 · 이동하면 띠가 줄기만 한다(부분집합) · 켬 + 빈 표 + 이동 = 끔 + 이동(같은 자리) ·
+//   ⑧ ★[T604 추신2] 존별 평행이동 `coastShift`(★T637 ⑧k·⑧l — 뭍 이웃 경계 잇는 폭 = COASTLINE_BASE) — 이동 0 = 비트 그대로 · 이동하면 띠가 줄기만 한다(부분집합) · 켬 + 빈 표 + 이동 = 끔 + 이동(같은 자리) ·
 //      솔기 0(이동 다른 두 존 경계) · 뭍 이웃 경계에서 계단 없음(비탈) — 비탈 뺀 돌연변이를 이 자가 **문다** · 클라 = 서버(이동) · 함수 없으면 던진다
 //   ⑨ ★[T604 추신3] 기본 b · 한반도 이동 90(zone-config) · 끔(0) = 지금 바이트(이동도 안 먹는다) · **경계 앞 바다 ≥ 8셀**(핸드오프 겹침 띠 —
 //      `HANDOFF_COMMIT` 정본 zone-config 를 서버 · 클라(/zones)가 읽는다 · 박힌 수 0): 셀 중심이 바다 존 사각에서 그 폭 안인 칸은 전 뭍 존 ·
@@ -206,6 +206,16 @@ const OPT = (o) => Object.assign({ bandK: _bandK(), bandShift: _bandShift(), kee
   const mut = CS.generate({ ...ZONES.hanbando, id: 'hanbando' }, 32, OR, ZONES, BASE, NOISE, _oldDepth(), OPT({ variant: 'b', bandShift: (z) => (z.coastShift || 0) * 32 }));
   const dMut = depthCol(mut, NXh - 1);
   ok(Math.abs(dMut - dEdgeN) > 30, '⑧f 비탈을 뺀 돌연변이(평행이동 고르게) → ⑧e 자가 **문다**(경계에서 이동만큼 계단)', `${dMut} · ${dEdgeN}셀`);
+  // ★[T637] 잇는 폭 = COASTLINE_BASE(띠 평균 깊이 187.5셀) — 경계에서 k셀 들어간 열의 이동 = 이동 × min(1, k ÷ 187.5)(±2셀) · 종전(잇는 폭 = 이동 90 · 45°)이면 47셀 안에서 이미 47
+  { const prof = [0, 47, 94, 141, 200].map((k) => { const x = NX - 1 - k; return { k, d: depthCol(e0, x) - depthCol(e1, x), want: SH * Math.min(1, (k * 32) / BASE) }; });
+    const okP = prof.every((q) => Math.abs(q.d - q.want) <= 2);
+    const westP = [0, 94, 200].map((k) => ({ k, d: depthCol(e0, k) - depthCol(e1, k), want: SH * Math.min(1, (k * 32) / BASE) }));
+    ok(okP && westP.every((q) => Math.abs(q.d - q.want) <= 2), `⑧k ★[T637] 경계 잇기 폭 = 띠 평균 깊이(${(BASE / 32).toFixed(1)}셀) — 닛폰 쪽(동) · 중원북 쪽(서) 경계에서 k셀 들어간 열의 이동 = ${SH} × min(1, k ÷ ${(BASE / 32).toFixed(1)})`,
+      prof.map((q) => `동${q.k}:${q.d}/${q.want.toFixed(1)}`).join(' ') + ' · ' + westP.map((q) => `서${q.k}:${q.d}/${q.want.toFixed(1)}`).join(' '));
+    const old45 = CS.generate({ ...ZONES.hanbando, id: 'hanbando' }, 32, OR, ZONES, BASE, NOISE, _oldDepth(), OPT({ chars: {}, bandShift: (z, ax) => { const zx1 = z.worldOffsetX + z.zoneWidth, zx0 = z.worldOffsetX; return SH * 32 * Math.min(1, Math.min(ax - zx0, zx1 - ax) / (SH * 32)); } }));
+    const d47 = depthCol(e0, NX - 1 - 47) - depthCol(old45, NX - 1 - 47);
+    ok(Math.abs(d47 - 47) <= 2 && Math.abs(d47 - prof[1].d) > 15, '⑧l 돌연변이(종전 잇는 폭 = 이동 90 · 45°) → ⑧k 자가 **문다**(47셀 들어간 열이 47셀 이동)', `종전 ${d47} · 지금 ${prof[1].d}`);
+  }
   // 클라 쌍둥이(이동 칸이 /zones 로 실려 간다 · 지킴 폭도 /zones 의 handoffCommit)
   const src = fs.readFileSync(path.join(ROOT, 'public', 'client', '00-const.js'), 'utf8');
   const a = src.indexOf('const COASTLINE_BASE = 6000, COASTLINE_NOISE = 5000;'), bb = src.indexOf('// zonesMeta 받으면 모든 zone water tiles 미리 계산');

@@ -1279,8 +1279,8 @@ function _coastBandKAt(zone, bandK, ax, ay, oceanRects, maxDist) {
   return 1 + (bandK - 1) * _coastLandRamp(zone, ax, ay, oceanRects, maxDist);
 }
 // ★[T604 추신2 2026-10-03] 존별 **해안 평행이동** `zone.coastShift`(셀 · 기본 0 = 종전 바이트) — 띠 깊이에서 그만큼(px = 셀 × 칸 크기)
-//   빼고 0 아래는 0(재민 10-03 "해안선을 조금 남쪽으로"). 뭍 이웃 변에서는 같은 비탈 함수로 0 까지 — 비탈 길이 = 이동 그 값(새 수 0)이라
-//   이동 = min(이동, 뭍 이웃 변까지 거리): 경계에서 0 · 이동만큼 들어가면 다 이동(45° 꺾임 · 이웃 존 띠와 계단 0 · 존 몸통은 꼭 그만큼).
+//   빼고 0 아래는 0(재민 10-03 "해안선을 조금 남쪽으로"). 뭍 이웃 변에서는 같은 비탈 함수로 0 까지 — ★[T637] 비탈 길이 = 띠 평균 깊이
+//   `COASTLINE_BASE`(종전 = 이동 그 값 · 45° 꺾임이 계단처럼 보였다): 경계에서 0 · 187.5셀 들어가면 다 이동(이웃 존 띠와 계단 0 · 존 몸통은 꼭 그만큼).
 //   켬(`T588_COAST` a·b) 길이 이 함수 하나로 뺀다(생성기 `opts.bandShift` · 사본 0 · 클라 `00-const.js` 미러 · ★추신3 — 끔은 안 먹는다).
 //   ★[T604 추신3 2026-10-03] **경계 앞 바다 지킴** — 이동은 바다 존 경계 앞 바다를 핸드오프 겹침 띠 폭(`HANDOFF_COMMIT` — 정본 zone-config · 8셀)보다
 //   얇게 만들지 않는다(그 열은 8셀에서 멈춘다 · 재민 10-03) — 식은 `public/coast-shape.js shiftDepth` 한 자리 · 폭은 zone-config 값을 넘긴다(박힌 수 0).
@@ -1289,7 +1289,10 @@ function _coastShiftOf(zone) { return (typeof zone.coastShift === 'number' && zo
 function _coastShiftAt(zone, shiftCells, ax, ay, oceanRects, maxDist, tileSize) {
   if (shiftCells === 0) return 0;
   const S = shiftCells * tileSize;
-  return S * _coastLandRamp(zone, ax, ay, oceanRects, S);   // = min(S, 뭍 이웃 변까지 거리) — 경계에서 0 · 이동만큼 들어가면 다(45°) · maxDist 는 안 쓴다
+  // ★[T637 2026-10-04 · 재민 "한반도-닛폰 해안선은 불연속"] **잇는 폭 = `COASTLINE_BASE`**(띠의 평균 깊이 6,000px = 187.5셀 · 새 수 0) —
+  //   종전 잇는 폭 = 이동 그 값(90셀 → 45° 비탈)이라 경계 앞 90셀 안에서 해안이 80셀 가까이 꺾여 계단처럼 보였다. 띠 깊이 자 안에서 풀면
+  //   기울기 90/187.5 ≈ 0.48 — 경계 열에서 0(이웃 존 띠와 그대로 이음) · 187.5셀 들어가면 다 이동. 8셀(HANDOFF_COMMIT)은 더 가파르고, 이동 값은 지금 그 꺾임이다.
+  return S * _coastLandRamp(zone, ax, ay, oceanRects, COASTLINE_BASE);   // = S × min(1, 뭍 이웃 변까지 거리 ÷ 띠 평균 깊이) · maxDist 는 안 쓴다
 }
 
 // zone: { id, isOcean, worldOffsetX, worldOffsetY, zoneWidth, zoneHeight }
