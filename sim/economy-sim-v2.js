@@ -193,6 +193,12 @@ try {
       else DECAY_V2[id] = 0.0002;
     }
   }
+  // ★★[T635 ① 2026-10-04] 조개 팔찌감 = **옥과 같은 꼴의 위신재** — 손잡이 `T635_SHELL_ORNAMENT=1`(기본 끔 · 품목은 `T574_NEW_ITEMS=1` 일 때만 있다).
+  //   탄력 · 효용 · 위신재 표 · 부패를 옥(`jade`)의 그 수 그대로(새 수 0) · 기준값은 품목표 값 그대로(위 통합 줄 — 재민 값 칸).
+  if (typeof process !== 'undefined' && process.env && process.env.T635_SHELL_ORNAMENT === '1' && SPECIALTY.shell_bangle) {
+    ELASTICITY.shell_bangle = ELASTICITY.jade; UTILITY_WEIGHT.shell_bangle = UTILITY_WEIGHT.jade;
+    ORNAMENTAL.shell_bangle = ORNAMENTAL.jade; DECAY_V2.shell_bangle = DECAY_V2.jade;
+  }
   console.log(`[econ-sim-v2] specialty.js 통합: ${Object.keys(SPECIALTY).length}종 → 총 ${TRADABLE.length} TRADABLE`);
 } catch (e) {
   console.warn('[econ-sim-v2] specialty.js 로드 실패 (옛 17종만 사용):', e.message);

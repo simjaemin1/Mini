@@ -3518,6 +3518,17 @@ const T73_RAWGRAIN = process.env.T73_RAWGRAIN !== '0';   // 되돌림: T73_RAWGR
 const T17_TOOL     = process.env.T17_TOOL     !== '0';   // ① 도구 마모를 흐름으로 기록
 const T17_PRESERVE = process.env.T17_PRESERVE !== '0';   // ② 보존식 편입
 const T17_SALT     = process.env.T17_SALT     !== '0';   // ③ 자염 편입
+// ★★[T635 2026-10-04] **새 품목 수요부터 — 손잡이 둘 · 둘 다 기본 끔(= 지금 바이트)** · 새 수 0(쓰임 몫 = 이미 있는 비슷한 품목의 칸 그대로)
+//   ① `T635_SHELL_ORNAMENT=1` — 조개 팔찌감(`shell_bangle` · `T574_NEW_ITEMS=1` 일 때만 품목이 있다)을 **옥(`jade`)과 같은 꼴의 위신재**로:
+//      v1 비축(`RESERVE_PC`) · 웃돈 상한(`LUX_V1`) · 늘 포만(`SAT_ALWAYS`) · 봉헌(`RITE_PC`) 칸을 옥의 그 수로 · 값(`BASE_VALUE`)은 품목표 값 그대로
+//      (v2 쪽 — 탄력 · 효용 · 위신재 표 · 부패 — 는 `economy-sim-v2.js` 같은 손잡이). 공급 = 어부 부산물(조개 칸 `oyster` 율 그대로)
+//      × `land.shellBangle`(존 특산 표의 조개 팔찌감 단계 — 서버 `extractLandParamsApprox` 가 바다 닿는 마을에만 세운다).
+//   ② `T635_SEA_SPECIES=1` — 바다 닿는 마을의 어부 산출 `fish` 를 T602 해안 표 종으로 나눈다(`land.seaMix` — 비 = T602 흔함 칸 ·
+//      서버가 그 마을 해안 구간으로 세운다) · **합 kg 무변**(종 몫 kg = fish kg × 비 → 낱개 = ÷ 그 종 무게 · 무게 정본 `specialty.weight`) ·
+//      종은 식단(T86)에서 `fish` 군 · 열량은 **kg 그대로**(1kg 종 = 1kg fish — 같은 kg 를 나눴으니 끼니가 무변).
+const T635_SHELL_ORNAMENT = (typeof process !== 'undefined' && process.env && process.env.T635_SHELL_ORNAMENT === '1');
+const T635_SEA_SPECIES = (typeof process !== 'undefined' && process.env && process.env.T635_SEA_SPECIES === '1');
+const _t635Sea = Object.create(null);   // ② 나눠 낸 종 → 1낱 = fish 몇 단위(kg 비) — 식단이 이 표로 먹는다(켠 판에서만 찬다)
 
 // ★flow-EMA 소비 계측(2026-07-12, CHECKLIST 154 부채 해소): 실소비를 v._consDay에 기록 → tickVillage 일 경계에서
 //   v._consEMA(30일 관성)로 폴드 → v2 가격 target의 flowT(=EMA×30)가 됨. 유령 보유 하한(N×0.5) 제거의 보상 —
@@ -3545,12 +3556,12 @@ function consumeFood(v, need) {
     const P = v._priceCache;
     if (P) {
       const cand = {};
-      for (const r in T86_GROUP) {
+      for (const r of (T635_SEA_SPECIES ? _t635DietIds() : Object.keys(T86_GROUP))) {   // ★[T635 ②] 켜면 나눠 낸 종도 `fish` 군(끔 = 종전 열쇠 순서 그대로)
         if (PRESERVED_FOODS.indexOf(r) >= 0) continue;      // 보존식은 예산 밖 — 맨 뒤 규약(T17 ②)
         const q = v.storage[r] || 0; if (!(q > 0)) continue;
         const fe = _t86Factor(r); if (!(fe > 0)) continue;
         const pr = P[r]; if (!(pr > 0)) continue;
-        const g = T86_GROUP[r];
+        const g = T86_GROUP[r] || (T635_SEA_SPECIES && _t635Sea[r] != null ? 'fish' : undefined);
         (cand[g] || (cand[g] = [])).push({ r, fe, per: pr / fe });   // 유효가격 = 그림자가격 ÷ 열량환산
       }
       const groups = Object.keys(cand);
@@ -3946,11 +3957,38 @@ const T86_DIET = process.env.T86_DIET !== '0';   // 되돌림: T86_DIET=0 → T7
 
 // 이 품목 1단위가 내는 열량(= food 단위). 전부 이 파일의 기존 표에서 읽는다 — 사본 0.
 function _t86Factor(r) {
+  if (T635_SEA_SPECIES && _t635Sea[r] != null) return _t635Sea[r];   // ★[T635 ②] 나눠 낸 종 = 그 kg 만큼의 fish
   if (r === 'cooked_food') return 1.12;
   if (r === 'food' || r === 'fish' || r === 'meat') return 1;
   if (RAW_GRAINS.indexOf(r) >= 0) return RAW_GRAIN_FOOD_FACTOR;
   return FORAGE_FOOD_FACTOR[r] || 0;
 }
+// ★[T635 ②] 식단 후보 열쇠 — 종전 표 + 나눠 낸 종(이미 표에 있는 종은 한 번만)
+// ★[T635 ②] 어부 산출을 그 마을 해안 종 비로 나눠 낸다 — 종 kg = fish kg × 비 · 낱개 = 종 kg ÷ 그 종 무게(`weights.kgOf` — specialty 무게 정본)
+function _t635SeaProduce(addProduce, mix, amt) {
+  const W = _weightsMod(); const kf = (W && W.kgOf('fish')) || 1;
+  for (const id of Object.keys(mix)) {
+    const sh = mix[id]; if (!(sh > 0)) continue;
+    const ki = (W && W.kgOf(id)) || kf;
+    if (_t635Sea[id] == null) _t635Sea[id] = ki / kf;   // 1낱 = fish 몇 단위(식단 열량 — 같은 kg)
+    addProduce(id, amt * sh * kf / ki);
+  }
+}
+// ★[T635 ①] 품목이 있을 때만(`T574_NEW_ITEMS=1`) — 없으면 손잡이를 켜도 아무 칸도 안 선다
+let _t635Shell;
+function _t635ShellItem() {
+  if (_t635Shell === undefined) { const SP = _getSpecialty(); _t635Shell = !!(SP && SP.shell_bangle); }
+  return _t635Shell;
+}
+let _t635InitDone = false;
+function _t635Init() {   // 옥의 쓰임 칸을 그 수 그대로 조개 팔찌감에(값만 품목표 값) — 첫 마을을 세울 때 한 번
+  if (_t635InitDone) return; _t635InitDone = true;
+  if (!T635_SHELL_ORNAMENT || !_t635ShellItem()) return;
+  const SP = _getSpecialty();
+  RESERVE_PC.shell_bangle = RESERVE_PC.jade; LUX_V1.shell_bangle = LUX_V1.jade; SAT_ALWAYS.shell_bangle = SAT_ALWAYS.jade; RITE_PC.shell_bangle = RITE_PC.jade;
+  BASE_VALUE.shell_bangle = SP.shell_bangle.baseValue;
+}
+function _t635DietIds() { const ks = Object.keys(T86_GROUP); for (const r in _t635Sea) if (!(r in T86_GROUP)) ks.push(r); return ks; }
 
 // ═════════════════════════════════════════════════════════════════════════════
 // ★★[T100 · ECON 수술 2-b] **밭이 곳간에 닿는다.** — 4판(2026-09-07 · 재민 판정)이 정본이다.
@@ -5506,6 +5544,7 @@ function _ironWeaponCapable(v) {
   return (v.storage && v.storage.iron || 0) >= 0.4;
 }
 function createVillage(opts) {
+  if (T635_SHELL_ORNAMENT) _t635Init();   // ★[T635 ①] 끔이면 한 줄도 안 돈다
   const baseSize = opts.size ?? 50;
   const v = {
     id: 'v' + (_nextVillageId++),
@@ -5552,6 +5591,9 @@ function createVillage(opts) {
       //   ⚠끄면 **키 자체를 안 만든다**(값 `undefined` 로 두면 `Object.keys(land)` 가 달라진다 —
       //     직렬화·진단이 그 목록을 본다). 스프레드로 통째로 없앤다.
       ...(process.env.T17_MSY === '1' && opts.fishSustain != null ? { fishSustain: opts.fishSustain } : {}),
+      // ★[T635] 켠 판에만 서는 칸 둘(끄면 키 자체가 없다 — 위 `fishSustain` 과 같은 이유) — 값은 서버 `extractLandParamsApprox` 가 잰다
+      ...(T635_SEA_SPECIES && opts.seaMix ? { seaMix: opts.seaMix } : {}),
+      ...(T635_SHELL_ORNAMENT && opts.shellBangle > 0 ? { shellBangle: opts.shellBangle } : {}),
       size: baseSize,
       baseSize,                                                   // 확장 비용 계산 기준
     },
@@ -6308,7 +6350,10 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
       //   아래 부산물 루프(수지·껍질·도토리)는 `baseAmt` 를 그대로 타고 나간다(T135 `repl` 이 이미 거른다).
       if (!(T100_FIELD_YIELD && npc.currentJob === 'farmer')
        && !(npc.currentJob === 'fisher' && fishActOn(v))
-       && !(npc.currentJob === 'lumberjack' && woodActOn(v))) addProduce(jdef.output, baseAmt);
+       && !(npc.currentJob === 'lumberjack' && woodActOn(v))) {
+        if (T635_SEA_SPECIES && npc.currentJob === 'fisher' && v.land && v.land.seaMix) _t635SeaProduce(addProduce, v.land.seaMix, baseAmt);   // ★[T635 ②] 바다 마을 = 종으로(합 kg 무변)
+        else addProduce(jdef.output, baseAmt);
+      }
       // ★★[T179 2026-09-12] **걷어낸 자리에 배율만 남겨 둔다.** 위 한 줄이 농부의 추상 산출을 막는 순간
       //   `baseAmt` 안의 `skillMul·toolBoost·inputMult` 도 같이 사라진다 — T154·T166 의 문이 `baseAmt` 를
       //   통째로 덮어써서 저지른 것과 **같은 결함**이다(족보 145). 여기선 덮을 문이 없으니 **심어 둔다**:
@@ -6342,6 +6387,8 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
           }
           addProduce(r, baseAmt * rate);
         }
+        // ★[T635 ①] 조개 팔찌감 — 어부 부산물(조개 칸 `oyster` 율 그대로) × 이 마을의 산지 단계(`land.shellBangle` · 켠 판의 바다 마을만)
+        if (T635_SHELL_ORNAMENT && npc.currentJob === 'fisher' && v.land && v.land.shellBangle > 0 && _t635ShellItem()) addProduce('shell_bangle', baseAmt * (jdef.byproduct.oyster || 0) * v.land.shellBangle);
       }
       workNPC(npc);
     }
@@ -8874,6 +8921,12 @@ try {
       else if (r.category === 'spice') DECAY_V2[id] = 0.0002;  // 향신료 보존 잘됨
       else DECAY_V2[id] = 0.0002;
     }
+  }
+  // ★★[T635 ① 2026-10-04] 조개 팔찌감 = **옥과 같은 꼴의 위신재** — 손잡이 `T635_SHELL_ORNAMENT=1`(기본 끔 · 품목은 `T574_NEW_ITEMS=1` 일 때만 있다).
+  //   탄력 · 효용 · 위신재 표 · 부패를 옥(`jade`)의 그 수 그대로(새 수 0) · 기준값은 품목표 값 그대로(위 통합 줄 — 재민 값 칸).
+  if (typeof process !== 'undefined' && process.env && process.env.T635_SHELL_ORNAMENT === '1' && SPECIALTY.shell_bangle) {
+    ELASTICITY.shell_bangle = ELASTICITY.jade; UTILITY_WEIGHT.shell_bangle = UTILITY_WEIGHT.jade;
+    ORNAMENTAL.shell_bangle = ORNAMENTAL.jade; DECAY_V2.shell_bangle = DECAY_V2.jade;
   }
   console.log(`[econ-sim-v2] specialty.js 통합: ${Object.keys(SPECIALTY).length}종 → 총 ${TRADABLE.length} TRADABLE`);
 } catch (e) {
