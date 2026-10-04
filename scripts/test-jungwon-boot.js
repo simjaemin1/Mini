@@ -190,8 +190,9 @@ async function waitUp(p, url, tries = 300) {
   ok(((ZONES.hanbando.bridges || []).length / 2) === 836, 'ⓗ2 한반도 다리 836셀', `${(ZONES.hanbando.bridges || []).length / 2}`);
   // ★[PM 10-03] T550 이 닛폰 정본을 바꿨다(광맥 55 → 490 · 다리 208 → 449셀 · 후보 16 → 30) — 이 줄은 "중원북 작업이 닛폰을 안 건드렸나" 의 자라 새 정본 수로 옮긴다.
   // ★[T580 10-03] 사람 없는 덩이 A·B·C 를 이은 다리 98셀이 더해졌다(449 → 547) · ★[PM 10-03] 광맥은 T550 추신이 옛 55 로 되돌렸다(T574 추신4 다시 굽기 전).
-  ok((J.nippon.ores || []).length === 55 && ((ZONES.nippon.bridges || []).length / 2) === 416, 'ⓗ3 닛폰 광맥 55(T550 추신) · 다리 416셀(T550 정본 + T580 덩이 547 − T595 ② 뭍 위에 남은 131 · 폭 7000 으로 띠가 물러나 밑이 뭍이 됐다)');
-  ok((J.hanbando.villages || []).length === 51 && (J.nippon.villages || []).length === 30, 'ⓗ4 한반도 후보 51 · 닛폰 30 그대로(T550 정본)');
+  // ★[T638 2026-10-04] 닛폰 동쪽 정본(재민 지형 + T615·T616) — 광맥 55 + 자잘 700 · 다리 416 → 744(동쪽 고정점 + 지름길 1 · 서 토오가와 122) · 후보 30 → 50.
+  ok((J.nippon.ores || []).length === 755 && ((ZONES.nippon.bridges || []).length / 2) === 744, 'ⓗ3 닛폰 광맥 755(55 + 자잘 700 · T638) · 다리 744셀(T638)', `${(J.nippon.ores || []).length} · ${(ZONES.nippon.bridges || []).length / 2}`);
+  ok((J.hanbando.villages || []).length === 51 && (J.nippon.villages || []).length === 50, 'ⓗ4 한반도 후보 51 · 닛폰 50(T638 동쪽 정본)', `${(J.hanbando.villages || []).length} · ${(J.nippon.villages || []).length}`);
 
   shutdown();
   for (const f of [CDB, ZDB, CDB + '-wal', ZDB + '-wal', CDB + '-shm', ZDB + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }

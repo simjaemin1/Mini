@@ -277,8 +277,9 @@ async function waitUp(p, url, tries = 300) {
   //   존 설정 `seedAllVillages`(한반도 정본 길 · 게이트 우회)가 켜지면 30곳 · 435쌍(실측 · 도달 435/435) — 자는 설정을 읽는다(판정은 PM).
   //   env `SEED_ALL=1` 로 돌려도 같은 갈래(전수)다.
   const _np = ZONES[ZID] || {}, _all = !!_np.seedAllVillages || process.env.SEED_ALL === '1';
-  const _wantSeed = _all ? (npHard || []).length : 24;
-  ok(!!mSeeded && +mSeeded[3] === _wantSeed, `ⓘ2 ★시딩 마을 수 ${_wantSeed}(${_all ? '전수' : '상한 ' + (_np.villageMax || 20) + ' · 게이트'} · T595)`,
+  // ★[T638 2026-10-04] 후보 50(동쪽 정본) · 상한 50 — 게이트(간격 12,000px · 식량 하한)를 타면 **36곳**(실측) · 전수면 50 · 1,225쌍.
+  const _wantSeed = _all ? (npHard || []).length : 36;
+  ok(!!mSeeded && +mSeeded[3] === _wantSeed, `ⓘ2 ★시딩 마을 수 ${_wantSeed}(${_all ? '전수' : '상한 ' + (_np.villageMax || 20) + ' · 게이트'} · T595 · T638)`,
     mSeeded ? `시딩 ${mSeeded[3]}곳` : '-');
   ok(pairs === _wantSeed * (_wantSeed - 1) / 2, `ⓘ3 교역 쌍 ${_wantSeed * (_wantSeed - 1) / 2}(시딩 ${_wantSeed})`, `${pairs}쌍`);
 

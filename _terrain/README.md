@@ -9,3 +9,4 @@
   * `nippon_T615_안.json` · `nippon_T616_안.json` — 같은 판의 닛폰 존 절(`hanbando-terrain.json` 의 `nippon` 꼴 · `T549_PLAN` 으로 얹힌다).
   * `nippon_다리_v2.json` — 다리 flat 646셀(정본 416 + 230 · zone-config `nippon.bridges` 자리).
   * `nippon_광맥_v2.json` — T616 판 존 절 + 자잘 광맥 700(광종 칸 비움).
+* `editor-work_T638_닛폰동쪽.json`(T638 · 10-04) — **정본에 넣은 판**: 지금 정본 export 위에 닛폰 동쪽 범위만(재민 동쪽 새 지형 + 하야가와 · 후카가와 연장 + T615 · T616 더한 것 + T638 밸런스 손질) — 남해안(T631 범위)은 옛 꼴 그대로. `scripts/t638-make-work.py` 가 만든다(`t631-make-work.py` 의 거울).
