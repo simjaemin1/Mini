@@ -96,12 +96,13 @@ function zoneHook() {
     // 마을 — 서버 마을(영토·집) + econ 인구
     const vs = st.villages || [];
     const pops = [], own = new Map();
-    let empty = 0, banditized = 0, emptied = 0, terr = 0, houses = 0, bSites = 0, bAdv = 0, bStall = 0, bNoTrip = 0;
+    let empty = 0, banditized = 0, emptied = 0, terr = 0, houses = 0, bSites = 0, bAdv = 0, bStall = 0, bNoTrip = 0, wood0 = 0, woodSum = 0;
     for (const v of vs) {
       const e = v.econ; const n = e && e.npcs ? e.npcs.length : 0;
       pops.push(n);
       if (n <= 0) empty++;
       if (e && e._banditized) banditized++;
+      if (e && e.storage) { const wd = e.storage.wood || 0; woodSum += wd; if (wd < 1) wood0++; }   // 곳간 통나무(T581 §3-2 · T627 ② 맞춤 칸)
       if (e && e._everPop && n <= 0) emptied++;
       if (v._terrSet) { terr += v._terrSet.size; for (const k of v._terrSet) own.set(k, (own.get(k) || 0) + 1); }
       houses += (v._houseCells || []).length;
@@ -124,7 +125,8 @@ function zoneHook() {
     const row = { zone: st.zoneId, day: w.day, g, date, t: Date.now(),
       vils: vs.length, empty, banditized, emptied, popMin: pops.length ? pops[0] : 0, popMed: pops.length ? pops[pops.length >> 1] : 0, popMax: pops.length ? pops[pops.length - 1] : 0,
       terr, over, houses, dHouses, site, dSite, roads,
-      build: { sites: bSites, adv: bAdv, stall: bStall, noTrip: bNoTrip },   // 집 행위(T400 `_t400Dbg`) — 집터 · 오늘 오른 단계 · 곳간 빔 · 걸음 0(하루 낮에 왕복 하나도 못 함)
+      build: { sites: bSites, adv: bAdv, stall: bStall, noTrip: bNoTrip }, wood0, wood: +woodSum.toFixed(1),
+      trip: P.tripCalls != null ? { calls: P.tripCalls, fill: P.tripFill } : null,   // ★[T627] 운영 하루로 센 몫 — 판 시계보다 더 준 왕복(채운 왕복 · 켬 판에만 오른다)   // 집 행위(T400 `_t400Dbg`) — 집터 · 오늘 오른 단계 · 곳간 빔 · 걸음 0(하루 낮에 왕복 하나도 못 함)
       xz: X ? { sold: X.st.soldOk, crossArrive: X.st.crossArrive, bodyOut: X.st.bodyOut, bodyIn: X.st.bodyIn } : null,
       dayMs: tpl ? { work: +(+tpl.total || 0).toFixed(1), wall: tpl.wall, frames: tpl.frames, frameMax: tpl.frameMax } : null,
       heapMax, rssMax, heapLimit: HEAP_LIMIT, db: DBP ? sizeOf(DBP) : null };
@@ -184,7 +186,7 @@ function run(A) {
     Z[z] = { zdb, rows, mine, snapped: new Set(SNAP.filter((d) => fs.existsSync(path.join(OUTD, 'snap', `${tag}_${z}_d${d}.db`)))), p: spawn(process.execPath, ['-r', path.join(__dirname, 't533-xzone-server.js'), '-r', __filename, path.join(ROOT, 'server/zone.js')], { cwd: ROOT, stdio: ['ignore', logf, logf], env }) };
   }
   let prevMeta = null; if (RESUME) { try { prevMeta = JSON.parse(fs.readFileSync(path.join(OUTD, `meta_${tag}.json`), 'utf8')); } catch (e) {} }
-  const meta = { tag, seed: SEED, xzone: XZ, DAY_MS, DAYS, snap: SNAP, portOff: OFF, resumes: prevMeta ? [...(prevMeta.resumes || []), { at: new Date().toISOString(), from: prevMeta.days || null }] : [], start0: prevMeta ? (prevMeta.start0 || prevMeta.start) : undefined, start: new Date().toISOString(), host: { cpus: require('os').cpus().length, node: process.version, mem: require('os').totalmem() } };
+  const meta = { tag, seed: SEED, xzone: XZ, DAY_MS, DAYS, snap: SNAP, portOff: OFF, knobs: Object.fromEntries(Object.entries(process.env).filter(([k]) => /^T\d{3}_/.test(k))), resumes: prevMeta ? [...(prevMeta.resumes || []), { at: new Date().toISOString(), from: prevMeta.days || null }] : [], start0: prevMeta ? (prevMeta.start0 || prevMeta.start) : undefined, start: new Date().toISOString(), host: { cpus: require('os').cpus().length, node: process.version, mem: require('os').totalmem() } };
   try { meta.head = require('child_process').execSync('git rev-parse --short HEAD', { cwd: ROOT }).toString().trim(); } catch (e) {}
   fs.writeFileSync(path.join(OUTD, `meta_${tag}.json`), JSON.stringify(meta, null, 1));
   const kill = async () => { for (const z of ZS) { try { Z[z].p.kill('SIGINT'); } catch (e) {} } await sleep(4000); for (const z of ZS) { try { Z[z].p.kill('SIGKILL'); } catch (e) {} } try { c.kill('SIGKILL'); } catch (e) {} await sleep(500); };

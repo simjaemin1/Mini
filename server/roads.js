@@ -197,31 +197,59 @@ function clientRoads() { // welcome 1회 — 등급 셀 flat [cx,cy,lv,...] (밟
   }
   return out.length ? out : null;
 }
-function flushDaily(day) { // DB 배치 플러시(dirty만) + 클라 변경분 broadcast
-  if (!S.dirty.size) return { rows: 0, sentN: 0 };
-  const db = S.db;
-  let rows = 0;
-  db.db.exec('BEGIN');
+// ★★[T630 2026-10-04] **하루 플러시를 틱 조각으로** — 길 일 훅 최대 80~111ms 의 주인이 이 함수였다(T605·T617 실측: 하루 1만 행 한 트랜잭션 34~88ms).
+//   ⓐ 날이 바뀐 그 틱에 **그날의 행을 얼린다**(dirty 키마다 그 순간의 v·d · 셀이 없으면 지움) — 종전이 그 틱에 쓰던 바로 그 값이다.
+//      dirty 는 새 집합으로 갈아 끼운다 ⇒ 그 뒤 찍힌 것은 다음 날 몫(종전과 같은 뜻: 종전도 플러시 뒤에 찍힌 것은 다음 날 썼다).
+//   ⓑ 틱마다 예산(= 틱 조각기의 예산 `villages.tickSliceMs()` · 새 수 0)만큼 **한 트랜잭션 = 한 묶음**으로 쓴다. 예산 0 = 한 번에(종전).
+//   ⓒ 방송(등급 전이 셀)은 **마지막 묶음 뒤 한 번** — 얼린 값으로 종전과 같은 차례·같은 내용.
+//   ⓓ 묶음이 실패하면 그 묶음과 남은 키를 dirty 로 되돌린다(다음 날 그때 값으로 다시 — 종전 "다음 날 재시도"와 같은 뜻 · 이미 들어간 묶음은 남는다).
+//   ⓔ 프로세스가 정상 종료하면(`exit`) 남은 묶음을 그 자리에서 다 쓴다. 강제 종료(SIGKILL)는 남은 묶음을 잃는다 — 종전도 그날 찍힌 것을 다 잃는 자리다.
+let _fl = null;   // { day, rows:[[k, v|null, d]], i, n, cells, graded, stamped }
+function _sliceMs() { try { const V = require('./villages'); return V.tickSliceMs ? (V.tickSliceMs() | 0) : 0; } catch (e) { return 0; } }
+function flushDaily(day) { // 그날 행을 얼려 둔다(쓰기는 `_flushStep` — 틱마다 한 묶음)
+  if (_fl) _flushStep(0);   // 앞날 것이 남았으면 먼저 다 쓴다(날이 조각보다 길어 실제론 안 난다)
+  if (!S.dirty.size) return { rows: 0, sentN: 0, pending: false };
+  const rows = [];
+  for (const k of S.dirty) { const r = S.cells.get(k); rows.push(r ? [k, r.v, r.d] : [k, null, 0]); }
+  S.dirty = new Set();
+  _fl = { day, rows, i: 0, n: 0, cells: S.cells.size, graded: S.stats.graded, stamped: S.stats.stamped };
+  _flushStep(_sliceMs());
+  return { rows: rows.length, sentN: 0, pending: !!_fl };
+}
+function _flushStep(budgetMs) {
+  const F = _fl; if (!F) return;
+  const db = S.db, t0 = Date.now();
+  const i0 = F.i;
   try {
-    for (const k of S.dirty) {
-      const r = S.cells.get(k);
-      if (r) db.upsertRoadCell(S.zoneId, k, r.v, r.d);
+    db.db.exec('BEGIN');
+    while (F.i < F.rows.length) {
+      const [k, v, d] = F.rows[F.i];
+      if (v !== null) db.upsertRoadCell(S.zoneId, k, v, d);
       else db.deleteRoadCell(S.zoneId, k);
-      rows++;
+      F.i++;
+      if (budgetMs > 0 && Date.now() - t0 >= budgetMs) break;
     }
     db.db.exec('COMMIT');
-  } catch (e) { try { db.db.exec('ROLLBACK'); } catch (_) { } console.error(`[${S.zoneId}] 🛤️ 답압 길 저장 실패(다음 날 재시도):`, e.message); return { rows: 0, sentN: 0 }; }
-  // 변경분 diff(등급 전이 셀만 — 대역폭 소형)
+    F.n++;
+  } catch (e) {
+    try { db.db.exec('ROLLBACK'); } catch (_) { }
+    for (let j = i0; j < F.rows.length; j++) S.dirty.add(F.rows[j][0]);   // ⓓ 이 묶음과 남은 키 — 다음 날 그때 값으로
+    _fl = null;
+    console.error(`[${S.zoneId}] 🛤️ 답압 길 저장 실패(다음 날 재시도 ${F.rows.length - i0}행):`, e.message);
+    return;
+  }
+  if (F.i < F.rows.length) return;   // 다음 틱에 이어 쓴다
+  _fl = null;
+  // 변경분 diff(등급 전이 셀만 — 대역폭 소형) — 얼린 값으로 · 종전과 같은 차례
   const changed = [];
-  for (const k of S.dirty) {
-    const r = S.cells.get(k);
-    const lv = r ? (r.v >= T2 ? 2 : (r.v >= T1 ? 1 : 0)) : 0;
+  for (const [k, v] of F.rows) {
+    const lv = v !== null ? (v >= T2 ? 2 : (v >= T1 ? 1 : 0)) : 0;
     if ((S.sent.get(k) || 0) !== lv) { S.sent.set(k, lv); if (!lv) S.sent.delete(k); changed.push(k % S.cellsW, (k / S.cellsW) | 0, lv); }
   }
-  S.dirty.clear();
   if (changed.length && S.broadcast) { try { S.broadcast({ type: 'road_cells', cells: changed }); } catch (_) { } }
-  return { rows, sentN: changed.length / 3 };
+  console.log(`[${S.zoneId}] 🛤️ 답압 길 day ${F.day}: 셀 ${F.cells}(등급 ${F.graded}) · 저장 ${F.rows.length}행 · 클라 변경 ${changed.length / 3}셀 · 오늘 스탬프 ${F.stamped} · 묶음 ${F.n}`);
 }
+process.on('exit', () => { if (_fl) { try { _flushStep(0); } catch (e) { } } });   // ⓔ
 
 function init(deps) { // deps: { zoneId, cellsW, cellsH, epoch, dayMs, broadcast }
   if (!ENABLED) { console.log(`[${deps && deps.zoneId || 'zone'}] 🛤️ roads: ENABLE_ROADS=0 — 비활성(no-op)`); return; }
@@ -252,13 +280,12 @@ function init(deps) { // deps: { zoneId, cellsW, cellsH, epoch, dayMs, broadcast
 function onGameTick(now) {
   if (!S.ready) return;
   const day = Math.floor((now - S.epoch) / S.dayMs);
-  if (day === S.lastDay) return;
+  if (day === S.lastDay) { if (_fl) { try { _flushStep(_sliceMs()); } catch (e) { } } return; }   // ★[T630] 얼린 행을 틱마다 한 묶음
   S.lastDay = day;
   try {
     _rebuildCoarse(day);
-    const f = flushDaily(day);
+    flushDaily(day);   // ★[T630] 로그는 마지막 묶음 뒤(`_flushStep`)
     S.stats.cellsTotal = S.cells.size;
-    if (f.rows) console.log(`[${S.zoneId}] 🛤️ 답압 길 day ${day}: 셀 ${S.cells.size}(등급 ${S.stats.graded}) · 저장 ${f.rows}행 · 클라 변경 ${f.sentN}셀 · 오늘 스탬프 ${S.stats.stamped}`);
     S.stats.stamped = 0;
   } catch (e) { console.error(`[${S.zoneId}] 🛤️ 답압 길 데일리 실패:`, e.message); }
 }
