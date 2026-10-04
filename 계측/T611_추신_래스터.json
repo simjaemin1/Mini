@@ -1,0 +1,4473 @@
+{
+ "seeds": {
+  "7": {
+   "popOld": 8230,
+   "popNew": 8246,
+   "touched": 2,
+   "dTouched": 1,
+   "clean": 49,
+   "dClean": 15,
+   "rows": [
+    {
+     "name": "어촌13",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      60,
+      60
+     ],
+     "pop": [
+      153,
+      98
+     ]
+    },
+    {
+     "name": "농촌3",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      62,
+      62
+     ],
+     "pop": [
+      174,
+      130
+     ]
+    },
+    {
+     "name": "임업6",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      58,
+      58
+     ],
+     "pop": [
+      299,
+      259
+     ]
+    },
+    {
+     "name": "어촌5",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      60,
+      60
+     ],
+     "pop": [
+      203,
+      163
+     ]
+    },
+    {
+     "name": "어촌16",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      59,
+      59
+     ],
+     "pop": [
+      190,
+      154
+     ]
+    },
+    {
+     "name": "광산2",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      82,
+      82
+     ],
+     "pop": [
+      174,
+      143
+     ]
+    },
+    {
+     "name": "어촌10",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      60,
+      60
+     ],
+     "pop": [
+      161,
+      138
+     ]
+    },
+    {
+     "name": "농촌7",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      80,
+      80
+     ],
+     "pop": [
+      123,
+      100
+     ]
+    },
+    {
+     "name": "광산4",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      70,
+      70
+     ],
+     "pop": [
+      109,
+      88
+     ]
+    },
+    {
+     "name": "농촌19",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      81,
+      81
+     ],
+     "pop": [
+      133,
+      113
+     ]
+    },
+    {
+     "name": "어촌4",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      62,
+      62
+     ],
+     "pop": [
+      183,
+      164
+     ]
+    },
+    {
+     "name": "어촌12",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      60,
+      60
+     ],
+     "pop": [
+      214,
+      200
+     ]
+    },
+    {
+     "name": "어촌14",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      60,
+      60
+     ],
+     "pop": [
+      209,
+      195
+     ]
+    },
+    {
+     "name": "농촌20",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      176,
+      176
+     ],
+     "pop": [
+      113,
+      99
+     ]
+    },
+    {
+     "name": "농촌14",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      176,
+      176
+     ],
+     "pop": [
+      81,
+      70
+     ]
+    },
+    {
+     "name": "어촌8",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      60,
+      60
+     ],
+     "pop": [
+      165,
+      156
+     ]
+    },
+    {
+     "name": "광산3",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      240,
+      240
+     ],
+     "pop": [
+      115,
+      109
+     ]
+    },
+    {
+     "name": "어촌11",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      60,
+      60
+     ],
+     "pop": [
+      195,
+      189
+     ]
+    },
+    {
+     "name": "농촌15",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      176,
+      176
+     ],
+     "pop": [
+      99,
+      94
+     ]
+    },
+    {
+     "name": "농촌16",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      99,
+      99
+     ],
+     "pop": [
+      124,
+      119
+     ]
+    },
+    {
+     "name": "농촌21",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 47,
+     "oldOnly": 0,
+     "terrNewOnly": 94,
+     "moved": true,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      79,
+      82
+     ],
+     "pop": [
+      142,
+      138
+     ]
+    },
+    {
+     "name": "임업1",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      205,
+      205
+     ],
+     "pop": [
+      247,
+      244
+     ]
+    },
+    {
+     "name": "농촌8",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      86,
+      86
+     ],
+     "pop": [
+      119,
+      116
+     ]
+    },
+    {
+     "name": "어촌9",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      59,
+      59
+     ],
+     "pop": [
+      203,
+      202
+     ]
+    },
+    {
+     "name": "농촌11",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      80,
+      80
+     ],
+     "pop": [
+      149,
+      148
+     ]
+    },
+    {
+     "name": "농촌13",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      93,
+      93
+     ],
+     "pop": [
+      131,
+      131
+     ]
+    },
+    {
+     "name": "농촌1",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      87,
+      87
+     ],
+     "pop": [
+      235,
+      236
+     ]
+    },
+    {
+     "name": "임업4",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      139,
+      139
+     ],
+     "pop": [
+      159,
+      160
+     ]
+    },
+    {
+     "name": "어촌3",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      60,
+      60
+     ],
+     "pop": [
+      198,
+      200
+     ]
+    },
+    {
+     "name": "농촌18",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      176,
+      176
+     ],
+     "pop": [
+      102,
+      106
+     ]
+    },
+    {
+     "name": "임업5",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      112,
+      112
+     ],
+     "pop": [
+      189,
+      194
+     ]
+    },
+    {
+     "name": "농촌9",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      176,
+      176
+     ],
+     "pop": [
+      116,
+      121
+     ]
+    },
+    {
+     "name": "농촌12",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 11,
+     "oldOnly": 0,
+     "terrNewOnly": 24,
+     "moved": true,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      85,
+      82
+     ],
+     "pop": [
+      131,
+      136
+     ]
+    },
+    {
+     "name": "어촌15",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      59,
+      59
+     ],
+     "pop": [
+      183,
+      189
+     ]
+    },
+    {
+     "name": "농촌10",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      176,
+      176
+     ],
+     "pop": [
+      95,
+      103
+     ]
+    },
+    {
+     "name": "어촌1",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      69,
+      69
+     ],
+     "pop": [
+      104,
+      116
+     ]
+    },
+    {
+     "name": "광산5",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      187,
+      187
+     ],
+     "pop": [
+      158,
+      174
+     ]
+    },
+    {
+     "name": "농촌17",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      66,
+      66
+     ],
+     "pop": [
+      136,
+      153
+     ]
+    },
+    {
+     "name": "농촌4",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      60,
+      60
+     ],
+     "pop": [
+      169,
+      187
+     ]
+    },
+    {
+     "name": "농촌5",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      64,
+      64
+     ],
+     "pop": [
+      117,
+      135
+     ]
+    },
+    {
+     "name": "어촌6",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      60,
+      60
+     ],
+     "pop": [
+      192,
+      210
+     ]
+    },
+    {
+     "name": "농촌6",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      75,
+      75
+     ],
+     "pop": [
+      126,
+      146
+     ]
+    },
+    {
+     "name": "광산7",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      240,
+      240
+     ],
+     "pop": [
+      68,
+      90
+     ]
+    },
+    {
+     "name": "어촌7",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      60,
+      60
+     ],
+     "pop": [
+      201,
+      224
+     ]
+    },
+    {
+     "name": "광산6",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      92,
+      92
+     ],
+     "pop": [
+      49,
+      73
+     ]
+    },
+    {
+     "name": "농촌2",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      61,
+      61
+     ],
+     "pop": [
+      195,
+      227
+     ]
+    },
+    {
+     "name": "농촌22",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      63,
+      63
+     ],
+     "pop": [
+      97,
+      130
+     ]
+    },
+    {
+     "name": "광산1",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      240,
+      240
+     ],
+     "pop": [
+      42,
+      77
+     ]
+    },
+    {
+     "name": "임업2",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      65,
+      65
+     ],
+     "pop": [
+      381,
+      423
+     ]
+    },
+    {
+     "name": "임업3",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      73,
+      73
+     ],
+     "pop": [
+      253,
+      298
+     ]
+    },
+    {
+     "name": "어촌2",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      58,
+      58
+     ],
+     "pop": [
+      326,
+      378
+     ]
+    }
+   ]
+  },
+  "42": {
+   "popOld": 8381,
+   "popNew": 7491,
+   "touched": 2,
+   "dTouched": -13,
+   "clean": 49,
+   "dClean": -877,
+   "rows": [
+    {
+     "name": "어촌6",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      60,
+      60
+     ],
+     "pop": [
+      206,
+      89
+     ]
+    },
+    {
+     "name": "농촌13",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      93,
+      93
+     ],
+     "pop": [
+      136,
+      48
+     ]
+    },
+    {
+     "name": "농촌5",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      64,
+      64
+     ],
+     "pop": [
+      171,
+      98
+     ]
+    },
+    {
+     "name": "광산7",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      240,
+      240
+     ],
+     "pop": [
+      112,
+      46
+     ]
+    },
+    {
+     "name": "어촌13",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      60,
+      60
+     ],
+     "pop": [
+      190,
+      124
+     ]
+    },
+    {
+     "name": "어촌16",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      59,
+      59
+     ],
+     "pop": [
+      185,
+      122
+     ]
+    },
+    {
+     "name": "임업4",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      139,
+      139
+     ],
+     "pop": [
+      202,
+      144
+     ]
+    },
+    {
+     "name": "광산2",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      82,
+      82
+     ],
+     "pop": [
+      195,
+      138
+     ]
+    },
+    {
+     "name": "농촌4",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      60,
+      60
+     ],
+     "pop": [
+      191,
+      141
+     ]
+    },
+    {
+     "name": "어촌15",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      59,
+      59
+     ],
+     "pop": [
+      188,
+      139
+     ]
+    },
+    {
+     "name": "어촌11",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      60,
+      60
+     ],
+     "pop": [
+      190,
+      142
+     ]
+    },
+    {
+     "name": "농촌17",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      66,
+      66
+     ],
+     "pop": [
+      127,
+      83
+     ]
+    },
+    {
+     "name": "광산3",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      240,
+      240
+     ],
+     "pop": [
+      108,
+      67
+     ]
+    },
+    {
+     "name": "임업6",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      58,
+      58
+     ],
+     "pop": [
+      286,
+      249
+     ]
+    },
+    {
+     "name": "임업2",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      65,
+      65
+     ],
+     "pop": [
+      372,
+      342
+     ]
+    },
+    {
+     "name": "어촌1",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      69,
+      69
+     ],
+     "pop": [
+      132,
+      103
+     ]
+    },
+    {
+     "name": "농촌9",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      176,
+      176
+     ],
+     "pop": [
+      111,
+      85
+     ]
+    },
+    {
+     "name": "어촌7",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      60,
+      60
+     ],
+     "pop": [
+      234,
+      212
+     ]
+    },
+    {
+     "name": "농촌22",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      63,
+      63
+     ],
+     "pop": [
+      130,
+      110
+     ]
+    },
+    {
+     "name": "농촌7",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      80,
+      80
+     ],
+     "pop": [
+      131,
+      114
+     ]
+    },
+    {
+     "name": "임업3",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      73,
+      73
+     ],
+     "pop": [
+      297,
+      281
+     ]
+    },
+    {
+     "name": "농촌18",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      176,
+      176
+     ],
+     "pop": [
+      105,
+      90
+     ]
+    },
+    {
+     "name": "농촌21",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 47,
+     "oldOnly": 0,
+     "terrNewOnly": 94,
+     "moved": true,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      79,
+      82
+     ],
+     "pop": [
+      154,
+      139
+     ]
+    },
+    {
+     "name": "어촌10",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      60,
+      60
+     ],
+     "pop": [
+      141,
+      129
+     ]
+    },
+    {
+     "name": "임업5",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      112,
+      112
+     ],
+     "pop": [
+      201,
+      191
+     ]
+    },
+    {
+     "name": "농촌6",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      75,
+      75
+     ],
+     "pop": [
+      142,
+      132
+     ]
+    },
+    {
+     "name": "농촌14",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      176,
+      176
+     ],
+     "pop": [
+      89,
+      80
+     ]
+    },
+    {
+     "name": "농촌1",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      87,
+      87
+     ],
+     "pop": [
+      232,
+      226
+     ]
+    },
+    {
+     "name": "어촌3",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      60,
+      60
+     ],
+     "pop": [
+      206,
+      200
+     ]
+    },
+    {
+     "name": "농촌3",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      62,
+      62
+     ],
+     "pop": [
+      119,
+      113
+     ]
+    },
+    {
+     "name": "어촌5",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      60,
+      60
+     ],
+     "pop": [
+      194,
+      188
+     ]
+    },
+    {
+     "name": "어촌14",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      60,
+      60
+     ],
+     "pop": [
+      209,
+      206
+     ]
+    },
+    {
+     "name": "어촌12",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      60,
+      60
+     ],
+     "pop": [
+      177,
+      175
+     ]
+    },
+    {
+     "name": "농촌19",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      81,
+      81
+     ],
+     "pop": [
+      136,
+      134
+     ]
+    },
+    {
+     "name": "농촌20",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      176,
+      176
+     ],
+     "pop": [
+      111,
+      109
+     ]
+    },
+    {
+     "name": "농촌16",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      99,
+      99
+     ],
+     "pop": [
+      125,
+      124
+     ]
+    },
+    {
+     "name": "농촌8",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      86,
+      86
+     ],
+     "pop": [
+      116,
+      116
+     ]
+    },
+    {
+     "name": "농촌11",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      80,
+      80
+     ],
+     "pop": [
+      149,
+      149
+     ]
+    },
+    {
+     "name": "농촌15",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      176,
+      176
+     ],
+     "pop": [
+      101,
+      101
+     ]
+    },
+    {
+     "name": "어촌9",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      59,
+      59
+     ],
+     "pop": [
+      199,
+      200
+     ]
+    },
+    {
+     "name": "농촌12",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 11,
+     "oldOnly": 0,
+     "terrNewOnly": 24,
+     "moved": true,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      85,
+      82
+     ],
+     "pop": [
+      129,
+      131
+     ]
+    },
+    {
+     "name": "어촌8",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      60,
+      60
+     ],
+     "pop": [
+      142,
+      145
+     ]
+    },
+    {
+     "name": "광산5",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      187,
+      187
+     ],
+     "pop": [
+      186,
+      191
+     ]
+    },
+    {
+     "name": "농촌2",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      61,
+      61
+     ],
+     "pop": [
+      217,
+      226
+     ]
+    },
+    {
+     "name": "농촌10",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      176,
+      176
+     ],
+     "pop": [
+      89,
+      98
+     ]
+    },
+    {
+     "name": "광산6",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      92,
+      92
+     ],
+     "pop": [
+      60,
+      76
+     ]
+    },
+    {
+     "name": "임업1",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      205,
+      205
+     ],
+     "pop": [
+      191,
+      207
+     ]
+    },
+    {
+     "name": "광산4",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      70,
+      70
+     ],
+     "pop": [
+      82,
+      101
+     ]
+    },
+    {
+     "name": "광산1",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      240,
+      240
+     ],
+     "pop": [
+      57,
+      93
+     ]
+    },
+    {
+     "name": "어촌2",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      58,
+      58
+     ],
+     "pop": [
+      312,
+      360
+     ]
+    },
+    {
+     "name": "어촌4",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      62,
+      62
+     ],
+     "pop": [
+      116,
+      184
+     ]
+    }
+   ]
+  },
+  "1020": {
+   "popOld": 8280,
+   "popNew": 8273,
+   "touched": 2,
+   "dTouched": 50,
+   "clean": 49,
+   "dClean": -57,
+   "rows": [
+    {
+     "name": "어촌4",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      62,
+      62
+     ],
+     "pop": [
+      187,
+      107
+     ]
+    },
+    {
+     "name": "광산5",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      187,
+      187
+     ],
+     "pop": [
+      207,
+      158
+     ]
+    },
+    {
+     "name": "임업6",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      58,
+      58
+     ],
+     "pop": [
+      314,
+      265
+     ]
+    },
+    {
+     "name": "임업5",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      112,
+      112
+     ],
+     "pop": [
+      234,
+      187
+     ]
+    },
+    {
+     "name": "임업2",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      65,
+      65
+     ],
+     "pop": [
+      408,
+      364
+     ]
+    },
+    {
+     "name": "농촌5",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      64,
+      64
+     ],
+     "pop": [
+      144,
+      108
+     ]
+    },
+    {
+     "name": "어촌2",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      58,
+      58
+     ],
+     "pop": [
+      367,
+      332
+     ]
+    },
+    {
+     "name": "어촌16",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      59,
+      59
+     ],
+     "pop": [
+      189,
+      157
+     ]
+    },
+    {
+     "name": "임업1",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      205,
+      205
+     ],
+     "pop": [
+      226,
+      197
+     ]
+    },
+    {
+     "name": "농촌17",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      66,
+      66
+     ],
+     "pop": [
+      174,
+      147
+     ]
+    },
+    {
+     "name": "어촌9",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      59,
+      59
+     ],
+     "pop": [
+      223,
+      197
+     ]
+    },
+    {
+     "name": "어촌14",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      60,
+      60
+     ],
+     "pop": [
+      205,
+      190
+     ]
+    },
+    {
+     "name": "광산3",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      240,
+      240
+     ],
+     "pop": [
+      96,
+      84
+     ]
+    },
+    {
+     "name": "임업3",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      73,
+      73
+     ],
+     "pop": [
+      280,
+      271
+     ]
+    },
+    {
+     "name": "농촌1",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      87,
+      87
+     ],
+     "pop": [
+      243,
+      234
+     ]
+    },
+    {
+     "name": "광산4",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      70,
+      70
+     ],
+     "pop": [
+      126,
+      118
+     ]
+    },
+    {
+     "name": "농촌4",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      60,
+      60
+     ],
+     "pop": [
+      186,
+      178
+     ]
+    },
+    {
+     "name": "광산1",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      240,
+      240
+     ],
+     "pop": [
+      101,
+      97
+     ]
+    },
+    {
+     "name": "농촌11",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      80,
+      80
+     ],
+     "pop": [
+      149,
+      147
+     ]
+    },
+    {
+     "name": "광산7",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      240,
+      240
+     ],
+     "pop": [
+      91,
+      91
+     ]
+    },
+    {
+     "name": "농촌2",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      61,
+      61
+     ],
+     "pop": [
+      229,
+      229
+     ]
+    },
+    {
+     "name": "농촌8",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      86,
+      86
+     ],
+     "pop": [
+      115,
+      115
+     ]
+    },
+    {
+     "name": "농촌13",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      93,
+      93
+     ],
+     "pop": [
+      129,
+      129
+     ]
+    },
+    {
+     "name": "농촌15",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      176,
+      176
+     ],
+     "pop": [
+      101,
+      102
+     ]
+    },
+    {
+     "name": "광산6",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      92,
+      92
+     ],
+     "pop": [
+      66,
+      68
+     ]
+    },
+    {
+     "name": "농촌21",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 47,
+     "oldOnly": 0,
+     "terrNewOnly": 94,
+     "moved": true,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      79,
+      82
+     ],
+     "pop": [
+      137,
+      139
+     ]
+    },
+    {
+     "name": "어촌3",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      60,
+      60
+     ],
+     "pop": [
+      207,
+      210
+     ]
+    },
+    {
+     "name": "어촌6",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      60,
+      60
+     ],
+     "pop": [
+      215,
+      218
+     ]
+    },
+    {
+     "name": "농촌6",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      75,
+      75
+     ],
+     "pop": [
+      140,
+      143
+     ]
+    },
+    {
+     "name": "농촌9",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      176,
+      176
+     ],
+     "pop": [
+      115,
+      119
+     ]
+    },
+    {
+     "name": "농촌16",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      99,
+      99
+     ],
+     "pop": [
+      124,
+      128
+     ]
+    },
+    {
+     "name": "농촌19",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      81,
+      81
+     ],
+     "pop": [
+      130,
+      135
+     ]
+    },
+    {
+     "name": "농촌18",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      176,
+      176
+     ],
+     "pop": [
+      103,
+      109
+     ]
+    },
+    {
+     "name": "농촌22",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      63,
+      63
+     ],
+     "pop": [
+      126,
+      133
+     ]
+    },
+    {
+     "name": "어촌5",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      60,
+      60
+     ],
+     "pop": [
+      189,
+      198
+     ]
+    },
+    {
+     "name": "어촌11",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      60,
+      60
+     ],
+     "pop": [
+      165,
+      174
+     ]
+    },
+    {
+     "name": "임업4",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      139,
+      139
+     ],
+     "pop": [
+      153,
+      163
+     ]
+    },
+    {
+     "name": "어촌1",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      69,
+      69
+     ],
+     "pop": [
+      95,
+      112
+     ]
+    },
+    {
+     "name": "농촌3",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      62,
+      62
+     ],
+     "pop": [
+      131,
+      148
+     ]
+    },
+    {
+     "name": "어촌15",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      59,
+      59
+     ],
+     "pop": [
+      169,
+      187
+     ]
+    },
+    {
+     "name": "농촌7",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      80,
+      80
+     ],
+     "pop": [
+      115,
+      136
+     ]
+    },
+    {
+     "name": "어촌7",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      60,
+      60
+     ],
+     "pop": [
+      218,
+      241
+     ]
+    },
+    {
+     "name": "어촌8",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      60,
+      60
+     ],
+     "pop": [
+      117,
+      141
+     ]
+    },
+    {
+     "name": "광산2",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      82,
+      82
+     ],
+     "pop": [
+      153,
+      179
+     ]
+    },
+    {
+     "name": "농촌10",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      176,
+      176
+     ],
+     "pop": [
+      65,
+      96
+     ]
+    },
+    {
+     "name": "농촌14",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      176,
+      176
+     ],
+     "pop": [
+      47,
+      78
+     ]
+    },
+    {
+     "name": "농촌20",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      176,
+      176
+     ],
+     "pop": [
+      74,
+      113
+     ]
+    },
+    {
+     "name": "어촌12",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      60,
+      60
+     ],
+     "pop": [
+      166,
+      206
+     ]
+    },
+    {
+     "name": "농촌12",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 11,
+     "oldOnly": 0,
+     "terrNewOnly": 24,
+     "moved": true,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      85,
+      82
+     ],
+     "pop": [
+      87,
+      135
+     ]
+    },
+    {
+     "name": "어촌10",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      60,
+      60
+     ],
+     "pop": [
+      133,
+      183
+     ]
+    },
+    {
+     "name": "어촌13",
+     "oldOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOn": {
+      "lot": 0,
+      "field": 0,
+      "yard": 0
+     },
+     "newOnly": 0,
+     "oldOnly": 0,
+     "terrNewOnly": 0,
+     "moved": false,
+     "houses": [
+      2,
+      2
+     ],
+     "fields": [
+      60,
+      60
+     ],
+     "pop": [
+      116,
+      177
+     ]
+    }
+   ]
+  }
+ },
+ "oldCells": 69048,
+ "newCells": 70659
+}
