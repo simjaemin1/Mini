@@ -293,7 +293,7 @@ async function waitUp(p, url, tries = 300) {
   const hbOres = ((require(path.join(ROOT, 'server', 'hanbando-terrain.json')).hanbando || {}).ores || []).length;
   ok(hbOres === 787, 'ⓗ 한반도 정본 광맥 수가 그대로다', `${hbOres}개`);
   const hbBr = ((ZONES.hanbando && ZONES.hanbando.bridges) || []).length / 2;
-  ok(hbBr === 816, 'ⓗ2 한반도 다리 셀 수가 그대로다(★T631 836 → 816 — 뜬 다리 20셀 뺌)', `${hbBr}셀`);
+  ok(hbBr === 850, 'ⓗ2 한반도 다리 셀 수가 그대로다(★T631 836 → 816 뜬 다리 뺌 · ★T639 → 850 강1 지름길 둘)', `${hbBr}셀`);
 
   shutdown();
   for (const f of [CDB, ZDB, CDB + '-wal', ZDB + '-wal', CDB + '-shm', ZDB + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }

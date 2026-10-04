@@ -260,6 +260,10 @@ const _seen = {};
     ok(r.sum.startsWith(want), `목록 칸 머리 = 서버 정본 마스크로 센 수(작업 피처 · 강 점 = 꼭짓점 · 마을·광맥·숲 = 중심)`, r.sum);
     ok(r.n === r.rows && r.n >= rv + cnt.village + cnt.ore + cnt.forest,
       '목록 줄 수 = 바다 위 피처 수(강은 꼭짓점이 뭍이어도 줄기가 바다를 지나면 든다)', `${r.n} · 줄 ${r.rows}`);
+    //   ★[T639] 정본에 바다 위 피처가 0 이면(남해안 꼬리까지 잘라 강 점 0) 아래 셋(테두리 · 목록 누름)이 잴 것이 없다 — **시험 강 하나**를
+    //     남쪽 끝 바다(x 8000 · 화면 왼쪽 — y 129,900 은 띠 안)로 그어 넣고 재고, export 전에 뺀다(자명 통과 금지 · 정본 무접촉)
+    const probe = await pc.evaluate(() => { if (document.querySelector('#seaList .fitem[data-sea=river]')) return false;
+      S.features.push({ id: 99901, type: 'river', name: '(시험 바다 강)', flags: {}, path: [{ x: 8000, y: 126500, w: 200 }, { x: 8000, y: 129900, w: 200 }] }); refresh(); render(); return true; });
     // 빨간 테두리 — 남해안을 화면에 넣고 켬/끔 화소
     const red = async () => pc.evaluate(() => { const d = ctx.getImageData(0, 0, cv.width, cv.height).data; let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i] > 230 && d[i + 1] < 70 && d[i + 2] < 70) n++; return n; });
     await pc.evaluate(() => { S.view.scale = 0.03; S.view.ox = 20; S.view.oy = cv.height - 130016 * 0.03 - 20; render(); });
@@ -267,12 +271,13 @@ const _seen = {};
     await pc.click('#coastToggle'); await pc.waitForTimeout(100);
     const off = await red(); const offTxt = await pc.evaluate(() => document.getElementById('seaCount').textContent);
     //   ★[T631] 문턱은 '켬이면 보인다'(> 0) — 남해안 정본 손질(T631)로 바다 위 피처가 강 2줄 8점만 남아 테두리 화소가 200 밑(197)이 됐다 · 뜻은 켬/끔 대조
-    ok(on > 0 && off === 0 && offTxt === '–', '층 켬 = 바다 위 빨간 테두리 · 끔 = 테두리 0 · 목록 비움', JSON.stringify({ on, off, offTxt }));
+    ok(on > 0 && off === 0 && offTxt === '–', '층 켬 = 바다 위 빨간 테두리 · 끔 = 테두리 0 · 목록 비움' + (probe ? '(시험 강)' : ''), JSON.stringify({ on, off, offTxt }));
     await pc.click('#coastToggle'); await pc.waitForTimeout(100);
     // 목록 줄을 누르면 그 피처로 간다(선택 · 화면 가운데가 바다 위 자리)
     r = await pc.evaluate(() => { const it = document.querySelector('#seaList .fitem[data-sea=river]'); if (!it) return null; it.click();
       const cx = s2wx(cv.width / 2), cy = s2wy(cv.height / 2); return { sel: S.sel && S.sel.type, name: S.sel && S.sel.name, sea: seaAt(cx, cy) }; });
     ok(!!r && r.sel === 'river' && r.sea === true, '목록 줄 누름 = 그 강 선택 · 화면 가운데가 그 강의 바다 위 자리', JSON.stringify(r));
+    if (probe) await pc.evaluate(() => { S.features = S.features.filter((f) => f.id !== 99901); if (S.sel && S.sel.id === 99901) S.sel = null; refresh(); render(); });
     const ex = sha(await exportText(pc));
     ok(ex === (_UPD ? _seen.single : pin.single), '표시를 켜고 끄고 눌러도 단일 export sha256 = 고정값(읽기 전용)', ex.slice(0, 16));
     ok(pc._errs.length === 0, '바다 위 표시 — 페이지 오류 0', pc._errs.join(' | '));
