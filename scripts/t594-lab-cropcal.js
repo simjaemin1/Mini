@@ -8,8 +8,11 @@
 //     표시 사이(▼T594-CROPCAL … ▲T594-CROPCAL)에 **구워 넣는다.** 손으로 고치면 다음 굽기에 사라진다.
 //   ★`--check` 는 굽지 않고 어긋남만 본다(exit 1) — `scripts/test-crop-cal.js` ⑧ 이 부른다(사본 감시).
 //
-// ★랩 쪽 셈(구운 블록 안 `cropGrowAt`): 1년생 = 활동일 그대로 · 월동(보리·밀·마늘) = 심은 날 → 다음 3월 1일(랩 달력
-//   `L_MOSTART[2]` · 랩은 1월 1일 기점 365일) + 활동일 — 서버 T99 춘화(겨울이 끝난 다음 날부터 센다)와 같은 셈이다.
+// ★랩 쪽 셈(구운 블록 안 `cropGrowAt`): 1년생 = 활동일 그대로 · 월동(보리·밀·마늘) = **서버 T99 춘화 그 셈**(`crops.vernalDay` →
+//   `readyDay`): 심은 날부터 계절을 건너 겨울을 찾고 → 그 겨울이 끝난 다음 날부터 겨울(휴면) 아닌 날을 활동일만큼 센다.
+//   달력은 번들이 내놓는 정본(`EconEngine.Calendar` = `server/calendar.js` · 랩 날 − `L_START` = econ 날 — 랩 `lMonth` 와 같은 자리).
+//   ★[T641 2026-10-04] 옛 줄은 랩 **1월 기점 365일 달력**(`L_YEAR`·`L_MOSTART[2]`)의 3월 1일을 썼다 — T599 가 랩 달을 달력 정본으로
+//     옮긴 뒤(랩 날 120 = econ 3월 1일) 그 날은 econ **12월 30일**이라 월동 작물이 서버보다 **61일 일찍** 익었다(보리 10/1 → 3/31 ↔ 서버 5/31).
 //   손잡이를 끄면(기본) `cropGrowAt` 이 랩 표의 `grow` 를 그대로 돌려준다 ⇒ 랩 종전과 같다.
 //
 // 실행: node scripts/t594-lab-cropcal.js [--check] [랩.html …]
@@ -52,7 +55,7 @@ function blockFor(labIds) {
     `${START} (생성물 — node scripts/t594-lab-cropcal.js · 손으로 고치지 마라 · 정본 server/crop-cal.js → crops.calDaysOf)`,
     `const L_CROPCAL_T={${ent.join(',')}};   // ★[T594] 작물 철 고증 활동일(농사로 1차 · 파종창 가운데날 → 수확창 가운데날) · v:1 = 월동(겨울 지난 3월 1일부터 센다 — 서버 T99 춘화)`,
     `let L_CROPCAL=false;try{if(typeof location!=='undefined'&&new URLSearchParams(location.search).get('cropcal')==='1')L_CROPCAL=true;}catch(e){}try{const _el=(typeof document!=='undefined')&&document.getElementById('cropCal');if(_el)_el.checked=L_CROPCAL;}catch(e){}   // 손잡이(끔 기본 = 랩 종전 그대로) · 패널 '작물 철 고증' · URL ?cropcal=1`,
-    `function cropGrowAt(cr,day){const t=L_CROPCAL&&L_CROPCAL_T[cr.id];if(!t)return cr.grow;if(!t.v)return t.g;const y=Math.floor(day/L_YEAR),doy=day-y*L_YEAR,m3=L_MOSTART[2];return (doy<m3?y*L_YEAR+m3:(y+1)*L_YEAR+m3)-day+t.g;}   // 심는 날 → 익기까지 달력일(끔 = cr.grow 그대로) · 월동 = 다음 3월 1일까지 + 활동일`,
+    `function cropGrowAt(cr,day){const t=L_CROPCAL&&L_CROPCAL_T[cr.id];if(!t)return cr.grow;if(!t.v)return t.g;const C=EconEngine.Calendar,p=day-L_START,nx=d=>C.seasonStart(d)+C.seasonLen(d);let d=p;for(let i=0;i<=L_SEASONS.length&&C.seasonOf(d)!=='winter';i++)d=nx(d);if(C.seasonOf(d)!=='winter')return t.g;let e=nx(d),n=0;while(n<t.g){if(C.seasonOf(e)!=='winter')n++;e++;}return e-p;}   // 심는 날 → 익기까지 날수(끔 = cr.grow 그대로) · 월동 = 서버 T99 춘화 그 셈(달력 정본 — 그 겨울이 끝난 다음 날부터 겨울 아닌 날을 활동일만큼 · ★[T641] 옛 줄은 랩 1월 기점 달력이라 61일 일렀다)`,
     END,
   ].join('\n');
   return { text, n: ent.length, miss };

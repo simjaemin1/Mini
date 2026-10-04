@@ -154,28 +154,41 @@ console.log('\n⑨ 랩 두 벌 — 구운 블록 = 정본 · 같은 날 익는�
   ok(chk === 0, '★⑨ `t594-lab-cropcal.js --check` — 두 랩의 구운 블록이 정본과 같다');
   for (const f of ['lab/마을실험실.html', 'lab/전쟁실험실.html']) {
     const H = fs.readFileSync(path.join(ROOT, f), 'utf8');
-    const yl = (H.match(/const L_YEAR=365, L_MOSTART=\[[^\]]*\]/) || [])[0];
+    const yl = (H.match(/const L_YEAR=365, L_MOSTART=\[[^\]]*\], L_SEASONS=\[[^\]]*\], L_START=\d+;/) || [])[0];   // ★[T641] 계절 표·자리 차(L_START)까지 — 거울이 달력 정본으로 센다
     const a = H.indexOf('// ▼T594-CROPCAL'), b = H.indexOf('// ▲T594-CROPCAL');
     const ci = H.indexOf('const CROPS=['), cj = H.indexOf('];', ci);
     pre(!!yl && a > 0 && b > a && ci > 0, `${path.basename(f)}: 랩 달력 줄 · T594 블록 · CROPS 표를 찾았다`);
     if (!(yl && a > 0 && b > a && ci > 0)) continue;
-    const L = new Function(`${yl};${H.slice(ci, cj + 2)}\n${H.slice(a, b)}\nreturn {L_YEAR,L_MOSTART,CROPS,L_CROPCAL_T,cropGrowAt,set:(v)=>{L_CROPCAL=v;}};`)();
+    const mkL = (blk) => new Function('EconEngine', `${yl}\n${H.slice(ci, cj + 2)}\n${blk}\nreturn {L_START,CROPS,L_CROPCAL_T,cropGrowAt,set:(v)=>{L_CROPCAL=v;}};`)({ Calendar: Cal });   // 랩이 부르는 달력 = 번들 `EconEngine.Calendar` = server/calendar.js
+    const L = mkL(H.slice(a, b));
     // 끔: 랩 표 그대로
     L.set(false);
     ok(L.CROPS.every((c) => [0, 100, 300].every((d) => L.cropGrowAt(c, d) === c.grow)), `⑨ ${path.basename(f)}: 끔 = 랩 표 grow 그대로(30종)`);
-    // 켬: 서버와 같은 날 익는다(랩 달력 1월 1일 기점 → 날짜로 견준다)
+    // 켬: 서버와 같은 날 익는다 — ★[T641] 랩 날 = econ 날 + `L_START`(T599 가 랩 달을 달력 정본으로 옮긴 뒤의 자리 · 랩 `lMonth` 와 같은 셈).
+    //   종전 이 줄은 랩 **1월 기점 달력**(`L_MOSTART`)으로 날짜를 견줬다 — 거울도 같은 옛 달력으로 셌으니 **둘이 같이 틀려 통과**했다
+    //   (랩 화면·파종 달은 이미 달력 정본이라 켬 판 보리·밀·마늘이 서버보다 61일 일찍 익었다 — T641 이 잡음).
     L.set(true);
-    const labDay = (m, dom) => L.L_MOSTART[m - 1] + dom - 1;
-    const labDate = (d) => { const y = Math.floor(d / L.L_YEAR), doy = d - y * L.L_YEAR; let m = 11; while (m > 0 && L.L_MOSTART[m] > doy) m--; return `${m + 1}/${doy - L.L_MOSTART[m] + 1}`; };
-    const diffs = [];
-    for (const r of ON) {
-      const ko = Crops.koOf(r.id), cands = [ko, ko.replace(/\(.*\)/, ''), (/\(([^)]*)\)/.exec(ko) || [])[1]];
-      const cr = L.CROPS.find((c) => cands.includes(c.id)); if (!cr) { diffs.push(r.id + ' 랩 표에 없음'); continue; }
-      const t = Cal.dateOf(r.s), p = labDay(t.month, t.dom);
-      const got = labDate(p + L.cropGrowAt(cr, p)), want = fmt(r.rd);
-      if (got !== want) diffs.push(`${r.id} 랩 ${got} ≠ 서버 ${want}`);
+    const cmpOn = (LL) => {
+      const diffs = [];
+      for (const r of ON) {
+        const ko = Crops.koOf(r.id), cands = [ko, ko.replace(/\(.*\)/, ''), (/\(([^)]*)\)/.exec(ko) || [])[1]];
+        const cr = LL.CROPS.find((c) => cands.includes(c.id)); if (!cr) { diffs.push(r.id + ' 랩 표에 없음'); continue; }
+        const p = r.s + LL.L_START;
+        const got = fmt(r.s + LL.cropGrowAt(cr, p)), want = fmt(r.rd);
+        if (got !== want) diffs.push(`${r.id} 랩 ${got} ≠ 서버 ${want}`);
+      }
+      return diffs;
+    };
+    const diffs = cmpOn(L);
+    ok(diffs.length === 0, `★⑨ ${path.basename(f)}: 켬 — 16종이 서버와 **같은 날** 익는다(월동 = 그 겨울이 끝난 3월 1일 + 활동일)`, diffs.join(' · '));
+    // [자명 통과 금지 · T641] T641 전 옛 거울 줄(랩 1월 기점 달력)을 끼우면 월동 셋이 갈린다 — 위 비교가 실제로 문다
+    {
+      const OLD = "function cropGrowAt(cr,day){const t=L_CROPCAL&&L_CROPCAL_T[cr.id];if(!t)return cr.grow;if(!t.v)return t.g;const y=Math.floor(day/L_YEAR),doy=day-y*L_YEAR,m3=L_MOSTART[2];return (doy<m3?y*L_YEAR+m3:(y+1)*L_YEAR+m3)-day+t.g;}";
+      const blk = H.slice(a, b), mut = blk.replace(/function cropGrowAt\(cr,day\)\{[^\n]*?\}(?=   \/\/)/, OLD);
+      let bit = false, d0 = [];
+      if (mut !== blk) { const M = mkL(mut); M.set(true); d0 = cmpOn(M); bit = d0.length === 3; }
+      ok(bit, `⑨ ${path.basename(f)}: [자명 통과 금지] 옛 줄(1월 기점 달력)을 끼우면 월동 셋이 갈린다`, d0.join(' · '));
     }
-    ok(diffs.length === 0, `★⑨ ${path.basename(f)}: 켬 — 16종이 서버와 **같은 날** 익는다(월동 = 다음 3월 1일 + 활동일)`, diffs.join(' · '));
     const uses = (H.match(/\(e\.g\|\|e\.crop\.grow\)/g) || []).length, bare = (H.replace(/\(e\.g\|\|e\.crop\.grow\)/g, '').match(/e\.crop\.grow/g) || []).length;
     ok(uses === 6 && bare === 0 && /g:cropGrowAt\(cr,day\)/.test(H), `⑨ ${path.basename(f)}: 상태기 여섯 자리가 밭마다의 성장일(e.g)을 읽고 · 심을 때 한 번 정한다`, `읽기 ${uses} · 맨 grow ${bare}`);
   }
