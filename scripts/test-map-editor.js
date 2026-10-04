@@ -266,7 +266,8 @@ const _seen = {};
     const on = await red();
     await pc.click('#coastToggle'); await pc.waitForTimeout(100);
     const off = await red(); const offTxt = await pc.evaluate(() => document.getElementById('seaCount').textContent);
-    ok(on > 200 && off === 0 && offTxt === '–', '층 켬 = 바다 위 빨간 테두리 · 끔 = 테두리 0 · 목록 비움', JSON.stringify({ on, off, offTxt }));
+    //   ★[T631] 문턱은 '켬이면 보인다'(> 0) — 남해안 정본 손질(T631)로 바다 위 피처가 강 2줄 8점만 남아 테두리 화소가 200 밑(197)이 됐다 · 뜻은 켬/끔 대조
+    ok(on > 0 && off === 0 && offTxt === '–', '층 켬 = 바다 위 빨간 테두리 · 끔 = 테두리 0 · 목록 비움', JSON.stringify({ on, off, offTxt }));
     await pc.click('#coastToggle'); await pc.waitForTimeout(100);
     // 목록 줄을 누르면 그 피처로 간다(선택 · 화면 가운데가 바다 위 자리)
     r = await pc.evaluate(() => { const it = document.querySelector('#seaList .fitem[data-sea=river]'); if (!it) return null; it.click();

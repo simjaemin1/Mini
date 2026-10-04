@@ -209,23 +209,23 @@ console.log=_l; setTimeout(()=>process.exit(0),10);`);
   // A — 반쯤 짓고 끈다
   const a = boot({ T527_BRIDGE_ACT: '1', T537_SHORTCUT: '1' }, `const vil=mk(300); Q.day(vil); const rows=D.getVillageBridges('hanbando');
 process.stdout.write(String.fromCharCode(10)+JSON.stringify({stage:S0.stage,mat:S0.mat.wood,rows:rows.length,done:rows[0]&&rows[0].done,cnt:H.bridgeCellCount()})+String.fromCharCode(10));`);
-  ok(a.rows === 1 && a.done === 0 && a.stage === 0 && a.mat === 300 && a.cnt === 836, '⑧ A — 반쯤(놓인 통나무 300 · 단계 0) · 행 1 · 존 다리 836 그대로', JSON.stringify(a));
+  ok(a.rows === 1 && a.done === 0 && a.stage === 0 && a.mat === 300 && a.cnt === 816, '⑧ A — 반쯤(놓인 통나무 300 · 단계 0) · 행 1 · 존 다리 816(★T631 836→816) 그대로', JSON.stringify(a));
   // B — 재기동: 진척이 이어지고 끝까지 짓는다
   const b = boot({ T527_BRIDGE_ACT: '1', T537_SHORTCUT: '1' }, `const r0={stage:S0.stage,mat:S0.mat.wood,sum:S0.sum&&S0.sum.took}; const vil=mk(0); let d=0; while(!S0.done&&d<60){ vil.econ.storage.wood+=100; now+=DAY; Q.day(vil); d++; }
 const rows=D.getVillageBridges('hanbando'); const st=JSON.parse(rows[0].state);
 process.stdout.write(String.fromCharCode(10)+JSON.stringify({r0,done:S0.done,rowDone:rows[0].done,added:(st.added||[]).length/2,cnt:H.bridgeCellCount(),took:st.sum.took,sig:setSig()})+String.fromCharCode(10));`);
   ok(b.r0.stage === 0 && b.r0.mat === 300 && b.r0.sum === 300, '⑧ B ★재기동 뒤 **진척이 이어진다** — 놓인 통나무 300 · 크루 누적 300(DB 행에서)', JSON.stringify(b.r0));
-  ok(b.done === true && b.rowDone === 1 && b.added === SCN && b.cnt === 836 + SCN - SCDUP && Math.abs(b.took - SCRAW) < 1e-6, `⑧ B 완공 — 행 done · 셀 ${SCN} 기록 · 존 ${836 + SCN - SCDUP}(시딩 836 + 새 ${SCN - SCDUP}) · 누적 ${SCRAW}(두 판을 이은 합)`, JSON.stringify({ cnt: b.cnt, took: b.took }));
+  ok(b.done === true && b.rowDone === 1 && b.added === SCN && b.cnt === 816 + SCN - SCDUP && Math.abs(b.took - SCRAW) < 1e-6, `⑧ B 완공 — 행 done · 셀 ${SCN} 기록 · 존 ${816 + SCN - SCDUP}(시딩 816 + 새 ${SCN - SCDUP}) · 누적 ${SCRAW}(두 판을 이은 합)`, JSON.stringify({ cnt: b.cnt, took: b.took }));
   // C — 재기동(손잡이 끔): 존 부팅이 지은 다리를 다시 올린다
   const c = boot({ T527_BRIDGE_ACT: '' }, `let wet=null; for(let i=0;i+1<ZC.bridgeShortcuts[0].cells.length;i+=2){ const x=px(ZC.bridgeShortcuts[0].cells[i]),y=px(ZC.bridgeShortcuts[0].cells[i+1]); if(H.isWaterTileLocal(x,y)&&!(ZC.bridges.join(',').includes(ZC.bridgeShortcuts[0].cells[i]+','+ZC.bridgeShortcuts[0].cells[i+1]))){ wet=[x,y]; break; } }
 process.stdout.write(String.fromCharCode(10)+JSON.stringify({cnt:H.bridgeCellCount(),pl:(H.bridgePayload()||[]).length/2,head:(H.bridgePayload()||[]).slice(0,ZC.bridges.length).join()===ZC.bridges.join(),blk:H.isTerrainBlockedLocal(wet[0],wet[1]),sig:setSig(),log:LOG.filter(l=>/지은 다리 복원/.test(l)).length,sites:Q.sites()})+String.fromCharCode(10));`);
-  ok(c.cnt === 836 + SCN - SCDUP && c.pl === 836 + SCN - SCDUP && c.head === true && c.blk === false && c.log === 1, `⑧ C ★재기동(끔) — 존 부팅이 **같은 셀**을 다시 올린다 · welcome 도 ${836 + SCN - SCDUP}(시딩 뒤에 붙음) · 물 칸 통행`, JSON.stringify({ cnt: c.cnt, pl: c.pl, blk: c.blk }));
+  ok(c.cnt === 816 + SCN - SCDUP && c.pl === 816 + SCN - SCDUP && c.head === true && c.blk === false && c.log === 1, `⑧ C ★재기동(끔) — 존 부팅이 **같은 셀**을 다시 올린다 · welcome 도 ${816 + SCN - SCDUP}(시딩 뒤에 붙음) · 물 칸 통행`, JSON.stringify({ cnt: c.cnt, pl: c.pl, blk: c.blk }));
   ok(c.sig === b.sig && c.sites === null, '⑧ C 다리 셀 집합 해시 = 완공 직후 판과 같다 · 끔이면 진척 표는 안 선다(지은 다리만 남는다)', `${c.sig}`);
   const d = boot({ T527_BRIDGE_ACT: '1', T537_SHORTCUT: '1' }, `process.stdout.write(String.fromCharCode(10)+JSON.stringify({done:S0.done,stage:S0.stage,cnt:H.bridgeCellCount()})+String.fromCharCode(10));`);
-  ok(d.done === true && d.stage === 2 && d.cnt === 836 + SCN - SCDUP, '⑧ D 재기동(켬) — 완공 후보는 완공으로 이어진다(다시 짓지 않는다)', JSON.stringify(d));
+  ok(d.done === true && d.stage === 2 && d.cnt === 816 + SCN - SCDUP, '⑧ D 재기동(켬) — 완공 후보는 완공으로 이어진다(다시 짓지 않는다)', JSON.stringify(d));
   const e = probe({ ZONE_ID: 'hanbando', PORT: String(38995), DB_PATH: `/tmp/test-bridge-persist-e-${process.pid}.db`, ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0' }, `console.log=()=>{};console.warn=()=>{};console.error=()=>{};const H=require(${ZP}).__testBind(); const {ZONES}=require(${ZCP});
 process.stdout.write(String.fromCharCode(10)+JSON.stringify({cnt:H.bridgeCellCount(),same:H.bridgePayload()===ZONES.hanbando.bridges})+String.fromCharCode(10)); setTimeout(()=>process.exit(0),10);`);
-  ok(e.cnt === 836 && e.same === true, '⑧ 미끼 — 빈 DB 로 부팅하면 종전 그대로(836 · welcome 같은 참조)', JSON.stringify(e));
+  ok(e.cnt === 816 && e.same === true, '⑧ 미끼 — 빈 DB 로 부팅하면 종전 그대로(816 · ★T631 836→816 · welcome 같은 참조)', JSON.stringify(e));
   for (const f of [DB, DB + '-wal', DB + '-shm', `/tmp/test-bridge-persist-e-${process.pid}.db`]) { try { fs.unlinkSync(f); } catch (e2) {} }
   ok(/CREATE TABLE IF NOT EXISTS village_bridges/.test(rd('server/zone-local-db.js')) && /db\.getVillageBridges\(ZONE_ID\)/.test(ZSRC) && /addBridgeCells\(st\.added/.test(ZSRC), '⑧ 스키마 추가 전용(구DB 안전) · 복원은 같은 `addBridgeCells`(새 길 0)');
 }
