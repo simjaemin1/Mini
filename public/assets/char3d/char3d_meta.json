@@ -1,5 +1,5 @@
 {
- "_": "[T545] char_export_gltf.py 산물 — 엔진이 읽는 규약. 클라는 이 수를 하드코딩하지 않는다.",
+ "_": "[T545 · T604] char_export_gltf.py 산물 — 엔진이 읽는 규약. 클라는 이 수를 하드코딩하지 않는다(옷 → 메시는 `bodies.<몸>.meshOf`).",
  "alphaTest": 0.5,
  "atlas": {
   "cells": {
@@ -40,33 +40,112 @@
  "bodies": {
   "F": {
    "bones": 31,
+   "clothes": {
+    "K": 0.879751,
+    "belt": 3,
+    "bumped": 22,
+    "cut": {
+     "hem": "knee",
+     "sleeve": "long"
+    },
+    "hem3": 0.41995,
+    "hemS": 0.46,
+    "inserted": 5,
+    "mhclo": {
+     "base": {
+      "mhclo": "710fa50cdf8afa6f",
+      "obj": "31b0fc5e9ac65b74"
+     },
+     "fur": {
+      "mhclo": "6881c0f5618df03d",
+      "obj": "c6fe96bd64e73591"
+     }
+    },
+    "rings": 14,
+    "sheetRings": 9,
+    "sleeve": 7,
+    "src": "scripts/char_clothes_mhclo.py",
+    "trimV": [
+     0.399249,
+     0.418452
+    ],
+    "tris_base": 896,
+    "tris_fur": 896,
+    "verts_base": 498,
+    "verts_fur": 498
+   },
    "mesh": "F_body",
+   "meshOf": {
+    "fur": "F_fur",
+    "hemp": "F_body",
+    "leather": "F_body",
+    "ramie": "F_body"
+   },
    "node": "F",
    "parts": {
     "brows": "eyebrows/eyebrow001/eyebrow001.mhclo",
-    "clothes": "clothes/female_elegantsuit01/female_elegantsuit01.mhclo",
     "eyes": "eyes/low-poly/low-poly.mhclo",
     "hair": "hair/braid01/braid01.mhclo",
     "proxy": "proxymeshes/female1605/female1605.proxy",
     "skin": "skins/young_asian_female/young_lightskinned_female_diffuse3.png"
    },
    "scale": 1.070004,
-   "tris": 6000,
+   "tris": 5999,
+   "trisFur": 5999,
    "trisParts": {
     "brows": 192,
-    "cloth": 1552,
+    "cloth": 896,
     "eyes": 172,
-    "hair": 1552,
-    "skin": 2532
+    "hair": 1571,
+    "skin": 3168
    }
   },
   "M": {
    "bones": 31,
+   "clothes": {
+    "K": 0.958034,
+    "belt": 3,
+    "bumped": 36,
+    "cut": {
+     "hem": "sheet",
+     "sleeve": "short"
+    },
+    "hem3": 0.67319,
+    "hemS": 0.7,
+    "inserted": 6,
+    "mhclo": {
+     "base": {
+      "mhclo": "36023c0376a52c89",
+      "obj": "28f96b782cf68f8c"
+     },
+     "fur": {
+      "mhclo": "be7c2aad8ea83d1e",
+      "obj": "d8cddb36678c21a7"
+     }
+    },
+    "rings": 14,
+    "sheetRings": 8,
+    "sleeve": 3,
+    "src": "scripts/char_clothes_mhclo.py",
+    "trimV": [
+     0.601298,
+     0.618596
+    ],
+    "tris_base": 640,
+    "tris_fur": 640,
+    "verts_base": 370,
+    "verts_fur": 370
+   },
    "mesh": "M_body",
+   "meshOf": {
+    "fur": "M_fur",
+    "hemp": "M_body",
+    "leather": "M_body",
+    "ramie": "M_body"
+   },
    "node": "M",
    "parts": {
     "brows": "eyebrows/eyebrow001/eyebrow001.mhclo",
-    "clothes": "clothes/male_casualsuit04/male_casualsuit04.mhclo",
     "eyes": "eyes/low-poly/low-poly.mhclo",
     "hair": "hair/ponytail01/ponytail01.mhclo",
     "proxy": "proxymeshes/male1591/male1591.proxy",
@@ -74,12 +153,13 @@
    },
    "scale": 0.982668,
    "tris": 6000,
+   "trisFur": 6000,
    "trisParts": {
     "brows": 192,
-    "cloth": 1589,
+    "cloth": 640,
     "eyes": 172,
-    "hair": 1591,
-    "skin": 2456
+    "hair": 1856,
+    "skin": 3140
    }
   }
  },

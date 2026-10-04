@@ -6,7 +6,8 @@
 //
 // ★이 하네스가 지키는 계약:
 //   ⓐ glTF — `char_export_gltf.py` 산물(glb·메타·무늬)이 잠금과 같다 · 입력 지문(저장소 안 원본) · 원본은 저장소 밖 ·
-//      몸 둘(M·F) × 메시 하나 · 프리미티브 하나 · 재질 0(엔진이 건다) · 삼각형 2~6k · 뼈 31(cmu_mb) · 클립 다섯 × 몸 둘(모캡 · 판·루프·fps = 시트 표) ·
+//      몸 둘(M·F) × 옷 기하 둘(T604 본·갖옷 — 그리는 것은 하나) · 프리미티브 하나 · 재질 0(엔진이 건다) · 삼각형 2~6k · 뼈 31(cmu_mb) · 클립 다섯 × 몸 둘(모캡 · 판·루프·fps = 시트 표) ·
+//      [T604] 청동기 옷 = 시트 링 표 → 3D 몸 → MPFB mhclo(`char_clothes_mhclo.py` · 새 수 0 · 남 시트 단·반팔 · 여 무릎 단·긴팔) ·
 //      키 1.60 · 무늬 1024² 이하 · 합 5MB 안 · CREDITS(MPFB/MakeHuman · CMU · ambientCG · three.js) · 옛 클립 파일(T539) 0
 //   ⓑ 자 [T545 개정 — 실루엣이 바뀌니 IoU 대신] — 발밑 ≤ 1px(가장 낮은 살 · 몸 둘 × 클립 다섯 × 판 전부) ·
 //      8방향 발 가운데(두 발목 가운데 ↔ 앵커 ≤ 1px · 서기 + 서서 하는 클립 × 판 전부) · 키 = 셀 규약(사람 1.6m ↔ 51.2px ±1)
@@ -20,7 +21,7 @@
 //      주민 모드 = 같은 술어(옷 넷 · 클립) n/n · 도구 층은 3D 손목을 따른다
 //   ⑤ 마을 광장 — 주민 3D 여럿 + 시트 도구·등짐 층 · 같은 자리 시트 판 나란히(그림)
 //   ⓕ 끔(기본) — 주소창에 손잡이가 없으면 three.js·glb·char3d.js 요청 0 · `window.__char3d` 없음 · 시트가 그린다
-// 실행: node scripts/e2e-char3d.js [그림.png] [--json 경로]
+// 실행: node scripts/e2e-char3d.js [그림.png] [--json 경로] [--fig=t604](그림을 T604 청동기 옷 절만)
 'use strict';
 const path = require('path');
 const fs = require('fs');
@@ -31,6 +32,7 @@ const FB = require('./fixture-boot');
 const FX = require('./fixture-clock');
 const args = process.argv.slice(2);
 const OUTPNG = args.find((a) => a.endsWith('.png')) || null;
+const FIG = (args.find((a) => a.startsWith('--fig=')) || '').slice(6) || null;   // [T604] `--fig=t604` = 청동기 옷 그림만(옷 넷 × 남·여 · 앞·옆 · 마을 광장)
 const JI = args.indexOf('--json'); const OUTJSON = JI >= 0 ? args[JI + 1] : null;
 const CPORT = 3010, ZPORT = 3020;
 const ZDB = `/tmp/e2e-char3d-${process.pid}.db`, CDB = `/tmp/e2e-char3d-c-${process.pid}.db`;
@@ -109,16 +111,19 @@ const imgDim = (p) => {   // PNG IHDR · JPEG SOF — 무늬 크기(1024² 이�
   const sexes = Object.keys(META.bodies).sort();
   const meshN = (J.meshes || []).map((m) => m.name).sort();
   const prims = (J.meshes || []).map((m) => m.primitives.length);
-  ok(JSON.stringify(sexes) === '["F","M"]' && JSON.stringify(meshN) === JSON.stringify(sexes.map((s) => META.bodies[s].mesh).sort()) && prims.every((n) => n === 1) && !(J.materials && J.materials.length),
-     'ⓐ ★몸 둘(M·F) — 몸마다 메시 하나 · 프리미티브 하나 · 재질 0(아틀라스 재질은 엔진이 건다 · 족보 487)', `${meshN.join(' ')} · 프리미티브 ${prims.join('/')} · 재질 ${(J.materials || []).length}`);
+  // ★[T604] 몸마다 옷 기하 둘(본 옷 `<몸>_body` = 삼베·모시·가죽 · 갖옷 `<몸>_fur` = 털 두께) — 옷 → 메시는 메타 `meshOf` · 그리는 것은 하나
+  const wantMesh = sexes.flatMap((s) => [...new Set(Object.values(META.bodies[s].meshOf || {}))]).sort();
+  const ofOk = sexes.every((s) => { const of = META.bodies[s].meshOf || {}; return META.clothKinds.every((k) => of[k] === `${s}_${k === 'fur' ? 'fur' : 'body'}`); });
+  ok(JSON.stringify(sexes) === '["F","M"]' && JSON.stringify(meshN) === JSON.stringify(wantMesh) && ofOk && meshN.length === 2 * sexes.length && prims.every((n) => n === 1) && !(J.materials && J.materials.length),
+     'ⓐ ★몸 둘(M·F) — [T604] 몸마다 옷 기하 둘(본 · 갖옷 — 옷에 맞는 하나만 그린다 `meshOf`) · 메시마다 프리미티브 하나 · 재질 0(아틀라스 재질은 엔진이 건다 · 족보 487)', `${meshN.join(' ')} · 프리미티브 ${prims.join('/')} · 재질 ${(J.materials || []).length}`);
   const tris = {}, topY = {};
   for (const m of J.meshes) {
     const p = m.primitives[0], ia = J.accessors[p.indices], pa = J.accessors[p.attributes.POSITION];
     tris[m.name] = ia.count / 3; topY[m.name] = pa.max[1];
   }
   REC.a.tris = tris;
-  ok(Object.values(tris).every((t) => t >= 2000 && t <= 6000) && sexes.every((s) => META.bodies[s].tris === tris[META.bodies[s].mesh]),
-     'ⓐ 삼각형 2~6k — 한 몸(살·옷·머리·눈·눈썹 합) · 메타와 같다(카드 ① 좀보이드 결)', JSON.stringify(tris));
+  ok(Object.values(tris).every((t) => t >= 2000 && t <= 6000) && sexes.every((s) => META.bodies[s].tris === tris[`${s}_body`] && META.bodies[s].trisFur === tris[`${s}_fur`]),
+     'ⓐ 삼각형 2~6k — 한 몸(살·옷·머리·눈·눈썹 합 · 본 옷 몸 · 갖옷 몸 따로) · 메타와 같다(카드 ① 좀보이드 결 · T604 6,000 안)', JSON.stringify(tris));
   const skins = J.skins || [];
   const jn = skins.map((s) => s.joints.map((i) => J.nodes[i].name));
   ok(skins.length === 2 && jn.every((L) => L.length === 31) && jn.every((L) => { const p = L[0].split('_')[0]; return L.every((n) => n.startsWith(p + '_')); }),
@@ -144,8 +149,29 @@ const imgDim = (p) => {   // PNG IHDR · JPEG SOF — 무늬 크기(1024² 이�
   ok(JSON.stringify(META.clothKinds) === '["hemp","ramie","leather","fur"]' && tex.length === wantTex && dims.every((d) => d[0] > 0 && d[0] <= 1024 && d[1] <= 1024) && total <= 5 * 1024 * 1024,
      'ⓐ 무늬 — 옷 넷(삼베·모시·가죽·갖옷) × 몸 둘 + 알파 둘 · 1024² 이하 · glb·메타·무늬 합 5MB 안', `${tex.length}장 · ${REC.a.tex.dims.join(' ')} · ${(total / 1024 / 1024).toFixed(2)}MB`);
   const src = fs.readFileSync(path.join(ROOT, 'scripts', 'char_export_gltf.py'), 'utf8');
-  ok(/HS\.create_human\(/.test(src) && /add_builtin_rig\(base, "cmu_mb"\)/.test(src) && !/from_pydata|bmesh|primitive_\w+_add/.test(src),
-     'ⓐ 새 형상 = 도구가 뽑는다(MPFB `create_human` · `cmu_mb`) · 손 모델링 0(점·면을 손으로 짓는 줄 0)');
+  ok(/HS\.create_human\(/.test(src) && /add_builtin_rig\(base, "cmu_mb"\)/.test(src) && !/from_pydata|bmesh|primitive_\w+_add/.test(src) && !/casualsuit|elegantsuit/.test(src.replace(/#.*$/gm, '')),
+     'ⓐ 새 형상 = 도구가 뽑는다(MPFB `create_human` · `cmu_mb`) · 손 모델링 0(점·면을 손으로 짓는 줄 0) · [T604] CC0 현대 옷(`casualsuit`·`elegantsuit`) 0');
+  // ★[T604 ②] 청동기 옷 기하 — 시트 링 표 → 3D 몸 → MPFB mhclo(`char_clothes_mhclo.py`) · 재단 = 카드("무릎 길이 웃옷 · 반팔/긴팔 · 허리띠 · 여: 긴 웃옷/치마")
+  {
+    const cs = fs.readFileSync(path.join(ROOT, 'scripts', 'char_clothes_mhclo.py'), 'utf8');
+    const cr = fs.readFileSync(path.join(ROOT, 'scripts', 'char_render.py'), 'utf8');
+    const reads = ['TUNIC_R', 'SKIRT_R', 'BELT_R', 'SLV_R', 'FUR_PAD', 'TORSO_R', 'LEG_R', 'ARM_R', 'BONES', 'LOFT_SEG'].every((k) => new RegExp(`"${k}"`).test(cs)) && /ast\.parse/.test(cs) && /char_render\.py/.test(cs);
+    // 생성기의 소수 상수 = 0 · 1 · 수치 허용(1e-6 ~ 1e-15)뿐 — 꼴의 수는 전부 시트 표에서 온다(정수는 첨자·표본 수)
+    const lits = [...cs.replace(/#.*$/gm, '').replace(/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, '""').matchAll(/(?<![\w.])(\d+\.\d*|\d*\.\d+|\d+e-?\d+)(?![\w.])/g)].map((m) => m[1]);
+    const okLit = new Set(['0.0', '1.0', '1e-6', '1e-9', '1e-12', '1e-15']);
+    const badLit = [...new Set(lits.filter((x) => !okLit.has(x)))];
+    const skirtLow = Math.min(...[...cr.slice(cr.indexOf('\nSKIRT_R = ['), cr.indexOf(']', cr.indexOf('\nSKIRT_R = [')) + 1).matchAll(/\(([\d.]+),/g)].map((m) => +m[1]));
+    const zKnee = +(/Z_ANKLE, Z_KNEE, Z_HIP, Z_WAIST, Z_SHLD, Z_NECK = ([\d.]+), ([\d.]+)/.exec(cr) || [0, 0, NaN])[2];
+    const C = (s) => META.bodies[s].clothes || {};
+    const cutOk = C('M').cut && C('M').cut.hem === 'sheet' && C('M').cut.sleeve === 'short' && C('F').cut && C('F').cut.hem === 'knee' && C('F').cut.sleeve === 'long';
+    const hemOk = Math.abs(C('M').hemS - skirtLow) < 1e-9 && Math.abs(C('F').hemS - zKnee) < 1e-9;
+    const fp = sexes.every((s) => C(s).mhclo && ['base', 'fur'].every((v) => /^[0-9a-f]{16}$/.test((C(s).mhclo[v] || {}).mhclo || '') && /^[0-9a-f]{16}$/.test((C(s).mhclo[v] || {}).obj || '')));
+    const noCC0 = sexes.every((s) => !('clothes' in (META.bodies[s].parts || {})));
+    REC.a.clothes = { M: { cut: C('M').cut, hemS: C('M').hemS, rings: C('M').rings, sleeve: C('M').sleeve, tris: C('M').tris_base }, F: { cut: C('F').cut, hemS: C('F').hemS, rings: C('F').rings, sleeve: C('F').sleeve, tris: C('F').tris_base }, badLit };
+    ok(reads && badLit.length === 0 && cutOk && hemOk && fp && noCC0,
+       'ⓐ ★[T604] 청동기 옷 = 시트 링 표(웃옷·옷자락·허리띠·소매·털 두께 — 원문을 읽는다 · 생성기에 새 수 0) → 3D 몸 → MPFB mhclo · 남 = 시트 단·반팔 · 여 = 무릎 단·긴팔 · CC0 현대 옷 0',
+       `남 단 ${C('M').hemS}(시트 SKIRT_R 맨 아래 ${skirtLow}) · 여 단 ${C('F').hemS}(Z_KNEE ${zKnee}) · 관 링 ${C('M').rings}/${C('F').rings} · 소매 링 ${C('M').sleeve}/${C('F').sleeve} · 옷 삼각형 ${C('M').tris_base}/${C('F').tris_base}${badLit.length ? ' · 새 수 ' + badLit.join(',') : ''}`);
+  }
   const v = path.join(ROOT, 'public', 'vendor', 'three.0.186.1.min.js');
   const vh = fs.existsSync(v) ? fs.readFileSync(v, 'utf8').slice(0, 300) : '';
   ok(/three\.js 0\.186\.1/.test(vh) && /MIT/.test(vh) && fs.existsSync(path.join(ROOT, 'public', 'vendor', 'three.LICENSE.txt')), 'ⓐ three.js 한 판 고정(public/vendor · MIT 전문 동봉 · CDN 0)');
@@ -459,6 +485,79 @@ const imgDim = (p) => {   // PNG IHDR · JPEG SOF — 무늬 크기(1024² 이�
        'ⓓ 다섯째 옷(가죽 판갑 `hide`)은 시트가 그린다(옷 재질 다섯째 이상 = 회부) · 가죽으로 되입으면 다시 3D', dh ? `판갑 ${dh.layers.join('+')} 3D ${dh.mesh} · 가죽 3D ${dl && dl.mesh}` : 'null');
   }
 
+  // ── ⓓ+ [T604 ②] 청동기 옷 — 옷 → 메시(본 · 갖옷) · 시트 판과 나란히(같은 판 · 같은 방향) · 큰 그림(같은 엔진 · 4배) ──
+  console.log('\nⓓ+ [T604] 청동기 옷 — 본 옷 셋은 한 기하(무늬만) · 갖옷은 제 기하(털 두께) · 시트와 같은 판 나란히(적기만)');
+  {
+    const DIRS = [1, 3];                                       // 1 = 카메라를 마주 본 행(앞) · 3 = 옆(깊이가 가로로만 눕는 행 — ⓑ 키 자와 같은 줄)
+    await P.waitForFunction((kinds) => kinds.every((k) => { try { return !!charSheet('clothes_' + k + '_idle'); } catch (e) { return false; } }), META.clothKinds, { timeout: 60000 }).catch(() => {});
+    const g = await P.evaluate(([kinds, dirs]) => {
+      const m = charMeta(), fw = m.frameW, fh = m.frameH, N = fw * fh, C = window.__char3d, out = { snap: {}, sheet: {}, area: {}, iou: {} };
+      const cv = document.createElement('canvas'); cv.width = fw; cv.height = fh; const gg = cv.getContext('2d', { willReadFrequently: true });
+      const mk = (a) => { const o = new Uint8Array(N); for (let i = 0; i < N; i++) o[i] = a[i * 4 + 3] > 127 ? 1 : 0; return o; };
+      const iou = (a, b) => { let I = 0, U = 0; for (let i = 0; i < N; i++) { if (a[i] && b[i]) I++; if (a[i] || b[i]) U++; } return U ? +(I / U).toFixed(4) : 0; };
+      const cnt = (a) => a.reduce((x, y) => x + y, 0);
+      for (const sex of ['M', 'F']) for (const k of kinds) for (const d of dirs) {
+        const t = C.snap(d, 'idle', 0, { sex, kind: k });
+        out.snap[`${sex}_${k}_${d}`] = t.data;
+        const a = mk(t.data); out.area[`${sex}_${k}_${d}`] = cnt(a);
+        if (sex === 'M') {                                     // 시트 몸은 하나(남녀 칸 없음) — 게임 안의 몸(`defaultBody` M)과 맞댄다
+          gg.clearRect(0, 0, fw, fh); gg.drawImage(charSheet('body_idle'), 0, d * fh, fw, fh, 0, 0, fw, fh); gg.drawImage(charSheet('clothes_' + k + '_idle'), 0, d * fh, fw, fh, 0, 0, fw, fh);
+          const sd = gg.getImageData(0, 0, fw, fh).data; out.sheet[`${k}_${d}`] = Array.from(sd);
+          out.iou[`${k}_${d}`] = iou(a, mk(sd)); out.area[`sheet_${k}_${d}`] = cnt(mk(sd));
+        }
+      }
+      const same = (x, y) => { const A = out.snap[x], B = out.snap[y]; for (let i = 3; i < A.length; i += 4) if ((A[i] > 127) !== (B[i] > 127)) return false; return true; };
+      out.sameBase = ['M', 'F'].every((sx) => dirs.every((d) => same(`${sx}_hemp_${d}`, `${sx}_ramie_${d}`) && same(`${sx}_hemp_${d}`, `${sx}_leather_${d}`)));
+      return out;
+    }, [META.clothKinds, DIRS]);
+    const furBig = ['M', 'F'].every((sx) => DIRS.every((d) => g.area[`${sx}_fur_${d}`] > g.area[`${sx}_leather_${d}`]));
+    REC.t604 = { iou: g.iou, area: g.area, sameBase: g.sameBase, furBig, snap: g.snap, sheet: g.sheet };
+    console.log('    [표] (적기만) 남 몸 3D ↔ 시트 같은 판(서기 0판) — 옷 · 방향 · 실루엣 겹침(IoU) · 화소 3D / 시트');
+    for (const k of META.clothKinds) for (const d of DIRS) console.log(`      ${k} · ${d} · ${g.iou[`${k}_${d}`]} · ${g.area[`M_${k}_${d}`]} / ${g.area[`sheet_${k}_${d}`]}`);
+    ok(g.sameBase && furBig,
+       'ⓓ ★[T604] 옷 → 메시 — 삼베·모시·가죽은 한 기하(실루엣 화소가 같다 · 무늬만 다르다) · 갖옷은 제 기하(털 두께 — 같은 몸·판·방향에서 실루엣이 크다) · 몸 둘 × 앞·옆',
+       DIRS.map((d) => `방향 ${d}: 남 가죽 ${g.area[`M_leather_${d}`]} → 갖옷 ${g.area[`M_fur_${d}`]} · 여 ${g.area[`F_leather_${d}`]} → ${g.area[`F_fur_${d}`]}`).join(' · '));
+    if (OUTPNG) {                                              // 큰 그림(같은 엔진 · 같은 투영 · 4배 · 서기 0판) — 메타·glb·무늬를 같은 문법으로 따로 싣는다(클라 무접촉)
+      REC.t604.studio = await P.evaluate(async (o) => {
+        const T = window.THREE, meta = await (await fetch('/assets/char3d/char3d_meta.json')).json();
+        const gltf = await new Promise((ok2, no) => new T.GLTFLoader().load('/assets/char3d/' + meta.glb, ok2, undefined, no));
+        const TL = new T.TextureLoader();
+        const tex = (u, srgb) => new Promise((ok2, no) => TL.load('/assets/char3d/' + u, (t) => { t.flipY = false; if (srgb) t.colorSpace = T.SRGBColorSpace; ok2(t); }, undefined, no));
+        const MAT = {};
+        for (const sex of Object.keys(meta.textures)) { MAT[sex] = {}; const al = await tex(meta.textures[sex].alpha, false);
+          for (const k of meta.clothKinds) MAT[sex][k] = new T.MeshStandardMaterial({ map: await tex(meta.textures[sex][k], true), alphaMap: al, alphaTest: meta.alphaTest, roughness: meta.roughness[k], metalness: 0, side: T.DoubleSide }); }
+        const cm = charMeta(), PPU = cm.ppu * o.k, W = o.w, H = o.h, AX = W / 2, AY = H - o.foot;
+        const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+        const R = new T.WebGLRenderer({ canvas: cv, alpha: true, antialias: true, premultipliedAlpha: true, preserveDrawingBuffer: true });
+        R.setPixelRatio(1); R.setClearColor(0x000000, 0);
+        const scene = new T.Scene(), sd = meta.sunDir, E0 = Math.asin(-sd[2]), A0 = Math.atan2(-sd[1], -sd[0]);
+        const sun = new T.DirectionalLight(0xffffff, meta.sunEnergy);
+        sun.position.set(Math.cos(E0) * Math.cos(A0) * 10, Math.sin(E0) * 10, Math.cos(E0) * Math.sin(A0) * 10); scene.add(sun); scene.add(sun.target);
+        const sky = new T.Color(meta.sky[0], meta.sky[1], meta.sky[2]); scene.add(new T.HemisphereLight(sky, sky, Math.PI * meta.skyStrength));
+        const c = Math.cos(Math.PI / 6), s = Math.sin(Math.PI / 6);
+        const cam = new T.OrthographicCamera(-AX / PPU, (W - AX) / PPU, AY / PPU, -(H - AY) / PPU, 0.1, 200);
+        cam.up.set(-s / Math.SQRT2, c, -s / Math.SQRT2); cam.position.set(c / Math.SQRT2 * 50, s * 50, c / Math.SQRT2 * 50); cam.lookAt(0, 0, 0);
+        cam.updateMatrixWorld(); cam.updateProjectionMatrix();
+        const out = {};
+        for (const j of o.jobs) {                              // j = {sex, kind, d, clip(없으면 쉼 자세 — 묶기 자세 그대로), key(열쇠)}
+          const model = T.SkeletonUtils.clone(gltf.scene.getObjectByName(j.sex)); model.scale.set(1, meta.zsq, -1);
+          const root = new T.Group(); root.add(model); scene.add(root);
+          const of = meta.bodies[j.sex].meshOf;
+          for (const nm of new Set(Object.values(of))) { const m = model.getObjectByName(nm); m.frustumCulled = false; m.visible = nm === of[j.kind]; if (m.visible) m.material = MAT[j.sex][j.kind]; }
+          if (j.clip) { const mixer = new T.AnimationMixer(model), a = mixer.clipAction(gltf.animations.find((q) => q.name === j.sex + '.' + j.clip)); a.play(); a.time = j.key; mixer.update(0); }
+          root.rotation.y = -(j.d * Math.PI / 4);
+          R.clear(); R.render(scene, cam);
+          out[j.id] = cv.toDataURL('image/png');
+          scene.remove(root);
+        }
+        return out;
+      }, { k: 4, w: 232, h: 300, foot: 34, jobs: [
+        ...['M', 'F'].flatMap((sex) => META.clothKinds.flatMap((kind) => DIRS.map((d) => ({ id: `${sex}_${kind}_${d}`, sex, kind, d, clip: null })))),
+        ...['M', 'F'].flatMap((sex) => [0, 2, 4, 6].map((f) => ({ id: `walk_${sex}_${f}`, sex, kind: 'hemp', d: 3, clip: 'walk', key: f * META.keysPerFrame }))),
+        ...['M', 'F'].flatMap((sex) => [0, 2, 4, 6].map((f) => ({ id: `run_${sex}_${f}`, sex, kind: 'fur', d: 1, clip: 'run', key: f * META.keysPerFrame }))) ] });
+    }
+  }
+
   // ── ④ 빛 — 게임 시각 · 날씨 ──
   console.log('\n④ 빛 — 방향광 + 반구광 하나 · 게임 시각(`worldPhase`)·날씨(`wxState().precip`)에서 각도·세기');
   {
@@ -717,7 +816,25 @@ const imgDim = (p) => {   // PNG IHDR · JPEG SOF — 무늬 크기(1024² 이�
     const onBg = (arr, fw, fh) => { const o = new PNG({ width: fw, height: fh }); for (let i = 0; i < fw * fh * 4; i += 4) { const a = arr[i + 3] / 255; o.data[i] = Math.round(arr[i] * a + 70 * (1 - a)); o.data[i + 1] = Math.round(arr[i + 1] * a + 84 * (1 - a)); o.data[i + 2] = Math.round(arr[i + 2] * a + 62 * (1 - a)); o.data[i + 3] = 255; } return o; };
     const fw = CHMETA.frameW, fh = CHMETA.frameH;
     const sec = [];
-    if (REC.five.frames) {
+    if (REC.t604 && REC.t604.studio) {                         // [T604] 청동기 옷 — 큰 그림 · 게임 크기 3D ↔ 시트 · (아래) 마을 광장
+      const ko = { hemp: '삼베', ramie: '모시', leather: '가죽', fur: '갖옷' }, dn = { 1: '앞', 3: '옆' }, D = [1, 3];
+      const st = REC.t604.studio, cut = (s) => (META.bodies[s].clothes || {}).cut || {};
+      const fig = (src, cap) => `<figure><img src="${src}" style="image-rendering:auto"><figcaption>${cap}</figcaption></figure>`;
+      for (const sx of ['M', 'F']) {
+        const C = META.bodies[sx].clothes || {};
+        sec.push(`<section><h2>${sx === 'M' ? '남' : '여'} — ${sx === 'M' ? '시트 그대로: 옷자락 단(시트 SKIRT_R 맨 아래) · 반팔 · 허리띠' : '긴 웃옷: 단 무릎(Z_KNEE) · 긴팔(손목까지) · 허리띠'} · 쉼 자세(묶기 자세 — 옷 꼴 그대로) · 게임 투영 · 4배 <b>(관 링 ${C.rings} · 소매 링 ${C.sleeve} · 옷 삼각형 ${C.tris_base} · 몸 ${META.bodies[sx].tris})</b></h2>
+          <div class="row">${META.clothKinds.map((k) => D.map((d) => fig(st[`${sx}_${k}_${d}`], `${ko[k]} · ${dn[d]}`)).join('')).join('')}</div></section>`);
+      }
+      sec.push(`<section><h2>움직임 — 걷기(삼베 · 옆 · 0·2·4·6판) · 달리기(갖옷 · 앞 · 0·2·4·6판) — 남 · 여 <b>(옷자락 = MakeHuman 치마 보조 기하에 묶임 · 소매 = 위팔·아래팔)</b></h2>
+        <div class="row">${['M', 'F'].map((sx) => [0, 2, 4, 6].map((f) => fig(st[`walk_${sx}_${f}`], `${sx === 'M' ? '남' : '여'} 걷기 ${f}`)).join('')).join('')}</div>
+        <div class="row">${['M', 'F'].map((sx) => [0, 2, 4, 6].map((f) => fig(st[`run_${sx}_${f}`], `${sx === 'M' ? '남' : '여'} 달리기 ${f}`)).join('')).join('')}</div></section>`);
+      const tri = (k, d) => `<div class="pair">${im(onBg(REC.t604.snap[`M_${k}_${d}`], fw, fh), 3, `3D ${ko[k]} ${dn[d]}`)}${im(onBg(REC.t604.sheet[`${k}_${d}`], fw, fh), 3, `시트 ${ko[k]} ${dn[d]} · IoU ${REC.t604.iou[`${k}_${d}`]}`)}</div>`;
+      sec.push(`<section><h2>게임 크기 — 남 몸 3D ↔ 시트(같은 판: 서기 0판 · 같은 방향 · ×3 계단) <b>(실루엣 겹침은 적기만 — 판정은 재민)</b></h2>
+        <div class="row">${['hemp', 'leather'].map((k) => D.map((d) => tri(k, d)).join('')).join('')}</div>
+        <div class="row">${['ramie', 'fur'].map((k) => D.map((d) => tri(k, d)).join('')).join('')}</div>
+        <div class="row">${META.clothKinds.map((k) => D.map((d) => im(onBg(REC.t604.snap[`F_${k}_${d}`], fw, fh), 3, `여 3D ${ko[k]} ${dn[d]}`)).join('')).join('')}</div></section>`);
+    }
+    if (REC.five.frames) {                                     // ⑤ 마을 광장(T604 그림의 "마을 광장 한 컷"도 이 판)
       const [fM, fS] = REC.five.frames, ps = REC.five.npcScr || [];
       const mx = ps.length ? ps.reduce((s, q) => s + q[0], 0) / ps.length : VW >> 1, my = ps.length ? ps.reduce((s, q) => s + q[1], 0) / ps.length - 30 : (VH >> 1) - 10;
       const cx = Math.round(Math.max(310, Math.min(VW - 310, mx))), cy = Math.round(Math.max(210, Math.min(VH - 210, my)));
@@ -727,18 +844,18 @@ const imgDim = (p) => {   // PNG IHDR · JPEG SOF — 무늬 크기(1024² 이�
       let best = null; for (const q of pts) { const k = pts.filter((r) => Math.hypot(r[0] - q[0], r[1] - q[1]) < 110).length; if (!best || k > best.k) best = { q, k }; }
       if (best) sec.push(`<section><h2>⑤ 확대 ×2 — 주민 ${best.k}명 둘레</h2><div class="row">${im(crop(fM, best.q[0], best.q[1] - 30, 280, 180), 2, '3D')}${im(crop(fS, best.q[0], best.q[1] - 30, 280, 180), 2, '시트')}</div></section>`);
     }
-    if (REC.d.kindPng) {
+    if (REC.d.kindPng && FIG !== 't604') {
       sec.push(`<section><h2>ⓓ 옷 넷 — 같은 몸·판(걷기 2판 · 방향 1) <b>(밝기 ${REC.d.ordMesh.join(' > ')})</b></h2><div class="row">${META.clothKinds.map((k) => im(onBg(REC.d.kindPng[k], fw, fh), 3, k)).join('')}</div></section>`);
     }
-    if (REC.light.png) {
+    if (REC.light.png && FIG !== 't604') {
       sec.push(`<section><h2>④ 빛 — 한낮 · 저녁(u 0.9) · 큰비 <b>(직사광 ${REC.light.noon.sun} · ${REC.light.eve.sun} · ${REC.light.rain.sun})</b></h2><div class="row">${['noon', 'eve', 'rain'].map((k) => im(onBg(REC.light.png[k], fw, fh), 3, k)).join('')}</div></section>`);
     }
-    if (REC.one.other && REC.one.other.png) {
+    if (REC.one.other && REC.one.other.png && FIG !== 't604') {
       const [gM, gS] = REC.one.other.png, o = REC.one.other;
       sec.push(`<section><h2>① 남의 몸(둘째 접속 · 삼베옷) — 화면 3D ↔ 시트 <b>(타일 자리 어긋남 ${o.place ? `(${o.place.dx},${o.place.dy})` : '-'}px)</b></h2>
         <div class="row">${im(gM, 3, '3D × 3')}${im(gS, 3, '시트 × 3')}</div></section>`);
     }
-    if (fs.existsSync('/tmp/e2e-char3d-bench-mesh.png') && fs.existsSync('/tmp/e2e-char3d-bench-sheet.png')) {
+    if (FIG !== 't604' && fs.existsSync('/tmp/e2e-char3d-bench-mesh.png') && fs.existsSync('/tmp/e2e-char3d-bench-sheet.png')) {
       const bs = PNG.sync.read(fs.readFileSync('/tmp/e2e-char3d-bench-sheet.png')), bm = PNG.sync.read(fs.readFileSync('/tmp/e2e-char3d-bench-mesh.png'));
       const M = E(100, 'mesh');
       sec.push(`<section><h2>② 몸 100 — 장면 한 번(WebGL 렌더 ${M.glRenders}번 / 3D 판 ${M.bodyFrames}) · 그리기 호출 ${M.calls} <b>(SwiftShader 렌더 시트 ${E(100, 'sheet').renderMs}ms / 메시 ${M.renderMs}ms)</b></h2>
@@ -749,11 +866,11 @@ const imgDim = (p) => {   // PNG IHDR · JPEG SOF — 무늬 크기(1024² 이�
       .w{padding:22px;display:grid;gap:22px;width:max-content}
       h1{margin:0;font-size:20px;font-weight:700}
       section{display:grid;gap:8px} h2{margin:0;font-size:16px;font-weight:600} h2 b{color:#e0b074;font-weight:600}
-      .row{display:flex;gap:10px;align-items:flex-start} figure{margin:0;display:grid;gap:4px}
+      .row{display:flex;gap:10px;align-items:flex-start} figure{margin:0;display:grid;gap:4px} .pair{display:flex;gap:2px;padding-right:10px}
       img{image-rendering:pixelated;display:block;border:1px solid #3a423a} figcaption{font-size:12.5px;color:#b7bfb4}
       .num{font-family:'Noto Sans Mono CJK KR',monospace}
     </style><div class="w">
-      <h1>T545 — 소체 교체(MPFB 실사풍 저폴리) · 하네스 그림 (손잡이 <span class="num">/?T522_CHAR_3D=1</span> · 끔이 기본)</h1>
+      <h1>${FIG === 't604' ? 'T604 ② — 청동기 옷(시트 링 표 → 3D 몸 → MPFB mhclo) · 옷 넷 × 남·여 · 앞·옆 · 마을 광장 한 컷' : 'T545 — 소체 교체(MPFB 실사풍 저폴리) · 하네스 그림'} (손잡이 <span class="num">/?T522_CHAR_3D=1</span> · 끔이 기본)</h1>
       ${sec.join('\n')}
     </div>`;
     const pg = await (await browser.newContext({ viewport: { width: 1400, height: 900 }, deviceScaleFactor: 1 })).newPage();
@@ -763,7 +880,7 @@ const imgDim = (p) => {   // PNG IHDR · JPEG SOF — 무늬 크기(1024² 이�
     console.log('→', OUTPNG, `${sz[0]}x${sz[1]}`);
   }
   await browser.close();
-  if (OUTJSON) { const r = JSON.parse(JSON.stringify(REC, (k, v) => (['turnPng', 'kindPng', 'png', 'frames', 'thumbs', 'data'].includes(k) ? undefined : v))); fs.writeFileSync(OUTJSON, JSON.stringify(r, null, 1)); }
+  if (OUTJSON) { const r = JSON.parse(JSON.stringify(REC, (k, v) => (['turnPng', 'kindPng', 'png', 'frames', 'thumbs', 'data', 'snap', 'sheet', 'studio'].includes(k) ? undefined : v))); fs.writeFileSync(OUTJSON, JSON.stringify(r, null, 1)); }
   console.log(`\n=== ${pass}/${pass + fail} ${fail ? '✗' : '✓'} ===`);
   shutdown();
   process.exit(fail ? 1 : 0);
