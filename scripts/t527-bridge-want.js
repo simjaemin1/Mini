@@ -127,7 +127,8 @@ if (process.env.T527_WANT_CHILD === 'P') {
     }
     pairOut.push({ a: IN.vs[pr.i].name, b: IN.vs[pr.j].name, pathN: path ? path.length : null, runs: runs.length, noCross, keys });
   }
-  process.stdout.write('\n@@' + JSON.stringify({ cands: [...cand.values()], pairs: pairOut }) + '\n');
+  // ★[T638] 파이프에 큰 줄을 비동기로 쓰고 곧장 exit 하면 잘린다(닛폰 50마을 판 314KB 가 133KB 에서 끊겨 부모 JSON.parse 가 죽음) — 동기 쓰기(바이트 같음)
+  fs.writeSync(1, '\n@@' + JSON.stringify({ cands: [...cand.values()], pairs: pairOut }) + '\n');
   process.exit(0);
 }
 if (process.env.T527_WANT_CHILD) {
@@ -146,7 +147,7 @@ if (process.env.T527_WANT_CHILD) {
   P._distProbe.compute(`T527 ${mode}`);
   console.log = _log;
   const mat = world._distMatrix.map((r) => r.map((d) => (isFinite(d) ? +d.toFixed(2) : null)));
-  process.stdout.write('\n@@' + JSON.stringify({ mode, brN, vs, mat, max: world._distMatrixMax, log: logs.filter((l) => /거리행렬/.test(l)) }) + '\n');
+  fs.writeSync(1, '\n@@' + JSON.stringify({ mode, brN, vs, mat, max: world._distMatrixMax, log: logs.filter((l) => /거리행렬/.test(l)) }) + '\n');
   process.exit(0);
 }
 
@@ -190,7 +191,9 @@ if (process.argv.includes('--shortcut')) {
   fs.writeFileSync(tmp('pairs'), JSON.stringify({ vs, pairs: pushed }));
   const runEnv = (m, extra) => { const out = execFileSync(process.execPath, [__filename, Z], { env: Object.assign({}, process.env, { T527_WANT_CHILD: m }, extra || {}), maxBuffer: 1 << 28, stdio: ['ignore', 'pipe', 'inherit'] }).toString(); return JSON.parse(out.slice(out.lastIndexOf('\n@@') + 3)); };
   const PC = runEnv('P', { T527_PAIRS_FILE: tmp('pairs') });
-  const cands = PC.cands;
+  // ★[T638] 후보를 존의 한쪽(셀 x 구간)으로만 — `T527_CAND_X=<시작>,<끝>`(닛폰 동쪽 = 1250,99999 · 비면 전부 · 종전 그대로) · 한 후보마다 판 하나(~20초)라 427곳 전부는 2시간이 넘는다
+  const _cx = (process.env.T527_CAND_X || '').split(',').map(Number);
+  const cands = (process.env.T527_CAND_X ? PC.cands.filter((c) => c.cells[0] >= _cx[0] && c.cells[0] < _cx[1]) : PC.cands);
   console.log(`[③] 창 밖 ${pushed.length}쌍 → 도하 후보 ${cands.length}곳 · ${((Date.now() - t0) / 1000).toFixed(0)}초`);
   const inWin = (mat) => { let n = 0; const who = []; for (const p of pushed) { const d = mat[p.i][p.j]; if (d != null && d <= capA) { n++; who.push(`${vs[p.i].name}–${vs[p.j].name}`); } } return { n, who }; };
   const all = [].concat(...cands.map((c) => c.cells));
