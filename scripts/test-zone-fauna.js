@@ -7,11 +7,12 @@
 //   이 하네스는 그 칸이 **표 그대로** 옮겨졌는지, 켜면 **없음 = 안 남**이 세 자리(첫 스폰 · DB 적재 · 야생 블록)에서
 //   실제로 서는지, 끄면 **옛 줄 그대로**인지를 잰다.
 //
-//  ① 표 = T607 그대로 — 고증 문서 ① 표를 **읽어서** 칸마다 대조(사본 0) · 문서 18줄 = 표 줄 8 + 새 종 후보 8 + 곰 두 줄
+//  ① 표 = T607 그대로 — 고증 문서 ① 표를 **읽어서** 칸마다 대조(사본 0) · 문서 18줄 = 표 줄 9 + 새 종 후보 8 + 나중 존 1
+//     (★[T636 · 재민 10-04] 곰 = 반달가슴곰 줄 · 불곰은 나중 존 `FAUNA_LATER`)
 //  ② 끔 = 옛 줄 — 손잡이 없음이면 모든 biome × 존에서 목록이 옛 함수(존 없음)와 **같은 배열** · `faunaOut` 늘 false
 //     · 배선(zone.js 첫 스폰 · DB 적재 · wildlife.js 5a)이 손잡이 뒤에 있다 · 블록(B)은 무수정
 //  ③ 켬 — 닛폰 mountain 목록에서 호랑이만 빠진다 · 한반도 목록 그대로 · 표범은 칸만 없음(두 존 biome 목록에 원래 없다)
-//     · 드묾(미끼 줄)은 몫 무변(T607 은 비를 안 줬다) · 새 종은 안 든다 · 표 밖 종(곰 · 아이벡스 · 범위 밖)은 지금 값
+//     · 드묾(미끼 줄)은 몫 무변(T607 은 비를 안 줬다) · 새 종은 안 든다 · 표 밖 종(아이벡스 · 범위 밖)은 지금 값 · 곰(반달가슴곰)은 두 존 있음
 //  ④ 야생 블록 다리 — 실기(정본 `tick` · 최소 호스트 = test-hunt-vis ⑥ 꼴): 랩 🐯 한 마리를 세워 두고 한 틱 —
 //     끔 닛폰 = 그림자 tiger 가 선다(대조) · 켬 닛폰 = 그림자 0 · 랩 목록에서도 빠진다 · 켬 한반도 = 선다
 //  ⑤ 실부팅(닛폰 · 임시 DB · 하위 프로세스 둘) — 켬: 첫 스폰 공격 개체가 서는데 호랑이 0 ·
@@ -125,9 +126,9 @@ say('\n① 표 = T607 그대로 — 고증 문서 ① 표를 읽어 칸마다 �
     rows.push({ name: c[0].replace(/\*\*/g, ''), hb: word(c[1]), np: word(c[2]) });
   }
   pre(h > 0 && rows.length > 0, '문서 ① 표를 찾았다', `${rows.length}줄`);
-  const mine = [...A.ZONE_FAUNA, ...A.FAUNA_NEW, ...A.FAUNA_BEAR];
-  ok(rows.length === 18 && mine.length === 18, '★① 문서 18줄 = 표 줄 8 + 새 종 후보 8 + 곰 두 줄(짝 미정)',
-    `문서 ${rows.length} · 표 ${A.ZONE_FAUNA.length} + 새 종 ${A.FAUNA_NEW.length} + 곰 ${A.FAUNA_BEAR.length}`);
+  const mine = [...A.ZONE_FAUNA, ...A.FAUNA_NEW, ...A.FAUNA_LATER];
+  ok(rows.length === 18 && mine.length === 18, '★① 문서 18줄 = 표 줄 9 + 새 종 후보 8 + 나중 존 1(불곰 · T636)',
+    `문서 ${rows.length} · 표 ${A.ZONE_FAUNA.length} + 새 종 ${A.FAUNA_NEW.length} + 나중 존 ${A.FAUNA_LATER.length}`);
   const miss = [], bad = [];
   for (const r of rows) {
     const m = mine.filter((x) => x.t607 === r.name);
@@ -142,7 +143,9 @@ say('\n① 표 = T607 그대로 — 고증 문서 ① 표를 읽어 칸마다 �
   const kos = new Set(Object.values(A.ANIMALS).map((m) => m.ko));
   const ghost = A.FAUNA_NEW.filter((r) => kos.has(r.t607.split(/[ (/]/)[0]));
   ok(ghost.length === 0, '① 새 종 후보 8은 카탈로그에 이름이 없다(게임에 없는 종 — 켬에서도 안 넣는다)', ghost.map((r) => r.t607).join(',') || '0');
-  ok(!ids.includes('bear') && !ids.includes('ibex'), '① 곰 · 아이벡스는 표에 줄이 없다(짝 미정 · T607 재민 칸 → 지금 값)');
+  const bearRow = A.ZONE_FAUNA.find((r) => r.id === 'bear');
+  ok(!!bearRow && bearRow.t607 === '반달가슴곰' && !ids.includes('ibex'), '★① [T636] 곰 = 반달가슴곰 줄(재민 10-04) · 아이벡스는 표에 줄이 없다(T607 재민 칸 → 지금 값)', bearRow ? `${bearRow.hb}/${bearRow.np}` : '없음');
+  ok(A.FAUNA_LATER.length === 1 && A.FAUNA_LATER[0].t607 === '불곰' && !kos.has('불곰'), '① [T636] 불곰은 나중 존 줄 하나 — 게임 id 없음(지금 존에 안 남)');
   const npOut = mine.filter((r) => r.np === '없음').map((r) => r.t607.split('(')[0]);
   const hbOut = mine.filter((r) => r.hb === '없음').map((r) => r.t607.split('(')[0]);
   ok(hbOut.length === 1 && /일본원숭이/.test(hbOut[0]), '① 한반도 없음 1 = 일본원숭이(T607 ② 그대로)', hbOut.join(','));
@@ -150,7 +153,7 @@ say('\n① 표 = T607 그대로 — 고증 문서 ① 표를 읽어 칸마다 �
   ok(A.ZONE_FAUNA.filter((r) => r.diff).map((r) => r.id).join() === 'pheasant' && A.FAUNA_NEW.filter((r) => r.diff).length === 3,
     '① "다른 종" 네 쌍(너구리·오소리·꿩·산양)은 없음이 아니라 있음/있음 + 표시(T607 ② "섞지 않는다")');
   const rare = mine.filter((r) => r.hb === '드묾' || r.np === '드묾');
-  ok(rare.length === 1 && rare[0].t607 === '불곰' && !ids.includes('bear'), '① 드묾 칸은 불곰 한반도 하나 — 곰 짝 미정이라 게임 종엔 드묾 0', rare.map((r) => r.t607).join(','));
+  ok(rare.length === 1 && rare[0].t607 === '불곰' && A.ZONE_FAUNA.every((r) => r.hb !== '드묾' && r.np !== '드묾'), '① 드묾 칸은 불곰 한반도 하나(나중 존) — 게임 종엔 드묾 0', rare.map((r) => r.t607).join(','));
 }
 
 // ── ② 끔 = 옛 줄 ─────────────────────────────────────────────────────────────────────────
@@ -185,7 +188,7 @@ withEnv({ T622_ZONE_FAUNA: '1' }, () => {
   ok(same(hOn, hOff), '★③ 켬 한반도 — 목록 그대로(호랑이 있음)', `${hOn.length}종`);
   ok(A.faunaCell('leopard', 'nippon') === '없음' && !nOff.includes('leopard') && !hOff.includes('leopard'),
     '③ 표범 — 닛폰 칸 없음이지만 두 존 biome 목록에 원래 없다(빠지는 수 0 · 보고에 줄)', `spawn_biome ${A.ANIMALS.leopard.spawn_biome.join(',')}`);
-  ok(nOn.includes('bear') && nOn.includes('ibex') && hOn.includes('moose'), '③ 표 밖 종(곰 · 아이벡스 · 무스)은 지금 값 그대로');
+  ok(nOn.includes('bear') && hOn.includes('bear') && nOn.includes('ibex') && hOn.includes('moose'), '③ 곰(반달가슴곰 있음/있음)은 두 존에서 그대로 · 표 밖 종(아이벡스 · 무스)은 지금 값 그대로');
   const all = new Set(Object.keys(A.ANIMALS));
   let ghost = 0; for (const b of BIOMES) for (const z of ZIDS) for (const id of A.huntableInBiome(b, z)) if (!all.has(id)) ghost++;
   ok(ghost === 0, '③ 켬에서도 새 종은 안 든다(목록은 카탈로그 안에서 빼기만)');

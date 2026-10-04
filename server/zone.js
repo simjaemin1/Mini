@@ -83,7 +83,7 @@ const { Quadtree, QuadtreeInc } = require('./quadtree'); // spatial index — O(
 const { ChunkManager, CHUNK_SIZE, generateChunkResources, resourcesAtCell, cellChunksOf, overflowInto, seedGenChunkOf, regrowStageOf, REGROW, generateVillagesForZone, generateCoastlineWaterTiles, RESOURCE_HP_TABLE, GROVE_KINDS, forestSpacing: chunkForestSpacing, FOREST_MIN_COV: chunkForestMinCov } = require('./chunk');   // ★[T325] `resourcesAtCell` — 관측자 무관 색인(T301) 그대로. 나무꾼이 청크 없이 나무를 묻는다 // ★[T124] 재생 정산은 T122 정본을 그대로 받는다(사본 0) // 청크 단위 entity 분류 + procedural + 해안선 + ★[T108] 자연물 hp 정본
 const { findPath: pfFindPath } = require('./pathfind'); // Phase 14.49-b: NPC A* pathfinding
 const PathCore = require('../sim/path-core.js'); // ★[생활 층 100% ①] 랩·서버 공용 경로 정본 — smoothPath(스트링 풀링)를 주민 이동에 직결
-const { ANIMALS } = require('./animals');  // Phase 5-6: 동물 mob 36종 catalog
+const { ANIMALS, dropsOf } = require('./animals');  // Phase 5-6: 동물 mob 36종 catalog · ★[T636] dropsOf = 사체 드롭 정본(끔이면 카탈로그 그대로)
 const GuildTreasury = require('./guild-treasury'); // 길드 곳간(물리) ↔ central 금고(회계) 정합 — 장부 계약은 그 파일 상단 참조
 const PlayerItems = require('./player-items'); // 플레이어 아이템 인스턴스(품질·속성·내구) — econ 무접촉·본체 서버층(설계: 플레이어_아이템_속성_설계.md)
 // ★[부패·보존 배치 2026-08-31] 부패 곡선·보존 가공의 정본. 여기(아래 FOOD_EFFECTS 보다 위)에서
@@ -2052,7 +2052,9 @@ const CORPSE_DECAY_MS = 5 * 60 * 1000;  // 5분 후 부패
 function spawnCorpse(mob, killerPid) {
   const cid = `c${nextCorpseId++}`;
   const def = ANIMALS[mob.type];
-  const drops = (def && def.drops) ? def.drops : { meat_game: 1, leather: 1 };  // fallback (옛 mob)
+  // ★[T636 · 손잡이 `T636_DROP_KG` 기본 끔] 드롭 정본은 `animals.js dropsOf` — 끔이면 카탈로그 `drops` 그 객체(옛 줄 그대로) ·
+  //   켬이면 고기 칸만 kg(T607 몸무게 × T629 수율 — 사슴·곰·꿩) · 가죽·뼈·뿔은 지금 값.
+  const drops = (def && def.drops) ? dropsOf(mob.type) : { meat_game: 1, leather: 1 };  // fallback (옛 mob)
   const corpse = {
     cid, mobType: mob.type,
     x: mob.x, y: mob.y,
@@ -11316,6 +11318,8 @@ function __testBind() {
     mineOreCell, trySortOre, minedCells, ITEM_LABEL_SERVER,
     // ── 길들이기 시대 게이트 E2E(test-tame.js) ── 실서버 mobs/MOB_DEFS 와 실제 tryFeed 를 그대로 쓴다
     mobs, MOB_DEFS, tryFeed, qtMobs: () => qtMobs,
+    // ── ★[T636] 사체 드롭 kg E2E(test-drop-kg.js) ── 실서버 spawnCorpse/butcherCorpse 를 그대로 쓴다(읽기·부르기만)
+    spawnCorpse, butcherCorpse, corpses,
     // ── 조업 진척 계약 E2E(2026-08-02e ⑤) ── 시간은 벽시계라 하네스가 job.until 을 당겨 검증한다
     SMELT_BASE_MS, SMELT_MIN_MS, KILN_BURN_MS, KILN_BATCH_MS_PER, _smeltDurationMs, _jobProgress,
     // ── 조업 **페이싱** 실측(2026-08-02f ②) ── 단조까지 이어야 사슬 한 바퀴의 실시간이 나온다
