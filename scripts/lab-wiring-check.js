@@ -21,6 +21,7 @@
 //   F. 번들     — economy-engine.browser.js 가 엔진 소스와 같은가(손으로 기웠는지 포함)
 //   G. 인라인   — 랩 HTML 의 인라인 엔진이 그 번들과 같은가
 //   K. 대조     — 서버에만 있던 여섯(T569·T570·T577 추신·T578·T579 추신·T590)이 랩에도 같은 식으로 섰나(T599)
+//   L. 대조 2차 — 서버 env 손잡이 문(같은 이름 · 같은 기본) · 작물 철 월동 셈(T594 거울 = 서버 T99 readyDay)(T641)
 //
 // 실행: node scripts/lab-wiring-check.js [랩HTML...]
 //   HTML 을 안 주면 lab/마을실험실.html · lab/전쟁실험실.html 을 잰다(랩은 2026-09-05 레포 안으로 들어왔다).
@@ -752,6 +753,137 @@ console.log('\n[K] 랩 ↔ 서버 대조 — 서버에만 있던 여섯(T599)');
     const lab = fnBody(rd('lab/전쟁실험실.html'), 'function _t577Hash(');
     if (mut && mut !== sHash && lab && lab !== mut) ok('ⓓ [자명 통과 금지] 서버 해시 곱수 31→37 로 비틀면 랩 본문과 갈린다 — 비교가 실제로 문다');
     else bad('ⓓ [자명 통과 금지] 비틀어도 같은 답 — 본문 비교가 죽었다');
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// [L] ★★[T641 2026-10-04] 랩 ↔ 서버 대조 2차 — **서버 env 손잡이 문** · **작물 철 월동 셈**(T594 거울 = 서버 T99)
+// ══════════════════════════════════════════════════════════════════════════════
+//   대조표 = `lab/README.md` '랩 ↔ 서버 대조 2차' 절. 이 절은 그 '옮김' 두 줄이 **계속 같은지** 기계로 본다.
+//   ⓐ 문(`▼T641-ENV-DOOR`)이 두 랩에 하나씩 · 번들 시작 표시 **앞**(번들이 처음 실행될 때 env 가 이미 서 있어야 한다) ·
+//      문 본문을 떠서 돌리면 URL **대문자 칸만** env 로 가고(랩 소문자 칸 `seed`·`cropcal` 은 안 샌다) · 칸이 없으면
+//      `window.process` 를 **안 만든다**(= 종전 랩 그대로)
+//   ⓑ 번들 shim 이 `root.process` 를 읽는다 · 서버와 같은 손잡이 줄(`T602_NEW_FISH` — server/specialty.js 의 그 줄)이 번들에 실려 있다
+//   ⓒ [자명 통과 금지] 문 정규식을 풀어 소문자도 받게 비틀면 랩 손잡이 칸이 env 로 샌다 — 검사가 문다
+//   ⓓ 작물 철 켬 — 랩 `cropGrowAt`(구운 블록 · `scripts/t594-lab-cropcal.js`) = 서버 `crops.readyDay`(T594_CROP_CAL=1)
+//      거울 16종 × econ 날 0..1460(윤년 하나 포함) 전수 — 심는 날부터 익는 날까지 날수가 같은가
+//   ⓔ [자명 통과 금지] T641 전 옛 줄(랩 1월 기점 365일 달력의 3월 1일 = econ 12월 30일)을 넣으면 월동 셋이 갈린다
+console.log('\n[L] 랩 ↔ 서버 대조 2차 — 서버 env 손잡이 문 · 작물 철 월동 셈(T641)');
+{
+  const vm = require('vm');
+  const LABS_L = ['lab/마을실험실.html', 'lab/전쟁실험실.html'];
+  const doorOf = (H) => {
+    const a = H.indexOf('▼T641-ENV-DOOR'), b = H.indexOf('▲T641-ENV-DOOR');
+    if (a < 0 || b < a) return null;
+    const s = H.indexOf('<script>', a), e = H.indexOf('</script>', s);
+    return (s > a && e > s && e < b) ? H.slice(s + 8, e) : null;
+  };
+  const runDoor = (code, search) => {
+    const win = {};
+    vm.runInNewContext(code, { window: win, location: { search }, URLSearchParams, console: { info() {} }, document: { addEventListener() {} } });
+    return win;
+  };
+  const probe = (code) => {
+    const w1 = runDoor(code, '?T602_NEW_FISH=1&seed=7&cropcal=1&PEACE_W=0.3&stream=gorge');
+    const w0 = runDoor(code, '?seed=7&cropcal=1'), wE = runDoor(code, '');
+    return { env: w1.process ? JSON.stringify(w1.process.env) : null, none: !('process' in w0) && !('process' in wE) };
+  };
+  const WANT = '{"T602_NEW_FISH":"1","PEACE_W":"0.3"}';
+  let door0 = null;
+  for (const f of LABS_L) {
+    const H = rd(f);
+    const n = (H.match(/▼T641-ENV-DOOR/g) || []).length, a = H.indexOf('▼T641-ENV-DOOR'), s = H.indexOf('<!-- ENGINE-BUNDLE-START');
+    if (n !== 1) { bad(`${f} [T641 ⓐ] 문 표시 ${n}개 — 하나여야 한다`); continue; }
+    if (!(s > a)) { bad(`${f} [T641 ⓐ] 문이 번들 시작 표시 뒤에 있다 — 번들이 env 없이 먼저 돈다`); continue; }
+    ok(`${f} [T641 ⓐ] 문 하나 · 번들 시작 표시 앞(번들이 처음 돌 때 env 가 서 있다)`);
+    const code = doorOf(H); if (!code) { bad(`${f} [T641 ⓐ] 문 본문을 못 떴다`); continue; }
+    door0 = door0 || code;
+    try {
+      const p = probe(code);
+      if (p.env === WANT && p.none) ok(`${f} [T641 ⓐ] 대문자 칸만 같은 이름으로 env(${WANT}) · 소문자 칸(seed·cropcal·stream) 안 샘 · 칸 없으면 window.process 안 만듦`);
+      else bad(`${f} [T641 ⓐ] 문 동작이 다르다 — env ${p.env} · 칸 없음에 process ${p.none ? '안 만듦' : '만듦'}`);
+    } catch (e) { bad(`${f} [T641 ⓐ] 문 본문이 돌지 않는다 — ${e.message}`); }
+  }
+  // ⓐ′ 작물 철 손잡이 — 서버 이름(`?T594_CROP_CAL=`)도 받는다(구운 블록 바로 뒤 한 줄 · 서버 `crops.js` `_num` 과 같은 읽기)
+  for (const f of LABS_L) {
+    const H = rd(f), end = H.indexOf('// ▲T594-CROPCAL\n');
+    const line = end < 0 ? '' : H.slice(end + '// ▲T594-CROPCAL\n'.length).split('\n')[0];
+    if (!/LAB_ENV\.T594_CROP_CAL/.test(line)) { bad(`${f} [T641 ⓐ′] 작물 철 서버 이름 줄이 구운 블록 바로 뒤에 없다`); continue; }
+    const code = line.replace(/\s+\/\/ ★\[T641\][^\n]*$/, '');
+    const run = (v, cc0) => { const ctx = { LAB_ENV: v === undefined ? undefined : { T594_CROP_CAL: v }, L_CROPCAL: cc0, document: { getElementById() { return null; } } };
+      vm.runInNewContext('var LAB_ENV=this.LAB_ENV;var L_CROPCAL=this.L_CROPCAL;' + code + ';this.out=L_CROPCAL;', ctx); return ctx.out; };
+    const got = [run('1', false), run('0', true), run('2.5', false), run('x', true), run('x', false), run(undefined, true), run(undefined, false)];
+    const want = [true, false, true, true, false, true, false];   // 수 → 0 이 아니면 켬 · 수가 아니거나 없으면 그대로(서버 `_num(k, 기본)` 의 기본 자리)
+    if (JSON.stringify(got) === JSON.stringify(want)) ok(`${f} [T641 ⓐ′] 작물 철 손잡이 — 서버 이름 \`?T594_CROP_CAL=\` 도 받는다(1 켬 · 0 끔 · 수가 아니면 그대로 = 서버 _num)`);
+    else bad(`${f} [T641 ⓐ′] 작물 철 서버 이름 줄 동작이 다르다 — ${JSON.stringify(got)} ≠ ${JSON.stringify(want)}`);
+  }
+  // ⓑ 번들 — shim 이 root.process 를 읽고 · 서버와 같은 손잡이 줄이 실려 있다
+  {
+    const B = rd('sim/economy-engine.browser.js'), SP = rd('server/specialty.js');
+    const LINE = "if (process.env.T602_NEW_FISH === '1') {";
+    if (!/var process=\(typeof root\.process!=='undefined'&&root\.process\)\?root\.process:\{env:\{\}\};/.test(B)) bad('ⓑ 번들 process shim 이 root.process 를 안 읽는다 — 문이 닿지 않는다');
+    else ok('ⓑ 번들 process shim = `root.process` 가 있으면 그것(문이 심은 env 를 번들이 읽는다)');
+    if (SP.includes(LINE) && B.includes(LINE)) ok('ⓑ 서버와 같은 손잡이 줄 — `T602_NEW_FISH` 줄이 server/specialty.js 와 번들에 같은 글자로 있다(랩도 이 줄을 읽는다)');
+    else bad('ⓑ `T602_NEW_FISH` 줄이 서버·번들 중 한쪽에 없다 — 대조표 줄이 낡았다');
+  }
+  // ⓒ 자명 통과 금지 — 정규식을 풀면(소문자 허용) 랩 칸이 샌다
+  if (door0) {
+    const mut = door0.replace('/^[A-Z][A-Z0-9_]*$/', '/^[A-Za-z][A-Za-z0-9_]*$/');
+    let leak = false; try { leak = mut !== door0 && probe(mut).env !== WANT; } catch (e) { leak = true; }
+    if (leak) ok('ⓒ [자명 통과 금지] 문 정규식을 소문자까지 풀면 랩 칸(seed·cropcal)이 env 로 샌다 — 검사가 문다');
+    else bad('ⓒ [자명 통과 금지] 비틀어도 같은 답 — 문 검사가 죽었다');
+  }
+  // ⓓ 작물 철 월동 셈 — 랩 cropGrowAt(켬) = 서버 readyDay(T594_CROP_CAL=1)
+  {
+    const Cal = require(path.join(root, 'server/calendar'));
+    const DAYS_L = 1461;   // 네 해(첫 2월 29일 = 4년 — 달력 정본 머리말) — 날마다 심어 본다
+    let srv = null;
+    try {
+      const code = `process.env.T594_CROP_CAL='1';const C=require(${JSON.stringify(path.join(root, 'server/crops'))}),K=require(${JSON.stringify(path.join(root, 'server/crop-cal'))});`
+        + `const o={};for(const id of K.ids()){const ko=String(C.koOf(id)||''),a=[];for(let e=0;e<${DAYS_L};e++)a.push(C.readyDay(id,e)-e);o[id]={ko,a};}process.stdout.write(JSON.stringify(o));`;
+      srv = JSON.parse(execFileSync(process.execPath, ['-e', code], { cwd: root, maxBuffer: 64 << 20, env: Object.assign({}, process.env, { T594_CROP_CAL: '1' }) }).toString());
+    } catch (e) { bad(`ⓓ 서버 readyDay 표를 못 만들었다 — ${e.message.slice(0, 120)}`); }
+    const blockOf = (H) => { const a = H.indexOf('// ▼T594-CROPCAL'), b = H.indexOf('// ▲T594-CROPCAL'); return (a >= 0 && b > a) ? H.slice(a, b) : null; };
+    const mk = (blk) => new Function('EconEngine', 'L_START', 'L_SEASONS', 'L_YEAR', 'L_MOSTART',
+      blk.replace(/let L_CROPCAL=[^\n]*/, 'let L_CROPCAL=true;') + '\nreturn { cropGrowAt, T: L_CROPCAL_T };');
+    const constsOf = (H) => {   // 그 랩의 실제 자리 차·계절 표·옛 달력(옛 줄이 읽던 것)을 그대로
+      const m = H.match(/const L_YEAR=(\d+), L_MOSTART=(\[[^\]]*\]), L_SEASONS=(\[[^\]]*\]), L_START=(\d+);/);
+      return m ? { year: +m[1], mostart: JSON.parse(m[2]), seasons: JSON.parse(m[3].replace(/'/g, '"')), start: +m[4] } : null;
+    };
+    const cmp = (fn, T) => {
+      let n = 0, same = 0, winterBad = 0; const ex = [];
+      for (const lid of Object.keys(T)) {
+        const sid = Object.keys(srv).find((id) => { const ko = srv[id].ko, inner = (/\(([^)]*)\)/.exec(ko) || [])[1]; return [ko, ko.replace(/\(.*\)/, ''), inner].filter(Boolean).includes(lid); });
+        if (!sid) { ex.push(lid + ':서버 짝 없음'); continue; }
+        for (let e = 0; e < DAYS_L; e++) {
+          n++; const g = fn.call(null, { id: lid, grow: -1 }, e + CONSTS.start);
+          if (g === srv[sid].a[e]) same++; else { if (T[lid].v) winterBad++; if (ex.length < 3) ex.push(`${lid}@${e}:${g}≠${srv[sid].a[e]}`); }
+        }
+      }
+      return { n, same, winterBad, ex };
+    };
+    let CONSTS = null;
+    if (srv) for (const f of LABS_L) {
+      const H = rd(f), blk = blockOf(H); CONSTS = constsOf(H);
+      if (!blk || !CONSTS) { bad(`${f} [T594 ⓓ] 구운 블록·랩 달력 상수를 못 찾았다`); continue; }
+      const L = mk(blk)({ Calendar: Cal }, CONSTS.start, CONSTS.seasons, CONSTS.year, CONSTS.mostart);
+      const r = cmp(L.cropGrowAt, L.T);
+      if (r.n > 0 && r.same === r.n) ok(`${f} [T594 ⓓ] 작물 철 켬 — 랩 cropGrowAt = 서버 readyDay ${r.same}/${r.n}(거울 ${Object.keys(L.T).length}종 × econ 날 0..${DAYS_L - 1} · 월동 = 그 겨울이 끝난 다음 날부터)`);
+      else bad(`${f} [T594 ⓓ] 작물 철 켬 — 랩 ≠ 서버 ${r.n - r.same}/${r.n}(월동 ${r.winterBad}) · ${r.ex.join(' · ')}`);
+    }
+    // ⓔ 자명 통과 금지 — T641 전 옛 줄(랩 1월 기점 달력)을 넣으면 월동이 갈린다
+    if (srv && CONSTS) {
+      const H = rd('lab/전쟁실험실.html'), blk = blockOf(H);
+      const OLD = "function cropGrowAt(cr,day){const t=L_CROPCAL&&L_CROPCAL_T[cr.id];if(!t)return cr.grow;if(!t.v)return t.g;const y=Math.floor(day/L_YEAR),doy=day-y*L_YEAR,m3=L_MOSTART[2];return (doy<m3?y*L_YEAR+m3:(y+1)*L_YEAR+m3)-day+t.g;}";
+      const mut = blk ? blk.replace(/function cropGrowAt\(cr,day\)\{[^\n]*?\}(?=   \/\/)/, OLD) : null;
+      if (!mut || mut === blk) bad('ⓔ [자명 통과 금지] 옛 줄을 끼우지 못했다 — 구운 블록 꼴이 바뀌었다');
+      else {
+        const L = mk(mut)({ Calendar: Cal }, CONSTS.start, CONSTS.seasons, CONSTS.year, CONSTS.mostart);
+        const r = cmp(L.cropGrowAt, L.T);
+        if (r.winterBad > 0) ok(`ⓔ [자명 통과 금지] T641 전 옛 줄(랩 1월 기점 달력)은 월동 셋에서 ${r.winterBad}날 갈린다 — 비교가 실제로 문다`);
+        else bad('ⓔ [자명 통과 금지] 옛 줄도 같은 답 — 비교가 죽었다');
+      }
+    }
   }
 }
 
