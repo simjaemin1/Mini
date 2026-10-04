@@ -30,6 +30,8 @@ const fs = require('fs');
 const ROOT = path.join(__dirname, '..');
 const HOOK = process.env.T581_HOOK || '';
 const VJS = path.join('server', 'villages.js');
+const EJS = path.join('sim', 'economy-sim.js');   // ★[T644] econ v1(소비 기록 `_cons` 가 사는 곳)
+const WOOD = process.env.T581_WOOD === '1';
 
 let _isMain = true; try { _isMain = require('worker_threads').isMainThread; } catch (e) {}
 if (HOOK === 'zone' && !_isMain) {
@@ -63,9 +65,13 @@ function zoneHook() {
   const _compile = Module.prototype._compile;
   Module.prototype._compile = function (content, filename) {
     if (filename.endsWith(VJS)) content += '\n;globalThis.__t581w = function () { return { state, probe: _probe, tp: _tickPerf }; };\n';
+    //   ★[T644] 통나무 장부(`T581_WOOD=1` 일 때만) — econ 소비 기록 함수 `_cons` 를 같은 자리에서 감싼다(값은 그대로 넘긴다 · 동작 0).
+    //     통나무를 쓴 자리 = 부른 함수:줄(econ 안이면 그 줄 · `actFromGranary` 면 그것을 부른 생활층 함수까지) — 마을 `_t644Day` 에 그날 합.
+    if (WOOD && filename.endsWith(EJS)) content += '\n;(function () { const _o = _cons; _cons = function (v, r, amt) { if (r === \'wood\' && amt > 0 && v) { try { const L = String(new Error().stack || \'\').split(\'\\n\'); const fr = (i) => { const m = /at (?:Object\\.)?([^ ]+) \\(.*[\\\\/]([^\\\\/]+):(\\d+):\\d+\\)/.exec(L[i] || \'\'); return m ? m[1] + \':\' + m[2].replace(/\\.js$/, \'\') + \':\' + m[3] : \'?\'; }; let k = fr(2); if (/^actFromGranary:/.test(k)) k = \'actFromGranary<\' + fr(3).split(\':\')[0]; const d = v._t644Day || (v._t644Day = {}); d[k] = (d[k] || 0) + amt; } catch (e) {} } return _o(v, r, amt); }; })();\n';
     return _compile.call(this, content, filename);
   };
   const OUTF = process.env.T581_ROWS;
+  const WOODF = process.env.T581_WOOD_ROWS;   // ★[T644] 마을마다 하루 한 줄(통나무 장부)
   const PORT = process.env.PORT;
   const DBP = process.env.DB_PATH;
   const v8 = require('v8');
@@ -108,6 +114,17 @@ function zoneHook() {
       houses += (v._houseCells || []).length;
       if (v._site) bSites++;
       const bd = v._t400Dbg; if (bd && bd.crew) { bAdv += bd.adv || 0; if (bd.stall) bStall++; if (!(bd.perTrip > 0)) bNoTrip++; }
+    }
+    if (WOOD && WOODF) {   // ★[T644] 통나무 장부 — 곳간 · 직업 생산(총 · 세 전) · 생활층 나무꾼 입고 · 쓴 자리별 · 나무꾼 수 · 인구 · 집 · 집터
+      const out = [];
+      for (const v of vs) { const e = v.econ; if (!e || !e.storage) continue;
+        const pb = e.dailyProductionBuf || {};
+        out.push({ v: v.name, n: e.npcs ? e.npcs.length : 0, wood: +(e.storage.wood || 0).toFixed(2), prod: +(pb.wood || 0).toFixed(3), act: +(e._t325InflowToday || 0).toFixed(3),
+          cons: e._t644Day || {}, lj: (e.counts && e.counts.lumberjack) || 0, land: e.land ? +(e.land.wood || 0).toFixed(3) : null, housing: e.housing != null ? +(+e.housing).toFixed(2) : null,
+          houses: (v._houseCells || []).length, site: v._site ? (v._t400Dbg && v._t400Dbg.stall ? 'stall' : 'build') : null, food: +((e.storage.food || 0)).toFixed(1),
+          bdt: e._banditized ? 1 : 0, born: e._bornDay != null ? e._bornDay : null });
+        e._t644Day = {}; }
+      try { fs.appendFileSync(WOODF, JSON.stringify({ zone: st.zoneId, day: w.day, vils: out }) + '\n'); } catch (e) {}
     }
     let over = 0; for (const c of own.values()) if (c >= 2) over++;
     pops.sort((a, b) => a - b);
@@ -179,7 +196,7 @@ function run(A) {
     if (!RESUME) for (const f of [rows, mine]) { try { fs.unlinkSync(f); } catch (e) {} }
     const env = Object.assign({}, process.env, { PORT: String(ZONES[z].port + OFF), ZONE_ID: z, T581_PORT_OFF: String(OFF), CENTRAL_URL: `http://localhost:${CP}`, ENABLED_ZONES: ZS.join(','),
       DB_PATH: zdb, ENABLE_VILLAGES: '1', VILLAGE_DAY_MS: String(DAY_MS),
-      T533_HOOK: 'zone', T533_SEED: String(SEED), T533_ROWS: rows, T581_HOOK: 'zone', T581_ROWS: mine });
+      T533_HOOK: 'zone', T533_SEED: String(SEED), T533_ROWS: rows, T581_HOOK: 'zone', T581_ROWS: mine, T581_WOOD_ROWS: path.join(OUTD, `wood_${tag}_${z}.jsonl`) });
     if (XZ === 'on') env.T525_CROSS_ZONE = '1'; else delete env.T525_CROSS_ZONE;
     delete env.NODE_OPTIONS;   // 힙 문턱 = 기본 한도 — 판도 기본으로 돈다
     const logf = fs.openSync(path.join(OUTD, `z_${tag}_${z}.log`), RESUME ? 'a' : 'w');
