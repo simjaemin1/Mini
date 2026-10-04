@@ -314,9 +314,10 @@ const ANIMALS = {
 //     ① 부팅 첫 스폰 목록(zone.js `huntableInBiome(ZONE.biome, ZONE_ID)`)  ② DB 적재(이 존에서 없음인 행은 안 싣는다 — 행은 그대로 · 끄면 돌아온다)
 //     ③ 야생 블록(wildlife.js — 🐯 는 본체 tiger 로 비친다 · 블록 무수정 · 다리에서 그림자 짓기 전에 거둔다)
 //   드묾 = 지금 출현 몫에 T607 이 준 비가 있으면 그 비 — **T607 은 비를 하나도 주지 않았다** ⇒ 표시만(몫 무변 · 보고에 줄).
-// ★표 줄 = T607 ① 표에 **게임 id 짝이 하나로 정해지는** 종만(8). 칸 글자는 T607 그대로 · 확실도도 그대로.
+// ★표 줄 = T607 ① 표에 **게임 id 짝이 하나로 정해지는** 종만(9). 칸 글자는 T607 그대로 · 확실도도 그대로.
+//   ★[T636 · 재민 10-04 "곰은 한반도니까 반달곰 · 불곰은 나중 존에서"] 곰(bear) = **반달가슴곰** 줄 — 무게·떼도 그 칸(떼 1 = 카탈로그 pack 1 · 무게는 아래 드롭 kg 표).
+//     불곰 줄은 `FAUNA_LATER`(나중 존 — 지금 존엔 안 남)로 남긴다.
 //   표에 줄이 없는 종 = **지금 값**(존 구분 없이 biome 대로 · 카드 캐논 "표에 없는 칸은 지금 값"):
-//     · 곰(bear) — T607 은 반달가슴곰(있음/있음)과 불곰(드묾~없음/없음) 두 줄이다 · 게임 '곰' 하나가 어느 짝인지 미정 → 재민 칸
 //     · 아이벡스(ibex) — T607 이 재민 칸으로 넘겼다("산양 자리로 쓰인 것으로 보이나 판정 0")
 //     · 범위 밖(한대·툰드라·열대·사막 종 · 가축) — T607 이 "깊은 출처 조사를 안 했다"고 적은 줄(표 밖) → 재민 칸
 // ⚠새 수 0 · 사본 0 — 무게·떼·철은 이 카드에서 **안 고친다**(카탈로그 hp·pack 그대로). 클라 사본(`public/animals.js`)은 위 ANIMALS 만 읽는다(무접촉).
@@ -331,6 +332,8 @@ const ZONE_FAUNA = Object.freeze([
   { id: 'red_fox',   t607: '여우',                    hb: '있음', np: '있음', st: '확실', ev: '열도: 고유 아종 V. v. japonica' },
   { id: 'pheasant',  t607: '꿩',                      hb: '있음', np: '있음', st: '확실', diff: true, ev: '열도: 다른 종 — 일본 고유 녹색꿩 P. versicolor("없음"이 아니다)' },
   { id: 'quail',     t607: '메추라기',                hb: '있음', np: '있음', st: '약',   ev: '두 존 다 "있음(추정)" — 통설 수준(전용 1차 출처 못 엶)' },
+  { id: 'bear',      t607: '반달가슴곰',              hb: '있음', np: '있음', st: '확실',
+    ev: '[T636] 재민 10-04 "곰은 한반도니까 반달곰" · 한반도: 지리산·설악산 극희귀 · 열도: 혼슈·시코쿠·규슈(동쪽 조몬 조기 출토 — T625 하시다테 바위그늘)' },
 ]);
 // T607 ① 표에서 **게임에 짝이 없는** 줄 — 켬에서도 안 넣는다(그림·드롭이 없다 → 재민 판정 칸 · 보고 "새 종 후보")
 const FAUNA_NEW = Object.freeze([
@@ -343,10 +346,10 @@ const FAUNA_NEW = Object.freeze([
   { t607: '오소리',                hb: '있음', np: '있음', diff: true, note: '다른 종(대륙 M. leucurus ↔ 일본 M. anakuma)' },
   { t607: '산양 / 일본산양(세로우)', hb: '있음', np: '있음', diff: true, note: '다른 종 · 게임 ibex 자리인지는 T607 재민 칸' },
 ]);
-// 게임 '곰' 하나에 T607 두 줄 — 짝 미정(재민 칸 · 표에 줄 없음 = 지금 값)
-const FAUNA_BEAR = Object.freeze([
-  { t607: '반달가슴곰', hb: '있음', np: '있음' },
-  { t607: '불곰',       hb: '드묾', np: '없음', note: '한반도 "드묾~없음"(중북부 역사적 · 현재 절멸 추정) · 열도는 홋카이도만' },
+// ★[T636] **나중 존** — 재민 10-04 "불곰은 나중 존에서". 지금 존(한반도 · 닛폰)엔 안 남(게임 id 없음 · 켬에서도 안 넣는다).
+//   T607 칸은 그대로 적어 둔다(그 존을 지을 때 읽는다). 게임 '곰'(bear)은 위 표의 반달가슴곰 줄이다.
+const FAUNA_LATER = Object.freeze([
+  { t607: '불곰', hb: '드묾', np: '없음', note: '나중 존 · 한반도 "드묾~없음"(중북부 역사적 · 현재 절멸 추정) · 열도는 홋카이도만(블래키스턴 선 북쪽)' },
 ]);
 const _FBY = new Map(ZONE_FAUNA.map((r) => [r.id, r]));
 function faunaOn() { return typeof process !== 'undefined' && !!process.env && process.env.T622_ZONE_FAUNA === '1'; }
@@ -357,6 +360,69 @@ function faunaCell(id, zone) {
 }
 /** 켬이고 그 존 칸이 '없음'이면 true — 스폰 목록 · DB 적재 · 야생 블록이 같은 이 함수를 부른다(끔이면 늘 false). */
 function faunaOut(id, zone) { return faunaOn() && faunaCell(id, zone) === '없음'; }
+
+// ═══════════════════════════════════════════════════════════════════════
+// 🥩 [T636 · 2026-10-04] 사냥 드롭을 킬로그램으로 — T607 몸무게(보통) × T629 수율 · 손잡이 `T636_DROP_KG` 기본 끔
+// ═══════════════════════════════════════════════════════════════════════
+// ★왜 [재민 10-04 "아이템 무게는 전부 킬로그램"] 품목 한 개의 무게(`specialty.RESOURCES[..].weight` — 사슴·들짐승고기 1.0kg ·
+//   닭고기 0.5kg)는 kg 인데, 위 카탈로그 드롭(`drops`)은 몸무게에서 유도한 근거가 없는 정수였다(T629 §0 — 사슴 고기 3개 = 3kg).
+//   T607 이 몸무게를, T629 가 수율을 냈다 → **고기 칸만** 그 곱으로 바꾼다.
+// ★손잡이 `T636_DROP_KG` — **부를 때 읽는다**. 기본 끔(= main 바이트 — `dropsOf` 가 카탈로그 `drops` 객체를 **같은 참조로** 돌려준다).
+//   켬('1')이면 이 표에 줄이 있는 종의 고기 칸 = 반올림(생체 kg × 수율 ÷ 그 품목 한 개의 kg) — 인벤은 낱개다(남는 몫 장부는 이 카드 밖).
+//   가죽·뼈·뿔·모피 = T629 칸이 있으면 그 수 · 없으면 지금 값 → **전부 지금 값**이다
+//   (T629 가죽 칸은 사슴 넓이 0.74~0.84㎡ 하나 — 게임 가죽은 한 개 3kg 이라 넓이를 개수로 옮길 수가 없다 · 뼈·뿔은 수가 없다).
+// ★몸무게 '보통' 읽기(새 수 0 — T607 칸의 수만 · 셈만): 평균이 적혔으면 평균 · 범위만이면 가운데 · 두 칸(수컷/암컷 · 두 아종)이면 둘의 가운데.
+// ★표 줄 = T607 무게 칸 **과** T629 수율 칸이 둘 다 있는 게임 종(셋). 나머지는 지금 값 — 멧돼지(T629 미확인) · 호랑이·표범·늑대·여우
+//   (T629 줄 없음) · 북극토끼(T607 무게 없음 · T629 토끼는 멧토끼) · 메추라기(T607 무게 미확인) · 아이벡스 · 범위 밖 · 가축.
+// ⚠수율은 전부 **다른 아종·종·사육종 참고치**다(T629 그대로) — 줄마다 `ref` 에 적었다.
+const DROP_KG = Object.freeze([
+  { id: 'deer', item: 'meat_game',
+    live: { manchu: [68, 109], nippon: [40, 70] }, liveSrc: 'T607 사슴 "만주아종 수컷68~109·일본아종 수컷40~70"(암컷 칸 없음 — 수컷 값)',
+    yld: [0.78, 0.48], yldSrc: 'T629 사슴 생체→지육 ≈78% × 지육→뼈 없는 살코기 ≈48%(= 생체의 37.4% · T629 "약 37~38%")',
+    ref: '북미 화이트테일 — 다른 아종 참고치' },
+  { id: 'bear', item: 'meat_game',
+    live: { m: 135, f: [40, 125] }, liveSrc: 'T607 반달가슴곰 "수컷평균135(60~200)·암컷40~125"',
+    yld: [0.33], yldSrc: 'T629 곰 지육→살코기 ≈33% — 생체→지육 칸 미확인(지육 대비 비를 생체에 곱했다 → 큰 쪽)',
+    ref: '북미 흑곰 — 다른 종 참고치' },
+  { id: 'pheasant', item: 'meat_chicken',
+    live: { m: 1.2, f: 0.9 }, liveSrc: 'T607 꿩 "수컷평균1.2·암컷0.9(0.5~3)"',
+    yld: [0.70], yldSrc: 'T629 꿩 생체→지육 ≈70%(밀 69.9%·배합 70.2%)',
+    ref: '사육 꿩 — 사육종 참고치' },
+]);
+const _DKG = new Map(DROP_KG.map((r) => [r.id, r]));
+function dropKgOn() { return typeof process !== 'undefined' && !!process.env && process.env.T636_DROP_KG === '1'; }
+// 몸무게 칸 하나의 대표값 — 수 그대로 · 범위 [lo, hi] 는 가운데 · 두 칸(객체)은 둘의 가운데
+function _rep(v) {
+  if (typeof v === 'number') return v;
+  if (Array.isArray(v)) return (v[0] + v[1]) / 2;
+  const xs = Object.values(v).map(_rep);
+  return xs.reduce((a, b) => a + b, 0) / xs.length;
+}
+let _WT = null;
+function _unitKg(item) {
+  if (_WT === null) { try { _WT = require('./weights'); } catch (e) { _WT = false; } }
+  const k = _WT && _WT.kgOf ? _WT.kgOf(item) : 0;
+  return k > 0 ? k : 1;
+}
+/** 표 한 줄의 셈 — 생체 kg · 수율 · 고기 kg · 낱개(켬 드롭) · 지금 드롭. 표에 줄이 없으면 null. 손잡이와 무관(보고·하네스용). */
+function dropKgRow(id) {
+  const r = _DKG.get(id), a = ANIMALS[id];
+  if (!r || !a) return null;
+  const liveKg = _rep(r.live), yld = r.yld.reduce((p, x) => p * x, 1), meatKg = liveKg * yld, unitKg = _unitKg(r.item);
+  return { id, item: r.item, liveKg, yld, meatKg, unitKg, units: Math.max(1, Math.round(meatKg / unitKg)), now: (a.drops || {})[r.item] || 0,
+    liveSrc: r.liveSrc, yldSrc: r.yldSrc, ref: r.ref };
+}
+const _KGD = new Map();
+/** ★사체 드롭의 정본 — zone.js `spawnCorpse` 가 부른다. 끔이면 카탈로그 `drops` 그 객체 · 켬이면 고기 칸만 kg 로 바꾼 사본(얼림). */
+function dropsOf(id) {
+  const a = ANIMALS[id];
+  if (!a) return null;
+  if (!dropKgOn()) return a.drops;
+  const r = dropKgRow(id);
+  if (!r) return a.drops;
+  if (!_KGD.has(id)) _KGD.set(id, Object.freeze(Object.assign({}, a.drops, { [r.item]: r.units })));
+  return _KGD.get(id);
+}
 
 // === helpers ===
 function _summary() {
@@ -378,7 +444,8 @@ function huntableInBiome(biome, zone) {
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { ANIMALS, _summary, huntableInBiome,
-    FAUNA_ZONES, ZONE_FAUNA, FAUNA_NEW, FAUNA_BEAR, faunaOn, faunaCell, faunaOut };
+    FAUNA_ZONES, ZONE_FAUNA, FAUNA_NEW, FAUNA_LATER, faunaOn, faunaCell, faunaOut,
+    DROP_KG, dropKgOn, dropsOf, dropKgRow };
 }
 if (typeof window !== 'undefined') {
   window.Animals = { ANIMALS };

@@ -4,11 +4,11 @@
 // ⚠**계측기다. 하네스가 아니다 — 러너에 넣지 마라**(`@regress` 없음). 제품 코드는 한 글자도 안 만진다.
 //
 // 내는 것(카드 T622 ③):
-//   ⓐ 존 칸 표 — 게임 종 8줄(T607 칸 그대로) · 새 종 후보 8 · 곰 두 줄(짝 미정)
+//   ⓐ 존 칸 표 — 게임 종 9줄(T607 칸 그대로 · ★[T636] 곰 = 반달가슴곰) · 새 종 후보 8 · 나중 존 1(불곰)
 //   ⓑ 존별 출현 종 — 첫 스폰 목록(카탈로그 · biome) ∪ 야생 블록(랩 다섯 종 → 본체 종) · 끔/켬
 //   ⓒ 실부팅 첫 스폰 마릿수(한반도 · 닛폰 × 끔/켬 · 임시 DB) → 사냥 드롭 바뀜(카탈로그 drops × 마릿수)
 //   ⓓ region-profiles TV 짐승 줄 끔/켬
-//   ⓔ 재민 칸 — 표 밖 종을 다르게 읽으면(곰 = 불곰 · 범위 밖 "양쪽 다 없음" 적용) 무엇이 빠지나(목록 셈 · 제품 무접촉)
+//   ⓔ 재민 칸 — 표 밖 종을 다르게 읽으면(범위 밖 "양쪽 다 없음" 적용) 무엇이 빠지나(목록 셈 · 제품 무접촉 · 곰 짝은 T636 에서 닫혔다)
 //
 // 쓰는 법: node scripts/t622-fauna-table.js [out.json]          (실부팅 넷 — 2코어에서 3~5분)
 //          T622_PROBE=boot ZONE_ID=nippon [T622_ZONE_FAUNA=1] [T622_ROOT=<다른 트리>] node scripts/t622-fauna-table.js
@@ -60,7 +60,7 @@ const res = { at: new Date().toISOString(), table: {}, lists: {}, boot: {}, drop
 res.table = {
   rows: A.ZONE_FAUNA.map((r) => ({ id: r.id, ko: ko(r.id), t607: r.t607, hb: r.hb, np: r.np, st: r.st, diff: !!r.diff })),
   newCand: A.FAUNA_NEW.map((r) => ({ t607: r.t607, hb: r.hb, np: r.np, diff: !!r.diff, note: r.note || '' })),
-  bear: A.FAUNA_BEAR.map((r) => ({ t607: r.t607, hb: r.hb, np: r.np, note: r.note || '' })),
+  later: A.FAUNA_LATER.map((r) => ({ t607: r.t607, hb: r.hb, np: r.np, note: r.note || '' })),   // ★[T636] 불곰 = 나중 존(곰 = 반달가슴곰 — 표 줄)
 };
 // ⓑ 목록
 const listOf = (z, on) => withEnv({ T622_ZONE_FAUNA: on ? '1' : null }, () => {
@@ -83,12 +83,11 @@ const expect = (ids) => {
   if (ag.length) { const tp = ag.reduce((s, id) => s + (A.ANIMALS[id].pack || 1), 0); for (const id of ag) out[id] = +(150 * (A.ANIMALS[id].pack || 1) / tp).toFixed(1); }
   return out;
 };
-const OUT_OF_SCOPE = Object.keys(A.ANIMALS).filter((id) => !A.ANIMALS[id].breeding && !A.ZONE_FAUNA.some((r) => r.id === id) && id !== 'bear' && id !== 'ibex');
+const OUT_OF_SCOPE = Object.keys(A.ANIMALS).filter((id) => !A.ANIMALS[id].breeding && !A.ZONE_FAUNA.some((r) => r.id === id) && id !== 'ibex');
 for (const z of ZONES) {
   const base = res.lists[z].on.cat;
   res.alt[z] = {
     asIs: { list: base, exp: expect(base) },
-    bearBrown: (() => { const l = A.FAUNA_BEAR[1][A.FAUNA_ZONES[z]] === '없음' ? base.filter((id) => id !== 'bear') : base; return { list: l, exp: expect(l), note: A.FAUNA_BEAR[1][A.FAUNA_ZONES[z]] }; })(),
     outScope: (() => { const l = base.filter((id) => !OUT_OF_SCOPE.includes(id) && id !== 'ibex'); return { list: l, cut: base.filter((id) => !l.includes(id)), exp: expect(l) }; })(),
   };
 }
