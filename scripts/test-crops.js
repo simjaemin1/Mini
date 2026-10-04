@@ -200,10 +200,14 @@ function dayOfSeason(season) {
   {
     const g = (id) => Crops.growDaysOf(id);
     pre(g('lettuce') !== g('rice'), '두 작물의 성장일이 실제로 다르다', `상추 ${g('lettuce')} vs 쌀 ${g('rice')}`);
-    ok(g('lettuce') === RAW.lettuce.growDays && g('rice') === RAW.rice.growDays,
-      '★★⑤ⓐ 성장일이 **카탈로그 값 그대로**다(상추 24 · 쌀 78)', `${g('lettuce')} / ${g('rice')}`);
-    ok(Crops.grownDays('rice', 100, 100 + 78) === 78 && !Crops.isReady('rice', 100, 100 + 77) && Crops.isReady('rice', 100, 100 + 78),
-      '★⑤ⓐ 1년생은 심은 날부터 성장일이 지나면 여문다');
+    // ★[T634 2026-10-04] 작물 철 고증 **기본 켬** — 표 16종(상추·쌀 포함)은 고증 활동일(`calDaysOf` 유도)이 정본이고
+    //   `T594_CROP_CAL=0` 이면 카탈로그 그대로다. 정본이 어느 값을 내야 하는지를 손잡이에게 묻는다(값을 여기 적지 않는다).
+    const want = (id) => (Crops.T594_CROP_CAL && Crops.calDaysOf(id) != null ? Crops.calDaysOf(id) : RAW[id].growDays);
+    ok(g('lettuce') === want('lettuce') && g('rice') === want('rice'),
+      `★★⑤ⓐ 성장일이 **정본 값 그대로**다(${Crops.T594_CROP_CAL ? 'T594 켬 = 기본 — 고증 유도' : '`T594_CROP_CAL=0` — 카탈로그'} 상추 ${want('lettuce')} · 쌀 ${want('rice')})`, `${g('lettuce')} / ${g('rice')}`);
+    const GR = g('rice');
+    ok(Crops.grownDays('rice', 100, 100 + GR) === GR && !Crops.isReady('rice', 100, 100 + GR - 1) && Crops.isReady('rice', 100, 100 + GR),
+      '★⑤ⓐ 1년생은 심은 날부터 성장일이 지나면 여문다', `쌀 ${GR}일`);
     // ★★월동 — 겨울 하루는 나이를 먹되 자라지 않는다
     const plant = AUTUMN + 60;
     pre(Crops.seasonOfDay(plant) === 'autumn', '월동 검사 파종일이 실제로 가을이다', `${plant}일`);
@@ -813,11 +817,12 @@ function dayOfSeason(season) {
       const GARLIC_P = (() => { let p = null; for (let d = 0; d < 400; d++) if (Crops.canSowOn('garlic', d) && Crops.sowMonthsOf('garlic').includes(Crops.monthOf(d))) { p = d; break; } return p; })();
       const PID3 = PER3[0];
 
-      // ① 되돌림 셋 = 0 ⇒ T91 값 그대로 (마늘이 12월에 익는다)
-      const rd0 = Number(runWith({ T99_VERNAL: '0', T99_CARE_PAUSE: '0', T99_PERENNIAL_DORMANT: '0' },
-        `C.readyDay('garlic',${GARLIC_P})`));
-      ok(rd0 === GARLIC_P + Crops.growDaysOf('garlic') && (require('../server/calendar').ON ? Crops.monthOf(rd0) >= 11 : Crops.seasonOfDay(rd0) === 'winter'),
-        '★★★⑫ⓗ 되돌림(env 셋 = 0) ⇒ **T91 값이 그대로 재현된다**(마늘 — 옛 달력 12월 · 켬 11월 30일)',
+      // ① 되돌림 넷 = 0 ⇒ T91 값 그대로 (마늘이 12월에 익는다)
+      //   ★[T634] T91 은 T594 앞이다 ⇒ 되돌림에 작물 철 손잡이(`T594_CROP_CAL=0` · 이제 기본 켬)도 같이 건다 · 성장일은 그 판 자신의 값(카탈로그)
+      const REV = { T99_VERNAL: '0', T99_CARE_PAUSE: '0', T99_PERENNIAL_DORMANT: '0', T594_CROP_CAL: '0' };
+      const rd0 = Number(runWith(REV, `C.readyDay('garlic',${GARLIC_P})`)), g0 = Number(runWith(REV, `C.growDaysOf('garlic')`));
+      ok(rd0 === GARLIC_P + g0 && g0 === RAW.garlic.growDays && (require('../server/calendar').ON ? Crops.monthOf(rd0) >= 11 : Crops.seasonOfDay(rd0) === 'winter'),
+        '★★★⑫ⓗ 되돌림(env 넷 = 0 — T99 셋 + T594) ⇒ **T91 값이 그대로 재현된다**(마늘 — 옛 달력 12월 · 켬 11월 30일)',
         `게임일 ${rd0} · ${Crops.monthOf(rd0)}월`);
       ok(Crops.readyDay('garlic', GARLIC_P) !== rd0,
         '★★⑫ⓗ 그리고 켠 판은 그 값이 **아니다**(되돌림이 실제로 무언가를 되돌린다)',

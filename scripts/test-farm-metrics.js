@@ -22,7 +22,11 @@ process.env.ENABLE_VILLAGES = '0';
 const Villages = require(path.join(ROOT, 'server', 'villages.js'));
 const P = Villages.__labProbe;
 const CACHE = `/tmp/test-farm-metrics-${process.pid}.json`;
-const DAYS = parseInt(process.env.TFM_DAYS || '40', 10);   // 짧게 — 재는 것은 값이 아니라 **성질**이다
+// 짧게 — 재는 것은 값이 아니라 **성질**이다.
+// ★[T634 2026-10-04] 기본 날수 = 정본 "창설 마을의 첫 수확까지"(`crops.daysToFirstHarvest(0)` — 작물 철 켬·끔 둘 다 55일).
+//   종전 40 은 가장 빠른 상추(24일)에 기댄 수였다 — 작물 철 고증이 기본 켬이 되자 가장 빠른 수확이 아욱 45일로 밀려
+//   40일 판엔 **한 바퀴가 없었다**(③ 수확 0회). 날수를 정본에게 물으면 철이 바뀌어도 판이 한 바퀴를 품는다.
+const DAYS = parseInt(process.env.TFM_DAYS || '', 10) || require(path.join(ROOT, 'server', 'crops.js')).daysToFirstHarvest(0);
 
 function run(seed) {
   return execFileSync(process.execPath, [path.join(ROOT, 'scripts', 'farm-metrics.js'), String(DAYS), String(seed)],

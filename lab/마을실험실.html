@@ -53,7 +53,7 @@
     <div style="font-size:11px;color:#7a8494;margin-top:2px">🔍 휠=확대/축소 · 드래그=이동 · 더블클릭=리셋</div>
     <div class="row"><label>마을 수</label><input type="number" id="nvil" min="1" max="12" value="8" style="width:48px"> <span style="color:#7a8494">생활 시뮬 동시 마을(§3e: 8~12)</span></div>
     <div class="row" style="margin-top:6px"><button onclick="gToggle()" id="gBtn">▶ 성장 시뮬</button> <button onclick="lifeToggle()" id="lBtn">▶ 생활 시뮬</button>
-      <label style="color:#aeb8c4">속도 <select id="simSpeed"><option value="1">실전 1×(시계 1분/초)</option><option value="12">관찰 12×</option><option value="80" selected>보통 80×</option><option value="800">빠름 800×</option><option value="12000">초고속 12000×</option></select></label> <label style="color:#aeb8c4" title="[T594] 작물 성장일을 농사로 고증 기간으로(벼 136일 · 보리·밀·마늘은 겨울 지난 3월 1일부터) — 끔 = 랩 종전 그대로 · 켠 뒤 새로 심는 밭부터 · URL ?cropcal=1"><input type="checkbox" id="cropCal" onchange="L_CROPCAL=this.checked">작물 철 고증</label></div>
+      <label style="color:#aeb8c4">속도 <select id="simSpeed"><option value="1">실전 1×(시계 1분/초)</option><option value="12">관찰 12×</option><option value="80" selected>보통 80×</option><option value="800">빠름 800×</option><option value="12000">초고속 12000×</option></select></label> <label style="color:#aeb8c4" title="[T594·T634] 작물 성장일을 농사로 고증 기간으로(벼 136일 · 보리·밀·마늘은 겨울 지난 3월 1일부터) — 기본 켬 · 끄면 랩 종전(카탈로그 성장일) · 바꾼 뒤 새로 심는 밭부터 · URL ?cropcal=0 = 끔"><input type="checkbox" id="cropCal" checked onchange="L_CROPCAL=this.checked">작물 철 고증</label></div>
     <div class="stat" id="gstat" style="background:#161f2a;border-color:#2a3a4a">▶ 눌러서 마을이 자라는 걸 관찰 — 인구 K로 차오름 → 붐비면 확장 → R_max에서 정지. 겨울엔 곳간 소진.</div>
     <div class="stat" id="jobstat" style="background:#141d28;border-color:#2a3a4a;font-size:11px;line-height:1.5"></div>
     <div class="stat" id="stat"></div>
@@ -12128,7 +12128,7 @@ const CROPS=[
  {id:'참외',field:'밭',plantMo:[3,4],grow:56,yieldC:10},{id:'박',field:'밭',plantMo:[3,4],grow:70,yieldC:10}];
 // ▼T594-CROPCAL (생성물 — node scripts/t594-lab-cropcal.js · 손으로 고치지 마라 · 정본 server/crop-cal.js → crops.calDaysOf)
 const L_CROPCAL_T={'벼':{g:136},'보리':{g:91,v:1},'밀':{g:104,v:1},'조':{g:122},'메밀':{g:71},'콩':{g:133},'팥':{g:112},'녹두':{g:86},'참깨':{g:97},'들깨':{g:102},'생강':{g:173},'마늘':{g:101,v:1},'배추':{g:61},'무':{g:66},'아욱':{g:45},'상추':{g:71}};   // ★[T594] 작물 철 고증 활동일(농사로 1차 · 파종창 가운데날 → 수확창 가운데날) · v:1 = 월동(겨울 지난 3월 1일부터 센다 — 서버 T99 춘화)
-let L_CROPCAL=false;try{if(typeof location!=='undefined'&&new URLSearchParams(location.search).get('cropcal')==='1')L_CROPCAL=true;}catch(e){}try{const _el=(typeof document!=='undefined')&&document.getElementById('cropCal');if(_el)_el.checked=L_CROPCAL;}catch(e){}   // 손잡이(끔 기본 = 랩 종전 그대로) · 패널 '작물 철 고증' · URL ?cropcal=1
+let L_CROPCAL=true;try{if(typeof location!=='undefined'&&new URLSearchParams(location.search).get('cropcal')==='0')L_CROPCAL=false;}catch(e){}try{const _el=(typeof document!=='undefined')&&document.getElementById('cropCal');if(_el)_el.checked=L_CROPCAL;}catch(e){}   // 손잡이(★T634 기본 켬 = 서버와 같다 · 끔 = 랩 종전 그대로) · 패널 '작물 철 고증' · URL ?cropcal=0 = 끔
 function cropGrowAt(cr,day){const t=L_CROPCAL&&L_CROPCAL_T[cr.id];if(!t)return cr.grow;if(!t.v)return t.g;const y=Math.floor(day/L_YEAR),doy=day-y*L_YEAR,m3=L_MOSTART[2];return (doy<m3?y*L_YEAR+m3:(y+1)*L_YEAR+m3)-day+t.g;}   // 심는 날 → 익기까지 달력일(끔 = cr.grow 그대로) · 월동 = 다음 3월 1일까지 + 활동일
 // ▲T594-CROPCAL
 const L_MAXSK=8,L_CONSUME=1.0,L_FISH=35,L_FORAGE=0.10,L_BIRTH=0.0001,L_STARVE=0.004,L_YIELD=1.0,L_STOREMAX=300;   // L_BIRTH=하루당 출산. L_YIELD=수확스케일(평균비옥도서 K~50). L_STOREMAX=1인당 곳간 저장한계(성장기 잉여 폭발 방지, 고정농지라 안전)
