@@ -2674,13 +2674,19 @@ function _walkResume(key, coarse, budgetMs) {
   const over = () => budgetMs > 0 && Date.now() - t0 >= budgetMs;
   while (J.i < N.length - 1) {
     if (over()) return { done: false };   // 구간을 시작하기 **전**에 잰다(구간 하나는 작다 — 넓은 돌아가기만 아래에서 조각낸다)
-    const a = N[J.i] || (N[J.i] = _walkNodeCell(coarse[J.i].x, coarse[J.i].y)), b = N[J.i + 1] || (N[J.i + 1] = _walkNodeCell(coarse[J.i + 1].x, coarse[J.i + 1].y));
+    // ★[T617 ①] 노드 칸 잡기(`_walkNodeCell` — 처음 닿는 칸은 나무 술어가 청크를 낳는다)와 가까운 길(`localPath`) **사이에도** 잰다.
+    //   멈춘 자리는 일(J)에 남는다 — 잡은 노드 칸은 `N` 에, 다음에 볼 반경은 `J.ri` 에. 다음 부름은 거기서 잇는다(다시 하는 일 0 · 같은 순서).
+    //   T605 실측: 이 부름의 35%가 16ms 를 넘었다(최대 30~41ms) — 넘은 몫이 이 셋(노드 칸 둘 · 반경 둘)에 몰려 있었다.
+    if (!N[J.i]) { N[J.i] = _walkNodeCell(coarse[J.i].x, coarse[J.i].y); if (over()) return { done: false }; }
+    if (!N[J.i + 1]) { N[J.i + 1] = _walkNodeCell(coarse[J.i + 1].x, coarse[J.i + 1].y); if (over()) return { done: false }; }
+    const a = N[J.i], b = N[J.i + 1];
     if (!J.cells.length) J.cells.push(a);
     if (a.x !== b.x || a.y !== b.y) {
       const sk = a.x * 65536 + a.y + '>' + (b.x * 65536 + b.y);
       let seg = state._walkSegFar && state._walkSegFar.has(sk) ? state._walkSegFar.get(sk) : undefined;   // 넓혀서 푼 구간은 쌍을 건너 한 번만
       if (seg === undefined && !J.farS) {
-        for (let ri = 0; ri < WALK_NEAR_RS.length && !seg; ri++) {
+        for (let ri = J.ri | 0; ri < WALK_NEAR_RS.length && !seg; ri++) {
+          if (ri > (J.ri | 0) && over()) { J.ri = ri; return { done: false }; }   // ★[T617 ①] 반경 사이 — 못 푼 반경은 다시 안 판다(`J.ri` 부터)
           const r = WALK_NEAR_RS[ri], side = Math.max(Math.abs(b.x - a.x), Math.abs(b.y - a.y)) + 2 * r + 1;
           seg = PathCore.localPath(a.x, a.y, b.x, b.y, { blockedStep, prefer, radius: r, maxNodes: side * side });
         }
@@ -2691,7 +2697,7 @@ function _walkResume(key, coarse, budgetMs) {
       }
       if (J.farS) {
         for (;;) {
-          const r = PathCore.pathStep(J.farS, 512);
+          const r = PathCore.pathStep(J.farS, PATH_STEP_NODES);   // ★[T617 ①] 512 → 교역로 재개형과 같은 알갱이(32) — 512 한 걸음이 최대 40~52ms 였다(나무 술어가 청크를 낳는 칸). 양보는 반복 사이에서만(path-core 보증 · 같은 길)
           if (r.done) { seg = r.path; J.farS = null; (state._walkSegFar || (state._walkSegFar = new Map())).set(sk, seg || null); if (seg) J.far++; break; }
           if (over()) return { done: false };
         }
@@ -2699,7 +2705,7 @@ function _walkResume(key, coarse, budgetMs) {
       if (seg && seg.length) { for (let k = 1; k < seg.length; k++) J.cells.push(seg[k]); }
       else { J.cells.push(b); J.straight++; }
     }
-    J.i++;
+    J.i++; J.ri = 0;   // ★[T617 ①] 다음 구간은 첫 반경부터
   }
   // 셀 → px(셀 중심) · 끝점은 교역로의 그 px(회관 중심) 그대로
   if (!J.px) {
