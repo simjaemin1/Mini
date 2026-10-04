@@ -4924,7 +4924,7 @@ function _warForageMarch(w, body, day, bearers) {
   if (!(typeof process !== 'undefined' && process.env && process.env.T347_FORAGE_ACT === '1')) return 0;
   const keep = _t347ActItems(); if (!keep || !keep.length) return 0;
   const R = _t347R(), sp = dp.moveSpeed || 0, dayR = dp.dayPhaseRatio || 0;
-  const dayS = (state.dayMs || 0) * dayR / 1000;
+  const dayS = _tripDayMs() * dayR / 1000;   // ★[T627] 채집꾼의 하루 한도와 같은 낮 초(켬 = 정본 운영 하루)
   const cc = _carryCfg(), cap = (cc && cc.CFG && cc.CFG.CAP_KG) || 0, W = _weights();
   if (!(R > 0) || !(sp > 0) || !(dayS > 0)) return 0;
   const path = _warDayCells(body); if (!path.length) return 0;
@@ -5479,7 +5479,8 @@ const _probe = { siteLog: [], auditN: 0, auditBad: 0, auditFirst: '', siteCall: 
                  //   슬롯을 빼앗겨 버린 중간 상태 수 · 캐러밴이 길을 기다린 조각 수.
                  pathJobs: 0, pathSliceMax: 0, pathChunkMax: 0, pathDrop: 0, pathWait: 0,
                  oreCold: 0, oreMs: 0, oreMax: 0,
-                 fishDrawn: 0, fishDrawDays: 0 };   // ★[T60 ②] NPC 어획이 실제로 깎은 stock 누계(계측)
+                 fishDrawn: 0, fishDrawDays: 0,
+                 tripCalls: 0, tripFill: 0 };   // ★[T627] 운영 하루로 센 몫 — 부른 수 · 판 시계보다 더 준 왕복(채운 왕복 · 켬일 때만 오른다)   // ★[T60 ②] NPC 어획이 실제로 깎은 stock 누계(계측)
 function probeStats() { return { siteLog: _probe.siteLog.slice(-400), auditN: _probe.auditN, auditBad: _probe.auditBad, auditFirst: _probe.auditFirst, siteMemo: LIFE_SITE_MEMO, siteRescanDays: LIFE_SITE_RESCAN_DAYS, siteSkip: _probe.siteSkip, terrGrowDays: _probe.terrGrowDays, terrGrowCells: _probe.terrGrowCells,
   siteCand: _probe.siteCand, siteScan: _probe.siteScan, siteReason: _probe.siteReason, siteCall: _probe.siteCall, siteHit: _probe.siteHit, siteMiss: _probe.siteCall - _probe.siteHit, siteMissCap: _probe.siteMissCap, siteMissFree: _probe.siteMissFree, capHouse: T579_CAP_HOUSE,
   siteMs: _probe.siteMs, siteMax: _probe.siteMax, siteVils: _probe.siteVils.size,
@@ -5487,7 +5488,7 @@ function probeStats() { return { siteLog: _probe.siteLog.slice(-400), auditN: _p
   pathJobs: _probe.pathJobs, pathSliceMax: _probe.pathSliceMax, pathChunkMax: _probe.pathChunkMax, pathDrop: _probe.pathDrop, pathWait: _probe.pathWait, pathStepNodes: PATH_STEP_NODES,
   routePlain: _probe.routePlain | 0, routeRedigPass: _probe.routeRedigPass | 0, routeRedig: _probe.routeRedig | 0, routeRedigChanged: _probe.routeRedigChanged | 0, walkBuilt: _probe.walkBuilt | 0, walkStraight: _probe.walkStraight | 0, walkFar: _probe.walkFar | 0,   // ★[T578]
   oreCold: _probe.oreCold, oreMs: _probe.oreMs, oreMax: _probe.oreMax,
-  fishDrawn: +_probe.fishDrawn.toFixed(3), fishDrawDays: _probe.fishDrawDays, fish2way: FISH2WAY }; }
+  fishDrawn: +_probe.fishDrawn.toFixed(3), fishDrawDays: _probe.fishDrawDays, fish2way: FISH2WAY, t627: T627_TRIP_DAY, tripCalls: _probe.tripCalls, tripFill: _probe.tripFill }; }
 const _lifeSubMax = {};   // 같은 항목의 **마을 한 곳 최댓값** — 조각 예산은 합이 아니라 최댓값이 정한다
 let _lifeMax = 0, _lifeMaxName = '';   // ★[T1 §0] 마을 한 곳의 최댓값 — '마을 경계 조각'이 예산에 드는지의 직답
 function tickPerf() {
@@ -6933,7 +6934,7 @@ const LIFE_TASK_SEC = 5.0;    // ★작물 셀 1건당 실걸음 실초 — **�
                               //   짐 상한에서 _jobT를 0으로 풀어 대기를 건너뛰기 때문 — 추정 말고 실측이 정본.
                               //   ※일감이 모자란 평시엔 예산이 남으므로 이 값은 **상한**이지 강제량이 아니다.)
 function _lifeTasksPerFarmerDay() {   // 낮 실초 ÷ 건당 실초 = 농부 1인 하루 처리 셀(하한 1)
-  const dayMs = state.dayMs || 600000;
+  const dayMs = _tripDayMs() || 600000;   // ★[T627] 켬 = 정본 운영 하루(리허설 전용 · 끔 = 판 시계 그대로)
   const dayR = (state.deps && state.deps.dayPhaseRatio) || 0.7;
   return Math.max(1, Math.round((dayMs * dayR / 1000) / LIFE_TASK_SEC));
 }
@@ -7148,14 +7149,30 @@ function _t325Scan(vil, day) {
 //     낮 초 = `state.dayMs × dayPhaseRatio ÷ 1000` · 왕복 초 = `2 × 거리 ÷ moveSpeed` ·
 //     한 짐에 드는 그루 = `⌊CAP_KG ÷ (그루당 단 × kgOf('wood'))⌋`(최소 1그루 — 한 그루는 지고 온다)
 //   ⇒ 하루 벨 그루 = 왕복 수 × 짐당 그루 수. 숲에 있는 만큼만 벤다(그게 T341 의 유일한 상한이다).
+// ★★[T627 2026-10-04 · **리허설 전용** 손잡이 `T627_TRIP_DAY` 기본 끔 — 제품은 이미 운영 시계라 켤 일이 없다]
+//   생활층 하루 몫(나무꾼·집 크루·채집 왕복 · 농부 하루 셀 · 원판 밖 채집 반경 · 행군 채집 시간)은 **하루의 실초**에서 유도된다.
+//   시험 시계(`VILLAGE_DAY_MS`)로 하루를 줄인 판은 그 몫이 줄어 세계가 달라진다(T581 §4 — 4초 판 집 0 · 120초 판 통나무 0).
+//   ⇒ 켜면 몫을 셀 때만 낮 초를 **정본 운영 하루**(`zone-config WORLD.dayLengthMs`)로 셈한다(새 수 0). 몸의 걸음은 판 시계 그대로라
+//     몸이 실제로 못 걸은 왕복은 **결과로 채운다**(자재·통나무가 곳간에 닿는 장부는 정본 몫 · 몸은 보여 주기) — 그 차이를 `_probe.tripFill` 이 센다.
+//   끄면 `state.dayMs` 그대로(종전 글자 · main 바이트).
+const T627_TRIP_DAY = process.env.T627_TRIP_DAY === '1';
+function _tripDayMs() {   // 하루 몫을 셀 때의 하루 길이(ms) — 끔 = 판 시계 · 켬 = 정본 운영 하루
+  if (!T627_TRIP_DAY) return state.dayMs || 0;
+  const W = require('./zone-config').WORLD;                          // 정본 게임일(이 파일의 다른 자리처럼 그 자리에서 읽는다 · require 캐시)
+  return (W && W.dayLengthMs) || state.dayMs || 0;
+}
 function _t341TripsPerDay(vil, distPx, unitsPerTree) {
   const sp = (state.deps && state.deps.moveSpeed) || 0;              // px/초 — zone 정본
   const dayR = (state.deps && state.deps.dayPhaseRatio) || 0;        // 낮 비율 — zone-config 정본
-  const dayS = (state.dayMs || 0) * dayR / 1000;                     // 낮의 실초
+  const dayS = _tripDayMs() * dayR / 1000;                           // 낮의 실초(★[T627] 켬 = 정본 운영 하루의 낮)
   if (!(sp > 0) || !(dayS > 0) || !(distPx > 0)) return 0;
   const round = 2 * distPx / sp;
   if (!(round > 0)) return 0;
   const trips = Math.floor(dayS / round);
+  if (T627_TRIP_DAY && trips > 0) {   // ★[T627] 판 시계로는 몇 번이었나 — 그 차이가 채운 왕복(계측 전용)
+    const local = Math.floor(((state.dayMs || 0) * dayR / 1000) / round);
+    _probe.tripCalls++; if (trips > local) _probe.tripFill += trips - local;
+  }
   return trips > 0 ? trips : 0;
 }
 function _t341TreesPerLoad(unitsPerTree) {
@@ -7498,7 +7515,7 @@ function _t490ReachOn() { return typeof process !== 'undefined' && !!process.env
 function _t490ReachCells() {
   const sp = (state.deps && state.deps.moveSpeed) || 0;
   const dayR = (state.deps && state.deps.dayPhaseRatio) || 0;
-  const dayS = (state.dayMs || 0) * dayR / 1000;                     // `_t341TripsPerDay` 의 낮 초 그대로
+  const dayS = _tripDayMs() * dayR / 1000;                           // `_t341TripsPerDay` 의 낮 초 그대로(★[T627] 같은 문)
   if (!(sp > 0) || !(dayS > 0)) return 0;
   const trip = Math.floor(sp * dayS / 2 / SZ);                      // 한 번 오갈 수 있는 가장 먼 칸(⌊…⌋ — 넘으면 왕복 0)
   const W = require('./zone-config').WORLD;                          // 정본 게임일(이 파일의 다른 자리처럼 그 자리에서 읽는다 · require 캐시)
@@ -8514,7 +8531,7 @@ function _t400BuildDay(vil) {
   const roundS = sp > 0 ? 2 * F.d / sp : 0;
   const tripsEach = _t341TripsPerDay(vil, F.d, 1);   // 한 사람 하루 왕복 상한 — 걸음이 정한다(나무꾼과 같은 식)
   dbg.perTrip = tripsEach;
-  dbg.dayS = +(((state.dayMs || 0) * ((state.deps && state.deps.dayPhaseRatio) || 0) / 1000) * crew.length).toFixed(3);
+  dbg.dayS = +((_tripDayMs() * ((state.deps && state.deps.dayPhaseRatio) || 0) / 1000) * crew.length).toFixed(3);   // ★[T627] 왕복 상한과 같은 낮 초
   const left = crew.map(() => tripsEach);
   let labor = crew.length * LIFE_STAGE_PDAY, rr = 0;
   if (!s2.mat) s2.mat = {};
