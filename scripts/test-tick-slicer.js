@@ -55,6 +55,7 @@ const cp = (src, dst) => { for (const sfx of ['', '-wal', '-shm']) { try { fs.co
 // ── 한 팔: 부팅 → DAYS 게임일 → /perf 수확 ──────────────────────────────────
 async function arm(label, sliceMs, extraEnv) {
   const CDB = `/tmp/slicer-${label}-c.db`, ZDB = `/tmp/slicer-${label}-z.db`;
+  const ECON = `/tmp/slicer-${label}-econ.jsonl`; try { fs.unlinkSync(ECON); } catch (e) {}   // ★[T645] ⑨ 의 증인(econ 마을 칸 조각 이름 — `slicer-econ-ids.js`)
   cp(SEED_C, CDB); cp(SEED_Z, ZDB);
   const _central = boot('central.js', { PORT: String(CPORT), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });
   // ★★[T349 2026-09-21] 기동 증인은 **아이의 입**이다(정본 `fixture-boot.waitUp` · T344).
@@ -69,6 +70,8 @@ async function arm(label, sliceMs, extraEnv) {
     VILLAGE_DAY_MS: String(DAY_MS), ENABLE_BANDITS: '0', ENABLE_ROADS: '0', ENABLE_WILDLIFE: '0',
     VILLAGE_TICK_SLICE_MS: String(sliceMs),
     ...(extraEnv || {}),   // ★[T513] 팔마다 손잡이 하나 더(`T513_DAY_SLICE` 팔)
+    // ★[T645] ⑨ 증인 — econ 정본 조각의 마을 칸이 하루에 어느 마을로 따로 불렸나(시간 무관 · 존 코드 무접촉 · 값 무변)
+    NODE_OPTIONS: `${process.env.NODE_OPTIONS || ''} --require ${path.join(__dirname, 'slicer-econ-ids.js')}`.trim(), SLICER_ECON_OUT: ECON,
     // ★[T42 뒤] 교역로 **선계산을 끈다.** 이 하네스의 주제는 *일틱 조각내기*이고, 선계산은
     //   무인 프레임에 A*(100~1,900ms)를 도는 별개 층이다. 켜 두면 루프 지연·경제 잡음이
     //   그쪽에서 들어와 조각내기를 못 잰다(실제로 ⑥·⑧이 그걸로 흔들렸다).
@@ -338,7 +341,15 @@ async function arm(label, sliceMs, extraEnv) {
       const pmaxAt = parts.reduce((m, k) => ((st[k + '·max'] || 0) > (st[m + '·max'] || 0) ? k : m), parts[0]);
       console.log(`  · 되돌림 ${fmt(d0)}`);
       console.log(`  · 켬(조각내기 팔) econ 조각 — ${parts.map((k) => `${k.slice(5)} 합 ${st[k] || 0}ms · 최대 ${st[k + '·max'] || 0}ms`).join(' / ')}`);
-      ok(st['econ:vil'] != null && b.chunks >= d0.chunks + d0.villages, '⑨ 켬(기본)이 econ 을 **마을 수만큼** 더 나눴다', `조각 ${d0.chunks}(되돌림) → ${b.chunks}(마을 ${d0.villages})`);
+      // ★★[T645] 종전 자 `b.chunks >= d0.chunks + d0.villages` 는 조각 **수**라 생활층·캐러밴의 'retry' 조각(= 시간)이 섞여
+      //   main 그대로도 379 ↔ 400(문턱 429)로 갈렸다. 뜻은 그대로 — **econ 정본의 마을 칸이 마을마다 따로 불렸나**를 이름 집합으로 본다.
+      //   켬: 그날 마감마다 따로 불린 마을 수 = 마을 수 · 부름 수 = 마을 수(한 마을 한 조각) · 이름 해시가 날마다 같다(같은 목록) / 되돌림: 0(정본 조각을 안 연다).
+      const rdE = (lb) => { try { return fs.readFileSync(`/tmp/slicer-${lb}-econ.jsonl`, 'utf8').trim().split('\n').filter(Boolean).map((l) => JSON.parse(l)); } catch (e) { return []; } };
+      const EH = rdE('head'), E0 = rdE('day0');
+      const judge9 = (E, nv) => E.length >= 1 && E.every((e) => e.vil === nv && e.calls === nv);
+      ok(judge9(EH, d0.villages) && E0.length === 0, '⑨ 켬(기본)이 econ 을 **마을 수만큼** 따로 나눴다(마을 칸 이름 집합 · 시간 무관)',
+        `켬 ${EH.length}마감 × 따로 불린 마을 ${[...new Set(EH.map((e) => e.vil))].join('/')}(부름 ${[...new Set(EH.map((e) => e.calls))].join('/')} · 마을 ${d0.villages}) · 되돌림 마감 ${E0.length}줄 · 참고 조각 수 ${d0.chunks} → ${b.chunks}`);
+      ok(!judge9(E0, d0.villages), '⑨ ★미끼 — 같은 판정을 되돌림 팔(켬 끔)에 대면 빨강이다(자명 통과 금지)', `되돌림 ${E0.length}줄`);
       ok(JSON.stringify(d0.order) === JSON.stringify(CANON), '⑨ 되돌림도 단계 순서가 정본과 같다', JSON.stringify(d0.order));
       ok(D2.econTick.days >= DAYS, `⑨ 되돌림 ${DAYS}일이 모두 마감됐다`, `${D2.econTick.days}일`);
       const bEcon = (d0.stages && d0.stages.econ) || 0;
