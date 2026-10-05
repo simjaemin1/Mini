@@ -12,8 +12,19 @@
 //   ⑦ pageerror·console error 0.
 //
 // 결정론 장치(랩은 안 건드린다 — 하네스가 페이지에 주입):
-//   · Math.random = mulberry32(고정 시드)  · performance.now = 가상시계(프레임당 16.667ms) + rAF 래핑
+//   · Math.random = mulberry32(고정 시드)  · performance.now = 가상시계(프레임당 16.667ms)
+//   · ★[T649] rAF 는 **줄로 받고 프레임은 하네스가 민다**(T641 `--slow` 판의 꼴) — 한 프레임 = 줄에 선 콜백 전부를
+//     **같은 now** 로 한 번씩(브라우저 rAF 규약 그대로 · 그 사이 새로 선 콜백은 다음 프레임).
 //   → dt 고정 → dGM 고정 → A/B가 같은 시간축 위에서 돈다(실시간 프레임 편차 제거).
+//   · ★[T649] **지정 시각 · 하루 표본 · 끝을 프레임 번호/랩 날로 고른다** — 하네스의 실시간(ms)은 어디에도 안 든다.
+//     종전 판은 같은 파일도 판마다 갈렸다(T641 실측: B 16/16 · 15/15 · A 14/15 · 16/16). 자리가 셋이었다:
+//       ⓐ 지정 시각 = 400ms 마다 들여다본 첫 표본 → 몇째 프레임에 지정이 들어가는지가 상자 부하를 따랐다.
+//       ⓑ 시계 원점 = 래퍼가 실제 rAF 마다 vt 를 밀어 **토글 때의 vt** 가 적재 시간을 따랐다 → dt 의 끝자리(부동소수)가
+//          달라져 며칠 뒤 세계가 갈린다(T649 실측: 원점만 0 ↔ 60프레임 다른 두 판 — 400 프레임 같음 · 2,900 프레임 갈림).
+//          집터 없는 A 가 갈린 까닭이 이것이다. 이제 토글 전엔 한 프레임도 안 돈다(원점 = 0).
+//       ⓒ 끝 표본 = 400ms 표본 → 날 안에서 움직이는 값(입주·현장 인원·식량)이 판마다 다른 순간에 찍혔다.
+//     덤: 종전 래퍼는 rAF 콜백**마다** 16.667 을 더해, uiLoop 와 한 프레임에 같이 도는 lifeLoop 의 dt 가 33.334ms 였다
+//     (아래 SPEED 줄의 dGM 1.983 이 아니라 3.967 — T649 실측 149/149회). 이제 머리말 그대로 프레임당 16.667.
 const { chromium } = require('playwright');
 const path = require('path');
 
@@ -26,17 +37,45 @@ const NVIL = 2, POP = 40, SEED = 7;
 const WARMUP = 2;           // 지정 전 정착 일수(상대)
 const RUN_DAYS = 18;        // 지정 후 관측 일수
 
+const FRAME_MS = 16.667;    // 한 프레임의 가상 시간(종전 래퍼의 그 수)
 const INIT = (prng) => `
 (() => {
   let s = ${prng};
   Math.random = function(){ s|=0; s=(s+0x6D2B79F5)|0; let t=Math.imul(s^(s>>>15),1|s); t=(t+Math.imul(t^(t>>>7),61|t))^t; return ((t^(t>>>14))>>>0)/4294967296; };
-  let vt = 0;
-  const _raf = window.requestAnimationFrame.bind(window);
+  let vt = 0, n = 0;
+  const Q = [];
   performance.now = () => vt;
-  window.requestAnimationFrame = (cb) => _raf(() => { vt += 16.667; cb(vt); });
+  window.requestAnimationFrame = (cb) => { Q.push(cb); return Q.length; };
+  // ★[T649] 한 프레임 — 줄을 비우고 시계를 한 칸 민 뒤 전부 같은 now 로(콜백이 던지면 하네스까지 그대로 올라온다)
+  window.__step = () => { const q = Q.splice(0); vt += ${FRAME_MS}; n++; for (const cb of q) cb(vt); };
+  // ★[T649] 랩 날 d 에 닿는 **첫 프레임**까지 민다. 마감은 실시간이 아니라 "시계가 섰나" —
+  //   생활 시계(lifeLoop)가 다음 프레임 줄에 없으면 선 것이다(종전: 180초 · 1,500초 벽시계 마감).
+  window.__untilDay = (d) => {
+    while (VILS[0].day < d) {
+      window.__step();
+      if (!lifeOn || Q.indexOf(lifeLoop) < 0) throw new Error('시계 정지 — 생활 시계가 다음 프레임 줄에 없다 · day ' + VILS[0].day + ' < ' + d + ' · 프레임 ' + n);
+    }
+    return n;
+  };
+  window.__frame = () => n;
   window.__vt = () => vt;
 })();
 `;
+// ★[T649] 미끼 판 — ⑧ 이 지키는 것(마을 집터에 예비 크루 L_PCREW_RESERVE 가 먼저 · 의뢰 집은 그 위 잉여만)을 **일부러 깬다**.
+//   랩 파일은 안 건드린다 — 이 판의 페이지에서만 `pickBuildSite` 를 감싸, 의뢰 집이 서 있는 동안
+//   마을 집터에 **이미 누가 붙어 있으면** 다음 사람부터는 의뢰 집으로 보낸다(예비 크루를 빼앗는다 → 마을 집터는
+//   크루가 붙은 채 상한을 못 채운다). 같은 자(⑧)가 이 판에서 빨개야 ⑧ 의 초록이 무언가를 지킨다.
+//   ⚠둘에 하나만 돌리는 미끼(T649 첫 판)는 ⑧ 이 초록이었다 — 마을 집터가 크루 1/10 로도 상한(1,610 인·분)을 채웠다(잉여만 뺏겼다 = 깬 게 아니다).
+const DECOY = `(() => {
+  const orig = pickBuildSite;
+  window.pickBuildSite = function (a) {
+    const r = orig(a), s = life;
+    if (!r || r.player || !s) return r;
+    const p = s.houses.find((h) => h.player && (h.builtFloors || 0) < (h.floors || 1));
+    if (!p) return r;
+    return s.agents.some((b) => b !== a && b._site === r && b.state === 'build') ? p : r;
+  };
+})(); true`;
 
 const SNAP = () => {
   const v = VILS[0];
@@ -61,7 +100,7 @@ const SNAP = () => {
   };
 };
 
-async function runOnce(withPlayerSite, prng) {
+async function runOnce(withPlayerSite, prng, decoy) {
   prng = prng || '0x9e3779b9';
   const browser = await chromium.launch(CHROME ? { executablePath: CHROME, args: ['--no-sandbox'] } : { args: ['--no-sandbox'] });
   const page = await browser.newPage({ viewport: { width: 1000, height: 900 } });
@@ -71,6 +110,8 @@ async function runOnce(withPlayerSite, prng) {
   await page.addInitScript(INIT(prng));
   await page.goto(LAB);
   await page.waitForFunction(() => typeof window.lifeToggle === 'function' && typeof VILS !== 'undefined', null, { timeout: 60000 });
+  await page.evaluate(`window.__SNAP = ${SNAP}; true`);   // ★[T649] 표본 자를 페이지 안에 둔다 — 프레임 사이에서 바로 잰다(같은 함수 하나)
+  if (decoy) await page.evaluate(DECOY);
   await page.evaluate(({ nv, pop, seed, sp }) => {
     document.getElementById('nvil').value = String(nv);
     document.getElementById('pop').value = String(pop);
@@ -81,14 +122,11 @@ async function runOnce(withPlayerSite, prng) {
     lifeToggle();
   }, { nv: NVIL, pop: POP, seed: SEED, sp: SPEED });
 
-  const take = () => page.evaluate(SNAP);
+  const take = () => page.evaluate(() => window.__SNAP());
   const day0 = (await take()).day;
 
-  const until = async (d, capMs) => {
-    const t0 = Date.now();
-    for (;;) { const s = await take(); if (s.day >= d) return s; if (Date.now() - t0 > capMs) throw new Error('시계 정지 의심 — day ' + s.day + ' < ' + d); await page.waitForTimeout(400); }
-  };
-  await until(day0 + WARMUP, 180000);
+  // ★[T649] 지정 시각 = 랩 날 day0+WARMUP 의 **첫 프레임**(종전: 400ms 마다 들여다본 첫 표본 — 몇째 프레임인지가 부하를 따랐다)
+  const placeFrame = await page.evaluate((d) => window.__untilDay(d), day0 + WARMUP);
 
   let placed = null;
   if (withPlayerSite) {
@@ -126,31 +164,35 @@ async function runOnce(withPlayerSite, prng) {
     if (placed.err) { await browser.close(); throw new Error('지정 실패: ' + placed.err + ' / 거절=' + JSON.stringify(placed.rejects)); }
   }
 
+  // ★[T649] 관측 = 날이 바뀌는 **첫 프레임마다** 표본 하나 · 끝 = 랩 날 startDay+RUN_DAYS 의 첫 프레임
+  //   (종전: 400ms 마다 들여다본 그날 첫 표본 · 끝도 그 표본 — 날 안에서 움직이는 값이 판마다 다른 순간에 찍혔다 ·
+  //    마감은 1,500초 벽시계였다 — 이제 마감은 `__untilDay` 의 "시계가 섰나" 하나)
   const startDay = (await take()).day;
   const series = new Map();
   let doneDay = null, last = null;
-  const t0 = Date.now();
-  while (Date.now() - t0 < 1500000) {
+  for (;;) {
     const s = await take(); last = s;
     if (!series.has(s.day)) series.set(s.day, s);
     if (withPlayerSite && s.pDone && doneDay === null) doneDay = s.day;
     if (s.day - startDay >= RUN_DAYS) break;
-    await page.waitForTimeout(400);
+    await page.evaluate((d) => window.__untilDay(d), s.day + 1);   // 다음 랩 날의 첫 프레임까지 민다(종전: 400ms 잠)
   }
+  const endFrame = await page.evaluate(() => window.__frame());
   await page.evaluate(() => { if (window.lifeOn) lifeToggle(); });
   await browser.close();
-  return { placed, startDay, doneDay, last, series: [...series.entries()].map(([d, s]) => [d, s]), errs, cerrs };
+  return { placed, placeFrame, endFrame, startDay, doneDay, last, series: [...series.entries()].map(([d, s]) => [d, s]), errs, cerrs };
 }
 
 (async () => {
   let fail = 0;
   const chk = (c, m) => { console.log((c ? '  ✓ ' : '  ✗ ') + m); if (!c) fail++; };
   console.log('=== 10차 T3 · 랩 플레이어 의뢰 집 건설(B안) 헤드리스 검증 ===');
-  console.log(`설정: 마을 ${NVIL}개 · 초기인구 ${POP} · seed ${SEED} · 속도 ${SPEED}×(slow) · 결정론(Math.random+가상시계 고정) · 관측 ${RUN_DAYS}일`);
+  console.log(`설정: 마을 ${NVIL}개 · 초기인구 ${POP} · seed ${SEED} · 속도 ${SPEED}×(slow) · 결정론(Math.random+가상시계 고정 · 프레임은 하네스가 민다) · 관측 ${RUN_DAYS}일`);
 
   console.log('\n[B런 — 플레이어 집터 지정]');
   const B = await runOnce(true);
   console.log('  지정 결과: ' + JSON.stringify({ cx: B.placed.cx, cy: B.placed.cy, day: B.placed.day, 자재스텁: B.placed.cost, 모드해제: B.placed.modeAfter === false }));
+  console.log(`  시계: 지정 = 프레임 ${B.placeFrame}(랩 날 ${B.placed.day} 의 첫 프레임) · 끝 = 프레임 ${B.endFrame}(랩 날 ${B.last.day} 의 첫 프레임) — 실시간 0`);
   console.log('  후보 ' + B.placed.cand + '칸 훑는 동안의 거절 사유 분포: ' + JSON.stringify(B.placed.rejects));
   console.log('  공정 로그(단계 전이만):');
   for (const e of (B.last.plog || [])) console.log(`    day ${e.day} · ${e.label} — built ${e.built} · 현장 누적 ${e.crewSec} 인·분`);
@@ -202,10 +244,18 @@ async function runOnce(withPlayerSite, prng) {
     }
     return { crewed, sat, mean: crewed ? +(sumInc / crewed).toFixed(4) : 0 };
   };
+  const sat8 = (c) => c.crewed > 0 && c.sat === c.crewed;   // ⑧ 의 자 — 아래 미끼도 **같은 자**로 잰다
   const ca = capStat(A), cb = capStat(B);
   console.log(`  마을 집터 '크루 붙은 날' 하루 상한 포화율 — A ${ca.sat}/${ca.crewed}(평균 진척 ${ca.mean}) · B ${cb.sat}/${cb.crewed}(평균 진척 ${cb.mean}) · 상한 0.35`);
-  chk(cb.crewed > 0 && cb.sat === cb.crewed,
+  chk(sat8(cb),
     `⑧ 마을 집터는 크루가 붙은 날 **전부** 하루 상한을 채웠다 — B ${cb.sat}/${cb.crewed}일 (여유 크루만 빌려줬다는 인과 증거)`);
+  // ★[T649] 자명 통과 금지 — 지키는 대상(마을 집터가 먼저)을 **일부러 깬** 판에서는 같은 자가 빨개야 한다.
+  //   B 와 같은 판(같은 난수 · 같은 지정 프레임)에 미끼만 얹는다. 크루가 붙은 날이 남아 있어야(crewed>0) 빨강이 "포화를 못 채웠다"는 뜻이다.
+  const D = await runOnce(true, undefined, true);
+  const cd = capStat(D);
+  console.log(`  [미끼 B′] 의뢰 집이 서 있는 동안 마을 집터엔 먼저 붙은 한 사람만 — 지정 (${D.placed.cx},${D.placed.cy}) 프레임 ${D.placeFrame} · 포화 ${cd.sat}/${cd.crewed}(평균 진척 ${cd.mean})`);
+  chk(cd.crewed > 0 && !sat8(cd),
+    `⑧ⓜ 자명 통과 금지 — 예비 크루를 일부러 빼앗은 미끼 판은 같은 자로 **빨강** — B′ ${cd.sat}/${cd.crewed}일 (크루 붙은 날 ${cd.crewed} 중 ${cd.crewed - cd.sat}일 상한 미달)`);
 
   const am = new Map(A.series), bm = new Map(B.series), a2m = new Map(A2.series);
   const days = [...am.keys()].filter((d) => bm.has(d) && a2m.has(d)).sort((a, b) => a - b);
