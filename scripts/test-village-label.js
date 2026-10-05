@@ -9,7 +9,7 @@
 //     ② 문턱은 **typeLabel 그대로** — 갈래 함수가 옛 typeLabel 식(랩 사본의 그 줄)과 격자 전수에서 같은 답을 낸다
 //     ③ 규칙 — 판정 둘 · 받쳐 주면 그대로 · 못 받쳐 주면 땅이 가리키는 쪽(광맥 선 · 숲 선 · 큰 몫 · 기본값)
 //     ④ 이름 짓기 — 번호는 후보 전체의 다음 번호 · 꼬리만 바꾸는 꼴 · 꼬리표 없는 이름은 그대로 · 겹침 0
-//     ⑤ 실지도(한반도 51 + 닛폰 30) — 바뀐 이름은 꼬리표가 실제로 바뀐 것뿐 · 남은 꼬리표는 땅이 받쳐 준다 · 이름 겹침 0
+//     ⑤ 실지도(한반도 51 + 닛폰 50 · T638 상한 50) — 바뀐 이름은 꼬리표가 실제로 바뀐 것뿐 · 남은 꼬리표는 땅이 받쳐 준다 · 이름 겹침 0
 //     ⑥ 배선 — 서버 시딩·두 자(`t17-metrics`·`t176-ab`)가 **같은 함수**를 부른다 · 끄면 후보 이름 그대로
 //
 // 실행: node scripts/test-village-label.js
@@ -108,7 +108,7 @@ console.log('\n④ 이름 짓기 — 낱말만 바꾼다');
 }
 
 // ── ⑤ 실지도 ───────────────────────────────────────────────────────────────────
-console.log('\n⑤ 실지도 — 한반도 51 + 닛폰 30(서버 시딩과 같은 조립 · 같은 함수)');
+console.log('\n⑤ 실지도 — 한반도 51 + 닛폰 50(서버 시딩과 같은 조립 · 같은 함수)');
 {
   //   표 기계(`t593-labels.js`)가 서버 시딩과 같은 조립·같은 함수로 낸 표를 받아 **성질**을 본다(이름을 하네스가 짓지 않는다).
   const JF = `/tmp/t593-label-test-${process.pid}.json`;
@@ -116,7 +116,7 @@ console.log('\n⑤ 실지도 — 한반도 51 + 닛폰 30(서버 시딩과 같�
   const out = JSON.parse(fs.readFileSync(JF, 'utf8'));
   try { fs.unlinkSync(JF); } catch (e) {}
   const hb = out.find((t) => t.zone === 'hanbando'), np = out.find((t) => t.zone === 'nippon');
-  ok(hb && hb.candidates === 51 && np && np.candidates === 30, '⑤ [상황] 후보 51 + 30 을 다 세웠다', `${hb && hb.candidates} + ${np && np.candidates}`);
+  ok(hb && hb.candidates === 51 && np && np.candidates === 50, '⑤ [상황] 후보 51 + 50(T638) 을 다 세웠다', `${hb && hb.candidates} + ${np && np.candidates}`);
   // 받쳐 줌 — 남은 꼬리표마다 그 근거 칸이 실제로 있다(판정 둘 · 섞임의 농·어 · 기본의 농 · 광맥 선 · 숲 선)
   const backed = (r) => (r.why === r.tag)
     || ((r.tag === 'plain' || r.tag === 'riverside') && r.why === 'mixed') || (r.tag === 'plain' && r.why === 'none')
