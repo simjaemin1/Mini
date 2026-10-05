@@ -10506,6 +10506,8 @@ function allocRealOn() { const x = _allocKnob('L_ALLOC_REAL'); return x === null
 // ★[T263 2026-09-13 · ★T362] 식사를 흐름-EMA 에 실을지 — **기본 끔**. 끔이 곧 2026-07-12 판정(수출 억압 회피)이고 비트 동일이다.
 //   ⚠이름은 **T263 이 지은 그것 그대로**다(새 손잡이 0). 카드 T362 머리의 "T258 손잡이"는 `T258_SIDE_CONS`(부재료)이고
 //     그것은 이 줄이 아니며 main 에 있지도 않다 — 보고/T362 §0-ⓐ 에 그 읽기를 적었다.
+// ★[T652 2026-10-05] 나무꾼 이른 배정 — **기본 끔**(미설정·`0` = 종전 비트). 서버 `T652_WOOD_EARLY=1` · 랩 `window.T652_WOOD_EARLY = 1`.
+function woodEarlyOn() { const x = _allocKnob('T652_WOOD_EARLY'); return x !== null && x !== '0'; }
 function foodConsOn() { const x = _allocKnob('T263_FOOD_CONS'); return x !== null && x !== '0'; }
 function allocRealWin() { const x = _allocKnob('L_ALLOC_WIN'); const n = (x === null) ? 1 : parseFloat(x); return Number.isFinite(n) ? n : 1; }
 // ★[T184] 되돌림 — `L_ALLOC_BASKET=1` 이면 1판(바구니 전체 소득)으로 돌아간다. 기본은 2판(주산물 항).
@@ -10795,7 +10797,13 @@ function pickDeficitJob_rational(v, world) {
       && (v.storage.weapon || 0) >= (counts.warrior || 0) + 1 && hasSlot(v, 'warrior', cap, counts)) return 'warrior';
   if ((counts.tailor || 0) < tailorTarget(v)) return 'tailor';   // ★의복(2026-07-12): 재봉사 — 스톡-플로우 노동목표(장인 패턴). 옷감 게이트는 tailorTarget 내(옷감 보온-eq<1 → 0 — 요리사 결함[픽커 후보 부재] 재발 방지로 여기 명시 등록)
   // ★주거 압박: 집이 거의 가득(인구 성장 막힘) + 집 지을 목재 부족 → 나무꾼. 집 지어야 인구가 늚 → 고리를 닫는 안전망.
-  if (v.housing !== undefined && N >= v.housing * 0.95 && (v.storage.wood || 0) < N * 2 && hasSlot(v, 'lumberjack', cap, counts)) return 'lumberjack';
+  //   ★[T652 2026-10-05 · 손잡이 `T652_WOOD_EARLY` **기본 끔**] 이 안전망은 집이 다 찬 뒤 · 곳간이 N×2 밑일 때만 선다 — 통나무의 62%는
+  //     땔감이고(T644 §1) 시딩 곳간은 9~25일에 0 이 되니, 대부분 마을은 **바닥난 뒤에야** 이 줄에 닿는다. 켜면 같은 줄이 이미 있는 신호를
+  //     하나 더 읽는다: **남은 날 = 곳간 ÷ 하루 소비 EMA(`_consEMA.wood`) < 30** — 30 은 v2 가 흐름 수요를 재는 바로 그 창
+  //     (`flowT = _consEMA × 30` · economy-sim-v2 computeShadowPrices)이다. 새 수 0. 끔이면 이 줄은 종전 그대로(비트 동일).
+  if (((v.housing !== undefined && N >= v.housing * 0.95 && (v.storage.wood || 0) < N * 2)
+       || (woodEarlyOn() && (v.storage.wood || 0) < ((v._consEMA && v._consEMA.wood) || 0) * 30))
+      && hasSlot(v, 'lumberjack', cap, counts)) return 'lumberjack';
   // ★S1 석재 안전망: 돌은 채집자원 — 돌밭/강가(land.stone 충분) 마을이 석재 부족하면 채집꾼(광부 아님). 집·도구 석재 수요 → 채집. 돌 없으면(stone≤0.25) 안 함(교역 의존).
   //   ★[2026-08-02c] STONE_NET 이 켜지면 경계는 위 선순위 줄에서 `>=0.25` 로 다시 잡힌다(여긴 재고 문턱 N*1.5 = 집·도구 통합 수요라 그대로 둔다).
   if ((v.land.stone || 0) > (STONE_NET_ON ? 0.2499 : 0.25) && (v.storage.stone || 0) < N * 1.5 && hasSlot(v, 'forager', cap, counts)) return 'forager';

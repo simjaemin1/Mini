@@ -75,6 +75,11 @@ function zoneHook() {
     return _compile.call(this, content, filename);
   };
   if (FLOW && process.env.T581_FLOW_ROWS) flowObs(process.env.T581_FLOW_ROWS);
+  let _V1 = null;
+  const foodDays = (e) => { try { if (!_V1) _V1 = require(path.join(ROOT, EJS)); const n = e.npcs ? e.npcs.length : 0; return n > 0 ? +(_V1.totalFoodEquivalent(e) / n).toFixed(1) : null; } catch (err) { return null; } };
+  const woodPrice = (w, e) => { if (!w || typeof w.priceFn !== 'function') return null; const c0 = w._effDemCache; try { const t = w.priceFn(e); return t && t.wood != null ? +t.wood.toFixed(3) : null; } catch (err) { return null; } finally { w._effDemCache = c0; } };
+  const _swSeen = new Map();   // 마을 → 마지막으로 적은 배정 날(econ `_dbgSwitch.day` — 하루 경계 표본이 배정 날을 넘겨 보는 일이 없게 · 자 쪽 장부)
+  const swOf = (name, e) => { const d = e._dbgSwitch; if (!d || _swSeen.get(name) === d.day) return null; _swSeen.set(name, d.day); return [d.day, d.need, d.did]; };
   const OUTF = process.env.T581_ROWS;
   const WOODF = process.env.T581_WOOD_ROWS;   // ★[T644] 마을마다 하루 한 줄(통나무 장부)
   const PORT = process.env.PORT;
@@ -127,8 +132,12 @@ function zoneHook() {
         out.push({ v: v.name, n: e.npcs ? e.npcs.length : 0, wood: +(e.storage.wood || 0).toFixed(2), prod: +(pb.wood || 0).toFixed(3), act: +(e._t325InflowToday || 0).toFixed(3),
           cons: e._t644Day || {}, lj: (e.counts && e.counts.lumberjack) || 0, land: e.land ? +(e.land.wood || 0).toFixed(3) : null, housing: e.housing != null ? +(+e.housing).toFixed(2) : null,
           houses: (v._houseCells || []).length, site: v._site ? (v._t400Dbg && v._t400Dbg.stall ? 'stall' : 'build') : null, food: +((e.storage.food || 0)).toFixed(1),
-          bdt: e._banditized ? 1 : 0, born: e._bornDay != null ? e._bornDay : null });
-        if (FLOW) { try { const r = out[out.length - 1]; const P2 = shadowWood(e); r.pw = P2.p; r.pwT = P2.t; } catch (e2) {} }   // ★[T656] 통나무 그림자가격(그날 재고 · 순수 읽기)
+          bdt: e._banditized ? 1 : 0, born: e._bornDay != null ? e._bornDay : null,
+          //   ★[T652] 배정이 읽는 신호 — 통나무 그림자가격(econ 정본 `world.priceFn` 을 부르기만 · 그날 캐시 `_effDemCache` 는 되돌린다 · 동작 0)
+          //     · 하루 소비 EMA(`_consEMA.wood` — 남은 날 = 곳간 ÷ 이것) · 식량 날수(기근 문 `foodEquiv < N×30` 그 값) · 그날 배정(`_dbgSwitch`)
+          pw: woodPrice(w, e), ema: +(((e._consEMA || {}).wood) || 0).toFixed(3), fd: foodDays(e),
+          sw: swOf(v.name, e) });
+        if (FLOW) { try { const r = out[out.length - 1]; const P2 = shadowWood(e); r.pw = P2.p; r.pwT = P2.t; } catch (e2) {} }   // ★[T656 · T652 와 합침: FLOW 판에선 pw 를 이 값으로 덮는다] 통나무 그림자가격(그날 재고 · 순수 읽기)
         e._t644Day = {}; }
       try { fs.appendFileSync(WOODF, JSON.stringify({ zone: st.zoneId, day: w.day, vils: out }) + '\n'); } catch (e) {}
     }
