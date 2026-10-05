@@ -801,8 +801,11 @@ console.log('\n⑨ 3사본 · 소스 계약');
   const B = fs.readFileSync(path.join(ROOT, 'sim', 'economy-engine.browser.js'), 'utf8');
   for (const k of ['T100_ANCHOR_N', 'T100_HARVEST_PER_FARMER_YEAR', 'T100_K', 'T100_FIELD_YIELD', 'farmFlowPerDay', 'harvestToGranary', 'SEED_FOOD_DAYS_D0', 'seedFoodDays', 'T100_GARDEN_FLOOR', 'gardenFloorTopUp'])
     ok(B.indexOf(k) >= 0, `⑨ 번들에 \`${k}\` 가 있다`);
-  const n = (B.match(/T100_FIELD_YIELD/g) || []).length, m = (SRC.match(/T100_FIELD_YIELD/g) || []).length;
-  ok(n === m, '⑨ ★손잡이가 무는 자리 수가 소스와 **같다**', `번들 ${n} = 소스 ${m}`);
+  // ★[T648 2026-10-05] 번들엔 이제 econ 밖 서버 정본(작물 — `server/crops.js` · `events.js` …)도 실린다 — 그 주석이 이 손잡이 이름을 적는다.
+  //   ⇒ 자리 수는 번들 안 **economy-sim.js 덩이**(`modules["v1"]`)에서 센다(이 절이 묻는 것 = 번들의 econ 사본이 소스와 같은 자리를 갖나).
+  const a1 = B.indexOf('modules["v1"]=(function(){'), a2 = B.indexOf('modules["v2"]=(function(){', a1), V1 = (a1 >= 0 && a2 > a1) ? B.slice(a1, a2) : B;
+  const n = (V1.match(/T100_FIELD_YIELD/g) || []).length, m = (SRC.match(/T100_FIELD_YIELD/g) || []).length;
+  ok(n === m, '⑨ ★손잡이가 무는 자리 수가 소스와 **같다**(번들의 economy-sim.js 덩이)', `번들 ${n} = 소스 ${m}`);
 }
 
 // ── ⑬ 배율 자리 [T179] — 대체가 삼킨 `skillMul·toolBoost·inputMult` ───────
