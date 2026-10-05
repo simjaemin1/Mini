@@ -32,6 +32,8 @@ const HOOK = process.env.T581_HOOK || '';
 const VJS = path.join('server', 'villages.js');
 const EJS = path.join('sim', 'economy-sim.js');   // ★[T644] econ v1(소비 기록 `_cons` 가 사는 곳)
 const WOOD = process.env.T581_WOOD === '1';
+const EJS2 = path.join('sim', 'economy-sim-v2.js');   // ★[T656] econ v2(캐러밴 발주 `tickTradeV2` 가 사는 곳)
+const FLOW = process.env.T581_FLOW === '1';           // ★[T656] 통나무 유통 장부(켤 때만 — 끔이면 이 자는 T644 판 그대로)
 
 let _isMain = true; try { _isMain = require('worker_threads').isMainThread; } catch (e) {}
 if (HOOK === 'zone' && !_isMain) {
@@ -68,8 +70,11 @@ function zoneHook() {
     //   ★[T644] 통나무 장부(`T581_WOOD=1` 일 때만) — econ 소비 기록 함수 `_cons` 를 같은 자리에서 감싼다(값은 그대로 넘긴다 · 동작 0).
     //     통나무를 쓴 자리 = 부른 함수:줄(econ 안이면 그 줄 · `actFromGranary` 면 그것을 부른 생활층 함수까지) — 마을 `_t644Day` 에 그날 합.
     if (WOOD && filename.endsWith(EJS)) content += '\n;(function () { const _o = _cons; _cons = function (v, r, amt) { if (r === \'wood\' && amt > 0 && v) { try { const L = String(new Error().stack || \'\').split(\'\\n\'); const fr = (i) => { const m = /at (?:Object\\.)?([^ ]+) \\(.*[\\\\/]([^\\\\/]+):(\\d+):\\d+\\)/.exec(L[i] || \'\'); return m ? m[1] + \':\' + m[2].replace(/\\.js$/, \'\') + \':\' + m[3] : \'?\'; }; let k = fr(2); if (/^actFromGranary:/.test(k)) k = \'actFromGranary<\' + fr(3).split(\':\')[0]; const d = v._t644Day || (v._t644Day = {}); d[k] = (d[k] || 0) + amt; } catch (e) {} } return _o(v, r, amt); }; })();\n';
+    //   ★[T656] 유통 장부(`T581_FLOW=1` 일 때만) — 발주 루프 네 자리에 **읽기만 하는** 줄을 끼운다(`flowPatch` · 값·순서·분기 무변).
+    if (FLOW && filename.endsWith(EJS2)) content = flowPatch(content);
     return _compile.call(this, content, filename);
   };
+  if (FLOW && process.env.T581_FLOW_ROWS) flowObs(process.env.T581_FLOW_ROWS);
   const OUTF = process.env.T581_ROWS;
   const WOODF = process.env.T581_WOOD_ROWS;   // ★[T644] 마을마다 하루 한 줄(통나무 장부)
   const PORT = process.env.PORT;
@@ -123,6 +128,7 @@ function zoneHook() {
           cons: e._t644Day || {}, lj: (e.counts && e.counts.lumberjack) || 0, land: e.land ? +(e.land.wood || 0).toFixed(3) : null, housing: e.housing != null ? +(+e.housing).toFixed(2) : null,
           houses: (v._houseCells || []).length, site: v._site ? (v._t400Dbg && v._t400Dbg.stall ? 'stall' : 'build') : null, food: +((e.storage.food || 0)).toFixed(1),
           bdt: e._banditized ? 1 : 0, born: e._bornDay != null ? e._bornDay : null });
+        if (FLOW) { try { const r = out[out.length - 1]; const P2 = shadowWood(e); r.pw = P2.p; r.pwT = P2.t; } catch (e2) {} }   // ★[T656] 통나무 그림자가격(그날 재고 · 순수 읽기)
         e._t644Day = {}; }
       try { fs.appendFileSync(WOODF, JSON.stringify({ zone: st.zoneId, day: w.day, vils: out }) + '\n'); } catch (e) {}
     }
@@ -154,6 +160,90 @@ function zoneHook() {
     });
   }, 200);
   if (_iv.unref) _iv.unref();
+}
+
+// ── ★[T656] 유통 장부 — 캐러밴 발주(`economy-sim-v2.js tickTradeV2`) 네 자리에 읽기 줄 ───────────────────────
+//   ① 마을 차례 첫머리(`alreadySent` 앞): 여유 노동 상한·지금 교역 중·통나무 재고 — 통나무가 남는데 발주 루프가 아예 안 도는 날을 가른다.
+//   ② 다리마다(`totalProfit` 셈 바로 뒤 · 관문 `<= 0` 앞): [품목 · 목적지 · 거리 · 출발값 · 도착값(×0.95) · 운반비/단위 · 기대손실 · 수량 · 총이익].
+//   ③ 이익 나는 다리 0(`if (!best) break` 자리): 기록 후 그대로 끊는다.
+//   ④ 기회비용 관문(`best.profit <= lp.mv × 왕복일 × (1 − slack/2)`) 앞: 고른 화물 · 덮기 전 최고(무기·식량 끌기가 덮었나) · 관문 통과.
+//   ⚠값을 바꾸는 줄 0 — 전부 이미 선 지역 변수를 배열에 담아 넘길 뿐이다. 호스트 함수(도적 위험 등)를 더 부르지 않는다.
+function flowPatch(src) {
+  const R = [
+    ['    const alreadySent = new Set();', '    if (globalThis.__t656v) globalThis.__t656v(world, day, a, spareCap, currentlyTrading);\n    const alreadySent = new Set();'],
+    ['let best = null, bestF = null, bestArms = null;', 'let best = null, bestF = null, bestArms = null; const _t656L = globalThis.__t656 ? [] : null;'],
+    ['const totalProfit = profitPerUnit * N_units;', 'const totalProfit = profitPerUnit * N_units; if (_t656L) _t656L.push([cand.res, b.v, dist, pFrom, pTo, transportCostPerUnit, expectedLossRatio, N_units, totalProfit]);'],
+    ['      if (!best) break;\n      if (bestArms) best = bestArms;', '      if (!best) { if (_t656L) globalThis.__t656({ world, day, a, candidates, nb: _nbList, L: _t656L, best: null, b0: null, sent: alreadySent, it: caravansLaunched }); break; }\n      const _t656b0 = best;\n      if (bestArms) best = bestArms;'],
+    ['      if (best.profit <= lp.mv * tripDays * (1 - 0.5 * slack)) break;', '      if (_t656L) globalThis.__t656({ world, day, a, candidates, nb: _nbList, L: _t656L, best, b0: _t656b0, sent: alreadySent, it: caravansLaunched, opp: lp.mv * tripDays * (1 - 0.5 * slack), trip: tripDays });\n      if (best.profit <= lp.mv * tripDays * (1 - 0.5 * slack)) break;'],
+  ];
+  for (const [a, b] of R) {
+    const i = src.indexOf(a);
+    if (i < 0 || src.indexOf(a, i + 1) >= 0) { console.error('[T656] 끼울 자리를 못 찾았다(또는 둘) — 유통 장부 끔: ' + a.slice(0, 60)); return src; }
+  }
+  for (const [a, b] of R) src = src.replace(a, () => b);
+  console.error('[T656] 유통 장부 네 자리 끼움');
+  return src;
+}
+let _E2 = null;
+function shadowWood(e) {   // 통나무 그림자가격 · 목표(정본 함수 `computeShadowPrices` 를 그대로 부른다 — 순수 읽기 · v 에 안 쓴다)
+  if (!_E2) _E2 = require(path.join(ROOT, 'sim/economy-sim-v2.js'));
+  const N = (e.npcs && e.npcs.length) || 1;
+  return { p: +_E2.computeShadowPrices(e).wood.toFixed(3), t: +(0.05 * N * 30).toFixed(1) };   // 목표 = 생계 0.05/인 × 30일(위 함수의 `subs × 30` — 통나무는 가격 가드라 flowT 0)
+}
+function flowObs(FLOWF) {
+  const buf = [];
+  const flush = () => { if (!buf.length) return; try { fs.appendFileSync(FLOWF, buf.join('\n') + '\n'); } catch (e) {} buf.length = 0; };
+  const iv = setInterval(flush, 2000); if (iv.unref) iv.unref();
+  process.on('exit', flush);
+  const zone = () => { const W = globalThis.__t581w && globalThis.__t581w(); return W && W.state ? W.state.zoneId : null; };
+  const r1 = (x) => +(+x).toFixed(1), r3 = (x) => +(+x).toFixed(3);
+  //   ① 마을 차례 — 통나무가 수출 문턱(재고 > 1.2 × 인구 · 위 발주 루프의 '그 외' 줄: 목표 max(0.05N×30, 0.8N) × 0.8)을 넘는 마을만 적는다.
+  globalThis.__t656v = (world, day, a, cap, cur) => { try {
+    const v = a.v, N = v.npcs.length, wd = v.storage.wood || 0;
+    if (wd > Math.max(0.05 * N * 30, N * 0.8) * 0.8) buf.push(JSON.stringify({ k: 'v', z: zone(), d: day, s: v.name, n: N, w: r1(wd), cap, cur }));
+  } catch (e) {} };
+  globalThis.__t656 = (o) => { try {
+    const v = o.a.v, N = v.npcs.length, L = o.L;
+    const per = {};
+    for (const l of L) { const p = per[l[0]] || (per[l[0]] = { n: 0, pos: 0, best: null }); p.n++; if (l[8] > 0) { p.pos++; if (!p.best || l[8] > p.best[1]) p.best = [l[1].name, l[8], l[7], l[4], l[2], l[3], l[6]]; } }
+    const cands = o.candidates.map((c) => c.res);
+    const wc = cands.includes('wood');
+    const top = Object.entries(per).filter(([, p]) => p.best).sort((x, y) => y[1].best[1] - x[1].best[1]);
+    const rec = { k: 'c', z: zone(), d: o.day, s: v.name, n: N, it: o.it, w: r1(v.storage.wood || 0), nc: cands.length, wc,
+      top: top.slice(0, 4).map(([r, p]) => [r, p.best[0], r1(p.best[1]), r1(p.best[2])]),
+      wr: top.findIndex(([r]) => r === 'wood'),
+      ch: o.best ? [o.best.cand.res, o.best.b.v.name, r1(o.best.profit), r1(o.best.N_units)] : null,
+      ov: o.best && o.b0 && o.b0 !== o.best ? [o.b0.cand.res, o.b0.b.v.name] : null,
+      g: o.best ? (o.best.profit > o.opp) : null, opp: o.opp != null ? r1(o.opp) : null };
+    if (wc) {
+      const pw = per.wood || { n: 0, pos: 0, best: null };
+      rec.wb = pw.best ? [pw.best[0], r1(pw.best[1]), r1(pw.best[2]), r3(pw.best[3]), r1(pw.best[4]), r3(pw.best[5]), r3(pw.best[6])] : null;   // [목적지 · 총이익 · 수량 · 도착값 · 거리 · 출발값 · 손실]
+      rec.wn = [pw.n, pw.pos];
+      const nb = new Set(o.nb), legs = new Map(); for (const l of L) if (l[0] === 'wood') legs.set(l[1], l);
+      const infoR = o.world.infoRange || 400, zs = {};
+      for (const b of o.world.villages) {
+        if (b === v || (b.storage.wood || 0) >= 1) continue;   // 0 마을 = 그 순간 곳간 통나무 < 1(T644 의 그 셈)
+        const l = legs.get(b); let s;
+        if (l) {
+          if (!(l[8] > 0)) s = 'neg';
+          else if (o.best && o.best.cand.res === 'wood' && o.best.b.v === b) s = (o.best.profit > o.opp) ? 'sent' : 'gate';
+          else if (pw.best && pw.best[0] !== b.name) s = 'dest';
+          else s = 'res';
+          zs[b.name] = [s, r1(l[2]), r3(l[4]), r1(l[8])];
+        } else {
+          if (!nb.has(b)) s = 'nb';
+          else if (b.npcs.length === 0) s = 'empty';
+          else if (b.isolated && o.day < b.isolatedUntilDay) s = 'iso';
+          else if ((v._grudgeBlock && v._grudgeBlock[b.name]) || (b._grudgeBlock && b._grudgeBlock[v.name])) s = 'grudge';
+          else if (o.sent.has('wood->' + b.name)) s = 'dup';
+          else s = 'info';
+          zs[b.name] = [s];
+        }
+      }
+      rec.zs = zs; rec.infoR = infoR;
+    }
+    buf.push(JSON.stringify(rec));
+  } catch (e) {} };
 }
 
 // ── 바깥 — 판 · 그림 · 표 ─────────────────────────────────────────────────────────────
@@ -193,10 +283,10 @@ function run(A) {
   for (const z of ZS) {
     const zdb = path.join(OUTD, `z_${tag}_${z}.db`); if (!RESUME) rmf(zdb);
     const rows = path.join(OUTD, `rows_${tag}_${z}.jsonl`), mine = path.join(OUTD, `t581_${tag}_${z}.jsonl`);
-    if (!RESUME) for (const f of [rows, mine]) { try { fs.unlinkSync(f); } catch (e) {} }
+    if (!RESUME) for (const f of [rows, mine, path.join(OUTD, `wood_${tag}_${z}.jsonl`), path.join(OUTD, `flow_${tag}_${z}.jsonl`)]) { try { fs.unlinkSync(f); } catch (e) {} }
     const env = Object.assign({}, process.env, { PORT: String(ZONES[z].port + OFF), ZONE_ID: z, T581_PORT_OFF: String(OFF), CENTRAL_URL: `http://localhost:${CP}`, ENABLED_ZONES: ZS.join(','),
       DB_PATH: zdb, ENABLE_VILLAGES: '1', VILLAGE_DAY_MS: String(DAY_MS),
-      T533_HOOK: 'zone', T533_SEED: String(SEED), T533_ROWS: rows, T581_HOOK: 'zone', T581_ROWS: mine, T581_WOOD_ROWS: path.join(OUTD, `wood_${tag}_${z}.jsonl`) });
+      T533_HOOK: 'zone', T533_SEED: String(SEED), T533_ROWS: rows, T581_HOOK: 'zone', T581_ROWS: mine, T581_WOOD_ROWS: path.join(OUTD, `wood_${tag}_${z}.jsonl`), T581_FLOW_ROWS: path.join(OUTD, `flow_${tag}_${z}.jsonl`) });
     if (XZ === 'on') env.T525_CROSS_ZONE = '1'; else delete env.T525_CROSS_ZONE;
     delete env.NODE_OPTIONS;   // 힙 문턱 = 기본 한도 — 판도 기본으로 돈다
     const logf = fs.openSync(path.join(OUTD, `z_${tag}_${z}.log`), RESUME ? 'a' : 'w');
