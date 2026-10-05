@@ -1,5 +1,5 @@
 {
- "_": "[T545 · T604] char_export_gltf.py 산물 — 엔진이 읽는 규약. 클라는 이 수를 하드코딩하지 않는다(옷 → 메시는 `bodies.<몸>.meshOf`).",
+ "_": "[T545 · T604 · T654] char_export_gltf.py 산물 — 엔진이 읽는 규약. 클라는 이 수를 하드코딩하지 않는다(갖옷 털 두께는 `bodies.<몸>.inflate`).",
  "alphaTest": 0.5,
  "atlas": {
   "cells": {
@@ -55,10 +55,6 @@
      "base": {
       "mhclo": "710fa50cdf8afa6f",
       "obj": "31b0fc5e9ac65b74"
-     },
-     "fur": {
-      "mhclo": "6881c0f5618df03d",
-      "obj": "c6fe96bd64e73591"
      }
     },
     "rings": 14,
@@ -70,17 +66,12 @@
      0.418452
     ],
     "tris_base": 896,
-    "tris_fur": 896,
-    "verts_base": 498,
-    "verts_fur": 498
+    "verts_base": 498
+   },
+   "inflate": {
+    "fur": 0.02824
    },
    "mesh": "F_body",
-   "meshOf": {
-    "fur": "F_fur",
-    "hemp": "F_body",
-    "leather": "F_body",
-    "ramie": "F_body"
-   },
    "node": "F",
    "parts": {
     "brows": "eyebrows/eyebrow001/eyebrow001.mhclo",
@@ -91,7 +82,6 @@
    },
    "scale": 1.070004,
    "tris": 5999,
-   "trisFur": 5999,
    "trisParts": {
     "brows": 192,
     "cloth": 896,
@@ -117,10 +107,6 @@
      "base": {
       "mhclo": "36023c0376a52c89",
       "obj": "28f96b782cf68f8c"
-     },
-     "fur": {
-      "mhclo": "be7c2aad8ea83d1e",
-      "obj": "d8cddb36678c21a7"
      }
     },
     "rings": 14,
@@ -132,17 +118,12 @@
      0.618596
     ],
     "tris_base": 640,
-    "tris_fur": 640,
-    "verts_base": 370,
-    "verts_fur": 370
+    "verts_base": 370
+   },
+   "inflate": {
+    "fur": 0.028243
    },
    "mesh": "M_body",
-   "meshOf": {
-    "fur": "M_fur",
-    "hemp": "M_body",
-    "leather": "M_body",
-    "ramie": "M_body"
-   },
    "node": "M",
    "parts": {
     "brows": "eyebrows/eyebrow001/eyebrow001.mhclo",
@@ -153,7 +134,6 @@
    },
    "scale": 0.982668,
    "tris": 6000,
-   "trisFur": 6000,
    "trisParts": {
     "brows": 192,
     "cloth": 640,
@@ -296,6 +276,8 @@
  "flip": "시트는 굽고 나서 좌우를 뒤집는다(_flip_png) — 엔진은 모델 좌표를 게임 좌표 그대로 놓고(거울 = 행렬식 −1) 같은 그림을 얻는다",
  "glb": "char_body.glb",
  "height": 1.6,
+ "inflateAttr": "_inflate",
+ "inflateNote": "[T654] 옷 → 메시는 하나(옷 넷 = 재질) · 갖옷 = 정점 속성 `_inflate`(옷 점 = 털 두께 방향 단위 벡터 · 살·눈·눈썹·머리 = 0) × `bodies.<몸>.inflate.<옷>`(m · 생성기 `FUR_PAD` × 키 비 × 등배) — 묶기 자세에서 민 뒤 스키닝(엔진 셰이더 한 줄)",
  "keysPerFrame": 4,
  "mpfb": "2.0.17",
  "rig": "MPFB cmu_mb(31뼈 · CMU BVH 관절 이름) — 뼈 이름 앞에 몸 머리('M_'·'F_')",

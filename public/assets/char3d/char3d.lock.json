@@ -1,5 +1,5 @@
 {
- "_": "[T545 · T604] char3d 잠금 — 값 = 파일 sha1 앞 16자(바이트가 자산). 입력 지문이 바뀌면 다시 굽는다. 원본은 저장소 밖(`~/Mini/_3d_in/`).",
+ "_": "[T545 · T604 · T654] char3d 잠금 — 값 = 파일 sha1 앞 16자(바이트가 자산). 입력 지문이 바뀌면 다시 굽는다. 원본은 저장소 밖(`~/Mini/_3d_in/`).",
  "_기계": "pip bpy 5.0.1 · io_scene_gltf2 5.0.21 · MPFB 2.0.17",
  "_입력": {
   "add-on-mpfb-v2.0.17.zip": "078ecdb514eb8f23",
@@ -24,15 +24,15 @@
   "makehuman_system_assets/proxymeshes/male1591/male1591.proxy": "d4820809da0ada43",
   "makehuman_system_assets/skins/young_asian_female/young_lightskinned_female_diffuse3.png": "a9162978ca6c1210",
   "makehuman_system_assets/skins/young_asian_male/young_lightskinned_male_diffuse3.png": "bee08ca22401a57e",
-  "scripts/char_clothes_mhclo.py": "cda56499a72a84bb",
-  "scripts/char_export_gltf.py": "2ec8aa6ff38d09bf",
+  "scripts/char_clothes_mhclo.py": "b95e3ebe56cde30a",
+  "scripts/char_export_gltf.py": "bfc0536f665aa6c3",
   "scripts/char_render.py": "ec8ba1259fe207be",
   "scripts/mocap_retarget.py": "28fae298e7077ebb",
   "scripts/render_common.py": "030520b536163a5b"
  },
  "char3d": {
-  "char3d_meta.json": "fb1f51321fffe323",
-  "char_body.glb": "746a903d036bdaf8",
+  "char3d_meta.json": "36ad8fe17c40030a",
+  "char_body.glb": "c72d70a37bf900ca",
   "tex/f_alpha.png": "590d92966d8bb26d",
   "tex/f_fur.jpg": "8384d5feb98d1c03",
   "tex/f_hemp.jpg": "af28a928e673c1dc",
