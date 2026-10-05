@@ -1,0 +1,2199 @@
+{
+ "card": "T651",
+ "note": "econ = t17-metrics 시딩 씨앗 lp._seaDistPx/32 · 곧은 = 정본 마스크 EDT · 실걸음 = T524 4방 BFS +1 · 8방 = MCP_Geometric +1 · 하구 = 띠에 닿은 민물 성분까지 곧은 · edgeWN = 서·북 변까지(참고)",
+ "zones": {
+  "hanbando": {
+   "zone": "hanbando",
+   "n": 51,
+   "summary": {
+    "econ": {
+     "140": 3,
+     "30": 1
+    },
+    "own": {
+     "140": 3,
+     "30": 1
+    },
+    "world": {
+     "140": 3,
+     "30": 1
+    },
+    "walk": {
+     "140": 3,
+     "30": 1
+    },
+    "walk8": {
+     "140": 3,
+     "30": 1
+    },
+    "estuary": {
+     "140": 25,
+     "30": 14
+    },
+    "edgeWN": {
+     "140": 2,
+     "30": 0
+    }
+   },
+   "rows": [
+    {
+     "name": "광산1",
+     "cell": [
+      2120,
+      2117
+     ],
+     "econ": 1773.3,
+     "own": 1773.3,
+     "world": 1766.5,
+     "walk": 2547,
+     "walk8": 2247.2,
+     "edgeWN": 2117,
+     "estuary": 339.0,
+     "nearest": "이웃 띠 nippon",
+     "nearestCell": [
+      2283,
+      3876
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "광산2",
+     "cell": [
+      2007,
+      218
+     ],
+     "econ": 3675.4,
+     "own": 3675.4,
+     "world": 3668.4,
+     "walk": 5954,
+     "walk8": 4941.0,
+     "edgeWN": 218,
+     "estuary": 903.4,
+     "nearest": "이웃 띠 nippon",
+     "nearestCell": [
+      2283,
+      3876
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "광산3",
+     "cell": [
+      1425,
+      794
+     ],
+     "econ": 3131.4,
+     "own": 3131.4,
+     "world": 3131.4,
+     "walk": 4676,
+     "walk8": 3957.6,
+     "edgeWN": 794,
+     "estuary": 268.0,
+     "nearest": "띠 S kr_s",
+     "nearestCell": [
+      1170,
+      3915
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "광산4",
+     "cell": [
+      1285,
+      1330
+     ],
+     "econ": 2587.6,
+     "own": 2587.6,
+     "world": 2587.6,
+     "walk": 3966,
+     "walk8": 3453.8,
+     "edgeWN": 1285,
+     "estuary": 10.2,
+     "nearest": "띠 S kr_s",
+     "nearestCell": [
+      1170,
+      3915
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "어촌1",
+     "cell": [
+      1296,
+      2357
+     ],
+     "econ": 1563.1,
+     "own": 1563.1,
+     "world": 1563.1,
+     "walk": 2127,
+     "walk8": 1863.7,
+     "edgeWN": 1296,
+     "estuary": 7.0,
+     "nearest": "띠 S kr_s",
+     "nearestCell": [
+      1170,
+      3915
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "광산5",
+     "cell": [
+      1129,
+      2948
+     ],
+     "econ": 967.8,
+     "own": 967.7,
+     "world": 967.7,
+     "walk": 1455,
+     "walk8": 1192.8,
+     "edgeWN": 1129,
+     "estuary": 86.0,
+     "nearest": "띠 S kr_s",
+     "nearestCell": [
+      1167,
+      3915
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "광산6",
+     "cell": [
+      227,
+      3078
+     ],
+     "econ": 808.2,
+     "own": 808.2,
+     "world": 808.2,
+     "walk": 1148,
+     "walk8": 988.0,
+     "edgeWN": 227,
+     "estuary": 148.2,
+     "nearest": "띠 S kr_w",
+     "nearestCell": [
+      43,
+      3865
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "광산7",
+     "cell": [
+      2038,
+      3099
+     ],
+     "econ": 803.9,
+     "own": 803.9,
+     "world": 803.9,
+     "walk": 886,
+     "walk8": 855.5,
+     "edgeWN": 2038,
+     "estuary": 85.3,
+     "nearest": "띠 S kr_e",
+     "nearestCell": [
+      2187,
+      3889
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "어촌2",
+     "cell": [
+      1643,
+      393
+     ],
+     "econ": 3536.0,
+     "own": 3536.0,
+     "world": 3536.0,
+     "walk": 5261,
+     "walk8": 4358.7,
+     "edgeWN": 393,
+     "estuary": 635.1,
+     "nearest": "띠 S kr_e",
+     "nearestCell": [
+      1762,
+      3927
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "임업1",
+     "cell": [
+      891,
+      3516
+     ],
+     "econ": 433.6,
+     "own": 433.6,
+     "world": 433.6,
+     "walk": 567,
+     "walk8": 487.6,
+     "edgeWN": 891,
+     "estuary": 262.8,
+     "nearest": "띠 S kr_s",
+     "nearestCell": [
+      938,
+      3947
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "임업2",
+     "cell": [
+      1189,
+      3097
+     ],
+     "econ": 818.2,
+     "own": 818.2,
+     "world": 818.2,
+     "walk": 1284,
+     "walk8": 1030.0,
+     "edgeWN": 1189,
+     "estuary": 28.0,
+     "nearest": "띠 S kr_s",
+     "nearestCell": [
+      1170,
+      3915
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "임업3",
+     "cell": [
+      1793,
+      1910
+     ],
+     "econ": 2017.2,
+     "own": 2017.2,
+     "world": 2017.2,
+     "walk": 2427,
+     "walk8": 2226.2,
+     "edgeWN": 1793,
+     "estuary": 47.4,
+     "nearest": "띠 S kr_e",
+     "nearestCell": [
+      1764,
+      3927
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "농촌1",
+     "cell": [
+      438,
+      2438
+     ],
+     "econ": 1473.5,
+     "own": 1473.5,
+     "world": 1473.5,
+     "walk": 1973,
+     "walk8": 1716.2,
+     "edgeWN": 438,
+     "estuary": 79.1,
+     "nearest": "띠 S kr_w",
+     "nearestCell": [
+      505,
+      3910
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "임업4",
+     "cell": [
+      326,
+      1304
+     ],
+     "econ": 2576.6,
+     "own": 2576.6,
+     "world": 2576.6,
+     "walk": 3035,
+     "walk8": 2820.4,
+     "edgeWN": 326,
+     "estuary": 419.0,
+     "nearest": "띠 S kr_w",
+     "nearestCell": [
+      43,
+      3865
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "임업5",
+     "cell": [
+      980,
+      690
+     ],
+     "econ": 3230.4,
+     "own": 3230.4,
+     "world": 3230.4,
+     "walk": 4609,
+     "walk8": 3996.6,
+     "edgeWN": 690,
+     "estuary": 340.3,
+     "nearest": "띠 S kr_s",
+     "nearestCell": [
+      1167,
+      3915
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "어촌3",
+     "cell": [
+      564,
+      2615
+     ],
+     "econ": 1296.1,
+     "own": 1296.1,
+     "world": 1296.1,
+     "walk": 2353,
+     "walk8": 1895.7,
+     "edgeWN": 564,
+     "estuary": 2.2,
+     "nearest": "띠 S kr_w",
+     "nearestCell": [
+      511,
+      3910
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "임업6",
+     "cell": [
+      1584,
+      489
+     ],
+     "econ": 3442.6,
+     "own": 3442.6,
+     "world": 3442.6,
+     "walk": 5106,
+     "walk8": 4238.2,
+     "edgeWN": 489,
+     "estuary": 538.3,
+     "nearest": "띠 S kr_e",
+     "nearestCell": [
+      1762,
+      3927
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "농촌2",
+     "cell": [
+      621,
+      3442
+     ],
+     "econ": 479.0,
+     "own": 479.0,
+     "world": 479.0,
+     "walk": 481,
+     "walk8": 479.4,
+     "edgeWN": 621,
+     "estuary": 7.0,
+     "nearest": "띠 S kr_w",
+     "nearestCell": [
+      621,
+      3921
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "농촌3",
+     "cell": [
+      2011,
+      3574
+     ],
+     "econ": 357.8,
+     "own": 357.8,
+     "world": 357.8,
+     "walk": 384,
+     "walk8": 369.4,
+     "edgeWN": 2011,
+     "estuary": 16.6,
+     "nearest": "띠 S kr_e",
+     "nearestCell": [
+      2175,
+      3892
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "어촌4",
+     "cell": [
+      683,
+      731
+     ],
+     "econ": 3183.7,
+     "own": 3183.6,
+     "world": 3183.6,
+     "walk": 3965,
+     "walk8": 3560.9,
+     "edgeWN": 683,
+     "estuary": 563.1,
+     "nearest": "띠 S kr_w",
+     "nearestCell": [
+      511,
+      3910
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "농촌4",
+     "cell": [
+      78,
+      518
+     ],
+     "econ": 3347.2,
+     "own": 3347.2,
+     "world": 3347.2,
+     "walk": 4015,
+     "walk8": 3693.8,
+     "edgeWN": 78,
+     "estuary": 1197.5,
+     "nearest": "띠 S kr_w",
+     "nearestCell": [
+      43,
+      3865
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "농촌5",
+     "cell": [
+      1380,
+      2091
+     ],
+     "econ": 1836.1,
+     "own": 1836.0,
+     "world": 1836.0,
+     "walk": 2625,
+     "walk8": 2276.0,
+     "edgeWN": 1380,
+     "estuary": 224.0,
+     "nearest": "띠 S kr_s",
+     "nearestCell": [
+      1170,
+      3915
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "어촌5",
+     "cell": [
+      196,
+      2119
+     ],
+     "econ": 1752.7,
+     "own": 1752.7,
+     "world": 1752.7,
+     "walk": 2092,
+     "walk8": 1952.4,
+     "edgeWN": 196,
+     "estuary": 5.0,
+     "nearest": "띠 S kr_w",
+     "nearestCell": [
+      43,
+      3865
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "어촌6",
+     "cell": [
+      2034,
+      3952
+     ],
+     "econ": 0.0,
+     "own": 0.0,
+     "world": 0.0,
+     "walk": 0,
+     "walk8": 0.0,
+     "edgeWN": 2034,
+     "estuary": 0.0,
+     "nearest": "띠 S kr_e",
+     "nearestCell": [
+      2034,
+      3952
+     ],
+     "onBand": true,
+     "kind": 2
+    },
+    {
+     "name": "어촌7",
+     "cell": [
+      1509,
+      173
+     ],
+     "econ": 3757.3,
+     "own": 3757.3,
+     "world": 3757.3,
+     "walk": 5347,
+     "walk8": 4469.9,
+     "edgeWN": 173,
+     "estuary": 831.6,
+     "nearest": "띠 S kr_s",
+     "nearestCell": [
+      1170,
+      3915
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "어촌8",
+     "cell": [
+      54,
+      1790
+     ],
+     "econ": 2075.0,
+     "own": 2075.0,
+     "world": 2075.0,
+     "walk": 2563,
+     "walk8": 2340.2,
+     "edgeWN": 54,
+     "estuary": 2.0,
+     "nearest": "띠 S kr_w",
+     "nearestCell": [
+      43,
+      3865
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "어촌9",
+     "cell": [
+      803,
+      548
+     ],
+     "econ": 3374.7,
+     "own": 3374.7,
+     "world": 3374.7,
+     "walk": 4268,
+     "walk8": 3779.2,
+     "edgeWN": 548,
+     "estuary": 565.0,
+     "nearest": "띠 S kr_w",
+     "nearestCell": [
+      511,
+      3910
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "어촌10",
+     "cell": [
+      848,
+      895
+     ],
+     "econ": 3033.8,
+     "own": 3033.8,
+     "world": 3033.8,
+     "walk": 3964,
+     "walk8": 3470.0,
+     "edgeWN": 848,
+     "estuary": 358.8,
+     "nearest": "띠 S kr_w",
+     "nearestCell": [
+      511,
+      3910
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "어촌11",
+     "cell": [
+      1722,
+      2734
+     ],
+     "econ": 1193.7,
+     "own": 1193.7,
+     "world": 1193.7,
+     "walk": 1532,
+     "walk8": 1372.8,
+     "edgeWN": 1722,
+     "estuary": 3.0,
+     "nearest": "띠 S kr_e",
+     "nearestCell": [
+      1762,
+      3927
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "어촌12",
+     "cell": [
+      738,
+      3274
+     ],
+     "econ": 657.5,
+     "own": 657.5,
+     "world": 657.5,
+     "walk": 669,
+     "walk8": 667.8,
+     "edgeWN": 738,
+     "estuary": 5.0,
+     "nearest": "띠 S kr_w",
+     "nearestCell": [
+      621,
+      3921
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "어촌13",
+     "cell": [
+      399,
+      3318
+     ],
+     "econ": 601.4,
+     "own": 601.4,
+     "world": 601.4,
+     "walk": 646,
+     "walk8": 639.1,
+     "edgeWN": 399,
+     "estuary": 5.0,
+     "nearest": "띠 S kr_w",
+     "nearestCell": [
+      505,
+      3910
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "어촌14",
+     "cell": [
+      1797,
+      648
+     ],
+     "econ": 3264.4,
+     "own": 3264.4,
+     "world": 3264.4,
+     "walk": 5160,
+     "walk8": 4340.9,
+     "edgeWN": 648,
+     "estuary": 424.9,
+     "nearest": "이웃 띠 nippon",
+     "nearestCell": [
+      2283,
+      3876
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "어촌15",
+     "cell": [
+      326,
+      775
+     ],
+     "econ": 3102.9,
+     "own": 3102.9,
+     "world": 3102.9,
+     "walk": 3564,
+     "walk8": 3349.4,
+     "edgeWN": 326,
+     "estuary": 847.6,
+     "nearest": "띠 S kr_w",
+     "nearestCell": [
+      43,
+      3865
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "농촌6",
+     "cell": [
+      169,
+      218
+     ],
+     "econ": 3649.2,
+     "own": 3649.2,
+     "world": 3649.2,
+     "walk": 4290,
+     "walk8": 3976.4,
+     "edgeWN": 169,
+     "estuary": 1265.1,
+     "nearest": "띠 S kr_w",
+     "nearestCell": [
+      43,
+      3865
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "어촌16",
+     "cell": [
+      161,
+      575
+     ],
+     "econ": 3292.1,
+     "own": 3292.1,
+     "world": 3292.1,
+     "walk": 3925,
+     "walk8": 3616.1,
+     "edgeWN": 161,
+     "estuary": 1096.8,
+     "nearest": "띠 S kr_w",
+     "nearestCell": [
+      43,
+      3865
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "농촌7",
+     "cell": [
+      159,
+      934
+     ],
+     "econ": 2933.3,
+     "own": 2933.3,
+     "world": 2933.3,
+     "walk": 3496,
+     "walk8": 3228.1,
+     "edgeWN": 159,
+     "estuary": 786.2,
+     "nearest": "띠 S kr_w",
+     "nearestCell": [
+      43,
+      3865
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "농촌8",
+     "cell": [
+      161,
+      1667
+     ],
+     "econ": 2201.2,
+     "own": 2201.2,
+     "world": 2201.2,
+     "walk": 2761,
+     "walk8": 2525.0,
+     "edgeWN": 161,
+     "estuary": 54.0,
+     "nearest": "띠 S kr_w",
+     "nearestCell": [
+      43,
+      3865
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "농촌9",
+     "cell": [
+      159,
+      2390
+     ],
+     "econ": 1479.6,
+     "own": 1479.6,
+     "world": 1479.6,
+     "walk": 1858,
+     "walk8": 1696.7,
+     "edgeWN": 159,
+     "estuary": 239.8,
+     "nearest": "띠 S kr_w",
+     "nearestCell": [
+      43,
+      3865
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "농촌10",
+     "cell": [
+      161,
+      2760
+     ],
+     "econ": 1111.3,
+     "own": 1111.3,
+     "world": 1111.3,
+     "walk": 1486,
+     "walk8": 1325.9,
+     "edgeWN": 161,
+     "estuary": 331.7,
+     "nearest": "띠 S kr_w",
+     "nearestCell": [
+      43,
+      3865
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "농촌11",
+     "cell": [
+      161,
+      3499
+     ],
+     "econ": 384.6,
+     "own": 384.6,
+     "world": 384.6,
+     "walk": 637,
+     "walk8": 529.7,
+     "edgeWN": 161,
+     "estuary": 167.9,
+     "nearest": "띠 S kr_w",
+     "nearestCell": [
+      43,
+      3865
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "농촌12",
+     "cell": [
+      156,
+      3851
+     ],
+     "econ": 63.8,
+     "own": 63.8,
+     "world": 63.8,
+     "walk": 73,
+     "walk8": 66.7,
+     "edgeWN": 156,
+     "estuary": 63.8,
+     "nearest": "띠 S kr_w",
+     "nearestCell": [
+      166,
+      3914
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "농촌13",
+     "cell": [
+      428,
+      210
+     ],
+     "econ": 3675.2,
+     "own": 3675.2,
+     "world": 3675.2,
+     "walk": 4231,
+     "walk8": 3956.6,
+     "edgeWN": 210,
+     "estuary": 1069.5,
+     "nearest": "띠 S kr_w",
+     "nearestCell": [
+      43,
+      3865
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "농촌14",
+     "cell": [
+      423,
+      580
+     ],
+     "econ": 3306.9,
+     "own": 3306.9,
+     "world": 3306.9,
+     "walk": 3856,
+     "walk8": 3584.6,
+     "edgeWN": 423,
+     "estuary": 862.0,
+     "nearest": "띠 S kr_w",
+     "nearestCell": [
+      43,
+      3865
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "농촌15",
+     "cell": [
+      428,
+      939
+     ],
+     "econ": 2951.2,
+     "own": 2951.2,
+     "world": 2951.2,
+     "walk": 3502,
+     "walk8": 3227.6,
+     "edgeWN": 428,
+     "estuary": 679.1,
+     "nearest": "띠 S kr_w",
+     "nearestCell": [
+      43,
+      3865
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "농촌16",
+     "cell": [
+      428,
+      1667
+     ],
+     "econ": 2231.5,
+     "own": 2231.5,
+     "world": 2231.5,
+     "walk": 2774,
+     "walk8": 2547.1,
+     "edgeWN": 428,
+     "estuary": 76.0,
+     "nearest": "띠 S kr_w",
+     "nearestCell": [
+      43,
+      3865
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "농촌17",
+     "cell": [
+      428,
+      2032
+     ],
+     "econ": 1873.0,
+     "own": 1873.0,
+     "world": 1873.0,
+     "walk": 2369,
+     "walk8": 2128.0,
+     "edgeWN": 428,
+     "estuary": 17.0,
+     "nearest": "띠 S kr_w",
+     "nearestCell": [
+      43,
+      3865
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "농촌18",
+     "cell": [
+      428,
+      2760
+     ],
+     "econ": 1152.6,
+     "own": 1152.6,
+     "world": 1152.6,
+     "walk": 1641,
+     "walk8": 1390.1,
+     "edgeWN": 428,
+     "estuary": 115.7,
+     "nearest": "띠 S kr_w",
+     "nearestCell": [
+      505,
+      3910
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "농촌19",
+     "cell": [
+      428,
+      3124
+     ],
+     "econ": 789.8,
+     "own": 789.8,
+     "world": 789.8,
+     "walk": 820,
+     "walk8": 817.1,
+     "edgeWN": 428,
+     "estuary": 46.0,
+     "nearest": "띠 S kr_w",
+     "nearestCell": [
+      505,
+      3910
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "농촌20",
+     "cell": [
+      428,
+      3489
+     ],
+     "econ": 428.0,
+     "own": 428.0,
+     "world": 428.0,
+     "walk": 452,
+     "walk8": 451.8,
+     "edgeWN": 428,
+     "estuary": 108.5,
+     "nearest": "띠 S kr_w",
+     "nearestCell": [
+      505,
+      3910
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "농촌21",
+     "cell": [
+      424,
+      3844
+     ],
+     "econ": 95.0,
+     "own": 95.0,
+     "world": 95.0,
+     "walk": 96,
+     "walk8": 95.4,
+     "edgeWN": 424,
+     "estuary": 95.0,
+     "nearest": "띠 S kr_w",
+     "nearestCell": [
+      422,
+      3939
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "농촌22",
+     "cell": [
+      964,
+      1864
+     ],
+     "econ": 2061.0,
+     "own": 2061.0,
+     "world": 2061.0,
+     "walk": 2952,
+     "walk8": 2574.5,
+     "edgeWN": 964,
+     "estuary": 11.0,
+     "nearest": "띠 S kr_s",
+     "nearestCell": [
+      1167,
+      3915
+     ],
+     "onBand": false,
+     "kind": 1
+    }
+   ]
+  },
+  "nippon": {
+   "zone": "nippon",
+   "n": 50,
+   "summary": {
+    "econ": {
+     "140": 11,
+     "30": 4
+    },
+    "own": {
+     "140": 11,
+     "30": 4
+    },
+    "world": {
+     "140": 11,
+     "30": 4
+    },
+    "walk": {
+     "140": 9,
+     "30": 4
+    },
+    "walk8": {
+     "140": 10,
+     "30": 4
+    },
+    "estuary": {
+     "140": 22,
+     "30": 9
+    },
+    "edgeWN": {
+     "140": 9,
+     "30": 3
+    }
+   },
+   "rows": [
+    {
+     "name": "이즈사키",
+     "cell": [
+      1374,
+      299
+     ],
+     "econ": 662.2,
+     "own": 662.2,
+     "world": 662.2,
+     "walk": 1135,
+     "walk8": 1042.3,
+     "edgeWN": 299,
+     "estuary": 350.1,
+     "nearest": "띠 E jp_e",
+     "nearestCell": [
+      2009,
+      111
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "지옹로",
+     "cell": [
+      408,
+      652
+     ],
+     "econ": 1675.2,
+     "own": 1675.2,
+     "world": 1675.2,
+     "walk": 3232,
+     "walk8": 2921.9,
+     "edgeWN": 408,
+     "estuary": 337.1,
+     "nearest": "띠 E jp_e",
+     "nearestCell": [
+      2050,
+      320
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "네코로",
+     "cell": [
+      266,
+      2390
+     ],
+     "econ": 1495.7,
+     "own": 1495.7,
+     "world": 1495.7,
+     "walk": 1758,
+     "walk8": 1604.5,
+     "edgeWN": 266,
+     "estuary": 531.3,
+     "nearest": "띠 S jp_w",
+     "nearestCell": [
+      96,
+      3876
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "후지로",
+     "cell": [
+      726,
+      2302
+     ],
+     "econ": 1376.0,
+     "own": 1376.0,
+     "world": 1376.0,
+     "walk": 1895,
+     "walk8": 1658.9,
+     "edgeWN": 726,
+     "estuary": 175.2,
+     "nearest": "띠 E jp_e",
+     "nearestCell": [
+      2102,
+      2294
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "카토쿠",
+     "cell": [
+      790,
+      805
+     ],
+     "econ": 1295.2,
+     "own": 1295.2,
+     "world": 1295.2,
+     "walk": 1762,
+     "walk8": 1515.1,
+     "edgeWN": 790,
+     "estuary": 4.5,
+     "nearest": "띠 E jp_e",
+     "nearestCell": [
+      2085,
+      828
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "지옹다",
+     "cell": [
+      813,
+      3265
+     ],
+     "econ": 708.5,
+     "own": 708.5,
+     "world": 708.5,
+     "walk": 788,
+     "walk8": 754.9,
+     "edgeWN": 813,
+     "estuary": 289.9,
+     "nearest": "띠 S jp_w",
+     "nearestCell": [
+      893,
+      3969
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "노라마",
+     "cell": [
+      244,
+      1442
+     ],
+     "econ": 1841.0,
+     "own": 1841.0,
+     "world": 1841.0,
+     "walk": 2684,
+     "walk8": 2543.4,
+     "edgeWN": 244,
+     "estuary": 262.2,
+     "nearest": "띠 E jp_e",
+     "nearestCell": [
+      2058,
+      1756
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "후지다",
+     "cell": [
+      1262,
+      661
+     ],
+     "econ": 823.0,
+     "own": 823.0,
+     "world": 823.0,
+     "walk": 982,
+     "walk8": 890.6,
+     "edgeWN": 661,
+     "estuary": 306.4,
+     "nearest": "띠 E jp_e",
+     "nearestCell": [
+      2085,
+      661
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "이즈이",
+     "cell": [
+      1158,
+      536
+     ],
+     "econ": 917.8,
+     "own": 917.8,
+     "world": 917.8,
+     "walk": 1211,
+     "walk8": 1078.0,
+     "edgeWN": 536,
+     "estuary": 348.2,
+     "nearest": "띠 E jp_e",
+     "nearestCell": [
+      2050,
+      320
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "쿠라마",
+     "cell": [
+      75,
+      691
+     ],
+     "econ": 2009.5,
+     "own": 2009.5,
+     "world": 2009.5,
+     "walk": 2808,
+     "walk8": 2574.7,
+     "edgeWN": 75,
+     "estuary": 620.9,
+     "nearest": "띠 E jp_e",
+     "nearestCell": [
+      2050,
+      320
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "지옹사키",
+     "cell": [
+      648,
+      2039
+     ],
+     "econ": 1431.8,
+     "own": 1431.8,
+     "world": 1431.8,
+     "walk": 1869,
+     "walk8": 1654.8,
+     "edgeWN": 648,
+     "estuary": 236.6,
+     "nearest": "띠 E jp_e",
+     "nearestCell": [
+      2072,
+      1890
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "마트노",
+     "cell": [
+      499,
+      43
+     ],
+     "econ": 1511.4,
+     "own": 1511.4,
+     "world": 1511.4,
+     "walk": 1566,
+     "walk8": 1534.5,
+     "edgeWN": 43,
+     "estuary": 799.7,
+     "nearest": "띠 E jp_e",
+     "nearestCell": [
+      2009,
+      108
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "쿠라다",
+     "cell": [
+      657,
+      3425
+     ],
+     "econ": 560.8,
+     "own": 560.7,
+     "world": 560.7,
+     "walk": 665,
+     "walk8": 606.9,
+     "edgeWN": 657,
+     "estuary": 293.4,
+     "nearest": "띠 S jp_w",
+     "nearestCell": [
+      521,
+      3969
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "히마쿠",
+     "cell": [
+      1398,
+      1740
+     ],
+     "econ": 660.2,
+     "own": 660.2,
+     "world": 660.2,
+     "walk": 910,
+     "walk8": 781.3,
+     "edgeWN": 1398,
+     "estuary": 162.0,
+     "nearest": "띠 E jp_e",
+     "nearestCell": [
+      2058,
+      1756
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "타카쿠",
+     "cell": [
+      314,
+      1014
+     ],
+     "econ": 1780.5,
+     "own": 1780.5,
+     "world": 1780.5,
+     "walk": 2455,
+     "walk8": 2081.0,
+     "edgeWN": 314,
+     "estuary": 375.2,
+     "nearest": "띠 E jp_e",
+     "nearestCell": [
+      2085,
+      830
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "타카노",
+     "cell": [
+      1178,
+      3181
+     ],
+     "econ": 765.1,
+     "own": 765.1,
+     "world": 765.1,
+     "walk": 935,
+     "walk8": 917.0,
+     "edgeWN": 1178,
+     "estuary": 130.1,
+     "nearest": "띠 S jp_s",
+     "nearestCell": [
+      1348,
+      3927
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "아카어촌",
+     "cell": [
+      1202,
+      3930
+     ],
+     "econ": 44.0,
+     "own": 44.0,
+     "world": 44.0,
+     "walk": 45,
+     "walk8": 44.0,
+     "edgeWN": 1202,
+     "estuary": 44.0,
+     "nearest": "띠 S jp_s",
+     "nearestCell": [
+      1201,
+      3974
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "시로농촌",
+     "cell": [
+      20,
+      3076
+     ],
+     "econ": 803.5,
+     "own": 803.5,
+     "world": 803.5,
+     "walk": 815,
+     "walk8": 815.0,
+     "edgeWN": 20,
+     "estuary": 591.8,
+     "nearest": "띠 S jp_w",
+     "nearestCell": [
+      95,
+      3876
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "쿠로어촌",
+     "cell": [
+      1379,
+      2539
+     ],
+     "econ": 720.2,
+     "own": 720.2,
+     "world": 720.2,
+     "walk": 783,
+     "walk8": 766.8,
+     "edgeWN": 1379,
+     "estuary": 3.6,
+     "nearest": "띠 E jp_e",
+     "nearestCell": [
+      2096,
+      2607
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "아오어촌",
+     "cell": [
+      69,
+      3744
+     ],
+     "econ": 134.5,
+     "own": 134.5,
+     "world": 134.5,
+     "walk": 145,
+     "walk8": 142.4,
+     "edgeWN": 69,
+     "estuary": 72.1,
+     "nearest": "띠 S jp_w",
+     "nearestCell": [
+      95,
+      3876
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "미도리광산",
+     "cell": [
+      866,
+      1448
+     ],
+     "econ": 1231.2,
+     "own": 1231.1,
+     "world": 1231.1,
+     "walk": 1947,
+     "walk8": 1628.3,
+     "edgeWN": 866,
+     "estuary": 86.0,
+     "nearest": "띠 E jp_e",
+     "nearestCell": [
+      2058,
+      1756
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "하야어촌",
+     "cell": [
+      1342,
+      1194
+     ],
+     "econ": 748.0,
+     "own": 748.0,
+     "world": 748.0,
+     "walk": 1369,
+     "walk8": 1078.4,
+     "edgeWN": 1194,
+     "estuary": 17.0,
+     "nearest": "띠 E jp_e",
+     "nearestCell": [
+      2089,
+      1232
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "토오광산",
+     "cell": [
+      580,
+      2802
+     ],
+     "econ": 1157.8,
+     "own": 1157.8,
+     "world": 1157.8,
+     "walk": 1451,
+     "walk8": 1273.1,
+     "edgeWN": 580,
+     "estuary": 397.3,
+     "nearest": "띠 S jp_w",
+     "nearestCell": [
+      244,
+      3910
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "사키농촌",
+     "cell": [
+      87,
+      1920
+     ],
+     "econ": 1956.0,
+     "own": 1956.0,
+     "world": 1956.0,
+     "walk": 2049,
+     "walk8": 2000.3,
+     "edgeWN": 87,
+     "estuary": 537.2,
+     "nearest": "띠 S jp_w",
+     "nearestCell": [
+      95,
+      3876
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "후카임업",
+     "cell": [
+      20,
+      175
+     ],
+     "econ": 1990.0,
+     "own": 1990.0,
+     "world": 1990.0,
+     "walk": 2259,
+     "walk8": 2101.3,
+     "edgeWN": 20,
+     "estuary": 946.2,
+     "nearest": "띠 E jp_e",
+     "nearestCell": [
+      2009,
+      111
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "아라광산",
+     "cell": [
+      835,
+      56
+     ],
+     "econ": 1175.2,
+     "own": 1175.2,
+     "world": 1175.2,
+     "walk": 1217,
+     "walk8": 1193.2,
+     "edgeWN": 56,
+     "estuary": 749.2,
+     "nearest": "띠 E jp_e",
+     "nearestCell": [
+      2009,
+      108
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "키요어촌",
+     "cell": [
+      742,
+      3881
+     ],
+     "econ": 112.1,
+     "own": 112.1,
+     "world": 112.1,
+     "walk": 116,
+     "walk8": 113.2,
+     "edgeWN": 742,
+     "estuary": 26.4,
+     "nearest": "띠 S jp_w",
+     "nearestCell": [
+      746,
+      3993
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "나가임업",
+     "cell": [
+      1157,
+      2134
+     ],
+     "econ": 940.7,
+     "own": 940.7,
+     "world": 940.7,
+     "walk": 1429,
+     "walk8": 1330.2,
+     "edgeWN": 1157,
+     "estuary": 72.7,
+     "nearest": "띠 E jp_e",
+     "nearestCell": [
+      2097,
+      2170
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "히로농촌",
+     "cell": [
+      1015,
+      2778
+     ],
+     "econ": 1087.5,
+     "own": 1087.5,
+     "world": 1087.5,
+     "walk": 1475,
+     "walk8": 1324.8,
+     "edgeWN": 1015,
+     "estuary": 270.2,
+     "nearest": "띠 E jp_e",
+     "nearestCell": [
+      2098,
+      2877
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "오오임업",
+     "cell": [
+      715,
+      388
+     ],
+     "econ": 1323.3,
+     "own": 1323.3,
+     "world": 1323.3,
+     "walk": 1599,
+     "walk8": 1500.4,
+     "edgeWN": 388,
+     "estuary": 415.6,
+     "nearest": "띠 E jp_e",
+     "nearestCell": [
+      2009,
+      111
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "새후보1",
+     "cell": [
+      2111,
+      3710
+     ],
+     "econ": 10.8,
+     "own": 10.8,
+     "world": 10.8,
+     "walk": 11,
+     "walk8": 11.0,
+     "edgeWN": 2111,
+     "estuary": 10.8,
+     "nearest": "띠 E jp_e",
+     "nearestCell": [
+      2115,
+      3700
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "새후보2",
+     "cell": [
+      2098,
+      2894
+     ],
+     "econ": 10.0,
+     "own": 10.0,
+     "world": 10.0,
+     "walk": 13,
+     "walk8": 10.1,
+     "edgeWN": 2098,
+     "estuary": 10.0,
+     "nearest": "띠 E jp_e",
+     "nearestCell": [
+      2106,
+      2900
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "새후보3",
+     "cell": [
+      2035,
+      702
+     ],
+     "econ": 64.0,
+     "own": 64.0,
+     "world": 64.0,
+     "walk": 90,
+     "walk8": 66.2,
+     "edgeWN": 702,
+     "estuary": 64.0,
+     "nearest": "띠 E jp_e",
+     "nearestCell": [
+      2085,
+      662
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "새후보4",
+     "cell": [
+      1988,
+      2211
+     ],
+     "econ": 114.0,
+     "own": 114.0,
+     "world": 114.0,
+     "walk": 133,
+     "walk8": 121.4,
+     "edgeWN": 1988,
+     "estuary": 75.8,
+     "nearest": "띠 E jp_e",
+     "nearestCell": [
+      2099,
+      2185
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "새후보5",
+     "cell": [
+      2009,
+      57
+     ],
+     "econ": 19.2,
+     "own": 19.2,
+     "world": 19.2,
+     "walk": 24,
+     "walk8": 19.6,
+     "edgeWN": 57,
+     "estuary": 19.2,
+     "nearest": "띠 E jp_e",
+     "nearestCell": [
+      2024,
+      69
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "새후보6",
+     "cell": [
+      2014,
+      1574
+     ],
+     "econ": 110.8,
+     "own": 110.9,
+     "world": 110.9,
+     "walk": 132,
+     "walk8": 117.9,
+     "edgeWN": 1574,
+     "estuary": 110.9,
+     "nearest": "띠 E jp_e",
+     "nearestCell": [
+      2122,
+      1549
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "새후보7",
+     "cell": [
+      1607,
+      3543
+     ],
+     "econ": 426.4,
+     "own": 426.4,
+     "world": 426.4,
+     "walk": 554,
+     "walk8": 519.6,
+     "edgeWN": 1607,
+     "estuary": 39.4,
+     "nearest": "띠 S jp_s",
+     "nearestCell": [
+      1696,
+      3960
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "새후보8",
+     "cell": [
+      1626,
+      2979
+     ],
+     "econ": 454.7,
+     "own": 454.7,
+     "world": 454.7,
+     "walk": 689,
+     "walk8": 585.5,
+     "edgeWN": 1626,
+     "estuary": 299.2,
+     "nearest": "띠 E jp_e",
+     "nearestCell": [
+      2062,
+      3108
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "새후보9",
+     "cell": [
+      1812,
+      1136
+     ],
+     "econ": 285.0,
+     "own": 285.0,
+     "world": 285.0,
+     "walk": 287,
+     "walk8": 285.8,
+     "edgeWN": 1136,
+     "estuary": 285.0,
+     "nearest": "띠 E jp_e",
+     "nearestCell": [
+      2097,
+      1139
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "새후보10",
+     "cell": [
+      1558,
+      2178
+     ],
+     "econ": 539.0,
+     "own": 539.0,
+     "world": 539.0,
+     "walk": 715,
+     "walk8": 613.2,
+     "edgeWN": 1558,
+     "estuary": 66.2,
+     "nearest": "띠 E jp_e",
+     "nearestCell": [
+      2097,
+      2173
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "새후보11",
+     "cell": [
+      1781,
+      2554
+     ],
+     "econ": 319.4,
+     "own": 319.4,
+     "world": 319.4,
+     "walk": 344,
+     "walk8": 336.3,
+     "edgeWN": 1781,
+     "estuary": 81.0,
+     "nearest": "띠 E jp_e",
+     "nearestCell": [
+      2096,
+      2607
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "새후보12",
+     "cell": [
+      1654,
+      584
+     ],
+     "econ": 437.8,
+     "own": 437.8,
+     "world": 437.8,
+     "walk": 667,
+     "walk8": 547.5,
+     "edgeWN": 584,
+     "estuary": 32.6,
+     "nearest": "띠 E jp_e",
+     "nearestCell": [
+      2085,
+      661
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "새후보13",
+     "cell": [
+      1859,
+      3262
+     ],
+     "econ": 231.6,
+     "own": 231.6,
+     "world": 231.6,
+     "walk": 279,
+     "walk8": 248.0,
+     "edgeWN": 1859,
+     "estuary": 231.6,
+     "nearest": "띠 E jp_e",
+     "nearestCell": [
+      2083,
+      3203
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "새후보14",
+     "cell": [
+      1654,
+      1468
+     ],
+     "econ": 455.1,
+     "own": 455.1,
+     "world": 455.1,
+     "walk": 532,
+     "walk8": 491.9,
+     "edgeWN": 1468,
+     "estuary": 363.3,
+     "nearest": "띠 E jp_e",
+     "nearestCell": [
+      2109,
+      1477
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "새후보15",
+     "cell": [
+      1647,
+      30
+     ],
+     "econ": 366.3,
+     "own": 366.3,
+     "world": 366.3,
+     "walk": 380,
+     "walk8": 371.4,
+     "edgeWN": 30,
+     "estuary": 301.2,
+     "nearest": "띠 E jp_e",
+     "nearestCell": [
+      2013,
+      16
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "새후보16",
+     "cell": [
+      1251,
+      3575
+     ],
+     "econ": 365.1,
+     "own": 365.1,
+     "world": 365.1,
+     "walk": 410,
+     "walk8": 391.8,
+     "edgeWN": 1251,
+     "estuary": 20.6,
+     "nearest": "띠 S jp_s",
+     "nearestCell": [
+      1348,
+      3927
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "새후보17",
+     "cell": [
+      1811,
+      3834
+     ],
+     "econ": 125.0,
+     "own": 125.0,
+     "world": 125.0,
+     "walk": 160,
+     "walk8": 134.9,
+     "edgeWN": 1811,
+     "estuary": 77.4,
+     "nearest": "띠 S jp_s",
+     "nearestCell": [
+      1762,
+      3949
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "새후보18",
+     "cell": [
+      1729,
+      1868
+     ],
+     "econ": 343.4,
+     "own": 343.4,
+     "world": 343.4,
+     "walk": 348,
+     "walk8": 345.8,
+     "edgeWN": 1729,
+     "estuary": 343.4,
+     "nearest": "띠 E jp_e",
+     "nearestCell": [
+      2072,
+      1885
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "새후보19",
+     "cell": [
+      2112,
+      2527
+     ],
+     "econ": 10.6,
+     "own": 10.6,
+     "world": 10.6,
+     "walk": 14,
+     "walk8": 10.5,
+     "edgeWN": 2112,
+     "estuary": 10.6,
+     "nearest": "띠 E jp_e",
+     "nearestCell": [
+      2119,
+      2535
+     ],
+     "onBand": false,
+     "kind": 1
+    },
+    {
+     "name": "새후보21",
+     "cell": [
+      261,
+      3394
+     ],
+     "econ": 509.5,
+     "own": 509.5,
+     "world": 509.5,
+     "walk": 639,
+     "walk8": 549.0,
+     "edgeWN": 261,
+     "estuary": 295.2,
+     "nearest": "띠 S jp_w",
+     "nearestCell": [
+      96,
+      3876
+     ],
+     "onBand": false,
+     "kind": 1
+    }
+   ]
+  }
+ }
+}
