@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // === scripts/t640-perf.js — 새 세계 첫 부팅: `zone server up` 까지 · 표본이 끝나는 때 · 그동안 틱·루프 p95 [T640 ② · 2026-10-04] ===
 //
-// ★central + 존 하나를 새 DB 로 띄운다(존 env 는 기본값 = 라이브 문법 · 하루 24분 정본 시계). 부모 env 가 그대로 간다(`T640_BOOT_SLICE=1` 이면 켬 팔).
+// ★central + 존 하나를 새 DB 로 띄운다(존 env 는 기본값 = 라이브 문법 · 하루 24분 정본 시계). 부모 env 가 그대로 간다(★[T655] 켬이 기본 · `T640_BOOT_SLICE=0` 이면 끔 팔).
 //   잰다: 존을 띄운 순간 → `zone server up` 줄(초) · `도적 시뮬 준비` 줄(초 · 끔이면 up 앞) · 그 뒤 `--secs` 동안 10초마다 `/perf?reset=1`
 //   (틱 본문 p95·max · 이벤트 루프 지연 p95·p99) — 표본이 도는 창과 끝난 뒤 창을 가른다.
 // ★재기만 한다 — 제품 코드 0 · 러너 밖.
@@ -51,7 +51,7 @@ function boot(file, env) {
   clearInterval(watch);
   const agg = (sel) => { const r = rows.filter(sel); if (!r.length) return null; const m = (k) => +(r.reduce((a, x) => a + (x[k] || 0), 0) / r.length).toFixed(2);
     return { windows: r.length, tickP95: m('tickP95'), tickMax: Math.max(...r.map((x) => x.tickMax || 0)), loopP95: m('loopP95'), loopP99: m('loopP99') }; };
-  const out = { zone: ZID, arm: process.env.T640_BOOT_SLICE === '1' ? 'on' : 'off', upS, readyS: marks.ready, sliceEnd: marks.sliceEnd || null,
+  const out = { zone: ZID, arm: process.env.T640_BOOT_SLICE === '0' ? 'off' : 'on', upS, readyS: marks.ready, sliceEnd: marks.sliceEnd || null,
     during: agg((x) => x.sampling), after: agg((x) => !x.sampling), rows };
   fs.writeFileSync(OUT, JSON.stringify(out, null, 1));
   console.log(JSON.stringify(Object.assign({}, out, { rows: undefined })));
