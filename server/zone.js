@@ -83,7 +83,7 @@ const { Quadtree, QuadtreeInc } = require('./quadtree'); // spatial index — O(
 const { ChunkManager, CHUNK_SIZE, generateChunkResources, resourcesAtCell, cellChunksOf, overflowInto, seedGenChunkOf, regrowStageOf, REGROW, generateVillagesForZone, generateCoastlineWaterTiles, RESOURCE_HP_TABLE, GROVE_KINDS, forestSpacing: chunkForestSpacing, FOREST_MIN_COV: chunkForestMinCov } = require('./chunk');   // ★[T325] `resourcesAtCell` — 관측자 무관 색인(T301) 그대로. 나무꾼이 청크 없이 나무를 묻는다 // ★[T124] 재생 정산은 T122 정본을 그대로 받는다(사본 0) // 청크 단위 entity 분류 + procedural + 해안선 + ★[T108] 자연물 hp 정본
 const { findPath: pfFindPath } = require('./pathfind'); // Phase 14.49-b: NPC A* pathfinding
 const PathCore = require('../sim/path-core.js'); // ★[생활 층 100% ①] 랩·서버 공용 경로 정본 — smoothPath(스트링 풀링)를 주민 이동에 직결
-const { ANIMALS, dropsOf } = require('./animals');  // Phase 5-6: 동물 mob 36종 catalog · ★[T636] dropsOf = 사체 드롭 정본(끔이면 카탈로그 그대로)
+const { ANIMALS, dropsOf, dropKgOn } = require('./animals');  // Phase 5-6: 동물 mob 36종 catalog · ★[T636] dropsOf = 사체 드롭 정본(끔이면 카탈로그 그대로) · ★[T647] dropKgOn = 사체 고기 먹기 문
 const GuildTreasury = require('./guild-treasury'); // 길드 곳간(물리) ↔ central 금고(회계) 정합 — 장부 계약은 그 파일 상단 참조
 const PlayerItems = require('./player-items'); // 플레이어 아이템 인스턴스(품질·속성·내구) — econ 무접촉·본체 서버층(설계: 플레이어_아이템_속성_설계.md)
 // ★[부패·보존 배치 2026-08-31] 부패 곡선·보존 가공의 정본. 여기(아래 FOOD_EFFECTS 보다 위)에서
@@ -2052,9 +2052,10 @@ const CORPSE_DECAY_MS = 5 * 60 * 1000;  // 5분 후 부패
 function spawnCorpse(mob, killerPid) {
   const cid = `c${nextCorpseId++}`;
   const def = ANIMALS[mob.type];
-  // ★[T636 · 손잡이 `T636_DROP_KG` 기본 끔] 드롭 정본은 `animals.js dropsOf` — 끔이면 카탈로그 `drops` 그 객체(옛 줄 그대로) ·
+  // ★[T636 · 손잡이 `T636_DROP_KG` — ★[T647] 없음 = 켬 · `=0` = 종전] 드롭 정본은 `animals.js dropsOf` — `=0` 이면 카탈로그 `drops` 그 객체(옛 줄 그대로) ·
   //   켬이면 고기 칸만 kg(T607 몸무게 × T629 수율 — 사슴·곰·꿩) · 가죽·뼈·뿔은 지금 값.
-  const drops = (def && def.drops) ? dropsOf(mob.type) : { meat_game: 1, leather: 1 };  // fallback (옛 mob)
+  //   ★[T647] 존 id 를 같이 넘긴다 — 사슴은 그 존의 아종 칸(한반도 만주아종 33 · 닛폰 일본아종 21 · 그 밖 존은 두 칸 가운데 27).
+  const drops = (def && def.drops) ? dropsOf(mob.type, ZONE_ID) : { meat_game: 1, leather: 1 };  // fallback (옛 mob)
   const corpse = {
     cid, mobType: mob.type,
     x: mob.x, y: mob.y,
@@ -2458,6 +2459,11 @@ const FOOD_EFFECTS = {
   food_cooked:  { thirst: 2 },
   fish_cooked:  { thirst: 0 },   // ★구운 생선이 표에 없었다(먹을 수 없는 조리식이었다)
 };
+// ★★[T647 · 손잡이 `T636_DROP_KG` — 없음 = 켬 · `=0` = 종전] **사체 고기를 손에서 먹는다.** 도살 드롭 `meat_game`(사슴·들짐승고기)은
+//   여태 이 표에 없어 "먹을 수 없는 아이템"이었다(T636 회부 ③). 효과는 **날고기 줄 그대로**(날 살 · 갈증 0 · HP −3 — 새 수 0) ·
+//   포만은 아래 열량 유도 한 줄이 `kcal.js` 의 meat_game 줄(USDA 사슴 날것 1,200kcal/kg)에서 채운다.
+//   곳간·거래 값은 안 바뀐다 — meat_game 은 곳간 넣기 표(`villages.PV_DEPOSIT_MAP`)에 줄이 없다(넣기·거래·게시판이 이 품목을 안 다룬다).
+if (dropKgOn()) FOOD_EFFECTS.meat_game = Object.assign({}, FOOD_EFFECTS.meat_raw);
 // ★★[부패·보존 배치 2026-08-31] **보존식 4종** — 목록은 `spoil.PRESERVED_ITEMS` 가 정본이고
 //   여기서는 **효과만** 붙인다(품목 이름을 두 벌로 적지 않는다).
 //   ★값의 근거: 보존은 **수분을 빼는 일**이다. 같은 무게에 열량이 몰리므로 단위당 회복이 크지만,

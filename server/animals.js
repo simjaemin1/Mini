@@ -362,22 +362,29 @@ function faunaCell(id, zone) {
 function faunaOut(id, zone) { return faunaOn() && faunaCell(id, zone) === '없음'; }
 
 // ═══════════════════════════════════════════════════════════════════════
-// 🥩 [T636 · 2026-10-04] 사냥 드롭을 킬로그램으로 — T607 몸무게(보통) × T629 수율 · 손잡이 `T636_DROP_KG` 기본 끔
+// 🥩 [T636 · 2026-10-04] 사냥 드롭을 킬로그램으로 — T607 몸무게(보통) × T629 수율 · 손잡이 `T636_DROP_KG` ★[T647] **기본 켬**
 // ═══════════════════════════════════════════════════════════════════════
 // ★왜 [재민 10-04 "아이템 무게는 전부 킬로그램"] 품목 한 개의 무게(`specialty.RESOURCES[..].weight` — 사슴·들짐승고기 1.0kg ·
 //   닭고기 0.5kg)는 kg 인데, 위 카탈로그 드롭(`drops`)은 몸무게에서 유도한 근거가 없는 정수였다(T629 §0 — 사슴 고기 3개 = 3kg).
 //   T607 이 몸무게를, T629 가 수율을 냈다 → **고기 칸만** 그 곱으로 바꾼다.
-// ★손잡이 `T636_DROP_KG` — **부를 때 읽는다**. 기본 끔(= main 바이트 — `dropsOf` 가 카탈로그 `drops` 객체를 **같은 참조로** 돌려준다).
-//   켬('1')이면 이 표에 줄이 있는 종의 고기 칸 = 반올림(생체 kg × 수율 ÷ 그 품목 한 개의 kg) — 인벤은 낱개다(남는 몫 장부는 이 카드 밖).
+// ★손잡이 `T636_DROP_KG` — **부를 때 읽는다**. ★[T647 · 2026-10-05 · PM 결정(위임) · 재민 거부권 — 재민 10-04 "아이템 무게는 전부 킬로그램"]
+//   **없음 = 켬** · `=0` = 종전(되돌림 손잡이 하나 = T636 끔 = main 바이트 — `dropsOf` 가 카탈로그 `drops` 객체를 **같은 참조로** 돌려준다 ·
+//   사체 고기 먹기(`kcal.js` meat_game 줄 · zone.js 먹기 표)도 같이 꺼진다).
+//   켬이면 이 표에 줄이 있는 종의 고기 칸 = 반올림(생체 kg × 수율 ÷ 그 품목 한 개의 kg) — 인벤은 낱개다(남는 몫 장부는 이 카드 밖).
 //   가죽·뼈·뿔·모피 = T629 칸이 있으면 그 수 · 없으면 지금 값 → **전부 지금 값**이다
 //   (T629 가죽 칸은 사슴 넓이 0.74~0.84㎡ 하나 — 게임 가죽은 한 개 3kg 이라 넓이를 개수로 옮길 수가 없다 · 뼈·뿔은 수가 없다).
 // ★몸무게 '보통' 읽기(새 수 0 — T607 칸의 수만 · 셈만): 평균이 적혔으면 평균 · 범위만이면 가운데 · 두 칸(수컷/암컷 · 두 아종)이면 둘의 가운데.
+// ★[T647] **존별 아종** — 줄에 `zones`(존 → 아종 칸)가 있으면 그 존은 **그 아종 칸만** 읽는다(사슴: 한반도 = 만주아종 · 닛폰 = 일본아종).
+//   근거 = 분포(T607 이 인용한 위키 Sika deer — 만주아종 "northeastern China, Korea, and Russian Far East" · 일본아종 C. n. nippon
+//   "southern Honshu, Shikoku, and Kyushu") · T607 칸 자체는 "만주아종 = 한반도"라고 적지 않았다(PM 결정 · 재민 거부권).
+//   존을 모르는 부름(하네스 단위 셈)과 표에 없는 존(중원북 · 베링 …)은 **두 아종 가운데**(T636 값)를 읽는다.
 // ★표 줄 = T607 무게 칸 **과** T629 수율 칸이 둘 다 있는 게임 종(셋). 나머지는 지금 값 — 멧돼지(T629 미확인) · 호랑이·표범·늑대·여우
 //   (T629 줄 없음) · 북극토끼(T607 무게 없음 · T629 토끼는 멧토끼) · 메추라기(T607 무게 미확인) · 아이벡스 · 범위 밖 · 가축.
 // ⚠수율은 전부 **다른 아종·종·사육종 참고치**다(T629 그대로) — 줄마다 `ref` 에 적었다.
 const DROP_KG = Object.freeze([
   { id: 'deer', item: 'meat_game',
     live: { manchu: [68, 109], nippon: [40, 70] }, liveSrc: 'T607 사슴 "만주아종 수컷68~109·일본아종 수컷40~70"(암컷 칸 없음 — 수컷 값)',
+    zones: { hanbando: 'manchu', nippon: 'nippon' },   // ★[T647] 한반도 = 만주아종 · 닛폰 = 일본아종(분포 근거 · 위 주석)
     yld: [0.78, 0.48], yldSrc: 'T629 사슴 생체→지육 ≈78% × 지육→뼈 없는 살코기 ≈48%(= 생체의 37.4% · T629 "약 37~38%")',
     ref: '북미 화이트테일 — 다른 아종 참고치' },
   { id: 'bear', item: 'meat_game',
@@ -390,7 +397,8 @@ const DROP_KG = Object.freeze([
     ref: '사육 꿩 — 사육종 참고치' },
 ]);
 const _DKG = new Map(DROP_KG.map((r) => [r.id, r]));
-function dropKgOn() { return typeof process !== 'undefined' && !!process.env && process.env.T636_DROP_KG === '1'; }
+// ★[T647] 없음(·빈 값) = 켬 · '0' 하나만 끔(되돌림) — T574_REGION 과 같은 문법(없음 = 기본값)
+function dropKgOn() { return !(typeof process !== 'undefined' && !!process.env && process.env.T636_DROP_KG === '0'); }
 // 몸무게 칸 하나의 대표값 — 수 그대로 · 범위 [lo, hi] 는 가운데 · 두 칸(객체)은 둘의 가운데
 function _rep(v) {
   if (typeof v === 'number') return v;
@@ -404,24 +412,30 @@ function _unitKg(item) {
   const k = _WT && _WT.kgOf ? _WT.kgOf(item) : 0;
   return k > 0 ? k : 1;
 }
-/** 표 한 줄의 셈 — 생체 kg · 수율 · 고기 kg · 낱개(켬 드롭) · 지금 드롭. 표에 줄이 없으면 null. 손잡이와 무관(보고·하네스용). */
-function dropKgRow(id) {
+// 그 존이 읽는 아종 칸 — 줄에 `zones` 가 있고 그 존이 적혀 있을 때만(아니면 null = 두 칸 가운데)
+function _subOf(r, zone) { return (r && r.zones && zone && Object.prototype.hasOwnProperty.call(r.zones, zone)) ? r.zones[zone] : null; }
+/** 표 한 줄의 셈 — 생체 kg · 수율 · 고기 kg · 낱개(켬 드롭) · 지금 드롭. 표에 줄이 없으면 null. 손잡이와 무관(보고·하네스용).
+ *  ★[T647] `zone` 을 주면 그 존의 아종 칸(`zones`) — 없거나 모르는 존이면 두 칸 가운데(T636 값). */
+function dropKgRow(id, zone) {
   const r = _DKG.get(id), a = ANIMALS[id];
   if (!r || !a) return null;
-  const liveKg = _rep(r.live), yld = r.yld.reduce((p, x) => p * x, 1), meatKg = liveKg * yld, unitKg = _unitKg(r.item);
-  return { id, item: r.item, liveKg, yld, meatKg, unitKg, units: Math.max(1, Math.round(meatKg / unitKg)), now: (a.drops || {})[r.item] || 0,
+  const sub = _subOf(r, zone);
+  const liveKg = sub ? _rep(r.live[sub]) : _rep(r.live), yld = r.yld.reduce((p, x) => p * x, 1), meatKg = liveKg * yld, unitKg = _unitKg(r.item);
+  return { id, item: r.item, zone: zone || null, sub, liveKg, yld, meatKg, unitKg, units: Math.max(1, Math.round(meatKg / unitKg)), now: (a.drops || {})[r.item] || 0,
     liveSrc: r.liveSrc, yldSrc: r.yldSrc, ref: r.ref };
 }
 const _KGD = new Map();
-/** ★사체 드롭의 정본 — zone.js `spawnCorpse` 가 부른다. 끔이면 카탈로그 `drops` 그 객체 · 켬이면 고기 칸만 kg 로 바꾼 사본(얼림). */
-function dropsOf(id) {
+/** ★사체 드롭의 정본 — zone.js `spawnCorpse` 가 부른다(★[T647] 존 id 를 같이 넘긴다). 끔(`=0`)이면 카탈로그 `drops` 그 객체 ·
+ *  켬(기본)이면 고기 칸만 kg 로 바꾼 사본(얼림 · 종 × 아종 칸마다 하나). */
+function dropsOf(id, zone) {
   const a = ANIMALS[id];
   if (!a) return null;
   if (!dropKgOn()) return a.drops;
-  const r = dropKgRow(id);
+  const r = dropKgRow(id, zone);
   if (!r) return a.drops;
-  if (!_KGD.has(id)) _KGD.set(id, Object.freeze(Object.assign({}, a.drops, { [r.item]: r.units })));
-  return _KGD.get(id);
+  const key = id + '|' + (r.sub || '');
+  if (!_KGD.has(key)) _KGD.set(key, Object.freeze(Object.assign({}, a.drops, { [r.item]: r.units })));
+  return _KGD.get(key);
 }
 
 // === helpers ===
