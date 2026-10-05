@@ -24,6 +24,8 @@
 //   --preview — 판 하나 더(**미리보기 · 제품 아님**): 지금 랩 + 돌봄 차례 비율을 서버 정본 활동일 비율로(`crops.grownDays ÷ growDaysOf` —
 //     서버 `villages._cropGrowFrac` 그 셈 · 월동 셋만 · 켬일 때만) 바꾼 사본. 랩 비율은 달력일(`(day−planted)/g`)이라 겨울에도 차올라
 //     휴면 문만 옮기면 봄에 밀린 김매기가 몰린다 — 서버는 활동일이라 "멈춘 자리에서 재개"한다(villages.js T99 주석). 회부 판단 재료.
+//     ★[T648 추가안 — 둘째 커밋] 이 비율이 구운 블록의 `cropCareFrac` 로 들어갔다 ⇒ 지금 랩(머리)에 `cropCareFrac` 가 있으면 미리보기는 쓸모가 없다
+//       (머리 = 미리보기 · 판이 같다 — 확인은 `--ref <첫 커밋>` 으로 이식 전 = 첫 커밋 랩 · 머리 = 둘째 커밋 랩을 견준다).
 'use strict';
 process.env.ENABLE_VILLAGES = process.env.ENABLE_VILLAGES || '0';
 process.env.DB_PATH = process.env.DB_PATH || `/tmp/t648-probe-${process.pid}.db`;
@@ -70,7 +72,10 @@ function labCopies(FILE) {
   const out = { base: path.join(dir, 'base-' + FILE), head: path.join(dir, 'head-' + FILE), prev: path.join(dir, 'prev-' + FILE), headRaw: path.join(ROOT, 'lab', FILE) };
   fs.writeFileSync(out.base, instrumented(base, 'base'));
   fs.writeFileSync(out.head, instrumented(head, 'head'));
-  fs.writeFileSync(out.prev, instrumented(previewOf(head), 'prev'));
+  if (argv.includes('--preview')) {   // ★[T648 추가안] 머리에 cropCareFrac 가 이미 있으면 미리보기 = 머리(쓸모없음)
+    if (head.includes('function cropCareFrac(e,day){')) throw new Error('--preview: 지금 랩에 cropCareFrac(T648 추가안)가 이미 있다 — 미리보기 = 머리. `--ref <첫 커밋>` 으로 견줘라');
+    fs.writeFileSync(out.prev, instrumented(previewOf(head), 'prev'));
+  }
   return out;
 }
 

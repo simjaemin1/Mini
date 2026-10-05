@@ -151,6 +151,8 @@
 구운 블록(`▼T594-CROPCAL` · 생성기 `scripts/t594-lab-cropcal.js`)의 문 `cropDormant(e,day)` 가 그것을 부르고(랩 id → 서버 id `L_CROPSID` · 랩 날 − `L_START` = econ 날),
 상태기 세 자리 — `cellTask`(일감) · `doTask`(수행) · 하루 작물 진화(품질 감점·병충해) — 가 그 문 하나로 들어간다(서버 `cropTaskOf` · `cropDoTask` · `cropDayTick` 이 `dormantAt` 하나로 들어가는 그 꼴).
 끔(`?cropcal=0`)이면 문이 늘 거짓 = 랩 종전 바이트(끔 판은 겨울에도 자라는 표 `grow` 달력일이라 돌봄만 멈추면 셈이 두 벌이 된다).
+**[T648 추가안 — 둘째 커밋]** 돌봄 차례 비율(김매기 벌 · 김 놓친 감점 문턱)도 서버 정본 활동일 비율로 — 구운 블록의 `cropCareFrac(e,day)` 가
+번들의 `EconEngine.Crops.grownDays(서버 id, 심은 econ 날, econ 날) ÷ max(1, growDaysOf(서버 id))`(서버 `villages._cropGrowFrac` 그 셈)를 부른다(월동 셋 · 켬 · 그 밖·끔 = 종전 달력일 비율).
 기계 검사 `scripts/lab-wiring-check.js` **[M]** · `scripts/test-crop-cal.js` ⑪ · 계수 `node scripts/t648-lab-dormant.js` · 보고 `보고/T648_2026-10-05.md`.
 
 | 항목 | 서버 | 랩(T648 뒤) | 같은가 | 다르면 어디 |
@@ -158,4 +160,4 @@
 | 휴면 중 돌봄 일감(T99 ②) | `cropTaskOf` · `cropDoTask` — 익음(5) 다음 `dormantAt` 이면 0 · 수행 없음(익은 것은 겨울에도 거둔다) | `cellTask` · `doTask` — 같은 순서로 `cropDormant` | 다르다 → **옮김** | T648 전: 월동 밭이 겨울 내내 김매기 · 물대기(보리 논) · 방제 일감을 받았다 |
 | 휴면 중 품질·병충해(T99 ②) | `cropDayTick` — `dormantAt` 이면 감점 0 · 병충해 안 붙음 | 하루 작물 진화 `else if(!cropDormant(e,day))` | 다르다 → **옮김** | T648 전: 겨울 감점·병충해(난수)가 돌았다 |
 | 휴면 축 = 월동 + 다년생(T99 ③) | `_dormantKind` = 월동 셋 + 다년생 넷(돌봄·품질·**성장**) | 문은 같은 술어(돌봄·품질) — 랩 다년생 둘(부추·미나리)은 3~4월에 심어 55일에 거둬 겨울을 안 만난다 | 같다(돌봄·품질) · 다르다(성장) | 랩 다년생은 겨울에도 자라고(표 `grow` 달력일) 거두면 칸이 빈다(그루터기 T91 없음) — 회부 |
-| 돌봄 차례 비율(김매기 벌 · 감점 문턱) | `_cropGrowFrac` = `grownDays ÷ growDaysOf` — **활동일**(월동은 춘화일 3월 1일부터 · 겨울 안 셈) ⇒ 가을 김매기 0 · 봄에 "멈춘 자리에서 재개" | `(day−planted) ÷ g` — **달력일**(가을·겨울에도 차오른다) | 다르다(종전) | 휴면 문만 옮기면 겨울에 막힌 김매기가 **봄 초에 몰린다**(밀린 벌 + 감점) — 회부(같은 정본 `grownDays`·`growDaysOf` 로 바꾸면 서버와 같은 날 같은 밭 100% — 계수 미리보기) |
+| 돌봄 차례 비율(김매기 벌 · 감점 문턱) | `_cropGrowFrac` = `grownDays ÷ growDaysOf` — **활동일**(월동은 춘화일 3월 1일부터 · 겨울 안 셈) ⇒ 가을 김매기 0 · 봄에 "멈춘 자리에서 재개" | **[T648 추가안]** `cropCareFrac(e,day)` — 월동 셋 = 번들 정본 `grownDays ÷ max(1, growDaysOf)` 그 셈 · 1년생·표 밖·끔 = 종전 `(day−planted) ÷ g`(달력일) | 다르다 → **옮김(추가안)** | 휴면 문만 옮기면 겨울에 막힌 김매기가 **봄 초에 몰렸다**(밀린 벌 + 감점 — 두 랩 × 3시드 월동 감점 전 철 106,707 → 178,489) · 추가안까지 29,826 · 서버와 같은 날 같은 밭 42,029/42,029(100%) |

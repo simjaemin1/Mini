@@ -23,6 +23,7 @@
 //   K. 대조     — 서버에만 있던 여섯(T569·T570·T577 추신·T578·T579 추신·T590)이 랩에도 같은 식으로 섰나(T599)
 //   L. 대조 2차 — 서버 env 손잡이 문(같은 이름 · 같은 기본) · 작물 철 월동 셈(T594 거울 = 서버 T99 readyDay)(T641)
 //   M. 밭 겨울 휴면 — 서버 T99 ②③ 술어(crops.dormantAt)를 번들로 싣고 랩 상태기 세 자리가 그 문 하나만 부르나(T648)
+//      + 돌봄 차례 비율(김매기 벌 · 감점 문턱)이 서버 정본 활동일 비율(grownDays ÷ growDaysOf) 하나를 부르나(T648 추가안)
 //
 // 실행: node scripts/lab-wiring-check.js [랩HTML...]
 //   HTML 을 안 주면 lab/마을실험실.html · lab/전쟁실험실.html 을 잰다(랩은 2026-09-05 레포 안으로 들어왔다).
@@ -895,6 +896,9 @@ console.log('\n[L] 랩 ↔ 서버 대조 2차 — 서버 env 손잡이 문 · �
 //   ⓑ 두 랩 — 문(`cropDormant`)은 구운 블록 안 하나 · 본문이 `EconEngine.Crops.dormantAt` 을 부른다 · 상태기 세 자리(cellTask · doTask · 하루 작물 진화)가
 //      그 문을 부른다 · 번들 밖 랩 글에 휴면 술어를 손으로 다시 짠 자리(`function dormantAt` · `_dormantKind` · `_dormant(`)가 없다
 //   ⓒ [자명 통과 금지] 세 자리 중 하나를 뺀 사본은 자리 수가 갈리고 · 번들에서 `Crops` 내놓기를 뺀 사본은 ⓐ 가 갈린다
+//   ⓓ ★[T648 추가안] 돌봄 차례 비율 `cropCareFrac` — 구운 블록 안 하나 · 월동 셋은 번들 정본 `C.grownDays(…)/Math.max(1,C.growDaysOf(…))`
+//      (= 서버 `villages._cropGrowFrac`) · 상태기 세 자리(cellTask · doTask 김매기 · 하루 진화 감점 문턱)가 그것을 부른다 ·
+//      종전 달력일 비율 글 `(day-e.planted)/(e.g||e.crop.grow)` 은 그 정의의 종전 갈래 하나뿐(1년생 · 끔) — 자리를 되돌린 사본은 갈린다
 //   (값 대조 — 문 = 서버 dormantAt 30종 × 1,461날 · 겨울 하루 일감 0 · 품질 무변 — 은 `scripts/test-crop-cal.js` ⑪)
 console.log('\n[M] 랩 밭 겨울 휴면 — 서버 T99 ②③ 술어를 번들로(T648)');
 {
@@ -906,6 +910,8 @@ console.log('\n[M] 랩 밭 겨울 휴면 — 서버 T99 ②③ 술어를 번들�
   if (exportsCrops(B) && srcs.every(([, x]) => x) && jsonIn) ok('ⓐ 번들이 서버 작물 정본을 글자 그대로 싣고(crops.js · crops.json · crop-cal.js · events.js) `EconEngine.Crops` 로 내놓는다(사본 0)');
   else bad(`ⓐ 번들 작물 정본 — 내놓기 ${exportsCrops(B) ? '○' : '✗'} · ${srcs.map(([f, x]) => `${path.basename(f)} ${x ? '○' : '✗'}`).join(' · ')} · crops.json ${jsonIn ? '○' : '✗'} (sim/build-econ-bundle.js T648)`);
   const SITE = /if\(cropDormant\(e,day\)\)return 0;|if\(cropDormant\(e,day\)\)return false;|else if\(!cropDormant\(e,day\)\)\{/g;
+  const CARE = /(?<!function )cropCareFrac\(e,day\)/g, OLDF = '(day-e.planted)/(e.g||e.crop.grow)';   // ★[T648 추가안]
+  const careOf = (H) => { const O = outsideBundle(H); return { calls: (H.match(CARE) || []).length, oldN: O.split(OLDF).length - 1 }; };
   const outsideBundle = (H) => { const a = H.indexOf('<!-- ENGINE-BUNDLE-START'), b = H.indexOf('<!-- ENGINE-BUNDLE-END'); return (a >= 0 && b > a) ? H.slice(0, a) + H.slice(b) : H; };
   let H0 = null;
   for (const f of ['lab/마을실험실.html', 'lab/전쟁실험실.html']) {
@@ -921,6 +927,11 @@ console.log('\n[M] 랩 밭 겨울 휴면 — 서버 T99 ②③ 술어를 번들�
     const hand = /function\s+dormantAt\s*\(|_dormantKind|function\s+_dormant\s*\(/.test(O);
     if (hand) bad(`${f} [T648 ⓑ] 번들 밖 랩 글에 휴면 술어를 손으로 짠 자리가 있다 — 사본이다`);
     else ok(`${f} [T648 ⓑ] 번들 밖 랩 글에 휴면 술어 사본 0(dormantAt · _dormantKind · _dormant 정의 없음)`);
+    // ⓓ ★[T648 추가안] 돌봄 차례 비율
+    const cdefs = (O.match(/function cropCareFrac\(e,day\)\{[^\n]*/g) || []), ci = H.indexOf('function cropCareFrac(e,day){'), cc = careOf(H);
+    const canon = cdefs.length === 1 && /C\.grownDays\(sid,e\.planted-L_START,day-L_START\)\/Math\.max\(1,C\.growDaysOf\(sid\)\)/.test(cdefs[0]) && /C=EconEngine\.Crops/.test(cdefs[0]);
+    if (!canon || !(ci > blkA && ci < blkB) || cc.calls !== 3 || cc.oldN !== 1) bad(`${f} [T648 ⓓ] 돌봄 차례 비율 — 정의 ${cdefs.length}개(구운 블록 안 하나 · 번들 정본 grownDays ÷ growDaysOf ${canon ? '○' : '✗'}) · 부르는 자리 ${cc.calls}(셋) · 종전 달력일 비율 글 ${cc.oldN}(정의의 종전 갈래 하나)`);
+    else ok(`${f} [T648 ⓓ] 돌봄 차례 비율 cropCareFrac 하나(구운 블록) — 월동 셋 = 번들 정본 grownDays ÷ max(1, growDaysOf)(서버 _cropGrowFrac 그 셈) · 상태기 세 자리가 부른다 · 종전 비율 글은 그 종전 갈래 하나`);
   }
   // ⓒ 자명 통과 금지
   {
@@ -928,8 +939,10 @@ console.log('\n[M] 랩 밭 겨울 휴면 — 서버 T99 ②③ 술어를 번들�
     const mutB = B.replace('root.EconEngine.Crops=modules.crops;', '');
     const bite1 = !!mutSite && (mutSite.match(SITE) || []).length === 2;
     const bite2 = !exportsCrops(mutB);
-    if (bite1 && bite2) ok('ⓒ [자명 통과 금지] doTask 자리를 뺀 사본은 자리 셋 → 둘 · 번들에서 Crops 내놓기를 뺀 사본은 ⓐ 가 갈린다 — 검사가 문다');
-    else bad(`ⓒ [자명 통과 금지] 비틀어도 같은 답 — 자리 ${bite1 ? '문다' : '죽음'} · 번들 ${bite2 ? '문다' : '죽음'}`);
+    const mutCare = H0 ? H0.replace('gf=cropCareFrac(e,day)', 'gf=' + OLDF) : null, mc = mutCare ? careOf(mutCare) : null;
+    const bite3 = !!mc && mc.calls === 2 && mc.oldN === 2;   // ★[T648 추가안] 하루 진화 감점 문턱을 종전 비율로 되돌린 사본 ⇒ ⓓ 가 갈린다
+    if (bite1 && bite2 && bite3) ok('ⓒ [자명 통과 금지] doTask 자리를 뺀 사본은 자리 셋 → 둘 · 번들에서 Crops 내놓기를 뺀 사본은 ⓐ 가 갈린다 · 감점 문턱을 종전 비율로 되돌린 사본은 ⓓ 가 갈린다 — 검사가 문다');
+    else bad(`ⓒ [자명 통과 금지] 비틀어도 같은 답 — 자리 ${bite1 ? '문다' : '죽음'} · 번들 ${bite2 ? '문다' : '죽음'} · 돌봄 비율 ${bite3 ? '문다' : '죽음'}`);
   }
 }
 
