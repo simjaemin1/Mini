@@ -2318,7 +2318,12 @@ function _routePlainRetry(J) {
 //   ⚠`budgetMs <= 0` = 슬라이서를 끈 대조군(`VILLAGE_TICK_SLICE_MS=0`) ⇒ **한 번에 완주**한다
 //     (종전 동작 그대로 — 되돌리는 스위치가 경로에도 그대로 걸린다).
 function _routeResume(key, x0, y0, x1, y1, budgetMs) {
-  if (_pathJob && _pathJob.key !== key) { _probe.pathDrop++; _pathJob = null; }   // ★한 번에 하나
+  if (_pathJob && _pathJob.key !== key) {
+    //   ★★[T655] 떠 있는 일이 **부팅 표본**(T640 · `routeSampleStep` 이 단 표식)이면 버리지 않고 기다린다 — 버리면 표본이 그 쌍을 처음부터 다시 판다
+    //     (빠른 시계 실측: 양보 3,608 · 일 84 → 216초). 표본은 그 쌍을 끝낸 뒤 한 틱 비켜 준다(`_routeBootWait`) — 서로 버리지 않고 번갈아.
+    if (_pathJob.boot) { state._routeBootWait = true; _probe.pathBootWait = (_probe.pathBootWait || 0) + 1; return { done: false }; }
+    _probe.pathDrop++; _pathJob = null;   // ★한 번에 하나
+  }
   if (!_pathJob) {
     const J = _routeBegin(x0, y0, x1, y1);
     if (!J) return { done: true, pts: null, workMs: 0, sliceMax: 0, slices: 0 };
@@ -6126,8 +6131,13 @@ function routeBootFreeze(on) {
 //   한 조각 — 다른 쌍의 재개형 일이 떠 있으면(캐러밴이 판다) 손을 뗀다(`busy`) · 그쪽이 끝나면 이어 간다(일을 서로 버리지 않게).
 function routeSampleStep(A, B, budgetMs) {
   const { key } = _routeKey(A, B);
-  if (_pathJob && _pathJob.key !== key && state.routeCache.get(key) === undefined) return { done: false, busy: true };
-  return getRouteResumable(A, B, budgetMs);
+  const miss = state.routeCache.get(key) === undefined;
+  if (_pathJob && _pathJob.key !== key && miss) return { done: false, busy: true };
+  //   ★[T655] 새 쌍을 열려는데 표본 일 때문에 기다린 문(캐러밴)이 있었다 — 한 틱 비켜 준다(그 문이 다음 조각에 자기 일을 연다)
+  if (!_pathJob && miss && state._routeBootWait) { state._routeBootWait = false; return { done: false, busy: true }; }
+  const r = getRouteResumable(A, B, budgetMs);
+  if (_pathJob && _pathJob.key === key) _pathJob.boot = true;   // 이 일은 부팅 표본의 것 — 다른 문이 와도 버리지 않는다(위 `_routeResume`)
+  return r;
 }
 function banditHost() {
   if (!state.ready) return null;
