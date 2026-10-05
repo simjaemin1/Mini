@@ -97,6 +97,8 @@ function runOne(seed, k) {
       T315_MAPBEDS: process.env.T315_MAPBEDS != null ? process.env.T315_MAPBEDS : '0',
       VILLAGE_NPC_CAP: process.env.VILLAGE_NPC_CAP || '1',
       T577_SEED: String(seed), T577_DAYS: String(DAYS), T577_OUT: out,
+      //   ★[T655] 첫 부팅 조각(T640 · 제품 기본 켬)은 이 자에서 끈다 — 하루 250ms 면 표본이 도는 ~4분 동안 수백 날이 지나 도적 데일리를 건너뛴다(T640 회부 ①).
+      T640_BOOT_SLICE: '0',
     });
     const t0 = Date.now();
     const child = spawn(process.execPath, ['-r', path.join(__dirname, 't577-server-hook.js'), path.join(ROOT, 'server', 'zone.js')],

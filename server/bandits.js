@@ -178,27 +178,60 @@ function ensureRouteField() {
   let rp = routePts();
   if (S.routeField && S.routeFieldSig === rp.sig) return S.routeField;
   if (!rp.pts) { S._routes = null; rp = routePts(); }   // ★[T453 ③] 놓은 표본은 다시 모은다(아래 — 지금 길로는 안 닿는다 · 안전판)
+  const F = _fieldBegin(rp);
+  _fieldStep(F, Infinity);   // 한 번에 끝까지(종전과 같은 계산 · 같은 순서)
+  return _fieldEnd(F);
+}
+// ★★[T655 2026-10-05] 거리장을 **재개형**으로 — 세 마디(표본 칸 찍기 · 전방 패스 · 후방 패스)를 줄 단위로 놓았다 이어 간다.
+//   `deadline` 까지 하고 나온다(`Infinity` = 한 번에 · 종전 `ensureRouteField` 가 이 꼴). 같은 순서 · 같은 식 ⇒ 같은 배열(사본 0).
+//   새 세계 첫 부팅 조각(T640 · 켬 기본)이 표본 뒤에 이걸 틱마다 민다 — "하루(한 번)에 몰아서 하는 일이 있으면 안 된다"(재민 10-05).
+function _fieldBegin(rp) {
   const gw = Math.max(1, Math.ceil(S.host.cellsW / FG)), gh = Math.max(1, Math.ceil(S.host.cellsH / FG));
-  const INF = 0x7fff;
-  const f = new Uint16Array(gw * gh).fill(INF);
-  for (const p of rp.pts) {
-    const gx = Math.min(gw - 1, Math.max(0, Math.round(p.x / FG)));
-    const gy = Math.min(gh - 1, Math.max(0, Math.round(p.y / FG)));
-    f[gy * gw + gx] = 0;
+  return { rp, gw, gh, f: new Uint16Array(gw * gh).fill(0x7fff), ph: 0, k: 0 };
+}
+function _fieldStep(F, deadline) {
+  const f = F.f, gw = F.gw, gh = F.gh, pts = F.rp.pts;
+  if (F.ph === 0) {   // 표본 칸 = 0
+    while (F.k < pts.length) {
+      const p = pts[F.k++];
+      const gx = Math.min(gw - 1, Math.max(0, Math.round(p.x / FG)));
+      const gy = Math.min(gh - 1, Math.max(0, Math.round(p.y / FG)));
+      f[gy * gw + gx] = 0;
+      if ((F.k & 4095) === 0 && Date.now() >= deadline) return false;
+    }
+    F.ph = 1; F.k = 0;
   }
-  for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) { // 전방 패스
-    const i = y * gw + x; let v = f[i];
-    if (x > 0 && f[i - 1] + 1 < v) v = f[i - 1] + 1;
-    if (y > 0 && f[i - gw] + 1 < v) v = f[i - gw] + 1;
-    f[i] = v;
+  if (F.ph === 1) {   // 전방 패스 — 줄 하나씩
+    while (F.k < gh) {
+      const y = F.k++;
+      for (let x = 0; x < gw; x++) {
+        const i = y * gw + x; let v = f[i];
+        if (x > 0 && f[i - 1] + 1 < v) v = f[i - 1] + 1;
+        if (y > 0 && f[i - gw] + 1 < v) v = f[i - gw] + 1;
+        f[i] = v;
+      }
+      if (Date.now() >= deadline) return false;
+    }
+    F.ph = 2; F.k = gh - 1;
   }
-  for (let y = gh - 1; y >= 0; y--) for (let x = gw - 1; x >= 0; x--) { // 후방 패스
-    const i = y * gw + x; let v = f[i];
-    if (x < gw - 1 && f[i + 1] + 1 < v) v = f[i + 1] + 1;
-    if (y < gh - 1 && f[i + gw] + 1 < v) v = f[i + gw] + 1;
-    f[i] = v;
+  if (F.ph === 2) {   // 후방 패스 — 줄 하나씩
+    while (F.k >= 0) {
+      const y = F.k--;
+      for (let x = gw - 1; x >= 0; x--) {
+        const i = y * gw + x; let v = f[i];
+        if (x < gw - 1 && f[i + 1] + 1 < v) v = f[i + 1] + 1;
+        if (y < gh - 1 && f[i + gw] + 1 < v) v = f[i + gw] + 1;
+        f[i] = v;
+      }
+      if (Date.now() >= deadline) return false;
+    }
+    F.ph = 3;
   }
-  S.routeField = { f, gw, gh, empty: rp.pts.length === 0 };
+  return true;
+}
+function _fieldEnd(F) {
+  const rp = F.rp;
+  S.routeField = { f: F.f, gw: F.gw, gh: F.gh, empty: rp.pts.length === 0 };
   S.routeFieldSig = rp.sig;
   // ★[T453 ③ 2026-09-27] 표본(`pts` — 교역로 정점마다 {x,y} · 한반도 114만 개 · 힙 41.8MB)은 **이 거리장을 한 번 만들 때만** 읽힌다.
   //   다음 부름은 위 두 줄(서명 같음 → 거리장 그대로)에서 끝나고, 서명이 바뀌면 `routePts` 가 통째로 다시 모은다 ⇒ 붙들 까닭이 없다.
@@ -246,36 +279,57 @@ function campSpot(ocx, ocy) { // 은거지 탐색: 옛 터 기준 나선 — 완
   return best;
 }
 function denScan(day) { // ★원천③ 배치(부팅 1회): 오지 스코어 = min거리(마을, 캡500) + min거리(교역로, 캡400)×0.7 + 숲60
-  const host = S.host, ta = host.ta;
+  const D = _denBegin(day);
+  if (!D) return;
+  _denStep(D, Infinity);   // 한 번에 끝까지(종전과 같은 계산 · 같은 순서)
+  _denEnd(D);
+}
+// ★★[T655 2026-10-05] 소굴 격자 훑기를 **재개형**으로 — 줄(y) 하나씩 놓았다 이어 간다(같은 pass · 같은 y · 같은 x 순서 ⇒ 같은 후보 줄 · 같은 정렬 ⇒ 같은 소굴).
+//   `deadline` 까지 하고 나온다(`Infinity` = 한 번에 · 종전 `denScan` 이 이 꼴).
+function _denBegin(day) {
+  const host = S.host;
   S.DENS = []; S.denSeq = 1;
-  if (!host.villages.length) return;
-  const t0 = Date.now();
+  if (!host.villages.length) return null;
   const N = Math.max(host.cellsW, host.cellsH);
-  const DEN_N = N >= 1200 ? 3 : 2; // 랩 규칙 그대로(N=1600→3) — 한반도 ~4063셀 → 3곳
-  const cand = [];
-  for (let pass = 0; pass < 3 && !cand.length; pass++) {
-    const DV = [BDT_DEN_DV, 140, 90][pass]; // 오지 하한 폴백(소형 맵 대비 — 본체는 pass0에서 끝남)
-    for (let y = 40; y < host.cellsH - 40; y += 16) for (let x = 40; x < host.cellsW - 40; x += 16) {
-      let dv = 1e9;
-      for (const v of host.villages) { const d = Math.hypot(x - v.ccx, y - v.ccy); if (d < dv) dv = d; }
-      if (dv < DV) continue;                 // 오지 하한(먼저 — 값싼 필터)
-      if (ta.isBlocked(x, y)) continue;
-      let dr = routeDistCells(x, y);
-      if (dr > 1e8) dr = 600;                // 교역로 자체가 없음 → 상수 취급(랩 동일)
-      const sc = Math.min(dv, 500) + Math.min(dr, 400) * 0.7 + (ta.forestMult(x, y) > 1.2 ? 60 : 0);
-      cand.push({ x, y, sc, dv, dr });
+  return { day, t0: Date.now(), DEN_N: N >= 1200 ? 3 : 2, cand: [], pass: 0, y: 40 };   // 랩 규칙 그대로(N=1600→3) — 한반도 ~4063셀 → 3곳
+}
+function _denStep(D, deadline) {
+  const host = S.host, ta = host.ta;
+  while (D.pass < 3) {
+    if (D.y === 40 && D.cand.length) break;   // 종전 `for (pass…; pass < 3 && !cand.length; …)` — 판을 열 때만 묻는다
+    const DV = [BDT_DEN_DV, 140, 90][D.pass]; // 오지 하한 폴백(소형 맵 대비 — 본체는 pass0에서 끝남)
+    if (D.y < host.cellsH - 40) {
+      const y = D.y;
+      for (let x = 40; x < host.cellsW - 40; x += 16) {
+        let dv = 1e9;
+        for (const v of host.villages) { const d = Math.hypot(x - v.ccx, y - v.ccy); if (d < dv) dv = d; }
+        if (dv < DV) continue;                 // 오지 하한(먼저 — 값싼 필터)
+        if (ta.isBlocked(x, y)) continue;
+        let dr = routeDistCells(x, y);
+        if (dr > 1e8) dr = 600;                // 교역로 자체가 없음 → 상수 취급(랩 동일)
+        const sc = Math.min(dv, 500) + Math.min(dr, 400) * 0.7 + (ta.forestMult(x, y) > 1.2 ? 60 : 0);
+        D.cand.push({ x, y, sc, dv, dr });
+      }
+      D.y += 16;
+      if (Date.now() >= deadline) return false;
+      continue;
     }
+    D.pass++; D.y = 40;
   }
+  return true;
+}
+function _denEnd(D) {
+  const host = S.host, day = D.day, cand = D.cand;
   cand.sort((a, b) => b.sc - a.sc);
   for (const c of cand) {
-    if (S.DENS.length >= DEN_N) break;
+    if (S.DENS.length >= D.DEN_N) break;
     let ok = true;
     for (const d of S.DENS) if (Math.hypot(c.x - d.cx, c.y - d.cy) < BDT_DEN_SEP) { ok = false; break; }
     if (ok) S.DENS.push({ id: S.denSeq++, cx: c.x, cy: c.y, sc: Math.round(c.sc), dv: Math.round(c.dv), dr: Math.round(c.dr), gen: 0, next: 0, cleared: 0 });
   }
   S.stats.dens = S.DENS.length;
   for (const d of S.DENS) log(day, `소굴#${d.id} 배치(${d.cx},${d.cy}) 오지점수 ${d.sc} — 마을거리 ${d.dv}·교역로거리 ${d.dr}${S.host.ta.forestMult(d.cx, d.cy) > 1.2 ? '·숲' : ''}`);
-  console.log(`[${S.zoneId}] 🏴 [도적] 소굴 ${S.DENS.length}곳 배치 ${Date.now() - t0}ms (후보 ${cand.length}·그리드 ${host.cellsW}×${host.cellsH}셀)`);
+  console.log(`[${S.zoneId}] 🏴 [도적] 소굴 ${S.DENS.length}곳 배치 ${Date.now() - D.t0}ms (후보 ${cand.length}·그리드 ${host.cellsW}×${host.cellsH}셀)`);
 }
 
 // =============================================================================
@@ -647,14 +701,16 @@ function _bindRest(host, day0) {
   console.log(`[${S.zoneId}] 🏴 도적 시뮬 준비(§11 1파: 경제·수명주기): 소굴 ${S.DENS.filter(d => !d.cleared).length}곳 · 도적단 ${S.GANGS.length} · econ 훅(banditRouteRisk/onBanditLoot) 설치 · day ${day0}${FIXTURE ? ` [FIXTURE=${FIXTURE}]` : ''}${BDT_MIN_DAY !== 365 ? ` [MINDAY=${BDT_MIN_DAY}]` : ''}`);
   return true;
 }
-// ═══ ★★[T640 2026-10-04 · T605 §4-1] 새 세계 첫 부팅 — 교역로 표본을 **조각으로**(손잡이 `T640_BOOT_SLICE` · ★기본 끔 = main 바이트) ═══
+// ═══ ★★[T640 2026-10-04 · T605 §4-1] 새 세계 첫 부팅 — 교역로 표본을 **조각으로**(손잡이 `T640_BOOT_SLICE` · ★[T655] 기본 켬 · `=0` = 종전) ═══
 //   종전: `bindHost` → `denScan` → `routePts` 가 유한 쌍 전부를 **부팅 안에서** 동기 A*(한반도 1,225쌍 · 72초 · 그동안 listen 못 함).
 //   켬: 부팅은 표본 없이 끝난다(소굴 0 · 단 0 · 훅 없음 = 도적 층이 아직 안 선 존). listen 뒤 게임 틱마다 슬라이서 예산(`sliceMs` —
 //     마을 하루 조각과 같은 그 예산)만큼 같은 순서(i<j · 유한 쌍)로 판다 — 문은 재개형(`routeSampleStep` → `getRouteResumable` · T85 비트 동일).
 //   ★얼린 길: 판이 도는 동안 교역로 A* 는 부팅 순간 코스 지도(`roads.frozenView`)를 본다 — 그 사이 사람이 와서 칸이 등급을 받아도
 //     종전(부팅 순간 한 번에 판 길)과 같은 바이트다. 끝나면 얼림을 풀고 `denScan` · 훅 · 저장 · 실체를 **부팅 날 그대로** 잇는다.
 //   ⚠그 사이 도적은 없다 — 새 세계는 원래 단 0 · 결성은 `BDT_MIN_DAY` 뒤(기본 365일)라 econ 쪽 위험(`banditRouteRisk`)도 종전과 같이 0 이다.
-const T640_BOOT_SLICE = typeof process !== 'undefined' && !!process.env && process.env.T640_BOOT_SLICE === '1';
+//   ★★[T655 2026-10-05 · PM 결정(위임)] **켬이 기본**이다 — 손잡이 없음 = 켬 · `T640_BOOT_SLICE=0` = 종전(부팅 안에서 한 번에).
+//     빠른 시계 자(`t577-server-run` · 하루 250ms)는 자 안에서 `=0` 을 박는다(표본이 도는 동안 수백 날이 지나 도적 데일리를 건너뛴다 — T640 회부 ①).
+const T640_BOOT_SLICE = typeof process !== 'undefined' && !!process.env && process.env.T640_BOOT_SLICE !== '0';
 function _bootSliceBegin(host) {
   host.routeBootFreeze(true);
   S._boot = { day0: host.world.day, sig: _routeSig(host), i: 0, j: 1, pts: [], pairs: 0, slices: 0, busy: 0, workMs: 0, t0: Date.now() };
@@ -681,15 +737,33 @@ function _bootSliceStep() {
   }
   B.workMs += Date.now() - t0;
   if (B.i < V.length) return;
-  // 끝 — 표본을 종전 `routePts` 가 만드는 그 꼴로 두고, 얼림을 풀고, 부팅 날 그대로 잇는다
+  // 표본 끝 — 종전 `routePts` 가 만드는 그 꼴로 두고 얼림을 푼다. 거리장 · 소굴 훑기는 ★[T655] 다음 틱부터 같은 예산으로 이어 간다(`_bootTailStep`).
   S._routes = { sig: B.sig, pts: B.pts };
   S.routeField = null;
   host.routeBootFreeze(false);
+  B.sampleWall = Date.now() - B.t0;
+  B.phase = 'field'; B.F = _fieldBegin(S._routes); B.tailSlices = 0; B.tailMs = 0; B.tailMax = 0;
+}
+// ★★[T655 2026-10-05 · T640 회부 ②] 표본 뒤의 일 — 거리장 → 소굴 격자 훑기 → 배치 · 훅 · 저장 · 실체를 **틱마다 같은 예산으로** 이어 간다.
+//   종전(T640)은 이 셋을 한 틱에 했다(한반도 160~188ms). 같은 함수(`_fieldStep` · `_denStep` — 동기 판도 이것)를 놓았다 이어 가니 같은 바이트.
+function _bootTailStep() {
+  const B = S._boot, host = S.host;
+  const t0 = Date.now(), budget = host.sliceMs > 0 ? host.sliceMs : 0, deadline = budget > 0 ? t0 + budget : Infinity;
+  B.tailSlices++;
+  let done = false;
+  if (B.phase === 'field' && _fieldStep(B.F, deadline)) { _fieldEnd(B.F); B.F = null; B.phase = 'scan'; B.D = _denBegin(B.day0); }
+  if (B.phase === 'scan' && Date.now() < deadline) {
+    if (!B.D || _denStep(B.D, deadline)) { if (B.D) _denEnd(B.D); B.D = null; B.phase = 'bind'; }
+  }
+  if (B.phase === 'bind' && Date.now() < deadline) done = true;
+  const d = Date.now() - t0; B.tailMs += d; if (d > B.tailMax) B.tailMax = d;
+  if (!done) return;
   S._boot = null;
   const wall = Date.now() - B.t0, dayMs = host.dayMs || 0;
-  console.log(`[${S.zoneId}] 🏴 [도적] 부팅 표본 끝(T640) — 쌍 ${B.pairs} · 조각 ${B.slices}(양보 ${B.busy}) · 일 ${B.workMs}ms · 벽시계 ${(wall / 1000).toFixed(1)}s${dayMs ? ` = 게임 ${(wall / dayMs * 1440).toFixed(0)}분` : ''} · day ${B.day0} → ${host.world.day}`);
-  S.bootSlice = { pairs: B.pairs, slices: B.slices, busy: B.busy, workMs: B.workMs, wallMs: wall, gameMin: dayMs ? +(wall / dayMs * 1440).toFixed(1) : null, day0: B.day0, day1: host.world.day };
-  denScan(B.day0);
+  console.log(`[${S.zoneId}] 🏴 [도적] 부팅 표본 끝(T640) — 쌍 ${B.pairs} · 조각 ${B.slices}(양보 ${B.busy}) · 일 ${B.workMs}ms · 표본 벽시계 ${(B.sampleWall / 1000).toFixed(1)}s`
+    + ` · 꼬리(거리장·소굴) 조각 ${B.tailSlices} · 일 ${B.tailMs}ms · 조각 최대 ${B.tailMax}ms · 벽시계 ${(wall / 1000).toFixed(1)}s${dayMs ? ` = 게임 ${(wall / dayMs * 1440).toFixed(0)}분` : ''} · day ${B.day0} → ${host.world.day}`);
+  S.bootSlice = { pairs: B.pairs, slices: B.slices, busy: B.busy, workMs: B.workMs, sampleWallMs: B.sampleWall, tailSlices: B.tailSlices, tailMs: B.tailMs, tailMax: B.tailMax,
+    wallMs: wall, gameMin: dayMs ? +(wall / dayMs * 1440).toFixed(1) : null, day0: B.day0, day1: host.world.day };
   _bindRest(host, B.day0);
 }
 function init() {
@@ -698,7 +772,7 @@ function init() {
 }
 function onGameTick() {
   if (!ENABLED) return;
-  if (S._boot) { try { _bootSliceStep(); } catch (e) { console.error(`[${S.zoneId}] 🏴 [도적] 부팅 표본 조각 실패(다음 틱 재시도):`, e.message); } return; }   // ★[T640]
+  if (S._boot) { try { if (S._boot.phase) _bootTailStep(); else _bootSliceStep(); } catch (e) { console.error(`[${S.zoneId}] 🏴 [도적] 부팅 표본 조각 실패(다음 틱 재시도):`, e.message); } return; }   // ★[T640]
   if (!S.ready) { // villages가 늦게 준비되는 경우 — 가벼운 재시도(10초에 1회 수준, 평시 O(1))
     S._bindTried = (S._bindTried || 0) + 1;
     if (S._bindTried === 1 || S._bindTried % 300 === 0) { try { bindHost(); } catch (_) { } }
