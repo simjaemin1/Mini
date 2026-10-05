@@ -8,6 +8,7 @@
 //   ⑧ 재민 문장 — "벼 10월 · 보리·밀은 겨울을 나서 5~6월" ⑨ 랩 두 벌 거울(구운 블록 = 정본 · 기본 켬 · 같은 날 익는다 · 끔 = 랩 그대로)
 //   ⑩ 돌연변이 넷 — 손잡이 무시 · 춘화 빼고 셈 · 표 한 칸 바꿈 · 기본을 끔으로 되돌림 ⇒ 빨강이어야 한다(이빨)
 //   ⑪ [T648] 랩 밭 겨울 휴면 — 휴면 중 일감 0 · 품질 무변 · 병충해 0(월동 셋 · 다년생 둘) · 봄엔 돈다 · 끔 = 종전 · 문 = 서버 술어 · 미끼(문을 빼면 빨강)
+//      + [T648 추가안] 돌봄 차례 비율 = 서버 활동일 비율(가을 김매기 0 · 봄 둘째 날 몰림 0 · = grownDays ÷ growDaysOf · 하루 메모 · 1년생·끔 = 종전 · 미끼)
 // ★★[T634 2026-10-04] **기본 켬** — ⓪ 손잡이 없음 = 켬 · `T594_CROP_CAL=0` = 옛 판(카탈로그) · `1` = 켬(기본과 같은 수).
 //   그래서 끔 통제군은 이제 `{T594_CROP_CAL:'0'}` 이고, 켬 쪽은 **기본 env**(`{}`)로 잰다(배포가 실제로 받는 판).
 //
@@ -208,8 +209,11 @@ console.log('\n⑨ 랩 두 벌 — 구운 블록 = 정본 · 기본 켬 · 같�
       if (mut !== blk) { const M = mkL(mut); M.set(true); d0 = cmpOn(M); bit = d0.length === 3; }
       ok(bit, `⑨ ${path.basename(f)}: [자명 통과 금지] 옛 줄(1월 기점 달력)을 끼우면 월동 셋이 갈린다`, d0.join(' · '));
     }
+    // ★[T648 추가안] 돌봄 차례 비율 세 자리(cellTask · doTask · 하루 진화)는 `cropCareFrac` 한 곳으로 모였다 — 그 안의 종전 갈래(월동 셋 밖 · 끔)가 e.g 를 읽는다
+    //   ⇒ 읽는 자리 여섯 → 넷(그림 · cropRipe · 썩음 · cropCareFrac 종전 갈래)
     const uses = (H.match(/\(e\.g\|\|e\.crop\.grow\)/g) || []).length, bare = (H.replace(/\(e\.g\|\|e\.crop\.grow\)/g, '').match(/e\.crop\.grow/g) || []).length;
-    ok(uses === 6 && bare === 0 && /g:cropGrowAt\(cr,day\)/.test(H), `⑨ ${path.basename(f)}: 상태기 여섯 자리가 밭마다의 성장일(e.g)을 읽고 · 심을 때 한 번 정한다`, `읽기 ${uses} · 맨 grow ${bare}`);
+    const careOld = /function cropCareFrac\(e,day\)\{[^\n]*return \(day-e\.planted\)\/\(e\.g\|\|e\.crop\.grow\);\}/.test(H);
+    ok(uses === 4 && careOld && bare === 0 && /g:cropGrowAt\(cr,day\)/.test(H), `⑨ ${path.basename(f)}: 상태기 자리들(그림 · 익음 · 썩음 · 돌봄 비율 종전 갈래 — 넷)이 밭마다의 성장일(e.g)을 읽고 · 심을 때 한 번 정한다`, `읽기 ${uses} · 돌봄 비율 종전 갈래 ${careOld ? '○' : '✗'} · 맨 grow ${bare}`);
   }
 }
 
@@ -265,7 +269,7 @@ console.log('\n⑪ 랩 밭 겨울 휴면(T648) — 휴면 중 일감 0 · 품질
     if (parts.some((x) => !x) || ci < 0 || !(b > a && a > 0) || !(tj > ti && ti > 0) || fns.some((x) => !x)) return null;
     let body = `${parts.join('\n')}\n${H.slice(ci, cj + 2)}\n${H.slice(a, b)}\nlet life=null;const V={fert:1};const pkey=(x,y)=>x+','+y,ckey=c=>pkey(c.cx,c.cy);function villageCropFor(){return null;}function lMonth(){return 0;}\n`
       + `${fns.join('\n')}\nfunction tick(s,day){${H.slice(ti, tj)}\nreturn sp;}\n`
-      + 'return {L_START,CROPS,cellTask,doTask,tick,cropDormant,cropGrowAt,L_CROPSID,setLife:(x)=>{life=x;},setCal:(v)=>{L_CROPCAL=v;}};';
+      + 'return {L_START,CROPS,cellTask,doTask,tick,cropDormant,cropGrowAt,cropCareFrac:(typeof cropCareFrac===\'function\'?cropCareFrac:null),L_CROPSID,setLife:(x)=>{life=x;},setCal:(v)=>{L_CROPCAL=v;}};';
     if (mut) body = mut(body);
     return new Function('EconEngine', 'location', body)(E, undefined);
   };
@@ -325,7 +329,82 @@ console.log('\n⑪ 랩 밭 겨울 휴면(T648) — 휴면 중 일감 0 · 품질
     // ⓗ 세 자리가 문을 실제로 부른다(글자) · 문은 번들 정본을 부른다
     const sites = (H.match(/if\(cropDormant\(e,day\)\)return 0;|if\(cropDormant\(e,day\)\)return false;|else if\(!cropDormant\(e,day\)\)\{/g) || []).length;
     ok(sites === 3 && /function cropDormant\(e,day\)\{[^\n]*EconEngine\.Crops\.dormantAt\(sid,day-L_START\)/.test(H), `⑪ⓗ ${nm}: 상태기 세 자리(cellTask · doTask · 하루 진화)가 문을 부르고 · 문은 번들의 서버 정본을 부른다`, `자리 ${sites}`);
+
+    // ── ★[T648 추가안] 돌봄 차례 비율(김매기 벌 · 김 놓친 감점 문턱) = 서버 정본 활동일 비율(월동 셋 · 켬) ──────────
+    //   서버 `villages._cropGrowFrac` = `grownDays(id, 심은 날, 날) ÷ max(1, growDaysOf(id))` — 월동은 춘화일(3월 1일)부터 · 겨울은 안 센다
+    //   ⇒ 가을 김매기 0 · 봄엔 "멈춘 자리에서 재개". 랩 종전 `(day−planted) ÷ g` 는 달력일이라 가을·겨울에도 차올라,
+    //     휴면 문만 있으면 겨울에 막힌 김매기가 봄 첫날에 몰린다(밀린 벌 + 감점 — 계수 `t648-lab-dormant.js`).
+    const careDay = (L, lid, pe, day) => {   // 한 칸의 하루: 일감 · 하루 진화(병충해 주사위 0.99 → 안 붙는다 — 김 놓친 감점만 본다) · 비율
+      const F = field(L, lid, pe), D = day + L.L_START;
+      const t = L.cellTask(F.plot, F.c, D), f = L.cropCareFrac ? L.cropCareFrac(F.e, D) : null;
+      const q0 = F.e.q; withRand(0.99, () => L.tick(F.s, D));
+      return { t, dq: q0 - F.e.q, f };
+    };
+    const MAR2 = Cal.dayOf(2, 3, 2);
+    // ⓘ 가을 하루(10/1 심음 · 11/1) — 월동 밭(밀·마늘) 김매기 일감 0 · 감점 0 · 비율 0(서버 grownDays = 0 — 춘화 전)
+    const AU = ['밀', '마늘'].map((lid) => [lid, careDay(L, lid, OCT1, NOV1)]);
+    ok(!!L.cropCareFrac && AU.every(([, r]) => r.t === 0 && r.dq === 0 && r.f === 0), `★⑪ⓘ ${nm}: [추가안] 가을 하루(10/1 심음 · 11/1) — 월동 밭 김매기 일감 0 · 감점 0 · 돌봄 비율 0(서버 활동일 — 춘화 전)`, AU.map(([l, r]) => `${l} 일감 ${r.t} · 비율 ${r.f}`).join(' / '));
+    // ⓙ 봄 둘째 날(3/2) — 겨울에 밀린 벌이 몰리지 않는다(비율 = 활동일 1 ÷ 성장일 — 종전 달력일 비율이면 0.6 → 김매기 + 감점)
+    const SP = ['밀', '마늘'].map((lid) => [lid, careDay(L, lid, OCT1, MAR2)]);
+    ok(SP.every(([, r]) => r.t === 0 && r.dq === 0 && r.f > 0 && r.f < 0.05), `★⑪ⓙ ${nm}: [추가안] 봄 둘째 날(3/2) — 몰린 김매기 0 · 감점 0(멈춘 자리에서 재개 · 비율 = 활동일 ÷ 성장일)`, SP.map(([l, r]) => `${l} 일감 ${r.t} · 비율 ${r.f == null ? '?' : r.f.toFixed(3)}`).join(' / '));
+    // ⓚ 비율 = 서버 정본 셈 — 월동 셋 × 파종(10/1 · 11/1) × 날 300(econ) — 같은 함수(번들 grownDays · growDaysOf)를 같은 인자로
+    {
+      let n2 = 0, same2 = 0; const ex2 = [];
+      for (const [lid, sid] of [['보리', 'barley'], ['밀', 'wheat'], ['마늘', 'garlic']]) for (const pe of [OCT1, NOV1]) {
+        const F = field(L, lid, pe);
+        for (let d = pe; d < pe + 300; d++) {
+          n2++; const x = L.cropCareFrac ? L.cropCareFrac(F.e, d + L.L_START) : NaN, y = Crops.grownDays(sid, pe, d) / Math.max(1, Crops.growDaysOf(sid));
+          if (x === y) same2++; else if (ex2.length < 2) ex2.push(`${lid}@${d}: ${x} ≠ ${y}`);
+        }
+      }
+      ok(n2 > 0 && same2 === n2, `★⑪ⓚ ${nm}: [추가안] 돌봄 비율 = 서버 grownDays ÷ max(1, growDaysOf)(월동 셋 × 파종 둘 × 300일)`, `${same2}/${n2}${ex2.length ? ' · ' + ex2.join(' ') : ''}`);
+    }
+    // ⓚ+ 하루 메모 — 같은 날 여러 칸(작물·파종일이 다른)을 섞어 두 번씩 물어도 칸마다 서버 셈 그대로 · [자명 통과 금지] 열쇠에서 파종일을 뺀 사본은 갈린다
+    {
+      const mixed = (LL) => {
+        // ⚠가을에 심은 월동 칸은 같은 겨울을 나면 파종일이 달라도 비율이 같다(춘화일부터 센다) — 열쇠의 파종일이 이빨을 가지려면
+        //   다른 겨울을 나는 칸(3/10 에 심은 밀 = 그해 겨울 뒤 춘화)이 섞여야 한다.
+        const FS = [['밀', 'wheat', OCT1], ['밀', 'wheat', NOV1], ['마늘', 'garlic', OCT1], ['보리', 'barley', NOV1], ['밀', 'wheat', MAR2 + 8]].map(([lid, sid, pe]) => ({ sid, pe, F: field(LL, lid, pe) }));
+        let n3 = 0, bad3 = 0;
+        for (let d = NOV1; d < NOV1 + 260; d++) for (let r = 0; r < 2; r++) for (const x of FS) {
+          n3++; if (LL.cropCareFrac(x.F.e, d + LL.L_START) !== Crops.grownDays(x.sid, x.pe, d) / Math.max(1, Crops.growDaysOf(x.sid))) bad3++;
+        }
+        return { n3, bad3 };
+      };
+      const A3 = L.cropCareFrac ? mixed(L) : null;
+      const M3 = build(H, (src) => src.replace("const k=sid+'|'+e.planted;", 'const k=sid;'));
+      const B3 = M3 && M3.cropCareFrac ? mixed(M3) : null;
+      ok(!!A3 && A3.n3 > 0 && A3.bad3 === 0 && !!B3 && B3.bad3 > 0, `⑪ⓚ+ ${nm}: [추가안] 하루 메모 — 같은 날 다섯 칸 섞어 두 번씩 ${A3 ? A3.n3 : '?'}번 물어도 서버 셈 그대로 · [자명 통과 금지] 열쇠에서 파종일을 뺀 사본은 ${B3 ? B3.bad3 : '?'}번 갈린다`);
+    }
+    // ⓛ 그 밖 · 끔 = 종전 달력일 비율(1년생 상추 · 끔이면 밀도) — 끔 = 랩 종전 바이트
+    {
+      const F1 = field(L, '상추', NOV1); let ok1 = !!L.cropCareFrac;
+      for (let D = F1.e.planted; ok1 && D < F1.e.planted + 120; D++) ok1 = L.cropCareFrac(F1.e, D) === (D - F1.e.planted) / (F1.e.g || F1.e.crop.grow);
+      L.setCal(false);
+      const F2 = field(L, '밀', OCT1); let ok2 = !!L.cropCareFrac;
+      for (let D = F2.e.planted; ok2 && D < F2.e.planted + 300; D++) ok2 = L.cropCareFrac(F2.e, D) === (D - F2.e.planted) / (F2.e.g || F2.e.crop.grow);
+      const OW = careDay(L, '밀', OCT1, MAR2);
+      L.setCal(true);
+      ok(ok1 && ok2 && OW.t === 1 && OW.dq > 0, `⑪ⓛ ${nm}: [추가안] 1년생 · 끔 = 종전 달력일 비율((day−planted) ÷ g) — 끔이면 밀 3/2 에 종전처럼 김매기 ${OW.t} · 감점 ${OW.dq.toFixed(2)}`, `상추 ${ok1 ? '○' : '✗'} · 끔 밀 ${ok2 ? '○' : '✗'}`);
+    }
+    // ⓜ [자명 통과 금지] 세 자리를 종전 비율로 되돌린 사본 ⇒ 가을 김매기가 서고 봄 둘째 날 밀린 벌이 몰린다 — ⓘ · ⓙ 가 문다
+    {
+      const OLDF = '(day-e.planted)/(e.g||e.crop.grow)';
+      const M2 = build(H, (src) => src.split('cropCareFrac(e,day)>=').join(OLDF + '>=').replace('gf=cropCareFrac(e,day)', 'gf=' + OLDF));
+      const a1 = M2 ? careDay(M2, '밀', OCT1, NOV1) : null, a2 = M2 ? careDay(M2, '밀', OCT1, MAR2) : null;
+      ok(!!a1 && a1.t === 1 && !!a2 && a2.t === 1 && a2.dq > 0, `⑪ⓜ ${nm}: [자명 통과 금지] 세 자리를 종전 비율로 되돌린 사본 — 밀 가을 일감 ${a1 ? a1.t : '?'} · 봄 둘째 날 일감 ${a2 ? a2.t : '?'} · 감점 ${a2 ? a2.dq.toFixed(2) : '?'} ⇒ ⓘ · ⓙ 가 빨개진다`);
+    }
+    // ⓝ 세 자리가 비율 하나를 부른다(글자) · 비율은 번들 정본(grownDays · growDaysOf)을 부른다
+    {
+      const calls = (H.match(/(?<!function )cropCareFrac\(e,day\)/g) || []).length;
+      const def = /function cropCareFrac\(e,day\)\{const sid=L_CROPCAL&&L_CROPSID\[e\.crop\.id\],C=EconEngine\.Crops;if\(sid&&C\.isWinterCrop\(sid\)\)\{[^\n]*f=C\.grownDays\(sid,e\.planted-L_START,day-L_START\)\/Math\.max\(1,C\.growDaysOf\(sid\)\);/.test(H);
+      ok(calls === 3 && def, `⑪ⓝ ${nm}: [추가안] 상태기 세 자리(cellTask 김매기 · doTask 김매기 · 하루 진화 감점 문턱)가 비율 cropCareFrac 를 부르고 · 비율은 번들의 서버 정본을 부른다`, `자리 ${calls} · 정의 ${def ? '○' : '✗'}`);
+    }
   }
+  // ⓚ' 서버 쪽 셈의 글자 — `villages._cropGrowFrac` 이 grownDays ÷ max(1, growDaysOf) 인가(바뀌면 랩 cropCareFrac 를 다시 맞춰야 한다)
+  const VS = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8');
+  ok(/function _cropGrowFrac\(e, day\) \{\s*const C = _Crops\(\); if \(!C\) return 0;\s*const need = Math\.max\(1, C\.growDaysOf\(e\.c\)\);\s*return C\.grownDays\(e\.c, e\.p, day\) \/ need;/.test(VS),
+    `⑪ⓚ' [추가안] 서버 돌봄 비율 정본 villages._cropGrowFrac = grownDays(id, 심은 날, 날) ÷ max(1, growDaysOf(id)) — 랩 cropCareFrac 와 같은 셈(글자)`);
 }
 
 console.log(`\n=== 결과: ${pass} PASS / ${fail} FAIL ===`);

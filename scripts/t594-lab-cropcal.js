@@ -23,6 +23,15 @@
 //   번들이 `server/crops.js` 를 싣는다 · `sim/build-econ-bundle.js` T648). 랩 상태기 세 자리(`cellTask` · `doTask` · 하루 작물 진화)가
 //   이 문 하나로 들어간다(서버 `cropTaskOf` · `cropDoTask` · `cropDayTick` 이 `dormantAt` 하나로 들어가는 그 꼴).
 //   ⚠끔(`?cropcal=0`)이면 늘 거짓 — 끔 판은 랩 표 `grow` 달력일(겨울에도 자라는 옛 셈)이라 돌봄만 멈추면 셈이 두 벌이 된다 ⇒ 끔 = 랩 종전 바이트.
+// ★★[T648 추가안] **돌봄 차례 비율**(김매기 벌 · 김 놓친 감점 문턱)도 서버 정본으로 — `cropCareFrac(e,day)` =
+//   `EconEngine.Crops.grownDays(서버 id, 심은 econ 날, econ 날) ÷ growDaysOf(서버 id)`(서버 `villages._cropGrowFrac` 그 셈 · 월동 셋 · 켬).
+//   랩 옛 비율 `(day−planted)÷g` 는 **달력일**이라 가을·겨울에도 차올라, 휴면 문만 있으면 겨울에 막힌 김매기가 봄 초에 몰렸다
+//   (계수: 전쟁 7 봄 감점 0 → 26,792). 서버는 활동일(춘화일부터 · 겨울 안 셈)이라 "멈춘 자리에서 재개"한다(villages.js T99 주석).
+//   ⚠월동 셋만 — 그 셋의 `g` 는 `cropGrowAt`(= 서버 readyDay 와 같은 셈 · T641)이라 비율의 분모가 서버와 같다. 1년생은 두 비율이 같고
+//     (휴면·춘화 없음), 표 밖 작물은 랩 `grow` 와 카탈로그 활동일이 다를 수 있어 종전 그대로 둔다 · 끔이면 종전 그대로(바이트 같음).
+//   ⚠하루 메모 — `grownDays` 는 춘화일부터 그날까지 날마다 휴면을 묻는 셈(부를 때 수십~백 번 · 8µs 안팎)이고 `cellTask` 가 칸마다 여러 번
+//     부른다 ⇒ 메모 없이는 랩 500일 판이 두 배로 느렸다(전쟁 42: 72 → 156초). 값은 (작물 · 파종일 · 날)만의 함수라 같은 날 같은 열쇠는 같은 값 —
+//     날이 바뀌면 비운다(값 무변 · 지문 같음 — 계수 판으로 확인).
 //
 // 실행: node scripts/t594-lab-cropcal.js [--check] [랩.html …]
 'use strict';
@@ -74,6 +83,7 @@ function blockFor(labIds) {
     `const L_CROPCAL_T={${ent.join(',')}};   // ★[T594] 작물 철 고증 활동일(농사로 1차 · 파종창 가운데날 → 수확창 가운데날) · v:1 = 월동(겨울 지난 3월 1일부터 센다 — 서버 T99 춘화)`,
     `let L_CROPCAL=true;try{if(typeof location!=='undefined'&&new URLSearchParams(location.search).get('cropcal')==='0')L_CROPCAL=false;}catch(e){}try{const _el=(typeof document!=='undefined')&&document.getElementById('cropCal');if(_el)_el.checked=L_CROPCAL;}catch(e){}   // 손잡이(★T634 기본 켬 = 서버와 같다 · 끔 = 랩 종전 그대로) · 패널 '작물 철 고증' · URL ?cropcal=0 = 끔`,
     `const L_CROPSID={${sids.join(',')}};   // ★[T648] 랩 작물 id → 서버 작물 id(카탈로그 ko 로 고른 짝 · 랩 표 ${labIds.length}종 중 ${sids.length}) — 서버 정본 술어를 부를 때만 쓴다`,
+    `let _ccfDay=-1;const _ccfMemo=new Map();function cropCareFrac(e,day){const sid=L_CROPCAL&&L_CROPSID[e.crop.id],C=EconEngine.Crops;if(sid&&C.isWinterCrop(sid)){if(day!==_ccfDay){_ccfDay=day;_ccfMemo.clear();}const k=sid+'|'+e.planted;let f=_ccfMemo.get(k);if(f===undefined){f=C.grownDays(sid,e.planted-L_START,day-L_START)/Math.max(1,C.growDaysOf(sid));_ccfMemo.set(k,f);}return f;}return (day-e.planted)/(e.g||e.crop.grow);}   // ★[T648 추가안] 돌봄 차례 비율(김매기 벌 · 감점 문턱) — 월동 셋 = 서버 정본 활동일 비율(crops.grownDays ÷ growDaysOf · villages._cropGrowFrac 그 셈 — 가을 0 · 겨울 멈춤 · 봄에 멈춘 자리에서) · 그 밖·끔 = 종전 달력일 비율 · 하루 메모(같은 날 · 같은 작물 · 같은 파종일 = 같은 값 · 값 무변 — grownDays 는 날수만큼 도는 셈이라 칸마다 부르면 랩 판이 두 배로 느려진다)`,
     `function cropDormant(e,day){if(!L_CROPCAL)return false;const sid=L_CROPSID[e.crop.id];return !!sid&&EconEngine.Crops.dormantAt(sid,day-L_START);}   // ★[T648] 휴면이면 돌봄 일감 0 · 품질 감점 0 · 병충해 0(서버 T99 ② · ③ 다년생) — 술어 = 번들의 서버 정본 crops.dormantAt 그대로(사본 0) · 끔(?cropcal=0)이면 늘 거짓 = 랩 종전 그대로`,
     `function cropGrowAt(cr,day){const t=L_CROPCAL&&L_CROPCAL_T[cr.id];if(!t)return cr.grow;if(!t.v)return t.g;const C=EconEngine.Calendar,p=day-L_START,nx=d=>C.seasonStart(d)+C.seasonLen(d);let d=p;for(let i=0;i<=L_SEASONS.length&&C.seasonOf(d)!=='winter';i++)d=nx(d);if(C.seasonOf(d)!=='winter')return t.g;let e=nx(d),n=0;while(n<t.g){if(C.seasonOf(e)!=='winter')n++;e++;}return e-p;}   // 심는 날 → 익기까지 날수(끔 = cr.grow 그대로) · 월동 = 서버 T99 춘화 그 셈(달력 정본 — 그 겨울이 끝난 다음 날부터 겨울 아닌 날을 활동일만큼 · ★[T641] 옛 줄은 랩 1월 기점 달력이라 61일 일렀다)`,
     END,
