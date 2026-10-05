@@ -146,8 +146,11 @@ console.log('\n⑥ 3사본 — 번들이 소스와 같은 세계다');
   const B = fs.readFileSync(path.join(ROOT, 'sim', 'economy-engine.browser.js'), 'utf8');
   ok(/const RAW_GRAINS = \['wheat', 'rice', 'barley'\]/.test(B), '⑥ 번들에 생곡 표가 있다');
   ok(/RAW_GRAIN_FOOD_FACTOR/.test(B) && /T73_RAWGRAIN/.test(B), '⑥ 번들에 계수와 손잡이가 있다');
-  const n = (B.match(/T73_RAWGRAIN/g) || []).length, m = (SRC.match(/T73_RAWGRAIN/g) || []).length;
-  ok(n === m, '⑥ ★손잡이가 무는 자리 수가 소스와 **같다**(한 자리가 빠지면 랩만 다른 세계가 된다)', `번들 ${n} = 소스 ${m}`);
+  // ★[T648 2026-10-05] 번들엔 이제 econ 밖 서버 정본(작물 — `server/crops.js` · `events.js` …)도 실린다 — `events.js` 주석이 이 손잡이 이름을 적는다.
+  //   ⇒ 자리 수는 번들 안 **economy-sim.js 덩이**(`modules["v1"]`)에서 센다(이 절이 묻는 것 = 번들의 econ 사본이 소스와 같은 자리를 갖나).
+  const a1 = B.indexOf('modules["v1"]=(function(){'), a2 = B.indexOf('modules["v2"]=(function(){', a1), V1 = (a1 >= 0 && a2 > a1) ? B.slice(a1, a2) : B;
+  const n = (V1.match(/T73_RAWGRAIN/g) || []).length, m = (SRC.match(/T73_RAWGRAIN/g) || []).length;
+  ok(n === m, '⑥ ★손잡이가 무는 자리 수가 소스와 **같다**(번들의 economy-sim.js 덩이 · 한 자리가 빠지면 랩만 다른 세계가 된다)', `번들 ${n} = 소스 ${m}`);
   ok(SPEC.RESOURCES.wheat.contributes.subsistence > 0,
     '⑥ [교차] specialty 는 **이미** 생곡을 자급 식량으로 친다(이 카드는 그 표에 econ 을 맞춘 것이다)',
     `wheat subsistence ${SPEC.RESOURCES.wheat.contributes.subsistence}`);

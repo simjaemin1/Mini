@@ -17,6 +17,12 @@
 // ★★[T634 2026-10-04] **기본 켬**(서버와 같은 꼴 — 손잡이 없음 = 켬 · 끔 = 옛 판): 패널 '작물 철 고증' 칸이 처음부터 체크되어 있고
 //   URL `?cropcal=0` 이 끈다(종전 `?cropcal=1` 은 이제 기본과 같다). 칸(체크박스 줄)도 이 스크립트가 굽고 `--check` 가 본다 —
 //   블록의 기본값과 칸의 `checked` 가 갈리면 화면이 거짓말을 한다.
+// ★★[T648 2026-10-05] **휴면 문**(서버 T99 ② 휴면 중 돌봄·품질 정지 · ③ 다년생 휴면) — 블록에 두 줄을 더 굽는다:
+//   `L_CROPSID`(랩 id → 서버 id · 아래 `labIdFor` 그 하나로 30종 전부 · 짝이 겹치면 굽지 않는다) ·
+//   `cropDormant(e,day)` = 번들의 서버 정본 `EconEngine.Crops.dormantAt(서버 id, econ 날)` 을 **그대로 부른다**(술어 사본 0 —
+//   번들이 `server/crops.js` 를 싣는다 · `sim/build-econ-bundle.js` T648). 랩 상태기 세 자리(`cellTask` · `doTask` · 하루 작물 진화)가
+//   이 문 하나로 들어간다(서버 `cropTaskOf` · `cropDoTask` · `cropDayTick` 이 `dormantAt` 하나로 들어가는 그 꼴).
+//   ⚠끔(`?cropcal=0`)이면 늘 거짓 — 끔 판은 랩 표 `grow` 달력일(겨울에도 자라는 옛 셈)이라 돌봄만 멈추면 셈이 두 벌이 된다 ⇒ 끔 = 랩 종전 바이트.
 //
 // 실행: node scripts/t594-lab-cropcal.js [--check] [랩.html …]
 'use strict';
@@ -52,7 +58,12 @@ function labIdFor(id, labIds) {
   return cands.find((k) => labIds.includes(k)) || null;
 }
 function blockFor(labIds) {
-  const ent = [], miss = [];
+  const ent = [], miss = [], sids = [], seen = new Map();
+  for (const id of Crops.IDS) {   // ★[T648] 랩 id → 서버 id(30종 전부 · 휴면 술어를 부를 때)
+    const lid = labIdFor(id, labIds); if (!lid) continue;
+    if (seen.has(lid)) throw new Error(`랩 id ${lid} 가 서버 ${seen.get(lid)} · ${id} 둘에 짝지어진다 — labIdFor 를 고쳐라`);
+    seen.set(lid, id); sids.push(`'${lid}':'${id}'`);
+  }
   for (const id of CropCal.ids()) {
     const lid = labIdFor(id, labIds), g = Crops.calDaysOf(id);
     if (!lid || g == null) { miss.push(id); continue; }
@@ -62,6 +73,8 @@ function blockFor(labIds) {
     `${START} (생성물 — node scripts/t594-lab-cropcal.js · 손으로 고치지 마라 · 정본 server/crop-cal.js → crops.calDaysOf)`,
     `const L_CROPCAL_T={${ent.join(',')}};   // ★[T594] 작물 철 고증 활동일(농사로 1차 · 파종창 가운데날 → 수확창 가운데날) · v:1 = 월동(겨울 지난 3월 1일부터 센다 — 서버 T99 춘화)`,
     `let L_CROPCAL=true;try{if(typeof location!=='undefined'&&new URLSearchParams(location.search).get('cropcal')==='0')L_CROPCAL=false;}catch(e){}try{const _el=(typeof document!=='undefined')&&document.getElementById('cropCal');if(_el)_el.checked=L_CROPCAL;}catch(e){}   // 손잡이(★T634 기본 켬 = 서버와 같다 · 끔 = 랩 종전 그대로) · 패널 '작물 철 고증' · URL ?cropcal=0 = 끔`,
+    `const L_CROPSID={${sids.join(',')}};   // ★[T648] 랩 작물 id → 서버 작물 id(카탈로그 ko 로 고른 짝 · 랩 표 ${labIds.length}종 중 ${sids.length}) — 서버 정본 술어를 부를 때만 쓴다`,
+    `function cropDormant(e,day){if(!L_CROPCAL)return false;const sid=L_CROPSID[e.crop.id];return !!sid&&EconEngine.Crops.dormantAt(sid,day-L_START);}   // ★[T648] 휴면이면 돌봄 일감 0 · 품질 감점 0 · 병충해 0(서버 T99 ② · ③ 다년생) — 술어 = 번들의 서버 정본 crops.dormantAt 그대로(사본 0) · 끔(?cropcal=0)이면 늘 거짓 = 랩 종전 그대로`,
     `function cropGrowAt(cr,day){const t=L_CROPCAL&&L_CROPCAL_T[cr.id];if(!t)return cr.grow;if(!t.v)return t.g;const C=EconEngine.Calendar,p=day-L_START,nx=d=>C.seasonStart(d)+C.seasonLen(d);let d=p;for(let i=0;i<=L_SEASONS.length&&C.seasonOf(d)!=='winter';i++)d=nx(d);if(C.seasonOf(d)!=='winter')return t.g;let e=nx(d),n=0;while(n<t.g){if(C.seasonOf(e)!=='winter')n++;e++;}return e-p;}   // 심는 날 → 익기까지 날수(끔 = cr.grow 그대로) · 월동 = 서버 T99 춘화 그 셈(달력 정본 — 그 겨울이 끝난 다음 날부터 겨울 아닌 날을 활동일만큼 · ★[T641] 옛 줄은 랩 1월 기점 달력이라 61일 일렀다)`,
     END,
   ].join('\n');

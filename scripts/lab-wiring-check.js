@@ -22,6 +22,7 @@
 //   G. 인라인   — 랩 HTML 의 인라인 엔진이 그 번들과 같은가
 //   K. 대조     — 서버에만 있던 여섯(T569·T570·T577 추신·T578·T579 추신·T590)이 랩에도 같은 식으로 섰나(T599)
 //   L. 대조 2차 — 서버 env 손잡이 문(같은 이름 · 같은 기본) · 작물 철 월동 셈(T594 거울 = 서버 T99 readyDay)(T641)
+//   M. 밭 겨울 휴면 — 서버 T99 ②③ 술어(crops.dormantAt)를 번들로 싣고 랩 상태기 세 자리가 그 문 하나만 부르나(T648)
 //
 // 실행: node scripts/lab-wiring-check.js [랩HTML...]
 //   HTML 을 안 주면 lab/마을실험실.html · lab/전쟁실험실.html 을 잰다(랩은 2026-09-05 레포 안으로 들어왔다).
@@ -884,6 +885,51 @@ console.log('\n[L] 랩 ↔ 서버 대조 2차 — 서버 env 손잡이 문 · �
         else bad('ⓔ [자명 통과 금지] 옛 줄도 같은 답 — 비교가 죽었다');
       }
     }
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// [M] ★★[T648 2026-10-05] 랩 밭 겨울 휴면 — **서버 T99 ②③ 술어를 번들로 싣고 랩 상태기 세 자리가 그것만 부르나**
+// ══════════════════════════════════════════════════════════════════════════════
+//   ⓐ 번들이 서버 작물 정본을 **글자 그대로** 싣고(`server/crops.js` · `crops.json` · `crop-cal.js` · `events.js`) `EconEngine.Crops` 로 내놓는다
+//   ⓑ 두 랩 — 문(`cropDormant`)은 구운 블록 안 하나 · 본문이 `EconEngine.Crops.dormantAt` 을 부른다 · 상태기 세 자리(cellTask · doTask · 하루 작물 진화)가
+//      그 문을 부른다 · 번들 밖 랩 글에 휴면 술어를 손으로 다시 짠 자리(`function dormantAt` · `_dormantKind` · `_dormant(`)가 없다
+//   ⓒ [자명 통과 금지] 세 자리 중 하나를 뺀 사본은 자리 수가 갈리고 · 번들에서 `Crops` 내놓기를 뺀 사본은 ⓐ 가 갈린다
+//   (값 대조 — 문 = 서버 dormantAt 30종 × 1,461날 · 겨울 하루 일감 0 · 품질 무변 — 은 `scripts/test-crop-cal.js` ⑪)
+console.log('\n[M] 랩 밭 겨울 휴면 — 서버 T99 ②③ 술어를 번들로(T648)');
+{
+  const B = rd('sim/economy-engine.browser.js');
+  const stripSb = (t) => t.replace(/^#!.*\n/, '');
+  const exportsCrops = (b) => /root\.EconEngine\.Crops=modules\.crops;/.test(b);
+  const srcs = ['server/crops.js', 'server/crop-cal.js', 'server/events.js'].map((f) => [f, B.includes(stripSb(rd(f)))]);
+  const jsonIn = B.includes(`modules["cropsData"]=${rd('server/crops.json').trim()};`);
+  if (exportsCrops(B) && srcs.every(([, x]) => x) && jsonIn) ok('ⓐ 번들이 서버 작물 정본을 글자 그대로 싣고(crops.js · crops.json · crop-cal.js · events.js) `EconEngine.Crops` 로 내놓는다(사본 0)');
+  else bad(`ⓐ 번들 작물 정본 — 내놓기 ${exportsCrops(B) ? '○' : '✗'} · ${srcs.map(([f, x]) => `${path.basename(f)} ${x ? '○' : '✗'}`).join(' · ')} · crops.json ${jsonIn ? '○' : '✗'} (sim/build-econ-bundle.js T648)`);
+  const SITE = /if\(cropDormant\(e,day\)\)return 0;|if\(cropDormant\(e,day\)\)return false;|else if\(!cropDormant\(e,day\)\)\{/g;
+  const outsideBundle = (H) => { const a = H.indexOf('<!-- ENGINE-BUNDLE-START'), b = H.indexOf('<!-- ENGINE-BUNDLE-END'); return (a >= 0 && b > a) ? H.slice(0, a) + H.slice(b) : H; };
+  let H0 = null;
+  for (const f of ['lab/마을실험실.html', 'lab/전쟁실험실.html']) {
+    const H = rd(f), O = outsideBundle(H); H0 = H0 || H;
+    const defs = (O.match(/function cropDormant\(e,day\)\{[^\n]*/g) || []);
+    const blkA = H.indexOf('// ▼T594-CROPCAL'), blkB = H.indexOf('// ▲T594-CROPCAL'), di = H.indexOf('function cropDormant(e,day){');
+    if (defs.length !== 1 || !(di > blkA && di < blkB)) { bad(`${f} [T648 ⓑ] 문 cropDormant 정의 ${defs.length}개(구운 블록 안 하나여야 한다)`); continue; }
+    if (!/EconEngine\.Crops\.dormantAt\(sid,day-L_START\)/.test(defs[0])) bad(`${f} [T648 ⓑ] 문이 번들의 서버 정본(EconEngine.Crops.dormantAt)을 안 부른다`);
+    else ok(`${f} [T648 ⓑ] 문 하나(구운 블록) — 번들의 서버 정본 EconEngine.Crops.dormantAt(서버 id, econ 날)을 부른다`);
+    const sites = (H.match(SITE) || []).length;
+    if (sites !== 3) bad(`${f} [T648 ⓑ] 상태기에서 문을 부르는 자리 ${sites} — 셋(cellTask · doTask · 하루 작물 진화)이어야 한다`);
+    else ok(`${f} [T648 ⓑ] 상태기 세 자리(cellTask 일감 · doTask 수행 · 하루 작물 진화 감점)가 문 하나로 들어간다`);
+    const hand = /function\s+dormantAt\s*\(|_dormantKind|function\s+_dormant\s*\(/.test(O);
+    if (hand) bad(`${f} [T648 ⓑ] 번들 밖 랩 글에 휴면 술어를 손으로 짠 자리가 있다 — 사본이다`);
+    else ok(`${f} [T648 ⓑ] 번들 밖 랩 글에 휴면 술어 사본 0(dormantAt · _dormantKind · _dormant 정의 없음)`);
+  }
+  // ⓒ 자명 통과 금지
+  {
+    const mutSite = H0 ? H0.replace('if(cropDormant(e,day))return false;', '') : null;
+    const mutB = B.replace('root.EconEngine.Crops=modules.crops;', '');
+    const bite1 = !!mutSite && (mutSite.match(SITE) || []).length === 2;
+    const bite2 = !exportsCrops(mutB);
+    if (bite1 && bite2) ok('ⓒ [자명 통과 금지] doTask 자리를 뺀 사본은 자리 셋 → 둘 · 번들에서 Crops 내놓기를 뺀 사본은 ⓐ 가 갈린다 — 검사가 문다');
+    else bad(`ⓒ [자명 통과 금지] 비틀어도 같은 답 — 자리 ${bite1 ? '문다' : '죽음'} · 번들 ${bite2 ? '문다' : '죽음'}`);
   }
 }
 
