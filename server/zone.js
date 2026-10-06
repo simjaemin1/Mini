@@ -3631,7 +3631,13 @@ function npcCanReach(ax, ay, bx, by) {
 function computeNpcPath(npc, now) {
   if (typeof npc.targetX !== 'number' || typeof npc.targetY !== 'number') return null;
   const d = Math.hypot(npc.targetX - npc.x, npc.targetY - npc.y);
-  if (d < 48) return [{ x: npc.targetX, y: npc.targetY }];
+  if (d < 48) {
+    // ★[T670 ①] 도착한 사람은 틱마다 여기로 온다(A* 부름의 98 % — T646 §3). 이미 같은 한 점짜리 길을 들고 있으면 그 배열을 돌려준다
+    //   (내용 같음 · 부른 쪽이 `pathIndex = 0` · `_pathAt = now` 를 종전대로 다시 쓴다 — 새 배열 할당만 0).
+    const P = npc.path;
+    if (P && P.length === 1 && Object.is(P[0].x, npc.targetX) && Object.is(P[0].y, npc.targetY)) return P;
+    return [{ x: npc.targetX, y: npc.targetY }];
+  }
   const isVil = !!npc.simVillageId;   // 마을 주민 = 랩 이동 정본 대상
   // 도주는 직선 전력질주(랩 동형 — 도주는 경로 계획 밖). 비주민 배회도 현행 beeline(성능 — 야생·레거시 회귀 없음)
   if (npc.behavior === 'flee' || (npc.behavior === 'wander' && !isVil)) {
@@ -3729,11 +3735,13 @@ function followNpcPath(npc, speedMult) {
 //   ⇒ 목표에 도착(경로 소진 + 12px 이내)했으면 stuck 이 아니다. 12px 은 followNpcPath 의 도착 판정(10px)과 맞춘 값.
 //     영구 정지 위험 없음: 도착지가 벽 안이든 물가든 **다음 결정**이 새 목표를 주고, 그때 거리가 12px 을 넘으면
 //     stuck 감지는 종전대로 작동한다.
+// ★[T670 ①] `_stuckPos` 를 **제자리에서 덮어쓴다**(새 객체 0) — 이 객체를 읽는 곳은 `detectStuck` 하나뿐이다(서버 전체 `_stuckPos` 6자리 · 바깥 참조 0) ⇒ 값·순서 같다.
+function _t670Stuck(npc, now) { const S = npc._stuckPos; if (S) { S.x = npc.x; S.y = npc.y; S.at = now; } else npc._stuckPos = { x: npc.x, y: npc.y, at: now }; }
 function detectStuck(npc, now) {
   if (npc.targetX != null && npc.targetY != null
       && (!npc.path || npc.pathIndex >= npc.path.length)
       && Math.hypot(npc.x - npc.targetX, npc.y - npc.targetY) < 12) {
-    npc._stuckPos = { x: npc.x, y: npc.y, at: now };   // 서 있는 동안 타이머를 계속 리셋 — 떠날 때 즉시 오판 금지
+    _t670Stuck(npc, now);   // 서 있는 동안 타이머를 계속 리셋 — 떠날 때 즉시 오판 금지
     npc._stuckN = 0;
     return false;
   }
@@ -3743,12 +3751,12 @@ function detectStuck(npc, now) {
   }
   const moved = Math.hypot(npc.x - npc._stuckPos.x, npc.y - npc._stuckPos.y);
   if (moved > 5) {
-    npc._stuckPos = { x: npc.x, y: npc.y, at: now };
+    _t670Stuck(npc, now);
     npc._stuckN = 0;   // ★[생활 층 100% ①] 정상 이동 재개 → 연속 stuck 카운터 리셋
     return false;
   }
   if (now - npc._stuckPos.at > 1500) {
-    npc._stuckPos = { x: npc.x, y: npc.y, at: now }; // reset
+    _t670Stuck(npc, now); // reset
     return true;
   }
   return false;
@@ -3854,9 +3862,14 @@ function _t316WalkAlways(npc) {
   return !!(SimVillages.chiefWalking && SimVillages.chiefWalking(npc));
 }
 
+// ★[T670 ①] 밤 귀가 국면 — 틱의 `now` 하나에 한 번(`worldPhase` 순수 함수의 메모 · 새 수 0)
+let _t670PhNow = NaN, _t670Ph = 0;
+// ★[T670 ②] 헛물음 건너뛰기 — `decideNpcBehavior` 는 타이머 문(`now < nextDecisionAt`) 앞에 **부수효과가 없다**(캐나디아 갈래 판정 하나뿐).
+//   켜면 그 문에서 바로 돌아올 부름을 부르는 쪽에서 거른다 = 같은 일을 안 할 뿐(같은 결과). 기본 끔 = 종전 그대로.
+const T670_SKIP_IDLE = process.env.T670_SKIP_IDLE === '1';
 function npcStep(npc, dt, now) {
   npc._t540StepAt = now;   // ★[T540 관측] 이 몸이 마지막으로 걸음 문을 받은 때(`/walkdbg stepAge` — 새벽 멎음을 이것으로 잡았다)
-  decideNpcBehavior(npc, now);
+  if (!(T670_SKIP_IDLE && !npc.canadiaVillage && now < npc.nextDecisionAt)) decideNpcBehavior(npc, now);   // ★[T670 ②] 끔 = 종전 그대로
 
   // ★[§15 2파·비전투원 대피] 전투·긴급 소집 중 마을 주민(villages.js가 simEvacUntil 소프트 TTL 설정) —
   //   행동 목표를 자택으로 고정(취침·출근 대신 '대피'). TTL 만료(전투 종결)면 자동 해제. fight(교전)는 예외.
@@ -3868,8 +3881,17 @@ function npcStep(npc, dt, now) {
   //   인간 일과만 로컬 fv=(전역 phase+마을 _lonOff)%1 — 야생·도적·econ 일 경계는 전역 유지(랩 5351 블록 계약).
   //   VILLAGE_LON=0 게이트. 서버 NPC 일과 모델이 얕아(§2 매트릭스) 야간 자택 대기가 첫 스케줄 소비처(최소 실체).
   else if (SIM_LON_ON && npc.simLonOff != null && npc.npcHomeX != null && npc.behavior !== 'fight') {
-    const fv = (worldPhase(now) + npc.simLonOff) % 1;
-    if (fv > WORLD.dayPhaseRatio) { npc.targetX = npc.npcBedX ?? npc.npcHomeX; npc.targetY = npc.npcBedY ?? npc.npcHomeY; if (npc.behavior !== 'wander') { npc.behavior = 'wander'; npc.path = null; } npc.gatherTarget = null; }   // ★[침대 진입] 밤 목표=실내 침대(npcLifeTick과 동일 — 두 게이트가 침대/마당으로 갈라지면 왕복 진동). 자리 분산은 1인 1침대(BED_SLOTS)가 실체로 보장
+    // ★[T670 ①] `worldPhase(now)` 는 `now` 의 순수 함수다 — 틱 안의 `now` 는 모두 같으므로 틱당 한 번만 셈한다(같은 값 · 같은 비트).
+    if (now !== _t670PhNow) { _t670PhNow = now; _t670Ph = worldPhase(now); }
+    const fv = (_t670Ph + npc.simLonOff) % 1;
+    if (fv > WORLD.dayPhaseRatio) {   // ★[침대 진입] 밤 목표=실내 침대(npcLifeTick과 동일 — 두 게이트가 침대/마당으로 갈라지면 왕복 진동). 자리 분산은 1인 1침대(BED_SLOTS)가 실체로 보장
+      // ★[T670 ①] 같은 값이면 다시 쓰지 않는다(쓰는 순서·값 그대로 — 같은 값 덮어쓰기는 아무것도 안 바꾼다)
+      const _bx = npc.npcBedX ?? npc.npcHomeX, _by = npc.npcBedY ?? npc.npcHomeY;
+      if (!Object.is(npc.targetX, _bx)) npc.targetX = _bx;
+      if (!Object.is(npc.targetY, _by)) npc.targetY = _by;
+      if (npc.behavior !== 'wander') { npc.behavior = 'wander'; npc.path = null; }
+      if (npc.gatherTarget !== null) npc.gatherTarget = null;
+    }
   }
 
   // Phase 4d-14d: canadia caravan traveling — decideCanadiaBehavior가 직접 vx/vy(500 px/s) 설정.
@@ -3934,7 +3956,9 @@ function npcStep(npc, dt, now) {
   // path가 만료(목표 바뀜)되거나 너무 오래(>3초) 됐으면 재계산.
   let speedMult = npc.behavior === 'flee' ? 2.5 : 0.6;   // ★도주=달리기 5m/s(맨몸이라 전투 유닛 돌격보다 빠름 → 추격 어려움, 고증). 배회=1.2
   if (npc.behavior !== 'flee' && npc._huntSpd) speedMult *= npc._huntSpd;   // ★[사냥꾼 완전체] wildlife 두뇌 배속(랩 moveNPC 동형): 잠행 0.5×·추적/회수 2×·속보 1.25×·조준 정지≈0
-  const targetKey = `${npc.targetX|0}_${npc.targetY|0}`;
+  // ★[T670 ①] 목표 키 문자열은 목표가 바뀔 때만 짓는다 — 같은 두 수면 같은 글자다(`===` 가 참이면 `|0` 의 입력이 같다 · NaN 은 늘 다시 짓는다).
+  if (npc.targetX !== npc._t670TkX || npc.targetY !== npc._t670TkY) { npc._t670TkX = npc.targetX; npc._t670TkY = npc.targetY; npc._t670Tk = `${npc.targetX|0}_${npc.targetY|0}`; }
+  const targetKey = npc._t670Tk;
   const needPath = !npc.path || npc.pathIndex >= npc.path.length ||
                    npc._pathFor !== targetKey ||
                    (npc._pathAt && now - npc._pathAt > 5000);
