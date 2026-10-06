@@ -83,6 +83,7 @@ function _A6run(br, npc, same, cause) {
   _A6.hq[br].cause[cause]++;
 }
 const _A6near = (npc, tx, ty) => typeof tx === 'number' && Math.hypot(npc.x - tx, npc.y - ty) < 48;   // computeNpcPath 의 d<48 그 수
+if (process.env.T646_SEGONLY !== '1') {   // [T670] 구간 팔은 갈래를 안 감싼다
 // 결정 — 문자열을 짓지 않는다(필드 넷을 그대로 견준다 · 탐침 몫을 줄이고 그 몫을 따로 잰다 \`probe\`)
 { const f0 = decideNpcBehavior;
   decideNpcBehavior = function (npc, now) {
@@ -114,7 +115,8 @@ if (SimVillages.npcLifeTick) { const f0 = SimVillages.npcLifeTick;
   }; }
 // npcStep 전체 · 따라가기 · 걸음
 var _A6arrT = 0, _A6ps = 0, _A6pb = 0;
-{ const f0 = npcStep; npcStep = function (npc, dt, now) { _A6arrT = 0; const s = _a6t(); f0(npc, dt, now); const e = _a6t(); _A6sub('npcStep', e - s); if (_A6arrT) _A6sub('arrive', e - _A6arrT); }; }
+{ const f0 = npcStep; npcStep = function (npc, dt, now) { const _st = !npc.path || npc.pathIndex >= npc.path.length;   // [T670] 서 있는 사람(길을 다 걸었다) / 걷는 사람
+    _A6arrT = 0; const s = _a6t(); f0(npc, dt, now); const e = _a6t(); _A6sub('npcStep', e - s); _A6sub(_st ? 'npcStep:서' : 'npcStep:걷', e - s); if (_A6arrT) _A6sub('arrive', e - _A6arrT); }; }
 { const f0 = detectStuck; detectStuck = function (npc, now) { const s = _a6t(); const r = f0(npc, now); _A6sub('stuck', _a6t() - s); return r; }; }
 { const f0 = unstuckNpc; unstuckNpc = function (npc, now) { const s = _a6t(); const r = f0(npc, now); _A6sub('unstuck', _a6t() - s); return r; }; }
 { const f0 = followNpcPath;
@@ -161,13 +163,60 @@ var _A6arrT = 0, _A6ps = 0, _A6pb = 0;
     }
     return r;
   }; }
+}
 // GC — 구간 안에 이미 들어 있다(겹침) · 따로 센다
 try { new (require('perf_hooks').PerformanceObserver)((l) => { for (const e of l.getEntries()) { if (_A6) _A6sub('gc', e.duration); } }).observe({ entryTypes: ['gc'] }); } catch (e) {}
 `;
 
-function makeTree(dir, probe) {
+// ── [T670 ③] A* 실패 표 — 사본에만 · 실패한 부름만 같은 입력으로 두 번 더 판다(셈 팔 · 예산 없는 팔) ──────────────
+const Z7_TAIL = `
+;(function () {   // [T670 탐침] computeNpcPath 문맥 — 지금 묻는 사람(pathfind 꼬리가 읽는다) · T381 막힌 목표(pathfind 를 안 부르고 null)
+  const f0 = computeNpcPath;
+  computeNpcPath = function (npc, now) {
+    globalThis.__t670ctx = npc; globalThis.__t670pf = 0;
+    const la = npc._lastAStarAt; const r = f0(npc, now);
+    if (!r && npc._lastAStarAt !== la && !globalThis.__t670pf && globalThis.__t670rec) globalThis.__t670rec({ kind: 'dead', npc, sx: npc.x, sy: npc.y, ex: npc.targetX, ey: npc.targetY, ms: 0, exp: 0 });
+    globalThis.__t670ctx = null; return r;
+  };
+  const rows = [], rep = new Map();
+  globalThis.__t670rec = (o) => {
+    const n = o.npc || {}, cs = 32, ck = 16;   // 청크 = 16칸(존 청크 512px)
+    const scx = Math.floor(o.sx / cs), scy = Math.floor(o.sy / cs), ecx = Math.floor(o.ex / cs), ecy = Math.floor(o.ey / cs);
+    const key = Math.floor(scx / ck) + ',' + Math.floor(scy / ck) + '>' + ecx + ',' + ecy + '@' + zoneGameDay();
+    rep.set(key, (rep.get(key) || 0) + 1);
+    if (rows.length < 20000) rows.push({ kind: o.kind, day: zoneGameDay(), vil: n.simVillageId || null, act: n._lifeAct || n.behavior || null, job: n.simJob || null,
+      s: [scx, scy], e: [ecx, ecy], dist: Math.abs(ecx - scx) + Math.abs(ecy - scy), ms: +o.ms.toFixed(3), exp: o.exp, edges: o.edges || 0,
+      unl: o.unl || null, key, wet: o.wet || 0 });
+    if ((rows.length % 20) === 1 && process.env.T670_AFAIL_OUT) { try { require('fs').writeFileSync(process.env.T670_AFAIL_OUT, JSON.stringify({ rows, rep: [...rep] })); } catch (e) {} }
+  };
+  setInterval(() => { if (process.env.T670_AFAIL_OUT) { try { require('fs').writeFileSync(process.env.T670_AFAIL_OUT, JSON.stringify({ rows, rep: [...rep] })); } catch (e) {} } }, 30000).unref();
+})();
+`;
+const PF_TAIL = `
+;(function () {   // [T670 탐침] 실패만 다시 판다 — ① 원래 부름(시간만 · 감싸지 않는다) ② 같은 예산 셈 팔(펼친 칸·간선) ③ 예산 없는 팔(같은 반경 — 닿나 · 필요 칸)
+  const f0 = module.exports.findPath, perf = require('perf_hooks').performance;
+  const counted = (opts, maxCells) => { const seen = new Set(); let edges = 0, wet = 0; const ib = opts.isBlockedFn, iw = opts.isWaterFn;
+    const o = Object.assign({}, opts, { maxCells, isBlockedFn: function (a, b, c, d) { edges++; seen.add(a * 65536 + b); return ib ? ib.apply(this, arguments) : false; },
+      isWaterFn: function () { wet++; return iw ? iw.apply(this, arguments) : false; } });
+    return { o, get exp() { return seen.size; }, get edges() { return edges; }, get wet() { return wet; } };
+  };
+  module.exports.findPath = function (sx, sy, ex, ey, opts) {
+    globalThis.__t670pf = 1;
+    const t = perf.now(); const r = f0(sx, sy, ex, ey, opts); const ms = perf.now() - t;
+    if (r || !globalThis.__t670rec || !globalThis.__t670ctx) return r;
+    const R = (opts && opts.searchRadiusCells) || 64, cd = Math.abs(Math.floor(ex / 32) - Math.floor(sx / 32)) + Math.abs(Math.floor(ey / 32) - Math.floor(sy / 32));
+    if (cd > R) { globalThis.__t670rec({ kind: 'far', npc: globalThis.__t670ctx, sx, sy, ex, ey, ms, exp: 0 }); return r; }
+    const A = counted(opts || {}, (opts && opts.maxCells) || 4096); f0(sx, sy, ex, ey, A.o);
+    const B = counted(opts || {}, Infinity); const rb = f0(sx, sy, ex, ey, B.o);
+    globalThis.__t670rec({ kind: A.exp === 0 ? 'goalBlocked' : (rb ? 'budget' : 'unreach'), npc: globalThis.__t670ctx, sx, sy, ex, ey, ms, exp: A.exp, edges: A.edges, wet: A.wet,
+      unl: { found: !!rb, exp: B.exp } });
+    return r;
+  };
+})();
+`;
+function makeTree(dir, probe, ref, seg) {
   try { execFileSync('git', ['worktree', 'remove', '--force', dir], { cwd: ROOT, stdio: 'ignore' }); } catch (e) {}
-  execFileSync('git', ['worktree', 'add', '--detach', '-q', dir, 'HEAD'], { cwd: ROOT, stdio: 'ignore' });
+  execFileSync('git', ['worktree', 'add', '--detach', '-q', dir, ref || 'HEAD'], { cwd: ROOT, stdio: 'ignore' });
   try { fs.symlinkSync(path.join(ROOT, 'node_modules'), path.join(dir, 'node_modules')); } catch (e) {}
   if (!probe) return 0;
   const zp = path.join(dir, 'server', 'zone.js');
@@ -180,6 +229,12 @@ function makeTree(dir, probe) {
     const tailEnd = a.startsWith('  { const _h = process.hrtime(_tickHr0)');
     s = s.replace(a, () => `  _A6m(${JSON.stringify(name)});${tailEnd ? ' _A6end();' : ''}\n` + a);
   }
+  if (process.argv.includes('--astar')) {   // [T670 ③] A* 실패 한 방 표 — pathfind 꼬리(실패 부름만 다시 판다) + computeNpcPath 앞 문맥(사람·행동)
+    const pf = path.join(dir, 'server', 'pathfind.js');
+    fs.appendFileSync(pf, PF_TAIL);
+    s += Z7_TAIL;
+  }
+  if (seg) { s += TAIL; fs.writeFileSync(zp, s); execFileSync(process.execPath, ['--check', zp]); return SEGS.length; }   // [T670] 구간 팔 — 구간 표식만(틱당 시계 13번 · 사람당 ≈0) · 갈래 시계·장부 0
   { const a = '      movePlayerStep(p);';   // 걸음(NPC) — 틱 함수 안의 함수라 바인딩을 못 감싼다 ⇒ 부르는 자리(T356 의 그 앵커)
     if (cnt(a) !== 1) throw new Error('걸음 앵커 ' + cnt(a));
     s = s.replace(a, () => "      { const _s6 = _a6t(); movePlayerStep(p); _A6sub('step', _a6t() - _s6); }"); }
@@ -204,7 +259,8 @@ async function run(conf, tag, probe) {
   const out = path.join(DIR, `${tag}.json`);
   if (fs.existsSync(out)) { console.log('있음', out); return; }
   const dir = `/tmp/wt-t646-${tag}`;
-  const n = makeTree(dir, probe);
+  const _ri = process.argv.indexOf('--ref'), REF = _ri >= 0 ? process.argv[_ri + 1] : 'HEAD', SEG = process.argv.includes('--seg');
+  const n = makeTree(dir, probe, REF, SEG);
   const CP = 4010, ZP = 4011, SECRET = 't646';
   const DB = `/tmp/t646-z-${tag}.db`, CDB = `/tmp/t646-c-${tag}.db`;
   rmdb(DB); rmdb(CDB);
@@ -218,7 +274,7 @@ async function run(conf, tag, probe) {
   const z = spawn(process.execPath, [...(PROF ? ['--cpu-prof', '--cpu-prof-interval', '10000', '--cpu-prof-dir', PROF] : []), path.join(dir, 'server/zone.js')], { cwd: dir, stdio: ['ignore', logf, logf],
     env: Object.assign({}, env0, CONF[conf], { PORT: String(ZP), ZONE_ID: 'hanbando', CENTRAL_HOST: 'localhost', CENTRAL_PORT: String(CP),
       CENTRAL_SECRET: SECRET, ENABLE_VILLAGES: '1', VILLAGE_DAY_MS: String(DAY), DB_PATH: DB, VILLAGE_WAR_LOG: '0', T312_FISH_ACT: '1',
-      T646_EVERY: String(SLICE_S * 30), T646_PATH_OUT: path.join(DIR, `${tag}.dest.json`) }) });
+      T646_EVERY: String(SLICE_S * 30), T646_SEGONLY: SEG ? '1' : '', T670_AFAIL_OUT: path.join(DIR, `${tag}.afail.json`), T646_PATH_OUT: path.join(DIR, `${tag}.dest.json`) }) });
   const getj = async (p) => { try { const r = await fetch(`http://localhost:${ZP}${p}`, { headers: { 'x-zone-secret': SECRET }, signal: AbortSignal.timeout(20000) }); return await r.json(); } catch (e) { return null; } };
   const say = (...a) => console.log(`[${tag}]`, ...a);
   const t0 = Date.now();
@@ -252,7 +308,7 @@ async function run(conf, tag, probe) {
   try { z.kill('SIGKILL'); } catch (e) {} try { c.kill('SIGKILL'); } catch (e) {}
   await sleep(1500); rmdb(DB); rmdb(CDB);
   try { execFileSync('git', ['worktree', 'remove', '--force', dir], { cwd: ROOT, stdio: 'ignore' }); } catch (e) {}
-  fs.writeFileSync(out, JSON.stringify({ conf, tag, probe, at: new Date().toISOString(), wallS: Math.round((Date.now() - t0) / 1000), windows }));
+  fs.writeFileSync(out, JSON.stringify({ conf, tag, probe, ref: REF, seg: SEG, at: new Date().toISOString(), wallS: Math.round((Date.now() - t0) / 1000), windows }));
   say('끝', Math.round((Date.now() - t0) / 1000), 's');
 }
 
