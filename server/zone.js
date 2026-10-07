@@ -1110,6 +1110,7 @@ let _lastResRebuild = 0;    // qtResources 전체 재구축 throttle (5Hz 상한
 // ★[T461] 걸음 문 WASM 커널 — 선언만 여기(아래 `refreshDitchCells`·`_rebuildResources` 가 부른다) · 만드는 자리는 `isBlockedByTree` 뒤
 let _WW = null;             // 커널(끔이면 null — 아래 세 자리가 전부 무동작)
 let _wwRes = null;          // `qtResources` 가 **지금 든** 자원 목록(마지막 재구축 · 안에 든 것만) — 커널의 나무 열 원천
+let _wwResGen = 0;          // ★[T672] 자원 항목의 충돌 필드(종류·반경)를 **제자리에서** 바꾸는 자리가 올린다(`_shapeRegrown`) — 커널 나무 열 다시 채우기의 열쇠 하나
 // ★★★[T421 2026-09-26 · T371 회부 · T375 §4-4 · T385 §4-4 세 번 미룬 자리] **격자 증분.** `T421_SPATIAL_INC=1` 일 때만.
 //   ★왜 — T385 뒤 그 밖에서 두 번째로 큰 것이 `spatial`(0.206µs/사람)이다. 틱마다 나무 셋을 비우고 전수를 다시 넣는다.
 //   ★★무엇을 지키나 — **조회 결과가 비트 동일**해야 한다(무엇이 · **어떤 순서로** 나오나). 나무의 조회 순서는
@@ -1508,6 +1509,8 @@ function walkPerf(reset) {
               terrPerStep: _walk.steps ? +(_walk.terrQ / _walk.steps).toFixed(2) : 0,
               wallPerStep: _walk.steps ? +(_walk.wallQ / _walk.steps).toFixed(2) : 0 };
   if (_WW) { o.ww = { mode: T461_WALK_WASM, ticks: _wwStat.ticks, steps: _wwStat.steps, bad: _wwStat.bad, badTicks: _wwStat.badTicks, gateBad: _wwStat.gateBad, sample: _wwStat.sample.slice(), memMB: +(_WW.bytes() / 1048576).toFixed(2) };
+    if (T672_WALK_CUT) { o.ww.t672 = { treeHit: _wwTC.hit, treeMiss: _wwTC.miss, treeBad: _wwTC.treeBad, still: _wwTC.still, stillBad: _wwTC.stillBad, k: _wwTC.k };   // ★[T672] 관측
+      if (reset) { _wwTC.hit = 0; _wwTC.miss = 0; _wwTC.treeBad = 0; _wwTC.still = 0; _wwTC.stillBad = 0; } }
     if (reset) { _wwStat.ticks = 0; _wwStat.steps = 0; _wwStat.bad = 0; _wwStat.badTicks = 0; _wwStat.gateBad = 0; _wwStat.sample.length = 0; } }   // ★[T461]
   if (reset) { _walk.steps = 0; _walk.ej = 0; _walk.ejQ = 0; _walk.ejFail = 0; _walk.terrQ = 0; _walk.waterQ = 0; _walk.wallQ = 0; _walk.cut = 0; _walk.ejPids.clear(); }
   return o;
@@ -2707,6 +2710,7 @@ function _shapeRegrown(r) {
                                            : [REGROW.TREE_STUMP_Y(), REGROW.TREE_FULL_Y()];
   const elapsed = (gameDayNow() - r.plantedDay) + _gy[0] * Y;
   const stage = regrowStageOf('tree', elapsed, _sp);
+  _wwResGen++;   // ★[T672] 아래 두 갈래가 종류·반경을 제자리에서 고친다 — 커널 나무 열은 다음 틱에 다시 채운다
   if (stage === 'mature' || stage === null) {
     r.type = 'tree'; r.maxHp = RESOURCE_HP_TABLE.tree; r.r = PLANT_R; r.h = PLANT_H;
   } else {
@@ -13049,6 +13053,26 @@ const _wwVerify = T461_WALK_WASM === 'verify', _wwOn = !_wwVerify && T461_WALK_W
 const _wwList = [];                     // 커널 몸(차례대로) — 열의 i 번째가 이 배열의 i 번째
 const _wwSeq = [], _wwCode = [];        // 이동 문 거름까지 온 주민 전부(차례대로)와 그 갈래: 0 잠(비활성 청크) · 1 커널 · 2 JS 정본(위층·계단)
 const _wwStat = { ticks: 0, steps: 0, bad: 0, badTicks: 0, sample: [], gateBad: 0 };
+// ★★[T672 2026-10-06] **걸음 깎기** — 손잡이 `T672_WALK_CUT=1`(기본 끔 · 끄면 아래 두 갈래가 한 번도 안 열린다 = 종전 바이트).
+//   ⓐ 나무 열 — 커널 나무 열(`RX·RY·RR` + 해시 `ww_trees`)은 **입력이 같으면 같은 열**이다. 입력 = (지금 든 목록 `_wwRes` · 그 항목의
+//      종류·반경·x·y). 그래서 목록이 바뀌었거나(재구축 = 새 배열) 항목 필드가 제자리에서 바뀌었거나(`_wwResGen`) 커널 열의 자리가
+//      옮겨졌을 때(`ensure` 가 키움 → 새 뷰 · `ww_cfg` 가 해시를 비운다)만 다시 채우고 다시 짓는다. 그 밖의 틱은 지난 열 그대로다.
+//   ⓑ 서 있는 몸 — 속도 0 · 존 안 · 발밑 타일이 **구워졌고 열려 있으면** 커널 `step_one` 은 글자로 아무것도 안 바꾼다
+//      (탈출 갈래 안 탐 · nx=x+0 · 같은 셀 벽 셋 · 나무 셋은 옛 자리 · 빙하 같은 y · 지형 셋 거짓 · mo ≤ 0 ⇒ NX=x · NY=y · 갈래 2).
+//      그 몸은 커널에 안 넣고 이동 문에서 갈래 2 의 뒷일(답압 스탬프)만 한다(차례 그대로) · 관측 계수는 커널이 셀 수를 그대로 더한다
+//      (걸음 1 · 지형 질의 4 · 같은 셀 벽 3). ⚠좌표 0(−0 은 +0 속도와 더하면 +0 으로 바뀐다)·범위 밖·안 구운 타일은 커널로 보낸다.
+//   ⚠견줌(`verify`)에선 두 갈래의 증인을 센다 — 나무 열을 지난 열로 쓴 틱마다 새로 채운 열과 비트로(`treeBad`) · 서 있는 몸은 JS 정본이
+//     옮긴 뒤 처음 값과 비트로(`stillBad`).
+const T672_WALK_CUT = process.env.T672_WALK_CUT === '1';
+const _wwStill = [], _wwStill0 = [];    // 서 있는 몸(차례대로) · 견줌일 때 그 처음 값(x, y, vx, vy)
+const _wwNoRes = [];                    // 빈 목록의 정체(새 배열을 틱마다 안 만든다 — 나무 열 열쇠가 서게)
+const _wwTC = { src: null, rx: null, gen: -1, k: 0, hit: 0, miss: 0, treeBad: 0, still: 0, stillBad: 0 };
+function _wwIsStill(p) {   // 커널 `terr()` 와 같은 칸 셈(정수 · 타일 2비트) — 구웠고(1) 안 막힘(2 아님)
+  const x = p.x, y = p.y;
+  if (!(x > 0 && y > 0 && x < _WW.zw && y < _WW.zh)) return false;   // ±0 · NaN · 범위 밖은 커널로(±0 은 +0 속도와 더하면 부호가 바뀔 수 있다)
+  const b = (Math.floor(y / 32) * _WW.tw + Math.floor(x / 32)) << 1;
+  return ((_WW.TB[b >> 3] >> (b & 7)) & 3) === 1;
+}
 if ((_wwOn || _wwVerify) && !ZONE.isOcean) {
   _WW = require('./walk-wasm').create({ zw: ZONE.zoneWidth, zh: ZONE.zoneHeight, iceN: !NEIGHBOR.hasNorth, iceS: !NEIGHBOR.hasSouth,
     iceBand: ICE_BAND_PX, speed: MOVE_SPEED,
@@ -13060,34 +13084,56 @@ if ((_wwOn || _wwVerify) && !ZONE.isOcean) {
 //     T461 첫 판이 26존 판에서 걷는 몸이 적을 때 **더 무거워진** 까닭이 그 두 번이었다 — 보고 §3).
 function _wwPre(moveDt) {
   _wwList.length = 0; _wwSeq.length = 0; _wwCode.length = 0;
+  const cut = T672_WALK_CUT && Number.isFinite(moveDt);                                    // ★[T672 ⓑ] 서 있는 몸 거름(끔이면 안 열린다)
+  _wwStill.length = 0; _wwStill0.length = 0;
   for (const p of players.values()) {
     if (p.handingOff || !p.isNpc || p.simCaravan || p.simWar) continue;
     let c = 1;
     if (!p.canadiaVillage && !_t316WalkAlways(p) && !isPositionActive(p.x, p.y)) c = 0;   // 이동 문의 그 거름(몸이 안 움직인 자리에서)
     else if (p.floor || p.onStairId) c = 2;                                                // 위층·계단 = JS 정본
+    else if (cut && p.vx === 0 && p.vy === 0 && _wwIsStill(p)) { c = 3; _streamWalkMul(p); }   // ★[T672 ⓑ] 서 있는 몸 = 뒷일만(개울 메모는 종전처럼 갱신)
     _wwSeq.push(p); _wwCode.push(c);
     if (c === 1) _wwList.push(p);
+    else if (c === 3) { _wwStill.push(p); if (!_wwOn) _wwStill0.push(p.x, p.y, p.vx, p.vy); }
   }
-  const n = _wwList.length;
-  _wwStat.ticks++; _wwStat.steps += n;
+  const n = _wwList.length, S = cut ? _wwStill.length : 0;
+  _wwStat.ticks++; _wwStat.steps += n + S;
+  if (S) { _wwTC.still += S; if (_wwOn) { _walk.steps += S; _walk.terrQ += 4 * S; _walk.wallQ += 3 * S; } }   // ★[T672 ⓑ] 커널이 그 몸에 셀 수 그대로
   if (!n) return 0;                                                                        // 걷는 몸이 없으면 나무·커널도 안 부른다
-  const res = qtResources ? (_wwRes || []) : [];
+  const res = qtResources ? (_wwRes || _wwNoRes) : _wwNoRes;
   _WW.ensure(n, res.length);
   const X = _WW.X, Y = _WW.Y, VX = _WW.VX, VY = _WW.VY, RD = _WW.RD;
   for (let i = 0; i < n; i++) {
     const p = _wwList[i], m = p._rdMul;
     X[i] = p.x; Y[i] = p.y; VX[i] = p.vx; VY[i] = p.vy; RD[i] = ((m && m !== 1) ? m : 1) * _streamWalkMul(p);   // ★[T585] 커널도 같은 배율(길 × 개울)
   }
-  let k = 0;
   const RX = _WW.RX, RY = _WW.RY, RR = _WW.RR;
-  for (let j = 0; j < res.length; j++) {
-    const r = res[j]; let R;
-    if (r.type === 'tree' && r.r) R = Math.min(r.r, TRUNK_COLLIDER_MAX) + PLAYER_BODY_R;
-    else if (r.type === 'rock' || r.type === 'ore') R = ROCK_COLLIDER_R + PLAYER_BODY_R;
-    else continue;
-    RX[k] = r.x; RY[k] = r.y; RR[k] = R; k++;
+  if (!T672_WALK_CUT || res !== _wwTC.src || RX !== _wwTC.rx || _wwResGen !== _wwTC.gen) {   // ★[T672 ⓐ] 입력이 바뀐 틱만(끔이면 늘)
+    let k = 0;
+    for (let j = 0; j < res.length; j++) {
+      const r = res[j]; let R;
+      if (r.type === 'tree' && r.r) R = Math.min(r.r, TRUNK_COLLIDER_MAX) + PLAYER_BODY_R;
+      else if (r.type === 'rock' || r.type === 'ore') R = ROCK_COLLIDER_R + PLAYER_BODY_R;
+      else continue;
+      RX[k] = r.x; RY[k] = r.y; RR[k] = R; k++;
+    }
+    _WW.trees(k);
+    _wwTC.src = res; _wwTC.rx = RX; _wwTC.gen = _wwResGen; _wwTC.k = k; _wwTC.miss++;
+  } else {
+    _wwTC.hit++;
+    if (_wwVerify) {   // ★[T672 ⓐ 증인] 지난 열 = 지금 새로 채울 열(비트)
+      let k = 0, bad = 0;
+      for (let j = 0; j < res.length; j++) {
+        const r = res[j]; let R;
+        if (r.type === 'tree' && r.r) R = Math.min(r.r, TRUNK_COLLIDER_MAX) + PLAYER_BODY_R;
+        else if (r.type === 'rock' || r.type === 'ore') R = ROCK_COLLIDER_R + PLAYER_BODY_R;
+        else continue;
+        if (k >= _wwTC.k || !Object.is(RX[k], r.x) || !Object.is(RY[k], r.y) || !Object.is(RR[k], R)) bad++;
+        k++;
+      }
+      if (bad || k !== _wwTC.k) _wwTC.treeBad++;
+    }
   }
-  _WW.trees(k);
   _WW.step(n, moveDt);
   if (_wwOn) {
     const C = _WW.CNT;
@@ -13104,9 +13150,18 @@ function _wwPost(p, i) {
   else if (st === 2) Roads.stampEntityPx(p, p.x, p.y);
   else p.nextDecisionAt = 0;
 }
+// ★[T672 ⓑ] 서 있는 몸의 뒷일 — `_wwPost(p, i)` 의 갈래 2 를 커널 답(X=p.x · Y=p.y)으로 푼 것(차례 그대로)
+function _wwStillPost(p) {
+  if (T585_WALK_STAT) _t585WalkCount(p, 0, 0);
+  Roads.stampEntityPx(p, p.x, p.y);
+}
 // `verify` — JS 정본이 옮긴 뒤 비트로 견준다 · 앞문이 적은 갈래가 이동 문의 실제 거름과 같은가(걸음 수 = 갈래 1 + 2)도
 function _wwCheck(jsSteps) {
   let bad = 0, want = 0;
+  for (let i = 0, j = 0; i < _wwStill0.length; i += 4, j++) {   // ★[T672 ⓑ 증인] 서 있는 몸 — JS 정본이 옮긴 뒤 처음 값 그대로인가
+    const p = _wwStill[j];
+    if (!Object.is(p.x, _wwStill0[i]) || !Object.is(p.y, _wwStill0[i + 1]) || !Object.is(p.vx, _wwStill0[i + 2]) || !Object.is(p.vy, _wwStill0[i + 3])) _wwTC.stillBad++;
+  }
   for (let i = 0; i < _wwCode.length; i++) if (_wwCode[i]) want++;
   if (jsSteps !== want) _wwStat.gateBad++;   // 사람 입력 걸음이 섞이면 늘어난다(견줌 판은 관측자만 — 사람 0)
   for (let i = 0; i < _wwList.length; i++) {
@@ -13700,6 +13755,7 @@ setInterval(() => {
       if (_wwOn && p === _wwSeq[_wwCur]) {   // ★[T461] 앞문이 적은 갈래 — 커널 몸은 뒷일만(차례 그대로) · 잠든 몸은 건너뜀 · 2 는 아래 정본 문으로
         const _c = _wwCode[_wwCur++];
         if (_c === 1) { _wwPost(p, _wwK++); continue; }
+        if (_c === 3) { _wwStillPost(p); continue; }   // ★[T672 ⓑ] 서 있는 몸 — 뒷일만
         if (_c === 0) continue;
       }
       // ★★★[T316 2026-09-19 · 캐논 ⓑ] **결정과 이동은 문이 둘이다.** 위 `npcStep` 게이트만 열면
