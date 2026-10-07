@@ -214,6 +214,44 @@ const PF_TAIL = `
   };
 })();
 `;
+const T675_TAIL = `
+// ── [T675 ① 자 맞추기 · 계측기가 박았다 · 제품엔 없다] 셋째 자: 공유 메모리 표본기 ──────────────────────────────────────
+//   주 스레드는 구간 표식마다 **지금 구간 번호**를 SharedArrayBuffer 한 칸에 쓴다(Atomics.store · ns 단위) · \`npcStep\` 안이면 둘째 칸 1.
+//   워커 스레드가 50µs 마다 그 두 칸을 읽어 센다 — 신호·스택 걷기 0(CPU 프로파일러와 독립) · 시계 0(구간 시계와 독립).
+//   같은 30 초 창마다 \`[T675S]\` 한 줄: 구간 시계 합 · 표본 수 · 프로세스 CPU(\`process.cpuUsage\` — 모든 스레드) · 페이지 폴트 · GC 멈춤(주 스레드).
+;(function () {
+  if (process.env.T675_SAB !== '1') return;
+  const { Worker } = require('worker_threads');
+  const NSEG = 64, sab = new SharedArrayBuffer(4 * (4 + NSEG * 2)), I = new Int32Array(sab);
+  I[0] = -1; I[1] = 0;
+  const names = ['(틱 밖)'], idx = new Map();
+  const W = new Worker(\`
+    const { workerData } = require('worker_threads'); const I = new Int32Array(workerData);
+    for (;;) { Atomics.wait(I, 3, 0, 0.05); const s = Atomics.load(I, 0), st = Atomics.load(I, 1); const k = 4 + (s + 1) * 2 + st; Atomics.add(I, k, 1); }
+  \`, { eval: true, workerData: sab });
+  W.unref();
+  let segSum = {}, tickMs = 0, ticks = 0, stepMs = 0;
+  const m0 = _A6m, e0 = _A6end, s0 = _A6start;
+  const seg = (k) => { let i = idx.get(k); if (i === undefined) { i = names.length; names.push(k); idx.set(k, i); } return i; };
+  // 구간 순서: 표식 k 는 "k 가 끝났다" — 다음 구간은 표식 차례의 다음 이름. 첫 틱에 차례를 배운다.
+  const order = []; let learned = false, pos = 0;
+  _A6start = function () { s0(); pos = 0; Atomics.store(I, 0, learned ? seg(order[0]) - 1 : 0); };
+  _A6m = function (k) { const t0 = _A6prev; m0(k); segSum[k] = (segSum[k] || 0) + (_A6prev - t0);
+    if (!learned) order.push(k); pos++; Atomics.store(I, 0, learned && pos < order.length ? seg(order[pos]) - 1 : 0); };
+  _A6end = function () { const t = _a6t(); tickMs += t - _A6t0; ticks++; e0(); if (!learned && order.length) { learned = true; for (const k of order) seg(k); } Atomics.store(I, 0, -1); };
+  { const f0 = npcStep; npcStep = function (a, b, c) { Atomics.store(I, 1, 1); const t = _a6t(); f0(a, b, c); stepMs += _a6t() - t; Atomics.store(I, 1, 0); }; }
+  let gcMs = {}; try { const { PerformanceObserver } = require('perf_hooks'); new PerformanceObserver((l) => { for (const e of l.getEntries()) { const k = (e.detail && e.detail.kind) || e.kind || 0; gcMs[k] = (gcMs[k] || 0) + e.duration; } }).observe({ entryTypes: ['gc'] }); } catch (e) {}
+  let cu = process.cpuUsage(), ru = process.resourceUsage(), w0 = Date.now(), c0 = new Int32Array(I.length);
+  setInterval(() => {
+    const cu2 = process.cpuUsage(cu), ru2 = process.resourceUsage(), w = Date.now();
+    const cnt = {}; for (let s = -1; s < names.length - 1; s++) for (let st = 0; st < 2; st++) { const k = 4 + (s + 1) * 2 + st; const v = I[k] - c0[k]; if (v) cnt[(s < 0 ? '(틱 밖)' : names[s + 1]) + (st ? '|step' : '')] = v; }
+    c0.set(I);
+    try { console.log('[T675S] ' + JSON.stringify({ phase: +worldPhase(w).toFixed(4), wallMs: w - w0, ticks, tickMs, stepMs, pop: npcs.size, segMs: segSum, sab: cnt,
+      cpuUserMs: cu2.user / 1000, cpuSysMs: cu2.system / 1000, minflt: ru2.minorPageFault - ru.minorPageFault, majflt: ru2.majorPageFault - ru.majorPageFault, gcMs })); } catch (e) {}
+    cu = process.cpuUsage(); ru = ru2; w0 = w; segSum = {}; tickMs = 0; ticks = 0; stepMs = 0; gcMs = {};
+  }, 30000).unref();
+})();
+`;
 const SHAPE_TAIL = `
 // ── [T671 ① 몸 재기 · 계측기가 박았다 · 제품엔 없다 · \`--allow-natives-syntax\` 판에만] ─────────────────────
 ;(function () {
@@ -306,7 +344,7 @@ function makeTree(dir, probe, ref, seg) {
     s = s.replace(a1, () => a1.replace('const player', 'let player')).replace(a2, () => '  player = globalThis.__T671P(player);\n' + a2);
     s = TRAP_TAIL + s.replace(/^'use strict';?/, '');
   }   // [T671 ①] 몸 재기(사본에만 · 존을 `--allow-natives-syntax` 로 띄운다)
-  if (seg) { s += TAIL; fs.writeFileSync(zp, s); execFileSync(process.execPath, ['--check', zp]); return SEGS.length; }   // [T670] 구간 팔 — 구간 표식만(틱당 시계 13번 · 사람당 ≈0) · 갈래 시계·장부 0
+  if (seg) { s += TAIL; if (process.argv.includes('--sab')) s += T675_TAIL; fs.writeFileSync(zp, s); execFileSync(process.execPath, ['--check', zp]); return SEGS.length; }   // [T670] 구간 팔 — 구간 표식만(틱당 시계 13번 · 사람당 ≈0) · 갈래 시계·장부 0
   { const a = '      movePlayerStep(p);';   // 걸음(NPC) — 틱 함수 안의 함수라 바인딩을 못 감싼다 ⇒ 부르는 자리(T356 의 그 앵커)
     if (cnt(a) !== 1) throw new Error('걸음 앵커 ' + cnt(a));
     s = s.replace(a, () => "      { const _s6 = _a6t(); movePlayerStep(p); _A6sub('step', _a6t() - _s6); }"); }
@@ -346,14 +384,15 @@ async function run(conf, tag, probe) {
   const z = spawn(process.execPath, [...(process.argv.includes('--shape') ? ['--allow-natives-syntax'] : []), ...(PROF ? ['--cpu-prof', '--cpu-prof-interval', '10000', '--cpu-prof-dir', PROF] : []), path.join(dir, 'server/zone.js')], { cwd: dir, stdio: ['ignore', logf, logf],
     env: Object.assign({}, env0, CONF[conf], { PORT: String(ZP), ZONE_ID: 'hanbando', CENTRAL_HOST: 'localhost', CENTRAL_PORT: String(CP),
       CENTRAL_SECRET: SECRET, ENABLE_VILLAGES: '1', VILLAGE_DAY_MS: String(DAY), DB_PATH: DB, VILLAGE_WAR_LOG: '0', T312_FISH_ACT: '1',
-      T646_EVERY: String(SLICE_S * 30), T646_SEGONLY: SEG ? '1' : '', T670_AFAIL_OUT: path.join(DIR, `${tag}.afail.json`), T646_PATH_OUT: path.join(DIR, `${tag}.dest.json`), T671_TRAP_OUT: process.argv.includes('--trap') ? path.join(DIR, `${tag}.trap.json`) : '', T671_SHAPE_OUT: process.argv.includes('--shape') ? path.join(DIR, `${tag}.shape.jsonl`) : '' }) });
+      T646_EVERY: String(SLICE_S * 30), T646_SEGONLY: SEG ? '1' : '', T675_SAB: process.argv.includes('--sab') ? '1' : '', T670_AFAIL_OUT: path.join(DIR, `${tag}.afail.json`), T646_PATH_OUT: path.join(DIR, `${tag}.dest.json`), T671_TRAP_OUT: process.argv.includes('--trap') ? path.join(DIR, `${tag}.trap.json`) : '', T671_SHAPE_OUT: process.argv.includes('--shape') ? path.join(DIR, `${tag}.shape.jsonl`) : '' }) });
   const getj = async (p) => { try { const r = await fetch(`http://localhost:${ZP}${p}`, { headers: { 'x-zone-secret': SECRET }, signal: AbortSignal.timeout(20000) }); return await r.json(); } catch (e) { return null; } };
   const say = (...a) => console.log(`[${tag}]`, ...a);
   const t0 = Date.now();
   for (let i = 0; i < 900; i++) { try { const r = await fetch(`http://localhost:${ZP}/health`, { signal: AbortSignal.timeout(3000) }); if (r.ok) break; } catch (e) {} await sleep(1000); }
   say('기동', Date.now() - t0, 'ms · 탐침 구간', n);
   const WS = require(path.join(ROOT, 'node_modules', 'ws'));
-  const ws = new WS(`ws://localhost:${ZP}/?observer=1`); ws.on('error', () => {}); ws.on('message', () => {});
+  const NOOBS = process.argv.includes('--noobs');   // [T675 ①] 관측자 없는 팔(방송 몫 빼기 — 자 맞추기의 대조)
+  const ws = NOOBS ? { send() {}, close() {} } : new WS(`ws://localhost:${ZP}/?observer=1`); if (!NOOBS) { ws.on('error', () => {}); ws.on('message', () => {}); }
   const ping = setInterval(() => { try { ws.send(JSON.stringify({ type: 'ping', t: Date.now() })); } catch (e) {} }, 5000);
   const phaseNow = async () => { const L = await getj('/lifedbg'); return L && L.phase; };
   const windows = [];
