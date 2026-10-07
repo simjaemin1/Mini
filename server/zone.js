@@ -3902,6 +3902,8 @@ let _t670PhNow = NaN, _t670Ph = 0;
 // ★[T670 ②] 헛물음 건너뛰기 — `decideNpcBehavior` 는 타이머 문(`now < nextDecisionAt`) 앞에 **부수효과가 없다**(캐나디아 갈래 판정 하나뿐).
 //   켜면 그 문에서 바로 돌아올 부름을 부르는 쪽에서 거른다 = 같은 일을 안 할 뿐(같은 결과). 기본 끔 = 종전 그대로.
 const T670_SKIP_IDLE = process.env.T670_SKIP_IDLE !== '0';   // ★PM 10-07 켬 기본(바이트 같음 · 되돌림 =0)
+// ★[T673 ①] 서 있는 사람 일찍 끊기 — 기본 끔(`=1` 켬 · 아래 `npcStep` 주석)
+const T673_STILL = process.env.T673_STILL === '1';
 function npcStep(npc, dt, now) {
   npc._t540StepAt = now;   // ★[T540 관측] 이 몸이 마지막으로 걸음 문을 받은 때(`/walkdbg stepAge` — 새벽 멎음을 이것으로 잡았다)
   if (!(T670_SKIP_IDLE && !npc.canadiaVillage && now < npc.nextDecisionAt)) decideNpcBehavior(npc, now);   // ★[T670 ②] 끔 = 종전 그대로
@@ -3932,6 +3934,30 @@ function npcStep(npc, dt, now) {
   // Phase 4d-14d: canadia caravan traveling — decideCanadiaBehavior가 직접 vx/vy(500 px/s) 설정.
   //   followNpcPath가 덮어쓰지 않도록 일찍 return. (A* path도 skip → 직선 이동, 마을 사이 진동 X)
   if (npc.canadiaTask === 'traveling') return;
+
+  // ★★[T673 ① 2026-10-07 · 서 있는 사람 일찍 끊기] 손잡이 `T673_STILL=1`(기본 끔 = 종전 그대로).
+  //   T671 §3: 밤엔 `npcStep` 의 98 % 가 **도착해 서 있는 사람**이다. 그 사람이 매 틱 지나는 길은 늘 같다 —
+  //     막힘 감지 "서 있음" 갈래(`_stuckPos` 를 지금으로 · `_stuckN = 0`) → 경로 끝이라 `computeNpcPath` → `d<48` 갈래가
+  //     들고 있던 한 점 길을 그대로 돌려준다(T670) → `pathIndex = 0` · `_pathFor` · `_pathAt = now` → `followNpcPath` 가
+  //     그 점 10px 안이라 `pathIndex = 1` · `vx = vy = 0` → 도착 뒤 행동 없음.
+  //   ⇒ 그 길을 **글자 그대로 따라가는 조건**이 지금 몸에서 서면, 그 길이 남기는 쓰기만 같은 차례·같은 값으로 하고 끝낸다.
+  //     조건은 지난 틱이 아니라 **지금 몸**으로 본다 — 결정·대피·밤 귀가(위 머리)가 목표·행동을 바꿨거나, 밀림·공격으로
+  //     위치가 바뀌었거나, 길이 바뀌었으면 조건이 안 서고 종전 길로 간다(바깥 사건 표: 보고/T673 §2).
+  //   시간이 흐르면 바뀌는 값(`_stuckPos.at` · `_pathAt`)은 건너뛰지 않고 **같은 `now` 로 쓴다** — 미뤘다 몰아 쓰는 장부가 없다.
+  //   증인: `scripts/t673-witness.js`(종전 ↔ 지금 `npcStep` 차등 · 경계 · 갈래마다 조건 하나씩 깬 표본).
+  if (T673_STILL && !T370_PATH_REUSE && npc.behavior !== 'fight' && !npc.canadiaVillage) {
+    const P = npc.path, tx = npc.targetX, ty = npc.targetY;
+    if (P && P.length === 1 && npc.pathIndex >= 1 && typeof tx === 'number' && typeof ty === 'number'
+        && tx === npc._t670TkX && ty === npc._t670TkY
+        && Object.is(P[0].x, tx) && Object.is(P[0].y, ty)
+        && _t671Lt(tx - npc.x, ty - npc.y, 10)
+        && !(npc.behavior === 'gather' && npc.gatherTarget) && npc.behavior !== 'plant' && !(npc.behavior === 'harvest' && npc.harvestTarget)) {
+      _t670Stuck(npc, now); npc._stuckN = 0;                                 // detectStuck 서 있음 갈래
+      npc.pathIndex = 0; npc._pathFor = npc._t670Tk; npc._pathAt = now;      // needPath → 같은 한 점 길(npc.path 그대로)
+      npc.pathIndex++; npc.vx = 0; npc.vy = 0;                               // followNpcPath 도착
+      return;                                                                // 도착 뒤 행동 없음
+    }
+  }
 
   // stuck 감지 — 모든 모드 공통. fight 모드 / canadia NPC는 자체 state machine 있어서 제외
   if (npc.behavior !== 'fight' && !npc.canadiaVillage && detectStuck(npc, now)) {
