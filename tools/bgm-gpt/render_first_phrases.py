@@ -103,7 +103,7 @@ def write_m4a(path, samples, gain_db, description):
     )
 
 
-def source_path(source_id, source_dir, gugak_root):
+def resolve_source(source_id, source_dir, gugak_root):
     if source_dir:
         direct = source_dir / f"{source_id}.flac"
         if direct.is_file():
@@ -128,7 +128,7 @@ def main():
         parser.error("provide --source-dir during download or --gugak-root after organization")
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
-    sources = [source_path(source_id, args.source_dir, args.gugak_root) for source_id in IDS]
+    sources = [resolve_source(source_id, args.source_dir, args.gugak_root) for source_id in IDS]
     phrases = []
     source_info = []
     for source_id, source_path in zip(IDS, sources):
