@@ -94,22 +94,80 @@ def check_kind(root, kind, manifest_name, id_key, organized_name):
     }
 
 
+def check_organization(root):
+    organized = root / "정리"
+    actual_paths = set()
+    if organized.exists():
+        for folder, _, files in os.walk(organized):
+            for filename in files:
+                if filename.startswith(".") or filename == "목록표.csv":
+                    continue
+                actual_paths.add((Path(folder) / filename).relative_to(organized).as_posix())
+
+    csv_path = organized / "목록표.csv"
+    csv_paths = []
+    invalid_paths = []
+    if csv_path.exists():
+        with csv_path.open(encoding="utf-8-sig", newline="") as handle:
+            for row in csv.DictReader(handle):
+                relative = row.get("경로", "")
+                parts = Path(relative).parts
+                if not relative or Path(relative).is_absolute() or ".." in parts:
+                    invalid_paths.append(relative)
+                else:
+                    csv_paths.append(Path(relative).as_posix())
+    csv_set = set(csv_paths)
+
+    raw_audio = []
+    raw_partial = []
+    for kind in ("extend", "phrase", "monotone_dl", "monotone"):
+        source = root / "raw" / kind
+        if not source.exists():
+            continue
+        for folder, _, files in os.walk(source):
+            for filename in files:
+                relative = str((Path(folder) / filename).relative_to(root))
+                if ".part" in filename:
+                    raw_partial.append(relative)
+                elif Path(filename).suffix.lower() in AUDIO_EXTS:
+                    raw_audio.append(relative)
+
+    missing = sorted(csv_set - actual_paths)
+    omitted = sorted(actual_paths - csv_set)
+    return {
+        "organized_csv_rows": len(csv_paths) + len(invalid_paths) if csv_path.exists() else None,
+        "organized_file_count": len(actual_paths),
+        "organized_csv_duplicate_path_count": len(csv_paths) - len(csv_set),
+        "organized_csv_invalid_path_count": len(invalid_paths),
+        "organized_csv_missing_file_count": len(missing),
+        "organized_csv_missing_file_examples": missing[:20],
+        "organized_files_not_in_csv_count": len(omitted),
+        "organized_files_not_in_csv_examples": omitted[:20],
+        "raw_remaining_audio_count": len(raw_audio),
+        "raw_remaining_audio_examples": raw_audio[:20],
+        "raw_partial_file_count": len(raw_partial),
+        "raw_partial_file_examples": raw_partial[:20],
+    }
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, required=True)
     args = parser.parse_args()
     root = args.root
     report = {kind: check_kind(root, kind, *spec) for kind, spec in KINDS.items()}
-    csv_path = root / "정리" / "목록표.csv"
-    if csv_path.exists():
-        with csv_path.open(encoding="utf-8-sig", newline="") as handle:
-            report["organized_csv_rows"] = sum(1 for _ in csv.DictReader(handle))
-    else:
-        report["organized_csv_rows"] = None
+    report.update(check_organization(root))
     report["done_marker"] = (root / "정리" / ".done").exists()
     print(json.dumps(report, ensure_ascii=False, indent=2))
     problem_fields = ("missing_map_count", "blank_map_count", "no_file_count", "float_not_wv_count")
-    if not report["done_marker"] or any(report[kind][field] for kind in KINDS for field in problem_fields):
+    organization_problem_fields = (
+        "organized_csv_duplicate_path_count", "organized_csv_invalid_path_count",
+        "organized_csv_missing_file_count", "organized_files_not_in_csv_count",
+        "raw_remaining_audio_count",
+    )
+    if (not report["done_marker"] or report["organized_csv_rows"] is None
+            or any(report[kind][field] for kind in KINDS for field in problem_fields)
+            or any(report[field] for field in organization_problem_fields)):
         raise SystemExit(1)
 
 

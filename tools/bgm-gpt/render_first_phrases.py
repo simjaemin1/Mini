@@ -22,6 +22,9 @@ IDS = [f"w3-714-{n:03d}" for n in range(1, 6)]
 CREDIT = "국악기 음원 제공 — 국립국악원 (공공누리 제1유형)"
 TARGET_LUFS = -20.0
 MAX_TRUE_PEAK = -1.5
+# FFmpeg afftdn at 44.1 kHz preserves the buffer length but shifts its signal
+# by 1,102 samples.  Verified against all five source phrases before AAC.
+AFFTDN_DELAY_SAMPLES = 1102
 NAMES = (
     "001_대금_원음연결.m4a",
     "002_대금_악구음량균형.m4a",
@@ -86,9 +89,11 @@ def denoise(samples):
     )
     out = array("f")
     out.frombytes(result.stdout)
-    if len(out) < len(samples):
-        out.extend([0.0] * (len(samples) - len(out)))
-    return out[:len(samples)]
+    if len(out) != len(samples):
+        raise ValueError(f"afftdn changed sample count: {len(out)} != {len(samples)}")
+    aligned = out[AFFTDN_DELAY_SAMPLES:]
+    aligned.extend([0.0] * AFFTDN_DELAY_SAMPLES)
+    return aligned
 
 
 def write_m4a(path, samples, gain_db, description):
@@ -109,8 +114,16 @@ def resolve_source(source_id, source_dir, gugak_root):
         if direct.is_file():
             return direct
     if gugak_root:
+        returned_stem = source_id
+        name_map = gugak_root / "tools" / ".map_phrase.tsv"
+        if name_map.is_file():
+            with name_map.open(encoding="utf-8") as handle:
+                for line in handle:
+                    fields = line.rstrip("\n").split("\t")
+                    if len(fields) == 3 and fields[0] == source_id and fields[1]:
+                        returned_stem = Path(fields[1]).stem
         organized = gugak_root / "정리" / "악구" / "대금"
-        matches = sorted(organized.rglob(f"{source_id}__*.flac")) if organized.exists() else []
+        matches = sorted(organized.rglob(f"{returned_stem}__*.flac")) if organized.exists() else []
         if len(matches) == 1:
             return matches[0]
         if len(matches) > 1:
@@ -158,7 +171,7 @@ def main():
     cleaned = denoise(balanced)
     versions = (raw, balanced, cleaned)
     descriptions = (
-        "다섯 완전 악구를 원음 그대로 차례로 연결",
+        "다섯 완전 악구를 개별 보정 없이 차례로 연결(비교용 공통 음량 조정만)",
         "악구별 평균 음량 차이만 보정, 내부 강약과 길이 그대로",
         "악구별 음량 보정 뒤 약한 FFT 잡음 정제(nr=5, nf=-55)",
     )
@@ -184,6 +197,7 @@ def main():
 
     info = {"credit": CREDIT, "identification": "provisional until finish.py map completes",
             "sample_rate": RATE, "common_target_lufs": common_target,
+            "denoise_delay_compensated_samples": AFFTDN_DELAY_SAMPLES,
             "source_median_lufs": median_i,
             "source_phrase_gains_db": [round(gain, 4) for gain in phrase_gains],
             "sources": source_info, "outputs": outputs}
