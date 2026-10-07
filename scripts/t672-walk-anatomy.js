@@ -115,6 +115,10 @@ function makeTree(dir, probe) {
       s = s.replace(a, () => "        if (_c === 3) { const _s7 = _p7t(); _wwStillPost(p); _P7sub('stillPost', _p7t() - _s7); continue; }"); }
     { const a = '      movePlayerStep(p);\n    } else {'; need1(a, 'JS 걸음');
       s = s.replace(a, () => "      { const _s7 = _p7t(); movePlayerStep(p); _P7sub('jsStep', _p7t() - _s7); }\n    } else {"); }
+    if (process.env.T674_POSTSPLIT === '1') {   // ★[T674] `_wwPost` 안 답압 스탬프만 따로(부를 때마다 시계 한 쌍 더 — 쓰기 몫 = post − stamp − 쌍)
+      const a = '  else if (st === 2) Roads.stampEntityPx(p, p.x, p.y);\n'; need1(a, '_wwPost 스탬프');
+      s = s.replace(a, () => "  else if (st === 2) { const _s8 = _p7t(); Roads.stampEntityPx(p, p.x, p.y); _P7sub('stamp', _p7t() - _s8); }\n");
+    }
     { const a = '  sepNpcs(dt);'; need1(a, 'sepNpcs');
       s = s.replace(a, () => "  { const _s7 = _p7t(); sepNpcs(dt); _P7sub('sep', _p7t() - _s7); }"); }
   }
