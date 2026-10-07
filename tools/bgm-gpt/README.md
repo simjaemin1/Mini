@@ -8,6 +8,8 @@ python3 tools/bgm-gpt/render_first_phrases.py \
   --output-dir ~/Mini/_bgm/gpt/청취
 ```
 
+`finish.py`가 정리를 끝내 raw 파일을 옮긴 뒤에는 `--source-dir` 대신 `--gugak-root ~/Mini/_bgm/국악원`을 쓴다. 이 경우 정리된 대금 악구의 ID 이름으로 파일 하나를 찾으며, 중복이면 멈춘다.
+
 | 청취본 | 차이 |
 |---|---|
 | `001_대금_원음연결.m4a` | 다섯 악구를 원음 그대로 연결 |

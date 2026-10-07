@@ -103,14 +103,32 @@ def write_m4a(path, samples, gain_db, description):
     )
 
 
+def source_path(source_id, source_dir, gugak_root):
+    if source_dir:
+        direct = source_dir / f"{source_id}.flac"
+        if direct.is_file():
+            return direct
+    if gugak_root:
+        organized = gugak_root / "정리" / "악구" / "대금"
+        matches = sorted(organized.rglob(f"{source_id}__*.flac")) if organized.exists() else []
+        if len(matches) == 1:
+            return matches[0]
+        if len(matches) > 1:
+            raise ValueError(f"multiple organized sources for {source_id}: {matches}")
+    raise FileNotFoundError(f"no source file for {source_id}")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--source-dir", type=Path, required=True)
+    parser.add_argument("--source-dir", type=Path)
+    parser.add_argument("--gugak-root", type=Path)
     parser.add_argument("--output-dir", type=Path, required=True)
     args = parser.parse_args()
+    if not args.source_dir and not args.gugak_root:
+        parser.error("provide --source-dir during download or --gugak-root after organization")
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
-    sources = [args.source_dir / f"{source_id}.flac" for source_id in IDS]
+    sources = [source_path(source_id, args.source_dir, args.gugak_root) for source_id in IDS]
     phrases = []
     source_info = []
     for source_id, source_path in zip(IDS, sources):
