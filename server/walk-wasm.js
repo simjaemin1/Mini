@@ -49,6 +49,7 @@ function create(opt) {
   W.clearTerrain = () => { W.TB.fill(0); };
   W.bytes = () => memory.buffer.byteLength;
   W.wasmBytes = buf.length;
+  W.zw = opt.zw; W.zh = opt.zh; W.tw = tw;   // ★[T672] 서 있는 몸 거름(`_wwStill`)이 커널과 같은 칸 셈을 JS 에서 한다(읽기만)
   return W;
 }
 module.exports = { create };

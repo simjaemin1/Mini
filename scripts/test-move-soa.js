@@ -1763,6 +1763,9 @@ console.log('\n⑳ T461 걸음 문 WASM 커널 — 1,000틱 뒤 전원 좌표 �
 {
   // ★제품 글자를 뜬다: 이동 문(`movePlayerStep`) · 커널 앞문(`_wwPre`) · 뒷문(`_wwPost`) — 커널은 `server/walk-wasm.js`(제품 껍데기) 그대로.
   const MV = body('movePlayerStep'), PRE = body('_wwPre'), POST = body('_wwPost');
+  const ISS = body('_wwIsStill'), SPOST = body('_wwStillPost');   // ★[T672] 서 있는 몸 거름 · 뒷일(앞문이 부른다 · 끔이면 안 열린다)
+  const T672P = ['T672_WALK_CUT', '_wwStill', '_wwStill0', '_wwNoRes', '_wwTC', '_wwResGen', '_wwVerify'];
+  const t672A = (on, gen) => [!!on, [], [], [], { src: null, rx: null, gen: -1, k: 0, hit: 0, miss: 0, treeBad: 0, still: 0, stillBad: 0 }, gen || 0, false];
   ok(MV.length > 1000 && PRE.length > 300 && POST.length > 100, '⑳ [전제] 제품의 이동 문·커널 앞문·뒷문 글자를 떴다', `${MV.length}·${PRE.length}·${POST.length}자`);
   // 합성 세계 — 셀의 순수 함수(주사위 0 · 해시) · 강 띠 둘 · 바위 점 · 벽 변 · 나무/바위/광맥/어린나무
   const ZW = 32000, ZH = 32000, ICE = 1500;
@@ -1812,8 +1815,8 @@ console.log('\n⑳ T461 걸음 문 WASM 커널 — 1,000틱 뒤 전원 좌표 �
   const WW = require(path.join(ROOT, 'server', 'walk-wasm.js')).create({ zw: ZW, zh: ZH, iceN: true, iceS: true, iceBand: ICE, speed: 64,
     terrMiss: (x, y) => terr0(x, y), wallQ: (nx, ny, ox, oy) => wallJs(nx, ny, ox, oy) });
   const mkPrePost = (players, W, resList) => new Function('players', '_t316WalkAlways', 'isPositionActive', 'qtResources', '_wwRes', '_wwList', '_wwSeq', '_wwCode', '_WW', '_walk', '_wwOn', '_wwStat',
-    'TRUNK_COLLIDER_MAX', 'PLAYER_BODY_R', 'ROCK_COLLIDER_R', 'Roads', '_streamWalkMul', 'T585_WALK_STAT', '_t585WalkCount', PRE + '\n' + POST + '\nreturn { _wwPre, _wwPost };')(
-    players, () => true, () => true, {}, resList, [], [], [], WW, W, true, { ticks: 0, steps: 0 }, 9, 6, 14, Roads, () => 1, false, () => {});   // ★[T585] 개울 ×1 · 걸음 관측 끔
+    'TRUNK_COLLIDER_MAX', 'PLAYER_BODY_R', 'ROCK_COLLIDER_R', 'Roads', '_streamWalkMul', 'T585_WALK_STAT', '_t585WalkCount', ...T672P, PRE + '\n' + ISS + '\n' + POST + '\nreturn { _wwPre, _wwPost };')(
+    players, () => true, () => true, {}, resList, [], [], [], WW, W, true, { ticks: 0, steps: 0 }, 9, 6, 14, Roads, () => 1, false, () => {}, ...t672A(false));   // ★[T585] 개울 ×1 · 걸음 관측 끔
   // 주민 — 뭍·물 안(탈출)·빙하 곁·존 끝(클램프)·길 배속
   const mkNpcs = (N, seed) => { _s = seed; const a = []; for (let i = 0; i < N; i++) {
     const k = i % 10; let x = 400 + rnd() * (ZW - 800), y = 1600 + rnd() * (ZH - 3200);
@@ -1872,8 +1875,8 @@ console.log('\n⑳ T461 걸음 문 WASM 커널 — 1,000틱 뒤 전원 좌표 �
       P.push({ pid: 'h' + i, isNpc: true, x: qx + 1, y: qy, vx: -30, vy: 0, floor: 0 });   // −30px/s × 1/30s = −1px(바깥에서 반경 끝으로)
       want.push(!(Math.hypot(RK.x - qx, RK.y - qy) < 20)); }
     const { _wwPre } = new Function('players', '_t316WalkAlways', 'isPositionActive', 'qtResources', '_wwRes', '_wwList', '_wwSeq', '_wwCode', '_WW', '_walk', '_wwOn', '_wwStat',
-      'TRUNK_COLLIDER_MAX', 'PLAYER_BODY_R', 'ROCK_COLLIDER_R', 'Roads', '_streamWalkMul', PRE + '\nreturn { _wwPre };')(
-      new Map(P.map((p) => [p.pid, p])), () => true, () => true, {}, [RK], [], [], [], WH, mkWalk(), true, { ticks: 0, steps: 0 }, 9, 6, 14, Roads, () => 1);   // ★[T585] 개울 ×1
+      'TRUNK_COLLIDER_MAX', 'PLAYER_BODY_R', 'ROCK_COLLIDER_R', 'Roads', '_streamWalkMul', ...T672P, PRE + '\n' + ISS + '\nreturn { _wwPre };')(
+      new Map(P.map((p) => [p.pid, p])), () => true, () => true, {}, [RK], [], [], [], WH, mkWalk(), true, { ticks: 0, steps: 0 }, 9, 6, 14, Roads, () => 1, ...t672A(false));   // ★[T585] 개울 ×1
     const n = _wwPre(1 / 30);
     let agree = 0, blockedN = 0, startOpen = 0;
     for (let i = 0; i < n; i++) { const moved = WH.X[i] !== P[i].x; if (moved === want[i]) agree++; if (!want[i]) blockedN++;
@@ -1894,6 +1897,69 @@ console.log('\n⑳ T461 걸음 문 WASM 커널 — 1,000틱 뒤 전원 좌표 �
   ok(Z.includes("      if (!p.canadiaVillage && !_t316WalkAlways(p) && !isPositionActive(p.x, p.y)) continue; // dormant NPC skip\n      movePlayerStep(p);"),
      '⑳ 이동 문의 옛 두 줄(거름 · `movePlayerStep(p)`)은 **한 글자도 안 바뀌었다**(자들의 닻 그대로)');
   ok(fs.existsSync(path.join(ROOT, 'server', 'walk-wasm.wasm')) && fs.existsSync(path.join(ROOT, 'tools', 'walk-wasm', 'walk.c')), '⑳ 산출물 `server/walk-wasm.wasm` · 원문 `tools/walk-wasm/walk.c` 가 레포에 있다');
+  // ★★[T672] 걸음 깎기(`T672_WALK_CUT=1`) — ⓐ 나무 열은 입력이 바뀐 틱만 다시 채운다 · ⓑ 서 있는 몸은 커널에 안 넣고 뒷일만.
+  //   세 판을 나란히: A = JS 정본 이동 문 · B = 커널 + 깎기 켬 · C = 커널 + 깎기 끔(커널 둘은 **따로 만든다** — 나무 열·지형 비트가 그 메모리에 산다).
+  //   몸의 1/3 쯤이 틱마다 바뀌며 **선다**(속도 0 · 강 띠 안에 선 몸도 — 정본은 그 몸을 밀어낸다).
+  //   300틱에 나무 1/3 을 **제자리에서** 어린나무로 바꾸고(충돌체에서 빠진다) 자원 판본을 올린다 — 깎기 판은 그 틱에 다시 채워야 같다.
+  {
+    const mkCut = (players, W, resList, WWx, on, still) => { const seq = [], code = [], tc = t672A(on)[4];
+      const f = new Function('players', '_t316WalkAlways', 'isPositionActive', 'qtResources', '_wwRes', '_wwList', '_wwSeq', '_wwCode', '_WW', '_walk', '_wwOn', '_wwStat',
+        'TRUNK_COLLIDER_MAX', 'PLAYER_BODY_R', 'ROCK_COLLIDER_R', 'Roads', '_streamWalkMul', 'T585_WALK_STAT', '_t585WalkCount',
+        'T672_WALK_CUT', '_wwStill', '_wwStill0', '_wwNoRes', '_wwTC', '_wwVerify',
+        'let _wwResGen = 0;\n' + PRE + '\n' + (still || ISS) + '\n' + POST + '\n' + SPOST + '\nreturn { _wwPre, _wwPost, _wwStillPost, bump: () => { _wwResGen++; } };')(
+        players, () => true, () => true, {}, resList, [], seq, code, WWx, W, true, { ticks: 0, steps: 0 }, 9, 6, 14, Roads, () => 1, false, () => {},
+        !!on, [], [], [], tc, false);
+      return Object.assign(f, { seq, code, tc }); };
+    const mkWW = () => require(path.join(ROOT, 'server', 'walk-wasm.js')).create({ zw: ZW, zh: ZH, iceN: true, iceS: true, iceBand: ICE, speed: 64,
+      terrMiss: (x, y) => terr0(x, y), wallQ: (nx, ny, ox, oy) => wallJs(nx, ny, ox, oy) });
+    const post = (f) => { let k = 0; for (let i = 0; i < f.seq.length; i++) { if (f.code[i] === 1) f._wwPost(f.seq[i], k++); else if (f.code[i] === 3) f._wwStillPost(f.seq[i]); } };
+    const one = (N, T, opt) => {
+      const R = RES.map((r) => Object.assign({}, r));   // 이 판만의 자원(제자리에서 바꾼다)
+      const TGx = new Map(); for (const r of R) { const kk = Math.floor(r.x / 64) + ',' + Math.floor(r.y / 64); if (!TGx.has(kk)) TGx.set(kk, []); TGx.get(kk).push(r); }
+      const treeX = (x, y) => { const gx = Math.floor(x / 64), gy = Math.floor(y / 64);
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) for (const r of (TGx.get((gx + dx) + ',' + (gy + dy)) || [])) {
+          if (r.type === 'tree' && r.r) { if (Math.hypot(r.x - x, r.y - y) < Math.min(r.r, 9) + 6) return true; }
+          else if (r.type === 'rock' || r.type === 'ore') { if (Math.hypot(r.x - x, r.y - y) < 14 + 6) return true; } } return false; };
+      const WA = mkWalk(), WB = mkWalk(), WC = mkWalk();
+      const moveA = new Function('isTerrainBlockedLocal', 'isBlockedByWall', 'isBlockedByTree', 'treeBlockerAt', 'isInIceBand', 'Roads', 'clamp', 'ZONE',
+        'MOVE_SPEED', 'moveDt', '_walk', 'buildings', 'MoveModel', 'MOVE_PARAMS', 'findZoneAt', 'ZONE_ID', 'fireHandoff', 'HANDOFF_COMMIT', '_streamWalkMul',
+        MV + '\nreturn movePlayerStep;')(terr, (nx, ny, ox, oy) => wallJs(nx, ny, ox, oy), treeX, null, iceBand, Roads, clamp, ZONE,
+        64, 1 / 30, WA, new Map(), null, { slide: true }, () => null, 'test', () => {}, 256, () => 1);
+      const A = mkNpcs(N, 999 + N), B = mkNpcs(N, 999 + N), C = mkNpcs(N, 999 + N);
+      const fB = mkCut(new Map(B.map((p) => [p.pid, p])), WB, R, mkWW(), true, opt.still), fC = mkCut(new Map(C.map((p) => [p.pid, p])), WC, R, mkWW(), false);
+      let tickBad = 0, stillTicks = 0;
+      for (let t = 0; t < T; t++) {
+        if (t === 300) { for (let i = 0; i < R.length; i += 3) if (R[i].type === 'tree') { R[i].type = 'sapling'; R[i].r = 3; } if (!opt.noBump) { fB.bump(); fC.bump(); } }
+        for (let i = 0; i < N; i++) { let v = velOf(i, t); if (h32(i, t >> 6, 9) % 3 === 0) v = [0, 0];
+          A[i].vx = B[i].vx = C[i].vx = v[0]; A[i].vy = B[i].vy = C[i].vy = v[1]; }
+        stamps.length = 0; for (const p of A) moveA(p); const sA = stamps.slice();
+        stamps.length = 0; fB._wwPre(1 / 30); post(fB); const sB = stamps.slice();
+        stamps.length = 0; fC._wwPre(1 / 30); post(fC); const sC = stamps.slice();
+        if (fB.code.includes(3)) stillTicks++;
+        if (sA.length !== sB.length || sA.some((v, j) => !Object.is(v, sB[j])) || sC.length !== sB.length || sC.some((v, j) => !Object.is(v, sB[j]))) tickBad++;
+      }
+      let bad = 0; for (let i = 0; i < N; i++) for (const k of ['x', 'y', 'vx', 'vy']) if (!sameF64(A[i][k], B[i][k]) || !sameF64(C[i][k], B[i][k])) { bad++; break; }
+      let nd = 0; for (let i = 0; i < N; i++) if (A[i].nextDecisionAt !== B[i].nextDecisionAt || !!A[i].dirty !== !!B[i].dirty) nd++;
+      return { bad, tickBad, nd, WB, WC, tc: fB.tc, stillTicks };
+    };
+    for (const N of [1329, 2656]) {
+      const r = one(N, 1000, {});
+      ok(r.bad === 0 && r.tickBad === 0 && r.nd === 0, `⑳-T672-${N} ★깎기 켬 1,000틱 — 정본 JS · 커널(깎기 끔) · 커널(깎기 켬) 셋이 x·y·vx·vy **비트 동일** · 답압 스탬프 차례·좌표 틱마다 같음 · nextDecisionAt·dirty 같음`,
+         `어긋남 ${r.bad} · 스탬프 틀린 틱 ${r.tickBad} · 뒷일 ${r.nd}`);
+      const a = r.WB, b = r.WC;
+      ok(a.steps === b.steps && a.terrQ === b.terrQ && a.wallQ === b.wallQ && a.ej === b.ej && a.ejQ === b.ejQ && a.ejFail === b.ejFail,
+         `⑳-T672-${N} 관측 계수(걸음 · 지형 질의 · 같은 셀 벽 · 탈출) 깎기 켬 = 끔`, `걸음 ${a.steps}/${b.steps} · 지형 ${a.terrQ}/${b.terrQ} · 벽 ${a.wallQ}/${b.wallQ} · 탈출 ${a.ej}/${b.ej}`);
+      ok(r.tc.still > N * 100 && r.tc.hit > 900 && r.tc.miss >= 2 && r.tc.miss <= 4,
+         `⑳-T672-${N} [자명 통과 금지] 서 있는 몸이 실제로 커널 밖으로 갔고(뒷일만) · 나무 열은 대부분 틱 지난 열 · 판본이 오른 틱엔 다시 채웠다`,
+         `서 있는 몸·틱 ${r.tc.still} · 나무 열 지난 것 ${r.tc.hit} · 다시 채움 ${r.tc.miss}`);
+    }
+    {   // 자명 통과 금지 둘 — ⓐ 판본을 안 올리면 · ⓑ 서 있는 몸 거름이 발밑 타일을 안 보면 — 게이트가 문다
+      const r1 = one(1329, 600, { noBump: true });
+      const r2 = one(1329, 300, { still: 'function _wwIsStill(p) { return p.x >= 0 && p.y >= 0 && p.x < _WW.zw && p.y < _WW.zh; }' });
+      ok(r1.bad > 0 && r2.bad > 0, '⑳-T672 [자명 통과 금지] 나무를 제자리에서 바꾸고 **판본을 안 올리면** · 서 있는 몸 거름이 **발밑 타일(강 띠)을 안 보면** 게이트가 **문다**',
+         `판본 안 올림 어긋남 ${r1.bad} · 타일 안 봄 어긋남 ${r2.bad}`);
+    }
+  }
   console.log('    접점: T461_WALK_WASM · movePlayerStep · _wwPre · _wwPost · walk-wasm · WebAssembly · Float64Array · SoA');
 }
 

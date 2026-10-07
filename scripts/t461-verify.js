@@ -35,17 +35,19 @@ async function one(tpl, idx) {
   await sleep(20000);
   await getj('/perf?reset=1');
   const res = { tpl, slices: [] }; let ticks = 0, steps = 0, bad = 0, gateBad = 0;
+  const t7 = { on: false, treeHit: 0, treeMiss: 0, treeBad: 0, still: 0, stillBad: 0 };   // ★[T672] 깎기 켬(`T672_WALK_CUT=1`)이면 두 증인도 센다
   while (ticks < MIN_TICKS || res.slices.length < 2) {
     await sleep(SLICE_S * 1000);
     const p = await getj('/perf?reset=1'), L = await getj('/lifedbg');
     const w = p && p.walk && p.walk.ww;
     if (!w) { res.err = '견줌 칸 없음(walk.ww)'; break; }
     ticks += w.ticks; steps += w.steps; bad += w.bad; gateBad += w.gateBad || 0;
+    if (w.t672) { t7.on = true; for (const k of ['treeHit', 'treeMiss', 'treeBad', 'still', 'stillBad']) t7[k] += w.t672[k] || 0; }
     res.slices.push({ ticks: w.ticks, steps: w.steps, bad: w.bad, badTicks: w.badTicks, sample: w.sample, phase: L && L.phase, p50: p.tick && p.tick.ms && p.tick.ms.p50, walkSteps: p.walk.steps, eject: p.walk.eject });
     console.log(`[${path.basename(tpl)}] 틱 ${w.ticks} · 커널 걸음 ${w.steps} · 어긋남 ${w.bad} · 갈래 틀린 틱 ${w.gateBad} · phase ${L && L.phase != null ? L.phase.toFixed(3) : '?'} · JS 걸음 ${p.walk.steps} · 탈출 ${p.walk.eject}`);
     if (res.slices.length > 60) break;
   }
-  Object.assign(res, { ticks, steps, bad, gateBad, gate: !res.err && ticks >= MIN_TICKS && bad === 0 && gateBad === 0 });
+  Object.assign(res, { ticks, steps, bad, gateBad, t672: t7.on ? t7 : null, gate: !res.err && ticks >= MIN_TICKS && bad === 0 && gateBad === 0 && (!t7.on || (t7.treeBad === 0 && t7.stillBad === 0)) });
   try { ws.close(); } catch (e) {} try { z.kill(); } catch (e) {} try { c.kill(); } catch (e) {}
   await sleep(1500); rmdb(DB); rmdb(CDB);
   return res;
@@ -53,6 +55,6 @@ async function one(tpl, idx) {
 (async () => {
   const out = [];
   for (let i = 0; i < TPLS.length; i++) { out.push(await one(TPLS[i], i)); fs.writeFileSync(OUT, JSON.stringify(out, null, 1)); }
-  for (const r of out) console.log(`게이트 ${r.gate ? '○' : '✗'} — ${path.basename(r.tpl)} · 틱 ${r.ticks} · 커널 걸음 ${r.steps} · 어긋남 ${r.bad} · 갈래 틀린 틱 ${r.gateBad}${r.err ? ' · ' + r.err : ''}`);
+  for (const r of out) console.log(`게이트 ${r.gate ? '○' : '✗'} — ${path.basename(r.tpl)} · 틱 ${r.ticks} · 커널 걸음 ${r.steps} · 어긋남 ${r.bad} · 갈래 틀린 틱 ${r.gateBad}${r.t672 ? ` · [T672] 나무 열 지난 것 ${r.t672.treeHit}/다시 ${r.t672.treeMiss} · 어긋남 ${r.t672.treeBad} · 서 있는 몸 ${r.t672.still} · 어긋남 ${r.t672.stillBad}` : ''}${r.err ? ' · ' + r.err : ''}`);
   process.exit(out.every((r) => r.gate) ? 0 : 1);
 })();
