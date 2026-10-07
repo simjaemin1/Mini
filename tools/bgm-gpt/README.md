@@ -61,3 +61,17 @@ python3 tools/bgm-gpt/render_arirang_level_011.py \
 ```
 
 ⑤와 같은 38.4초·44.1kHz 스테레오 AAC와 출처 크레딧을 확인하고, `제작정보_음량_011.json`에 입력·출력 SHA-256과 구간 음량을 남긴다. 이미 같은 이름의 출력이 있으면 덮어쓰지 않는다. 19.2초의 자연 감쇠·쉼→강한 재어택이 없어지는 것은 아니며, 반복 루프를 완성한 것도 아니다. ⑪은 청취 비교용 미확정 R&D이고 게임 기본 BGM에 연결하지 않는다.
+
+## 아리랑 앞절 해금 교대 비교 (⑫)
+
+`render_arirang_haegeum_012.py`는 ⑪의 앞절 대금을 같은 C장조 아리랑 해금 `s3-914-001`로 **교체**한다. 해금 녹음의 19.2초 뒤 원래 잔향은 다음 절 아래로 이어 주고, 뒷절 대금·가야금 새 줄기에만 ⑪과 동일한 3초 음량 곡선을 적용한다. 원본 PCM을 혼합한 뒤 AAC로 한 번만 인코딩한다.
+
+```bash
+python3 tools/bgm-gpt/render_arirang_haegeum_012.py \
+  --gugak-root '/Users/simjaemin1/Mini/_bgm/국악원' \
+  --reference-005 '/Users/simjaemin1/Mini/_bgm/gpt/청취/005_아리랑_대금_가야금.m4a' \
+  --reference-011 '/Users/simjaemin1/Mini/_bgm/gpt/청취/011_아리랑_대금가야금_뒷절음량균형.m4a' \
+  --output-dir '/path/to/new-audition-directory'
+```
+
+원본과 ⑤·⑪의 SHA-256을 검사하고, ⑪과 같은 38.4초·약 −20 LUFS·크레딧을 검증한다. 기존 청취 폴더에 바로 덮어쓰기 하지 않고 새 출력 폴더를 요구한다. ⑫의 경계 앞뒤 3초 음량 차는 +1.42 LU로, ⑪의 +0.83 LU보다 0.59 LU 크다. 해금 음색의 적합성이나 19.2초 재어택의 자연스러움은 재민 청취 전 미확정이며, 게임 기본 BGM은 바꾸지 않는다.
