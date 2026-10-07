@@ -966,7 +966,9 @@ console.log('\n⑩ T381_PATH_DEAD — 못 갈 칸엔 길을 안 묻는다 [T381]
   ok(r1.deadNotNull === 0, '⑩-c ★★★켬 = **막힌 목표엔 언제나 null**(대칭이 선다 — 끝점 순서가 답을 안 가른다)', `길이 난 것 ${r1.deadNotNull}/${deadN - sameCellDead}`);
   // ★유일한 예외("출발 셀 == 목표 셀")는 **`computeNpcPath` 가 못 닿는 자리**다 — 그래서 뺀다.
   //   32px 셀 안의 두 점은 아무리 멀어도 대각선 √2·32 = 45.25px 이고, 그 앞의 `d < 48` 갈래가 이미 돌려보낸 뒤다.
-  const cm = Z.match(/ {2}const d = Math\.hypot\(npc\.targetX - npc\.x, npc\.targetY - npc\.y\);\n {2}if \(d < (\d+)\)/);
+  //   ★[T671 ②] 그 갈래는 `_t671Lt(…, 48)`(= `Math.hypot(…) < 48` 와 같은 답 — 증인 `scripts/t671-witness.js` ⓐⓓ)로 바뀌었다 — 두 글자 다 받는다.
+  const cm = Z.match(/ {2}const d = Math\.hypot\(npc\.targetX - npc\.x, npc\.targetY - npc\.y\);\n {2}if \(d < (\d+)\)/)
+          || Z.match(/\n {2}if \(_t671Lt\(npc\.targetX - npc\.x, npc\.targetY - npc\.y, (\d+)\)\)/);
   ok(!!cm && Math.SQRT2 * 32 < Number(cm[1]),
      '⑩-c2 ★그 예외는 `computeNpcPath` 가 **못 닿는 자리**다 — 같은 셀이면 거리 ≤ √2·32 이고 앞선 `d < 48` 갈래가 이미 돌려보낸 뒤다',
      cm ? `셀 대각선 ${(Math.SQRT2 * 32).toFixed(2)}px < 제품의 ${cm[1]}px` : '앞 갈래를 못 찾음');

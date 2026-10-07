@@ -2956,6 +2956,30 @@ const NPC_RESPAWN_MS = 30 * 1000;
 const NPC_FLEE_RANGE = 250;        // 늑대 시야 안이면 도망
 const NPC_CLAIM_SIZE = 192;
 
+// ★★[T671 ② 2026-10-07 · 몸 모양 고정] 손잡이 `T671_SHAPE=1`(기본 끔 = 종전 그대로).
+//   T671 ① 이 잰 것: 주민 몸 621 은 전부 빠른 속성(사전 모드 0)인데 **모양(V8 맵)이 79~87 가지**였다(가장 큰 무리 14.5 %) —
+//   필드 60개가 직업·생활 순서마다 **다른 차례로 나중에** 붙기 때문이다. 그래서 `npcStep`·`detectStuck`·`followNpcPath` 의
+//   속성 자리가 거의 다 **메가모픽**(모양 > 4 — 읽기마다 스텁 캐시 해시 찾기)이었다(T671 보고 §1).
+//   ⇒ 나중에 붙던 필드를 **태어날 때 한 번에 같은 차례로** `undefined` 로 만든다 — 모든 몸이 한 모양에서 출발한다.
+//   ★값은 하나도 안 바뀐다: 없는 필드를 읽으면 `undefined` 이고 미리 만든 필드도 `undefined` 다(`!x` · `x == null` · `??` · `typeof` 같음).
+//     달라질 수 있는 것은 **키 목록·`in`·`hasOwnProperty`·펼침·`delete`** 뿐이고, 몸 전체를 그렇게 읽는 자리는 **0** 이다
+//     (전수 표: 보고/T671 §2 — 정적 grep + 몸을 Proxy 로 싼 동적 판 `t646-anatomy --trap` 의 ownKeys·in·gopd·delete 0회 ·
+//      직렬화는 `serializeBody` 가 이름으로 골라 읽는다).
+//   ★이름 붙은 쓰기 줄이다(계산된 키 루프 금지 — V8 은 계산 키로 바깥 필드가 12 를 넘으면 몸을 사전 모드로 내린다).
+//   목록 = T671 ① 판의 실제 필드 합집합(리터럴 밖 60 · 빈도 차례). 목록 밖 필드는 종전대로 나중에 붙는다(드문 몸만 갈라진다).
+const T671_SHAPE = process.env.T671_SHAPE === '1';
+function _t671Shape(p) {
+  p.simJob = undefined; p._dOff = undefined; p._half = undefined; p._hd = undefined; p._huntOn = undefined; p._huntSpd = undefined; p._lifeAct = undefined;
+  p._lifeActAt = undefined; p._pathAt = undefined; p._pathFor = undefined; p._rdK = undefined; p._rdMul = undefined; p._sh = undefined; p._simCloth = undefined;
+  p._stCx = undefined; p._stCy = undefined; p._stMul = undefined; p._stuckN = undefined; p._stuckPos = undefined; p._t540DecAt = undefined; p._t540StepAt = undefined;
+  p._t670Tk = undefined; p._t670TkX = undefined; p._t670TkY = undefined; p._workT = undefined; p._wornAt = undefined; p.gatherTarget = undefined; p.npcBedX = undefined;
+  p.npcBedY = undefined; p.path = undefined; p.pathIndex = undefined; p.simLonOff = undefined; p.simVillageId = undefined; p._jobT = undefined; p._esk = undefined;
+  p._fOutD = undefined; p._workSite = undefined; p._jobN = undefined; p._vgDay = undefined; p._vgGiveUp = undefined; p._vgSince = undefined; p._vgX = undefined;
+  p._vgY = undefined; p._t400Leg = undefined; p._lastAStarAt = undefined; p._arm = undefined; p._fgl = undefined; p._huntBud = undefined; p._huntKil = undefined;
+  p._huntWk = undefined; p._fishSpotX = undefined; p._fishSpotY = undefined; p._fishT = undefined; p._t312Ei = undefined; p._t340 = undefined; p._t340N = undefined;
+  p._t312Kg = undefined; p._t312U = undefined; p._farmK = undefined; p._lifeTask = undefined;
+  p._warPackOf = undefined;   // 전쟁 짐(villages.js `_t671Unpack` — 끔이면 `delete`)
+}
 function spawnNpc(opts = {}) {
   // 위치: opts.x/y 우선, 없으면 zone 내부 랜덤 (클레임 충돌 안 나는 곳)
   let cx, cy;
@@ -3023,6 +3047,7 @@ function spawnNpc(opts = {}) {
   player.npcHomeY = opts.npcHomeY != null ? opts.npcHomeY : null;
   player.npcWorkX = opts.npcWorkX != null ? opts.npcWorkX : null;
   player.npcWorkY = opts.npcWorkY != null ? opts.npcWorkY : null;
+  if (T671_SHAPE) _t671Shape(player);   // ★[T671 ②] 몸 모양 고정(끔 = 종전 그대로)
   players.set(pid, player);
   npcs.add(pid);
 
@@ -3628,10 +3653,16 @@ function npcCanReach(ax, ay, bx, by) {
   if (straightPathClear(ax, ay, bx, by, 0)) return true;
   return !!pfFindPath(ax, ay, bx, by, { floor: 0, isBlockedFn: isBlockedByWall, isWaterFn: isTerrainBlockedLocal, maxCells: Infinity, searchRadiusCells: _pfRadius(true) });
 }
+// ★★[T671 ② · 거리 **비교만** 하는 자리 — hypot 없이 같은 답] `Math.hypot` 은 V8 에서 인라인되지 않는 빌트인 부름이다(이 상자 ≈ 50 ns ·
+//   제곱 비교 ≈ 3 ns). 그런데 제곱 비교만으로는 **경계에서 답이 갈린다**(반올림 — 500만 표본에 ≈ 3,000 번 · 증인 `scripts/t671-witness.js`).
+//   ⇒ 제곱합이 R² 에서 상대 1e-12 보다 멀면 제곱 비교로, 그 띠 안(또는 NaN)이면 **hypot 그대로** 가른다.
+//   왜 같은가: 제곱합의 반올림 오차는 상대 ≈ 3·2⁻⁵³(3.3e-16) · hypot 오차도 몇 ulp — 띠(1e-12)가 그 천 배 넘게 넓다 ⇒ 띠 밖에선 두 식의 부호가
+//   같을 수밖에 없다. 넘침(∞)·밑넘침(0)·NaN 도 같은 쪽으로 간다(증인 ⓕ). 새 수 0(1e-12 는 비교 띠 · 판정 수가 아니다).
+function _t671Lt(dx, dy, R) { const d2 = dx * dx + dy * dy, R2 = R * R; if (d2 < R2 * (1 - 1e-12)) return true; if (d2 > R2 * (1 + 1e-12)) return false; return Math.hypot(dx, dy) < R; }
+function _t671Gt(dx, dy, R) { const d2 = dx * dx + dy * dy, R2 = R * R; if (d2 > R2 * (1 + 1e-12)) return true; if (d2 < R2 * (1 - 1e-12)) return false; return Math.hypot(dx, dy) > R; }
 function computeNpcPath(npc, now) {
   if (typeof npc.targetX !== 'number' || typeof npc.targetY !== 'number') return null;
-  const d = Math.hypot(npc.targetX - npc.x, npc.targetY - npc.y);
-  if (d < 48) {
+  if (_t671Lt(npc.targetX - npc.x, npc.targetY - npc.y, 48)) {   // ★[T671 ②] = `Math.hypot(…) < 48` 와 같은 답(아래 `_t671Lt` · 경계 띠 안은 hypot 그대로)
     // ★[T670 ①] 도착한 사람은 틱마다 여기로 온다(A* 부름의 98 % — T646 §3). 이미 같은 한 점짜리 길을 들고 있으면 그 배열을 돌려준다
     //   (내용 같음 · 부른 쪽이 `pathIndex = 0` · `_pathAt = now` 를 종전대로 다시 쓴다 — 새 배열 할당만 0).
     const P = npc.path;
@@ -3709,8 +3740,8 @@ function followNpcPath(npc, speedMult) {
   if (!npc.path || npc.pathIndex >= npc.path.length) return true;
   const wp = npc.path[npc.pathIndex];
   const dx = wp.x - npc.x, dy = wp.y - npc.y;
-  const dd = Math.hypot(dx, dy);
-  if (dd < 10) {
+  // ★[T671 ②] 도착(< 10)은 hypot 없이 가른다(`_t671Lt` = 같은 답) — 안 닿았을 때만 나눗셈에 쓸 `dd` 를 종전 그대로 hypot 으로 짓는다.
+  if (_t671Lt(dx, dy, 10)) {
     npc.pathIndex++;
     if (npc.pathIndex >= npc.path.length) {
       npc.vx = 0; npc.vy = 0;
@@ -3718,6 +3749,7 @@ function followNpcPath(npc, speedMult) {
     }
     return false;
   }
+  const dd = Math.hypot(dx, dy);
   const speed = MOVE_SPEED * (speedMult || 0.6);
   npc.vx = (dx / dd) * speed;
   npc.vy = (dy / dd) * speed;
@@ -3740,7 +3772,7 @@ function _t670Stuck(npc, now) { const S = npc._stuckPos; if (S) { S.x = npc.x; S
 function detectStuck(npc, now) {
   if (npc.targetX != null && npc.targetY != null
       && (!npc.path || npc.pathIndex >= npc.path.length)
-      && Math.hypot(npc.x - npc.targetX, npc.y - npc.targetY) < 12) {
+      && _t671Lt(npc.x - npc.targetX, npc.y - npc.targetY, 12)) {   // ★[T671 ②] = `Math.hypot(…) < 12`
     _t670Stuck(npc, now);   // 서 있는 동안 타이머를 계속 리셋 — 떠날 때 즉시 오판 금지
     npc._stuckN = 0;
     return false;
@@ -3749,8 +3781,7 @@ function detectStuck(npc, now) {
     npc._stuckPos = { x: npc.x, y: npc.y, at: now };
     return false;
   }
-  const moved = Math.hypot(npc.x - npc._stuckPos.x, npc.y - npc._stuckPos.y);
-  if (moved > 5) {
+  if (_t671Gt(npc.x - npc._stuckPos.x, npc.y - npc._stuckPos.y, 5)) {   // ★[T671 ②] = `Math.hypot(…) > 5`
     _t670Stuck(npc, now);
     npc._stuckN = 0;   // ★[생활 층 100% ①] 정상 이동 재개 → 연속 stuck 카운터 리셋
     return false;

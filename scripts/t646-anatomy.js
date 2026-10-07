@@ -214,6 +214,71 @@ const PF_TAIL = `
   };
 })();
 `;
+const SHAPE_TAIL = `
+// ── [T671 ① 몸 재기 · 계측기가 박았다 · 제품엔 없다 · \`--allow-natives-syntax\` 판에만] ─────────────────────
+;(function () {
+  if (!process.env.T671_SHAPE_OUT) return;
+  const fs = require('fs'), OUT = process.env.T671_SHAPE_OUT, EVERY = +(process.env.T671_SHAPE_EVERY || 30000);
+  const HF = new Function('o', 'return %HasFastProperties(o)'), SM = new Function('a', 'b', 'return %HaveSameMap(a, b)'), DP = new Function('f', '%DebugPrint(f)');
+  const prevKeys = new Map(), wasSlow = new Set();
+  let k = 0;
+  setInterval(() => {
+    try {
+      const bodies = []; for (const pid of npcs) { const b = players.get(pid); if (b) bodies.push([pid, b]); }
+      const reps = [], repN = [], repJob = [], nk = [], slowKeys = {}, fastKeys = {}, byJob = {}, newSlow = { removed: {}, added: {}, n: 0 };
+      let slow = 0;
+      for (const [pid, b] of bodies) {
+        const keys = Object.keys(b); nk.push(keys.length);
+        const f = HF(b); const job = b.simJob || b.npcJob || '(없음)';
+        const J = byJob[job] || (byJob[job] = { n: 0, slow: 0, maps: new Set() });
+        J.n++;
+        if (!f) { slow++; J.slow++; for (const x of keys) slowKeys[x] = (slowKeys[x] || 0) + 1;
+          if (!wasSlow.has(pid)) { wasSlow.add(pid); newSlow.n++; const pk = prevKeys.get(pid);
+            if (pk) { const now = new Set(keys); for (const x of pk) if (!now.has(x)) newSlow.removed[x] = (newSlow.removed[x] || 0) + 1; for (const x of keys) if (!pk.has(x)) newSlow.added[x] = (newSlow.added[x] || 0) + 1; }
+            else newSlow.added['(첫 표본에 이미)'] = (newSlow.added['(첫 표본에 이미)'] || 0) + 1; } }
+        else { for (const x of keys) fastKeys[x] = (fastKeys[x] || 0) + 1;
+          let g = -1; for (let i = 0; i < reps.length; i++) if (SM(reps[i], b)) { g = i; break; }
+          if (g < 0) { reps.push(b); repN.push(0); repJob.push({}); g = reps.length - 1; }
+          repN[g]++; repJob[g][job] = (repJob[g][job] || 0) + 1; J.maps.add(g); }
+        prevKeys.set(pid, new Set(keys));
+      }
+      nk.sort((a, b) => a - b);
+      const q = (p) => nk.length ? nk[Math.min(nk.length - 1, Math.floor(nk.length * p))] : 0;
+      const groups = repN.map((n, i) => ({ n, keys: Object.keys(reps[i]).length, jobs: repJob[i] })).sort((a, b) => b.n - a.n);
+      const row = { k: k++, t: Date.now(), n: bodies.length, keysP50: q(0.5), keysP95: q(0.95), keysMax: nk[nk.length - 1] || 0, keysMin: nk[0] || 0,
+        slow, maps: reps.length, top: groups.slice(0, 8), byJob: Object.fromEntries(Object.entries(byJob).map(([j, v]) => [j, { n: v.n, slow: v.slow, maps: v.maps.size }])),
+        slowKeys, fastKeys, newSlow };
+      fs.appendFileSync(OUT, JSON.stringify(row) + '\\n');
+      if (process.env.T671_IC === '1' && k % 6 === 0) {
+        for (const [nm, fn] of [['npcStep', npcStep], ['detectStuck', detectStuck], ['followNpcPath', followNpcPath], ['computeNpcPath', computeNpcPath], ['decideNpcBehavior', decideNpcBehavior]]) {
+          fs.writeSync(1, \`@@T671IC \${k} \${nm}\\n\`); DP(fn); }
+        fs.writeSync(1, \`@@T671IC_END \${k}\\n\`);
+      }
+    } catch (e) { try { fs.appendFileSync(OUT, JSON.stringify({ err: String(e && e.stack) }) + '\\n'); } catch (e2) {} }
+  }, EVERY).unref();
+})();
+`;
+const TRAP_TAIL = `
+// ── [T671 ② 전수 표 증인 · 계측기가 박았다 · 제품엔 없다] 몸을 Proxy 로 싸서 "몸 전체를 읽는 자리" 를 동적으로 센다 ──
+;(function () {
+  if (!process.env.T671_TRAP_OUT) return;
+  const fs = require('fs'), OUT = process.env.T671_TRAP_OUT;
+  const sites = new Map(), addN = new Map();
+  const site = () => { const L = String(new Error().stack).split(String.fromCharCode(10)).slice(1), o = []; for (const x of L) { const i = x.indexOf('zone.js:'); if (i >= 0 && parseInt(x.slice(i + 8), 10) <= 40) continue; if (x.includes('<anonymous>') || x.includes('node:')) continue; const j = x.lastIndexOf('server'), w = x.indexOf('(') >= 0 ? x.slice(x.indexOf('at ') + 3, x.indexOf('(')).trim() : ''; o.push(w + ' @' + (j >= 0 ? x.slice(j).replace(')', '') : x.trim())); if (o.length >= 2) break; } return o.join(' <- '); };
+  const rec = (kind, key) => { const k = kind + ' | ' + (key === undefined ? '' : String(key)) + ' | ' + site(); sites.set(k, (sites.get(k) || 0) + 1); };
+  const H = {
+    ownKeys(t) { rec('ownKeys'); return Reflect.ownKeys(t); },
+    has(t, k) { rec(Object.prototype.hasOwnProperty.call(t, k) ? 'in:있음' : 'in:없음', k); return k in t; },
+    getOwnPropertyDescriptor(t, k) { rec('gopd', k); return Reflect.getOwnPropertyDescriptor(t, k); },
+    deleteProperty(t, k) { rec(Object.prototype.hasOwnProperty.call(t, k) ? 'delete:있음' : 'delete:없음', k); return delete t[k]; },
+    defineProperty(t, k, d) { rec('define', k); return Reflect.defineProperty(t, k, d); },
+    set(t, k, v) { if (!Object.prototype.hasOwnProperty.call(t, k)) { rec('add', k); addN.set(k, (addN.get(k) || 0) + 1); } t[k] = v; return true; },
+  };
+  Object.defineProperty(H.ownKeys, 'name', { value: 't671trap' });
+  globalThis.__T671P = (o) => new Proxy(o, H);
+  setInterval(() => { try { fs.writeFileSync(OUT, JSON.stringify({ sites: [...sites].sort((a, b) => b[1] - a[1]), adds: [...addN].sort((a, b) => b[1] - a[1]) })); } catch (e) {} }, 30000).unref();
+})();
+`;
 function makeTree(dir, probe, ref, seg) {
   try { execFileSync('git', ['worktree', 'remove', '--force', dir], { cwd: ROOT, stdio: 'ignore' }); } catch (e) {}
   execFileSync('git', ['worktree', 'add', '--detach', '-q', dir, ref || 'HEAD'], { cwd: ROOT, stdio: 'ignore' });
@@ -234,6 +299,13 @@ function makeTree(dir, probe, ref, seg) {
     fs.appendFileSync(pf, PF_TAIL);
     s += Z7_TAIL;
   }
+  if (process.argv.includes('--shape')) s += SHAPE_TAIL;
+  if (process.argv.includes('--trap')) {   // [T671 ②] 몸을 Proxy 로 — 몸 전체를 읽는 자리(키 목록·in·delete·정의) 동적 전수
+    const a1 = '  const player = {\n    pid, playerId: npcId, ws: null,', a2 = '  player.myClaim = null;\n';
+    if (cnt(a1) !== 1 || cnt(a2) !== 1) throw new Error('trap 앵커 ' + cnt(a1) + ' ' + cnt(a2));
+    s = s.replace(a1, () => a1.replace('const player', 'let player')).replace(a2, () => '  player = globalThis.__T671P(player);\n' + a2);
+    s = TRAP_TAIL + s.replace(/^'use strict';?/, '');
+  }   // [T671 ①] 몸 재기(사본에만 · 존을 `--allow-natives-syntax` 로 띄운다)
   if (seg) { s += TAIL; fs.writeFileSync(zp, s); execFileSync(process.execPath, ['--check', zp]); return SEGS.length; }   // [T670] 구간 팔 — 구간 표식만(틱당 시계 13번 · 사람당 ≈0) · 갈래 시계·장부 0
   { const a = '      movePlayerStep(p);';   // 걸음(NPC) — 틱 함수 안의 함수라 바인딩을 못 감싼다 ⇒ 부르는 자리(T356 의 그 앵커)
     if (cnt(a) !== 1) throw new Error('걸음 앵커 ' + cnt(a));
@@ -261,7 +333,7 @@ async function run(conf, tag, probe) {
   const dir = `/tmp/wt-t646-${tag}`;
   const _ri = process.argv.indexOf('--ref'), REF = _ri >= 0 ? process.argv[_ri + 1] : 'HEAD', SEG = process.argv.includes('--seg');
   const n = makeTree(dir, probe, REF, SEG);
-  const CP = 4010, ZP = 4011, SECRET = 't646';
+  const CP = +(process.env.T646_PORT || 4010), ZP = CP + 1, SECRET = 't646';   // [T671] 판 둘을 나란히 돌릴 때 T646_PORT
   const DB = `/tmp/t646-z-${tag}.db`, CDB = `/tmp/t646-c-${tag}.db`;
   rmdb(DB); rmdb(CDB);
   for (const s of ['', '-wal', '-shm']) { try { fs.copyFileSync(TPL + s, DB + s); } catch (e) {} }
@@ -271,10 +343,10 @@ async function run(conf, tag, probe) {
   const c = spawn(process.execPath, [path.join(dir, 'server/central.js')], { cwd: dir, stdio: 'ignore',
     env: Object.assign({}, env0, { PORT: String(CP), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando', CENTRAL_SECRET: SECRET }) });
   const PROF = process.argv.includes('--prof') ? path.join(DIR, `prof-${tag}`) : null;   // 기본 끔 — 켜면 존에 V8 CPU 프로파일(10ms 표본 · 자기 시간으로 빈 몫을 찾는다)
-  const z = spawn(process.execPath, [...(PROF ? ['--cpu-prof', '--cpu-prof-interval', '10000', '--cpu-prof-dir', PROF] : []), path.join(dir, 'server/zone.js')], { cwd: dir, stdio: ['ignore', logf, logf],
+  const z = spawn(process.execPath, [...(process.argv.includes('--shape') ? ['--allow-natives-syntax'] : []), ...(PROF ? ['--cpu-prof', '--cpu-prof-interval', '10000', '--cpu-prof-dir', PROF] : []), path.join(dir, 'server/zone.js')], { cwd: dir, stdio: ['ignore', logf, logf],
     env: Object.assign({}, env0, CONF[conf], { PORT: String(ZP), ZONE_ID: 'hanbando', CENTRAL_HOST: 'localhost', CENTRAL_PORT: String(CP),
       CENTRAL_SECRET: SECRET, ENABLE_VILLAGES: '1', VILLAGE_DAY_MS: String(DAY), DB_PATH: DB, VILLAGE_WAR_LOG: '0', T312_FISH_ACT: '1',
-      T646_EVERY: String(SLICE_S * 30), T646_SEGONLY: SEG ? '1' : '', T670_AFAIL_OUT: path.join(DIR, `${tag}.afail.json`), T646_PATH_OUT: path.join(DIR, `${tag}.dest.json`) }) });
+      T646_EVERY: String(SLICE_S * 30), T646_SEGONLY: SEG ? '1' : '', T670_AFAIL_OUT: path.join(DIR, `${tag}.afail.json`), T646_PATH_OUT: path.join(DIR, `${tag}.dest.json`), T671_TRAP_OUT: process.argv.includes('--trap') ? path.join(DIR, `${tag}.trap.json`) : '', T671_SHAPE_OUT: process.argv.includes('--shape') ? path.join(DIR, `${tag}.shape.jsonl`) : '' }) });
   const getj = async (p) => { try { const r = await fetch(`http://localhost:${ZP}${p}`, { headers: { 'x-zone-secret': SECRET }, signal: AbortSignal.timeout(20000) }); return await r.json(); } catch (e) { return null; } };
   const say = (...a) => console.log(`[${tag}]`, ...a);
   const t0 = Date.now();

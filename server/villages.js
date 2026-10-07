@@ -5059,6 +5059,10 @@ function _warReleasePid(pid) {
 //   ⚠NPC 몸은 허기 게이지가 면제다(zone 생존 게이지 루프 `if (p.isNpc) … HUNGER_MAX`) — 그래서 이 층이 옮기는 것은 **짐이 준다는 사실**이다.
 function _warPackCtx(w) { const A = w && w.atk && w.atk.econ; return { _priceCache: A && A._priceCache, _world: A && A._world }; }
 function _warBagView(p, keys) { const inv = p && p.inventory; const v = {}; if (!inv) return v; for (const k of keys) { const q = inv[k] || 0; if (q > 0) v[k] = q; } return v; }
+// ★[T671 ②] 짐 표식 지우기 — 손잡이 `T671_SHAPE=1` 이면 `delete` 대신 `undefined` 로 비운다(`delete` 는 몸을 사전 모드로 내린다 · zone.js `_t671Shape`).
+//   이 필드를 읽는 자리는 전부 `=== w.id` / `!== w.id` 비교 다섯이다(키 목록·`in` 0 — 보고/T671 §2 표) ⇒ 없음과 `undefined` 가 같은 답. 끔 = 종전 `delete` 그대로.
+const T671_SHAPE = process.env.T671_SHAPE === '1';
+function _t671Unpack(p) { if (T671_SHAPE) p._warPackOf = undefined; else delete p._warPackOf; }
 function _warBagWrite(p, keys, v) { if (!p.inventory) p.inventory = {}; for (const k of keys) { const q = v[k] || 0; if (q > 1e-9) p.inventory[k] = q; else delete p.inventory[k]; } }
 // ════════════════════════════════════════════════════════════════
 // ★★[T441 2026-09-27 · 군량 = 행위 ⓑ · PM #68] **길에서 채집한다** — T423 짐 위에 선다(손잡이 `T441_FORAGE_MARCH` · 끔).
@@ -5222,7 +5226,7 @@ function _warFgUnits(w, items) { let u = 0; if (w && w._fgKeys && items) for (co
 function _warRationLayDownBody(body) {
   const w = body && body.w, WC = state.war; if (!w || !w._packOnBodies || !WC || !WC.rationLayDown) return 0;
   const players = state.deps.players, keys = w._packKeys || [], items = {};
-  for (const pid of (body.pids || [])) { const p = players.get(pid); if (!p || p._warPackOf !== w.id) continue; const bag = _warBagView(p, keys); for (const k in bag) items[k] = (items[k] || 0) + bag[k]; _warBagWrite(p, keys, {}); delete p._warPackOf; }
+  for (const pid of (body.pids || [])) { const p = players.get(pid); if (!p || p._warPackOf !== w.id) continue; const bag = _warBagView(p, keys); for (const k in bag) items[k] = (items[k] || 0) + bag[k]; _warBagWrite(p, keys, {}); _t671Unpack(p); }
   let n = 0; for (const k in items) n += items[k];
   if (w._rationBook && w._fgKeys) w._rationBook.fgBack = (w._rationBook.fgBack || 0) + _warFgUnits(w, items);
   if (w._rationBook && w._rationBook.lootDay != null && w._rationBook.homeDay == null) { w._rationBook.homeDay = state.world.day; w._rationBook.homeAt = state._warTickAt || 0; }   // ★[T466] 노획이 집에 닿은 날
@@ -5231,7 +5235,7 @@ function _warRationLayDownBody(body) {
 function _warRationCollect(w) {
   const body = state.warBodies && state.warBodies.get(w.id); if (!body) return null;
   const players = state.deps.players, keys = w._packKeys || [], items = {};
-  for (const pid of (body.pids || [])) { const p = players.get(pid); if (!p || p._warPackOf !== w.id) continue; const bag = _warBagView(p, keys); for (const k in bag) items[k] = (items[k] || 0) + bag[k]; _warBagWrite(p, keys, {}); delete p._warPackOf; }
+  for (const pid of (body.pids || [])) { const p = players.get(pid); if (!p || p._warPackOf !== w.id) continue; const bag = _warBagView(p, keys); for (const k in bag) items[k] = (items[k] || 0) + bag[k]; _warBagWrite(p, keys, {}); _t671Unpack(p); }
   if (w._rationBook && w._fgKeys) w._rationBook.fgBack = (w._rationBook.fgBack || 0) + _warFgUnits(w, items);
   if (w._rationBook && w._rationBook.lootDay != null && w._rationBook.homeDay == null) { w._rationBook.homeDay = state.world.day; w._rationBook.homeAt = state._warTickAt || 0; }   // ★[T466] 노획이 집에 닿은 날
   return Object.keys(items).length ? items : null;
@@ -5239,7 +5243,7 @@ function _warRationCollect(w) {
 function _warBagDrop(w, p) {
   if (!w || !p || !w._packOnBodies || p._warPackOf !== w.id || !state.war || !state.war.bagFE) return 0;
   const keys = w._packKeys || [], bag = _warBagView(p, keys), fe = state.war.bagFE(bag, _warPackCtx(w));
-  _warBagWrite(p, keys, {}); delete p._warPackOf;
+  _warBagWrite(p, keys, {}); _t671Unpack(p);
   if (w._rationBook) { w._rationBook.drop += fe; if (w._fgKeys) w._rationBook.fgDrop = (w._rationBook.fgDrop || 0) + _warFgUnits(w, bag); }
   if (_lootActOn()) { const pile = w._lootPile || (w._lootPile = {}); for (const k in bag) pile[k] = (pile[k] || 0) + bag[k]; }   // ★[T466] 떨어진 짐은 전장에 남는다(이긴 쪽이 줍는다)
   return fe;
