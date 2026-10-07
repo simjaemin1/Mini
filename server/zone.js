@@ -2971,7 +2971,7 @@ const NPC_CLAIM_SIZE = 192;
 //      직렬화는 `serializeBody` 가 이름으로 골라 읽는다).
 //   ★이름 붙은 쓰기 줄이다(계산된 키 루프 금지 — V8 은 계산 키로 바깥 필드가 12 를 넘으면 몸을 사전 모드로 내린다).
 //   목록 = T671 ① 판의 실제 필드 합집합(리터럴 밖 60 · 빈도 차례). 목록 밖 필드는 종전대로 나중에 붙는다(드문 몸만 갈라진다).
-const T671_SHAPE = process.env.T671_SHAPE === '1';
+const T671_SHAPE = process.env.T671_SHAPE !== '0';   // ★PM 10-07 켬 기본(바이트 같음 · 되돌림 =0)
 function _t671Shape(p) {
   p.simJob = undefined; p._dOff = undefined; p._half = undefined; p._hd = undefined; p._huntOn = undefined; p._huntSpd = undefined; p._lifeAct = undefined;
   p._lifeActAt = undefined; p._pathAt = undefined; p._pathFor = undefined; p._rdK = undefined; p._rdMul = undefined; p._sh = undefined; p._simCloth = undefined;
@@ -3901,7 +3901,7 @@ function _t316WalkAlways(npc) {
 let _t670PhNow = NaN, _t670Ph = 0;
 // ★[T670 ②] 헛물음 건너뛰기 — `decideNpcBehavior` 는 타이머 문(`now < nextDecisionAt`) 앞에 **부수효과가 없다**(캐나디아 갈래 판정 하나뿐).
 //   켜면 그 문에서 바로 돌아올 부름을 부르는 쪽에서 거른다 = 같은 일을 안 할 뿐(같은 결과). 기본 끔 = 종전 그대로.
-const T670_SKIP_IDLE = process.env.T670_SKIP_IDLE === '1';
+const T670_SKIP_IDLE = process.env.T670_SKIP_IDLE !== '0';   // ★PM 10-07 켬 기본(바이트 같음 · 되돌림 =0)
 function npcStep(npc, dt, now) {
   npc._t540StepAt = now;   // ★[T540 관측] 이 몸이 마지막으로 걸음 문을 받은 때(`/walkdbg stepAge` — 새벽 멎음을 이것으로 잡았다)
   if (!(T670_SKIP_IDLE && !npc.canadiaVillage && now < npc.nextDecisionAt)) decideNpcBehavior(npc, now);   // ★[T670 ②] 끔 = 종전 그대로
@@ -13063,7 +13063,7 @@ const _wwStat = { ticks: 0, steps: 0, bad: 0, badTicks: 0, sample: [], gateBad: 
 //      (걸음 1 · 지형 질의 4 · 같은 셀 벽 3). ⚠좌표 0(−0 은 +0 속도와 더하면 +0 으로 바뀐다)·범위 밖·안 구운 타일은 커널로 보낸다.
 //   ⚠견줌(`verify`)에선 두 갈래의 증인을 센다 — 나무 열을 지난 열로 쓴 틱마다 새로 채운 열과 비트로(`treeBad`) · 서 있는 몸은 JS 정본이
 //     옮긴 뒤 처음 값과 비트로(`stillBad`).
-const T672_WALK_CUT = process.env.T672_WALK_CUT === '1';
+const T672_WALK_CUT = process.env.T672_WALK_CUT !== '0';   // ★PM 10-07 켬 기본(바이트 같음 · 되돌림 =0)
 const _wwStill = [], _wwStill0 = [];    // 서 있는 몸(차례대로) · 견줌일 때 그 처음 값(x, y, vx, vy)
 const _wwNoRes = [];                    // 빈 목록의 정체(새 배열을 틱마다 안 만든다 — 나무 열 열쇠가 서게)
 const _wwTC = { src: null, rx: null, gen: -1, k: 0, hit: 0, miss: 0, treeBad: 0, still: 0, stillBad: 0 };

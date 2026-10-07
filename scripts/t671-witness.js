@@ -147,7 +147,7 @@ console.log('\n=== T671 ② 바이트 같음 증인 · 종전', REF, '===');
   const before = sp.slice(i0, i1);
   const hit = keys.filter((k) => new RegExp('(^|[\\s{,])' + k.replace('$', '\\$') + '\\s*[:,]|player\\.' + k.replace('$', '\\$') + '\\s*=').test(before));
   ok(hit.length === 0, 'ⓔ ★목록이 리터럴·스폰 대입과 **안 겹친다**(이미 값을 받은 필드를 `undefined` 로 덮지 않는다)', hit.join(',') || null);
-  ok((NEW.match(/_t671Shape\(/g) || []).length === 2 && /const T671_SHAPE = process\.env\.T671_SHAPE === '1';/.test(NEW), 'ⓔ 손잡이 `T671_SHAPE` 한 자리(기본 끔 = 부름 0)');
+  ok((NEW.match(/_t671Shape\(/g) || []).length === 2 && /const T671_SHAPE = process\.env\.T671_SHAPE !== '0';/.test(NEW), 'ⓔ 손잡이 `T671_SHAPE` 한 자리(PM 10-07 켬 기본 · =0 이면 부름 0)');
 }
 // ⓕ `_warPackOf` — `delete` 를 `undefined` 로 바꿔도 같은 답인가: 서버 전체의 이 필드 자리가 전부 같음 비교·대입뿐인가(글자 표)
 {

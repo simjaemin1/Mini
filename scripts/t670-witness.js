@@ -116,7 +116,7 @@ const same = (a, b) => { const ka = Object.keys(a).sort(), kb = Object.keys(b).s
   const assigns = code.filter((l) => /(^|[^=!<>])=[^=]/.test(l) && !/^if \(npc\.canadiaVillage\) \{$/.test(l));
   ok(code.join(' ') === 'if (npc.canadiaVillage) { decideCanadiaBehavior(npc, now); return; }', 'ⓔ ★타이머 문 앞은 캐나디아 갈래 **하나뿐**이다(대입·난수·장부 0) — 건너뛰기 조건이 그 갈래를 빼고 같은 문을 쓴다', `대입 ${assigns.length}`);
   ok(/if \(!\(T670_SKIP_IDLE && !npc\.canadiaVillage && now < npc\.nextDecisionAt\)\) decideNpcBehavior\(npc, now\);/.test(NEW), 'ⓔ 부르는 자리 — 손잡이 끔이면 단락되어 종전 그대로 부른다');
-  ok(/const T670_SKIP_IDLE = process\.env\.T670_SKIP_IDLE === '1';/.test(NEW), 'ⓔ 손잡이 `T670_SKIP_IDLE` 기본 끔');
+  ok(/const T670_SKIP_IDLE = process\.env\.T670_SKIP_IDLE !== '0';/.test(NEW), 'ⓔ 손잡이 `T670_SKIP_IDLE`(PM 10-07 켬 기본 · =0 되돌림)');
 }
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===`);
 process.exit(fail ? 1 : 0);

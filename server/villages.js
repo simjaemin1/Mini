@@ -5061,7 +5061,7 @@ function _warPackCtx(w) { const A = w && w.atk && w.atk.econ; return { _priceCac
 function _warBagView(p, keys) { const inv = p && p.inventory; const v = {}; if (!inv) return v; for (const k of keys) { const q = inv[k] || 0; if (q > 0) v[k] = q; } return v; }
 // ★[T671 ②] 짐 표식 지우기 — 손잡이 `T671_SHAPE=1` 이면 `delete` 대신 `undefined` 로 비운다(`delete` 는 몸을 사전 모드로 내린다 · zone.js `_t671Shape`).
 //   이 필드를 읽는 자리는 전부 `=== w.id` / `!== w.id` 비교 다섯이다(키 목록·`in` 0 — 보고/T671 §2 표) ⇒ 없음과 `undefined` 가 같은 답. 끔 = 종전 `delete` 그대로.
-const T671_SHAPE = process.env.T671_SHAPE === '1';
+const T671_SHAPE = process.env.T671_SHAPE !== '0';   // ★PM 10-07 켬 기본(바이트 같음 · 되돌림 =0)
 function _t671Unpack(p) { if (T671_SHAPE) p._warPackOf = undefined; else delete p._warPackOf; }
 function _warBagWrite(p, keys, v) { if (!p.inventory) p.inventory = {}; for (const k of keys) { const q = v[k] || 0; if (q > 1e-9) p.inventory[k] = q; else delete p.inventory[k]; } }
 // ════════════════════════════════════════════════════════════════
