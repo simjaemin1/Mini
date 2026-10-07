@@ -93,6 +93,15 @@ if (process.env.T602_NEW_FISH === '1') Object.assign(KCAL_PER_KG, {
   mackerel:      1315,   // 고등어 살 2,390 × 0.55 = 1,314.5
 });
 
+// ★★[T647 2026-10-05 · 손잡이 `T636_DROP_KG` — 없음 = 켬 · `=0` = 종전(이 줄이 없다 = main 바이트)] **사체 고기(`meat_game`)의 열량 줄.**
+//   도살 드롭 `meat_game`(사슴·들짐승고기 · `specialty.weight` 1.0kg)은 이 표에 줄이 없어 손에서 못 먹었다(T636 회부 ③).
+//   값 = **USDA FoodData Central · SR Legacy "Game meat, deer, raw"(FDC ID 173855)** 120 kcal/100g × 10 = 1,200 kcal/kg
+//   (날것 · 살 — 도살 드롭은 뼈 없는 살코기라 가식부 1.0 · 단백질 23.0g · 지방 2.42g/100g). 위 `meat_raw` 주석 "1,200~1,600" 의 아래 끝과 같다.
+//   ⚠국가표준식품성분표(농진청)의 사슴 줄은 이번 판 못 찾았다(조회 오류 — 보고 표) · 곰 고기도 같은 품목(meat_game)이라 이 줄을 먹는다(곰 성분 미확인).
+//   ⚠곳간·거래 값은 안 바뀐다 — meat_game 은 곳간 넣기 표(`villages.PV_DEPOSIT_MAP`)에 줄이 없어
+//     넣기·꺼내기·거래소·게시판·보상 환산(`econUnitsOf`·`itemsOf`)이 이 품목을 아예 안 다룬다(`test-drop-kg` 가 잰다).
+if (require('./animals').dropKgOn()) KCAL_PER_KG.meat_game = 1200;   // USDA FDC 173855 — 120 kcal/100g
+
 // ── §2 조리식 — **재료 열량 합 × econ 이 이미 쓰는 계수** ───────────────────
 //   ★계수를 여기서 짓지 않는다: econ `consumeFood` 가 `cooked_food` 를 **1.12** 로 환산한다
 //     (`sim/economy-sim.js` — "영양 풍부"). 같은 세계에 두 개의 조리 이득이 있으면 안 된다.
