@@ -1,0 +1,100 @@
+{
+  "schema": "mini.bgm-gpt.original-variation.v1",
+  "status": "unreviewed_rnd_only",
+  "title": "아리랑 이웃음에서 나온 새 8마디 — 초안 1",
+  "meter": "3/4",
+  "jangdan": "semachi",
+  "bar_count": 8,
+  "beats_per_bar": 3,
+  "sobak_per_beat": 3,
+  "sobak_seconds": 0.26666666666666666,
+  "seconds_per_beat": 0.8,
+  "duration_seconds": 19.2,
+  "tonic": "C5",
+  "scale_pitch_classes": ["C", "D", "E", "G", "A"],
+  "lead_instrument": "daegeum",
+  "origin_note": "Authorial C-pentatonic variation using the opening G4→A4 neighboring rise as seed; not a transcription or a copy of the NGC recording.",
+  "performance_note": "Articulations are explicit authorial hypotheses, not automatically inferred from touching notes. A slur changes target F0 within the existing 12 ms score-expression policy, never a sustained glissando. All sounding vibrato is off in this first score; the ending is a disabled review candidate only.",
+  "bars": [
+    {
+      "bar": 1,
+      "role": "question_seed_G_A_C_A",
+      "events": [
+        {"onset_sobak": 0, "duration_sobak": 2, "pitch": "G4", "articulation": "breath_start"},
+        {"onset_sobak": 2, "duration_sobak": 1, "pitch": "A4", "articulation": "slur"},
+        {"onset_sobak": 3, "duration_sobak": 3, "pitch": "C5", "articulation": "slur"},
+        {"onset_sobak": 6, "duration_sobak": 3, "pitch": "A4", "articulation": "slur"}
+      ]
+    },
+    {
+      "bar": 2,
+      "role": "answer_up_to_D_then_C",
+      "events": [
+        {"onset_sobak": 0, "duration_sobak": 2, "pitch": "G4", "articulation": "rearticulate"},
+        {"onset_sobak": 2, "duration_sobak": 1, "pitch": "A4", "articulation": "slur"},
+        {"onset_sobak": 3, "duration_sobak": 3, "pitch": "D5", "articulation": "rearticulate"},
+        {"onset_sobak": 6, "duration_sobak": 2, "pitch": "C5", "articulation": "slur"},
+        {"onset_sobak": 8, "duration_sobak": 1, "rest": true, "reason": "phrase_breath"}
+      ]
+    },
+    {
+      "bar": 3,
+      "role": "answer_peak_E",
+      "events": [
+        {"onset_sobak": 0, "duration_sobak": 3, "pitch": "C5", "articulation": "breath_start"},
+        {"onset_sobak": 3, "duration_sobak": 2, "pitch": "D5", "articulation": "slur"},
+        {"onset_sobak": 5, "duration_sobak": 3, "pitch": "E5", "articulation": "slur"},
+        {"onset_sobak": 8, "duration_sobak": 1, "pitch": "D5", "articulation": "slur"}
+      ]
+    },
+    {
+      "bar": 4,
+      "role": "half_cadence_G",
+      "events": [
+        {"onset_sobak": 0, "duration_sobak": 2, "pitch": "C5", "articulation": "slur"},
+        {"onset_sobak": 2, "duration_sobak": 1, "pitch": "A4", "articulation": "slur"},
+        {"onset_sobak": 3, "duration_sobak": 4, "pitch": "G4", "articulation": "slur"},
+        {"onset_sobak": 7, "duration_sobak": 2, "rest": true, "reason": "half_cadence_breath"}
+      ]
+    },
+    {
+      "bar": 5,
+      "role": "departure_A_C_D_E",
+      "events": [
+        {"onset_sobak": 0, "duration_sobak": 2, "pitch": "A4", "articulation": "breath_start"},
+        {"onset_sobak": 2, "duration_sobak": 1, "pitch": "C5", "articulation": "slur"},
+        {"onset_sobak": 3, "duration_sobak": 3, "pitch": "D5", "articulation": "slur"},
+        {"onset_sobak": 6, "duration_sobak": 3, "pitch": "E5", "articulation": "rearticulate"}
+      ]
+    },
+    {
+      "bar": 6,
+      "role": "E_repeated_then_broken_descent",
+      "events": [
+        {"onset_sobak": 0, "duration_sobak": 3, "pitch": "E5", "articulation": "rearticulate"},
+        {"onset_sobak": 3, "duration_sobak": 2, "pitch": "C5", "articulation": "slur"},
+        {"onset_sobak": 5, "duration_sobak": 1, "pitch": "D5", "articulation": "slur"},
+        {"onset_sobak": 6, "duration_sobak": 2, "pitch": "A4", "articulation": "rearticulate"},
+        {"onset_sobak": 8, "duration_sobak": 1, "rest": true, "reason": "phrase_breath"}
+      ]
+    },
+    {
+      "bar": 7,
+      "role": "seed_return_rhythm_changed",
+      "events": [
+        {"onset_sobak": 0, "duration_sobak": 3, "pitch": "G4", "articulation": "breath_start"},
+        {"onset_sobak": 3, "duration_sobak": 1, "pitch": "A4", "articulation": "slur"},
+        {"onset_sobak": 4, "duration_sobak": 2, "pitch": "C5", "articulation": "slur"},
+        {"onset_sobak": 6, "duration_sobak": 3, "pitch": "A4", "articulation": "slur"}
+      ]
+    },
+    {
+      "bar": 8,
+      "role": "section_cadence_C",
+      "events": [
+        {"onset_sobak": 0, "duration_sobak": 7, "pitch": "C5", "articulation": "rearticulate", "vibrato_intention": "disabled_late_yoseong_candidate_only"},
+        {"onset_sobak": 7, "duration_sobak": 2, "rest": true, "reason": "section_end_breath"}
+      ]
+    }
+  ]
+}

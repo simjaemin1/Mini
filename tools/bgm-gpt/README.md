@@ -75,3 +75,20 @@ python3 tools/bgm-gpt/render_arirang_haegeum_012.py \
 ```
 
 원본과 ⑤·⑪의 SHA-256을 검사하고, ⑪과 같은 38.4초·약 −20 LUFS·크레딧을 검증한다. 기존 청취 폴더에 바로 덮어쓰기 하지 않고 새 출력 폴더를 요구한다. ⑫의 경계 앞뒤 3초 음량 차는 +1.42 LU로, ⑪의 +0.83 LU보다 0.59 LU 크다. 해금 음색의 적합성이나 19.2초 재어택의 자연스러움은 재민 청취 전 미확정이며, 게임 기본 BGM은 바꾸지 않는다.
+
+## 새 8마디 악보와 원연주 악구 재배열 (⑬)
+
+`new-arirang-score/`는 아리랑의 G→A 이웃음에서 착상한 8마디·19.2초 저작 악보 초안과 명시적 호흡·재어택·슬러 표현 계획이다. 원연주 채보나 완성 BGM이 아니다. 악보·생성 코드·계획의 일치를 먼저 검사한다.
+
+```bash
+python3 tools/bgm-gpt/new-arirang-score/build_score_expression_plan.py --check
+```
+
+`source_led_arrange_013.py`는 그 새 악보를 연주하지 않는다. 국립국악원 아리랑 대금 `w3-914-002` 한 녹음의 자연 악구 A/B/C/D를 순서만 바꾸어 38.4초 비교본을 만든다. 개별 음 자르기·이조·시간 늘이기·크로스페이드가 없고, 기존 출력은 덮어쓰지 않는다. 기본 실행은 원본 경계의 읽기 전용 감사다.
+
+```bash
+python3 tools/bgm-gpt/source_led_arrange_013.py --gugak-root /path/to/_bgm/국악원
+python3 tools/bgm-gpt/source_led_arrange_013.py --gugak-root /path/to/_bgm/국악원 --output-dir /fresh/audition-dir --render
+```
+
+⑬은 음원 원연주 재배열이고 AI 생성·새 악보 렌더·게임 자산이 아니다. 재민의 청취 판정 전까지 미확정이다. 국악기 음원 제공 — 국립국악원 (공공누리 제1유형).
