@@ -23,3 +23,15 @@ python3 tools/bgm-gpt/render_first_phrases.py \
 ```bash
 python3 tools/bgm-gpt/audit_finish.py --root ~/Mini/_bgm/국악원
 ```
+
+## 아리랑 대금 E5 초입 비교 (⑦–⑨)
+
+④ 대금 독주의 E5 초입이 높게 들리는지 확인할 때, 아래 도구는 `w3-914-001` 원본 FLAC을 **읽기만** 해서 같은 3.3초의 원본·약보정·강보정 AAC 세 개를 만든다. 원본에서 4.5–6.3초와 11.8–13.05초를 발췌하고 사이에 0.25초 쉼을 둔다. NumPy·SciPy·FFmpeg가 필요하다.
+
+```bash
+python3 tools/bgm-gpt/render_e_onset_psola.py \
+  --source-flac '/Users/simjaemin1/Mini/_bgm/국악원/정리/악구/대금/민요/아리랑/w3-914-001__아리랑 01.flac' \
+  --output-dir '/Users/simjaemin1/Mini/_bgm/gpt/청취'
+```
+
+동일한 원본 ID·SHA-256을 확인한 뒤, 본래 연주의 음량 곡선을 보존하는 주기 기반 PSOLA 실험을 E 초입에만 적용한다. ⑧은 높은 초입을 절반가량 낮추고 ⑨는 더 낮추지만 음색 변화 가능성이 있어 채택판이 아니다. ⑨의 둘째 E는 12.5초부터 원본으로 복귀해 다음 음을 보존한다. 세 출력은 ④와 같은 전체 게인(+1.36dB)이며, 발췌 부분의 음량인 약 -22.4 LUFS를 유지한다. ④ **전체**의 -20 LUFS로 발췌본을 키우지 않는다. AAC 출처 크레딧, 출력 해시와 음정·음량 진단은 `제작정보_E초입_007-009.json`에 남긴다. 기존 ⑦–⑨가 있으면 덮어쓰지 않고 멈춘다. ④ 원본·게임 기본 BGM은 수정하지 않는다.
