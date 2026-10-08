@@ -7,7 +7,7 @@ const fs = require('fs');
 const [fa, fb] = process.argv.slice(2).filter((x) => !x.startsWith('--'));
 const SHOW = process.argv.includes('--sites');
 const A = JSON.parse(fs.readFileSync(fa, 'utf8')), B = JSON.parse(fs.readFileSync(fb, 'utf8'));
-const F = ['이름', '곳간', '인구', 'econ 주민', '몸 좌표 합', '주거', '확장', null, '금고', '교역 표', '마지막 교역일'];
+const F = ['이름', '곳간', '인구', 'econ 주민', '몸 좌표 합', '주거', '확장', null, '금고', '교역 표', '마지막 교역일', '직업 수', '어장 상한', '어제 어획', '잠재 어획'];   // ★[T661] 뒤 넷 덧칸(옛 판 json 엔 없다 — 없으면 둘 다 undefined 라 같다)
 const cash = (t) => (t && typeof t === 'object') ? (t._cash != null ? t._cash : '—') : t;
 const byD = (X) => new Map(X.days.map((r) => [r.d, r]));
 const MA = byD(A), MB = byD(B);

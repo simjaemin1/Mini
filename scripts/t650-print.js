@@ -108,7 +108,9 @@ if (OUT0) {
             serverVillage: SV && SV[0] ? Object.keys(SV[0]).slice(0, 80) : [], world: Object.keys(world).slice(0, 80) };
           const byName = new Map(); for (const sv of (SV || [])) if (sv && sv.name) byName.set(sv.name, sv);
           const vil = V.map((v) => { const sv = byName.get(v.name);
-            return [v.name, H(stor(v.storage)), (v.npcs || []).length, H(npcSig(v.npcs)), bodySum(sv), R6(v.housing), v.expansions || 0, stor(v.storage), (v.treasury && typeof v.treasury === 'object') ? stor(v.treasury) : R6(v.treasury), v.tradeStats ? H(v.tradeStats) : null, v.lastTradeDay != null ? v.lastTradeDay : null]; });
+            return [v.name, H(stor(v.storage)), (v.npcs || []).length, H(npcSig(v.npcs)), bodySum(sv), R6(v.housing), v.expansions || 0, stor(v.storage), (v.treasury && typeof v.treasury === 'object') ? stor(v.treasury) : R6(v.treasury), v.tradeStats ? H(v.tradeStats) : null, v.lastTradeDay != null ? v.lastTradeDay : null,
+              // ★[T661] 덧칸(끝에만 덧붙인다 — 비교기의 칸 번호 무변): 직업 수 · 어장 상한 · 어제 어획 · 잠재 어획
+              v.counts ? stor(v.counts) : null, v.land ? R6(v.land.fishSustain) : null, R6(v._fishOutLast), R6(v._fishRawLast)]; });
           const wsnap = {}; for (const [q, x] of Object.entries(wr)) wsnap[q] = R6(x); for (const q of Object.keys(wr)) delete wr[q];
           days.push({ d, seed: Econ.__t650Seed ? Econ.__t650Seed() : null, wd: world.day, cnt: Object.assign({}, cnt), sites: JSON.parse(JSON.stringify(sites)), wr: WR ? wsnap : undefined,
             car: Array.isArray(world.caravans) ? world.caravans.length : null, vil,
