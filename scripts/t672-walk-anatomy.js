@@ -121,6 +121,39 @@ function makeTree(dir, probe) {
     }
     { const a = '  sepNpcs(dt);'; need1(a, 'sepNpcs');
       s = s.replace(a, () => "  { const _s7 = _p7t(); sepNpcs(dt); _P7sub('sep', _p7t() - _s7); }"); }
+    if (process.env.T676_PROBE === '1') {   // ★[T676] 답압 스탬프 갈래(메모 / 셀 넘음) · 활성 판정(부름 수·몫) · 서로 비키기 안쪽(세우기 · 사람 · 밀기)
+      { const a1 = '  const gkey = (x, y) => ((x / SEP_BK) | 0) * 100000 + ((y / SEP_BK) | 0) + 5000000;\n  for (const pid of npcs) {', a0 = '  const movers = [];\n  for (const pid of npcs) {';
+        const a = cnt(a1) === 1 ? a1 : a0; need1(a, 'sepNpcs 머리');   // T676 판(버킷 다시 쓰기) · 옛 판 둘 다
+        s = s.replace(a, () => a.replace('\n  for (const pid of npcs) {', ' _P8s = _p7t();\n  for (const pid of npcs) {')); }
+      { const a = '  for (const p of players.values()) {   // 사람 = 밀리지 않는 고정체'; need1(a, 'sepNpcs 사람');
+        s = s.replace(a, () => "  { const _t8 = _p7t(); _P7sub('sepBuild', _t8 - _P8s); _P8s = _t8; }\n" + a); }
+      { const a = '  const R2 = SEP_SOFT_PX * SEP_SOFT_PX;\n  const push = Math.min(16, 26 * dt);'; need1(a, 'sepNpcs 밀기');
+        s = s.replace(a, () => "  { const _t8 = _p7t(); _P7sub('sepHum', _t8 - _P8s); _P8s = _t8; }\n" + a); }
+      s += `
+// ── [T676 탐침] ──
+var _P8s = 0;
+{ const f0 = Roads.stampEntityPx; Roads.stampEntityPx = function (ent, x, y) { const k0 = ent._rdK; const s = _p7t(); f0(ent, x, y); const d = _p7t() - s; _P7sub(ent._rdK !== k0 ? 'stampX' : 'stampM', d); }; }
+{ const f0 = isPositionActive; isPositionActive = function (x, y) { const s = _p7t(); const r = f0(x, y); _P7sub('ipa', _p7t() - s); return r; }; }
+globalThis.__p7t = () => _p7t(); globalThis.__p7sub = (k, v) => _P7sub(k, v);   // 늦게 묶는다(TAIL 의 const 는 아직 TDZ)
+if (process.env.T676_PAVEDSPLIT === '1') {   // ★[T676] 포장 오름 사건(onPaved) 안 — 부름 수·몫과 그 안의 넷
+  const W = (o, k, tag) => { const f0 = o[k]; if (typeof f0 !== 'function') return; o[k] = function () { const s = _p7t(); try { return f0.apply(this, arguments); } finally { _P7sub(tag, _p7t() - s); } }; };
+  W(Roads._S, 'onPaved', 'pv사건'); W(SimVillages, 'villageOfCell', 'pv마을셀'); W(Roads, 'pavedNear', 'pv길둘레');
+  { const f0 = clearTreesInCells; clearTreesInCells = function () { const s = _p7t(); try { return f0.apply(this, arguments); } finally { _P7sub('pv나무걷기', _p7t() - s); } }; }
+  { const f0 = _t566CellChanged; _t566CellChanged = function () { const s = _p7t(); try { return f0.apply(this, arguments); } finally { _P7sub('pv판갱신', _p7t() - s); } }; }
+}
+`;
+      if (process.env.T676_ROADSPLIT === '1') {   // ★[T676] \`stampCell\` 안 갈래(셀 넘는 부름만 · 부름이 드물어 시계 몫 작다)
+        const rp = path.join(dir, 'server', 'roads.js'); let R = fs.readFileSync(rp, 'utf8');
+        const rr = (a, b) => { if (R.split(a).length !== 2) throw new Error('roads 앵커 ' + a.slice(0, 40)); R = R.replace(a, () => b); };
+        rr('function stampCell(cx, cy) { // +1 답압(랩 roadStamp verbatim) — 등급 반환\n', 'let _p9 = 0; const _m9 = (k) => { const g = globalThis; if (!g.__p7t) return; const t = g.__p7t(); g.__p7sub(k, t - _p9); _p9 = t; };\nfunction stampCell(cx, cy) { // +1 답압(랩 roadStamp verbatim) — 등급 반환\n  _p9 = globalThis.__p7t ? globalThis.__p7t() : 0;\n');
+        rr('  const k = kOf(cx, cy), t = dayNow();\n  let r = S.cells.get(k);\n', "  const k = kOf(cx, cy), t = dayNow(); _m9('sc머리·날');\n  let r = S.cells.get(k); _m9('sc셀 찾기');\n");
+        rr('  if (!r) { S.cells.set(k, { v: 1, d: t }); S.dirty.add(k); S.stats.stamped++; return 0; }\n', "  if (!r) { S.cells.set(k, { v: 1, d: t }); S.dirty.add(k); S.stats.stamped++; _m9('sc새 셀'); return 0; }\n");
+        rr('  const lv = r.v >= T2 ? 2 : (r.v >= T1 ? 1 : 0);\n  if (lv >= 1) {', "  _m9('sc감쇠·더하기·dirty');\n  const lv = r.v >= T2 ? 2 : (r.v >= T1 ? 1 : 0);\n  if (lv >= 1) {");
+        rr('  // ★[T566 추신2 ①] 등급이 **2 로 오르는 그 호출**', "  _m9('sc코스');\n  // ★[T566 추신2 ①] 등급이 **2 로 오르는 그 호출**");
+        rr('  if (lv === 2 && !S.paved.has(k)) { S.paved.add(k); if (S.onPaved) { try { S.onPaved(cx, cy); } catch (e) { } } }\n  return lv;', "  if (lv === 2 && !S.paved.has(k)) { S.paved.add(k); if (S.onPaved) { try { S.onPaved(cx, cy); } catch (e) { } } }\n  _m9('sc포장');\n  return lv;");
+        fs.writeFileSync(rp, R); execFileSync(process.execPath, ['--check', rp]);
+      }
+    }
   }
   s += TAIL.replace('${PROBE}', probe ? '1' : '0');
   fs.writeFileSync(zp, s);
@@ -157,7 +190,7 @@ async function run(tag, probe, cut) {
   const phaseNow = async () => { const L = await getj('/lifedbg'); return L && L.phase; };
   const windows = [];
   const QUICK = parseInt(process.env.T672_QUICK || '0', 10);   // 빠른 판 — 창을 안 기다리고 기동 직후(원점 = 하루 경계 LEAD 초 앞 · 밤 끝) 조각 QUICK 개
-  for (const [W, lo, hi] of (QUICK ? [['quick', 0, 1]] : [['day', 0.10, 0.62], ['night', 0.72, 0.97]])) {
+  for (const [W, lo, hi] of (QUICK ? [['quick', 0, 1]] : [['day', 0.10, 0.62], ['night', 0.72, 0.97]].filter((w) => !process.env.T672_WINDOWS || process.env.T672_WINDOWS.split(',').includes(w[0])))) {
     let ph = null;
     for (let i = 0; i < 1000 && !QUICK; i++) { ph = await phaseNow(); if (ph != null && ph >= lo && ph <= hi - (SLICES * SLICE_S) / (DAY / 1000)) break; await sleep(5000); }
     say(W, '창 · phase', ph);

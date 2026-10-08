@@ -416,6 +416,9 @@ function _t566CellMayHaveLedger(x, y) {
 //        · 장부 씨 중 지금 T122 단계가 **성목**인 것 — 이미 다 자라 서 있는 나무다 ⇒ 장부에서 지운다(T341 되살림 문 그대로 · 서 있던 나무 그대로)
 //        · 장부 씨 중 그루터기·묘목(자라던 자리) — 답이 'gone' 이 된다(리젠을 막는다) · 켜진 청크에 서 있으면 그 개체를 내린다(묶음 · 소리 0)
 //     ⚠"막힘이 오는 날의 성목"은 이 사건에서만 가린다 — 부팅은 둘레를 안 걷고 안 가린다(추신2 ⑤): 막힌 동안 자란 장부 씨는 단계가 성목이어도 'gone' 이다.
+// ★★[T676 ① 2026-10-07] 답압 스탬프의 몫은 **셀 넘는 부름의 1.4 % 가 여는 이 사건**이었다(T676 §1 — 사건 하나 ≈450 µs · 낮 0.19 µs/사람 ·
+//   그중 둘레 24칸 `villageOfCell`(마을 51곳 영토 집합을 글자 키로 훑는다) ≈0.12). `T676_STAMP=1` 이면 둘레 칸마다 **길 둘레(`pavedNear` — 코스 칸 몇 개 +
+//   25칸 집합 물음)를 먼저** 묻는다. 둘 다 읽기만 하는 술어이고 답은 둘의 '또는'이라 차례를 바꿔도 값이 같다(예외도 둘 다 `before = true`).
 function _t566OnPaved(cx, cy) {
   _t566Stat.paved++;
   let day; try { day = gameDayNow(); } catch (e) { day = undefined; }
@@ -424,7 +427,9 @@ function _t566OnPaved(cx, cy) {
   for (let y = cy - R; y <= cy + R; y++) for (let x = cx - R; x <= cx + R; x++) {
     if (x < 0 || y < 0 || (x === cx && y === cy)) continue;
     let before = false;
-    try { before = !!(SimVillages.villageOfCell && SimVillages.villageOfCell(x, y)) || !!Roads.pavedNear(x, y, R, kP); } catch (e) { before = true; }
+    if (T676_STAMP) { try { before = !!Roads.pavedNear(x, y, R, kP) || !!(SimVillages.villageOfCell && SimVillages.villageOfCell(x, y)); } catch (e) { before = true; } }   // ★[T676 ①] 싼 물음 먼저(두 물음 다 읽기만 · 값은 같은 '또는')
+    else try { before = !!(SimVillages.villageOfCell && SimVillages.villageOfCell(x, y)) || !!Roads.pavedNear(x, y, R, kP); } catch (e) { before = true; }
+    if (T676_VERIFY) { let b2; try { b2 = !!Roads.pavedNear(x, y, R, kP) || !!(SimVillages.villageOfCell && SimVillages.villageOfCell(x, y)); } catch (e) { b2 = true; } _t676Stat.pvN++; if (b2 !== before) _t676Stat.pvBad++; }
     if (before) continue;
     _t566Stat.ringNew++;
     if (Number.isFinite(day) && _t566CellMayHaveLedger(x, y)) {
@@ -1033,6 +1038,37 @@ function farTreesStat() {
 }
 
 function isChunkActiveKey(key) { return activeChunkKeys.has(key); }
+// ★★[T676 ② 2026-10-07] **활성 판정 정수 판** — 손잡이 `T676_STAMP=1`(기본 끔 = 아래 옛 줄 그대로).
+//   옛 판은 부를 때마다 청크 키 **글자**(`${cx}_${cy}`)를 짓고 `Set.has` 를 한다(몹 AI · 이동 문 · 서로 비키기 · 결정 문 · 낙하·HP — 사람마다 틱마다).
+//   켬이면 `activeChunkKeys` 를 **청크 격자 비트**(`Uint8Array` colsX × colsY · 1 = 그 키가 집합에 있다)로 옮겨 두고 칸 하나만 읽는다.
+//   ★같은 답: 비트는 집합의 키를 풀어 **정준 글자**(`keyOf(cx,cy)` 가 똑같이 다시 짓는 키)인 것만 켠다 ⇒ 격자 안 (cx,cy) 에서
+//     "비트 = 1" ⟺ "keyOf(cx,cy) ∈ 집합". 격자 밖·NaN 은 옛 줄로 간다(글자 그대로). −0 칸은 `keyOf(−0,·)` = "0_·" = 0 칸이라 같다.
+//   ★무효화: 집합은 `updateActiveChunks` 가 **새 Set 으로 갈아 끼운다** ⇒ 정체가 바뀐 판에만 다시 푼다(틱당 활성 청크 수만큼 · 몸 수와 무관).
+const T676_STAMP = process.env.T676_STAMP === '1';
+const T676_VERIFY = process.env.T676_STAMP === 'verify';   // ★견줌 — 세계는 옛 판 답으로 돌고, 새 판 답을 곁에서 세어 어긋남을 센다(`/perf` walk.t676)
+const _t676Stat = { ipaN: 0, ipaBad: 0, pvN: 0, pvBad: 0 };
+let _actSrc = null, _actBM = null;
+const _actOn = [];
+function _actRebuild() {
+  const CX = chunkManager.colsX, CY = chunkManager.colsY;
+  if (!_actBM) _actBM = new Uint8Array(CX * CY);
+  for (let i = 0; i < _actOn.length; i++) _actBM[_actOn[i]] = 0;
+  _actOn.length = 0;
+  for (const k of activeChunkKeys) {
+    if (typeof k !== 'string') continue;
+    const j = k.indexOf('_'), cx = +k.slice(0, j), cy = +k.slice(j + 1);
+    if (Number.isInteger(cx) && Number.isInteger(cy) && cx >= 0 && cy >= 0 && cx < CX && cy < CY && chunkManager.keyOf(cx, cy) === k) { const i = cy * CX + cx; _actBM[i] = 1; _actOn.push(i); }
+  }
+  _actSrc = activeChunkKeys;
+}
+function _isPositionActiveBM(x, y) {   // ★[T676 ②] 켬 판 — 격자 안이면 비트 · 밖·NaN 이면 옛 판(`_isPositionActive0`) 그대로
+  const cs = chunkManager.chunkSize, cx = Math.floor(x / cs), cy = Math.floor(y / cs), CX = chunkManager.colsX;
+  if (cx >= 0 && cy >= 0 && cx < CX && cy < chunkManager.colsY) {
+    if (_actSrc !== activeChunkKeys) _actRebuild();
+    return _actBM[cy * CX + cx] === 1;
+  }
+  return _isPositionActive0(x, y);
+}
 function isPositionActive(x, y) {
   // ★[T345] `chunkXY` 가 만들던 `{cx,cy}` 객체를 없앴다 — 이 술어는 주민마다 틱마다 두 번 불린다
   //   (결정 문 · 이동 문). 같은 나눗셈·같은 키라 답은 정의상 같다.
@@ -1041,6 +1077,9 @@ function isPositionActive(x, y) {
   const cs = chunkManager.chunkSize;
   return activeChunkKeys.has(chunkManager.keyOf(Math.floor(x / cs), Math.floor(y / cs)));
 }
+const _isPositionActive0 = isPositionActive;                // ★[T676 ②] 옛 판(글자 그대로 · 하네스가 뜨는 그 몸)
+if (T676_STAMP) isPositionActive = _isPositionActiveBM;     // 켬이면 이름을 갈아 끼운다(부르는 자리 글자 0 · 끄면 이 줄이 안 돈다)
+else if (T676_VERIFY) isPositionActive = function (x, y) { const a = _isPositionActive0(x, y); _t676Stat.ipaN++; if (_isPositionActiveBM(x, y) !== a) _t676Stat.ipaBad++; return a; };
 // ★★★[T385 2026-09-26 · T371 회부 1-ⓑ · T375 가 음수로 증명한 자리] **순회 일곱을 둘로.** `T385_ONE_SWEEP=1` 일 때만.
 //   ★왜 — T375 가 문지기를 필드로 싸게 했더니 그 밖이 1.15 → 1.46µs(+27 %)였다. 넷이 던 것(−0.200)보다
 //     **새로 놓은 순회 둘**(+0.462)이 더 들었다 ⇒ 값은 문지기가 아니라 **순회 한 바퀴**(≈ 0.21~0.25µs/사람)에 있다.
@@ -1512,6 +1551,7 @@ function walkPerf(reset) {
     if (T672_WALK_CUT) { o.ww.t672 = { treeHit: _wwTC.hit, treeMiss: _wwTC.miss, treeBad: _wwTC.treeBad, still: _wwTC.still, stillBad: _wwTC.stillBad, k: _wwTC.k };   // ★[T672] 관측
       if (reset) { _wwTC.hit = 0; _wwTC.miss = 0; _wwTC.treeBad = 0; _wwTC.still = 0; _wwTC.stillBad = 0; } }
     if (reset) { _wwStat.ticks = 0; _wwStat.steps = 0; _wwStat.bad = 0; _wwStat.badTicks = 0; _wwStat.gateBad = 0; _wwStat.sample.length = 0; } }   // ★[T461]
+  if (T676_STAMP || T676_VERIFY) { o.t676 = Object.assign({ mode: T676_STAMP ? 'on' : 'verify' }, _t676Stat); if (reset) { _t676Stat.ipaN = 0; _t676Stat.ipaBad = 0; _t676Stat.pvN = 0; _t676Stat.pvBad = 0; } }   // ★[T676] 견줌 셈
   if (reset) { _walk.steps = 0; _walk.ej = 0; _walk.ejQ = 0; _walk.ejFail = 0; _walk.terrQ = 0; _walk.waterQ = 0; _walk.wallQ = 0; _walk.cut = 0; _walk.ejPids.clear(); }
   return o;
 }
@@ -3859,22 +3899,34 @@ function unstuckNpc(npc, now) {
 //   movePlayerStep 콜라이더와 동일 판정 재사용). 해시 그리드 O(N×국소밀도), 틱당 1회.
 // =============================================================================
 const SEP_SOFT_PX = 27.2, SEP_BODY_PX = 16, SEP_BK = 64;   // 0.85셀 개인공간 · 0.5셀 몸(NPC_BODY 정본 수동 동기) · 버킷 2셀
+// ★★[T676 ③] 버킷 다시 쓰기 — `T676_STAMP=1` 이면 버킷 지도·배열·`movers` 를 틱마다 새로 안 짓고 비워서 다시 쓴다.
+//   ★같은 답: 버킷 안 차례 = 넣은 차례(같다) · 지난 틱에만 쓴 버킷은 **빈 배열**로 남는다 ⇒ 아래 밀기 루프의 `if (!c) continue` 와
+//     빈 `for` 는 같은 일이다(아무것도 안 더한다). 지도가 너무 커지면(버킷 6.5만 넘게 남으면) 비운다(답 무관).
+const _sepG = new Map(), _sepUsed = [], _sepMovers = [];
+function _sepPut(G, k, p) { let c = G.get(k); if (!c) G.set(k, c = []); if (!c.length) _sepUsed.push(c); c.push(p); }
 function sepNpcs(dt) {
-  const G = new Map(), gkey = (x, y) => ((x / SEP_BK) | 0) * 100000 + ((y / SEP_BK) | 0) + 5000000;
-  const movers = [];
+  let G, movers;
+  if (T676_STAMP) {
+    for (let i = 0; i < _sepUsed.length; i++) _sepUsed[i].length = 0;
+    _sepUsed.length = 0; if (_sepG.size > 65536) _sepG.clear();
+    G = _sepG; movers = _sepMovers; movers.length = 0;
+  } else { G = new Map(); movers = []; }
+  const gkey = (x, y) => ((x / SEP_BK) | 0) * 100000 + ((y / SEP_BK) | 0) + 5000000;
   for (const pid of npcs) {
     const p = players.get(pid);
     if (!p || p.hp <= 0 || p.handingOff) continue;
     if (!p.canadiaVillage && !isPositionActive(p.x, p.y)) continue;   // dormant 스킵(비용·기존 정지 규약 동일)
-    const k = gkey(p.x, p.y), c = G.get(k);
-    c ? c.push(p) : G.set(k, [p]);
+    const k = gkey(p.x, p.y);
+    if (T676_STAMP) _sepPut(G, k, p);
+    else { const c = G.get(k); c ? c.push(p) : G.set(k, [p]); }
     if (p.simCaravan || p.simWar) continue;   // 단일 작성자 계약 — 고정체로만 참여
     movers.push(p);
   }
   for (const p of players.values()) {   // 사람 = 밀리지 않는 고정체 등록(NPC가 비켜감)
     if (p.isNpc || p.handingOff) continue;
-    const k = gkey(p.x, p.y), c = G.get(k);
-    c ? c.push(p) : G.set(k, [p]);
+    const k = gkey(p.x, p.y);
+    if (T676_STAMP) _sepPut(G, k, p);
+    else { const c = G.get(k); c ? c.push(p) : G.set(k, [p]); }
   }
   const R2 = SEP_SOFT_PX * SEP_SOFT_PX;
   const push = Math.min(16, 26 * dt);   // 소프트 밀림 상한(랩 min(0.5, 0.35·dGM)셀 동형 스케일)

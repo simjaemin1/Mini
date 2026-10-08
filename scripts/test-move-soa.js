@@ -2079,5 +2079,98 @@ console.log('\n⑲ T489 → T496 — 소문 분리 기본 켬(`T489_RUMOR_SPLIT`
   console.log('    접점: T489_RUMOR_SPLIT · T496_CARAVAN_REST · T468_PORTER · cargoWalkMul · rumorDaySpeed · _t489Speed · CARAVAN_DAY_SPEED · caravanWalkPerDay · rumor.js');
 }
 
+console.log('\n㉒ T676 활성 판정 비트 · 서로 비키기 버킷 다시 쓰기 — 옛 판과 답이 같다 [T676]');
+{
+  // ── ② 활성 판정: 제품 글자 셋(`_actRebuild` · `_isPositionActiveBM` · `isPositionActive`) — 옛 판과 비트 판을 같은 집합·같은 점에 묻는다
+  const { ChunkManager } = require(path.join(ROOT, 'server', 'chunk.js'));
+  const CM = new ChunkManager(70016, 130016);
+  const ACT = new Function('chunkManager', 'let activeChunkKeys = new Set(); let _actSrc = null, _actBM = null; const _actOn = [];\n' +
+    body('_actRebuild') + '\n' + body('_isPositionActiveBM') + '\n' + body('isPositionActive') + '\nconst _isPositionActive0 = isPositionActive;\n' +
+    'return { set: (S) => { activeChunkKeys = S; }, old: _isPositionActive0, bm: _isPositionActiveBM };')(CM);
+  ok(ACT && typeof ACT.bm === 'function', '㉒ [전제] 제품 글자 셋을 떴다(옛 판 · 비트 판 · 다시 풀기)', `${body('_isPositionActiveBM').length}자`);
+  let rs = 676; const rnd = () => { rs = (rs * 1103515245 + 12345) >>> 0; return rs / 4294967296; };
+  let n = 0, bad = 0, actN = 0;
+  const odd = ['-0_3', '03_4', '1.5_2', '9999_1', '1_9999', '-1_2', 'x_y', '5', '', '2_3_4'];
+  for (let set = 0; set < 40; set++) {
+    const S = new Set();
+    const c0 = (rnd() * CM.colsX) | 0, c1 = (rnd() * CM.colsY) | 0, r = 1 + ((rnd() * 4) | 0);
+    for (let dx = -r; dx <= r; dx++) for (let dy = -r; dy <= r; dy++) if (rnd() < 0.8) S.add(CM.keyOf(c0 + dx, c1 + dy));   // 격자 밖 키도 섞인다(가장자리)
+    for (const k of odd) if (rnd() < 0.5) S.add(k);
+    if (rnd() < 0.3) S.add(7);
+    ACT.set(S);
+    for (let i = 0; i < 3000; i++) {
+      let x, y;
+      const q = i % 10;
+      if (q < 6) { x = (c0 + (rnd() * (2 * r + 3) - r - 1)) * CM.chunkSize; y = (c1 + (rnd() * (2 * r + 3) - r - 1)) * CM.chunkSize; }   // 집합 둘레
+      else if (q === 6) { x = -rnd() * 3000; y = rnd() * 130016; }                     // 서쪽 밖
+      else if (q === 7) { x = [NaN, -0, Infinity, -Infinity, 0][i % 5]; y = [0, NaN, -0, 512, -1e-9][(i >> 3) % 5]; }
+      else { x = rnd() * 72000 - 1000; y = rnd() * 132000 - 1000; }
+      const a = ACT.old(x, y), b = ACT.bm(x, y); n++; if (a) actN++;
+      if (a !== b) bad++;
+    }
+  }
+  ok(bad === 0 && actN > n * 0.2, '㉒ ★활성 판정 — 비트 판 = 옛 판(40 집합 × 3,000점 · 격자 밖 · NaN · ±0 · ±∞ · 정준 아닌 키 `-0_3`·`03_4`·`1.5_2` · 수 키)', `어긋남 ${bad}/${n} · 참 ${actN}`);
+  { // 집합을 갈아 끼우면(새 Set) 다음 물음에서 다시 푼다 · 같은 Set 에 키를 더한 것은 못 본다(제품은 늘 새 Set 으로 갈아 끼운다 — 그 규약이 문)
+    const S1 = new Set([CM.keyOf(3, 3)]); ACT.set(S1);
+    const a1 = ACT.bm(3 * CM.chunkSize + 1, 3 * CM.chunkSize + 1), b1 = ACT.bm(4 * CM.chunkSize + 1, 3 * CM.chunkSize + 1);
+    ACT.set(new Set([CM.keyOf(4, 3)]));
+    const a2 = ACT.bm(3 * CM.chunkSize + 1, 3 * CM.chunkSize + 1), b2 = ACT.bm(4 * CM.chunkSize + 1, 3 * CM.chunkSize + 1);
+    ok(a1 && !b1 && !a2 && b2, '㉒ 집합을 새 Set 으로 갈아 끼우면 비트도 그 틱에 따라간다(지난 비트는 지운다)', `${a1}${b1}→${a2}${b2}`);
+    const Zc = codeOnly(Z);
+    const assigns = (Zc.match(/(?<!let )activeChunkKeys\s*=[^=]/g) || []).length, muts = (Zc.match(/activeChunkKeys\.(add|delete|clear)\(/g) || []).length + ['wildlife.js', 'villages.js'].reduce((t, f) => t + (fs.readFileSync(path.join(ROOT, 'server', f), 'utf8').match(/(ActiveChunkKeys\(\)|\bkeys)\.(add|delete|clear)\(/g) || []).length, 0);
+    ok(assigns === 1 && muts === 0, '㉒ ★제품이 `activeChunkKeys` 를 바꾸는 자리는 **갈아 끼우기 하나**(`updateActiveChunks`) · 제자리 add/delete/clear 0 — 정체 비교로 무효화가 선다',
+       `갈아 끼우기 ${assigns} · 제자리 ${muts}`);
+    ok(/const _isPositionActive0 = isPositionActive;/.test(Zc) && /if \(T676_STAMP\) isPositionActive = _isPositionActiveBM;/.test(Zc) && /const T676_STAMP = process\.env\.T676_STAMP === '1';/.test(Zc),
+       '㉒ 끄면 이름이 안 바뀐다(옛 판 그대로) · 켬은 이름 하나만 갈아 끼운다');
+  }
+
+  // ── ③ 서로 비키기: 제품 글자(`sepNpcs` · `_sepPut`) 두 벌 — 켬(버킷 다시 쓰기) · 끔 — 같은 몸들을 300틱 돌려 좌표를 비트로 견준다
+  const mkSep = (on, put) => new Function('npcs', 'players', 'isPositionActive', 'isTerrainBlockedLocal', 'isBlockedByWall', 'T676_STAMP',
+    'const SEP_SOFT_PX = 27.2, SEP_BODY_PX = 16, SEP_BK = 64; const _sepG = new Map(), _sepUsed = [], _sepMovers = [];\n' + (put || body('_sepPut')) + '\n' + body('sepNpcs') + '\nreturn sepNpcs;');
+  const world = (seed) => { rs = seed; const P = new Map(), N = new Set();
+    for (let i = 0; i < 700; i++) { const v = i % 7; const p = { pid: 'q' + i, isNpc: true, hp: v === 6 ? 0 : 10, handingOff: false, floor: i % 13 === 0 ? 1 : 0,
+      x: 3000 + rnd() * 900 + (v === 5 ? 20000 : 0), y: 3000 + rnd() * 900, simCaravan: i % 17 === 0, simWar: false, canadiaVillage: null };
+      P.set(p.pid, p); N.add(p.pid); }
+    for (let i = 0; i < 5; i++) P.set('h' + i, { pid: 'h' + i, isNpc: false, hp: 10, handingOff: false, floor: 0, x: 3100 + i * 50, y: 3200 });
+    return { P, N }; };
+  const runSep = (on, put, T) => {
+    const { P, N } = world(4242);
+    const f = mkSep(on, put)(N, P, (x, y) => x < 15000, (x, y) => (x > 3400 && x < 3420), (nx, ny, ox, oy, fl) => (Math.floor(nx / 32) === 110 && Math.floor(ny / 32) !== Math.floor(oy / 32)), !!on);
+    const trace = [];
+    for (let t = 0; t < T; t++) {
+      rs = 9000 + t;
+      for (const p of P.values()) if (p.isNpc && (p.pid.charCodeAt(1) + t) % 5 === 0) { p.x += (rnd() - 0.5) * 70; p.y += (rnd() - 0.5) * 70; }   // 틱마다 몇이 버킷을 옮긴다
+      f(1 / 30);
+      let h = 0; for (const p of P.values()) h = (h * 31 + Math.round(p.x * 1e6) + Math.round(p.y * 1e6) * 7) % 1e15;
+      trace.push(h);
+    }
+    return { P, trace };
+  };
+  const A = runSep(false, null, 300), B = runSep(true, null, 300);
+  let pb = 0, tb = 0, moved = 0; const W0 = world(4242).P;
+  for (const [k, p] of A.P) { const q = B.P.get(k); if (!Object.is(p.x, q.x) || !Object.is(p.y, q.y)) pb++; }
+  for (let i = 0; i < A.trace.length; i++) if (A.trace[i] !== B.trace[i]) tb++;
+  ok(pb === 0 && tb === 0, '㉒ ★서로 비키기 — 버킷 다시 쓰기 켬 = 끔(700몸 · 300틱 · 틱마다 좌표 해시 · 층 둘 · 캐러밴 고정체 · 사람 고정체 · 잠든 몸 · 벽·물 취소)', `몸 어긋남 ${pb} · 틱 어긋남 ${tb}`);
+  // 자명 통과 금지 — 밀기가 실제로 일어났고 · 다 쓴 버킷을 안 비우면(쓴 목록에 안 적으면) 게이트가 문다
+  { const { P } = world(4242); const f = mkSep(false)(new Set([...P.keys()].filter((k) => P.get(k).isNpc)), P, () => true, () => false, () => false, false); const x0 = [...P.values()].map((p) => p.x); f(1 / 30);
+    moved = [...P.values()].filter((p, i) => p.x !== x0[i]).length; }
+  const C = runSep(true, 'function _sepPut(G, k, p) { let c = G.get(k); if (!c) G.set(k, c = []); c.push(p); }', 60);
+  let cb = 0; for (let i = 0; i < C.trace.length; i++) if (C.trace[i] !== A.trace[i]) cb++;
+  ok(moved > 50 && cb > 0, '㉒ [자명 통과 금지] 한 틱에 실제로 밀린 몸이 있고 · 쓴 버킷을 비우지 않는 가짜(`_sepUsed` 에 안 적음)는 **갈린다**', `밀린 몸 ${moved} · 가짜 어긋난 틱 ${cb}/60`);
+  { // ── ① 포장 오름 사건의 둘레 물음 — 켬 판은 같은 두 물음을 차례만 바꾼다(둘 다 읽기만 · '또는')
+    const pv = codeOnly(body('_t566OnPaved'));
+    const on = (pv.match(/if \(T676_STAMP\) \{ try \{ before = (.*?); \} catch/) || [])[1] || '', off = (pv.match(/else try \{ before = (.*?); \} catch/) || [])[1] || '';
+    const terms = (e) => e.split(' || ').map((t) => t.trim()).sort().join(' | ');
+    ok(on && off && on !== off && terms(on) === terms(off) && on.split(' || ').length === 2,
+       '㉒ ① 포장 오름 둘레 — 켬 판은 끔 판의 두 물음을 **차례만** 바꾼다(같은 두 항의 또는 · 예외도 같은 `before = true`)', `${terms(on)}`);
+    const VOC = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8'), RD = fs.readFileSync(path.join(ROOT, 'server', 'roads.js'), 'utf8');
+    const bodyOf = (src, name) => { const i = src.indexOf('function ' + name + '('); let d = 0; for (let k = src.indexOf('{', i); k < src.length; k++) { if (src[k] === '{') d++; else if (src[k] === '}' && !--d) return src.slice(i, k + 1); } return ''; };
+    const pure = (b) => { const c = codeOnly(b); return !/\.(?:set|add|delete|clear|push|splice|pop|shift|unshift)\(/.test(c) && !/[\w$\]]\s*\.\s*[\w$]+\s*(?:[-+*\/|&]?=)(?!=)/.test(c) && !/\]\s*(?:[-+*\/|&]?=)(?!=)/.test(c) && !/\.[\w$]+\s*(?:\+\+|--)/.test(c); };   // 멤버 쓰기 · 넣기·빼기 0(지역 변수 대입은 된다)
+    ok(!pure('function f(k) { S.paved.add(k); }') && !pure('function f(v) { v.hit = 1; }') && !pure('function f(a) { a[0] = 1; }') && pure('function f(x) { let any = false; any = true; return any; }'), '㉒ ① [자] 읽기만 판정이 멤버 쓰기·넣기를 문다(지역 대입은 통과)');
+    ok(pure(bodyOf(VOC, 'villageOfCell')) && pure(bodyOf(RD, 'pavedNear')), '㉒ ① 두 물음(`villageOfCell` · `pavedNear`)은 **읽기만** 한다(대입·넣기·빼기 0 — 차례를 바꿔도 세계가 같다)');
+  }
+  console.log('    접점: T676_STAMP · isPositionActive · _isPositionActiveBM · _actRebuild · activeChunkKeys · sepNpcs · _sepPut · _sepUsed');
+}
+
 console.log(`\n=== 결과: ${pass} PASS / ${fail} FAIL ===\n`);
 process.exit(fail ? 1 : 0);
