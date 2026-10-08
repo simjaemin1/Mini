@@ -89,7 +89,7 @@ console.log('\n=== T671 ② 바이트 같음 증인 · 종전', REF, '===');
 {
   const so = fnSrc(OLD, 'followNpcPath'), sn = HELP + fnSrc(NEW, 'followNpcPath');
   ok(/_t671Lt/.test(sn) && !/_t671/.test(so), 'ⓒ [전제] 두 글자가 실제로 다르다');
-  const Fo = new Function('MOVE_SPEED', so + '\nreturn followNpcPath;')(160), Fn = new Function('MOVE_SPEED', 'T675_PATH1', '_t675Len', sn + '\nreturn followNpcPath;')(160, false, (n, P) => P.length);   // [T675] 뒤 카드의 손잡이 — 끔으로 세운다
+  const Fo = new Function('MOVE_SPEED', so + '\nreturn followNpcPath;')(160), Fn = new Function('MOVE_SPEED', sn + '\nreturn followNpcPath;')(160);
   let n = 0, d = null, nearN = 0;
   for (let i = 0; i < 600000 && !d; i++) {
     const L = 1 + Math.floor(rnd() * 4), P = [];
@@ -114,7 +114,7 @@ console.log('\n=== T671 ② 바이트 같음 증인 · 종전', REF, '===');
   const env = { straightPathClear: (ax, ay, bx, by) => h(ax, ay, bx, by) % 3 === 0, T381_PATH_DEAD: true, BUILDING_SIZE: 32,
     isTerrainBlockedLocal: (a, b) => h(a, b) % 7 === 0, _pfRadius: (v) => v ? 64 : 24, T399_CELL_CAP: false, isBlockedByWall: () => false,
     pfFindPath: (sx, sy, ex, ey) => h(sx, sy, ex, ey) % 5 === 0 ? null : [{ x: sx, y: sy }, { x: (sx + ex) / 2, y: (sy + ey) / 2 }, { x: ex, y: ey }],
-    _roadPrefer: null, _streamOn: () => false, _streamCost: null, PathCore: { smoothPath: (wp) => wp.slice() }, Roads: { ENABLED: false }, _roadKeep: null, T675_PATH1: false };   // [T675] 뒤 카드의 손잡이 — 끔
+    _roadPrefer: null, _streamOn: () => false, _streamCost: null, PathCore: { smoothPath: (wp) => wp.slice() }, Roads: { ENABLED: false }, _roadKeep: null };
   const K = Object.keys(env);
   const Fo = new Function(...K, so + '\nreturn computeNpcPath;')(...K.map((k) => env[k])), Fn = new Function(...K, sn + '\nreturn computeNpcPath;')(...K.map((k) => env[k]));
   let n = 0, d = null, near = 0;

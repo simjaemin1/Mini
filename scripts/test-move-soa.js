@@ -2120,7 +2120,7 @@ console.log('\n㉒ T676 활성 판정 비트 · 서로 비키기 버킷 다시 �
     const assigns = (Zc.match(/(?<!let )activeChunkKeys\s*=[^=]/g) || []).length, muts = (Zc.match(/activeChunkKeys\.(add|delete|clear)\(/g) || []).length + ['wildlife.js', 'villages.js'].reduce((t, f) => t + (fs.readFileSync(path.join(ROOT, 'server', f), 'utf8').match(/(ActiveChunkKeys\(\)|\bkeys)\.(add|delete|clear)\(/g) || []).length, 0);
     ok(assigns === 1 && muts === 0, '㉒ ★제품이 `activeChunkKeys` 를 바꾸는 자리는 **갈아 끼우기 하나**(`updateActiveChunks`) · 제자리 add/delete/clear 0 — 정체 비교로 무효화가 선다',
        `갈아 끼우기 ${assigns} · 제자리 ${muts}`);
-    ok(/const _isPositionActive0 = isPositionActive;/.test(Zc) && /if \(T676_STAMP\) isPositionActive = _isPositionActiveBM;/.test(Zc) && /const T676_STAMP = process\.env\.T676_STAMP === '1';/.test(Zc),
+    ok(/const _isPositionActive0 = isPositionActive;/.test(Zc) && /if \(T676_STAMP\) isPositionActive = _isPositionActiveBM;/.test(Zc) && /const T676_STAMP = process\.env\.T676_STAMP !== '0' && process\.env\.T676_STAMP !== 'verify';/.test(Zc),
        '㉒ 끄면 이름이 안 바뀐다(옛 판 그대로) · 켬은 이름 하나만 갈아 끼운다');
   }
 

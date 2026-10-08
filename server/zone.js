@@ -1044,7 +1044,7 @@ function isChunkActiveKey(key) { return activeChunkKeys.has(key); }
 //   ★같은 답: 비트는 집합의 키를 풀어 **정준 글자**(`keyOf(cx,cy)` 가 똑같이 다시 짓는 키)인 것만 켠다 ⇒ 격자 안 (cx,cy) 에서
 //     "비트 = 1" ⟺ "keyOf(cx,cy) ∈ 집합". 격자 밖·NaN 은 옛 줄로 간다(글자 그대로). −0 칸은 `keyOf(−0,·)` = "0_·" = 0 칸이라 같다.
 //   ★무효화: 집합은 `updateActiveChunks` 가 **새 Set 으로 갈아 끼운다** ⇒ 정체가 바뀐 판에만 다시 푼다(틱당 활성 청크 수만큼 · 몸 수와 무관).
-const T676_STAMP = process.env.T676_STAMP === '1';
+const T676_STAMP = process.env.T676_STAMP !== '0' && process.env.T676_STAMP !== 'verify';   // ★PM 10-08 켬 기본(바이트 같음 · 되돌림 =0 · 견줌 =verify)
 const T676_VERIFY = process.env.T676_STAMP === 'verify';   // ★견줌 — 세계는 옛 판 답으로 돌고, 새 판 답을 곁에서 세어 어긋남을 센다(`/perf` walk.t676)
 const _t676Stat = { ipaN: 0, ipaBad: 0, pvN: 0, pvBad: 0 };
 let _actSrc = null, _actBM = null;
@@ -3029,7 +3029,6 @@ function _t671Shape(p) {
   p._huntWk = undefined; p._fishSpotX = undefined; p._fishSpotY = undefined; p._fishT = undefined; p._t312Ei = undefined; p._t340 = undefined; p._t340N = undefined;
   p._t312Kg = undefined; p._t312U = undefined; p._farmK = undefined; p._lifeTask = undefined;
   p._warPackOf = undefined;   // 전쟁 짐(villages.js `_t671Unpack` — 끔이면 `delete`)
-  p._p1A = undefined; p._p1x = undefined; p._p1y = undefined;   // ★[T675 ②] 한 점 길(손잡이 끔이면 안 쓰인다 — 모양만 같게)
 }
 function spawnNpc(opts = {}) {
   // 위치: opts.x/y 우선, 없으면 zone 내부 랜덤 (클레임 충돌 안 나는 곳)
@@ -3711,26 +3710,14 @@ function npcCanReach(ax, ay, bx, by) {
 //   같을 수밖에 없다. 넘침(∞)·밑넘침(0)·NaN 도 같은 쪽으로 간다(증인 ⓕ). 새 수 0(1e-12 는 비교 띠 · 판정 수가 아니다).
 function _t671Lt(dx, dy, R) { const d2 = dx * dx + dy * dy, R2 = R * R; if (d2 < R2 * (1 - 1e-12)) return true; if (d2 > R2 * (1 + 1e-12)) return false; return Math.hypot(dx, dy) < R; }
 function _t671Gt(dx, dy, R) { const d2 = dx * dx + dy * dy, R2 = R * R; if (d2 > R2 * (1 + 1e-12)) return true; if (d2 < R2 * (1 - 1e-12)) return false; return Math.hypot(dx, dy) > R; }
-// ★★[T675 ② 2026-10-08 · 한 점 길을 몸 안으로] 손잡이 `T675_PATH1=1`(기본 끔 = 종전 그대로).
-//   T673 §3: `npcStep` 자기 시간의 가장 큰 줄은 도착한 사람의 한 점 길 읽기(`P.length` · `P[0].x/.y`)였다 — 길 배열·점 객체가
-//   몸과 떨어진 곳에 있어 사람마다 캐시를 못 맞춘다. ⇒ `computeNpcPath` 의 `d<48` 갈래가 **스스로 지은** 한 점 길은 그 배열(`_p1A`)과
-//   점 좌표(`_p1x`·`_p1y`)를 몸에 같이 적는다. 읽는 자리는 `npc.path === npc._p1A` 이면(같은 배열) 길이 = 1 · 점 = 몸 필드로 읽는다.
-//   ★의미는 그대로다: `npc.path` 는 종전 그 배열 그대로 들고 있고(방송·`/walkdbg`·하네스가 보는 것 그대로), 바꾼 것은 **읽는 길**뿐이다.
-//   ★같은 답인 까닭: 그 배열은 이 함수가 지어 몸에 적은 뒤 **아무도 고치지 않는다**(서버 전체 `.path` 쓰기 표 — 보고/T675 §2 ·
-//     `push`·`splice`·`path[i] =`·점 좌표 쓰기 0) ⇒ 같은 배열이면 길이 1 · 점 = 적어 둔 두 수. 다른 배열이면 종전 읽기 그대로.
-const T675_PATH1 = process.env.T675_PATH1 === '1';
-function _t675Len(npc, P) { return (T675_PATH1 && P === npc._p1A) ? 1 : P.length; }
 function computeNpcPath(npc, now) {
   if (typeof npc.targetX !== 'number' || typeof npc.targetY !== 'number') return null;
   if (_t671Lt(npc.targetX - npc.x, npc.targetY - npc.y, 48)) {   // ★[T671 ②] = `Math.hypot(…) < 48` 와 같은 답(아래 `_t671Lt` · 경계 띠 안은 hypot 그대로)
     // ★[T670 ①] 도착한 사람은 틱마다 여기로 온다(A* 부름의 98 % — T646 §3). 이미 같은 한 점짜리 길을 들고 있으면 그 배열을 돌려준다
     //   (내용 같음 · 부른 쪽이 `pathIndex = 0` · `_pathAt = now` 를 종전대로 다시 쓴다 — 새 배열 할당만 0).
     const P = npc.path;
-    if (T675_PATH1 && P && P === npc._p1A) { if (Object.is(npc._p1x, npc.targetX) && Object.is(npc._p1y, npc.targetY)) return P; }   // ★[T675 ②] 같은 배열 = 몸 필드로
-    else if (P && P.length === 1 && Object.is(P[0].x, npc.targetX) && Object.is(P[0].y, npc.targetY)) return P;
-    const A = [{ x: npc.targetX, y: npc.targetY }];
-    if (T675_PATH1) { npc._p1A = A; npc._p1x = npc.targetX; npc._p1y = npc.targetY; }
-    return A;
+    if (P && P.length === 1 && Object.is(P[0].x, npc.targetX) && Object.is(P[0].y, npc.targetY)) return P;
+    return [{ x: npc.targetX, y: npc.targetY }];
   }
   const isVil = !!npc.simVillageId;   // 마을 주민 = 랩 이동 정본 대상
   // 도주는 직선 전력질주(랩 동형 — 도주는 경로 계획 밖). 비주민 배회도 현행 beeline(성능 — 야생·레거시 회귀 없음)
@@ -3800,15 +3787,13 @@ function computeNpcPath(npc, now) {
 // npc.path를 따라 다음 waypoint 향해 vx/vy 설정. 도착했으면 다음 waypoint로.
 // 반환: true면 path 완료 (목표 도달), false면 진행 중
 function followNpcPath(npc, speedMult) {
-  if (!npc.path || npc.pathIndex >= _t675Len(npc, npc.path)) return true;
-  let wx, wy;   // ★[T675 ②] 한 점 길(같은 배열 · 첫 점)이면 몸 필드로 — 아니면 종전 그대로
-  if (T675_PATH1 && npc.path === npc._p1A && npc.pathIndex === 0) { wx = npc._p1x; wy = npc._p1y; }
-  else { const wp = npc.path[npc.pathIndex]; wx = wp.x; wy = wp.y; }
-  const dx = wx - npc.x, dy = wy - npc.y;
+  if (!npc.path || npc.pathIndex >= npc.path.length) return true;
+  const wp = npc.path[npc.pathIndex];
+  const dx = wp.x - npc.x, dy = wp.y - npc.y;
   // ★[T671 ②] 도착(< 10)은 hypot 없이 가른다(`_t671Lt` = 같은 답) — 안 닿았을 때만 나눗셈에 쓸 `dd` 를 종전 그대로 hypot 으로 짓는다.
   if (_t671Lt(dx, dy, 10)) {
     npc.pathIndex++;
-    if (npc.pathIndex >= _t675Len(npc, npc.path)) {
+    if (npc.pathIndex >= npc.path.length) {
       npc.vx = 0; npc.vy = 0;
       return true;
     }
