@@ -37,30 +37,10 @@ const NVIL = 2, POP = 40, SEED = 7;
 const WARMUP = 2;           // 지정 전 정착 일수(상대)
 const RUN_DAYS = 18;        // 지정 후 관측 일수
 
-const FRAME_MS = 16.667;    // 한 프레임의 가상 시간(종전 래퍼의 그 수)
-const INIT = (prng) => `
-(() => {
-  let s = ${prng};
-  Math.random = function(){ s|=0; s=(s+0x6D2B79F5)|0; let t=Math.imul(s^(s>>>15),1|s); t=(t+Math.imul(t^(t>>>7),61|t))^t; return ((t^(t>>>14))>>>0)/4294967296; };
-  let vt = 0, n = 0;
-  const Q = [];
-  performance.now = () => vt;
-  window.requestAnimationFrame = (cb) => { Q.push(cb); return Q.length; };
-  // ★[T649] 한 프레임 — 줄을 비우고 시계를 한 칸 민 뒤 전부 같은 now 로(콜백이 던지면 하네스까지 그대로 올라온다)
-  window.__step = () => { const q = Q.splice(0); vt += ${FRAME_MS}; n++; for (const cb of q) cb(vt); };
-  // ★[T649] 랩 날 d 에 닿는 **첫 프레임**까지 민다. 마감은 실시간이 아니라 "시계가 섰나" —
-  //   생활 시계(lifeLoop)가 다음 프레임 줄에 없으면 선 것이다(종전: 180초 · 1,500초 벽시계 마감).
-  window.__untilDay = (d) => {
-    while (VILS[0].day < d) {
-      window.__step();
-      if (!lifeOn || Q.indexOf(lifeLoop) < 0) throw new Error('시계 정지 — 생활 시계가 다음 프레임 줄에 없다 · day ' + VILS[0].day + ' < ' + d + ' · 프레임 ' + n);
-    }
-    return n;
-  };
-  window.__frame = () => n;
-  window.__vt = () => vt;
-})();
-`;
+// ★[T660] 시계(줄 rAF · 프레임은 하네스가 민다 · 원점 0 · 마감 = "시계가 섰나")는 정본 `fixture-lab-clock` 하나로 옮겼다 —
+//   위 T649 머리말의 그 글 그대로다(같은 꼴을 mining · market 도 쓴다 · 사본 0).
+const LC = require('./fixture-lab-clock');
+const INIT = LC.init;
 // ★[T649] 미끼 판 — ⑧ 이 지키는 것(마을 집터에 예비 크루 L_PCREW_RESERVE 가 먼저 · 의뢰 집은 그 위 잉여만)을 **일부러 깬다**.
 //   랩 파일은 안 건드린다 — 이 판의 페이지에서만 `pickBuildSite` 를 감싸, 의뢰 집이 서 있는 동안
 //   마을 집터에 **이미 누가 붙어 있으면** 다음 사람부터는 의뢰 집으로 보낸다(예비 크루를 빼앗는다 → 마을 집터는
@@ -126,7 +106,7 @@ async function runOnce(withPlayerSite, prng, decoy) {
   const day0 = (await take()).day;
 
   // ★[T649] 지정 시각 = 랩 날 day0+WARMUP 의 **첫 프레임**(종전: 400ms 마다 들여다본 첫 표본 — 몇째 프레임인지가 부하를 따랐다)
-  const placeFrame = await page.evaluate((d) => window.__untilDay(d), day0 + WARMUP);
+  const placeFrame = await LC.untilDay(page, day0 + WARMUP);
 
   let placed = null;
   if (withPlayerSite) {
@@ -175,7 +155,7 @@ async function runOnce(withPlayerSite, prng, decoy) {
     if (!series.has(s.day)) series.set(s.day, s);
     if (withPlayerSite && s.pDone && doneDay === null) doneDay = s.day;
     if (s.day - startDay >= RUN_DAYS) break;
-    await page.evaluate((d) => window.__untilDay(d), s.day + 1);   // 다음 랩 날의 첫 프레임까지 민다(종전: 400ms 잠)
+    await LC.untilDay(page, s.day + 1);   // 다음 랩 날의 첫 프레임까지 민다(종전: 400ms 잠)
   }
   const endFrame = await page.evaluate(() => window.__frame());
   await page.evaluate(() => { if (window.lifeOn) lifeToggle(); });
