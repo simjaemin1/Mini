@@ -1,0 +1,486 @@
+{
+ "card": "T663",
+ "ruler": "t577-server-run 400 · VILLAGE_CARAVAN_MAX=0 · T400_BUILD_ACT=0 · t663-wood.js",
+ "server": {
+  "same": [
+   {
+    "a": "off",
+    "b": "offB",
+    "seed": 1020,
+    "run": false,
+    "wood": false,
+    "eight": false,
+    "firstDiff": 71
+   },
+   {
+    "a": "off",
+    "b": "offB",
+    "seed": 7,
+    "run": true,
+    "wood": true,
+    "eight": true
+   },
+   {
+    "a": "off",
+    "b": "offB",
+    "seed": 42,
+    "run": true,
+    "wood": true,
+    "eight": true
+   }
+  ],
+  "arms": {
+   "off": {
+    "7": {
+     "pop": 2809,
+     "dead": 0,
+     "ever": 51,
+     "dissolved": 1,
+     "empty": 0,
+     "firstEmpty": null,
+     "wood0": [
+      23,
+      38,
+      49,
+      49
+     ],
+     "zeroMed": 27,
+     "hit": 51,
+     "ljLeadMed": 1,
+     "ljBefore": 16,
+     "ljNever": 5,
+     "lj": [
+      269,
+      119
+     ],
+     "popDay": [
+      1157,
+      2491,
+      2809
+     ],
+     "eight": {
+      "pop": 2809,
+      "dead": 0,
+      "ever": 51,
+      "weapQ": 215,
+      "expand": 442,
+      "board": 1433,
+      "toolQ": 3644.5,
+      "preserve": 47.1,
+      "grain": 15229.7
+     }
+    },
+    "42": {
+     "pop": 2682,
+     "dead": 1,
+     "ever": 51,
+     "dissolved": 2,
+     "empty": 1,
+     "firstEmpty": 393,
+     "wood0": [
+      22,
+      38,
+      45,
+      48
+     ],
+     "zeroMed": 27,
+     "hit": 51,
+     "ljLeadMed": 0,
+     "ljBefore": 21,
+     "ljNever": 5,
+     "lj": [
+      291,
+      130
+     ],
+     "popDay": [
+      1162,
+      2538,
+      2682
+     ],
+     "eight": {
+      "pop": 2682,
+      "dead": 1,
+      "ever": 51,
+      "weapQ": 221,
+      "expand": 578,
+      "board": 1823,
+      "toolQ": 4029.7,
+      "preserve": 30.1,
+      "grain": 16346.7
+     }
+    },
+    "1020": {
+     "pop": 2988,
+     "dead": 0,
+     "ever": 51,
+     "dissolved": 0,
+     "empty": 0,
+     "firstEmpty": null,
+     "wood0": [
+      23,
+      39,
+      46,
+      46
+     ],
+     "zeroMed": 28,
+     "hit": 51,
+     "ljLeadMed": -1,
+     "ljBefore": 23,
+     "ljNever": 6,
+     "lj": [
+      298,
+      210
+     ],
+     "popDay": [
+      1167,
+      2553,
+      2988
+     ],
+     "eight": {
+      "pop": 2988,
+      "dead": 0,
+      "ever": 51,
+      "weapQ": 163,
+      "expand": 1034,
+      "board": 1538,
+      "toolQ": 3874.2,
+      "preserve": 5.7,
+      "grain": 15893.6
+     }
+    }
+   },
+   "on": {
+    "7": {
+     "pop": 3189,
+     "dead": 0,
+     "ever": 51,
+     "dissolved": 2,
+     "empty": 0,
+     "firstEmpty": null,
+     "wood0": [
+      18,
+      40,
+      48,
+      43
+     ],
+     "zeroMed": 31,
+     "hit": 50,
+     "ljLeadMed": -7,
+     "ljBefore": 30,
+     "ljNever": 4,
+     "lj": [
+      288,
+      142
+     ],
+     "popDay": [
+      1157,
+      2698,
+      3189
+     ],
+     "eight": {
+      "pop": 3189,
+      "dead": 0,
+      "ever": 51,
+      "weapQ": 283,
+      "expand": 566,
+      "board": 1579,
+      "toolQ": 4586.6,
+      "preserve": 53.5,
+      "grain": 18949.4
+     }
+    },
+    "42": {
+     "pop": 2991,
+     "dead": 0,
+     "ever": 51,
+     "dissolved": 0,
+     "empty": 0,
+     "firstEmpty": null,
+     "wood0": [
+      14,
+      41,
+      47,
+      42
+     ],
+     "zeroMed": 32,
+     "hit": 51,
+     "ljLeadMed": -10,
+     "ljBefore": 34,
+     "ljNever": 5,
+     "lj": [
+      295,
+      151
+     ],
+     "popDay": [
+      1158,
+      2529,
+      2991
+     ],
+     "eight": {
+      "pop": 2991,
+      "dead": 0,
+      "ever": 51,
+      "weapQ": 209,
+      "expand": 688,
+      "board": 1415,
+      "toolQ": 3624.1,
+      "preserve": 0,
+      "grain": 16304.8
+     }
+    },
+    "1020": {
+     "pop": 2881,
+     "dead": 0,
+     "ever": 51,
+     "dissolved": 0,
+     "empty": 0,
+     "firstEmpty": null,
+     "wood0": [
+      14,
+      41,
+      47,
+      48
+     ],
+     "zeroMed": 31,
+     "hit": 51,
+     "ljLeadMed": -8,
+     "ljBefore": 33,
+     "ljNever": 6,
+     "lj": [
+      315,
+      135
+     ],
+     "popDay": [
+      1160,
+      2601,
+      2881
+     ],
+     "eight": {
+      "pop": 2881,
+      "dead": 0,
+      "ever": 51,
+      "weapQ": 183,
+      "expand": 414,
+      "board": 1601,
+      "toolQ": 2925.4,
+      "preserve": 10.7,
+      "grain": 10030
+     }
+    },
+    "_delta": {
+     "ds": [
+      -3.5809906291834004,
+      13.527945888216447,
+      11.521252796420582
+     ],
+     "mean": 7.156069351817877,
+     "width": 17.108936517399847,
+     "read": "못 가름"
+    }
+   },
+   "narrow": {
+    "7": {
+     "pop": 3046,
+     "dead": 0,
+     "ever": 51,
+     "dissolved": 0,
+     "empty": 0,
+     "firstEmpty": null,
+     "wood0": [
+      18,
+      33,
+      48,
+      45
+     ],
+     "zeroMed": 30,
+     "hit": 50,
+     "ljLeadMed": -7,
+     "ljBefore": 31,
+     "ljNever": 5,
+     "lj": [
+      293,
+      126
+     ],
+     "popDay": [
+      1161,
+      2564,
+      3046
+     ],
+     "eight": {
+      "pop": 3046,
+      "dead": 0,
+      "ever": 51,
+      "weapQ": 227,
+      "expand": 1091,
+      "board": 1572,
+      "toolQ": 4686.2,
+      "preserve": 234.6,
+      "grain": 19390.6
+     }
+    },
+    "42": {
+     "pop": 2757,
+     "dead": 0,
+     "ever": 51,
+     "dissolved": 0,
+     "empty": 0,
+     "firstEmpty": null,
+     "wood0": [
+      15,
+      36,
+      48,
+      46
+     ],
+     "zeroMed": 31,
+     "hit": 51,
+     "ljLeadMed": -7,
+     "ljBefore": 34,
+     "ljNever": 2,
+     "lj": [
+      318,
+      178
+     ],
+     "popDay": [
+      1161,
+      2550,
+      2757
+     ],
+     "eight": {
+      "pop": 2757,
+      "dead": 0,
+      "ever": 51,
+      "weapQ": 204,
+      "expand": 420,
+      "board": 1583,
+      "toolQ": 3350.4,
+      "preserve": 68.2,
+      "grain": 11502.7
+     }
+    },
+    "1020": {
+     "pop": 2781,
+     "dead": 0,
+     "ever": 51,
+     "dissolved": 0,
+     "empty": 0,
+     "firstEmpty": null,
+     "wood0": [
+      15,
+      42,
+      49,
+      43
+     ],
+     "zeroMed": 31,
+     "hit": 51,
+     "ljLeadMed": -6,
+     "ljBefore": 33,
+     "ljNever": 3,
+     "lj": [
+      302,
+      128
+     ],
+     "popDay": [
+      1162,
+      2559,
+      2781
+     ],
+     "eight": {
+      "pop": 2781,
+      "dead": 0,
+      "ever": 51,
+      "weapQ": 184,
+      "expand": 1034,
+      "board": 1624,
+      "toolQ": 3015.1,
+      "preserve": 61.8,
+      "grain": 11398.4
+     }
+    },
+    "_delta": {
+     "ds": [
+      -6.927710843373494,
+      8.437166251334995,
+      2.796420581655481
+     ],
+     "mean": 1.435291996538994,
+     "width": 15.36487709470849,
+     "read": "못 가름"
+    }
+   }
+  }
+ },
+ "aa_spread_pop400": {
+  "1020": [
+   2778,
+   2914,
+   2973,
+   2988
+  ],
+  "7": [
+   2809,
+   2928
+  ],
+  "42": [
+   2682,
+   2810,
+   3212
+  ]
+ },
+ "first_div_separate": {
+  "1020": [
+   61,
+   65,
+   67,
+   68,
+   71
+  ],
+  "7": [
+   62,
+   63
+  ],
+  "42": [
+   53,
+   54,
+   60
+  ]
+ },
+ "t17": {
+  "off": [
+   8273,
+   8246,
+   7491
+  ],
+  "on": [
+   7938,
+   8058,
+   8166
+  ],
+  "narrow": [
+   8239,
+   8123,
+   8494
+  ],
+  "seeds": [
+   1020,
+   7,
+   42
+  ],
+  "wood_short": {
+   "off": [
+    704,
+    721,
+    568
+   ],
+   "on": [
+    523,
+    584,
+    530
+   ],
+   "narrow": [
+    563,
+    569,
+    626
+   ]
+  }
+ }
+}
