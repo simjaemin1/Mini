@@ -12,6 +12,7 @@
 //   ⓔ 가르기(선택): `--before-glb=<glb>` = 전 뿌리의 `char_body.glb` 만 갈아 끼운다(쪽 요청 가로채기) — 갖옷 몸의 법선·뼈 무게를 본 옷 것으로 바꾼 판을
 //      넣으면 화소 차가 어디서 오는지(면 법선 · 뼈 무게 · 나머지) 가른다(보고 T654 §③ 표).
 //      그림에 가르기 표를 싣으려면 `--parts=<이름>=<json>,…`(위 판들이 쓴 `--json`).
+//   ⓕ [T664] 글자만 바꾸는 손잡이: `--title=<그림 머리>` · `--names=<전 이름>,<후 이름>`(기본 T604,T654) · `--label=<표 첫 줄>` — 재는 식은 그대로.
 // 실행: node scripts/t654-mesh-cmp.js --before=<뿌리> [--before-glb=<glb>] [--json=<경로>] [--png=<그림 경로>] [--parts=…]     (서버 무접촉 — central 정적 판만 띄운다)
 'use strict';
 const path = require('path');
@@ -24,6 +25,9 @@ const ROOT = path.join(__dirname, '..');
 const arg = (k) => { const a = process.argv.find((x) => x.startsWith(`--${k}=`)); return a ? a.slice(k.length + 3) : null; };
 const BEFORE = arg('before') && path.resolve(arg('before'));
 const OUTJSON = arg('json'), OUTPNG = arg('png'), BGLB = arg('before-glb') && path.resolve(arg('before-glb'));
+const [NB, NA] = (arg('names') || 'T604,T654').split(',');
+const TITLE = arg('title') || 'T654 — 3D 옷 메시 사본 0 · 몸마다 메시 하나 + 갖옷 정점 부풀림(셰이더 한 줄) · 같은 자세 · 같은 카메라 전/후';
+const LABEL = arg('label') || `${NB} 갖옷 몸 그대로`;
 if (!BEFORE || !fs.existsSync(path.join(BEFORE, 'public', 'client3d', 'char3d.js'))) {
   console.error('쓰는 법: node scripts/t654-mesh-cmp.js --before=<뿌리(public/client3d/char3d.js 가 있는 자리)> [--json=…] [--png=…]');
   process.exit(2);
@@ -208,7 +212,7 @@ function diffImg(A, B) {               // 같은 실루엣·같은 색 = 옅은 
     const parts = (arg('parts') || '').split(',').filter(Boolean).map((kv) => { const [lab, f] = kv.split('='); return [lab, JSON.parse(fs.readFileSync(f, 'utf8'))]; });
     const prow = (lab, tb) => { const f = tb['*|fur|all'], al = tb['*|*|all']; return `<tr><td>${esc(lab)}</td><td>${f.pct} / ${f.xor}</td><td>${f.dcol.mean} · ${f.dcol.med}</td><td>${al.pct} / ${al.xor}</td></tr>`; };
     const ptab = parts.length ? `<h2>가르기 — 갖옷 화소 차는 어디서 오나(전 뿌리의 갖옷 몸에 본 옷 몸의 값을 넣고 다시 맞댐 · 게임 크기 전부)</h2><table><tr><th>전 판</th><th>갖옷 바뀐 % / 실루엣 %</th><th>색 차 평균 · 가운데</th><th>모두 % / 실루엣 %</th></tr>`
-      + prow('T604 갖옷 몸 그대로', REC.table) + parts.map(([lab, j]) => prow(lab, j.table)).join('') + '</table>' : '';
+      + prow(LABEL, REC.table) + parts.map(([lab, j]) => prow(lab, j.table)).join('') + '</table>' : '';
     const cells = [];
     for (const d of [1, 3]) for (const p of FIGP) {
       const lab = `${d === 1 ? '앞(1)' : '옆(3)'} · ${GN[p.g]}${p.clip ? ' ' + p.f + '판' : ''}`;
@@ -225,13 +229,13 @@ function diffImg(A, B) {               // 같은 실루엣·같은 색 = 옅은 
       .row{display:flex;align-items:flex-start;margin:3px 0}.grp{display:flex;flex-wrap:wrap;gap:2px;width:${3 * (cw + 4)}px;margin-right:18px}.grp img{border:1px solid #ddd}
       .cap{width:100%;font-size:11px;color:#555}.lab{width:160px;font-size:12px;padding-top:8px}.hd{display:flex;margin-left:160px;font-weight:bold;font-size:12px}
       .hd div{width:${3 * (cw + 4)}px;margin-right:18px;text-align:center}.num{font-family:monospace}</style>
-      <h1>T654 — 3D 옷 메시 사본 0 · 몸마다 메시 하나 + 갖옷 정점 부풀림(셰이더 한 줄) · 같은 자세 · 같은 카메라 전/후</h1>
-      <div>전 = T604(main · 몸마다 메시 둘: <span class="num">${mesh(S.before)}</span>)<br>후 = T654(<span class="num">${mesh(S.after)}</span> · 속성 <span class="num">_INFLATE</span> = 털 두께 방향)</div>
-      <div>glb <b class="num">${S.before.glb.toLocaleString()} → ${S.after.glb.toLocaleString()}B</b> · 합(glb·메타·무늬 ${S.after.files - 1}) <b class="num">${S.before.total.toLocaleString()} → ${S.after.total.toLocaleString()}B</b> · 그리는 길 = 각 뿌리의 <span class="num">client3d/char3d.js</span> 그대로(<span class="num">__char3d.snap</span> · 게임 투영 · 한낮 빛)</div>
+      <h1>${esc(TITLE)}</h1>
+      <div>전 = ${esc(NB)}(<span class="num">${mesh(S.before)}</span>)<br>후 = ${esc(NA)}(<span class="num">${mesh(S.after)}</span> · 사용자 속성 <span class="num">${esc([...new Set(S.after.meshes.flatMap((m) => m.attrs.filter((a) => a.startsWith('_'))))].join(' · ') || '없음')}</span>)</div>
+      <div>glb <b class="num">${S.before.glb.toLocaleString()} → ${S.after.glb.toLocaleString()}B</b> · 합(glb·메타·무늬 ${S.after.files - 2}) <b class="num">${S.before.total.toLocaleString()} → ${S.after.total.toLocaleString()}B</b> · 그리는 길 = 각 뿌리의 <span class="num">client3d/char3d.js</span> 그대로(<span class="num">__char3d.snap</span> · 게임 투영 · 한낮 빛)</div>
       <h2>게임 크기(109×90) — 바뀐 화소 % / 실루엣 차 % · 8방향 × (쉼 + 클립 다섯 판 전부) 합 · 분모 = 전·후 실루엣 합집합</h2>
       <table><tr><th>몸</th><th>옷</th>${[...groups, 'all'].map((g) => `<th>${GN[g] || g}</th>`).join('')}<th>색 차 평균 · 가운데(/255)</th></tr>${rows.join('')}</table>${ptab}
       <h2>×4(같은 클라 · 같은 투영 · 몸 둘레만) — 전 · 후 · 차(회색 = 같음 · 노랑→빨강 = 색만 다름(차 × 8) · 자주 = 실루엣 갈림)</h2>
-      <div class="hd"><div>남: 전(T604 갖옷 몸) · 후(T654 한 메시 + 부풀림) · 차</div><div>여: 전 · 후 · 차</div></div>${cells.join('')}`;
+      <div class="hd"><div>남: 전(${esc(NB)}) · 후(${esc(NA)}) · 차</div><div>여: 전 · 후 · 차</div></div>${cells.join('')}`;
     const page = await browser.newPage({ viewport: { width: 1200, height: 900 } });
     await page.setContent(html);
     await page.screenshot({ path: OUTPNG, fullPage: true });
