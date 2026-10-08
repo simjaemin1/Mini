@@ -152,13 +152,13 @@ function createHost(o) {
     const sig = sigOf(mine) + '|' + sigOf(roster);
     const w = W.get(peer) || { sig: null, running: false, want: null };
     W.set(peer, w);
-    if (w.sig === sig || (w.want && w.want.sig === sig)) return;
+    if (w.sig === sig || (w.want && w.want.sig === sig) || (w.running && w.cur === sig)) return;   // ★[T662] 지금 재고 있는 그 명부면 줄 세우지 않는다(종전: 재는 동안 같은 명부가 또 오면 끝난 뒤 같은 표를 한 번 더 쟀다)
     w.want = { sig, mine, roster };
     if (!w.running) _run(peer, w);
   }
   function _run(peer, w) {
     const job = w.want; w.want = null; if (!job) return;
-    w.running = true;
+    w.running = true; w.cur = job.sig;
     const A = zone < peer ? zone : peer, B = zone < peer ? peer : zone;   // 두 존이 같은 순서로 잰다 ⇒ 같은 표
     const q = { A, B, rosterA: A === zone ? job.mine : job.roster, rosterB: A === zone ? job.roster : job.mine, coast: true };
     const t0 = Date.now();
@@ -172,15 +172,16 @@ function createHost(o) {
     } catch (e) { w.running = false; log(`걸음표 워커 실패(${peer}): ${e.message}`); return; }
     wk.stdout.resume(); wk.stderr.resume();   // 워커 안 소음은 버린다(모듈 적재 로그 — 정본이 말하는 것)
     let got = false;
-    const done = () => { w.running = false; for (const s of ['', '-wal', '-shm']) { try { require('fs').unlinkSync(tmpDb + s); } catch (e) {} } if (w.want) _run(peer, w); };
+    const done = () => { w.running = false; w.cur = null; for (const s of ['', '-wal', '-shm']) { try { require('fs').unlinkSync(tmpDb + s); } catch (e) {} } if (w.want) _run(peer, w); };
     wk.on('message', (m) => {
       got = true;
       if (m && m.ok) {
         const r = core.setGeo(peer, m.r);
         w.sig = job.sig;
         hs.geo[peer] = { pairs: Object.keys(m.r.dist || {}).reduce((a, k) => a + Object.keys(m.r.dist[k]).length, 0), within: r.pairs, withinNoRoute: r.noSplit, mine: r.mine, theirs: r.theirs,
-          routed: m.r.routed, failed: m.r.failed, bfsMs: m.r.ms && m.r.ms.bfs, routeMs: m.r.ms && m.r.ms.route, wallMs: Date.now() - t0 };
-        log(`경계 걸음표 ${A}+${B} — 쌍 ${hs.geo[peer].pairs} · 걸어 2km 안 ${r.pairs}(그중 합친 길 못 판 ${r.noSplit}) · 경계 마을 이쪽 ${r.mine} · 저쪽 ${r.theirs} · 길 ${m.r.routed}(못 판 ${m.r.failed}) · BFS ${(m.r.ms.bfs / 1000).toFixed(1)}s · 길 ${(m.r.ms.route / 1000).toFixed(1)}s(워커 · 틱 안 막음)`);
+          routed: m.r.routed, failed: m.r.failed, bfsMs: m.r.ms && m.r.ms.bfs, routeMs: m.r.ms && m.r.ms.route, wallMs: Date.now() - t0,
+          cache: m.r.cache || null };   // ★[T662] 'made'(잰 판) · 'wait'(이웃 워커가 재는 것을 기다려 읽음) · 'hit'(있던 것을 읽음) · null(손잡이 끔)
+        log(`경계 걸음표 ${A}+${B} — 쌍 ${hs.geo[peer].pairs} · 걸어 2km 안 ${r.pairs}(그중 합친 길 못 판 ${r.noSplit}) · 경계 마을 이쪽 ${r.mine} · 저쪽 ${r.theirs} · 길 ${m.r.routed}(못 판 ${m.r.failed}) · BFS ${(m.r.ms.bfs / 1000).toFixed(1)}s · 길 ${(m.r.ms.route / 1000).toFixed(1)}s${m.r.cache ? ` · 한 벌 ${m.r.cache}` : ''} · 벽시계 ${((Date.now() - t0) / 1000).toFixed(0)}s(워커 · 틱 안 막음)`);
       } else log(`걸음표 실패(${peer}): ${m && m.err}`);
       try { wk.terminate(); } catch (e) {}   // 답을 받았으면 워커를 닫는다(지형·길 격자 메모리를 존에 남기지 않는다)
     });

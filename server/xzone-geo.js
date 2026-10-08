@@ -152,14 +152,71 @@ function crossGeo(q) {
   return { A, B, nA, nB: rB.length, dist, split, ms: { bfs: bfsMs, route: Date.now() - t1 }, routed, multi, failed };
 }
 
-module.exports = { zoneAdapter, unionAdapter, bfsMatrix, crossGeo, _splitRoute, _mods };
+// ── ★★[T662 2026-10-08] **한 벌을 한 번만 잰다** — 손잡이 `T662_GEO_CACHE`(★기본 켬 · `=0` = 종전: 워커마다 제가 잰다)
+//   T655 회부 ②의 670초는 e2e(한 상자에 central + 한반도 + 닛폰)에서 잰 값이다. 두 존 호스트가 **같은 질문**(A<B · 같은 명부 · 같은 지형)을
+//   **각자 워커로** 잰다(T533 설계 "두 존이 같은 한 벌") — 2코어 상자에선 같은 계산 둘이 존 서버 둘과 코어를 나눠 쓴다.
+//   ⇒ 답을 **질문의 지문**(아래 `_geoKey`)으로 파일에 적고, 같은 지문을 먼저 잡은 워커가 재는 동안 다른 워커는 **기다렸다 읽는다**:
+//     ⓐ 파일이 있으면 읽는다(재기동 · 같은 상자의 이웃 존) ⓑ 없으면 잠금 파일을 잡은(`wx` — 하나만 이긴다) 워커가 재고 적는다
+//     ⓒ 못 잡은 워커는 파일이 설 때까지 기다린다 — 잠금 주인 프로세스가 죽었으면(`kill(pid, 0)` ESRCH) 잠금을 걷고 제가 잰다.
+//   ★답은 바이트 같다 — 같은 함수(`crossGeo`)가 낸 같은 객체를 JSON 으로 적고 읽는다(dist · split 의 수는 유한 · 정수/소수 그대로 왕복).
+//     `ms` 만 그 판의 것(읽은 판은 `cache` 칸에 'hit' · 'wait' 을 적고 bfs/route 는 0 — 잰 일이 없다).
+//   ★지문 = 질문(A · B · 두 명부 · coast · splitR) + 손잡이 env(`T<번호>_*` · `VILLAGE_*` · `TERRAIN_*` — 존마다 다른 `ZONE_ID`·`DB_PATH` 는 뺀다)
+//     + 워커가 실은 **모든 모듈 파일의 내용**(`require.cache` — 지형 JSON · zone-config · villages · path-core … 하나라도 바뀌면 다른 지문).
+//   자리: `T662_GEO_CACHE_DIR`(없으면 OS 임시 폴더 `durango-xzone-geo`) · 같은 존 쌍의 옛 파일은 새 파일을 적을 때 지운다(쌍마다 하나).
+//   ⚠다른 상자(실서버 — 존마다 제 호스트)에선 나누지 못한다(파일이 안 보인다) — 그 판은 재기동 때 ⓐ 만 산다.
+const T662_GEO_CACHE = process.env.T662_GEO_CACHE !== '0';
+function _geoKey(q) {
+  const fs = require('fs'), crypto = require('crypto');
+  _mods(); try { require('./hanbando-terrain.json'); } catch (e) {}
+  const h = crypto.createHash('sha1');
+  h.update(JSON.stringify({ A: q.A, B: q.B, rosterA: q.rosterA, rosterB: q.rosterB, coast: q.coast, splitR: q.splitR == null ? null : q.splitR }));
+  for (const k of Object.keys(process.env).filter((k) => /^(T\d+_|VILLAGE_|TERRAIN_)/.test(k)).sort()) h.update(`\n${k}=${process.env[k]}`);
+  for (const f of Object.keys(require.cache).filter((f) => !f.includes(`${path.sep}node_modules${path.sep}`)).sort()) {
+    try { h.update(`\n${path.relative(path.join(__dirname, '..'), f)}:`); h.update(fs.readFileSync(f)); } catch (e) {}
+  }
+  return h.digest('hex').slice(0, 24);
+}
+function sharedCrossGeo(q) {
+  if (!T662_GEO_CACHE) return crossGeo(q);
+  const fs = require('fs'), os = require('os');
+  const dir = process.env.T662_GEO_CACHE_DIR || path.join(os.tmpdir(), 'durango-xzone-geo');
+  try { fs.mkdirSync(dir, { recursive: true }); } catch (e) { return crossGeo(q); }
+  const pre = `${q.A}+${q.B}.`, key = _geoKey(q);
+  const file = path.join(dir, `${pre}${key}.json`), lock = path.join(dir, `${pre}${key}.lock`);
+  const read = (how) => { try { const r = JSON.parse(fs.readFileSync(file, 'utf8')); r.ms = { bfs: 0, route: 0 }; r.cache = how; return r; } catch (e) { return null; } };
+  const alive = (pid) => { try { process.kill(pid, 0); return true; } catch (e) { return e.code === 'EPERM'; } };
+  const nap = new Int32Array(new SharedArrayBuffer(4));
+  for (let waited = false; ;) {
+    const hit = read(waited ? 'wait' : 'hit'); if (hit) return hit;
+    let fd = -1;
+    try { fd = fs.openSync(lock, 'wx'); } catch (e) { if (e.code !== 'EEXIST') return crossGeo(q); }
+    if (fd >= 0) {
+      try {
+        fs.writeSync(fd, String(process.pid)); fs.closeSync(fd);
+        const again = read(waited ? 'wait' : 'hit'); if (again) return again;   // 잠금을 잡는 사이 다른 워커가 다 적고 풀었다
+        const r = crossGeo(q);
+        const tmp = `${file}.${process.pid}.tmp`;
+        fs.writeFileSync(tmp, JSON.stringify(r)); fs.renameSync(tmp, file);
+        for (const f of fs.readdirSync(dir)) if (f.startsWith(pre) && f.endsWith('.json') && path.join(dir, f) !== file) { try { fs.unlinkSync(path.join(dir, f)); } catch (e) {} }
+        r.cache = 'made';
+        return r;
+      } finally { try { fs.unlinkSync(lock); } catch (e) {} }
+    }
+    let pid = 0; try { pid = parseInt(fs.readFileSync(lock, 'utf8'), 10) || 0; } catch (e) {}
+    if (pid && !alive(pid)) { try { fs.unlinkSync(lock); } catch (e) {} continue; }   // 잠금 주인이 죽었다 — 걷고 다시 잡는다
+    waited = true;
+    Atomics.wait(nap, 0, 0, 1000);   // 이웃 워커가 재는 중 — 1초씩 기다린다(워커 스레드라 존 틱은 안 막힌다)
+  }
+}
+
+module.exports = { zoneAdapter, unionAdapter, bfsMatrix, crossGeo, sharedCrossGeo, _geoKey, _splitRoute, _mods };
 
 // ── 워커 입구 — 존 서버 경계 호스트가 `new Worker(__filename, { workerData: { xzoneGeo: q } })` 로 띄운다 ──
 {
   let wt = null; try { wt = require('worker_threads'); } catch (e) {}
   if (wt && !wt.isMainThread && wt.workerData && wt.workerData.xzoneGeo) {
     let out;
-    try { out = { ok: true, r: crossGeo(wt.workerData.xzoneGeo) }; } catch (e) { out = { ok: false, err: String(e && e.stack || e) }; }
+    try { out = { ok: true, r: sharedCrossGeo(wt.workerData.xzoneGeo) }; } catch (e) { out = { ok: false, err: String(e && e.stack || e) }; }
     wt.parentPort.postMessage(out);
   }
 }

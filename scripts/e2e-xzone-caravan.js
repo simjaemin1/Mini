@@ -65,7 +65,9 @@ const dist = (a, b) => (a && b) ? Math.hypot(a.x - b.x, a.y - b.y) : Infinity;
   ok(cu.ok, 'ⓔ0 central 기동', cu.ok ? `${cu.ms}ms` : cu.why);
   //   ★팔 `T525_CROSS_ZONE=1` · 마을 켬 · 하루 `XZ_DAYMS` · 캐러밴 몸 상한은 넉넉히(`VILLAGE_CARAVAN_MAX` — 종전 손잡이 · 넘는 캐러밴이 몸을 갖게) · 야생 끔(속도)
   const common = { CENTRAL_URL: `http://localhost:${CPORT}`, ENABLE_VILLAGES: '1', T525_CROSS_ZONE: '1', VILLAGE_DAY_MS: DAYMS, ENABLED_ZONES: ZIDS.join(','),
-    VILLAGE_CARAVAN_MAX: '400', ENABLE_WILDLIFE: '0' };
+    VILLAGE_CARAVAN_MAX: '400', ENABLE_WILDLIFE: '0',
+    //   ★[T662] 걸음표 한 벌 파일 자리 — 이 판의 임시 폴더(판마다 처음부터 잰다 = 찬 판을 잰다 · 두 존이 같은 자리를 봐야 한 벌을 나눈다)
+    T662_GEO_CACHE_DIR: process.env.T662_GEO_CACHE_DIR || `${DDIR}/geo` };
   const ups = {};
   for (const z of ZIDS) { const p = boot(z, 'zone.js', Object.assign({ PORT: String(ZONES[z].port), ZONE_ID: z, DB_PATH: `${DDIR}/w-${z}.db` }, common)); ups[z] = FB.waitUp(p, /zone server up on/, { name: z, capMs: 900000 }); }
   for (const z of ZIDS) { const r = await ups[z]; ok(r.ok, `ⓔ ${z} 존 기동(마을 시딩 포함)`, r.ok ? `${(r.ms / 1000).toFixed(1)}s` : r.why); }
@@ -97,7 +99,7 @@ const dist = (a, b) => (a && b) ? Math.hypot(a.x - b.x, a.y - b.y) : Infinity;
   }
   ok(!!H && !!N && H.peers.join() === 'nippon' && N.peers.join() === 'hanbando', 'ⓐ1 두 존이 서로를 이웃으로 안다(zone-config 동서남북 · 켜진 존만)', H && N ? `한반도 → ${H.peers} · 닛폰 → ${N.peers}` : '-');
   const gh = H && H.geo && H.geo.nippon, gn = N && N.geo && N.geo.hanbando;
-  ok(!!gh && !!gn, 'ⓐ2 ★두 존 다 합친 걸음표가 섰다(워커 — 틱을 안 막는다)', gh && gn ? `한반도 ${(gh.wallMs / 1000).toFixed(0)}s · 닛폰 ${(gn.wallMs / 1000).toFixed(0)}s · 기동 뒤 ${((Date.now() - t0) / 1000).toFixed(0)}s` : '-');
+  ok(!!gh && !!gn, 'ⓐ2 ★두 존 다 합친 걸음표가 섰다(워커 — 틱을 안 막는다)', gh && gn ? `한반도 ${(gh.wallMs / 1000).toFixed(0)}s${gh.cache ? `(${gh.cache})` : ''} · 닛폰 ${(gn.wallMs / 1000).toFixed(0)}s${gn.cache ? `(${gn.cache})` : ''} · 기동 뒤 ${((Date.now() - t0) / 1000).toFixed(0)}s` : '-');
   ok(!!gh && !!gn && gh.pairs === gn.pairs && gh.within === gn.within && gh.mine === gn.theirs && gh.theirs === gn.mine,
     'ⓐ3 ★같은 표(거울상) — 쌍 · 걸어 2km 안 · 경계 마을 이쪽/저쪽', gh && gn ? `쌍 ${gh.pairs}/${gn.pairs} · 2km 안 ${gh.within}/${gn.within}(합친 길 없음 ${gh.withinNoRoute}) · 경계 한반도 ${gh.mine}=${gn.theirs} · 닛폰 ${gh.theirs}=${gn.mine}` : '-');
   ok(pre > 0 && stub0 === 0, 'ⓐ4 표가 오기 전엔 스텁 0(= 끔과 같다)', `표 서기 전 표본 ${pre} · 스텁 최대 ${stub0}`);
