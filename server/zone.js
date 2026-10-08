@@ -1540,7 +1540,20 @@ WATER_TILES = (() => {
 //     비용은 뜨거운 자리에서 `++` 셋 — 틱 374ms 대비 잴 수 없는 크기다(끈 팔 p50 2.466ms 가 증인).
 const _walk = { steps: 0, ej: 0, ejQ: 0, ejFail: 0, terrQ: 0, waterQ: 0, wallQ: 0, cut: 0, ejPids: new Set() };
 let _npcCursor = null;   // ★[T324 ⓒ] 결정 문 예산이 지난 틱에 멈춘 자리(pid) — null 이면 처음부터
+// ★[T678] 문 그래프 손잡이·그릇(아래 `computeNpcPath` 머리글) — 다리·환호 무효화가 부팅 중 부를 수 있어 여기(위쪽)에 선언한다
+const T678_GATES = (process.env.T678_GATES || '').trim(), T678_ON = T678_GATES === '1', T678_VERIFY = T678_GATES === 'verify';
+let _t678G = null;
+const _t678PH = require('perf_hooks').performance, _t678Now = () => _t678PH.now();   // 관측 시계(ms · 소수) — 세계 무관
+function _t678Perf(reset) {
+  if (!_t678G) return null;
+  const q = (a, p) => { if (!a.length) return null; const s = a.slice().sort((x, y) => x - y); return s[Math.min(s.length - 1, Math.floor(s.length * p))]; };
+  const o = Object.assign({ mode: T678_GATES }, _t678G.stats(), { q: Object.assign({}, _t678Q),
+    v: Object.assign({}, _t678V, { diffs: _t678V.diffs.slice(), ratios: undefined, walkA: undefined, walkRatios: _t678V.walkRatios.slice(), gOnlyLen: _t678V.gOnlyLen.slice(), diffP50: q(_t678V.diffs, 0.5), diffP95: q(_t678V.diffs, 0.95), ratioP50: q(_t678V.ratios, 0.5), ratioP95: q(_t678V.ratios, 0.95), walkRatioP50: q(_t678V.walkRatios, 0.5), walkRatioP95: q(_t678V.walkRatios, 0.95), nDiff: _t678V.diffs.length }) });
+  if (reset) { for (const k of Object.keys(_t678Q)) _t678Q[k] = 0; for (const k of Object.keys(_t678V)) _t678V[k] = Array.isArray(_t678V[k]) ? [] : 0; }
+  return o;
+}
 function walkPerf(reset) {
+  const _t678o = _t678Perf(reset);
   const o = { steps: _walk.steps, eject: _walk.ej, ejectQ: _walk.ejQ, ejectFail: _walk.ejFail,
               ejectPids: _walk.ejPids.size, terrQ: _walk.terrQ, waterQ: _walk.waterQ, wallQ: _walk.wallQ,
               cutTicks: _walk.cut, cursor: _npcCursor !== null ? 1 : 0,
@@ -1552,6 +1565,7 @@ function walkPerf(reset) {
       if (reset) { _wwTC.hit = 0; _wwTC.miss = 0; _wwTC.treeBad = 0; _wwTC.still = 0; _wwTC.stillBad = 0; } }
     if (reset) { _wwStat.ticks = 0; _wwStat.steps = 0; _wwStat.bad = 0; _wwStat.badTicks = 0; _wwStat.gateBad = 0; _wwStat.sample.length = 0; } }   // ★[T461]
   if (T676_STAMP || T676_VERIFY) { o.t676 = Object.assign({ mode: T676_STAMP ? 'on' : 'verify' }, _t676Stat); if (reset) { _t676Stat.ipaN = 0; _t676Stat.ipaBad = 0; _t676Stat.pvN = 0; _t676Stat.pvBad = 0; } }   // ★[T676] 견줌 셈
+  if (_t678o) o.t678 = _t678o;   // ★[T678] 문 그래프 관측(끔이면 칸 없음)
   if (reset) { _walk.steps = 0; _walk.ej = 0; _walk.ejQ = 0; _walk.ejFail = 0; _walk.terrQ = 0; _walk.waterQ = 0; _walk.wallQ = 0; _walk.cut = 0; _walk.ejPids.clear(); }
   return o;
 }
@@ -1650,6 +1664,7 @@ function addBridgeCells(flat) {
   }
   if (!add.length) return 0;
   _bridgeGen++;
+  if (_t678G) _t678G.invalidateAll();   // ★[T678] 다리가 놓이면 문 표는 전부 낡는다(다시 짓기는 조각)
   if (_BLK_BITS) _BLK_BITS.fill(0);
   if (_WW) _WW.clearTerrain();
   try { broadcast({ type: 'bridges_add', cells: add }); } catch (e) {}
@@ -1670,6 +1685,7 @@ function refreshDitchCells() {
   DITCH_CELLS.clear();
   if (_BLK_BITS) _BLK_BITS.fill(0);   // ★[T356 ②] 환호가 바뀌면 막힘 비트를 통째로 영점(유도값이라 다시 구우면 된다)
   if (_WW) _WW.clearTerrain();        // ★[T461] 커널의 지형 비트도 같은 까닭으로 영점
+  if (_t678G) _t678G.invalidateAll();  // ★[T678] 환호가 바뀌면 문 표도 전부 낡는다
   try {
     const flat = SimVillages.ditchCells ? SimVillages.ditchCells() : [];
     for (let i = 0; i + 1 < flat.length; i += 2) DITCH_CELLS.add(_cellKey(flat[i], flat[i + 1]));   // ★[T333] 정수 키
@@ -3710,6 +3726,68 @@ function npcCanReach(ax, ay, bx, by) {
 //   같을 수밖에 없다. 넘침(∞)·밑넘침(0)·NaN 도 같은 쪽으로 간다(증인 ⓕ). 새 수 0(1e-12 는 비교 띠 · 판정 수가 아니다).
 function _t671Lt(dx, dy, R) { const d2 = dx * dx + dy * dy, R2 = R * R; if (d2 < R2 * (1 - 1e-12)) return true; if (d2 > R2 * (1 + 1e-12)) return false; return Math.hypot(dx, dy) < R; }
 function _t671Gt(dx, dy, R) { const d2 = dx * dx + dy * dy, R2 = R * R; if (d2 > R2 * (1 + 1e-12)) return true; if (d2 < R2 * (1 - 1e-12)) return false; return Math.hypot(dx, dy) > R; }
+// ★★[T678 2026-10-08 · 재민 설계] **청크 문 그래프 1단계** — 손잡이 `T678_GATES`(기본 끔 · `1` 켬 · `verify` 견줌 = 세계는 끔 그대로 · 문 길을 곁에서 세어 견준다).
+//   주민 칸 A* 앞에서 문 그래프(`server/chunk-gates.js`)로 "닿는가 · 얼마나"를 먼저 답한다 — 못 닿으면 A* 를 안 부르고 null ·
+//   닿으면 문 길(청크 안 표를 따라 내려간 칸 길)을 그 자리의 A* 답으로 쓴다(스무딩은 종전 그대로). 표가 아직 없는 청크면 종전 A*.
+//   ★술어는 A* 가 쓰는 그 둘(`isTerrainBlockedLocal` 셀 중심 · `isBlockedByWall(셀 중심 → 이웃 셀 중심, 층 0)` — `pathfind.js` 간선과 같은 차례·인자).
+//   ★예산 — 표 짓기는 틱마다 **주민 A* 예산 1,500**(술어 부름 수 · 새 수 0)만큼 조각으로 · 서명 쓸기는 표마다 1초에 한 번(틱 Hz). 반경도 그 반경(`_pfRadius`).
+//   ⚠길이 달라진다(판정 칸): 칸 비용 1(개울 ×2 · 답압 길 선호 없음) · 문 대표 칸을 지난다 — 같은 출발·목표의 길 길이 차를 `verify` 가 잰다.
+//   (손잡이·표 그릇은 위 `walkPerf` 앞에 둔다 — 다리·환호 무효화가 부팅 중에 부를 수 있다 · TDZ)
+const _t678V = { n: 0, bothFound: 0, aOnly: 0, gOnly: 0, bothNull: 0, unknown: 0, aMs: 0, gMs: 0, aMaxMs: 0, gMaxMs: 0, diffs: [], ratios: [], walkA: [], walkRatios: [], gOnlyLen: [] };
+const _t678Q = { calls: 0, nullFast: 0, gatePath: 0, fallback: 0, ms: 0, maxMs: 0 };
+function _t678Init() {
+  if (_t678G || !(T678_ON || T678_VERIFY)) return _t678G;
+  const C = BUILDING_SIZE / 2, cs = Math.round(chunkManager.chunkSize / BUILDING_SIZE);
+  _t678G = require('./chunk-gates').create({ chunkCells: cs, cellsW: Math.ceil(ZONE.zoneWidth / BUILDING_SIZE), cellsH: Math.ceil(ZONE.zoneHeight / BUILDING_SIZE),
+    pass: (cx, cy) => !isTerrainBlockedLocal(cx * BUILDING_SIZE + C, cy * BUILDING_SIZE + C),
+    step: (fx, fy, tx, ty) => !isBlockedByWall(fx * BUILDING_SIZE + C, fy * BUILDING_SIZE + C, tx * BUILDING_SIZE + C, ty * BUILDING_SIZE + C, 0) });
+  return _t678G;
+}
+// 건물 서명 — 그 청크가 켜져 있으면(벽 질의 격자 `qtColl` 이 그 청크 건물을 든다) 충돌 종류 건물의 (종류·칸·층·변·열림·부서짐) 해시 · 꺼져 있으면 'off'
+function _t678Sig(X, Y) {
+  const k = chunkManager.keyOf(X, Y);
+  if (!activeChunkKeys.has(k)) return ['off', 0];
+  const c = chunkManager.chunks.get(k); if (!c) return ['none', 0];
+  let h = 0, n = 0;
+  for (const b of c.buildings.values()) {
+    n++; if (!COLL_TYPES.has(b.type)) continue;
+    const d = b.data || {}, t = b.type + '|' + b.x + '|' + b.y + '|' + (b.floor || 0) + '|' + (d.side || '') + '|' + (d.open ? 1 : 0) + '|' + (d.damaged ? 1 : 0);
+    for (let i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) | 0;
+  }
+  return [n + ':' + h, n];
+}
+function _t678Tick() {
+  const G = _t678Init(); if (!G) return;
+  G.tick(1500, _t678Now);
+  G.sweep(Math.ceil(G.size() / TICK_HZ), _t678Sig);   // 표마다 1초에 한 번(틱 Hz 그 수 · 새 수 0)
+}
+// 문 길 → `pfFindPath` 꼴(셀 중심 · 마지막은 실제 목표 px) · 못 닿음 = null · 표 없음 = undefined
+function _t678Route(npc) {
+  const G = _t678Init(); if (!G) return undefined;
+  const sx = Math.floor(npc.x / BUILDING_SIZE), sy = Math.floor(npc.y / BUILDING_SIZE), gx = Math.floor(npc.targetX / BUILDING_SIZE), gy = Math.floor(npc.targetY / BUILDING_SIZE);
+  const r = G.route(sx, sy, gx, gy, _pfRadius(true));
+  if (r.res === 'unknown') return undefined;
+  if (r.res !== 'found') return null;
+  const C = BUILDING_SIZE / 2, wp = r.cells.map(([cx, cy]) => ({ x: cx * BUILDING_SIZE + C, y: cy * BUILDING_SIZE + C }));
+  if (wp.length) wp[wp.length - 1] = { x: npc.targetX, y: npc.targetY }; else wp.push({ x: npc.targetX, y: npc.targetY });
+  return wp;
+}
+function _t678Verify(npc, wp) {
+  const t0 = _t678Now(); const g = _t678Route(npc); const ms = _t678Now() - t0; const V = _t678V;
+  V.n++; V.gMs += ms; if (ms > V.gMaxMs) V.gMaxMs = ms;
+  if (g === undefined) { V.unknown++; return; }
+  if (wp && g) {
+    V.bothFound++;
+    if (V.diffs.length < 20000) {
+      V.diffs.push(g.length - wp.length); V.ratios.push(+(g.length / Math.max(1, wp.length)).toFixed(3));
+      // 걷는 길이(스무딩 뒤 · px) — computeNpcPath 꼬리와 같은 스무딩(같은 술어 · 같은 앵커)
+      const sm = (w) => (w.length < 3 ? w : PathCore.smoothPath(w, (ax, ay, bx, by) => straightPathClear(ax, ay, bx, by, 0), { keep: Roads.ENABLED ? _roadKeep : null }));
+      const L = (w) => { let x = npc.x, y = npc.y, d = 0; for (const p of w) { d += Math.hypot(p.x - x, p.y - y); x = p.x; y = p.y; } return d; };
+      const la = L(sm(wp)), lg = L(sm(g));
+      V.walkA.push(+la.toFixed(1)); V.walkRatios.push(+(lg / Math.max(1, la)).toFixed(3));
+    }
+  } else if (wp) V.aOnly++; else if (g) { V.gOnly++; if (V.gOnlyLen.length < 20000) V.gOnlyLen.push(g.length); } else V.bothNull++;
+}
 function computeNpcPath(npc, now) {
   if (typeof npc.targetX !== 'number' || typeof npc.targetY !== 'number') return null;
   if (_t671Lt(npc.targetX - npc.x, npc.targetY - npc.y, 48)) {   // ★[T671 ②] = `Math.hypot(…) < 48` 와 같은 답(아래 `_t671Lt` · 경계 띠 안은 hypot 그대로)
@@ -3771,7 +3849,13 @@ function computeNpcPath(npc, now) {
   //     켬은 그 실패를 한 번 1,500칸(3.8ms) → 6,434칸(17ms)으로 키워 A* 가 끔의 세 배가 된다. 예산 하나는 "멀다"만 풀고
   //     "못 닿는다"의 값을 키운다 ⇒ 먼저 못 닿는 현장을 안 주거나 `null` 난 목표를 되묻지 않아야 한다(회부).
   const _pfR = _pfRadius(isVil);        // 주민=2048px(집→먼 밭·물가 현장). 비주민=768px — ★반경이 정본(★[T427] 수는 `_pfRadius` 한 자리)
-  const wp = pfFindPath(npc.x, npc.y, npc.targetX, npc.targetY, {
+  let _t678wp;
+  if (T678_ON && isVil && !(npc.floor || 0)) {   // ★[T678] 문 그래프가 먼저 — 답이 있으면 그것이 이 자리의 길(null 이면 A* 안 부름)
+    const _t0 = _t678Now(); _t678wp = _t678Route(npc); const _dt = _t678Now() - _t0;
+    _t678Q.calls++; _t678Q.ms += _dt; if (_dt > _t678Q.maxMs) _t678Q.maxMs = _dt;
+    if (_t678wp === null) _t678Q.nullFast++; else if (_t678wp) _t678Q.gatePath++; else _t678Q.fallback++;
+  }
+  const wp = _t678wp !== undefined ? _t678wp : pfFindPath(npc.x, npc.y, npc.targetX, npc.targetY, {
     floor: npc.floor || 0,
     isBlockedFn: isBlockedByWall,
     isWaterFn: isTerrainBlockedLocal,
@@ -3780,6 +3864,7 @@ function computeNpcPath(npc, now) {
     preferFn: isVil ? _roadPrefer : undefined,   // ★답압 수렴(랩 bfsPath prefer 동형): 등거리 동률이 길로 스냅
     costFn: (_streamOn() && npc.simJob !== 'bandit') ? _streamCost : undefined,   // ★[T585] 개울 칸 비용 ×2(= 걸음 ×0.5 의 역 · 새 수 0) · 도적은 그대로
   });
+  if (T678_VERIFY && isVil && !(npc.floor || 0)) _t678Verify(npc, wp);   // ★[T678 견줌] 세계는 A* 답 그대로 · 문 길을 곁에서
   if (!wp || wp.length < 3 || !isVil) return wp;
   const fl = npc.floor || 0;   // ★스트링 풀링(랩 _smoothWalk 동형): canPass=직선 통행(동일 게이트) · keep=길 칸 앵커
   return PathCore.smoothPath(wp, (ax, ay, bx, by) => straightPathClear(ax, ay, bx, by, fl), { keep: Roads.ENABLED ? _roadKeep : null });
@@ -13515,6 +13600,7 @@ setInterval(() => {
   { const _t0 = Date.now(); SimVillages.onGameTick(now); const _d = Date.now() - _t0; if (_d >= 5) perfMark('econ_frame', _d); }
   // §11 도적 일일 훅 — villages 옆(econ 틱이 world.day를 민 직후 같은 경계에서 데일리 1회). 평시 O(1) 정수 비교.
   Bandits.onGameTick(now);
+  if (T678_ON || T678_VERIFY) _t678Tick();   // ★[T678] 문 표 짓기·서명 쓸기(조각 · 주민 A* 예산 1,500)
   // §16 답압 길 — 게임일 경계 dirty 플러시·coarse 재구축·클라 변경분(평시 O(1) 비교)
   Roads.onGameTick(now);
   if (_t566RelPend.length) _t566FlushRel();   // ★[T566] 날을 모른 채 풀린 길(부팅 · 꺼진 사이) — 시계가 선 첫 틱에 둘레를 푼다(평시 길이 0 비교 1회)

@@ -409,7 +409,7 @@ async function run(conf, tag, probe) {
       const buf = fs.readFileSync(logp).subarray(mark).toString('utf8');
       const ana = buf.split('\n').filter((x) => x.startsWith('[T646] ')).map((x) => { try { return JSON.parse(x.slice(7)); } catch (e) { return null; } }).filter(Boolean);
       const t = p && p.tick && p.tick.ms;
-      slices.push({ k, phase: L && L.phase, p50: t && t.p50, p95: t && t.p95, max: t && t.max, ticks: p && p.tick && p.tick.n, npcs: null, ana });
+      slices.push({ k, phase: L && L.phase, p50: t && t.p50, p95: t && t.p95, max: t && t.max, ticks: p && p.tick && p.tick.n, npcs: null, ana, t678: (p && p.walk && p.walk.t678) || null });   // [T678] 문 그래프 관측(켬·견줌 판만)
       say(`${W} 조각 ${k} · p50 ${t ? t.p50 : '?'} · p95 ${t ? t.p95 : '?'} · 줄 ${ana.length}`);
     }
     windows.push({ W, slices });
