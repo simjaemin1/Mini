@@ -14635,13 +14635,48 @@ const PREF_DISC = 1;   // prefer(길 스냅) = 길 칸 진입비 -1(99/100). 등
 const DIRS4 = [[1, 0, ORTHO], [-1, 0, ORTHO], [0, 1, ORTHO], [0, -1, ORTHO]];   // 이웃 순서 = 완전 동률의 최후 해소(가로 우선) — 정규화 덕에 방향 무관 동일 복도
 const DIRS8 = [[1, 0, ORTHO], [-1, 0, ORTHO], [0, 1, ORTHO], [0, -1, ORTHO], [1, 1, DIAG], [1, -1, DIAG], [-1, 1, DIAG], [-1, -1, DIAG]];
 
-function _mkHeap() {   // 이진 최소힙 {f,g,x,y} — 랩·서버 기존 구현 동형
-  const a = [];
-  return {
-    push(n) { a.push(n); let c = a.length - 1; while (c > 0) { const p = (c - 1) >> 1; if (a[p].f <= a[c].f) break; const t = a[p]; a[p] = a[c]; a[c] = t; c = p; } },
-    pop() { const top = a[0], last = a.pop(); if (a.length) { a[0] = last; let c = 0; for (;;) { const l = 2 * c + 1, r = 2 * c + 2; let m = c; if (l < a.length && a[l].f < a[m].f) m = l; if (r < a.length && a[r].f < a[m].f) m = r; if (m === c) break; const t = a[m]; a[m] = a[c]; a[c] = t; c = m; } } return top; },
-    get size() { return a.length; },
+// ★★[T662 2026-10-08] 힙을 **평평한 배열 넷**(f · g · x · y)으로 — 같은 알고리즘 · 같은 비교 · 같은 차례(답 비트 동일).
+//   종전: 칸 하나를 꺼낼 때마다 `{f,g,x,y}` 객체 하나를 만들고(밀 때) 힙은 객체 포인터 배열이었다 — 큰 탐색(꺼냄 25만 · 힙 수십만)에서
+//   내리기(sift-down)가 객체를 쫓아다니는 캐시 미스가 됐다(T662 해부: 두 존 걸음표 길 403초 중 `pop` 자기시간 32% · `_searchStep` 35%).
+//   ⇒ 같은 이진 최소힙을 타입 배열로: 올리기 `F[p] <= f` 면 멈춤 · 내리기 왼쪽 `<` 다음 오른쪽 `<`(종전 `a[m].f` 비교 그대로) —
+//     맞바꾸기 대신 구멍을 옮기는 것만 다르고 매 단계 같은 자리에 같은 값이 선다(최종 배열 같음 ⇒ 꺼내는 차례 같음).
+//   꺼낸 값은 힙의 칸 넷(`tf`·`tg`·`tx`·`ty`)에 둔다(객체 0). `size` · `pop()` 문은 그대로(하네스 ⑦ 이 재개 사이에 하나 뺀다).
+function _mkHeap() {   // 이진 최소힙 (f,g,x,y) — 랩·서버 기존 구현 동형
+  let cap = 1024, n = 0;
+  let F = new Float64Array(cap), G = new Float64Array(cap), X = new Int32Array(cap), Y = new Int32Array(cap);
+  const grow = () => {
+    cap *= 2;
+    const F2 = new Float64Array(cap); F2.set(F); F = F2; const G2 = new Float64Array(cap); G2.set(G); G = G2;
+    const X2 = new Int32Array(cap); X2.set(X); X = X2; const Y2 = new Int32Array(cap); Y2.set(Y); Y = Y2;
   };
+  const h = {
+    tf: 0, tg: 0, tx: 0, ty: 0,
+    push(f, g, x, y) {
+      if (n === cap) grow();
+      let c = n++;
+      while (c > 0) { const p = (c - 1) >> 1; if (F[p] <= f) break; F[c] = F[p]; G[c] = G[p]; X[c] = X[p]; Y[c] = Y[p]; c = p; }
+      F[c] = f; G[c] = g; X[c] = x; Y[c] = y;
+    },
+    pop() {
+      h.tf = F[0]; h.tg = G[0]; h.tx = X[0]; h.ty = Y[0];
+      n--;
+      if (n > 0) {
+        const lf = F[n], lg = G[n], lx = X[n], ly = Y[n];
+        let c = 0;
+        for (;;) {
+          const l = 2 * c + 1, r = l + 1; let m = c, mf = lf;
+          if (l < n && F[l] < mf) { m = l; mf = F[l]; }
+          if (r < n && F[r] < mf) m = r;
+          if (m === c) break;
+          F[c] = F[m]; G[c] = G[m]; X[c] = X[m]; Y[c] = Y[m]; c = m;
+        }
+        F[c] = lf; G[c] = lg; X[c] = lx; Y[c] = ly;
+      }
+      return h;
+    },
+    get size() { return n; },
+  };
+  return h;
 }
 function _perp(x, y, sx, sy, gx, gy, invLen) {   // 시작→목표 직선까지 수직거리(직선 편향)
   return Math.abs((x - sx) * (gy - sy) - (y - sy) * (gx - sx)) * invLen;
@@ -14702,11 +14737,11 @@ function _searchBegin(sx, sy, gx, gy, o) {
   const enc = (x, y) => (sc ? y * W2 + x : x + ',' + y);
   const open = _mkHeap();
   gSet(sx, sy, 0); cameSet(sx, sy, -1);
-  open.push({ f: H(sx, sy), g: 0, x: sx, y: sy });
+  open.push(H(sx, sy), 0, sx, sy);
   // ★상태는 **전부 여기 한 덩어리**다 — 그래야 놓았다 이어 갈 수 있다(지역 변수로 남으면 못 잇는다).
   return {
     sx, sy, gx, gy, rev, minX, maxX, minY, maxY, H,
-    gGet, gSet, cameGet, cameSet, enc, sc, W2, open,
+    gGet, gSet, cameGet, cameSet, enc, sc, W2, open, scGen: sc ? sc.gen : 0,   // ★[T662] 이 탐색의 세대(시작 때 값 — 클로저 `gen` 과 같은 수)
     maxPops: o.maxPops, dirs: o.dirs, nodeBlocked: o.nodeBlocked,
     costMul: o.costMul, prefer: o.prefer, stepBlocked: o.stepBlocked,
     pops: 0, found: false, done: false, path: null,
@@ -14723,26 +14758,32 @@ function _searchStep(S, budget) {
   const gx = S.gx, gy = S.gy, minX = S.minX, maxX = S.maxX, minY = S.minY, maxY = S.maxY;
   const dirs = S.dirs, nodeBlocked = S.nodeBlocked, costMul = S.costMul, prefer = S.prefer;
   const stepBlocked = S.stepBlocked, maxPops = S.maxPops;
+  //   ★[T662] scratch 판은 g·came·stamp 를 **배열에서 바로** 읽고 쓴다(`gGet`·`gSet`·`cameSet`·`enc` 클로저와 같은 식 · 같은 값) — 큰 격자 성능.
+  const sc = S.sc, W2 = S.W2, scG = sc ? sc.g : null, scSt = sc ? sc.stamp : null, scCame = sc ? sc.came : null, gen = S.scGen;
   let n = 0;
   while (open.size > 0) {
     if (budget > 0 && n >= budget) return { done: false, path: null };   // ★양보 — 힙·g·came·pops 그대로 두고 나간다
     n++;
-    const cur = open.pop();
-    if (cur.g !== gGet(cur.x, cur.y)) continue;   // stale(lazy 삭제 — 서버 동형)
-    if (cur.x === gx && cur.y === gy) { S.found = true; break; }
+    open.pop();
+    const cg = open.tg, cx = open.tx, cy = open.ty;   // ★[T662] 꺼낸 칸(객체 0 — 힙의 칸 넷)
+    if (sc ? (scSt[cy * W2 + cx] === gen ? cg !== scG[cy * W2 + cx] : cg !== Infinity) : cg !== gGet(cx, cy)) continue;   // stale(lazy 삭제 — 서버 동형)
+    if (cx === gx && cy === gy) { S.found = true; break; }
     if (++S.pops > maxPops) break;   // 예산 가드
     for (let d = 0; d < dirs.length; d++) {
       const dx = dirs[d][0], dy = dirs[d][1], w0 = dirs[d][2];
-      const nx = cur.x + dx, ny = cur.y + dy;
+      const nx = cx + dx, ny = cy + dy;
       if (nx < minX || nx > maxX || ny < minY || ny > maxY) continue;
-      if (stepBlocked ? stepBlocked(cur.x, cur.y, nx, ny) : nodeBlocked(nx, ny)) continue;   // 간선(edge) 판정 없으면 노드 판정 직행(래퍼 간접호출 제거 — 대격자 성능)
-      if (dx && dy && nodeBlocked && (nodeBlocked(cur.x + dx, cur.y) || nodeBlocked(cur.x, cur.y + dy))) continue;   // 대각 코너 절단 금지
+      if (stepBlocked ? stepBlocked(cx, cy, nx, ny) : nodeBlocked(nx, ny)) continue;   // 간선(edge) 판정 없으면 노드 판정 직행(래퍼 간접호출 제거 — 대격자 성능)
+      if (dx && dy && nodeBlocked && (nodeBlocked(cx + dx, cy) || nodeBlocked(cx, cy + dy))) continue;   // 대각 코너 절단 금지
       let step = costMul ? Math.round(w0 * costMul(nx, ny)) : w0;
       if (prefer && prefer(nx, ny) > 0) step -= PREF_DISC;   // ★길 스냅(답압 수렴)
-      const ng = cur.g + step;
-      if (ng < gGet(nx, ny)) {
-        gSet(nx, ny, ng); cameSet(nx, ny, enc(cur.x, cur.y));
-        open.push({ f: ng + H(nx, ny), g: ng, x: nx, y: ny });
+      const ng = cg + step;
+      if (sc) {
+        const ni = ny * W2 + nx;
+        if (ng < (scSt[ni] === gen ? scG[ni] : Infinity)) { scSt[ni] = gen; scG[ni] = ng; scCame[ni] = cy * W2 + cx; open.push(ng + H(nx, ny), ng, nx, ny); }
+      } else if (ng < gGet(nx, ny)) {
+        gSet(nx, ny, ng); cameSet(nx, ny, enc(cx, cy));
+        open.push(ng + H(nx, ny), ng, nx, ny);
       }
     }
   }
