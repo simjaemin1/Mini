@@ -123,6 +123,19 @@ const CARAVAN_REPAIR_COOLDOWN_MS = 2000;     // 로컬 재경로 최소 간격(N
 const CARAVAN_REPAIR_LOOKAHEAD_PX = 480;     // 차단 시 우회 목표 = 전방 480px(15셀) 경로 정점
 const CARAVAN_ISOLATE_FAILS = 3;             // 재경로 연속 실패 → 완전 고립 판정(§5.5b 2단계)
 const CARAVAN_BLOCKTEST = parseInt(process.env.VILLAGE_CARAVAN_BLOCKTEST || '0', 10); // 테스트 전용(헤더 주석)
+// ★★[T661 2026-10-08 · 세션4] 손잡이 `T661_CARAVAN_TICK`(기본 끔 · `=1` 켬) — 캐러밴 몸을 벽시계에서 뗀다(T650 회부 ②④).
+//   T650: 서버 판이 흔들리는 주인은 몸의 벽시계였다 — ① 도착 임박 가드(틱마다 `now` vs `arriveAt` · 남은 px 는 받은 틱 수에 달렸다)
+//   ② 몸의 길 답압(틱마다 걸은 자리 = 벽시계 걸음). 켜면 몸에 **장부 진척**(`body._t661`)이 선다:
+//     · 진척은 econ 하루 경계(캐러밴 동기 `_caravanSyncOne` — 하루 조각의 그 자리 · 차례 = `world.caravans` 차례)에서만 움직인다 —
+//       L(d) = 길이 × min(1, (d − 출발일) ÷ (도착일 − 출발일)) — econ 이 그리는 그 일정 그대로(속도·거리 새 수 0 · 시계만 바뀐다).
+//     · ② 답압 = 그날 장부가 지난 구간 [L(d−1), L(d)] 의 셀만 찍는다(상인 → 호위 차례 · 호위는 20(i+1)px 뒤 — `_escortMarch` 간격 그대로).
+//     · ① 가드 = 장부가 막혔고(그날 구간을 훑다 벽에 섰다 — 활성 청크 · 술어는 틱 판 그대로) 다음 경계가 도착일인데 남은 px > 64 이면
+//       `⌈남은 ÷ 하루 px⌉` 만큼 민다(종전 식 그대로 · 판정 자리만 경계로).
+//     · 틱의 몸은 **보이는 것**이다 — 장부 일정을 그날 벽시계 몫만큼 보간해 걷는다(따라잡기 상한 명목 ×4 그대로 · 벽 앞에선 선다).
+//       세계에 닿는 것(답압 · econ 시계 · 재경로)은 틱에서 안 한다.
+//   ★같은 손잡이로 하나 더(게이트가 드러냈다 · 보고 T661 §④): 어장 상한 매김(`refreshAllFishSustain`)을 존 60초 주기(벽시계) 대신 하루 마감의 정한 자리에서.
+//   ⚠끔 = main 바이트(이 손잡이 줄이 안 닿는다). 남은 벽시계 꼴 자리(재경로 쿨다운 `CARAVAN_REPAIR_COOLDOWN_MS` · 머묾 `lingerUntil` 등)는 보고 T661 표 — 고치지 않았다.
+const T661_ON = process.env.T661_CARAVAN_TICK === '1';
 
 // --- P3: 실체 전쟁 상수 ---
 //   ★[T284 2026-09-14] 관측자 LOD 반경·몸 상한·headless 폴백은 **제거**했다 —
@@ -2952,13 +2965,14 @@ function spawnCaravanBody(c, now, budgetMs) {
   body.pxPerDay = body.len / legDays;                        // 지연 환산용 명목 속도(이 캐러밴의 일정에서 역산)
   body.nomPxMs = body.len / Math.max(1, body.arriveAt - now); // 페이싱 상한(×4)의 기준
   body.escorts = N.escorts;   // ★[convoy 물리 행군] 호위 전사 실체(위 `_caravanNpcs` 가 상인 뒤에 세웠다 — 주석은 그 자리에)
+  if (T661_ON) _t661Anchor(body, pts, body.phase);   // ★[T661] 장부는 오늘(econ 날)부터 — 세운 날은 안 움직인다
   state.caravanBodies.set(c.id, body);
   console.log(`[${state.zoneId}] 🐂 캐러밴#${c.id} 출발: ${c.from.name}→${c.to.name} ${c.giveRes}×${Math.round(c.giveAmt)} 호위${c.escort}(실체 ${body.escorts.length}) — 경로 ${pts.length}정점 ${Math.round(body.len)}px ${legDays}게임일(econ d${c.departDay}→d${c.arriveDay})`);
   return true;
 }
-function startReturnLeg(body, now) { // 도착 머묾(linger) 종료 → 귀환 출발
+// 돌아가는 길 — 종전 `startReturnLeg` 몸통 그대로 이름만 올렸다(켬이면 도착 경계에서 · 끔이면 머묾이 끝난 틱에서 부른다).
+function _t661ReturnPts(body) {
   const c = body.c;
-  if (body._xz && c && c._xzHome) return _xzStartReturnLeg(body, now);   // ★★[T533] 이웃 존 캐러밴 — 집은 경계 너머다(경계 칸까지 걷는다 · 끔이면 이 줄 무동작)
   const homeVil = state.byEcon.get(c.from), hereVil = state.byEcon.get(c.to);
   let pts = (homeVil && hereVil) ? getRoute(hereVil, homeVil) : null;
   if (pts) { const wr = _walkFor(hereVil, homeVil, 0); if (wr.pts) pts = wr.pts; }   // ★[T578 ②] 걷는 길(가는 길에 판 것 — 같은 쌍 · 거꾸로)
@@ -2966,6 +2980,22 @@ function startReturnLeg(body, now) { // 도착 머묾(linger) 종료 → 귀환 
     pts = [];
     for (let i = body.pts.length - 1; i >= 0; i--) pts.push(body.pts[i]);
   }
+  return pts;
+}
+function startReturnLeg(body, now) { // 도착 머묾(linger) 종료 → 귀환 출발
+  const c = body.c;
+  if (body._xz && c && c._xzHome) return _xzStartReturnLeg(body, now);   // ★★[T533] 이웃 존 캐러밴 — 집은 경계 너머다(경계 칸까지 걷는다 · 끔이면 이 줄 무동작)
+  if (T661_ON && body._t661 && body._t661.leg === 'inbound') {   // ★[T661] 돌아가는 길은 도착 경계에 장부가 이미 골랐다(`_t661ReturnPts`) — 몸은 그 길을 걷는다
+    setBodyPts(body, body._t661.path.pts);
+    body.phase = 'inbound';
+    body.departAt = now;
+    body.arriveAt = Math.max(now + 1, econDayToMs(c.returnArriveDay));
+    body.pxPerDay = body._t661.ppd;
+    body.nomPxMs = body.len / Math.max(1, body.arriveAt - now);
+    console.log(`[${state.zoneId}] 🐂 캐러밴#${c.id} 귀환 출발: ${c.to.name}→${c.from.name}${c._returningRes ? ` ${c._returningRes}×${Math.round(c._returningAmt || 0)}` : ' (빈손)'} — econ d${c.returnArriveDay} 도착 예정`);
+    return;
+  }
+  const pts = _t661ReturnPts(body);
   setBodyPts(body, pts);
   body.phase = 'inbound';
   const legDays = Math.max(1, c.returnArriveDay - state.world.day);
@@ -3056,6 +3086,94 @@ function caravanBlockedResponse(body, p, now) {
     }
   }
 }
+// ── ★★[T661] 장부 진척 — 손잡이 켬일 때만 부른다(끔이면 아래 다섯 함수는 한 번도 안 불린다) ──
+//   장부 = { path(길 · pts/cum/len) · L(진척 px) · D0(이 구간을 연 econ 날) · leg('outbound'|'inbound') · ppd(하루 px) · stall · day(마지막으로 움직인 날) }
+function _t661Path(pts) {   // `setBodyPts` 와 같은 누적 길이(그 식 그대로) — 장부는 제 길을 따로 쥔다(머묾 동안 몸은 옛 길 끝에 서 있다)
+  const cum = new Float64Array(pts.length);
+  let L = 0;
+  for (let i = 1; i < pts.length; i++) { L += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y); cum[i] = L; }
+  return { pts, cum, len: L, segIdx: 0 };
+}
+function _t661Anchor(body, pts, leg) {
+  const c = body.c, d = state.world.day;
+  const path = _t661Path(pts);
+  const D1 = leg === 'outbound' ? c.arriveDay : c.returnArriveDay;
+  body._t661 = { path, L: 0, D0: d, leg, ppd: path.len / Math.max(1, D1 - d), stall: false, day: d };
+}
+function _t661End(body) { const T = body._t661, c = body.c; return T.leg === 'outbound' ? c.arriveDay : c.returnArriveDay; }
+function _t661Target(T, dd, D1) { return T.path.len * Math.min(1, Math.max(0, (dd - T.D0) / Math.max(1, D1 - T.D0))); }
+// [a, b] 구간의 셀을 찍는다 — 상인 다음 호위(틱 판의 차례) · 표본 간격 SZ/4(셀 한 칸을 건너뛰지 않는다).
+function _t661Stamp(body, a, b) {
+  if (!state.roads || !(b > a)) return;
+  const T = body._t661, players = state.deps.players;
+  const run = (ent, x0, x1, st) => {
+    if (!ent || !(x1 > x0)) return;
+    for (let q = x0; ; q += SZ / 4) {
+      const at = Math.min(q, x1);
+      const pt = caravanPointAt(T.path, at, st);
+      state.roads.stampEntityPx(ent, pt.x, pt.y);
+      if (at >= x1) break;
+    }
+  };
+  run(players.get(body.pid), a, b, { segIdx: 0 });
+  if (body.escorts) for (let i = 0; i < body.escorts.length; i++) {
+    const off = 20 * (i + 1);
+    run(players.get(body.escorts[i].pid), Math.max(0, a - off), Math.max(0, b - off), { segIdx: 0 });
+  }
+}
+// 하루 한 번 — 장부를 오늘 자리로(벽에 서면 거기서 멈춘다) · 지난 구간 답압 · 가드.
+function _t661Day(body, now) {
+  const T = body._t661; if (!T) return;
+  const d = state.world.day;
+  if (T.day === d) return;   // 같은 날 두 번(조각 'retry' 로 다시 불려도) — 한 번만
+  T.day = d;
+  const D1 = _t661End(body);
+  const want = Math.max(T.L, _t661Target(T, d, D1));
+  let to = want, blockedAt = null;
+  const { isPositionActive, isBlockedByWall } = state.deps;
+  if (want > T.L && isPositionActive && isBlockedByWall) {   // 그날 구간을 훑는다 — 틱 판의 벽 술어 그대로(활성 청크만)
+    const st = { segIdx: 0 };
+    let prev = caravanPointAt(T.path, T.L, st);
+    for (let q = T.L + SZ / 4; ; q += SZ / 4) {
+      const at = Math.min(q, want);
+      const nx = caravanPointAt(T.path, at, st);
+      if (isPositionActive(prev.x, prev.y) && isBlockedByWall(nx.x, nx.y, prev.x, prev.y, 0)) { to = Math.max(T.L, at - SZ / 4); blockedAt = prev; break; }
+      prev = nx;
+      if (at >= want) break;
+    }
+  }
+  _t661Stamp(body, T.L, to);
+  T.L = to;
+  T.stall = !!blockedAt;
+  // ① 가드 — 막혔고 다음 경계가 도착일인데 못 닿는다
+  const remain = T.path.len - T.L;
+  if (T.stall && d + 1 >= D1 && !body._xzSendWait && remain > 64) {
+    const push = Math.max(1, Math.ceil(remain / Math.max(1, T.ppd)));
+    _clockPush(body.c, push, T.leg);     // ★[T60 ③] 세 값 동기
+    body.arriveAt += push * state.dayMs;
+    body.delayedDays += push;
+    console.log(`[${state.zoneId}] 🐂 캐러밴#${body.c.id} econ 도착 +${push}일 지연(잔여 ${Math.round(remain)}px — 차단/정체 흡수 · T661 장부)`);
+  }
+  // 막힌 자리 — 재경로는 종전 함수 그대로(장부 자리에서 · 몸이 아니라 장부가 섰다) · 길이 바뀌면 장부를 새 길에 다시 건다
+  if (blockedAt && T.leg === body.phase) {
+    const p = state.deps.players.get(body.pid);
+    if (p) {
+      body.prog = T.L; caravanPointAt(body, T.L);
+      p.x = blockedAt.x; p.y = blockedAt.y;
+      const before = body.pts;
+      caravanBlockedResponse(body, p, now);
+      if (body.pts !== before && body._t661 === T) _t661Anchor(body, body.pts, body.phase === 'inbound' ? 'inbound' : 'outbound');   // 재경로(같은 구간) · 고립 귀환(돌아서는 구간)
+    }
+  }
+}
+// 틱의 몸이 따라갈 자리(보이는 것) — 장부 일정을 그날 벽시계 몫만큼 보간 · 막혔으면 장부 자리.
+function _t661Vis(body, now) {
+  const T = body._t661;
+  if (T.stall) return T.L;
+  const f = Math.min(1, Math.max(0, (now - econDayToMs(state.world.day)) / Math.max(1, state.dayMs)));
+  return Math.max(T.L, _t661Target(T, state.world.day + f, _t661End(body)));
+}
+
 // 30Hz — 모든 실체 캐러밴 전진. 활성 청크(플레이어 시야)만 벽 충돌 판정, 비활성은 경로 보간(dormant 동형).
 //   idle 존 스킵보다 앞(onGameTick 최상단 호출)이라 무인 존에서도 진행 — econ과 이격 없음.
 function tickCaravanBodies(now) {
@@ -3102,6 +3220,19 @@ function tickCaravanBodies(now) {
     // 도착 임박 가드 — 실체가 못 갔으면 econ 도착을 뒤로(§5.5b 지연): econ이 몸을 앞지르는 것 차단.
     //   발동 조건 = '최대 따라잡기 속도(명목×4)로도 남은 시간+2틱 안에 못 닿는 잔여'만 — 페이싱의
     //   정상 잔여(마지막 1틱 분량)를 지연으로 오인하지 않게(첫 스모크에서 전 캐러밴 +1일 오발 확인·수정).
+    if (T661_ON && body._t661) {   // ★★[T661] 보이는 몸 — 장부 일정을 따라 걷기만 한다(가드 · 답압 · 재경로는 하루 경계 `_t661Day`)
+      const T = body._t661;
+      const tgt = (T.path.pts === body.pts) ? _t661Vis(body, now) : body.prog;   // 머묾 뒤 아직 옛 길이면(방어) 선다
+      const step = Math.min(remainPx, Math.max(0, tgt - body.prog), body.nomPxMs * 4 * dtMs);
+      if (!(step > 0)) { p.vx = 0; p.vy = 0; _escortMarch(body, dtMs, players); continue; }
+      const next = caravanPointAt(body, body.prog + step);
+      if (isPositionActive && isPositionActive(p.x, p.y) && isBlockedByWall && isBlockedByWall(next.x, next.y, p.x, p.y, 0)) { p.vx = 0; p.vy = 0; continue; }   // 벽 앞에선 선다(재경로는 장부가)
+      body.prog += step;
+      p.vx = (next.x - p.x) / dtMs * 1000; p.vy = (next.y - p.y) / dtMs * 1000;
+      p.x = next.x; p.y = next.y;
+      _escortMarch(body, dtMs, players);
+      continue;
+    }
     if (!body._xzSendWait && now >= body.arriveAt - state.dayMs * 0.02   // ★[T578 추신] 경계로 걷는 중인 몸은 econ 을 더 밀지 않는다(기록은 이미 나왔다)
         && remainPx > Math.max(64, body.nomPxMs * 4 * (Math.max(0, body.arriveAt - now) + 66))) {
       const push = Math.max(1, Math.ceil(remainPx / Math.max(1, body.pxPerDay)));
@@ -3142,7 +3273,7 @@ function _escortMarch(body, dtMs, players) {
     const tp = caravanPointAt(body, Math.max(0, body.prog - 20 * (i + 1)), e);
     ep.vx = (tp.x - ep.x) / dtMs * 1000; ep.vy = (tp.y - ep.y) / dtMs * 1000;   // 걷기 모션(클라 facing)
     ep.x = tp.x; ep.y = tp.y;
-    if (state.roads) state.roads.stampEntityPx(ep, ep.x, ep.y);   // §16 답압(★호위도 길을 밟는다 — 상인 동형. 대열 5명이면 답압 5배 = 교역로가 더 빨리 길이 됨)
+    if (state.roads && !(T661_ON && body._t661)) state.roads.stampEntityPx(ep, ep.x, ep.y);   // ★[T661] 켬이면 호위 답압도 하루 경계 장부가(`_t661Stamp`) · §16 답압(★호위도 길을 밟는다 — 상인 동형. 대열 5명이면 답압 5배 = 교역로가 더 빨리 길이 됨)
   }
 }
 // 게임일 경계(econ 틱 직후) — econ 캐러밴 집합과 실체 대조: 스폰/상태 전이/회수.
@@ -3166,6 +3297,7 @@ function _caravanSyncOne(now, c, S, budgetMs) {
     //   받은 몸(기록이 econ 에 들기 전에 경계 칸에 선 몸)이 제 기록을 만나면 잇는다 · 이웃 존에 가 있는 캐러밴은 몸도 거기다(이 존은 안 세운다).
     if (body && body.c !== c && body.c && body.c._xzPending && c.state !== 'xzone') body.c = c;
     if (c.state === 'xzone') return;
+    if (T661_ON && body && body._t661) _t661Day(body, now);   // ★★[T661] 하루 한 번 장부 — 차례 = `world.caravans` 차례(이 함수를 부르는 그 차례)
     if (!body) {
       if (bodies.size < CARAVAN_BODY_MAX) {
         const r = spawnCaravanBody(c, now, _pb);
@@ -3183,12 +3315,14 @@ function _caravanSyncOne(now, c, S, budgetMs) {
       body.prog = body.len;
       body.phase = 'linger';
       body.lingerUntil = now + state.dayMs * CARAVAN_LINGER_DAY_FRAC;
+      if (T661_ON && body._t661) { _t661Anchor(body, _t661ReturnPts(body), 'inbound'); body._t661.L = 0; }   // ★[T661] 돌아가는 구간의 장부는 도착한 이 경계에서 연다(머묾은 보이는 것)
       S.arrived++;
       console.log(`[${state.zoneId}] 🐂 캐러밴#${c.id} 도착: ${c.from.name}→${c.to.name} ${c.giveRes}${c._abandoned ? ' (빈손 손절)' : ' 매도'} — 1게임시간 머묾 후 귀환`);
     } else if (c.to !== body.toV) {
       // econ 도착 시점 재라우팅(가격 손절 — 기존 로직) — 실체는 현 위치(구 목적지)에서 새 목적지로 재출발
       const p = players.get(body.pid);
-      const pos = p ? { x: p.x, y: p.y } : caravanPointAt(body, body.prog);
+      const pos = (T661_ON && body._t661) ? caravanPointAt(body._t661.path, body._t661.L, { segIdx: 0 })   // ★[T661] 다시 떠나는 자리 = 장부 자리(보이는 몸 자리 말고)
+        : (p ? { x: p.x, y: p.y } : caravanPointAt(body, body.prog));
       const oldToVil = state.byEcon.get(body.toV), newToVil = state.byEcon.get(c.to);
       // ★[T85] 재라우팅도 같은 문을 쓴다 — 여기도 콜드 A* 가 한 조각을 통째로 먹던 자리다.
       //   ⚠아직 몸을 안 만졌다(위 `pos` 는 읽기뿐) — 재진입 안전. 실사용에선 거의 캐시 적중이다
@@ -3203,6 +3337,7 @@ function _caravanSyncOne(now, c, S, budgetMs) {
       else if (newToVil) pts = [{ x: pos.x, y: pos.y }, { x: newToVil.ccx * SZ + SZ / 2, y: newToVil.ccy * SZ + SZ / 2 }]; // 경로 실패 폴백: 직선 보간(비활성 수준 — 행렬 유한쌍이라 실사용 희박)
       else { despawnCaravanNpc(body); bodies.delete(c.id); S.removed++; return; } // 대상 마을 미상(방어) — 실체 생략, econ은 계속
       setBodyPts(body, pts);
+      if (T661_ON && body._t661) { _t661Anchor(body, pts, 'outbound'); if (p) { p.x = pos.x; p.y = pos.y; } }   // ★[T661] 새 길에 장부를 다시 건다 · 몸은 장부 자리에서 다시 떠난다
       body.toV = c.to;
       const legDays = Math.max(1, c.arriveDay - world.day);
       body.departAt = now;
@@ -3221,6 +3356,7 @@ function _caravanSyncSweep(S) {
     if (body._xzHanding || (body.c && body.c._xzPending)) continue;   // ★[T533] 경계 문 앞(이웃 존 답을 기다린다) · 받은 몸(기록이 다음 경계에 든다) — 끔이면 없다
     const c = body.c;
     const killed = c && c.trader && c.from && Array.isArray(c.from.npcs) && c.from.npcs.indexOf(c.trader) < 0;
+    if (T661_ON && body._t661 && !killed && body._t661.leg === 'inbound') { _t661Stamp(body, body._t661.L, body._t661.path.len); body._t661.L = body._t661.path.len; }   // ★[T661] 집에 닿은 날 — 마지막 구간 답압(장부 끝까지)
     despawnCaravanNpc(body);
     bodies.delete(id);
     S.removed++;
@@ -5930,6 +6066,7 @@ function _openDayJobs(now) {
 
   // ⑦ 캐러밴 실체 동기 — 중앙 17ms 인데 **p95 989ms**(안이 전부 A*). 캐러밴 한 대씩 쪼갠다.
   //   쓸기(회수)만 `seen` 전량이 필요해 원자다.
+  if (T661_ON) add('caravan', () => refreshAllFishSustain(Date.now(), true));   // ★[T661] 어장 상한 매기기 — 종전 존 60초 주기(벽시계)를 하루 마감의 정한 자리로(캐러밴 동기 바로 앞 · 재고 회복 시각은 낚시 정본 그대로)
   for (const c of state.world.caravans.slice()) add('caravan', () => _caravanSyncOne(C.now, c, C.car));   // ★[T85] 반환('retry')을 드레인이 본다
   add('caravan', () => { _caravanSyncSweep(C.car); });
 
@@ -11240,7 +11377,11 @@ function npcFishDraw(vil, now) {
 }
 
 // 모든 마을 갱신 — 회복(로지스틱 재생)이 어획 없이도 보이게 하려면 주기적으로 한 번씩 돌아야 한다.
-function refreshAllFishSustain(now) {
+function refreshAllFishSustain(now, t661Day) {
+  // ★★[T661] 켬이면 하루 마감의 정한 자리(`_openDayJobs` · 캐러밴 동기 바로 앞)에서만 돈다 — 존의 벽시계 주기(`FISH_TICK_MS` 60초 setInterval)는 비켜선다.
+  //   T661 이 잰 것: 첫 주기가 `land._fishBase`(씨딩 때 보관만 한 값)를 `fishSustain` 으로 처음 매기는데, 그 순간이 econ 몇째 날인지가
+  //   판마다 다르다(같은 씨앗 세 판 = 41일 · 41일 · 그 뒤) — 어부 상한이 걸리는 날이 갈리고 22~45 마을 생선이 같이 갈린다. 끔이면 이 줄 무동작.
+  if (T661_ON && !t661Day) return 0;
   let n = 0;
   for (const v of state.villages) { if (refreshFishSustain(v, now)) n++; }
   return n;
