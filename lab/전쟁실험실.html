@@ -13961,7 +13961,17 @@ function computeVillageStats(v) {
 //     ★어느 팔이 정본인가는 재민 #63 — 이 술어는 **켜지 않는다**.
 function isSubsistenceFlow(r) { return !!SUBSISTENCE_PER_NPC[r]; }
 const _T416_ARM = (typeof process !== 'undefined' && process.env && process.env.T416_SUBS_GUARD) ? String(process.env.T416_SUBS_GUARD).toLowerCase() : '';
+// ★★[T659 2026-10-08] **통나무 흐름 닻** — 손잡이 `T659_WOOD_FLOW`(**기본 끔** · 미설정·`0` = 종전 비트 · 서버 env · 번들은 process 심 → 랩 끔).
+//   통나무(`wood`)는 SUBSISTENCE_PER_NPC 등재(0.05/인/일 — 주거 본체 목재 · 위 표)라 위 가격 가드가 flowT 를 0 으로 읽는다
+//   ⇒ 값의 닻 = `subs×30` = 1.5N. 그런데 실제 통나무 소비(`_consEMA.wood` — 집 · 땔감 · 장인 투입 … v1 `_cons` 자리들)는
+//   그 열 배 안팎이다(T652 회부 ① · T659 계수). 가드의 전제("subs×30 이 이미 손튜닝 **흐름** target")가 통나무에선 서지 않아,
+//   시딩 곳간을 "넘친다"로 읽고 값이 늦게 오른다(첫 30일 수출 39% · 0 날 6일 전에야 닻 위 — T652 §1).
+//   켜면 **통나무에 한해 가격 쪽 가드를 연다** — 가격 셋(`computeShadowPrices` · `_priceParamsV2` · `tickDecay`)이 이 술어를 부르므로
+//   동기 계약 그대로 한 자리 · target = max(subs×30, buffer, flowT, derivT) 공식 무변(새 수 0 — 이미 있는 흐름 EMA 를 읽을 뿐).
+//   게시판(`who === 'board'`)은 무변. T416 팔(a/b)과 겹치면 통나무 가격 쪽만 이 줄이 이긴다(b 는 이미 무가드).
+const T659_WOOD_FLOW = (() => { const x = (typeof process !== 'undefined' && process.env) ? process.env.T659_WOOD_FLOW : undefined; return x != null && x !== '' && x !== '0'; })();
 function subsGuard(r, who) {
+  if (T659_WOOD_FLOW && r === 'wood' && who === 'price') return false;   // ★[T659] 통나무만 — 가격이 실제 흐름(flowT)을 본다
   if (_T416_ARM === 'b') return false;
   if (_T416_ARM === 'a') return isSubsistenceFlow(r);
   return who === 'board' ? false : isSubsistenceFlow(r);   // 현행: 가격만 가드
@@ -13982,6 +13992,7 @@ module.exports = {
   T489_RUMOR_SPLIT, T468_PORTER, cargoWalkMul, rumorDaySpeed,   // ★[T489 · T496 기본 켬] 소문 분리 — 소문 시계(rumor.js)·짐 배수 · 하네스(⑲)·표가 **이 값**을 읽는다(사본 0)
   T496_CARAVAN_REST,   // ★[T496] 쉬는 짐꾼(캐러밴 = 몸 × 하루 비 · 기본 끔) — 하네스(⑲)·표가 읽는다
   isSubsistenceFlow, subsGuard,   // ★[T416] subs 가드 술어 하나 — 가격 셋·게시판 하나가 같은 문을 부른다
+  T659_WOOD_FLOW,   // ★[T659] 통나무 흐름 닻 손잡이(기본 끔) — 하네스·자가 읽는다
   // 시장 충격 정산 헬퍼(1b) — 프로브·자가검증용 노출
   _priceParamsV2, _impactSegs, _impactF, _impactBuyV2, _impactSellV2,
   // 기온 모델(2026-07-12) — 생활층(밤낮 시간 곡선)·프로브용 노출
