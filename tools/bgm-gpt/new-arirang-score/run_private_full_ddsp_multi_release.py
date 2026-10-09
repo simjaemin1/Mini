@@ -21,6 +21,11 @@ from typing import Any, Callable, Mapping, Sequence
 
 PINNED_LEGACY_RUNNER_SHA256 = "3d160f3d9021d3d1c302901554e8d04546c4965f02bf919ab5655cd927771799"
 PINNED_COMPAT_PLAN_SHA256 = "a06eea18b06d5af458afb87184899b498d25ba564eaf5a4ad3412cb9084b7458"
+PINNED_B1_FINAL_C_PLAN_SHA256 = "a09a8daa9cc68c636c7fc3ecc86aea912dd182250caa4db9eec2f3680160b244"
+AUDITION_PLAN_SHA256 = {
+    "B0": PINNED_COMPAT_PLAN_SHA256,
+    "B1_final_C_only": PINNED_B1_FINAL_C_PLAN_SHA256,
+}
 EXPECTED_RELEASE_COUNT = 4
 WINDOW_SECONDS = 0.020
 
@@ -97,6 +102,7 @@ def make_multi_release_qa(
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("--legacy-runner", type=Path, required=True)
+    parser.add_argument("--audition-slot", choices=tuple(AUDITION_PLAN_SHA256), default="B0")
     own, forwarded = parser.parse_known_args(argv)
     legacy = load_pinned_legacy_runner(own.legacy_runner)
     args = legacy.parse_args(forwarded)
@@ -104,8 +110,21 @@ def main(argv: Sequence[str] | None = None) -> int:
         raise ValueError("this wrapper permits only an explicitly confirmed full-length private R&D render")
     if not args.experimental_hard_f0_step or args.checkpoint_native_reverb or args.reference_flute_wav or args.component_diagnostics:
         raise ValueError("the only permitted experiment is a dry, hard-step, no-reference render")
-    if sha256(args.plan.expanduser().resolve()) != PINNED_COMPAT_PLAN_SHA256:
-        raise ValueError("authorial compatibility plan differs from the validated private R&D copy")
+    plan_sha256 = sha256(args.plan.expanduser().resolve())
+    if plan_sha256 != AUDITION_PLAN_SHA256[own.audition_slot]:
+        raise ValueError("authorial plan differs from the pinned private R&D audition slot")
+    if own.audition_slot == "B1_final_C_only":
+        b0_path = Path(__file__).resolve().with_name("new_ari_8bar_ddsp_gugak_legacy100_r1.json")
+        if sha256(b0_path) != PINNED_COMPAT_PLAN_SHA256:
+            raise ValueError("B1 audition source B0 plan changed")
+        plan = json.loads(args.plan.expanduser().resolve().read_text(encoding="utf-8"))
+        b1 = plan.get("private_b1_audition", {})
+        if (b1.get("b0_compat_plan_sha256") != PINNED_COMPAT_PLAN_SHA256
+                or b1.get("selected_event_id") != "b08_e0_rearticulate"
+                or b1.get("no_training") is not True
+                or b1.get("no_game_or_public_release") is not True
+                or b1.get("published_checkpoint_rights_cleared_for_game") is not False):
+            raise ValueError("B1 private-only one-event provenance gate failed")
     _, events, duration = legacy._validate_plan(args.plan.expanduser().resolve())
     if duration != 19.2 or sum(event["articulation"] == "release" for event in events) != EXPECTED_RELEASE_COUNT:
         raise ValueError("the pinned full plan must have 19.2 seconds and exactly four releases")
@@ -134,6 +153,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         "legacy_runner_sha256": PINNED_LEGACY_RUNNER_SHA256,
         "wrapper_sha256": sha256(Path(__file__).resolve()),
         "compat_plan_sha256": PINNED_COMPAT_PLAN_SHA256,
+        "render_plan_sha256": plan_sha256,
+        "audition_slot": own.audition_slot,
         "runtime_report_sha256": sha256(report_path),
         "dry_wav_sha256": report["outputs"]["dry_wav"]["sha256"],
         "qa_change": "only reuse original 20 ms/-6 dB release-boundary check separately at each of four releases; no score, controls, decoder, synthesis, or audio edits",
