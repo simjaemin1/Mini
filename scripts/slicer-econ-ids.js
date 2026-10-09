@@ -23,6 +23,9 @@ Module._load = function (request, parent, isMain) {
       const P = orig.apply(this, arguments);
       const seen = []; let calls = 0;
       const v0 = P.village, t0 = P.tail;
+      //   ★[T665] 미끼 — `SLICER_BAIT=skip-trade` 이면 이 팔의 econ 정본 조각에서 교역 단계를 빼먹는다(조각내기가 일을 빠뜨린 꼴).
+      //     ⑧ 의 경제 크기 판정이 이걸 못 잡으면 그 판정은 아무것도 못 지킨다(하네스가 그 팔에만 준다 · 기본 무동작).
+      if (process.env.SLICER_BAIT === 'skip-trade') P.trade = function () {};
       P.village = function (v) { calls++; seen.push(String(v && (v.name || v.id))); return v0.apply(this, arguments); };
       P.tail = function () {
         const r = t0.apply(this, arguments);

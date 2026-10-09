@@ -37,6 +37,8 @@ const DAYS = parseInt(process.env.SLICER_DAYS || '', 10) || 6;
 const { SEED_C, SEED_Z, ensureSeed } = require('./slicer-seed.js');
 
 let pass = 0, fail = 0;
+let STOP_AT = null;   // ★[T665] 씨앗 날 + DAYS(아래 씨앗 준비 뒤에 읽는다)
+const _t665 = {};   // ★[T665] 쌍마다 경제 크기 차(바닥 재기 — `T665_DUMP` 가 있을 때만 파일로)
 const ok = (c, m, extra) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (extra !== undefined && extra !== '' ? `  ${extra}` : '')); };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const procs = [];
@@ -69,9 +71,12 @@ async function arm(label, sliceMs, extraEnv) {
     PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
     VILLAGE_DAY_MS: String(DAY_MS), ENABLE_BANDITS: '0', ENABLE_ROADS: '0', ENABLE_WILDLIFE: '0',
     VILLAGE_TICK_SLICE_MS: String(sliceMs),
+    SLICER_BAIT: '',   // ★[T665] 미끼는 부모 env 에서 새지 않게 — 조각내기 팔만 `extraEnv` 로 받는다
     ...(extraEnv || {}),   // ★[T513] 팔마다 손잡이 하나 더(`T513_DAY_SLICE` 팔)
     // ★[T645] ⑨ 증인 — econ 정본 조각의 마을 칸이 하루에 어느 마을로 따로 불렸나(시간 무관 · 존 코드 무접촉 · 값 무변)
-    NODE_OPTIONS: `${process.env.NODE_OPTIONS || ''} --require ${path.join(__dirname, 'slicer-econ-ids.js')}`.trim(), SLICER_ECON_OUT: ECON,
+    NODE_OPTIONS: `${process.env.NODE_OPTIONS || ''} --require ${path.join(__dirname, 'slicer-econ-ids.js')} --require ${path.join(__dirname, 'slicer-day-stop.js')}`.trim(), SLICER_ECON_OUT: ECON,
+    SLICER_STOP_DAYS: String(DAYS),   // ★[T665] 모든 팔을 같은 날에서 세운다(`slicer-day-stop.js` — 같은 날끼리 견주게)
+    ...(STOP_AT != null ? { SLICER_STOP_AT: String(STOP_AT) } : {}),   //   절대 날 = 씨앗 날 + DAYS(부팅 날을 늦게 읽어 한 팔만 하루 밀리던 판이 있었다)
     // ★[T42 뒤] 교역로 **선계산을 끈다.** 이 하네스의 주제는 *일틱 조각내기*이고, 선계산은
     //   무인 프레임에 A*(100~1,900ms)를 도는 별개 층이다. 켜 두면 루프 지연·경제 잡음이
     //   그쪽에서 들어와 조각내기를 못 잰다(실제로 ⑥·⑧이 그걸로 흔들렸다).
@@ -99,7 +104,22 @@ async function arm(label, sliceMs, extraEnv) {
   //   '어제치가 남은 마을 수'가 달라진다(실측: 한쪽 49곳이 526일 · 다른 쪽 50곳이 527일).
   //   그 상태로 DB 를 대조하면 **없는 발산을 보고**하게 된다(⑧이 첫 판에 정확히 그랬다).
   //   ⚠계측(`j`)은 **위에서 이미 떴다** — 이 대기 구간은 판정 창 밖이다.
-  await sleep(DAY_MS * 2 + 1000);
+  //   ★[T665] 날이 얼었으니(`slicer-day-stop.js`) 마을 행이 **다 같은 날**로 저장될 때까지 기다렸다 끈다(종전: 하루 둘을 더 흘리고 끝 —
+  //     끄는 순간 팔마다 저장된 날이 갈려 같은 날 마을이 0~4곳만 남는 판이 있었다). 상한은 종전 대기의 다섯 배(배수가 못 끝나면 그대로 끄고 전제가 말한다).
+  { const { DatabaseSync } = require('node:sqlite');
+    const until = Date.now() + (DAY_MS * 2 + 1000) * 5;
+    let last = null;
+    for (;;) {
+      let days = null;
+      try { const db = new DatabaseSync(ZDB, { readOnly: true }); days = db.prepare('SELECT MIN(day) lo, MAX(day) hi, COUNT(*) n FROM villages WHERE econ_state IS NOT NULL').get(); db.close(); } catch (e) {}
+      last = days;
+      if (days && days.n > 0 && days.lo === days.hi && (STOP_AT != null ? days.hi >= STOP_AT : (j && j.econTick && j.econTick.last && days.hi >= j.econTick.last.day))) break;
+      if (Date.now() > until) break;
+      await sleep(500);
+    }
+    //   진단 한 줄 — 팔이 몇 일 행으로 섰나(전제가 빨가면 여기부터 본다)
+    console.log(`  · [${label}] 마을 행 날 ${last ? `${last.lo}~${last.hi} · ${last.n}곳` : '—'}${STOP_AT != null ? ` (목표 ${STOP_AT})` : ''}`);
+  }
   killAll();
   await sleep(4000);   // 포트 반납(직전 배치의 교훈 — 연속 부팅은 바인드에 실패한다)
   return j;
@@ -110,6 +130,10 @@ async function arm(label, sliceMs, extraEnv) {
   // 씨앗 DB — 없으면 한 번 만들어 둔다(그 뒤로는 재사용). 절차는 공용 정본이 갖고 있다.
   { const r = await ensureSeed();
     if (!r.ok) { console.log(`  ✗ 씨앗 준비 실패 — ${r.why}`); process.exit(1); } }
+  //   ★[T665] 씨앗 날 — 모든 팔이 여기서 출발해 씨앗 날 + DAYS 에서 선다(`slicer-day-stop.js`)
+  try { const { DatabaseSync } = require('node:sqlite'); const db = new DatabaseSync(SEED_Z, { readOnly: true });
+    const r = db.prepare('SELECT MAX(day) d FROM villages').get(); db.close(); if (r && Number.isFinite(r.d)) STOP_AT = r.d + DAYS; } catch (e) { STOP_AT = null; }
+  console.log(`  · 씨앗 날 ${STOP_AT != null ? STOP_AT - DAYS : '?'} → 모든 팔이 ${STOP_AT != null ? STOP_AT : '부팅 날 + ' + DAYS} 일에서 선다(T665)`);
 
   const A = await arm('base', 0);    // 대조군 — 양보 끈을 뽑았다(종전 동작)
   // ★★[T49 2026-09-02] 자기 실패 검사기 — `SLICER_SABOTAGE=1` 이면 **조각내기 팔에도 끈을 뽑는다.**
@@ -117,7 +141,7 @@ async function arm(label, sliceMs, extraEnv) {
   //   밖에서 한 번 돌려 빨간 걸 보일 수 있어야 한다. 기본 부팅엔 이 분기가 없다.
   const SLICE_MS = process.env.SLICER_SABOTAGE === '1' ? 0 : 16;
   if (SLICE_MS === 0) console.log('  ★사보타주 — 조각내기 팔도 끈을 뽑는다(효과비가 1 로 떨어져야 한다)');
-  const B = await arm('head', SLICE_MS);   // 조각내기
+  const B = await arm('head', SLICE_MS, process.env.SLICER_BAIT ? { SLICER_BAIT: process.env.SLICER_BAIT } : null);   // 조각내기 · ★[T665] 미끼는 이 팔에만
   // ★★[T49 2026-09-02] **대조군을 한 번 더 돈다 — 잡음 바닥을 재기 위해서다**(족보 80).
   //   ⑥ 은 "최대 막힘이 대조군의 1/3 이하"였는데, `max` 는 꼬리가 두꺼운 통계다.
   //   2026-09-01 전수에서 2183.14 ≤ 2118.1 로 **3%** 차이로 떨어졌다 — 그건 회귀가 아니라
@@ -314,6 +338,33 @@ async function arm(label, sliceMs, extraEnv) {
     };
     const MB = cmpMass('/tmp/slicer-base-z.db', '/tmp/slicer-head-z.db');
     const MA = cmpMass('/tmp/slicer-head-z.db', '/tmp/slicer-aa-z.db');
+    // ★★[T665 2026-10-05] **문턱 = 이 판의 잡음 바닥에서 유도**(T411 꼴 · 새 수 0). 종전 문턱(인구 0.5% · 식량 2% · 마을 3명)은 손으로 적은 수였고,
+    //   대조군 줄은 식량 바닥을 **인구 문턱(0.5%)** 에 대고 있었다 — main 도 같은 판 두 번이 0.3~1.1% 라 그 줄은 늘 반쯤 빨갰다(T655 회부 ③ · T645 회부 ②).
+    //   ★바닥 B = **판정 받는 팔(`head`)이 안 낀** 다섯 팔(base · base2 · aa · day0 · life0 — 전부 같은 경제여야 하는 제품 판들) 사이 열 쌍의 차 중 큰 쪽
+    //     (곳간 식량 합 · 인구 합 · 마을별 최대 — 셋 따로). 미끼가 바닥을 부풀려 제 몸을 숨기지 못하게 head 는 바닥에 안 넣는다.
+    //   ★문턱 = 2B — **삼각 부등식**에서 나온다: head 가 그 다섯과 같은 경제라면 어느 팔 Y 를 거쳐도 |head − R| ≤ |head − Y| + |Y − R| 이고
+    //     두 다리 다 바닥 안이다(⇒ ≤ 2B). "같은 판 한 번 더"를 바닥 그 자체(최댓값 한 표본)에 대면 같은 분포의 표본끼리라 동전이다(T411 §ⓐ ·
+    //     T665 실측: 바닥 = 최댓값이면 10판 중 3판 빨강) — T411 ⑧ 이 ⑦ 의 바닥을 쓴 그 까닭처럼 구조로 넉넉한 자를 댄다.
+    //   미끼(`SLICER_BAIT=skip-trade` — head 의 econ 이 교역을 빼먹는다)는 그 문턱 밖으로 나가 빨갛다(보고 T665 §③).
+    const BEN = ['base', 'base2', 'aa', 'day0', 'life0'];
+    const PM = {};
+    const pm = (x, y) => { const k = x < y ? `${x}/${y}` : `${y}/${x}`; if (!PM[k]) PM[k] = cmpMass(`/tmp/slicer-${x}-z.db`, `/tmp/slicer-${y}-z.db`); return PM[k]; };
+    const met = (m) => ({ food: Math.abs(m.f1 - m.f2), pop: m.dPop, max: m.dPopMax, n: m.n });
+    const BF = { food: 0, pop: 0, max: 0, pairs: 0, at: {} };
+    for (let i = 0; i < BEN.length; i++) for (let k = i + 1; k < BEN.length; k++) {
+      const m = pm(BEN[i], BEN[k]); if (m.n < 10) continue; const e = met(m), tag = `${BEN[i]}/${BEN[k]}`; BF.pairs++;
+      if (e.food > BF.food) { BF.food = e.food; BF.at.food = tag; }
+      if (e.pop > BF.pop) { BF.pop = e.pop; BF.at.pop = tag; }
+      if (e.max > BF.max) { BF.max = e.max; BF.at.max = tag; }
+    }
+    const judge = (m) => { const e = met(m); return { ok: e.n >= 10 && e.food <= 2 * BF.food && e.pop <= 2 * BF.pop && e.max <= 2 * BF.max, e }; };
+    const fmtJ = (j) => `식량 차 ${j.e.food.toFixed(0)} ≤ ${(2 * BF.food).toFixed(0)} · 인구 차 ${j.e.pop} ≤ ${2 * BF.pop} · 마을 최대 ${j.e.max} ≤ ${2 * BF.max}명`;
+    if (process.env.T665_DUMP) { const AL = ['base', 'head', 'base2', 'aa', 'day0', 'life0']; for (let i = 0; i < AL.length; i++) for (let k = i + 1; k < AL.length; k++) pm(AL[i], AL[k]); }   // 자 밖 판: 쌍 전부(바닥 재기)
+    _t665.BF = BF; _t665.PM = PM;
+    const MA0 = cmpMass('/tmp/slicer-base-z.db', '/tmp/slicer-base2-z.db');   // ★[T665] 같은 판 둘째 쌍(끈 뽑음 두 판)
+    _t665.AA = cnt('/tmp/slicer-head-z.db', '/tmp/slicer-aa-z.db'); _t665.AB = cnt('/tmp/slicer-base-z.db', '/tmp/slicer-head-z.db');
+    _t665.AA0 = cnt('/tmp/slicer-base-z.db', '/tmp/slicer-base2-z.db');
+    Object.assign(_t665, { MA, MA0, MB });
     ok(MB.n >= 10 && MB.pop1 > 100, '⑧ [전제] 잴 만큼 큰 경제다(자명 통과 금지)', `${MB.n}곳 · 인구 ${MB.pop1}`);
     // ★★[정직하게 적는다] A/A 는 **완전 동일**이다 — 이 층은 같은 일정이면 결정론이다.
     //   그러니 아래 A/B 차이는 잡음이 아니라 **조각내기가 만든 진짜 차이**다.
@@ -323,11 +374,10 @@ async function arm(label, sliceMs, extraEnv) {
     //     순서가 크게 뒤틀리면(예: 단계 하나를 빠뜨리면) 이 문턱을 훌쩍 넘는다.
     console.log(`  · A/A(같은 일정 두 판) — 인구 차 ${MA.dPop} · 식량 차 ${(MA.fRel * 100).toFixed(3)}%   ← 이 층의 **잡음 바닥**`);
     console.log(`  · A/B(끈 뽑음 ↔ 조각내기) — 인구 ${MB.pop1} vs ${MB.pop2} · 식량 ${MB.f1.toFixed(0)} vs ${MB.f2.toFixed(0)} (${(MB.fRel * 100).toFixed(2)}%)  ★회부 §A-5`);
-    ok(MA.fRel <= 0.005 && MA.dPop / Math.max(1, MA.pop1) <= 0.005, '⑧ [대조군] 같은 일정 두 판의 **잡음 바닥이 문턱보다 작다**(그래야 아래 판정이 뜻을 갖는다)',
-      `인구 차 ${MA.dPop} · 식량 차 ${(MA.fRel * 100).toFixed(3)}% ≤ 0.5%`);
-    ok(MB.dPop / Math.max(1, MB.pop1) <= 0.005, '⑧ ★★인구가 실질 동일(≤0.5%)', `${MB.pop1} vs ${MB.pop2} (${(MB.dPop / Math.max(1, MB.pop1) * 100).toFixed(2)}%)`);
-    ok(MB.dPopMax <= 3, '⑧ ★★마을 한 곳도 크게 안 갈렸다(≤3명)', `최대 차 ${MB.dPopMax}명`);
-    ok(MB.fRel <= 0.02, '⑧ ★★곳간 식량 총량이 실질 동일(≤2%)', `${MB.f1.toFixed(0)} vs ${MB.f2.toFixed(0)} (${(MB.fRel * 100).toFixed(2)}%)`);
+    ok(BF.pairs === 10, '⑧ [대조군] 잡음 바닥 B 가 섰다 — 판정 받는 팔이 안 낀 다섯 팔의 열 쌍(같은 날 마을 ≥10)',
+      `쌍 ${BF.pairs} · B = 식량 ${BF.food.toFixed(0)}(${BF.at.food || '-'}) · 인구 ${BF.pop}(${BF.at.pop || '-'}) · 마을 최대 ${BF.max}명(${BF.at.max || '-'})`);
+    { const j = judge(MB); _t665.J8 = j;
+      ok(j.ok, '⑧ ★★끈 뽑음 ↔ 조각내기 — 곳간 식량 · 인구 · 마을 최대가 **2B 안**(바닥에서 삼각 부등식으로 유도)', `${fmtJ(j)} (식량 ${(MB.fRel * 100).toFixed(2)}%)`); }
 
     // ⑨ ★★[T513 · T523] **econ 하루 틱 조각**(기본 켬) ↔ 되돌림(`T513_DAY_SLICE=0` · econ 한 조각) — ⑧ 과 같은 자(경제의 크기).
     //   econ 정본 조각(`tickWorldV2Parts`)은 `tickWorldV2` 가 부르는 그 한 벌이라 조각 사이에 아무 일도 없으면 계산이 같다 —
@@ -354,11 +404,10 @@ async function arm(label, sliceMs, extraEnv) {
       ok(D2.econTick.days >= DAYS, `⑨ 되돌림 ${DAYS}일이 모두 마감됐다`, `${D2.econTick.days}일`);
       const bEcon = (d0.stages && d0.stages.econ) || 0;
       ok(pmax < bEcon, '⑨ ★econ 의 가장 큰 조각(켬)이 되돌림의 econ 한 조각보다 작다', `${pmax}ms(${pmaxAt}) < ${bEcon}ms`);
-      const M9 = cmpMass('/tmp/slicer-day0-z.db', '/tmp/slicer-head-z.db');
+      const M9 = cmpMass('/tmp/slicer-day0-z.db', '/tmp/slicer-head-z.db'); _t665.M9 = M9;
       console.log(`  · 되돌림 ↔ 켬 — 인구 ${M9.pop1} vs ${M9.pop2} · 식량 ${M9.f1.toFixed(0)} vs ${M9.f2.toFixed(0)} (${(M9.fRel * 100).toFixed(2)}%) · ${M9.n}곳`);
-      ok(M9.n >= 10 && M9.dPop / Math.max(1, M9.pop1) <= 0.005, '⑨ ★★인구가 실질 동일(≤0.5%)', `${M9.pop1} vs ${M9.pop2}`);
-      ok(M9.dPopMax <= 3, '⑨ ★★마을 한 곳도 크게 안 갈렸다(≤3명)', `최대 차 ${M9.dPopMax}명`);
-      ok(M9.fRel <= 0.02, '⑨ ★★곳간 식량 총량이 실질 동일(≤2%)', `${(M9.fRel * 100).toFixed(2)}%`);
+      { const j = judge(M9); _t665.J9 = j;
+        ok(j.ok, '⑨ ★★되돌림 ↔ 켬 — 곳간 식량 · 인구 · 마을 최대가 **2B 안**(⑧ 과 같은 자)', `${fmtJ(j)} (식량 ${(M9.fRel * 100).toFixed(2)}%)`); }
       const B9 = cnt('/tmp/slicer-day0-z.db', '/tmp/slicer-head-z.db');
       console.log(`  · 바이트 일치(정보) — 되돌림 ↔ 켬 동일 ${B9.same}·다름 ${B9.diff}(건너뜀 ${B9.skip})`);
     }
@@ -377,16 +426,16 @@ async function arm(label, sliceMs, extraEnv) {
       ok(JSON.stringify(l0.order) === JSON.stringify(CANON), '⑩ 되돌림도 단계 순서가 정본과 같다', JSON.stringify(l0.order));
       ok(L2.econTick.days >= DAYS, `⑩ 되돌림 ${DAYS}일이 모두 마감됐다`, `${L2.econTick.days}일`);
       ok(stepMax > 0 && stepMax <= lifeOff, '⑩ ★쉼표 조각 최대 ≤ 되돌림 한 마을 생활층 최대(창 전체)', `${stepMax}ms ≤ ${lifeOff}ms`);
-      const M10 = cmpMass('/tmp/slicer-life0-z.db', '/tmp/slicer-head-z.db');
+      const M10 = cmpMass('/tmp/slicer-life0-z.db', '/tmp/slicer-head-z.db'); _t665.M10 = M10;
       console.log(`  · 되돌림 ↔ 켬 — 인구 ${M10.pop1} vs ${M10.pop2} · 식량 ${M10.f1.toFixed(0)} vs ${M10.f2.toFixed(0)} (${(M10.fRel * 100).toFixed(2)}%) · ${M10.n}곳`);
-      ok(M10.n >= 10 && M10.dPop / Math.max(1, M10.pop1) <= 0.005, '⑩ ★★인구가 실질 동일(≤0.5%)', `${M10.pop1} vs ${M10.pop2}`);
-      ok(M10.dPopMax <= 3, '⑩ ★★마을 한 곳도 크게 안 갈렸다(≤3명)', `최대 차 ${M10.dPopMax}명`);
-      ok(M10.fRel <= 0.02, '⑩ ★★곳간 식량 총량이 실질 동일(≤2%)', `${(M10.fRel * 100).toFixed(2)}%`);
+      { const j = judge(M10); _t665.J10 = j;
+        ok(j.ok, '⑩ ★★되돌림 ↔ 켬 — 곳간 식량 · 인구 · 마을 최대가 **2B 안**(⑧ 과 같은 자)', `${fmtJ(j)} (식량 ${(M10.fRel * 100).toFixed(2)}%)`); }
       const B10 = cnt('/tmp/slicer-life0-z.db', '/tmp/slicer-head-z.db');
       console.log(`  · 바이트 일치(정보) — 되돌림 ↔ 켬 동일 ${B10.same}·다름 ${B10.diff}(건너뜀 ${B10.skip})`);
     }
   } catch (e) { ok(false, '⑧ 발산 대조 실패', e.message); }
 
+  if (process.env.T665_DUMP) { try { fs.appendFileSync(process.env.T665_DUMP, JSON.stringify(_t665) + '\n'); } catch (e) {} }   // ★[T665] 바닥 재기(자 밖 판에서만)
   console.log(`\n=== ${pass} 통과 / ${fail} 실패 ===\n`);
   process.exit(fail ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });
