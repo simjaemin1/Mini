@@ -135,7 +135,7 @@ const CARAVAN_BLOCKTEST = parseInt(process.env.VILLAGE_CARAVAN_BLOCKTEST || '0',
 //       세계에 닿는 것(답압 · econ 시계 · 재경로)은 틱에서 안 한다.
 //   ★같은 손잡이로 하나 더(게이트가 드러냈다 · 보고 T661 §④): 어장 상한 매김(`refreshAllFishSustain`)을 존 60초 주기(벽시계) 대신 하루 마감의 정한 자리에서.
 //   ⚠끔 = main 바이트(이 손잡이 줄이 안 닿는다). 남은 벽시계 꼴 자리(재경로 쿨다운 `CARAVAN_REPAIR_COOLDOWN_MS` · 머묾 `lingerUntil` 등)는 보고 T661 표 — 고치지 않았다.
-const T661_ON = process.env.T661_CARAVAN_TICK === '1';
+const T661_ON = process.env.T661_CARAVAN_TICK !== '0';   // ★PM 10-09 켬 기본(결정론이 캐논 · 족보 591 · 되돌림 =0)
 
 // --- P3: 실체 전쟁 상수 ---
 //   ★[T284 2026-09-14] 관측자 LOD 반경·몸 상한·headless 폴백은 **제거**했다 —
