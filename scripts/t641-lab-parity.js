@@ -20,7 +20,9 @@
 //
 // ⓗ `--slow` — 관찰 속도(119 · 실제 도보) 판을 **rAF 를 손으로 돌려** 결정론으로(`test-lab-psite` 그 꼴 · 마을 2 · 인구 40 · 시드 7 ·
 //   A = 집터 없음 · B = 2일째 첫 프레임에 플레이어 집터) — 이식 전 ↔ 지금 세계 지문이 프레임 500마다 같은가.
-//   (`test-lab-psite` 는 실시간 400ms 표본으로 지정 시각·하루 표본을 정해 같은 파일도 판마다 갈린다 — 그 하네스 대신 결정론 판으로 잰다)
+//   (T641 때 `test-lab-psite` 는 실시간 400ms 표본으로 지정 시각·하루 표본을 정해 같은 파일도 판마다 갈렸다 — 그래서 이 결정론 판으로 쟀다.
+//    ★[T660] psite 는 T649 에 같은 꼴(줄 rAF · 랩 날 첫 프레임 · 원점 0)로 옮겨 이제 결정론이다 — 시계 정본 `scripts/fixture-lab-clock.js`.
+//    다른 점 하나: 이 판은 토글 전에 줄을 비워 uiLoop 를 뺀다(psite 는 둔다 · T649 실측: 지정 프레임·칸·끝 프레임·mapBeds 가 같았다).)
 //
 // 실행: node scripts/t641-lab-parity.js [--lab war|village|both] [--days 500] [--seeds 7,42,1020] [--nvil 8]
 //                                       [--on T602_NEW_FISH=1] [--decoy PEACE_W=0.3] [--ref origin/main] [--json out.json]

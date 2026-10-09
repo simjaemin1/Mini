@@ -11,10 +11,15 @@
 //   ⑥ 광부 정원 되먹임: land.ore 하락 → jobCapacity.miner 하락
 //   ⑦ pageerror·console error 0
 //
-// 결정론: Math.random 시드 고정 + performance.now 가상시계(test-lab-psite 동형)
+// 결정론: Math.random 시드 고정 + performance.now 가상시계 — ★[T660] 시계 정본 `fixture-lab-clock`(T649 꼴)
+//   · rAF 는 줄로 받고 프레임은 하네스가 민다 · ①② 를 재는 동안에도 프레임은 안 돈다(토글 전 0 프레임 = 시계 원점 0)
+//   · 표본 = 랩 날마다 **첫 프레임** · 끝(sN) = 랩 날 startDay+RUN_DAYS 의 첫 프레임
+//   · 마감 = "시계가 섰나" 하나(종전: 300ms 들여다보기 · 1,500초 벽시계 — 넘으면 `⚠ 시간 초과` 찍고 **짧은 창으로 그냥 판정**했다.
+//     T641 두 판이 60일 중 47일 · 38일에서 잘렸다 — ③~⑥ 이 판마다 다른 날을 쟀다)
 const { chromium } = require('playwright');
 const path = require('path');
 const os = require('os');
+const LC = require('./fixture-lab-clock');
 
 const CHROME = process.env.CHROME_PATH || undefined;
 // ★랩 파일 경로: LAB_FILE 환경변수(기본 `lab/전쟁실험실.html`).
@@ -24,16 +29,7 @@ const SPEED = parseInt(process.env.SPEED || '119', 10);
 const NVIL = 3, POP = parseInt(process.env.POP || '40', 10), SEED = 7;
 const RUN_DAYS = parseInt(process.env.RUN_DAYS || '60', 10);
 
-const INIT = (prng) => `
-(() => {
-  let s = ${prng};
-  Math.random = function(){ s|=0; s=(s+0x6D2B79F5)|0; let t=Math.imul(s^(s>>>15),1|s); t=(t+Math.imul(t^(t>>>7),61|t))^t; return ((t^(t>>>14))>>>0)/4294967296; };
-  let vt = 0;
-  const _raf = window.requestAnimationFrame.bind(window);
-  performance.now = () => vt;
-  window.requestAnimationFrame = (cb) => _raf(() => { vt += 16.667; cb(vt); });
-})();
-`;
+const INIT = LC.init;
 
 const SNAP = () => {
   const v = VILS.find((q) => q.role === 'mining') || VILS[0];
@@ -135,28 +131,45 @@ const SNAP = () => {
   let s0 = await take();
   const startDay = s0.day;
   const series = [s0];
-  const t0 = Date.now();
+  let frame = 0;
   for (;;) {
     const s = await take();
-    if (s.day !== series[series.length - 1].day) { series.push(s); if ((s.day - startDay) % 10 === 0) console.log('    …day ' + (s.day - startDay) + '/' + RUN_DAYS + ' 재고 ' + s.oreSum + ' 광부 ' + s.miners + ' land.ore ' + s.landOre + ' (' + ((Date.now() - t0) / 1000).toFixed(0) + 's)'); }
+    if (s.day !== series[series.length - 1].day) { series.push(s); if ((s.day - startDay) % 10 === 0) console.log('    …day ' + (s.day - startDay) + '/' + RUN_DAYS + ' 재고 ' + s.oreSum + ' 광부 ' + s.miners + ' land.ore ' + s.landOre + ' (프레임 ' + frame + ')'); }
     if (s.day >= startDay + RUN_DAYS) break;
-    if (Date.now() - t0 > 1500000) { console.log('  ⚠ 시간 초과 — day ' + s.day); break; }
-    await page.waitForTimeout(300);
+    frame = await LC.untilDay(page, s.day + 1);   // ★[T660] 다음 랩 날의 첫 프레임까지 민다(종전: 300ms 잠 · 1,500초 벽시계)
   }
   const sN = series[series.length - 1];
 
   // ── ③ 2인 1조 ──
   console.log('③ 2인 1조');
-  const cells = sN.pairs.filter(([k]) => k !== 'none');
-  const multi = cells.filter(([, mps]) => mps.length > 1);
-  const sameOnly = multi.filter(([, mps]) => mps.every((m) => m === mps[0]));
+  // ★[T660] 셀·조 셈을 한 함수로 뽑았다 — 아래 미끼도 **같은 자**로 잰다(뜻 무변)
+  const pairStat = (pairs) => {
+    const cells = pairs.filter(([k]) => k !== 'none');
+    const multi = cells.filter(([, mps]) => mps.length > 1);
+    const sameOnly = multi.filter(([, mps]) => mps.every((m) => m === mps[0]));
+    return { cells, multi, sameOnly };
+  };
+  const oneTeam = (st) => st.multi.length === 0 || st.sameOnly.length === st.multi.length;
+  const { cells, multi, sameOnly } = pairStat(sN.pairs);
   const sizes = {}; for (const [, mps] of cells) sizes[mps.length] = (sizes[mps.length] || 0) + 1;
   console.log('    광부 ' + sN.miners + '명 · 점유 셀 ' + cells.length + '개 · 셀당 인원 분포 ' + JSON.stringify(sizes));
   ok(sN.role === 'mining', '대상 마을 = 광산촌 (실측 ' + sN.role + ' · rockEdge ' + sN.rockEdge + '셀)');
   ok(cells.length > 0, '광부가 광맥 셀에 배치됨');
-  ok(multi.length === 0 || sameOnly.length === multi.length,
+  ok(oneTeam({ multi, sameOnly }),
     '한 셀에 2명 이상이면 전원 같은 조 (' + sameOnly.length + '/' + multi.length + ')');
   ok(Math.max(0, ...Object.keys(sizes).map(Number)) <= 2, '한 셀 최대 2명');
+  // ★[T660] 미끼 — ③ 이 지키는 것(한 광맥 셀엔 한 조만)을 끝 표본 **뒤에** 일부러 깬다: 대상 마을 주민 둘을 서로 다른
+  //   조 번호로 같은 광맥 셀에 광부로 세운다(랩 파일 무접촉 · 프레임 0 — 위 판정들은 이미 잰 sN 을 쓴다).
+  //   같은 SNAP · 같은 자로 다시 재면 빨개야 한다 — 광부가 0 인 판에서도 자가 살아 있음을 보인다.
+  const sB = await page.evaluate(() => {
+    const v = VILS.find((q) => q.role === 'mining') || VILS[0];
+    const [cx, cy] = v.oreRich.keys().next().value.split(',').map(Number);
+    const a1 = v.agents.find((a) => a.job !== 'miner'), a2 = v.agents.find((a) => a !== a1 && a.job !== 'miner');
+    for (const a of [a1, a2]) { a.job = 'miner'; a.work = { cx, cy }; a._mp = v.agents.indexOf(a); }
+    return true;
+  }).then(() => take());
+  const bSt = pairStat(sB.pairs);
+  ok(!oneTeam(bSt), '③ⓜ 자명 통과 금지 — 한 광맥 셀에 다른 조 둘을 일부러 세운 미끼는 같은 자로 **빨강** (같은 조 셀 ' + bSt.sameOnly.length + '/' + bSt.multi.length + ')');
 
   // ── ④ 채광 실체 ──
   console.log('④ 채광 실체');
