@@ -4,7 +4,7 @@
 //   끄면(기본) 요청조차 안 간다 — 시트 경로 비트 동일 · 화소 동일.
 // ★[T545] 소체 = MPFB(MakeHuman · CC0) 실사풍 저폴리 몸 — 몸마다 **메시 하나 · 재질 하나**(옷까지 한 메시 · 아틀라스 한 장).
 //   [T604] 옷 기하 = 청동기 옷(시트 링 표 → `char_clothes_mhclo.py`) · [T654] 몸마다 메시 **하나**(T604 의 갖옷 몸 사본을 걷었다) —
-//   옷 넷 = 재질(아틀라스) · 갖옷 털 두께 = 정점 속성 `_inflate`(옷 점 = 털 두께 방향) × 메타 `bodies.<몸>.inflate.fur` — 셰이더 한 줄(`inflate`).
+//   옷 넷 = 재질(아틀라스) · 갖옷 털 두께 = 정점 속성 `_inflate`(옷 점 = 털 두께 방향) × 메타 `bodies.<몸>.inflate.fur` — 셰이더 한 줄(`inflate`) · [T664] 갖옷 음영 = 면 속성 `_furnormal`(민 옷의 면 법선) · 두 속성 다 성긴 접근자.
 //   몸 파일 하나(`char_body.glb`)에 몸 둘(M·F) · 몸마다 클립 다섯(CMU 모캡 리타깃) — 메타가 규약이다(`char3d_meta.json`).
 //   재질 = 아틀라스(옷 넷 — 삼베·모시·가죽·갖옷 · 몸마다 넉 장) + 알파 한 장(머리·눈썹 · `alphaMap`) · 빛은 이 파일이 건다(④).
 // ★그리는 자리 = **시트가 그리던 그 자리**다 — `drawCharSprite` 의 층 고리에서 'body' 층 자리에 3D 타일 한 장을 찍는다
@@ -56,15 +56,17 @@
   function fail(why) { api.ready = false; api.why = why; }
   // ★[T654] 갖옷 털 두께 — 같은 메시의 옷 점을 털 두께 방향(정점 속성 · 그 밖 점은 0)으로 두께(m)만큼 **묶기 자세에서** 민 뒤 스키닝한다.
   //   방향 = 생성기가 둘레에 두께를 더하던 방향(T604 갖옷 기하 그대로) · 두께 = 메타 `bodies.<몸>.inflate.<옷>` · 하네스 그림도 이 함수를 부른다(사본 0).
-  function inflate(mat, pad, attr) {
-    const A = attr || meta.inflateAttr;
+  //   [T664] 음영 = 민 옷의 면 법선(면 속성 `furNormalAttr` · 0 아닌 점만 — 살·눈·눈썹·머리는 제 법선 그대로) — 법선도 한 줄.
+  function inflate(mat, pad, attr, nattr) {
+    const A = attr || meta.inflateAttr, N = nattr || meta.furNormalAttr;
     mat.onBeforeCompile = (sh) => {
       sh.uniforms.inflatePad = { value: pad };
       sh.vertexShader = sh.vertexShader
-        .replace('#include <common>', `#include <common>\nattribute vec3 ${A};\nuniform float inflatePad;`)
+        .replace('#include <common>', `#include <common>\nattribute vec3 ${A};\nattribute vec3 ${N};\nuniform float inflatePad;`)
+        .replace('#include <beginnormal_vertex>', `#include <beginnormal_vertex>\n\tif ( dot( ${N}, ${N} ) > 0.0 ) objectNormal = ${N};`)   // ← [T664] 갖옷 면 법선
         .replace('#include <begin_vertex>', `#include <begin_vertex>\n\ttransformed += ${A} * inflatePad;`);   // ← 그 한 줄
     };
-    mat.customProgramCacheKey = () => 'inflate:' + A;
+    mat.customProgramCacheKey = () => 'inflate:' + A + ':' + N;
     return mat;
   }
   api.inflate = inflate;

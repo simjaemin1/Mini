@@ -9,7 +9,8 @@
 #      시스템 자산의 `male1591`·`female1605` · 눈 `low-poly` · 눈썹 `eyebrow001` · 머리 `ponytail01`(남)·`braid01`(여) ·
 #      ★[T604 ②] 옷 기하 = **청동기 옷**(`char_clothes_mhclo.py` — 시트 `char_render.py` 의 링 표를 3D 몸에 입혀 MPFB `mhclo` 로 묶는다 ·
 #      남 = 시트 그대로(옷자락 단 · 반팔 · 허리띠) · 여 = 무릎 단 · 긴팔 · 허리띠) — ★[T654] 옷 기하 하나(옷 넷이 같이 · 갖옷 털 두께는
-#      정점 속성 `_inflate` = 털 두께 방향(옷 점만 · 생성기가 둘레에 두께를 더하던 방향) × 메타 `bodies.<몸>.inflate.fur`(m) — 엔진 셰이더 한 줄).
+#      정점 속성 `_inflate` = 털 두께 방향(옷 점만 · 생성기가 둘레에 두께를 더하던 방향) × 메타 `bodies.<몸>.inflate.fur`(m) — 엔진 셰이더 한 줄 ·
+#      [T664] 면 속성 `_furnormal` = 민 옷의 면 법선(갖옷 재질의 음영) · 두 속성 다 glb 뒷손질로 성긴 접근자).
 #      T545 의 CC0 현대 옷(`male_casualsuit04`·`female_elegantsuit01`)은 더 안 읽는다.
 #      키 = 1.60m(카드 "키 160cm 안팎" · 하네스 "사람 1.6m ↔ px") — 몸 맨 위(정수리)를 1.60m 에 맞추는 등배 한 번.
 #      삼각형 = 한 몸 6,000 안(카드 "2~6k") — 살·눈·눈썹은 그대로 · [T604] 옷은 지은 그대로(링 표가 정한 수 · 남는 몫의 반 안이어야 한다) ·
@@ -229,8 +230,25 @@ def build(sex):
             for i, d in enumerate(cl["inflate"]["dir"]):
                 e = R3 @ Vector(d)
                 a.data[i].vector = (e.x, e.z, -e.y)
+    # ★[T664] 갖옷 면 법선 = 옷을 털 두께(메타 값 그대로)만큼 민 기하의 블렌더 면 법선 — T604 갖옷 몸이 평평 음영으로 내던 그 식(면마다 하나) → 면 속성 `_furnormal`
+    #   (살·눈·눈썹·머리 = 0 · 엔진은 갖옷 재질에서만 0 아닌 법선으로 바꾼다 · glTF 축으로 미리 돌린다) — 민 자리는 재고 바로 되돌린다(점 바이트 그대로).
+    pad = round(s * cl["inflate"]["pad"], 6)
+    me = parts["cloth"].data
+    rest = [v.co.copy() for v in me.vertices]
+    for v, d in zip(me.vertices, cl["inflate"]["dir"]):
+        v.co = v.co + (R3 @ Vector(d)) * pad
+    me.update()
+    fn = [p.normal.copy() for p in me.polygons]
+    for v, c in zip(me.vertices, rest):
+        v.co = c
+    me.update()
+    for k, o in parts.items():
+        a = o.data.attributes.new("_furnormal", "FLOAT_VECTOR", "FACE")
+        if k == "cloth":
+            for i, n in enumerate(fn):
+                a.data[i].vector = (n.x, n.z, -n.y)
     bpy.context.view_layer.update()
-    return rig, parts, cl, {"scale": round(s, 6), "topM": round(top, 6), "tris": tri, "inflate": {"fur": round(s * cl["inflate"]["pad"], 6)}}
+    return rig, parts, cl, {"scale": round(s, 6), "topM": round(top, 6), "tris": tri, "inflate": {"fur": pad}}
 
 
 # ── ③ 아틀라스 — 칸마다 원본 무늬를 붙이고 UV 를 그 칸으로 옮긴다 ─────────────────────────────────
@@ -623,12 +641,85 @@ opts = dict(filepath=GLB, export_format="GLB", use_selection=True, export_yup=Tr
             export_optimize_animation_size=True, export_optimize_animation_keep_anim_armature=True,   # NLA 는 늘 표본을 뜬다 — 값이 안 변하는 채널은 열쇠 둘로(★False 면 쉼과 다른 상수 회전(엉덩관절·어깨·손가락)까지 버린다 · 실측)
             export_anim_slide_to_zero=False, export_frame_step=1,
             export_materials="NONE", export_normals=True, export_texcoords=True, export_vertex_color="NONE",
-            export_attributes=True,                        # ★[T654] 사용자 속성(밑줄 머리) — `_inflate`(갖옷 털 두께 방향)만 있다(ⓐ 하네스가 잰다)
+            export_attributes=True,                        # ★[T654] 사용자 속성(밑줄 머리) — `_inflate`(갖옷 털 두께 방향) · [T664] `_furnormal`(갖옷 면 법선) 둘만 있다(ⓐ 하네스가 잰다)
             export_all_influences=False, export_cameras=False, export_lights=False, export_extras=False, export_morph=False)
 known = {p.identifier for p in bpy.ops.export_scene.gltf.get_rna_type().properties}
 if "export_attributes" not in known:
     raise SystemExit("[char3d] ★내보내기에 사용자 속성 손잡이(`export_attributes`)가 없다 — 갖옷 털 두께(`_inflate`)를 못 싣는다")
 bpy.ops.export_scene.gltf(**{k: v for k, v in opts.items() if k in known})
+
+
+# ── ④′ glb 뒷손질 한 단 — [T664] 사용자 속성은 성긴 접근자로 ─────────────────────────────────────
+#   내보내기(io_scene_gltf2)는 사용자 속성을 빽빽이만 쓴다 — `_inflate`·`_furnormal` 은 옷 점만 0 이 아니고 살·눈·눈썹·머리 몫이 다 0 이다.
+#   glTF 2.0 성긴 접근자(본 = 0 · 0 아닌 줄만 첨자 + 값 · 핵심 규격 — 확장 0)로 고쳐 쓴다. 다른 버퍼 뷰는 바이트 그대로 옮긴다(4바이트 맞춤) · 결정적.
+def sparsify_glb(path, keys):
+    import struct
+    b = open(path, "rb").read()
+    jl = struct.unpack_from("<I", b, 12)[0]
+    J = json.loads(b[20:20 + jl].decode("utf-8"))
+    bo = 20 + jl
+    BIN = b[bo + 8: bo + 8 + struct.unpack_from("<I", b, bo)[0]]
+    NC = {"SCALAR": 1, "VEC2": 2, "VEC3": 3, "VEC4": 4}
+    tgt = sorted({p["attributes"][k] for m in J["meshes"] for p in m["primitives"] for k in keys if k in p["attributes"]})
+    users = {}
+    for i, a in enumerate(J["accessors"]):
+        for v in [a.get("bufferView")] + [a["sparse"][q]["bufferView"] for q in ("indices", "values") if "sparse" in a]:
+            if v is not None:
+                users.setdefault(v, set()).add(i)
+    for im in J.get("images", []):
+        if "bufferView" in im:
+            users.setdefault(im["bufferView"], set()).add(-1)
+    drop = {J["accessors"][i]["bufferView"] for i in tgt}
+    if not tgt or any(J["accessors"][i]["componentType"] != 5126 for i in tgt) or any(users[v] - set(tgt) for v in drop):
+        raise SystemExit(f"[char3d] ★성긴 접근자로 못 고친다 — 속성 {keys} 접근자 {tgt} (float 가 아니거나 버퍼 뷰를 남과 같이 쓴다)")
+    views, chunks, remap = [], [], {}
+
+    def put(data, view):
+        view["byteOffset"] = sum(len(c) for c in chunks)
+        view["byteLength"] = len(data)
+        chunks.append(data + b"\0" * ((-len(data)) % 4))
+        views.append(view)
+        return len(views) - 1
+    for vi, v in enumerate(J["bufferViews"]):
+        if vi not in drop:
+            o = v.get("byteOffset", 0)
+            remap[vi] = put(BIN[o:o + v["byteLength"]], {k: x for k, x in v.items() if k not in ("byteOffset", "byteLength")})
+    out = {}
+    for i in tgt:
+        a = J["accessors"][i]
+        v, n = J["bufferViews"][a["bufferView"]], NC[a["type"]]
+        o, st = v.get("byteOffset", 0) + a.get("byteOffset", 0), v.get("byteStride", 4 * n)
+        arr = np.array([np.frombuffer(BIN, dtype="<f4", count=n, offset=o + r * st) for r in range(a["count"])], dtype=np.float32)
+        nz = np.flatnonzero(np.any(arr != 0, axis=1))
+        if not len(nz):
+            raise SystemExit(f"[char3d] ★접근자 {i}({a['type']}) 가 전부 0 이다 — 성긴 접근자는 줄이 하나 이상이어야 한다")
+        wide = a["count"] > np.iinfo(np.uint16).max                    # 첨자 꼴 = 점 수가 정한다(규격 · 설계 수 아님)
+        iv = put(nz.astype("<u4" if wide else "<u2").tobytes(), {"buffer": 0})
+        vv = put(arr[nz].astype("<f4").tobytes(), {"buffer": 0})
+        a.pop("bufferView"); a.pop("byteOffset", None)
+        a["sparse"] = {"count": int(len(nz)), "indices": {"bufferView": iv, "componentType": 5125 if wide else 5123}, "values": {"bufferView": vv}}
+        out[i] = (a["count"], int(len(nz)))
+    for i, a in enumerate(J["accessors"]):
+        if i not in tgt and "bufferView" in a:
+            a["bufferView"] = remap[a["bufferView"]]
+        if i not in tgt and "sparse" in a:
+            for q in ("indices", "values"):
+                a["sparse"][q]["bufferView"] = remap[a["sparse"][q]["bufferView"]]
+    for im in J.get("images", []):
+        if "bufferView" in im:
+            im["bufferView"] = remap[im["bufferView"]]
+    J["bufferViews"] = views
+    nb = b"".join(chunks)
+    J["buffers"][0]["byteLength"] = len(nb)
+    js = json.dumps(J, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    js += b" " * ((-len(js)) % 4)
+    with open(path, "wb") as f:
+        f.write(struct.pack("<4sII", b"glTF", 2, 12 + 8 + len(js) + 8 + len(nb)) + struct.pack("<I4s", len(js), b"JSON") + js + struct.pack("<I4s", len(nb), b"BIN\0") + nb)
+    return len(b), out
+
+
+_glb0, _sp = sparsify_glb(GLB, ("_INFLATE", "_FURNORMAL"))
+print(f"[char3d] ★[T664] 성긴 접근자: glb {_glb0}B → {os.path.getsize(GLB)}B · " + " · ".join(f"접근자 {i} {c}점 중 {k}" for i, (c, k) in sorted(_sp.items())))
 
 # ── ⑤ 메타 — 엔진이 읽는 규약(클라는 수를 안 박는다) ──────────────────────────────────────────
 import io_scene_gltf2                                  # noqa: E402
@@ -637,7 +728,7 @@ for k in ("render_common.py", "mocap_retarget.py", "char_clothes_mhclo.py", "cha
     INPUTS["scripts/" + k] = sha16(os.path.join(HERE, k))
 INPUTS["add-on-mpfb-v2.0.17.zip"] = _zip_sha
 meta = {
-    "_": "[T545 · T604 · T654] char_export_gltf.py 산물 — 엔진이 읽는 규약. 클라는 이 수를 하드코딩하지 않는다(갖옷 털 두께는 `bodies.<몸>.inflate`).",
+    "_": "[T545 · T604 · T654 · T664] char_export_gltf.py 산물 — 엔진이 읽는 규약. 클라는 이 수를 하드코딩하지 않는다(갖옷 털 두께는 `bodies.<몸>.inflate`).",
     "glb": "char_body.glb",
     "units": "1 = 1m = 1셀(32 게임px)",
     "facing": "방향 0 = 모델 +x(Blender) — 시트 행 0 과 같다 · 방향 d = d×45°(연속 회전은 atan2(fy,fx))",
@@ -665,8 +756,10 @@ meta = {
     "atlas": {"size": ATLAS, "cells": CELLS, "pad": PAD},
     "clothKinds": list(CLOTH_KINDS),
     "inflateAttr": "_inflate",
+    "furNormalAttr": "_furnormal",
     "inflateNote": "[T654] 옷 → 메시는 하나(옷 넷 = 재질) · 갖옷 = 정점 속성 `_inflate`(옷 점 = 털 두께 방향 단위 벡터 · 살·눈·눈썹·머리 = 0) × "
-                   "`bodies.<몸>.inflate.<옷>`(m · 생성기 `FUR_PAD` × 키 비 × 등배) — 묶기 자세에서 민 뒤 스키닝(엔진 셰이더 한 줄)",
+                   "`bodies.<몸>.inflate.<옷>`(m · 생성기 `FUR_PAD` × 키 비 × 등배) — 묶기 자세에서 민 뒤 스키닝(엔진 셰이더 한 줄) · "
+                   "[T664] 갖옷 면 법선 = 면 속성 `_furnormal`(민 옷의 면 법선 · 그 밖 0 — 갖옷 재질만 바꾼다) · 두 속성 다 glTF 성긴 접근자(바탕 0)",
     "textures": {sex: dict({k: f"tex/{sex.lower()}_{k}.jpg" for k in CLOTH_KINDS}, alpha=f"tex/{sex.lower()}_alpha.png") for sex in built},
     "roughness": {k: rc.CLOTH_MATS[k][1] for k in CLOTH_KINDS},
     "alphaTest": 0.5,
@@ -687,7 +780,7 @@ outs = {"char_body.glb": sha16(GLB), "char3d_meta.json": sha16(META)}
 for fn in sorted(os.listdir(TEXD)):
     outs["tex/" + fn] = sha16(os.path.join(TEXD, fn))
 lock = {
-    "_": "[T545 · T604 · T654] char3d 잠금 — 값 = 파일 sha1 앞 16자(바이트가 자산). 입력 지문이 바뀌면 다시 굽는다. 원본은 저장소 밖(`~/Mini/_3d_in/`).",
+    "_": "[T545 · T604 · T654 · T664] char3d 잠금 — 값 = 파일 sha1 앞 16자(바이트가 자산). 입력 지문이 바뀌면 다시 굽는다. 원본은 저장소 밖(`~/Mini/_3d_in/`).",
     "_기계": f"pip bpy {bpy.app.version_string} · {meta['exporter']} · MPFB {MPFB_VER}",
     "_입력": dict(sorted(INPUTS.items())),
     "char3d": outs,
