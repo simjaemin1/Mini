@@ -881,7 +881,7 @@ function tickTradeV2(world, day) {
         const stock = a.v.storage[r] || 0;
         const subs = (SUBSISTENCE_PER_NPC[r] || 0) * N;
         const buffer = N * 0.8;
-        const target = Math.max(subs * 30, buffer);
+        const target = Math.max(exportDaysSlot(a.v, r, subs), buffer);   // ★[T683] 끔 = `subs * 30` 그대로(아래 `exportDaysSlot` · 비트 동일)
         let keep, thresh;
         if (FOODR[r]) { keep = target * 1.2; thresh = target * 1.4; }       // 식량: 36일치 보유(>기근30), 42일치 초과만 수출
         else if (CAPITAL[r]) { keep = N * 1.2; thresh = N * 1.5; }          // 도구: 1.2개/명 보유, 1.5개/명 초과만 수출(덤핑 금지)
@@ -2213,6 +2213,17 @@ function subsGuard(r, who) {
   if (_T416_ARM === 'a') return isSubsistenceFlow(r);
   return who === 'board' ? false : isSubsistenceFlow(r);   // 현행: 가격만 가드
 }
+// ★★[T683 2026-10-10] **수출 후보 문턱이 흐름을 본다** — 손잡이 `T683_EXPORT_FLOW`(**기본 끔** · `=1` 만 켬 · 끔 = 종전 비트).
+//   발주 후보(`tickTradeV2` — "그 외" 품목 keep = target × 0.5 · thresh = target × 0.8)의 target = `max(subs×30, 0.8N)` 은
+//   흐름을 모른다(T659 회부 ④) — 통나무는 subs 0.05/인/일 이라 thresh 1.2N(8명 9.6)이고, 시딩 곳간(64~152)은 늘 후보다.
+//   켜면 **통나무에 한해** `subs×30` 자리에 그 마을 흐름 EMA(`_consEMA.wood` — v1 `_cons` 자리들 · v2 flowT 가 읽는 그 값) × 같은 날 수(30)를 쓴다.
+//   새 수 0 · 판정 0(문턱 꼴 · 0.5 · 0.8 · 0.8N 무변) · 출발 뒤 값 다시 매김(`tg = max(subs×30, buf)` 두 자리) · 귀환 화물 문턱은 무변.
+//   ⚠EMA 가 0 에서 덥혀지는 새 세계(`T683_EMA_INIT` 끔)에선 첫 3~4주 문턱이 종전보다 **낮다**(목표 = 0.8N 바닥) — v1 `T683_EMA_INIT` 와 짝.
+const T683_EXPORT_FLOW = (typeof process !== 'undefined' && process.env && process.env.T683_EXPORT_FLOW === '1');
+function exportDaysSlot(v, r, subs) {
+  if (T683_EXPORT_FLOW && r === 'wood') return (((v && v._consEMA) || {}).wood || 0) * 30;   // ★[T683] 통나무만 — subs×30 자리에 흐름 × 같은 날 수
+  return subs * 30;
+}
 
 module.exports = {
   createWorldV2,
@@ -2230,6 +2241,7 @@ module.exports = {
   T496_CARAVAN_REST,   // ★[T496] 쉬는 짐꾼(캐러밴 = 몸 × 하루 비 · 기본 끔) — 하네스(⑲)·표가 읽는다
   isSubsistenceFlow, subsGuard,   // ★[T416] subs 가드 술어 하나 — 가격 셋·게시판 하나가 같은 문을 부른다
   T659_WOOD_FLOW,   // ★[T659] 통나무 흐름 닻 손잡이(기본 끔) — 하네스·자가 읽는다
+  T683_EXPORT_FLOW, exportDaysSlot,   // ★[T683] 수출 후보 문턱 손잡이(기본 끔) · 그 자리 하나 — 하네스·자가 읽는다
   // 시장 충격 정산 헬퍼(1b) — 프로브·자가검증용 노출
   _priceParamsV2, _impactSegs, _impactF, _impactBuyV2, _impactSellV2,
   // 기온 모델(2026-07-12) — 생활층(밤낮 시간 곡선)·프로브용 노출

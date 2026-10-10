@@ -6459,6 +6459,15 @@ const _t635Sea = Object.create(null);   // ② 나눠 낸 종 → 1낱 = fish �
 //   소비재 수요는 실측 흐름이 만든다(신규 재화는 소비처에 _cons 한 줄 = CAP_TARGET·시드·글럿가드·감산 4종 수동 통합 불요).
 //   plain number만 기록(serializeEcon 계약). RNG 무접촉 — 결정론 보존.
 function _cons(v, r, amt) { if (!(amt > 0)) return; const d = v._consDay || (v._consDay = {}); d[r] = (d[r] || 0) + amt; }
+// ★★[T683 2026-10-10] **통나무 흐름 EMA 초기값** — 손잡이 `T683_EMA_INIT`(**기본 끔** · `=1` 만 켬 · 끔이면 아래 `createVillage` 한 줄이 안 돈다 = 종전 비트).
+//   새 세계 마을은 `_consEMA` 없이 태어나 첫 폴드(`tickVillage` 머리)에서 `{}` 로 선다 — 통나무 흐름이 0 에서 30일을 덥히는 사이
+//   시딩 곳간이 "넘친다"로 읽혀 팔려 나간다(T659 §1 · 회부 ③ⓐ — 곳간 0 중앙 23일).
+//   켜면 시딩 때 **아는 소비**로 시작한다 = 땔감 `FIREWOOD_PC × n`(1인 하루 땔감 — 짚 · 잔가지 · 껍질은 시딩 때 0 이라 전부 통나무)
+//   + 집 몫 `houseDayBuild × houseCostPerCap('wood')`(오늘 올릴 집 × 통나무 단가 — 집 절 · 숯가마 `houseWoodShare` 가 부르는 그 두 함수).
+//   ⚠집 몫은 시딩 집(`HOUSE_START`)이 `n × HOUSE_BUFFER` 위면 0 이다(8명 시딩: 집 20 ≥ 9.2 — 집 짓기는 n ≥ 18 부터).
+//   새 수 0 · 통나무 하나 · 인구 0 터(플레이어 마을)는 안 건다 · 재부팅 복원(`restoreEcon`)은 `createVillage` 를 안 지난다(새 세계만).
+const T683_EMA_INIT = (typeof process !== 'undefined' && process.env && process.env.T683_EMA_INIT === '1');
+function t683WoodEmaInit(v, N) { return N * FIREWOOD_PC + houseDayBuild(v, N, totalFoodEquivalent(v)) * houseCostPerCap('wood'); }
 
 // 식량 소비 우선순위 — cooked_food > fish/meat > food > 채집물(fruit/veg/mushroom)
 // 채집물은 환산비가 낮아 농사보다 끼니로 비효율
@@ -8641,6 +8650,7 @@ function createVillage(opts) {
   v.storage.herb = initN * 0.5;       // ★약재(§9): 정착민 상비약 반 근씩 — 재고0 희소폭등(가격 스파이크→채집 쏠림 과도) 방지 시드
   v.storage.weapon = Math.max(v.storage.weapon || 0, initN * 0.15);   // ★활 시드(§9 3차): 정착민 사냥꾼은 제 활을 들고 옴(~초기 사냥꾼 수) — t=0 무기 결손이 무기장 캐치업·교역을 흔드는 것 방지(herb 패턴)
   v.housing = Math.max(initN, HOUSE_START);   // ★주거 수용력. K = min(식량,생산) 안에서 인구가 이 값에 막힘(성장 게이트).
+  if (T683_EMA_INIT && initN > 0) v._consEMA = { wood: t683WoodEmaInit(v, initN) };   // ★[T683] 시딩 때 아는 통나무 소비로 흐름 EMA 를 연다(끔 = 키 없음 · 위 `_cons` 옆 주석)
   // ★★[2026-08-03e 배치 12 ②] **한 번이라도 사람이 살았는가** — 소멸 판정의 전제다(계측 전용, 로직 무관).
   //   플레이어 마을은 인구 0 으로 태어난다. 그 상태를 `pop === 0` 으로만 세면 **태어나자마자 소멸**로
   //   찍혀 지표가 통째로 거짓말이 된다(배치 6·7·8 이 반복해 만난 실패 유형: 지표가 틀리면 결론이 틀린다).
@@ -11648,6 +11658,7 @@ module.exports = {
   createNPC,
   tickVillage,
   _cons,   // ★flow-EMA 소비 계측(v2 옹기 진흙 등 v2 소재 소비처용)
+  T683_EMA_INIT, t683WoodEmaInit, FIREWOOD_PC,   // ★[T683] 흐름 EMA 초기값 손잡이(기본 끔) · 초기값 식 하나 · 땔감 수 — 하네스 · 계측기가 옮겨 적지 않는다
   adjustGuildTax,
   tickMigration,
   processEvents,
@@ -12547,7 +12558,7 @@ function tickTradeV2(world, day) {
         const stock = a.v.storage[r] || 0;
         const subs = (SUBSISTENCE_PER_NPC[r] || 0) * N;
         const buffer = N * 0.8;
-        const target = Math.max(subs * 30, buffer);
+        const target = Math.max(exportDaysSlot(a.v, r, subs), buffer);   // ★[T683] 끔 = `subs * 30` 그대로(아래 `exportDaysSlot` · 비트 동일)
         let keep, thresh;
         if (FOODR[r]) { keep = target * 1.2; thresh = target * 1.4; }       // 식량: 36일치 보유(>기근30), 42일치 초과만 수출
         else if (CAPITAL[r]) { keep = N * 1.2; thresh = N * 1.5; }          // 도구: 1.2개/명 보유, 1.5개/명 초과만 수출(덤핑 금지)
@@ -13879,6 +13890,17 @@ function subsGuard(r, who) {
   if (_T416_ARM === 'a') return isSubsistenceFlow(r);
   return who === 'board' ? false : isSubsistenceFlow(r);   // 현행: 가격만 가드
 }
+// ★★[T683 2026-10-10] **수출 후보 문턱이 흐름을 본다** — 손잡이 `T683_EXPORT_FLOW`(**기본 끔** · `=1` 만 켬 · 끔 = 종전 비트).
+//   발주 후보(`tickTradeV2` — "그 외" 품목 keep = target × 0.5 · thresh = target × 0.8)의 target = `max(subs×30, 0.8N)` 은
+//   흐름을 모른다(T659 회부 ④) — 통나무는 subs 0.05/인/일 이라 thresh 1.2N(8명 9.6)이고, 시딩 곳간(64~152)은 늘 후보다.
+//   켜면 **통나무에 한해** `subs×30` 자리에 그 마을 흐름 EMA(`_consEMA.wood` — v1 `_cons` 자리들 · v2 flowT 가 읽는 그 값) × 같은 날 수(30)를 쓴다.
+//   새 수 0 · 판정 0(문턱 꼴 · 0.5 · 0.8 · 0.8N 무변) · 출발 뒤 값 다시 매김(`tg = max(subs×30, buf)` 두 자리) · 귀환 화물 문턱은 무변.
+//   ⚠EMA 가 0 에서 덥혀지는 새 세계(`T683_EMA_INIT` 끔)에선 첫 3~4주 문턱이 종전보다 **낮다**(목표 = 0.8N 바닥) — v1 `T683_EMA_INIT` 와 짝.
+const T683_EXPORT_FLOW = (typeof process !== 'undefined' && process.env && process.env.T683_EXPORT_FLOW === '1');
+function exportDaysSlot(v, r, subs) {
+  if (T683_EXPORT_FLOW && r === 'wood') return (((v && v._consEMA) || {}).wood || 0) * 30;   // ★[T683] 통나무만 — subs×30 자리에 흐름 × 같은 날 수
+  return subs * 30;
+}
 
 module.exports = {
   createWorldV2,
@@ -13896,6 +13918,7 @@ module.exports = {
   T496_CARAVAN_REST,   // ★[T496] 쉬는 짐꾼(캐러밴 = 몸 × 하루 비 · 기본 끔) — 하네스(⑲)·표가 읽는다
   isSubsistenceFlow, subsGuard,   // ★[T416] subs 가드 술어 하나 — 가격 셋·게시판 하나가 같은 문을 부른다
   T659_WOOD_FLOW,   // ★[T659] 통나무 흐름 닻 손잡이(기본 끔) — 하네스·자가 읽는다
+  T683_EXPORT_FLOW, exportDaysSlot,   // ★[T683] 수출 후보 문턱 손잡이(기본 끔) · 그 자리 하나 — 하네스·자가 읽는다
   // 시장 충격 정산 헬퍼(1b) — 프로브·자가검증용 노출
   _priceParamsV2, _impactSegs, _impactF, _impactBuyV2, _impactSellV2,
   // 기온 모델(2026-07-12) — 생활층(밤낮 시간 곡선)·프로브용 노출
