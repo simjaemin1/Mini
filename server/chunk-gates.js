@@ -2,8 +2,10 @@
 // server/chunk-gates.js — T678 청크 문 그래프(계층 길찾기) 1단계 · 손잡이 `T678_GATES`(zone.js · 기본 끔)
 // =============================================================================
 // ★무엇 — 청크(존 `chunkManager.chunkSize` · 32칸) 경계의 **문**(통행 칸 짝이 이어진 구간 하나 = 문 하나)과,
-//   청크 안 칸마다 "그 문까지 몇 걸음"(축 4방 BFS) 표를 둔다. 먼 길은 **문 그래프 다익스트라** → 청크 안 표를 따라 내려가 칸 길을 짓는다.
+//   청크 안 칸마다 "그 문까지 몇 걸음"(축 4방 BFS) 표를 둔다. 먼 길은 **문 그래프 다익스트라**로 닿는가·얼마나를 답한다.
 //   ⇒ "닿는가 · 얼마나"를 칸 A* 없이 답한다(T670 ③: A* 실패 시간의 전부가 예산 부족 · 한 방 32.5 ms).
+// ★[T679 2단계] 칸 길은 문 그래프가 고른 청크들(회랑) 위 **BFS 최단**이다 — 문 대표 칸을 들르지 않는다(꼬리 줄이기).
+//   표 수 상한(LRU · `opt.cap()`) — 넘으면 가장 오래 안 물은 표부터 버린다.
 // ★술어는 존이 넘긴 **그 둘**이다(사본 0) — `pass(cx,cy)`(= `!isTerrainBlockedLocal(셀 중심)` · 다리 통행 · 환호 막힘)와
 //   `step(fx,fy,tx,ty)`(= `!isBlockedByWall(셀 중심 → 이웃 셀 중심, 층 0)` · 벽 변 · 계단 옆). `pathfind.js` 의 간선 규칙과 같은 둘이다
 //   (커널 `sim/path-core.js` 무접촉). 칸 비용은 1(개울 ×2 · 길 선호는 안 쓴다 — 길이가 A* 와 다를 수 있는 자리 · 보고 표).
@@ -26,7 +28,8 @@ function create(opt) {
   let gen = 1;                    // 지형 판(전부 낡게)
   let building = null;            // 짓는 중(조각)
   const st = { built: 0, rebuilt: 0, predCalls: 0, buildMs: 0, maxSliceMs: 0, queries: 0, unknown: 0, far: 0, blocked: 0, unreach: 0, found: 0, stale: 0,
-    sigChecks: 0, sigInval: 0, invalAll: 0, qMs: 0, qMaxMs: 0 };
+    sigChecks: 0, sigInval: 0, invalAll: 0, qMs: 0, qMaxMs: 0,
+    evicted: 0, corr: 0, corrCells: 0, corrMaxCells: 0, corrFail: 0 };   // ★[T679] 표 상한(LRU) · 회랑 BFS
 
   const chunkOf = (cx, cy) => Math.floor(cy / C) * NX + Math.floor(cx / C);
 
@@ -123,6 +126,18 @@ function create(opt) {
     return T;
   }
 
+  // ★[T679 ②] 표 상한(LRU) — 상한은 부르는 쪽이 준다(`opt.cap()` · 존 = 마을 수 × 묻기 창 청크 수 · 새 수 0).
+  //   새 청크를 지어 상한을 넘으면 **가장 오래 안 물은** 표부터 버린다(방금 지은 것은 빼고). 버린 청크를 다시 물으면 `unknown` → 종전 A* · 다시 짓기 줄(조각 예산 그대로).
+  let stamp = 0;   // 묻기 차례(창 안 표마다 찍는다)
+  function evictOver(keep) {
+    const cap = opt.cap ? opt.cap() : Infinity;
+    while (recs.size > cap) {
+      let mk = -1, mu = Infinity;
+      for (const [k, r] of recs) if (k !== keep && r.used < mu) { mu = r.used; mk = k; }
+      if (mk < 0) break;
+      recs.delete(mk); st.evicted++;
+    }
+  }
   function enqueue(ci) { if (!queued.has(ci)) { queued.add(ci); queue.push(ci); } }
   // 틱마다 — 예산(술어 부름 수)만큼 이어서 짓는다
   function tick(budget, nowMs) {
@@ -140,8 +155,9 @@ function create(opt) {
       const u = work(building, left); left -= Math.max(1, u); st.predCalls += u;
       if (building.ph === 5) {
         const b = building, prev = recs.get(b.ci);
-        recs.set(b.ci, { ci: b.ci, X: b.X, Y: b.Y, x0: b.x0, y0: b.y0, w: b.w, h: b.h, gen: b.gen, dirty: false, pass: b.pass, open: b.open, gates: b.gates, sig: prev ? prev.sig : undefined });
-        if (prev) st.rebuilt++; else st.built++;
+        recs.set(b.ci, { ci: b.ci, X: b.X, Y: b.Y, x0: b.x0, y0: b.y0, w: b.w, h: b.h, gen: b.gen, dirty: false, pass: b.pass, open: b.open, gates: b.gates, sig: prev ? prev.sig : undefined,
+          used: prev ? prev.used : stamp });
+        if (prev) st.rebuilt++; else { st.built++; evictOver(b.ci); }
         building = null; done++;
       }
     }
@@ -151,8 +167,8 @@ function create(opt) {
 
   // ── 묻기 ────────────────────────────────────────────────────────────────
   // 반환: { res: 'far'|'blocked'|'unknown'|'unreach'|'found', cells?: [[cx,cy],…](출발 칸 빼고 목표 칸까지), len? }
-  function route(sx, sy, gx, gy, R) {
-    st.queries++;
+  function route(sx, sy, gx, gy, R, wantOld) {
+    st.queries++; stamp++;
     if (Math.abs(gx - sx) + Math.abs(gy - sy) > R) { st.far++; return { res: 'far' }; }
     if (sx === gx && sy === gy) { st.found++; return { res: 'found', cells: [], len: 0 }; }   // `pathfind` 같은 칸 — 탐색 없이
     if (!pass(sx, sy) || !pass(gx, gy)) { st.blocked++; return { res: 'blocked' }; }
@@ -163,6 +179,7 @@ function create(opt) {
     for (let Y = y0; Y <= y1; Y++) for (let X = x0; X <= x1; X++) {
       const ci = Y * NX + X, r = recs.get(ci);
       if (!r) { miss = true; enqueue(ci); continue; }
+      r.used = stamp;   // ★[T679] LRU — 창에 든 표
       if (r.gen !== gen || r.dirty) { stale = true; enqueue(ci); }
       win.push(r);
     }
@@ -199,11 +216,28 @@ function create(opt) {
       const sib = byKey.get(g.key); if (sib) for (const v of sib) if (v !== u && nodes[v - 2].r !== r) relax(u, v, 1);   // 경계 건너기 한 걸음
     }
     if (!Number.isFinite(dist[1])) { st.unreach++; return { res: 'unreach' }; }
-    // 칸 길 — 다리마다 표를 따라 내려간다
     const chain = []; for (let v = 1; v !== -1; v = prev[v]) chain.push(v); chain.reverse();   // 0, …, 1
+    // ★[T679 ①] 칸 길 = **회랑 BFS** — 문 길이 지나는 청크들(출발 · 문들 · 목표 청크)만 놓고, 지은 비트(통행 · 간선) 위에서 출발 → 목표 최단 칸 길을 다시 찾는다.
+    //   문 대표 칸(구간 가운데)을 들르지 않는다 — 구간 어느 짝으로든 건넌다. 술어 부름 0(표 비트만) · 회랑 칸 수 ≤ 창 칸 수.
+    //   (T678 은 다리마다 문 표를 따라 내려가 대표 칸을 반드시 지났다 — 짧은 길일수록 그 들름이 길이 비를 키웠다: 걷는 길이 p95 1.77.)
+    const corr = [rs]; for (let i = 1; i < chain.length - 1; i++) { const r = nodes[chain[i] - 2].r; if (corr.indexOf(r) < 0) corr.push(r); } if (corr.indexOf(rg) < 0) corr.push(rg);
+    let cells = corridorPath(corr, sx, sy, gx, gy);
+    let cellsOld = null;
+    if (!cells || wantOld) {   // 회랑이 못 찾으면(낡은 표가 엇갈린 판 — 없어야 한다) 종전 내려가기 · 견줌은 둘 다
+      if (!cells) st.corrFail++;
+      cellsOld = descendPath(chain, nodes, rs, sIdx, TG);
+      if (!cellsOld) return { res: 'unreach' };
+      if (!cells) cells = cellsOld;
+    }
+    st.found++;
+    return wantOld ? { res: 'found', cells, cellsOld, len: dist[1], corr: corr.length } : { res: 'found', cells, len: dist[1] };
+  }
+
+  // 종전(T678) 칸 길 — 다리마다 문 표를 따라 내려간다(E S W N 차례 첫 하강 · 건너면 이웃 청크의 그 문 대표 칸)
+  function descendPath(chain, nodes, rs, sIdx, TG) {
     const cells = [];
     let cr = rs, cIdx = sIdx;
-    const descend = (r, from, T) => {   // r 안 from 에서 T 가 0 인 칸까지(앞으로 가는 간선 · E S W N 차례)
+    const descend = (r, from, T) => {
       let c = from;
       while (T[c] !== 0) {
         const cx = c % r.w, cy = (c / r.w) | 0; let nx = -1;
@@ -220,13 +254,47 @@ function create(opt) {
     };
     for (let i = 1; i < chain.length; i++) {
       const v = chain[i];
-      if (v === 1) { if (descend(cr, cIdx, TG) < 0) return { res: 'unreach' }; break; }
+      if (v === 1) { if (descend(cr, cIdx, TG) < 0) return null; break; }
       const { r, g } = nodes[v - 2];
-      if (r === cr) { cIdx = descend(cr, cIdx, g.T); if (cIdx < 0) return { res: 'unreach' }; }
-      else { cr = r; cIdx = g.c; cells.push([g.gx, g.gy]); }   // 건너기 — 이웃 청크의 그 문 대표 칸
+      if (r === cr) { cIdx = descend(cr, cIdx, g.T); if (cIdx < 0) return null; }
+      else { cr = r; cIdx = g.c; cells.push([g.gx, g.gy]); }
     }
-    st.found++;
-    return { res: 'found', cells, len: dist[1] };
+    return cells;
+  }
+  // ★[T679 ①] 회랑 BFS — 청크 목록 위 출발 → 목표 최단 칸 길(앞으로 가는 간선 · E S W N 차례 · 축 4방).
+  //   청크 안 간선 = `open` 비트(이웃 통행까지 든 비트) · 경계 건너기 = 안쪽 칸의 그 방향 `open` 비트 + 바깥 청크(회랑 안)의 `pass`.
+  //   ⇒ `pathfind` 가 부르는 그 두 술어 값과 같은 간선이다(짓기 때 구운 값). 반환: [[cx,cy],…](출발 칸 빼고 목표까지) · 없으면 null
+  function corridorPath(list, sx, sy, gx, gy) {
+    const L = list.length, off = new Int32Array(L + 1), slot = new Map();
+    for (let i = 0; i < L; i++) { slot.set(list[i].ci, i); off[i + 1] = off[i] + list[i].w * list[i].h; }
+    const tot = off[L], par = new Int32Array(tot).fill(-1), q = new Int32Array(tot), owner = new Uint8Array(tot);
+    for (let i = 0; i < L; i++) owner.fill(i, off[i], off[i + 1]);
+    const at = (cx, cy) => { const j = slot.get(chunkOf(cx, cy)); if (j === undefined) return -1; const r = list[j]; return off[j] + (cy - r.y0) * r.w + (cx - r.x0); };
+    const s = at(sx, sy), g = at(gx, gy);
+    if (s < 0 || g < 0) return null;
+    let qh = 0, qt = 0; par[s] = s; q[qt++] = s;
+    let found = s === g;
+    while (qh < qt && !found) {
+      const u = q[qh++], j = owner[u], r = list[j], c = u - off[j], lx = c % r.w, ly = (c / r.w) | 0, o = r.open[c];
+      for (let d = 0; d < 4; d++) {
+        if (!(o & (1 << d))) continue;
+        const nx = lx + DIRS[d][0], ny = ly + DIRS[d][1];
+        let v;
+        if (nx >= 0 && ny >= 0 && nx < r.w && ny < r.h) v = off[j] + ny * r.w + nx;   // 청크 안(비트에 이웃 통행이 들었다)
+        else {   // 건너기 — 바깥 칸이 회랑 안 청크이고 통행이어야
+          v = at(r.x0 + nx, r.y0 + ny); if (v < 0) continue;
+          const j2 = owner[v]; if (!list[j2].pass[v - off[j2]]) continue;   // 막다른 칸 거르기(막힌 칸은 비트가 0 이라 길에 안 든다)
+        }
+        if (par[v] !== -1) continue;
+        par[v] = u; q[qt++] = v;
+        if (v === g) { found = true; break; }
+      }
+    }
+    st.corr++; st.corrCells += qt; if (qt > st.corrMaxCells) st.corrMaxCells = qt;
+    if (!found) return null;
+    const out = [];
+    for (let v = g; v !== s; v = par[v]) { const j = owner[v], r = list[j], c = v - off[j]; out.push([r.x0 + (c % r.w), r.y0 + ((c / r.w) | 0)]); }
+    return out.reverse();
   }
 
   // ── 무효화 ──────────────────────────────────────────────────────────────
@@ -252,9 +320,11 @@ function create(opt) {
     }
   }
   function memBytes() { let b = 0; for (const r of recs.values()) { b += r.pass.length + r.open.length; for (const g of r.gates) b += g.T.length * 2 + 64; } return b; }
-  function stats() { let gates = 0; for (const r of recs.values()) gates += r.gates.length; return Object.assign({ recs: recs.size, gates, queue: queue.length, memMB: +(memBytes() / 1048576).toFixed(2), gen, NX, NY, C }, st); }
+  function stats() { let gates = 0; for (const r of recs.values()) gates += r.gates.length; return Object.assign({ recs: recs.size, gates, queue: queue.length + (building ? 1 : 0), memMB: +(memBytes() / 1048576).toFixed(2), gen, NX, NY, C }, st); }
   function enqueueAll() { for (let ci = 0; ci < NX * NY; ci++) enqueue(ci); }   // 하네스 · 부팅 미리 굽기용(존은 안 부른다)
-  return { size: () => recs.size, route, tick, sweep, invalidateAll, invalidateChunk, chunkOf, stats, enqueueAll, _recs: recs };
+  const windowChunks = (R) => { const k = 2 * Math.ceil(R / C) + 1; return Math.min(NX, k) * Math.min(NY, k); };   // 반경 R 묻기 창이 걸치는 청크 수(최대)
+  const busy = () => queue.length > 0 || !!building;   // 짓기 줄이 있나(틱 머리 · 관측)
+  return { size: () => recs.size, busy, windowChunks, route, tick, sweep, invalidateAll, invalidateChunk, chunkOf, stats, enqueueAll, _recs: recs };
 }
 
 module.exports = { create, UNR };

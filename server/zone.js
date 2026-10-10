@@ -1548,7 +1548,9 @@ function _t678Perf(reset) {
   if (!_t678G) return null;
   const q = (a, p) => { if (!a.length) return null; const s = a.slice().sort((x, y) => x - y); return s[Math.min(s.length - 1, Math.floor(s.length * p))]; };
   const o = Object.assign({ mode: T678_GATES }, _t678G.stats(), { q: Object.assign({}, _t678Q),
-    v: Object.assign({}, _t678V, { diffs: _t678V.diffs.slice(), ratios: undefined, walkA: undefined, walkRatios: _t678V.walkRatios.slice(), gOnlyLen: _t678V.gOnlyLen.slice(), diffP50: q(_t678V.diffs, 0.5), diffP95: q(_t678V.diffs, 0.95), ratioP50: q(_t678V.ratios, 0.5), ratioP95: q(_t678V.ratios, 0.95), walkRatioP50: q(_t678V.walkRatios, 0.5), walkRatioP95: q(_t678V.walkRatios, 0.95), nDiff: _t678V.diffs.length }) });
+    v: Object.assign({}, _t678V, { diffs: _t678V.diffs.slice(), ratios: undefined, walkA: undefined, walkRatios: _t678V.walkRatios.slice(), gOnlyLen: _t678V.gOnlyLen.slice(), diffP50: q(_t678V.diffs, 0.5), diffP95: q(_t678V.diffs, 0.95), ratioP50: q(_t678V.ratios, 0.5), ratioP95: q(_t678V.ratios, 0.95), walkRatioP50: q(_t678V.walkRatios, 0.5), walkRatioP95: q(_t678V.walkRatios, 0.95), nDiff: _t678V.diffs.length,
+      walkRatiosOld: _t678V.walkRatiosOld.slice(), gOnlyLenOld: _t678V.gOnlyLenOld.slice(), walkRatioOldP95: q(_t678V.walkRatiosOld, 0.95), samples: _t678V.samples.slice() }),
+    warm: _t678WarmOut() });   // ★[T679] 회랑 길 견줌(종전 내려가기 길과 같은 쌍) · 그림 표본 · 짓는 틱
   if (reset) { for (const k of Object.keys(_t678Q)) _t678Q[k] = 0; for (const k of Object.keys(_t678V)) _t678V[k] = Array.isArray(_t678V[k]) ? [] : 0; }
   return o;
 }
@@ -3731,16 +3733,21 @@ function _t671Gt(dx, dy, R) { const d2 = dx * dx + dy * dy, R2 = R * R; if (d2 >
 //   닿으면 문 길(청크 안 표를 따라 내려간 칸 길)을 그 자리의 A* 답으로 쓴다(스무딩은 종전 그대로). 표가 아직 없는 청크면 종전 A*.
 //   ★술어는 A* 가 쓰는 그 둘(`isTerrainBlockedLocal` 셀 중심 · `isBlockedByWall(셀 중심 → 이웃 셀 중심, 층 0)` — `pathfind.js` 간선과 같은 차례·인자).
 //   ★예산 — 표 짓기는 틱마다 **주민 A* 예산 1,500**(술어 부름 수 · 새 수 0)만큼 조각으로 · 서명 쓸기는 표마다 1초에 한 번(틱 Hz). 반경도 그 반경(`_pfRadius`).
-//   ⚠길이 달라진다(판정 칸): 칸 비용 1(개울 ×2 · 답압 길 선호 없음) · 문 대표 칸을 지난다 — 같은 출발·목표의 길 길이 차를 `verify` 가 잰다.
+//   ⚠길이 달라진다(판정 칸): 칸 비용 1(개울 ×2 · 답압 길 선호 없음) — 같은 출발·목표의 길 길이 차를 `verify` 가 잰다.
+//   ★[T679] 칸 길은 **회랑 BFS**(문 길이 지나는 청크만 · 지은 비트 위 최단) — 문 대표 칸을 더는 들르지 않는다(T678 p95 1.77 의 꼬리).
+//     표 상한(LRU) = 마을 수 × 묻기 창 청크 수 · 견줌(`verify`)은 종전 내려가기 길과 같은 쌍을 같이 재고 그림 표본을 남긴다.
 //   (손잡이·표 그릇은 위 `walkPerf` 앞에 둔다 — 다리·환호 무효화가 부팅 중에 부를 수 있다 · TDZ)
-const _t678V = { n: 0, bothFound: 0, aOnly: 0, gOnly: 0, bothNull: 0, unknown: 0, aMs: 0, gMs: 0, aMaxMs: 0, gMaxMs: 0, diffs: [], ratios: [], walkA: [], walkRatios: [], gOnlyLen: [] };
+const _t678V = { n: 0, bothFound: 0, aOnly: 0, gOnly: 0, bothNull: 0, unknown: 0, aMs: 0, gMs: 0, aMaxMs: 0, gMaxMs: 0, diffs: [], ratios: [], walkA: [], walkRatios: [], gOnlyLen: [],
+  walkRatiosOld: [], gOnlyLenOld: [], samples: [] };   // ★[T679] 종전(내려가기) 길 견줌 · 그림 표본(못 닿던 쌍 · 꼬리 쌍)
 const _t678Q = { calls: 0, nullFast: 0, gatePath: 0, fallback: 0, ms: 0, maxMs: 0 };
 function _t678Init() {
   if (_t678G || !(T678_ON || T678_VERIFY)) return _t678G;
   const C = BUILDING_SIZE / 2, cs = Math.round(chunkManager.chunkSize / BUILDING_SIZE);
   _t678G = require('./chunk-gates').create({ chunkCells: cs, cellsW: Math.ceil(ZONE.zoneWidth / BUILDING_SIZE), cellsH: Math.ceil(ZONE.zoneHeight / BUILDING_SIZE),
     pass: (cx, cy) => !isTerrainBlockedLocal(cx * BUILDING_SIZE + C, cy * BUILDING_SIZE + C),
-    step: (fx, fy, tx, ty) => !isBlockedByWall(fx * BUILDING_SIZE + C, fy * BUILDING_SIZE + C, tx * BUILDING_SIZE + C, ty * BUILDING_SIZE + C, 0) });
+    step: (fx, fy, tx, ty) => !isBlockedByWall(fx * BUILDING_SIZE + C, fy * BUILDING_SIZE + C, tx * BUILDING_SIZE + C, ty * BUILDING_SIZE + C, 0),
+    // ★[T679 ②] 표 상한 = 마을 수 × 주민 묻기 창이 걸치는 청크 수(반경 `_pfRadius` · 청크 크기 — 새 수 0) · 마을이 없으면 창 하나
+    cap: () => { let nv = 0; try { const v = SimVillages.clientVillages && SimVillages.clientVillages(); nv = v ? v.length : 0; } catch (e) {} return Math.max(1, nv) * _t678G.windowChunks(_pfRadius(true)); } });
   return _t678G;
 }
 // 건물 서명 — 그 청크가 켜져 있으면(벽 질의 격자 `qtColl` 이 그 청크 건물을 든다) 충돌 종류 건물의 (종류·칸·층·변·열림·부서짐) 해시 · 꺼져 있으면 'off'
@@ -3756,37 +3763,83 @@ function _t678Sig(X, Y) {
   }
   return [n + ':' + h, n];
 }
+// ★[T679 ③] 짓는 틱 관측 — 틱 머리에서 짓기 줄이 있었나(`_t678Busy`) · 틱 끝(존 틱 시계 `_tickMs`)에서 그 틱 전체 ms 를 갈래로 센다(세계 무관)
+let _t678Busy = false;
+const _t678W = { ticks: 0, bTicks: 0, bMax: 0, nMax: 0, lastBusyTick: 0, arrB: [], arrN: [] };
+function _t678WarmTick(ms) {
+  const W = _t678W; W.ticks++;
+  if (_t678Busy) { W.bTicks++; W.lastBusyTick = W.ticks; if (ms > W.bMax) W.bMax = ms; if (W.arrB.length < 20000) W.arrB.push(ms); }
+  else { if (ms > W.nMax) W.nMax = ms; if (W.ticks <= 18000 && W.arrN.length < 20000) W.arrN.push(ms); }   // 안 짓는 틱은 부팅 뒤 10분(30 Hz × 600 s)만 — 같은 때 견줌
+}
+function _t678WarmOut() {
+  const W = _t678W, q = (a, p) => { if (!a.length) return null; const t = a.slice().sort((x, y) => x - y); return +t[Math.min(t.length - 1, Math.floor(t.length * p))].toFixed(2); };
+  return { ticks: W.ticks, bTicks: W.bTicks, lastBusyTick: W.lastBusyTick, bMax: +W.bMax.toFixed(2), bP50: q(W.arrB, 0.5), bP99: q(W.arrB, 0.99), nMax: +W.nMax.toFixed(2), nP50: q(W.arrN, 0.5), nP99: q(W.arrN, 0.99), nN: W.arrN.length };
+}
 function _t678Tick() {
   const G = _t678Init(); if (!G) return;
+  _t678Busy = G.busy();
   G.tick(1500, _t678Now);
   G.sweep(Math.ceil(G.size() / TICK_HZ), _t678Sig);   // 표마다 1초에 한 번(틱 Hz 그 수 · 새 수 0)
 }
 // 문 길 → `pfFindPath` 꼴(셀 중심 · 마지막은 실제 목표 px) · 못 닿음 = null · 표 없음 = undefined
-function _t678Route(npc) {
+const _t678Wp = (npc, cells) => { const C = BUILDING_SIZE / 2, wp = cells.map(([cx, cy]) => ({ x: cx * BUILDING_SIZE + C, y: cy * BUILDING_SIZE + C }));
+  if (wp.length) wp[wp.length - 1] = { x: npc.targetX, y: npc.targetY }; else wp.push({ x: npc.targetX, y: npc.targetY });
+  return wp; };
+function _t678Route(npc, raw) {
   const G = _t678Init(); if (!G) return undefined;
   const sx = Math.floor(npc.x / BUILDING_SIZE), sy = Math.floor(npc.y / BUILDING_SIZE), gx = Math.floor(npc.targetX / BUILDING_SIZE), gy = Math.floor(npc.targetY / BUILDING_SIZE);
-  const r = G.route(sx, sy, gx, gy, _pfRadius(true));
+  const r = G.route(sx, sy, gx, gy, _pfRadius(true), !!raw);   // ★[T679] 견줌이면 종전 내려가기 길도 같이(raw)
+  if (raw) return r;
   if (r.res === 'unknown') return undefined;
   if (r.res !== 'found') return null;
-  const C = BUILDING_SIZE / 2, wp = r.cells.map(([cx, cy]) => ({ x: cx * BUILDING_SIZE + C, y: cy * BUILDING_SIZE + C }));
-  if (wp.length) wp[wp.length - 1] = { x: npc.targetX, y: npc.targetY }; else wp.push({ x: npc.targetX, y: npc.targetY });
-  return wp;
+  return _t678Wp(npc, r.cells);
+}
+// 그림 표본 — 창(출발 ± 반경) 칸 지도: '1' 통행 · 'b' 다리 칸 · '0' 막힘 · '?' 표 없음(지은 표의 통행 비트 그대로)
+function _t678Grid(sx, sy, R) {
+  const G = _t678G, recs = G._recs; let out = '';
+  for (let y = sy - R; y <= sy + R; y++) for (let x = sx - R; x <= sx + R; x++) {
+    const r = (x < 0 || y < 0) ? null : recs.get(G.chunkOf(x, y));
+    if (!r || x < r.x0 || y < r.y0 || x >= r.x0 + r.w || y >= r.y0 + r.h) { out += '?'; continue; }
+    const p = r.pass[(y - r.y0) * r.w + (x - r.x0)];
+    out += !p ? '0' : (isBridgeTileLocal(x * BUILDING_SIZE + BUILDING_SIZE / 2, y * BUILDING_SIZE + BUILDING_SIZE / 2) ? 'b' : '1');
+  }
+  return out;
 }
 function _t678Verify(npc, wp) {
-  const t0 = _t678Now(); const g = _t678Route(npc); const ms = _t678Now() - t0; const V = _t678V;
+  const t0 = _t678Now(); const r = _t678Route(npc, true); const ms = _t678Now() - t0; const V = _t678V;
   V.n++; V.gMs += ms; if (ms > V.gMaxMs) V.gMaxMs = ms;
-  if (g === undefined) { V.unknown++; return; }
+  if (!r || r.res === 'unknown') { V.unknown++; return; }
+  const g = r.res === 'found' ? _t678Wp(npc, r.cells) : null, go = r.res === 'found' ? _t678Wp(npc, r.cellsOld) : null;
+  const sm = (w) => (w.length < 3 ? w : PathCore.smoothPath(w, (ax, ay, bx, by) => straightPathClear(ax, ay, bx, by, 0), { keep: Roads.ENABLED ? _roadKeep : null }));
+  const L = (w) => { let x = npc.x, y = npc.y, d = 0; for (const p of w) { d += Math.hypot(p.x - x, p.y - y); x = p.x; y = p.y; } return d; };
+  const R = _pfRadius(true), sx = Math.floor(npc.x / BUILDING_SIZE), sy = Math.floor(npc.y / BUILDING_SIZE);
+  const cellsOf = (w) => w.map((p) => [Math.floor(p.x / BUILDING_SIZE), Math.floor(p.y / BUILDING_SIZE)]);
   if (wp && g) {
     V.bothFound++;
     if (V.diffs.length < 20000) {
       V.diffs.push(g.length - wp.length); V.ratios.push(+(g.length / Math.max(1, wp.length)).toFixed(3));
       // 걷는 길이(스무딩 뒤 · px) — computeNpcPath 꼬리와 같은 스무딩(같은 술어 · 같은 앵커)
-      const sm = (w) => (w.length < 3 ? w : PathCore.smoothPath(w, (ax, ay, bx, by) => straightPathClear(ax, ay, bx, by, 0), { keep: Roads.ENABLED ? _roadKeep : null }));
-      const L = (w) => { let x = npc.x, y = npc.y, d = 0; for (const p of w) { d += Math.hypot(p.x - x, p.y - y); x = p.x; y = p.y; } return d; };
-      const la = L(sm(wp)), lg = L(sm(g));
-      V.walkA.push(+la.toFixed(1)); V.walkRatios.push(+(lg / Math.max(1, la)).toFixed(3));
+      const la = L(sm(wp)), lg = L(sm(g)), lo = L(sm(go));
+      V.walkA.push(+la.toFixed(1)); V.walkRatios.push(+(lg / Math.max(1, la)).toFixed(3)); V.walkRatiosOld.push(+(lo / Math.max(1, la)).toFixed(3));
+      // 꼬리 표본 — 종전 길이 비가 가장 큰 쌍 하나(조각마다)
+      const ro = lo / Math.max(1, la), cur = V.samples.find((x) => x.kind === 'tail');
+      if (ro > 1.5 && (!cur || ro > cur.ratioOld)) {
+        const smp = { kind: 'tail', sx, sy, gx: Math.floor(npc.targetX / BUILDING_SIZE), gy: Math.floor(npc.targetY / BUILDING_SIZE), R, ratioOld: +ro.toFixed(3), ratioNew: +(lg / Math.max(1, la)).toFixed(3),
+          astar: cellsOf(sm(wp)), gNew: cellsOf(sm(g)), gOld: cellsOf(sm(go)), grid: _t678Grid(sx, sy, R) };
+        if (cur) V.samples[V.samples.indexOf(cur)] = smp; else V.samples.push(smp);
+      }
     }
-  } else if (wp) V.aOnly++; else if (g) { V.gOnly++; if (V.gOnlyLen.length < 20000) V.gOnlyLen.push(g.length); } else V.bothNull++;
+  } else if (wp) V.aOnly++;
+  else if (g) {
+    V.gOnly++; if (V.gOnlyLen.length < 20000) { V.gOnlyLen.push(r.cells.length); V.gOnlyLenOld.push(r.cellsOld.length); }
+    // 못 닿던 쌍 표본(조각마다 하나) — 칸 A* 예산 없음 길도 곁에서(그림용 · 세계 무관)
+    if (!V.samples.some((x) => x.kind === 'unreach')) {
+      const un = pfFindPath(npc.x, npc.y, npc.targetX, npc.targetY, { floor: 0, isBlockedFn: isBlockedByWall, isWaterFn: isTerrainBlockedLocal, maxCells: Infinity, searchRadiusCells: R,
+        preferFn: _roadPrefer, costFn: (_streamOn() && npc.simJob !== 'bandit') ? _streamCost : undefined });
+      V.samples.push({ kind: 'unreach', sx, sy, gx: Math.floor(npc.targetX / BUILDING_SIZE), gy: Math.floor(npc.targetY / BUILDING_SIZE), R, job: npc.simJob || '', act: npc.simAction || npc.behavior || '',
+        astarUnl: un ? cellsOf(sm(un)) : null, gNew: cellsOf(sm(g)), gOld: cellsOf(sm(go)), lenNew: +L(sm(g)).toFixed(1), lenUnl: un ? +L(sm(un)).toFixed(1) : null, grid: _t678Grid(sx, sy, R) });
+    }
+  } else V.bothNull++;
 }
 function computeNpcPath(npc, now) {
   if (typeof npc.targetX !== 'number' || typeof npc.targetY !== 'number') return null;
@@ -14650,7 +14703,8 @@ setInterval(() => {
   tickDowned(now);
   { const _tot = Date.now() - now; if (_tot >= 33) perfMark('tick', _tot); }
   { const _td = Date.now() - now; global._tt = (global._tt||0)+_td; global._tn = (global._tn||0)+1; if (_td > (global._tmx||0)) global._tmx = _td; }
-  { const _h = process.hrtime(_tickHr0); _tickMs.ring[_tickMs.i++ % _tickMs.ring.length] = _h[0] * 1e3 + _h[1] / 1e6; _tickMs.n++; }   // ★[T284 ④]
+  { const _h = process.hrtime(_tickHr0); _tickMs.ring[_tickMs.i++ % _tickMs.ring.length] = _h[0] * 1e3 + _h[1] / 1e6; _tickMs.n++;   // ★[T284 ④]
+    if (_t678G) _t678WarmTick(_h[0] * 1e3 + _h[1] / 1e6); }   // ★[T679 ③] 짓는 틱 · 안 짓는 틱(문 그래프 켬·견줌만)
 }, TICK_MS);
 
 // ★[낚시 v2] 입질·만료 폴링 — 찌가 흔들리는 순간과, 창을 그냥 지나친 순간을 서버가 알린다.
