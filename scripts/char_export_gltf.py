@@ -10,7 +10,8 @@
 #      ★[T604 ②] 옷 기하 = **청동기 옷**(`char_clothes_mhclo.py` — 시트 `char_render.py` 의 링 표를 3D 몸에 입혀 MPFB `mhclo` 로 묶는다 ·
 #      남 = 시트 그대로(옷자락 단 · 반팔 · 허리띠) · 여 = 무릎 단 · 긴팔 · 허리띠) — ★[T654] 옷 기하 하나(옷 넷이 같이 · 갖옷 털 두께는
 #      정점 속성 `_inflate` = 털 두께 방향(옷 점만 · 생성기가 둘레에 두께를 더하던 방향) × 메타 `bodies.<몸>.inflate.fur`(m) — 엔진 셰이더 한 줄 ·
-#      [T664] 면 속성 `_furnormal` = 민 옷의 면 법선(갖옷 재질의 음영) · 두 속성 다 glb 뒷손질로 성긴 접근자).
+#      [T664] 면 속성 `_furnormal` = 민 옷의 면 법선(갖옷 재질의 음영) · [T685] 점 속성 `_furjoints`·`_furweights` = 갖옷 몫 뼈 넷·무게 넷
+#      (생성기 갖옷 기하 — T604 판 그대로 — 를 MPFB 로 따로 묶은 무게 · 그리지 않는다) · 사용자 속성 넷 다 glb 뒷손질로 성긴 접근자).
 #      T545 의 CC0 현대 옷(`male_casualsuit04`·`female_elegantsuit01`)은 더 안 읽는다.
 #      키 = 1.60m(카드 "키 160cm 안팎" · 하네스 "사람 1.6m ↔ px") — 몸 맨 위(정수리)를 1.60m 에 맞추는 등배 한 번.
 #      삼각형 = 한 몸 6,000 안(카드 "2~6k") — 살·눈·눈썹은 그대로 · [T604] 옷은 지은 그대로(링 표가 정한 수 · 남는 몫의 반 안이어야 한다) ·
@@ -176,6 +177,16 @@ def decimate(o, target):
     return tris(o)
 
 
+def gltf_min_influence():
+    """[T685] 내보내기(io_scene_gltf2)가 뼈 무게를 고르는 문턱 — 그 원문(`__get_bone_data` 의 `min_influence`)을 읽는다(사본 0 · 갖옷 몫 무게를 같은 규칙으로)."""
+    import io_scene_gltf2
+    p = os.path.join(os.path.dirname(io_scene_gltf2.__file__), "blender", "exp", "primitive_extract.py")
+    m = re.findall(r"^\s*min_influence\s*=\s*([0-9.eE+-]+)\s*$", open(p, encoding="utf-8").read(), re.M)
+    if len(m) != 1:
+        raise SystemExit(f"[char3d] ★내보내기 원문에서 뼈 무게 문턱(min_influence)을 하나로 못 읽었다: {m} — {p}")
+    return float(m[0])
+
+
 # ── ① 소체 — MPFB 로 몸 하나 · 프록시 · 눈 · 눈썹 · 머리 · 옷(기하 둘 — T604 청동기 옷) ──────────────────────
 def build(sex):
     spec = BODIES[sex]
@@ -193,20 +204,39 @@ def build(sex):
     parts["brows"] = HS.add_mhclo_asset(src(COMMON["brows"]), base, asset_type="eyebrows", subdiv_levels=0, material_type="NONE")
     parts["hair"] = HS.add_mhclo_asset(src(spec["hair"]), base, asset_type="hair", subdiv_levels=0, material_type="NONE")
     parts["cloth"] = HS.add_mhclo_asset(cl["base"], base, asset_type="clothes", subdiv_levels=0, material_type="NONE")
-    for o in parts.values():                           # 모디파이어(무게 밖)는 적용해서 굳힌다 · 옷은 살을 안 지운다(delete_verts 0 — 어깨·단에서 살 구멍 0)
+    fur = HS.add_mhclo_asset(cl["fur"], base, asset_type="clothes", subdiv_levels=0, material_type="NONE")   # [T685] 갖옷 묶기(무게 재료만 · 안 그린다)
+    for o in list(parts.values()) + [fur]:             # 모디파이어(무게 밖)는 적용해서 굳힌다 · 옷은 살을 안 지운다(delete_verts 0 — 어깨·단에서 살 구멍 0)
         apply_mods(o)
         for g in [g for g in o.vertex_groups if g.name not in rig.data.bones]:   # 뼈가 아닌 묶음은 버린다
             o.vertex_groups.remove(g)
     bpy.data.objects.remove(base, do_unlink=True)      # 기본 메시(고폴리)는 버린다 — 프록시가 몸이다
-    for o in [rig] + list(parts.values()):
+    for o in [rig, fur] + list(parts.values()):
         if o.matrix_world != Matrix.Identity(4):
             raise SystemExit(f"[char3d] ★{o.name} 의 오브젝트 변환이 단위가 아니다 — 데이터 변환 전제가 깨졌다")
     # ★[T654] 옷 점 차례 = 생성기가 지은 차례인가(털 두께 방향을 점 번호로 싣는다) — 묶어 입힌 점마다 가장 가까운 지은 점이 제 번호여야 한다
-    got = np.array([tuple(v.co) for v in parts["cloth"].data.vertices], dtype=np.float64)
-    made = np.array(cl["inflate"]["verts"], dtype=np.float64)
-    near = ((got[:, None, :] - made[None, :, :]) ** 2).sum(-1).argmin(1) if len(got) == len(made) else None
-    if near is None or (near != np.arange(len(made))).any():
-        raise SystemExit(f"[char3d] ★{sex} 입힌 옷 점 차례가 지은 차례와 다르다(점 {len(got)} · 지은 {len(made)}) — 털 두께 방향을 못 싣는다")
+    #   [T685] 갖옷 묶기도 같은 검사(점 차례 = 본 옷 차례 — 갖옷 몫 무게를 같은 점 번호로 싣는다)
+    for ob_, made_ in ((parts["cloth"], cl["inflate"]["verts"]), (fur, cl["furVerts"])):
+        got = np.array([tuple(v.co) for v in ob_.data.vertices], dtype=np.float64)
+        made = np.array(made_, dtype=np.float64)
+        near = ((got[:, None, :] - made[None, :, :]) ** 2).sum(-1).argmin(1) if len(got) == len(made) else None
+        if near is None or (near != np.arange(len(made))).any():
+            raise SystemExit(f"[char3d] ★{sex} 입힌 옷 점 차례가 지은 차례와 다르다({ob_.name} · 점 {len(got)} · 지은 {len(made)}) — 점 번호로 못 싣는다")
+    # ★[T685] 갖옷 몫 뼈 무게 = 갖옷 묶기가 입힌 무게를 **내보내기와 같은 규칙**으로 고른다 — 문턱 = 내보내기 원문의 `min_influence`(사본 0) ·
+    #   무게 큰 차례(같으면 묶음 차례 그대로 — 안정 정렬) · 앞 넷 · float32 합으로 나눔 → 정점 속성 `_furjoints`(뼈 번호 + 1 · 빈 칸 0 — glb 뒷손질이 glTF 뼈 번호로) · `_furweights`
+    mi = gltf_min_influence()
+    bidx = {b.name: i for i, b in enumerate(rig.data.bones)}
+    nf = len(fur.data.vertices)
+    FJ, FW = np.zeros((nf, 4), dtype=np.float32), np.zeros((nf, 4), dtype=np.float32)
+    for v in fur.data.vertices:
+        bones = [(bidx[fur.vertex_groups[g.group].name], g.weight) for g in v.groups if g.weight > mi and fur.vertex_groups[g.group].name in bidx]
+        bones.sort(key=lambda x: x[1], reverse=True)
+        if not bones:
+            raise SystemExit(f"[char3d] ★{sex} 갖옷 점 {v.index} 에 뼈 무게가 없다 — 갖옷 묶기가 안 섰다")
+        for c, (bi, w) in enumerate(bones[:4]):
+            FJ[v.index, c], FW[v.index, c] = bi + 1, w
+    FW /= FW.sum(axis=1).reshape(-1, 1)                # 내보내기 `primitive_attributes` 와 같은 정규화(float32 · 행마다)
+    fur_n = {"verts": nf, "multi": int(sum(len([g for g in v.groups if g.weight > mi]) > 4 for v in fur.data.vertices))}
+    bpy.data.objects.remove(fur, do_unlink=True)       # 갖옷 묶기는 무게만 남기고 버린다(안 그린다 · 사본 0)
     # 삼각형 예산: 살·눈·눈썹은 그대로 · 옷은 지은 그대로(링 표가 정한다 — 줄이지 않는다) · 남는 몫을 머리에
     fixed = tris(parts["skin"]) + tris(parts["eyes"]) + tris(parts["brows"])
     left = TRI_BUDGET - fixed
@@ -247,8 +277,21 @@ def build(sex):
         if k == "cloth":
             for i, n in enumerate(fn):
                 a.data[i].vector = (n.x, n.z, -n.y)
+    # ★[T685] 갖옷 몫 뼈 넷 · 무게 넷 = 점 속성(넷씩 — 색 칸 꼴로 싣는다 · 살·눈·눈썹·머리 0) — 엔진은 갖옷 재질에서만 갈아 끼운다
+    for k, o in parts.items():
+        aj = o.data.attributes.new("_furjoints", "FLOAT_COLOR", "POINT")
+        aw = o.data.attributes.new("_furweights", "FLOAT_COLOR", "POINT")
+        if k == "cloth":
+            if len(o.data.vertices) != nf:
+                raise SystemExit(f"[char3d] ★{sex} 갖옷 묶기 점 {nf} ≠ 옷 점 {len(o.data.vertices)}")
+            aj.data.foreach_set("color", FJ.ravel())
+            aw.data.foreach_set("color", FW.ravel())
+        else:                                          # ★색 칸 새 속성의 바탕은 흰색(1,1,1,1)이다(실측) — 0 으로 채운다(살·머리는 갖옷 무게 0)
+            z = np.zeros(4 * len(o.data.vertices), dtype=np.float32)
+            aj.data.foreach_set("color", z)
+            aw.data.foreach_set("color", z)
     bpy.context.view_layer.update()
-    return rig, parts, cl, {"scale": round(s, 6), "topM": round(top, 6), "tris": tri, "inflate": {"fur": pad}}
+    return rig, parts, cl, {"scale": round(s, 6), "topM": round(top, 6), "tris": tri, "inflate": {"fur": pad}, "furWeights": fur_n}
 
 
 # ── ③ 아틀라스 — 칸마다 원본 무늬를 붙이고 UV 를 그 칸으로 옮긴다 ─────────────────────────────────
@@ -592,6 +635,7 @@ scene.render.fps = 1                                   # ★열쇠 시각 = 판 
 scene.render.fps_base = 1.0
 os.makedirs(TEXD, exist_ok=True)
 built = {}
+BONES_OF = {}                                          # [T685] 메시 이름 → 뼈 이름(블렌더 차례 · 몸 머리 붙인 뒤)
 
 
 def _join(objs, name):
@@ -616,6 +660,7 @@ for sex in ("M", "F"):
     for b in rig.data.bones:                           # 뼈 이름에 몸 머리(두 몸이 한 파일 · 이름이 겹치지 않게) — 무게 묶음도 따라 바뀐다
         b.name = f"{sex}_{b.name}"
     rig.name = rig.data.name = sex
+    BONES_OF[f"{sex}_body"] = [b.name for b in rig.data.bones]   # [T685] 갖옷 몫 뼈 번호(블렌더 차례) → 이름 → glTF 뼈 번호(glb 뒷손질)
     missing = [g.name for g in body.vertex_groups if g.name not in rig.data.bones]
     if missing:
         raise SystemExit(f"[char3d] ★뼈 이름을 바꾼 뒤 무게 묶음이 안 따라왔다: {missing[:5]}")
@@ -641,7 +686,7 @@ opts = dict(filepath=GLB, export_format="GLB", use_selection=True, export_yup=Tr
             export_optimize_animation_size=True, export_optimize_animation_keep_anim_armature=True,   # NLA 는 늘 표본을 뜬다 — 값이 안 변하는 채널은 열쇠 둘로(★False 면 쉼과 다른 상수 회전(엉덩관절·어깨·손가락)까지 버린다 · 실측)
             export_anim_slide_to_zero=False, export_frame_step=1,
             export_materials="NONE", export_normals=True, export_texcoords=True, export_vertex_color="NONE",
-            export_attributes=True,                        # ★[T654] 사용자 속성(밑줄 머리) — `_inflate`(갖옷 털 두께 방향) · [T664] `_furnormal`(갖옷 면 법선) 둘만 있다(ⓐ 하네스가 잰다)
+            export_attributes=True,                        # ★[T654] 사용자 속성(밑줄 머리) — `_inflate`(갖옷 털 두께 방향) · [T664] `_furnormal`(갖옷 면 법선) · [T685] `_furjoints`·`_furweights`(갖옷 몫 뼈·무게) 넷만 있다(ⓐ 하네스가 잰다)
             export_all_influences=False, export_cameras=False, export_lights=False, export_extras=False, export_morph=False)
 known = {p.identifier for p in bpy.ops.export_scene.gltf.get_rna_type().properties}
 if "export_attributes" not in known:
@@ -652,7 +697,7 @@ bpy.ops.export_scene.gltf(**{k: v for k, v in opts.items() if k in known})
 # ── ④′ glb 뒷손질 한 단 — [T664] 사용자 속성은 성긴 접근자로 ─────────────────────────────────────
 #   내보내기(io_scene_gltf2)는 사용자 속성을 빽빽이만 쓴다 — `_inflate`·`_furnormal` 은 옷 점만 0 이 아니고 살·눈·눈썹·머리 몫이 다 0 이다.
 #   glTF 2.0 성긴 접근자(본 = 0 · 0 아닌 줄만 첨자 + 값 · 핵심 규격 — 확장 0)로 고쳐 쓴다. 다른 버퍼 뷰는 바이트 그대로 옮긴다(4바이트 맞춤) · 결정적.
-def sparsify_glb(path, keys):
+def sparsify_glb(path, keys, conv=None):
     import struct
     b = open(path, "rb").read()
     jl = struct.unpack_from("<I", b, 12)[0]
@@ -661,6 +706,8 @@ def sparsify_glb(path, keys):
     BIN = b[bo + 8: bo + 8 + struct.unpack_from("<I", b, bo)[0]]
     NC = {"SCALAR": 1, "VEC2": 2, "VEC3": 3, "VEC4": 4}
     tgt = sorted({p["attributes"][k] for m in J["meshes"] for p in m["primitives"] for k in keys if k in p["attributes"]})
+    whose = {p["attributes"][k]: (k, mi) for mi, m in enumerate(J["meshes"]) for p in m["primitives"] for k in keys if k in p["attributes"]}
+    joints_of = {n["mesh"]: [J["nodes"][j]["name"] for j in J["skins"][n["skin"]]["joints"]] for n in J["nodes"] if "mesh" in n and "skin" in n}
     users = {}
     for i, a in enumerate(J["accessors"]):
         for v in [a.get("bufferView")] + [a["sparse"][q]["bufferView"] for q in ("indices", "values") if "sparse" in a]:
@@ -690,12 +737,17 @@ def sparsify_glb(path, keys):
         v, n = J["bufferViews"][a["bufferView"]], NC[a["type"]]
         o, st = v.get("byteOffset", 0) + a.get("byteOffset", 0), v.get("byteStride", 4 * n)
         arr = np.array([np.frombuffer(BIN, dtype="<f4", count=n, offset=o + r * st) for r in range(a["count"])], dtype=np.float32)
+        key, mi = whose[i]
+        dt, ct = "<f4", 5126
+        if conv and key in conv:                                       # [T685] 값 바꿈(갖옷 몫 뼈 번호 → glTF 뼈 번호 · 정수 꼴)
+            arr, dt, ct = conv[key](J["meshes"][mi]["name"], arr, joints_of.get(mi))
         nz = np.flatnonzero(np.any(arr != 0, axis=1))
         if not len(nz):
             raise SystemExit(f"[char3d] ★접근자 {i}({a['type']}) 가 전부 0 이다 — 성긴 접근자는 줄이 하나 이상이어야 한다")
         wide = a["count"] > np.iinfo(np.uint16).max                    # 첨자 꼴 = 점 수가 정한다(규격 · 설계 수 아님)
         iv = put(nz.astype("<u4" if wide else "<u2").tobytes(), {"buffer": 0})
-        vv = put(arr[nz].astype("<f4").tobytes(), {"buffer": 0})
+        vv = put(arr[nz].astype(dt).tobytes(), {"buffer": 0})
+        a["componentType"] = ct
         a.pop("bufferView"); a.pop("byteOffset", None)
         a["sparse"] = {"count": int(len(nz)), "indices": {"bufferView": iv, "componentType": 5125 if wide else 5123}, "values": {"bufferView": vv}}
         out[i] = (a["count"], int(len(nz)))
@@ -718,8 +770,22 @@ def sparsify_glb(path, keys):
     return len(b), out
 
 
-_glb0, _sp = sparsify_glb(GLB, ("_INFLATE", "_FURNORMAL"))
-print(f"[char3d] ★[T664] 성긴 접근자: glb {_glb0}B → {os.path.getsize(GLB)}B · " + " · ".join(f"접근자 {i} {c}점 중 {k}" for i, (c, k) in sorted(_sp.items())))
+def _furjoints(mesh, arr, joints):
+    """[T685] 갖옷 몫 뼈 칸 = 블렌더 뼈 번호 + 1(빈 칸 0) → 그 몸 스킨의 glTF 뼈 번호(이름으로 맞댐 · 빈 칸 0 — 내보내기 `JOINTS_0` 와 같은 꼴) · u8."""
+    names = BONES_OF[mesh]
+    jix = {n: k for k, n in enumerate(joints or [])}
+    if np.any(arr != np.round(arr)) or arr.max() > len(names) or any(n not in jix for n in names):
+        raise SystemExit(f"[char3d] ★{mesh} 갖옷 몫 뼈 칸이 뼈 번호가 아니거나 스킨에 없는 뼈가 있다")
+    out = np.zeros(arr.shape, dtype=np.float32)
+    for (r, c), v in np.ndenumerate(arr):
+        if v:
+            out[r, c] = jix[names[int(v) - 1]]
+    wide = len(joints) > np.iinfo(np.uint8).max + 1
+    return out, ("<u2" if wide else "<u1"), (5123 if wide else 5121)
+
+
+_glb0, _sp = sparsify_glb(GLB, ("_INFLATE", "_FURNORMAL", "_FURJOINTS", "_FURWEIGHTS"), conv={"_FURJOINTS": _furjoints})
+print(f"[char3d] ★[T664·T685] 성긴 접근자: glb {_glb0}B → {os.path.getsize(GLB)}B · " + " · ".join(f"접근자 {i} {c}점 중 {k}" for i, (c, k) in sorted(_sp.items())))
 
 # ── ⑤ 메타 — 엔진이 읽는 규약(클라는 수를 안 박는다) ──────────────────────────────────────────
 import io_scene_gltf2                                  # noqa: E402
@@ -728,7 +794,7 @@ for k in ("render_common.py", "mocap_retarget.py", "char_clothes_mhclo.py", "cha
     INPUTS["scripts/" + k] = sha16(os.path.join(HERE, k))
 INPUTS["add-on-mpfb-v2.0.17.zip"] = _zip_sha
 meta = {
-    "_": "[T545 · T604 · T654 · T664] char_export_gltf.py 산물 — 엔진이 읽는 규약. 클라는 이 수를 하드코딩하지 않는다(갖옷 털 두께는 `bodies.<몸>.inflate`).",
+    "_": "[T545 · T604 · T654 · T664 · T685] char_export_gltf.py 산물 — 엔진이 읽는 규약. 클라는 이 수를 하드코딩하지 않는다(갖옷 털 두께는 `bodies.<몸>.inflate`).",
     "glb": "char_body.glb",
     "units": "1 = 1m = 1셀(32 게임px)",
     "facing": "방향 0 = 모델 +x(Blender) — 시트 행 0 과 같다 · 방향 d = d×45°(연속 회전은 atan2(fy,fx))",
@@ -739,6 +805,7 @@ meta = {
     "body": "MPFB " + MPFB_VER + " · MakeHuman 시스템 자산(CC0)",
     "bodies": {sex: {"node": sex, "mesh": f"{sex}_body", "tris": v["info"]["trisTotal"], "trisParts": v["info"]["tris"],
                      "inflate": v["info"]["inflate"],
+                     "furSkin": {"verts": v["info"]["furWeights"]["verts"], "over4": v["info"]["furWeights"]["multi"]},
                      "bones": v["info"]["bones"], "scale": v["info"]["scale"],
                      "parts": {"proxy": BODIES[sex]["proxy"], "skin": BODIES[sex]["skin"], "hair": BODIES[sex]["hair"],
                                "eyes": COMMON["eyes"], "brows": COMMON["brows"]},
@@ -757,9 +824,13 @@ meta = {
     "clothKinds": list(CLOTH_KINDS),
     "inflateAttr": "_inflate",
     "furNormalAttr": "_furnormal",
+    "furJointsAttr": "_furjoints",
+    "furWeightsAttr": "_furweights",
     "inflateNote": "[T654] 옷 → 메시는 하나(옷 넷 = 재질) · 갖옷 = 정점 속성 `_inflate`(옷 점 = 털 두께 방향 단위 벡터 · 살·눈·눈썹·머리 = 0) × "
                    "`bodies.<몸>.inflate.<옷>`(m · 생성기 `FUR_PAD` × 키 비 × 등배) — 묶기 자세에서 민 뒤 스키닝(엔진 셰이더 한 줄) · "
-                   "[T664] 갖옷 면 법선 = 면 속성 `_furnormal`(민 옷의 면 법선 · 그 밖 0 — 갖옷 재질만 바꾼다) · 두 속성 다 glTF 성긴 접근자(바탕 0)",
+                   "[T664] 갖옷 면 법선 = 면 속성 `_furnormal`(민 옷의 면 법선 · 그 밖 0 — 갖옷 재질만 바꾼다) · "
+                   "[T685] 갖옷 몫 뼈 넷·무게 넷 = `_furjoints`(glTF 뼈 번호 u8)·`_furweights`(합 1) — 생성기 갖옷 기하를 MPFB 로 따로 묶은 무게(내보내기와 같은 규칙) · "
+                   "갖옷 재질만 스키닝 뼈·무게를 갈아 끼운다 · 사용자 속성 넷 다 glTF 성긴 접근자(바탕 0)",
     "textures": {sex: dict({k: f"tex/{sex.lower()}_{k}.jpg" for k in CLOTH_KINDS}, alpha=f"tex/{sex.lower()}_alpha.png") for sex in built},
     "roughness": {k: rc.CLOTH_MATS[k][1] for k in CLOTH_KINDS},
     "alphaTest": 0.5,
@@ -780,7 +851,7 @@ outs = {"char_body.glb": sha16(GLB), "char3d_meta.json": sha16(META)}
 for fn in sorted(os.listdir(TEXD)):
     outs["tex/" + fn] = sha16(os.path.join(TEXD, fn))
 lock = {
-    "_": "[T545 · T604 · T654 · T664] char3d 잠금 — 값 = 파일 sha1 앞 16자(바이트가 자산). 입력 지문이 바뀌면 다시 굽는다. 원본은 저장소 밖(`~/Mini/_3d_in/`).",
+    "_": "[T545 · T604 · T654 · T664 · T685] char3d 잠금 — 값 = 파일 sha1 앞 16자(바이트가 자산). 입력 지문이 바뀌면 다시 굽는다. 원본은 저장소 밖(`~/Mini/_3d_in/`).",
     "_기계": f"pip bpy {bpy.app.version_string} · {meta['exporter']} · MPFB {MPFB_VER}",
     "_입력": dict(sorted(INPUTS.items())),
     "char3d": outs,
