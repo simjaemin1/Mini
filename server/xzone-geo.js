@@ -102,6 +102,11 @@ function _splitRoute(pts, rA, rB) {
   return { cross: { x: cx, y: cy }, partA, partB, lenA: len(partA), lenB: len(partB), multi: pts.slice(k).some((p) => inR(p, rA)) };
 }
 
+// ★★[T682 2026-10-10] 손잡이 `T682_UNREACH`(★기본 끔 · `=1` 켬) — 쌍마다 A\* 를 파기 전에 두 끝의 **성분 번호**를 본다(villages `_routeComp` ·
+//   교역로 격자 메모 위에서 한 번 매긴다). 다르면 그 쌍은 정말 못 간다 — A\* 도 반드시 빈손이라 표가 같다(T662 회부 ①의 "못 판 쌍" 중 ⓐ 몫).
+//   ⚠재 보니(보고 T682) 두 존 87마을이 **한 성분**(코스 노드 929,487)이라 못 판 753쌍이 전부 ⓑ(닿는데 상한 25만이 모자람)였다 — 켜도 버릴 쌍 0 · 번호 매기는 값만 든다.
+const T682_UNREACH = process.env.T682_UNREACH === '1';
+
 // ── 두 존 걸음표 — { dist: { a: { b: econ 거리 } }, split: { a: { b: { fA, ptA, ptB, ptsA, ptsB } } } }
 //   rosterA/B = [{ name, cx, cy }](제 존 로컬 칸) · infoR = econ `infoRange` · splitR = 경계 칸·길을 낼 거리 상한(econ)
 //   ptA/ptsA 는 **A 로컬 px** · ptB/ptsB 는 **B 로컬 px**(받는 존이 제 좌표로 몸을 세운다).
@@ -129,13 +134,17 @@ function crossGeo(q) {
   const recB = { x0: offB.x, y0: offB.y, x1: offB.x + ZONES[B].zoneWidth, y1: offB.y + ZONES[B].zoneHeight };
   const splitR = q.splitR != null ? q.splitR : Infinity;
   const split = {};
-  let routed = 0, multi = 0, failed = 0;
+  let routed = 0, multi = 0, failed = 0, unreach = 0, compMs = 0;
   _quiet(() => P._routeProbe.reset());
   for (let i = 0; i < nA; i++) for (let j = nA; j < vil.length; j++) {
     const d = dist[vil[i].name][vil[j].name];
     if (d == null || !(d <= splitR)) continue;
     const px = (v) => ({ x: (v.ux + 0.5) * SZ, y: (v.uy + 0.5) * SZ });
     const a = px(vil[i]), b = px(vil[j]);
+    if (T682_UNREACH) {   // ★[T682] 두 끝이 다른 성분이면 탐색 없이 빈손(A* 도 반드시 빈손 — 같은 답)
+      const tc = Date.now(); const same = _quiet(() => P._routeProbe.sameComp(a.x, a.y, b.x, b.y)); compMs += Date.now() - tc;
+      if (!same) { failed++; unreach++; continue; }
+    }
     const pts = _quiet(() => P._routeProbe.pts(a.x, a.y, b.x, b.y));
     const sp = pts ? _splitRoute(pts, recA, recB) : null;
     if (!sp) { failed++; continue; }
@@ -149,7 +158,9 @@ function crossGeo(q) {
     };
   }
   _quiet(() => P._routeProbe.reset());
-  return { A, B, nA, nB: rB.length, dist, split, ms: { bfs: bfsMs, route: Date.now() - t1 }, routed, multi, failed };
+  const out = { A, B, nA, nB: rB.length, dist, split, ms: { bfs: bfsMs, route: Date.now() - t1 }, routed, multi, failed };
+  if (T682_UNREACH) { out.unreach = unreach; out.ms.comp = compMs; const cs = _quiet(() => P._routeProbe.compStat()); out.comps = cs ? cs.n : null; }   // 켬 판만 칸이 선다(끔 = 종전 글자)
+  return out;
 }
 
 // ── ★★[T662 2026-10-08] **한 벌을 한 번만 잰다** — 손잡이 `T662_GEO_CACHE`(★기본 켬 · `=0` = 종전: 워커마다 제가 잰다)

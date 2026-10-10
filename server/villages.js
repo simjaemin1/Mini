@@ -2232,6 +2232,58 @@ function _t619RedigKeep(keys, chg) {
     return false;
   });
 }
+// ★[T682] 교역로 격자 열림 메모 한 자리 — `_routeBegin` 의 `isBlk`(주입 술어 앞부분)와 성분 번호(`_routeComp`)가 같이 쓴다(식 무변: 범위 밖 = 막힘 · `coarseOpen` 를 칸마다 한 번).
+function _routeGridBlk(R, gx, gy) {
+  const gw = R.gw, gh = R.gh;
+  if (gx < 0 || gy < 0 || gx >= gw || gy >= gh) return true;
+  const i = gy * gw + gx;
+  if (R.blk[i] === 0) R.blk[i] = coarseOpen(R.ta, gx, gy) ? 1 : 2;
+  return R.blk[i] === 2;
+}
+// ★[T682] 마을 칸 → 코스 노드 스냅(종전 `_routeBegin` 안 클로저 그대로 꺼냈다 — 행렬 srcNode 와 같은 반경 6노드 나선)
+function _routeSnap(R, isBlk, px, py) {
+  const gw = R.gw, gh = R.gh;
+  const gx0 = Math.min(gw - 1, Math.max(0, Math.round(px / SZ / DIST_STEP)));
+  const gy0 = Math.min(gh - 1, Math.max(0, Math.round(py / SZ / DIST_STEP)));
+  if (!isBlk(gx0, gy0)) return gy0 * gw + gx0;
+  for (let r = 1; r <= ROUTE_SNAP_R; r++) for (let a = 0; a < 16; a++) {
+    const nx = Math.round(gx0 + Math.cos(a / 16 * 2 * Math.PI) * r), ny = Math.round(gy0 + Math.sin(a / 16 * 2 * Math.PI) * r);
+    if (nx >= 0 && ny >= 0 && nx < gw && ny < gh && !isBlk(nx, ny)) return ny * gw + nx;
+  }
+  return -1;
+}
+// ★★[T682 2026-10-10] **성분 번호** — 교역로 격자의 열린 노드를 4방으로 묶는다(한 번 · 격자 메모 `R.blk` 위 · 무효화는 그 메모와 같이).
+//   8방 + 코너 절단 금지(`path-core` 도로 프리셋)에선 대각 한 걸음이 두 옆 칸이 다 열려야 서므로 닿는 집합이 4방 성분과 같다.
+//   간선 규칙(`T598_ROUTE_EDGE`)·주입 술어(`extraBlk`)는 간선·노드를 **더 막기만** 하므로, 성분이 다르면 그 규칙에서도 못 닿는다(거꾸로는 아니다).
+//   ⇒ 두 끝의 성분이 다르면 A\* 는 반드시 빈손이다(열린 노드가 바닥나거나 상한) — 탐색 없이 같은 빈손을 돌려줄 수 있다.
+function _routeComp() {
+  const R = ensureRouteGrid(); if (!R) return null;
+  if (R.comp) return R.comp;
+  const gw = R.gw, gh = R.gh, N = gw * gh, lab = new Int32Array(N).fill(-1), Q = new Int32Array(N);
+  let nc = 0;
+  for (let s = 0; s < N; s++) {
+    if (lab[s] >= 0 || _routeGridBlk(R, s % gw, (s / gw) | 0)) continue;
+    let h = 0, t = 0; Q[t++] = s; lab[s] = nc;
+    while (h < t) {
+      const i = Q[h++], x = i % gw, y = (i / gw) | 0;
+      if (x + 1 < gw && lab[i + 1] < 0 && !_routeGridBlk(R, x + 1, y)) { lab[i + 1] = nc; Q[t++] = i + 1; }
+      if (x > 0 && lab[i - 1] < 0 && !_routeGridBlk(R, x - 1, y)) { lab[i - 1] = nc; Q[t++] = i - 1; }
+      if (y + 1 < gh && lab[i + gw] < 0 && !_routeGridBlk(R, x, y + 1)) { lab[i + gw] = nc; Q[t++] = i + gw; }
+      if (y > 0 && lab[i - gw] < 0 && !_routeGridBlk(R, x, y - 1)) { lab[i - gw] = nc; Q[t++] = i - gw; }
+    }
+    nc++;
+  }
+  R.comp = { lab, n: nc };
+  return R.comp;
+}
+// 두 끝이 같은 성분인가(스냅까지 `_routeBegin` 과 같은 길) — 스냅 실패면 false(그 쌍은 `_routeBegin` 도 null 이다).
+function _routeSameComp(x0, y0, x1, y1) {
+  const C = _routeComp(); if (!C) return true;
+  const R = state._route, isBlk = (gx, gy) => _routeGridBlk(R, gx, gy);
+  const si = _routeSnap(R, isBlk, x0, y0), ti = _routeSnap(R, isBlk, x1, y1);
+  if (si < 0 || ti < 0) return false;
+  return C.lab[si] === C.lab[ti];
+}
 function _routeBegin(x0, y0, x1, y1, extraBlk, plain) {
   // ★★[T85 · §0-ⓐ 실측의 직접 귀결] **격자 scratch 는 하나다.** 새 탐색이 시작되면 `sc.gen` 이 오르고,
   //   그 순간 세워 둔 탐색의 g 는 전부 "낡은 세대"가 되어 `Infinity` 로 읽힌다(`came` 는 스탬프도 없다).
@@ -2243,22 +2295,10 @@ function _routeBegin(x0, y0, x1, y1, extraBlk, plain) {
   if (!R) return null;
   const { gw, gh, half, ta } = R;
   const isBlk = (gx, gy) => {
-    if (gx < 0 || gy < 0 || gx >= gw || gy >= gh) return true;
-    const i = gy * gw + gx;
-    if (R.blk[i] === 0) R.blk[i] = coarseOpen(ta, gx, gy) ? 1 : 2;   // ★거리행렬과 동일 규칙(다리 구제 포함)
-    if (R.blk[i] === 2) return true;
+    if (_routeGridBlk(R, gx, gy)) return true;   // ★거리행렬과 동일 규칙(다리 구제 포함) — ★[T682] 격자 메모 한 자리(성분 번호도 이것으로)
     return extraBlk ? !!extraBlk(gx, gy) : false;   // ★[T364 ②] 주입 술어(전쟁 행군로의 숲) — 미주입이면 종전 그대로
   };
-  const snap = (px, py) => { // 행렬 srcNode와 동일 스냅(반경 6노드 나선)
-    const gx0 = Math.min(gw - 1, Math.max(0, Math.round(px / SZ / DIST_STEP)));
-    const gy0 = Math.min(gh - 1, Math.max(0, Math.round(py / SZ / DIST_STEP)));
-    if (!isBlk(gx0, gy0)) return gy0 * gw + gx0;
-    for (let r = 1; r <= ROUTE_SNAP_R; r++) for (let a = 0; a < 16; a++) {
-      const nx = Math.round(gx0 + Math.cos(a / 16 * 2 * Math.PI) * r), ny = Math.round(gy0 + Math.sin(a / 16 * 2 * Math.PI) * r);
-      if (nx >= 0 && ny >= 0 && nx < gw && ny < gh && !isBlk(nx, ny)) return ny * gw + nx;
-    }
-    return -1;
-  };
+  const snap = (px, py) => _routeSnap(R, isBlk, px, py);   // 행렬 srcNode와 동일 스냅(반경 6노드 나선)
   const si = snap(x0, y0), ti = snap(x1, y1);
   if (si < 0 || ti < 0) return null;
   // ★[경로 통일 2026-07-17] 탐색 본체 = sim/path-core.js routePath(랩 tradePath와 같은 정본 — 직선 편향·코너컷 금지·100/140).
@@ -4127,7 +4167,7 @@ function invalidateTradeDistances(cx, cy) { // eslint-disable-line no-unused-var
   if (state.db && state.db.clearTradeRoutes) { try { state.db.clearTradeRoutes(state.zoneId); } catch (e) {} }
   if (state.ready) { try { _routeWarmBuild(); } catch (e) {} }   // ★[T42 ①ⓑ] 다 버렸으니 다시 데울 목록을 세운다
   lifeSiteResetAll();   // ★[T41 ①] 지형이 바뀌면 옛 거부가 뒤집힐 수 있다 — 표지 + 거부 캐시 파기(셋째).
-  if (state._route) { state._route.blk.fill(0); if (state._route.openN) state._route.openN.fill(-1); }   // ★[T578 ③] 칸 안 열린 수 메모도
+  if (state._route) { state._route.blk.fill(0); if (state._route.openN) state._route.openN.fill(-1); state._route.comp = null; }   // ★[T682] 성분 번호도(같은 격자 메모에서 나온다)   // ★[T578 ③] 칸 안 열린 수 메모도
   if (state._walkSegFar) state._walkSegFar.clear();
   _t598Forget(cx, cy);   // ★[T598] 칸 배수 · 이웃 잇기 메모도(벽이 서면 바뀐다 — 벽 칸을 주면 그 코스 칸 둘레만 · 손잡이 끔이면 배열이 없어 무동작)
   if (state._distBlk) state._distBlk.fill(0);   // ★[배치 12] 교역 거리행렬 코스 격자도 같은 훅에서 비운다(캐러밴 A* 격자와 동형)
@@ -11699,6 +11739,8 @@ module.exports = { streamStat, fishPerf, woodPerf, foragePerf, farmPerf,   // �
     //   정본 A\*(`computeRoutePts`) 그대로(사본 0) · `_distProbe.setup` 이 꽂은 어댑터 위에서 · reset = 격자 캐시·재개 슬롯 비움.
     _routeProbe: {
       pts: (x0, y0, x1, y1) => computeRoutePts(x0, y0, x1, y1),
+      sameComp: (x0, y0, x1, y1) => _routeSameComp(x0, y0, x1, y1),   // ★[T682] 성분 번호(첫 부름에 한 번 매긴다) — 다르면 `pts` 는 반드시 null
+      compStat: () => { const C = state._route && state._route.comp; return C ? { n: C.n } : null; },
       reset: () => { state._route = null; _pathJob = null; },
     },
     // ★[T100 2026-09-05] 개간 하네스용 — `_distProbe`·`_memberProbe` 와 **같은 규약**(최소 주입구 하나).
