@@ -15285,7 +15285,7 @@ function openMarket(vil){
   if(!vil||!vil.center||!vil.agents)return 0;
   vil._mktUntil=lifeGM+L_MKT_LINGER;
   const _oV=V,_oL=life; V=vil.V; life=vil;
-  let n=Math.max(1,Math.round(vil.agents.length*L_MKT_FRAC)),k=0,got=0;
+  let n=Math.max(1,Math.round(vil.agents.length*L_MKT_FRAC))-vil.agents.filter(a=>a._mkt).length,k=0,got=0;   // ★[T684] 이미 선 장에 다시 불리면(교역 NPC 둘이 같은 날 같은 마당에 닿는다) **이미 모인 사람을 뺀다** — 상한은 장이 설 때마다가 아니라 마을 인구 × L_MKT_FRAC 하나다(종전: 부를 때마다 새로 세어 7+7=14 = 34.1% · T660 실측). 다 찼으면 n≤0 → 아래 고리가 바로 끝난다(장 기한 연장만)
   for(const a of vil.agents){ if(n<=0)break;
     if(a._muster||a.rest||a._mkt)continue;
     if(a.state==='trading'||a.state==='build'||a.state==='gran'||a.state==='toGran')continue;   // 일하는 사람은 안 끌어온다
