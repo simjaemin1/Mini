@@ -1,0 +1,388 @@
+{
+ "card": "T680",
+ "base": "e15680e7",
+ "ruler": "t577-server-run 400 · VILLAGE_CARAVAN_MAX=0 · T400_BUILD_ACT=0 · t663-wood.js",
+ "aa": "A↔B · A↔C 3시드 6/6 바이트 같음",
+ "t652": {
+  "same": [],
+  "arms": {
+   "A": {
+    "7": {
+     "pop": 2975,
+     "dead": 0,
+     "ever": 51,
+     "dissolved": 0,
+     "empty": 0,
+     "firstEmpty": null,
+     "wood0": [
+      21,
+      42,
+      50,
+      41
+     ],
+     "zeroMed": 28,
+     "hit": 51,
+     "ljLeadMed": 9,
+     "ljBefore": 11,
+     "ljNever": 11,
+     "lj": [
+      198,
+      154
+     ],
+     "popDay": [
+      1095,
+      2170,
+      2975
+     ],
+     "eight": {
+      "pop": 2975,
+      "dead": 0,
+      "ever": 51,
+      "weapQ": 173,
+      "expand": 465,
+      "board": 1027,
+      "toolQ": 3819.6,
+      "preserve": 18.6,
+      "grain": 18435.8
+     }
+    },
+    "42": {
+     "pop": 2953,
+     "dead": 0,
+     "ever": 51,
+     "dissolved": 0,
+     "empty": 0,
+     "firstEmpty": null,
+     "wood0": [
+      22,
+      40,
+      49,
+      45
+     ],
+     "zeroMed": 28,
+     "hit": 51,
+     "ljLeadMed": 18,
+     "ljBefore": 12,
+     "ljNever": 9,
+     "lj": [
+      178,
+      212
+     ],
+     "popDay": [
+      1096,
+      2179,
+      2953
+     ],
+     "eight": {
+      "pop": 2953,
+      "dead": 0,
+      "ever": 51,
+      "weapQ": 201,
+      "expand": 530,
+      "board": 1076,
+      "toolQ": 3466.6,
+      "preserve": 6.8,
+      "grain": 13799
+     }
+    },
+    "1020": {
+     "pop": 2544,
+     "dead": 1,
+     "ever": 51,
+     "dissolved": 1,
+     "empty": 1,
+     "firstEmpty": 393,
+     "wood0": [
+      21,
+      39,
+      50,
+      47
+     ],
+     "zeroMed": 28,
+     "hit": 51,
+     "ljLeadMed": 2,
+     "ljBefore": 11,
+     "ljNever": 10,
+     "lj": [
+      152,
+      155
+     ],
+     "popDay": [
+      1100,
+      2026,
+      2544
+     ],
+     "eight": {
+      "pop": 2544,
+      "dead": 1,
+      "ever": 51,
+      "weapQ": 170,
+      "expand": 280,
+      "board": 1132,
+      "toolQ": 2987.2,
+      "preserve": 0,
+      "grain": 11488.4
+     }
+    }
+   },
+   "on": {
+    "7": {
+     "pop": 3068,
+     "dead": 0,
+     "ever": 51,
+     "dissolved": 0,
+     "empty": 0,
+     "firstEmpty": null,
+     "wood0": [
+      18,
+      43,
+      46,
+      39
+     ],
+     "zeroMed": 30,
+     "hit": 50,
+     "ljLeadMed": 2,
+     "ljBefore": 20,
+     "ljNever": 7,
+     "lj": [
+      220,
+      210
+     ],
+     "popDay": [
+      1100,
+      2285,
+      3068
+     ],
+     "eight": {
+      "pop": 3068,
+      "dead": 0,
+      "ever": 51,
+      "weapQ": 165,
+      "expand": 509,
+      "board": 1078,
+      "toolQ": 3383.6,
+      "preserve": 5.6,
+      "grain": 14128
+     }
+    },
+    "42": {
+     "pop": 2625,
+     "dead": 0,
+     "ever": 51,
+     "dissolved": 0,
+     "empty": 0,
+     "firstEmpty": null,
+     "wood0": [
+      17,
+      40,
+      48,
+      44
+     ],
+     "zeroMed": 31,
+     "hit": 51,
+     "ljLeadMed": -3,
+     "ljBefore": 26,
+     "ljNever": 4,
+     "lj": [
+      208,
+      132
+     ],
+     "popDay": [
+      1097,
+      2211,
+      2625
+     ],
+     "eight": {
+      "pop": 2625,
+      "dead": 0,
+      "ever": 51,
+      "weapQ": 170,
+      "expand": 352,
+      "board": 1125,
+      "toolQ": 3269.3,
+      "preserve": 0,
+      "grain": 14448.9
+     }
+    },
+    "1020": {
+     "pop": 2950,
+     "dead": 0,
+     "ever": 51,
+     "dissolved": 0,
+     "empty": 0,
+     "firstEmpty": null,
+     "wood0": [
+      18,
+      40,
+      49,
+      43
+     ],
+     "zeroMed": 31,
+     "hit": 51,
+     "ljLeadMed": -1,
+     "ljBefore": 24,
+     "ljNever": 5,
+     "lj": [
+      192,
+      148
+     ],
+     "popDay": [
+      1099,
+      2264,
+      2950
+     ],
+     "eight": {
+      "pop": 2950,
+      "dead": 0,
+      "ever": 51,
+      "weapQ": 262,
+      "expand": 639,
+      "board": 1165,
+      "toolQ": 3895.2,
+      "preserve": 43.5,
+      "grain": 13331.4
+     }
+    },
+    "_delta": {
+     "ds": [
+      15.959119496855346,
+      3.1260504201680672,
+      -11.10734845919404
+     ],
+     "mean": 2.6592738192764585,
+     "width": 27.066467956049387,
+     "read": "못 가름"
+    }
+   },
+   "narrow": {
+    "7": {
+     "pop": 2696,
+     "dead": 0,
+     "ever": 51,
+     "dissolved": 0,
+     "empty": 0,
+     "firstEmpty": null,
+     "wood0": [
+      20,
+      44,
+      50,
+      43
+     ],
+     "zeroMed": 30,
+     "hit": 51,
+     "ljLeadMed": 7,
+     "ljBefore": 21,
+     "ljNever": 4,
+     "lj": [
+      178,
+      168
+     ],
+     "popDay": [
+      1100,
+      2234,
+      2696
+     ],
+     "eight": {
+      "pop": 2696,
+      "dead": 0,
+      "ever": 51,
+      "weapQ": 137,
+      "expand": 925,
+      "board": 928,
+      "toolQ": 3199.8,
+      "preserve": 1.7,
+      "grain": 11171.3
+     }
+    },
+    "42": {
+     "pop": 2326,
+     "dead": 0,
+     "ever": 51,
+     "dissolved": 1,
+     "empty": 0,
+     "firstEmpty": null,
+     "wood0": [
+      18,
+      45,
+      50,
+      48
+     ],
+     "zeroMed": 30,
+     "hit": 51,
+     "ljLeadMed": -3,
+     "ljBefore": 26,
+     "ljNever": 4,
+     "lj": [
+      199,
+      116
+     ],
+     "popDay": [
+      1099,
+      2225,
+      2326
+     ],
+     "eight": {
+      "pop": 2326,
+      "dead": 0,
+      "ever": 51,
+      "weapQ": 159,
+      "expand": 410,
+      "board": 971,
+      "toolQ": 3073.8,
+      "preserve": 17.4,
+      "grain": 10023.9
+     }
+    },
+    "1020": {
+     "pop": 2535,
+     "dead": 0,
+     "ever": 51,
+     "dissolved": 0,
+     "empty": 0,
+     "firstEmpty": null,
+     "wood0": [
+      19,
+      41,
+      48,
+      47
+     ],
+     "zeroMed": 30,
+     "hit": 51,
+     "ljLeadMed": -2,
+     "ljBefore": 24,
+     "ljNever": 8,
+     "lj": [
+      198,
+      135
+     ],
+     "popDay": [
+      1099,
+      2288,
+      2535
+     ],
+     "eight": {
+      "pop": 2535,
+      "dead": 0,
+      "ever": 51,
+      "weapQ": 149,
+      "expand": 1033,
+      "board": 1004,
+      "toolQ": 3106.6,
+      "preserve": 9.7,
+      "grain": 12098.7
+     }
+    },
+    "_delta": {
+     "ds": [
+      -0.3537735849056604,
+      -9.378151260504202,
+      -21.23264476803251
+     ],
+     "mean": -10.32152320448079,
+     "width": 20.87887118312685,
+     "read": "방향만"
+    }
+   }
+  }
+ }
+}
