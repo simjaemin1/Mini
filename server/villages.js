@@ -136,6 +136,15 @@ const CARAVAN_BLOCKTEST = parseInt(process.env.VILLAGE_CARAVAN_BLOCKTEST || '0',
 //   ★같은 손잡이로 하나 더(게이트가 드러냈다 · 보고 T661 §④): 어장 상한 매김(`refreshAllFishSustain`)을 존 60초 주기(벽시계) 대신 하루 마감의 정한 자리에서.
 //   ⚠끔 = main 바이트(이 손잡이 줄이 안 닿는다). 남은 벽시계 꼴 자리(재경로 쿨다운 `CARAVAN_REPAIR_COOLDOWN_MS` · 머묾 `lingerUntil` 등)는 보고 T661 표 — 고치지 않았다.
 const T661_ON = process.env.T661_CARAVAN_TICK !== '0';   // ★PM 10-09 켬 기본(결정론이 캐논 · 족보 591 · 되돌림 =0)
+// ★★[T681 2026-10-10 · 세션4] 손잡이 `T681_WALLCLOCK`(기본 끔 · `=1` 켬) — T661 ⑤ 표의 "안 고침 — 같은 꼴" 자리를 T661 꼴(econ 날 · 장부)로.
+//   ① 전쟁 몸 — 행군 지휘관 진척(`_warEnsureBody` 의 `frac` · `_warPaceCommander`) · 귀환 진척(`_warPaceReturn` · `marchDays`)을 econ 날 장부로(`_t681Day`) ·
+//      위협 T 를 하루 한 번 장부 속도로 · 전쟁 몸 한 걸음(행군 대형 · 교전 스텝)을 **econ 하루 몫**(하루 길이 × 존 틱 Hz — 새 수 0)만큼만:
+//      틱에서 몫이 남으면 걷고, 모자란 몫은 하루 마감 첫 자리(`_t681Flush`)가 채운다 — 한 econ 날에 도는 걸음 수가 벽시계에 안 달린다.
+//   ② 태어나는 자리 씨의 날 = econ 날(종전 `gameDayOf(Date.now())` — econ 이 밀리면 다르다).
+//   ③ 줄어드는 몸(`tickBodyExits`) — 누운 몸의 회수 · 걷는 몸의 도착을 econ 날로(누운 시간 = 짐승 시신 값 ÷ 하루 길이 · 걸음 = 존 걸음 × 하루 길이).
+//   ④ 캐러밴 재경로 쿨다운 — T661 장부가 부르는 판(`T661_ON`)에선 2초 대신 econ 하루 한 번.
+//   몸은 보이는 것만(틱 보간) · 세계에 닿는 일(답압 · 위협 · 회수 · 풀어 줌)은 econ 날이 정한다. ⚠끔 = main 바이트(이 손잡이 줄이 안 닿는다).
+const T681_ON = process.env.T681_WALLCLOCK === '1';
 
 // --- P3: 실체 전쟁 상수 ---
 //   ★[T284 2026-09-14] 관측자 LOD 반경·몸 상한·headless 폴백은 **제거**했다 —
@@ -893,7 +902,7 @@ function spawnOneNpc(vil) {
   // Stage 4A: 작업 지점을 회관 밖 도넛(180~320px)으로 — 회관 9×9(반폭 144px+벽)이 실물화되어
   //   내부 좌표를 주면 NPC가 벽에 영원히 비비게 됨(레거시엔 중앙 건물이 없어 ±200 균일이 무해했음).
   // ★[T350 · 주사위 0] 태어나는 자리 — 씨 = (마을 신원 · 집 셀 · 게임일 · 그 마을의 몇 번째 주민).
-  _diceVil.seed(_seedOf(_pidHash('simvil_' + vil.dbId), Math.floor(hx / SZ), Math.floor(hy / SZ), (state.dayMs ? gameDayOf(Date.now()) : 0) | 0, vil.npcPids.length | 0));   // 날 = `gameDayOf` 정본(사본 0)
+  _diceVil.seed(_seedOf(_pidHash('simvil_' + vil.dbId), Math.floor(hx / SZ), Math.floor(hy / SZ), (state.dayMs ? (T681_ON ? (state.world.day | 0) : gameDayOf(Date.now())) : 0) | 0, vil.npcPids.length | 0));   // ★[T681 ②] 켬 = econ 날   // 날 = `gameDayOf` 정본(사본 0)
   const wAng = _dv() * Math.PI * 2, wR = 180 + _dv() * 140;
   // ★[T394 ①] 몸 자리는 **종전 순서 그대로**(셋째·넷째 굴림) 먼저 꺼내 두고, 일터를 고른다(다시 뽑기는 그 뒤 흐름).
   const bodyX = hx + (_dv() - 0.5) * 60, bodyY = hy + (_dv() - 0.5) * 60;
@@ -1003,7 +1012,8 @@ function _bxDie(vil, p, w) {
   p._bxExit = 'died';
   try { broadcast({ type: 'player_down_state', pid: p.pid, isDown: true, why: 'down' }); } catch (e) {}
   const ms = Math.max(0, +(state.deps.corpseMs || 0));
-  _bxMap().set(p.pid, { pid: p.pid, vid: vil.dbId, k: w.k, cat: 'died', t0: now, until: now + ms });
+  _bxMap().set(p.pid, { pid: p.pid, vid: vil.dbId, k: w.k, cat: 'died', t0: now, until: now + ms,
+    untilDay: T681_ON ? state.world.day + ms / Math.max(1, state.dayMs) : undefined });   // ★[T681 ③] 켬 = 누운 시간을 econ 날로(같은 값 ÷ 하루 길이)
   _bx.died[w.k]++;
   if (w.k === 'starve') noteStarved(vil);
 }
@@ -1022,6 +1032,7 @@ function _bxWalk(vil, p, w) {
   const cat = BX_CAT[w.k] || 'other';
   const rec = { pid: p.pid, vid: vil.dbId, k: w.k, cat, t0: now };
   setBodyPts(rec, pts);
+  if (T681_ON) { rec.d0 = state.world.day; rec.L = 0; rec.ppd = (((state.deps && state.deps.moveSpeed) || 0) / 1000) * state.dayMs; }   // ★[T681 ③] 켬 = 걸음 장부(존 걸음 × 하루 길이)
   p._bxExit = cat;
   _bxMap().set(p.pid, rec);
   _bx[cat][w.k]++;
@@ -1042,12 +1053,13 @@ function tickBodyExits(now) {
   for (const [pid, r] of [...M]) {
     const p = players.get(pid);
     if (!p) { M.delete(pid); _bx.lost++; continue; }               // 다른 문이 거뒀다(핸드오프 등)
-    if (r.cat === 'died') { if (now >= r.until) { _bxGone(r, p); _bx.rot++; } continue; }
+    if (r.cat === 'died') { if (!T681_ON && now >= r.until) { _bxGone(r, p); _bx.rot++; } continue; }   // ★[T681 ③] 켬이면 회수는 하루 경계(`_t681Day`)
     if (!(sp > 0)) continue;                                       // 걸음 정본이 없는 판(하네스 목) — 서 있는다
     if (!(p.hp > 0)) { p.vx = 0; p.vy = 0; continue; }             // 길에서 늑대 등에 쓰러졌다 — 깨면 폴리라인으로 돌아온다(캐러밴 그 줄)
     const remain = r.len - r.prog;
-    if (remain <= 0.5) { _bxGone(r, p); _bx.arrive++; continue; }
-    const step = Math.min(remain, sp * dtMs);
+    if (remain <= 0.5) { if (T681_ON) { p.vx = 0; p.vy = 0; continue; } _bxGone(r, p); _bx.arrive++; continue; }   // ★[T681 ③] 켬이면 도착 회수는 하루 경계
+    const step = T681_ON ? Math.min(remain, sp * dtMs, Math.max(0, _t681BxVis(r, now) - r.prog)) : Math.min(remain, sp * dtMs);   // ★[T681 ③] 켬 = 장부 일정을 넘지 않게(보이는 것)
+    if (!(step > 0)) { p.vx = 0; p.vy = 0; continue; }
     const next = caravanPointAt(r, r.prog + step);
     r.prog += step;
     p.vx = (next.x - p.x) / dtMs * 1000; p.vy = (next.y - p.y) / dtMs * 1000;
@@ -3046,7 +3058,8 @@ function isolateCaravanReturn(body, p, now) {
 // §5.5b 1단계 — 이동 중 차단: 로컬 A*(벽 인지 — 활성 청크는 건물이 메모리에 로드됨) 재경로 →
 //   연장분만큼 econ arriveDay 지연. 반복 실패 시 고립 처리.
 function caravanBlockedResponse(body, p, now) {
-  if (now - body.lastRepairAt < CARAVAN_REPAIR_COOLDOWN_MS) return;
+  if (T681_ON && T661_ON && body._t661) { if (body._t681RepDay === state.world.day) return; body._t681RepDay = state.world.day; }   // ★[T681 ④] 장부가 부르는 판 — econ 하루 한 번(2초 벽시계 쿨다운 대신)
+  else if (now - body.lastRepairAt < CARAVAN_REPAIR_COOLDOWN_MS) return;
   body.lastRepairAt = now;
   const c = body.c;
   // 우회 목표 = 전방 lookahead 지점의 경로 정점(차단 구간 너머)
@@ -4501,6 +4514,7 @@ const _clamp01v = (x) => (x < 0 ? 0 : (x > 1 ? 1 : x));
 //   마을 방향에 **투영**한다: 다가오면 +, 스쳐 지나가면 ~0, 멀어지면 −(0 으로 잘린다).
 //   ⚠값은 T329 와 같은 자리에서 나온다(새 수 0) — 정면으로 다가오는 군대의 close 는 예전과 같은 수다.
 function _warBodyVel(body, now) {
+  if (T681_ON) return body._t681V || { vx: 0, vy: 0 };   // ★[T681 ①] 켬 = 장부 속도(하루 한 번 `_t681Day` 가 찍는다 · 여기선 안 고친다)
   const cx = body.cmd.cx, cy = body.cmd.cy;
   let vx = 0, vy = 0;
   if (body._thX != null && body._thAt != null && now > body._thAt) {
@@ -4914,7 +4928,9 @@ function _warEnsureBody(w, now) {
   body.departAt = now; body.arriveAt = Math.max(now + 1, econDayToMs(eta));
   body.pxPerDay = body.len / legDays; body.nomPxMs = body.len / Math.max(1, body.arriveAt - now);
   body.campProg = Math.max(0, body.len - _warCampBackCells() * SZ);   // ★주둔 링에서 멈춘다(돌격 결단 전엔 마을로 안 들어간다)
-  const bornMs = econDayToMs(born); const frac = Math.max(0, Math.min(1, (now - bornMs) / Math.max(1, body.arriveAt - bornMs)));
+  const bornMs = econDayToMs(born); const frac = T681_ON ? Math.max(0, Math.min(1, (state.world.day - born) / legDays))   // ★[T681 ①] 켬 = econ 날 몫
+    : Math.max(0, Math.min(1, (now - bornMs) / Math.max(1, body.arriveAt - bornMs)));
+  if (T681_ON) body._t681 = { leg: 'march', D0: born, D1: eta, day: state.world.day };
   body.prog = Math.min(body.campProg, body.len * frac);
   const c = caravanPointAt(body, body.prog); body.cmd = { cx: c.x / SZ, cy: c.y / SZ };
   state.warBodies.set(w.id, body);
@@ -5144,6 +5160,7 @@ function _warSetupReturn(body, survPids, isRout) {
   const now = state._warTickAt || Date.now(), legDays = Math.max(1, w.marchDays || 1);
   body.departAt = now; body.arriveAt = Math.max(now + 1, econDayToMs(state.world.day + legDays));
   body.pxPerDay = body.len / legDays; body.nomPxMs = body.len / Math.max(1, body.arriveAt - now);
+  if (T681_ON) body._t681 = { leg: 'return', D0: state.world.day, D1: state.world.day + legDays, day: state.world.day };   // ★[T681 ①] 귀환 장부(econ 날)
   // 귀환 출발점 = 경로 위 생존자에게 가장 가까운 점이 아니라 경로 시작(방어 마을) — 병사는 그 자리에서 걸어 따라붙는다(스냅 없음).
   const c = caravanPointAt(body, 0); body.cmd = { cx: c.x / SZ, cy: c.y / SZ }; body.heading = Math.atan2(w.atk.ccy - body.cmd.cy, w.atk.ccx - body.cmd.cx);
   const units = []; for (const pid of survPids) { const p = players.get(pid); if (!p) continue; const gu = { type: p._muType || 'militia', pid }; WL.bindGroupUnit(gu, p); units.push(gu); }
@@ -5153,6 +5170,13 @@ function _warSetupReturn(body, survPids, isRout) {
 }
 // 귀환 페이싱 + 도착 시 해제·정리.
 function _warPaceReturn(body, now, dtMs) {
+  if (T681_ON && body._t681) {   // ★[T681 ①] 켬 — 진척 · 답압 · 회수는 하루 경계 장부(`_t681Day`) · 틱은 병사가 지휘관을 따라 걷기만(보이는 것)
+    if (!body.retGroup) return;
+    body.retGroup.cmd = { cx: body.cmd.cx, cy: body.cmd.cy }; body.retGroup.heading = body.heading;
+    state.warLive._muStepFollow(body.retGroup, state.warLive.MU.FOLLOW_CAP);
+    _warSyncMeta(body.retGroup, 0, body._retRout);
+    return;
+  }
   const remainPx = body.len - body.prog;
   if (remainPx <= 0.5 || !body.retGroup) { _warCleanupBody(body, true); return; }
   const speed = Math.min(remainPx / Math.max(1, body.arriveAt - now), body.nomPxMs * 4);
@@ -5639,6 +5663,131 @@ function _warAfterDaily(surrBefore) {
 }
 
 // tickWarBodies — 존 틱(30Hz) 한 번: 행군 몸 페이싱·인스턴스화·방어 포진 + 교전 스텝(고정 dt) + 대치·정산 전이 + 귀환.
+// ── ★★[T681] 장부 — 손잡이 켬일 때만 부른다 ──
+// 전쟁 몸 하루 몫(걸음 수) = 하루 길이 × 존 틱 Hz(교전 스텝 dt = 1/틱 Hz 그 값 · 새 수 0). 정본 시계 24분이면 43,200 = 그날 틱 수와 같다.
+function _t681Quota() { const WL = state.warLive; return Math.max(1, Math.round((state.dayMs || 0) * ((WL && WL.TICK_HZ) || 30) / 1000)); }
+function _t681Take(body) {
+  const d = state.world.day | 0;
+  let q = body._t681q;
+  if (!q || q.day !== d) q = body._t681q = { day: d, left: _t681Quota() };
+  if (q.left <= 0) return false;
+  q.left--;
+  return true;
+}
+// 하루 마감 첫 자리 — 지난 econ 날 몫 중 틱이 못 쓴 걸음을 채운다(차례 = `WARS` 차례 · 조각 예산이 차면 'retry' 로 다음 조각에 이어 간다).
+function _t681Flush() {
+  if (!state.war || !state.warLive || !state.war.WARS) return;
+  const t0 = Date.now(), B = TICK_SLICE_MS || 0, now = state._warTickAt || Date.now(), dtMs = 1000 / ((state.warLive && state.warLive.TICK_HZ) || 30);
+  for (const w of state.war.WARS) {
+    if (w.phase !== 'march' && w.phase !== 'battle') continue;
+    const body = state.warBodies && state.warBodies.get(w.id); if (!body || body.phase === 'return' || body.noArmy) continue;
+    const d = state.world.day | 0;
+    if (!body._t681q || body._t681q.day !== d) body._t681q = { day: d, left: _t681Quota() };   // 그날 틱이 한 번도 안 걸었다 — 몫 전부
+    while (body._t681q.left > 0) {
+      body._t681q.left--;
+      const C = { fighting: 0 };
+      _warTickOne(w, body, now, dtMs, C);
+      if (w.phase !== 'march' && w.phase !== 'battle') break;   // 이 걸음에 끝났다(궤주 · 함락 · 대치)
+      if (B > 0 && Date.now() - t0 >= B) return 'retry';
+    }
+  }
+}
+// 하루 경계 장부 — 전쟁 몸(행군 지휘관 · 귀환) 진척 · 답압 · 회수, 위협 T, 줄어드는 몸 회수.
+function _t681Day(now) {
+  const d = state.world.day | 0;
+  if (state.war && state.warLive && state.war.WARS) {
+    for (const w of state.war.WARS) {   // 행군 중인 전쟁의 몸을 오늘 세운다(틱이 세우던 그 함수 — 차례 = `WARS` 차례)
+      if (w.phase !== 'march' && w.phase !== 'battle') continue;
+      _warEnsureBody(w, now);
+    }
+  }
+  if (state.warBodies) for (const body of [...state.warBodies.values()]) {
+    const T = body._t681; if (!T || T.day === d) { if (body) body._t681V = { vx: 0, vy: 0 }; continue; }
+    T.day = d;
+    const prev = body.cmd ? { cx: body.cmd.cx, cy: body.cmd.cy } : null;
+    if (T.leg === 'march' && body.w.phase === 'march') {
+      const endProg = body.campProg != null ? body.campProg : body.len;
+      const want = Math.min(endProg, body.len * Math.max(0, Math.min(1, (d - T.D0) / Math.max(1, T.D1 - T.D0))));
+      if (want > body.prog) { _t681StampPath(body, body.prog, want); body.prog = want; }
+      const c = caravanPointAt(body, body.prog); body.cmd = { cx: c.x / SZ, cy: c.y / SZ };
+      body.heading = Math.atan2(body.w.def.ccy - body.cmd.cy, body.w.def.ccx - body.cmd.cx);
+    } else if (T.leg === 'return' && body.phase === 'return') {
+      const want = body.len * Math.max(0, Math.min(1, (d - T.D0) / Math.max(1, T.D1 - T.D0)));
+      if (want > body.prog) { _t681StampPath(body, body.prog, want); body.prog = want; }
+      const c = caravanPointAt(body, body.prog); body.cmd = { cx: c.x / SZ, cy: c.y / SZ };
+      body.heading = Math.atan2(body.w.atk.ccy - body.cmd.cy, body.w.atk.ccx - body.cmd.cx);
+      if (body.len - body.prog <= 0.5 || !body.retGroup) { _warCleanupBody(body, true); continue; }   // 집에 닿았다 — 풀어 준다(종전 귀환 끝 그 함수)
+    }
+    const sec = Math.max(1, state.dayMs) / 1000;   // 장부 속도 = 그날 옮긴 칸 ÷ 하루 길이(초) — 위협의 접근 항이 읽는다
+    body._t681V = (prev && body.cmd) ? { vx: (body.cmd.cx - prev.cx) / sec, vy: (body.cmd.cy - prev.cy) / sec } : { vx: 0, vy: 0 };
+  }
+  if (state.war) _warWriteThreats(now);
+  const M = state.bodyExits;   // 줄어드는 몸 — 누운 몸 회수 · 걷는 몸 도착(차례 = 넣은 차례)
+  if (M && M.size) {
+    const players = state.deps.players;
+    for (const [pid, r] of [...M]) {
+      const p = players.get(pid);
+      if (!p) continue;   // 틱이 거둔다(종전 'lost' 줄)
+      if (r.cat === 'died') { if (r.untilDay != null && d >= r.untilDay) { _bxGone(r, p); _bx.rot++; } continue; }
+      if (r.ppd == null) continue;
+      r.L = Math.min(r.len, Math.max(0, (d - r.d0) * r.ppd));
+      if (r.len - r.L <= 0.5) { _bxGone(r, p); _bx.arrive++; }
+    }
+  }
+}
+function _t681BxVis(r, now) {   // 걷는 몸이 따라갈 자리(보이는 것) — 장부 일정을 그날 벽시계 몫만큼 보간
+  if (r.ppd == null) return r.len;
+  const f = Math.min(1, Math.max(0, (now - econDayToMs(state.world.day)) / Math.max(1, state.dayMs)));
+  return Math.min(r.len, Math.max(0, (state.world.day + f - r.d0) * r.ppd));
+}
+function _t681StampPath(body, a, b) {   // 지휘관 선의 답압 — 그날 장부가 지난 구간(표본 SZ/4 · T661 `_t661Stamp` 그 꼴)
+  if (!state.roads || !(b > a)) return;
+  const st = { segIdx: 0 };
+  for (let q = a; ; q += SZ / 4) { const at = Math.min(q, b); const pt = caravanPointAt(body, at, st); state.roads.stampEntityPx(body, pt.x, pt.y); if (at >= b) break; }
+}
+// ★[T681] 전쟁 몸 한 걸음(종전 `tickWarBodies` 루프 몸통 글자 그대로 옮겼다 — `continue` 는 `return 0` · 끝까지 가면 1 = 병사 수를 센다).
+//   끔이면 틱마다 한 번(종전 그대로) · 켬이면 econ 하루 몫(`_t681Take`)이 남은 만큼만 틱에서, 모자란 몫은 하루 마감 첫 자리(`_t681Flush`)에서.
+function _warTickOne(w, body, now, dtMs, C) {
+  const WL = state.warLive;
+  if (w.phase === 'march') {
+    if (!T681_ON) _warPaceCommander(body, now, dtMs);   // ★[T681 ①] 켬이면 지휘관 진척은 하루 경계 장부(`_t681Day`)
+    _warInstantiateAttackers(body); _warEnsureDefense(body);
+    _warStepFormations(body);
+    if (body.fight && (body.fight.ctx.arrows.length)) WL.stepFight(body.fight);   // 대치 직후 날아가던 화살만 마저
+    if (body.defGroup && body.defGroup._scram) _warEvacVillage(w.def, now);
+    if (body.fight && body.fight.engagedOnce && now - body._bcAt >= WAR_BC_MS) _warBroadcastBattle(body, now, 'standoff');
+  } else {   // 'battle' — 연속 교전
+    const f = body.fight; if (!f) return 0;
+    _warEnsureDefense(body);                     // hold 태세: 돌격이 마을권에 들면 긴급 소집
+    if (f.state === 'advance') { _warAdvanceMarch(body); _warHoldCtlSides(body); }   // 전진 쪽은 행군로 위 대형 · 지키는 쪽은 포진·주둔 유지
+    const ev = WL.stepFight(f);
+    C.fighting++;
+    if (body.atkGroup) _warSyncMeta(body.atkGroup, 0, false);
+    if (body.defGroup) _warSyncMeta(body.defGroup, 1, false);
+    _warEvacVillage(w.def, now);
+    if (ev.rout) {
+      const winner = ev.rout === 'A' ? 'B' : 'A';
+      WL.settle(f, 'rout', winner);
+      w._sortie = false; w.phase = 'return'; w.eta = state.world.day + (w.marchDays || 1);   // 교전 뒤 귀환(war-core _opResolveEngage 끝줄과 같은 전이)
+      _warEndFight(body, 'rout', winner);
+      return 0;
+    }
+    if (!body.defGroup && f.state !== 'engaged') {   // 수비가 없다 — 목표(마을 중심)에 닿으면 무저항 함락(war-core)
+      const c = WL.centroid(f, 'A');
+      if (c && Math.hypot(c.x - f.objective.x, c.y - f.objective.y) <= WL.WAR_ENGAGE_R * WL.M_PER_CELL) {
+        if (w.def && w.def._den) { _t476DenBattle(body); return 0; }   // ★[T476] 소굴 — 지키는 마을 사람이 없는 게 아니라 도적이 있다(war-core 그 판)
+        try { state.war._warWalkoverOutcome(w.atk, w.def, state.world.day, w.casus, w); } catch (_) { }   // ★[T466] w — 켬이면 곳간 몫을 몸이 옮긴다
+        WL.settle(f, 'walkover', 'A');
+        w._sortie = false; w.phase = 'return'; w.eta = state.world.day + (w.marchDays || 1);
+        _warEndFight(body, 'walkover', 'A');
+        return 0;
+      }
+    }
+    if (ev.standoff) { _warToStandoff(body); _warBroadcastBattle(body, now, 'standoff'); return 0; }
+    if (now - body._bcAt >= WAR_BC_MS || body._bcPhase !== 'battle') { if (f.engagedOnce) _warBroadcastBattle(body, now, 'battle'); }
+  }
+  return 1;
+}
 function tickWarBodies(now) {
   if (!state.war || !state.warLive) { state._warTickAt = now; return; }
   const t0 = _perfNow();
@@ -5648,50 +5797,18 @@ function tickWarBodies(now) {
   if (!WARS.length && !state.warBodies.size) return;
   const WL = state.warLive, liveWid = new Set();
   let soldiers = 0, fighting = 0;
-  _warWriteThreats(now);   // ★[T329 ①] 위협 T — 군대가 움직였으니 다시 쓴다(O(전쟁 수) · 마을 수 무관)
+  if (!T681_ON) _warWriteThreats(now);   // ★[T329 ①] 위협 T — 군대가 움직였으니 다시 쓴다(O(전쟁 수) · 마을 수 무관) · ★[T681 ①] 켬이면 하루 한 번(`_t681Day`)
   for (const w of WARS) {
     if (w.id != null) liveWid.add(w.id);
     if (w.phase !== 'march' && w.phase !== 'battle') continue;
     const body = _warEnsureBody(w, now); if (!body || body.phase === 'return') continue;
     body._lastOp = w.op;
     if (body.noArmy) { _warNoArmy(body, state.world.day); continue; }
-    if (w.phase === 'march') {
-      _warPaceCommander(body, now, dtMs);
-      _warInstantiateAttackers(body); _warEnsureDefense(body);
-      _warStepFormations(body);
-      if (body.fight && (body.fight.ctx.arrows.length)) WL.stepFight(body.fight);   // 대치 직후 날아가던 화살만 마저
-      if (body.defGroup && body.defGroup._scram) _warEvacVillage(w.def, now);
-      if (body.fight && body.fight.engagedOnce && now - body._bcAt >= WAR_BC_MS) _warBroadcastBattle(body, now, 'standoff');
-    } else {   // 'battle' — 연속 교전
-      const f = body.fight; if (!f) continue;
-      _warEnsureDefense(body);                     // hold 태세: 돌격이 마을권에 들면 긴급 소집
-      if (f.state === 'advance') { _warAdvanceMarch(body); _warHoldCtlSides(body); }   // 전진 쪽은 행군로 위 대형 · 지키는 쪽은 포진·주둔 유지
-      const ev = WL.stepFight(f);
-      fighting++;
-      if (body.atkGroup) _warSyncMeta(body.atkGroup, 0, false);
-      if (body.defGroup) _warSyncMeta(body.defGroup, 1, false);
-      _warEvacVillage(w.def, now);
-      if (ev.rout) {
-        const winner = ev.rout === 'A' ? 'B' : 'A';
-        WL.settle(f, 'rout', winner);
-        w._sortie = false; w.phase = 'return'; w.eta = state.world.day + (w.marchDays || 1);   // 교전 뒤 귀환(war-core _opResolveEngage 끝줄과 같은 전이)
-        _warEndFight(body, 'rout', winner);
-        continue;
-      }
-      if (!body.defGroup && f.state !== 'engaged') {   // 수비가 없다 — 목표(마을 중심)에 닿으면 무저항 함락(war-core)
-        const c = WL.centroid(f, 'A');
-        if (c && Math.hypot(c.x - f.objective.x, c.y - f.objective.y) <= WL.WAR_ENGAGE_R * WL.M_PER_CELL) {
-          if (w.def && w.def._den) { _t476DenBattle(body); continue; }   // ★[T476] 소굴 — 지키는 마을 사람이 없는 게 아니라 도적이 있다(war-core 그 판)
-          try { state.war._warWalkoverOutcome(w.atk, w.def, state.world.day, w.casus, w); } catch (_) { }   // ★[T466] w — 켬이면 곳간 몫을 몸이 옮긴다
-          WL.settle(f, 'walkover', 'A');
-          w._sortie = false; w.phase = 'return'; w.eta = state.world.day + (w.marchDays || 1);
-          _warEndFight(body, 'walkover', 'A');
-          continue;
-        }
-      }
-      if (ev.standoff) { _warToStandoff(body); _warBroadcastBattle(body, now, 'standoff'); continue; }
-      if (now - body._bcAt >= WAR_BC_MS || body._bcPhase !== 'battle') { if (f.engagedOnce) _warBroadcastBattle(body, now, 'battle'); }
-    }
+    if (T681_ON && !_t681Take(body)) { if (body.fight) soldiers += body.fight.ctx.units.length; continue; }   // ★[T681] 오늘 몫을 다 썼다 — 서 있는다(다음 econ 날 몫에서)
+    const C = { fighting: 0 };
+    const _r = _warTickOne(w, body, now, dtMs, C);
+    fighting += C.fighting;
+    if (!_r) continue;
     if (body.fight) soldiers += body.fight.ctx.units.length;
   }
   // 귀환 페이싱 + 고아 정리
@@ -5996,6 +6113,7 @@ function _openDayJobs(now) {
 
   // ⓪ ★★[T533] 존 경계(팔 켬 + 호스트 — 끔이면 이 줄과 econ 뒤 한 줄 무동작 · 조각 목록 무변): econ **앞** = 지난 경계에 이웃이 민 스텁·기록을 꽂는다.
   if (state.xzone) add('xzone', () => _xzDayIn());
+  if (T681_ON) add('econ', () => _t681Flush());   // ★[T681] 지난 econ 날 전쟁 몸 몫 채우기 — econ 앞 정한 자리('retry' 면 다음 조각에 이어 간다 · 이름은 econ 단계 안)
   // ① econ 1일 틱 — **마을 간 원자**(교역·캐러밴 정산). 쪼개지 않는다. 실측 99ms(p95 163ms).
   //   ★[T513] 손잡이 켬이면 아래 `_econDayParts` 가 같은 일을 조각 여럿으로 얹는다(끔 = 이 한 조각 그대로).
   if (T513_DAY_SLICE && state.econV2 && typeof state.econV2.tickWorldV2Parts === 'function') _econDayParts(C, add);
@@ -6066,6 +6184,7 @@ function _openDayJobs(now) {
 
   // ⑦ 캐러밴 실체 동기 — 중앙 17ms 인데 **p95 989ms**(안이 전부 A*). 캐러밴 한 대씩 쪼갠다.
   //   쓸기(회수)만 `seen` 전량이 필요해 원자다.
+  if (T681_ON) add('caravan', () => _t681Day(C.now));   // ★[T681] 몸 장부 하루(전쟁 행군·귀환 · 위협 · 줄어드는 몸) — 캐러밴 동기 바로 앞 정한 자리
   if (T661_ON) add('caravan', () => refreshAllFishSustain(Date.now(), true));   // ★[T661] 어장 상한 매기기 — 종전 존 60초 주기(벽시계)를 하루 마감의 정한 자리로(캐러밴 동기 바로 앞 · 재고 회복 시각은 낚시 정본 그대로)
   for (const c of state.world.caravans.slice()) add('caravan', () => _caravanSyncOne(C.now, c, C.car));   // ★[T85] 반환('retry')을 드레인이 본다
   add('caravan', () => { _caravanSyncSweep(C.car); });
