@@ -1,5 +1,5 @@
 {
- "_": "[T545 · T604 · T654 · T664] char_export_gltf.py 산물 — 엔진이 읽는 규약. 클라는 이 수를 하드코딩하지 않는다(갖옷 털 두께는 `bodies.<몸>.inflate`).",
+ "_": "[T545 · T604 · T654 · T664 · T685] char_export_gltf.py 산물 — 엔진이 읽는 규약. 클라는 이 수를 하드코딩하지 않는다(갖옷 털 두께는 `bodies.<몸>.inflate`).",
  "alphaTest": 0.5,
  "atlas": {
   "cells": {
@@ -55,6 +55,10 @@
      "base": {
       "mhclo": "710fa50cdf8afa6f",
       "obj": "31b0fc5e9ac65b74"
+     },
+     "fur": {
+      "mhclo": "6881c0f5618df03d",
+      "obj": "c6fe96bd64e73591"
      }
     },
     "rings": 14,
@@ -66,7 +70,13 @@
      0.418452
     ],
     "tris_base": 896,
-    "verts_base": 498
+    "tris_fur": 896,
+    "verts_base": 498,
+    "verts_fur": 498
+   },
+   "furSkin": {
+    "over4": 92,
+    "verts": 498
    },
    "inflate": {
     "fur": 0.02824
@@ -107,6 +117,10 @@
      "base": {
       "mhclo": "36023c0376a52c89",
       "obj": "28f96b782cf68f8c"
+     },
+     "fur": {
+      "mhclo": "be7c2aad8ea83d1e",
+      "obj": "d8cddb36678c21a7"
      }
     },
     "rings": 14,
@@ -118,7 +132,13 @@
      0.618596
     ],
     "tris_base": 640,
-    "verts_base": 370
+    "tris_fur": 640,
+    "verts_base": 370,
+    "verts_fur": 370
+   },
+   "furSkin": {
+    "over4": 103,
+    "verts": 370
    },
    "inflate": {
     "fur": 0.028243
@@ -274,11 +294,13 @@
  },
  "facing": "방향 0 = 모델 +x(Blender) — 시트 행 0 과 같다 · 방향 d = d×45°(연속 회전은 atan2(fy,fx))",
  "flip": "시트는 굽고 나서 좌우를 뒤집는다(_flip_png) — 엔진은 모델 좌표를 게임 좌표 그대로 놓고(거울 = 행렬식 −1) 같은 그림을 얻는다",
+ "furJointsAttr": "_furjoints",
  "furNormalAttr": "_furnormal",
+ "furWeightsAttr": "_furweights",
  "glb": "char_body.glb",
  "height": 1.6,
  "inflateAttr": "_inflate",
- "inflateNote": "[T654] 옷 → 메시는 하나(옷 넷 = 재질) · 갖옷 = 정점 속성 `_inflate`(옷 점 = 털 두께 방향 단위 벡터 · 살·눈·눈썹·머리 = 0) × `bodies.<몸>.inflate.<옷>`(m · 생성기 `FUR_PAD` × 키 비 × 등배) — 묶기 자세에서 민 뒤 스키닝(엔진 셰이더 한 줄) · [T664] 갖옷 면 법선 = 면 속성 `_furnormal`(민 옷의 면 법선 · 그 밖 0 — 갖옷 재질만 바꾼다) · 두 속성 다 glTF 성긴 접근자(바탕 0)",
+ "inflateNote": "[T654] 옷 → 메시는 하나(옷 넷 = 재질) · 갖옷 = 정점 속성 `_inflate`(옷 점 = 털 두께 방향 단위 벡터 · 살·눈·눈썹·머리 = 0) × `bodies.<몸>.inflate.<옷>`(m · 생성기 `FUR_PAD` × 키 비 × 등배) — 묶기 자세에서 민 뒤 스키닝(엔진 셰이더 한 줄) · [T664] 갖옷 면 법선 = 면 속성 `_furnormal`(민 옷의 면 법선 · 그 밖 0 — 갖옷 재질만 바꾼다) · [T685] 갖옷 몫 뼈 넷·무게 넷 = `_furjoints`(glTF 뼈 번호 u8)·`_furweights`(합 1) — 생성기 갖옷 기하를 MPFB 로 따로 묶은 무게(내보내기와 같은 규칙) · 갖옷 재질만 스키닝 뼈·무게를 갈아 끼운다 · 사용자 속성 넷 다 glTF 성긴 접근자(바탕 0)",
  "keysPerFrame": 4,
  "mpfb": "2.0.17",
  "rig": "MPFB cmu_mb(31뼈 · CMU BVH 관절 이름) — 뼈 이름 앞에 몸 머리('M_'·'F_')",

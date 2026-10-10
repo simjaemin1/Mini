@@ -6,7 +6,7 @@
 //
 // ★이 하네스가 지키는 계약:
 //   ⓐ glTF — `char_export_gltf.py` 산물(glb·메타·무늬)이 잠금과 같다 · 입력 지문(저장소 안 원본) · 원본은 저장소 밖 ·
-//      몸 둘(M·F) · 몸마다 메시 하나(T654 — 옷 넷 = 재질 · 갖옷 = 정점 속성 `_inflate` × 털 두께 · 셰이더 한 줄 · T664 면 법선 `_furnormal` · 성긴 접근자) · 프리미티브 하나 · 재질 0(엔진이 건다) ·
+//      몸 둘(M·F) · 몸마다 메시 하나(T654 — 옷 넷 = 재질 · 갖옷 = 정점 속성 `_inflate` × 털 두께 · 셰이더 한 줄 · T664 면 법선 `_furnormal` · T685 갖옷 몫 뼈·무게 · 성긴 접근자) · 프리미티브 하나 · 재질 0(엔진이 건다) ·
 //      삼각형 2~6k · 뼈 31(cmu_mb) · 클립 다섯 × 몸 둘(모캡 · 판·루프·fps = 시트 표) ·
 //      [T604] 청동기 옷 = 시트 링 표 → 3D 몸 → MPFB mhclo(`char_clothes_mhclo.py` · 새 수 0 · 남 시트 단·반팔 · 여 무릎 단·긴팔) ·
 //      키 1.60 · 무늬 1024² 이하 · 합 5MB 안 · CREDITS(MPFB/MakeHuman · CMU · ambientCG · three.js) · 옛 클립 파일(T539) 0
@@ -115,15 +115,16 @@ const imgDim = (p) => {   // PNG IHDR · JPEG SOF — 무늬 크기(1024² 이�
   // ★[T654] 몸마다 메시 하나(T604 의 갖옷 몸 — 살·눈·눈썹·머리 사본 — 걷음) · 옷 넷 = 재질 · 갖옷 = 정점 속성 `_inflate` × 털 두께(메타 · 셰이더 한 줄)
   //   속성: 옷 칸(아틀라스 `cloth`) 점 = 털 두께 방향 단위 벡터(소매 뚜껑 가운데 = 0 — 자리 둘) · 그 밖 점(살·눈·눈썹·머리) = 0 · 두께 = 등배 × 키 비 × 시트 `FUR_PAD`
   //   [T664] 갖옷 면 법선 `_furnormal` = 옷 칸 점만 단위(민 옷 삼각형과 같은 쪽) · 그 밖 0 · 두 속성 다 **성긴 접근자**(버퍼 뷰 없이 바탕 0 · 줄 = 0 아닌 점 수)
+  //   [T685] 갖옷 몫 뼈 넷 `_furjoints`(정수 · 그 몸 스킨 뼈 수 안) · 무게 넷 `_furweights`(옷 칸 점마다 합 1 · 음수 0) · 그 밖 0 · 둘 다 성긴 접근자
   const wantMesh = sexes.map((s) => META.bodies[s].mesh).sort();
   const NCMP = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4 };
-  const rdv = (vi, off0, count, cn, ct) => { const bv = J.bufferViews[vi], sz = ct === 5123 ? 2 : 4, st = bv.byteStride || sz * cn, o = binOff + (bv.byteOffset || 0) + off0, out = [];
-    for (let k = 0; k < count; k++) { const r = []; for (let c = 0; c < cn; c++) { const q = o + k * st + sz * c; r.push(ct === 5126 ? b.readFloatLE(q) : ct === 5125 ? b.readUInt32LE(q) : b.readUInt16LE(q)); } out.push(r); }
+  const rdv = (vi, off0, count, cn, ct) => { const bv = J.bufferViews[vi], sz = ct === 5121 ? 1 : ct === 5123 ? 2 : 4, st = bv.byteStride || sz * cn, o = binOff + (bv.byteOffset || 0) + off0, out = [];
+    for (let k = 0; k < count; k++) { const r = []; for (let c = 0; c < cn; c++) { const q = o + k * st + sz * c; r.push(ct === 5126 ? b.readFloatLE(q) : ct === 5125 ? b.readUInt32LE(q) : ct === 5123 ? b.readUInt16LE(q) : b.readUInt8(q)); } out.push(r); }
     return out; };
-  const accF = (i) => { const a = J.accessors[i], n = NCMP[a.type];          // 빽빽 · 성긴(바탕 0 또는 버퍼 뷰 + 갈아 끼움) 둘 다
-    if (a.componentType !== 5126) return null;
-    const out = a.bufferView != null ? rdv(a.bufferView, a.byteOffset || 0, a.count, n, 5126) : Array.from({ length: a.count }, () => new Array(n).fill(0));
-    if (a.sparse) { const sp = a.sparse, ix = rdv(sp.indices.bufferView, sp.indices.byteOffset || 0, sp.count, 1, sp.indices.componentType), vs = rdv(sp.values.bufferView, sp.values.byteOffset || 0, sp.count, n, 5126);
+  const accF = (i) => { const a = J.accessors[i], n = NCMP[a.type], ct = a.componentType;   // 빽빽 · 성긴(바탕 0 또는 버퍼 뷰 + 갈아 끼움) 둘 다 · [T685] 정수 꼴도(뼈 칸 u8)
+    if (a.normalized || ![5121, 5123, 5125, 5126].includes(ct)) return null;
+    const out = a.bufferView != null ? rdv(a.bufferView, a.byteOffset || 0, a.count, n, ct) : Array.from({ length: a.count }, () => new Array(n).fill(0));
+    if (a.sparse) { const sp = a.sparse, ix = rdv(sp.indices.bufferView, sp.indices.byteOffset || 0, sp.count, 1, sp.indices.componentType), vs = rdv(sp.values.bufferView, sp.values.byteOffset || 0, sp.count, n, ct);
       ix.forEach((r, k) => { out[r[0]] = vs[k]; }); }
     return out; };
   const FUR_PAD = +(/^FUR_PAD\s*=\s*([\d.]+)/m.exec(fs.readFileSync(path.join(ROOT, 'scripts', 'render_common.py'), 'utf8')) || [0, NaN])[1];
@@ -149,17 +150,26 @@ const imgDim = (p) => {   // PNG IHDR · JPEG SOF — 무늬 크기(1024² 이�
       const u = [0, 1, 2].map((c) => Q[i1][c] - Q[i0][c]), w = [0, 1, 2].map((c) => Q[i2][c] - Q[i0][c]);
       const nx = u[1] * w[2] - u[2] * w[1], ny = u[2] * w[0] - u[0] * w[2], nz = u[0] * w[1] - u[1] * w[0];
       if (nx * FN[i0][0] + ny * FN[i0][1] + nz * FN[i0][2] > 0) triSame++; }
-    const sp = [ia, na].map((k) => { const a = J.accessors[k]; return a.bufferView == null && !!a.sparse && a.sparse.count === accF(k).filter((v) => v.some((x) => x !== 0)).length; });
-    infl[m.name] = { ok: badOut === 0 && badLen === 0 && capPos.size === 2 && fnUnit === cloth && fnOut === 0 && triCloth > 0 && triSame === triCloth && sp.every(Boolean),
-                     cloth, unit, capPos: capPos.size, badOut, badLen, fnUnit, fnOut, triCloth, triSame, sparse: [ia, na].map((k) => (J.accessors[k].sparse || {}).count) };
+    // [T685] 갖옷 몫 뼈·무게 — 옷 칸 점마다 무게 합 1(음수 0) · 뼈 칸 = 정수 · 그 몸 스킨 뼈 수 안 · 옷 칸 밖 0
+    const ja = p.attributes[(META.furJointsAttr || '').toUpperCase()], wa = p.attributes[(META.furWeightsAttr || '').toUpperCase()];
+    const FJ = ja != null && J.accessors[ja].type === 'VEC4' ? accF(ja) : null, FW = wa != null && J.accessors[wa].type === 'VEC4' ? accF(wa) : null;
+    const nd = (J.nodes || []).find((x) => x.mesh === J.meshes.indexOf(m) && x.skin != null), nJ = nd ? J.skins[nd.skin].joints.length : 0;
+    let fwCloth = 0, fwOut = 0, fjBad = 0;
+    if (FJ && FW && FJ.length === nv && FW.length === nv) FW.forEach((w, i) => { const c = inCloth(UV[i]);
+      if (c) { if (Math.abs(w[0] + w[1] + w[2] + w[3] - 1) < 1e-6 && w.every((x) => x >= 0)) fwCloth++; if (FJ[i].some((j) => !Number.isInteger(j) || j < 0 || j >= nJ)) fjBad++; }
+      else if (w.some((x) => x !== 0) || FJ[i].some((x) => x !== 0)) fwOut++; });
+    const keys4 = [ia, na, ja, wa], sp = keys4.map((k) => { const a = k != null ? J.accessors[k] : null; return !!a && a.bufferView == null && !!a.sparse && a.sparse.count === (accF(k) || []).filter((v) => v.some((x) => x !== 0)).length; });
+    infl[m.name] = { ok: badOut === 0 && badLen === 0 && capPos.size === 2 && fnUnit === cloth && fnOut === 0 && triCloth > 0 && triSame === triCloth && sp.every(Boolean) &&
+                         !!FJ && !!FW && nJ > 0 && fwCloth === cloth && fwOut === 0 && fjBad === 0,
+                     cloth, unit, capPos: capPos.size, badOut, badLen, fnUnit, fnOut, triCloth, triSame, fwCloth, fwOut, fjBad, nJ, sparse: keys4.map((k) => (k != null && J.accessors[k].sparse || {}).count) };
   }
   const padOk = sexes.every((s) => { const B = META.bodies[s], f = (B.inflate || {}).fur;
     return Math.abs(f - B.scale * B.clothes.K * FUR_PAD) < 1e-6 && Object.keys(B.inflate).join() === 'fur' && !('meshOf' in B) && !('trisFur' in B); });
   REC.a.inflate = { attr: META.inflateAttr, nattr: META.furNormalAttr, mesh: infl, pad: Object.fromEntries(sexes.map((s) => [s, META.bodies[s].inflate])), FUR_PAD };
   ok(JSON.stringify(sexes) === '["F","M"]' && JSON.stringify(meshN) === JSON.stringify(wantMesh) && meshN.length === sexes.length && prims.every((n) => n === 1) && !(J.materials && J.materials.length) &&
      meshN.every((n) => infl[n] && infl[n].ok) && padOk,
-     'ⓐ ★몸 둘(M·F) — [T654·T664] 몸마다 메시 하나(옷 넷 = 재질 · 갖옷 = `_inflate` 옷 점만 단위 방향 × 털 두께 = 등배 × 키 비 × `FUR_PAD` · `_furnormal` 옷 점만 민 옷 면 법선 · 둘 다 성긴 접근자) · 프리미티브 하나 · 재질 0(엔진이 건다 · 족보 487)',
-     `${meshN.join(' ')} · 프리미티브 ${prims.join('/')} · 재질 ${(J.materials || []).length} · ${meshN.map((n) => { const q = infl[n] || {}; return `${n} 옷 점 ${q.cloth}(방향 ${q.unit} · 뚜껑 가운데 자리 ${q.capPos} · 면 법선 ${q.fnUnit} · 같은 쪽 삼각형 ${q.triSame}/${q.triCloth}) · 밖 ≠0 ${q.badOut}/${q.fnOut} · 성긴 줄 ${(q.sparse || []).join('/')}`; }).join(' · ')} · 두께 ${sexes.map((s) => (META.bodies[s].inflate || {}).fur).join('/')}m`);
+     'ⓐ ★몸 둘(M·F) — [T654·T664·T685] 몸마다 메시 하나(옷 넷 = 재질 · 갖옷 = `_inflate` 옷 점만 단위 방향 × 털 두께 = 등배 × 키 비 × `FUR_PAD` · `_furnormal` 옷 점만 민 옷 면 법선 · `_furjoints`·`_furweights` 옷 점만 갖옷 몫 뼈·무게(합 1) · 넷 다 성긴 접근자) · 프리미티브 하나 · 재질 0(엔진이 건다 · 족보 487)',
+     `${meshN.join(' ')} · 프리미티브 ${prims.join('/')} · 재질 ${(J.materials || []).length} · ${meshN.map((n) => { const q = infl[n] || {}; return `${n} 옷 점 ${q.cloth}(방향 ${q.unit} · 뚜껑 가운데 자리 ${q.capPos} · 면 법선 ${q.fnUnit} · 같은 쪽 삼각형 ${q.triSame}/${q.triCloth} · 갖옷 무게 합 1 ${q.fwCloth} · 뼈 칸 밖 ${q.fjBad}/${q.nJ}뼈) · 밖 ≠0 ${q.badOut}/${q.fnOut}/${q.fwOut} · 성긴 줄 ${(q.sparse || []).join('/')}`; }).join(' · ')} · 두께 ${sexes.map((s) => (META.bodies[s].inflate || {}).fur).join('/')}m`);
   const tris = {}, topY = {};
   for (const m of J.meshes) {
     const p = m.primitives[0], ia = J.accessors[p.indices], pa = J.accessors[p.attributes.POSITION];
@@ -209,7 +219,7 @@ const imgDim = (p) => {   // PNG IHDR · JPEG SOF — 무늬 크기(1024² 이�
     const C = (s) => META.bodies[s].clothes || {};
     const cutOk = C('M').cut && C('M').cut.hem === 'sheet' && C('M').cut.sleeve === 'short' && C('F').cut && C('F').cut.hem === 'knee' && C('F').cut.sleeve === 'long';
     const hemOk = Math.abs(C('M').hemS - skirtLow) < 1e-9 && Math.abs(C('F').hemS - zKnee) < 1e-9;
-    const fp = sexes.every((s) => C(s).mhclo && Object.keys(C(s).mhclo).join() === 'base' &&    // [T654] 옷 기하 하나(갖옷 기하 0 — 털 두께는 정점 속성)
+    const fp = sexes.every((s) => C(s).mhclo && Object.keys(C(s).mhclo).join() === 'base,fur' && /^[0-9a-f]{16}$/.test((C(s).mhclo.fur || {}).mhclo || '') &&   // [T654] 그리는 기하 하나 · [T685] 갖옷 기하 = 묶기만(무게 재료)
       /^[0-9a-f]{16}$/.test(C(s).mhclo.base.mhclo || '') && /^[0-9a-f]{16}$/.test(C(s).mhclo.base.obj || ''));
     const noCC0 = sexes.every((s) => !('clothes' in (META.bodies[s].parts || {})));
     REC.a.clothes = { M: { cut: C('M').cut, hemS: C('M').hemS, rings: C('M').rings, sleeve: C('M').sleeve, tris: C('M').tris_base }, F: { cut: C('F').cut, hemS: C('F').hemS, rings: C('F').rings, sleeve: C('F').sleeve, tris: C('F').tris_base }, badLit };
@@ -571,7 +581,7 @@ const imgDim = (p) => {   // PNG IHDR · JPEG SOF — 무늬 크기(1024² 이�
         const MAT = {};
         for (const sex of Object.keys(meta.textures)) { MAT[sex] = {}; const al = await tex(meta.textures[sex].alpha, false), inf = meta.bodies[sex].inflate || {};
           for (const k of meta.clothKinds) { MAT[sex][k] = new T.MeshStandardMaterial({ map: await tex(meta.textures[sex][k], true), alphaMap: al, alphaTest: meta.alphaTest, roughness: meta.roughness[k], metalness: 0, side: T.DoubleSide });
-            if (inf[k] > 0) window.__char3d.inflate(MAT[sex][k], inf[k], meta.inflateAttr, meta.furNormalAttr); } }   // [T654·T664] 갖옷 부풀림·면 법선 = 클라의 그 함수(사본 0)
+            if (inf[k] > 0) window.__char3d.inflate(MAT[sex][k], inf[k], meta.inflateAttr, meta.furNormalAttr, meta.furJointsAttr, meta.furWeightsAttr); } }   // [T654·T664·T685] 갖옷 부풀림·면 법선·뼈 무게 = 클라의 그 함수(사본 0)
         const cm = charMeta(), PPU = cm.ppu * o.k, W = o.w, H = o.h, AX = W / 2, AY = H - o.foot;
         const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
         const R = new T.WebGLRenderer({ canvas: cv, alpha: true, antialias: true, premultipliedAlpha: true, preserveDrawingBuffer: true });
