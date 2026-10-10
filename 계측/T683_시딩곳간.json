@@ -1,0 +1,6593 @@
+{
+ "card": "T683",
+ "date": "2026-10-10",
+ "base": "e15680e7",
+ "note": "관찰자 t683-seed-probe.js · 표 기계 t683-seed-table.js(lab · srv) · keepAt = 마을마다 첫 30일 첫 통나무 출발 전날 곳간 · n · EMA → keep 두 식(subs×30 · EMA×30 의 절반 · 바닥 0.4n) 중앙",
+ "srv": {
+  "mode": "srv",
+  "dir": "/tmp/t683/srv",
+  "arms": [
+   "main",
+   "off",
+   "a",
+   "b",
+   "ab"
+  ],
+  "seeds": [
+   1020,
+   7,
+   42
+  ],
+  "BASE": 1.67,
+  "det": {
+   "7": {
+    "rows": 400,
+    "first": null,
+    "probeSame": true,
+    "eightSame": true
+   },
+   "42": {
+    "rows": 400,
+    "first": null,
+    "probeSame": true,
+    "eightSame": true
+   },
+   "1020": {
+    "rows": 400,
+    "first": null,
+    "probeSame": true,
+    "eightSame": true
+   }
+  },
+  "rows": [
+   {
+    "arm": "main",
+    "seed": 1020,
+    "인구": 2544,
+    "소멸": "1/51",
+    "빈마을": 1,
+    "게시": 1132,
+    "무기Q": 170,
+    "확장셀": 280,
+    "도구Q": 2987.2,
+    "보존식": 0,
+    "생곡": 11488.4,
+    "wood": {
+     "seeded": 6150.4,
+     "seedDaysMed": null,
+     "door": {
+      "firstN": 29,
+      "firstDayMed": 17,
+      "firstAmtMed": 93.708,
+      "firstCap": 13,
+      "bonusVils": 40,
+      "bonusSum": 2886.4,
+      "exBonus": 2763.8229999999994,
+      "exBase": 387.646,
+      "bonus90": 17
+     },
+     "ex1": 2829.8289999999997,
+     "ex2": 321.64,
+     "exp30": 3151.4689999999996,
+     "share30": 0.512400656867846,
+     "share1": 0.4601048712278876,
+     "im30": 2954,
+     "exAll": 8185.3640000000005,
+     "days": 400,
+     "knobs": {
+      "T659_WOOD_FLOW": false
+     },
+     "at": {
+      "30": {
+       "day": 30,
+       "wood0": 21,
+       "pop": 1100,
+       "vils": 51,
+       "woodMed": 7.574,
+       "emaRatio": 0.8295999999999999
+      },
+      "100": {
+       "day": 100,
+       "wood0": 39,
+       "pop": 2026,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.7253333333333333
+      },
+      "400": {
+       "day": 400,
+       "wood0": 47,
+       "pop": 2544,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.17285714285714285
+      }
+     },
+     "zeroMed": 28,
+     "never0": 0,
+     "emaD1": {
+      "day": 1,
+      "wood0": 0,
+      "pop": 408,
+      "vils": 51,
+      "woodMed": 131.788,
+      "emaRatio": 0
+     },
+     "emaD10": {
+      "day": 10,
+      "wood0": 0,
+      "pop": 557,
+      "vils": 51,
+      "woodMed": 110.421,
+      "emaRatio": 0.4099999999999999
+     },
+     "emaD30": {
+      "day": 30,
+      "wood0": 21,
+      "pop": 1100,
+      "vils": 51,
+      "woodMed": 7.574,
+      "emaRatio": 0.8295999999999999
+     },
+     "pfMed": 1.752,
+     "scarcity30": 0.30538922155688625
+    }
+   },
+   {
+    "arm": "main",
+    "seed": 7,
+    "인구": 2975,
+    "소멸": "0/51",
+    "빈마을": 0,
+    "게시": 1027,
+    "무기Q": 173,
+    "확장셀": 465,
+    "도구Q": 3819.6,
+    "보존식": 18.6,
+    "생곡": 18435.8,
+    "wood": {
+     "seeded": 6150.4,
+     "seedDaysMed": null,
+     "door": {
+      "firstN": 29,
+      "firstDayMed": 17,
+      "firstAmtMed": 91.515,
+      "firstCap": 13,
+      "bonusVils": 40,
+      "bonusSum": 2886.4,
+      "exBonus": 2547.674,
+      "exBase": 303.836,
+      "bonus90": 17
+     },
+     "ex1": 2765.5599999999995,
+     "ex2": 85.95000000000002,
+     "exp30": 2851.5099999999993,
+     "share30": 0.46363000780437036,
+     "share1": 0.4496553069719042,
+     "im30": 2664.8999999999996,
+     "exAll": 10705.682,
+     "days": 400,
+     "knobs": {
+      "T659_WOOD_FLOW": false
+     },
+     "at": {
+      "30": {
+       "day": 30,
+       "wood0": 21,
+       "pop": 1095,
+       "vils": 51,
+       "woodMed": 9.424,
+       "emaRatio": 0.8156521739130433
+      },
+      "100": {
+       "day": 100,
+       "wood0": 42,
+       "pop": 2170,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.105
+      },
+      "400": {
+       "day": 400,
+       "wood0": 41,
+       "pop": 2975,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.006666666666666666
+      }
+     },
+     "zeroMed": 28,
+     "never0": 0,
+     "emaD1": {
+      "day": 1,
+      "wood0": 0,
+      "pop": 408,
+      "vils": 51,
+      "woodMed": 131.788,
+      "emaRatio": 0
+     },
+     "emaD10": {
+      "day": 10,
+      "wood0": 0,
+      "pop": 558,
+      "vils": 51,
+      "woodMed": 110.421,
+      "emaRatio": 0.4099999999999999
+     },
+     "emaD30": {
+      "day": 30,
+      "wood0": 21,
+      "pop": 1095,
+      "vils": 51,
+      "woodMed": 9.424,
+      "emaRatio": 0.8156521739130433
+     },
+     "pfMed": 1.617,
+     "scarcity30": 0.3
+    }
+   },
+   {
+    "arm": "main",
+    "seed": 42,
+    "인구": 2953,
+    "소멸": "0/51",
+    "빈마을": 0,
+    "게시": 1076,
+    "무기Q": 201,
+    "확장셀": 530,
+    "도구Q": 3466.6,
+    "보존식": 6.8,
+    "생곡": 13799,
+    "wood": {
+     "seeded": 6150.4,
+     "seedDaysMed": null,
+     "door": {
+      "firstN": 29,
+      "firstDayMed": 18,
+      "firstAmtMed": 93.161,
+      "firstCap": 13,
+      "bonusVils": 40,
+      "bonusSum": 2886.4,
+      "exBonus": 2568.66,
+      "exBase": 239.324,
+      "bonus90": 18
+     },
+     "ex1": 2768.7439999999997,
+     "ex2": 39.239999999999995,
+     "exp30": 2807.9839999999995,
+     "share30": 0.4565530697190426,
+     "share1": 0.4501729968782518,
+     "im30": 2592.72,
+     "exAll": 7533.388999999999,
+     "days": 400,
+     "knobs": {
+      "T659_WOOD_FLOW": false
+     },
+     "at": {
+      "30": {
+       "day": 30,
+       "wood0": 22,
+       "pop": 1096,
+       "vils": 51,
+       "woodMed": 5.338,
+       "emaRatio": 0.8147826086956521
+      },
+      "100": {
+       "day": 100,
+       "wood0": 40,
+       "pop": 2179,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.7407692307692306
+      },
+      "400": {
+       "day": 400,
+       "wood0": 45,
+       "pop": 2953,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.1428205128205128
+      }
+     },
+     "zeroMed": 28,
+     "never0": 0,
+     "emaD1": {
+      "day": 1,
+      "wood0": 0,
+      "pop": 408,
+      "vils": 51,
+      "woodMed": 131.788,
+      "emaRatio": 0
+     },
+     "emaD10": {
+      "day": 10,
+      "wood0": 0,
+      "pop": 558,
+      "vils": 51,
+      "woodMed": 110.421,
+      "emaRatio": 0.4099999999999999
+     },
+     "emaD30": {
+      "day": 30,
+      "wood0": 22,
+      "pop": 1096,
+      "vils": 51,
+      "woodMed": 5.338,
+      "emaRatio": 0.8147826086956521
+     },
+     "pfMed": 1.717,
+     "scarcity30": 0.3
+    }
+   },
+   {
+    "arm": "off",
+    "seed": 1020,
+    "인구": 2544,
+    "소멸": "1/51",
+    "빈마을": 1,
+    "게시": 1132,
+    "무기Q": 170,
+    "확장셀": 280,
+    "도구Q": 2987.2,
+    "보존식": 0,
+    "생곡": 11488.4,
+    "wood": {
+     "seeded": 6150.4,
+     "seedDaysMed": 195.29411764705884,
+     "door": {
+      "firstN": 29,
+      "firstDayMed": 17,
+      "firstAmtMed": 93.708,
+      "firstCap": 13,
+      "bonusVils": 40,
+      "bonusSum": 2886.4,
+      "exBonus": 2763.8229999999994,
+      "exBase": 387.646,
+      "bonus90": 17
+     },
+     "ex1": 2829.8289999999997,
+     "ex2": 321.64,
+     "exp30": 3151.4689999999996,
+     "share30": 0.512400656867846,
+     "share1": 0.4601048712278876,
+     "im30": 2954,
+     "exAll": 8185.3640000000005,
+     "days": 400,
+     "knobs": {
+      "T683_EMA_INIT": false,
+      "T683_EXPORT_FLOW": false,
+      "T659_WOOD_FLOW": false
+     },
+     "at": {
+      "30": {
+       "day": 30,
+       "wood0": 21,
+       "pop": 1100,
+       "vils": 51,
+       "woodMed": 7.574,
+       "emaRatio": 0.8295999999999999
+      },
+      "100": {
+       "day": 100,
+       "wood0": 39,
+       "pop": 2026,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.7253333333333333
+      },
+      "400": {
+       "day": 400,
+       "wood0": 47,
+       "pop": 2544,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.17285714285714285
+      }
+     },
+     "zeroMed": 28,
+     "never0": 0,
+     "emaD1": {
+      "day": 1,
+      "wood0": 0,
+      "pop": 408,
+      "vils": 51,
+      "woodMed": 131.788,
+      "emaRatio": 0
+     },
+     "emaD10": {
+      "day": 10,
+      "wood0": 0,
+      "pop": 557,
+      "vils": 51,
+      "woodMed": 110.421,
+      "emaRatio": 0.4099999999999999
+     },
+     "emaD30": {
+      "day": 30,
+      "wood0": 21,
+      "pop": 1100,
+      "vils": 51,
+      "woodMed": 7.574,
+      "emaRatio": 0.8295999999999999
+     },
+     "pfMed": 1.752,
+     "scarcity30": 0.30538922155688625
+    }
+   },
+   {
+    "arm": "off",
+    "seed": 7,
+    "인구": 2975,
+    "소멸": "0/51",
+    "빈마을": 0,
+    "게시": 1027,
+    "무기Q": 173,
+    "확장셀": 465,
+    "도구Q": 3819.6,
+    "보존식": 18.6,
+    "생곡": 18435.8,
+    "wood": {
+     "seeded": 6150.4,
+     "seedDaysMed": 195.29411764705884,
+     "door": {
+      "firstN": 29,
+      "firstDayMed": 17,
+      "firstAmtMed": 91.515,
+      "firstCap": 13,
+      "bonusVils": 40,
+      "bonusSum": 2886.4,
+      "exBonus": 2547.674,
+      "exBase": 303.836,
+      "bonus90": 17
+     },
+     "ex1": 2765.5599999999995,
+     "ex2": 85.95000000000002,
+     "exp30": 2851.5099999999993,
+     "share30": 0.46363000780437036,
+     "share1": 0.4496553069719042,
+     "im30": 2664.8999999999996,
+     "exAll": 10705.682,
+     "days": 400,
+     "knobs": {
+      "T683_EMA_INIT": false,
+      "T683_EXPORT_FLOW": false,
+      "T659_WOOD_FLOW": false
+     },
+     "at": {
+      "30": {
+       "day": 30,
+       "wood0": 21,
+       "pop": 1095,
+       "vils": 51,
+       "woodMed": 9.424,
+       "emaRatio": 0.8156521739130433
+      },
+      "100": {
+       "day": 100,
+       "wood0": 42,
+       "pop": 2170,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.105
+      },
+      "400": {
+       "day": 400,
+       "wood0": 41,
+       "pop": 2975,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.006666666666666666
+      }
+     },
+     "zeroMed": 28,
+     "never0": 0,
+     "emaD1": {
+      "day": 1,
+      "wood0": 0,
+      "pop": 408,
+      "vils": 51,
+      "woodMed": 131.788,
+      "emaRatio": 0
+     },
+     "emaD10": {
+      "day": 10,
+      "wood0": 0,
+      "pop": 558,
+      "vils": 51,
+      "woodMed": 110.421,
+      "emaRatio": 0.4099999999999999
+     },
+     "emaD30": {
+      "day": 30,
+      "wood0": 21,
+      "pop": 1095,
+      "vils": 51,
+      "woodMed": 9.424,
+      "emaRatio": 0.8156521739130433
+     },
+     "pfMed": 1.617,
+     "scarcity30": 0.3
+    }
+   },
+   {
+    "arm": "off",
+    "seed": 42,
+    "인구": 2953,
+    "소멸": "0/51",
+    "빈마을": 0,
+    "게시": 1076,
+    "무기Q": 201,
+    "확장셀": 530,
+    "도구Q": 3466.6,
+    "보존식": 6.8,
+    "생곡": 13799,
+    "wood": {
+     "seeded": 6150.4,
+     "seedDaysMed": 195.29411764705884,
+     "door": {
+      "firstN": 29,
+      "firstDayMed": 18,
+      "firstAmtMed": 93.161,
+      "firstCap": 13,
+      "bonusVils": 40,
+      "bonusSum": 2886.4,
+      "exBonus": 2568.66,
+      "exBase": 239.324,
+      "bonus90": 18
+     },
+     "ex1": 2768.7439999999997,
+     "ex2": 39.239999999999995,
+     "exp30": 2807.9839999999995,
+     "share30": 0.4565530697190426,
+     "share1": 0.4501729968782518,
+     "im30": 2592.72,
+     "exAll": 7533.388999999999,
+     "days": 400,
+     "knobs": {
+      "T683_EMA_INIT": false,
+      "T683_EXPORT_FLOW": false,
+      "T659_WOOD_FLOW": false
+     },
+     "at": {
+      "30": {
+       "day": 30,
+       "wood0": 22,
+       "pop": 1096,
+       "vils": 51,
+       "woodMed": 5.338,
+       "emaRatio": 0.8147826086956521
+      },
+      "100": {
+       "day": 100,
+       "wood0": 40,
+       "pop": 2179,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.7407692307692306
+      },
+      "400": {
+       "day": 400,
+       "wood0": 45,
+       "pop": 2953,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.1428205128205128
+      }
+     },
+     "zeroMed": 28,
+     "never0": 0,
+     "emaD1": {
+      "day": 1,
+      "wood0": 0,
+      "pop": 408,
+      "vils": 51,
+      "woodMed": 131.788,
+      "emaRatio": 0
+     },
+     "emaD10": {
+      "day": 10,
+      "wood0": 0,
+      "pop": 558,
+      "vils": 51,
+      "woodMed": 110.421,
+      "emaRatio": 0.4099999999999999
+     },
+     "emaD30": {
+      "day": 30,
+      "wood0": 22,
+      "pop": 1096,
+      "vils": 51,
+      "woodMed": 5.338,
+      "emaRatio": 0.8147826086956521
+     },
+     "pfMed": 1.717,
+     "scarcity30": 0.3
+    }
+   },
+   {
+    "arm": "a",
+    "seed": 1020,
+    "인구": 2544,
+    "소멸": "1/51",
+    "빈마을": 1,
+    "게시": 1134,
+    "무기Q": 170,
+    "확장셀": 280,
+    "도구Q": 2987.2,
+    "보존식": 0,
+    "생곡": 11488.4,
+    "wood": {
+     "seeded": 6150.4,
+     "seedDaysMed": 195.29411764705884,
+     "door": {
+      "firstN": 29,
+      "firstDayMed": 17,
+      "firstAmtMed": 93.708,
+      "firstCap": 13,
+      "bonusVils": 40,
+      "bonusSum": 2886.4,
+      "exBonus": 2763.8229999999994,
+      "exBase": 387.646,
+      "bonus90": 17
+     },
+     "ex1": 2829.8289999999997,
+     "ex2": 321.64,
+     "exp30": 3151.4689999999996,
+     "share30": 0.512400656867846,
+     "share1": 0.4601048712278876,
+     "im30": 2954,
+     "exAll": 8185.3640000000005,
+     "days": 400,
+     "knobs": {
+      "T683_EMA_INIT": true,
+      "T683_EXPORT_FLOW": false,
+      "T659_WOOD_FLOW": false
+     },
+     "at": {
+      "30": {
+       "day": 30,
+       "wood0": 21,
+       "pop": 1100,
+       "vils": 51,
+       "woodMed": 7.574,
+       "emaRatio": 1.037391304347826
+      },
+      "100": {
+       "day": 100,
+       "wood0": 39,
+       "pop": 2026,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.736
+      },
+      "400": {
+       "day": 400,
+       "wood0": 47,
+       "pop": 2544,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.17285714285714285
+      }
+     },
+     "zeroMed": 28,
+     "never0": 0,
+     "emaD1": {
+      "day": 1,
+      "wood0": 0,
+      "pop": 408,
+      "vils": 51,
+      "woodMed": 131.788,
+      "emaRatio": 1.7
+     },
+     "emaD10": {
+      "day": 10,
+      "wood0": 0,
+      "pop": 557,
+      "vils": 51,
+      "woodMed": 110.421,
+      "emaRatio": 1.314
+     },
+     "emaD30": {
+      "day": 30,
+      "wood0": 21,
+      "pop": 1100,
+      "vils": 51,
+      "woodMed": 7.574,
+      "emaRatio": 1.037391304347826
+     },
+     "pfMed": 1.752,
+     "scarcity30": 0.30538922155688625
+    }
+   },
+   {
+    "arm": "a",
+    "seed": 7,
+    "인구": 2975,
+    "소멸": "0/51",
+    "빈마을": 0,
+    "게시": 1029,
+    "무기Q": 173,
+    "확장셀": 465,
+    "도구Q": 3819.6,
+    "보존식": 18.6,
+    "생곡": 18435.8,
+    "wood": {
+     "seeded": 6150.4,
+     "seedDaysMed": 195.29411764705884,
+     "door": {
+      "firstN": 29,
+      "firstDayMed": 17,
+      "firstAmtMed": 91.515,
+      "firstCap": 13,
+      "bonusVils": 40,
+      "bonusSum": 2886.4,
+      "exBonus": 2547.674,
+      "exBase": 303.836,
+      "bonus90": 17
+     },
+     "ex1": 2765.5599999999995,
+     "ex2": 85.95000000000002,
+     "exp30": 2851.5099999999993,
+     "share30": 0.46363000780437036,
+     "share1": 0.4496553069719042,
+     "im30": 2664.8999999999996,
+     "exAll": 10705.682,
+     "days": 400,
+     "knobs": {
+      "T683_EMA_INIT": true,
+      "T683_EXPORT_FLOW": false,
+      "T659_WOOD_FLOW": false
+     },
+     "at": {
+      "30": {
+       "day": 30,
+       "wood0": 21,
+       "pop": 1095,
+       "vils": 51,
+       "woodMed": 9.424,
+       "emaRatio": 1.046315789473684
+      },
+      "100": {
+       "day": 100,
+       "wood0": 42,
+       "pop": 2170,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.1102173913043478
+      },
+      "400": {
+       "day": 400,
+       "wood0": 41,
+       "pop": 2975,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.006666666666666666
+      }
+     },
+     "zeroMed": 28,
+     "never0": 0,
+     "emaD1": {
+      "day": 1,
+      "wood0": 0,
+      "pop": 408,
+      "vils": 51,
+      "woodMed": 131.788,
+      "emaRatio": 1.7
+     },
+     "emaD10": {
+      "day": 10,
+      "wood0": 0,
+      "pop": 558,
+      "vils": 51,
+      "woodMed": 110.421,
+      "emaRatio": 1.314
+     },
+     "emaD30": {
+      "day": 30,
+      "wood0": 21,
+      "pop": 1095,
+      "vils": 51,
+      "woodMed": 9.424,
+      "emaRatio": 1.046315789473684
+     },
+     "pfMed": 1.617,
+     "scarcity30": 0.3
+    }
+   },
+   {
+    "arm": "a",
+    "seed": 42,
+    "인구": 2953,
+    "소멸": "0/51",
+    "빈마을": 0,
+    "게시": 1078,
+    "무기Q": 201,
+    "확장셀": 530,
+    "도구Q": 3466.6,
+    "보존식": 6.8,
+    "생곡": 13799,
+    "wood": {
+     "seeded": 6150.4,
+     "seedDaysMed": 195.29411764705884,
+     "door": {
+      "firstN": 29,
+      "firstDayMed": 18,
+      "firstAmtMed": 93.161,
+      "firstCap": 13,
+      "bonusVils": 40,
+      "bonusSum": 2886.4,
+      "exBonus": 2568.66,
+      "exBase": 239.324,
+      "bonus90": 18
+     },
+     "ex1": 2768.7439999999997,
+     "ex2": 39.239999999999995,
+     "exp30": 2807.9839999999995,
+     "share30": 0.4565530697190426,
+     "share1": 0.4501729968782518,
+     "im30": 2592.72,
+     "exAll": 7533.388999999999,
+     "days": 400,
+     "knobs": {
+      "T683_EMA_INIT": true,
+      "T683_EXPORT_FLOW": false,
+      "T659_WOOD_FLOW": false
+     },
+     "at": {
+      "30": {
+       "day": 30,
+       "wood0": 22,
+       "pop": 1096,
+       "vils": 51,
+       "woodMed": 5.338,
+       "emaRatio": 1.0356521739130433
+      },
+      "100": {
+       "day": 100,
+       "wood0": 40,
+       "pop": 2179,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.7469230769230768
+      },
+      "400": {
+       "day": 400,
+       "wood0": 45,
+       "pop": 2953,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.1428205128205128
+      }
+     },
+     "zeroMed": 28,
+     "never0": 0,
+     "emaD1": {
+      "day": 1,
+      "wood0": 0,
+      "pop": 408,
+      "vils": 51,
+      "woodMed": 131.788,
+      "emaRatio": 1.7
+     },
+     "emaD10": {
+      "day": 10,
+      "wood0": 0,
+      "pop": 558,
+      "vils": 51,
+      "woodMed": 110.421,
+      "emaRatio": 1.314
+     },
+     "emaD30": {
+      "day": 30,
+      "wood0": 22,
+      "pop": 1096,
+      "vils": 51,
+      "woodMed": 5.338,
+      "emaRatio": 1.0356521739130433
+     },
+     "pfMed": 1.717,
+     "scarcity30": 0.3
+    }
+   },
+   {
+    "arm": "b",
+    "seed": 1020,
+    "인구": 2790,
+    "소멸": "1/51",
+    "빈마을": 1,
+    "게시": 1221,
+    "무기Q": 184,
+    "확장셀": 902,
+    "도구Q": 3273.4,
+    "보존식": 0.2,
+    "생곡": 9855.8,
+    "wood": {
+     "seeded": 6150.4,
+     "seedDaysMed": 195.29411764705884,
+     "door": {
+      "firstN": 31,
+      "firstDayMed": 18,
+      "firstAmtMed": 98.754,
+      "firstCap": 15,
+      "bonusVils": 40,
+      "bonusSum": 2886.4,
+      "exBonus": 3553.5389999999993,
+      "exBase": 200,
+      "bonus90": 20
+     },
+     "ex1": 3241.7289999999994,
+     "ex2": 511.81,
+     "exp30": 3753.5389999999993,
+     "share30": 0.6102918509365244,
+     "share1": 0.5270761251300727,
+     "im30": 3670.65,
+     "exAll": 16481.016000000003,
+     "days": 400,
+     "knobs": {
+      "T683_EMA_INIT": false,
+      "T683_EXPORT_FLOW": true,
+      "T659_WOOD_FLOW": false
+     },
+     "at": {
+      "30": {
+       "day": 30,
+       "wood0": 25,
+       "pop": 1096,
+       "vils": 51,
+       "woodMed": 2.903,
+       "emaRatio": 0.8172727272727273
+      },
+      "100": {
+       "day": 100,
+       "wood0": 47,
+       "pop": 2016,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.9355294117647058
+      },
+      "400": {
+       "day": 400,
+       "wood0": 40,
+       "pop": 2790,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.3406666666666667
+      }
+     },
+     "zeroMed": 27,
+     "never0": 0,
+     "emaD1": {
+      "day": 1,
+      "wood0": 0,
+      "pop": 408,
+      "vils": 51,
+      "woodMed": 131.788,
+      "emaRatio": 0
+     },
+     "emaD10": {
+      "day": 10,
+      "wood0": 0,
+      "pop": 557,
+      "vils": 51,
+      "woodMed": 110.421,
+      "emaRatio": 0.4099999999999999
+     },
+     "emaD30": {
+      "day": 30,
+      "wood0": 25,
+      "pop": 1096,
+      "vils": 51,
+      "woodMed": 2.903,
+      "emaRatio": 0.8172727272727273
+     },
+     "pfMed": 1.702,
+     "scarcity30": 0.3101796407185629
+    }
+   },
+   {
+    "arm": "b",
+    "seed": 7,
+    "인구": 2969,
+    "소멸": "1/51",
+    "빈마을": 1,
+    "게시": 1118,
+    "무기Q": 234,
+    "확장셀": 847,
+    "도구Q": 3394.8,
+    "보존식": 22.5,
+    "생곡": 12107,
+    "wood": {
+     "seeded": 6150.4,
+     "seedDaysMed": 195.29411764705884,
+     "door": {
+      "firstN": 31,
+      "firstDayMed": 18,
+      "firstAmtMed": 98.754,
+      "firstCap": 15,
+      "bonusVils": 40,
+      "bonusSum": 2886.4,
+      "exBonus": 3570.26,
+      "exBase": 200,
+      "bonus90": 21
+     },
+     "ex1": 3358.6499999999996,
+     "ex2": 411.61,
+     "exp30": 3770.2599999999998,
+     "share30": 0.613010535900104,
+     "share1": 0.5460864334027055,
+     "im30": 3670.1,
+     "exAll": 15148.712000000001,
+     "days": 400,
+     "knobs": {
+      "T683_EMA_INIT": false,
+      "T683_EXPORT_FLOW": true,
+      "T659_WOOD_FLOW": false
+     },
+     "at": {
+      "30": {
+       "day": 30,
+       "wood0": 26,
+       "pop": 1094,
+       "vils": 51,
+       "woodMed": 0.155,
+       "emaRatio": 0.8156521739130433
+      },
+      "100": {
+       "day": 100,
+       "wood0": 45,
+       "pop": 2167,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.9500000000000001
+      },
+      "400": {
+       "day": 400,
+       "wood0": 45,
+       "pop": 2969,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.5488000000000001
+      }
+     },
+     "zeroMed": 27,
+     "never0": 0,
+     "emaD1": {
+      "day": 1,
+      "wood0": 0,
+      "pop": 408,
+      "vils": 51,
+      "woodMed": 131.788,
+      "emaRatio": 0
+     },
+     "emaD10": {
+      "day": 10,
+      "wood0": 0,
+      "pop": 558,
+      "vils": 51,
+      "woodMed": 110.421,
+      "emaRatio": 0.4099999999999999
+     },
+     "emaD30": {
+      "day": 30,
+      "wood0": 26,
+      "pop": 1094,
+      "vils": 51,
+      "woodMed": 0.155,
+      "emaRatio": 0.8156521739130433
+     },
+     "pfMed": 1.665,
+     "scarcity30": 0.3089820359281437
+    }
+   },
+   {
+    "arm": "b",
+    "seed": 42,
+    "인구": 3070,
+    "소멸": "0/51",
+    "빈마을": 0,
+    "게시": 1227,
+    "무기Q": 221,
+    "확장셀": 609,
+    "도구Q": 3644.8,
+    "보존식": 9.7,
+    "생곡": 13646.5,
+    "wood": {
+     "seeded": 6150.4,
+     "seedDaysMed": 195.29411764705884,
+     "door": {
+      "firstN": 33,
+      "firstDayMed": 18,
+      "firstAmtMed": 98.754,
+      "firstCap": 16,
+      "bonusVils": 40,
+      "bonusSum": 2886.4,
+      "exBonus": 3166.8559999999998,
+      "exBase": 300,
+      "bonus90": 21
+     },
+     "ex1": 3408.7259999999997,
+     "ex2": 58.129999999999995,
+     "exp30": 3466.8559999999998,
+     "share30": 0.5636797606659729,
+     "share1": 0.5542283428720083,
+     "im30": 3148.6600000000003,
+     "exAll": 15423.055000000004,
+     "days": 400,
+     "knobs": {
+      "T683_EMA_INIT": false,
+      "T683_EXPORT_FLOW": true,
+      "T659_WOOD_FLOW": false
+     },
+     "at": {
+      "30": {
+       "day": 30,
+       "wood0": 26,
+       "pop": 1085,
+       "vils": 51,
+       "woodMed": 0.213,
+       "emaRatio": 0.8147826086956521
+      },
+      "100": {
+       "day": 100,
+       "wood0": 43,
+       "pop": 2113,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.9624999999999998
+      },
+      "400": {
+       "day": 400,
+       "wood0": 43,
+       "pop": 3070,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.34
+      }
+     },
+     "zeroMed": 27,
+     "never0": 0,
+     "emaD1": {
+      "day": 1,
+      "wood0": 0,
+      "pop": 408,
+      "vils": 51,
+      "woodMed": 131.788,
+      "emaRatio": 0
+     },
+     "emaD10": {
+      "day": 10,
+      "wood0": 0,
+      "pop": 558,
+      "vils": 51,
+      "woodMed": 110.421,
+      "emaRatio": 0.4099999999999999
+     },
+     "emaD30": {
+      "day": 30,
+      "wood0": 26,
+      "pop": 1085,
+      "vils": 51,
+      "woodMed": 0.213,
+      "emaRatio": 0.8147826086956521
+     },
+     "pfMed": 1.531,
+     "scarcity30": 0.30598802395209584
+    }
+   },
+   {
+    "arm": "ab",
+    "seed": 1020,
+    "인구": 2654,
+    "소멸": "0/51",
+    "빈마을": 0,
+    "게시": 1031,
+    "무기Q": 205,
+    "확장셀": 902,
+    "도구Q": 3028.5,
+    "보존식": 106.5,
+    "생곡": 12100.5,
+    "wood": {
+     "seeded": 6150.4,
+     "seedDaysMed": 195.29411764705884,
+     "door": {
+      "firstN": 27,
+      "firstDayMed": 18,
+      "firstAmtMed": 95.425,
+      "firstCap": 13,
+      "bonusVils": 40,
+      "bonusSum": 2886.4,
+      "exBonus": 2878.7960000000003,
+      "exBase": 290.563,
+      "bonus90": 17
+     },
+     "ex1": 2774.769,
+     "ex2": 394.59,
+     "exp30": 3169.359,
+     "share30": 0.5153094107700312,
+     "share1": 0.45115260796045786,
+     "im30": 3102.0600000000004,
+     "exAll": 11798.739,
+     "days": 400,
+     "knobs": {
+      "T683_EMA_INIT": true,
+      "T683_EXPORT_FLOW": true,
+      "T659_WOOD_FLOW": false
+     },
+     "at": {
+      "30": {
+       "day": 30,
+       "wood0": 22,
+       "pop": 1101,
+       "vils": 51,
+       "woodMed": 2.857,
+       "emaRatio": 1.0472
+      },
+      "100": {
+       "day": 100,
+       "wood0": 45,
+       "pop": 2163,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.8682926829268292
+      },
+      "400": {
+       "day": 400,
+       "wood0": 45,
+       "pop": 2654,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.3784210526315789
+      }
+     },
+     "zeroMed": 30,
+     "never0": 0,
+     "emaD1": {
+      "day": 1,
+      "wood0": 0,
+      "pop": 408,
+      "vils": 51,
+      "woodMed": 131.788,
+      "emaRatio": 1.7
+     },
+     "emaD10": {
+      "day": 10,
+      "wood0": 0,
+      "pop": 557,
+      "vils": 51,
+      "woodMed": 110.421,
+      "emaRatio": 1.314
+     },
+     "emaD30": {
+      "day": 30,
+      "wood0": 22,
+      "pop": 1101,
+      "vils": 51,
+      "woodMed": 2.857,
+      "emaRatio": 1.0472
+     },
+     "pfMed": 1.762,
+     "scarcity30": 0.31197604790419164
+    }
+   },
+   {
+    "arm": "ab",
+    "seed": 7,
+    "인구": 2779,
+    "소멸": "0/51",
+    "빈마을": 0,
+    "게시": 1193,
+    "무기Q": 267,
+    "확장셀": 979,
+    "도구Q": 3499.9,
+    "보존식": 8.2,
+    "생곡": 13277.7,
+    "wood": {
+     "seeded": 6150.4,
+     "seedDaysMed": 195.29411764705884,
+     "door": {
+      "firstN": 27,
+      "firstDayMed": 18,
+      "firstAmtMed": 94.529,
+      "firstCap": 13,
+      "bonusVils": 40,
+      "bonusSum": 2886.4,
+      "exBonus": 2921.4939999999997,
+      "exBase": 357.787,
+      "bonus90": 17
+     },
+     "ex1": 2840.071,
+     "ex2": 439.21,
+     "exp30": 3279.281,
+     "share30": 0.533181744276795,
+     "share1": 0.4617701287721124,
+     "im30": 3215.32,
+     "exAll": 17675.348,
+     "days": 400,
+     "knobs": {
+      "T683_EMA_INIT": true,
+      "T683_EXPORT_FLOW": true,
+      "T659_WOOD_FLOW": false
+     },
+     "at": {
+      "30": {
+       "day": 30,
+       "wood0": 19,
+       "pop": 1100,
+       "vils": 51,
+       "woodMed": 10.695,
+       "emaRatio": 1.0526315789473684
+      },
+      "100": {
+       "day": 100,
+       "wood0": 41,
+       "pop": 2161,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.7239024390243901
+      },
+      "400": {
+       "day": 400,
+       "wood0": 40,
+       "pop": 2779,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.1662068965517241
+      }
+     },
+     "zeroMed": 30,
+     "never0": 1,
+     "emaD1": {
+      "day": 1,
+      "wood0": 0,
+      "pop": 408,
+      "vils": 51,
+      "woodMed": 131.788,
+      "emaRatio": 1.7
+     },
+     "emaD10": {
+      "day": 10,
+      "wood0": 0,
+      "pop": 558,
+      "vils": 51,
+      "woodMed": 110.421,
+      "emaRatio": 1.314
+     },
+     "emaD30": {
+      "day": 30,
+      "wood0": 19,
+      "pop": 1100,
+      "vils": 51,
+      "woodMed": 10.695,
+      "emaRatio": 1.0526315789473684
+     },
+     "pfMed": 1.953,
+     "scarcity30": 0.30598802395209584
+    }
+   },
+   {
+    "arm": "ab",
+    "seed": 42,
+    "인구": 2570,
+    "소멸": "1/51",
+    "빈마을": 1,
+    "게시": 1174,
+    "무기Q": 227,
+    "확장셀": 618,
+    "도구Q": 3228.6,
+    "보존식": 18.6,
+    "생곡": 13151.2,
+    "wood": {
+     "seeded": 6150.4,
+     "seedDaysMed": 195.29411764705884,
+     "door": {
+      "firstN": 27,
+      "firstDayMed": 19,
+      "firstAmtMed": 100,
+      "firstCap": 14,
+      "bonusVils": 40,
+      "bonusSum": 2886.4,
+      "exBonus": 2647.261,
+      "exBase": 368.156,
+      "bonus90": 17
+     },
+     "ex1": 2832.997,
+     "ex2": 182.42,
+     "exp30": 3015.417,
+     "share30": 0.4902798191987513,
+     "share1": 0.46061995967741937,
+     "im30": 2766.5400000000004,
+     "exAll": 11657.931,
+     "days": 400,
+     "knobs": {
+      "T683_EMA_INIT": true,
+      "T683_EXPORT_FLOW": true,
+      "T659_WOOD_FLOW": false
+     },
+     "at": {
+      "30": {
+       "day": 30,
+       "wood0": 21,
+       "pop": 1097,
+       "vils": 51,
+       "woodMed": 5.863,
+       "emaRatio": 1.043157894736842
+      },
+      "100": {
+       "day": 100,
+       "wood0": 43,
+       "pop": 2255,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.0371052631578945
+      },
+      "400": {
+       "day": 400,
+       "wood0": 43,
+       "pop": 2570,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.22218181818181817
+      }
+     },
+     "zeroMed": 30,
+     "never0": 0,
+     "emaD1": {
+      "day": 1,
+      "wood0": 0,
+      "pop": 408,
+      "vils": 51,
+      "woodMed": 131.788,
+      "emaRatio": 1.7
+     },
+     "emaD10": {
+      "day": 10,
+      "wood0": 0,
+      "pop": 558,
+      "vils": 51,
+      "woodMed": 110.421,
+      "emaRatio": 1.314
+     },
+     "emaD30": {
+      "day": 30,
+      "wood0": 21,
+      "pop": 1097,
+      "vils": 51,
+      "woodMed": 5.863,
+      "emaRatio": 1.043157894736842
+     },
+     "pfMed": 1.744,
+     "scarcity30": 0.3065868263473054
+    }
+   }
+  ],
+  "delta": {
+   "a": {
+    "인구": {
+     "d": [
+      0,
+      0,
+      0
+     ],
+     "mean": 0,
+     "width": 0,
+     "verdict": "못 가름"
+    },
+    "게시": {
+     "d": [
+      0.18,
+      0.19,
+      0.19
+     ],
+     "mean": 0.19,
+     "width": 0.02,
+     "verdict": "가름"
+    },
+    "무기Q": {
+     "d": [
+      0,
+      0,
+      0
+     ],
+     "mean": 0,
+     "width": 0,
+     "verdict": "못 가름"
+    },
+    "확장셀": {
+     "d": [
+      0,
+      0,
+      0
+     ],
+     "mean": 0,
+     "width": 0,
+     "verdict": "못 가름"
+    },
+    "도구Q": {
+     "d": [
+      0,
+      0,
+      0
+     ],
+     "mean": 0,
+     "width": 0,
+     "verdict": "못 가름"
+    },
+    "보존식": {
+     "d": [
+      0,
+      0,
+      0
+     ],
+     "mean": 0,
+     "width": 0,
+     "verdict": "못 가름"
+    },
+    "생곡": {
+     "d": [
+      0,
+      0,
+      0
+     ],
+     "mean": 0,
+     "width": 0,
+     "verdict": "못 가름"
+    },
+    "w0_30": {
+     "d": [
+      0,
+      0,
+      0
+     ],
+     "mean": 0,
+     "width": 0,
+     "verdict": "못 가름"
+    },
+    "w0_100": {
+     "d": [
+      0,
+      0,
+      0
+     ],
+     "mean": 0,
+     "width": 0,
+     "verdict": "못 가름"
+    },
+    "w0_400": {
+     "d": [
+      0,
+      0,
+      0
+     ],
+     "mean": 0,
+     "width": 0,
+     "verdict": "못 가름"
+    },
+    "exp30": {
+     "d": [
+      0,
+      0,
+      0
+     ],
+     "mean": 0,
+     "width": 0,
+     "verdict": "못 가름"
+    },
+    "pfMed": {
+     "d": [
+      0,
+      0,
+      0
+     ],
+     "mean": 0,
+     "width": 0,
+     "verdict": "못 가름"
+    }
+   },
+   "b": {
+    "인구": {
+     "d": [
+      9.67,
+      -0.2,
+      3.96
+     ],
+     "mean": 4.48,
+     "width": 9.87,
+     "verdict": "못 가름"
+    },
+    "게시": {
+     "d": [
+      7.86,
+      8.86,
+      14.03
+     ],
+     "mean": 10.25,
+     "width": 6.17,
+     "verdict": "가름"
+    },
+    "무기Q": {
+     "d": [
+      8.24,
+      35.26,
+      9.95
+     ],
+     "mean": 17.82,
+     "width": 27.02,
+     "verdict": "방향만"
+    },
+    "확장셀": {
+     "d": [
+      222.14,
+      82.15,
+      14.91
+     ],
+     "mean": 106.4,
+     "width": 207.24,
+     "verdict": "방향만"
+    },
+    "도구Q": {
+     "d": [
+      9.58,
+      -11.12,
+      5.14
+     ],
+     "mean": 1.2,
+     "width": 20.7,
+     "verdict": "못 가름"
+    },
+    "보존식": {
+     "d": [
+      0,
+      20.97,
+      42.65
+     ],
+     "mean": 21.2,
+     "width": 42.65,
+     "verdict": "못 가름"
+    },
+    "생곡": {
+     "d": [
+      -14.21,
+      -34.33,
+      -1.11
+     ],
+     "mean": -16.55,
+     "width": 33.22,
+     "verdict": "방향만"
+    },
+    "w0_30": {
+     "d": [
+      19.05,
+      23.81,
+      18.18
+     ],
+     "mean": 20.35,
+     "width": 5.63,
+     "verdict": "가름"
+    },
+    "w0_100": {
+     "d": [
+      20.51,
+      7.14,
+      7.5
+     ],
+     "mean": 11.72,
+     "width": 13.37,
+     "verdict": "방향만"
+    },
+    "w0_400": {
+     "d": [
+      -14.89,
+      9.76,
+      -4.44
+     ],
+     "mean": -3.19,
+     "width": 24.65,
+     "verdict": "못 가름"
+    },
+    "exp30": {
+     "d": [
+      19.1,
+      32.22,
+      23.46
+     ],
+     "mean": 24.93,
+     "width": 13.12,
+     "verdict": "가름"
+    },
+    "pfMed": {
+     "d": [
+      -2.85,
+      2.97,
+      -10.83
+     ],
+     "mean": -3.57,
+     "width": 13.8,
+     "verdict": "못 가름"
+    }
+   },
+   "ab": {
+    "인구": {
+     "d": [
+      4.32,
+      -6.59,
+      -12.97
+     ],
+     "mean": -5.08,
+     "width": 17.29,
+     "verdict": "못 가름"
+    },
+    "게시": {
+     "d": [
+      -8.92,
+      16.16,
+      9.11
+     ],
+     "mean": 5.45,
+     "width": 25.09,
+     "verdict": "못 가름"
+    },
+    "무기Q": {
+     "d": [
+      20.59,
+      54.34,
+      12.94
+     ],
+     "mean": 29.29,
+     "width": 41.4,
+     "verdict": "방향만"
+    },
+    "확장셀": {
+     "d": [
+      222.14,
+      110.54,
+      16.6
+     ],
+     "mean": 116.43,
+     "width": 205.54,
+     "verdict": "방향만"
+    },
+    "도구Q": {
+     "d": [
+      1.38,
+      -8.37,
+      -6.87
+     ],
+     "mean": -4.62,
+     "width": 9.75,
+     "verdict": "못 가름"
+    },
+    "보존식": {
+     "d": [
+      0,
+      -55.91,
+      173.53
+     ],
+     "mean": 39.21,
+     "width": 229.44,
+     "verdict": "못 가름"
+    },
+    "생곡": {
+     "d": [
+      5.33,
+      -27.98,
+      -4.69
+     ],
+     "mean": -9.12,
+     "width": 33.31,
+     "verdict": "못 가름"
+    },
+    "w0_30": {
+     "d": [
+      4.76,
+      -9.52,
+      -4.55
+     ],
+     "mean": -3.1,
+     "width": 14.29,
+     "verdict": "못 가름"
+    },
+    "w0_100": {
+     "d": [
+      15.38,
+      -2.38,
+      7.5
+     ],
+     "mean": 6.83,
+     "width": 17.77,
+     "verdict": "못 가름"
+    },
+    "w0_400": {
+     "d": [
+      -4.26,
+      -2.44,
+      -4.44
+     ],
+     "mean": -3.71,
+     "width": 2.01,
+     "verdict": "가름"
+    },
+    "exp30": {
+     "d": [
+      0.57,
+      15,
+      7.39
+     ],
+     "mean": 7.65,
+     "width": 14.43,
+     "verdict": "방향만"
+    },
+    "pfMed": {
+     "d": [
+      0.57,
+      20.78,
+      1.57
+     ],
+     "mean": 7.64,
+     "width": 20.21,
+     "verdict": "방향만"
+    }
+   }
+  }
+ },
+ "lab": {
+  "mode": "lab",
+  "dir": "/tmp/t683/runs",
+  "arms": [
+   "main",
+   "off",
+   "a",
+   "b",
+   "ab"
+  ],
+  "seeds": [
+   1020,
+   7,
+   42
+  ],
+  "cmp": {
+   "t17": [
+    true,
+    true,
+    true
+   ],
+   "t176": [
+    true,
+    true,
+    true
+   ]
+  },
+  "same": {
+   "a:t17": [
+    false,
+    false,
+    false
+   ],
+   "b:t17": [
+    false,
+    false,
+    false
+   ],
+   "ab:t17": [
+    false,
+    false,
+    false
+   ],
+   "a:t176": [
+    false,
+    false,
+    false
+   ],
+   "b:t176": [
+    false,
+    false,
+    false
+   ],
+   "ab:t176": [
+    false,
+    false,
+    false
+   ]
+  },
+  "rows": [
+   {
+    "ruler": "t17",
+    "arm": "main",
+    "seed": 1020,
+    "wood": {
+     "seeded": 6150.4,
+     "seedDaysMed": null,
+     "door": {
+      "firstN": 32,
+      "firstDayMed": 18,
+      "firstAmtMed": 98.826,
+      "firstCap": 15,
+      "bonusVils": 40,
+      "bonusSum": 2886.4,
+      "exBonus": 2685.344,
+      "exBase": 644.742,
+      "bonus90": 16
+     },
+     "ex1": 3013.3160000000007,
+     "ex2": 316.77,
+     "exp30": 3330.0860000000007,
+     "share30": 0.5414421826222686,
+     "share1": 0.4899382154006245,
+     "im30": 3971.3799999999997,
+     "exAll": 247445.59399999998,
+     "days": 800,
+     "knobs": {
+      "T659_WOOD_FLOW": false
+     },
+     "at": {
+      "30": {
+       "day": 30,
+       "wood0": 31,
+       "pop": 1152,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.7999999999999999
+      },
+      "100": {
+       "day": 100,
+       "wood0": 34,
+       "pop": 2772,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.1204651162790698
+      },
+      "400": {
+       "day": 400,
+       "wood0": 37,
+       "pop": 4565,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.4466666666666665
+      },
+      "800": {
+       "day": 800,
+       "wood0": 8,
+       "pop": 8273,
+       "vils": 51,
+       "woodMed": 191.999,
+       "emaRatio": 1.5354128440366972
+      }
+     },
+     "zeroMed": 25,
+     "never0": 0,
+     "emaD1": {
+      "day": 1,
+      "wood0": 0,
+      "pop": 408,
+      "vils": 51,
+      "woodMed": 131.788,
+      "emaRatio": 0
+     },
+     "emaD10": {
+      "day": 10,
+      "wood0": 0,
+      "pop": 566,
+      "vils": 51,
+      "woodMed": 110.328,
+      "emaRatio": 0.4099999999999999
+     },
+     "emaD30": {
+      "day": 30,
+      "wood0": 31,
+      "pop": 1152,
+      "vils": 51,
+      "woodMed": 0,
+      "emaRatio": 0.7999999999999999
+     }
+    },
+    "인구": 8273,
+    "소멸": "0/51",
+    "무기Q": 1389,
+    "확장셀": 8743,
+    "게시": 2522,
+    "도구Q": 16046.2,
+    "보존식": 6356.1,
+    "생곡": 75408,
+    "㉮": 1.93,
+    "㉯": 2.03,
+    "부족 wood": 704
+   },
+   {
+    "ruler": "t17",
+    "arm": "main",
+    "seed": 7,
+    "wood": {
+     "seeded": 6150.4,
+     "seedDaysMed": null,
+     "door": {
+      "firstN": 36,
+      "firstDayMed": 18,
+      "firstAmtMed": 95.122,
+      "firstCap": 16,
+      "bonusVils": 40,
+      "bonusSum": 2886.4,
+      "exBonus": 3391.613,
+      "exBase": 953.312,
+      "bonus90": 20
+     },
+     "ex1": 3642.6450000000004,
+     "ex2": 702.28,
+     "exp30": 4344.925,
+     "share30": 0.7064459222164413,
+     "share1": 0.5922614789281999,
+     "im30": 5178.41,
+     "exAll": 280120.988,
+     "days": 800,
+     "knobs": {
+      "T659_WOOD_FLOW": false
+     },
+     "at": {
+      "30": {
+       "day": 30,
+       "wood0": 31,
+       "pop": 1153,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.8528
+      },
+      "100": {
+       "day": 100,
+       "wood0": 30,
+       "pop": 2835,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.227142857142857
+      },
+      "400": {
+       "day": 400,
+       "wood0": 33,
+       "pop": 5024,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.4093413173652696
+      },
+      "800": {
+       "day": 800,
+       "wood0": 2,
+       "pop": 8246,
+       "vils": 51,
+       "woodMed": 179.269,
+       "emaRatio": 1.5772192513368986
+      }
+     },
+     "zeroMed": 25,
+     "never0": 0,
+     "emaD1": {
+      "day": 1,
+      "wood0": 0,
+      "pop": 408,
+      "vils": 51,
+      "woodMed": 131.788,
+      "emaRatio": 0
+     },
+     "emaD10": {
+      "day": 10,
+      "wood0": 0,
+      "pop": 566,
+      "vils": 51,
+      "woodMed": 110.328,
+      "emaRatio": 0.4099999999999999
+     },
+     "emaD30": {
+      "day": 30,
+      "wood0": 31,
+      "pop": 1153,
+      "vils": 51,
+      "woodMed": 0,
+      "emaRatio": 0.8528
+     }
+    },
+    "인구": 8246,
+    "소멸": "0/51",
+    "무기Q": 1478,
+    "확장셀": 11213,
+    "게시": 2690,
+    "도구Q": 16978.6,
+    "보존식": 4420.6,
+    "생곡": 74242.8,
+    "㉮": 1.89,
+    "㉯": 1.98,
+    "부족 wood": 721
+   },
+   {
+    "ruler": "t17",
+    "arm": "main",
+    "seed": 42,
+    "wood": {
+     "seeded": 6150.4,
+     "seedDaysMed": null,
+     "door": {
+      "firstN": 32,
+      "firstDayMed": 18,
+      "firstAmtMed": 95.001,
+      "firstCap": 14,
+      "bonusVils": 40,
+      "bonusSum": 2886.4,
+      "exBonus": 2568.6880000000006,
+      "exBase": 785.7219999999999,
+      "bonus90": 17
+     },
+     "ex1": 3105.980000000001,
+     "ex2": 248.43,
+     "exp30": 3354.4100000000008,
+     "share30": 0.5453970473465142,
+     "share1": 0.5050045525494279,
+     "im30": 3937.9499999999994,
+     "exAll": 167522.24000000005,
+     "days": 800,
+     "knobs": {
+      "T659_WOOD_FLOW": false
+     },
+     "at": {
+      "30": {
+       "day": 30,
+       "wood0": 28,
+       "pop": 1156,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.85
+      },
+      "100": {
+       "day": 100,
+       "wood0": 38,
+       "pop": 2748,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.2157333333333333
+      },
+      "400": {
+       "day": 400,
+       "wood0": 34,
+       "pop": 4268,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.9047826086956521
+      },
+      "800": {
+       "day": 800,
+       "wood0": 6,
+       "pop": 7491,
+       "vils": 51,
+       "woodMed": 104.18,
+       "emaRatio": 1.4821
+      }
+     },
+     "zeroMed": 25,
+     "never0": 0,
+     "emaD1": {
+      "day": 1,
+      "wood0": 0,
+      "pop": 408,
+      "vils": 51,
+      "woodMed": 131.788,
+      "emaRatio": 0
+     },
+     "emaD10": {
+      "day": 10,
+      "wood0": 0,
+      "pop": 566,
+      "vils": 51,
+      "woodMed": 110.328,
+      "emaRatio": 0.4099999999999999
+     },
+     "emaD30": {
+      "day": 30,
+      "wood0": 28,
+      "pop": 1156,
+      "vils": 51,
+      "woodMed": 0,
+      "emaRatio": 0.85
+     }
+    },
+    "인구": 7491,
+    "소멸": "0/51",
+    "무기Q": 1258,
+    "확장셀": 6742,
+    "게시": 2418,
+    "도구Q": 14802.8,
+    "보존식": 4832.8,
+    "생곡": 69633.1,
+    "㉮": 1.96,
+    "㉯": 2.05,
+    "부족 wood": 568
+   },
+   {
+    "ruler": "t17",
+    "arm": "off",
+    "seed": 1020,
+    "wood": {
+     "seeded": 6150.4,
+     "seedDaysMed": 195.29411764705884,
+     "door": {
+      "firstN": 32,
+      "firstDayMed": 18,
+      "firstAmtMed": 98.826,
+      "firstCap": 15,
+      "bonusVils": 40,
+      "bonusSum": 2886.4,
+      "exBonus": 2685.344,
+      "exBase": 644.742,
+      "bonus90": 16
+     },
+     "ex1": 3013.3160000000007,
+     "ex2": 316.77,
+     "exp30": 3330.0860000000007,
+     "share30": 0.5414421826222686,
+     "share1": 0.4899382154006245,
+     "im30": 3971.3799999999997,
+     "exAll": 247445.59399999998,
+     "days": 800,
+     "knobs": {
+      "T683_EMA_INIT": false,
+      "T683_EXPORT_FLOW": false,
+      "T659_WOOD_FLOW": false
+     },
+     "at": {
+      "30": {
+       "day": 30,
+       "wood0": 31,
+       "pop": 1152,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.7999999999999999
+      },
+      "100": {
+       "day": 100,
+       "wood0": 34,
+       "pop": 2772,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.1204651162790698
+      },
+      "400": {
+       "day": 400,
+       "wood0": 37,
+       "pop": 4565,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.4466666666666665
+      },
+      "800": {
+       "day": 800,
+       "wood0": 8,
+       "pop": 8273,
+       "vils": 51,
+       "woodMed": 191.999,
+       "emaRatio": 1.5354128440366972
+      }
+     },
+     "zeroMed": 25,
+     "never0": 0,
+     "emaD1": {
+      "day": 1,
+      "wood0": 0,
+      "pop": 408,
+      "vils": 51,
+      "woodMed": 131.788,
+      "emaRatio": 0
+     },
+     "emaD10": {
+      "day": 10,
+      "wood0": 0,
+      "pop": 566,
+      "vils": 51,
+      "woodMed": 110.328,
+      "emaRatio": 0.4099999999999999
+     },
+     "emaD30": {
+      "day": 30,
+      "wood0": 31,
+      "pop": 1152,
+      "vils": 51,
+      "woodMed": 0,
+      "emaRatio": 0.7999999999999999
+     }
+    },
+    "인구": 8273,
+    "소멸": "0/51",
+    "무기Q": 1389,
+    "확장셀": 8743,
+    "게시": 2522,
+    "도구Q": 16046.2,
+    "보존식": 6356.1,
+    "생곡": 75408,
+    "㉮": 1.93,
+    "㉯": 2.03,
+    "부족 wood": 704
+   },
+   {
+    "ruler": "t17",
+    "arm": "off",
+    "seed": 7,
+    "wood": {
+     "seeded": 6150.4,
+     "seedDaysMed": 195.29411764705884,
+     "door": {
+      "firstN": 36,
+      "firstDayMed": 18,
+      "firstAmtMed": 95.122,
+      "firstCap": 16,
+      "bonusVils": 40,
+      "bonusSum": 2886.4,
+      "exBonus": 3391.613,
+      "exBase": 953.312,
+      "bonus90": 20
+     },
+     "ex1": 3642.6450000000004,
+     "ex2": 702.28,
+     "exp30": 4344.925,
+     "share30": 0.7064459222164413,
+     "share1": 0.5922614789281999,
+     "im30": 5178.41,
+     "exAll": 280120.988,
+     "days": 800,
+     "knobs": {
+      "T683_EMA_INIT": false,
+      "T683_EXPORT_FLOW": false,
+      "T659_WOOD_FLOW": false
+     },
+     "at": {
+      "30": {
+       "day": 30,
+       "wood0": 31,
+       "pop": 1153,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.8528
+      },
+      "100": {
+       "day": 100,
+       "wood0": 30,
+       "pop": 2835,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.227142857142857
+      },
+      "400": {
+       "day": 400,
+       "wood0": 33,
+       "pop": 5024,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.4093413173652696
+      },
+      "800": {
+       "day": 800,
+       "wood0": 2,
+       "pop": 8246,
+       "vils": 51,
+       "woodMed": 179.269,
+       "emaRatio": 1.5772192513368986
+      }
+     },
+     "zeroMed": 25,
+     "never0": 0,
+     "emaD1": {
+      "day": 1,
+      "wood0": 0,
+      "pop": 408,
+      "vils": 51,
+      "woodMed": 131.788,
+      "emaRatio": 0
+     },
+     "emaD10": {
+      "day": 10,
+      "wood0": 0,
+      "pop": 566,
+      "vils": 51,
+      "woodMed": 110.328,
+      "emaRatio": 0.4099999999999999
+     },
+     "emaD30": {
+      "day": 30,
+      "wood0": 31,
+      "pop": 1153,
+      "vils": 51,
+      "woodMed": 0,
+      "emaRatio": 0.8528
+     }
+    },
+    "인구": 8246,
+    "소멸": "0/51",
+    "무기Q": 1478,
+    "확장셀": 11213,
+    "게시": 2690,
+    "도구Q": 16978.6,
+    "보존식": 4420.6,
+    "생곡": 74242.8,
+    "㉮": 1.89,
+    "㉯": 1.98,
+    "부족 wood": 721
+   },
+   {
+    "ruler": "t17",
+    "arm": "off",
+    "seed": 42,
+    "wood": {
+     "seeded": 6150.4,
+     "seedDaysMed": 195.29411764705884,
+     "door": {
+      "firstN": 32,
+      "firstDayMed": 18,
+      "firstAmtMed": 95.001,
+      "firstCap": 14,
+      "bonusVils": 40,
+      "bonusSum": 2886.4,
+      "exBonus": 2568.6880000000006,
+      "exBase": 785.7219999999999,
+      "bonus90": 17
+     },
+     "ex1": 3105.980000000001,
+     "ex2": 248.43,
+     "exp30": 3354.4100000000008,
+     "share30": 0.5453970473465142,
+     "share1": 0.5050045525494279,
+     "im30": 3937.9499999999994,
+     "exAll": 167522.24000000005,
+     "days": 800,
+     "knobs": {
+      "T683_EMA_INIT": false,
+      "T683_EXPORT_FLOW": false,
+      "T659_WOOD_FLOW": false
+     },
+     "at": {
+      "30": {
+       "day": 30,
+       "wood0": 28,
+       "pop": 1156,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.85
+      },
+      "100": {
+       "day": 100,
+       "wood0": 38,
+       "pop": 2748,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.2157333333333333
+      },
+      "400": {
+       "day": 400,
+       "wood0": 34,
+       "pop": 4268,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.9047826086956521
+      },
+      "800": {
+       "day": 800,
+       "wood0": 6,
+       "pop": 7491,
+       "vils": 51,
+       "woodMed": 104.18,
+       "emaRatio": 1.4821
+      }
+     },
+     "zeroMed": 25,
+     "never0": 0,
+     "emaD1": {
+      "day": 1,
+      "wood0": 0,
+      "pop": 408,
+      "vils": 51,
+      "woodMed": 131.788,
+      "emaRatio": 0
+     },
+     "emaD10": {
+      "day": 10,
+      "wood0": 0,
+      "pop": 566,
+      "vils": 51,
+      "woodMed": 110.328,
+      "emaRatio": 0.4099999999999999
+     },
+     "emaD30": {
+      "day": 30,
+      "wood0": 28,
+      "pop": 1156,
+      "vils": 51,
+      "woodMed": 0,
+      "emaRatio": 0.85
+     }
+    },
+    "인구": 7491,
+    "소멸": "0/51",
+    "무기Q": 1258,
+    "확장셀": 6742,
+    "게시": 2418,
+    "도구Q": 14802.8,
+    "보존식": 4832.8,
+    "생곡": 69633.1,
+    "㉮": 1.96,
+    "㉯": 2.05,
+    "부족 wood": 568
+   },
+   {
+    "ruler": "t17",
+    "arm": "a",
+    "seed": 1020,
+    "wood": {
+     "seeded": 6150.4,
+     "seedDaysMed": 195.29411764705884,
+     "door": {
+      "firstN": 32,
+      "firstDayMed": 18,
+      "firstAmtMed": 98.826,
+      "firstCap": 15,
+      "bonusVils": 40,
+      "bonusSum": 2886.4,
+      "exBonus": 2685.344,
+      "exBase": 644.742,
+      "bonus90": 16
+     },
+     "ex1": 3013.3160000000007,
+     "ex2": 316.77,
+     "exp30": 3330.0860000000007,
+     "share30": 0.5414421826222686,
+     "share1": 0.4899382154006245,
+     "im30": 3971.3799999999997,
+     "exAll": 247445.59399999998,
+     "days": 800,
+     "knobs": {
+      "T683_EMA_INIT": true,
+      "T683_EXPORT_FLOW": false,
+      "T659_WOOD_FLOW": false
+     },
+     "at": {
+      "30": {
+       "day": 30,
+       "wood0": 31,
+       "pop": 1152,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.0452631578947367
+      },
+      "100": {
+       "day": 100,
+       "wood0": 34,
+       "pop": 2772,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.1311627906976744
+      },
+      "400": {
+       "day": 400,
+       "wood0": 37,
+       "pop": 4565,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.4466666666666665
+      },
+      "800": {
+       "day": 800,
+       "wood0": 8,
+       "pop": 8273,
+       "vils": 51,
+       "woodMed": 191.999,
+       "emaRatio": 1.5354128440366972
+      }
+     },
+     "zeroMed": 25,
+     "never0": 0,
+     "emaD1": {
+      "day": 1,
+      "wood0": 0,
+      "pop": 408,
+      "vils": 51,
+      "woodMed": 131.788,
+      "emaRatio": 1.7
+     },
+     "emaD10": {
+      "day": 10,
+      "wood0": 0,
+      "pop": 566,
+      "vils": 51,
+      "woodMed": 110.328,
+      "emaRatio": 1.2499999999999998
+     },
+     "emaD30": {
+      "day": 30,
+      "wood0": 31,
+      "pop": 1152,
+      "vils": 51,
+      "woodMed": 0,
+      "emaRatio": 1.0452631578947367
+     }
+    },
+    "인구": 8273,
+    "소멸": "0/51",
+    "무기Q": 1389,
+    "확장셀": 8743,
+    "게시": 2524,
+    "도구Q": 16046.2,
+    "보존식": 6356.1,
+    "생곡": 75408,
+    "㉮": 1.93,
+    "㉯": 2.03,
+    "부족 wood": 704
+   },
+   {
+    "ruler": "t17",
+    "arm": "a",
+    "seed": 7,
+    "wood": {
+     "seeded": 6150.4,
+     "seedDaysMed": 195.29411764705884,
+     "door": {
+      "firstN": 36,
+      "firstDayMed": 18,
+      "firstAmtMed": 95.122,
+      "firstCap": 16,
+      "bonusVils": 40,
+      "bonusSum": 2886.4,
+      "exBonus": 3391.613,
+      "exBase": 953.312,
+      "bonus90": 20
+     },
+     "ex1": 3642.6450000000004,
+     "ex2": 702.28,
+     "exp30": 4344.925,
+     "share30": 0.7064459222164413,
+     "share1": 0.5922614789281999,
+     "im30": 5178.41,
+     "exAll": 280120.988,
+     "days": 800,
+     "knobs": {
+      "T683_EMA_INIT": true,
+      "T683_EXPORT_FLOW": false,
+      "T659_WOOD_FLOW": false
+     },
+     "at": {
+      "30": {
+       "day": 30,
+       "wood0": 31,
+       "pop": 1153,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.0568
+      },
+      "100": {
+       "day": 100,
+       "wood0": 30,
+       "pop": 2835,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.2385714285714284
+      },
+      "400": {
+       "day": 400,
+       "wood0": 33,
+       "pop": 5024,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.4093413173652696
+      },
+      "800": {
+       "day": 800,
+       "wood0": 2,
+       "pop": 8246,
+       "vils": 51,
+       "woodMed": 179.269,
+       "emaRatio": 1.5772192513368986
+      }
+     },
+     "zeroMed": 25,
+     "never0": 0,
+     "emaD1": {
+      "day": 1,
+      "wood0": 0,
+      "pop": 408,
+      "vils": 51,
+      "woodMed": 131.788,
+      "emaRatio": 1.7
+     },
+     "emaD10": {
+      "day": 10,
+      "wood0": 0,
+      "pop": 566,
+      "vils": 51,
+      "woodMed": 110.328,
+      "emaRatio": 1.2499999999999998
+     },
+     "emaD30": {
+      "day": 30,
+      "wood0": 31,
+      "pop": 1153,
+      "vils": 51,
+      "woodMed": 0,
+      "emaRatio": 1.0568
+     }
+    },
+    "인구": 8246,
+    "소멸": "0/51",
+    "무기Q": 1478,
+    "확장셀": 11213,
+    "게시": 2690,
+    "도구Q": 16978.6,
+    "보존식": 4420.6,
+    "생곡": 74242.8,
+    "㉮": 1.89,
+    "㉯": 1.99,
+    "부족 wood": 723
+   },
+   {
+    "ruler": "t17",
+    "arm": "a",
+    "seed": 42,
+    "wood": {
+     "seeded": 6150.4,
+     "seedDaysMed": 195.29411764705884,
+     "door": {
+      "firstN": 32,
+      "firstDayMed": 18,
+      "firstAmtMed": 95.001,
+      "firstCap": 14,
+      "bonusVils": 40,
+      "bonusSum": 2886.4,
+      "exBonus": 2568.6880000000006,
+      "exBase": 785.7219999999999,
+      "bonus90": 17
+     },
+     "ex1": 3105.980000000001,
+     "ex2": 248.43,
+     "exp30": 3354.4100000000008,
+     "share30": 0.5453970473465142,
+     "share1": 0.5050045525494279,
+     "im30": 3937.9499999999994,
+     "exAll": 167522.24000000005,
+     "days": 800,
+     "knobs": {
+      "T683_EMA_INIT": true,
+      "T683_EXPORT_FLOW": false,
+      "T659_WOOD_FLOW": false
+     },
+     "at": {
+      "30": {
+       "day": 30,
+       "wood0": 28,
+       "pop": 1156,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.0483333333333331
+      },
+      "100": {
+       "day": 100,
+       "wood0": 38,
+       "pop": 2748,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.2218666666666667
+      },
+      "400": {
+       "day": 400,
+       "wood0": 34,
+       "pop": 4268,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.9047826086956521
+      },
+      "800": {
+       "day": 800,
+       "wood0": 6,
+       "pop": 7491,
+       "vils": 51,
+       "woodMed": 104.18,
+       "emaRatio": 1.4821
+      }
+     },
+     "zeroMed": 25,
+     "never0": 0,
+     "emaD1": {
+      "day": 1,
+      "wood0": 0,
+      "pop": 408,
+      "vils": 51,
+      "woodMed": 131.788,
+      "emaRatio": 1.7
+     },
+     "emaD10": {
+      "day": 10,
+      "wood0": 0,
+      "pop": 566,
+      "vils": 51,
+      "woodMed": 110.328,
+      "emaRatio": 1.2499999999999998
+     },
+     "emaD30": {
+      "day": 30,
+      "wood0": 28,
+      "pop": 1156,
+      "vils": 51,
+      "woodMed": 0,
+      "emaRatio": 1.0483333333333331
+     }
+    },
+    "인구": 7491,
+    "소멸": "0/51",
+    "무기Q": 1258,
+    "확장셀": 6742,
+    "게시": 2419,
+    "도구Q": 14802.8,
+    "보존식": 4832.8,
+    "생곡": 69633.1,
+    "㉮": 1.96,
+    "㉯": 2.06,
+    "부족 wood": 569
+   },
+   {
+    "ruler": "t17",
+    "arm": "b",
+    "seed": 1020,
+    "wood": {
+     "seeded": 6150.4,
+     "seedDaysMed": 195.29411764705884,
+     "door": {
+      "firstN": 33,
+      "firstDayMed": 15,
+      "firstAmtMed": 100,
+      "firstCap": 18,
+      "bonusVils": 40,
+      "bonusSum": 2886.4,
+      "exBonus": 3264.622,
+      "exBase": 568.3919999999999,
+      "bonus90": 23
+     },
+     "ex1": 3533.144,
+     "ex2": 299.87,
+     "exp30": 3833.0139999999997,
+     "share30": 0.6232137747138398,
+     "share1": 0.5744575962539021,
+     "im30": 4549.59,
+     "exAll": 203819.22999999998,
+     "days": 800,
+     "knobs": {
+      "T683_EMA_INIT": false,
+      "T683_EXPORT_FLOW": true,
+      "T659_WOOD_FLOW": false
+     },
+     "at": {
+      "30": {
+       "day": 30,
+       "wood0": 29,
+       "pop": 1134,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.7769230769230769
+      },
+      "100": {
+       "day": 100,
+       "wood0": 40,
+       "pop": 2863,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.1689610389610388
+      },
+      "400": {
+       "day": 400,
+       "wood0": 30,
+       "pop": 4221,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.347047619047619
+      },
+      "800": {
+       "day": 800,
+       "wood0": 3,
+       "pop": 8287,
+       "vils": 51,
+       "woodMed": 239.069,
+       "emaRatio": 1.5283597883597881
+      }
+     },
+     "zeroMed": 24,
+     "never0": 0,
+     "emaD1": {
+      "day": 1,
+      "wood0": 0,
+      "pop": 408,
+      "vils": 51,
+      "woodMed": 131.788,
+      "emaRatio": 0
+     },
+     "emaD10": {
+      "day": 10,
+      "wood0": 0,
+      "pop": 566,
+      "vils": 51,
+      "woodMed": 110.328,
+      "emaRatio": 0.4099999999999999
+     },
+     "emaD30": {
+      "day": 30,
+      "wood0": 29,
+      "pop": 1134,
+      "vils": 51,
+      "woodMed": 0,
+      "emaRatio": 0.7769230769230769
+     }
+    },
+    "인구": 8287,
+    "소멸": "0/51",
+    "무기Q": 1389,
+    "확장셀": 10574,
+    "게시": 2730,
+    "도구Q": 16446.2,
+    "보존식": 4952.1,
+    "생곡": 75157.6,
+    "㉮": 1.9,
+    "㉯": 2,
+    "부족 wood": 542
+   },
+   {
+    "ruler": "t17",
+    "arm": "b",
+    "seed": 7,
+    "wood": {
+     "seeded": 6150.4,
+     "seedDaysMed": 195.29411764705884,
+     "door": {
+      "firstN": 35,
+      "firstDayMed": 15,
+      "firstAmtMed": 100,
+      "firstCap": 19,
+      "bonusVils": 40,
+      "bonusSum": 2886.4,
+      "exBonus": 4171.637,
+      "exBase": 538.6510000000001,
+      "bonus90": 28
+     },
+     "ex1": 4007.808,
+     "ex2": 702.48,
+     "exp30": 4710.2880000000005,
+     "share30": 0.7658506763787722,
+     "share1": 0.6516337148803331,
+     "im30": 6029.75,
+     "exAll": 162418.62500000003,
+     "days": 800,
+     "knobs": {
+      "T683_EMA_INIT": false,
+      "T683_EXPORT_FLOW": true,
+      "T659_WOOD_FLOW": false
+     },
+     "at": {
+      "30": {
+       "day": 30,
+       "wood0": 31,
+       "pop": 1133,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.7990909090909091
+      },
+      "100": {
+       "day": 100,
+       "wood0": 37,
+       "pop": 2869,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.2376666666666667
+      },
+      "400": {
+       "day": 400,
+       "wood0": 38,
+       "pop": 4502,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.3404761904761904
+      },
+      "800": {
+       "day": 800,
+       "wood0": 6,
+       "pop": 7875,
+       "vils": 51,
+       "woodMed": 205.973,
+       "emaRatio": 1.4961481481481482
+      }
+     },
+     "zeroMed": 24,
+     "never0": 0,
+     "emaD1": {
+      "day": 1,
+      "wood0": 0,
+      "pop": 408,
+      "vils": 51,
+      "woodMed": 131.788,
+      "emaRatio": 0
+     },
+     "emaD10": {
+      "day": 10,
+      "wood0": 0,
+      "pop": 566,
+      "vils": 51,
+      "woodMed": 110.328,
+      "emaRatio": 0.4099999999999999
+     },
+     "emaD30": {
+      "day": 30,
+      "wood0": 31,
+      "pop": 1133,
+      "vils": 51,
+      "woodMed": 0,
+      "emaRatio": 0.7990909090909091
+     }
+    },
+    "인구": 7875,
+    "소멸": "0/51",
+    "무기Q": 1391,
+    "확장셀": 9291,
+    "게시": 2524,
+    "도구Q": 14762.9,
+    "보존식": 4499.1,
+    "생곡": 67220.1,
+    "㉮": 1.92,
+    "㉯": 2.01,
+    "부족 wood": 509
+   },
+   {
+    "ruler": "t17",
+    "arm": "b",
+    "seed": 42,
+    "wood": {
+     "seeded": 6150.4,
+     "seedDaysMed": 195.29411764705884,
+     "door": {
+      "firstN": 33,
+      "firstDayMed": 15,
+      "firstAmtMed": 100,
+      "firstCap": 19,
+      "bonusVils": 40,
+      "bonusSum": 2886.4,
+      "exBonus": 4155.637999999999,
+      "exBase": 664.242,
+      "bonus90": 26
+     },
+     "ex1": 3671.6099999999997,
+     "ex2": 1148.27,
+     "exp30": 4819.879999999999,
+     "share30": 0.7836693548387096,
+     "share1": 0.5969709287200833,
+     "im30": 5756.01,
+     "exAll": 214556.80399999995,
+     "days": 800,
+     "knobs": {
+      "T683_EMA_INIT": false,
+      "T683_EXPORT_FLOW": true,
+      "T659_WOOD_FLOW": false
+     },
+     "at": {
+      "30": {
+       "day": 30,
+       "wood0": 28,
+       "pop": 1132,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.7660869565217391
+      },
+      "100": {
+       "day": 100,
+       "wood0": 39,
+       "pop": 2611,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.2742857142857142
+      },
+      "400": {
+       "day": 400,
+       "wood0": 37,
+       "pop": 4327,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.3550632911392404
+      },
+      "800": {
+       "day": 800,
+       "wood0": 4,
+       "pop": 8488,
+       "vils": 51,
+       "woodMed": 254.66,
+       "emaRatio": 1.518235294117647
+      }
+     },
+     "zeroMed": 24,
+     "never0": 0,
+     "emaD1": {
+      "day": 1,
+      "wood0": 0,
+      "pop": 408,
+      "vils": 51,
+      "woodMed": 131.788,
+      "emaRatio": 0
+     },
+     "emaD10": {
+      "day": 10,
+      "wood0": 0,
+      "pop": 566,
+      "vils": 51,
+      "woodMed": 110.328,
+      "emaRatio": 0.4099999999999999
+     },
+     "emaD30": {
+      "day": 30,
+      "wood0": 28,
+      "pop": 1132,
+      "vils": 51,
+      "woodMed": 0,
+      "emaRatio": 0.7660869565217391
+     }
+    },
+    "인구": 8488,
+    "소멸": "0/51",
+    "무기Q": 1361,
+    "확장셀": 10949,
+    "게시": 2662,
+    "도구Q": 15907.5,
+    "보존식": 4907.9,
+    "생곡": 79727.6,
+    "㉮": 1.92,
+    "㉯": 2.02,
+    "부족 wood": 508
+   },
+   {
+    "ruler": "t17",
+    "arm": "ab",
+    "seed": 1020,
+    "wood": {
+     "seeded": 6150.4,
+     "seedDaysMed": 195.29411764705884,
+     "door": {
+      "firstN": 29,
+      "firstDayMed": 18,
+      "firstAmtMed": 100,
+      "firstCap": 15,
+      "bonusVils": 40,
+      "bonusSum": 2886.4,
+      "exBonus": 2732.9100000000003,
+      "exBase": 614.246,
+      "bonus90": 17
+     },
+     "ex1": 3057.3360000000002,
+     "ex2": 289.82000000000005,
+     "exp30": 3347.1560000000004,
+     "share30": 0.5442176118626432,
+     "share1": 0.49709547346514055,
+     "im30": 3745.2400000000002,
+     "exAll": 201296.50900000002,
+     "days": 800,
+     "knobs": {
+      "T683_EMA_INIT": true,
+      "T683_EXPORT_FLOW": true,
+      "T659_WOOD_FLOW": false
+     },
+     "at": {
+      "30": {
+       "day": 30,
+       "wood0": 29,
+       "pop": 1152,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.046315789473684
+      },
+      "100": {
+       "day": 100,
+       "wood0": 39,
+       "pop": 2626,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.125
+      },
+      "400": {
+       "day": 400,
+       "wood0": 33,
+       "pop": 4849,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.3806666666666667
+      },
+      "800": {
+       "day": 800,
+       "wood0": 6,
+       "pop": 8194,
+       "vils": 51,
+       "woodMed": 183.975,
+       "emaRatio": 1.496405529953917
+      }
+     },
+     "zeroMed": 25,
+     "never0": 0,
+     "emaD1": {
+      "day": 1,
+      "wood0": 0,
+      "pop": 408,
+      "vils": 51,
+      "woodMed": 131.788,
+      "emaRatio": 1.7
+     },
+     "emaD10": {
+      "day": 10,
+      "wood0": 0,
+      "pop": 566,
+      "vils": 51,
+      "woodMed": 110.328,
+      "emaRatio": 1.2499999999999998
+     },
+     "emaD30": {
+      "day": 30,
+      "wood0": 29,
+      "pop": 1152,
+      "vils": 51,
+      "woodMed": 0,
+      "emaRatio": 1.046315789473684
+     }
+    },
+    "인구": 8194,
+    "소멸": "0/51",
+    "무기Q": 1328,
+    "확장셀": 9773,
+    "게시": 2621,
+    "도구Q": 15813.2,
+    "보존식": 5588.2,
+    "생곡": 74232.9,
+    "㉮": 1.93,
+    "㉯": 2.03,
+    "부족 wood": 618
+   },
+   {
+    "ruler": "t17",
+    "arm": "ab",
+    "seed": 7,
+    "wood": {
+     "seeded": 6150.4,
+     "seedDaysMed": 195.29411764705884,
+     "door": {
+      "firstN": 31,
+      "firstDayMed": 18,
+      "firstAmtMed": 94.042,
+      "firstCap": 14,
+      "bonusVils": 40,
+      "bonusSum": 2886.4,
+      "exBonus": 2560.3880000000004,
+      "exBase": 1049.183,
+      "bonus90": 19
+     },
+     "ex1": 2935.7410000000004,
+     "ex2": 673.8299999999999,
+     "exp30": 3609.5710000000004,
+     "share30": 0.5868839425078045,
+     "share1": 0.4773252146201874,
+     "im30": 4388.839999999999,
+     "exAll": 242207.7490000001,
+     "days": 800,
+     "knobs": {
+      "T683_EMA_INIT": true,
+      "T683_EXPORT_FLOW": true,
+      "T659_WOOD_FLOW": false
+     },
+     "at": {
+      "30": {
+       "day": 30,
+       "wood0": 30,
+       "pop": 1154,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.0576
+      },
+      "100": {
+       "day": 100,
+       "wood0": 38,
+       "pop": 2743,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.9936363636363635
+      },
+      "400": {
+       "day": 400,
+       "wood0": 29,
+       "pop": 4724,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.3973846153846154
+      },
+      "800": {
+       "day": 800,
+       "wood0": 4,
+       "pop": 8130,
+       "vils": 51,
+       "woodMed": 239.796,
+       "emaRatio": 1.5406060606060603
+      }
+     },
+     "zeroMed": 25,
+     "never0": 0,
+     "emaD1": {
+      "day": 1,
+      "wood0": 0,
+      "pop": 408,
+      "vils": 51,
+      "woodMed": 131.788,
+      "emaRatio": 1.7
+     },
+     "emaD10": {
+      "day": 10,
+      "wood0": 0,
+      "pop": 566,
+      "vils": 51,
+      "woodMed": 110.328,
+      "emaRatio": 1.2499999999999998
+     },
+     "emaD30": {
+      "day": 30,
+      "wood0": 30,
+      "pop": 1154,
+      "vils": 51,
+      "woodMed": 0,
+      "emaRatio": 1.0576
+     }
+    },
+    "인구": 8130,
+    "소멸": "0/51",
+    "무기Q": 1395,
+    "확장셀": 11327,
+    "게시": 3026,
+    "도구Q": 16208.8,
+    "보존식": 4847,
+    "생곡": 73789.7,
+    "㉮": 1.82,
+    "㉯": 1.91,
+    "부족 wood": 622
+   },
+   {
+    "ruler": "t17",
+    "arm": "ab",
+    "seed": 42,
+    "wood": {
+     "seeded": 6150.4,
+     "seedDaysMed": 195.29411764705884,
+     "door": {
+      "firstN": 27,
+      "firstDayMed": 15,
+      "firstAmtMed": 93.935,
+      "firstCap": 12,
+      "bonusVils": 40,
+      "bonusSum": 2886.4,
+      "exBonus": 2308.8390000000004,
+      "exBase": 713.733,
+      "bonus90": 17
+     },
+     "ex1": 2582.8220000000006,
+     "ex2": 439.75,
+     "exp30": 3022.5720000000006,
+     "share30": 0.49144315816857453,
+     "share1": 0.4199437434963581,
+     "im30": 3607.61,
+     "exAll": 192741.783,
+     "days": 800,
+     "knobs": {
+      "T683_EMA_INIT": true,
+      "T683_EXPORT_FLOW": true,
+      "T659_WOOD_FLOW": false
+     },
+     "at": {
+      "30": {
+       "day": 30,
+       "wood0": 29,
+       "pop": 1155,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.0545454545454545
+      },
+      "100": {
+       "day": 100,
+       "wood0": 38,
+       "pop": 2745,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.274032258064516
+      },
+      "400": {
+       "day": 400,
+       "wood0": 32,
+       "pop": 4554,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.2247619047619047
+      },
+      "800": {
+       "day": 800,
+       "wood0": 1,
+       "pop": 8310,
+       "vils": 51,
+       "woodMed": 296.101,
+       "emaRatio": 1.487913669064748
+      }
+     },
+     "zeroMed": 26,
+     "never0": 0,
+     "emaD1": {
+      "day": 1,
+      "wood0": 0,
+      "pop": 408,
+      "vils": 51,
+      "woodMed": 131.788,
+      "emaRatio": 1.7
+     },
+     "emaD10": {
+      "day": 10,
+      "wood0": 0,
+      "pop": 566,
+      "vils": 51,
+      "woodMed": 110.328,
+      "emaRatio": 1.2499999999999998
+     },
+     "emaD30": {
+      "day": 30,
+      "wood0": 29,
+      "pop": 1155,
+      "vils": 51,
+      "woodMed": 0,
+      "emaRatio": 1.0545454545454545
+     }
+    },
+    "인구": 8310,
+    "소멸": "0/51",
+    "무기Q": 1320,
+    "확장셀": 10566,
+    "게시": 2784,
+    "도구Q": 16943.1,
+    "보존식": 5250.2,
+    "생곡": 83575.6,
+    "㉮": 1.88,
+    "㉯": 1.97,
+    "부족 wood": 574
+   },
+   {
+    "ruler": "t176",
+    "arm": "main",
+    "seed": 1020,
+    "wood": {
+     "seeded": 6150.4,
+     "seedDaysMed": null,
+     "door": {
+      "firstN": 32,
+      "firstDayMed": 18,
+      "firstAmtMed": 98.826,
+      "firstCap": 15,
+      "bonusVils": 40,
+      "bonusSum": 2886.4,
+      "exBonus": 2685.344,
+      "exBase": 644.742,
+      "bonus90": 16
+     },
+     "ex1": 3013.3160000000007,
+     "ex2": 316.77,
+     "exp30": 3330.0860000000007,
+     "share30": 0.5414421826222686,
+     "share1": 0.4899382154006245,
+     "im30": 3971.3799999999997,
+     "exAll": 247445.59399999998,
+     "days": 800,
+     "knobs": {
+      "T659_WOOD_FLOW": false
+     },
+     "at": {
+      "30": {
+       "day": 30,
+       "wood0": 31,
+       "pop": 1152,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.7999999999999999
+      },
+      "100": {
+       "day": 100,
+       "wood0": 34,
+       "pop": 2772,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.1204651162790698
+      },
+      "400": {
+       "day": 400,
+       "wood0": 37,
+       "pop": 4565,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.4466666666666665
+      },
+      "800": {
+       "day": 800,
+       "wood0": 8,
+       "pop": 8273,
+       "vils": 51,
+       "woodMed": 191.999,
+       "emaRatio": 1.5354128440366972
+      }
+     },
+     "zeroMed": 25,
+     "never0": 0,
+     "emaD1": {
+      "day": 1,
+      "wood0": 0,
+      "pop": 408,
+      "vils": 51,
+      "woodMed": 131.788,
+      "emaRatio": 0
+     },
+     "emaD10": {
+      "day": 10,
+      "wood0": 0,
+      "pop": 566,
+      "vils": 51,
+      "woodMed": 110.328,
+      "emaRatio": 0.4099999999999999
+     },
+     "emaD30": {
+      "day": 30,
+      "wood0": 31,
+      "pop": 1152,
+      "vils": 51,
+      "woodMed": 0,
+      "emaRatio": 0.7999999999999999
+     }
+    },
+    "인구": 8273,
+    "소멸": "0/51",
+    "무기Q": 1389,
+    "확장셀": 8743,
+    "게시": 2522,
+    "도구Q": 16046.2,
+    "보존식": 6356.1,
+    "생곡": 75408,
+    "㉮": 1.9295,
+    "㉯": 2.0261,
+    "통나무 모자란 마을·날": 19433,
+    "통나무값 평균": 297.9537,
+    "통나무 생산": 533368.4,
+    "통나무 소비": 328660.8,
+    "땔감": 305717.7,
+    "집 목재": 22942.6,
+    "통나무 수입": 59460.5,
+    "기근 마을·날": 13211
+   },
+   {
+    "ruler": "t176",
+    "arm": "main",
+    "seed": 7,
+    "wood": {
+     "seeded": 6150.4,
+     "seedDaysMed": null,
+     "door": {
+      "firstN": 36,
+      "firstDayMed": 18,
+      "firstAmtMed": 95.122,
+      "firstCap": 16,
+      "bonusVils": 40,
+      "bonusSum": 2886.4,
+      "exBonus": 3391.613,
+      "exBase": 953.312,
+      "bonus90": 20
+     },
+     "ex1": 3642.6450000000004,
+     "ex2": 702.28,
+     "exp30": 4344.925,
+     "share30": 0.7064459222164413,
+     "share1": 0.5922614789281999,
+     "im30": 5178.41,
+     "exAll": 280120.988,
+     "days": 800,
+     "knobs": {
+      "T659_WOOD_FLOW": false
+     },
+     "at": {
+      "30": {
+       "day": 30,
+       "wood0": 31,
+       "pop": 1153,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.8528
+      },
+      "100": {
+       "day": 100,
+       "wood0": 30,
+       "pop": 2835,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.227142857142857
+      },
+      "400": {
+       "day": 400,
+       "wood0": 33,
+       "pop": 5024,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.4093413173652696
+      },
+      "800": {
+       "day": 800,
+       "wood0": 2,
+       "pop": 8246,
+       "vils": 51,
+       "woodMed": 179.269,
+       "emaRatio": 1.5772192513368986
+      }
+     },
+     "zeroMed": 25,
+     "never0": 0,
+     "emaD1": {
+      "day": 1,
+      "wood0": 0,
+      "pop": 408,
+      "vils": 51,
+      "woodMed": 131.788,
+      "emaRatio": 0
+     },
+     "emaD10": {
+      "day": 10,
+      "wood0": 0,
+      "pop": 566,
+      "vils": 51,
+      "woodMed": 110.328,
+      "emaRatio": 0.4099999999999999
+     },
+     "emaD30": {
+      "day": 30,
+      "wood0": 31,
+      "pop": 1153,
+      "vils": 51,
+      "woodMed": 0,
+      "emaRatio": 0.8528
+     }
+    },
+    "인구": 8246,
+    "소멸": "0/51",
+    "무기Q": 1478.3,
+    "확장셀": 11213,
+    "게시": 2690,
+    "도구Q": 16978.6,
+    "보존식": 4420.6,
+    "생곡": 74242.8,
+    "㉮": 1.8877,
+    "㉯": 1.9825,
+    "통나무 모자란 마을·날": 17903,
+    "통나무값 평균": 273.4345,
+    "통나무 생산": 583468,
+    "통나무 소비": 348670.3,
+    "땔감": 325175.9,
+    "집 목재": 23494.2,
+    "통나무 수입": 81594.2,
+    "기근 마을·날": 13161
+   },
+   {
+    "ruler": "t176",
+    "arm": "main",
+    "seed": 42,
+    "wood": {
+     "seeded": 6150.4,
+     "seedDaysMed": null,
+     "door": {
+      "firstN": 32,
+      "firstDayMed": 18,
+      "firstAmtMed": 95.001,
+      "firstCap": 14,
+      "bonusVils": 40,
+      "bonusSum": 2886.4,
+      "exBonus": 2568.6880000000006,
+      "exBase": 785.7219999999999,
+      "bonus90": 17
+     },
+     "ex1": 3105.980000000001,
+     "ex2": 248.43,
+     "exp30": 3354.4100000000008,
+     "share30": 0.5453970473465142,
+     "share1": 0.5050045525494279,
+     "im30": 3937.9499999999994,
+     "exAll": 167522.24000000005,
+     "days": 800,
+     "knobs": {
+      "T659_WOOD_FLOW": false
+     },
+     "at": {
+      "30": {
+       "day": 30,
+       "wood0": 28,
+       "pop": 1156,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.85
+      },
+      "100": {
+       "day": 100,
+       "wood0": 38,
+       "pop": 2748,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.2157333333333333
+      },
+      "400": {
+       "day": 400,
+       "wood0": 34,
+       "pop": 4268,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.9047826086956521
+      },
+      "800": {
+       "day": 800,
+       "wood0": 6,
+       "pop": 7491,
+       "vils": 51,
+       "woodMed": 104.18,
+       "emaRatio": 1.4821
+      }
+     },
+     "zeroMed": 25,
+     "never0": 0,
+     "emaD1": {
+      "day": 1,
+      "wood0": 0,
+      "pop": 408,
+      "vils": 51,
+      "woodMed": 131.788,
+      "emaRatio": 0
+     },
+     "emaD10": {
+      "day": 10,
+      "wood0": 0,
+      "pop": 566,
+      "vils": 51,
+      "woodMed": 110.328,
+      "emaRatio": 0.4099999999999999
+     },
+     "emaD30": {
+      "day": 30,
+      "wood0": 28,
+      "pop": 1156,
+      "vils": 51,
+      "woodMed": 0,
+      "emaRatio": 0.85
+     }
+    },
+    "인구": 7491,
+    "소멸": "0/51",
+    "무기Q": 1258.3,
+    "확장셀": 6742,
+    "게시": 2418,
+    "도구Q": 14802.8,
+    "보존식": 4832.8,
+    "생곡": 69633.1,
+    "㉮": 1.9552,
+    "㉯": 2.0521,
+    "통나무 모자란 마을·날": 23119,
+    "통나무값 평균": 363.5216,
+    "통나무 생산": 457618.8,
+    "통나무 소비": 286673.1,
+    "땔감": 266123.1,
+    "집 목재": 20550,
+    "통나무 수입": 29880,
+    "기근 마을·날": 14924
+   },
+   {
+    "ruler": "t176",
+    "arm": "off",
+    "seed": 1020,
+    "wood": {
+     "seeded": 6150.4,
+     "seedDaysMed": 195.29411764705884,
+     "door": {
+      "firstN": 32,
+      "firstDayMed": 18,
+      "firstAmtMed": 98.826,
+      "firstCap": 15,
+      "bonusVils": 40,
+      "bonusSum": 2886.4,
+      "exBonus": 2685.344,
+      "exBase": 644.742,
+      "bonus90": 16
+     },
+     "ex1": 3013.3160000000007,
+     "ex2": 316.77,
+     "exp30": 3330.0860000000007,
+     "share30": 0.5414421826222686,
+     "share1": 0.4899382154006245,
+     "im30": 3971.3799999999997,
+     "exAll": 247445.59399999998,
+     "days": 800,
+     "knobs": {
+      "T683_EMA_INIT": false,
+      "T683_EXPORT_FLOW": false,
+      "T659_WOOD_FLOW": false
+     },
+     "at": {
+      "30": {
+       "day": 30,
+       "wood0": 31,
+       "pop": 1152,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.7999999999999999
+      },
+      "100": {
+       "day": 100,
+       "wood0": 34,
+       "pop": 2772,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.1204651162790698
+      },
+      "400": {
+       "day": 400,
+       "wood0": 37,
+       "pop": 4565,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.4466666666666665
+      },
+      "800": {
+       "day": 800,
+       "wood0": 8,
+       "pop": 8273,
+       "vils": 51,
+       "woodMed": 191.999,
+       "emaRatio": 1.5354128440366972
+      }
+     },
+     "zeroMed": 25,
+     "never0": 0,
+     "emaD1": {
+      "day": 1,
+      "wood0": 0,
+      "pop": 408,
+      "vils": 51,
+      "woodMed": 131.788,
+      "emaRatio": 0
+     },
+     "emaD10": {
+      "day": 10,
+      "wood0": 0,
+      "pop": 566,
+      "vils": 51,
+      "woodMed": 110.328,
+      "emaRatio": 0.4099999999999999
+     },
+     "emaD30": {
+      "day": 30,
+      "wood0": 31,
+      "pop": 1152,
+      "vils": 51,
+      "woodMed": 0,
+      "emaRatio": 0.7999999999999999
+     }
+    },
+    "인구": 8273,
+    "소멸": "0/51",
+    "무기Q": 1389,
+    "확장셀": 8743,
+    "게시": 2522,
+    "도구Q": 16046.2,
+    "보존식": 6356.1,
+    "생곡": 75408,
+    "㉮": 1.9295,
+    "㉯": 2.0261,
+    "통나무 모자란 마을·날": 19433,
+    "통나무값 평균": 297.9537,
+    "통나무 생산": 533368.4,
+    "통나무 소비": 328660.8,
+    "땔감": 305717.7,
+    "집 목재": 22942.6,
+    "통나무 수입": 59460.5,
+    "기근 마을·날": 13211
+   },
+   {
+    "ruler": "t176",
+    "arm": "off",
+    "seed": 7,
+    "wood": {
+     "seeded": 6150.4,
+     "seedDaysMed": 195.29411764705884,
+     "door": {
+      "firstN": 36,
+      "firstDayMed": 18,
+      "firstAmtMed": 95.122,
+      "firstCap": 16,
+      "bonusVils": 40,
+      "bonusSum": 2886.4,
+      "exBonus": 3391.613,
+      "exBase": 953.312,
+      "bonus90": 20
+     },
+     "ex1": 3642.6450000000004,
+     "ex2": 702.28,
+     "exp30": 4344.925,
+     "share30": 0.7064459222164413,
+     "share1": 0.5922614789281999,
+     "im30": 5178.41,
+     "exAll": 280120.988,
+     "days": 800,
+     "knobs": {
+      "T683_EMA_INIT": false,
+      "T683_EXPORT_FLOW": false,
+      "T659_WOOD_FLOW": false
+     },
+     "at": {
+      "30": {
+       "day": 30,
+       "wood0": 31,
+       "pop": 1153,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.8528
+      },
+      "100": {
+       "day": 100,
+       "wood0": 30,
+       "pop": 2835,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.227142857142857
+      },
+      "400": {
+       "day": 400,
+       "wood0": 33,
+       "pop": 5024,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.4093413173652696
+      },
+      "800": {
+       "day": 800,
+       "wood0": 2,
+       "pop": 8246,
+       "vils": 51,
+       "woodMed": 179.269,
+       "emaRatio": 1.5772192513368986
+      }
+     },
+     "zeroMed": 25,
+     "never0": 0,
+     "emaD1": {
+      "day": 1,
+      "wood0": 0,
+      "pop": 408,
+      "vils": 51,
+      "woodMed": 131.788,
+      "emaRatio": 0
+     },
+     "emaD10": {
+      "day": 10,
+      "wood0": 0,
+      "pop": 566,
+      "vils": 51,
+      "woodMed": 110.328,
+      "emaRatio": 0.4099999999999999
+     },
+     "emaD30": {
+      "day": 30,
+      "wood0": 31,
+      "pop": 1153,
+      "vils": 51,
+      "woodMed": 0,
+      "emaRatio": 0.8528
+     }
+    },
+    "인구": 8246,
+    "소멸": "0/51",
+    "무기Q": 1478.3,
+    "확장셀": 11213,
+    "게시": 2690,
+    "도구Q": 16978.6,
+    "보존식": 4420.6,
+    "생곡": 74242.8,
+    "㉮": 1.8877,
+    "㉯": 1.9825,
+    "통나무 모자란 마을·날": 17903,
+    "통나무값 평균": 273.4345,
+    "통나무 생산": 583468,
+    "통나무 소비": 348670.3,
+    "땔감": 325175.9,
+    "집 목재": 23494.2,
+    "통나무 수입": 81594.2,
+    "기근 마을·날": 13161
+   },
+   {
+    "ruler": "t176",
+    "arm": "off",
+    "seed": 42,
+    "wood": {
+     "seeded": 6150.4,
+     "seedDaysMed": 195.29411764705884,
+     "door": {
+      "firstN": 32,
+      "firstDayMed": 18,
+      "firstAmtMed": 95.001,
+      "firstCap": 14,
+      "bonusVils": 40,
+      "bonusSum": 2886.4,
+      "exBonus": 2568.6880000000006,
+      "exBase": 785.7219999999999,
+      "bonus90": 17
+     },
+     "ex1": 3105.980000000001,
+     "ex2": 248.43,
+     "exp30": 3354.4100000000008,
+     "share30": 0.5453970473465142,
+     "share1": 0.5050045525494279,
+     "im30": 3937.9499999999994,
+     "exAll": 167522.24000000005,
+     "days": 800,
+     "knobs": {
+      "T683_EMA_INIT": false,
+      "T683_EXPORT_FLOW": false,
+      "T659_WOOD_FLOW": false
+     },
+     "at": {
+      "30": {
+       "day": 30,
+       "wood0": 28,
+       "pop": 1156,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.85
+      },
+      "100": {
+       "day": 100,
+       "wood0": 38,
+       "pop": 2748,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.2157333333333333
+      },
+      "400": {
+       "day": 400,
+       "wood0": 34,
+       "pop": 4268,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.9047826086956521
+      },
+      "800": {
+       "day": 800,
+       "wood0": 6,
+       "pop": 7491,
+       "vils": 51,
+       "woodMed": 104.18,
+       "emaRatio": 1.4821
+      }
+     },
+     "zeroMed": 25,
+     "never0": 0,
+     "emaD1": {
+      "day": 1,
+      "wood0": 0,
+      "pop": 408,
+      "vils": 51,
+      "woodMed": 131.788,
+      "emaRatio": 0
+     },
+     "emaD10": {
+      "day": 10,
+      "wood0": 0,
+      "pop": 566,
+      "vils": 51,
+      "woodMed": 110.328,
+      "emaRatio": 0.4099999999999999
+     },
+     "emaD30": {
+      "day": 30,
+      "wood0": 28,
+      "pop": 1156,
+      "vils": 51,
+      "woodMed": 0,
+      "emaRatio": 0.85
+     }
+    },
+    "인구": 7491,
+    "소멸": "0/51",
+    "무기Q": 1258.3,
+    "확장셀": 6742,
+    "게시": 2418,
+    "도구Q": 14802.8,
+    "보존식": 4832.8,
+    "생곡": 69633.1,
+    "㉮": 1.9552,
+    "㉯": 2.0521,
+    "통나무 모자란 마을·날": 23119,
+    "통나무값 평균": 363.5216,
+    "통나무 생산": 457618.8,
+    "통나무 소비": 286673.1,
+    "땔감": 266123.1,
+    "집 목재": 20550,
+    "통나무 수입": 29880,
+    "기근 마을·날": 14924
+   },
+   {
+    "ruler": "t176",
+    "arm": "a",
+    "seed": 1020,
+    "wood": {
+     "seeded": 6150.4,
+     "seedDaysMed": 195.29411764705884,
+     "door": {
+      "firstN": 32,
+      "firstDayMed": 18,
+      "firstAmtMed": 98.826,
+      "firstCap": 15,
+      "bonusVils": 40,
+      "bonusSum": 2886.4,
+      "exBonus": 2685.344,
+      "exBase": 644.742,
+      "bonus90": 16
+     },
+     "ex1": 3013.3160000000007,
+     "ex2": 316.77,
+     "exp30": 3330.0860000000007,
+     "share30": 0.5414421826222686,
+     "share1": 0.4899382154006245,
+     "im30": 3971.3799999999997,
+     "exAll": 247445.59399999998,
+     "days": 800,
+     "knobs": {
+      "T683_EMA_INIT": true,
+      "T683_EXPORT_FLOW": false,
+      "T659_WOOD_FLOW": false
+     },
+     "at": {
+      "30": {
+       "day": 30,
+       "wood0": 31,
+       "pop": 1152,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.0452631578947367
+      },
+      "100": {
+       "day": 100,
+       "wood0": 34,
+       "pop": 2772,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.1311627906976744
+      },
+      "400": {
+       "day": 400,
+       "wood0": 37,
+       "pop": 4565,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.4466666666666665
+      },
+      "800": {
+       "day": 800,
+       "wood0": 8,
+       "pop": 8273,
+       "vils": 51,
+       "woodMed": 191.999,
+       "emaRatio": 1.5354128440366972
+      }
+     },
+     "zeroMed": 25,
+     "never0": 0,
+     "emaD1": {
+      "day": 1,
+      "wood0": 0,
+      "pop": 408,
+      "vils": 51,
+      "woodMed": 131.788,
+      "emaRatio": 1.7
+     },
+     "emaD10": {
+      "day": 10,
+      "wood0": 0,
+      "pop": 566,
+      "vils": 51,
+      "woodMed": 110.328,
+      "emaRatio": 1.2499999999999998
+     },
+     "emaD30": {
+      "day": 30,
+      "wood0": 31,
+      "pop": 1152,
+      "vils": 51,
+      "woodMed": 0,
+      "emaRatio": 1.0452631578947367
+     }
+    },
+    "인구": 8273,
+    "소멸": "0/51",
+    "무기Q": 1389,
+    "확장셀": 8743,
+    "게시": 2524,
+    "도구Q": 16046.2,
+    "보존식": 6356.1,
+    "생곡": 75408,
+    "㉮": 1.9343,
+    "㉯": 2.0314,
+    "통나무 모자란 마을·날": 19433,
+    "통나무값 평균": 297.9537,
+    "통나무 생산": 533368.4,
+    "통나무 소비": 328660.8,
+    "땔감": 305717.7,
+    "집 목재": 22942.6,
+    "통나무 수입": 59460.5,
+    "기근 마을·날": 13211
+   },
+   {
+    "ruler": "t176",
+    "arm": "a",
+    "seed": 7,
+    "wood": {
+     "seeded": 6150.4,
+     "seedDaysMed": 195.29411764705884,
+     "door": {
+      "firstN": 36,
+      "firstDayMed": 18,
+      "firstAmtMed": 95.122,
+      "firstCap": 16,
+      "bonusVils": 40,
+      "bonusSum": 2886.4,
+      "exBonus": 3391.613,
+      "exBase": 953.312,
+      "bonus90": 20
+     },
+     "ex1": 3642.6450000000004,
+     "ex2": 702.28,
+     "exp30": 4344.925,
+     "share30": 0.7064459222164413,
+     "share1": 0.5922614789281999,
+     "im30": 5178.41,
+     "exAll": 280120.988,
+     "days": 800,
+     "knobs": {
+      "T683_EMA_INIT": true,
+      "T683_EXPORT_FLOW": false,
+      "T659_WOOD_FLOW": false
+     },
+     "at": {
+      "30": {
+       "day": 30,
+       "wood0": 31,
+       "pop": 1153,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.0568
+      },
+      "100": {
+       "day": 100,
+       "wood0": 30,
+       "pop": 2835,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.2385714285714284
+      },
+      "400": {
+       "day": 400,
+       "wood0": 33,
+       "pop": 5024,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.4093413173652696
+      },
+      "800": {
+       "day": 800,
+       "wood0": 2,
+       "pop": 8246,
+       "vils": 51,
+       "woodMed": 179.269,
+       "emaRatio": 1.5772192513368986
+      }
+     },
+     "zeroMed": 25,
+     "never0": 0,
+     "emaD1": {
+      "day": 1,
+      "wood0": 0,
+      "pop": 408,
+      "vils": 51,
+      "woodMed": 131.788,
+      "emaRatio": 1.7
+     },
+     "emaD10": {
+      "day": 10,
+      "wood0": 0,
+      "pop": 566,
+      "vils": 51,
+      "woodMed": 110.328,
+      "emaRatio": 1.2499999999999998
+     },
+     "emaD30": {
+      "day": 30,
+      "wood0": 31,
+      "pop": 1153,
+      "vils": 51,
+      "woodMed": 0,
+      "emaRatio": 1.0568
+     }
+    },
+    "인구": 8246,
+    "소멸": "0/51",
+    "무기Q": 1478.3,
+    "확장셀": 11213,
+    "게시": 2690,
+    "도구Q": 16978.6,
+    "보존식": 4420.6,
+    "생곡": 74242.8,
+    "㉮": 1.8922,
+    "㉯": 1.9875,
+    "통나무 모자란 마을·날": 17903,
+    "통나무값 평균": 273.4345,
+    "통나무 생산": 583468,
+    "통나무 소비": 348670.3,
+    "땔감": 325175.9,
+    "집 목재": 23494.2,
+    "통나무 수입": 81594.2,
+    "기근 마을·날": 13161
+   },
+   {
+    "ruler": "t176",
+    "arm": "a",
+    "seed": 42,
+    "wood": {
+     "seeded": 6150.4,
+     "seedDaysMed": 195.29411764705884,
+     "door": {
+      "firstN": 32,
+      "firstDayMed": 18,
+      "firstAmtMed": 95.001,
+      "firstCap": 14,
+      "bonusVils": 40,
+      "bonusSum": 2886.4,
+      "exBonus": 2568.6880000000006,
+      "exBase": 785.7219999999999,
+      "bonus90": 17
+     },
+     "ex1": 3105.980000000001,
+     "ex2": 248.43,
+     "exp30": 3354.4100000000008,
+     "share30": 0.5453970473465142,
+     "share1": 0.5050045525494279,
+     "im30": 3937.9499999999994,
+     "exAll": 167522.24000000005,
+     "days": 800,
+     "knobs": {
+      "T683_EMA_INIT": true,
+      "T683_EXPORT_FLOW": false,
+      "T659_WOOD_FLOW": false
+     },
+     "at": {
+      "30": {
+       "day": 30,
+       "wood0": 28,
+       "pop": 1156,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.0483333333333331
+      },
+      "100": {
+       "day": 100,
+       "wood0": 38,
+       "pop": 2748,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.2218666666666667
+      },
+      "400": {
+       "day": 400,
+       "wood0": 34,
+       "pop": 4268,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.9047826086956521
+      },
+      "800": {
+       "day": 800,
+       "wood0": 6,
+       "pop": 7491,
+       "vils": 51,
+       "woodMed": 104.18,
+       "emaRatio": 1.4821
+      }
+     },
+     "zeroMed": 25,
+     "never0": 0,
+     "emaD1": {
+      "day": 1,
+      "wood0": 0,
+      "pop": 408,
+      "vils": 51,
+      "woodMed": 131.788,
+      "emaRatio": 1.7
+     },
+     "emaD10": {
+      "day": 10,
+      "wood0": 0,
+      "pop": 566,
+      "vils": 51,
+      "woodMed": 110.328,
+      "emaRatio": 1.2499999999999998
+     },
+     "emaD30": {
+      "day": 30,
+      "wood0": 28,
+      "pop": 1156,
+      "vils": 51,
+      "woodMed": 0,
+      "emaRatio": 1.0483333333333331
+     }
+    },
+    "인구": 7491,
+    "소멸": "0/51",
+    "무기Q": 1258.3,
+    "확장셀": 6742,
+    "게시": 2419,
+    "도구Q": 14802.8,
+    "보존식": 4832.8,
+    "생곡": 69633.1,
+    "㉮": 1.9603,
+    "㉯": 2.0577,
+    "통나무 모자란 마을·날": 23119,
+    "통나무값 평균": 363.5216,
+    "통나무 생산": 457618.8,
+    "통나무 소비": 286673.1,
+    "땔감": 266123.1,
+    "집 목재": 20550,
+    "통나무 수입": 29880,
+    "기근 마을·날": 14924
+   },
+   {
+    "ruler": "t176",
+    "arm": "b",
+    "seed": 1020,
+    "wood": {
+     "seeded": 6150.4,
+     "seedDaysMed": 195.29411764705884,
+     "door": {
+      "firstN": 33,
+      "firstDayMed": 15,
+      "firstAmtMed": 100,
+      "firstCap": 18,
+      "bonusVils": 40,
+      "bonusSum": 2886.4,
+      "exBonus": 3264.622,
+      "exBase": 568.3919999999999,
+      "bonus90": 23
+     },
+     "ex1": 3533.144,
+     "ex2": 299.87,
+     "exp30": 3833.0139999999997,
+     "share30": 0.6232137747138398,
+     "share1": 0.5744575962539021,
+     "im30": 4549.59,
+     "exAll": 203819.22999999998,
+     "days": 800,
+     "knobs": {
+      "T683_EMA_INIT": false,
+      "T683_EXPORT_FLOW": true,
+      "T659_WOOD_FLOW": false
+     },
+     "at": {
+      "30": {
+       "day": 30,
+       "wood0": 29,
+       "pop": 1134,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.7769230769230769
+      },
+      "100": {
+       "day": 100,
+       "wood0": 40,
+       "pop": 2863,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.1689610389610388
+      },
+      "400": {
+       "day": 400,
+       "wood0": 30,
+       "pop": 4221,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.347047619047619
+      },
+      "800": {
+       "day": 800,
+       "wood0": 3,
+       "pop": 8287,
+       "vils": 51,
+       "woodMed": 239.069,
+       "emaRatio": 1.5283597883597881
+      }
+     },
+     "zeroMed": 24,
+     "never0": 0,
+     "emaD1": {
+      "day": 1,
+      "wood0": 0,
+      "pop": 408,
+      "vils": 51,
+      "woodMed": 131.788,
+      "emaRatio": 0
+     },
+     "emaD10": {
+      "day": 10,
+      "wood0": 0,
+      "pop": 566,
+      "vils": 51,
+      "woodMed": 110.328,
+      "emaRatio": 0.4099999999999999
+     },
+     "emaD30": {
+      "day": 30,
+      "wood0": 29,
+      "pop": 1134,
+      "vils": 51,
+      "woodMed": 0,
+      "emaRatio": 0.7769230769230769
+     }
+    },
+    "인구": 8287,
+    "소멸": "0/51",
+    "무기Q": 1388.7,
+    "확장셀": 10574,
+    "게시": 2730,
+    "도구Q": 16446.2,
+    "보존식": 4952.1,
+    "생곡": 75157.6,
+    "㉮": 1.8998,
+    "㉯": 1.9963,
+    "통나무 모자란 마을·날": 21183,
+    "통나무값 평균": 330.9104,
+    "통나무 생산": 521969.4,
+    "통나무 소비": 317408.2,
+    "땔감": 294805.1,
+    "집 목재": 22602.8,
+    "통나무 수입": 77524.5,
+    "기근 마을·날": 14116
+   },
+   {
+    "ruler": "t176",
+    "arm": "b",
+    "seed": 7,
+    "wood": {
+     "seeded": 6150.4,
+     "seedDaysMed": 195.29411764705884,
+     "door": {
+      "firstN": 35,
+      "firstDayMed": 15,
+      "firstAmtMed": 100,
+      "firstCap": 19,
+      "bonusVils": 40,
+      "bonusSum": 2886.4,
+      "exBonus": 4171.637,
+      "exBase": 538.6510000000001,
+      "bonus90": 28
+     },
+     "ex1": 4007.808,
+     "ex2": 702.48,
+     "exp30": 4710.2880000000005,
+     "share30": 0.7658506763787722,
+     "share1": 0.6516337148803331,
+     "im30": 6029.75,
+     "exAll": 162418.62500000003,
+     "days": 800,
+     "knobs": {
+      "T683_EMA_INIT": false,
+      "T683_EXPORT_FLOW": true,
+      "T659_WOOD_FLOW": false
+     },
+     "at": {
+      "30": {
+       "day": 30,
+       "wood0": 31,
+       "pop": 1133,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.7990909090909091
+      },
+      "100": {
+       "day": 100,
+       "wood0": 37,
+       "pop": 2869,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.2376666666666667
+      },
+      "400": {
+       "day": 400,
+       "wood0": 38,
+       "pop": 4502,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.3404761904761904
+      },
+      "800": {
+       "day": 800,
+       "wood0": 6,
+       "pop": 7875,
+       "vils": 51,
+       "woodMed": 205.973,
+       "emaRatio": 1.4961481481481482
+      }
+     },
+     "zeroMed": 24,
+     "never0": 0,
+     "emaD1": {
+      "day": 1,
+      "wood0": 0,
+      "pop": 408,
+      "vils": 51,
+      "woodMed": 131.788,
+      "emaRatio": 0
+     },
+     "emaD10": {
+      "day": 10,
+      "wood0": 0,
+      "pop": 566,
+      "vils": 51,
+      "woodMed": 110.328,
+      "emaRatio": 0.4099999999999999
+     },
+     "emaD30": {
+      "day": 30,
+      "wood0": 31,
+      "pop": 1133,
+      "vils": 51,
+      "woodMed": 0,
+      "emaRatio": 0.7990909090909091
+     }
+    },
+    "인구": 7875,
+    "소멸": "0/51",
+    "무기Q": 1391.4,
+    "확장셀": 9291,
+    "게시": 2524,
+    "도구Q": 14762.9,
+    "보존식": 4499.1,
+    "생곡": 67220.1,
+    "㉮": 1.9194,
+    "㉯": 2.0141,
+    "통나무 모자란 마을·날": 22530,
+    "통나무값 평균": 359.1516,
+    "통나무 생산": 512020.2,
+    "통나무 소비": 315473.3,
+    "땔감": 293800,
+    "집 목재": 21673.2,
+    "통나무 수입": 54182.7,
+    "기근 마을·날": 14473
+   },
+   {
+    "ruler": "t176",
+    "arm": "b",
+    "seed": 42,
+    "wood": {
+     "seeded": 6150.4,
+     "seedDaysMed": 195.29411764705884,
+     "door": {
+      "firstN": 33,
+      "firstDayMed": 15,
+      "firstAmtMed": 100,
+      "firstCap": 19,
+      "bonusVils": 40,
+      "bonusSum": 2886.4,
+      "exBonus": 4155.637999999999,
+      "exBase": 664.242,
+      "bonus90": 26
+     },
+     "ex1": 3671.6099999999997,
+     "ex2": 1148.27,
+     "exp30": 4819.879999999999,
+     "share30": 0.7836693548387096,
+     "share1": 0.5969709287200833,
+     "im30": 5756.01,
+     "exAll": 214556.80399999995,
+     "days": 800,
+     "knobs": {
+      "T683_EMA_INIT": false,
+      "T683_EXPORT_FLOW": true,
+      "T659_WOOD_FLOW": false
+     },
+     "at": {
+      "30": {
+       "day": 30,
+       "wood0": 28,
+       "pop": 1132,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.7660869565217391
+      },
+      "100": {
+       "day": 100,
+       "wood0": 39,
+       "pop": 2611,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.2742857142857142
+      },
+      "400": {
+       "day": 400,
+       "wood0": 37,
+       "pop": 4327,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.3550632911392404
+      },
+      "800": {
+       "day": 800,
+       "wood0": 4,
+       "pop": 8488,
+       "vils": 51,
+       "woodMed": 254.66,
+       "emaRatio": 1.518235294117647
+      }
+     },
+     "zeroMed": 24,
+     "never0": 0,
+     "emaD1": {
+      "day": 1,
+      "wood0": 0,
+      "pop": 408,
+      "vils": 51,
+      "woodMed": 131.788,
+      "emaRatio": 0
+     },
+     "emaD10": {
+      "day": 10,
+      "wood0": 0,
+      "pop": 566,
+      "vils": 51,
+      "woodMed": 110.328,
+      "emaRatio": 0.4099999999999999
+     },
+     "emaD30": {
+      "day": 30,
+      "wood0": 28,
+      "pop": 1132,
+      "vils": 51,
+      "woodMed": 0,
+      "emaRatio": 0.7660869565217391
+     }
+    },
+    "인구": 8488,
+    "소멸": "0/51",
+    "무기Q": 1360.5,
+    "확장셀": 10949,
+    "게시": 2662,
+    "도구Q": 15907.5,
+    "보존식": 4907.9,
+    "생곡": 79727.6,
+    "㉮": 1.9243,
+    "㉯": 2.018,
+    "통나무 모자란 마을·날": 21212,
+    "통나무값 평균": 330.3586,
+    "통나무 생산": 543460,
+    "통나무 소비": 333654.6,
+    "땔감": 310666.2,
+    "집 목재": 22988.3,
+    "통나무 수입": 83417.5,
+    "기근 마을·날": 14368
+   },
+   {
+    "ruler": "t176",
+    "arm": "ab",
+    "seed": 1020,
+    "wood": {
+     "seeded": 6150.4,
+     "seedDaysMed": 195.29411764705884,
+     "door": {
+      "firstN": 29,
+      "firstDayMed": 18,
+      "firstAmtMed": 100,
+      "firstCap": 15,
+      "bonusVils": 40,
+      "bonusSum": 2886.4,
+      "exBonus": 2732.9100000000003,
+      "exBase": 614.246,
+      "bonus90": 17
+     },
+     "ex1": 3057.3360000000002,
+     "ex2": 289.82000000000005,
+     "exp30": 3347.1560000000004,
+     "share30": 0.5442176118626432,
+     "share1": 0.49709547346514055,
+     "im30": 3745.2400000000002,
+     "exAll": 201296.50900000002,
+     "days": 800,
+     "knobs": {
+      "T683_EMA_INIT": true,
+      "T683_EXPORT_FLOW": true,
+      "T659_WOOD_FLOW": false
+     },
+     "at": {
+      "30": {
+       "day": 30,
+       "wood0": 29,
+       "pop": 1152,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.046315789473684
+      },
+      "100": {
+       "day": 100,
+       "wood0": 39,
+       "pop": 2626,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.125
+      },
+      "400": {
+       "day": 400,
+       "wood0": 33,
+       "pop": 4849,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.3806666666666667
+      },
+      "800": {
+       "day": 800,
+       "wood0": 6,
+       "pop": 8194,
+       "vils": 51,
+       "woodMed": 183.975,
+       "emaRatio": 1.496405529953917
+      }
+     },
+     "zeroMed": 25,
+     "never0": 0,
+     "emaD1": {
+      "day": 1,
+      "wood0": 0,
+      "pop": 408,
+      "vils": 51,
+      "woodMed": 131.788,
+      "emaRatio": 1.7
+     },
+     "emaD10": {
+      "day": 10,
+      "wood0": 0,
+      "pop": 566,
+      "vils": 51,
+      "woodMed": 110.328,
+      "emaRatio": 1.2499999999999998
+     },
+     "emaD30": {
+      "day": 30,
+      "wood0": 29,
+      "pop": 1152,
+      "vils": 51,
+      "woodMed": 0,
+      "emaRatio": 1.046315789473684
+     }
+    },
+    "인구": 8194,
+    "소멸": "0/51",
+    "무기Q": 1328.4,
+    "확장셀": 9773,
+    "게시": 2621,
+    "도구Q": 15813.2,
+    "보존식": 5588.2,
+    "생곡": 74232.9,
+    "㉮": 1.9311,
+    "㉯": 2.0291,
+    "통나무 모자란 마을·날": 20270,
+    "통나무값 평균": 312.9068,
+    "통나무 생산": 532936.6,
+    "통나무 소비": 328549.5,
+    "땔감": 305708.2,
+    "집 목재": 22840.9,
+    "통나무 수입": 65618.8,
+    "기근 마을·날": 13832
+   },
+   {
+    "ruler": "t176",
+    "arm": "ab",
+    "seed": 7,
+    "wood": {
+     "seeded": 6150.4,
+     "seedDaysMed": 195.29411764705884,
+     "door": {
+      "firstN": 31,
+      "firstDayMed": 18,
+      "firstAmtMed": 94.042,
+      "firstCap": 14,
+      "bonusVils": 40,
+      "bonusSum": 2886.4,
+      "exBonus": 2560.3880000000004,
+      "exBase": 1049.183,
+      "bonus90": 19
+     },
+     "ex1": 2935.7410000000004,
+     "ex2": 673.8299999999999,
+     "exp30": 3609.5710000000004,
+     "share30": 0.5868839425078045,
+     "share1": 0.4773252146201874,
+     "im30": 4388.839999999999,
+     "exAll": 242207.7490000001,
+     "days": 800,
+     "knobs": {
+      "T683_EMA_INIT": true,
+      "T683_EXPORT_FLOW": true,
+      "T659_WOOD_FLOW": false
+     },
+     "at": {
+      "30": {
+       "day": 30,
+       "wood0": 30,
+       "pop": 1154,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.0576
+      },
+      "100": {
+       "day": 100,
+       "wood0": 38,
+       "pop": 2743,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 0.9936363636363635
+      },
+      "400": {
+       "day": 400,
+       "wood0": 29,
+       "pop": 4724,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.3973846153846154
+      },
+      "800": {
+       "day": 800,
+       "wood0": 4,
+       "pop": 8130,
+       "vils": 51,
+       "woodMed": 239.796,
+       "emaRatio": 1.5406060606060603
+      }
+     },
+     "zeroMed": 25,
+     "never0": 0,
+     "emaD1": {
+      "day": 1,
+      "wood0": 0,
+      "pop": 408,
+      "vils": 51,
+      "woodMed": 131.788,
+      "emaRatio": 1.7
+     },
+     "emaD10": {
+      "day": 10,
+      "wood0": 0,
+      "pop": 566,
+      "vils": 51,
+      "woodMed": 110.328,
+      "emaRatio": 1.2499999999999998
+     },
+     "emaD30": {
+      "day": 30,
+      "wood0": 30,
+      "pop": 1154,
+      "vils": 51,
+      "woodMed": 0,
+      "emaRatio": 1.0576
+     }
+    },
+    "인구": 8130,
+    "소멸": "0/51",
+    "무기Q": 1394.7,
+    "확장셀": 11327,
+    "게시": 3026,
+    "도구Q": 16208.8,
+    "보존식": 4847,
+    "생곡": 73789.7,
+    "㉮": 1.8249,
+    "㉯": 1.9089,
+    "통나무 모자란 마을·날": 19873,
+    "통나무값 평균": 293.7689,
+    "통나무 생산": 553697.5,
+    "통나무 소비": 322874.7,
+    "땔감": 300376.7,
+    "집 목재": 22497.8,
+    "통나무 수입": 92680.1,
+    "기근 마을·날": 15131
+   },
+   {
+    "ruler": "t176",
+    "arm": "ab",
+    "seed": 42,
+    "wood": {
+     "seeded": 6150.4,
+     "seedDaysMed": 195.29411764705884,
+     "door": {
+      "firstN": 27,
+      "firstDayMed": 15,
+      "firstAmtMed": 93.935,
+      "firstCap": 12,
+      "bonusVils": 40,
+      "bonusSum": 2886.4,
+      "exBonus": 2308.8390000000004,
+      "exBase": 713.733,
+      "bonus90": 17
+     },
+     "ex1": 2582.8220000000006,
+     "ex2": 439.75,
+     "exp30": 3022.5720000000006,
+     "share30": 0.49144315816857453,
+     "share1": 0.4199437434963581,
+     "im30": 3607.61,
+     "exAll": 192741.783,
+     "days": 800,
+     "knobs": {
+      "T683_EMA_INIT": true,
+      "T683_EXPORT_FLOW": true,
+      "T659_WOOD_FLOW": false
+     },
+     "at": {
+      "30": {
+       "day": 30,
+       "wood0": 29,
+       "pop": 1155,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.0545454545454545
+      },
+      "100": {
+       "day": 100,
+       "wood0": 38,
+       "pop": 2745,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.274032258064516
+      },
+      "400": {
+       "day": 400,
+       "wood0": 32,
+       "pop": 4554,
+       "vils": 51,
+       "woodMed": 0,
+       "emaRatio": 1.2247619047619047
+      },
+      "800": {
+       "day": 800,
+       "wood0": 1,
+       "pop": 8310,
+       "vils": 51,
+       "woodMed": 296.101,
+       "emaRatio": 1.487913669064748
+      }
+     },
+     "zeroMed": 26,
+     "never0": 0,
+     "emaD1": {
+      "day": 1,
+      "wood0": 0,
+      "pop": 408,
+      "vils": 51,
+      "woodMed": 131.788,
+      "emaRatio": 1.7
+     },
+     "emaD10": {
+      "day": 10,
+      "wood0": 0,
+      "pop": 566,
+      "vils": 51,
+      "woodMed": 110.328,
+      "emaRatio": 1.2499999999999998
+     },
+     "emaD30": {
+      "day": 30,
+      "wood0": 29,
+      "pop": 1155,
+      "vils": 51,
+      "woodMed": 0,
+      "emaRatio": 1.0545454545454545
+     }
+    },
+    "인구": 8310,
+    "소멸": "0/51",
+    "무기Q": 1320.3,
+    "확장셀": 10566,
+    "게시": 2784,
+    "도구Q": 16943.1,
+    "보존식": 5250.2,
+    "생곡": 83575.6,
+    "㉮": 1.8799,
+    "㉯": 1.9713,
+    "통나무 모자란 마을·날": 20853,
+    "통나무값 평균": 319.0266,
+    "통나무 생산": 527151.5,
+    "통나무 소비": 315662.2,
+    "땔감": 293046.7,
+    "집 목재": 22616,
+    "통나무 수입": 52476.4,
+    "기근 마을·날": 14708
+   }
+  ],
+  "delta": {
+   "t17:a": {
+    "인구": {
+     "d": [
+      0,
+      0,
+      0
+     ],
+     "mean": 0,
+     "width": 0,
+     "verdict": "못 가름"
+    },
+    "무기Q": {
+     "d": [
+      0,
+      0,
+      0
+     ],
+     "mean": 0,
+     "width": 0,
+     "verdict": "못 가름"
+    },
+    "확장셀": {
+     "d": [
+      0,
+      0,
+      0
+     ],
+     "mean": 0,
+     "width": 0,
+     "verdict": "못 가름"
+    },
+    "게시": {
+     "d": [
+      0.08,
+      0,
+      0.04
+     ],
+     "mean": 0.04,
+     "width": 0.08,
+     "verdict": "못 가름"
+    },
+    "도구Q": {
+     "d": [
+      0,
+      0,
+      0
+     ],
+     "mean": 0,
+     "width": 0,
+     "verdict": "못 가름"
+    },
+    "보존식": {
+     "d": [
+      0,
+      0,
+      0
+     ],
+     "mean": 0,
+     "width": 0,
+     "verdict": "못 가름"
+    },
+    "생곡": {
+     "d": [
+      0,
+      0,
+      0
+     ],
+     "mean": 0,
+     "width": 0,
+     "verdict": "못 가름"
+    },
+    "㉮": {
+     "d": [
+      0,
+      0,
+      0
+     ],
+     "mean": 0,
+     "width": 0,
+     "verdict": "못 가름"
+    },
+    "㉯": {
+     "d": [
+      0,
+      0.51,
+      0.49
+     ],
+     "mean": 0.33,
+     "width": 0.51,
+     "verdict": "못 가름"
+    },
+    "부족 wood": {
+     "d": [
+      0,
+      0.28,
+      0.18
+     ],
+     "mean": 0.15,
+     "width": 0.28,
+     "verdict": "못 가름"
+    },
+    "w0_30": {
+     "d": [
+      0,
+      0,
+      0
+     ],
+     "mean": 0,
+     "width": 0,
+     "verdict": "못 가름"
+    },
+    "w0_100": {
+     "d": [
+      0,
+      0,
+      0
+     ],
+     "mean": 0,
+     "width": 0,
+     "verdict": "못 가름"
+    },
+    "w0_400": {
+     "d": [
+      0,
+      0,
+      0
+     ],
+     "mean": 0,
+     "width": 0,
+     "verdict": "못 가름"
+    },
+    "exp30": {
+     "d": [
+      0,
+      0,
+      0
+     ],
+     "mean": 0,
+     "width": 0,
+     "verdict": "못 가름"
+    },
+    "pop400": {
+     "d": [
+      0,
+      0,
+      0
+     ],
+     "mean": 0,
+     "width": 0,
+     "verdict": "못 가름"
+    }
+   },
+   "t17:b": {
+    "인구": {
+     "d": [
+      0.17,
+      -4.5,
+      13.31
+     ],
+     "mean": 2.99,
+     "width": 17.81,
+     "verdict": "못 가름"
+    },
+    "무기Q": {
+     "d": [
+      0,
+      -5.89,
+      8.19
+     ],
+     "mean": 0.77,
+     "width": 14.07,
+     "verdict": "못 가름"
+    },
+    "확장셀": {
+     "d": [
+      20.94,
+      -17.14,
+      62.4
+     ],
+     "mean": 22.07,
+     "width": 79.54,
+     "verdict": "못 가름"
+    },
+    "게시": {
+     "d": [
+      8.25,
+      -6.17,
+      10.09
+     ],
+     "mean": 4.06,
+     "width": 16.26,
+     "verdict": "못 가름"
+    },
+    "도구Q": {
+     "d": [
+      2.49,
+      -13.05,
+      7.46
+     ],
+     "mean": -1.03,
+     "width": 20.51,
+     "verdict": "못 가름"
+    },
+    "보존식": {
+     "d": [
+      -22.09,
+      1.78,
+      1.55
+     ],
+     "mean": -6.25,
+     "width": 23.86,
+     "verdict": "못 가름"
+    },
+    "생곡": {
+     "d": [
+      -0.33,
+      -9.46,
+      14.5
+     ],
+     "mean": 1.57,
+     "width": 23.96,
+     "verdict": "못 가름"
+    },
+    "㉮": {
+     "d": [
+      -1.55,
+      1.59,
+      -2.04
+     ],
+     "mean": -0.67,
+     "width": 3.63,
+     "verdict": "못 가름"
+    },
+    "㉯": {
+     "d": [
+      -1.48,
+      1.52,
+      -1.46
+     ],
+     "mean": -0.48,
+     "width": 2.99,
+     "verdict": "못 가름"
+    },
+    "부족 wood": {
+     "d": [
+      -23.01,
+      -29.4,
+      -10.56
+     ],
+     "mean": -20.99,
+     "width": 18.84,
+     "verdict": "가름"
+    },
+    "w0_30": {
+     "d": [
+      -6.45,
+      0,
+      0
+     ],
+     "mean": -2.15,
+     "width": 6.45,
+     "verdict": "못 가름"
+    },
+    "w0_100": {
+     "d": [
+      17.65,
+      23.33,
+      2.63
+     ],
+     "mean": 14.54,
+     "width": 20.7,
+     "verdict": "방향만"
+    },
+    "w0_400": {
+     "d": [
+      -18.92,
+      15.15,
+      8.82
+     ],
+     "mean": 1.69,
+     "width": 34.07,
+     "verdict": "못 가름"
+    },
+    "exp30": {
+     "d": [
+      15.1,
+      8.41,
+      43.69
+     ],
+     "mean": 22.4,
+     "width": 35.28,
+     "verdict": "방향만"
+    },
+    "pop400": {
+     "d": [
+      -7.54,
+      -10.39,
+      1.38
+     ],
+     "mean": -5.51,
+     "width": 11.77,
+     "verdict": "못 가름"
+    }
+   },
+   "t17:ab": {
+    "인구": {
+     "d": [
+      -0.95,
+      -1.41,
+      10.93
+     ],
+     "mean": 2.86,
+     "width": 12.34,
+     "verdict": "못 가름"
+    },
+    "무기Q": {
+     "d": [
+      -4.39,
+      -5.62,
+      4.93
+     ],
+     "mean": -1.69,
+     "width": 10.54,
+     "verdict": "못 가름"
+    },
+    "확장셀": {
+     "d": [
+      11.78,
+      1.02,
+      56.72
+     ],
+     "mean": 23.17,
+     "width": 55.7,
+     "verdict": "방향만"
+    },
+    "게시": {
+     "d": [
+      3.93,
+      12.49,
+      15.14
+     ],
+     "mean": 10.52,
+     "width": 11.21,
+     "verdict": "방향만"
+    },
+    "도구Q": {
+     "d": [
+      -1.45,
+      -4.53,
+      14.46
+     ],
+     "mean": 2.82,
+     "width": 18.99,
+     "verdict": "못 가름"
+    },
+    "보존식": {
+     "d": [
+      -12.08,
+      9.65,
+      8.64
+     ],
+     "mean": 2.07,
+     "width": 21.73,
+     "verdict": "못 가름"
+    },
+    "생곡": {
+     "d": [
+      -1.56,
+      -0.61,
+      20.02
+     ],
+     "mean": 5.95,
+     "width": 21.58,
+     "verdict": "못 가름"
+    },
+    "㉮": {
+     "d": [
+      0,
+      -3.7,
+      -4.08
+     ],
+     "mean": -2.6,
+     "width": 4.08,
+     "verdict": "못 가름"
+    },
+    "㉯": {
+     "d": [
+      0,
+      -3.54,
+      -3.9
+     ],
+     "mean": -2.48,
+     "width": 3.9,
+     "verdict": "못 가름"
+    },
+    "부족 wood": {
+     "d": [
+      -12.22,
+      -13.73,
+      1.06
+     ],
+     "mean": -8.3,
+     "width": 14.79,
+     "verdict": "못 가름"
+    },
+    "w0_30": {
+     "d": [
+      -6.45,
+      -3.23,
+      3.57
+     ],
+     "mean": -2.04,
+     "width": 10.02,
+     "verdict": "못 가름"
+    },
+    "w0_100": {
+     "d": [
+      14.71,
+      26.67,
+      0
+     ],
+     "mean": 13.79,
+     "width": 26.67,
+     "verdict": "못 가름"
+    },
+    "w0_400": {
+     "d": [
+      -10.81,
+      -12.12,
+      -5.88
+     ],
+     "mean": -9.6,
+     "width": 6.24,
+     "verdict": "가름"
+    },
+    "exp30": {
+     "d": [
+      0.51,
+      -16.92,
+      -9.89
+     ],
+     "mean": -8.77,
+     "width": 17.44,
+     "verdict": "못 가름"
+    },
+    "pop400": {
+     "d": [
+      6.22,
+      -5.97,
+      6.7
+     ],
+     "mean": 2.32,
+     "width": 12.67,
+     "verdict": "못 가름"
+    }
+   },
+   "t176:a": {
+    "인구": {
+     "d": [
+      0,
+      0,
+      0
+     ],
+     "mean": 0,
+     "width": 0,
+     "verdict": "못 가름"
+    },
+    "무기Q": {
+     "d": [
+      0,
+      0,
+      0
+     ],
+     "mean": 0,
+     "width": 0,
+     "verdict": "못 가름"
+    },
+    "확장셀": {
+     "d": [
+      0,
+      0,
+      0
+     ],
+     "mean": 0,
+     "width": 0,
+     "verdict": "못 가름"
+    },
+    "게시": {
+     "d": [
+      0.08,
+      0,
+      0.04
+     ],
+     "mean": 0.04,
+     "width": 0.08,
+     "verdict": "못 가름"
+    },
+    "도구Q": {
+     "d": [
+      0,
+      0,
+      0
+     ],
+     "mean": 0,
+     "width": 0,
+     "verdict": "못 가름"
+    },
+    "보존식": {
+     "d": [
+      0,
+      0,
+      0
+     ],
+     "mean": 0,
+     "width": 0,
+     "verdict": "못 가름"
+    },
+    "생곡": {
+     "d": [
+      0,
+      0,
+      0
+     ],
+     "mean": 0,
+     "width": 0,
+     "verdict": "못 가름"
+    },
+    "㉮": {
+     "d": [
+      0.25,
+      0.24,
+      0.26
+     ],
+     "mean": 0.25,
+     "width": 0.02,
+     "verdict": "가름"
+    },
+    "㉯": {
+     "d": [
+      0.26,
+      0.25,
+      0.27
+     ],
+     "mean": 0.26,
+     "width": 0.02,
+     "verdict": "가름"
+    },
+    "통나무 모자란 마을·날": {
+     "d": [
+      0,
+      0,
+      0
+     ],
+     "mean": 0,
+     "width": 0,
+     "verdict": "못 가름"
+    },
+    "통나무값 평균": {
+     "d": [
+      0,
+      0,
+      0
+     ],
+     "mean": 0,
+     "width": 0,
+     "verdict": "못 가름"
+    },
+    "통나무 생산": {
+     "d": [
+      0,
+      0,
+      0
+     ],
+     "mean": 0,
+     "width": 0,
+     "verdict": "못 가름"
+    },
+    "통나무 소비": {
+     "d": [
+      0,
+      0,
+      0
+     ],
+     "mean": 0,
+     "width": 0,
+     "verdict": "못 가름"
+    },
+    "땔감": {
+     "d": [
+      0,
+      0,
+      0
+     ],
+     "mean": 0,
+     "width": 0,
+     "verdict": "못 가름"
+    },
+    "집 목재": {
+     "d": [
+      0,
+      0,
+      0
+     ],
+     "mean": 0,
+     "width": 0,
+     "verdict": "못 가름"
+    },
+    "통나무 수입": {
+     "d": [
+      0,
+      0,
+      0
+     ],
+     "mean": 0,
+     "width": 0,
+     "verdict": "못 가름"
+    },
+    "기근 마을·날": {
+     "d": [
+      0,
+      0,
+      0
+     ],
+     "mean": 0,
+     "width": 0,
+     "verdict": "못 가름"
+    },
+    "w0_30": {
+     "d": [
+      0,
+      0,
+      0
+     ],
+     "mean": 0,
+     "width": 0,
+     "verdict": "못 가름"
+    },
+    "w0_100": {
+     "d": [
+      0,
+      0,
+      0
+     ],
+     "mean": 0,
+     "width": 0,
+     "verdict": "못 가름"
+    },
+    "w0_400": {
+     "d": [
+      0,
+      0,
+      0
+     ],
+     "mean": 0,
+     "width": 0,
+     "verdict": "못 가름"
+    },
+    "exp30": {
+     "d": [
+      0,
+      0,
+      0
+     ],
+     "mean": 0,
+     "width": 0,
+     "verdict": "못 가름"
+    },
+    "pop400": {
+     "d": [
+      0,
+      0,
+      0
+     ],
+     "mean": 0,
+     "width": 0,
+     "verdict": "못 가름"
+    }
+   },
+   "t176:b": {
+    "인구": {
+     "d": [
+      0.17,
+      -4.5,
+      13.31
+     ],
+     "mean": 2.99,
+     "width": 17.81,
+     "verdict": "못 가름"
+    },
+    "무기Q": {
+     "d": [
+      -0.02,
+      -5.88,
+      8.12
+     ],
+     "mean": 0.74,
+     "width": 14,
+     "verdict": "못 가름"
+    },
+    "확장셀": {
+     "d": [
+      20.94,
+      -17.14,
+      62.4
+     ],
+     "mean": 22.07,
+     "width": 79.54,
+     "verdict": "못 가름"
+    },
+    "게시": {
+     "d": [
+      8.25,
+      -6.17,
+      10.09
+     ],
+     "mean": 4.06,
+     "width": 16.26,
+     "verdict": "못 가름"
+    },
+    "도구Q": {
+     "d": [
+      2.49,
+      -13.05,
+      7.46
+     ],
+     "mean": -1.03,
+     "width": 20.51,
+     "verdict": "못 가름"
+    },
+    "보존식": {
+     "d": [
+      -22.09,
+      1.78,
+      1.55
+     ],
+     "mean": -6.25,
+     "width": 23.86,
+     "verdict": "못 가름"
+    },
+    "생곡": {
+     "d": [
+      -0.33,
+      -9.46,
+      14.5
+     ],
+     "mean": 1.57,
+     "width": 23.96,
+     "verdict": "못 가름"
+    },
+    "㉮": {
+     "d": [
+      -1.54,
+      1.68,
+      -1.58
+     ],
+     "mean": -0.48,
+     "width": 3.26,
+     "verdict": "못 가름"
+    },
+    "㉯": {
+     "d": [
+      -1.47,
+      1.59,
+      -1.66
+     ],
+     "mean": -0.51,
+     "width": 3.26,
+     "verdict": "못 가름"
+    },
+    "통나무 모자란 마을·날": {
+     "d": [
+      9.01,
+      25.84,
+      -8.25
+     ],
+     "mean": 8.87,
+     "width": 34.09,
+     "verdict": "못 가름"
+    },
+    "통나무값 평균": {
+     "d": [
+      11.06,
+      31.35,
+      -9.12
+     ],
+     "mean": 11.1,
+     "width": 40.47,
+     "verdict": "못 가름"
+    },
+    "통나무 생산": {
+     "d": [
+      -2.14,
+      -12.25,
+      18.76
+     ],
+     "mean": 1.46,
+     "width": 31,
+     "verdict": "못 가름"
+    },
+    "통나무 소비": {
+     "d": [
+      -3.42,
+      -9.52,
+      16.39
+     ],
+     "mean": 1.15,
+     "width": 25.91,
+     "verdict": "못 가름"
+    },
+    "땔감": {
+     "d": [
+      -3.57,
+      -9.65,
+      16.74
+     ],
+     "mean": 1.17,
+     "width": 26.39,
+     "verdict": "못 가름"
+    },
+    "집 목재": {
+     "d": [
+      -1.48,
+      -7.75,
+      11.87
+     ],
+     "mean": 0.88,
+     "width": 19.62,
+     "verdict": "못 가름"
+    },
+    "통나무 수입": {
+     "d": [
+      30.38,
+      -33.59,
+      179.18
+     ],
+     "mean": 58.65,
+     "width": 212.77,
+     "verdict": "못 가름"
+    },
+    "기근 마을·날": {
+     "d": [
+      6.85,
+      9.97,
+      -3.73
+     ],
+     "mean": 4.36,
+     "width": 13.69,
+     "verdict": "못 가름"
+    },
+    "w0_30": {
+     "d": [
+      -6.45,
+      0,
+      0
+     ],
+     "mean": -2.15,
+     "width": 6.45,
+     "verdict": "못 가름"
+    },
+    "w0_100": {
+     "d": [
+      17.65,
+      23.33,
+      2.63
+     ],
+     "mean": 14.54,
+     "width": 20.7,
+     "verdict": "방향만"
+    },
+    "w0_400": {
+     "d": [
+      -18.92,
+      15.15,
+      8.82
+     ],
+     "mean": 1.69,
+     "width": 34.07,
+     "verdict": "못 가름"
+    },
+    "exp30": {
+     "d": [
+      15.1,
+      8.41,
+      43.69
+     ],
+     "mean": 22.4,
+     "width": 35.28,
+     "verdict": "방향만"
+    },
+    "pop400": {
+     "d": [
+      -7.54,
+      -10.39,
+      1.38
+     ],
+     "mean": -5.51,
+     "width": 11.77,
+     "verdict": "못 가름"
+    }
+   },
+   "t176:ab": {
+    "인구": {
+     "d": [
+      -0.95,
+      -1.41,
+      10.93
+     ],
+     "mean": 2.86,
+     "width": 12.34,
+     "verdict": "못 가름"
+    },
+    "무기Q": {
+     "d": [
+      -4.36,
+      -5.66,
+      4.93
+     ],
+     "mean": -1.7,
+     "width": 10.58,
+     "verdict": "못 가름"
+    },
+    "확장셀": {
+     "d": [
+      11.78,
+      1.02,
+      56.72
+     ],
+     "mean": 23.17,
+     "width": 55.7,
+     "verdict": "방향만"
+    },
+    "게시": {
+     "d": [
+      3.93,
+      12.49,
+      15.14
+     ],
+     "mean": 10.52,
+     "width": 11.21,
+     "verdict": "방향만"
+    },
+    "도구Q": {
+     "d": [
+      -1.45,
+      -4.53,
+      14.46
+     ],
+     "mean": 2.82,
+     "width": 18.99,
+     "verdict": "못 가름"
+    },
+    "보존식": {
+     "d": [
+      -12.08,
+      9.65,
+      8.64
+     ],
+     "mean": 2.07,
+     "width": 21.73,
+     "verdict": "못 가름"
+    },
+    "생곡": {
+     "d": [
+      -1.56,
+      -0.61,
+      20.02
+     ],
+     "mean": 5.95,
+     "width": 21.58,
+     "verdict": "못 가름"
+    },
+    "㉮": {
+     "d": [
+      0.08,
+      -3.33,
+      -3.85
+     ],
+     "mean": -2.37,
+     "width": 3.93,
+     "verdict": "못 가름"
+    },
+    "㉯": {
+     "d": [
+      0.15,
+      -3.71,
+      -3.94
+     ],
+     "mean": -2.5,
+     "width": 4.09,
+     "verdict": "못 가름"
+    },
+    "통나무 모자란 마을·날": {
+     "d": [
+      4.31,
+      11,
+      -9.8
+     ],
+     "mean": 1.84,
+     "width": 20.81,
+     "verdict": "못 가름"
+    },
+    "통나무값 평균": {
+     "d": [
+      5.02,
+      7.44,
+      -12.24
+     ],
+     "mean": 0.07,
+     "width": 19.68,
+     "verdict": "못 가름"
+    },
+    "통나무 생산": {
+     "d": [
+      -0.08,
+      -5.1,
+      15.19
+     ],
+     "mean": 3.34,
+     "width": 20.3,
+     "verdict": "못 가름"
+    },
+    "통나무 소비": {
+     "d": [
+      -0.03,
+      -7.4,
+      10.11
+     ],
+     "mean": 0.89,
+     "width": 17.51,
+     "verdict": "못 가름"
+    },
+    "땔감": {
+     "d": [
+      0,
+      -7.63,
+      10.12
+     ],
+     "mean": 0.83,
+     "width": 17.74,
+     "verdict": "못 가름"
+    },
+    "집 목재": {
+     "d": [
+      -0.44,
+      -4.24,
+      10.05
+     ],
+     "mean": 1.79,
+     "width": 14.29,
+     "verdict": "못 가름"
+    },
+    "통나무 수입": {
+     "d": [
+      10.36,
+      13.59,
+      75.62
+     ],
+     "mean": 33.19,
+     "width": 65.27,
+     "verdict": "방향만"
+    },
+    "기근 마을·날": {
+     "d": [
+      4.7,
+      14.97,
+      -1.45
+     ],
+     "mean": 6.07,
+     "width": 16.42,
+     "verdict": "못 가름"
+    },
+    "w0_30": {
+     "d": [
+      -6.45,
+      -3.23,
+      3.57
+     ],
+     "mean": -2.04,
+     "width": 10.02,
+     "verdict": "못 가름"
+    },
+    "w0_100": {
+     "d": [
+      14.71,
+      26.67,
+      0
+     ],
+     "mean": 13.79,
+     "width": 26.67,
+     "verdict": "못 가름"
+    },
+    "w0_400": {
+     "d": [
+      -10.81,
+      -12.12,
+      -5.88
+     ],
+     "mean": -9.6,
+     "width": 6.24,
+     "verdict": "가름"
+    },
+    "exp30": {
+     "d": [
+      0.51,
+      -16.92,
+      -9.89
+     ],
+     "mean": -8.77,
+     "width": 17.44,
+     "verdict": "못 가름"
+    },
+    "pop400": {
+     "d": [
+      6.22,
+      -5.97,
+      6.7
+     ],
+     "mean": 2.32,
+     "width": 12.67,
+     "verdict": "못 가름"
+    }
+   }
+  }
+ },
+ "keepAt": {
+  "srv:off:1020": {
+   "firstN": 29,
+   "dayMed": 17,
+   "stockMed": 109.73,
+   "nMed": 14,
+   "emaMed": 0.43,
+   "keepSubsMed": 10.5,
+   "keepFlowMed": 6.8,
+   "amtMed": 93.71
+  },
+  "t17:off:1020": {
+   "firstN": 32,
+   "dayMed": 17,
+   "stockMed": 110.51,
+   "nMed": 14,
+   "emaMed": 0.35,
+   "keepSubsMed": 10.5,
+   "keepFlowMed": 5.6,
+   "amtMed": 95.07
+  },
+  "t176:off:1020": {
+   "firstN": 32,
+   "dayMed": 17,
+   "stockMed": 110.51,
+   "nMed": 14,
+   "emaMed": 0.35,
+   "keepSubsMed": 10.5,
+   "keepFlowMed": 5.6,
+   "amtMed": 95.07
+  },
+  "srv:off:7": {
+   "firstN": 29,
+   "dayMed": 17,
+   "stockMed": 103.3,
+   "nMed": 14,
+   "emaMed": 0.43,
+   "keepSubsMed": 10.5,
+   "keepFlowMed": 6.8,
+   "amtMed": 91.52
+  },
+  "t17:off:7": {
+   "firstN": 36,
+   "dayMed": 18,
+   "stockMed": 110.48,
+   "nMed": 14,
+   "emaMed": 0.35,
+   "keepSubsMed": 10.5,
+   "keepFlowMed": 5.6,
+   "amtMed": 92.5
+  },
+  "t176:off:7": {
+   "firstN": 36,
+   "dayMed": 18,
+   "stockMed": 110.48,
+   "nMed": 14,
+   "emaMed": 0.35,
+   "keepSubsMed": 10.5,
+   "keepFlowMed": 5.6,
+   "amtMed": 92.5
+  },
+  "srv:off:42": {
+   "firstN": 29,
+   "dayMed": 18,
+   "stockMed": 108.82,
+   "nMed": 14,
+   "emaMed": 0.43,
+   "keepSubsMed": 10.5,
+   "keepFlowMed": 6.8,
+   "amtMed": 93.16
+  },
+  "t17:off:42": {
+   "firstN": 32,
+   "dayMed": 18,
+   "stockMed": 110.39,
+   "nMed": 14,
+   "emaMed": 0.35,
+   "keepSubsMed": 10.5,
+   "keepFlowMed": 5.6,
+   "amtMed": 90.2
+  },
+  "t176:off:42": {
+   "firstN": 32,
+   "dayMed": 18,
+   "stockMed": 110.39,
+   "nMed": 14,
+   "emaMed": 0.35,
+   "keepSubsMed": 10.5,
+   "keepFlowMed": 5.6,
+   "amtMed": 90.2
+  },
+  "srv:a:1020": {
+   "firstN": 29,
+   "dayMed": 17,
+   "stockMed": 109.73,
+   "nMed": 14,
+   "emaMed": 0.81,
+   "keepSubsMed": 10.5,
+   "keepFlowMed": 12.15,
+   "amtMed": 93.71
+  },
+  "t17:a:1020": {
+   "firstN": 32,
+   "dayMed": 17,
+   "stockMed": 110.51,
+   "nMed": 14,
+   "emaMed": 0.78,
+   "keepSubsMed": 10.5,
+   "keepFlowMed": 11.63,
+   "amtMed": 95.07
+  },
+  "t176:a:1020": {
+   "firstN": 32,
+   "dayMed": 17,
+   "stockMed": 110.51,
+   "nMed": 14,
+   "emaMed": 0.78,
+   "keepSubsMed": 10.5,
+   "keepFlowMed": 11.63,
+   "amtMed": 95.07
+  },
+  "srv:a:7": {
+   "firstN": 29,
+   "dayMed": 17,
+   "stockMed": 103.3,
+   "nMed": 14,
+   "emaMed": 0.81,
+   "keepSubsMed": 10.5,
+   "keepFlowMed": 12.18,
+   "amtMed": 91.52
+  },
+  "t17:a:7": {
+   "firstN": 36,
+   "dayMed": 18,
+   "stockMed": 110.48,
+   "nMed": 14,
+   "emaMed": 0.78,
+   "keepSubsMed": 10.5,
+   "keepFlowMed": 11.63,
+   "amtMed": 92.5
+  },
+  "t176:a:7": {
+   "firstN": 36,
+   "dayMed": 18,
+   "stockMed": 110.48,
+   "nMed": 14,
+   "emaMed": 0.78,
+   "keepSubsMed": 10.5,
+   "keepFlowMed": 11.63,
+   "amtMed": 92.5
+  },
+  "srv:a:42": {
+   "firstN": 29,
+   "dayMed": 18,
+   "stockMed": 108.82,
+   "nMed": 14,
+   "emaMed": 0.81,
+   "keepSubsMed": 10.5,
+   "keepFlowMed": 12.18,
+   "amtMed": 93.16
+  },
+  "t17:a:42": {
+   "firstN": 32,
+   "dayMed": 18,
+   "stockMed": 110.39,
+   "nMed": 14,
+   "emaMed": 0.78,
+   "keepSubsMed": 10.5,
+   "keepFlowMed": 11.63,
+   "amtMed": 90.2
+  },
+  "t176:a:42": {
+   "firstN": 32,
+   "dayMed": 18,
+   "stockMed": 110.39,
+   "nMed": 14,
+   "emaMed": 0.78,
+   "keepSubsMed": 10.5,
+   "keepFlowMed": 11.63,
+   "amtMed": 90.2
+  },
+  "srv:b:1020": {
+   "firstN": 31,
+   "dayMed": 18,
+   "stockMed": 113.58,
+   "nMed": 14,
+   "emaMed": 0.42,
+   "keepSubsMed": 10.5,
+   "keepFlowMed": 6.27,
+   "amtMed": 98.75
+  },
+  "t17:b:1020": {
+   "firstN": 33,
+   "dayMed": 15,
+   "stockMed": 115.27,
+   "nMed": 13,
+   "emaMed": 0.35,
+   "keepSubsMed": 9.75,
+   "keepFlowMed": 5.6,
+   "amtMed": 100
+  },
+  "t176:b:1020": {
+   "firstN": 33,
+   "dayMed": 15,
+   "stockMed": 115.27,
+   "nMed": 13,
+   "emaMed": 0.35,
+   "keepSubsMed": 9.75,
+   "keepFlowMed": 5.6,
+   "amtMed": 100
+  },
+  "srv:b:7": {
+   "firstN": 31,
+   "dayMed": 18,
+   "stockMed": 113.58,
+   "nMed": 14,
+   "emaMed": 0.42,
+   "keepSubsMed": 10.5,
+   "keepFlowMed": 6.24,
+   "amtMed": 98.75
+  },
+  "t17:b:7": {
+   "firstN": 35,
+   "dayMed": 15,
+   "stockMed": 115.27,
+   "nMed": 14,
+   "emaMed": 0.32,
+   "keepSubsMed": 10.5,
+   "keepFlowMed": 5.6,
+   "amtMed": 100
+  },
+  "t176:b:7": {
+   "firstN": 35,
+   "dayMed": 15,
+   "stockMed": 115.27,
+   "nMed": 14,
+   "emaMed": 0.32,
+   "keepSubsMed": 10.5,
+   "keepFlowMed": 5.6,
+   "amtMed": 100
+  },
+  "srv:b:42": {
+   "firstN": 33,
+   "dayMed": 18,
+   "stockMed": 113.58,
+   "nMed": 14,
+   "emaMed": 0.43,
+   "keepSubsMed": 10.5,
+   "keepFlowMed": 6.8,
+   "amtMed": 98.75
+  },
+  "t17:b:42": {
+   "firstN": 33,
+   "dayMed": 15,
+   "stockMed": 117.63,
+   "nMed": 13,
+   "emaMed": 0.35,
+   "keepSubsMed": 9.75,
+   "keepFlowMed": 5.6,
+   "amtMed": 100
+  },
+  "t176:b:42": {
+   "firstN": 33,
+   "dayMed": 15,
+   "stockMed": 117.63,
+   "nMed": 13,
+   "emaMed": 0.35,
+   "keepSubsMed": 9.75,
+   "keepFlowMed": 5.6,
+   "amtMed": 100
+  },
+  "srv:ab:1020": {
+   "firstN": 27,
+   "dayMed": 18,
+   "stockMed": 116.25,
+   "nMed": 14,
+   "emaMed": 0.81,
+   "keepSubsMed": 10.5,
+   "keepFlowMed": 12.14,
+   "amtMed": 95.42
+  },
+  "t17:ab:1020": {
+   "firstN": 29,
+   "dayMed": 18,
+   "stockMed": 115.27,
+   "nMed": 14,
+   "emaMed": 0.78,
+   "keepSubsMed": 10.5,
+   "keepFlowMed": 11.63,
+   "amtMed": 100
+  },
+  "t176:ab:1020": {
+   "firstN": 29,
+   "dayMed": 18,
+   "stockMed": 115.27,
+   "nMed": 14,
+   "emaMed": 0.78,
+   "keepSubsMed": 10.5,
+   "keepFlowMed": 11.63,
+   "amtMed": 100
+  },
+  "srv:ab:7": {
+   "firstN": 27,
+   "dayMed": 18,
+   "stockMed": 116.25,
+   "nMed": 14,
+   "emaMed": 0.81,
+   "keepSubsMed": 10.5,
+   "keepFlowMed": 12.14,
+   "amtMed": 94.53
+  },
+  "t17:ab:7": {
+   "firstN": 31,
+   "dayMed": 18,
+   "stockMed": 112.14,
+   "nMed": 14,
+   "emaMed": 0.78,
+   "keepSubsMed": 10.5,
+   "keepFlowMed": 11.63,
+   "amtMed": 94.04
+  },
+  "t176:ab:7": {
+   "firstN": 31,
+   "dayMed": 18,
+   "stockMed": 112.14,
+   "nMed": 14,
+   "emaMed": 0.78,
+   "keepSubsMed": 10.5,
+   "keepFlowMed": 11.63,
+   "amtMed": 94.04
+  },
+  "srv:ab:42": {
+   "firstN": 27,
+   "dayMed": 19,
+   "stockMed": 116.25,
+   "nMed": 15,
+   "emaMed": 0.82,
+   "keepSubsMed": 11.25,
+   "keepFlowMed": 12.25,
+   "amtMed": 100
+  },
+  "t17:ab:42": {
+   "firstN": 27,
+   "dayMed": 15,
+   "stockMed": 110.48,
+   "nMed": 14,
+   "emaMed": 0.78,
+   "keepSubsMed": 10.5,
+   "keepFlowMed": 11.63,
+   "amtMed": 93.94
+  },
+  "t176:ab:42": {
+   "firstN": 27,
+   "dayMed": 15,
+   "stockMed": 110.48,
+   "nMed": 14,
+   "emaMed": 0.78,
+   "keepSubsMed": 10.5,
+   "keepFlowMed": 11.63,
+   "amtMed": 93.94
+  }
+ }
+}
