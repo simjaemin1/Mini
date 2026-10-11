@@ -53,6 +53,10 @@ for (const k of Object.keys(Spoil.PRESERVED_ITEMS)) LOT_CORE.add(k);
 if (Spoil.Crops) {
   for (const c of Spoil.Crops.list()) { LOT_CORE.add(c.id); LOT_CORE.add(Spoil.Crops.seedOf(c.id)); }
 }
+// ★★[T694 2026-10-11 · 손잡이 `T694_GAME_MEAT=1` — 없음 = 끔 = 이 블록이 아무것도 안 한다(main 바이트)] 사냥 고기도 **로트다**
+//   (곰고기 · 구운 사슴·들짐승고기 · 삶은 곰고기 — `meat_game` 은 특산 축산이라 이미 로트). 목록 정본은 `server/game-meat.js`(옮겨 적지 않는다).
+{ let _GM = null; try { _GM = require('./game-meat'); } catch (e) {}
+  if (_GM && _GM.on()) for (const k of _GM.lotItems()) LOT_CORE.add(k); }
 function isLot(item) {
   if (!item) return false;
   if (LOT_CORE.has(item)) return true;

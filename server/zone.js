@@ -7301,7 +7301,31 @@ function doCook(player, recipeName) {
       send(player.ws, { type: 'notice', text: `${item} ${amt}개 필요` }); return;
     }
   }
+  // ★[T694] 품목을 내는 줄(`recipe.item` — `game-meat.js` 사냥 고기 굽기·삶기 · 켬에서만 이런 줄이 있다)은 **대기열 자리를 먼저 본다**
+  //   (보존 가공 `doPreserve` 문법 — 재료를 뺀 뒤 "대기열이 찼다"로 되돌리는 길을 아예 안 만든다 · 되돌리기는 로트 나이를 뭉갠다).
+  if (recipe.item && Facility.view(_fc.b, Date.now()).length >= Facility.MAX_QUEUE) {
+    send(player.ws, { type: 'notice', text: `${_fc.ko} 대기열이 찼다(${Facility.MAX_QUEUE})` }); return;
+  }
   for (const [item, amt] of Object.entries(recipe.cost)) consumeItem(player, item, amt);   // ★[원장 승격] 제작 투입도 원장을 깎는다
+  // ★★[T694] **품목으로 낸다** — 요리 인스턴스(영양 = 숙련 × 재료 등급)가 아니라 무게·열량이 있는 품목(`produces`)이다.
+  //   수령은 시설 대기열의 `items`·`lotItems` 갈래(`doCraftCollect` — 보존 가공과 같은 길 · 로트 취득일 = 완성일).
+  //   열량 = `kcal.js` §2(재료 열량 × 1.12) · 무게 = 날것 kg × USDA 조리 수율(`weights.js` ← `game-meat.js`). 끄면 이런 줄이 없다.
+  if (recipe.item) {
+    const _prod = Object.assign({}, recipe.produces);
+    const _lot = {}; for (const [k, n] of Object.entries(_prod)) if (Lots.isLot(k)) _lot[k] = n;
+    const rkI = Facility.enqueue(_fc.b, { id: genEquipId(), kind: 'cook', label: recipe.label, owner: player.playerId,
+      items: _prod, lotItems: _lot }, Date.now());
+    if (!rkI.ok) {   // 위에서 자리를 미리 봤으니 사실상 도달 불가 — 그래도 재료를 삼키지 않는다(아래 요리 갈래와 같은 되돌림)
+      for (const [item, amt] of Object.entries(recipe.cost)) player.inventory[item] += amt;
+      send(player.ws, { type: 'notice', text: rkI.err }); return;
+    }
+    markBuildingDirty(_fc.b);
+    sendInventory(player);
+    sendCraftQueue(player);
+    send(player.ws, { type: 'notice', text: `🔥 ${_fc.ko}에 얹었다 — ${recipe.label} · ${Math.ceil(rkI.job.ms / 1000)}초${rkI.ahead ? ` (앞에 ${rkI.ahead}개)` : ''}` });
+    savePlayer(player);
+    return;
+  }
   // 요리 인스턴스 생성(신선도·버프 — 설계 §6). 스칼라 산출 대신 품질 인스턴스(cook숙련×재료). 갓 지은 요리 > 식은 요리.
   ensurePlayerItems(player);
   const cookLvl = playerCraftLevel(player, 'cooking');
@@ -10366,6 +10390,10 @@ const ITEM_LABEL_SERVER = {
 //   위 두 루프(`PRESERVED_EFFECTS` · `Crops.foodMap`)와 같은 주입 문법이고, 다만 **표의 주인이 채운다**.
 //   (zone 이 품목을 다시 나열하면 그게 사본이다 — 자염이 `brine: Salt.BRINE_KO` 로 이미 그 규약을 썼다.)
 require('./tidal').install({ FOOD_EFFECTS, ITEM_LABEL_SERVER, COOK_RECIPES });
+// ★★[T694 2026-10-11 · 손잡이 `T694_GAME_MEAT=1` — 없음 = 끔 = 이 줄이 아무것도 안 한다(main 바이트)] **사냥 고기 — 표의 주인이 채운다**(위 갯벌 줄과 같은 문법).
+//   곰고기(먹기 = 날고기 줄 그대로) · 구운 사슴·들짐승고기 · 삶은 곰고기(먹기 = `meat_cooked` 줄 그대로 — 날고기 HP 패널티 없음) ·
+//   이름표 · 조리 두 줄(`item: true` — 아래 `doCook` 이 품목으로 낸다). 포만은 바로 아래 열량 유도 한 줄이 채운다.
+require('./game-meat').install({ FOOD_EFFECTS, ITEM_LABEL_SERVER, COOK_RECIPES });
 // ★★★[T59 2026-09-03] **포만감을 여기서 채운다 — 표가 다 모인 마지막 자리다.**
 //   위로 올리면 늦게 주입되는 표(작물·보존식·갯벌)가 옛 손글씨 값을 그대로 들고 남는다 —
 //   실제로 한 번 그렇게 물렸다(굴 3 · 해조 4 가 T52 의 손글씨였다). ⇒ **주입이 다 끝난 뒤 한 번.**

@@ -8601,6 +8601,18 @@ const PV_DEPOSIT_MAP = {
   wheat: 'wheat', rice: 'rice', barley: 'barley',
   chestnut: 'chestnut', grape: 'grape', mulberry_fruit: 'mulberry_fruit', acorn: 'acorn',
 };
+// ★★[T694 2026-10-11 · 손잡이 `T694_GAME_MEAT=1` — 없음 = 끔 = 이 줄이 아무것도 안 한다(`game-meat.js` 를 부르지도 않는다 · main 바이트)] **사냥 고기 넷.**
+//   T647 이 도살 드롭 `meat_game` 을 손에서 먹게 했지만 이 표에 줄이 없어 넣기·꺼내기·거래소·게시판이 안 다뤘다(T647 회부 ④).
+//   · `meat_game` → `meat_game` — econ 에 같은 id 의 재화가 **이미 있다**(`specialty.RESOURCES.meat_game` '사슴·들짐승고기' · 축산 · 사냥)
+//     ⇒ T302·T328 항등 줄과 같은 꼴(*"이 표는 대응을 새로 만들지 않고 이름이 같다는 사실을 적을 뿐이다"*).
+//   · `meat_bear`(T694 곰고기) → `meat_game` — econ 에 곰 재화가 없다(econ 에 품목을 더하는 일은 재민 칸) ⇒ 이름이 이미 '들짐승고기'인 그 재화로 접는다
+//     (T694 전에는 곰 드롭 자체가 meat_game 이었다 = 접기 전과 같은 자리). 단위는 **열량**이다(`kcal.econUnitsOf` · 곳간이 환전소가 되지 않는 짝) —
+//     곰고기 1kg 1,610kcal = 사슴·들짐승고기 1.34kg 어치. ⚠"`fish` 로 접지 않는다"(T302)와는 다르다 — 그쪽은 econ 에 제 id 가 있었다.
+//   · 익힌 둘(구운 사슴·들짐승고기 · 삶은 곰고기) → `cooked_food` — 위 `fish_cooked`·`meat_cooked` 줄과 같은 꼴(조리식은 econ cooked_food 하나).
+//   ★순서가 계약이다: `meat_game` 이 먼저 → 꺼내기·보상의 대표 품목(`toEcon`)이 사슴·들짐승고기다(`cooked_food` 대표는 위 `fish_cooked` 그대로).
+if (process.env.T694_GAME_MEAT === '1' && require('./game-meat').on()) Object.assign(PV_DEPOSIT_MAP, {
+  meat_game: 'meat_game', meat_bear: 'meat_game', meat_game_cooked: 'cooked_food', meat_bear_cooked: 'cooked_food',
+});
 const PV_DEPOSIT_RATE = (() => { const x = parseFloat(process.env.VILLAGE_DEPOSIT_RATE || '1'); return (isFinite(x) && x > 0) ? x : 1; })();
 // ★[T59] 열량 정본 — 늦게 부른다(맞물림 금지 · `forage`·`spoil` 과 같은 규약).
 let _Kc = null;

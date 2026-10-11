@@ -98,9 +98,19 @@ if (process.env.T602_NEW_FISH === '1') Object.assign(KCAL_PER_KG, {
 //   값 = **USDA FoodData Central · SR Legacy "Game meat, deer, raw"(FDC ID 173855)** 120 kcal/100g × 10 = 1,200 kcal/kg
 //   (날것 · 살 — 도살 드롭은 뼈 없는 살코기라 가식부 1.0 · 단백질 23.0g · 지방 2.42g/100g). 위 `meat_raw` 주석 "1,200~1,600" 의 아래 끝과 같다.
 //   ⚠국가표준식품성분표(농진청)의 사슴 줄은 이번 판 못 찾았다(조회 오류 — 보고 표) · 곰 고기도 같은 품목(meat_game)이라 이 줄을 먹는다(곰 성분 미확인).
+//     ★[T694] 켬(`T694_GAME_MEAT=1`)이면 곰 드롭은 곰고기(`meat_bear`)라 아래 제 줄을 먹는다.
 //   ⚠곳간·거래 값은 안 바뀐다 — meat_game 은 곳간 넣기 표(`villages.PV_DEPOSIT_MAP`)에 줄이 없어
 //     넣기·꺼내기·거래소·게시판·보상 환산(`econUnitsOf`·`itemsOf`)이 이 품목을 아예 안 다룬다(`test-drop-kg` 가 잰다).
+//     ★[T694] 켬이면 그 표에 줄이 선다(`villages.js` T694 블록 · `test-game-meat` 가 잰다).
 if (require('./animals').dropKgOn()) KCAL_PER_KG.meat_game = 1200;   // USDA FDC 173855 — 120 kcal/100g
+// ★★[T694 2026-10-11 · 손잡이 `T694_GAME_MEAT=1` — 없음 = 끔 = 이 줄이 없다(main 바이트)] **곰고기(`meat_bear`)의 열량 줄** — 위 T647 줄의 회부 ①("곰 고기도 사슴 열량").
+//   값 = **USDA FoodData Central · SR Legacy "Game meat, bear, raw"(FDC ID 173845 · NDB 17146)** 161 kcal/100g × 10 = 1,610 kcal/kg
+//   (날것 · 살 — 단백질 20.1g · 지방 8.30g · 수분 71.2g/100g · 드롭은 뼈 없는 살코기라 가식부 1.0 = 위 meat_game 줄과 같은 꼴).
+//   ⚠USDA "bear" 는 종 미표기(북미 곰)다 — 반달가슴곰 줄이 아니다(다른 종 참고치 · T636 수율 `ref` 와 같은 처지).
+//   ⚠국가표준식품성분표(농진청 · DB 10.2)의 곰 줄 · 일본 식품성분표의 くま 줄은 못 찾았다(보고/T694 ⑤ 표).
+//   품목·드롭·굽기·곳간은 `server/game-meat.js`(손잡이 정본) · `animals.dropsOf`(곰 드롭의 고기 칸 = 곰고기) · `villages.PV_DEPOSIT_MAP`.
+//   ★익힌 둘(구운 사슴·들짐승고기 · 삶은 곰고기)은 이 표에 안 적는다 — 아래 §2 가 레시피 재료 열량 × 1.12 로 유도한다.
+if (require('./game-meat').on()) KCAL_PER_KG.meat_bear = 1610;   // USDA FDC 173845 — 161 kcal/100g
 
 // ── §2 조리식 — **재료 열량 합 × econ 이 이미 쓰는 계수** ───────────────────
 //   ★계수를 여기서 짓지 않는다: econ `consumeFood` 가 `cooked_food` 를 **1.12** 로 환산한다
