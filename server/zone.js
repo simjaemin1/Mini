@@ -1097,6 +1097,15 @@ else if (T676_VERIFY) isPositionActive = function (x, y) { const a = _isPosition
 //     — 끔(종전 순회 일곱)과 켬(한 바퀴 둘)이 **같은 함수**를 부른다. 사본 0: 본문은 종전 루프 몸통 그대로(`continue` → `return`).
 // ★★[T421 ⓪ 2026-09-26 · PM 위임] **기본 켬** — 값이 섰다(그 밖 1.00 → 0.72µs · 게이트 ⑨ 비트 동일). 되돌림 `T385_ONE_SWEEP=0`.
 const T385_ONE_SWEEP = process.env.T385_ONE_SWEEP !== '0';
+// ★★[T689 2026-10-11 · 세션4] 손잡이 `T689_GC`(기본 끔 · `=1` 켬) — 틱마다 새로 짓는 쓰레기를 **같은 값으로** 줄인다(GC 메이저·스캐빈지 몫).
+//   T689 가 쟀다(표본 힙 프로파일러 · 틱 구간별 힙 증가): 틱 본문은 큰 함수라 최적화가 안 되어 `for…of` 가 몸마다 반복 결과 객체를 짓고,
+//   `for (const [, p] of players)` 는 몸마다 [키, 값] 배열까지 짓는다(어로 · 사람 저장 · 걸음 커널 앞문 · 계단·낙하·게이지 한 바퀴 — 틱당 39 · 39 · 55 · 56 KB).
+//   벽 술어 셋(`isBlockedByWall` · `isBlockedByStairSide` · `_edgeScan` 과 바닥·울타리)은 셀을 넘을 때마다 `{cx, cy}` 객체 넷과 질의 배열 둘을 지었다.
+//   켜면: 같은 차례의 `Map.forEach`(살아 있는 순회 — 지우기·넣기 의미가 `for…of` 와 같다) · 벽 술어는 빌려 쓰는 객체 · 빌려 쓰는 질의 배열(`queryCircleScratch` — 같은 순회 · 같은 차례).
+//   ⚠값은 한 비트도 안 바뀐다(같은 차례 · 같은 수) — 3시드 두 자 · `t461-verify` · `test-move-soa` 가 문. 끔 = main 바이트(이 손잡이 줄이 안 닿는다).
+const T689_GC = process.env.T689_GC === '1';   // (머리에 둔다 — 벽·바닥 술어가 모듈 평가 중 불려도 TDZ 0)
+const _t689SOC = { cx: 0, cy: 0 }, _t689SNC = { cx: 0, cy: 0 };   // ★[T689] 켬: 계단 측면 술어가 빌려 쓰는 칸 둘(재진입 0 — 이 함수는 안에서 자기를 안 부른다)
+const _t689WOC = { cx: 0, cy: 0 }, _t689WNC = { cx: 0, cy: 0 };   // ★[T689] 켬: 벽 술어가 빌려 쓰는 칸 둘
 // 활성 여부가 판정에 쓰이는 몸인가 — 종전 문지기 세 줄(`spatial`·`fall`·`hpRegen`)의 앞 두 항 그대로(술어는 안 부른다)
 function _needAct(p) { return p.isNpc && !p.canadiaVillage; }
 // ★[T385 ③] 계단 칸 **정수 키** — `${cx}_${cy}` 문자열을 몸마다 틱마다 만들던 자리.
@@ -13052,7 +13061,7 @@ function _edgeScan(cx, cy, side, floor, roomMode) {
   // fence는 14.50부터 cell 위치 (edge 아님). 여기선 check 안 함.
   const ex = cx * BUILDING_SIZE;
   const ey = cy * BUILDING_SIZE;
-  const nearby = qtColl ? qtColl.queryCircle(ex, ey, BUILDING_SIZE * 2) : Array.from(buildings.values());   // ★[T449 ③] 벽 질의 격자(밭 0)
+  const nearby = qtColl ? (T689_GC ? qtColl.queryCircleScratch(ex, ey, BUILDING_SIZE * 2) : qtColl.queryCircle(ex, ey, BUILDING_SIZE * 2)) : Array.from(buildings.values());   // ★[T449 ③] 벽 질의 격자(밭 0) · ★[T689] 켬: 같은 차례 빌린 배열(고리 안 질의 0)
   for (const b of nearby) {
     if (b.type !== 'wall' && b.type !== 'door') continue;
     if ((b.floor || 0) !== floor) continue;
@@ -13080,7 +13089,7 @@ function findEdgeBoundary(cx, cy, side, floor) { return _edgeScan(cx, cy, side, 
 // 그 칸의 바닥 타일(방 판정 정본 입력). 계단이 만든 자동 바닥도 바닥이다.
 function findFloorTile(cx, cy, floor) {
   const ax = cx * BUILDING_SIZE + BUILDING_SIZE / 2, ay = cy * BUILDING_SIZE + BUILDING_SIZE / 2;
-  const nearby = qtColl ? qtColl.queryCircle(ax, ay, BUILDING_SIZE) : Array.from(buildings.values());   // ★[T449 ③] 벽 질의 격자(밭 0)
+  const nearby = qtColl ? (T689_GC ? qtColl.queryCircleScratch(ax, ay, BUILDING_SIZE) : qtColl.queryCircle(ax, ay, BUILDING_SIZE)) : Array.from(buildings.values());   // ★[T449 ③] 벽 질의 격자(밭 0) · ★[T689] 켬: 같은 차례 빌린 배열(고리 안 질의 0)
   for (const b of nearby) {
     if (b.type !== 'floor') continue;
     if ((b.floor || 0) !== floor) continue;
@@ -13158,7 +13167,7 @@ function roomsDropChunk(c) {
 function findCellFence(cx, cy, floor) {
   const cellAx = cx * BUILDING_SIZE + BUILDING_SIZE / 2;
   const cellAy = cy * BUILDING_SIZE + BUILDING_SIZE / 2;
-  const nearby = qtColl ? qtColl.queryCircle(cellAx, cellAy, BUILDING_SIZE) : Array.from(buildings.values());   // ★[T449 ③] 벽 질의 격자(밭 0)
+  const nearby = qtColl ? (T689_GC ? qtColl.queryCircleScratch(cellAx, cellAy, BUILDING_SIZE) : qtColl.queryCircle(cellAx, cellAy, BUILDING_SIZE)) : Array.from(buildings.values());   // ★[T449 ③] 벽 질의 격자(밭 0) · ★[T689] 켬: 같은 차례 빌린 배열(고리 안 질의 0)
   for (const b of nearby) {
     if (b.type !== 'fence') continue;
     if ((b.floor || 0) !== floor) continue;
@@ -13204,8 +13213,9 @@ function findStairBuildingForCell(cx, cy) {
   return { stair, step: entry.step };
 }
 function isBlockedByStairSide(newX, newY, oldX, oldY, entityFloor = 0) {
-  const oc = cellOf(oldX, oldY);
-  const nc = cellOf(newX, newY);
+  let oc, nc;
+  if (T689_GC) { oc = _t689SOC; nc = _t689SNC; oc.cx = Math.floor(oldX / BUILDING_SIZE); oc.cy = Math.floor(oldY / BUILDING_SIZE); nc.cx = Math.floor(newX / BUILDING_SIZE); nc.cy = Math.floor(newY / BUILDING_SIZE); }   // = cellOf 그 식
+  else { oc = cellOf(oldX, oldY); nc = cellOf(newX, newY); }
   if (oc.cx === nc.cx && oc.cy === nc.cy) return false;
   const enteringStair = findStairBuildingForCell(nc.cx, nc.cy);
   if (!enteringStair) return false;
@@ -13306,20 +13316,25 @@ if ((_wwOn || _wwVerify) && !ZONE.isOcean) {
 // 이동 문 **앞** — 이동 문과 같은 거름(순서 그대로)으로 커널 몸을 모으고 한 번에 옮긴다
 //   ★거름은 **한 번만** 한다 — 갈래를 적어 두고 이동 문은 그 적은 것을 읽는다(잠든 몸의 청크 물음을 두 번 안 한다 ·
 //     T461 첫 판이 26존 판에서 걷는 몸이 적을 때 **더 무거워진** 까닭이 그 두 번이었다 — 보고 §3).
+let _wwCut = false;   // ★[T689] `_wwPreOne` 이 읽는 그 틱의 `cut`(forEach 콜백은 인자를 몸 하나만 받는다)
+function _wwPreOne(p) {   // 종전 `_wwPre` 고리 몸통 글자 그대로(`continue` → `return`) — 끔이면 고리가, 켬이면 `forEach` 가 부른다
+  if (p.handingOff || !p.isNpc || p.simCaravan || p.simWar) return;
+  const cut = _wwCut;
+  let c = 1;
+  if (!p.canadiaVillage && !_t316WalkAlways(p) && !isPositionActive(p.x, p.y)) c = 0;   // 이동 문의 그 거름(몸이 안 움직인 자리에서)
+  else if (p.floor || p.onStairId) c = 2;                                                // 위층·계단 = JS 정본
+  else if (cut && p.vx === 0 && p.vy === 0 && _wwIsStill(p)) { c = 3; _streamWalkMul(p); }   // ★[T672 ⓑ] 서 있는 몸 = 뒷일만(개울 메모는 종전처럼 갱신)
+  _wwSeq.push(p); _wwCode.push(c);
+  if (c === 1) _wwList.push(p);
+  else if (c === 3) { _wwStill.push(p); if (!_wwOn) _wwStill0.push(p.x, p.y, p.vx, p.vy); }
+}
 function _wwPre(moveDt) {
   _wwList.length = 0; _wwSeq.length = 0; _wwCode.length = 0;
   const cut = T672_WALK_CUT && Number.isFinite(moveDt);                                    // ★[T672 ⓑ] 서 있는 몸 거름(끔이면 안 열린다)
+  _wwCut = cut;
   _wwStill.length = 0; _wwStill0.length = 0;
-  for (const p of players.values()) {
-    if (p.handingOff || !p.isNpc || p.simCaravan || p.simWar) continue;
-    let c = 1;
-    if (!p.canadiaVillage && !_t316WalkAlways(p) && !isPositionActive(p.x, p.y)) c = 0;   // 이동 문의 그 거름(몸이 안 움직인 자리에서)
-    else if (p.floor || p.onStairId) c = 2;                                                // 위층·계단 = JS 정본
-    else if (cut && p.vx === 0 && p.vy === 0 && _wwIsStill(p)) { c = 3; _streamWalkMul(p); }   // ★[T672 ⓑ] 서 있는 몸 = 뒷일만(개울 메모는 종전처럼 갱신)
-    _wwSeq.push(p); _wwCode.push(c);
-    if (c === 1) _wwList.push(p);
-    else if (c === 3) { _wwStill.push(p); if (!_wwOn) _wwStill0.push(p.x, p.y, p.vx, p.vy); }
-  }
+  if (T689_GC) { _wwCut = cut; players.forEach(_wwPreOne); }   // ★[T689] 같은 차례 · 같은 몸통(아래) — 반복 결과 객체 0
+  else for (const p of players.values()) _wwPreOne(p);
   const n = _wwList.length, S = cut ? _wwStill.length : 0;
   _wwStat.ticks++; _wwStat.steps += n + S;
   if (S) { _wwTC.still += S; if (_wwOn) { _walk.steps += S; _walk.terrQ += 4 * S; _walk.wallQ += 3 * S; } }   // ★[T672 ⓑ] 커널이 그 몸에 셀 수 그대로
@@ -13423,7 +13438,9 @@ function isBlockedByWall(newX, newY, oldX, oldY, playerFloor = 0, traceName = nu
   const _ocx = Math.floor(oldX / BUILDING_SIZE), _ocy = Math.floor(oldY / BUILDING_SIZE);
   const _ncx = Math.floor(newX / BUILDING_SIZE), _ncy = Math.floor(newY / BUILDING_SIZE);
   if (_ocx === _ncx && _ocy === _ncy) return false;
-  const oc = { cx: _ocx, cy: _ocy }, nc = { cx: _ncx, cy: _ncy };   // 셀을 넘는 걸음에서만 만든다(10% 미만)
+  let oc, nc;
+  if (T689_GC) { oc = _t689WOC; nc = _t689WNC; oc.cx = _ocx; oc.cy = _ocy; nc.cx = _ncx; nc.cy = _ncy; }   // ★[T689] 켬: 빌려 쓰는 칸 둘(같은 값 · 재진입 0)
+  else { oc = { cx: _ocx, cy: _ocy }; nc = { cx: _ncx, cy: _ncy }; }   // 셀을 넘는 걸음에서만 만든다(10% 미만)
   // 14.49-e2: 계단 측면 진입 차단 (먼저 검사 — 빠르고 우선순위 높음). 14.49-e7al: floor check 추가
   if (isBlockedByStairSide(newX, newY, oldX, oldY, playerFloor)) return true;
   let blocked = false;
@@ -13732,7 +13749,9 @@ setInterval(() => {
   //     커서의 첫 사람에서 끊겨 **한 명도** 결정을 못 받는다 — 새벽(하루 경계) 조각이 도는 몇 초 동안 깬 주민 168~400 명이 걸음 문 0.
   //     평소(앞쪽 일 < 15ms)엔 머리가 몇 ms 늦게 잡힐 뿐이다(틱이 그만큼 길어질 수 있다 — 표).
   _decT0 = Date.now();   // ★[T562 ④] 생활층 배정도 같은 머리로 묻는다(`decBudgetOver`)
-  for (const pid of npcs) {
+  // ★[T689] 몸통 하나(`_decOne` — 종전 몸통 글자 그대로를 `do … while (false)` 로 감쌌다 · `continue` = 이 사람 끝 · `break` = 멈춤(`_stopAt` 이 선다)) ·
+  //   끔 = 같은 `for…of` + 멈추면 `break` · 켬 = `Set.forEach`(살아 있는 순회 — 같은 차례) + 멈춤 깃발(멈춘 뒤 사람은 아무것도 안 묻는다 — 시계도 안 읽는다) · 반복 결과 객체 0
+  const _decOne = (pid) => { do {
     if (!_curHit) { if (pid !== _npcCursor) continue; _curHit = true; }   // 지난 틱에 **못 한** 그 사람부터 한다
     const npc = players.get(pid);
     if (!npc || npc.hp <= 0) continue;
@@ -13748,7 +13767,9 @@ setInterval(() => {
     if (!npc.canadiaVillage && !_t316WalkAlways(npc) && !isPositionActive(npc.x, npc.y)) { npc.vx = 0; npc.vy = 0; continue; }
     if ((Date.now() - _decT0) > 15) { _stopAt = pid; break; }   // ★[T324 ⓒ] 이 사람은 **아직 안 했다** — 다음 틱이 여기서 시작한다 · ★[T562 ④] 머리 = 루프 머리
     npcStep(npc, dt, now);
-  }
+  } while (false); return _stopAt !== null; };
+  if (T689_GC) { let _decStop = false; npcs.forEach((pid) => { if (!_decStop && _decOne(pid)) _decStop = true; }); }
+  else for (const pid of npcs) if (_decOne(pid)) break;
   _npcCursor = _curHit ? _stopAt : null;   // 한 바퀴를 다 돌았거나(=null) 커서가 사라졌으면 처음부터
   _decT0 = 0;
   if (_stopAt !== null) _walk.cut++;       // ★[T324] 예산에 닿은 틱 수(관측 전용)
@@ -13972,7 +13993,8 @@ setInterval(() => {
   // === 입력 큐 구동 — 사람: 입력 1개=1스텝(밀린 만큼 따라잡기), NPC: 틱당 1스텝 ===
   //   클라가 보낸 입력을 받은 순서대로 그대로 재생 → 서버 위치(seq=k) = 클라 예측(seq=k) → 리컨실리에이션 보정 0.
   //   빈 틱(입력 없음)엔 안 움직여 '유령 이동' 제거. GC로 밀린 입력은 틱당 최대 8개까지 흡수(catch-up).
-  for (const p of players.values()) {
+  // ★[T689] 몸통 하나(`_moveOne` — 종전 몸통 글자 그대로를 `do … while (false)` 로 감쌌다) · 끔 = 같은 `for…of` · 켬 = `Map.forEach`(같은 차례) · 반복 결과 객체 0
+  const _moveOne = (p) => { do {   // ★[T689] 한 바퀴 `do … while (false)` — 몸통 글자 그대로(`continue` = 이 몸 끝 · 안쪽 입력 고리의 `break` 는 그 고리만)
     if (p.handingOff) continue;
     if (p.isNpc) {
       if (p.simCaravan) continue; // §4-4 Stage 4B: 캐러밴 실체 NPC — 이동은 villages.js 페이싱(경로 보간+벽 판정)이 전담(이중 이동 방지)
@@ -14025,7 +14047,9 @@ setInterval(() => {
       //     어차피 움직이지도 않는다(movePlayerStep 을 안 부른다) — 다음 입력이 오면 이어서 감속한다.
       if (consumed === 0 && MOVE_PARAMS.model !== 'accel') { p.vx = 0; p.vy = 0; }
     }
-  }
+  } while (false); };
+  if (T689_GC) players.forEach(_moveOne);
+  else for (const p of players.values()) _moveOne(p);
   if (_wwVerify && _WW) _wwCheck(_walk.steps - _wwSteps0);   // ★[T461] 견줌 — JS 정본이 옮긴 몸을 커널 답과 비트로(분리 전 · 같은 자리)
   sepNpcs(dt);   // ★[생활 층 ①] NPC 상호 분리 — 이동 적용 직후(같은 틱 위치에 보정) 틱당 1회
 
@@ -14158,7 +14182,7 @@ setInterval(() => {
     if (floor === 0) return true; // 0층은 항상 땅
     const cx = Math.floor(absX / BUILDING_SIZE);
     const cy = Math.floor(absY / BUILDING_SIZE);
-    const near = qtColl ? qtColl.queryCircle(absX, absY, BUILDING_SIZE) : Array.from(buildings.values());   // ★[T449 ③] 벽 질의 격자(밭 0)
+    const near = qtColl ? (T689_GC ? qtColl.queryCircleScratch(absX, absY, BUILDING_SIZE) : qtColl.queryCircle(absX, absY, BUILDING_SIZE)) : Array.from(buildings.values());   // ★[T449 ③] 벽 질의 격자(밭 0) · ★[T689] 켬: 같은 차례 빌린 배열(고리 안 질의 0)
     for (const b of near) {
       if (b.type !== 'floor' && b.type !== 'stair') continue;
       const bcx = Math.floor(b.x / BUILDING_SIZE);
@@ -14245,7 +14269,14 @@ setInterval(() => {
   if (!T385_ONE_SWEEP) for (const m of mobs.values()) _fallStepM(m);
   // ★[T421 ③] **몹 한 바퀴** — T385 가 주민만 했다(§4 회부). 몹마다 종전 차례(계단 → 낙하) · 활성 여부는 **한 번**
   //   (계단은 z·층만 쓴다 — x·y·hp 를 안 바꾼다 ⇒ 낙하가 보는 활성·hp 는 계단 앞과 같다). 의존 표: 몹끼리 서로 안 읽는다.
-  if (T385_ONE_SWEEP) for (const m of mobs.values()) {
+  if (T385_ONE_SWEEP && T689_GC) mobs.forEach((m) => {   // ★[T689] 같은 몸통 · 같은 차례(Map.forEach 도 살아 있는 순회 — 도는 중 지움·더함이 for…of 와 같다) · 반복 결과 객체 0
+    if (m.hp <= 0) return;
+    const act = isPositionActive(m.x, m.y);
+    if (!act) return;
+    _stairStepM(m, act);
+    _fallStepM(m, act);
+  });
+  else if (T385_ONE_SWEEP) for (const m of mobs.values()) {
     if (m.hp <= 0) continue;
     const act = isPositionActive(m.x, m.y);
     if (!act) continue;
@@ -14396,14 +14427,16 @@ setInterval(() => {
   if (T385_ONE_SWEEP) {
     if (stairCellDirty) rebuildStairCellCache();   // ③ 있음/없음을 재기 전에 캐시를 맞춘다(종전엔 첫 조회가 했다 — 같은 일)
     _stairNone = stairCellCache.size === 0;
-    for (const p of players.values()) {
+    const _sweepOne = (p) => {
       const act = _needAct(p) ? isPositionActive(p.x, p.y) : true;
       _stairStepP(p);
       _fallStepP(p, act);
       _gaugeStep(p);
       _hpRegenStep(p, act);
       _gaugeNetStep(p);
-    }
+    };
+    if (T689_GC) players.forEach(_sweepOne);   // ★[T689] 같은 몸통 · 같은 차례 · 반복 결과 객체 0
+    else for (const p of players.values()) _sweepOne(p);
   }
 
   // === Mob AI ===
@@ -14739,11 +14772,17 @@ setInterval(() => {
 //   왜 틱에 얹나: `setTimeout` 을 사람마다 걸면 재접속·승계·크래시에서 타이머가 새고,
 //   **서버 시각이 정본**이라는 규약도 흐려진다. 틱은 이미 돌고 있고 값이 싸다(사람 수만큼의 비교).
 const _fishStats2 = { bites: 0, expired: 0 };
+let _fishNow = 0;
 function _fishPoll(now) {
-  for (const [, p] of players) {
+  if (T689_GC) { _fishNow = now; players.forEach(_fishPollOne); return; }   // ★[T689] 같은 차례(살아 있는 순회) · [키, 값] 배열 0
+  for (const [, p] of players) _fishPollOne(p, now);
+}
+function _fishPollOne(p, now) {   // 종전 `_fishPoll` 고리 몸통 글자 그대로(`continue` → `return`)
+  if (typeof now !== 'number') now = _fishNow;   // forEach 는 (값, 키, 지도)를 넘긴다 — 둘째 인자는 키라 버린다
+  {
     const f = p._fish;
-    if (f && f.state === 'fight') { if (now >= f.landAt) _fishLand(p, f, now); continue; }   // ★[T609 ②] 싸움 끝 = 손에 든다(켬만 생긴다)
-    if (!f || f.state !== 'wait') continue;
+    if (f && f.state === 'fight') { if (now >= f.landAt) _fishLand(p, f, now); return; }   // ★[T609 ②] 싸움 끝 = 손에 든다(켬만 생긴다)
+    if (!f || f.state !== 'wait') return;
     if (!f.bit && now >= f.biteAt) {
       f.bit = true; _fishStats2.bites++;
       // ★손맛 — 찌가 흔들린다. 클라가 이 상태로 찌 애니메이션을 바꾼다(HUD 아니라 세계 안).
@@ -14770,7 +14809,8 @@ const _saveStats = { saved: 0, skippedClean: 0, skippedSuperseded: 0, ms: 0 };
 function _periodicSave(now) {
   if (!players.size) return;
   const arr = players; let n = 0;
-  for (const [, p] of arr) {
+  for (const _e of (T689_GC ? arr.values() : arr)) {   // ★[T689] 켬: 값만 도는 같은 차례 — [키, 값] 배열 0(앞의 커서 건너뛰기에서도 사람마다 하나씩 지었다)
+    const p = T689_GC ? _e : _e[1];
     if (n++ < _saveCursor) continue;
     _saveCursor = n;
     if (p.isNpc) continue;

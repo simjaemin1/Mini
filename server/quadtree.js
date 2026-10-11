@@ -5,6 +5,8 @@
 //   qt.insert({ x: 100, y: 200, ref: someObj });
 //   const refs = qt.queryCircle(150, 250, 80);  // 반경 80 안 ref들
 
+const _qcCand = [], _qcOut = [];   // ★[T689] `queryCircleScratch` 가 빌려 주는 두 배열(모든 트리가 같이 쓴다)
+
 class Quadtree {
   constructor(x, y, w, h, capacity = 8, depth = 0, maxDepth = 8) {
     this.x = x; this.y = y; this.w = w; this.h = h;
@@ -87,6 +89,29 @@ class Quadtree {
       if (dx * dx + dy * dy <= r2) out.push(ref);
     }
     return out;
+  }
+
+  // ★[T689] 같은 답 · 할당 0 판 — `queryCircle` 과 같은 차례(같은 queryRect 순회 → 같은 거리 거름)로 **빌려 쓰는 배열** 하나에 담아 준다.
+  //   ⚠돌려준 배열은 다음 `queryCircleScratch` 부름까지만 옳다(모든 트리가 한 배열을 같이 쓴다) — 받은 쪽이 그 배열을 도는 동안
+  //     다른 질의를 부르지 않는 자리(벽·바닥·울타리 술어 — 고리 안에서 묻는 것 0)에서만 쓴다.
+  queryCircleScratch(cx, cy, r) {
+    const n = this._qrInto(cx - r, cy - r, r * 2, r * 2, _qcCand, 0);
+    const r2 = r * r; let k = 0;
+    for (let i = 0; i < n; i++) { const ref = _qcCand[i]; const dx = ref.x - cx, dy = ref.y - cy; if (dx * dx + dy * dy <= r2) _qcOut[k++] = ref; }
+    _qcOut.length = k;
+    return _qcOut;
+  }
+  _qrInto(rx, ry, rw, rh, out, k) {   // `queryRect` 와 같은 순회 · 같은 차례 — 끝 자리를 돌려준다(배열 길이는 안 고친다)
+    if (!this.intersects(rx, ry, rw, rh)) return k;
+    const E = this.entities;
+    for (let i = 0; i < E.length; i++) { const e = E[i]; if (e.x >= rx && e.x < rx + rw && e.y >= ry && e.y < ry + rh) out[k++] = e.ref; }
+    if (this.divided) {
+      k = this.nw._qrInto(rx, ry, rw, rh, out, k);
+      k = this.ne._qrInto(rx, ry, rw, rh, out, k);
+      k = this.sw._qrInto(rx, ry, rw, rh, out, k);
+      k = this.se._qrInto(rx, ry, rw, rh, out, k);
+    }
+    return k;
   }
 
   // 가장 가까운 1개 (rough — bounding box로만 추리고 거리 계산)
