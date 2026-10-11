@@ -282,7 +282,23 @@ function _rebuildCoarseVerify(t) {
   if (badC || badChg || badGen || badGr || badRel) { I.st.vBad++; if (I.st.vBad <= 3) console.error(`[${S.zoneId}] 🛤️ [T688 견줌] 어긋남 day ${t}: 코스 ${badC} · 바뀐 칸 ${badChg} · 오름 ${badGen} · 등급 셀 ${badGr}(${S.stats.graded}/${I.graded}) · 풀림 ${badRel}(${FR.length}/${relI.length})`); }
 }
 function _t688Rebuild(t) { if (I.ready && T688_ON) _rebuildCoarseInc(t); else if (I.ready && T688_VERIFY) _rebuildCoarseVerify(t); else _rebuildCoarse(t); }
-function roadDayPerf() { return T688 ? Object.assign({ mode: T688, lvl: I.lvl.size, sched: I.sched.size, dueDays: I.due.size, flRate: +_flRate.toFixed(3), flBatches: _flSt.n, flMaxMs: +_flSt.maxMs.toFixed(2), flMaxRows: _flSt.maxRows, flCapped: _flSt.capped, flSnap: _flSt.snap, flPending: !!_fl }, I.st) : null; }
+// ★[T696] 하네스 문 — 셀 값(v·d)을 손으로 고친 뒤 부른다(`test-regrow-block ⓑⓖ` 가 `d` 를 뒤로 고쳐 쓴다 · 현실엔 없는 일).
+//   T688 등급·문턱 날 색인을 **지금 값**으로 다시 잡는다(값은 안 바꾼다 · 스탬프·조회 감쇠 자리가 하는 그 일). 끔(종전 재구축)이면 할 일이 없다.
+function retouchCell(cx, cy) {
+  if (!S.ready || !I.ready) return;
+  const k = kOf(cx, cy), r = S.cells.get(k);
+  _i688Set(k, r || null, r ? (r.v >= T2 ? 2 : (r.v >= T1 ? 1 : 0)) : 0);
+}
+// ★[T696] 다음 길 하루 경계에 풀릴 수 있는 다져진 길 셀 — 문턱 날이 내일 안인 등급 2 셀 + 낮에 등급 2 에서 내려간 셀(`I.low`).
+//   존이 그 둘레의 원시 판을 미리 지어 두는 데만 쓴다(읽기만 · 캐시 데우기 · 빠진 셀은 경계에서 지금처럼 짓는다). T688 끔이면 빈 목록.
+function unpaveSoonKeys() {
+  if (!S.ready || !I.ready) return [];
+  const out = [], t1 = S.lastDay + 1;
+  for (const [dd, a] of I.due) { if (dd > t1) continue; for (const k of a) if (S.paved.has(k) && I.lvl.get(k) === 2) out.push(k); }
+  for (const k of I.low) if (S.paved.has(k)) out.push(k);
+  return out;
+}
+function roadDayPerf() { return (T688_ON || T688_VERIFY) ? Object.assign({ mode: T688, lvl: I.lvl.size, sched: I.sched.size, dueDays: I.due.size, flRate: +_flRate.toFixed(3), flBatches: _flSt.n, flMaxMs: +_flSt.maxMs.toFixed(2), flMaxRows: _flSt.maxRows, flCapped: _flSt.capped, flSnap: _flSt.snap, flPending: !!_fl }, I.st) : null; }
 
 // ★[T578 ④] 교역로 A* 가 h 를 줄일 몫 — 스텝 비용 할인의 최저값(`COST` 의 가장 작은 값 · 수 사본 0).
 function courseCostMin() { return (S.ready && S.coarse.size) ? Math.min(...COST) : 1; }   // 등급 칸이 하나도 없으면 할인도 없다(h 그대로)
@@ -491,4 +507,4 @@ function onGameTick(now) {
 // ★[T566] 다져진 길 셀 수 · 키(읽기만 — 존의 부팅 걷기 · 자)
 function pavedCount() { return S.ready ? S.paved.size : 0; }
 function pavedKeys() { return S.ready ? [...S.paved] : []; }
-module.exports = { roadDayPerf, init, onGameTick, stampCell, stampEntityPx, speedMulOf, levelOf, courseCostMul, courseCostMin, courseCostMinIn, takeCoarseChanges, frozenView, coarseGen, isReady: () => S.ready, clientRoads, pavedNear, pavedCount, pavedKeys, ENABLED, _S: S };
+module.exports = { roadDayPerf, retouchCell, unpaveSoonKeys, init, onGameTick, stampCell, stampEntityPx, speedMulOf, levelOf, courseCostMul, courseCostMin, courseCostMinIn, takeCoarseChanges, frozenView, coarseGen, isReady: () => S.ready, clientRoads, pavedNear, pavedCount, pavedKeys, ENABLED, _S: S };
