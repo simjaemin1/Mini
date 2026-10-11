@@ -125,6 +125,7 @@ function makeTree(dir, ref) {
     rep('      const rv = j.f();', "      const _t686a = process.hrtime.bigint(); const rv = j.f(); globalThis.__T686J && __T686J(j.s || j.n, Number(process.hrtime.bigint() - _t686a) / 1e6);");
     rep('  try { _closeDay(C); }', "  { const _t686c = process.hrtime.bigint(); try { _closeDay(C); } catch (e) { console.error(`[${state.zoneId}] 🏘️ 일틱 마감 로그 실패:`, e.message); } globalThis.__T686J && __T686J('(마감 꼬리 _closeDay)', Number(process.hrtime.bigint() - _t686c) / 1e6); }\n  if (0) try { _closeDay(C); }");
     fs.writeFileSync(vp, s); execFileSync(process.execPath, ['--check', vp]); }
+  if (process.env.T686_PATCH) require(path.resolve(process.env.T686_PATCH))(dir);   // [T688] 덧 탐침(사본에만 · 예: scripts/t688-probe.js)
 }
 
 async function run(tag) {
