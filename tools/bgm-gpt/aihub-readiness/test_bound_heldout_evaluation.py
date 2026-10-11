@@ -200,6 +200,19 @@ class BoundHeldoutEvaluationTests(unittest.TestCase):
             bound.inspect_result_binding(
                 fixture.output, expected_checkpoint_sha256=fixture.checkpoint_sha),
             "complete_bound_to_checkpoint")
+        self.assertEqual(
+            bound.inspect_current_checkpoint(fixture.output, fixture.checkpoints),
+            "complete_bound_to_checkpoint")
+
+    def test_inspect_detects_checkpoint_changed_after_binding(self) -> None:
+        fixture = self.fixture
+        bound.evaluate_and_bind(**fixture.arguments(),
+                                evaluator=lambda **kwargs: fixture.evaluation_report(),
+                                contract_reader=lambda path: fixture.contract)
+        fixture.set_checkpoint(b"changed-after-binding")
+        self.assertEqual(
+            bound.inspect_current_checkpoint(fixture.output, fixture.checkpoints),
+            "binding_checkpoint_mismatch")
 
     def test_changed_checkpoint_after_evaluation_stays_unbound(self) -> None:
         fixture = self.fixture

@@ -369,6 +369,22 @@ def inspect_result_binding(output_dir: Path, *, expected_checkpoint_sha256: str 
         return "binding_invalid"
 
 
+def inspect_current_checkpoint(output_dir: Path, checkpoint_dir: Path) -> str:
+    """Recheck the checkpoint itself as well as the locally bound result bytes."""
+    try:
+        with trial._exclusive_private_lock(checkpoint_dir):
+            current = _checkpoint_snapshot(checkpoint_dir)
+            binding, _ = _json_private(
+                output_dir / "result" / BINDING_NAME, max_bytes=MAX_REPORT_BYTES)
+            if (binding.get("checkpoint_marker_sha256") != current["marker_sha256"]
+                    or binding.get("checkpoint_bytes") != current["checkpoint_bytes"]):
+                return "binding_checkpoint_mismatch"
+            return inspect_result_binding(
+                output_dir, expected_checkpoint_sha256=current["checkpoint_sha256"])
+    except (pilot.PilotError, trial.TrialError, BindingError, OSError):
+        return "binding_checkpoint_missing_or_invalid"
+
+
 def evaluate_and_bind(*, source_manifest: Path, split_manifest: Path,
                       upstream_root: Path, checkpoint_dir: Path,
                       output_dir: Path, minutes: int = 30, pairs: int = 3,
@@ -423,9 +439,11 @@ def main() -> None:
     bind.add_argument("--pairs", type=int, default=3)
     inspect = sub.add_parser("inspect")
     inspect.add_argument("--output-dir", type=Path, required=True)
+    inspect.add_argument("--checkpoint-dir", type=Path, required=True)
     args = parser.parse_args()
     if args.action == "inspect":
-        print(json.dumps({"status": inspect_result_binding(args.output_dir)}))
+        print(json.dumps({"status": inspect_current_checkpoint(
+            args.output_dir, args.checkpoint_dir)}))
         return
     try:
         result = evaluate_and_bind(
