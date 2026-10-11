@@ -245,7 +245,8 @@ is untested on the user's 4060, so the WSL gate must demonstrate an actual
 GPU operation and a tiny DDSP train step before a full pilot. A failed gate
 would not prove daegeum ML synthesis impossible; it would reject this
 specific environment/configuration. [IRCAM's PyTorch DDSP](https://github.com/acids-ircam/ddsp_pytorch)
-has a published 48 kHz F0/loudness path but needs code/compatibility work.
+has a published 16 kHz, 100 Hz F0/loudness example configuration, but its
+legacy preprocessing and CUDA/CPU-only training script need Mac adaptation.
 [RAVE](https://github.com/acids-ircam/RAVE) is not an independently
 score-controlled model and its [code license is CC BY-NC
 4.0](https://raw.githubusercontent.com/acids-ircam/RAVE/master/LICENSE), so
@@ -322,3 +323,36 @@ separate air/noise/gesture states. Its preprocessor normally recomputes
 loudness from audio, so actual score-only inference must disable that and
 verify the trained model's exact feature meaning and frame rate. Even with
 the bridge, audible breath timbre and attack realism remain unproven.
+
+## Bounded Mac MPS data-path pilot
+
+`mac_mps_ddsp_features.py` and `mac_mps_ddsp_pilot.py` provide a separate,
+small IRCAM PyTorch DDSP feasibility path. This is **not** the Magenta 250 Hz
+path above: the pinned IRCAM example has 16 kHz audio and 100 Hz (160-sample)
+pitch/loudness frames. The local YIN pitch extractor replaces CREPE for this
+pilot and is an imperfect measurement, especially for fast ornaments. The
+loudness feature was compared against the upstream formula with librosa 0.11
+on synthetic sine, vibrato, noise, and silence; maximum absolute differences
+were below 0.000001 after matching the 0.11 zero-padding behavior. Neither
+synthetic agreement nor F0 confidence proves that a recording is a pure solo
+or that its MIDI is aligned.
+
+The `private` command deliberately requires the approved, private 16 kHz
+manifest and song-held-out split. It rejects validation data, duplicate names
+or hashes, cross-split song groups or inodes, repository/public paths,
+world-readable private inputs, excess disk use, more than ten clips or twenty
+steps. Source WAVs and their feature windows remain in memory. Ordinary
+Python socket APIs are guarded during the private run, but this is **not** an
+OS network sandbox. It writes only a 0600 aggregate report in a separate
+0700 directory—no checkpoint, generated audio, per-file features, or source
+names.
+
+On 2026-10-12, the Mac M4 MPS trial selected one four-second window from each
+of five different training song groups and completed 20/20 steps with finite
+loss and gradients, no CPU fallback, and no held-out input. The private report
+records this limited fact only. It establishes a runnable local **learning
+path**, not timbre quality, generalization, vibrato timing, or a playable new
+BGM. The 64 ms YIN window attenuated 5–7 Hz vibrato depth by roughly 14–27%
+on synthetic tones, so it must not be used as validated expressive ground
+truth. A longer pilot will need a private checkpoint and strictly held-out
+reconstruction listening before score rendering can be judged.
