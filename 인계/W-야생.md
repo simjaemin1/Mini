@@ -5,6 +5,29 @@
 > 원래 `V-마을배치.md` 3-사 에 있었고, 이 파일이 서면서 **통째로 옮겨 왔다**(V 쪽엔 참조 한 줄만).
 > ⚠`인계/README.md` 색인은 **PM 만 편집**한다 — 이 파일의 행 추가는 보고서에 "공통 갱신 제안"으로 냈다.
 
+## 7-고기마무리. ★★2026-10-11 [T694] — **곰고기 열량 줄 · 날고기 HP 출처 · 모닥불 굽기·삶기(USDA 수율 · 품목) · 곳간 넣기** (손잡이 `T694_GAME_MEAT=1` · 없음 = 끔 = main 바이트 · 가지 `batch/game-meat-cook-1011` · 승인 대기)
+
+> 전문 `보고/T694_2026-10-11.md` · 근거표 `설계/고증_사냥고기_조리.md`. 정본 `server/game-meat.js`(손잡이 `on()` · 품목 이름 · 조리 수율 표 · 각 정본에 한 줄씩 주입) · 하네스 `scripts/test-game-meat.js`.
+
+```
+손잡이   game-meat.js   on() = T694_GAME_MEAT === '1' ∧ T636 드롭 kg 켬 — 없음·빈 값·0·true = 끔(main) · T636=0 이면 같이 꺼짐
+곰       animals.js     DROP_KG 곰 줄 t694:'meat_bear' — dropsOf 가 고기 칸 이름을 그 자리에서 바꿔 끼운다(36kg 그대로)
+         kcal.js        KCAL_PER_KG.meat_bear = 1610(USDA SR Legacy "Game meat, bear, raw" FDC 173845 · 161kcal/100g · 북미 곰)
+굽기     game-meat.js   RAW 표 — 사슴 굽기 340 g / 곰 삶기 277 g (USDA 단위 무게 "1 lb 날것 → 익힌 것") ÷ 453.59237
+         zone.js        GameMeat.install 한 줄(먹기 = meat_raw·meat_cooked 줄 사본 · 이름표 · 조리 두 줄 item:true)
+                        doCook — recipe.item 이면 **품목**(시설 대기열 items·lotItems → doCraftCollect) · 대기열 자리 먼저 본다
+         kcal.js §2     익힌 것 열량 = 재료 × 1.12(유도 · 표에 안 적음) · weights.js 익힌 kg = 날것 × 수율(주입)
+곳간     villages.js    PV_DEPOSIT_MAP 넷 — meat_game 항등 · meat_bear → meat_game(접기) · 익힌 둘 → cooked_food · 끔이면 game-meat.js 를 안 부른다
+보관     spoil.js       날것 RAW_FLESH 2.5일(meat_game 5 → 2.5) · 익힌 것 COOKED 3.5일 · lots.js 로트 셋 추가
+```
+
+**★★다음 세션이 알아야 할 것**
+
+1. ★★**모닥불 요리는 원래 요리 인스턴스다**(영양 = 숙련 × 재료 등급 — 열량·무게 없음). 사냥 고기 두 줄만 `item: true` 로 **품목**을 낸다 — 같은 창에 두 문법이 같이 있다(재민 칸에 올렸다). `produces` 를 읽는 건 그 갈래뿐이다(물병 족보 (83) 는 그대로 유효).
+2. ★★곰고기는 곳간에서 **meat_game 으로 접힌다**(econ 곰 재화 없음) — 꺼내면 사슴·들짐승고기로 나온다(열량 보존). 넣기 단위는 열량(사슴 1kg = 0.49단위 · 곰 0.66) — T647 인계 1 이 예고한 무게비 → 열량비 갈아탐이 켬에서 일어난다.
+3. ★날고기 −3 은 kg 당이다(1개 = 1kg) — 수의 근거가 없다(2026-05-29 손글씨). 굽기·삶기가 그 짝이다(익힌 줄엔 hpDelta 없음).
+4. 곰의 익힌 줄은 **삶기**다(USDA 곰 구이 줄 없음) · 굽기 한 번 = 1kg(사슴 33kg = 33번) · 상한 날고기를 구우면 갓 구운 것(요리 인스턴스와 같은 문법) — 셋 다 재민 칸.
+
 ## 6-켬기본. ★★2026-10-05 [T647] — **드롭 kg 켬 기본 · 사슴 존별 아종 · 사체 고기 먹기** (`T636_DROP_KG` 없음 = 켬 · `=0` = 종전 · 가지 `batch/drop-kg-on-1005` · 승인 대기)
 
 > 전문 `보고/T647_2026-10-05.md`. PM 결정(위임 · 재민 거부권). 정본 `server/animals.js`(`dropsOf(종, 존)`) · `server/kcal.js`(meat_game 줄) · 하네스 `scripts/test-drop-kg.js`.
