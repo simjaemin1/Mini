@@ -233,7 +233,10 @@ WSL/RTX 4060 compatibility gate and official DDSP commands. The separate
 keeps whole labeled songs out of training. On the private `C001` set it
 created hard-link-only partitions: 216 training clips (4,189.610 s, 15 song
 groups) and 34 held-out clips (739.201 s, 4 song groups). No model was
-trained, and no source audio or checkpoint entered Git.
+trained, and no source audio or checkpoint entered Git. A read-only check at
+DDSP's default 4 s window/1 s hop found 3,432 candidate training windows;
+21 had full-window RMS below -50 dBFS and none below -60 dBFS. This checks
+for pervasive long silence, not pitch quality or solo instrumentation.
 
 The official DDSP solo-instrument model accepts measured F0 and loudness;
 that makes it an instrument-timbre reconstruction experiment, **not** a
@@ -266,3 +269,56 @@ boundaries, aligns MIDI notes to WAV using pitch/attack evidence and manual
 spot checks, and evaluates on the held-out songs. Only then can a
 score-conditioned model learn *when* and *how* to enter/leave vibrato. The
 DDSP timbre pilot alone cannot make that musical decision.
+
+### Small acoustic check of the VB01 labels
+
+`audit_vibrato_boundaries.py` is a **read-only diagnostic**, not a validated
+expression model. It uses 80 ms autocorrelation-style F0 frames and a strict
+3.5–8.5 Hz periodic-modulation test on 0.5 s windows. A synthetic-only unit
+suite checks flat, modulated, breath-noisy, silent, and gliding cases. The
+approved private `C001` input yielded 177 clips with an isolated candidate
+VB01 span; the fixed-seed run sampled one span from each of 160 clips.
+
+The center of 120/160 annotated spans met the strict modulation criterion.
+An unannotated control from the same clip was analyzable in 119 cases; 18 of
+those met it. The start-side windows were both analyzable in 112 cases, with
+41 flat-to-modulated patterns; the end-side windows were both analyzable in
+85 cases, with 27 modulated-to-flat patterns and 49 still modulated after the
+label. This supports further VB01 **presence** research, but not treating the
+published start/end milliseconds as precise acoustic onsets/releases. The
+half-second windows blur boundaries by roughly 0.3 s; breath noise, attacks,
+unlabeled ornaments, and estimator errors remain. The unannotated controls
+are not confirmed straight tones, and the isolated sample is not a random
+sample of every VB01 event. No private waveform, per-event result, or model
+was exported. Acoustic pitch-class counts are only a stratified sample with
+possible overtone errors; they do not establish MIDI/audio alignment or
+eight-bar-score compatibility.
+
+The same script sampled eight half-second windows from each of the 250
+prepared clips: 1,564/2,000 windows had analyzable F0. In 65,217
+high-confidence frames within MIDI notes 55–90, the current score's G4 and
+C5 appeared in only 83 and 295 frames respectively. A comparison of the
+five exact score pitches G4/A4/C5/D5/E5 versus the same melody transposed
+two semitones (A4/B4/D5/E5/F#5) counted 25,043 versus 37,943 correlated
+frames in this stratified sample. This raises a **coverage question** for a
+model trained only on `C001`; it is not a music-fit score or authorization
+to transpose the existing draft. YIN can make overtone/octave errors, and
+these acoustic estimates are not aligned to the supplied MIDI or the new
+score. A future audition may compare keys, but neither one is selected here.
+
+## Score-only conditioning bridge, not a renderer
+
+`score_ddsp_conditioning_adapter.py` converts the existing authorial
+19.2-second expression plan's 48 kHz/300 Hz controls in memory into a
+16 kHz/250 Hz **candidate** F0/loudness grid (307,200 samples and 4,800
+control rows). It preserves explicit rest, breath-start, rearticulation,
+and slur ownership across the rate change; it does not read audio, load a
+checkpoint, train, synthesize, or modify game playback. Its boundary tests
+use only the public score and synthetic mutations.
+
+The 250 Hz choice matches Magenta DDSP's published **default** solo setup,
+not every DDSP checkpoint. That decoder takes F0 and loudness, not the
+separate air/noise/gesture states. Its preprocessor normally recomputes
+loudness from audio, so actual score-only inference must disable that and
+verify the trained model's exact feature meaning and frame rate. Even with
+the bridge, audible breath timbre and attack realism remain unproven.
