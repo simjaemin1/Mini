@@ -5950,7 +5950,8 @@ function tickPerf() {
   }
   return { days: R.length, last: _tickPerf.last, probe: probeStats(),
            maxChunk: mc, maxChunkAt: mcAt, frameMax: fm,   // ★[T42-b] 창 전체(위 주석)
-           total: R.length ? { p50: q(tot, 0.5), p95: q(tot, 0.95), max: Math.max(...tot) } : null, stages };
+           total: R.length ? { p50: q(tot, 0.5), p95: q(tot, 0.95), max: Math.max(...tot) } : null, stages,
+           ...(T690_DAY_PHASE ? { t690: Object.assign({ pend: (state._t690 && state._t690.list.length) || 0 }, _t690Stat) } : {}) };   // ★[T690] 켬 판만 칸이 선다
 }
 
 // =============================================================================
@@ -6016,6 +6017,7 @@ function onGameTick(now) {
   //   정상적으로는 절대 겹치지 않지만, 겹치면 그건 **밀린 것**이지 건너뛸 일이 아니다.
   if (state.tickJobs) { _drainTickJobs(now); return; }
   if (state.dayFreeze) return;
+  if (T690_DAY_PHASE) { const n = _t690Due(now); if (n) { _t690Open(n, gameDayOf(now) > state.lastGameDay); _drainTickJobs(now); return; } }   // ★[T690] 위상이 온 마을의 생활층(다음 경계 전엔 남은 전부)
   const day = gameDayOf(now);
   if (day <= state.lastGameDay) return;
   state.lastGameDay = day;
@@ -6100,6 +6102,61 @@ function _econDayParts(C, add) {
   add('econ', () => mute(() => P.trade()), 'econ:trade');
   add('econ', () => mute(() => P.caravans()), 'econ:caravan');
   add('econ', () => { mute(() => { P.tail(); _econDayWar(); }); _econDayAfter(); }, 'econ:tail');
+}
+
+// ★★[T690 2026-10-11] **하루 일을 하루에 편다** — 손잡이 `T690_DAY_PHASE`(★기본 끔 · `=1` 켬 · 1단계 = 생활층 조각만).
+//   T686: 날 경계 2.2초 창에 30ms 넘는 틱 40/48 — 그 짐의 가장 큰 몫이 생활층(`life:쉼표` × 51 · 경계 하나 0.5~1.5초)이다.
+//   켜면 하루 마감은 생활층을 안 얹고(`_openDayJobs` 의 그 한 줄) 마을마다 **하루 안의 제 때**에 그 마을 생활층만 따로 연다:
+//     위상 k/V — k = (dbId + 그 경계의 게임일) mod V · V = 그날 얼린 마을 수(새 수 0 · 마을 번호·날에서 유도 · 날마다 차례가 돈다).
+//     게임일 안 몫(`(now − 원점) ÷ 하루 − 날`)이 k/V 를 넘은 첫 틱에 그 마을(들)을 작은 마감(같은 조각 문 · 같은 드레인 · 같은 대기 큐 ·
+//     몸 얼림)으로 돈다. 다음 경계는 남은 마을을 **먼저 다 돌린 뒤에** 연다(생활(d) → econ(d+1) 차례는 그대로 — 손 넣기 `_lifeHandsIn` 의 짝).
+//   ★같은 날을 본다: 작은 마감의 `_dayNow()` 는 **그 경계의 시각**이다(종전 생활층이 보던 그 값 — 게임일 `_d` 가 같다).
+//   ⚠바뀌는 것(값이 바뀐다 · 설계 판정 몫 — 보고 T690): ① 마을 차례(번호 순 → 날마다 도는 위상 순) ② 생활층과 그날 낮 몸의 일(걷는 손 ·
+//     벌목 · 채집 · 사냥)의 앞뒤 — 종전엔 경계 한 순간에 모든 마을이 손을 비웠다 ③ 같은 마감 안의 뒤 조각(`dist` — 생활층이 무효화한 거리행렬은
+//     다음 경계에) ④ 저장 큐가 그 마을 생활층 **앞**에 돌 수 있다(영속만 · 값 무변).
+const T690_DAY_PHASE = process.env.T690_DAY_PHASE === '1';
+const _t690Stat = { plans: 0, opens: 0, flushed: 0, vils: 0, frameMax: 0 };
+function _t690Plan(C) {
+  const V = C.vils.length, D = gameDayOf(C.now);
+  const L = C.vils.map((vil, i) => ({ vil, i, k: (((vil.dbId | 0) + D) % V + V) % V }));
+  L.sort((a, b) => a.k - b.k || a.i - b.i);
+  state._t690 = { now: C.now, day: D, V, list: L };
+  _t690Stat.plans++;
+}
+// 지금 열 마을 수 — 다음 경계면 남은 전부(flush) · 아니면 위상이 지난 것만
+function _t690Due(now) {
+  const P = state._t690; if (!P || !P.list.length) return 0;
+  const x = (now - state.epoch) / state.dayMs;
+  if (Math.floor(x) > P.day) return P.list.length;
+  const frac = x - P.day;
+  let n = 0; while (n < P.list.length && P.list[n].k / P.V <= frac) n++;
+  return n;
+}
+function _t690Open(n, flush) {
+  const P = state._t690, take = P.list.splice(0, n);
+  const C = { now: P.now, t0: Date.now(), stg: {}, chunks: 0, maxChunk: 0, maxChunkAt: '', order: [], vils: take.map((e) => e.vil), t690: true };
+  const J = [];
+  _lifeDayJobs(C.vils, (nm, f, sub) => J.push(sub ? { n: nm, f, s: sub } : { n: nm, f }));
+  state.tickCtx = C; state.tickJobs = J;
+  _t690Stat.opens++; _t690Stat.vils += take.length; if (flush) _t690Stat.flushed += take.length;
+}
+function _t690Closed(C) { if ((C.frameMax || 0) > _t690Stat.frameMax) _t690Stat.frameMax = C.frameMax; }
+
+// ⑩ 생활층 조각 — 마을 하나씩(★[T690] 하루 마감과 위상 조각이 **같은 함수**로 얹는다 · 몸통은 종전 그 자리 그대로 옮겼다).
+function _lifeDayJobs(vils, add) {
+  if (T523_LIFE_SLICE) for (const vil of vils) {
+    //   ★[T523] 켬 — 한 마을의 하루를 발생기로 들고 쉼표마다 'retry'(T85 문법 — 같은 자리 맨 앞으로 · 같은 하루 안의 다음 조각)
+    let g = null, at = 0;
+    add('life', () => {
+      try {
+        if (!g) g = _lifeDailySteps(vil); else _t523Pause += Date.now() - at;
+        if (g.next().done) return;
+        at = Date.now(); return 'retry';
+      } catch (e) { console.error(`[${state.zoneId}] 생활층 일일 훅 실패(${vil.name}):`, e.message); }
+    }, 'life:쉼표');
+  } else for (const vil of vils) add('life', () => {
+    try { _lifeDaily(vil); } catch (e) { console.error(`[${state.zoneId}] 생활층 일일 훅 실패(${vil.name}):`, e.message); }
+  });
 }
 
 // 하루 경계: 그날 할 일을 조각 목록으로 **세우기만** 한다(아무것도 실행하지 않는다).
@@ -6198,19 +6255,8 @@ function _openDayJobs(now) {
   // ⑩ 생활층 — **일틱의 80%**. 마을 경계로 쪼갠다. 한 조각(마을 한 곳)이 중앙 227ms 라
   //   여전히 예산을 넘는다 — 그 사실은 `/perf` 가 그대로 말하고, 그 안의 수술은 회부다(§4).
   add('life', () => { for (const k in _lifeSub) _lifeSub[k] = 0; for (const k in _lifeSubMax) delete _lifeSubMax[k]; _lifeMax = 0; _lifeMaxName = ''; });
-  if (T523_LIFE_SLICE) for (const vil of C.vils) {
-    //   ★[T523] 켬 — 한 마을의 하루를 발생기로 들고 쉼표마다 'retry'(T85 문법 — 같은 자리 맨 앞으로 · 같은 하루 안의 다음 조각)
-    let g = null, at = 0;
-    add('life', () => {
-      try {
-        if (!g) g = _lifeDailySteps(vil); else _t523Pause += Date.now() - at;
-        if (g.next().done) return;
-        at = Date.now(); return 'retry';
-      } catch (e) { console.error(`[${state.zoneId}] 생활층 일일 훅 실패(${vil.name}):`, e.message); }
-    }, 'life:쉼표');
-  } else for (const vil of C.vils) add('life', () => {
-    try { _lifeDaily(vil); } catch (e) { console.error(`[${state.zoneId}] 생활층 일일 훅 실패(${vil.name}):`, e.message); }
-  });
+  if (T690_DAY_PHASE) _t690Plan(C);   // ★[T690] 켬 — 마을마다 하루 안의 제 때(위상)에 연다(아래 `_t690Plan`) · 끔 = 아래 한 줄(종전 그대로)
+  else _lifeDayJobs(C.vils, add);
 
   // ⑪ BFS 거리행렬 — 무효화됐을 때만.
   add('dist', () => {
@@ -6305,6 +6351,7 @@ function _drainTickJobs(now) {
   { const fd = Date.now() - f0; if (fd > (C.frameMax || 0)) C.frameMax = fd; }
   if (J.length) return;                       // 아직 마감 중 — 다음 프레임에 이어서
   state.tickJobs = null; state.tickCtx = null;  // ★먼저 푼다 — 안 그러면 방류된 요청이 도로 큐에 걸린다
+  if (C.t690) { _t690Closed(C); _drainVillageWaitQ(); return; }   // ★[T690] 위상 조각(생활층만) — 하루 마감 꼬리(`_closeDay` 로그·계측)는 경계 마감만
   try { _closeDay(C); } catch (e) { console.error(`[${state.zoneId}] 🏘️ 일틱 마감 로그 실패:`, e.message); }
   _drainVillageWaitQ();
 }
