@@ -324,6 +324,18 @@ loudness from audio, so actual score-only inference must disable that and
 verify the trained model's exact feature meaning and frame rate. Even with
 the bridge, audible breath timbre and attack realism remain unproven.
 
+`score_ircam_conditioning_adapter.py` separately maps the same unchanged
+score to the IRCAM pilot's 100 Hz grid (1,920 rows). Its F0, authored dB
+intent, rest/breath/rearticulation ownership, and optional +2-semitone
+comparison are **candidate controls only**. The model's measured
+weighted-log-spectrum loudness is not the score's authored dB envelope;
+the adapter deliberately emits no model loudness tensor and rejects
+inference. Training-only loudness calibration, bound to the exact feature
+extractor, split, and checkpoint, plus held-out and listening validation are
+required before those controls can drive this model. A 12 ms authored slur
+occupies only one or two 100 Hz rows, so its rendered articulation is also
+unproven. Public-score/synthetic tests enforce these boundaries.
+
 ## Bounded Mac MPS data-path pilot
 
 `mac_mps_ddsp_features.py` and `mac_mps_ddsp_pilot.py` provide a separate,
