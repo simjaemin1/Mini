@@ -83,6 +83,16 @@ const { seedRand: _t340Rng, pidHash: _pidHash, seedOf: _seedOf, makeStream: _mak
 const TB = require('./tick-budget');   // ★[T687] 한 틱 공용 예산(손잡이 `T687_SHARED_BUDGET` · 끔 = 문마다 제 예산 그대로)
 //   ★[T687 ②] 같은 손잡이로 하루 마감 통짜를 더 잘게 — 생활층 한 마을의 갈래 경계 쉼표 · 사냥 밴드 짓기 뒤 · 인구 재동기 마을 하나씩(차례 그대로 · 끔 = 종전 글자)
 const T687_ON = TB.ON;
+// ★★[T695 2026-10-11] 결정 문 먼저 — 손잡이 `T695_DEC_FIRST=1`(공용 예산 켬일 때만 · 기본 끔 = T687 차례 그대로).
+//   마감 조각이 이어지는 틱과 교역로 선계산 · 다시 파기는 존 틱의 **주민 결정 문 뒤**(`deferLate` — 존이 부른다)에서 남은 몫을 쓴다.
+//   거기서 몫이 없어 마감이 한 조각도 못 돌았으면 다음 틱은 종전 자리(마을 onGameTick)에서 먼저 돈다 — 번갈아(새 수 0).
+const T695_LATE = () => TB.DEC_FIRST && !state._t695Starved;
+function deferLate(now) {
+  if (!TB.DEC_FIRST) return;
+  if (state._t695W) { state._t695W = false; if (!state.tickJobs) { if (!TB.out(TICK_SLICE_MS, 'route')) try { _routeWarmStep(); } catch (e) {} if (!TB.out(TICK_SLICE_MS, 'redig')) try { _routeRedigStep(); } catch (e) {} } }
+  if (state._t695C) { state._t695C = false;
+    if (state.tickJobs) { if (TB.out(TICK_SLICE_MS, 'close')) state._t695Starved = true; else _drainTickJobs(now); } }
+}
 // ★[T350] 흐름 둘 — 결정마다 클로저를 만들지 않는다(할당 0 · T345).
 //   `_diceLife` = 주민 생활층 결정(순수 해시 · 신원·셀·날·틱) · `_diceVil` = 마을 자리(출생·배치 · 스트림).
 const _diceLife = _makeStream(), _diceVil = _makeStream();
@@ -5985,7 +5995,9 @@ function onGameTick(now) {
   // ★[10차 T4 장마당] 캐러밴 체류(phase='linger') 집합이 바뀔 때만 방송 — 평시 O(캐러밴 수) 비교 1회
   try { _mktBroadcast(); } catch (e) { console.error(`[${state.zoneId}] 🏪 장마당 플래그 방송 실패:`, e.message); }
   // ★[T42 ①ⓑ] 교역로 선계산 한 걸음 — 마감 중이 아니고 **사람이 없을 때만**(위 주석).
-  if (!state.tickJobs) { if (!TB.out(TICK_SLICE_MS, 'route')) try { _routeWarmStep(); } catch (e) {} if (!TB.out(TICK_SLICE_MS, 'redig')) try { _routeRedigStep(); } catch (e) {} }   // ★[T687] 켬이면 이 틱 남은 몫이 없을 때 쉰다   // ★[T578 ④] 데우기 다음 차례 — 길이 바뀐 날 교역로를 다시 판다
+  //   ★[T695] 결정 문 먼저(`T695_DEC_FIRST`)면 이 둘(교역로 선계산 · 다시 파기)은 결정 문 **뒤**(`deferLate`)에서 남은 몫으로 돈다 — 끔이면 이 줄 그대로.
+  if (T695_LATE()) { if (!state.tickJobs) state._t695W = true; }
+  else if (!state.tickJobs) { if (!TB.out(TICK_SLICE_MS, 'route')) try { _routeWarmStep(); } catch (e) {} if (!TB.out(TICK_SLICE_MS, 'redig')) try { _routeRedigStep(); } catch (e) {} }   // ★[T687] 켬이면 이 틱 남은 몫이 없을 때 쉰다   // ★[T578 ④] 데우기 다음 차례 — 길이 바뀐 날 교역로를 다시 판다
   // ★자정 스파이크 분산: DB 직렬화(마을당 ~10KB JSON — 자정 틱 비용의 주범)는 이후 틱에 1마을/틱씩 배수(drain).
   //   econ 틱 자체는 일괄 유지 — 교역(tickWorldV2)이 마을 간 원자적이라 쪼개면 정합이 깨짐. 30Hz 예산(33ms) 보호.
   if (state.saveQueue && state.saveQueue.length) {
@@ -6019,7 +6031,8 @@ function onGameTick(now) {
   //   마감 중에는 새 날을 열지 않는다(아래 첫 줄). 하루가 24분이고 마감이 3초 남짓이라
   //   정상적으로는 절대 겹치지 않지만, 겹치면 그건 **밀린 것**이지 건너뛸 일이 아니다.
   //   ★[T687] 켬이면 이 틱 공용 몫이 이미 바닥났을 때 마감 조각을 이 틱엔 쉰다(다음 틱 · 차례 그대로).
-  if (state.tickJobs) { if (!TB.out(TICK_SLICE_MS, 'close')) _drainTickJobs(now); return; }
+  //   ★[T695] 결정 문 먼저면 이어지는 마감 조각도 결정 문 뒤(`deferLate`)에서 남은 몫으로 — 지난 틱 거기서 몫이 없어 못 돌았으면 이 틱은 종전 자리(번갈아 · 둘 다 굶지 않게).
+  if (state.tickJobs) { if (T695_LATE()) { state._t695C = true; return; } state._t695Starved = false; if (!TB.out(TICK_SLICE_MS, 'close')) _drainTickJobs(now); return; }
   if (state.dayFreeze) return;
   if (T690_DAY_PHASE) { const n = _t690Due(now); if (n) { _t690Open(n, gameDayOf(now) > state.lastGameDay); _drainTickJobs(now); return; } }   // ★[T690] 위상이 온 마을의 생활층(다음 경계 전엔 남은 전부)
   const day = gameDayOf(now);
@@ -11697,7 +11710,7 @@ module.exports = { streamStat, fishPerf, woodPerf, foragePerf, farmPerf,   // �
   _actDay, _actTake,   // ★[T334] 예산 장부 몸통(어부 전용 — T341 이 나무에서 걷어냈다) — 하네스가 규칙을 옮겨 적지 않게 내준다
   _t341TripsPerDay, _t341TreesPerLoad, _t398Cells,   // ★[T341] 하루 왕복 수·짐당 그루 — **걸음이 정한다**(하네스가 유도를 다시 계산해 대조한다) · ★[T398] 나무꾼 후보 셀(고리 · 자·하네스가 이 함수를 부른다)
  
-  init, onGameTick, invalidateTradeDistances, npcLifeTick, lifeDebug, econDay, econDayT,
+  init, onGameTick, deferLate, invalidateTradeDistances, npcLifeTick, lifeDebug, econDay, econDayT,
   chiefOf, chiefGreetAsk, chiefGreetHas, chiefWalking,
   bedSlotOf,   // ★[T540] 관측 — 침대 슬롯·집(`/walkdbg`)   // ★[T529] 촌장이 온다(손잡이 `T529_CHIEF_WALKS` · 읽는 곳 하나)
   tickPerf,   // ★[T1 §0] 일틱 단계별 소요 — zone.js `/perf` 가 소비(계측 전용)
