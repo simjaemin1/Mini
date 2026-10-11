@@ -81,3 +81,26 @@ and AI Hub credit, not redistribution of raw or merely edited recordings.
 Record the terms presented to the actual applicant and review near-copy
 outputs before any game release. None of this licenses the separate
 DDSP-Gugak checkpoint.
+
+## Read-only local label ZIP inventory
+
+After the applicant has lawfully obtained a **small label ZIP**, inspect one
+explicitly named local archive without extracting it:
+
+```bash
+python3 tools/bgm-gpt/aihub-readiness/inventory_label_zip.py \
+  /absolute/path/to/TL_전통국악_F_민속악.zip
+python3 -m unittest tools/bgm-gpt/aihub-readiness/test_inventory_label_zip.py -v
+```
+
+The command makes no network request, reads no API key, writes no file, and
+prints only aggregate counts plus per-JSON-member indices, sizes, and parse
+statuses. It never prints local paths, ZIP member names,
+annotation values other than the literal `WN01` tally, or performer names.
+Unsafe ZIP member names and symlinks are skipped; nothing is extracted.
+Archive, member, total JSON byte, line, and JSON-structure limits bound the
+scan. It reports exact `WN01` string values and matches in the documented
+`instrument_cd` field **only in successfully parsed files**. These are not
+unique clip counts, verified daegeum solos, or usable WAV/MIDI pairs. Skipped
+and unparseable files make the totals lower bounds. The actual AI Hub schema
+must still be checked against authorized data before relying on the counts.
