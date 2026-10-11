@@ -36,7 +36,7 @@ own rights/scope review. Do not pass NGC originals, AI Hub recordings, or
 DDSP-Gugak assets into this synthetic-only command. No game/default/public
 asset permission is inferred here.
 
-## 71470 acquisition facts (checked 2026-10-11)
+## 71470 acquisition facts (checked 2026-10-12)
 
 The [official dataset page](https://www.aihub.or.kr/aihubdata/data/view.do?currMenu=115&dataSetSn=71470&topMenu=100)
 lists 900 clips tagged as daegeum (`WN01`) and a total compressed dataset
@@ -61,16 +61,16 @@ in other genre packages. A safe acquisition sequence after approval is to
 download the small label archives first, count `WN01` entries and inspect
 their references, then fetch only a source archive whose labels contain
 usable candidates. Do not infer that the folk ZIP contains all 900 clips.
-The folk training ZIP alone would exceed this Mac's safe extraction budget;
-the 1 GB validation ZIP may be a practical first real-audio sample after
-checking its labels and the current free space. Store API keys only in an
-untracked, private location, never in this repository or logs.
-
-The dataset Download button currently leads to an AI Hub login form. Its
-application requires the applicant's own identity and purpose; the page
-states domestic applicants only. No account credentials, approval receipt,
-API key, dataset WAV/MIDI/JSON, or WSL RTX 4060 training host is established
-in this project yet.
+The folk training ZIP alone would exceed this Mac's safe extraction budget.
+The applicant completed the site login and consent flow and the page reported
+automatic approval on 2026-10-12. No credentials or API keys are stored by
+these tools. Ten small label archives have been downloaded to a private,
+Git-ignored directory outside this repository. They are **not** training
+audio. The folk *validation* labels contain no `WN01` entries; the small
+creative/fusion validation source archives are candidates for a first
+read-only audio/schema review, not for model training. The WSL RTX 4060
+training host is not yet verified. Keep original WAV/MIDI/JSON and derived
+per-clip data out of the repository and public assets.
 
 The [AI Hub policy](https://www.aihub.or.kr/intrcn/guid/usagepolicy.do?currMenu=151&topMenu=105)
 restricts the supplied raw data to model training, prohibits unapproved
@@ -84,20 +84,31 @@ DDSP-Gugak checkpoint.
 
 ## Read-only local label ZIP inventory
 
-After the applicant has lawfully obtained a **small label ZIP**, inspect one
-explicitly named local archive without extracting it:
+After the applicant has lawfully obtained a **small label TAR** from the
+browser, normalize its single `.zip.part0` member to a new private ZIP. The
+normalizer verifies archive bounds and ZIP CRCs, never extracts JSON, rejects
+repository output paths, and creates the ZIP with mode `0600`. Then inspect
+that explicitly named ZIP without extracting it:
 
 ```bash
+python3 tools/bgm-gpt/aihub-readiness/normalize_label_tar.py \
+  --tar /absolute/private/path/label.tar \
+  --output /absolute/private/path/label.zip
 python3 tools/bgm-gpt/aihub-readiness/inventory_label_zip.py \
-  /absolute/path/to/TL_전통국악_F_민속악.zip
+  /absolute/private/path/label.zip
+python3 -m unittest tools/bgm-gpt/aihub-readiness/test_normalize_label_tar.py -v
 python3 -m unittest tools/bgm-gpt/aihub-readiness/test_inventory_label_zip.py -v
 ```
 
-The command makes no network request, reads no API key, writes no file, and
+The inventory command makes no network request, reads no API key, writes no file, and
 prints only aggregate counts plus per-JSON-member indices, sizes, and parse
 statuses. It never prints local paths, ZIP member names,
 annotation values other than the literal `WN01` tally, or performer names.
-Unsafe ZIP member names and symlinks are skipped; nothing is extracted.
+Traversal-style ZIP member names and symlinks are skipped; nothing is
+extracted. AI Hub's actual validation-label ZIP uses a single leading `/`
+on JSON member names. Those entries are counted under
+`read_only_absolute_name_members` and parsed **only in memory** through their
+ZIP entry handles, never used as filesystem paths.
 Archive, member, total JSON byte, line, and JSON-structure limits bound the
 scan. It reports exact `WN01` string values and matches in the documented
 `instrument_cd` field **only in successfully parsed files**. These are not

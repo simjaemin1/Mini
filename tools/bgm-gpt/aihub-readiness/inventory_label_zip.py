@@ -32,10 +32,16 @@ class InventoryError(Exception):
 def _safe_member_name(name: str) -> bool:
     if not name or "\\" in name or "\x00" in name:
         return False
+    # AI Hub label ZIPs can use a single leading slash. We only read entries
+    # through ZipFile.open(ZipInfo), never extract them to filesystem paths.
+    if name.startswith("//"):
+        return False
     path = PurePosixPath(name)
     parts = name.split("/")
+    if path.is_absolute():
+        parts = parts[1:]
     return (
-        not path.is_absolute()
+        bool(parts)
         and ":" not in parts[0]
         and all(part not in ("", ".", "..") for part in parts)
     )
@@ -121,6 +127,7 @@ def inspect_zip(path: Path) -> dict[str, object]:
     archive_members = 0
     json_members = 0
     skipped_unsafe_names = 0
+    read_only_absolute_names = 0
     skipped_non_json = 0
     examined_bytes = 0
     exact_values_total = 0
@@ -140,6 +147,8 @@ def inspect_zip(path: Path) -> dict[str, object]:
                 if not _safe_member_name(info.filename) or _is_symlink(info):
                     skipped_unsafe_names += 1
                     continue
+                if info.filename.startswith("/"):
+                    read_only_absolute_names += 1
                 kind = _member_kind(info.filename)
                 if kind is None:
                     skipped_non_json += 1
@@ -204,6 +213,7 @@ def inspect_zip(path: Path) -> dict[str, object]:
             "members": archive_members,
             "json_or_jsonl_members": json_members,
             "skipped_unsafe_members": skipped_unsafe_names,
+            "read_only_absolute_name_members": read_only_absolute_names,
             "skipped_non_json_members": skipped_non_json,
             "json_bytes_read": examined_bytes,
         },

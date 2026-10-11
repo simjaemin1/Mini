@@ -81,6 +81,7 @@ class LabelZipInventoryTests(unittest.TestCase):
             with zipfile.ZipFile(zip_path, "w") as archive:
                 archive.writestr("../escape.json", '{"instrument_cd":"WN01"}')
                 archive.writestr("/absolute.json", '{"instrument_cd":"WN01"}')
+                archive.writestr("//network-share.json", '{"instrument_cd":"WN01"}')
                 archive.writestr("C:\\windows.json", '{"instrument_cd":"WN01"}')
                 archive.writestr("C:/windows.json", '{"instrument_cd":"WN01"}')
                 link = zipfile.ZipInfo("linked.json")
@@ -92,8 +93,9 @@ class LabelZipInventoryTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0)
             report = json.loads(result.stdout)
             self.assertEqual(report["archive"]["skipped_unsafe_members"], 5)
-            self.assertEqual(report["wn01_evidence"]["exact_wn01_string_values"], 1)
-            self.assertEqual(len(report["files"]), 1)
+            self.assertEqual(report["archive"]["read_only_absolute_name_members"], 1)
+            self.assertEqual(report["wn01_evidence"]["exact_wn01_string_values"], 2)
+            self.assertEqual(len(report["files"]), 2)
             self.assertFalse((Path(temp).parent / "escape.json").exists())
             self.assertNotIn("escape.json", result.stdout)
 
