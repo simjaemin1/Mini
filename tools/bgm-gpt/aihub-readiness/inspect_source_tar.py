@@ -31,6 +31,7 @@ MAX_TAR_BYTES = 8 * 1024**3
 MAX_TARS = 128
 MAX_TAR_MEMBERS = 128
 MAX_PARTS = 128
+MAX_PART_SUFFIX_DIGITS = 12
 MAX_CENTRAL_DIRECTORY_BYTES = 16 * 1024**2
 MAX_ZIP_MEMBERS = 50_000
 MAX_REPORTED_ENTRIES = 64
@@ -149,9 +150,9 @@ class _JoinedTarParts:
 
 def _tar_parts(
     archives: list[tuple[tarfile.TarFile, int, int]],
-) -> tuple[list[_TarPart], list[dict[str, int]], list[dict[str, int]]]:
+) -> tuple[list[_TarPart], list[dict[str, int | str]], list[dict[str, int]]]:
     found: dict[int, _TarPart] = {}
-    part_rows: list[dict[str, int]] = []
+    part_rows: list[dict[str, int | str]] = []
     tar_rows: list[dict[str, int]] = []
     zip_base: str | None = None
     global_member_count = 0
@@ -169,6 +170,8 @@ def _tar_parts(
             match = PART_RE.fullmatch(name)
             if match:
                 base, index_text = match.groups()
+                if len(index_text) > MAX_PART_SUFFIX_DIGITS:
+                    raise SourceInspectionError("zip_part_limit")
                 part_number = int(index_text)
             elif name.endswith(".zip"):
                 base, part_number, direct_zip = name, 0, True
@@ -178,7 +181,7 @@ def _tar_parts(
                 zip_base = base
             if base != zip_base or part_number in found or (direct_zip and global_member_count != 0):
                 raise SourceInspectionError("mixed_or_duplicate_zip_parts")
-            if part_number >= MAX_PARTS:
+            if len(found) >= MAX_PARTS or part_number > MAX_TAR_BYTES:
                 raise SourceInspectionError("zip_part_limit")
             found[part_number] = _TarPart(fd, member)
             part_rows.append({
@@ -194,10 +197,28 @@ def _tar_parts(
         raise SourceInspectionError("empty_tar")
     if direct_zip and len(found) != 1:
         raise SourceInspectionError("mixed_or_duplicate_zip_parts")
-    if set(found) != set(range(len(found))):
+    ordered_suffixes = sorted(found)
+    ordinal_contiguous = ordered_suffixes == list(range(len(found)))
+    byte_offset_contiguous = True
+    next_byte_offset = 0
+    for suffix in ordered_suffixes:
+        if suffix != next_byte_offset:
+            byte_offset_contiguous = False
+            break
+        next_byte_offset += found[suffix].member.size
+    if not ordinal_contiguous and not byte_offset_contiguous:
         raise SourceInspectionError("missing_zip_part")
-    ordered_parts = [found[index] for index in range(len(found))]
-    return ordered_parts, sorted(part_rows, key=lambda row: row["part_number"]), tar_rows
+    numbering_scheme = (
+        "direct_zip" if direct_zip else
+        "single_part" if len(found) == 1 else
+        "ordinal" if ordinal_contiguous else "byte_offset"
+    )
+    ordered_parts = [found[suffix] for suffix in ordered_suffixes]
+    ordered_rows = sorted(part_rows, key=lambda row: int(row["part_number"]))
+    for part_index, row in enumerate(ordered_rows):
+        row["part_index"] = part_index
+        row["numbering_scheme"] = numbering_scheme
+    return ordered_parts, ordered_rows, tar_rows
 
 
 def _zip_directory_preflight(view, size: int, max_members: int, max_directory_bytes: int) -> tuple[int, int]:
@@ -232,7 +253,9 @@ def _zip_directory_preflight(view, size: int, max_members: int, max_directory_by
         if len(zip64_record) != 56 or zip64_record[:4] != b"PK\x06\x06":
             raise SourceInspectionError("zip64_end_record_invalid")
         record_bytes = struct.unpack_from("<Q", zip64_record, 4)[0]
-        if not 44 <= record_bytes <= 1024 or zip64_offset + 12 + record_bytes != absolute_end_offset - 20:
+        # Python's ZipFile assumes the minimum ZIP64 record without an
+        # extensible data sector. Reject that unsupported variant explicitly.
+        if record_bytes != 44 or zip64_offset + 12 + record_bytes != absolute_end_offset - 20:
             raise SourceInspectionError("zip64_end_record_invalid")
         _, _, _, _, disk64, directory_disk64, disk_entries64, entries64, directory_bytes64, directory_offset64 = struct.unpack(
             "<4sQHHIIQQQQ", zip64_record
@@ -296,12 +319,16 @@ def _zip_structure(view: _JoinedTarParts) -> tuple[dict[str, object], dict[str, 
                     raise SourceInspectionError("zip_total_declared_size_limit")
                 if compressed_total > view.size:
                     raise SourceInspectionError("zip_total_compressed_size_invalid")
-                suffix = Path(normalized).suffix.lower() if not is_dir else ""
+                raw_suffix = Path(normalized).suffix.lower() if not is_dir else ""
+                suffix = (
+                    raw_suffix if raw_suffix in LINK_SUFFIXES
+                    else "(other)" if raw_suffix else "(none)"
+                ) if not is_dir else ""
                 if is_dir:
                     directories += 1
                 else:
-                    suffixes[suffix or "(none)"] += 1
-                    if suffix in LINK_SUFFIXES:
+                    suffixes[suffix] += 1
+                    if raw_suffix in LINK_SUFFIXES:
                         source_paths[normalized].append(index)
                 if index < MAX_REPORTED_ENTRIES:
                     records.append({
@@ -480,7 +507,12 @@ def _wn01_pair_linkage(stems: set[str], source_paths: dict[str, list[int]]) -> d
     both_unique = 0
     for stem in stems:
         wav = _match_name(stem + ".wav", source_paths, by_basename)
-        mid = _match_name(stem + ".mid", source_paths, by_basename)
+        mid_alternatives = [
+            _match_name(stem + extension, source_paths, by_basename)
+            for extension in (".mid", ".midi")
+        ]
+        found_mid = [status for status in mid_alternatives if status != "missing"]
+        mid = "ambiguous_basename" if len(found_mid) > 1 else found_mid[0] if found_mid else "missing"
         wav_status[wav] += 1
         mid_status[mid] += 1
         if wav in ("exact_path", "unique_basename") and mid in ("exact_path", "unique_basename"):
@@ -518,6 +550,7 @@ def inspect_source_tar(tar_paths: Path | list[Path], label_zip_path: Path | None
             "schema": "mini.aihub-71470-source-tar-inspection.v1",
             "tar_bytes": total_tar_bytes,
             "tar_members": len(part_rows),
+            "zip_part_numbering": part_rows[0]["numbering_scheme"],
             "tars": tar_rows,
             "parts": part_rows,
             "zip": zip_report,

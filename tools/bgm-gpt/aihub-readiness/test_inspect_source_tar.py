@@ -46,6 +46,37 @@ def run_inspector(source: Path | list[Path], label: Path | None = None) -> subpr
 
 
 class InspectSourceTarTests(unittest.TestCase):
+    def test_byte_offset_suffixes_across_tars_require_exact_cumulative_sizes(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp)
+            first = directory / "offset-zero.tar"
+            second = directory / "offset-next.tar"
+            payload = zip_bytes({"nested/song.wav": b"sound", "nested/song.mid": b"score"})
+            cut = len(payload) // 2
+            self.assertGreater(cut, 1)
+            write_tar(first, [("source.zip.part0", payload[:cut], None)])
+            write_tar(second, [(f"source.zip.part{cut}", payload[cut:], None)])
+            result = run_inspector([second, first])
+            self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
+            report = json.loads(result.stdout)
+            self.assertEqual(report["zip_part_numbering"], "byte_offset")
+            self.assertEqual([part["part_number"] for part in report["parts"]], [0, cut])
+            self.assertEqual([part["part_index"] for part in report["parts"]], [0, 1])
+            self.assertEqual(report["zip"]["members"], 2)
+
+            write_tar(second, [(f"source.zip.part{cut + 1}", payload[cut:], None)])
+            result = run_inspector([first, second])
+            self.assertEqual(result.returncode, 2)
+            self.assertEqual(json.loads(result.stdout)["code"], "missing_zip_part")
+
+    def test_numeric_suffix_is_bounded_before_integer_conversion(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            source = Path(temp) / "source.tar"
+            write_tar(source, [("source.zip.part" + "9" * 1000, b"x", None)])
+            result = run_inspector(source)
+            self.assertEqual(result.returncode, 2)
+            self.assertEqual(json.loads(result.stdout)["code"], "zip_part_limit")
+
     def test_split_parts_across_separate_tars_are_read_without_copying(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             directory = Path(temp)
@@ -115,6 +146,13 @@ class InspectSourceTarTests(unittest.TestCase):
             result = run_inspector(source)
             self.assertEqual(json.loads(result.stdout)["code"], "zip_directory_limit")
 
+            extended_zip64 = bytearray(zip64)
+            struct.pack_into("<Q", extended_zip64, 4, 45)
+            write_tar(source, [("source.zip.part0", ordinary[:end] + extended_zip64 + b"x" +
+                                struct.pack("<4sIQI", b"PK\x06\x07", 0, end, 1) + sentinel_end, None)])
+            result = run_inspector(source)
+            self.assertEqual(json.loads(result.stdout)["code"], "zip64_end_record_invalid")
+
     def test_wn01_extensionless_stems_link_wav_and_mid_separately(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             directory = Path(temp)
@@ -151,6 +189,46 @@ class InspectSourceTarTests(unittest.TestCase):
                 "missing": 1, "unique_basename": 1,
             })
             self.assertNotIn("ABCDEFGHIJKL", result.stdout)
+
+    def test_midi_extension_is_accepted_but_two_score_extensions_are_ambiguous(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp)
+            source = directory / "source.tar"
+            label = directory / "label.zip"
+            label.write_bytes(zip_bytes({"one.json": json.dumps({
+                "music_type_info": {"instrument_cd": "WN01"},
+                "music_source_info": {"music_src_nm": "song", "music_src_fmt": "wav"},
+            }).encode()}))
+            for members, linked, ambiguous in (
+                ({"song.wav": b"a", "song.midi": b"b"}, 1, 0),
+                ({"song.wav": b"a", "song.midi": b"b", "song.mid": b"c"}, 0, 1),
+            ):
+                with self.subTest(members=sorted(members)):
+                    write_tar(source, [("source.zip.part0", zip_bytes(members), None)])
+                    report = json.loads(run_inspector(source, label).stdout)
+                    self.assertEqual(report["wn01_pair_linkage"]["both_wav_and_mid_uniquely_named"], linked)
+                    self.assertEqual(report["wn01_pair_linkage"]["mid_name_status"].get("ambiguous_basename", 0), ambiguous)
+
+    def test_private_extension_is_bucketed_without_leaking_name(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            source = Path(temp) / "source.tar"
+            write_tar(source, [("source.zip.part0", zip_bytes({
+                "song.PRIVATE_PERSON": b"secret", "song.wav": b"audio",
+            }), None)])
+            result = run_inspector(source)
+            self.assertEqual(result.returncode, 0)
+            report = json.loads(result.stdout)
+            self.assertEqual(report["zip"]["file_suffix_counts"], {"(other)": 1, ".wav": 1})
+            self.assertNotIn("PRIVATE_PERSON", result.stdout)
+
+    def test_very_long_part_number_returns_fixed_error(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            source = Path(temp) / "source.tar"
+            write_tar(source, [("source.zip.part" + "9" * 5000, b"invalid", None)])
+            result = run_inspector(source)
+            self.assertEqual(result.returncode, 2)
+            self.assertEqual(json.loads(result.stdout)["code"], "zip_part_limit")
+            self.assertEqual(result.stderr, "")
 
     def test_single_part_zip_structure_and_filename_links_without_name_leaks(self) -> None:
         with tempfile.TemporaryDirectory() as temp:

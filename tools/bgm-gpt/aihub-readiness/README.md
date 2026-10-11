@@ -1,10 +1,12 @@
-# Paired daegeum training readiness: synthetic quality smoke only
+# Daegeum training readiness and private source triage
 
 The existing [`aihub-paired-ingest`](../../aihub-paired-ingest/README.md) gate
 checks an explicitly named future local WAV/MIDI/JSON bundle for scope, path,
 hash, length, and shallow file signature. It **does not** decode WAV, parse
 MIDI notes, or compare performance and annotation timing. This independent
 prototype tests those missing ideas using generated sine-wave fixtures only.
+Later sections describe separate, bounded tools for the applicant's approved
+private AI Hub 71470 data.
 
 ```bash
 python3 tools/bgm-gpt/aihub-readiness/synthetic_pair_quality.py
@@ -26,15 +28,13 @@ not a pass/fail musical judgment. Thresholds are test probes, not empirically
 calibrated dataset acceptance criteria. Passing this synthetic smoke does not
 mean a real pair is usable for training, sounds authentic, or is licensed.
 
-**Rights gate before any real-data use:** Obtain the actual bundle and its
-applicable terms through a separately authorized process; preserve the
-project's access/rights-review record; inspect the real annotation schema;
-review this prototype's thresholds and codec support on a small, lawful
-sample; and create a separate data adapter that re-verifies the existing
-ingest report's hashes. That adapter and any model training require their
-own rights/scope review. Do not pass NGC originals, AI Hub recordings, or
-DDSP-Gugak assets into this synthetic-only command. No game/default/public
-asset permission is inferred here.
+**Rights gate:** The applicant separately accepted the AI Hub 71470 terms
+and the site reported automatic approval on 2026-10-12. The real-data tools
+below are confined to this approved local R&D dataset and private directory.
+The synthetic smoke above still must not receive NGC originals, AI Hub
+recordings, or DDSP-Gugak assets. Neither approval nor a passed smoke test
+grants permission to ship source audio, use a third-party checkpoint, or
+replace a game/default asset.
 
 ## 71470 acquisition facts (checked 2026-10-12)
 
@@ -50,8 +50,9 @@ adapter; the synthetic fixture above does not mirror that schema.
 The [official API guide](https://www.aihub.or.kr/devsport/apishell/list.do?currMenu=403&topMenu=100)
 supports public file listing and, after dataset approval, downloading by
 `filekey`;
-it recommends **2–3×** the compressed size for download/extraction. The
-current Mac has only about 15 GiB free, so a full download here is not safe.
+it recommends **2–3×** the compressed size for download/extraction. The Mac
+had about 15 GiB free before selective acquisition, so a full
+download/extraction here is not safe.
 The public file listing (read-only `-mode l -datasetkey 71470`, 2026-10-11)
 groups audio by **genre**, not by instrument. In particular, traditional
 folk-music training source `TS_전통국악_F_민속악.zip` is 7 GB (filekey `504208`)
@@ -64,13 +65,10 @@ usable candidates. Do not infer that the folk ZIP contains all 900 clips.
 The folk training ZIP alone would exceed this Mac's safe extraction budget.
 The applicant completed the site login and consent flow and the page reported
 automatic approval on 2026-10-12. No credentials or API keys are stored by
-these tools. Ten small label archives have been downloaded to a private,
-Git-ignored directory outside this repository. They are **not** training
-audio. The folk *validation* labels contain no `WN01` entries; the small
-creative/fusion validation source archives are candidates for a first
-read-only audio/schema review, not for model training. The WSL RTX 4060
-training host is not yet verified. Keep original WAV/MIDI/JSON and derived
-per-clip data out of the repository and public assets.
+these tools. Ten small label archives and three selected source archives are
+held in a private, Git-ignored directory outside this repository. The WSL
+RTX 4060 training host is not yet verified. Keep original WAV/MIDI/JSON and
+derived per-clip data out of the repository and public assets.
 
 The [AI Hub policy](https://www.aihub.or.kr/intrcn/guid/usagepolicy.do?currMenu=151&topMenu=105)
 restricts the supplied raw data to model training, prohibits unapproved
@@ -115,3 +113,112 @@ scan. It reports exact `WN01` string values and matches in the documented
 unique clip counts, verified daegeum solos, or usable WAV/MIDI pairs. Skipped
 and unparseable files make the totals lower bounds. The actual AI Hub schema
 must still be checked against authorized data before relying on the counts.
+
+## Read-only source archive and pair triage
+
+Source packages arrive as TAR files containing one `.zip.part0` or a ZIP split
+across `.partN` members, sometimes in separate TAR downloads. `N` can be an
+ordinal or the ZIP byte offset (the actual `TS_E` uses 0, 1073741824, ...).
+The inspector verifies that the pieces form a contiguous ZIP under either
+scheme; it does not assume every `N` is a part number.
+The structural inspector reads their central directory in place (including
+bounded ZIP64) without copying, extracting, or decompressing source audio.
+Pass each TAR explicitly and in any order; missing or mixed parts fail closed:
+
+```bash
+python3 tools/bgm-gpt/aihub-readiness/inspect_source_tar.py \
+  --tar /absolute/private/path/source_part0.tar \
+  --label-zip /absolute/private/path/label.zip
+python3 -m unittest tools/bgm-gpt/aihub-readiness/test_inspect_source_tar.py -v
+```
+
+Its aggregate `wn01_pair_linkage` checks only whether each WN01 label's
+extensionless `music_source_info.music_src_nm` has a unique `.wav` and `.mid`
+name in the source ZIP. It does **not** prove that the payloads are readable,
+that the audio is solo daegeum, or that notes and performance times align.
+No source paths, filenames, performer names, or payload bytes are printed.
+
+For a bounded first pass over the actual WN01 payloads, use the separate
+read-only audit. It reads only uniquely named pairs, at most 64 MiB per WAV,
+8 MiB per MIDI, and 2 GiB of payloads in total, one file at a time. It checks
+basic PCM format, labeled duration, approximate silence/clipping, MIDI
+note-on count, and a **rough** MIDI end time:
+
+```bash
+python3 tools/bgm-gpt/aihub-readiness/aihub_pair_quality_audit.py \
+  --source-tar /absolute/private/path/source_part0.tar \
+  --label-zip /absolute/private/path/label.zip
+python3 -m unittest tools/bgm-gpt/aihub-readiness/test_aihub_pair_quality_audit.py -v
+```
+
+Repeat `--source-tar` for every split TAR. Outputs contain aggregate counts
+only. A good header or matching duration is not an audio-quality judgment;
+the MIDI end time may reflect notation or trailing events rather than an
+aligned recorded note. Audit results must not be used to merge the official
+training and validation splits or to publish original dataset audio.
+
+## Actual 71470 daegeum triage, 2026-10-12
+
+All ten label archives parsed (9,961 JSON files). They contain 816 records
+whose `instrument_cd` is exactly `WN01`: 769 training and 47 validation.
+This differs from the official page's 900-clip figure for an unresolved
+reason; neither figure is a verified solo/aligned training count. The small
+`VS_R` validation source yielded 17 named WAV/MIDI pairs; **none** enter
+training. `TS_C` training yielded 14 named pairs, only four mono, totaling
+about 154 seconds of labeled audio.
+
+The selected `TS_E` training TAR is 5,187,421,184 bytes and contains five
+byte-offset-numbered ZIP parts. The virtual ZIP has 2,564 WAV and 2,564
+MIDI members. All 331 `WN01` labels in `TL_E` uniquely match both names and
+all 331 WAVs were decoded for a bounded read-only audit. Their durations
+match labels within 0.1 s; 263 are mono and 68 stereo; no approximate
+near-silence or obvious clipping was flagged. A rough MIDI-total-time check
+differs from WAV by over one second in 228 cases. This is **not** a proven
+note-alignment failure, but it forbids treating filename matches as a
+score-to-performance training set without further analysis.
+
+For a WAV-only instrument-timbre pilot, a private selector groups labels by
+identical performer, recording place, and channel; these fields do **not**
+prove solo recording. Its largest group, `C001`, has 250 mono 48 kHz clips
+from 19 titles and 4,928.804 s of labeled duration. Run the selector with
+the approved, private training label ZIP and save the detailed manifest
+outside the repository:
+
+```bash
+python3 tools/bgm-gpt/aihub-readiness/select_daegeum_cluster.py \
+  --label-zip /absolute/private/path/TL_E_training.zip \
+  --split training \
+  --output /absolute/private/path/TL_E_clusters.json
+```
+
+The following command probes only the chosen WAVs, by default without
+writing audio. It refuses stereo input, missing/ambiguous names,
+label/header/duration mismatch, validation split, unsafe output paths, and
+insufficient disk. `--materialize` then creates a **new** 0700 directory
+with 0600 16 kHz mono PCM16 WAVs and a private provenance manifest; it will
+not overwrite an existing directory. It never places recordings in Git.
+
+```bash
+python3 tools/bgm-gpt/aihub-readiness/prepare_selected_audio.py \
+  --tar /absolute/private/path/TS_E_training.tar \
+  --manifest /absolute/private/path/TL_E_clusters.json \
+  --cluster-id C001 \
+  --output-dir /absolute/private/path/TS_E_C001_16k_mono
+# Add --materialize only after the read-only summary is accepted.
+```
+
+The local `C001` preparation produced 250 private WAVs totaling 157,742,678
+bytes, with source CRC, format, and duration checks. Originals are retained.
+An aggregate read-only pass found a median clip duration of 20.97 s and
+median RMS of -36.8 dBFS; 31 clips have over one-quarter of 100 ms windows
+below -50 dBFS, and two have a tiny number of near-full-scale samples.
+None is a wholesale silent file. In 19 matched source/prep representatives,
+the median original 8-20 kHz power fraction was 0.00016. That low fraction
+does **not** rule out perceptually important breath texture.
+This is *model input*, not a trained model or a new BGM. A 16 kHz pilot may
+lose some high-frequency breath detail, so audible comparison against
+original 48 kHz performances and a held-out test are required before any
+claim of daegeum-like quality. Score-to-expression, breath phrasing, and
+sigimsae placement remain separate unsolved tasks; MIDI and timestamp labels
+have not been acoustically aligned. No game/default BGM or `main` files were
+changed.
