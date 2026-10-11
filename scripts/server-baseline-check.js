@@ -103,7 +103,7 @@ const SEEDS = PLAN0 ? PLAN0.split(',').map((x) => +x.split(':')[0]) : String(opt
 const DAYS_OF = {}; for (const s of SEEDS) DAYS_OF[s] = DAYS;
 if (PLAN0) for (const x of PLAN0.split(',')) { const [a, b] = x.split(':').map(Number); DAYS_OF[a] = b || DAYS; }
 if (MAKE && PLAN0) { console.error('--make 는 --plan 없이(모든 시드 같은 날)'); process.exit(2); }
-const PAR = parseInt(opt('--par', String(SEEDS.length)), 10);   // ★[T699] 기본 = 시드 수(한꺼번에) — 부하가 겹쳐도 바이트 같다(T680 · T699 동시 3 판 3/3) · 2코어에서 동시 3 이 동시 2 보다 빠르다(690 대 912초)
+const PAR = parseInt(opt('--par', String(PLAN0 ? Math.max(1, Math.min(SEEDS.length, os.cpus().length)) : SEEDS.length)), 10);   // ★[T699] 기본 — 날이 같은 판(전체)은 시드 수(한꺼번에 · 2코어 동시 3 = 690초 < 동시 2 = 912초) · 날이 섞인 짧은 판은 코어 수(긴 판이 바닥 · 동시 2 = 409초 < 동시 3 = 469초). 부하가 겹쳐도 바이트 같다(T680 · T699)
 // ★판의 조건 = T650 자(T680 · T683 이 결정론을 본 그 판). 바꾸면 기준선이 다른 세계다.
 const COND = { VILLAGE_CARAVAN_MAX: '0', T400_BUILD_ACT: '0' };
 // ★[T699] 교역로 디스크 캐시 — 부팅 소굴 배치의 교역로 A*(109초)를 판마다 다시 파지 않는다(같은 지문 = 같은 길 · 결과 바이트 같음).
