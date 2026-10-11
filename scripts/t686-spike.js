@@ -120,8 +120,14 @@ function makeTree(dir, ref) {
     const rep = (a, b) => { if (cnt(s, a) !== 1) throw new Error(`마을 앵커 ${cnt(s, a)}개: ${a.slice(0, 50)}`); s = s.replace(a, () => b); };
     rep('  if (!state.ready) return; // 플래그 off', '  if (!state.ready) return; globalThis.__T686VS && __T686VS(!!state.tickJobs); // 플래그 off');
     for (const [a, name] of VSEGS) rep(a, `  globalThis.__T686VM && __T686VM(${JSON.stringify(name)});\n` + a);
-    rep('  if (state.tickJobs) { _drainTickJobs(now); return; }', "  globalThis.__T686VM && __T686VM('v:날 문 앞(얼림 검사)');\n  if (state.tickJobs) { _drainTickJobs(now); globalThis.__T686VM && __T686VM('v:하루 조각(이어서)'); return; }");
-    rep('  _openDayJobs(now);\n  _drainTickJobs(now);\n}', "  _openDayJobs(now); globalThis.__T686VM && __T686VM('v:하루 열기(_openDayJobs)');\n  _drainTickJobs(now); globalThis.__T686VM && __T686VM('v:하루 조각(첫 프레임)');\n}");
+    //   ★[T687] 공용 예산 판(`TB.out` 문)과 종전 판 — 둘 중 있는 꼴에 박는다
+    if (cnt(s, "  if (state.tickJobs) { if (!TB.out(TICK_SLICE_MS, 'close')) _drainTickJobs(now); return; }") === 1) {
+      rep("  if (state.tickJobs) { if (!TB.out(TICK_SLICE_MS, 'close')) _drainTickJobs(now); return; }", "  globalThis.__T686VM && __T686VM('v:날 문 앞(얼림 검사)');\n  if (state.tickJobs) { if (!TB.out(TICK_SLICE_MS, 'close')) _drainTickJobs(now); globalThis.__T686VM && __T686VM('v:하루 조각(이어서)'); return; }");
+      rep("  _openDayJobs(now);\n  if (!TB.out(TICK_SLICE_MS, 'close')) _drainTickJobs(now);\n}", "  _openDayJobs(now); globalThis.__T686VM && __T686VM('v:하루 열기(_openDayJobs)');\n  if (!TB.out(TICK_SLICE_MS, 'close')) _drainTickJobs(now); globalThis.__T686VM && __T686VM('v:하루 조각(첫 프레임)');\n}");
+    } else {
+      rep('  if (state.tickJobs) { _drainTickJobs(now); return; }', "  globalThis.__T686VM && __T686VM('v:날 문 앞(얼림 검사)');\n  if (state.tickJobs) { _drainTickJobs(now); globalThis.__T686VM && __T686VM('v:하루 조각(이어서)'); return; }");
+      rep('  _openDayJobs(now);\n  _drainTickJobs(now);\n}', "  _openDayJobs(now); globalThis.__T686VM && __T686VM('v:하루 열기(_openDayJobs)');\n  _drainTickJobs(now); globalThis.__T686VM && __T686VM('v:하루 조각(첫 프레임)');\n}");
+    }
     rep('      const rv = j.f();', "      const _t686a = process.hrtime.bigint(); const rv = j.f(); globalThis.__T686J && __T686J(j.s || j.n, Number(process.hrtime.bigint() - _t686a) / 1e6);");
     rep('  try { _closeDay(C); }', "  { const _t686c = process.hrtime.bigint(); try { _closeDay(C); } catch (e) { console.error(`[${state.zoneId}] 🏘️ 일틱 마감 로그 실패:`, e.message); } globalThis.__T686J && __T686J('(마감 꼬리 _closeDay)', Number(process.hrtime.bigint() - _t686c) / 1e6); }\n  if (0) try { _closeDay(C); }");
     fs.writeFileSync(vp, s); execFileSync(process.execPath, ['--check', vp]); }
