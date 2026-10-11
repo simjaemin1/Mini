@@ -8,7 +8,7 @@ import io
 from pathlib import Path
 import sys
 import unittest
-from contextlib import redirect_stderr, redirect_stdout
+from contextlib import nullcontext, redirect_stderr, redirect_stdout
 from unittest.mock import patch
 
 import numpy as np
@@ -119,6 +119,30 @@ class ScoreLoudnessFeasibilityTests(unittest.TestCase):
         self.assertNotIn("Traceback", out.getvalue() + err.getvalue())
         self.assertIn("unexpected_private_diagnostic_error", out.getvalue())
         self.assertEqual(err.getvalue(), "")
+
+    def test_aggregate_run_completes_without_private_audio(self) -> None:
+        pairs = fake_pairs()
+        counts = {"clips_examined": 15, "clips_with_selected_windows": 15,
+                  "clips_with_stable_pairs": 15, "selected_windows": 15,
+                  "stable_100hz_frames": len(pairs["rms_dbfs"]),
+                  "training_song_groups_with_pairs": 3}
+        binding = {"checkpoint_loudness_mean": -6.0, "checkpoint_loudness_std": 1.0}
+        with (patch.object(diagnostic.pilot, "_network_disabled", return_value=nullcontext()),
+              patch.object(diagnostic, "_check_bindings",
+                           return_value=([{}] * 15, Path("dummy_train"), binding)),
+              patch.object(diagnostic.trial, "_balanced_training_records",
+                           return_value=[{}] * 15),
+              patch.object(diagnostic, "_collect_train_pairs", return_value=(pairs, counts)),
+              patch.object(diagnostic, "_recheck_checkpoint_binding"),
+              patch.object(diagnostic.trial, "_atomic_private_bytes") as write):
+            result = diagnostic.run(
+                source_manifest=Path("source"), split_manifest=Path("split"),
+                checkpoint_dir=Path("checkpoint"), upstream_root=Path("upstream"),
+                output_dir=Path("output"), clips=15, minutes=1)
+        self.assertEqual(result["status"], "train_only_feasibility_completed")
+        payload = write.call_args.args[2]
+        self.assertIn(b'"selected_training_window_seconds": 4.0', payload)
+        self.assertIn(b'"inference_ready": false', payload)
 
 
 if __name__ == "__main__":
