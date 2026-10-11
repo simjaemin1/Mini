@@ -1,6 +1,7 @@
 // === sim/_path-core-test.js — path-core 정본 검증 (형태·최단성·계약) ===
 'use strict';
 const PC = require('./path-core.js');
+const LEAN0 = process.env.T697_DAY_GC === '1'; if (LEAN0) PC.setLean(true);   // ★[T697] `T697_DAY_GC=1` 이면 위 절 전부를 알뜰 판으로 다시 건다
 let pass = 0, fail = 0;
 const ok = (c, m) => { if (c) { pass++; } else { fail++; console.log('  ✗ FAIL:', m); } };
 const shape = p => { let s = ''; for (let i = 1; i < p.length; i++) { const dx = p[i].x - p[i-1].x, dy = p[i].y - p[i-1].y; s += dx>0?(dy>0?'↘':dy<0?'↗':'E'):dx<0?(dy>0?'↙':dy<0?'↖':'W'):(dy>0?'S':'N'); } return s.replace(/(.)\1*/g, m => m[0] + (m.length>1?m.length:'')); };
@@ -347,6 +348,42 @@ const shape = p => { let s = ''; for (let i = 1; i < p.length; i++) { const dx =
   let d0 = 0; for (const [a, b] of dead.slice(0, 40)) { const x = PC.localPath(a[0], a[1], b[0], b[1], { blockedStep: step }), y = PC.localPath(a[0], a[1], b[0], b[1], { blockedStep: step, blocked: undefined }); if (!same(x, y)) d0++; }
   ok(d0 === 0, `ⓓ \`blocked\` 를 안 주면 종전과 같다(기본값 \`() => false\` · 다른 쌍 ${d0}/40)`);
   console.log(`  [표] 열린 40쌍 비트 동일 ${eq}/40 · 막힌 목표(출발 열림) ${fwdN + revN}쌍 — 사전순 앞 목표에 길 ${asymOld} → ${asymNew} · 뒤 목표에 길 ${fwdPath}(원래 0)`);
+}
+
+// [T697] 알뜰 판(`setLean`) — 끔 ↔ 켬 같은 길 · 같은 꺼낸 수(걸음 Map · 도로 scratch · 재개형 예산 · 먼 걸음 Map · 음수 좌표 · 열쇠 범위 밖)
+console.log('[T697] 알뜰 판 — 끔 ↔ 켬 같은 답');
+{
+  let sd = 697; const rnd = () => (sd = (Math.imul(sd, 1103515245) + 12345) >>> 0) / 4294967296;
+  const W = 220, H = 220;
+  const run = (lean) => {
+    PC.setLean(lean); sd = 697; const out = [];
+    const wall = new Uint8Array(W * H); for (let i = 0; i < W * H; i++) wall[i] = rnd() < 0.18 ? 1 : 0;
+    const blocked = (x, y) => x < 0 || y < 0 || x >= W || y >= H || wall[y * W + x] === 1;
+    const sc = { w: W, h: H, g: new Float64Array(W * H), came: new Int32Array(W * H), stamp: new Int32Array(W * H), gen: 0 };
+    const costMul = (x, y) => ((x * 3 + y) % 11 === 0 ? 0.87 : (x + y) % 5 === 0 ? 1.3 : 1);
+    for (let q = 0; q < 320; q++) {
+      const sx = (rnd() * W) | 0, sy = (rnd() * H) | 0, gx = (rnd() * W) | 0, gy = (rnd() * H) | 0, kind = q % 4;
+      let r, pops = -1;
+      if (kind === 0) r = PC.localPath(sx, sy, gx, gy, { blocked, blockedStep: (a, b, c, d) => blocked(c, d), prefer: (x, y) => (x % 7 === 0 ? 1 : 0), costMul: q % 3 ? null : (x, y) => (y % 4 ? 1 : 2), radius: q % 8 ? 20 : 0, maxNodes: 4000 });
+      else if (kind === 1) r = PC.routePath(sx, sy, gx, gy, { blocked, costMul, scratch: sc, hScale: 0.87 });
+      else if (kind === 2) { const S = PC.routePathBegin(sx, sy, gx, gy, { blocked, maxPops: 3000 + q, scratch: q % 8 === 2 ? sc : null }); if (S) { let z; do { z = PC.pathStep(S, 1 + (q % 37)); if (!z.done && q % 5 === 0 && S.open.size > 2) S.open.pop(); } while (!z.done); r = z.path; pops = S.pops; } else r = 'null'; }
+      else { const S = PC.routePathBegin(sx - 40, sy - 40, gx, gy, { blocked: (x, y) => (x < -50 || y < -50 || x >= W || y >= H) ? true : (x >= 0 && y >= 0 && wall[y * W + x] === 1), costMul, scratch: null }); if (S) { let z; do { z = PC.pathStep(S, 500); } while (!z.done); r = z.path; pops = S.pops; } else r = 'null'; }
+      out.push(JSON.stringify(r) + '|' + pops);
+    }
+    return out;
+  };
+  const A = run(false), B = run(true);
+  let bad = 0, found = 0, negs = 0; for (let i = 0; i < A.length; i++) { if (A[i] !== B[i]) bad++; if (A[i][0] === '[') found++; if (/"x":-/.test(A[i])) negs++; }
+  ok(found > 150 && negs > 10, `[T697] [상황] 길이 넉넉히 났고(${found}/${A.length}) 음수 좌표 길도 있다(${negs})`);
+  ok(bad === 0, `[T697] ★★끔 ↔ 켬 같은 길 · 같은 꺼낸 수(재개 사이 힙 한 칸 빼기 포함) — 다른 질의 ${bad}/${A.length}`);
+  PC.setLean(false); const a = PC.localPath(16378, 5, 16391, 9, {}), a2 = PC.routePath(-16390, 3, -16377, 9, {});
+  PC.setLean(true); const b = PC.localPath(16378, 5, 16391, 9, {}), b2 = PC.routePath(-16390, 3, -16377, 9, {});
+  ok(a && JSON.stringify(a) === JSON.stringify(b) && a2 && JSON.stringify(a2) === JSON.stringify(b2), '[T697] 정수 열쇠 범위(±16384) 를 넘나드는 길 — 문자열 열쇠와 섞여도 같다');
+  // 자명 통과 금지 — 꺼내는 차례를 하나 비틀면(같은 f 를 다른 g 로) 갈린다
+  PC.setLean(true); const S1 = PC.routePathBegin(0, 0, 60, 37, { blocked: () => false }); PC.pathStep(S1, 50); S1.open.pop(); const z1 = PC.pathStep(S1, 0);
+  const S2 = PC.routePathBegin(0, 0, 60, 37, { blocked: () => false }); const z2 = PC.pathStep(S2, 0);
+  ok(S1.pops !== S2.pops || JSON.stringify(z1.path) !== JSON.stringify(z2.path), '[T697] [자명 통과 금지] 재개 사이에 힙 한 칸을 빼면 꺼낸 수가 갈린다(자가 차례를 본다)');
+  PC.setLean(LEAN0);
 }
 
 console.log(fail === 0 ? `PASS ${pass}/${pass + fail}` : `FAIL ${fail}/${pass + fail}`);
