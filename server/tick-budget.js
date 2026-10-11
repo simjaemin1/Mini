@@ -9,7 +9,7 @@
 //   쉬고 다음 틱에 잇는다. 예산은 종전처럼 **조각 사이에서만** 본다(조각 하나는 끊지 않는다).
 // ★끔(기본) · 틱 밖(부팅 · 하네스 · 헤드리스) · 문 예산 0(= 끈 대조군 · 한 번에 완주) — 전부 종전 그대로(문 제 예산).
 // ⚠세계 값은 안 바꾼다 — 바뀌는 것은 *언제*뿐이다(조각내기 · 재개형 A* 의 T85 비트 동일 계약 그대로). 판정은 T650 자 400일 바이트.
-const ON = typeof process !== 'undefined' && !!process.env && process.env.T687_SHARED_BUDGET === '1';
+const ON = typeof process !== 'undefined' && !!process.env && process.env.T687_SHARED_BUDGET !== '0';   // ★10-11 PM 착지 켬 기본(`0` = 끔)
 let _end = 0, _ms = 0;
 const S = { ticks: 0, skipped: {}, over: 0 };   // 계측 — 문이 몫이 없어 쉰 틱 수(문 이름별)
 // 틱 머리 · 꼬리(존 게임 틱만 부른다)

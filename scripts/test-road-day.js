@@ -110,7 +110,7 @@ const rowsOf = (X) => X.db.db.prepare('SELECT cell_key, v, d FROM roads ORDER BY
 
 console.log('\n① 끔 ↔ 켬 — 같은 연산 줄 · 날마다 견줌');
 const OPS = script(688, 420);
-const A = mk('off', ''), B = mk('on', '1'), V = mk('ver', 'verify');
+const A = mk('off', '0'), B = mk('on', '1'), V = mk('ver', 'verify');
 const r1 = drive([A, B, V], OPS);
 const SA = A.R._S;
 ok(SA.cells.size > 1000 && SA.stats.graded > 200 && SA.paved.size + 0 >= 0 && SA.coarseGen > 20, '① [전제] 세계가 섰다 — 밟힌 셀 · 등급 셀 · 지도가 여러 번 바뀜',
@@ -124,7 +124,7 @@ console.log(`    ↳ 켬 판 묶음 ${PB.flBatches} · 잘림 ${PB.flCapped} · 
 { // 상한 갈래를 확실히 밟는 판 — 속도를 작게 눌러(하네스만 · 글자 바꾸기) 하루 행을 여러 묶음으로 자른다
   const rateLine = '  if (budgetMs > 0 && rows > 0 && ms > 0) { const r = rows / ms; _flDayMin = _flDayMin ? Math.min(_flDayMin, r) : r; _flRate = _flDayMin; }';
   ok(SRC.includes(rateLine), '② [전제] 속도 글자가 있다');
-  const A2 = mk('off2', ''), C2 = mk('narrow', '1', (s) => s.replace(rateLine, '  _flRate = 3 / budgetMs;'));
+  const A2 = mk('off2', '0'), C2 = mk('narrow', '1', (s) => s.replace(rateLine, '  _flRate = 3 / budgetMs;'));
   const r2 = drive([A2, C2], script(2688, 120));
   const PC = C2.R.roadDayPerf();
   ok(PC.flCapped > 50 && PC.flSnap > 50, '② [전제] 좁힌 판은 묶음을 실제로 잘랐고 · 그 사이 연산이 쓰기 전 복사를 밟았다', `잘림 ${PC.flCapped} · 묶음 ${PC.flBatches} · 최대 ${PC.flMaxRows}행 · 경계 값 적음 ${PC.flSnap}`);
@@ -155,7 +155,7 @@ bait('스탬프 자리에서 등급을 안 고침', '  if (I.ready) _i688Touch(k
   const rateLine = '  if (budgetMs > 0 && rows > 0 && ms > 0) { const r = rows / ms; _flDayMin = _flDayMin ? Math.min(_flDayMin, r) : r; _flRate = _flDayMin; }';
   const cow = 'if (_flCow) _flSnap(';
   ok(SRC.includes(rateLine) && SRC.includes(cow), '⑤ [전제] 글자: 속도 · 쓰기 전 복사');
-  const O = mk('cw0', ''), P = mk('cw1', '1', (s) => s.replace(rateLine, '  _flRate = 3 / budgetMs;').split(cow).join('if (false) _flSnap('));
+  const O = mk('cw0', '0'), P = mk('cw1', '1', (s) => s.replace(rateLine, '  _flRate = 3 / budgetMs;').split(cow).join('if (false) _flSnap('));
   const r = drive([O, P], script(3688, 150));
   ok(r.bad > 0 || rowsOf(O) !== rowsOf(P), '⑤ 쓰기 전 복사(경계 값 적기 셋 — 스탬프 · 새 셀 · 조회 감쇠)를 빼면 ② 가 **문다**', `어긋난 날 ${r.bad}${r.firstBad ? ' · 처음 ' + r.firstBad : ''} · 표 같음 ${rowsOf(O) === rowsOf(P)}`);
 }
@@ -170,7 +170,7 @@ if (process.env.T688_REAL_DB) {
   W = 2208; H = 4064; ZID = 'hanbando';   // 한반도 69 × 127 청크 × 32칸
   const d0 = meta.b + 1;
   NOW = EPOCH + d0 * DAY;
-  const O = mk('roff', '', null, process.env.T688_REAL_DB), N = mk('ron', '1', null, process.env.T688_REAL_DB), Vr = mk('rver', 'verify', null, process.env.T688_REAL_DB);
+  const O = mk('roff', '0', null, process.env.T688_REAL_DB), N = mk('ron', '1', null, process.env.T688_REAL_DB), Vr = mk('rver', 'verify', null, process.env.T688_REAL_DB);
   // 연산 줄 — 하루 스탬프 ≈3만(T686 판의 하루 행 3.1만~3.4만) · 밟힌 셀에서 고르되 등급 셀을 더 자주 · 가끔 여러 날 건너뛰기
   let rs = 6880; const rnd = () => { rs = (Math.imul(rs, 1103515245) + 12345) >>> 0; return rs / 4294967296; };
   const graded = keys.filter((x) => x.v >= 8).map((x) => x.k), all = keys.map((x) => x.k);
