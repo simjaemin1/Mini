@@ -341,6 +341,7 @@ function clientRoads() { // welcome 1회 — 등급 셀 flat [cx,cy,lv,...] (밟
 //   ⓓ 묶음이 실패하면 그 묶음과 남은 키를 dirty 로 되돌린다(다음 날 그때 값으로 다시 — 종전 "다음 날 재시도"와 같은 뜻 · 이미 들어간 묶음은 남는다).
 //   ⓔ 프로세스가 정상 종료하면(`exit`) 남은 묶음을 그 자리에서 다 쓴다. 강제 종료(SIGKILL)는 남은 묶음을 잃는다 — 종전도 그날 찍힌 것을 다 잃는 자리다.
 let _fl = null;   // { day, rows:[[k, v|null, d]], i, n, cells, graded, stamped } — ★[T688 켬] 쓰기 전 복사 꼴: { lazy, keys, it, snap, out, i, total, … }
+const TB = require('./tick-budget');   // ★[T687] 한 틱 공용 예산(끔 = 제 예산 그대로)
 function _sliceMs() { try { const V = require('./villages'); return V.tickSliceMs ? (V.tickSliceMs() | 0) : 0; } catch (e) { return 0; } }
 function _villagesBusy() { try { const V = require('./villages'); return !!(V.villagesBusy && V.villagesBusy()); } catch (e) { return false; } }
 // ★[T688 ⓑ] 묶음 행 상한 — 속도 = 그날 묶음들 중 가장 느린 것(행 ÷ BEGIN~COMMIT ms — WAL 자동 체크포인트가 든 묶음까지) · 다음 날 첫 묶음은 지난날 속도 ·
@@ -366,7 +367,7 @@ function flushDaily(day) { // 그날 행을 얼려 둔다(쓰기는 `_flushStep`
   for (const k of S.dirty) { const r = S.cells.get(k); rows.push(r ? [k, r.v, r.d] : [k, null, 0]); }
   S.dirty = new Set();
   _fl = { day, rows, i: 0, n: 0, cells: S.cells.size, graded: S.stats.graded, stamped: S.stats.stamped };
-  _flushStep(_sliceMs());
+  if (!TB.out(_sliceMs(), 'roads')) _flushStep(TB.slice(_sliceMs()));   // ★[T687] 켬 = 이 틱 남은 몫 · 없으면 다음 틱(행은 얼려 둔 채)
   return { rows: rows.length, sentN: 0, pending: !!_fl };
 }
 function _flushStep(budgetMs) {
@@ -475,7 +476,7 @@ function onGameTick(now) {
   if (!S.ready) return;
   const day = Math.floor((now - S.epoch) / S.dayMs);
   if (day === S.lastDay) {   // ★[T630] 얼린 행을 틱마다 한 묶음
-    if (_fl && !(T688_ON && _villagesBusy())) { try { _flushStep(_sliceMs()); } catch (e) { } }   // ★[T688 ⓑ] 마을 하루 마감이 도는 틱엔 쉰다(예산끼리 쌓이지 않게 · 쓰는 행 · 차례는 같다)
+    if (_fl && !(T688_ON && _villagesBusy()) && !TB.out(_sliceMs(), 'roads')) { try { _flushStep(TB.slice(_sliceMs())); } catch (e) { } }   // ★[T688 ⓑ] 마을 하루 마감이 도는 틱엔 쉰다 · ★[T687] 켬 = 이 틱 남은 몫 · 없으면 다음 틱
     return;
   }
   S.lastDay = day;

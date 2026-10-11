@@ -145,6 +145,7 @@ function denRng(a, b) {
 //   교전 피해 배분 · 실체 도적의 배회 자리. 전부 **세계를 움직인다**. 같은 흐름으로 모은다.
 //   흐름은 모듈에 하나(할당 0) · 씨는 `S.denSeed`(이 파일의 그 씨)와 날·시도에서 난다 — 새 수 0.
 const _SEED = require('./seed-rand');
+const TB = require('./tick-budget');   // ★[T687] 한 틱 공용 예산(끔 = 제 예산 그대로)
 const _diceB = _SEED.makeStream();
 const _rb = _diceB.next;
 let _bTick = 0;
@@ -720,7 +721,7 @@ function _bootSliceBegin(host) {
 function _bootSliceStep() {
   const B = S._boot, host = S.host, V = host.villages, mat = host.world._distMatrix;
   if (B.sig !== _routeSig(host)) { B.i = 0; B.j = 1; B.pts = []; B.pairs = 0; B.sig = _routeSig(host); }   // 마을 구성이 바뀌면 처음부터(종전 서명과 같은 뜻)
-  const t0 = Date.now(), budget = host.sliceMs > 0 ? host.sliceMs : 0;
+  const t0 = Date.now(), budget = host.sliceMs > 0 ? TB.slice(host.sliceMs) : 0;   // ★[T687] 켬 = 이 틱 남은 몫(≥1 — 0 은 무제한이라)
   B.slices++;
   while (B.i < V.length) {
     if (B.j >= V.length) { B.i++; B.j = B.i + 1; continue; }
@@ -748,7 +749,7 @@ function _bootSliceStep() {
 //   종전(T640)은 이 셋을 한 틱에 했다(한반도 160~188ms). 같은 함수(`_fieldStep` · `_denStep` — 동기 판도 이것)를 놓았다 이어 가니 같은 바이트.
 function _bootTailStep() {
   const B = S._boot, host = S.host;
-  const t0 = Date.now(), budget = host.sliceMs > 0 ? host.sliceMs : 0, deadline = budget > 0 ? t0 + budget : Infinity;
+  const t0 = Date.now(), budget = host.sliceMs > 0 ? TB.slice(host.sliceMs) : 0, deadline = budget > 0 ? t0 + budget : Infinity;
   B.tailSlices++;
   let done = false;
   if (B.phase === 'field' && _fieldStep(B.F, deadline)) { _fieldEnd(B.F); B.F = null; B.phase = 'scan'; B.D = _denBegin(B.day0); }
@@ -772,6 +773,7 @@ function init() {
 }
 function onGameTick() {
   if (!ENABLED) return;
+  if (S._boot && TB.out(S.host && S.host.sliceMs, 'bandit')) return;   // ★[T687] 이 틱 몫이 없다 — 다음 틱
   if (S._boot) { try { if (S._boot.phase) _bootTailStep(); else _bootSliceStep(); } catch (e) { console.error(`[${S.zoneId}] 🏴 [도적] 부팅 표본 조각 실패(다음 틱 재시도):`, e.message); } return; }   // ★[T640]
   if (!S.ready) { // villages가 늦게 준비되는 경우 — 가벼운 재시도(10초에 1회 수준, 평시 O(1))
     S._bindTried = (S._bindTried || 0) + 1;

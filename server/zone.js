@@ -74,6 +74,7 @@ const SAVE_INTERVAL_MS = Math.max(1000, parseInt(process.env.SAVE_INTERVAL_MS ||
 const SAVE_MOVE_EPS = 2;   // 이만큼도 안 움직였으면 쓸 게 없다(px)
 const Winter = require('./winter');   // ★[T20] 겨울나기 — 초기화는 villages.js(장부 옆), 여기선 납품 훅 한 줄
 const Bandits = require('./bandits'); // §11 도적 캐논 1파(경제·수명주기 — 소굴·해체 전환·econ 약탈 훅). ENABLE_BANDITS=0 → 완전 no-op, ENABLE_VILLAGES=0이면 자동 휴면
+const TB = require('./tick-budget');   // ★[T687] 한 틱 공용 예산(손잡이 `T687_SHARED_BUDGET` · 끔 = 문마다 제 예산 그대로)
 const Roads = require('./roads'); // §16 답압 길 4파(희소맵·게으른 감쇠·DB 영속·A* 할인). ENABLE_ROADS=0 → 완전 no-op
 const Soil = require('./soil');   // [배치 20 B] 동적 토양치·지질(희소맵·게으른 리젠·DB 영속·렌더 전용). ENABLE_SOIL=0 → 기준선만
 const Rooms = require('./rooms'); // ★[배치 18 ①] 방 판정 정본(벽·문으로 닫힌 '바닥 깔린' 셀 집합). 서버가 판정해 클라에 실어 준다 — 클라 재계산 금지(사본 방지)
@@ -484,7 +485,8 @@ function _t566FlushRel() {
   _promoteHarvestOnce();   // −1(부팅에 적은 행) 먼저 오늘로(T426 다시 훑기와 같은 차례)
   //   ★한 틱에 다 하지 않는다 — 틱 예산(1000/TICK_HZ ms)의 절반까지만 풀고 나머지는 다음 틱(T333 미리 굽기 "한 번에 한 줄"과 같은 꼴 · 새 수 0).
   //     꺼진 사이가 길면 수만 셀이 한꺼번에 온다(서울 사본 3.7일 = 64,237셀 · 한 번에 풀면 6.4초 멎는다).
-  const t0 = Date.now(), budget = 1000 / TICK_HZ / 2;
+  if (TB.out(1000 / TICK_HZ / 2, 't566')) return;   // ★[T687] 이 틱 몫이 없다 — 다음 틱
+  const t0 = Date.now(), budget = TB.left(1000 / TICK_HZ / 2);
   let i = 0;
   for (; i + 1 < _t566RelPend.length && Date.now() - t0 < budget; i += 2) _t566Release(_t566RelPend[i], _t566RelPend[i + 1]);
   _t566RelPend.splice(0, i);
@@ -3725,7 +3727,7 @@ function npcReachHas(S, bx, by) {
 }
 // ★[T562 ④] 결정 예산을 **사람 안에서도** 잰다 — 결정 문(아래 NPC 루프)이 틱 머리 시각을 적어 두고, 생활층 배정이 후보·넓히기 사이에서 묻는다.
 let _decT0 = 0;
-function decBudgetOver() { return _decT0 > 0 && (Date.now() - _decT0) > 15; }
+function decBudgetOver() { return _decT0 > 0 && ((Date.now() - _decT0) > 15 || TB.out(15)); }   // ★[T687] 켬 = 이 틱 공용 몫도 본다
 function npcCanReach(ax, ay, bx, by) {
   if (straightPathClear(ax, ay, bx, by, 0)) return true;
   return !!pfFindPath(ax, ay, bx, by, { floor: 0, isBlockedFn: isBlockedByWall, isWaterFn: isTerrainBlockedLocal, maxCells: Infinity, searchRadiusCells: _pfRadius(true) });
@@ -5089,7 +5091,7 @@ const server = http.createServer((req, res) => {
     //   `?reset=1` 은 루프 히스토그램만 영점 조정한다(하네스가 창을 열기 직전에 부른다).
     let _econ = null; try { _econ = SimVillages.tickPerf ? SimVillages.tickPerf() : null; } catch (e) {}
     const _rst = req.url.indexOf('reset=1') >= 0;
-    res.end(JSON.stringify({ zone: ZONE_ID, now: Date.now(), sliceMs: SimVillages.tickSliceMs ? SimVillages.tickSliceMs() : null,
+    res.end(JSON.stringify({ zone: ZONE_ID, now: Date.now(), sliceMs: SimVillages.tickSliceMs ? SimVillages.tickSliceMs() : null, sharedBudget: TB.stats(),   // ★[T687] 공용 예산(켬일 때 · 문이 몫이 없어 쉰 틱 수)
       events: _perfRing.slice(), econTick: _econ, loop: loopDelayStats(_rst),
       // ★[T153] 틱 시계 — 벽시계(`wall`)와 **세계가 실제로 적분한 시간**(`sim`)을 나란히 낸다.
       //   `lagPct` 가 곧 "세계가 얼마나 뒤졌나"다(종전 5.3% · 빚을 이월하면 0 근처).
@@ -13652,6 +13654,7 @@ function _tickMsStats(reset) {
 setInterval(() => {
   const now = Date.now();
   const _tickHr0 = process.hrtime();   // ★[T284 ④] 틱 본문 소요 계측(관측자)
+  TB.begin(SimVillages.tickSliceMs ? SimVillages.tickSliceMs() : 0);   // ★★[T687] 한 틱 공용 몫 = 마을 하루 마감 예산 그 수(30Hz 한 프레임의 절반) — 켬일 때만 · 문들이 차례로 남은 몫을 쓴다
   // ★★[T153 2026-09-07 재민 확정] **틱 빚 — 잘라 낸 몫을 버리지 않고 다음 틱에 얹는다.**
   //   종전: `dt = Math.min(0.2, elapsed)`. 상한은 옳다(죽음의 나선을 막는다) — 그런데 **잘린 몫을 버렸다.**
   //   그래서 세계의 적분 시계(`Body.tick` · 물리 · 타이머)가 벽시계보다 **영구히** 뒤졌다:
@@ -13719,6 +13722,7 @@ setInterval(() => {
       global._idleSkipAt = now;
       // 입력 타임아웃 정리만 (NPC AI·이동·broadcast 모두 skip)
     }
+    TB.end();   // ★[T687]
     return;
   }
 
@@ -13765,7 +13769,7 @@ setInterval(() => {
     //     (:11255 `movePlayerStep` 루프) — 실측에서 틱의 대부분은 거기서 났다(p50 2.47 → 374.6ms · 152배).
     //     예산을 늘리지도, 새로 걸지도 않는다: 놓는 수가 곧 설계 판정이라 PM 몫이다(T316 §3 회부).
     if (!npc.canadiaVillage && !_t316WalkAlways(npc) && !isPositionActive(npc.x, npc.y)) { npc.vx = 0; npc.vy = 0; continue; }
-    if ((Date.now() - _decT0) > 15) { _stopAt = pid; break; }   // ★[T324 ⓒ] 이 사람은 **아직 안 했다** — 다음 틱이 여기서 시작한다 · ★[T562 ④] 머리 = 루프 머리
+    if ((Date.now() - _decT0) > 15 || TB.out(15, 'decide')) { _stopAt = pid; break; }   // ★[T687] 켬 = 이 틱 공용 몫이 바닥나도 여기서 멈춘다(커서 그대로)   // ★[T324 ⓒ] 이 사람은 **아직 안 했다** — 다음 틱이 여기서 시작한다 · ★[T562 ④] 머리 = 루프 머리
     npcStep(npc, dt, now);
   } while (false); return _stopAt !== null; };
   if (T689_GC) { let _decStop = false; npcs.forEach((pid) => { if (!_decStop && _decOne(pid)) _decStop = true; }); }
@@ -13794,7 +13798,7 @@ setInterval(() => {
       }
     }
     if (_farmStageQ) {
-      const _t0 = Date.now(), _over = () => Date.now() - _t0 > 15;   // 틱 예산(결정 문의 그 15ms) — 밭 시계가 아니다(밭은 `_farmStageQd` 게임일로 센다)
+      const _t0 = Date.now(), _over = () => Date.now() - _t0 > 15 || TB.out(15, 'farm');   // ★[T687]   // 틱 예산(결정 문의 그 15ms) — 밭 시계가 아니다(밭은 `_farmStageQd` 게임일로 센다)
       while (_farmStageQi < _farmStageQ.length) {
         const b = _farmStageQ[_farmStageQi++];
         if (!b.data) continue;
@@ -14766,6 +14770,7 @@ setInterval(() => {
   { const _td = Date.now() - now; global._tt = (global._tt||0)+_td; global._tn = (global._tn||0)+1; if (_td > (global._tmx||0)) global._tmx = _td; }
   { const _h = process.hrtime(_tickHr0); _tickMs.ring[_tickMs.i++ % _tickMs.ring.length] = _h[0] * 1e3 + _h[1] / 1e6; _tickMs.n++;   // ★[T284 ④]
     if (_t678G) _t678WarmTick(_h[0] * 1e3 + _h[1] / 1e6); }   // ★[T679 ③] 짓는 틱 · 안 짓는 틱(문 그래프 켬·견줌만)
+  TB.end();   // ★[T687] 틱 밖(하네스·HTTP·타이머)은 문 제 예산 그대로
 }, TICK_MS);
 
 // ★[낚시 v2] 입질·만료 폴링 — 찌가 흔들리는 순간과, 창을 그냥 지나친 순간을 서버가 알린다.
