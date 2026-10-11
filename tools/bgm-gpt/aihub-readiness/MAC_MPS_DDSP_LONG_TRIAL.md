@@ -67,13 +67,27 @@ steps. An uninterrupted run may finish sooner. Successful step completion
 only proves that the optimization executed, not that the timbre is convincing.
 
 ```sh
-<private_venv_python> tools/bgm-gpt/aihub-readiness/mac_mps_ddsp_long_trial.py evaluate \
+<private_venv_python> tools/bgm-gpt/aihub-readiness/bound_heldout_evaluation.py evaluate-and-bind \
   --source-manifest <private_16k_manifest.json> \
   --split-manifest <private_split.json> \
   --upstream-root <private_pinned_ddsp_pytorch_checkout> \
   --checkpoint-dir <private_checkpoint_directory> \
   --output-dir <new_private_evaluation_directory> \
   --pairs 3 --minutes 30
+```
+
+The wrapper runs the pinned evaluator unchanged in a fresh private output
+folder. It verifies the 1,000-step checkpoint marker and actual tensor-file
+hash before and after, then binds the training/evaluation reports and exact
+listening WAV bytes in a private `result/checkpoint_binding.json`. A bare
+`heldout_report.json` without this binding is **incomplete**, even if it has
+plausible metrics. Check the current checkpoint and all bound outputs later
+with:
+
+```sh
+<private_venv_python> tools/bgm-gpt/aihub-readiness/bound_heldout_evaluation.py inspect \
+  --checkpoint-dir <private_checkpoint_directory> \
+  --output-dir <private_evaluation_directory>
 ```
 
 Evaluation records unmasked four-second heldout spectral loss, then separately
