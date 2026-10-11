@@ -349,6 +349,46 @@ def _interpolate_supported(rms_dbfs: float, support: dict) -> float | None:
     return float(np.interp(rms_dbfs, centers, values))
 
 
+def _nominal_pitch_rows(compiled: dict, pairs: dict, *, shift_semitones: int) -> list[dict]:
+    """Count the same stable training F0 frames for each authorial pitch.
+
+    These are YIN observations, not score-aligned examples or timbre evidence.
+    The +2 comparison changes only the query target; never the score or audio.
+    """
+    if shift_semitones not in (0, 2):
+        raise DiagnosticError("unsupported_pitch_comparison")
+    pitch = np.asarray(pairs["pitch_hz"], dtype=np.float64)
+    songs = np.asarray(pairs["song_index"], dtype=np.int32)
+    if (pitch.shape != songs.shape or not len(pitch)
+            or not np.all(np.isfinite(pitch)) or np.any(pitch <= 0)):
+        raise DiagnosticError("pitch_pairs_invalid")
+    names = ("C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B")
+    notes = {}
+    for event in compiled["events"]:
+        if event["articulation"] == "release":
+            continue
+        original_hz = float(event["pitch_hz"])
+        original_midi = round(69 + 12 * math.log2(original_hz / 440.0))
+        notes[original_midi] = original_hz
+    rows = []
+    for original_midi, original_hz in sorted(notes.items()):
+        target_midi = original_midi + shift_semitones
+        target_hz = original_hz * 2 ** (shift_semitones / 12.0)
+        near = np.abs(1200.0 * np.log2(pitch / target_hz)) <= PITCH_TOLERANCE_CENTS
+        frames = int(np.count_nonzero(near))
+        song_count = len(set(songs[near].tolist()))
+        rows.append({
+            "score_pitch": f"{names[original_midi % 12]}{original_midi // 12 - 1}",
+            "score_pitch_hz": round(original_hz, 6),
+            "target_pitch": f"{names[target_midi % 12]}{target_midi // 12 - 1}",
+            "target_pitch_hz": round(target_hz, 6),
+            "train_frames_within_50_cents": frames,
+            "train_songs_within_50_cents": song_count,
+            "minimum_observed_support": frames >= MIN_BIN_FRAMES and song_count >= MIN_BIN_SONGS,
+        })
+    return rows
+
+
 def _score_coverage(compiled: dict, candidate: dict, pairs: dict, support: dict,
                     normalizer_mean: float, normalizer_std: float) -> dict:
     steady = {float(event["steady_loudness_db"]) for event in compiled["events"]
@@ -377,26 +417,36 @@ def _score_coverage(compiled: dict, candidate: dict, pairs: dict, support: dict,
                                "range_only_not_learned_attack_or_breath" if name in ("breath_start", "rearticulate")
                                else "range_only_not_timbre_validation"),
         }
-    pitch = np.asarray(pairs["pitch_hz"], dtype=np.float64)
-    songs = np.asarray(pairs["song_index"], dtype=np.int32)
-    pitch_rows = []
-    names = ("C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B")
-    notes = {}
-    for event in compiled["events"]:
-        if event["articulation"] == "release":
-            continue
-        hz = float(event["pitch_hz"])
-        midi = round(69 + 12 * math.log2(hz / 440.0))
-        name = f"{names[midi % 12]}{midi // 12 - 1}"
-        notes[name] = 440.0 * 2 ** ((midi - 69) / 12)
-    for name, hz in sorted(notes.items()):
-        cents = 1200.0 * np.log2(pitch / hz)
-        near = np.abs(cents) <= PITCH_TOLERANCE_CENTS
-        frames = int(np.count_nonzero(near))
-        song_count = len(set(songs[near].tolist()))
-        pitch_rows.append({"score_pitch": name, "train_frames_within_50_cents": frames,
-                           "train_songs_within_50_cents": song_count,
-                           "minimum_observed_support": frames >= MIN_BIN_FRAMES and song_count >= MIN_BIN_SONGS})
+    shifted = score_adapter.adapt_compiled_controls(compiled, pitch_shift_semitones=2)
+    baseline_f0 = np.asarray(candidate["f0_hz_candidate"], dtype=np.float64)
+    shifted_f0 = np.asarray(shifted["f0_hz_candidate"], dtype=np.float64)
+    sounding = baseline_f0 > 0
+    if (shifted["manifest"].get("inference_ready") is not False
+            or shifted["manifest"].get("pitch_shift_semitones") != 2
+            or shifted["manifest"].get("plan_sha256") != candidate["manifest"].get("plan_sha256")
+            or not np.array_equal(shifted_f0 > 0, sounding)
+            or not np.allclose(shifted_f0[sounding], baseline_f0[sounding] * 2 ** (2 / 12),
+                               rtol=0, atol=0.001)
+            or not np.array_equal(shifted["loudness_db_intent"], intent)
+            or not np.array_equal(shifted["gesture_state"], states)
+            or not np.array_equal(shifted["event_index"], candidate["event_index"])):
+        raise DiagnosticError("pitch_comparison_candidate_mismatch")
+    pitch_rows = _nominal_pitch_rows(compiled, pairs, shift_semitones=0)
+    shifted_pitch_rows = _nominal_pitch_rows(compiled, pairs, shift_semitones=2)
+    pitch_comparison = {
+        "source": "same_train_only_stable_YIN_F0_frames_for_both_queries",
+        "support_gate": {"max_absolute_cents": PITCH_TOLERANCE_CENTS,
+                         "minimum_frames": MIN_BIN_FRAMES,
+                         "minimum_training_songs": MIN_BIN_SONGS},
+        "original": {"pitch_shift_semitones": 0, "nominal_notes": pitch_rows,
+                     "all_notes_minimally_supported": all(row["minimum_observed_support"] for row in pitch_rows)},
+        "plus_two_candidate": {"pitch_shift_semitones": 2,
+                               "adapter_candidate_inference_ready": False,
+                               "nominal_notes": shifted_pitch_rows,
+                               "all_notes_minimally_supported": all(row["minimum_observed_support"] for row in shifted_pitch_rows)},
+        "not_authorized_to_transpose_or_render": True,
+        "interpretation": "F0_coverage_comparison_only_not_score_fit_timbre_quality_or_musical_selection",
+    }
     anchor_feature = _interpolate_supported(anchor, support)
     return {
         "score_plan_sha256": candidate["manifest"]["plan_sha256"],
@@ -408,10 +458,12 @@ def _score_coverage(compiled: dict, candidate: dict, pairs: dict, support: dict,
         "anchor_normalized_candidate": None if anchor_feature is None else round((anchor_feature - normalizer_mean) / normalizer_std, 6),
         "states": state_rows,
         "nominal_pitch_coverage": pitch_rows,
+        "nominal_pitch_comparison": pitch_comparison,
         "all_sounding_state_frames_supported": all(state_rows[name]["all_frames_in_train_supported_center_range"]
                                                for name in ("breath_start", "rearticulate", "slur")),
         "all_nominal_pitches_minimally_supported": all(row["minimum_observed_support"] for row in pitch_rows),
         "release_requires_sample_domain_mute": True,
+        "not_authorized_to_transpose_or_render": True,
         "score_candidate_inference_ready": False,
     }
 

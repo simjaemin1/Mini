@@ -65,6 +65,32 @@ class ScoreLoudnessFeasibilityTests(unittest.TestCase):
         self.assertFalse(coverage["all_nominal_pitches_minimally_supported"])
         self.assertEqual(len(coverage["nominal_pitch_coverage"]), 5)
 
+    def test_plus_two_candidate_uses_same_train_f0_without_selection(self) -> None:
+        compiled, candidate, _ = diagnostic._score_candidate()
+        support = diagnostic._support_bins(fake_pairs(), normalizer_std=1.0)
+        original_pitches = [event.get("pitch_hz") for event in compiled["events"]]
+        coverage = diagnostic._score_coverage(compiled, candidate, fake_pairs(), support,
+                                               normalizer_mean=-6.0, normalizer_std=1.0)
+        comparison = coverage["nominal_pitch_comparison"]
+        self.assertTrue(comparison["not_authorized_to_transpose_or_render"])
+        self.assertTrue(coverage["not_authorized_to_transpose_or_render"])
+        self.assertEqual(comparison["support_gate"], {"max_absolute_cents": 50.0,
+                                                       "minimum_frames": 30,
+                                                       "minimum_training_songs": 3})
+        self.assertEqual(comparison["plus_two_candidate"]["pitch_shift_semitones"], 2)
+        self.assertFalse(comparison["plus_two_candidate"]["adapter_candidate_inference_ready"])
+        self.assertEqual(len(comparison["original"]["nominal_notes"]), 5)
+        self.assertEqual(len(comparison["plus_two_candidate"]["nominal_notes"]), 5)
+        original = {row["score_pitch"]: row for row in comparison["original"]["nominal_notes"]}
+        shifted = {row["score_pitch"]: row for row in comparison["plus_two_candidate"]["nominal_notes"]}
+        self.assertAlmostEqual(original["A4"]["target_pitch_hz"], 440.0, delta=0.001)
+        self.assertAlmostEqual(shifted["A4"]["target_pitch_hz"], 493.883, delta=0.001)
+        self.assertEqual(original["A4"]["train_frames_within_50_cents"], len(fake_pairs()["pitch_hz"]))
+        self.assertEqual(shifted["A4"]["train_frames_within_50_cents"], 0)
+        self.assertEqual(shifted["G4"]["target_pitch"], "A4")
+        self.assertTrue(shifted["G4"]["minimum_observed_support"])
+        self.assertEqual(original_pitches, [event.get("pitch_hz") for event in compiled["events"]])
+
     def test_selected_synthetic_window_uses_exact_training_loudness(self) -> None:
         seconds = 4
         frames = seconds * 16_000

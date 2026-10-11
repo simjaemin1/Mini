@@ -404,7 +404,14 @@ arrays, audio, names, or per-song values are written to disk.
 
 The private JSON reports song-supported 2 dB RMS bins, a **train-only**
 monotone candidate relation and its isotonic correction, nominal score-pitch
-coverage, and out-of-support flags for breath/rearticulation/slur/release.
+coverage, and out-of-support flags for breath/rearticulation/slur/release. It
+also compares the **unchanged original** score against an explicitly requested
+`+2`-semitone IRCAM adapter candidate using the *same* sampled train-only F0
+frames. Each of the five nominal notes gets its original target Hz, shifted
+target Hz, ±50-cent frame count, represented training-song count, and the same
+minimum support gate (30 frames from three songs). The report explicitly sets
+`not_authorized_to_transpose_or_render: true`: coverage does **not** choose a
+key, prove timbre, edit the score, or start synthesis.
 For this *feasibility coordinate only*, it assumes score steady −29 dB maps
 to the median stable RMS of each represented training song, then preserves
 relative authored dB differences. That is not a measured score-to-RMS fact,
