@@ -169,6 +169,7 @@ async function run(tag) {
     k++; say(`${k}분 · 틱 p95 ${p && p.tick && p.tick.ms ? p.tick.ms.p95 : '?'} · econ day ${p && p.econTick && p.econTick.last ? p.econTick.last.day : '?'}`);
   }
   clearInterval(ping);
+  { const p = await getj('/perf'); try { fs.writeFileSync(path.join(DIR, `${tag}.perf.json`), JSON.stringify(p)); } catch (e) {} }   // ★[T687] 끝 `/perf`(하루 마감 단계 · 1마을 갈래 최대)
   try { z.kill('SIGUSR2'); } catch (e) {}
   await sleep(3000);
   try { process.kill(z.pid, 'SIGUSR1'); } catch (e) {}

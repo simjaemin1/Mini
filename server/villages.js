@@ -80,6 +80,9 @@ const ENABLED = process.env.ENABLE_VILLAGES !== '0'; // 기본 켜짐. '0'만 �
 //   `_t340Rng`(T340 낚시 흐름)·`_pidHash`(신원 해시)는 **한 글자도 안 바뀐다** — 옮긴 것뿐이고,
 //   `test-fish-act` 73 과 `test-move-soa ④` 가 그 바이트 동일을 건다. 머리에 두는 이유는 TDZ 다(T324).
 const { seedRand: _t340Rng, pidHash: _pidHash, seedOf: _seedOf, makeStream: _makeStream } = require('./seed-rand');
+const TB = require('./tick-budget');   // ★[T687] 한 틱 공용 예산(손잡이 `T687_SHARED_BUDGET` · 끔 = 문마다 제 예산 그대로)
+//   ★[T687 ②] 같은 손잡이로 하루 마감 통짜를 더 잘게 — 생활층 한 마을의 갈래 경계 쉼표 · 사냥 밴드 짓기 뒤 · 인구 재동기 마을 하나씩(차례 그대로 · 끔 = 종전 글자)
+const T687_ON = TB.ON;
 // ★[T350] 흐름 둘 — 결정마다 클로저를 만들지 않는다(할당 0 · T345).
 //   `_diceLife` = 주민 생활층 결정(순수 해시 · 신원·셀·날·틱) · `_diceVil` = 마을 자리(출생·배치 · 스트림).
 const _diceLife = _makeStream(), _diceVil = _makeStream();
@@ -2528,7 +2531,7 @@ function _routeWarmStep() {
   //     ⇒ 쌍 하나를 파는 동안은 프레임마다 한 조각씩(16ms), 쌍과 쌍 사이에는 종전대로 250ms 쉰다.
   const pair = q[0];
   let fin = true;
-  try { fin = getRouteResumable(pair[0], pair[1], TICK_SLICE_MS).done; } catch (e) { fin = true; }
+  try { fin = getRouteResumable(pair[0], pair[1], TB.slice(TICK_SLICE_MS)).done; } catch (e) { fin = true; }   // ★[T687] 켬 = 이 틱 남은 몫(T85 비트 동일)
   if (!fin) return;                  // 아직 이 쌍을 파는 중 — 다음 프레임에 이어 간다(큐에서 안 뺀다)
   q.shift();
   state._routeWarmAt = Date.now();   // ★걸음이 **끝난 뒤**부터 재다 — 2.4초짜리 뒤에도 진짜로 쉬게
@@ -2579,7 +2582,7 @@ function _routeRedigStep() {
   const key = state.routeRedigQ[0];
   const ids = key.split('_'), A = state.byDbId.get(+ids[0]), B = state.byDbId.get(+ids[1]);
   if (!A || !B) { state.routeRedigQ.shift(); return; }
-  const r = _routeResume('redig:' + key, A.ccx * SZ + SZ / 2, A.ccy * SZ + SZ / 2, B.ccx * SZ + SZ / 2, B.ccy * SZ + SZ / 2, TICK_SLICE_MS);
+  const r = _routeResume('redig:' + key, A.ccx * SZ + SZ / 2, A.ccy * SZ + SZ / 2, B.ccx * SZ + SZ / 2, B.ccy * SZ + SZ / 2, TB.slice(TICK_SLICE_MS));   // ★[T687]
   if (!r.done) return;
   state.routeRedigQ.shift();
   state._routeWarmAt = Date.now();
@@ -2955,11 +2958,11 @@ function spawnCaravanBody(c, now, budgetMs) {
   // ★★[T85] 길을 **예산만큼만** 판다. 다 안 파였으면 이 조각에서는 안 떠나고 `'wait'` 를 돌려준다 —
   //   부른 쪽(`_caravanSyncOne` → `_drainTickJobs`)이 **같은 하루 안의 다음 조각**에 다시 부른다.
   //   ⚠여기서 아직 아무것도 안 만졌다(스폰 전) — 그래서 재진입이 안전하다. 이 줄이 그 계약이다.
-  const rr = getRouteResumable(legA, legB, (budgetMs === undefined) ? TICK_SLICE_MS : budgetMs);
+  const rr = getRouteResumable(legA, legB, (budgetMs === undefined) ? TB.slice(TICK_SLICE_MS) : budgetMs);   // ★[T687] 켬 = 이 틱 남은 몫
   if (!rr.done) { _probe.pathWait++; return 'wait'; }
   if (!rr.pts) return false;
   // ★★[T578 ②] 노드 사이를 걷는 길 — 쌍마다 한 번 예산만큼 이어 판다(아직이면 교역로와 같은 `'wait'` 계약 · 아무것도 안 만졌다).
-  const wr = _walkFor(legA, legB, (budgetMs === undefined) ? TICK_SLICE_MS : budgetMs);
+  const wr = _walkFor(legA, legB, (budgetMs === undefined) ? TB.slice(TICK_SLICE_MS) : budgetMs);   // ★[T687]
   if (!wr.done) { _probe.pathWait++; return 'wait'; }
   const pts = wr.pts || rr.pts;
   // ★[T533] 상인·호위 몸 세우기를 이름만 올렸다(`_caravanNpcs` — 이웃 존에서 넘어온 몸도 같은 함수 · 부르는 차례 그대로: 상인 → 호위).
@@ -3298,7 +3301,7 @@ function _caravanSyncNew() { return { seen: new Set(), spawned: 0, arrived: 0, r
 // ★[T85] `budgetMs` — 길을 파는 데 이 조각에서 쓸 수 있는 시간. 기본은 **슬라이서 손잡이 그대로**(새 손잡이 0).
 //   `0` 이면 무제한 = 종전 동작(일괄 문·조각내기를 끈 대조군).
 function _caravanSyncOne(now, c, S, budgetMs) {
-  const _pb = (budgetMs === undefined) ? TICK_SLICE_MS : budgetMs;
+  const _pb = (budgetMs === undefined) ? TB.slice(TICK_SLICE_MS) : budgetMs;   // ★[T687] 켬 = 이 틱 남은 몫
   const world = state.world, bodies = state.caravanBodies;
   const players = state.deps.players;
   const seen = S.seen;
@@ -5677,7 +5680,7 @@ function _t681Take(body) {
 // 하루 마감 첫 자리 — 지난 econ 날 몫 중 틱이 못 쓴 걸음을 채운다(차례 = `WARS` 차례 · 조각 예산이 차면 'retry' 로 다음 조각에 이어 간다).
 function _t681Flush() {
   if (!state.war || !state.warLive || !state.war.WARS) return;
-  const t0 = Date.now(), B = TICK_SLICE_MS || 0, now = state._warTickAt || Date.now(), dtMs = 1000 / ((state.warLive && state.warLive.TICK_HZ) || 30);
+  const t0 = Date.now(), B = TB.slice(TICK_SLICE_MS || 0), now = state._warTickAt || Date.now(), dtMs = 1000 / ((state.warLive && state.warLive.TICK_HZ) || 30);
   for (const w of state.war.WARS) {
     if (w.phase !== 'march' && w.phase !== 'battle') continue;
     const body = state.warBodies && state.warBodies.get(w.id); if (!body || body.phase === 'return' || body.noArmy) continue;
@@ -5981,7 +5984,7 @@ function onGameTick(now) {
   // ★[10차 T4 장마당] 캐러밴 체류(phase='linger') 집합이 바뀔 때만 방송 — 평시 O(캐러밴 수) 비교 1회
   try { _mktBroadcast(); } catch (e) { console.error(`[${state.zoneId}] 🏪 장마당 플래그 방송 실패:`, e.message); }
   // ★[T42 ①ⓑ] 교역로 선계산 한 걸음 — 마감 중이 아니고 **사람이 없을 때만**(위 주석).
-  if (!state.tickJobs) { try { _routeWarmStep(); } catch (e) {} try { _routeRedigStep(); } catch (e) {} }   // ★[T578 ④] 데우기 다음 차례 — 길이 바뀐 날 교역로를 다시 판다
+  if (!state.tickJobs) { if (!TB.out(TICK_SLICE_MS, 'route')) try { _routeWarmStep(); } catch (e) {} if (!TB.out(TICK_SLICE_MS, 'redig')) try { _routeRedigStep(); } catch (e) {} }   // ★[T687] 켬이면 이 틱 남은 몫이 없을 때 쉰다   // ★[T578 ④] 데우기 다음 차례 — 길이 바뀐 날 교역로를 다시 판다
   // ★자정 스파이크 분산: DB 직렬화(마을당 ~10KB JSON — 자정 틱 비용의 주범)는 이후 틱에 1마을/틱씩 배수(drain).
   //   econ 틱 자체는 일괄 유지 — 교역(tickWorldV2)이 마을 간 원자적이라 쪼개면 정합이 깨짐. 30Hz 예산(33ms) 보호.
   if (state.saveQueue && state.saveQueue.length) {
@@ -6014,13 +6017,14 @@ function onGameTick(now) {
   //
   //   마감 중에는 새 날을 열지 않는다(아래 첫 줄). 하루가 24분이고 마감이 3초 남짓이라
   //   정상적으로는 절대 겹치지 않지만, 겹치면 그건 **밀린 것**이지 건너뛸 일이 아니다.
-  if (state.tickJobs) { _drainTickJobs(now); return; }
+  //   ★[T687] 켬이면 이 틱 공용 몫이 이미 바닥났을 때 마감 조각을 이 틱엔 쉰다(다음 틱 · 차례 그대로).
+  if (state.tickJobs) { if (!TB.out(TICK_SLICE_MS, 'close')) _drainTickJobs(now); return; }
   if (state.dayFreeze) return;
   const day = gameDayOf(now);
   if (day <= state.lastGameDay) return;
   state.lastGameDay = day;
   _openDayJobs(now);
-  _drainTickJobs(now);
+  if (!TB.out(TICK_SLICE_MS, 'close')) _drainTickJobs(now);
 }
 
 // ── 조각 예산 ────────────────────────────────────────────────────────────────
@@ -6135,16 +6139,17 @@ function _openDayJobs(now) {
   if (state.xzone) add('xzone', () => _xzDayOut());
 
   // ② 인구·직업 재동기 — 실측 1ms. 마을별로 쪼갤 값어치가 없다(조각 오버헤드가 더 크다).
-  add('pop', () => {
-    for (const vil of C.vils) {
-      C.econPop += vil.econ.npcs.length;
-      syncVillagePop(vil, POP_SYNC_PER_DAY); // 완만 반영: ±POP_SYNC_PER_DAY/일
-      syncVillageJobs(vil, C.jobChanges);    // Stage 4A: econ counts 비례 재동기(신규 스폰 포함)
-      syncVillageClothes(vil, state.deps.players, state.econ);   // ★[T125] 곳간 옷 재고 → 주민 착장(econ 읽기만)
-      C.npcCount += vil.npcPids.length;
-      C.pops[vil.dbId] = vil.econ.npcs.length;
-    }
-  });
+  const _popOne = (vil) => {
+    C.econPop += vil.econ.npcs.length;
+    syncVillagePop(vil, POP_SYNC_PER_DAY); // 완만 반영: ±POP_SYNC_PER_DAY/일
+    syncVillageJobs(vil, C.jobChanges);    // Stage 4A: econ counts 비례 재동기(신규 스폰 포함)
+    syncVillageClothes(vil, state.deps.players, state.econ);   // ★[T125] 곳간 옷 재고 → 주민 착장(econ 읽기만)
+    C.npcCount += vil.npcPids.length;
+    C.pops[vil.dbId] = vil.econ.npcs.length;
+  };
+  //   ★[T687 ②] 켬이면 마을 하나씩 조각(같은 차례 · 같은 함수 — 사람 수에 비례하는 통짜였다) · 끔 = 한 조각 그대로.
+  if (T687_ON) for (const vil of C.vils) add('pop', () => _popOne(vil));
+  else add('pop', () => { for (const vil of C.vils) _popOne(vil); });
 
   // ③ 영토 확장 — 실측 177ms(p95 395ms). **마을 경계**로 쪼갠다.
   //   ★[11차 재민 지시] econ이 매일 산 땅만큼 실제 셀을 넓히고, 새 셀의 나무를 벤다.
@@ -6276,7 +6281,7 @@ function _drainVillageWaitQ() {
 function _drainTickJobs(now) {
   const C = state.tickCtx, J = state.tickJobs;
   if (!C || !J) { state.tickJobs = null; state.tickCtx = null; return; }
-  const f0 = Date.now();
+  const f0 = Date.now(), _B = TB.left(TICK_SLICE_MS);   // ★[T687] 끔 = 조각 예산 그대로 · 켬 = 이 틱 남은 몫(문 예산보다 크지 않다)
   C.frames = (C.frames || 0) + 1;
   try {
     do {
@@ -6295,7 +6300,7 @@ function _drainTickJobs(now) {
       //   ⚠맨 앞이라 뒤 단계(쓸기·사건 장부)를 앞지르지 않는다 — 단계 순서가 그대로다(`C.order` 가 증거).
       //   ⚠헛돌지 않는다: 되돌아온 조각은 이미 이 프레임의 예산을 썼으므로 아래 `while` 이 프레임을 닫는다.
       if (rv === 'retry') J.unshift(j);
-    } while (J.length && (TICK_SLICE_MS === 0 || Date.now() - f0 < TICK_SLICE_MS));
+    } while (J.length && (TICK_SLICE_MS === 0 || Date.now() - f0 < _B));
   } catch (e) {
     console.error(`[${state.zoneId}] 🏘️ 마을 econ 틱 실패 (다음 경계에 재시도):`, e.message);
     state.tickJobs = null; state.tickCtx = null; _drainVillageWaitQ();
@@ -8192,7 +8197,8 @@ function _t427HomeOf(vil, npc) {   // 집(없으면 회관 중심) — 도달을
 const _T562_VERIFY = process.env.T562_VERIFY === '1';
 const _t562Stat = { sets: 0, reuse: 0, q: 0, pend: 0, vq: 0, vdiff: 0, vdiffs: [] };
 function _t562On() { const dp = state.deps; return !!(dp && typeof dp.npcReachBegin === 'function' && typeof dp.collGenAround === 'function'); }
-function _t562SliceStop() { const t = Date.now(), B = TICK_SLICE_MS || 16; return () => Date.now() - t > B; }   // 하루 마감 조각 안의 넓히기 예산(조각 예산 그 수)
+function _t562SliceStop() { const t = Date.now(), B = TB.slice(TICK_SLICE_MS || 16);   // ★[T687] 켬 = 이 틱 남은 몫
+  return () => Date.now() - t > B; }   // 하루 마감 조각 안의 넓히기 예산(조각 예산 그 수)
 function _t427Set(vil, o, stop) {
   const dp = state.deps;
   const R = vil._t427R || (vil._t427R = new Map());
@@ -9868,8 +9874,10 @@ function* _lifeGameDaySteps(vil, day) {
   if (_t146() === 0) return;
   const m = _huntBandBuild(vil);
   if (!m) return;
+  if (T687_ON) yield;   // ★[T687] 쉼표 — 밴드 짓기 뒤(쉰 시간은 부르는 쪽이 뺀다)
   //   ① 사냥꾼 하루치 차감 — 정본 하나(하루 틱도 하네스도 이 문으로 들어온다)
   yield* _huntHuntersSteps(vil, state.deps && state.deps.players, day);
+  if (T687_ON && (day % 7 === 0 || day % 14 === 0)) yield;   // ★[T687] 쉼표 — 주 단위 회복 · 14일 부존 앞(그날만)
   // ② 회복 — 주 단위 배치 로지스틱(랩 10760 그대로 · r 이 느려 1차 근사 동일)
   if (day % 7 === 0) for (const [k2, g2] of m) {
     if (g2 > 0 && g2 < L_GAMEMAX) { const ng = g2 + 7 * L_GAMER * g2 * (1 - g2 / L_GAMEMAX);
@@ -10261,23 +10269,27 @@ function* _lifeDailySteps(vil) {   // 게임일 경계: 크루·클레임 재대
   }
   vil._cropClaim = new Set(); vil._jobSites = null;   // ★[생활 층 100% ③] 작물 셀 클레임·직업 현장 캐시 일일 리셋(자가치유·현장 재평가)
   _sub('crop');
+  if (T687_ON) { const _pz0 = _t523Pause; yield; const _pz = _t523Pause - _pz0; _lt += _pz; _lt0 += _pz; }   // ★[T687] 쉼표(차례 그대로 · 쉰 시간은 스톱워치에서 뺀다)
   _lifeHunterEconLink(vil);   // ★[HSK↔econ] 시각 사냥꾼 ↔ econ 사냥꾼 NPC 연결(랩 배치 루틴 verbatim — 일일 재대사)
   _lifeEconLink(vil, 'farmer');   // ★[T190] 시각 농부 ↔ econ 농부 — **같은 규칙**(수확이 그 농부의 배율을 쓴다 · 손잡이 끄면 배율이 1 이라 무해)
   _sub('hunter');
   try { _lifeGranAdd(vil); } catch (e) { console.error(`[${state.zoneId}] 생활층 곳간 증설 실패(${vil.name}):`, e.message); }   // ★[곳간 증설 런타임] 재고 비례 링 증설(랩 _granAdd)
   _sub('granAdd');   // ★[T523] 계측 전용 — 종전 `gran` 의 첫 토막
+  if (T687_ON) { const _pz0 = _t523Pause; yield; const _pz = _t523Pause - _pz0; _lt += _pz; _lt0 += _pz; }   // ★[T687] 쉼표(차례 그대로 · 쉰 시간은 스톱워치에서 뺀다)
   // 작물 하루 틱(랩 7920 동형): 김매기·물대기 놓치면 품질↓ · 병충해 발생(내일 방제 일감) — 상태·연출만(식량은 econ 소유)
   if (vil._crop && vil._crop.size) {
     const day = state.dayMs ? gameDayOf(_dayNow()) : 0;
     for (const [k, e] of vil._crop) cropDayTick(e, !vil._drySet.has(k), day, k);   // ★[T58b] 정본 하나(플레이어 농지도 이걸 재생한다)
   }
   _sub('cropDay');   // ★[T523] 계측 전용 — 둘째 토막(아래 `gran` 은 이제 사냥 하루만)
+  if (T687_ON) { const _pz0 = _t523Pause; yield; const _pz = _t523Pause - _pz0; _lt += _pz; _lt0 += _pz; }   // ★[T687] 쉼표(차례 그대로 · 쉰 시간은 스톱워치에서 뺀다)
   // ★[T146] 사냥 하루 정산 — 개체군 회복·차감·부존 갱신(랩 `lifeDayAll` 동형 · 값 그대로)
   try { const _pz0 = _t523Pause; yield* _lifeGameDaySteps(vil, state.world.day | 0); const _pz = _t523Pause - _pz0; _lt += _pz; _lt0 += _pz; } catch (e) { console.error(`[${state.zoneId}] 사냥 하루 틱 실패(${vil.name}):`, e.message); }
   _sub('gran');
   vil._psiteCrew = 0;
   for (const pid of vil.npcPids) { const p = state.deps.players.get(pid); if (p && p._lifeTask) { if (p._lifeTask.k === 'clear') { vil._claim.add(p._lifeTask.cx + ',' + p._lifeTask.cy); vil._clearCrew++; } else if (p._lifeTask.k === 'build') { if (p._lifeTask.ps) vil._psiteCrew++; else vil._buildCrew++; } } }
   _sub('pids');
+  if (T687_ON) { const _pz0 = _t523Pause; yield; const _pz = _t523Pause - _pz0; _lt += _pz; _lt0 += _pz; }   // ★[T687] 쉼표(차례 그대로 · 쉰 시간은 스톱워치에서 뺀다)
   if (vil._pendSite && !vil._site) {   // 재부팅 복원: 진행 중이던 터 재실체화(단계 1부터 — 관용)
     const ps = vil._pendSite; vil._pendSite = null;
     if (state.deps.liveBuildRow) {
@@ -10302,6 +10314,7 @@ function* _lifeDailySteps(vil) {   // 게임일 경계: 크루·클레임 재대
     : (vil.econ.npcs.length > cap * 0.92);
   if (!vil._site && _wantSite) { try { _lifeAddHouseSite(vil); } catch (e) { console.error(`[${state.zoneId}] 생활층 신축 실패(${vil.name}):`, e.message); } }
   _sub('site');
+  if (T687_ON) { const _pz0 = _t523Pause; yield; const _pz = _t523Pause - _pz0; _lt += _pz; _lt0 += _pz; }   // ★[T687] 쉼표(차례 그대로 · 쉰 시간은 스톱워치에서 뺀다)
   // ★★[T400] 집 — 자재를 나르는 크루의 하루(관측자 무관 · 이 줄은 아래 관측자 문 **앞**이다). 끔이면 한 줄도 안 돈다.
   if (_lifeEcon().T400_BUILD_ACT) { try { _t400BuildDay(vil); } catch (e) { console.error(`[${state.zoneId}] 생활층 집 행위 실패(${vil.name}):`, e.message); } _sub('site'); }
   // ★★[T527] 다리 — 섬 마을 여유 크루의 하루(관측자 무관 · 같은 자리). 끔이면 한 줄도 안 돈다.
@@ -10316,6 +10329,7 @@ function* _lifeDailySteps(vil) {   // 게임일 경계: 크루·클레임 재대
     _sub('headless');
   }
   _sub('near');
+  if (T687_ON) { const _pz0 = _t523Pause; yield; const _pz = _t523Pause - _pz0; _lt += _pz; _lt0 += _pz; }   // ★[T687] 쉼표(차례 그대로 · 쉰 시간은 스톱워치에서 뺀다)
   // ★[NPC hp 랩 100% — 랩 7576~7590 verbatim] 부상 회복(일일) + 부상 노동력 계수. 회복 = 요양18·근무6/일 ×건강F×행복F×식량F.
   //   zone.js 초당 회복(플레이어 전용)에서 마을 NPC는 제외되며(simVillageId 게이트) 이 일일 규칙이 유일한 회복 경로 —
   //   요양 수일 = 노동 손실 실체(랩 herb 수요·_laborMul의 전제). 개체 허기·아사 없음(식량 사망 = econ 기근 인구감소가 유일).
