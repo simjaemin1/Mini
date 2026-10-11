@@ -368,3 +368,15 @@ BGM. The 64 ms YIN window attenuated 5–7 Hz vibrato depth by roughly 14–27%
 on synthetic tones, so it must not be used as validated expressive ground
 truth. A longer pilot will need a private checkpoint and strictly held-out
 reconstruction listening before score rendering can be judged.
+
+`audit_yin_window_quality.py` compares 32 ms and 64 ms YIN on identical 10 ms
+frames without writing source audio or per-frame results. In the private
+250-clip aggregate, 118 isolated `VB01` events passed the shared-voicing and
+periodicity gates; their median 32/64 ms modulation-depth ratio was **1.064**.
+In the sparse 80–150 Hz stratum selected by the 64 ms tracker, median tracker
+disagreement was **490 cents**, so neither estimate is established as true F0.
+The spectral-flatness “noise-like” proxy selected only five frames and is
+**not a usable breath test** here. These are tracker-comparison diagnostics,
+not F0 ground truth or proof of better expression. Keep the 64 ms timbre
+baseline; do not promote 32 ms as the sole training pitch track without
+independent low-pitch, voicing, and breath-boundary validation.
