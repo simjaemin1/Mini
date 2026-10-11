@@ -233,6 +233,9 @@ const _inZone = (x, y) => !(x < 0 || y < 0 || x >= ZONE.zoneWidth || y >= ZONE.z
 //   닛폰은 폭이 좁아 띠가 16% 로 안쪽까지 든다(T348 계획기가 **정확히 이 자리**에서 헛다리를 놓았다).
 //   띠를 안 보면 자가 바다 위에 마을을 세운다(이즈사키 — 서버는 "뭍 없음 — 스킵").
 //   ⇒ `T17_COAST`(기본: 한반도 끔 = 종전 그대로 · 다른 존 켬). 원천은 서버가 부르는 그 함수 하나(사본 0).
+//   ★[T669 2026-10-08] `T17_COAST=1` = 서버 정본 해안 그대로다 — 물 술어(시딩 `findOpenCenter` · 마당 · 땅 셈 · 걸음)가 서버 `WATER_TILES` 와 같은 칸을 본다.
+//     바다 거리(`villages.seaDistPx`)는 손잡이와 무관하게 이미 같은 칸이다(자는 `deps.waterTiles` 가 없어 같은 함수를 `findZoneAt` 없이 부른다 — 생성기가 그 인자를 안 써 칸 집합 같음 · 두 존 다른 칸 0).
+//     한반도 기본 끔 = 기준선 자 바이트(여덟째 판) · 켜는 것은 기준선 자 변경(PM) — 표 `보고/T669_2026-10-08.md`.
 const _COAST = process.env.T17_COAST !== undefined ? process.env.T17_COAST === '1' : (Z !== 'hanbando');
 const _COAST_TILES = _COAST ? R('server/chunk').generateCoastlineWaterTiles({ ...ZONE, id: Z }, SZ, R('server/zone-config').findZoneAt,
   Object.values(ZONES).filter((z) => z.isOcean).map((z) => ({ x0: z.worldOffsetX, y0: z.worldOffsetY, x1: z.worldOffsetX + z.zoneWidth, y1: z.worldOffsetY + z.zoneHeight }))) : null;
