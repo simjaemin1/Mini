@@ -6662,14 +6662,14 @@ function _t593SeaBank(cx, cy) {
 function _t593SeaHand() { const F = _fishingMod(); return !!(F && F.T593_SEA); }
 // ★[T350] `_t340Rng` 정의는 `server/seed-rand.js` 로 옮겼다(머리에서 require · 사본 0).
 // 한 시도 — 상태는 `npc._t340` 하나(던진 자리·입질 시각·창·그 종). 자리를 옮기면 버린다(안 물림).
-// ★★[T677 ② 2026-10-08 · 어부 드리움의 자리 판정을 칸마다 한 번] 손잡이 `T677_LIFE_SCAN=1`(기본 끔 = 종전 그대로).
+// ★★[T677 ② 2026-10-08 · 어부 드리움의 자리 판정을 칸마다 한 번] 손잡이 `T677_LIFE_SCAN`(★10-11 켬 기본 · `0` = 종전 그대로).
 //   T677 ① 갈래 표본기: 낮 `npcStep` 의 생활층 몫 가운데 가장 큰 것이 어부의 던짐(`_t340Try`)이었다(사람당 ≈ 0.16 µs · 낮 `npcStep` 의 10 %).
 //   던질 때마다 `fishing.spotAt` 이 그 칸에서 **모든 강의 모든 마디**까지 거리를 다시 잰다(`_riverU`) — 그런데 그 답은
 //   지형(강·호수·이웃 존 물)과 칸 좌표만의 순수 함수이고 지형은 존마다 한 번 지어 그대로 쓴다(`terrain._generated`).
 //   ⇒ (존, 칸)마다 한 번 재어 둔다. **판본** = 그 존 지형 객체 자체(`ZONE_TERRAIN[zoneId]` — 다시 지으면 다른 객체 → 기억을 비운다).
 //   ★같은 답인 까닭: ① `spotAt` 는 인자와 지형만 읽고 아무것도 안 쓴다(글자 — 증인 ⓐ) ② 돌려받은 자리 객체를 고치는 자리 0
 //     (`plan` · `spotScore` 가 읽기만 · 증인 ⓒ) ⇒ 같은 객체를 다시 줘도 같다 ③ 던지다 예외가 나면 종전처럼 `null`(기억 안 함).
-const T677_LIFE_SCAN = process.env.T677_LIFE_SCAN === '1';
+const T677_LIFE_SCAN = process.env.T677_LIFE_SCAN !== '0';   // ★10-11 PM 착지 켬 기본(바이트 같음 · `0` = 종전)
 const _t677SpotM = new Map(); let _t677SpotT = null, _t677SpotZ = null;
 function _t677Spot(F, cx, cy) {
   const T = _terrainMod(), z = state.zoneId, t = T.ZONE_TERRAIN ? T.ZONE_TERRAIN[z] : null;
