@@ -35,3 +35,49 @@ ingest report's hashes. That adapter and any model training require their
 own rights/scope review. Do not pass NGC originals, AI Hub recordings, or
 DDSP-Gugak assets into this synthetic-only command. No game/default/public
 asset permission is inferred here.
+
+## 71470 acquisition facts (checked 2026-10-11)
+
+The [official dataset page](https://www.aihub.or.kr/aihubdata/data/view.do?currMenu=115&dataSetSn=71470&topMenu=100)
+lists 900 clips tagged as daegeum (`WN01`) and a total compressed dataset
+size of **19.20 GB**. It says only *some* MIDI scores are synchronized with
+audio and WAV/score matching needs segment cleanup. Thus 900 is not a count
+of clean, aligned solo training examples. The published JSON schema includes
+`music_trk_nmbr`, `instrument_cd`, optional `main_instr_player`, and optional
+sigimsae spans. Validate their actual values before implementing a real-data
+adapter; the synthetic fixture above does not mirror that schema.
+
+The [official API guide](https://www.aihub.or.kr/devsport/apishell/list.do?currMenu=403&topMenu=100)
+supports public file listing and, after dataset approval, downloading by
+`filekey`;
+it recommends **2–3×** the compressed size for download/extraction. The
+current Mac has only about 15 GiB free, so a full download here is not safe.
+The public file listing (read-only `-mode l -datasetkey 71470`, 2026-10-11)
+groups audio by **genre**, not by instrument. In particular, traditional
+folk-music training source `TS_전통국악_F_민속악.zip` is 7 GB (filekey `504208`)
+and its label archive is 4 MB (`504213`); validation source is 1 GB
+(`504222`) with a 532 KB label archive (`504227`). Daegeum may also occur
+in other genre packages. A safe acquisition sequence after approval is to
+download the small label archives first, count `WN01` entries and inspect
+their references, then fetch only a source archive whose labels contain
+usable candidates. Do not infer that the folk ZIP contains all 900 clips.
+The folk training ZIP alone would exceed this Mac's safe extraction budget;
+the 1 GB validation ZIP may be a practical first real-audio sample after
+checking its labels and the current free space. Store API keys only in an
+untracked, private location, never in this repository or logs.
+
+The dataset Download button currently leads to an AI Hub login form. Its
+application requires the applicant's own identity and purpose; the page
+states domestic applicants only. No account credentials, approval receipt,
+API key, dataset WAV/MIDI/JSON, or WSL RTX 4060 training host is established
+in this project yet.
+
+The [AI Hub policy](https://www.aihub.or.kr/intrcn/guid/usagepolicy.do?currMenu=151&topMenu=105)
+restricts the supplied raw data to model training, prohibits unapproved
+redistribution and requires attribution. Its
+[FAQ](https://aihub.or.kr/aihubnews/faq/list.do?currMenu=146&topMenu=104)
+allows commercial distribution of trained models/services with dataset-name
+and AI Hub credit, not redistribution of raw or merely edited recordings.
+Record the terms presented to the actual applicant and review near-copy
+outputs before any game release. None of this licenses the separate
+DDSP-Gugak checkpoint.
