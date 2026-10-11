@@ -1401,7 +1401,7 @@ console.log('\n⑮ T427 ① — 닿는 현장만(배정 순간 집 → 후보 ·
   };
   //   ★[T514 추신 · T523] `huntHunters` 는 이제 정본 몸통 `_huntHuntersSteps`(생성기)를 끝까지 도는 한 줄이다 — **둘 다** 제품 글자 그대로 뜬다(사본 0)
   //   ★[T562] 도달 기억이 **집마다 닿는 칸 집합**(존이 주입하면)으로 갈렸다 — 그 몸통 셋(켬 술어 · 집합 기억 · 조각 예산)도 제품 글자 그대로 뜬다.
-  const t562Src = bodyV('_t562On') + '\n' + bodyV('_t427Set') + '\n' + bodyV('_t562SliceStop') + '\nconst _T562_VERIFY = false; const _t562Stat = { sets: 0, reuse: 0, q: 0, pend: 0, vq: 0, vdiff: 0, vdiffs: [] }; const TICK_SLICE_MS = 16;';
+  const t562Src = bodyV('_t562On') + '\n' + bodyV('_t427Set') + '\n' + bodyV('_t562SliceStop') + '\nconst _T562_VERIFY = false; const _t562Stat = { sets: 0, reuse: 0, q: 0, pend: 0, vq: 0, vdiff: 0, vdiffs: [] }; const TICK_SLICE_MS = 16; const TB = { slice: (o) => o };';   // ★[PM 10-11 · T687] _t562SliceStop 가 공용 예산(`TB.slice`)을 묻는다 — 하네스는 틱 밖이라 `tick-budget` 도 제 예산 그대로 돌려준다(같은 꼴의 대역)
   const onSrc = bodyV('_t427On'), homeSrc = bodyV('_t427HomeOf'), reachSrc = bodyV('_t427Reach'), siteSrc = bodyV('_t427Site'),
     huntSrc = bodyV('huntHunters') + (bodyV('_huntHuntersSteps') ? '\n' + bodyV('_huntHuntersSteps') : '');
   ok(onSrc.length > 40 && homeSrc.length > 60 && reachSrc.length > 200 && siteSrc.length > 100 && huntSrc.length > 1500,
