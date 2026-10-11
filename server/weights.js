@@ -135,7 +135,8 @@ const DERIVED_KG = {
 //   ⓑ 익힌 둘 = 날것 kg × USDA 조리 수율(1 lb 날것 → 340 g 굽기 · 277 g 삶기 — 출처·셈은 `game-meat.js` 머리).
 //     ★여기 수를 안 적는다 — 이 파일의 `kgOf` 를 넘겨 그쪽이 곱한다(별칭이 먼저 서야 곰고기 kg 가 잡힌다 — 차례가 계약).
 { let _GM = null; try { _GM = require('./game-meat'); } catch (e) {}
-  if (_GM && _GM.on()) { Object.assign(ITEM_ALIAS, _GM.ALIAS); Object.assign(DERIVED_KG, _GM.weightMap(kgOf)); } }
+  // ★[PM 10-11] 번들(econ 브라우저)은 모르는 require 에 `{}` 를 준다 — `on` 이 함수인지 먼저 본다
+  if (_GM && typeof _GM.on === 'function' && _GM.on()) { Object.assign(ITEM_ALIAS, _GM.ALIAS); Object.assign(DERIVED_KG, _GM.weightMap(kgOf)); } }
 
 // ── 정본 접근자 ─────────────────────────────────────────────────────────────
 //   순서: 별칭 → specialty(정본) → 코어 표 → 플레이어 전용 유도값.
