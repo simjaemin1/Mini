@@ -703,7 +703,7 @@ function _impactF(P, S, s) {
   return S.pLo * S.sLo + pw + (s > S.sHi ? S.pHi * (s - S.sHi) : 0);
 }
 // 매수: 예산 C로 재고를 s0→s1까지 파고듦 — F(s1)=F(s0)−C 구간별 닫힌형 역산. 물리 재고 상한.
-function _impactBuyV2(v, r, budget) {
+function _impactBuyV2(v, r, budget, held) {   // ★[T692] held = 곳간 가운데 팔지 않는 몫(시딩 비축 · 없으면 0 → 종전 비트)
   const P = _priceParamsV2(v, r);
   if (!(budget > 0) || P.physical <= 0) return { qty: 0, cost: 0 };
   const S = _impactSegs(P), s0 = P.sEff, F0 = _impactF(P, S, s0);
@@ -716,7 +716,7 @@ function _impactBuyV2(v, r, budget) {
     s1 = Math.abs(e - 1) < 1e-9 ? S.sLo * Math.exp(g / S.k)
       : Math.pow(Math.pow(S.sLo, 1 - e) + g * (1 - e) / S.k, 1 / (1 - e));
   } else s1 = S.sHi + (Ft - _impactF(P, S, S.sHi)) / S.pHi;
-  const qty = Math.min(Math.max(0, s0 - s1), P.physical);
+  const qty = Math.min(Math.max(0, s0 - s1), P.physical - (held || 0));
   if (qty <= 0) return { qty: 0, cost: 0 };
   return { qty, cost: F0 - _impactF(P, S, s0 - qty) };
 }
@@ -878,7 +878,7 @@ function tickTradeV2(world, day) {
       const candidates = [];
       for (const r of TRADABLE) {
         if (_oreBanned(r)) continue;   // ★[2026-08-02f ①-3] 원석은 산지에서만 녹인다 — 발주 후보에서 제외
-        const stock = a.v.storage[r] || 0;
+        const stock = v1.seedReserveAvail(a.v, r);   // ★[T692] 곳간 − 시딩 비축(끔 = `a.v.storage[r] || 0` 그대로)
         const subs = (SUBSISTENCE_PER_NPC[r] || 0) * N;
         const buffer = N * 0.8;
         const target = Math.max(subs * 30, buffer);
@@ -1082,7 +1082,7 @@ function tickTradeV2(world, day) {
         if (r === 'weapon') aTarget = Math.max(2, (((a.v.counts && a.v.counts.warrior) || 0) + ((a.v.counts && a.v.counts.hunter) || 0)) * 1.3);
         else if (r === 'armor') aTarget = Math.max(1, ((a.v.counts && a.v.counts.warrior) || 0) * 1.3);
         if ((a.v.storage[r] || 0) >= aTarget * WEAPON_RETURN_GLUT_MULT) continue;   // ★return-glut-cap: 무기는 사용자×1.3×배수 넘으면 안 실어옴(청동검 소량 수입). 그 외 극단 글럿 차단
-        const bStock = b.v.storage[r] || 0;
+        const bStock = v1.seedReserveAvail(b.v, r);   // ★[T692] 되사 갈 수 있는 곳간 = 곳간 − 시딩 비축(끔 = 종전)
         const bSubs = (SUBSISTENCE_PER_NPC[r] || 0) * b.v.npcs.length;
         const bTarget = Math.max(bSubs * 30, b.v.npcs.length * 0.3);
         if (bStock <= bTarget * 1.0) continue;
@@ -1410,13 +1410,13 @@ function _caravanArrive(world, c, day) {
       }
       if (_bfR) returnRes = _bfR;
     }
-    if (!returnRes || !((c.to.storage[returnRes] || 0) > 1) || _returnGlutted(returnRes)) {
+    if (!returnRes || !(v1.seedReserveAvail(c.to, returnRes) > 1) || _returnGlutted(returnRes)) {   // ★[T692] 비축 뺀 곳간(끔 = 종전)
       // 다시 best 찾기 — 귀환 마을 글럿 재화는 제외
       let bestR = null, bestRatio = 0;
       for (const r of TRADABLE) {
         if (r === c.giveRes) continue;
         if (_oreBanned(r)) continue;   // ★[2026-08-02f ①-3] 귀환화물로도 원석을 싣지 않는다(발주와 같은 잣대)
-        const bStock = c.to.storage[r] || 0;
+        const bStock = v1.seedReserveAvail(c.to, r);   // ★[T692] 비축 뺀 곳간(끔 = 종전)
         if (bStock <= 1) continue;
         if (_returnGlutted(r)) continue;   // ★return-glut-cap
         const ratio = (pricesFrom[r] || 1) / (pricesTo[r] || 1);
@@ -1440,7 +1440,7 @@ function _caravanArrive(world, c, day) {
       if (_rpFn) {
         let _r = null;
         try { _r = _rpFn(c.from, c.to, returnRes); } catch (e) { _r = null; }
-        if (_r && _r !== c.giveRes && (c.to.storage[_r] || 0) > 1 && !_returnGlutted(_r)) returnRes = _r;
+        if (_r && _r !== c.giveRes && v1.seedReserveAvail(c.to, _r) > 1 && !_returnGlutted(_r)) returnRes = _r;   // ★[T692] 비축 뺀 곳간
       }
     }
     // ★pull 계측(#26 — 행동 무영향 카운터): 위기 발주촌 대금 구성(식량류 비율). 회귀 불변식이 pull 채널의 조용한 회귀를 감시.
@@ -1457,7 +1457,7 @@ function _caravanArrive(world, c, day) {
       //   매수세: 시장 실지불 C×(1+TAU)=netCredit → C=netCredit/(1+TAU), 세금=C×TAU
       //   (종전 taxToOnBuy는 재고 부족으로 못 산 미체결분까지 과세하던 결함 — 함께 수리).
       const _budget = netCreditAfterArrival / (1 + TAU);
-      const _buy = _impactBuyV2(c.to, returnRes, _budget);
+      const _buy = _impactBuyV2(c.to, returnRes, _budget, v1.seedReserveHeld(c.to, returnRes));   // ★[T692] 비축은 안 판다(끔 = 0 → 종전)
       c.to.storage[returnRes] = (c.to.storage[returnRes] || 0) - _buy.qty;
       c.to.treasury._cash = (c.to.treasury._cash || 0) + _buy.cost * TAU;
       c._returningRes = returnRes;
