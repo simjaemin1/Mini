@@ -380,3 +380,72 @@ The spectral-flatness “noise-like” proxy selected only five frames and is
 not F0 ground truth or proof of better expression. Keep the 64 ms timbre
 baseline; do not promote 32 ms as the sole training pitch track without
 independent low-pitch, voicing, and breath-boundary validation.
+
+## Train-only IRCAM score-loudness feasibility diagnostic
+
+`diagnose_ircam_score_loudness.py` is a separate, **non-rendering** check for
+the 1,000-step IRCAM checkpoint. It does not change the pinned training script,
+checkpoint, score adapter, or game. The B0 score's −29 dB steady, −58 dB breath
+start, −43 dB reattack, and −80 dB release are **authorial intentions**, not
+the model's weighted-log spectral loudness. Never pass these dB values directly
+to the checkpoint or infer that F0=0 makes silence.
+
+The diagnostic first binds the checkpoint marker and `.pt` SHA-256 to the
+complete training report, approved C001 source/split manifest hashes, exact
+feature extractor and training script hashes, model configuration, upstream
+IRCAM code, and checkpoint mean/std. It reads the full split *manifests* but
+opens **no held-out WAV**. From a deterministic, song-balanced subset of 15–216
+training files (60 by default), it streams each training WAV's SHA-256 check,
+holds at most its first 120 seconds in memory, and reuses the actual
+high-confidence 4-second windows selected by the training algorithm. For
+stable voiced 100 Hz frames in those windows, it pairs the checkpoint's exact
+weighted-log feature with a 64 ms centered RMS dBFS measurement. No frame
+arrays, audio, names, or per-song values are written to disk.
+
+The private JSON reports song-supported 2 dB RMS bins, a **train-only**
+monotone candidate relation and its isotonic correction, nominal score-pitch
+coverage, and out-of-support flags for breath/rearticulation/slur/release.
+For this *feasibility coordinate only*, it assumes score steady −29 dB maps
+to the median stable RMS of each represented training song, then preserves
+relative authored dB differences. That is not a measured score-to-RMS fact,
+not a learned articulation, and not an inference-ready calibrated curve.
+The RMS/feature association can change with pitch, breath noise, and tone
+color, so this one-dimensional relation is **not a causal same-timbre
+conversion**. The script checks the checkpoint marker, full `.pt` SHA, and
+training-report SHA again after all training WAVs are read; any change fails
+closed before an aggregate is written.
+Bins need at least 30 measured frames from three training songs; only the
+contiguous supported run around the anchor can be interpolated. No
+extrapolation is permitted. Release is flagged for mandatory post-reverb
+sample-domain mute even if its nominal level falls within a training bin.
+The separate held-out audio evaluation and human A/B listening remain
+necessary before any score inference; this diagnostic never performs them.
+
+Create a fresh empty 0700 folder outside Git, source audio, and checkpoints.
+Run this only with the private environment after reviewing the code and the
+current rights grant (replace the bracketed paths with absolute local paths):
+
+```sh
+<private_venv_python> tools/bgm-gpt/aihub-readiness/diagnose_ircam_score_loudness.py \
+  --source-manifest <private_16k_manifest.json> \
+  --split-manifest <private_split.json> \
+  --checkpoint-dir <private_completed_1000_step_trial> \
+  --upstream-root <private_pinned_ddsp_pytorch_checkout> \
+  --output-dir <fresh_empty_private_0700_directory> \
+  --clips 60 --minutes 30
+```
+
+It writes just `train_only_score_loudness_feasibility.json` (0600), with
+aggregate figures and hashes but no source names or waveforms. The output
+always states `inference_ready: false`. The time cap is soft between clips;
+one hash or feature pass can finish after it. Memory is bounded by one 120 s
+mono float32 prefix (about 7.7 MiB), feature-working buffers, and at most
+216 × 3 × 4 s of in-memory candidate frames; disk use is one small JSON.
+The Python socket guard is **not** an operating-system network sandbox.
+
+Synthetic/public-score test (no licensed audio or checkpoint):
+
+```sh
+cd tools/bgm-gpt/aihub-readiness
+python3 -m unittest test_diagnose_ircam_score_loudness.py -v
+```
