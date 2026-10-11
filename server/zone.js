@@ -1541,7 +1541,7 @@ WATER_TILES = (() => {
 const _walk = { steps: 0, ej: 0, ejQ: 0, ejFail: 0, terrQ: 0, waterQ: 0, wallQ: 0, cut: 0, ejPids: new Set() };
 let _npcCursor = null;   // ★[T324 ⓒ] 결정 문 예산이 지난 틱에 멈춘 자리(pid) — null 이면 처음부터
 // ★[T678] 문 그래프 손잡이·그릇(아래 `computeNpcPath` 머리글) — 다리·환호 무효화가 부팅 중 부를 수 있어 여기(위쪽)에 선언한다
-const T678_GATES = (process.env.T678_GATES || '').trim(), T678_ON = T678_GATES === '1', T678_VERIFY = T678_GATES === 'verify';
+const T678_GATES = (process.env.T678_GATES || '').trim(), T678_ON = T678_GATES !== '0' && T678_GATES !== 'verify', T678_VERIFY = T678_GATES === 'verify';   // ★재민 10-11 켬 기본("청크 문 그래프 열어야지" · 되돌림 =0 · 견줌 =verify)
 let _t678G = null;
 const _t678PH = require('perf_hooks').performance, _t678Now = () => _t678PH.now();   // 관측 시계(ms · 소수) — 세계 무관
 function _t678Perf(reset) {
