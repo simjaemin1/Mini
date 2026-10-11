@@ -65,7 +65,8 @@ console.log('\n① ⓐ 셀 판정 — 객체 둘 → 정수 넷 (같은 답)');
   ok(/const _ocx = Math\.floor\(oldX \/ BUILDING_SIZE\), _ocy = Math\.floor\(oldY \/ BUILDING_SIZE\);/.test(Z)
      && /if \(_ocx === _ncx && _ocy === _ncy\) return false;/.test(Z),
      '① ★제품이 그 정수 식을 쓴다(조기 반환 앞에 객체가 없다)');
-  ok(/const oc = \{ cx: _ocx, cy: _ocy \}, nc = \{ cx: _ncx, cy: _ncy \};/.test(Z),
+  ok(/const oc = \{ cx: _ocx, cy: _ocy \}, nc = \{ cx: _ncx, cy: _ncy \};/.test(Z)
+     || /else \{ oc = \{ cx: _ocx, cy: _ocy \}; nc = \{ cx: _ncx, cy: _ncy \}; \}/.test(Z),   // ★[T689] 끔 갈래가 같은 꼴(켬은 빌린 칸 — ㉓)
      '① ★셀을 **넘는** 걸음에서만 객체를 만든다(아래 경로가 그 꼴을 쓴다 — 사본 0)');
 }
 
@@ -582,6 +583,8 @@ console.log('\n⑧ T370_PATH_REUSE — 경로를 두 번 묻지 않는다 [T370]
 //   ★자명 통과 금지 둘: 벗 화살(`_followPayload`)이 **벗의 hp**(같은 틱에 HP 단계가 쓰는 칸)를 읽게 비틀면 갈린다 ·
 //     벗의 `z`(계단 단계가 쓰는 칸)를 읽게 비틀어도 갈린다 — 표가 "안 읽는다" 고 한 자리를 자가 실제로 본다.
 console.log('\n⑨ T385_ONE_SWEEP 순회 일곱 → 둘 — 켬/끔이 같은 세계 [T385]');
+let GC9 = process.env.T689_GC === '1';   // ★[T689] 판 손잡이 — ㉓ 가 끔·켬 둘로 다시 돌린다
+let RUN9 = null;
 {
   const ZSRC = Z;
   const cut = (a, b) => { const i = ZSRC.indexOf(a), j = ZSRC.indexOf(b, i + 1); return (i < 0 || j < 0) ? '' : ZSRC.slice(i, j); };
@@ -637,11 +640,12 @@ console.log('\n⑨ T385_ONE_SWEEP 순회 일곱 → 둘 — 켬/끔이 같은 �
     const chunkManager = { chunkSize: CS, keyOf: (cx, cy) => `${cx}_${cy}` };
     const stairCellCache = new Map();
     const qtBuildings = { queryCircle: (x, y, r) => { const o = []; for (const b of world.buildings.values()) if (Math.abs(b.x - x) <= r + BS && Math.abs(b.y - y) <= r + BS) o.push(b); return o; } };
+    { const _sc = []; qtBuildings.queryCircleScratch = (x, y, r) => { const o = qtBuildings.queryCircle(x, y, r); _sc.length = 0; for (const b of o) _sc.push(b); return _sc; }; }   // ★[T689] 켬 갈래의 빌린 배열(같은 집합 · 같은 차례 — 진짜 트리의 같음은 ㉓)
     const onlineById = new Map(); for (const p of world.players.values()) if (!p.isNpc) onlineById.set(p.playerId, p);
     const env = {
       players: world.players, mobs: world.mobs, buildings: world.buildings, activeChunkKeys, chunkManager, stairCellCache, qtBuildings,
       qtColl: qtBuildings,   // ★[T449 ③] 받침 술어(`hasFloorSupportAt`)가 이제 벽 질의 격자를 본다 — 여기선 같은 모의 격자(종류는 술어가 거른다 · 판정은 `test-coll-grid`)
-      T385_ONE_SWEEP: on, BUILDING_SIZE: BS, FLOOR_HEIGHT: FH, HUNGER_MAX: 100, THIRST_MAX: 100,
+      T385_ONE_SWEEP: on, T689_GC: GC9, BUILDING_SIZE: BS, FLOOR_HEIGHT: FH, HUNGER_MAX: 100, THIRST_MAX: 100,
       COLD_CLOTH_WEAR_MS: 60000, CARRIER_WEAR_MS: 60000, VP_DECAY_PER_SEC: 0.5,
       send: (ws, m) => log.push('S' + ws.id + ':' + m.type + ':' + (m.hp ?? m.floor ?? '') + (m.follow ? ':' + JSON.stringify(m.follow) : '')),
       broadcast: (m) => log.push('B:' + m.type + ':' + m.pid + ':' + (m.floor ?? m.hp ?? '')),
@@ -717,6 +721,7 @@ console.log('\n⑨ T385_ONE_SWEEP 순회 일곱 → 둘 — 켬/끔이 같은 �
     return { dig, msgMulti, msgSeq, w, cnt };
   };
   const firstDiff = (a, b) => { for (let t = 0; t < a.length; t++) if (a[t] !== b[t]) return t; return -1; };
+  RUN9 = { run, firstDiff };   // ★[T689] ㉓ 가 같은 판을 손잡이 끔·켬으로 다시 돌린다
 
   // ⓐ 계단이 있는 세계 — 몸이 오르고 떨어지고 굶고 아문다
   {
@@ -1764,7 +1769,9 @@ console.log('\n⑱ T474 — 캐러밴 시계 = 몸 걸음에서 유도(손잡이
 console.log('\n⑳ T461 걸음 문 WASM 커널 — 1,000틱 뒤 전원 좌표 비트 동일(두 N) · 끔 = 옛 문 [T461]');
 {
   // ★제품 글자를 뜬다: 이동 문(`movePlayerStep`) · 커널 앞문(`_wwPre`) · 뒷문(`_wwPost`) — 커널은 `server/walk-wasm.js`(제품 껍데기) 그대로.
-  const MV = body('movePlayerStep'), PRE = body('_wwPre'), POST = body('_wwPost');
+  const MV = body('movePlayerStep'), POST = body('_wwPost');
+  //   ★[T689] 앞문 몸통이 `_wwPreOne` 으로 나뉘었다(손잡이 `T689_GC` · 켬 = `players.forEach`) — 둘을 같이 뜬다 · 판 손잡이는 이 프로세스 env(끔·켬 두 번 돌린다)
+  const PRE = 'const T689_GC = ' + (process.env.T689_GC === '1') + ';\nlet _wwCut = false;\n' + body('_wwPre') + '\n' + body('_wwPreOne');
   const ISS = body('_wwIsStill'), SPOST = body('_wwStillPost');   // ★[T672] 서 있는 몸 거름 · 뒷일(앞문이 부른다 · 끔이면 안 열린다)
   const T672P = ['T672_WALK_CUT', '_wwStill', '_wwStill0', '_wwNoRes', '_wwTC', '_wwResGen', '_wwVerify'];
   const t672A = (on, gen) => [!!on, [], [], [], { src: null, rx: null, gen: -1, k: 0, hit: 0, miss: 0, treeBad: 0, still: 0, stillBad: 0 }, gen || 0, false];
@@ -2170,6 +2177,78 @@ console.log('\n㉒ T676 활성 판정 비트 · 서로 비키기 버킷 다시 �
     ok(pure(bodyOf(VOC, 'villageOfCell')) && pure(bodyOf(RD, 'pavedNear')), '㉒ ① 두 물음(`villageOfCell` · `pavedNear`)은 **읽기만** 한다(대입·넣기·빼기 0 — 차례를 바꿔도 세계가 같다)');
   }
   console.log('    접점: T676_STAMP · isPositionActive · _isPositionActiveBM · _actRebuild · activeChunkKeys · sepNpcs · _sepPut · _sepUsed');
+}
+
+// =============================================================================
+// ㉓ T689 — 틱마다 짓던 쓰레기를 같은 값으로(손잡이 `T689_GC` · 기본 끔) [T689 · 보고/T689_2026-10-11.md]
+//   ⓐ 진짜 `Quadtree` 에서 빌린 배열 질의(`queryCircleScratch`) = 옛 질의(`queryCircle`) — 원소·**차례** 모두(바닥 술어는 첫 적중을 돌려준다)
+//   ⓑ ⑨ 의 판(계단·낙하·게이지·HP 한 바퀴 · 받침 술어)을 손잡이 끔·켬으로 — 4,200틱 몸 해시 · 메시지 차례 같음
+//   ⓒ 계단 측면 술어(제품 글자)를 빌린 칸 끔·켬으로 — 같은 답
+//   ⓓ 글자: 끔 갈래가 옛 꼴 그대로(`for…of` · 새 객체) · 켬 갈래가 같은 몸통 함수를 부른다(어로 · 사람 저장 · 앞문 · 결정 문 · 이동 문 · 벽 술어)
+//   ⚠⑳(걸음 커널 앞문)·⑨(한 바퀴)는 이 프로세스 env 를 따른다 — `T689_GC=1 node scripts/test-move-soa.js` 가 켬 갈래 전체를 다시 건다.
+console.log('\n㉓ T689 — 틱마다 짓던 쓰레기를 같은 값으로(빌린 배열 · forEach · 빌린 칸) [T689]');
+{
+  const Quadtree = require(path.join(ROOT, 'server', 'quadtree.js'));
+  const QT = Quadtree.Quadtree;   // `qtColl` 의 꼴(증분 판 아님 — zone.js `new Quadtree`)
+  const qt = new QT(0, 0, 8192, 8192);
+  let _q = 689; const rq = () => { _q = (Math.imul(_q, 1103515245) + 12345) >>> 0; return _q / 4294967296; };
+  for (let i = 0; i < 6000; i++) { const ref = { id: i, x: Math.floor(rq() * 256) * 32 + (i % 3 ? 16 : 0), y: Math.floor(rq() * 256) * 32 + (i % 5 ? 16 : 32) }; qt.insert({ x: ref.x, y: ref.y, ref }); }
+  let qn = 0, bad = 0, hits = 0, multi = 0;
+  for (let i = 0; i < 20000; i++) {
+    const cx = (i % 4 === 0) ? Math.floor(rq() * 256) * 32 : rq() * 8192, cy = (i % 4 === 0) ? Math.floor(rq() * 256) * 32 + 16 : rq() * 8192, r = [32, 64, 16, 48][i % 4];
+    const a = qt.queryCircle(cx, cy, r), b = qt.queryCircleScratch(cx, cy, r);
+    qn++; hits += a.length; if (a.length > 1) multi++;
+    if (a.length !== b.length) { bad++; continue; }
+    for (let k = 0; k < a.length; k++) if (a[k] !== b[k]) { bad++; break; }
+  }
+  ok(hits > 5000 && multi > 1000, '㉓ⓐ [상황] 질의가 실제로 여럿을 돌려줬다(한 칸에 둘 넘게 — 차례가 뜻을 갖는 판)', `질의 ${qn} · 적중 ${hits} · 둘 넘음 ${multi}`);
+  ok(bad === 0, '㉓ⓐ ★★진짜 트리 — 빌린 배열 질의 = 옛 질의(원소 · 차례 · 길이)', `다른 질의 ${bad}/${qn}`);
+  { let a = [], b = []; for (let k = 0; k < 4000 && a.length < 2; k++) { const x = rq() * 8192, y = rq() * 8192; a = qt.queryCircle(x, y, 96); b = qt.queryCircleScratch(x, y, 96).slice().reverse(); }
+    ok(a.length > 1 && a.some((x, k) => x !== b[k]), '㉓ⓐ [자명 통과 금지] 차례만 뒤집은 가짜는 문다(같은 집합이어도)', `길이 ${a.length}`); }
+  { const b1 = qt.queryCircleScratch(100, 100, 64), b2 = qt.queryCircleScratch(5000, 5000, 64);
+    ok(b1 === b2, '㉓ⓐ 빌린 배열은 하나다(다음 질의가 덮는다 — 받는 쪽 고리 안 질의 0 인 자리에서만 쓴다)'); }
+  // ⓑ ⑨ 판을 손잡이 끔·켬으로
+  if (RUN9) {
+    const g0 = GC9;
+    GC9 = false; const A = RUN9.run({ stairs: true }, true);
+    GC9 = true; const B = RUN9.run({ stairs: true }, true);
+    GC9 = g0;
+    const fd = RUN9.firstDiff(A.dig, B.dig);
+    let md = 0; for (let t = 0; t < A.msgSeq.length; t++) if (A.msgSeq[t] !== B.msgSeq[t]) md++;
+    ok(fd < 0 && md === 0, '㉓ⓑ ★★한 바퀴(몹 forEach · 몸 forEach · 받침 빌린 배열) 끔 = 켬 — 몸 360 + 몹 48 × 4,200틱 해시 · 메시지 **차례까지**', fd < 0 ? `메시지 다른 틱 ${md}` : `첫 다름 틱 ${fd}`);
+  } else ok(false, '㉓ⓑ [전제] ⑨ 판을 다시 돌릴 손잡이가 없다');
+  // ⓒ 계단 측면 술어 — 제품 글자 · 빌린 칸 끔·켬
+  {
+    const SS = body('isBlockedByStairSide');
+    const mk = (gc) => new Function('BUILDING_SIZE', 'cellOf', 'findStairBuildingForCell', 'dirVecForCollider', 'T689_GC', '_t689SOC', '_t689SNC', SS + '\nreturn isBlockedByStairSide;')(
+      32, (x, y) => ({ cx: Math.floor(x / 32), cy: Math.floor(y / 32) }),
+      (cx, cy) => { const h = ((cx * 73856093) ^ (cy * 19349663)) >>> 0; if (h % 5) return null; return { stair: { id: 's' + (h % 7), floor: h % 2, data: { dir: ['N', 'S', 'E', 'W'][h % 4] } }, step: h % 3 }; },
+      (d) => (d === 'N' ? { x: 0, y: -1 } : d === 'S' ? { x: 0, y: 1 } : d === 'E' ? { x: 1, y: 0 } : { x: -1, y: 0 }), gc, { cx: 0, cy: 0 }, { cx: 0, cy: 0 });
+    const f0 = mk(false), f1 = mk(true);
+    let d = 0, blk = 0;
+    for (let i = 0; i < 60000; i++) { const ox = rq() * 4000, oy = rq() * 4000, nx = ox + (rq() - 0.5) * 70, ny = oy + (rq() - 0.5) * 70, fl = i % 3;
+      const a = f0(nx, ny, ox, oy, fl), b = f1(nx, ny, ox, oy, fl); if (a !== b) d++; if (a) blk++; }
+    ok(SS.length > 300 && blk > 1000 && d === 0, '㉓ⓒ ★계단 측면 술어(제품 글자) — 빌린 칸 켬 = 새 객체 끔(6만 걸음 · 막힘이 실제로 나옴)', `막힘 ${blk} · 다른 답 ${d}`);
+  }
+  // ⓓ 글자 — 끔 갈래는 옛 꼴 그대로 · 켬 갈래는 같은 몸통을 부른다
+  {
+    const fp = body('_fishPoll'), ps = body('_periodicSave'), pre = body('_wwPre'), wall = body('isBlockedByWall');
+    ok(/for \(const \[, p\] of players\) _fishPollOne\(p, now\);/.test(fp) && /players\.forEach\(_fishPollOne\)/.test(fp), '㉓ⓓ 어로 — 끔 `for (const [, p] of players)` · 켬 `players.forEach` · 같은 몸통(`_fishPollOne`)');
+    ok(/T689_GC \? arr\.values\(\) : arr/.test(ps) && /const p = T689_GC \? _e : _e\[1\];/.test(ps), '㉓ⓓ 사람 저장 — 같은 차례(값만 · [키, 값]의 값) · 커서·조기 반환 그대로');
+    ok(/players\.forEach\(_wwPreOne\)/.test(pre) && /for \(const p of players\.values\(\)\) _wwPreOne\(p\);/.test(pre), '㉓ⓓ 걸음 커널 앞문 — 끔 `for…of` · 켬 `forEach` · 같은 몸통(`_wwPreOne`)');
+    ok(/else \{ oc = \{ cx: _ocx, cy: _ocy \}; nc = \{ cx: _ncx, cy: _ncy \}; \}/.test(wall) && /oc = _t689WOC; nc = _t689WNC;/.test(wall), '㉓ⓓ 벽 술어 — 끔 새 객체 · 켬 빌린 칸(같은 네 수)');
+    { const d1 = Z.slice(Z.indexOf('  const _decOne = (pid) => { do {'), Z.indexOf('  if (T689_GC) { let _decStop = false;'));
+      ok(d1.length > 500 && /\{ _stopAt = pid; break; \}/.test(d1) && /\} while \(false\); return _stopAt !== null; \};/.test(d1)
+         && /if \(T689_GC\) \{ let _decStop = false; npcs\.forEach\(\(pid\) => \{ if \(!_decStop && _decOne\(pid\)\) _decStop = true; \}\); \}\n  else for \(const pid of npcs\) if \(_decOne\(pid\)\) break;/.test(Z),
+         '㉓ⓓ 결정 문 — 몸통 글자 그대로(`do … while (false)` · `break` 가 `_stopAt` 을 세운다) · 끔 `for…of`+`break` · 켬 `forEach`+멈춤 깃발', `${d1.length}자`); }
+    { const mv1 = Z.slice(Z.indexOf('  const _moveOne = (p) => { do {'), Z.indexOf('  if (T689_GC) players.forEach(_moveOne);'));
+      ok(mv1.length > 1000 && (codeOnly(mv1).match(/\bcontinue;/g) || []).length === 7 && !/\breturn;/.test(codeOnly(mv1)) && /\} while \(false\); \};/.test(mv1)
+         && /if \(T689_GC\) players\.forEach\(_moveOne\);\n  else for \(const p of players\.values\(\)\) _moveOne\(p\);/.test(Z),
+         '㉓ⓓ 이동 문 — 몸통 글자 그대로(`do … while (false)` · `continue` 일곱 = 이 몸 끝) · 끔 `for…of` · 켬 `forEach`', `${mv1.length}자`); }
+    const nq = (Z.match(/qtColl \? \(T689_GC \? qtColl\.queryCircleScratch\(/g) || []).length;
+    ok(nq === 4, '㉓ⓓ 빌린 배열 질의 자리 넷(벽 변 · 바닥 타일 · 울타리 · 받침) — 모두 받는 고리 안에서 다른 질의를 안 부른다', `${nq}자리`);
+  }
+  console.log('    접점: T689_GC · queryCircleScratch · _qrInto · _fishPollOne · _wwPreOne · _periodicSave · _decOne · _moveOne · isBlockedByWall · isBlockedByStairSide');
 }
 
 console.log(`\n=== 결과: ${pass} PASS / ${fail} FAIL ===\n`);

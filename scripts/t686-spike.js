@@ -13,6 +13,7 @@
 //
 // 실행: node scripts/t686-spike.js run <tag> [--ref <커밋>]      (T686_DIR=/tmp/t686 · T686_TPL=<DIR>/tpl-t100.db · T686_LEAD_S=240 · T686_BOUNDS=3)
 //       node scripts/t686-spike.js table <tag>
+//       [T689] T686_PRELOAD=<파일>(존에 덧 preload) · T686_END_S=<벽 초>(짧은 판 — 없으면 경계 수로)
 'use strict';
 const path = require('path');
 const fs = require('fs');
@@ -144,10 +145,11 @@ async function run(tag) {
   const c = spawn(process.execPath, [path.join(dir, 'server/central.js')], { cwd: dir, stdio: 'ignore',
     env: Object.assign({}, env0, { NODE_OPTIONS: clk, PORT: String(CP), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando', CENTRAL_SECRET: SECRET }) });
   const z = spawn(process.execPath, [path.join(dir, 'server/zone.js')], { cwd: dir, stdio: ['ignore', logf, logf],
-    env: Object.assign({}, env0, { NODE_OPTIONS: `${clk} --require ${path.join(__dirname, 't686-timers.js')}`, T686_TIMERS_OUT: tout, T686_OUT: out,
+    env: Object.assign({}, env0, { NODE_OPTIONS: `${clk} --require ${path.join(__dirname, 't686-timers.js')}` + (process.env.T686_PRELOAD ? ` --require ${process.env.T686_PRELOAD}` : ''), T686_TIMERS_OUT: tout, T686_OUT: out,   // ★[T689] 덧 preload `T686_PRELOAD`(계측 · 없으면 종전)
       PORT: String(ZP), ZONE_ID: 'hanbando', CENTRAL_HOST: 'localhost', CENTRAL_PORT: String(CP), CENTRAL_SECRET: SECRET,
       ENABLE_VILLAGES: '1', VILLAGE_DAY_MS: String(DAY), DB_PATH: DB, VILLAGE_WAR_LOG: '0', T312_FISH_ACT: '1' }) });
   const kill = () => { for (const p of [z, c]) { try { p.kill('SIGKILL'); } catch (e) {} } };
+  z.on('exit', (code, sig) => console.log(`[${tag}] 존 프로세스 끝 code=${code} signal=${sig}`));   // ★[T689] 존이 먼저 죽으면 적는다(계측)
   process.on('exit', kill);
   const getj = async (p) => { try { const r = await fetch(`http://localhost:${ZP}${p}`, { headers: { 'x-zone-secret': SECRET }, signal: AbortSignal.timeout(20000) }); return await r.json(); } catch (e) { return null; } };
   const say = (...a) => console.log(`[${tag}]`, ...a);
@@ -160,7 +162,7 @@ async function run(tag) {
   await sleep(10000); try { z.kill('SIGHUP'); } catch (e) {}   // 관측자가 붙고 10초 — 여기부터 센다(부팅·첫 따라잡기 틱 뺌)
   //   경계: 가짜 시계 기준 — 원점 at 이 프로세스 시작 순간이다(t455-clock). 경계 k = at + LEAD + (k-1)·DAY.
   const bootMs = Date.now() - t0;
-  const endWall = t0 + LEAD_S * 1000 + (BOUNDS - 1) * DAY + 90000;
+  const endWall = process.env.T686_END_S ? t0 + (+process.env.T686_END_S) * 1000 : t0 + LEAD_S * 1000 + (BOUNDS - 1) * DAY + 90000;   // ★[T689] 짧은 판(벽 초 · 없으면 종전)
   say(`경계 ${BOUNDS}개 — 첫 경계 ${LEAD_S}초 · 끝 ${((endWall - t0) / 60000).toFixed(1)}분(벽) · 부팅 ${(bootMs / 1000).toFixed(0)}초`);
   let k = 0;
   while (Date.now() < endWall) {
