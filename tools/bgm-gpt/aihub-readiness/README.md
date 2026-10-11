@@ -180,7 +180,9 @@ score-to-performance training set without further analysis.
 For a WAV-only instrument-timbre pilot, a private selector groups labels by
 identical performer, recording place, and channel; these fields do **not**
 prove solo recording. Its largest group, `C001`, has 250 mono 48 kHz clips
-from 19 titles and 4,928.804 s of labeled duration. Run the selector with
+from 19 titles and 4,928.804 s of labeled duration. All 250 also declare
+`music_trk_nmbr == 1`, but that is a track-count label, not an acoustic proof
+that no accompaniment leaked into the mic. Run the selector with
 the approved, private training label ZIP and save the detailed manifest
 outside the repository:
 
@@ -222,3 +224,45 @@ claim of daegeum-like quality. Score-to-expression, breath phrasing, and
 sigimsae placement remain separate unsolved tasks; MIDI and timestamp labels
 have not been acoustically aligned. No game/default BGM or `main` files were
 changed.
+
+## Song-held-out DDSP pilot gate
+
+See [`DDSP_WSL_PILOT.md`](DDSP_WSL_PILOT.md) for the primary-source-backed
+WSL/RTX 4060 compatibility gate and official DDSP commands. The separate
+`ddsp_wsl_pilot.py split` checks every prepared WAV's format and SHA-256 and
+keeps whole labeled songs out of training. On the private `C001` set it
+created hard-link-only partitions: 216 training clips (4,189.610 s, 15 song
+groups) and 34 held-out clips (739.201 s, 4 song groups). No model was
+trained, and no source audio or checkpoint entered Git.
+
+The official DDSP solo-instrument model accepts measured F0 and loudness;
+that makes it an instrument-timbre reconstruction experiment, **not** a
+learned breath/vibrato composer. Its legacy TensorFlow/CUDA dependency stack
+is untested on the user's 4060, so the WSL gate must demonstrate an actual
+GPU operation and a tiny DDSP train step before a full pilot. A failed gate
+would not prove daegeum ML synthesis impossible; it would reject this
+specific environment/configuration. [IRCAM's PyTorch DDSP](https://github.com/acids-ircam/ddsp_pytorch)
+has a published 48 kHz F0/loudness path but needs code/compatibility work.
+[RAVE](https://github.com/acids-ircam/RAVE) is not an independently
+score-controlled model and its [code license is CC BY-NC
+4.0](https://raw.githubusercontent.com/acids-ircam/RAVE/master/LICENSE), so
+game use needs separate rights review before choosing it as a fallback.
+
+## Expression supervision is a separate problem
+
+Read-only inspection of the same `C001` labels found 1,481 timestamped
+sigimsae spans in 249 of 250 clips: 1,104 `VB01` (small vibrato) and 377
+`DW01` (falling ornament). The other `VB`/`DW` types did not occur in this
+cluster. `VB01` spans cover about 20.36% of labeled time. Of them, 777 have
+at least 0.5 s free of *other annotations* on both sides, which makes them
+useful boundary-review candidates but does **not** establish that those
+surroundings are voiced flat tones. Seven event pairs overlap in six clips.
+
+The annotations have clip-local millisecond start/end strings, but no note
+ID, pitch, breath, or score alignment. A defensible expression stage first
+extracts F0/voicing/confidence and loudness from the private original WAVs,
+checks the acoustic onset/release of labeled ornaments, masks uncertain
+boundaries, aligns MIDI notes to WAV using pitch/attack evidence and manual
+spot checks, and evaluates on the held-out songs. Only then can a
+score-conditioned model learn *when* and *how* to enter/leave vibrato. The
+DDSP timbre pilot alone cannot make that musical decision.
