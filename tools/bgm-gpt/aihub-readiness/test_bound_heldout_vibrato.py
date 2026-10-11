@@ -174,6 +174,7 @@ class BoundHeldoutVibratoTests(unittest.TestCase):
                 "status": "heldout_vb01_reproduction_evaluated",
                 "heldout_crops_evaluated": vb.EXPECTED_SELECTED,
                 "counts": {"selected_clips": vb.EXPECTED_SELECTED},
+                "heldout_song_group_aggregates": [{} for _ in range(trial.HELDOUT_SONGS)],
                 "source_manifest_sha256": "e" * 64,
                 "split_manifest_sha256": "f" * 64,
                 "label_zip_sha256": "1" * 64,

@@ -273,6 +273,8 @@ def _source_selection(records: list[dict], heldout_dir: Path, label_zip: Path,
             or counts["eligible_vb01_labels"] != EXPECTED_ELIGIBLE
             or counts["selected_clips"] != EXPECTED_SELECTED):
         raise VibratoError("heldout_label_population_changed")
+    if {item["song_index"] for item in selected} != {item["song_index"] for item in records}:
+        raise VibratoError("heldout_song_group_coverage_changed")
     # Three song groups are chosen by index only, not their acoustic or model quality.
     first_songs = sorted({item["song_index"] for item in records})[:PAIR_TARGET_SONGS]
     for rank, song in enumerate(first_songs, start=1):
@@ -305,6 +307,7 @@ def _aggregate_report(selection: dict[str, Any], *, source_sha: str, split_sha: 
         counts["matched_quiet_to_active_proxies_within_200ms"] += row["attack_matched"]
         counts["central_input_voiced_output_pitch_gap_gt30ms"] += row["longest_missing_frames"] > 3
         counts["central_common_voiced_frames"] += row["common_voiced_frames"]
+        counts["central_crops_with_common_voiced_f0"] += row["common_voiced_frames"] > 0
         counts["central_source_active_10ms_frames"] += row["central_source_active_frames"]
         counts["central_output_quiet_on_source_active_frames"] += row["central_quiet_frames"]
         counts["central_output_audible_gap_gt30ms"] += row["longest_audible_gap_frames"] > 3
@@ -615,7 +618,9 @@ def inspect_current_binding(*, source_manifest: Path, split_manifest: Path, labe
                 or not isinstance(selection.get("records"), list)
                 or len(selection["records"]) != EXPECTED_SELECTED
                 or report.get("heldout_crops_evaluated") != EXPECTED_SELECTED
-                or report.get("counts", {}).get("selected_clips") != EXPECTED_SELECTED):
+                or report.get("counts", {}).get("selected_clips") != EXPECTED_SELECTED
+                or not isinstance(report.get("heldout_song_group_aggregates"), list)
+                or len(report["heldout_song_group_aggregates"]) != trial.HELDOUT_SONGS):
             return "binding_pair_or_population_mismatch"
         source, source_sha, split, split_sha, _, _ = trial._private_inputs(
             source_manifest, split_manifest, output_dir, upstream_root)
