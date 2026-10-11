@@ -3205,8 +3205,11 @@ function createLedger(opts) {
   //   넷째 인자 `{ steps: true }` 면 **돌리지 않고** 발생기를 돌려준다 — 서버 하루 마감이 마을 하나씩 조각으로 민다
   //   (`T698_BOUNDARY_SLICE` · villages.js). 끝까지 민 발생기의 `return` 값이 종전 `out` 과 같다.
   //   ⚠쉬는 사이 econ 상태가 바뀌면 값이 갈린다 — 그 짝(마감 중 몸 결정 얼림 · 대기 큐)은 부르는 쪽 몫이다.
+  //   ★관찰기 훅(자 · 게이트)은 `scanDay` 를 감싸 **부른 뒤** 장부 통계를 읽는다 ⇒ 조각 판은 앞을 `scanSteps`(안 감싼 문)로 밀고,
+  //     꼬리(`yield 'tail'` 뒤 — 지연 · 완공 · 겨울 · 구조 · 굶음 · 의뢰)를 `scanDay(world, day, extra, { drain: g })` 로 끝낸다 —
+  //     감싼 문이 그날 한 번 · 장부가 다 선 뒤에 돌아온다(econ 은 장부가 안 만진다 — ⑧ — 앞뒤 어디서 읽어도 같다).
   function scanDay(world, day, extra, opt) {
-    const g = _scanSteps(world, day, extra);
+    const g = (opt && opt.drain) || _scanSteps(world, day, extra);
     if (opt && opt.steps) return g;
     let r = g.next(); while (!r.done) r = g.next();
     return r.value;
@@ -3312,6 +3315,7 @@ function createLedger(opts) {
       commit(s, mine, out);
       yield 'v';   // ★[T698] 쉼표 — 마을 하나 뒤
     }
+    yield 'tail';   // ★[T698] 쉼표 — 꼬리 앞(조각 판은 여기서 감싼 `scanDay` 문으로 넘긴다)
 
     // ⑥ 교역 도착 지연 — 실체 층(server/villages.js `body.delayedDays`)이 있을 때만.
     //    econ 단독(랩)엔 실체가 없어 0건이다. **없는 데이터를 억지로 만들지 않는다.**
@@ -3832,7 +3836,7 @@ function createLedger(opts) {
 
   return {
     cfg, stats, TYPES,
-    prime, scanDay, recent, board, claim, unclaim, ringOf, detOf, loadRing, loadRequest,
+    prime, scanDay, scanSteps: (world, day, extra) => _scanSteps(world, day, extra), recent, board, claim, unclaim, ringOf, detOf, loadRing, loadRequest,
     // ★[T7] 소문 물리 전파 — 가시성 술어와 그 부속. 사본 금지: 사건을 보는 문은 이것뿐이다.
     visibleEvents, visibleTo, heardDayOf, delayTo, returnBrief,
     // ★[T127] 소문 왜곡 — 홉 수와 뭉갬. 하네스가 **장부가 실제로 쓰는 것**을 그대로 부른다(사본 금지).

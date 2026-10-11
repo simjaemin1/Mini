@@ -11160,10 +11160,10 @@ function* _scanEventsSteps() {
     starved: _starvedToday(),                                      // ★[T590] 굶어 죽음 — 구조와 같은 자리
     winter: Winter.dailyExtra(state.world.day, state.villages) };   // ★[T20] 겨울나기 — 공표(가을 첫날)·판정(겨울 첫날)
   let evs;
-  if (T698_BOUNDARY_SLICE) {   // ★[T698] 장부 발생기를 쉼표마다 넘긴다(관찰기 훅이 감싼 `scanDay` 문 그대로 — 넷째 인자만)
-    const lg = state.ledger.scanDay(state.world, state.world.day, _x, { steps: true });
-    let r = lg.next(); while (!r.done) { yield; r = lg.next(); }
-    evs = r.value || [];
+  if (T698_BOUNDARY_SLICE) {   // ★[T698] 장부 발생기를 쉼표마다 넘긴다 — 꼬리만 감싼 `scanDay` 문으로(아래)
+    const lg = state.ledger.scanSteps(state.world, state.world.day, _x);   // 앞(도착 절 · 마을 하나씩)은 안 감싼 문
+    let r = lg.next(); while (!r.done && r.value !== 'tail') { yield; r = lg.next(); }
+    evs = r.done ? (r.value || []) : (state.ledger.scanDay(state.world, state.world.day, _x, { drain: lg }) || []);   // 꼬리는 감싼 문(관찰기 훅이 다 선 장부를 본다)
   } else evs = state.ledger.scanDay(state.world, state.world.day, _x);
   // 의뢰 진척 저장은 납품 시점에 한다(여기선 게시/철회만 — onRequest 훅이 이미 했다).
   if (state.world.day % 30 === 0) {
