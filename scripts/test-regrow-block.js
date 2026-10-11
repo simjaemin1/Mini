@@ -260,6 +260,10 @@ if (MODE === '--seoul') {
   Object.assign(process.env, { ZONE_ID: ZID, PORT: String(40800 + (process.pid % 150)), DB_PATH: TMP,
     ENABLE_VILLAGES: '0', ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '1', E2E_GIVE: '1' });
   delete process.env.T566_REGROW_BLOCK;   // 제품 기본(켬)으로 잰다
+  // ★[PM 10-11 · T688 켬 기본] ⓑⓖ 는 길 셀의 `d` 를 **뒤로** 고쳐 써서(현실엔 없는 일 — 밟으면 `d` 는 늘기만 한다) 경계 재구축이 내림을 보는지 잰다.
+  //   T688 의 문턱 날 색인은 밟기(`_i688Touch`)로만 갱신되므로 이 손글씨를 못 본다 → 이 판은 종전 재구축(`0`)으로 잰다.
+  //   T688 켬 ↔ 끔의 풀림·오름 차례 같음은 `test-road-day` 가 잰다.
+  if (process.env.T688_ROAD_DAY == null) process.env.T688_ROAD_DAY = '0';
   const _l = console.log, _w = console.warn, _e = console.error;
   console.log = () => {}; console.warn = () => {}; console.error = () => {};
   const Zone = require(path.join(ROOT, 'server', 'zone.js'));
