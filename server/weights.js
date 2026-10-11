@@ -130,6 +130,12 @@ const DERIVED_KG = {
 //   여기 옮겨 적으면 잔량비를 고치는 날 이 줄만 뒤처진다(작물이 `kgOf` 에서 이미 쓰는 규약).
 //   ⚠늦게 부른다 — `tidal` 은 `specialty` 를 무는데 이 파일도 그렇다(맞물림 금지 · `crops` 와 같은 자리).
 { let _T = null; try { _T = require('./tidal'); } catch (e) {} if (_T && _T.weightMap) Object.assign(DERIVED_KG, _T.weightMap()); }
+// ★★[T694 2026-10-11 · 손잡이 `T694_GAME_MEAT=1` — 없음 = 끔 = 이 블록이 아무것도 안 한다(main 바이트)] **사냥 고기 — 표의 주인이 채운다**(위 갯벌 줄과 같은 문법).
+//   ⓐ 별칭 — 곰고기 1개 = 사슴·들짐승고기 1개(`specialty.meat_game.weight` 1.0kg)를 **가리킨다**(옮겨 적지 않는다 · meat_raw → meat 꼴).
+//   ⓑ 익힌 둘 = 날것 kg × USDA 조리 수율(1 lb 날것 → 340 g 굽기 · 277 g 삶기 — 출처·셈은 `game-meat.js` 머리).
+//     ★여기 수를 안 적는다 — 이 파일의 `kgOf` 를 넘겨 그쪽이 곱한다(별칭이 먼저 서야 곰고기 kg 가 잡힌다 — 차례가 계약).
+{ let _GM = null; try { _GM = require('./game-meat'); } catch (e) {}
+  if (_GM && _GM.on()) { Object.assign(ITEM_ALIAS, _GM.ALIAS); Object.assign(DERIVED_KG, _GM.weightMap(kgOf)); } }
 
 // ── 정본 접근자 ─────────────────────────────────────────────────────────────
 //   순서: 별칭 → specialty(정본) → 코어 표 → 플레이어 전용 유도값.

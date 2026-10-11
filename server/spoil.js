@@ -118,6 +118,11 @@ if (Crops) { for (const [k, d] of Object.entries(Crops.shelfMap())) SHELF_DAYS[k
 //   ⚠`tidal` 은 여기서 **늦게** 부른다(모듈 맞물림 금지 — `crops` 와 같은 자리).
 { let _Tidal = null; try { _Tidal = require('./tidal'); } catch (e) {}
   if (_Tidal) for (const [k, d] of Object.entries(_Tidal.shelfMap())) SHELF_DAYS[k] = d; }
+// ★★[T694 2026-10-11 · 손잡이 `T694_GAME_MEAT=1` — 없음 = 끔 = 이 블록이 아무것도 안 한다(main 바이트)] **사냥 고기를 고기 줄에 맞춘다.**
+//   `meat_game` 은 이 표에 줄이 없어 특산 축산 기본값 `D.DEFAULT`(5일)를 먹었다 — 같은 날고기 `meat_raw`(RAW_FLESH 2.5일)의 두 배.
+//   ⇒ 날것(사슴·들짐승고기 · 곰고기) = `D.RAW_FLESH` · 익힌 둘 = `D.COOKED`. 날수를 새로 안 짓는다 — 위 `D` 의 칸을 가리킬 뿐이다.
+{ let _GM = null; try { _GM = require('./game-meat'); } catch (e) {}
+  if (_GM && _GM.on()) Object.assign(SHELF_DAYS, _GM.shelfMap(D)); }
 
 function shelfOf(item) {
   const s = SHELF_DAYS[item];

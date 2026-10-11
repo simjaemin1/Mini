@@ -387,7 +387,7 @@ const DROP_KG = Object.freeze([
     zones: { hanbando: 'manchu', nippon: 'nippon' },   // ★[T647] 한반도 = 만주아종 · 닛폰 = 일본아종(분포 근거 · 위 주석)
     yld: [0.78, 0.48], yldSrc: 'T629 사슴 생체→지육 ≈78% × 지육→뼈 없는 살코기 ≈48%(= 생체의 37.4% · T629 "약 37~38%")',
     ref: '북미 화이트테일 — 다른 아종 참고치' },
-  { id: 'bear', item: 'meat_game',
+  { id: 'bear', item: 'meat_game', t694: 'meat_bear',   // ★[T694] 켬(`T694_GAME_MEAT=1`)이면 고기 칸 품목 = 곰고기(`game-meat.js` · 열량 USDA FDC 173845)
     live: { m: 135, f: [40, 125] }, liveSrc: 'T607 반달가슴곰 "수컷평균135(60~200)·암컷40~125"',
     yld: [0.33], yldSrc: 'T629 곰 지육→살코기 ≈33% — 생체→지육 칸 미확인(지육 대비 비를 생체에 곱했다 → 큰 쪽)',
     ref: '북미 흑곰 — 다른 종 참고치' },
@@ -414,27 +414,45 @@ function _unitKg(item) {
 }
 // 그 존이 읽는 아종 칸 — 줄에 `zones` 가 있고 그 존이 적혀 있을 때만(아니면 null = 두 칸 가운데)
 function _subOf(r, zone) { return (r && r.zones && zone && Object.prototype.hasOwnProperty.call(r.zones, zone)) ? r.zones[zone] : null; }
+// ★[T694] 사냥 고기 손잡이(`T694_GAME_MEAT=1` · 정본 `server/game-meat.js` `on()`) — 늦게 부른다(브라우저·맞물림 무해 · 못 부르면 끔).
+let _GMm = null;
+function _gameMeatOn() {
+  if (_GMm === null) { try { _GMm = require('./game-meat'); } catch (e) { _GMm = false; } }
+  return !!(_GMm && _GMm.on());
+}
 /** 표 한 줄의 셈 — 생체 kg · 수율 · 고기 kg · 낱개(켬 드롭) · 지금 드롭. 표에 줄이 없으면 null. 손잡이와 무관(보고·하네스용).
- *  ★[T647] `zone` 을 주면 그 존의 아종 칸(`zones`) — 없거나 모르는 존이면 두 칸 가운데(T636 값). */
+ *  ★[T647] `zone` 을 주면 그 존의 아종 칸(`zones`) — 없거나 모르는 존이면 두 칸 가운데(T636 값).
+ *  ★[T694] 줄에 `t694` 가 있고 사냥 고기 손잡이가 켜졌으면 고기 칸 **품목**이 그것이다(곰 → 곰고기 · 단위 kg 는 같은 1kg) —
+ *    `catItem` = 카탈로그 `drops` 의 고기 칸 이름(바꿔 끼울 자리 · `now` 가 읽는 칸). 끄면 `item === catItem`(종전 그대로). */
 function dropKgRow(id, zone) {
   const r = _DKG.get(id), a = ANIMALS[id];
   if (!r || !a) return null;
   const sub = _subOf(r, zone);
-  const liveKg = sub ? _rep(r.live[sub]) : _rep(r.live), yld = r.yld.reduce((p, x) => p * x, 1), meatKg = liveKg * yld, unitKg = _unitKg(r.item);
-  return { id, item: r.item, zone: zone || null, sub, liveKg, yld, meatKg, unitKg, units: Math.max(1, Math.round(meatKg / unitKg)), now: (a.drops || {})[r.item] || 0,
+  const item = (r.t694 && _gameMeatOn()) ? r.t694 : r.item;
+  const liveKg = sub ? _rep(r.live[sub]) : _rep(r.live), yld = r.yld.reduce((p, x) => p * x, 1), meatKg = liveKg * yld, unitKg = _unitKg(item);
+  return { id, item, catItem: r.item, zone: zone || null, sub, liveKg, yld, meatKg, unitKg, units: Math.max(1, Math.round(meatKg / unitKg)), now: (a.drops || {})[r.item] || 0,
     liveSrc: r.liveSrc, yldSrc: r.yldSrc, ref: r.ref };
 }
 const _KGD = new Map();
 /** ★사체 드롭의 정본 — zone.js `spawnCorpse` 가 부른다(★[T647] 존 id 를 같이 넘긴다). 끔(`=0`)이면 카탈로그 `drops` 그 객체 ·
- *  켬(기본)이면 고기 칸만 kg 로 바꾼 사본(얼림 · 종 × 아종 칸마다 하나). */
+ *  켬(기본)이면 고기 칸만 kg 로 바꾼 사본(얼림 · 종 × 아종 칸마다 하나).
+ *  ★[T694] 고기 칸 품목이 카탈로그 이름과 다르면(곰 → 곰고기) **그 자리에서 이름을 바꿔 끼운다**(칸 차례 그대로 · 사슴·들짐승고기 칸은 안 남는다). */
 function dropsOf(id, zone) {
   const a = ANIMALS[id];
   if (!a) return null;
   if (!dropKgOn()) return a.drops;
   const r = dropKgRow(id, zone);
   if (!r) return a.drops;
-  const key = id + '|' + (r.sub || '');
-  if (!_KGD.has(key)) _KGD.set(key, Object.freeze(Object.assign({}, a.drops, { [r.item]: r.units })));
+  const key = id + '|' + (r.sub || '') + (r.item !== r.catItem ? '|' + r.item : '');
+  if (!_KGD.has(key)) {
+    if (r.item === r.catItem) _KGD.set(key, Object.freeze(Object.assign({}, a.drops, { [r.item]: r.units })));
+    else {
+      const d = {};
+      for (const [k, v] of Object.entries(a.drops)) { if (k === r.catItem) d[r.item] = r.units; else d[k] = v; }
+      if (!(r.item in d)) d[r.item] = r.units;
+      _KGD.set(key, Object.freeze(d));
+    }
+  }
   return _KGD.get(key);
 }
 
