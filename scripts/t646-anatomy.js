@@ -222,29 +222,45 @@ const T675_TAIL = `
 ;(function () {
   if (process.env.T675_SAB !== '1') return;
   const { Worker } = require('worker_threads');
-  const NSEG = 64, sab = new SharedArrayBuffer(4 * (4 + NSEG * 2)), I = new Int32Array(sab);
-  I[0] = -1; I[1] = 0;
+  // [T677 ①] 갈래 칸(I[2]) — \`npcStep\` 안의 갈래 번호(0 = 갈래 밖 · 1 결정 · 2 생활층 · 3 머리 · 4 막힘 · 5 경로 셈 · 6 길(가까움) · 7 길(먼 갈래·A*) · 8 따라가기 · 9 도착 뒤).
+  //   \`T677_BR=1\` 일 때만 갈래 칸을 쓴다(감싸기 + 글자 표식 · 시계 0). 끄면 종전 T675 표본기 그대로(갈래 0 · \`npcStep\` 시계 감싸기).
+  const NSEG = 64, NBR = 32, BASE = 8, sab = new SharedArrayBuffer(4 * (BASE + (NSEG + 1) * 2 * NBR)), I = new Int32Array(sab);
+  const BR = ['', '결정', '생활층', '머리', '막힘', '경로 셈', '길·가까움', '길·먼 갈래(A*)', '따라가기', '도착 뒤', '생활층·농사 칸', '생활층·일터 목록', '생활층·개간 후보', '생활층·닿는 일터', '생활층·곳간', '생활층·집터 크루', '', '생활층§스케줄 문', '생활층§진행 중 작업', '생활층§작업 배정(개간·건설)', '생활층§농부 실작업', '생활층§나무꾼(T325)', '생활층§벌목·채광·채집', '생활층§어부', '생활층§사냥꾼', '어부·자리·드리움', '어부·드리울 자리 고르기', '어부·끝(목표·라벨)', '어부·_t340Try(던짐·입질)', '닿는가(_t427Reach)'];
+  const BRON = process.env.T677_BR === '1';
+  I[0] = -1; I[1] = 0; I[2] = 0;
+  globalThis.__T677I = I;
   const names = ['(틱 밖)'], idx = new Map();
   const W = new Worker(\`
     const { workerData } = require('worker_threads'); const I = new Int32Array(workerData);
-    for (;;) { Atomics.wait(I, 3, 0, 0.05); const s = Atomics.load(I, 0), st = Atomics.load(I, 1); const k = 4 + (s + 1) * 2 + st; Atomics.add(I, k, 1); }
+    for (;;) { Atomics.wait(I, 3, 0, 0.05); const s = Atomics.load(I, 0), st = Atomics.load(I, 1), br = Atomics.load(I, 2); Atomics.add(I, \${BASE} + ((s + 1) * 2 + st) * \${NBR} + (st ? br : 0), 1); }
   \`, { eval: true, workerData: sab });
   W.unref();
   let segSum = {}, tickMs = 0, ticks = 0, stepMs = 0;
   const m0 = _A6m, e0 = _A6end, s0 = _A6start;
   const seg = (k) => { let i = idx.get(k); if (i === undefined) { i = names.length; names.push(k); idx.set(k, i); } return i; };
-  // 구간 순서: 표식 k 는 "k 가 끝났다" — 다음 구간은 표식 차례의 다음 이름. 첫 틱에 차례를 배운다.
   const order = []; let learned = false, pos = 0;
   _A6start = function () { s0(); pos = 0; Atomics.store(I, 0, learned ? seg(order[0]) - 1 : 0); };
   _A6m = function (k) { const t0 = _A6prev; m0(k); segSum[k] = (segSum[k] || 0) + (_A6prev - t0);
     if (!learned) order.push(k); pos++; Atomics.store(I, 0, learned && pos < order.length ? seg(order[pos]) - 1 : 0); };
   _A6end = function () { const t = _a6t(); tickMs += t - _A6t0; ticks++; e0(); if (!learned && order.length) { learned = true; for (const k of order) seg(k); } Atomics.store(I, 0, -1); };
-  { const f0 = npcStep; npcStep = function (a, b, c) { Atomics.store(I, 1, 1); const t = _a6t(); f0(a, b, c); stepMs += _a6t() - t; Atomics.store(I, 1, 0); }; }
+  if (!BRON) { const f0 = npcStep; npcStep = function (a, b, c) { Atomics.store(I, 1, 1); const t = _a6t(); f0(a, b, c); stepMs += _a6t() - t; Atomics.store(I, 1, 0); }; }
+  else {
+    { const f0 = npcStep; npcStep = function (a, b, c) { Atomics.store(I, 2, 0); Atomics.store(I, 1, 1); f0(a, b, c); Atomics.store(I, 1, 0); Atomics.store(I, 2, 0); }; }
+    const wrapB = (f0, id) => function () { const p = I[2]; Atomics.store(I, 2, id); const r = f0.apply(this, arguments); Atomics.store(I, 2, p); return r; };
+    decideNpcBehavior = wrapB(decideNpcBehavior, 1);
+    if (SimVillages && SimVillages.npcLifeTick) SimVillages.npcLifeTick = wrapB(SimVillages.npcLifeTick, 2);
+    detectStuck = wrapB(detectStuck, 4);
+    computeNpcPath = wrapB(computeNpcPath, 6);
+    followNpcPath = wrapB(followNpcPath, 8);
+  }
   let gcMs = {}; try { const { PerformanceObserver } = require('perf_hooks'); new PerformanceObserver((l) => { for (const e of l.getEntries()) { const k = (e.detail && e.detail.kind) || e.kind || 0; gcMs[k] = (gcMs[k] || 0) + e.duration; } }).observe({ entryTypes: ['gc'] }); } catch (e) {}
   let cu = process.cpuUsage(), ru = process.resourceUsage(), w0 = Date.now(), c0 = new Int32Array(I.length);
   setInterval(() => {
     const cu2 = process.cpuUsage(cu), ru2 = process.resourceUsage(), w = Date.now();
-    const cnt = {}; for (let s = -1; s < names.length - 1; s++) for (let st = 0; st < 2; st++) { const k = 4 + (s + 1) * 2 + st; const v = I[k] - c0[k]; if (v) cnt[(s < 0 ? '(틱 밖)' : names[s + 1]) + (st ? '|step' : '')] = v; }
+    const cnt = {};
+    for (let s = -1; s < names.length - 1; s++) for (let st = 0; st < 2; st++) for (let br = 0; br < NBR; br++) {
+      const k = BASE + ((s + 1) * 2 + st) * NBR + br; const v = I[k] - c0[k];
+      if (v) cnt[(s < 0 ? '(틱 밖)' : names[s + 1]) + (st ? '|step' : '') + (br ? '#' + (BR[br] || br) : '')] = v; }
     c0.set(I);
     try { console.log('[T675S] ' + JSON.stringify({ phase: +worldPhase(w).toFixed(4), wallMs: w - w0, ticks, tickMs, stepMs, pop: npcs.size, segMs: segSum, sab: cnt,
       cpuUserMs: cu2.user / 1000, cpuSysMs: cu2.system / 1000, minflt: ru2.minorPageFault - ru.minorPageFault, majflt: ru2.majorPageFault - ru.majorPageFault, gcMs })); } catch (e) {}
@@ -344,6 +360,36 @@ function makeTree(dir, probe, ref, seg) {
     s = s.replace(a1, () => a1.replace('const player', 'let player')).replace(a2, () => '  player = globalThis.__T671P(player);\n' + a2);
     s = TRAP_TAIL + s.replace(/^'use strict';?/, '');
   }   // [T671 ①] 몸 재기(사본에만 · 존을 `--allow-natives-syntax` 로 띄운다)
+  if (seg && process.argv.includes('--br')) {   // [T677 ①] 생활층 안 갈래(villages.js 사본 꼬리 — 함수 바인딩을 감싼다 · 시계 0)
+    const vp = path.join(dir, 'server', 'villages.js');
+    { let V = fs.readFileSync(vp, 'utf8'); const vc = (a) => V.split(a).length - 1;   // npcLifeTick 안 절 표식(절 머리 줄 앞에 · 시계 0)
+      for (const [a, id] of [['  // ══ 스케줄 게이트(', 17], ['  // ══ 진행 중 작업(', 18], ['  // ══ 작업 배정: ', 19], ['  // ══ 직업 실작업(', 20],
+        ["  if (job === 'lumberjack' && vil.econ && _lifeEcon().woodActOn(vil.econ)) {", 21], ["  if (job === 'lumberjack' || job === 'miner' || job === 'forager') {", 22],
+        ["  if (job === 'fisher') {", 23], ["  if (job === 'hunter') {", 24],
+        ["    const ws = npc._workSite;\n    if (Math.hypot(npc.x - ws.x, npc.y - ws.y) > 130)", 25], ['    if (npc._fishSpotX == null || !npc._fishT || now >= npc._fishT) {', 26],
+        ["    npc.behavior = 'wander'; npc.targetX = npc._fishSpotX; npc.targetY = npc._fishSpotY; npc.gatherTarget = null;", 27]]) {
+        if (vc(a) !== 1) throw new Error('생활층 절 앵커 ' + vc(a) + ' ' + a);
+        V = V.replace(a, () => `  globalThis.__T677I && Atomics.store(globalThis.__T677I, 2, ${id});\n` + a); }
+      fs.writeFileSync(vp, V); }
+    fs.appendFileSync(vp, `
+;(function () {   // [T677 탐침 · 계측기가 박았다 · 제품엔 없다] — 표본기 칸(\`__T677I\`)은 존 끝에서 생긴다 ⇒ 부를 때 찾는다
+  const W = (f0, id) => function () { const I = globalThis.__T677I; if (!I) return f0.apply(this, arguments); const p = I[2]; Atomics.store(I, 2, id); const r = f0.apply(this, arguments); Atomics.store(I, 2, p); return r; };
+  _lifeNextFarmCell = W(_lifeNextFarmCell, 10); _lifeDoTask = W(_lifeDoTask, 10); _lifeJobSites = W(_lifeJobSites, 11);
+  _lifeFrontier = W(_lifeFrontier, 12); _lifeNeedClear = W(_lifeNeedClear, 12); _t427Site = W(_t427Site, 13);
+  _lifeGranStep = W(_lifeGranStep, 14); _granGo = W(_granGo, 14); _t400BodyStep = W(_t400BodyStep, 15); _t340Try = W(_t340Try, 28); _t427Reach = W(_t427Reach, 29);
+})();
+`);
+  }
+  if (seg && process.argv.includes('--br')) {   // [T677 ①] 갈래 표식(표본기 갈래 칸 · 시계 0) — 감싸지 못하는 토막 넷(머리 · 경로 셈 · 길 먼 갈래 · 도착 뒤)
+    const S = (id) => `Atomics.store(__T677I, 2, ${id}); `;
+    for (const [a, ins, after] of [
+      ['  // ★[§15 2파·비전투원 대피]', S(3), false], ['  // stuck 감지 — 모든 모드 공통', S(0), false],
+      ["  let speedMult = npc.behavior === 'flee'", S(5), false], ['  if (needPath && !_skip) {', S(0), false],
+      ['  const isVil = !!npc.simVillageId;   // 마을 주민', S(7), false], ['  if (!arrived) return;\n', S(9), true]]) {
+      if (cnt(a) !== 1) throw new Error('갈래 앵커 ' + cnt(a) + ' ' + a);
+      s = s.replace(a, () => after ? a + '  ' + ins + '\n' : '  ' + ins + '\n' + a);
+    }
+  }
   if (seg) { s += TAIL; if (process.argv.includes('--sab')) s += T675_TAIL; fs.writeFileSync(zp, s); execFileSync(process.execPath, ['--check', zp]); return SEGS.length; }   // [T670] 구간 팔 — 구간 표식만(틱당 시계 13번 · 사람당 ≈0) · 갈래 시계·장부 0
   { const a = '      movePlayerStep(p);';   // 걸음(NPC) — 틱 함수 안의 함수라 바인딩을 못 감싼다 ⇒ 부르는 자리(T356 의 그 앵커)
     if (cnt(a) !== 1) throw new Error('걸음 앵커 ' + cnt(a));
@@ -384,7 +430,7 @@ async function run(conf, tag, probe) {
   const z = spawn(process.execPath, [...(process.argv.includes('--shape') ? ['--allow-natives-syntax'] : []), ...(PROF ? ['--cpu-prof', '--cpu-prof-interval', '10000', '--cpu-prof-dir', PROF] : []), path.join(dir, 'server/zone.js')], { cwd: dir, stdio: ['ignore', logf, logf],
     env: Object.assign({}, env0, CONF[conf], { PORT: String(ZP), ZONE_ID: 'hanbando', CENTRAL_HOST: 'localhost', CENTRAL_PORT: String(CP),
       CENTRAL_SECRET: SECRET, ENABLE_VILLAGES: '1', VILLAGE_DAY_MS: String(DAY), DB_PATH: DB, VILLAGE_WAR_LOG: '0', T312_FISH_ACT: '1',
-      T646_EVERY: String(SLICE_S * 30), T646_SEGONLY: SEG ? '1' : '', T675_SAB: process.argv.includes('--sab') ? '1' : '', T670_AFAIL_OUT: path.join(DIR, `${tag}.afail.json`), T646_PATH_OUT: path.join(DIR, `${tag}.dest.json`), T671_TRAP_OUT: process.argv.includes('--trap') ? path.join(DIR, `${tag}.trap.json`) : '', T671_SHAPE_OUT: process.argv.includes('--shape') ? path.join(DIR, `${tag}.shape.jsonl`) : '' }) });
+      T646_EVERY: String(SLICE_S * 30), T646_SEGONLY: SEG ? '1' : '', T675_SAB: process.argv.includes('--sab') ? '1' : '', T677_BR: process.argv.includes('--br') ? '1' : '', T670_AFAIL_OUT: path.join(DIR, `${tag}.afail.json`), T646_PATH_OUT: path.join(DIR, `${tag}.dest.json`), T671_TRAP_OUT: process.argv.includes('--trap') ? path.join(DIR, `${tag}.trap.json`) : '', T671_SHAPE_OUT: process.argv.includes('--shape') ? path.join(DIR, `${tag}.shape.jsonl`) : '' }) });
   const getj = async (p) => { try { const r = await fetch(`http://localhost:${ZP}${p}`, { headers: { 'x-zone-secret': SECRET }, signal: AbortSignal.timeout(20000) }); return await r.json(); } catch (e) { return null; } };
   const say = (...a) => console.log(`[${tag}]`, ...a);
   const t0 = Date.now();

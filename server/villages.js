@@ -6662,6 +6662,24 @@ function _t593SeaBank(cx, cy) {
 function _t593SeaHand() { const F = _fishingMod(); return !!(F && F.T593_SEA); }
 // ★[T350] `_t340Rng` 정의는 `server/seed-rand.js` 로 옮겼다(머리에서 require · 사본 0).
 // 한 시도 — 상태는 `npc._t340` 하나(던진 자리·입질 시각·창·그 종). 자리를 옮기면 버린다(안 물림).
+// ★★[T677 ② 2026-10-08 · 어부 드리움의 자리 판정을 칸마다 한 번] 손잡이 `T677_LIFE_SCAN=1`(기본 끔 = 종전 그대로).
+//   T677 ① 갈래 표본기: 낮 `npcStep` 의 생활층 몫 가운데 가장 큰 것이 어부의 던짐(`_t340Try`)이었다(사람당 ≈ 0.16 µs · 낮 `npcStep` 의 10 %).
+//   던질 때마다 `fishing.spotAt` 이 그 칸에서 **모든 강의 모든 마디**까지 거리를 다시 잰다(`_riverU`) — 그런데 그 답은
+//   지형(강·호수·이웃 존 물)과 칸 좌표만의 순수 함수이고 지형은 존마다 한 번 지어 그대로 쓴다(`terrain._generated`).
+//   ⇒ (존, 칸)마다 한 번 재어 둔다. **판본** = 그 존 지형 객체 자체(`ZONE_TERRAIN[zoneId]` — 다시 지으면 다른 객체 → 기억을 비운다).
+//   ★같은 답인 까닭: ① `spotAt` 는 인자와 지형만 읽고 아무것도 안 쓴다(글자 — 증인 ⓐ) ② 돌려받은 자리 객체를 고치는 자리 0
+//     (`plan` · `spotScore` 가 읽기만 · 증인 ⓒ) ⇒ 같은 객체를 다시 줘도 같다 ③ 던지다 예외가 나면 종전처럼 `null`(기억 안 함).
+const T677_LIFE_SCAN = process.env.T677_LIFE_SCAN === '1';
+const _t677SpotM = new Map(); let _t677SpotT = null, _t677SpotZ = null;
+function _t677Spot(F, cx, cy) {
+  const T = _terrainMod(), z = state.zoneId, t = T.ZONE_TERRAIN ? T.ZONE_TERRAIN[z] : null;
+  if (t !== _t677SpotT || z !== _t677SpotZ) { _t677SpotM.clear(); _t677SpotT = t; _t677SpotZ = z; }
+  if (!(cx >= 0 && cx < 65536 && cy >= 0 && cy < 65536)) return F.spotAt(T, z, cx * SZ + SZ / 2, cy * SZ + SZ / 2);   // 정수 열쇠 밖(존 밖 칸) — 종전 그대로
+  const k = cx * 65536 + cy;   // 셀 키 정수(위 범위 안에서 겹침 0)
+  let v = _t677SpotM.get(k);
+  if (v === undefined) { v = F.spotAt(T, z, cx * SZ + SZ / 2, cy * SZ + SZ / 2); _t677SpotM.set(k, v); }
+  return v;
+}
 function _t340Try(vil, npc, now, day, h, ws) {
   const F = _fishingMod(); if (!F) return false;
   const cx = Math.floor((npc._fishSpotX != null ? npc._fishSpotX : ws.x) / SZ);
@@ -6673,7 +6691,7 @@ function _t340Try(vil, npc, now, day, h, ws) {
     // 한 자리에 한 번만 던진다 — 던지고 나면 아래 `wait` 로 빠진다
     // ── 던짐 ── 자리·재고는 플레이어가 쓰는 그 술어로 묻는다(사본 0)
     let sp = null, stock01 = 1;
-    try { sp = F.spotAt(_terrainMod(), state.zoneId, cx * SZ + SZ / 2, cy * SZ + SZ / 2); } catch (e) { sp = null; }
+    try { sp = T677_LIFE_SCAN ? _t677Spot(F, cx, cy) : F.spotAt(_terrainMod(), state.zoneId, cx * SZ + SZ / 2, cy * SZ + SZ / 2); } catch (e) { sp = null; }   // ★[T677 ②] 켬 = 같은 칸은 한 번만
     try { stock01 = F.stockRatioAt(cx, cy, now); } catch (e) { stock01 = 1; }
     if (!sp) return 'wait';
     // ★[T574] 존 특산 프로필 + 경계 혼용(정본 `region-profiles`) — 켬일 때만 고르는 함수를 넘긴다(끄면 옛 줄 그대로).
