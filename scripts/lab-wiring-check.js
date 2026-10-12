@@ -253,6 +253,34 @@ console.log('\n[T100] 인당 기준 경작칸 — 정본 하나인가');
   else ok('villages.js 에 사본이 없다 — `_lifeVL().LAND_NEED` 로 읽는다');
 }
 
+// ★★[T707 2026-10-12] **장마당 정본 넷은 하나다** — `server/village-layout.js` `MKT_SPOTS`·`MKT_FRAC`·`MKT_LINGER_DAY_FRAC`·`HALL_YARD_PTS`.
+//   서버는 `_lifeVL()` 로 읽는다. 전쟁실험실(`L_MKT_FRAC`·`MKT_SPOTS`·`L_MKT_LINGER`·`_hallYard` 후보)과 클라(`MARKET_STALLS` 칸)는
+//   정본을 require 못 하는 **손 사본**이라 여기서 대조한다(T100 `LAND_NEED` 와 같은 문법 · 마을실험실엔 장마당이 없다).
+console.log('\n[T707] 장마당 정본 넷 — 실험실·클라 손 사본이 정본과 같은가');
+{
+  const VL = require(path.join(root, 'server', 'village-layout.js'));
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  if (!VL.MKT_SPOTS || VL.MKT_FRAC == null || VL.MKT_LINGER_DAY_FRAC == null || !VL.HALL_YARD_PTS) bad('village-layout.js 가 장마당 정본 넷을 안 내준다');
+  else {
+    const L = rd('lab/전쟁실험실.html');
+    const mf = L.match(/const L_MKT_FRAC=([0-9.]+)/);
+    if (!mf) bad('전쟁실험실 L_MKT_FRAC 를 못 찾았다'); else if (+mf[1] !== VL.MKT_FRAC) bad(`전쟁실험실 L_MKT_FRAC ${mf[1]} ≠ 정본 ${VL.MKT_FRAC}`); else ok(`전쟁실험실 L_MKT_FRAC ${mf[1]} = 정본 MKT_FRAC`);
+    const ms = L.match(/const MKT_SPOTS=(\[\[[-0-9,\[\]]+\]\]);/);
+    if (!ms) bad('전쟁실험실 MKT_SPOTS 를 못 찾았다'); else if (!same(JSON.parse(ms[1]), VL.MKT_SPOTS)) bad(`전쟁실험실 MKT_SPOTS ${ms[1]} ≠ 정본`); else ok(`전쟁실험실 MKT_SPOTS = 정본(${VL.MKT_SPOTS.length}자리)`);
+    const ml = L.match(/const L_MKT_LINGER=Math\.round\(L_MINDAY\/24\*([0-9.]+)\)/);
+    if (!ml) bad('전쟁실험실 L_MKT_LINGER 꼴(L_MINDAY/24*h)을 못 찾았다'); else if (Math.abs(+ml[1] / 24 - VL.MKT_LINGER_DAY_FRAC) > 1e-12) bad(`전쟁실험실 장 길이 ${ml[1]}시간 ≠ 정본 하루의 ${VL.MKT_LINGER_DAY_FRAC}`); else ok(`전쟁실험실 장 길이 ${ml[1]}게임시간 = 정본 MKT_LINGER_DAY_FRAC × 24`);
+    const hy = L.match(/const cs=(\[\[h\.cx[^;]*\]\]);/);
+    let pts = null;
+    if (hy) { pts = []; const re = /\[h\.cx([+-]\d+)?,h\.cy([+-]\d+)?\]/g; let m; while ((m = re.exec(hy[1]))) pts.push([+(m[1] || 0), +(m[2] || 0)]); }
+    if (!pts) bad('전쟁실험실 _hallYard 후보(cs)를 못 찾았다'); else if (!same(pts, VL.HALL_YARD_PTS)) bad(`전쟁실험실 _hallYard 후보 ${JSON.stringify(pts)} ≠ 정본 HALL_YARD_PTS`); else ok(`전쟁실험실 _hallYard 후보 = 정본 HALL_YARD_PTS(${pts.length}칸)`);
+    const C = rd('public/client/40-r2-sprites.js');
+    const cs = C.match(/const MARKET_STALLS = (\[[^;]*\]);/);
+    let cells = null;
+    if (cs) { cells = []; const re = /\['[a-z_]+', (-?\d+), (-?\d+)\]/g; let m; while ((m = re.exec(cs[1]))) cells.push([+m[1], +m[2]]); }
+    if (!cells) bad('클라 MARKET_STALLS 를 못 찾았다'); else if (!same(cells, VL.MKT_SPOTS)) bad(`클라 MARKET_STALLS 칸 ${JSON.stringify(cells)} ≠ 정본 MKT_SPOTS`); else ok(`클라 MARKET_STALLS 칸 = 정본 MKT_SPOTS(${cells.length}자리)`);
+  }
+}
+
 // ── H: 랩 부팅 기본 = 서버 기본 (T221 · ★T244 갱신) ──────────────────────────
 //   ★왜 [T209 → T221] 랩이 손잡이를 서버와 **다른 자리**에서 뜨면 "랩 팔"이 서버 팔이 아니다.
 //     실제로 그랬다: `L_HAPPYWORK` 가 0.24 로 떠서 T196 의 랩 표가 켠 판이었다(랩 기준선 인구 +17.6%).

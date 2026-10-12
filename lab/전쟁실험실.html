@@ -5667,6 +5667,12 @@ module.exports = {
   const inDisc = (cx, cy, R, x, y) => { const ax = x + 0.5 - cx, ay = y + 0.5 - cy; return ax * ax + ay * ay < R * R; };   // 셀 중심(x+.5,y+.5)이 격자점(cx,cy) 반경 R 안(엄격<) — 전 구역 판정의 단일 원식(렌더도 같은 셀 집합=판정과 픽셀 일치)
   const discCells = (R) => { const o = [], B = Math.ceil(R); for (let dx = -B; dx < B; dx++) for (let dy = -B; dy < B; dy++) if ((dx + 0.5) * (dx + 0.5) + (dy + 0.5) * (dy + 0.5) < R * R) o.push([dx, dy]); return o; };
   const LOT_CELLS = discCells(LOT_R), LOT_GUARD = discCells(LOT_R + FARM_GAP), YARD_CELLS = discCells(HALL_YARD);
+  // ★★[T707 2026-10-12 · 재민 10-12 T693 판정] 장마당 정본 넷 — **실험실 값 그대로**(새 수 0 · 랩 `L_MKT_FRAC`·`MKT_SPOTS`·`L_MKT_LINGER`·`_hallYard` 의 손 사본은
+  //   `scripts/lab-wiring-check.js` [T707] 절이 이 값과 대조한다). 큰집 = 8×8 발자국 [-4..3]² · 남벽 문 (0, 3→4).
+  //   MKT_SPOTS = 마당 좌판·사람 자리(문 통로 dx=0 열은 비운다) · MKT_FRAC = 장이 서면 모이는 마을 인구 비율 ·
+  //   MKT_LINGER_DAY_FRAC = 장 길이(하루의 4/24 = 4게임시간 · 랩 `L_MINDAY/24*4`) · HALL_YARD_PTS = 상인이 서는 남문 앞 마당 후보(결정론 차례 · 막히면 다음).
+  const MKT_SPOTS = [[-3, 5], [-1, 7], [2, 5], [4, 6], [-4, 7], [3, 8]], MKT_FRAC = 0.18, MKT_LINGER_DAY_FRAC = 4 / 24;
+  const HALL_YARD_PTS = [[0, 5], [0, 4], [-1, 5], [1, 5], [-2, 5], [2, 5], [0, 6]];
   // ★[재민 10-03] 개울 완충 = 부지 + **3칸**(물가세 없이) — 큰 물 완충(`FARM_GAP` 2)과 따로 둔 한 수(재민 값 · T584 표 뒤).
   const STREAM_GAP = 3, STREAM_GUARD = discCells(LOT_R + STREAM_GAP);   // 부지 원판(124셀 — 구 12×12 등적·적도폭 12), 부지+2 침수·완충 원판, 큰집 마당 원판(316셀)
   // ★★[T579 2026-10-03 · T569 ④] **집 부지 인당** = 부지 원판 셀 수 ÷ 집 한 채 정원(층당 정원 × 층 상한) — 식이다(새 수 0 · 124 ÷ 6 = 20.67).
@@ -6070,7 +6076,8 @@ module.exports = {
   const API = { LAND_NEED, LOT_PER_HEAD, houseSiteWant, territoryTarget, HOUSE_MAX_FLOORS, TERR_PER_SIZE, TERR_PER_LOT, TERR_CORE,   // ★[T100 4판] 정본 — 밖(villages.js·계측기·하네스)이 이 값을 읽는다
     generate, STREAM_GAP, STREAM_GUARD, typeBranch, TYPE_LINES, footprintLand, axisAt, nearestBank, waterEDT, maskEDT, HOUSE_HALF, HOUSE_CAP: HOUSE_CAP_PER_FLOOR, HOUSE_CAP_PER_FLOOR, LAND_PER_HOUSE, landNeedPer, HALL_YARD, LOT_R, FARM_GAP, ALLEY_R, HALL_CLEAR, inDisc, LOT_CELLS, LOT_GUARD, YARD_CELLS, houseFarmBlock, hallFarmBlock, discHitsStream, streamLotCells,
     AISLE, LIFE_HOUSE_GAP, LIFE_HOUSE_GAP_AISLE,   // ★[T315] 집 간격 유도 — 값이 아니라 식(사본 0) · ★[T326] 기본 = `LIFE_HOUSE_GAP`(15 · PM #52) · 되돌림 = `LIFE_HOUSE_GAP_AISLE`(18)
-    ditchRing, ditchConnectivity, DITCH_W, DITCH_AXIS_RATIO, DITCH_GATE_HALF, DITCH_MARGIN };
+    ditchRing, ditchConnectivity, DITCH_W, DITCH_AXIS_RATIO, DITCH_GATE_HALF, DITCH_MARGIN,
+    MKT_SPOTS, MKT_FRAC, MKT_LINGER_DAY_FRAC, HALL_YARD_PTS };   // ★[T707] 장마당 정본 넷(실험실 값 그대로)
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   if (typeof window !== 'undefined') window.VillageLayout = API;
 })();
@@ -13046,6 +13053,20 @@ function _killWarriors(v, n) {
 // ★★[T525 2026-09-29] **도착 한 번 = 이 함수 하나** — 종전 `tickCaravansV2` 의 outbound 갈래를 이름만 올렸다(`continue` → `return` · 값·순서 무변).
 //   왜: 이웃 존 캐러밴의 도착을 **같은 함수**로 치르려면 식이 이름을 가져야 한다(사본을 만들면 그 순간 두 존의 교역 규칙이 갈린다 · T233 문법).
 //   이웃 존 몫(켬일 때만 닿는다): 목적지가 스텁이면 몸을 넘긴다(`_xzHandOff`) · 집이 스텁이면(이웃 존 캐러밴) 집 값표·사상은 스텁/델타로.
+// ★★[T707 2026-10-12 · 재민 10-12 T693 판정] **장마당 — 캐러밴 ↔ 마을 물물교환은 상인이 떠날 때 한 번에**(손잡이 `T707_MARKET` · 기본 끔).
+//   재민: "나중에 캐러밴이 와 있는 4시간 동안 플레이어는 마을뿐 아니라 캐러밴과도 거래할 수 있게 할 건데, 그때 가격은 캐러밴이
+//   마을과 거래해버리기 **전** 가격이어야 합리적이다." ⇒ 도착(장부 도착일)엔 **값만 찍어 둔다**(받는 마을 · 보낸 마을 그림자가격 · 받는 마을 곳간) ·
+//   매도/재routing/빈손 판단은 도착 때 그대로(그 판단이 곧 "장이 선다 · 안 선다") · 장이 서면 `c._mktD = 그날`(호스트가 장을 연다) ·
+//   정산(매도 · 매수 · 세금 · 귀환 화물 · 교역 기록)은 **떠날 때** — 장 길이(4시간)는 하루 안이고 econ 은 하루 단위라
+//   그 다음 정한 자리 = **다음 econ 틱 머리**(`settleMarketsV2` — `tickWorldV2Parts.head` 날 올린 바로 뒤 · 마을 틱 앞 · CLI · 실험실 · 서버가 같은 자리).
+//   정산은 종전 글자(`_caravanTrade` — "평소" 몸통을 이름만 올렸다)를 그대로 부르되 판단 값은 찍어 둔 것(도착 때 값)이다 ·
+//   교역 기록의 날 = 장부에 든 날(도착 + 1 · 장부 사건 FIRST_GOODS · 마지막 교역일이 그날 줄로 읽는다 — 장이 선 날은 `c._mktD`).
+//   ⚠끔 = 종전 바이트(아래 갈래가 한 줄도 안 닿는다 · `_caravanTrade` 는 도착 자리에서 종전과 같은 차례로 불린다).
+//   ⚠이웃 존이 낀 캐러밴(T525 · 기본 끔)은 종전대로 도착 때 정산(`_xzArriveLoop` 가 그 자리의 교역 기록을 읽는다).
+//   플레이어 ↔ 캐러밴 거래와 그에 따른 재계산은 나중(이 정산이 그 갈고리 자리 · 찍어 둔 `c._t707` 이 그 기준값이다).
+const T707_MARKET = (typeof process !== 'undefined' && process.env && process.env.T707_MARKET === '1');
+function _t707On(world) { return T707_MARKET || !!(world && world.t707Market); }
+function _t707Xz(c) { return !!(c && (c._xzHome || (c.from && c.from._xz) || (c.to && c.to._xz))); }
 function _caravanArrive(world, c, day) {
     // ★★[T525] 목적지가 이웃 존 스텁 — 도착은 그 존이 치른다(약탈도 그쪽 호스트가 정한다). 팔이 꺼졌거나 호스트가 빠졌으면 짐을 되돌린다.
     if (c.to && c.to._xz) { if (_xzOn(world)) _xzHandOff(world, c, day); else _xzBounce(world, c, day); return; }
@@ -13177,10 +13198,25 @@ function _caravanArrive(world, c, day) {
         travelDays: c.travelDays,
         abandoned: true, note: '빈손 귀환',
       });
+      if (_t707On(world) && !_t707Xz(c)) c._mktD = day;   // ★[T707] 빈손으로 돌아서도 그날 그 마당에 장은 선다(팔지 않은 짐 · 정산할 것 0)
       return;
     }
 
     // ====== 평소: 매도·매수·복귀 ======
+    // ★★[T707] 켬 — 장이 선다: 값만 찍고(도착 때 값) 정산은 떠날 때(`settleMarketsV2` · 다음 econ 틱 머리). 귀환 화물은 정산이 정한다.
+    if (_t707On(world) && !_t707Xz(c)) {
+      c._t707 = { d: day, give: deliveredGive, loss: outboundLoss, pTo, pricesTo, pricesFrom, stockTo: Object.assign({}, c.to.storage) };
+      c._mktD = day;
+      c._returningRes = null;
+      c._returningAmt = 0;
+      c.state = 'inbound';
+      return;
+    }
+    _caravanTrade(world, c, day, deliveredGive, outboundLoss, pricesTo, pricesFrom, pTo);
+}
+// ★★[T707] 매도·매수·복귀 — 종전 `_caravanArrive` 의 "평소" 몸통을 **글자 그대로** 이름만 올렸다.
+//   끔 = 도착 자리에서 부른다(종전 바이트) · 켬 = 떠날 때 `settleMarketsV2` 가 찍어 둔 값(도착 때 그림자가격)으로 부른다.
+function _caravanTrade(world, c, day, deliveredGive, outboundLoss, pricesTo, pricesFrom, pTo) {
     // ★시장 충격 정산(2026-07-12): 매도 수익 = ∫p(s)ds(재고 증가 방향) — 대량 투하는 가격을 스스로
     //   누름(종전 flat deliveredGive×pTo는 호가 불변 가정 → 소시장 덤핑 과대수익). 재고 가산 '전' 계산.
     //   pTo는 결정·로그용 스냅샷으로 유지.
@@ -13299,6 +13335,22 @@ function _caravanArrive(world, c, day) {
       travelDays: c.travelDays,
     });
 }
+// ★★[T707] 떠날 때 정산 — 찍어 둔 장(`c._t707`)을 `world.caravans` 차례로 한 번에 정산한다(같은 마을 같은 날 둘째는 첫째 정산 뒤 곳간을 본다 = 종전 차례).
+//   부르는 자리: `tickWorldV2Parts.head` — 날을 올린 바로 뒤 · 마을 틱 앞(교역 기록의 날 = 장부에 든 날).
+//   두 번 불려도 한 번(정산한 장은 지운다). 끔이면 찍힌 장이 없어 0.
+function settleMarketsV2(world) {
+  if (!world || !world.caravans || !world.caravans.length) return 0;
+  let n = 0;
+  for (const c of world.caravans) {
+    const P = c._t707;
+    if (!P) continue;
+    c._t707 = null;
+    _caravanTrade(world, c, world.day, P.give, P.loss, P.pricesTo, P.pricesFrom, P.pTo);   // 날 = 장부에 든 날(오늘 econ 날) — 장부 사건(`events.js` FIRST_GOODS)·마지막 교역일이 오늘 줄로 읽는다
+    n++;
+  }
+  if (n) { const S = world._t707Stat || (world._t707Stat = { settled: 0, days: 0 }); S.settled += n; S.days++; }
+  return n;
+}
 
 function tickCaravansV2(world, day) {
   // ★★[T525] 이웃 존에서 온 기록 먼저(그 존 캐러밴의 도착 · 이 존 캐러밴의 귀환) — 팔 켬 + 호스트가 꽂았을 때만.
@@ -13322,7 +13374,7 @@ function tickCaravansV2(world, day) {
       if (c._xzBack && day >= c._xzBack.day) _xzHandBack(world, c, day, c._xzRow || null, c._xzBack.remain);
     }
 
-    else if (c.state === 'inbound' && day >= c.returnArriveDay) {
+    else if (c.state === 'inbound' && day >= c.returnArriveDay && !c._t707) {   // ★[T707] 정산 전 장은 귀환을 안 닫는다(머리에서 정산되니 실제로는 안 닿는다 · 끔이면 `_t707` 없음 = 종전)
       // ★[de-abstract] 약탈 (귀환) = per-entity 실전투: 왕복 같은 길목 갱 vs 호위+상인
       const gangI = world.banditGang ? world.banditGang(c.from, c.to) : null;
       let inboundLoss = 0;
@@ -13641,6 +13693,7 @@ function tickWorldV2Parts(world) {
   return {
     head() {
       world.day += 1;
+      if (_t707On(world)) settleMarketsV2(world);   // ★[T707] 어제 선 장의 떠날 때 정산 — 날을 올린 **바로 뒤**(마을 틱 앞 · 교역 기록의 날 = 장부에 든 날 · 끔 = 이 줄 무동작)
       v1.processEvents(world, world.day);
       // DEBUG flags — 각 효과 on/off
       if (world._dbg?.weather !== false) tickWeather(world, world.day);
@@ -14051,6 +14104,7 @@ module.exports = {
   T496_CARAVAN_REST,   // ★[T496] 쉬는 짐꾼(캐러밴 = 몸 × 하루 비 · 기본 끔) — 하네스(⑲)·표가 읽는다
   isSubsistenceFlow, subsGuard,   // ★[T416] subs 가드 술어 하나 — 가격 셋·게시판 하나가 같은 문을 부른다
   T659_WOOD_FLOW,   // ★[T659] 통나무 흐름 닻 손잡이(기본 끔) — 하네스·자가 읽는다
+  T707_MARKET, settleMarketsV2,   // ★[T707] 장마당 떠날 때 정산 — 손잡이(기본 끔) · 정산 문(서버 하루 마감이 econ 조각 첫 자리에서 부른다 · 하네스가 같은 문을 부른다)
   // 시장 충격 정산 헬퍼(1b) — 프로브·자가검증용 노출
   _priceParamsV2, _impactSegs, _impactF, _impactBuyV2, _impactSellV2,
   // 기온 모델(2026-07-12) — 생활층(밤낮 시간 곡선)·프로브용 노출
@@ -15498,7 +15552,8 @@ function openMarket(vil){
   vil._mktUntil=lifeGM+L_MKT_LINGER;
   const _oV=V,_oL=life; V=vil.V; life=vil;
   let n=Math.max(1,Math.round(vil.agents.length*L_MKT_FRAC))-vil.agents.filter(a=>a._mkt).length,k=0,got=0;   // ★[T684] 이미 선 장에 다시 불리면(교역 NPC 둘이 같은 날 같은 마당에 닿는다) **이미 모인 사람을 뺀다** — 상한은 장이 설 때마다가 아니라 마을 인구 × L_MKT_FRAC 하나다(종전: 부를 때마다 새로 세어 7+7=14 = 34.1% · T660 실측). 다 찼으면 n≤0 → 아래 고리가 바로 끝난다(장 기한 연장만)
-  for(const a of vil.agents){ if(n<=0)break;
+  const _A=vil.agents,_NA=_A.length,_s0=_NA?((((VILS.indexOf(vil)|0)+(vil.day|0))%_NA)+_NA)%_NA:0;   // ★[T707 · 재민 10-12 "얼굴 돌리기"] (마을, 날) 차례로 시작점을 돌린다 — 서버 `_t707Roster` 와 같은 문법(주사위 0 · 종전: 늘 배열 앞 = 같은 얼굴)
+  for(let _i=0;_i<_NA;_i++){ const a=_A[(_s0+_i)%_NA]; if(n<=0)break;
     if(a._muster||a.rest||a._mkt)continue;
     if(a.state==='trading'||a.state==='build'||a.state==='gran'||a.state==='toGran')continue;   // 일하는 사람은 안 끌어온다
     const sp=MKT_SPOTS[k++%MKT_SPOTS.length];
