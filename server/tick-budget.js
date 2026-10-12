@@ -18,7 +18,7 @@ const S = { ticks: 0, skipped: {}, over: 0, rsvOut: {}, yieldTicks: 0, decCut: 0
 //     그 몫은 새 수가 아니다 — **지난 틱 결정 문이 실제로 쓴 시간**(다 돌았으면) · 끊겼으면 결정 문 제 예산(15ms — 그 문의 수).
 //   ⚠둘이 같이 굶지 않게: 앞 문이 그 몫 때문에 이 틱을 쉬었으면 다음 틱엔 몫을 안 남긴다(번갈아 — 결정이 무거운 틱에도 마감이 선다).
 //   ⚠한 틱 합은 그대로 공용 몫 하나다("마감 16 + 결정 15" 쌓임은 안 선다) — 결정 문이 남은 몫 안에서 돈다.
-const DEC_FIRST = ON && typeof process !== 'undefined' && !!process.env && process.env.T695_DEC_FIRST === '1';
+const DEC_FIRST = ON && typeof process !== 'undefined' && !!process.env && process.env.T695_DEC_FIRST !== '0';   // ★10-12 PM 착지 켬 기본(`0` = T687 차례 그대로)
 let _rsv = 0, _rsvNext = 0, _late = false, _rsvHit = false;
 const _rsvNow = () => (DEC_FIRST && !_late ? _rsv : 0);   // 계측 — 문이 몫이 없어 쉰 틱 수(문 이름별)
 // 틱 머리 · 꼬리(존 게임 틱만 부른다)

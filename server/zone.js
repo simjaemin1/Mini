@@ -474,7 +474,7 @@ function _t566OnUnpaved(cx, cy) {
 //      판의 값은 지금 짓든 경계에서 짓든 같다(같은 생성기 · 같은 인자). 다져진 길 전부의 둘레를 지으면 청크 2,474판 ≈ 58 MB 라 내일 몫만 짓는다.
 //   ⚠풀림 자체(벤 날 적기)를 다음 틱들로 미루는 조각은 **안 했다** — 미룬 사이 장부(`harvestedSeeds`) · 판 캐시 · 원경 판(`_farVer`) · 다져진 길 ·
 //      영토를 읽고 쓰는 문이 끼면 차례가 바뀐다(보고 §1 표). 값이 같음을 지키는 문을 다 걸 수 없어 경계 틱 안에 둔다.
-const T696 = process.env.T696_ROAD_TAIL === '1';
+const T696 = process.env.T696_ROAD_TAIL !== '0';   // ★10-12 PM 착지 켬 기본(`0` = 종전)
 function _t696Blocked(cx, cy) {   // = regrowBlockedAt(cx, cy) — 차례만 바꾼 '또는'(값 같음)
   if (!_T566_ON) return false;
   try { if (Roads.pavedNear && Roads.pavedNear(cx | 0, cy | 0, _T566_R)) return true; } catch (e) {}

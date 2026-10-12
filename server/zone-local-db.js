@@ -38,7 +38,7 @@ try {
 //      SQLite 문서의 형식 — mxFrame · nBackfill)를 읽어 **옮기지 않은 프레임 ≥ 종전 문턱(이 연결이 읽은 `wal_autocheckpoint` 값)** 이고 일꾼이 쉬고 있으면 부른다.
 //   ⇒ 값(행)은 같다 — 체크포인트는 같은 프레임을 DB 파일로 옮길 뿐이다. 내구성 표는 보고 §2.
 //   ⚠머리 형식이 기대와 다르거나(판 · 쪽 크기) 일꾼이 서지 못하면 자동 체크포인트를 그대로 둔다(= 종전).
-const T696_WAL = process.env.T696_ROAD_TAIL === '1' && process.env.T696_WAL !== '0';
+const T696_WAL = process.env.T696_ROAD_TAIL !== '0' && process.env.T696_WAL !== '0'   /* ★10-12 PM 착지 켬 기본 */;
 const _wal = { on: false, n: 0, page: 0, shmFd: null, buf: null, worker: null, busy: false, req: 0, done: 0, ms: 0, maxMs: 0, frames: 0, maxPend: 0, err: 0, last: null };
 function _walHead() {   // wal-index 머리 → { mxFrame, nBackfill } · 못 읽으면 null
   try {
