@@ -3098,7 +3098,21 @@ function createLedger(opts) {
   // ── 하루 경계 스캔 ─────────────────────────────────────────────────────────
   //   extra.caravanDelays: [{ vid, days, from, to }] — 호스트(server/villages.js)가
   //   실체 캐러밴의 `body.delayedDays` 증분을 그대로 넘긴다. 랩(econ 단독)엔 실체가 없으니 빈 배열이다.
-  function scanDay(world, day, extra) {
+  // ★★[T698 2026-10-11] 몸통을 발생기 하나(`_scanSteps`)로 — 교역 도착 절 뒤 · 마을 하나 뒤에서 쉰다(같은 차례 · 같은 값).
+  //   `scanDay(world, day, extra)` 는 종전 그대로 끝까지 돌고 사건 목록을 돌려준다(부르는 쪽 · 관찰기 훅 무변).
+  //   넷째 인자 `{ steps: true }` 면 **돌리지 않고** 발생기를 돌려준다 — 서버 하루 마감이 마을 하나씩 조각으로 민다
+  //   (`T698_BOUNDARY_SLICE` · villages.js). 끝까지 민 발생기의 `return` 값이 종전 `out` 과 같다.
+  //   ⚠쉬는 사이 econ 상태가 바뀌면 값이 갈린다 — 그 짝(마감 중 몸 결정 얼림 · 대기 큐)은 부르는 쪽 몫이다.
+  //   ★관찰기 훅(자 · 게이트)은 `scanDay` 를 감싸 **부른 뒤** 장부 통계를 읽는다 ⇒ 조각 판은 앞을 `scanSteps`(안 감싼 문)로 밀고,
+  //     꼬리(`yield 'tail'` 뒤 — 지연 · 완공 · 겨울 · 구조 · 굶음 · 의뢰)를 `scanDay(world, day, extra, { drain: g })` 로 끝낸다 —
+  //     감싼 문이 그날 한 번 · 장부가 다 선 뒤에 돌아온다(econ 은 장부가 안 만진다 — ⑧ — 앞뒤 어디서 읽어도 같다).
+  function scanDay(world, day, extra, opt) {
+    const g = (opt && opt.drain) || _scanSteps(world, day, extra);
+    if (opt && opt.steps) return g;
+    let r = g.next(); while (!r.done) r = g.next();
+    return r.value;
+  }
+  function* _scanSteps(world, day, extra) {
     const t0 = process.hrtime.bigint();
     const out = [];
     _lastDay = day | 0;
@@ -3127,10 +3141,14 @@ function createLedger(opts) {
       }
     }
 
-    world.villages.forEach((v, i) => {
+    yield 'arrivals';   // ★[T698] 쉼표 — 교역 도착 절 뒤
+
+    const _vs = world.villages;
+    for (let i = 0; i < _vs.length; i++) {   // ★[T698] 종전 `forEach` 그대로(같은 차례 · `return` → `continue`) — 마을 하나 뒤마다 쉼표
+      const v = _vs[i];
       const vid = vidOf(v, i);
-      if (vid == null) return;
-      if (!v.npcs || v.npcs.length === 0) { emptied(vid, day, out); return; }   // 사람이 없는 마을엔 소식이 없다 — ★[T572] 비던 그날 한 줄만
+      if (vid == null) continue;
+      if (!v.npcs || v.npcs.length === 0) { emptied(vid, day, out); yield 'v'; continue; }   // 사람이 없는 마을엔 소식이 없다 — ★[T572] 비던 그날 한 줄만
       const s = st(vid);
       const mine = [];
       const prices = priceView(v, day);      // ★★[T133] 하역 뒤의 값 — 위 주석
@@ -3193,7 +3211,9 @@ function createLedger(opts) {
       deeds(s, v, day, mine);
 
       commit(s, mine, out);
-    });
+      yield 'v';   // ★[T698] 쉼표 — 마을 하나 뒤
+    }
+    yield 'tail';   // ★[T698] 쉼표 — 꼬리 앞(조각 판은 여기서 감싼 `scanDay` 문으로 넘긴다)
 
     // ⑥ 교역 도착 지연 — 실체 층(server/villages.js `body.delayedDays`)이 있을 때만.
     //    econ 단독(랩)엔 실체가 없어 0건이다. **없는 데이터를 억지로 만들지 않는다.**
@@ -3714,7 +3734,7 @@ function createLedger(opts) {
 
   return {
     cfg, stats, TYPES,
-    prime, scanDay, recent, board, claim, unclaim, ringOf, detOf, loadRing, loadRequest,
+    prime, scanDay, scanSteps: (world, day, extra) => _scanSteps(world, day, extra), recent, board, claim, unclaim, ringOf, detOf, loadRing, loadRequest,
     // ★[T7] 소문 물리 전파 — 가시성 술어와 그 부속. 사본 금지: 사건을 보는 문은 이것뿐이다.
     visibleEvents, visibleTo, heardDayOf, delayTo, returnBrief,
     // ★[T127] 소문 왜곡 — 홉 수와 뭉갬. 하네스가 **장부가 실제로 쓰는 것**을 그대로 부른다(사본 금지).
@@ -12481,7 +12501,11 @@ function pricesFor(v, day) {
   }
   return v._priceCache;
 }
-function tickTradeV2(world, day) {
+// ★★[T698 2026-10-11] 교역 몸통을 발생기 하나(`tickTradeV2Steps`)로 — 마을(a) 하나 사이에서 쉰다(같은 차례 · 같은 값).
+//   `tickTradeV2` 는 종전 그대로 끝까지 돈다(헤드리스 자 · 랩 · `tickWorldV2` 무변). 서버 하루 마감만 `tickWorldV2Parts().tradeSteps()` 로 조각을 민다.
+//   ⚠쉬는 사이 곳간·시세가 바뀌면 값이 갈린다 — 그 짝(마감 중 몸 결정 얼림 · 대기 큐)은 부르는 쪽(villages.js `T698_BOUNDARY_SLICE`) 몫이다.
+function tickTradeV2(world, day) { const g = tickTradeV2Steps(world, day); while (!g.next().done); }
+function* tickTradeV2Steps(world, day) {
   // ★자정 일괄 폐지 — 매일 실행하되 마을별로 교역일을 분산((day+idx)%INTERVAL). 스파이크·시세 staleness↓.
   // 1) 가격표(캐시 — 이웃 시세 조회용)
   const data = world.villages.map((v, i) => ({
@@ -12499,7 +12523,9 @@ function tickTradeV2(world, day) {
   //    매 caravan마다 새 best 검색 (이미 출장한 자원·목적지 제외).
   //    출발 의사결정에 forward price 위험 마진 (도착 가격 5% 낮을 가정).
   const FORWARD_PRICE_MARGIN = 0.95; // 도착 시 가격 5% 낮을 거라 가정 (forward discount)
+  let _t698n = 0;
   for (const a of data) {
+    if (_t698n++) yield 'a';   // ★[T698] 쉼표 — 마을 하나 사이(첫 마을 앞은 안 쉰다 · `continue` 와 무관하게 사이마다 한 번)
     // ★3일 게이트·동시8%·가치상한 전부 폐지 — 매일 검사, 조건 되면 연속 교역.
     //   실질 제한은 아래 spareCap(여유노동)뿐 — 마을 글럿도에서 창발(하드 %캡 아님).
     if (a.v.isolated && day < a.v.isolatedUntilDay) continue;
@@ -13536,6 +13562,7 @@ function tickWorldV2Parts(world) {
       if (world._dbg?.decay !== false) tickDecay(v);
     },
     trade() { tickTradeV2(world, world.day); },
+    tradeSteps() { return tickTradeV2Steps(world, world.day); },   // ★[T698] 같은 교역 · 마을 하나씩(서버 하루 마감)
     caravans() { tickCaravansV2(world, world.day); },
     tail() {
       // v2 r7: 이주·강제소개 OFF — 사용자 명시 의도 (안정된 마을 7개로 서버 오픈).

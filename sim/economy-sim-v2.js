@@ -789,7 +789,11 @@ function pricesFor(v, day) {
   }
   return v._priceCache;
 }
-function tickTradeV2(world, day) {
+// ★★[T698 2026-10-11] 교역 몸통을 발생기 하나(`tickTradeV2Steps`)로 — 마을(a) 하나 사이에서 쉰다(같은 차례 · 같은 값).
+//   `tickTradeV2` 는 종전 그대로 끝까지 돈다(헤드리스 자 · 랩 · `tickWorldV2` 무변). 서버 하루 마감만 `tickWorldV2Parts().tradeSteps()` 로 조각을 민다.
+//   ⚠쉬는 사이 곳간·시세가 바뀌면 값이 갈린다 — 그 짝(마감 중 몸 결정 얼림 · 대기 큐)은 부르는 쪽(villages.js `T698_BOUNDARY_SLICE`) 몫이다.
+function tickTradeV2(world, day) { const g = tickTradeV2Steps(world, day); while (!g.next().done); }
+function* tickTradeV2Steps(world, day) {
   // ★자정 일괄 폐지 — 매일 실행하되 마을별로 교역일을 분산((day+idx)%INTERVAL). 스파이크·시세 staleness↓.
   // 1) 가격표(캐시 — 이웃 시세 조회용)
   const data = world.villages.map((v, i) => ({
@@ -807,7 +811,9 @@ function tickTradeV2(world, day) {
   //    매 caravan마다 새 best 검색 (이미 출장한 자원·목적지 제외).
   //    출발 의사결정에 forward price 위험 마진 (도착 가격 5% 낮을 가정).
   const FORWARD_PRICE_MARGIN = 0.95; // 도착 시 가격 5% 낮을 거라 가정 (forward discount)
+  let _t698n = 0;
   for (const a of data) {
+    if (_t698n++) yield 'a';   // ★[T698] 쉼표 — 마을 하나 사이(첫 마을 앞은 안 쉰다 · `continue` 와 무관하게 사이마다 한 번)
     // ★3일 게이트·동시8%·가치상한 전부 폐지 — 매일 검사, 조건 되면 연속 교역.
     //   실질 제한은 아래 spareCap(여유노동)뿐 — 마을 글럿도에서 창발(하드 %캡 아님).
     if (a.v.isolated && day < a.v.isolatedUntilDay) continue;
@@ -1844,6 +1850,7 @@ function tickWorldV2Parts(world) {
       if (world._dbg?.decay !== false) tickDecay(v);
     },
     trade() { tickTradeV2(world, world.day); },
+    tradeSteps() { return tickTradeV2Steps(world, world.day); },   // ★[T698] 같은 교역 · 마을 하나씩(서버 하루 마감)
     caravans() { tickCaravansV2(world, world.day); },
     tail() {
       // v2 r7: 이주·강제소개 OFF — 사용자 명시 의도 (안정된 마을 7개로 서버 오픈).

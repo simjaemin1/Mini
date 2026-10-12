@@ -6107,6 +6107,16 @@ const T513_DAY_SLICE = process.env.T513_DAY_SLICE !== '0';
 //   ★★[T528 2026-09-29 · ★PM 승격] **기본 켬**(되돌림 `T523_LIFE_SLICE=0` = 종전 마을 하나 = 조각 하나) — T523 이 켬 156 → 46ms ·
 //     econ 지문 50/50 · 사냥 장부 지문 끔↔켬 17 ≤ 끔↔끔 24(잡음 바닥 안)를 보였다.
 const T523_LIFE_SLICE = process.env.T523_LIFE_SLICE !== '0';
+// ★★[T698 2026-10-11] **평시 경계 짐 — 교역 · 사건 장부를 마을 하나씩** — 손잡이 `T698_BOUNDARY_SLICE`(★기본 끔 · `=1` 켬 · 끔 = 종전 글자).
+//   T690 · T687: 평시 경계(2 · 3)의 30ms 넘는 틱 주인 중 통짜 둘 — `econ:trade`(한 조각 44 ms) · `events`(42~60 ms). T687 은 "조각 사이에 몸 노동이
+//   끼어 곳간을 만진다"는 까닭으로 안 쪼갰다 ⇒ 켜면 그 짝을 같이 세운다:
+//     ① **마감 중 마을 몸 결정 얼림** — `npcLifeTick` 이 마감 중(`state.tickJobs`)이면 그 결정을 쉰다(일과 소유 · 아무것도 안 한다).
+//        조각 사이 곳간·칸·장부를 만지는 몸 일(어부·나무꾼·채집꾼·농부의 곳간 입고 · 밭 칸 · 집 · 사냥)은 전부 이 결정 안에서 난다(보고 T698 §1 표).
+//        캐러밴 · 떠나는 몸 · 전쟁 몸은 이미 얼어 있고(T1) 사람의 장부 요청은 대기 큐다(T1 §2-②) — 같은 문의 한 줄 더.
+//     ② 교역 = econ 정본 발생기(`tickWorldV2Parts().tradeSteps()` — 마을 하나 사이 쉼표) · 사건 장부 = 장부 발생기(`scanDay(…, { steps: true })` —
+//        교역 도착 절 뒤 · 마을 하나 뒤 쉼표). 한 쉼표 = 'retry'(T85 문법 — 같은 자리 맨 앞 · 같은 하루 안의 다음 조각 · 차례 무변).
+//   캐러밴 동기(`_caravanSyncOne`)는 이미 한 대씩 · 몸 A* 는 재개형이다(T85) — 손대지 않는다.
+const T698_BOUNDARY_SLICE = process.env.T698_BOUNDARY_SLICE === '1';
 let _t523Pause = 0;   // 쉼표에서 다른 프레임에 넘겨 준 시간의 누계(생활층 스톱워치가 그만큼 뺀다 · 계측 전용)
 
 // ★[T513] econ 조각의 앞뒤 일 — 한 조각(끔)과 여러 조각(켬)이 **같은 함수**를 부른다(사본 0 · 몸통은 종전 econ 조각 그대로 옮겼다).
@@ -6158,7 +6168,10 @@ function _econDayParts(C, add) {
   const mute = (f) => { const _log = console.log; console.log = () => {}; try { f(); } finally { console.log = _log; } };
   add('econ', () => { _econDayFixture(); for (const vil of C.vils) _lifeHandsIn(vil); mute(() => P.head()); }, 'econ:head');
   for (const v of state.world.villages.slice()) add('econ', () => mute(() => P.village(v)), 'econ:vil');   // 마을 하나 = 조각 하나(목록은 여는 순간 얼린다)
-  add('econ', () => mute(() => P.trade()), 'econ:trade');
+  if (T698_BOUNDARY_SLICE && typeof P.tradeSteps === 'function') {   // ★[T698] 켬 — 마을 하나씩(같은 발생기를 끝까지 = `P.trade()`)
+    let g = null;
+    add('econ', () => { let done = false; mute(() => { if (!g) g = P.tradeSteps(); done = g.next().done; }); return done ? undefined : 'retry'; }, 'econ:trade');
+  } else add('econ', () => mute(() => P.trade()), 'econ:trade');
   add('econ', () => mute(() => P.caravans()), 'econ:caravan');
   add('econ', () => { mute(() => { P.tail(); _econDayWar(); }); _econDayAfter(); }, 'econ:tail');
 }
@@ -6307,7 +6320,10 @@ function _openDayJobs(now) {
   add('caravan', () => { _caravanSyncSweep(C.car); });
 
   // ⑧ 사건 장부 — econ·캐러밴이 오늘 값이 된 **바로 이 지점**(종전 위치 그대로). 실측 6ms.
-  add('events', () => { try { _scanEventsDaily(); } catch (e) { console.error(`[${state.zoneId}] 📜 사건 장부 실패(틱은 계속):`, e.message); } });
+  if (T698_BOUNDARY_SLICE) {   // ★[T698] 켬 — 사건 장부를 마을 하나씩(`_scanEventsSteps` — 같은 앞·뒤 · 같은 장부 발생기)
+    let g = null;
+    add('events', () => { try { if (!g) g = _scanEventsSteps(); if (!g.next().done) return 'retry'; } catch (e) { console.error(`[${state.zoneId}] 📜 사건 장부 실패(틱은 계속):`, e.message); } });
+  } else add('events', () => { try { _scanEventsDaily(); } catch (e) { console.error(`[${state.zoneId}] 📜 사건 장부 실패(틱은 계속):`, e.message); } });
 
   // ⑨ 저장 큐 — 다음 틱부터 1마을/틱(종전 그대로).
   add('save', () => { state.saveQueue = C.vils.slice(); });
@@ -10508,6 +10524,7 @@ function* _lifeDailySteps(vil) {   // 게임일 경계: 크루·클레임 재대
 }
 function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도주 뒤·야간 귀가 게이트 앞) — true=일과 소유(레거시 차단)
   if (!LIFE_ON) return false;
+  if (T698_BOUNDARY_SLICE && state.tickJobs) return true;   // ★[T698] 마감 중 마을 몸 결정 얼림(위 손잡이 주석 ①) — 이 결정은 쉰다(일과 소유 · 레거시도 막는다)
   // ★★[T134 2026-09-06] **짐을 진 주민에게 지게를 입힌다.** 정본은 손의 볏단 수다(★[T316] `npc._carry` → `inventory.grain_sheaf`) —
   //   수확이 +1, 곳간 인출이 +q, 저장·귀가가 0 으로 만든다. 여기서는 **읽기만** 한다(회계 무접촉).
   //   ⚠`_lifeAct` 라벨('운반'·'저장')은 **못 쓴다**: 그 라벨은 곳간 과업 창 안에서만 찍히는데,
@@ -11208,14 +11225,21 @@ function noteStarved(vil) {
 }
 function _starvedToday() { const out = _evStarved.slice(); _evStarved.length = 0; return out; }
 
-function _scanEventsDaily() {
+function _scanEventsDaily() { const g = _scanEventsSteps(); while (!g.next().done); }   // ★[T698] 몸통은 아래 발생기 하나(끔 = 끝까지 한 번에 · 종전 그대로)
+function* _scanEventsSteps() {
   if (!state.ledger) return;
   const t0 = Date.now();
   try { _noteTradeDays(state.world); } catch (e) {}   // ★[T577 ④] 마지막 교역일 — 장부와 같은 하루 경계
-  const evs = state.ledger.scanDay(state.world, state.world.day, { caravanDelays: _caravanDelaysToday(), builds: _buildsToday(),
+  const _x = { caravanDelays: _caravanDelaysToday(), builds: _buildsToday(),
     rescues: _rescuesToday(),                                      // ★[T119] 구조 — 완공과 같은 자리
     starved: _starvedToday(),                                      // ★[T590] 굶어 죽음 — 구조와 같은 자리
-    winter: Winter.dailyExtra(state.world.day, state.villages) });   // ★[T20] 겨울나기 — 공표(가을 첫날)·판정(겨울 첫날)
+    winter: Winter.dailyExtra(state.world.day, state.villages) };   // ★[T20] 겨울나기 — 공표(가을 첫날)·판정(겨울 첫날)
+  let evs;
+  if (T698_BOUNDARY_SLICE) {   // ★[T698] 장부 발생기를 쉼표마다 넘긴다 — 꼬리만 감싼 `scanDay` 문으로(아래)
+    const lg = state.ledger.scanSteps(state.world, state.world.day, _x);   // 앞(도착 절 · 마을 하나씩)은 안 감싼 문
+    let r = lg.next(); while (!r.done && r.value !== 'tail') { yield; r = lg.next(); }
+    evs = r.done ? (r.value || []) : (state.ledger.scanDay(state.world, state.world.day, _x, { drain: lg }) || []);   // 꼬리는 감싼 문(관찰기 훅이 다 선 장부를 본다)
+  } else evs = state.ledger.scanDay(state.world, state.world.day, _x);
   // 의뢰 진척 저장은 납품 시점에 한다(여기선 게시/철회만 — onRequest 훅이 이미 했다).
   if (state.world.day % 30 === 0) {
     try { state.db.pruneVillageEvents(state.zoneId, state.world.day - state.ledger.cfg.KEEP_DAYS); } catch (e) {}
