@@ -84,6 +84,7 @@ const { Quadtree, QuadtreeInc } = require('./quadtree'); // spatial index — O(
 const { ChunkManager, CHUNK_SIZE, generateChunkResources, resourcesAtCell, cellChunksOf, overflowInto, seedGenChunkOf, regrowStageOf, REGROW, generateVillagesForZone, generateCoastlineWaterTiles, RESOURCE_HP_TABLE, GROVE_KINDS, forestSpacing: chunkForestSpacing, FOREST_MIN_COV: chunkForestMinCov } = require('./chunk');   // ★[T325] `resourcesAtCell` — 관측자 무관 색인(T301) 그대로. 나무꾼이 청크 없이 나무를 묻는다 // ★[T124] 재생 정산은 T122 정본을 그대로 받는다(사본 0) // 청크 단위 entity 분류 + procedural + 해안선 + ★[T108] 자연물 hp 정본
 const { findPath: pfFindPath } = require('./pathfind'); // Phase 14.49-b: NPC A* pathfinding
 const PathCore = require('../sim/path-core.js'); // ★[생활 층 100% ①] 랩·서버 공용 경로 정본 — smoothPath(스트링 풀링)를 주민 이동에 직결
+if (process.env.T697_DAY_GC === '1') PathCore.setLean(true);   // ★[T697] 손잡이 `T697_DAY_GC=1` — 경로 커널 알뜰 판(같은 답 · 숫자 상자·문자열 열쇠 0 · `sim/path-core.js` 머리). 끔 = 종전 글자
 const { ANIMALS, dropsOf, dropKgOn } = require('./animals');  // Phase 5-6: 동물 mob 36종 catalog · ★[T636] dropsOf = 사체 드롭 정본(끔이면 카탈로그 그대로) · ★[T647] dropKgOn = 사체 고기 먹기 문
 const GuildTreasury = require('./guild-treasury'); // 길드 곳간(물리) ↔ central 금고(회계) 정합 — 장부 계약은 그 파일 상단 참조
 const PlayerItems = require('./player-items'); // 플레이어 아이템 인스턴스(품질·속성·내구) — econ 무접촉·본체 서버층(설계: 플레이어_아이템_속성_설계.md)
@@ -463,12 +464,52 @@ function _t566OnUnpaved(cx, cy) {
   if (!Number.isFinite(day)) { _t566RelPend.push(cx, cy); _t566Stat.relPend++; return; }
   _t566Release(cx, cy);
 }
+// ★★[T696 2026-10-11 · T688 회부 ①] 길 풀림 콜백의 몫 줄이기 — 손잡이 `T696_ROAD_TAIL`(기본 끔 · `1` 켬 · 끔 = 종전 글자 그대로).
+//   T696 탐침(끔 · 경계 첫 틱 · 풀린 셀 106개 · 28.1 ms): 장부 거르기 2,650번 2.9 ms · 막힘 술어 640번 11.7 ms(셀 하나 ≈5 ~ 18 µs — 마을 51곳 영토
+//   집합을 글자 키로 훑는 `villageOfCell` 이 먼저다) · 원시 판 41번 10.1 ms(그중 처음 짓는 청크 판 한 번 최대 6.1 ms) · 장부 씨 벤 날 적기 0번.
+//   ⓐ 술어 차례 — 길 둘레(`pavedNear` · 코스 칸 몇 개 + 25칸 집합)를 먼저 묻는다. 둘 다 읽기만 하고 답은 '또는'이라 값이 같다(T676 ① 과 같은 문 ·
+//      예외는 둘 다 '안 막힘'으로 따로 삼킨다 = 종전과 같은 처리). 막 풀린 길 셀의 둘레는 대개 다른 다져진 길 둘레에 든다.
+//   ⓑ 원시 판 미리 짓기 — **내일 경계에 풀릴 수 있는** 다져진 길 셀(T688 문턱 날 색인 · `Roads.unpaveSoonKeys`) 둘레가 닿는 청크의 원시 판
+//      (`_ringCacheRaw` · 교란 전 · 날·장부와 무관 · 버리지 않는 캐시)을 평시 틱의 공용 몫(`TB` · 풀린 길 대기와 같은 반 틱)으로 미리 지어 둔다.
+//      판의 값은 지금 짓든 경계에서 짓든 같다(같은 생성기 · 같은 인자). 다져진 길 전부의 둘레를 지으면 청크 2,474판 ≈ 58 MB 라 내일 몫만 짓는다.
+//   ⚠풀림 자체(벤 날 적기)를 다음 틱들로 미루는 조각은 **안 했다** — 미룬 사이 장부(`harvestedSeeds`) · 판 캐시 · 원경 판(`_farVer`) · 다져진 길 ·
+//      영토를 읽고 쓰는 문이 끼면 차례가 바뀐다(보고 §1 표). 값이 같음을 지키는 문을 다 걸 수 없어 경계 틱 안에 둔다.
+const T696 = process.env.T696_ROAD_TAIL !== '0';   // ★10-12 PM 착지 켬 기본(`0` = 종전)
+function _t696Blocked(cx, cy) {   // = regrowBlockedAt(cx, cy) — 차례만 바꾼 '또는'(값 같음)
+  if (!_T566_ON) return false;
+  try { if (Roads.pavedNear && Roads.pavedNear(cx | 0, cy | 0, _T566_R)) return true; } catch (e) {}
+  try { if (SimVillages.villageOfCell && SimVillages.villageOfCell(cx | 0, cy | 0)) return true; } catch (e) {}
+  return false;
+}
+const _t696Pre = { keys: null, i: 0, day: -1, q: [], built: 0, ms: 0, maxMs: 0, ticks: 0, skip: 0, cells: 0 };
+function _t696Prebuild() {
+  if (!T696 || !_T566_ON || !Roads._S || !Roads._S.ready || !Roads.unpaveSoonKeys) return;
+  const S = Roads._S, P = _t696Pre;
+  //   길 하루마다 한 번 — 내일 경계에 풀릴 수 있는 다져진 길 셀(T688 문턱 날 색인)을 받아 그 둘레가 닿는 청크만 미리 짓는다(캐시가 커지지 않게)
+  if (P.day !== S.lastDay) { P.day = S.lastDay; P.keys = Roads.unpaveSoonKeys(); P.i = 0; P.cells += P.keys.length; }
+  if ((!P.keys || P.i >= P.keys.length) && !P.q.length) return;
+  if (TB.out(1000 / TICK_HZ / 2, 't696')) { P.skip++; return; }   // ★[T687] 이 틱 몫이 없다 — 다음 틱
+  const t0 = Date.now(), budget = TB.left(1000 / TICK_HZ / 2), W = _t566W(), R = _T566_R, cs = chunkManager.chunkSize;
+  while (Date.now() - t0 < budget) {
+    if (P.q.length) { const [qx, qy] = P.q.pop(); if (!_ringCacheRaw.has(chunkManager.keyOf(qx, qy))) { _ringTable(qx, qy, true); P.built++; break; } continue; }   // 판 짓기는 틱에 하나(한 판 ≤ ≈12 ms)
+    if (!P.keys || P.i >= P.keys.length) break;
+    const k = P.keys[P.i++], cx = k % W, cy = (k / W) | 0;
+    //   둘레(체비쇼프 R) 상자의 네 귀 셀이 닿는 청크 = 상자 안 어느 셀에 닿는 청크 전부(청크 폭 ≫ 상자 폭 · `cellChunksOf` 넘침 그대로)
+    for (const [x, y] of [[cx - R, cy - R], [cx + R, cy - R], [cx - R, cy + R], [cx + R, cy + R]]) {
+      if (x < 0 || y < 0) continue;
+      const q = cellChunksOf(x, y, cs);
+      for (let i = 0; i < q.length; i += 2) if (!_ringCacheRaw.has(chunkManager.keyOf(q[i], q[i + 1]))) P.q.push([q[i], q[i + 1]]);
+    }
+  }
+  const _d = Date.now() - t0; P.ms += _d; if (_d > P.maxMs) P.maxMs = _d; P.ticks++;
+}
+//   (훅 안 답 기억 — 겹친 둘레의 술어를 셀마다 한 번만 묻기 — 도 재 보았다: 실제 크기 틀 ⑥ 에서 기억 있음 ↔ 없음이 재는 대로 엇갈려 뺐다 · 보고 §1)
 function _t566Release(cx, cy) {
   const R = _T566_R;
   for (let y = cy - R; y <= cy + R; y++) for (let x = cx - R; x <= cx + R; x++) {
     if (x < 0 || y < 0) continue;
     if (!_t566CellMayHaveLedger(x, y)) { _t566Stat.relEmpty++; continue; }   // 장부 씨가 있을 수 없는 셀 — 풀려도 할 일이 없다(술어도 원시 판도 안 묻는다)
-    if (regrowBlockedAt(x, y)) continue;                     // 아직 막혔다(영토 · 다른 다져진 길의 둘레)
+    if (T696 ? _t696Blocked(x, y) : regrowBlockedAt(x, y)) continue;   // 아직 막혔다(영토 · 다른 다져진 길의 둘레) · ★[T696 ⓐ] 켬 = 길 둘레 먼저(값 같음)
     _t566Stat.released++;
     let raw = []; try { raw = _idxAtCell(x, y, true); } catch (e) { raw = []; _idxWarnOnce('T566 길 풀림', e, '그 셀은 종전 시계로 돌아간다'); }
     for (const e of raw) {
@@ -11674,6 +11715,7 @@ function __testBind() {
     _idxAtCell, _ringCache, _ringStat, harvestedSeeds, _t325CutTreeAt, _t341Unharvest,
     // ★[T566] 재생 술어 — 자(`test-regrow-block`)가 **그 술어·그 문**을 그대로 묻고 두드린다(길 오름은 `Roads.stampCell` 그대로 · 사본 0)
     regrowBlockedAt, _t566Stat, _t566On: _T566_ON, _t566R: _T566_R, _t566SeedCell, _t566FlushRel, _t566RelPend, Roads,
+    T696, _t696Blocked, _t696Prebuild, _t696Pre, _ringCacheRaw, _ringBuild,   // ★[T696] 술어 차례 · 원시 판 미리 짓기(하네스가 같은 값을 잰다)
     // ★[T495] 부분 수확 — 하네스가 **문 그대로** 두드린다(단위로 따기 · 남은 전리품 · 장부 · 군락 색인 · 통째 따기 · 플레이어 채집)
     _t495PickAt, _t495RestOf, _t495Rest, pickedSeeds, _t347GrovesAtCell, _t347PickAt, gatherResource,
     // ── 빈손 시작(2026-08-28) ── 줍기·제작·도구 표를 **정본 그대로** 내준다
@@ -13705,6 +13747,8 @@ setInterval(() => {
   // §16 답압 길 — 게임일 경계 dirty 플러시·coarse 재구축·클라 변경분(평시 O(1) 비교)
   Roads.onGameTick(now);
   if (_t566RelPend.length) _t566FlushRel();   // ★[T566] 날을 모른 채 풀린 길(부팅 · 꺼진 사이) — 시계가 선 첫 틱에 둘레를 푼다(평시 길이 0 비교 1회)
+  if (T696) _t696Prebuild();   // ★[T696 ⓑ] 원시 판 미리 짓기(공용 몫 · 다 지으면 길 하루에 한 바퀴 거른다)
+  if (T696) db.walTick();   // ★[T696 ②] WAL — 옮기지 않은 프레임이 종전 문턱을 넘었으면 일꾼 스레드가 체크포인트(COMMIT 밖)
   Soil.onGameTick(now);   // [배치 20 B] 토양치 게임일 1회 플러시 + tile_state 변경분 방송
   _fruitSeasonSweep();    // ★[T170] 철이 바뀌는 날 한 번 — 열매 비트 뒤집힘 방송(평시 낱말 비교 1회)
   // ★[T487] 적설 결산 — 게임일 경계에서 한 걸음(평시 O(1) 날짜 비교 · 무인 존도 돈다 = 관측자 무관).
@@ -13722,6 +13766,7 @@ setInterval(() => {
       global._idleSkipAt = now;
       // 입력 타임아웃 정리만 (NPC AI·이동·broadcast 모두 skip)
     }
+    if (SimVillages.deferLate) SimVillages.deferLate(now);   // ★[T695] 결정 문이 없는 틱(잠든 존)도 마감은 잇는다
     TB.end();   // ★[T687]
     return;
   }
@@ -13753,6 +13798,7 @@ setInterval(() => {
   //     커서의 첫 사람에서 끊겨 **한 명도** 결정을 못 받는다 — 새벽(하루 경계) 조각이 도는 몇 초 동안 깬 주민 168~400 명이 걸음 문 0.
   //     평소(앞쪽 일 < 15ms)엔 머리가 몇 ms 늦게 잡힐 뿐이다(틱이 그만큼 길어질 수 있다 — 표).
   _decT0 = Date.now();   // ★[T562 ④] 생활층 배정도 같은 머리로 묻는다(`decBudgetOver`)
+  TB.lateBegin();   // ★[T695] 결정 문 머리 — 여기부터는 결정 몫을 남기지 않는다(끔이면 무동작)
   // ★[T689] 몸통 하나(`_decOne` — 종전 몸통 글자 그대로를 `do … while (false)` 로 감쌌다 · `continue` = 이 사람 끝 · `break` = 멈춤(`_stopAt` 이 선다)) ·
   //   끔 = 같은 `for…of` + 멈추면 `break` · 켬 = `Set.forEach`(살아 있는 순회 — 같은 차례) + 멈춤 깃발(멈춘 뒤 사람은 아무것도 안 묻는다 — 시계도 안 읽는다) · 반복 결과 객체 0
   const _decOne = (pid) => { do {
@@ -13775,7 +13821,9 @@ setInterval(() => {
   if (T689_GC) { let _decStop = false; npcs.forEach((pid) => { if (!_decStop && _decOne(pid)) _decStop = true; }); }
   else for (const pid of npcs) if (_decOne(pid)) break;
   _npcCursor = _curHit ? _stopAt : null;   // 한 바퀴를 다 돌았거나(=null) 커서가 사라졌으면 처음부터
+  TB.lateEnd(Date.now() - _decT0, 15, _stopAt !== null);   // ★[T695] 다음 틱 결정 몫 = 이번에 쓴 시간(끊겼으면 제 예산 15 — 이 문의 그 수)
   _decT0 = 0;
+  if (SimVillages.deferLate) SimVillages.deferLate(now);   // ★[T695] 결정 문 먼저(켬)면 이어지는 마감 조각 · 교역로 선계산이 여기서 남은 몫을 쓴다(끔이면 무동작)
   if (_stopAt !== null) _walk.cut++;       // ★[T324] 예산에 닿은 틱 수(관측 전용)
   // ★★[T108 2026-09-05] **벽시계 ready 마크 틱을 지우고, 게임일 경계 한 번으로 바꿨다.**
   //   여기가 **매 틱** 전 활성 청크의 밭을 훑어 `now >= readyAt` 으로 `ready` 를 켜던 자리다.

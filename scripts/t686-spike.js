@@ -23,7 +23,7 @@ const DIR = process.env.T686_DIR || '/tmp/t686';
 const TPL = process.env.T686_TPL || path.join(DIR, 'tpl-t100.db');
 const LEAD_S = parseInt(process.env.T686_LEAD_S || '240', 10);
 const BOUNDS = parseInt(process.env.T686_BOUNDS || '3', 10);
-const DAY = 1440000;
+const DAY = parseInt(process.env.T686_DAY_MS || '', 10) || 1440000;   // ★[T695] 낮 경계 판 — 마을 하루를 짧게(12분이면 경계가 밤 · 낮 번갈아)
 const SPIKE = 30;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const rmdb = (f) => { for (const s of ['', '-wal', '-shm']) { try { fs.unlinkSync(f + s); } catch (e) {} } };
@@ -43,7 +43,8 @@ const SEGS = [
   ['  // === 활성 청크 갱신 (player·observer 위치 기반) ===', 'idle 문'],
   ['  // === Spatial index 재구축 — 모든 nearest-search가 이걸 씀 ===', '청크'],
   ['  // === NPC 행동 결정 (사람 player는 input으로 vx/vy 받지만 NPC는 직접 결정) ===', '공간 색인·입력 시한'],
-  ['  stepArrows(dt);', '결정 문(순회)'],
+  ['  if (SimVillages.deferLate) SimVillages.deferLate(now);   // ★[T695] 결정 문 먼저', '결정 문(순회)', true],   // ★[T695] 있을 때만
+  ['  stepArrows(dt);', '늦은 마감(T695)·밭 그림'],
   ['  // === 입력 큐 구동 — 사람: 입력 1개=1스텝(밀린 만큼 따라잡기), NPC: 틱당 1스텝 ===', '화살·걸음 커널 준비'],
   ['  // === Phase 14.49-e: PZ식 다단 계단 — 3 cell 점유 + step별 z + walk-off로 floor 전환 ===', '이동 문(순회)'],
   ['  // === Mob AI ===', '계단·낙하·게이지·HP'],
@@ -70,7 +71,12 @@ const ZTAIL = `
   let t0 = 0, prev = 0, cur = null, vPrev = 0;
   const H = new Uint32Array(1001);   // 0.1ms 칸 · 100ms 넘으면 끝 칸
   let W = null;
-  const resetW = () => { W = { t: Date.now(), ticks: 0, tot: 0, max: 0, over30: 0, over16: 0, seg: {}, segMax: {}, jobs: {}, jobMax: {}, spikes: [] }; };
+  const resetW = () => { W = { t: Date.now(), ticks: 0, tot: 0, max: 0, over30: 0, over16: 0, seg: {}, segMax: {}, jobs: {}, jobMax: {}, spikes: [], closeTicks: 0, closeZero: 0, openZero: 0, closes: [] }; };
+  //   ★[T695] 결정 문 굶음 — 틱마다 걸음 문(npcStep)을 받은 몸 수 · 마감 창(마을 하루 조각이 도는 틱들)에 0 명인 틱 ·
+  //     마감 창 동안 걸음 문을 한 번도 못 받은 **깬 몸**(창 머리에 '취침'·'요양' 아닌 · 산 마을 몸)
+  let _stepN = 0, _inClose = false, _cl = null;
+  { const f0 = npcStep; npcStep = function (a, b, c) { _stepN++; return f0(a, b, c); }; }
+  const _awake = (p) => p && p.isNpc && p.simVillageId != null && (p.hp || 0) > 0 && p._lifeAct !== '취침' && p._lifeAct !== '요양';
   resetW();
   let all = { ticks: 0, tot: 0, over30: 0, over16: 0, max: 0 };
   const dayInfo = () => { let ph = null, gd = null, ed = null; try { ph = +worldPhase(Date.now()).toFixed(4); } catch (e) {} try { gd = zoneGameDay(); } catch (e) {} try { ed = gameDayNow(); } catch (e) {} return { ph, gd, ed }; };
@@ -82,6 +88,12 @@ const ZTAIL = `
   globalThis.__T686E = () => {
     const tot = now() - t0; if (!cur) return;
     H[Math.min(1000, Math.floor(tot * 10))]++;
+    if (cur.close) { W.closeTicks++; if (_stepN === 0) W.closeZero++; } else if (_stepN === 0) W.openZero++;
+    if (cur.close && !_inClose) { _inClose = true; const a = []; for (const pid of npcs) { const p = players.get(pid); if (_awake(p)) a.push(p); } _cl = { at: Date.now(), ph: dayInfo().ph, ticks: 0, zero: 0, awake: a }; }
+    if (_inClose && _cl) { _cl.ticks++; if (_stepN === 0) _cl.zero++; }
+    if (!cur.close && _inClose) { _inClose = false; const t = _cl.at; let n0 = 0; for (const p of _cl.awake) if (!(p._t540StepAt >= t)) n0++;
+      W.closes.push({ at: t, ph: _cl.ph, durMs: Date.now() - t, ticks: _cl.ticks, zeroTicks: _cl.zero, awake: _cl.awake.length, awakeNoStep: n0 }); _cl = null; }
+    _stepN = 0;
     W.ticks++; W.tot += tot; if (tot > W.max) W.max = tot; if (tot > SPIKE) W.over30++; if (tot > 16) W.over16++;
     all.ticks++; all.tot += tot; if (tot > SPIKE) all.over30++; if (tot > 16) all.over16++; if (tot > all.max) all.max = tot;
     for (const k in cur.seg) { W.seg[k] = (W.seg[k] || 0) + cur.seg[k]; if (cur.seg[k] > (W.segMax[k] || 0)) W.segMax[k] = cur.seg[k]; }
@@ -111,7 +123,8 @@ function makeTree(dir, ref) {
   { const zp = path.join(dir, 'server', 'zone.js'); let s = fs.readFileSync(zp, 'utf8');
     if (cnt(s, HEAD_ANCHOR) !== 1) throw new Error('머리 앵커 ' + cnt(s, HEAD_ANCHOR));
     s = s.replace(HEAD_ANCHOR, () => HEAD_ANCHOR + '\n  globalThis.__T686S && __T686S();');
-    for (const [a, name] of SEGS) {
+    for (const [a, name, opt] of SEGS) {
+      if (opt && cnt(s, a) === 0) continue;   // ★[T695] 없는 판(종전 main)은 건너뛴다 — 그 판은 '늦은 마감' 칸이 곧 결정 문 뒤 밭 그림 몫
       if (cnt(s, a) !== 1) throw new Error(`구간 앵커 ${cnt(s, a)}개: ${a.slice(0, 50)}`);
       const end = a.startsWith('  { const _h = process.hrtime(_tickHr0)');
       s = s.replace(a, () => `  globalThis.__T686M && __T686M(${JSON.stringify(name)});${end ? ' globalThis.__T686E && __T686E();' : ''}\n` + a);
@@ -122,7 +135,11 @@ function makeTree(dir, ref) {
     rep('  if (!state.ready) return; // 플래그 off', '  if (!state.ready) return; globalThis.__T686VS && __T686VS(!!state.tickJobs); // 플래그 off');
     for (const [a, name] of VSEGS) rep(a, `  globalThis.__T686VM && __T686VM(${JSON.stringify(name)});\n` + a);
     //   ★[T687] 공용 예산 판(`TB.out` 문)과 종전 판 — 둘 중 있는 꼴에 박는다
-    if (cnt(s, "  if (state.tickJobs) { if (!TB.out(TICK_SLICE_MS, 'close')) _drainTickJobs(now); return; }") === 1) {
+    const _a695 = "  if (state.tickJobs) { if (T695_LATE()) { state._t695C = true; return; } state._t695Starved = false; if (!TB.out(TICK_SLICE_MS, 'close')) _drainTickJobs(now); return; }";
+    if (cnt(s, _a695) === 1) {   // ★[T695] 결정 문 먼저 판 — 늦은 마감은 존 구간 '늦은 마감(T695)·밭 그림'에 든다(조각 이름은 그대로 잡힌다)
+      rep(_a695, "  globalThis.__T686VM && __T686VM('v:날 문 앞(얼림 검사)');\n" + _a695.replace("_drainTickJobs(now); return; }", "_drainTickJobs(now); globalThis.__T686VM && __T686VM('v:하루 조각(이어서)'); return; }"));
+      rep("  _openDayJobs(now);\n  if (!TB.out(TICK_SLICE_MS, 'close')) _drainTickJobs(now);\n}", "  _openDayJobs(now); globalThis.__T686VM && __T686VM('v:하루 열기(_openDayJobs)');\n  if (!TB.out(TICK_SLICE_MS, 'close')) _drainTickJobs(now); globalThis.__T686VM && __T686VM('v:하루 조각(첫 프레임)');\n}");
+    } else if (cnt(s, "  if (state.tickJobs) { if (!TB.out(TICK_SLICE_MS, 'close')) _drainTickJobs(now); return; }") === 1) {
       rep("  if (state.tickJobs) { if (!TB.out(TICK_SLICE_MS, 'close')) _drainTickJobs(now); return; }", "  globalThis.__T686VM && __T686VM('v:날 문 앞(얼림 검사)');\n  if (state.tickJobs) { if (!TB.out(TICK_SLICE_MS, 'close')) _drainTickJobs(now); globalThis.__T686VM && __T686VM('v:하루 조각(이어서)'); return; }");
       rep("  _openDayJobs(now);\n  if (!TB.out(TICK_SLICE_MS, 'close')) _drainTickJobs(now);\n}", "  _openDayJobs(now); globalThis.__T686VM && __T686VM('v:하루 열기(_openDayJobs)');\n  if (!TB.out(TICK_SLICE_MS, 'close')) _drainTickJobs(now); globalThis.__T686VM && __T686VM('v:하루 조각(첫 프레임)');\n}");
     } else {
@@ -145,7 +162,7 @@ async function run(tag) {
   const DB = `/tmp/t686-z-${tag}.db`, CDB = `/tmp/t686-c-${tag}.db`;
   rmdb(DB); rmdb(CDB);
   for (const s of ['', '-wal', '-shm']) { try { fs.copyFileSync(TPL + s, DB + s); } catch (e) {} }
-  const at = (Math.floor(fs.statSync(TPL).mtimeMs / DAY) + 2) * DAY - LEAD_S * 1000;   // T455 고정 원점(하루 경계 LEAD 초 앞)
+  const at = (Math.floor(fs.statSync(TPL).mtimeMs / 1440000) + 2) * 1440000 - LEAD_S * 1000;   // T455 고정 원점(하루 경계 LEAD 초 앞 · ★[T695] 세계 낮밤 한 바퀴(24분)에 맞춘다 — 첫 경계 = 국면 0)
   const logp = path.join(DIR, `${tag}.log`), logf = fs.openSync(logp, 'w');
   const clk = `--require ${path.join(__dirname, 't455-clock.js')}`;
   const env0 = Object.assign({}, process.env, { T455_CLOCK_PRE: '1', T455_CLOCK_AT: String(at) });
@@ -202,6 +219,7 @@ function table(tag) {
     const g = T.gcBig.filter((x) => x[3] >= s.p0 - 2 && x[3] <= s.p0 + s.ms + 2).reduce((a, x) => a + x[2], 0); s.gc = +g.toFixed(1);
     const segs = Object.entries(s.seg).sort((a, b) => b[1] - a[1]); const [top, topv] = segs[0] || ['?', 0];
     if (g > topv * 0.6) return 'GC';
+    if (top.startsWith('늦은 마감') && Object.keys(s.jobs || {}).length) { const j = Object.entries(s.jobs).sort((a, b) => b[1] - a[1])[0]; return `마을 하루 조각(늦은) · ${j[0]}`; }
     if (top.startsWith('econ')) { const v = Object.entries(s.v || {}).sort((a, b) => b[1] - a[1])[0]; const j = Object.entries(s.jobs || {}).sort((a, b) => b[1] - a[1])[0];
       return (v && /하루/.test(v[0]) && j) ? `마을 하루 조각 · ${j[0]}` : `econ · ${v ? v[0] : '?'}`; }
     return top; };
@@ -214,7 +232,9 @@ function table(tag) {
     spikes: spikes.map((s) => ({ ms: s.ms, ph: s.ph, close: s.close, gc: s.gc, owner: owner(s) })),
     segUsPerTick: Object.entries(seg).sort((a, b) => b[1] - a[1]).map(([k, v]) => [k, +(v / n * 1000).toFixed(1), +(segMax[k] || 0).toFixed(1)]),
     jobsMsMax: Object.entries(jobs).sort((a, b) => b[1] - a[1]).map(([k, v]) => [k, +v.toFixed(1), +(jobMax[k] || 0).toFixed(1)]),
-    loop: T.loop, gc: T.gc, timers: T.sites.slice(0, 20).map((x) => [x.k, x.n, x.tot, x.max, x.o30]) };
+    loop: T.loop, gc: T.gc, timers: T.sites.slice(0, 20).map((x) => [x.k, x.n, x.tot, x.max, x.o30]),
+    closeTicks: W.reduce((a, x) => a + (x.closeTicks || 0), 0), closeZero: W.reduce((a, x) => a + (x.closeZero || 0), 0), openZero: W.reduce((a, x) => a + (x.openZero || 0), 0),
+    closes: W.flatMap((x) => x.closes || []) };
   console.log(JSON.stringify(res, null, 1));
   return res;
 }

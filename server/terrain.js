@@ -249,6 +249,21 @@ function _pointToSegmentDist(px, py, x1, y1, x2, y2) {
   const projY = y1 + t * dy;
   return { dist: Math.hypot(px - projX, py - projY), t };
 }
+// ★[T697 2026-10-11 · 세션4] 손잡이 `T697_DAY_GC=1` — 같은 식을 실수 배열 두 칸(`_PSD` = [dist, t])에 쓴다(답마다 객체 하나 · 숫자 상자 둘 0).
+//   T689·T697 표본 힙 프로파일러: 교역로 선계산의 지형 물음(`_terrBlocked0` → 물·바위 → `_isPointInRiver`)이 이 객체로 330초에 350MB 를 지었다.
+//   값은 같다(같은 연산 · 같은 차례 · Float64 칸은 실수를 그대로 담는다). 끔이면 아래 `_isPointInRiver` 가 종전 문을 부른다.
+const _T697 = process.env.T697_DAY_GC === '1';
+const _PSD = new Float64Array(2);
+function _pointToSegmentDistInto(px, py, x1, y1, x2, y2) {
+  const dx = x2 - x1, dy = y2 - y1;
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq < 0.0001) { _PSD[0] = Math.hypot(px - x1, py - y1); _PSD[1] = 0; return; }
+  let t = ((px - x1) * dx + (py - y1) * dy) / lenSq;
+  t = Math.max(0, Math.min(1, t));
+  const projX = x1 + t * dx;
+  const projY = y1 + t * dy;
+  _PSD[0] = Math.hypot(px - projX, py - projY); _PSD[1] = t;
+}
 
 // 호수 경계 각도별 wobble — 완벽한 원/타원 대신 살짝 울퉁불퉁. 중심좌표 시드로 호수마다 고유·결정론적.
 function _lakeWobble(center, ang) {
@@ -327,6 +342,7 @@ function _isPointInRiver(x, y, river) {
     const y2 = p2.pos ? p2.pos[1] : p2[1];
     const w1 = (p1.width != null) ? p1.width : (river.width || 200);
     const w2 = (p2.width != null) ? p2.width : (river.width || 200);
+    if (_T697) { _pointToSegmentDistInto(x, y, x1, y1, x2, y2); if (_PSD[0] < (w1 + (w2 - w1) * _PSD[1]) / 2) return true; continue; }   // ★[T697] 같은 식 · 같은 비교
     const r = _pointToSegmentDist(x, y, x1, y1, x2, y2);
     const halfWidth = (w1 + (w2 - w1) * r.t) / 2;
     if (r.dist < halfWidth) return true;

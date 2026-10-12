@@ -92,6 +92,58 @@ function _perp(x, y, sx, sy, gx, gy, invLen) {   // 시작→목표 직선까지
   return Math.abs((x - sx) * (gy - sy) - (y - sy) * (gx - sx)) * invLen;
 }
 
+// ★★[T697 2026-10-11 · 세션4] **알뜰 판**(`setLean(true)` — 서버가 손잡이 `T697_DAY_GC=1` 일 때만 켠다 · 랩은 안 부른다 = 종전 글자).
+//   T689·T697 표본 힙 프로파일러가 쟀다: 교역로 선계산(`_routeResume` → `_searchStep`)이 존 할당의 첫째였고, 그 몸은 **숫자 상자**다 —
+//     ⓐ `pop` 이 꺼낸 값을 힙 객체 칸(`tf` · `tg`)에 실수로 쓸 때마다 상자 하나씩(종전 판 `tf` 는 읽는 곳이 없다),
+//     ⓑ `H` 클로저 · `open.push` 는 탐색마다 새로 짓는 클로저라 부르는 자리가 여러 모양이 되어 펼쳐 넣지 못한다 → 실수 인자·반환마다 상자,
+//     ⓒ Map 판(걸음 `localPath` · 먼 걸음 `routePathBegin`)은 칸마다 `x + ',' + y` 문자열을 짓는다.
+//   ⇒ 같은 알고리즘 · 같은 비교 · 같은 차례를 **모듈 함수 하나 모양**으로: 힙은 모듈 함수(`_hlPush` · `_hlPop`)가 미는 평평한 배열 넷 그대로,
+//     꺼낸 g 는 실수 배열 한 칸(`TG[0]`)에, h 는 같은 식을 모듈 함수(`_hval`)로, Map 열쇠는 범위 안이면 정수(`_lk` · 범위 밖은 종전 문자열 —
+//     문자열엔 늘 ',' 가 있어 정수 열쇠와 안 겹친다). 값·차례는 한 비트도 안 바뀐다(`_path-core-test` ⑧ 이 끔 ↔ 켬 길 · 꺼낸 수를 견준다).
+let _LEAN = false;
+function setLean(on) { _LEAN = !!on; }
+const _LK_O = 16384, _LK_W = 32768;   // 정수 열쇠 = (x+16384)·32768 + (y+16384) — |x|,|y| < 16384 이면 정수(작은 정수 범위 안 · 단사)
+function _lk(x, y) { return (x > -_LK_O && x < _LK_O && y > -_LK_O && y < _LK_O) ? (x + _LK_O) * _LK_W + (y + _LK_O) : x + ',' + y; }
+function _mkHeapL() {   // `_mkHeap` 과 같은 이진 최소힙 — 상태만 객체에, 밀기·꺼내기는 모듈 함수
+  const hp = { cap: 64, n: 0, F: new Float64Array(64), G: new Float64Array(64), X: new Int32Array(64), Y: new Int32Array(64), TG: new Float64Array(1), tx: 0, ty: 0,   // 처음 64칸(걸음 탐색은 작다 · 차면 두 배 — 차례 무관)
+    push(f, g, x, y) { _hlPush(hp, f, g, x, y); }, pop() { _hlPop(hp); return hp; }, get size() { return hp.n; }, get tg() { return hp.TG[0]; } };   // 겉 문(하네스 ⑦ 의 `pop()` · `size`)
+  return hp;
+}
+function _hlGrow(hp) {
+  const cap = hp.cap * 2; hp.cap = cap;
+  const F2 = new Float64Array(cap); F2.set(hp.F); hp.F = F2; const G2 = new Float64Array(cap); G2.set(hp.G); hp.G = G2;
+  const X2 = new Int32Array(cap); X2.set(hp.X); hp.X = X2; const Y2 = new Int32Array(cap); Y2.set(hp.Y); hp.Y = Y2;
+}
+function _hlPush(hp, f, g, x, y) {   // = `_mkHeap` push 글자(같은 비교 `F[p] <= f`)
+  if (hp.n === hp.cap) _hlGrow(hp);
+  const F = hp.F, G = hp.G, X = hp.X, Y = hp.Y;
+  let c = hp.n++;
+  while (c > 0) { const p = (c - 1) >> 1; if (F[p] <= f) break; F[c] = F[p]; G[c] = G[p]; X[c] = X[p]; Y[c] = Y[p]; c = p; }
+  F[c] = f; G[c] = g; X[c] = x; Y[c] = y;
+}
+function _hlPop(hp) {   // = `_mkHeap` pop 글자(왼쪽 `<` 다음 오른쪽 `<`) · 꺼낸 g 는 `TG[0]` · x·y 는 정수 칸
+  const F = hp.F, G = hp.G, X = hp.X, Y = hp.Y;
+  hp.TG[0] = G[0]; hp.tx = X[0]; hp.ty = Y[0];
+  const n = --hp.n;
+  if (n > 0) {
+    const lf = F[n], lg = G[n], lx = X[n], ly = Y[n];
+    let c = 0;
+    for (;;) {
+      const l = 2 * c + 1, r = l + 1; let m = c, mf = lf;
+      if (l < n && F[l] < mf) { m = l; mf = F[l]; }
+      if (r < n && F[r] < mf) m = r;
+      if (m === c) break;
+      F[c] = F[m]; G[c] = G[m]; X[c] = X[m]; Y[c] = Y[m]; c = m;
+    }
+    F[c] = lf; G[c] = lg; X[c] = lx; Y[c] = ly;
+  }
+}
+function _hval(S, x, y) {   // = `_searchBegin` 의 `H` 클로저 글자(같은 연산 · 같은 차례) — S 칸에서 읽는다
+  const gx = S.gx, gy = S.gy;
+  if (S.oct) { const dx = Math.abs(x - gx), dy = Math.abs(y - gy); return ((dx > dy ? ORTHO * (dx - dy) + DIAG * dy : ORTHO * (dy - dx) + DIAG * dx) + _perp(x, y, S.sx, S.sy, gx, gy, S.invLen) * S.biasW * ORTHO) * S.hs; }
+  return ((Math.abs(x - gx) + Math.abs(y - gy)) * ORTHO + _perp(x, y, S.sx, S.sy, gx, gy, S.invLen) * S.biasW * ORTHO) * S.hs;
+}
+
 // ── _search: 단일 탐색 커널 — localPath/routePath는 이걸 규칙 프리셋으로 호출한다 ──
 //   o = { dirs, octile(bool — h 모드), biasW, stepBlocked(fx,fy,tx,ty), nodeBlocked(x,y)|null(코너컷용),
 //         costMul(x,y)|null, prefer(x,y)|null, maxPops, radius, scratch|null }
@@ -145,6 +197,7 @@ function _searchBegin(sx, sy, gx, gy, o) {
     cameSet = (x, y, v) => cm.set(key(x, y), v);
   }
   const enc = (x, y) => (sc ? y * W2 + x : x + ',' + y);
+  if (_LEAN) return _searchBeginL(sx, sy, gx, gy, o, rev, minX, maxX, minY, maxY, invLen, hs, H, sc, W2);   // ★[T697] 알뜰 판(같은 시작 · 같은 h)
   const open = _mkHeap();
   gSet(sx, sy, 0); cameSet(sx, sy, -1);
   open.push(H(sx, sy), 0, sx, sy);
@@ -158,12 +211,118 @@ function _searchBegin(sx, sy, gx, gy, o) {
   };
 }
 
+// ── [T697] 알뜰 판 시작 — 종전 시작과 같은 끝점·상자·h · 저장은 scratch 그대로 또는 Map(정수 열쇠) ──
+function _searchBeginL(sx, sy, gx, gy, o, rev, minX, maxX, minY, maxY, invLen, hs, H, sc, W2) {
+  const open = _mkHeapL();
+  const gm = sc ? null : new Map(), cm = sc ? null : new Map();
+  const S = {
+    sx, sy, gx, gy, rev, minX, maxX, minY, maxY, H, lean: true, oct: !!o.octile, biasW: o.biasW, invLen, hs, gm, cm,
+    gGet: null, gSet: null, cameSet: null, enc: null,
+    cameGet: sc ? ((x, y) => sc.came[y * W2 + x]) : ((x, y) => { const v = cm.get(_lk(x, y)); return v === undefined ? -1 : v; }),   // 백트레이스 · 하네스가 읽는다
+    sc, W2, open, scGen: sc ? sc.gen : 0,
+    maxPops: o.maxPops, dirs: o.dirs, nodeBlocked: o.nodeBlocked,
+    costMul: o.costMul, prefer: o.prefer, stepBlocked: o.stepBlocked,
+    pops: 0, found: false, done: false, path: null,
+  };
+  if (sc) { const i = sy * W2 + sx; sc.stamp[i] = sc.gen; sc.g[i] = 0; sc.came[i] = -1; }   // = gSet(sx,sy,0) · cameSet(sx,sy,-1)
+  else { const k = _lk(sx, sy); gm.set(k, 0); cm.set(k, -1); }
+  _hlPush(open, _hval(S, sx, sy), 0, sx, sy);
+  return S;
+}
+// ── [T697] 알뜰 판 걸음 — `_searchStep` 과 같은 고리 · 같은 거름 · 같은 차례(값 상자 · 문자열 열쇠만 없다) ──
+function _searchStepL(S, budget) {
+  //   ★밀기·꺼내기·h 를 **이 고리 안에 펼쳐** 적었다(= `_hlPush` · `_hlPop` · `_hval` 글자 — 같은 비교 · 같은 연산 · 같은 차례).
+  //     서버 표본 힙(T697 E 판)이 그 셋을 따로 부르면 실수 인자·반환마다 상자를 지었다(펼쳐 넣기가 안 됐다) — 부르지 않으면 상자 0.
+  const open = S.open, TG = open.TG;
+  let F = open.F, G = open.G, X = open.X, Y = open.Y;
+  const gx = S.gx, gy = S.gy, minX = S.minX, maxX = S.maxX, minY = S.minY, maxY = S.maxY;
+  const dirs = S.dirs, nodeBlocked = S.nodeBlocked, costMul = S.costMul, prefer = S.prefer;
+  const stepBlocked = S.stepBlocked, maxPops = S.maxPops;
+  const sc = S.sc, W2 = S.W2, scG = sc ? sc.g : null, scSt = sc ? sc.stamp : null, scCame = sc ? sc.came : null, gen = S.scGen;
+  const gm = S.gm, cm = S.cm;
+  const oct = S.oct, hsx = S.sx, hsy = S.sy, invLen = S.invLen, biasW = S.biasW, hs = S.hs;   // `_hval` 이 읽는 칸
+  let n = 0;
+  while (open.n > 0) {
+    if (budget > 0 && n >= budget) return { done: false, path: null };
+    n++;
+    // — 꺼내기(= `_hlPop`) —
+    TG[0] = G[0]; const cx = X[0], cy = Y[0];
+    { const hn = --open.n;
+      if (hn > 0) {
+        const lf = F[hn], lg = G[hn], lx = X[hn], ly = Y[hn];
+        let c = 0;
+        for (;;) {
+          const l = 2 * c + 1, r = l + 1; let m = c, mf = lf;
+          if (l < hn && F[l] < mf) { m = l; mf = F[l]; }
+          if (r < hn && F[r] < mf) m = r;
+          if (m === c) break;
+          F[c] = F[m]; G[c] = G[m]; X[c] = X[m]; Y[c] = Y[m]; c = m;
+        }
+        F[c] = lf; G[c] = lg; X[c] = lx; Y[c] = ly;
+      } }
+    open.tx = cx; open.ty = cy;
+    const cg = TG[0];
+    if (sc) { if (scSt[cy * W2 + cx] === gen ? cg !== scG[cy * W2 + cx] : cg !== Infinity) continue; }
+    else { const v = gm.get(_lk(cx, cy)); if (cg !== (v === undefined ? Infinity : v)) continue; }   // = gGet
+    if (cx === gx && cy === gy) { S.found = true; break; }
+    if (++S.pops > maxPops) break;
+    for (let d = 0; d < dirs.length; d++) {
+      const dx = dirs[d][0], dy = dirs[d][1], w0 = dirs[d][2];
+      const nx = cx + dx, ny = cy + dy;
+      if (nx < minX || nx > maxX || ny < minY || ny > maxY) continue;
+      if (stepBlocked ? stepBlocked(cx, cy, nx, ny) : nodeBlocked(nx, ny)) continue;
+      if (dx && dy && nodeBlocked && (nodeBlocked(cx + dx, cy) || nodeBlocked(cx, cy + dy))) continue;
+      let step = costMul ? Math.round(w0 * costMul(nx, ny)) : w0;
+      if (prefer && prefer(nx, ny) > 0) step -= PREF_DISC;
+      const ng = cg + step;
+      let take = false;
+      if (sc) {
+        const ni = ny * W2 + nx;
+        if (ng < (scSt[ni] === gen ? scG[ni] : Infinity)) { scSt[ni] = gen; scG[ni] = ng; scCame[ni] = cy * W2 + cx; take = true; }
+      } else {
+        const nk = _lk(nx, ny), v = gm.get(nk);
+        if (ng < (v === undefined ? Infinity : v)) { gm.set(nk, ng); cm.set(nk, _lk(cx, cy)); take = true; }
+      }
+      if (take) {
+        // — h(= `_hval` · `_perp` 글자) —
+        const pp = Math.abs((nx - hsx) * (gy - hsy) - (ny - hsy) * (gx - hsx)) * invLen;
+        let hv;
+        if (oct) { const ax = Math.abs(nx - gx), ay = Math.abs(ny - gy); hv = ((ax > ay ? ORTHO * (ax - ay) + DIAG * ay : ORTHO * (ay - ax) + DIAG * ax) + pp * biasW * ORTHO) * hs; }
+        else hv = ((Math.abs(nx - gx) + Math.abs(ny - gy)) * ORTHO + pp * biasW * ORTHO) * hs;
+        const f = ng + hv;
+        // — 밀기(= `_hlPush`) —
+        if (open.n === open.cap) { _hlGrow(open); F = open.F; G = open.G; X = open.X; Y = open.Y; }
+        let c = open.n++;
+        while (c > 0) { const pq = (c - 1) >> 1; if (F[pq] <= f) break; F[c] = F[pq]; G[c] = G[pq]; X[c] = X[pq]; Y[c] = Y[pq]; c = pq; }
+        F[c] = f; G[c] = ng; X[c] = nx; Y[c] = ny;
+      }
+    }
+  }
+  S.done = true;
+  S.path = S.found ? _searchTraceL(S) : null;
+  return { done: true, path: S.path };
+}
+// ── [T697] 알뜰 판 백트레이스 — 정수 열쇠는 풀고, 문자열 열쇠(범위 밖)는 종전처럼 쪼갠다 ──
+function _searchTraceL(S) {
+  if (S.sc) return _searchTrace(S);   // scratch 판은 종전 글자 그대로(`cameGet` 이 같은 배열을 읽는다)
+  const path = [], cm = S.cm;
+  let k = _lk(S.gx, S.gy);
+  while (k !== -1) {
+    let x, y;
+    if (typeof k === 'number') { x = Math.floor(k / _LK_W) - _LK_O; y = k - (x + _LK_O) * _LK_W - _LK_O; }
+    else { const c = k.indexOf(','); x = +k.slice(0, c); y = +k.slice(c + 1); }
+    path.unshift({ x, y }); const v = cm.get(_lk(x, y)); k = v === undefined ? -1 : v;   // = cameGet(없으면 -1)
+  }
+  return S.rev ? path.reverse() : path;
+}
+
 // ── _searchStep: 예산(꺼낸 노드 수)만큼 돌고 나온다. `budget<=0` = 무제한(완주) ──
 //   반환 { done, path } — `done` 이 false 면 아무것도 안 끝났다는 뜻이고, `S` 를 다시 넣으면 이어 간다.
 //   ★★양보는 `open.pop()` **앞**에서만 한다: 반복 하나는 통째로 돌거나 아예 안 돈다.
 //     그래서 예산이 무엇이든 꺼내는 순서가 같고, 답이 비트 동일이다(위 머리 주석 ⓐⓑⓒ).
 function _searchStep(S, budget) {
   if (S.done) return { done: true, path: S.path };
+  if (S.lean) return _searchStepL(S, budget);   // ★[T697] 알뜰 판(시작이 정한다 — 한 탐색 안에서 안 바뀐다)
   const open = S.open, gGet = S.gGet, gSet = S.gSet, cameSet = S.cameSet, enc = S.enc, H = S.H;
   const gx = S.gx, gy = S.gy, minX = S.minX, maxX = S.maxX, minY = S.minY, maxY = S.maxY;
   const dirs = S.dirs, nodeBlocked = S.nodeBlocked, costMul = S.costMul, prefer = S.prefer;
@@ -295,6 +454,6 @@ function smoothPath(path, canPass, opts) {
   return rev ? out.reverse() : out;
 }
 
-const PathCore = { localPath, routePath, smoothPath, routePathBegin, pathStep, ORTHO, DIAG };
+const PathCore = { localPath, routePath, smoothPath, routePathBegin, pathStep, setLean, ORTHO, DIAG };   // ★[T697] setLean — 서버만 부른다(랩 = 끔)
 if (typeof module !== 'undefined' && module.exports) module.exports = PathCore;
 if (typeof window !== 'undefined') window.PathCore = PathCore;

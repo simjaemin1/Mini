@@ -1493,8 +1493,8 @@ console.log('\n⑮ T427 ① — 닿는 현장만(배정 순간 집 → 후보 ·
       const M = mk(on, pred);
       const _cellOfPx = (p) => Math.floor(p / SZ);
       const _gameKey = (vil, cx, cy) => { const k = cx + ',' + cy; return vil._gameRich.has(k) ? k : null; };
-      return new Function('_t427On', '_t427Reach', '_t427HomeOf', '_cellOfPx', '_gameKey', 'huntTakeAt', 'L_GAMEMAX', 'SZ', '_t562SliceStop',
-        huntSrc + '\nreturn huntHunters;')(M._t427On, M._t427Reach, M._t427HomeOf, _cellOfPx, _gameKey, () => 0, 100, SZ, M._t562SliceStop);
+      return new Function('_t427On', '_t427Reach', '_t427HomeOf', '_cellOfPx', '_gameKey', 'huntTakeAt', 'L_GAMEMAX', 'SZ', '_t562SliceStop', 'T697_DAY_GC',
+        huntSrc + '\nreturn huntHunters;')(M._t427On, M._t427Reach, M._t427HomeOf, _cellOfPx, _gameKey, () => 0, 100, SZ, M._t562SliceStop, process.env.T697_DAY_GC === '1');   // ★[T697] 사냥꾼 자리 고르기 손잡이(이 프로세스 env — 끔·켬 두 번 돌린다)
     };
     // 종전 규칙(대조군) — 제품 글자와 따로 적은 argmax(빈 풍부 셀 먼저 · 다른 사냥꾼 ±5 피함 · 없으면 아무 풍부 셀)
     const ref = (m, hs, hwSeq) => { const hw = [], out = [];

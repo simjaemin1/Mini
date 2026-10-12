@@ -16,6 +16,7 @@
 //   견주기: node scripts/server-baseline-check.js 계측/서버기준선_<날짜>.json [--days 400|60] [--seeds …] [--par 2]
 //           ⇒ 시드마다 ○/✗ · 다르면 첫 갈림 날 · 마을 · 칸(st/pp/hs/tr) · 지금 판의 그 칸 값. 짧은 판(--days N < 기준선 날)은 날 지문 앞 N 날만 견준다.
 //   짧은 판(시드마다 날을 따로): --plan 1020:400,7:60,42:60 — 긴 판부터 띄우고 `--par` 개씩 같이 돈다(시드마다 t577 판 하나).
+//   교역로 디스크 캐시(T699): 기본 켬(os 임시 폴더) · `--route-cache off` 로 끈다 · 첫 판이 적고 다음 판부터 물려받는다.
 //   env 는 아이 판에 그대로 간다 — 손잡이를 켠 트리를 재려면 env 를 얹으면 된다(그 판은 갈려야 맞다).
 //   종료 코드: 같음 0 · 다름 1 · 판 실패 2.
 'use strict';
@@ -102,14 +103,19 @@ const SEEDS = PLAN0 ? PLAN0.split(',').map((x) => +x.split(':')[0]) : String(opt
 const DAYS_OF = {}; for (const s of SEEDS) DAYS_OF[s] = DAYS;
 if (PLAN0) for (const x of PLAN0.split(',')) { const [a, b] = x.split(':').map(Number); DAYS_OF[a] = b || DAYS; }
 if (MAKE && PLAN0) { console.error('--make 는 --plan 없이(모든 시드 같은 날)'); process.exit(2); }
-const PAR = parseInt(opt('--par', String(Math.max(1, Math.min(SEEDS.length, os.cpus().length)))), 10);
+const PAR = parseInt(opt('--par', String(PLAN0 ? Math.max(1, Math.min(SEEDS.length, os.cpus().length)) : SEEDS.length)), 10);   // ★[T699] 기본 — 날이 같은 판(전체)은 시드 수(한꺼번에 · 2코어 동시 3 = 690초 < 동시 2 = 912초) · 날이 섞인 짧은 판은 코어 수(긴 판이 바닥 · 동시 2 = 409초 < 동시 3 = 469초). 부하가 겹쳐도 바이트 같다(T680 · T699)
 // ★판의 조건 = T650 자(T680 · T683 이 결정론을 본 그 판). 바꾸면 기준선이 다른 세계다.
 const COND = { VILLAGE_CARAVAN_MAX: '0', T400_BUILD_ACT: '0' };
+// ★[T699] 교역로 디스크 캐시 — 부팅 소굴 배치의 교역로 A*(109초)를 판마다 다시 파지 않는다(같은 지문 = 같은 길 · 결과 바이트 같음).
+//   기본 = os 임시 폴더 `durango-route-cache`(레포 밖) · `--route-cache off` = 종전(판마다 판다) · `--route-cache <dir>` = 그 폴더.
+const RC0 = opt('--route-cache', process.env.T699_ROUTE_CACHE || path.join(os.tmpdir(), 'durango-route-cache'));
+const ROUTE_CACHE = RC0 === 'off' ? null : RC0;
 
 function runOne(dir, seed, days, dumpDay) {
   return new Promise((resolve) => {
     const env = Object.assign({}, process.env, COND, { SBC_HOOK: '1', T577_DIR: dir, T577_TAG: 'sbc', T577_PAR: '1',
       NODE_OPTIONS: ((process.env.NODE_OPTIONS || '') + ` --require ${__filename}`).trim() });
+    if (ROUTE_CACHE) env.T699_ROUTE_CACHE = ROUTE_CACHE; else delete env.T699_ROUTE_CACHE;
     if (dumpDay) env.SBC_DUMP_DAY = String(dumpDay);   // 없으면 바깥 env 의 SBC_DUMP_DAY 를 그대로 넘긴다
     const t0 = Date.now();
     const ch = spawn(process.execPath, [path.join(__dirname, 't577-server-run.js'), String(days), String(seed)], { cwd: ROOT, env, stdio: 'ignore' });
@@ -137,7 +143,7 @@ async function runSet(dir, dumpDay) {
 
 (async () => {
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sbc-'));
-console.log(`\n=== 서버 판 기준선 ${MAKE ? '만들기' : '견주기'} — ${SEEDS.map((x) => `${x}:${DAYS_OF[x]}일`).join(' · ')} · 동시 ${PAR} · 판 ${tmp} ===`);
+console.log(`\n=== 서버 판 기준선 ${MAKE ? '만들기' : '견주기'} — ${SEEDS.map((x) => `${x}:${DAYS_OF[x]}일`).join(' · ')} · 동시 ${PAR} · 교역로 캐시 ${ROUTE_CACHE || '끔'} · 판 ${tmp} ===`);
 const R = await runSet(tmp);
 console.log(`  판 모두 ${R.sec}초`);
 if (MAKE) {

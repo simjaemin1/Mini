@@ -260,10 +260,9 @@ if (MODE === '--seoul') {
   Object.assign(process.env, { ZONE_ID: ZID, PORT: String(40800 + (process.pid % 150)), DB_PATH: TMP,
     ENABLE_VILLAGES: '0', ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '1', E2E_GIVE: '1' });
   delete process.env.T566_REGROW_BLOCK;   // 제품 기본(켬)으로 잰다
-  // ★[PM 10-11 · T688 켬 기본] ⓑⓖ 는 길 셀의 `d` 를 **뒤로** 고쳐 써서(현실엔 없는 일 — 밟으면 `d` 는 늘기만 한다) 경계 재구축이 내림을 보는지 잰다.
-  //   T688 의 문턱 날 색인은 밟기(`_i688Touch`)로만 갱신되므로 이 손글씨를 못 본다 → 이 판은 종전 재구축(`0`)으로 잰다.
-  //   T688 켬 ↔ 끔의 풀림·오름 차례 같음은 `test-road-day` 가 잰다.
-  if (process.env.T688_ROAD_DAY == null) process.env.T688_ROAD_DAY = '0';
+  // ★[T696] ⓑⓖ 는 길 셀의 `d` 를 **뒤로** 고쳐 써서(현실엔 없는 일 — 밟으면 `d` 는 늘기만 한다) 경계 재구축이 내림을 보는지 잰다.
+  //   T688(켬 기본)의 문턱 날 색인은 값이 바뀌는 자리(스탬프 · 조회 감쇠)로만 갱신된다 ⇒ 손글씨 뒤엔 `Roads.retouchCell` 로 알린다(값은 안 바꾼다).
+  //   그래서 이 판은 제품 기본(T688 켬)으로 잰다 — 종전 고정(`T688_ROAD_DAY=0`)은 뺐다.
   const _l = console.log, _w = console.warn, _e = console.error;
   console.log = () => {}; console.warn = () => {}; console.error = () => {};
   const Zone = require(path.join(ROOT, 'server', 'zone.js'));
@@ -399,12 +398,35 @@ if (MODE === '--seoul') {
       '★★ⓒ 막힌 셀 — 빠진 것은 **장부의 나무 씨**뿐(덤불·풀·군락 무접촉 · 카드 ④) · 남은 것은 차례까지 같다', `${cellsBlocked}칸 · 빠진 나무 씨 ${droppedTree} · 빠진 그 밖 ${droppedOther} · 어긋남 ${badBlocked} · (대조 군 채집 개체 ${nonTree})`);
   }
 
+  // ── ⓗ [T696] 풀림 술어 차례 · 원시 판 미리 짓기 — 같은 값 ─────────────────────────────────────────────
+  console.log('\nⓗ [T696] 풀림 콜백 — 술어 차례(길 둘레 먼저) · 원시 판 미리 짓기');
+  {
+    let n = 0, bad = 0, blk = 0;
+    for (const k of S.paved) { const px0 = k % W, py0 = (k / W) | 0;
+      for (let y = py0 - 6; y <= py0 + 6; y++) for (let x = px0 - 6; x <= px0 + 6; x++) { n++; const a = H.regrowBlockedAt(x, y), b = H._t696Blocked(x, y); if (a) blk++; if (a !== b) bad++; } }
+    ok(S.paved.size > 0 && n > 100 && blk > 0 && blk < n && bad === 0, '★ⓗ 길 둘레를 먼저 묻는 술어 = `regrowBlockedAt`(막힘 · 안 막힘 둘 다 있는 판에서)', `다져진 길 ${S.paved.size} · 셀 ${n} · 막힘 ${blk} · 어긋남 ${bad}`);
+  }
+
   // ── ⓑⓖ 풀림 — 다져진 길이 감쇠로 등급 2 아래 → 그 셀과 둘레가 풀린다(벤 날 = 풀린 날) ─────────────
   {
     const st1 = Object.assign({}, H._t566Stat);
     const rP = S.cells.get(kP);
     const tNow = Math.floor((Date.now() - S.epoch) / S.dayMs);
     rP.d = tNow - 60;                                   // 60일 묵은 길(28 × 0.995^60 ≈ 20.7 < T2) — 감쇠식은 `roads.js` 그대로
+    if (R.retouchCell) R.retouchCell(kP % W, (kP / W) | 0);   // ★[T696] 손으로 고친 값을 T688 색인에 알린다(값은 안 바꾼다)
+    if (H.T696) {   // ★[T696 ⓑ] 내일 풀릴 셀(P)의 둘레가 닿는 청크 원시 판을 비우고 미리 짓기로 다시 짓는다 → 그 자리에서 지은 판과 JSON 통째 같다
+      const soon = R.unpaveSoonKeys(), keys = new Set();
+      for (const k of soon) { const x0 = k % W, y0 = (k / W) | 0;
+        for (const [x, y] of [[x0 - 2, y0 - 2], [x0 + 2, y0 - 2], [x0 - 2, y0 + 2], [x0 + 2, y0 + 2]]) { const q = CH.cellChunksOf(x, y, CH.CHUNK_SIZE); for (let i = 0; i < q.length; i += 2) keys.add(q[i] + '_' + q[i + 1]); } }
+      for (const kk of keys) H._ringCacheRaw.delete(kk);
+      const b0 = H._t696Pre.built; H._t696Pre.day = -1; H._t696Pre.q.length = 0;
+      for (let i = 0; i < 2000 && (i === 0 || H._t696Pre.i < (H._t696Pre.keys || []).length || H._t696Pre.q.length); i++) H._t696Prebuild();
+      let same = 0, tot = 0;
+      for (const kk of keys) { const t = H._ringCacheRaw.get(kk); if (!t) continue; tot++; const [qx, qy] = kk.split('_').map(Number);
+        if (JSON.stringify([...t]) === JSON.stringify([...H._ringBuild(qx, qy, undefined, undefined)])) same++; }
+      ok(soon.includes(kP) && H._t696Pre.built - b0 === keys.size && tot === keys.size && same === tot, '★ⓗ 내일 풀릴 셀(P) 둘레의 원시 판을 미리 지었고 = 그 자리에서 지은 판(JSON 통째)',
+        `내일 풀릴 셀 ${soon.length}(P 듦 ${soon.includes(kP)}) · 청크 ${keys.size} · 미리 지음 ${H._t696Pre.built - b0} · 견줌 ${same}/${tot}`);
+    }
     S.lastDay = -1; R.onGameTick(Date.now());           // 하루 경계(`_rebuildCoarse` — 내림을 재는 그 자리)
     const rel = H._t566Stat;
     ok(!S.paved.has(kP) && !H.regrowBlockedAt(R1[0], R1[1]) && rel.unpaved - st1.unpaved === 1 && rel.released - st1.released === 25,
