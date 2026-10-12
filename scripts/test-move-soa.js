@@ -1403,7 +1403,7 @@ console.log('\n⑮ T427 ① — 닿는 현장만(배정 순간 집 → 후보 ·
   //   ★[T562] 도달 기억이 **집마다 닿는 칸 집합**(존이 주입하면)으로 갈렸다 — 그 몸통 셋(켬 술어 · 집합 기억 · 조각 예산)도 제품 글자 그대로 뜬다.
   const t562Src = bodyV('_t562On') + '\n' + bodyV('_t427Set') + '\n' + bodyV('_t562SliceStop') + '\nconst _T562_VERIFY = false; const _t562Stat = { sets: 0, reuse: 0, q: 0, pend: 0, vq: 0, vdiff: 0, vdiffs: [] }; const TICK_SLICE_MS = 16; const TB = { slice: (o) => o };';   // ★[PM 10-11 · T687] _t562SliceStop 가 공용 예산(`TB.slice`)을 묻는다 — 하네스는 틱 밖이라 `tick-budget` 도 제 예산 그대로 돌려준다(같은 꼴의 대역)
   const onSrc = bodyV('_t427On'), homeSrc = bodyV('_t427HomeOf'), reachSrc = bodyV('_t427Reach'), siteSrc = bodyV('_t427Site'),
-    huntSrc = bodyV('huntHunters') + (bodyV('_huntHuntersSteps') ? '\n' + bodyV('_huntHuntersSteps') : '');
+    huntSrc = bodyV('huntHunters') + (bodyV('_huntHuntersSteps') ? '\n' + bodyV('_huntHuntersSteps') : '') + (bodyV('_t715XY') ? '\n' + bodyV('_t715XY') : '');   // ★[T715] 열쇠 풀이 기억도 제품 글자
   ok(onSrc.length > 40 && homeSrc.length > 60 && reachSrc.length > 200 && siteSrc.length > 100 && huntSrc.length > 1500,
      '⑮ [전제] 제품에서 **그 글자** 다섯을 떴다(켬 술어 · 집 · 도달 기억 · 현장 고르기 · 사냥꾼 하루 옮기기)',
      `${onSrc.length} · ${homeSrc.length} · ${reachSrc.length} · ${siteSrc.length} · ${huntSrc.length}자`);
@@ -1489,12 +1489,13 @@ console.log('\n⑮ T427 ① — 닿는 현장만(배정 순간 집 → 후보 ·
   }
   // ⓗ 사냥꾼 하루 옮기기(`huntHunters`) — 같은 선호 순서로 닿는 첫 셀 · 전부 못 닿으면 집(장부 `_huntWk` 는 종전 셀)
   {
-    const HB = (on, pred) => {
+    const HB = (on, pred, t715) => {
       const M = mk(on, pred);
       const _cellOfPx = (p) => Math.floor(p / SZ);
       const _gameKey = (vil, cx, cy) => { const k = cx + ',' + cy; return vil._gameRich.has(k) ? k : null; };
-      return new Function('_t427On', '_t427Reach', '_t427HomeOf', '_cellOfPx', '_gameKey', 'huntTakeAt', 'L_GAMEMAX', 'SZ', '_t562SliceStop', 'T697_DAY_GC',
-        huntSrc + '\nreturn huntHunters;')(M._t427On, M._t427Reach, M._t427HomeOf, _cellOfPx, _gameKey, () => 0, 100, SZ, M._t562SliceStop, process.env.T697_DAY_GC === '1');   // ★[T697] 사냥꾼 자리 고르기 손잡이(이 프로세스 env — 끔·켬 두 번 돌린다)
+      return new Function('_t427On', '_t427Reach', '_t427HomeOf', '_cellOfPx', '_gameKey', 'huntTakeAt', 'L_GAMEMAX', 'SZ', '_t562SliceStop', 'T697_DAY_GC', 'T715_HUNT_GC',
+        huntSrc + '\nreturn huntHunters;')(M._t427On, M._t427Reach, M._t427HomeOf, _cellOfPx, _gameKey, () => 0, 100, SZ, M._t562SliceStop, process.env.T697_DAY_GC === '1',
+        t715 === undefined ? process.env.T715_HUNT_GC === '1' : t715);   // ★[T715] 사냥꾼 자리 고르기 알뜰 판(이 프로세스 env · ⑮-h2 는 끔·켬 둘을 직접 견준다)   // ★[T697] 사냥꾼 자리 고르기 손잡이(이 프로세스 env — 끔·켬 두 번 돌린다)
     };
     // 종전 규칙(대조군) — 제품 글자와 따로 적은 argmax(빈 풍부 셀 먼저 · 다른 사냥꾼 ±5 피함 · 없으면 아무 풍부 셀)
     const ref = (m, hs, hwSeq) => { const hw = [], out = [];
@@ -1530,6 +1531,24 @@ console.log('\n⑮ T427 ① — 닿는 현장만(배정 순간 집 → 후보 ·
     ok(offSame === offN && offN === 1200, '⑮-h 끈 팔 `huntHunters` = **종전 규칙 그대로**(대조군 argmax 와 사냥꾼 1,200명 전부 같은 셀)', `${offSame}/${offN}`);
     ok(onBadOff > 100 && onBad === 0, '⑮-h ★★사냥꾼 하루 옮기기도 **못 닿는 사냥터 0**(같은 선호 순서로 닿는 첫 셀)', `${onBadOff} → ${onBad}`);
     ok(homeN > 0 && homeWk === homeN, '⑮-h 전부 못 닿으면 현장은 집 · 사냥 장부(`_huntWk`)는 **종전 셀 그대로**(헤드리스 값 무변 · 값은 회부)', `집 ${homeN}명 · 장부 종전 ${homeWk}/${homeN}`);
+  // ⓗ2 [T715] 사냥꾼 자리 고르기 알뜰 판(`T715_HUNT_GC`) — 끔 ↔ 켬 같은 장부 셀 · 같은 현장 · 같은 닿음 물음 차례(물음 순서까지 적어 견준다)
+  {
+    let same = 0, n = 0, qSame = 0, fall = 0;
+    const worlds = [];
+    for (let t = 0; t < 300; t++) { const m = new Map(); for (let i = 0; i < 18; i++) { const cx = 96 + ((t * 5 + i * 7) % 30), cy = 90 + ((t * 3 + i * 11) % 20); m.set(cx + ',' + cy, 16 + ((t * 13 + i * 17) % 84) - (i % 5 === 0 ? 0.5 : 0)); } worlds.push(m); }
+    { const m = new Map(); for (let i = 0; i < 14; i++) m.set((111 + (i * 5) % 12) + ',' + (90 + (i * 7) % 20), 20 + (i % 4) * 5); worlds.push(m); }   // 전부 강 건너 · 같은 풍부도 동률 많음(안정 정렬을 문다)
+    for (const m of worlds) {
+      const run = (t715) => { const hs = Array.from({ length: 4 }, (_, i) => Object.assign({ pid: 'w' + i, simJob: 'hunter' }, home)), players = new Map(hs.map((p) => [p.pid, p]));
+        const vil = { _gameRich: new Map(m), npcPids: hs.map((p) => p.pid), ccx: 100, ccy: 100 }, qs = [];
+        const pred = (ax, ay, bx, by) => { qs.push(bx + ',' + by); return reachTrue(ax, ay, bx, by); };
+        HB(true, pred, t715)(vil, players, 7); return { hs, qs }; };
+      const A = run(false), B = run(true);
+      A.hs.forEach((p, i) => { n++; const q = B.hs[i]; if (JSON.stringify([p._huntWk, p._workSite]) === JSON.stringify([q._huntWk, q._workSite])) same++; if (p._workSite && p._workSite.x === home.npcHomeX) fall++; });
+      if (A.qs.join('|') === B.qs.join('|')) qSame++;
+    }
+    ok(fall > 0, '⑮-h2 [상황] 첫 후보가 안 닿아 뒤 목록(빈 셀 · 아무 셀)까지 간 사냥꾼이 있다(정렬 차례가 뜻을 갖는 판)', `집으로 떨어짐 ${fall}`);
+    ok(same === n && qSame === worlds.length, '⑮-h2 ★★[T715] 끔 ↔ 켬 같은 장부 셀 · 같은 현장 · **닿음 물음 차례까지** 같다', `사냥꾼 ${same}/${n} · 물음 차례 ${qSame}/${worlds.length}`);
+  }
   }
   // ⓙ [T562] 집마다 닿는 칸 집합(존이 `npcReachBegin/Step/Has` · `collGenAround` 를 주면) — 같은 답 · 도장이 같으면 날이 바뀌어도 다시 안 넓힌다 · 예산 넘으면 `null` 뒤 이어서
   {

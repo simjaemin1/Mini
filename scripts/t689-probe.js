@@ -9,7 +9,7 @@
 //     ③ 표본 힙 프로파일러(inspector `HeapProfiler.startSampling` · GC 로 이미 거둔 것도 센다) — 할당 바이트를 부른 자리(함수 · 파일:줄)별로 합한다.
 //        `T689_HEAP=0` 이면 끈다. 간격 `T689_HEAP_INT`(바이트 · 기본 65536).
 'use strict';
-const OUT = process.env.T689_OUT || '';
+const OUT = (process.env.T689_OUT && require('worker_threads').isMainThread) ? process.env.T689_OUT : '';   // ★[T715] 일꾼 스레드에선 안 잰다(같은 파일을 덮는다)
 if (OUT) {
   const fs = require('fs');
   const path = require('path');
