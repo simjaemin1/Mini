@@ -5,6 +5,31 @@
 > 원래 `V-마을배치.md` 3-사 에 있었고, 이 파일이 서면서 **통째로 옮겨 왔다**(V 쪽엔 참조 한 줄만).
 > ⚠`인계/README.md` 색인은 **PM 만 편집**한다 — 이 파일의 행 추가는 보고서에 "공통 갱신 제안"으로 냈다.
 
+## 8-배탈. ★★2026-10-12 [T705] — **식중독 지수 P · 배탈 지수 B · 문턱 θ(잠복이 있는 탈) · 날고기 −3 뺌 · 상한 것을 구우면 상한 채** (손잡이 `T705_FOOD_SICK=1` · 없음 = 끔 = main 바이트 · 가지 `batch/food-sick-1012` · 승인 대기)
+
+> 전문 `보고/T705_2026-10-12.md` · 근거표 `설계/고증_식중독_배탈.md`. 정본 `server/sick.js`(출처 수 셋 · 유도 · 닫힌 해) · 몸 칸 `server/body.js` · 하네스 `scripts/test-food-sick.js`.
+
+```
+손잡이   sick.js        ON = T705_FOOD_SICK === '1' — 없음·빈 값·0·true = 끔(main · 존이 sick.js 를 부르지도 않는다)
+식       sick.js        dP/dt = 섭취 − a·P · dB/dt = P − b·B · HP −max(0, B − θ)/게임 1시간 — 닫힌 해 step(s, h)
+수       sick.js        CDC 포도상구균 SRC 30분·8시간·24시간 → a 0.2796 · b 0.04167 /시간 · θ 0.4617 kg·시간(규칙 ⓐⓑⓒ · env SICK_* 로 덮음)
+몸       body.js        p.body.sick {P, B, at}(처음 먹을 때만) · tick 한 줄(dt 만큼 · 둘 다 0 이면 안 봄 · 오프라인 멈춤)
+                        extremeHpRate 축 'sick'(빚 → takeHpDamage → damagePlayer 'extreme:sick' · 회복 멈춤)
+                        sickIntake(p, dose) · sickDayMs(ms)(존 부팅 한 줄) · toSave [P, B] · fromSave · selfPayload.sick
+먹기     zone.js        doEat 독 = kg × 개수 × (1 − f) → Body.sickIntake · 켬이면 illnessFor(즉시 부상) 안 부름
+요리     zone.js        _t705SpoiledShare(peekOffer FIFO · 미리 봄) → dish.tox = cooked_food 0.55kg × 상한 몫 · doEatDish → sickIntake
+굽기     zone.js        doCook 품목 갈래 lotSpoiled → doCraftCollect 상한 로트(e = 보관일 · d = 오늘 − 보관일)
+−3       zone.js        켬이면 FOOD_EFFECTS 음수 hpDelta 삭제(meat_raw · meat_game · meat_bear — 그 셋뿐)
+```
+
+**★★다음 세션이 알아야 할 것**
+
+1. ★★존 틱 글자(`_gaugeStep` 의 `Body.tick` 인자)에 새 이름을 넣지 마라 — `test-move-soa` 가 그 글자를 떠서 제 판에서 돌린다(끔에서도 `ReferenceError`). 하루 길이는 부팅 한 줄(`Body.sickDayMs(_SEASON_DAY_MS)`)로 넣었다 · `test-food-sick` ① 이 그 글자를 지킨다.
+2. ★독은 **먹는 물건의 무게 × (1 − f)** 한 규칙이다 — 상한 1kg 을 구우면 0.7496kg 어치(무게를 따라 준다 · 재민 칸). 균/독소 이분은 `spoil.stageOf`(상함 = 독소 · 시듦 = 균 — 익히면 0).
+3. ★econ 곳간은 날짜 없는 총량이다 — "오래된 것부터"를 걸 자리가 없다(econ 재민 칸). 넣는 문이 (1 − f) 를 버리고 상한 것을 거절하고, 꺼내면 오늘 로트다.
+4. 상한 것 1kg 체력 50 · 2kg 128(죽는다) · 문턱 0.18kg. 앓는 동안 자연 회복이 멈춘다 · 클라 무들 없음(`selfPayload.sick` 만 실었다).
+5. T694 ⑤ 열 줄 중 −3 · ⑦ 이 이 손잡이로 들어갔다 — `T694_GAME_MEAT` 켬 제안은 두 손잡이 켬으로 쟀다(보고 §6).
+
 ## 7-고기마무리. ★★2026-10-11 [T694] — **곰고기 열량 줄 · 날고기 HP 출처 · 모닥불 굽기·삶기(USDA 수율 · 품목) · 곳간 넣기** (손잡이 `T694_GAME_MEAT=1` · 없음 = 끔 = main 바이트 · 가지 `batch/game-meat-cook-1011` · 승인 대기)
 
 > 전문 `보고/T694_2026-10-11.md` · 근거표 `설계/고증_사냥고기_조리.md`. 정본 `server/game-meat.js`(손잡이 `on()` · 품목 이름 · 조리 수율 표 · 각 정본에 한 줄씩 주입) · 하네스 `scripts/test-game-meat.js`.
