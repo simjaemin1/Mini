@@ -2511,6 +2511,11 @@ function genEquipId() { return `e${Date.now().toString(36)}${(_nextEquipId++).to
 //   포만감 유도가 이 수를 쓰는데, 표는 파일 앞쪽에서 만들어진다. 두 벌로 적지 않으려고 선언을 올렸다.
 const _SEASON_DAY_MS = (parseInt(process.env.VILLAGE_DAY_MS || '', 10) || (WORLD && WORLD.dayLengthMs) || 24 * 60 * 1000);
 const Kcal = require('./kcal');   // ★[T59] 열량 정본 — 포만감·환산의 유일한 출처
+// ★★[T705 2026-10-12 · 재민 10-12 · 손잡이 `T705_FOOD_SICK=1` — 없음 = 끔 = 아래 T705 줄들이 아무것도 안 한다(`sick.js` 를 부르지도 않는다 · main 바이트)]
+//   식중독 지수 P → 배탈 지수 B → θ 를 넘은 만큼 체력(정본 `server/sick.js` · 몸 칸 `body.js`). zone 접점: 먹기 · 요리 · 수령 · 요리 먹기 · 먹기 표 한 줄.
+const T705_SICK = process.env.T705_FOOD_SICK === '1';
+let _SickM = null;
+function _sickM() { return _SickM || (_SickM = require('./sick')); }
 // ★★★[T59 2026-09-03 재민 확정] **포만감은 여기 안 적는다 — 열량에서 유도한다.**
 //   *"식량의 단위는 열량이다 — 포만감은 적는 게 아니라 kg × kcal/kg 에서 유도한다."*
 //   왜: 같은 곡식 한 개로 **NPC 는 하루를 살고 플레이어는 일곱 개가 필요했다**(7배 어긋남).
@@ -7265,7 +7270,14 @@ function doEat(player, item, amount, who) {
   //   ⚠[T44] "아사 폐지" 폐기와 무관하다 — 극단 HP 감소는 허기·갈증·추위 셋이고 상한 음식은 그 목록 밖이다.
   //   부상 축이 이미 이속·작업 배율 곡선과 바닥(0.72)을 갖고 있어 죽음의 나선이 안 난다.
   let _ill = 0;
-  if (spoiledQty > 0) {
+  // ★★[T705 · 재민 10-12] 켬이면 즉시 부상 대신 **독을 몸에 얹는다** — 독 = 먹은 kg × (1 − f)(영양이 f 몫이면 독은 나머지 몫 ·
+  //   `spoil.freshnessOf` 그대로 · 새 곡선 0) → 식중독 지수 P → 배탈 지수 B → θ 를 넘은 만큼 체력(`body.extremeHpRate` 한 줄).
+  //   잠복이 있다(먹은 그 자리에서는 아무 일도 없다). 갓 잡은 것(f = 1)은 독 0 · 상한 것(f = 0)은 먹은 kg 전부.
+  if (T705_SICK) {
+    const _dose = _sickM().doseOf(Weights.kgOfOrDefault(item), ate, fresh);
+    if (_dose > 0) Body.sickIntake(target, _dose, Date.now());
+  }
+  if (spoiledQty > 0 && !T705_SICK) {
     _ill = Spoil.illnessFor(spoiledQty);
     if (_ill > 0) {
       const _b = Body.ensure(target);
@@ -7295,6 +7307,24 @@ function doEat(player, item, amount, who) {
   if (target !== player) savePlayer(target);
 }
 
+// ★★[T705 · 재민 10-12 "익히면 균 몫은 준다 · 독소 몫은 남는다"] 요리에 들어갈 재료 중 **상한 몫**(f = 0 · `spoil.stageOf` 의 이분)의
+//   무게 비율 — 시듦까지의 1 − f(균)는 불에 죽고, 상함에서 생긴 독소는 열에 안 깨진다(CDC 포도상구균 — `sick.js` 머리).
+//   ⚠**미리 본다**(로트를 안 건드린다): `consumeItem` 이 줄인 인벤을 쓸개(`reconcile`)가 **오래된 것부터** 맞추는데,
+//     `Spoil.peekOffer` 가 같은 FIFO 로 "지금 n 개를 내면 어느 로트에서 나가나"를 읽는다(거래소 견적과 같은 정본).
+function _t705SpoiledShare(player, cost) {
+  const today = zoneGameDay();
+  let kgAll = 0, kgSp = 0;
+  for (const [it, amt] of Object.entries(cost || {})) {
+    const n = Number(amt) || 0, kg = Weights.kgOfOrDefault(it);
+    if (!(n > 0)) continue;
+    kgAll += kg * n;
+    if (!Lots.isLot(it)) continue;
+    Lots.reconcile(player, it, player.inventory, today);
+    const off = Spoil.peekOffer(it, Lots.of(player, it), n, today);
+    kgSp += kg * (Number(off.spoiled) || 0);
+  }
+  return kgAll > 0 ? Math.min(1, kgSp / kgAll) : 0;
+}
 // === 요리 (campfire 근처에서만) ===
 function doCook(player, recipeName) {
   const recipe = COOK_RECIPES[recipeName];
@@ -7317,6 +7347,7 @@ function doCook(player, recipeName) {
   if (recipe.item && Facility.view(_fc.b, Date.now()).length >= Facility.MAX_QUEUE) {
     send(player.ws, { type: 'notice', text: `${_fc.ko} 대기열이 찼다(${Facility.MAX_QUEUE})` }); return;
   }
+  const _t705Sp = T705_SICK ? _t705SpoiledShare(player, recipe.cost) : 0;   // ★[T705] 상한 몫(먹기 전에 미리 · 끄면 0)
   for (const [item, amt] of Object.entries(recipe.cost)) consumeItem(player, item, amt);   // ★[원장 승격] 제작 투입도 원장을 깎는다
   // ★★[T694] **품목으로 낸다** — 요리 인스턴스(영양 = 숙련 × 재료 등급)가 아니라 무게·열량이 있는 품목(`produces`)이다.
   //   수령은 시설 대기열의 `items`·`lotItems` 갈래(`doCraftCollect` — 보존 가공과 같은 길 · 로트 취득일 = 완성일).
@@ -7324,8 +7355,12 @@ function doCook(player, recipeName) {
   if (recipe.item) {
     const _prod = Object.assign({}, recipe.produces);
     const _lot = {}; for (const [k, n] of Object.entries(_prod)) if (Lots.isLot(k)) _lot[k] = n;
-    const rkI = Facility.enqueue(_fc.b, { id: genEquipId(), kind: 'cook', label: recipe.label, owner: player.playerId,
-      items: _prod, lotItems: _lot }, Date.now());
+    // ★[T705] 상한 몫으로 익힌 것은 **상한 채로** 태어난다(독소가 남는다) — 그 몫은 `lotSpoiled` 로 따로 적어 수령 때 상한 로트로 꽂는다.
+    const _lotSp = {};
+    if (_t705Sp > 0) for (const k of Object.keys(_lot)) { const ns = +(_lot[k] * _t705Sp).toFixed(6); if (ns > 0) { _lotSp[k] = ns; _lot[k] = +(_lot[k] - ns).toFixed(6); } }
+    const _job = { id: genEquipId(), kind: 'cook', label: recipe.label, owner: player.playerId, items: _prod, lotItems: _lot };
+    if (Object.keys(_lotSp).length) _job.lotSpoiled = _lotSp;
+    const rkI = Facility.enqueue(_fc.b, _job, Date.now());
     if (!rkI.ok) {   // 위에서 자리를 미리 봤으니 사실상 도달 불가 — 그래도 재료를 삼키지 않는다(아래 요리 갈래와 같은 되돌림)
       for (const [item, amt] of Object.entries(recipe.cost)) player.inventory[item] += amt;
       send(player.ws, { type: 'notice', text: rkI.err }); return;
@@ -7343,6 +7378,9 @@ function doCook(player, recipeName) {
   const dish = PlayerItems.craftItem('food', cookLvl, recipe.cost);
   dish.id = genEquipId();
   dish.label = recipe.label;
+  // ★[T705] 상한 재료로 지은 요리는 **독소를 품는다** — 독 = 요리 한 그릇의 무게(`cooked_food` · 짐 무게와 같은 수) × 상한 몫.
+  //   먹을 때(`doEatDish`) 배탈 지수로 간다. 끄면 이 칸이 없다.
+  if (_t705Sp > 0) dish.tox = +(Weights.kgOfOrDefault('cooked_food') * _t705Sp).toFixed(6);
   // ★신선도는 **꺼낼 때** 찍는다 — 불에 올려 둔 동안 식지 않는다(다 되면 그때가 갓 지은 때다).
   const rk = Facility.enqueue(_fc.b, { id: dish.id, kind: 'cook', label: recipe.label,
     owner: player.playerId, dish }, Date.now());
@@ -7527,6 +7565,8 @@ function doEatDish(player, id) {
   if (hpBuff > 0) {
     setHp(player, player.hp + hpBuff, 'dish');
   }
+  // ★[T705] 상한 재료로 지은 요리의 독소(`doCook` 이 적은 `dish.tox`) — 배탈 지수로 간다. 끄면 이 칸이 없다.
+  if (T705_SICK && dish.tox > 0) Body.sickIntake(player, dish.tox, Date.now());
   player.dishes.splice(idx, 1);
   sendDishes(player);
   send(player.ws, { type: 'gauges', hunger: Math.round(player.hunger), thirst: Math.round(player.thirst) });
@@ -8040,6 +8080,13 @@ function doCraftCollect(player, buildingId) {
       if (j.lotItems) {
         const _d = _gameDayAt(j.doneAt || Date.now());
         for (const [k, n] of Object.entries(j.lotItems)) if (Lots.isLot(k)) Lots.note(player, k, n, _d);
+        // ★[T705] 상한 몫으로 익힌 것 — **이미 상한 로트**로 꽂는다(노출 = 그 품목 보관일 ⇒ f = 0 · 날짜는 보관일만큼 앞 —
+        //   같은 날 갓 익힌 로트와 섞이지 않게: `note` 는 같은 날·같은 자리면 노출을 평균한다). 끄면 이 칸이 없다.
+        if (j.lotSpoiled) for (const [k, n] of Object.entries(j.lotSpoiled)) {
+          if (!Lots.isLot(k) || !(n > 0)) continue;
+          const L = Spoil.shelfOf(k);
+          Lots.moveIn(player, k, [{ d: _d - Math.ceil(L), n, e: L, t: _d }], _d, 0, 'carry');
+        }
       }
     } else if (j.dish) {
       j.dish.craftedAtMs = Date.now();   // ★신선도는 **꺼낸 때**부터 — 불 위에서 식지 않는다
@@ -10410,6 +10457,12 @@ require('./game-meat').install({ FOOD_EFFECTS, ITEM_LABEL_SERVER, COOK_RECIPES }
 //   실제로 한 번 그렇게 물렸다(굴 3 · 해조 4 가 T52 의 손글씨였다). ⇒ **주입이 다 끝난 뒤 한 번.**
 //   `installCookRecipes` 는 조리식 유도(재료 열량 합 × econ 의 1.12)가 `COOK_RECIPES` 정본을 보게 한다 —
 //   `kcal.js` 가 레시피를 옮겨 적으면 그게 사본이다.
+// ★★[T705 · 재민 10-12 "날고기 −3 뺀다(①로 대체)"] 켬이면 먹는 즉시 체력을 깎는 칸(`hpDelta` 음수 — 날고기 `meat_raw` 와 그 사본
+//   `meat_game`·`meat_bear` 뿐)을 지운다 — 날것의 해는 이제 **상한 몫(1 − f)이 배탈 지수로** 온다(`doEat`). 끄면 이 줄은 아무것도 안 한다.
+if (T705_SICK) for (const _v of Object.values(FOOD_EFFECTS)) if (_v && _v.hpDelta < 0) delete _v.hpDelta;
+// ★[T705] 배탈 지수는 **게임 시간**으로 흐른다 — 이 존의 하루 길이(정본 `_SEASON_DAY_MS` 하나)를 부팅 때 한 번 몸에 알린다.
+//   ⚠틱 글자(`_gaugeStep` 의 `Body.tick` 인자)에 안 넣는다 — 그 글자는 `test-move-soa` 가 떠서 그대로 돌린다(끄면 main 글자 그대로).
+if (T705_SICK) Body.sickDayMs(_SEASON_DAY_MS);
 Kcal.installCookRecipes(COOK_RECIPES);
 for (const k of Object.keys(FOOD_EFFECTS)) FOOD_EFFECTS[k].hunger = Kcal.hungerOf(k, _SEASON_DAY_MS);
 // ★[보존 배치 2026-08-31] 보존식 이름은 `spoil.PRESERVED_ITEMS.ko` 가 정본이다 — 옮겨 적지 않는다.
@@ -11633,6 +11686,7 @@ function __testBind() {
     Kcal, _SEASON_DAY_MS,   // ★[T59] 열량 정본 + 이 존이 쓰는 하루 길이(하네스가 유도값을 재현할 때 쓴다)
     // ── 무게 모델(2026-08-27) ── 정본 모듈을 그대로 내준다(하네스가 곡선을 다시 짜면 사본이다)
     Weights, Carry, Lots, moveMultOf, zoneGameDay, COOK_RECIPES, doCook, _unitsOfFor,
+    doEatDish,   // ★[T705] 요리 먹기 — 상한 재료 요리의 독소가 배탈 지수로 가는지(test-food-sick · 읽기·부르기만)
     // ★[부패·보존 배치 2026-08-31] 하네스가 잡을 손잡이들
     Spoil, doPreserve, preserveMenuPayload, _spoiledGuardItems, _spoiledGuardRes, _gameDayAt, __e2eFreezeZoneDay,
     // ★[작물 층 2026-08-31]
