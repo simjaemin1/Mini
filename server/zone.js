@@ -13765,6 +13765,7 @@ setInterval(() => {
       global._idleSkipAt = now;
       // 입력 타임아웃 정리만 (NPC AI·이동·broadcast 모두 skip)
     }
+    if (SimVillages.deferLate) SimVillages.deferLate(now);   // ★[T695] 결정 문이 없는 틱(잠든 존)도 마감은 잇는다
     TB.end();   // ★[T687]
     return;
   }
@@ -13796,6 +13797,7 @@ setInterval(() => {
   //     커서의 첫 사람에서 끊겨 **한 명도** 결정을 못 받는다 — 새벽(하루 경계) 조각이 도는 몇 초 동안 깬 주민 168~400 명이 걸음 문 0.
   //     평소(앞쪽 일 < 15ms)엔 머리가 몇 ms 늦게 잡힐 뿐이다(틱이 그만큼 길어질 수 있다 — 표).
   _decT0 = Date.now();   // ★[T562 ④] 생활층 배정도 같은 머리로 묻는다(`decBudgetOver`)
+  TB.lateBegin();   // ★[T695] 결정 문 머리 — 여기부터는 결정 몫을 남기지 않는다(끔이면 무동작)
   // ★[T689] 몸통 하나(`_decOne` — 종전 몸통 글자 그대로를 `do … while (false)` 로 감쌌다 · `continue` = 이 사람 끝 · `break` = 멈춤(`_stopAt` 이 선다)) ·
   //   끔 = 같은 `for…of` + 멈추면 `break` · 켬 = `Set.forEach`(살아 있는 순회 — 같은 차례) + 멈춤 깃발(멈춘 뒤 사람은 아무것도 안 묻는다 — 시계도 안 읽는다) · 반복 결과 객체 0
   const _decOne = (pid) => { do {
@@ -13818,7 +13820,9 @@ setInterval(() => {
   if (T689_GC) { let _decStop = false; npcs.forEach((pid) => { if (!_decStop && _decOne(pid)) _decStop = true; }); }
   else for (const pid of npcs) if (_decOne(pid)) break;
   _npcCursor = _curHit ? _stopAt : null;   // 한 바퀴를 다 돌았거나(=null) 커서가 사라졌으면 처음부터
+  TB.lateEnd(Date.now() - _decT0, 15, _stopAt !== null);   // ★[T695] 다음 틱 결정 몫 = 이번에 쓴 시간(끊겼으면 제 예산 15 — 이 문의 그 수)
   _decT0 = 0;
+  if (SimVillages.deferLate) SimVillages.deferLate(now);   // ★[T695] 결정 문 먼저(켬)면 이어지는 마감 조각 · 교역로 선계산이 여기서 남은 몫을 쓴다(끔이면 무동작)
   if (_stopAt !== null) _walk.cut++;       // ★[T324] 예산에 닿은 틱 수(관측 전용)
   // ★★[T108 2026-09-05] **벽시계 ready 마크 틱을 지우고, 게임일 경계 한 번으로 바꿨다.**
   //   여기가 **매 틱** 전 활성 청크의 밭을 훑어 `now >= readyAt` 으로 `ready` 를 켜던 자리다.
