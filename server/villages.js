@@ -2597,6 +2597,45 @@ function _routeRedigStep() {
     try { state.db.upsertTradeRoute(state.zoneId, key, state._routeSig || (state._routeSig = _routeSig()), JSON.stringify(r.pts)); } catch (e) {}
   }
 }
+// ★★[T699 2026-10-11 · 손잡이 `T699_ROUTE_CACHE=<디렉터리>` · **기본 끔**(미설정 = 종전 글자 그대로)] 부팅 소굴 배치(`bandits.denScan`)가
+//   부르는 교역로 A*(한반도 1,269쌍 · 109초)를 **디스크 캐시**에서 물려받는다 — 같은 세계면 같은 길이다(T42 영속과 같은 뜻 · 파일만 다르다).
+//   열쇠(지문) = 길 서명(`_routeSig` — 지형 · 존 설정 · 물 칸 · 길 규칙 판 · 길 손잡이) + 마을 자리(dbId · ccx · ccy · 순서)
+//     + 거리행렬 닿음(유한/무한 — 어느 쌍을 파나) + 길 칸 수(답압 할인 — 새 세계 부팅이면 0). 지문이 다르면 파일이 없다 = 다시 판다.
+//   물려받는 순서 = 판 그대로의 Map 차례(파일에 그 차례로 적는다) · 이미 있는 쌍은 건너뛴다 ⇒ 캐시 Map 이 종전 판과 같은 차례 · 같은 값.
+//   캐시는 레포 밖(게이트 `scripts/server-baseline-check.js` 가 os 임시 폴더를 준다). 쓰기는 임시 파일 → 이름 바꾸기(판 여럿이 같이 써도 안전).
+function _t699RouteFile() {
+  const dir = process.env.T699_ROUTE_CACHE;
+  if (!dir || !state.routeCache || !state.villages) return null;
+  const mat = state.world && state.world._distMatrix;
+  const V = state.villages;
+  let reach = '';
+  if (mat) for (let i = 0; i < V.length; i++) for (let j = i + 1; j < V.length; j++) reach += (mat[i] && isFinite(mat[i][j])) ? '1' : '0';
+  let roadCells = 0; try { const R = state.roads && state.roads._S; roadCells = R && R.cells ? R.cells.size : 0; } catch (e) {}
+  const key = [state._routeSig || (state._routeSig = _routeSig()), V.map((v) => `${v.dbId}:${v.ccx},${v.ccy}`).join(';'), reach, 'roads:' + roadCells].join('|');
+  const h = require('crypto').createHash('sha1').update(key).digest('hex').slice(0, 16);
+  return require('path').join(dir, `routes_${state.zoneId}_${h}.json`);
+}
+function routeCacheLoad() {   // → true(물려받음) · false(파일 없음 — 판 뒤에 routeCacheSave) · null(손잡이 끔)
+  const f = _t699RouteFile();
+  if (!f) return null;
+  let rows = null;
+  try { rows = JSON.parse(require('fs').readFileSync(f, 'utf8')); } catch (e) { return false; }
+  let n = 0;
+  for (const [k, pts] of rows) { if (state.routeCache.has(k)) continue; state.routeCache.set(k, pts); n++; }
+  console.log(`[${state.zoneId}] 🐂 [T699] 교역로 디스크 캐시 ${n}쌍 물려받음(${require('path').basename(f)})`);
+  return true;
+}
+function routeCacheSave() {
+  const f = _t699RouteFile();
+  if (!f) return;
+  try {
+    const fs = require('fs'); fs.mkdirSync(require('path').dirname(f), { recursive: true });
+    const tmp = f + '.' + process.pid + '.tmp';
+    fs.writeFileSync(tmp, JSON.stringify([...state.routeCache]));
+    fs.renameSync(tmp, f);
+    console.log(`[${state.zoneId}] 🐂 [T699] 교역로 디스크 캐시 ${state.routeCache.size}쌍 적음(${require('path').basename(f)})`);
+  } catch (e) { console.warn(`[${state.zoneId}] 🐂 [T699] 교역로 디스크 캐시 쓰기 실패(계속):`, e.message); }
+}
 function _routePrime() {
   if (!state.db || !state.db.getTradeRoutes) return;
   const sig = state._routeSig || (state._routeSig = _routeSig());
@@ -6461,6 +6500,7 @@ function banditHost() {
     ta: state._distCtx && state._distCtx.ta,         // 지형 어댑터(isBlocked/forestMult — 셀 단위)
     getRoute,                                        // 마을쌍 경로 pts(px) — 캐러밴 A*·캐시 재사용(랩 getTradePath 동형)
     routeSampleStep, routeBootFreeze, sliceMs: TICK_SLICE_MS,   // ★[T640] 부팅 표본 조각 · 얼린 길 · 조각 예산(슬라이서 그 예산)
+    routeCacheLoad, routeCacheSave,                  // ★[T699] 교역로 디스크 캐시(손잡이 `T699_ROUTE_CACHE` · 끔이면 null 을 돌려주고 아무것도 안 한다)
     dayMs: state.dayMs,
     broadcast: state.deps && state.deps.broadcast,
     // ★[2파 도적 실체] 소굴 배회 NPC용 — 기존 스폰/제거 경로 재사용(발명 금지·캐러밴 관례)

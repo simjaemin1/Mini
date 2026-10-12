@@ -688,7 +688,9 @@ function bindHost() {
     //   ★★[T640] 손잡이 켬 + 표본을 아직 안 모았다 ⇒ 전 쌍 A* 를 부팅에서 하지 않고 **listen 뒤 틱마다 조각으로** 판다(`_bootSliceStep`).
     //     표본이 끝나면 그 자리에서 아래 줄들(소굴 배치 · 훅 · 저장 · 실체)을 부팅 날 그대로 잇는다. 끔이면 종전 그대로(이 갈래 무동작).
     if (T640_BOOT_SLICE && host.routeSampleStep && host.routeBootFreeze && !(S._routes && S._routes.sig === _routeSig(host))) return _bootSliceBegin(host);
+    const _t699 = host.routeCacheLoad ? host.routeCacheLoad() : null;   // ★[T699] 손잡이 켬 · 같은 지문 파일이 있으면 교역로를 물려받는다(끔 = null · 무동작)
     denScan(host.world.day); // 신규 존(or 복원 실패) — lifeInit 1회 동형
+    if (_t699 === false && host.routeCacheSave) host.routeCacheSave();   // ★[T699] 파일이 없었다 — 방금 판 길을 적는다
   }
   return _bindRest(host, host.world.day);
 }
