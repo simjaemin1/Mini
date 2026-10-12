@@ -160,6 +160,74 @@ bait('스탬프 자리에서 등급을 안 고침', '  if (I.ready) _i688Touch(k
   ok(r.bad > 0 || rowsOf(O) !== rowsOf(P), '⑤ 쓰기 전 복사(경계 값 적기 셋 — 스탬프 · 새 셀 · 조회 감쇠)를 빼면 ② 가 **문다**', `어긋난 날 ${r.bad}${r.firstBad ? ' · 처음 ' + r.firstBad : ''} · 표 같음 ${rowsOf(O) === rowsOf(P)}`);
 }
 
+// ⑦ [T713] 플러시 끝 쪼개기(`T713_FLUSH_END`) — 묶음마다 견주고 끝 틱엔 `S.sent` 고침 + 방송만 · 끔 ↔ 켬 같은 방송 · 같은 `S.sent` · 같은 DB
+{
+  console.log('\n⑦ [T713] 플러시 끝 — 묶음마다 견줌(끔 ↔ 켬)');
+  const mk713 = (tag, mode, on, patch) => { const o = process.env.T713_FLUSH_END; if (on) process.env.T713_FLUSH_END = '1'; else delete process.env.T713_FLUSH_END;
+    try { return mk(tag, mode, patch); } finally { if (o == null) delete process.env.T713_FLUSH_END; else process.env.T713_FLUSH_END = o; } };
+  const sentOf = (X) => [...X.R._S.sent].map((x) => x.join(':')).join(',');
+  const rateLine = '  if (budgetMs > 0 && rows > 0 && ms > 0) { const r = rows / ms; _flDayMin = _flDayMin ? Math.min(_flDayMin, r) : r; _flRate = _flDayMin; }';
+  const narrow = (s) => s.replace(rateLine, '  _flRate = 3 / budgetMs;');
+  ok(SRC.includes('const T713 = process.env.T713_FLUSH_END') && SRC.includes(rateLine), '⑦ [전제] 손잡이 · 속도 글자');
+  // ⓐ 제품 기본(T688 켬) · 끔(T688 0)에서도 켬은 아무 일 없음
+  const A7 = mk713('fe0', '1', false), B7 = mk713('fe1', '1', true), C7 = mk713('fe2', '0', true), D7 = mk713('fe3', '0', false);
+  const r7 = drive([A7, B7, C7, D7], script(713, 300));
+  const nbc = A7.bc.length, ncell = A7.bc.reduce((a, m) => a + JSON.parse(m).cells.length / 3, 0);
+  ok(r7.bad === 0 && nbc > 50 && ncell > 500, '⑦ ★끔 = 켬(T688 켬 · 끔 둘 다) — 날마다 세계 · 판 끝 DB 쓰기 차례 · 방송(차례 · 바이트)', `어긋남 ${r7.bad}${r7.firstBad ? ' · 처음 ' + r7.firstBad : ''} · 방송 ${nbc}번 · 셀 ${ncell}`);
+  ok(sentOf(A7) === sentOf(B7) && sentOf(A7) === sentOf(C7) && A7.R._S.sent.size > 100, '⑦ ★`S.sent`(마지막 방송 등급) 같다 — 키 · 값 · 넣은 차례', `${A7.R._S.sent.size}키`);
+  // ⓑ 묶음 3행(상한이 문다) — 견줌이 수백 묶음에 나뉜다
+  const A8 = mk713('fe4', '1', false, narrow), B8 = mk713('fe5', '1', true, narrow);
+  const r8 = drive([A8, B8], script(1713, 120));
+  ok(r8.bad === 0 && sentOf(A8) === sentOf(B8) && B8.R.roadDayPerf().flCapped > 50 && rowsOf(A8) === rowsOf(B8), '⑦ ★묶음 3행 — 같은 방송 · 같은 `S.sent` · 같은 표', `어긋남 ${r8.bad}${r8.firstBad ? ' · 처음 ' + r8.firstBad : ''} · 묶음 ${B8.R.roadDayPerf().flBatches} · 잘림 ${B8.R.roadDayPerf().flCapped}`);
+  // ⓑ′ `S.sent` 고침을 3키씩 틱마다(끝 틱 뒤 여러 틱 · 다음 날 견줌 전에 남은 것을 다 함) — 같은 방송 · 같은 `S.sent`
+  const apLine = '    if (budgetMs > 0 && (Q.i & 255) === 0 && _i688Now() - t0 >= budgetMs) break;';
+  ok(SRC.includes(apLine), '⑦ [전제] 글자: 고침 몫');
+  { let spread = 0; const A9 = mk713('fe6', '1', false, narrow), B9 = mk713('fe7', '1', true, (s) => narrow(s).replace(apLine, '    if (budgetMs > 0 && Q.i % 3 === 0) break;').replace('function _t713Diff(F, batch) {\n  if (_t713Q) _t713Apply(0);', 'function _t713Diff(F, batch) {\n  if (_t713Q) { globalThis.__t713spread = (globalThis.__t713spread || 0) + 1; _t713Apply(0); }'));
+    globalThis.__t713spread = 0;
+    //   묶음도 3행(그날 플러시가 다음 날 경계까지 가 끝 틱이 경계에 온다 ⇒ 고침이 다음 날 첫 견줌 앞까지 남는다 — 마저 하는 갈래를 실제로 밟는다)
+    const r9 = drive([A9, B9], script(1713, 120)); spread = globalThis.__t713spread;
+    ok(r9.bad === 0 && sentOf(A9) === sentOf(B9) && spread > 0, '⑦ ★`S.sent` 고침 3키씩(여러 틱 · 묶음 3행) — 같은 방송 · 같은 `S.sent` · 남은 고침을 다음 견줌 전에 마저 함', `어긋남 ${r9.bad}${r9.firstBad ? ' · 처음 ' + r9.firstBad : ''} · 다음 견줌 전에 남은 고침을 마저 한 번 ${spread}`); }
+  // ⓒ 묶음 실패 — 그날 중간 묶음에서 쓰기가 던진다 → 종전처럼 그날 끝이 없다(방송 0 · `S.sent` 그대로) · 남은 키는 다음 날
+  //   그날 묶음이 여럿 지난 뒤 던지게 — 묶음 3행 판에서 COMMIT 된 묶음이 30 개를 넘고 · 그 안에 등급이 바뀐 셀이 있는 첫 쓰기(10일째 뒤)에서 던진다.
+  //   판 상태는 하네스 사본에만 붙인 들여다보기(`module.exports._t713fl`)로 본다 — 끔 판의 '들어간 묶음 속 바뀐 셀' 수가 0 보다 커야 미끼가 뜻이 있다
+  const dayOf = () => Math.floor((NOW - EPOCH) / DAY);
+  const peek = (s) => s + '\nmodule.exports._t713fl = () => _fl;\n';
+  const failAt = (X) => { const D = X.db, up = D.upsertRoadCell; X.fails = 0; X.preChg = 0;
+    D.upsertRoadCell = (z, k, v, d) => {
+      const F = !X.fails && dayOf() >= 10 && X.R._t713fl();
+      if (F && F.lazy && F.n >= 30) {
+        let c = 0; const S = X.R._S, T1 = 8, T2 = 28;   // 들어간 묶음 속 바뀐 셀(끔 판 = F.out · 켬 판 = F.chg) — 종전 식 그대로
+        if (F.chg) c = F.chg.k.length; else for (let j = 0; j < F.out.length; j += 2) { const vv = F.out[j + 1], lv = vv !== null ? (vv >= T2 ? 2 : (vv >= T1 ? 1 : 0)) : 0; if ((S.sent.get(F.out[j]) || 0) !== lv) c++; }
+        if (c > 0) { X.fails++; X.preChg = c; X.failDay = dayOf(); X.failN = F.n; throw new Error('T713 미끼 실패'); }
+      }
+      return up(z, k, v, d); }; return X; };
+  const failCase = (patchB) => {
+    const A = failAt(mk713('ff0_' + (++_bn), '1', false, (s) => peek(narrow(s)))), B = failAt(mk713('ff1_' + _bn, '1', true, patchB ? (s) => peek(patchB(narrow(s))) : (s) => peek(narrow(s))));
+    const _e = console.error; console.error = () => {};
+    const r = drive([A, B], script(2713, 120));
+    console.error = _e;
+    return { A, B, r, same: r.bad === 0 && sentOf(A) === sentOf(B) && rowsOf(A) === rowsOf(B) };
+  };
+  const F9 = failCase(null);
+  ok(F9.A.fails === 1 && F9.B.fails === 1 && F9.A.preChg > 0 && F9.A.preChg === F9.B.preChg && F9.same, '⑦ ★묶음 실패(들어간 묶음 30 개 넘고 그 안에 바뀐 셀이 있을 때 · 묶음 3행) — 끔 = 켬: 방송 · `S.sent` · 표 같다(그날 끝 없음)',
+    `어긋남 ${F9.r.bad}${F9.r.firstBad ? ' · 처음 ' + F9.r.firstBad : ''} · 실패 ${F9.A.fails}/${F9.B.fails}(날 ${F9.A.failDay} · 묶음 ${F9.A.failN} 뒤 · 들어간 묶음 속 바뀐 셀 ${F9.A.preChg}/${F9.B.preChg}) · 방송 ${F9.A.bc.length}/${F9.B.bc.length}`);
+  // ⓓ 자명 통과 금지 — 켬에서 `S.sent` 를 묶음 때 고치면(끝 틱으로 미루지 않으면) 실패 판에서 문다 · 마지막 묶음을 안 견주면 ⓐ 가 문다
+  const sentLine = '    if ((S.sent.get(k) || 0) !== lv) { C.k.push(k);';
+  ok(SRC.includes(sentLine), '⑦ [전제] 글자: 묶음 견줌');
+  const Fb = failCase((s) => s.replace(sentLine, '    if ((S.sent.get(k) || 0) !== lv) { S.sent.set(k, lv); if (!lv) S.sent.delete(k); C.k.push(k);'));
+  ok(!Fb.same, '⑦ 미끼: 묶음 때 `S.sent` 를 고치면 실패 판에서 **문다**', `어긋남 ${Fb.r.bad}${Fb.r.firstBad ? ' · 처음 ' + Fb.r.firstBad : ''} · S.sent 같음 ${sentOf(Fb.A) === sentOf(Fb.B)}`);
+  const applyLine = '    S.sent.set(k, lv); if (!lv) S.sent.delete(k);\n    if (budgetMs > 0';
+  ok(SRC.includes(applyLine), '⑦ [전제] 글자: 끝 틱 뒤 `S.sent` 고침');
+  { const Aa = mk713('fa0', '1', false), Ba = mk713('fa1', '1', true, (s) => s.replace(applyLine, '    if (budgetMs > 0'));
+    const ra = drive([Aa, Ba], script(713, 120));
+    ok(ra.bad > 0 || sentOf(Aa) !== sentOf(Ba), '⑦ 미끼: 끝 틱 뒤 `S.sent` 고침을 빼면 **문다**', `어긋남 ${ra.bad}${ra.firstBad ? ' · 처음 ' + ra.firstBad : ''} · S.sent 같음 ${sentOf(Aa) === sentOf(Ba)}`); }
+  const lastLine = '  if (T713) _t713Diff(F, batch);';
+  ok(SRC.includes(lastLine), '⑦ [전제] 글자: 묶음 견줌 부름');
+  const Ab = mk713('fb0', '1', false), Bb = mk713('fb1', '1', true, (s) => s.replace(lastLine, '  if (T713 && !F.end) _t713Diff(F, batch);'));
+  const rb = drive([Ab, Bb], script(713, 120));
+  ok(rb.bad > 0, '⑦ 미끼: 마지막 묶음을 안 견주면 ⓐ 가 **문다**', `어긋남 ${rb.bad}${rb.firstBad ? ' · 처음 ' + rb.firstBad : ''}`);
+}
+
 // ⑥ [선택 · `T688_REAL_DB=<틀 DB>`] 실제 크기 — 틀의 `roads` 표(한반도 · 밟힌 셀 24만)를 그대로 싣고 같은 연산 줄로 날을 넘긴다
 if (process.env.T688_REAL_DB) {
   console.log('\n⑥ 실제 크기 — 틀 DB 의 길 표로 날을 넘긴다');
@@ -171,6 +239,7 @@ if (process.env.T688_REAL_DB) {
   const d0 = meta.b + 1;
   NOW = EPOCH + d0 * DAY;
   const O = mk('roff', '0', null, process.env.T688_REAL_DB), N = mk('ron', '1', null, process.env.T688_REAL_DB), Vr = mk('rver', 'verify', null, process.env.T688_REAL_DB);
+  const N13 = (() => { const o = process.env.T713_FLUSH_END; process.env.T713_FLUSH_END = '1'; try { return mk('ron713', '1', null, process.env.T688_REAL_DB); } finally { if (o == null) delete process.env.T713_FLUSH_END; else process.env.T713_FLUSH_END = o; } })();   // ★[T713] 켬 팔
   // 연산 줄 — 하루 스탬프 ≈3만(T686 판의 하루 행 3.1만~3.4만) · 밟힌 셀에서 고르되 등급 셀을 더 자주 · 가끔 여러 날 건너뛰기
   let rs = 6880; const rnd = () => { rs = (Math.imul(rs, 1103515245) + 12345) >>> 0; return rs / 4294967296; };
   const graded = keys.filter((x) => x.v >= 8).map((x) => x.k), all = keys.map((x) => x.k);
@@ -182,9 +251,11 @@ if (process.env.T688_REAL_DB) {
     }
     day += rnd() < 0.15 ? 2 + ((rnd() * 25) | 0) : 1;
   }
-  const r6 = drive([O, N, Vr], ops, d0);
+  const r6 = drive([O, N, Vr, N13], ops, d0);
   const P6 = Vr.R.roadDayPerf(), PN = N.R.roadDayPerf();
   ok(r6.bad === 0 && P6.vBad === 0, '⑥ ★실제 크기 — 끔 = 켬 = 견줌(날마다 일곱 가지 · 견줌 다섯)', `날 ${r6.days} · 어긋남 ${r6.bad}${r6.firstBad ? ' · 처음 ' + r6.firstBad : ''} · 견줌 ${P6.vBad}/${P6.vDays}`);
+  { const sOf = (X) => [...X.R._S.sent].map((x) => x.join(':')).join(','), nb = O.bc.reduce((a, m) => a + JSON.parse(m).cells.length / 3, 0);
+    ok(r6.bad === 0 && sOf(O) === sOf(N13) && sOf(N) === sOf(N13) && nb > 1000 && rowsOf(N) === rowsOf(N13), '⑥ ★[T713] 실제 크기 — 플러시 끝 쪼갠 판도 같다(방송 · `S.sent` · 표)', `방송 ${O.bc.length}번 · 셀 ${nb} · S.sent ${N13.R._S.sent.size}키`); }
   ok(rowsOf(O) === rowsOf(N), '⑥ ★`roads` 표 같다', `${O.db.db.prepare('SELECT COUNT(*) n FROM roads').get().n}행`);
   console.log(`    ↳ 밟힌 셀 ${O.R._S.cells.size} · 등급 ${O.R._S.stats.graded} · 다져진 길 ${O.R._S.paved.size} · 하루 재구축 종전 최대 ${P6.fullMaxMs.toFixed(1)}ms(평균 ${(P6.fullMs / P6.vDays).toFixed(1)}) · 새 셈 최대 ${PN.maxMs.toFixed(1)}ms(평균 ${(PN.ms / PN.days).toFixed(1)}) · 경계 문턱 날 셀 ${(PN.dueEvals / PN.days).toFixed(0)}/날 · 쓰기 전 복사 ${PN.flSnap}`);
 }
