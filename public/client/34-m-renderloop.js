@@ -797,6 +797,10 @@
             if (Math.abs(_mx - worldCx) > VIEW_RADIUS || Math.abs(_my - worldCy) > VIEW_RADIUS) continue;
             renderables.push({ z: w2i(_mx, _my).y, kind: 'cellprop', key: _mk, gx: _mx, gy: _my, wx: _mx, wy: _my });
           }
+          // ★[T707 · 재민 10-12 "'장마당' 글자는 실험실 쪽"] 실험실 `drawMarkets` 의 글자 — 자리 (cx−2, cy+4) · 좌판 위에 얹는다(z 를 좌판 맨 앞보다 한 칸 앞).
+          { const _lx = ox + (mcx - 2) * CL_BUILDING_SIZE + 16, _ly = oy + (mcy + 4) * CL_BUILDING_SIZE + 16;
+            if (Math.abs(_lx - worldCx) <= VIEW_RADIUS && Math.abs(_ly - worldCy) <= VIEW_RADIUS)
+              renderables.push({ z: w2i(ox + mcx * CL_BUILDING_SIZE + 16, oy + (mcy + 9) * CL_BUILDING_SIZE + 16).y, kind: 'mktlabel', gx: _lx, gy: _ly, wx: _lx, wy: _ly }); }
         }
       }
       // §4-4 Stage 4A: 마을 시뮬 영토 — 경계 셀(b: [dx,dy,mask...]) 반투명 렌더. claim보다 더 배경(-900).
@@ -1453,6 +1457,12 @@
       } else if (item.kind === 'cellprop') {
         // ★[마당 소품] 화덕·장독 — 다리 타일과 같은 셀 정합 규약(이미지 중심=셀 중심·128px). 폴백은 없음(없으면 안 그림).
         drawBridgeSprite(item.key, item.gx, item.gy, toScreen);
+      } else if (item.kind === 'mktlabel') {
+        // ★[T707] '장마당' 글자 — 실험실 `drawMarkets` 와 같은 글·같은 색(#ffe14d · 굵게).
+        const _lp = toScreen(w2i(item.gx, item.gy).x, w2i(item.gx, item.gy).y);
+        ctx.fillStyle = '#ffe14d'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText('장마당', _lp.x, _lp.y);
+        ctx.textAlign = 'start';
       } else if (item.kind === 'granpile') {
         // ★[곳간② 재고 표시] 볏짚 단 더미 — 재고 1~19=작은 더미, 20+=큰 더미(G_STOCK_CAP=60 기준 1/3 분기).
         //   스프라이트는 다리 타일과 **같은 셀 정합 카메라**로 렌더돼 같은 규약(중심=셀 중심·128px)으로 그린다.

@@ -151,7 +151,9 @@
   const BRIDGE_DRAW_PX = 128;   // = 셀 다이아 폭(64) × 2 — 렌더 ortho_scale=2√2와 짝인 상수
   // ★[10차 T4 장마당] 좌판 배치 — 큰집(8×8, 발자국 [-4..3]²) 남벽 문 앞 마당. 문 통로(dx=0)와 그 옆(dx=±1)은
   //   비워 둔다(랩 _hallYard가 쓰는 통로 — 막으면 NPC 문턱 정체). dy≥5라 발자국 밖·마당 원(r10) 안.
-  const MARKET_STALLS = [['mkt_mat', -3, 5], ['mkt_basket', -1, 7], ['mkt_jar', 2, 5], ['mkt_hide', 4, 6]];
+  //   ★[T707 · 재민 10-12 "실험실 좌판"] 자리 여섯 = 정본 `server/village-layout.js` `MKT_SPOTS`(실험실 `MKT_SPOTS` 그대로 · 앞 넷은 종전 칸) — 뒤 둘은 소품을 돌려 쓴다.
+  //     클라는 정본을 require 못 해 손으로 옮겼다 — `scripts/lab-wiring-check.js` [T707] 절이 칸을 정본과 대조한다(사본 감시).
+  const MARKET_STALLS = [['mkt_mat', -3, 5], ['mkt_basket', -1, 7], ['mkt_jar', 2, 5], ['mkt_hide', 4, 6], ['mkt_mat', -4, 7], ['mkt_basket', 3, 8]];
   function drawBridgeSprite(key, wx, wy, toScreenFn) {
     const im = BRIDGE_SPRITES[key]; if (!im || !im.complete || !im.naturalHeight) return false;
     const p = w2i(wx, wy), s = toScreenFn(p.x, p.y);

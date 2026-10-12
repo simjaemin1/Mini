@@ -148,6 +148,14 @@ const T661_ON = process.env.T661_CARAVAN_TICK !== '0';   // ★PM 10-09 켬 기�
 //   ④ 캐러밴 재경로 쿨다운 — T661 장부가 부르는 판(`T661_ON`)에선 2초 대신 econ 하루 한 번.
 //   몸은 보이는 것만(틱 보간) · 세계에 닿는 일(답압 · 위협 · 회수 · 풀어 줌)은 econ 날이 정한다. ⚠끔 = main 바이트(이 손잡이 줄이 안 닿는다).
 const T681_ON = process.env.T681_WALLCLOCK !== '0';   // ★PM 10-10 켬 기본(결정론 캐논 · 되돌림 =0)
+// ★★[T707 2026-10-12 · 재민 10-12 T693 판정 · 설계 `설계/설계_장마당_이식.md`] 손잡이 `T707_MARKET`(econ 과 같은 이름 · 기본 끔 · 끔 = main 바이트).
+//   ① 장부 도착이 장을 연다 — econ 이 장이 선 날을 캐러밴에 적는다(`c._mktD`) · 몸 유무와 무관(몸 상한 60 을 넘는 날 몸 없는 장도 선다).
+//   ② 장 길이 = `MKT_LINGER_DAY_FRAC`(4/24 · 실험실 정본 · village-layout) — 상인 머묾도 장 끝까지 · 캐러밴 ↔ 마을 정산은 econ `settleMarketsV2`(떠날 때 ·
+//      다음 econ 틱 머리 = `tickWorldV2Parts.head` · 존도 CLI 와 같은 자리).
+//   ③ 모임 = 명부 셈(인구 × `MKT_FRAC` − 이미 든 수 · (마을, 날) 차례로 시작점을 돌린다 · 크루 · 행위 팔 직업 거름) → 생활층 문 하나(보이는 것 · 몸 필드 0).
+//   ④ 상인 자리 = 남문 앞 마당(`HALL_YARD_PTS` · 실험실 `_hallYard`) — 귀환 길 앞에 마당 → 큰집 중심 한 토막(보이는 몸과 장부 길이 같은 길).
+const T707_ON = process.env.T707_MARKET === '1';
+const _t707Stat = { markets: 0, joins: 0, roster: 0, carNoBody: 0, mktNoBody: 0, linger: 0, spawnLinger: 0 };
 
 // --- P3: 실체 전쟁 상수 ---
 //   ★[T284 2026-09-14] 관측자 LOD 반경·몸 상한·headless 폴백은 **제거**했다 —
@@ -2964,7 +2972,9 @@ function spawnCaravanBody(c, now, budgetMs) {
   // ★★[T578 ②] 노드 사이를 걷는 길 — 쌍마다 한 번 예산만큼 이어 판다(아직이면 교역로와 같은 `'wait'` 계약 · 아무것도 안 만졌다).
   const wr = _walkFor(legA, legB, (budgetMs === undefined) ? TB.slice(TICK_SLICE_MS) : budgetMs);   // ★[T687]
   if (!wr.done) { _probe.pathWait++; return 'wait'; }
-  const pts = wr.pts || rr.pts;
+  let pts = wr.pts || rr.pts;
+  const _t707Mk = T707_ON && !outbound && c._mktD === state.world.day && pts && pts.length;   // ★[T707] 장이 선 날 상한이 풀려 도착 마을에서 서는 몸 — 장 끝까지 마당에 선다
+  if (_t707Mk) pts = [_t707Yard(legA)].concat(pts);
   // ★[T533] 상인·호위 몸 세우기를 이름만 올렸다(`_caravanNpcs` — 이웃 존에서 넘어온 몸도 같은 함수 · 부르는 차례 그대로: 상인 → 호위).
   const N = _caravanNpcs(c, legA.ccx * SZ + SZ / 2, legA.ccy * SZ + SZ / 2, `simvil_${fromVil.dbId}`, fromVil.name, fromVil.dbId);
   const p = N.p;
@@ -2981,6 +2991,7 @@ function spawnCaravanBody(c, now, budgetMs) {
   body.nomPxMs = body.len / Math.max(1, body.arriveAt - now); // 페이싱 상한(×4)의 기준
   body.escorts = N.escorts;   // ★[convoy 물리 행군] 호위 전사 실체(위 `_caravanNpcs` 가 상인 뒤에 세웠다 — 주석은 그 자리에)
   if (T661_ON) _t661Anchor(body, pts, body.phase);   // ★[T661] 장부는 오늘(econ 날)부터 — 세운 날은 안 움직인다
+  if (_t707Mk) { const vil = state.byEcon.get(c.to), rec = vil && vil._mkt; body.phase = 'linger'; body.lingerUntil = (rec && rec.cars.has(c.id)) ? rec.end : now + state.dayMs * CARAVAN_LINGER_DAY_FRAC; p.x = pts[0].x; p.y = pts[0].y; _t707Stat.spawnLinger++; }
   state.caravanBodies.set(c.id, body);
   console.log(`[${state.zoneId}] 🐂 캐러밴#${c.id} 출발: ${c.from.name}→${c.to.name} ${c.giveRes}×${Math.round(c.giveAmt)} 호위${c.escort}(실체 ${body.escorts.length}) — 경로 ${pts.length}정점 ${Math.round(body.len)}px ${legDays}게임일(econ d${c.departDay}→d${c.arriveDay})`);
   return true;
@@ -2995,6 +3006,7 @@ function _t661ReturnPts(body) {
     pts = [];
     for (let i = body.pts.length - 1; i >= 0; i--) pts.push(body.pts[i]);
   }
+  if (T707_ON && hereVil && pts && pts.length) pts = [_t707Yard(hereVil)].concat(pts);   // ★[T707] 상인은 남문 앞 마당에서 떠난다(마당 → 큰집 중심 → 귀환 길 · 끔 = 이 줄 무동작)
   return pts;
 }
 function startReturnLeg(body, now) { // 도착 머묾(linger) 종료 → 귀환 출발
@@ -3007,7 +3019,7 @@ function startReturnLeg(body, now) { // 도착 머묾(linger) 종료 → 귀환 
     body.arriveAt = Math.max(now + 1, econDayToMs(c.returnArriveDay));
     body.pxPerDay = body._t661.ppd;
     body.nomPxMs = body.len / Math.max(1, body.arriveAt - now);
-    console.log(`[${state.zoneId}] 🐂 캐러밴#${c.id} 귀환 출발: ${c.to.name}→${c.from.name}${c._returningRes ? ` ${c._returningRes}×${Math.round(c._returningAmt || 0)}` : ' (빈손)'} — econ d${c.returnArriveDay} 도착 예정`);
+    console.log(`[${state.zoneId}] 🐂 캐러밴#${c.id} 귀환 출발: ${c.to.name}→${c.from.name}${c._t707 ? ' (정산은 다음 econ 틱 · T707)' : (c._returningRes ? ` ${c._returningRes}×${Math.round(c._returningAmt || 0)}` : ' (빈손)')} — econ d${c.returnArriveDay} 도착 예정`);
     return;
   }
   const pts = _t661ReturnPts(body);
@@ -3018,7 +3030,7 @@ function startReturnLeg(body, now) { // 도착 머묾(linger) 종료 → 귀환 
   body.arriveAt = Math.max(now + 1, econDayToMs(c.returnArriveDay));
   body.pxPerDay = body.len / legDays;
   body.nomPxMs = body.len / Math.max(1, body.arriveAt - now);
-  console.log(`[${state.zoneId}] 🐂 캐러밴#${c.id} 귀환 출발: ${c.to.name}→${c.from.name}${c._returningRes ? ` ${c._returningRes}×${Math.round(c._returningAmt || 0)}` : ' (빈손)'} — econ d${c.returnArriveDay} 도착 예정`);
+  console.log(`[${state.zoneId}] 🐂 캐러밴#${c.id} 귀환 출발: ${c.to.name}→${c.from.name}${c._t707 ? ' (정산은 다음 econ 틱 · T707)' : (c._returningRes ? ` ${c._returningRes}×${Math.round(c._returningAmt || 0)}` : ' (빈손)')} — econ d${c.returnArriveDay} 도착 예정`);
 }
 // §5.5b 2단계 — 완전 고립: econ '빈손 귀환(화물 보존)' 상태로 전이(기존 tickCaravansV2 inbound 처리에 위임).
 //   제3 마을 재라우팅은 econ이 도착 시점 가격 손절에서 이미 수행 — 벽 인지 전역 경로가 없는 현 단계에선
@@ -3313,6 +3325,7 @@ function _caravanSyncOne(now, c, S, budgetMs) {
     //   받은 몸(기록이 econ 에 들기 전에 경계 칸에 선 몸)이 제 기록을 만나면 잇는다 · 이웃 존에 가 있는 캐러밴은 몸도 거기다(이 존은 안 세운다).
     if (body && body.c !== c && body.c && body.c._xzPending && c.state !== 'xzone') body.c = c;
     if (c.state === 'xzone') return;
+    if (T707_ON && c._mktD === world.day) _t707Open(c);   // ★[T707] 장부 도착이 장을 연다 — 몸 유무와 무관 · 'retry' 로 다시 불려도 한 번(끔 = 이 줄 무동작)
     if (T661_ON && body && body._t661) _t661Day(body, now);   // ★★[T661] 하루 한 번 장부 — 차례 = `world.caravans` 차례(이 함수를 부르는 그 차례)
     if (!body) {
       if (bodies.size < CARAVAN_BODY_MAX) {
@@ -3332,6 +3345,7 @@ function _caravanSyncOne(now, c, S, budgetMs) {
       body.phase = 'linger';
       body.lingerUntil = now + state.dayMs * CARAVAN_LINGER_DAY_FRAC;
       if (T661_ON && body._t661) { _t661Anchor(body, _t661ReturnPts(body), 'inbound'); body._t661.L = 0; }   // ★[T661] 돌아가는 구간의 장부는 도착한 이 경계에서 연다(머묾은 보이는 것)
+      if (T707_ON) _t707Linger(body, c, p);   // ★[T707] 장 끝까지 머문다 · 남문 앞 마당에 선다(끔 = 이 줄 무동작)
       S.arrived++;
       console.log(`[${state.zoneId}] 🐂 캐러밴#${c.id} 도착: ${c.from.name}→${c.to.name} ${c.giveRes}${c._abandoned ? ' (빈손 손절)' : ' 매도'} — 1게임시간 머묾 후 귀환`);
     } else if (c.to !== body.toV) {
@@ -3366,6 +3380,7 @@ function _caravanSyncOne(now, c, S, budgetMs) {
 }
 // 쓸기 — `seen` 전량이 모인 뒤에만 옳다(그래서 이 절반은 원자다).
 function _caravanSyncSweep(S) {
+  if (T707_ON) _t707Tally();   // ★[T707] 오늘 선 장의 몸 없는 몫을 센다(캐러밴 동기가 다 돈 뒤 · 끔 = 이 줄 무동작)
   const bodies = state.caravanBodies, seen = S.seen;
   for (const [id, body] of [...bodies]) {
     if (seen.has(id)) continue;
@@ -3476,7 +3491,7 @@ function _xzStartReturnLeg(body, now) {
   body.arriveAt = Math.max(now + 1, econDayToMs(c.returnArriveDay));
   body.pxPerDay = body.len / legDays;
   body.nomPxMs = body.len / Math.max(1, body.arriveAt - now);
-  console.log(`[${state.zoneId}] 🐂 캐러밴#${c.id} 귀환 출발(경계로): ${c.to.name}→경계 칸(집 ${c.from && c.from.name}@${c._xzHome.zone})${c._returningRes ? ` ${c._returningRes}×${Math.round(c._returningAmt || 0)}` : ' (빈손)'} — econ d${c.returnArriveDay} 경계`);
+  console.log(`[${state.zoneId}] 🐂 캐러밴#${c.id} 귀환 출발(경계로): ${c.to.name}→경계 칸(집 ${c.from && c.from.name}@${c._xzHome.zone})${c._t707 ? ' (정산은 다음 econ 틱 · T707)' : (c._returningRes ? ` ${c._returningRes}×${Math.round(c._returningAmt || 0)}` : ' (빈손)')} — econ d${c.returnArriveDay} 경계`);
 }
 // 이웃 존 캐러밴이 이 존 안에서 완전히 막혔다 — 판 것 없이(짐 보존) 넘어온 경계 칸으로 되짚어 집 존에 돌려준다.
 function _xzIsolate(body, p, now) {
@@ -7200,7 +7215,8 @@ function lifeDebug() {   // ★[직접 서버 디버깅 — 사용자 요청] zo
       t529: vil._t529Log ? vil._t529Log.map((e) => ({ pid: e.pid, chief: e.chief, d0: e.d0, t0: e.t0, wAt: e.wAt, gAt: e.gAt, gD: e.gD || null, bAt: e.bAt, end: e.end, why: e.why || null, asked: e.asked || 0, late: e.late || 0,
         now: e.end ? null : (() => { const c = state.deps.players.get(e.chief), q = state.deps.players.get(e.pid); return c ? { x: Math.round(c.x), y: Math.round(c.y), b: c.behavior || '', d: q ? Math.round(Math.hypot(c.x - q.x, c.y - q.y)) : null, path: c.path ? c.path.length : 0 } : null; })() })) : null,   // ★[T529] 촌장 줄(끔이면 null) · 열린 줄은 촌장의 지금 자리   // ★[T449] 결산 문 누계(끔이면 null) — 날 · 관측 날 · 관측 마을 일괄(농부·신축 — 팔 꺼짐) · 몸 명부로 넘긴 나무꾼·채집 날
       t435: vil._t435Sum || null,   // ★[T435] 곳간 증설 행위 누계(끔이면 null) — 크루·일 · 왕복 · 나른 재료 · 곳간 빈 날 · 선 동 수   // ★[T400] 집 행위 누계(끔이면 null) — 걸음초·낮초·왕복·나른 통나무·전진 단계·크루 직업
-      mkt: (() => { if (!state.caravanBodies) return 0; for (const b of state.caravanBodies.values()) if (b.phase === 'linger' && state.byEcon.get(b.toV) === vil) return 1; return 0; })(),   // ★[10차 T4] 장마당 개장 여부(캐러밴 체류 중) — 라이브 확인용 계측
+      mkt: T707_ON ? ((vil._mkt && Date.now() < vil._mkt.end) ? 1 : 0) : (() => { if (!state.caravanBodies) return 0; for (const b of state.caravanBodies.values()) if (b.phase === 'linger' && state.byEcon.get(b.toV) === vil) return 1; return 0; })(),   // ★[10차 T4] 장마당 개장 여부(캐러밴 체류 중) — 라이브 확인용 계측 · ★[T707] 켬 = 장 기록(장부가 연다)
+      ...(T707_ON ? { mktN: vil._mkt ? vil._mkt.at.size : 0 } : {}),   // ★[T707] 켬만 — 오늘(마지막) 장 명부 수(끔 = 칸 0 · 종전 모양)
       ccx: vil.ccx, ccy: vil.ccy, acts, sample });
   }
   let tN = 0, tAct = 0;
@@ -7208,7 +7224,8 @@ function lifeDebug() {   // ★[직접 서버 디버깅 — 사용자 요청] zo
   return { t: new Date().toISOString(), phase: wpF ? +wpF(now).toFixed(3) : null, dayR, life: LIFE_ON,
     totals: { pop: tN, actN: tAct, actPct: tN ? +(tAct / tN * 100).toFixed(1) : 0, vgStuck: _vgStuckN, t562: _t562Stat,
               tkPday: _lifeTasksPerFarmerDay(), taskSec: LIFE_TASK_SEC,   // ★결산 정합 진단: 헤드리스가 쓰는 농부 1인 하루 작물 셀(날 길이 파생)
-              dormant: out.filter(v => !v.terr).length, noFarmer: out.filter(v => !(v.jobs && v.jobs.farmer)).length },
+              dormant: out.filter(v => !v.terr).length, noFarmer: out.filter(v => !(v.jobs && v.jobs.farmer)).length,
+              ...(T707_ON ? { t707: Object.assign({}, _t707Stat) } : {}) },   // ★[T707] 켬만 — 장 · 명부 · 몸 없는 장 · 정산 누계
     villages: out };
 }
 function _lifeDropTask(vil, npc) {   // 진행 중 작업 즉시 반납(요양 진입·반일 퇴근·야간 — 크루 카운터·클레임 정리. 일일 자가치유의 즉시판)
@@ -9376,6 +9393,82 @@ function _granBroadcast(now) {               // onGameTick(30Hz) 훅 — 변화�
   if (g.length) state.deps.broadcast({ type: 'gran_stock', g });
 }
 
+// ══ ★★[T707 2026-10-12] 장마당 — 장부가 열고 · 명부가 모으고 · 몸은 보이는 것 ═══════════════════════════════════════════════
+//   장 기록 = 마을 객체 한 칸 `vil._mkt = { d, end, at: Map(pid → 자리 차례), cars: Set(캐러밴 id), body }` — 몸 필드 0(T671 모양 고정 무접촉).
+//   ⓐ 여는 문 `_t707Open` — `_caravanSyncOne` 머리(econ 이 그날 장이 선 캐러밴에 `_mktD` 를 적었다) · 같은 날 둘째는 같은 기록에 든다(늘어남 0).
+//   ⓑ 명부 `_t707Roster` — 수 = max(1, round(몸 수 × MKT_FRAC)) − 이미 든 수(T684 셈) · 차례 = 몸 명부 `npcPids` 를 (마을 번호 + 날) mod 몸 수 에서 돌려
+//      (T690 위상 문법 · 주사위 0 · 실험실 `openMarket` 도 같은 문법) · 거름(장부 사실만 = 결정론): 그날 집 크루(T400) · 곳간 크루(T435) · 다리 크루(T527) ·
+//      행위 팔이 켜진 직업(T312 어부 · T325 나무꾼 · T347 채집 · T368 농부 — 몸의 손이 econ 으로 간다). 몸 상태(요양 · 밤 · 진행 작업)는 문이 거른다(빈자리).
+//   ⓒ 몸 `_t707Walk` — `npcLifeTick` 아침 추첨 뒤 · 반일 앞 문 하나에서 자리(`MKT_SPOTS[k % 6]`)로 걷고 선다 · 라벨 '장마당' · 장이 끝나면 일과 그대로.
+//   ⓓ 상인 `_t707Linger` — 머묾 = 장 끝 · 자리 = 남문 앞 마당(귀환 길 첫 점) · 호위도 그 자리.
+function _t707Yard(vil) {   // 실험실 `_hallYard` 의 서버판 — 후보 차례(정본 `HALL_YARD_PTS`) · 지형 막힘은 존 술어(`_t394Blocked` · 사본 0) · 다 막히면 (cx, cy+4)
+  const VL = _lifeVL();
+  for (const d of VL.HALL_YARD_PTS) { const x = (vil.ccx + d[0]) * SZ + SZ / 2, y = (vil.ccy + d[1]) * SZ + SZ / 2; if (!_t394Blocked(x, y)) return { x, y }; }
+  return { x: vil.ccx * SZ + SZ / 2, y: (vil.ccy + 4) * SZ + SZ / 2 };
+}
+function _t707ActJob(vil, job) {   // 행위 팔이 켜진 직업 — 그 몸의 일은 손 → 곳간 → econ 이라 장에 안 부른다(econ 무접촉 · 팔이 꺼진 기본에선 0명)
+  const E = _lifeEcon(), ec = vil && vil.econ;
+  if (!ec || !job) return false;
+  if (job === 'fisher') return !!(E.fishActOn && E.fishActOn(ec));
+  if (job === 'lumberjack') return !!(E.woodActOn && E.woodActOn(ec));
+  if (job === 'forager') return !!(E.forageActOn && E.forageActOn(ec));
+  if (job === 'farmer') return !!E.T368_FARM_ACT;
+  return false;
+}
+function _t707Roster(vil, rec) {
+  const ids = vil.npcPids || [], P = ids.length;
+  if (!P) return 0;
+  const VL = _lifeVL(), E = _lifeEcon(), pl = state.deps && state.deps.players;
+  let n = Math.max(1, Math.round(P * VL.MKT_FRAC)) - rec.at.size;   // ★T684 셈 — 상한은 장마다 하나(이미 든 사람을 뺀다)
+  if (n <= 0) return 0;
+  const skip = new Set();
+  if (E.T400_BUILD_ACT && vil._site) for (const p of _t400Crew(vil)) skip.add(p.pid);
+  if (E.T435_GRANARY_ACT) for (const p of _t435Crew(vil)) skip.add(p.pid);
+  if (E.T527_BRIDGE_ACT) for (const p of _t527Crew(vil)) skip.add(p.pid);
+  const s0 = (((vil.dbId | 0) + (rec.d | 0)) % P + P) % P;   // ★얼굴 돌리기 — (마을, 날) 차례로 시작점(주사위 0)
+  let got = 0;
+  for (let i = 0; i < P && n > 0; i++) {
+    const pid = ids[(s0 + i) % P];
+    if (rec.at.has(pid) || skip.has(pid)) continue;
+    const p = pl && pl.get(pid);
+    if (!p || _t707ActJob(vil, p.simJob)) continue;
+    rec.at.set(pid, rec.at.size); n--; got++;
+  }
+  return got;
+}
+function _t707Open(c) {
+  const vil = state.byEcon && state.byEcon.get(c.to);
+  if (!vil || !state.dayMs || !state.world) return null;
+  const D = state.world.day | 0;
+  let rec = vil._mkt;
+  if (!rec || rec.d !== D) { rec = vil._mkt = { d: D, end: econDayToMs(D) + state.dayMs * _lifeVL().MKT_LINGER_DAY_FRAC, at: new Map(), cars: new Set(), body: -1 }; _t707Stat.markets++; }
+  if (rec.cars.has(c.id)) return rec;
+  rec.cars.add(c.id); _t707Stat.joins++;
+  _t707Stat.roster += _t707Roster(vil, rec);
+  return rec;
+}
+function _t707Tally() {   // 오늘 선 장 — 캐러밴 몸이 하나도 없는 장(상한 60 · 길 없음)을 센다(하루 한 번 · 동기 다 돈 뒤)
+  if (!state.world) return;
+  const D = state.world.day | 0, B = state.caravanBodies;
+  for (const vil of state.villages) {
+    const r = vil._mkt; if (!r || r.d !== D || r.body >= 0) continue;
+    let b = 0; for (const id of r.cars) { if (B && B.has(id)) b++; else _t707Stat.carNoBody++; }
+    r.body = b; if (!b) _t707Stat.mktNoBody++;
+  }
+}
+function _t707Linger(body, c, p) {   // 상인 머묾 = 장 끝 · 남문 앞 마당(귀환 길 첫 점)에 선다 · 호위는 `_escortMarch` 가 그 자리로(진척 0)
+  const vil = state.byEcon && state.byEcon.get(c.to), rec = vil && vil._mkt;
+  if (rec && rec.cars.has(c.id)) body.lingerUntil = rec.end;
+  const rp = (T661_ON && body._t661) ? body._t661.path.pts : _t661ReturnPts(body);
+  if (rp && rp.length) { setBodyPts(body, rp); if (p) { p.x = rp[0].x; p.y = rp[0].y; } }
+  _t707Stat.linger++;
+}
+function _t707Walk(vil, npc, k) {   // 장 명부의 몸 — 제 자리로 걷고 선다(목표만 · 길은 존 걸음 · 사냥꾼은 두뇌 주도권을 내려놓는다 — `_lifeGoHome` 꼴)
+  const S2 = _lifeVL().MKT_SPOTS, sp = S2[k % S2.length];
+  npc.behavior = 'wander'; npc.targetX = (vil.ccx + sp[0]) * SZ + SZ / 2; npc.targetY = (vil.ccy + sp[1]) * SZ + SZ / 2; npc.gatherTarget = null;
+  npc._huntOn = 0; npc._huntSpd = 0;
+  _lifeAct(npc, '장마당');
+}
 // ★★[10차 T4] 장마당(계절 장) — 상태 플래그 1개. **새 상태·새 채널·새 타이머를 만들지 않는다.**
 //   고증(설계_장마당_환호_고증과_설계안.md A-1): 청동기시대 상설 시장의 근거는 없다. 그래서 "열려 있는 시장"이
 //   따로 있는 게 아니라, **캐러밴이 큰집 마당에 머무는 동안만** 그 자리가 장(場)이 된다.
@@ -9383,6 +9476,12 @@ function _granBroadcast(now) {               // onGameTick(30Hz) 훅 — 변화�
 //   startReturnLeg가 phase를 바꾸므로 장은 저절로 파한다 — 별도 만료 로직이 없다(그게 이 설계의 요점).
 function marketVillages() {                  // → flat [ccx, ccy, …] (영토·곳간 페이로드와 같은 소형 규약)
   const out = [];
+  if (T707_ON) {   // ★[T707] 장 = 마을의 장 기록(장부 도착이 연다 · 장 끝까지) — 몸 머묾이 아니다(몸 없는 장도 선다 · 끔 = 아래 종전 그대로)
+    if (!state.ready) return out;
+    const now = Date.now();
+    for (const vil of state.villages) { const r = vil._mkt; if (r && now < r.end) out.push(vil.ccx, vil.ccy); }
+    return out;
+  }
   if (!state.ready || !state.caravanBodies) return out;
   const seen = new Set();
   for (const body of state.caravanBodies.values()) {
@@ -10494,6 +10593,12 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
   if (npc._hd !== day) { npc._hd = day;
     _diceLife.seed(_seedOf(_shOfNpc(npc), Math.floor((npc.npcHomeX || npc.x || 0) / SZ), Math.floor((npc.npcHomeY || npc.y || 0) / SZ), day, 0));
     npc._half = _dl() < ((vil.econ && vil.econ._idleFrac) || 0); }
+  // ★★[T707] 장마당 — 오늘 장 명부에 든 몸은 장이 서는 동안 마당 제 자리로 간다(보이는 것만 · 명부는 마을 기록 · 몸 필드 0).
+  //   앞의 문(곳간 · 요양 · 밤·기상 · 촌장)이 먼저다 · 진행 작업(개간·건설·의뢰 집터)이 있거나 그날 집 크루면 안 온다(빈자리 · 다시 안 채운다).
+  if (T707_ON && vil._mkt && now < vil._mkt.end && !npc._lifeTask) {
+    const k = vil._mkt.at.get(npc.pid);
+    if (k !== undefined && !(vil._t400Crew && vil._t400Crew.indexOf(npc.pid) >= 0)) { _t707Walk(vil, npc, k); return true; }
+  }
   const dayFrac = fv / dayR;   // 낮 진행률 0~1(랩 상수의 서버 환산 축)
   // 반일 오후(랩 7991 퇴근길 징발 — 일>건축>휴식): 미완공 집터 있으면 전 직업 건축 합류(상한 없음 — 랩 동형), 없으면 자택 휴식
   if (npc._half && dayFrac >= SCH_HALF_R) {
@@ -11839,6 +11944,13 @@ module.exports = { streamStat, fishPerf, woodPerf, foragePerf, farmPerf,   // �
     _t561Probe: { fit: (p) => _t561Fit(p), crew: (vil, job) => _t561Crew(vil, job).map((p) => p.pid), standing: (tr, npc, h, first) => _t561Standing(tr, npc, h, first),
       ladder: (vil, npc, now) => _t561Ladder(vil, npc, now), granStep: (vil, npc, now) => _lifeGranStep(vil, npc, now), life: (npc, now) => npcLifeTick(npc, now),
       get T561_ROSTER_BODY() { return T561_ROSTER_BODY; }, get SCH_REST_IN() { return SCH_REST_IN; } },
+    // ★[T707] 장마당 하네스용 — 같은 규약(최소 주입구 하나 · 정본 함수를 그대로 부른다 · 하네스가 명부·자리·장 끝 규칙을 다시 적으면 그게 사본이다)
+    _t707Probe: {
+      setup: (o) => { const K = ['deps', 'world', 'byEcon', 'byDbId', 'villages', 'caravanBodies', 'dayMs', 'epoch', 'lastGameDay', 'ready', 'zoneId', 'econV2'];
+        const k = {}; for (const n of K) k[n] = state[n]; if (o) for (const n of K) if (n in o) state[n] = o[n]; return k; },
+      open: (c) => _t707Open(c), roster: (vil, rec) => _t707Roster(vil, rec), yard: (vil) => _t707Yard(vil), tally: () => _t707Tally(),
+      linger: (body, c, p) => _t707Linger(body, c, p), returnPts: (body) => _t661ReturnPts(body), life: (npc, now) => npcLifeTick(npc, now),
+      markets: () => marketVillages(), stat: () => Object.assign({}, _t707Stat), get ON() { return T707_ON; } },
     // ★[T569] 겹침 하네스용 — 같은 규약(최소 주입구 하나 · 정본 함수를 그대로 부른다)
     _t569Probe: { setup: (o) => { const k = { ta: state.ta, villages: state.villages, db: state.db };
         if (o) { if ('ta' in o) state.ta = o.ta; if ('villages' in o) state.villages = o.villages; if ('db' in o) state.db = o.db; } return k; },

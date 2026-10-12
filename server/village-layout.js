@@ -54,6 +54,12 @@
   const inDisc = (cx, cy, R, x, y) => { const ax = x + 0.5 - cx, ay = y + 0.5 - cy; return ax * ax + ay * ay < R * R; };   // 셀 중심(x+.5,y+.5)이 격자점(cx,cy) 반경 R 안(엄격<) — 전 구역 판정의 단일 원식(렌더도 같은 셀 집합=판정과 픽셀 일치)
   const discCells = (R) => { const o = [], B = Math.ceil(R); for (let dx = -B; dx < B; dx++) for (let dy = -B; dy < B; dy++) if ((dx + 0.5) * (dx + 0.5) + (dy + 0.5) * (dy + 0.5) < R * R) o.push([dx, dy]); return o; };
   const LOT_CELLS = discCells(LOT_R), LOT_GUARD = discCells(LOT_R + FARM_GAP), YARD_CELLS = discCells(HALL_YARD);
+  // ★★[T707 2026-10-12 · 재민 10-12 T693 판정] 장마당 정본 넷 — **실험실 값 그대로**(새 수 0 · 랩 `L_MKT_FRAC`·`MKT_SPOTS`·`L_MKT_LINGER`·`_hallYard` 의 손 사본은
+  //   `scripts/lab-wiring-check.js` [T707] 절이 이 값과 대조한다). 큰집 = 8×8 발자국 [-4..3]² · 남벽 문 (0, 3→4).
+  //   MKT_SPOTS = 마당 좌판·사람 자리(문 통로 dx=0 열은 비운다) · MKT_FRAC = 장이 서면 모이는 마을 인구 비율 ·
+  //   MKT_LINGER_DAY_FRAC = 장 길이(하루의 4/24 = 4게임시간 · 랩 `L_MINDAY/24*4`) · HALL_YARD_PTS = 상인이 서는 남문 앞 마당 후보(결정론 차례 · 막히면 다음).
+  const MKT_SPOTS = [[-3, 5], [-1, 7], [2, 5], [4, 6], [-4, 7], [3, 8]], MKT_FRAC = 0.18, MKT_LINGER_DAY_FRAC = 4 / 24;
+  const HALL_YARD_PTS = [[0, 5], [0, 4], [-1, 5], [1, 5], [-2, 5], [2, 5], [0, 6]];
   // ★[재민 10-03] 개울 완충 = 부지 + **3칸**(물가세 없이) — 큰 물 완충(`FARM_GAP` 2)과 따로 둔 한 수(재민 값 · T584 표 뒤).
   const STREAM_GAP = 3, STREAM_GUARD = discCells(LOT_R + STREAM_GAP);   // 부지 원판(124셀 — 구 12×12 등적·적도폭 12), 부지+2 침수·완충 원판, 큰집 마당 원판(316셀)
   // ★★[T579 2026-10-03 · T569 ④] **집 부지 인당** = 부지 원판 셀 수 ÷ 집 한 채 정원(층당 정원 × 층 상한) — 식이다(새 수 0 · 124 ÷ 6 = 20.67).
@@ -457,7 +463,8 @@
   const API = { LAND_NEED, LOT_PER_HEAD, houseSiteWant, territoryTarget, HOUSE_MAX_FLOORS, TERR_PER_SIZE, TERR_PER_LOT, TERR_CORE,   // ★[T100 4판] 정본 — 밖(villages.js·계측기·하네스)이 이 값을 읽는다
     generate, STREAM_GAP, STREAM_GUARD, typeBranch, TYPE_LINES, footprintLand, axisAt, nearestBank, waterEDT, maskEDT, HOUSE_HALF, HOUSE_CAP: HOUSE_CAP_PER_FLOOR, HOUSE_CAP_PER_FLOOR, LAND_PER_HOUSE, landNeedPer, HALL_YARD, LOT_R, FARM_GAP, ALLEY_R, HALL_CLEAR, inDisc, LOT_CELLS, LOT_GUARD, YARD_CELLS, houseFarmBlock, hallFarmBlock, discHitsStream, streamLotCells,
     AISLE, LIFE_HOUSE_GAP, LIFE_HOUSE_GAP_AISLE,   // ★[T315] 집 간격 유도 — 값이 아니라 식(사본 0) · ★[T326] 기본 = `LIFE_HOUSE_GAP`(15 · PM #52) · 되돌림 = `LIFE_HOUSE_GAP_AISLE`(18)
-    ditchRing, ditchConnectivity, DITCH_W, DITCH_AXIS_RATIO, DITCH_GATE_HALF, DITCH_MARGIN };
+    ditchRing, ditchConnectivity, DITCH_W, DITCH_AXIS_RATIO, DITCH_GATE_HALF, DITCH_MARGIN,
+    MKT_SPOTS, MKT_FRAC, MKT_LINGER_DAY_FRAC, HALL_YARD_PTS };   // ★[T707] 장마당 정본 넷(실험실 값 그대로)
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   if (typeof window !== 'undefined') window.VillageLayout = API;
 })();
