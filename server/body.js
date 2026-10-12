@@ -290,6 +290,14 @@ const CFG = {
 //     T516 `T516_WARMTH_CLO`(재질 clo 방한 · clothes.js)와 **같이** 켠다(T516 보고 "두 팔은 같이만"). 되돌림은 셋 다 `=0`(종전 글자 그대로).
 const T508_DECAY_EXP = (() => { const v = process.env.T508_DECAY_EXP; return v === '0' ? '' : (v === 'rat' ? 'rat' : '1'); })();
 const T508_CLO = process.env.T508_CLO !== '0';
+// ★★[T705 2026-10-12 · 재민 10-12 · 손잡이 `T705_FOOD_SICK=1` — 없음 = 끔 = 아래 줄들이 아무것도 안 한다(`sick.js` 를 부르지도 않는다 · main 바이트)]
+//   **식중독 지수 P → 배탈 지수 B → θ 를 넘은 만큼 체력**(정본 `server/sick.js`). 몸에는 `b.sick = {P, B, at}` 한 칸만 — 처음 먹을 때 선다.
+//   ★극단 합산기(`extremeHpRate`)에 **한 줄**로 얹는다 — 그래서 빚(`hpDebt`) · 정본 피해 경로(`damagePlayer`) · 자연 회복 멈춤 ·
+//     사망 원인(`extreme:sick`)이 따로 짓지 않고 따라온다(두 번째 합산기 0).
+const T705_SICK = process.env.T705_FOOD_SICK === '1';
+let _Sk = null;
+function _sick() { return _Sk || (_Sk = require('./sick')); }
+let _sickDay = 0;   // ★[T705] 존이 부팅 때 알린 하루 길이(ms · `sickDayMs`) — 없으면 `sick.js` 기본(24분)
 // ★감쇠의 꼴 — **새 수 0**: 종전 두 토막 선형이 지나는 **매듭 셋** (0, 100) · (TOP_FRAC·T, SPLIT·100) · (T, 0) 을 그대로 지난다.
 //   ⓐ 지수 꼴 dx/dt = −k·(x + b) — 상태에 비례하되 **상수 b 를 더한다**: 순수 −k·x 는 0 에 영영 안 닿아(총시간 ∞)
 //      "100→0 = `*_SEC`" 캐논을 못 지킨다. 두 수 (k, b) 를 두 매듭이 정한다:
@@ -593,6 +601,11 @@ function extremeHpRate(p) {
     rate += v;
     parts.push({ axis: a, ko: KO[a], emo: EMO[a], sev: +sev[a].toFixed(4), e: +e.toFixed(4), r, rate: +v.toFixed(6) });
   }
+  // ★[T705] 배탈 — B 가 θ 를 넘은 만큼(HP/게임시간 → 이 합산기의 단위 HP/게임분). 끄면 이 줄이 없다.
+  if (T705_SICK && p.body && p.body.sick) {
+    const v = _sick().rateHpPerMin(p.body.sick);
+    if (v > 0) { rate += v; parts.push({ axis: 'sick', ko: '배탈', emo: '🤢', sev: +(+p.body.sick.B).toFixed(4), e: 0, r: 0, rate: +v.toFixed(6) }); }
+  }
   parts.sort((x, y) => y.rate - x.rate);
   // ★합계는 **반올림하지 않는다** — 이 값이 적분기의 입력이라, 여기서 6자리로 자르면
   //   긴 구간에서 총량이 조금씩 어긋난다(하네스 ⑰㉥ 이 그 차이를 실제로 잡아냈다).
@@ -852,6 +865,8 @@ function tick(p, dtSec, ctx) {
   if (!(dtSec > 0)) return;
   const b = ensure(p);
   const c = ctx || {};
+  // ★[T705] 배탈 — **넘겨 준 dt 만큼만** 닫힌 해로 푼다(둘 다 0 이면 안 본다 · 오프라인 따라잡기 0 — 머리 헌법). 끄면 이 줄이 없다.
+  if (T705_SICK && b.sick) { _sick().step(b.sick, _sick().hoursOf(dtSec, c.dayMs || _sickDay)); b.sick.at = c.now || Date.now(); }
   // ★★추위 — **평형 수렴**(재민 확정 2026-08-30). 주변이 목표점을 만들고 몸이 거기로 간다.
   //   종전은 누적식이라 노출이 조금만 있어도 결국 1 에 닿았다(적립금). 이제는 밤에 올랐다가
   //   **낮이 오면 해소 행동 없이도 내려간다** — 겨울엔 평형점 자체가 높아 옷·불이 필요하다.
@@ -941,11 +956,21 @@ function onEat(p, opts) {
   return b.morale;
 }
 function onHerb(p, now) { const b = ensure(p); b.herbUntil = (now || Date.now()) + CFG.INJURY_HERB_MS; return b.herbUntil; }
+// ★[T705] 이 존의 하루 길이(ms)를 한 번 받는다(zone 부팅 한 줄) — 배탈 지수가 게임 시간으로 흐르게. 끄면 안 부른다.
+function sickDayMs(ms) { const v = Number(ms); if (v > 0) _sickDay = v; return _sickDay; }
+// ★[T705] 먹은 독(kg × (1 − f))을 몸에 얹는다 — 켬에서만(끄면 0 · 몸에 칸을 안 만든다). 반환 = 얹은 뒤 P.
+function sickIntake(p, dose, nowMs) {
+  if (!T705_SICK || !(Number(dose) > 0)) return 0;
+  const b = ensure(p);
+  if (!b.sick) b.sick = { P: 0, B: 0, at: Number(nowMs) || Date.now() };
+  _sick().intake(b.sick, dose, nowMs);
+  return b.sick.P;
+}
 
 // ── 전송 — 본인에겐 연속, 남에겐 단계만(§8.3) ────────────────────────────────
 function selfPayload(p) {
   const b = ensure(p), e = effects(p);
-  return {
+  const out = {
     hunger: +(p.hunger == null ? 100 : p.hunger).toFixed(2),
     thirst: +(p.thirst == null ? 100 : p.thirst).toFixed(2),
     cold: +b.cold.toFixed(4), fatigue: +b.fatigue.toFixed(4),
@@ -964,6 +989,11 @@ function selfPayload(p) {
     //     0 을 보내면 화면이 "0일 남았다"는 없는 말을 하게 된다.
     aftermath: ((b._amLeft || 0) > 0) ? { days: +(b._amLeft).toFixed(2), cap: +(b._amCap).toFixed(4) } : null,
   };
+  // ★[T705] 배탈 — 화면 재료(클라는 아직 안 그린다 · 무들은 클라 카드). 끄면 이 칸이 없다.
+  if (T705_SICK && b.sick && (b.sick.P > 0 || b.sick.B > 0)) {
+    out.sick = { P: +b.sick.P.toFixed(4), B: +b.sick.B.toFixed(4), theta: +_sick().PARAM.theta.toFixed(4), hpPerH: +_sick().rateHpPerHour(b.sick).toFixed(4) };
+  }
+  return out;
 }
 // 남에게 보낼 것 — **단계뿐**. 외형 반영은 이번 범위 밖이라 소비자가 없지만,
 // 전송 설계를 지금 정해 두지 않으면 나중에 연속값이 새어 나간다(§8.3 공학 확정).
@@ -971,7 +1001,13 @@ function peerPayload(p) { return { moodles: moodles(p).map((m) => ({ axis: m.axi
 
 // 저장/복원 — 주기 저장(`SAVE_INTERVAL_MS`) 경로에 실린다.
 // ★[T105] `wet` 을 싣는다 — 젖음은 **유도값이 아니다**(같은 자리·같은 날씨라도 방금 비를 맞았는지가 다르다).
-function toSave(p) { const b = ensure(p); return { cold: +b.cold.toFixed(4), fatigue: +b.fatigue.toFixed(4), injury: +b.injury.toFixed(4), morale: +b.morale.toFixed(4), stam: +b.stam.toFixed(4), wet: +(b.wet || 0).toFixed(4), deadDay: Number.isFinite(b.deadDay) ? b.deadDay : null }; }
+function toSave(p) {
+  const b = ensure(p);
+  const o = { cold: +b.cold.toFixed(4), fatigue: +b.fatigue.toFixed(4), injury: +b.injury.toFixed(4), morale: +b.morale.toFixed(4), stam: +b.stam.toFixed(4), wet: +(b.wet || 0).toFixed(4), deadDay: Number.isFinite(b.deadDay) ? b.deadDay : null };
+  // ★[T705] 배탈은 유도값이 아니다(먹은 이력) — 앓는 중이면 [P, B] 를 싣는다. 끄면 이 칸이 없다.
+  if (T705_SICK && b.sick && (b.sick.P > 0 || b.sick.B > 0)) o.sick = [+b.sick.P.toFixed(6), +b.sick.B.toFixed(6)];
+  return o;
+}
 function fromSave(p, saved) {
   const b = ensure(p);
   if (!saved || typeof saved !== 'object') return b;
@@ -980,6 +1016,11 @@ function fromSave(p, saved) {
   }
   // ★[T43 후유증] 죽은 날은 **게임일**이라 0~1 클램프 대상이 아니다(위 루프에 넣으면 1 로 뭉개진다).
   if (Number.isFinite(saved.deadDay)) b.deadDay = saved.deadDay;
+  // ★[T705] 배탈 — 다시 붙은 그 순간부터 흐른다(접속 끊긴 동안은 안 흘렀다 · 따라잡기 0). 끄면 이 줄이 없다.
+  if (T705_SICK && Array.isArray(saved.sick) && saved.sick.length >= 2) {
+    const P = Number(saved.sick[0]), B = Number(saved.sick[1]);
+    if (P > 0 || B > 0) b.sick = { P: P > 0 ? P : 0, B: B > 0 ? B : 0, at: Date.now() };
+  }
   return b;
 }
 // dirty — §8.3 "Δ>0.01 이면 갱신". 주기 저장의 판정에도 쓴다.
@@ -1006,5 +1047,6 @@ module.exports = {
   extremeHpRate, extremeAt, extremeness, takeHpDamage, DRAIN_AXES,
   startAftermath, aftermathLeft, staminaCap,
   tick, onLabor, onDamage, onEat, onHerb,
+  sickIntake, sickDayMs, T705_SICK,     // ★[T705] 배탈 — `zone.doEat`·`doEatDish` 가 **이것을** 부른다(정본 `sick.js`)
   selfPayload, peerPayload, toSave, fromSave, dirtySince, snapshot,
 };
