@@ -7,7 +7,7 @@
 #     ⓐ 꼴의 정본 = `char_render.py` 의 링 표(`TUNIC_R` 웃옷 · `SKIRT_R` 옷자락 · `BELT_R` 허리띠 · `SLV_R` 소매) +
 #        몸 표(`TORSO_R` · `LEG_R` · `ARM_R`) + 뼈 표(`BONES`) + 갖옷 털 두께 `FUR_PAD` — **원문을 읽는다**(ast · 사본 0).
 #     ⓑ 높이 = 뼈 자리끼리 맞댄다(시트 발목·무릎·엉덩관절·어깨관절·머리뼈 밑·정수리 ↔ MPFB `cmu_mb` 같은 관절) — 사이는 곧은 보간.
-#        소매는 위팔·아래팔 뼈를 따라 잰다(시트 팔은 곧게 내린 팔 · MPFB 는 A 자).
+#        소매는 위팔·아래팔 뼈를 따라 잰다(시트 팔은 곧게 내린 팔 · MPFB 쉼은 A 자 — [T708 ①] 3D 몸도 팔 내린 선 자세로 굳힌 뒤에 짓는다(내보내기 `stand_pose`)).
 #     ⓒ 둘레 = 3D 몸의 단면(볼록 껍질) + **시트의 여유**(시트 옷 링 − 시트 몸 단면 · 방향마다) × 키 비(3D 정수리 ÷ 시트 `H_TOT`).
 #        웃옷은 시트 몸이 그렇듯 몸에서 2cm 남짓 뜨고 · 옷자락은 두 다리를 한 둘레로 감싼다 · 허리띠는 웃옷 위 몇 mm.
 #     ⓓ 링 사이에서 몸이 옷을 뚫으면 그 높이에 링을 하나 더 넣는다(몸 점마다 잰다 · 요구 = 몸 점이 옷 안) ·
@@ -18,6 +18,10 @@
 #        두께를 더하던 방향 · 소매 뚜껑 가운데 0)과 두께(`FUR_PAD` × 키 비)를 돌려주고, 엔진 셰이더가 갖옷일 때만 그만큼 민다(메시 사본 0).
 #        ★[T685 2026-10-10] 갖옷 기하(둘레 + 두께 — T604 판 식 그대로)도 다시 짓는다 — 그리지 않고 **MPFB 묶기만**: 그 묶기가 낸 뼈 무게를
 #        내보내기가 갖옷 몫 무게(정점 속성)로 싣는다(옛 갖옷 몸이 제 묶기로 움직이던 그대로 · 본 옷 무게 무접촉).
+#        ★[T708 2026-10-12] 갖옷 = **따로 지은 겉옷**(본 옷과 같은 위상 · 같은 점 차례 · 제 꼴 — 몸 굴곡을 안 따라간다): 단 무릎 · 긴 소매(곧은 통) ·
+#        가슴(어깨관절 아래 가장 높은 관 링) 아래는 그 높이 ~ 가슴 사이 본 옷 링을 다 덮는 볼록 껍질(허리·엉덩이 굴곡 0 — 천이 떨어진다) + 털 두께 ·
+#        허리띠는 본 옷 자리(겉옷 안에 숨는다). 내보내기가 "겉옷 자리 − 본 옷 자리"를 점 속성 `_furoffset` 으로 싣는다(T654 의 방향 × 두께 부풀림을 걷었다) ·
+#        겉옷 묶기 무게 = 갖옷 몫 무게(T685 그대로).
 #     ⓕ 소매 = 시트 `SLV_R` 링을 위팔 뼈 위 같은 자리에 · 둘레 = 이웃 링 사이 팔 점의 축 반지름 최대 + 시트 소매 여유 × 키 비 ·
 #        위 끝은 막는다(시트 `loft()` 윗 뚜껑 — 네모 여덟) — 어깨에서 소매와 웃옷이 겹치는 자리(시트도 겹친다)에 열린 틈이 안 선다.
 #     ⓖ 살은 안 지운다(`delete_verts` 0) — 옷 밑 살을 지우면 어깨·단에서 옷끼리 벌어질 때 구멍이 난다 · 예산은 6,000 안에 든다.
@@ -43,8 +47,8 @@ _NEED = ("H_TOT", "Z_ANKLE", "Z_KNEE", "Z_HIP", "Z_WAIST", "Z_SHLD", "Z_NECK", "
          "SH_W", "HIP_W", "ARM_Y", "LOFT_SEG", "TORSO_R", "ARM_R", "LEG_R", "SLV_R", "FUR_PAD", "TUNIC_R", "SKIRT_R", "BELT_R",
          "BONES", "_hz")
 CUTS = {"M": {"hem": "sheet", "sleeve": "short"}, "F": {"hem": "knee", "sleeve": "long"}}
-VARIANTS = ("base", "fur")                 # 본 옷 기하(옷 넷이 같이 그린다 — [T654] 갖옷 = 같은 기하 + 털 두께 방향 × 두께 · 셰이더) ·
-                                           # [T685] 갖옷 기하 = **묶기만**(T604 갖옷 판 그대로 지어 MPFB 로 묶는다 — 그 뼈 무게를 갖옷 몫 무게로 · 그리지 않는다)
+VARIANTS = ("base", "fur")                 # 본 옷 기하(삼베·모시·가죽이 그린다) · [T708 ③] 갖옷 = **따로 지은 겉옷**(본 옷과 같은 위상 · 제 꼴 — 내보내기가
+                                           # "갖옷 자리 − 본 옷 자리"를 점 속성으로 · MPFB 묶기 뼈 무게를 갖옷 몫 무게로(T685 그대로) · 갖옷 재질만 갈아 끼운다)
 _EPS = 1e-6                                # 수치 허용(1µm · 설계 수 아님) — 민 링 위에 정확히 얹힌 점의 부동소수 잔차
 _ELLIPSE_SAMPLES = 256                     # 수치 표본(설계 수 아님) — 시트 타원의 볼록 껍질을 잡는 점 수 · 배로 늘려도 링이 0.01mm 안에서 같다(보고 T604 §②)
 
@@ -254,9 +258,10 @@ def _ring_pts(r):
 
 
 def make(sex, base, rig, outdir, cell_px, pad_px, ClothesService, log=print):
-    """몸 하나의 옷 기하(본 옷 하나 — [T654] 갖옷은 같은 기하 + 털 두께 방향)를 짓고 MPFB 로 묶어 .mhclo + .obj 로 쓴다.
-    돌려주는 것: {'base': mhclo 경로, 'inflate': {'dir': 점마다 털 두께 방향, 'pad': 두께, 'verts': 지은 점(묶기 앞 · 차례 맞대기)}, 'fur': [T685] 갖옷 묶기 mhclo 경로(그리지 않는다 — 뼈 무게 재료), 'furVerts': 그 지은 점, 'info': {...}}
-    (자리·방향·두께는 MPFB 좌표 — 내보내기가 몸과 같은 변환을 건다)."""
+    """몸 하나의 옷 기하 둘(본 옷 · [T708 ③] 갖옷 = 따로 지은 겉옷 — 본 옷과 같은 위상 · 같은 점 차례)을 짓고 MPFB 로 묶어 .mhclo + .obj 로 쓴다.
+    돌려주는 것: {'base': 본 옷 mhclo 경로, 'baseVerts': 그 지은 점(묶기 앞 · 차례 맞대기), 'fur': 갖옷(겉옷) mhclo 경로(그리지 않는다 — 자리·뼈 무게 재료),
+    'furVerts': 그 지은 점, 'pad': 털 두께(m), 'info': {... · 'coat': 겉옷 재단 표}}
+    (자리·두께는 MPFB 좌표 — 내보내기가 몸과 같은 변환을 건다)."""
     S = sheet_tables()
     N = int(S["LOFT_SEG"])
     cut = CUTS[sex]
@@ -314,10 +319,10 @@ def make(sex, base, rig, outdir, cell_px, pad_px, ClothesService, log=print):
 
     # ── ① 소매 — 축을 따라 · 링마다 이웃 링 사이 팔 점의 반지름 최대 + 시트 여유 × K ─────────
     #   ★소매 위 끝은 막는다(시트 `loft()` 의 윗 뚜껑 — 네모 여덟: 가운데 + 테두리 셋씩) · 소매 끝(손목 쪽)은 열린다(팔이 지난다)
-    sleeves = {}
-    for side in ("L", "R"):
+    def sleeve_rings(side, tab):
+        """소매 링(시트 소매 타원 표 `tab` = [(zs, rx, ry)] 위→아래) — 축 위 링마다 이웃 링 사이 팔 점의 반지름 최대 + 시트 여유 × K."""
         at = side_par[side]
-        geo = [at(r[0]) for r in slv]
+        geo = [at(r[0]) for r in tab]
         frames = []
         for g in geo:
             c, a, _ = g
@@ -353,14 +358,16 @@ def make(sex, base, rig, outdir, cell_px, pad_px, ClothesService, log=print):
                 for kk in (k, (k + 1) % N):
                     rad[jj][kk] = max(rad[jj][kk], rv)
         rings_s = []
-        for j, ((c, a, u, w), r) in enumerate(zip(frames, slv)):
+        for j, ((c, a, u, w), r) in enumerate(zip(frames, tab)):
             ar = arm_at(r[0])
             e = [K * (ellipse_r(r[1], r[2], 2 * math.pi * k / N) - ellipse_r(ar[0], ar[1], 2 * math.pi * k / N)) for k in range(N)]
             rings_s.append({"zs": r[0], "c": c, "u": u, "w": w, "rad": [rad[j][k] + e[k] for k in range(N)], "ease": e, "part": at(r[0])[2][0]})
         empty = [j for j, rr in enumerate(rad) if min(rr) <= 0.0]
         if empty:
             raise SystemExit(f"[clothes] ★{sex}{side} 소매 링 {empty} 에 팔 점이 안 든 방향이 있다")
-        sleeves[side] = rings_s
+        return rings_s
+
+    sleeves = {side: sleeve_rings(side, slv) for side in ("L", "R")}
 
     # ── ② 몸통 관 링 — 시트 링 높이 · 단면 껍질 + 시트 여유 × K ────────────────────────────────────────
     srings = sheet_tube(S, cut)
@@ -473,6 +480,73 @@ def make(sex, base, rig, outdir, cell_px, pad_px, ClothesService, log=print):
         e = [K * (ellipse_r(brx, bry, 2 * math.pi * k / N) - ellipse_r(trx, try_, 2 * math.pi * k / N)) for k in range(N)]
         belt.append({"z": z3, "zs": zs, "c": c, "u": F_AX, "w": L_AX, "rad": [r + x for r, x in zip(rad, e)], "ease": e})
 
+    # ── ③′ [T708 ③] 갖옷 = 따로 지은 겉옷 — 본 옷과 같은 위상(링 수 · 차례 · 뚜껑)에 제 꼴(몸 굴곡을 안 따라간다) ─────────────────
+    #   재단 = 긴 웃옷 재단(`CUTS` 여 — 단 무릎 · 긴팔)을 남녀 다(갖옷 = 가장 따뜻한 옷 · 겉에 덧입는다 — `설계/고증_청동기옷.md` 부여 "裘" 를 덧입음) ·
+    #   꼴 = 천이 아래로 떨어진다(새 수 0 — 기존 "늘어짐" 규칙을 가슴까지 올린 것):
+    #     관 — 어깨관절보다 낮은 가장 높은 관 링(가슴)부터 아래는 **그 링 높이 ~ 가슴 사이 본 옷 링을 다 덮는 볼록 껍질**(허리·배·엉덩이 굴곡 0) ·
+    #          가슴 위(어깨·목)는 본 옷 링 그대로 · 단 = 무릎(본 옷 단이 무릎보다 위면 엉덩관절 아래 링을 엉덩관절 ↔ 무릎으로 고르게 다시 편다) ·
+    #     소매 — 곧은 통: 링마다 같은 반지름(소매가 덮는 팔 점(소매 위 끝 ~ 손목)의 팔 축 거리 최대 + 시트 소매 끝 링 여유) · 긴팔(짧은 소매 링 셋 = 위 끝 · 팔꿈치 · 손목) ·
+    #     허리띠 — 본 옷 자리 그대로(갖옷 안에 숨는다 — 자리 차 0) · 두께 = `FUR_PAD` × 키 비(관·소매 둘레에).
+    padF = K * S["FUR_PAD"]
+    knee3 = Bd.bz("LeftLeg", "RightLeg")
+    shld3 = Bd.bz("LeftArm", "RightArm")
+    hem3 = rings[0]["z"]
+    jt = max(j for j, r in enumerate(rings) if r["z"] < shld3)              # 가슴 = 어깨관절보다 낮은 가장 높은 관 링
+    dirs2 = [(math.sin(2 * math.pi * k / N), -math.cos(2 * math.pi * k / N)) for k in range(N)]   # 방향 k(앞 F_AX · 왼 L_AX) → MPFB (x, y)
+
+    def zmap(z):
+        if hem3 > knee3 + 1e-9 and z < hip3:
+            return hip3 - (hip3 - z) * (hip3 - knee3) / (hip3 - hem3)
+        return z
+
+    def pts2(r):
+        return [(float(r["c"][0] + r["rad"][k] * dirs2[k][0]), float(r["c"][1] + r["rad"][k] * dirs2[k][1])) for k in range(N)]
+    coat_tube = []
+    for j, r in enumerate(rings):
+        z2 = zmap(r["z"])
+        if j <= jt:
+            P = []
+            for i in range(jt + 1):
+                if rings[i]["z"] >= z2 - 1e-9 or z2 < hem3:
+                    P += pts2(rings[i])
+            h = _hull(P)
+            xs, ys = [q[0] for q in h], [q[1] for q in h]
+            c2 = ((min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2)
+            rad = [_ray(h, c2, math.atan2(dirs2[k][1], dirs2[k][0])) + padF for k in range(N)]
+            c3 = np.array([c2[0], c2[1], z2])
+        else:
+            rad = [x + padF for x in r["rad"]]
+            c3 = np.array(r["c"], dtype=float)
+        coat_tube.append({"z": z2, "c": c3, "u": F_AX, "w": L_AX, "rad": rad})
+    # 소매 — 긴 웃옷 재단의 시트 소매 표(짧은 소매면 여 재단과 같은 식으로 손목까지 늘린다) · 링 자리 = 본 옷 링 수 그대로
+    #   (긴팔 = 본 옷 자리 · 짧은 소매 링 셋 = 위 끝 · 팔꿈치 · 손목) · 반지름 = 본 옷과 같은 식(팔 점 + 시트 여유) · 팔꿈치 아래는 아래로 안 좁아진다(늘어짐) · + 두께
+    slv_long = list(slv)
+    if cut["sleeve"] != "long":
+        e_last = (slv[-1][1] - arm_at(slv[-1][0])[0], slv[-1][2] - arm_at(slv[-1][0])[1])
+        for r in S["ARM_R"]:
+            if zL1 - 1e-9 <= r[0] < slv[-1][0]:
+                slv_long.append((r[0], r[1] * S["LIMB_K"] + e_last[0], r[2] * S["LIMB_K"] + e_last[1]))
+    asc = sorted(slv_long)
+    nr = len(slv)                                                    # ★`n`(몸 점 수)과 다른 이름 — 덮어쓰면 아래 몸 무리가 앞 몇 점만 된다(실측: 웃옷 무리 3점 · 묶기가 머리로)
+    if cut["sleeve"] == "long":
+        zs_list = [r[0] for r in slv]
+    elif nr == 3:
+        zs_list = [slv[0][0], zU1, slv_long[-1][0]]                   # 위 끝 · 팔꿈치 · 손목(긴 재단 소매 끝 링 — 여 긴팔과 같은 끝)
+    else:
+        raise SystemExit(f"[clothes] ★{sex} 짧은 소매 링이 {nr} — 갖옷 긴팔(위 끝 · 팔꿈치 · 손목)로 못 편다")
+    tab_c = [(zs,) + _interp_rings(asc, zs, (1, 2)) for zs in zs_list]
+    coat_slv = {}
+    for side in ("L", "R"):
+        rs = sleeve_rings(side, tab_c)
+        for j in range(1, len(rs)):
+            if rs[j]["zs"] < zU1 - 1e-12:                               # 팔꿈치 아래 — 위 링보다 안 좁아진다(방향마다 큰 쪽)
+                rs[j]["rad"] = [max(a, b) for a, b in zip(rs[j]["rad"], rs[j - 1]["rad"])]
+        for r in rs:
+            r["rad"] = [x + padF for x in r["rad"]]
+        coat_slv[side] = rs
+    coat_info = {"cut": {"hem": "knee", "sleeve": "long"}, "drapeTop": jt, "drapeTopZ": round(rings[jt]["z"], 5), "hem3": round(coat_tube[0]["z"], 5),
+                 "sleeveRings": [round(r["zs"], 4) for r in coat_slv["L"]], "pad": round(padF, 6)}
+
     # ── ④ 메시 — 관 · 소매 둘 · 띠 (네모 면만 · 열린 관) · UV(칸 안 고른 결 밀도) · 점 무리 ───────────────────────
     def perim(r):
         P = _ring_pts(r)
@@ -481,6 +555,7 @@ def make(sex, base, rig, outdir, cell_px, pad_px, ClothesService, log=print):
     def length(rs):
         return float(sum(np.linalg.norm(b["c"] - a["c"]) for a, b in zip(rs, rs[1:])))
     isl = [("tube", rings), ("slvL", sleeves["L"]), ("slvR", sleeves["R"]), ("belt", belt)]
+    isl_coat = [("tube", coat_tube), ("slvL", coat_slv["L"]), ("slvR", coat_slv["R"]), ("belt", [dict(r) for r in belt])]   # [T708 ③] 같은 차례 · 같은 링 수
     dims = {nm: (max(perim(r) for r in rs), length(rs)) for nm, rs in isl}
     Wpx, Hpx = cell_px[0] - 2 * pad_px, cell_px[1] - 2 * pad_px            # 칸 안쪽(번짐 막이 뺀) — export `remap_uv` 와 같은 자
     rows = [["tube"], ["slvL", "slvR"], ["belt"]]
@@ -499,17 +574,13 @@ def make(sex, base, rig, outdir, cell_px, pad_px, ClothesService, log=print):
     trim = (place["belt"][1] / Hpx, (place["belt"][1] + dims["belt"][1] * dpx) / Hpx)
 
     def build(variant):
-        padm = K * S["FUR_PAD"] if variant == "fur" else 0.0     # [T685] 갖옷 묶기 재료 = T604 갖옷 판 식 그대로(둘레 + 두께)
-        V, Fc, UV, grp, D = [], [], [], [], []
-        for nm, rs in isl:
+        V, Fc, UV, grp = [], [], [], []
+        for nm, rs in (isl_coat if variant == "fur" else isl):      # [T708 ③] 갖옷 = 따로 지은 겉옷 링(두께는 링에 이미 든다)
             base_i = len(V)
             x0, y0 = place[nm]
             acc = 0.0
             for j, r in enumerate(rs):
-                rr = dict(r)
-                rr["rad"] = [x + padm for x in r["rad"]]
-                V += _ring_pts(rr)
-                D += _ring_pts(dict(r, c=np.zeros(3), rad=[1.0] * N))  # ★[T654] 털 두께 방향 = 링 평면의 바깥 단위 벡터(ⓔ 갖옷 = 둘레 + 두께 — T604 갖옷 기하가 민 방향 그대로)
+                V += _ring_pts(r)
                 if nm == "tube":
                     g = "t604_upper" if r["z"] > hip3 else "helper-skirt"
                 elif nm == "belt":
@@ -523,9 +594,8 @@ def make(sex, base, rig, outdir, cell_px, pad_px, ClothesService, log=print):
             if nm.startswith("slv"):                                  # 소매 위 끝 뚜껑 — 가운데 점 + 네모 여덟(겉 = 어깨 쪽 · 감김을 거꾸로)
                 ci = len(V)
                 V.append(rs[0]["c"])
-                D.append(np.zeros(3))                                  # 뚜껑 가운데는 둘레가 아니다 — 두께 0(T604 갖옷 판도 안 밀었다)
                 grp.append(f"t604_arm{nm[-1]}")
-                cr = sum(rs[0]["rad"]) / N + padm
+                cr = sum(rs[0]["rad"]) / N
                 cu = (x0 + dims[nm][0] * dpx / 2, y0 + dims[nm][1] * dpx - cr * dpx)   # 섬 안 작은 원(결이 되풀이되니 겹쳐도 같다)
                 for k in range(0, N, 2):
                     q = [base_i + (k + d) % N for d in (2, 1, 0)]
@@ -562,13 +632,15 @@ def make(sex, base, rig, outdir, cell_px, pad_px, ClothesService, log=print):
             by.setdefault(g, []).append(i)
         for g, idx in by.items():
             ob.vertex_groups[g].add(idx, 1.0, "REPLACE")
-        return ob, len(Fc) * 2, V, D
+        return ob, len(Fc) * 2, V
 
     # ── ⑤ 몸 무리(묶을 자리) — 몸 메시에 잠깐 세운다 · 옷 점은 제 무리의 가장 가까운 몸 면에 묶인다 ─────────────────
     groups = {"t604_upper": [i for i in range(n) if upper[i]]}
     for side in ("L", "R"):
         groups[f"t604_arm{side}"] = [i for i, (sd, s) in par.items() if sd == side and s >= s_top and Bd.dom[i] in ("LeftArm", "RightArm")]
         groups[f"t604_farm{side}"] = [i for i, (sd, s) in par.items() if sd == side and Bd.dom[i] in ("LeftForeArm", "RightForeArm")]
+    if len(groups["t604_upper"]) < 1000 or len(co) != n:
+        raise SystemExit(f"[clothes] ★{sex} 웃옷 몸 무리가 {len(groups['t604_upper'])}점 — 몸 점 수 {n}/{len(co)}")
     made = []
     for g, idx in groups.items():
         vg = base.vertex_groups.new(name=g)
@@ -577,7 +649,8 @@ def make(sex, base, rig, outdir, cell_px, pad_px, ClothesService, log=print):
     os.makedirs(outdir, exist_ok=True)
     out = {"info": {"rings": len(rings), "inserted": inserted, "bumped": bumped, "sheetRings": len(srings), "belt": len(belt),
                     "sleeve": len(sleeves["L"]), "K": round(K, 6), "hem3": round(rings[0]["z"], 5),
-                    "hemS": srings[0][0], "trimV": [round(trim[0], 6), round(trim[1], 6)], "cut": dict(cut)}}
+                    "hemS": srings[0][0], "trimV": [round(trim[0], 6), round(trim[1], 6)], "cut": dict(cut), "coat": coat_info},
+           "pad": float(padF)}
     # ★묶기 = MPFB `ClothesService.create_mhclo_from_clothes_matching` 의 고리 그대로(같은 클래스 · 같은 인자) —
     #   다른 것은 하나: 몸 단면표(`MeshCrossRef` · 몸 19,158점 · 무리 백여 개 — 한 번에 30초)를 미리 한 번 짓는다(MPFB 는 부를 때마다 새로 짓는다 ·
     #   T604 판은 옷 둘이 같이 썼다 · [T654] 기하는 하나).
@@ -589,7 +662,7 @@ def make(sex, base, rig, outdir, cell_px, pad_px, ClothesService, log=print):
     sf = _cm.GeneralObjectProperties.get_value("scale_factor", entity_reference=base)
     have = {g.name for g in base.vertex_groups}
     for variant in VARIANTS:
-        ob, ntri, V, D = build(variant)
+        ob, ntri, V = build(variant)
         bad = [p.index for p in ob.data.polygons if len(p.vertices) != 4]
         ng = [len(v.groups) for v in ob.data.vertices]
         miss = [g.name for g in ob.vertex_groups if g.name not in have]
@@ -614,11 +687,8 @@ def make(sex, base, rig, outdir, cell_px, pad_px, ClothesService, log=print):
         out[variant] = path
         out["info"][f"tris_{variant}"] = ntri
         out["info"][f"verts_{variant}"] = len(ob.data.vertices)
-        # ★[T654] 갖옷 = 이 기하 + 털 두께 방향 × 두께(ⓔ) — 점 차례 = 지은 차례(.obj 점 차례 · 내보내기가 맞대어 잰다)
-        if variant == "base":
-            out["inflate"] = {"dir": [tuple(map(float, d)) for d in D], "pad": float(K * S["FUR_PAD"]), "verts": [tuple(map(float, v)) for v in V]}
-        else:                                                          # [T685] 갖옷 묶기 — 점 차례 = 본 옷과 같다(같은 위상 · 같은 차례)
-            out["furVerts"] = [tuple(map(float, v)) for v in V]
+        # 점 차례 = 지은 차례(.obj 점 차례 · 내보내기가 맞대어 잰다) — [T708 ③] 갖옷(겉옷) 점 차례 = 본 옷과 같다(같은 위상 · 같은 차례)
+        out["baseVerts" if variant == "base" else "furVerts"] = [tuple(map(float, v)) for v in V]
         bpy.data.objects.remove(ob, do_unlink=True)
         log(f"[clothes] {sex} {variant}: 링 관 {len(rings)}(시트 {len(srings)} + 넣음 {inserted} · 민 {bumped}) · 소매 {len(sleeves['L'])} · 띠 {len(belt)} · 삼각형 {ntri} → {os.path.basename(path)}")
     for vg in made:

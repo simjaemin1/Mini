@@ -28,7 +28,8 @@ const OUTJSON = arg('json'), OUTPNG = arg('png'), BGLB = arg('before-glb') && pa
 const [NB, NA] = (arg('names') || 'T604,T654').split(',');
 const TITLE = arg('title') || 'T654 — 3D 옷 메시 사본 0 · 몸마다 메시 하나 + 갖옷 정점 부풀림(셰이더 한 줄) · 같은 자세 · 같은 카메라 전/후';
 const LABEL = arg('label') || `${NB} 갖옷 몸 그대로`;
-if (!BEFORE || !fs.existsSync(path.join(BEFORE, 'public', 'client3d', 'char3d.js'))) {
+// ★[T708] 재는 길(뿌리 띄우기 · 찍기 · 맞대기)은 `module.exports` 로 나눈다 — `t708-body-cmp.js` 가 사본 없이 불러 쓴다(이 파일을 직접 돌릴 때만 아래 본문이 돈다).
+if (require.main === module && (!BEFORE || !fs.existsSync(path.join(BEFORE, 'public', 'client3d', 'char3d.js')))) {
   console.error('쓰는 법: node scripts/t654-mesh-cmp.js --before=<뿌리(public/client3d/char3d.js 가 있는 자리)> [--json=…] [--png=…]');
   process.exit(2);
 }
@@ -131,7 +132,9 @@ function diffImg(A, B) {               // 같은 실루엣·같은 색 = 옅은 
   return o;
 }
 
-(async () => {
+module.exports = { bootCentral, openRoot, snapAll, cmp, hstat, sizes, png, diffImg, cleanup };
+
+if (require.main === module) (async () => {
   const { chromium } = require('playwright');                       // 하네스와 같은 꼴(NODE_PATH)
   const META = JSON.parse(fs.readFileSync(path.join(ROOT, 'public', 'assets', 'char3d', 'char3d_meta.json'), 'utf8'));
   const SEX = ['M', 'F'], KINDS = META.clothKinds, DIRS = [0, 1, 2, 3, 4, 5, 6, 7];

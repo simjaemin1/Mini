@@ -1,5 +1,5 @@
 {
- "_": "[T545 · T604 · T654 · T664 · T685] char_export_gltf.py 산물 — 엔진이 읽는 규약. 클라는 이 수를 하드코딩하지 않는다(갖옷 털 두께는 `bodies.<몸>.inflate`).",
+ "_": "[T545 · T604 · T654 · T664 · T685 · T708] char_export_gltf.py 산물 — 엔진이 읽는 규약. 클라는 이 수를 하드코딩하지 않는다(갖옷 = `coatKind` 재질이 `furOffsetAttr` 를 더한다).",
  "alphaTest": 0.5,
  "atlas": {
   "cells": {
@@ -41,24 +41,43 @@
   "F": {
    "bones": 31,
    "clothes": {
-    "K": 0.879751,
+    "K": 0.882369,
     "belt": 3,
     "bumped": 22,
+    "coat": {
+     "cut": {
+      "hem": "knee",
+      "sleeve": "long"
+     },
+     "drapeTop": 7,
+     "drapeTopZ": 1.11326,
+     "hem3": 0.42127,
+     "pad": 0.026471,
+     "sleeveRings": [
+      1.405,
+      1.3,
+      1.18,
+      1.09,
+      0.99,
+      0.89,
+      0.835
+     ]
+    },
     "cut": {
      "hem": "knee",
      "sleeve": "long"
     },
-    "hem3": 0.41995,
+    "hem3": 0.42127,
     "hemS": 0.46,
     "inserted": 5,
     "mhclo": {
      "base": {
-      "mhclo": "710fa50cdf8afa6f",
-      "obj": "31b0fc5e9ac65b74"
+      "mhclo": "f073acacfce6bc49",
+      "obj": "53c2fddbe15140ae"
      },
      "fur": {
-      "mhclo": "6881c0f5618df03d",
-      "obj": "c6fe96bd64e73591"
+      "mhclo": "d568312a678d8c46",
+      "obj": "8356082c81c1902d"
      }
     },
     "rings": 14,
@@ -66,20 +85,38 @@
     "sleeve": 7,
     "src": "scripts/char_clothes_mhclo.py",
     "trimV": [
-     0.399249,
-     0.418452
+     0.370968,
+     0.391138
     ],
     "tris_base": 896,
     "tris_fur": 896,
     "verts_base": 498,
     "verts_fur": 498
    },
-   "furSkin": {
-    "over4": 92,
-    "verts": 498
+   "coat": {
+    "cut": {
+     "hem": "knee",
+     "sleeve": "long"
+    },
+    "drapeTop": 7,
+    "drapeTopZ": 1.11326,
+    "hem3": 0.42127,
+    "offsetMaxM": 0.06176,
+    "offsetZero": 50,
+    "pad": 0.02824,
+    "sleeveRings": [
+     1.405,
+     1.3,
+     1.18,
+     1.09,
+     0.99,
+     0.89,
+     0.835
+    ]
    },
-   "inflate": {
-    "fur": 0.02824
+   "furSkin": {
+    "over4": 90,
+    "verts": 498
    },
    "mesh": "F_body",
    "node": "F",
@@ -90,7 +127,39 @@
     "proxy": "proxymeshes/female1605/female1605.proxy",
     "skin": "skins/young_asian_female/young_lightskinned_female_diffuse3.png"
    },
-   "scale": 1.070004,
+   "scale": 1.06683,
+   "stand": {
+    "armWindow": [
+     376,
+     533
+    ],
+    "left": {
+     "ankleGap": 0.15196,
+     "armAbd": 1.755,
+     "elbow": 25.87,
+     "knee": 0.0,
+     "thighAbd": -1.0
+    },
+    "legsFrame": 0,
+    "regroundM": 0.004449,
+    "src": "cmu_77_02_stand.bvh",
+    "turned": {
+     "LeftArm": 41.241,
+     "LeftFoot": 0.0,
+     "LeftForeArm": 37.478,
+     "LeftHand": 37.354,
+     "LeftLeg": 5.913,
+     "LeftToeBase": 0.0,
+     "LeftUpLeg": 8.56,
+     "RightArm": 41.241,
+     "RightFoot": 0.0,
+     "RightForeArm": 37.478,
+     "RightHand": 37.354,
+     "RightLeg": 5.913,
+     "RightToeBase": 0.0,
+     "RightUpLeg": 8.56
+    }
+   },
    "tris": 5999,
    "trisParts": {
     "brows": 192,
@@ -103,45 +172,74 @@
   "M": {
    "bones": 31,
    "clothes": {
-    "K": 0.958034,
+    "K": 0.961158,
     "belt": 3,
-    "bumped": 36,
+    "bumped": 33,
+    "coat": {
+     "cut": {
+      "hem": "knee",
+      "sleeve": "long"
+     },
+     "drapeTop": 5,
+     "drapeTopZ": 1.21156,
+     "hem3": 0.45898,
+     "pad": 0.028835,
+     "sleeveRings": [
+      1.405,
+      1.09,
+      0.835
+     ]
+    },
     "cut": {
      "hem": "sheet",
      "sleeve": "short"
     },
-    "hem3": 0.67319,
+    "hem3": 0.6769,
     "hemS": 0.7,
-    "inserted": 6,
+    "inserted": 5,
     "mhclo": {
      "base": {
-      "mhclo": "36023c0376a52c89",
-      "obj": "28f96b782cf68f8c"
+      "mhclo": "c48d63d9f83024c3",
+      "obj": "70a31a3f31713042"
      },
      "fur": {
-      "mhclo": "be7c2aad8ea83d1e",
-      "obj": "d8cddb36678c21a7"
+      "mhclo": "68c876cb7da93b26",
+      "obj": "d5a9cd880727f49b"
      }
     },
-    "rings": 14,
+    "rings": 13,
     "sheetRings": 8,
     "sleeve": 3,
     "src": "scripts/char_clothes_mhclo.py",
     "trimV": [
-     0.601298,
-     0.618596
+     0.584864,
+     0.602943
     ],
-    "tris_base": 640,
-    "tris_fur": 640,
-    "verts_base": 370,
-    "verts_fur": 370
+    "tris_base": 608,
+    "tris_fur": 608,
+    "verts_base": 354,
+    "verts_fur": 354
+   },
+   "coat": {
+    "cut": {
+     "hem": "knee",
+     "sleeve": "long"
+    },
+    "drapeTop": 5,
+    "drapeTopZ": 1.21156,
+    "hem3": 0.45898,
+    "offsetMaxM": 0.33555,
+    "offsetZero": 50,
+    "pad": 0.028243,
+    "sleeveRings": [
+     1.405,
+     1.09,
+     0.835
+    ]
    },
    "furSkin": {
-    "over4": 103,
-    "verts": 370
-   },
-   "inflate": {
-    "fur": 0.028243
+    "over4": 97,
+    "verts": 354
    },
    "mesh": "M_body",
    "node": "M",
@@ -152,13 +250,45 @@
     "proxy": "proxymeshes/male1591/male1591.proxy",
     "skin": "skins/young_asian_male/young_lightskinned_male_diffuse3.png"
    },
-   "scale": 0.982668,
+   "scale": 0.979474,
+   "stand": {
+    "armWindow": [
+     376,
+     533
+    ],
+    "left": {
+     "ankleGap": 0.17625,
+     "armAbd": 1.755,
+     "elbow": 25.87,
+     "knee": 0.0,
+     "thighAbd": -1.0
+    },
+    "legsFrame": 0,
+    "regroundM": 0.00531,
+    "src": "cmu_77_02_stand.bvh",
+    "turned": {
+     "LeftArm": 39.61,
+     "LeftFoot": 0.0,
+     "LeftForeArm": 42.691,
+     "LeftHand": 41.097,
+     "LeftLeg": 6.555,
+     "LeftToeBase": 0.0,
+     "LeftUpLeg": 8.471,
+     "RightArm": 39.61,
+     "RightFoot": 0.0,
+     "RightForeArm": 42.691,
+     "RightHand": 41.097,
+     "RightLeg": 6.555,
+     "RightToeBase": 0.0,
+     "RightUpLeg": 8.471
+    }
+   },
    "tris": 6000,
    "trisParts": {
     "brows": 192,
-    "cloth": 640,
+    "cloth": 608,
     "eyes": 172,
-    "hair": 1856,
+    "hair": 1888,
     "skin": 3140
    }
   }
@@ -219,6 +349,19 @@
    "duration": 0.571429,
    "fps": 14.0,
    "frames": 8,
+   "gait": {
+    "corr": 0.9928,
+    "groundShiftMm": [
+     -1.34,
+     46.96
+    ],
+    "legs": "Fukuchi RK, Fukuchi CA, Duarte M (2017) · doi:10.7717/peerj.3298 · 45 · 28명",
+    "phase0": 0.232,
+    "thighMocapDeg": [
+     -35.09,
+     41.76
+    ]
+   },
    "keys": 32,
    "label": "CMU 09_01 (Subject #9 · run)",
    "loop": true,
@@ -261,6 +404,19 @@
    "duration": 0.8,
    "fps": 10.0,
    "frames": 8,
+   "gait": {
+    "corr": 0.9914,
+    "groundShiftMm": [
+     -2.0,
+     13.49
+    ],
+    "legs": "Fukuchi CA, Fukuchi RK, Duarte M (2018) · doi:10.7717/peerj.4640 · T08 · 23명",
+    "phase0": 0.329,
+    "thighMocapDeg": [
+     -30.93,
+     34.32
+    ]
+   },
    "keys": 32,
    "label": "CMU 07_01 (Subject #7 · walk)",
    "loop": true,
@@ -284,6 +440,8 @@
   "leather",
   "fur"
  ],
+ "coatKind": "fur",
+ "coatNote": "[T708 ③] 옷 → 메시는 하나(옷 넷 = 재질) · 갖옷(`coatKind`) = 따로 지은 겉옷(생성기 — 본 옷과 같은 위상 · 단 무릎 · 긴팔 · 가슴 아래로 떨어지는 천 · 털 두께) — 정점 속성 `_furoffset`(옷 점 = 겉옷 자리 − 본 옷 자리 · m · glTF 축 · 그 밖 0)을 묶기 자세에서 더한 뒤 스키닝(엔진 셰이더 한 줄 — T654~T685 의 몸 부풀림 `_inflate` 를 걷었다) · [T664] 갖옷 면 법선 = 면 속성 `_furnormal`(겉옷의 면 법선 · 그 밖 0 — 갖옷 재질만 바꾼다) · [T685] 갖옷 몫 뼈 넷·무게 넷 = `_furjoints`(glTF 뼈 번호 u8)·`_furweights`(합 1) — 겉옷 기하를 MPFB 로 따로 묶은 무게(내보내기와 같은 규칙) · 갖옷 재질만 스키닝 뼈·무게를 갈아 끼운다 · 사용자 속성 넷 다 glTF 성긴 접근자(바탕 0)",
  "defaultBody": "M",
  "exporter": "io_scene_gltf2 5.0.21",
  "fabric": {
@@ -296,11 +454,10 @@
  "flip": "시트는 굽고 나서 좌우를 뒤집는다(_flip_png) — 엔진은 모델 좌표를 게임 좌표 그대로 놓고(거울 = 행렬식 −1) 같은 그림을 얻는다",
  "furJointsAttr": "_furjoints",
  "furNormalAttr": "_furnormal",
+ "furOffsetAttr": "_furoffset",
  "furWeightsAttr": "_furweights",
  "glb": "char_body.glb",
  "height": 1.6,
- "inflateAttr": "_inflate",
- "inflateNote": "[T654] 옷 → 메시는 하나(옷 넷 = 재질) · 갖옷 = 정점 속성 `_inflate`(옷 점 = 털 두께 방향 단위 벡터 · 살·눈·눈썹·머리 = 0) × `bodies.<몸>.inflate.<옷>`(m · 생성기 `FUR_PAD` × 키 비 × 등배) — 묶기 자세에서 민 뒤 스키닝(엔진 셰이더 한 줄) · [T664] 갖옷 면 법선 = 면 속성 `_furnormal`(민 옷의 면 법선 · 그 밖 0 — 갖옷 재질만 바꾼다) · [T685] 갖옷 몫 뼈 넷·무게 넷 = `_furjoints`(glTF 뼈 번호 u8)·`_furweights`(합 1) — 생성기 갖옷 기하를 MPFB 로 따로 묶은 무게(내보내기와 같은 규칙) · 갖옷 재질만 스키닝 뼈·무게를 갈아 끼운다 · 사용자 속성 넷 다 glTF 성긴 접근자(바탕 0)",
  "keysPerFrame": 4,
  "mpfb": "2.0.17",
  "rig": "MPFB cmu_mb(31뼈 · CMU BVH 관절 이름) — 뼈 이름 앞에 몸 머리('M_'·'F_')",
