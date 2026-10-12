@@ -30,6 +30,75 @@ try {
   console.warn(`[${ZONE_ID}/db] WAL 실패:`, e.message);
 }
 
+// ★★[T696 2026-10-11 · T688 회부 ②] **WAL 체크포인트를 COMMIT 밖으로** — 손잡이 `T696_ROAD_TAIL`(기본 끔 · `1` 켬 · 끔 = 종전 글자 그대로).
+//   종전: 이 연결의 자동 체크포인트(`wal_autocheckpoint` · SQLite 기본 1,000쪽)가 **그 문턱을 넘긴 COMMIT 안에서** 돈다(프레임 옮기기 + fsync 둘).
+//   그래서 길 하루 플러시 묶음 · 장부 · 저장 큐 같은 쓰기가 아무 틱에서나 15~44 ms 를 문다(T688 탐침 — 묶음 크기와 무관).
+//   켬: ① 이 연결의 자동 체크포인트를 끈다(`wal_autocheckpoint = 0`) ② 같은 파일을 연 **일꾼 스레드**(worker_threads · 제 연결)가
+//      `PRAGMA wal_checkpoint(PASSIVE)` 를 돈다 — 쓰는 쪽을 막지 않는 그 모드 ③ 언제 = 틱마다 WAL 머리(`-shm` 의 wal-index 머리 ·
+//      SQLite 문서의 형식 — mxFrame · nBackfill)를 읽어 **옮기지 않은 프레임 ≥ 종전 문턱(이 연결이 읽은 `wal_autocheckpoint` 값)** 이고 일꾼이 쉬고 있으면 부른다.
+//   ⇒ 값(행)은 같다 — 체크포인트는 같은 프레임을 DB 파일로 옮길 뿐이다. 내구성 표는 보고 §2.
+//   ⚠머리 형식이 기대와 다르거나(판 · 쪽 크기) 일꾼이 서지 못하면 자동 체크포인트를 그대로 둔다(= 종전).
+const T696_WAL = process.env.T696_ROAD_TAIL === '1' && process.env.T696_WAL !== '0';
+const _wal = { on: false, n: 0, page: 0, shmFd: null, buf: null, worker: null, busy: false, req: 0, done: 0, ms: 0, maxMs: 0, frames: 0, maxPend: 0, err: 0, last: null };
+function _walHead() {   // wal-index 머리 → { mxFrame, nBackfill } · 못 읽으면 null
+  try {
+    if (_wal.shmFd === null) _wal.shmFd = require('fs').openSync(DB_PATH + '-shm', 'r');
+    const b = _wal.buf || (_wal.buf = Buffer.alloc(136));
+    if (require('fs').readSync(_wal.shmFd, b, 0, 136, 0) < 136) return null;
+    if (b.readUInt32LE(0) !== 3007000) return null;   // iVersion
+    return { mxFrame: b.readUInt32LE(16), nBackfill: b.readUInt32LE(96) };
+  } catch (e) { return null; }
+}
+function _walStart() {
+  if (!T696_WAL || DB_PATH === ':memory:') return;
+  try {
+    const n = db.prepare('PRAGMA wal_autocheckpoint').get().wal_autocheckpoint;
+    const page = db.prepare('PRAGMA page_size').get().page_size;
+    const jm = db.prepare('PRAGMA journal_mode').get().journal_mode;
+    if (!(n > 0) || !(page > 0) || String(jm).toLowerCase() !== 'wal') return;
+    db.exec('BEGIN IMMEDIATE'); db.exec('COMMIT');   // -shm 을 세운다(머리를 읽을 수 있게)
+    if (!_walHead()) { console.warn(`[${ZONE_ID}/db] ★[T696] WAL 머리를 못 읽는다 — 자동 체크포인트 그대로(종전)`); return; }
+    const { Worker } = require('worker_threads');
+    const w = new Worker(`
+      const { parentPort, workerData } = require('worker_threads');
+      const { DatabaseSync } = require('node:sqlite');
+      const d = new DatabaseSync(workerData.path);
+      d.exec('PRAGMA busy_timeout = 5000'); d.exec('PRAGMA synchronous = NORMAL');   // 본 연결과 같은 동기 수준(체크포인트 앞 WAL fsync · 뒤 DB fsync = 종전 자동 체크포인트와 같다)
+      const st = d.prepare('PRAGMA wal_checkpoint(PASSIVE)');
+      const { performance } = require('perf_hooks');
+      parentPort.on('message', (m) => {
+        if (m === 'close') { try { d.close(); } catch (e) {} process.exit(0); }
+        const t0 = performance.now(); let r = null, err = null;
+        try { r = st.get(); } catch (e) { err = e.message; }
+        parentPort.postMessage({ r, err, ms: performance.now() - t0 });
+      });`, { eval: true, workerData: { path: DB_PATH } });
+    w.on('message', (m) => { _wal.busy = false; _wal.done++; _wal.ms += m.ms; if (m.ms > _wal.maxMs) _wal.maxMs = m.ms; _wal.last = m.r; if (m.err) _wal.err++; });
+    w.on('error', (e) => { console.error(`[${ZONE_ID}/db] ★[T696] 체크포인트 일꾼 실패 — 자동 체크포인트로 되돌린다:`, e.message); _walStop(); });
+    w.on('exit', () => { if (_wal.on) _walStop(); });
+    w.unref();
+    _wal.worker = w; _wal.n = n; _wal.page = page;
+    db.exec('PRAGMA wal_autocheckpoint = 0');
+    _wal.on = true;
+    console.log(`[${ZONE_ID}/db] ★[T696] WAL 체크포인트 일꾼 켬 — 자동 체크포인트(${n}쪽) 끔 · 옮기지 않은 프레임 ≥ ${n} 이면 일꾼이 PASSIVE`);
+  } catch (e) { console.warn(`[${ZONE_ID}/db] ★[T696] 일꾼을 못 세웠다 — 자동 체크포인트 그대로:`, e.message); _walStop(); }
+}
+function _walStop() {
+  if (_wal.on) { try { db.exec(`PRAGMA wal_autocheckpoint = ${_wal.n}`); } catch (e) {} }
+  _wal.on = false; _wal.busy = false;
+  if (_wal.worker) { try { _wal.worker.postMessage('close'); } catch (e) {} _wal.worker = null; }
+}
+// 틱마다(존이 부른다) — 옮기지 않은 프레임이 문턱 이상이고 일꾼이 쉬면 체크포인트를 맡긴다
+function walTick() {
+  if (!_wal.on || _wal.busy) return;
+  const h = _walHead(); if (!h) return;
+  const pend = h.mxFrame - h.nBackfill;
+  if (pend > _wal.maxPend) _wal.maxPend = pend;
+  if (pend < _wal.n) return;
+  _wal.busy = true; _wal.req++; _wal.frames += pend;
+  try { _wal.worker.postMessage('ckpt'); } catch (e) { _wal.busy = false; }
+}
+function walPerf() { return T696_WAL ? { on: _wal.on, n: _wal.n, req: _wal.req, done: _wal.done, busy: _wal.busy, ms: +_wal.ms.toFixed(1), maxMs: +_wal.maxMs.toFixed(2), frames: _wal.frames, maxPend: _wal.maxPend, err: _wal.err, last: _wal.last } : null; }
+
 db.exec(`
   CREATE TABLE IF NOT EXISTS resources (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -650,8 +719,9 @@ function getVillageFarmInCellRect(cx0, cx1, cy0, cy1) { return stmtGetVillageFar
 
 console.log(`[${ZONE_ID}/db] 로컬 zone DB 준비됨: ${DB_PATH}`);
 
+_walStart();   // ★[T696] 표를 다 세운 뒤가 아니어도 된다(체크포인트는 표와 무관)
 module.exports = {
-  db,
+  db, walTick, walPerf,   // ★[T696]
   getResources, insertResource, updateResourceHp, deleteResource,
   getBuildings, getBuildingsInRect, insertBuilding, updateBuildingData, deleteBuilding,
   getMobs, insertMob, updateMobState, deleteMob,
