@@ -84,6 +84,7 @@ const { Quadtree, QuadtreeInc } = require('./quadtree'); // spatial index — O(
 const { ChunkManager, CHUNK_SIZE, generateChunkResources, resourcesAtCell, cellChunksOf, overflowInto, seedGenChunkOf, regrowStageOf, REGROW, generateVillagesForZone, generateCoastlineWaterTiles, RESOURCE_HP_TABLE, GROVE_KINDS, forestSpacing: chunkForestSpacing, FOREST_MIN_COV: chunkForestMinCov } = require('./chunk');   // ★[T325] `resourcesAtCell` — 관측자 무관 색인(T301) 그대로. 나무꾼이 청크 없이 나무를 묻는다 // ★[T124] 재생 정산은 T122 정본을 그대로 받는다(사본 0) // 청크 단위 entity 분류 + procedural + 해안선 + ★[T108] 자연물 hp 정본
 const { findPath: pfFindPath } = require('./pathfind'); // Phase 14.49-b: NPC A* pathfinding
 const PathCore = require('../sim/path-core.js'); // ★[생활 층 100% ①] 랩·서버 공용 경로 정본 — smoothPath(스트링 풀링)를 주민 이동에 직결
+if (process.env.T697_DAY_GC === '1') PathCore.setLean(true);   // ★[T697] 손잡이 `T697_DAY_GC=1` — 경로 커널 알뜰 판(같은 답 · 숫자 상자·문자열 열쇠 0 · `sim/path-core.js` 머리). 끔 = 종전 글자
 const { ANIMALS, dropsOf, dropKgOn } = require('./animals');  // Phase 5-6: 동물 mob 36종 catalog · ★[T636] dropsOf = 사체 드롭 정본(끔이면 카탈로그 그대로) · ★[T647] dropKgOn = 사체 고기 먹기 문
 const GuildTreasury = require('./guild-treasury'); // 길드 곳간(물리) ↔ central 금고(회계) 정합 — 장부 계약은 그 파일 상단 참조
 const PlayerItems = require('./player-items'); // 플레이어 아이템 인스턴스(품질·속성·내구) — econ 무접촉·본체 서버층(설계: 플레이어_아이템_속성_설계.md)

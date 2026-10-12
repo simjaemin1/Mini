@@ -93,6 +93,9 @@ function deferLate(now) {
   if (state._t695C) { state._t695C = false;
     if (state.tickJobs) { if (TB.out(TICK_SLICE_MS, 'close')) state._t695Starved = true; else _drainTickJobs(now); } }
 }
+// ★[T697 2026-10-11 · 세션4] 손잡이 `T697_DAY_GC`(기본 끔 · `=1` 켬) — 하루 조각 · 교역로 선계산의 쓰레기를 **같은 값으로** 줄인다(경로 커널 알뜰 판 `PathCore.setLean` ·
+//   지형 선분 거리 `terrain.js` · 사냥꾼 자리 고르기 `m.forEach`). 값·차례 무변 — 끔 = 종전 글자. 보고/T697.
+const T697_DAY_GC = process.env.T697_DAY_GC === '1';
 // ★[T350] 흐름 둘 — 결정마다 클로저를 만들지 않는다(할당 0 · T345).
 //   `_diceLife` = 주민 생활층 결정(순수 해시 · 신원·셀·날·틱) · `_diceVil` = 마을 자리(출생·배치 · 스트림).
 const _diceLife = _makeStream(), _diceVil = _makeStream();
@@ -9959,7 +9962,7 @@ function* _huntHuntersSteps(vil, players, day) {
       let bFree = null, rFree = L_GAMEMAX * 0.15, bAny = null, rAny = L_GAMEMAX * 0.15;
       //   ★[T427 ①] 켜면 같은 순회에서 후보를 **선호 순서 그대로** 모은다(빈 풍부 셀 · 아무 풍부 셀 — 문턱은 위 첫 값 · 새 수 0).
       const _t427 = _t427On(), _thr = rAny, _fr = _t427 ? [] : null, _an = _t427 ? [] : null;
-      for (const [k2, rr] of m) {
+      const _huntScan = (rr, k2) => {   // ★[T697] 종전 고리 몸통 글자 그대로 — 켬 = `m.forEach`(같은 차례 · [키, 값] 배열 0) · 끔 = 종전 `for…of`
         if (rr > rAny) { rAny = rr; bAny = k2; }
         if (_an && rr > _thr) _an.push([k2, rr]);
         if (rr > rFree || (_fr && rr > _thr)) {   // 끄면 `rr > rFree` 하나 — 종전 비트 그대로
@@ -9969,7 +9972,8 @@ function* _huntHuntersSteps(vil, players, day) {
           if (!occ && rr > rFree) { rFree = rr; bFree = k2; }
           if (!occ && _fr) _fr.push([k2, rr]);
         }
-      }
+      };
+      if (T697_DAY_GC) m.forEach(_huntScan); else for (const [k2, rr] of m) _huntScan(rr, k2);
       let b = bFree || bAny, _home = null;
       //   ★[T427 ①] 고른 셀이 집에서 **안 닿으면** 같은 선호(빈 셀 먼저 · 풍부도 내림 · 동률은 종전 순회 순서 — 안정 정렬)로 닿는 첫 셀.
       //     전부 안 닿으면 **현장은 집**이다 — 사냥 장부(`_huntWk`)는 종전 셀 그대로 둔다(헤드리스 값 무변 · 값은 회부 · 보고 표).
