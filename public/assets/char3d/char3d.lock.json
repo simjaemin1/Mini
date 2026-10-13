@@ -1,5 +1,5 @@
 {
- "_": "[T545 · T604 · T654 · T664 · T685] char3d 잠금 — 값 = 파일 sha1 앞 16자(바이트가 자산). 입력 지문이 바뀌면 다시 굽는다. 원본은 저장소 밖(`~/Mini/_3d_in/`).",
+ "_": "[T545 · T604 · T654 · T664 · T685 · T708] char3d 잠금 — 값 = 파일 sha1 앞 16자(바이트가 자산). 입력 지문이 바뀌면 다시 굽는다. 원본은 저장소 밖(`~/Mini/_3d_in/`).",
  "_기계": "pip bpy 5.0.1 · io_scene_gltf2 5.0.21 · MPFB 2.0.17",
  "_입력": {
   "add-on-mpfb-v2.0.17.zip": "078ecdb514eb8f23",
@@ -7,6 +7,7 @@
   "ambientcg/Fabric036/Fabric036_1K-JPG_Color.jpg": "2cd6c1c956a523e3",
   "ambientcg/Fabric061/Fabric061_1K-JPG_Color.jpg": "5d9ef9c93d9f1dab",
   "ambientcg/Leather028/Leather028_1K-JPG_Color.jpg": "55144e0d83608e40",
+  "assets-src/gait/gait_norms.json": "4abb31cb0958dbf9",
   "assets-src/mocap/cmu_07_01_walk.bvh": "55bc411e432a73e9",
   "assets-src/mocap/cmu_09_01_run.bvh": "1558a0fb5ab56279",
   "assets-src/mocap/cmu_113_24_throw.bvh": "f7cd82b78eb49d0b",
@@ -24,24 +25,24 @@
   "makehuman_system_assets/proxymeshes/male1591/male1591.proxy": "d4820809da0ada43",
   "makehuman_system_assets/skins/young_asian_female/young_lightskinned_female_diffuse3.png": "a9162978ca6c1210",
   "makehuman_system_assets/skins/young_asian_male/young_lightskinned_male_diffuse3.png": "bee08ca22401a57e",
-  "scripts/char_clothes_mhclo.py": "a4b4a672d74d0a09",
-  "scripts/char_export_gltf.py": "eb9fe5550dc64b9a",
+  "scripts/char_clothes_mhclo.py": "7fa49c22a7b07db3",
+  "scripts/char_export_gltf.py": "828a35326b2ea256",
   "scripts/char_render.py": "ec8ba1259fe207be",
   "scripts/mocap_retarget.py": "28fae298e7077ebb",
   "scripts/render_common.py": "030520b536163a5b"
  },
  "char3d": {
-  "char3d_meta.json": "2d23e472d82c3cc0",
-  "char_body.glb": "e776beb2dd461bf3",
+  "char3d_meta.json": "1c90f888fcb3f3f9",
+  "char_body.glb": "96fa53c0c6aa69ed",
   "tex/f_alpha.png": "590d92966d8bb26d",
-  "tex/f_fur.jpg": "8384d5feb98d1c03",
-  "tex/f_hemp.jpg": "af28a928e673c1dc",
-  "tex/f_leather.jpg": "047c1877ab2d8aa7",
-  "tex/f_ramie.jpg": "09b295fbcfe72e0e",
+  "tex/f_fur.jpg": "8ce43b8433027153",
+  "tex/f_hemp.jpg": "4408890ef77d42fa",
+  "tex/f_leather.jpg": "e2bdd2b0a77b1373",
+  "tex/f_ramie.jpg": "5873e894ae3a065e",
   "tex/m_alpha.png": "9bd349a1e7383bc8",
-  "tex/m_fur.jpg": "6c0d3e0a9bde1432",
-  "tex/m_hemp.jpg": "b95eadea7533bf50",
-  "tex/m_leather.jpg": "4c034f6921011206",
-  "tex/m_ramie.jpg": "d4dc50802b3bed75"
+  "tex/m_fur.jpg": "b79d1c02e5bf3bec",
+  "tex/m_hemp.jpg": "e1638dd08b59e91a",
+  "tex/m_leather.jpg": "9957a5c66a2f587b",
+  "tex/m_ramie.jpg": "9253ff100a87b4fe"
  }
 }

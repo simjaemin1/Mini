@@ -4,8 +4,8 @@
 //   끄면(기본) 요청조차 안 간다 — 시트 경로 비트 동일 · 화소 동일.
 // ★[T545] 소체 = MPFB(MakeHuman · CC0) 실사풍 저폴리 몸 — 몸마다 **메시 하나 · 재질 하나**(옷까지 한 메시 · 아틀라스 한 장).
 //   [T604] 옷 기하 = 청동기 옷(시트 링 표 → `char_clothes_mhclo.py`) · [T654] 몸마다 메시 **하나**(T604 의 갖옷 몸 사본을 걷었다) —
-//   옷 넷 = 재질(아틀라스) · 갖옷 털 두께 = 정점 속성 `_inflate`(옷 점 = 털 두께 방향) × 메타 `bodies.<몸>.inflate.fur` — 셰이더 한 줄(`inflate`) · [T664] 갖옷 음영 = 면 속성 `_furnormal`(민 옷의 면 법선) ·
-//   [T685] 갖옷 스키닝 = 갖옷 몫 뼈·무게(`_furjoints`·`_furweights` — 따로 묶은 갖옷 무게) · 사용자 속성 넷 다 성긴 접근자.
+//   옷 넷 = 재질(아틀라스) · [T708 ③] 갖옷 = 따로 지은 겉옷 — 정점 속성 `_furoffset`(옷 점 = 겉옷 자리 − 본 옷 자리) — 셰이더 한 줄(`coat`) · [T664] 갖옷 음영 = 면 속성 `_furnormal`(겉옷의 면 법선) ·
+//   [T685] 갖옷 스키닝 = 갖옷 몫 뼈·무게(`_furjoints`·`_furweights` — 따로 묶은 겉옷 무게) · 사용자 속성 넷 다 성긴 접근자 · [T708 ①] 묶기 자세 = 팔 내린 선 자세 · ② 걷기·달리기 다리 = 열린 보행 자료.
 //   몸 파일 하나(`char_body.glb`)에 몸 둘(M·F) · 몸마다 클립 다섯(CMU 모캡 리타깃) — 메타가 규약이다(`char3d_meta.json`).
 //   재질 = 아틀라스(옷 넷 — 삼베·모시·가죽·갖옷 · 몸마다 넉 장) + 알파 한 장(머리·눈썹 · `alphaMap`) · 빛은 이 파일이 건다(④).
 // ★그리는 자리 = **시트가 그리던 그 자리**다 — `drawCharSprite` 의 층 고리에서 'body' 층 자리에 3D 타일 한 장을 찍는다
@@ -55,24 +55,23 @@
   let E0 = 0, A0 = 0;                      // 한낮 태양 고도·방위(시트 굽기 · Blender 축)
 
   function fail(why) { api.ready = false; api.why = why; }
-  // ★[T654] 갖옷 털 두께 — 같은 메시의 옷 점을 털 두께 방향(정점 속성 · 그 밖 점은 0)으로 두께(m)만큼 **묶기 자세에서** 민 뒤 스키닝한다.
-  //   방향 = 생성기가 둘레에 두께를 더하던 방향(T604 갖옷 기하 그대로) · 두께 = 메타 `bodies.<몸>.inflate.<옷>` · 하네스 그림도 이 함수를 부른다(사본 0).
-  //   [T664] 음영 = 민 옷의 면 법선(면 속성 `furNormalAttr` · 0 아닌 점만 — 살·눈·눈썹·머리는 제 법선 그대로) — 법선도 한 줄.
-  //   [T685] 스키닝 = 갖옷 몫 뼈 넷·무게 넷(`furJointsAttr`·`furWeightsAttr` · 무게가 0 아닌 점만 — 옛 갖옷 몸이 따로 묶여 움직이던 그 무게)로 갈아 끼운다.
-  function inflate(mat, pad, attr, nattr, jattr, wattr) {
-    const A = attr || meta.inflateAttr, N = nattr || meta.furNormalAttr, JN = jattr || meta.furJointsAttr, W = wattr || meta.furWeightsAttr;
+  // ★[T708 ③] 갖옷 = **따로 지은 겉옷** — 같은 메시의 옷 점을 겉옷 자리(정점 속성 `furOffsetAttr` = 겉옷 자리 − 본 옷 자리 · m · 그 밖 점 0)로 **묶기 자세에서** 옮긴 뒤 스키닝한다
+  //   (T654~T685 의 몸 부풀림 — 털 두께 방향 × 두께 — 을 걷었다 · 겉옷 꼴 = 생성기: 단 무릎 · 긴팔 · 가슴 아래로 떨어지는 천 · 털 두께). 하네스 그림도 이 함수를 부른다(사본 0).
+  //   [T664] 음영 = 겉옷의 면 법선(면 속성 `furNormalAttr` · 0 아닌 점만 — 살·눈·눈썹·머리는 제 법선 그대로) — 법선도 한 줄.
+  //   [T685] 스키닝 = 갖옷 몫 뼈 넷·무게 넷(`furJointsAttr`·`furWeightsAttr` · 무게가 0 아닌 점만 — 겉옷을 따로 묶은 그 무게)로 갈아 끼운다.
+  function coat(mat, attr, nattr, jattr, wattr) {
+    const A = attr || meta.furOffsetAttr, N = nattr || meta.furNormalAttr, JN = jattr || meta.furJointsAttr, W = wattr || meta.furWeightsAttr;
     mat.onBeforeCompile = (sh) => {
-      sh.uniforms.inflatePad = { value: pad };
       sh.vertexShader = sh.vertexShader
-        .replace('#include <common>', `#include <common>\nattribute vec3 ${A};\nattribute vec3 ${N};\nattribute vec4 ${JN};\nattribute vec4 ${W};\nuniform float inflatePad;`)
+        .replace('#include <common>', `#include <common>\nattribute vec3 ${A};\nattribute vec3 ${N};\nattribute vec4 ${JN};\nattribute vec4 ${W};`)
         .replace('#include <beginnormal_vertex>', `#include <beginnormal_vertex>\n\tif ( dot( ${N}, ${N} ) > 0.0 ) objectNormal = ${N};`)   // ← [T664] 갖옷 면 법선
         .replace('#include <skinbase_vertex>', `#ifdef USE_SKINNING\n\tbool furSkin = dot( ${W}, ${W} ) > 0.0;\n\tvec4 furSkinIndex = furSkin ? ${JN} : skinIndex;\n\tvec4 furSkinWeight = furSkin ? ${W} : skinWeight;\n#define skinIndex furSkinIndex\n#define skinWeight furSkinWeight\n#endif\n\t#include <skinbase_vertex>`)   // ← [T685] 갖옷 몫 뼈·무게
-        .replace('#include <begin_vertex>', `#include <begin_vertex>\n\ttransformed += ${A} * inflatePad;`);   // ← 그 한 줄
+        .replace('#include <begin_vertex>', `#include <begin_vertex>\n\ttransformed += ${A};`);   // ← [T708] 겉옷 자리
     };
-    mat.customProgramCacheKey = () => 'inflate:' + A + ':' + N + ':' + JN + ':' + W;
+    mat.customProgramCacheKey = () => 'coat:' + A + ':' + N + ':' + JN + ':' + W;
     return mat;
   }
-  api.inflate = inflate;
+  api.coat = coat;
   function cm() { return (typeof charMeta === 'function') ? charMeta() : null; }
   // ★게임엔 성별 칸이 없다(서버가 안 보낸다 — 회부) ⇒ 모두 기본 몸(`defaultBody`) · 하네스·그림만 `api.sex` 로 고른다(추측 0)
   function sexOf() { return (api.sex && CLIP[api.sex]) ? api.sex : meta.defaultBody; }
@@ -376,7 +375,7 @@
     for (const [q, v] of vis) q.root.visible = v;
     if (o.scale) b.model.scale.set(1, meta.zsq, -1);
     b.root.visible = false; b.clip = null;                     // 판 파이프라인 무접촉 — 타일은 받침(stg)에서 오고 재는 판은 WebGL 판만 쓴다
-    return { w: fw, h: fh, ax, ay, calls, wrist: [+wr[0].toFixed(2), +wr[1].toFixed(2)],
+    return { w: fw, h: fh, ax, ay, calls, wrist: [+wr[0].toFixed(4), +wr[1].toFixed(4)],   // [T708] 넷째 자리 — 둘째 자리로 끊으면 하네스 기대값(정수 반올림)이 경계(−1.504)에서 뒤집혔다
              feet: [+((fp[0][0] + fp[1][0]) / 2).toFixed(2), +((fp[0][1] + fp[1][1]) / 2).toFixed(2)],
              low: o.geo ? +low.toFixed(4) : null, top: o.geo ? +top.toFixed(4) : null, data: Array.from(g.getImageData(0, 0, fw, fh).data) };
   };
@@ -411,14 +410,13 @@
     const sky = new T.Color(meta.sky[0], meta.sky[1], meta.sky[2]);
     hemi = new T.HemisphereLight(sky, sky, Math.PI * meta.skyStrength);
     scene.add(hemi);
-    // ── 재질: 몸마다 옷마다 하나(아틀라스 한 장 + 알파 한 장 · 거칠기 = 옷 본천 `CLOTH_MATS`) · [T654] 갖옷은 털 두께만큼 부풀린다 ──
+    // ── 재질: 몸마다 옷마다 하나(아틀라스 한 장 + 알파 한 장 · 거칠기 = 옷 본천 `CLOTH_MATS`) · [T708 ③] 갖옷(`coatKind`) 재질만 겉옷 자리로 옮긴다 ──
     for (const sex of Object.keys(tex)) {
       MAT[sex] = {};
-      const inf = meta.bodies[sex].inflate || {};
       for (const k of meta.clothKinds) {
         MAT[sex][k] = new T.MeshStandardMaterial({ map: tex[sex][k], alphaMap: tex[sex].alpha, alphaTest: meta.alphaTest,
                                                    roughness: meta.roughness[k], metalness: 0, side: T.DoubleSide });
-        if (inf[k] > 0) inflate(MAT[sex][k], inf[k]);
+        if (k === meta.coatKind) coat(MAT[sex][k]);
       }
     }
     KINDS = new Set(meta.clothKinds);

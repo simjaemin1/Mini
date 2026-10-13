@@ -8,20 +8,26 @@
 #      매크로는 MPFB 기본값 그대로(나이·근육·체중·비율 0.5)에 성별 둘 · 인종 asian 1.0 — 프록시(저폴리 몸)는 MakeHuman
 #      시스템 자산의 `male1591`·`female1605` · 눈 `low-poly` · 눈썹 `eyebrow001` · 머리 `ponytail01`(남)·`braid01`(여) ·
 #      ★[T604 ②] 옷 기하 = **청동기 옷**(`char_clothes_mhclo.py` — 시트 `char_render.py` 의 링 표를 3D 몸에 입혀 MPFB `mhclo` 로 묶는다 ·
-#      남 = 시트 그대로(옷자락 단 · 반팔 · 허리띠) · 여 = 무릎 단 · 긴팔 · 허리띠) — ★[T654] 옷 기하 하나(옷 넷이 같이 · 갖옷 털 두께는
-#      정점 속성 `_inflate` = 털 두께 방향(옷 점만 · 생성기가 둘레에 두께를 더하던 방향) × 메타 `bodies.<몸>.inflate.fur`(m) — 엔진 셰이더 한 줄 ·
-#      [T664] 면 속성 `_furnormal` = 민 옷의 면 법선(갖옷 재질의 음영) · [T685] 점 속성 `_furjoints`·`_furweights` = 갖옷 몫 뼈 넷·무게 넷
-#      (생성기 갖옷 기하 — T604 판 그대로 — 를 MPFB 로 따로 묶은 무게 · 그리지 않는다) · 사용자 속성 넷 다 glb 뒷손질로 성긴 접근자).
+#      남 = 시트 그대로(옷자락 단 · 반팔 · 허리띠) · 여 = 무릎 단 · 긴팔 · 허리띠) — ★[T654] 옷 기하 하나(옷 넷이 같이) ·
+#      ★[T708 ③] 갖옷 = **따로 지은 겉옷**(생성기 — 본 옷과 같은 위상 · 단 무릎 · 긴 소매 · 가슴 아래로 곧게 떨어지는 천 + 털 두께) —
+#      정점 속성 `_furoffset`(옷 점 = 겉옷 자리 − 본 옷 자리 · m · glTF 축 · 그 밖 0)을 엔진 셰이더가 묶기 자세에서 더한다
+#      (T654~T685 의 몸 부풀림 `_inflate` 를 걷었다) · [T664] 면 속성 `_furnormal` = 겉옷의 면 법선(갖옷 재질의 음영) ·
+#      [T685] 점 속성 `_furjoints`·`_furweights` = 갖옷 몫 뼈 넷·무게 넷(겉옷 기하를 MPFB 로 따로 묶은 무게 · 그리지 않는다) ·
+#      사용자 속성 넷 다 glb 뒷손질로 성긴 접근자).
+#      ★[T708 ①] 묶기 자세 = **팔 내린 선 자세**(MPFB 쉼 A 자 → 다리 = BVH 0번 판 · 팔 = 서기 창 평균 · 좌우 대칭 — `stand_pose`) — 옷 넷 맞춤·뼈 무게는 이 자세에서.
 #      T545 의 CC0 현대 옷(`male_casualsuit04`·`female_elegantsuit01`)은 더 안 읽는다.
 #      키 = 1.60m(카드 "키 160cm 안팎" · 하네스 "사람 1.6m ↔ px") — 몸 맨 위(정수리)를 1.60m 에 맞추는 등배 한 번.
 #      삼각형 = 한 몸 6,000 안(카드 "2~6k") — 살·눈·눈썹은 그대로 · [T604] 옷은 지은 그대로(링 표가 정한 수 · 남는 몫의 반 안이어야 한다) ·
 #      나머지를 머리에(넘치면 축약 `Decimate`).
 #   ② 리그 = MPFB 기본 리그 `cmu_mb`(31뼈 · 이름이 CMU BVH 관절과 같다) · 모션 = **CMU 모캡 리타깃**(코드 흔들기 0):
 #      원본·창 규칙은 시트 굽기와 **같은 것**을 읽는다(`assets-src/mocap/*.bvh` · `mocap_retarget.py` 의 CLIPS·window_of — 사본 0).
-#      리타깃 = 관절 월드 회전(BVH **0번 판**(변환기가 넣은 T자 보정 판) 대비) + **쉼 자세 보정**(팔다리만 — BVH 는 T자 · MPFB 는 A자) ·
+#      리타깃 = 관절 월드 회전(BVH **0번 판**(변환기가 넣은 T자 보정 판) 대비) + **쉼 자세 보정**(팔다리만 — BVH 는 T자 · MPFB 는 A자 —
+#      [T708 ①] 묶기 자세가 선 자세로 바뀌어도 보정은 옛 A 자 뼈 방향·틀(`align`)로 — 클립의 뼈 월드 회전은 그대로) ·
 #      제자리(걷기·달리기 = 엉덩이 원점 · 서서 하는 클립 = 열쇠마다 두 발목 가운데 원점) · 접지(발 관절의 가장 낮은 높이 = 쉼 자세의 그 높이).
+#      ★[T708 ②] 걷기·달리기의 **다리(엉덩이·무릎·발목)** = 열린 보행 자료의 평균 주기(`assets-src/gait/gait_norms.json` · `scripts/gait_norms.py` —
+#      Fukuchi 2018 걷기 · 2017 달리기 · CC BY 4.0) — 위상만 모캡 넓적다리에 맞추고(상관) · 윗몸은 모캡 그대로 · 접지 = 열쇠마다 살 가장 낮은 점 = 0.
 #   ③ 무늬 = 아틀라스 한 장(1024² 이하 · 카드) — 몸마다 **그리는 메시 하나 · 재질 하나**(족보 487 "몸마다 메시 하나·재질 아틀라스"):
-#      ★[T654] 몸마다 메시 **하나**(T604 판의 갖옷 몸 `<몸>_fur` — 살·눈·눈썹·머리 사본 — 을 걷었다) · 옷 넷 = 재질(아틀라스) · 갖옷 = 셰이더 부풀림.
+#      ★[T654] 몸마다 메시 **하나**(T604 판의 갖옷 몸 `<몸>_fur` — 살·눈·눈썹·머리 사본 — 을 걷었다) · 옷 넷 = 재질(아틀라스) · 갖옷 = 셰이더가 겉옷 자리로([T708] `_furoffset`).
 #      피부 = MakeHuman `young_asian_*`(CC0) · 눈 `brown` · 눈썹 · 머리(밝기 = 원판 · 빛깔 = 시트 정본 `char_render.py` 'hair') ·
 #      옷 넷(삼베·모시·가죽·갖옷) = ambientCG(CC0) 사진의 결 × `render_common.CLOTH_MATS` 의 본천 색 ·
 #      ★[T604] 허리띠 섬(옷 칸 안 가로 띠)만 본천 × `CLOTH_TRIM_K`(시트 허리끈 `hemp2` 와 같은 비).
@@ -187,6 +193,146 @@ def gltf_min_influence():
     return float(m[0])
 
 
+# ── ⓪′ [T708 ①] 묶기 자세 = 팔 내린 선 자세 ─────────────────────────────────────────────────────────────
+#   MPFB 쉼 자세는 A 자다(위팔 벌림 41° · 팔꿈치 굽힘 46° · 무릎 굽힘 6° · 발목 사이 0.36 — 프로브 실측) — 옷을 이 자세에서 맞추니 그림의 '쉼'이
+#   팔 벌린 사람이었다(재민 10-11). ⇒ 옷을 맞추기 **전에** 기본 메시·뼈대의 쉼 자세를 바꾼다(몸 메시 교체 0 — 같은 MPFB 몸을 자세만):
+#     다리(넓적다리·정강이) = BVH **0번 판**(곧게 선 다리 — 클립 리타깃의 기준 자세와 같은 판) · 팔(위팔·아래팔) = 서기 클립(`idle2`) 창의 **평균 방향**(좌우 평균 —
+#     사람이 서서 팔을 내린 자료) · 손 = 아래팔 방향(손목 곧게 — `idle2` 리타깃도 손목 0°) · 발·발끝 = MPFB 쉼 그대로(발바닥이 땅에 평평) ·
+#     몸통·목·머리·빗장·엉덩관절 = MPFB 그대로(손대지 않는다). 새 수 0 — 방향은 자료에서 · 손댈 뼈는 리타깃의 팔다리 사슬(`LIMB`).
+#   굳히기 = 그 자세로 평가한 기본 메시 자리를 메시에 쓰고(모양 열쇠는 섞인 꼴 그대로 굳힌다) 뼈대 쉼 자세를 그 자세로(`armature_apply`) · 발바닥(살 가장 낮은 점)을 0 에 다시 세운다.
+#   ★리타깃은 **옛 쉼 자세(A 자)의 뼈 방향·틀로** 맞춘다(`align`) — 클립의 뼈 월드 회전이 이 판 앞과 같다(쉼 자세는 옷·무게 묶기에만 든다).
+def _bvh_dirs_engine(path, frames):
+    """BVH 판들에서 팔다리 마디 방향(엔진 축 — 앞·왼·위 · 판마다 엉덩이 방위를 빼고) — {마디: (왼쪽, 오른쪽)} 의 판 목록."""
+    nodes, order, fr, _dt = MR.parse_bvh(path)
+    I = {nd["name"]: i for i, nd in enumerate(nodes)}
+    out = []
+    for fi in frames:
+        pos = MR.fk(nodes, order, fr[fi])
+        E = {n: Vector((pos[I[n]][2], pos[I[n]][0], pos[I[n]][1])) for n in I}   # BVH(x 왼 · y 위 · z 앞) → 엔진(앞 · 왼 · 위) — mocap_retarget 머리 주석의 실측 축
+        left = E["LeftUpLeg"] - E["RightUpLeg"]
+        left.z = 0.0
+        left.normalize()
+        Hn = Matrix(((left.y, -left.x, 0.0), (left.x, left.y, 0.0), (0.0, 0.0, 1.0)))   # 엉덩이 방위를 앞(+x)으로
+        d = lambda a, b: (Hn @ (E[b] - E[a])).normalized()
+        out.append({"UpLeg": (d("LeftUpLeg", "LeftLeg"), d("RightUpLeg", "RightLeg")), "Leg": (d("LeftLeg", "LeftFoot"), d("RightLeg", "RightFoot")),
+                    "Arm": (d("LeftArm", "LeftForeArm"), d("RightArm", "RightForeArm")), "ForeArm": (d("LeftForeArm", "LeftHand"), d("RightForeArm", "RightHand"))})
+    return out
+
+
+def stand_targets():
+    """[T708 ①] 선 자세 목표 방향(엔진 축 · 왼쪽 몸 — 오른쪽은 거울) — 다리 = BVH 0번 판 · 팔 = 서기 창 평균(좌우 평균) · 손 = 아래팔."""
+    spec = next(c for c in MR.CLIPS if c[0] == "idle2")
+    name, fn, label, nf, fps, loop, rule, bone = spec
+    path = os.path.join(MOCAP, fn)
+    INPUTS["assets-src/mocap/" + fn] = sha16(path)
+    nodes, order, frames, dt = MR.parse_bvh(path)
+    start, period = MR.window_of(nodes, order, frames, rule, bone, int(round(nf / fps / dt)), loop)
+    mir = lambda v: Vector((v.x, -v.y, v.z))
+    f0 = _bvh_dirs_engine(path, [0])[0]
+    win = _bvh_dirs_engine(path, range(start, start + period))
+    tg = {}
+    for k in ("UpLeg", "Leg"):
+        tg[k] = ((f0[k][0] + mir(f0[k][1])) / 2).normalized()
+    for k in ("Arm", "ForeArm"):
+        s = Vector((0.0, 0.0, 0.0))
+        for q in win:
+            s += q[k][0] + mir(q[k][1])
+        tg[k] = s.normalized()
+    tg["Hand"] = tg["ForeArm"].copy()
+    return tg, {"src": fn, "legsFrame": 0, "armWindow": [int(start), int(period)]}
+
+
+def stand_pose(base, rig):
+    """[T708 ①] MPFB 쉼(A 자) → 팔 내린 선 자세로 기본 메시·뼈대를 굳힌다. 돌려주는 것: (옛 쉼의 뼈 방향·틀 — 리타깃 맞춤, 자세 표)."""
+    tg, src_info = stand_targets()
+    E2M = Matrix(((0.0, 1.0, 0.0), (-1.0, 0.0, 0.0), (0.0, 0.0, 1.0)))   # 엔진(앞 · 왼 · 위) → MPFB(+x 왼 · −y 앞 · +z 위)
+    bones = rig.data.bones
+    old = {b.name: ((b.tail_local - b.head_local).normalized(), b.matrix_local.to_3x3().normalized()) for b in bones}
+    want = {}
+    for side, sg in (("Left", 1.0), ("Right", -1.0)):
+        for k in ("UpLeg", "Leg", "Arm", "ForeArm", "Hand"):
+            v = tg[k]
+            want[side + k] = (E2M @ Vector((v.x, sg * v.y, v.z))).normalized()
+        for k in ("Foot", "ToeBase"):
+            want[side + k] = "rest"                      # 발바닥 평평 — 쉼의 월드 틀 그대로
+    order_b = [b for b in bones if b.parent is None]
+    i = 0
+    while i < len(order_b):
+        order_b.extend(order_b[i].children)
+        i += 1
+    if any(n not in bones for n in want):
+        raise SystemExit(f"[char3d] ★선 자세 뼈가 리그에 없다: {[n for n in want if n not in bones]}")
+    bpy.context.view_layer.update()
+    for b in order_b:
+        if b.name not in want:
+            continue
+        pb = rig.pose.bones[b.name]
+        Mc = pb.matrix.copy()
+        if want[b.name] == "rest":
+            R3 = b.matrix_local.to_3x3().normalized()
+        else:
+            cur = (Mc.to_3x3().normalized() @ Vector((0.0, 1.0, 0.0))).normalized()
+            R3 = cur.rotation_difference(want[b.name]).to_matrix() @ Mc.to_3x3().normalized()
+        pb.matrix = Matrix.Translation(Mc.translation) @ R3.to_4x4()
+        bpy.context.view_layer.update()
+    # 굳히기 — 가리개(MASK)를 끄고 평가한 자리(모양 열쇠 섞임 + 뼈대 자세)를 메시에 쓴다
+    masks = [m for m in base.modifiers if m.type == "MASK"]
+    was = [m.show_viewport for m in masks]
+    for m in masks:
+        m.show_viewport = False
+    dg = bpy.context.evaluated_depsgraph_get()
+    ev = base.evaluated_get(dg)
+    me = ev.to_mesh()
+    co = [v.co.copy() for v in me.vertices]
+    ev.to_mesh_clear()
+    if len(co) != len(base.data.vertices):
+        raise SystemExit("[char3d] ★선 자세 평가 점 수가 기본 메시와 다르다")
+    if base.data.shape_keys:
+        base.shape_key_clear()
+    for v, c in zip(base.data.vertices, co):
+        v.co = c
+    base.data.update()
+    bpy.context.view_layer.objects.active = rig
+    with bpy.context.temp_override(active_object=rig, object=rig, selected_objects=[rig], selected_editable_objects=[rig]):
+        bpy.ops.object.mode_set(mode="POSE")
+        bpy.ops.pose.armature_apply(selected=False)
+        bpy.ops.object.mode_set(mode="OBJECT")
+    for pb in rig.pose.bones:
+        pb.matrix_basis = Matrix.Identity(4)
+    # 발바닥 다시 세우기 — 살(`body` 무리) 가장 낮은 점 = 0
+    gi = base.vertex_groups["body"].index
+    low = min(v.co.z for v in base.data.vertices if any(g.group == gi for g in v.groups))
+    T = Matrix.Translation((0.0, 0.0, -low))
+    base.data.transform(T)
+    rig.data.transform(T)
+    base.data.update()
+    bpy.context.view_layer.update()
+    dg = bpy.context.evaluated_depsgraph_get()
+    ev = base.evaluated_get(dg)
+    me = ev.to_mesh()
+    err = max((a.co - b.co).length for a, b in zip(me.vertices, base.data.vertices)) if len(me.vertices) == len(base.data.vertices) else None
+    ev.to_mesh_clear()
+    for m, w in zip(masks, was):
+        m.show_viewport = w
+    if err is None or err > 1e-5:
+        raise SystemExit(f"[char3d] ★선 자세를 굳힌 뒤 뼈대 변형이 단위가 아니다(차 {err}) — 쉼 자세가 안 섰다")
+    def ang(bn):
+        b = bones[bn]
+        return (b.tail_local - b.head_local).normalized()
+    tab = {}
+    for nm, (d0, _B) in old.items():
+        if nm in want:
+            tab[nm] = round(math.degrees(d0.angle(ang(nm))), 3)
+    side = {}
+    for s in ("Left",):
+        ua, fa = ang(s + "Arm"), ang(s + "ForeArm")
+        th, sh = ang(s + "UpLeg"), ang(s + "Leg")
+        side = {"armAbd": round(math.degrees(math.atan2(ua.x, -ua.z)), 3), "elbow": round(math.degrees(ua.angle(fa)), 3),
+                "knee": round(math.degrees(th.angle(sh)), 3), "thighAbd": round(math.degrees(math.atan2(th.x, -th.z)), 3),
+                "ankleGap": round(abs(bones["LeftFoot"].head_local.x - bones["RightFoot"].head_local.x), 5)}
+    return old, dict(src_info, turned=tab, left=side, regroundM=round(-low, 6))
+
+
 # ── ① 소체 — MPFB 로 몸 하나 · 프록시 · 눈 · 눈썹 · 머리 · 옷(기하 둘 — T604 청동기 옷) ──────────────────────
 def build(sex):
     spec = BODIES[sex]
@@ -195,8 +341,10 @@ def build(sex):
     macro["race"] = {"asian": 1.0, "caucasian": 0.0, "african": 0.0}
     base = HS.create_human(macro_detail_dict=macro)
     rig = HS.add_builtin_rig(base, "cmu_mb")
+    # ★[T708 ①] 묶기 자세 = 팔 내린 선 자세(옷·눈·머리·프록시를 다 이 자세에서 맞춘다) — 옛 쉼(A 자)의 뼈 방향·틀은 리타깃 맞춤으로 남긴다
+    alignA, stand = stand_pose(base, rig)
     # ★[T604 ②] 옷 = 시트 링 표 → 이 몸 → MPFB mhclo — 기본 메시(뼈 무게 · 보조 기하)를 읽어 짓는다(무리는 잠깐 세웠다 걷는다)
-    #   [T654] 기하는 하나(옷 넷이 같이) — 갖옷 털 두께는 점마다 방향(`cl["inflate"]`) · 엔진 셰이더가 민다(메시 사본 0)
+    #   [T654] 기하는 하나(옷 넷이 같이) — [T708 ③] 갖옷 = 같은 위상의 따로 지은 겉옷(`cl["fur"]`) · 엔진 셰이더가 그 자리로 옮긴다(메시 사본 0)
     cl = CM.make(sex, base, rig, WORK, CELLS["cloth"][2:], PAD, CS, log=print)
     prox = HS.add_mhclo_asset(src(spec["proxy"]), base, asset_type="Proxymeshes", subdiv_levels=0, material_type="NONE")
     parts = {"skin": prox}
@@ -215,7 +363,7 @@ def build(sex):
             raise SystemExit(f"[char3d] ★{o.name} 의 오브젝트 변환이 단위가 아니다 — 데이터 변환 전제가 깨졌다")
     # ★[T654] 옷 점 차례 = 생성기가 지은 차례인가(털 두께 방향을 점 번호로 싣는다) — 묶어 입힌 점마다 가장 가까운 지은 점이 제 번호여야 한다
     #   [T685] 갖옷 묶기도 같은 검사(점 차례 = 본 옷 차례 — 갖옷 몫 무게를 같은 점 번호로 싣는다)
-    for ob_, made_ in ((parts["cloth"], cl["inflate"]["verts"]), (fur, cl["furVerts"])):
+    for ob_, made_ in ((parts["cloth"], cl["baseVerts"]), (fur, cl["furVerts"])):
         got = np.array([tuple(v.co) for v in ob_.data.vertices], dtype=np.float64)
         made = np.array(made_, dtype=np.float64)
         near = ((got[:, None, :] - made[None, :, :]) ** 2).sum(-1).argmin(1) if len(got) == len(made) else None
@@ -236,7 +384,9 @@ def build(sex):
             FJ[v.index, c], FW[v.index, c] = bi + 1, w
     FW /= FW.sum(axis=1).reshape(-1, 1)                # 내보내기 `primitive_attributes` 와 같은 정규화(float32 · 행마다)
     fur_n = {"verts": nf, "multi": int(sum(len([g for g in v.groups if g.weight > mi]) > 4 for v in fur.data.vertices))}
-    bpy.data.objects.remove(fur, do_unlink=True)       # 갖옷 묶기는 무게만 남기고 버린다(안 그린다 · 사본 0)
+    # ★[T708 ③] 갖옷 자리 = 따로 지은 겉옷을 MPFB 가 입힌 자리 — 본 옷 점과 차례가 같다 ⇒ 점마다 "갖옷 자리 − 본 옷 자리"(MPFB 축 · 등배 앞)
+    OFF = [(vf.co - vb.co).copy() for vf, vb in zip(fur.data.vertices, parts["cloth"].data.vertices)]
+    bpy.data.objects.remove(fur, do_unlink=True)       # 갖옷 묶기는 자리·무게만 남기고 버린다(사본 0)
     # 삼각형 예산: 살·눈·눈썹은 그대로 · 옷은 지은 그대로(링 표가 정한다 — 줄이지 않는다) · 남는 몫을 머리에
     fixed = tris(parts["skin"]) + tris(parts["eyes"]) + tris(parts["brows"])
     left = TRI_BUDGET - fixed
@@ -246,27 +396,31 @@ def build(sex):
     tri["hair"] = decimate(parts["hair"], max(1, left - tri["cloth"]))
     # 축·키: MPFB(−y 앞 · +x 왼쪽) → 엔진 규약(+x 앞 · +y 왼쪽 · T522 "방향 0 = +x") · 정수리 = 1.60m
     top = max(v.co.z for v in parts["skin"].data.vertices)
+    # ★[T708 ①] 키 = **선 자세** 정수리 1.60m(셀 규약 — 하네스 ⓑ "쉼 자세 정수리 × 32 = 51.2px") — 옛 A 자 쉼은 무릎이 6° 굽어 같은 몸이 0.3 % 낮았다
+    #   (등배 0.98267 → 0.97947 · 클립의 뼈 월드 회전은 그대로 · 자리는 등배만큼)
     s = H_PERSON / top
     M = Matrix.Rotation(math.pi / 2, 4, "Z") @ Matrix.Scale(s, 4)
     rig.data.transform(M)
     for o in parts.values():
         o.data.transform(M)
-    # ★[T654] 털 두께 방향 = 정점 속성 `_inflate`(옷 점 = 생성기 방향을 몸과 같이 돌린 단위 벡터 · 살·눈·눈썹·머리 = 0) · 두께 = 생성기 두께 × 등배.
-    #   내보내기는 사용자 속성을 축 바꿈 없이 낸다(io_scene_gltf2 `__get_layer_attribute`) — 위치와 같은 glTF 축(y 위: (x, z, −y))으로 미리 돌려 싣는다.
+    R3m = M.to_3x3().normalized()
+    align = {nm: ((R3m @ d).normalized(), (R3m @ B).normalized()) for nm, (d, B) in alignA.items()}   # [T708 ①] 옛 쉼(A 자) 뼈 방향·틀 — 엔진 축
+    # ★[T708 ③] 갖옷 자리 = 정점 속성 `_furoffset`(옷 점 = 따로 지은 겉옷 자리 − 본 옷 자리 · 몸과 같이 돌리고 등배 · 살·눈·눈썹·머리 = 0) — 엔진이 갖옷 재질에서만 더한다
+    #   (T654~T685 의 `_inflate` 털 두께 방향 × 두께 = 몸 부풀림을 걷었다). 내보내기는 사용자 속성을 축 바꿈 없이 낸다 — glTF 축(y 위: (x, z, −y))으로 미리 돌린다.
     R3 = M.to_3x3().normalized()
+    OFFm = [(R3 @ d) * s for d in OFF]
     for k, o in parts.items():
-        a = o.data.attributes.new("_inflate", "FLOAT_VECTOR", "POINT")
+        a = o.data.attributes.new("_furoffset", "FLOAT_VECTOR", "POINT")
         if k == "cloth":
-            for i, d in enumerate(cl["inflate"]["dir"]):
-                e = R3 @ Vector(d)
+            for i, e in enumerate(OFFm):
                 a.data[i].vector = (e.x, e.z, -e.y)
-    # ★[T664] 갖옷 면 법선 = 옷을 털 두께(메타 값 그대로)만큼 민 기하의 블렌더 면 법선 — T604 갖옷 몸이 평평 음영으로 내던 그 식(면마다 하나) → 면 속성 `_furnormal`
-    #   (살·눈·눈썹·머리 = 0 · 엔진은 갖옷 재질에서만 0 아닌 법선으로 바꾼다 · glTF 축으로 미리 돌린다) — 민 자리는 재고 바로 되돌린다(점 바이트 그대로).
-    pad = round(s * cl["inflate"]["pad"], 6)
+    # ★[T664 → T708] 갖옷 면 법선 = 겉옷 자리(본 옷 + `_furoffset`)의 블렌더 면 법선(면마다 하나 — 본 옷과 같은 평평 음영) → 면 속성 `_furnormal`
+    #   (살·눈·눈썹·머리 = 0 · 엔진은 갖옷 재질에서만 0 아닌 법선으로 바꾼다 · glTF 축으로 미리 돌린다) — 옮긴 자리는 재고 바로 되돌린다(점 바이트 그대로).
+    pad = round(s * cl["pad"], 6)
     me = parts["cloth"].data
     rest = [v.co.copy() for v in me.vertices]
-    for v, d in zip(me.vertices, cl["inflate"]["dir"]):
-        v.co = v.co + (R3 @ Vector(d)) * pad
+    for v, e in zip(me.vertices, OFFm):
+        v.co = v.co + e
     me.update()
     fn = [p.normal.copy() for p in me.polygons]
     for v, c in zip(me.vertices, rest):
@@ -291,7 +445,9 @@ def build(sex):
             aj.data.foreach_set("color", z)
             aw.data.foreach_set("color", z)
     bpy.context.view_layer.update()
-    return rig, parts, cl, {"scale": round(s, 6), "topM": round(top, 6), "tris": tri, "inflate": {"fur": pad}, "furWeights": fur_n}
+    offn = [e.length for e in OFFm]
+    coat = dict(cl["info"]["coat"], pad=pad, offsetMaxM=round(max(offn), 5), offsetZero=int(sum(1 for x in offn if x == 0.0)))
+    return rig, parts, cl, {"scale": round(s, 6), "topM": round(top, 6), "tris": tri, "coat": coat, "furWeights": fur_n, "stand": stand, "align": align}
 
 
 # ── ③ 아틀라스 — 칸마다 원본 무늬를 붙이고 UV 를 그 칸으로 옮긴다 ─────────────────────────────────
@@ -455,8 +611,21 @@ def bvh_end_sites(path):
     return ends
 
 
-def retarget_clip(rig, prefix, clip_name, spec, sheet):
-    """한 클립을 액션 하나로. 열쇠 k 의 시각 = k(판 단위 · 장면 fps 1 — 내보내기가 열쇠 사이를 다시 뜨지 않게)."""
+def _cyc(curve, ph):
+    """101점 주기 표(0 = 100 %)를 위상 ph(0~1)에서 곧게 보간."""
+    x = (ph % 1.0) * 100.0
+    i = min(99, int(math.floor(x)))
+    f = x - i
+    return curve[i] * (1 - f) + curve[i + 1] * f
+
+
+def retarget_clip(rig, prefix, clip_name, spec, sheet, align, gait=None, body=None):
+    """한 클립을 액션 하나로. 열쇠 k 의 시각 = k(판 단위 · 장면 fps 1 — 내보내기가 열쇠 사이를 다시 뜨지 않게).
+    ★[T708 ①] `align` = 옛 쉼(MPFB A 자)의 뼈 방향·틀(엔진 축) — 쉼 보정 Q 와 월드 회전은 이것으로 짓는다(클립의 뼈 월드 회전 = 이 판 앞과 같다) ·
+      관절 자리·지역 회전(L)은 새 쉼(선 자세)으로 — 묶기 자세가 바뀌어도 움직임은 그대로다.
+    ★[T708 ②] `gait` = 열린 보행 자료의 다리 마디 땅 기준 시상각(`assets-src/gait/gait_norms.json` — 넓적다리 · 정강이 · 발) — 걷기·달리기의
+      다리(넓적다리 · 정강이 · 발 · 발끝)를 그 각으로 세운다(윗몸은 모캡 그대로) · 위상 = 모캡 왼 넓적다리 각과 자료 넓적다리 각의 상관이 가장 큰 자리 ·
+      오른 다리 = 반 주기 뒤 · 접지 = 그 열쇠의 살 가장 낮은 점(`body` 평가)을 쉼의 발바닥(0)에."""
     name, fn, label, nf, fps, loop, rule, bone = spec
     path = os.path.join(MOCAP, fn)
     INPUTS["assets-src/mocap/" + fn] = sha16(path)
@@ -517,7 +686,7 @@ def retarget_clip(rig, prefix, clip_name, spec, sheet):
         else:
             v = target(j, None)
         if v is not None and v.length > 1e-6:
-            Q[b.name] = (b.tail_local - b.head_local).normalized().rotation_difference((C_B2O @ v).normalized()).to_matrix()
+            Q[b.name] = align[nm][0].rotation_difference((C_B2O @ v).normalized()).to_matrix()
         else:
             Q[b.name] = Q[b.parent.name].copy() if b.parent else Matrix.Identity(3)
     W0o = {ni: C_B2O @ W0[ni] @ C_B2O.transposed() for ni in W0}
@@ -537,13 +706,59 @@ def retarget_clip(rig, prefix, clip_name, spec, sheet):
         f = Wh @ Vector((1, 0, 0))
         sx += f.x; sy += f.y
     H = Matrix.Rotation(-math.atan2(sy, sx), 3, "Z")
+    gi = None
+    if gait:
+        # ★[T708 ②] 위상 맞추기 — 모캡 왼 넓적다리의 땅 기준 시상각(열쇠마다) ↔ 자료 넓적다리 각(φ0 + k/K) — 상관이 가장 큰 φ0(1/1000 격자 · 결정적)
+        th_m = []
+        for k in range(K):
+            t = start + period * k / float(K)
+            P = MR.fk(nodes, order, frames[min(len(frames) - 1, int(round(t)))])
+            d = H @ (C_B2O @ (Vector(P[J["LeftLeg"]]) - Vector(P[J["LeftUpLeg"]])))
+            th_m.append(math.degrees(math.atan2(d.x, -d.z)))
+        thm = np.array(th_m) - np.mean(th_m)
+        best = None
+        for q in range(1000):
+            c = np.array([_cyc(gait["thigh"], q / 1000.0 + k / float(K)) for k in range(K)])
+            c = c - c.mean()
+            r = float(thm @ c / (np.linalg.norm(thm) * np.linalg.norm(c)))
+            if best is None or r > best[1]:
+                best = (q / 1000.0, r)
+        ph0 = best[0]
+        Ry = lambda deg: Matrix.Rotation(-math.radians(deg), 3, "Y")      # 앞으로 + (아래 → 앞 · 엔진 +y = 왼쪽 축)
+        vert = {}
+        for side in ("Left", "Right"):
+            for part in ("UpLeg", "Leg"):
+                vert[side + part] = Q[prefix + side + part] @ align[side + part][1]      # 0번 판 = 곧게 선 다리(수직)
+        gi = {"phase0": ph0, "corr": round(best[1], 4), "thighMocap": [round(min(th_m), 2), round(max(th_m), 2)]}
+        # 접지 재료 — 정강이·발·발끝에 무게가 있는 살 점(쉼 자리 · 뼈 무게 합 1 로)
+        legb = {prefix + sd + pt for sd in ("Left", "Right") for pt in ("Leg", "Foot", "ToeBase")}
+        gname = {g.index: g.name for g in body.vertex_groups}
+        feet_skin = []
+        for v in body.data.vertices:
+            ws = [(gname[g.group], g.weight) for g in v.groups if gname[g.group] in rest and g.weight > 0]
+            if any(n in legb for n, _w in ws):
+                tot = sum(w for _n, w in ws)
+                feet_skin.append((Vector((v.co.x, v.co.y, v.co.z, 1.0)), [(n, w / tot) for n, w in ws]))
+        if not feet_skin:
+            raise SystemExit(f"[char3d] ★{prefix} 정강이·발 살 점이 없다 — 접지를 못 잰다")
 
-    def locals_at(fi, ctr=(0.0, 0.0)):
+        def legs_at(kk):
+            out = {}
+            for side, off in (("Left", 0.0), ("Right", 0.5)):
+                ph = ph0 + kk / float(K) + off
+                a_t, a_s, a_f = (_cyc(gait[c], ph) for c in ("thigh", "shank", "foot"))
+                out[prefix + side + "UpLeg"] = Ry(a_t) @ vert[side + "UpLeg"]
+                out[prefix + side + "Leg"] = Ry(a_s) @ vert[side + "Leg"]
+                out[prefix + side + "Foot"] = Ry(a_f) @ align[side + "Foot"][1]          # 발 0 = 쉼의 평평한 발바닥(MPFB 선 발 · 선 자세에서도 그대로)
+                out[prefix + side + "ToeBase"] = Ry(a_f) @ align[side + "ToeBase"][1]
+            return out
+
+    def locals_at(fi, ctr=(0.0, 0.0), legs=None):
         W = pose_at(fi)
         Mp = {}
         for b in order_b:
             nm = b.name[len(prefix):]
-            T = H @ W[J[RENAME_BVH.get(nm, nm)]] @ corr[b.name] @ rest[b.name].to_3x3()
+            T = legs[b.name] if (legs and b.name in legs) else H @ W[J[RENAME_BVH.get(nm, nm)]] @ corr[b.name] @ align[nm][1]
             if b.parent is None:
                 head = rest[b.name].translation.copy()
             else:
@@ -582,7 +797,8 @@ def retarget_clip(rig, prefix, clip_name, spec, sheet):
         if feet_ctr:
             m0, m1 = locals_at(i0)[1], locals_at(i1)[1]
             ctr = (m0[0] * (1 - w) + m1[0] * w, m0[1] * (1 - w) + m1[1] * w)
-        L0, L1 = locals_at(i0, ctr)[0], locals_at(i1, ctr)[0]
+        legs = legs_at(kk) if gait else None
+        L0, L1 = locals_at(i0, ctr, legs)[0], locals_at(i1, ctr, legs)[0]
         for b in order_b:
             pb = rig.pose.bones[b.name]
             pb.rotation_mode = "QUATERNION"
@@ -592,9 +808,25 @@ def retarget_clip(rig, prefix, clip_name, spec, sheet):
                 q.negate()
             prev[b.name] = q.copy()
             pb.rotation_quaternion = q
-            pb.keyframe_insert("rotation_quaternion", frame=k)
             if b.parent is None:
                 pb.location = L0[b.name].translation.lerp(L1[b.name].translation, w)
+        if gait:                                       # ★[T708 ②] 접지 = 이 열쇠 살 가장 낮은 점 → 0(쉼 발바닥) — 발뒤꿈치로 닿는 열쇠(관절은 발 속)도 땅 위
+            #   살 자리는 직접 스키닝해 잰다(뼈대 변형 = 열쇠의 뼈 행렬 · 쉼 역행렬 · 무게 — 블렌더 뼈대 모디파이어와 같은 식) — 장면 평가(depsgraph)는
+            #   이미 실린 NLA 트랙(앞 클립)을 같이 돌려 이 열쇠의 자세를 덮었다(실측: 달리기 0번 열쇠 = 걷기 자세) ⇒ 쓰지 않는다
+            Mw = {}
+            for b in order_b:
+                pb = rig.pose.bones[b.name]
+                Lb = Matrix.Translation(pb.location) @ pb.rotation_quaternion.to_matrix().to_4x4()
+                Mw[b.name] = (rest[b.name] @ Lb) if b.parent is None else (Mw[b.parent.name] @ rest[b.parent.name].inverted() @ rest[b.name] @ Lb)
+            D = {n: Mw[n] @ rest[n].inverted() for n in Mw}
+            lowz = min(sum(wt * (D[bn] @ co).z for bn, wt in ws) for co, ws in feet_skin)
+            rb = order_b[0]
+            rig.pose.bones[rb.name].location = rig.pose.bones[rb.name].location + rest[rb.name].to_3x3().transposed() @ Vector((0.0, 0.0, -lowz))
+            gi.setdefault("lowSkinBefore", []).append(round(lowz, 5))
+        for b in order_b:
+            pb = rig.pose.bones[b.name]
+            pb.keyframe_insert("rotation_quaternion", frame=k)
+            if b.parent is None:
                 pb.keyframe_insert("location", frame=k)
     for fc in getattr(act, "fcurves", []):
         for kp in fc.keyframe_points:
@@ -608,7 +840,9 @@ def retarget_clip(rig, prefix, clip_name, spec, sheet):
         pb.location = (0, 0, 0)
     return {"frames": nf, "fps": fps, "loop": bool(loop), "keys": K, "span": K if loop else K - 1,
             "duration": round((nf if loop else max(1, nf - 1)) / fps, 6), "src": fn, "label": label,
-            "window": [int(start), int(period)], "rule": rule, "sheet": sheet, "center": "feet" if feet_ctr else "hips"}
+            "window": [int(start), int(period)], "rule": rule, "sheet": sheet, "center": "feet" if feet_ctr else "hips",
+            **({"gait": {"legs": gait["src"], "phase0": gi["phase0"], "corr": gi["corr"], "thighMocapDeg": gi["thighMocap"],
+                         "groundShiftMm": [round(-1000 * max(gi["lowSkinBefore"]), 2), round(-1000 * min(gi["lowSkinBefore"]), 2)]}} if gait else {})}
 
 
 # ── 판 ─────────────────────────────────────────────────────────────────────────────────────
@@ -630,6 +864,12 @@ for c in MOCAP_CLIPS:                                  # ★시트 표와 판·�
     if not sh or sh[0] != c[3] or sh[1] != c[5] or abs(sh[2] - c[4]) > 1e-9:
         raise SystemExit(f"[char3d] ★모캡 표와 시트 표가 갈렸다: {c[0]} {c[3:6]} vs {sh}")
 CLIP_ALIAS = {"idle": "idle2", "aim": "aim2", "swing": "swing2"}   # 3D 는 모캡판 하나 — 손 포즈판 셋은 같은 뜻의 모캡판으로 선다
+# ★[T708 ②] 걷기·달리기 다리 = 열린 보행 자료의 평균 주기(`scripts/gait_norms.py` 산물 · 커밋 표 — 읽기만) · 그 밖 클립은 모캡 그대로
+GAIT_PATH = os.path.join(ROOT, "assets-src", "gait", "gait_norms.json")
+_gn = json.load(open(GAIT_PATH, encoding="utf-8"))
+INPUTS["assets-src/gait/gait_norms.json"] = sha16(GAIT_PATH)
+GAIT = {c: dict(_gn[c], src=f"{_gn['sources'][c]['cite'].split(')')[0]}) · doi:{_gn['sources'][c]['doi']} · {_gn[c]['cond']} · {_gn[c]['n']}명")
+        for c in ("walk", "run")}
 scene = bpy.context.scene
 scene.render.fps = 1                                   # ★열쇠 시각 = 판 번호(T539 클립 파일과 같은 문법 — 내보내기가 장면 fps 로 다시 뜬다)
 scene.render.fps_base = 1.0
@@ -655,7 +895,7 @@ for sex in ("M", "F"):
     atl, alpha = build_atlases(sex, cl["info"]["trimV"])
     for kind, o in parts.items():
         remap_uv(o, CELLS[kind])
-    # ★[T654] 몸 하나 = 살·눈·눈썹·머리·옷(옷 넷이 같이 — 갖옷 털 두께는 정점 속성 `_inflate` · 셰이더) — 사본 0
+    # ★[T654] 몸 하나 = 살·눈·눈썹·머리·옷(옷 넷이 같이 — [T708] 갖옷 겉옷 자리는 정점 속성 `_furoffset` · 셰이더) — 사본 0
     body = _join([parts["skin"], parts["eyes"], parts["brows"], parts["hair"], parts["cloth"]], f"{sex}_body")
     for b in rig.data.bones:                           # 뼈 이름에 몸 머리(두 몸이 한 파일 · 이름이 겹치지 않게) — 무게 묶음도 따라 바뀐다
         b.name = f"{sex}_{b.name}"
@@ -666,14 +906,14 @@ for sex in ("M", "F"):
         raise SystemExit(f"[char3d] ★뼈 이름을 바꾼 뒤 무게 묶음이 안 따라왔다: {missing[:5]}")
     clips = {}
     for spec in MOCAP_CLIPS:
-        clips[spec[0]] = retarget_clip(rig, sex + "_", spec[0], spec, SHEET[spec[0]])
+        clips[spec[0]] = retarget_clip(rig, sex + "_", spec[0], spec, SHEET[spec[0]], info["align"], gait=GAIT.get(spec[0]), body=body)
     for kind, im in atl.items():
         im.save(os.path.join(TEXD, f"{sex.lower()}_{kind}.jpg"), quality=88, optimize=False, progressive=False, subsampling=0)
     alpha.save(os.path.join(TEXD, f"{sex.lower()}_alpha.png"), optimize=False, compress_level=9)
     info["trisTotal"] = tris(body)
     info["bones"] = len(rig.data.bones)
     built[sex] = {"rig": rig, "body": body, "info": info, "clips": clips, "cl": cl}
-    print(f"[char3d] {sex}: 삼각형 {info['trisTotal']}({info['tris']}) · 뼈 {info['bones']} · 등배 {info['scale']} · 갖옷 두께 {info['inflate']['fur']}m · 클립 {list(clips)}")
+    print(f"[char3d] {sex}: 삼각형 {info['trisTotal']}({info['tris']}) · 뼈 {info['bones']} · 등배 {info['scale']} · 갖옷(겉옷) {json.dumps(info['coat'], ensure_ascii=False)} · 클립 {list(clips)}")
 
 # ── ④ 내보내기 — GLB 하나(두 몸 · 몸마다 메시 하나) ───────────────────────────────────────────
 bpy.ops.object.select_all(action="DESELECT")
@@ -686,16 +926,16 @@ opts = dict(filepath=GLB, export_format="GLB", use_selection=True, export_yup=Tr
             export_optimize_animation_size=True, export_optimize_animation_keep_anim_armature=True,   # NLA 는 늘 표본을 뜬다 — 값이 안 변하는 채널은 열쇠 둘로(★False 면 쉼과 다른 상수 회전(엉덩관절·어깨·손가락)까지 버린다 · 실측)
             export_anim_slide_to_zero=False, export_frame_step=1,
             export_materials="NONE", export_normals=True, export_texcoords=True, export_vertex_color="NONE",
-            export_attributes=True,                        # ★[T654] 사용자 속성(밑줄 머리) — `_inflate`(갖옷 털 두께 방향) · [T664] `_furnormal`(갖옷 면 법선) · [T685] `_furjoints`·`_furweights`(갖옷 몫 뼈·무게) 넷만 있다(ⓐ 하네스가 잰다)
+            export_attributes=True,                        # ★사용자 속성(밑줄 머리) — [T708] `_furoffset`(갖옷 겉옷 자리) · [T664] `_furnormal`(갖옷 면 법선) · [T685] `_furjoints`·`_furweights`(갖옷 몫 뼈·무게) 넷만 있다(ⓐ 하네스가 잰다)
             export_all_influences=False, export_cameras=False, export_lights=False, export_extras=False, export_morph=False)
 known = {p.identifier for p in bpy.ops.export_scene.gltf.get_rna_type().properties}
 if "export_attributes" not in known:
-    raise SystemExit("[char3d] ★내보내기에 사용자 속성 손잡이(`export_attributes`)가 없다 — 갖옷 털 두께(`_inflate`)를 못 싣는다")
+    raise SystemExit("[char3d] ★내보내기에 사용자 속성 손잡이(`export_attributes`)가 없다 — 갖옷 겉옷 자리(`_furoffset`)를 못 싣는다")
 bpy.ops.export_scene.gltf(**{k: v for k, v in opts.items() if k in known})
 
 
 # ── ④′ glb 뒷손질 한 단 — [T664] 사용자 속성은 성긴 접근자로 ─────────────────────────────────────
-#   내보내기(io_scene_gltf2)는 사용자 속성을 빽빽이만 쓴다 — `_inflate`·`_furnormal` 은 옷 점만 0 이 아니고 살·눈·눈썹·머리 몫이 다 0 이다.
+#   내보내기(io_scene_gltf2)는 사용자 속성을 빽빽이만 쓴다 — `_furoffset`·`_furnormal`·… 은 옷 점만 0 이 아니고 살·눈·눈썹·머리 몫이 다 0 이다.
 #   glTF 2.0 성긴 접근자(본 = 0 · 0 아닌 줄만 첨자 + 값 · 핵심 규격 — 확장 0)로 고쳐 쓴다. 다른 버퍼 뷰는 바이트 그대로 옮긴다(4바이트 맞춤) · 결정적.
 def sparsify_glb(path, keys, conv=None):
     import struct
@@ -784,7 +1024,7 @@ def _furjoints(mesh, arr, joints):
     return out, ("<u2" if wide else "<u1"), (5123 if wide else 5121)
 
 
-_glb0, _sp = sparsify_glb(GLB, ("_INFLATE", "_FURNORMAL", "_FURJOINTS", "_FURWEIGHTS"), conv={"_FURJOINTS": _furjoints})
+_glb0, _sp = sparsify_glb(GLB, ("_FUROFFSET", "_FURNORMAL", "_FURJOINTS", "_FURWEIGHTS"), conv={"_FURJOINTS": _furjoints})
 print(f"[char3d] ★[T664·T685] 성긴 접근자: glb {_glb0}B → {os.path.getsize(GLB)}B · " + " · ".join(f"접근자 {i} {c}점 중 {k}" for i, (c, k) in sorted(_sp.items())))
 
 # ── ⑤ 메타 — 엔진이 읽는 규약(클라는 수를 안 박는다) ──────────────────────────────────────────
@@ -794,7 +1034,7 @@ for k in ("render_common.py", "mocap_retarget.py", "char_clothes_mhclo.py", "cha
     INPUTS["scripts/" + k] = sha16(os.path.join(HERE, k))
 INPUTS["add-on-mpfb-v2.0.17.zip"] = _zip_sha
 meta = {
-    "_": "[T545 · T604 · T654 · T664 · T685] char_export_gltf.py 산물 — 엔진이 읽는 규약. 클라는 이 수를 하드코딩하지 않는다(갖옷 털 두께는 `bodies.<몸>.inflate`).",
+    "_": "[T545 · T604 · T654 · T664 · T685 · T708] char_export_gltf.py 산물 — 엔진이 읽는 규약. 클라는 이 수를 하드코딩하지 않는다(갖옷 = `coatKind` 재질이 `furOffsetAttr` 를 더한다).",
     "glb": "char_body.glb",
     "units": "1 = 1m = 1셀(32 게임px)",
     "facing": "방향 0 = 모델 +x(Blender) — 시트 행 0 과 같다 · 방향 d = d×45°(연속 회전은 atan2(fy,fx))",
@@ -804,8 +1044,9 @@ meta = {
     "height": H_PERSON,
     "body": "MPFB " + MPFB_VER + " · MakeHuman 시스템 자산(CC0)",
     "bodies": {sex: {"node": sex, "mesh": f"{sex}_body", "tris": v["info"]["trisTotal"], "trisParts": v["info"]["tris"],
-                     "inflate": v["info"]["inflate"],
+                     "coat": v["info"]["coat"],
                      "furSkin": {"verts": v["info"]["furWeights"]["verts"], "over4": v["info"]["furWeights"]["multi"]},
+                     "stand": v["info"]["stand"],
                      "bones": v["info"]["bones"], "scale": v["info"]["scale"],
                      "parts": {"proxy": BODIES[sex]["proxy"], "skin": BODIES[sex]["skin"], "hair": BODIES[sex]["hair"],
                                "eyes": COMMON["eyes"], "brows": COMMON["brows"]},
@@ -822,15 +1063,16 @@ meta = {
     "clipNames": "glTF 애니메이션 이름 = '<몸>.<클립>'(M.walk · F.walk …)",
     "atlas": {"size": ATLAS, "cells": CELLS, "pad": PAD},
     "clothKinds": list(CLOTH_KINDS),
-    "inflateAttr": "_inflate",
+    "coatKind": "fur",
+    "furOffsetAttr": "_furoffset",
     "furNormalAttr": "_furnormal",
     "furJointsAttr": "_furjoints",
     "furWeightsAttr": "_furweights",
-    "inflateNote": "[T654] 옷 → 메시는 하나(옷 넷 = 재질) · 갖옷 = 정점 속성 `_inflate`(옷 점 = 털 두께 방향 단위 벡터 · 살·눈·눈썹·머리 = 0) × "
-                   "`bodies.<몸>.inflate.<옷>`(m · 생성기 `FUR_PAD` × 키 비 × 등배) — 묶기 자세에서 민 뒤 스키닝(엔진 셰이더 한 줄) · "
-                   "[T664] 갖옷 면 법선 = 면 속성 `_furnormal`(민 옷의 면 법선 · 그 밖 0 — 갖옷 재질만 바꾼다) · "
-                   "[T685] 갖옷 몫 뼈 넷·무게 넷 = `_furjoints`(glTF 뼈 번호 u8)·`_furweights`(합 1) — 생성기 갖옷 기하를 MPFB 로 따로 묶은 무게(내보내기와 같은 규칙) · "
-                   "갖옷 재질만 스키닝 뼈·무게를 갈아 끼운다 · 사용자 속성 넷 다 glTF 성긴 접근자(바탕 0)",
+    "coatNote": "[T708 ③] 옷 → 메시는 하나(옷 넷 = 재질) · 갖옷(`coatKind`) = 따로 지은 겉옷(생성기 — 본 옷과 같은 위상 · 단 무릎 · 긴팔 · 가슴 아래로 떨어지는 천 · 털 두께) — "
+                 "정점 속성 `_furoffset`(옷 점 = 겉옷 자리 − 본 옷 자리 · m · glTF 축 · 그 밖 0)을 묶기 자세에서 더한 뒤 스키닝(엔진 셰이더 한 줄 — T654~T685 의 몸 부풀림 `_inflate` 를 걷었다) · "
+                 "[T664] 갖옷 면 법선 = 면 속성 `_furnormal`(겉옷의 면 법선 · 그 밖 0 — 갖옷 재질만 바꾼다) · "
+                 "[T685] 갖옷 몫 뼈 넷·무게 넷 = `_furjoints`(glTF 뼈 번호 u8)·`_furweights`(합 1) — 겉옷 기하를 MPFB 로 따로 묶은 무게(내보내기와 같은 규칙) · "
+                 "갖옷 재질만 스키닝 뼈·무게를 갈아 끼운다 · 사용자 속성 넷 다 glTF 성긴 접근자(바탕 0)",
     "textures": {sex: dict({k: f"tex/{sex.lower()}_{k}.jpg" for k in CLOTH_KINDS}, alpha=f"tex/{sex.lower()}_alpha.png") for sex in built},
     "roughness": {k: rc.CLOTH_MATS[k][1] for k in CLOTH_KINDS},
     "alphaTest": 0.5,
@@ -851,7 +1093,7 @@ outs = {"char_body.glb": sha16(GLB), "char3d_meta.json": sha16(META)}
 for fn in sorted(os.listdir(TEXD)):
     outs["tex/" + fn] = sha16(os.path.join(TEXD, fn))
 lock = {
-    "_": "[T545 · T604 · T654 · T664 · T685] char3d 잠금 — 값 = 파일 sha1 앞 16자(바이트가 자산). 입력 지문이 바뀌면 다시 굽는다. 원본은 저장소 밖(`~/Mini/_3d_in/`).",
+    "_": "[T545 · T604 · T654 · T664 · T685 · T708] char3d 잠금 — 값 = 파일 sha1 앞 16자(바이트가 자산). 입력 지문이 바뀌면 다시 굽는다. 원본은 저장소 밖(`~/Mini/_3d_in/`).",
     "_기계": f"pip bpy {bpy.app.version_string} · {meta['exporter']} · MPFB {MPFB_VER}",
     "_입력": dict(sorted(INPUTS.items())),
     "char3d": outs,

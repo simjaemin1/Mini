@@ -41,6 +41,11 @@
 * **`crickets`(왕귀뚜라미 · 여름·가을 밤) — 공공누리 제1유형 · 출처표시 필요** [T501]
   > 본 저작물은 국립생물자원관이 2020년 작성하여 공공누리 제1유형으로 개방한 '왕귀뚜라미'(한국의 귀뚜라미 소리)를 이용하였으며, 해당 저작물은 공공누리(https://www.kogl.or.kr/recommend/recommendDivView.do?recommendIdx=10524&division=audio)에서 무료로 다운받으실 수 있습니다.
   ⚠이 집 **첫 공공누리 소리**다(국립국악원 BGM 과 같은 틀 — 위 표식 안에 줄을 올리면 알림 스택 셋째 줄이 찬다 · 올릴지는 재민 판정 · 지금은 CC-BY 넷과 같은 `/크레딧` 묶음 회부).
+* **보행 자료 둘(걷기 · 달리기 다리 관절각) — CC BY 4.0 · 표시 필요** [T708]
+  > Fukuchi C, Fukuchi R, Duarte M (2018). A public data set of overground and treadmill walking kinematics and kinetics of healthy individuals. figshare. Dataset. https://doi.org/10.6084/m9.figshare.5722711.v6 — 논문 PeerJ 6:e4640 https://doi.org/10.7717/peerj.4640 — CC BY 4.0
+  > Fukuchi R, Fukuchi C, Duarte M (2017). A public data set of running biomechanics and the effects of running speed on lower extremity kinematics and kinetics. figshare. Dataset. https://doi.org/10.6084/m9.figshare.4543435.v5 — 논문 PeerJ 5:e3298 https://doi.org/10.7717/peerj.3298 — CC BY 4.0
+  바꾼 것: 원자료(저장소 밖)에서 다리 관절각(엉덩이·무릎·발목 · 시상면)을 사람마다·주기마다 평균한 표(`assets-src/gait/gait_norms.json` · `scripts/gait_norms.py`)로 3D 걷기·달리기의 다리를 다시 지었다(`public/assets/char3d/char_body.glb`).
+  ⚠이 집 **첫 CC-BY 자료(소리 밖)**다. 게임 안 알림 스택(3줄) 밖이라 CC-BY 소리들과 같은 `/크레딧` 묶음 회부.
 ## 2. 빌린 것
 
 | 항목 | 무엇을 | 어디에 들어갔나 | 라이선스 | 요구 | 카드 |
@@ -48,6 +53,7 @@
 | **CMU Graphics Lab Motion Capture Database** | 모션 캡처 다섯 클립(07_01 walk · 09_01 run · 80_71 chopping wood · 113_24 Throw · 77_02 standing) | `assets-src/mocap/*.bvh` → 리타깃 포즈표 → `public/assets/char/` 시트 192장 · [T545] 같은 다섯을 MPFB 리그(`cmu_mb`)로 리타깃 → `public/assets/char3d/char_body.glb` 클립 다섯 × 몸 둘 | 연구 자유 · **상업 제품에 포함 가능** · **데이터 자체의 재판매 금지**(변환본도) | **문구**(§1 첫 줄) | T96 · T155 |
 | **cgspeed BVH 변환본** (Bruce Hahne, 2010 "Motionbuilder-friendly BVH conversion release") | 위 CMU 원본(ASF/AMC)을 BVH 로 옮긴 판 | 같은 파일 | 변환자가 **추가 제한을 두지 않는다**("I (Bruce) place no additional restrictions on the use of this particular BVH conversion") | 없음 — CMU 문구로 충분 | T96 |
 | **una-dinosauria/cmu-mocap** (미러) | 위 변환본을 담은 GitHub 사본 — 이 저장소가 실제로 받은 자리(커밋 `09a07f54`) | 같은 파일 | 미러 · 위 둘을 따른다 | 없음 | T96 |
+| **Fukuchi · Fukuchi · Duarte 보행 자료 둘** (걷기 2018 · 달리기 2017) | [T708] 3D 걷기·달리기의 **다리 관절각**(엉덩이·무릎·발목 시상면 — 걷기 = 러닝머신 T08 · 젊은 무리 23명 · 달리기 = 4.5 m/s · 28명)의 평균 주기 | `assets-src/gait/gait_norms.json`(평균 표 · `scripts/gait_norms.py` 산물 · 원자료는 저장소 밖) → `public/assets/char3d/char_body.glb` 걷기·달리기 클립 다리 × 몸 둘(시트 192장은 무접촉 — 모캡 그대로) | **CC BY 4.0** | 표시(§1 아래 줄) | T708 |
 | **국립국악원 국악기 디지털 음원 — 「단음 다운로드」** | 실제 악기 녹음: 산조가야금(원본 21파일 → 조각 262) · 정악가야금 · 정악대금(5파일 → 조각 113) | `public/assets/audio/bgm/*.ogg`·`*.m4a` **13곡**(가야금 음 1574개 · 합성 대체 0) — 12곡이라 적혀 있던 것을 T257 이 고쳤다(`village_day_jeongak` 누락 · T246 발견) | **공공누리 제1유형(출처표시)** — 상업 이용 가능 · 변형 가능 | **문구**(§1 둘째 줄) | 배치 시절(2026-07-29~31) |
 | **npm 실행 의존성 다섯** | `express` 4 · `ws` 8 · `better-sqlite3` 12 · `pngjs` 7 · `acorn` 8 | 서버(`server/`) · 하네스 | 전부 **MIT** (각 패키지 `LICENSE` 실측) | 배포 시 라이선스 전문 동봉 | — |
 | **SQLite** | `better-sqlite3` 가 품고 있는 엔진 | 서버 DB | **퍼블릭 도메인** | 없음 | — |
@@ -233,6 +239,7 @@ MPFB 2.0.17(GPL-3.0-or-later · [T545] 소체 뽑기 — 블렌더 확장 · `ex
 | npm 다섯 | MIT = 라이선스·저작권 표시 동봉 | 지금은 `node_modules` 안에만 있다 | ⚠ 바이너리로 묶어 팔면 **전문 동봉**이 필요하다(소스 배포면 그대로 따라간다) |
 | 폰트 | — | 파일을 안 배포한다 | ✅ 의무 없음 |
 | MPFB(T545) | 코드 GPL-3.0-or-later | 굽는 도구로만 돈다(저장소·배포물에 코드 0) · 배포하는 메시·무늬는 CC0 자산(MakeHuman · ambientCG)에서 나온다 | ✅ 의무 없음(CC0) · 코드를 고쳐 배포하면 GPL — 하지 않는다 |
+| 보행 자료 둘(T708) | CC BY 4.0 = 지은이 표시 · 라이선스 고리 · 바꾼 것 표시 | 원자료는 저장소 밖 · 평균 표와 그것으로 지은 3D 다리 움직임을 배포 · 표시 문장은 §1 아래 줄 | ✅ 상업·변형 모두 허용 · ⚠표시는 `/크레딧` 묶음이 설 때(CC-BY 소리들과 같은 회부) |
 | 효과음 둘(§2-b) | 퍼블릭 도메인 = 조건 없음 | `public/assets/sfx/` 에 배포한다 | ✅ 상업·변형 모두 허용 · 표시 의무 없음 |
 | 출처 미상 둘(§3) | 알 수 없다 | 배포 이미지에는 안 들어간다 | ⚠ 저장소 공개 전 정리 — 재민 |
 
@@ -265,3 +272,4 @@ MPFB 2.0.17(GPL-3.0-or-later · [T545] 소체 뽑기 — 블렌더 확장 · `ex
 * 공공누리 이용조건 — https://www.kogl.or.kr/info/license.do
 * MakeHuman 커뮤니티 — http://www.makehumancommunity.org · MPFB — https://extensions.blender.org/add-ons/mpfb/ · 시스템 자산(CC0) — http://files.makehumancommunity.org
 * ambientCG(CC0) — https://ambientcg.com/view?id=Fabric061 · Fabric036 · Leather028 · Carpet016
+* 보행 자료(CC BY 4.0) — 걷기 https://doi.org/10.6084/m9.figshare.5722711 (논문 https://doi.org/10.7717/peerj.4640) · 달리기 https://doi.org/10.6084/m9.figshare.4543435 (논문 https://doi.org/10.7717/peerj.3298) · 라이선스 https://creativecommons.org/licenses/by/4.0/
