@@ -3104,6 +3104,7 @@ function _t671Shape(p) {
   p._huntWk = undefined; p._fishSpotX = undefined; p._fishSpotY = undefined; p._fishT = undefined; p._t312Ei = undefined; p._t340 = undefined; p._t340N = undefined;
   p._t312Kg = undefined; p._t312U = undefined; p._farmK = undefined; p._lifeTask = undefined;
   p._warPackOf = undefined;   // 전쟁 짐(villages.js `_t671Unpack` — 끔이면 `delete`)
+  p._t724Site = undefined; p._t724T = undefined;   // ★[T724] 광부 몸의 그날 셀 · 선 때(villages.js `_t724BodyStep` — 손잡이 `T724_MINE_ACT` 켬일 때만 값이 든다)
 }
 function spawnNpc(opts = {}) {
   // 위치: opts.x/y 우선, 없으면 zone 내부 랜덤 (클레임 충돌 안 나는 곳)

@@ -3969,7 +3969,15 @@ function _oreMineDaily(vil) {
   const lvlAvg = skillN ? skillSum / skillN : 0;
   vil._mineLvl = +lvlAvg.toFixed(2);
   let consumed = 0;
-  if (nMiner > 0) {
+  // ★★[T724] 켬 · **그날 광부 몸이 친 마을**은 셀을 여기서 안 깎는다 — 몸이 칠 때마다 이미 깎았다(두 번 깎기 0).
+  //   몸이 안 친 마을(헤드리스 · 관측자 없는 마을)은 종전 일괄 그대로다(카드 ③). 숙련(`_mineLvl`)·oFrac 은 그대로 센다(몸의 덩이 kg 가 숙련을 읽는다).
+  //   끄면 `_t724Skip` 은 늘 거짓 — 아래 줄은 종전 그대로(비트 동일).
+  const _t724Skip = !!(_lifeEcon().T724_MINE_ACT && vil.econ && (vil.econ._t724Walk | 0) > 0);
+  if (_lifeEcon().T724_MINE_ACT && nMiner > 0) {   // 계측 전용(켬만) — 그날 몸 XOR 일괄 · 수요 D
+    const P = _t724P(); if (_t724Skip) P.skip++; else P.batch++;
+    if (P.dv.length < 300) P.dv.push([vil.name, _t724Day(_dayNow()), nMiner, _t724Skip ? 1 : 0, +((vil.econ && vil.econ._oreOutLast) || 0).toFixed(4), +(lvlAvg).toFixed(2)]);
+  }
+  if (nMiner > 0 && !_t724Skip) {
     // 2인 1조: 짝(2명)당 셀 하나. 조는 서로 다른 셀에 붙는다(랩 조 단위 분산 동형).
     const teams = Math.max(1, Math.ceil(nMiner / 2));
     for (let t = 0; t < teams; t++) {
@@ -4006,6 +4014,143 @@ function _oreFeedback(vil, oFrac) {
   if (vil._baseOre == null) vil._baseOre = land.ore || 0;
   land.ore = +(vil._baseOre * (ORE_FLOOR + (1 - ORE_FLOOR) * oFrac)).toFixed(2);
 }
+// ★★★[T724 2026-10-13] **채굴 행위 층 — 광부 몸이 셀을 칠 때 재고가 깎이고, 캔 것은 손에 들고 곳간으로.**
+//   재민 10-13: "지금 채굴을 광부가 실제로 캘 때 즉각적으로 재고가 까이는 거 아니었어?" — 아니었다. 몸은 '채광' 표시로 바위에 가서 채집 동작만 하고
+//   셀을 깎는 자리는 하루 정산(`_oreMineDaily`) 하나였다. 물고기(T312) · 나무(T325) · 채집(T347) · 농사(T368)엔 있는 행위 층이 채굴만 없었다.
+//   손잡이 하나 `T724_MINE_ACT`(econ 정본이 쥔다 · 기본 끔 = main 바이트). 켜면:
+//   ① **몸이 친다** — 광부 몸이 제 조의 광맥 셀(`_oreMineDaily` 의 조 · 셀 고르기 그대로: 2인 1조 · 조 t 는 품위 순 목록의 t, t+조수, … 중 덩이가 남은 첫 셀)에
+//      서서 친다. 1타 = `MINE_SWING_MS`(플레이어 서버 쿨다운 그 수) · 선 동안 흐른 시간만큼. 한 타가 깎는 재고 = 1/타수(깊이 → 타수 `mineSwingsNeeded`)
+//      · 한 타가 떼는 kg = 덩이 kg(숙련 → `mineChunkKg(마을 광부 숙련 평균)` — `_oreMineDaily` 가 세는 그 숙련) ÷ 타수. 친 때마다 `oreConsumeAt`.
+//      주사위 0(덩이 산포 · 광석/맥석 추첨은 플레이어 선광 층의 것 — 몸은 평균장을 든다). 캔 것은 **손**(`inventory.ore_chunk` · kg — 플레이어와 같은 칸).
+//   ② **손 → 곳간** — 짐(`carry.js CAP_KG` 25)이 차면 곳간 사다리(`_granGo` · 정산은 `_lifeGranStep` ③ 한 줄) · 곳간이 없는 마을은 퇴근(손은 해 질 녘에).
+//      해 질 녘 남은 손은 경계 손 일괄(`_lifeHandsIn`)의 한 절. 곳간 입구는 econ 정본 `mineToGranary`(수요 문 · 세금 · 장부 다리 — 같은 몸통).
+//      곳간이 안 받은 몫은 **손에 남는다**(T544 꼴 — 소멸 0). econ 단위 = kg ÷ `weights.kgOf('ore')`(정본 · 옮겨 적지 않는다).
+//   ③ 하루 정산 — 그날 몸이 친 마을(`econ._t724Walk` — 경계 손 일괄이 econ 틱 바로 앞에 심는다)은 `_oreMineDaily` 가 셀을 안 깎고(두 번 깎기 0)
+//      econ 은 그 마을 원석을 수식으로 안 낸다(`mineActOn` 게이트). 몸이 안 친 마을은 종전 일괄 그대로다.
+//   ④ 그날 몫이 찼으면(T374 수요 문 — 손 + 오늘 곳간 ≥ 수식이 낼 원석) 퇴근 — 나무꾼 · 채집과 같은 한 줄(`_lifeGoHome(npc, '휴식')`).
+//   새 몸 필드 둘(`_t724Site` · `_t724T`)은 `zone.js _t671Shape` 에 있다. 새 수 0.
+let _specMod = null;
+const _spec = () => { if (_specMod === null) { try { _specMod = require('./specialty'); } catch (e) { _specMod = false; } } return _specMod || null; };
+function _oreKg() { const W = _weights(); return (W && W.kgOf) ? (W.kgOf('ore') || 0) : 0; }   // econ 원석 한 단위 kg(정본 5.00)
+// 계측 전용 누계(켬일 때만 선다 · 회계 아님) — `/perf` 의 `t724`
+function _t724P() {
+  return _probe.t724 || (_probe.t724 = { pulse: 0, sw: 0, kg: 0, cut: 0, bodies: 0, gran: 0, granKg: 0, granU: 0, dusk: 0, duskKg: 0, duskU: 0,
+    keepKg: 0, done: 0, full: 0, noGran: 0, none: 0, repick: 0, skip: 0, batch: 0, walkVd: 0, ns: 0, calls: 0,
+    granH: new Array(24).fill(0), duskDays: 0, firstGran: [], days: [], dv: [], double: 0, walk: 0, wait: 0, vs: {}, nsPick: 0, picks: 0, nsCut: 0 });
+}
+// 그날 그 마을의 광부 몸 명부(명부 순서 = `npcPids` 순서 · 하루 캐시) → 이 몸의 조(2인 1조 · `_oreMineDaily` 의 조 그대로)
+function _t724Team(vil, npc, day) {
+  let R = vil._t724R;
+  if (!R || R.day !== day) {
+    const pl = state.deps.players, ids = [];
+    for (const pid of (vil.npcPids || [])) { const p = pl && pl.get(pid); if (p && p.simJob === 'miner') ids.push(pid); }
+    R = vil._t724R = { day, ids };
+  }
+  const n = R.ids.length || 1, teams = Math.max(1, Math.ceil(n / 2));
+  let i = R.ids.indexOf(npc.pid); if (i < 0) i = _pidHash(npc.pid) % n;
+  return { t: (i >> 1) % teams, teams };
+}
+// 조 t 의 셀 — 품위 순 목록(`_oreCellsOf`)에서 t, t+조수, … 중 덩이가 남은 첫 셀(`_oreMineDaily` 의 그 차례 · 고갈되면 다음 자리로 밀린다)
+//   ⚠"남은" = 재고 ≥ 1(플레이어 채굴의 "다 팠다" 문턱 `rec.s < 1`) — 첫 판(스모크)에서 다 판 셀이 재생으로 0.0001 씩 돋는 자리에 몸이 서서
+//     한 타에 1/타수 대신 재생분만 깎았다(17타에 0.0005 덩이). 일괄은 그런 셀을 `want` 가 남으면 지나간다 — 몸도 지나간다.
+//   ⚠몸은 **닿는** 셀만 고른다 — 다른 현장 직업이 쓰는 그 문(`_t427Reach` · T427 · T562 집에서 닿는 칸 집합 · 손잡이 그대로 · 끄면 묻지 않는다).
+//     일괄은 걸음이 없어 이 문이 없다. 몸은 강 건너 셀 앞에서 하루를 선다(첫 실측 판: 광부 넷 중 둘이 그날 한 타도 못 쳤다).
+//     답이 아직이면(`null` — 결정 예산) 이 틱은 제자리 · 다음 틱에 이어서(T562 ④ 그 규약).
+function _t724Pick(vil, npc, day) {
+  const cells = vil._oreCells, dep = state.deps;
+  if (!cells || !cells.length) return null;
+  const tm = _t724Team(vil, npc, day);
+  const reach = _t427On(), stop = (dep && dep.decBudgetOver) || null;
+  for (let k = tm.t; k < cells.length; k += tm.teams) {
+    const c = cells[k];
+    if (!((dep.oreStockAt(c.cx, c.cy) || 0) >= 1)) continue;   // 덩이 하나 남은 셀(플레이어 `rec.s < 1` = "다 팠다" 그 문턱)
+    const x = c.cx * SZ + SZ / 2, y = c.cy * SZ + SZ / 2;
+    if (reach) { const r = _t427Reach(vil, npc, x, y, day, stop); if (r === null) return { wait: 1, day }; if (!r) continue; }
+    return { k, cx: c.cx, cy: c.cy, x, y, day };
+  }
+  return null;
+}
+// 몸 한 걸음 — 이 틱을 가지면 true. 광맥 목록이 아직 없으면 false(레거시 폴스루 — 종전 채광 그림).
+function _t724BodyStep(vil, npc, now, day) {
+  const dep = state.deps, S = _spec();
+  if (!S || !dep.oreConsumeAt || !dep.oreStockAt || !vil._oreCells || !vil._oreCells.length) return false;
+  const kgU = _oreKg(); if (!(kgU > 0)) return false;
+  const E = _lifeEcon(), P = _t724P();
+  const inv = npc.inventory || (npc.inventory = {});
+  const hand = inv.ore_chunk || 0;
+  const _cc = _carryCfg(), cap = (_cc && _cc.CFG && _cc.CFG.CAP_KG) || 0;
+  //   ④ 수요 문 — 그 마을 손(아직 곳간에 안 든 몫)까지 뺀다(T374 `held` 규약 · 손 합은 몸이 바꿀 때마다 고친 칸 · 해 질 녘에 다시 센다)
+  const left = E.mineDemandLeft(vil.econ, (vil._t724HeldKg || 0) / kgU);
+  if (!(left > 0)) { npc._t724T = 0; P.done++; _lifeGoHome(npc, '휴식'); return true; }
+  //   ② 짐이 찼다 — 곳간 사다리(없으면 퇴근 · 손은 해 질 녘 일괄이 넣는다)
+  if (cap > 0 && hand >= cap) {
+    npc._t724T = 0; P.full++;
+    if (_granGo(vil, npc, false)) return true;
+    P.noGran++; _lifeGoHome(npc, '휴식'); return true;
+  }
+  //   ① 자리 — 그날 처음이면 조의 셀을 고른다 · 다 비면 그날은 끝(퇴근)
+  let s = npc._t724Site;
+  if (!s || s.day !== day || s.wait) { const _p0 = process.hrtime.bigint(); s = npc._t724Site = (_t724Pick(vil, npc, day) || { none: 1, day }); npc._t724T = 0; P.nsPick += Number(process.hrtime.bigint() - _p0); P.picks++; }   // 계측 — 고르기(닿나 집합 포함) 몫
+  if (s.wait) { P.wait++; return true; }                                // 닿나 아직 — 이 틱은 제자리
+  if (s.none) { P.none++; _lifeGoHome(npc, '휴식'); return true; }
+  if (Math.hypot(npc.x - s.x, npc.y - s.y) > 44) {
+    npc.behavior = 'wander'; npc.targetX = s.x; npc.targetY = s.y; npc.gatherTarget = null; npc._t724T = 0; _lifeAct(npc, '출근');
+    P.walk++; const _w = P.vs[vil.name] || (P.vs[vil.name] = { walk: 0, d0: 0, d: 0, cell: null }); _w.walk++; _w.d = Math.round(Math.hypot(npc.x - s.x, npc.y - s.y)); if (!_w.d0) _w.d0 = _w.d; _w.cell = [s.cx, s.cy];   // 계측 — 현장까지 남은 거리(줄어드나)
+    return true;
+  }
+  npc.behavior = 'wander'; npc.targetX = s.x; npc.targetY = s.y; npc.gatherTarget = null;   // 제자리(그 셀에 선다)
+  _lifeAct(npc, '채광');
+  if (!npc._t724T) { npc._t724T = now; return true; }                 // 선 순간부터 센다(걸어온 시간은 타수가 아니다)
+  let n = Math.floor((now - npc._t724T) / S.MINE_SWING_MS);
+  if (n < 1) return true;
+  const _c0 = process.hrtime.bigint();                                   // 계측 — 광맥 장부 몫(읽기 · 깎기 · 존의 DB 한 줄)
+  const st = dep.oreStockAt(s.cx, s.cy) || 0;
+  if (!(st >= 1)) { npc._t724Site = null; P.repick++; return true; }  // 다 팠다(플레이어 그 문턱) — 다음 결정에 조의 다음 셀로
+  const need = S.mineSwingsNeeded(st / S.ORE_K);                      // 깊이 → 타수(셀 속성 · 레벨 무관)
+  const ck = S.mineChunkKg(vil._mineLvl || 0);                         // 숙련 → 덩이 kg
+  const kgSw = ck / need;
+  //   상한 셋(먼저 걸리는 쪽) — 짐 · 그날 몫 · 셀 재고. 걸려 남은 시간은 버린다(선 동안만 센다 — 다음 걸음은 곳간이거나 퇴근이다).
+  if (cap > 0) n = Math.min(n, Math.max(1, Math.ceil((cap - hand) / kgSw)));
+  if (left !== Infinity) n = Math.min(n, Math.max(1, Math.ceil(left * kgU / kgSw)));
+  n = Math.min(n, Math.max(1, Math.ceil(st * need)));
+  npc._t724T += n * S.MINE_SWING_MS;
+  if (now - npc._t724T >= S.MINE_SWING_MS) npc._t724T = now;
+  const got = dep.oreConsumeAt(s.cx, s.cy, n / need) || 0;             // ★친 때마다 재고를 깎는다(1타 = 1/타수 덩이)
+  P.nsCut += Number(process.hrtime.bigint() - _c0);
+  if (!(got > 0)) { npc._t724Site = null; P.repick++; return true; }
+  const kg = got * ck;                                                 // 깎은 덩이 × 덩이 kg
+  inv.ore_chunk = +(hand + kg).toFixed(6);
+  vil._t724HeldKg = (vil._t724HeldKg || 0) + kg;
+  vil._t724Hit = (vil._t724Hit | 0) + n;
+  if (!vil._t724B || vil._t724B.day !== day) vil._t724B = { day, ids: new Set() };
+  if (!vil._t724B.ids.has(npc.pid)) { vil._t724B.ids.add(npc.pid); P.bodies++; }
+  P.pulse++; P.sw += n; P.kg += kg; P.cut += got;
+  vil._t724Cut = (vil._t724Cut || 0) + got;                            // 계측 — 그날 몸이 깎은 덩이(두 번 깎기 검사)
+  return true;
+}
+// 손 → 곳간(econ 정본 `mineToGranary`) — 곳간이 안 받은 몫은 손에 남는다(T544 꼴). why: 'gran'(사다리) · 'dusk'(해 질 녘 경계 손 일괄)
+function _t724Deliver(vil, npc, why, now) {
+  if (!vil || !vil.econ || !npc || !npc.inventory || !_lifeEcon().T724_MINE_ACT) return 0;
+  const kg = npc.inventory.ore_chunk || 0; if (!(kg > 0)) return 0;
+  const kgU = _oreKg(); if (!(kgU > 0)) return 0;
+  const g = _lifeEcon().mineToGranary(vil.econ, kg / kgU) || 0;
+  const r = +(kg - g * kgU).toFixed(6);
+  npc.inventory.ore_chunk = r > 1e-9 ? r : 0;
+  const out = kg - npc.inventory.ore_chunk;
+  vil._t724HeldKg = Math.max(0, (vil._t724HeldKg || 0) - out);
+  const P = _t724P();
+  if (why === 'gran') {
+    P.gran++; P.granKg += out; P.granU += g;
+    const wp = state.deps.worldPhase;
+    const fv = wp ? (((wp(now) + (npc.simLonOff || 0)) % 1) + 1) % 1 : 0;
+    P.granH[Math.min(23, Math.floor(fv * 24))]++;
+    const d = _t724Day(now);
+    if (P.firstGran.length < 40 && vil._t724FG !== d) { vil._t724FG = d; P.firstGran.push([vil.name, d, +fv.toFixed(3), +out.toFixed(2)]); }   // 마을 · 날 · 그날 첫 사다리 입고 국면 · kg
+  } else { P.dusk++; P.duskKg += out; P.duskU += g; }
+  if (npc.inventory.ore_chunk > 0) P.keepKg += npc.inventory.ore_chunk;   // 곳간이 안 받아 손에 남은 kg(입고 때마다 · 소멸 0 의 증거)
+  return g;
+}
+function _t724Day(now) { return state.dayMs ? gameDayOf(now) : 0; }
 
 const TERR_GROW_MAX_PER_DAY = 60;   // 마을당 하루 최대 확장 셀 — econ 구매 속도보다 넉넉하되 폭주는 막는다
 // ★★[T230 2026-09-13 재민 확정] **영토 목표에 주택 압력을 더하는 손잡이 — 기본 끔.**
@@ -6013,6 +6158,7 @@ function probeStats() { return { siteLog: _probe.siteLog.slice(-400), auditN: _p
   t620MemoN: _probe.t620MemoN | 0, t620MemoBad: _probe.t620MemoBad | 0, t620MemoFirst: _probe.t620MemoFirst || '',   // ★[T620 ①] 검사용
   t620WfHit: _probe.t620WfHit | 0, t620WfN: _probe.t620WfN | 0, t620WfBad: _probe.t620WfBad | 0, t620Prewarm: _probe.t620Prewarm | 0,
   oreWarm: _probe.oreWarm | 0, oreWarmRows: _probe.oreWarmRows | 0, oreWarmMs: _probe.oreWarmMs | 0, oreAuditN: _probe.oreAuditN | 0, oreAuditBad: _probe.oreAuditBad | 0,   // ★[T620 ②]
+  t724: _probe.t724 || null,   // ★[T724] 채굴 행위 층 계측(켬일 때만 선다)
   fishDrawn: +_probe.fishDrawn.toFixed(3), fishDrawDays: _probe.fishDrawDays, fish2way: FISH2WAY, t627: T627_TRIP_DAY, tripCalls: _probe.tripCalls, tripFill: _probe.tripFill }; }
 const _lifeSubMax = {};   // 같은 항목의 **마을 한 곳 최댓값** — 조각 예산은 합이 아니라 최댓값이 정한다
 let _lifeMax = 0, _lifeMaxName = '';   // ★[T1 §0] 마을 한 곳의 최댓값 — '마을 경계 조각'이 예산에 드는지의 직답
@@ -6315,7 +6461,7 @@ function _openDayJobs(now) {
 
   // ④ NPC 채굴 — 중앙 9ms 인데 **최대 4,260ms**(광맥 셀 캐시가 식은 날). 마을 경계로 쪼갠다.
   for (const vil of C.vils) add('ore', () => {
-    try { const r = _oreMineDaily(vil); if (r) { _oreFeedback(vil, r.oFrac); if (r.consumed > 0) { C.ore.v++; C.ore.c += r.consumed; } } } catch (e) { }
+    try { const r = _oreMineDaily(vil); if (r) { _oreFeedback(vil, r.oFrac); if (r.consumed > 0) { C.ore.v++; C.ore.c += r.consumed; if (vil._t724CutLast > 0) _t724P().double++; } } } catch (e) { }   // ★[T724 계측] 몸이 깎은 날에 일괄도 깎았나(두 번 깎기 — 0 이어야 한다 · 끄면 칸이 안 선다)
   });
   add('ore', () => { if (C.ore.v) console.log(`[${state.zoneId}] ⛏ NPC 채굴: ${C.ore.v}개 마을 · 재고 -${C.ore.c.toFixed(0)}`); });
 
@@ -8081,8 +8227,28 @@ function _t374Done(vil, job) {
 //   ⚠사람 수만 `_lifeDaily` 로 넘긴다(`_t347PreWalked`·`_t325PreWalked` — "몸이 걷는 마을은 헤드리스로 안 딴다" 판정 무변).
 function _lifeHandsIn(vil) {
   const E = _lifeEcon();
-  if (!(E.T347_FORAGE_ACT || E.T325_WOOD_ACT) || !vil || !vil.econ) return;
+  if (!(E.T347_FORAGE_ACT || E.T325_WOOD_ACT || E.T724_MINE_ACT) || !vil || !vil.econ) return;   // ★[T724] 셋째 항(끄면 종전 두 항 그대로)
   const pl = state.deps.players; if (!pl) return;
+  // ★★[T724 ②③] 광부의 손도 econ 틱 **앞**에서 곳간에(나무 · 채집 절과 같은 자리 · 같은 까닭 — 두 시계 한 줄) — 곳간이 안 받은 몫은 손에 남는다.
+  //   그리고 **그날 몸이 쳤나**를 econ 마을에 심는다(`_t724Walk` — econ 게이트 `mineActOn` 과 `_oreMineDaily` 의 셀 깎기 문이 읽는다 · 몸 XOR 일괄).
+  if (E.T724_MINE_ACT) {
+    let held = 0, n = 0;
+    for (const pid of (vil.npcPids || [])) {
+      const p = pl.get(pid); if (!p || !p.inventory || !(p.inventory.ore_chunk > 0)) continue;
+      _t724Deliver(vil, p, 'dusk', 0); n++;
+      held += p.inventory.ore_chunk || 0;
+    }
+    vil._t724HeldKg = held;                                     // 손 합을 다시 센다(몸이 바꾼 칸이 갈렸어도 여기서 맞춘다)
+    const hit = vil._t724Hit | 0;
+    vil.econ._t724Walk = hit > 0 ? 1 : 0;
+    vil._t724Hit = 0;
+    vil._t724CutLast = vil._t724Cut || 0; vil._t724Cut = 0;
+    if (hit > 0) {
+      const P = _t724P(); P.walkVd++;
+      if (P.days.length < 400) P.days.push([vil.name, _t724Day(_dayNow()), hit, +vil._t724CutLast.toFixed(4), +held.toFixed(2), +((vil.econ._oreOutLast || 0)).toFixed(4), +((vil.econ._t724InflowToday || 0)).toFixed(4)]);   // 마을 · 날 · 타수 · 깎은 덩이 · 남은 손 kg · 수요 D · 그날 곳간 든 단위
+    }
+    if (n) _t724P().duskDays++;
+  }
   if (E.T347_FORAGE_ACT && E.forageActOn(vil.econ)) {
     const keep = _t347KeepOf(vil) || [];
     let n = 0;
@@ -9454,7 +9620,7 @@ function _lifeGranStep(vil, npc, now) {
   //   서버는 상태가 없고 스케줄 게이트를 매 틱 재평가하므로, 도장이 없으면
   //   퇴근 훅이 저장(짐>0)↔인출(빈손)을 무한 왕복시킨다 — 집에 못 간다.
   if (t.draw) { const q = Math.min(G_DRAW, _granStockOf(vil, g)); _granStockAdd(vil, g, -q); _handAdd(npc, q); npc._granD = state.dayMs ? gameDayOf(now) : 0; }
-  else { _granStockAdd(vil, g, _handOf(npc)); _handSet(npc, 0); if (npc._t368H) _t368Deliver(vil, npc, 'gran'); if (npc.inventory && (npc.inventory.wood || 0) > 0) _t561Ladder(vil, npc, now); }   // ③ 정산(물리 장부만 — econ 무접촉 · ★[T316] 손은 `inventory`) · ★[T368] 켠 팔은 **이 귀환이 곳간 입고**다(손의 작물 → `_farmGranary`) · ★[T561 ②ⓑ] 켠 팔은 통나무도(끄면 `_t561Ladder` 첫 줄에서 돌아간다)
+  else { _granStockAdd(vil, g, _handOf(npc)); _handSet(npc, 0); if (npc._t368H) _t368Deliver(vil, npc, 'gran'); if (npc.inventory && (npc.inventory.wood || 0) > 0) _t561Ladder(vil, npc, now); if (npc.inventory && npc.inventory.ore_chunk > 0) _t724Deliver(vil, npc, 'gran', now); }   // ★[T724 ②] 켠 팔은 원석도(끄면 몸 손에 원석이 없다 · `_t724Deliver` 첫 줄도 손잡이) · ③ 정산(물리 장부만 — econ 무접촉 · ★[T316] 손은 `inventory`) · ★[T368] 켠 팔은 **이 귀환이 곳간 입고**다(손의 작물 → `_farmGranary`) · ★[T561 ②ⓑ] 켠 팔은 통나무도(끄면 `_t561Ladder` 첫 줄에서 돌아간다)
   npc._granTask = null;
   return false;                                                      // 소유권 반납 → 이번 틱부터 평소 일과
 }
@@ -10897,6 +11063,13 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
     //     짐이 차면 거기로 가서 내린다(`_t561Hall`). 끔 = 옛 줄(곳간이 없으면 짐 상한 없이 해 질 녘까지 든다 — 옛 몸은 1그루에서 멈춰 드러나지 않았다).
     if (T561_ROSTER_BODY && _cap > 0 && _kg >= _cap && !(vil._granList && vil._granList.length)) { npc._t561Hall = { at: 0 }; npc._jobT = 0; return true; }
     return true;
+  }
+  // ★★★[T724] **치는 순간 손에, 귀환하면 곳간에** — 광부 몸이 제 조의 광맥 셀에서 친다(위 `_t724BodyStep` 머리말).
+  //   손잡이가 꺼져 있으면 이 줄은 **통째로 안 돈다**(아래 종전 갈래 그대로 · 비트 동일). 광맥 목록이 아직이면 종전 갈래로 흘린다.
+  if (job === 'miner' && vil.econ && _lifeEcon().T724_MINE_ACT) {
+    const _t0 = process.hrtime.bigint(), _own = _t724BodyStep(vil, npc, now, day), P = _t724P();
+    P.ns += Number(process.hrtime.bigint() - _t0); P.calls++;
+    if (_own) return true;
   }
   if (job === 'lumberjack' || job === 'miner' || job === 'forager') {   // 벌목·채광·채집=자원 밀집 현장 출근 + 실물 채집(랩 7841·7844·7861 동형)
     const sites = _lifeJobSites(vil, day)[job];
