@@ -10777,7 +10777,10 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
   // ══ 스케줄 게이트(랩 lifeLoop home 분기 7978~7987 동형 — 우선순위: 요양 > 밤·기상 전 취침 > 아침 추첨 > 반일 오후) ══
   const wpF = state.deps.worldPhase, dayR = state.deps.dayPhaseRatio || 0.7;
   const fv = wpF ? _t720Fv(wpF(now), npc.simLonOff || 0) : 0.35;   // 경도 로컬 태양시(§19 동형 — 동쪽 마을이 먼저 깨고 먼저 잔다)
-  const day = state.dayMs ? _bodyDay(npc, now) : 0;   // ★[T720] 켬 = 현지 날
+  const day = state.dayMs ? gameDayOf(now) : 0;
+  //   ★[T720 ②] **몸의 날**(일과 도장 — 반일 굴림 · 곳간 인출 · 농부 출근 · 해 질 녘 정산) = 그 마을의 현지 날(끔 = `day` 그대로).
+  //     현장 목록 · 나무 목록 · 어장 예산 · 작물 달처럼 **econ 날에 묶인 장부**는 `day`(세계 날)를 그대로 쓴다 — 1단계는 econ 경계가 세계 시계다(두 날이 섞이면 같은 장부를 두 번 연다).
+  const bday = T720_LON_DAY ? (state.dayMs ? _bodyDay(npc, now) : 0) : day;
   // 요양(랩 a.rest 6298·7526): hp<60% 진입 → 진행 작업 반납·자택 요양. 만피 해제(회복=zone.js 자연 리젠 — 히스테리시스 동형)
   if (npc._rest) {
     if ((npc.hp || 0) >= (npc.maxHp || 100)) npc._rest = 0;
@@ -10785,7 +10788,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
   } else if (npc.hp != null && npc.hp > 0 && npc.hp < (npc.maxHp || 100) * SCH_REST_IN) {
     npc._rest = 1; _lifeDropTask(vil, npc); _lifeGoHome(npc, '요양'); return true;
   }
-  if (T720_LON_DAY && _t720Step(vil, npc, now, fv, dayR, day)) return true;   // ★[T720 ③] 해 질 녘 곳간 정산(요양 뒤 · 잠 앞)
+  if (T720_LON_DAY && _t720Step(vil, npc, now, fv, dayR, bday)) return true;   // ★[T720 ③] 해 질 녘 곳간 정산(요양 뒤 · 잠 앞)
   // 기상 시차(랩 a._dOff): 개인 결정론 오프셋 0~하루 3%(43분) — 마을 일괄 기상의 프레임 스파이크 분산 + 유기적 출근 풍경
   if (npc._dOff === undefined) npc._dOff = ((_pidHash(npc.pid) % 997) / 997) * SCH_DOFF;
   if (fv >= dayR || fv < npc._dOff) { npc._workT = null; _lifeGoHome(npc, '취침'); return true; }
@@ -10794,8 +10797,8 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
   // 아침 추첨(랩 a._hd/_half 7984): econ 여유노동(_idleFrac) 비율 = 오늘 반일 근무 확률 — 여가→행복의 시각화(궁핍촌 idle 0=항상 종일)
   // ★[T350 · 주사위 0] 그날 '반일' 여부 — 하루 한 번 굴린다. 씨 = (신원 · 집 셀 · 게임일 · 0).
   //   틱을 안 넣는 이유: **하루 한 번**이라 날이 곧 그 굴림의 자리다(같은 날 다시 물어도 같은 답).
-  if (npc._hd !== day) { npc._hd = day;
-    _diceLife.seed(_seedOf(_shOfNpc(npc), Math.floor((npc.npcHomeX || npc.x || 0) / SZ), Math.floor((npc.npcHomeY || npc.y || 0) / SZ), day, 0));
+  if (npc._hd !== bday) { npc._hd = bday;
+    _diceLife.seed(_seedOf(_shOfNpc(npc), Math.floor((npc.npcHomeX || npc.x || 0) / SZ), Math.floor((npc.npcHomeY || npc.y || 0) / SZ), bday, 0));
     npc._half = _dl() < ((vil.econ && vil.econ._idleFrac) || 0); }
   // ★★[T707] 장마당 — 오늘 장 명부에 든 몸은 장이 서는 동안 마당 제 자리로 간다(보이는 것만 · 명부는 마을 기록 · 몸 필드 0).
   //   앞의 문(곳간 · 요양 · 밤·기상 · 촌장)이 먼저다 · 진행 작업(개간·건설·의뢰 집터)이 있거나 그날 집 크루면 안 온다(빈자리 · 다시 안 채운다).
@@ -10812,7 +10815,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
       else if (vil._psite) { vil._psiteCrew = (vil._psiteCrew || 0) + 1; npc._lifeTask = { k: 'build', ps: 1, px: (vil._psite.cx - 2.5) * SZ, py: (vil._psite.cy - 0.5) * SZ, prog: 0 }; npc._workT = now; }   // ★[11차 T4] 마을 일감이 없을 때만 의뢰 집터로(마을 우선 — 랩 ④ 규약)
       else {
         // ★[곳간②] 퇴근길: 든 짐은 곳간에 넣고, 빈손이면 재고에서 하루치를 꺼내 집으로 나른다
-        if (npc._granD !== day) {   // ★오늘 인출을 마쳤으면 곳간 용무 종료 — 저장↔인출 왕복 금지(랩 toHome 이탈 대응)
+        if (npc._granD !== bday) {   // ★오늘 인출을 마쳤으면 곳간 용무 종료 — 저장↔인출 왕복 금지(랩 toHome 이탈 대응)
           if (_handOf(npc) > 0 && _granGo(vil, npc, false)) return true;
           if (!(_handOf(npc) > 0) && _granGo(vil, npc, true)) return true;
         }
@@ -10845,8 +10848,8 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
   // 농부 아침 출근 창(랩 7983 fv<L_DAWN+0.08): 창 밖 + 오늘 미출근(요양 해제가 낮이면 등)=오늘 휴무 — 랩 동형
   const isFarmer = npc.simJob === 'farmer';
   if (isFarmer) {
-    if (dayFrac > SCH_FARMW_R && npc._fOutD !== day) { _lifeGoHome(npc, '휴식'); return true; }
-    npc._fOutD = day;   // 창 안 진입 — 오늘 출근 도장(창 지나도 계속 근무)
+    if (dayFrac > SCH_FARMW_R && npc._fOutD !== bday) { _lifeGoHome(npc, '휴식'); return true; }
+    npc._fOutD = bday;   // 창 안 진입 — 오늘 출근 도장(창 지나도 계속 근무)
   }
   if (isFarmer && vil._clearCrew < LIFE_CREW && _lifeNeedClear(vil)) {
     const fr = _lifeFrontier(vil); let best = null, bd = 1e9;
