@@ -4014,7 +4014,35 @@ function followNpcPath(npc, speedMult) {
 //     stuck 감지는 종전대로 작동한다.
 // ★[T670 ①] `_stuckPos` 를 **제자리에서 덮어쓴다**(새 객체 0) — 이 객체를 읽는 곳은 `detectStuck` 하나뿐이다(서버 전체 `_stuckPos` 6자리 · 바깥 참조 0) ⇒ 값·순서 같다.
 function _t670Stuck(npc, now) { const S = npc._stuckPos; if (S) { S.x = npc.x; S.y = npc.y; S.at = now; } else npc._stuckPos = { x: npc.x, y: npc.y, at: now }; }
+// ★★[T700 2026-10-12 · 막힘 갈래 깎기] 손잡이 `T700_STUCK=1`(기본 끔 = 아래 종전 글자 그대로).
+//   T677 갈래 표본기: 막힘(`detectStuck`)이 낮 `npcStep` 의 17.5 % · 밤 23.2 % — 글자로는 비교 몇 개인데 크다.
+//   서 있는 사람이 매 틱 `_stuckPos` 의 `x`·`y`·`at` 셋을 쓴다. 그 객체는 몸과 따로 살고, V8(포인터 압축)에서
+//   소수 칸 셋은 **각자 상자(HeapNumber)** 에 산다 ⇒ 한 사람 한 틱에 객체 + 상자 셋을 만진다.
+//   ⇒ 켬: `_stuckPos` 를 `Float64Array(3)` [x, y, at] 로 — 값이 한 덩어리 안에 바로 산다(같은 비트 · −0 · NaN 그대로).
+//     그리고 이미 0 인 `_stuckN` 은 다시 쓰지 않는다(같은 값).
+//   ★같은 답인 까닭: `_stuckPos` 를 읽는 자리는 이 두 함수뿐이다(서버 전체 · 증인 ⓓ) — 담는 그릇만 바뀌고 넣고 꺼내는 수는 같다.
+//     ⚠하나 — 몸 `x` 가 수가 아니면(undefined) 종전 객체는 undefined 를, 배열은 NaN 을 담는다. 그 칸은 뺄셈에만 쓰여
+//     둘 다 NaN 으로 간다(증인 ⓑ 가 그 몸을 넣는다).
+const T700_STUCK = process.env.T700_STUCK === '1';
+function _t700Set(npc, now) { let S = npc._stuckPos; if (!S) S = npc._stuckPos = new Float64Array(3); S[0] = npc.x; S[1] = npc.y; S[2] = now; }
+function _t700Detect(npc, now) {
+  if (npc.targetX != null && npc.targetY != null && (!npc.path || npc.pathIndex >= npc.path.length) && _t671Lt(npc.x - npc.targetX, npc.y - npc.targetY, 12)) {
+    _t700Set(npc, now);
+    if (npc._stuckN !== 0) npc._stuckN = 0;
+    return false;
+  }
+  const S = npc._stuckPos;
+  if (!S) { _t700Set(npc, now); return false; }
+  if (_t671Gt(npc.x - S[0], npc.y - S[1], 5)) {
+    _t700Set(npc, now);
+    if (npc._stuckN !== 0) npc._stuckN = 0;
+    return false;
+  }
+  if (now - S[2] > 1500) { _t700Set(npc, now); return true; }
+  return false;
+}
 function detectStuck(npc, now) {
+  if (T700_STUCK) return _t700Detect(npc, now);   // ★[T700] 켬 = 위 같은 답 · 끔 = 아래 종전 그대로
   if (npc.targetX != null && npc.targetY != null
       && (!npc.path || npc.pathIndex >= npc.path.length)
       && _t671Lt(npc.x - npc.targetX, npc.y - npc.targetY, 12)) {   // ★[T671 ②] = `Math.hypot(…) < 12`
