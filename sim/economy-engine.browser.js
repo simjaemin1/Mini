@@ -5406,8 +5406,41 @@ const ABS_CLOCK_DESIGN = {
   GAME_TIME_SCALE: 60,                      // 1실초 = 60게임초(캐논 §1 시간 60×)
   REAL_EPOCH_UTC: Date.UTC(2026, 0, 1),     // 실세계 기준점(예시 — 채택 세션에서 확정·불변 계약)
   GAME_EPOCH_DAYS: 0,                       // 게임력 기점(예: '기원전 150년' 달력 매핑은 표시 층 몫)
-  ADOPTED: false,                            // ★미채택 — 어떤 코드도 이 블록을 읽지 않는다(설계 예약 전용)
+  ADOPTED: false,                            // ★미채택 — 어떤 코드도 이 블록을 읽지 않는다(설계 예약 전용) · ★[T720] 켬이면 아래 시각 한 식이 이 배율을 쓴다(`ABS_CLOCK_DESIGN.ADOPTED` 는 손잡이를 따른다)
 };
+
+// ═══════════ ★★[T720 2026-10-13 · 재민 10-13 판정 · 손잡이 `T720_LON_DAY`(기본 끔 = 아래 함수를 아무도 안 부른다 · main 바이트)] 경도 하루 1단계 — **시각 한 식** ═══════════
+//   ① 경도 λ(x) = x ÷ 세계 폭 − 0.5 (하루 몫 −0.5 ~ +0.5 = −180° ~ +180°) — 세계 존 표가 서쪽 아메리카(x = 0)부터 동쪽 태평양까지 한 바퀴다(원통).
+//      λ = 0 은 세계 가운데(x = W/2) · **날짜선 = x 0 ↔ W 이음매**(베링 끝과 캐나다 사이 태평양). 새 수 0(세계 폭 = 존 설정).
+//   ② 게임 시각 = 실제 UTC ms × 60(`ABS_CLOCK_DESIGN.GAME_TIME_SCALE` — 1실초 = 1게임분 · 하루 = `dayLengthMs` × 60 = 24시간).
+//      기점 `REAL_EPOCH_UTC` 는 UTC 자정이고 UTC 자정은 언제나 `dayLengthMs`(24분)의 배수라 그날의 몫은 기점과 무관하다(검사: 아래 `_T720_DAY_OK`).
+//      달력(1년 3월 1일 = econ 날 0)은 econ 날 그대로다 — 절대 날과 econ 날을 잇는 것은 T722(서버가 멈춰도 날을 따라잡기) 몫.
+//   ③ 현지 시각(0 = 자정) = 그 시각의 하루 몫 + λ(x). 해 몫(종전 `worldPhase` 의 뜻 — 0 = 해 뜸 · `dayPhaseRatio` 까지 낮)은 현지 시각 − 해 뜸.
+//      해 뜸 06:00 은 종전 클라 HUD 의 "phase 0 = 새벽 6시"(`gameTimeString` `+ 6`) 그 자리다 — 이름만 붙였다(새 수 0).
+//   ★종전 상수 0.045(서버 §19 `_lonOff` · 클라 `_lonView` · 랩 `L_LON_SPREAD`)가 이 식 하나로 바뀐다(켬일 때).
+//   ★종전 `worldPhase(t)`(경도 없는 세계 몫)는 그대로 둔다 — econ 경계 · 몹 밤 · 날씨는 1단계에서 세계 시계다. 그 값은 λ − 해뜸 = 0 인 자리(x = 0.75 W · 한반도 존 안)의 해 몫과 같다.
+const T720_LON_DAY = (typeof process !== 'undefined' && process.env && process.env.T720_LON_DAY === '1');
+if (T720_LON_DAY) ABS_CLOCK_DESIGN.ADOPTED = true;
+const SUNRISE_FRAC = 6 / 24;   // 해 뜸 = 06:00(종전 클라 `gameTimeString` 의 `+ 6` · 하루 몫)
+const _t720Frac = (v) => { const f = v % 1; return f < 0 ? f + 1 : f; };
+/** 경도(하루 몫 −0.5 ~ +0.5) — 절대 x(px). */
+function lonOf(xAbs) { return xAbs / WORLD.worldWidth - 0.5; }
+/** 해 몫에 더할 몫 — 종전 `worldPhase` 에 더하면 그 자리의 해 몫이 된다(`_lonOff` · `simLonOff` · 클라 `_lonView` 자리). */
+function lonPhaseOff(xAbs) { return lonOf(xAbs) - SUNRISE_FRAC; }
+/** 현지 시각(하루 몫 · 0 = 자정) — 게임 시각 = (실제 UTC − 기점) × 60. */
+function localTod(xAbs, nowMs = Date.now()) {
+  const A = ABS_CLOCK_DESIGN, gday = WORLD.dayLengthMs * A.GAME_TIME_SCALE;
+  return _t720Frac(((nowMs - A.REAL_EPOCH_UTC) * A.GAME_TIME_SCALE) / gday + lonOf(xAbs));
+}
+/** 현지 해 몫(0 = 해 뜸 · `dayPhaseRatio` 까지 낮) — 종전 `worldPhase` 와 같은 뜻의 현지판. */
+function localPhase(xAbs, nowMs = Date.now()) { return _t720Frac(localTod(xAbs, nowMs) - SUNRISE_FRAC); }
+/** 현지 날 — 종전 게임일(`floor((t − epoch) ÷ dayMs)`)이 바뀌는 그 해 자리(해 뜸)에서 그 자리의 날이 바뀐다. `dayMs` 는 판 시계(빠른 시계 판이면 그 하루). */
+function localDay(xAbs, nowMs = Date.now(), dayMs = WORLD.dayLengthMs, epoch = WORLD.worldEpoch) {
+  return Math.floor((nowMs - (epoch || 0)) / dayMs + lonPhaseOff(xAbs));
+}
+/** 해 몫 더하기(음수 경도 몫도 [0,1) 로) — 종전 `(p + off) % 1` 의 켬 판. */
+function phaseAdd(p, off) { return _t720Frac(p + off); }
+const _T720_DAY_OK = (ABS_CLOCK_DESIGN.REAL_EPOCH_UTC % WORLD.dayLengthMs) === 0;   // 기점이 하루의 배수 — 켬 판의 해 몫이 종전 `worldPhase` 와 같은 시계 위에 선다
 
 function worldPhase(nowMs = Date.now()) {
   const t = (nowMs - WORLD.worldEpoch) % WORLD.dayLengthMs;
@@ -5501,6 +5534,7 @@ function _findNeighborSide(zoneId, side) {
 
 module.exports = {
   ABS_CLOCK_DESIGN, // §19 절대 시계 설계 예약(미채택 — 관측·문서용)
+  T720_LON_DAY, SUNRISE_FRAC, lonOf, lonPhaseOff, localTod, localPhase, localDay, phaseAdd, _T720_DAY_OK,   // ★[T720] 시각 한 식(켬일 때만 부른다)
   ZONES, WORLD, ZONE_ORDER, CENTRAL, WS_PROTO, HTTP_PROTO,
   publicZoneMap, worldPhase, isNight, darknessLevel,
   findZoneAt, worldDistance, worldDeltaX, WRAP_X,
@@ -14019,5 +14053,5 @@ module.exports = {
 
 ;return module.exports;})();
 
-  root.EconEngine=Object.assign({},modules.v1,modules.v2); root.EconEngine.Era=modules.era; root.EconEngine.Calendar=modules.cal; root.EconEngine.Layout=modules.vlayout; root.EconEngine.Crops=modules.crops;
+  root.EconEngine=Object.assign({},modules.v1,modules.v2); root.EconEngine.Era=modules.era; root.EconEngine.Calendar=modules.cal; root.EconEngine.Layout=modules.vlayout; root.EconEngine.Crops=modules.crops; root.EconEngine.ZoneCfg=modules.zcfg;
 })(typeof window!=='undefined'?window:globalThis);

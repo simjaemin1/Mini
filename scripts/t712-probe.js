@@ -41,6 +41,11 @@ function _t712Census(vil) {   // 그 마을 몸의 손 — 품목별 양 · 든 
   const OUT = process.env.T712_PROBE_OUT; if (!OUT) return;
   const fs = require('fs');
   let inHI = false, lastHI = 0, rec = null;
+  const _c7sum = () => {   // ★[T720] 해 질 녘 곳간 정산 누계(켬 판만 선다 · 끔이면 0) — 하루 문 마을은 [이름 · 횟수 · 곳간 수]
+    const o = { go: 0, done: 0, give: 0, hall: 0, giveVil: [] };
+    for (const v of (state.villages || [])) { const C = v._t720C; if (!C) continue; o.go += C.go; o.done += C.done; o.give += C.give; o.hall += C.hall; if (C.give) o.giveVil.push([v.name, C.give, (v._granList || []).length]); }
+    return o;
+  };
   const K = ['fish', 'wood', 'forage', 'grain'];
   const fresh = () => { const d = {}; for (const k of K) d[k] = { day: 0, head: 0, close: 0 }; return d; };
   let del = fresh();
@@ -50,7 +55,7 @@ function _t712Census(vil) {   // 그 마을 몸의 손 — 품목별 양 · 든 
     const now = Date.now();
     if (now - lastHI > 1000) {   // 새 마감 — 앞 마감 사이(낮 + 그 마감)의 들어감을 닫고 새 줄을 연다
       if (rec) { rec.del = del; rows.push(rec); del = fresh(); }
-      rec = { at: now, wd: state.world ? state.world.day : null, n: 0, ms: 0, max: 0, held: { wood: 0, forage: 0, fish: 0, grain: 0, nWood: 0, nForage: 0, nFish: 0, nGrain: 0 }, after: { wood: 0, forage: 0, fish: 0, grain: 0 } };
+      rec = { at: now, t720: _c7sum(), wd: state.world ? state.world.day : null, n: 0, ms: 0, max: 0, held: { wood: 0, forage: 0, fish: 0, grain: 0, nWood: 0, nForage: 0, nFish: 0, nGrain: 0 }, after: { wood: 0, forage: 0, fish: 0, grain: 0 } };
     }
     lastHI = now;
     const c0 = census(vil); for (const k in c0) rec.held[k] += c0[k];
@@ -60,7 +65,7 @@ function _t712Census(vil) {   // 그 마을 몸의 손 — 품목별 양 · 든 
     const c1 = census(vil); for (const k of K) rec.after[k] += c1[k];
     return r;
   };
-  const flush = () => { try { const cur = rec ? Object.assign({}, rec, { del, open: true }) : null; fs.writeFileSync(OUT, rows.concat(cur ? [cur] : []).map((x) => JSON.stringify(x)).join('\\n') + '\\n'); } catch (e) {} };
+  const flush = () => { try { const cur = rec ? Object.assign({}, rec, { del, open: true, t720End: _c7sum() }) : null; fs.writeFileSync(OUT, rows.concat(cur ? [cur] : []).map((x) => JSON.stringify(x)).join('\\n') + '\\n'); } catch (e) {} };
   setInterval(flush, 60000).unref(); process.on('SIGUSR2', flush); process.on('exit', flush);
 })();
 `;
@@ -78,6 +83,8 @@ if (require.main === module && process.argv[2] === 'table') {
       const d = r.del, s = (k) => `${k} 낮 ${d[k].day.toFixed(1)} · 앞 ${d[k].head.toFixed(1)} · 뒤 ${d[k].close.toFixed(1)}`;
       console.log(`  wd ${r.wd} · 마을 ${r.n} · handsIn ${r.ms.toFixed(2)} ms(최대 ${r.max.toFixed(2)}) · 손 셈 통 ${r.held.wood.toFixed(1)}(${r.held.nWood}) 채 ${r.held.forage.toFixed(1)}(${r.held.nForage}) 물 ${r.held.fish.toFixed(2)}(${r.held.nFish}) 곡 ${r.held.grain.toFixed(1)}(${r.held.nGrain}) → 뒤 통 ${r.after.wood.toFixed(1)} 채 ${r.after.forage.toFixed(1)}${r.open ? ' · (열린 줄)' : ''}`);
       console.log(`     그 뒤 든 것: ${['wood', 'forage', 'fish', 'grain'].map(s).join(' | ')}`);
+      if (r.t720End && (r.t720End.go || r.t720End.give)) console.log(`     [T720 판 끝 누계] 나섬 ${r.t720End.go} · 넣음 ${r.t720End.done} · 하루 문 ${r.t720End.give} · 회관 ${r.t720End.hall} · 하루 문 마을 ${JSON.stringify(r.t720End.giveVil)}`);
+      if (r.t720 && (r.t720.go || r.t720.give)) console.log(`     [T720 누계] 나섬 ${r.t720.go} · 넣음 ${r.t720.done} · 하루 문 ${r.t720.give} · 회관 ${r.t720.hall} · 하루 문 마을 ${JSON.stringify(r.t720.giveVil)}`);
     }
   }
 }
