@@ -57,9 +57,33 @@ if (Spoil.Crops) {
 //   (곰고기 · 구운 사슴·들짐승고기 · 삶은 곰고기 — `meat_game` 은 특산 축산이라 이미 로트). 목록 정본은 `server/game-meat.js`(옮겨 적지 않는다).
 { let _GM = null; try { _GM = require('./game-meat'); } catch (e) {}
   if (_GM && _GM.on()) for (const k of _GM.lotItems()) LOT_CORE.add(k); }
+// ★★[T725 ② 2026-10-13 · 손잡이 `T725_LOT_KINDS=1` — 없음·빈 값·0 = 끔 = 아래 표를 안 읽는다(main 바이트)] **안 썩는 재료는 로트가 아니다.**
+//   아래 `isLot` 의 특산 규칙(해산물·축산·작물 = 상한다)이 **먹지 않는 재료**까지 통째로 쳐서 깃털·뼈·가죽·모피·삼에
+//   보관일 5일(`spoil` 특산 기본값 `D.DEFAULT`)이 붙었다 — 손에서 그렇게 상하고, 곳간 그림자 로트의 70%가 이들이었다(T716 회부 ②).
+//   ⇒ 규칙을 "먹을 것 + 썩는 것"으로 좁힌다: 먹을 것은 그대로 두고, 먹지 않는 재료 중 **출처가 안 썩는다고 말하는 것**만 뺀다.
+//     새 수 0 · 새 곡선 0 — 썩는가는 품목 성질이고 출처는 줄마다 적었다(전문 표 `보고/T725_2026-10-13.md` §2).
+//     ⚠"안 썩는다" = 마른 채 두면 날·달 단위로 상하지 않는다. 섬유는 젖으면(상대습도 65% 넘게) 곰팡이가 슨다(CCI Notes 13/15) —
+//       이 세계엔 짐의 젖음 축이 없다(회부). 무두질 전 **생가죽은 썩는다** — 그 품목은 `hide` 다(지금도 로트가 아니다 · 넓히기는 재민 칸).
+//     ⚠작물 카탈로그 품목(`LOT_CORE` — 삼(대마)·쪽·차·뽕잎)은 손대지 않는다(보관일이 재민 카탈로그 저장성 축에서 온다).
+const T725_KINDS = process.env.T725_LOT_KINDS === '1';
+const NO_ROT = Object.freeze({
+  leather:  '무두질 — 가죽의 단백질 구조를 영구히 바꿔 더 질기고 덜 분해되게 한다(Wikipedia "Tanning (leather)")',
+  fur:      '무두질 — 위와 같은 줄(손질한 모피)',
+  feather:  '90% 넘게 케라틴 · 펩신·트립신 같은 흔한 단백질 분해효소에 분해되지 않는 난분해 고분자(Li 2019, Front. Microbiol. 10:2717)',
+  wool:     '케라틴(털 — 양털 포함) · 물·유기용매에 극히 안 녹는다(Wikipedia "Keratin")',
+  horn:     '케라틴(뿔·발굽)(Wikipedia "Keratin")',
+  bone:     '백골화 = 분해의 마지막 단계(뼈만 남는다) · 기름진 흙의 산이 약 20년에 녹이고 중성 흙·모래에선 수백 년(Wikipedia "Skeletonization")',
+  ivory:    '매머드 상아 조각상이 4만 2천~4만 년 남았다(Wikipedia "Venus of Hohle Fels")',
+  silk_raw: '비단 단백질(피브로인)이 8,500년 무덤 흙에서 · 비단 천 3630 BC(Wikipedia "Silk")',
+  linen:    '리넨 옷이 3482~3102 BC 부터 남았다(Wikipedia "Tarkhan dress")',
+  cotton:   '셀룰로스 섬유 — 상대습도 60% 아래면 곰팡이가 슬기 어렵다(CCI Notes 13/15) · 젖으면 썩는다(RMG "Cordage")',
+  flax:     '줄기에서 섬유 아닌 것을 떼어 섬유를 거둔다(retting — 섬유는 남는 쪽 · 지나치면 셀룰라아제가 섬유도 약하게 한다)(Wikipedia "Retting") · 마른 섬유(CCI Notes 13/15)',
+  hemp:     '위와 같은 줄(Retting — 삼) · 밧줄 내구성 마닐라급(RMG "Cordage: its origins, construction, properties and uses in ships")',
+});
 function isLot(item) {
   if (!item) return false;
   if (LOT_CORE.has(item)) return true;
+  if (T725_KINDS && NO_ROT[item]) return false;   // ★[T725 ②] 안 썩는 재료(위 출처 표) — 끄면 이 줄 무동작
   const sp = Specialty && Specialty.RESOURCES && Specialty.RESOURCES[item];
   // 해산물·축산·작물은 상한다. 광물·임산물(통나무·송진)·가공 내구재는 아니다.
   return !!(sp && (sp.category === 'marine' || sp.category === 'livestock' || sp.category === 'agri'));
@@ -301,5 +325,6 @@ function fromSave(p, saved) {
   return all(p);
 }
 module.exports = { CFG, LOT_CORE, _day, isLot, all, of, sum, note, reconcile, consume, consumeFrom, view, viewAll, toSave, fromSave,
+  T725_KINDS, NO_ROT,   // ★[T725 ②] 안 썩는 재료 표(하네스·보고가 읽는다)
   // ★[부패 2차 2026-09-01] 정산·자리·그릇 이동
   settle, setPlace, moveOut, moveIn, settleRecs };
