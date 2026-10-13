@@ -14,6 +14,8 @@
 // 실행: node scripts/t686-spike.js run <tag> [--ref <커밋>]      (T686_DIR=/tmp/t686 · T686_TPL=<DIR>/tpl-t100.db · T686_LEAD_S=240 · T686_BOUNDS=3)
 //       node scripts/t686-spike.js table <tag>
 //       [T689] T686_PRELOAD=<파일>(존에 덧 preload) · T686_END_S=<벽 초>(짧은 판 — 없으면 경계 수로)
+//       [T715] T715_QCV=1 — 빌린 배열 질의 = 옛 질의 견줌(판 끝 decAll.qcv)
+//       [T715] T715_DEC=1 — 결정 문 안(틱마다 몸 수 · 가장 긴 한 몸: 누가 · 직업 · 라벨 · 결정 ms · 길 ms) · 판 끝 `decAll`(몸 하나 15·30 ms 넘음)
 'use strict';
 const path = require('path');
 const fs = require('fs');
@@ -76,6 +78,30 @@ const ZTAIL = `
   //     마감 창 동안 걸음 문을 한 번도 못 받은 **깬 몸**(창 머리에 '취침'·'요양' 아닌 · 산 마을 몸)
   let _stepN = 0, _inClose = false, _cl = null;
   { const f0 = npcStep; npcStep = function (a, b, c) { _stepN++; return f0(a, b, c); }; }
+  //   ★[T715] T715_DEC=1 — 결정 문 안을 잰다: 틱마다 걸음 문 받은 몸 수 · 합 ms · 가장 긴 한 몸(누가 · 직업 · 라벨 · 결정 ms · 길 ms · 길 수).
+  //     몸 하나 15 ms 넘음 · 30 ms 넘음은 판 전체로도 센다(읽기만 · 세계에 0).
+  const _T715 = process.env.T715_DEC === '1';
+  let _dN = 0, _dMs = 0, _dTop = null, _dCur = null, _dDec = 0, _dPath = 0, _dPathN = 0;
+  const _dAll = { n: 0, over15: 0, over30: 0, top: [], qcv: null };
+  //   ★[T715] T715_QCV=1 — 빌린 배열 질의(queryCircleScratch)가 부를 때마다 옛 질의(queryCircle)와 같은지(원소 · 차례) · 스스로 안에서 다시 불리는지(nest)
+  if (process.env.T715_QCV === '1') {
+    const P = Quadtree.prototype, f0 = P.queryCircleScratch, V = _dAll.qcv = { n: 0, bad: 0, depth: 0, nest: 0 };
+    P.queryCircleScratch = function (cx, cy, r) {
+      V.n++; V.depth++; if (V.depth > 1) V.nest++;
+      const a = f0.call(this, cx, cy, r), b = this.queryCircle(cx, cy, r);
+      if (a.length !== b.length || a.some((x, i) => x !== b[i])) V.bad++;
+      V.depth--; return a;
+    };
+  }
+  if (_T715) {
+    const fS = npcStep; npcStep = function (a, b, c) { const t = now(); _dCur = a; _dDec = 0; _dPath = 0; _dPathN = 0; try { return fS(a, b, c); } finally {
+      const ms = now() - t; _dN++; _dMs += ms; _dAll.n++;
+      if (ms > 15) _dAll.over15++; if (ms > 30) { _dAll.over30++; if (_dAll.top.length < 200) _dAll.top.push([Date.now(), +ms.toFixed(2), a.pid, a.simJob || a.npcJob || null, a._lifeAct || null, a.behavior || null, +_dDec.toFixed(2), +_dPath.toFixed(2), _dPathN]); }
+      if (!_dTop || ms > _dTop[1]) _dTop = [a.pid, +ms.toFixed(2), a.simJob || a.npcJob || null, a._lifeAct || null, a.behavior || null, +_dDec.toFixed(2), +_dPath.toFixed(2), _dPathN];
+      _dCur = null; } };
+    const fD = decideNpcBehavior; decideNpcBehavior = function (a, b) { const t = now(); try { return fD(a, b); } finally { if (_dCur === a) _dDec += now() - t; } };
+    const fP = computeNpcPath; computeNpcPath = function (a, b) { const t = now(); try { return fP(a, b); } finally { if (_dCur === a) { _dPath += now() - t; _dPathN++; } } };
+  }
   const _awake = (p) => p && p.isNpc && p.simVillageId != null && (p.hp || 0) > 0 && p._lifeAct !== '취침' && p._lifeAct !== '요양';
   resetW();
   let all = { ticks: 0, tot: 0, over30: 0, over16: 0, max: 0 };
@@ -100,19 +126,22 @@ const ZTAIL = `
     if (tot > SPIKE) {
       const r = (o) => { const x = {}; for (const k in o) if (o[k] >= 0.05) x[k] = +o[k].toFixed(2); return x; };
       const J = {}; for (const [k, ms] of cur.jobs) J[k] = +(((J[k] || 0) + ms)).toFixed(2);
-      W.spikes.push(Object.assign({ at: Date.now(), p0: +(t0).toFixed(1), ms: +tot.toFixed(2), close: cur.close, nJobs: cur.jobs.length, pop: npcs.size }, dayInfo(), { seg: r(cur.seg), v: r(cur.v), jobs: J }));
+      W.spikes.push(Object.assign({ at: Date.now(), p0: +(t0).toFixed(1), ms: +tot.toFixed(2), close: cur.close, nJobs: cur.jobs.length, pop: npcs.size }, dayInfo(), { seg: r(cur.seg), v: r(cur.v), jobs: J },
+        _T715 ? { dec: { n: _dN, ms: +_dMs.toFixed(2), top: _dTop } } : {}));
+      if (process.env.T715_JIT === '1') { const sg = Object.entries(cur.seg).sort((a, b) => b[1] - a[1])[0]; console.log('[T715-SPIKE] ' + tot.toFixed(1) + 'ms ' + (sg ? sg[0] + ' ' + sg[1].toFixed(1) : '') + ' dec ' + _dN + '/' + _dMs.toFixed(1)); }
     }
+    _dN = 0; _dMs = 0; _dTop = null;
     cur = null;
   };
   const flush = (fin) => {
-    try { const row = Object.assign({ kind: fin ? 'fin' : 'win', pop: npcs.size }, dayInfo(), W, { seg: W.seg, all });
+    try { const row = Object.assign({ kind: fin ? 'fin' : 'win', pop: npcs.size }, dayInfo(), W, { seg: W.seg, all }, _T715 && fin ? { decAll: _dAll } : {});
       if (fin) row.hist = Array.from(H);
       fs.appendFileSync(OUT, JSON.stringify(row) + '\\n'); } catch (e) { try { fs.appendFileSync(OUT, JSON.stringify({ err: String(e && e.stack) }) + '\\n'); } catch (e2) {} }
     resetW();
   };
   setInterval(() => flush(false), 60000).unref();
   process.on('SIGUSR2', () => flush(true));
-  process.on('SIGHUP', () => { H.fill(0); all = { ticks: 0, tot: 0, over30: 0, over16: 0, max: 0 }; resetW(); fs.appendFileSync(OUT, JSON.stringify({ kind: 'reset', at: Date.now() }) + '\\n'); });   // 부팅 몫을 뺀다(관측자가 붙은 뒤부터)
+  process.on('SIGHUP', () => { H.fill(0); all = { ticks: 0, tot: 0, over30: 0, over16: 0, max: 0 }; resetW(); _dAll.n = 0; _dAll.over15 = 0; _dAll.over30 = 0; _dAll.top.length = 0; if (_dAll.qcv) { _dAll.qcv.n = 0; _dAll.qcv.bad = 0; _dAll.qcv.nest = 0; } fs.appendFileSync(OUT, JSON.stringify({ kind: 'reset', at: Date.now() }) + '\\n'); });   // 부팅 몫을 뺀다(관측자가 붙은 뒤부터)
 })();
 `;
 function makeTree(dir, ref) {

@@ -5,7 +5,9 @@
 //   첫 서버 프레임(`server/…:줄`). 게임 틱(30Hz setInterval)도 한 자리로 잡힌다(틱 본문 + 그 안의 GC).
 // ★이벤트 루프 지연(`monitorEventLoopDelay` 10ms) · GC(종류별 횟수·합·최대 · 30ms 넘는 GC 목록)를 같이 쓴다.
 // 손잡이: `T686_TIMERS_OUT`(없으면 아무것도 안 한다). SIGUSR1 이면 바로 쓴다(그 밖엔 30초마다).
-const OUT = process.env.T686_TIMERS_OUT;
+// ★[T715] 일꾼 스레드(T696 WAL 체크포인트 일꾼 등)도 preload 를 물려받는다 — 거기서도 돌면 같은 파일에 **한가한 일꾼의 표**를 30초마다 덮어썼다
+//   (GC 몇 번 · 타이머 0 — T715 B 판이 그렇게 망가졌다). 큰 스레드에서만 잰다.
+const OUT = process.env.T686_TIMERS_OUT && require('worker_threads').isMainThread ? process.env.T686_TIMERS_OUT : '';
 if (OUT) {
   const fs = require('fs');
   const { performance, monitorEventLoopDelay, PerformanceObserver } = require('perf_hooks');

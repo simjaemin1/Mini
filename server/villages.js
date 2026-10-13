@@ -98,6 +98,18 @@ function deferLate(now) {
 // ★[T697 2026-10-11 · 세션4] 손잡이 `T697_DAY_GC`(기본 끔 · `=1` 켬) — 하루 조각 · 교역로 선계산의 쓰레기를 **같은 값으로** 줄인다(경로 커널 알뜰 판 `PathCore.setLean` ·
 //   지형 선분 거리 `terrain.js` · 사냥꾼 자리 고르기 `m.forEach`). 값·차례 무변 — 끔 = 종전 글자. 보고/T697.
 const T697_DAY_GC = process.env.T697_DAY_GC === '1';
+// ★[T715 2026-10-12 · 세션4] 손잡이 `T715_HUNT_GC`(기본 끔 · `=1` 켬) — 사냥꾼 자리 고르기(하루 조각)의 쓰레기를 **같은 값 · 같은 차례**로 줄인다.
+//   T697 표본 힙: 하루 조각 할당의 대부분이 `_huntHuntersSteps` 였다 — 후보마다 `[열쇠, 풍부도]` 쌍 둘 · 열쇠 문자열 쪼개기(`slice` 둘) ·
+//   후보 목록 정렬 · `[[b]].concat(…)` 새 배열. 켜면: 열쇠 → 칸 풀이를 마을마다 한 번(`vil._t715XY` · 같은 `+slice` 값) · 후보는 평평한 배열 둘
+//   (열쇠 · 풍부도) · 정렬은 그 첨자 배열을 같은 비교로(V8 정렬은 안정 — 같은 풍부도는 넣은 차례 그대로 = 쌍 정렬과 같은 순열) ·
+//   첫 후보(b)가 닿으면 정렬 0(종전도 b 다음은 안 본다 — 정렬은 값에 안 닿는다). 끔 = 종전 글자.
+const T715_HUNT_GC = process.env.T715_HUNT_GC === '1';
+function _t715XY(vil, k) {   // 열쇠 'cx,cy' → [cx, cy] 칸 — 종전 `+k.slice(0, ci)` · `+k.slice(ci + 1)` 그 값(마을마다 한 번만 쪼갠다)
+  const M = vil._t715XY || (vil._t715XY = new Map());
+  let v = M.get(k);
+  if (v === undefined) { const ci = k.indexOf(','); v = [+k.slice(0, ci), +k.slice(ci + 1)]; M.set(k, v); }
+  return v;
+}
 // ★[T350] 흐름 둘 — 결정마다 클로저를 만들지 않는다(할당 0 · T345).
 //   `_diceLife` = 주민 생활층 결정(순수 해시 · 신원·셀·날·틱) · `_diceVil` = 마을 자리(출생·배치 · 스트림).
 const _diceLife = _makeStream(), _diceVil = _makeStream();
@@ -10102,11 +10114,41 @@ function* _huntHuntersSteps(vil, players, day) {
           if (!occ && _fr) _fr.push([k2, rr]);
         }
       };
-      if (T697_DAY_GC) m.forEach(_huntScan); else for (const [k2, rr] of m) _huntScan(rr, k2);
+      //   ★[T715] 켬 = 같은 몸통(아래 `_huntScanL`) · 후보는 평평한 배열 넷 · 열쇠 풀이는 마을 기억
+      const _frK = T715_HUNT_GC && _t427 ? [] : null, _frR = _frK ? [] : null, _anK = _frK ? [] : null, _anR = _frK ? [] : null;
+      const _huntScanL = (rr, k2) => {   // = `_huntScan` 글자(쌍 대신 평평한 두 배열 · 쪼개기 대신 `_t715XY`)
+        if (rr > rAny) { rAny = rr; bAny = k2; }
+        if (_anK && rr > _thr) { _anK.push(k2); _anR.push(rr); }
+        if (rr > rFree || (_frK && rr > _thr)) {
+          const xy = _t715XY(vil, k2), cx2 = xy[0], cy2 = xy[1];
+          let occ = false;
+          for (let oi = 0; oi < hw.length; oi++) { const o = hw[oi]; if (Math.abs(o.cx - cx2) <= 5 && Math.abs(o.cy - cy2) <= 5) { occ = true; break; } }
+          if (!occ && rr > rFree) { rFree = rr; bFree = k2; }
+          if (!occ && _frK) { _frK.push(k2); _frR.push(rr); }
+        }
+      };
+      if (T715_HUNT_GC) m.forEach(_huntScanL);
+      else if (T697_DAY_GC) m.forEach(_huntScan); else for (const [k2, rr] of m) _huntScan(rr, k2);
       let b = bFree || bAny, _home = null;
       //   ★[T427 ①] 고른 셀이 집에서 **안 닿으면** 같은 선호(빈 셀 먼저 · 풍부도 내림 · 동률은 종전 순회 순서 — 안정 정렬)로 닿는 첫 셀.
       //     전부 안 닿으면 **현장은 집**이다 — 사냥 장부(`_huntWk`)는 종전 셀 그대로 둔다(헤드리스 값 무변 · 값은 회부 · 보고 표).
-      if (b && _t427) {
+      if (b && _t427 && T715_HUNT_GC) {   // ★[T715] 같은 차례: b → 빈 셀(풍부도 내림 · 안정) → 아무 셀(같음) — 정렬은 앞이 다 안 닿을 때만
+        let _ok = null;
+        for (let ph = 0; ph < 3 && _ok === null; ph++) {
+          let K = null, ord = null;
+          if (ph === 0) K = [b];
+          else { K = ph === 1 ? _frK : _anK; const R = ph === 1 ? _frR : _anR; ord = new Array(K.length); for (let i = 0; i < K.length; i++) ord[i] = i; ord.sort((u, v) => R[v] - R[u]); }
+          const nK = ord ? ord.length : K.length;
+          for (let j = 0; j < nK; j++) {
+            const kk = ord ? K[ord[j]] : K[j];
+            const xy = _t715XY(vil, kk), qx = xy[0] * SZ + SZ / 2, qy = xy[1] * SZ + SZ / 2;   // = `_xy(kk)`
+            let _r; while ((_r = _t427Reach(vil, p, qx, qy, day, _t562SliceStop())) === null) yield;
+            if (_r) { _ok = kk; break; }
+          }
+        }
+        if (_ok) b = _ok; else _home = _t427HomeOf(vil, p);
+      }
+      else if (b && _t427) {
         const _xy = (kk) => { const ci = kk.indexOf(','); return { x: +kk.slice(0, ci) * SZ + SZ / 2, y: +kk.slice(ci + 1) * SZ + SZ / 2 }; };
         let _ok = null;
         for (const [kk] of [[b]].concat(_fr.sort((u, v) => v[1] - u[1]), _an.sort((u, v) => v[1] - u[1]))) {
