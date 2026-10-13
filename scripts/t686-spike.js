@@ -14,6 +14,7 @@
 // 실행: node scripts/t686-spike.js run <tag> [--ref <커밋>]      (T686_DIR=/tmp/t686 · T686_TPL=<DIR>/tpl-t100.db · T686_LEAD_S=240 · T686_BOUNDS=3)
 //       node scripts/t686-spike.js table <tag>
 //       [T689] T686_PRELOAD=<파일>(존에 덧 preload) · T686_END_S=<벽 초>(짧은 판 — 없으면 경계 수로)
+//       [T719] T719_DEEP=1(T715_DEC=1 위) — npcStep 시간 분포(낮·밤) · 긴 걸음(T719_THR ms)마다 함수별 ms · 마을 사본 생활층 함수 감싸기
 //       [T715] T715_QCV=1 — 빌린 배열 질의 = 옛 질의 견줌(판 끝 decAll.qcv)
 //       [T715] T715_DEC=1 — 결정 문 안(틱마다 몸 수 · 가장 긴 한 몸: 누가 · 직업 · 라벨 · 결정 ms · 길 ms) · 판 끝 `decAll`(몸 하나 15·30 ms 넘음)
 'use strict';
@@ -102,6 +103,30 @@ const ZTAIL = `
     const fD = decideNpcBehavior; decideNpcBehavior = function (a, b) { const t = now(); try { return fD(a, b); } finally { if (_dCur === a) _dDec += now() - t; } };
     const fP = computeNpcPath; computeNpcPath = function (a, b) { const t = now(); try { return fP(a, b); } finally { if (_dCur === a) { _dPath += now() - t; _dPathN++; } } };
   }
+  //   ★[T719] T719_DEEP=1(T715_DEC=1 위) — 한 사람 한 걸음(npcStep) 시간 분포(낮·밤 · 1/4 옥타브 칸) · 긴 걸음(T719_THR ms · 기본 5)마다 그 걸음 안 함수별 ms(포함 값)
+  //     함수 칸: 존(결정 · 생활층 · 막힘 · 길 · 따라가기 · 풀기) + 마을 사본 꼬리가 감싼 생활층 안 함수(__T719W) · T715_JIT=1 이면 긴 걸음마다 [T719W] 줄(앞 V8 줄 = 그 걸음 안 풀림)
+  if (_T715 && process.env.T719_DEEP === '1') {
+    const THR = +(process.env.T719_THR || 5), NB = 96, NF = 48;
+    const HD = new Float64Array(NB), HN = new Float64Array(NB), FN = [], FI = new Map(), ACC = new Float64Array(NF), CNT = new Int32Array(NF);
+    const fid = (k) => { let i = FI.get(k); if (i === undefined) { i = FN.length; FN.push(k); FI.set(k, i); } return i; };
+    let night = false, maxD = 0, maxN = 0, sumD = 0, sumN = 0, nD = 0, nN = 0;
+    const worst = [];
+    globalThis.__T719W = (k, f0) => { const i = fid(k); return function () { const t = now(); try { return f0.apply(this, arguments); } finally { if (_dCur) { ACC[i] += now() - t; CNT[i]++; } } }; };
+    globalThis.__T719A = (k, ms) => { if (_dCur) { const i = fid(k); ACC[i] += ms; CNT[i]++; } };   // 마을 사본 꼬리가 부른다(생활층 안 함수)
+    { const upd = () => { try { night = (worldPhase(Date.now()) % 1) > WORLD.dayPhaseRatio; } catch (e) {} }; upd(); setInterval(upd, 1000).unref(); }   // 낮·밤 — 1초마다(걸음마다 시계를 더 안 읽는다)
+    const fS2 = npcStep; npcStep = function (a, b, c) { ACC.fill(0); CNT.fill(0); const t = now(); try { return fS2(a, b, c); } finally {
+      const ms = now() - t, us = ms * 1000, bi = us <= 0.25 ? 0 : Math.min(NB - 1, Math.floor(4 * Math.log2(us / 0.25)));
+      if (night) { HN[bi]++; sumN += ms; nN++; if (ms > maxN) maxN = ms; } else { HD[bi]++; sumD += ms; nD++; if (ms > maxD) maxD = ms; }
+      if (ms > THR && worst.length < 3000) { const acc = []; for (let i = 0; i < FN.length; i++) if (ACC[i] > 0.05) acc.push([FN[i], +ACC[i].toFixed(2), CNT[i]]); acc.sort((x, y) => y[1] - x[1]);
+        worst.push([Date.now(), +ms.toFixed(2), night ? 1 : 0, a.pid, a.simJob || a.npcJob || null, a._lifeAct || null, a.behavior || null, a.simVillageId || null, acc.slice(0, 8)]);
+        if (process.env.T715_JIT === '1') console.log('[T719W] ' + ms.toFixed(1) + 'ms ' + (a.simJob || '') + ' ' + (a._lifeAct || '') + ' ' + JSON.stringify(acc.slice(0, 4))); } } };
+    for (const [k, nm] of [['결정', 'decideNpcBehavior'], ['막힘', 'detectStuck'], ['풀기', 'unstuckNpc'], ['따라가기', 'followNpcPath']]) {
+      try { const f0 = eval(nm); if (typeof f0 === 'function') eval(nm + ' = globalThis.__T719W(' + JSON.stringify(k) + ', f0)'); } catch (e) {} }
+    { const fP2 = computeNpcPath; computeNpcPath = globalThis.__T719W('길', fP2); }
+    if (SimVillages && SimVillages.npcLifeTick) SimVillages.npcLifeTick = globalThis.__T719W('생활층', SimVillages.npcLifeTick);
+    _dAll.t719 = { get thr() { return THR; }, get hist() { return { day: Array.from(HD), night: Array.from(HN) }; }, get stat() { return { nD, nN, avgDUs: nD ? sumD / nD * 1000 : 0, avgNUs: nN ? sumN / nN * 1000 : 0, maxD, maxN }; }, worst,
+      reset() { HD.fill(0); HN.fill(0); maxD = maxN = sumD = sumN = nD = nN = 0; worst.length = 0; } };
+  }
   const _awake = (p) => p && p.isNpc && p.simVillageId != null && (p.hp || 0) > 0 && p._lifeAct !== '취침' && p._lifeAct !== '요양';
   resetW();
   let all = { ticks: 0, tot: 0, over30: 0, over16: 0, max: 0 };
@@ -134,14 +159,14 @@ const ZTAIL = `
     cur = null;
   };
   const flush = (fin) => {
-    try { const row = Object.assign({ kind: fin ? 'fin' : 'win', pop: npcs.size }, dayInfo(), W, { seg: W.seg, all }, _T715 && fin ? { decAll: _dAll } : {});
+    try { const row = Object.assign({ kind: fin ? 'fin' : 'win', pop: npcs.size }, dayInfo(), W, { seg: W.seg, all }, _T715 && fin ? { decAll: _dAll } : {}, fin && SimVillages && SimVillages.t719Stat ? { t719Cls: globalThis.__T719C || null, t719Pre: SimVillages.t719Stat(), t562: SimVillages.t562Stat ? SimVillages.t562Stat() : null } : {});   // ★[T719] 미리 넓히기 손잡이 셈(끔이면 0)
       if (fin) row.hist = Array.from(H);
       fs.appendFileSync(OUT, JSON.stringify(row) + '\\n'); } catch (e) { try { fs.appendFileSync(OUT, JSON.stringify({ err: String(e && e.stack) }) + '\\n'); } catch (e2) {} }
     resetW();
   };
   setInterval(() => flush(false), 60000).unref();
   process.on('SIGUSR2', () => flush(true));
-  process.on('SIGHUP', () => { H.fill(0); all = { ticks: 0, tot: 0, over30: 0, over16: 0, max: 0 }; resetW(); _dAll.n = 0; _dAll.over15 = 0; _dAll.over30 = 0; _dAll.top.length = 0; if (_dAll.qcv) { _dAll.qcv.n = 0; _dAll.qcv.bad = 0; _dAll.qcv.nest = 0; } fs.appendFileSync(OUT, JSON.stringify({ kind: 'reset', at: Date.now() }) + '\\n'); });   // 부팅 몫을 뺀다(관측자가 붙은 뒤부터)
+  process.on('SIGHUP', () => { H.fill(0); all = { ticks: 0, tot: 0, over30: 0, over16: 0, max: 0 }; resetW(); _dAll.n = 0; _dAll.over15 = 0; _dAll.over30 = 0; _dAll.top.length = 0; if (_dAll.qcv) { _dAll.qcv.n = 0; _dAll.qcv.bad = 0; _dAll.qcv.nest = 0; } if (_dAll.t719) _dAll.t719.reset(); fs.appendFileSync(OUT, JSON.stringify({ kind: 'reset', at: Date.now() }) + '\\n'); });   // 부팅 몫을 뺀다(관측자가 붙은 뒤부터)
 })();
 `;
 function makeTree(dir, ref) {
@@ -181,6 +206,38 @@ function makeTree(dir, ref) {
     }
     rep('      const rv = j.f();', "      const _t686a = process.hrtime.bigint(); const rv = j.f(); globalThis.__T686J && __T686J(j.s || j.n, Number(process.hrtime.bigint() - _t686a) / 1e6);");
     rep('  try { _closeDay(C); }', "  { const _t686c = process.hrtime.bigint(); try { _closeDay(C); } catch (e) { console.error(`[${state.zoneId}] 🏘️ 일틱 마감 로그 실패:`, e.message); } globalThis.__T686J && __T686J('(마감 꼬리 _closeDay)', Number(process.hrtime.bigint() - _t686c) / 1e6); }\n  if (0) try { _closeDay(C); }");
+    if (process.env.T719_DEEP === '1') s += `
+;(function () {   // [T719 탐침 · 계측기가 박았다 · 제품엔 없다] 생활층 안 함수 포함 ms — 존 꼬리의 __T719A 로(걸음 문 안일 때만 센다)
+  const pf = require('perf_hooks').performance;
+  const W = (k, f0) => (typeof f0 !== 'function') ? f0 : function () { const A = globalThis.__T719A; if (!A) return f0.apply(this, arguments); const t = pf.now(); try { return f0.apply(this, arguments); } finally { A(k, pf.now() - t); } };
+  try { _lifeNextFarmCell = W('생활·농사 칸', _lifeNextFarmCell); } catch (e) {}
+  try { _lifeDoTask = W('생활·작업', _lifeDoTask); } catch (e) {}
+  try { _lifeJobSites = W('생활·일터 목록', _lifeJobSites); } catch (e) {}
+  try { _lifeFrontier = W('생활·개간 후보', _lifeFrontier); } catch (e) {}
+  try { _lifeNeedClear = W('생활·개간 필요', _lifeNeedClear); } catch (e) {}
+  try { _t427Site = W('생활·닿는 현장', _t427Site); } catch (e) {}
+  try { _t427Reach = W('생활·닿는가', _t427Reach); } catch (e) {}
+  try { _t427Set = W('생활·닿는 칸 집합', _t427Set); } catch (e) {}
+  try { _lifeGranStep = W('생활·곳간', _lifeGranStep); } catch (e) {}
+  try { _granGo = W('생활·곳간 가기', _granGo); } catch (e) {}
+  try { _t400BodyStep = W('생활·집터 크루', _t400BodyStep); } catch (e) {}
+  try { _t340Try = W('생활·어부 던짐', _t340Try); } catch (e) {}
+  try { _t677Spot = W('생활·어부 자리', _t677Spot); } catch (e) {}
+  try { _lifeGoHome = W('생활·집으로', _lifeGoHome); } catch (e) {}
+  try { _lifeSiteFilters = W('생활·현장 거름', _lifeSiteFilters); } catch (e) {}
+  try { _lifeLiveFarmTile = W('생활·밭 칸', _lifeLiveFarmTile); } catch (e) {}
+  try { _lifeDropTask = W('생활·작업 놓기', _lifeDropTask); } catch (e) {}
+  try { _lifeHandsIn = W('생활·손 넣기', _lifeHandsIn); } catch (e) {}
+  try { _cellTask = W('생활·칸 작업', _cellTask); } catch (e) {}
+  // [T719 ③ 진단] T719_SETCLS=1 — 집 기억(_t427Set) 부름을 들어갈 때 꼴로 가른다(새 집 · 바뀜(곁 다 됨/덜 됨/묵음/없음) · 이어서 · 그대로) · 꼴마다 번 · ms · 2 ms 넘은 번 · 최대
+  if (process.env.T719_SETCLS === '1') try { const s0 = _t427Set; _t427Set = function (vil, o, stop) {
+    let c = '?'; try { const R = vil._t427R, key = Math.floor(o.x / SZ) + ',' + Math.floor(o.y / SZ), e = R && R.get(key), st = state.deps.collGenAround(o.x, o.y);
+      c = !e ? '새 집' : e.stamp !== st ? (e.pre && e.pre.stamp === st ? (e.pre.S.done ? '바뀜·곁 다 됨' : '바뀜·곁 덜 됨') : (e.pre ? '바뀜·곁 묵음' : '바뀜·곁 없음')) : (e.S.done ? '그대로' : '이어서');
+      if (e && (e.S.ax !== o.x || e.S.ay !== o.y)) c += '(시작 점 다름)'; } catch (er) {}
+    const t = pf.now(); try { return s0.apply(this, arguments); } finally { const d = pf.now() - t, C = globalThis.__T719C || (globalThis.__T719C = {}), x = C[c] || (C[c] = { n: 0, ms: 0, n2: 0, ms2: 0, mx: 0 });
+      x.n++; x.ms += d; if (d > 2) { x.n2++; x.ms2 += d; } if (d > x.mx) x.mx = d; } }; } catch (e) {}
+})();
+`;
     fs.writeFileSync(vp, s); execFileSync(process.execPath, ['--check', vp]); }
   if (process.env.T686_PATCH) require(path.resolve(process.env.T686_PATCH))(dir);   // [T688] 덧 탐침(사본에만 · 예: scripts/t688-probe.js)
 }

@@ -15,6 +15,7 @@
 //
 // 실행: node scripts/t646-anatomy.js run <conf> <tag> [--probe 0|1]   (conf: cap40 | inf)
 //       node scripts/t646-anatomy.js table
+//   [T719] --hbr(--hist 와 같이) — 갈래 다섯(결정·생활층·막힘·길·따라가기) 한 번 부름 분포도 · --hist — 한 사람 한 걸음(npcStep) 시간 분포(낮·밤 창마다 · 표에 step: 평균 · p50 · p99 · p99.9 · p99.99 · 최대 · 15 ms 넘음) · T646_PRELOAD=<파일>(존 덧 preload)
 //   T646_DIR=/tmp/t646 · T646_TPL=/tmp/t646/tpl/tpl-t100.db · T646_SLICE_S=30 · T646_SLICES=6 · T646_LEAD_S=150
 'use strict';
 const path = require('path');
@@ -268,6 +269,31 @@ const T675_TAIL = `
   }, 30000).unref();
 })();
 `;
+const T719_TAIL = `
+// ── [T719 ① 최악 자 · 계측기가 박았다 · 제품엔 없다 · \`--hist\` 판에만] 한 사람 한 걸음(npcStep) 시간 분포 ──────────────────────────────
+//   감싸기 하나(시계 둘) — 1/4 옥타브 칸(0.25 µs 부터) · 창마다 [T646] 줄에 stepH · stepN · stepMs · stepMax 를 싣는다.
+;(function () {
+  if (process.env.T719_HIST !== '1') return;
+  const NB = 96, H = new Float64Array(NB); let n = 0, ms = 0, mx = 0, o15 = 0;
+  { const f0 = npcStep; npcStep = function (a, b, c) { const t = _a6t(); f0(a, b, c); const d = _a6t() - t, us = d * 1000;
+    H[us <= 0.25 ? 0 : Math.min(NB - 1, Math.floor(4 * Math.log2(us / 0.25)))]++; n++; ms += d; if (d > mx) mx = d; if (d > 15) o15++; }; }
+  // [T719 ①] \`--hbr\` — 갈래(T677 \`--br\` 의 다섯 문)마다 한 번 부름 시간 분포도(감싸기 다섯 · 시계 둘씩 · 자 판과 따로 돈다)
+  const BH = {};
+  if (process.env.T719_HBR === '1') {
+    const wrapH = (f0, k) => { const b = BH[k] = { h: new Float64Array(NB), n: 0, ms: 0, mx: 0, o15: 0 };
+      return function () { const t = _a6t(); const r = f0.apply(this, arguments); const d = _a6t() - t, us = d * 1000;
+        b.h[us <= 0.25 ? 0 : Math.min(NB - 1, Math.floor(4 * Math.log2(us / 0.25)))]++; b.n++; b.ms += d; if (d > b.mx) b.mx = d; if (d > 15) b.o15++; return r; }; };
+    decideNpcBehavior = wrapH(decideNpcBehavior, '결정');
+    if (SimVillages && SimVillages.npcLifeTick) SimVillages.npcLifeTick = wrapH(SimVillages.npcLifeTick, '생활층');
+    detectStuck = wrapH(detectStuck, '막힘');
+    computeNpcPath = wrapH(computeNpcPath, '길');
+    followNpcPath = wrapH(followNpcPath, '따라가기');
+  }
+  const e0 = _A6end;
+  _A6end = function () { if (_A6.n + 1 >= _A6EVERY) { _A6.stepH = Array.from(H); _A6.stepN = n; _A6.stepMs = ms; _A6.stepMax = mx; _A6.stepO15 = o15; H.fill(0); n = 0; ms = 0; mx = 0; o15 = 0;
+    if (Object.keys(BH).length) { _A6.stepB = {}; for (const [k, b] of Object.entries(BH)) { _A6.stepB[k] = { h: Array.from(b.h), n: b.n, ms: b.ms, mx: b.mx, o15: b.o15 }; b.h.fill(0); b.n = 0; b.ms = 0; b.mx = 0; b.o15 = 0; } } } e0(); };
+})();
+`;
 const SHAPE_TAIL = `
 // ── [T671 ① 몸 재기 · 계측기가 박았다 · 제품엔 없다 · \`--allow-natives-syntax\` 판에만] ─────────────────────
 ;(function () {
@@ -390,7 +416,7 @@ function makeTree(dir, probe, ref, seg) {
       s = s.replace(a, () => after ? a + '  ' + ins + '\n' : '  ' + ins + '\n' + a);
     }
   }
-  if (seg) { s += TAIL; if (process.argv.includes('--sab')) s += T675_TAIL; fs.writeFileSync(zp, s); execFileSync(process.execPath, ['--check', zp]); return SEGS.length; }   // [T670] 구간 팔 — 구간 표식만(틱당 시계 13번 · 사람당 ≈0) · 갈래 시계·장부 0
+  if (seg) { s += TAIL; if (process.argv.includes('--sab')) s += T675_TAIL; if (process.argv.includes('--hist')) s += T719_TAIL; fs.writeFileSync(zp, s); execFileSync(process.execPath, ['--check', zp]); return SEGS.length; }   // [T670] 구간 팔 — 구간 표식만(틱당 시계 13번 · 사람당 ≈0) · 갈래 시계·장부 0
   { const a = '      movePlayerStep(p);';   // 걸음(NPC) — 틱 함수 안의 함수라 바인딩을 못 감싼다 ⇒ 부르는 자리(T356 의 그 앵커)
     if (cnt(a) !== 1) throw new Error('걸음 앵커 ' + cnt(a));
     s = s.replace(a, () => "      { const _s6 = _a6t(); movePlayerStep(p); _A6sub('step', _a6t() - _s6); }"); }
@@ -423,14 +449,14 @@ async function run(conf, tag, probe) {
   for (const s of ['', '-wal', '-shm']) { try { fs.copyFileSync(TPL + s, DB + s); } catch (e) {} }
   const at = (Math.floor(fs.statSync(TPL).mtimeMs / DAY) + 2) * DAY - LEAD_S * 1000;   // T455 고정 원점(하루 경계 LEAD 초 앞)
   const logp = path.join(DIR, `${tag}.log`), logf = fs.openSync(logp, 'w');
-  const env0 = Object.assign({}, process.env, { NODE_OPTIONS: `--require ${path.join(__dirname, 't455-clock.js')}`, T455_CLOCK_PRE: '1', T455_CLOCK_AT: String(at) });
+  const env0 = Object.assign({}, process.env, { NODE_OPTIONS: `--require ${path.join(__dirname, 't455-clock.js')}` + (process.env.T646_PRELOAD ? ` --require ${process.env.T646_PRELOAD}` : ''), T455_CLOCK_PRE: '1', T455_CLOCK_AT: String(at) });   // ★[T719] 덧 preload(계측 · 없으면 종전)
   const c = spawn(process.execPath, [path.join(dir, 'server/central.js')], { cwd: dir, stdio: 'ignore',
     env: Object.assign({}, env0, { PORT: String(CP), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando', CENTRAL_SECRET: SECRET }) });
   const PROF = process.argv.includes('--prof') ? path.join(DIR, `prof-${tag}`) : null;   // 기본 끔 — 켜면 존에 V8 CPU 프로파일(10ms 표본 · 자기 시간으로 빈 몫을 찾는다)
   const z = spawn(process.execPath, [...(process.argv.includes('--shape') ? ['--allow-natives-syntax'] : []), ...(PROF ? ['--cpu-prof', '--cpu-prof-interval', '10000', '--cpu-prof-dir', PROF] : []), path.join(dir, 'server/zone.js')], { cwd: dir, stdio: ['ignore', logf, logf],
     env: Object.assign({}, env0, CONF[conf], { PORT: String(ZP), ZONE_ID: 'hanbando', CENTRAL_HOST: 'localhost', CENTRAL_PORT: String(CP),
       CENTRAL_SECRET: SECRET, ENABLE_VILLAGES: '1', VILLAGE_DAY_MS: String(DAY), DB_PATH: DB, VILLAGE_WAR_LOG: '0', T312_FISH_ACT: '1',
-      T646_EVERY: String(SLICE_S * 30), T646_SEGONLY: SEG ? '1' : '', T675_SAB: process.argv.includes('--sab') ? '1' : '', T677_BR: process.argv.includes('--br') ? '1' : '', T670_AFAIL_OUT: path.join(DIR, `${tag}.afail.json`), T646_PATH_OUT: path.join(DIR, `${tag}.dest.json`), T671_TRAP_OUT: process.argv.includes('--trap') ? path.join(DIR, `${tag}.trap.json`) : '', T671_SHAPE_OUT: process.argv.includes('--shape') ? path.join(DIR, `${tag}.shape.jsonl`) : '' }) });
+      T646_EVERY: String(SLICE_S * 30), T646_SEGONLY: SEG ? '1' : '', T675_SAB: process.argv.includes('--sab') ? '1' : '', T677_BR: process.argv.includes('--br') ? '1' : '', T719_HIST: process.argv.includes('--hist') ? '1' : '', T719_HBR: process.argv.includes('--hbr') ? '1' : '', T670_AFAIL_OUT: path.join(DIR, `${tag}.afail.json`), T646_PATH_OUT: path.join(DIR, `${tag}.dest.json`), T671_TRAP_OUT: process.argv.includes('--trap') ? path.join(DIR, `${tag}.trap.json`) : '', T671_SHAPE_OUT: process.argv.includes('--shape') ? path.join(DIR, `${tag}.shape.jsonl`) : '' }) });
   const getj = async (p) => { try { const r = await fetch(`http://localhost:${ZP}${p}`, { headers: { 'x-zone-secret': SECRET }, signal: AbortSignal.timeout(20000) }); return await r.json(); } catch (e) { return null; } };
   const say = (...a) => console.log(`[${tag}]`, ...a);
   const t0 = Date.now();
@@ -488,10 +514,16 @@ function table() {
       if (!A.ast) A.ast = JSON.parse(JSON.stringify(x.ast)); else { for (const k of ['near', 'beeline', 'straight', 'cooldown', 'fail', 'found']) { A.ast[k][0] += x.ast[k][0]; A.ast[k][1] += x.ast[k][1]; }
         A.ast.inside += x.ast.inside; A.ast.outside += x.ast.outside; for (const g of ['outLab', 'why', 'walked']) for (const [k, v] of Object.entries(x.ast[g])) A.ast[g][k] = (A.ast[g][k] || 0) + v; }
     }
+    { let N = 0, MS = 0, MX = 0, O15 = 0; const HH = new Array(96).fill(0); for (const sl of w.slices) for (const x of sl.ana) if (x.stepH) { N += x.stepN; MS += x.stepMs; if (x.stepMax > MX) MX = x.stepMax; O15 += x.stepO15 || 0; x.stepH.forEach((v, i) => { HH[i] += v; }); }
+      if (N) { const q = (p) => { let c = 0; for (let i = 0; i < 96; i++) { c += HH[i]; if (c >= N * p) return +(0.25 * Math.pow(2, (i + 1) / 4)).toFixed(2); } return null; };   // 칸 위 끝(µs)
+        A.step = { n: N, avgUs: +(MS / N * 1000).toFixed(3), p50Us: q(0.5), p99Us: q(0.99), p999Us: q(0.999), p9999Us: q(0.9999), maxMs: +MX.toFixed(2), over15: O15 }; } }   // ★[T719] 한 걸음 분포
+    { const BB = {}; for (const sl of w.slices) for (const x of sl.ana) if (x.stepB) for (const [k, b] of Object.entries(x.stepB)) { const a = BB[k] || (BB[k] = { h: new Array(96).fill(0), n: 0, ms: 0, mx: 0, o15: 0 }); a.n += b.n; a.ms += b.ms; if (b.mx > a.mx) a.mx = b.mx; a.o15 += b.o15; b.h.forEach((v, i) => { a.h[i] += v; }); }
+      for (const [k, a] of Object.entries(BB)) { if (!a.n) continue; const q = (p) => { let c = 0; for (let i = 0; i < 96; i++) { c += a.h[i]; if (c >= a.n * p) return +(0.25 * Math.pow(2, (i + 1) / 4)).toFixed(2); } return null; };
+        (A.stepBr || (A.stepBr = {}))[k] = { n: a.n, avgUs: +(a.ms / a.n * 1000).toFixed(3), p50Us: q(0.5), p99Us: q(0.99), p999Us: q(0.999), maxMs: +a.mx.toFixed(2), over15: a.o15 }; } }   // ★[T719 ①] 갈래마다
     if (!A.n) continue;
     const pop = A.popN / A.n, us = (ms) => +(ms / A.n * 1000 / pop).toFixed(3);
     const p50s = w.slices.map((s) => s.p50).filter((x) => x != null), p95s = w.slices.map((s) => s.p95).filter((x) => x != null);
-    const r = { conf: j.conf, tag: j.tag, probe: j.probe, W: w.W, pop: Math.round(pop), ticks: A.n, tickP50: R.median(p50s), tickP95: R.median(p95s), totUs: us(A.tot),
+    const r = { conf: j.conf, tag: j.tag, probe: j.probe, W: w.W, pop: Math.round(pop), ticks: A.n, step: A.step || null, stepBr: A.stepBr || null, tickP50: R.median(p50s), tickP95: R.median(p95s), totUs: us(A.tot),
       segUs: Object.fromEntries(Object.entries(A.seg).map(([k, v]) => [k, us(v)])), segSumUs: us(Object.values(A.seg).reduce((s, v) => s + v, 0)),
       subUs: Object.fromEntries(Object.entries(A.sub).map(([k, v]) => [k, us(v)])), subN: Object.fromEntries(Object.entries(A.subN).map(([k, v]) => [k, +(v / A.n).toFixed(1)])),
       hq: Object.fromEntries(Object.entries(A.hq).map(([k, h]) => [k, { n: h.n, sameRate: +(h.same / Math.max(1, h.n)).toFixed(3), gatedRate: +(h.gated / Math.max(1, h.n)).toFixed(3), sameUs: us(h.msSame), diffUs: us(h.msDiff),
