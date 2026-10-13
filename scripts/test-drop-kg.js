@@ -15,13 +15,13 @@
 //     표 밖 종 그대로(같은 참조) · 켬 드롭 객체는 얼어 있다
 //  ⑤ 따라오는 것 — 사체 고기 열량(`kcal.js` meat_game 1,200/kg · USDA) ÷ 하루치 2,450 → 한 번 사냥 몇 날치 · 짐 무게(T618 지게 50~70kg)
 //  ⑥ 실기 — 존을 임시 DB·가벼운 판으로 띄워(test-tame 꼴) 사체를 세우고 **진짜 도살**(`butcherCorpse`) → **진짜 먹기**(`doEat`) →
-//     포만 · 한반도 33 / 닛폰 21 / 되돌림 3(먹기 거절) · 곳간·거래 환산은 켬/되돌림 같다(meat_game 은 곳간 넣기 표 밖)
+//     포만 · 한반도 33 / 닛폰 21 / 되돌림 3(먹기 거절) · 곳간·거래 환산은 두 판이 다 가진 품목에서 같다(켬은 T694 사냥 고기 넷이 곳간 넣기 표에 더 있다)
 //
 // 실행: node scripts/test-drop-kg.js      (⑥ 이 존을 세 번 띄운다 — 가벼운 판이라 몇 초)
 'use strict';
-// ★[PM 10-13] T705_FOOD_SICK · T694_GAME_MEAT 켬 기본 — 이 하네스는 종전 세계를 적은 단언이라 끔(`=0`)으로 묶는다(켬 세계는 test-food-sick · test-game-meat · T705 후속 카드가 이 단언을 새 세계로 옮긴다)
-if (process.env.T705_FOOD_SICK == null) process.env.T705_FOOD_SICK = '0';
-if (process.env.T694_GAME_MEAT == null) process.env.T694_GAME_MEAT = '0';
+// ★[T716 ⑥ · 2026-10-13] **켬 세계**(T694 사냥 고기 · T705 배탈 지수 — PM 10-13 켬 기본)의 단언이다 — PM 이 걸어 둔 끔 묶음(`=0` 둘)을 걷었다.
+//   곰 고기 칸 = 곰고기(`meat_bear` 36 · 1,610 kcal/kg) · 날고기 줄에 즉시 HP 칸 없음(해는 배탈 지수) · `meat_game` 은 곳간 넣기 표 안(T694 ④).
+//   되돌림(`T636_DROP_KG=0`)은 T694 를 같이 끈다(`game-meat.on()` 이 드롭 kg 켬을 요구한다) — ③ · ⑥ 되돌림 판은 종전 그대로다.
 const path = require('path');
 const fs = require('fs');
 const { execFileSync } = require('child_process');
@@ -54,7 +54,8 @@ if (process.env.T636_SUB === 'butcher') {
     if (type === 'deer') {   // 도살 → 먹기 → 포만(손에서 한 개)
       const h0 = p.hunger, hp0 = p.hp, n0 = p.inventory.meat_game || 0;
       H.doEat(p, 'meat_game', 1);
-      out.eat = { h0, h1: p.hunger, hp0, hp1: p.hp, n0, n1: p.inventory.meat_game || 0, eff: H.FOOD_EFFECTS.meat_game || null };
+      out.eat = { h0, h1: p.hunger, hp0, hp1: p.hp, n0, n1: p.inventory.meat_game || 0, eff: H.FOOD_EFFECTS.meat_game || null,
+        sick: (p.body && p.body.sick) ? { P: p.body.sick.P, B: p.body.sick.B } : null };   // [T716 ⑥] 배탈 칸(켬 세계 · 갓 잡은 고기는 안 선다)
     }
   }
   // 곳간·거래 환산 — 곳간 넣기 표의 품목마다 열량 환산(넣기·거래소 `econUnitsOf` · 꺼내기·보상 `itemsOf`)
@@ -179,7 +180,8 @@ for (const id of Object.keys(A.ANIMALS)) { ON[id] = A.dropsOf(id); ONZ[id] = { h
   ok(ONZ.deer.nippon.meat_game === 21 && Rn.sub === 'nippon', '★★④ 사슴 닛폰 = 일본아종 55kg × 37.44% → 고기 21', `${Rn.meatKg.toFixed(2)}kg`);
   ok(ON.deer.meat_game === 27 && A.dropsOf('deer', 'jungwon_n').meat_game === 27 && R.deer.sub === null,
     '★④ 존 모름 · 표에 없는 존(중원북) = 두 아종 가운데 71.75kg → 27(T636 값)', `${R.deer.meatKg.toFixed(2)}kg`);
-  ok(ON.bear.meat_game === 36 && ONZ.bear.hanbando.meat_game === 36 && ONZ.bear.nippon.meat_game === 36, '★④ 곰(반달가슴곰) 6 → 36(존 안 가름)', `생체 ${R.bear.liveKg} × 33% = ${R.bear.meatKg.toFixed(2)}kg`);
+  ok(ON.bear.meat_bear === 36 && ONZ.bear.hanbando.meat_bear === 36 && ONZ.bear.nippon.meat_bear === 36 && !('meat_game' in ON.bear),
+    '★④ 곰(반달가슴곰) 6 → 36(존 안 가름) — 고기 칸 이름은 곰고기(`meat_bear` · T694 켬)', `생체 ${R.bear.liveKg} × 33% = ${R.bear.meatKg.toFixed(2)}kg`);
   ok(ON.pheasant.meat_chicken === 1, '④ 꿩 닭고기 1 → 1 — 0.735kg = 한 개 0.5kg 의 1.47배 → 반올림 1(지금과 같음)', `${R.pheasant.meatKg.toFixed(3)}kg ÷ ${R.pheasant.unitKg}`);
   let other = 0;
   for (const r of A.DROP_KG) for (const [k, v] of Object.entries(A.ANIMALS[r.id].drops)) for (const d of [ON[r.id], ONZ[r.id].hanbando, ONZ[r.id].nippon]) if (k !== r.item && d[k] !== v) other++;
@@ -202,7 +204,8 @@ say('\n⑤ 따라오는 것 — 한 번 사냥 몇 날치(사체 고기 열량) 
   ok(days(ONZ.deer.hanbando.meat_game) > 16 && days(ONZ.deer.hanbando.meat_game) < 16.5, '★⑤ 사슴 한 마리 = 한 사람 몇 날치 — 한반도',
     `끔 ${days(A.ANIMALS.deer.drops.meat_game)}날 → 켬 ${days(ONZ.deer.hanbando.meat_game)}날`);
   ok(days(ONZ.deer.nippon.meat_game) > 10 && days(ONZ.deer.nippon.meat_game) < 10.5, '⑤ 닛폰', `${days(ONZ.deer.nippon.meat_game)}날`);
-  ok(days(ON.bear.meat_game) > 17 && days(ON.bear.meat_game) < 18, '⑤ 곰 한 마리', `끔 ${days(A.ANIMALS.bear.drops.meat_game)}날 → 켬 ${days(ON.bear.meat_game)}날`);
+  const bearDays = +(ON.bear.meat_bear * W.kgOf('meat_bear') * K.kcalPerKg('meat_bear') / day).toFixed(2);   // [T694] 곰고기 1,610 kcal/kg(USDA 북미 곰)
+  ok(K.kcalPerKg('meat_bear') === 1610 && bearDays > 23.5 && bearDays < 24, '⑤ 곰 한 마리 — 곰고기 36 × 1,610 kcal/kg(T694) ÷ 하루치', `끔 ${days(A.ANIMALS.bear.drops.meat_game)}날 → 켬 ${bearDays}날`);
   const kgOf = (d) => Object.entries(d).reduce((s, [k, n]) => s + n * W.kgOf(k), 0);
   const m618 = D618.match(/(\d+)\s*[∼~]\s*(\d+)\s*㎏/);
   pre(!!m618, 'T618 지게 무게 칸을 읽었다', m618 ? `${m618[1]}~${m618[2]}kg` : '없음');
@@ -223,7 +226,8 @@ say('\n⑥ 실기 — 존을 띄워 사체 → 도살(butcherCorpse) → 먹기(
   pre(off.out.deer && off.out.deer.inv.meat_game === 3 && !off.out.deer.left, '되돌림 — 사슴을 도살하면 고기 3(카탈로그 · 이게 아니면 아래가 자명 통과)', JSON.stringify(off.out.deer && off.out.deer.inv));
   ok(hb.out.deer.inv.meat_game === 33 && hb.out.deer.inv.leather === 2 && hb.out.deer.inv.horn === 1, '★★⑥ 한반도(기본 켬) — 사슴 도살 인벤 고기 33 · 가죽 2 · 뿔 1', JSON.stringify(hb.out.deer.inv));
   ok(np.out.deer.inv.meat_game === 21, '★★⑥ 닛폰 — 사슴 도살 고기 21(일본아종)', JSON.stringify(np.out.deer.inv));
-  ok(hb.out.bear.inv.meat_game === 36 && np.out.bear.inv.meat_game === 36 && off.out.bear.inv.meat_game === 6, '⑥ 곰 도살 고기 36(두 존) · 되돌림 6', JSON.stringify(hb.out.bear.inv));
+  ok(hb.out.bear.inv.meat_bear === 36 && np.out.bear.inv.meat_bear === 36 && !hb.out.bear.inv.meat_game && off.out.bear.inv.meat_game === 6,
+    '⑥ 곰 도살 고기 = 곰고기 36(두 존 · T694) · 되돌림 사슴·들짐승고기 6', JSON.stringify(hb.out.bear.inv));
   ok(JSON.stringify(hb.out.wolf.inv) === JSON.stringify(off.out.wolf.inv) && JSON.stringify(hb.out.pheasant.inv) === JSON.stringify(off.out.pheasant.inv),
     '⑥ 늑대(표 밖) · 꿩(반올림 같음)은 켬 · 되돌림 인벤이 같다', JSON.stringify(hb.out.wolf.inv));
   ok((hb.notes || []).some((s) => /도살 \+meat_game 33/.test(s)), '⑥ 도살 알림이 켬 수를 말한다', (hb.notes || []).find((s) => /도살/.test(s)) || '');
@@ -232,12 +236,16 @@ say('\n⑥ 실기 — 존을 띄워 사체 → 도살(butcherCorpse) → 먹기(
   pre(e.n0 === 33 && e.h0 === 50, '먹기 전 — 손에 사슴고기 33 · 허기 50');
   ok(!!e.eff && e.eff.hunger > 24 && e.eff.hunger < 25 && Math.abs(e.eff.hunger - K.hungerOf('meat_game')) < 1e-9, '★★⑥ [T647] 먹기 표에 사체 고기가 있다 — 포만은 열량 유도(1kg × 1,200kcal ÷ 2,450 × 하루 허기 50)', JSON.stringify(e.eff));
   ok(e.n1 === 32 && Math.abs((e.h1 - e.h0) - e.eff.hunger) < 1e-6, '★★⑥ [T647] 존 판에서 진짜로 먹었다 — 손 33 → 32 · 허기 +24.49', `허기 ${e.h0} → ${+e.h1.toFixed(2)}`);
-  ok(e.hp1 === e.hp0 + e.eff.hpDelta && e.eff.hpDelta === -3 && e.eff.thirst === 0, '⑥ 날고기 줄 그대로 — HP −3 · 갈증 0(새 수 0)', `HP ${e.hp0} → ${e.hp1}`);
+  ok(e.hp1 === e.hp0 && !(e.eff.hpDelta < 0) && e.eff.thirst === 0 && e.sick === null,
+    '⑥ 날고기 줄 — 즉시 HP 칸 없음(T705 · 해는 배탈 지수 — 갓 잡은 고기는 독 0 · 몸에 배탈 칸도 안 선다) · 갈증 0', `HP ${e.hp0} → ${e.hp1} · sick ${JSON.stringify(e.sick)}`);
   const oe = off.out.eat || {};
   ok(!oe.eff && oe.n1 === oe.n0 && oe.h1 === oe.h0 && (off.notes || []).some((s) => /먹을 수 없는 아이템: meat_game/.test(s)), '★⑥ 되돌림 — 먹기 표에 없다("먹을 수 없는 아이템" · 허기 · 손 그대로 = main)', `손 ${oe.n0} → ${oe.n1}`);
   // ★곳간·거래 무변 — meat_game 은 곳간 넣기 표 밖 · 표의 품목 환산은 켬 · 되돌림 같다
-  ok(hb.inMap === false && off.inMap === false, '★⑥ 곳간·거래 — meat_game 은 곳간 넣기 표(PV_DEPOSIT_MAP) 밖(넣기·꺼내기·거래소·게시판이 이 품목을 안 다룬다)');
-  ok(Object.keys(hb.conv).length > 20 && JSON.stringify(hb.conv) === JSON.stringify(off.conv), '★★⑥ 곳간·거래 환산 — 표의 품목마다 econUnitsOf · itemsOf 가 켬 · 되돌림 같다', `${Object.keys(hb.conv).length}품목`);
+  ok(hb.inMap === true && off.inMap === false, '★⑥ 곳간·거래 — meat_game 은 곳간 넣기 표(PV_DEPOSIT_MAP) 안(T694 ④ · 넣기·꺼내기·거래소·게시판이 다룬다) · 되돌림(T636=0)은 밖');
+  const common = Object.keys(off.conv).filter((k) => k in hb.conv), extra = Object.keys(hb.conv).filter((k) => !(k in off.conv)).sort();
+  ok(common.length === Object.keys(off.conv).length && common.length > 20 && common.every((k) => JSON.stringify(hb.conv[k]) === JSON.stringify(off.conv[k]))
+    && extra.join() === 'meat_bear,meat_bear_cooked,meat_game,meat_game_cooked',
+    '★★⑥ 곳간·거래 환산 — 두 판이 다 가진 품목은 econUnitsOf · itemsOf 가 켬 · 되돌림 같다 · 켬에만 사냥 고기 넷(T694)', `${common.length}품목 + ${extra.join('·')}`);
   ok(['hb', 'np', 'off'].every((k) => Object.values(({ hb, np, off })[k].out).every((o) => !o || o.left === undefined || !o.left)), '⑥ 도살한 사체는 지워졌다(두 번 못 바른다)');
 }
 

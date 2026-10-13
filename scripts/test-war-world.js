@@ -39,8 +39,8 @@
 //
 // 실행: node scripts/test-war-world.js          (서버 절 건너뛰기: WAR_WORLD_NO_SERVER=1)
 'use strict';
-// ★[PM 10-13] T694_GAME_MEAT 켬 기본 — 이 하네스는 종전 세계를 적은 단언이라 끔(`=0`)으로 묶는다(켬 세계는 test-food-sick · test-game-meat · T705 후속 카드가 이 단언을 새 세계로 옮긴다)
-if (process.env.T694_GAME_MEAT == null) process.env.T694_GAME_MEAT = '0';
+// ★[T716 ⑥ · 2026-10-13] ⓧ① 은 **켬 세계**(T694 사냥 고기 · PM 10-13 켬 기본)의 단언이다 — PM 이 걸어 둔 끔 묶음(`T694_GAME_MEAT=0`)을 걷었다.
+//   곳간 대응표의 이름 다른 줄이 7 → 10(곰고기 → 들짐승고기 · 익힌 둘 → 조리식) · "같은 물건" 판정은 그대로 둘(곰고기 1,610 ≠ 1,200 kcal/kg).
 const path = require('path');
 const fs = require('fs');
 const ROOT = path.join(__dirname, '..');
@@ -1093,8 +1093,10 @@ function berryArrowPart() {
   const M = SimVillages.playerVillageDepositMap();
   const renamed = Object.keys(M).filter(k => M[k] !== k);
   const same = renamed.filter(k => HV._econSameOf(k)).map(k => `${k}=${M[k]}(${KC.kcalPerKg(k)})`);
-  ok(same.join('·') === 'berry=fruit(500)·meat_raw=meat(1500)' && renamed.length === 7,
-    'ⓧ① 등가 표 — 대응 정본의 이름이 다른 줄 7 중 **같은 물건 2**(kg당 열량이 같다) · 가공·제련 대응 5 는 "바꿔 받는 물건"이라 빠진다', `${same.join(' · ')} · 빠짐 ${renamed.filter(k => !HV._econSameOf(k)).map(k => k + '→' + M[k]).join(' ')}`);
+  // ★[T716 ⑥ · 켬 세계] T694 사냥 고기 셋(곰고기 → 들짐승고기 · 익힌 둘 → 조리식)이 이름 다른 줄에 더해진다 — 등가는 그대로 둘(곰고기 1,610 ≠ 들짐승고기 1,200 kcal/kg)
+  ok(same.join('·') === 'berry=fruit(500)·meat_raw=meat(1500)' && renamed.length === 10
+    && ['meat_bear', 'meat_game_cooked', 'meat_bear_cooked'].every((k) => renamed.includes(k) && !HV._econSameOf(k)),
+    'ⓧ① 등가 표 — 대응 정본의 이름이 다른 줄 10 중 **같은 물건 2**(kg당 열량이 같다) · 가공·제련 대응 5 와 사냥 고기 셋(T694 — 곰고기 1,610 ≠ 1,200 · 익힌 둘)은 "바꿔 받는 물건"이라 빠진다', `${same.join(' · ')} · 빠짐 ${renamed.filter(k => !HV._econSameOf(k)).map(k => k + '→' + M[k]).join(' ')}`);
   ok(KC.kcalPerKg('berry') === KC.kcalPerKg('fruit') && HV._econSameOf('fiber') === null && HV._econSameOf('twig') === null && HV._econSameOf('herb') === null,
     'ⓧ① 군락 전리품 넷 — berry → fruit(같은 물건) · twig·herb 는 이름이 같다 · fiber 는 econ 재화가 아니다(대응 없음)', `berry ${KC.kcalPerKg('berry')} = fruit ${KC.kcalPerKg('fruit')} kcal/kg`);
   const fnSame = VS.slice(VS.indexOf('function _econSameOf('), VS.indexOf('function _econSameOf(') + 600);

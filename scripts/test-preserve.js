@@ -18,8 +18,9 @@
 //
 // 실행: node scripts/test-preserve.js
 'use strict';
-// ★[PM 10-13] T705_FOOD_SICK 켬 기본 — 이 하네스는 종전 세계를 적은 단언이라 끔(`=0`)으로 묶는다(켬 세계는 test-food-sick · test-game-meat · T705 후속 카드가 이 단언을 새 세계로 옮긴다)
-if (process.env.T705_FOOD_SICK == null) process.env.T705_FOOD_SICK = '0';
+// ★[T716 ⑥ · 2026-10-13] **켬 세계**(T705 배탈 지수 · PM 10-13 켬 기본)의 단언이다 — PM 이 걸어 둔 끔 묶음(`T705_FOOD_SICK=0`)을 걷었다.
+//   ②ⓒⓓⓔ 가 종전 "상한 것 = 즉시 부상"을 적던 자리를 **배탈 지수**(먹은 kg × (1 − f) → P → 잠복 → B > θ 면 체력)로 옮겼다.
+//   되돌림(`=0`) 세계의 거동은 `test-food-sick` ① 이 따로 지킨다(즉시 −3 · 즉시 부상 · 배탈 칸 없음).
 const path = require('path');
 const ROOT = path.join(__dirname, '..');
 
@@ -58,6 +59,7 @@ const Lots = require(path.join(ROOT, 'server', 'lots.js'));
 const Facility = require(path.join(ROOT, 'server', 'facility.js'));
 const Weights = require(path.join(ROOT, 'server', 'weights.js'));
 const Body = require(path.join(ROOT, 'server', 'body.js'));
+const Sick = require(path.join(ROOT, 'server', 'sick.js'));   // ★[T716 ⑥] 배탈 지수 정본(독 · 닫힌 해 · 곡선)
 
 function mkPlayer(name, inv) {
   const msgs = [];
@@ -186,7 +188,7 @@ function giveAged(p, item, n, ageDays) {
     pre(!H.FOOD_EFFECTS[SPOIL_ITEM].hpDelta, '그리고 hpDelta 가 없다(HP 불감소 검사가 오염되지 않게)');
     const age = Math.ceil(Spoil.shelfOf(SPOIL_ITEM)) + 2;
     pre(Spoil.freshnessOf(SPOIL_ITEM, age) === 0, '검사 표본이 **정말 상함**이다(시듦으로 상함을 재면 가짜)', `f=${Spoil.freshnessOf(SPOIL_ITEM, age)}`);
-    const inj = [], hun = [];
+    const inj = [], hun = [], sickP = [];
     for (let i = 0; i < 20; i++) {
       const p = mkPlayer('bad' + i, {});
       giveAged(p, SPOIL_ITEM, 3, age);
@@ -194,22 +196,38 @@ function giveAged(p, item, n, ageDays) {
       H.doEat(p, SPOIL_ITEM, 1);
       if (i === 0) pre(/섭취/.test(lastNote(p)), '★그리고 **실제로 먹었다**(행동의 성사를 독립적으로 센다)', lastNote(p).slice(0, 40));
       hun.push(+p.hunger.toFixed(6)); inj.push(+Body.ensure(p).injury.toFixed(6));
+      sickP.push(+(((Body.ensure(p).sick || {}).P) || 0).toFixed(6));
     }
     ok(hun.every((h) => h === 0), '★★②ⓒ 상한 걸 먹으면 **회복 0**', `허기 ${hun[0]}`);
-    ok(new Set(inj).size === 1 && inj[0] > 0,
-      '★★②ⓒ 그리고 **확정적으로** 탈이 난다 — 20회 전부 같은 값(확률 0/100 아님)', `부상 +${inj[0]} ×20회`);
-    ok(Math.abs(inj[0] - Spoil.SPOIL_INJURY) < 1e-6, '★②ⓒ 탈의 크기 = SPOIL_INJURY(한 단위 기준)', `${inj[0]}`);
+    // ★[T716 ⑥ · 켬 세계] 탈은 즉시 부상이 아니라 **배탈 지수 P**(독 = 먹은 kg × (1 − f))로 몸에 얹힌다 — 주사위 0
+    ok(new Set(sickP).size === 1 && sickP[0] > 0 && inj.every((x) => x === 0),
+      '★★②ⓒ 그리고 **확정적으로** 탈이 몸에 얹힌다 — 20회 전부 같은 배탈 지수 P(확률 0/100 아님) · 즉시 부상 0', `P +${sickP[0]} ×20회 · 부상 ${inj[0]}`);
+    const dose = Sick.doseOf(Weights.kgOfOrDefault(SPOIL_ITEM), 1, 0);
+    ok(Math.abs(sickP[0] - dose) < 1e-6, '★②ⓒ 탈의 크기 = 독 = 먹은 kg × (1 − f)(상함 f = 0 · 한 단위 기준 · `sick.doseOf`)', `${sickP[0]} = ${dose}`);
   }
-  // 탈은 **부상 축**이다 — 새 축도, HP 감소도 없다(아사 폐지 캐논과 같은 결).
+  // ★[T716 ⑥ · 켬 세계] 탈은 **잠복이 있는 배탈 지수**다 — 먹는 자리에선 HP·부상·걸음이 그대로고, 잠복 뒤 B 가 θ 를 넘으면
+  //   극단 합산기에 배탈 줄(축 `sick`)이 선다(체력은 그 줄이 정본 피해 경로로 깎는다 — `test-food-sick` ④ · `test-downed` ⑧).
   {
     const p = mkPlayer('axis', {}); giveAged(p, SPOIL_ITEM, 2, Math.ceil(Spoil.shelfOf(SPOIL_ITEM)) + 3);
-    const hp0 = p.hp; const before = Body.ensure(p).injury;
+    const hp0 = p.hp; const before = Body.ensure(p).injury; const mv0 = Body.effects(p).moveMult;
     H.doEat(p, SPOIL_ITEM, 1);
     const b = Body.ensure(p);
-    ok(p.hp === hp0, '★★②ⓓ **HP 는 안 깎인다** — 탈은 부상 축으로만 온다', `HP ${hp0}→${p.hp}`);
-    ok(b.injury > before, '★②ⓓ 부상 축이 오른다(새 축 없음)', `${before}→${b.injury.toFixed(4)}`);
-    ok(Body.effects(p).moveMult < 1, '★②ⓓ 그래서 **걸음이 느려진다**(기존 부상 곡선 그대로)', String(Body.effects(p).moveMult));
-    ok(/탈이 났다/.test(lastNote(p)), '★②ⓓ 그리고 화면이 그렇게 말한다', lastNote(p).slice(0, 50));
+    ok(p.hp === hp0 && b.injury === before, '★★②ⓓ 먹는 자리에선 **HP 도 부상도 안 움직인다** — 잠복(배탈 지수 P 만 선다)', `HP ${hp0}→${p.hp} · 부상 ${before}→${b.injury}`);
+    ok(!!b.sick && b.sick.P > 0 && !(b.sick.B > 0), '★②ⓓ 새 칸 하나 — 몸의 배탈 칸 `sick`(P > 0 · B = 0 · 처음 먹을 때 선다)', JSON.stringify(b.sick && { P: b.sick.P, B: b.sick.B }));
+    ok(Body.effects(p).moveMult === mv0, '★②ⓓ 걸음은 그대로다(배탈은 체력 축 하나 — 부상 곡선을 안 탄다)', `${mv0} → ${Body.effects(p).moveMult}`);
+    ok(!/탈이 났다/.test(lastNote(p)) && /섭취/.test(lastNote(p)), '★②ⓓ 화면은 먹은 것만 말한다(잠복 — 먹는 자리의 "탈이 났다" 없음)', lastNote(p).slice(0, 50));
+    // 잠복 뒤 — 그 양의 앓기 시작 시각(`sick.course` 의 닫힌 해)보다 반 시간 더 몸 틱을 민다(게임 시간 = 이 존의 하루 길이)
+    const c = Sick.course(b.sick.P, 48, 1 / 60);
+    pre(c.onsetH > 0, '이 양은 문턱을 넘는다(안 앓는 양이면 아래가 자명 통과)', `독 ${b.sick.P} · 앓기 시작 ${c.onsetH}시간`);
+    const pre0 = Body.extremeHpRate(p).parts.some((x) => x.axis === 'sick');
+    const dayMs = +process.env.VILLAGE_DAY_MS;
+    const sec = (c.onsetH + 0.5) * dayMs / 24 / 1000;
+    p.hunger = 100; p.thirst = 100;
+    Body.tick(p, sec, { now: Date.now(), indoor: true, nearFire: true, seasonCold: 0 });
+    p.hunger = 100; p.thirst = 100;
+    const er = Body.extremeHpRate(p);
+    ok(!pre0 && er.parts.some((x) => x.axis === 'sick' && x.rate > 0), '★★②ⓓ 잠복 뒤 극단 합산기에 **배탈 줄**이 선다(체력은 그 줄이 깎는다 · 먹은 자리엔 없었다)',
+      `먹은 직후 ${pre0} → ${(c.onsetH + 0.5).toFixed(2)}시간 뒤 ${JSON.stringify(er.parts.filter((x) => x.axis === 'sick').map((x) => ({ B: x.sev, rate: x.rate })))}`);
   }
   // 반쯤 상한 묶음 — 신선한 몫에서만 회복, 상한 몫에서만 탈(평균으로 뭉개지 않는다)
   {
@@ -222,8 +240,11 @@ function giveAged(p, item, n, ageDays) {
     const b = Body.ensure(p);
     ok(p.hunger > 0 && p.hunger < H.FOOD_EFFECTS.fish_cooked.hunger * 2,
       '★★②ⓔ 섞어 먹으면 **신선한 몫만큼만** 찬다', p.hunger.toFixed(3));
-    ok(b.injury > 0 && Math.abs(b.injury - Spoil.illnessFor(1)) < 1e-6,
-      '★★②ⓔ 그리고 탈은 **상한 몫만큼만** 난다(평균으로 뭉개지 않는다)', b.injury.toFixed(4));
+    // ★[T716 ⑥ · 켬 세계] 독은 상한 몫만큼만 — 로트마다 kg × n × (1 − f) 의 합(선형이라 먹은 몫의 평균 f 로 내도 같은 값 · 뭉개지지 않는다)
+    const kgFc = Weights.kgOfOrDefault('fish_cooked');
+    const want = Sick.doseOf(kgFc, 1, 0) + Sick.doseOf(kgFc, 1, 1);
+    ok(!!b.sick && Math.abs(b.sick.P - want) < 1e-6 && b.injury === 0,
+      '★★②ⓔ 그리고 탈은 **상한 몫만큼만** 얹힌다(상한 한 개의 독 + 신선한 한 개의 독 0 · 즉시 부상 0)', `P ${b.sick && b.sick.P} = ${want}`);
   }
 
   // ═══ ③ 보존 가공 ════════════════════════════════════════════════════════

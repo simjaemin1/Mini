@@ -17,8 +17,8 @@
 //
 // 실행: node scripts/test-downed.js
 'use strict';
-// ★[PM 10-13] T705_FOOD_SICK 켬 기본 — 이 하네스는 종전 세계를 적은 단언이라 끔(`=0`)으로 묶는다(켬 세계는 test-food-sick · test-game-meat · T705 후속 카드가 이 단언을 새 세계로 옮긴다)
-if (process.env.T705_FOOD_SICK == null) process.env.T705_FOOD_SICK = '0';
+// ★[T716 ⑥ · 2026-10-13] ⑧ 은 **켬 세계**(T705 배탈 지수 · PM 10-13 켬 기본)의 단언이다 — PM 이 걸어 둔 끔 묶음(`T705_FOOD_SICK=0`)을 걷었다.
+//   음식의 해는 이제 즉시 −3 이 아니라 잠복 뒤의 배탈(극단 합산기 → 정본 피해 경로)이다. 되돌림 세계는 `test-food-sick` ① 이 지킨다.
 const path = require('path');
 const fs = require('fs');
 const ROOT = path.join(__dirname, '..');
@@ -404,22 +404,36 @@ const isWildSpot = (x, y) =>
   // ═══ ⑧★ HP 0 의 뜻이 하나다 — 음식도 쓰러뜨린다 ═════════════════════════════
   //   죽음 설계 §0-ⓐ-4: `doEat` 의 `hpDelta` 갈래만 `damagePlayer` 밖에 있어
   //   **hp 0 인데 쓰러지지 않은 몸**이 만들어졌다(더 안 맞고 영원히 안 아무는 몸).
-  say('\n⑧ HP 0 의 뜻이 하나 — 음식도 정본 경로로');
+  //   ★[T716 ⑥ · 켬 세계] 음식의 해는 이제 **배탈 지수**(T705)다 — 날고기 줄에 즉시 HP 칸이 없고, 상한 고기는 잠복 뒤
+  //     극단 합산기(축 `sick`)가 **같은 정본 경로**(`damagePlayer` · why `extreme`)로 깎는다. 그래서 이 절은 "먹으면 그 자리에서 쓰러진다"가 아니라
+  //     "먹은 뒤 존 틱이 깎아 쓰러뜨린다"를 잰다 — 사슬은 존의 진짜 게임 루프(`_gaugeStep`)가 민다(하네스가 다시 짜지 않는다).
+  say('\n⑧ HP 0 의 뜻이 하나 — 음식(배탈)도 정본 경로로');
   {
     clearPlayers();
+    const Sp = H.Spoil;
     const p = mkPlayer('eater', 30848, 59872);
-    p.hp = 2; p.hunger = 10;
-    p.inventory.meat_raw = 1;
-    pre(H.FOOD_EFFECTS.meat_raw.hpDelta < 0, '날고기가 정말 HP 를 깎는 표다', `${H.FOOD_EFFECTS.meat_raw.hpDelta}`);
-    H.doEat(p, 'meat_raw');
-    ok(p.hp === 0 && p.isDown === true,
-      '★★⑧ HP 2 에서 날고기를 먹으면 **쓰러진다**(종전엔 hp 0 인데 안 쓰러지는 몸이 됐다)',
-      `hp ${p.hp} · isDown ${p.isDown}`);
-    // ★자명 통과 금지 — 풀피에서 같은 걸 먹으면 −3 이 실제로 일어난다(안 깎이는 게 아니다)
+    p.hp = 2; p.hunger = 100;
+    // ★양이 시간 손잡이다 — 존의 하루 길이(시간 축)는 안 건드리고 독의 양으로 잠복·깎임을 몇 초로 당긴다(같은 식 · 같은 문턱)
+    // 상한 로트 — 노출 = 보관일(그릇이 돌려주는 레코드 꼴 · `Lots.moveIn` 공개 API · 기온이 늦게 상하게 하는 날에도 f = 0 이 정확하다)
+    const N = 200, L = Sp.shelfOf('meat_raw'), today = H.zoneGameDay();
+    p.inventory.meat_raw = N; Lots.moveIn(p, 'meat_raw', [{ d: today - Math.ceil(L) - 2, n: N, e: L, t: today }], today, 0, 'carry');
+    pre(!(H.FOOD_EFFECTS.meat_raw.hpDelta < 0), '날고기 줄엔 즉시 HP 칸이 없다(켬 세계 — 해는 배탈 지수로)', JSON.stringify(H.FOOD_EFFECTS.meat_raw));
+    pre(Sp.freshnessOf('meat_raw', Sp.exposureOf(Lots.of(p, 'meat_raw')[0], H.zoneGameDay())) === 0, '먹을 고기가 정말 상했다(f = 0 — 시든 것이면 독이 줄어 아래가 느려진다)');
+    H.doEat(p, 'meat_raw', N);
+    const sk = B.ensure(p).sick;
+    ok(p.hp === 2 && !p.isDown && !!sk && sk.P > N - 1e-6, '★⑧ 먹는 자리에선 안 깎인다 — 잠복(몸에 배탈 지수 P 만 선다)', `hp ${p.hp} · P ${sk && sk.P}`);
+    const t0 = Date.now();
+    const down = await until(() => p.isDown, 40);
+    const hc = p.__msgs.filter((m) => m.type === 'hp_changed').map((m) => m.why);
+    ok(down && p.hp === 0 && p.isDown === true && hc[hc.length - 1] === 'extreme',
+      '★★⑧ 상한 고기를 먹은 몸은 잠복 뒤 **쓰러진다** — 존 틱의 극단 합산기 → 정본 피해 경로(why extreme)',
+      `hp ${p.hp} · isDown ${p.isDown} · ${((Date.now() - t0) / 1000).toFixed(1)}초 · 마지막 why ${hc[hc.length - 1]}`);
+    // ★자명 통과 금지 — 갓 잡은 날고기는 독 0 이다(즉시 −3 도 · 배탈 칸도 없다)
     const q = mkPlayer('eater2', 30848, 59872);
-    q.hunger = 10; q.inventory.meat_raw = 1;
+    q.hunger = 10; q.inventory.meat_raw = 1; Lots.note(q, 'meat_raw', 1, H.zoneGameDay());
     H.doEat(q, 'meat_raw');
-    ok(q.hp === 97 && !q.isDown, '★⑧ 자명 통과 금지 — 풀피에선 그냥 −3 이다', `hp ${q.hp}`);
+    ok(q.hp === 100 && !q.isDown && !B.ensure(q).sick, '★⑧ 자명 통과 금지 — 갓 잡은 날고기는 독 0(즉시 −3 도 · 배탈 칸도 없다)', `hp ${q.hp} · sick ${JSON.stringify(B.ensure(q).sick || null)}`);
+    clearPlayers();
     // ★소스 계약 — 플레이어 hp 에 쓰는 자리가 정본 넷 밖에 없다
     const zsrc = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8')
       .split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n');
