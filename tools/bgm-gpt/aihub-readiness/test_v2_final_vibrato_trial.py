@@ -67,6 +67,21 @@ class FinalVibratoComparisonTests(unittest.TestCase):
         b[281_599] = 0.0001
         self.assertFalse(comparison.prefix_comparison(a, b)["prefix_within_tolerance"])
 
+    def test_cpu_cumulative_phase_prefix_is_causal_when_only_final_vibrato_changes(self):
+        import torch
+        _, _, _, b0, b1 = fixture()
+        plain = torch.from_numpy(np.repeat(b0["candidate"]["f0_hz_candidate"], 160))
+        vibrating = torch.from_numpy(np.repeat(b1["candidate"]["f0_hz_candidate"], 160))
+        phase0 = torch.cumsum(2 * math.pi * plain / 16_000, dim=0)
+        phase1 = torch.cumsum(2 * math.pi * vibrating / 16_000, dim=0)
+        self.assertTrue(torch.equal(phase0[:281_600], phase1[:281_600]))
+        self.assertGreater(float(torch.max(torch.abs(phase0[281_600:] - phase1[281_600:]))), 0.01)
+
+    def test_unrecognized_render_backend_rejected_before_private_inputs(self):
+        with self.assertRaisesRegex(comparison.ComparisonError, "render_device"):
+            comparison.run(b0_dir=Path("/none"), calibration_file=Path("/none"), parent_checkpoint_dir=Path("/none"),
+                           checkpoint_dir=Path("/none"), upstream_root=Path("/none"), output_dir=Path("/none"), render_device="unknown")
+
 
 if __name__ == "__main__":
     unittest.main()

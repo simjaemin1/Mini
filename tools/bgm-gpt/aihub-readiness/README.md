@@ -456,3 +456,61 @@ Synthetic/public-score test (no licensed audio or checkpoint):
 cd tools/bgm-gpt/aihub-readiness
 python3 -m unittest test_diagnose_ircam_score_loudness.py -v
 ```
+
+## Dry v2 and the separate authored-score trial (2026-10-13)
+
+The original reverb-dependent checkpoint is not used for the new score.
+`mac_mps_ddsp_v2_dry_trial.py` trains a scratch dry-only model on 12 fit songs,
+with three internal-validation songs. The 500-step run selected step 400.
+`mac_mps_ddsp_v2_continuation.py` then completed 2,000 additional steps at a
+lower learning rate, without changing the parent training code or fit data.
+**No checkpoint passed all internal per-window level/quiet/drop criteria.**
+The diagnostic best was continuation step 1,850 (total step 2,250). Do not
+call this population-level model validation success or promote it to the game.
+The existing external diagnostic gates and frozen evaluation remain unchanged.
+
+The separate private composition route tests a supported, authored melody
+with explicitly declared performance processing, not the failed raw-model
+generalization claim. `calibrate_v2_score_controls.py` uses only the 12 fit
+songs to establish pitch-specific input support and a provisional RMS/feature
+association. `compose_v2_level_calibrated_trial.py` renders the entire 19.2 s
+score in one model forward at the supported +2-semitone pitch setting. Authored
+breath envelopes and exact sample-domain rests are applied explicitly. One
+constant gain per note is derived from its raw steady waveform, with an 80 ms
+gain transition and a hard ±12 dB correction limit; there is no framewise AGC.
+Raw audio, controls, gains, and corrected metrics stay in a private archive.
+
+The actual B0 score passed all 28-note pitch/level, 18-slur, and four-rest
+numeric checks, both before and after note correction. Corrections were only
++0.027 to +2.169 dB; median steady pitch error was 0.9502 cents. These numbers
+apply to **this supported score**, not all registers or naturalness of timbre.
+`compare_v2_final_vibrato_trial.py` reuses the same new model, noise seed,
+note gains, and listening gain for B1. It copies only the previously authored
+final-note vibrato selection, never legacy DDSP-Gugak model weights. Placement
+and vibrato shape are authored, not learned. Actual modulation and unchanged
+earlier audio are checked separately before a comparison preview is written.
+
+The first MPS B1 render passed musical checks and measured about 17.08 cents
+of final-note modulation, but failed the unchanged-prefix waveform check.
+On this Mac/torch stack, a model-free reproduction found that float32 MPS
+phase `cumsum` changed earlier phases between the variants. Repeating the
+same fixed MPS input five times also changed phase by up to 0.015625 radians,
+whereas repeated CPU `cumsum` was identical. This is a local numerical
+reproducibility observation, not proof that future F0 is the cause or that
+all MPS installations behave this way. The failed render remains diagnostic only.
+The matched CPU comparison therefore renders **both** B0 and B1 anew on the
+same CPU engine, rather than comparing CPU B1 against the old MPS B0 audio.
+There is no waveform splice or looser prefix criterion.
+The actual matched CPU pair completed two full-score forwards in 3.20 s
+before encoding. Both performances passed all score/level/rest checks, and
+their raw and corrected waveforms were exactly identical through 17.6 s.
+The final-note modulation fit measured 17.085 cents against the authored
+18-cent contour (fixed 3.45 Hz fit, R² 0.999744; not an independently estimated
+rate). Both new AAC files decoded completely as 19.2 s mono audio. Perceptual
+timbre quality and musical interpretation remain unconfirmed by the listener.
+
+All checkpoints, AI Hub audio, generated audio, calibration reports, and local
+listening pages remain outside Git and cloud services under the private R&D
+grant. Only code, public-score rules, documentation, and synthetic tests may be
+committed. Numeric checks do not establish authentic daegeum timbre or authorize
+game output. The existing playback code and default BGM are unchanged.

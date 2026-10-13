@@ -20,6 +20,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import time
 
 import numpy as np
 
@@ -139,7 +140,11 @@ def prefix_comparison(before: np.ndarray, after: np.ndarray) -> dict:
 
 
 def run(*, b0_dir: Path, calibration_file: Path, parent_checkpoint_dir: Path,
-        checkpoint_dir: Path, upstream_root: Path, output_dir: Path) -> dict:
+        checkpoint_dir: Path, upstream_root: Path, output_dir: Path,
+        render_device: str = "mps") -> dict:
+    if render_device not in ("mps", "cpu"):
+        raise ComparisonError("explicit_supported_render_device_required")
+    started = time.monotonic()
     for folder in (b0_dir, parent_checkpoint_dir, checkpoint_dir, upstream_root, output_dir):
         calibration.approved_private_path(folder, directory=True)
     calibration.approved_private_path(calibration_file)
@@ -195,25 +200,52 @@ def run(*, b0_dir: Path, calibration_file: Path, parent_checkpoint_dir: Path,
         model = DDSP(**v2.MODEL_CONFIG)
         model.reverb = torch.nn.Identity()
         model.load_state_dict(checkpoint["model_state"], strict=True)
-        model.to("mps").eval()
-        pitch = torch.from_numpy(controls["candidate"]["f0_hz_candidate"].copy()).to("mps").reshape(1, -1, 1)
-        loudness = torch.from_numpy(controls["normalized_loudness"].copy()).to("mps").reshape(1, -1, 1)
-        torch.manual_seed(composition.SEED)
-        with torch.no_grad():
-            raw = model(pitch, loudness).squeeze().detach().cpu().numpy()
-        raw_prefix = prefix_comparison(saved["model_raw_float32"], raw)
-        corrected = raw * curve * gain_curve
-        corrected_prefix = prefix_comparison(saved["corrected_float32"], corrected)
+        model.to(render_device).eval()
+        forward_calls = 0
+        def synthesize(f0, normalized):
+            nonlocal forward_calls
+            pitch = torch.from_numpy(f0.copy()).to(render_device).reshape(1, -1, 1)
+            loudness = torch.from_numpy(normalized.copy()).to(render_device).reshape(1, -1, 1)
+            torch.manual_seed(composition.SEED)
+            with torch.no_grad():
+                output = model(pitch, loudness).squeeze().detach().cpu().numpy()
+            forward_calls += 1
+            if output.shape != (307_200,) or not np.all(np.isfinite(output)):
+                raise ComparisonError("paired_render_shape_or_finiteness_failed")
+            return output
+        baseline_raw = saved["model_raw_float32"]
+        baseline_corrected = saved["corrected_float32"]
+        baseline_raw_metrics = b0["raw_score_metrics"]
+        baseline_corrected_metrics = b0["corrected_score_metrics"]
+        baseline_gate = b0["gate"]
+        engine_comparison = None
         anchor = report["calibration"]["anchor_rms_dbfs"]
+        if render_device == "cpu":
+            # Render BOTH versions on the same CPU backend. Never compare
+            # a new CPU B1 with the old MPS AAC or splice an MPS prefix in.
+            baseline_raw = synthesize(saved["f0_hz"], saved["normalized_loudness"])
+            baseline_corrected = baseline_raw * curve * gain_curve
+            baseline_raw_metrics = renderer.score_metrics(baseline_raw * curve, compiled_b0, controls_b0, anchor)
+            baseline_corrected_metrics = renderer.score_metrics(baseline_corrected, compiled_b0, controls_b0, anchor)
+            baseline_gate = composition.composition_gate(baseline_raw_metrics, baseline_corrected_metrics, b0["note_level_correction"], baseline_corrected)
+            engine_comparison = prefix_comparison(saved["model_raw_float32"], baseline_raw)
+        raw = synthesize(controls["candidate"]["f0_hz_candidate"], controls["normalized_loudness"])
+        raw_prefix = prefix_comparison(baseline_raw, raw)
+        corrected = raw * curve * gain_curve
+        corrected_prefix = prefix_comparison(baseline_corrected, corrected)
         raw_metrics = renderer.score_metrics(raw * curve, compiled, controls, anchor)
         corrected_metrics = renderer.score_metrics(corrected, compiled, controls, anchor)
+        if time.monotonic() - started > 600:
+            raise ComparisonError("paired_comparison_ten_minute_cap")
         gate = composition.composition_gate(raw_metrics, corrected_metrics, b0["note_level_correction"], corrected)
         evidence = output_vibrato_evidence(corrected, compiled, controls)
         gate["checks"].update({"identical_raw_prefix": raw_prefix["prefix_within_tolerance"],
                                "identical_corrected_prefix": corrected_prefix["prefix_within_tolerance"],
+                               "same_backend_b0_musical_gates": baseline_gate["eligible_for_private_composition_preview"],
                                "output_final_modulation_observed": evidence["output_modulation_numerically_observed"]})
         listening_gain = 10 ** (b0["uniform_listening_gain_db"] / 20)
-        gate["checks"]["same_b0_listening_gain_and_peak"] = listening_gain <= 16 and float(np.max(np.abs(corrected))) * listening_gain <= 0.90
+        gate["checks"]["same_b0_listening_gain_and_peak"] = (listening_gain <= 16
+            and max(float(np.max(np.abs(corrected))), float(np.max(np.abs(baseline_corrected)))) * listening_gain <= 0.90)
         gate["eligible_for_private_composition_preview"] = bool(all(gate["checks"].values()))
         snapshot_after = composition.trial_child_snapshot(checkpoint_dir)
         parent_after = composition.diagnostic.checkpoint_snapshot(parent_checkpoint_dir)
@@ -225,6 +257,7 @@ def run(*, b0_dir: Path, calibration_file: Path, parent_checkpoint_dir: Path,
         if b0_after != b0_report_sha or calibration_after != calibration_sha:
             raise ComparisonError("b0_or_calibration_changed_during_comparison")
         archive = composition._np_bytes({"model_raw_float32": raw, "corrected_float32": corrected,
+            "paired_b0_model_raw_float32": baseline_raw, "paired_b0_corrected_float32": baseline_corrected,
             "f0_hz": controls["candidate"]["f0_hz_candidate"], "normalized_loudness": controls["normalized_loudness"],
             "authored_output_curve": curve, "reused_b0_note_gain_curve": gain_curve})
         v1._atomic_private_bytes(output_dir, "private_b1_raw_controls.npz", archive, replace=False)
@@ -232,7 +265,11 @@ def run(*, b0_dir: Path, calibration_file: Path, parent_checkpoint_dir: Path,
             "b1_plan_sha256": hashlib.sha256(plan_payload).hexdigest(), "source_expression_b1_sha256": B1_SOURCE_SHA256,
             "source_builder_sha256": BUILDER_SHA256, "legacy_model_weights_read": False,
             "actual_timbre_model_sha256": snapshot["checkpoint_sha256"], "checkpoint_total_step": snapshot["total_step"],
-            "calibration_sha256": calibration_sha, "model_forward_calls": 1, "source_waveforms_read": 0,
+            "calibration_sha256": calibration_sha, "model_forward_calls": forward_calls, "source_waveforms_read": 0,
+            "render_device": render_device, "dtype": "float32", "wall_seconds_before_encoding": time.monotonic() - started,
+            "same_backend_paired_b0_raw_metrics": baseline_raw_metrics,
+            "same_backend_paired_b0_corrected_metrics": baseline_corrected_metrics,
+            "old_mps_b0_vs_new_cpu_b0_prefix": engine_comparison,
             "raw_model_internal_feasibility_passed": b0["raw_model_internal_status"]["raw_internal_feasibility_passed"],
             "reused_b0_note_gain_curve_sha256": hashlib.sha256(np.ascontiguousarray(gain_curve).tobytes()).hexdigest(),
             "uniform_listening_gain_db": b0["uniform_listening_gain_db"], "pitch_shift_semitones": controls["pitch_shift_semitones"],
@@ -240,7 +277,8 @@ def run(*, b0_dir: Path, calibration_file: Path, parent_checkpoint_dir: Path,
             "raw_score_metrics": raw_metrics, "corrected_score_metrics": corrected_metrics, "gate": gate,
             "private_b1_archive_sha256": hashlib.sha256(archive).hexdigest(), "script_sha256": composition._hash(Path(__file__)),
             "limits": ["Vibrato shape and placement are inherited authorial choices, not learned decisions.",
-                       "Same new ML model, B0 note gains, uniform listening gain and noise seed; only final-note F0 changes.",
+                       "Same new ML model, render backend, B0 note gains, uniform listening gain and noise seed; only final-note F0 changes.",
+                       "CPU paired mode regenerates both performances; it does not assert waveform equality with the older MPS run.",
                        "Short-region pitch estimator is acoustic evidence, not proof of authentic daegeum interpretation.",
                        "Private AI Hub 71470 research only, no game output or external model validation claim."]}
         if gate["eligible_for_private_composition_preview"]:
@@ -253,11 +291,25 @@ def run(*, b0_dir: Path, calibration_file: Path, parent_checkpoint_dir: Path,
             if encoded.returncode or not audio_path.is_file() or not 0 < audio_path.stat().st_size < 4_194_304:
                 raise ComparisonError("private_comparison_aac_encoding_failed")
             audio_path.chmod(0o600)
-            b0_aac = pilot._private_file(b0_dir / "new_score_level_calibrated.m4a", max_bytes=4_194_304)
-            if hashlib.sha256(b0_aac).hexdigest() != b0["audio_aac_sha256"]:
-                raise ComparisonError("b0_listening_audio_changed")
-            v1._atomic_private_bytes(output_dir, "b0_straight.m4a", b0_aac, replace=False)
-            result.update({"status": "private_b0_b1_comparison_ready", "b0_aac_private_copy_sha256": hashlib.sha256(b0_aac).hexdigest(),
+            if render_device == "cpu":
+                b0_wav = renderer._wav_bytes(baseline_corrected * listening_gain)
+                v1._atomic_private_bytes(output_dir, "b0_straight.wav", b0_wav, replace=False)
+                b0_path = output_dir / "b0_straight.m4a"
+                encoded_b0 = subprocess.run([encoder, "-nostdin", "-v", "error", "-protocol_whitelist", "file,pipe", "-i",
+                    str(output_dir / "b0_straight.wav"), "-c:a", "aac", "-b:a", "128k", "-ar", "48000",
+                    "-movflags", "+faststart", str(b0_path)], stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, timeout=60)
+                if encoded_b0.returncode or not b0_path.is_file() or not 0 < b0_path.stat().st_size < 4_194_304:
+                    raise ComparisonError("paired_cpu_b0_aac_encoding_failed")
+                b0_path.chmod(0o600)
+                b0_aac = pilot._private_file(b0_path, max_bytes=4_194_304)
+                result["same_backend_b0_wav_sha256"] = hashlib.sha256(b0_wav).hexdigest()
+            else:
+                b0_aac = pilot._private_file(b0_dir / "new_score_level_calibrated.m4a", max_bytes=4_194_304)
+                if hashlib.sha256(b0_aac).hexdigest() != b0["audio_aac_sha256"]:
+                    raise ComparisonError("b0_listening_audio_changed")
+                v1._atomic_private_bytes(output_dir, "b0_straight.m4a", b0_aac, replace=False)
+            result.update({"status": "private_b0_b1_comparison_ready", "b0_aac_sha256": hashlib.sha256(b0_aac).hexdigest(),
+                           "b0_audio_source": "fresh_matched_cpu_render" if render_device == "cpu" else "private_copy_of_existing_mps_b0",
                            "b1_wav_sha256": hashlib.sha256(wav).hexdigest(), "b1_aac_sha256": composition._hash(audio_path)})
             html = ("<!doctype html><html lang='ko'><meta charset='utf-8'><title>새 선율 대금 비교</title>"
                 "<body style='font:18px system-ui;padding:28px;max-width:780px'><h1>새 8마디 대금 — 마지막 음 비교</h1>"
@@ -266,12 +318,12 @@ def run(*, b0_dir: Path, calibration_file: Path, parent_checkpoint_dir: Path,
                 "<button onclick=\"document.getElementById('b0').currentTime=16.8\">마지막 음부터</button>"
                 "<h2>② 마지막 음에 얕은 비브라토</h2><audio id='b1' controls preload='metadata' src='b1_final_vibrato.m4a'></audio>"
                 "<button onclick=\"document.getElementById('b1').currentTime=16.8\">마지막 음부터</button>"
-                "<p>처음 17.6초는 같은 소리이며 음량 보정도 같습니다. 비브라토 위치·모양은 이전에 작성한 규칙을 사용했습니다.</p>"
+                "<p>앞부분은 같은 연주이며 음량 보정도 같습니다. 비브라토 위치·모양은 이전에 작성한 규칙을 사용했습니다.</p>"
                 "<p>AI Hub 국악 악보 및 음원 데이터(71470)로 학습한 로컬 연구용 시험본입니다. 게임 확정본이나 모델 전체 검증 합격을 뜻하지 않습니다.</p>"
                 "<script>const all=document.querySelectorAll('audio');all.forEach(a=>a.addEventListener('play',()=>all.forEach(b=>{if(a!==b)b.pause()})))</script></body></html>").encode()
             v1._atomic_private_bytes(output_dir, "listen.html", html, replace=False)
         v1._atomic_private_bytes(output_dir, REPORT_NAME, composition._json_bytes(result), replace=False)
-        return {"status": result["status"], "model_forward_calls": 1,
+        return {"status": result["status"], "model_forward_calls": forward_calls, "render_device": render_device,
                 "output_vibrato_amplitude_cents": evidence.get("output_fixed_rate_fit", {}).get("amplitude_cents") if evidence.get("output_fixed_rate_fit") else None,
                 "unchanged_prefix_seconds": PREFIX_SECONDS, "shared_b0_gain": True}
 
@@ -280,6 +332,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("b0-dir", "calibration-file", "parent-checkpoint-dir", "checkpoint-dir", "upstream-root", "output-dir"):
         parser.add_argument("--" + name, required=True, type=Path)
+    parser.add_argument("--render-device", choices=("mps", "cpu"), default="mps")
     args = parser.parse_args()
     try:
         result = run(**vars(args))
