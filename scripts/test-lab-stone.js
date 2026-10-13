@@ -195,7 +195,8 @@ console.log('\n⑧ 문(T173) — `economy-sim-v2.js` 의 접점은 한 줄인가
     '⑧ 문 문법이 T135/T157/T161/T163 선례와 같다');
   ok(!/returnPullFn/.test(fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8')),
     '⑧ ★★서버는 이 문을 **안 연다**(= 라이브 무변)');
-  ok(/if \(_r && _r !== c\.giveRes && \(c\.to\.storage\[_r\] \|\| 0\) > 1 && !_returnGlutted\(_r\)\) returnRes = _r;/.test(V2CODE),
+  //   ★[T703] T692(`T692_SEED_RESERVE` · 기본 끔)가 실물 게이트를 `v1.seedReserveAvail(c.to, _r)`(= 곳간 − 시딩 비축 · 끔이면 `storage[_r] || 0` 그대로)로 바꿨다 — 두 꼴을 다 받는다
+  ok(/if \(_r && _r !== c\.giveRes && (?:\(c\.to\.storage\[_r\] \|\| 0\)|v1\.seedReserveAvail\(c\.to, _r\)) > 1 && !_returnGlutted\(_r\)\) returnRes = _r;/.test(V2CODE),
     '⑧ ★★★**공짜 돌 0** — 문이 종전 두 게이트(실물 >1 · 글럿 아님)를 그대로 다시 건다');
 }
 
@@ -295,7 +296,8 @@ console.log('\n⑫ 공짜 돌 0 — 파는 쪽 재고를 엔진이 실제로 뺀
 {
   ok(/c\.to\.storage\[returnRes\] = \(c\.to\.storage\[returnRes\] \|\| 0\) - _buy\.qty;/.test(V2CODE),
     '⑫ ★★도착 마을 재고에서 **산 만큼 빠진다**(`_impactBuyV2` 정산 · 이 줄이 사라지면 공짜 돌이 된다)');
-  ok(/const _buy = _impactBuyV2\(c\.to, returnRes, _budget\);/.test(V2CODE),
+  //   ★[T703] T692 넷째 인자 = 비축으로 쥔 양(`seedReserveHeld` · 끔 = 0 → 종전 식)
+  ok(/const _buy = _impactBuyV2\(c\.to, returnRes, _budget(?:, v1\.seedReserveHeld\(c\.to, returnRes\))?\);/.test(V2CODE),
     '⑫ 매수량은 **예산 역산**이다(시장 충격 정산 — 문이 이 식을 우회하지 않는다)');
 }
 

@@ -870,9 +870,18 @@ console.log('\n⑰ [T475] 걷는 목록은 마을마다 — 그 마을 원판에
   ok(chain.real.share < chain.bait.share && chain.bW.share > chain.real.share,
     'ⓓ ★걷는 몫(= 수요 `D·share`)도 마을마다 — 야생 없는 마을은 작고 야생 있는 마을은 그 품목만큼 크다', `A ${chain.real.share} · B ${chain.bW.share} · 세계 ${chain.bait.share}`);
   // ⓔ 두 시계 한 줄 — 자리(정적)
-  const econJob = (VC.match(/add\('econ', \(\) => \{[\s\S]*?\n  \}\);/) || [''])[0];
+  //   ★[T703] 첫 `add('econ', …)` 은 이제 T513 조각 판(`_econDayParts` · `T513_DAY_SLICE` **기본 켬**)의 머리 조각이다(그 함수가 위에 있다).
+  //     둘 다 건다: 되돌림 판(`=0` — 한 조각 `tickWorldV2`)은 아래 iH < iT · 켬 판(조각)은 머리 조각 안에서 손 → `P.head()`(econ 정본 조각의 첫째)
+  const econJob = ([...VC.matchAll(/add\('econ', \(\) => \{[\s\S]*?\n  \}\);/g)].map((m) => m[0]).find((b) => b.includes('state.econV2.tickWorldV2(state.world);')) || '');
   const iH = econJob.indexOf('for (const vil of C.vils) _lifeHandsIn(vil);'), iT = econJob.indexOf('state.econV2.tickWorldV2(state.world);');
   ok(iH > 0 && iT > iH, 'ⓔ ★★econ 일 조각 안에서 손이 **틱 앞에** 곳간에 든다(`_lifeHandsIn` → `tickWorldV2`) — 새 단계 0(조각 순서 캐논 무변)', `${iH} < ${iT}`);
+  {   // ★[T703] 켬 판(T513 조각 · 기본) — 머리 조각 한 줄에서 손이 econ 정본 첫 조각(`P.head()`) 앞
+    const parts = (VC.match(/function _econDayParts\([^)]*\) \{[\s\S]*?\n\}/) || [''])[0];
+    const head = (parts.match(/add\('econ', \(\) => \{[^\n]*\}, 'econ:head'\);/) || [''])[0];
+    const jH = head.indexOf('for (const vil of C.vils) _lifeHandsIn(vil);'), jP = head.indexOf('P.head()');
+    const first = parts.indexOf("add('econ'") === parts.indexOf(head);
+    ok(jH > 0 && jP > jH && first, 'ⓔ ★★[T513 조각 판 · 기본 켬] 머리 조각(econ 첫 조각)에서 손이 **econ 정본 조각 앞에** 곳간에 든다(`_lifeHandsIn` → `P.head()`)', `${jH} < ${jP} · 첫 조각 ${first}`);
+  }
   //   ★[T538 추신 ⓪] T513 이 econ 하루를 조각으로 갈라(`_econDayParts` · `econ:head`) 부르는 자리가 **둘**이 됐다 — 사본이 아니라 **갈래**다:
   //     `_openDayJobs` 의 `if (T513_DAY_SLICE && …tickWorldV2Parts…) _econDayParts(C, add); else add('econ', …)` — 한 하루에 **둘 중 하나만** 돈다.
   //     ⇒ 계약을 제품 글자 그대로: 자리 둘 · 하나는 `econ:head` 조각(머리 `P.head()` 앞) · 하나는 끔 갈래 조각(`tickWorldV2` 앞) · 둘을 가르는 것은 그 `if/else` 한 줄.

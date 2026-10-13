@@ -148,6 +148,11 @@ const T661_ON = process.env.T661_CARAVAN_TICK !== '0';   // ★PM 10-09 켬 기�
 //   ④ 캐러밴 재경로 쿨다운 — T661 장부가 부르는 판(`T661_ON`)에선 2초 대신 econ 하루 한 번.
 //   몸은 보이는 것만(틱 보간) · 세계에 닿는 일(답압 · 위협 · 회수 · 풀어 줌)은 econ 날이 정한다. ⚠끔 = main 바이트(이 손잡이 줄이 안 닿는다).
 const T681_ON = process.env.T681_WALLCLOCK !== '0';   // ★PM 10-10 켬 기본(결정론 캐논 · 되돌림 =0)
+// ★[T703 2026-10-12 · 세션14] 손잡이 `T703_MARCH_LEDGER`(기본 끔 · `=1` 켬 · T681 켬 위에서만) — T681 켬 판 행군의 두 어긋남을 고친다(test-war-world ⓐ · ⓦ):
+//   ① 대형이 지휘관 장부 자리를 따라간다(날마다 · 교전 들기 앞 — 종전엔 대형이 제 회관에 선 채 교전에 들어 회관 발자국 칸을 지났다)
+//   ② 길에서 먹기가 오늘 장부 자리까지를 "지난 길"로 읽는다(종전엔 하루 마감 차례 탓에 늘 0 — 낮 전부를 땄다)
+//   끔 = main 바이트(서버 기준선 3/3) · 켜면 전쟁이 있는 판이 갈린다(기준선 1020 날 383 농촌19) — 켜기는 PM.
+const T703_MARCH = T681_ON && process.env.T703_MARCH_LEDGER === '1';
 
 // --- P3: 실체 전쟁 상수 ---
 //   ★[T284 2026-09-14] 관측자 LOD 반경·몸 상한·headless 폴백은 **제거**했다 —
@@ -5034,6 +5039,7 @@ function _warGroupCentroid(g) { let x = 0, y = 0, n = 0; for (const u of g.units
 function _warEngage(w, day, why) {
   const now = state._warTickAt || Date.now();
   const body = _warEnsureBody(w, now); if (!body) return false;
+  if (T703_MARCH && body._t681 && body._t681.leg === 'march' && body.mode !== 'fight') _t681MarchTo(body, state.world.day | 0);   // ★[T703] 그날 장부 자리까지 간 뒤 대형(위 `_t681MarchTo` 머리)
   _warInstantiateAttackers(body);
   if (!body.atkGroup) { body.noArmy = true; w.phase = 'battle'; state._warStat.noArmy++; return true; }
   _warEnsureDefense(body, why === 'sortie');
@@ -5256,7 +5262,10 @@ function _warDayCells(body) {
   if (!body) return out;
   if (body.pts && body.pts.length && body.len > 0 && body.prog != null && body.mode !== 'camp' && body.mode !== 'fight') {
     if (body._fgPts !== body.pts) { body._fgPts = body.pts; body._fgProg = 0; }
-    const a = Math.max(0, Math.min(body.len, body._fgProg || 0)), b = Math.max(a, Math.min(body.len, body.prog));
+    //   ★[T703] T681 켬 — 행군 지휘관 자리는 하루 마감 장부(`_t681Day`)가 옮기는데, 길에서 먹기(war-core `daily` → `rationEat` → 여기)가 **그보다 앞**이라
+    //     오늘 지난 길이 늘 0 이었다(낮 전부를 딴다 · test-war-world ⓦ). 오늘 장부 자리(`_t681MarchWant` · 몸 무변)를 끝으로 읽는다(끔 판 = 틱이 옮긴 `prog` 그대로).
+    const _pr = (T703_MARCH && body._t681 && body._t681.leg === 'march' && body.w && body.w.phase === 'march') ? Math.max(body.prog, _t681MarchWant(body, state.world.day | 0)) : body.prog;
+    const a = Math.max(0, Math.min(body.len, body._fgProg || 0)), b = Math.max(a, Math.min(body.len, _pr));
     for (let s = a; ; s += SZ) { const c = caravanPointAt(body, Math.min(s, b), {}); out.push({ x: c.x, y: c.y }); if (s >= b) break; }
     body._fgProg = b;
     return out;
@@ -5709,11 +5718,7 @@ function _t681Day(now) {
     T.day = d;
     const prev = body.cmd ? { cx: body.cmd.cx, cy: body.cmd.cy } : null;
     if (T.leg === 'march' && body.w.phase === 'march') {
-      const endProg = body.campProg != null ? body.campProg : body.len;
-      const want = Math.min(endProg, body.len * Math.max(0, Math.min(1, (d - T.D0) / Math.max(1, T.D1 - T.D0))));
-      if (want > body.prog) { _t681StampPath(body, body.prog, want); body.prog = want; }
-      const c = caravanPointAt(body, body.prog); body.cmd = { cx: c.x / SZ, cy: c.y / SZ };
-      body.heading = Math.atan2(body.w.def.ccy - body.cmd.cy, body.w.def.ccx - body.cmd.cx);
+      _t681MarchTo(body, d);
     } else if (T.leg === 'return' && body.phase === 'return') {
       const want = body.len * Math.max(0, Math.min(1, (d - T.D0) / Math.max(1, T.D1 - T.D0)));
       if (want > body.prog) { _t681StampPath(body, body.prog, want); body.prog = want; }
@@ -5737,6 +5742,24 @@ function _t681Day(now) {
       if (r.len - r.L <= 0.5) { _bxGone(r, p); _bx.arrive++; }
     }
   }
+}
+// ★[T681 ①] 행군 지휘관 장부 — 그날(d)까지 간 자리(진 끝 `campProg` 까지 · 답압 · 지휘관 자리 · 방향). `_t681Day` 의 행군 갈래 몸통 글자 그대로 옮겼다.
+//   ★[T703] 교전 들기(`_warEngage`)도 먼저 부른다 — 도착 날엔 하루 마감(war-core `daily` → 결단 뒤 `_warAfterDaily` → `_warEngage`)이 `_t681Day` 보다 **앞**이라,
+//     종전엔 지휘관이 지난 날 장부 자리(행군 1일이면 제 회관 칸)에서 대형을 세워 싸웠다(test-war-world ⓐ 장애물 안 75틱). 끔 판은 페이싱이 eta 에 진에 닿는다 — 그 자리로 맞춘다.
+function _t681MarchWant(body, d) {   // 그날(d) 행군 장부 자리(px · 진 끝까지) — 몸을 안 고친다
+  const T = body._t681;
+  const endProg = body.campProg != null ? body.campProg : body.len;
+  return Math.min(endProg, body.len * Math.max(0, Math.min(1, (d - T.D0) / Math.max(1, T.D1 - T.D0))));
+}
+function _t681MarchTo(body, d) {
+  const want = _t681MarchWant(body, d);
+  if (want > body.prog) { _t681StampPath(body, body.prog, want); body.prog = want; }
+  const c = caravanPointAt(body, body.prog); body.cmd = { cx: c.x / SZ, cy: c.y / SZ };
+  body.heading = Math.atan2(body.w.def.ccy - body.cmd.cy, body.w.def.ccx - body.cmd.cx);
+  //   ★[T703] 대형도 장부 자리로 — 끔 판은 행군 틱이 대형 지휘(`ag.cmd = body.cmd` · 슬롯 추종)를 지휘관과 같이 옮긴다. 켬 판은 지휘관만 날마다 옮겨
+  //     대형이 제 회관에 선 채로 교전에 들었다(회관 발자국 칸을 지나 진까지 대형째 걸음 — 장애물 안 틱). 슬롯 자리로 세운다(막힌 슬롯은 `_warStandNear` · 종전 함수).
+  const g = body.atkGroup;
+  if (T703_MARCH && g && body.mode !== 'fight') { g.cmd = { cx: body.cmd.cx, cy: body.cmd.cy }; g.heading = body.heading; _warSnapToSlots(g); }
 }
 function _t681BxVis(r, now) {   // 걷는 몸이 따라갈 자리(보이는 것) — 장부 일정을 그날 벽시계 몫만큼 보간
   if (r.ppd == null) return r.len;
@@ -6415,6 +6438,7 @@ function __p3Bind(mock) {
   return {
     state, tickWarBodies, warThreats, syncVillagePop, removeOneNpc, spawnOneNpc,
     noteBodyExit, tickBodyExits, bodyExitStats, _starvedToday,   // ★[T590] 줄어드는 몸 — 하네스(`test-body-exit`)가 운영과 같은 문을 부른다
+    _t681Day, _t681Flush, T681_ON, T703_MARCH,   // ★[T703] T681 켬(기본) 판의 하루 경계 두 자리 — 하네스가 운영 하루 마감과 같은 차례(econ 앞 `_t681Flush` · 캐러밴 앞 `_t681Day`)로 부른다(값 무변 · 내보내기만)
     _warEngage, _warAfterDaily, _warEndFight, _warBuildRectIndex, _warBlockedCell, _warWorld, warPerf, _warOrderFallback, _warToStandoff,
     _warDraftPids, _warReleasePid, econDayToMs, _warEnsureBody, _warSampleComp, _vbFootprint,
     threatOf, _warWriteThreats, _warOutMul, _lifeJobSites, _lifeJobSiteOK, _warRoutePts, _warTreeCell, computeRoutePts,

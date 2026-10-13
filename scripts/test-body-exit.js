@@ -65,6 +65,15 @@ function econLeave(e, k) { for (let i = 0; i < k; i++) e.npcs.pop(); }   // 도�
 const leftAt = (bcast, from) => bcast.slice(from).filter((m) => m && m.type === 'player_left').map((m) => m.pid);
 const downAt = (bcast, from) => bcast.slice(from).filter((m) => m && m.type === 'player_down_state' && m.isDown).map((m) => m.pid);
 const sumv = (o) => Object.values(o || {}).reduce((a, v) => a + v, 0);
+// ★[T703] T681 켬(기본 · `T681_WALLCLOCK` 없음) — 누운 몸 회수 · 걷는 몸 도착은 **econ 날 경계**(`_t681Day`)가 하고, 틱은 보이는 걸음만 장부 일정까지 간다.
+//   그래서 하네스 시계를 운영처럼 econ 날에 맞춘다: 시작 = 그날 경계(`econDayToMs`) · 하루 길이마다 날을 넘기고(world.day · lastGameDay) 그 자리에서 `_t681Day`.
+//   끔(`=0`)이면 이 시계를 안 쓴다 — 종전 판(벽시계 `now` 만) 한 글자도 그대로.
+const T681 = !!V.__p3Bind({}).T681_ON;
+function clk(T, t0) { const S = T.H.state; return { t: T681 ? T.H.econDayToMs(S.world.day) + 1 : t0, dayAt: T681 ? T.H.econDayToMs(S.world.day) : 0 }; }
+function step(T, c, ms) {   // 틱 하나(ms) — 켬이면 날 경계에서 운영 하루 마감 자리 그대로
+  const S = T.H.state; c.t += ms; T.H.tickBodyExits(c.t);
+  while (T681 && c.t - c.dayAt >= S.dayMs) { c.dayAt += S.dayMs; S.world.day++; S.lastGameDay++; T.H._t681Day(c.t); }
+}
 
 console.log('\n=== T590 — 사람이 줄 때 몸이 몸으로 줄어드는가 ===');
 
@@ -86,10 +95,10 @@ let vanishAtSync = 0;
   ok(s1.died.old - s0.died.old === 1 && s1.died.starve === s0.died.starve, '① 까닭 = 늙음·병(기근 날이 아니다)', `old +${s1.died.old - s0.died.old}`);
   ok(P.downedAt === 0, '① 구조 창 0 — 업어 일으킬 수 없다(`tryRescue` 의 창 판정이 막는다)');
   // ③ 누운 시간 — 시신 값이 지나야 거둔다(그 전엔 그대로)
-  const b1 = T.bcast.length, t0 = Date.now();
-  T.H.tickBodyExits(t0); T.H.tickBodyExits(t0 + CORPSE_MS / 2);
+  const b1 = T.bcast.length, c = clk(T, Date.now());
+  T.H.tickBodyExits(c.t); step(T, c, CORPSE_MS / 2);
   ok(T.players.has(first) && leftAt(T.bcast, b1).length === 0 && P.x === x0 && P.y === y0, '③ 누운 시간의 절반 — 아직 그 자리에 그대로 있다');
-  T.H.tickBodyExits(t0 + CORPSE_MS + 1000);
+  step(T, c, CORPSE_MS / 2 + 1000);
   ok(!T.players.has(first) && leftAt(T.bcast, b1).indexOf(first) >= 0, '③ 시신 값이 지나면 거둔다(`player_left` 는 이때 한 번)');
 }
 
@@ -138,10 +147,10 @@ let vanishAtSync = 0;
   // 걸음 — 한 틱 이동 ≤ 걸음 한도 · 은거지에 다가간다 · 닿으면 거둔다
   const cx = camp.cx * SZ + SZ / 2, cy = camp.cy * SZ + SZ / 2;
   const P = T.players.get(tail[0]);
-  let t = 5000; T.H.tickBodyExits(t);
+  const c = clk(T, 5000); T.H.tickBodyExits(c.t);
   let d0 = Math.hypot(P.x - cx, P.y - cy), maxStep = 0, mono = true, ticks = 0;
   while (T.players.has(tail[0]) && ticks < 20000) {
-    const px = P.x, py = P.y; t += 100; T.H.tickBodyExits(t); ticks++;
+    const px = P.x, py = P.y; step(T, c, 100); ticks++;
     if (!T.players.has(tail[0])) break;
     maxStep = Math.max(maxStep, Math.hypot(P.x - px, P.y - py));
     const d = Math.hypot(P.x - cx, P.y - cy); if (d > d0 + 1e-6) mono = false; d0 = d;
@@ -185,9 +194,9 @@ let vanishAtSync = 0;
   const s1 = T.H.bodyExitStats();
   ok(s1.other.unknown - s0.other.unknown === 1 && T.players.has(last), '⑦ 까닭 모름 = 그 밖 — 몸은 남아 걷는다');
   const P = T.players.get(last), cx = T.vil.ccx * SZ + SZ / 2, cy = T.vil.ccy * SZ + SZ / 2;
-  let t = 9000, n = 0; T.H.tickBodyExits(t);
+  const c = clk(T, 9000); let n = 0; T.H.tickBodyExits(c.t);
   let far = 0;
-  while (T.players.has(last) && n < 20000) { far = Math.hypot(P.x - cx, P.y - cy); t += 100; T.H.tickBodyExits(t); n++; }
+  while (T.players.has(last) && n < 20000) { far = Math.hypot(P.x - cx, P.y - cy); step(T, c, 100); n++; }
   ok(!T.players.has(last) && far >= T.vil._maxRPx - MOVE * 0.1 - 1, '⑦ 마을 가장자리(`_maxRPx`) 너머까지 걸은 뒤에 거둔다', `${far.toFixed(0)}px / ${T.vil._maxRPx}px`);
 }
 
