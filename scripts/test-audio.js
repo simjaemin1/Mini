@@ -831,7 +831,7 @@ console.log('\n⑫ ★★[T321] 어부의 소리 — 결말 셋에 키 셋');
   //   `'낚음'` 줄(블록 끝머리)을 못 덮었고, ⑫b·⑫c 가 **코드가 멀쩡한데** 빨개졌다.
   //   ⇒ 블록은 **다음 직업 갈래**까지다. 자를 대상의 모양이 바뀌어도 창이 따라간다.
   const blk = (() => {
-    const i = vil.indexOf("if (job === 'fisher')");
+    const i = vil.indexOf("if (job === 'fisher') {");   // ★[PM 10-13] 블록 머리는 `{` 까지 — T707 명부의 한 줄 판정(`if (job === 'fisher') return …`)을 잡지 않게
     if (i < 0) return '';
     const j = vil.indexOf("if (job === '", i + 10);
     return vil.slice(i, j > i ? j : i + 8000);

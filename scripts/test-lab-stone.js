@@ -21,6 +21,8 @@
 'use strict';
 process.env.ENABLE_VILLAGES = process.env.ENABLE_VILLAGES || '0';
 process.env.DB_PATH = process.env.DB_PATH || `/tmp/t163-st-${process.pid}.db`;
+// ★[PM 10-13] T707_MARKET 켬 기본 — ⑨(둘째 화물 귀환)는 '도착 때 정산' 세계를 적은 단언이라 끔(`=0`)으로 묶는다(떠날 때 정산 세계로 옮기기 = T707 추신)
+if (process.env.T707_MARKET == null) process.env.T707_MARKET = '0';
 const path = require('path');
 const fs = require('fs');
 const ROOT = path.join(__dirname, '..');

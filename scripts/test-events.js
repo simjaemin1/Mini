@@ -1156,7 +1156,7 @@ const mkLedgerGeo = (world, geo, cfg) => {
     ok(vi >= 0, '㉟a 전제: 사람이 스무 명 넘는 마을이 있다(30% 를 덜어낼 수 있다)', vi >= 0 ? `${W.villages[vi].npcs.length}명` : '');
     const v = W.villages[vi], n0 = v.npcs.length;
     const cut = (k) => { for (let i = 0; i < k && v.npcs.length; i++) v.npcs.pop(); };
-    cut(Math.ceil(n0 * 0.40));
+    cut(Math.ceil(n0 * 0.50));   // ★[PM 10-13] 40 → 50% — 자는 '자기평균'에서 30% 인데 지금 몸 수에서 덜었다. T707 켬 세계(시드 7)는 그 마을이 자라던 중이라 평균이 지금보다 낮아 40% 를 덜어도 문턱(30%) 밑이 안 됐다 · 50% 면 두 세계 다 넘는다
     const e1 = L3.scanDay(W, W.day + 1, {}).filter((e) => e.vid === vi && e.type === 'POP_COLLAPSE');
     ok(e1.length === 1, '㉟ 인구가 자기평균에서 30% 넘게 빠지면 붕괴 위기 1건', e1[0] ? `mag=${e1[0].mag} (${e1[0].meta.was}→${e1[0].meta.pop}명)` : `${n0}→${v.npcs.length}명`);
     const e2 = L3.scanDay(W, W.day + 2, {}).filter((e) => e.vid === vi && e.type === 'POP_COLLAPSE');
