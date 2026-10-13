@@ -83,6 +83,8 @@ const { seedRand: _t340Rng, pidHash: _pidHash, seedOf: _seedOf, makeStream: _mak
 const TB = require('./tick-budget');   // ★[T687] 한 틱 공용 예산(손잡이 `T687_SHARED_BUDGET` · 끔 = 문마다 제 예산 그대로)
 //   ★[T687 ②] 같은 손잡이로 하루 마감 통짜를 더 잘게 — 생활층 한 마을의 갈래 경계 쉼표 · 사냥 밴드 짓기 뒤 · 인구 재동기 마을 하나씩(차례 그대로 · 끔 = 종전 글자)
 const T687_ON = TB.ON;
+const T714_WAIT_YIELD = process.env.T714_WAIT_YIELD !== '0';
+const T714_DUE_FIRST = process.env.T714_DUE_FIRST !== '0';   // ★[T714] 다음 경계가 온 뒤 남은 마감은 머리 자리에서 몫을 남김없이(아래 `onGameTick`) · `=0` = 종전   // ★[T714] 남(도적 부팅 표본)을 기다리며 돌아온 마감 조각은 프레임을 닫는다(아래 `_drainTickJobs`) · `=0` = 종전
 // ★★[T695 2026-10-11] 결정 문 먼저 — 손잡이 `T695_DEC_FIRST=1`(공용 예산 켬일 때만 · 기본 끔 = T687 차례 그대로).
 //   마감 조각이 이어지는 틱과 교역로 선계산 · 다시 파기는 존 틱의 **주민 결정 문 뒤**(`deferLate` — 존이 부른다)에서 남은 몫을 쓴다.
 //   거기서 몫이 없어 마감이 한 조각도 못 돌았으면 다음 틱은 종전 자리(마을 onGameTick)에서 먼저 돈다 — 번갈아(새 수 0).
@@ -2370,7 +2372,7 @@ function _routeResume(key, x0, y0, x1, y1, budgetMs) {
   if (_pathJob && _pathJob.key !== key) {
     //   ★★[T655] 떠 있는 일이 **부팅 표본**(T640 · `routeSampleStep` 이 단 표식)이면 버리지 않고 기다린다 — 버리면 표본이 그 쌍을 처음부터 다시 판다
     //     (빠른 시계 실측: 양보 3,608 · 일 84 → 216초). 표본은 그 쌍을 끝낸 뒤 한 틱 비켜 준다(`_routeBootWait`) — 서로 버리지 않고 번갈아.
-    if (_pathJob.boot) { state._routeBootWait = true; _probe.pathBootWait = (_probe.pathBootWait || 0) + 1; return { done: false }; }
+    if (_pathJob.boot) { state._routeBootWait = true; state._t714Wait = true; _probe.pathBootWait = (_probe.pathBootWait || 0) + 1; return { done: false }; }
     _probe.pathDrop++; _pathJob = null;   // ★한 번에 하나
   }
   if (!_pathJob) {
@@ -5994,7 +5996,7 @@ function probeStats() { return { siteLog: _probe.siteLog.slice(-400), auditN: _p
   siteMs: _probe.siteMs, siteMax: _probe.siteMax, siteVils: _probe.siteVils.size,
   routeCold: _probe.routeCold, routeColdPrimed: _probe.routeColdPrimed, routeMs: _probe.routeMs, routeMax: _probe.routeMax, routeHit: _probe.routeHit, routeClear: _probe.routeClear,
   pathJobs: _probe.pathJobs, pathSliceMax: _probe.pathSliceMax, pathChunkMax: _probe.pathChunkMax, pathDrop: _probe.pathDrop, pathWait: _probe.pathWait, pathStepNodes: PATH_STEP_NODES,
-  routePlain: _probe.routePlain | 0, routeRedigPass: _probe.routeRedigPass | 0, routeRedig: _probe.routeRedig | 0, routeRedigChanged: _probe.routeRedigChanged | 0, walkBuilt: _probe.walkBuilt | 0, walkStraight: _probe.walkStraight | 0, walkFar: _probe.walkFar | 0,   // ★[T578]
+  routePlain: _probe.routePlain | 0, routeRedigPass: _probe.routeRedigPass | 0, routeRedig: _probe.routeRedig | 0, routeRedigChanged: _probe.routeRedigChanged | 0, pathBootWait: _probe.pathBootWait | 0, t714Yield: _probe.t714Yield | 0, t714Due: _probe.t714Due | 0, walkBuilt: _probe.walkBuilt | 0, walkStraight: _probe.walkStraight | 0, walkFar: _probe.walkFar | 0,   // ★[T578]
   oreCold: _probe.oreCold, oreMs: _probe.oreMs, oreMax: _probe.oreMax,
   t620MemoN: _probe.t620MemoN | 0, t620MemoBad: _probe.t620MemoBad | 0, t620MemoFirst: _probe.t620MemoFirst || '',   // ★[T620 ①] 검사용
   t620WfHit: _probe.t620WfHit | 0, t620WfN: _probe.t620WfN | 0, t620WfBad: _probe.t620WfBad | 0, t620Prewarm: _probe.t620Prewarm | 0,
@@ -6089,7 +6091,11 @@ function onGameTick(now) {
   //   정상적으로는 절대 겹치지 않지만, 겹치면 그건 **밀린 것**이지 건너뛸 일이 아니다.
   //   ★[T687] 켬이면 이 틱 공용 몫이 이미 바닥났을 때 마감 조각을 이 틱엔 쉰다(다음 틱 · 차례 그대로).
   //   ★[T695] 결정 문 먼저면 이어지는 마감 조각도 결정 문 뒤(`deferLate`)에서 남은 몫으로 — 지난 틱 거기서 몫이 없어 못 돌았으면 이 틱은 종전 자리(번갈아 · 둘 다 굶지 않게).
-  if (state.tickJobs) { if (T695_LATE()) { state._t695C = true; return; } state._t695Starved = false; if (!TB.out(TICK_SLICE_MS, 'close')) _drainTickJobs(now); return; }
+  //   ★★[T714] **다음 경계가 왔는데 마감이 아직이면 마감이 먼저**(T690 "다음 경계 앞 마무리" 문법 · 손잡이 `T714_DUE_FIRST` 기본 켬 · `=0` = 종전).
+  //     하루가 마감보다 짧으면(빠른 시계 · 무거운 날) 결정 몫 · 번갈아 때문에 마감 몫이 한 틱에 수 ms 로 줄어 마감이 하루의 몇 배를 끈다(실측 4초 하루에 15~120초).
+  //     ⇒ 밀린 마감은 이 틱 머리 자리에서 공용 몫을 남김없이 먼저 쓴다(몫 남기기 끔 — 결정 문 · 뒤 문은 그 나머지). 마감이 끝나면 다음 날이 열린다(차례 · 값 그대로).
+  if (state.tickJobs) { const _due = T714_DUE_FIRST && TB.DEC_FIRST && gameDayOf(now) > state.lastGameDay; if (_due) { TB.lateBegin(); _probe.t714Due = (_probe.t714Due || 0) + 1; }
+    if (!_due && T695_LATE()) { state._t695C = true; return; } state._t695Starved = false; if (!TB.out(TICK_SLICE_MS, 'close')) _drainTickJobs(now); return; }
   if (state.dayFreeze) return;
   if (T690_DAY_PHASE) { const n = _t690Due(now); if (n) { _t690Open(n, gameDayOf(now) > state.lastGameDay); _drainTickJobs(now); return; } }   // ★[T690] 위상이 온 마을의 생활층(다음 경계 전엔 남은 전부)
   const day = gameDayOf(now);
@@ -6419,6 +6425,7 @@ function _drainTickJobs(now) {
     do {
       const j = J.shift();
       const a = Date.now();
+      state._t714Wait = false;   // ★[T714] 이 조각이 부팅 표본(다른 문)을 기다리며 돌아왔나
       const rv = j.f();
       const d = Date.now() - a;
       C.chunks++; C.work = (C.work || 0) + d;
@@ -6432,6 +6439,13 @@ function _drainTickJobs(now) {
       //   ⚠맨 앞이라 뒤 단계(쓸기·사건 장부)를 앞지르지 않는다 — 단계 순서가 그대로다(`C.order` 가 증거).
       //   ⚠헛돌지 않는다: 되돌아온 조각은 이미 이 프레임의 예산을 썼으므로 아래 `while` 이 프레임을 닫는다.
       if (rv === 'retry') J.unshift(j);
+      //   ★★[T714 2026-10-12] **남을 기다리며 돌아온 조각은 이 프레임을 닫는다.** 위 '헛돌지 않는다' 가정은 'retry' 가 예산을 쓰고 돌아온다는 것이었다 —
+      //     그런데 교역로 슬롯을 도적 부팅 표본(T640 · `_pathJob.boot`)이 쥐고 있으면 캐러밴 조각은 **아무 일도 안 하고** 곧바로 돌아온다(`_routeResume`).
+      //     종전(문마다 제 예산)엔 이 루프가 16ms 를 헛돌아도 도적 문이 제 예산으로 표본을 이어 팠다. T687 공용 몫에선 이 헛돎이 몫을 다 써서
+      //     **도적 문이 영영 몫을 못 받는다** ⇒ 표본도 캐러밴도 안 끝나고 econ 날이 멈췄다(빠른 시계 `t368-farm-day a` · 실측 대기 7,800만 번).
+      //   ⇒ 기다림으로 돌아온 조각은 그 자리에 둔 채 프레임을 닫는다 — 남은 몫은 뒤 차례 문(도적 표본)이 쓴다. 차례 · 값 그대로(언제만).
+      //   손잡이 `T714_WAIT_YIELD`(기본 켬 · `=0` = 종전 헛돎).
+      if (rv === 'retry' && T714_WAIT_YIELD && state._t714Wait) { _probe.t714Yield = (_probe.t714Yield || 0) + 1; break; }
     } while (J.length && (TICK_SLICE_MS === 0 || Date.now() - f0 < _B));
   } catch (e) {
     console.error(`[${state.zoneId}] 🏘️ 마을 econ 틱 실패 (다음 경계에 재시도):`, e.message);

@@ -135,8 +135,12 @@ function makeTree(dir, ref) {
     rep('  if (!state.ready) return; // 플래그 off', '  if (!state.ready) return; globalThis.__T686VS && __T686VS(!!state.tickJobs); // 플래그 off');
     for (const [a, name] of VSEGS) rep(a, `  globalThis.__T686VM && __T686VM(${JSON.stringify(name)});\n` + a);
     //   ★[T687] 공용 예산 판(`TB.out` 문)과 종전 판 — 둘 중 있는 꼴에 박는다
+    const _a714 = "    if (!_due && T695_LATE()) { state._t695C = true; return; } state._t695Starved = false; if (!TB.out(TICK_SLICE_MS, 'close')) _drainTickJobs(now); return; }";
     const _a695 = "  if (state.tickJobs) { if (T695_LATE()) { state._t695C = true; return; } state._t695Starved = false; if (!TB.out(TICK_SLICE_MS, 'close')) _drainTickJobs(now); return; }";
-    if (cnt(s, _a695) === 1) {   // ★[T695] 결정 문 먼저 판 — 늦은 마감은 존 구간 '늦은 마감(T695)·밭 그림'에 든다(조각 이름은 그대로 잡힌다)
+    if (cnt(s, _a714) === 1) {   // ★[T714] 밀린 마감 먼저 판 — 같은 꼴에 박는다
+      rep(_a714, _a714.replace("_drainTickJobs(now); return; }", "_drainTickJobs(now); globalThis.__T686VM && __T686VM('v:하루 조각(이어서)'); return; }"));
+      rep("  _openDayJobs(now);\n  if (!TB.out(TICK_SLICE_MS, 'close')) _drainTickJobs(now);\n}", "  _openDayJobs(now); globalThis.__T686VM && __T686VM('v:하루 열기(_openDayJobs)');\n  if (!TB.out(TICK_SLICE_MS, 'close')) _drainTickJobs(now); globalThis.__T686VM && __T686VM('v:하루 조각(첫 프레임)');\n}");
+    } else if (cnt(s, _a695) === 1) {   // ★[T695] 결정 문 먼저 판 — 늦은 마감은 존 구간 '늦은 마감(T695)·밭 그림'에 든다(조각 이름은 그대로 잡힌다)
       rep(_a695, "  globalThis.__T686VM && __T686VM('v:날 문 앞(얼림 검사)');\n" + _a695.replace("_drainTickJobs(now); return; }", "_drainTickJobs(now); globalThis.__T686VM && __T686VM('v:하루 조각(이어서)'); return; }"));
       rep("  _openDayJobs(now);\n  if (!TB.out(TICK_SLICE_MS, 'close')) _drainTickJobs(now);\n}", "  _openDayJobs(now); globalThis.__T686VM && __T686VM('v:하루 열기(_openDayJobs)');\n  if (!TB.out(TICK_SLICE_MS, 'close')) _drainTickJobs(now); globalThis.__T686VM && __T686VM('v:하루 조각(첫 프레임)');\n}");
     } else if (cnt(s, "  if (state.tickJobs) { if (!TB.out(TICK_SLICE_MS, 'close')) _drainTickJobs(now); return; }") === 1) {
