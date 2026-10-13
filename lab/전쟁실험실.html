@@ -12349,9 +12349,17 @@ const RAID_MAX = 0.5;
 // =============================================================================
 // ★동기 계약(2026-07-12): 자원별 산식(target·stock·maxAdj·elast)은 _priceParamsV2(아래 1b. 시장 충격 정산)와
 //   동일 유지해야 함 — 수정 시 반드시 양쪽 동기(결정층 가격과 정산층 적분의 일물일가).
-function computeShadowPrices(v) {
+// ★★[T726 2026-10-13 · T718 회부 1 · 재민 08-01 "모든 기본 비축 목표 없애라"] **목표 식은 하나다.** 위 동기 계약은 글로만 있었고
+//   실제 식은 넷이었다 — 결정(여기) · 정산(`_priceParamsV2`) · 부패(`tickDecay`) · 출발 직후 가격(`tickTradeV2Steps` 두 자리).
+//   정산 · 부패엔 08-01 에 결정층에서만 지운 보유 수요 `N × util × 1.2` 가, 출발 직후엔 `N × max(0.5, util × 1.2)` 가 남아 있었고
+//   정산 곡선엔 위신재 웃돈 상한 · 원석 상한이 없었다(T718 표본: 결정 ≠ 정산 목표 72,801/102,816 칸 · 정산 값 중앙 3,981배).
+//   ⇒ 결정층 식을 그대로 셋으로 뺐다 — `_targetCtxV2`(마을 하나: 자본재 커버리지) · `_targetV2`(품목 하나: 목표 · 유효 재고 · 웃돈 상한)
+//     · `_oreCapV2`(원석 상한) + 값 한 줄 `_priceFromV2`. 결정층은 늘 이 넷을 부른다(식을 옮겼을 뿐 — 비트 동일).
+//   손잡이 `T726_ONE_TARGET=1`(기본 끔): 정산 · 부패 · 출발 직후도 같은 넷을 부른다(새 수 0). 끔 = 세 자리 종전 식 = main 비트.
+const T726_ONE_TARGET = (typeof process !== 'undefined' && process.env && process.env.T726_ONE_TARGET === '1');
+// 마을 하나의 문맥 — 자본재 커버리지(결정층 식 그대로).
+function _targetCtxV2(v) {
   const N = v.npcs.length || 1;
-  const prices = {};
   // ★자본재(capital goods) 커버리지 — 도구·무기·갑옷은 *소비재가 아니라 내구 자본*.
   //   목표재고 = 사용자 1인당 1개(소비재 버퍼 N×0.5 폐지 — 인구 절반을 무기로 두려던 가짜수요).
   //   • 도구 3종(돌·청동·철)은 *대체재* → 합산 재고로 평가(청동 마을서 돌도구 고갈→가짜 폭등→대장장이 폭주 방지).
@@ -12367,103 +12375,124 @@ function computeShadowPrices(v) {
     clothes: Math.max(2, N * 1.2),   // ★의복(2026-07-12): 1인 1벌+여벌 — 자본재 커버리지(도구 동형)
   };
   const CAP_STOCK = { tool: toolStock, bronze_tool: toolStock, iron_tool: toolStock };  // 도구는 *합산* 재고로 희소도 평가
-  for (const r of TRADABLE) {
-    const base = BASE_VALUE_V2[r] || 1;
-    const elast = ELASTICITY[r] || 1.0;
-    // v2 r6.1: target에 효용 가중치 약하게 — 너무 크면 모두 부족 신호로 식량 폭주
-    const subs = (SUBSISTENCE_PER_NPC[r] || 0) * N;
-    const util = UTILITY_WEIGHT[r] || 0.1;
-    let target, stock;
-    if (CAP_TARGET[r] !== undefined) {
-      // 자본재: 커버리지 기반(사용자 1인당 1개). 도구는 합산 재고.
-      target = CAP_TARGET[r];
-      stock = Math.max(0.1, CAP_STOCK[r] !== undefined ? CAP_STOCK[r] : (v.storage[r] || 0));
-    } else {
-      // ★장식재(위신재)에 진짜 수요 부여 — use-value = 위신·심리(prestige). 1인당 LUX_TARGET_PC 목표.
-      //   (옛 N×0.02 = 수요 죽임. 이제 위신재를 없는 마을은 수입하고 광산촌은 잉여 수출)
-      // ★flow-EMA target(2026-07-12, CHECKLIST 154 해소): 유령 보유 하한 max(0.5,·) 제거 — 소비재 수요는
-      //   실소비 흐름 flowT(=_consEMA×30, v1 _cons 계측 16사이트)가 만든다. 잡화 롱테일(util 0.1)의 가짜 보유
-      //   수요 소멸, 실소비 재화(연료·옷감·투입재·식단·봉헌)는 흐름이 target을 정직 견인 — 신규 재화는 소비처에
-      //   _cons 한 줄이면 끝(CAP_TARGET·시드·글럿가드·감산 4종 수동 통합 부채 해소).
-      //   동기 계약: _priceParamsV2·tickDecay 동일 공식. 분별 프로브(하한 제거 비치명)·A/B 근거 CHECKLIST 참조.
-      // ★subs 가드(A/B 실측): SUBSISTENCE_PER_NPC 등재 재화(주식·연료·석재·의류 사슬)는 subs×30이 이미 손튜닝
-      //   흐름 target — flowT 중복 적용 시 실측(한랭 연료 등)이 캘리브를 2~3배 덮어써 시장 전체 유보 인플레
-      //   (s505 576→17 붕괴 실측). flowT는 손튜닝 없는 롱테일 전용.
-      const flowT = subsGuard(r, 'price') ? 0 : ((v._consEMA || {})[r] || 0) * 30;
-      // ★★★[재민 지시 2026-08-01] "모든 기본 비축 목표 없애라"
-      //   "전혀 안 쓰는데 최소한의 비축을 위한 수요 때문에 철을 사는 거 아냐..
-      //    그걸 완전히 없애도 잘 작동해야 하는 거 아냐?"
-      //   맞다. N × util × 1.2 는 **용도와 무관하게 항상 깔리는 보유 수요**였다. 그래서
-      //   아무도 안 쓰는 철이 재고 0일 때 "부족 프리미엄"을 받아 구리와 같은 값(5.60)이 됐고,
-      //   그 값이 중간재 상한을 통해 원석값을 떠받쳐 광부가 계속 뽑혔다(실측: 철 91% 광맥 마을에 광부 2명).
-      //   가격이 "부족하면 비싸다"만 알고 "아무도 안 원한다"를 몰랐던 것 — 직업 선택은 그 거짓말을 정직히 따랐다.
-      //   ⇒ 수요는 **실소비 흐름(flowT)**과 생존필수(subs)와 자본재 커버리지(CAP_TARGET)만이 만든다.
-      //     안 쓰면 0이고, 플레이어가 철검을 들여와 마을이 쓰기 시작하면 _cons 가 잡혀 저절로 생긴다.
-      //   ※장식재(ORNAMENTAL)의 위신 수요는 남긴다 — 그건 '쓰지 않는 재화'가 아니라 보유 자체가 효용이다.
-      const buffer = ORNAMENTAL[r] ? N * LUX_TARGET_PC : 0;
-      // ★[2026-08-02f ①-2] 파생 투입수요 — 판정은 v1 한 곳에서만(사본 금지). 손잡이 OFF 면 항상 0.
-      //   동기 계약: 아래 `_priceParamsV2`·`tickDecay` 도 같은 줄을 갖는다.
-      const derivT = v1.derivedInputTarget ? v1.derivedInputTarget(v, r) : 0;
-      target = Math.max(subs * 30, buffer, flowT, derivT);
-      // ★식량 다양성 수요 — 자체 생산 못 하는 식품군은 다양성 위해 소량 수입 목표. 자체 생산하면(≥0.05/명) 보너스 없음.
-      //   ★식량안보 게이트: 주식(곡물) 25일치 이상일 때만 — 굶는 마을은 다양성보다 생존(주식) 우선(변방 마을 아사 방지).
-      if (VARIETY_FOOD[r] && (v.dailyProductionBuf ? (v.dailyProductionBuf[r] || 0) / N : 0) < 0.05
-          && (v.storage.food || 0) / N > 25) {
-        target = Math.max(target, N * VARIETY_TARGET_PC);
-      }
-      stock = Math.max(0.1, v.storage[r] || 0);
-      // ★선견적 가격(flow 반영): 구조적 식량적자(생산<소비)를 30일 선반영 → 적자 마을은 *초기재고 무관하게* 수입.
-      //   재고(stock)만 보면 근시안 — 큰 buffer에 가려 적자가 안 보여 교역이 stock에 휘둘림(경제적 오류).
-      //   surplusEMA.food = 자체생산−소비(수입 제외) → 구조적 비교우위 적자를 정확히 포착.
-      if (r === 'food' && v.surplusEMA && v.surplusEMA.food < 0) {
-        stock = Math.max(0.1, stock + v.surplusEMA.food * 30);
-      }
+  return { N, CAP_TARGET, CAP_STOCK };
+}
+// 품목 하나 — 목표 · 유효 재고 · 웃돈 상한(결정층 식 그대로 · 네 자리가 부른다). 값은 `_priceFromV2`.
+function _targetV2(v, r, ctx) {
+  const N = ctx.N, CAP_TARGET = ctx.CAP_TARGET, CAP_STOCK = ctx.CAP_STOCK;
+  const base = BASE_VALUE_V2[r] || 1;
+  const elast = ELASTICITY[r] || 1.0;
+  // v2 r6.1: target에 효용 가중치 약하게 — 너무 크면 모두 부족 신호로 식량 폭주
+  const subs = (SUBSISTENCE_PER_NPC[r] || 0) * N;
+  const util = UTILITY_WEIGHT[r] || 0.1;
+  let target, stock;
+  if (CAP_TARGET[r] !== undefined) {
+    // 자본재: 커버리지 기반(사용자 1인당 1개). 도구는 합산 재고.
+    target = CAP_TARGET[r];
+    stock = Math.max(0.1, CAP_STOCK[r] !== undefined ? CAP_STOCK[r] : (v.storage[r] || 0));
+  } else {
+    // ★장식재(위신재)에 진짜 수요 부여 — use-value = 위신·심리(prestige). 1인당 LUX_TARGET_PC 목표.
+    //   (옛 N×0.02 = 수요 죽임. 이제 위신재를 없는 마을은 수입하고 광산촌은 잉여 수출)
+    // ★flow-EMA target(2026-07-12, CHECKLIST 154 해소): 유령 보유 하한 max(0.5,·) 제거 — 소비재 수요는
+    //   실소비 흐름 flowT(=_consEMA×30, v1 _cons 계측 16사이트)가 만든다. 잡화 롱테일(util 0.1)의 가짜 보유
+    //   수요 소멸, 실소비 재화(연료·옷감·투입재·식단·봉헌)는 흐름이 target을 정직 견인 — 신규 재화는 소비처에
+    //   _cons 한 줄이면 끝(CAP_TARGET·시드·글럿가드·감산 4종 수동 통합 부채 해소).
+    //   동기 계약: _priceParamsV2·tickDecay 동일 공식. 분별 프로브(하한 제거 비치명)·A/B 근거 CHECKLIST 참조.
+    // ★subs 가드(A/B 실측): SUBSISTENCE_PER_NPC 등재 재화(주식·연료·석재·의류 사슬)는 subs×30이 이미 손튜닝
+    //   흐름 target — flowT 중복 적용 시 실측(한랭 연료 등)이 캘리브를 2~3배 덮어써 시장 전체 유보 인플레
+    //   (s505 576→17 붕괴 실측). flowT는 손튜닝 없는 롱테일 전용.
+    const flowT = subsGuard(r, 'price') ? 0 : ((v._consEMA || {})[r] || 0) * 30;
+    // ★★★[재민 지시 2026-08-01] "모든 기본 비축 목표 없애라"
+    //   "전혀 안 쓰는데 최소한의 비축을 위한 수요 때문에 철을 사는 거 아냐..
+    //    그걸 완전히 없애도 잘 작동해야 하는 거 아냐?"
+    //   맞다. N × util × 1.2 는 **용도와 무관하게 항상 깔리는 보유 수요**였다. 그래서
+    //   아무도 안 쓰는 철이 재고 0일 때 "부족 프리미엄"을 받아 구리와 같은 값(5.60)이 됐고,
+    //   그 값이 중간재 상한을 통해 원석값을 떠받쳐 광부가 계속 뽑혔다(실측: 철 91% 광맥 마을에 광부 2명).
+    //   가격이 "부족하면 비싸다"만 알고 "아무도 안 원한다"를 몰랐던 것 — 직업 선택은 그 거짓말을 정직히 따랐다.
+    //   ⇒ 수요는 **실소비 흐름(flowT)**과 생존필수(subs)와 자본재 커버리지(CAP_TARGET)만이 만든다.
+    //     안 쓰면 0이고, 플레이어가 철검을 들여와 마을이 쓰기 시작하면 _cons 가 잡혀 저절로 생긴다.
+    //   ※장식재(ORNAMENTAL)의 위신 수요는 남긴다 — 그건 '쓰지 않는 재화'가 아니라 보유 자체가 효용이다.
+    const buffer = ORNAMENTAL[r] ? N * LUX_TARGET_PC : 0;
+    // ★[2026-08-02f ①-2] 파생 투입수요 — 판정은 v1 한 곳에서만(사본 금지). 손잡이 OFF 면 항상 0.
+    //   동기 계약: 아래 `_priceParamsV2`·`tickDecay` 도 같은 줄을 갖는다.
+    const derivT = v1.derivedInputTarget ? v1.derivedInputTarget(v, r) : 0;
+    target = Math.max(subs * 30, buffer, flowT, derivT);
+    // ★식량 다양성 수요 — 자체 생산 못 하는 식품군은 다양성 위해 소량 수입 목표. 자체 생산하면(≥0.05/명) 보너스 없음.
+    //   ★식량안보 게이트: 주식(곡물) 25일치 이상일 때만 — 굶는 마을은 다양성보다 생존(주식) 우선(변방 마을 아사 방지).
+    if (VARIETY_FOOD[r] && (v.dailyProductionBuf ? (v.dailyProductionBuf[r] || 0) / N : 0) < 0.05
+        && (v.storage.food || 0) / N > 25) {
+      target = Math.max(target, N * VARIETY_TARGET_PC);
     }
-    // ★★[재민 지적] "당장 필요하지 않은데 엄청난 자원을 들여 이상한 걸 사오는 장치가 있지는 않은가"
-    //   있었다. 두 겹이었다.
-    //   ① **세계에 존재하지도 않는 자원에 수요가 붙어 있었다.** specialty 196종이 전부 TRADABLE 로
-    //      들어오는데, 그중 상아(ivory) 같은 건 이 세계의 어떤 직업도 생산하지 않는다. 그런데
-    //      target 은 인구 비례로 붙고 stock 은 0(→ 0.1 바닥) 이라 희소도가 발산했다.
-    //      실측: 상아 그림자가격 **3,184.9** — 같은 마을 식량 1.09 의 **2,900배**다.
-    //      공급이 없어 거래가 성사되지 않았을 뿐, 누가 한 개라도 내놓는 순간 마을이 식량을 쏟아붓는다.
-    //      ⇒ **본 적도 없는 것을 원하지 않는다.** 세계 어디에도 공급된 적 없는 자원은 수요가 0이다.
-    //   ② 사치재는 웃돈에 상한이 있다 — 굶으면 식량에 전 재산을 내지만 위신재엔 그러지 않는다.
-    //      필수재의 희소도 곱셈을 위신재에 그대로 쓰면 "없으면 값이 무한대"가 된다.
-    //   ⇒ 목표를 **세계 총공급 중 내 인구 몫**으로 제한한다(위 _worldStockOf 주석 참조).
-    const _ws = _worldStockOf(v, r);
-    //   ⚠**필수재와 자본재는 제외한다.** 식량은 세계에 없어도 원해야 한다 — 그 절박함이 곧
-    //     기근 신호이고 교역을 부른다. 거기에 "구할 수 있는 만큼만 원해라"를 걸면 흉년에
-    //     가격이 안 올라 캐러밴이 식량을 안 옮긴다(실측: 삼림 마을 식량가격이 1000 으로 튀며 기근).
-    //     제한은 **없어도 죽지 않는 것들**(위신재·잡화 롱테일)에만 건다.
-    if (_ws && !SUBSISTENCE_PER_NPC[r] && CAP_TARGET[r] === undefined && !VARIETY_FOOD[r]) {
-      target = Math.min(target, Math.max(0.2, _ws.stock * (N / _ws.pop) * EFFDEM_SHARE));
+    stock = Math.max(0.1, v.storage[r] || 0);
+    // ★선견적 가격(flow 반영): 구조적 식량적자(생산<소비)를 30일 선반영 → 적자 마을은 *초기재고 무관하게* 수입.
+    //   재고(stock)만 보면 근시안 — 큰 buffer에 가려 적자가 안 보여 교역이 stock에 휘둘림(경제적 오류).
+    //   surplusEMA.food = 자체생산−소비(수입 제외) → 구조적 비교우위 적자를 정확히 포착.
+    if (r === 'food' && v.surplusEMA && v.surplusEMA.food < 0) {
+      stock = Math.max(0.1, stock + v.surplusEMA.food * 30);
     }
-    const scarcity = Math.pow(target / stock, elast);
-    // ★효용가중 가격상한: 고효용(식량 util1.5→상한1000)은 격차 자유, 저효용 외래품(util0.1→상한16)은 억제.
-    //   외래 부산물이 재고0→550배 폭발해 교역 독식하는 걸 막아 staple(돌·식량) 재분배가 캐러밴을 잡게 함.
-    let maxAdj = Math.min(PRICE_ADJ_MAX, 10 * Math.pow(10, util * 2));
-    if (ORNAMENTAL[r]) maxAdj = Math.min(maxAdj, LUX_ADJ_MAX);   // ②위신재는 웃돈 상한
-    const adj = Math.max(PRICE_ADJ_MIN, Math.min(maxAdj, scarcity));
-    prices[r] = base * adj;
   }
-  // ★★[재민 지적] "중간재라 불렀나? 그게 오류를 만들지는 않겠지?" — 만들고 있었다.
-  //   실측: 원석 그림자가격 **39.81** vs 같은 마을 구리 **0.47**. 원석이 그것으로 만드는 금속보다
-  //   85배 비쌌다. 제련이 원석을 소진시키면 원석 재고가 0 이 되고, 희소도(target/stock)가 폭발한다.
-  //   그런데 금속은 쌓여서 가격이 바닥이다 — 그러면 "녹여봐야 손해"가 되어 제련이 **영구 정지**한다.
-  //   제련이 자기 원료를 비싸게 만들어 자기를 죽이는 악순환이다.
-  //   ⇒ 사슬 항등식을 가격에 직접 건다: **중간재는 그것이 될 최종재보다 비쌀 수 없다.**
-  //     P(원석) ≤ 제련수율 × P(그 마을 광종의 금속)
-  {
-    const mix = v1.oreMixOf ? v1.oreMixOf(v) : (v.land && v.land.oreMix);   // ★유효 조성(수입 원석 포함)
-    if (prices.ore != null && mix) {
-      let mv = 0, tot = 0;
-      for (const k in mix) { const q = mix[k]; if (!(q > 0)) continue; tot += q;
-        const _id = k === 'jade_raw' ? 'jade' : k;
-        // ★시대 게이트 — 못 뽑는 금속(철 등)은 분자에서 뺀다. 분모엔 남긴다(그 몫은 슬래그 = 실손실).
-        if (v1._eraMetalKnown && !v1._eraMetalKnown(_id)) continue;
-        mv += q * (prices[_id] || 0); }
-      if (tot > 0) prices.ore = Math.min(prices.ore, (v1._SMELT_YIELD || 0.33) * (mv / tot));
-    }
+  // ★★[재민 지적] "당장 필요하지 않은데 엄청난 자원을 들여 이상한 걸 사오는 장치가 있지는 않은가"
+  //   있었다. 두 겹이었다.
+  //   ① **세계에 존재하지도 않는 자원에 수요가 붙어 있었다.** specialty 196종이 전부 TRADABLE 로
+  //      들어오는데, 그중 상아(ivory) 같은 건 이 세계의 어떤 직업도 생산하지 않는다. 그런데
+  //      target 은 인구 비례로 붙고 stock 은 0(→ 0.1 바닥) 이라 희소도가 발산했다.
+  //      실측: 상아 그림자가격 **3,184.9** — 같은 마을 식량 1.09 의 **2,900배**다.
+  //      공급이 없어 거래가 성사되지 않았을 뿐, 누가 한 개라도 내놓는 순간 마을이 식량을 쏟아붓는다.
+  //      ⇒ **본 적도 없는 것을 원하지 않는다.** 세계 어디에도 공급된 적 없는 자원은 수요가 0이다.
+  //   ② 사치재는 웃돈에 상한이 있다 — 굶으면 식량에 전 재산을 내지만 위신재엔 그러지 않는다.
+  //      필수재의 희소도 곱셈을 위신재에 그대로 쓰면 "없으면 값이 무한대"가 된다.
+  //   ⇒ 목표를 **세계 총공급 중 내 인구 몫**으로 제한한다(위 _worldStockOf 주석 참조).
+  const _ws = _worldStockOf(v, r);
+  //   ⚠**필수재와 자본재는 제외한다.** 식량은 세계에 없어도 원해야 한다 — 그 절박함이 곧
+  //     기근 신호이고 교역을 부른다. 거기에 "구할 수 있는 만큼만 원해라"를 걸면 흉년에
+  //     가격이 안 올라 캐러밴이 식량을 안 옮긴다(실측: 삼림 마을 식량가격이 1000 으로 튀며 기근).
+  //     제한은 **없어도 죽지 않는 것들**(위신재·잡화 롱테일)에만 건다.
+  if (_ws && !SUBSISTENCE_PER_NPC[r] && CAP_TARGET[r] === undefined && !VARIETY_FOOD[r]) {
+    target = Math.min(target, Math.max(0.2, _ws.stock * (N / _ws.pop) * EFFDEM_SHARE));
+  }
+  // ★효용가중 가격상한: 고효용(식량 util1.5→상한1000)은 격차 자유, 저효용 외래품(util0.1→상한16)은 억제.
+  //   외래 부산물이 재고0→550배 폭발해 교역 독식하는 걸 막아 staple(돌·식량) 재분배가 캐러밴을 잡게 함.
+  let maxAdj = Math.min(PRICE_ADJ_MAX, 10 * Math.pow(10, util * 2));
+  if (ORNAMENTAL[r]) maxAdj = Math.min(maxAdj, LUX_ADJ_MAX);   // ②위신재는 웃돈 상한
+  return { base, e: elast, target, sEff: stock, physical: Math.max(0, v.storage[r] || 0), maxAdj };
+}
+// 값 한 줄 — 목표 · 유효 재고 · 탄력 · 웃돈 상한 → 그림자가격(원석 상한 앞).
+function _priceFromV2(T) { return T.base * Math.max(PRICE_ADJ_MIN, Math.min(T.maxAdj, Math.pow(T.target / T.sEff, T.e))); }
+// ★★[재민 지적] "중간재라 불렀나? 그게 오류를 만들지는 않겠지?" — 만들고 있었다.
+//   실측: 원석 그림자가격 **39.81** vs 같은 마을 구리 **0.47**. 원석이 그것으로 만드는 금속보다
+//   85배 비쌌다. 제련이 원석을 소진시키면 원석 재고가 0 이 되고, 희소도(target/stock)가 폭발한다.
+//   그런데 금속은 쌓여서 가격이 바닥이다 — 그러면 "녹여봐야 손해"가 되어 제련이 **영구 정지**한다.
+//   제련이 자기 원료를 비싸게 만들어 자기를 죽이는 악순환이다.
+//   ⇒ 사슬 항등식을 가격에 직접 건다: **중간재는 그것이 될 최종재보다 비쌀 수 없다.**
+//     P(원석) ≤ 제련수율 × P(그 마을 광종의 금속)
+//   priceOf(금속 id) → 그 마을 결정층 값(원석 상한 앞). 조성이 없거나 합이 0 이면 null(상한 없음).
+function _oreCapV2(v, priceOf) {
+  const mix = v1.oreMixOf ? v1.oreMixOf(v) : (v.land && v.land.oreMix);   // ★유효 조성(수입 원석 포함)
+  if (!mix) return null;
+  let mv = 0, tot = 0;
+  for (const k in mix) { const q = mix[k]; if (!(q > 0)) continue; tot += q;
+    const _id = k === 'jade_raw' ? 'jade' : k;
+    // ★시대 게이트 — 못 뽑는 금속(철 등)은 분자에서 뺀다. 분모엔 남긴다(그 몫은 슬래그 = 실손실).
+    if (v1._eraMetalKnown && !v1._eraMetalKnown(_id)) continue;
+    mv += q * (priceOf(_id) || 0); }
+  return tot > 0 ? (v1._SMELT_YIELD || 0.33) * (mv / tot) : null;
+}
+// 결정층 값 하나(원석 상한 앞 — `computeShadowPrices` 의 그 값). TRADABLE 밖은 값표에 없다(= 0).
+function _priceOfV2(v, k, ctx) { return ELASTICITY[k] === undefined ? 0 : _priceFromV2(_targetV2(v, k, ctx)); }
+// 결정층 값 하나 — 원석이면 상한까지(출발 직후 가격이 부른다 · 켬).
+function _priceNowV2(v, r) {
+  const ctx = _targetCtxV2(v);
+  let p = _priceOfV2(v, r, ctx);
+  if (r === 'ore') { const cap = _oreCapV2(v, (k) => _priceOfV2(v, k, ctx)); if (cap != null) p = Math.min(p, cap); }
+  return p;
+}
+function computeShadowPrices(v) {
+  const prices = {};
+  const ctx = _targetCtxV2(v);
+  for (const r of TRADABLE) prices[r] = _priceFromV2(_targetV2(v, r, ctx));
+  if (prices.ore != null) {
+    const cap = _oreCapV2(v, (k) => prices[k]);
+    if (cap != null) prices.ore = Math.min(prices.ore, cap);
   }
   return prices;
 }
@@ -12481,6 +12510,8 @@ function computeShadowPrices(v) {
 //   출발 EV(totalProfit)는 flat+0.95 마진 휴리스틱 유지 — 기대는 근사, 정산은 진실(후속 정합 후보).
 // =============================================================================
 function _priceParamsV2(v, r) {
+  // ★★[T726] 켬 — 결정층과 같은 함수 · 같은 상한 둘(위신재 웃돈은 `_targetV2` 안 · 원석은 `_settleParamsV2`). 끔 = 아래 종전 식(main 비트).
+  if (T726_ONE_TARGET) return _settleParamsV2(v, r);
   const N = v.npcs.length || 1;
   const cnt = v.counts || {};
   const base = BASE_VALUE_V2[r] || 1;
@@ -12509,14 +12540,30 @@ function _priceParamsV2(v, r) {
   const maxAdj = Math.min(PRICE_ADJ_MAX, 10 * Math.pow(10, util * 2));
   return { base, e, target, sEff: stock, physical: Math.max(0, v.storage[r] || 0), maxAdj };
 }
+// ★★[T726] 정산 곡선 = 결정층 값 곡선 — p(s) = base × clamp(바닥 0.01, 천장, (목표/s)^e) 에 원석 상한(값 ≤ cap)까지 같이.
+//   결정층은 원석 값을 min(·, cap) 으로 깎는다 ⇒ 곡선 천장을 cap/base 로 낮춘 것과 같다(cap 이 바닥 밑이면 곡선 전체가 cap 에서 평평).
+//   목표 0(안 쓰는 품목)이면 결정층 값은 바닥(base × 0.01) — 곡선도 거기서 평평(`flat`). 평평한 곡선은 켬에서만 선다.
+//   유효 재고 sEff 에서 이 곡선의 값 = `computeShadowPrices` 의 값(같은 함수 · 같은 상한).
+function _settleParamsV2(v, r) {
+  const ctx = _targetCtxV2(v);
+  const P = _targetV2(v, r, ctx);
+  if (r === 'ore') {
+    const cap = _oreCapV2(v, (k) => _priceOfV2(v, k, ctx));
+    if (cap != null) P.maxAdj = Math.min(P.maxAdj, cap / P.base);
+  }
+  if (!(P.target > 0) || !(P.maxAdj > PRICE_ADJ_MIN)) P.flat = P.base * Math.min(PRICE_ADJ_MIN, P.maxAdj);
+  return P;
+}
 // 가격 3구간 경계(유효재고 좌표): s≤sLo 천장 flat(base·maxAdj) · [sLo,sHi] 멱법칙 k·s^−e · s≥sHi 바닥 flat(base·ADJ_MIN)
 function _impactSegs(P) {
+  if (P.flat != null) return { flat: P.flat };   // ★[T726] 평평한 곡선(켬에서만 — 목표 0 · 원석 상한이 바닥 밑)
   return { sLo: P.target * Math.pow(P.maxAdj, -1 / P.e), sHi: P.target * Math.pow(PRICE_ADJ_MIN, -1 / P.e),
     pLo: P.base * P.maxAdj, pHi: P.base * PRICE_ADJ_MIN, k: P.base * Math.pow(P.target, P.e) };
 }
 // 부정적분 F(s)=∫[0→s]p(u)du — 연속·순증(구간 경계에서 가격 일치: k·sLo^−e=base·maxAdj, k·sHi^−e=base·ADJ_MIN)
 function _impactF(P, S, s) {
   if (s <= 0) return 0;
+  if (S.flat != null) return S.flat * s;   // ★[T726] 평평한 곡선
   if (s <= S.sLo) return S.pLo * s;
   const b = Math.min(s, S.sHi), e = P.e;
   const pw = Math.abs(e - 1) < 1e-9 ? S.k * Math.log(b / S.sLo)
@@ -12531,6 +12578,7 @@ function _impactBuyV2(v, r, budget, held) {   // ★[T692] held = 곳간 가운�
   const Ft = F0 - budget;
   let s1;
   if (Ft <= 0) s1 = 0;
+  else if (S.flat != null) s1 = Ft / S.flat;   // ★[T726] 평평한 곡선(값 0 이면 위 줄에서 이미 s1 = 0)
   else if (Ft <= S.pLo * S.sLo) s1 = Ft / S.pLo;
   else if (Ft <= _impactF(P, S, S.sHi)) {
     const g = Ft - S.pLo * S.sLo, e = P.e;
@@ -12827,7 +12875,9 @@ function* tickTradeV2Steps(world, day) {
       a.v.storage[cand.res] -= N_units;
       a.sent += N_units * pFrom;
       // ★가치 변동(자기제한): 수출로 재고↓ → 현지 가격↑ → 다음 원정 이익↓ → 차익거래가 균형까지만.
-      { const r = cand.res, base = BASE_VALUE_V2[r] || 1, elast = ELASTICITY[r] || 1,
+      //   ★★[T726] 켬 — 결정층과 같은 값(목표 함수 하나 · 웃돈 상한 · 원석 상한). 끔 = 종전 축약식(보유 수요 `N × max(0.5, util × 1.2)`).
+      if (T726_ONE_TARGET) a.prices[cand.res] = _priceNowV2(a.v, cand.res);
+      else { const r = cand.res, base = BASE_VALUE_V2[r] || 1, elast = ELASTICITY[r] || 1,
           subs = (SUBSISTENCE_PER_NPC[r] || 0) * N, buf = N * Math.max(0.5, (UTILITY_WEIGHT[r] || 0.1) * 1.2),
           tg = Math.max(subs * 30, buf), st = Math.max(0.1, a.v.storage[r] || 0);
         a.prices[r] = base * Math.max(PRICE_ADJ_MIN, Math.min(PRICE_ADJ_MAX, Math.pow(tg / st, elast))); }
@@ -12879,7 +12929,8 @@ function* tickTradeV2Steps(world, day) {
       if (_res2 && _n2 >= 1) {
         a.v.storage[_res2] -= _n2;                    // 출발 즉시 차감(첫 품목과 같은 자리·같은 문법)
         a.sent += _n2 * _p2;
-        { const r = _res2, base = BASE_VALUE_V2[r] || 1, elast = ELASTICITY[r] || 1,
+        if (T726_ONE_TARGET) a.prices[_res2] = _priceNowV2(a.v, _res2);   // ★[T726] 켬 — 첫 품목과 같은 값 문
+        else { const r = _res2, base = BASE_VALUE_V2[r] || 1, elast = ELASTICITY[r] || 1,
             subs = (SUBSISTENCE_PER_NPC[r] || 0) * N, buf = N * Math.max(0.5, (UTILITY_WEIGHT[r] || 0.1) * 1.2),
             tg = Math.max(subs * 30, buf), st = Math.max(0.1, a.v.storage[r] || 0);
           a.prices[r] = base * Math.max(PRICE_ADJ_MIN, Math.min(PRICE_ADJ_MAX, Math.pow(tg / st, elast))); }
@@ -13611,15 +13662,22 @@ function tickDecay(v) {
   //   면제가 없으면 목표재고 ~1 인 빈 마을에서 rate 가 클램프(0.95)에 붙어 하루 95%씩 썩고,
   //   회복 창(day%50)까지 문턱 15 를 못 버틴다 — E2E 실측: 82.4 → 4.1(하루 만에).
   const _founding = !!(v.founder && v.npcs.length === 0);
+  // ★★[T726] 켬 — 과잉부패의 목표도 결정층 함수 하나(`_targetV2` — 보유 수요 `N × util × 1.2` 없음 · 다양성 · 유효수요 상한 포함).
+  //   끔 = 아래 종전 식(main 비트). 문맥(자본재 커버리지)은 이 마을 부패 앞에서 한 번.
+  const _t726 = T726_ONE_TARGET ? _targetCtxV2(v) : null;
   for (const [r, baseRate] of Object.entries(DECAY_V2)) {
     const s = v.storage[r] || 0;
     if (s <= 0) continue;
+    let target;
+    if (_t726) target = _targetV2(v, r, _t726).target;
+    else {
     const subs = (SUBSISTENCE_PER_NPC[r] || 0) * N;
     const util = UTILITY_WEIGHT[r] || 0.1;
     const flowT = subsGuard(r, 'price') ? 0 : ((v._consEMA || {})[r] || 0) * 30;   // ★flow-EMA(동기 계약·subs 가드) — 롱테일 작업 재고는 과잉부패에서 보호
     const buffer = N * (util * 1.2);
     const derivT = v1.derivedInputTarget ? v1.derivedInputTarget(v, r) : 0;   // ★[2026-08-02f ①-2] 동기 계약
-    const target = Math.max(subs * 30, buffer, flowT, derivT);
+    target = Math.max(subs * 30, buffer, flowT, derivT);
+    }
     // excess: target × mult 초과분은 비례 가속(쥐·곰팡이·도둑). 부패성 식량은 mult 낮아 ~60일에서 cap.
     const xm = DECAY_EXCESS_MULT[r] || 10;
     const excess = _founding ? 0 : Math.max(0, s / Math.max(1, target * xm) - 1);
@@ -14108,6 +14166,8 @@ module.exports = {
   T707_MARKET, settleMarketsV2,   // ★[T707] 장마당 떠날 때 정산 — 손잡이(기본 끔) · 정산 문(서버 하루 마감이 econ 조각 첫 자리에서 부른다 · 하네스가 같은 문을 부른다)
   // 시장 충격 정산 헬퍼(1b) — 프로브·자가검증용 노출
   _priceParamsV2, _impactSegs, _impactF, _impactBuyV2, _impactSellV2,
+  // ★[T726] 목표 한 함수(결정층 식 정본) — 하네스 · 관찰기가 같은 문을 부른다
+  T726_ONE_TARGET, _targetCtxV2, _targetV2, _priceFromV2, _oreCapV2, _priceOfV2, _priceNowV2, _settleParamsV2, tickDecay,
   // 기온 모델(2026-07-12) — 생활층(밤낮 시간 곡선)·프로브용 노출
   temperatureAt, CLIMATE, seasonOf,   // ★[T570] seasonOf = 달력 정본 위임(events·test-calendar ④ 가 이걸 견준다)
   // ★[2026-08-03e 배치 12 ②] 인구 유입 문턱 — 하네스·길드 재고 UI 가 **같은 함수**를 부른다(사본 금지)
