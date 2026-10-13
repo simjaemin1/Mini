@@ -294,7 +294,7 @@ const T508_CLO = process.env.T508_CLO !== '0';
 //   **식중독 지수 P → 배탈 지수 B → θ 를 넘은 만큼 체력**(정본 `server/sick.js`). 몸에는 `b.sick = {P, B, at}` 한 칸만 — 처음 먹을 때 선다.
 //   ★극단 합산기(`extremeHpRate`)에 **한 줄**로 얹는다 — 그래서 빚(`hpDebt`) · 정본 피해 경로(`damagePlayer`) · 자연 회복 멈춤 ·
 //     사망 원인(`extreme:sick`)이 따로 짓지 않고 따라온다(두 번째 합산기 0).
-const T705_SICK = process.env.T705_FOOD_SICK === '1';
+const T705_SICK = process.env.T705_FOOD_SICK !== '0';   // ★[PM 10-13] 켬 기본
 let _Sk = null;
 function _sick() { return _Sk || (_Sk = require('./sick')); }
 let _sickDay = 0;   // ★[T705] 존이 부팅 때 알린 하루 길이(ms · `sickDayMs`) — 없으면 `sick.js` 기본(24분)

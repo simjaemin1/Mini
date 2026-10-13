@@ -2554,7 +2554,7 @@ const _SEASON_DAY_MS = (parseInt(process.env.VILLAGE_DAY_MS || '', 10) || (WORLD
 const Kcal = require('./kcal');   // ★[T59] 열량 정본 — 포만감·환산의 유일한 출처
 // ★★[T705 2026-10-12 · 재민 10-12 · 손잡이 `T705_FOOD_SICK=1` — 없음 = 끔 = 아래 T705 줄들이 아무것도 안 한다(`sick.js` 를 부르지도 않는다 · main 바이트)]
 //   식중독 지수 P → 배탈 지수 B → θ 를 넘은 만큼 체력(정본 `server/sick.js` · 몸 칸 `body.js`). zone 접점: 먹기 · 요리 · 수령 · 요리 먹기 · 먹기 표 한 줄.
-const T705_SICK = process.env.T705_FOOD_SICK === '1';
+const T705_SICK = process.env.T705_FOOD_SICK !== '0';   // ★[PM 10-13] 켬 기본
 let _SickM = null;
 function _sickM() { return _SickM || (_SickM = require('./sick')); }
 // ★★★[T59 2026-09-03 재민 확정] **포만감은 여기 안 적는다 — 열량에서 유도한다.**

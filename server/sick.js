@@ -34,7 +34,7 @@
 'use strict';
 const _num = (k, d) => { const v = parseFloat(process.env[k]); return Number.isFinite(v) && v > 0 ? v : d; };
 
-const ON = typeof process !== 'undefined' && !!process.env && process.env.T705_FOOD_SICK === '1';
+const ON = typeof process !== 'undefined' && !!process.env && process.env.T705_FOOD_SICK !== '0';   // ★[PM 10-13] 켬 기본 · 되돌림 `=0`
 const DAY_MS_DEFAULT = 24 * 60 * 1000;
 
 // ── 출처의 수(시간) — 이 셋 말고 새 수는 없다 ─────────────────────────────────

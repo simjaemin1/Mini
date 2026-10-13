@@ -43,7 +43,7 @@ const T688 = (process.env.T688_ROAD_DAY || '').trim(), T688_ON = T688 !== '0' &&
 //      견주는 차례 = 묶음 차례 = 종전 `F.out` 차례 ⇒ 방송 `cells` 배열 · `S.sent` 고침 차례가 같다.
 //      묶음이 실패하면 종전처럼 그날 끝이 없다(`F.chg` 를 버린다 · `S.sent` 무접촉 · 방송 0).
 //   묶음 행 상한(`_flRate`)은 견주기 **전에** 잰 ms 로 정한다 ⇒ 묶음 경계 · DB 쓰기 차례도 같다.
-const T713 = process.env.T713_FLUSH_END === '1';
+const T713 = process.env.T713_FLUSH_END !== '0';   // ★[PM 10-13] 켬 기본(바이트 같음 3/3 · 끝 틱 21.6 → 1.1 ms) · 되돌림 `=0`
 
 const SZ = 32;
 const T1 = 8, T2 = 28, VMAX = 120, DK = 0.995;                 // 랩 L_ROAD_T1/T2/MAX/DK verbatim

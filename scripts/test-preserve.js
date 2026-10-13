@@ -18,6 +18,8 @@
 //
 // 실행: node scripts/test-preserve.js
 'use strict';
+// ★[PM 10-13] T705_FOOD_SICK 켬 기본 — 이 하네스는 종전 세계를 적은 단언이라 끔(`=0`)으로 묶는다(켬 세계는 test-food-sick · test-game-meat · T705 후속 카드가 이 단언을 새 세계로 옮긴다)
+if (process.env.T705_FOOD_SICK == null) process.env.T705_FOOD_SICK = '0';
 const path = require('path');
 const ROOT = path.join(__dirname, '..');
 

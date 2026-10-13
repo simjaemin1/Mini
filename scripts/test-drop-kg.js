@@ -19,6 +19,9 @@
 //
 // 실행: node scripts/test-drop-kg.js      (⑥ 이 존을 세 번 띄운다 — 가벼운 판이라 몇 초)
 'use strict';
+// ★[PM 10-13] T705_FOOD_SICK · T694_GAME_MEAT 켬 기본 — 이 하네스는 종전 세계를 적은 단언이라 끔(`=0`)으로 묶는다(켬 세계는 test-food-sick · test-game-meat · T705 후속 카드가 이 단언을 새 세계로 옮긴다)
+if (process.env.T705_FOOD_SICK == null) process.env.T705_FOOD_SICK = '0';
+if (process.env.T694_GAME_MEAT == null) process.env.T694_GAME_MEAT = '0';
 const path = require('path');
 const fs = require('fs');
 const { execFileSync } = require('child_process');

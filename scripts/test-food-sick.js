@@ -142,7 +142,7 @@ let pass = 0, fail = 0;
 const ok = (c, m, x) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (x !== undefined && x !== '' ? `  ${x}` : '')); };
 const pre = (c, m, x) => { if (!c) { fail++; console.log('  ✗ [상황] ' + m + (x !== undefined ? `  ${x}` : '')); } else console.log('  · [상황] ' + m + (x !== undefined ? `  ${x}` : '')); };
 const say = (m) => console.log(m);
-const BASE_ENV = (() => { const e = Object.assign({}, process.env); delete e.T705_FOOD_SICK; delete e.T694_GAME_MEAT; delete e.T705_SUB; delete e.SICK_A_PER_H; delete e.SICK_B_PER_H; delete e.SICK_THETA; return e; })();
+const BASE_ENV = (() => { const e = Object.assign({}, process.env); e.T705_FOOD_SICK = '0'; e.T694_GAME_MEAT = '0';   /* ★[PM 10-13] 두 손잡이 켬 기본 — 이 하네스의 '끔' 판은 `=0` */ delete e.T705_SUB; delete e.SICK_A_PER_H; delete e.SICK_B_PER_H; delete e.SICK_THETA; return e; })();
 const sub = (env) => {
   const o = execFileSync(process.execPath, [__filename], { env: Object.assign({}, BASE_ENV, env, { T705_SUB: 'zone' }), stdio: 'pipe', maxBuffer: 64 << 20 });
   return JSON.parse(o.toString().trim().split('\n').pop());
@@ -163,13 +163,13 @@ const zOn = sub({ T705_FOOD_SICK: '1' });
 const zBoth = sub({ T705_FOOD_SICK: '1', T694_GAME_MEAT: '1' });
 {
   pre(!zOff.err && !zOn.err && !zBoth.err, '존 세 판이 떴다', zOff.err || zOn.err || zBoth.err || '');
-  const knob = (v) => JSON.parse(execFileSync(process.execPath, ['-e', 'process.stdout.write(JSON.stringify(require(process.argv[1]).ON))', SV('sick.js')], { env: Object.assign({}, BASE_ENV, v === undefined ? {} : { T705_FOOD_SICK: v }) }).toString());
-  ok(knob(undefined) === false && knob('') === false && knob('0') === false && knob('true') === false && knob('1') === true, "★① 손잡이 — '1' 하나만 켬(없음·빈 값·'0'·'true' = 끔)");
+  const knob = (v) => JSON.parse(execFileSync(process.execPath, ['-e', 'process.stdout.write(JSON.stringify(require(process.argv[1]).ON))', SV('sick.js')], { env: (() => { const e = Object.assign({}, BASE_ENV, v === undefined ? {} : { T705_FOOD_SICK: v }); if (v === undefined) delete e.T705_FOOD_SICK; return e; })() }).toString());
+  ok(knob(undefined) === true && knob('') === true && knob('0') === false && knob('true') === true && knob('1') === true, "★① 손잡이 — 켬 기본(PM 10-13) · '0' 하나만 끔");
   ok(zOff.sickLoaded === false && zOn.sickLoaded === true, '★★① 끔이면 존이 `sick.js` 를 부르지도 않는다(적재 목록 무변)', `끔 ${zOff.sickLoaded} · 켬 ${zOn.sickLoaded}`);
   ok(zOff.eff.meat_raw && zOff.eff.meat_raw.hpDelta === -3 && zOff.eff.meat_game && zOff.eff.meat_game.hpDelta === -3, '① 끔 — 날고기 줄 HP −3 그대로(main)');
   ok(zOff.B0.hp === 97 && zOff.B0.sick === null && zOff.C0.injury > 0 && zOff.C0.sick === null, '★① 끔 — 날고기 먹으면 즉시 HP −3 · 상한 것은 즉시 부상(종전 둘 그대로) · 배탈 칸 없음', `HP ${zOff.B0.hp} · 부상 ${zOff.C0.injury}`);
   ok(zOff.Ddish.every((x) => x.tox === null) && zOff.Dafter.sick === null && !('sick' in zOff.save), '① 끔 — 요리 독소 칸 없음 · 저장에 배탈 칸 없음(종전 저장 꼴)');
-  ok(/const T705_SICK = process\.env\.T705_FOOD_SICK === '1';/.test(ZSRC) && !/require\('\.\/sick'\)(?![\s\S]{0,40}_SickM)/.test(ZSRC.replace(/_SickM = require\('\.\/sick'\)/g, '')), '① 배선 — zone 은 켬일 때만 늦게 부른다(`_sickM()` 한 자리)');
+  ok(/const T705_SICK = process\.env\.T705_FOOD_SICK !== '0';/.test(ZSRC) && !/require\('\.\/sick'\)(?![\s\S]{0,40}_SickM)/.test(ZSRC.replace(/_SickM = require\('\.\/sick'\)/g, '')), '① 배선 — zone 은 켬일 때만 늦게 부른다(`_sickM()` 한 자리)');
   // ★[T705 · 게이트가 드러냈다] 존 틱 글자는 main 그대로 — `test-move-soa` 가 `_gaugeStep` 글자를 떠서 제 판에서 돌린다(새 이름을 넣으면 거기서 죽는다)
   const _gi = ZSRC.indexOf('  function _gaugeStep(p) {'), _gj = ZSRC.indexOf('\n  }\n', _gi), _gs = (_gi > 0 && _gj > _gi) ? ZSRC.slice(_gi, _gj) : '';
   ok(_gs.length > 0 && !/T705|_SEASON_DAY_MS|sick/i.test(_gs), '★① 존 틱 글자(`_gaugeStep`)에 T705 가 없다 — 하루 길이는 부팅 때 한 번(`Body.sickDayMs`) · `test-move-soa` 가 그 글자를 떠서 돌린다', `${_gs.length}자`);

@@ -39,6 +39,8 @@
 //
 // 실행: node scripts/test-war-world.js          (서버 절 건너뛰기: WAR_WORLD_NO_SERVER=1)
 'use strict';
+// ★[PM 10-13] T694_GAME_MEAT 켬 기본 — 이 하네스는 종전 세계를 적은 단언이라 끔(`=0`)으로 묶는다(켬 세계는 test-food-sick · test-game-meat · T705 후속 카드가 이 단언을 새 세계로 옮긴다)
+if (process.env.T694_GAME_MEAT == null) process.env.T694_GAME_MEAT = '0';
 const path = require('path');
 const fs = require('fs');
 const ROOT = path.join(__dirname, '..');

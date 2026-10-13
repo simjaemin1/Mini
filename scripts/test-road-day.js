@@ -163,7 +163,7 @@ bait('스탬프 자리에서 등급을 안 고침', '  if (I.ready) _i688Touch(k
 // ⑦ [T713] 플러시 끝 쪼개기(`T713_FLUSH_END`) — 묶음마다 견주고 끝 틱엔 `S.sent` 고침 + 방송만 · 끔 ↔ 켬 같은 방송 · 같은 `S.sent` · 같은 DB
 {
   console.log('\n⑦ [T713] 플러시 끝 — 묶음마다 견줌(끔 ↔ 켬)');
-  const mk713 = (tag, mode, on, patch) => { const o = process.env.T713_FLUSH_END; if (on) process.env.T713_FLUSH_END = '1'; else delete process.env.T713_FLUSH_END;
+  const mk713 = (tag, mode, on, patch) => { const o = process.env.T713_FLUSH_END; if (on) process.env.T713_FLUSH_END = '1'; else process.env.T713_FLUSH_END = '0';   /* ★[PM 10-13] 켬 기본 — 끔 판은 `=0` */
     try { return mk(tag, mode, patch); } finally { if (o == null) delete process.env.T713_FLUSH_END; else process.env.T713_FLUSH_END = o; } };
   const sentOf = (X) => [...X.R._S.sent].map((x) => x.join(':')).join(',');
   const rateLine = '  if (budgetMs > 0 && rows > 0 && ms > 0) { const r = rows / ms; _flDayMin = _flDayMin ? Math.min(_flDayMin, r) : r; _flRate = _flDayMin; }';

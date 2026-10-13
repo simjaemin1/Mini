@@ -131,7 +131,7 @@ let pass = 0, fail = 0;
 const ok = (c, m, x) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (x !== undefined && x !== '' ? `  ${x}` : '')); };
 const pre = (c, m, x) => { if (!c) { fail++; console.log('  ✗ [상황] ' + m + (x !== undefined ? `  ${x}` : '')); } else console.log('  · [상황] ' + m + (x !== undefined ? `  ${x}` : '')); };
 const say = (m) => console.log(m);
-const BASE_ENV = (() => { const e = Object.assign({}, process.env); delete e.T694_GAME_MEAT; delete e.T636_DROP_KG; delete e.T694_SUB; return e; })();
+const BASE_ENV = (() => { const e = Object.assign({}, process.env); e.T694_GAME_MEAT = '0'; e.T705_FOOD_SICK = '0'; delete e.T636_DROP_KG;   /* ★[PM 10-13] T694 · T705 켬 기본 — 이 하네스의 '끔' 판은 `=0` · 날고기 −3 절(⑤⑦)은 T705 끔 세계(배탈 세계는 test-food-sick) */ delete e.T694_SUB; return e; })();
 const sub = (mode, env) => {
   const o = execFileSync(process.execPath, [__filename], { env: Object.assign({}, BASE_ENV, env, { T694_SUB: mode }), stdio: 'pipe', maxBuffer: 64 << 20 });
   return JSON.parse(o.toString().trim().split('\n').pop());
@@ -152,8 +152,8 @@ const tOn = sub('tables', { T694_GAME_MEAT: '1' });
 {
   const tEmpty = sub('tables', { T694_GAME_MEAT: '' }), tZero = sub('tables', { T694_GAME_MEAT: '0' }), tTrue = sub('tables', { T694_GAME_MEAT: 'true' });
   const strip = (t) => JSON.stringify(Object.assign({}, t, { on: null }));
-  ok(tOff.on === false && tEmpty.on === false && tZero.on === false && tTrue.on === false && tOn.on === true, "★① 손잡이 — '1' 하나만 켬(없음·빈 값·'0'·'true' = 끔)");
-  ok(strip(tOff) === strip(tEmpty) && strip(tOff) === strip(tZero), '★★① 끔 판 셋(없음·빈 값·0)의 표가 글자째 같다(드롭·열량·무게·보관일·로트·곳간 대응)');
+  ok(tOff.on === false && tEmpty.on === true && tZero.on === false && tTrue.on === true && tOn.on === true, "★① 손잡이 — 켬 기본(PM 10-13) · '0' 하나만 끔");
+  ok(strip(tOff) === strip(tZero) && strip(tOn) === strip(tEmpty), '★★① 끔 판(0)은 표가 글자째 같고 · 빈 값은 켬 판과 같다(드롭·열량·무게·보관일·로트·곳간 대응)');
   const leak = [];
   for (const k of T694_ITEMS) {
     if (k in tOff.kcal || k in tOff.derived || k in tOff.alias || k in tOff.shelf || k in tOff.map) leak.push(k);
@@ -274,7 +274,7 @@ say('\n⑥ 곳간 — 넣기 단위 = 열량 · 대표 = 사슴·들짐승고기
   ok(back && back.items >= 1 && Math.abs((back.items * 1200 + back.leftUnits * 2450) - (10 * 1200 + 10 * 1610)) < 5,
     '★⑥ 꺼내면 사슴·들짐승고기로 — 열량이 보존된다(곰 10kg + 사슴 10kg = 28,100 kcal → 사슴 23개 + 남는 몫 곳간)', `${back && back.items}개 · 남는 ${back && back.leftUnits}단위`);
   ok(!zOff.del.inFrom && zOff.del.toEconMeatGame === null, '⑥ 끔 — 게시판·거래소가 meat_game 을 모른다(main)');
-  ok(/if \(process\.env\.T694_GAME_MEAT === '1' && require\('\.\/game-meat'\)\.on\(\)\) Object\.assign\(PV_DEPOSIT_MAP, \{/.test(VSRC),
+  ok(/if \(process\.env\.T694_GAME_MEAT !== '0' && require\('\.\/game-meat'\)\.on\(\)\) Object\.assign\(PV_DEPOSIT_MAP, \{/.test(VSRC),
     '⑥ 배선 — villages.js 는 손잡이가 꺼져 있으면 game-meat.js 를 부르지도 않는다(econ 랩 적재 목록 무변)');
 }
 

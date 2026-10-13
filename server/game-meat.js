@@ -17,7 +17,7 @@
 'use strict';
 
 function on() {
-  if (typeof process === 'undefined' || !process.env || process.env.T694_GAME_MEAT !== '1') return false;
+  if (typeof process === 'undefined' || !process.env || process.env.T694_GAME_MEAT === '0') return false;   // ★[PM] 켬 기본 · 되돌림 `=0`(날짜는 족보 — 이 파일은 출처 수만 둔다 · test-game-meat ②)
   return require('./animals').dropKgOn();
 }
 

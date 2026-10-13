@@ -218,7 +218,7 @@ const child = (kind, env, vp) => {
   const line = o.split('\n').filter((l) => l.startsWith('@@')).pop();
   return line ? JSON.parse(line.slice(2)) : { ok: false, err: '자식 출력 없음' };
 };
-const ON = { T707_MARKET: '1' }, OFF = { T707_MARKET: null };
+const ON = { T707_MARKET: '1' }, OFF = { T707_MARKET: '0' };   // ★[PM 10-13] 켬 기본 — 끔 판은 `=0`
 
 console.log('\n=== 서버 장마당(T707) — 장부가 열고 · 명부가 모으고 · 떠날 때 정산 ===');
 const S = child('server', ON);

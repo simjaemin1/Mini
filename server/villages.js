@@ -181,7 +181,7 @@ const T681_ON = process.env.T681_WALLCLOCK !== '0';   // ★PM 10-10 켬 기본(
 //      다음 econ 틱 머리 = `tickWorldV2Parts.head` · 존도 CLI 와 같은 자리).
 //   ③ 모임 = 명부 셈(인구 × `MKT_FRAC` − 이미 든 수 · (마을, 날) 차례로 시작점을 돌린다 · 크루 · 행위 팔 직업 거름) → 생활층 문 하나(보이는 것 · 몸 필드 0).
 //   ④ 상인 자리 = 남문 앞 마당(`HALL_YARD_PTS` · 실험실 `_hallYard`) — 귀환 길 앞에 마당 → 큰집 중심 한 토막(보이는 몸과 장부 길이 같은 길).
-const T707_ON = process.env.T707_MARKET === '1';
+const T707_ON = process.env.T707_MARKET !== '0';   // ★[PM 10-13 · 재민 10-12 "켜자"] 켬 기본 · 되돌림 `=0`
 const _t707Stat = { markets: 0, joins: 0, roster: 0, carNoBody: 0, mktNoBody: 0, linger: 0, spawnLinger: 0 };
 
 // --- P3: 실체 전쟁 상수 ---
@@ -8796,7 +8796,7 @@ const PV_DEPOSIT_MAP = {
 //     곰고기 1kg 1,610kcal = 사슴·들짐승고기 1.34kg 어치. ⚠"`fish` 로 접지 않는다"(T302)와는 다르다 — 그쪽은 econ 에 제 id 가 있었다.
 //   · 익힌 둘(구운 사슴·들짐승고기 · 삶은 곰고기) → `cooked_food` — 위 `fish_cooked`·`meat_cooked` 줄과 같은 꼴(조리식은 econ cooked_food 하나).
 //   ★순서가 계약이다: `meat_game` 이 먼저 → 꺼내기·보상의 대표 품목(`toEcon`)이 사슴·들짐승고기다(`cooked_food` 대표는 위 `fish_cooked` 그대로).
-if (process.env.T694_GAME_MEAT === '1' && require('./game-meat').on()) Object.assign(PV_DEPOSIT_MAP, {
+if (process.env.T694_GAME_MEAT !== '0' && require('./game-meat').on()) Object.assign(PV_DEPOSIT_MAP, {
   meat_game: 'meat_game', meat_bear: 'meat_game', meat_game_cooked: 'cooked_food', meat_bear_cooked: 'cooked_food',
 });
 const PV_DEPOSIT_RATE = (() => { const x = parseFloat(process.env.VILLAGE_DEPOSIT_RATE || '1'); return (isFinite(x) && x > 0) ? x : 1; })();

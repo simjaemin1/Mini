@@ -1243,7 +1243,8 @@ function _killWarriors(v, n) {
 //   ⚠끔 = 종전 바이트(아래 갈래가 한 줄도 안 닿는다 · `_caravanTrade` 는 도착 자리에서 종전과 같은 차례로 불린다).
 //   ⚠이웃 존이 낀 캐러밴(T525 · 기본 끔)은 종전대로 도착 때 정산(`_xzArriveLoop` 가 그 자리의 교역 기록을 읽는다).
 //   플레이어 ↔ 캐러밴 거래와 그에 따른 재계산은 나중(이 정산이 그 갈고리 자리 · 찍어 둔 `c._t707` 이 그 기준값이다).
-const T707_MARKET = (typeof process !== 'undefined' && process.env && process.env.T707_MARKET === '1');
+// ★[PM 10-13 · 재민 "켜자"] 켬 기본 — 서버·실험실(번들은 process 가 없어 켬) 같이 · 되돌림 `T707_MARKET=0`
+const T707_MARKET = !(typeof process !== 'undefined' && process.env && process.env.T707_MARKET === '0');
 function _t707On(world) { return T707_MARKET || !!(world && world.t707Market); }
 function _t707Xz(c) { return !!(c && (c._xzHome || (c.from && c.from._xz) || (c.to && c.to._xz))); }
 function _caravanArrive(world, c, day) {
