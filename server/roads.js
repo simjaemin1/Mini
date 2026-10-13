@@ -33,6 +33,17 @@ const ENABLED = process.env.ENABLE_ROADS !== '0';
 //      부팅 뒤 첫 묶음(속도 모름)은 한 행으로 잰다. ④ 마을 하루 마감이 도는 틱(`villagesBusy`)엔 묶음을 쉰다 — 마감 예산 16 + 길 예산이 한 틱에 쌓이지 않게.
 //      같은 행 · 같은 차례 · 묶음이 잘게 나뉘고 늦게 쓰일 뿐이다(원자성은 묶음 단위 그대로 — 보고 표).
 const T688 = (process.env.T688_ROAD_DAY || '').trim(), T688_ON = T688 !== '0' && T688 !== 'verify', T688_VERIFY = T688 === 'verify';
+// ★★[T713 2026-10-12 · T696 회부 ①] 플러시 끝 틱(`_flushEnd`) 쪼개기 — 손잡이 `T713_FLUSH_END`(기본 끔 · `1` 켬 · 끔 = 종전 글자 그대로).
+//   종전(T688 켬 · 쓰기 전 복사 묶음): 마지막 묶음 뒤 **한 틱에** 그날 쓴 키 전부(3.8만)를 `[k, v]` 짝으로 다시 만들고(`kv`) 키마다 `S.sent` 와 견줘
+//   바뀐 등급 셀을 모아 방송한다 — 한 틱 ≈ 29 ms(T696 on3 · 마지막 묶음 8.6 ms 와 같은 틱 · 10,000명 외삽 ≈ 0.47 초).
+//   켬: 묶음마다 COMMIT 이 된 그 묶음의 키만 `S.sent` 와 견줘 바뀐 셀(k · 등급 · 방송 셀 셋)을 그날 몫(`F.chg`)에 붙인다(`S.sent` 는 **안 고친다**).
+//      끝 틱엔 방송만 한다 · `S.sent` 고침(바뀐 셀만)은 그 뒤 틱들에 공용 몫(`TB`)으로 나눠 하고, 다음 견줌 전에 반드시 다 끝낸다(`_t713Apply(0)`).
+//   ⇒ 같은 값 · 같은 차례: `S.sent` 를 읽고 쓰는 자리는 이 플러시 끝 하나뿐이다(`clientRoads` 는 셀 값을 본다 · 방송은 `S.sent` 를 안 읽는다) · 한 날의 키는 서로 다르다(dirty 집합) ·
+//      앞날 플러시는 다음 날 첫 묶음 전에 끝난다(`flushDaily` 첫 줄) ⇒ 묶음 때 읽은 `S.sent.get(k)` = 종전이 끝 틱에 읽었을 그 값.
+//      견주는 차례 = 묶음 차례 = 종전 `F.out` 차례 ⇒ 방송 `cells` 배열 · `S.sent` 고침 차례가 같다.
+//      묶음이 실패하면 종전처럼 그날 끝이 없다(`F.chg` 를 버린다 · `S.sent` 무접촉 · 방송 0).
+//   묶음 행 상한(`_flRate`)은 견주기 **전에** 잰 ms 로 정한다 ⇒ 묶음 경계 · DB 쓰기 차례도 같다.
+const T713 = process.env.T713_FLUSH_END === '1';
 
 const SZ = 32;
 const T1 = 8, T2 = 28, VMAX = 120, DK = 0.995;                 // 랩 L_ROAD_T1/T2/MAX/DK verbatim
@@ -298,7 +309,7 @@ function unpaveSoonKeys() {
   for (const k of I.low) if (S.paved.has(k)) out.push(k);
   return out;
 }
-function roadDayPerf() { return (T688_ON || T688_VERIFY) ? Object.assign({ mode: T688, lvl: I.lvl.size, sched: I.sched.size, dueDays: I.due.size, flRate: +_flRate.toFixed(3), flBatches: _flSt.n, flMaxMs: +_flSt.maxMs.toFixed(2), flMaxRows: _flSt.maxRows, flCapped: _flSt.capped, flSnap: _flSt.snap, flPending: !!_fl }, I.st) : null; }
+function roadDayPerf() { return (T688_ON || T688_VERIFY) ? Object.assign({ mode: T688, lvl: I.lvl.size, sched: I.sched.size, dueDays: I.due.size, flRate: +_flRate.toFixed(3), flBatches: _flSt.n, flMaxMs: +_flSt.maxMs.toFixed(2), flMaxRows: _flSt.maxRows, flCapped: _flSt.capped, flSnap: _flSt.snap, flPending: !!_fl || !!_t713Q }, I.st) : null; }
 
 // ★[T578 ④] 교역로 A* 가 h 를 줄일 몫 — 스텝 비용 할인의 최저값(`COST` 의 가장 작은 값 · 수 사본 0).
 function courseCostMin() { return (S.ready && S.coarse.size) ? Math.min(...COST) : 1; }   // 등급 칸이 하나도 없으면 할인도 없다(h 그대로)
@@ -450,14 +461,45 @@ function _flushStepLazy(F, budgetMs) {
     console.error(`[${S.zoneId}] 🛤️ 답압 길 저장 실패(다음 날 재시도 ${F.total - F.i + batch.length / 2}행):`, e.message);
     return;
   }
-  for (let j = 0; j < batch.length; j++) F.out.push(batch[j]);
+  if (!T713) for (let j = 0; j < batch.length; j++) F.out.push(batch[j]);
   const ms = _i688Now() - p0, rows = batch.length / 2;
   if (budgetMs > 0 && rows > 0 && ms > 0) { const r = rows / ms; _flDayMin = _flDayMin ? Math.min(_flDayMin, r) : r; _flRate = _flDayMin; }
   _flSt.n++; if (ms > _flSt.maxMs) _flSt.maxMs = ms; if (rows > _flSt.maxRows) _flSt.maxRows = rows;
+  if (T713) _t713Diff(F, batch);   // ★[T713] 이 묶음 키만 견준다(상한을 정한 ms 뒤 — 묶음 경계 그대로)
   if (!F.end) return;   // 다음 틱에 이어 쓴다
   _fl = null; _flCow = false;
+  if (T713) { _t713End(F); return; }
   const kv = []; for (let j = 0; j < F.out.length; j += 2) kv.push([F.out[j], F.out[j + 1]]);
   _flushEnd(F, kv);
+}
+// ★[T713] `S.sent` 고침 남은 몫 — 방송 뒤 틱들에 나눠 한다(budgetMs 0 = 남은 것 다)
+let _t713Q = null;
+function _t713Apply(budgetMs) {
+  const Q = _t713Q; if (!Q) return;
+  const t0 = _i688Now();
+  while (Q.i < Q.k.length) {
+    const k = Q.k[Q.i], lv = Q.lv[Q.i]; Q.i++;
+    S.sent.set(k, lv); if (!lv) S.sent.delete(k);
+    if (budgetMs > 0 && (Q.i & 255) === 0 && _i688Now() - t0 >= budgetMs) break;
+  }
+  if (Q.i >= Q.k.length) _t713Q = null;
+}
+// ★[T713] 묶음 하나의 견줌 — 종전 `_flushEnd` 루프의 몸 그대로(등급 · `S.sent` 견줌 · 방송 셀) · `S.sent` 고침만 끝 틱 뒤로 미룬다
+function _t713Diff(F, batch) {
+  if (_t713Q) _t713Apply(0);   // 앞날 고침이 남았으면 견주기 전에 다 한다(읽기 전에 쓰기 — 종전 차례)
+  const C = F.chg || (F.chg = { k: [], lv: [], cells: [] });
+  for (let j = 0; j < batch.length; j += 2) {
+    const k = batch[j], v = batch[j + 1];
+    const lv = v !== null ? (v >= T2 ? 2 : (v >= T1 ? 1 : 0)) : 0;
+    if ((S.sent.get(k) || 0) !== lv) { C.k.push(k); C.lv.push(lv); C.cells.push(k % S.cellsW, (k / S.cellsW) | 0, lv); }
+  }
+}
+function _t713End(F) {
+  const C = F.chg || { k: [], lv: [], cells: [] };
+  if (C.k.length) _t713Q = { k: C.k, lv: C.lv, i: 0 };   // `S.sent` 고침은 다음 틱부터(종전 고침 차례 그대로 · 읽는 자리는 다음 견줌뿐)
+  const changed = C.cells;
+  if (changed.length && S.broadcast) { try { S.broadcast({ type: 'road_cells', cells: changed }); } catch (_) { } }
+  console.log(`[${S.zoneId}] 🛤️ 답압 길 day ${F.day}: 셀 ${F.cells}(등급 ${F.graded}) · 저장 ${F.lazy ? F.total : F.rows.length}행 · 클라 변경 ${changed.length / 3}셀 · 오늘 스탬프 ${F.stamped} · 묶음 ${F.n}`);
 }
 process.on('exit', () => { if (_fl) { try { _flushStep(0); } catch (e) { } } });   // ⓔ
 
@@ -492,7 +534,8 @@ function onGameTick(now) {
   if (!S.ready) return;
   const day = Math.floor((now - S.epoch) / S.dayMs);
   if (day === S.lastDay) {   // ★[T630] 얼린 행을 틱마다 한 묶음
-    if (_fl && !(T688_ON && _villagesBusy()) && !TB.out(_sliceMs(), 'roads')) { try { _flushStep(TB.slice(_sliceMs())); } catch (e) { } }   // ★[T688 ⓑ] 마을 하루 마감이 도는 틱엔 쉰다 · ★[T687] 켬 = 이 틱 남은 몫 · 없으면 다음 틱
+    if (_fl && !(T688_ON && _villagesBusy()) && !TB.out(_sliceMs(), 'roads')) { try { _flushStep(TB.slice(_sliceMs())); } catch (e) { } }
+    else if (_t713Q && !TB.out(_sliceMs(), 'roads')) { try { _t713Apply(TB.slice(_sliceMs())); } catch (e) { } }   // ★[T713] 묶음이 없는 틱에 `S.sent` 고침 남은 몫   // ★[T688 ⓑ] 마을 하루 마감이 도는 틱엔 쉰다 · ★[T687] 켬 = 이 틱 남은 몫 · 없으면 다음 틱
     return;
   }
   S.lastDay = day;
