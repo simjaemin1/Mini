@@ -9461,13 +9461,16 @@ function _granGo(vil, npc, forDraw) {           // 곳간행 개시 — 자리 �
 //   ★하루 문 — 깨어 걸은 시간(결정 간격 틈 `SCH_VG_STUCK` 보다 긴 멎음은 안 센다 — `_t529Step` 의 그 자)이 낮 하나를 넘으면 놓는다(짐은 손에).
 //   한 몸은 그 날(나선 날) 한 번만 나선다 — 다녀왔든(곳간이 다 안 받아 손에 남은 채집 · T544) 놓았든 이튿날 해 질 녘에 다시.
 function _t720Ct(vil) { return vil._t720C || (vil._t720C = { go: 0, done: 0, give: 0, hall: 0 }); }   // 계측 전용(회계 아님)
+//   ⚠통나무는 **나무꾼의 손**만 — 집 크루(T400)가 곳간에서 꺼내 집터로 나르는 통나무는 벤 것이 아니다(곳간에 다시 넣으면 그 자재가 econ 입구로 두 번 든다 ·
+//     종전 경계 일괄은 그 손까지 `_t325Deliver` 로 넣었다 — 보고 §회부). 크루 명부는 T400 의 그 칸(`vil._t400Crew`)이다.
+function _t720Logger(vil, npc) { return npc.simJob === 'lumberjack' && !(vil._t400Crew && vil._t400Crew.indexOf(npc.pid) >= 0); }
 function _t720Held(vil, npc) {
   if (!vil.econ) return 0;
   const E = _lifeEcon(), inv = npc.inventory || {};
   let u = 0;
   if (E.fishActOn(vil.econ)) u += npc._t312U || 0;
   if (_t368ItemsOn() && npc._t368H) for (const c in npc._t368H) u += npc._t368H[c] || 0;
-  if (E.T325_WOOD_ACT && E.woodActOn(vil.econ)) u += inv.wood || 0;
+  if (E.T325_WOOD_ACT && E.woodActOn(vil.econ) && _t720Logger(vil, npc)) u += inv.wood || 0;
   if (E.T347_FORAGE_ACT && E.forageActOn(vil.econ)) { for (const k of (_t347KeepOf(vil) || [])) for (const h of _t347HandsOf(k)) u += inv[h] || 0; }
   return u;
 }
@@ -9475,7 +9478,7 @@ function _t720Settle(vil, npc, now, S) {
   const E = _lifeEcon();
   if (E.fishActOn(vil.econ) && (npc._t312U || 0) > 0) _t312Deliver(vil, npc);
   if (_t368ItemsOn() && npc._t368H) _t368Deliver(vil, npc, 'gran');
-  if (E.T325_WOOD_ACT && E.woodActOn(vil.econ) && npc.inventory && (npc.inventory.wood || 0) > 0) { _t325Deliver(vil, npc); _t561Walked(vil, npc, now); }
+  if (E.T325_WOOD_ACT && E.woodActOn(vil.econ) && _t720Logger(vil, npc) && npc.inventory && (npc.inventory.wood || 0) > 0) { _t325Deliver(vil, npc); _t561Walked(vil, npc, now); }
   if (E.T347_FORAGE_ACT && E.forageActOn(vil.econ) && npc.inventory) {
     let u = 0; for (const k of (_t347KeepOf(vil) || [])) for (const h of _t347HandsOf(k)) u += npc.inventory[h] || 0;
     if (u > 0) { _t347Deliver(vil, npc); const d = _bodyDay(npc, now); if (S.fw !== d) { S.fw = d; vil._t347PreWalked = (vil._t347PreWalked | 0) + 1; } }
