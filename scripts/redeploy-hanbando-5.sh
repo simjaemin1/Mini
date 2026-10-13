@@ -42,6 +42,7 @@ echo "[build] 완료"
 for Z in $TARGET_ZONES; do
   ID=${Z%:*}; PORT=${Z#*:}
   mkdir -p /srv/durango/$ID
+  docker stop durango-zone-$ID >/dev/null 2>&1 || true   # ★[T728] SIGTERM 먼저 — 존이 진행 중 마감을 끝내고 마을을 저장한 뒤 내린다(기본 정지 시간 안 · 넘기면 SIGKILL · 마지막 경계 저장 그대로)
   docker rm -f durango-zone-$ID >/dev/null 2>&1 || true
   docker run -d --name durango-zone-$ID --restart unless-stopped \
     -p $PORT:$PORT -v /srv/durango/$ID:/data \

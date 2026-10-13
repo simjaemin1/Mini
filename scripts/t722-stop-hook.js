@@ -72,7 +72,9 @@ function snap(tag) {
     const keys = Object.keys(e).filter((k) => typeof e[k] !== 'function' && k !== '_world').sort();
     const kh = {}; for (const k of keys) { try { kh[k] = H(e[k] === undefined ? 'u' : e[k]); } catch (x) { kh[k] = '(순환)'; } }
     const ids = (e.npcs || []).map((n) => n && n.id);
-    return { name: vl.name, dbId: vl.dbId, pop: (e.npcs || []).length, kh, ids, crop: vl._crop ? H(vl._crop) : null, npcPids: (vl.npcPids || []).length };
+    const sh = {}; for (const k of Object.keys(vl).filter((k) => k !== 'econ' && typeof vl[k] !== 'function').sort()) { try { const x = vl[k];
+      sh[k] = H(x === undefined ? 'u' : (x instanceof Map ? [...x.entries()] : x instanceof Set ? [...x] : x)); } catch (z) { sh[k] = '(순환)'; } }
+    return { name: vl.name, dbId: vl.dbId, pop: (e.npcs || []).length, kh, sh, ids, crop: vl._crop ? H(vl._crop) : null, npcPids: (vl.npcPids || []).length };
   });
   const allIds = vil.flatMap((v) => v.ids);
   const dup = allIds.length - new Set(allIds).size;
@@ -110,6 +112,11 @@ if (STOP) {
       if (!armed && (day | 0) >= STOP) {
         armed = true;
         const st = require(VILL).__t722();
+        if (process.env.T722_RAWTERM === '1') {   // ★[T728] 제품 종료 문 그대로 — 얼림·드레인 없이 S 날 장부 문(마감 한가운데)에서 SIGTERM
+          try { if (DUMP) fs.writeFileSync(DUMP, JSON.stringify(Object.assign(snap('rawterm'), { rawterm: true }))); } catch (e) {}
+          console.log(`[t722] SIGTERM(마감 중 · 얼림 없음) — econ day ${st.world.day}`);
+          process.kill(process.pid, 'SIGTERM'); return r;
+        }
         if (CRASH) { try { if (DUMP) fs.writeFileSync(DUMP, JSON.stringify(Object.assign(snap('crash'), { crash: true }))); } catch (e) {} process.exit(1); }
         st.dayFreeze = true;   // 다음 날을 열지 않는다(마감 · 저장 큐 드레인은 얼림 앞에 있다 — villages.js onGameTick)
         const t0 = Date.now();

@@ -42,4 +42,5 @@ EXPOSE 3002
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
   CMD wget -q -O- http://localhost:${PORT}/health || exit 1
 
-CMD ["sh", "-c", "node --experimental-sqlite server/zone.js"]
+# ★[T728] `exec` — node 가 PID 1 이 되어 `docker stop` 의 SIGTERM 을 직접 받는다(sh 가 PID 1 이면 신호를 넘기지 않아 종료 저장이 안 돈다).
+CMD ["sh", "-c", "exec node --experimental-sqlite server/zone.js"]

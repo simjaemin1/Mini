@@ -347,6 +347,7 @@ function cropSprite(stage, crop) {
   // ★★[달력 2026-08-30 재민 확정] 연·계절·일 — **서버가 econ 정본에서 유도해 준 것**을 그대로 그린다.
   //   클라가 day→계절 매핑을 갖는 순간 그게 사본이고, 엔진이 계절 경계를 바꾸면 화면만 거짓말한다.
   let myCalendar = null;
+  let myCalNext = null, myCalAt = 0;   // ★[T728 ④] 서버가 실을 때만(켬) — 다음 날짜와 그 경계 시각(서버 ms). 경계가 오면 클라가 넘긴다(`_t728CalTick`)
   // ★★[온도 곡선 2026-08-31] 바깥 날씨 { cold, ko, emo, night, shelter } — **서버가 준 그대로** 그린다.
   //   클라가 게임일→온도 매핑을 갖는 순간 그게 사본이고, 곡선을 고치면 화면만 거짓말한다(달력과 같은 규약).
   let myWeather = null;

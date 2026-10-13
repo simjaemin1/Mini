@@ -391,6 +391,7 @@
     zoomEnd(_zOn);      // ★월드 패스 끝 — 오프스크린을 화면에 통째로 늘리거나 줄여 얹는다
     updateBuildProgressEl(); // 14.51: 3초 progress bar (DOM)
     updateMinimap();
+    _t728CalTick();     // ★[T728 ④] 날짜 경계 — 서버가 다음 날짜를 실었을 때만 일한다(끔이면 곧바로 돌아간다)
     requestAnimationFrame(loop);
   }
   // === 화살 이펙트 ===

@@ -5793,6 +5793,7 @@ async function _acceptConnection(ws, req, C) {
       claims: Array.from(claims.values()),
       simVillages: SimVillages.clientVillages(), // §4-4 Stage 4A: 마을 영토(경계 셀)·이름·인구 — 1회
     calendar: calendarNow(),                   // ★[달력 2026-08-30] 연·계절·일 — econ 정본에서 유도
+    ...(_t728CalNext() || {}),                 // ★[T728 ④] 켬이면 다음 날짜 · 그 경계 시각(끔 = 칸 없음)
     weather: weatherNow(),                     // ★[온도 곡선 2026-08-31] 바깥 날씨 — 입장 즉시 배지
       granStocks: SimVillages.granStocks(),      // ★곳간② 물리 재고 스냅샷(이후 gran_stock 델타) — 사다리 앞 짐더미 연출
       markets: SimVillages.marketVillages(),     // ★[10차 T4] 장마당 스냅샷 flat[ccx,ccy,…](이후 markets 방송) — 캐러밴 체류 중인 마을만
@@ -6335,6 +6336,7 @@ async function _acceptConnection(ws, req, C) {
     claims: Array.from(claims.values()),
     simVillages: SimVillages.clientVillages(), // §4-4 Stage 4A: 마을 영토(경계 셀)·이름·인구 — 1회
     calendar: calendarNow(),                   // ★[달력 2026-08-30] 연·계절·일 — econ 정본에서 유도
+    ...(_t728CalNext() || {}),                 // ★[T728 ④] 켬이면 다음 날짜 · 그 경계 시각(끔 = 칸 없음)
     weather: weatherNow(),                     // ★[온도 곡선 2026-08-31] 바깥 날씨 — 입장 즉시 배지
       granStocks: SimVillages.granStocks(),      // ★곳간② 물리 재고 스냅샷(이후 gran_stock 델타) — 사다리 앞 짐더미 연출
       markets: SimVillages.marketVillages(),     // ★[10차 T4] 장마당 스냅샷 flat[ccx,ccy,…](이후 markets 방송) — 캐러밴 체류 중인 마을만
@@ -8310,8 +8312,14 @@ if (T486_PONG_SPLIT) {
     setInterval(() => { _t486LoopP95 = +(_m.percentile(95) / 1e6).toFixed(2); _m.reset(); }, 5000).unref();
   } catch (e) { /* perf_hooks 없으면 loopP95 = null */ }
 }
+// ★★[T728 ④] 켬(`T728_RESTART_KEEP=1`)이면 pong 에 **서버 벽시계 ms**(`sn`)를 싣는다 — 클라가 pong 마다 차를 다시 잰다(참 차 ∈ [sn − 받은 때, sn − 보낸 때] 구간을 겹쳐 좁힌다 · `30-n-net.js`).
+//   종전엔 welcome 한 번(1.69 MB · 직렬 앞 도장)으로만 맞추고 다시 잴 길이 없었다(`srvIn`/`srvOut` 은 단조 시계라 절대 시각이 아니다). 끔 = 칸 없음(종전 글자).
+const T728_CLOCK = process.env.T728_RESTART_KEEP === '1';
+function _t728CalNext() { try { return T728_CLOCK && SimVillages.t728CalNext ? SimVillages.t728CalNext() : null; } catch (e) { return null; } }
 function _t486Pong(t, srvIn) {
-  return T486_PONG_SPLIT ? { type: 'pong', t, srvIn: +srvIn.toFixed(3), srvOut: +_t486Now().toFixed(3), loopP95: _t486LoopP95 } : { type: 'pong', t };
+  const p = T486_PONG_SPLIT ? { type: 'pong', t, srvIn: +srvIn.toFixed(3), srvOut: +_t486Now().toFixed(3), loopP95: _t486LoopP95 } : { type: 'pong', t };
+  if (T728_CLOCK) p.sn = Date.now();
+  return p;
 }
 // ★★[달력 2026-08-30 재민 확정] 화면에 나갈 연·계절·일. **새 매핑을 여기서 만들지 않는다** —
 //   `Events.calendarOf` 가 econ `seasonOf` 하나만 보고 전부 유도한다(상수 0개).
@@ -15312,10 +15320,25 @@ process.on('uncaughtException', (e) => {
 
 // === Graceful shutdown — 종료 직전 모든 mob/플레이어 상태 flush ===
 let shuttingDown = false;
+// ★★[T728] 켬(`T728_RESTART_KEEP=1`)이면 **경계에 맞춰 내린다** — 진행 중인 하루 마감 조각을 끝까지 돌리고(새 날은 안 연다)
+//   마을 행 전부 + world 메타 행을 한 트랜잭션으로 적은 뒤 아래 종전 flush 로 간다. 끔 = 종전 글자 그대로(곧바로 flush).
+//   한도는 새로 짓지 않는다 — 배포가 주는 정지 시간(`docker stop` 기본)이 한도다. 그 안에 못 끝내면 SIGKILL 이 오고, 마을은 마지막 경계 저장
+//   그대로 남는다(저장은 끝에 한 트랜잭션이라 반쯤 쓰인 판이 없다). 손으로 띄운 판에서만 `T728_SHUTDOWN_CAP_MS` 로 한도를 줄 수 있다(없으면 기다린다).
+const T728_SHUTDOWN_CAP_MS = (() => { const v = parseInt(process.env.T728_SHUTDOWN_CAP_MS || '', 10); return Number.isFinite(v) && v > 0 ? v : Infinity; })();
 function gracefulShutdown(signal) {
   if (shuttingDown) return;
   shuttingDown = true;
   console.log(`[${ZONE_ID}] ${signal} 받음 — 상태 flush 후 종료...`);
+  if (SimVillages.t728On && SimVillages.t728On() && SimVillages.t728Shutdown) {
+    SimVillages.t728Shutdown(T728_SHUTDOWN_CAP_MS, (r) => {
+      console.log(`[${ZONE_ID}] 🏘️ [T728] 종료 저장 — ${r.why} · 마감 기다림 ${r.waitMs | 0}ms · 저장 ${r.saveMs | 0}ms · 마을 ${r.villages | 0} · econ 날 ${r.day}${r.err ? ' · 실패 ' + r.err : ''}`);
+      _shutdownFlush();
+    });
+    return;
+  }
+  _shutdownFlush();
+}
+function _shutdownFlush() {
   try {
     let mobsSaved = 0;
     for (const m of mobs.values()) {
