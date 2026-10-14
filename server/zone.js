@@ -8834,7 +8834,7 @@ function _oreSave(key, rec, now) {
 }
 // ★★[T735] 광맥 장부 모아 쓰기 — 손잡이 `T735_VEIN_BATCH=1`(기본 끔 = `_vein` null · 종전 그대로). 정본 `server/vein-batch.js` 머리말.
 //   언제 쓰나: 사람 주기 저장의 그 간격(`SAVE_INTERVAL_MS` — 새 수 0) · 종료 flush(`_shutdownFlush` 머리 — T728 경계 저장 뒤).
-const T735_VEIN_BATCH = process.env.T735_VEIN_BATCH === '1';
+const T735_VEIN_BATCH = process.env.T735_VEIN_BATCH !== '0';   // ★[PM 10-14] 켬 기본(같은 값 · DB 만 모아 쓰기) · 되돌림 `=0`
 const _vein = T735_VEIN_BATCH ? require('./vein-batch').create({ db, map: minedCells }) : null;
 if (_t735Boot) setImmediate(() => { try { console.log(`[${ZONE_ID}] ⛏ [T735] 광맥 장부 부팅 로드 — ${_veinDigest()}`); } catch (e) { } });
 let _veinNextAt = 0;

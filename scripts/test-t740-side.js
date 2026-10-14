@@ -18,13 +18,13 @@ const canon = (x) => JSON.stringify(x, (k, v) => (v instanceof Map ? { M: [...v.
 console.log('\n=== T740 메모리 전용 마을 칸 영속 ===');
 // ① 기본값 — env 를 지운 자식
 {
-  const env = Object.assign({}, process.env); delete env.T740_SIDE_KEEP;
+  const env = Object.assign({}, process.env); delete env.T740_SIDE_KEEP;   // ★[PM 10-14] 기본 켬 — env 없는 자식은 true
   const v = execFileSync(process.execPath, ['-e', "process.stdout.write(String(require('./server/villages.js').__labProbe._t740Probe.T740_SIDE))"], { cwd: ROOT, env }).toString();
-  ok(v === 'false', '① 손잡이 기본 끔(env 없는 자식)', v);
+  ok(v === 'true', '① 손잡이 기본 켬(env 없는 자식 · PM 10-14)', v);
 }
 function load(on) {
   for (const k of Object.keys(require.cache)) if (k.indexOf(path.join(ROOT, 'server')) === 0 || k.indexOf(path.join(ROOT, 'sim')) === 0) delete require.cache[k];
-  if (on) process.env.T740_SIDE_KEEP = '1'; else delete process.env.T740_SIDE_KEEP;
+  process.env.T740_SIDE_KEEP = on ? '1' : '0';   // ★[PM 10-14] 끔 = '0'(기본 켬)
   return require(path.join(ROOT, 'server', 'villages.js')).__labProbe._t740Probe;
 }
 function fakeVil(name, id) {

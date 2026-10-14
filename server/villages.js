@@ -855,7 +855,7 @@ const _T728_KEEP_KEYS = new Set(['_forageActItems', '_priceCache', '_priceCacheD
 //     · 공사 중인 집터 `_site` · 의뢰 집터 `_psite` 의 **단계**와 놓인 자재(`mat` · T400) — 종전 "단계 1부터 — 관용"(진척 · 자재 소멸). 켬이면 그 단계 · 그 자재로 다시 선다.
 //     · T400 그날 크루 명부 `_t400Crew` · 계측 셋 — 마감이 정한 명부라 다시 뜨면 다음 마감까지 몸이 집터로 안 갔다.
 //     · 착공한 곳간 `_granPend`(자리 · 완공 날) — 종전: 착공이 사라져 다른 자리에서 6일을 다시 셌다.
-const T740_SIDE = process.env.T740_SIDE_KEEP === '1';
+const T740_SIDE = process.env.T740_SIDE_KEEP !== '0';   // ★[PM 10-14] 켬 기본(T728 과 같은 곁 칸 문법 · 다시 뜰 때만) · 되돌림 `=0`
 const _T740_KEYS = ['_crop', '_mkt', '_potSet', '_siteMissDay', '_siteDirty', '_siteRejS', '_siteRejL', '_maxRPx', '_hEvD', '_mineLvl', '_t724Hit', '_t724Cut', '_granStock',
   '_mCl', '_mSt', '_mTk', '_dCl', '_dSt', '_dTk', '_gameTook', '_hlDay',   // 계측 셈 여덟
   '_t400Crew', '_t400Dbg', '_t400Sum', '_t400Log',   // T400 집 행위(기본 켬) — 그날 크루 명부 · 계측 셋
@@ -7486,7 +7486,7 @@ function _t717NewWood(p) {
 //   ⚠econ 은 두 칸을 이미 안다(보고 §1 전수): 잔가지 = `RESOURCES` · 하급 연료(`_lowFuel` — `LOW_FUEL_EQ` 0.3 등가) · 요리 곁재료 · 채집 수식 품목 ·
 //     도토리 = `FORAGE_FOOD_FACTOR` 0.25(식량 등가 · 구황 소비) · T86 채집 칸 · 플레이어 곳간 표(`PV_DEPOSIT_MAP`).
 //   ⚠새 수 0 · 새 문 0 · 바닥에 놓기 0. 손잡이 `T733_FELL_LOOT=1` · 끔(미설정) = 옛 줄(비트 동일). 행위 층(`T325_WOOD_ACT`)이 꺼진 세계엔 부르는 자리가 없다.
-const T733_FELL_LOOT = process.env.T733_FELL_LOOT === '1';
+const T733_FELL_LOOT = process.env.T733_FELL_LOOT !== '0';   // ★[PM 10-14] 켬 기본(소멸 금지) · 되돌림 `=0`
 const _T733_KEYS = ['twig', 'acorn'];   // 존 전리품 표(나무 · 묘목)의 통나무 밖 칸 — 하네스가 표와 같은지 문다(표에 새 칸이 서면 빨강)
 //   곳간 그 칸에 — 입구가 받은 몫을 돌려준다
 function _t733Gran(vil, k, u) {

@@ -50,7 +50,7 @@ console.log('\n=== 벤 그루의 잔가지 · 도토리(T733 ①) · 채집 손 
 // ── ① 정적 ──────────────────────────────────────────────────────────────────────────────────────────────
 console.log('\n① 잔가지 · 도토리 → 곳간 — 정적');
 {
-  ok(/const T733_FELL_LOOT = process\.env\.T733_FELL_LOOT === '1';/.test(VC), 'ⓐ 손잡이 `T733_FELL_LOOT` — 기본 끔(`1` 만 켬)');
+  ok(/const T733_FELL_LOOT = process\.env\.T733_FELL_LOOT !== '0';/.test(VC), 'ⓐ 손잡이 `T733_FELL_LOOT` — 기본 켬(`0` 만 끔 · PM 10-14)');
   //   존 전리품 표(나무 · 묘목 갈래)의 통나무 밖 칸 = 이 카드의 두 칸(표에 새 칸이 서면 여기가 빨강 — 그 칸을 곳간에 넣을지는 econ 이 아나부터)
   const lf = ZC.slice(ZC.indexOf('function lootOfResource('), ZC.indexOf("if (t === 'rock')"));
   const keys = new Set();
