@@ -885,6 +885,83 @@ function _t740Pack(vil) {
   return o;
 }
 const _t740Stat = { restored: null };
+// ★★[T747 2026-10-14] **재기동이 잃는 몸 칸** — 손잡이 `T747_BODY_KEEP`(★기본 끔 · `=1` 켬 · 끔 = 종전 글자 그대로).
+//   T728 · T740 은 마을 · 메타만 영속했다. 다시 뜨면 몸은 새로 스폰된다(새 객체 · 집 근처 · 빈손 · 진행 작업 없음 · 피 가득).
+//   T747 실측(실제 시계 판 · 몸 612 · 칸 104): 다시 뜬 첫 틱에 갈린 칸 66 — 그중 **값에 닿고 다시 셀 수 없는 칸**만 마을 행 곁 칸 하나(`_t747Body`)에 싣는다
+//   (T740 곁 칸 문법 · `_t740Enc` · 새 표 0 · **새 몸 필드 0** — 아래는 전부 이미 있는 몸 칸 · 새 수 0). 전수 표는 `보고/T747` ①.
+//     · 손 — `inventory`(그 판: 미꾸라지 1,200 · 붕어 62 · 원석 50.5 kg 이 사라졌다 = 소멸) · 손의 장부값 `_t312U` · `_t312Kg` · `_t368H` · `_t368N` · 손에 남긴 몫 `_t717L` · `_t733F`
+//     · 진행 작업 `_lifeTask`(개간 · 시공 · 진척 `prog` — 그 판: 개간 84% 가 0 으로) · 농부가 잡은 밭 셀 `_farmK` · 그날 나간 날 `_fOutD` · 일터 `_workSite` · 순찰 차례 `_jobN`
+//     · 몸 — 자리 `x` · `y`(다시 뜨면 집으로 뛰었다 — 순간이동) · `hp` · 요양 `_rest` · 직업 `simJob`(같은 자리 같은 직업이 아니면 위 칸을 안 붙인다 — 아래)
+//     · 낚시 자리 `_fishSpotX` · `_fishSpotY` · 던진 수 `_t340N`(종 고르기 씨) · 광부 그날 셀 `_t724Site` · 사냥꾼 그날 예산 · 잡은 수 `_huntBud` · `_huntKil`
+//   **멈춘 시간은 버린다** — 시각 칸(`_workT` · `_jobT` · `_t724T` · `_t340` 던짐 · 길 캐시)은 싣지 않는다(다시 뜬 뒤 첫 걸음부터 센다 · `_workT` 없으면 노동 적산 0 부터).
+//   반쯤 한 일: 대상이 그대로면 잇는다 — 개간 셀이 아직 개간 앞(밭이 아니고 영토 · 잠재 농지)이면 · 집터가 그대로 있으면. 사라졌으면 깨끗이 푼다(손은 남는다).
+//   마을 클레임 그림자(`_claim` · `_clearCrew` · `_buildCrew` · `_psiteCrew` · `_cropClaim` · 광부 손 합 `_t724HeldKg`)는 되돌린 몸에서 다시 센다(하루 마감의 재대사 줄과 같은 식).
+//   몸 열쇠 = 마을 `npcPids` 자리(T728 `_t728HuntWk` 문법). 저장된 몸이 지금 몸보다 많으면 남은 손은 그 마을 첫 몸의 손에 더한다(소멸 0).
+const T747_BODY = process.env.T747_BODY_KEEP === '1';
+const _T747_KEYS = ['simJob', 'x', 'y', 'hp', '_rest', 'inventory', '_t312U', '_t312Kg', '_t368H', '_t368N', '_t717L', '_t733F',
+  '_lifeTask', '_farmK', '_fOutD', '_workSite', '_jobN', '_fishSpotX', '_fishSpotY', '_t340N', '_t724Site', '_huntBud', '_huntKil'];
+function _t747Pack(vil) {
+  const P = state.deps && state.deps.players; if (!P || !vil.npcPids) return null;
+  const rows = [];
+  for (let i = 0; i < vil.npcPids.length; i++) {
+    const b = P.get(vil.npcPids[i]); if (!b) { rows.push(null); continue; }
+    const o = {};
+    for (const k of _T747_KEYS) { const x = b[k]; if (x !== undefined && x !== null) o[k] = _t740Enc(x); }
+    if (o._lifeTask && o._lifeTask.k === 'greet') delete o._lifeTask;   // 인사(T529)는 그 사람 · 그 순간의 일 — 싣지 않는다
+    rows.push(o);
+  }
+  return rows;
+}
+const _t747Stat = { restored: null };
+function _t747Restore() {
+  const P = state.deps && state.deps.players;
+  const R = { villages: 0, bodies: 0, jobMiss: 0, hands: 0, extraHands: 0, task: 0, taskDrop: 0, moved: 0, hpLow: 0 };
+  if (!P) return R;
+  for (const vil of state.villages) {
+    const e = vil.econ; if (!e || !('_t747Body' in e)) continue;
+    const rows = e._t747Body; delete e._t747Body;
+    if (!Array.isArray(rows)) continue;
+    R.villages++;
+    const spill = [];
+    for (let i = 0; i < rows.length; i++) {
+      const S0 = rows[i]; if (!S0) continue;
+      const S = _t740Dec(S0);
+      const b = i < vil.npcPids.length ? P.get(vil.npcPids[i]) : null;
+      if (!b) { if (S.inventory) spill.push(S.inventory); continue; }
+      R.bodies++;
+      if (S.simJob != null && b.simJob !== S.simJob) { R.jobMiss++; b.simJob = S.simJob; }   // 같은 자리 = 같은 몸(직업도 그 몸의 것)
+      if (Number.isFinite(S.x) && Number.isFinite(S.y)) { b.x = S.x; b.y = S.y; b.targetX = S.x; b.targetY = S.y; b.vx = 0; b.vy = 0; R.moved++; }
+      if (Number.isFinite(S.hp) && S.hp > 0) { b.hp = Math.min(S.hp, b.maxHp || S.hp); if (b.hp < (b.maxHp || 100)) R.hpLow++; }
+      if (S._rest != null) b._rest = S._rest;
+      if (S.inventory && typeof S.inventory === 'object') { b.inventory = S.inventory; let any = false; for (const k in S.inventory) if (S.inventory[k] > 0 && k !== 'seed_berry') any = true; if (any) R.hands++; }
+      for (const k of ['_t312U', '_t312Kg', '_t368H', '_t368N', '_t717L', '_t733F', '_farmK', '_fOutD', '_workSite', '_jobN', '_fishSpotX', '_fishSpotY', '_t340N', '_t724Site', '_huntBud', '_huntKil'])
+        if (k in S) b[k] = S[k];
+      //   반쯤 한 일 — 대상이 그대로면 잇고(노동 적산은 도착부터 — `_workT` 없음) · 사라졌으면 푼다
+      if (S._lifeTask && typeof S._lifeTask === 'object') {
+        const t = S._lifeTask, key = t.cx + ',' + t.cy;
+        const ok = t.k === 'clear' ? !!(vil._terrSet && vil._terrSet.has(key) && !(vil._farmSet && vil._farmSet.has(key)) && !(vil._drySet && vil._drySet.has(key)))
+          : t.k === 'build' ? !!(t.ps ? vil._psite : vil._site) : false;
+        if (ok) { b._lifeTask = t; b._workT = null; R.task++; } else R.taskDrop++;
+      }
+    }
+    if (spill.length) {   // 저장된 몸이 지금보다 많았다 — 남은 손은 첫 몸에(소멸 0)
+      const b0 = vil.npcPids.length ? P.get(vil.npcPids[0]) : null;
+      if (b0) { b0.inventory = b0.inventory || {}; for (const inv of spill) for (const k in inv) if (typeof inv[k] === 'number' && inv[k] > 0 && k !== 'seed_berry') { b0.inventory[k] = +((b0.inventory[k] || 0) + inv[k]).toFixed(6); R.extraHands++; } }
+    }
+    //   마을 클레임 그림자 — 되돌린 몸에서 다시 센다(하루 마감 재대사 줄과 같은 식)
+    vil._claim = new Set(); vil._clearCrew = 0; vil._buildCrew = 0; vil._psiteCrew = 0; vil._cropClaim = new Set(); let held = 0;
+    for (const pid of vil.npcPids) {
+      const p = P.get(pid); if (!p) continue;
+      if (p._lifeTask) { if (p._lifeTask.k === 'clear') { vil._claim.add(p._lifeTask.cx + ',' + p._lifeTask.cy); vil._clearCrew++; } else if (p._lifeTask.k === 'build') { if (p._lifeTask.ps) vil._psiteCrew++; else vil._buildCrew++; } }
+      if (p._farmK) vil._cropClaim.add(p._farmK);
+      if (p.inventory && p.inventory.ore_chunk > 0) held += p.inventory.ore_chunk;
+    }
+    vil._t724HeldKg = held;
+  }
+  _t747Stat.restored = R;
+  console.log(`[${state.zoneId}] 🏘️ [T747] 몸 칸 되돌림 — 마을 ${R.villages} · 몸 ${R.bodies} · 손 든 몸 ${R.hands} · 진행 작업 이음 ${R.task} · 풂 ${R.taskDrop} · 직업 다시 맞춤 ${R.jobMiss} · 남은 손 ${R.extraHands}`);
+  return R;
+}
 function _t740SavedPsite(vil, r) {
   const S = vil.econ && vil.econ._t740Side, P = S && S.psite;
   return (P && P.cx === r.cx && P.cy === r.cy) ? P : null;
@@ -950,7 +1027,8 @@ function serializeEcon(v) {
       if (hw.length) out._t728HuntWk = hw;
     }
   }
-  if (T740_SIDE) { const vil = state.byEcon && state.byEcon.get(v); if (vil) out._t740Side = _t740Pack(vil); }   // ★[T740] 메모리 전용 마을 칸(위 `T740_SIDE` 주석 · 복원 `_t740Restore`)
+  if (T740_SIDE) { const vil = state.byEcon && state.byEcon.get(v); if (vil) out._t740Side = _t740Pack(vil); }
+  if (T747_BODY) { const vil = state.byEcon && state.byEcon.get(v); if (vil) { const B = _t747Pack(vil); if (B) out._t747Body = B; } }   // ★[T747] 몸 칸(위 `T747_BODY` 주석 · 복원 `_t747Restore`)   // ★[T740] 메모리 전용 마을 칸(위 `T740_SIDE` 주석 · 복원 `_t740Restore`)
   if (_ltd.has(v)) out.lastTradeDay = _ltd.get(v);   // ★[T577 ④] 저장 줄에서만(위 주석)
   if (_T732_ON) { const G = _t732Gran(); const D = G && G.dump(v); if (D) out._t732Lots = D; }   // ★[T732] 곳간 로트 장부 — 곳간 값과 같은 줄에(같은 순간 · 재기동이 같이 읽는다)
   out.history = (v.history || []).slice(-50);
@@ -4808,6 +4886,8 @@ function init(deps) {
     if (T728_KEEP) { try { _t728Restore(); } catch (e) { console.error(`[${ZONE_ID}] 🏘️ [T728] 재기동 영속 복원 실패(종전대로 계속):`, e.message); } }
     if (T740_SIDE) { try { _t740Restore(); } catch (e) { console.error(`[${ZONE_ID}] 🏘️ [T740] 마을 칸 복원 실패(종전대로 계속):`, e.message); } }
     else for (const v of state.villages) if (v.econ && '_t740Side' in v.econ) delete v.econ._t740Side;   // ★[T740] 끔 — 켬으로 적은 행의 곁 칸을 econ 에 남기지 않는다(다음 켬이 묵은 칸을 되돌리지 않게 · main 행엔 이 칸이 없어 무동작)
+    if (T747_BODY) { try { _t747Restore(); } catch (e) { console.error(`[${ZONE_ID}] 🏘️ [T747] 몸 칸 복원 실패(종전대로 계속):`, e.message); } }
+    else for (const v of state.villages) if (v.econ && '_t747Body' in v.econ) delete v.econ._t747Body;   // ★[T747] 끔 — 켬으로 적은 행의 곁 칸을 econ 에 남기지 않는다(main 행엔 이 칸이 없어 무동작)
     if (_T732_ON) { try { _t732Boot(); } catch (e) { console.error(`[${ZONE_ID}] 🧺 [T732] 곳간 로트 장부 붙이기 실패(장부 없이 계속):`, e.message); } }
     // ★★[T533] 존 경계 호스트 — 팔 `T525_CROSS_ZONE`(econ 정본) 켬 + 존이 미는 문을 줬을 때만(끔 = 이 줄 무동작 · 조각 목록·몸 층 무변).
     //   실패해도 존 부팅은 계속한다(경계가 닫힌 채 = 끔과 같다).
