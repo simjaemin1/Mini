@@ -46,7 +46,7 @@ function boot(phase, extra) {
   const r1 = await boot('p1', { T722_STOP_DAY: String(STOP), T722_DUMP: path.join(DIR, 'stop.json'), T722_CRASH: CRASH ? '1' : '', T722_RAWTERM: a.includes('--rawterm') ? '1' : '' });
   console.log(`  p1 — 끝 코드 ${r1.code} · ${r1.sec.toFixed(1)}초`);
   if (GAP) await new Promise((r) => setTimeout(r, GAP));
-  const r2 = await boot('p2', { T722_RESUME: path.join(DIR, 'stop.json'), T722_DUMP: path.join(DIR, 'resume.json'), T722_CATCH: CATCH ? String(CATCH) : '', T722_PERSIST: PERSIST });
+  const r2 = await boot('p2', { T722_RESUME: path.join(DIR, 'stop.json'), T722_DUMP: path.join(DIR, 'resume.json'), T722_CATCH: CATCH ? String(CATCH) : '', T722_PERSIST: PERSIST, T722_NOJUMP: a.includes('--nojump') ? '1' : '' });
   console.log(`  p2 — 끝 코드 ${r2.code} · ${r2.sec.toFixed(1)}초`);
   // 날 지문 합치기: p1 의 S 날까지 + p2 의 S 뒤
   const P1 = JSON.parse(fs.readFileSync(path.join(DIR, 'p1.json.t650.json'), 'utf8'));

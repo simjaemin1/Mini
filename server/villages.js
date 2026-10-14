@@ -12032,8 +12032,23 @@ function _t728Restore() {
       R.meta = true;
     } else R.why = `메타 날 ${R.day} ≠ econ 날 ${W.day | 0} — 번호만 앞으로(난수 · 캐러밴은 종전대로)`;
   }
+  // ★★[T728 ⑥ · 재민 10-14 "멈춘 동안의 시간은 따라잡지 않고 지난 채로 버린다"] **날 = 시계에서 계산.**
+  //   메타 앵커(그 날 D 와 그 경계의 벽시계 날 g)로 지금 날을 셈한다: D + (지금 벽시계 날 − g). econ 날이 **바로 그 날로 뛴다** —
+  //   건너뛴 날의 정산은 안 한다(새 날 하나가 열릴 뿐). 계수기 여덟(달력 · 나무 · 도적 · 소문 · econ 날씨 · 소속 · 캐러밴 장부)은 전부 econ 날을
+  //   읽으므로 같이 뛴다. 그 사이 도착했어야 할 캐러밴은 다음 econ 틱에 도착한다(`day >= arriveDay` — econ 정본 그대로).
+  //   하늘 · 작물 · 부패처럼 이미 공식인 것은 그대로 흘러가 있다. 새 수 0(하루 길이 · epoch 는 앵커에 적힌 그 값이 지금 값과 같을 때만 쓴다).
+  if (M.anchor && Number.isFinite(M.anchor.g) && M.anchor.dayMs === state.dayMs && M.anchor.epoch === state.epoch) {
+    const nd = (M.anchor.day | 0) + Math.max(0, Math.floor(state.lastGameDay - M.anchor.g));
+    R.jump = Math.max(0, nd - (W.day | 0));
+    if (R.jump > 0) {
+      W.day = nd;
+      let due = 0; for (const c of (W.caravans || [])) if ((c.state === 'outbound' && nd >= c.arriveDay) || (c.state === 'inbound' && nd >= c.returnArriveDay)) due++;
+      R.due = due;
+    }
+  } else if (M.anchor) R.why += (R.why ? ' · ' : '') + `앵커 시계(하루 ${M.anchor.dayMs} · epoch ${M.anchor.epoch})가 지금 시계와 달라 날을 안 뛴다`;
   _t728Stat.restored = R;
-  console.log(`[${state.zoneId}] 🏘️ [T728] 재기동 영속 — 마을 곁 칸 ${R.side} · 메타 ${R.meta ? `되돌림(날 ${R.day} · 캐러밴 ${R.caravans}${R.lost ? ` · 못 이은 ${R.lost}` : ''})` : R.why}`);
+  console.log(`[${state.zoneId}] 🏘️ [T728] 재기동 영속 — 마을 곁 칸 ${R.side} · 메타 ${R.meta ? `되돌림(날 ${R.day} · 캐러밴 ${R.caravans}${R.lost ? ` · 못 이은 ${R.lost}` : ''})` : R.why}`
+    + ` · 날 뜀 ${R.jump | 0}${R.jump ? `(econ 날 ${R.day} → ${W.day | 0} · 이미 도착했어야 할 캐러밴 ${R.due | 0})` : ''}`);
   return R;
 }
 // ★[T728 ④] 다음 날짜와 그 경계 시각 — 클라가 **같은 공식**(서버 시각 = 클라 시각 + 다시 잰 차)으로 경계 순간에 날짜를 넘긴다
