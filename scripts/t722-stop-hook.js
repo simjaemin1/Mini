@@ -99,6 +99,11 @@ function snap(tag) {
       return [vl.name, { fa: Array.isArray(e._forageActItems) ? e._forageActItems.slice() : null, pc, pcd: e._priceCacheDay, ltd: e.lastTradeDay, bo: vl._baseOre, pb: e.dailyProductionBuf ? Object.assign({}, e.dailyProductionBuf) : null }]; })),
     mc: global.__t722mc ? Object.fromEntries([...global.__t722mc.entries()].map(([k, r]) => [k, [r.s, r.t, r.w, r.kg]])) : null,
     vil, dupIds: dup, bodies: st.deps && st.deps.players ? st.deps.players.size : null,
+    side: global.__t740Side ? global.__t740Side(st) : undefined,
+    bodyKeep: process.env.T722_BODY_SAVE === '1' ? (() => { const P = st.deps && st.deps.players, o = {}; if (!P) return null;   // ★[T740] 몸 영속 흉내(계측 사본) — 명부 자리마다 몸의 JSON 칸 통째
+      for (const vl of st.villages || []) o[vl.name] = (vl.npcPids || []).map((pid) => { const b = P.get(pid); if (!b) return null; const r = {};
+        for (const k of Object.keys(b)) { if (k === 'ws') continue; const x = b[k]; if (typeof x === 'function') continue; try { const j = JSON.stringify(x); if (j !== undefined && j.length < 200000) r[k] = j; } catch (e) {} } return [pid, r]; });
+      return o; })() : undefined,   // ★[T740] 서버 마을 칸 — Map · Set 을 풀어 칸 값 통째(t740-side-hook 이 있을 때만)
     t722: { back: st._t722Back, t0: st._t722T0, t1: st._t722T1 },
   };
 }
@@ -127,7 +132,9 @@ if (STOP) {
         const iv = setInterval(() => {
           if (st.tickJobs || (st.saveQueue && st.saveQueue.length)) return;
           clearInterval(iv);
+          if (global.__t740Pause) global.__t740Pause();   // ★[T740] 덤프 동안 벽시계를 세운다(대조 판이 같은 순간에서 이어 가게)
           try { if (DUMP) fs.writeFileSync(DUMP, JSON.stringify(Object.assign(snap('stop'), { drainMs: Date.now() - t0 }))); } catch (e) { console.error('[t722] 덤프 실패', e.message); }
+          if (process.env.T722_CONT === '1' && global.__t740Cont) { console.log(`[t722] 멈춤 없이 이어감(T740 대조) — econ day ${st.world.day} · 드레인 ${Date.now() - t0}ms`); global.__t740Cont(st); return; }   // ★[T740] 재기동 없는 대조 판
           console.log(`[t722] 멈춤 — econ day ${st.world.day} · 마감·저장 드레인 ${Date.now() - t0}ms · SIGTERM`);
           process.kill(process.pid, 'SIGTERM');
         }, 5);
@@ -156,6 +163,12 @@ if (RESUME) {
           if (PERSIST.has('ltd')) e.lastTradeDay = k.ltd;
           if (PERSIST.has('pb') && k.pb) e.dailyProductionBuf = Object.assign({}, k.pb);
           if (PERSIST.has('bo')) { if (k.bo != null) vl._baseOre = k.bo; else delete vl._baseOre; } }
+        if (PERSIST.has('body') && S0.bodyKeep) {   // ★[T740] 몸 영속 흉내 — 같은 명부 자리 · 같은 pid 몸에 JSON 칸을 되돌린다(T728 회부 2 의 크기 재기 · 제품 무변)
+          const P = st.deps.players; let n = 0, miss = 0;
+          for (const vl of st.villages) { const L = S0.bodyKeep[vl.name] || []; for (let i = 0; i < L.length; i++) { const e = L[i]; if (!e) continue; const b = P.get(vl.npcPids[i]);
+            if (!b || vl.npcPids[i] !== e[0]) { miss++; continue; } for (const [k, j] of Object.entries(e[1])) { try { b[k] = JSON.parse(j); } catch (x) {} } n++; } }
+          console.log(`[t722] 몸 영속 흉내 — 몸 ${n} 되돌림 · 못 맞춘 ${miss}`);
+        }
         if (PERSIST.has('car') && Array.isArray(S0.carSer)) {   // 길 위 캐러밴 — 이름 · 주민 번호로 다시 잇는다(DB 행 흉내)
           const W = st.world, byName = new Map(W.villages.map((v) => [v.name, v]));
           W.caravans = S0.carSer.map((c) => { const o = Object.assign({}, c); o.from = byName.get(c.from); o.to = byName.get(c.to);

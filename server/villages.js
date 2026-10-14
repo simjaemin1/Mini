@@ -830,6 +830,75 @@ const _serializeWarned = new Set();
 //   새 수 0 · 새 몸 필드 0. 값은 바뀌지 않는다(돌고 있는 동안은 끔과 같은 글자 · 저장 줄과 복원 문만 다르다).
 const T728_KEEP = process.env.T728_RESTART_KEEP !== '0';   // ★[PM 10-14] 켬 기본 · 되돌림 `=0`
 const _T728_KEEP_KEYS = new Set(['_forageActItems', '_priceCache', '_priceCacheDay', 'dailyProductionBuf']);
+// ★★[T740 2026-10-14] **재기동이 잃는 메모리 전용 마을 칸** — 손잡이 `T740_SIDE_KEEP`(★기본 끔 · `=1` 켬 · 끔 = 종전 글자 그대로).
+//   서버 마을 객체(`state.villages[i]`)의 칸 중 저장(마을 행 · 메타 행 · 마을 건물 행)을 안 거치는데 **값에 닿는** 것을 마을 행 곁 칸 하나(`_t740Side`)에 싣는다
+//   (T728 곁 칸 문법 · 새 표 0 · 새 몸 필드 0 · 새 수 0). 전수 표는 `보고/T740` ① — 다시 셈으로 같은 값이 나오는 칸(캐시 · 계측)은 싣지 않는다.
+//     · 작물 `_crop`(셀 → 심은 날 · 돌본 날 · 물 댄 날 · 김맨 차례 · 병 · 품질) — 종전 "재부팅 = 재파종"(밭에 선 작물이 사라지고 새로 심긴다 = 소멸 + 생성).
+//       날 칸은 이미 벽시계 날(`_lifeDay`)이라 멈춘 동안의 자람은 작물 공식이 그대로 센다(T728 ⑥ 하늘 · 작물 · 부패 줄).
+//     · 장마당 `_mkt`(그날 장 · 장 끝 시각 · 명부 · 선 캐러밴) — 캐러밴은 T728 메타 행이 같은 번호로 되돌린다.
+//     · 잠재 농지 `_potSet` — 집터가 선점해 뺀 칸이 행(`nongzone`)에선 안 빠져 다시 뜨면 되살아났다(개간 앞 · 집터 거르기가 읽는다).
+//     · 집터 거르기 기억 넷(`_siteMissDay` · `_siteDirty` · `_siteRejS` · `_siteRejL`) — 잠재 농지와 짝(T41 · 같은 답을 같은 날에 낸다).
+//     · 마을 반경 `_maxRPx` — 돌고 있는 동안엔 부팅 값 그대로인데 다시 뜨면 행에서 다시 재 커졌다(일터 · 몸 깨우기 반경이 읽는다).
+//     · 사냥 위험 낮 누계 `_hEvD` · 광부 숙련 `_mineLvl` · 광부 몸 타수 `_t724Hit` · 깎은 덩이 `_t724Cut` · 곳간② 물리 장부 `_granStock` — 하루 마감이 읽는 낮 칸.
+//     · 계측 셈 여덟(오늘 · 어제 진척 · 사냥 누계 · 결산 도장) — 다시 셀 수 없는 셈이라 같이 싣는다.
+//     · 공사 중인 집터 `_site` · 의뢰 집터 `_psite` 의 **단계**와 놓인 자재(`mat` · T400) — 종전 "단계 1부터 — 관용"(진척 · 자재 소멸). 켬이면 그 단계 · 그 자재로 다시 선다.
+//     · T400 그날 크루 명부 `_t400Crew` · 계측 셋 — 마감이 정한 명부라 다시 뜨면 다음 마감까지 몸이 집터로 안 갔다.
+//     · 착공한 곳간 `_granPend`(자리 · 완공 날) — 종전: 착공이 사라져 다른 자리에서 6일을 다시 셌다.
+const T740_SIDE = process.env.T740_SIDE_KEEP === '1';
+const _T740_KEYS = ['_crop', '_mkt', '_potSet', '_siteMissDay', '_siteDirty', '_siteRejS', '_siteRejL', '_maxRPx', '_hEvD', '_mineLvl', '_t724Hit', '_t724Cut', '_granStock',
+  '_mCl', '_mSt', '_mTk', '_dCl', '_dSt', '_dTk', '_gameTook', '_hlDay',   // 계측 셈 여덟
+  '_t400Crew', '_t400Dbg', '_t400Sum', '_t400Log',   // T400 집 행위(기본 켬) — 그날 크루 명부 · 계측 셋
+  '_granPend'];   // 착공한 곳간(자리 · 완공 날)
+//   Map · Set 을 어느 깊이에서든 표식 붙은 배열로(차례 그대로) — 객체 참조는 이 칸들에 없다(전수 표 ①).
+function _t740Enc(x) {
+  if (x instanceof Map) { const a = []; for (const [k, v] of x) a.push(_t740Enc(k), _t740Enc(v)); return { $M: a }; }
+  if (x instanceof Set) { const a = []; for (const v of x) a.push(_t740Enc(v)); return { $S: a }; }
+  if (Array.isArray(x)) return x.map(_t740Enc);
+  if (x && typeof x === 'object') { const o = {}; for (const k of Object.keys(x)) o[k] = _t740Enc(x[k]); return o; }
+  return x;
+}
+function _t740Dec(x) {
+  if (Array.isArray(x)) return x.map(_t740Dec);
+  if (x && typeof x === 'object') {
+    if (Array.isArray(x.$M)) { const m = new Map(); for (let i = 0; i + 1 < x.$M.length; i += 2) m.set(_t740Dec(x.$M[i]), _t740Dec(x.$M[i + 1])); return m; }
+    if (Array.isArray(x.$S)) return new Set(x.$S.map(_t740Dec));
+    const o = {}; for (const k of Object.keys(x)) o[k] = _t740Dec(x[k]); return o;
+  }
+  return x;
+}
+function _t740Pack(vil) {
+  const o = {};
+  for (const k of _T740_KEYS) if (k in vil) o[k] = _t740Enc(vil[k]);
+  if (vil._site) { o.site = { cx: vil._site.cx, cy: vil._site.cy, stage: vil._site.stage }; if (vil._site.mat) o.site.mat = _t740Enc(vil._site.mat); }   // ★T400 — 곳간에서 꺼내 집터에 놓은 자재(종전: 재기동에 사라졌다 — 소멸)
+  if (vil._psite) o.psite = { cx: vil._psite.cx, cy: vil._psite.cy, stage: vil._psite.stage, bo: vil._psite.bo ? vil._psite.bo.dbId : null };
+  return o;
+}
+const _t740Stat = { restored: null };
+function _t740SavedPsite(vil, r) {
+  const S = vil.econ && vil.econ._t740Side, P = S && S.psite;
+  return (P && P.cx === r.cx && P.cy === r.cy) ? P : null;
+}
+// 부팅 — 마을 행 곁 칸(`_t740Side`)을 서버 마을 칸으로 되돌리고 지운다(T728 곁 칸과 같은 자리 · 부팅 앵커 줄 바로 뒤).
+function _t740Restore() {
+  const R = { villages: 0, keys: {}, crop: 0, mkt: 0, site: 0, psite: 0 };
+  for (const vil of state.villages) {
+    const e = vil.econ; if (!e || !('_t740Side' in e)) continue;
+    const S = e._t740Side; delete e._t740Side;
+    if (!S || typeof S !== 'object') continue;
+    R.villages++;
+    for (const k of _T740_KEYS) if (k in S) { vil[k] = _t740Dec(S[k]); R.keys[k] = (R.keys[k] || 0) + 1; }
+    if (vil._crop instanceof Map) R.crop += vil._crop.size;
+    if (vil._mkt) R.mkt++;
+    //   공사 중이던 마을 집터 — 저장된 단계로 지금 선다(종전: 다음 하루 마감에 단계 1로). 행(`housesite`)이 없으면(그새 완공) 세우지 않는다.
+    if (S.site && !vil._site && vil._pendSite && vil._pendSite.cx === S.site.cx && vil._pendSite.cy === S.site.cy) { vil._pendSite = null; _siteRise(vil, S.site, Math.max(1, S.site.stage | 0)); if (vil._site && S.site.mat) vil._site.mat = _t740Dec(S.site.mat); R.site++; }
+    if (S.psite && vil._psite && vil._psite.stage === S.psite.stage) R.psite++;
+  }
+  //   클라 영토 페이로드의 반경도 같은 값으로(페이로드는 이 줄 앞에서 행으로 다시 잰 반경을 실었다)
+  for (const e of (state.clientPayload || [])) { const v = state.byDbId && state.byDbId.get(e.id); if (v && v._maxRPx != null) e.r = v._maxRPx; }
+  _t740Stat.restored = R;
+  console.log(`[${state.zoneId}] 🏘️ [T740] 메모리 전용 마을 칸 되돌림 — 마을 ${R.villages} · 작물 ${R.crop} · 장 ${R.mkt} · 집터 ${R.site} · 의뢰 집터 ${R.psite}`);
+  return R;
+}
 // ★★[T577 ④ 2026-10-03] **마지막 교역일은 서버 길에서 적는다** — econ 이 만든 칸(`lastTradeDay: 0`)은 sim/ 어디서도
 //   쓰이지도 읽히지도 않아 라이브 50/50 이 0 이었다(T572 회부 6). econ 객체는 **안 건드린다**: 서버가 곁(WeakMap)에
 //   쥐고 있다가 저장 줄(`serializeEcon`)에서만 그 칸을 덮는다 ⇒ econ 하루는 바이트 그대로 · DB 행에는 날이 남는다.
@@ -870,6 +939,7 @@ function serializeEcon(v) {
       if (hw.length) out._t728HuntWk = hw;
     }
   }
+  if (T740_SIDE) { const vil = state.byEcon && state.byEcon.get(v); if (vil) out._t740Side = _t740Pack(vil); }   // ★[T740] 메모리 전용 마을 칸(위 `T740_SIDE` 주석 · 복원 `_t740Restore`)
   if (_ltd.has(v)) out.lastTradeDay = _ltd.get(v);   // ★[T577 ④] 저장 줄에서만(위 주석)
   out.history = (v.history || []).slice(-50);
   try {
@@ -4645,9 +4715,12 @@ function init(deps) {
       for (const vil of state.villages) {
         const r = (vil._pSiteRows || [])[0]; if (!r) continue;
         let ow = null; try { ow = (JSON.parse(r.data || '{}') || {}).owner || null; } catch (e) {}
-        const bo = deps.liveBuildRow ? deps.liveBuildRow('hut_site', (r.cx - 2.5) * SZ, (r.cy - 3.5) * SZ,
-          { stage: 1, x0: r.cx - 5, y0: r.cy - 5, x1: r.cx + 0, y1: r.cy - 2, owner: ow, psite: 1 }, ow || `npc_simvil_${vil.dbId}`, '의뢰 움집터', null) : null;
-        vil._psite = { cx: r.cx, cy: r.cy, stage: 1, bo, player: 1, owner: ow, ownerName: '의뢰 움집' };
+        //   ★[T740] 켬 — 저장된 단계로 · 플레이어 소유 집터 행은 부팅 지우기(`npc_%`)를 안 타 살아 있다 ⇒ 그 행을 다시 쥔다(새 행 0 — 종전은 같은 자리에 둘째 집터가 섰다)
+        const sv = T740_SIDE ? _t740SavedPsite(vil, r) : null, st0 = sv ? Math.max(1, sv.stage | 0) : 1;
+        const old = sv && sv.bo != null && deps.buildings ? deps.buildings.get('b' + sv.bo) : null;
+        const bo = (old && old.type === 'hut_site') ? old : deps.liveBuildRow ? deps.liveBuildRow('hut_site', (r.cx - 2.5) * SZ, (r.cy - 3.5) * SZ,
+          { stage: st0, x0: r.cx - 5, y0: r.cy - 5, x1: r.cx + 0, y1: r.cy - 2, owner: ow, psite: 1 }, ow || `npc_simvil_${vil.dbId}`, '의뢰 움집터', null) : null;
+        vil._psite = { cx: r.cx, cy: r.cy, stage: st0, bo, player: 1, owner: ow, ownerName: '의뢰 움집' };
         vil._psiteCrew = 0; n++;
       }
       if (n) console.log(`[${ZONE_ID}] 🏠 플레이어 의뢰 집터 복원 ${n}건(단계는 1로 재시작 — 진행도 비영속 관용)`);
@@ -4717,6 +4790,8 @@ function init(deps) {
 
     state.lastGameDay = gameDayOf(Date.now()); // 다음 경계부터 틱 (재기동 따라잡기 없음 — 실시간 앵커)
     if (T728_KEEP) { try { _t728Restore(); } catch (e) { console.error(`[${ZONE_ID}] 🏘️ [T728] 재기동 영속 복원 실패(종전대로 계속):`, e.message); } }
+    if (T740_SIDE) { try { _t740Restore(); } catch (e) { console.error(`[${ZONE_ID}] 🏘️ [T740] 마을 칸 복원 실패(종전대로 계속):`, e.message); } }
+    else for (const v of state.villages) if (v.econ && '_t740Side' in v.econ) delete v.econ._t740Side;   // ★[T740] 끔 — 켬으로 적은 행의 곁 칸을 econ 에 남기지 않는다(다음 켬이 묵은 칸을 되돌리지 않게 · main 행엔 이 칸이 없어 무동작)
     // ★★[T533] 존 경계 호스트 — 팔 `T525_CROSS_ZONE`(econ 정본) 켬 + 존이 미는 문을 줬을 때만(끔 = 이 줄 무동작 · 조각 목록·몸 층 무변).
     //   실패해도 존 부팅은 계속한다(경계가 닫힌 채 = 끔과 같다).
     if (econV2.T525_CROSS_ZONE && deps.xzonePost) { try { _xzInit(ZONE_ID); } catch (e) { state.xzone = null; console.error(`[${ZONE_ID}] 🌐 [T533] 경계 호스트 실패(경계 닫힌 채 계속):`, e.message); } }
@@ -9654,6 +9729,13 @@ function _lifeAddHouseSiteInner(vil) {
     }
   }
 }
+// 집터 하나를 그 단계로 세운다(건물 행 · 방송 · 마을 칸) — 하루 마감의 재부팅 복원(단계 1 · 종전 그 글자)과 ★[T740] 부팅 복원(저장된 단계)이 같이 부른다.
+function _siteRise(vil, ps, stage) {
+  if (!state.deps.liveBuildRow) return;
+  const bo = state.deps.liveBuildRow('hut_site', (ps.cx - 2.5) * SZ, (ps.cy - 3.5) * SZ, { stage, x0: ps.cx - 5, y0: ps.cy - 5, x1: ps.cx + 0, y1: ps.cy - 2, owner: 'npc', floor: 0 }, `npc_simvil_${vil.dbId}`, `${vil.name} 새 움집터`, null);
+  state.deps.broadcast({ type: 'building_added', building: bo });
+  vil._site = { cx: ps.cx, cy: ps.cy, stage, bo };
+}
 function _lifeAdvanceSite(vil, which) {   // 크루 1단계 완수 → 단계 전진(클라 hut_site 렌더가 1~3단계 표시) / 4→완공
   const s2 = (which === 'p') ? vil._psite : vil._site; if (!s2) return;
   if (which !== 'p') vil._mSt = (vil._mSt || 0) + 1;   // ★[LIFE_* 튜닝 계측] 오늘 전진한 **마을** 건설 단계 수(의뢰분은 마을 지표 아님)
@@ -11092,11 +11174,7 @@ function* _lifeDailySteps(vil) {   // 게임일 경계: 크루·클레임 재대
   if (T687_ON) { const _pz0 = _t523Pause; yield; const _pz = _t523Pause - _pz0; _lt += _pz; _lt0 += _pz; }   // ★[T687] 쉼표(차례 그대로 · 쉰 시간은 스톱워치에서 뺀다)
   if (vil._pendSite && !vil._site) {   // 재부팅 복원: 진행 중이던 터 재실체화(단계 1부터 — 관용)
     const ps = vil._pendSite; vil._pendSite = null;
-    if (state.deps.liveBuildRow) {
-      const bo = state.deps.liveBuildRow('hut_site', (ps.cx - 2.5) * SZ, (ps.cy - 3.5) * SZ, { stage: 1, x0: ps.cx - 5, y0: ps.cy - 5, x1: ps.cx + 0, y1: ps.cy - 2, owner: 'npc', floor: 0 }, `npc_simvil_${vil.dbId}`, `${vil.name} 새 움집터`, null);
-      state.deps.broadcast({ type: 'building_added', building: bo });
-      vil._site = { cx: ps.cx, cy: ps.cy, stage: 1, bo };
-    }
+    _siteRise(vil, ps, 1);
   }
   const cap = vil._houseCells.length * (_lifeVL().HOUSE_CAP || 6);
   // ★★[T315 ② `_mapBeds` 살리기 — **서버 한 줄**] econ 이 서버가 실제로 지은 집을 보게 된다.
@@ -12581,6 +12659,7 @@ module.exports = { t719ReachPre, t719Stat: () => _t719Stat, streamStat, fishPerf
   _t341TripsPerDay, _t341TreesPerLoad, _t398Cells,   // ★[T341] 하루 왕복 수·짐당 그루 — **걸음이 정한다**(하네스가 유도를 다시 계산해 대조한다) · ★[T398] 나무꾼 후보 셀(고리 · 자·하네스가 이 함수를 부른다)
  
   t728Shutdown, t728On: () => T728_KEEP, t728Stat: () => _t728Stat, t728CalNext,   // ★[T728] 재기동 영속(종료 저장 문 · 손잡이 · 계측)
+  t740On: () => T740_SIDE, t740Stat: () => _t740Stat,   // ★[T740] 메모리 전용 마을 칸 영속(손잡이 · 계측)
   init, onGameTick, deferLate, invalidateTradeDistances, npcLifeTick, lifeDebug, econDay, econDayT,
   chiefOf, chiefGreetAsk, chiefGreetHas, chiefWalking,
   bedSlotOf,   // ★[T540] 관측 — 침대 슬롯·집(`/walkdbg`)   // ★[T529] 촌장이 온다(손잡이 `T529_CHIEF_WALKS` · 읽는 곳 하나)
@@ -12677,6 +12756,11 @@ module.exports = { t719ReachPre, t719Stat: () => _t719Stat, streamStat, fishPerf
     _farmMulProbe: (vil, npc) => _farmMul(vil, npc),
     // ★[T198] 공간 브리지를 심는 **그 함수 자체**를 내준다 — 하네스가 유도식을 다시 적으면 그게 사본이다.
     _fieldBridgeProbe: (vil) => _fieldBridge(vil),
+    // ★[T740] 메모리 전용 마을 칸 영속 하네스용 — 같은 규약(최소 주입구 하나 · 정본 함수를 그대로 부른다 · 하네스가 실을 칸 · 되돌림 규칙을 다시 적으면 그게 사본이다)
+    _t740Probe: {
+      setup: (o) => { const K = ['deps', 'villages', 'byDbId', 'byEcon', 'clientPayload', 'zoneId']; const k = {}; for (const n of K) k[n] = state[n]; if (o) for (const n of K) if (n in o) state[n] = o[n]; return k; },
+      enc: (x) => _t740Enc(x), dec: (x) => _t740Dec(x), pack: (vil) => _t740Pack(vil), restore: () => _t740Restore(), savedPsite: (vil, r) => _t740SavedPsite(vil, r),
+      serialize: (ev) => serializeEcon(ev), get KEYS() { return _T740_KEYS.slice(); }, get T740_SIDE() { return T740_SIDE; } },
     // ★[T374] 관측 갈래 퇴근 판정의 **그 함수 자체**를 내준다(같은 규약 · 최소 주입구 하나 — 손을 세려면 사람 목록이 있어야 한다).
     //   하네스가 "D − 오늘 − 손" 을 다시 적으면 그게 사본이다 — 정본 `_t374Done`·`_t374Held` 를 그대로 부른다.
     // ★[T400] 집 행위 하네스용 — 같은 규약(최소 주입구 하나). 하네스는 걸음·자재 규칙을 다시 적지 않는다 — 정본 함수를 그대로 부른다.
