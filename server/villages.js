@@ -12699,6 +12699,36 @@ function econDayT(now) { if (!state.world || !Number.isFinite(state.world.day) |
 
 // ★★[T728] world 메타 행 — 직렬 · 복원 · 종료 저장(손잡이 `T728_RESTART_KEEP` 켬에서만 불린다 · 위 `T728_KEEP` 주석).
 //   캐러밴은 마을 객체와 상인(econ 주민) 객체를 쥐고 있어 그대로는 직렬이 안 된다 ⇒ 마을은 이름, 상인은 주민 번호로 적고 복원 때 다시 잇는다.
+// ★★[T742 2026-10-14] **재기동이 잃는 존 · 모듈 메모리** — 손잡이 `T742_ZONE_KEEP`(★기본 끔 · `=1` 켬 · 끔 = 종전 글자 그대로).
+//   마을 칸 밖 모듈의 메모리 중 값에 닿거나 생성 · 소멸을 내는 것을 **T728 메타 행에 이름표 칸**(`t742`)으로 싣는다(새 표 0 · 새 수 0).
+//   다른 모듈(존 · 도적)이 제 칸을 `t742Bind(이름, 꺼내기, 넣기)` 로 건다 — 부팅 순서 때문에(존 모듈의 칸은 마을 init 뒤에 선다)
+//   메타 행을 읽은 값은 그 이름이 걸릴 때까지 기다렸다가 넣는다. Map · Set 은 T740 표식 배열(`_t740Enc`) 그대로. 전수 표는 `보고/T742` ①.
+const T742_ZONE = process.env.T742_ZONE_KEEP === '1';
+const _t742Reg = new Map();
+let _t742Pend = null;
+const _t742Stat = { bound: [], restored: [], saves: 0 };
+function t742Bind(name, get, set) {
+  if (!T742_ZONE) return false;
+  _t742Reg.set(name, { get, set });
+  if (!_t742Stat.bound.includes(name)) _t742Stat.bound.push(name);
+  if (_t742Pend && name in _t742Pend) { try { set(_t740Dec(_t742Pend[name])); _t742Stat.restored.push(name); console.log(`[${state.zoneId}] 🏘️ [T742] 모듈 메모리 되돌림 — ${name}`); } catch (e) { console.error(`[${state.zoneId}] [T742] ${name} 되돌림 실패:`, e.message); } delete _t742Pend[name]; }
+  return true;
+}
+//   전쟁 번호 계수기 · 전쟁 셈 — econ world 칸인데 메타 행에 없었다. 다시 뜨면 번호가 1 부터 다시 서서 **묶여 남은 징발자의 번호와 겹쳤다**(T742 ③ W380).
+//   번호는 앞으로만(겹친 번호 0) · 셈은 그대로. 진행 중 전쟁 자체(`_warWars`)는 교전 몸에 묶여 싣지 않는다(회부).
+t742Bind('world.warSeq', () => (state.world ? state.world._warSeq : null), (v) => { if (state.world && Number.isFinite(+v)) state.world._warSeq = Math.max(state.world._warSeq || 1, +v | 0); });
+t742Bind('world.warStats', () => (state.world ? state.world._warStats : null), (v) => { if (state.world && v && typeof v === 'object') state.world._warStats = v; });
+function _t742MetaOut() {
+  const o = Object.assign({}, _t742Pend || {});   // 아직 안 걸린 이름은 읽은 그대로 다시 싣는다(저장이 먼저 와도 잃지 않게)
+  for (const [n, r] of _t742Reg) { try { o[n] = _t740Enc(r.get()); } catch (e) {} }
+  _t742Stat.saves++;
+  return o;
+}
+function _t742MetaIn(x) {
+  if (!x || typeof x !== 'object') return;
+  _t742Pend = Object.assign({}, x);
+  for (const [n, r] of _t742Reg) if (n in _t742Pend) { try { r.set(_t740Dec(_t742Pend[n])); _t742Stat.restored.push(n); console.log(`[${state.zoneId}] 🏘️ [T742] 모듈 메모리 되돌림 — ${n}`); } catch (e) {} delete _t742Pend[n]; }
+}
 function _t728Meta() {
   const W = state.world, E = state.econ;
   const car = [];
@@ -12714,7 +12744,8 @@ function _t728Meta() {
     car.push(o);
   }
   return JSON.stringify({ v: 1, rng: E && E.rngState ? E.rngState() : null, caravanId: W._caravanIdCounter || 0, caravans: car,
-    anchor: { day: W.day | 0, g: state.lastGameDay, epoch: state.epoch, dayMs: state.dayMs, at: Date.now() } });
+    anchor: { day: W.day | 0, g: state.lastGameDay, epoch: state.epoch, dayMs: state.dayMs, at: Date.now() },
+    ...(T742_ZONE ? { t742: _t742MetaOut() } : {}) });   // ★[T742] 존 · 모듈 메모리(끔 = 칸 없음 · 종전 글자)
 }
 const _t728Stat = { metaSaves: 0, restored: null, shutdown: null, dropKeys: [] };
 function _t728SaveMeta() {
@@ -12767,6 +12798,7 @@ function _t728Restore() {
   const row = state.db && state.db.getWorldMeta ? state.db.getWorldMeta(state.zoneId) : null;
   if (!row) { R.why = '메타 행 없음(첫 부팅 · 끔에서 켬으로)'; _t728Stat.restored = R; console.log(`[${state.zoneId}] 🏘️ [T728] 재기동 영속 — 마을 곁 칸 ${R.side} · ${R.why}`); return R; }
   const M = JSON.parse(row.data), W = state.world;
+  if (T742_ZONE && M.t742) _t742MetaIn(M.t742);   // ★[T742] 날과 무관하게 넣는다(그 칸들은 제 날 칸을 들고 있다 · 위 `T742_ZONE` 주석)
   R.day = M.anchor ? M.anchor.day : null;
   // 번호 계수기는 언제나 앞으로만(겹친 번호 0 이 먼저다) · 난수와 캐러밴은 **그 날의 메타일 때만**(다른 날이면 이미 도착한 짐을 되살리게 된다 — 생성 금지)
   if (M.rng && state.econ.setRngState && state.econ.rngState) {
@@ -12868,7 +12900,8 @@ module.exports = { t719ReachPre, t719Stat: () => _t719Stat, t731Stat: () => _t73
   _t341TripsPerDay, _t341TreesPerLoad, _t398Cells,   // ★[T341] 하루 왕복 수·짐당 그루 — **걸음이 정한다**(하네스가 유도를 다시 계산해 대조한다) · ★[T398] 나무꾼 후보 셀(고리 · 자·하네스가 이 함수를 부른다)
  
   t728Shutdown, t728On: () => T728_KEEP, t728Stat: () => _t728Stat, t728CalNext,   // ★[T728] 재기동 영속(종료 저장 문 · 손잡이 · 계측)
-  t740On: () => T740_SIDE, t740Stat: () => _t740Stat,   // ★[T740] 메모리 전용 마을 칸 영속(손잡이 · 계측)
+  t740On: () => T740_SIDE, t740Stat: () => _t740Stat,
+  t742Bind, t742On: () => T742_ZONE, t742Stat: () => _t742Stat,   // ★[T742] 존 · 모듈 메모리 영속(손잡이 · 거는 문 · 계측)   // ★[T740] 메모리 전용 마을 칸 영속(손잡이 · 계측)
   init, onGameTick, deferLate, invalidateTradeDistances, npcLifeTick, lifeDebug, econDay, econDayT,
   chiefOf, chiefGreetAsk, chiefGreetHas, chiefWalking,
   bedSlotOf,   // ★[T540] 관측 — 침대 슬롯·집(`/walkdbg`)   // ★[T529] 촌장이 온다(손잡이 `T529_CHIEF_WALKS` · 읽는 곳 하나)
@@ -12966,6 +12999,8 @@ module.exports = { t719ReachPre, t719Stat: () => _t719Stat, t731Stat: () => _t73
     // ★[T198] 공간 브리지를 심는 **그 함수 자체**를 내준다 — 하네스가 유도식을 다시 적으면 그게 사본이다.
     _fieldBridgeProbe: (vil) => _fieldBridge(vil),
     // ★[T740] 메모리 전용 마을 칸 영속 하네스용 — 같은 규약(최소 주입구 하나 · 정본 함수를 그대로 부른다 · 하네스가 실을 칸 · 되돌림 규칙을 다시 적으면 그게 사본이다)
+    // ★[T742] 존 · 모듈 메모리 하네스용 — 거는 문 · 메타 이름표 칸 왕복을 정본 그대로 부른다
+    _t742Probe: { out: () => _t742MetaOut(), in: (x) => _t742MetaIn(x), names: () => [..._t742Reg.keys()], pend: () => _t742Pend, get T742_ZONE() { return T742_ZONE; } },
     _t740Probe: {
       setup: (o) => { const K = ['deps', 'villages', 'byDbId', 'byEcon', 'clientPayload', 'zoneId']; const k = {}; for (const n of K) k[n] = state[n]; if (o) for (const n of K) if (n in o) state[n] = o[n]; return k; },
       enc: (x) => _t740Enc(x), dec: (x) => _t740Dec(x), pack: (vil) => _t740Pack(vil), restore: () => _t740Restore(), savedPsite: (vil, r) => _t740SavedPsite(vil, r),
