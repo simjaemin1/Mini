@@ -7014,6 +7014,14 @@ const T325_WOOD_ACT = process.env.T325_WOOD_ACT === '1';
 //       주입이 없으면 켜도 게이트가 안 열린다(폴백이 곧 종전 = 비트 동일).
 //   켜기는 재민 — 이 카드는 값을 안 정한다.
 const T347_FORAGE_ACT = process.env.T347_FORAGE_ACT === '1';
+// ★★★[T724 2026-10-13] **채굴 행위 이식 — 기본 끔.** 끄면 이 파일은 **오늘 main 과 비트 동일**이다
+//   (아래 네 자리가 전부 이 상수 뒤에 있다: 곳간 입구 `mineToGranary` · `addProduce('ore')` 게이트 · 수요 칸 `_oreOutLast` · 장부 다리).
+//   ⚠나무꾼(T325)과 **같은 문법**이다 — 새 규약 0. 다른 것 둘:
+//     ⓐ 게이트가 "셀이 있나" 가 아니라 **그날 몸이 쳤나**(`_t724Walk` — 생활층이 econ 틱 바로 앞 `_lifeHandsIn` 에서 심는다).
+//        몸이 안 친 마을(헤드리스 · 관측자 없는 마을)은 **종전 일괄 그대로**다(수식 원석 + `_oreMineDaily` 셀 깎기 — 카드 ③).
+//     ⓑ 몸이 캔 kg 를 econ 단위로 바꾸는 것은 부르는 쪽(`server/villages.js`)이다 — `weights.kgOf('ore')` 정본(5.00 · 옮겨 적지 않는다).
+//   켜기는 재민 — 이 카드는 값을 안 정한다.
+const T724_MINE_ACT = process.env.T724_MINE_ACT === '1';
 // ★★★[T400 2026-09-26] **집도 행위다 — 기본 끔.** 끄면 이 파일은 **넷째 판과 비트 동일**이다
 //   (아래 두 자리가 전부 이 상수 뒤에 있다: 주거 증축의 자재 단가 · 곳간 출구 `actFromGranary`).
 //   ① 자재의 정본은 **하나**다 — `server/hut-stages.js`(서버 움집 공정 · PM 권고 #61 · 재민 거부권).
@@ -7396,6 +7404,20 @@ function forageToGranary(v, item, units) {
 // ★[T347] 이 마을이 **행위 채집**으로 도는가 — 손잡이 ∧ 군락 셀이 있다(생활층이 `resourceAt` 로 세어 심는다).
 //   ⚠둘 다여야 한다. 군락 0 마을은 켜도 종전 수식 그대로다 — 몸이 갈 자리가 없다(나무꾼과 같은 계약).
 function forageActOn(v) { return !!(T347_FORAGE_ACT && v && (v._t347Cells | 0) > 0); }
+// ★★[T724] **광부의 곳간 입구.** 캐논: *"치는 순간 손에, 귀환하면 곳간에."* — 어부·나무꾼과 **같은 몸통 · 같은 세금 · 같은 장부 다리**(`actToGranary`).
+//   ⚠수요 문도 같은 몸통이다(`actDemandCap` · D = 그 마을이 오늘 수식으로 낼 원석 `_oreOutLast`) — 곳간이 안 받은 몫은 부르는 쪽 손에 남는다(T544 꼴).
+//   ⚠조성(`oreMix`)은 **넣는 몫만큼** 접는다 — 종전 수식 갈래가 `addProduce` 앞에서 하던 그 접기(같은 함수 · 같은 자리 순서: 재고 가산 전).
+//   ★새 수 0.
+function mineToGranary(v, units) {
+  if (!T724_MINE_ACT || !v || !v.storage) return 0;
+  const u = actDemandCap(v, units, (v._oreOutLast || 0), '_t724InflowToday');
+  if (!(u > 0)) return 0;
+  if (v.land && v.land.oreMix) foldOreMix(v, v.storage.ore || 0, u, v.land.oreMix);
+  return actToGranary(v, 'ore', u, '_t724InflowToday', '_t724InN');
+}
+function mineDemandLeft(v, held) { return actDemandLeft(v, (v && v._oreOutLast) || 0, '_t724InflowToday', held); }
+// ★[T724] 이 마을의 원석이 **오늘 몸에서** 오는가 — 손잡이 ∧ 그날 광부 몸이 한 번이라도 쳤다(생활층이 심는다 · 헤드리스는 0 = 종전).
+function mineActOn(v) { return !!(T724_MINE_ACT && v && (v._t724Walk | 0) > 0); }
 // ★★[T347] **걷는 목록** — 이 파일이 안 짓는다. 군락 실체가 대는 품목을 생활층이 세어 주입하고
 //   (`world.forageActItems` · `lootOfResource` → `PV_DEPOSIT_MAP` 를 지나 econ 재화로 · 사본 0),
 //   여기서는 그 목록과 채집 믹스의 **교집합**만 걷는다. 목록이 없으면 아무것도 안 걷는다(비트 동일).
@@ -9265,8 +9287,13 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
         // ★[2026-08-02b] 캔 원석도 **조성을 싣는다** — 수입 원석과 섞이면 가중 평균이 된다.
         //   폴드는 재고 가산 **전**(기존 재고량이 가중치). 실제 반영량은 세금·감산을 거치므로
         //   addProduce 와 같은 배수를 쓸 수 없다 — 근사로 oAmt 를 쓴다(비율만 쓰는 값이라 무해).
-        if (v.land && v.land.oreMix) foldOreMix(v, v.storage.ore || 0, oAmt, v.land.oreMix);
-        addProduce('ore', oAmt);
+        // ★★[T724] 켬이면 수식이 오늘 낼 원석을 **수요 칸으로만** 남긴다(`_oreOutLast` — 몸의 수요 문 D · 나무 `_woodOutLast` 와 같은 꼴).
+        //   몸이 친 날(`mineActOn`)은 원석이 이 줄로 안 들어온다 — 손 → 곳간(`mineToGranary`) 하나다(이중 0). 부산물(소금·점토·특수석)은 그대로.
+        if (T724_MINE_ACT) v._t724OutAcc = (v._t724OutAcc || 0) + oAmt;
+        if (!mineActOn(v)) {
+          if (v.land && v.land.oreMix) foldOreMix(v, v.storage.ore || 0, oAmt, v.land.oreMix);
+          addProduce('ore', oAmt);
+        }
         // ★청동 희소성 복원: tin을 부산물에서 *제거*. 종전 { copper:0.22, tin:0.11, ... } → tin은 전 마을 자동산출 = 청동 보편재의 근본 원인.
         //   이제 tin은 산지(land.tin>0)만 아래 별도 채굴. copper/iron/장식재는 종전대로 모든 광맥 부산물(청동기: 구리는 흔하되 주석이 병목).
         // ★★[재민 확정] 고정 dict 폐기. 지도의 **광종 구성**이 그대로 산출이 된다.
@@ -9422,6 +9449,17 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
     v._t325InflowToday = 0;
     dailyProductionPotential.wood = (dailyProductionPotential.wood || 0) + _t325In;
     dailyProduction.wood = (dailyProduction.wood || 0) + _t325In;
+  }
+  // ★★[T724] 손으로 들여온 원석도 **같은 자리에서** 장부에 적는다(T312 · T325 와 같은 꼴 · 이중 0 — 몸이 친 날 `ore` 는 `addProduce` 를 안 탄다).
+  //   그리고 수식이 오늘 낼 원석(광부 갈래가 모은 `_t724OutAcc`)을 내일의 수요 칸 `_oreOutLast` 로 넘긴다.
+  if (T724_MINE_ACT) {
+    const _t724In = v._t724InflowToday || 0;
+    if (_t724In > 0) {
+      v._t724InflowToday = 0;
+      dailyProductionPotential.ore = (dailyProductionPotential.ore || 0) + _t724In;
+      dailyProduction.ore = (dailyProduction.ore || 0) + _t724In;
+    }
+    v._oreOutLast = v._t724OutAcc || 0; v._t724OutAcc = 0;
   }
   // ★★[T374 2026-09-23 · ★T347 의 빚을 갚는다] **채집 입고도 같은 자리에서 장부에 적는다.**
   //   T347 은 `_t347InflowToday` 를 남기기만 하고 **이 다리를 안 놓았다** — 그래서 두 가지가 동시에 틀렸다:
@@ -11662,6 +11700,7 @@ module.exports = {
   T435_GRANARY_ACT, granaryEconMaterials,   // ★[T435] 곳간 증설 재료 — 생활층·하네스가 표를 옮겨 적지 않게
   T400_BUILD_ACT, T527_BRIDGE_ACT, T537_SHORTCUT, buildActOn, houseDayBuild, houseWoodShare, woodSpare, T497_HUT_COST, hutPillarsArm, T517_HUT_STONE, hutStoneUnits, actFromGranary, hutEconMaterials, hutEconStage, hutStageCount, hutCapPerHut, houseCostPerCap,   // ★[T400] 집 행위 — 하네스·생활층이 표·유도를 옮겨 적지 않게 내준다
   actToGranary, woodToGranary, woodActOn, woodRegrowR, woodRegrowPerDay, T325_WOOD_ACT,
+  mineToGranary, mineDemandLeft, mineActOn, T724_MINE_ACT,
   forageToGranary, forageActOn, forageActItemsOf, foragerYieldsFor, T347_FORAGE_ACT,   // ★[T347] 채집 행위 — 문 셋 + 믹스 정본 + 손잡이(하네스가 표를 옮겨 적지 않는다)
   actDemandLeft, actDemandCap, fishDemandLeft, woodDemandLeft, forageDemandLeft, T374_DEMAND_STOP,
   T368_FARM_ACT, t368EvenRelease, totalFoodProductionEquivalent,   // ★[T368] 농부 행위 — 손잡이 + 품목별 고르게 푸는 자리 + 생산 환산(하네스가 옮겨 적지 않는다 · 입구는 `harvestToGranary` 그대로)   // ★[T374] 그날 수요 — 몸통 하나 + 품목별 `D` 자리 셋 + 손잡이
