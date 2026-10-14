@@ -5,9 +5,11 @@
 //     (판 JSON 옆 `.t733.json`)
 //   ★잰다 — 마을마다 · econ 하루마다 한 번(하루 마감 장부 `scanDay` 앞 · 같은 날 두 번 안 적는다):
 //     · n · 곳간 잔가지 · 도토리(`storage` — 다른 흐름도 섞인 재고) · 땔감 충당률(`_fuelCov`) · 추위 · 건강
+//     · 곳간 통나무 · 나무꾼 수 · 수식 하루 통나무 몫(`_woodOutLast`) · 영토 확장 셀 누계(`expansions`) · 국고 [식량 · 통나무 · 돌]
 //     · 그날 **헤드리스가 벤 그루의 전리품**(존 문 `t325CutTreeAt` 이 돌려준 것 — 바로 뒤 통나무 입구 `woodToGranary` 의 마을로 잇는다) [단 · 잔가지 · 도토리 · 그루]
 //     · (켠 팔) 곳간에 든 두 칸 누계(`vil._t733Gr`) · 마을 짐(`econ._t733Pack`) · 몸 손의 두 칸 합
 //     · 걸은 몸 — 채집(`_t347Dbg.walked` · 켠 팔은 [옛 셈 · 새 셈] `_t347Dbg.t733`) · 나무(`_t325Dbg.walked`)
+//     · 채집 — 몸 손의 열매 · 약초 합(`berry` · `herb` — 잔가지는 위 칸) · 곳간에 든 채집 누계(`_t347Gran`) · 그날 헤드리스 딴 개체(`_t347Dbg.pick`)
 //     · 세계 하루 — 벤 전리품 합(헤드리스 · 몸 갈래 따로 — 호출 스택에 `_lifeDailySteps` 가 있나)
 //   ★관찰만 한다 — 감싼 함수에 같은 인수를 그대로 넘기고 그 값을 그대로 돌려준다. 파일은 `exit` 에서 쓴다.
 'use strict';
@@ -57,7 +59,7 @@ if (SRV_OUT) {
       if (!names) {
         names = V.map((v) => v.name);
         land = V.map((v) => { const L = v.land || {}; return { wood: L.wood, fertility: L.fertility, size: L.size }; });
-        for (let i = 0; i < V.length; i++) S.push({ n: [], tw: [], ac: [], fc: [], cold: [], hl: [], cut: [], gr: [], pk: [], hd: [], fw: [], f7: [], ww: [], ct: [] });
+        for (let i = 0; i < V.length; i++) S.push({ n: [], tw: [], ac: [], fc: [], cold: [], hl: [], cut: [], gr: [], pk: [], hd: [], fw: [], f7: [], ww: [], ct: [], fh: [], fg: [], fp: [], wd: [], lj: [], wo: [], ex: [], tr: [] });
       }
       days.push(d);
       const k7 = S7(); const SV = (k7 && k7.villages) || [], pl = k7 && k7.deps && k7.deps.players;
@@ -66,13 +68,15 @@ if (SRV_OUT) {
         const v = V[i], st = v.storage || {}, R = S[i];
         R.n.push((v.npcs || []).length); R.tw.push(r4(st.twig || 0)); R.ac.push(r4(st.acorn || 0));
         R.fc.push(r4(v._fuelCov)); R.cold.push(r4(v._coldStress || 0)); R.hl.push(r4(v.lastStats && v.lastStats.health));
+        R.wd.push(r4(st.wood || 0)); R.lj.push((v.counts && v.counts.lumberjack) || 0); R.wo.push(r4(v._woodOutLast || 0)); R.ex.push(v.expansions || 0);
+        { const T = v.treasury || {}; R.tr.push([r4(T.food || 0), r4(T.wood || 0), r4(T.stone || 0)]); }
         const c = cutBy.get(v.name); R.cut.push(c ? c.map(r4) : 0);
         const s = sv.get(v.name);
         const G = s && s._t733Gr; R.gr.push(G ? [r4(G.twig || 0), r4(G.acorn || 0)] : 0);
         const P = v._t733Pack; R.pk.push(P ? [r4(P.twig || 0), r4(P.acorn || 0)] : 0);
-        let ht = 0, ha = 0; if (s && pl && s.npcPids) for (const pid of s.npcPids) { const p = pl.get(pid); if (p && p.inventory) { ht += p.inventory.twig || 0; ha += p.inventory.acorn || 0; } }
-        R.hd.push(ht || ha ? [r4(ht), r4(ha)] : 0);
-        const F = s && s._t347Dbg; R.fw.push(F ? (F.walked | 0) : null); R.f7.push(F && F.t733 ? F.t733.slice() : 0);
+        let ht = 0, ha = 0, hf = 0; if (s && pl && s.npcPids) for (const pid of s.npcPids) { const p = pl.get(pid); if (p && p.inventory) { ht += p.inventory.twig || 0; ha += p.inventory.acorn || 0; hf += (p.inventory.berry || 0) + (p.inventory.herb || 0); } }
+        R.hd.push(ht || ha ? [r4(ht), r4(ha)] : 0); R.fh.push(r4(hf));
+        const F = s && s._t347Dbg; R.fw.push(F ? (F.walked | 0) : null); R.f7.push(F && F.t733 ? F.t733.slice() : 0); R.fp.push(F ? (F.pick | 0) : null); R.fg.push(r4((s && s._t347Gran) || 0));
         const D = s && s._t325Dbg; R.ww.push(D ? (D.walked | 0) : null); R.ct.push(D ? (D.cut | 0) : null);
       }
       W.push(wd.map(r4));
