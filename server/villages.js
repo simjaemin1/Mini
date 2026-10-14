@@ -898,7 +898,7 @@ const _t740Stat = { restored: null };
 //   반쯤 한 일: 대상이 그대로면 잇는다 — 개간 셀이 아직 개간 앞(밭이 아니고 영토 · 잠재 농지)이면 · 집터가 그대로 있으면. 사라졌으면 깨끗이 푼다(손은 남는다).
 //   마을 클레임 그림자(`_claim` · `_clearCrew` · `_buildCrew` · `_psiteCrew` · `_cropClaim` · 광부 손 합 `_t724HeldKg`)는 되돌린 몸에서 다시 센다(하루 마감의 재대사 줄과 같은 식).
 //   몸 열쇠 = 마을 `npcPids` 자리(T728 `_t728HuntWk` 문법). 저장된 몸이 지금 몸보다 많으면 남은 손은 그 마을 첫 몸의 손에 더한다(소멸 0).
-const T747_BODY = process.env.T747_BODY_KEEP === '1';
+const T747_BODY = process.env.T747_BODY_KEEP !== '0';   // ★[PM 10-14] 켬 기본(소멸 금지 · 다시 뜰 때만 — 손 · 진행 작업 · 자리) · 되돌림 `=0`
 const _T747_KEYS = ['simJob', 'x', 'y', 'hp', '_rest', 'inventory', '_t312U', '_t312Kg', '_t368H', '_t368N', '_t717L', '_t733F',
   '_lifeTask', '_farmK', '_fOutD', '_workSite', '_jobN', '_fishSpotX', '_fishSpotY', '_t340N', '_t724Site', '_huntBud', '_huntKil',
   '_sh', '_hd', '_half'];   // 신원 해시 캐시(존 `_shOf` 가 `playerId` — 스폰마다 무작위 꼬리 — 로 먼저 세우면 다시 뜬 몸의 주사위 씨가 바뀐다) · 그날 반일 굴림(같은 날 다시 굴리지 않게)
@@ -12793,7 +12793,7 @@ function econDayT(now) { if (!state.world || !Number.isFinite(state.world.day) |
 //   마을 칸 밖 모듈의 메모리 중 값에 닿거나 생성 · 소멸을 내는 것을 **T728 메타 행에 이름표 칸**(`t742`)으로 싣는다(새 표 0 · 새 수 0).
 //   다른 모듈(존 · 도적)이 제 칸을 `t742Bind(이름, 꺼내기, 넣기)` 로 건다 — 부팅 순서 때문에(존 모듈의 칸은 마을 init 뒤에 선다)
 //   메타 행을 읽은 값은 그 이름이 걸릴 때까지 기다렸다가 넣는다. Map · Set 은 T740 표식 배열(`_t740Enc`) 그대로. 전수 표는 `보고/T742` ①.
-const T742_ZONE = process.env.T742_ZONE_KEEP === '1';
+const T742_ZONE = process.env.T742_ZONE_KEEP !== '0';   // ★[PM 10-14] 켬 기본(소멸 · 생성 금지 · 다시 뜰 때만 — 열매 재고 · 도적 주사위 차례 · 전쟁 번호) · 되돌림 `=0`
 const _t742Reg = new Map();
 let _t742Pend = null;
 const _t742Stat = { bound: [], restored: [], saves: 0 };

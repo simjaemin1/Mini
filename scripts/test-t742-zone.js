@@ -13,9 +13,9 @@ let pass = 0, fail = 0;
 const ok = (c, m, x) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (x !== undefined && x !== '' ? `  ${x}` : '')); };
 console.log('\n=== T742 존 · 모듈 메모리 영속 ===');
 {
-  const env = Object.assign({}, process.env); delete env.T742_ZONE_KEEP;
+  const env = Object.assign({}, process.env, { T742_ZONE_KEEP: '0' });   // ★[PM 10-14] 기본 켬 — 끔 = '0'
   const v = execFileSync(process.execPath, ['-e', "const V=require('./server/villages.js');require('./server/bandits.js');process.stdout.write(JSON.stringify([V.__labProbe._t742Probe.T742_ZONE, V.__labProbe._t742Probe.names().length, V.t742Bind('x',()=>1,()=>{})]))"], { cwd: ROOT, env }).toString();
-  ok(v === '[false,0,false]', '① 기본 끔 — 거는 문 무동작 · 이름 0(env 없는 자식)', v);
+  ok(v === '[false,0,false]', '① 끔(`=0`) — 거는 문 무동작 · 이름 0', v);
 }
 process.env.T742_ZONE_KEEP = '1';
 const V = require(path.join(ROOT, 'server', 'villages.js'));
