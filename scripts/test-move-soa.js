@@ -1401,7 +1401,7 @@ console.log('\n⑮ T427 ① — 닿는 현장만(배정 순간 집 → 후보 ·
   };
   //   ★[T514 추신 · T523] `huntHunters` 는 이제 정본 몸통 `_huntHuntersSteps`(생성기)를 끝까지 도는 한 줄이다 — **둘 다** 제품 글자 그대로 뜬다(사본 0)
   //   ★[T562] 도달 기억이 **집마다 닿는 칸 집합**(존이 주입하면)으로 갈렸다 — 그 몸통 셋(켬 술어 · 집합 기억 · 조각 예산)도 제품 글자 그대로 뜬다.
-  const t562Src = bodyV('_t562On') + '\n' + bodyV('_t427Set') + '\n' + bodyV('_t562SliceStop') + '\nconst _T562_VERIFY = false; const _t562Stat = { sets: 0, reuse: 0, q: 0, pend: 0, vq: 0, vdiff: 0, vdiffs: [] }; const TICK_SLICE_MS = 16; const TB = { slice: (o) => o };';   // ★[PM 10-11 · T687] _t562SliceStop 가 공용 예산(`TB.slice`)을 묻는다 — 하네스는 틱 밖이라 `tick-budget` 도 제 예산 그대로 돌려준다(같은 꼴의 대역)
+  const t562Src = bodyV('_t562On') + '\n' + bodyV('_t427Set') + '\n' + bodyV('_t562SliceStop') + '\nconst _T562_VERIFY = false; const _t562Stat = { sets: 0, reuse: 0, q: 0, pend: 0, vq: 0, vdiff: 0, vdiffs: [] }; const TICK_SLICE_MS = 16; const TB = { slice: (o) => o }; const T719_REACH_PRE = process.env.T719_REACH_PRE === \'1\'; const _t719Stat = { checked: 0, cont: 0, pre: 0, adopt: 0, preDone: 0, idle: 0, nChecked: 0, nBegin: 0, nDone: 0, nRestart: 0, nAdopt: 0 };';   // ★[T719] 미리 닿는 칸 집합 손잡이(기본 끔) — `_t427Set` 몸이 묻는 두 이름   // ★[PM 10-11 · T687] _t562SliceStop 가 공용 예산(`TB.slice`)을 묻는다 — 하네스는 틱 밖이라 `tick-budget` 도 제 예산 그대로 돌려준다(같은 꼴의 대역)
   const onSrc = bodyV('_t427On'), homeSrc = bodyV('_t427HomeOf'), reachSrc = bodyV('_t427Reach'), siteSrc = bodyV('_t427Site'),
     huntSrc = bodyV('huntHunters') + (bodyV('_huntHuntersSteps') ? '\n' + bodyV('_huntHuntersSteps') : '') + (bodyV('_t715XY') ? '\n' + bodyV('_t715XY') : '');   // ★[T715] 열쇠 풀이 기억도 제품 글자
   ok(onSrc.length > 40 && homeSrc.length > 60 && reachSrc.length > 200 && siteSrc.length > 100 && huntSrc.length > 1500,
@@ -1575,6 +1575,58 @@ console.log('\n⑮ T427 ① — 닿는 현장만(배정 순간 집 → 후보 ·
     const r1 = a2(vil3, Object.assign({ pid: 'm' }, home), sites, 1, 9), r2 = a2(vil3, Object.assign({ pid: 'm' }, home), sites, 1, 9), r3 = a2(vil3, Object.assign({ pid: 'm' }, home), sites, 1, 9);
     const want = assign(mk(true, reachTrue))({ ccx: 100, ccy: 100 }, Object.assign({ pid: 'm' }, home), sites, 1, 9);
     ok(r1 === null && r2 === null && r3 && r3.x === want.x && r3.y === want.y, '⑮-j ★[T562 ④] 결정 예산이 넘으면 `null`(= 아직 · 제자리) — 넓히기를 이어서 끝낸 틱에 **같은 배정**', `${r1} · ${r2} · (${r3 && r3.x},${r3 && r3.y})`);
+    // ★[T719 ③] 미리 넓히기(손잡이 `T719_REACH_PRE` · 기본 끔) — 도장이 바뀐 집을 틱 꼬리에서 미리 넓혀 두면 `_t427Set` 이 **그것을 물려받는다**(같은 시작 점 · 같은 도장)
+    //   · 미리 넓힌 뒤 도장이 또 바뀌면 안 받는다(종전처럼 새로 넓힌다) · 끄면 꼬리 문은 0 을 돌려주고 아무것도 안 만진다. 제품 글자 그대로(`t719ReachPre` · `_t427Set`).
+    {
+      const preSrc = bodyV('t719ReachPre') + '\n' + bodyV('_t719NewHomes') + '\n' + homeSrc + "\nconst _T719_JOBS = new Set(['lumberjack', 'miner', 'forager', 'fisher', 'hunter']); let _t719NpcIt = null, _t719Cur = null;";
+      const mk7 = (on) => { const vilX = { ccx: 100, ccy: 100 }, st = { deps: X, villages: [vilX] };
+        const src7 = t562Src.replace("const T719_REACH_PRE = process.env.T719_REACH_PRE === '1';", 'const T719_REACH_PRE = ' + on + ';') + '\nlet _t719Vi = 0, _t719It = null, _t719G = NaN, _t719S0 = -1, _t719Idle = false, _t719Pass = 0, _t719Work = 0;\n' + preSrc + '\nreturn { _t427Set, t719ReachPre, _t719Stat };';
+        return Object.assign(new Function('state', 'SZ', src7)(st, SZ), { vilX }); };
+      const o7 = { x: home.npcHomeX, y: home.npcHomeY };
+      const M7 = mk7(true), v7 = M7.vilX;
+      gen = 50; begins = 0;
+      const s1 = M7._t427Set(v7, o7, null);
+      gen = 51; M7.t719ReachPre(50); M7.t719ReachPre(50);
+      const b1 = begins, s2 = M7._t427Set(v7, o7, null), b2 = begins - b1, ad1 = M7._t719Stat.adopt;
+      gen = 52; M7.t719ReachPre(50); gen = 53;
+      const b3 = begins, s3 = M7._t427Set(v7, o7, null);
+      ok(preSrc.length > 400 && s1 && s1.done && b1 === 2 && s2 && s2.done && s2 !== s1 && b2 === 0 && ad1 === 1 && s3 && s3.done && begins - b3 === 1 && M7._t719Stat.adopt === 1 && s3.ax === o7.x && s3.ay === o7.y,
+         '⑮-k ★[T719 ③] 미리 넓히기 — 도장 바뀐 집을 꼬리에서 넓혀 두면 `_t427Set` 이 **물려받는다**(새 넓히기 0) · 그 뒤 도장이 또 바뀌면 안 받고 새로 넓힌다',
+         `처음 ${b1 - 1} · 꼬리 ${b1 - 1} · 물려받은 뒤 새로 ${b2} · 물려받음 ${M7._t719Stat.adopt} · 도장 또 바뀐 뒤 새로 ${begins - b3}`);
+      const M8 = mk7(false); gen = 60; begins = 0; M8._t427Set(M8.vilX, o7, null); gen = 61;
+      const r8 = M8.t719ReachPre(50), b8 = begins;
+      ok(r8 === 0 && b8 === 1 && M8._t719Stat.checked === 0 && !M8.vilX._t427R.values().next().value.pre,
+         '⑮-k ★[T719 ③] 끄면(기본) 꼬리 문은 0 — 미리 넓히기 0 · 집 기억에 손 안 댄다(종전 글자 그대로)', `돌려줌 ${r8} · 넓히기 ${b8}`);
+      {   // 쉼 — 세상 세대(`collGenAll`)가 그대로고 한 바퀴 할 일이 없었으면 도장을 안 묻는다 · 세대가 오르면 다시 돈다
+        const vilI = { ccx: 100, ccy: 100 }; let asksG = 0; const XI = Object.assign({}, X, { collGenAround: (...a) => { asksG++; return X.collGenAround(...a); }, collGenAll: () => gen });
+        const src9 = t562Src.replace("const T719_REACH_PRE = process.env.T719_REACH_PRE === '1';", 'const T719_REACH_PRE = true;') + '\nlet _t719Vi = 0, _t719It = null, _t719G = NaN, _t719S0 = -1, _t719Idle = false, _t719Pass = 0, _t719Work = 0;\n' + preSrc + '\nreturn { _t427Set, t719ReachPre, _t719Stat };';
+        const M9 = new Function('state', 'SZ', src9)({ deps: XI, villages: [vilI, { ccx: 0, ccy: 0 }] }, SZ);
+        gen = 70; M9._t427Set(vilI, o7, null); gen = 71;
+        for (let k = 0; k < 6; k++) M9.t719ReachPre(50);
+        const a0 = asksG, idle0 = M9._t719Stat.idle; for (let k = 0; k < 20; k++) M9.t719ReachPre(50);
+        const quiet = asksG - a0, idle1 = M9._t719Stat.idle - idle0; gen = 72; const r9 = M9.t719ReachPre(50);
+        const pd = M9._t719Stat.preDone;
+        ok(pd === 2 && quiet === 0 && idle1 === 20 && r9 > 0 && M9._t719Stat.pre === 2,
+           '⑮-k ★[T719 ③] 쉼 — 할 일 없는 한 바퀴 뒤 세상 세대가 그대로면 도장 0번(틱마다 0) · 세대가 오르면 다시 돌아 미리 넓힌다',
+           `쉰 틱 ${idle1}/20 · 그동안 도장 ${quiet} · 세대 뒤 ${r9}`);
+      }
+      {   // ⓒ 처음 묻는 집 — 일터 고르는 직업 주민의 집을 꼬리에서 미리 넓혀 두면 첫 물음이 그것을 쓴다 · 같은 칸 다른 좌표의 주민이 먼저 물으면 안 쓴다
+        const vilN = { ccx: 100, ccy: 100 }, fish = Object.assign({ pid: 'f1', simVillageId: 7, simJob: 'fisher' }, home), farm = { pid: 'g1', simVillageId: 7, simJob: 'farmer', npcHomeX: 90 * SZ + 16, npcHomeY: 90 * SZ + 16 };
+        const vilQ = { ccx: 100, ccy: 100 }, fishQ = Object.assign({ pid: 'f2', simVillageId: 8, simJob: 'hunter' }, home);
+        const XN = Object.assign({}, X, { npcs: new Set(['f1', 'g1', 'f2']), players: new Map([['f1', fish], ['g1', farm], ['f2', fishQ]]) });   // 존 꼴 — `npcs` 는 pid 모음 · 몸은 `players`
+        const srcN = t562Src.replace("const T719_REACH_PRE = process.env.T719_REACH_PRE === '1';", 'const T719_REACH_PRE = true;') + '\nlet _t719Vi = 0, _t719It = null, _t719G = NaN, _t719S0 = -1, _t719Idle = false, _t719Pass = 0, _t719Work = 0;\n' + preSrc + '\nreturn { _t427Set, t719ReachPre, _t719Stat };';
+        const MN = new Function('state', 'SZ', srcN)({ deps: XN, villages: [vilN, vilQ], byDbId: new Map([[7, vilN], [8, vilQ]]) }, SZ);
+        gen = 80; begins = 0; MN.t719ReachPre(50);
+        const bPre = begins, sN = MN._t427Set(vilN, { x: fish.npcHomeX, y: fish.npcHomeY }, null), bAfter = begins - bPre;
+        const sQ = MN._t427Set(vilQ, { x: fishQ.npcHomeX + 3, y: fishQ.npcHomeY }, null);   // 같은 칸 · 다른 좌표 — 곁 것을 안 쓴다
+        ok(bPre === 2 && sN && sN.done && bAfter === 0 && MN._t719Stat.nAdopt === 1 && sQ && sQ.done && sQ.ax === fishQ.npcHomeX + 3 && begins - bPre === 1 && !vilN._t719N.size && !vilQ._t719N.size,
+           '⑮-k ★[T719 ③ⓒ] 처음 묻는 집 — 일터 고르는 직업(어부 · 사냥꾼 …) 집만 꼬리에서 미리(농부 0) · 첫 물음이 **물려받는다** · 같은 칸 다른 좌표가 먼저 물으면 안 받고 새로',
+           `미리 ${bPre} · 물려받은 뒤 새로 ${bAfter} · 물려받음 ${MN._t719Stat.nAdopt} · 다른 좌표 새로 ${begins - bPre - bAfter}`);
+      }
+      ok(/const T719_REACH_PRE = process\.env\.T719_REACH_PRE === '1';/.test(V) && /const T719_REACH_PRE_Z = process\.env\.T719_REACH_PRE === '1';/.test(Z)
+         && /if \(T719_REACH_PRE_Z\) \{[^\n]*SimVillages\.t719ReachPre\(/.test(Z),
+         '⑮-k 손잡이 `T719_REACH_PRE` — **기본 끔**(`=1` 만 켬) · 존은 틱 꼬리(쓰러짐 뒤 · 10 ms 안이면 남은 몫 ≤2 ms)에서만 부른다');
+    }
   }
   // ⓘ 미끼 — 술어가 늘 "닿는다"(= 안 본다)면 못 닿는 현장이 다시 배정된다
   {

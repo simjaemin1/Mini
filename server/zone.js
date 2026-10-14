@@ -1146,7 +1146,8 @@ const T385_ONE_SWEEP = process.env.T385_ONE_SWEEP !== '0';
 //   벽 술어 셋(`isBlockedByWall` · `isBlockedByStairSide` · `_edgeScan` 과 바닥·울타리)은 셀을 넘을 때마다 `{cx, cy}` 객체 넷과 질의 배열 둘을 지었다.
 //   켜면: 같은 차례의 `Map.forEach`(살아 있는 순회 — 지우기·넣기 의미가 `for…of` 와 같다) · 벽 술어는 빌려 쓰는 객체 · 빌려 쓰는 질의 배열(`queryCircleScratch` — 같은 순회 · 같은 차례).
 //   ⚠값은 한 비트도 안 바뀐다(같은 차례 · 같은 수) — 3시드 두 자 · `t461-verify` · `test-move-soa` 가 문. 끔 = main 바이트(이 손잡이 줄이 안 닿는다).
-const T689_GC = process.env.T689_GC === '1';   // (머리에 둔다 — 벽·바닥 술어가 모듈 평가 중 불려도 TDZ 0)
+const T689_GC = process.env.T689_GC === '1';
+const T719_REACH_PRE_Z = process.env.T719_REACH_PRE === '1';   // ★[T719] 닿는 칸 집합 미리 넓히기(틱 꼬리) — villages.js `t719ReachPre`   // (머리에 둔다 — 벽·바닥 술어가 모듈 평가 중 불려도 TDZ 0)
 const _t689SOC = { cx: 0, cy: 0 }, _t689SNC = { cx: 0, cy: 0 };   // ★[T689] 켬: 계단 측면 술어가 빌려 쓰는 칸 둘(재진입 0 — 이 함수는 안에서 자기를 안 부른다)
 const _t689WOC = { cx: 0, cy: 0 }, _t689WNC = { cx: 0, cy: 0 };   // ★[T689] 켬: 벽 술어가 빌려 쓰는 칸 둘
 // 활성 여부가 판정에 쓰이는 몸인가 — 종전 문지기 세 줄(`spatial`·`fall`·`hpRegen`)의 앞 두 항 그대로(술어는 안 부른다)
@@ -3720,8 +3721,10 @@ const _collGen = new Map();   // 청크 키 → 콜라이더 세대(COLL_TYPES �
 function _collBump(b) {
   if (!b || !COLL_TYPES.has(b.type)) return;
   const cs = chunkManager.chunkSize, k = chunkManager.keyOf(Math.floor(b.x / cs), Math.floor(b.y / cs));
-  _collGen.set(k, (_collGen.get(k) | 0) + 1);
+  _collGen.set(k, (_collGen.get(k) | 0) + 1); _collGenAll++;
 }
+let _collGenAll = 0;   // ★[T719] 세상 전체 콜라이더 세대(청크 세대의 합 — 미리 넓히기가 "바뀐 게 없음"을 한 번에 본다)
+function collGenAll() { return _bridgeGen * 1000003 + _collGenAll; }
 { const _ib = chunkManager.insertBuilding.bind(chunkManager), _rb = chunkManager.removeBuilding.bind(chunkManager);
   chunkManager.insertBuilding = (b) => { _ib(b); _collBump(b); };
   chunkManager.removeBuilding = (b) => { _rb(b); _collBump(b); }; }
@@ -4616,7 +4619,7 @@ SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, is
   isRockTileLocal,
   isSeaTileLocal,   // ★[T593 ④] 바다 술어 — NPC 어부가 선 물가가 바다 칸 곁인지(`villages._t593SeaBank` · 손잡이 `T593_SEA` 끔이면 안 읽는다)
   standCellNear: _standCellNear,   // ★[T541 ⓑ] 설 수 있는 가장 가까운 칸 — 나선은 한 자리(T83) · 전쟁 대형 슬롯이 막혔을 때 부른다(술어는 호출측)
-  npcReachBegin, npcReachStep, npcReachHas, collGenAround, decBudgetOver,   // ★★[T562] 집마다 닿는 칸 집합(같은 술어·같은 반경) · 그 기억의 도장 · 사람 안의 결정 예산
+  npcReachBegin, npcReachStep, npcReachHas, collGenAround, collGenAll, decBudgetOver,   // ★★[T562] 집마다 닿는 칸 집합(같은 술어·같은 반경) · 그 기억의 도장 · 사람 안의 결정 예산
   npcCanReach,   // ★★[T427 ①] 현장 배정이 부르는 도달 술어(`computeNpcPath` 의 그 술어·그 반경 · 손잡이는 생활층 `T427_SITE_REACH`)
   tickHz: TICK_HZ,   // ★[T284] 실체 전쟁 교전 스텝 = 존 틱 한 번(dt = 1/TICK_HZ)
   // ★★[T295 후속 · T284 회부 "나무는 아직 안 본다" 닫기] 전쟁이 쓰는 **나무 술어**(셀 → 서 있는 나무 있나).
@@ -15003,6 +15006,7 @@ setInterval(() => {
   // ★[RTT 상관 계측] 틱 전체가 예산(33ms)을 넘긴 순간도 남긴다 — 원인이 위 둘이 아닐 수도 있다.
   // ★★[T43] 쓰러짐 사슬 — 업고 걷기 · 붙들기 진행 · 창 소진 · 깨어남(내부에서 1초에 한 번만 돈다).
   tickDowned(now);
+  if (T719_REACH_PRE_Z) { const _h7 = process.hrtime(_tickHr0), _el = _h7[0] * 1e3 + _h7[1] / 1e6; if (_el < 10) SimVillages.t719ReachPre(Math.min(2, 10 - _el)); }   // ★[T719] 남는 시간에 닿는 칸 집합 미리(villages.js `t719ReachPre` 머리 · 끔이면 이 줄만 거친다)
   { const _tot = Date.now() - now; if (_tot >= 33) perfMark('tick', _tot); }
   { const _td = Date.now() - now; global._tt = (global._tt||0)+_td; global._tn = (global._tn||0)+1; if (_td > (global._tmx||0)) global._tmx = _td; }
   { const _h = process.hrtime(_tickHr0); _tickMs.ring[_tickMs.i++ % _tickMs.ring.length] = _h[0] * 1e3 + _h[1] / 1e6; _tickMs.n++;   // ★[T284 ④]

@@ -8437,12 +8437,82 @@ const _t562Stat = { sets: 0, reuse: 0, q: 0, pend: 0, vq: 0, vdiff: 0, vdiffs: [
 function _t562On() { const dp = state.deps; return !!(dp && typeof dp.npcReachBegin === 'function' && typeof dp.collGenAround === 'function'); }
 function _t562SliceStop() { const t = Date.now(), B = TB.slice(TICK_SLICE_MS || 16);   // ★[T687] 켬 = 이 틱 남은 몫
   return () => Date.now() - t > B; }   // 하루 마감 조각 안의 넓히기 예산(조각 예산 그 수)
+// ★★[T719 2026-10-13 · 세션4] 손잡이 `T719_REACH_PRE`(기본 끔 · `=1` 켬) — 집마다 닿는 칸 집합을 **틱 꼬리의 남는 시간에 미리** 넓힌다.
+//   T719 자(54분 깊은 판)가 쟀다: 한 사람 걸음 문이 5 ms 를 넘은 63번 중 34번이 이 집합 넓히기(`_t427Set` → `npcReachStep`)였다 —
+//   주민 결정(어부 '출근' · 사냥꾼 '수색'·'취침')이 그 자리에서 벽 변 · 지형을 상자(±64칸) 가득 묻는다. 도장(`collGenAround`)은 상자 안
+//   청크의 콜라이더 세대 합이라 그 근처에 무엇이 서기만 해도 집합을 처음부터 다시 넓힌다.
+//   켜면: 존 틱 꼬리(남는 시간 · 2 ms 안)가 마을 기억을 돌며 ⓐ 도장이 같은데 덜 넓힌 집합은 **이어서** 넓히고(같은 S · 그 집이 다음에 물어도 이을 그 일)
+//   ⓑ 도장이 바뀐 집합은 **새 도장 · 같은 시작 점(지난 S 의 ax · ay)** 으로 곁(`pre`)에 넓혀 둔다. 다음에 그 집이 물을 때 도장 · 시작 점이 같으면
+//   곁 것을 쓴다 — 같은 술어 · 같은 상자 · 같은 BFS 차례라 답이 같다(도장이 같으면 그 상자의 벽 · 다리가 안 바뀌었다). 다르면 종전처럼 새로 넓힌다.
+//   새 수 0 · 판정 0 · 끔 = 종전 글자(곁 칸을 안 만든다).
+const T719_REACH_PRE = process.env.T719_REACH_PRE === '1';
+const _t719Stat = { checked: 0, cont: 0, pre: 0, adopt: 0, preDone: 0, idle: 0, nChecked: 0, nBegin: 0, nDone: 0, nRestart: 0, nAdopt: 0 };
+//   쉼: 한 바퀴(마을 전부) 돌아 할 일이 없었고 그 뒤 세상 콜라이더 세대(`collGenAll`)도 집 기억 셈(`sets`·`pend`)도 그대로면 아무것도 안 묻는다(틱마다 도장 16번 → 0).
+let _t719Vi = 0, _t719It = null, _t719G = NaN, _t719S0 = -1, _t719Idle = false, _t719Pass = 0, _t719Work = 0;
+function t719ReachPre(budgetMs) {
+  if (!T719_REACH_PRE || !_t562On()) return 0;
+  const dp = state.deps, vils = state.villages; if (!vils || !vils.length) return 0;
+  const G = typeof dp.collGenAll === 'function' ? dp.collGenAll() : NaN, S0 = _t562Stat.sets + _t562Stat.pend;
+  if (!(G === _t719G) || S0 !== _t719S0) { _t719G = G; _t719S0 = S0; _t719Idle = false; _t719Pass = 0; _t719Work = 0; }
+  const t0 = Date.now(), stop = () => Date.now() - t0 > budgetMs;
+  _t719NewHomes(dp, stop);   // ⓒ 아직 기억이 없는 집(처음 묻기 전) — 쉼과 따로 돈다(주민 8명씩)
+  if (_t719Idle) { _t719Stat.idle++; return 0; }
+  let checked = 0, spins = 0;
+  while (checked < 16 && spins < vils.length + 1 && !stop()) {
+    if (!_t719It) { _t719Vi = (_t719Vi + 1) % vils.length; spins++;
+      if (++_t719Pass > vils.length) { if (!_t719Work) { _t719Idle = true; break; } _t719Pass = 1; _t719Work = 0; }
+      const R = vils[_t719Vi] && vils[_t719Vi]._t427R; if (!R || !R.size) continue; _t719It = R.values(); }
+    const r = _t719It.next(); if (r.done) { _t719It = null; continue; }
+    const e = r.value; checked++; _t719Stat.checked++;
+    const stamp = dp.collGenAround(e.S.ax, e.S.ay);
+    if (e.stamp === stamp) { if (!e.S.done) { _t719Work++; _t719Stat.cont++; dp.npcReachStep(e.S, stop); if (e.S.done && e.S.q) e.S.q = null; } }
+    else { if (!e.pre || e.pre.stamp !== stamp) { e.pre = { stamp, S: dp.npcReachBegin(e.S.ax, e.S.ay) }; _t719Stat.pre++; }
+      if (!e.pre.S.done) { _t719Work++; dp.npcReachStep(e.pre.S, stop); if (e.pre.S.done) { _t719Stat.preDone++; if (e.pre.S.q) e.pre.S.q = null; } } }
+  }
+  return checked;
+}
+//   ⓒ 처음 묻기 전의 집 — T719 진단(10분 판): 집합 넓히기 2 ms 넘은 부름 132번 중 124번이 **기억이 아직 없는 집**(첫 물음 · 밤새 아무도 안 물은 어부 · 사냥꾼 집)이었다.
+//   일터를 고르는 다섯 직업(벌목 · 채광 · 채집 · 어부 · 사냥꾼) 주민을 틱마다 8명씩 돌며 그 집(`_t427HomeOf`) 기억이 없으면 곁 칸(`vil._t719N`)에
+//   **그 주민의 집 좌표 · 지금 도장**으로 넓혀 둔다(한 번에 하나 · 남는 시간만 · 도장이 바뀌면 처음부터). `_t427Set` 은 기억이 없을 때 곁 것의
+//   도장 · 시작 점이 같으면 그것을 쓴다(덜 됐으면 이어서) — 같은 술어 · 같은 상자 · 같은 차례라 답이 같다. 시작 점이 다른 주민이 먼저 물으면 안 쓴다(종전대로 새로).
+const _T719_JOBS = new Set(['lumberjack', 'miner', 'forager', 'fisher', 'hunter']);
+let _t719NpcIt = null, _t719Cur = null;
+function _t719NewHomes(dp, stop) {
+  if (_t719Cur) {
+    const { vil, key, ent } = _t719Cur, R = vil._t427R;
+    if ((R && R.get(key)) || !vil._t719N || vil._t719N.get(key) !== ent) _t719Cur = null;   // 그새 누가 물었다(집 기억이 생겼다) — 놓는다
+    else { const st = dp.collGenAround(ent.S.ax, ent.S.ay);
+      if (st !== ent.stamp) { _t719Stat.nRestart++; ent.stamp = st; ent.S = dp.npcReachBegin(ent.S.ax, ent.S.ay); }
+      if (dp.npcReachStep(ent.S, stop)) { if (ent.S.q) ent.S.q = null; _t719Stat.nDone++; _t719Cur = null; } else return; }
+  }
+  const npcs = dp.npcs, P = dp.players, by = state.byDbId; if (!npcs || !P || !by) return;   // `npcs` = pid 모음(Set) · 몸은 `players`
+  for (let k = 0; k < 8 && !_t719Cur && !stop(); k++) {
+    if (!_t719NpcIt) _t719NpcIt = npcs.values();
+    const r = _t719NpcIt.next(); if (r.done) { _t719NpcIt = null; break; }
+    const npc = P.get(r.value); if (!npc || !npc.simVillageId || !_T719_JOBS.has(npc.simJob)) continue;
+    const vil = by.get(npc.simVillageId); if (!vil) continue;
+    _t719Stat.nChecked++;
+    const o = _t427HomeOf(vil, npc), key = Math.floor(o.x / SZ) + ',' + Math.floor(o.y / SZ);
+    if (vil._t427R && vil._t427R.get(key)) continue;
+    const N = vil._t719N || (vil._t719N = new Map()); let ent = N.get(key);
+    const st = dp.collGenAround(o.x, o.y);
+    if (ent && ent.S.ax === o.x && ent.S.ay === o.y && ent.stamp === st && ent.S.done) continue;
+    if (!ent || ent.S.ax !== o.x || ent.S.ay !== o.y || ent.stamp !== st) { ent = { stamp: st, S: dp.npcReachBegin(o.x, o.y) }; N.set(key, ent); _t719Stat.nBegin++; }
+    if (dp.npcReachStep(ent.S, stop)) { if (ent.S.q) ent.S.q = null; _t719Stat.nDone++; } else _t719Cur = { vil, key, ent };
+  }
+}
 function _t427Set(vil, o, stop) {
   const dp = state.deps;
   const R = vil._t427R || (vil._t427R = new Map());
   const key = Math.floor(o.x / SZ) + ',' + Math.floor(o.y / SZ), stamp = dp.collGenAround(o.x, o.y);
   let e = R.get(key);
-  if (!e || e.stamp !== stamp) { e = { stamp, S: dp.npcReachBegin(o.x, o.y) }; R.set(key, e); _t562Stat.sets++; }
+  if (!e || e.stamp !== stamp) {
+    const N = (T719_REACH_PRE && !e && vil._t719N) ? vil._t719N.get(key) : null;   // ★[T719 ⓒ] 처음 묻는 집 — 곁에 미리 넓힌 것
+    const P = !T719_REACH_PRE ? null : (e ? ((e.pre && e.pre.stamp === stamp && e.pre.S.ax === o.x && e.pre.S.ay === o.y) ? e.pre : null)   // ★[T719] 곁에 미리 넓힌 것(같은 도장 · 같은 시작 점)
+      : ((N && N.stamp === stamp && N.S.ax === o.x && N.S.ay === o.y) ? N : null));
+    if (P) { if (e) _t719Stat.adopt++; else _t719Stat.nAdopt++; }
+    if (N) vil._t719N.delete(key);
+    e = { stamp, S: P ? P.S : dp.npcReachBegin(o.x, o.y) }; R.set(key, e); _t562Stat.sets++; }
   else if (e.S.done) _t562Stat.reuse++;
   if (!e.S.done && !dp.npcReachStep(e.S, stop || null)) { _t562Stat.pend++; return null; }
   if (e.S.q) e.S.q = null;   // 넓히기가 끝나면 줄은 버린다(집합만 남긴다 · 집 하나 16.6KB)
@@ -12110,7 +12180,7 @@ function __rumorProbe() {
     rumor: Object.assign({}, L.rumorStats) };
 }
 
-module.exports = { streamStat, fishPerf, woodPerf, foragePerf, farmPerf,   // ★[T316] `/perf` 가 내주는 어부 관측(손잡이 끔이면 null) · ★[T325] 나무꾼 · ★[T347] 채집도 같은 꼴 · ★[T368] 농부
+module.exports = { t719ReachPre, t719Stat: () => _t719Stat, streamStat, fishPerf, woodPerf, foragePerf, farmPerf,   // ★[T316] `/perf` 가 내주는 어부 관측(손잡이 끔이면 null) · ★[T325] 나무꾼 · ★[T347] 채집도 같은 꼴 · ★[T368] 농부
   _t400BuildDay, _t400PerLoad, _t400Crew, _t400From,   // ★[T400] 집 행위 1층 — 하네스가 같은 함수를 부른다(사본 0)
   _t347ActItems, _t347PerLoad,   // ★[T347] 걷는 목록·짐당 개체 — 하네스가 표·유도를 옮겨 적지 않게 내준다(사본 금지)
   _lifeLootForage,   // ★[T462] 개체 하나가 내는 걷는 단위 — 자·하네스가 "세는 것 = 따는 것"을 이 함수로 잰다(사본 0)
