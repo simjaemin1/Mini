@@ -309,6 +309,9 @@ console.log('\n⑥ ★게이트 — 같은 씨 · 51마을 7게임일 · 좌표 
       //   결정론 모의 지형(세로 줄 강 — 7칸마다 2칸)을 준다. 이 게이트는 그 되짚기까지 **두 판 비트 동일**을 건다.
       T394_WORK_TERRAIN: true,
       _t394OpenTarget: _t394Fn,
+      // ★[T732] 어부의 8초 한 마리 줄에 로트 적기(`if (T732_MOMENT) Lots.note(…)`)가 섰다 — 손잡이는 **제품 기본(끔)** 그대로 싣는다
+      //   (끔이면 그 줄이 아무것도 안 한다 · 이 게이트의 두 판 비트 동일은 끔 세계의 것).
+      T732_MOMENT: false,
     };
     const keys = Object.keys(env);
     const fn = new Function(...keys, src + '\nreturn decideNpcBehavior;')(...keys.map((k) => env[k]));

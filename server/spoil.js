@@ -198,7 +198,7 @@ function peekAges(lots, n) {
   for (const l of (lots || [])) {
     if (left <= 1e-9) break;
     const take = Math.min(left, Number(l.n) || 0);
-    if (take > 0) { out.push({ d: l.d, n: +take.toFixed(6), e: l.e, t: l.t, m: l.m, w: l.w }); left -= take; }
+    if (take > 0) { const r = { d: l.d, n: +take.toFixed(6), e: l.e, t: l.t, m: l.m, w: l.w }; if (l.k != null) r.k = l.k; out.push(r); left -= take; }   // ★[T732] 순간 `k` 는 있을 때만
   }
   return out;
 }
@@ -514,15 +514,18 @@ function cumExposure(day, elevKm, damp) {
     const base = t.c[0] + (d - SPAN - t.a) * md;
     t.a = d - SPAN; t.c = [base];
   }
-  while (t.a + t.c.length - 1 < d) {                       // 앞으로만 늘린다
+  const need = frac > 0 ? d + 1 : d;                       // ★[T732] 소수 날이면 그 다음 날 칸까지(그날 하루치 = 이웃 두 칸의 차 — 날마다 한 번만 센다)
+  while (t.a + t.c.length - 1 < need) {                    // 앞으로만 늘린다
     const last = t.a + t.c.length - 1;
     t.c.push(t.c[t.c.length - 1] + dayExposure(last, t.e, t.w));
   }
   const base = (d < t.a) ? (t.c[0] - (t.a - d) * _meanDay(t)) : t.c[d - t.a];
+  //   ★[T732] 소수 날 몫 — 그날 하루치(표의 이웃 두 칸 차 = 쌓을 때 더한 그 `dayExposure(d)`) × 지난 몫. 창 밖이면 종전대로 바로 센다.
+  const dayX = !(frac > 0) ? 0 : ((d >= t.a && d + 1 - t.a < t.c.length) ? t.c[d + 1 - t.a] - t.c[d - t.a] : dayExposure(d, t.e, t.w));
   // 창이 길어지면 왼쪽을 자른다 — `c` 는 **절대 누적**이라 잘라도 값의 뜻이 안 바뀐다.
   const MAXLEN = 2 * SPAN + 2;
   if (t.c.length > MAXLEN) { const cut = t.c.length - MAXLEN; t.c = t.c.slice(cut); t.a += cut; }
-  return frac > 0 ? base + frac * dayExposure(d, t.e, t.w) : base;
+  return frac > 0 ? base + frac * dayX : base;
 }
 // 계측용 — 하네스가 "표가 적중했는가"를 세려면 필요하다.
 function _cumStats() { let n = 0; for (const t of _cum.values()) n += t.c.length; return { tables: _cum.size, days: n }; }
@@ -537,8 +540,31 @@ function _cumReset() { _cum.clear(); _meanC.clear(); _ref = null; }
 //     `Lots.settle` 이 처음 만질 때 `e = today − d · t = today` 로 옮겨 적는다 — 그 순간 값이 **연속**이다.
 //   ⚠`d` 를 정산일로 재활용하지 않은 이유: 그러면 모든 로트의 `d` 가 오늘로 뭉개져
 //     화면의 나이 표시와 "이 로트를 먹는다"(`consumeFrom`)가 **조용히 같은 로트를 가리키게** 된다.
+// ★★[T732 2026-10-14 · 손잡이 `T732_MOMENT_LOT=1` — 시계가 안 꽂히면(끔) 아래 두 함수는 안 불린다(main 바이트)] **순간 로트의 노출.**
+//   레코드에 얻은 순간 `k`(게임 ms)가 있으면 정산 순간 `t` 와 지금을 **소수 날**로 잰다 — `cumExposure` 가 이미 소수 날을 받는다
+//   (하루치 노출 × 그날 지난 몫 · 새 곡선 0 · 새 수 0). 지금 = 시계가 가리키는 순간(부르는 쪽이 넘긴 날이 오늘일 때) · 아니면 그 날 0시.
+let _mClk = null, _mDay = 0;
+function setMomentClock(fn, dayMs) { _mClk = (typeof fn === 'function') ? fn : null; _mDay = Number(dayMs) > 0 ? +dayMs : 0; }
+function momentNow(today) {
+  const d = _day(today);
+  if (!_mClk || !(_mDay > 0)) return d;
+  const nf = Math.floor(Number(_mClk()) || 0) / _mDay;
+  return Math.floor(nf) === d ? nf : d;
+}
+function exposureAt(lot, nowFrac, elevKm) {
+  if (!lot) return 0;
+  const k0 = (Number.isFinite(lot.k) && _mDay > 0) ? lot.k / _mDay : _day(lot.d);
+  if (lot.e == null) { const a = nowFrac - k0; return a > 0 ? a : 0; }
+  const m = (lot.m == null) ? 1 : +lot.m;
+  const w = (lot.w == null) ? 0 : +lot.w;
+  const t0 = (lot.t == null) ? k0 : +lot.t;
+  const add = nowFrac > t0 ? (cumExposure(nowFrac, elevKm, w) - cumExposure(t0, elevKm, w)) * m : 0;
+  const e = (+lot.e || 0) + (add > 0 ? add : 0);
+  return e > 0 ? +e.toFixed(6) : 0;
+}
 function exposureOf(lot, today, elevKm) {
   if (!lot) return 0;
+  if (_mClk !== null) return exposureAt(lot, momentNow(today), elevKm);   // ★[T732] 순간 로트 — 켬이면 옛 꼴(`{d,n}` · `{d,n,e,t,m,w}`)도 같은 시계로 읽는다(정산 전후 절벽 0 · `k` 없으면 그 날 0시)
   const now = _day(today);
   if (lot.e == null) { const a = now - _day(lot.d); return a > 0 ? a : 0; }   // 옛 로트 = 종전 뜻
   const m = (lot.m == null) ? 1 : +lot.m;
@@ -558,6 +584,7 @@ module.exports = {
   // ★[부패 2차 2026-09-01] 온도 결합 + 저장 감속
   EXP, PLACES, placeOf, placeKeys, placeFields, rateAtC, refC, meanC,
   dayExposure, cumExposure, exposureOf, _cumStats, _cumReset,
+  setMomentClock, momentNow, exposureAt,   // ★[T732] 순간 로트(소수 날 노출)
   nutritionMult, illnessFor, ofAges, bestOf, peekAges, peekOffer,
   yieldMult, canPreserve, outputQty, preserveMs,
   shelfTable, winterMath, orderCheck, resolveFrom,

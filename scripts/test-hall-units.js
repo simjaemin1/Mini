@@ -236,10 +236,12 @@ say('\n⑤ 배선');
 {
   const fnOf = (src, name) => { const i = src.indexOf(`function ${name}(`); return i < 0 ? '' : src.slice(i, src.indexOf('\n}\n', i)); };
   const f = fnOf(ZSRC, 'tryVillageDeposit');
-  const g = f.indexOf('if (T725_HALL) {'), s = f.indexOf('_spoiledGuardItems('), d = f.search(/SimVillages\.playerVillageDeposit\(vil, player\.inventory, want \|\| \{\}, T725_HALL \? _unitsOfFor\(player\) : undefined\)/), c = f.indexOf('Carry.takeKg(');
-  ok(g > 0 && s > g && d > s && c > d && /if \(T725_HALL\) \{ for \(const \[it, n\] of Object\.entries\(r\.taken/.test(f),
+  //   ★[T732] 환산 콜백은 한 줄 위에서 `_uo` 로 한 번 만든다(곳간 문이 **같은** 콜백으로 낸 로트에 무게를 매긴다 — 둘이 다른 환산이면 사본)
+  const g = f.indexOf('if (T725_HALL) {'), s = f.indexOf('_spoiledGuardItems('), u = f.indexOf('const _uo = T725_HALL ? _unitsOfFor(player) : undefined;'), d = f.search(/SimVillages\.playerVillageDeposit\(vil, player\.inventory, want \|\| \{\}, _uo\)/), c = f.indexOf('Carry.takeKg(');
+  ok(g > 0 && s > g && u > s && d > u && c > d && /if \(T725_HALL\) \{ for \(const \[it, n\] of Object\.entries\(r\.taken/.test(f),
     '★⑤ 회관 문 — 상한 것 판정 → 정본 넣기(끄면 `undefined` = 종전 개수) → 낸 개체 빼기 · 셋 다 손잡이 뒤 · 같은 함수(`_spoiledGuardItems` · `_unitsOfFor` · `Carry.takeKg`)');
-  ok(/if \(_s716\) _t716Put\(player, _s716, !T725_HALL\);/.test(f), '⑤ T716 장부(끔 기본)도 같은 무게로 — 끔이면 종전 `true`(개수) 그대로');
+  ok(/_t732DoorEnd\(_d732, player, !!\(r && r\.ok\), vil, _uo\);/.test(f) && f.indexOf('_t732DoorBegin(') < d && f.indexOf('_t732DoorEnd(') > d,
+    '⑤ 곳간 문(T732 · 끔 기본 — T716 임시 고침을 걷은 자리)도 같은 무게(`_uo`)로 — 끄면 `undefined` = 종전 개수 그대로');
   const il = fnOf(LSRC, 'isLot');
   ok(il.indexOf('LOT_CORE.has(item)') > 0 && il.indexOf('if (T725_KINDS && NO_ROT[item]) return false;') > il.indexOf('LOT_CORE.has(item)'),
     '⑤ `isLot` — 로트 핵심 다음 · 특산 규칙 앞에서 출처 표만 뺀다(손잡이 뒤)');

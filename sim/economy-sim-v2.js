@@ -536,6 +536,12 @@ const RAID_MAX = 0.5;
 //     · `_oreCapV2`(원석 상한) + 값 한 줄 `_priceFromV2`. 결정층은 늘 이 넷을 부른다(식을 옮겼을 뿐 — 비트 동일).
 //   손잡이 `T726_ONE_TARGET=1`(기본 끔): 정산 · 부패 · 출발 직후도 같은 넷을 부른다(새 수 0). 끔 = 세 자리 종전 식 = main 비트.
 const T726_ONE_TARGET = (typeof process !== 'undefined' && process.env && process.env.T726_ONE_TARGET === '1');
+// ★★[T732 2026-10-14] **캐러밴 짐에 로트가 실려 다닌다** — 호스트(존 서버 · 손잡이 `T732_MOMENT_LOT=1`)가 곳간 장부 훅을 꽂을 때만.
+//   랩 · CLI · 끈 서버는 안 꽂는다 = `_LOTH` null = 아래 훅 줄이 전부 무동작(비트 동일). 훅은 **관측자**다 — 값을 하나도 안 바꾼다:
+//   출발(곳간에서 뗀 레코드 → 짐) · 도착(짐 → 받는 곳간 · 약탈·우회로 준 몫은 비율대로) · 되사 옴(받는 곳간에서 뗀 레코드 → 짐) · 귀환(짐 → 집 곳간) · 빈손 귀환(안 판 짐 그대로).
+//   짐은 길 위에서 늙는다(자리 = 몸에 지님 · 정산은 꺼낼 때 조회 함수가 한다 — 도착 때 f 를 값에 쓰는 것은 T730 몫).
+let _LOTH = null;
+function setLotHook(h) { _LOTH = (h && typeof h === 'object') ? h : null; }
 // 마을 하나의 문맥 — 자본재 커버리지(결정층 식 그대로).
 function _targetCtxV2(v) {
   const N = v.npcs.length || 1;
@@ -1051,7 +1057,9 @@ function* tickTradeV2Steps(world, day) {
 
       // 출발 — a.v.storage[cand.res] 차감 즉시
       const { cand, b, dist, N_units, pFrom, pTo } = best;
+      if (_LOTH) _LOTH.capBegin(a.v, cand.res);   // ★[T732] 뗀 레코드를 짐에(끄면 무동작)
       a.v.storage[cand.res] -= N_units;
+      const _lotG = _LOTH ? _LOTH.capEnd(a.v, cand.res) : null;
       a.sent += N_units * pFrom;
       // ★가치 변동(자기제한): 수출로 재고↓ → 현지 가격↑ → 다음 원정 이익↓ → 차익거래가 균형까지만.
       //   ★★[T726] 켬 — 결정층과 같은 값(목표 함수 하나 · 웃돈 상한 · 원석 상한). 끔 = 종전 축약식(보유 수요 `N × max(0.5, util × 1.2)`).
@@ -1105,8 +1113,11 @@ function* tickTradeV2Steps(world, day) {
           if (world.cargoTwoBest && _bRes) { _res2 = _bRes; _n2 = _bN; _p2 = _bP; _pp2 = _bPP; }
         }
       }
+      let _lotG2 = null;   // ★[T732]
       if (_res2 && _n2 >= 1) {
+        if (_LOTH) _LOTH.capBegin(a.v, _res2);
         a.v.storage[_res2] -= _n2;                    // 출발 즉시 차감(첫 품목과 같은 자리·같은 문법)
+        if (_LOTH) _lotG2 = _LOTH.capEnd(a.v, _res2);
         a.sent += _n2 * _p2;
         if (T726_ONE_TARGET) a.prices[_res2] = _priceNowV2(a.v, _res2);   // ★[T726] 켬 — 첫 품목과 같은 값 문
         else { const r = _res2, base = BASE_VALUE_V2[r] || 1, elast = ELASTICITY[r] || 1,
@@ -1178,6 +1189,7 @@ function* tickTradeV2Steps(world, day) {
         state: 'outbound',
         travelDays,
       });
+      if (_LOTH) { const _c = world.caravans[world.caravans.length - 1]; if (_lotG) _LOTH.cargo(_c, 'give', _lotG); if (_lotG2) _LOTH.cargo(_c, 'give2', _lotG2); }   // ★[T732] 짐에 로트가 실려 간다(주입 없으면 이 줄 안 탐)
       // ★★[T533] 목적지가 이웃 존 스텁 — **경계 칸에 서는 날**을 적는다(몸이 넘는 날 = 기록이 넘는 날). 호스트가 `split` 을 안 주면 적지 않는다(T525 뼈대 = 도착일).
       if (_XZ && b.v._xz && typeof _XZ.split === 'function') {
         const _sp = _XZ.split(a.v, b.v);
@@ -1399,6 +1411,7 @@ function _caravanArrive(world, c, day) {
       // 2) 대안 없음 → 빈손 귀환 (자원 보존)
       c._returningRes = c.giveRes;
       c._returningAmt = deliveredGive;
+      if (_LOTH) _LOTH.bounce(c);   // ★[T732] 안 판 짐이 레코드째 돌아온다
       // ★[T206] 둘째 화물도 **집으로 돌아온다** — 안 적으면 그 양이 세계에서 사라진다(질량 누수).
       if (c.giveRes2 && c.giveAmt2 > 0) { c._returningRes2 = c.giveRes2; c._returningAmt2 = c.giveAmt2 * (1 - outboundLoss); }
       c._abandoned = true;
@@ -1456,7 +1469,9 @@ function _caravanTrade(world, c, day, deliveredGive, outboundLoss, pricesTo, pri
     // ★★[2026-08-02b] 원석이면 **출발 마을의 조성**을 함께 싣는다 — 광석은 실어 와도 그 광석이다.
     //   폴드는 재고 가산 **전**에(기존 재고량이 가중치라 순서가 의미를 갖는다).
     if (c.giveRes === 'ore' && v1.foldOreMix) v1.foldOreMix(c.to, c.to.storage.ore || 0, deliveredGive, v1.oreMixOf(c.from));
+    if (_LOTH) _LOTH.unload(c, 'give', c.to, c.giveRes, deliveredGive);   // ★[T732] 짐 레코드째(끄면 무동작)
     c.to.storage[c.giveRes] = (c.to.storage[c.giveRes] || 0) + deliveredGive;
+    if (_LOTH) _LOTH.clearIn(c.to, c.giveRes);
     // ★★[T206 · 접점 ②] 둘째 화물 매도 — **첫 품목과 완전히 같은 문법을 한 번 더** 쓴다.
     //   (충격 정산 `_impactSellV2` · 원석 조성 폴드 · 재고 가산 · 세금 — 순서까지 같다.)
     //   미주입 세계에는 `giveRes2` 가 없으므로 이 블록도 통째로 건너뛴다 = 비트 동일.
@@ -1465,7 +1480,9 @@ function _caravanTrade(world, c, day, deliveredGive, outboundLoss, pricesTo, pri
       _delivered2 = c.giveAmt2 * (1 - outboundLoss);
       _gross2 = _impactSellV2(c.to, c.giveRes2, _delivered2);
       if (c.giveRes2 === 'ore' && v1.foldOreMix) v1.foldOreMix(c.to, c.to.storage.ore || 0, _delivered2, v1.oreMixOf(c.from));
+      if (_LOTH) _LOTH.unload(c, 'give2', c.to, c.giveRes2, _delivered2);   // ★[T732]
       c.to.storage[c.giveRes2] = (c.to.storage[c.giveRes2] || 0) + _delivered2;
+      if (_LOTH) _LOTH.clearIn(c.to, c.giveRes2);
     }
     const taxTo = (grossCredit + _gross2) * TAU;
     const netCreditAfterArrival = (grossCredit + _gross2) - taxTo;
@@ -1545,7 +1562,9 @@ function _caravanTrade(world, c, day, deliveredGive, outboundLoss, pricesTo, pri
       //   (종전 taxToOnBuy는 재고 부족으로 못 산 미체결분까지 과세하던 결함 — 함께 수리).
       const _budget = netCreditAfterArrival / (1 + TAU);
       const _buy = _impactBuyV2(c.to, returnRes, _budget, v1.seedReserveHeld(c.to, returnRes));   // ★[T692] 비축은 안 판다(끔 = 0 → 종전)
+      if (_LOTH) _LOTH.capBegin(c.to, returnRes);   // ★[T732] 되사 온 레코드를 짐에
       c.to.storage[returnRes] = (c.to.storage[returnRes] || 0) - _buy.qty;
+      if (_LOTH) _LOTH.cargo(c, 'ret', _LOTH.capEnd(c.to, returnRes));
       c.to.treasury._cash = (c.to.treasury._cash || 0) + _buy.cost * TAU;
       c._returningRes = returnRes;
       c._returningAmt = _buy.qty;
@@ -1631,7 +1650,9 @@ function tickCaravansV2(world, day) {
         const received = c._returningAmt * (1 - inboundLoss);
         // ★귀환 화물이 원석이면 **매입처(c.to)의 조성**을 싣고 온다(위와 같은 규약)
         if (c._returningRes === 'ore' && v1.foldOreMix) v1.foldOreMix(c.from, c.from.storage.ore || 0, received, v1.oreMixOf(c.to));
+        if (_LOTH) _LOTH.unload(c, 'ret', c.from, c._returningRes, received);   // ★[T732] 짐 레코드째(약탈로 준 몫은 비율대로)
         c.from.storage[c._returningRes] = (c.from.storage[c._returningRes] || 0) + received;
+        if (_LOTH) _LOTH.clearIn(c.from, c._returningRes);
         // v2 r13 Fix 1: 무역 자본 적립 — 받은 자원의 3%가 길드 treasury로 (사용자 의도: 3% 기본 세금)
         //   페니키아·베네치아 동학. 무역 도시도 영토 확장 가능.
         if (!c._abandoned && c.from.treasury && received > 0) {
@@ -1651,7 +1672,9 @@ function tickCaravansV2(world, day) {
       if (c._returningRes2 && c._returningAmt2 > 0) {
         const received2 = c._returningAmt2 * (1 - inboundLoss);
         if (c._returningRes2 === 'ore' && v1.foldOreMix) v1.foldOreMix(c.from, c.from.storage.ore || 0, received2, v1.oreMixOf(c.to));
+        if (_LOTH) _LOTH.unload(c, 'ret2', c.from, c._returningRes2, received2);   // ★[T732]
         c.from.storage[c._returningRes2] = (c.from.storage[c._returningRes2] || 0) + received2;
+        if (_LOTH) _LOTH.clearIn(c.from, c._returningRes2);
       }
       c._done = true;
     }
@@ -1680,6 +1703,7 @@ function _xzHandOff(world, c, day) {
 // 스텁이 목적지인데 넘길 문이 없다(팔 끔 · 호스트 없음) — 짐을 집으로 되돌린다(빈손 귀환과 같은 뜻 · 질량 보존).
 //   ★[T533] 경계까지 걸었으면 걸어 온 만큼 되걷는다(`_xzCross.leg`) · 아니면 여정 일수(T525 뼈대).
 function _xzBounce(world, c, day) {
+  if (_LOTH) _LOTH.bounce(c);   // ★[T732]
   c._returningRes = c.giveRes; c._returningAmt = c.giveAmt;
   if (c.giveRes2 && c.giveAmt2 > 0) { c._returningRes2 = c.giveRes2; c._returningAmt2 = c.giveAmt2; }
   c._abandoned = true; c.state = 'inbound';
@@ -2367,4 +2391,5 @@ module.exports = {
   // ★★[T525] 존 경계 넘기 뼈대 — 호스트(존 서버·자)가 **같은 두 함수**로 스텁을 만든다(답하는 쪽 스냅 · 받는 쪽 스텁 · 사본 0)
   T525_CROSS_ZONE, xzoneSnapshot, xzoneStub,
   xzoneBounce: _xzBounce, xzoneLeg: _xzLeg,   // ★[T533] 서버 호스트가 부르는 둘 — 이웃 존이 안 받은 넘김을 경계에서 되돌림 · 제 존 몫 일수(몸이 되짚을 때) — 사본 0
+  setLotHook,   // ★[T732] 곳간 로트 장부 훅(서버 켬일 때만 꽂는다 · 랩·CLI 는 안 꽂는다 = 무동작)
 };
