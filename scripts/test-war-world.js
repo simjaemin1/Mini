@@ -1219,7 +1219,7 @@ function lootActPart() {
   const WS = fs.readFileSync(path.join(ROOT, 'sim/war-core.js'), 'utf8'), VS = fs.readFileSync(path.join(ROOT, 'server/villages.js'), 'utf8');
   const lm = WS.slice(WS.indexOf('function _warLootMove('), WS.indexOf('function _warLootMove(') + 900);
   ok(/_warFoodTake\(D, amount, FOOD\)/.test(lm) && /return _warFoodMove\(D, A, amount\)/.test(lm) && /_warLootMove\(\(precomputedRes && \(precomputedRes\.res \|\| precomputedRes\.bodies\)\) \? w : null/.test(WS)
-    && (WS.match(/T466_LOOT_ACT/g) || []).length === 1 && (VS.match(/process\.env\.T466_LOOT_ACT/g) || []).length === 1 && /function lootGive\(e, items\)[^\n]*_warFoodGive\(e, items, 1\)/.test(WS),
+    && (WS.match(/T466_LOOT_ACT/g) || []).length === 1 && (VS.match(/process\.env\.T466_LOOT_ACT/g) || []).length === 1 && /function lootGive\(e, items(, lots)?\)[^\n]*_warFoodGive\(e, items, 1(, lots \|\| null)?\)/.test(WS),
     'ⓨ 정적 — 정산 수를 같은 문(`_warFoodTake`)으로 떼고 되돌림·내려놓기도 같은 문(`_warFoodGive`) · 헤드리스 결판(몸 없음)은 종전 즉시(★T476: 몸이 선 헤드리스 = 소굴 토벌만 몸 표식) · 손잡이 하나');
   for (const r of rows) say('      ' + r);
   for (const [k, v] of keep) { if (v == null) delete process.env[k]; else process.env[k] = v; }
