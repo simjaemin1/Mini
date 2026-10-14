@@ -819,6 +819,17 @@ const SERIALIZE_SKIP = new Set([
   '_forageActItems',   // ★[T475] 마을별 걷는 목록 — 생활층이 원판 종에서 **세는** 값(사본 0 · 세계 목록 `forageActItems` 처럼 하루 경계에서 다시 심는다)
 ]);
 const _serializeWarned = new Set();
+// ★★[T728 2026-10-13] **재기동이 잃는 것을 영속한다** — 손잡이 `T728_RESTART_KEEP`(★기본 끔 · `=1` 켬 · 끔 = 종전 글자 그대로).
+//   T722 실측: 멈춤이 0 분이어도 다시 뜬 다음 날 47/51 마을이 갈렸다. 재기동이 잃는 것 여덟을 하나씩 되돌려 가며 갈림이 0 이 되는 것을 확인했다
+//   (보고/T722 · 설계/설계_따라잡기_T722 §2). 켜면:
+//     ⓐ 마을 칸 넷(`_forageActItems` · `_priceCache` · `_priceCacheDay` · `dailyProductionBuf`)을 직렬에서 빼지 않는다 — "매 틱 리셋"이 아니었다:
+//        다음 날 머리의 유효 수요 캐시가 **어제 생산 × 30** 을 공급으로 센다(`economy-sim-v2.js` `_worldStockOf`).
+//     ⓑ `lastTradeDay` 왕복 — 저장 줄은 종전처럼 서버 장부 값을 싣고(T577 ④), econ 제 값은 곁 칸에 실어 복원 때 둘 다 제자리로.
+//     ⓒ 서버 `_baseOre`(광맥 되먹임의 기준 — 첫 되먹임 때 한 번 잡는 값)를 econ 행 곁 칸으로 — 다시 뜰 때마다 깎인 `land.ore` 로 다시 잡던 톱니를 막는다.
+//     ⓓ world 메타 행 하나(`world_meta`): econ 난수 상태 · 다음 주민 번호 · 다음 마을 번호 · 길 위 캐러밴(이름과 주민 번호로 다시 잇는다)과 번호 계수기 · 앵커.
+//   새 수 0 · 새 몸 필드 0. 값은 바뀌지 않는다(돌고 있는 동안은 끔과 같은 글자 · 저장 줄과 복원 문만 다르다).
+const T728_KEEP = process.env.T728_RESTART_KEEP === '1';
+const _T728_KEEP_KEYS = new Set(['_forageActItems', '_priceCache', '_priceCacheDay', 'dailyProductionBuf']);
 // ★★[T577 ④ 2026-10-03] **마지막 교역일은 서버 길에서 적는다** — econ 이 만든 칸(`lastTradeDay: 0`)은 sim/ 어디서도
 //   쓰이지도 읽히지도 않아 라이브 50/50 이 0 이었다(T572 회부 6). econ 객체는 **안 건드린다**: 서버가 곁(WeakMap)에
 //   쥐고 있다가 저장 줄(`serializeEcon`)에서만 그 칸을 덮는다 ⇒ econ 하루는 바이트 그대로 · DB 행에는 날이 남는다.
@@ -837,8 +848,27 @@ function _noteTradeDays(world) {
 function serializeEcon(v) {
   const out = {};
   for (const k of Object.keys(v)) {
-    if (SERIALIZE_SKIP.has(k) || typeof v[k] === 'function') continue;
+    if ((SERIALIZE_SKIP.has(k) && !(T728_KEEP && _T728_KEEP_KEYS.has(k))) || typeof v[k] === 'function') continue;
     out[k] = v[k];
+  }
+  if (T728_KEEP) {   // ★[T728 ⓑ ⓒ] 곁 칸 — 복원 문(`_t728Restore`)이 제자리로 돌려놓고 지운다
+    out._t728LtdOwn = v.lastTradeDay;
+    out._t728LtdSrv = _ltd.has(v) ? _ltd.get(v) : null;
+    const vil = state.byEcon && state.byEcon.get(v);
+    if (vil && vil._baseOre != null) out._t728BaseOre = vil._baseOre;
+    // ★[T728 ⓔ 아홉째] 사냥터 개체 장부(`_gameRich` 셀 → 마릿수)와 그 기준 둘 — 메모리 전용이라 다시 뜨면 **모든 셀이 가득 찬 채** 다시 지어지고
+    //   (짐승이 되살아난다 — 생성) `_baseGame` 이 깎인 `land.game` 으로 다시 잡혔다(톱니). 14일 부존 갱신 날 산출이 갈렸다(T722 281 날 광산3).
+    if (vil) {
+      const flat = (m) => { const a = []; for (const [k2, g2] of m) a.push(k2, g2); return a; };
+      if (vil._gameRich) out._t728Game = { tot0: vil._gameTot0, base: vil._baseGame, floorN: vil._gameFloorN, m: flat(vil._gameRich) };
+      else if (vil._gameNone) out._t728Game = { none: vil._gameNone };
+      else if (vil._gameScan) out._t728Game = { scan: { dy: vil._gameScan.dy, n: vil._gameScan.n, g: vil._gameScan.g.slice(), m: flat(vil._gameScan.m) } };
+      //   ★[T728 ⓕ 열째] 사냥꾼 몸의 작업 셀(`_huntWk` — 이미 있는 몸 칸 · 새 칸 0). 하루치 차감이 **그 셀에서** 빠진다(`_huntHuntersSteps`).
+      //     다시 뜨면 몸이 새로 서며 작업 셀을 잃어 다른 셀이 깎였다(T728 실측 267 날 광산3). 명부 차례(`npcPids` 의 자리)와 직업으로 다시 붙인다.
+      const P = state.deps && state.deps.players, hw = [];
+      if (P && vil.npcPids) for (let i = 0; i < vil.npcPids.length; i++) { const b = P.get(vil.npcPids[i]); if (b && b._huntWk) hw.push(i, b.simJob || null, b._huntWk.cx, b._huntWk.cy); }
+      if (hw.length) out._t728HuntWk = hw;
+    }
   }
   if (_ltd.has(v)) out.lastTradeDay = _ltd.get(v);   // ★[T577 ④] 저장 줄에서만(위 주석)
   out.history = (v.history || []).slice(-50);
@@ -863,7 +893,7 @@ function restoreEcon(json, econ) {
   const v = JSON.parse(json);
   v._world = null; // 호출부에서 재부착
   v.history = Array.isArray(v.history) ? v.history : [];
-  v.dailyProductionBuf = Object.fromEntries(econ.RESOURCES.map(r => [r, 0]));
+  if (!(T728_KEEP && v.dailyProductionBuf && typeof v.dailyProductionBuf === 'object')) v.dailyProductionBuf = Object.fromEntries(econ.RESOURCES.map(r => [r, 0]));   // ★[T728 ⓐ] 켬 = 저장된 어제 생산 그대로
   v.npcs = Array.isArray(v.npcs) ? v.npcs : [];
   v.storage = v.storage || {};
   v.surplusEMA = v.surplusEMA || {};
@@ -4541,6 +4571,7 @@ function init(deps) {
     }
 
     state.lastGameDay = gameDayOf(Date.now()); // 다음 경계부터 틱 (재기동 따라잡기 없음 — 실시간 앵커)
+    if (T728_KEEP) { try { _t728Restore(); } catch (e) { console.error(`[${ZONE_ID}] 🏘️ [T728] 재기동 영속 복원 실패(종전대로 계속):`, e.message); } }
     // ★★[T533] 존 경계 호스트 — 팔 `T525_CROSS_ZONE`(econ 정본) 켬 + 존이 미는 문을 줬을 때만(끔 = 이 줄 무동작 · 조각 목록·몸 층 무변).
     //   실패해도 존 부팅은 계속한다(경계가 닫힌 채 = 끔과 같다).
     if (econV2.T525_CROSS_ZONE && deps.xzonePost) { try { _xzInit(ZONE_ID); } catch (e) { state.xzone = null; console.error(`[${ZONE_ID}] 🌐 [T533] 경계 호스트 실패(경계 닫힌 채 계속):`, e.message); } }
@@ -6097,6 +6128,7 @@ function onGameTick(now) {
   if (state.saveQueue && state.saveQueue.length) {
     const vil = state.saveQueue.shift();
     try { state.db.updateVillageState(vil.dbId, serializeEcon(vil.econ), vil.econ.npcs.length, state.world.day); } catch (e) { console.error(`[${state.zoneId}] 🏘️ 마을 저장 실패(재큐):`, e.message); state.saveQueue.push(vil); }
+    if (T728_KEEP && !state.saveQueue.length) { try { _t728SaveMeta(); } catch (e) { console.error(`[${state.zoneId}] 🏘️ [T728] 메타 행 저장 실패:`, e.message); } }   // ★[T728] 그날 마을 행이 다 적힌 순간의 world 메타
   }
   // ★★[2026-08-26 재민 확정 · 테스트 전용] **게임일 정지.**
   //   왜: 실클라 하네스는 하루가 0.5~1.2초라, 게시판을 열고 재료를 받고 납품하는 몇십 초 사이에
@@ -6365,7 +6397,9 @@ function _openDayJobs(now) {
   add('bcast', () => {
     // ★[달력 2026-08-30] 날짜가 바뀌었으니 달력도 같이 보낸다 — 클라가 매핑을 다시 하지 않는다.
     let _cal = null; try { _cal = require('./events').calendarOf(state.world.day | 0); } catch (e) {}
-    state.deps.broadcast({ type: 'sim_village_day', day: state.world.day, jobs: C.jobChanges, pops: C.pops, terr: C.terr, wx: C.wx, calendar: _cal });
+    const _cn = T728_KEEP ? t728CalNext() : null;   // ★[T728 ④] 켬이면 다음 날짜 · 경계 시각을 같이(끔 = 종전 글자)
+    state.deps.broadcast(_cn ? Object.assign({ type: 'sim_village_day', day: state.world.day, jobs: C.jobChanges, pops: C.pops, terr: C.terr, wx: C.wx, calendar: _cal }, _cn)
+      : { type: 'sim_village_day', day: state.world.day, jobs: C.jobChanges, pops: C.pops, terr: C.terr, wx: C.wx, calendar: _cal });
   });
 
   // ⑦ 캐러밴 실체 동기 — 중앙 17ms 인데 **p95 989ms**(안이 전부 A*). 캐러밴 한 대씩 쪼갠다.
@@ -11953,6 +11987,108 @@ function econDay() { return (state.world && Number.isFinite(state.world.day)) ? 
 // ★[T484 ①] 분수 게임일 — econ 의 날 D + 그 날의 경계(`econDayToMs(D)`)에서 흐른 몫. 경계를 넘었는데 econ 이 아직 D 에 있어도 1 을 넘어 **이어진다**(계단 0).
 function econDayT(now) { if (!state.world || !Number.isFinite(state.world.day) || !state.dayMs) return null; const D = state.world.day | 0; return D + (now - econDayToMs(D)) / state.dayMs; }
 
+// ★★[T728] world 메타 행 — 직렬 · 복원 · 종료 저장(손잡이 `T728_RESTART_KEEP` 켬에서만 불린다 · 위 `T728_KEEP` 주석).
+//   캐러밴은 마을 객체와 상인(econ 주민) 객체를 쥐고 있어 그대로는 직렬이 안 된다 ⇒ 마을은 이름, 상인은 주민 번호로 적고 복원 때 다시 잇는다.
+function _t728Meta() {
+  const W = state.world, E = state.econ;
+  const car = [];
+  for (const c of (W.caravans || [])) {
+    const o = {};
+    for (const k of Object.keys(c)) {
+      const x = c[k];
+      if (k === 'from' || k === 'to') o[k] = x ? x.name : null;
+      else if (k === 'trader') o[k] = (x && x.id != null) ? x.id : null;
+      else { try { JSON.stringify(x); o[k] = x; } catch (e) { if (!_t728Stat.dropKeys.includes(k)) _t728Stat.dropKeys.push(k); } }
+    }
+    car.push(o);
+  }
+  return JSON.stringify({ v: 1, rng: E && E.rngState ? E.rngState() : null, caravanId: W._caravanIdCounter || 0, caravans: car,
+    anchor: { day: W.day | 0, g: state.lastGameDay, epoch: state.epoch, dayMs: state.dayMs, at: Date.now() } });
+}
+const _t728Stat = { metaSaves: 0, restored: null, shutdown: null, dropKeys: [] };
+function _t728SaveMeta() {
+  if (!state.db || !state.db.upsertWorldMeta || !state.world) return;
+  state.db.upsertWorldMeta(state.zoneId, _t728Meta(), state.world.day | 0); _t728Stat.metaSaves++;
+}
+// 부팅 — 마을 곁 칸을 제자리로 · 메타 행이 그 날의 것이면 econ 전역과 길 위 캐러밴을 되돌린다.
+function _t728Restore() {
+  const R = { side: 0, meta: false, day: null, caravans: 0, lost: 0, why: '' };
+  for (const vil of state.villages) {
+    const e = vil.econ; if (!e) continue;
+    let hit = false;
+    if ('_t728BaseOre' in e) { if (e._t728BaseOre != null) vil._baseOre = e._t728BaseOre; delete e._t728BaseOre; hit = true; }
+    if ('_t728Game' in e) {
+      const G = e._t728Game, unflat = (a) => { const m = new Map(); for (let i = 0; i + 1 < a.length; i += 2) m.set(a[i], a[i + 1]); return m; };
+      if (G && G.m && !G.scan) { vil._gameRich = unflat(G.m); vil._gameTot0 = G.tot0; vil._baseGame = G.base; if (G.floorN != null) vil._gameFloorN = G.floorN; }
+      else if (G && G.none) vil._gameNone = G.none;
+      else if (G && G.scan) vil._gameScan = { dy: G.scan.dy, n: G.scan.n, g: G.scan.g, m: unflat(G.scan.m) };
+      delete e._t728Game; hit = true;
+    }
+    if ('_t728HuntWk' in e) {
+      const hw = e._t728HuntWk, P = state.deps && state.deps.players;
+      if (Array.isArray(hw) && P) for (let i = 0; i + 3 < hw.length; i += 4) { const b = P.get(vil.npcPids[hw[i]]); if (b && (b.simJob || null) === hw[i + 1]) b._huntWk = { cx: hw[i + 2], cy: hw[i + 3] }; }
+      delete e._t728HuntWk; hit = true;
+    }
+    if ('_t728LtdOwn' in e) { if (e._t728LtdSrv != null) _ltd.set(e, e._t728LtdSrv); e.lastTradeDay = e._t728LtdOwn; delete e._t728LtdOwn; delete e._t728LtdSrv; hit = true; }
+    if (hit) R.side++;
+  }
+  const row = state.db && state.db.getWorldMeta ? state.db.getWorldMeta(state.zoneId) : null;
+  if (!row) { R.why = '메타 행 없음(첫 부팅 · 끔에서 켬으로)'; _t728Stat.restored = R; console.log(`[${state.zoneId}] 🏘️ [T728] 재기동 영속 — 마을 곁 칸 ${R.side} · ${R.why}`); return R; }
+  const M = JSON.parse(row.data), W = state.world;
+  R.day = M.anchor ? M.anchor.day : null;
+  // 번호 계수기는 언제나 앞으로만(겹친 번호 0 이 먼저다) · 난수와 캐러밴은 **그 날의 메타일 때만**(다른 날이면 이미 도착한 짐을 되살리게 된다 — 생성 금지)
+  if (M.rng && state.econ.setRngState && state.econ.rngState) {
+    const cur = state.econ.rngState();
+    const same = R.day === (W.day | 0);
+    state.econ.setRngState({ seed: same ? M.rng.seed : null, npc: Math.max(cur.npc, M.rng.npc | 0), vil: Math.max(cur.vil, M.rng.vil | 0) });
+    if (same) {
+      const byName = new Map(W.villages.map((v) => [v.name, v]));
+      const findNpc = (v, id) => { if (id == null) return null; let n = v && (v.npcs || []).find((x) => x && x.id === id); if (n) return n;
+        for (const u of W.villages) { n = (u.npcs || []).find((x) => x && x.id === id); if (n) return n; } return null; };
+      const out = [];
+      for (const c of (M.caravans || [])) {
+        const o = Object.assign({}, c); o.from = byName.get(c.from); o.to = byName.get(c.to);
+        if (!o.from || !o.to) { R.lost++; continue; }
+        o.trader = findNpc(o.from, c.trader);
+        out.push(o);
+      }
+      W.caravans = out; W._caravanIdCounter = M.caravanId | 0; R.caravans = out.length;
+      R.meta = true;
+    } else R.why = `메타 날 ${R.day} ≠ econ 날 ${W.day | 0} — 번호만 앞으로(난수 · 캐러밴은 종전대로)`;
+  }
+  _t728Stat.restored = R;
+  console.log(`[${state.zoneId}] 🏘️ [T728] 재기동 영속 — 마을 곁 칸 ${R.side} · 메타 ${R.meta ? `되돌림(날 ${R.day} · 캐러밴 ${R.caravans}${R.lost ? ` · 못 이은 ${R.lost}` : ''})` : R.why}`);
+  return R;
+}
+// ★[T728 ④] 다음 날짜와 그 경계 시각 — 클라가 **같은 공식**(서버 시각 = 클라 시각 + 다시 잰 차)으로 경계 순간에 날짜를 넘긴다
+//   (종전: 마감 끝 방송을 기다려 HUD 06:00 보다 마감 길이만큼 늦게 넘어갔다). 날짜 값은 그대로 econ 날이다(따라잡기는 재민 판정 몫).
+function t728CalNext() {
+  if (!T728_KEEP || !state.world || !Number.isFinite(state.world.day) || !state.dayMs) return null;
+  let cal = null; try { cal = require('./events').calendarOf((state.world.day | 0) + 1); } catch (e) { return null; }
+  return { calendarNext: cal, calendarAt: econDayToMs((state.world.day | 0) + 1) };
+}
+// 종료(SIGTERM) — 진행 중 마감을 끝까지 돌리고(얼림: 새 날은 안 연다) 마을 행 전부 + 메타 행을 한 트랜잭션으로. 한도를 넘기면 마을은 마지막 경계 저장 그대로 둔다(반쯤 돈 날을 적지 않는다).
+function t728Shutdown(capMs, done) {
+  const t0 = Date.now();
+  if (!state.ready || !state.world || !state.db) { done({ why: '마을 시뮬 없음' }); return; }
+  state.dayFreeze = true;
+  const fin = (why) => {
+    const t1 = Date.now(); let n = 0, err = null;
+    if (why === '경계') {
+      try {
+        const rows = [];
+        for (const vil of state.villages) { if (!vil.econ || !Number.isFinite(vil.dbId)) continue; rows.push({ id: vil.dbId, econ: serializeEcon(vil.econ), pop: vil.econ.npcs.length, day: state.world.day }); }
+        state.db.saveVillagesAndMeta(rows, state.zoneId, _t728Meta(), state.world.day | 0);
+        state.saveQueue = []; n = rows.length;
+      } catch (e) { err = e.message; }
+    }
+    const r = { why, waitMs: t1 - t0, saveMs: Date.now() - t1, villages: n, day: state.world.day | 0, err };
+    _t728Stat.shutdown = r; done(r);
+  };
+  const step = () => { if (!state.tickJobs) return fin('경계'); if (Date.now() - t0 > capMs) return fin('한도'); setTimeout(step, 5); };
+  step();
+}
+
 // ★★[T7 2026-09-01] 소문 도달 지연 계측 훅 — **읽기 전용**(계측기도 사본 금지 · 검증 원칙 ㉒).
 //   대리 지표(51마을 도달 지연 분포)를 계측 스크립트가 **정본 표 그대로** 읽게 내준다.
 //   ⚠아무 상태도 안 바꾼다. 도달표를 데우는 것뿐이고 그건 어차피 첫 사건이 할 일이다.
@@ -11981,6 +12117,7 @@ module.exports = { streamStat, fishPerf, woodPerf, foragePerf, farmPerf,   // �
   _actDay, _actTake,   // ★[T334] 예산 장부 몸통(어부 전용 — T341 이 나무에서 걷어냈다) — 하네스가 규칙을 옮겨 적지 않게 내준다
   _t341TripsPerDay, _t341TreesPerLoad, _t398Cells,   // ★[T341] 하루 왕복 수·짐당 그루 — **걸음이 정한다**(하네스가 유도를 다시 계산해 대조한다) · ★[T398] 나무꾼 후보 셀(고리 · 자·하네스가 이 함수를 부른다)
  
+  t728Shutdown, t728On: () => T728_KEEP, t728Stat: () => _t728Stat, t728CalNext,   // ★[T728] 재기동 영속(종료 저장 문 · 손잡이 · 계측)
   init, onGameTick, deferLate, invalidateTradeDistances, npcLifeTick, lifeDebug, econDay, econDayT,
   chiefOf, chiefGreetAsk, chiefGreetHas, chiefWalking,
   bedSlotOf,   // ★[T540] 관측 — 침대 슬롯·집(`/walkdbg`)   // ★[T529] 촌장이 온다(손잡이 `T529_CHIEF_WALKS` · 읽는 곳 하나)

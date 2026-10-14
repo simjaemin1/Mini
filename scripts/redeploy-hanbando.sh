@@ -99,6 +99,7 @@ recreate() {  # recreate <name> <image> <port> <volume>
   fi
   docker inspect "$NAME" --format '{{range .Config.Env}}{{println .}}{{end}}' \
     | grep -v -E '^(PATH|NODE_VERSION|YARN_VERSION|NODE_ENV|HOME|HOSTNAME)=' > "/tmp/${NAME}.env"
+  docker stop "$NAME" >/dev/null 2>&1 || true   # ★[T728] SIGTERM 먼저 — 존이 진행 중 마감을 끝내고 마을을 저장한 뒤 내린다(기본 정지 시간 안 · 넘기면 SIGKILL · 마지막 경계 저장 그대로)
   docker rm -f "$NAME" >/dev/null
   docker run -d --name "$NAME" --restart unless-stopped \
     -p "${PORT}:${PORT}" -v "${VOL}:/data" \

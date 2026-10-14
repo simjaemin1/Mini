@@ -54,6 +54,15 @@
   window.__getPlayerId = () => myPlayerId;
   // ★[배산임수 감사 2026-08-29] 게이지 진단 훅 — 하네스가 "둠벙에서 실제로 마셔지는가"를 화면 값으로 잰다(읽기 전용).
   window.__calendar = () => (myCalendar ? JSON.parse(JSON.stringify(myCalendar)) : null);
+  // ★[T728 ④] 날짜도 **같은 공식**으로 넘긴다 — 서버 시각(`worldNow()` = 클라 시각 + 다시 잰 차)이 다음 날 경계에 닿으면 그 자리에서.
+  //   (종전: 마감 끝 방송을 기다려 HUD 06:00 보다 1~3초 늦게 넘어갔다.) 서버가 다음 날짜를 안 실으면(끔) 아무것도 안 한다.
+  function _t728CalTick() {
+    if (!myCalNext || !myCalAt || typeof worldNow !== 'function') return;
+    if (worldNow() < myCalAt) return;
+    myCalendar = myCalNext; myCalNext = null; myCalAt = 0;
+    try { updateHud(); } catch (e) {}
+  }
+  window.__t728Clock = () => ({ offset: worldClock ? worldClock.serverNowOffset : null, iv: worldClock && worldClock._t728Iv ? worldClock._t728Iv.slice() : null, cal: myCalendar ? myCalendar.day : null, next: myCalNext ? myCalNext.day : null, at: myCalAt });
   window.__wx = () => (myWeather ? JSON.parse(JSON.stringify(myWeather)) : null);   // ★[온도] 하네스 훅(읽기 전용)
   // ★[옷 티어 2026-08-31] 장비 진단 훅(읽기 전용) — 하네스가 '무엇을 입었나'를 화면 상태로 잰다.
   window.__equipState = () => JSON.parse(JSON.stringify({ equipment: equipment || [], slots: equipSlots || {} }));
@@ -950,6 +959,7 @@
         if (msg.craftSkill) craftSkill = msg.craftSkill;
         if (msg.self.hp !== undefined) { myHp = msg.self.hp; myMaxHp = msg.self.maxHp; }
         if (msg.calendar) myCalendar = msg.calendar;   // ★[달력] 입장 즉시 — 첫 날짜 경계를 기다리지 않는다
+        if (msg.calendarNext) { myCalNext = msg.calendarNext; myCalAt = +msg.calendarAt || 0; }   // ★[T728 ④] 켬일 때만 오는 칸
         if (msg.weather) myWeather = msg.weather;     // ★[온도] 입장 즉시 — 첫 gauges 를 기다리지 않는다
         if (typeof msg.self.hunger === 'number') myHunger = msg.self.hunger;
         if (typeof msg.self.thirst === 'number') myThirst = msg.self.thirst;
@@ -1213,6 +1223,7 @@
       c.claims.delete(msg.id);
     } else if (msg.type === 'sim_village_day') {
       window.__evGameDay = msg.day | 0;   // ★[사건 레이어] 촌장 브리핑 "하루 한 번" 의 시계
+      if (msg.calendarNext) { myCalNext = msg.calendarNext; myCalAt = +msg.calendarAt || 0; }   // ★[T728 ④] 다음 경계(켬일 때만)
       if (msg.calendar) { myCalendar = msg.calendar; updateHud(); }   // ★[달력] 날짜가 바뀌었다
       // §4-4 Stage 4A: 게임일 1회 — 마을 인구 라벨 + NPC 직업(simJob) 변경분 + §19 영토 크립 반경(tr) 갱신
       if (c.simVillages && msg.pops) for (const v of c.simVillages) { if (msg.pops[v.id] != null) v.pop = msg.pops[v.id]; if (msg.terr && msg.terr[v.id] != null) v.tr = msg.terr[v.id]; }
@@ -1638,6 +1649,18 @@
       // 14.43: watchdog용 — 최근 pong 시각 기록
       c.lastPongAt = performance.now();
       if (c.role === 'primary') lastRttMs = c.lastPongAt - msg.t;
+      //   ★★[T728 ④] 서버 벽시계(`sn`)가 실려 오면(켬) **pong 마다 차를 다시 잰다.** 서버가 pong 을 만든 순간은 클라가 ping 을 보낸 때와
+      //     pong 을 받은 때 사이에 있다 ⇒ 참 차는 [sn − 받은 때, sn − 보낸 때] 안이다(새 수 0 — 왕복이 곧 불확실의 폭).
+      //     pong 마다 그 구간을 겹쳐 좁히고(가운데를 쓴다), 겹침이 비면(시계가 뛰었다 — OS 시계 변경 · 절전 복귀) 새 구간에서 다시 시작한다.
+      //     welcome 한 번(1.69 MB · 직렬 앞 도장)으로 잡은 차는 첫 pong(1초 안)에서 고쳐진다. 칸이 없으면(끔) 아무것도 안 한다.
+      if (c.role === 'primary' && typeof msg.sn === 'number' && worldClock) {
+        const t3 = Date.now(), rtt = Math.max(0, c.lastPongAt - msg.t);
+        const a = msg.sn - t3, b = a + rtt, I = worldClock._t728Iv;
+        if (I && Math.max(I[0], a) <= Math.min(I[1], b)) { I[0] = Math.max(I[0], a); I[1] = Math.min(I[1], b); }
+        else worldClock._t728Iv = [a, b];
+        worldClock.serverNowOffset = (worldClock._t728Iv[0] + worldClock._t728Iv[1]) / 2;
+        _t728CalTick();
+      }
       //   ★[T486] pong 셋 — 서버가 실었을 때만(끔이면 칸이 없다 · 이 줄은 아무것도 안 한다). 망 = 왕복 − 서버 체류.
       if (c.role === 'primary' && typeof msg.srvIn === 'number' && typeof msg.srvOut === 'number') {
         const _srv = msg.srvOut - msg.srvIn, _rtt = c.lastPongAt - msg.t;

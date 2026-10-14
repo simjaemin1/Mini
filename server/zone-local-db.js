@@ -477,6 +477,16 @@ db.exec(`
     updated_at INTEGER NOT NULL
   );
 `);
+// === [T728] world 메타 행 — 재기동이 잃던 world 수준 상태(econ 난수 · 번호 계수기 · 길 위 캐러밴 · 앵커). bandit_state 관례(존 하나 = 행 하나 · 추가 전용).
+//   행은 `T728_RESTART_KEEP` 켬에서만 쓰인다(끔이면 테이블만 있고 행 0 — 무해).
+db.exec(`
+  CREATE TABLE IF NOT EXISTS world_meta (
+    zone       TEXT PRIMARY KEY,
+    data       TEXT NOT NULL,
+    day        INTEGER NOT NULL DEFAULT 0,
+    updated_at INTEGER NOT NULL
+  );
+`);
 // === §16 답압 길(server/roads.js) — 밟힌 셀만(희소·게으른 감쇠), 게임일 1회 dirty 배치 플러시 ===
 // villages/bandit 관례(추가 전용·CREATE TABLE IF NOT EXISTS — 구DB 마이그레이션 안전). ENABLE_ROADS=0이면 행 0.
 db.exec(`
@@ -686,6 +696,19 @@ const stmtGetBanditState = db.prepare('SELECT * FROM bandit_state WHERE zone = ?
 const stmtUpsertBanditState = db.prepare(
   'INSERT INTO bandit_state (zone, data, day, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(zone) DO UPDATE SET data = excluded.data, day = excluded.day, updated_at = excluded.updated_at'
 );
+const stmtGetWorldMeta = db.prepare('SELECT * FROM world_meta WHERE zone = ?');
+const stmtUpsertWorldMeta = db.prepare('INSERT INTO world_meta (zone, data, day, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(zone) DO UPDATE SET data = excluded.data, day = excluded.day, updated_at = excluded.updated_at');
+function getWorldMeta(zone) { return stmtGetWorldMeta.get(zone) || null; }
+function upsertWorldMeta(zone, dataJson, day) { stmtUpsertWorldMeta.run(zone, dataJson, day | 0, Date.now()); }
+// ★[T728] 마을 행 여럿 + 메타 행을 **한 트랜잭션**으로(종료 저장 · 하루 저장 끝) — 반쯤 쓰인 판이 남지 않게
+function saveVillagesAndMeta(rows, zone, metaJson, day) {
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    for (const r of rows) stmtUpdateVillageState.run(r.econ, r.pop | 0, r.day | 0, r.id);
+    if (metaJson != null) stmtUpsertWorldMeta.run(zone, metaJson, day | 0, Date.now());
+    db.exec('COMMIT');
+  } catch (e) { try { db.exec('ROLLBACK'); } catch (x) {} throw e; }
+}
 function getBanditState(zone) { return stmtGetBanditState.get(zone) || null; }
 function upsertBanditState(zone, dataJson, day) { stmtUpsertBanditState.run(zone, dataJson, day | 0, Date.now()); }
 
@@ -731,6 +754,7 @@ module.exports = {
   upsertFishCell, getAllFishCells, deleteFishCell,
   upsertPickedSeed, getAllPickedSeeds, deletePickedSeed,   // ★[T495] 부분 수확 — 개체에 남은 단위(켠 팔만 · 표는 처음 쓸 때)
   // §4-4 마을 시뮬 (villages.js)
+  getWorldMeta, upsertWorldMeta, saveVillagesAndMeta,   // ★[T728]
   getVillagesByZone, insertVillage, updateVillageState, insertVillageBuilding, getVillageBuildings,
   getVillageFarmInCellRect, getVillageStructRows,
   eachVillageCell, getVillageStructAll, getVillageFarthest, getTerrContestOwners,   // ★[T538] 경계 있는 부팅 로드

@@ -11811,6 +11811,10 @@ module.exports = {
   setDistMatrix,
   setSeed,
   srand: () => srand(),
+  // ★[T728] 재기동 영속 — 모듈 전역 셋(econ 난수 상태 · 다음 주민 번호 · 다음 마을 번호)을 읽고 되돌리는 문.
+  //   서버 world 메타 행(`T728_RESTART_KEEP` 켬)만 부른다 — 안 부르면 아무 일도 없다(랩 · CLI · 픽스처 무변).
+  rngState: () => ({ seed: _seed, npc: _nextNpcId, vil: _nextVillageId }),
+  setRngState: (o) => { if (!o) return; if (o.seed != null) _seed = o.seed >>> 0; if (Number.isFinite(o.npc)) _nextNpcId = o.npc; if (Number.isFinite(o.vil)) _nextVillageId = o.vil; },
   // ★S2 계측/랩 노출 — 노동목표 함수(석공·대장장이)
   masonTarget, smithTarget, weaponsmithTarget, armorsmithTarget, warriorTarget,
   // ★S4 명장 견습(세대 전승)

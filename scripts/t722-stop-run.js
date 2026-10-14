@@ -43,7 +43,7 @@ function boot(phase, extra) {
 
 (async () => {
   console.log(`=== T722 멈춤 팔 ${TAG} — ${DAYS}일 · 시드 ${SEED} · 멈춤 날 ${STOP}${CRASH ? '(크래시)' : ''} · 따라잡기 ${CATCH} · 영속 흉내 ${PERSIST || '없음'} ===`);
-  const r1 = await boot('p1', { T722_STOP_DAY: String(STOP), T722_DUMP: path.join(DIR, 'stop.json'), T722_CRASH: CRASH ? '1' : '' });
+  const r1 = await boot('p1', { T722_STOP_DAY: String(STOP), T722_DUMP: path.join(DIR, 'stop.json'), T722_CRASH: CRASH ? '1' : '', T722_RAWTERM: a.includes('--rawterm') ? '1' : '' });
   console.log(`  p1 — 끝 코드 ${r1.code} · ${r1.sec.toFixed(1)}초`);
   if (GAP) await new Promise((r) => setTimeout(r, GAP));
   const r2 = await boot('p2', { T722_RESUME: path.join(DIR, 'stop.json'), T722_DUMP: path.join(DIR, 'resume.json'), T722_CATCH: CATCH ? String(CATCH) : '', T722_PERSIST: PERSIST });
