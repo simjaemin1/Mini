@@ -6488,7 +6488,7 @@ function _t731Boot(now) {
   const base = _t731Base(now), L = _t731Order();
   state.t731Day = base; state._t731 = null;
   for (const vil of state.villages) vil._t731Day = base;
-  state._t731Anchor = L.length ? base - (L[0]._lonMid || 0) : null;
+  state._t731Anchor = L.length ? base - (L[0]._lonMid || 0) : base;   // ★[T744] 마을 0 = 세계 경계(λ 0)
   const cnt = {}; for (const v of L) { const d = _t731LD(v, now); cnt[d] = (cnt[d] || 0) + 1; }
   const iso = (ms) => new Date(ms).toISOString().slice(11, 19);
   const e = L[0], w = L[L.length - 1];
@@ -6500,7 +6500,7 @@ function _t731Boot(now) {
 function _t731Due(now) {   // ★[T714] 켬 판의 "다음 것이 왔나" — 열린 창의 다음 마을이 자정을 넘었거나, 창이 없는데 동쪽 끝이 다음 날로 넘었다
   const W = state._t731;
   if (W) return !!(W.list.length && _t731LD(W.list[0], now) >= W.D);
-  const L = state.villages; let hi = -Infinity; for (const v of L) hi = Math.max(hi, _t731LD(v, now));
+  const L = state.villages; let hi = L.length ? -Infinity : gameDayOf(now); for (const v of L) hi = Math.max(hi, _t731LD(v, now));   // ★[T744] 마을 0 = 세계 경계
   return hi > (state.t731Day | 0);
 }
 function _t731Tick(now) {
@@ -6508,11 +6508,11 @@ function _t731Tick(now) {
   const fr = !!state.dayFreeze;   // 얼림(종료 저장 · e2e) = 새 창은 안 열고 열린 창은 남은 마을을 몰아 닫는다(반쯤 돈 날을 적지 않는다)
   if (!W) {
     if (fr) return;
-    const L = _t731Order(); if (!L.length) return;
-    if (_t731LD(L[0], now) <= state.t731Day) return;
+    const L = _t731Order();   // ★[T744] 마을 0(빈 세계 · 새 세계)이면 λ = 0 의 날(세계 경계)로 머리 · 꼬리만 — 종전처럼 econ 날은 간다(T731 은 여기서 멈췄다: test-recut 빈 세계)
+    if ((L.length ? _t731LD(L[0], now) : gameDayOf(now)) <= state.t731Day) return;
     const D = Math.max(state.t731Day + 1, _t731Base(now));   // 하루 넘게 밀렸으면 종전처럼 건너뛴다(따라잡기 0)
     W = state._t731 = { D, list: L, all: state.villages.slice(), extra: state.world.villages.filter((ev) => !state.byEcon.has(ev)), P: null, C: null, wit: [], open: now };
-    state.lastGameDay = D; state._t731Anchor = D - (L[0]._lonMid || 0);
+    state.lastGameDay = D; state._t731Anchor = D - (L.length ? (L[0]._lonMid || 0) : 0);
     head = true;
   }
   let n = 0; while (n < W.list.length && (fr || _t731LD(W.list[n], now) >= W.D)) n++;
