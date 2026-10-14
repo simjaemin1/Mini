@@ -25,7 +25,7 @@ const _clockReady = (() => {
 
 const WebSocket = require('ws');
 const http = require('http');
-const { ZONES, WORLD, isNight, worldPhase, darknessLevel, findZoneAt, worldDistance, worldDeltaX, HANDOFF_COMMIT } = require('./zone-config');   // ★[T604 추신3] HANDOFF_COMMIT 정본 = zone-config(해안 지킴과 한 자리)
+const { ZONES, WORLD, isNight, worldPhase, darknessLevel, findZoneAt, worldDistance, worldDeltaX, HANDOFF_COMMIT, T720_LON_DAY, SUNRISE_FRAC, phaseAdd } = require('./zone-config');   // ★[T720] 경도 하루 1단계 손잡이 · 시각 한 식   // ★[T604 추신3] HANDOFF_COMMIT 정본 = zone-config(해안 지킴과 한 자리)
 const db = require('./zone-local-db'); // 로컬 zone DB — players 없음
 const SimVillages = require('./villages'); // §4-4 NPC 마을 시뮬 — top-level은 상수뿐(실작업은 아래 init 호출, ENABLE_VILLAGES=0이면 완전 no-op)
 // ★[T484 ②③] 존 기후 — 이 존의 평년값(`server/climate-normals.js` · `apply` 인 존만)과 청동기 Δ(`T484_PALEO` 켬만)를 econ `CLIMATE` 에 얹는다.
@@ -3104,6 +3104,7 @@ function _t671Shape(p) {
   p._vgY = undefined; p._t400Leg = undefined; p._lastAStarAt = undefined; p._arm = undefined; p._fgl = undefined; p._huntBud = undefined; p._huntKil = undefined;
   p._huntWk = undefined; p._fishSpotX = undefined; p._fishSpotY = undefined; p._fishT = undefined; p._t312Ei = undefined; p._t340 = undefined; p._t340N = undefined;
   p._t312Kg = undefined; p._t312U = undefined; p._farmK = undefined; p._lifeTask = undefined;
+  p._t720 = undefined;   // ★[T720 ③] 해 질 녘 곳간 정산(villages `_t720Step` — 켬이면 서는 칸)
   p._warPackOf = undefined;   // 전쟁 짐(villages.js `_t671Unpack` — 끔이면 `delete`)
   p._t724Site = undefined; p._t724T = undefined;   // ★[T724] 광부 몸의 그날 셀 · 선 때(villages.js `_t724BodyStep` — 손잡이 `T724_MINE_ACT` 켬일 때만 값이 든다)
 }
@@ -4175,8 +4176,8 @@ function npcStep(npc, dt, now) {
   else if (SIM_LON_ON && npc.simLonOff != null && npc.npcHomeX != null && npc.behavior !== 'fight') {
     // ★[T670 ①] `worldPhase(now)` 는 `now` 의 순수 함수다 — 틱 안의 `now` 는 모두 같으므로 틱당 한 번만 셈한다(같은 값 · 같은 비트).
     if (now !== _t670PhNow) { _t670PhNow = now; _t670Ph = worldPhase(now); }
-    const fv = (_t670Ph + npc.simLonOff) % 1;
-    if (fv > WORLD.dayPhaseRatio) {   // ★[침대 진입] 밤 목표=실내 침대(npcLifeTick과 동일 — 두 게이트가 침대/마당으로 갈라지면 왕복 진동). 자리 분산은 1인 1침대(BED_SLOTS)가 실체로 보장
+    const fv = T720_LON_DAY ? phaseAdd(_t670Ph, npc.simLonOff) : (_t670Ph + npc.simLonOff) % 1;   // ★[T720] 켬 = 음수 경도 몫도 [0,1)
+    if (fv > WORLD.dayPhaseRatio && !(npc._t720 && npc._t720.k)) {   // ★[T720 ③] 해 질 녘 곳간 정산 중인 몸은 그 걸음이 먼저(끔이면 칸이 없다 = 종전)   // ★[침대 진입] 밤 목표=실내 침대(npcLifeTick과 동일 — 두 게이트가 침대/마당으로 갈라지면 왕복 진동). 자리 분산은 1인 1침대(BED_SLOTS)가 실체로 보장
       // ★[T670 ①] 같은 값이면 다시 쓰지 않는다(쓰는 순서·값 그대로 — 같은 값 덮어쓰기는 아무것도 안 바꾼다)
       const _bx = npc.npcBedX ?? npc.npcHomeX, _by = npc.npcBedY ?? npc.npcHomeY;
       if (!Object.is(npc.targetX, _bx)) npc.targetX = _bx;
@@ -5367,7 +5368,7 @@ const server = http.createServer((req, res) => {
         const r = { pid: p.pid, vid: p.simVillageId, job: p.simJob || null, slot: b ? b.slot : null, hk: b ? b.hk : null,
           x: Math.round(p.x), y: Math.round(p.y), dBed: dBed == null ? null : Math.round(dBed),
           dHome: p.npcHomeX != null ? Math.round(Math.hypot(p.x - p.npcHomeX, p.y - p.npcHomeY)) : null,
-          fv: p.simLonOff != null ? +(((worldPhase(now) + p.simLonOff) % 1)).toFixed(4) : null, dOff: p._dOff != null ? +p._dOff.toFixed(4) : null,
+          fv: p.simLonOff != null ? +((T720_LON_DAY ? phaseAdd(worldPhase(now), p.simLonOff) : (worldPhase(now) + p.simLonOff) % 1)).toFixed(4) : null, dOff: p._dOff != null ? +p._dOff.toFixed(4) : null,
           act: p._lifeAct || null, beh: p.behavior || null, tgt: p.targetX != null ? [Math.round(p.targetX), Math.round(p.targetY)] : null,
           v: [+(p.vx || 0).toFixed(1), +(p.vy || 0).toFixed(1)], path: p.path ? p.path.length : 0, pi: p.pathIndex | 0,
           active: isPositionActive(p.x, p.y), chief: !!(SimVillages.chiefWalking && SimVillages.chiefWalking(p)), fl, stair: p.onStairId || null,
@@ -5808,12 +5809,12 @@ async function _acceptConnection(ws, req, C) {
       ditches: ditchPayload(),         // ★[11차 T3 환호] 도랑 셀 flat [cx,cy,...] — 마을 소유 사물(부팅 후 불변)이라 welcome 1회
       buildings: activeChunkBuildings(),
       rooms: Rooms.allRooms().map(Rooms.wireRoom),   // ★[배치 18 ①] 방은 서버가 판정한다 — 클라는 받아 쓰기만(사본 방지)
-      worldClock: {
+      worldClock: Object.assign({
         epoch: WORLD.worldEpoch,
         dayLengthMs: WORLD.dayLengthMs,
         dayPhaseRatio: WORLD.dayPhaseRatio,
         serverNow: Date.now(),
-      },
+      }, T720_LON_DAY ? { lonDay: 1, worldWidth: WORLD.worldWidth, sunrise: SUNRISE_FRAC } : null),   // ★[T720] 켬 = 클라가 같은 식(경도 · 해 뜸)을 쓴다 · 끔 = 칸 0(종전 바이트)
     });
     sendCorpsesInit(ws);
     // 초기 tick — AOI 필터 적용
@@ -6429,12 +6430,12 @@ async function _acceptConnection(ws, req, C) {
             // 14.42-a — home 위치 (클라가 부활 옵션 UI 등에 사용)
             homeZone: player._homeZone || null,
             homeX: player._homeX, homeY: player._homeY },
-    worldClock: {
+    worldClock: Object.assign({
       epoch: WORLD.worldEpoch,
       dayLengthMs: WORLD.dayLengthMs,
       dayPhaseRatio: WORLD.dayPhaseRatio,
       serverNow: Date.now(), // 클라가 자기 시계 보정용으로 씀
-    },
+    }, T720_LON_DAY ? { lonDay: 1, worldWidth: WORLD.worldWidth, sunrise: SUNRISE_FRAC } : null),   // ★[T720]
   });
   sendCorpsesInit(ws);
   // ★★[T43 2026-09-02 · §12] **쓰러진 채 들어오면 쓰러진 화면이 뜬다.**
@@ -7715,10 +7716,10 @@ function handleObserverMessage(ws, raw) {
               floor: player.floor || 0,
               homeZone: player._homeZone || null,
               homeX: player._homeX, homeY: player._homeY },
-      worldClock: {
+      worldClock: Object.assign({
         epoch: WORLD.worldEpoch, dayLengthMs: WORLD.dayLengthMs,
         dayPhaseRatio: WORLD.dayPhaseRatio, serverNow: Date.now(),
-      },
+      }, T720_LON_DAY ? { lonDay: 1, worldWidth: WORLD.worldWidth, sunrise: SUNRISE_FRAC } : null),   // ★[T720]
     });
     sendCorpsesInit(ws);
     attachPlayerHandlers(ws, player);

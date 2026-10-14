@@ -5508,8 +5508,41 @@ const ABS_CLOCK_DESIGN = {
   GAME_TIME_SCALE: 60,                      // 1실초 = 60게임초(캐논 §1 시간 60×)
   REAL_EPOCH_UTC: Date.UTC(2026, 0, 1),     // 실세계 기준점(예시 — 채택 세션에서 확정·불변 계약)
   GAME_EPOCH_DAYS: 0,                       // 게임력 기점(예: '기원전 150년' 달력 매핑은 표시 층 몫)
-  ADOPTED: false,                            // ★미채택 — 어떤 코드도 이 블록을 읽지 않는다(설계 예약 전용)
+  ADOPTED: false,                            // ★미채택 — 어떤 코드도 이 블록을 읽지 않는다(설계 예약 전용) · ★[T720] 켬이면 아래 시각 한 식이 이 배율을 쓴다(`ABS_CLOCK_DESIGN.ADOPTED` 는 손잡이를 따른다)
 };
+
+// ═══════════ ★★[T720 2026-10-13 · 재민 10-13 판정 · 손잡이 `T720_LON_DAY`(기본 끔 = 아래 함수를 아무도 안 부른다 · main 바이트)] 경도 하루 1단계 — **시각 한 식** ═══════════
+//   ① 경도 λ(x) = x ÷ 세계 폭 − 0.5 (하루 몫 −0.5 ~ +0.5 = −180° ~ +180°) — 세계 존 표가 서쪽 아메리카(x = 0)부터 동쪽 태평양까지 한 바퀴다(원통).
+//      λ = 0 은 세계 가운데(x = W/2) · **날짜선 = x 0 ↔ W 이음매**(베링 끝과 캐나다 사이 태평양). 새 수 0(세계 폭 = 존 설정).
+//   ② 게임 시각 = 실제 UTC ms × 60(`ABS_CLOCK_DESIGN.GAME_TIME_SCALE` — 1실초 = 1게임분 · 하루 = `dayLengthMs` × 60 = 24시간).
+//      기점 `REAL_EPOCH_UTC` 는 UTC 자정이고 UTC 자정은 언제나 `dayLengthMs`(24분)의 배수라 그날의 몫은 기점과 무관하다(검사: 아래 `_T720_DAY_OK`).
+//      달력(1년 3월 1일 = econ 날 0)은 econ 날 그대로다 — 절대 날과 econ 날을 잇는 것은 T722(서버가 멈춰도 날을 따라잡기) 몫.
+//   ③ 현지 시각(0 = 자정) = 그 시각의 하루 몫 + λ(x). 해 몫(종전 `worldPhase` 의 뜻 — 0 = 해 뜸 · `dayPhaseRatio` 까지 낮)은 현지 시각 − 해 뜸.
+//      해 뜸 06:00 은 종전 클라 HUD 의 "phase 0 = 새벽 6시"(`gameTimeString` `+ 6`) 그 자리다 — 이름만 붙였다(새 수 0).
+//   ★종전 상수 0.045(서버 §19 `_lonOff` · 클라 `_lonView` · 랩 `L_LON_SPREAD`)가 이 식 하나로 바뀐다(켬일 때).
+//   ★종전 `worldPhase(t)`(경도 없는 세계 몫)는 그대로 둔다 — econ 경계 · 몹 밤 · 날씨는 1단계에서 세계 시계다. 그 값은 λ − 해뜸 = 0 인 자리(x = 0.75 W · 한반도 존 안)의 해 몫과 같다.
+const T720_LON_DAY = (typeof process !== 'undefined' && process.env && process.env.T720_LON_DAY === '1');
+if (T720_LON_DAY) ABS_CLOCK_DESIGN.ADOPTED = true;
+const SUNRISE_FRAC = 6 / 24;   // 해 뜸 = 06:00(종전 클라 `gameTimeString` 의 `+ 6` · 하루 몫)
+const _t720Frac = (v) => { const f = v % 1; return f < 0 ? f + 1 : f; };
+/** 경도(하루 몫 −0.5 ~ +0.5) — 절대 x(px). */
+function lonOf(xAbs) { return xAbs / WORLD.worldWidth - 0.5; }
+/** 해 몫에 더할 몫 — 종전 `worldPhase` 에 더하면 그 자리의 해 몫이 된다(`_lonOff` · `simLonOff` · 클라 `_lonView` 자리). */
+function lonPhaseOff(xAbs) { return lonOf(xAbs) - SUNRISE_FRAC; }
+/** 현지 시각(하루 몫 · 0 = 자정) — 게임 시각 = (실제 UTC − 기점) × 60. */
+function localTod(xAbs, nowMs = Date.now()) {
+  const A = ABS_CLOCK_DESIGN, gday = WORLD.dayLengthMs * A.GAME_TIME_SCALE;
+  return _t720Frac(((nowMs - A.REAL_EPOCH_UTC) * A.GAME_TIME_SCALE) / gday + lonOf(xAbs));
+}
+/** 현지 해 몫(0 = 해 뜸 · `dayPhaseRatio` 까지 낮) — 종전 `worldPhase` 와 같은 뜻의 현지판. */
+function localPhase(xAbs, nowMs = Date.now()) { return _t720Frac(localTod(xAbs, nowMs) - SUNRISE_FRAC); }
+/** 현지 날 — 종전 게임일(`floor((t − epoch) ÷ dayMs)`)이 바뀌는 그 해 자리(해 뜸)에서 그 자리의 날이 바뀐다. `dayMs` 는 판 시계(빠른 시계 판이면 그 하루). */
+function localDay(xAbs, nowMs = Date.now(), dayMs = WORLD.dayLengthMs, epoch = WORLD.worldEpoch) {
+  return Math.floor((nowMs - (epoch || 0)) / dayMs + lonPhaseOff(xAbs));
+}
+/** 해 몫 더하기(음수 경도 몫도 [0,1) 로) — 종전 `(p + off) % 1` 의 켬 판. */
+function phaseAdd(p, off) { return _t720Frac(p + off); }
+const _T720_DAY_OK = (ABS_CLOCK_DESIGN.REAL_EPOCH_UTC % WORLD.dayLengthMs) === 0;   // 기점이 하루의 배수 — 켬 판의 해 몫이 종전 `worldPhase` 와 같은 시계 위에 선다
 
 function worldPhase(nowMs = Date.now()) {
   const t = (nowMs - WORLD.worldEpoch) % WORLD.dayLengthMs;
@@ -5603,6 +5636,7 @@ function _findNeighborSide(zoneId, side) {
 
 module.exports = {
   ABS_CLOCK_DESIGN, // §19 절대 시계 설계 예약(미채택 — 관측·문서용)
+  T720_LON_DAY, SUNRISE_FRAC, lonOf, lonPhaseOff, localTod, localPhase, localDay, phaseAdd, _T720_DAY_OK,   // ★[T720] 시각 한 식(켬일 때만 부른다)
   ZONES, WORLD, ZONE_ORDER, CENTRAL, WS_PROTO, HTTP_PROTO,
   publicZoneMap, worldPhase, isNight, darknessLevel,
   findZoneAt, worldDistance, worldDeltaX, WRAP_X,
@@ -14179,7 +14213,7 @@ module.exports = {
 
 ;return module.exports;})();
 
-  root.EconEngine=Object.assign({},modules.v1,modules.v2); root.EconEngine.Era=modules.era; root.EconEngine.Calendar=modules.cal; root.EconEngine.Layout=modules.vlayout; root.EconEngine.Crops=modules.crops;
+  root.EconEngine=Object.assign({},modules.v1,modules.v2); root.EconEngine.Era=modules.era; root.EconEngine.Calendar=modules.cal; root.EconEngine.Layout=modules.vlayout; root.EconEngine.Crops=modules.crops; root.EconEngine.ZoneCfg=modules.zcfg;
 })(typeof window!=='undefined'?window:globalThis);
 
 </script>
@@ -15868,7 +15902,7 @@ function draw(){
     ctx.stroke();
   }
   if(lifeOn&&lifeSlow){const tod=(lifeGM%L_MINDAY)/L_MINDAY;   // ★밤 틴트 터미네이터: 일괄 어둡기 → 로컬 태양시(경도=x/N×L_LON_SPREAD) 함수 — 화면 좌(서)·우(동)가 경도 차만큼 다른 어둡기(동쪽이 먼저 밝고 먼저 어두워짐, 원통 세계 대비). 시차 65분이라 미묘하지만 정확
-    const _dkAt=cx2=>{const lt=(tod+(Math.max(0,Math.min(N,cx2))/N)*L_LON_SPREAD)%1;return lt<L_DAWN?Math.min(1,(L_DAWN-lt)/0.13)*0.5:(lt>=L_DUSK?Math.min(1,(lt-L_DUSK)/0.13)*0.5:0);};   // 셀x→로컬 tod→어둡기(기존 공식 그대로). %1 랩=자정 직후 최암(정확)
+    const _dkAt=cx2=>{const lt=L_T720?_t720Frac(tod+_t720LabLon(Math.max(0,Math.min(N,cx2)))):(tod+(Math.max(0,Math.min(N,cx2))/N)*L_LON_SPREAD)%1;return lt<L_DAWN?Math.min(1,(L_DAWN-lt)/0.13)*0.5:(lt>=L_DUSK?Math.min(1,(lt-L_DUSK)/0.13)*0.5:0);};   // 셀x→로컬 tod→어둡기(기존 공식 그대로). %1 랩=자정 직후 최암(정확)
     const _s2c=sx=>(sx-view.ox)/(view.z*CELL);let _dkMx=0;const _dks=[];for(let i2=0;i2<=4;i2++){const d2=_dkAt(_s2c(i2*190));_dks.push(d2);if(d2>_dkMx)_dkMx=d2;}   // 화면 5점 샘플 — dk(x)는 구간선형이라 5점 보간 오차 무시 수준
     if(_dkMx>0.01){ctx.setTransform(1,0,0,1,0,0);const _gr=ctx.createLinearGradient(0,0,760,0);for(let i2=0;i2<=4;i2++)_gr.addColorStop(i2/4,'rgba(12,20,55,'+_dks[i2].toFixed(3)+')');ctx.fillStyle=_gr;ctx.fillRect(0,0,760,760);ctx.setTransform(view.z,0,0,view.z,view.ox,view.oy);}}   // createLinearGradient 프레임당 1개(성능 무해)
   const nf=NPCS.filter(n=>n.job==='farmer').length;
@@ -16004,6 +16038,12 @@ const pctr=k=>{const i=k.indexOf(',');return{cx:+k.slice(0,i)+(L_PARCEL-1)/2,cy:
 const L_WALK=2, L_MINDAY=1440, L_WATERGAP=7;   /*★유닛 통일: 1유닛=시계 1분*/   // 논은 ~7일마다 물대기(촘촘히 → 밭일 지속, 유휴↓)
 const NPC_MAXHP=100, NPC_REST_IN=60, NPC_REGEN_REST=18, NPC_REGEN_WORK=6, NPC_DMG_BOAR=30, NPC_DMG_WOLF=25, NPC_DMG_TIGER=65, NPC_MELEE_HP=75;   // ★개별 NPC 체력: hp<60→요양(만피까지 귀가, 멧돼지 2타·호랑이 1타=요양행), 회복 요양18·근무6/일 ×건강·행복·식량. 사냥꾼 hp<75=근접전 회피(재부상 나선 차단). 치사 가능. 플레이어 공격도 이 hp 깎으면 됨(향후)
 const L_DAWN=0.25, L_DUSK=0.833;   // ★하루=24시간. 낮(06~20시)=노동, 밤(20~06시)=취침. f(0~1)=00~24시
+// ★[T720 2026-10-13] 경도 하루 1단계 — URL `?T720_LON_DAY=1`(서버와 같은 이름 · T641 env 문)이면 서버와 **같은 식**: 랩 지도 셀 x 를 한반도 존 위 절대 x 로 놓고
+//   경도 = x ÷ 세계 폭 − 0.5(`zone-config.lonOf` — 번들 `EconEngine.ZoneCfg`). 랩 시각 f 는 0 = 자정(현지 시각과 같은 축)이라 해 뜸을 빼지 않는다.
+//   지도 서 → 동 끝의 차 = 존 폭 ÷ 세계 폭(유도 · 종전 0.045 자리). 끔 = 종전 줄 그대로.
+const L_T720=(typeof window!=='undefined'&&window.LAB_ENV&&window.LAB_ENV.T720_LON_DAY==='1'&&typeof EconEngine!=='undefined'&&!!EconEngine.ZoneCfg);
+function _t720Frac(v){const f=v%1;return f<0?f+1:f;}
+function _t720LabLon(cx){const ZC=EconEngine.ZoneCfg,Z=ZC.ZONES.hanbando;return ZC.lonOf(Z.worldOffsetX+(cx/N)*Z.zoneWidth);}
 const L_LON_SPREAD=0.045;   // ★경도 시차 폭(하루 비율): 맵 서→동 끝 로컬 태양시 차 4.5%≈65분 — 현 1.6km의 가상 시차(연출 스케일). 인간 일과만 로컬 fv=(f+vil._lonOff)%1, 야생 몹 수면·도적 야행·일 경계 회계(lifeDay)는 전역 f 유지(econ=전역 날짜, 행동=로컬 태양시 — 분리 원칙. 야생 로컬화는 본체 인계). 미래 원통 세계: 둘레/자전 주기로 이 상수만 재산정
 // ★노동기반 집 건설(라이프): 인구 늘면 집터 추가 → 유휴 NPC가 진행도 채워 완공. 발자국 없으면 2층 증축.
 const W_PEN_K=2000;   // ★[사용자 설계] 물가 페널티 계수: K/거리²(부지 원 가장자리~물, 연속식 — 2셀 500·5셀 80·10셀 20·17.5셀 6점, 문턱 없음). ※K 상향(4000) 실험: 200명 혼잡에선 후보 집합이 빡빡해 순서만 재배열되고 물가 집 수가 오히려 늘기도(패킹 카오스) — 가격으론 혼잡 균형을 못 이겨 원복. 성장(addHouseSite)·shore 재생성 공용. 하드 한계는 +2셀 링 별도
@@ -18644,7 +18684,7 @@ function lifeLoop(now){if(!lifeOn)return;   // 통합 게임시계: 농부 이�
   const dGM=sp*dt,prevDay=Math.floor(lifeGM/L_MINDAY);lifeGM+=dGM;const day=Math.floor(lifeGM/L_MINDAY),f=(lifeGM%L_MINDAY)/L_MINDAY,slow=dGM<6;lifeSlow=slow;   // 관찰·보통=실제 도보+셀작업, 빠름·초고속=스냅+일괄(빨리감기)
   if(slow)dispatchTrades();   // ★여유 NPC를 교역에 파견(아침 분산) — 실제 NPC가 걸어서 다녀옴
   for(const vil of VILS){life=vil;V=vil.V;   // ★S6: 각 마을 NPC 이동·셀작업(life·V 전환)
-  const fv=(f+(vil._lonOff!==undefined?vil._lonOff:(vil._lonOff=(vil.center?vil.center.cx/N:0.5)*L_LON_SPREAD)))%1;   // ★경도 로컬 태양시(원통 세계 대비): 동쪽(cx 큰) 마을이 먼저 깨고 먼저 잔다 — 사람 일과 판정만 fv, 몹·도적·일 경계는 전역 f. 개인 기상 시차 a._dOff는 fv 위에 공존(마을 시차+개인 시차). %1 랩(f≥0.955)은 일과상 전부 밤 구간 — home 분기는 취침으로 수렴, 잔존 work 상태는 자정 전원 home 리셋(7165행)이 회수
+  const fv=L_T720?_t720Frac(f+(vil._lonOff!==undefined?vil._lonOff:(vil._lonOff=_t720LabLon(vil.center?vil.center.cx:N/2)))):(f+(vil._lonOff!==undefined?vil._lonOff:(vil._lonOff=(vil.center?vil.center.cx/N:0.5)*L_LON_SPREAD)))%1;   // ★경도 로컬 태양시(원통 세계 대비): 동쪽(cx 큰) 마을이 먼저 깨고 먼저 잔다 — 사람 일과 판정만 fv, 몹·도적·일 경계는 전역 f. 개인 기상 시차 a._dOff는 fv 위에 공존(마을 시차+개인 시차). %1 랩(f≥0.955)은 일과상 전부 밤 구간 — home 분기는 취침으로 수렴, 잔존 work 상태는 자정 전원 home 리셋(7165행)이 회수
   if(slow)for(const a of life.agents){   // 저속(관찰·보통): 실제 도보 + 셀작업. 행동을 a.action에 기록.
     if(a._muster)continue;   // ★출정 중인 주민 = 일상(농사·이동) 정지. 위치는 _muSyncAgents(집결·행군)가 구동.
     if(a._linger>0)a._linger-=dGM;   // ★[10차 T4] 마당 체류 잔여(장 서는 동안 상인은 그 자리에 머문다)

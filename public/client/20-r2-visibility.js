@@ -719,6 +719,7 @@
     const t = (worldNow() - worldClock.epoch) % worldClock.dayLengthMs;
     // §19 4파 경도 로컬 태양시(표시 공식): 뷰(카메라) 경도 오프셋 가산 — 동쪽이 먼저 밝고 먼저 어두워짐.
     //   시계·밤 오버레이·(밤) 라벨이 전부 이 로컬 phase를 소비(클라 표시 전용 — 서버 econ 일 경계는 전역).
+    if (worldClock.lonDay) { const f = (t / worldClock.dayLengthMs + _lonView) % 1; return f < 0 ? f + 1 : f; }   // ★[T720] 음수 경도 몫도 [0,1)
     return (t / worldClock.dayLengthMs + _lonView) % 1;
   }
   function isNight() {
@@ -739,7 +740,8 @@
     if (!worldClock) return '--:--';
     const p = worldPhase();
     // phase 0 = 새벽 6시로 잡자 — 익숙한 감각
-    const hours24 = ((p * 24) + 6) % 24;
+    // ★[T720] 켬 = 그 식의 현지 시·분(해 몫 + 해 뜸 = 현지 시각 · 서버 `zone-config.localTod`) — 하드코딩 +6 이 아니라 서버가 준 해 뜸 몫
+    const hours24 = worldClock.lonDay ? (((p + (worldClock.sunrise || 0)) % 1) * 24) : ((p * 24) + 6) % 24;
     const hh = Math.floor(hours24);
     const mm = Math.floor((hours24 - hh) * 60);
     return `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;

@@ -1832,7 +1832,7 @@ function foundPlayerVillage(opts) {
   };
   ev._fieldCells = 0;   // ★[T100] 새 마을은 밭 0칸에서 시작한다 — econ 은 텃밭 하한으로 받는다(굶기지 마라)
   { const _cw = Math.ceil((state.deps && state.deps.zoneWidth ? state.deps.zoneWidth : (require('./zone-config').ZONES[state.zoneId] || {}).zoneWidth || 1) / SZ);
-    vil._lonOff = +((ccx / Math.max(1, _cw)) * 0.045).toFixed(4); }
+    vil._lonOff = T720_LON_DAY ? _t720LonOff(ccx) : +((ccx / Math.max(1, _cw)) * 0.045).toFixed(4); }   // ★[T720] 켬 = 원통 경도
   state.villages.push(vil);
   state.byDbId.set(dbId, vil);
   state.byEcon.set(ev, vil);
@@ -4579,8 +4579,8 @@ function init(deps) {
     state.roads = require('./roads');        // §16 답압 길(4파) — 캐러밴·행군 스탬프 + 교역 A* 할인(ENABLE_ROADS=0이면 내부 no-op)
     // §19 경도 로컬 시각(4파): 마을별 _lonOff = (ccx/셀폭)×0.045 — 인간 일과(마을 NPC 취침)만 로컬 태양시.
     //   econ 일 경계·야생·도적은 전역 유지(블록 계약 — 랩 L_LON_SPREAD 5351행 verbatim).
-    { const _cw = Math.ceil(ZONE.zoneWidth / SZ); for (const vil of state.villages) vil._lonOff = +((vil.ccx / _cw) * 0.045).toFixed(4);
-      const _lo = state.villages.map(v => v._lonOff); if (_lo.length) console.log(`[${state.zoneId}] 🕐 경도 시차(§19): 마을 ${_lo.length}곳 스프레드 ${(Math.min(..._lo) * 1440).toFixed(0)}~${(Math.max(..._lo) * 1440).toFixed(0)}분/일(0.045 상수 — 동쪽이 먼저 잔다)`); }
+    { const _cw = Math.ceil(ZONE.zoneWidth / SZ); for (const vil of state.villages) vil._lonOff = T720_LON_DAY ? _t720LonOff(vil.ccx) : +((vil.ccx / _cw) * 0.045).toFixed(4);   // ★[T720] 켬 = 원통 경도(`lonPhaseOff`)
+      const _lo = state.villages.map(v => v._lonOff); if (_lo.length) console.log(`[${state.zoneId}] 🕐 경도 시차(§19): 마을 ${_lo.length}곳 스프레드 ${(Math.min(..._lo) * 1440).toFixed(0)}~${(Math.max(..._lo) * 1440).toFixed(0)}분/일(${T720_LON_DAY ? '원통 경도 · T720' : '0.045 상수'} — 동쪽이 먼저 잔다)`); }
 
     // --- P1: NPC 마을 전쟁 econ 층 배선 (tickWorldV2 후 daily 구동) ---
     //   전쟁 상태는 전부 vil.econ(plain object)에 저장 → serializeEcon 이 자동 영속(_grudge/_warTrauma/
@@ -6351,6 +6351,26 @@ const T523_LIFE_SLICE = process.env.T523_LIFE_SLICE !== '0';
 //        교역 도착 절 뒤 · 마을 하나 뒤 쉼표). 한 쉼표 = 'retry'(T85 문법 — 같은 자리 맨 앞 · 같은 하루 안의 다음 조각 · 차례 무변).
 //   캐러밴 동기(`_caravanSyncOne`)는 이미 한 대씩 · 몸 A* 는 재개형이다(T85) — 손대지 않는다.
 const T698_BOUNDARY_SLICE = process.env.T698_BOUNDARY_SLICE === '1';
+// ══ ★★★[T720 2026-10-13 · 경도 하루 1단계 · 손잡이 `T720_LON_DAY`(기본 **끔** = 아래 갈래를 아무도 안 탄다 · main 바이트)] ═══════════════
+//   T712 설계 위 재민 10-13 판정: ⓐ 원통 경도 · 시계 = 실제 UTC × 60 · 날짜선 = 태평양 이음매. 시각 식은 `zone-config`(`lonPhaseOff` · `phaseAdd`) 하나다.
+//   ① 마을 경도 몫 `_lonOff` = 그 마을 중심 절대 x 의 `lonPhaseOff`(종전 존 안 x × 0.045 상수 자리) — 몸 `simLonOff` 가 그대로 받는다.
+//   ② 몸의 일과 시각 fv = 해 몫 + `simLonOff`(음수 몫도 [0,1) — `phaseAdd`) · **몸의 날 = 현지 날**(`_bodyDay` — 종전 세계 날 `gameDayOf`).
+//   ③ 손 → 곳간 = **닿는 순간**: 해 질 녘 손에 행위 층 짐(물고기 · 볏단 · 통나무 · 채집)이 있으면 집 대신 곳간 사다리(곳간 없는 마을은 회관)로 간다(`_t720Step`).
+//      경계 손 일괄(`_lifeHandsIn` · `_lifeDaily` 손 비우기 넷)은 걷는다. ★하루 문 — 깨어 걸은 시간이 낮 하나(`dayMs × dayPhaseRatio`)를 넘도록
+//      못 닿으면 놓고 집으로(짐은 손에 · 그 날은 다시 안 나선다 · 이튿날 해 질 녘에 다시) — 촌장 마중(`_t529Step`)의 그 문 · 새 수 0.
+//   ④ econ 경계 · 마감 조각은 그대로(1단계 · 2단계는 econ 공유 씨 흐름 가르기 뒤).
+const T720_LON_DAY = process.env.T720_LON_DAY === '1';
+let _zc720m = null;
+function _zc720() { return _zc720m || (_zc720m = require('./zone-config')); }
+function _t720LonOff(ccx) {   // 마을 중심 셀 x → 해 몫에 더할 경도 몫(절대 x = 존 원점 + 셀 중심)
+  const Z = _zc720(), zo = ((Z.ZONES[state.zoneId] || {}).worldOffsetX) || 0;
+  return Z.lonPhaseOff(zo + ccx * SZ + SZ / 2);
+}
+function _t720Fv(wp, off) { return T720_LON_DAY ? _zc720().phaseAdd(wp, off) : (wp + off) % 1; }   // 끔 = 종전 식 그대로
+function _bodyDay(npc, now) {   // 몸의 날 — 끔 = 세계 날(종전) · 켬 = 그 마을 현지 날(해 뜸에서 바뀐다)
+  if (!T720_LON_DAY) return gameDayOf(now);
+  return Math.floor((now - state.epoch) / state.dayMs + ((npc && npc.simLonOff) || 0));
+}
 let _t523Pause = 0;   // 쉼표에서 다른 프레임에 넘겨 준 시간의 누계(생활층 스톱워치가 그만큼 뺀다 · 계측 전용)
 
 // ★[T513] econ 조각의 앞뒤 일 — 한 조각(끔)과 여러 조각(켬)이 **같은 함수**를 부른다(사본 0 · 몸통은 종전 econ 조각 그대로 옮겼다).
@@ -7519,7 +7539,7 @@ function lifeDebug() {   // ★[직접 서버 디버깅 — 사용자 요청] zo
         // ★[2026-08-04c 배치 17 ②] 밤 어부·낚시터 방황 규명용 — 이 셋이 없으면 "밤인데 왜 밖인가"를 못 가린다.
         //   lon = §19 경도 오프셋 · fv = 이 마을의 로컬 태양시(밤 판정의 실제 입력) · beh/tgt = 이동 목표(방황 판별)
         lon: p.simLonOff != null ? +p.simLonOff.toFixed(4) : null,
-        fv: (wpF && p.simLonOff != null) ? +(((wpF(now) + p.simLonOff) % 1)).toFixed(3) : null,
+        fv: (wpF && p.simLonOff != null) ? +(_t720Fv(wpF(now), p.simLonOff)).toFixed(3) : null,
         beh: p.behavior || null, tgt: (p.targetX != null ? [Math.round(p.targetX), Math.round(p.targetY)] : null),
         dHome: p.npcHomeX != null ? Math.round(Math.hypot(p.x - p.npcHomeX, p.y - p.npcHomeY)) : null,
         dBed: p.npcBedX != null ? Math.round(Math.hypot(p.x - p.npcBedX, p.y - p.npcBedY)) : null,
@@ -8319,6 +8339,7 @@ function _t374Done(vil, job) {
 //   ⚠헤드리스는 손이 비어 있어 아무것도 안 한다 · 손잡이가 꺼져 있으면 첫 줄에서 돌아간다(끈 팔 비트 동일).
 //   ⚠사람 수만 `_lifeDaily` 로 넘긴다(`_t347PreWalked`·`_t325PreWalked` — "몸이 걷는 마을은 헤드리스로 안 딴다" 판정 무변).
 function _lifeHandsIn(vil) {
+  if (T720_LON_DAY) return;   // ★[T720 ③] 켬 = 경계 일괄 없음 — 손은 곳간에 닿는 순간 든다(`_t720Step`)
   const E = _lifeEcon();
   if (!(E.T347_FORAGE_ACT || E.T325_WOOD_ACT || E.T724_MINE_ACT) || !vil || !vil.econ) return;   // ★[T724] 셋째 항(끄면 종전 두 항 그대로)
   const pl = state.deps.players; if (!pl) return;
@@ -9762,6 +9783,58 @@ function _granGo(vil, npc, forDraw) {           // 곳간행 개시 — 자리 �
   npc._granTask = { cx: g.cx, cy: g.cy, draw: !!forDraw, at: 0 };
   return true;
 }
+// ★★★[T720 ③] **해 질 녘 곳간 정산 — 손은 곳간에 닿는 순간 든다**(켬만 · 끔이면 아무도 안 부른다).
+//   행위 층 짐(그 마을에서 켜진 품목만 — `_lifeDaily` 의 손 비우기 넷과 같은 문): 물고기(`_t312U`) · 볏단(`_t368H`) · 통나무 · 채집(마을 목록의 손 이름).
+//   해 질 녘(현지 fv ≥ 낮 비율) 그 짐이 손에 있으면 집 대신 **가장 가까운 곳간 사다리**로 간다(곳간이 없는 마을은 **회관** = 마을 중심 · T561 ②ⓒ 의 그 자리).
+//   가서(`운반`) · 머물고(`저장` · `G_STOREW`) · 넣는다(곳간 입구 넷 — econ 정본 함수 그대로 · 사본 0). 통나무 · 채집은 그날 걸은 몸 도장(헤드리스 판정 무변).
+//   ★하루 문 — 깨어 걸은 시간(결정 간격 틈 `SCH_VG_STUCK` 보다 긴 멎음은 안 센다 — `_t529Step` 의 그 자)이 낮 하나를 넘으면 놓는다(짐은 손에).
+//   한 몸은 그 날(나선 날) 한 번만 나선다 — 다녀왔든(곳간이 다 안 받아 손에 남은 채집 · T544) 놓았든 이튿날 해 질 녘에 다시.
+function _t720Ct(vil) { return vil._t720C || (vil._t720C = { go: 0, done: 0, give: 0, hall: 0 }); }   // 계측 전용(회계 아님)
+//   ⚠통나무는 **나무꾼의 손**만 — 집 크루(T400)가 곳간에서 꺼내 집터로 나르는 통나무는 벤 것이 아니다(곳간에 다시 넣으면 그 자재가 econ 입구로 두 번 든다 ·
+//     종전 경계 일괄은 그 손까지 `_t325Deliver` 로 넣었다 — 보고 §회부). 크루 명부는 T400 의 그 칸(`vil._t400Crew`)이다.
+function _t720Logger(vil, npc) { return npc.simJob === 'lumberjack' && !(vil._t400Crew && vil._t400Crew.indexOf(npc.pid) >= 0); }
+function _t720Held(vil, npc) {
+  if (!vil.econ) return 0;
+  const E = _lifeEcon(), inv = npc.inventory || {};
+  let u = 0;
+  if (E.fishActOn(vil.econ)) u += npc._t312U || 0;
+  if (_t368ItemsOn() && npc._t368H) for (const c in npc._t368H) u += npc._t368H[c] || 0;
+  if (E.T325_WOOD_ACT && E.woodActOn(vil.econ) && _t720Logger(vil, npc)) u += inv.wood || 0;
+  if (E.T347_FORAGE_ACT && E.forageActOn(vil.econ)) { for (const k of (_t347KeepOf(vil) || [])) for (const h of _t347HandsOf(k)) u += inv[h] || 0; }
+  return u;
+}
+function _t720Settle(vil, npc, now, S) {
+  const E = _lifeEcon();
+  if (E.fishActOn(vil.econ) && (npc._t312U || 0) > 0) _t312Deliver(vil, npc);
+  if (_t368ItemsOn() && npc._t368H) _t368Deliver(vil, npc, 'gran');
+  if (E.T325_WOOD_ACT && E.woodActOn(vil.econ) && _t720Logger(vil, npc) && npc.inventory && (npc.inventory.wood || 0) > 0) { _t325Deliver(vil, npc); _t561Walked(vil, npc, now); }
+  if (E.T347_FORAGE_ACT && E.forageActOn(vil.econ) && npc.inventory) {
+    let u = 0; for (const k of (_t347KeepOf(vil) || [])) for (const h of _t347HandsOf(k)) u += npc.inventory[h] || 0;
+    if (u > 0) { _t347Deliver(vil, npc); const d = _bodyDay(npc, now); if (S.fw !== d) { S.fw = d; vil._t347PreWalked = (vil._t347PreWalked | 0) + 1; } }
+  }
+}
+function _t720Step(vil, npc, now, fv, dayR, day) {
+  let S = npc._t720;
+  if (!S || !S.k) {
+    if (!(fv >= dayR)) return false;                       // 해 질 녘(현지)부터
+    if (S && S.dd === day) return false;                   // 그 날은 이미 나섰다
+    if (!(_t720Held(vil, npc) > 0)) return false;
+    let g = null, bd = Infinity;
+    for (const x of (vil._granList || [])) { const L = _granLadder(x), d = Math.hypot(L.x - npc.x, L.y - npc.y); if (d < bd) { bd = d; g = x; } }
+    const L = g ? _granLadder(g) : { x: vil.ccx * SZ + SZ / 2, y: vil.ccy * SZ + SZ / 2 };
+    npc._t720 = S = { k: 1, tx: L.x, ty: L.y, at: 0, aw: 0, last: now, d0: day, dd: S ? S.dd : -1, fw: S ? S.fw : -1 };
+    const C = _t720Ct(vil); C.go++; if (!g) C.hall++;
+  }
+  { const gap = now - S.last; if (gap < SCH_VG_STUCK) S.aw += gap; S.last = now; }
+  if (S.aw > (state.dayMs || 600000) * dayR) { S.k = 0; S.dd = S.d0; _t720Ct(vil).give++; return false; }   // 하루 문 — 짐은 손에 든 채 집으로
+  if (Math.hypot(npc.x - S.tx, npc.y - S.ty) > 44) { npc.behavior = 'wander'; npc.targetX = S.tx; npc.targetY = S.ty; npc.gatherTarget = null; _lifeAct(npc, '운반'); return true; }
+  if (!S.at) S.at = now;
+  _lifeAct(npc, '저장');
+  if (now - S.at < G_STOREW) return true;
+  _t720Settle(vil, npc, now, S);
+  S.k = 0; S.dd = S.d0; _t720Ct(vil).done++;
+  return false;
+}
 // 곳간행 실행 — 이번 틱 소유권을 가지면 true. (랩 toGran/gran 2상태를 서버 _lifeTask 대신 _granTask로 표현)
 function _lifeGranStep(vil, npc, now) {
   const t = npc._granTask; if (!t) return false;
@@ -9782,7 +9855,7 @@ function _lifeGranStep(vil, npc, now) {
   //   랩은 인출 직후 state='toHome'으로 상태를 떠나 그날 다시 work 탈출 검사에 걸리지 않는다(8010행).
   //   서버는 상태가 없고 스케줄 게이트를 매 틱 재평가하므로, 도장이 없으면
   //   퇴근 훅이 저장(짐>0)↔인출(빈손)을 무한 왕복시킨다 — 집에 못 간다.
-  if (t.draw) { const q = Math.min(G_DRAW, _granStockOf(vil, g)); _granStockAdd(vil, g, -q); _handAdd(npc, q); npc._granD = state.dayMs ? gameDayOf(now) : 0; }
+  if (t.draw) { const q = Math.min(G_DRAW, _granStockOf(vil, g)); _granStockAdd(vil, g, -q); _handAdd(npc, q); npc._granD = state.dayMs ? _bodyDay(npc, now) : 0; }
   else { _granStockAdd(vil, g, _handOf(npc)); _handSet(npc, 0); if (npc._t368H) _t368Deliver(vil, npc, 'gran'); if (npc.inventory && (npc.inventory.wood || 0) > 0) _t561Ladder(vil, npc, now); if (npc.inventory && npc.inventory.ore_chunk > 0) _t724Deliver(vil, npc, 'gran', now); }   // ★[T724 ②] 켠 팔은 원석도(끄면 몸 손에 원석이 없다 · `_t724Deliver` 첫 줄도 손잡이) · ③ 정산(물리 장부만 — econ 무접촉 · ★[T316] 손은 `inventory`) · ★[T368] 켠 팔은 **이 귀환이 곳간 입고**다(손의 작물 → `_farmGranary`) · ★[T561 ②ⓑ] 켠 팔은 통나무도(끄면 `_t561Ladder` 첫 줄에서 돌아간다)
   npc._granTask = null;
   return false;                                                      // 소유권 반납 → 이번 틱부터 평소 일과
@@ -10661,7 +10734,7 @@ function _t561Ladder(vil, npc, now) {
 //   그 몸의 하루는 있었다 ⇒ 일괄이 그 몸 몫으로 걸음 한도를 대신 베지 않는다(캐논 "일괄은 몸을 대신할 뿐 몸보다 많이 내지 않는다").
 //   ⚠켜진 팔만 부른다(부르는 두 자리 모두 `T561_ROSTER_BODY` 뒤) — 끔 = 옛 XOR(해 질 녘 손만).
 function _t561Walked(vil, npc, now) {
-  const d = state.dayMs ? gameDayOf(now) : 0;                                                     // 몸의 날(`npcLifeTick` 이 쓰는 그 날)
+  const d = state.dayMs ? _bodyDay(npc, now) : 0;                                                  // 몸의 날(`npcLifeTick` 이 쓰는 그 날 · ★[T720] 켬 = 현지 날)
   if (npc._t561Wd !== d) { npc._t561Wd = d; vil._t325PreWalked = (vil._t325PreWalked | 0) + 1; }
 }
 // ★[T523] `_lifeDaily` 는 정본 몸통(`_lifeDailySteps` 발생기)을 쉬지 않고 끝까지 돈다 — 종전 호출·순서·값 그대로.
@@ -10692,7 +10765,7 @@ function* _lifeDailySteps(vil) {   // 게임일 경계: 크루·클레임 재대
   //   ⚠짐이 차서 이미 돌아간 사람은 손이 비어 있어 이 줄이 무해하다.
   if (vil.econ && _lifeEcon().fishActOn(vil.econ)) {
     const _pl = state.deps.players;
-    for (const pid of (vil.npcPids || [])) { const p = _pl && _pl.get(pid); if (p && (p._t312U || 0) > 0) _t312Deliver(vil, p); }
+    if (!T720_LON_DAY) for (const pid of (vil.npcPids || [])) { const p = _pl && _pl.get(pid); if (p && (p._t312U || 0) > 0) _t312Deliver(vil, p); }   // ★[T720 ③] 켬 = 손 비우기 없음(닿는 순간)
     vil._t312 = null;   // ★이월 없음 — 날이 바뀌면 예산 장부를 버린다(설계_민물고기 §2)
     vil._t312W = null;  // 물 갈래는 계절이 바뀌면 다시 읽는다(논이 생기기도 한다)
   }
@@ -10700,7 +10773,7 @@ function* _lifeDailySteps(vil) {   // 게임일 경계: 크루·클레임 재대
   //   볏단이 차서(`G_CARRY`) 곳간에 다녀온 농부는 그때 이미 넣었다(`_lifeGranStep`) — 손이 비어 이 줄이 무해하다.
   if (vil.econ && _t368ItemsOn()) {
     const _pl = state.deps.players;
-    for (const pid of (vil.npcPids || [])) { const p = _pl && _pl.get(pid); if (p && p._t368H) _t368Deliver(vil, p, 'day'); }
+    if (!T720_LON_DAY) for (const pid of (vil.npcPids || [])) { const p = _pl && _pl.get(pid); if (p && p._t368H) _t368Deliver(vil, p, 'day'); }   // ★[T720 ③] 켬 = 손 비우기 없음
   }
   // ★★[T325] **낮이 끝나면 들고 있던 통나무를 곳간에 넣는다**(캐논 ⓐ — 귀환 시 입고). 어부 절과 같은 꼴.
   //   ⚠그리고 **관측자 없는 마을**의 나무꾼도 여기서 **같은 함수**로 하루를 푼다 —
@@ -10718,7 +10791,7 @@ function* _lifeDailySteps(vil) {   // 게임일 경계: 크루·클레임 재대
     const _on = _lifeEcon().woodActOn(vil.econ);
     const _pl = state.deps.players;
     let _walked = 0; if (vil._t325PreWalked) { _walked = vil._t325PreWalked; vil._t325PreWalked = 0; }   // ★[T475 ②] 손은 econ 틱 앞에서 이미 곳간에(`_lifeHandsIn`) — 사람 수만 이어 받는다
-    if (_on) for (const pid of (vil.npcPids || [])) { const p = _pl && _pl.get(pid); if (p && p.inventory && (p.inventory.wood || 0) > 0) { const nw = _t717NewWood(p); _t325Deliver(vil, p); if (nw) _walked++; } }   // ★[T717 ②] 켬 = 남긴 몫만 든 손은 "걸은 몸"이 아니다(끔 = 옛 줄)
+    if (_on) for (const pid of (vil.npcPids || [])) { const p = _pl && _pl.get(pid); if (p && p.inventory && (p.inventory.wood || 0) > 0) { const nw = _t717NewWood(p); if (!T720_LON_DAY) _t325Deliver(vil, p); if (nw) _walked++; }   /* ★[PM 10-14 합침] T717 ② 셈 + T720 ③ 켬 = 손은 든 채 */ }   // ★[T717 ②] 켬 = 남긴 몫만 든 손은 "걸은 몸"이 아니다(끔 = 옛 줄)
     //   ★★[T717 ②] 어제 곳간이 안 받은 짐(헤드리스가 벤 그루의 나머지)을 **오늘 먼저** 넣는다(베기 전 · 같은 입구 · 그날 몫만큼) — 채집 `_t544PackIn` 과 같은 자리.
     if (T717_WOOD_HAND && _on) _t717PackIn(vil);
     //   ★[T449 ⓑ] 관측 마을(켬)의 나무꾼은 **몸 명부** — 일괄 명부에서 빠진다(T423 문법 · 끔이면 종전 명부 그대로)
@@ -10816,7 +10889,7 @@ function* _lifeDailySteps(vil) {   // 게임일 경계: 크루·클레임 재대
     if (_on && _keep.length) for (const pid of (vil.npcPids || [])) {
       const p = _pl && _pl.get(pid); if (!p || !p.inventory) continue;
       let u = 0; for (const k of _keep) for (const h of _t347HandsOf(k)) u += p.inventory[h] || 0;   // ★[T458] 손 이름
-      if (u > 0) { _t347Deliver(vil, p); _walked++; }
+      if (u > 0) { if (!T720_LON_DAY) _t347Deliver(vil, p); _walked++; }   // ★[T720 ③] 켬 = 손은 든 채(걸은 몸으로만 센다)
     }
     //   ★★[T544] 어제 곳간이 안 받은 짐을 **오늘 먼저** 넣는다(따기 전 · 같은 입구 · 그날 몫만큼) — 게이트가 선 마을만.
     const _pkIn = (_on && _keep.length) ? _t544PackIn(vil, _keep) : 0;
@@ -11029,14 +11102,17 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
   // ★[곳간②] 곳간행(운반·저장·인출)은 스케줄보다 우선 — 짐을 든 채 딴 데로 가지 않는다.
   //   단 밤(취침 구간)엔 중단하고 귀가시킨다(랩: 황혼 이후 저장은 바로 귀가 — 밤 헛걸음 제거).
   if (npc._granTask) {
-    const _fvG = state.deps.worldPhase ? (state.deps.worldPhase(now) + (npc.simLonOff || 0)) % 1 : 0.35;
+    const _fvG = state.deps.worldPhase ? _t720Fv(state.deps.worldPhase(now), npc.simLonOff || 0) : 0.35;
     if (_fvG >= (state.deps.dayPhaseRatio || 0.7)) { npc._granTask = null; }
     else if (_lifeGranStep(vil, npc, now)) return true;
   }
   // ══ 스케줄 게이트(랩 lifeLoop home 분기 7978~7987 동형 — 우선순위: 요양 > 밤·기상 전 취침 > 아침 추첨 > 반일 오후) ══
   const wpF = state.deps.worldPhase, dayR = state.deps.dayPhaseRatio || 0.7;
-  const fv = wpF ? (wpF(now) + (npc.simLonOff || 0)) % 1 : 0.35;   // 경도 로컬 태양시(§19 동형 — 동쪽 마을이 먼저 깨고 먼저 잔다)
+  const fv = wpF ? _t720Fv(wpF(now), npc.simLonOff || 0) : 0.35;   // 경도 로컬 태양시(§19 동형 — 동쪽 마을이 먼저 깨고 먼저 잔다)
   const day = state.dayMs ? gameDayOf(now) : 0;
+  //   ★[T720 ②] **몸의 날**(일과 도장 — 반일 굴림 · 곳간 인출 · 농부 출근 · 해 질 녘 정산) = 그 마을의 현지 날(끔 = `day` 그대로).
+  //     현장 목록 · 나무 목록 · 어장 예산 · 작물 달처럼 **econ 날에 묶인 장부**는 `day`(세계 날)를 그대로 쓴다 — 1단계는 econ 경계가 세계 시계다(두 날이 섞이면 같은 장부를 두 번 연다).
+  const bday = T720_LON_DAY ? (state.dayMs ? _bodyDay(npc, now) : 0) : day;
   // 요양(랩 a.rest 6298·7526): hp<60% 진입 → 진행 작업 반납·자택 요양. 만피 해제(회복=zone.js 자연 리젠 — 히스테리시스 동형)
   if (npc._rest) {
     if ((npc.hp || 0) >= (npc.maxHp || 100)) npc._rest = 0;
@@ -11044,6 +11120,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
   } else if (npc.hp != null && npc.hp > 0 && npc.hp < (npc.maxHp || 100) * SCH_REST_IN) {
     npc._rest = 1; _lifeDropTask(vil, npc); _lifeGoHome(npc, '요양'); return true;
   }
+  if (T720_LON_DAY && _t720Step(vil, npc, now, fv, dayR, bday)) return true;   // ★[T720 ③] 해 질 녘 곳간 정산(요양 뒤 · 잠 앞)
   // 기상 시차(랩 a._dOff): 개인 결정론 오프셋 0~하루 3%(43분) — 마을 일괄 기상의 프레임 스파이크 분산 + 유기적 출근 풍경
   if (npc._dOff === undefined) npc._dOff = ((_pidHash(npc.pid) % 997) / 997) * SCH_DOFF;
   if (fv >= dayR || fv < npc._dOff) { npc._workT = null; _lifeGoHome(npc, '취침'); return true; }
@@ -11052,8 +11129,8 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
   // 아침 추첨(랩 a._hd/_half 7984): econ 여유노동(_idleFrac) 비율 = 오늘 반일 근무 확률 — 여가→행복의 시각화(궁핍촌 idle 0=항상 종일)
   // ★[T350 · 주사위 0] 그날 '반일' 여부 — 하루 한 번 굴린다. 씨 = (신원 · 집 셀 · 게임일 · 0).
   //   틱을 안 넣는 이유: **하루 한 번**이라 날이 곧 그 굴림의 자리다(같은 날 다시 물어도 같은 답).
-  if (npc._hd !== day) { npc._hd = day;
-    _diceLife.seed(_seedOf(_shOfNpc(npc), Math.floor((npc.npcHomeX || npc.x || 0) / SZ), Math.floor((npc.npcHomeY || npc.y || 0) / SZ), day, 0));
+  if (npc._hd !== bday) { npc._hd = bday;
+    _diceLife.seed(_seedOf(_shOfNpc(npc), Math.floor((npc.npcHomeX || npc.x || 0) / SZ), Math.floor((npc.npcHomeY || npc.y || 0) / SZ), bday, 0));
     npc._half = _dl() < ((vil.econ && vil.econ._idleFrac) || 0); }
   // ★★[T707] 장마당 — 오늘 장 명부에 든 몸은 장이 서는 동안 마당 제 자리로 간다(보이는 것만 · 명부는 마을 기록 · 몸 필드 0).
   //   앞의 문(곳간 · 요양 · 밤·기상 · 촌장)이 먼저다 · 진행 작업(개간·건설·의뢰 집터)이 있거나 그날 집 크루면 안 온다(빈자리 · 다시 안 채운다).
@@ -11070,7 +11147,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
       else if (vil._psite) { vil._psiteCrew = (vil._psiteCrew || 0) + 1; npc._lifeTask = { k: 'build', ps: 1, px: (vil._psite.cx - 2.5) * SZ, py: (vil._psite.cy - 0.5) * SZ, prog: 0 }; npc._workT = now; }   // ★[11차 T4] 마을 일감이 없을 때만 의뢰 집터로(마을 우선 — 랩 ④ 규약)
       else {
         // ★[곳간②] 퇴근길: 든 짐은 곳간에 넣고, 빈손이면 재고에서 하루치를 꺼내 집으로 나른다
-        if (npc._granD !== day) {   // ★오늘 인출을 마쳤으면 곳간 용무 종료 — 저장↔인출 왕복 금지(랩 toHome 이탈 대응)
+        if (npc._granD !== bday) {   // ★오늘 인출을 마쳤으면 곳간 용무 종료 — 저장↔인출 왕복 금지(랩 toHome 이탈 대응)
           if (_handOf(npc) > 0 && _granGo(vil, npc, false)) return true;
           if (!(_handOf(npc) > 0) && _granGo(vil, npc, true)) return true;
         }
@@ -11103,8 +11180,8 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
   // 농부 아침 출근 창(랩 7983 fv<L_DAWN+0.08): 창 밖 + 오늘 미출근(요양 해제가 낮이면 등)=오늘 휴무 — 랩 동형
   const isFarmer = npc.simJob === 'farmer';
   if (isFarmer) {
-    if (dayFrac > SCH_FARMW_R && npc._fOutD !== day) { _lifeGoHome(npc, '휴식'); return true; }
-    npc._fOutD = day;   // 창 안 진입 — 오늘 출근 도장(창 지나도 계속 근무)
+    if (dayFrac > SCH_FARMW_R && npc._fOutD !== bday) { _lifeGoHome(npc, '휴식'); return true; }
+    npc._fOutD = bday;   // 창 안 진입 — 오늘 출근 도장(창 지나도 계속 근무)
   }
   if (isFarmer && vil._clearCrew < LIFE_CREW && _lifeNeedClear(vil)) {
     const fr = _lifeFrontier(vil); let best = null, bd = 1e9;
