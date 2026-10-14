@@ -408,6 +408,11 @@ function _rationActOn() { return typeof process !== 'undefined' && !!process.env
 // ★★[T466] 약탈 = 행위(군량 행위 ⓒ · PM #68 · 재민 "즉시 판정이 아니라 물리 노획 → 운반 → 귀가 저장") — 손잡이 끔.
 function _lootActOn() { return typeof process !== 'undefined' && !!process.env && process.env.T466_LOOT_ACT === '1'; }
 function _armsLedgerOn() { return typeof process !== 'undefined' && !!process.env && process.env.T403_ARMS_LEDGER === '1'; }
+// ★★[T732 2026-10-14] **군량 짐에도 로트가 실려 다닌다** — 호스트(존 서버 · 손잡이 `T732_MOMENT_LOT=1`)가 곳간 장부 훅을 꽂을 때만.
+//   랩 · CLI · 브라우저 · 끈 서버는 안 꽂는다 = `_LOTH` null = 아래 훅 줄이 전부 무동작(비트 동일). 훅은 **관측자**다(값 무변):
+//   곳간에서 뗄 때(`_warFoodTake`) 나간 레코드를 모으고 · 줄 때(`_warFoodGive`) 그 레코드째 받는 곳간에 넣는다(약탈 · 공납 · 몸값 · 팩 환급).
+let _LOTH = null;
+function setLotHook(h) { _LOTH = (h && typeof h === 'object') ? h : null; }
 function warArmsOut(e, force) {
   if (!_armsLedgerOn() || !e || !e.storage) return null;
   const F = Math.max(0, force | 0);
@@ -539,6 +544,15 @@ function _warDraftPick(e, job) {
 //   ⓒ **환급 한 곳**: 궤주·항복·철수·무저항 **어느 길이든** `warRationRefund(w, ...)` 하나를 지난다.
 //     죽은 병사 몫은 안 돌아온다(들고 있던 것) — 생존 비율만큼만 곳간으로.
 function _warFoodTake(e, need, foodFns) {
+  if (!_LOTH) return _warFoodTake0(e, need, foodFns);
+  // ★[T732] 뗀 레코드를 품목별로 모은다(곳간 장부가 없는 그릇 — 몸 짐 거울 — 이면 안 모인다)
+  const on = _LOTH.capBegin(e, null);
+  const r = _warFoodTake0(e, need, foodFns);
+  const lots = on ? _LOTH.capEnd(e, null) : null;
+  if (lots && Object.keys(lots).length) r.lots = lots;
+  return r;
+}
+function _warFoodTake0(e, need, foodFns) {
   // → { got, items } · items = 품목별 실제로 뗀 양(환급이 그대로 돌려준다)
   if (!e || !e.storage || !(need > 0)) return { got: 0, items: null };
   if (foodFns && typeof foodFns.consumeFood === 'function') {
@@ -553,10 +567,12 @@ function _warFoodTake(e, need, foodFns) {
   e.storage.food = (e.storage.food || 0) - got;
   return { got, items: got > 0 ? { food: got } : null };
 }
-function _warFoodGive(e, items, frac) {
+function _warFoodGive(e, items, frac, lots) {
   if (!e || !e.storage || !items || !(frac > 0)) return 0;
+  if (_LOTH) { if (lots) _LOTH.giveBegin(e, lots, frac); else if (_LOTH.giveNoRec) _LOTH.giveNoRec(e, items); }   // ★[T732] 뗀 레코드째 받는다 · 레코드 없는 줌은 센다(끄면 이 줄 무동작)
   let sum = 0;
   for (const k in items) { const q = (items[k] || 0) * frac; if (q > 0) { e.storage[k] = (e.storage[k] || 0) + q; sum += q; } }
+  if (_LOTH && lots) _LOTH.giveEnd(e);
   return sum;
 }
 
@@ -713,7 +729,7 @@ function createWar(opts) {
     const D = (days != null) ? days : WAR_SIEGE_PACK;
     if (!A || per <= 0 || !(D > 0)) return 0;
     const take = _warFoodTake(A, per * D, FOOD);
-    if (w) { w._packItems = take.items; w._packLoad = take.got; w._packForce = force || 0; }
+    if (w) { w._packItems = take.items; w._packLoad = take.got; w._packForce = force || 0; if (_LOTH && take.lots) w._packLots = _LOTH.packFrom(take.lots); }   // ★[T732] 팩 레코드(전쟁 객체 곁 칸 · 몸 필드 아님 · 켬만)
     return take.got / per;
   }
   // 환급 한 곳 — 궤주·항복·철수·무저항 넷이 전부 이 함수를 지난다. 잔량 비율 × 생존 비율(전사자 몫은 안 돌아온다).
@@ -723,7 +739,8 @@ function createWar(opts) {
     const per = (force || 0) * WAR_RATION; if (!(per > 0)) return 0;
     const items = w && w._packItems, load = (w && w._packLoad) || 0;
     const surv = (w && w._packForce > 0 && w._packSurv != null) ? Math.max(0, Math.min(1, w._packSurv / w._packForce)) : 1;   // 전사자 몫 제외
-    if (items && load > 0) return _warFoodGive(A, items, Math.min(1, (rem * per) / load) * surv);
+    //   ★[T732] 팩은 원정 동안 **오래된 것부터** 먹혔다 — 남은 몫은 레코드의 새 쪽 꼬리(`packKeep`) · 전사자 몫은 고르게(각자 다 지고 갔다)
+    if (items && load > 0) return _warFoodGive(A, items, Math.min(1, (rem * per) / load) * surv, (_LOTH && w && w._packLots) ? _LOTH.packKeep(w._packLots, Math.min(1, (rem * per) / load)) : null);
     A.storage.food = (A.storage.food || 0) + rem * per * surv;   // 폴백(품목 기록 없음 — 구 객체·재부팅)
     return rem * per * surv;
   }
@@ -767,7 +784,7 @@ function createWar(opts) {
   function _warFoodMove(fromE, toE, amount) {
     if (!(amount > 0)) return 0;
     const t = _warFoodTake(fromE, amount, FOOD);
-    if (t.got > 0 && toE) _warFoodGive(toE, t.items, 1);
+    if (t.got > 0 && toE) _warFoodGive(toE, t.items, 1, t.lots);
     return t.got;
   }
   // ★★[T466] 약탈 곳간 몫 — **정산 수 그대로**(amount) 같은 문으로 뗀다. 켬 ∧ 짐이 몸에 있음 ∧ 호스트가 받음(`opts.lootCarry`)이면
@@ -777,7 +794,7 @@ function createWar(opts) {
     if (!(amount > 0)) return 0;
     if (!(w && _lootActOn() && _rationActOn() && w._packOnBodies && typeof opts.lootCarry === 'function')) return _warFoodMove(D, A, amount);
     const t = _warFoodTake(D, amount, FOOD);
-    if (t.got > 0) { let ok = false; try { ok = !!opts.lootCarry(w, t.items, kind); } catch (_) { ok = false; } if (!ok) _warFoodGive(A, t.items, 1); }
+    if (t.got > 0) { let ok = false; try { ok = !!opts.lootCarry(w, t.items, kind); } catch (_) { ok = false; } if (!ok) _warFoodGive(A, t.items, 1, t.lots); }
     return t.got;
   }
   // 몸이 다 싣지 못한 곳간 몫은 **그 곳간에 그대로**(뗀 품목 그대로 되돌림) · 몸이 집에 닿으면 받은 쪽 곳간에 — 둘 다 같은 문.
@@ -813,7 +830,7 @@ function createWar(opts) {
     const one = {}; for (const k in items) { const q = (items[k] || 0) * frac; if (q > 0) one[k] = q; }
     const book = w._rationBook = { load, split: (w._packRem || 0) * per, eaten: 0, back: 0, drop: 0, ledgerEaten: load - (w._packRem || 0) * per, days: [] };
     w._packOnBodies = n; w._packKeys = Object.keys(one); w._packShare = (w.force || 0) / n;
-    w._packItems = null; w._packLoad = 0;
+    w._packItems = null; w._packLoad = 0; if (w._packLots) w._packLots = null;
     return one;
   }
   // 몸 하나가 먹는다 — 그 짐(품목 칸만 본 거울)에서 섭식 정본 순서로 `need`(식량등가)만큼. → { got, items }
@@ -839,7 +856,7 @@ function createWar(opts) {
   function _rationLayDownAll(w) {
     let back = 0;
     if (typeof opts.rationCollect === 'function') { let items = null; try { items = opts.rationCollect(w); } catch (_) { items = null; } if (items) back = rationLayDown(w, items); }
-    w._packRem = 0; w._packItems = null; w._packLoad = 0;
+    w._packRem = 0; w._packItems = null; w._packLoad = 0; if (w._packLots) w._packLots = null;
     return back;
   }
 
@@ -848,7 +865,7 @@ function createWar(opts) {
     if (!w || w._packRem == null) return 0;
     if (survivors != null) w._packSurv = Math.max(0, survivors);
     const back = _opPackRefund(w.atk, w.force || 0, w._packRem, w);
-    w._packRem = 0; w._packItems = null; w._packLoad = 0;
+    w._packRem = 0; w._packItems = null; w._packLoad = 0; if (w._packLots) w._packLots = null;
     return back;
   }
   // 무혈 항복 공통 효과 — 조공 계약+곳간 공납(WAR_LOOT 절반·★음수 하한 0 — 빈 곳간 항복=공납 0+조공 계약만, 랩 최신 수리)·사상 0·방화 없음·원한/피로 소폭
@@ -1231,6 +1248,8 @@ const WarCore = {
   warFE, warGrudge, warAddGrudge, warTrauma, warAddTrauma, warJustice, warWeaponFlow,
   // ★[T403] 무기 반출/반납 장부(손잡이 `T403_ARMS_LEDGER` · 끔 = null/0)
   warArmsOut, warArmsReturn,
+  // ★[T732] 곳간 로트 장부 훅(서버 켬일 때만 꽂는다 · 랩·CLI·브라우저는 안 꽂는다 = 무동작)
+  setLotHook,
   // 팩토리
   createWar,
 };

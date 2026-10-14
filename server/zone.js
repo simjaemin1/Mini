@@ -2190,6 +2190,8 @@ function butcherCorpse(player, cid) {
   const parts = [];
   for (const [item, amt] of Object.entries(corpse.drops)) {
     player.inventory[item] = (player.inventory[item] || 0) + amt;
+    // ★[T732] 사체에서 나온 것은 **죽은 순간**에 생겼다(바닥에 누운 동안도 늙었다 — 바닥 = 몸에 지님과 같은 배율) · 끄면 쓸개가 '오늘'로 잡는다
+    if (T732_MOMENT) Lots.note(player, item, amt, zoneGameDay(), 'carry', zoneGameMsAt(corpse.spawnTime || Date.now()));
     parts.push(`${item} ${amt}`);
   }
   const def = ANIMALS[corpse.mobType];
@@ -3601,6 +3603,7 @@ function decideNpcBehavior(npc, now) {
       if (!npc._lastFishAt || now - npc._lastFishAt > 8000) {   // 8초마다 1마리 (인벤=가시 표현; 마을경제는 추상 JOB_YIELD)
         npc._lastFishAt = now;
         npc.inventory.fish = (npc.inventory.fish || 0) + 1;
+        if (T732_MOMENT) Lots.note(npc, 'fish', 1, zoneGameDay());   // ★[T732] 낚은 순간(NPC 손 — 곁 장부 · 몸 필드 0)
       }
       npc.behavior = 'wander';
       npc.targetX = npc.npcWorkX + (_dn() - 0.5) * 40;
@@ -4288,7 +4291,7 @@ function npcStep(npc, dt, now) {
         r.hp -= 1;
         if (r.hp <= 0) {
           const loot = _t495Rest(r, lootOfResource(r));   // ★정본 하나 — 플레이어와 같은 표를 쓴다(사본 금지) · ★[T495] 남은 단위만(장부 없으면 그 객체 그대로)
-          for (const [k, v] of Object.entries(loot)) npc.inventory[k] = (npc.inventory[k] || 0) + v;
+          for (const [k, v] of Object.entries(loot)) { npc.inventory[k] = (npc.inventory[k] || 0) + v; if (T732_MOMENT) Lots.note(npc, k, v, zoneGameDay()); }   // ★[T732] NPC 손도 얻은 순간(곁 장부 — 몸 필드 0)
           _takeResourceEntity(r, true);     // ★[T325] 빼는 여섯 줄을 **문 하나**로 모았다(아래 정의 · 행동 무변)
         } else {
           if (r.dbId) db.updateResourceHp(r.dbId, r.hp);
@@ -4336,7 +4339,7 @@ function npcStep(npc, dt, now) {
           && Crops.isReady(b.data.crop, b.data.plantedDay, zoneGameDay())) {
         const _t = zoneGameDay(), _cid = b.data.crop;
         const _units = Crops.harvestUnits(_cid, { supply: b.data.supply, seedFresh: b.data.seedFresh });
-        if (_units > 0) npc.inventory[_cid] = (npc.inventory[_cid] || 0) + _units;
+        if (_units > 0) { npc.inventory[_cid] = (npc.inventory[_cid] || 0) + _units; if (T732_MOMENT) Lots.note(npc, _cid, _units, _t); }   // ★[T732] 거둔 순간
         const _e = _cropEntryOf(b.data);
         if (SimVillages.cropAfterHarvest(_e, _t)) {                  // 다년생 — 그루터기로 남는다
           b.data = { crop: _e.c, plantedDay: _e.p, seedFresh: b.data.seedFresh, farmStage: 0,
@@ -4886,7 +4889,9 @@ Membership.init({ SimVillages, ZONE_ID, send, players, gameDay: gameDayNow,
   //   ★[T159] 길드 곳간 문(central 이 판정) · 품목의 우리말(존이 들고 있는 이름표).
   //     ⚠이름표는 **함수로** 넘긴다 — 표가 이 줄보다 뒤에서 완성된다(`Rescue.init` 선례).
   central, itemLabel: () => ITEM_LABEL_SERVER,
-  afterWithdraw: (player, r) => _afterWithdraw(player, r) });
+  afterWithdraw: (player, r) => _afterWithdraw(player, r),
+  //   ★[T732] 곳간 문 감싸개 — 켬일 때만 준다(끄면 이 칸이 없다 = membership 이 종전 그대로 부른다). UI · 채팅 인출이 다 이 문을 지난다.
+  ...(process.env.T732_MOMENT_LOT === '1' ? { wrapWithdraw: (player, fn) => _t732Wrap(player, fn) } : {}) });
 
 // ★[T45 2026-09-02] 사유지 v2 — **이미 있는 것만 넘긴다**(사본 금지).
 //   ⚠`gameDay` 를 일부러 안 넘긴다 — 부재 시계는 **실시간**이고 세계의 시간이 아니다(claims.js 제3 규약).
@@ -5547,6 +5552,8 @@ const server = http.createServer((req, res) => {
           floor: data.floor || 0,
           createdAt: Date.now(),
         });
+        // ★[T732] 몸(로트 포함)을 들고 있는다 — 승격(observer→primary) 길이 로트를 통째로 잃고 쓸개가 '오늘'로 다시 적던 구멍. 끄면 이 줄 무동작.
+        if (T732_MOMENT && data.body && typeof data.body === 'object') pendingHandoffs.get(data.token).body = data.body;
         // 5초 안에 클라가 접속 안 하면 만료
         setTimeout(() => pendingHandoffs.delete(data.token), 5000);
         console.log(`[${ZONE_ID}] ⇐ handoff_prepare token=${data.token.slice(0,8)} for ${data.name}`);
@@ -6239,6 +6246,8 @@ async function _acceptConnection(ws, req, C) {
     _arrivedAt: Date.now(), // Phase 5-K: 핸드오프 직후 재핸드오프 쿨다운 기준
 
   };
+  // ★[T732] 하네스 초기 인벤(`ZONE_TEST_INV` · 운영 0)의 로트 품목 — 받은 순간에 적는다(쓸개의 근사 0). 끄면 이 줄 무동작.
+  if (T732_MOMENT) for (const k of Object.keys(_testInv)) if (Lots.isLot(k)) { const need = Math.floor(+inventory[k] || 0) - Math.floor(Lots.sum(player, k) + 1e-6); if (need > 0) Lots.note(player, k, need, zoneGameDay()); }
   // ★★[2026-08-25 재민 확정 · B-6] 살아 있던 몸을 그대로 이어받는다.
   //   **몸의 상태만** 가져온다 — 신원·사회 정보(playerId·tribe·home)는 central 이 정본이다.
   //   여기서 가져오지 않으면 그 값들은 "마지막 저장" 시점으로 되돌아간다.
@@ -6556,7 +6565,7 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'claim') tryClaim(player, msg.kind || 'personal');
   // ★[원장 승격 2026-08-30] 지목 드롭/줍기 — `ids`(개체 원장 id) · `lotDay`(로트 취득일) · `giIds`(바닥 여러 덩이).
   //   옛 인자(`item`+`amount`, `giId`)는 그대로 산다 — 하네스·옛 클라가 안 깨진다.
-  else if (msg.type === 'drop_item') tryDropItem(player, msg.item, msg.amount || 1, { ids: msg.ids, lotDay: msg.lotDay, toolId: msg.toolId });
+  else if (msg.type === 'drop_item') tryDropItem(player, msg.item, msg.amount || 1, { ids: msg.ids, lotDay: msg.lotDay, lotK: msg.lotK, toolId: msg.toolId });   // ★[T732] `lotK` = 로트의 얻은 순간(클라가 실으면 · 안 실으면 날)
   else if (msg.type === 'pickup_item') {
     if (Array.isArray(msg.giIds)) for (const g of msg.giIds.slice(0, 64)) tryPickupItem(player, g);
     else tryPickupItem(player, msg.giId);
@@ -6741,7 +6750,7 @@ function handlePlayerInput(player, raw) {
     send(player.ws, { type: 'notice', text: r.ok ? `🧪 ${r.name} ${r.kind} (D${r.day}~${r.until})` : `🧪 ${r.err}` });
   }
   else if (E2E_GIVE && msg.type === '__e2e_give') {
-    for (const [k, q] of Object.entries(msg.items || {})) { const n = Number(q); if (isFinite(n) && n > 0) player.inventory[k] = (player.inventory[k] || 0) + Math.floor(n); }
+    for (const [k, q] of Object.entries(msg.items || {})) { const n = Number(q); if (isFinite(n) && n > 0) { player.inventory[k] = (player.inventory[k] || 0) + Math.floor(n); if (T732_MOMENT) Lots.note(player, k, Math.floor(n), zoneGameDay()); } }   // ★[T732] 받은 순간(근사 0)
     // 도구는 인벤 수량이 아니라 **인스턴스**다(`toolItems` = {id, type, d}) — 정본 생성 경로와 같은 모양으로 만든다
     for (const t of (msg.tools || [])) {
       if (!player.toolItems) player.toolItems = [];
@@ -7145,7 +7154,8 @@ function doPlant(player, cropId) {
   finally { player._plantCrop = null; player._plantSeedFresh = null; }
   if (!okBuilt) {
     // 못 지었으면 씨앗을 **나이 그대로** 돌려준다(로트 병합 금지 규약)
-    for (const a of got.ages) Lots.note(player, seed, a.n, a.d);
+    if (T732_MOMENT) Lots.moveIn(player, seed, got.ages, today, 0, 'carry');   // ★[T732] 레코드째(순간 · 노출 · 자리) — `note(a.d)` 는 노출을 버렸다
+    else for (const a of got.ages) Lots.note(player, seed, a.n, a.d);
     player.inventory[seed] = Math.floor(Lots.sum(player, seed) + 1e-6);
     sendInventory(player); return;
   }
@@ -7684,6 +7694,8 @@ function handleObserverMessage(ws, raw) {
       lastAttackAt: 0, lastDamagedAt: 0,
       handingOff: false, lastSeen: Date.now(), _arrivedAt: Date.now(),
     };
+    // ★[T732] 승격도 로트를 잇는다(출발 존이 실은 몸 · `serializeBody` 그 스냅샷) — 없으면 종전(쓸개가 지금으로 적는다 · 근사로 센다)
+    if (T732_MOMENT && pending.body) { try { const _B = parseBody(pending.body, {}); if (_B && _B.lots) player.lots = _B.lots; } catch (e) {} }
     players.set(pid, player);
     updateActiveChunks();
     if (pending.source_zone && ZONES[pending.source_zone]) {
@@ -7907,6 +7919,10 @@ function doDismantleBuilding(player, buildingId) {
     if (b.data._led && typeof b.data._led === 'object') {
       for (const [k, arr] of Object.entries(b.data._led)) if (Array.isArray(arr)) Carry.noteEntries(player, k, arr);
     }
+    // ★[T732] 부수면 **로트도** 같이 돌아온다 — 종전엔 `_lots` 를 버려 상자 속 음식이 꺼낸 날 갓 얻은 것이 됐다(상자 = 되돌리는 기계).
+    if (T732_MOMENT && b.data._lots && typeof b.data._lots === 'object') {
+      for (const [k, recs] of Object.entries(b.data._lots)) if (Array.isArray(recs) && recs.length) Lots.moveIn(player, k, recs, zoneGameDay(), 0, 'carry');
+    }
   }
   // 14.54-a: stair ↔ auto floor cascade
   let cascadeIds = [];
@@ -8128,12 +8144,14 @@ function doCraftCollect(player, buildingId) {
       //   건어물이 수령한 날 갓 만든 것으로 둔갑한다(건조대가 정지 상자가 되는 바로 그 구멍).
       if (j.lotItems) {
         const _d = _gameDayAt(j.doneAt || Date.now());
-        for (const [k, n] of Object.entries(j.lotItems)) if (Lots.isLot(k)) Lots.note(player, k, n, _d);
+        const _kDone = T732_MOMENT ? zoneGameMsAt(j.doneAt || Date.now()) : undefined;   // ★[T732] 다 된 **순간**(끄면 날)
+        for (const [k, n] of Object.entries(j.lotItems)) if (Lots.isLot(k)) Lots.note(player, k, n, _d, 'carry', _kDone);
         // ★[T705] 상한 몫으로 익힌 것 — **이미 상한 로트**로 꽂는다(노출 = 그 품목 보관일 ⇒ f = 0 · 날짜는 보관일만큼 앞 —
         //   같은 날 갓 익힌 로트와 섞이지 않게: `note` 는 같은 날·같은 자리면 노출을 평균한다). 끄면 이 칸이 없다.
         if (j.lotSpoiled) for (const [k, n] of Object.entries(j.lotSpoiled)) {
           if (!Lots.isLot(k) || !(n > 0)) continue;
           const L = Spoil.shelfOf(k);
+          if (T732_MOMENT) { Lots.moveIn(player, k, [{ d: _d, k: _kDone, n, e: L, t: _kDone / _SEASON_DAY_MS }], zoneGameDay(), 0, 'carry'); continue; }   // ★[T732] 같은 순간 · 다른 노출(안 섞인다)
           Lots.moveIn(player, k, [{ d: _d - Math.ceil(L), n, e: L, t: _d }], _d, 0, 'carry');
         }
       }
@@ -8282,6 +8300,15 @@ function __e2eFreezeZoneDay(on) {
   else if (_e2eDayFrozen !== null) { _e2eDayOffset += _rawGameDay() - _e2eDayFrozen; _e2eDayFrozen = null; }
   return { frozen: _e2eDayFrozen !== null, day: zoneGameDay() };
 }
+// ★★[T732 2026-10-14 · 손잡이 `T732_MOMENT_LOT=1` — 없음·빈 값·0 = 끔 = 시계를 안 꽂는다(로트·곳간 장부가 날 문법 그대로 · main 바이트)]
+//   **얻은 순간의 시계 = 절대 게임 ms.** `zoneGameDay` 와 같은 산수(세계 기점 · 얼림 · 얼었던 날수)를 ms 로 — 수를 두 벌로 적지 않는다.
+//   얼면 그 날 0시에 멈춘다(녹은 뒤 순간이 뒤로 가지 않는다 — 얼었던 날수는 정수라 녹은 순간 ≥ 그 날 0시).
+function zoneGameMsAt(realMs) {
+  if (_e2eDayFrozen !== null) return (_e2eDayFrozen - _e2eDayOffset) * _SEASON_DAY_MS;
+  return (Number(realMs) - ((WORLD && WORLD.worldEpoch) || 0)) - _e2eDayOffset * _SEASON_DAY_MS;
+}
+function zoneGameMs() { return zoneGameMsAt(Date.now()); }
+const T732_MOMENT = process.env.T732_MOMENT_LOT === '1';   // 시계는 `Lots` 를 부른 줄 바로 뒤에서 꽂는다(아래 `require('./lots')`)
 // ★★[T1 §2-④ 2026-09-01] **이벤트 루프 지연** — RTT 스파이크의 직접 원인을 서버 쪽에서 그대로 재는 자.
 //   `econ_day 2000ms` 는 "그 일이 2초 걸렸다"만 말한다. 루프가 실제로 **얼마나 막혔나**는 이게 답한다.
 //   조각내기가 통했다면 총 일 시간은 그대로여도 **p99 가 내려간다** — 그게 이 배치의 판정선이다.
@@ -8622,13 +8649,16 @@ function doSellIronRelic(player, id) {
   if (!isIron) { send(player.ws, { type: 'notice', text: '철기가 아니다 — 위세품으로 쳐주지 않는다(용해는 판매 버튼)' }); return; }
   const q = (inst.attrs && inst.attrs.__q != null) ? inst.attrs.__q : (inst.q != null ? inst.q / 100 : 1);
   let r;
+  const _d732 = T732_MOMENT ? _t732DoorBegin(player, []) : null;   // ★[T732] 대금은 곳간에서 나온다(끄면 null)
   try { r = SimVillages.lifeSellIronRelic(player.x, player.y, SHOP_RANGE_PX, { quality: q }); }
-  catch (e) { send(player.ws, { type: 'notice', text: `판매 실패: ${e.message}` }); return; }
-  if (!r || r.err) { send(player.ws, { type: 'notice', text: r ? r.err : '판매 불가' }); return; }
+  catch (e) { _t732DoorEnd(_d732, player, false); send(player.ws, { type: 'notice', text: `판매 실패: ${e.message}` }); return; }
+  if (!r || r.err) { _t732DoorEnd(_d732, player, false); send(player.ws, { type: 'notice', text: r ? r.err : '판매 불가' }); return; }
   player.equipment.splice(idx, 1);
   for (const k in player.equipSlots) if (player.equipSlots[k] === id) delete player.equipSlots[k];
   const parts = [];
-  for (const k in r.pay) { player.inventory[k] = +((player.inventory[k] || 0) + r.pay[k]).toFixed(3); parts.push(`${ITEM_LABEL_SERVER[k] || k} ${r.pay[k]}`); }
+  try {   // ★[T732] 대금을 손에 싣는 줄까지 문 안(던져도 문은 닫는다)
+    for (const k in r.pay) { player.inventory[k] = +((player.inventory[k] || 0) + r.pay[k]).toFixed(3); parts.push(`${ITEM_LABEL_SERVER[k] || k} ${r.pay[k]}`); }
+  } finally { _t732DoorEnd(_d732, player, true, null, null); }   // ★[T732] 대금(곡식 등)은 곳간 나이째(끄면 무동작)
   sendInventory(player);
   sendEquipment(player);
   send(player.ws, { type: 'notice',
@@ -8807,6 +8837,7 @@ const Body = require('./body');   // ★[신체 상태 §7] 5축·연속 효과 
 const Weights = require('./weights');
 const Carry = require('./carry');
 const Lots = require('./lots');
+if (T732_MOMENT) Lots.setClock(zoneGameMs, _SEASON_DAY_MS);   // ★[T732] 얻은 순간의 시계(끄면 안 꽂는다 — 날 문법 그대로)
 const Fishing = require('./fishing');
 // ★★[T574 2026-10-03] 존 특산 프로필 + 경계 혼용 띠(정본 `server/region-profiles.js`) — 낚시 종 · 부팅 광종 채움이 부른다.
 //   손잡이 `T574_REGION`(띠 반폭 D 셀) — 끄면 두 자리 모두 옛 글자 그대로(주사위·해시 소비도 같다).
@@ -9456,6 +9487,7 @@ function tryForage(player) {
   }
   player.inventory[src.kind] = (player.inventory[src.kind] || 0) + got;
   // (로트 없음 — 잔가지·자갈·풀·짠물은 무기한 벌크다. 나이가 뜻이 없다.)
+  if (T732_MOMENT) Lots.note(player, src.kind, got, zoneGameDay());   // ★[T732] 갯벌 몫(굴·해조·전복)은 로트다 — 얻은 순간(로트 아닌 것은 `note` 가 안 받는다)
   sendInventory(player);
   if (src.kind === Salt.BRINE) {
     send(player.ws, { type: 'notice',
@@ -9638,6 +9670,7 @@ function tryPickFruit(player, resId) {
   const n = Math.max(1, Math.round(got * 10));   // 재고 단위(연간수율=1.0 기준) → 낱개. 표의 눈금 그대로 열 배.
   player.inventory = player.inventory || {};
   player.inventory[item] = (player.inventory[item] || 0) + n;
+  if (T732_MOMENT) Lots.note(player, item, n, zoneGameDay());   // ★[T732] 딴 순간(머루 = 로트)
   send(player.ws, { type: 'notice', text: `🌰 ${T.koOf(sp)}에서 ${ITEM_LABEL_SERVER[item] || item} ${n}`, kind: 'gather' });
   send(player.ws, { type: 'inventory', inventory: player.inventory });
   if (canPersist(player)) savePlayer(player);
@@ -9811,6 +9844,7 @@ function tryGather(player, resId, water) {
       for (const [item, amt] of Object.entries(def.produces)) {
         const got = Math.max(1, Math.floor(amt));
         player.inventory[item] = (player.inventory[item] || 0) + got;
+        if (T732_MOMENT) Lots.note(player, item, got, zoneGameDay());   // ★[T732] 거둔 순간(젖·알·기름)
         parts.push(`${item} ${got}`);
       }
       sendInventory(player);
@@ -9900,6 +9934,7 @@ function gatherResource(player, best) {
     }
     for (const [item, amt] of Object.entries(loot)) {
       player.inventory[item] = (player.inventory[item] || 0) + amt;
+      if (T732_MOMENT) Lots.note(player, item, amt, zoneGameDay());   // ★[T732] 캔 순간(산딸기·씨앗·버섯…)
     }
     // ★[T393] 빼는 몸은 **문 하나**(`_takeResourceEntity`) — 제 몸을 따로 적던 곳이라 중복 적재 표에서 안 빠져
     //   뺀 심은 나무가 유령으로 다시 방송됐다. 방송은 아래 종전 자리에서 한다(`false` · 메시지 순서 무변).
@@ -10266,7 +10301,7 @@ function _spawnGroundItems(player, item, parcels, lotRecs) {
     if (_lr) {
       // 바닥의 자리 배율을 찍는다 — 실내 바닥이면 완충이 걸린다(움집 안이 여름에 서늘한 그 이유).
       const _pf = Spoil.placeFields(_placeKeyOfGround(player.x, player.y, player.floor));
-      gi.lots = _lr.map((r) => Object.assign({}, r, { m: _pf.m, w: _pf.w, t: _gd }));
+      gi.lots = _lr.map((r) => Object.assign({}, r, { m: _pf.m, w: _pf.w, t: T732_MOMENT ? r.t : _gd }));   // ★[T732] 정산 순간 그대로(날로 덮으면 그날 몫을 두 번 센다)
     }
     // ★★[T102 ①] 개체는 **참조 그대로** 싣는다 — 필드를 베끼지 않는다.
     if (pc.inst) { gi.inst = pc.inst; gi.instKind = pc.instKind || 'tool'; gi.tool = _giTool(gi); }
@@ -10346,7 +10381,7 @@ function tryDropItem(player, item, amount, opts) {
   // ── ② 로트 지목 — 펼친 "3일 전 베리" 줄만 버린다 ─────────────────────
   if (Number.isFinite(opts.lotDay) && Lots.isLot(item)) {
     const want = Math.max(1, Math.min(99, parseInt(amount, 10) || 1));
-    const r = Lots.consumeFrom(player, item, opts.lotDay | 0, want, player.inventory);
+    const r = Lots.consumeFrom(player, item, opts.lotDay | 0, want, player.inventory, (T732_MOMENT && Number.isFinite(+opts.lotK)) ? +opts.lotK : undefined);   // ★[T732] 순간으로 고르면 그 로트
     const n = Math.floor(r.taken + 1e-9);
     if (n <= 0) { send(player.ws, { type: 'notice', text: '그 로트가 비었다' }); return; }
     const t = Carry.takeEntries(player, item, n);
@@ -11389,10 +11424,12 @@ function tryVillageDeposit(player, buildingId, want) {
     const _sp = _spoiledGuardItems(player, Object.keys(want || {}).filter((it) => _map[it] && Number(want[it]) >= 1));
     if (_sp) { send(player.ws, { type: 'notice', text: `🏘️ ${_sp}` }); return; }
   }
-  const _s716 = T716_AGE ? _t716Snap(player, vil) : null;   // ★[T716 ⑤] 넣기 전 로트(끄면 null)
-  const r = SimVillages.playerVillageDeposit(vil, player.inventory, want || {}, T725_HALL ? _unitsOfFor(player) : undefined);   // ★[T725 ①] 끄면 종전 개수 × 환산율
+  const _uo = T725_HALL ? _unitsOfFor(player) : undefined;   // ★[T725 ①] 끄면 종전 개수 × 환산율
+  const _d732 = _t732DoorBegin(player, null);   // ★[T732] 곳간 문(끄면 null)
+  let r = null;
+  try { r = SimVillages.playerVillageDeposit(vil, player.inventory, want || {}, _uo); }
+  finally { _t732DoorEnd(_d732, player, !!(r && r.ok), vil, _uo); }   // ★[T732] 낸 로트를 곳간 장부에 그 나이째(던져도 문은 닫는다 · 끄면 무동작)
   if (!r.ok) { send(player.ws, { type: 'notice', text: `🏘️ ${r.err}` }); return; }
-  if (_s716) _t716Put(player, _s716, !T725_HALL);   // ★[T716 ⑤] 회관 넣기 = 개수 × 환산율(T725 켬이면 열량 × 신선도 — 거래소와 같은 무게)
   if (T725_HALL) { for (const [it, n] of Object.entries(r.taken || {})) Carry.takeKg(player, it, n); Carry.reconcile(player, player.inventory); }   // ★[T725 ①] 낸 개체를 장부에서 뺀다
   savePlayer(player);
   sendInventory(player);
@@ -11430,108 +11467,100 @@ function tryVillageBrief(player, vid) {
   }
   send(player.ws, { type: 'village_brief', brief: r });
 }
-// ★★[T716 ⑤ 2026-10-13 · 임시 고침 · 손잡이 `T716_GRANARY_AGE=1` — 없음·빈 값·0 = 끔 = 아래 T716 줄들이 아무것도 안 한다(main 바이트)]
-//   **"꺼내면 새것" 구멍** — 곳간(econ `v.storage`)은 날짜 없는 총량이라, 넣은 음식이 꺼낼 때 `Lots.reconcile(…, 오늘)` 로 **갓 얻은 것**이 됐다
-//   (아래 `_afterWithdraw` 의 그 줄 · 출고일 = 취득일). econ 곳간엔 "그 곳간의 나이 몫"이 따로 없다 — 있는 나이는 **플레이어가 넣은 로트**뿐이다.
-//   ⇒ 넣을 때 나간 로트 레코드(오래된 것부터 · 정산된 노출 그대로)를 마을 econ 객체 옆 장부 `econ._t716Lots[재화]` 에 적고
-//     (econ 은 이 칸을 안 읽는다 · `_t544Pack` 과 같은 자리 · econ_state 에 같이 적혀 재부팅에도 남는다 · 곳간 자리 배율로 늙는다),
-//     꺼낼 때(같은 자리 `_afterWithdraw`) 그 레코드를 오래된 것부터 **그대로** 싣는다 — 같은 물건 · 넣은 개수 · 그 노출.
-//     · 넣은 값은 단위로 장부에 적힌다(곳간 칸의 실제 증가분 `Δstorage` 를 레코드에 나눈다 — 정본 환산 함수가 적은 그대로 · 사본 0).
-//     · 마을이 먹은 몫(장부 합 > 꺼내기 전 재고)은 **오래된 것부터** 지운다(설계 ② 의 소비 순서 — econ 은 지금 가격 가중으로 먹는다).
-//     · 장부가 못 덮는 몫(econ 이 만든 것 · 나이를 모른다)은 종전대로 오늘 것이다(설계 ② 가 econ 로트로 메운다).
-//     · 대표 품목 k 개(장부가 덮는 단위만큼 · 낱개로만)를 빼고 넣었던 물건을 그 나이째 꽂는다 — 단위가 보존된다(곳간이 환전소가 아니다).
-const T716_AGE = process.env.T716_GRANARY_AGE === '1';
-let _t716PF = null;
-function _t716Place() { return _t716PF || (_t716PF = Spoil.placeFields('granary')); }
-// 환산율 — 넣기·꺼내기가 쓰는 정본 상수(`villages.PV_DEPOSIT_RATE` · 읽기만)
-function _t716Rate() { try { const P = SimVillages.__labProbe && SimVillages.__labProbe._memberProbe; const x = P && P.RATE; return x > 0 ? x : 1; } catch (e) { return 1; } }
-// 넣기 전 — 곳간 표에 있는 로트 품목의 인벤·로트(정산된 복사)·재화 칸을 적어 둔다
-function _t716Snap(player, vil) {
-  if (!T716_AGE || !player || !vil || !vil.econ || !vil.econ.storage) return null;
-  const today = zoneGameDay(), map = SimVillages.playerVillageDepositMap();
-  const inv = {}, lots = {}, st = {};
-  for (const it of Object.keys(player.inventory || {})) {
-    if (!map[it] || !Lots.isLot(it) || !(Number(player.inventory[it]) > 0)) continue;
-    Lots.reconcile(player, it, player.inventory, today);
-    inv[it] = Math.floor(Number(player.inventory[it]) || 0);
-    lots[it] = Lots.of(player, it).map((l) => Object.assign({}, l));
-    st[map[it]] = Number(vil.econ.storage[map[it]]) || 0;
-  }
-  return Object.keys(inv).length ? { vil, inv, lots, st, today } : null;
-}
-// 넣은 뒤 — 줄어든 개수만큼 오래된 로트부터 레코드로 떼어 장부에 적는다. byCount = 회관 넣기(개수 × 환산율 · 열량·신선도 안 봄)
-function _t716Put(player, snap, byCount) {
-  if (!snap) return 0;
-  const map = SimVillages.playerVillageDepositMap(), v = snap.vil.econ, pf = _t716Place();
-  const byRes = {};
-  for (const [it, n0] of Object.entries(snap.inv)) {
-    const gone = n0 - Math.floor(Number(player.inventory[it]) || 0);
-    if (!(gone > 0)) continue;
-    let left = gone;
-    for (const l of snap.lots[it]) {
-      if (left <= 1e-9) break;
-      const take = Math.min(left, +l.n || 0);
-      if (!(take > 0)) continue;
-      left -= take;
-      const e = Spoil.exposureOf(l, snap.today, 0);
-      const w0 = byCount ? take : take * Spoil.nutritionMult(Spoil.freshnessOf(it, e)) * (Kcal.kcalOf(it) || 1);
-      (byRes[map[it]] || (byRes[map[it]] = [])).push({ i: it, n: +take.toFixed(6), d: l.d, e: +e.toFixed(6), w0 });
-    }
-  }
-  let n = 0;
-  for (const [res, recs] of Object.entries(byRes)) {
-    const du = (Number(v.storage[res]) || 0) - (snap.st[res] || 0);
-    const W = recs.reduce((a, r) => a + r.w0, 0);
-    if (!(du > 1e-9) || !(W > 0)) continue;
-    const L = v._t716Lots || (v._t716Lots = {});
-    const arr = L[res] || (L[res] = []);
-    for (const r of recs) {
-      const u = +(du * r.w0 / W).toFixed(6);
-      if (!(u > 0)) continue;
-      arr.push({ i: r.i, n: r.n, u, d: r.d, e: r.e, t: snap.today, m: pf.m, w: pf.w }); n++;
-    }
-  }
-  return n;
-}
-// 꺼낸 뒤(같은 자리) — 장부를 재고에 맞추고, 덮는 몫을 넣은 그대로 싣는다. 반환 { k, got } 또는 null
-function _t716Take(player, r) {
-  if (!T716_AGE || !r || !(r.qty >= 1) || !(r.units > 0) || !player || !player.member || player.member.vid == null) return null;
-  const vil = SimVillages.villageByDbId ? SimVillages.villageByDbId(player.member.vid | 0) : null;
-  const v = vil && vil.econ, L = v && v._t716Lots && v._t716Lots[r.res];
-  if (!Array.isArray(L) || !L.length) return null;
-  const today = zoneGameDay(), du = r.units * _t716Rate(), give = r.qty | 0, rep = r.item;
-  // ① 마을이 먹은 몫 — 장부 합이 꺼내기 전 재고보다 크면 그 차이를 오래된 것부터 지운다
-  const before = (Number(r.stockAfter) || 0) + du;
-  let sum = L.reduce((a, x) => a + x.u, 0);
-  while (sum > before + 1e-9 && L.length) {
-    const x = L[0], cut = Math.min(x.u, sum - before), f = cut / x.u;
-    x.n = +(x.n * (1 - f)).toFixed(6); x.u = +(x.u - cut).toFixed(6); sum -= cut;
-    if (x.u <= 1e-9) L.shift();
-  }
-  // ② 덮는 몫 — 대표 품목 낱개로만(한 개 = 이번 꺼내기의 단위 ÷ 개수 · 남는 몫은 장부에 그대로)
-  const per = du / give, k = Math.min(give, Math.floor(sum / per + 1e-9));
-  const got = {};
-  if (k >= 1) {
-    let left = k * per;
-    while (left > 1e-9 && L.length) {
-      const x = L[0], take = Math.min(left, x.u), f = take / x.u, n = +(x.n * f).toFixed(6);
-      if (n > 0) (got[x.i] || (got[x.i] = [])).push({ d: x.d, n, e: x.e, t: x.t, m: x.m, w: x.w });
-      x.n = +(x.n - n).toFixed(6); x.u = +(x.u - take).toFixed(6); left -= take;
-      if (x.u <= 1e-9) L.shift();
-    }
-  }
-  if (!L.length) { delete v._t716Lots[r.res]; if (!Object.keys(v._t716Lots).length) delete v._t716Lots; }
-  if (k < 1) return null;
-  // ③ 인벤 — 대표 품목 k 개(오늘 것이 될 뻔한 몫)를 빼고, 넣었던 물건을 곳간에서 늙은 노출째 손('carry')으로 꽂는다
-  player.inventory[rep] = Math.max(0, (Math.floor(Number(player.inventory[rep]) || 0)) - k);
-  if (Lots.isLot(rep)) Lots.reconcile(player, rep, player.inventory, today);   // 남은 give − k 개(장부가 못 덮은 몫)는 종전대로 오늘 것
-  for (const [it, recs] of Object.entries(got)) {
+// ★★[T732 2026-10-14 · 손잡이 `T732_MOMENT_LOT=1` — 없음·빈 값·0 = 끔 = 아래 T732 문 줄들이 아무것도 안 한다(main 바이트)] **곳간 문 — 사람 ↔ 곳간 로트.**
+//   T716 ⑤ 임시 고침(넣은 몫만 마을 곁 장부 `econ._t716Lots` · 꺼낼 때 대표 품목 k 개를 넣은 물건으로 갈아 끼움 · 손잡이 `T716_GRANARY_AGE`)을 **걷었다**(족보 631 ①).
+//   본 구현: 곳간 칸 전부가 얻은 순간 로트 장부다(`granary-lots.js` — econ 이 만든 것 · 캐러밴 · 전쟁 짐 · 사람이 넣은 것 · 마을이 먹은 것이 다 지난다).
+//   문(회관 넣기 · 거래소 · 게시판 납품과 보상 · 겨울 몫 · 꺼내기 · 마을 밥 · 위세품 값)은 **정본 함수 그대로** 몇 개 · 몇 단위인지를 정하고,
+//   그 앞뒤에서 로트만 옮긴다:
+//     · 문 앞(`_t732DoorBegin`): 곳간이 다루는 사람 품목을 맞추고(인벤 = 로트 합) 낼 수 있는 레코드를 미리 본다(빼지 않는다) · 곳간 장부의 문을 연다.
+//     · 문 뒤(`_t732DoorEnd`): 인벤에서 **줄어든** 품목 = 곳간에 든 것 — 오래된 것부터 그 개수의 레코드를, 문이 쓴 그 환산(`unitsOf` — 열량 × 신선도)으로
+//       무게를 매겨 곳간이 늘어난 몫에 채운다(접힌 신선도 f0 을 적어 둔다 · 같은 순간 · 노출 그대로 · 곳간 자리로).
+//       인벤에서 **늘어난** 품목 = 곳간에서 나온 것 — 곳간이 오래된 것부터 뗀 레코드를 문이 정한 낱개로 나눠 싣는다. 넣을 때 접힌 신선도는 편다
+//       (f0 < 1 인 레코드의 낱개 = 문 몫 ÷ f0 — 두 번 깎으면 소멸이다 · 넘는 정수 몫만 인벤에 더한다). 문이 실패하면 장부도 문 앞으로.
+//   ⚠품목: 꺼낼 때 나오는 것은 문이 정한 **대표 품목**이다(곳간 재화 하나 = econ 칸 하나 — 곰고기를 넣으면 사슴·들짐승고기로 나온다 · 나이는 곰고기의 것).
+//     넣은 물건 그대로 돌려주는 길(T716 이 했던 것)은 문이 정하는 품목을 바꾸는 일이라 재민 칸에 둔다(보고 §재민 칸).
+const GL = T732_MOMENT ? require('./granary-lots') : null;
+function _t732DoorBegin(player, giveItems) {
+  if (!GL || !player || !player.inventory) return null;
+  const today = zoneGameDay(), map = SimVillages.playerVillageDepositMap() || {}, inv = player.inventory;
+  const inv0 = {}, snap = {};
+  const items = new Set(Object.keys(map));
+  for (const it of Object.keys(inv)) items.add(it);   // 위세품 값처럼 재화 이름 그대로 들어오는 품목도(`food`)
+  for (const it of items) {
     if (!Lots.isLot(it)) continue;
-    if (it !== rep) Lots.reconcile(player, it, player.inventory, today);
-    Lots.moveIn(player, it, recs, today, 0, 'carry');
-    player.inventory[it] = Math.floor(Lots.sum(player, it) + 1e-6);
+    Lots.reconcile(player, it, inv, today);            // 인벤 = 로트 합(근사가 있으면 쓸개가 센다)
+    inv0[it] = Number(inv[it]) || 0;
+    const n = Math.floor(inv0[it]);
+    if (n > 0 && map[it] && (!giveItems || giveItems.includes(it))) snap[it] = Lots.peek(player, it, n, inv, today);
   }
-  return { k, got };
+  if (!GL.doorBegin()) return null;
+  return { today, inv0, snap, map };
+}
+function _t732Cut(recs, n) {   // 미리 본 레코드(오래된 것부터)에서 앞 n 개 몫
+  const out = []; let left = n;
+  for (const r of (recs || [])) { if (left <= 1e-9) break; const t = Math.min(left, +r.n || 0); if (t > 1e-9) { out.push(Object.assign({}, r, { n: +t.toFixed(6) })); left -= t; } }
+  return out;
+}
+function _t732DoorEnd(ctx, player, ok, vil, unitsOf) {
+  if (!ctx) return null;
+  const d = GL.doorEnd(!!ok);
+  if (!ok || !d) return null;
+  const today = ctx.today, map = ctx.map, inv = player.inventory;
+  const out = { put: {}, got: {} };
+  // ① 곳간에 든 것 — 인벤에서 줄어든 품목(오래된 것부터 그 개수 · 문이 쓴 환산으로 무게)
+  const byRes = {};
+  for (const it of Object.keys(ctx.snap)) {
+    const gone = (ctx.inv0[it] || 0) - (Number(inv[it]) || 0);
+    if (!(gone > 1e-9)) continue;
+    const recs = _t732Cut(ctx.snap[it], gone);
+    const byUnits = typeof unitsOf === 'function';
+    const U = byUnits ? (Number(unitsOf(it, Math.round(gone))) || gone) : gone;
+    (byRes[map[it]] || (byRes[map[it]] = [])).push(...GL.recsFromPlayer(recs, it, U, byUnits, today));
+    out.put[it] = gone;
+  }
+  for (const [res, recs] of Object.entries(byRes)) {
+    let v = vil && vil.econ;
+    if (!v) for (const [hv, H] of d.held) if (H[res] > 0) { v = hv; break; }
+    if (v) GL.doorIn(d, v, res, recs);
+  }
+  // ② 곳간에서 나온 것 — 인벤에서 늘어난 품목(곳간이 오래된 것부터 뗀 레코드 · 문이 정한 낱개 · 접힌 신선도는 편다)
+  for (const it of Object.keys(ctx.inv0)) {
+    const add = (Number(inv[it]) || 0) - (ctx.inv0[it] || 0);
+    if (!(add > 1e-9)) continue;
+    const res = map[it] || it;
+    let recs = [];
+    for (const M of d.cap.values()) if (M[res] && M[res].length) { recs = recs.concat(M[res]); delete M[res]; }
+    if (!recs.length) continue;
+    const pr = GL.recsToPlayer(recs, add);
+    if (!pr.length) continue;
+    Lots.moveIn(player, it, pr, today, 0, 'carry');
+    const extra = Math.floor(Lots.sum(player, it) + 1e-6) - Math.floor((Number(inv[it]) || 0) + 1e-6);
+    if (extra > 0) inv[it] = (Number(inv[it]) || 0) + extra;
+    out.got[it] = { n: +pr.reduce((a, r) => a + r.n, 0).toFixed(6), add, extra: Math.max(0, extra), recs: pr.length };
+  }
+  // ③ 아무도 안 채운 늘어남 — 그 순간의 새 로트(센다 · 문 표를 다 막았으면 0) · ④ 사람 쪽 — 낸 품목의 로트를 오래된 것부터 지운다
+  GL.doorRest(d);
+  for (const it of Object.keys(out.put)) Lots.reconcile(player, it, inv, today);
+  return out;
+}
+// 화면 한 줄 — 나온 것의 나이(가장 늙은 몫의 신선도)
+function _t732GotLine(player, got) {
+  if (!got || !got.got) return '';
+  const today = zoneGameDay(), parts = [];
+  for (const [it, g] of Object.entries(got.got)) {
+    let fmin = 1; for (const l of Lots.of(player, it)) fmin = Math.min(fmin, Spoil.freshnessOf(it, Spoil.exposureOf(l, today)));
+    parts.push(`${ITEM_LABEL_SERVER[it] || it} ${+g.n.toFixed(2)}${g.extra > 0 ? `(넣을 때 시든 몫을 펴 +${g.extra})` : ''} · 곳간 나이째(가장 늙은 몫 신선도 ${fmin.toFixed(2)})`);
+  }
+  return parts.length ? ` · ${parts.join(' · ')}` : '';
+}
+// 꺼내기 문 감싸개 — 정본 함수(`fn`)를 문 안에서 부르고, 나온 레코드를 사람에게 싣는다(인출 · 마을 밥). 끄면 `fn()` 그대로.
+const _t732Got = new WeakMap();   // 사람 → 방금 문이 실은 것(뒷정리 `_afterWithdraw` 의 화면 한 줄 · 몸 필드 아님)
+function _t732Wrap(player, fn) {
+  const ctx = _t732DoorBegin(player, []);
+  let r = null, ok = false;
+  try { r = fn(); ok = !!(r && r.ok); }
+  finally { const g = _t732DoorEnd(ctx, player, ok, null, null); if (g) _t732Got.set(player, g); }
+  return r;
 }
 // ★★[T11 2026-09-02 재민 확정] **곳간에서 꺼내기 — 마을 사람의 몫.**
 //   판정(누가·얼마나)은 `server/membership.js`, 실물 이동은 `villages.playerVillageWithdraw`
@@ -11540,15 +11569,14 @@ function _t716Take(player, r) {
 //     — 즉 **출고일 = 취득일**이 종전 규약으로 저절로 선다(새 규약을 만들지 않았다).
 function _afterWithdraw(player, r) {
   const today = zoneGameDay();
-  const _t716 = T716_AGE ? _t716Take(player, r) : null;   // ★[T716 ⑤] 넣은 로트를 그 나이째 싣는다(끄면 이 줄 무동작 — 아래 오늘 것 그대로)
+  const _g732 = GL ? _t732Got.get(player) : null; if (_g732) _t732Got.delete(player);   // ★[T732] 문이 곳간 레코드를 이미 실었다(그 나이째 · 끄면 null — 아래 오늘 것 그대로)
   if (Lots.isLot(r.item)) Lots.reconcile(player, r.item, player.inventory, today);
   Carry.reconcile(player, player.inventory);
   savePlayer(player);
   sendInventory(player);
   send(player.ws, { type: 'notice', text: `🏘️ ${r.name} 곳간에서 ${ITEM_LABEL_SERVER[r.item] || r.item} ${r.qty} 꺼냈다`
     + ` — 오늘 남은 몫 ${r.remain}/${r.limit}`
-    + (_t716 ? ` · 넣은 그대로 ${Object.entries(_t716.got).map(([k, a]) => `${ITEM_LABEL_SERVER[k] || k} ${+a.reduce((x, y) => x + y.n, 0).toFixed(2)}`).join(' · ')}`
-      + `(대표 ${ITEM_LABEL_SERVER[r.item] || r.item} ${_t716.k}개 몫 · 그 나이째)` : '') });
+    + (_g732 ? _t732GotLine(player, _g732) : '') });
   // ★거래소 창이 열려 있으면 **그 창을 다시 보내 준다** — 방금 곳간이 줄었고 남은 몫도 줄었다
   //   (거래소 실행이 시세를 다시 보내 주는 것과 같은 규약: 화면이 낡은 값을 들고 있으면 그게 거짓말이다).
   try {
@@ -11665,10 +11693,12 @@ function tryVillageTradeExec(player, vid, giveRes, takeRes, qty, want, numeraire
   if (!SimVillages.villageTradeExec) return;
   const _sp = _spoiledGuardRes(player, giveRes);   // ★[부패] 상한 것은 거래소가 안 받는다
   if (_sp) { send(player.ws, { type: 'notice', text: `🏪 ${_sp}` }); return; }
-  const _s716 = T716_AGE ? _t716Snap(player, SimVillages.villageByDbId ? SimVillages.villageByDbId(vid | 0) : null) : null;   // ★[T716 ⑤]
-  const r = SimVillages.villageTradeExec(vid | 0, player.x, player.y, player.inventory, giveRes, takeRes, qty, _unitsOfFor(player), want);
+  const _uo = _unitsOfFor(player);
+  const _d732 = _t732DoorBegin(player, null);   // ★[T732] 곳간 문(끄면 null)
+  let r = null, _g732 = null;
+  try { r = SimVillages.villageTradeExec(vid | 0, player.x, player.y, player.inventory, giveRes, takeRes, qty, _uo, want); }
+  finally { _g732 = _t732DoorEnd(_d732, player, !!(r && !r.err), _d732 && SimVillages.villageByDbId ? SimVillages.villageByDbId(vid | 0) : null, _uo); }   // ★[T732] 낸 것 · 받은 것의 로트(실패 · 던짐이면 장부도 되돌림)
   if (r.err) { send(player.ws, { type: 'notice', text: `🏪 ${r.err}` }); return; }
-  if (_s716) _t716Put(player, _s716, false);   // ★[T716 ⑤] 거래소에 낸 몫(열량 × 신선도 환산)
   // ★내준 개체를 장부에서 **실제로 뺀다** — 위 환산은 `peekKg`(보기)였다. 안 빼면 무게가 안 준다.
   for (const [it, n] of Object.entries(r.gaveItems || {})) Carry.takeKg(player, it, n);
   Carry.reconcile(player, player.inventory);
@@ -11676,7 +11706,7 @@ function tryVillageTradeExec(player, vid, giveRes, takeRes, qty, want, numeraire
   sendInventory(player);
   const gave = Object.entries(r.gaveItems || {}).map(([k, q]) => `${ITEM_LABEL_SERVER[k] || k} ${q}`).join(' · ');
   send(player.ws, { type: 'notice', text: `🏪 ${r.name} 거래소 — ${gave} → ${ITEM_LABEL_SERVER[r.tookItem] || r.tookItem} ${r.take}`
-    + (r.capped ? ` (마을 재고가 모자라 ${r.wanted}→${r.give}개만 받았다)` : '') });
+    + (r.capped ? ` (마을 재고가 모자라 ${r.wanted}→${r.give}개만 받았다)` : '') + (_g732 ? _t732GotLine(player, _g732) : '') });
   // ★시세표를 **다시 보내 준다** — 방금 내 거래가 시세를 움직였을 수 있고, 그걸 보는 게 이 배치의 요점이다.
   try {
     const b = SimVillages.villageTradeBoard(vid | 0, player.x, player.y, player.inventory, numeraire);   // ★[T69] 되보내는 표도 **같은 기준**이라야 한다
@@ -11687,10 +11717,12 @@ function tryVillageDeliver(player, vid, item, want) {
   if (!SimVillages.villageDeliver) return;
   const _sp = _spoiledGuardItems(player, [item]);   // ★[부패] 게시판 납품도 같은 판정(같은 함수)
   if (_sp) { send(player.ws, { type: 'notice', text: `📋 ${_sp}` }); return; }
-  const _s716 = T716_AGE ? _t716Snap(player, SimVillages.villageByDbId ? SimVillages.villageByDbId(vid | 0) : null) : null;   // ★[T716 ⑤]
-  const r = SimVillages.villageDeliver(vid | 0, player.x, player.y, player.inventory, item, want, _unitsOfFor(player));
+  const _uo = _unitsOfFor(player);
+  const _d732 = _t732DoorBegin(player, null);   // ★[T732] 곳간 문(끄면 null)
+  let r = null, _g732 = null;
+  try { r = SimVillages.villageDeliver(vid | 0, player.x, player.y, player.inventory, item, want, _uo); }
+  finally { _g732 = _t732DoorEnd(_d732, player, !!(r && !r.err), _d732 && SimVillages.villageByDbId ? SimVillages.villageByDbId(vid | 0) : null, _uo); }   // ★[T732] 낸 것 · 보상의 로트
   if (r.err) { send(player.ws, { type: 'notice', text: `📋 ${r.err}` }); return; }
-  if (_s716) _t716Put(player, _s716, false);   // ★[T716 ⑤] 게시판 · 겨울 몫에 낸 몫(열량 × 신선도 환산)
   for (const [it, n] of Object.entries(r.taken || {})) Carry.takeKg(player, it, n);   // ★납품한 개체를 장부에서 뺀다
   Carry.reconcile(player, player.inventory);
   savePlayer(player);
@@ -11698,7 +11730,7 @@ function tryVillageDeliver(player, vid, item, want) {
   const gave = Object.entries(r.taken || {}).map(([k, q]) => `${ITEM_LABEL_SERVER[k] || k} ${q}`).join(' · ');
   const got = r.rew > 0 ? ` → ${ITEM_LABEL_SERVER[r.rewItem] || r.rewItem} ${r.rew}` : '';
   send(player.ws, { type: 'notice', text: (r.winter ? `🧊 ${r.name} 올겨울 몫 — ${gave}` :   // ★[T20] 겨울 몫은 보상이 없다(그 대가는 겨울 보상)
-    `📋 ${r.name}에 납품 — ${gave}${got}${r.refused > 0 ? ` (${r.refused}개는 남은 몫을 넘어 돌려받음)` : ''}`) });
+    `📋 ${r.name}에 납품 — ${gave}${got}${r.refused > 0 ? ` (${r.refused}개는 남은 몫을 넘어 돌려받음)` : ''}`) + (_g732 ? _t732GotLine(player, _g732) : '') });
   Onboarding.onDeliver(player, r, vid | 0);   // ★[온보딩 v2] 누적 기여(=T11 이 재사용할 하나의 카운터)·곳간 이펙트·훅 대사·빈터 권리
   Membership.onDeliver(player, r, vid | 0);   // ★[T11] **그 다음**이다 — 기여가 오른 뒤라야 소속 문턱을 정확히 본다
   Winter.onDeliver(player, r, vid | 0);      // ★[T20] 겨울나기 — **양**을 센다(횟수는 위 온보딩 정본 하나다)
@@ -11867,7 +11899,7 @@ function __testBind() {
     // ── 무게 모델(2026-08-27) ── 정본 모듈을 그대로 내준다(하네스가 곡선을 다시 짜면 사본이다)
     Weights, Carry, Lots, moveMultOf, zoneGameDay, COOK_RECIPES, doCook, _unitsOfFor,
     doEatDish,   // ★[T705] 요리 먹기 — 상한 재료 요리의 독소가 배탈 지수로 가는지(test-food-sick · 읽기·부르기만)
-    T716_AGE, _t716Snap, _t716Put, _t716Take, _afterWithdraw, tryVillageWithdraw, tryVillageDeliver, Membership,   // ★[T716 ⑤] 곳간 나이 몫(test-granary-age · 읽기·부르기만)
+    T732_MOMENT, GL, _t732DoorBegin, _t732DoorEnd, _t732Wrap, _afterWithdraw, tryVillageWithdraw, tryVillageDeliver, Membership, doSellIronRelic,   // ★[T732] 곳간 문(test-granary-age · test-moment-lot · 읽기·부르기만)
     T725_HALL, tryVillageDeposit, tryVillageTradeExec,   // ★[T725 ①] 회관 넣기 문(test-hall-units · 읽기·부르기만)
     // ★[부패·보존 배치 2026-08-31] 하네스가 잡을 손잡이들
     Spoil, doPreserve, preserveMenuPayload, _spoiledGuardItems, _spoiledGuardRes, _gameDayAt, __e2eFreezeZoneDay,
@@ -12068,7 +12100,7 @@ function tryChestPut(player, buildingId, item, amount) {
   const _pk = _placeKeyOfBuilding(b);
   const _pf = Spoil.placeFields(_pk);
   const _lotRecs = Lots.isLot(item)
-    ? Lots.moveOut(player, item, amount, player.inventory, zoneGameDay(), 0).map((r) => Object.assign({}, r, { m: _pf.m, w: _pf.w, t: zoneGameDay() }))
+    ? Lots.moveOut(player, item, amount, player.inventory, zoneGameDay(), 0).map((r) => Object.assign({}, r, { m: _pf.m, w: _pf.w, t: T732_MOMENT ? r.t : zoneGameDay() }))   // ★[T732] 정산 순간 그대로
     : null;
   const _took = consumeItem(player, item, amount);
   b.data = b.data || {};
@@ -13041,7 +13073,7 @@ function _villageMeal(p, vid) {
   try { feq = SimVillages.playerVillageWithdrawStockFoodEq(vil) || 0; } catch (e) { feq = 0; }
   if (!(feq >= 1)) return { fed: false, empty: true };          // ★굶는 마을은 사람을 못 살린다
   let r = null;
-  try { r = SimVillages.playerVillageWithdraw(vil, p.inventory, 'food', 1); } catch (e) { r = null; }
+  try { r = T732_MOMENT ? _t732Wrap(p, () => SimVillages.playerVillageWithdraw(vil, p.inventory, 'food', 1)) : SimVillages.playerVillageWithdraw(vil, p.inventory, 'food', 1); } catch (e) { r = null; }   // ★[T732] 곳간 나이째(끄면 종전 그대로)
   if (!r || !r.ok) return { fed: false, empty: true, err: r && r.err };
   try { doEat(p, r.item, r.qty, p); } catch (e) {}              // ★먹임 정본(T56 먹이기와 같은 함수)
   // ★★**극단 축을 벗어나는 만큼만.** 문턱은 T44 표에서 유도한다(`Body.extremeAt` — 리터럴 금지),

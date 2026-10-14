@@ -89,9 +89,201 @@ function isLot(item) {
   return !!(sp && (sp.category === 'marine' || sp.category === 'livestock' || sp.category === 'agri'));
 }
 
-function all(p) { if (!p.lots || typeof p.lots !== 'object') p.lots = {}; return p.lots; }
+function all(p) {
+  if (_mNpcBox(p)) { let L = _mNpc.get(p); if (!L) { L = {}; _mNpc.set(p, L); } return L; }   // ★[T732] NPC 몸 — 곁 장부(몸 필드 0)
+  if (!p.lots || typeof p.lots !== 'object') p.lots = {}; return p.lots;
+}
 function of(p, item) { const L = all(p); if (!Array.isArray(L[item])) L[item] = []; return L[item]; }
 function sum(p, item) { let s = 0; for (const l of of(p, item)) s += l.n; return +s.toFixed(6); }
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════════
+// ★★★[T732 2026-10-14 · 손잡이 `T732_MOMENT_LOT=1` — 없음·빈 값·0 = 끔 = 아래 순간 갈래를 하나도 안 탄다(main 바이트)]
+//   **로트 = 얻은 순간.** 재민 10-12 · 10-14 재확인(족보 631 ①): 신선도는 아이템마다 — **같은 순간에 얻은 것만 합친다.**
+//   종전 열쇠는 **날**이었다: 같은 날 · 같은 자리 것은 노출을 개수 가중 평균해 한 로트로 뭉쳤고(0시 것과 23시 것이 하나),
+//   노출은 정수 날로 쌓였다(그날 얻은 것은 그날 0시부터 늙는다 — T716 ① 뭉개지는 자리 ①·⑪). 켬이면:
+//     · 열쇠 `k` = 얻은 순간(게임 ms · 절대 시계 — 존이 `setClock` 으로 꽂는다) · `d` = 그 순간의 날(화면 "N일 전" · 날 문법 호환)
+//     · 노출 `e` 는 정산 순간 `t`(**소수 날**)까지 — `spoil.cumExposure` 가 이미 소수 날을 받는다(새 곡선 0 · 새 수 0)
+//     · 같은 순간 · 같은 자리 · 같은 노출만 합친다(평균 0 — 합치는 둘이 같은 물건일 때만)
+//     · 옛 레코드 `{d, n}` 은 **그 날 0시 순간**으로 읽는다(지우지 않는다) · `{d,n,e,t,m,w}` 는 `k = d 0시` 만 붙는다(값 연속)
+//     · 상한(품목당 `LOT_MAX_PER_ITEM` 12)은 남긴다 — 까닭은 메모리 · 저장 크기(보고 §1 표). 뭉갤 때 규칙은 종전 그대로:
+//       **가장 오래된 둘 · 더 이른 순간 · 큰 노출** → 음식이 실제보다 싱싱해 보이는 일 0(같은 순간으로 정산한 뒤 견준다).
+//     · 맞추기(`reconcile`)가 남는 몫을 "지금 얻은 것"으로 잡으면 **근사 한 번**으로 센다(`stats().approx`) — 길을 다 고쳤으면 0 이다.
+//     · 몸 필드 0: NPC 몸엔 `lots` 칸이 없다 — NPC 의 로트는 몸 밖 곁 장부(`WeakMap`)에 둔다(죽음 드롭이 그 레코드를 바닥에 싣는다).
+const T732_MOMENT = process.env.T732_MOMENT_LOT === '1';
+let _mClk = null, _mDay = 0;
+const _mNpc = new WeakMap();
+const _mStat = { approx: 0, approxBy: {}, coalesced: 0 };
+function setClock(nowMs, dayMs) {
+  _mClk = (typeof nowMs === 'function') ? nowMs : null;
+  _mDay = Number(dayMs) > 0 ? Number(dayMs) : 0;
+  if (typeof Spoil.setMomentClock === 'function') Spoil.setMomentClock(T732_MOMENT ? _mClk : null, _mDay);
+}
+function _mOn() { return T732_MOMENT && _mClk !== null && _mDay > 0; }
+function _mNpcBox(p) { return !!(p && p.isNpc) && _mOn(); }
+function _mNowMs() { return Math.floor(Number(_mClk()) || 0); }
+// 부르는 쪽이 넘긴 '날' → 순간. 지금 날이면 **지금 순간** · 다른 날이면 그 날 0시(옛 꼴 `{d, n}` 의 뜻 그대로)
+function _mMsOf(day) { const d = _day(day), now = _mNowMs(); return (Math.floor(now / _mDay) === d) ? now : d * _mDay; }
+function _mNowFrac(day) { const d = _day(day), now = _mNowMs(); return (Math.floor(now / _mDay) === d) ? now / _mDay : d; }
+function _mK(l) { return Number.isFinite(l.k) ? l.k : _day(l.d) * _mDay; }
+// 순서 = 얻은 순간(오래된 것부터 — 먹기·내기·뭉개기가 다 이 순서) · 같은 순간이면 더 늙은 것 먼저
+function _mSort(arr) { arr.sort((x, y) => (_mK(x) - _mK(y)) || ((+y.e || 0) - (+x.e || 0))); return arr; }
+function _mSettleOne(l, nowFrac, elevKm) {
+  if (!Number.isFinite(l.k)) l.k = _day(l.d) * _mDay;                  // 옛 레코드 — 그 날 0시 순간(지우지 않는다)
+  if (l.e == null) {                                                    // 옛 `{d, n}` — 나이 = 그 날 0시부터(종전 뜻 · 소수 날)
+    const a = nowFrac - _day(l.d);
+    l.e = a > 0 ? +a.toFixed(6) : 0; l.t = nowFrac;
+    if (l.m == null) l.m = 1;
+    if (l.w == null) l.w = 0;
+    return l;
+  }
+  const t0 = (l.t == null) ? l.k / _mDay : +l.t;
+  if (!(t0 < nowFrac)) return l;
+  l.e = +Spoil.exposureAt(l, nowFrac, elevKm).toFixed(6);
+  l.t = nowFrac;
+  return l;
+}
+function _mCap(arr, nowFrac) {
+  while (arr.length > CFG.MAX_LOTS) {
+    const a = _mSettleOne(arr[0], nowFrac, 0), b = _mSettleOne(arr[1], nowFrac, 0);   // 같은 순간으로 정산한 뒤 견준다
+    const m = { d: Math.floor(Math.min(_mK(a), _mK(b)) / _mDay), k: Math.min(_mK(a), _mK(b)), n: +(a.n + b.n).toFixed(6),
+      e: Math.max(+a.e || 0, +b.e || 0), t: Math.max(+a.t || 0, +b.t || 0), m: a.m == null ? 1 : a.m, w: a.w == null ? 0 : a.w, coalesced: true };
+    arr.splice(0, 2, m);
+    _mStat.coalesced++;
+  }
+  return arr;
+}
+function _mNote(p, item, n, day, place, k) {
+  if (!isLot(item) || !(n > 0)) return null;
+  const arr = of(p, item);
+  const kk = Number.isFinite(k) ? Math.floor(k) : _mMsOf(day);
+  const pf = Spoil.placeFields(place || 'carry');
+  // 같은 순간 · 같은 자리 · 아직 안 늙은 로트만 같은 물건이다(평균 0)
+  const hit = arr.find((l) => _mK(l) === kk && (l.m == null ? 1 : l.m) === pf.m && (l.w == null ? 0 : l.w) === pf.w
+    && !((+l.e || 0) > 0) && !(+l.t > kk / _mDay));
+  if (hit) hit.n = +(hit.n + (+n)).toFixed(6);
+  else arr.push({ d: Math.floor(kk / _mDay), k: kk, n: +(+n).toFixed(6), e: 0, t: kk / _mDay, m: pf.m, w: pf.w });
+  _mSort(arr);
+  return _mCap(arr, Math.max(kk / _mDay, _mNowFrac(day)));
+}
+function _mSettle(p, item, today, elevKm) { const nf = _mNowFrac(today); for (const l of of(p, item)) _mSettleOne(l, nf, elevKm); return of(p, item); }
+function _mSetPlace(p, item, place, today, elevKm) {
+  _mSettle(p, item, today, elevKm);
+  const pf = Spoil.placeFields(place || 'carry');
+  for (const l of of(p, item)) { l.m = pf.m; l.w = pf.w; }
+  return of(p, item);
+}
+function _mReconcile(p, item, inventory, day) {
+  if (!isLot(item)) return null;
+  const arr = of(p, item);
+  if (arr.length) _mSettle(p, item, day);
+  const have = Math.max(0, Math.floor(Number((inventory || {})[item]) || 0));
+  const s = sum(p, item);
+  if (Math.floor(s + CFG.EPS) < have) {
+    // ★근사 — 이 몫이 어디서 왔는지 아무 길도 안 적었다. 지금 얻은 것으로 잡고 **센다**(길을 다 고쳤으면 0).
+    _mStat.approx++; _mStat.approxBy[item] = (_mStat.approxBy[item] || 0) + 1;
+    _mNote(p, item, have - Math.floor(s + CFG.EPS), day);
+  } else if (Math.floor(s + CFG.EPS) > have) {
+    let over = Math.floor(s + CFG.EPS) - have;
+    while (over > CFG.EPS && arr.length) {
+      const take = Math.min(over, arr[0].n);
+      arr[0].n = +(arr[0].n - take).toFixed(6); over -= take;
+      if (arr[0].n <= CFG.EPS) arr.shift();
+    }
+  }
+  if (!arr.length) delete all(p)[item];
+  return arr;
+}
+function _mRec(l, n) { const r = { d: l.d, k: _mK(l), n: +(+n).toFixed(6), e: l.e, t: l.t, m: l.m, w: l.w }; if (l.coalesced) r.coalesced = true; return r; }
+function _mConsume(p, item, amount, inventory, day) {
+  if (!isLot(item)) return { taken: 0, ages: [] };
+  _mReconcile(p, item, inventory, day);
+  const arr = of(p, item);
+  let left = Math.max(0, Number(amount) || 0), taken = 0;
+  const ages = [];
+  while (left > CFG.EPS && arr.length) {
+    const take = Math.min(left, arr[0].n);
+    ages.push(_mRec(arr[0], take));
+    arr[0].n = +(arr[0].n - take).toFixed(6);
+    left -= take; taken += take;
+    if (arr[0].n <= CFG.EPS) arr.shift();
+  }
+  if (inventory) inventory[item] = Math.floor(sum(p, item) + CFG.EPS);
+  if (!arr.length) delete all(p)[item];
+  return { taken: +taken.toFixed(6), ages };
+}
+// 지목 소비 — 펼친 로트 줄 하나(`k` 가 오면 그 순간 · 없으면 그 날의 첫 로트). ★맞춘 뒤 고른다(종전엔 안 맞추고 골라 갓 얻은 몫이 지워질 수 있었다)
+function _mConsumeFrom(p, item, day, amount, inventory, k) {
+  if (!isLot(item)) return { taken: 0 };
+  const today = Math.floor(_mNowMs() / _mDay);
+  _mReconcile(p, item, inventory, today);
+  const arr = of(p, item);
+  const i = Number.isFinite(k) ? arr.findIndex((l) => _mK(l) === Math.floor(k)) : arr.findIndex((l) => l.d === _day(day));
+  if (i < 0) return { taken: 0 };
+  const take = Math.min(Math.max(0, Number(amount) || 0), arr[i].n);
+  const ages = take > 0 ? [_mRec(arr[i], take)] : [];
+  arr[i].n = +(arr[i].n - take).toFixed(6);
+  if (arr[i].n <= CFG.EPS) arr.splice(i, 1);
+  if (inventory) inventory[item] = Math.floor(sum(p, item) + CFG.EPS);
+  if (!arr.length) delete all(p)[item];
+  return { taken: +take.toFixed(6), ages };
+}
+function _mMoveOut(p, item, amount, inventory, today, elevKm) {
+  if (!isLot(item)) return [];
+  _mReconcile(p, item, inventory, today);
+  const arr = of(p, item);
+  let left = Math.max(0, Number(amount) || 0);
+  const out = [];
+  while (left > CFG.EPS && arr.length) {
+    const take = Math.min(left, arr[0].n);
+    out.push(_mRec(arr[0], take));
+    arr[0].n = +(arr[0].n - take).toFixed(6); left -= take;
+    if (arr[0].n <= CFG.EPS) arr.shift();
+  }
+  if (!arr.length) delete all(p)[item];
+  return out;
+}
+// 안 빼고 미리 본다 — 지금 n 개를 내면 나갈 레코드(FIFO · 정산된 복사). 곳간 문이 넣기 **전에** 장부에 실을 것을 안다.
+function _mPeek(p, item, amount, inventory, today) {
+  if (!isLot(item)) return [];
+  _mReconcile(p, item, inventory, today);
+  let left = Math.max(0, Number(amount) || 0);
+  const out = [];
+  for (const l of of(p, item)) {
+    if (left <= CFG.EPS) break;
+    const take = Math.min(left, l.n);
+    if (take > 0) { out.push(_mRec(l, take)); left -= take; }
+  }
+  return out;
+}
+function _mMoveIn(p, item, recs, today, elevKm, place) {
+  if (!isLot(item) || !Array.isArray(recs) || !recs.length) return of(p, item);
+  const arr = of(p, item), nf = _mNowFrac(today);
+  const pf = Spoil.placeFields(place || 'carry');
+  for (const l of arr) _mSettleOne(l, nf, elevKm);
+  for (const r0 of recs) {
+    if (!(r0 && r0.n > 0)) continue;
+    const r = _mSettleOne(Object.assign({}, r0), nf, elevKm);           // 그릇에 있던 구간을 **먼저** 그릇 배율로 정산(체크포인트 규약)
+    const kk = _mK(r);
+    const hit = arr.find((l) => _mK(l) === kk && l.m === pf.m && l.w === pf.w && Math.abs((+l.e || 0) - (+r.e || 0)) < 1e-9);
+    if (hit) { hit.n = +(hit.n + (+r.n)).toFixed(6); if (r.coalesced) hit.coalesced = true; }
+    else { const x = { d: Math.floor(kk / _mDay), k: kk, n: +(+r.n).toFixed(6), e: +r.e || 0, t: nf, m: pf.m, w: pf.w }; if (r.coalesced) x.coalesced = true; arr.push(x); }
+  }
+  _mSort(arr);
+  return _mCap(arr, nf);
+}
+function _mSettleRecs(recs, today, elevKm) { const nf = _mNowFrac(today); for (const r of (recs || [])) if (r) _mSettleOne(r, nf, elevKm); return recs; }
+function _mView(p, item, inventory, day) {
+  if (!isLot(item)) return null;
+  _mReconcile(p, item, inventory, day);
+  const arr = of(p, item);
+  if (!arr.length) return null;
+  return { item, total: sum(p, item),
+           lots: arr.map((l) => {
+             const ageDays = Math.max(0, _day(day) - l.d);
+             const fresh = Spoil.freshnessOf(item, Spoil.exposureOf(l, day));
+             return { day: l.d, k: _mK(l), n: l.n, ageDays, coalesced: !!l.coalesced, fresh, stage: Spoil.stageOf(fresh) };
+           }) };
+}
 
 // ★상한 — **오래된 쪽 둘을 뭉치고 더 오래된 날짜를 준다.**
 //   왜 이 방향인가: 반대로 하면(새것에 붙이면) 갓 얻은 식량이 **실제보다 오래돼 보인다**.
@@ -117,7 +309,9 @@ function _cap(arr) {
   return arr;
 }
 // 취득 — 같은 날이면 그 로트에 더하고, 다른 날이면 **새 로트**(병합 금지).
-function note(p, item, n, day, place) {
+//   ★[T732] 켬이면 같은 **순간**만 합친다(`k` 를 주면 그 순간 · 안 주면 지금) — 위 순간 갈래.
+function note(p, item, n, day, place, k) {
+  if (_mOn()) return _mNote(p, item, n, day, place, k);
   if (!isLot(item) || !(n > 0)) return null;
   const arr = of(p, item), d = _day(day);
   // ★[부패 2차] 새 로트는 **정산된 채로** 태어난다: 노출 0 · 정산일 = 취득일 · 자리 배율.
@@ -140,6 +334,7 @@ function note(p, item, n, day, place) {
 //   **읽을 때와 옮길 때만** 정산하면 값이 정확하다. 틱 0 은 그대로다.
 //   ★옛 로트(`e` 없음) 마이그레이션: `e = today − d`(종전 나이) · `t = today` ⇒ **그 순간 값이 연속**.
 function settle(p, item, today, elevKm) {
+  if (_mOn()) return _mSettle(p, item, today, elevKm);   // ★[T732] 소수 날 정산
   const arr = of(p, item), now = _day(today);
   for (const l of arr) {
     if (l.e == null) {                                   // 옛 로트 — 종전 나이를 그대로 옮겨 적는다
@@ -158,6 +353,7 @@ function settle(p, item, today, elevKm) {
 }
 // 자리를 바꾼다 — **정산 먼저**(안 그러면 지난 구간에 새 배율이 소급된다).
 function setPlace(p, item, place, today, elevKm) {
+  if (_mOn()) return _mSetPlace(p, item, place, today, elevKm);   // ★[T732]
   settle(p, item, today, elevKm);
   const pf = Spoil.placeFields(place || 'carry');
   for (const l of of(p, item)) { l.m = pf.m; l.w = pf.w; }
@@ -167,6 +363,7 @@ function setPlace(p, item, place, today, elevKm) {
 //   반환한 레코드는 그대로 그릇의 장부에 적히고, 돌아올 땐 그대로 다시 꽂힌다.
 //   ⇒ **상자가 부패 시계를 지우지 않는다.** (§0 실측: 여태 지우고 있었다 — f 0.20 → 1.00)
 function moveOut(p, item, amount, inventory, today, elevKm) {
+  if (_mOn()) return _mMoveOut(p, item, amount, inventory, today, elevKm);   // ★[T732] 레코드에 순간 `k` 를 싣는다
   if (!isLot(item)) return [];
   reconcile(p, item, inventory, today);
   settle(p, item, today, elevKm);
@@ -186,6 +383,7 @@ function moveOut(p, item, amount, inventory, today, elevKm) {
 }
 // 그릇에서 사람에게. `place` 는 **받는 쪽**(보통 'carry').
 function moveIn(p, item, recs, today, elevKm, place) {
+  if (_mOn()) return _mMoveIn(p, item, recs, today, elevKm, place);   // ★[T732] 순간째 꽂는다(같은 순간·자리·노출만 합친다)
   if (!isLot(item) || !Array.isArray(recs) || !recs.length) return of(p, item);
   const arr = of(p, item), now = _day(today);
   const pf = Spoil.placeFields(place || 'carry');
@@ -200,6 +398,7 @@ function moveIn(p, item, recs, today, elevKm, place) {
 }
 // 그릇 안에서 시간이 흐른다 — 그릇의 장부를 **그 자리 배율로** 정산한다(꺼낼 때 부르면 충분하다).
 function settleRecs(recs, today, elevKm) {
+  if (_mOn()) return _mSettleRecs(recs, today, elevKm);   // ★[T732]
   const now = _day(today);
   for (const r of (recs || [])) {
     if (!r) continue;
@@ -213,6 +412,7 @@ function settleRecs(recs, today, elevKm) {
 // ★인벤과 장부를 맞춘다 — 로트를 안 거친 경로가 인벤을 건드려도 스스로 낫는다.
 //   남으면 **오늘 얻은 것**으로 잡고(알고 하는 근사), 모자라면 **오래된 것부터** 뺀다.
 function reconcile(p, item, inventory, day) {
+  if (_mOn()) return _mReconcile(p, item, inventory, day);   // ★[T732] 남는 몫을 지금으로 잡으면 근사 한 번(센다)
   if (!isLot(item)) return null;
   const arr = of(p, item);
   // ★[부패 2차] **읽는 모든 경로가 여기를 지난다** — 그래서 정산을 여기 건다.
@@ -235,6 +435,7 @@ function reconcile(p, item, inventory, day) {
 // 소비 — **오래된 로트부터**. 소수 소비 허용(한 입 0.25단위).
 //   반환: { taken, ages:[{d,n}] } · 인벤은 `floor(Σ)` 로 맞춘다.
 function consume(p, item, amount, inventory, day) {
+  if (_mOn()) return _mConsume(p, item, amount, inventory, day);   // ★[T732] 레코드에 순간 `k`
   if (!isLot(item)) return { taken: 0, ages: [] };
   reconcile(p, item, inventory, day);
   const arr = of(p, item);
@@ -256,7 +457,8 @@ function consume(p, item, amount, inventory, day) {
 // ★★[원장 승격 2026-08-30] **지목 소비** — 펼친 로트 줄 하나를 골라 버리는 길.
 //   `consume` 은 오래된 것부터(FIFO)라 "3일 전 것만 버린다"를 표현할 수 없었다.
 //   FIFO 를 없애는 게 아니라 **옆에 지목 경로를 하나 더** 낸다(먹기는 그대로 FIFO 가 맞다).
-function consumeFrom(p, item, day, amount, inventory) {
+function consumeFrom(p, item, day, amount, inventory, k) {
+  if (_mOn()) return _mConsumeFrom(p, item, day, amount, inventory, k);   // ★[T732] 순간 `k` 로 고르고 · 맞춘 뒤 고른다
   if (!isLot(item)) return { taken: 0 };
   const arr = of(p, item);
   const i = arr.findIndex((l) => l.d === _day(day));
@@ -282,6 +484,7 @@ function viewAll(p, inventory, day) {
 }
 // 표시용 — 겹쳐 보여 주되 펼치면 로트가 보인다("감자 4.2 (0.84kg)" → 로트별 나이).
 function view(p, item, inventory, day) {
+  if (_mOn()) return _mView(p, item, inventory, day);   // ★[T732] 줄마다 순간 `k`
   if (!isLot(item)) return null;
   reconcile(p, item, inventory, day);
   const arr = of(p, item);
@@ -314,9 +517,11 @@ function fromSave(p, saved) {
           if (l.coalesced) o.coalesced = true;
           // ★[부패 2차] 노출 넷은 **있을 때만** 싣는다 — 없는 로트는 옛 로트로 읽혀 마이그레이션된다.
           //   (거짓 키를 붙이면 저장 전후 구조가 달라져 "재접속을 넘어 그대로인가"가 자기 직렬화로 실패한다.)
-          if (Number.isFinite(l.e)) { o.e = +l.e; o.t = _day(l.t == null ? l.d : l.t); o.m = Number.isFinite(l.m) ? +l.m : 1; o.w = Number.isFinite(l.w) ? +l.w : 0; }
+          if (Number.isFinite(l.e)) { o.e = +l.e; o.t = (_mOn() && Number.isFinite(l.t)) ? +l.t : _day(l.t == null ? l.d : l.t); o.m = Number.isFinite(l.m) ? +l.m : 1; o.w = Number.isFinite(l.w) ? +l.w : 0; }
+          if (_mOn() && Number.isFinite(l.k)) o.k = Math.floor(l.k);   // ★[T732] 얻은 순간(소수 날 정산 `t` 와 함께)
           return o;
         });
+      if (_mOn()) { _mSort(arr); if (arr.length) out[k] = _mCap(arr, _mNowFrac(Math.floor(_mNowMs() / _mDay))); continue; }   // ★[T732]
       arr.sort((x, y) => x.d - y.d);
       if (arr.length) out[k] = _cap(arr);
     }
@@ -324,7 +529,17 @@ function fromSave(p, saved) {
   }
   return all(p);
 }
+// ★[T732] 하네스·보고가 읽는 자(관측 전용 — 세계를 안 바꾼다)
+function stats(reset) { const o = { approx: _mStat.approx, approxBy: Object.assign({}, _mStat.approxBy), coalesced: _mStat.coalesced }; if (reset) { _mStat.approx = 0; _mStat.approxBy = {}; _mStat.coalesced = 0; } return o; }
+function peek(p, item, amount, inventory, today) { return _mOn() ? _mPeek(p, item, amount, inventory, today) : []; }
+function momentOn() { return _mOn(); }
+// 지금 순간에 얻었다 — 날을 모르는 쪽(마을 생활층)이 부른다. 끄면(시계 없음) 아무것도 안 한다.
+function noteNow(p, item, n, place) { return _mOn() ? _mNote(p, item, n, Math.floor(_mNowMs() / _mDay), place) : null; }
+function nowMs() { return _mOn() ? _mNowMs() : null; }
+function dayMs() { return _mOn() ? _mDay : null; }
+function msOf(day) { return _mOn() ? _mMsOf(day) : null; }
 module.exports = { CFG, LOT_CORE, _day, isLot, all, of, sum, note, reconcile, consume, consumeFrom, view, viewAll, toSave, fromSave,
+  T732_MOMENT, setClock, momentOn, nowMs, dayMs, msOf, peek, stats, noteNow,   // ★[T732] 순간 로트(손잡이 · 시계 · 미리 보기 · 자)
   T725_KINDS, NO_ROT,   // ★[T725 ②] 안 썩는 재료 표(하네스·보고가 읽는다)
   // ★[부패 2차 2026-09-01] 정산·자리·그릇 이동
   settle, setPlace, moveOut, moveIn, settleRecs };

@@ -74,6 +74,17 @@
 //   둘 다 invalidate 호출로 행렬 재계산 로그까지 확인).
 // =============================================================================
 'use strict';
+// ★[T732 · 손잡이 `T732_MOMENT_LOT=1`] 로트 장부는 **늦게 · 켬일 때만** 부른다 — 끄면(랩 포함) `lots.js` 를 싣지도 않는다(main 바이트 · 랩 모듈 무변).
+const _T732_ON = (typeof process !== 'undefined' && process.env && process.env.T732_MOMENT_LOT === '1');
+let _t732LotsM = null;
+function _t732Lots() { if (!_T732_ON) return null; if (_t732LotsM === null) { try { _t732LotsM = require('./lots'); } catch (e) { _t732LotsM = false; } } return (_t732LotsM && _t732LotsM.momentOn()) ? _t732LotsM : null; }
+// 곳간 로트 장부(`granary-lots.js`) — 같은 규약(늦게 · 켬일 때만 · 존이 시계를 꽂은 뒤에만)
+let _t732GranM = null;
+function _t732GranMod() { if (!_T732_ON) return null; if (_t732GranM === null) { try { _t732GranM = require('./granary-lots'); } catch (e) { _t732GranM = false; } } return _t732GranM || null; }
+function _t732Gran() { return _t732Lots() ? _t732GranMod() : null; }
+let _t732BootWait = false;   // 마을 init 이 존의 시계보다 먼저 돈다(존 모듈이 다 읽힌 뒤에 꽂는다) — 붙이기를 첫 틱 머리로 미룬다
+const _t732Saved = new WeakMap();   // econ 마을 → 저장된 곳간 장부(복원 문이 econ 객체에서 떼어 둔다 · 붙이기가 읽는다)
+
 
 const ENABLED = process.env.ENABLE_VILLAGES !== '0'; // 기본 켜짐. '0'만 완전 no-op.
 // ★★[T350 2026-09-22 · 주사위 0] 씨 해시 **정본**(`server/seed-rand.js`) — 아래 두 함수는 여기로 옮겼다(사본 0).
@@ -871,6 +882,7 @@ function serializeEcon(v) {
     }
   }
   if (_ltd.has(v)) out.lastTradeDay = _ltd.get(v);   // ★[T577 ④] 저장 줄에서만(위 주석)
+  if (_T732_ON) { const G = _t732Gran(); const D = G && G.dump(v); if (D) out._t732Lots = D; }   // ★[T732] 곳간 로트 장부 — 곳간 값과 같은 줄에(같은 순간 · 재기동이 같이 읽는다)
   out.history = (v.history || []).slice(-50);
   try {
     return JSON.stringify(out);
@@ -891,6 +903,7 @@ function serializeEcon(v) {
 }
 function restoreEcon(json, econ) {
   const v = JSON.parse(json);
+  if (v._t732Lots !== undefined) { if (_T732_ON && v._t732Lots) _t732Saved.set(v, v._t732Lots); delete v._t732Lots; }   // ★[T732] 곳간 장부는 econ 칸이 아니다(떼어 두고 붙이기가 읽는다 · 끄면 버린다)
   v._world = null; // 호출부에서 재부착
   v.history = Array.isArray(v.history) ? v.history : [];
   if (!(T728_KEEP && v.dailyProductionBuf && typeof v.dailyProductionBuf === 'object')) v.dailyProductionBuf = Object.fromEntries(econ.RESOURCES.map(r => [r, 0]));   // ★[T728 ⓐ] 켬 = 저장된 어제 생산 그대로
@@ -4717,6 +4730,7 @@ function init(deps) {
 
     state.lastGameDay = gameDayOf(Date.now()); // 다음 경계부터 틱 (재기동 따라잡기 없음 — 실시간 앵커)
     if (T728_KEEP) { try { _t728Restore(); } catch (e) { console.error(`[${ZONE_ID}] 🏘️ [T728] 재기동 영속 복원 실패(종전대로 계속):`, e.message); } }
+    if (_T732_ON) { try { _t732Boot(); } catch (e) { console.error(`[${ZONE_ID}] 🧺 [T732] 곳간 로트 장부 붙이기 실패(장부 없이 계속):`, e.message); } }
     // ★★[T533] 존 경계 호스트 — 팔 `T525_CROSS_ZONE`(econ 정본) 켬 + 존이 미는 문을 줬을 때만(끔 = 이 줄 무동작 · 조각 목록·몸 층 무변).
     //   실패해도 존 부팅은 계속한다(경계가 닫힌 채 = 끔과 같다).
     if (econV2.T525_CROSS_ZONE && deps.xzonePost) { try { _xzInit(ZONE_ID); } catch (e) { state.xzone = null; console.error(`[${ZONE_ID}] 🌐 [T533] 경계 호스트 실패(경계 닫힌 채 계속):`, e.message); } }
@@ -6244,6 +6258,7 @@ function tickPerf() {
 // =============================================================================
 function onGameTick(now) {
   if (!state.ready) return; // 플래그 off·비대상 존·init 실패 전부 여기서 차단
+  if (_t732BootWait) { try { _t732Boot(); } catch (e) { _t732BootWait = false; console.error(`[${state.zoneId}] 🧺 [T732] 곳간 로트 장부 붙이기 실패(장부 없이 계속):`, e.message); } }   // ★[T732] 미룬 붙이기(끄면 늘 거짓)
   if (!state._oreWarm && state.villages && state.villages.length) _oreWarmStart();   // ★[T620 ②] 광맥 셀 미리 굽기(배경 · 한 번)
   // ★★[T1 2026-09-01] **마감 중에는 실체 30Hz 를 멈춘다.**
   //   조각내기 전엔 하루가 한 프레임에 끝났으므로, 그 하루의 모든 단계가 **같은 순간의 실체**를 봤다.
@@ -6487,6 +6502,7 @@ function _lifeDayJobs(vils, add) {
 
 // 하루 경계: 그날 할 일을 조각 목록으로 **세우기만** 한다(아무것도 실행하지 않는다).
 function _openDayJobs(now) {
+  if (_T732_ON) { const G = _t732Gran(); if (G) G.tickBegin(); }   // ★[T732] 하루 마감 = 한 순간 — 마감 동안 econ 이 얻은 것의 열쇠
   const t0 = Date.now();
   const C = { now, t0, stg: {}, econPop: 0, npcCount: 0, jobChanges: {}, pops: {}, terr: {}, wx: {},
               car: _caravanSyncNew(), ore: { v: 0, c: 0 }, chunks: 0, maxChunk: 0, maxChunkAt: '', order: [],
@@ -6685,12 +6701,14 @@ function _drainTickJobs(now) {
   } catch (e) {
     console.error(`[${state.zoneId}] 🏘️ 마을 econ 틱 실패 (다음 경계에 재시도):`, e.message);
     state.tickJobs = null; state.tickCtx = null; _drainVillageWaitQ();
+    if (_T732_ON) { const G = _t732Gran(); if (G) G.tickEnd(); }
     return;
   }
   // ★[T1] **한 프레임이 실제로 얼마나 막혔나** — 조각 하나가 아니라 이 값이 RTT 를 정한다.
   { const fd = Date.now() - f0; if (fd > (C.frameMax || 0)) C.frameMax = fd; }
   if (J.length) return;                       // 아직 마감 중 — 다음 프레임에 이어서
   state.tickJobs = null; state.tickCtx = null;  // ★먼저 푼다 — 안 그러면 방류된 요청이 도로 큐에 걸린다
+  if (_T732_ON) { const G = _t732Gran(); if (G) { try { G.sync(state.world && state.world.villages); } catch (e) { console.error(`[${state.zoneId}] 🧺 [T732] 곳간 장부 맞대기 실패:`, e.message); } G.tickEnd(); } }   // ★[T732] 마감 끝 — 새 칸 감싸기 · 장부 합 = 곳간 값 맞대기(어긋남은 센다)
   if (C.t690) { _t690Closed(C); _drainVillageWaitQ(); return; }   // ★[T690] 위상 조각(생활층만) — 하루 마감 꼬리(`_closeDay` 로그·계측)는 경계 마감만
   try { _closeDay(C); } catch (e) { console.error(`[${state.zoneId}] 🏘️ 일틱 마감 로그 실패:`, e.message); }
   _drainVillageWaitQ();
@@ -11399,7 +11417,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
           //   ⓓ 셀 예산에서 **통째로** 꺼낸다 — 안 되면 그 셀은 오늘 비었다(이월 0).
           const _got = _t312Take(vil, day, _key, _units);
           if (_got > 0) {
-            if (npc.inventory) npc.inventory[_sp.id] = (npc.inventory[_sp.id] || 0) + 1;   // ★손에 — 플레이어와 **같은 칸**(`inventory`)
+            if (npc.inventory) { npc.inventory[_sp.id] = (npc.inventory[_sp.id] || 0) + 1; const _L = _t732Lots(); if (_L) _L.noteNow(npc, _sp.id, 1); }   // ★손에 — 플레이어와 **같은 칸**(`inventory`) · ★[T732] 낚은 순간
             npc._t312U = +((npc._t312U || 0) + _got).toFixed(6);                            // 손에 든 것의 장부값(귀환 때 곳간으로)
             npc._t312Kg = +((npc._t312Kg || 0) + _sp.kg).toFixed(3);
             _lifeAct(npc, '낚음');
@@ -11411,7 +11429,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
         if (_cap > 0 && (npc._t312Kg || 0) >= _cap) _t312Deliver(vil, npc);
       } else if (!npc._lastFishAt || now - npc._lastFishAt > 8000) {   // ★[T340] 끈 팔만 8초 박자(종전 비트)
         npc._lastFishAt = now;
-        if (npc.inventory) npc.inventory.fish = (npc.inventory.fish || 0) + 1;   // 8초 1마리(구 ③-b 이관 — simJob 기준)
+        if (npc.inventory) { npc.inventory.fish = (npc.inventory.fish || 0) + 1; const _L = _t732Lots(); if (_L) _L.noteNow(npc, 'fish', 1); }   // 8초 1마리(구 ③-b 이관 — simJob 기준) · ★[T732] 손에 든 순간(곁 장부)
       }
     }
     // ★★[2026-08-04c 배치 17 ②] **낚시터 미세 방황 수리** — 재민 관측 "낚시터에서 미세하게 자꾸 방황한다".
@@ -12358,6 +12376,7 @@ function _t728Meta() {
       else if (k === 'trader') o[k] = (x && x.id != null) ? x.id : null;
       else { try { JSON.stringify(x); o[k] = x; } catch (e) { if (!_t728Stat.dropKeys.includes(k)) _t728Stat.dropKeys.push(k); } }
     }
+    if (_T732_ON) { const G = _t732Gran(); const K = G && G.cargoDump(c); if (K) o._t732Cargo = K; }   // ★[T732] 짐 레코드(길 위에서도 로트가 따라간다)
     car.push(o);
   }
   return JSON.stringify({ v: 1, rng: E && E.rngState ? E.rngState() : null, caravanId: W._caravanIdCounter || 0, caravans: car,
@@ -12367,6 +12386,27 @@ const _t728Stat = { metaSaves: 0, restored: null, shutdown: null, dropKeys: [] }
 function _t728SaveMeta() {
   if (!state.db || !state.db.upsertWorldMeta || !state.world) return;
   state.db.upsertWorldMeta(state.zoneId, _t728Meta(), state.world.day | 0); _t728Stat.metaSaves++;
+}
+// ★★[T732 2026-10-14 · 손잡이 `T732_MOMENT_LOT=1` — 끄면 이 함수를 안 부른다] **곳간 로트 장부를 econ 마을에 붙인다**(부팅 한 번).
+//   저장된 장부(`serializeEcon` 의 `_t732Lots` — 복원 문이 econ 객체에서 떼어 둔 것)가 있으면 그것을, 없으면 지금 곳간 값을
+//   지금 순간의 로트 하나로(나이 모름 — 첫 부팅 · 끔에서 켬으로 · `seeded` 로 센다). 그리고 econ 캐러밴 · 전쟁 군량 짐에 훅을 꽂는다
+//   (훅은 관측자 — econ 값 무변 · 랩 · CLI 는 안 꽂는다).
+function _t732Boot() {
+  const G = _t732GranMod(); if (!G) return null;
+  //   존이 아직 시계를 안 꽂았다(마을 init 은 존 모듈을 읽는 도중에 돈다 · 시계는 그 뒤에 꽂힌다) — 첫 틱 머리(`onGameTick`)가 다시 부른다
+  //   (econ 이 곳간을 처음 만지는 자리가 그 틱이다 — 저장된 장부와 곳간 값이 그때까지 같다).
+  if (!_t732Lots()) { _t732BootWait = true; return null; }
+  _t732BootWait = false;
+  let n = 0, saved = 0;
+  for (const v of ((state.world && state.world.villages) || [])) {
+    const sv = _t732Saved.get(v) || null;
+    if (sv) { saved++; _t732Saved.delete(v); }
+    if (G.attach(v, sv, null)) n++;
+  }
+  if (state.econV2 && typeof state.econV2.setLotHook === 'function') state.econV2.setLotHook(G.hooks);
+  try { require('../sim/war-core').setLotHook(G.hooks); } catch (e) {}
+  console.log(`[${state.zoneId}] 🧺 [T732] 곳간 로트 장부 — 마을 ${n}곳(저장된 장부 ${saved}) · 캐러밴 · 군량 짐 훅`);
+  return { n, saved };
 }
 // 부팅 — 마을 곁 칸을 제자리로 · 메타 행이 그 날의 것이면 econ 전역과 길 위 캐러밴을 되돌린다.
 function _t728Restore() {
@@ -12406,7 +12446,9 @@ function _t728Restore() {
       const out = [];
       for (const c of (M.caravans || [])) {
         const o = Object.assign({}, c); o.from = byName.get(c.from); o.to = byName.get(c.to);
+        const _cg = o._t732Cargo; delete o._t732Cargo;   // ★[T732] 짐 레코드는 캐러밴 칸이 아니다(켬이면 장부로 · 끄면 버린다)
         if (!o.from || !o.to) { R.lost++; continue; }
+        if (_cg) { const G = _t732GranMod(); if (G) G.cargoLoad(o, _cg); }   // (시계 없이도 — 짐 레코드를 그 캐러밴에 다시 싣기만)
         o.trader = findNpc(o.from, c.trader);
         out.push(o);
       }

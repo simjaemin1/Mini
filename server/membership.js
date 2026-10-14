@@ -235,7 +235,9 @@ function withdraw(player, vid, res, qty) {
   if (remain <= 0) return { ok: false, err: `오늘 몫은 다 꺼냈다 (한도 ${limitOf(contribOf(player.playerId), basis, vid)})` };
   const want = Math.max(1, Math.floor(Number(qty) || 0) || remain);
   const take = Math.min(want, remain);
-  const r = V.playerVillageWithdraw(g.vil, player.inventory, r0, take);
+  //   ★[T732] 존이 곳간 문 감싸개를 줬으면(로트 장부 켬 — 곳간이 뗀 레코드를 사람에게 싣는다) 그 안에서 부른다 · 안 줬으면(끔) 종전 그대로.
+  const _wd = () => V.playerVillageWithdraw(g.vil, player.inventory, r0, take);
+  const r = (typeof H.wrapWithdraw === 'function') ? H.wrapWithdraw(player, _wd) : _wd();
   if (!r.ok) return r;
   const m = memberOf(player);
   const d = _day();

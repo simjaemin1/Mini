@@ -1,0 +1,422 @@
+'use strict';
+// === server/granary-lots.js — T732: 곳간도 로트로 — econ 곳간 칸의 얻은 순간 장부 · 캐러밴 짐 · 전쟁 짐 ===
+//
+// ★★[T732 2026-10-14 · 손잡이 `T732_MOMENT_LOT=1` — 끄면 이 파일을 아무도 안 부른다(존·마을이 늦게 · 켬일 때만 싣는다) · main 바이트]
+//   재민 10-12 · 10-14(족보 631 ①): 신선도는 아이템마다 — **곳간 포함.** T716 ⑤ 임시 고침(넣은 몫만 곁 장부)을 걷고 본 구현.
+//
+// ── 관측자 ─────────────────────────────────────────────────────────────────────────────────────────
+//   econ 값을 **한 자리도 안 바꾼다.** 곳간 칸(`v.storage[재화]` — 로트 재화만)에 접근자를 걸어, econ 이 쓰는 그 값을 그대로 두고
+//   같은 양을 장부에 적는다: **늘면 그 순간의 새 로트**(얻음 · 같은 순간이면 합친다) · **줄면 오래된 것부터**(먹음 · 썩음 · 세금 — FIFO).
+//   ⇒ "NPC 는 오래된 것부터 먹는다"가 장부의 뜻이다. 상한 것을 버리는 것 · 먹을까 팔까는 econ 의 결정이라 이 카드 밖(T730 — 족보 631 ②).
+//   옮김(사람 ↔ 곳간 · 캐러밴 · 전쟁 짐)은 **문이 레코드를 넘긴다** — 새 로트 = 얻은 순간 하나뿐.
+//
+// ── 레코드 ──────────────────────────────────────────────────────────────────────────────────────────
+//   `{ k, u, f0, e, t, m, w }` — k 얻은 순간(게임 ms) · u econ 단위 · e/t 노출(정산 순간 t · 소수 날) · m/w 자리(곳간 · 길 위 = 몸에 지님)
+//   `f0` = 곳간에 들 때 단위에 이미 접힌 신선도. 사람이 내는 문(회관 · 거래소 · 게시판)은 단위를 **열량 × 신선도**로 잰다(T725 · 부패 배치) —
+//     그 몫을 다시 나이로 깎으면 두 번 깎는다. 그래서 꺼낼 때 낱개 = (문이 정한 낱개 몫) ÷ f0 · 나이는 레코드째(넣은 그대로 늙어 간다).
+//     econ 이 만든 것은 f0 = 1(단위가 곧 갓 난 양).
+//
+// ── 일시 변경 ────────────────────────────────────────────────────────────────────────────────────
+//   거래소 견적(`trade.planSliced` · `gluttedAt`)은 곳간을 잠깐 바꿨다 되돌린다 — 그동안은 장부를 멈춘다(`suspend`).
+//   교환이 실패해 곳간을 되돌리면(`exchange` ⑤) 장부도 되돌린다(`txBegin`/`txEnd`).
+//   새 칸(econ 이 처음 만드는 재화)은 econ 하루 뒤 `sync` 가 감싼다 — 그 첫 몫은 그날 econ 틱의 순간에 얻은 것이다(틱 안의 순간은 하나).
+//   `sync` 는 장부 합과 곳간 값을 맞대 보고, 어긋나면 고치고 **센다**(`stats().drift` — 길을 다 막았으면 0).
+//
+// ── 순간 ─────────────────────────────────────────────────────────────────────────────────────────
+//   하루 마감은 세계에게 **한 순간**이다(villages.js T1 주석 — 마감 조각이 여러 프레임에 흘러도). 그래서 마감 동안 econ 이 얻은 것은
+//   전부 그 순간(`tickBegin` 이 잡은 게임 ms) 하나로 적는다 — 같은 순간 · 같은 품목이면 한 레코드(같은 순간만 합친다).
+//   마감 밖(사람의 문 · 실시간 몸)은 그때그때의 순간이다.
+//
+// ── 사람의 문(회관 · 거래소 · 게시판 · 겨울 몫 · 꺼내기 · 마을 밥 · 위세품 값) ──────────────────────────────────
+//   문이 몇 개를 넣고 몇 단위를 꺼낼지는 **문이 정한다**(정본 함수 무변). 문 동안(`doorBegin`~`doorEnd`) 늘어난 몫은 잡아 두고(장부에 아직 안 적음),
+//   줄어든 몫은 오래된 것부터 떼어 모은다. 문이 끝나면 존이 사람 쪽에서 실제로 나간 레코드(오래된 것부터)로 늘어난 몫을 채우고(`doorIn`),
+//   모은 레코드를 사람에게 싣는다(`recsToPlayer`). 문이 실패해 곳간을 되돌리면 장부도 문 앞으로(스냅숏).
+const Lots = require('./lots');
+const Spoil = require('./spoil');
+const ON = Lots.T732_MOMENT;
+const EPS = 1e-9;
+const LED = new WeakMap();      // econ 마을 → { [재화]: rec[] }
+const DEBT = new WeakMap();     // econ 마을 → { [재화]: 곳간이 0 아래로 내려간 몫(장부가 줄 수 없는 몫) }
+const PEND = new WeakMap();     // econ 마을 → { [재화]: rec[] } — 다음 늘어남이 받을 레코드(옮김 · 무게 = u)
+const CAP = new WeakMap();      // econ 마을 → { [재화|'*']: rec[] } — 모으는 중(꺼내기 · 사기 · 싣기)
+const TX = new WeakMap();       // econ 마을 → { [재화]: { arr, debt } } — 되돌릴 스냅숏
+const CARGO = new WeakMap();    // 캐러밴 → { give, give2, ret, ret2 }
+const WRAPPED = new WeakMap();  // econ 마을 → Set(감싼 재화)
+let _suspend = 0;
+let _tickK = null;   // 하루 마감의 순간(게임 ms) — 마감 동안 econ 이 얻은 것의 열쇠
+let _door = null;    // 사람의 문 — { held: Map(v → {재화: 단위}), cap: Map(v → {재화: rec[]}), tx: Set(v) }
+const ST = { attached: 0, seeded: 0, seededU: 0, restored: 0, t716In: 0, newLots: 0, moved: 0, outRecs: 0, debtU: 0,
+  wrappedLate: 0, adopted: 0, drift: 0, driftU: 0, cargoIn: 0, cargoOut: 0, txRollback: 0, doors: 0, doorNoRec: 0, doorStale: 0, giveNoRec: 0, giveNoRecU: 0 };
+
+let _gpf = null, _cpf = null;
+function _gran() { return _gpf || (_gpf = Spoil.placeFields('granary')); }
+function _carry() { return _cpf || (_cpf = Spoil.placeFields('carry')); }
+function _now() { return Lots.nowMs(); }
+function _kNow() { return _tickK != null ? _tickK : _now(); }   // 새 로트의 열쇠 — 마감 중이면 마감의 순간
+function _day() { return Lots.dayMs() || 1; }
+function _nowFrac() { return _now() / _day(); }
+function _rec(k, u) { const g = _gran(); return { k, u, f0: 1, e: 0, t: k / _day(), m: g.m, w: g.w }; }
+// 정산 — 그 레코드의 자리 배율로 지금까지(소수 날 · `spoil.exposureAt` 정본)
+function _settle(r, nf) { const t0 = (r.t == null) ? r.k / _day() : +r.t; if (t0 < nf) { r.e = +Spoil.exposureAt(r, nf, 0).toFixed(6); r.t = nf; } return r; }
+// 자리를 바꾼다 — 정산 먼저(지난 구간에 새 배율이 소급되지 않게)
+function _restamp(r, pf, nf) { _settle(r, nf); r.m = pf.m; r.w = pf.w; return r; }
+function _copy(r, u) { return { k: r.k, u, f0: r.f0 == null ? 1 : r.f0, e: r.e, t: r.t, m: r.m, w: r.w }; }
+function _sortK(arr) { arr.sort((a, b) => (a.k - b.k) || ((+b.e || 0) - (+a.e || 0))); return arr; }
+
+// ══ 접근자 — econ 이 쓰는 값은 그대로 · 같은 양을 장부에 ════════════════════════════════════════
+function _wrap(v, res, seedK) {
+  if (!Lots.isLot(res)) return false;
+  const st = v.storage;
+  const d = Object.getOwnPropertyDescriptor(st, res);
+  if (!d || d.get) return false;                       // 없는 칸은 만들지 않는다(키 순서 무변) · 이미 감쌌다
+  let val = d.value;
+  const L = LED.get(v);
+  if (!L[res]) { const q = Number(val) || 0; if (q > EPS) { L[res] = [_rec(seedK, q)]; ST.seeded++; ST.seededU += q; } }
+  Object.defineProperty(st, res, {
+    enumerable: d.enumerable !== false, configurable: true,
+    get() { return val; },
+    set(x) {
+      const a = Number(val) || 0; val = x; const b = Number(x) || 0;
+      if (_suspend) return;
+      if (b > a + EPS) { if (_door) _hold(v, res, b - a); else _in(v, res, b - a); }
+      else if (b < a - EPS) _out(v, res, a - b);
+    },
+  });
+  let W = WRAPPED.get(v); if (!W) { W = new Set(); WRAPPED.set(v, W); } W.add(res);
+  return true;
+}
+function _in(v, res, du) {
+  const L = LED.get(v); if (!L) return;
+  let left = du;
+  const D = DEBT.get(v);
+  if (D && D[res] > EPS) { const pay = Math.min(left, D[res]); D[res] -= pay; left -= pay; if (D[res] <= EPS) delete D[res]; }
+  if (!(left > EPS)) return;
+  _txTouch(v, res);
+  const arr = L[res] || (L[res] = []);
+  const P = PEND.get(v), q = P && P[res];
+  if (q && q.length) {                                   // 옮김 — 넘겨받는 레코드(무게 비율대로 나눠 받는다)
+    const W = q.reduce((a, r) => a + (+r.u || 0), 0);
+    if (W > EPS) {
+      const nf = _nowFrac(), g = _gran();
+      for (const r of q) { const u = left * (+r.u || 0) / W; if (u > EPS) arr.push(_restamp(_copy(r, u), g, nf)); }
+      q.length = 0; delete P[res];
+      ST.moved++;
+      _sortK(arr);
+      return;
+    }
+  }
+  const k = _kNow(), g = _gran();                       // 얻음 — 지금 순간의 새 로트(같은 순간 · 같은 자리 · 갓 난 것이면 합친다)
+  const last = arr.length ? arr[arr.length - 1] : null;
+  if (last && last.k === k && last.m === g.m && last.w === g.w && !(+last.e > 0) && (last.f0 == null || last.f0 === 1)) last.u += left;
+  else { arr.push(_rec(k, left)); ST.newLots++; if (last && last.k > k) _sortK(arr); }
+}
+function _out(v, res, du) {
+  const L = LED.get(v); if (!L) return;
+  _txTouch(v, res);
+  const arr = L[res] || [];
+  let left = du;
+  const C = CAP.get(v), cap = C && (C[res] || C['*']);
+  const taken = (cap || _door) ? [] : null;
+  while (left > EPS && arr.length) {
+    const r = arr[0], take = Math.min(left, r.u);
+    if (taken) taken.push(_copy(r, take));
+    r.u -= take; left -= take;
+    if (r.u <= EPS) arr.shift();
+  }
+  if (left > EPS) { const D = DEBT.get(v) || (DEBT.set(v, {}), DEBT.get(v)); D[res] = (D[res] || 0) + left; ST.debtU += left; }
+  if (!arr.length) delete L[res];
+  if (taken && taken.length) {
+    ST.outRecs += taken.length;
+    if (cap) {
+      if (C[res]) C[res].push(...taken);
+      else { const S = C['*']; (S[res] || (S[res] = [])).push(...taken); }
+    }
+    if (_door) { let M = _door.cap.get(v); if (!M) { M = {}; _door.cap.set(v, M); } (M[res] || (M[res] = [])).push(...taken.map((r) => Object.assign({}, r))); }
+  }
+}
+// 문 동안 늘어난 몫 — 아직 장부에 안 적는다(문이 끝나면 사람 쪽에서 나간 레코드로 채운다 · `doorIn`)
+function _hold(v, res, du) {
+  _txTouch(v, res);
+  let H = _door.held.get(v); if (!H) { H = {}; _door.held.set(v, H); }
+  H[res] = (H[res] || 0) + du;
+}
+// 되돌림 스냅숏 — 교환이 실패하면 곳간 값도 되돌아가니 장부도 그 순간으로
+function _txTouch(v, res) {
+  let T = TX.get(v);
+  if (!T && _door && LED.has(v)) { T = {}; TX.set(v, T); _door.tx.add(v); }
+  if (!T || T[res]) return;
+  const L = LED.get(v), D = DEBT.get(v);
+  T[res] = { arr: (L && L[res]) ? L[res].map((r) => Object.assign({}, r)) : null, debt: D ? (D[res] || 0) : 0 };
+}
+
+// ══ 붙이기 · 맞대기 ═════════════════════════════════════════════════════════════════════════════
+//   `saved` = 저장된 장부(`dump` 꼴) — 있으면 그것을 꽂고, 없으면 지금 곳간 값을 `seedK` 순간의 로트 하나로(나이 모름 — 첫 부팅 · 끔에서 켬으로)
+function attach(v, saved, seedK) {
+  if (!ON || !v || !v.storage || typeof v.storage !== 'object' || !Lots.momentOn()) return false;
+  if (!LED.has(v)) { LED.set(v, {}); ST.attached++; }
+  const L = LED.get(v);
+  const k = Number.isFinite(seedK) ? seedK : _kNow();
+  if (saved && saved.L && typeof saved.L === 'object') {
+    for (const [res, recs] of Object.entries(saved.L)) if (Array.isArray(recs) && recs.length && !L[res]) L[res] = recs.filter((r) => r && r.u > EPS).map((r) => Object.assign({}, r));
+    if (saved.D && typeof saved.D === 'object') DEBT.set(v, Object.assign({}, saved.D));
+    ST.restored++;
+  } else if (v._t716Lots && typeof v._t716Lots === 'object') {
+    // ★[T716 걷기] 임시 고침의 곁 장부(`econ._t716Lots` — 사람이 넣은 몫만 · 그 나이째)가 있으면 그 레코드를 본 장부로 옮긴다(그 날 0시 순간 · 노출 그대로).
+    //   나머지 몫(econ 이 만든 것)은 아래 씨앗(나이 모름). 단위 신선도 접힘(f0)은 곁 장부가 안 적었다 — 1 로 읽는다(펴지 않는다 = 더 늙어 보이는 쪽).
+    const g = _gran();
+    for (const [res, recs] of Object.entries(v._t716Lots)) {
+      if (!Array.isArray(recs) || !Lots.isLot(res) || L[res]) continue;
+      const have = Number(v.storage[res]) || 0;
+      let left = have; const arr = [];
+      for (const r of recs) { if (!(r && r.u > EPS) || !(left > EPS)) continue; const u = Math.min(left, +r.u); left -= u;
+        arr.push({ k: Math.floor(+r.d || 0) * _day(), u, f0: 1, e: +r.e || 0, t: (r.t == null ? Math.floor(+r.d || 0) : +r.t), m: r.m == null ? g.m : r.m, w: r.w == null ? g.w : r.w }); }
+      if (left > EPS) arr.push(_rec(k, left));
+      if (arr.length) { L[res] = _sortK(arr); ST.t716In++; }
+    }
+    delete v._t716Lots;
+  }
+  for (const res of Object.keys(v.storage)) _wrap(v, res, k);
+  return true;
+}
+// econ 하루 뒤(같은 턴) — 새 마을 · 새 칸을 감싸고, 장부 합 = 곳간 값을 맞대 본다(어긋나면 고치고 센다)
+function sync(econVillages) {
+  if (!ON || !Lots.momentOn()) return null;
+  const k = _kNow();
+  let late = 0, drift = 0;
+  for (const v of (econVillages || [])) {
+    if (!v || !v.storage) continue;
+    if (!LED.has(v)) { attach(v, null, k); continue; }
+    for (const res of Object.keys(v.storage)) if (_wrap(v, res, k)) { late++; ST.wrappedLate++; }
+    const L = LED.get(v), D = DEBT.get(v) || {};
+    for (const res of (WRAPPED.get(v) || [])) {
+      const want = Number(v.storage[res]) || 0;
+      const have = (L[res] || []).reduce((a, r) => a + r.u, 0) - (D[res] || 0);
+      const dd = want - have;
+      if (Math.abs(dd) > 1e-6 * Math.max(1, Math.abs(want))) {
+        drift++; ST.drift++; ST.driftU += Math.abs(dd);
+        const s = _suspend; _suspend = 0;
+        if (dd > 0) _in(v, res, dd); else _out(v, res, -dd);
+        _suspend = s;
+      }
+    }
+  }
+  return { late, drift };
+}
+
+// ══ 문 — 옮김 ═══════════════════════════════════════════════════════════════════════════════════
+function pushIn(v, res, recs) {
+  if (!LED.has(v) || !Array.isArray(recs) || !recs.length) return;
+  let P = PEND.get(v); if (!P) { P = {}; PEND.set(v, P); }
+  (P[res] || (P[res] = [])).push(...recs);
+}
+// 받는 문이 끝났다 — 남은 대기 레코드를 치운다. 그 문이 **새 칸**을 만들었으면(econ 은 없던 재화를 `(x || 0) + q` 로 처음 쓴다 — 접근자가 아직 없다)
+//   그 대기 레코드로 칸을 감싼다(새 칸의 첫 몫 = 옮겨 온 레코드 · '지금 얻은 것'이 아니다).
+function clearIn(v, res) {
+  const P = PEND.get(v); if (!P) return;
+  for (const r of (res == null ? Object.keys(P) : [res])) { const q = P[r]; if (q && q.length) _adopt(v, r, q); delete P[r]; }
+  if (!Object.keys(P).length) PEND.delete(v);
+}
+function isWrapped(v, res) { const W = WRAPPED.get(v); if (!W || !W.has(res)) return false; const d = Object.getOwnPropertyDescriptor(v.storage, res); return !!(d && d.get); }
+function _adopt(v, res, recs) {
+  if (!LED.has(v) || !Lots.isLot(res) || !v.storage) return false;
+  const d = Object.getOwnPropertyDescriptor(v.storage, res);
+  if (!d || d.get) return false;
+  const q = Number(d.value) || 0, L = LED.get(v);
+  const W = recs.reduce((a, r) => a + (+r.u || 0), 0);
+  if (!L[res] && q > EPS && W > EPS) {
+    const nf = _nowFrac(), g = _gran();
+    L[res] = _sortK(recs.filter((r) => (+r.u || 0) > EPS).map((r) => _restamp(_copy(r, q * (+r.u) / W), g, nf)));
+    ST.adopted++;
+  }
+  _wrap(v, res, _kNow());
+  return true;
+}
+function capBegin(v, res) { if (!LED.has(v)) return false; let C = CAP.get(v); if (!C) { C = {}; CAP.set(v, C); } C[res == null ? '*' : res] = (res == null) ? {} : []; return true; }
+function capEnd(v, res) {
+  const C = CAP.get(v); if (!C) return res == null ? {} : [];
+  const key = res == null ? '*' : res, got = C[key] || (res == null ? {} : []);
+  delete C[key]; if (!Object.keys(C).length) CAP.delete(v);
+  return got;
+}
+function suspend(on) { _suspend = Math.max(0, _suspend + (on ? 1 : -1)); }
+function txBegin(v) { if (LED.has(v)) TX.set(v, {}); }
+function txEnd(v, commit) {
+  const T = TX.get(v); TX.delete(v);
+  if (!T || commit) return;
+  const L = LED.get(v); let D = DEBT.get(v);
+  for (const [res, snap] of Object.entries(T)) {
+    if (snap.arr && snap.arr.length) L[res] = snap.arr; else delete L[res];
+    if (snap.debt > EPS) { if (!D) { D = {}; DEBT.set(v, D); } D[res] = snap.debt; } else if (D) delete D[res];
+  }
+  ST.txRollback++;
+}
+// 하루 마감 — 그 동안 econ 이 얻은 것은 그 순간 하나(villages.js 가 마감을 열 때 · 다 비웠을 때 부른다)
+function tickBegin() { if (_door) _doorStale(); if (ON && Lots.momentOn()) _tickK = _now(); }
+function tickEnd() { _tickK = null; }
+// 사람의 문 — 열기 · 닫기(실패면 장부를 문 앞으로 되돌린다). 닫으면 { held, cap } 을 낸다(존이 레코드를 채우고 싣는다).
+function doorBegin() {
+  if (!ON || !Lots.momentOn()) return false;
+  if (_door) _doorStale();
+  _door = { held: new Map(), cap: new Map(), tx: new Set() }; ST.doors++;
+  return true;
+}
+// 안 닫힌 문(문 사이에서 던져 닫는 줄을 못 탄 경우 — 존 문은 finally 로 닫는다) — 잡아 둔 늘어남을 그 순간의 새 로트로 적고 닫는다(센다 · 문이 영영 열려 econ 늘어남을 삼키지 않게)
+function _doorStale() { const d = doorEnd(true); doorRest(d); ST.doorStale++; }
+function doorEnd(commit) {
+  const d = _door; _door = null;
+  if (!d) return null;
+  for (const v of d.tx) txEnd(v, !!commit);
+  if (!commit) return null;
+  return d;
+}
+// 문 동안 늘어난 그 칸의 몫을 사람 쪽에서 나간 레코드(무게 = 단위)로 채운다 · 레코드가 없으면 그 순간의 새 로트(세어 둔다)
+function doorIn(d, v, res, recs) {
+  const H = d && d.held.get(v), du = H ? (H[res] || 0) : 0;
+  if (H) delete H[res];
+  if (!(du > EPS)) {   // 접근자가 없던 칸(문이 처음 만든 재화) — 대기 레코드로 감싼다
+    if (recs && recs.length && LED.has(v) && !isWrapped(v, res)) { pushIn(v, res, recs); clearIn(v, res); }
+    return 0;
+  }
+  if (recs && recs.length) pushIn(v, res, recs); else ST.doorNoRec++;
+  _in(v, res, du);
+  clearIn(v, res);
+  return du;
+}
+// 문이 끝났는데 아무도 안 채운 늘어남 — 그 순간의 새 로트로(세어 둔다 · 문 표를 다 막았으면 0)
+function doorRest(d) {
+  if (!d) return 0;
+  let n = 0;
+  for (const [v, H] of d.held) for (const res of Object.keys(H)) { if (H[res] > EPS) { _in(v, res, H[res]); n++; ST.doorNoRec++; } }
+  d.held.clear();
+  return n;
+}
+function doorCap(d, v, res) { const M = d && d.cap.get(v); return (M && M[res]) || []; }
+
+// ══ 사람 ↔ 곳간 ═════════════════════════════════════════════════════════════════════════════════
+//   넣기: 사람의 로트 레코드(FIFO · 정산된 복사)를 재화 단위 무게로 바꿔 둔다. `unitsMode` = 문이 단위를 열량 × 신선도로 재는가(f0 = 그 신선도).
+function recsFromPlayer(recs, item, units, unitsMode, today) {
+  const out = [];
+  if (!Array.isArray(recs) || !recs.length || !(units > 0)) return out;
+  const fs = recs.map((r) => Math.max(0, Spoil.freshnessOf(item, Spoil.exposureOf(r, today))));
+  const ws = recs.map((r, i) => (+r.n || 0) * (unitsMode ? fs[i] : 1));
+  const W = ws.reduce((a, x) => a + x, 0);
+  if (!(W > EPS)) return out;
+  recs.forEach((r, i) => {
+    if (!(ws[i] > EPS)) return;
+    out.push({ k: Number.isFinite(r.k) ? r.k : Math.floor(r.d) * _day(), u: units * ws[i] / W, f0: unitsMode ? Math.max(1e-6, fs[i]) : 1,
+      e: +r.e || 0, t: (r.t == null) ? (Number.isFinite(r.k) ? r.k / _day() : Math.floor(r.d)) : +r.t, m: r.m == null ? 1 : r.m, w: r.w == null ? 0 : r.w });
+  });
+  return out;
+}
+//   꺼내기: 곳간에서 빠진 레코드 → 사람 로트(문이 정한 낱개 `give` 를 단위 비율로 나눠 · f0 로 편다 · 나이는 레코드째).
+//   반환 = 레코드별 { k, n, e, t, m, w } (사람 쪽 `Lots.moveIn` 이 그대로 받는다)
+function recsToPlayer(recs, give) {
+  const out = [];
+  if (!Array.isArray(recs) || !recs.length || !(give > 0)) return out;
+  const U = recs.reduce((a, r) => a + (+r.u || 0), 0);
+  if (!(U > EPS)) return out;
+  const per = give / U, nf = _nowFrac();
+  let allOne = true;
+  for (const r0 of recs) {
+    const r = _settle(_copy(r0, r0.u), nf);
+    const f0 = r.f0 == null ? 1 : +r.f0;
+    if (f0 !== 1) allOne = false;
+    const n = per * r.u / Math.max(1e-6, f0);
+    if (n > EPS) out.push({ d: Math.floor(r.k / _day()), k: r.k, n, e: r.e, t: r.t, m: r.m, w: r.w });
+  }
+  // 6자리로 자른다 — 접힘이 없으면(f0 = 1) 합이 문이 정한 낱개와 **정확히** 같게(남은 끝수는 가장 큰 레코드에 · 낱개가 0.999999 로 떨어지지 않게)
+  let S = 0, big = null;
+  for (const o of out) { o.n = +o.n.toFixed(6); S += o.n; if (!big || o.n > big.n) big = o; }
+  if (allOne && big) { const fix = +(give - S).toFixed(6); if (fix !== 0) big.n = +(big.n + fix).toFixed(6); }
+  return out;
+}
+
+// ══ 캐러밴 · 전쟁 짐(sim 훅이 부른다 — `setLotHook`) ════════════════════════════════════════════
+//   짐은 길 위에서 늙는다 — 자리 = 몸에 지님(정산은 꺼낼 때 조회 함수가 한다 · 새 수 0).
+function _toCarry(recs) { const nf = _nowFrac(), c = _carry(); for (const r of recs) _restamp(r, c, nf); return recs; }
+function cargo(c, slot, recs) {
+  if (!c || !Array.isArray(recs)) return;
+  let K = CARGO.get(c); if (!K) { K = {}; CARGO.set(c, K); }
+  K[slot] = _toCarry(recs.map((r) => _copy(r, r.u)));
+  ST.cargoOut++;
+}
+function unload(c, slot, v, res, amt) {
+  const K = c && CARGO.get(c), recs = K && K[slot];
+  if (!recs || !recs.length || !(amt > 0)) { if (K) delete K[slot]; return; }
+  const U = recs.reduce((a, r) => a + r.u, 0);
+  const frac = U > EPS ? Math.min(1, amt / U) : 0;
+  if (frac > 0) pushIn(v, res, recs.map((r) => _copy(r, r.u * frac)));   // 약탈 · 우회로 준 몫은 비율대로(주사위 0)
+  delete K[slot];
+  ST.cargoIn++;
+}
+function bounce(c) {   // 빈손 귀환 — 안 판 짐이 그대로 돌아온다
+  const K = c && CARGO.get(c); if (!K) return;
+  if (K.give) { K.ret = K.give; delete K.give; }
+  if (K.give2) { K.ret2 = K.give2; delete K.give2; }
+}
+function cargoDump(c) { const K = c && CARGO.get(c); return K && Object.keys(K).length ? JSON.parse(JSON.stringify(K)) : null; }
+function cargoLoad(c, saved) { if (c && saved && typeof saved === 'object') CARGO.set(c, JSON.parse(JSON.stringify(saved))); }
+// 전쟁 짐(`war-core` 훅) — 곳간에서 뗀 품목별 레코드를 짐에(몸에 지님) · 내려놓을 때 비율대로
+function packFrom(byRes) { const out = {}; for (const [res, recs] of Object.entries(byRes || {})) if (recs && recs.length) out[res] = _toCarry(recs.map((r) => _copy(r, r.u))); return out; }
+// 팩의 남은 몫 — 원정 동안 **오래된 것부터** 먹혔으니 남은 것은 새 쪽 꼬리(품목마다 단위 비율 `keep`)
+function packKeep(byRes, keep) {
+  const kf = Number(keep);
+  if (!byRes || !(kf > 0)) return null;
+  if (kf >= 1) return byRes;
+  const out = {};
+  for (const [res, recs] of Object.entries(byRes)) {
+    if (!Array.isArray(recs) || !recs.length) continue;
+    let want = recs.reduce((a, r) => a + (+r.u || 0), 0) * kf;
+    const tail = [];
+    for (let i = recs.length - 1; i >= 0 && want > EPS; i--) { const t = Math.min(want, +recs[i].u || 0); if (t > EPS) tail.unshift(_copy(recs[i], t)); want -= t; }
+    if (tail.length) out[res] = tail;
+  }
+  return out;
+}
+function giveBegin(v, byRes, frac) {
+  if (!byRes) return;
+  const f = Number(frac) > 0 ? Math.min(1, +frac) : 0;
+  for (const [res, recs] of Object.entries(byRes)) if (recs && recs.length && f > 0) pushIn(v, res, recs.map((r) => _copy(r, r.u * f)));
+}
+function giveEnd(v) { clearIn(v); }
+// 레코드 없이 곳간에 드는 줌(전쟁 짐을 몸이 내려놓기 T423 · 노획 운반 T466 · 장부 없는 그릇에서 온 노획 — 기본 끔 갈래) — 그 순간의 새 로트가 된다 · 센다
+function giveNoRec(v, items) { if (!LED.has(v)) return; let q = 0; for (const k in (items || {})) if (Lots.isLot(k)) q += +items[k] || 0; if (q > 0) { ST.giveNoRec++; ST.giveNoRecU += q; } }
+const hooks = { capBegin, capEnd, cargo, unload, bounce, pushIn, clearIn, packFrom, packKeep, giveBegin, giveEnd, giveNoRec };
+
+// ══ 영속 · 보기 · 자 ═════════════════════════════════════════════════════════════════════════════
+function dump(v) {
+  const L = LED.get(v); if (!L) return null;
+  const out = { L: {}, D: Object.assign({}, DEBT.get(v) || {}) };
+  for (const [res, recs] of Object.entries(L)) if (recs && recs.length) out.L[res] = recs.map((r) => ({ k: r.k, u: +r.u.toFixed(9), f0: r.f0 == null ? 1 : r.f0, e: r.e, t: r.t, m: r.m, w: r.w }));
+  return out;
+}
+function ledger(v, res) { const L = LED.get(v); return L ? (res == null ? L : (L[res] || [])) : null; }
+function attached(v) { return LED.has(v); }
+// 그 재화의 곳간 몫 신선도(단위 가중 · 상한 몫) — 화면 · 하네스가 읽는다
+function freshOf(v, res) {
+  const L = LED.get(v), arr = L && L[res]; if (!arr || !arr.length) return null;
+  const today = Math.floor(_nowFrac());
+  let U = 0, wf = 0, bad = 0;
+  for (const r of arr) { const f = Spoil.freshnessOf(res, Spoil.exposureOf(Object.assign({}, r, { k: r.k }), today)); U += r.u; wf += f * r.u; if (f <= 0) bad += r.u; }
+  return { u: +U.toFixed(6), fresh: U > 0 ? +(wf / U).toFixed(6) : 1, spoiledU: +bad.toFixed(6), lots: arr.length };
+}
+function stats(reset) { const o = Object.assign({}, ST); if (reset) for (const k of Object.keys(ST)) ST[k] = 0; return o; }
+// 불변식 — 감싼 칸마다 장부 합 − 빚 = 곳간 값(어긋난 칸 목록)
+function check(econVillages, tol) {
+  const bad = []; let cells = 0;
+  for (const v of (econVillages || [])) {
+    const L = LED.get(v); if (!L) continue;
+    const D = DEBT.get(v) || {};
+    for (const res of (WRAPPED.get(v) || [])) {
+      cells++;
+      const want = Number(v.storage[res]) || 0, have = (L[res] || []).reduce((a, r) => a + r.u, 0) - (D[res] || 0);
+      if (Math.abs(want - have) > (tol || 1e-6) * Math.max(1, Math.abs(want))) bad.push({ v: v.name, res, want, have });
+    }
+  }
+  return { cells, bad };
+}
+
+module.exports = { ON, attach, sync, pushIn, clearIn, capBegin, capEnd, suspend, txBegin, txEnd, isWrapped,
+  tickBegin, tickEnd, doorBegin, doorEnd, doorIn, doorRest, doorCap,
+  recsFromPlayer, recsToPlayer, hooks, cargo, unload, bounce, cargoDump, cargoLoad, packFrom, packKeep, giveBegin, giveEnd,
+  dump, ledger, attached, freshOf, stats, check };

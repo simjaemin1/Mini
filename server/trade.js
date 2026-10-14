@@ -32,6 +32,11 @@
 'use strict';
 const path = require('path');
 const Events = require('./events');
+// ★[T732 · 손잡이 `T732_MOMENT_LOT=1`] 곳간 로트 장부 — 견적(`gluttedAt` · `planSliced`)이 곳간을 잠깐 바꿨다 되돌리는 동안은 장부를 멈춘다.
+//   늦게 · 켬일 때만 싣는다(끄면 · 랩이면 안 싣는다 — main 바이트 · 랩 모듈 무변). 값은 한 자리도 안 바꾼다.
+const _T732_ON = (typeof process !== 'undefined' && process.env && process.env.T732_MOMENT_LOT === '1');
+let _t732G = null;
+function _t732Pause(on) { if (!_T732_ON) return; if (_t732G === null) { try { _t732G = require('./granary-lots'); } catch (e) { _t732G = false; } } if (_t732G) _t732G.suspend(on); }
 
 const _num = (k, d) => { const v = parseFloat(process.env[k]); return Number.isFinite(v) ? v : d; };
 const CFG = {
@@ -99,12 +104,13 @@ function gluttedAt(econV2, v, res, stock) {
   const before = +st[res] || 0;
   const p0 = +Events.pricesFresh(econV2, v)[res] || 0;
   if (!(p0 > 0)) return false;
+  _t732Pause(true);   // ★[T732] 계산이지 거래가 아니다 — 장부 멈춤(끄면 무동작)
   try {
     st[res] = before + Math.max(CFG.GLUT_PROBE_MIN, before * CFG.GLUT_PROBE_FRAC);
     const p1 = +Events.pricesFresh(econV2, v)[res] || 0;
     // 재고를 크게 늘렸는데 값이 **한 톨도** 안 내려가면 바닥이다.
     return !(p1 < p0 * (1 - 1e-9));
-  } finally { st[res] = before; }
+  } finally { st[res] = before; _t732Pause(false); }
 }
 
 // ── 시세표 — 그 마을 앞에서만 부른다(원격 조회 API 를 만들지 않는다 · §3.2 정보 비대칭) ──
@@ -174,6 +180,7 @@ function planSliced(econV2, v, giveRes, takeRes, giveQty, cap) {
   const step = q / n;
   const g0 = +((v.storage || {})[giveRes] || 0), t0 = +((v.storage || {})[takeRes] || 0);
   let gave = 0, took = 0, first = 0;
+  _t732Pause(true);   // ★[T732] 조각 계획은 계산이다 — 장부 멈춤(끄면 무동작)
   try {
     for (let i = 0; i < n; i++) {
       const p = Events.pricesFresh(econV2, v);
@@ -193,6 +200,7 @@ function planSliced(econV2, v, giveRes, takeRes, giveQty, cap) {
     }
   } finally {
     v.storage[giveRes] = g0; v.storage[takeRes] = t0;   // ★계산이었을 뿐 — 원상복구
+    _t732Pause(false);
   }
   return { gave, took, ratio: first, avg: gave > 0 ? took / gave : 0 };
 }

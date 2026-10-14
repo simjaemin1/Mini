@@ -1,0 +1,327 @@
+#!/usr/bin/env node
+// @regress
+// === scripts/test-moment-lot.js — T732: 로트 = 얻은 순간 · 모든 길에서 로트가 따라간다 (손잡이 T732_MOMENT_LOT=1 · 없음 = 끔 = main 바이트) ===
+//
+// ★왜 [T732 · 재민 10-12 · 10-14 재확인(족보 631 ①)] 신선도는 아이템마다다 — 같은 순간에 얻은 것만 합친다 · 곳간 포함.
+//   종전 로트 열쇠는 **날**이었고(0시 것과 23시 것이 한 로트) · econ 곳간은 날짜 없는 총량이라 넣은 음식이 녹고 나온 음식은 '오늘 것'이었다
+//   · 캐러밴 짐 · 전쟁 군량도 곳간에서 곳간으로 갈 때 나이를 버렸다(받는 쪽에서 '지금 얻은 것').
+//   이 하네스는 세 층을 **정본 모듈 그대로** 잰다(서버 포트 0 — 존을 안 띄운다 · 시계는 하네스가 꽂는다):
+//
+//  ① 순간 열쇠 — 같은 순간만 합친다 · 옛 꼴(`{d,n}` · `{d,n,e,t,m,w}`)은 그 날 0시 순간으로 읽는다(지우지 않는다 · 정산 전후 절벽 0)
+//  ② 상한 뭉개기 — 품목당 12 는 남긴다(몸 크기) · 뭉갤 때 **더 이른 순간 · 큰 노출**(싱싱해 보이는 일 0) · 센다
+//  ③ 근사 셈 — 맞추기가 남는 몫을 '지금 얻은 것'으로 잡으면 센다 · 지목 소비는 맞춘 뒤 고른다
+//  ④ NPC 곁 장부 — NPC 몸엔 `lots` 칸이 안 생긴다(몸 필드 0) · 장부는 몸 밖
+//  ⑤ 곳간 장부 — 늘면 그 순간의 로트(마감 = 한 순간) · 줄면 오래된 것부터 · 옮김은 레코드째 · 견적 멈춤 · 실패 되돌림 · 사람의 문 · 새 칸 · 저장/복원
+//  ⑥ 캐러밴 — 랩 econ v2(5마을 · 200일)에 훅을 꽂고 매일 불변식(장부 합 = 곳간) · 짐 레코드의 순간이 내릴 때 그대로
+//  ⑦ 전쟁 군량 — 팩 싣기 · 환급(오래된 것부터 먹힌 꼬리) · 항복 공납(곳간 → 곳간 레코드째)
+//  ⑧ 끔 — 손잡이 '1' 하나만 켬 · 끄면 시계를 안 꽂고 장부가 안 붙는다(아이 판)
+//
+// 실행: node scripts/test-moment-lot.js
+'use strict';
+const path = require('path');
+const { execFileSync } = require('child_process');
+const ROOT = path.resolve(__dirname, '..');
+const SV = (p) => path.join(ROOT, 'server', p);
+
+// ══ 아이 판 — 끔/켬 손잡이만 본다 ══════════════════════════════════════════════════
+if (process.env.T732_SUB === 'knob') {
+  const Lots = require(SV('lots.js'));
+  const GL = require(SV('granary-lots.js'));
+  Lots.setClock(() => 5 * 1440000 + 1000, 1440000);   // 존이 하는 그 꽂기(끄면 lots 가 안 받는다)
+  const p = { inventory: { berry: 2 } };
+  Lots.note(p, 'berry', 2, 5);
+  const v = { name: 'x', storage: { food: 3 } };
+  const att = GL.attach(v, null, null);
+  console.log(JSON.stringify({ on: Lots.T732_MOMENT, momentOn: Lots.momentOn(), lot: (p.lots && p.lots.berry && p.lots.berry[0]) || null, att, getter: !!(Object.getOwnPropertyDescriptor(v.storage, 'food') || {}).get }));
+  process.exit(0);
+}
+
+process.env.T732_MOMENT_LOT = '1';
+const Lots = require(SV('lots.js'));
+const Spoil = require(SV('spoil.js'));
+const GL = require(SV('granary-lots.js'));
+const DAY = 1440000;                 // 존의 `_SEASON_DAY_MS`(실시간 24분 = 게임 하루) — 시계 단위는 그 ms
+const MIN = DAY / 1440;              // 게임 1분
+let NOW = 900 * DAY + 180 * MIN;     // 게임 900일 03:00(하네스 시계 — 존의 `zoneGameMs` 자리)
+Lots.setClock(() => NOW, DAY);
+
+let pass = 0, fail = 0;
+const ok = (c, m, x) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (x !== undefined && x !== '' ? `  ${x}` : '')); };
+const say = (m) => console.log(m);
+const near = (a, b, e) => Math.abs(a - b) <= (e == null ? 1e-6 : e);
+const today = () => Math.floor(NOW / DAY);
+const fOf = (item, l) => Spoil.freshnessOf(item, Spoil.exposureOf(l, today()));
+const mkP = (inv) => ({ inventory: Object.assign({}, inv || {}), isNpc: false });
+
+say('\n=== 로트 = 얻은 순간 · 모든 길에서 로트가 따라간다 (T732 · 손잡이 T732_MOMENT_LOT=1) ===');
+
+say('\n① 순간 열쇠 · 같은 순간만 합친다 · 옛 꼴');
+{
+  ok(Lots.momentOn() === true && Lots.T732_MOMENT === true, '① 켬 · 시계가 꽂혔다');
+  const p = mkP({ berry: 6 });
+  const t1 = NOW;
+  Lots.note(p, 'berry', 2, today());
+  NOW += 7 * MIN;     // 7분 뒤(같은 날)
+  Lots.note(p, 'berry', 3, today());
+  Lots.note(p, 'berry', 1, today(), 'carry', t1);   // 첫 순간에 얻은 것을 하나 더(같은 순간 = 합친다)
+  const L = Lots.of(p, 'berry');
+  ok(L.length === 2 && L[0].k === t1 && near(L[0].n, 3) && L[1].k === t1 + 7 * MIN && near(L[1].n, 3),
+    '★★① 같은 날이라도 순간이 다르면 다른 로트 · 같은 순간이면 합친다(평균 0)', JSON.stringify(L.map((l) => [l.k, l.n])));
+  ok(L[0].d === Math.floor(t1 / DAY) && L[0].d === L[1].d, '① `d` 는 그 순간의 날(화면 "N일 전" · 날 문법 호환)');
+  ok(L[0].e === 0 && near(L[0].t, t1 / DAY, 1e-9), '① 새 로트는 정산된 채로 태어난다(노출 0 · 정산 순간 = 얻은 순간 · 소수 날)');
+  // 옛 꼴 — 그 날 0시 순간으로 읽는다(지우지 않는다) · 정산 전후 같은 값(절벽 0)
+  const q = mkP({ berry: 4, fish: 2 });
+  const D = today() - 2;
+  q.lots = { berry: [{ d: D, n: 4 }], fish: [{ d: D, n: 2, e: 0.5, t: D, m: 1, w: 0 }] };
+  const f0b = fOf('berry', q.lots.berry[0]), f0f = fOf('fish', q.lots.fish[0]);
+  Lots.settle(q, 'berry', today(), 0); Lots.settle(q, 'fish', today(), 0);
+  const b = q.lots.berry[0], f = q.lots.fish[0];
+  ok(b.k === D * DAY && f.k === D * DAY && b.n === 4 && f.n === 2, '★① 옛 레코드 둘 — 열쇠 = 그 날 0시 순간 · 개수 그대로(지우지 않는다)', JSON.stringify({ b: [b.k, b.n], f: [f.k, f.n] }));
+  ok(near(b.e, NOW / DAY - D, 1e-5), '① 옛 `{d,n}` 의 나이 = 그 날 0시부터 지금까지(소수 날)', `${b.e} ≈ ${(NOW / DAY - D).toFixed(6)}`);
+  ok(near(fOf('berry', b), f0b, 1e-6) && near(fOf('fish', f), f0f, 1e-6), '★① 정산 전후 신선도 같다 — 절벽 0(켬이면 옛 꼴도 같은 시계로 읽는다)', `${f0b} → ${fOf('berry', b)} · ${f0f} → ${fOf('fish', f)}`);
+  // 저장 → 복원(JSON) — 같은 레코드
+  const q2 = mkP({});
+  const back = Lots.fromSave(q2, JSON.parse(JSON.stringify(Lots.toSave(q))));
+  ok(back && back.berry && back.berry[0].k === b.k && near(back.berry[0].e, b.e) && near(back.berry[0].t, b.t, 1e-9), '① 저장 꼴에 `k` 가 실린다 · 복원하면 같은 순간 · 같은 정산(소수 날)', JSON.stringify(back && back.berry && back.berry[0]));
+}
+
+say('\n② 상한 뭉개기 — 남긴다(몸 크기) · 더 이른 순간 · 큰 노출 · 센다');
+{
+  const p = mkP({ fish: 14 });
+  const c0 = Lots.stats().coalesced;
+  const ks = [];
+  for (let i = 0; i < 14; i++) { ks.push(NOW); Lots.note(p, 'fish', 1, today()); NOW += 40 * MIN; }   // 40분마다 한 마리(날을 넘는다)
+  const L = Lots.of(p, 'fish');
+  const c1 = Lots.stats().coalesced;
+  ok(L.length === Lots.CFG.MAX_LOTS && c1 - c0 === 2, `★② 품목당 ${Lots.CFG.MAX_LOTS} 은 남긴다 — 14 순간 → ${L.length} 로트 · 뭉개기 ${c1 - c0}`, `상한 ${Lots.CFG.MAX_LOTS}`);
+  const m = L[0];
+  ok(m.coalesced === true && m.k === ks[0] && near(m.n, 3), '★★② 뭉친 로트 = 가장 오래된 셋 · 열쇠는 **더 이른 순간**', JSON.stringify({ k: m.k, n: m.n }));
+  const fm = fOf('fish', m), fNext = fOf('fish', L[1]);
+  ok(fm <= fNext + 1e-12, '★★② 뭉친 로트는 다음 로트보다 싱싱하지 않다(음식이 실제보다 싱싱해 보이는 일 0)', `${fm} ≤ ${fNext}`);
+  const fTrue = Spoil.freshnessOf('fish', Spoil.exposureAt({ k: ks[0], e: 0, t: ks[0] / DAY, m: 1, w: 0 }, NOW / DAY, 0));
+  ok(near(fm, fTrue, 1e-6), '② 그 신선도 = 가장 이른 순간에 얻은 한 마리의 것(정산한 뒤 견줬다)', `${fm} = ${fTrue}`);
+}
+
+say('\n③ 근사 셈 · 지목 소비');
+{
+  const p = mkP({ berry: 0 });
+  const a0 = Lots.stats().approx;
+  Lots.note(p, 'berry', 2, today());
+  p.inventory.berry = 5;                      // 로트를 안 거친 몫 3
+  Lots.reconcile(p, 'berry', p.inventory, today());
+  const st = Lots.stats();
+  ok(st.approx - a0 === 1 && st.approxBy.berry >= 1 && near(Lots.sum(p, 'berry'), 5), '★③ 맞추기가 남는 몫을 지금 얻은 것으로 잡으면 **센다**(근사 한 번)', `approx +${st.approx - a0}`);
+  // 지목 소비 — 맞춘 뒤 고른다(종전엔 안 맞추고 골라 갓 얻은 몫이 지워질 수 있었다)
+  const q = mkP({ fish: 0 });
+  const k1 = NOW; Lots.note(q, 'fish', 2, today()); NOW += MIN;
+  const k2 = NOW; Lots.note(q, 'fish', 2, today());
+  q.inventory.fish = 4;
+  const r = Lots.consumeFrom(q, 'fish', today(), 1, q.inventory, k2);
+  const L = Lots.of(q, 'fish');
+  ok(r.taken === 1 && L.length === 2 && near(L[0].n, 2) && L[0].k === k1 && near(L[1].n, 1) && q.inventory.fish === 3, '★③ 지목(`k`) 소비 — 그 순간 로트에서만 뗀다', JSON.stringify(L.map((l) => [(l.k - k1) / MIN, l.n])));
+  const a1 = Lots.stats().approx;
+  Lots.reconcile(q, 'fish', q.inventory, today());
+  ok(Lots.stats().approx === a1, '③ 길을 다 거친 판은 맞추기가 근사를 안 센다');
+}
+
+say('\n④ NPC 곁 장부 — 몸 필드 0');
+{
+  const npc = { isNpc: true, inventory: { fish: 0 } };
+  npc.inventory.fish += 2; Lots.note(npc, 'fish', 2, today());
+  ok(!('lots' in npc) && Lots.sum(npc, 'fish') === 2, '★④ NPC 몸엔 `lots` 칸이 안 생긴다 — 장부는 몸 밖(곁 장부)', Object.keys(npc).join(','));
+  const recs = Lots.moveOut(npc, 'fish', 1, npc.inventory, today(), 0);
+  npc.inventory.fish -= 1;
+  ok(recs.length === 1 && recs[0].k === Lots.of(npc, 'fish')[0].k && near(Lots.sum(npc, 'fish'), 1), '④ 곁 장부도 같은 문(꺼내기 · 맞추기 — 죽음 드롭이 이 레코드를 바닥에 싣는다)');
+}
+
+say('\n⑤ 곳간 장부');
+{
+  GL.stats(true);
+  const v = { name: '갑', storage: { food: 10, wood: 5, fish: 0 } };
+  const kSeed = NOW;
+  ok(GL.attach(v, null, null) === true, '⑤ 붙이기');
+  const dw = Object.getOwnPropertyDescriptor(v.storage, 'wood'), df = Object.getOwnPropertyDescriptor(v.storage, 'food');
+  ok(!!df.get && !dw.get && dw.value === 5, '⑤ 로트 재화만 감싼다(나무는 값 그대로 · 칸 순서 무변)', Object.keys(v.storage).join(','));
+  ok(JSON.stringify(v.storage) === '{"food":10,"wood":5,"fish":0}', '⑤ econ 이 보는 값 그대로(직렬화 · 열거 순서)');
+  let Lg = GL.ledger(v, 'food');
+  ok(Lg.length === 1 && Lg[0].k === kSeed && Lg[0].u === 10 && GL.stats().seeded === 1, '⑤ 첫 붙이기 — 지금 곳간 값을 지금 순간 로트 하나로(나이 모름 · 센다)');
+  // 마감 = 한 순간
+  NOW += DAY; const kT = NOW;
+  GL.tickBegin();
+  NOW += 2 * MIN; v.storage.food += 3;
+  NOW += 2 * MIN; v.storage.food += 2;      // 마감 조각이 프레임을 넘겨도 같은 순간
+  GL.tickEnd();
+  Lg = GL.ledger(v, 'food');
+  ok(Lg.length === 2 && Lg[1].k === kT && near(Lg[1].u, 5), '★⑤ 하루 마감 = 한 순간 — 그 동안 얻은 것은 그 순간 레코드 하나(같은 순간만 합친다)', JSON.stringify(Lg.map((r) => [r.k - kSeed, r.u])));
+  // 줄면 오래된 것부터
+  v.storage.food -= 11;
+  Lg = GL.ledger(v, 'food');
+  ok(Lg.length === 1 && Lg[0].k === kT && near(Lg[0].u, 4), '★⑤ 줄면 오래된 것부터(NPC 는 오래된 것부터 먹는다) — 씨앗 10 다 · 마감 몫 1', JSON.stringify(Lg.map((r) => [r.k - kSeed, r.u])));
+  // 빚 — 곳간이 0 아래로(장부가 줄 수 없는 몫) → 다음 늘어남이 먼저 갚는다
+  v.storage.food -= 6;                        // 4 → −2
+  ok(!GL.ledger(v, 'food').length && GL.check([v]).bad.length === 0, '⑤ 0 아래 — 빚으로 적는다(장부 합 − 빚 = 곳간)', `food ${v.storage.food}`);
+  v.storage.food += 3;
+  Lg = GL.ledger(v, 'food');
+  ok(Lg.length === 1 && near(Lg[0].u, 1) && GL.check([v]).bad.length === 0, '⑤ 다음 늘어남이 빚부터 갚는다', JSON.stringify(Lg.map((r) => r.u)));
+  // 견적 멈춤 — 잠깐 바꿨다 되돌리는 동안 장부 무변
+  const before = JSON.stringify(GL.ledger(v));
+  GL.suspend(true); v.storage.food += 50; v.storage.food -= 50; GL.suspend(false);
+  ok(JSON.stringify(GL.ledger(v)) === before, '★⑤ 견적 멈춤(`gluttedAt` · `planSliced` 의 잠깐 바꾸기) — 장부 무변(오래된 것이 새것으로 갈리지 않는다)');
+  // 실패 되돌림
+  GL.txBegin(v); v.storage.food -= 1; v.storage.food += 1; GL.txEnd(v, false);
+  ok(JSON.stringify(GL.ledger(v)) === before && GL.check([v]).bad.length === 0, '★⑤ 교환 실패 되돌림 — 장부도 그 순간으로(새 로트 0)');
+  // 옮김 — 다른 곳간으로 레코드째(캐러밴 짐 문법) · 받는 쪽에 그 칸이 없으면 대기 레코드로 감싼다(새 칸의 첫 몫 = 옮겨 온 것)
+  const w2 = { name: '을', storage: { food: 0 } };
+  GL.attach(w2, null, null);
+  NOW += DAY;
+  v.storage.fish += 4;                        // 갑이 생선을 얻었다(지금)
+  const kFish = GL.ledger(v, 'fish')[0].k;
+  GL.capBegin(v, 'fish'); v.storage.fish -= 3; const recs = GL.capEnd(v, 'fish');
+  const car = {};
+  GL.cargo(car, 'give', recs);
+  NOW += 2 * DAY;                             // 길 위 이틀
+  GL.unload(car, 'give', w2, 'fish', 3);
+  w2.storage.fish = (w2.storage.fish || 0) + 3;   // econ 이 처음 쓰는 칸(접근자 없음)
+  GL.clearIn(w2, 'fish');
+  const Lw = GL.ledger(w2, 'fish');
+  ok(Lw.length === 1 && Lw[0].k === kFish && near(Lw[0].u, 3) && GL.isWrapped(w2, 'fish'), '★★⑤ 옮김은 레코드째 — 받는 곳간의 새 칸도 그 순간(지금 얻은 것이 아니다)', JSON.stringify(Lw.map((r) => [r.k - kFish, r.u])));
+  const fRoad = Spoil.freshnessOf('fish', Spoil.exposureOf(Lw[0], today()));
+  const fHome = Spoil.freshnessOf('fish', Spoil.exposureOf(GL.ledger(v, 'fish')[0], today()));
+  ok(fRoad < fHome, '⑤ 길 위에서는 몸에 지님 배율로 늙었다(곳간에 남은 같은 순간 것보다 덜 싱싱 — 늙힘은 조회 함수)', `${fRoad} < ${fHome}`);
+  // 사람의 문 — 늘어남은 잡아 두고 사람 쪽 레코드로 채운다 · 줄어듦은 모은다 · 실패면 되돌림
+  const pl = mkP({ fish: 3 });
+  const kp = NOW - 300 * MIN; Lots.note(pl, 'fish', 3, Math.floor(kp / DAY), 'carry', kp);   // 다섯 시간 전에 낚은 생선(시들기 전)
+  const pr = Lots.peek(pl, 'fish', 3, pl.inventory, today());
+  const fP = Spoil.freshnessOf('fish', Spoil.exposureOf(pr[0], today()));
+  GL.doorBegin();
+  v.storage.fish += 1.2;                      // 문(정본 넣기)이 단위로 올렸다
+  v.storage.food -= 0.5;                      // 같은 문에서 곡식을 내줬다
+  const d = GL.doorEnd(true);
+  GL.doorIn(d, v, 'fish', GL.recsFromPlayer(pr, 'fish', 1.2, true, today()));
+  const got = GL.doorCap(d, v, 'food');
+  GL.doorRest(d);
+  const Lf = GL.ledger(v, 'fish'), last = Lf.find((r) => r.k === kp);
+  ok(fP > 0 && fP < 1 && !!last && near(last.u, 1.2) && near(last.f0, fP, 1e-6), '★★⑤ 사람의 문 — 낸 것은 사람의 순간 · 단위 무게 · 접힌 신선도(f0)째 곳간에', JSON.stringify(last));
+  ok(got.length === 1 && near(got[0].u, 0.5), '⑤ 문이 뗀 곡식 레코드를 모았다(사람에게 실을 것)', JSON.stringify(got.map((r) => r.u)));
+  const pIn = GL.recsToPlayer([Object.assign({}, last, { u: 0.6 })], 2);
+  ok(pIn.length === 1 && near(pIn[0].n, 2 / fP, 1e-5) && pIn[0].k === kp, '★⑤ 꺼낼 때 접힌 신선도를 편다 — 낱개 = 문 몫 ÷ f0(두 번 깎으면 소멸)', `${pIn[0].n} = 2 ÷ ${fP}`);
+  const pIn2 = GL.recsToPlayer([{ k: 1, u: 0.3333333, f0: 1, e: 0, t: 1 / DAY, m: 0.7, w: 0.55 }, { k: 2, u: 0.6666667, f0: 1, e: 0, t: 2 / DAY, m: 0.7, w: 0.55 }], 7);
+  ok(near(pIn2.reduce((a, r) => a + r.n, 0), 7, 1e-9), '⑤ 접힘이 없으면 낱개 합 = 문이 정한 낱개(끝수 0 — 6.999999 로 떨어지지 않는다)', JSON.stringify(pIn2.map((r) => r.n)));
+  const snap = JSON.stringify(GL.ledger(v));
+  GL.doorBegin();
+  v.storage.food -= 0.2; v.storage.fish += 0.4;     // 문 안(내주기 · 받기)
+  v.storage.food += 0.2; v.storage.fish -= 0.4;     // econ 이 실패로 곳간을 되돌렸다(교환 ⑤ 되돌림)
+  GL.doorEnd(false);
+  ok(JSON.stringify(GL.ledger(v)) === snap && GL.check([v]).bad.length === 0, '★⑤ 실패한 문 — 장부가 문 앞으로(되돌린 곳간 값과 맞는다 · 새 로트 0)');
+  // 안 닫힌 문(문 사이에서 던져 닫는 줄을 못 탔다) — 다음 문(또는 마감)이 그 문을 닫고 잡아 둔 늘어남을 적는다(센다 · econ 늘어남을 영영 삼키지 않는다)
+  {
+    const s0 = GL.stats().doorStale;
+    GL.doorBegin(); v.storage.food += 2;      // 닫는 줄 없이 끝났다
+    const held = GL.check([v]).bad.length;    // 문이 열린 동안은 장부가 늘어남을 모른다
+    GL.doorBegin(); GL.doorRest(GL.doorEnd(true));
+    ok(held === 1 && GL.stats().doorStale - s0 === 1 && GL.check([v]).bad.length === 0, '⑤ 안 닫힌 문 — 다음 문이 닫고 잡아 둔 몫을 그 순간의 로트로 적는다(센다 · 불변식 되돌아옴)', `stale +${GL.stats().doorStale - s0}`);
+  }
+  // 맞대기 — 새 칸(econ 이 처음 만든 재화)은 마감 끝에 감싼다 · 어긋남 0
+  GL.tickBegin(); const kT2 = NOW;
+  v.storage.meat = 7;                          // 접근자 없는 새 칸(econ 생산)
+  const s = GL.sync([v, w2]);
+  GL.tickEnd();
+  ok(s.late === 1 && s.drift === 0 && GL.ledger(v, 'meat')[0].k === kT2 && GL.check([v, w2]).bad.length === 0, '★⑤ 마감 끝 맞대기 — 새 칸은 그 마감의 순간 · 어긋남 0 · 불변식(장부 합 − 빚 = 곳간)', JSON.stringify(s));
+  // 저장 → 복원 — 같은 장부(재기동)
+  const dump = JSON.parse(JSON.stringify(GL.dump(v)));
+  const v2 = { name: '갑', storage: JSON.parse(JSON.stringify(v.storage)) };
+  GL.attach(v2, dump, null);
+  ok(JSON.stringify(GL.ledger(v2)) === JSON.stringify(GL.dump(v).L) && GL.check([v2]).bad.length === 0, '★⑤ 저장 → 복원 — 같은 레코드 · 불변식 그대로(재기동 뒤)');
+  const st = GL.stats();
+  ok(st.doorNoRec === st.doorStale && st.drift === 0, '⑤ 문 표 · 맞대기 — 레코드 없이 든 몫 = 안 닫힌 문의 몫뿐 · 어긋남 0', JSON.stringify({ doorNoRec: st.doorNoRec, doorStale: st.doorStale, drift: st.drift, adopted: st.adopted, moved: st.moved }));
+}
+
+say('\n⑥ 캐러밴 — 랩 econ v2(5마을 · 200일) · 매일 불변식 · 짐 레코드의 순간');
+{
+  const econV2 = require(path.join(ROOT, 'sim', 'economy-sim-v2'));
+  const world = econV2.createWorldV2({ seed: 7, villageCount: 5, picker: 'rational', infoRange: 5000, raidPer100: 0.005 });
+  GL.stats(true);
+  NOW = 2000 * DAY;
+  for (const v of world.villages) GL.attach(v, null, null);
+  const seen = { out: 0, in: 0, kOk: 0, kBad: 0, maxRec: 0 };
+  const H = Object.assign({}, GL.hooks);
+  H.cargo = (c, slot, recs) => { seen.out++; return GL.hooks.cargo(c, slot, recs); };
+  H.unload = (c, slot, v, res, amt) => {
+    const K = GL.cargoDump(c); const recs = (K && K[slot]) || [];
+    for (const r of recs) { if (r.k < NOW) seen.kOk++; else seen.kBad++; }   // 길은 하루 이상 — 짐의 순간은 오늘 마감보다 이르다
+    seen.in++;
+    return GL.hooks.unload(c, slot, v, res, amt);
+  };
+  econV2.setLotHook(H);
+  let bad = 0, firstBad = null, drift = 0;
+  try {
+    for (let d = 0; d < 200; d++) {
+      NOW += DAY;
+      GL.tickBegin();
+      econV2.tickWorldV2(world);
+      const s = GL.sync(world.villages);
+      GL.tickEnd();
+      if (d > 0) drift += s.drift;
+      const c = GL.check(world.villages, 1e-6);
+      if (c.bad.length) { bad++; if (!firstBad) firstBad = { d, b: c.bad.slice(0, 3) }; }
+      for (const v of world.villages) { const L = GL.ledger(v); for (const r of Object.keys(L)) seen.maxRec = Math.max(seen.maxRec, L[r].length); }
+    }
+  } finally { econV2.setLotHook(null); }
+  const st = GL.stats();
+  ok(bad === 0, '★★⑥ 200일 매일 — 감싼 칸마다 장부 합 − 빚 = 곳간 값(불변식)', firstBad ? JSON.stringify(firstBad) : `칸 ${GL.check(world.villages).cells}`);
+  ok(drift === 0, '★⑥ 맞대기 어긋남 0 — econ 이 장부 모르게 곳간을 바꾼 길이 없다(새 칸 감싸기는 별개)', `drift ${drift} · 늦게 감싼 칸 ${st.wrappedLate}`);
+  ok(seen.out > 0 && seen.in > 0 && st.moved > 0, '⑥ 캐러밴이 실제로 오갔다 — 짐 싣기 · 내리기 · 레코드 넘김', JSON.stringify({ 싣기: seen.out, 내리기: seen.in, 넘김: st.moved }));
+  ok(seen.kBad === 0 && seen.kOk > 0, '★★⑥ 내린 짐 레코드의 순간 < 오늘 마감 — 받는 곳간에서 "지금 얻은 것"이 되지 않는다', `${seen.kOk} 레코드`);
+  // 끔 바이트 — 훅을 안 꽂은 같은 세계와 곳간 값이 같다(훅은 관측자)
+  const w0 = econV2.createWorldV2({ seed: 7, villageCount: 5, picker: 'rational', infoRange: 5000, raidPer100: 0.005 });
+  for (let d = 0; d < 200; d++) econV2.tickWorldV2(w0);
+  const sig = (w) => JSON.stringify(w.villages.map((v) => [v.name, Object.keys(v.storage).map((k) => [k, +(+v.storage[k]).toFixed(9)]), (v.npcs || []).length]));
+  ok(sig(world) === sig(w0), '★★⑥ 훅은 관측자 — 장부를 붙인 세계와 안 붙인 세계의 곳간 · 인구가 200일 같다', `레코드 최대(칸 하나) ${seen.maxRec}`);
+}
+
+say('\n⑦ 전쟁 군량 — 팩 싣기 · 환급 꼬리 · 항복 공납');
+{
+  const WarCore = require(path.join(ROOT, 'sim', 'war-core'));
+  WarCore.setLotHook(GL.hooks);
+  try {
+    const mkV = (name, food) => ({ name, econ: { name, npcs: Array.from({ length: 10 }, (_, i) => ({ id: i })), counts: {}, storage: { food }, _warFatigue: 0 } });
+    const A = mkV('공격', 0), Dv = mkV('방어', 0);
+    const world = { villages: [A.econ, Dv.econ], day: 10 };
+    const war = WarCore.createWar({ villages: [A, Dv], world, seed: 1, log: () => {} });
+    GL.attach(A.econ, null, null); GL.attach(Dv.econ, null, null);
+    const k1 = NOW; A.econ.storage.food += 30; NOW += DAY;
+    const k2 = NOW; A.econ.storage.food += 30; NOW += DAY;
+    const w = { id: 1, atk: A, def: Dv, force: 5 };
+    const days = war._opPackLoad(A, 5, 8, w);
+    const pk = w._packLots && w._packLots.food;
+    ok(days > 0 && pk && pk.length === 2 && pk[0].k === k1 && pk[1].k === k2 && near(pk[0].u + pk[1].u, w._packLoad), '★⑦ 팩 싣기 — 곳간에서 뗀 레코드째(오래된 것부터 · 전쟁 객체 곁 칸)', JSON.stringify(pk && pk.map((r) => [r.k - k1, r.u])));
+    NOW += 2 * DAY;
+    const back = war._opPackRefund(A, 5, days * 0.25, w);   // 4분의 1 남았다(원정 동안 오래된 것부터 먹혔다)
+    const L = GL.ledger(A.econ, 'food');
+    ok(back > 0 && L.length >= 1 && L.every((r) => r.k === k2 || r.k === k1) && L[L.length - 1].k === k2, '★⑦ 환급 — 남은 몫은 새 쪽 꼬리(오래된 것부터 먹혔다) · 그 순간째', JSON.stringify(L.map((r) => [r.k - k1, +r.u.toFixed(3)])));
+    ok(GL.check([A.econ, Dv.econ]).bad.length === 0, '⑦ 불변식 그대로');
+    // 항복 공납 — 방어 곳간 → 공격 곳간 레코드째
+    const kd = NOW; Dv.econ.storage.food += 40; NOW += DAY;
+    war._opDoSurrender(A, Dv, 20, null);
+    const got = GL.ledger(A.econ, 'food').filter((r) => r.k === kd);
+    ok(got.length === 1 && got[0].u > 0, '★⑦ 항복 공납(곳간 → 곳간) — 받는 쪽에 방어 곳간의 순간 그대로(지금 얻은 것이 아니다)', JSON.stringify(got.map((r) => +r.u.toFixed(3))));
+    ok(GL.check([A.econ, Dv.econ]).bad.length === 0, '⑦ 불변식 그대로');
+  } finally { WarCore.setLotHook(null); }
+}
+
+say('\n⑧ 끔 — 손잡이 \'1\' 하나만 켬');
+{
+  const run = (val) => {
+    const env = Object.assign({}, process.env, { T732_SUB: 'knob' });
+    if (val === undefined) delete env.T732_MOMENT_LOT; else env.T732_MOMENT_LOT = val;
+    return JSON.parse(execFileSync(process.execPath, [__filename], { env, stdio: 'pipe' }).toString().trim().split('\n').pop());
+  };
+  const off = run(undefined), on = run('1'), z = run('0'), t = run('true');
+  ok(off.on === false && off.momentOn === false && off.att === false && off.getter === false && off.lot && off.lot.k === undefined,
+    '★⑧ 끔(없음) — 시계를 안 받는다 · 곳간 장부 안 붙는다 · 로트는 날 꼴 그대로(main)', JSON.stringify(off.lot));
+  ok(z.on === false && t.on === false && z.att === false && t.att === false, "⑧ '0' · 'true' 도 끔");
+  ok(on.on === true && on.momentOn === true && on.att === true && on.getter === true && on.lot && Number.isFinite(on.lot.k), "⑧ '1' 이면 켬 — 순간 열쇠 · 곳간 장부");
+}
+
+console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
+process.exit(fail ? 1 : 0);
