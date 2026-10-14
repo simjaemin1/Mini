@@ -1903,6 +1903,7 @@ function foundPlayerVillage(opts) {
   ev._fieldCells = 0;   // ★[T100] 새 마을은 밭 0칸에서 시작한다 — econ 은 텃밭 하한으로 받는다(굶기지 마라)
   { const _cw = Math.ceil((state.deps && state.deps.zoneWidth ? state.deps.zoneWidth : (require('./zone-config').ZONES[state.zoneId] || {}).zoneWidth || 1) / SZ);
     vil._lonOff = T720_LON_DAY ? _t720LonOff(ccx) : +((ccx / Math.max(1, _cw)) * 0.045).toFixed(4); }   // ★[T720] 켬 = 원통 경도
+  if (T731_ON) { vil._lonMid = _t731Lam(ccx); vil._t731Day = state.t731Day; }   // ★[T731] 현지 자정 경도 몫 · 정산한 날(새 마을 = 마지막으로 닫힌 날 — 다음 창부터 제 자정에)
   state.villages.push(vil);
   state.byDbId.set(dbId, vil);
   state.byEcon.set(ev, vil);
@@ -2927,7 +2928,7 @@ function getRouteResumable(aVil, bVil, budgetMs) {
 //   실체→econ 역방향은 차단(지연·고립)뿐 — 모듈 헤더 'Stage 4B' 참조.
 // =============================================================================
 function econDayToMs(econDay) { // econ world.day D의 게임일 경계 절대시각(ms) — 앵커: 현 lastGameDay↔world.day 정렬
-  return state.epoch + (state.lastGameDay + (econDay - state.world.day)) * state.dayMs;
+  return state.epoch + ((T731_ON && state._t731Anchor != null ? state._t731Anchor : state.lastGameDay) + (econDay - state.world.day)) * state.dayMs;   // ★[T731] 켬 = 창이 열린 순간(동쪽 끝 자정)에 앵커
 }
 // ═══ ★★[T578 ② 2026-10-03] 캐러밴·호위가 **땅 위를 걷는다** — 교역로 노드 사이를 path-core 걸음으로 ═══
 //   T573 이 쟀다: 캐러밴 몸은 교역로 노드열(코스 격자 `DIST_STEP` 칸 = 128px 간격)을 **선형 보간해 그 위에 섰다** —
@@ -4650,6 +4651,7 @@ function init(deps) {
     // §19 경도 로컬 시각(4파): 마을별 _lonOff = (ccx/셀폭)×0.045 — 인간 일과(마을 NPC 취침)만 로컬 태양시.
     //   econ 일 경계·야생·도적은 전역 유지(블록 계약 — 랩 L_LON_SPREAD 5351행 verbatim).
     { const _cw = Math.ceil(ZONE.zoneWidth / SZ); for (const vil of state.villages) vil._lonOff = T720_LON_DAY ? _t720LonOff(vil.ccx) : +((vil.ccx / _cw) * 0.045).toFixed(4);   // ★[T720] 켬 = 원통 경도(`lonPhaseOff`)
+      if (T731_ON) for (const vil of state.villages) vil._lonMid = _t731Lam(vil.ccx);   // ★[T731] 현지 자정 경도 몫(λ · 동쪽이 크다)
       const _lo = state.villages.map(v => v._lonOff); if (_lo.length) console.log(`[${state.zoneId}] 🕐 경도 시차(§19): 마을 ${_lo.length}곳 스프레드 ${(Math.min(..._lo) * 1440).toFixed(0)}~${(Math.max(..._lo) * 1440).toFixed(0)}분/일(${T720_LON_DAY ? '원통 경도 · T720' : '0.045 상수'} — 동쪽이 먼저 잔다)`); }
 
     // --- P1: NPC 마을 전쟁 econ 층 배선 (tickWorldV2 후 daily 구동) ---
@@ -4789,6 +4791,7 @@ function init(deps) {
     }
 
     state.lastGameDay = gameDayOf(Date.now()); // 다음 경계부터 틱 (재기동 따라잡기 없음 — 실시간 앵커)
+    if (T731_ON) _t731Boot(Date.now());   // ★[T731] 마을마다 현지 자정 날을 시계에서 바로(증인 한 줄)
     if (T728_KEEP) { try { _t728Restore(); } catch (e) { console.error(`[${ZONE_ID}] 🏘️ [T728] 재기동 영속 복원 실패(종전대로 계속):`, e.message); } }
     if (T740_SIDE) { try { _t740Restore(); } catch (e) { console.error(`[${ZONE_ID}] 🏘️ [T740] 마을 칸 복원 실패(종전대로 계속):`, e.message); } }
     else for (const v of state.villages) if (v.econ && '_t740Side' in v.econ) delete v.econ._t740Side;   // ★[T740] 끔 — 켬으로 적은 행의 곁 칸을 econ 에 남기지 않는다(다음 켬이 묵은 칸을 되돌리지 않게 · main 행엔 이 칸이 없어 무동작)
@@ -6382,8 +6385,9 @@ function onGameTick(now) {
   //   ★★[T714] **다음 경계가 왔는데 마감이 아직이면 마감이 먼저**(T690 "다음 경계 앞 마무리" 문법 · 손잡이 `T714_DUE_FIRST` 기본 켬 · `=0` = 종전).
   //     하루가 마감보다 짧으면(빠른 시계 · 무거운 날) 결정 몫 · 번갈아 때문에 마감 몫이 한 틱에 수 ms 로 줄어 마감이 하루의 몇 배를 끈다(실측 4초 하루에 15~120초).
   //     ⇒ 밀린 마감은 이 틱 머리 자리에서 공용 몫을 남김없이 먼저 쓴다(몫 남기기 끔 — 결정 문 · 뒤 문은 그 나머지). 마감이 끝나면 다음 날이 열린다(차례 · 값 그대로).
-  if (state.tickJobs) { const _due = T714_DUE_FIRST && TB.DEC_FIRST && gameDayOf(now) > state.lastGameDay; if (_due) { TB.lateBegin(); _probe.t714Due = (_probe.t714Due || 0) + 1; }
+  if (state.tickJobs) { const _due = T714_DUE_FIRST && TB.DEC_FIRST && (T731_ON ? _t731Due(now) : gameDayOf(now) > state.lastGameDay); if (_due) { TB.lateBegin(); _probe.t714Due = (_probe.t714Due || 0) + 1; }
     if (!_due && T695_LATE()) { state._t695C = true; return; } state._t695Starved = false; if (!TB.out(TICK_SLICE_MS, 'close')) _drainTickJobs(now); return; }
+  if (T731_ON) { _t731Tick(now); return; }   // ★[T731] 켬 = 마을마다 현지 00:00 정산(동 → 서 · 아래 `_t731Tick`) · 끔 = 아래 종전 그대로
   if (state.dayFreeze) return;
   if (T690_DAY_PHASE) { const n = _t690Due(now); if (n) { _t690Open(n, gameDayOf(now) > state.lastGameDay); _drainTickJobs(now); return; } }   // ★[T690] 위상이 온 마을의 생활층(다음 경계 전엔 남은 전부)
   const day = gameDayOf(now);
@@ -6445,6 +6449,165 @@ function _t720Fv(wp, off) { return T720_LON_DAY ? _zc720().phaseAdd(wp, off) : (
 function _bodyDay(npc, now) {   // 몸의 날 — 끔 = 세계 날(종전) · 켬 = 그 마을 현지 날(해 뜸에서 바뀐다)
   if (!T720_LON_DAY) return gameDayOf(now);
   return Math.floor((now - state.epoch) / state.dayMs + ((npc && npc.simLonOff) || 0));
+}
+// ★★[T731 2026-10-14] **경도 하루 2단계 — 마을 현지 자정 정산(동 → 서)** — 손잡이 `T731_LOCAL_MIDNIGHT`(★기본 끔 · `=1` 켬 · 끔 = 종전 글자 · econ 씨 가르기도 같은 손잡이).
+//   재민 10-13 캐논: 마을 정산 = 그 마을 현지 00:00 · 한 실제 시각에 여럿이 넘으면 **동쪽 먼저**.
+//   현지 자정 날 LD(v, t) = floor((t − 기점) ÷ 하루 + λ_v)(`zone-config.localMidDay` 와 같은 식 · λ = `lonOf(마을 중심 x)` · 새 수 0).
+//   ⇒ 하루 경계 하나(세계 몫 0)가 **창** 하나가 된다: 동쪽 끝 마을이 D 로 넘는 순간 창 D 가 열리고(머리), 마을마다 제 자정에 제 조각을 돌고,
+//     서쪽 끝 마을이 넘으면 꼬리(마을 사이 장부 — 교역 · 캐러밴 · econ 꼬리 · 영토 · 채굴 · 날씨 방송 · 사건 장부 · 저장)로 닫는다.
+//     머리  = (존 경계 들임) · T681 몫 채우기 · econ 머리(날 +1 · 장 정산 · 사건 · 날씨 · 흉풍) · 생활층 계측 비움
+//     마을  = 손 → 곳간(`_lifeHandsIn`) · econ 마을 결산(`P.village` — 그 마을 씨 흐름) · 인구 · 직업 · 옷 · 생활층 하루(`_lifeDaily`)
+//     꼬리  = 종전 차례 그대로(교역 → 캐러밴 → econ 꼬리 → 존 경계 냄 → 영토 → 채굴 → 날씨 → 방송 → 캐러밴 동기 → 사건 → 저장 → 거리)
+//   창 가운데 머리 · 마을 조각은 미니 마감(`C.t731mini` — T690 문법: 마감 꼬리 로그 없이 대기 요청만 방류). 창 하나 = `_closeDay` 한 줄.
+//   ⚠econ 결산 차례가 마을마다 바뀌는 것은 econ 씨 가르기(`sim/economy-sim.js useVillageStream`)가 받친다 — 한 마을의 하루가 다른 마을 수열을 안 바꾼다.
+const T731_ON = process.env.T731_LOCAL_MIDNIGHT === '1';
+const _t731Stat = { windows: 0, vils: 0, late: 0, lateMax: 0, orderBad: 0, last: null, boot: null };
+function _t731Lam(ccx) { const Z = _zc720(), zo = ((Z.ZONES[state.zoneId] || {}).worldOffsetX) || 0; return Z.lonOf(zo + ccx * SZ + SZ / 2); }
+function _t731LD(vil, t) { return Math.floor((t - state.epoch) / state.dayMs + (vil._lonMid || 0)); }
+function _t731Due0(vil, D) { return state.epoch + (D - (vil._lonMid || 0)) * state.dayMs; }   // 그 마을이 D 로 넘는 실제 시각(ms)
+function _ledgerDay(vil, t) { return (vil && vil._t731Day != null) ? vil._t731Day : gameDayOf(t); }   // 장부 날 = 그 마을이 정산한 날
+function _t731Order() { return state.villages.slice().sort((a, b) => (b._lonMid || 0) - (a._lonMid || 0) || (a.dbId | 0) - (b.dbId | 0)); }   // 동 → 서(같은 λ = dbId)
+function _t731Base(t) { let lo = Infinity; for (const v of state.villages) lo = Math.min(lo, _t731LD(v, t)); return Number.isFinite(lo) ? lo : gameDayOf(t); }
+function _t731Boot(now) {
+  for (const vil of state.villages) if (vil._lonMid == null) vil._lonMid = _t731Lam(vil.ccx);
+  const base = _t731Base(now), L = _t731Order();
+  state.t731Day = base; state._t731 = null;
+  for (const vil of state.villages) vil._t731Day = base;
+  state._t731Anchor = L.length ? base - (L[0]._lonMid || 0) : null;
+  const cnt = {}; for (const v of L) { const d = _t731LD(v, now); cnt[d] = (cnt[d] || 0) + 1; }
+  const iso = (ms) => new Date(ms).toISOString().slice(11, 19);
+  const e = L[0], w = L[L.length - 1];
+  const B = { at: now, base, days: cnt, east: e ? [e.name, +(e._lonMid).toFixed(4), iso(_t731Due0(e, base + 1))] : null, west: w ? [w.name, +(w._lonMid).toFixed(4), iso(_t731Due0(w, base + 1))] : null,
+    spreadS: (e && w) ? +(((e._lonMid - w._lonMid) * state.dayMs) / 1000).toFixed(3) : 0, econDay: state.world ? state.world.day : null };
+  _t731Stat.boot = B;
+  console.log(`[${state.zoneId}] 🕛 [T731] 현지 자정 정산 — 부팅 시계에서 마을 날 ${JSON.stringify(cnt)} · 닫힌 날 ${base} · 다음 창 ${base + 1}: 동 ${B.east && B.east.join(' ')} → 서 ${B.west && B.west.join(' ')} · 퍼짐 ${B.spreadS}초 · econ 날 ${B.econDay}`);
+}
+function _t731Due(now) {   // ★[T714] 켬 판의 "다음 것이 왔나" — 열린 창의 다음 마을이 자정을 넘었거나, 창이 없는데 동쪽 끝이 다음 날로 넘었다
+  const W = state._t731;
+  if (W) return !!(W.list.length && _t731LD(W.list[0], now) >= W.D);
+  const L = state.villages; let hi = -Infinity; for (const v of L) hi = Math.max(hi, _t731LD(v, now));
+  return hi > (state.t731Day | 0);
+}
+function _t731Tick(now) {
+  let W = state._t731, head = false;
+  const fr = !!state.dayFreeze;   // 얼림(종료 저장 · e2e) = 새 창은 안 열고 열린 창은 남은 마을을 몰아 닫는다(반쯤 돈 날을 적지 않는다)
+  if (!W) {
+    if (fr) return;
+    const L = _t731Order(); if (!L.length) return;
+    if (_t731LD(L[0], now) <= state.t731Day) return;
+    const D = Math.max(state.t731Day + 1, _t731Base(now));   // 하루 넘게 밀렸으면 종전처럼 건너뛴다(따라잡기 0)
+    W = state._t731 = { D, list: L, all: state.villages.slice(), extra: state.world.villages.filter((ev) => !state.byEcon.has(ev)), P: null, C: null, wit: [], open: now };
+    state.lastGameDay = D; state._t731Anchor = D - (L[0]._lonMid || 0);
+    head = true;
+  }
+  let n = 0; while (n < W.list.length && (fr || _t731LD(W.list[n], now) >= W.D)) n++;
+  if (!head && !n) return;
+  const vils = W.list.splice(0, n);
+  _openDayJobs(now, { W, head, vils, tail: !W.list.length });
+  if (!TB.out(TICK_SLICE_MS, 'close')) _drainTickJobs(now);
+}
+function _t731Jobs(now, T) {
+  const W = T.W;
+  const C = W.C || (W.C = { now, t0: Date.now(), stg: {}, econPop: 0, npcCount: 0, jobChanges: {}, pops: {}, terr: {}, wx: {},
+    car: _caravanSyncNew(), ore: { v: 0, c: 0 }, chunks: 0, maxChunk: 0, maxChunkAt: '', order: [], vils: W.all, t731D: W.D, t731Opens: 0 });
+  C.now = now; C.t731mini = !T.tail; C.t731Opens++;
+  const J = [];
+  const add = (n, f, sub) => J.push(sub ? { n, f, s: sub } : { n, f });
+  const mute = (f) => { const _log = console.log; console.log = () => {}; try { f(); } finally { console.log = _log; } };
+  if (T.head) {
+    if (state.xzone) add('xzone', () => _xzDayIn());
+    if (T681_ON) add('econ', () => _t681Flush());
+    W.P = state.econV2.tickWorldV2Parts(state.world);   // econ 정본 조각 한 벌(`tickWorldV2` 가 부르는 그것 — 조각 손잡이와 무관하게 켬 판은 조각으로만 간다)
+    add('econ', () => { _econDayFixture(); mute(() => W.P.head()); }, 'econ:head');
+    add('life', () => { for (const k in _lifeSub) _lifeSub[k] = 0; for (const k in _lifeSubMax) delete _lifeSubMax[k]; _lifeMax = 0; _lifeMaxName = ''; });
+  }
+  const _popOne = (vil) => {
+    C.econPop += vil.econ.npcs.length;
+    syncVillagePop(vil, POP_SYNC_PER_DAY);
+    syncVillageJobs(vil, C.jobChanges);
+    syncVillageClothes(vil, state.deps.players, state.econ);
+    C.npcCount += vil.npcPids.length;
+    C.pops[vil.dbId] = vil.econ.npcs.length;
+  };
+  for (const vil of T.vils) {
+    add('econ', () => {
+      const at = Date.now(), due = _t731Due0(vil, W.D), late = at - due;
+      const prev = W.wit.length ? W.wit[W.wit.length - 1] : null;
+      if (prev && (vil._lonMid || 0) > prev[1] + 1e-12) _t731Stat.orderBad++;   // 동 → 서 어김(λ 가 앞 마을보다 크면)
+      W.wit.push([vil.name, vil._lonMid || 0, due, at]);
+      if (late > _t731Stat.lateMax) _t731Stat.lateMax = late;
+      if (!vil.econ || !state.world.villages.includes(vil.econ)) return;   // 창 가운데 사라진 마을 — 건너뛴다
+      _lifeHandsIn(vil);
+      mute(() => W.P.village(vil.econ));
+      vil._t731Day = W.D;
+    }, 'econ:vil');
+    add('pop', () => { if (vil.econ && state.villages.includes(vil)) _popOne(vil); });
+    _lifeDayJobs([vil], add);
+  }
+  if (T.tail) {
+    for (const ev of W.extra) add('econ', () => { if (state.world.villages.includes(ev)) mute(() => W.P.village(ev)); }, 'econ:vil');   // 존 마을에 안 묶인 econ 마을(있으면 · 꼬리 앞)
+    if (T698_BOUNDARY_SLICE && typeof W.P.tradeSteps === 'function') {
+      let g = null;
+      add('econ', () => { let done = false; mute(() => { if (!g) g = W.P.tradeSteps(); done = g.next().done; }); return done ? undefined : 'retry'; }, 'econ:trade');
+    } else add('econ', () => mute(() => W.P.trade()), 'econ:trade');
+    add('econ', () => mute(() => W.P.caravans()), 'econ:caravan');
+    add('econ', () => { mute(() => { W.P.tail(); _econDayWar(); }); _econDayAfter(); }, 'econ:tail');
+    if (state.xzone) add('xzone', () => _xzDayOut());
+    const V = W.all.filter((v) => state.villages.includes(v));
+    for (const vil of V) add('terr', () => { try { _terrGrow(vil); } catch (e) {} });
+    for (const vil of V) add('ore', () => {
+      try { const r = _oreMineDaily(vil); if (r) { _oreFeedback(vil, r.oFrac); if (r.consumed > 0) { C.ore.v++; C.ore.c += r.consumed; if (vil._t724CutLast > 0) _t724P().double++; } } } catch (e) { }
+    });
+    add('ore', () => { if (C.ore.v) console.log(`[${state.zoneId}] ⛏ NPC 채굴: ${C.ore.v}개 마을 · 재고 -${C.ore.c.toFixed(0)}`); });
+    add('wx', () => {
+      for (const vil of V) C.terr[vil.dbId] = Math.round(Math.sqrt(((vil.econ.land && vil.econ.land.size ? vil.econ.land.size * 25 : 2800)) / Math.PI) * SZ);
+      for (const vil of V) {
+        const w = vil.econ && vil.econ._weather;
+        C.wx[vil.dbId] = (w && w.untilDay >= state.world.day) ? [w.name, (w.mult && w.mult.fertility != null) ? w.mult.fertility : 1] : null;
+      }
+      for (const cv of (state.clientPayload || [])) {
+        if (C.pops[cv.id] != null) cv.pop = C.pops[cv.id];
+        if (C.terr[cv.id] != null) cv.tr = C.terr[cv.id];
+        cv.wx = C.wx[cv.id] || null;
+      }
+    });
+    add('bcast', () => {
+      let _cal = null; try { _cal = require('./events').calendarOf(state.world.day | 0); } catch (e) {}
+      const _cn = T728_KEEP ? t728CalNext() : null;
+      state.deps.broadcast(_cn ? Object.assign({ type: 'sim_village_day', day: state.world.day, jobs: C.jobChanges, pops: C.pops, terr: C.terr, wx: C.wx, calendar: _cal }, _cn)
+        : { type: 'sim_village_day', day: state.world.day, jobs: C.jobChanges, pops: C.pops, terr: C.terr, wx: C.wx, calendar: _cal });
+    });
+    if (T681_ON) add('caravan', () => _t681Day(C.now));
+    if (T661_ON) add('caravan', () => refreshAllFishSustain(Date.now(), true));
+    for (const c of state.world.caravans.slice()) add('caravan', () => _caravanSyncOne(C.now, c, C.car));
+    add('caravan', () => { _caravanSyncSweep(C.car); });
+    if (T698_BOUNDARY_SLICE) {
+      let g = null;
+      add('events', () => { try { if (!g) g = _scanEventsSteps(); if (!g.next().done) return 'retry'; } catch (e) { console.error(`[${state.zoneId}] 📜 사건 장부 실패(틱은 계속):`, e.message); } });
+    } else add('events', () => { try { _scanEventsDaily(); } catch (e) { console.error(`[${state.zoneId}] 📜 사건 장부 실패(틱은 계속):`, e.message); } });
+    add('save', () => { state.saveQueue = V.slice(); });
+    add('dist', () => {
+      if (!state.distDirty) return;
+      state.distDirty = false;
+      const _k = state._distIncrFrom; state._distIncrFrom = -1;
+      try { computeAndInjectDistMatrix('무효화 재계산', (_k > 0) ? { incrementalFrom: _k } : undefined); } catch (e) { console.error(`[${state.zoneId}] 🏘️ BFS 거리행렬 재계산 실패(기존 행렬 유지):`, e.message); }
+    });
+    add('t731', () => {   // 창 닫음 — 증인(동 → 서 · 마을마다 자정 시각 · 실제 돈 시각)
+      const w = W.wit, iso = (ms) => new Date(ms).toISOString().slice(11, 23);
+      const lates = w.map((x) => x[3] - x[2]);
+      const R = { D: W.D, econDay: state.world.day, n: w.length, opens: C.t731Opens, spanS: w.length ? +((w[w.length - 1][3] - w[0][3]) / 1000).toFixed(3) : 0,
+        dueSpanS: w.length ? +((w[w.length - 1][2] - w[0][2]) / 1000).toFixed(3) : 0,
+        lateMs: { max: lates.length ? Math.round(Math.max(...lates)) : 0, min: lates.length ? Math.round(Math.min(...lates)) : 0 },
+        east: w[0] ? [w[0][0], iso(w[0][2]), iso(w[0][3])] : null, west: w.length ? [w[w.length - 1][0], iso(w[w.length - 1][2]), iso(w[w.length - 1][3])] : null,
+        orderBad: _t731Stat.orderBad, wit: w.map((x) => [x[0], +x[1].toFixed(5), Math.round(x[2] - W.open), Math.round(x[3] - W.open)]) };
+      _t731Stat.windows++; _t731Stat.vils += w.length; _t731Stat.last = R;
+      console.log(`[${state.zoneId}] 🕛 [T731] 창 ${W.D} 닫음 — 마을 ${R.n}(미니 마감 ${R.opens}) · 동 ${R.east && R.east.join(' ')} → 서 ${R.west && R.west.join(' ')} · 자정 퍼짐 ${R.dueSpanS}초 · 돈 퍼짐 ${R.spanS}초 · 늦음 ${R.lateMs.min}~${R.lateMs.max}ms · 동→서 어김 ${R.orderBad}`);
+      if (process.env.T731_WIT === '1') console.log(`[${state.zoneId}] 🕛 [T731] 증인 ${JSON.stringify(R)}`);
+      state.t731Day = W.D; state._t731 = null;
+    });
+  }
+  state.tickCtx = C;
+  state.tickJobs = J;
 }
 let _t523Pause = 0;   // 쉼표에서 다른 프레임에 넘겨 준 시간의 누계(생활층 스톱워치가 그만큼 뺀다 · 계측 전용)
 
@@ -6561,7 +6724,8 @@ function _lifeDayJobs(vils, add) {
 }
 
 // 하루 경계: 그날 할 일을 조각 목록으로 **세우기만** 한다(아무것도 실행하지 않는다).
-function _openDayJobs(now) {
+function _openDayJobs(now, T) {
+  if (T) return _t731Jobs(now, T);   // ★[T731] 켬 — 창의 머리 · 마을 · 꼬리 조각(끔이면 T 가 없다 = 아래 종전 그대로)
   const t0 = Date.now();
   const C = { now, t0, stg: {}, econPop: 0, npcCount: 0, jobChanges: {}, pops: {}, terr: {}, wx: {},
               car: _caravanSyncNew(), ore: { v: 0, c: 0 }, chunks: 0, maxChunk: 0, maxChunkAt: '', order: [],
@@ -6767,6 +6931,7 @@ function _drainTickJobs(now) {
   if (J.length) return;                       // 아직 마감 중 — 다음 프레임에 이어서
   state.tickJobs = null; state.tickCtx = null;  // ★먼저 푼다 — 안 그러면 방류된 요청이 도로 큐에 걸린다
   if (C.t690) { _t690Closed(C); _drainVillageWaitQ(); return; }   // ★[T690] 위상 조각(생활층만) — 하루 마감 꼬리(`_closeDay` 로그·계측)는 경계 마감만
+  if (C.t731mini) { _drainVillageWaitQ(); return; }   // ★[T731] 창 가운데(머리 · 마을) — 하루 마감 꼬리(`_closeDay`)는 창 꼬리에서만
   try { _closeDay(C); } catch (e) { console.error(`[${state.zoneId}] 🏘️ 일틱 마감 로그 실패:`, e.message); }
   _drainVillageWaitQ();
 }
@@ -8012,7 +8177,7 @@ function _lifeClearDay(vil, farmerN) {
 }
 function _lifeHeadlessDay(vil) {
   _lifeVL();   // lazy 로드 방어(단독 호출 경로 — 5e8d5f5 'is not defined' 클래스 재발 금지)
-  const day = state.dayMs ? gameDayOf(_dayNow()) : 0;
+  const day = state.dayMs ? (T731_ON ? _ledgerDay(vil, _dayNow()) : gameDayOf(_dayNow())) : 0;
   let farmerN = 0, popN = 0;
   for (const pid of vil.npcPids) { const p = state.deps.players.get(pid); if (!p) continue; popN++; if (p.simJob === 'farmer') farmerN++; }
   if (!popN) return;
@@ -9783,7 +9948,7 @@ function _t400BuildDay(vil) {
   const E = _lifeEcon();
   if (!E.T400_BUILD_ACT || !vil.econ) return null;
   vil.econ._t400Live = true;   // econ 이 이 마을의 집 자재를 **추상 차감하지 않게**(차감은 아래 행위가 진다 · `buildActOn`)
-  const day = state.dayMs ? gameDayOf(_dayNow()) : 0;
+  const day = state.dayMs ? (T731_ON ? _ledgerDay(vil, _dayNow()) : gameDayOf(_dayNow())) : 0;
   const dbg = vil._t400Dbg = { day, crew: 0, trips: 0, perTrip: 0, took: 0, placed: 0, adv: 0, stall: 0, walkS: 0, dayS: 0, jobs: {} };
   const s2 = vil._site; if (!s2) { vil._t400Crew = null; return dbg; }
   const crew = _t400Crew(vil); if (!crew.length) return dbg;
@@ -10187,7 +10352,7 @@ function _t435Ready(vil) {
 function _t435GranaryDay(vil) {
   const E = _lifeEcon();
   const p = vil._granPend; if (!p || !E.T435_GRANARY_ACT || !vil.econ) return null;
-  const day = state.dayMs ? gameDayOf(_dayNow()) : 0;
+  const day = state.dayMs ? (T731_ON ? _ledgerDay(vil, _dayNow()) : gameDayOf(_dayNow())) : 0;
   const dbg = vil._t435Dbg = { day, crew: 0, trips: 0, took: 0, stall: 0, walkS: 0, jobs: {} };
   const need = E.granaryEconMaterials() || {};
   if (!p.mat) p.mat = {};
@@ -10309,7 +10474,7 @@ function _t527BridgeDay(vil) {
   const E = _lifeEcon();
   const sites = _t527Sites(); if (!sites || !vil.econ) return null;
   const site = sites.find((s) => !s.done && s.v.indexOf(vil.name) >= 0); if (!site) return null;
-  const day = state.dayMs ? gameDayOf(_dayNow()) : 0;
+  const day = state.dayMs ? (T731_ON ? _ledgerDay(vil, _dayNow()) : gameDayOf(_dayNow())) : 0;
   const dbg = vil._t527Dbg = { day, site: site.i, crew: 0, trips: 0, took: 0, adv: 0, stall: 0, walkS: 0, jobs: {} };
   const crew = _t527Crew(vil); if (!crew.length) return dbg;
   dbg.crew = crew.length;
@@ -10946,7 +11111,7 @@ function* _lifeDailySteps(vil) {   // 게임일 경계: 크루·클레임 재대
   //   ★[T341] **예산이 없다** — 멈추는 것은 **걸음**(하루 왕복 수 · 짐 상한)과 **숲**(있는 그루)뿐이다.
   //     가까운 순서가 아니라 색인 순서인 것은 헤드리스라서다. 그리고 하루가 끝나면 **재생**이 돈다.
   if (vil.econ && _lifeEcon().T325_WOOD_ACT) {
-    const _d = state.dayMs ? gameDayOf(_dayNow()) : 0;
+    const _d = state.dayMs ? (T731_ON ? _ledgerDay(vil, _dayNow()) : gameDayOf(_dayNow())) : 0;
     // ★먼저 센다 — 이 줄이 `woodActOn` 의 입력을 만든다(닭과 달걀을 여기서 끊는다 · 위 `_t325Scan` 주석).
     const _tr = _t325Scan(vil, _d);
     //   ⚠**`return` 을 쓰지 않는다** — 이 절은 `_lifeDaily` 의 중간이고, 여기서 돌아가면 뒤의 하루 경계
@@ -11034,7 +11199,7 @@ function* _lifeDailySteps(vil) {   // 게임일 경계: 크루·클레임 재대
   //   ⚠수식은 **한 벌**이다: `r` 유도(`forageRegrowR`)와 로지스틱(`actRegrowPerDay`) 모두 econ 정본이고
   //     나무와 **같은 몸통**(`_actRegrowR`)이다. 여기 갈린 것은 상태 칸 이름뿐이다(되돌릴 목록·누계).
   if (vil.econ && _lifeEcon().T347_FORAGE_ACT) {
-    const _d = state.dayMs ? gameDayOf(_dayNow()) : 0;
+    const _d = state.dayMs ? (T731_ON ? _ledgerDay(vil, _dayNow()) : gameDayOf(_dayNow())) : 0;
     const _gv = _t347Scan(vil, _d);                       // ★먼저 센다 — `forageActOn` 의 입력을 만든다
     //   ★걷는 목록을 econ 세계에 심는다 — `trees.attachToWorld` 가 `forageRealItems` 를 심는 그 계약이다
     //     (econ 은 지형·청크·전리품 표를 모른다 · 사본 0). 멱등이고 한 번만 센다.
@@ -11160,7 +11325,7 @@ function* _lifeDailySteps(vil) {   // 게임일 경계: 크루·클레임 재대
   if (T687_ON) { const _pz0 = _t523Pause; yield; const _pz = _t523Pause - _pz0; _lt += _pz; _lt0 += _pz; }   // ★[T687] 쉼표(차례 그대로 · 쉰 시간은 스톱워치에서 뺀다)
   // 작물 하루 틱(랩 7920 동형): 김매기·물대기 놓치면 품질↓ · 병충해 발생(내일 방제 일감) — 상태·연출만(식량은 econ 소유)
   if (vil._crop && vil._crop.size) {
-    const day = state.dayMs ? gameDayOf(_dayNow()) : 0;
+    const day = state.dayMs ? (T731_ON ? _ledgerDay(vil, _dayNow()) : gameDayOf(_dayNow())) : 0;
     for (const [k, e] of vil._crop) cropDayTick(e, !vil._drySet.has(k), day, k);   // ★[T58b] 정본 하나(플레이어 농지도 이걸 재생한다)
   }
   _sub('cropDay');   // ★[T523] 계측 전용 — 둘째 토막(아래 `gran` 은 이제 사냥 하루만)
@@ -11277,7 +11442,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
   // ══ 스케줄 게이트(랩 lifeLoop home 분기 7978~7987 동형 — 우선순위: 요양 > 밤·기상 전 취침 > 아침 추첨 > 반일 오후) ══
   const wpF = state.deps.worldPhase, dayR = state.deps.dayPhaseRatio || 0.7;
   const fv = wpF ? _t720Fv(wpF(now), npc.simLonOff || 0) : 0.35;   // 경도 로컬 태양시(§19 동형 — 동쪽 마을이 먼저 깨고 먼저 잔다)
-  const day = state.dayMs ? gameDayOf(now) : 0;
+  const day = state.dayMs ? (T731_ON ? _ledgerDay(vil, now) : gameDayOf(now)) : 0;   // ★[T731] 켬 = 장부 날도 그 마을이 정산한 날(현지 자정)
   //   ★[T720 ②] **몸의 날**(일과 도장 — 반일 굴림 · 곳간 인출 · 농부 출근 · 해 질 녘 정산) = 그 마을의 현지 날(끔 = `day` 그대로).
   //     현장 목록 · 나무 목록 · 어장 예산 · 작물 달처럼 **econ 날에 묶인 장부**는 `day`(세계 날)를 그대로 쓴다 — 1단계는 econ 경계가 세계 시계다(두 날이 섞이면 같은 장부를 두 번 연다).
   const bday = T720_LON_DAY ? (state.dayMs ? _bodyDay(npc, now) : 0) : day;
@@ -12265,6 +12430,7 @@ function __e2eDayFreeze(on) {
   const was = !!state.dayFreeze;
   state.dayFreeze = !!on;
   if (was && !state.dayFreeze) state.lastGameDay = gameDayOf(Date.now());   // 해동 = 지금부터 다시 센다
+  if (was && !state.dayFreeze && T731_ON && !state._t731) state.t731Day = _t731Base(Date.now());   // ★[T731] 켬 = 현지 자정 날도 지금부터
   return { ok: true, frozen: state.dayFreeze, day: state.world ? state.world.day : null };
 }
 
@@ -12566,7 +12732,7 @@ function _t728Restore() {
   if (M.rng && state.econ.setRngState && state.econ.rngState) {
     const cur = state.econ.rngState();
     const same = R.day === (W.day | 0);
-    state.econ.setRngState({ seed: same ? M.rng.seed : null, npc: Math.max(cur.npc, M.rng.npc | 0), vil: Math.max(cur.vil, M.rng.vil | 0) });
+    state.econ.setRngState({ seed: same ? M.rng.seed : null, npc: Math.max(cur.npc, M.rng.npc | 0), vil: Math.max(cur.vil, M.rng.vil | 0), s0: M.rng.s0 });   // ★[T731] 세계 씨(새 마을 흐름 재료 — 켬에서만 있다 · 끔이면 undefined = 무동작)
     if (same) {
       const byName = new Map(W.villages.map((v) => [v.name, v]));
       const findNpc = (v, id) => { if (id == null) return null; let n = v && (v.npcs || []).find((x) => x && x.id === id); if (n) return n;
@@ -12626,7 +12792,7 @@ function t728Shutdown(capMs, done) {
     const r = { why, waitMs: t1 - t0, saveMs: Date.now() - t1, villages: n, day: state.world.day | 0, err };
     _t728Stat.shutdown = r; done(r);
   };
-  const step = () => { if (!state.tickJobs) return fin('경계'); if (Date.now() - t0 > capMs) return fin('한도'); setTimeout(step, 5); };
+  const step = () => { if (!state.tickJobs && !(T731_ON && state._t731)) return fin('경계'); if (Date.now() - t0 > capMs) return fin('한도'); setTimeout(step, 5); };   // ★[T731] 켬 = 창(동 → 서)이 다 닫혀야 경계(얼림이 남은 마을을 몰아 닫는다)
   step();
 }
 
@@ -12651,7 +12817,8 @@ function __rumorProbe() {
     rumor: Object.assign({}, L.rumorStats) };
 }
 
-module.exports = { t719ReachPre, t719Stat: () => _t719Stat, streamStat, fishPerf, woodPerf, foragePerf, farmPerf,   // ★[T316] `/perf` 가 내주는 어부 관측(손잡이 끔이면 null) · ★[T325] 나무꾼 · ★[T347] 채집도 같은 꼴 · ★[T368] 농부
+module.exports = { t719ReachPre, t719Stat: () => _t719Stat, t731Stat: () => _t731Stat,   // ★[T731] 현지 자정 창 증인(켬에서만 찬다)
+  streamStat, fishPerf, woodPerf, foragePerf, farmPerf,   // ★[T316] `/perf` 가 내주는 어부 관측(손잡이 끔이면 null) · ★[T325] 나무꾼 · ★[T347] 채집도 같은 꼴 · ★[T368] 농부
   _t400BuildDay, _t400PerLoad, _t400Crew, _t400From,   // ★[T400] 집 행위 1층 — 하네스가 같은 함수를 부른다(사본 0)
   _t347ActItems, _t347PerLoad,   // ★[T347] 걷는 목록·짐당 개체 — 하네스가 표·유도를 옮겨 적지 않게 내준다(사본 금지)
   _lifeLootForage,   // ★[T462] 개체 하나가 내는 걷는 단위 — 자·하네스가 "세는 것 = 따는 것"을 이 함수로 잰다(사본 0)

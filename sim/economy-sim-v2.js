@@ -1887,6 +1887,7 @@ function tickWeather(world, day) {
     const v = world.villages[i];
     if (v._weather && v._weather.untilDay >= day) continue;
     // 마을마다 다른 phase로 trigger 결정 — index 기반 분산
+    if (v1.useVillageStream) v1.useVillageStream(v);   // ★[T731] 켬 = 그 마을 흐름(끔 = 무동작)
     const triggerRoll = v1.srand();
     if (triggerRoll < 0.015) {
       // 종류·기간도 마을마다 독립 (다음 srand 호출 — 마을 index에 따라 누적적으로 다름)
@@ -1897,6 +1898,7 @@ function tickWeather(world, day) {
         console.log(`  ${wk.name} Day ${day}: ${v.name} (${dur}일)`);
       }
     }
+    if (v1.useVillageStream) v1.useVillageStream(null);
   }
 }
 
@@ -1906,7 +1908,9 @@ function tickYearShock(world, day) {
   if (CAL.ON ? !(seasonOf(day) === 'autumn' && seasonOf(day - 1) !== 'autumn') : (day % 365 !== 180)) return;   // ★[T570] 켬 = 가을 첫날(9월 1일)
   const _shockDays = CAL.ON ? CAL.seasonLen(day) : 90;   // ★[T570] 그 가을의 길이(켬 91 · 끔 = 옛 90 글자 그대로)
   for (const v of world.villages) {
+    if (v1.useVillageStream) v1.useVillageStream(v);   // ★[T731] 켬 = 그 마을 흐름
     const roll = v1.srand();
+    if (v1.useVillageStream) v1.useVillageStream(null);
     if (roll < 0.15) {
       v._yearShock = { name: '🌾풍년', mult: { fertility: 1.3, game: 1.15 }, untilDay: day + _shockDays };
       console.log(`  🌾 Day ${day}: ${v.name} 풍년 (가을~겨울)`);
@@ -1928,7 +1932,7 @@ function tickYearShock(world, day) {
 //   ⚠`village(v)` 는 그 마을만 만진다(전역 쓰기 0 — 날씨·해 흉풍은 `head` 에서 이미 정해졌다).
 function tickWorldV2Parts(world) {
   let season = null, useSeason = false;
-  return {
+  const P = {
     head() {
       world.day += 1;
       if (_t707On(world)) settleMarketsV2(world);   // ★[T707] 어제 선 장의 떠날 때 정산 — 날을 올린 **바로 뒤**(마을 틱 앞 · 교역 기록의 날 = 장부에 든 날 · 끔 = 이 줄 무동작)
@@ -1940,6 +1944,11 @@ function tickWorldV2Parts(world) {
       useSeason = world._dbg?.season !== false;
     },
     village(v) {
+      if (v1.useVillageStream) v1.useVillageStream(v);   // ★[T731] 켬 = 이 마을의 일은 이 마을 흐름으로(끝에서 세계 흐름으로 돌려준다 · 끔 = 무동작)
+      try { _villageBody(v); } finally { if (v1.useVillageStream) v1.useVillageStream(null); }
+    },
+  };
+  function _villageBody(v) {
       if (world._dbg?.climate !== false) {
         // ★기온(2026-07-12): 야간최저 기준 한랭 스트레스(0~1) — 의복 커버리지 페널티·연료 가중·마모 가중이 소비(v1).
         const _elev = (v.land && v.land.elev) || 0;   // 호스트(지형층) 고도 주입 훅 — 미설치=0(해수면) 무해
@@ -1953,7 +1962,8 @@ function tickWorldV2Parts(world) {
       v1.adjustGuildTax(v, world.day);
       tickSubsistence(v, world.day);
       if (world._dbg?.decay !== false) tickDecay(v);
-    },
+  }
+  Object.assign(P, {
     trade() { tickTradeV2(world, world.day); },
     tradeSteps() { return tickTradeV2Steps(world, world.day); },   // ★[T698] 같은 교역 · 마을 하나씩(서버 하루 마감)
     caravans() { tickCaravansV2(world, world.day); },
@@ -1968,7 +1978,8 @@ function tickWorldV2Parts(world) {
       }
       if (world.tradeLog.length > 5000) world.tradeLog.splice(0, world.tradeLog.length - 5000);
     },
-  };
+  });
+  return P;
 }
 function tickWorldV2(world) {
   const P = tickWorldV2Parts(world);

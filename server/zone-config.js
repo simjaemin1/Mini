@@ -589,6 +589,11 @@ function localPhase(xAbs, nowMs = Date.now()) { return _t720Frac(localTod(xAbs, 
 function localDay(xAbs, nowMs = Date.now(), dayMs = WORLD.dayLengthMs, epoch = WORLD.worldEpoch) {
   return Math.floor((nowMs - (epoch || 0)) / dayMs + lonPhaseOff(xAbs));
 }
+/** ★[T731] 현지 자정 날 — 그 자리 현지 시각이 00:00 을 지나는 순간 하나 는다(재민 10-13: 마을 정산은 현지 00:00 · 동쪽 먼저).
+ *  = floor((t − 기점) ÷ 하루 + λ) — `localDay` 와 해 뜸 몫(¼)만 다르다(새 수 0). 동쪽(λ 큰 쪽)이 먼저 넘는다. */
+function localMidDay(xAbs, nowMs = Date.now(), dayMs = WORLD.dayLengthMs, epoch = WORLD.worldEpoch) {
+  return Math.floor((nowMs - (epoch || 0)) / dayMs + lonOf(xAbs));
+}
 /** 해 몫 더하기(음수 경도 몫도 [0,1) 로) — 종전 `(p + off) % 1` 의 켬 판. */
 function phaseAdd(p, off) { return _t720Frac(p + off); }
 const _T720_DAY_OK = (ABS_CLOCK_DESIGN.REAL_EPOCH_UTC % WORLD.dayLengthMs) === 0;   // 기점이 하루의 배수 — 켬 판의 해 몫이 종전 `worldPhase` 와 같은 시계 위에 선다
@@ -685,7 +690,7 @@ function _findNeighborSide(zoneId, side) {
 
 module.exports = {
   ABS_CLOCK_DESIGN, // §19 절대 시계 설계 예약(미채택 — 관측·문서용)
-  T720_LON_DAY, SUNRISE_FRAC, lonOf, lonPhaseOff, localTod, localPhase, localDay, phaseAdd, _T720_DAY_OK,   // ★[T720] 시각 한 식(켬일 때만 부른다)
+  T720_LON_DAY, SUNRISE_FRAC, lonOf, lonPhaseOff, localTod, localPhase, localDay, localMidDay, phaseAdd, _T720_DAY_OK,   // ★[T720] 시각 한 식(켬일 때만 부른다)
   ZONES, WORLD, ZONE_ORDER, CENTRAL, WS_PROTO, HTTP_PROTO,
   publicZoneMap, worldPhase, isNight, darknessLevel,
   findZoneAt, worldDistance, worldDeltaX, WRAP_X,
