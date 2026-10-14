@@ -6877,7 +6877,7 @@ function _closeDay(C) {
   _tickPerf.last = { day: state.world.day, at: Date.now(), total: C.work, wall: Date.now() - C.t0,
                      chunks: C.chunks, maxChunk: C.maxChunk, maxChunkAt: C.maxChunkAt, order: C.order,
                      frames: C.frames, frameMax: C.frameMax || 0,
-                     villages: C.vils.length, lifeMaxAt: _lifeMaxName, queued: C.queued || 0, stages: C.stg };
+                     villages: C.vils.length, lifeMaxAt: _lifeMaxName, queued: C.queued || 0, stages: C.stg, t731Opens: C.t731Opens };   // ★[T744] 켬 = 창의 미니 마감 수(끔 = undefined · JSON 에 안 선다)
   _tickPerf.ring.push(_tickPerf.last);
   if (_tickPerf.ring.length > 200) _tickPerf.ring.splice(0, _tickPerf.ring.length - 200);
   // ★[T1 §2-④] 하루 총합은 여기서 찍는다 — zone.js 의 `econ_frame` 은 이제 한 프레임 몫이다.
