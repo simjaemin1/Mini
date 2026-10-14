@@ -187,7 +187,7 @@ const _t707Stat = { markets: 0, joins: 0, roster: 0, carNoBody: 0, mktNoBody: 0,
 //   ① 대형이 지휘관 장부 자리를 따라간다(날마다 · 교전 들기 앞 — 종전엔 대형이 제 회관에 선 채 교전에 들어 회관 발자국 칸을 지났다)
 //   ② 길에서 먹기가 오늘 장부 자리까지를 "지난 길"로 읽는다(종전엔 하루 마감 차례 탓에 늘 0 — 낮 전부를 땄다)
 //   끔 = main 바이트(서버 기준선 3/3) · 켜면 전쟁이 있는 판이 갈린다(기준선 1020 날 383 농촌19) — 켜기는 PM.
-const T703_MARCH = T681_ON && process.env.T703_MARCH_LEDGER === '1';
+const T703_MARCH = T681_ON && process.env.T703_MARCH_LEDGER !== '0';   // ★[PM 10-14] 켬 기본(T681 켬 판 행군 장부 결함 고침 · 기준선 갈림 → 새 기준선) · 되돌림 `=0`
 
 // --- P3: 실체 전쟁 상수 ---
 //   ★[T284 2026-09-14] 관측자 LOD 반경·몸 상한·headless 폴백은 **제거**했다 —
@@ -828,7 +828,7 @@ const _serializeWarned = new Set();
 //     ⓒ 서버 `_baseOre`(광맥 되먹임의 기준 — 첫 되먹임 때 한 번 잡는 값)를 econ 행 곁 칸으로 — 다시 뜰 때마다 깎인 `land.ore` 로 다시 잡던 톱니를 막는다.
 //     ⓓ world 메타 행 하나(`world_meta`): econ 난수 상태 · 다음 주민 번호 · 다음 마을 번호 · 길 위 캐러밴(이름과 주민 번호로 다시 잇는다)과 번호 계수기 · 앵커.
 //   새 수 0 · 새 몸 필드 0. 값은 바뀌지 않는다(돌고 있는 동안은 끔과 같은 글자 · 저장 줄과 복원 문만 다르다).
-const T728_KEEP = process.env.T728_RESTART_KEEP === '1';
+const T728_KEEP = process.env.T728_RESTART_KEEP !== '0';   // ★[PM 10-14] 켬 기본 · 되돌림 `=0`
 const _T728_KEEP_KEYS = new Set(['_forageActItems', '_priceCache', '_priceCacheDay', 'dailyProductionBuf']);
 // ★★[T577 ④ 2026-10-03] **마지막 교역일은 서버 길에서 적는다** — econ 이 만든 칸(`lastTradeDay: 0`)은 sim/ 어디서도
 //   쓰이지도 읽히지도 않아 라이브 50/50 이 0 이었다(T572 회부 6). econ 객체는 **안 건드린다**: 서버가 곁(WeakMap)에
@@ -6359,7 +6359,7 @@ const T698_BOUNDARY_SLICE = process.env.T698_BOUNDARY_SLICE === '1';
 //      경계 손 일괄(`_lifeHandsIn` · `_lifeDaily` 손 비우기 넷)은 걷는다. ★하루 문 — 깨어 걸은 시간이 낮 하나(`dayMs × dayPhaseRatio`)를 넘도록
 //      못 닿으면 놓고 집으로(짐은 손에 · 그 날은 다시 안 나선다 · 이튿날 해 질 녘에 다시) — 촌장 마중(`_t529Step`)의 그 문 · 새 수 0.
 //   ④ econ 경계 · 마감 조각은 그대로(1단계 · 2단계는 econ 공유 씨 흐름 가르기 뒤).
-const T720_LON_DAY = process.env.T720_LON_DAY === '1';
+const T720_LON_DAY = process.env.T720_LON_DAY !== '0';   // ★[PM 10-14 · 재민 10-13 판정] 켬 기본 · 되돌림 `=0`
 let _zc720m = null;
 function _zc720() { return _zc720m || (_zc720m = require('./zone-config')); }
 function _t720LonOff(ccx) {   // 마을 중심 셀 x → 해 몫에 더할 경도 몫(절대 x = 존 원점 + 셀 중심)
@@ -7193,7 +7193,7 @@ function _t325Deliver(vil, npc) {
 //   ⚠econ 마을 객체에 두는 것은 `econ_state` 에 같이 적혀 재부팅에도 남게 하려는 것뿐이다(econ 은 이 칸을 안 읽는다 · `_t544Pack` 과 같은 자리).
 //   ⚠새 수 0 · 새 문 0 — 입구는 econ 정본 한 함수(`woodToGranary`)이고 짐·손은 그 입구가 돌려준 받은 몫의 나머지다. 바닥에 놓기는 안 만든다.
 //   ⚠손잡이 `T717_WOOD_HAND=1` · 끔(미설정) = 옛 줄 그대로(손 0 · 나머지 버림 · 비트 동일). 행위 층(`T325_WOOD_ACT`)이 꺼진 세계엔 부르는 자리가 없다.
-const T717_WOOD_HAND = process.env.T717_WOOD_HAND === '1';
+const T717_WOOD_HAND = process.env.T717_WOOD_HAND !== '0';   // ★[PM 10-14] 켬 기본(소멸 금지 · 기본 세계 바이트 같음) · 되돌림 `=0`
 function _t717PackPut(vil, u) {
   if (!(u > 1e-9) || !vil || !vil.econ) return 0;
   vil.econ._t717Pack = +((vil.econ._t717Pack || 0) + u).toFixed(6);
@@ -8667,7 +8667,7 @@ function _t562SliceStop() { const t = Date.now(), B = TB.slice(TICK_SLICE_MS || 
 //   ⓑ 도장이 바뀐 집합은 **새 도장 · 같은 시작 점(지난 S 의 ax · ay)** 으로 곁(`pre`)에 넓혀 둔다. 다음에 그 집이 물을 때 도장 · 시작 점이 같으면
 //   곁 것을 쓴다 — 같은 술어 · 같은 상자 · 같은 BFS 차례라 답이 같다(도장이 같으면 그 상자의 벽 · 다리가 안 바뀌었다). 다르면 종전처럼 새로 넓힌다.
 //   새 수 0 · 판정 0 · 끔 = 종전 글자(곁 칸을 안 만든다).
-const T719_REACH_PRE = process.env.T719_REACH_PRE === '1';
+const T719_REACH_PRE = process.env.T719_REACH_PRE !== '0';   // ★[PM 10-14] 켬 기본(같은 값 · 꼬리 줄임) · 되돌림 `=0`
 const _t719Stat = { checked: 0, cont: 0, pre: 0, adopt: 0, preDone: 0, idle: 0, nChecked: 0, nBegin: 0, nDone: 0, nRestart: 0, nAdopt: 0 };
 //   쉼: 한 바퀴(마을 전부) 돌아 할 일이 없었고 그 뒤 세상 콜라이더 세대(`collGenAll`)도 집 기억 셈(`sets`·`pend`)도 그대로면 아무것도 안 묻는다(틱마다 도장 16번 → 0).
 let _t719Vi = 0, _t719It = null, _t719G = NaN, _t719S0 = -1, _t719Idle = false, _t719Pass = 0, _t719Work = 0;

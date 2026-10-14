@@ -171,7 +171,7 @@ async function waitHttp(url, tries = 900) {
   // ★지급이 한 번에 안 붙을 수 있다(웰컴 직후 서버가 인벤을 다시 밀어 덮어쓰는 순간이 있다) — 확인될 때까지 다시 보낸다
   let inv0 = null;
   for (let i = 0; i < 6; i++) {
-    await send({ type: '__e2e_give', items: { stone: 400, wood: 400, berry: 300 }, tools: ['pickaxe', 'pickaxe'] });
+    await send({ type: '__e2e_give', items: { stone: 400, wood: 400 }, tools: ['pickaxe', 'pickaxe'] });   // ★[PM 10-14 · T725 켬] 베리는 넣기 직전에 준다 — 회관은 상한 것을 안 받는다(빠른 하루에선 미리 준 베리가 넣을 때 이미 상한다)
     await sleep(1200);
     inv0 = await page.evaluate(() => window.__getInv && window.__getInv());
     if (inv0 && (inv0.stone || 0) >= 400 && (inv0.wood || 0) >= 400) break;
@@ -334,7 +334,9 @@ async function waitHttp(url, tries = 900) {
   // ── 식량 투입 → 첫 주민 ─────────────────────────────────────────────────────
   if (hall) {
     await page.evaluate(() => { window.__villageInv = null; });
-    await send({ type: 'village_deposit', buildingId: hall.id, want: { berry: 300 } });
+    await send({ type: '__e2e_give', items: { berry: 1000 } });   // ★[PM 10-14 · T725 켬] 갓 딴 베리(위 주석) · 회관 = 거래소와 같은 무게(열량 × 신선도) — 베리 300 = 식량 4.7 이라 문턱 15 를 넘게 1000
+    await sleep(400);
+    await send({ type: 'village_deposit', buildingId: hall.id, want: { berry: 1000 } });
     for (let i = 0; i < 20 && !(await page.evaluate(() => window.__villageInv)); i++) await sleep(700);
     inv = await page.evaluate(() => window.__villageInv);
     const fruitQ = inv && ((inv.groups.find((g) => g.key === 'food') || { items: [] }).items.find((i) => i.r === 'fruit') || {}).q;

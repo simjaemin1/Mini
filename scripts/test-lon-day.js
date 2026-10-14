@@ -77,7 +77,7 @@ say('\n④ 존 경계에서 안 끊긴다(미끼 — 종전 0.045 식)');
   ok(span > 160 && span < 170, '한반도 존 폭 = 하루의 존 폭 ÷ 세계 폭(실초 · T712 표 165초)', span.toFixed(1)); }
 
 say('\n⑤ 끔 = 아무도 안 부른다');
-{ const env0 = Object.assign({}, process.env); delete env0.T720_LON_DAY;
+{ const env0 = Object.assign({}, process.env); env0.T720_LON_DAY = '0';   /* ★[PM 10-14] 켬 기본 — 끔 판은 `=0` */
   const probe = (env) => JSON.parse(execFileSync(process.execPath, ['-e', `const Z=require(${JSON.stringify(path.join(ROOT, 'server', 'zone-config.js'))});console.log(JSON.stringify([Z.T720_LON_DAY,Z.ABS_CLOCK_DESIGN.ADOPTED]))`], { env, encoding: 'utf8' }).trim());
   const off = probe(env0), on = probe(Object.assign({}, env0, { T720_LON_DAY: '1' }));
   ok(off[0] === false && off[1] === false, '★env 없음 → 손잡이 끔 · 절대 시계 미채택', JSON.stringify(off));

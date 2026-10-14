@@ -44,7 +44,7 @@ console.log('\n② 손·짐에 남는 통나무 — 정적');
   const del = body('_t325Deliver'), pin = body('_t717PackIn'), put = body('_t717PackPut'), nw = body('_t717NewWood');
   const daily = (VC.match(/function\* _lifeDailySteps\(vil\) \{[\s\S]*?\n\}/) || [''])[0];
   const hin = body('_lifeHandsIn');
-  ok(/const T717_WOOD_HAND = process\.env\.T717_WOOD_HAND === '1';/.test(VC), 'ⓐ 손잡이 `T717_WOOD_HAND` — `=1` 만 켬(미설정 = 끔)');
+  ok(/const T717_WOOD_HAND = process\.env\.T717_WOOD_HAND !== '0';/.test(VC), 'ⓐ 손잡이 `T717_WOOD_HAND` — 기본 켬(`=0` 만 끔)');
   ok(/if \(T717_WOOD_HAND\) \{ const r = \+\(u - got\)\.toFixed\(6\); npc\.inventory\.wood = r > 1e-9 \? r : 0; npc\._t717L = npc\.inventory\.wood; \}/.test(del)
      && /else npc\.inventory\.wood = 0;/.test(del),
     'ⓐ ★★몸 갈래(`_t325Deliver`) — 켬 = 넣은 만큼만 손에서 뺀다(남긴 몫 `_t717L`) · 끔 = 옛 줄(손 0)');
@@ -58,7 +58,7 @@ console.log('\n② 손·짐에 남는 통나무 — 정적');
     'ⓐ 짐 = econ 마을 칸 하나(단) · 입고는 같은 입구(`woodToGranary`) · 받은 만큼만 뺀다');
   ok(/return T717_WOOD_HAND \? w > \(p\._t717L \|\| 0\) \+ 1e-9 : w > 0;/.test(nw)
      && /const nw = _t717NewWood\(p\); _t325Deliver\(vil, p\); if \(nw\) n\+\+;/.test(hin)
-     && /const nw = _t717NewWood\(p\); _t325Deliver\(vil, p\); if \(nw\) _walked\+\+;/.test(daily),
+     && /const nw = _t717NewWood\(p\); (?:if \(!T720_LON_DAY\) )?_t325Deliver\(vil, p\); if \(nw\) _walked\+\+;/.test(daily),
     'ⓐ ★걸은 몸 세기(두 자리 — 틱 앞 손 입고 · 하루 손 입고) — 켬 = 남긴 몫보다 많이 든 손만 · 끔 = 손에 통나무가 있나(옛 줄)');
   ok(!/Ground|Drop/.test(del + pin + put), 'ⓔ 바닥에 놓는 문은 안 불린다(짐 · 손뿐)');
   //   새 수 0 — 이 카드가 더한 줄의 수는 1e-9(0 비교) · 6(소수 자리 — 옆 줄들의 그 규약)뿐
@@ -69,7 +69,7 @@ console.log('\n② 손·짐에 남는 통나무 — 정적');
 // ── ② 실행 — 몸 갈래 · 짐 · 하루(정본 `_lifeDaily`) ───────────────────────────────────────────────────────
 console.log('\n② 손·짐에 남는 통나무 — 실행(정본 함수 · 행위 층 켬 · 수요 문 켬)');
 {
-  const base = { T325_WOOD_ACT: '1', T347_FORAGE_ACT: '', T374_DEMAND_STOP: '1', T449_BODY_DAY: '', T491_BATCH_FROM_BODY: '', T561_ROSTER_BODY: '' };
+  const base = { T717_WOOD_HAND: '0', T325_WOOD_ACT: '1', T347_FORAGE_ACT: '', T374_DEMAND_STOP: '1', T449_BODY_DAY: '', T491_BATCH_FROM_BODY: '', T561_ROSTER_BODY: '' };
   //   ⓑ 몸 갈래 — 손 9 단 · 그날 몫 2
   const bodyJs = `const E=require(${EP}); const V=require(${VP}); const P=V.__labProbe._t717Probe;
     const ev=E.createVillage({initialPop:0,name:'x',fertility:1}); ev._woodOutLast=2; ev._t325InflowToday=0;
@@ -79,7 +79,7 @@ console.log('\n② 손·짐에 남는 통나무 — 실행(정본 함수 · 행�
     ev._t325InflowToday=0;                                         // 이튿날(틱이 오늘치를 장부에 옮기고 비웠다)
     const nw=P.newWood(npc); const g2=P.deliver(vil,npc); const h2=npc.inventory.wood;
     console.log(JSON.stringify({on:P.ON,g1:+g1.toFixed(6),h1,L1:L1==null?null:L1,nw,g2:+g2.toFixed(6),h2,gran:+(tot()-w0).toFixed(6)}))`;
-  const bOff = probe(base, bodyJs), bOn = probe(Object.assign({ T717_WOOD_HAND: '1' }, base), bodyJs);
+  const bOff = probe(base, bodyJs), bOn = probe(Object.assign({}, base, { T717_WOOD_HAND: '1' }), bodyJs);
   ok(bOff.on === false && bOff.g1 === 2 && bOff.h1 === 0 && bOff.L1 === null && bOff.g2 === 0,
     'ⓐ ★★끔 — 손 9 · 몫 2 → 곳간 2 · **손 0**(7 단이 세계에서 없어진다 — 옛 줄 그대로)', JSON.stringify(bOff));
   ok(bOn.on === true && bOn.g1 === 2 && bOn.h1 === 7 && bOn.L1 === 7 && bOn.nw === false && bOn.g2 === 2 && bOn.h2 === 5 && bOn.gran === 4,
@@ -90,7 +90,7 @@ console.log('\n② 손·짐에 남는 통나무 — 실행(정본 함수 · 행�
     P.put(vil,4.5); const out=[]; for (let d=0; d<4; d++) { ev._t325InflowToday=0; const g=P.packIn(vil); out.push([+g.toFixed(6), ev._t717Pack==null?null:ev._t717Pack]); }
     const z=P.put(vil,0); const neg=P.put(vil,-1);
     console.log(JSON.stringify({out,z,neg,pk:ev._t717Pack==null?null:ev._t717Pack,acc:+(vil._t717PkIn||0).toFixed(6)}))`;
-  const pk = probe(Object.assign({ T717_WOOD_HAND: '1' }, base), packJs);
+  const pk = probe(Object.assign({}, base, { T717_WOOD_HAND: '1' }), packJs);
   ok(JSON.stringify(pk.out) === JSON.stringify([[2, 2.5], [2, 0.5], [0.5, null], [0, null]]) && pk.z === 0 && pk.neg === 0 && pk.pk === null && pk.acc === 4.5,
     'ⓒ ★★짐 4.5 · 하루 몫 2 — 2 · 2 · 0.5 로 나뉘어 든다(나머지는 짐에) · 빈 짐은 칸을 지운다 · 0 · 음수는 안 넣는다', JSON.stringify(pk));
   //   ⓒ 하루 — 정본 `_lifeDaily` 나흘(숲 12셀 × 3그루 · 한 그루 6단 · 하루 몫 2 · 나무꾼 1)
@@ -115,19 +115,19 @@ console.log('\n② 손·짐에 남는 통나무 — 실행(정본 함수 · 행�
     }
     const hand=players.get(1).inventory.wood||0, pkEnd=ev._t717Pack||0;
     console.log(JSON.stringify({days,cut,cutU,h0,gran:+(tot()-w0).toFixed(6),pk:pkEnd,hand,lost:+(cutU+h0-(tot()-w0)-pkEnd-hand).toFixed(6)}))`;
-  const dOff = probe(base, dayJs()), dOn = probe(Object.assign({ T717_WOOD_HAND: '1' }, base), dayJs());
+  const dOff = probe(base, dayJs()), dOn = probe(Object.assign({}, base, { T717_WOOD_HAND: '1' }), dayJs());
   ok(dOff.cut === 4 && dOff.gran === 8 && dOff.pk === 0 && dOff.lost === 16,
     'ⓐ ★★끔 — 나흘 4그루(24단) · 곳간 8 · **16 단이 사라진다**(하루 몫 2 를 넘는 4 단씩 — 옛 줄 그대로)', `벤 ${dOff.cut}그루 · 곳간 ${dOff.gran} · 사라짐 ${dOff.lost}`);
   ok(dOn.cut === 2 && dOn.gran === 8 && dOn.pk === 4 && dOn.lost === 0 && dOn.days.map((x) => x.cut).join() === '1,0,0,1' && dOn.days.map((x) => x.pk).join() === '4,2,0,4',
     'ⓑ ★★★켬 — 같은 곳간 8 에 **2그루**(12단 = 곳간 8 + 짐 4 · 사라짐 0) · 짐이 이틀을 댄다(1 · 0 · 0 · 1그루)', `벤 ${dOn.cut}그루 · 짐 ${dOn.days.map((x) => x.pk).join('→')} · 사라짐 ${dOn.lost}`);
   //   ⓓ 남긴 몫만 든 손 — 켬: 일괄을 안 막는다 · 끔: 손에 통나무가 있으면 그날은 몸이 걸은 날(옛 줄)
-  const lOn = probe(Object.assign({ T717_WOOD_HAND: '1' }, base), dayJs({ inventory: { wood: 1 }, _t717L: 1 }));
+  const lOn = probe(Object.assign({}, base, { T717_WOOD_HAND: '1' }), dayJs({ inventory: { wood: 1 }, _t717L: 1 }));
   const lOff = probe(base, dayJs({ inventory: { wood: 1 } }));
   ok(lOn.days[0].walked === 0 && lOn.days[0].cut === 1 && lOn.lost === 0 && lOff.days[0].walked === 1 && lOff.days[0].cut === 0,
     'ⓓ ★★남긴 몫(1단)만 든 손 — 켬: 그날 걸은 몸이 아니다(일괄이 1그루 · 사라짐 0) · 끔: 손 입고가 걸은 몸으로 세어 일괄 0(옛 줄)',
     `켬 걸음 ${lOn.days[0].walked} · 벰 ${lOn.days[0].cut} ↔ 끔 걸음 ${lOff.days[0].walked} · 벰 ${lOff.days[0].cut}`);
   //   ⓐ 행위 층 끔 — 켜도 부르는 자리가 없다(곳간 입구가 0 을 돌려주고 손도 짐도 안 생긴다 · 기본 세계 = main 바이트의 근거)
-  const noAct = probe(Object.assign({ T717_WOOD_HAND: '1' }, base, { T325_WOOD_ACT: '' }), dayJs({ inventory: { wood: 3 } }));
+  const noAct = probe(Object.assign({}, base, { T717_WOOD_HAND: '1', T325_WOOD_ACT: '' }), dayJs({ inventory: { wood: 3 } }));
   ok(noAct.cut === 0 && noAct.gran === 0 && noAct.pk === 0 && noAct.hand === 3,
     'ⓐ ★행위 층(`T325_WOOD_ACT`) 끔 세계 — 켜도 아무것도 안 한다(벰 0 · 곳간 0 · 짐 0 · 손 그대로) ⇒ 기본 세계는 main 그대로', JSON.stringify({ cut: noAct.cut, gran: noAct.gran, pk: noAct.pk, hand: noAct.hand }));
 }

@@ -434,7 +434,7 @@ console.log('\n⑫ 켠 팔의 잠재 — 밭이 낸 식량이 **잠재에도** �
   const hits = C.split('\n').map((l, i) => [i + 1, l]).filter(([, l]) => /dailyProductionPotential/.test(l));
   // ★[T312] 분류기는 **칸 이름을 열거한다**(`.food` · `[r]`). 어부 다리가 `.fish` 를 쓰므로 여기 더한다 —
   //   열거식이라 새 칸이 생기면 사람이 한 번 보고 더해야 하고, 그게 이 검사가 지키려는 바로 그 일이다.
-  const _W = /dailyProductionPotential(\[[^\]]+\]|\.food|\.fish|\.wood)\s*=/;
+  const _W = /dailyProductionPotential(\[[^\]]+\]|\.food|\.fish|\.wood|\.ore)\s*=/;   // ★[PM 10-14 · T724] 광부 장부 다리 `.ore`
   const writes = hits.filter(([, l]) => _W.test(l));
   const reads = hits.filter(([, l]) => !_W.test(l) && !/const dailyProductionPotential = \{\}/.test(l));
   // ★[T312] 어부 장부 다리가 **쓰는 자리 하나**를 더한다 · ★[T325] 나무꾼이 하나 더(선언 1 · 쓰기 4 · 읽기 2 = 일곱).
@@ -443,8 +443,8 @@ console.log('\n⑫ 켠 팔의 잠재 — 밭이 낸 식량이 **잠재에도** �
   //     채집 입고가 장부에 한 번도 안 올랐고(빚), T374 가 수요 문을 걸자 드러났다(보고/T374 §2).
   //     ⇒ 수를 올리고 **새 자리를 이름으로 못 박는다**(T312·T325 가 쓴 그 규약 · 정규식을 느슨하게 하지 않는다).
   //   ★[T368 2026-09-25] 하나 더 — 밭 장부 다리(품목별 · 넷째 적용). 같은 규약으로 **이름으로 못 박는다**.
-  ok(hits.length === 9, '⑫ 잠재를 건드리는 자리는 **아홉**이다(선언 1 · 쓰기 6 · 읽기 2 · ★T312 어부 · ★T325 나무꾼 · ★T374 채집 · ★T368 밭)', `실제 ${hits.length}`);
-  ok(writes.length === 6, '⑫ ★쓰는 곳 **여섯** — `addProduce`(끈 팔) · T183(밭) · ★T312(어부) · ★T325(나무꾼) · ★T374(채집) · ★T368(밭 품목)', `실제 ${writes.length}`);
+  ok(hits.length === 10, '⑫ 잠재를 건드리는 자리는 **열**이다(선언 1 · 쓰기 7 · 읽기 2 · ★T312 어부 · ★T325 나무꾼 · ★T374 채집 · ★T368 밭 · ★T724 광부)', `실제 ${hits.length}`);
+  ok(writes.length === 7, '⑫ ★쓰는 곳 **일곱** — `addProduce`(끈 팔) · T183(밭) · ★T312(어부) · ★T325(나무꾼) · ★T374(채집) · ★T368(밭 품목) · ★T724(광부)', `실제 ${writes.length}`);
   ok(/dailyProductionPotential\[c\] = \(dailyProductionPotential\[c\] \|\| 0\) \+ u;/.test(C),
     '⑫ ★★[T368] 그 새 자리가 **밭 장부 다리**다(품목별 · `_t368InByItem`)');
   ok(/dailyProductionPotential\[it\] = \(dailyProductionPotential\[it\] \|\| 0\) \+ a;/.test(C),
@@ -453,6 +453,8 @@ console.log('\n⑫ 켠 팔의 잠재 — 밭이 낸 식량이 **잠재에도** �
     '⑫ ★[T312] 그 셋째 자리가 **어부 다리**다(이름으로 못 박는다 — 수만 올린 게 아니다)');
   ok(/dailyProductionPotential\.wood = \(dailyProductionPotential\.wood \|\| 0\) \+ _t325In;/.test(C),
     '⑫ ★[T325] 그 넷째 자리가 **나무꾼 다리**다(같은 문법 · 같은 꼴)');
+  ok(/dailyProductionPotential\.ore = \(dailyProductionPotential\.ore \|\| 0\) \+ _t724In;/.test(C),
+    '⑫ ★[T724 · PM 10-14] 일곱째 자리가 **광부 다리**다(같은 문법 · 이름으로 못 박는다)');
   ok(reads.length === 2, '⑫ 읽는 곳 **둘** — `totalFoodProductionEquivalent`(prodK) · 볏짚(fuelK)', `실제 ${reads.length}`);
   ok(/const dailyFoodProdPotential = totalFoodProductionEquivalent\(dailyProductionPotential, v\);/.test(C)
      && /\(dailyProductionPotential\.food \|\| 0\) \* STRAW_FUEL_PER_FOOD/.test(C),

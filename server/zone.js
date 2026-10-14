@@ -1147,7 +1147,7 @@ const T385_ONE_SWEEP = process.env.T385_ONE_SWEEP !== '0';
 //   켜면: 같은 차례의 `Map.forEach`(살아 있는 순회 — 지우기·넣기 의미가 `for…of` 와 같다) · 벽 술어는 빌려 쓰는 객체 · 빌려 쓰는 질의 배열(`queryCircleScratch` — 같은 순회 · 같은 차례).
 //   ⚠값은 한 비트도 안 바뀐다(같은 차례 · 같은 수) — 3시드 두 자 · `t461-verify` · `test-move-soa` 가 문. 끔 = main 바이트(이 손잡이 줄이 안 닿는다).
 const T689_GC = process.env.T689_GC === '1';
-const T719_REACH_PRE_Z = process.env.T719_REACH_PRE === '1';   // ★[T719] 닿는 칸 집합 미리 넓히기(틱 꼬리) — villages.js `t719ReachPre`   // (머리에 둔다 — 벽·바닥 술어가 모듈 평가 중 불려도 TDZ 0)
+const T719_REACH_PRE_Z = process.env.T719_REACH_PRE !== '0';   // ★[T719] 닿는 칸 집합 미리 넓히기(틱 꼬리) — villages.js `t719ReachPre`   // (머리에 둔다 — 벽·바닥 술어가 모듈 평가 중 불려도 TDZ 0)
 const _t689SOC = { cx: 0, cy: 0 }, _t689SNC = { cx: 0, cy: 0 };   // ★[T689] 켬: 계단 측면 술어가 빌려 쓰는 칸 둘(재진입 0 — 이 함수는 안에서 자기를 안 부른다)
 const _t689WOC = { cx: 0, cy: 0 }, _t689WNC = { cx: 0, cy: 0 };   // ★[T689] 켬: 벽 술어가 빌려 쓰는 칸 둘
 // 활성 여부가 판정에 쓰이는 몸인가 — 종전 문지기 세 줄(`spatial`·`fall`·`hpRegen`)의 앞 두 항 그대로(술어는 안 부른다)
@@ -3106,6 +3106,7 @@ function _t671Shape(p) {
   p._t312Kg = undefined; p._t312U = undefined; p._farmK = undefined; p._lifeTask = undefined;
   p._t720 = undefined;   // ★[T720 ③] 해 질 녘 곳간 정산(villages `_t720Step` — 켬이면 서는 칸)
   p._warPackOf = undefined;   // 전쟁 짐(villages.js `_t671Unpack` — 끔이면 `delete`)
+  p._t717L = undefined;   // ★[PM 10-14 · T717 ②] 손에 남긴 통나무 몫(villages.js `_t325Deliver` · `_t717NewWood` — test-body-fields 규약)
   p._t724Site = undefined; p._t724T = undefined;   // ★[T724] 광부 몸의 그날 셀 · 선 때(villages.js `_t724BodyStep` — 손잡이 `T724_MINE_ACT` 켬일 때만 값이 든다)
 }
 function spawnNpc(opts = {}) {
@@ -8319,7 +8320,7 @@ if (T486_PONG_SPLIT) {
 }
 // ★★[T728 ④] 켬(`T728_RESTART_KEEP=1`)이면 pong 에 **서버 벽시계 ms**(`sn`)를 싣는다 — 클라가 pong 마다 차를 다시 잰다(참 차 ∈ [sn − 받은 때, sn − 보낸 때] 구간을 겹쳐 좁힌다 · `30-n-net.js`).
 //   종전엔 welcome 한 번(1.69 MB · 직렬 앞 도장)으로만 맞추고 다시 잴 길이 없었다(`srvIn`/`srvOut` 은 단조 시계라 절대 시각이 아니다). 끔 = 칸 없음(종전 글자).
-const T728_CLOCK = process.env.T728_RESTART_KEEP === '1';
+const T728_CLOCK = process.env.T728_RESTART_KEEP !== '0';   // ★[PM 10-14] 켬 기본
 function _t728CalNext() { try { return T728_CLOCK && SimVillages.t728CalNext ? SimVillages.t728CalNext() : null; } catch (e) { return null; } }
 function _t486Pong(t, srvIn) {
   const p = T486_PONG_SPLIT ? { type: 'pong', t, srvIn: +srvIn.toFixed(3), srvOut: +_t486Now().toFixed(3), loopP95: _t486LoopP95 } : { type: 'pong', t };
@@ -11374,7 +11375,7 @@ function tryVillageWelcome(player, buildingId, on) {
 //   (넣고 빼면 불어난다 · 소멸·생성 금지 캐논 위반 · T716 회부 ①). 곳간 정본 주석 그대로 — *"다르면 곳간이 환전소가 된다."*
 //   켬: ① 상한 것 거절(`_spoiledGuardItems` — 게시판·거래소와 같은 판정 · 같은 함수) ② 단위 = `_unitsOfFor`(열량 × 신선도 — 거래소·게시판이 쓰는 그 환산 하나)
 //       ③ 낸 개체를 무게 장부에서 뺀다(`Carry.takeKg` — 환산이 `peekKg` 로 본 그 개체 · 게시판 납품과 같은 뒷정리). 새 수 0 · 새 함수 0.
-const T725_HALL = process.env.T725_HALL_UNITS === '1';
+const T725_HALL = process.env.T725_HALL_UNITS !== '0';   // ★[PM 10-14] 켬 기본(왕복 불어남 ×102 고침) · 되돌림 `=0`
 function tryVillageDeposit(player, buildingId, want) {
   const b = buildings.get(buildingId);
   if (!b || b.type !== 'village_hall') return;

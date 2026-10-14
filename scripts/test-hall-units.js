@@ -151,7 +151,7 @@ const near = (a, b, tol) => Math.abs(Number(a) - Number(b)) <= tol;
 const KNOBS = ['T725_HALL_UNITS', 'T725_LOT_KINDS'];
 const run = (on) => {
   const env = Object.assign({}, process.env, { T725_SUB: 'zone' });
-  for (const k of KNOBS) delete env[k];
+  for (const k of KNOBS) env[k] = '0';
   if (on) for (const k of KNOBS) env[k] = '1';
   const txt = execFileSync(process.execPath, [__filename], { env, encoding: 'utf8', maxBuffer: 64 << 20, timeout: 900000 });
   return JSON.parse(txt.trim().split('\n').pop());
@@ -168,7 +168,7 @@ pre(errOk(zOff) && errOk(zOn), '회관 문이 던진 말은 랩의 화면 갱신
 
 say('\n① 손잡이');
 {
-  ok(/const T725_HALL = process\.env\.T725_HALL_UNITS === '1';/.test(ZSRC) && /const T725_KINDS = process\.env\.T725_LOT_KINDS === '1';/.test(LSRC),
+  ok(/const T725_HALL = process\.env\.T725_HALL_UNITS !== '0';/.test(ZSRC) && /const T725_KINDS = process\.env\.T725_LOT_KINDS !== '0';/.test(LSRC),
     "① 손잡이 둘 — '1' 하나만 켬(없음·빈 값·'0'·'true' = 끔)");
   ok(zOff.hall === false && zOff.kinds === false && zOn.hall === true && zOn.kinds === true, '① 하위 판이 손잡이를 그대로 읽었다(끔 · 켬)', `${zOff.hall}/${zOff.kinds} · ${zOn.hall}/${zOn.kinds}`);
 }

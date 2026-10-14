@@ -1596,7 +1596,7 @@ console.log('\n⑮ T427 ① — 닿는 현장만(배정 순간 집 → 후보 ·
       const M8 = mk7(false); gen = 60; begins = 0; M8._t427Set(M8.vilX, o7, null); gen = 61;
       const r8 = M8.t719ReachPre(50), b8 = begins;
       ok(r8 === 0 && b8 === 1 && M8._t719Stat.checked === 0 && !M8.vilX._t427R.values().next().value.pre,
-         '⑮-k ★[T719 ③] 끄면(기본) 꼬리 문은 0 — 미리 넓히기 0 · 집 기억에 손 안 댄다(종전 글자 그대로)', `돌려줌 ${r8} · 넓히기 ${b8}`);
+         '⑮-k ★[T719 ③] 끄면(`=0`) 꼬리 문은 0 — 미리 넓히기 0 · 집 기억에 손 안 댄다(종전 글자 그대로)', `돌려줌 ${r8} · 넓히기 ${b8}`);
       {   // 쉼 — 세상 세대(`collGenAll`)가 그대로고 한 바퀴 할 일이 없었으면 도장을 안 묻는다 · 세대가 오르면 다시 돈다
         const vilI = { ccx: 100, ccy: 100 }; let asksG = 0; const XI = Object.assign({}, X, { collGenAround: (...a) => { asksG++; return X.collGenAround(...a); }, collGenAll: () => gen });
         const src9 = t562Src.replace("const T719_REACH_PRE = process.env.T719_REACH_PRE === '1';", 'const T719_REACH_PRE = true;') + '\nlet _t719Vi = 0, _t719It = null, _t719G = NaN, _t719S0 = -1, _t719Idle = false, _t719Pass = 0, _t719Work = 0;\n' + preSrc + '\nreturn { _t427Set, t719ReachPre, _t719Stat };';
@@ -1623,9 +1623,9 @@ console.log('\n⑮ T427 ① — 닿는 현장만(배정 순간 집 → 후보 ·
            '⑮-k ★[T719 ③ⓒ] 처음 묻는 집 — 일터 고르는 직업(어부 · 사냥꾼 …) 집만 꼬리에서 미리(농부 0) · 첫 물음이 **물려받는다** · 같은 칸 다른 좌표가 먼저 물으면 안 받고 새로',
            `미리 ${bPre} · 물려받은 뒤 새로 ${bAfter} · 물려받음 ${MN._t719Stat.nAdopt} · 다른 좌표 새로 ${begins - bPre - bAfter}`);
       }
-      ok(/const T719_REACH_PRE = process\.env\.T719_REACH_PRE === '1';/.test(V) && /const T719_REACH_PRE_Z = process\.env\.T719_REACH_PRE === '1';/.test(Z)
+      ok(/const T719_REACH_PRE = process\.env\.T719_REACH_PRE !== '0';/.test(V) && /const T719_REACH_PRE_Z = process\.env\.T719_REACH_PRE !== '0';/.test(Z)
          && /if \(T719_REACH_PRE_Z\) \{[^\n]*SimVillages\.t719ReachPre\(/.test(Z),
-         '⑮-k 손잡이 `T719_REACH_PRE` — **기본 끔**(`=1` 만 켬) · 존은 틱 꼬리(쓰러짐 뒤 · 10 ms 안이면 남은 몫 ≤2 ms)에서만 부른다');
+         '⑮-k 손잡이 `T719_REACH_PRE` — **기본 켬**(`=0` 만 끔) · 존은 틱 꼬리(쓰러짐 뒤 · 10 ms 안이면 남은 몫 ≤2 ms)에서만 부른다');
     }
   }
   // ⓘ 미끼 — 술어가 늘 "닿는다"(= 안 본다)면 못 닿는 현장이 다시 배정된다

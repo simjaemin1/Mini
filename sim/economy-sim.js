@@ -1038,7 +1038,7 @@ const T347_FORAGE_ACT = process.env.T347_FORAGE_ACT === '1';
 //        몸이 안 친 마을(헤드리스 · 관측자 없는 마을)은 **종전 일괄 그대로**다(수식 원석 + `_oreMineDaily` 셀 깎기 — 카드 ③).
 //     ⓑ 몸이 캔 kg 를 econ 단위로 바꾸는 것은 부르는 쪽(`server/villages.js`)이다 — `weights.kgOf('ore')` 정본(5.00 · 옮겨 적지 않는다).
 //   켜기는 재민 — 이 카드는 값을 안 정한다.
-const T724_MINE_ACT = process.env.T724_MINE_ACT === '1';
+const T724_MINE_ACT = (typeof process !== 'undefined' && process.env && process.env.T724_MINE_ACT !== '0');   // ★[PM 10-14] 켬 기본(몸이 치는 판에서만 갈림 · 헤드리스 바이트 같음) · 되돌림 `=0`
 // ★★★[T400 2026-09-26] **집도 행위다 — 기본 끔.** 끄면 이 파일은 **넷째 판과 비트 동일**이다
 //   (아래 두 자리가 전부 이 상수 뒤에 있다: 주거 증축의 자재 단가 · 곳간 출구 `actFromGranary`).
 //   ① 자재의 정본은 **하나**다 — `server/hut-stages.js`(서버 움집 공정 · PM 권고 #61 · 재민 거부권).

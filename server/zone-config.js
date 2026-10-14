@@ -570,7 +570,7 @@ const ABS_CLOCK_DESIGN = {
 //      해 뜸 06:00 은 종전 클라 HUD 의 "phase 0 = 새벽 6시"(`gameTimeString` `+ 6`) 그 자리다 — 이름만 붙였다(새 수 0).
 //   ★종전 상수 0.045(서버 §19 `_lonOff` · 클라 `_lonView` · 랩 `L_LON_SPREAD`)가 이 식 하나로 바뀐다(켬일 때).
 //   ★종전 `worldPhase(t)`(경도 없는 세계 몫)는 그대로 둔다 — econ 경계 · 몹 밤 · 날씨는 1단계에서 세계 시계다. 그 값은 λ − 해뜸 = 0 인 자리(x = 0.75 W · 한반도 존 안)의 해 몫과 같다.
-const T720_LON_DAY = (typeof process !== 'undefined' && process.env && process.env.T720_LON_DAY === '1');
+const T720_LON_DAY = !(typeof process !== 'undefined' && process.env && process.env.T720_LON_DAY === '0');   // ★[PM 10-14 · 재민 10-13] 켬 기본(서버 · 번들) · 되돌림 `=0`
 if (T720_LON_DAY) ABS_CLOCK_DESIGN.ADOPTED = true;
 const SUNRISE_FRAC = 6 / 24;   // 해 뜸 = 06:00(종전 클라 `gameTimeString` 의 `+ 6` · 하루 몫)
 const _t720Frac = (v) => { const f = v % 1; return f < 0 ? f + 1 : f; };

@@ -29,7 +29,7 @@ const VSRC = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8');
 const ZSRC = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
 const codeOf = (s) => s.split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n').replace(/\/\*[\s\S]*?\*\//g, ' ');
 const probe = (env, js) => JSON.parse(execFileSync(process.execPath, ['-e', js],
-  { env: Object.assign({}, process.env, env), stdio: 'pipe' }).toString());
+  { env: Object.assign({}, process.env, { T720_LON_DAY: '0', T717_WOOD_HAND: '0' }, env), stdio: 'pipe' }).toString());   // ★[PM 10-14] T720 · T717 기본 켬 — 이 하네스는 그 둘 끈 갈래(경계 일괄 · 손 비움)를 문다
 const EP = JSON.stringify(path.join(ROOT, 'sim', 'economy-sim.js'));
 
 console.log('\n=== 나무꾼 행위 이식 (T325) ===');

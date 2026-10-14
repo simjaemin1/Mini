@@ -65,7 +65,7 @@ if (Spoil.Crops) {
 //     ⚠"안 썩는다" = 마른 채 두면 날·달 단위로 상하지 않는다. 섬유는 젖으면(상대습도 65% 넘게) 곰팡이가 슨다(CCI Notes 13/15) —
 //       이 세계엔 짐의 젖음 축이 없다(회부). 무두질 전 **생가죽은 썩는다** — 그 품목은 `hide` 다(지금도 로트가 아니다 · 넓히기는 재민 칸).
 //     ⚠작물 카탈로그 품목(`LOT_CORE` — 삼(대마)·쪽·차·뽕잎)은 손대지 않는다(보관일이 재민 카탈로그 저장성 축에서 온다).
-const T725_KINDS = process.env.T725_LOT_KINDS === '1';
+const T725_KINDS = process.env.T725_LOT_KINDS !== '0';   // ★[PM 10-14] 켬 기본 · 되돌림 `=0`
 const NO_ROT = Object.freeze({
   leather:  '무두질 — 가죽의 단백질 구조를 영구히 바꿔 더 질기고 덜 분해되게 한다(Wikipedia "Tanning (leather)")',
   fur:      '무두질 — 위와 같은 줄(손질한 모피)',

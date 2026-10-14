@@ -5521,7 +5521,7 @@ const ABS_CLOCK_DESIGN = {
 //      해 뜸 06:00 은 종전 클라 HUD 의 "phase 0 = 새벽 6시"(`gameTimeString` `+ 6`) 그 자리다 — 이름만 붙였다(새 수 0).
 //   ★종전 상수 0.045(서버 §19 `_lonOff` · 클라 `_lonView` · 랩 `L_LON_SPREAD`)가 이 식 하나로 바뀐다(켬일 때).
 //   ★종전 `worldPhase(t)`(경도 없는 세계 몫)는 그대로 둔다 — econ 경계 · 몹 밤 · 날씨는 1단계에서 세계 시계다. 그 값은 λ − 해뜸 = 0 인 자리(x = 0.75 W · 한반도 존 안)의 해 몫과 같다.
-const T720_LON_DAY = (typeof process !== 'undefined' && process.env && process.env.T720_LON_DAY === '1');
+const T720_LON_DAY = !(typeof process !== 'undefined' && process.env && process.env.T720_LON_DAY === '0');   // ★[PM 10-14 · 재민 10-13] 켬 기본(서버 · 번들) · 되돌림 `=0`
 if (T720_LON_DAY) ABS_CLOCK_DESIGN.ADOPTED = true;
 const SUNRISE_FRAC = 6 / 24;   // 해 뜸 = 06:00(종전 클라 `gameTimeString` 의 `+ 6` · 하루 몫)
 const _t720Frac = (v) => { const f = v % 1; return f < 0 ? f + 1 : f; };
@@ -7157,7 +7157,7 @@ const T347_FORAGE_ACT = process.env.T347_FORAGE_ACT === '1';
 //        몸이 안 친 마을(헤드리스 · 관측자 없는 마을)은 **종전 일괄 그대로**다(수식 원석 + `_oreMineDaily` 셀 깎기 — 카드 ③).
 //     ⓑ 몸이 캔 kg 를 econ 단위로 바꾸는 것은 부르는 쪽(`server/villages.js`)이다 — `weights.kgOf('ore')` 정본(5.00 · 옮겨 적지 않는다).
 //   켜기는 재민 — 이 카드는 값을 안 정한다.
-const T724_MINE_ACT = process.env.T724_MINE_ACT === '1';
+const T724_MINE_ACT = (typeof process !== 'undefined' && process.env && process.env.T724_MINE_ACT !== '0');   // ★[PM 10-14] 켬 기본(몸이 치는 판에서만 갈림 · 헤드리스 바이트 같음) · 되돌림 `=0`
 // ★★★[T400 2026-09-26] **집도 행위다 — 기본 끔.** 끄면 이 파일은 **넷째 판과 비트 동일**이다
 //   (아래 두 자리가 전부 이 상수 뒤에 있다: 주거 증축의 자재 단가 · 곳간 출구 `actFromGranary`).
 //   ① 자재의 정본은 **하나**다 — `server/hut-stages.js`(서버 움집 공정 · PM 권고 #61 · 재민 거부권).
@@ -16101,7 +16101,7 @@ const L_DAWN=0.25, L_DUSK=0.833;   // ★하루=24시간. 낮(06~20시)=노동, 
 // ★[T720 2026-10-13] 경도 하루 1단계 — URL `?T720_LON_DAY=1`(서버와 같은 이름 · T641 env 문)이면 서버와 **같은 식**: 랩 지도 셀 x 를 한반도 존 위 절대 x 로 놓고
 //   경도 = x ÷ 세계 폭 − 0.5(`zone-config.lonOf` — 번들 `EconEngine.ZoneCfg`). 랩 시각 f 는 0 = 자정(현지 시각과 같은 축)이라 해 뜸을 빼지 않는다.
 //   지도 서 → 동 끝의 차 = 존 폭 ÷ 세계 폭(유도 · 종전 0.045 자리). 끔 = 종전 줄 그대로.
-const L_T720=(typeof window!=='undefined'&&window.LAB_ENV&&window.LAB_ENV.T720_LON_DAY==='1'&&typeof EconEngine!=='undefined'&&!!EconEngine.ZoneCfg);
+const L_T720=(typeof window!=='undefined'&&window.LAB_ENV&&window.LAB_ENV.T720_LON_DAY!=='0'&&typeof EconEngine!=='undefined'&&!!EconEngine.ZoneCfg);
 function _t720Frac(v){const f=v%1;return f<0?f+1:f;}
 function _t720LabLon(cx){const ZC=EconEngine.ZoneCfg,Z=ZC.ZONES.hanbando;return ZC.lonOf(Z.worldOffsetX+(cx/N)*Z.zoneWidth);}
 const L_LON_SPREAD=0.045;   // ★경도 시차 폭(하루 비율): 맵 서→동 끝 로컬 태양시 차 4.5%≈65분 — 현 1.6km의 가상 시차(연출 스케일). 인간 일과만 로컬 fv=(f+vil._lonOff)%1, 야생 몹 수면·도적 야행·일 경계 회계(lifeDay)는 전역 f 유지(econ=전역 날짜, 행동=로컬 태양시 — 분리 원칙. 야생 로컬화는 본체 인계). 미래 원통 세계: 둘레/자전 주기로 이 상수만 재산정

@@ -244,7 +244,7 @@ console.log('\n⑨ 기본 b · 한반도 이동(정본) · 경계 앞 바다 ≥
   const nnsrc = fs.readFileSync(path.join(ROOT, 'public', 'client', '30-n-net.js'), 'utf8');
   const csrc = fs.readFileSync(path.join(ROOT, 'public', 'client', '00-const.js'), 'utf8');
   const one = /^const HANDOFF_COMMIT = (\d+);/m.exec(csrc0);
-  ok(one && +one[1] === KEEP && KEEP / 32 === 8 && !/^const HANDOFF_COMMIT = /m.test(zsrc) && /\bHANDOFF_COMMIT \} = require\('\.\/zone-config'\)/.test(zsrc),
+  ok(one && +one[1] === KEEP && KEEP / 32 === 8 && !/^const HANDOFF_COMMIT = /m.test(zsrc) && /\bHANDOFF_COMMIT\b[^}\n]*\} = require\('\.\/zone-config'\)/.test(zsrc),
     '⑨ 전제: 핸드오프 겹침 띠 `HANDOFF_COMMIT` 정본 한 자리 = zone-config(8셀) · zone.js 는 거기서 받는다(제 글자 0)', `zone-config ${one && one[1]} · zone.js 정의 ${/^const HANDOFF_COMMIT = /m.test(zsrc) ? '있음' : '0'}`);
   ok(/keepPx: _ZC\.HANDOFF_COMMIT/.test(chsrc) && /handoffCommit: HANDOFF_COMMIT/.test(cesrc) && /handoffCommit = \(typeof data\.handoffCommit === 'number'/.test(nnsrc) && /keepPx: handoffCommit/.test(csrc)
     && !/\b256\b/.test(cssrc.replace(/\/\/.*$/gm, '')) && _keepPx() === KEEP,

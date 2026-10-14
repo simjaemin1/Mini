@@ -33,7 +33,7 @@ const VSRC = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8');
 const ZSRC = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
 const codeOf = (s) => s.split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n').replace(/\/\*[\s\S]*?\*\//g, ' ');
 const probe = (env, js) => JSON.parse(execFileSync(process.execPath, ['-e', js],
-  { env: Object.assign({}, process.env, env), stdio: 'pipe' }).toString());
+  { env: Object.assign({}, process.env, { T720_LON_DAY: '0', T724_MINE_ACT: '0' }, env), stdio: 'pipe' }).toString());   // ★[PM 10-14] T720 · T724 기본 켬 — 이 하네스는 그 둘 끈 갈래(경계 일괄 손 → 곳간)를 문다
 const EP = JSON.stringify(path.join(ROOT, 'sim', 'economy-sim.js'));
 
 console.log('\n=== 채집 행위 이식 (T347) ===');
@@ -937,7 +937,7 @@ console.log('\n⑰ [T475] 걷는 목록은 마을마다 — 그 마을 원판에
   // ⓕ 끔 비트 동일 · 직렬화 · 랩
   ok(/'_forageActItems',/.test(VC.slice(VC.indexOf('const SERIALIZE_SKIP'), VC.indexOf('const _serializeWarned'))),
     'ⓕ 마을 목록은 **저장 안 한다**(`SERIALIZE_SKIP` — 세는 값 · 하루 경계에서 다시 심는다 · 사본 0)');
-  ok(/if \(!\(E\.T347_FORAGE_ACT \|\| E\.T325_WOOD_ACT\) \|\| !vil \|\| !vil\.econ\) return;/.test(hiBody),
+  ok(/if \(!\(E\.T347_FORAGE_ACT \|\| E\.T325_WOOD_ACT(?: \|\| E\.T724_MINE_ACT)?\) \|\| !vil \|\| !vil\.econ\) return;/.test(hiBody),   // ★[PM 10-14] T724 셋째 항
     'ⓕ ★두 시계 한 줄은 손잡이 **첫 줄** 뒤다(끄면 곧장 돌아간다)');
   const labs = ['lab/마을실험실.html', 'lab/전쟁실험실.html'].map((f) => fs.readFileSync(path.join(ROOT, f), 'utf8').split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n'));
   ok(labs.every((s) => !/_forageActItems\s*=[^=]/.test(s)), 'ⓕ 랩은 마을 목록 문을 **안 연다**(브라우저엔 군락이 없다 — T226·T347 과 같은 이유)');

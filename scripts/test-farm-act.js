@@ -33,7 +33,7 @@ const VSRC = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8');
 const ZSRC = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
 const codeOf = (s) => s.split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n').replace(/\/\*[\s\S]*?\*\//g, ' ');
 const probe = (env, js) => JSON.parse(execFileSync(process.execPath, ['-e', js],
-  { env: Object.assign({}, process.env, { T100_FIELD_YIELD: '', T368_FARM_ACT: '', T227_EVEN: '' }, env), stdio: 'pipe' }).toString().trim().split('\n').pop());
+  { env: Object.assign({}, process.env, { T100_FIELD_YIELD: '', T368_FARM_ACT: '', T227_EVEN: '', T720_LON_DAY: '0' }, env), stdio: 'pipe' }).toString().trim().split('\n').pop());
 const EP = JSON.stringify(path.join(ROOT, 'sim', 'economy-sim.js'));
 const VP = JSON.stringify(path.join(ROOT, 'server', 'villages.js'));
 const KP = JSON.stringify(path.join(ROOT, 'server', 'kcal.js'));

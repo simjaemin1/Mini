@@ -5522,7 +5522,7 @@ const ABS_CLOCK_DESIGN = {
 //      해 뜸 06:00 은 종전 클라 HUD 의 "phase 0 = 새벽 6시"(`gameTimeString` `+ 6`) 그 자리다 — 이름만 붙였다(새 수 0).
 //   ★종전 상수 0.045(서버 §19 `_lonOff` · 클라 `_lonView` · 랩 `L_LON_SPREAD`)가 이 식 하나로 바뀐다(켬일 때).
 //   ★종전 `worldPhase(t)`(경도 없는 세계 몫)는 그대로 둔다 — econ 경계 · 몹 밤 · 날씨는 1단계에서 세계 시계다. 그 값은 λ − 해뜸 = 0 인 자리(x = 0.75 W · 한반도 존 안)의 해 몫과 같다.
-const T720_LON_DAY = (typeof process !== 'undefined' && process.env && process.env.T720_LON_DAY === '1');
+const T720_LON_DAY = !(typeof process !== 'undefined' && process.env && process.env.T720_LON_DAY === '0');   // ★[PM 10-14 · 재민 10-13] 켬 기본(서버 · 번들) · 되돌림 `=0`
 if (T720_LON_DAY) ABS_CLOCK_DESIGN.ADOPTED = true;
 const SUNRISE_FRAC = 6 / 24;   // 해 뜸 = 06:00(종전 클라 `gameTimeString` 의 `+ 6` · 하루 몫)
 const _t720Frac = (v) => { const f = v % 1; return f < 0 ? f + 1 : f; };
@@ -7158,7 +7158,7 @@ const T347_FORAGE_ACT = process.env.T347_FORAGE_ACT === '1';
 //        몸이 안 친 마을(헤드리스 · 관측자 없는 마을)은 **종전 일괄 그대로**다(수식 원석 + `_oreMineDaily` 셀 깎기 — 카드 ③).
 //     ⓑ 몸이 캔 kg 를 econ 단위로 바꾸는 것은 부르는 쪽(`server/villages.js`)이다 — `weights.kgOf('ore')` 정본(5.00 · 옮겨 적지 않는다).
 //   켜기는 재민 — 이 카드는 값을 안 정한다.
-const T724_MINE_ACT = process.env.T724_MINE_ACT === '1';
+const T724_MINE_ACT = (typeof process !== 'undefined' && process.env && process.env.T724_MINE_ACT !== '0');   // ★[PM 10-14] 켬 기본(몸이 치는 판에서만 갈림 · 헤드리스 바이트 같음) · 되돌림 `=0`
 // ★★★[T400 2026-09-26] **집도 행위다 — 기본 끔.** 끄면 이 파일은 **넷째 판과 비트 동일**이다
 //   (아래 두 자리가 전부 이 상수 뒤에 있다: 주거 증축의 자재 단가 · 곳간 출구 `actFromGranary`).
 //   ① 자재의 정본은 **하나**다 — `server/hut-stages.js`(서버 움집 공정 · PM 권고 #61 · 재민 거부권).
