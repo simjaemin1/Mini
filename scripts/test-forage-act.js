@@ -885,13 +885,24 @@ console.log('\n⑰ [T475] 걷는 목록은 마을마다 — 그 마을 원판에
   //   ★[T538 추신 ⓪] T513 이 econ 하루를 조각으로 갈라(`_econDayParts` · `econ:head`) 부르는 자리가 **둘**이 됐다 — 사본이 아니라 **갈래**다:
   //     `_openDayJobs` 의 `if (T513_DAY_SLICE && …tickWorldV2Parts…) _econDayParts(C, add); else add('econ', …)` — 한 하루에 **둘 중 하나만** 돈다.
   //     ⇒ 계약을 제품 글자 그대로: 자리 둘 · 하나는 `econ:head` 조각(머리 `P.head()` 앞) · 하나는 끔 갈래 조각(`tickWorldV2` 앞) · 둘을 가르는 것은 그 `if/else` 한 줄.
-  const nHands = (VC.match(/_lifeHandsIn\(vil\);/g) || []).length;
-  const headLine = (VC.match(/add\('econ', \(\) => \{[^\n]*\}, 'econ:head'\);/) || [''])[0];
+  //   ★[T731] 켬 판(`T731_LOCAL_MIDNIGHT=1` · 기본 끔)은 창 조각 함수 `_t731Jobs` 하나에서 마을마다 손을 넣는다(그 마을 자정 · econ 마을 결산 앞) —
+  //     종전 두 자리 계약은 그 함수를 뺀 글자에서 그대로 보고, 켬 자리는 아래 따로 본다(한 하루에 셋 중 하나만: `_openDayJobs(now, T)` 첫 줄이 T 면 거기로 간다).
+  const T731J = (VC.match(/function _t731Jobs\(now, T\) \{[\s\S]*?\n\}/) || [''])[0];
+  const VC0 = T731J ? VC.replace(T731J, '') : VC;
+  const nHands = (VC0.match(/_lifeHandsIn\(vil\);/g) || []).length;
+  const headLine = (VC0.match(/add\('econ', \(\) => \{[^\n]*\}, 'econ:head'\);/) || [''])[0];
   const iHh = headLine.indexOf('_lifeHandsIn(vil);'), iHp = headLine.indexOf('P.head()');
   const fork = /if \(T513_DAY_SLICE && [^\n]*tickWorldV2Parts[^\n]*\) _econDayParts\(C, add\);\s*\n\s*else add\('econ', \(\) => \{/.test(VC);
   ok(nHands === 2 && iHh > 0 && iHp > iHh && fork,
     'ⓔ 부르는 자리는 **둘 — 갈래**(T513 조각 켬 = `econ:head` 조각에서 머리 앞 · 끔 = econ 한 조각에서 틱 앞) · `if/else` 한 줄이 가른다 = 한 하루에 **하나만** 돈다',
     `자리 ${nHands} · econ:head 안 손 ${iHh} < 머리 ${iHp} · 갈래 ${fork ? '○' : '✗'}`);
+  {   // ★[T731] 켬 자리 — 마을 조각(`econ:vil`) 안에서 손이 그 마을 econ 결산(`W.P.village`) 앞 · 창 머리 조각엔 손이 없다(하루에 한 번) · 창으로 가는 문은 손잡이 뒤
+    const vilJob = (T731J.match(/add\('econ', \(\) => \{[\s\S]*?\}, 'econ:vil'\);/) || [''])[0];
+    const k1 = vilJob.indexOf('_lifeHandsIn(vil);'), k2 = vilJob.indexOf('W.P.village(vil.econ)');
+    const headT = (T731J.match(/add\('econ', \(\) => \{[^\n]*\}, 'econ:head'\);/) || [''])[0];
+    const gate = /if \(T\) return _t731Jobs\(now, T\);/.test(VC) && /if \(T731_ON\) \{ _t731Tick\(now\); return; \}/.test(VC);
+    ok(T731J && k1 > 0 && k2 > k1 && headT && !headT.includes('_lifeHandsIn') && (T731J.match(/_lifeHandsIn\(vil\);/g) || []).length === 1 && gate,
+      'ⓔ [T731 켬] 손은 마을 조각에서 그 마을 econ 결산 앞에 한 번 · 창 머리엔 없다 · 창 문은 손잡이 뒤', `${k1} < ${k2} · 머리 손 ${headT.includes('_lifeHandsIn') ? '있음' : '없음'} · 문 ${gate ? '○' : '✗'}`); }
   { // 미끼 — 갈래를 없앤 판(두 자리가 한 하루에 **둘 다** 도는 꼴: `else` 를 지운다)이면 위 검사가 문다
     const bait = VC.replace(/(_econDayParts\(C, add\);\s*\n\s*)else (add\('econ')/, '$1$2');
     const forkB = /if \(T513_DAY_SLICE && [^\n]*tickWorldV2Parts[^\n]*\) _econDayParts\(C, add\);\s*\n\s*else add\('econ', \(\) => \{/.test(bait);

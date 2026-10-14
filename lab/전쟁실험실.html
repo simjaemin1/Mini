@@ -5540,6 +5540,11 @@ function localPhase(xAbs, nowMs = Date.now()) { return _t720Frac(localTod(xAbs, 
 function localDay(xAbs, nowMs = Date.now(), dayMs = WORLD.dayLengthMs, epoch = WORLD.worldEpoch) {
   return Math.floor((nowMs - (epoch || 0)) / dayMs + lonPhaseOff(xAbs));
 }
+/** ★[T731] 현지 자정 날 — 그 자리 현지 시각이 00:00 을 지나는 순간 하나 는다(재민 10-13: 마을 정산은 현지 00:00 · 동쪽 먼저).
+ *  = floor((t − 기점) ÷ 하루 + λ) — `localDay` 와 해 뜸 몫(¼)만 다르다(새 수 0). 동쪽(λ 큰 쪽)이 먼저 넘는다. */
+function localMidDay(xAbs, nowMs = Date.now(), dayMs = WORLD.dayLengthMs, epoch = WORLD.worldEpoch) {
+  return Math.floor((nowMs - (epoch || 0)) / dayMs + lonOf(xAbs));
+}
 /** 해 몫 더하기(음수 경도 몫도 [0,1) 로) — 종전 `(p + off) % 1` 의 켬 판. */
 function phaseAdd(p, off) { return _t720Frac(p + off); }
 const _T720_DAY_OK = (ABS_CLOCK_DESIGN.REAL_EPOCH_UTC % WORLD.dayLengthMs) === 0;   // 기점이 하루의 배수 — 켬 판의 해 몫이 종전 `worldPhase` 와 같은 시계 위에 선다
@@ -5636,7 +5641,7 @@ function _findNeighborSide(zoneId, side) {
 
 module.exports = {
   ABS_CLOCK_DESIGN, // §19 절대 시계 설계 예약(미채택 — 관측·문서용)
-  T720_LON_DAY, SUNRISE_FRAC, lonOf, lonPhaseOff, localTod, localPhase, localDay, phaseAdd, _T720_DAY_OK,   // ★[T720] 시각 한 식(켬일 때만 부른다)
+  T720_LON_DAY, SUNRISE_FRAC, lonOf, lonPhaseOff, localTod, localPhase, localDay, localMidDay, phaseAdd, _T720_DAY_OK,   // ★[T720] 시각 한 식(켬일 때만 부른다)
   ZONES, WORLD, ZONE_ORDER, CENTRAL, WS_PROTO, HTTP_PROTO,
   publicZoneMap, worldPhase, isNight, darknessLevel,
   findZoneAt, worldDistance, worldDeltaX, WRAP_X,
@@ -6266,11 +6271,30 @@ function _computeVillageStats(v, N) {
 // 0. RNG (재현 가능한 seeded random)
 // =============================================================================
 let _seed = 42;
+// ★★[T731 2026-10-14 · 경도 하루 2단계 · 손잡이 `T731_LOCAL_MIDNIGHT`(기본 끔 = 아래 갈래를 아무도 안 탄다 · 종전 글자)] **씨 흐름을 마을마다 가른다.**
+//   종전엔 마을 결산(`village(v)`) · 날씨 · 흉풍이 세계 하나의 흐름(`_seed`)과 번호 계수기(`_nextNpcId`)를 차례로 나눠 썼다 —
+//   마을 차례가 바뀌면 같은 마을이 흐름의 다른 자리를 받아 값이 갈렸다(T712 §5-1: 동 → 서 차례만으로 3시드 날 3 갈림).
+//   켜면 그 마을의 일을 하는 동안(`useVillageStream(v)` ~ `useVillageStream(null)`)엔 **그 마을의 흐름**(`v._rs` · 같은 LCG)을 쓰고,
+//   새 주민 번호는 마을 안 계수기(`v._nid` — 번호 `n<마을 id>.<k>`)에서 뽑는다. 마을 흐름의 첫 값은 세계 씨(`setSeed` 의 값)와 마을 id 를
+//   **같은 LCG 로 섞어** 정한다(새 수 0 · 차례 무관). 교역 · 캐러밴 · 회복 · 사건(마을 둘 이상)은 세계 흐름 그대로다.
+//   `v._rs` · `v._nid` 는 econ 마을 칸이라 서버 저장 줄(`serializeEcon`)이 그대로 싣는다(재기동 뒤 같은 수열).
+const T731_LOCAL_MIDNIGHT = (typeof process !== 'undefined' && process.env && process.env.T731_LOCAL_MIDNIGHT === '1');
+let _seed0 = 42;     // 세계 씨(마을 흐름 첫 값의 재료 — 켬일 때만 읽는다)
+let _curV = null;    // 지금 흐름을 쥔 마을(켬일 때만 선다)
 function srand() {
+  if (_curV) { _curV._rs = (_curV._rs * 1664525 + 1013904223) >>> 0; return _curV._rs / 0xFFFFFFFF; }
   _seed = (_seed * 1664525 + 1013904223) >>> 0;
   return _seed / 0xFFFFFFFF;
 }
-function setSeed(s) { _seed = s >>> 0; }
+function setSeed(s) { _seed = s >>> 0; _seed0 = _seed; }
+function _t731StreamInit(v) {
+  if (typeof v._rs === 'number') return;
+  let x = _seed0 >>> 0; const id = String(v.id != null ? v.id : (v.name || ''));
+  for (let i = 0; i < id.length; i++) x = ((x ^ id.charCodeAt(i)) * 1664525 + 1013904223) >>> 0;
+  v._rs = x;
+}
+/** 켬 — 그 마을의 흐름을 쥔다(null = 세계 흐름으로 돌아간다). 끔 = 아무것도 안 한다. */
+function useVillageStream(v) { if (!T731_LOCAL_MIDNIGHT) return; if (v) _t731StreamInit(v); _curV = v || null; }
 function pickWeighted(weights) {
   const total = weights.reduce((a, b) => a + b, 0);
   let r = srand() * total;
@@ -8216,7 +8240,7 @@ let _nextNpcId = 1;
 function createNPC(opts = {}) {
   const job = opts.job || 'farmer';
   const npc = {
-    id: 'n' + (_nextNpcId++),
+    id: _curV ? ('n' + _curV.id + '.' + (_curV._nid = (_curV._nid | 0) + 1)) : 'n' + (_nextNpcId++),   // ★[T731] 켬 = 마을 안 계수기(차례 무관)
     age: 16 + Math.floor(srand() * 20),
     currentJob: job,
     skills: Object.fromEntries(FIELDS.map(f => [f, 0])),
@@ -11901,8 +11925,9 @@ module.exports = {
   srand: () => srand(),
   // ★[T728] 재기동 영속 — 모듈 전역 셋(econ 난수 상태 · 다음 주민 번호 · 다음 마을 번호)을 읽고 되돌리는 문.
   //   서버 world 메타 행(`T728_RESTART_KEEP` 켬)만 부른다 — 안 부르면 아무 일도 없다(랩 · CLI · 픽스처 무변).
-  rngState: () => ({ seed: _seed, npc: _nextNpcId, vil: _nextVillageId }),
-  setRngState: (o) => { if (!o) return; if (o.seed != null) _seed = o.seed >>> 0; if (Number.isFinite(o.npc)) _nextNpcId = o.npc; if (Number.isFinite(o.vil)) _nextVillageId = o.vil; },
+  rngState: () => (T731_LOCAL_MIDNIGHT ? { seed: _seed, npc: _nextNpcId, vil: _nextVillageId, s0: _seed0 } : { seed: _seed, npc: _nextNpcId, vil: _nextVillageId }),   // ★[T731] 켬 = 세계 씨(새 마을 흐름의 재료)도
+  setRngState: (o) => { if (!o) return; if (o.seed != null) _seed = o.seed >>> 0; if (Number.isFinite(o.npc)) _nextNpcId = o.npc; if (Number.isFinite(o.vil)) _nextVillageId = o.vil; if (T731_LOCAL_MIDNIGHT && Number.isFinite(o.s0)) _seed0 = o.s0 >>> 0; },
+  useVillageStream, T731_LOCAL_MIDNIGHT,   // ★[T731] 마을 흐름 쥐기(v2 의 마을 조각 · 날씨 · 흉풍이 부른다) · 손잡이
   // ★S2 계측/랩 노출 — 노동목표 함수(석공·대장장이)
   masonTarget, smithTarget, weaponsmithTarget, armorsmithTarget, warriorTarget,
   // ★S4 명장 견습(세대 전승)
@@ -13800,6 +13825,7 @@ function tickWeather(world, day) {
     const v = world.villages[i];
     if (v._weather && v._weather.untilDay >= day) continue;
     // 마을마다 다른 phase로 trigger 결정 — index 기반 분산
+    if (v1.useVillageStream) v1.useVillageStream(v);   // ★[T731] 켬 = 그 마을 흐름(끔 = 무동작)
     const triggerRoll = v1.srand();
     if (triggerRoll < 0.015) {
       // 종류·기간도 마을마다 독립 (다음 srand 호출 — 마을 index에 따라 누적적으로 다름)
@@ -13810,6 +13836,7 @@ function tickWeather(world, day) {
         console.log(`  ${wk.name} Day ${day}: ${v.name} (${dur}일)`);
       }
     }
+    if (v1.useVillageStream) v1.useVillageStream(null);
   }
 }
 
@@ -13819,7 +13846,9 @@ function tickYearShock(world, day) {
   if (CAL.ON ? !(seasonOf(day) === 'autumn' && seasonOf(day - 1) !== 'autumn') : (day % 365 !== 180)) return;   // ★[T570] 켬 = 가을 첫날(9월 1일)
   const _shockDays = CAL.ON ? CAL.seasonLen(day) : 90;   // ★[T570] 그 가을의 길이(켬 91 · 끔 = 옛 90 글자 그대로)
   for (const v of world.villages) {
+    if (v1.useVillageStream) v1.useVillageStream(v);   // ★[T731] 켬 = 그 마을 흐름
     const roll = v1.srand();
+    if (v1.useVillageStream) v1.useVillageStream(null);
     if (roll < 0.15) {
       v._yearShock = { name: '🌾풍년', mult: { fertility: 1.3, game: 1.15 }, untilDay: day + _shockDays };
       console.log(`  🌾 Day ${day}: ${v.name} 풍년 (가을~겨울)`);
@@ -13841,7 +13870,7 @@ function tickYearShock(world, day) {
 //   ⚠`village(v)` 는 그 마을만 만진다(전역 쓰기 0 — 날씨·해 흉풍은 `head` 에서 이미 정해졌다).
 function tickWorldV2Parts(world) {
   let season = null, useSeason = false;
-  return {
+  const P = {
     head() {
       world.day += 1;
       if (_t707On(world)) settleMarketsV2(world);   // ★[T707] 어제 선 장의 떠날 때 정산 — 날을 올린 **바로 뒤**(마을 틱 앞 · 교역 기록의 날 = 장부에 든 날 · 끔 = 이 줄 무동작)
@@ -13853,6 +13882,11 @@ function tickWorldV2Parts(world) {
       useSeason = world._dbg?.season !== false;
     },
     village(v) {
+      if (v1.useVillageStream) v1.useVillageStream(v);   // ★[T731] 켬 = 이 마을의 일은 이 마을 흐름으로(끝에서 세계 흐름으로 돌려준다 · 끔 = 무동작)
+      try { _villageBody(v); } finally { if (v1.useVillageStream) v1.useVillageStream(null); }
+    },
+  };
+  function _villageBody(v) {
       if (world._dbg?.climate !== false) {
         // ★기온(2026-07-12): 야간최저 기준 한랭 스트레스(0~1) — 의복 커버리지 페널티·연료 가중·마모 가중이 소비(v1).
         const _elev = (v.land && v.land.elev) || 0;   // 호스트(지형층) 고도 주입 훅 — 미설치=0(해수면) 무해
@@ -13866,7 +13900,8 @@ function tickWorldV2Parts(world) {
       v1.adjustGuildTax(v, world.day);
       tickSubsistence(v, world.day);
       if (world._dbg?.decay !== false) tickDecay(v);
-    },
+  }
+  Object.assign(P, {
     trade() { tickTradeV2(world, world.day); },
     tradeSteps() { return tickTradeV2Steps(world, world.day); },   // ★[T698] 같은 교역 · 마을 하나씩(서버 하루 마감)
     caravans() { tickCaravansV2(world, world.day); },
@@ -13881,7 +13916,8 @@ function tickWorldV2Parts(world) {
       }
       if (world.tradeLog.length > 5000) world.tradeLog.splice(0, world.tradeLog.length - 5000);
     },
-  };
+  });
+  return P;
 }
 function tickWorldV2(world) {
   const P = tickWorldV2Parts(world);
@@ -16104,6 +16140,38 @@ const L_DAWN=0.25, L_DUSK=0.833;   // ★하루=24시간. 낮(06~20시)=노동, 
 const L_T720=(typeof window!=='undefined'&&window.LAB_ENV&&window.LAB_ENV.T720_LON_DAY!=='0'&&typeof EconEngine!=='undefined'&&!!EconEngine.ZoneCfg);
 function _t720Frac(v){const f=v%1;return f<0?f+1:f;}
 function _t720LabLon(cx){const ZC=EconEngine.ZoneCfg,Z=ZC.ZONES.hanbando;return ZC.lonOf(Z.worldOffsetX+(cx/N)*Z.zoneWidth);}
+// ★★[T731 2026-10-14] 경도 하루 2단계 — URL `?T731_LOCAL_MIDNIGHT=1`(서버와 같은 이름)이면 서버 `_t731Tick` 과 **같은 식**: 마을마다 그 마을 현지 00:00 에 정산(동 → 서).
+//   현지 자정 날 LD = floor(lifeGM ÷ 하루 + λ) · λ = `_t720LabLon(마을 중심 x)`(새 수 0) · 한 프레임에 여럿이 넘으면 동쪽 먼저(λ 큰 쪽 · 같으면 VILS 차례).
+//   창 D: 동쪽 끝이 D 로 넘는 프레임에 머리(사냥 · 벌목 몫 꽂기 · econ 머리) → 마을마다 제 자정 프레임에 [어제 벤 몫 확정 · econ 마을 결산 · 무기 숙련 · lifeDay]
+//     → 서쪽 끝이 넘으면 꼬리(econ 교역 · 캐러밴 · 꼬리 → 도적 · 길 · 전쟁 · 소멸 — `lifeDayAll` 의 뒤 차례 그대로). econ 씨 흐름은 번들이 마을마다 가른다(같은 손잡이).
+//   끔 = `lifeDayAll` 종전 줄 그대로(아래 함수를 아무도 안 부른다).
+const L_T731=(typeof window!=='undefined'&&window.LAB_ENV&&window.LAB_ENV.T731_LOCAL_MIDNIGHT==='1'&&typeof EconEngine!=='undefined'&&!!EconEngine.ZoneCfg&&typeof EconEngine.tickWorldV2Parts==='function');
+let _t731W=null,_t731D=null;const _t731Wit=[];
+function _t731Lam(vil){return vil._lonMid!==undefined?vil._lonMid:(vil._lonMid=_t720LabLon(vil.center?vil.center.cx:N/2));}
+function _t731LD(vil,gm){return Math.floor(gm/L_MINDAY+_t731Lam(vil));}
+function _t731Step(doBulk,prevDay,slow,force){   // lifeLoop 매 프레임(켬만) — 제 자정이 온 마을만 돈다 · 하루 넘게 밀리면 창을 차례로(종전 50일 한도) · force = 헤드리스 `lifeDayAll`(창 하나를 한 번에 — 모두 자정을 넘긴 하루)
+  if(_t731D===null)_t731D=prevDay;   // 첫 프레임: 그 앞 날은 닫혔다(종전 lifeDayAll 이 prevDay 까지 돈 자리)
+  for(let g=0;g<(force?1:50);g++){
+    let W=_t731W;
+    if(!W){if(!VILS.length)return;const L=VILS.slice().sort((a,b)=>_t731Lam(b)-_t731Lam(a)||VILS.indexOf(a)-VILS.indexOf(b));
+      if(!force&&_t731LD(L[0],lifeGM)<=_t731D)return;
+      W=_t731W={D:_t731D+1,list:L,P:null,wit:[]};
+      if(ECON_WORLD){ECON_WORLD.huntIncomeFn=(_huntIncomeMode()==='real')?huntIncomeReal:undefined;ECON_WORLD.woodIncomeFn=(_woodIncomeMode()==='real')?woodIncomeReal:undefined;
+        W.P=EconEngine.tickWorldV2Parts(ECON_WORLD);W.extra=ECON_WORLD.villages.filter(ev=>!VILS.some(v=>v.econ===ev));W.P.head();}}
+    let n=0;while(n<W.list.length&&(force||_t731LD(W.list[n],lifeGM)>=W.D))n++;
+    for(const vil of W.list.splice(0,n)){
+      if(!VILS.includes(vil))continue;const ev=vil.econ;W.wit.push([vil.name||'',+_t731Lam(vil).toFixed(5),+lifeGM.toFixed(2)]);
+      if(ev){ev._hkillDay=vil._hkill||0;vil._hkill=0;ev._wcutDay=vil._wcut||0;vil._wcut=0;}   // 어제 잡은 · 벤 몫 확정(그 마을 자정에)
+      if(ev&&W.P&&ECON_WORLD.villages.includes(ev))W.P.village(ev);
+      if(ev)warTickWeaponSkills(ev);
+      life=vil;V=vil.V;lifeDay(doBulk);
+      if(slow)for(const a of vil.agents)if(a.state!=='trading')a.state='home';}
+    if(W.list.length)return;
+    if(W.P){for(const ev of W.extra)if(ECON_WORLD.villages.includes(ev))W.P.village(ev);W.P.trade();W.P.caravans();W.P.tail();}
+    _t731Wit.push({D:W.D,wit:W.wit});if(_t731Wit.length>40)_t731Wit.shift();
+    _t731D=W.D;_t731W=null;
+    _lifeDayTail(doBulk);}
+}
 const L_LON_SPREAD=0.045;   // ★경도 시차 폭(하루 비율): 맵 서→동 끝 로컬 태양시 차 4.5%≈65분 — 현 1.6km의 가상 시차(연출 스케일). 인간 일과만 로컬 fv=(f+vil._lonOff)%1, 야생 몹 수면·도적 야행·일 경계 회계(lifeDay)는 전역 f 유지(econ=전역 날짜, 행동=로컬 태양시 — 분리 원칙. 야생 로컬화는 본체 인계). 미래 원통 세계: 둘레/자전 주기로 이 상수만 재산정
 // ★노동기반 집 건설(라이프): 인구 늘면 집터 추가 → 유휴 NPC가 진행도 채워 완공. 발자국 없으면 2층 증축.
 const W_PEN_K=2000;   // ★[사용자 설계] 물가 페널티 계수: K/거리²(부지 원 가장자리~물, 연속식 — 2셀 500·5셀 80·10셀 20·17.5셀 6점, 문턱 없음). ※K 상향(4000) 실험: 200명 혼잡에선 후보 집합이 빡빡해 순서만 재배열되고 물가 집 수가 오히려 늘기도(패킹 카오스) — 가격으론 혼잡 균형을 못 이겨 원복. 성장(addHouseSite)·shore 재생성 공용. 하드 한계는 +2셀 링 별도
@@ -18375,6 +18443,7 @@ function roadShadowDaily(){   // ★[fast=가속 shadow 원칙 — "수개월 �
   }
 }
 function lifeDayAll(doBulk){   // 하루: econ world 한 번 틱(전 마을 경제) + 각 마을 공간 처리(life/V 전환)
+  if(L_T731){_t731Step(doBulk,VILS.length?VILS[0].day:0,false,true);return;}   // ★[T731] 켬 = 같은 창 식을 한 번에(동 → 서 · 헤드리스 하네스 · 빨리감기 밖에서 부를 때)
   /* ★[T154] 어제 잡은 마릿수를 확정해 econ 이 읽을 자리에 놓고, 오늘 치를 0 에서 다시 센다.
        주입은 **여기 한 줄**이다(엔진 규약: world 에 함수가 있을 때만 산다 — 없으면 종전 비트). */
   for(const vil of VILS){const ev=vil.econ;if(!ev)continue;ev._hkillDay=vil._hkill||0;vil._hkill=0;
@@ -18385,6 +18454,8 @@ function lifeDayAll(doBulk){   // 하루: econ world 한 번 틱(전 마을 경�
   // ★[전쟁실험실] 개인 무기 숙련 일일 성장(경제 함수 밖 훅) — 전사=검·창 상비 훈련↑. economy 무수정, econ.npcs에 _ws* 부착.
   for(const vil of VILS){ if(vil.econ)warTickWeaponSkills(vil.econ); }
   for(const vil of VILS){life=vil;V=vil.V;lifeDay(doBulk);}
+  _lifeDayTail(doBulk);}
+function _lifeDayTail(doBulk){   // ★[T731] 하루 꼬리(도적 · 길 · 전쟁 · 소멸 · 몸 시계) — 끔 = `lifeDayAll` 이 바로 부른다(차례 · 글자 그대로) · 켬 = 창 꼬리에서
   banditDaily(VILS.length?VILS[0].day:0);   // ★도적 일일 틱(소멸 필터 *앞* — 해체 전환은 잔존자가 있는 순간에만 가능. 전환이 인구 0을 만들면 바로 아래서 소멸 처리)
   if(doBulk)roadShadowDaily();tpRedigDaily();   // ★[T599 ← T578 ④] 등급 지도가 바뀐 날 다닌 쌍의 교역로를 다시 판다(하루 한 번) · ★[fast=가속 shadow] 빨리감기 날의 교역 답압 그림자(슬로우 날은 실보행 스탬핑 — 이중계상 금지 게이트)
   warDaily(VILS.length?VILS[0].day:0);   // ★전쟁 일일 틱(도적 옆 — 전쟁 사상→마을 쇠퇴→도적 전환이 다음날 banditDaily에 자동 연쇄)
@@ -18837,7 +18908,7 @@ function lifeLoop(now){if(!lifeOn)return;   // 통합 게임시계: 농부 이�
   if(slow)psiteStamp(life);   // ★[10차 T3] 하루 안의 공정 단계 전이(현장 노동이 쌓이는 즉시) — 일 경계 스냅만으로는 ③단계가 통째로 건너뛰어 보였다
   if(slow&&life.econ){let idle=0;if(fv>=L_DAWN&&fv<L_DUSK)for(const a of life.agents)if(a.state==='home')idle++;life.econ._slack=0.95*(life.econ._slack||0)+0.05*(idle/Math.max(1,life.agents.length));}   // ★그날 여유(slack)=현지 낮에 집에 있는(일 끝낸) NPC 비율(EMA). econ 교역 기회비용 할인에 씀.
   }   // ★S6: 마을 순회 끝
-  for(let d=prevDay;d<day&&d<prevDay+50;d++){lifeDayAll(!slow);if(slow)for(const v2 of VILS)for(const a of v2.agents)if(a.state!=='trading')a.state='home';}   // 넘어간 날만큼 하루처리. 교역 중 NPC는 리셋 제외(자정 넘겨도 왕복 계속)
+  if(L_T731)_t731Step(!slow,prevDay,slow);else for(let d=prevDay;d<day&&d<prevDay+50;d++){lifeDayAll(!slow);if(slow)for(const v2 of VILS)for(const a of v2.agents)if(a.state!=='trading')a.state='home';}   // 넘어간 날만큼 하루처리. 교역 중 NPC는 리셋 제외(자정 넘겨도 왕복 계속)
   if(!VILS.length){lifeOn=false;return;}   // ★전 마을 소멸 → 정지(무방비 접근 방지)
   if(lifeFocal>=VILS.length)lifeFocal=VILS.length-1;
   life=VILS[lifeFocal];V=life.V;
