@@ -65,7 +65,7 @@ WORK = os.path.join(SRCD, ".work", "t604")             # ★[T604] 옷 `mhclo`·
 
 H_PERSON = 1.60          # 카드 ①: 키 160cm 안팎 — 하네스 ⑤ "키 = 셀 규약(사람 1.6m ↔ px)" 와 같은 수
 TRI_BUDGET = 6000        # 카드 ①: 폴리곤 2~6k 삼각형 — 한 몸(살·옷·머리·눈·눈썹 합) 상한
-KEYS_PER_FRAME = 4       # 시트 한 판 사이에 열쇠 넷(시트 판 k = 열쇠 4k — 시트 층을 얹는 판이 정확히 열쇠에 선다)
+# KEYS_PER_FRAME — 시트 한 판 사이에 열쇠 넷(시트 판 k = 열쇠 4k — 시트 층을 얹는 판이 정확히 열쇠에 선다) · [T723] 정본은 `mocap_retarget.KEYS_PER_FRAME`(시트 다리 위상 맞춤과 같은 표본)
 BODIES = {
     "M": {"gender": 1.0, "proxy": "proxymeshes/male1591/male1591.proxy", "skin": "skins/young_asian_male/young_lightskinned_male_diffuse3.png",
           "hair": "hair/ponytail01/ponytail01.mhclo"},
@@ -125,6 +125,7 @@ sys.path.insert(0, HERE)
 import render_common as rc                             # noqa: E402  — 옷 색·태양·하늘 정본(읽기만)
 import char_clothes_mhclo as CM                        # noqa: E402  — ★[T604] 청동기 옷 기하(시트 링 표 → mhclo)
 import mocap_retarget as MR                            # noqa: E402  — BVH 파서·창 규칙·클립 표 정본(읽기만)
+KEYS_PER_FRAME = MR.KEYS_PER_FRAME                     # ★[T723] 정본 한 자리 — 3D 열쇠와 시트 다리 위상 맞춤이 같은 표본(판 × 4)
 
 for o in list(bpy.data.objects):                       # 시작 장면(정육면체·빛·카메라) 비우기
     bpy.data.objects.remove(o, do_unlink=True)
@@ -611,14 +612,6 @@ def bvh_end_sites(path):
     return ends
 
 
-def _cyc(curve, ph):
-    """101점 주기 표(0 = 100 %)를 위상 ph(0~1)에서 곧게 보간."""
-    x = (ph % 1.0) * 100.0
-    i = min(99, int(math.floor(x)))
-    f = x - i
-    return curve[i] * (1 - f) + curve[i + 1] * f
-
-
 def retarget_clip(rig, prefix, clip_name, spec, sheet, align, gait=None, body=None):
     """한 클립을 액션 하나로. 열쇠 k 의 시각 = k(판 단위 · 장면 fps 1 — 내보내기가 열쇠 사이를 다시 뜨지 않게).
     ★[T708 ①] `align` = 옛 쉼(MPFB A 자)의 뼈 방향·틀(엔진 축) — 쉼 보정 Q 와 월드 회전은 이것으로 짓는다(클립의 뼈 월드 회전 = 이 판 앞과 같다) ·
@@ -709,21 +702,9 @@ def retarget_clip(rig, prefix, clip_name, spec, sheet, align, gait=None, body=No
     gi = None
     if gait:
         # ★[T708 ②] 위상 맞추기 — 모캡 왼 넓적다리의 땅 기준 시상각(열쇠마다) ↔ 자료 넓적다리 각(φ0 + k/K) — 상관이 가장 큰 φ0(1/1000 격자 · 결정적)
-        th_m = []
-        for k in range(K):
-            t = start + period * k / float(K)
-            P = MR.fk(nodes, order, frames[min(len(frames) - 1, int(round(t)))])
-            d = H @ (C_B2O @ (Vector(P[J["LeftLeg"]]) - Vector(P[J["LeftUpLeg"]])))
-            th_m.append(math.degrees(math.atan2(d.x, -d.z)))
-        thm = np.array(th_m) - np.mean(th_m)
-        best = None
-        for q in range(1000):
-            c = np.array([_cyc(gait["thigh"], q / 1000.0 + k / float(K)) for k in range(K)])
-            c = c - c.mean()
-            r = float(thm @ c / (np.linalg.norm(thm) * np.linalg.norm(c)))
-            if best is None or r > best[1]:
-                best = (q / 1000.0, r)
-        ph0 = best[0]
+        #   ★[T723] 정본은 `mocap_retarget.gait_phase` 하나 — 시트(2D) 다리도 같은 함수 · 같은 표본(K = 판 × 4)으로 맞춘다(사본 0)
+        ph0, r_ph, th_m = MR.gait_phase(nodes, order, frames, start, period, K, gait["thigh"])   # ⚠`corr` 는 위의 쉼 보정 표 — 이름을 겹치지 않는다
+        best = (ph0, r_ph)
         Ry = lambda deg: Matrix.Rotation(-math.radians(deg), 3, "Y")      # 앞으로 + (아래 → 앞 · 엔진 +y = 왼쪽 축)
         vert = {}
         for side in ("Left", "Right"):
@@ -746,7 +727,7 @@ def retarget_clip(rig, prefix, clip_name, spec, sheet, align, gait=None, body=No
             out = {}
             for side, off in (("Left", 0.0), ("Right", 0.5)):
                 ph = ph0 + kk / float(K) + off
-                a_t, a_s, a_f = (_cyc(gait[c], ph) for c in ("thigh", "shank", "foot"))
+                a_t, a_s, a_f = (MR.gait_cyc(gait[c], ph) for c in ("thigh", "shank", "foot"))
                 out[prefix + side + "UpLeg"] = Ry(a_t) @ vert[side + "UpLeg"]
                 out[prefix + side + "Leg"] = Ry(a_s) @ vert[side + "Leg"]
                 out[prefix + side + "Foot"] = Ry(a_f) @ align[side + "Foot"][1]          # 발 0 = 쉼의 평평한 발바닥(MPFB 선 발 · 선 자세에서도 그대로)
@@ -865,11 +846,8 @@ for c in MOCAP_CLIPS:                                  # ★시트 표와 판·�
         raise SystemExit(f"[char3d] ★모캡 표와 시트 표가 갈렸다: {c[0]} {c[3:6]} vs {sh}")
 CLIP_ALIAS = {"idle": "idle2", "aim": "aim2", "swing": "swing2"}   # 3D 는 모캡판 하나 — 손 포즈판 셋은 같은 뜻의 모캡판으로 선다
 # ★[T708 ②] 걷기·달리기 다리 = 열린 보행 자료의 평균 주기(`scripts/gait_norms.py` 산물 · 커밋 표 — 읽기만) · 그 밖 클립은 모캡 그대로
-GAIT_PATH = os.path.join(ROOT, "assets-src", "gait", "gait_norms.json")
-_gn = json.load(open(GAIT_PATH, encoding="utf-8"))
-INPUTS["assets-src/gait/gait_norms.json"] = sha16(GAIT_PATH)
-GAIT = {c: dict(_gn[c], src=f"{_gn['sources'][c]['cite'].split(')')[0]}) · doi:{_gn['sources'][c]['doi']} · {_gn[c]['cond']} · {_gn[c]['n']}명")
-        for c in ("walk", "run")}
+INPUTS["assets-src/gait/gait_norms.json"] = sha16(MR.GAIT_PATH)
+GAIT = MR.gait_tables()                                # ★[T723] 표 읽기·출처 한 줄도 정본 한 자리(시트 포즈표와 같은 줄)
 scene = bpy.context.scene
 scene.render.fps = 1                                   # ★열쇠 시각 = 판 번호(T539 클립 파일과 같은 문법 — 내보내기가 장면 fps 로 다시 뜬다)
 scene.render.fps_base = 1.0

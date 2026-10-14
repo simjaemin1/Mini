@@ -129,7 +129,9 @@ def run(src, files):
         cf, F = tab(pf)
         cp, P = tab(pp)
         tm = Mk[:, cm["Time"]]
-        hz = 1.0 / float(np.median(np.diff(tm)))
+        # ★[T723] 표지 표본 = (판 수 − 1) ÷ 시간 폭 — 시각 열은 1/1000 초로 반올림돼 있어(0.007 · 0.006 · 0.007 …) 이웃 차의 가운데값은
+        #   0.007 이다(= 142.9 Hz · 실제 150 Hz). T708 은 가운데값을 써서 힘 시각이 5 % 늘어 표지와 어긋났다(30 초 끝에서 1.5 초) ⇒ 골반 기울기 창이 밀렸다.
+        hz = (len(tm) - 1) / float(tm[-1] - tm[0])
         ff = 2.0 * hz                                                  # 힘판 표본 = 표지의 두 배(원자료 열 수 · 30 s)
         if abs(len(F) / ff - len(Mk) / hz) > 0.05:
             raise SystemExit(f"[gait] ★RBDS{sid:03d} 힘·표지 길이가 안 맞다")
