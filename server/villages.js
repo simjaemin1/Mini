@@ -910,7 +910,9 @@ function _t747Pack(vil) {
     if (o._lifeTask && o._lifeTask.k === 'greet') delete o._lifeTask;   // 인사(T529)는 그 사람 · 그 순간의 일 — 싣지 않는다
     rows.push(o);
   }
-  return rows;
+  //   마을 클레임 그림자 — 저장 순간 그대로(하루 마감 리셋 뒤 걸어가던 몸의 클레임까지 다시 세면 저장 순간과 달라진다 — 첫 켬 판이 보였다)
+  const sh = { claim: vil._claim ? [...vil._claim] : null, clearCrew: vil._clearCrew, buildCrew: vil._buildCrew, psiteCrew: vil._psiteCrew, cropClaim: vil._cropClaim ? [...vil._cropClaim] : null };
+  return { rows, sh };
 }
 const _t747Stat = { restored: null };
 function _t747Restore() {
@@ -919,8 +921,10 @@ function _t747Restore() {
   if (!P) return R;
   for (const vil of state.villages) {
     const e = vil.econ; if (!e || !('_t747Body' in e)) continue;
-    const rows = e._t747Body; delete e._t747Body;
+    const B = e._t747Body; delete e._t747Body;
+    const rows = B && B.rows, SH = B && B.sh;
     if (!Array.isArray(rows)) continue;
+    const dropped = [];
     R.villages++;
     const spill = [];
     for (let i = 0; i < rows.length; i++) {
@@ -941,21 +945,25 @@ function _t747Restore() {
         const t = S._lifeTask, key = t.cx + ',' + t.cy;
         const ok = t.k === 'clear' ? !!(vil._terrSet && vil._terrSet.has(key) && !(vil._farmSet && vil._farmSet.has(key)) && !(vil._drySet && vil._drySet.has(key)))
           : t.k === 'build' ? !!(t.ps ? vil._psite : vil._site) : false;
-        if (ok) { b._lifeTask = t; b._workT = null; R.task++; } else R.taskDrop++;
+        if (ok) { b._lifeTask = t; b._workT = null; R.task++; } else { R.taskDrop++; dropped.push(t); }
       }
     }
     if (spill.length) {   // 저장된 몸이 지금보다 많았다 — 남은 손은 첫 몸에(소멸 0)
       const b0 = vil.npcPids.length ? P.get(vil.npcPids[0]) : null;
       if (b0) { b0.inventory = b0.inventory || {}; for (const inv of spill) for (const k in inv) if (typeof inv[k] === 'number' && inv[k] > 0 && k !== 'seed_berry') { b0.inventory[k] = +((b0.inventory[k] || 0) + inv[k]).toFixed(6); R.extraHands++; } }
     }
-    //   마을 클레임 그림자 — 되돌린 몸에서 다시 센다(하루 마감 재대사 줄과 같은 식)
-    vil._claim = new Set(); vil._clearCrew = 0; vil._buildCrew = 0; vil._psiteCrew = 0; vil._cropClaim = new Set(); let held = 0;
-    for (const pid of vil.npcPids) {
-      const p = P.get(pid); if (!p) continue;
-      if (p._lifeTask) { if (p._lifeTask.k === 'clear') { vil._claim.add(p._lifeTask.cx + ',' + p._lifeTask.cy); vil._clearCrew++; } else if (p._lifeTask.k === 'build') { if (p._lifeTask.ps) vil._psiteCrew++; else vil._buildCrew++; } }
-      if (p._farmK) vil._cropClaim.add(p._farmK);
-      if (p.inventory && p.inventory.ore_chunk > 0) held += p.inventory.ore_chunk;
+    //   마을 클레임 그림자 — 저장 순간 그대로 · 푼 진행 작업의 몫만 뺀다 · 광부 손 합은 되돌린 손에서 다시 센다(T724 가 해 질 녘에 다시 세는 그 합)
+    if (SH) {
+      if (SH.claim) vil._claim = new Set(SH.claim);
+      if (SH.cropClaim) vil._cropClaim = new Set(SH.cropClaim);
+      if (SH.clearCrew != null) vil._clearCrew = SH.clearCrew; if (SH.buildCrew != null) vil._buildCrew = SH.buildCrew; if (SH.psiteCrew != null) vil._psiteCrew = SH.psiteCrew;
+      for (const t of dropped) {
+        if (t.k === 'clear') { if (vil._claim) vil._claim.delete(t.cx + ',' + t.cy); vil._clearCrew = Math.max(0, (vil._clearCrew | 0) - 1); }
+        else if (t.k === 'build') { if (t.ps) vil._psiteCrew = Math.max(0, (vil._psiteCrew | 0) - 1); else vil._buildCrew = Math.max(0, (vil._buildCrew | 0) - 1); }
+      }
     }
+    let held = 0;
+    for (const pid of vil.npcPids) { const p = P.get(pid); if (p && p.inventory && p.inventory.ore_chunk > 0) held += p.inventory.ore_chunk; }
     vil._t724HeldKg = held;
   }
   _t747Stat.restored = R;
