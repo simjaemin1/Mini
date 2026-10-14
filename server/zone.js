@@ -11355,6 +11355,13 @@ function tryVillageWelcome(player, buildingId, on) {
   tryVillageInventory(player, buildingId);   // 화면을 그 자리에서 갱신(거래소·곳간과 같은 규약)
 }
 // ★[배치 12 ②] 곳간에 넣기 — 권한·거리 규약은 열람과 **완전히 같다**(같은 회관, 같은 술어).
+// ★★[T725 ① 2026-10-13 · 손잡이 `T725_HALL_UNITS=1` — 없음·빈 값·0 = 끔 = 아래 T725 줄들이 아무것도 안 한다(main 바이트)] **회관 넣기를 거래소·게시판과 같은 문으로.**
+//   종전 회관은 `playerVillageDeposit` 에 `unitsOf` 를 안 넘겨 **개수 × 환산율**로 넣었다(열량 · 신선도 안 봄 · 상한 것도 받는다).
+//   꺼내기는 열량 환산(T59 `kcal.itemsOf` — 1단위 = 하루치 2,450kcal)이라 짝이 어긋났다: 생선 1개 넣기 = 1단위 → 1단위 꺼내기 = 생선 5개
+//   (넣고 빼면 불어난다 · 소멸·생성 금지 캐논 위반 · T716 회부 ①). 곳간 정본 주석 그대로 — *"다르면 곳간이 환전소가 된다."*
+//   켬: ① 상한 것 거절(`_spoiledGuardItems` — 게시판·거래소와 같은 판정 · 같은 함수) ② 단위 = `_unitsOfFor`(열량 × 신선도 — 거래소·게시판이 쓰는 그 환산 하나)
+//       ③ 낸 개체를 무게 장부에서 뺀다(`Carry.takeKg` — 환산이 `peekKg` 로 본 그 개체 · 게시판 납품과 같은 뒷정리). 새 수 0 · 새 함수 0.
+const T725_HALL = process.env.T725_HALL_UNITS === '1';
 function tryVillageDeposit(player, buildingId, want) {
   const b = buildings.get(buildingId);
   if (!b || b.type !== 'village_hall') return;
@@ -11363,10 +11370,16 @@ function tryVillageDeposit(player, buildingId, want) {
   const d = b.data || {};
   const vil = SimVillages.playerVillageAt ? SimVillages.playerVillageAt(d.x0, d.y0) : null;
   if (!vil) { send(player.ws, { type: 'notice', text: '이 회관에 딸린 마을을 찾지 못했다' }); return; }
+  if (T725_HALL) {   // ★[T725 ①] 상한 것은 회관도 안 받는다 — 낼 품목(곳간이 받는 것 · 1개 이상)만 묻는다
+    const _map = SimVillages.playerVillageDepositMap() || {};
+    const _sp = _spoiledGuardItems(player, Object.keys(want || {}).filter((it) => _map[it] && Number(want[it]) >= 1));
+    if (_sp) { send(player.ws, { type: 'notice', text: `🏘️ ${_sp}` }); return; }
+  }
   const _s716 = T716_AGE ? _t716Snap(player, vil) : null;   // ★[T716 ⑤] 넣기 전 로트(끄면 null)
-  const r = SimVillages.playerVillageDeposit(vil, player.inventory, want || {});
+  const r = SimVillages.playerVillageDeposit(vil, player.inventory, want || {}, T725_HALL ? _unitsOfFor(player) : undefined);   // ★[T725 ①] 끄면 종전 개수 × 환산율
   if (!r.ok) { send(player.ws, { type: 'notice', text: `🏘️ ${r.err}` }); return; }
-  if (_s716) _t716Put(player, _s716, true);   // ★[T716 ⑤] 회관 넣기 = 개수 × 환산율
+  if (_s716) _t716Put(player, _s716, !T725_HALL);   // ★[T716 ⑤] 회관 넣기 = 개수 × 환산율(T725 켬이면 열량 × 신선도 — 거래소와 같은 무게)
+  if (T725_HALL) { for (const [it, n] of Object.entries(r.taken || {})) Carry.takeKg(player, it, n); Carry.reconcile(player, player.inventory); }   // ★[T725 ①] 낸 개체를 장부에서 뺀다
   savePlayer(player);
   sendInventory(player);
   const kv = Object.entries(r.taken).map(([k, q]) => `${ITEM_LABEL_SERVER[k] || k} ${q}`).join(' · ');
@@ -11841,6 +11854,7 @@ function __testBind() {
     Weights, Carry, Lots, moveMultOf, zoneGameDay, COOK_RECIPES, doCook, _unitsOfFor,
     doEatDish,   // ★[T705] 요리 먹기 — 상한 재료 요리의 독소가 배탈 지수로 가는지(test-food-sick · 읽기·부르기만)
     T716_AGE, _t716Snap, _t716Put, _t716Take, _afterWithdraw, tryVillageWithdraw, tryVillageDeliver, Membership,   // ★[T716 ⑤] 곳간 나이 몫(test-granary-age · 읽기·부르기만)
+    T725_HALL, tryVillageDeposit, tryVillageTradeExec,   // ★[T725 ①] 회관 넣기 문(test-hall-units · 읽기·부르기만)
     // ★[부패·보존 배치 2026-08-31] 하네스가 잡을 손잡이들
     Spoil, doPreserve, preserveMenuPayload, _spoiledGuardItems, _spoiledGuardRes, _gameDayAt, __e2eFreezeZoneDay,
     // ★[작물 층 2026-08-31]
