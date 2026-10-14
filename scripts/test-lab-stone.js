@@ -21,8 +21,9 @@
 'use strict';
 process.env.ENABLE_VILLAGES = process.env.ENABLE_VILLAGES || '0';
 process.env.DB_PATH = process.env.DB_PATH || `/tmp/t163-st-${process.pid}.db`;
-// ★[PM 10-13] T707_MARKET 켬 기본 — ⑨(둘째 화물 귀환)는 '도착 때 정산' 세계를 적은 단언이라 끔(`=0`)으로 묶는다(떠날 때 정산 세계로 옮기기 = T707 추신)
-if (process.env.T707_MARKET == null) process.env.T707_MARKET = '0';
+// ★[T727 2026-10-13] T707_MARKET 켬 기본 세계 그대로 돈다 — PM 10-13 의 끔(`=0`) 묶음을 지웠다.
+//   ⑨ 는 귀환 화물을 **정해지는 자리**에서 센다: 끔 = 도착(그날 `caravans` 조각) · 켬 = 떠날 때 정산(다음 날 `head` 의 `settleMarketsV2`).
+//   켬 세계에서 가까운 마을(이동 1일)은 정산(머리)과 귀환 닫기(같은 날 `caravans`)가 한 틱 안이라, 틱 끝에만 세면 화물이 늘 0 으로 보였다.
 const path = require('path');
 const fs = require('fs');
 const ROOT = path.join(__dirname, '..');
@@ -220,16 +221,31 @@ const mkTrade = (inject, starve) => {
   }
   w.day = 0;
   //   ★귀환 화물은 **실려 있는 동안** 세야 한다 — 집에 닿은 캐러밴은 목록에서 빠진다(끝에 세면 늘 0).
-  w._t173 = { stoneReturns: 0, stoneAmt: 0, returns: 0 };
+  //   ★[T727] 그리고 **정해지는 자리**에서 센다 — 틱을 `tickWorldV2` 와 같은 차례의 조각으로 돌려(머리 · 마을 · 교역 · 캐러밴 · 꼬리 —
+  //     `tickWorldV2` 본문 그대로라 세계는 같다) 머리(떠날 때 정산) 뒤와 틱 끝(도착) 두 번 본다.
+  //     `atSettle` = 머리 뒤에 처음 보인 화물(그 캐러밴은 머리 앞에 찍힌 장 `c._t707` 이 있었다) · `atArrive` = 틱 끝에 처음 보인 화물.
+  w._t173 = { stoneReturns: 0, stoneAmt: 0, returns: 0, atSettle: 0, atArrive: 0, settleFromMarket: 0 };
   const seen = new Set();
-  for (let d = 0; d < 300; d++) {
-    if (starve) for (let i = 0; i < w.villages.length; i += 2) w.villages[i].storage.stone = 0;
-    econV2.tickWorldV2(w, d);
+  const look = (where, pend) => {
     for (const c of (w.caravans || [])) {
       if (seen.has(c.id) || !c._returningRes) continue;
-      seen.add(c.id); w._t173.returns++;
+      seen.add(c.id); w._t173.returns++; w._t173[where]++;
+      if (where === 'atSettle' && pend.has(c.id)) w._t173.settleFromMarket++;
       if (c._returningRes === 'stone') { w._t173.stoneReturns++; w._t173.stoneAmt += (+c._returningAmt || 0); }
     }
+  };
+  for (let d = 0; d < 300; d++) {
+    const pend = new Set((w.caravans || []).filter((c) => c._t707).map((c) => c.id));   // 머리 앞 — 정산을 기다리는 장
+    const P = econV2.tickWorldV2Parts(w);
+    P.head();
+    look('atSettle', pend);
+    if (starve) for (let i = 0; i < w.villages.length; i += 2) w.villages[i].storage.stone = 0;
+    //   ★[T727] 비우기는 머리 **뒤** — 머리는 끔 세계에선 돌을 안 건드려 끔 판 값이 같고(19 → 129건 · 5,423 단위 그대로),
+    //     켬 세계에선 떠날 때 정산이 머리에 있다. 머리 앞에 비우면 픽스처가 정산 바로 앞을 쳐서 바닥 마을이 판 돌이 늘 0 이 된다
+    //     (켬 ×1.55 — 세계가 아니라 픽스처가 정산 시각과 부딪친 값). 비우는 뜻은 같다: 그날 생산 앞에 바닥 마을 돌 = 0.
+    for (const v of w.villages) P.village(v);
+    P.trade(); P.caravans(); P.tail();
+    look('atArrive', pend);
   }
   return w;
 };
@@ -240,6 +256,15 @@ const digest = (w) => JSON.stringify(w.villages.map((v) => ({ n: v.npcs.length, 
   ok(digest(a) === digest(b), '⑨ ★★주입 없는 두 판이 **비트 동일**(결정론 · 되돌림의 뿌리)');
   const so = mkTrade(false, true), sn = mkTrade(true, true);
   pre(so._t173.returns > 0, '이 세계에서 캐러밴이 실제로 귀환한다(안 돌면 아래가 자명 통과가 된다)', `귀환 ${so._t173.returns}건`);
+  //   ★[T727] 화물이 정해지는 자리 — 켬(기본) = 떠날 때 정산 · 끔(`T707_MARKET=0`) = 도착. 두 세계 모두 같은 하네스가 통과한다.
+  {
+    const MK = !!econV2.T707_MARKET, T = so._t173;
+    if (MK) ok(T.atSettle === T.returns && T.atArrive === 0 && T.settleFromMarket === T.returns,
+      '⑨ ★켬 세계 — 귀환 화물은 **전부 떠날 때 정산**(다음 날 머리)에서 정해진다 · 도착 때 정해지는 화물 0 · 정산된 것은 모두 어제 찍힌 장',
+      `정산 ${T.atSettle} · 도착 ${T.atArrive} · 찍힌 장에서 ${T.settleFromMarket} / ${T.returns}`);
+    else ok(T.atArrive === T.returns && T.atSettle === 0,
+      '⑨ ★끔 세계 — 귀환 화물은 **전부 도착 때** 정해진다(정산 0)', `도착 ${T.atArrive} · 정산 ${T.atSettle} / ${T.returns}`);
+  }
   ok(digest(so) !== digest(sn), '⑨ ★주입하면 실제로 **다른 세계**가 된다(문이 죽어 있지 않다)');
   ok(sn._t173.stoneReturns > so._t173.stoneReturns,
     '⑨ ★★★ON 에서 **돌 귀환 화물이 실제로 늘었다**(자명 통과 금지)',
