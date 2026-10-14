@@ -350,10 +350,24 @@
    "fps": 14.0,
    "frames": 8,
    "gait": {
+    "contact": {
+     "airKeys": 12,
+     "airLiftKeys": 0,
+     "airMinMm": 15.148,
+     "duty": 0.3151,
+     "liftKeys": 0,
+     "liftMaxDeg": 0.0,
+     "rule": "디딘 발(자료 디딤 구간) 살 가장 낮은 점 = 0 · 흔드는 발 땅 밑이면 넓적다리 들림 · 공중 = 자료 골반 높이(pelvisRise × 키)",
+     "stanceLowMm": [
+      -0.0,
+      0.0
+     ],
+     "swingMinMm": 15.148
+    },
     "corr": 0.9965,
     "groundShiftMm": [
      -1.93,
-     45.18
+     68.66
     ],
     "legs": "Fukuchi RK, Fukuchi CA, Duarte M (2017) · doi:10.7717/peerj.3298 · 45 · 28명",
     "phase0": 0.228,
@@ -405,6 +419,20 @@
    "fps": 10.0,
    "frames": 8,
    "gait": {
+    "contact": {
+     "airKeys": 0,
+     "airLiftKeys": 0,
+     "airMinMm": null,
+     "duty": 0.5658,
+     "liftKeys": 8,
+     "liftMaxDeg": 2.897,
+     "rule": "디딘 발(자료 디딤 구간) 살 가장 낮은 점 = 0 · 흔드는 발 땅 밑이면 넓적다리 들림 · 공중 = 자료 골반 높이(pelvisRise × 키)",
+     "stanceLowMm": [
+      -0.0,
+      10.058
+     ],
+     "swingMinMm": -0.0
+    },
     "corr": 0.9914,
     "groundShiftMm": [
      -2.0,

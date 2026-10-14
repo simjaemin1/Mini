@@ -358,7 +358,12 @@ const imgDim = (p) => {   // PNG IHDR · JPEG SOF — 무늬 크기(1024² 이�
     return out;
   });
   const want = geo.ay - 1.6 * PX_PER_M;                        // 정수리 줄(px) — 앵커에서 사람 키 1.6m 위
-  const lowPx = geo.low.map((r) => r.low * PX_PER_M), standLow = geo.stand.map((r) => r.low * PX_PER_M);
+  // ★[T741] 공중 판 = 자료 디딤 구간 밖(두 발 다) — 메타 `clips.<c>.gait.phase0` · `contact.duty`(판 f = 열쇠 keysPerFrame·f) · 그 판은 발밑 자에서 빼고 "두 발 다 뜬다(> 0)"로 단다
+  const airOf = (r) => { const m = META.clips[r.clip], g = m && m.gait; if (!g || !g.contact) return false;
+    const kk = r.f * META.keysPerFrame, on = (off) => ((g.phase0 + kk / m.keys + off) % 1 + 1) % 1 < g.contact.duty;
+    return !on(0) && !on(0.5); };
+  const aired = geo.low.filter(airOf);
+  const lowPx = geo.low.filter((r) => !airOf(r)).map((r) => r.low * PX_PER_M), standLow = geo.stand.map((r) => r.low * PX_PER_M);
   const worstLow = Math.max(...lowPx.map(Math.abs), ...standLow.map(Math.abs));
   const standClips = Object.keys(META.clips).filter((n) => META.clips[n].center === 'feet');
   const feetStand = geo.stand.map((r) => Math.abs(r.feetDx)), feetClips = geo.feet.filter((r) => standClips.includes(r.clip)).map((r) => Math.abs(r.dx));
@@ -371,7 +376,11 @@ const imgDim = (p) => {   // PNG IHDR · JPEG SOF — 무늬 크기(1024² 이�
   console.log('    [표] 몸 · 방향 · 서기 발목 가운데 Δx(px) · 가장 낮은 살(px) · (적기만) 시트 서기 0판 대비 발밑 줄 Δ · 발 가운데 Δx');
   for (const r of geo.stand) console.log(`      ${r.sex} · ${r.d} · ${r.feetDx} · ${(r.low * PX_PER_M).toFixed(2)} · ${r.sheetBottom} · ${r.sheetFeetX}`);
   console.log(`    [표] 클립별 가장 낮은 살(px · 몸 둘 × 판 전부): ${Object.keys(META.clips).map((n) => { const v = geo.low.filter((r) => r.clip === n).map((r) => r.low * PX_PER_M); return `${n} ${Math.min(...v).toFixed(2)}~${Math.max(...v).toFixed(2)}`; }).join(' · ')}`);
-  ok(worstLow <= 1, `ⓑ ★발밑 ≤ 1px — 가장 낮은 살이 땅(높이 0)에서 1px(1/32m) 안 · 몸 둘 × 클립 다섯 × 판 전부 + 서기 8방향(${lowPx.length + standLow.length}표본)`, `최대 ${worstLow.toFixed(3)}px`);
+  ok(worstLow <= 1, `ⓑ ★발밑 ≤ 1px — 가장 낮은 살이 땅(높이 0)에서 1px(1/32m) 안 · 몸 둘 × 클립 다섯 × 판 전부(공중 판 뺌) + 서기 8방향(${lowPx.length + standLow.length}표본)`, `최대 ${worstLow.toFixed(3)}px`);
+  REC.b.air = aired.map((r) => ({ sex: r.sex, clip: r.clip, f: r.f, lowMm: +(1000 * r.low).toFixed(2) }));
+  ok(aired.length > 0 && aired.every((r) => r.low > 0) && aired.every((r) => r.clip === 'run'),
+     `ⓑ ★[T741] 공중 판 — 자료 디딤 구간 밖(두 발 다)인 판은 달리기에만 있고 가장 낮은 살 > 0(두 발 다 뜬다 · 엉덩이 높이 = 자료 골반 높이 곡선)`,
+     `${aired.length}판 · 가장 낮은 살 ${aired.map((r) => (1000 * r.low).toFixed(1)).join('/')}mm`);
   ok(worstFeet <= 1, `ⓑ ★8방향 발 가운데 ≤ 1px — 두 발목 가운데 ↔ 앵커 x · 서기 8방향 × 몸 둘 + 서서 하는 클립(${standClips.join('·')}) × 판 전부 × 8방향(${feetStand.length + feetClips.length}표본)`, `최대 ${worstFeet.toFixed(3)}px`);
   ok(restTop.every((v) => Math.abs(v - 1.6 * PX_PER_M) <= 1) && rows37.every((r) => Math.abs(r.y0 - want) <= 1),
      `ⓑ ★키 = 셀 규약 — 쉼 자세 정수리 높이 × 32px/m = 51.2px ± 1(몸 둘) · 화면 정수리 줄 = 앵커 − 51.2 = ${want.toFixed(2)} ± 1(깊이가 가로로만 눕는 방향 3·7)`,
