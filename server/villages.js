@@ -893,13 +893,15 @@ const _t740Stat = { restored: null };
 //     · 진행 작업 `_lifeTask`(개간 · 시공 · 진척 `prog` — 그 판: 개간 84% 가 0 으로) · 농부가 잡은 밭 셀 `_farmK` · 그날 나간 날 `_fOutD` · 일터 `_workSite` · 순찰 차례 `_jobN`
 //     · 몸 — 자리 `x` · `y`(다시 뜨면 집으로 뛰었다 — 순간이동) · `hp` · 요양 `_rest` · 직업 `simJob`(같은 자리 같은 직업이 아니면 위 칸을 안 붙인다 — 아래)
 //     · 낚시 자리 `_fishSpotX` · `_fishSpotY` · 던진 수 `_t340N`(종 고르기 씨) · 광부 그날 셀 `_t724Site` · 사냥꾼 그날 예산 · 잡은 수 `_huntBud` · `_huntKil`
+//     · 신원 해시 캐시 `_sh`(존이 `playerId` — 스폰마다 무작위 꼬리 — 로 먼저 세우면 주사위 씨가 바뀐다) · 그날 반일 굴림 `_hd` · `_half`(같은 날 다시 안 굴린다)
 //   **멈춘 시간은 버린다** — 시각 칸(`_workT` · `_jobT` · `_t724T` · `_t340` 던짐 · 길 캐시)은 싣지 않는다(다시 뜬 뒤 첫 걸음부터 센다 · `_workT` 없으면 노동 적산 0 부터).
 //   반쯤 한 일: 대상이 그대로면 잇는다 — 개간 셀이 아직 개간 앞(밭이 아니고 영토 · 잠재 농지)이면 · 집터가 그대로 있으면. 사라졌으면 깨끗이 푼다(손은 남는다).
 //   마을 클레임 그림자(`_claim` · `_clearCrew` · `_buildCrew` · `_psiteCrew` · `_cropClaim` · 광부 손 합 `_t724HeldKg`)는 되돌린 몸에서 다시 센다(하루 마감의 재대사 줄과 같은 식).
 //   몸 열쇠 = 마을 `npcPids` 자리(T728 `_t728HuntWk` 문법). 저장된 몸이 지금 몸보다 많으면 남은 손은 그 마을 첫 몸의 손에 더한다(소멸 0).
 const T747_BODY = process.env.T747_BODY_KEEP === '1';
 const _T747_KEYS = ['simJob', 'x', 'y', 'hp', '_rest', 'inventory', '_t312U', '_t312Kg', '_t368H', '_t368N', '_t717L', '_t733F',
-  '_lifeTask', '_farmK', '_fOutD', '_workSite', '_jobN', '_fishSpotX', '_fishSpotY', '_t340N', '_t724Site', '_huntBud', '_huntKil'];
+  '_lifeTask', '_farmK', '_fOutD', '_workSite', '_jobN', '_fishSpotX', '_fishSpotY', '_t340N', '_t724Site', '_huntBud', '_huntKil',
+  '_sh', '_hd', '_half'];   // 신원 해시 캐시(존 `_shOf` 가 `playerId` — 스폰마다 무작위 꼬리 — 로 먼저 세우면 다시 뜬 몸의 주사위 씨가 바뀐다) · 그날 반일 굴림(같은 날 다시 굴리지 않게)
 function _t747Pack(vil) {
   const P = state.deps && state.deps.players; if (!P || !vil.npcPids) return null;
   const rows = [];
@@ -938,7 +940,7 @@ function _t747Restore() {
       if (Number.isFinite(S.hp) && S.hp > 0) { b.hp = Math.min(S.hp, b.maxHp || S.hp); if (b.hp < (b.maxHp || 100)) R.hpLow++; }
       if (S._rest != null) b._rest = S._rest;
       if (S.inventory && typeof S.inventory === 'object') { b.inventory = S.inventory; let any = false; for (const k in S.inventory) if (S.inventory[k] > 0 && k !== 'seed_berry') any = true; if (any) R.hands++; }
-      for (const k of ['_t312U', '_t312Kg', '_t368H', '_t368N', '_t717L', '_t733F', '_farmK', '_fOutD', '_workSite', '_jobN', '_fishSpotX', '_fishSpotY', '_t340N', '_t724Site', '_huntBud', '_huntKil'])
+      for (const k of ['_t312U', '_t312Kg', '_t368H', '_t368N', '_t717L', '_t733F', '_farmK', '_fOutD', '_workSite', '_jobN', '_fishSpotX', '_fishSpotY', '_t340N', '_t724Site', '_huntBud', '_huntKil', '_sh', '_hd', '_half'])
         if (k in S) b[k] = S[k];
       //   반쯤 한 일 — 대상이 그대로면 잇고(노동 적산은 도착부터 — `_workT` 없음) · 사라졌으면 푼다
       if (S._lifeTask && typeof S._lifeTask === 'object') {
