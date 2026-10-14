@@ -147,11 +147,30 @@ function _computeVillageStats(v, N) {
 // 0. RNG (재현 가능한 seeded random)
 // =============================================================================
 let _seed = 42;
+// ★★[T731 2026-10-14 · 경도 하루 2단계 · 손잡이 `T731_LOCAL_MIDNIGHT`(기본 끔 = 아래 갈래를 아무도 안 탄다 · 종전 글자)] **씨 흐름을 마을마다 가른다.**
+//   종전엔 마을 결산(`village(v)`) · 날씨 · 흉풍이 세계 하나의 흐름(`_seed`)과 번호 계수기(`_nextNpcId`)를 차례로 나눠 썼다 —
+//   마을 차례가 바뀌면 같은 마을이 흐름의 다른 자리를 받아 값이 갈렸다(T712 §5-1: 동 → 서 차례만으로 3시드 날 3 갈림).
+//   켜면 그 마을의 일을 하는 동안(`useVillageStream(v)` ~ `useVillageStream(null)`)엔 **그 마을의 흐름**(`v._rs` · 같은 LCG)을 쓰고,
+//   새 주민 번호는 마을 안 계수기(`v._nid` — 번호 `n<마을 id>.<k>`)에서 뽑는다. 마을 흐름의 첫 값은 세계 씨(`setSeed` 의 값)와 마을 id 를
+//   **같은 LCG 로 섞어** 정한다(새 수 0 · 차례 무관). 교역 · 캐러밴 · 회복 · 사건(마을 둘 이상)은 세계 흐름 그대로다.
+//   `v._rs` · `v._nid` 는 econ 마을 칸이라 서버 저장 줄(`serializeEcon`)이 그대로 싣는다(재기동 뒤 같은 수열).
+const T731_LOCAL_MIDNIGHT = (typeof process !== 'undefined' && process.env && process.env.T731_LOCAL_MIDNIGHT === '1');
+let _seed0 = 42;     // 세계 씨(마을 흐름 첫 값의 재료 — 켬일 때만 읽는다)
+let _curV = null;    // 지금 흐름을 쥔 마을(켬일 때만 선다)
 function srand() {
+  if (_curV) { _curV._rs = (_curV._rs * 1664525 + 1013904223) >>> 0; return _curV._rs / 0xFFFFFFFF; }
   _seed = (_seed * 1664525 + 1013904223) >>> 0;
   return _seed / 0xFFFFFFFF;
 }
-function setSeed(s) { _seed = s >>> 0; }
+function setSeed(s) { _seed = s >>> 0; _seed0 = _seed; }
+function _t731StreamInit(v) {
+  if (typeof v._rs === 'number') return;
+  let x = _seed0 >>> 0; const id = String(v.id != null ? v.id : (v.name || ''));
+  for (let i = 0; i < id.length; i++) x = ((x ^ id.charCodeAt(i)) * 1664525 + 1013904223) >>> 0;
+  v._rs = x;
+}
+/** 켬 — 그 마을의 흐름을 쥔다(null = 세계 흐름으로 돌아간다). 끔 = 아무것도 안 한다. */
+function useVillageStream(v) { if (!T731_LOCAL_MIDNIGHT) return; if (v) _t731StreamInit(v); _curV = v || null; }
 function pickWeighted(weights) {
   const total = weights.reduce((a, b) => a + b, 0);
   let r = srand() * total;
@@ -2097,7 +2116,7 @@ let _nextNpcId = 1;
 function createNPC(opts = {}) {
   const job = opts.job || 'farmer';
   const npc = {
-    id: 'n' + (_nextNpcId++),
+    id: _curV ? ('n' + _curV.id + '.' + (_curV._nid = (_curV._nid | 0) + 1)) : 'n' + (_nextNpcId++),   // ★[T731] 켬 = 마을 안 계수기(차례 무관)
     age: 16 + Math.floor(srand() * 20),
     currentJob: job,
     skills: Object.fromEntries(FIELDS.map(f => [f, 0])),
@@ -5782,8 +5801,9 @@ module.exports = {
   srand: () => srand(),
   // ★[T728] 재기동 영속 — 모듈 전역 셋(econ 난수 상태 · 다음 주민 번호 · 다음 마을 번호)을 읽고 되돌리는 문.
   //   서버 world 메타 행(`T728_RESTART_KEEP` 켬)만 부른다 — 안 부르면 아무 일도 없다(랩 · CLI · 픽스처 무변).
-  rngState: () => ({ seed: _seed, npc: _nextNpcId, vil: _nextVillageId }),
-  setRngState: (o) => { if (!o) return; if (o.seed != null) _seed = o.seed >>> 0; if (Number.isFinite(o.npc)) _nextNpcId = o.npc; if (Number.isFinite(o.vil)) _nextVillageId = o.vil; },
+  rngState: () => (T731_LOCAL_MIDNIGHT ? { seed: _seed, npc: _nextNpcId, vil: _nextVillageId, s0: _seed0 } : { seed: _seed, npc: _nextNpcId, vil: _nextVillageId }),   // ★[T731] 켬 = 세계 씨(새 마을 흐름의 재료)도
+  setRngState: (o) => { if (!o) return; if (o.seed != null) _seed = o.seed >>> 0; if (Number.isFinite(o.npc)) _nextNpcId = o.npc; if (Number.isFinite(o.vil)) _nextVillageId = o.vil; if (T731_LOCAL_MIDNIGHT && Number.isFinite(o.s0)) _seed0 = o.s0 >>> 0; },
+  useVillageStream, T731_LOCAL_MIDNIGHT,   // ★[T731] 마을 흐름 쥐기(v2 의 마을 조각 · 날씨 · 흉풍이 부른다) · 손잡이
   // ★S2 계측/랩 노출 — 노동목표 함수(석공·대장장이)
   masonTarget, smithTarget, weaponsmithTarget, armorsmithTarget, warriorTarget,
   // ★S4 명장 견습(세대 전승)
