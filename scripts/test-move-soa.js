@@ -1647,6 +1647,30 @@ console.log('\n⑮ T427 ① — 닿는 현장만(배정 순간 집 → 후보 ·
        `술어 ${off.calls} · ${on.calls} · 길들임 중 ${on.c0} · 집합 ${on.seen}`);
     ok(/const T734_ASTAR_SLICE = process\.env\.T734_ASTAR_SLICE !== '0';/.test(Z), '⑮-l 손잡이 `T734_ASTAR_SLICE` — 기본 켬(`=0` 만 끔 · PM 10-14)');
   }
+  // ★[T750 ①] 어부 던짐 지형 자리 미리 세기(`T750_CAST_SLICE` · 기본 끔) — 꼬리가 T677 기억(`_t677Spot` 그 함수)에 미리 넣고, 던질 때 같은 객체를 꺼낸다(제품 글자 그대로)
+  {
+    const src = bodyV('_t677Spot') + '\n' + bodyV('t750CastPre');
+    const run = (on) => {
+      let calls = 0; const zt = { rivers: [] };
+      const F = { spotAt: (T, z, x, y) => { calls++; return { water: ((x * 7 + y * 3) >> 5) % 3 === 0, u: (x + y) % 17, kind: 'river' }; } };
+      const vil = { _jobSites: { fisher: Array.from({ length: 30 }, (_, i) => ({ x: 3200 + (i % 6) * 32 + 16, y: 3200 + ((i / 6) | 0) * 32 + 16 })) } };
+      const fisher = { simJob: 'fisher', simVillageId: 3, _workSite: { x: 3264 + 16, y: 3264 + 16 }, _fishSpotX: null }, farmer = { simJob: 'farmer', simVillageId: 3, _workSite: { x: 100, y: 100 } };
+      const state = { zoneId: 'z', deps: { npcs: new Set(['a', 'b']), players: new Map([['a', fisher], ['b', farmer]]) }, byDbId: new Map([[3, vil]]) };
+      const M = new Function('state', 'SZ', 'T750_CAST_SLICE', 'T677_LIFE_SCAN', '_fishingMod', '_terrainMod',
+        'const _t677SpotM = new Map(); let _t677SpotT = null, _t677SpotZ = null; const _t750Stat = { checked: 0, cells: 0, filled: 0, had: 0 }; let _t750It = null;\n' + src + '\nreturn { _t677Spot, t750CastPre, _t750Stat };')(state, 32, on, true, () => F, () => ({ ZONE_TERRAIN: { z: zt } }));
+      const r = M.t750CastPre(50), c0 = calls;
+      const cells = [fisher._workSite, ...vil._jobSites.fisher.filter((q) => Math.abs(q.x - fisher._workSite.x) <= 128 && Math.abs(q.y - fisher._workSite.y) <= 128).slice(0, 12)];
+      const got = cells.map((q) => M._t677Spot(F, Math.floor(q.x / 32), Math.floor(q.y / 32)));
+      const fresh = cells.map((q) => F.spotAt(null, 'z', Math.floor(q.x / 32) * 32 + 16, Math.floor(q.y / 32) * 32 + 16));
+      return { r, c0, castCalls: calls - c0 - cells.length, same: JSON.stringify(got) === JSON.stringify(fresh), n: cells.length, st: M._t750Stat };
+    };
+    const off = run(false), on = run(true);
+    ok(on.r > 0 && on.castCalls === 0 && on.same && off.r === 0 && off.c0 === 0 && off.castCalls > 0 && off.same && on.st.checked === 1,
+       '⑮-m ★[T750 ①] 던질 칸 지형 자리 미리 세기 — 켜면 던질 때 `spotAt` 0번(기억에서 같은 값) · 끄면 꼬리 0 · 농부는 안 센다',
+       `칸 ${on.n} · 미리 ${on.r} · 켬 던짐 때 ${on.castCalls} · 끔 던짐 때 ${off.castCalls} · 같은 값 ${on.same && off.same}`);
+    ok(/const T750_CAST_SLICE = process\.env\.T750_CAST_SLICE === '1';/.test(V) && /const T750_CAST_SLICE_Z = process\.env\.T750_CAST_SLICE === '1';/.test(Z) && /if \(T750_CAST_SLICE_Z\) \{[^\n]*SimVillages\.t750CastPre\(/.test(Z),
+       '⑮-m 손잡이 `T750_CAST_SLICE` — 기본 끔(`=1` 만 켬) · 존은 틱 꼬리(10 ms 안이면 남은 몫 ≤2 ms)에서만 부른다');
+  }
   // ⓘ 미끼 — 술어가 늘 "닿는다"(= 안 본다)면 못 닿는 현장이 다시 배정된다
   {
     const liar = (ax, ay, bx, by) => true;
