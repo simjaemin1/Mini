@@ -866,7 +866,9 @@ function dayOfSeason(season) {
     ok(counts.readyAt + counts.plantedAt + counts.cropType === mig.length,
       '★★★⑬ⓐ `readyAt`·`plantedAt`·`cropType` 이 **승격 함수의 읽기 한 줄에만** 남는다',
       `총 ${counts.readyAt + counts.plantedAt + counts.cropType}건 = 그 줄 ${mig.length}건`);
-    ok(!/Date\.now\(\)[^\n]{0,40}(farm|crop)/i.test(zsrc4) && !/(farm|crop)[^\n]{0,40}Date\.now\(\)/i.test(zsrc4),
+    //   ★[T703] 따옴표 글자는 뺀다 — T687 공용 틱 예산이 이름표 `TB.out(15, 'farm')` 를 같은 줄에 달았다(틱 예산 15ms · 밭 시계 아님 · 밭은 게임일 `_farmStageQd`). 식별자·호출만 본다.
+    const zsrc4n = zsrc4.replace(/'(?:[^'\\\n]|\\.)*'/g, "''");
+    ok(!/Date\.now\(\)[^\n]{0,40}(farm|crop)/i.test(zsrc4n) && !/(farm|crop)[^\n]{0,40}Date\.now\(\)/i.test(zsrc4n),
       '★★⑬ⓐ 밭 절에 `Date.now()` 가 없다 — **밭의 시계는 게임일 하나다**');
 
     // ⓑ ★승격 — 옛 행 픽스처가 정본 모양으로 올라온다

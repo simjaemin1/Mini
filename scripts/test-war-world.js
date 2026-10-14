@@ -185,8 +185,10 @@ function _run(opts) {
   //   (epoch 0 · dayMs 30초 ⇒ 30초마다 다른 날). 그래서 같은 씨의 판이 **돌린 시각에 따라** 다른 자리에서 태어났다
   //   (ⓛ 간헐 빨강의 첫 뿌리 · 보고 T413 §0-ⓐ). 스폰 순간만 시계를 판의 날에 맞춘다 — 운영 코드는 한 글자도 안 바뀐다.
   //   `opts.spawnDay` = 그 날을 바꿔 보는 손(ⓛ 전멸 판 · 미끼용). 없으면 `world.day`.
-  { const _n = Date.now, _t = (opts.spawnDay != null ? opts.spawnDay : world.day) * dayMs + 1; Date.now = () => _t;
-    try { for (const v of villages) H.syncVillagePop(v, Infinity); } finally { Date.now = _n; } }
+  //   ★[T703] T681 켬(기본)이면 운영 씨의 날은 `world.day`(econ 날 · T681 ②)다 — 그 판에선 스폰 순간만 `world.day` 를 그 날로 둔다(되돌림 finally · 끔 판은 종전 벽시계 손 그대로).
+  { const _n = Date.now, _t = (opts.spawnDay != null ? opts.spawnDay : world.day) * dayMs + 1, _wd = world.day; Date.now = () => _t;
+    if (H.T681_ON && opts.spawnDay != null) world.day = opts.spawnDay;
+    try { for (const v of villages) H.syncVillagePop(v, Infinity); } finally { Date.now = _n; world.day = _wd; } }
   // 집 발자국 색인 — 스폰 자리가 발자국·바위 안이면 판 자체가 틀렸다(하네스 전제)
   H._warBuildRectIndex();
   let badSpawn = 0; for (const p of players.values()) { if (H._warBlockedCell(p.x / SZ, p.y / SZ) && !opts.noCollide) badSpawn++; }
@@ -237,10 +239,13 @@ function _run(opts) {
     H.tickWarBodies(now);
     // 하루 경계 — onGameTick 과 같은 순서(daily → 결단 뒤 정리)
     if (now - dayAt >= dayMs) {
+      //   ★[T703] T681 켬(기본)이면 운영 하루 마감과 같은 차례로 두 자리를 더 부른다 — econ **앞** `_t681Flush`(지난 날 몫 채우기) · econ 뒤 캐러밴 앞 `_t681Day`(행군·귀환 장부 · 위협 · 줄어드는 몸)
+      if (H.T681_ON) H._t681Flush();
       dayAt = now; world.day++; H.state.lastGameDay++;
       const sb = (war.stats().surrender) || 0;
       war.daily(world.day); H._warAfterDaily(sb);
       if (opts.den) H._t476Decide(world.day);   // ★[T476] 운영과 같은 자리(war-core daily 직후 · 결단 뒤)
+      if (H.T681_ON) H._t681Day(now);
       if (opts.den && opts.den.grow && tr0.gang && !tr0.grown) { tr0.gang.n = opts.den.grow; tr0.grown = world.day; }   // 원정 중 갱이 불었다(합류 — 싸우는 순간의 갱을 쓰나)
       (tr.packDays || (tr.packDays = [])).push({ day: world.day, rem: +(w._packRem || 0).toFixed(6), ration: w._ration != null ? +w._ration.toFixed(4) : null, phase: w.phase, op: w.op });
     }
@@ -571,16 +576,19 @@ function _run(opts) {
     ok(sigU(a) === sigU(b), 'ⓤ 벽시계를 사흘 밀어도 한 글자 같은 판 — 태어나는 자리의 씨는 판의 날(`world.day`)', `hash ${a.posHash}/${b.posHash} · 교전 ${a.fightTicks}/${b.fightTicks}틱`);
     // ★[T541] 전멸 판의 날 406 → 417 — 막힌 곧은 걸음이 걸음 경로(path-core)로 돌고 곧은 줄이 지나는 칸을 전부 보자
     //   406 판은 생존자가 남는 궤주가 됐다(판이 바뀐 것). 401~420 을 훑어 전멸 판(몸 치움 ○ · 옛 규칙 못 봄)은 417 하나 — 그 날을 쓴다(칸의 뜻은 그대로).
-    const g = runScenario(Object.assign({}, base, { spawnDay: 417 }));
-    ok(g.posHash !== a.posHash, 'ⓤ ★미끼① — 날을 바꾸면 자리가 바뀐다(씨가 실제로 날을 본다 · 위 칸은 자명 통과가 아니다)', `날 400 hash ${a.posHash} · 날 417 hash ${g.posHash}`);
-    ok(g.ended && g.ended.why === 'rout' && g.bodyGoneAtEnd === true, 'ⓤ 전멸 판(날 417 — 공격 표본 생존 0)도 끝난다 — 몸이 같은 틱에 치워져도 그 몸의 기록으로 읽는다',
+    //   ★[T703] T681 켬 + `T703_MARCH_LEDGER=1`(행군 장부 고침) 판은 같은 훑기(401~460)에서 전멸 판이 **451** 하나다(행군이 econ 날 장부라 판이 바뀐 것 · 칸의 뜻은 그대로).
+    //     T681 끔 판은 417 그대로 · T681 켬에 고침 끔(지금 기본)은 훑지 않았다(그 판은 ⓐ·ⓦ 가 먼저 빨강 — 행군 대형이 제 회관에서 싸운다 · 보고 T703).
+    const _H0 = SimVillages.__p3Bind({}), _uDay = (_H0.T681_ON && _H0.T703_MARCH) ? 451 : 417;
+    const g = runScenario(Object.assign({}, base, { spawnDay: _uDay }));
+    ok(g.posHash !== a.posHash, 'ⓤ ★미끼① — 날을 바꾸면 자리가 바뀐다(씨가 실제로 날을 본다 · 위 칸은 자명 통과가 아니다)', `날 400 hash ${a.posHash} · 날 ${_uDay} hash ${g.posHash}`);
+    ok(g.ended && g.ended.why === 'rout' && g.bodyGoneAtEnd === true, `ⓤ 전멸 판(날 ${_uDay} — 공격 표본 생존 0)도 끝난다 — 몸이 같은 틱에 치워져도 그 몸의 기록으로 읽는다`,
       `끝 ${JSON.stringify(g.ended)} · 몸 치움 ${g.bodyGoneAtEnd} · 궤주 ${g.stat.rout} · w.phase ${g.phase}`);
     ok(!g.endedLive, 'ⓤ ★미끼② — 옛 규칙(살아 있는 몸에서만 읽기)은 이 판을 **못 본다**(ⓛ 간헐 빨강의 재현 · 뿌리 둘째)', `옛 규칙 끝 ${JSON.stringify(g.endedLive)}`);
     const cut = runScenario(Object.assign({}, base, { maxTicks: 300 }));
     ok(!cut.ended && cut.fightTicks === 0, 'ⓤ ★미끼③ — 끝나기 전에 자르면 "끝났다"가 안 선다(판정이 상태를 본다 · 자명 통과 0)', `300틱: 끝 ${JSON.stringify(cut.ended)} · 교전 ${cut.fightTicks}틱`);
     const hsrc = fs.readFileSync(__filename, 'utf8');
     const pins = (hsrc.match(/Date\.now = \(\) => _t;/g) || []).length;
-    ok(pins === 1 && /try \{ for \(const v of villages\) H\.syncVillagePop\(v, Infinity\); \} finally \{ Date\.now = _n; \}/.test(hsrc),
+    ok(pins === 1 && /try \{ for \(const v of villages\) H\.syncVillagePop\(v, Infinity\); \} finally \{ Date\.now = _n;(?: world\.day = _wd;)? \}/.test(hsrc),
       'ⓤ 시계는 스폰 순간에만 판의 날에 맞춘다(한 자리 · 되돌림 finally) — 운영 코드 무변', `고정 자리 ${pins}`);
   }
 

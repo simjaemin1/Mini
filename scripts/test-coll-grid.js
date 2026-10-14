@@ -37,7 +37,8 @@ const names = (b) => [...codeOnly(b).matchAll(/b\.type !== '(\w+)'/g)].map((m) =
 const want = { _edgeScan: ['wall', 'door'], findCellFence: ['fence'], findFloorTile: ['floor'], hasFloorSupportAt: ['floor', 'stair'] };
 let sub = true; for (const k in want) { const n = names(PRED[k]); if (n.join() !== want[k].join() || !n.every((t) => COLL.includes(t))) sub = false; }
 ok(sub, '① ★★넷이 거르는 이름이 **그 집합 안**이다(술어가 새 종류를 보기 시작하면 여기가 빨개진다)', Object.keys(want).map((k) => `${k}=${names(PRED[k]).join('+')}`).join(' · '));
-ok(Object.values(PRED).every((b) => /\bqtColl \? qtColl\.queryCircle\(/.test(b) && !/qtBuildings/.test(codeOnly(b))), '① ★넷이 `qtColl` 을 본다(옛 `qtBuildings` 0) · 격자가 아직 없으면 종전 폴백 그대로');
+//   ★[T703] T689(`T689_GC` 끔 기본)가 같은 자리에 빌린 배열 갈래(`queryCircleScratch`)를 끼웠다 — 끔 갈래는 종전 `queryCircle` 그대로라 두 꼴을 다 받는다(갈래 없는 옛 꼴도)
+ok(Object.values(PRED).every((b) => /\bqtColl \? (?:\(T689_GC \? qtColl\.queryCircleScratch\([^()]*\) : )?qtColl\.queryCircle\(/.test(b) && !/qtBuildings/.test(codeOnly(b))), '① ★넷이 `qtColl` 을 본다(옛 `qtBuildings` 0) · 격자가 아직 없으면 종전 폴백 그대로');
 ok((codeOnly(Z).match(/qtColl\.queryCircle\(/g) || []).length === 4, '① `qtColl` 을 묻는 자리는 그 넷뿐이다');
 const RS = body('rebuildSpatialIndex'), RI = body('_rebuildSpatialInc');
 ok(/qtBuildings\.insert\(e\); S\.bld\.push\(e\); if \(COLL_TYPES\.has\(b\.type\)\) qtColl\.insert\(\{ x: b\.x, y: b\.y, ref: b \}\);/.test(RI),
@@ -79,9 +80,12 @@ const SRC = [body('_edgeScan'), body('findEdgeWall'), body('findFloorTile'), bod
   body('hasFloorSupportAt', '  '), body('dirVec', '  ')].join('\n');
 const scope = (bl, qt) => {
   const buildings = new Map(bl.map((b) => [b.id, b]));
+  //   ★[T703] T689(`T689_GC` · 기본 끔)가 술어 글자에 손잡이 하나와 빌려 쓰는 칸 둘을 넣었다 — 제품 머리(zone.js)와 같은 뜻으로 넘긴다(켬이면 같은 답인지도 이 판이 잰다)
   return new Function('qtColl', 'buildings', 'BUILDING_SIZE', 'ghostBuildings', 'ZONE', '_walk', 'DEBUG_COLLIDER', 'ZONE_ID', 'isBlockedByStairSide', 'isTerrainBlockedLocal',
+    'T689_GC', '_t689WOC', '_t689WNC',
     SRC + '\nreturn { isBlockedByWall, findFloorTile, findCellFence, hasFloorSupportAt, straightPathClear };')(
-    qt, buildings, SZ, new Map(), { worldOffsetX: 0, worldOffsetY: 0 }, { wallQ: 0 }, false, 't', () => false, () => false);
+    qt, buildings, SZ, new Map(), { worldOffsetX: 0, worldOffsetY: 0 }, { wallQ: 0 }, false, 't', () => false, () => false,
+    process.env.T689_GC === '1', { cx: 0, cy: 0 }, { cx: 0, cy: 0 });
 };
 const tree = (bl, keep) => { const q = new Quadtree(0, 0, W, H); for (const b of bl) if (keep(b)) q.insert({ x: b.x, y: b.y, ref: b }); return q; };
 

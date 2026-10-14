@@ -232,7 +232,8 @@ console.log('\n⑦ 걷기 술어 — `_t316WalkAlways` 에 **농부 항 하나**
   //   ⇒ 문은 여전히 **둘**(결정 · 이동). 셈은 글자 넷 = 정의 1 + 결정 1 + 이동 1 + 이동의 거울 1. 거울은 **글자로** 건다:
   //     이동 문의 거름 식이 앞문 안에 **글자 그대로** 있고, 그 밖 어디에도 셋째 문이 없다.
   const _gate = '!p.canadiaVillage && !_t316WalkAlways(p) && !isPositionActive(p.x, p.y)';
-  const _pre = bodyOf(ZC, '_wwPre');
+  //   ★[T703] T689 가 앞문 고리 몸통을 `_wwPreOne` 으로 떼어 냈다(끔 = 고리 · 켬 = forEach · 같은 몸통 글자) — 앞문 = 두 몸통을 합친 것
+  const _pre = bodyOf(ZC, '_wwPre') + '\n' + bodyOf(ZC, '_wwPreOne');
   ok((ZC.match(/_t316WalkAlways\(/g) || []).length === 4 && (_pre.match(/_t316WalkAlways\(/g) || []).length === 1 && _pre.includes(_gate)
      && ZC.split(_gate).length - 1 === 2,
      '⑦ 그 술어를 부르는 **문**은 그대로 **둘**(결정 · 이동 — 셋째 문 0) · 넷째 글자는 이동 문의 **거울**(`_wwPre` · 같은 거름 식 글자 그대로 · T499)');
