@@ -16,6 +16,8 @@
      (나) **디딘 발**만 — 자료 디딤 구간(그 발 위상 < 디딤 비율 · 왼발 위상 = φ0 + k/K · 오른발 + ½)에 양 끝이 다 드는 구간의 그 발 가장 낮은 점.
           φ0 = 모캡 왼 넓적다리 ↔ 자료 넓적다리 상관 맞춤(`mocap_retarget.gait_phase` · 시트·3D 같은 표본) — 모캡 다리(전)도 같은 창이라 같은 φ0
           (그 클립에 위상이 없으면 지금 `poses.json` 의 φ0) · 디딤 비율 = `gait_speeds.json`(다리 곡선을 뽑은 그 조건).
+     (다) [T741] **땅에 세운 점** — 디딘 발(자료 디딤 구간 · 둘이면 둘 중) 가장 낮은 살 점 = T741 3D 접지 규칙 그대로 · 디딘 발 없는 열쇠(공중)는 안 센다 ·
+          흔드는 발 − 디딘 발 높이 차 최저 · 공중 열쇠 수 · 공중 가장 낮은 살 최저도 적는다. `--body=M|F` 로 몸을 고른다(기본 = 메타 기본 몸).
   ⓓ 앞 = 모델 +x(3D: 클라가 +x 를 게임 방향으로 돌린다 · 2D: 방향 0 = +x · 짚신 앞코가 +x).
 게임 속도: 걷기 `MOVE_SPEED` 64 px/s = 2.0 m/s(server/zone.js · 32 px = 1 m) · 달리기 × `SPRINT_MULT` 2.5 = 5.0 m/s. 재생: 걷기 8판 10 fps · 달리기 8판 14 fps(`char_render.py` CLIPS).
 """
@@ -87,6 +89,31 @@ def slide(P, side, dt, v, ph0=None, duty=None):
         out["stance"] = {"phase0": ph0, "duty": duty, "intervals": n_int, "vAnim": round(vs, 5), "L": round(Ls, 5),
                          "slipCycle": round(v * T - Ls, 5), "slipStance": round((v - vs) * duty * T, 5),
                          "a_T": round(Ls / v, 5), "b_L": round(v * T, 5), "b_scale": round(v * T / Ls, 5), "swingLowKeys": swing_low}
+        # (다) [T741] 땅에 세운 점 = 디딘 발(자료 디딤 구간 · 둘이면 둘 중) 가장 낮은 살 점 — T741 3D 접지 규칙 그대로 · 디딘 발 없는 열쇠(공중)는 안 센다
+        Dg = Sg = Sa = 0.0
+        ng = 0
+        sw_gap, air, air_min = [], 0, None
+        for k in range(K):
+            n = (k + 1) % K
+            dd = [f for f in ("L", "R") if phase(k, f) < duty]
+            if not dd:
+                air += 1
+                zz = min(P[k][i][2] for i in range(len(P[k])))
+                air_min = zz if air_min is None else min(air_min, zz)
+                continue
+            cands = [i for i in range(len(P[k])) if side[i] in dd]
+            c = min(cands, key=lambda i: (P[k][i][2], i))
+            d = P[n][c][0] - P[k][c][0]
+            Dg -= d
+            Sg += d + v * dt
+            Sa += abs(d + v * dt)
+            ng += 1
+            for f in ("L", "R"):                                   # 흔드는 발 − 디딘 발(가장 낮은 점끼리) 높이 차
+                if f not in dd:
+                    sw_gap.append(min(P[k][i][2] for i in range(len(P[k])) if side[i] == f) - P[k][c][2])
+        out["grounded"] = {"keys": ng, "L": round(Dg, 5), "slipCycle": round(Sg, 5), "slipAbs": round(Sa, 5),
+                           "swingGapMinMm": round(1000 * min(sw_gap), 3) if sw_gap else None, "airKeys": air,
+                           "airMinMm": round(1000 * air_min, 3) if air_min is not None else None}
     return out
 
 
@@ -308,6 +335,9 @@ def main():
             s = d["stance"]
             print(f"        (나) 디딘 발만: 구간 {s['intervals']} · v_anim {s['vAnim']:.3f} · L {s['L']:.4f} → {100 * s['slipCycle']:+.1f} cm/주기 · "
                   f"디딤 한 번 {100 * s['slipStance']:+.1f} cm · ⓐ T' {s['a_T']:.4f} · ⓑ ×{s['b_scale']} · 흔드는 발이 가장 낮은 열쇠 {s['swingLowKeys']}/{d['keys']}")
+            g = d["grounded"]
+            print(f"        (다) 땅에 세운 점(디딘 발 중 가장 낮은 살): 열쇠 {g['keys']} · 미끄러짐 {100 * g['slipCycle']:+.1f} cm/주기(절대합 {100 * g['slipAbs']:.1f}) · "
+                  f"흔드는 발 − 디딘 발 최저 {g['swingGapMinMm']} mm · 공중 열쇠 {g['airKeys']}(가장 낮은 살 최저 {g['airMinMm']} mm)")
     if out:
         json.dump(r, open(out, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
         print(f"[slide] 저장: {out}")

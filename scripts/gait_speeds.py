@@ -18,7 +18,8 @@
 
 ★재는 법(새 수 0 — 자도 문턱도 `gait_norms.py` 그대로)
   ⓐ 표본 = 표지 (판 수 − 1) ÷ 시각 폭 · 힘판 = 그 두 배(두 파일 길이가 같은 초인지 맞대 본다 — T723 이 고친 그 식)
-  ⓑ 닿음 = 수직 반력 20 N 문턱(RBDS 논문 사건 규약) · 끊김 0.033 s 미만은 잇고 0.05 s 미만 닿음은 버린다(`gait_norms._runs`) · 파일 끝에 걸린 닿음은 뺀다
+  ⓑ 닿음 = 수직 반력 20 N 문턱(RBDS 논문 사건 규약) · 끊김 0.033 s 미만은 잇고 0.05 s 미만 닿음은 버린다 · 파일 끝에 걸린 닿음은 뺀다
+     (자 = `gait_norms.contacts`·`rates` — [T741] 3D 접지의 디딤 비율도 같은 자 · 이 파일은 부르기만)
   ⓒ 한 주기(같은 발이 다시 닿기까지) — 걷기 = 힘판마다 닿음 시작 간격 · 달리기 = 한 힘판의 닿음 시작 i → i+2 간격 · **가운데값**(발 헛디딤·벨트 넘음에 안 흔들린다)
      디딤 = 닿음 길이 가운데값 · 디딤 비율 = 디딤 ÷ 주기
   ⓓ 보폭(한 주기 · m) = 속도 × 주기 · 분당 걸음 = 120 ÷ 주기 · 키로 무차원: 보폭/키 · v/√(g·키)
@@ -42,25 +43,7 @@ WALK_CONDS = ["T0%d" % i for i in range(1, 9)]
 RUN_CONDS = ["25", "35", "45"]
 
 
-def times(p):
-    """표지 파일의 시각 열만(첫 열) — 표본 셈."""
-    L = open(p, encoding="utf-8").read().strip().split("\n")[1:]
-    return np.array([float(l.split("\t", 1)[0]) for l in L])
-
-
-def rates(pm, nF):
-    tm = times(pm)
-    hz = (len(tm) - 1) / float(tm[-1] - tm[0])
-    ff = 2.0 * hz
-    if abs(nF / ff - len(tm) / hz) > 0.05:
-        raise SystemExit(f"[speeds] ★힘·표지 길이가 안 맞다: {pm}")
-    return hz, ff
-
-
-def contacts(fy, ff):
-    on = fy > GN.STANCE_N
-    st = GN._runs(on, minlen=int(round(0.05 * ff)), gap=int(round(0.033 * ff)))
-    return [(a, b) for a, b in st if a > 0 and b < len(fy)]
+times, rates, contacts = GN.times, GN.rates, GN.contacts   # ★[T741] 정본은 `gait_norms.py`(3D 접지 디딤 비율도 같은 자)
 
 
 def walk(src, files):

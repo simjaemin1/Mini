@@ -618,7 +618,10 @@ def retarget_clip(rig, prefix, clip_name, spec, sheet, align, gait=None, body=No
       관절 자리·지역 회전(L)은 새 쉼(선 자세)으로 — 묶기 자세가 바뀌어도 움직임은 그대로다.
     ★[T708 ②] `gait` = 열린 보행 자료의 다리 마디 땅 기준 시상각(`assets-src/gait/gait_norms.json` — 넓적다리 · 정강이 · 발) — 걷기·달리기의
       다리(넓적다리 · 정강이 · 발 · 발끝)를 그 각으로 세운다(윗몸은 모캡 그대로) · 위상 = 모캡 왼 넓적다리 각과 자료 넓적다리 각의 상관이 가장 큰 자리 ·
-      오른 다리 = 반 주기 뒤 · 접지 = 그 열쇠의 살 가장 낮은 점(`body` 평가)을 쉼의 발바닥(0)에."""
+      오른 다리 = 반 주기 뒤 · 접지 = 그 열쇠의 살 가장 낮은 점(`body` 평가)을 쉼의 발바닥(0)에.
+    ★[T741] 접지 = **디딘 발** — 자료 디딤 구간(그 발 위상 < `gait.duty` · 같은 판 힘판)에 든 발 살 가장 낮은 점을 0 에(둘 다 디디면 낮은 쪽) ·
+      흔드는 발이 땅 밑이면 **그 발 넓적다리만** 수직에서 더 멀리(무릎이 오른다 · 정강이·발 땅 기준 각 = 자료) 땅에 닿을 만큼 든다(이분법) ·
+      디딘 발이 없는 열쇠(달리기 공중) = 엉덩이 높이를 자료 골반 높이 곡선(`gait.pelvisRise` × 몸 키)으로 앞뒤 디딘 열쇠 사이를 잇는다(두 끝은 디딘 발 높이에 맞춘다)."""
     name, fn, label, nf, fps, loop, rule, bone = spec
     path = os.path.join(MOCAP, fn)
     INPUTS["assets-src/mocap/" + fn] = sha16(path)
@@ -687,9 +690,13 @@ def retarget_clip(rig, prefix, clip_name, spec, sheet, align, gait=None, body=No
     feet_rest = min(min((rest[prefix + f].translation.z), (rest[prefix + f] @ Vector((0, bones[prefix + f].length, 0, 1))).z)
                     for f in FEET)
 
+    pose_cache = {}
+
     def pose_at(fi):
-        W = bvh_world_rots(nodes, order, frames[fi])
-        return {ni: C_B2O @ W[ni] @ C_B2O.transposed() for ni in W}
+        if fi not in pose_cache:                       # [T741] 같은 판을 여러 번 부른다(접지 · 들림 이분법) — 읽기만 하는 표라 한 번 계산
+            W = bvh_world_rots(nodes, order, frames[fi])
+            pose_cache[fi] = {ni: C_B2O @ W[ni] @ C_B2O.transposed() for ni in W}
+        return pose_cache[fi]
 
     # 방향: 창 안의 엉덩이 앞(+z_b)의 평균 방위를 +x 로
     sx = sy = 0.0
@@ -717,17 +724,23 @@ def retarget_clip(rig, prefix, clip_name, spec, sheet, align, gait=None, body=No
         feet_skin = []
         for v in body.data.vertices:
             ws = [(gname[g.group], g.weight) for g in v.groups if gname[g.group] in rest and g.weight > 0]
-            if any(n in legb for n, _w in ws):
+            lw = [(n, w) for n, w in ws if n in legb]
+            if lw:
                 tot = sum(w for _n, w in ws)
-                feet_skin.append((Vector((v.co.x, v.co.y, v.co.z, 1.0)), [(n, w / tot) for n, w in ws]))
-        if not feet_skin:
-            raise SystemExit(f"[char3d] ★{prefix} 정강이·발 살 점이 없다 — 접지를 못 잰다")
+                sd = "L" if max(lw, key=lambda t: t[1])[0].startswith(prefix + "Left") else "R"     # [T741] 발마다 — 다리 무게가 가장 큰 쪽
+                feet_skin.append((Vector((v.co.x, v.co.y, v.co.z, 1.0)), [(n, w / tot) for n, w in ws], sd))
+        if not feet_skin or {f[2] for f in feet_skin} != {"L", "R"}:
+            raise SystemExit(f"[char3d] ★{prefix} 정강이·발 살 점이 없다(또는 한쪽뿐) — 접지를 못 잰다")
+        if gait.get("duty") is None:
+            raise SystemExit(f"[char3d] ★{clip_name} 자료 디딤 비율(`duty`)이 없다 — `scripts/gait_norms.py` 를 다시 돌려라(T741)")
 
-        def legs_at(kk):
+        def legs_at(kk, lift=None):
             out = {}
             for side, off in (("Left", 0.0), ("Right", 0.5)):
                 ph = ph0 + kk / float(K) + off
                 a_t, a_s, a_f = (MR.gait_cyc(gait[c], ph) for c in ("thigh", "shank", "foot"))
+                d = (lift or {}).get(side, 0.0)
+                a_t = a_t + (d if a_t >= 0.0 else -d)          # ★[T741] 흔드는 발 들림 — 넓적다리를 수직에서 더 멀리(무릎이 오른다 · 정강이·발은 자료 각 그대로)
                 out[prefix + side + "UpLeg"] = Ry(a_t) @ vert[side + "UpLeg"]
                 out[prefix + side + "Leg"] = Ry(a_s) @ vert[side + "Leg"]
                 out[prefix + side + "Foot"] = Ry(a_f) @ align[side + "Foot"][1]          # 발 0 = 쉼의 평평한 발바닥(MPFB 선 발 · 선 자세에서도 그대로)
@@ -770,15 +783,123 @@ def retarget_clip(rig, prefix, clip_name, spec, sheet, align, gait=None, body=No
     rig.animation_data.action = act
     prev = {}
     nkeys = K + 1 if loop else K                     # 루프는 끝에 0번 열쇠를 한 번 더(되감기 보간이 안 끊기게)
+
+    def key_time(kk):
+        t = start + period * kk / float(K if loop else max(1, K - 1))
+        i0 = min(len(frames) - 1, int(math.floor(t)))
+        return i0, min(len(frames) - 1, i0 + 1), t - math.floor(t)
+
+    def skin_world(Mw):
+        """발마다 살 가장 낮은 높이(뼈대 변형 = 열쇠의 뼈 행렬 · 쉼 역행렬 · 무게 — 블렌더 뼈대 모디파이어와 같은 식)."""
+        D = {n: Mw[n] @ rest[n].inverted() for n in Mw}
+        lo = {"L": math.inf, "R": math.inf}
+        for co, ws, sd in feet_skin:
+            z = sum(wt * (D[bn] @ co).z for bn, wt in ws)
+            if z < lo[sd]:
+                lo[sd] = z
+        return lo
+
+    plan = None
+    if gait:
+        # ★[T741] 접지 계획 — 열쇠마다 (엉덩이 높이 옮김 · 다리 들림) 을 먼저 짓는다(키 넣기 전 · 장면 무접촉)
+        if feet_ctr or not loop:
+            raise SystemExit(f"[char3d] ★{clip_name} 보행 자료 다리는 엉덩이 원점 루프(걷기·달리기)에만 건다")
+
+        def eval_key(kk, lift=None):
+            i0, i1, w = key_time(kk)
+            legs = legs_at(kk, lift)
+            L0, L1 = locals_at(i0, (0.0, 0.0), legs)[0], locals_at(i1, (0.0, 0.0), legs)[0]
+            Mw = {}
+            for b in order_b:
+                q = L0[b.name].to_quaternion().slerp(L1[b.name].to_quaternion(), w)
+                loc = L0[b.name].translation.lerp(L1[b.name].translation, w) if b.parent is None else Vector((0.0, 0.0, 0.0))
+                Lb = Matrix.Translation(loc) @ q.to_matrix().to_4x4()
+                Mw[b.name] = (rest[b.name] @ Lb) if b.parent is None else (Mw[b.parent.name] @ rest[b.parent.name].inverted() @ rest[b.name] @ Lb)
+            return skin_world(Mw), Mw[order_b[0].name].translation.z
+        duty = gait["duty"]
+        on = lambda kk, off: ((ph0 + kk / float(K) + off) % 1.0) < duty           # 자료 디딤 구간(왼 0 · 오른 ½)
+        SIDES = (("L", "Left"), ("R", "Right"))
+        st = [(on(kk, 0.0), on(kk, 0.5)) for kk in range(K)]
+
+        def solve(f):
+            """f(d) ≥ 0 이 되는 가장 작은 d ≥ 0(°) — 이분법(부동소수 자리까지 · 넓적다리 90° 넘으면 죽는다)."""
+            if f(0.0) >= 0.0:
+                return 0.0
+            hi = 1.0
+            while f(hi) < 0.0:
+                hi *= 2.0
+                if hi > 90.0:
+                    raise SystemExit(f"[char3d] ★{clip_name} 흔드는 발을 넓적다리로 못 든다")
+            lo_d = 0.0
+            for _ in range(40):
+                mid = 0.5 * (lo_d + hi)
+                if f(mid) < 0.0:
+                    lo_d = mid
+                else:
+                    hi = mid
+            return hi
+        # ⓐ 디딘 열쇠 — 흔드는 발을 디딘 발 높이까지 든다(넓적다리 · 몸 높이와 무관한 두 발 높이 차로 푼다 — `locals_at` 의 관절 접지가 들림에 따라 몸을 옮기므로) → 디딘 발 = 0
+        lift = [dict() for _ in range(K)]
+        sft, hip = [None] * K, [None] * K
+        for kk in range(K):
+            dd = [sd for (sd, _n), f in zip(SIDES, st[kk]) if f]
+            if not dd:
+                continue
+            lk = {}
+            for (sd, side), f in zip(SIDES, st[kk]):
+                if f:
+                    continue
+
+                def gap(d, sd=sd, side=side):
+                    lo = eval_key(kk, dict(lk, **{side: d}))[0]
+                    return lo[sd] - min(lo[x] for x in dd)
+                d = solve(gap)
+                if d > 0.0:
+                    lk[side] = d
+            lo, hz = eval_key(kk, lk)
+            lift[kk], sft[kk], hip[kk] = lk, -min(lo[x] for x in dd), hz
+        # ⓑ 공중(디딘 발 없음) — 엉덩이 높이 = 앞 디딘 열쇠 + (자료 골반 높이 곡선 차) + 두 끝을 맞추는 곧은 보정(뒤 디딘 열쇠 높이에 닿게) · 땅 밑 발은 든다
+        air = [kk for kk in range(K) if sft[kk] is None]
+        if air:
+            if not gait.get("pelvisRise"):
+                raise SystemExit(f"[char3d] ★{clip_name} 디딘 발이 없는 열쇠가 있는데 자료 골반 높이 곡선(`pelvisRise`)이 없다")
+            Rz = lambda j: MR.gait_cyc(gait["pelvisRise"], ph0 + j / float(K)) * H_PERSON
+            hh = lambda j: hip[j % K] + sft[j % K]
+            target = {}
+            for k0 in air:
+                if k0 in target:
+                    continue
+                a, b2 = k0 - 1, k0 + 1
+                while sft[a % K] is None:
+                    a -= 1
+                while sft[b2 % K] is None:
+                    b2 += 1
+                Ha, Hb, n = hh(a), hh(b2), b2 - a
+                for j in range(a + 1, b2):
+                    target[j % K] = Ha + (Rz(j) - Rz(a)) + (j - a) / float(n) * ((Hb - Ha) - (Rz(b2) - Rz(a)))
+            for kk in air:
+                lk = {}
+                for sd, side in SIDES:
+
+                    def above(d, sd=sd, side=side):
+                        lo, hz = eval_key(kk, dict(lk, **{side: d}))
+                        return lo[sd] + (target[kk] - hz)
+                    d = solve(above)
+                    if d > 0.0:
+                        lk[side] = d
+                lo, hz = eval_key(kk, lk)
+                lift[kk], sft[kk], hip[kk] = lk, target[kk] - hz, hz
+        plan = {"st": st, "sft": sft, "lift": lift}
+        gi.update({"duty": duty, "air": len(air)})
+
     for k in range(nkeys):
         kk = k % K if loop else k
-        t = start + period * kk / float(K if loop else max(1, K - 1))
-        i0 = min(len(frames) - 1, int(math.floor(t))); i1 = min(len(frames) - 1, i0 + 1); w = t - math.floor(t)
+        i0, i1, w = key_time(kk)
         ctr = (0.0, 0.0)
         if feet_ctr:
             m0, m1 = locals_at(i0)[1], locals_at(i1)[1]
             ctr = (m0[0] * (1 - w) + m1[0] * w, m0[1] * (1 - w) + m1[1] * w)
-        legs = legs_at(kk) if gait else None
+        legs = legs_at(kk, plan["lift"][kk]) if gait else None
         L0, L1 = locals_at(i0, ctr, legs)[0], locals_at(i1, ctr, legs)[0]
         for b in order_b:
             pb = rig.pose.bones[b.name]
@@ -791,19 +912,19 @@ def retarget_clip(rig, prefix, clip_name, spec, sheet, align, gait=None, body=No
             pb.rotation_quaternion = q
             if b.parent is None:
                 pb.location = L0[b.name].translation.lerp(L1[b.name].translation, w)
-        if gait:                                       # ★[T708 ②] 접지 = 이 열쇠 살 가장 낮은 점 → 0(쉼 발바닥) — 발뒤꿈치로 닿는 열쇠(관절은 발 속)도 땅 위
-            #   살 자리는 직접 스키닝해 잰다(뼈대 변형 = 열쇠의 뼈 행렬 · 쉼 역행렬 · 무게 — 블렌더 뼈대 모디파이어와 같은 식) — 장면 평가(depsgraph)는
-            #   이미 실린 NLA 트랙(앞 클립)을 같이 돌려 이 열쇠의 자세를 덮었다(실측: 달리기 0번 열쇠 = 걷기 자세) ⇒ 쓰지 않는다
-            Mw = {}
-            for b in order_b:
-                pb = rig.pose.bones[b.name]
-                Lb = Matrix.Translation(pb.location) @ pb.rotation_quaternion.to_matrix().to_4x4()
-                Mw[b.name] = (rest[b.name] @ Lb) if b.parent is None else (Mw[b.parent.name] @ rest[b.parent.name].inverted() @ rest[b.name] @ Lb)
-            D = {n: Mw[n] @ rest[n].inverted() for n in Mw}
-            lowz = min(sum(wt * (D[bn] @ co).z for bn, wt in ws) for co, ws in feet_skin)
+        if gait:                                       # ★[T708 ②] 접지 → ★[T741] 디딘 발(자료 디딤 구간) 살 가장 낮은 점 = 0 · 공중 = 자료 골반 높이 · 흔드는 발 들림
+            #   살 자리는 직접 스키닝해 잰다 — 장면 평가(depsgraph)는 이미 실린 NLA 트랙(앞 클립)을 같이 돌려 이 열쇠의 자세를 덮었다(실측: 달리기 0번 열쇠 = 걷기 자세) ⇒ 쓰지 않는다
             rb = order_b[0]
-            rig.pose.bones[rb.name].location = rig.pose.bones[rb.name].location + rest[rb.name].to_3x3().transposed() @ Vector((0.0, 0.0, -lowz))
-            gi.setdefault("lowSkinBefore", []).append(round(lowz, 5))
+            rig.pose.bones[rb.name].location = rig.pose.bones[rb.name].location + rest[rb.name].to_3x3().transposed() @ Vector((0.0, 0.0, plan["sft"][kk]))
+            if k < K:
+                Mw = {}
+                for b in order_b:
+                    pb = rig.pose.bones[b.name]
+                    Lb = Matrix.Translation(pb.location) @ pb.rotation_quaternion.to_matrix().to_4x4()
+                    Mw[b.name] = (rest[b.name] @ Lb) if b.parent is None else (Mw[b.parent.name] @ rest[b.parent.name].inverted() @ rest[b.name] @ Lb)
+                lo = skin_world(Mw)
+                gi.setdefault("after", []).append((lo["L"], lo["R"]))
+                gi.setdefault("lowSkinBefore", []).append(round(-plan["sft"][kk], 5))
         for b in order_b:
             pb = rig.pose.bones[b.name]
             pb.keyframe_insert("rotation_quaternion", frame=k)
@@ -823,7 +944,22 @@ def retarget_clip(rig, prefix, clip_name, spec, sheet, align, gait=None, body=No
             "duration": round((nf if loop else max(1, nf - 1)) / fps, 6), "src": fn, "label": label,
             "window": [int(start), int(period)], "rule": rule, "sheet": sheet, "center": "feet" if feet_ctr else "hips",
             **({"gait": {"legs": gait["src"], "phase0": gi["phase0"], "corr": gi["corr"], "thighMocapDeg": gi["thighMocap"],
-                         "groundShiftMm": [round(-1000 * max(gi["lowSkinBefore"]), 2), round(-1000 * min(gi["lowSkinBefore"]), 2)]}} if gait else {})}
+                         "groundShiftMm": [round(-1000 * max(gi["lowSkinBefore"]), 2), round(-1000 * min(gi["lowSkinBefore"]), 2)],
+                         "contact": contact_info(gi, plan)}} if gait else {})}
+
+
+def contact_info(gi, plan):
+    """[T741] 접지 요약(메타) — 디딤 비율 · 디딘 발 뜸 최대 · 흔드는 발 최저 · 들린 열쇠 · 공중 열쇠(두 발 다 뜸)."""
+    st, lift, aft = plan["st"], plan["lift"], gi["after"]
+    sw = [1000 * aft[kk][i] for kk in range(len(st)) for i in (0, 1) if not st[kk][i]]
+    sn = [1000 * aft[kk][i] for kk in range(len(st)) for i in (0, 1) if st[kk][i]]
+    air = [kk for kk in range(len(st)) if not any(st[kk])]
+    ds = [d for L in lift for d in L.values()]
+    return {"duty": gi["duty"], "rule": "디딘 발(자료 디딤 구간) 살 가장 낮은 점 = 0 · 흔드는 발 땅 밑이면 넓적다리 들림 · 공중 = 자료 골반 높이(pelvisRise × 키)",
+            "stanceLowMm": [round(min(sn), 3), round(max(sn), 3)], "swingMinMm": round(min(sw), 3),
+            "liftKeys": sum(1 for L in lift if L), "liftMaxDeg": round(max(ds), 3) if ds else 0.0,
+            "airKeys": len(air), "airMinMm": round(min(min(1000 * aft[kk][0], 1000 * aft[kk][1]) for kk in air), 3) if air else None,
+            "airLiftKeys": sum(1 for kk in air if lift[kk])}
 
 
 # ── 판 ─────────────────────────────────────────────────────────────────────────────────────

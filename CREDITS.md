@@ -46,6 +46,7 @@
   > Fukuchi R, Fukuchi C, Duarte M (2017). A public data set of running biomechanics and the effects of running speed on lower extremity kinematics and kinetics. figshare. Dataset. https://doi.org/10.6084/m9.figshare.4543435.v5 — 논문 PeerJ 5:e3298 https://doi.org/10.7717/peerj.3298 — CC BY 4.0
   바꾼 것: 원자료(저장소 밖)에서 다리 관절각(엉덩이·무릎·발목 · 시상면)을 사람마다·주기마다 평균한 표(`assets-src/gait/gait_norms.json` · `scripts/gait_norms.py`)로 3D 걷기·달리기의 다리를 다시 지었다(`public/assets/char3d/char_body.glb`).
   [T723] 같은 표로 **2D 시트**(`public/assets/char/` 걷기·달리기·묶인 걸음 × 16층)의 다리도 다시 구웠다(`assets-src/mocap/poses.json` 다리 = 자료 · 같은 위상 맞춤) · 같은 두 자료의 힘판·표지 원자료로 **속도별 보폭·분당 걸음·디딤 비율** 표를 쟀다(`assets-src/gait/gait_speeds.json` · `scripts/gait_speeds.py` — 재는 표 · 굽기는 안 읽는다).
+  [T741] 같은 두 자료의 힘판으로 **디딤 비율**(걷기 T08 · 달리기 4.5 m/s)을, 달리기 표지(ASIS·PSIS)로 **골반 높이 곡선**을 재 `gait_norms.json` 에 더했다 — 3D 걷기·달리기 접지(디딘 발 · 공중 단계)가 읽는다(`public/assets/char3d/char_body.glb`).
   ⚠이 집 **첫 CC-BY 자료(소리 밖)**다. 게임 안 알림 스택(3줄) 밖이라 CC-BY 소리들과 같은 `/크레딧` 묶음 회부.
 ## 2. 빌린 것
 
