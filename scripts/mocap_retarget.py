@@ -336,11 +336,98 @@ def window_of(nodes, order, frames, rule, bone, span, loop=True):
     raise SystemExit("모르는 창 규칙: " + str(rule))
 
 
-def retarget(path, nframes=8, loop=True, rule="cycle", bone="thighL", span=0):
+# ═══════════ [T708 ② · T723 ①] 걷기·달리기 다리 = 열린 보행 자료 ═══════════
+#   3D(`char_export_gltf.py`)와 시트가 **같은 함수**로 위상을 맞추고 같은 표를 읽는다(사본 0) —
+#   시트 판 k = 3D 열쇠 4k = 자료 위상 φ0 + k/판수(오른다리 + ½) ⇒ 두 그림의 다리가 판마다 같은 자세다.
+#   표 = `assets-src/gait/gait_norms.json`(`scripts/gait_norms.py` 산물 · 걷기 Fukuchi 2018 · 달리기 2017 · CC BY 4.0 · 원자료는 저장소 밖).
+GAIT_PATH = os.path.join(ROOT, "assets-src", "gait", "gait_norms.json")
+GAIT_CLIPS = ("walk", "run")    # 자료가 있는 동작 — 다른 클립은 모캡 그대로
+KEYS_PER_FRAME = 4              # 3D 클립의 판당 열쇠(`char_export_gltf.py` 가 이 값을 쓴다) — 위상 맞춤의 표본 = 판 × 4
+# 시트 다리 뼈 → (자료 곡선 · 위상 어긋남) — 자료 각 = 땅 기준 시상각(앞으로 +) · 정강이 = 넓적다리 − 무릎 굽힘
+GAIT_LEGS = (("thighL", "thigh", 0.0), ("shinL", "shank", 0.0), ("thighR", "thigh", 0.5), ("shinR", "shank", 0.5))
+GAIT = {}                       # main() 이 채운다(`--probe` 는 모캡 그대로 잰다)
+
+
+def gait_tables():
+    """자료 표 → {클립: 곡선 표 + `src`(출처 한 줄: 지은이 (해) · doi · 조건 · 사람 수)} — 3D 메타와 포즈표가 같은 줄을 적는다."""
+    with open(GAIT_PATH, encoding="utf-8") as f:
+        g = json.load(f)
+    return {c: dict(g[c], src=f"{g['sources'][c]['cite'].split(')')[0]}) · doi:{g['sources'][c]['doi']} · {g[c]['cond']} · {g[c]['n']}명")
+            for c in GAIT_CLIPS}
+
+
+def gait_cyc(curve, ph):
+    """101점 주기 표(0 = 100 %)를 위상 ph(0~1)에서 곧게 보간."""
+    x = (ph % 1.0) * 100.0
+    i = min(99, int(math.floor(x)))
+    f = x - i
+    return curve[i] * (1 - f) + curve[i + 1] * f
+
+
+def fk_rot(nodes, order, frame):
+    """관절별 월드 회전(BVH 축) — `fk` 와 같은 곱셈 차례(채널 나열 순서)."""
+    vals = {}
+    for (ni, ch), v in zip(order, frame):
+        vals.setdefault(ni, {})[ch] = v
+    rot = {}
+    for ni, nd in enumerate(nodes):
+        d = vals.get(ni, {})
+        R = ((1, 0, 0), (0, 1, 0), (0, 0, 1))
+        for ch in nd["chans"]:
+            if ch.endswith("rotation"):
+                R = _mm(R, _rot(ch[0], d.get(ch, 0.0)))
+        rot[ni] = R if nd["parent"] is None else _mm(rot[nd["parent"]], R)
+    return rot
+
+
+def gait_phase(nodes, order, frames, start, period, K, thigh):
+    """[T708 ② · T723 ①] 위상 φ0 — 모캡 왼 넓적다리의 **땅 기준 시상각**(열쇠 K개 · 창 안 엉덩이 앞(+z_bvh)의 평균 방위를 앞(+x)으로 돌린 우리 축)
+       ↔ 자료 넓적다리 각(φ0 + k/K)의 상관이 가장 큰 φ0(1/1000 격자 · 같으면 앞 것 · 결정적).
+       돌려주는 것: (φ0, 상관, 모캡 넓적다리 각 목록(°)). 3D 내보내기와 시트가 이 함수 하나를 부른다."""
+    I = {nd["name"]: i for i, nd in enumerate(nodes)}
+    pick = lambda k: frames[min(len(frames) - 1, int(round(start + period * k / float(K))))]
+    sx = sy = 0.0
+    for k in range(K):
+        R = fk_rot(nodes, order, pick(k))[I["Hips"]]
+        sx += R[2][2]                      # 엉덩이 +z(앞) 축의 월드 방향 → 우리 앞(= BVH z)
+        sy += R[0][2]                      #                                  우리 왼(= BVH x)
+    psi = math.atan2(sy, sx)
+    cp, sp = math.cos(psi), math.sin(psi)
+    th = []
+    for k in range(K):
+        P = fk(nodes, order, pick(k))
+        a, b = P[I["LeftUpLeg"]], P[I["LeftLeg"]]
+        dx, dy, dz = b[2] - a[2], b[0] - a[0], b[1] - a[1]     # 우리 축(앞, 왼, 위)
+        th.append(math.degrees(math.atan2(cp * dx + sp * dy, -dz)))
+    mu = sum(th) / K
+    tm = [x - mu for x in th]
+    nt = math.sqrt(sum(x * x for x in tm))
+    best = None
+    for q in range(1000):
+        c = [gait_cyc(thigh, q / 1000.0 + k / float(K)) for k in range(K)]
+        mc = sum(c) / K
+        c = [x - mc for x in c]
+        r = sum(x * y for x, y in zip(tm, c)) / (nt * math.sqrt(sum(x * x for x in c)))
+        if best is None or r > best[1]:
+            best = (q / 1000.0, r)
+    return best[0], best[1], th
+
+
+def retarget(path, nframes=8, loop=True, rule="cycle", bone="thighL", span=0, gait=None):
+    """★[T723 ①] `gait` = 그 클립의 자료 표(`gait_norms.json` 의 walk/run) — 주면 다리 넷(넓적다리·정강이 × 좌우)의 시상각을
+       자료 주기로 세운다(관상각 = BVH 0번 판 그대로 · 몸통·팔·머리는 모캡 그대로). 위상 = `gait_phase`(3D 와 같은 함수 · 같은 표본)."""
     nodes, order, frames, dt = parse_bvh(path)
     I = {nd["name"]: i for i, nd in enumerate(nodes)}
     start, period = window_of(nodes, order, frames, rule, bone, span, loop)
     NFRAMES = nframes
+    gi = None
+    if gait:
+        if not loop:
+            raise SystemExit("보행 자료 다리는 루프 클립(걷기·달리기)에만 건다")
+        ph0, corr, th_m = gait_phase(nodes, order, frames, start, period, KEYS_PER_FRAME * nframes, gait["thigh"])
+        pz = fk(nodes, order, frames[0])                                  # 0번 판(T자 보정 판) — 다리 곧게(시상 0 · 관상 ∓1°)
+        beta0 = {nm: ab_of(seg_dir_body(pz, I, ja, jb), torso)[1] for nm, ja, jb, torso, _p in BONES}
+        gi = {"phase0": ph0, "corr": round(corr, 4), "thighMocapDeg": [round(min(th_m), 2), round(max(th_m), 2)]}
     out = []
     for k in range(NFRAMES):
         # ★루프는 k/N(끝=처음), 원샷은 k/(N−1)(끝=창의 끝) — `char_render.apply_pose` 의 u 와 같은 식이다.
@@ -356,6 +443,10 @@ def retarget(path, nframes=8, loop=True, rule="cycle", bone="thighL", span=0):
             d = tuple(d0[j] * (1 - w) + d1[j] * w for j in range(3))
             n = math.sqrt(sum(c * c for c in d)) or 1.0
             world[nm] = ab_of(tuple(c / n for c in d), torso)
+        if gi:
+            # ★[T723 ①] 다리 = 자료 — 리그 사지 α 는 뒤로 + 라 자료 각(앞으로 +)의 부호를 뒤집는다 · β = 0번 판(3D 의 '곧게 선 다리'와 같은 판)
+            for nm, seg, off in GAIT_LEGS:
+                world[nm] = (-math.radians(gait_cyc(gait[seg], ph0 + k / float(NFRAMES) + off)), beta0[nm])
         pose = {}
         for nm, _ja, _jb, torso, par in BONES:
             a, b = world[nm]
@@ -373,7 +464,8 @@ def retarget(path, nframes=8, loop=True, rule="cycle", bone="thighL", span=0):
         out.append(pose)
     return out, {"frames": len(frames), "fps": round(1.0 / dt, 3),
                  "cycleStart": start, "cyclePeriod": period,
-                 "cycleSec": round(period * dt, 4)}
+                 "cycleSec": round(period * dt, 4),
+                 **({"gait": dict(gi, legs=gait["src"])} if gi else {})}
 
 
 # ═══════════ §0 후보 표 [T155] ═══════════
@@ -427,6 +519,8 @@ def probe(name, path):
 
 
 def main():
+    global GAIT
+    GAIT = gait_tables()                     # ★[T723 ①] 걷기·달리기 다리 = 자료(그 밖 클립은 모캡 그대로)
     doc = {
         "_": "mocap_retarget.py 산물 — 손편집 금지. 원본은 assets-src/mocap/*.bvh, 규약은 그 스크립트.",
         "nframes": {c[0]: c[3] for c in CLIPS},
@@ -440,7 +534,7 @@ def main():
             print(f"[mocap] ⚠{fn} 이 없다 — {clip} 을 건너뛴다")
             continue
         nodes, order, frames, dt = parse_bvh(src)
-        poses, info = retarget(src, nf, loop, rule, bone, int(round(nf / fps / dt)))
+        poses, info = retarget(src, nf, loop, rule, bone, int(round(nf / fps / dt)), gait=GAIT.get(clip))
         info["nframes"], info["clipFps"], info["loop"], info["rule"] = nf, fps, loop, rule
         doc["clips"][clip] = poses
         info["file"] = fn
