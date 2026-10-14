@@ -25,7 +25,7 @@ const DIR = path.join(process.env.T740_DIR || '/tmp/t740/runs', TAG);
 fs.mkdirSync(DIR, { recursive: true });
 const DB = path.join(DIR, 'w.db');
 for (const f of [DB, DB + '-wal', DB + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
-const PRE = ['t722-stop-hook.js', 't650-print.js', 't740-side-hook.js'].map((f) => `--require ${path.join(__dirname, f)}`).join(' ');
+const PRE = ['t722-stop-hook.js', 't650-print.js', 't740-side-hook.js'].concat(String(process.env.T740_EXTRA_PRE || '').split(',').filter(Boolean)).map((f) => `--require ${path.join(__dirname, f)}`).join(' ');   // ★[T742] `T740_EXTRA_PRE=t742-mod-hook.js` — 모듈 메모리 해시
 function boot(phase, extra) {
   return new Promise((resolve) => {
     const out = path.join(DIR, phase);

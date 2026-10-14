@@ -9671,6 +9671,8 @@ function tryPlantTree(player, x, y, item) {
 //   · 규약 넷은 `server/trees.js` 가 쥔다(연 1회 · 겨울 소멸 · 볼 때 정산 · 크기 비례) — 여기 안 적는다.
 //   · 거리 게이트는 `GATHER_RANGE` **그대로**다(새 예외 0 — T90 이 세운 규약).
 const _fruitStore = new Map();          // 존 전체의 열매 재고(자리 키 → {n, yr}) — 볼 때 정산이라 틱 0
+// ★★[T742] 열매 재고는 메모리 전용이었다 — 다시 뜨면 딴 열매가 다시 달렸다(생성). 손잡이 `T742_ZONE_KEEP` 켬이면 T728 메타 행 이름표 칸으로(`villages.t742Bind` · 끔 = 무동작).
+SimVillages.t742Bind('zone.fruitStore', () => _fruitStore, (m) => { if (!(m instanceof Map)) return; _fruitStore.clear(); for (const [k, v] of m) _fruitStore.set(k, v); });
 
 // ★★[T170 2026-09-11 재민 확정] **`fruitNow` 한 비트** — "지금 이 나무에 열매가 달렸나".
 //   값의 정본은 `Trees.fruitSettle`(볼 때 정산)이다 — 규약 넷(연 1회·겨울 소멸·볼 때·크기 비례)을

@@ -149,6 +149,11 @@ const TB = require('./tick-budget');   // ★[T687] 한 틱 공용 예산(끔 = 
 const _diceB = _SEED.makeStream();
 const _rb = _diceB.next;
 let _bTick = 0;
+// ★★[T742] 주사위 흐름의 차례 `_bTick` 은 메모리 전용이었다 — 다시 뜨면 0 부터 다시 세어 같은 날 · 같은 자리의 씨가 달라진다(누가 도적이 되나 · 피해 배분 · 실체 자리).
+//   손잡이 `T742_ZONE_KEEP` 켬이면 마을 모듈의 T728 메타 행 이름표 칸으로 싣고 되돌린다(`villages.t742Bind` · 끔 = 무동작).
+//   되돌린 값은 부팅이 몸을 다시 세운 **뒤**에 한 번 더 넣는다(`_bindRest`) — 몸 다시 세우기(`syncBodies` · 몸 층)가 차례를 먹어도 그 뒤 흐름은 멈추기 전과 같다.
+let _bTickKeep = null;
+try { const _V = require('./villages'); if (_V.t742Bind) _V.t742Bind('bandits.bTick', () => (_bTickKeep != null ? _bTickKeep : _bTick), (v) => { _bTick = (+v) >>> 0; _bTickKeep = _bTick; }); } catch (e) {}
 function _bSeed(a, b) { _bTick = (_bTick + 1) >>> 0; _diceB.seed(_SEED.seedOf((S.denSeed >>> 0) || 1, a | 0, b | 0, _bTick, 0)); }
 
 // =============================================================================
@@ -701,6 +706,7 @@ function _bindRest(host, day0) {
   S.ready = true;
   save(day0);
   syncBodies();   // ★[2파] 부팅 실체화(복원 단 포함 — pid 비영속이라 여기서 재스폰)
+  if (_bTickKeep != null) { _bTick = _bTickKeep; _bTickKeep = null; }   // ★[T742] 몸을 다시 세운 뒤 — 주사위 차례를 멈추기 전 값으로(위 `_bTick` 주석 · 끔이면 늘 null)
   console.log(`[${S.zoneId}] 🏴 도적 시뮬 준비(§11 1파: 경제·수명주기): 소굴 ${S.DENS.filter(d => !d.cleared).length}곳 · 도적단 ${S.GANGS.length} · econ 훅(banditRouteRisk/onBanditLoot) 설치 · day ${day0}${FIXTURE ? ` [FIXTURE=${FIXTURE}]` : ''}${BDT_MIN_DAY !== 365 ? ` [MINDAY=${BDT_MIN_DAY}]` : ''}`);
   return true;
 }
