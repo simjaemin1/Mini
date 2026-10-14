@@ -420,11 +420,19 @@ async function waitHttp(url, tries = 900) {
     //   ⇒ 기다린 상태와 잰 상태가 **달랐다**(T349 가 `e2e-conn ②-b` 에서 겪은 그 자리와 같다).
     //   ⇒ **얼리고 다시 읽은 판에 둘이 있을 때까지** 한 바퀴를 통째로 돈다(상한은 표에만).
     const SHORT_CAP = 90000, tShort = Date.now(); let shortN = 0, rows = [];
+    //   ★[T704 추신] 부족을 **한 품목에 매달지 않는다.** 픽스처는 소비EMA 최댓값 품목을 문턱 아래로 내리는데, 하루 생산이 문턱의 10% 를
+    //     넘는 품목(T661 켠 세계의 나무)이면 다음 하루 마감 전에 다시 위라 부족 래치가 안 서고 의뢰가 안 걸린다 — 같은 품목에 두 번 주입해도
+    //     안 걸리면 그 품목을 `skip` 에 **붙박이로** 넣어 다음 품목으로 간다(`skip` 은 T80 의 종전 인자 · 제품 코드 0). 품목은 알림 줄에서 읽는다.
+    const stuck = []; let lastIt = null, sameIt = 0;
     while (Date.now() - tShort < SHORT_CAP) {
       if (canGive(bd).length < 2) {                                  // ⓐ 날을 푼 채로 세운다
-        const skip = ((bd && bd.rows) || []).map((r) => r.item);
+        const skip = ((bd && bd.rows) || []).map((r) => r.item).concat(stuck);
         await page.evaluate(([vid, sk]) => window.__sendPrimary({ type: '__e2e_village_short', vid, skip: sk }), [V.id, skip]);
         await sleep(700);
+        { const nl = await page.evaluate(() => (window.__notices || []).filter((t) => /\(문턱 /.test(t)).slice(-1)[0] || '');
+          const m = /\s(\S+) [-\d.]+→[-\d.]+ \(문턱/.exec(nl), it = m ? m[1] : null;
+          if (it && it === lastIt) sameIt++; else { lastIt = it; sameIt = 1; }
+          if (it && sameIt >= 2 && !stuck.includes(it)) { stuck.push(it); lastIt = null; sameIt = 0; } }
         bd = await ensureBoard(4);
         shortN++;
         continue;

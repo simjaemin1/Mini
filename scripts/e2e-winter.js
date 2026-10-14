@@ -194,9 +194,16 @@ async function waitHttp(url, tries = 900) {
 
   // ── ② 소속을 먼저 얻는다 — 인출 한도는 **마을 사람의 것**이다(⑥의 전제) ─────
   async function deliverBoardOnce() {
+    //   ★[T704 추신] 부족을 **한 품목에 매달지 않는다** — 픽스처가 고른 품목이 하루 생산으로 문턱 위에 돌아가 의뢰가 안 걸리면(T661 켠 세계의 나무),
+    //     같은 품목에 두 번 주입한 뒤 그 품목을 `skip` 에 넣고 다음 품목으로 간다(`skip` 은 T80 의 종전 인자 · 제품 코드 0). 품목은 알림 줄에서 읽는다.
+    const stuck = []; let lastIt = null, sameIt = 0;
     for (let i = 0; i < 12; i++) {
-      await page.evaluate((vid) => window.__sendPrimary({ type: '__e2e_village_short', vid }), V.id);
+      await page.evaluate(([vid, sk]) => window.__sendPrimary({ type: '__e2e_village_short', vid, skip: sk }), [V.id, stuck.slice()]);
       await sleep(700);
+      { const nl = await page.evaluate(() => (window.__notices || []).filter((t) => /\(문턱 /.test(t)).slice(-1)[0] || '');
+        const m = /\s(\S+) [-\d.]+→[-\d.]+ \(문턱/.exec(nl), it = m ? m[1] : null;
+        if (it && it === lastIt) sameIt++; else { lastIt = it; sameIt = 1; }
+        if (it && sameIt >= 2 && !stuck.includes(it)) { stuck.push(it); lastIt = null; sameIt = 0; } }
       const b = await askBoard(V.id);
       const row = b && b.rows && b.rows[0];
       const give = row && (row.give || [])[0];
@@ -288,7 +295,9 @@ async function waitHttp(url, tries = 900) {
     const b = await askBoard(V.id);
     if (!b || !b.head) break;                            // 이미 판정됐다 — 그냥 간다
     const mr = String(b.head).match(/남은\s*(\d+)\s*일/);
-    if (mr && +mr[1] <= 3) near = true; else await sleep(250);
+    //   ★[T704 추신] 창이 폴링보다 좁았다 — 하루 `DAY_MS`=120ms 라 "남은 3일"은 **360ms** 인데 한 바퀴(잠 250ms + 왕복)는 그보다 길어, 같은 판이 초록·빨강으로 갈렸다
+    //   (같은 커밋 연속 두 판: 29/0 · 28/1). 창을 **10일(≈1.2초)** 로 넓힌다 — 하네스의 시간 상수이고 게임 값이 아니다("가을 마지막 며칠"이라는 뜻은 그대로).
+    if (mr && +mr[1] <= 10) near = true; else await sleep(250);
   }
   if (near) {
     await freeze(true);

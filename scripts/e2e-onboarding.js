@@ -386,13 +386,23 @@ async function waitHttp(url, tries = 900) {
     // ── ⑤ 납품 → 보상 + 곳간 이펙트 + 훅 대사 ───────────────────────────────
     const vid = targetVid;
     async function ensureBoard(tries) {
+      // ★[T704] 부족을 **한 품목에 매달지 않는다.** 픽스처는 늘 소비EMA 최댓값 하나(`skip` 없으면)를 문턱 아래로 내리는데, 그 품목이
+      //   하루 생산이 문턱의 10% 를 넘는 것(T661 켠 세계의 1번 마을 나무: 하루 +수 개 · 문턱 약 4)이면 다음 하루 마감 전에 다시 문턱 위라
+      //   부족 래치가 안 서고 의뢰가 영영 안 걸린다. ⇒ 두 번 해도 안 걸리면 **그 품목을 `skip` 에 넣고 다음 품목**으로 간다
+      //   (`skip` 은 T80 이 만든 종전 손잡이 · 제품 코드 0 · 값 0). 알림 줄 `<마을> <품목> a→b (문턱 …)` 에서 품목을 읽는다.
+      const skip = []; let lastItem = null, same = 0;
       for (let i = 0; i < (tries || 25); i++) {
         await page.evaluate((v) => window.__sendPrimary({ type: 'village_board', vid: v }), vid);
         await sleep(400);
         const b0 = await page.evaluate(() => window.__evLastBoard || null);
         if (b0 && b0.rows && b0.rows.length) return b0;
-        await page.evaluate((v) => window.__sendPrimary({ type: '__e2e_village_short', vid: v }), vid);
+        await page.evaluate(([v, sk]) => window.__sendPrimary({ type: '__e2e_village_short', vid: v, skip: sk }), [vid, skip.slice()]);
         await sleep(900);
+        const nl = await page.evaluate(() => (window.__notices || []).filter((t) => /\(문턱 /.test(t)).slice(-1)[0] || '');
+        const m = /\s(\S+) [-\d.]+→[-\d.]+ \(문턱/.exec(nl);
+        const it = m ? m[1] : null;
+        if (it && it === lastItem) same++; else { lastItem = it; same = 1; }
+        if (it && same >= 2 && !skip.includes(it)) { skip.push(it); lastItem = null; same = 0; }
       }
       return await page.evaluate(() => window.__evLastBoard || null);
     }
@@ -415,9 +425,13 @@ async function waitHttp(url, tries = 900) {
     const need = await page.evaluate(() => (window.__onbState || {}).need || 3);
     for (let round = 0; round < 8 && contrib < need; round++) {
       // 상호작용 구간은 얼린다 — 경제가 검사를 앞지르지 않게
+      // ★[T704] 의뢰를 **세우는** 구간은 날이 흘러야 한다 — 얼린 날에는 부족 래치도 게시도 안 돈다(날 경계의 일). 걸린 뒤에 얼린다.
+      await page.evaluate(() => window.__sendPrimary({ type: '__e2e_day_freeze', on: false }));
+      await sleep(300);
+      await ensureBoard(12);
       await page.evaluate(() => window.__sendPrimary({ type: '__e2e_day_freeze', on: true }));
       await sleep(500);
-      const b1 = await ensureBoard(12);
+      const b1 = await ensureBoard(2);
       const row = b1 && b1.rows && b1.rows[0];
       if (!row) { await page.evaluate(() => window.__sendPrimary({ type: '__e2e_day_freeze', on: false })); await sleep(1500); continue; }
       const giveItem = (row.give || [])[0];
