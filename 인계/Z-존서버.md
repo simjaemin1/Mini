@@ -2026,3 +2026,12 @@ T89 첫 판이 39/44 표본에서만 사람을 봤고, 그걸 정책 탓으로 �
 
 * 받은 기록의 길: 줄 `pend`(onRecord) → 인박스 `X.inbox`(dayIn → econ 캐러밴 조각) → econ 캐러밴 → 나간 귀환 `X.out`(econ → dayOut) → `st.returnOut`. 하루 마감이 조각이라 `/perf` 가 그 사이에 닿는다.
 * `createCore().live()` = 줄·인박스·나간 기록 종류별 지금 값(읽기만 · `/perf` xzone `live`). `st.pend` 는 dayIn 순간 값(두 종류 합) — 셈에는 `live` 를 써라.
+## Z-가상시계. [T745 2026-10-14] 서버 판 자의 가상 시계 갈래 — `scripts/t745-vclock.js`
+
+> 보고 `보고/T745_2026-10-14.md`. 자만(제품 0) · 아이 존 프로세스 전역만 바꾼다.
+
+* 켜는 법: 러너 `scripts/t745-run.js <판> --vclock` · 게이트 `server-baseline-check.js … --vclock` · 맨손이면 `NODE_OPTIONS="--require scripts/t745-vclock.js" T745_VCLOCK=1`(아이 존만 — `T577_SEED` 있는 프로세스).
+* 묶는 것: `Date.now` · 인수 없는 `new Date()` · `setTimeout`/`setInterval` · `process.hrtime` · `performance.now` → 가상 시각 V(콜백 하나 동안 멎음 · 줄은 (만기, 등록 차례)). 기동 동안 V = `T745_V0`(상수) · `zone server up on` 뒤 돈다.
+* 결과: 하루 마감이 경계 틱 하나에 다 돈다(몫이 안 바닥남) ⇒ econ 날 = 벽시계 날. A/A 400 날 econ · 서버 마을 칸 68 칸 바이트 같음.
+* 멈춤 판: 다시 뜬 판 V0 = 멈춘 V + K 날 · 간격 위상 이어 받기(`T745_PHASE_OUT/IN`) · 날 뜀 K 고정(`T740_FORCE_JUMP` 사본).
+* ⚠못 덮는 자리: `setImmediate` · 실제 I/O 콜백 · 일꾼 스레드 시계. ⚠가상 시계 판은 실제 시계 판과 econ 이 267 날(시드 1020)부터 갈리는 다른 세계다 — 제 기준선과 견준다.

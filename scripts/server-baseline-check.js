@@ -17,6 +17,7 @@
 //           ⇒ 시드마다 ○/✗ · 다르면 첫 갈림 날 · 마을 · 칸(st/pp/hs/tr) · 지금 판의 그 칸 값. 짧은 판(--days N < 기준선 날)은 날 지문 앞 N 날만 견준다.
 //   짧은 판(시드마다 날을 따로): --plan 1020:400,7:60,42:60 — 긴 판부터 띄우고 `--par` 개씩 같이 돈다(시드마다 t577 판 하나).
 //   교역로 디스크 캐시(T699): 기본 켬(os 임시 폴더) · `--route-cache off` 로 끈다 · 첫 판이 적고 다음 판부터 물려받는다.
+//   가상 시계(T745): `--vclock` — 아이 존의 벽시계 · 타이머를 가상 시각 하나에 묶는다(`scripts/t745-vclock.js` · 서버 마을 칸까지 결정론).
 //   env 는 아이 판에 그대로 간다 — 손잡이를 켠 트리를 재려면 env 를 얹으면 된다(그 판은 갈려야 맞다).
 //   종료 코드: 같음 0 · 다름 1 · 판 실패 2.
 'use strict';
@@ -110,11 +111,15 @@ const COND = { VILLAGE_CARAVAN_MAX: '0', T400_BUILD_ACT: '0' };
 //   기본 = os 임시 폴더 `durango-route-cache`(레포 밖) · `--route-cache off` = 종전(판마다 판다) · `--route-cache <dir>` = 그 폴더.
 const RC0 = opt('--route-cache', process.env.T699_ROUTE_CACHE || path.join(os.tmpdir(), 'durango-route-cache'));
 const ROUTE_CACHE = RC0 === 'off' ? null : RC0;
+// ★[T745] `--vclock` — 아이 존을 가상 시계(`scripts/t745-vclock.js`)로 띄운다(판 조건은 그대로 · 시간만 하나로). 지문 · 견줌 문법은 같다.
+//   손잡이가 아니라 자 옵션이다(제품 무변). 실제 시계 기준선과 견주면 econ 이 같은지가 곧 "가상 시계가 econ 을 안 바꾼다"의 증인이다.
+const VCLOCK = A.includes('--vclock');
 
 function runOne(dir, seed, days, dumpDay) {
   return new Promise((resolve) => {
     const env = Object.assign({}, process.env, COND, { SBC_HOOK: '1', T577_DIR: dir, T577_TAG: 'sbc', T577_PAR: '1',
-      NODE_OPTIONS: ((process.env.NODE_OPTIONS || '') + ` --require ${__filename}`).trim() });
+      NODE_OPTIONS: ((VCLOCK ? `--require ${path.join(__dirname, 't745-vclock.js')} ` : '') + (process.env.NODE_OPTIONS || '') + ` --require ${__filename}`).trim() });
+    if (VCLOCK) env.T745_VCLOCK = '1';   // ★[T745] 가상 시계 갈래(아이 존만 · 프리로드 맨 앞 — 벽시계 · 타이머를 econ 날에 묶는다)
     if (ROUTE_CACHE) env.T699_ROUTE_CACHE = ROUTE_CACHE; else delete env.T699_ROUTE_CACHE;
     if (dumpDay) env.SBC_DUMP_DAY = String(dumpDay);   // 없으면 바깥 env 의 SBC_DUMP_DAY 를 그대로 넘긴다
     const t0 = Date.now();
@@ -150,7 +155,7 @@ if (MAKE) {
   const seeds = {};
   for (const s of SEEDS) { const o = R.out[s]; if (!o) { console.log(`  ✗ 시드 ${s} 판 실패`); process.exit(2); } seeds[s] = { eight: o.eight, dissolved: o.dissolved, empty: o.empty, runHash: o.runHash, names: o.names, days: o.days }; }
   let head = ''; try { head = require('child_process').execSync('git rev-parse --short=8 HEAD', { cwd: ROOT, encoding: 'utf8' }).trim(); } catch (e) {}
-  const doc = { made: new Date().toISOString().slice(0, 10), head, days: DAYS, seeds: SEEDS, cond: COND, clock: 'VILLAGE_DAY_MS=250(t577 기본)', sec: R.sec,
+  const doc = { made: new Date().toISOString().slice(0, 10), head, days: DAYS, seeds: SEEDS, cond: COND, clock: 'VILLAGE_DAY_MS=250(t577 기본)' + (VCLOCK ? ' · 가상 시계(T745 --vclock)' : ''), sec: R.sec,
     how: `node scripts/server-baseline-check.js --make ${MAKE} --days ${DAYS} --seeds ${SEEDS.join(',')}`,
     note: '날 지문 = [scanDay 날 · econ world.day · 그날 전체 sha1 12 · 마을마다 칸 넷(st·pp·hs·tr) sha1 4자리씩]', byseed: seeds };
   fs.writeFileSync(MAKE, JSON.stringify(doc));
