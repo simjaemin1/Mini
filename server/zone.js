@@ -3107,6 +3107,7 @@ function _t671Shape(p) {
   p._t720 = undefined;   // ★[T720 ③] 해 질 녘 곳간 정산(villages `_t720Step` — 켬이면 서는 칸)
   p._warPackOf = undefined;   // 전쟁 짐(villages.js `_t671Unpack` — 끔이면 `delete`)
   p._t717L = undefined;   // ★[PM 10-14 · T717 ②] 손에 남긴 통나무 몫(villages.js `_t325Deliver` · `_t717NewWood` — test-body-fields 규약)
+  p._t733F = undefined;   // ★[T733 ②] 손에 남긴 걷는 채집 몫(villages.js `_t347Deliver` · `_t733NewForage` — 손잡이 `T733_FELL_LOOT` 켬일 때만 값이 든다)
   p._t724Site = undefined; p._t724T = undefined;   // ★[T724] 광부 몸의 그날 셀 · 선 때(villages.js `_t724BodyStep` — 손잡이 `T724_MINE_ACT` 켬일 때만 값이 든다)
 }
 function spawnNpc(opts = {}) {
