@@ -201,5 +201,61 @@ console.log('\n⑥ [T679] 표 상한(LRU)');
   ok(ra !== 'unknown' && rb === 'unknown', '⑥ LRU 차례 — 최근에 물은 창(A)은 남고 오래된 창(B)이 버려진다', `A ${ra} · B ${rb} · 버림 ${G8.stats().evicted}`);
 }
 
+console.log('\n⑦ [T734] 문 그래프 이완을 청크마다 문 목록으로(`t734`) — 같은 이완 · 같은 차례 ⇒ 같은 답(결과 · 칸 길 · 길이)');
+{
+  let same = 0, tot = 0, foundN = 0, msOff = 0, msOn = 0;
+  for (const seed of [11, 7, 23]) {
+    const Wd = makeWorld(seed);
+    const Goff = G.create({ chunkCells: C, cellsW: CW, cellsH: CH, pass: Wd.P, step: Wd.S }), Gon = G.create({ t734: true, chunkCells: C, cellsW: CW, cellsH: CH, pass: Wd.P, step: Wd.S });
+    Goff.enqueueAll(); Goff.tick(Infinity); Gon.enqueueAll(); Gon.tick(Infinity);
+    for (const [sx, sy, gx, gy] of pairs(2000, seed * 31 + 5)) {
+      let t = process.hrtime.bigint(); const a = Goff.route(sx, sy, gx, gy, R); msOff += Number(process.hrtime.bigint() - t) / 1e6;
+      t = process.hrtime.bigint(); const b = Gon.route(sx, sy, gx, gy, R); msOn += Number(process.hrtime.bigint() - t) / 1e6;
+      tot++; if (a.res === 'found') foundN++;
+      if (JSON.stringify(a) === JSON.stringify(b)) same++;
+    }
+  }
+  ok(same === tot && foundN > 2000, '⑦ ★켬 = 끔(같은 답 · 칸 길 · 길이 — 세계 셋 · 6,000쌍)', `${same}/${tot} · 찾은 ${foundN}`);
+  console.log(`    [표] 묻기 합 끔 ${msOff.toFixed(0)} ms · 켬 ${msOn.toFixed(0)} ms(합성 세계 · 문 ${'≈'}700개)`);
+  const zs = require('fs').readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
+  ok(/const T734_ASTAR_SLICE = process\.env\.T734_ASTAR_SLICE === '1';/.test(zs) && /require\('\.\/chunk-gates'\)\.create\(\{ t734: T734_ASTAR_SLICE,/.test(zs),
+     '⑦ 손잡이 `T734_ASTAR_SLICE` — 기본 끔(`=1` 만 켬) · 존이 문 그래프에 넘긴다');
+}
+
+console.log('\n⑧ [T734 ②] 칸 A* 가 두 술어를 표 비트로 읽는다(`fastView`) — 같은 길 · 도장이 바뀐 표는 안 쓴다');
+{
+  const PX = 32, cell = (v) => Math.floor(v / PX);
+  let same = 0, tot = 0, fastHit = 0, foundN = 0, msOff = 0, msOn = 0;
+  for (const seed of [11, 7]) {
+    const Wd = makeWorld(seed); let calls = 0;
+    const isW = (X, Y) => { calls++; return !Wd.P(cell(X), cell(Y)); }, isB = (ox, oy, nx, ny) => { calls++; return !Wd.S(cell(ox), cell(oy), cell(nx), cell(ny)); };
+    const stamp = new Int32Array(Math.ceil(CW / C) * Math.ceil(CH / C));
+    const Gf = G.create({ t734: true, stamp: (ci) => stamp[ci], chunkCells: C, cellsW: CW, cellsH: CH, pass: Wd.P, step: Wd.S }); Gf.enqueueAll(); Gf.tick(Infinity);
+    for (const [sx, sy, gx, gy] of pairs(1500, seed * 7 + 3)) {
+      const o = { isBlockedFn: isB, isWaterFn: isW, maxCells: 1500, searchRadiusCells: R };
+      const X0 = sx * PX + 16, Y0 = sy * PX + 16, X1 = gx * PX + 16, Y1 = gy * PX + 16;
+      calls = 0; let t = process.hrtime.bigint(); const a = PF.findPath(X0, Y0, X1, Y1, o); msOff += Number(process.hrtime.bigint() - t) / 1e6; const cOff = calls;
+      calls = 0; t = process.hrtime.bigint(); const b = PF.findPath(X0, Y0, X1, Y1, Object.assign({ fast: Gf.fastView((ci) => stamp[ci]) }, o)); msOn += Number(process.hrtime.bigint() - t) / 1e6;
+      tot++; if (a) foundN++; if (JSON.stringify(a) === JSON.stringify(b)) same++; if (calls < cOff) fastHit++;
+    }
+    // 도장 — 표를 지은 뒤 벽을 세우고 그 청크 도장을 올리면 그 표는 안 쓴다(술어 = 새 벽) · 안 올리면(자명 통과 금지) 어긋난다
+    if (seed === 11) {
+      const fx = 64, fy = 60; for (let y = 30; y <= 90; y++) Wd.wallE[y * CW + fx] = 1;   // x 64 → 65 긴 벽(y 30~90 · 청크 셋에 걸친다)
+      const ci = Gf.chunkOf(fx, fy), o = { isBlockedFn: isB, isWaterFn: isW, maxCells: 1500, searchRadiusCells: R };
+      const live = (sx, sy, gx, gy) => PF.findPath(sx * PX + 16, sy * PX + 16, gx * PX + 16, gy * PX + 16, o);
+      const viaT = (sx, sy, gx, gy) => PF.findPath(sx * PX + 16, sy * PX + 16, gx * PX + 16, gy * PX + 16, Object.assign({ fast: Gf.fastView((c) => stamp[c]) }, o));
+      let diffStale = 0, diffBumped = 0, n8 = 0;
+      for (let k = 0; k < 40; k++) { const sx = 50 + (k % 8), sy = 52 + ((k / 8) | 0) * 3, gx = 78 - (k % 5), gy = 58 + (k % 6); n8++; if (JSON.stringify(live(sx, sy, gx, gy)) !== JSON.stringify(viaT(sx, sy, gx, gy))) diffStale++; }
+      const NXg = Math.ceil(CW / C); for (const cy of [0, 1, 2]) { const c0 = cy * NXg + 2; for (const d of [0, -1, 1, -NXg, NXg, -NXg - 1, -NXg + 1, NXg - 1, NXg + 1]) if (stamp[c0 + d] !== undefined) stamp[c0 + d]++; }   // 존의 `_collBump` 꼴 — 벽이 선 청크 셋의 세대가 오르면 그 청크와 이웃 여덟 표의 도장(3×3 합)이 바뀐다
+      for (let k = 0; k < 40; k++) { const sx = 50 + (k % 8), sy = 52 + ((k / 8) | 0) * 3, gx = 78 - (k % 5), gy = 58 + (k % 6); if (JSON.stringify(live(sx, sy, gx, gy)) !== JSON.stringify(viaT(sx, sy, gx, gy))) diffBumped++; }
+      ok(diffBumped === 0, '⑧ ★도장이 오르면 그 표(와 이웃 여덟)는 안 쓴다 — 새 벽을 따른다', `어긋남 ${diffBumped}/${n8}`);
+      ok(diffStale > 0, '⑧ [자명 통과 금지] 도장을 안 올리면 낡은 비트가 길을 바꾼다(위 검사가 문다)', `어긋남 ${diffStale}/${n8}`);
+      for (let y = 30; y <= 90; y++) Wd.wallE[y * CW + fx] = 0;
+    }
+  }
+  ok(same === tot && foundN > 1000 && fastHit === tot, '⑧ ★표 비트 A* = 술어 A*(같은 길 — 세계 둘 · 3,000쌍) · 쌍마다 술어 부름이 줄었다', `${same}/${tot} · 찾은 ${foundN} · 줄어든 쌍 ${fastHit}`);
+  console.log(`    [표] A* 합 술어 ${msOff.toFixed(0)} ms · 표 비트 ${msOn.toFixed(0)} ms(합성 술어는 싸다 — 존 술어는 벽 질의 격자를 묻는다)`);
+}
+
 console.log(`\n=== 결과: ${pass} PASS / ${fail} FAIL ===\n`);
 process.exit(fail ? 1 : 0);

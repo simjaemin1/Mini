@@ -1631,6 +1631,22 @@ console.log('\n⑮ T427 ① — 닿는 현장만(배정 순간 집 → 후보 ·
          '⑮-k 손잡이 `T719_REACH_PRE` — **기본 켬**(`=0` 만 끔) · 존은 틱 꼬리(쓰러짐 뒤 · 10 ms 안이면 남은 몫 ≤2 ms)에서만 부른다');
     }
   }
+  // ★[T734 ③] 넓히기 길들임(`T734_ASTAR_SLICE` · 기본 끔) — 켜면 첫 넓히기 전에 세계를 안 묻는 작은 상자를 여덟 번 끝까지 돌린다(술어 부름 0) ·
+  //   넓히기 상자는 같은 짓는 문 · 같은 칸 · 넓힌 집합 같음(제품 글자 그대로 — `npcReachBegin` · `npcReachStep` · `_t734ReachS` · `_t734WarmReach`)
+  {
+    const src = ['npcReachBegin', 'npcReachStep', '_t734ReachS', '_t734WarmReach'].map(body).join('\n');
+    const run = (on) => { let calls = 0;
+      const M = new Function('T734_ASTAR_SLICE', 'BUILDING_SIZE', '_pfRadius', 'isBlockedByWall', 'isTerrainBlockedLocal',
+        'var _t734Warm = false; const _NR4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];\n' + src + '\nreturn { npcReachBegin, npcReachStep };')(on, 32, () => 20,
+        (a, b, c, d) => { calls++; return ((a * 7 + b * 13 + c * 3) >> 5) % 7 === 0; }, (x, y) => { calls++; return ((x * 3 + y * 5) >> 5) % 9 === 0; });
+      const S = M.npcReachBegin(5000, 6000), c0 = calls; while (!M.npcReachStep(S, null)) {}
+      return { c0, calls, keys: Object.keys(S).join(','), seen: Buffer.from(S.seen).toString('base64').length + ':' + require('crypto').createHash('sha1').update(S.seen).digest('hex').slice(0, 12), n: S.n }; };
+    const off = run(false), on = run(true);
+    ok(src.length > 900 && on.c0 === 0 && off.c0 === 0 && on.calls === off.calls && on.keys === off.keys && on.seen === off.seen && on.n === off.n,
+       '⑮-l ★[T734 ③] 넓히기 길들임 — 켬 = 끔(술어 부름 · 상자 칸 · 넓힌 집합) · 길들임은 술어 0',
+       `술어 ${off.calls} · ${on.calls} · 길들임 중 ${on.c0} · 집합 ${on.seen}`);
+    ok(/const T734_ASTAR_SLICE = process\.env\.T734_ASTAR_SLICE === '1';/.test(Z), '⑮-l 손잡이 `T734_ASTAR_SLICE` — 기본 끔(`=1` 만 켬)');
+  }
   // ⓘ 미끼 — 술어가 늘 "닿는다"(= 안 본다)면 못 닿는 현장이 다시 배정된다
   {
     const liar = (ax, ay, bx, by) => true;

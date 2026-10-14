@@ -37,12 +37,22 @@ function findPath(startX, startY, endX, endY, opts = {}) {
   const cpx = (c) => c * CELL + CELL / 2;
   // ★[T394 ③] 노드 판정(물·바위 — 다리 예외)을 **한 번만** 적는다 — 간선이 쓰고, 끝점 검사(`localPath` 첫 줄)가 쓴다.
   //   종전 간선과 같은 순서로 부른다(벽 → 물 → 다리) — 관측 계수기까지 같은 수가 돈다.
-  const nodeBlocked = (x, y) => { const X = cpx(x), Y = cpx(y); return isWater(X, Y) && !(isBridge && isBridge(X, Y)); };
+  const nodeBlocked0 = (x, y) => { const X = cpx(x), Y = cpx(y); return isWater(X, Y) && !(isBridge && isBridge(X, Y)); };
   // 간선(edge) 차단 판정 — 정본 blockedStep 시그니처에 기존 wall-edge + 물(다리 예외) 규칙을 그대로 싣는다.
-  const blockedStep = (fx, fy, tx, ty) => {
+  const blockedStep0 = (fx, fy, tx, ty) => {
     if (isBlocked(cpx(fx), cpx(fy), cpx(tx), cpx(ty), floor)) return true;
-    return nodeBlocked(tx, ty);
+    return nodeBlocked0(tx, ty);
   };
+  // ★[T734 ②] `opts.fast`(존 · 문 그래프 표 비트 — `chunk-gates.fastView`)가 있으면 같은 두 술어 값을 표에서 읽는다(모르면 -1 → 종전 술어).
+  //   층 0 · 다리 술어 없음일 때만 존이 넣는다(표가 그 꼴로 지어졌다). 없으면 종전 글자 그대로.
+  const F = (opts.fast && floor === 0 && !isBridge) ? opts.fast : null;
+  const nodeBlocked = F ? ((x, y) => { const v = F.pass(x, y); return v >= 0 ? !v : nodeBlocked0(x, y); }) : nodeBlocked0;
+  const blockedStep = F ? ((fx, fy, tx, ty) => { const v = F.step(fx, fy, tx, ty); return v >= 0 ? v === 0 : blockedStep0(fx, fy, tx, ty); }) : blockedStep0;
+  if (F && opts.fastVerify) {   // ★[T734 견줌] 같은 묻기를 술어로도 — 같은 길인가(세계는 아래 표 비트 답)
+    const V = opts.fastVerify, a = findPath(startX, startY, endX, endY, Object.assign({}, opts, { fast: null, fastVerify: null })), b = findPath(startX, startY, endX, endY, Object.assign({}, opts, { fastVerify: null }));
+    V.n++; if (JSON.stringify(a) !== JSON.stringify(b)) { V.diff++; if (V.ex.length < 5) V.ex.push([startCx, startCy, endCx, endCy]); }
+    return b;
+  }
   const nodes = PathCore.localPath(startCx, startCy, endCx, endCy, {
     blocked: nodeBlocked,   // ★[T394 ③] 끝점이 막혔으면 탐색 전에 null(`routePath` 첫 줄과 같은 규칙)
     blockedStep, maxNodes: maxCells, radius: searchRadius,

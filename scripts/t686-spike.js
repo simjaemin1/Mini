@@ -118,11 +118,20 @@ const ZTAIL = `
       const ms = now() - t, us = ms * 1000, bi = us <= 0.25 ? 0 : Math.min(NB - 1, Math.floor(4 * Math.log2(us / 0.25)));
       if (night) { HN[bi]++; sumN += ms; nN++; if (ms > maxN) maxN = ms; } else { HD[bi]++; sumD += ms; nD++; if (ms > maxD) maxD = ms; }
       if (ms > THR && worst.length < 3000) { const acc = []; for (let i = 0; i < FN.length; i++) if (ACC[i] > 0.05) acc.push([FN[i], +ACC[i].toFixed(2), CNT[i]]); acc.sort((x, y) => y[1] - x[1]);
-        worst.push([Date.now(), +ms.toFixed(2), night ? 1 : 0, a.pid, a.simJob || a.npcJob || null, a._lifeAct || null, a.behavior || null, a.simVillageId || null, acc.slice(0, 8)]);
+        worst.push([Date.now(), +ms.toFixed(2), night ? 1 : 0, a.pid, a.simJob || a.npcJob || null, a._lifeAct || null, a.behavior || null, a.simVillageId || null, acc.slice(0, 8), +t.toFixed(3), globalThis.__T734SCH ? globalThis.__T734SCH() : null]);   // [10] = 틱 머리부터 [런큐 기다린 · 돈 · 벽] ms   // [9] = 걸음 머리(pf 시계 · T734 GC 겹침)
         if (process.env.T715_JIT === '1') console.log('[T719W] ' + ms.toFixed(1) + 'ms ' + (a.simJob || '') + ' ' + (a._lifeAct || '') + ' ' + JSON.stringify(acc.slice(0, 4))); } } };
     for (const [k, nm] of [['결정', 'decideNpcBehavior'], ['막힘', 'detectStuck'], ['풀기', 'unstuckNpc'], ['따라가기', 'followNpcPath']]) {
       try { const f0 = eval(nm); if (typeof f0 === 'function') eval(nm + ' = globalThis.__T719W(' + JSON.stringify(k) + ', f0)'); } catch (e) {} }
     { const fP2 = computeNpcPath; computeNpcPath = globalThis.__T719W('길', fP2); }
+    //   ★[T734] 길 안 — A*(pfFindPath) · 문 그래프(_t678Route) · 다듬기(smoothPath) · 길 안 남은 것 = 직선 검사 · 쿨다운
+    try { pfFindPath = globalThis.__T719W('길·A*', pfFindPath); } catch (e) {}
+    try { if (typeof _t678Route === 'function') _t678Route = globalThis.__T719W('길·문 그래프', _t678Route); } catch (e) {}
+    try { PathCore.smoothPath = globalThis.__T719W('길·다듬기', PathCore.smoothPath); } catch (e) {}
+    //   ★[T734] GC 겹침 — 판 내내 GC 마디(시작 · 길이 · 종류)를 적어 두고 판 끝에 긴 걸음마다 겹친 ms · 종류를 붙인다
+    const GCS = [], GCD = [], GCK = [];
+    try { const { PerformanceObserver } = require('perf_hooks'); new PerformanceObserver((l) => { for (const e of l.getEntries()) { if (GCS.length < 400000) { GCS.push(e.startTime); GCD.push(e.duration); GCK.push((e.detail && e.detail.kind) || e.kind || 0); } } }).observe({ entryTypes: ['gc'] }); } catch (e) {}
+    globalThis.__T734GC = (t0, t1) => { let ms = 0, k = 0; for (let i = 0; i < GCS.length; i++) { const a = GCS[i], b = a + GCD[i]; if (b <= t0 || a >= t1) continue; ms += Math.min(b, t1) - Math.max(a, t0); k |= GCK[i]; } return [+ms.toFixed(2), k]; };
+    globalThis.__T734GCN = () => GCS.length;
     if (SimVillages && SimVillages.npcLifeTick) SimVillages.npcLifeTick = globalThis.__T719W('생활층', SimVillages.npcLifeTick);
     _dAll.t719 = { get thr() { return THR; }, get hist() { return { day: Array.from(HD), night: Array.from(HN) }; }, get stat() { return { nD, nN, avgDUs: nD ? sumD / nD * 1000 : 0, avgNUs: nN ? sumN / nN * 1000 : 0, maxD, maxN }; }, worst,
       reset() { HD.fill(0); HN.fill(0); maxD = maxN = sumD = sumN = nD = nN = 0; worst.length = 0; } };
@@ -131,7 +140,12 @@ const ZTAIL = `
   resetW();
   let all = { ticks: 0, tot: 0, over30: 0, over16: 0, max: 0 };
   const dayInfo = () => { let ph = null, gd = null, ed = null; try { ph = +worldPhase(Date.now()).toFixed(4); } catch (e) {} try { gd = zoneGameDay(); } catch (e) {} try { ed = gameDayNow(); } catch (e) {} return { ph, gd, ed }; };
-  globalThis.__T686S = () => { t0 = prev = now(); cur = { seg: {}, v: {}, jobs: [], close: false }; };
+  //   ★[T734] 런큐 대기 — 주 스레드 /proc/<pid>/task/<pid>/schedstat(돈 ns · 기다린 ns)을 틱 머리에 읽어 두고 긴 걸음 끝에 다시 읽는다(빼앗긴 시간)
+  const _SCH = '/proc/' + process.pid + '/task/' + process.pid + '/schedstat', _schOn = process.env.T719_DEEP === '1' && (() => { try { fs.readFileSync(_SCH); return true; } catch (e) { return false; } })();
+  const _sch = () => { try { const a = fs.readFileSync(_SCH, 'utf8').split(' '); return [+a[0] / 1e6, +a[1] / 1e6]; } catch (e) { return [0, 0]; } };
+  let _sch0 = [0, 0], _schT = 0;
+  globalThis.__T734SCH = () => { if (!_schOn) return null; const b = _sch(); return [+(b[1] - _sch0[1]).toFixed(2), +(b[0] - _sch0[0]).toFixed(2), +(now() - _schT).toFixed(2)]; };   // [기다린 · 돈 · 벽] ms(틱 머리부터)
+  globalThis.__T686S = () => { t0 = prev = now(); cur = { seg: {}, v: {}, jobs: [], close: false }; if (_schOn) { _sch0 = _sch(); _schT = t0; } };
   globalThis.__T686M = (k) => { const t = now(); if (cur) cur.seg[k] = (cur.seg[k] || 0) + (t - prev); prev = t; };
   globalThis.__T686VS = (inClose) => { vPrev = now(); if (cur) cur.close = cur.close || !!inClose; };
   globalThis.__T686VM = (k) => { const t = now(); if (cur) cur.v[k] = (cur.v[k] || 0) + (t - vPrev); vPrev = t; };
@@ -159,8 +173,9 @@ const ZTAIL = `
     cur = null;
   };
   const flush = (fin) => {
-    try { const row = Object.assign({ kind: fin ? 'fin' : 'win', pop: npcs.size }, dayInfo(), W, { seg: W.seg, all }, _T715 && fin ? { decAll: _dAll } : {}, fin && SimVillages && SimVillages.t719Stat ? { t719Cls: globalThis.__T719C || null, t719Pre: SimVillages.t719Stat(), t562: SimVillages.t562Stat ? SimVillages.t562Stat() : null } : {});   // ★[T719] 미리 넓히기 손잡이 셈(끔이면 0)
+    try { const row = Object.assign({ kind: fin ? 'fin' : 'win', pop: npcs.size }, dayInfo(), W, { seg: W.seg, all }, _T715 && fin ? { decAll: _dAll } : {}, fin && SimVillages && SimVillages.t719Stat ? { t734v: globalThis.__T734V || null, t719Cls: globalThis.__T719C || null, t719Pre: SimVillages.t719Stat(), t562: SimVillages.t562Stat ? SimVillages.t562Stat() : null } : {});   // ★[T719] 미리 넓히기 손잡이 셈(끔이면 0)
       if (fin) row.hist = Array.from(H);
+      if (fin && _dAll.t719 && globalThis.__T734GC) { row.t734gc = { n: globalThis.__T734GCN(), w: _dAll.t719.worst.map((w) => globalThis.__T734GC(w[9], w[9] + w[1])) }; }   // ★[T734] 긴 걸음마다 [GC 겹친 ms · 종류 비트]
       fs.appendFileSync(OUT, JSON.stringify(row) + '\\n'); } catch (e) { try { fs.appendFileSync(OUT, JSON.stringify({ err: String(e && e.stack) }) + '\\n'); } catch (e2) {} }
     resetW();
   };
@@ -183,6 +198,9 @@ function makeTree(dir, ref) {
       const end = a.startsWith('  { const _h = process.hrtime(_tickHr0)');
       s = s.replace(a, () => `  globalThis.__T686M && __T686M(${JSON.stringify(name)});${end ? ' globalThis.__T686E && __T686E();' : ''}\n` + a);
     }
+    if (process.env.T719_DEEP === '1') {   // ★[T734] 길 안을 가른다 — A*(pfFindPath) 문을 다시 걸 수 있게(계측 사본만)
+      const a734 = "const { findPath: pfFindPath } = require('./pathfind');";
+      if (cnt(s, a734) === 1) s = s.replace(a734, () => "let { findPath: pfFindPath } = require('./pathfind');"); }
     s += ZTAIL; fs.writeFileSync(zp, s); execFileSync(process.execPath, ['--check', zp]); }
   { const vp = path.join(dir, 'server', 'villages.js'); let s = fs.readFileSync(vp, 'utf8');
     const rep = (a, b) => { if (cnt(s, a) !== 1) throw new Error(`마을 앵커 ${cnt(s, a)}개: ${a.slice(0, 50)}`); s = s.replace(a, () => b); };

@@ -20,6 +20,7 @@ const DIRS = [[1, 0], [0, 1], [-1, 0], [0, -1]];   // E S W N — 비트 1 2 4 8
 const UNR = 0xffff;
 
 function create(opt) {
+  const T734 = !!opt.t734;   // ★[T734] 손잡이(존 `T734_ASTAR_SLICE`) — 문 그래프 이완을 청크마다 문 목록으로(같은 이완 · 같은 차례 · 같은 답)
   const C = opt.chunkCells, CW = opt.cellsW, CH = opt.cellsH;
   const NX = Math.ceil(CW / C), NY = Math.ceil(CH / C);
   const pass = opt.pass, step = opt.step;
@@ -29,7 +30,7 @@ function create(opt) {
   let building = null;            // 짓는 중(조각)
   const st = { built: 0, rebuilt: 0, predCalls: 0, buildMs: 0, maxSliceMs: 0, queries: 0, unknown: 0, far: 0, blocked: 0, unreach: 0, found: 0, stale: 0,
     sigChecks: 0, sigInval: 0, invalAll: 0, qMs: 0, qMaxMs: 0,
-    evicted: 0, corr: 0, corrCells: 0, corrMaxCells: 0, corrFail: 0 };   // ★[T679] 표 상한(LRU) · 회랑 BFS
+    evicted: 0, corr: 0, corrCells: 0, corrMaxCells: 0, corrFail: 0, fastAns: 0, fastUnk: 0 };   // ★[T734] 표 비트로 답한 술어 · 모름(-1)   // ★[T679] 표 상한(LRU) · 회랑 BFS
 
   const chunkOf = (cx, cy) => Math.floor(cy / C) * NX + Math.floor(cx / C);
 
@@ -41,7 +42,7 @@ function create(opt) {
       // 경계 바깥 칸: 통행 · 바깥 → 안 간선(문 짝은 두 방향 다 열려야 문이다)
       bOut: [new Uint8Array(h), new Uint8Array(w), new Uint8Array(h), new Uint8Array(w)], bBack: [new Uint8Array(h), new Uint8Array(w), new Uint8Array(h), new Uint8Array(w)],
       bAlong: [new Uint8Array(h), new Uint8Array(w), new Uint8Array(h), new Uint8Array(w)],   // 바깥 줄의 j ↔ j+1 두 방향 다 열림(문 구간을 끊는 데 쓴다)
-      gates: null, t0: 0 };
+      gates: null, t0: 0, cst: (T734 && opt.stamp) ? opt.stamp(ci) : undefined };   // ★[T734] 짓기 머리의 콜라이더 도장(그 청크 · 이웃 여덟) — 그 뒤 무엇이 서거나 헐리면 이 표는 그 셈에 안 쓴다
   }
   // 한 단계 = 술어 한 부름(또는 계산 한 칸) — 예산을 그 수로 센다
   function work(b, budget) {
@@ -156,7 +157,7 @@ function create(opt) {
       if (building.ph === 5) {
         const b = building, prev = recs.get(b.ci);
         recs.set(b.ci, { ci: b.ci, X: b.X, Y: b.Y, x0: b.x0, y0: b.y0, w: b.w, h: b.h, gen: b.gen, dirty: false, pass: b.pass, open: b.open, gates: b.gates, sig: prev ? prev.sig : undefined,
-          used: prev ? prev.used : stamp });
+          used: prev ? prev.used : stamp, cst: b.cst });
         if (prev) st.rebuilt++; else { st.built++; evictOver(b.ci); }
         building = null; done++;
       }
@@ -189,11 +190,11 @@ function create(opt) {
     const sIdx = (sy - rs.y0) * rs.w + (sx - rs.x0), gIdx = (gy - rg.y0) * rg.w + (gx - rg.x0);
     const TG = bfsTo(rg, gIdx);
     // 노드: 0 = 출발 · 1 = 목표 · 2.. = (창 안 청크의 문 · 그 청크 쪽)
-    const nodes = [], byKey = new Map();
-    for (const r of win) for (let i = 0; i < r.gates.length; i++) {
-      const id = nodes.length + 2; nodes.push({ r, g: r.gates[i] });
+    const nodes = [], byKey = new Map(), byR = T734 ? new Map() : null;
+    for (const r of win) { const ids = T734 ? [] : null; for (let i = 0; i < r.gates.length; i++) {
+      const id = nodes.length + 2; nodes.push({ r, g: r.gates[i] }); if (ids) ids.push(id);
       const k = r.gates[i].key; const a = byKey.get(k); a ? a.push(id) : byKey.set(k, [id]);
-    }
+    } if (byR) byR.set(r, ids); }
     const N = nodes.length + 2, dist = new Float64Array(N).fill(Infinity), prev = new Int32Array(N).fill(-1), done = new Uint8Array(N);
     const heap = []; const push = (d, v) => { heap.push([d, v]); let i = heap.length - 1; while (i > 0) { const p = (i - 1) >> 1; if (heap[p][0] < heap[i][0] || (heap[p][0] === heap[i][0] && heap[p][1] <= heap[i][1])) break; [heap[p], heap[i]] = [heap[i], heap[p]]; i = p; } };
     const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i;
@@ -207,12 +208,14 @@ function create(opt) {
       if (u === 1) break;
       if (u === 0) {
         if (rs === rg) relax(0, 1, TG[sIdx]);
-        for (let i = 2; i < N; i++) if (nodes[i - 2].r === rs) relax(0, i, nodes[i - 2].g.T[sIdx]);
+        if (byR) { const ids = byR.get(rs); for (let k = 0; k < ids.length; k++) { const i = ids[k]; relax(0, i, nodes[i - 2].g.T[sIdx]); } }   // ★[T734] 같은 청크 문만(같은 차례 — 오름차순 id)
+        else for (let i = 2; i < N; i++) if (nodes[i - 2].r === rs) relax(0, i, nodes[i - 2].g.T[sIdx]);
         continue;
       }
       const { r, g } = nodes[u - 2];
       if (r === rg) relax(u, 1, TG[g.c]);
-      for (let i = 2; i < N; i++) if (i !== u && nodes[i - 2].r === r) relax(u, i, nodes[i - 2].g.T[g.c]);
+      if (byR) { const ids = byR.get(r); for (let k = 0; k < ids.length; k++) { const i = ids[k]; if (i !== u) relax(u, i, nodes[i - 2].g.T[g.c]); } }   // ★[T734] 같은 꼴
+      else for (let i = 2; i < N; i++) if (i !== u && nodes[i - 2].r === r) relax(u, i, nodes[i - 2].g.T[g.c]);
       const sib = byKey.get(g.key); if (sib) for (const v of sib) if (v !== u && nodes[v - 2].r !== r) relax(u, v, 1);   // 경계 건너기 한 걸음
     }
     if (!Number.isFinite(dist[1])) { st.unreach++; return { res: 'unreach' }; }
@@ -324,7 +327,34 @@ function create(opt) {
   function enqueueAll() { for (let ci = 0; ci < NX * NY; ci++) enqueue(ci); }   // 하네스 · 부팅 미리 굽기용(존은 안 부른다)
   const windowChunks = (R) => { const k = 2 * Math.ceil(R / C) + 1; return Math.min(NX, k) * Math.min(NY, k); };   // 반경 R 묻기 창이 걸치는 청크 수(최대)
   const busy = () => queue.length > 0 || !!building;   // 짓기 줄이 있나(틱 머리 · 관측)
-  return { size: () => recs.size, busy, windowChunks, route, tick, sweep, invalidateAll, invalidateChunk, chunkOf, stats, enqueueAll, _recs: recs };
+  // ★★[T734 ②] **같은 값을 내는 더 싼 자리** — 칸 A*(`pathfind.findPath`)가 묻는 두 술어(칸 통행 · 칸 → 이웃 간선)를 지은 표의 비트로 답한다.
+  //   표 비트는 짓기 때 **그 두 술어**를 부른 값이다(`pass` · `step` — `pathfind` 간선과 같은 차례 · 같은 인자). 그래서 표가 지어진 뒤로 그 청크와
+  //   이웃의 콜라이더 · 지형이 안 바뀌었으면 비트 = 지금 술어 값이다. ⇒ 쓰는 표 = 판(gen) 같음 · 낡음 표식 없음 · **짓기 머리 도장 = 지금 도장**(`stampOf`).
+  //   아니면 -1(모름 — 부르는 쪽이 종전 술어를 부른다). 한 번 묻기 동안 청크마다 한 번만 가린다(캐시 · 묻기는 한 틱 안 · 세계가 안 바뀐다).
+  //   step(fx,fy,tx,ty): 1 = 열림(벽 변 없음 · 도착 칸 통행) · 0 = 막힘 · -1 = 모름. 출발 칸이 통행일 때만 비트가 있다(아니면 -1).
+  function fastView(stampOf) {
+    const cache = new Map();
+    const recAt = (cx, cy) => {
+      if (cx < 0 || cy < 0 || cx >= CW || cy >= CH) return null;
+      const ci = chunkOf(cx, cy); let r = cache.get(ci);
+      if (r === undefined) { const R0 = recs.get(ci); r = (R0 && R0.gen === gen && !R0.dirty && R0.cst !== undefined && R0.cst === stampOf(ci)) ? R0 : null; cache.set(ci, r); }
+      return r;
+    };
+    const passAt = (cx, cy) => { const r = recAt(cx, cy); if (!r) { st.fastUnk++; return -1; } st.fastAns++; return r.pass[(cy - r.y0) * r.w + (cx - r.x0)]; };
+    const step = (fx, fy, tx, ty) => {
+      const r = recAt(fx, fy); if (!r) { st.fastUnk++; return -1; }
+      const c = (fy - r.y0) * r.w + (fx - r.x0); if (!r.pass[c]) { st.fastUnk++; return -1; }
+      if (tx < 0 || ty < 0 || tx >= CW || ty >= CH) { st.fastUnk++; return -1; }   // 세상 밖 — 짓기가 안 본 간선
+      const dx = tx - fx, dy = ty - fy, d = dx === 1 ? 0 : dy === 1 ? 1 : dx === -1 ? 2 : 3;
+      const bit = r.open[c] & (1 << d);
+      const lx = tx - r.x0, ly = ty - r.y0;
+      if (lx >= 0 && ly >= 0 && lx < r.w && ly < r.h) { st.fastAns++; return bit ? 1 : 0; }   // 청크 안: 비트 = 이웃 통행 && 간선
+      if (!bit) { st.fastAns++; return 0; }                                                   // 경계: 비트 = 간선(벽 변)
+      const p = passAt(tx, ty); return p < 0 ? -1 : (p ? 1 : 0);              // 건너편 칸 통행은 건너편 표에서
+    };
+    return { pass: passAt, step };
+  }
+  return { size: () => recs.size, busy, windowChunks, route, tick, sweep, invalidateAll, invalidateChunk, chunkOf, stats, enqueueAll, fastView, _recs: recs };
 }
 
 module.exports = { create, UNR };
