@@ -39,6 +39,10 @@ Module._extensions['.js'] = function (m, filename) {
       if (src.includes(b)) { src = src.replace(b, '  if (state._t722Back > 0) { state.lastGameDay++; state._t722Back--; if (!state._t722Back) state._t722T1 = Date.now(); } else state.lastGameDay = day;\n  _openDayJobs(now);'); cutN++; }
       console.log(`[t722] T722_CATCH=${CATCH} — 바꾼 자리 ${cutN}/2`);
     }
+    if (process.env.T722_NOJUMP === '1') {   // ★[T728 ⑥] 계측 전용 — 다시 뜰 때 날 뜀을 끈다(빠른 시계 자에선 부팅 시간만으로 수백 날이 뛰어 영속 완전성을 econ 날로 못 견준다)
+      const a = '  if (M.anchor && Number.isFinite(M.anchor.g) && M.anchor.dayMs === state.dayMs && M.anchor.epoch === state.epoch) {';
+      if (src.includes(a)) { src = src.replace(a, '  if (false && M.anchor) {'); console.log('[t722] T722_NOJUMP — 날 뜀 끔(계측 사본)'); }
+    }
     src += '\n;module.exports.__t722 = function () { return state; };\n';
     return m._compile(src, filename);
   }
