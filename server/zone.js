@@ -1147,6 +1147,10 @@ const T385_ONE_SWEEP = process.env.T385_ONE_SWEEP !== '0';
 //   켜면: 같은 차례의 `Map.forEach`(살아 있는 순회 — 지우기·넣기 의미가 `for…of` 와 같다) · 벽 술어는 빌려 쓰는 객체 · 빌려 쓰는 질의 배열(`queryCircleScratch` — 같은 순회 · 같은 차례).
 //   ⚠값은 한 비트도 안 바뀐다(같은 차례 · 같은 수) — 3시드 두 자 · `t461-verify` · `test-move-soa` 가 문. 끔 = main 바이트(이 손잡이 줄이 안 닿는다).
 const T689_GC = process.env.T689_GC === '1';
+const T734_ASTAR_SLICE = process.env.T734_ASTAR_SLICE === '1';
+const T734_VERIFY = process.env.T734_VERIFY === '1';   // ★[T734] 견줌(계측 · 켬 위에서만) — 표 비트 A* = 술어 A* 인가
+const _t734V = { n: 0, diff: 0, ex: [] }; globalThis.__T734V = _t734V;
+Object.defineProperty(_t734V, 'gates', { enumerable: true, get() { try { const s = _t678G && _t678G.stats(); return s ? { fastAns: s.fastAns, fastUnk: s.fastUnk, recs: s.recs, queries: s.queries, unknown: s.unknown, found: s.found } : null; } catch (e) { return null; } } });   // ★[T734] 판 끝 셈(표 비트 답 · 모름 · 문 그래프 묻기)   // ★[T734] 남은 한 방(문 그래프 이완 · 넓히기 길들임) — 기본 끔 = main 바이트 · `=1` 켬
 const T719_REACH_PRE_Z = process.env.T719_REACH_PRE !== '0';   // ★[T719] 닿는 칸 집합 미리 넓히기(틱 꼬리) — villages.js `t719ReachPre`   // (머리에 둔다 — 벽·바닥 술어가 모듈 평가 중 불려도 TDZ 0)
 const _t689SOC = { cx: 0, cy: 0 }, _t689SNC = { cx: 0, cy: 0 };   // ★[T689] 켬: 계단 측면 술어가 빌려 쓰는 칸 둘(재진입 0 — 이 함수는 안에서 자기를 안 부른다)
 const _t689WOC = { cx: 0, cy: 0 }, _t689WNC = { cx: 0, cy: 0 };   // ★[T689] 켬: 벽 술어가 빌려 쓰는 칸 둘
@@ -3743,7 +3747,27 @@ function npcReachBegin(ax, ay) {
   const R = _pfRadius(true), sx = Math.floor(ax / BUILDING_SIZE), sy = Math.floor(ay / BUILDING_SIZE), W = 2 * R + 1;
   const seen = new Uint8Array(W * W), q = new Int32Array(W * W);
   seen[R * W + R] = 1; q[0] = R * W + R;
+  if (T734_ASTAR_SLICE) { if (!_t734Warm) _t734WarmReach(); return _t734ReachS(ax, ay, sx, sy, R, W, seen, q); }   // ★[T734 ③] 한 곳에서 짓는다(같은 모양) · 첫 부름 전에 길들인다
   return { ax, ay, sx, sy, R, W, seen, q, qh: 0, qt: 1, done: false, n: 1 };
+}
+// ★★[T734 ③ 2026-10-14 · 세션4] `npcReachStep` 최적화 풀림 — T719 판에서 같은 opt id 로 되풀이해 풀렸다("Insufficient type feedback for generic named access").
+//   자리 = 끝 줄 `S.done = true`(바이트 offset 476 · 작은 판으로 재현). 넓히기는 예산(`stop`)에 걸려 여러 번 나눠 돌므로 V8 이 이 함수를 최적화할 때까지
+//   **한 번도 끝까지 안 간** 일이 많다 — 그 자리에 형 정보가 없어 최적화 코드가 끝날 때마다 해석기로 떨어진다.
+//   ⇒ 켜면 첫 넓히기 전에 **세계를 안 묻는 작은 상자**(가운데 한 칸 · 이웃 전부 본 칸)를 여덟 번 끝까지 돌린다(술어 부름 0 · 세계 0) — 상자는
+//     진짜 넓히기와 같은 짓는 문(`_t734ReachS`)에서 나와 모양(숨은 클래스)이 같다. 작은 판: 길들임 1번 = 풀림 1 · 4번 이상 = 0.
+// ★[T734 ②] 문 그래프 표의 도장 — 그 청크와 이웃 여덟의 콜라이더 세대 합 + 다리 세대(`collGenAround` 와 같은 재료 · 세대는 오르기만 한다 ⇒ 같으면 안 바뀌었다)
+function _t734Stamp(ci) {
+  const NX = _t734NXc || (_t734NXc = Math.ceil(Math.ceil(ZONE.zoneWidth / BUILDING_SIZE) / Math.round(chunkManager.chunkSize / BUILDING_SIZE))), X = ci % NX, Y = (ci / NX) | 0;   // = chunk-gates NX
+  let g = _bridgeGen * 1000003;
+  for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) g += _collGen.get(chunkManager.keyOf(X + dx, Y + dy)) | 0;
+  return g;
+}
+var _t734NXc = 0;
+var _t734Warm = false;   // (var — 모듈 평가 중 불려도 TDZ 0)
+function _t734ReachS(ax, ay, sx, sy, R, W, seen, q) { return { ax, ay, sx, sy, R, W, seen, q, qh: 0, qt: 1, done: false, n: 1 }; }
+function _t734WarmReach() {
+  _t734Warm = true;
+  for (let i = 0; i < 8; i++) { const S = _t734ReachS(0, 0, 0, 0, 1, 3, new Uint8Array(9).fill(1), new Int32Array(9)); S.q[0] = 4; npcReachStep(S, null); npcReachStep(S, null); }
 }
 const _NR4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 /** 넓히기를 이어 간다 — `stop()` 이 참이면 그 자리에서 놓는다(다음에 이어 간다). 끝나면 true. */
@@ -3806,7 +3830,7 @@ const _t678Q = { calls: 0, nullFast: 0, gatePath: 0, fallback: 0, ms: 0, maxMs: 
 function _t678Init() {
   if (_t678G || !(T678_ON || T678_VERIFY)) return _t678G;
   const C = BUILDING_SIZE / 2, cs = Math.round(chunkManager.chunkSize / BUILDING_SIZE);
-  _t678G = require('./chunk-gates').create({ chunkCells: cs, cellsW: Math.ceil(ZONE.zoneWidth / BUILDING_SIZE), cellsH: Math.ceil(ZONE.zoneHeight / BUILDING_SIZE),
+  _t678G = require('./chunk-gates').create({ t734: T734_ASTAR_SLICE, stamp: T734_ASTAR_SLICE ? _t734Stamp : undefined, chunkCells: cs, cellsW: Math.ceil(ZONE.zoneWidth / BUILDING_SIZE), cellsH: Math.ceil(ZONE.zoneHeight / BUILDING_SIZE),
     pass: (cx, cy) => !isTerrainBlockedLocal(cx * BUILDING_SIZE + C, cy * BUILDING_SIZE + C),
     step: (fx, fy, tx, ty) => !isBlockedByWall(fx * BUILDING_SIZE + C, fy * BUILDING_SIZE + C, tx * BUILDING_SIZE + C, ty * BUILDING_SIZE + C, 0),
     // ★[T679 ②] 표 상한 = 마을 수 × 주민 묻기 창이 걸치는 청크 수(반경 `_pfRadius` · 청크 크기 — 새 수 0) · 마을이 없으면 창 하나
@@ -3977,6 +4001,8 @@ function computeNpcPath(npc, now) {
     isWaterFn: isTerrainBlockedLocal,
     maxCells: T399_CELL_CAP ? Math.ceil(Math.PI * _pfR * _pfR / 2) : (isVil ? 1500 : 200),   // 끔=종전(주민 1500 · 비주민 200) · 켬=반원(6,434 · 905)
     searchRadiusCells: _pfR,
+    fast: (T734_ASTAR_SLICE && isVil && !(npc.floor || 0) && _t678G) ? _t678G.fastView(_t734Stamp) : undefined,   // ★[T734 ②] 지은 표 비트(같은 술어 값 · 도장 같을 때만)
+    fastVerify: T734_VERIFY ? _t734V : undefined,   // ★[T734 견줌] 술어 A* 도 한 번 더(계측 · `pathfind` 안에서 · 세계는 표 비트 답)
     preferFn: isVil ? _roadPrefer : undefined,   // ★답압 수렴(랩 bfsPath prefer 동형): 등거리 동률이 길로 스냅
     costFn: (_streamOn() && npc.simJob !== 'bandit') ? _streamCost : undefined,   // ★[T585] 개울 칸 비용 ×2(= 걸음 ×0.5 의 역 · 새 수 0) · 도적은 그대로
   });
