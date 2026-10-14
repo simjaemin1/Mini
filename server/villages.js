@@ -7007,13 +7007,48 @@ function _t312Take(vil, day, key, want) { return _actTake(_t312Day(vil, day), ke
 //   ⚠단위 환산이 **없다** — 목재는 낱개 = econ 단위다(`weights.js wood 3.00kg` 이 "장작·목재 단(段)" 하나).
 //     그래서 손에 든 낱개 수가 그대로 단위다(환산식 0 · 새 수 0). 물고기와 다른 점은 이 한 줄뿐이다.
 //   ⚠손은 그때 비운다(이중 0 — 손과 곳간에 같이 있을 수 없다).
+//   ★★[T717 ②] 켬이면 **넣은 만큼만** 뺀다 — 곳간 입구가 그날 몫까지만 받으면 나머지는 **손에 남는다**(채집 T544 `_t347Deliver` 와 같은 줄).
+//     이중 0 은 그대로다(든 몫은 손에서 빠졌다). 남긴 몫은 몸에 적는다(`_t717L` — 그 몸이 그날 새로 벴나를 셀 때 남긴 몫만 든 손을 빼려고 · 아래 `_t717NewWood`).
 function _t325Deliver(vil, npc) {
   const u = (npc.inventory && npc.inventory.wood) || 0;
   if (!(u > 0)) return 0;
   const got = _lifeEcon().woodToGranary(vil.econ, u) || 0;
-  npc.inventory.wood = 0;
+  if (T717_WOOD_HAND) { const r = +(u - got).toFixed(6); npc.inventory.wood = r > 1e-9 ? r : 0; npc._t717L = npc.inventory.wood; }   // ★[T717 ②] 곳간이 안 받은 몫 — 손에(소수 그대로 · 곳간이 소수로 받는다)
+  else npc.inventory.wood = 0;
   vil._t325Deliv = +((vil._t325Deliv || 0) + got).toFixed(6);
   return got;
+}
+// ★★★[T717 ② 2026-10-13] **곳간이 안 받은 통나무도 어딘가에 있다** — 캐논 소멸 금지(T712 회부 3 · T544 채집과 같은 문법).
+//   종전: 몸 갈래(`_t325Deliver`)는 곳간이 받은 만큼만 넣고 손을 0 으로 비웠다 · 헤드리스 하루는 벤 그루의 단을 통째로 입구에 내밀고
+//   입구가 돌려준 받은 몫을 안 읽었다 ⇒ 그날 수요(`actDemandCap` — 수식 하루 몫 `_woodOutLast`)를 넘는 몫이 세계에서 없어졌다
+//   (T712 실측: 몸 갈래 경계마다 든 것의 42~64%).
+//   ⇒ ⓐ 몸 갈래 — 남은 몫은 그 몸의 손에(위) · ⓑ 헤드리스 — 남은 몫은 마을 짐 하나(`econ._t717Pack` · 단)에 —
+//     이튿날 베기 전에 같은 입구로 먼저 든다(`_t717PackIn` — 채집 `_t544PackIn` 과 같은 자리 · 그날 몫만큼만 · 나머지는 또 짐에).
+//   ⚠econ 마을 객체에 두는 것은 `econ_state` 에 같이 적혀 재부팅에도 남게 하려는 것뿐이다(econ 은 이 칸을 안 읽는다 · `_t544Pack` 과 같은 자리).
+//   ⚠새 수 0 · 새 문 0 — 입구는 econ 정본 한 함수(`woodToGranary`)이고 짐·손은 그 입구가 돌려준 받은 몫의 나머지다. 바닥에 놓기는 안 만든다.
+//   ⚠손잡이 `T717_WOOD_HAND=1` · 끔(미설정) = 옛 줄 그대로(손 0 · 나머지 버림 · 비트 동일). 행위 층(`T325_WOOD_ACT`)이 꺼진 세계엔 부르는 자리가 없다.
+const T717_WOOD_HAND = process.env.T717_WOOD_HAND === '1';
+function _t717PackPut(vil, u) {
+  if (!(u > 1e-9) || !vil || !vil.econ) return 0;
+  vil.econ._t717Pack = +((vil.econ._t717Pack || 0) + u).toFixed(6);
+  return u;
+}
+//   짐을 곳간에 — 입구가 받은 만큼만 뺀다(나머지는 짐에 그대로). 받은 몫을 돌려준다.
+function _t717PackIn(vil) {
+  const u = (vil && vil.econ && vil.econ._t717Pack) || 0; if (!(u > 0)) return 0;
+  const g = _lifeEcon().woodToGranary(vil.econ, u) || 0;
+  if (!(g > 0)) return 0;
+  const r = +(u - g).toFixed(6);
+  if (r > 1e-9) vil.econ._t717Pack = r; else delete vil.econ._t717Pack;
+  vil._t717PkIn = +((vil._t717PkIn || 0) + g).toFixed(6);   // 계측 전용 누계(짐에서 곳간으로 든 단 · 켠 팔에만 선다)
+  return g;
+}
+//   그 몸이 **새로** 벤 통나무를 들었나 — 몸이 그날 걸었나를 세는 두 자리(`_lifeHandsIn` · `_lifeDaily` — T475 `_t325PreWalked` 규약)가 쓴다.
+//   켬: 지난 입고 뒤 손에 남긴 몫(`_t717L`)보다 많이 들었나 — 남긴 몫만 든 손은 "그날 걸은 몸"이 아니다(일괄을 막지 않는다).
+//   끔: 손에 통나무가 있나(옛 줄 그대로 — 끈 팔은 입고 때 손을 늘 0 으로 비우니 같은 뜻이다).
+function _t717NewWood(p) {
+  const w = (p && p.inventory && p.inventory.wood) || 0;
+  return T717_WOOD_HAND ? w > (p._t717L || 0) + 1e-9 : w > 0;
 }
 // ★[T325] 그 개체가 내는 **목재 낱개** — 표는 존이 쥔다(`lootOfResource`). 이 파일은 읽기만 한다(사본 0).
 //   ⚠묻는 것과 베는 것을 나눈 이유[T341]: **하루 걸음 한도**가 그 그루를 못 대면 **안 베야** 한다
@@ -8153,7 +8188,7 @@ function _lifeHandsIn(vil) {
   }
   if (E.T325_WOOD_ACT && E.woodActOn(vil.econ)) {
     let n = 0;
-    for (const pid of (vil.npcPids || [])) { const p = pl.get(pid); if (p && p.inventory && (p.inventory.wood || 0) > 0) { _t325Deliver(vil, p); n++; } }
+    for (const pid of (vil.npcPids || [])) { const p = pl.get(pid); if (p && p.inventory && (p.inventory.wood || 0) > 0) { const nw = _t717NewWood(p); _t325Deliver(vil, p); if (nw) n++; } }   // ★[T717 ②] 켬 = 남긴 몫만 든 손은 안 센다(끔 = 옛 줄 · 늘 센다)
     if (n) vil._t325PreWalked = (vil._t325PreWalked | 0) + n;
   }
 }
@@ -10517,7 +10552,9 @@ function* _lifeDailySteps(vil) {   // 게임일 경계: 크루·클레임 재대
     const _on = _lifeEcon().woodActOn(vil.econ);
     const _pl = state.deps.players;
     let _walked = 0; if (vil._t325PreWalked) { _walked = vil._t325PreWalked; vil._t325PreWalked = 0; }   // ★[T475 ②] 손은 econ 틱 앞에서 이미 곳간에(`_lifeHandsIn`) — 사람 수만 이어 받는다
-    if (_on) for (const pid of (vil.npcPids || [])) { const p = _pl && _pl.get(pid); if (p && p.inventory && (p.inventory.wood || 0) > 0) { _t325Deliver(vil, p); _walked++; } }
+    if (_on) for (const pid of (vil.npcPids || [])) { const p = _pl && _pl.get(pid); if (p && p.inventory && (p.inventory.wood || 0) > 0) { const nw = _t717NewWood(p); _t325Deliver(vil, p); if (nw) _walked++; } }   // ★[T717 ②] 켬 = 남긴 몫만 든 손은 "걸은 몸"이 아니다(끔 = 옛 줄)
+    //   ★★[T717 ②] 어제 곳간이 안 받은 짐(헤드리스가 벤 그루의 나머지)을 **오늘 먼저** 넣는다(베기 전 · 같은 입구 · 그날 몫만큼) — 채집 `_t544PackIn` 과 같은 자리.
+    if (T717_WOOD_HAND && _on) _t717PackIn(vil);
     //   ★[T449 ⓑ] 관측 마을(켬)의 나무꾼은 **몸 명부** — 일괄 명부에서 빠진다(T423 문법 · 끔이면 종전 명부 그대로)
     //   ★★[T491 ⓐ] 켬이면 명부 = 그날 일한 **나무꾼 몸**(`_t491Crew`) · 끔 = econ 나무꾼 수(옛 줄 그대로)
     const _t491C = T491_BATCH_FROM_BODY ? _t491Crew(vil) : null;
@@ -10562,7 +10599,8 @@ function* _lifeDailySteps(vil) {   // 게임일 경계: 크루·클레임 재대
         if (sk) (vil._t341Cut || (vil._t341Cut = [])).push(sk);   // ★재생이 되돌릴 목록(벤 순서)
         made += _t491C ? u : 1; vil._t325Dbg.cut++;                // ★[T491] 켬 = 단으로 센다(한도가 단이다) · 끔 = 그루(옛 줄 `made++` 와 같은 수)
         if (_t491C) vil._t325Dbg.t491.made = +(vil._t325Dbg.t491.made + u).toFixed(6);
-        _lifeEcon().woodToGranary(vil.econ, u);
+        const _g = _lifeEcon().woodToGranary(vil.econ, u);
+        if (T717_WOOD_HAND) _t717PackPut(vil, u - (_g || 0));        // ★[T717 ②] 곳간이 안 받은 몫은 마을 짐에(끔 = 옛 줄 · 버림)
         vil._t325Deliv = +((vil._t325Deliv || 0) + u).toFixed(6);
       }
     }
@@ -12304,6 +12342,9 @@ module.exports = { t719ReachPre, t719Stat: () => _t719Stat, streamStat, fishPerf
     // ★[T495] 부분 수확 — 같은 규약(정본 함수를 그대로 부른다 · 상태는 `_t400Probe.setup` 으로 꽂는다)
     _t495Probe: { on: () => _t495On(), units: (r) => _t495Units(r), visit: (vil, c, e, order, worth, keep) => _t495Visit(vil, c, e, order, worth, keep) },
     _t544Probe: { put: (vil, h, u) => _t544PackPut(vil, h, u), packIn: (vil, keep) => _t544PackIn(vil, keep), sum: (vil) => _t544PackSum(vil), hold: (vil) => _t544Hold(vil), deliver: (vil, npc) => _t347Deliver(vil, npc) },
+    // ★[T717 ②] 손·짐에 남는 통나무 — 같은 규약(최소 주입구 하나 · 정본 함수를 그대로 부른다 · 하네스가 남기는 규칙을 다시 적으면 그게 사본이다)
+    _t717Probe: { deliver: (vil, npc) => _t325Deliver(vil, npc), put: (vil, u) => _t717PackPut(vil, u), packIn: (vil) => _t717PackIn(vil), newWood: (p) => _t717NewWood(p),
+      handsIn: (vil) => _lifeHandsIn(vil), daily: (vil) => _lifeDaily(vil), get ON() { return T717_WOOD_HAND; } },
     // ★[T449] 결산 문 하네스용 — 같은 규약(최소 주입구 하나). 하네스는 문·명부 규칙을 다시 적지 않는다 — 정본 `_t449Seen`·`_lifeDaily` 를 그대로 부른다.
     _t449Probe: { seen: (vil) => _t449Seen(vil), daily: (vil) => _lifeDaily(vil), get T449_BODY_DAY() { return T449_BODY_DAY; } },
     // ★[T491] 일괄 = 몸의 하루 하네스용 — 같은 규약(최소 주입구 하나). 하네스는 명부·짐 규칙을 다시 적지 않는다 — 정본 `_t491Crew`·`_t491BodyDay` 를 그대로 부른다.

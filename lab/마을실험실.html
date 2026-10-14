@@ -10566,6 +10566,9 @@ function woodEarlyOn() { const x = _allocKnob('T652_WOOD_EARLY'); return x !== n
 //     T652 계측: 새 나무꾼은 주로 출생 배정에서 나오고(보류 없음), 전환 배정은 7일 1명이다. 값 하나 · 새 수 0. 끔(미설정·0)은 비트 동일.
 function woodEarlyMode() { const x = _allocKnob('T652_WOOD_EARLY'); return x === null || x === '0' ? 0 : (x === '2' ? 2 : 1); }
 let _t663Birth = false;   // 출생 배정 중인가(출생 줄이 피커를 부르는 동안만 참 — 읽는 곳은 위 좁은 문 하나)
+// ★[T717 ③ 2026-10-13] 기근 문 안의 땔감 한 명 — **기본 끔**(미설정·`0` = 종전 비트). 서버 `T717_FUEL_GATE=1` · 랩 `window.T717_FUEL_GATE = 1`.
+//   문은 `pickDeficitJob_rational` 기근 블록 안 한 줄이다(그 자리 주석).
+function fuelGateOn() { const x = _allocKnob('T717_FUEL_GATE'); return x !== null && x !== '0'; }
 function foodConsOn() { const x = _allocKnob('T263_FOOD_CONS'); return x !== null && x !== '0'; }
 function allocRealWin() { const x = _allocKnob('L_ALLOC_WIN'); const n = (x === null) ? 1 : parseFloat(x); return Number.isFinite(n) ? n : 1; }
 // ★[T184] 되돌림 — `L_ALLOC_BASKET=1` 이면 1판(바구니 전체 소득)으로 돌아간다. 기본은 2판(주산물 항).
@@ -10806,6 +10809,18 @@ function pickDeficitJob_rational(v, world) {
     const mineLabor = (counts.miner || 0);
     const richVein = Math.max(v.land.ore || 0, v.land.obsidian || 0, v.land.jade || 0, v.land.tin || 0) > 0.35;   // ★S1 광맥(ore) ★S5 +특수산지(흑요석·옥) ★청동 희소성 +주석산지
     if (richVein && foodEquiv > N * 18 && mineLabor < N * 0.04 && hasSlot(v, 'miner', cap, counts)) return 'miner';
+    // ★★[T717 ③ 2026-10-13 · 손잡이 `T717_FUEL_GATE` 기본 끔] **기근 문 안의 땔감 한 명.**
+    //   이 블록(식량 30일치 밑)은 식량 넷만 고른다 — 지키는 것은 **굶음**이다(위 주석: 강제 30일 버퍼 · 게이트 완화 실험은 인구·특화 둘 다 악화).
+    //   그런데 이 세계는 거의 늘 이 블록 안에 있어(맬서스 상한) 나무꾼이 안 선다 — T702: 직업 판단 955번 중 나무꾼 27 · 숲 마을 177번 중 1 ·
+    //   d101~400 곳간 통나무 0 날 93~100%(숲 마을 포함). 통나무가 0 이면 땔감은 짚 · 잔가지만 탄다 ⇒ 땔감 충당률(`_fuelCov`) < 1 ⇒
+    //   건강 −(1 − 충당률) × `FUEL_HEALTH_W` · 겨울엔 땔감 수요가 ×(1 + `FUEL_COLD_W` × 추위)로 커진다(연료 단계 · 위 상수 그대로).
+    //   ⇒ 둘 다 지키는 문: **그날 땔감이 모자랐고**(`_fuelCov < 1` — 연료 단계가 남긴 칸) **나무꾼이 0 이면 한 명.**
+    //     · 굶음 쪽 — 한 명뿐이다(나무꾼 0 일 때만 · 식량 노동은 1/N 만 뺀다) · 이 블록의 하드 플로어(N×6 — 위 부얼타운 광부 줄의 그 수) 밑이면 안 연다.
+    //     · 땔감 쪽 — 자리(`hasSlot` — 땅의 숲 몫 `jobCapacity`)가 없는 마을은 안 연다(벨 나무가 없다).
+    //   ⚠아래 "연료 게이트 실험 폐기" 주석의 옛 문(기근 문 밖 · 인원 제한 없음 — 노동 쟁탈전으로 시드7 랩 전멸)과 다르다: 기근 문 **안** · 0 → 1 명만.
+    //   ⚠새 수 0 — 1(한 명) · 6(이 블록의 하드 플로어) · 1(충당률 만점)만 쓴다. 끔 = 옛 줄 그대로(비트 동일).
+    if (fuelGateOn() && v._fuelCov !== undefined && v._fuelCov < 1 && (counts.lumberjack || 0) < 1 && foodEquiv > N * 6
+        && hasSlot(v, 'lumberjack', cap, counts)) return 'lumberjack';
     const foodOpts = [
       ['farmer',  v.land.fertility * 1.5],
       ['fisher',  v.land.water     * 1.2],
