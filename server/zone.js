@@ -4655,8 +4655,8 @@ SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, is
     if (!(amount > 0)) return 0;
     const now = _simNow(), key = cx + '_' + cy, rec = _oreRec(key, now);
     const got = Math.min(amount, Math.max(0, rec.s));
-    if (got <= 0) { if (!rec.fresh) _oreSave(key, rec); return 0; }
-    rec.s -= got; _oreSave(key, rec); return got;
+    if (got <= 0) { if (!rec.fresh) { _oreSaveNpc++; _oreSave(key, rec); } return 0; }
+    rec.s -= got; _oreSaveNpc++; _oreSave(key, rec); return got;
   },
   // ★NPC 경제가 보는 p 는 **자잘을 뺀 합성**이다(isMajorOreAt 과 짝) — 자잘은 플레이어 전용
   oreProbAt: (px, py) => (_terrain.oreProbMajorAt ? _terrain.oreProbMajorAt(ZONE_ID, px, py) : 0.3),
@@ -5157,6 +5157,7 @@ const server = http.createServer((req, res) => {
       forage: (() => { try { return SimVillages.foragePerf ? SimVillages.foragePerf() : null; } catch (e) { return null; } })(),   // ★[T347] 채집 관측(끔이면 null)
       farm: (() => { try { return SimVillages.farmPerf ? SimVillages.farmPerf() : null; } catch (e) { return null; } })(),   // ★[T368] 농부 관측(끔이면 null)
       xzone: (() => { try { return SimVillages.xzonePerf ? SimVillages.xzonePerf() : null; } catch (e) { return null; } })(),   // ★[T533] 존 경계 관측(팔 끔이면 null)
+      vein: { saves: _oreSaveN, npcSaves: _oreSaveNpc, cells: minedCells.size, batch: _vein ? _vein.stats() : null, digest: _vein ? _veinDigest() : null },   // ★[T735] 광맥 장부 쓰기 문 · 모아 쓰기(켬만)
       tick: Object.assign({}, _tick, { ms: _tickMsStats(_rst), on: TICK_DEBT_ON, dtMax: DT_MAX, debtMax: TICK_DEBT_MAX,
         lagPct: _tick.wall > 0 ? +(100 * (_tick.wall - _tick.sim) / _tick.wall).toFixed(3) : null }) }));
     return;
@@ -8735,6 +8736,7 @@ const Specialty = require('./specialty');
 //     각자 30타씩 60타를 채워 덩이가 나온다 = **2인 1조 협업이 규칙에서 저절로 나온다**.
 //     (Great Orme 불질 채광 고증: 한 명이 불을 지피고 한 명이 물을 붓는 2인 작업)
 const minedCells = new Map();
+let _t735Boot = false;
 
 { // 부팅: DB에서 파인 셀 로드 (구 스키마 prosperity(0..100) → 신 재고(0..1000) 이행)
   try {
@@ -8745,6 +8747,7 @@ const minedCells = new Map();
       minedCells.set(r.cell_key, { s, t: r.last_t, w, kg: r.kgsum || 0 });
     }
     if (minedCells.size) console.log(`[${ZONE_ID}] 광맥 파인 셀 ${minedCells.size}개 로드` + (migrated ? ` (구 번영도 ${migrated}개 → 재고 비율 이행)` : ''));
+    if (process.env.T735_VEIN_BATCH === '1') { _t735Boot = true; }   // ★[T735] 부팅 지문은 아래 `_veinDigest` 가 선 뒤에 적는다(함수 선언 차례)
   } catch (e) { console.log(`[${ZONE_ID}] mined_cells 로드 실패: ${e.message}`); }
 }
 // [배치 20 B] 동적 토양치 — minedCells 적재 **뒤에** 띄운다(채굴 거울 씨앗이 그걸 읽는다).
@@ -8772,7 +8775,9 @@ function _oreRec(key, now) {
   if (days > 0) { rec.s = Specialty.oreRegen(rec.s, days); rec.t = now; }
   return rec;
 }
-function _oreSave(key, rec) {
+let _oreSaveN = 0, _oreSaveNpc = 0;   // ★[T735 계측] 광맥 장부 쓰기 문을 지난 수(끔 = 그 수만큼 DB 한 줄씩) · 그중 NPC 문(`oreConsumeAt`)
+function _oreSave(key, rec, now) {
+  _oreSaveN++;
   // [배치 20 B] 채굴 축 — 렌더 거울 갱신.
   //   ★채광 정본(minedCells·mined_cells)은 아래 그대로다. 여기서 하는 건 읽어서 알려 주는 것뿐이다.
   //
@@ -8788,9 +8793,39 @@ function _oreSave(key, rec) {
     const _p = key.split('_');
     if (_p.length === 2) Soil.mirrorOre(+_p[0], +_p[1], rec.s, Specialty.ORE_K);
   } catch (e) { }
-  if (rec.s >= Specialty.ORE_K && rec.w <= 0 && !(rec.kg > 0)) { minedCells.delete(key); try { db.deleteMinedCell(key); } catch (e) { } return; }
+  //   ★★[T735] 켬이면 **메모리 장부는 지금 그대로** 고치고 DB 는 더러운 셀로만 적어 둔다(`_vein` — 저장 주기 · 종료 flush 에 한 트랜잭션).
+  //     `now` 는 바로 쓰기다(플레이어 1타가 덩이를 떨군 순간 — 손 · 몸 저장과 같은 순간이어야 크래시에 덩이가 두 번 생기지 않는다).
+  //     끄면 아래 두 줄이 종전 글자 그대로다.
+  if (rec.s >= Specialty.ORE_K && rec.w <= 0 && !(rec.kg > 0)) { minedCells.delete(key); if (_vein && !now) { _vein.mark(key); return; } try { db.deleteMinedCell(key); } catch (e) { } return; }
   delete rec.fresh; minedCells.set(key, rec);
+  if (_vein) { if (now) { try { _vein.now(key); } catch (e) { } } else _vein.mark(key); return; }
   try { db.upsertMinedCell(key, rec.s, rec.t, rec.w, rec.kg || 0); } catch (e) { }
+}
+// ★★[T735] 광맥 장부 모아 쓰기 — 손잡이 `T735_VEIN_BATCH=1`(기본 끔 = `_vein` null · 종전 그대로). 정본 `server/vein-batch.js` 머리말.
+//   언제 쓰나: 사람 주기 저장의 그 간격(`SAVE_INTERVAL_MS` — 새 수 0) · 종료 flush(`_shutdownFlush` 머리 — T728 경계 저장 뒤).
+const T735_VEIN_BATCH = process.env.T735_VEIN_BATCH === '1';
+const _vein = T735_VEIN_BATCH ? require('./vein-batch').create({ db, map: minedCells }) : null;
+if (_t735Boot) setImmediate(() => { try { console.log(`[${ZONE_ID}] ⛏ [T735] 광맥 장부 부팅 로드 — ${_veinDigest()}`); } catch (e) { } });
+let _veinNextAt = 0;
+// 메모리 장부 지문(재기동 뒤 같음 증인 — 종료 쓰기 로그 · 부팅 로드 로그 · `/perf` 가 같은 함수로 센다 · 계측 전용)
+//   ⚠재고는 **읽을 때 리젠을 적분한다**(`_oreRec` — 메모리 행의 s·t 가 쓰기 없이 앞으로 간다 · 종전부터 그렇다). 그래서 날 것(s, t)을 견주면
+//     같은 장부도 다르게 보인다(첫 판이 그것을 보였다 — 더러운 셀 0 인데 지문이 갈렸다). ⇒ 한 기준 시각 T 로 다시 적분한 재고(소수 6자리)를 센다.
+function _veinDigest(T) {
+  const at = T || Date.now(), keys = [...minedCells.keys()].sort();
+  const h = require('crypto').createHash('sha1');
+  for (const k of keys) {
+    const r = minedCells.get(k), d = (at - r.t) / _ORE_DAY_MS;
+    const se = d > 0 ? Specialty.oreRegen(r.s, d) : Math.min(Specialty.ORE_K, r.s);
+    h.update(k + ':' + se.toFixed(6) + ',' + (r.w || 0) + ',' + (r.kg || 0) + ';');
+  }
+  return `T ${at} · 셀 ${keys.length} · 지문 ${h.digest('hex').slice(0, 12)}`;
+}
+function _veinTick(now) {
+  if (!_vein || !_vein.size()) return;
+  if (!_veinNextAt) { _veinNextAt = now + SAVE_INTERVAL_MS; return; }
+  if (now < _veinNextAt) return;
+  _veinNextAt = now + SAVE_INTERVAL_MS;
+  _vein.flush('period');
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -9131,8 +9166,9 @@ function mineOreCell(player) {
   //    장기적으로는 타수에 비례해 분배된다. 무게만 기여도대로 정해지면 된다.)
   rec.w = (rec.w || 0) + 1;                                          // 기여는 누구나 1타 = 1
   rec.kg = (rec.kg || 0) + Specialty.mineChunkKg(lvlF);              // ★이 타격이 실어 나른 무게
-  let msg;
+  let msg, _chunk = false;
   if (rec.w >= need) {
+    _chunk = true;
     // ★[재민 확정] 가중평균은 이 덩이의 **평균**일 뿐이다. 실제 크기는 여기서 한 번 추첨한다.
     //   추첨을 타격마다 하지 않는 이유: 60타 평균은 산포를 √60 배 줄여 사실상 고정값이 된다
     //   (CV 0.28 → 0.036). "가끔 큰 돌덩이"는 **덩이 단위**로 굴려야 체감된다.
@@ -9170,7 +9206,7 @@ function mineOreCell(player) {
     msg = `⛏ 캐는 중 ${Math.round(rec.w)}/${Math.round(need)}`
       + (need > Specialty.MINE_SWINGS_PER * 1.5 ? ` (깊다 · 품위 ×${dp.toFixed(2)})` : '');
   }
-  _oreSave(key, rec);
+  _oreSave(key, rec, _chunk);   // ★[T735] 덩이를 떨군 1타는 바로 쓴다(손 · 몸 저장이 같은 순간 — 아래 `savePlayer`) · 타수 진척만인 1타는 모은다(끄면 인수 무시 · 종전 그대로)
   send(player.ws, { type: 'notice', text: msg + ` · 남은 광맥 ${Math.round(rec.s)}` });
   savePlayer(player);
   return true;
@@ -15006,6 +15042,7 @@ setInterval(() => {
   //   (자정 DB 드레인과 같은 결 — villages.js saveQueue 선례).
   _fishPoll(now);
   { const _t0 = Date.now(); _periodicSave(now); const _d = Date.now() - _t0; if (_d >= 5) perfMark('save', _d); }
+  if (_vein) _veinTick(now);   // ★[T735] 광맥 장부 모아 쓰기(켬만 · 저장 주기마다 한 트랜잭션)
   // ★[RTT 상관 계측] 틱 전체가 예산(33ms)을 넘긴 순간도 남긴다 — 원인이 위 둘이 아닐 수도 있다.
   // ★★[T43] 쓰러짐 사슬 — 업고 걷기 · 붙들기 진행 · 창 소진 · 깨어남(내부에서 1초에 한 번만 돈다).
   tickDowned(now);
@@ -15360,6 +15397,7 @@ function gracefulShutdown(signal) {
   _shutdownFlush();
 }
 function _shutdownFlush() {
+  if (_vein) { try { const n = _vein.flush('shutdown'); console.log(`[${ZONE_ID}] ⛏ [T735] 광맥 장부 종료 쓰기 — ${n} 셀 · ${_veinDigest()}`); } catch (e) { console.error(`[${ZONE_ID}] ⛏ [T735] 광맥 장부 종료 쓰기 실패:`, e.message); } }
   try {
     let mobsSaved = 0;
     for (const m of mobs.values()) {
