@@ -897,9 +897,9 @@ console.log('\n⑰ [T475] 걷는 목록은 마을마다 — 그 마을 원판에
     'ⓔ 부르는 자리는 **둘 — 갈래**(T513 조각 켬 = `econ:head` 조각에서 머리 앞 · 끔 = econ 한 조각에서 틱 앞) · `if/else` 한 줄이 가른다 = 한 하루에 **하나만** 돈다',
     `자리 ${nHands} · econ:head 안 손 ${iHh} < 머리 ${iHp} · 갈래 ${fork ? '○' : '✗'}`);
   {   // ★[T731] 켬 자리 — 마을 조각(`econ:vil`) 안에서 손이 그 마을 econ 결산(`W.P.village`) 앞 · 창 머리 조각엔 손이 없다(하루에 한 번) · 창으로 가는 문은 손잡이 뒤
-    const vilJob = (T731J.match(/add\('econ', \(\) => \{[\s\S]*?\}, 'econ:vil'\);/) || [''])[0];
+    const vilJob = (T731J.match(/add[HVT]?\('econ', \(\) => \{[\s\S]*?\}, 'econ:vil'\);/) || [''])[0];
     const k1 = vilJob.indexOf('_lifeHandsIn(vil);'), k2 = vilJob.indexOf('W.P.village(vil.econ)');
-    const headT = (T731J.match(/add\('econ', \(\) => \{[^\n]*\}, 'econ:head'\);/) || [''])[0];
+    const headT = (T731J.match(/add[HVT]?\('econ', \(\) => \{[^\n]*\}, 'econ:head'\);/) || [''])[0];
     const gate = /if \(T\) return _t731Jobs\(now, T\);/.test(VC) && /if \(T731_ON\) \{ _t731Tick\(now\); return; \}/.test(VC);
     ok(T731J && k1 > 0 && k2 > k1 && headT && !headT.includes('_lifeHandsIn') && (T731J.match(/_lifeHandsIn\(vil\);/g) || []).length === 1 && gate,
       'ⓔ [T731 켬] 손은 마을 조각에서 그 마을 econ 결산 앞에 한 번 · 창 머리엔 없다 · 창 문은 손잡이 뒤', `${k1} < ${k2} · 머리 손 ${headT.includes('_lifeHandsIn') ? '있음' : '없음'} · 문 ${gate ? '○' : '✗'}`); }

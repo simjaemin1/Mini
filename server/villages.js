@@ -6517,9 +6517,15 @@ function _t731Tick(now) {
   }
   let n = 0; while (n < W.list.length && (fr || _t731LD(W.list[n], now) >= W.D)) n++;
   if (!head && !n) return;
+  if (fr) W.flushN = (W.flushN || 0) + n;   // ★[T744] 얼림이 제 자정 전에 몰아 닫은 마을 수(창 꼴 증인)
   const vils = W.list.splice(0, n);
   _openDayJobs(now, { W, head, vils, tail: !W.list.length });
   if (!TB.out(TICK_SLICE_MS, 'close')) _drainTickJobs(now);
+}
+function _t731Mark(W, p, name) {   // ★[T744] 창 꼴 증인(켬만 · 아무것도 안 바꾼다)
+  if (!W.stages) { W.stages = { H: new Set(), V: new Set(), T: new Set() }; W.seq = ''; W.settled = {}; }
+  W.stages[p].add(name);
+  if (W.seq[W.seq.length - 1] !== p) { W.seq += p; if (W.settled[p] == null) { let k = 0; for (const v of W.all) if (v._t731Day === W.D) k++; W.settled[p] = k; } }
 }
 function _t731Jobs(now, T) {
   const W = T.W;
@@ -6527,14 +6533,16 @@ function _t731Jobs(now, T) {
     car: _caravanSyncNew(), ore: { v: 0, c: 0 }, chunks: 0, maxChunk: 0, maxChunkAt: '', order: [], vils: W.all, t731D: W.D, t731Opens: 0 });
   C.now = now; C.t731mini = !T.tail; C.t731Opens++;
   const J = [];
-  const add = (n, f, sub) => J.push(sub ? { n, f, s: sub } : { n, f });
+  //   ★[T744] 창 꼴 증인 — 조각마다 제 몫(H 머리 · V 마을 · T 꼬리)을 단다: 몫이 바뀌는 첫 조각에서 그때 정산한 마을 수를 적는다(머리 0 · 꼬리 = 다)
+  const addP = (p) => (n, f, sub) => { const g = () => { _t731Mark(W, p, sub || n); return f(); }; J.push(sub ? { n, f: g, s: sub } : { n, f: g }); };
+  const add = addP('T'), addH = addP('H'), addV = addP('V');
   const mute = (f) => { const _log = console.log; console.log = () => {}; try { f(); } finally { console.log = _log; } };
   if (T.head) {
-    if (state.xzone) add('xzone', () => _xzDayIn());
-    if (T681_ON) add('econ', () => _t681Flush());
+    if (state.xzone) addH('xzone', () => _xzDayIn());
+    if (T681_ON) addH('econ', () => _t681Flush());
     W.P = state.econV2.tickWorldV2Parts(state.world);   // econ 정본 조각 한 벌(`tickWorldV2` 가 부르는 그것 — 조각 손잡이와 무관하게 켬 판은 조각으로만 간다)
-    add('econ', () => { _econDayFixture(); mute(() => W.P.head()); }, 'econ:head');
-    add('life', () => { for (const k in _lifeSub) _lifeSub[k] = 0; for (const k in _lifeSubMax) delete _lifeSubMax[k]; _lifeMax = 0; _lifeMaxName = ''; });
+    addH('econ', () => { _econDayFixture(); mute(() => W.P.head()); }, 'econ:head');
+    addH('life', () => { for (const k in _lifeSub) _lifeSub[k] = 0; for (const k in _lifeSubMax) delete _lifeSubMax[k]; _lifeMax = 0; _lifeMaxName = ''; });
   }
   const _popOne = (vil) => {
     C.econPop += vil.econ.npcs.length;
@@ -6545,7 +6553,7 @@ function _t731Jobs(now, T) {
     C.pops[vil.dbId] = vil.econ.npcs.length;
   };
   for (const vil of T.vils) {
-    add('econ', () => {
+    addV('econ', () => {
       const at = Date.now(), due = _t731Due0(vil, W.D), late = at - due;
       const prev = W.wit.length ? W.wit[W.wit.length - 1] : null;
       if (prev && (vil._lonMid || 0) > prev[1] + 1e-12) _t731Stat.orderBad++;   // 동 → 서 어김(λ 가 앞 마을보다 크면)
@@ -6556,8 +6564,8 @@ function _t731Jobs(now, T) {
       mute(() => W.P.village(vil.econ));
       vil._t731Day = W.D;
     }, 'econ:vil');
-    add('pop', () => { if (vil.econ && state.villages.includes(vil)) _popOne(vil); });
-    _lifeDayJobs([vil], add);
+    addV('pop', () => { if (vil.econ && state.villages.includes(vil)) _popOne(vil); });
+    _lifeDayJobs([vil], addV);
   }
   if (T.tail) {
     for (const ev of W.extra) add('econ', () => { if (state.world.villages.includes(ev)) mute(() => W.P.village(ev)); }, 'econ:vil');   // 존 마을에 안 묶인 econ 마을(있으면 · 꼬리 앞)
@@ -6614,7 +6622,8 @@ function _t731Jobs(now, T) {
         dueSpanS: w.length ? +((w[w.length - 1][2] - w[0][2]) / 1000).toFixed(3) : 0,
         lateMs: { max: lates.length ? Math.round(Math.max(...lates)) : 0, min: lates.length ? Math.round(Math.min(...lates)) : 0 },
         east: w[0] ? [w[0][0], iso(w[0][2]), iso(w[0][3])] : null, west: w.length ? [w[w.length - 1][0], iso(w[w.length - 1][2]), iso(w[w.length - 1][3])] : null,
-        orderBad: _t731Stat.orderBad, wit: w.map((x) => [x[0], +x[1].toFixed(5), Math.round(x[2] - W.open), Math.round(x[3] - W.open)]) };
+        orderBad: _t731Stat.orderBad, wit: w.map((x) => [x[0], +x[1].toFixed(5), Math.round(x[2] - W.open), Math.round(x[3] - W.open)]),
+        seq: W.seq || '', settled: W.settled || {}, stages: W.stages ? { H: [...W.stages.H], V: [...W.stages.V], T: [...W.stages.T] } : null, flushN: W.flushN || 0, all: W.all.length };
       _t731Stat.windows++; _t731Stat.vils += w.length; _t731Stat.last = R;
       console.log(`[${state.zoneId}] 🕛 [T731] 창 ${W.D} 닫음 — 마을 ${R.n}(미니 마감 ${R.opens}) · 동 ${R.east && R.east.join(' ')} → 서 ${R.west && R.west.join(' ')} · 자정 퍼짐 ${R.dueSpanS}초 · 돈 퍼짐 ${R.spanS}초 · 늦음 ${R.lateMs.min}~${R.lateMs.max}ms · 동→서 어김 ${R.orderBad}`);
       if (process.env.T731_WIT === '1') console.log(`[${state.zoneId}] 🕛 [T731] 증인 ${JSON.stringify(R)}`);
