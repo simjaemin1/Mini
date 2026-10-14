@@ -225,8 +225,8 @@ const T675_TAIL = `
   const { Worker } = require('worker_threads');
   // [T677 ①] 갈래 칸(I[2]) — \`npcStep\` 안의 갈래 번호(0 = 갈래 밖 · 1 결정 · 2 생활층 · 3 머리 · 4 막힘 · 5 경로 셈 · 6 길(가까움) · 7 길(먼 갈래·A*) · 8 따라가기 · 9 도착 뒤).
   //   \`T677_BR=1\` 일 때만 갈래 칸을 쓴다(감싸기 + 글자 표식 · 시계 0). 끄면 종전 T675 표본기 그대로(갈래 0 · \`npcStep\` 시계 감싸기).
-  const NSEG = 64, NBR = 32, BASE = 8, sab = new SharedArrayBuffer(4 * (BASE + (NSEG + 1) * 2 * NBR)), I = new Int32Array(sab);
-  const BR = ['', '결정', '생활층', '머리', '막힘', '경로 셈', '길·가까움', '길·먼 갈래(A*)', '따라가기', '도착 뒤', '생활층·농사 칸', '생활층·일터 목록', '생활층·개간 후보', '생활층·닿는 일터', '생활층·곳간', '생활층·집터 크루', '', '생활층§스케줄 문', '생활층§진행 중 작업', '생활층§작업 배정(개간·건설)', '생활층§농부 실작업', '생활층§나무꾼(T325)', '생활층§벌목·채광·채집', '생활층§어부', '생활층§사냥꾼', '어부·자리·드리움', '어부·드리울 자리 고르기', '어부·끝(목표·라벨)', '어부·_t340Try(던짐·입질)', '닿는가(_t427Reach)'];
+  const NSEG = 64, NBR = 40, BASE = 8, sab = new SharedArrayBuffer(4 * (BASE + (NSEG + 1) * 2 * NBR)), I = new Int32Array(sab);
+  const BR = ['', '결정', '생활층', '머리', '막힘', '경로 셈', '길·가까움', '길·먼 갈래(A*)', '따라가기', '도착 뒤', '생활층·농사 칸', '생활층·일터 목록', '생활층·개간 후보', '생활층·닿는 일터', '생활층·곳간', '생활층·집터 크루', '', '생활층§스케줄 문', '생활층§진행 중 작업', '생활층§작업 배정(개간·건설)', '생활층§농부 실작업', '생활층§나무꾼(T325)', '생활층§벌목·채광·채집', '생활층§어부', '생활층§사냥꾼', '어부·자리·드리움', '어부·드리울 자리 고르기', '어부·끝(목표·라벨)', '어부·_t340Try(던짐·입질)', '닿는가(_t427Reach)', '막힘·서 있음 판정', '막힘·_stuckPos 쓰기', '막힘·처음', '막힘·움직임 판정', '막힘·타이머'];
   const BRON = process.env.T677_BR === '1';
   I[0] = -1; I[1] = 0; I[2] = 0;
   globalThis.__T677I = I;
@@ -250,7 +250,7 @@ const T675_TAIL = `
     const wrapB = (f0, id) => function () { const p = I[2]; Atomics.store(I, 2, id); const r = f0.apply(this, arguments); Atomics.store(I, 2, p); return r; };
     decideNpcBehavior = wrapB(decideNpcBehavior, 1);
     if (SimVillages && SimVillages.npcLifeTick) SimVillages.npcLifeTick = wrapB(SimVillages.npcLifeTick, 2);
-    detectStuck = wrapB(detectStuck, 4);
+    detectStuck = wrapB(detectStuck, 4); _t670Stuck = wrapB(_t670Stuck, 31); if (typeof _t700Set === 'function') _t700Set = wrapB(_t700Set, 31);
     computeNpcPath = wrapB(computeNpcPath, 6);
     followNpcPath = wrapB(followNpcPath, 8);
   }
@@ -411,7 +411,12 @@ function makeTree(dir, probe, ref, seg) {
     for (const [a, ins, after] of [
       ['  // ★[§15 2파·비전투원 대피]', S(3), false], ['  // stuck 감지 — 모든 모드 공통', S(0), false],
       ["  let speedMult = npc.behavior === 'flee'", S(5), false], ['  if (needPath && !_skip) {', S(0), false],
-      ['  const isVil = !!npc.simVillageId;   // 마을 주민', S(7), false], ['  if (!arrived) return;\n', S(9), true]]) {
+      ['  const isVil = !!npc.simVillageId;   // 마을 주민', S(7), false], ['  if (!arrived) return;\n', S(9), true],
+      // [T700] 막힘 안 한 겹 — 서 있음 판정 · 처음 · 움직임 판정 · 타이머(쓰기 `_t670Stuck` 은 감싸서 31)
+      ['  if (npc.targetX != null && npc.targetY != null\n      && (!npc.path || npc.pathIndex >= npc.path.length)', S(30), false],
+      ['  if (!npc._stuckPos) {\n    npc._stuckPos = { x: npc.x, y: npc.y, at: now };', S(32), false],
+      ['  if (_t671Gt(npc.x - npc._stuckPos.x, npc.y - npc._stuckPos.y, 5)) {', S(33), false],
+      ['  if (now - npc._stuckPos.at > 1500) {', S(34), false]]) {
       if (cnt(a) !== 1) throw new Error('갈래 앵커 ' + cnt(a) + ' ' + a);
       s = s.replace(a, () => after ? a + '  ' + ins + '\n' : '  ' + ins + '\n' + a);
     }
