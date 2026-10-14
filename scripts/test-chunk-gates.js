@@ -218,8 +218,8 @@ console.log('\n⑦ [T734] 문 그래프 이완을 청크마다 문 목록으로(
   ok(same === tot && foundN > 2000, '⑦ ★켬 = 끔(같은 답 · 칸 길 · 길이 — 세계 셋 · 6,000쌍)', `${same}/${tot} · 찾은 ${foundN}`);
   console.log(`    [표] 묻기 합 끔 ${msOff.toFixed(0)} ms · 켬 ${msOn.toFixed(0)} ms(합성 세계 · 문 ${'≈'}700개)`);
   const zs = require('fs').readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
-  ok(/const T734_ASTAR_SLICE = process\.env\.T734_ASTAR_SLICE === '1';/.test(zs) && /require\('\.\/chunk-gates'\)\.create\(\{ t734: T734_ASTAR_SLICE,/.test(zs),
-     '⑦ 손잡이 `T734_ASTAR_SLICE` — 기본 끔(`=1` 만 켬) · 존이 문 그래프에 넘긴다');
+  ok(/const T734_ASTAR_SLICE = process\.env\.T734_ASTAR_SLICE !== '0';/.test(zs) && /require\('\.\/chunk-gates'\)\.create\(\{ t734: T734_ASTAR_SLICE,/.test(zs),
+     '⑦ 손잡이 `T734_ASTAR_SLICE` — 기본 켬(`=0` 만 끔 · PM 10-14) · 존이 문 그래프에 넘긴다');
 }
 
 console.log('\n⑧ [T734 ②] 칸 A* 가 두 술어를 표 비트로 읽는다(`fastView`) — 같은 길 · 도장이 바뀐 표는 안 쓴다');

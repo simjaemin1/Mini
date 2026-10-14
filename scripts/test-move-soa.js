@@ -1645,7 +1645,7 @@ console.log('\n⑮ T427 ① — 닿는 현장만(배정 순간 집 → 후보 ·
     ok(src.length > 900 && on.c0 === 0 && off.c0 === 0 && on.calls === off.calls && on.keys === off.keys && on.seen === off.seen && on.n === off.n,
        '⑮-l ★[T734 ③] 넓히기 길들임 — 켬 = 끔(술어 부름 · 상자 칸 · 넓힌 집합) · 길들임은 술어 0',
        `술어 ${off.calls} · ${on.calls} · 길들임 중 ${on.c0} · 집합 ${on.seen}`);
-    ok(/const T734_ASTAR_SLICE = process\.env\.T734_ASTAR_SLICE === '1';/.test(Z), '⑮-l 손잡이 `T734_ASTAR_SLICE` — 기본 끔(`=1` 만 켬)');
+    ok(/const T734_ASTAR_SLICE = process\.env\.T734_ASTAR_SLICE !== '0';/.test(Z), '⑮-l 손잡이 `T734_ASTAR_SLICE` — 기본 켬(`=0` 만 끔 · PM 10-14)');
   }
   // ⓘ 미끼 — 술어가 늘 "닿는다"(= 안 본다)면 못 닿는 현장이 다시 배정된다
   {

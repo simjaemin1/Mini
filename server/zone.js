@@ -1147,7 +1147,7 @@ const T385_ONE_SWEEP = process.env.T385_ONE_SWEEP !== '0';
 //   켜면: 같은 차례의 `Map.forEach`(살아 있는 순회 — 지우기·넣기 의미가 `for…of` 와 같다) · 벽 술어는 빌려 쓰는 객체 · 빌려 쓰는 질의 배열(`queryCircleScratch` — 같은 순회 · 같은 차례).
 //   ⚠값은 한 비트도 안 바뀐다(같은 차례 · 같은 수) — 3시드 두 자 · `t461-verify` · `test-move-soa` 가 문. 끔 = main 바이트(이 손잡이 줄이 안 닿는다).
 const T689_GC = process.env.T689_GC === '1';
-const T734_ASTAR_SLICE = process.env.T734_ASTAR_SLICE === '1';
+const T734_ASTAR_SLICE = process.env.T734_ASTAR_SLICE !== '0';   // ★[PM 10-14] 켬 기본(같은 값 · 풀림 296 → 2~3) · 되돌림 `=0`
 const T734_VERIFY = process.env.T734_VERIFY === '1';   // ★[T734] 견줌(계측 · 켬 위에서만) — 표 비트 A* = 술어 A* 인가
 const _t734V = { n: 0, diff: 0, ex: [] }; globalThis.__T734V = _t734V;
 Object.defineProperty(_t734V, 'gates', { enumerable: true, get() { try { const s = _t678G && _t678G.stats(); return s ? { fastAns: s.fastAns, fastUnk: s.fastUnk, recs: s.recs, queries: s.queries, unknown: s.unknown, found: s.found } : null; } catch (e) { return null; } } });   // ★[T734] 판 끝 셈(표 비트 답 · 모름 · 문 그래프 묻기)   // ★[T734] 남은 한 방(문 그래프 이완 · 넓히기 길들임) — 기본 끔 = main 바이트 · `=1` 켬
