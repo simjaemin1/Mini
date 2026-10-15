@@ -29,13 +29,24 @@ for (const [k, tag] of RUNS) for (const s of SEEDS) {
   // 해체 줄 — `D<날> <마을> 해체(순감 X일·잔존 N명·피크 P) → 도적단#id S명 결성`
   const dis = [];
   for (const m of log.matchAll(/\[도적\] D(\d+) (\S+) 해체\(순감 (\d+)일·잔존 (\d+)명·피크 (\d+)\) → 도적단#\d+ (\d+)명 결성/g)) {
-    const day = +m[1], name = m[2], i = o.names.indexOf(name), row = obRow.get(day);
+    const day = +m[1], name = m[2], i = o.names.indexOf(name), row = obRow.get(day - 1);   // ★장부 줄 d 는 그날 도적 데일리 **뒤**에 찍힌다(해체 뒤 인구) — 해체가 본 상태 = 전날 줄(잔존 수가 로그와 맞는다)
     const v = row && i >= 0 ? row[i] : null;
-    dis.push({ day, name, n: +m[4], peak: +m[5], gang: +m[6], fe: v ? v[1] : null, inc: v ? v[2] : null, need: +m[4] * 3, emptyEnd: o.rows[o.rows.length - 1][1][i] === 0 });
+    dis.push({ day, name, n: +m[4], nRow: v ? v[0] : null, peak: +m[5], gang: +m[6], fe: v ? v[1] : null, inc: v ? v[2] : null, need: +m[4] * 3, emptyEnd: o.rows[o.rows.length - 1][1][i] === 0 });
   }
   const held = [...log.matchAll(/\[도적\] D(\d+) (\S+) 해체 보류 — 곳간 ([\d.]+) \+ 오는 식량 ([\d.]+)/g)].map((m) => ({ day: +m[1], name: m[2], fe: +m[3], inc: +m[4] }));
   const last = o.rows[o.rows.length - 1][1];
-  const empties = o.names.map((n, i) => (last[i] === 0 ? { name: n, day: o.emptyDay[i], dis: o.bdtDay[i] } : null)).filter(Boolean);
+  // 빈 마을마다 — 죽음 누계 · 피크 · 해체 조건(순감 ≥5 · 곳간 < 인구×3 · 3 ≤ 인구 ≤ max(4, min(20, 피크×0.55)))이 선 첫날(전날 줄 근사)
+  //   해체 표 없이 조건이 섰다 = 보호기(`_bdtOpenDay` · T577_RAMP 마을마다 365~729) 안이었다 · 조건이 한 번도 안 섰다 = 굶음이 문턱을 비켜 갔다
+  const empties = o.names.map((n, i) => {
+    if (last[i] !== 0) return null;
+    let condDay = null, lastN3 = null, deaths = 0, peak = 0;
+    if (ob) for (const r of ob.rows) {
+      const v = r[1][i]; deaths = v[7]; peak = Math.max(peak, v[5]);
+      if (v[0] >= 3) lastN3 = r[0];
+      if (condDay == null && !v[3] && v[4] >= 5 && v[1] < v[0] * 3 && v[0] >= 3 && v[0] <= Math.max(4, Math.min(20, v[5] * 0.55))) condDay = r[0];
+    }
+    return { name: n, day: o.emptyDay[i], dis: o.bdtDay[i], condDay, lastN3, deaths, peak };
+  }).filter(Boolean);
   const st = (ob && ob.stats) || {};
   const lastOb = ob && ob.rows.length ? ob.rows[ob.rows.length - 1][1] : [];
   R[`${k}|${s}`] = { k, s, o, dis, held, empties, st,
@@ -67,19 +78,23 @@ for (const [k, , lab] of RUNS) {
 }
 
 console.log('\n### 해체된 마을 — 그날 곳간 · 인구 · 오는 식량(문턱 = 인구 × 3)\n');
-console.log('| 판 | 시드 | 날 | 마을 | 잔존 | 피크 | 단 | 곳간 | 오는 식량 | 문턱 | 곳간+오는 ≥ 문턱? | 끝 날 빈 마을? |');
+console.log('| 판 | 시드 | 날 | 마을 | 잔존(로그 · 전날 줄) | 피크 | 단 | 곳간(전날) | 오는 식량(전날) | 문턱 | 곳간+오는 ≥ 문턱? | 끝 날 빈 마을? |');
 console.log('|---|---|---|---|---|---|---|---|---|---|---|---|');
 for (const [k] of RUNS) for (const s of SEEDS) {
   const r = R[`${k}|${s}`]; if (!r) continue;
-  for (const d of r.dis) console.log(`| ${k} | ${s} | ${d.day} | ${d.name} | ${d.n} | ${d.peak} | ${d.gang} | ${d.fe ?? '—'} | ${d.inc ?? '—'} | ${d.need} | ${d.fe != null ? (d.fe + d.inc >= d.need ? '넘음' : '모자람') : '—'} | ${d.emptyEnd ? '빔' : ''} |`);
+  for (const d of r.dis) console.log(`| ${k} | ${s} | ${d.day} | ${d.name} | ${d.n} · ${d.nRow ?? '—'} | ${d.peak} | ${d.gang} | ${d.fe ?? '—'} | ${d.inc ?? '—'} | ${d.need} | ${d.fe != null ? (d.fe + d.inc >= d.need ? '넘음' : '모자람') : '—'} | ${d.emptyEnd ? '빔' : ''} |`);
 }
 
 console.log('\n### 빈 마을(끝 날 0명) — 비운 날 · 해체 날\n');
-console.log('| 판 | 시드 | 마을(빈 날 · 해체 날) |');
-console.log('|---|---|---|');
+console.log('| 판 | 시드 | 마을 | 빈 날 | 해체 날 | 피크 | 죽음 누계 | 해체 조건 선 첫날 | 인구 ≥3 마지막 날 | 해체 없이 빈 까닭 |');
+console.log('|---|---|---|---|---|---|---|---|---|---|');
 for (const [k] of RUNS) for (const s of SEEDS) {
   const r = R[`${k}|${s}`]; if (!r) continue;
-  console.log(`| ${k} | ${s} | ${r.empties.map((x) => `${x.name}(${x.day ?? '—'} · ${x.dis ?? '해체 없음'})`).join(' · ') || '—'} |`);
+  if (!r.empties.length) { console.log(`| ${k} | ${s} | — ||||||||`); continue; }
+  for (const x of r.empties) {
+    const why = x.dis != null ? '' : r.o.bandit == null || (r.o.env && r.o.env.ENABLE_BANDITS === '0') ? '도적 층 없음 — 굶음' : x.condDay != null ? `조건 섬(${x.condDay}) — 보호기 안 · 굶음` : '조건 안 섬 — 굶음';
+    console.log(`| ${k} | ${s} | ${x.name} | ${x.day ?? '—'} | ${x.dis ?? '—'} | ${x.peak} | ${x.deaths} | ${x.condDay ?? '—'} | ${x.lastN3 ?? '—'} | ${why} |`);
+  }
 }
 
 // ── ⓒ 가 살린 마을 / 못 살린 마을 — 시드마다 ⓐ 의 해체 마을을 ⓒ 에서 찾는다(판은 바이트 결정론이 아니다 — 같은 시드 다른 판) ──
