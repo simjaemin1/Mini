@@ -265,6 +265,10 @@ const CV = path.join(SRV, 'central'); fs.mkdirSync(CV, { recursive: true });
   r = run(['central', '--apply', '--keep-accounts'], 'central\n지운다\n');
   ok(r.rc !== 0 && fs.existsSync(path.join(CV, 'central.db')), '둘째 글자가 "계정만" 이 아니면 안 한다');
   const S3 = st(); S3.containers['durango-central'].state = 'running'; fs.writeFileSync(STATE, JSON.stringify(S3));
+  //   ★[T751] 백업 폴더 이름은 **UTC 초**다(`_reset/<YYYYMMDD-HHMMSS>-central`) — 바로 위 거절 판이 이미 그 폴더를 만들었다.
+  //     같은 초 안에 다시 `--apply` 하면 `mkdir: File exists` 로 죽는다(이 상자 고친 뒤 전수 · 단독 재실행 둘 다 재현 · 빠른 판일수록 잦다).
+  //     이 절이 재는 것은 "계정만" 의 결과다 — 초가 넘어갈 때까지 기다려 두 판의 폴더를 가른다(같은 초 두 번 리셋은 도구 회부).
+  { const s0 = Math.floor(Date.now() / 1000); while (Math.floor(Date.now() / 1000) === s0) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 50); }
   r = run(['central', '--apply', '--keep-accounts'], 'central\n계정만\n');
   const d2 = new DatabaseSync(path.join(CV, 'central.db'), { readOnly: true });
   const al = d2.prepare("SELECT * FROM players WHERE player_id='alice'").get(), gx = d2.prepare("SELECT * FROM players WHERE player_id='anon_x'").get();
