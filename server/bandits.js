@@ -79,6 +79,37 @@ function _bdtOpenDay(vil) {   // 이 마을의 보호기가 끝나는 날(끔이
   if (!T577_RAMP) return BDT_MIN_DAY;
   return BDT_MIN_DAY + Math.floor(denRng(_t577Hash(vil && vil.name) % 100003, 577) * BDT_MIN_DAY);
 }
+// ★★[T765 2026-10-15 · 세션1 · 추상 가2 F8 · 캐논 "몸 XOR 일괄 · 소멸 · 생성 금지"] **후보는 몸으로 걸어가 붙는다** — 손잡이 `T577_CAND_WALK=1` 안에서만.
+//   종전 켬(T577 ⓐ + T590): 해체 그 순간 남은 사람의 econ 항목을 받는 마을 econ 에 **한꺼번에** 넣었다(일괄). 몸은 따로 하루 2명씩
+//   (`POP_SYNC_PER_DAY`) 그 마을까지 걸었고, 닿으면 **거둬졌다**(소멸) — 받는 마을은 econ 수를 따라 집 앞에 **새 몸**을 세웠다(생성).
+//   한 사람이 받는 마을 econ 에도(먹고 · 일하고) 길 위 몸에도 있었다.
+//   이제: 남은 사람은 econ 에서 빠져 **길 위 장부**(`S.WALK` — 캐러밴 inbound 그 자리 · 보고/T577 §3-ⓐ 가 그린 그 꼴)에 든다.
+//   몸은 그 자리에서 같이 떠난다(호스트 `t765Depart` — 명부 뒤에서 · 줄 선 까닭 몫은 남긴다 · 몸이 모자라면 장부만).
+//   닿는 날 = 몸 걸음 장부 그대로(T681 ③: 하루 걸음 = 존 걸음 × 하루 길이 · 길 = 두 마을 교역로) — 그날 받는 econ 에 붙고(종전 두 줄 그대로),
+//   걷던 몸은 그 마을 주민이 된다(호스트 `t765Join` — 출생 자리 `spawnOneNpc` 를 그 몸이 받는다 · 새 몸 0 · 거둠 0).
+//   새 수 0 · 영속 = 도적 저장 줄(`walk` — 켬에서 장부가 있을 때만 칸이 선다) · 손잡이를 끈 채 다시 뜨면 남은 장부는 다음 하루에 그 마을에 붙는다(종전 켬 꼴).
+function _t765Arrive(day) {   // 길 위 장부 — 닿은 사람을 받는 마을 econ 에 붙이고 몸을 주민으로(차례 = 떠난 차례)
+  if (!S.WALK.length) return 0;
+  let n = 0;
+  for (let i = 0; i < S.WALK.length; i++) {
+    const w = S.WALK[i];
+    if (T577_WALK && !(w.ppd > 0 && (day - w.d0) * w.ppd >= w.len - 0.5)) continue;   // 아직 길 위(걸음 장부 · `_t681Day` 의 그 닿음 식)
+    const to = S.host.villages.find((v) => v.dbId === w.to);
+    if (!to || !to.econ) continue;
+    const npc = w.npc;
+    to.econ.npcs.push(npc);
+    if (to.econ.counts && npc && npc.currentJob) to.econ.counts[npc.currentJob] = (to.econ.counts[npc.currentJob] || 0) + 1;
+    if (to.econ._banditized) S.stats.t765IntoDis = (S.stats.t765IntoDis || 0) + 1;   // 걷는 사이 받는 마을도 해체됐다(그래도 그 마을에 붙는다 · 표에만)
+    const joined = S.host.t765Join ? S.host.t765Join(w.pid, to) : false;
+    S.stats.t765Arrive = (S.stats.t765Arrive || 0) + 1;
+    if (joined) S.stats.t765Joined = (S.stats.t765Joined || 0) + 1;
+    const g = S.t765Rows && S.t765Rows.find((r) => r.d0 === w.d0 && r.fromId === w.from && r.toId === w.to);
+    if (g) { g.arrived = (g.arrived || 0) + 1; g.joined = (g.joined || 0) + (joined ? 1 : 0); g.day1 = day; }
+    S.WALK.splice(i--, 1); n++;
+  }
+  if (n) log(day, `후보 ${n}명이 걸어서 닿았다 — 받는 마을 econ 에 붙음(길 위 남은 ${S.WALK.length}명) [T765]`);
+  return n;
+}
 function _t577Walk(vil, day) {   // ⓐ 남은 사람 → 가장 가까운 산 마을(해체 표 없는 곳 우선) · econ 항목 이동
   const e = vil.econ; if (!e || !e.npcs.length) return 0;
   let best = null, bd = 1e18;
@@ -89,6 +120,16 @@ function _t577Walk(vil, day) {   // ⓐ 남은 사람 → 가장 가까운 산 �
   }
   if (!best) return 0;
   const moved = e.npcs.splice(0, e.npcs.length);
+  if (S.host.t765Depart) {   // ★[T765] 길 위 장부 — econ 은 닿는 날 붙는다(`_t765Arrive`) · 몸은 지금 같이 떠난다
+    for (const npc of moved) if (e.counts && npc && npc.currentJob) e.counts[npc.currentJob] = Math.max(0, (e.counts[npc.currentJob] || 0) - 1);
+    const L = S.host.t765Depart(vil, best, moved.length);
+    for (let i = 0; i < moved.length; i++) S.WALK.push({ npc: moved[i], from: vil.dbId, to: best.dbId, d0: day, len: L.len, ppd: L.ppd, pid: L.pids[i] != null ? L.pids[i] : null });
+    S.stats.t577Walk = (S.stats.t577Walk || 0) + moved.length;
+    (S.t765Rows || (S.t765Rows = [])).push({ d0: day, from: vil.name, fromId: vil.dbId, to: best.name, toId: best.dbId, n: moved.length, bodied: L.pids.length,
+      cells: Math.round(bd), routeCells: Math.round(L.len / SZ), eta: L.ppd > 0 ? day + Math.ceil(Math.max(0, L.len - 0.5) / L.ppd) : null });
+    log(day, `${vil.name} 해체 뒤 남은 ${moved.length}명 → ${best.name}(${Math.round(bd)}셀) [T577 ⓐ] — 몸 ${L.pids.length} · 길 ${Math.round(L.len / SZ)}셀 · 길 위 장부(닿는 날 econ 에 붙음 · T765)`);
+    return moved.length;
+  }
   for (const npc of moved) {
     if (e.counts && npc && npc.currentJob) e.counts[npc.currentJob] = Math.max(0, (e.counts[npc.currentJob] || 0) - 1);
     best.econ.npcs.push(npc);
@@ -121,6 +162,7 @@ const S = {
   seq: 1, denSeq: 1,
   DENS: [],          // {id,cx,cy,sc,dv,dr,gen,next,cleared}
   GANGS: [],         // {id,camp:{cx,cy},n,food,zero,born,home,why,lootN,lastLoot,den(소굴id|null),_sup:{vilDbId,eta,force,wep}|null,_supKill}
+  WALK: [],          // ★[T765] 길 위 장부(켬만 찬다) — {npc(econ 항목 그대로), from·to(마을 dbId), d0(떠난 날), len(길 px), ppd(하루 걸음 px), pid(같이 걷는 몸|null)}
   pairs: new Map(),  // 'A|B'(econ name 정렬) → [gang,...] — econ 훅 O(1) 조회 테이블
   pairSig: '',
   _routes: null,     // { sig, pts:[{x,y}셀] } — 유한쌍 교역로 표본(마을 구성 변경 시만 재수집) · ★T453: 거리장을 만든 뒤 pts 는 null(서명만)
@@ -465,6 +507,7 @@ function daily(day) { // 하루 1회(villages econ 틱 직후): 위기 추적→
   const host = S.host;
   if (S._pendingLogs && S._pendingLogs.length) { for (const m of S._pendingLogs) console.log(m); S._pendingLogs.length = 0; } // 침묵 창에서 쌓인 약탈 로그 방출
   if (FIXTURE === 'dissolve') applyFixture(day);
+  if (S.WALK.length) _t765Arrive(day);   // ★[T765] 길 위 후보 — 닿은 사람부터 붙는다(장부가 빈 판 = 끔은 이 줄이 아무것도 안 한다)
   for (const vil of host.villages) { // ── 위기 추적 + ①소멸 전환 + ②절망 이탈 (추적 카운터는 econ에 — serializeEcon 자동 영속) ──
     const e = vil.econ;
     if (!e) continue;
@@ -604,7 +647,8 @@ function save(day) {
   try {
     const gangs = S.GANGS.map(g => ({ id: g.id, camp: g.camp, n: g.n, food: g.food, zero: g.zero, born: g.born, home: g.home, why: g.why, lootN: g.lootN, lastLoot: g.lastLoot, den: g.den != null ? g.den : null, _sup: g._sup || null, _supKill: g._supKill || 0 , arms: g.arms || undefined }));
     { const _G = _gl(); if (_G) for (let i = 0; i < gangs.length; i++) { const L = _G.gangDump(S.GANGS[i]); if (L) gangs[i]._t748Lots = L; } }   // ★[T748] 갱 비축 줄(켬만 칸이 선다)
-    S.db.upsertBanditState(S.zoneId, JSON.stringify({ seq: S.seq, denSeq: S.denSeq, dens: S.DENS, gangs, stats: { ...S.stats, log: undefined } }), day);
+    const _walk = S.WALK.length ? { walk: S.WALK.map((w) => ({ npc: w.npc, from: w.from, to: w.to, d0: w.d0, len: w.len, ppd: w.ppd })) } : {};   // ★[T765] 길 위 장부(켬에서 찰 때만 칸이 선다 · 몸 pid 는 비영속)
+    S.db.upsertBanditState(S.zoneId, JSON.stringify({ seq: S.seq, denSeq: S.denSeq, dens: S.DENS, gangs, stats: { ...S.stats, log: undefined }, ..._walk }), day);
   } catch (e) {
     console.error(`[${S.zoneId}] 🏴 [도적] 저장 실패(다음 날 재시도):`, e.message);
   }
@@ -615,6 +659,7 @@ function restore(row) {
   S.DENS = Array.isArray(d.dens) ? d.dens : [];
   S.GANGS = (Array.isArray(d.gangs) ? d.gangs : []).map(g => ({ ...g, _sup: g._sup || null, _supKill: g._supKill || 0 }));
   if (d.stats) Object.assign(S.stats, d.stats, { log: S.stats.log });
+  if (Array.isArray(d.walk)) S.WALK = d.walk.map((w) => ({ npc: w.npc, from: w.from, to: w.to, d0: w.d0, len: w.len, ppd: w.ppd, pid: null }));   // ★[T765] 다시 뜨면 몸 없이 장부만(몸은 비영속 — 닿으면 받는 마을이 econ 수를 따라 세운다)
   console.log(`[${S.zoneId}] 🏴 [도적] 복원: 소굴 ${S.DENS.length}곳(생존 ${S.DENS.filter(x => !x.cleared).length}) · 도적단 ${S.GANGS.length}(총원 ${S.GANGS.reduce((a, g) => a + g.n, 0)}) · 저장 day ${row.day}`);
 }
 function clientCamps() { // 마커 1종: 활동 단(n>0) + 빈 소굴(n=0, 재결성 대기 — 클라가 흐리게). 철거 소굴 제외.
@@ -822,4 +867,9 @@ function onGameTick() {
   }
 }
 
-module.exports = { init, onGameTick, clientCamps, stats: () => S.stats, armsHeld, ARMS_RES, lotsBoot, gangs: () => S.GANGS, bootSlice: () => (S._boot ? { running: true, pairs: S._boot.pairs, slices: S._boot.slices, i: S._boot.i } : (S.bootSlice || null)) };   // ★[T521] 손 규칙 하나(villages 소굴 어댑터가 같은 함수를 읽는다)
+module.exports = { init, onGameTick, clientCamps, stats: () => S.stats, armsHeld, ARMS_RES, lotsBoot, gangs: () => S.GANGS,
+  t765: () => ({ on: T577_WALK, road: S.WALK.length, rows: (S.t765Rows || []).map((r) => Object.assign({}, r)) }),   // ★[T765] 길 위 장부 증인(관측 자 `t765-obs` · 하네스)
+  // ★[T765] 하네스 문 — 운영 함수 그대로(사본 0): 호스트 · 저장소를 꽂고 해체 걷기 · 닿기 · 저장 · 복원을 부른다
+  _t765Probe: { setHost: (h, db) => { const k = { host: S.host, db: S.db }; S.host = h; if (db !== undefined) S.db = db; return k; }, walk: (vil, day) => _t577Walk(vil, day), arrive: (day) => _t765Arrive(day),
+    ledger: () => S.WALK, reset: () => { S.WALK = []; S.t765Rows = []; }, save: (day) => save(day), restore: (row) => restore(row), get ON() { return T577_WALK; } },
+  bootSlice: () => (S._boot ? { running: true, pairs: S._boot.pairs, slices: S._boot.slices, i: S._boot.i } : (S.bootSlice || null)) };   // ★[T521] 손 규칙 하나(villages 소굴 어댑터가 같은 함수를 읽는다)
