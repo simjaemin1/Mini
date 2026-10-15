@@ -4192,7 +4192,27 @@ let _t670PhNow = NaN, _t670Ph = 0;
 // ★[T670 ②] 헛물음 건너뛰기 — `decideNpcBehavior` 는 타이머 문(`now < nextDecisionAt`) 앞에 **부수효과가 없다**(캐나디아 갈래 판정 하나뿐).
 //   켜면 그 문에서 바로 돌아올 부름을 부르는 쪽에서 거른다 = 같은 일을 안 할 뿐(같은 결과). 기본 끔 = 종전 그대로.
 const T670_SKIP_IDLE = process.env.T670_SKIP_IDLE !== '0';   // ★PM 10-07 켬 기본(바이트 같음 · 되돌림 =0)
+// ★★[T738 2026-10-15 · 증인 판 · 설계 카드] 뜨거운 필드 SoA — **x · y 둘만** 사람 객체 밖 `Float64Array` 열로(손잡이 `T738_SOA_XY` · 기본 끔 = main 바이트).
+//   열이 **유일한 원천**이다: 주민 몸이 처음 `npcStep` 에 들 때 그 자리의 x · y 데이터 칸을 **같은 자리에서** 접근자로 바꾼다(`defineProperty` —
+//   키 차례 무변 ⇒ JSON · 직렬화 · 델타 바이트 무변). 접근자는 그 몸의 슬롯 열을 읽고 쓴다 — 434 · 438 읽기 자리 · 30 · 30 쓰기 자리(T738 ①)가
+//   **한 글자도 안 바뀐 채** 열을 본다(이중 쓰기 0 · 한쪽만). Float64Array 는 binary64 그대로(−0 · NaN 보존 · 수가 아닌 값은 NaN 이 된다 — 주민 x · y 는 늘 수다).
+//   슬롯 = 들어온 차례(조밀 · T356 계약 §2 의 swap-remove 는 증인 밖 — 몸이 사라져도 슬롯은 남는다 · 열은 두 배씩 큰다). 새 몸 필드 0(슬롯은 접근자 클로저가 든다).
+const T738_SOA_XY = process.env.T738_SOA_XY === '1';
+const _t738 = { X: new Float64Array(T738_SOA_XY ? 1024 : 0), Y: new Float64Array(T738_SOA_XY ? 1024 : 0), n: 0, seen: new WeakSet() };
+function _t738Adopt(p) {
+  if (_t738.seen.has(p)) return;
+  _t738.seen.add(p);
+  const s = _t738.n++;
+  if (s >= _t738.X.length) {
+    const X = new Float64Array(_t738.X.length * 2), Y = new Float64Array(_t738.Y.length * 2);
+    X.set(_t738.X); Y.set(_t738.Y); _t738.X = X; _t738.Y = Y;
+  }
+  _t738.X[s] = p.x; _t738.Y[s] = p.y;
+  Object.defineProperty(p, 'x', { get() { return _t738.X[s]; }, set(v) { _t738.X[s] = v; }, enumerable: true, configurable: true });
+  Object.defineProperty(p, 'y', { get() { return _t738.Y[s]; }, set(v) { _t738.Y[s] = v; }, enumerable: true, configurable: true });
+}
 function npcStep(npc, dt, now) {
+  if (T738_SOA_XY) _t738Adopt(npc);   // ★[T738] 끔 = 종전 그대로
   npc._t540StepAt = now;   // ★[T540 관측] 이 몸이 마지막으로 걸음 문을 받은 때(`/walkdbg stepAge` — 새벽 멎음을 이것으로 잡았다)
   if (!(T670_SKIP_IDLE && !npc.canadiaVillage && now < npc.nextDecisionAt)) decideNpcBehavior(npc, now);   // ★[T670 ②] 끔 = 종전 그대로
 
@@ -11932,6 +11952,7 @@ function tryFurnaceSmelt(player, buildingId) {
 function __testBind() {
   return {
     claims, buildings, players, BUILDING_SIZE, Specialty,
+    _t738Adopt, _t738: () => _t738,   // ★[T738] SoA x·y 증인(`scripts/t738-witness.js` · 읽기 · 부르기만)
     FURNACE_STAGES, FURNACE_KINDS, FURNACE_FUEL_PER_ORE, CHARCOAL_KILN_STAGES, CHARCOAL_KILN_YIELD, CHARCOAL_KILN_WOOD,
     tryFurnaceStart, tryFurnaceAdvance, tryFurnaceSmelt,
     tryKilnStart, tryKilnAdvance, tryKilnBurn,
