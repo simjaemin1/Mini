@@ -173,7 +173,7 @@ const ZTAIL = `
     cur = null;
   };
   const flush = (fin) => {
-    try { const row = Object.assign({ kind: fin ? 'fin' : 'win', pop: npcs.size }, dayInfo(), W, { seg: W.seg, all }, _T715 && fin ? { decAll: _dAll } : {}, fin && SimVillages && SimVillages.t719Stat ? { t734v: globalThis.__T734V || null, t719Cls: globalThis.__T719C || null, t719Pre: SimVillages.t719Stat(), t562: SimVillages.t562Stat ? SimVillages.t562Stat() : null } : {});   // ★[T719] 미리 넓히기 손잡이 셈(끔이면 0)
+    try { const row = Object.assign({ kind: fin ? 'fin' : 'win', pop: npcs.size }, dayInfo(), W, { seg: W.seg, all }, _T715 && fin ? { decAll: _dAll } : {}, fin && SimVillages && SimVillages.t719Stat ? { t750c: globalThis.__T750C || null, t750s: SimVillages.t750Stat ? SimVillages.t750Stat() : null, t734v: globalThis.__T734V || null, t719Cls: globalThis.__T719C || null, t719Pre: SimVillages.t719Stat(), t562: SimVillages.t562Stat ? SimVillages.t562Stat() : null } : {});   // ★[T719] 미리 넓히기 손잡이 셈(끔이면 0)
       if (fin) row.hist = Array.from(H);
       if (fin && _dAll.t719 && globalThis.__T734GC) { row.t734gc = { n: globalThis.__T734GCN(), w: _dAll.t719.worst.map((w) => globalThis.__T734GC(w[9], w[9] + w[1])) }; }   // ★[T734] 긴 걸음마다 [GC 겹친 ms · 종류 비트]
       fs.appendFileSync(OUT, JSON.stringify(row) + '\\n'); } catch (e) { try { fs.appendFileSync(OUT, JSON.stringify({ err: String(e && e.stack) }) + '\\n'); } catch (e2) {} }
@@ -247,6 +247,17 @@ function makeTree(dir, ref) {
   try { _lifeDropTask = W('생활·작업 놓기', _lifeDropTask); } catch (e) {}
   try { _lifeHandsIn = W('생활·손 넣기', _lifeHandsIn); } catch (e) {}
   try { _cellTask = W('생활·칸 작업', _cellTask); } catch (e) {}
+  //   ★[T750] 던짐 한 번마다(긴 걸음 문턱과 무관) — 번 · 합 · 최대 · 1 / 2 / 5 ms 넘음 · 그 안 지형 자리(spotAt) 부름 수 → 판 끝 줄 t750c
+  try { const C = globalThis.__T750C = { n: 0, ms: 0, max: 0, o1: 0, o2: 0, o5: 0, spot: 0, spotMs: 0, top: [] }; let inT = false;
+    const F0 = _fishingMod(); if (F0) { const sp0 = F0.spotAt; F0.spotAt = function () { if (!inT) return sp0.apply(this, arguments); const t = pf.now(); try { return sp0.apply(this, arguments); } finally { C.spot++; C.spotMs += pf.now() - t; } }; }
+    const f0 = _t340Try; _t340Try = function () { const t = pf.now(); inT = true; try { return f0.apply(this, arguments); } finally { inT = false; const d = pf.now() - t; C.n++; C.ms += d; if (d > C.max) C.max = d; if (d > 1) C.o1++; if (d > 2) C.o2++; if (d > 5) C.o5++; if (d > 1 && C.top.length < 200) C.top.push(+d.toFixed(2)); } }; } catch (e) {}
+  //   ★[T750] 어부 던짐 안 — 바다 곁 · 재고 · 종 고르기(민물 · 바다 · 존 특산) · 해역 · 기다림 · 지형 자리(spotAt)
+  try { _t593SeaBank = W('던짐·바다 곁', _t593SeaBank); } catch (e) {}
+  try { const F = _fishingMod(); if (F) { F.stockRatioAt = W('던짐·재고', F.stockRatioAt); F.plan = W('던짐·기다림', F.plan); F.spotAt = W('던짐·지형 자리', F.spotAt); } } catch (e) {}
+  try { const Ff = _fresh(); if (Ff && Ff.pick) Ff.pick = W('던짐·민물 종', Ff.pick); } catch (e) {}
+  try { const Sf = _seaTbl(); if (Sf) { if (Sf.pick) Sf.pick = W('던짐·바다 종', Sf.pick); if (Sf.areaAt) Sf.areaAt = W('던짐·해역', Sf.areaAt); } } catch (e) {}
+  try { const Rp = _regionMod(); if (Rp && Rp.chooseSpecies) Rp.chooseSpecies = W('던짐·존 특산', Rp.chooseSpecies); } catch (e) {}
+  try { _t312Water = W('던짐·물 종류', _t312Water); } catch (e) {}
   // [T719 ③ 진단] T719_SETCLS=1 — 집 기억(_t427Set) 부름을 들어갈 때 꼴로 가른다(새 집 · 바뀜(곁 다 됨/덜 됨/묵음/없음) · 이어서 · 그대로) · 꼴마다 번 · ms · 2 ms 넘은 번 · 최대
   if (process.env.T719_SETCLS === '1') try { const s0 = _t427Set; _t427Set = function (vil, o, stop) {
     let c = '?'; try { const R = vil._t427R, key = Math.floor(o.x / SZ) + ',' + Math.floor(o.y / SZ), e = R && R.get(key), st = state.deps.collGenAround(o.x, o.y);

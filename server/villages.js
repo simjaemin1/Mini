@@ -7433,6 +7433,43 @@ function _t677Spot(F, cx, cy) {
   if (v === undefined) { v = F.spotAt(T, z, cx * SZ + SZ / 2, cy * SZ + SZ / 2); _t677SpotM.set(k, v); }
   return v;
 }
+// ★★[T750 2026-10-14 · 세션4] 손잡이 `T750_CAST_SLICE`(기본 끔 · `=1` 켬) — **어부 던짐의 지형 자리를 미리 센다.**
+//   T750 ①: `_t340Try` 한 번이 무거운 것은 그 칸 첫 던짐의 `fishing.spotAt`(강 55줄기 · 마디 4,241개 · 호수 14개를 다 잰다) 하나다.
+//     따뜻할 때 한 칸 ≈ 0.1 ms 인데, 존에서는 칸마다 한 번만 부르니(T677 ② 기억) V8 이 데우기 전 몸으로 돈다 — 처음 다섯 번 4.5 · 2.3 · 1.4 · 1.5 · 0.6 ms.
+//   ⇒ 켜면 존 틱 꼬리(남는 시간 · 2 ms 안)가 어부를 8명씩 돌며 **그 어부가 던질 수 있는 칸**(일터 앵커 · 앵커 128px 안 물가 후보 첫 12)의
+//     자리를 T677 기억(`_t677Spot` — 같은 함수 · 같은 열쇠 · 같은 판본)에 미리 넣는다. 던질 때는 기억에서 꺼낸다(같은 객체 — 같은 값).
+//   ★같은 값인 까닭: `spotAt` 는 지형과 칸만의 순수 함수다(T677 ② 증인 ⓐ) — 언제 재든 같다. 예외가 나면 기억 안 함(종전과 같다).
+//   쪼개기(한 번의 `spotAt` 를 틱마다 이어 재기)는 안 골랐다 — 강 마디 고리를 나누면 최솟값 동률 차례를 지켜야 해서 정본(`fishing.js`)을 고쳐야 한다. 미리 세기는 정본 무접촉.
+const T750_CAST_SLICE = process.env.T750_CAST_SLICE === '1';
+const _t750Stat = { checked: 0, cells: 0, filled: 0, had: 0 };
+let _t750It = null;
+function t750CastPre(budgetMs) {
+  if (!T750_CAST_SLICE || !T677_LIFE_SCAN) return 0;
+  const dp = state.deps, npcs = dp && dp.npcs, P = dp && dp.players, by = state.byDbId; if (!npcs || !P || !by) return 0;
+  const F = _fishingMod(); if (!F) return 0;
+  const T = _terrainMod(), z = state.zoneId, t = T.ZONE_TERRAIN ? T.ZONE_TERRAIN[z] : null;
+  const t0 = Date.now(); let filled = 0;
+  for (let k = 0; k < 8 && Date.now() - t0 <= budgetMs; k++) {
+    if (!_t750It) _t750It = npcs.values();
+    const r = _t750It.next(); if (r.done) { _t750It = null; break; }
+    const npc = P.get(r.value); if (!npc || npc.simJob !== 'fisher' || !npc.simVillageId || !npc._workSite) continue;
+    const vil = by.get(npc.simVillageId); if (!vil) continue;
+    _t750Stat.checked++;
+    const ws = npc._workSite, cand = [ws];
+    const js = vil._jobSites, sites = js && js.fisher;   // 그날 이미 고른 물가 목록만 읽는다(안 지으면 안 센다)
+    if (sites && sites.length) { let n = 0; for (const q of sites) { if (Math.abs(q.x - ws.x) <= 128 && Math.abs(q.y - ws.y) <= 128) { cand.push(q); if (++n >= 12) break; } } }
+    if (npc._fishSpotX != null) cand.push({ x: npc._fishSpotX, y: npc._fishSpotY });
+    for (const q of cand) {
+      const cx = Math.floor(q.x / SZ), cy = Math.floor(q.y / SZ);
+      if (!(cx >= 0 && cx < 65536 && cy >= 0 && cy < 65536)) continue;
+      _t750Stat.cells++;
+      if (t === _t677SpotT && z === _t677SpotZ && _t677SpotM.has(cx * 65536 + cy)) { _t750Stat.had++; continue; }
+      if (Date.now() - t0 > budgetMs) break;
+      try { _t677Spot(F, cx, cy); filled++; _t750Stat.filled++; } catch (e) {}
+    }
+  }
+  return filled;
+}
 function _t340Try(vil, npc, now, day, h, ws) {
   const F = _fishingMod(); if (!F) return false;
   const cx = Math.floor((npc._fishSpotX != null ? npc._fishSpotX : ws.x) / SZ);
@@ -13088,7 +13125,7 @@ function __rumorProbe() {
     rumor: Object.assign({}, L.rumorStats) };
 }
 
-module.exports = { t719ReachPre, t719Stat: () => _t719Stat, t731Stat: () => _t731Stat,   // ★[T731] 현지 자정 창 증인(켬에서만 찬다)
+module.exports = { t750CastPre, t750Stat: () => _t750Stat, t719ReachPre, t719Stat: () => _t719Stat, t731Stat: () => _t731Stat,   // ★[T731] 현지 자정 창 증인(켬에서만 찬다)
   streamStat, fishPerf, woodPerf, foragePerf, farmPerf,   // ★[T316] `/perf` 가 내주는 어부 관측(손잡이 끔이면 null) · ★[T325] 나무꾼 · ★[T347] 채집도 같은 꼴 · ★[T368] 농부
   _t400BuildDay, _t400PerLoad, _t400Crew, _t400From,   // ★[T400] 집 행위 1층 — 하네스가 같은 함수를 부른다(사본 0)
   _t347ActItems, _t347PerLoad,   // ★[T347] 걷는 목록·짐당 개체 — 하네스가 표·유도를 옮겨 적지 않게 내준다(사본 금지)
