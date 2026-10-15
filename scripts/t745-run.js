@@ -30,7 +30,8 @@ const DIR = path.join(process.env.T745_DIR || '/tmp/t745/runs', TAG);
 fs.mkdirSync(DIR, { recursive: true });
 const DB = path.join(DIR, 'w.db');
 for (const f of [DB, DB + '-wal', DB + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
-const PRE = [...(VC ? ['t745-vclock.js'] : []), 't722-stop-hook.js', 't650-print.js', 't740-side-hook.js'].map((f) => `--require ${path.join(__dirname, f)}`).join(' ');
+const PRE = [...(VC ? ['t745-vclock.js'] : []), 't722-stop-hook.js', 't650-print.js', 't740-side-hook.js', ...String(process.env.T745_EXTRA_PRE || '').split(',').filter(Boolean)].map(   // ★[T753] `T745_EXTRA_PRE` — 훅을 더 얹는다(비우기 · 모듈 해시)
+  (f) => `--require ${path.join(__dirname, f)}`).join(' ');
 function boot(phase, extra) {
   return new Promise((resolve) => {
     const out = path.join(DIR, phase);
