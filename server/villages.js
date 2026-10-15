@@ -225,6 +225,22 @@ const T681_ON = process.env.T681_WALLCLOCK !== '0';   // ★PM 10-10 켬 기본(
 //   ④ 상인 자리 = 남문 앞 마당(`HALL_YARD_PTS` · 실험실 `_hallYard`) — 귀환 길 앞에 마당 → 큰집 중심 한 토막(보이는 몸과 장부 길이 같은 길).
 const T707_ON = process.env.T707_MARKET !== '0';   // ★[PM 10-13 · 재민 10-12 "켜자"] 켬 기본 · 되돌림 `=0`
 const _t707Stat = { markets: 0, joins: 0, roster: 0, carNoBody: 0, mktNoBody: 0, linger: 0, spawnLinger: 0 };
+// ★★[T762 2026-10-15 · 세션6] 손잡이 `T762_SYNC_NEW`(기본 끔 · `=1` 켬) — 그날 econ 틱이 띄운 캐러밴도 **그날** 캐러밴 동기에 든다.
+//   결함(T762 실제 날 판): 하루 문(`_openDayJobs` · `_t731Jobs`)은 캐러밴 동기 조각을 **문을 여는 순간의 명부**(`world.caravans.slice()`)로 세운다 —
+//   econ 틱(같은 문의 앞 조각)이 띄운 캐러밴은 그 명부에 없어 **다음 경계**에야 몸이 선다. 끔(500 · 다리 2~10일)이면 가는 길 첫 하루가 몸 없이 가고
+//   1일 다리는 가는 길 통째가 몸 없이 간다(몸은 다음 경계에 도착 마을에 선다 — T707 장 머묾). `T474_CARAVAN_WALK` 켬이면 다리가 거의 다 1일이라
+//   **가는 길이 전부 장부만** 간다(실제 날 판 13/13 · 42/42 — 몸은 도착 마을에서 처음 선다).
+//   켜면 문을 연 명부 뒤에 조각 하나를 더 단다: 그 조각이 돌 때(econ 틱 뒤) 명부에 없던 캐러밴만 같은 `_caravanSyncOne` 으로(차례 = `world.caravans` 차례 ·
+//   길이 아직이면 `'retry'` 로 다음 조각에 같은 자리부터 — T85 계약 그대로). 새 수 0 · 새 함수 0 · 쓸기(`_caravanSyncSweep`)는 그 뒤 그대로.
+//   ⚠끔 = main 바이트(이 손잡이 줄이 안 닿는다 — 문을 여는 명부 글자 그대로). 몸 0 판(서버 기준선 자 · `VILLAGE_CARAVAN_MAX=0`)은 켬에서도 같아야 한다(보고 T762).
+const T762_SYNC_NEW = process.env.T762_SYNC_NEW === '1';
+function _t762SyncNewJob(C, had) {   // 명부(문을 연 순간)에 없던 캐러밴 — 이 조각이 도는 때의 `world.caravans` 차례로 · 'retry' 면 같은 자리부터
+  let q = null, i = 0;
+  return () => {
+    if (!q) q = state.world.caravans.filter((c) => !had.has(c));
+    for (; i < q.length; i++) if (_caravanSyncOne(C.now, q[i], C.car) === 'retry') return 'retry';
+  };
+}
 // ★[T703 2026-10-12 · 세션14] 손잡이 `T703_MARCH_LEDGER`(기본 끔 · `=1` 켬 · T681 켬 위에서만) — T681 켬 판 행군의 두 어긋남을 고친다(test-war-world ⓐ · ⓦ):
 //   ① 대형이 지휘관 장부 자리를 따라간다(날마다 · 교전 들기 앞 — 종전엔 대형이 제 회관에 선 채 교전에 들어 회관 발자국 칸을 지났다)
 //   ② 길에서 먹기가 오늘 장부 자리까지를 "지난 길"로 읽는다(종전엔 하루 마감 차례 탓에 늘 0 — 낮 전부를 땄다)
@@ -6747,7 +6763,9 @@ function _t731Jobs(now, T) {
     });
     if (T681_ON) add('caravan', () => _t681Day(C.now));
     if (T661_ON) add('caravan', () => refreshAllFishSustain(Date.now(), true));
-    for (const c of state.world.caravans.slice()) add('caravan', () => _caravanSyncOne(C.now, c, C.car));
+    { const _cl = state.world.caravans.slice();
+      for (const c of _cl) add('caravan', () => _caravanSyncOne(C.now, c, C.car));
+      if (T762_SYNC_NEW) add('caravan', _t762SyncNewJob(C, new Set(_cl))); }   // ★[T762] 켬 = 그날 econ 이 띄운 캐러밴도 그날(끔 = 이 줄 무동작)
     add('caravan', () => { _caravanSyncSweep(C.car); });
     if (T698_BOUNDARY_SLICE) {
       let g = null;
@@ -6981,7 +6999,9 @@ function _openDayJobs(now, T) {
   //   쓸기(회수)만 `seen` 전량이 필요해 원자다.
   if (T681_ON) add('caravan', () => _t681Day(C.now));   // ★[T681] 몸 장부 하루(전쟁 행군·귀환 · 위협 · 줄어드는 몸) — 캐러밴 동기 바로 앞 정한 자리
   if (T661_ON) add('caravan', () => refreshAllFishSustain(Date.now(), true));   // ★[T661] 어장 상한 매기기 — 종전 존 60초 주기(벽시계)를 하루 마감의 정한 자리로(캐러밴 동기 바로 앞 · 재고 회복 시각은 낚시 정본 그대로)
-  for (const c of state.world.caravans.slice()) add('caravan', () => _caravanSyncOne(C.now, c, C.car));   // ★[T85] 반환('retry')을 드레인이 본다
+  { const _cl = state.world.caravans.slice();
+    for (const c of _cl) add('caravan', () => _caravanSyncOne(C.now, c, C.car));   // ★[T85] 반환('retry')을 드레인이 본다
+    if (T762_SYNC_NEW) add('caravan', _t762SyncNewJob(C, new Set(_cl))); }   // ★[T762] 켬 = 그날 econ 틱이 띄운 캐러밴도 그날 동기에(끔 = 이 줄 무동작 · 위 손잡이 주석)
   add('caravan', () => { _caravanSyncSweep(C.car); });
 
   // ⑧ 사건 장부 — econ·캐러밴이 오늘 값이 된 **바로 이 지점**(종전 위치 그대로). 실측 6ms.
