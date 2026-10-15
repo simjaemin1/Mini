@@ -25,7 +25,7 @@ const _clockReady = (() => {
 
 const WebSocket = require('ws');
 const http = require('http');
-const { ZONES, WORLD, isNight, worldPhase, darknessLevel, findZoneAt, worldDistance, worldDeltaX, HANDOFF_COMMIT, T720_LON_DAY, SUNRISE_FRAC, phaseAdd } = require('./zone-config');   // ★[T720] 경도 하루 1단계 손잡이 · 시각 한 식   // ★[T604 추신3] HANDOFF_COMMIT 정본 = zone-config(해안 지킴과 한 자리)
+const { ZONES, WORLD, isNight, worldPhase, darknessLevel, findZoneAt, worldDistance, worldDeltaX, HANDOFF_COMMIT, T720_LON_DAY, SUNRISE_FRAC, phaseAdd, localPhase, T761_CLOCKS } = require('./zone-config');   // ★[T720] 경도 하루 1단계 손잡이 · 시각 한 식   // ★[T604 추신3] HANDOFF_COMMIT 정본 = zone-config(해안 지킴과 한 자리)
 const db = require('./zone-local-db'); // 로컬 zone DB — players 없음
 const SimVillages = require('./villages'); // §4-4 NPC 마을 시뮬 — top-level은 상수뿐(실작업은 아래 init 호출, ENABLE_VILLAGES=0이면 완전 no-op)
 // ★[T484 ②③] 존 기후 — 이 존의 평년값(`server/climate-normals.js` · `apply` 인 존만)과 청동기 Δ(`T484_PALEO` 켬만)를 econ `CLIMATE` 에 얹는다.
@@ -8501,7 +8501,13 @@ function weatherFor(p, now) {
   const cover = +coverOf(p).toFixed(4);
   // ★[T526] 켜면(T536 기본) 몸의 실내(정본 `isIndoorAt`)를 **전달만** 한다(마지막 인자) — 클라의 비·눈 층(T536 · 이 칸이 없을 때만 방 정본 `playerIsIndoors`)과
   //   계측기가 "몸이 지금 지붕 아래인가"를 서버의 말로 읽는다(사본 0). 끄면(`=0`) `null` 이라 칸이 안 생긴다(페이로드 바이트 동일).
-  return Object.assign({}, w, { shelter: sh, cut, insC: +insC.toFixed(2),
+  // ★[T761] 켬(`temp`)이면 화면의 바깥 ℃ 도 몸과 같은 **그 자리 현지 위상**으로(`hintOf` 같은 식 · 몸이 읽는 값과 한 값) — 끔 = 존 하나 값(`weatherNow`) 그대로.
+  let _wl = null;
+  if (T761_CLOCKS.temp && !(_e2eClock && Number.isFinite(_e2eClock.day))) {
+    try { const _n = now || Date.now(), _d = gameDayT(_n), h = require('./weather').hintOf(day, bodyNight(_n), 0, _d.t, localPhase(ZONE.worldOffsetX + p.x, _n));
+      if (h) _wl = { cold: h.cold, ko: h.ko, emo: h.emo, tempC: h.tempC }; } catch (e) { _wl = null; }
+  }
+  return Object.assign({}, w, _wl, { shelter: sh, cut, insC: +insC.toFixed(2),
     wind: +Wind.seasonWind(day).toFixed(3), exp: wexp, precip, wet: +wet.toFixed(4), cover }, T526_VILLAGE_INDOOR ? { indoor: isIndoorAt(p) } : null);
 }
 // ★★[천장 해제 2026-08-31] 그 자리의 고도(km) — econ 기온 감률(−6.5℃/km)의 입력.
@@ -14656,7 +14662,10 @@ setInterval(() => {
     // ★[바람 노출 2026-09-01] 완충을 한 번만 재고 노출에 **그대로 넘긴다** — 두 번 재면 두 값이 갈린다.
     const _day = gameDayNow(), _dT = gameDayT(now);   // ★[T484 ①] 추위는 그 시각의 ℃(`dayT`·`dayPh`) · 나머지 일 셈은 정수 일 그대로
     const _sh = villageShelterOf(p, now);
-    Body.tick(p, dt, { day: _day, dayT: _dT.t, dayPh: _dT.ph, elevKm: elevKmAt(p), night: _night, nearFire: _fire, indoor: _indoor, warmth,
+    // ★[T761] 켬(`T761_LOCAL_CLOCKS` 의 `temp`)이면 일교차의 위상만 **그 자리의 현지 해 몫**(`localPhase` 한 식) — 연주기·편차의 분수 일 `dayT` 는 그대로(같은 곡선 · 새 수 0).
+    //   얼린 시계(`__e2e_clock`)는 옛 규약 그대로(하네스 기대값 무변) · 끔 = 종전 `_dT.ph`.
+    const _dPh = (T761_CLOCKS.temp && !(_e2eClock && Number.isFinite(_e2eClock.day))) ? localPhase(ZONE.worldOffsetX + p.x, now) : _dT.ph;
+    Body.tick(p, dt, { day: _day, dayT: _dT.t, dayPh: _dPh, elevKm: elevKmAt(p), night: _night, nearFire: _fire, indoor: _indoor, warmth,
                        villageShelter: _sh, windExposure: windExposureOf(p, now, _day, _sh),
                        // ★[T114] 수관 차폐 — 젖음이 이 곱 하나를 쓴다(`Body.coverMult` · 추위 축 무접촉)
                        cover: coverOf(p),
@@ -14790,12 +14799,15 @@ setInterval(() => {
   const sightMult = night ? 1.5 : 1.0;
   const dmgMult = night ? 1.3 : 1.0;
   for (const m of mobs.values()) {
+    //   ★[T761] 켬(`T761_LOCAL_CLOCKS` 의 `mob`)이면 몹마다 **그 자리의 현지 밤**(`localPhase(존 원점 + x)` > 낮 몫 — `isNight` 와 같은 식의 현지판 · 새 수 0) · 끔 = 위 세 줄 그대로
+    const _mN = T761_CLOCKS.mob ? (localPhase(ZONE.worldOffsetX + m.x, now) > WORLD.dayPhaseRatio) : night;
+    const _sM = T761_CLOCKS.mob ? (_mN ? 1.5 : 1.0) : sightMult, _dM = T761_CLOCKS.mob ? (_mN ? 1.3 : 1.0) : dmgMult;
     // 비활성 청크 mob 멈춤 — CPU 절약
     if (!isChunkActiveKey(m._chunkKey)) { m.vx = 0; m.vy = 0; continue; }
     // §4-4 wildlife: 이동·AI는 wildlife.js(랩 updateMobs)가 전담 — 레거시 배회/어그로 미적용
     if (m.isWild) continue;
     const def = MOB_DEFS[m.type];
-    const sight = def.sightRange * sightMult;
+    const sight = def.sightRange * _sM;
 
     // === 길든 mob: 주인 따라가기, 어그로 안 함 ===
     if (m.tameOwner) {
@@ -14918,7 +14930,7 @@ setInterval(() => {
           //     스폰만 막으면 옛 DB 를 쓰는 하네스에서 그대로 물린다).
           if (HOSTILES_ON && sameFloor && realDist < 50 && now - m.lastAttackAt > 1000) {
             m.lastAttackAt = now;
-            damagePlayer(t, Math.round(def.damage * dmgMult), `mob:${m.type}`);
+            damagePlayer(t, Math.round(def.damage * _dM), `mob:${m.type}`);
           }
         }
       }
