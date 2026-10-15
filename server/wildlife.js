@@ -36,6 +36,8 @@ const L_QMIN = 0.25;                                  // 랩 4248: 작물 품질
 //     (실측: 사냥 2마리 → 0마리). 주입 자리면 안 끊긴다.
 let _rw = () => { throw new Error('wildlife: rng 미주입(init 전 호출)'); };
 const setPath = () => {};                             // 랩 NPC 귀가 경로 — 본체 프록시엔 무의미(피해 반영은 [C]의 damagePlayer 브리지가 담당)
+const { T761_CLOCKS: _T761C, lonPhaseOff } = require('./zone-config');   // ★[T761] 손잡이(기본 끔) · 시각 한 식
+const _T761_MOB = !!(_T761C && _T761C.mob);
 let lifeGM = 0;                                       // 게임분 — tick()이 본체 월드시계(worldPhase)에서 환산 주입(밤 경계 정렬 피스와이즈)
 let NX = 0, NY = 0, N = 0;                            // 존 셀 그리드(px/32). N=max(NX,NY) — 블록은 도주 목표점 클램프에만 사용
 const inG = (x, y) => x >= 0 && y >= 0 && x < NX && y < NY;
@@ -639,11 +641,16 @@ function tick(now) {
   //    단조·연속). lifeGM 절대시각 타이머(경계기억 등)는 본체 하루 10분 압축만큼 짧아짐 — dt 물리(속도)는 불변.
   {
     const DL = H.WORLD.dayLengthMs, DR = H.WORLD.dayPhaseRatio;
-    const el = now - (H.WORLD.worldEpoch || 0);
-    _dayI = Math.floor(el / DL);
-    const p = (el % DL) / DL;
+    let el = now - (H.WORLD.worldEpoch || 0);
+    // ★[T761] 켬(`T761_LOCAL_CLOCKS` 의 `mob`)이면 **뷰(활성 청크) 가운데 자리의 현지 시계** — 종전 해 몫에 그 자리 경도 몫
+    //   (`lonPhaseOff` · `localPhase` 와 같은 식)을 더한다(새 수 0). 블록(랩 원본) 무수정 — 존 하나 = 시계 하나라 뷰 가운데를 쓴다.
+    //   뷰가 서쪽으로 옮아 현지 시각이 되돌면 lifeGM 을 붙든다(단조 — 경계 기억 등 절대시각 타이머가 거꾸로 안 간다). 끔 = 종전 그대로.
+    if (_T761_MOB) el += lonPhaseOff((H.ZONE.worldOffsetX || 0) + ((_viewRect.x0 + _viewRect.x1) / 2 || (H.ZONE.zoneWidth || 0) / 64) * 32) * DL;
+    const dI = Math.floor(el / DL);
+    const p = (((el % DL) + DL) % DL) / DL;
     const f = p < DR ? (L_DAWN + (p / DR) * (L_DUSK - L_DAWN)) : (L_DUSK + ((p - DR) / (1 - DR)) * (1 - L_DUSK + L_DAWN));
-    lifeGM = (_dayI + f) * L_MINDAY;
+    const g = (dI + f) * L_MINDAY;
+    if (!_T761_MOB || g >= lifeGM) { _dayI = dI; lifeGM = g; }
   }
   // 2) 활성 청크 → 뷰 bbox(셀)·서식지·마을 기준점 (활성 셋이 바뀔 때만 재구축)
   const keys = H.getActiveChunkKeys();

@@ -5440,6 +5440,17 @@ function localDay(xAbs, nowMs = Date.now(), dayMs = WORLD.dayLengthMs, epoch = W
 }
 /** ★[T731] 현지 자정 날 — 그 자리 현지 시각이 00:00 을 지나는 순간 하나 는다(재민 10-13: 마을 정산은 현지 00:00 · 동쪽 먼저).
  *  = floor((t − 기점) ÷ 하루 + λ) — `localDay` 와 해 뜸 몫(¼)만 다르다(새 수 0). 동쪽(λ 큰 쪽)이 먼저 넘는다. */
+/** ★★[T761] 남은 세계 시계 셋을 현지로 — 손잡이 하나 `T761_LOCAL_CLOCKS`(기본 끔 = 아무 갈래도 안 선다 · main 바이트).
+ *  값: `1` · `all` = 셋 다 · 쉼표 목록 = 고른 갈래만(`wx` 날씨 굴림 · `mob` 몹 밤 · `temp` 기온 일교차) — 재민이 칸마다 고를 수 있게.
+ *  셋 다 같은 식 하나(`localPhase` · T731 마을 현지 자정)를 부른다 — 새 수 0. */
+const T761_CLOCKS = (() => {
+  const v = String((typeof process !== 'undefined' && process.env && process.env.T761_LOCAL_CLOCKS) || '').trim();
+  if (!v || v === '0') return { on: false, wx: false, mob: false, temp: false };
+  const all = v === '1' || v === 'all', S = new Set(v.split(',').map((x) => x.trim()));
+  const o = { wx: all || S.has('wx'), mob: all || S.has('mob'), temp: all || S.has('temp') };
+  o.on = o.wx || o.mob || o.temp;
+  return o;
+})();
 function localMidDay(xAbs, nowMs = Date.now(), dayMs = WORLD.dayLengthMs, epoch = WORLD.worldEpoch) {
   return Math.floor((nowMs - (epoch || 0)) / dayMs + lonOf(xAbs));
 }
@@ -5539,7 +5550,7 @@ function _findNeighborSide(zoneId, side) {
 
 module.exports = {
   ABS_CLOCK_DESIGN, // §19 절대 시계 설계 예약(미채택 — 관측·문서용)
-  T720_LON_DAY, SUNRISE_FRAC, lonOf, lonPhaseOff, localTod, localPhase, localDay, localMidDay, phaseAdd, _T720_DAY_OK,   // ★[T720] 시각 한 식(켬일 때만 부른다)
+  T720_LON_DAY, SUNRISE_FRAC, lonOf, lonPhaseOff, localTod, localPhase, localDay, localMidDay, phaseAdd, _T720_DAY_OK, T761_CLOCKS,   // ★[T720] 시각 한 식(켬일 때만 부른다)
   ZONES, WORLD, ZONE_ORDER, CENTRAL, WS_PROTO, HTTP_PROTO,
   publicZoneMap, worldPhase, isNight, darknessLevel,
   findZoneAt, worldDistance, worldDeltaX, WRAP_X,
@@ -13766,9 +13777,14 @@ const WEATHER_KINDS = [
 ];
 function tickWeather(world, day) {
   // v2 r7: 마을마다 독립 phase로 다양화 — 좌표를 seed offset으로 사용해 동조화 방지.
-  for (let i = 0; i < world.villages.length; i++) {
-    const v = world.villages[i];
-    if (v._weather && v._weather.untilDay >= day) continue;
+  for (let i = 0; i < world.villages.length; i++) _weatherRollOne(world.villages[i], day);
+}
+// ★[T761] 마을 하나의 날씨 굴림(종전 `tickWeather` 고리 몸통 그대로 — 끔 = 고리가 이 함수를 차례대로 부른다 · 같은 글자 · 같은 차례)
+//   켬(`T761_LOCAL_CLOCKS` 의 `wx`)이면 머리에서 안 굴리고 마을 조각(`P.village` — T731 켬이면 그 마을 현지 자정)에서 굴린다.
+const T761_WX = !!(((() => { try { return require('../server/zone-config'); } catch (e) { return null; } })() || {}).T761_CLOCKS || {}).wx;
+function _weatherRollOne(v, day) {
+  {
+    if (v._weather && v._weather.untilDay >= day) return;
     // 마을마다 다른 phase로 trigger 결정 — index 기반 분산
     if (v1.useVillageStream) v1.useVillageStream(v);   // ★[T731] 켬 = 그 마을 흐름(끔 = 무동작)
     const triggerRoll = v1.srand();
@@ -13821,12 +13837,13 @@ function tickWorldV2Parts(world) {
       if (_t707On(world)) settleMarketsV2(world);   // ★[T707] 어제 선 장의 떠날 때 정산 — 날을 올린 **바로 뒤**(마을 틱 앞 · 교역 기록의 날 = 장부에 든 날 · 끔 = 이 줄 무동작)
       v1.processEvents(world, world.day);
       // DEBUG flags — 각 효과 on/off
-      if (world._dbg?.weather !== false) tickWeather(world, world.day);
+      if (world._dbg?.weather !== false && !T761_WX) tickWeather(world, world.day);   // ★[T761] 켬(wx) = 마을 조각에서
       if (world._dbg?.yearShock !== false) tickYearShock(world, world.day);
       season = seasonOf(world.day);
       useSeason = world._dbg?.season !== false;
     },
     village(v) {
+      if (T761_WX && world._dbg?.weather !== false) _weatherRollOne(v, world.day);   // ★[T761] 켬(wx) = 그 마을 조각에서 그 마을 날씨를 굴린다(씨 = T731 마을 흐름 · 끔 = 무동작)
       if (v1.useVillageStream) v1.useVillageStream(v);   // ★[T731] 켬 = 이 마을의 일은 이 마을 흐름으로(끝에서 세계 흐름으로 돌려준다 · 끔 = 무동작)
       try { _villageBody(v); } finally { if (v1.useVillageStream) v1.useVillageStream(null); }
     },
