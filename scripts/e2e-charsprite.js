@@ -71,7 +71,46 @@ function openSpot() {
   return { x: cx0, y: cy0, WOX: ZM.worldOffsetX || 0, WOY: ZM.worldOffsetY || 0 };
 }
 
-(async () => {
+// ── ⓕ 앞뒤 자 — 시트 PNG 와 같이 구운 메타에서 행(방향)마다 평균 밝기(판 0~3) ────────────────
+//   [T65] 머리 = 머리 창의 밝기(앞이 밝다 — 이마) · 옷 = 판 전체(앞이 어둡다 — 앞섶).
+//   ★[T752] 머리 창 = **메타 입 자리**(`mouthScreen[클립][방향][판]`)의 줄(반올림)을 아래 끝으로 위로 7줄
+//     (창 높이 7 = 종전 그대로). 종전엔 실루엣 윗줄(α > 120)부터 7줄이었다 — 몸 옮김의 소수 자리에 흔들렸다(ⓕ 주석).
+//   ★`module.exports` 로 내놓는다 — 옛 시트 · 미끼 시트를 **같은 함수**로 재려고(사본 0). e2e 본문은 직접 돌릴 때만.
+function frontBackRows(png, meta, clip, headOnly) {
+  const FW = 109, FH = 90;
+  const ms = headOnly ? (meta && meta.mouthScreen && meta.mouthScreen[clip]) : null;
+  if (headOnly && !ms) throw new Error(`ⓕ 메타에 입 자리가 없다 — mouthScreen.${clip}`);
+  const nf = Math.floor(png.width / FW), out = [];
+  for (let r = 0; r < 8; r++) {
+    const vals = [];
+    for (let f = 0; f < Math.min(nf, 4); f++) {
+      let top = 1e9;
+      for (let y = 0; y < FH; y++) for (let x = 0; x < FW; x++) {
+        const i = ((r * FH + y) * png.width + f * FW + x) * 4;
+        if (png.data[i + 3] > 120 && y < top) top = y;
+      }
+      if (top > FH) continue;                                   // 빈 판(그림 없음)은 안 센다 — 종전 그대로
+      const y1 = headOnly ? Math.min(FH, Math.round(ms[r][f][1]) + 1) : FH;   // 머리: 입 줄까지(포함)
+      const y0 = headOnly ? Math.max(0, y1 - 7) : 0;                           //        위로 7줄
+      let sum = 0, n = 0;
+      for (let y = y0; y < y1; y++) for (let x = 0; x < FW; x++) {
+        const i = ((r * FH + y) * png.width + f * FW + x) * 4;
+        if (png.data[i + 3] > 200) { sum += png.data[i] * 0.3 + png.data[i + 1] * 0.6 + png.data[i + 2] * 0.1; n++; }
+      }
+      if (n > 10) vals.push(sum / n);
+    }
+    out.push(vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0);
+  }
+  return out;
+}
+// 앞 행(0·1·2) 평균 − 등진 행(4·5·6) 평균 · sgn 으로 부호 · rot 로 행을 돌린 대조군(앞뒤 맞바꿈 = 4)
+const frontBackGap = (v, sgn, rot) => {
+  const g = (k) => v[(k + (rot || 0)) % 8];
+  return sgn * (((g(0) + g(1) + g(2)) / 3) - ((g(4) + g(5) + g(6)) / 3));
+};
+module.exports = { frontBackRows, frontBackGap };
+
+if (require.main === module) (async () => {
   console.log('\n=== 캐릭터 스프라이트 애니 실클라 E2E (Chromium) ===');
   const SPOT = openSpot();
   console.log(`    열린 자리: 존 로컬(${SPOT.x},${SPOT.y})`);
@@ -685,42 +724,24 @@ function openSpot() {
   console.log('\n=== ⓕ 시트가 앞뒤를 가른다 [T65] ===');
   {
     const P = require(path.join(ROOT, 'node_modules', 'pngjs')).PNG;
-    const FW = 109, FH = 90;
     const rd = (n) => P.sync.read(fs.readFileSync(path.join(ROOT, 'public', 'assets', 'char', n)));
-    const lumRows = (png, headOnly) => {
-      const nf = Math.floor(png.width / FW), out = [];
-      for (let r = 0; r < 8; r++) {
-        const vals = [];
-        for (let f = 0; f < Math.min(nf, 4); f++) {
-          let top = 1e9;
-          for (let y = 0; y < FH; y++) for (let x = 0; x < FW; x++) {
-            const i = ((r * FH + y) * png.width + f * FW + x) * 4;
-            if (png.data[i + 3] > 120 && y < top) top = y;
-          }
-          if (top > FH) continue;
-          const y0 = headOnly ? top : 0, y1 = headOnly ? Math.min(FH, top + 7) : FH;
-          let sum = 0, n = 0;
-          for (let y = y0; y < y1; y++) for (let x = 0; x < FW; x++) {
-            const i = ((r * FH + y) * png.width + f * FW + x) * 4;
-            if (png.data[i + 3] > 200) { sum += png.data[i] * 0.3 + png.data[i + 1] * 0.6 + png.data[i + 2] * 0.1; n++; }
-          }
-          if (n > 10) vals.push(sum / n);
-        }
-        out.push(vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0);
-      }
-      return out;
-    };
-    const gap = (v, sgn, rot) => {
-      const g = (k) => v[(k + (rot || 0)) % 8];
-      return sgn * (((g(0) + g(1) + g(2)) / 3) - ((g(4) + g(5) + g(6)) / 3));
-    };
+    // ★★[T752 2026-10-15] **머리 창을 메타 입 자리에 묶는다**(PM 정함 · 문턱 8 그대로 · 새 수 0).
+    //   종전 창 = 실루엣 윗줄(α > 120)부터 7줄. T746 이 걸음 판마다 몸을 소수 px 오르내리게 하자(디딘 발 = 땅)
+    //   윗줄이 정수 줄로 튀어 창이 머리에서 미끄러졌다 — 등진 행(4·5·6) 창이 머리보다 +0.27 ~ +0.72 px 아래(실측) ·
+    //   걷기 앞−뒤 11.38 → 6.57(세 판 같은 빨강 · T746 회부 4). 입 자리(`mouthScreen[클립][방향][판]` — 굽기가
+    //   머리 뼈에서 잰 값)는 몸과 같이 옮겨지므로 창이 머리에 붙어 다닌다. 재는 길 = 파일 위 `frontBackRows` 하나
+    //   (옛 시트 · 미끼 시트도 같은 함수로 잰다 — 보고 T752). 메타는 시트와 **같은 폴더**에서 읽는다(같이 구운 짝).
+    const METAF = JSON.parse(fs.readFileSync(path.join(ROOT, 'public', 'assets', 'char', 'char_meta.json'), 'utf8'));
+    const lumRows = (png, headOnly, clip) => frontBackRows(png, METAF, clip, headOnly);
+    const gap = frontBackGap;
     // ★문턱은 **유도한다**(족보 74): 옛 시트와 새 시트의 실측을 로그 중앙(기하평균)에서 가른다.
     //   머리   옛 +2.35 · 새 +26.74  ⇒ √(2.35×26.74) = 7.9  ⇒ K_HEAD = 8
     //   옷     옛 +0.06 · 새 +14.73  ⇒ 옛이 사실상 0 이라 기하평균이 무의미 ⇒ 새 값의 1/3 로 잡는다 = 5
+    //   ★[T752] 창을 입 자리에 묶어도 문턱은 그대로(PM 정함) — 이 자로 걷기 옛 시트(main) 21.18 · T746 시트 19.94(보고 T752).
     const K_HEAD = 8, K_CLOTH = 5;
     for (const clip of ['idle', 'walk']) {
       const body = rd(`body_${clip}.png`), cloth = rd(`clothes_hemp_${clip}.png`);
-      const hv = lumRows(body, true), cv = lumRows(cloth, false);
+      const hv = lumRows(body, true, clip), cv = lumRows(cloth, false, clip);
       const hGap = gap(hv, +1, 0), cGap = gap(cv, -1, 0);          // 머리는 앞이 밝다 · 옷은 앞이 어둡다
       const hRot = gap(hv, +1, 4), cRot = gap(cv, -1, 4);          // 앞뒤를 맞바꾼 대조군
       console.log(`    [${clip}] 머리 밝기 행별 ${hv.map((x) => x.toFixed(0)).join(' ')}  ⇒ 앞−뒤 ${hGap.toFixed(2)}`);

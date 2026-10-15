@@ -413,6 +413,90 @@ def gait_phase(nodes, order, frames, start, period, K, thigh):
     return best[0], best[1], th
 
 
+def contact_plan(K, ph0, duty, eval_key, rise=None, label=""):
+    """[T741 → T746 정본 이사] 걸음 한 주기 접지 계획 — 3D 내보내기(`char_export_gltf.retarget_clip`)와 2D 시트(`char_render.apply_pose`)가 이 함수 하나를 부른다.
+       판(열쇠) k 의 디딘 발 = 자료 디딤 구간(그 발 위상 < `duty` · 왼 φ₀ + k/K · 오른 + ½).
+       ⓐ 디딘 발이 있는 판: 흔드는 발이 디딘 발보다 낮으면 그 발 넓적다리를 수직에서 더 멀리 — 두 발 높이 차가 0 이 되는 가장 작은 각(이분법) →
+          디딘 발(둘이면 낮은 쪽) 살 가장 낮은 점 = 0 이 되게 엉덩이 높이를 옮긴다.
+       ⓑ 디딘 발이 없는 판(달리기 공중): 엉덩이 높이 = 앞 디딘 판 + (골반 높이 곡선 `rise` 의 차) + 두 끝을 맞추는 곧은 보정(뒤 디딘 판에 닿게) ·
+          땅 밑 발은 같은 들림(그 판 엉덩이 목표로).
+       eval_key(k, lift) → ({"L": 왼발 살 가장 낮은 높이, "R": 오른발}, 엉덩이 높이) — 옮기기 전 · lift = {"Left"|"Right": 도}.
+       rise(j) → 위상 φ₀ + j/K 의 골반 높이(eval 과 같은 높이 단위) — 디딘 발 없는 판이 있으면 있어야 한다.
+       돌려주는 것: {"st": [(왼 디딤, 오른 디딤)], "sft": [엉덩이 높이 옮김], "lift": [{쪽: 도}], "hip": [옮기기 전 엉덩이 높이], "air": [디딘 발 없는 판]}."""
+    on = lambda kk, off: ((ph0 + kk / float(K) + off) % 1.0) < duty           # 자료 디딤 구간(왼 0 · 오른 ½)
+    SIDES = (("L", "Left"), ("R", "Right"))
+    st = [(on(kk, 0.0), on(kk, 0.5)) for kk in range(K)]
+
+    def solve(f):
+        """f(d) ≥ 0 이 되는 가장 작은 d ≥ 0(°) — 이분법(부동소수 자리까지 · 넓적다리 90° 넘으면 죽는다)."""
+        if f(0.0) >= 0.0:
+            return 0.0
+        hi = 1.0
+        while f(hi) < 0.0:
+            hi *= 2.0
+            if hi > 90.0:
+                raise SystemExit(f"[contact] ★{label} 흔드는 발을 넓적다리로 못 든다")
+        lo_d = 0.0
+        for _ in range(40):
+            mid = 0.5 * (lo_d + hi)
+            if f(mid) < 0.0:
+                lo_d = mid
+            else:
+                hi = mid
+        return hi
+    # ⓐ 디딘 판 — 흔드는 발을 디딘 발 높이까지 든다(몸 높이와 무관한 두 발 높이 차로 푼다 — 들림이 몸을 옮기는 자세 규칙이 있어도 같다) → 디딘 발 = 0
+    lift = [dict() for _ in range(K)]
+    sft, hip = [None] * K, [None] * K
+    for kk in range(K):
+        dd = [sd for (sd, _n), f in zip(SIDES, st[kk]) if f]
+        if not dd:
+            continue
+        lk = {}
+        for (sd, side), f in zip(SIDES, st[kk]):
+            if f:
+                continue
+
+            def gap(d, sd=sd, side=side):
+                lo = eval_key(kk, dict(lk, **{side: d}))[0]
+                return lo[sd] - min(lo[x] for x in dd)
+            d = solve(gap)
+            if d > 0.0:
+                lk[side] = d
+        lo, hz = eval_key(kk, lk)
+        lift[kk], sft[kk], hip[kk] = lk, -min(lo[x] for x in dd), hz
+    # ⓑ 공중 — 엉덩이 높이 = 앞 디딘 판 + (골반 높이 곡선 차) + 두 끝 맞춤 곧은 보정 · 땅 밑 발은 든다
+    air = [kk for kk in range(K) if sft[kk] is None]
+    if air:
+        if rise is None:
+            raise SystemExit(f"[contact] ★{label} 디딘 발이 없는 판이 있는데 골반 높이 곡선이 없다")
+        hh = lambda j: hip[j % K] + sft[j % K]
+        target = {}
+        for k0 in air:
+            if k0 in target:
+                continue
+            a, b2 = k0 - 1, k0 + 1
+            while sft[a % K] is None:
+                a -= 1
+            while sft[b2 % K] is None:
+                b2 += 1
+            Ha, Hb, n = hh(a), hh(b2), b2 - a
+            for j in range(a + 1, b2):
+                target[j % K] = Ha + (rise(j) - rise(a)) + (j - a) / float(n) * ((Hb - Ha) - (rise(b2) - rise(a)))
+        for kk in air:
+            lk = {}
+            for sd, side in SIDES:
+
+                def above(d, sd=sd, side=side):
+                    lo, hz = eval_key(kk, dict(lk, **{side: d}))
+                    return lo[sd] + (target[kk] - hz)
+                d = solve(above)
+                if d > 0.0:
+                    lk[side] = d
+            lo, hz = eval_key(kk, lk)
+            lift[kk], sft[kk], hip[kk] = lk, target[kk] - hz, hz
+    return {"st": st, "sft": sft, "lift": lift, "hip": hip, "air": air}
+
+
 def retarget(path, nframes=8, loop=True, rule="cycle", bone="thighL", span=0, gait=None):
     """★[T723 ①] `gait` = 그 클립의 자료 표(`gait_norms.json` 의 walk/run) — 주면 다리 넷(넓적다리·정강이 × 좌우)의 시상각을
        자료 주기로 세운다(관상각 = BVH 0번 판 그대로 · 몸통·팔·머리는 모캡 그대로). 위상 = `gait_phase`(3D 와 같은 함수 · 같은 표본)."""
@@ -428,6 +512,10 @@ def retarget(path, nframes=8, loop=True, rule="cycle", bone="thighL", span=0, ga
         pz = fk(nodes, order, frames[0])                                  # 0번 판(T자 보정 판) — 다리 곧게(시상 0 · 관상 ∓1°)
         beta0 = {nm: ab_of(seg_dir_body(pz, I, ja, jb), torso)[1] for nm, ja, jb, torso, _p in BONES}
         gi = {"phase0": ph0, "corr": round(corr, 4), "thighMocapDeg": [round(min(th_m), 2), round(max(th_m), 2)]}
+        # ★[T746] 접지 재료 — 시트 굽기가 3D 와 같은 `contact_plan` 을 부른다(디딤 비율 · 공중 골반 높이 곡선 = `gait_norms.json` 그대로)
+        gi["duty"] = gait["duty"]
+        if gait.get("pelvisRise"):
+            gi["pelvisRise"] = gait["pelvisRise"]
     out = []
     for k in range(NFRAMES):
         # ★루프는 k/N(끝=처음), 원샷은 k/(N−1)(끝=창의 끝) — `char_render.apply_pose` 의 u 와 같은 식이다.

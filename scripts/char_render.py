@@ -1266,16 +1266,97 @@ def _world_min_z(objs):
     return lo
 
 
+# ═══════════════ [T746] 걸음 접지 — 3D(T741)와 같은 접지 계획(`mocap_retarget.contact_plan`) ═══════════════
+#   ★T723 회부 3: 시트는 엉덩이 높이 고정 + 흔들림(bob — 걷기 1.2 · 달리기 2.2cm × |sin|)이라 디딘 발 가장 낮은 점이 −1.2 ~ +3.7cm 오르내렸다 ·
+#     달리기 디딘 판도 1.5~2.9cm 떠 있었다. ⇒ 3D 와 **같은 함수**로 판마다 엉덩이 높이(리그 자리 z)를 짓는다(사본 0):
+#     디딘 발(자료 디딤 구간 — 포즈표 `source.<클립>.gait.duty` · 위상 φ₀ + k/판수) 짚신 가장 낮은 점 = 선 판 땅(`_ground_ref`) ·
+#     흔드는 발이 땅 밑이면 그 넓적다리만 수직에서 더 멀리(정강이는 같은 만큼 되돌려 땅 기준 각 그대로 — 3D 와 같은 들림) ·
+#     디딘 발 없는 판(달리기 공중) = 골반 높이 곡선(`gait.pelvisRise` × 몸 키 `H_TOT` × `ZSQ` — 높이가 눌린 세상)으로 앞뒤 디딘 판 잇기 ·
+#     묶인 걸음 = 걷기 다리(같은 자료 · 같은 위상). 흔들림(bob)은 걸음 클립에서 걷는다 — 엉덩이 높이는 이제 디딘 다리가 정한다.
+import mocap_retarget as MR   # noqa: E402  — 접지 계획 정본(표준 라이브러리만 · 포즈표를 짓는 그 파일)
+_PLAN = {}
+_RZ_FWD = {}
+
+
+def _gait_of(clip):
+    src = (_MOCAP or {}).get("source", {})
+    return (src.get("walk" if clip == "captive_walk" else clip) or {}).get("gait")
+
+
+def _rz_fwd(sd):
+    """그 쪽 넓적다리의 rz 를 키우면 무릎이 앞(+x · 방향 0)으로 가는가 — 쉼 자세에서 한 번 잰다(리그 축 그대로 · 부호만)."""
+    if sd not in _RZ_FWD:
+        rig.location, rig.rotation_euler = (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)
+        _set_bones({})
+        x0 = rig.pose.bones["thigh" + sd].tail.x
+        _set_bones({"thigh" + sd: (0.0, 0.0, 0.1)})
+        _RZ_FWD[sd] = 1.0 if rig.pose.bones["thigh" + sd].tail.x > x0 else -1.0
+        _set_bones({})
+    return _RZ_FWD[sd]
+
+
+def _pose_frame(clip, fi, nframes, lift=None):
+    """걸음 판 하나의 자세 — 포즈표 + 다리 들림(방향 0 · 리그 자리 0). 접지 계획의 재료이자 굽는 판의 자세."""
+    u = (fi / nframes) if CLIP_LOOP[clip] else (fi / max(1, nframes - 1))
+    pose = dict(POSE_FN[clip](u))
+    rig.location, rig.rotation_euler = (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)
+    _set_bones(pose)
+    if lift:
+        for side, d in sorted(lift.items()):
+            sd = "L" if side == "Left" else "R"
+            th = rig.pose.bones["thigh" + sd]
+            fwd = 1.0 if (th.tail - th.head).x >= 0.0 else -1.0       # 무릎이 엉덩이 앞이면 앞으로 더 — 수직에서 더 멀리(무릎이 오른다)
+            off = math.radians(d) * fwd * _RZ_FWD[sd]
+            rx, ry, rz = pose.get("thigh" + sd, (0.0, 0.0, 0.0))
+            pose["thigh" + sd] = (rx, ry, rz + off)
+            sx, sy, sz = pose.get("shin" + sd, (0.0, 0.0, 0.0))
+            pose["shin" + sd] = (sx, sy, sz - off)                    # 정강이는 되돌려 땅 기준 각 그대로(3D 와 같은 들림)
+        _set_bones(pose)
+
+
+def _contact_plan(clip, nframes):
+    """걸음 클립의 접지 계획(판마다 엉덩이 옮김 · 다리 들림) — 한 번 짓고 둔다. 자료 위상이 없으면(사인 포즈) None."""
+    if clip in _PLAN:
+        return _PLAN[clip]
+    g = _gait_of(clip)
+    if SINE_POSE or not g or g.get("duty") is None:
+        _PLAN[clip] = None
+        return None
+    gref = _ground_ref()
+    for sd in ("L", "R"):
+        _rz_fwd(sd)
+    fL = [o for o in ALLOBJ if o.name == "footL"]
+    fR = [o for o in ALLOBJ if o.name == "footR"]
+
+    def ev(kk, lift):
+        _pose_frame(clip, kk, nframes, lift)
+        return {"L": _world_min_z(fL) - gref, "R": _world_min_z(fR) - gref}, (rig.matrix_world @ rig.pose.bones["root"].head).z
+    rise = (lambda j: MR.gait_cyc(g["pelvisRise"], g["phase0"] + j / float(nframes)) * H_TOT * ZSQ) if g.get("pelvisRise") else None
+    plan = MR.contact_plan(nframes, g["phase0"], g["duty"], ev, rise, label=f"시트 {clip}")
+    _PLAN[clip] = plan
+    print(f"[char] {clip} 접지(T746 · 디딘 발): 엉덩이 옮김 {min(plan['sft']):+.4f} ~ {max(plan['sft']):+.4f}m · 공중 판 {plan['air']} · "
+          f"들림 {[(k, {s: round(d, 3) for s, d in L.items()}) for k, L in enumerate(plan['lift']) if L]}")
+    return plan
+
+
 def apply_pose(clip, fi, nframes, dirIdx):
     """포즈 + 방향 회전을 적용. 방향은 **루트 본이 아니라 리그 오브젝트**를 돌린다
        (본을 돌리면 자식 로컬축이 따라 돌아 포즈 해석이 흔들린다)."""
+    plan = _contact_plan(clip, nframes) if clip in ('walk', 'run', 'captive_walk') else None
+    if plan is not None:
+        # ★[T746] 걸음 = 접지 계획(디딘 발 = 땅 · 흔드는 발 들림 · 공중 = 골반 높이) — 흔들림(bob) 대신 · 3D 와 같은 함수
+        _pose_frame(clip, fi, nframes, plan["lift"][fi])
+        rig.location = (0.0, 0.0, plan["sft"][fi])     # ★location 은 제 오브젝트 스케일을 안 먹는다(눌린 세상의 높이 그대로)
+        rig.rotation_euler = (0.0, 0.0, dirIdx * (2 * math.pi / DIRS))
+        bpy.context.view_layer.update()
+        return
     u = (fi / nframes) if CLIP_LOOP[clip] else (fi / max(1, nframes - 1))
     pose = POSE_FN[clip](u)
     for pb in rig.pose.bones:
         pb.rotation_mode = 'XYZ'
         pb.rotation_euler = pose.get(pb.name, (0.0, 0.0, 0.0))
         pb.location = (0.0, 0.0, 0.0)
-    # 걸음의 상하 흔들림(bob) — 리그 전체를 살짝 올렸다 내린다
+    # 걸음의 상하 흔들림(bob) — 리그 전체를 살짝 올렸다 내린다(★[T746] 자료 위상이 없는 사인 포즈만 — 걸음은 위 접지 계획)
     bob = 0.0
     if clip in ('walk', 'run', 'captive_walk'):
         # ★[T149] 묶인 걸음도 같은 걸음이다 — 흔들림 값을 `walk` 에서 **읽는다**(사본 0).
