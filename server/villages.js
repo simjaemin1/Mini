@@ -604,6 +604,7 @@ function extractLandParamsApprox(ta, ccx, ccy, layout) {
 //      그 존 단계 ÷ '많음'(0~1 — 옥 `land.jade` 와 같은 눈금) · **바다가 어장권(140셀) 안인 마을만** · 표 줄이 그 존에 없으면 0.
 //   ② `T635_SEA_SPECIES=1` · 같은 바다 마을의 해안 종 비 `seaMix` — T602 해안 표(`seafish.poolOf` — 그 자리 구간의 해역 · 갯가 자리 · 철 무시)의
 //      흔함 가중(`seafish.weightOf` — region-profiles 단계 수 · 새 수 0)을 합 1 로. 해역을 모르면(표 밖 구간) 고르게(그 파일 규약).
+const T711_SHELL_SOURCE = process.env.T711_SHELL_SOURCE === '1';   // ★[T711] 조개 산지 = `jp_s` 바다 마을만(기본 끔 = 종전)
 function _t635Land(ccx, ccy) {
   const shellOn = process.env.T635_SHELL_ORNAMENT === '1', seaOn = process.env.T635_SEA_SPECIES === '1';
   if (!shellOn && !seaOn) return {};
@@ -611,7 +612,12 @@ function _t635Land(ccx, ccy) {
   if (!(seaDistPx(zid, ccx, ccy) <= LAND_SCAN_R * SZ)) return {};   // 바다가 **어장권** 안(물 감쇠 · 자원권과 같은 140셀) — 자염 문턱(30셀)이면 닛폰 0곳
   const out = {};
   const px = ccx * SZ + SZ / 2, py = ccy * SZ + SZ / 2;
-  if (shellOn) {
+  // ★[T711 2026-10-15 · 재민 10-12 T667 판정 B] 조개 팔찌감 산지 = **"조개의 길"의 가공·집산지 — 닛폰 남(세토·규슈 · 구간 `jp_s`) 바다 마을만**.
+  //   손잡이 `T711_SHELL_SOURCE`(기본 끔 = 종전 — 조개 줄이 있는 존의 어장권 안 바다 마을 전부). 켜면 그 마을 자리의 해안 구간이
+  //   `jp_s` 일 때만 산지 단계가 선다 — 구간 읽기는 `seafish.sectionAt`(T588 `SECTIONS` 정본 · 사본 0). 한반도는 교역으로만(T635 그대로).
+  //   실제 서식지(아마미 이남 산호초)는 지도 밖 — 남쪽 존(류큐)이 생기면 그 존이 산지(그때 다시 · `설계/고증_조개팔찌_산지.md`).
+  if (shellOn && T711_SHELL_SOURCE && require('./seafish').sectionAt(zid, px, py) !== 'jp_s') { /* 산지 밖 — shellBangle 칸 없음 */ }
+  else if (shellOn) {
     const RP = require('./region-profiles'), col = RP.COLS[zid];
     const row = RP.NOTES.find((r) => r.id === 'shell_bangle');
     const lv = (row && col && row[col]) ? (RP.LV[row[col]] || 0) : 0;
