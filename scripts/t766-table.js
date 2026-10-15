@@ -41,7 +41,7 @@ for (const [k, tag] of RUNS) for (const s of SEEDS) {
     if (last[i] !== 0) return null;
     let condDay = null, lastN3 = null, deaths = 0, peak = 0;
     if (ob) for (const r of ob.rows) {
-      const v = r[1][i]; deaths = v[7]; peak = Math.max(peak, v[5]);
+      const v = r[1][i]; deaths = v[7]; peak = Math.max(peak, v[0]);   // 피크 = 인구 줄 최대(도적 층이 꺼지면 `_bdtPeak` 가 안 선다)
       if (v[0] >= 3) lastN3 = r[0];
       if (condDay == null && !v[3] && v[4] >= 5 && v[1] < v[0] * 3 && v[0] >= 3 && v[0] <= Math.max(4, Math.min(20, v[5] * 0.55))) condDay = r[0];
     }
