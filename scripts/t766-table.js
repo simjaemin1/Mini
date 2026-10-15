@@ -108,7 +108,7 @@ function compare(kx, ky, title) {
     const aN = new Set(A.dis.map((d) => d.name)), cN = new Map(C.dis.map((d) => [d.name, d]));
     const heldBy = {}; for (const h of C.held) heldBy[h.name] = (heldBy[h.name] || 0) + 1;
     const saved = [...aN].filter((n) => !cN.has(n)), not = [...aN].filter((n) => cN.has(n)), onlyC = [...cN.keys()].filter((n) => !aN.has(n));
-    const why = (d) => (d.inc > 0 ? `오는 ${d.inc} — ${d.fe}+${d.inc} < ${d.need}` : `오는 0 · 곳간 ${d.fe} < ${d.need}`);
+    const why = (d) => { const c = d.fe + d.inc >= d.need ? '≥' : '<'; return d.inc > 0 ? `오는 ${d.inc} — ${d.fe}+${d.inc} ${c} ${d.need}` : `오는 0 · 곳간 ${d.fe} ${c} ${d.need}`; };
     out.push({ seed: s, saved: saved.map((n) => ({ name: n, held: heldBy[n] || 0 })), not: not.map((n) => ({ name: n, why: why(cN.get(n)) })), onlyC });
     console.log(`| ${s} | ${[...aN].join(' · ')} (${aN.size}) | ${saved.map((n) => `${n}${heldBy[n] ? `(**보류 ${heldBy[n]}일**)` : ''}`).join(' · ') || '—'} (${saved.length}) | ${not.map((n) => `${n}(${why(cN.get(n))})`).join(' · ') || '—'} (${not.length}) | ${onlyC.map((n) => `${n}(${why(cN.get(n))})`).join(' · ') || '—'} (${onlyC.length}) |`);
   }
@@ -117,6 +117,20 @@ function compare(kx, ky, title) {
 const SAVE = compare('ⓐ', 'ⓒ', 'ⓐ → ⓒ 갈린 해체 마을(시드마다 ⓐ 해체 마을 기준)');
 const NOISE = compare('ⓐ', 'ⓐ″', 'ⓐ → ⓐ″ 갈린 해체 마을(같은 main 두 판 — 잡음 바닥)');
 
+// ── 빈 마을 대조 — 시드마다 마을 × 판(빈 날 · 해체 표 h) ──
+console.log('\n### 빈 마을 대조 — 시드마다 끝 날 빈 마을(빈 날 · h = 해체 표 달았음)\n');
+const KS = RUNS.map((r) => r[0]);
+console.log(`| 시드 | 마을 | ${KS.join(' | ')} |`);
+console.log(`|---|---|${KS.map(() => '---').join('|')}|`);
+const EMAT = [];
+for (const s of SEEDS) {
+  const names = new Set(); for (const k of KS) { const r = R[`${k}|${s}`]; if (r) for (const e of r.empties) names.add(e.name); }
+  for (const n of [...names].sort()) {
+    const cells = KS.map((k) => { const r = R[`${k}|${s}`]; if (!r) return '·'; const e = r.empties.find((x) => x.name === n); return e ? `**${e.day}**${e.dis != null ? ' h' : ''}` : ''; });
+    EMAT.push({ seed: s, name: n, cells: Object.fromEntries(KS.map((k, i) => [k, cells[i]])) });
+    console.log(`| ${s} | ${n} | ${cells.join(' | ')} |`);
+  }
+}
 // ── 해체 문이 직접 막은 마을(ⓒ · ⓓ 의 보류 줄) — 막은 뒤 어찌 됐나 ──
 console.log('\n### 해체 문이 직접 막은 마을(보류 줄) — 막은 뒤\n');
 console.log('| 판 | 시드 | 마을 | 보류 날(첫~끝 · 날 수) | 그때 곳간 + 오는 식량 | 뒤에 해체? | 끝 날 인구 | 빈 마을? |');
@@ -132,4 +146,4 @@ for (const k of ['ⓒ', 'ⓓ']) for (const s of SEEDS) {
     console.log(`| ${k} | ${s} | ${n} | ${hs[0].day}~${hs[hs.length - 1].day} · ${hs.length} | ${hs[0].fe} + ${hs[0].inc} | ${d ? `D${d.day}(${d.day - hs[hs.length - 1].day}일 뒤)` : '안 됨'} | ${endN} | ${endN === 0 ? '빔' : ''} |`);
   }
 }
-if (JOUT) fs.writeFileSync(JOUT, JSON.stringify({ dir: DIR, runs: Object.fromEntries(Object.entries(R).map(([key, r]) => [key, { empty: r.o.empty, dissolved: r.o.dissolved, firstEmpty: r.o.firstEmpty, bandit: r.o.bandit, eight: r.o.eight, pop400: r.pop400, pop800: r.pop800, dis: r.dis, held: r.held.length, heldVillages: [...new Set(r.held.map((h) => h.name))], empties: r.empties, cargoLost: +r.cargoLost.toFixed(1), tradersKilled: r.tradersKilled, supDead: r.st.supDead ?? null, t766Held: r.st.t766Held ?? null }])), sum: SUM, save: SAVE, noise: NOISE, held: HELD }, null, 1));
+if (JOUT) fs.writeFileSync(JOUT, JSON.stringify({ dir: DIR, runs: Object.fromEntries(Object.entries(R).map(([key, r]) => [key, { empty: r.o.empty, dissolved: r.o.dissolved, firstEmpty: r.o.firstEmpty, bandit: r.o.bandit, eight: r.o.eight, pop400: r.pop400, pop800: r.pop800, dis: r.dis, held: r.held.length, heldVillages: [...new Set(r.held.map((h) => h.name))], empties: r.empties, cargoLost: +r.cargoLost.toFixed(1), tradersKilled: r.tradersKilled, supDead: r.st.supDead ?? null, t766Held: r.st.t766Held ?? null }])), sum: SUM, save: SAVE, noise: NOISE, held: HELD, emptyMatrix: EMAT }, null, 1));
