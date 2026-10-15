@@ -16,6 +16,7 @@
 //       [T689] T686_PRELOAD=<파일>(존에 덧 preload) · T686_END_S=<벽 초>(짧은 판 — 없으면 경계 수로)
 //       [T719] T719_DEEP=1(T715_DEC=1 위) — npcStep 시간 분포(낮·밤) · 긴 걸음(T719_THR ms)마다 함수별 ms · 마을 사본 생활층 함수 감싸기
 //       [T715] T715_QCV=1 — 빌린 배열 질의 = 옛 질의 견줌(판 끝 decAll.qcv)
+//       [T756] T719_DEEP=1 이면 긴 걸음마다 주 스레드 CPU ms(`process.threadCpuUsage` · 정확) — 엄격 판정(scripts/t756-an.js) · `T756_CPU=0` 끔
 //       [T715] T715_DEC=1 — 결정 문 안(틱마다 몸 수 · 가장 긴 한 몸: 누가 · 직업 · 라벨 · 결정 ms · 길 ms) · 판 끝 `decAll`(몸 하나 15·30 ms 넘음)
 'use strict';
 const path = require('path');
@@ -110,15 +111,18 @@ const ZTAIL = `
     const HD = new Float64Array(NB), HN = new Float64Array(NB), FN = [], FI = new Map(), ACC = new Float64Array(NF), CNT = new Int32Array(NF);
     const fid = (k) => { let i = FI.get(k); if (i === undefined) { i = FN.length; FN.push(k); FI.set(k, i); } return i; };
     let night = false, maxD = 0, maxN = 0, sumD = 0, sumN = 0, nD = 0, nN = 0;
-    const worst = [];
+    const worst = []; globalThis.__T756W = worst;   // ★[T756] 표본 자(t756-prof.js)가 긴 걸음 창을 읽는다
     globalThis.__T719W = (k, f0) => { const i = fid(k); return function () { const t = now(); try { return f0.apply(this, arguments); } finally { if (_dCur) { ACC[i] += now() - t; CNT[i]++; } } }; };
     globalThis.__T719A = (k, ms) => { if (_dCur) { const i = fid(k); ACC[i] += ms; CNT[i]++; } };   // 마을 사본 꼬리가 부른다(생활층 안 함수)
     { const upd = () => { try { night = (worldPhase(Date.now()) % 1) > WORLD.dayPhaseRatio; } catch (e) {} }; upd(); setInterval(upd, 1000).unref(); }   // 낮·밤 — 1초마다(걸음마다 시계를 더 안 읽는다)
-    const fS2 = npcStep; npcStep = function (a, b, c) { ACC.fill(0); CNT.fill(0); const t = now(); try { return fS2(a, b, c); } finally {
+    //   ★[T756] 걸음 안 **주 스레드 CPU**(process.threadCpuUsage — 커널이 부를 때 그 스레드 몫을 바로 맞춰 준다 · schedstat 처럼 틱(≤ 4 ms)만큼 늦지 않다 · 부름 ≈ 0.27 µs)
+    //     긴 걸음 줄 [11] = 그 걸음 안 주 스레드가 실제로 돈 ms(GC 를 주 스레드가 했으면 그 몫도 든다 · [T734] GC 겹침 칸으로 가른다)
+    const _tcu = (typeof process.threadCpuUsage === 'function' && process.env.T756_CPU !== '0') ? () => { const u = process.threadCpuUsage(); return (u.user + u.system) / 1000; } : null;
+    const fS2 = npcStep; npcStep = function (a, b, c) { ACC.fill(0); CNT.fill(0); const u0 = _tcu ? process.threadCpuUsage() : null; const t = now(); try { return fS2(a, b, c); } finally {
       const ms = now() - t, us = ms * 1000, bi = us <= 0.25 ? 0 : Math.min(NB - 1, Math.floor(4 * Math.log2(us / 0.25)));
       if (night) { HN[bi]++; sumN += ms; nN++; if (ms > maxN) maxN = ms; } else { HD[bi]++; sumD += ms; nD++; if (ms > maxD) maxD = ms; }
       if (ms > THR && worst.length < 3000) { const acc = []; for (let i = 0; i < FN.length; i++) if (ACC[i] > 0.05) acc.push([FN[i], +ACC[i].toFixed(2), CNT[i]]); acc.sort((x, y) => y[1] - x[1]);
-        worst.push([Date.now(), +ms.toFixed(2), night ? 1 : 0, a.pid, a.simJob || a.npcJob || null, a._lifeAct || null, a.behavior || null, a.simVillageId || null, acc.slice(0, 8), +t.toFixed(3), globalThis.__T734SCH ? globalThis.__T734SCH() : null]);   // [10] = 틱 머리부터 [런큐 기다린 · 돈 · 벽] ms   // [9] = 걸음 머리(pf 시계 · T734 GC 겹침)
+        worst.push([Date.now(), +ms.toFixed(2), night ? 1 : 0, a.pid, a.simJob || a.npcJob || null, a._lifeAct || null, a.behavior || null, a.simVillageId || null, acc.slice(0, 8), +t.toFixed(3), globalThis.__T734SCH ? globalThis.__T734SCH() : null, u0 ? (() => { const u1 = process.threadCpuUsage(); return +((u1.user + u1.system - u0.user - u0.system) / 1000).toFixed(3); })() : null, u0 ? +((process.threadCpuUsage().system - u0.system) / 1000).toFixed(3) : null, globalThis.__T756RU ? globalThis.__T756RU() : null]);   // [11] = 걸음 안 주 스레드 CPU ms(T756) · [12] = 그중 커널(system) ms · [13] = 틱 머리부터 [작은 · 큰 쪽 폴트 · 자발 · 비자발 전환](프로세스)   // [10] = 틱 머리부터 [런큐 기다린 · 돈 · 벽] ms   // [9] = 걸음 머리(pf 시계 · T734 GC 겹침)
         if (process.env.T715_JIT === '1') console.log('[T719W] ' + ms.toFixed(1) + 'ms ' + (a.simJob || '') + ' ' + (a._lifeAct || '') + ' ' + JSON.stringify(acc.slice(0, 4))); } } };
     for (const [k, nm] of [['결정', 'decideNpcBehavior'], ['막힘', 'detectStuck'], ['풀기', 'unstuckNpc'], ['따라가기', 'followNpcPath']]) {
       try { const f0 = eval(nm); if (typeof f0 === 'function') eval(nm + ' = globalThis.__T719W(' + JSON.stringify(k) + ', f0)'); } catch (e) {} }
@@ -145,7 +149,9 @@ const ZTAIL = `
   const _sch = () => { try { const a = fs.readFileSync(_SCH, 'utf8').split(' '); return [+a[0] / 1e6, +a[1] / 1e6]; } catch (e) { return [0, 0]; } };
   let _sch0 = [0, 0], _schT = 0;
   globalThis.__T734SCH = () => { if (!_schOn) return null; const b = _sch(); return [+(b[1] - _sch0[1]).toFixed(2), +(b[0] - _sch0[0]).toFixed(2), +(now() - _schT).toFixed(2)]; };   // [기다린 · 돈 · 벽] ms(틱 머리부터)
-  globalThis.__T686S = () => { t0 = prev = now(); cur = { seg: {}, v: {}, jobs: [], close: false }; if (_schOn) { _sch0 = _sch(); _schT = t0; } };
+  let _ru0 = null, _tu0 = null; const _ruOn = process.env.T719_DEEP === '1' && process.env.T756_CPU !== '0';
+  globalThis.__T756RU = () => { if (!_ru0) return null; const r = process.resourceUsage(); return [r.minorPageFault - _ru0.minorPageFault, r.majorPageFault - _ru0.majorPageFault, r.voluntaryContextSwitches - _ru0.voluntaryContextSwitches, r.involuntaryContextSwitches - _ru0.involuntaryContextSwitches]; };
+  globalThis.__T686S = () => { t0 = prev = now(); cur = { seg: {}, v: {}, jobs: [], close: false }; if (_schOn) { _sch0 = _sch(); _schT = t0; } if (_ruOn) { _ru0 = process.resourceUsage(); _tu0 = process.threadCpuUsage(); } };
   globalThis.__T686M = (k) => { const t = now(); if (cur) cur.seg[k] = (cur.seg[k] || 0) + (t - prev); prev = t; };
   globalThis.__T686VS = (inClose) => { vPrev = now(); if (cur) cur.close = cur.close || !!inClose; };
   globalThis.__T686VM = (k) => { const t = now(); if (cur) cur.v[k] = (cur.v[k] || 0) + (t - vPrev); vPrev = t; };
@@ -163,9 +169,11 @@ const ZTAIL = `
     all.ticks++; all.tot += tot; if (tot > SPIKE) all.over30++; if (tot > 16) all.over16++; if (tot > all.max) all.max = tot;
     for (const k in cur.seg) { W.seg[k] = (W.seg[k] || 0) + cur.seg[k]; if (cur.seg[k] > (W.segMax[k] || 0)) W.segMax[k] = cur.seg[k]; }
     if (tot > SPIKE) {
+      { const K = globalThis.__T756SPK || (globalThis.__T756SPK = []); if (K.length < 2000) K.push([t0, tot]); }   // ★[T756] 30 ms+ 틱 창(표본 자)
       const r = (o) => { const x = {}; for (const k in o) if (o[k] >= 0.05) x[k] = +o[k].toFixed(2); return x; };
       const J = {}; for (const [k, ms] of cur.jobs) J[k] = +(((J[k] || 0) + ms)).toFixed(2);
-      W.spikes.push(Object.assign({ at: Date.now(), p0: +(t0).toFixed(1), ms: +tot.toFixed(2), close: cur.close, nJobs: cur.jobs.length, pop: npcs.size }, dayInfo(), { seg: r(cur.seg), v: r(cur.v), jobs: J },
+      const _tu1 = _tu0 ? process.threadCpuUsage() : null;   // ★[T756] 그 틱 주 스레드 CPU · 커널 몫 ms · 틱 머리부터 [폴트 작은 · 큰 · 자발 · 비자발]
+      W.spikes.push(Object.assign({ at: Date.now(), p0: +(t0).toFixed(1), ms: +tot.toFixed(2), close: cur.close, nJobs: cur.jobs.length, pop: npcs.size }, _tu1 ? { cpu: +((_tu1.user + _tu1.system - _tu0.user - _tu0.system) / 1000).toFixed(2), sys: +((_tu1.system - _tu0.system) / 1000).toFixed(2), ru: globalThis.__T756RU(), sch: globalThis.__T734SCH ? globalThis.__T734SCH() : null } : {}, dayInfo(), { seg: r(cur.seg), v: r(cur.v), jobs: J },
         _T715 ? { dec: { n: _dN, ms: +_dMs.toFixed(2), top: _dTop } } : {}));
       if (process.env.T715_JIT === '1') { const sg = Object.entries(cur.seg).sort((a, b) => b[1] - a[1])[0]; console.log('[T715-SPIKE] ' + tot.toFixed(1) + 'ms ' + (sg ? sg[0] + ' ' + sg[1].toFixed(1) : '') + ' dec ' + _dN + '/' + _dMs.toFixed(1)); }
     }
