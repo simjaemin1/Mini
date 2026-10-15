@@ -15807,7 +15807,8 @@ function openMarket(vil){
   vil._mktUntil=lifeGM+L_MKT_LINGER;
   const _oV=V,_oL=life; V=vil.V; life=vil;
   let n=Math.max(1,Math.round(vil.agents.length*L_MKT_FRAC))-vil.agents.filter(a=>a._mkt).length,k=0,got=0;   // ★[T684] 이미 선 장에 다시 불리면(교역 NPC 둘이 같은 날 같은 마당에 닿는다) **이미 모인 사람을 뺀다** — 상한은 장이 설 때마다가 아니라 마을 인구 × L_MKT_FRAC 하나다(종전: 부를 때마다 새로 세어 7+7=14 = 34.1% · T660 실측). 다 찼으면 n≤0 → 아래 고리가 바로 끝난다(장 기한 연장만)
-  const _A=vil.agents,_NA=_A.length,_s0=_NA?((((VILS.indexOf(vil)|0)+(vil.day|0))%_NA)+_NA)%_NA:0;   // ★[T707 · 재민 10-12 "얼굴 돌리기"] (마을, 날) 차례로 시작점을 돌린다 — 서버 `_t707Roster` 와 같은 문법(주사위 0 · 종전: 늘 배열 앞 = 같은 얼굴)
+  const _A=vil.agents,_NA=_A.length,_t707=(typeof EconEngine!=='undefined'&&!!EconEngine.T707_MARKET)||!!(typeof ECON_WORLD!=='undefined'&&ECON_WORLD&&ECON_WORLD.t707Market),_s0=(_t707&&_NA)?((((VILS.indexOf(vil)|0)+(vil.day|0))%_NA)+_NA)%_NA:0;   // ★[T707 · 재민 10-12 "얼굴 돌리기"] (마을, 날) 차례로 시작점을 돌린다 — 서버 `_t707Roster` 와 같은 문법(주사위 0 · 종전: 늘 배열 앞 = 같은 얼굴)
+  //   ★[T758] 돌리기는 **T707 손잡이 켬일 때만** — 번들이 읽는 그 손잡이(`EconEngine.T707_MARKET` = econ `_t707On` 의 앞 항 · 세계 칸 `t707Market` 도 같은 문) · 끔(`?T707_MARKET=0`)이면 시작점 0 = 종전 바이트(배열 앞부터 · T707 앞 랩과 같은 궤적)
   for(let _i=0;_i<_NA;_i++){ const a=_A[(_s0+_i)%_NA]; if(n<=0)break;
     if(a._muster||a.rest||a._mkt)continue;
     if(a.state==='trading'||a.state==='build'||a.state==='gran'||a.state==='toGran')continue;   // 일하는 사람은 안 끌어온다
