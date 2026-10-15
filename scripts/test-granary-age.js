@@ -14,6 +14,7 @@
 //  ③ 마을이 먹은 몫 — 오래된 것부터(넣은 시든 고기가 먼저 먹힌다) · 섞인 꺼내기 — 넣은 몫(그 나이) + econ 이 만든 몫(그 순간)
 //  ④ 오래된 것부터 — 두 번 넣은 장부에서 먼저 넣은 것이 먼저 나온다
 //  ⑤ 거래소 · 마을 밥 — 받는 쪽도 곳간 레코드째 · 낸 쪽은 사람의 순간째
+//     · ★[T748] 거래소 받기 = 열량 짝(`takeKcal` — 꺼내기 · 게시판 보상과 같은 `itemsOf`) — 받은 낱개 × 낱개 열량 = 곳간에서 나간 단위 · 로트는 레코드째
 //  ⑥ 불변식 — 장부 합 − 빚 = 곳간 · 문이 레코드 없이 넣은 몫 0 · 사람 쪽 근사 0
 //  ⑦ 배선 — 문 앞 `_t732DoorBegin` · 문 뒤 `_t732DoorEnd`(회관 · 거래소 · 게시판·겨울 몫 · 위세품 값) · 꺼내기는 membership 감싸개 · 마을 밥 ·
 //         T716 임시 고침 자리(손잡이 · 도우미 셋 · 곁 장부)는 걷혔다
@@ -146,6 +147,21 @@ if (process.env.T732_SUB === 'zone') {
     out.E = { r: r && { ok: r.ok, err: r.err, give: r.give, take: r.take, took: r.tookItem }, food: lotsOf(e2, 'food'), inv: Object.assign({}, e2.inventory),
       foodBefore, foodAfter: ledger('food'), gameAfter: ledger() };
 
+    // ── E2. [T748] 거래소 받기 = 열량 짝 — 켬의 거래소 문이 넘기는 `takeKcal`(kcal 정본)으로 낱개 열량이 하루치와 다른 곡물(쌀)을 받는다 ─────────────
+    //   받는 낱개 = `itemsOf`(꺼내기 · 게시판 보상과 같은 함수) · 곳간에서 나가는 단위 = 그 낱개의 열량 · 사람에게 실리는 로트 = 곳간 레코드째(문)
+    {
+      const TR = 'rice', TI = L.deliverable.toEcon.get(TR);
+      if (!((+VIL.econ.storage[TR] || 0) > 5)) VIL.econ.storage[TR] = 40;   // (랩 세계에 쌀이 모자라면 econ 몫으로 채운다 — 그 순간 레코드)
+      const e3 = mkP(); give(e3, 'meat_bear', 20, 0.9, 1);
+      const before = ledger(TR), s0 = +VIL.econ.storage[TR] || 0, a3 = H.Lots.stats().approx;
+      const _uo3 = H._unitsOfFor(e3);
+      const ctx3 = H._t732DoorBegin(e3, null);
+      const r3 = Trade.exchange({ ledger: L, econV2, vil: VIL, vid: VID, inventory: e3.inventory, giveRes: RES, takeRes: TR, giveQty: 20, want: 0, unitsOf: _uo3, deposit: V.playerVillageDeposit, takeKcal: H.Kcal });
+      H._t732DoorEnd(ctx3, e3, !!(r3 && r3.ok), VIL, _uo3);
+      out.E2 = { tr: TR, ti: TI, kcal: H.Kcal.kcalOf(TI), day: H.Kcal.DAY_KCAL, r: r3 && { ok: r3.ok, err: r3.err, take: r3.take, takeUnits: r3.takeUnits, took: r3.tookItem },
+        dS: +(s0 - (+VIL.econ.storage[TR] || 0)).toFixed(6), lots: lotsOf(e3, TI), inv: +(e3.inventory[TI] || 0), before, after: ledger(TR), approx: H.Lots.stats().approx - a3 };
+    }
+
     // ── F. 마을 밥 — 구제 때 곳간에서 한 끼(곡식 · 그 나이째) ─────────────
     VIL.econ.storage.food = 0; VIL.econ.storage.food = 60;
     const f1 = mkP();
@@ -241,6 +257,13 @@ say('\n⑤ 거래소 · 마을 밥');
   pre(Array.isArray(E.foodBefore) && E.foodBefore.length >= 2 && near(E.foodBefore[0].f0, 0.7, 1e-3), '곡식 장부 — 먼저 든 시든 곡식(f 0.7 · 이틀 전)이 앞 · econ 몫이 뒤', JSON.stringify((E.foodBefore || []).map((r) => [+r.f0.toFixed(3), +r.u.toFixed(3)])));
   ok(E.food.length >= 1 && near(E.food[0].f, 0.7, 1e-3), '★★⑤ 받은 곡식 = 곳간 장부의 오래된 것부터(먼저 든 시든 곡식 f 0.7 · 그 나이째 — 오늘 것이 아니다)', JSON.stringify(E.food));
   ok((E.gameAfter || []).some((r) => near(r.f0, 0.9, 1e-3)), '★⑤ 낸 곰고기는 곳간 장부에 그 순간 · 접힌 신선도(f0 0.9)째', JSON.stringify((E.gameAfter || []).map((r) => [+r.f0.toFixed(3), +r.u.toFixed(3)])));
+  const E2 = zOn.E2 || {};
+  pre(E2.r && E2.r.ok && E2.r.take > 0 && E2.r.took === E2.ti && E2.kcal > 0 && Math.abs(E2.kcal - E2.day) > 1, '[T748] 거래소 교환(곰고기 → 쌀 · 열량 짝)이 됐다', JSON.stringify(E2.r));
+  const per2 = E2.kcal / E2.day, sumN = (E2.lots || []).reduce((x, l) => x + l.n, 0), kB = new Set((E2.before || []).map((r) => r.k));
+  ok(E2.r && near(E2.r.takeUnits, E2.r.take * per2, 1e-3) && near(E2.dS, E2.r.takeUnits, 2e-3),
+    '★★⑤ [T748] 거래소 받기 = 열량 짝 — 받은 낱개 × 낱개 열량 = 곳간에서 나간 단위(꺼내기 · 게시판 보상과 같은 `itemsOf`)', `${E2.r && E2.r.take}개 × ${per2.toFixed(4)} = ${E2.r && E2.r.takeUnits} · 곳간 −${E2.dS}`);
+  ok(E2.r && near(sumN, E2.inv, 1e-6) && E2.inv === E2.r.take && (E2.lots || []).every((l) => kB.has(l.k)) && E2.approx === 0,
+    '★⑤ [T748] 받은 쌀의 로트 = 곳간 레코드째(문) · 낱개 합 = 인벤 = 받은 개수 · 근사 0', JSON.stringify(E2.lots));
   const F = zOn.F;
   pre(F.meal && F.meal.fed === true, '마을 밥 — 곳간에서 한 끼를 먹였다', JSON.stringify(F.meal));
   ok(F.meal && F.meal.fed === true && F.approx === 0 && near(F.du, F.meal.units, 1e-6) && (F.food.length === 0 || F.food.every((l) => F.kFood.includes(l.k))),

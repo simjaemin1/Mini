@@ -794,11 +794,11 @@ function createWar(opts) {
     if (!(amount > 0)) return 0;
     if (!(w && _lootActOn() && _rationActOn() && w._packOnBodies && typeof opts.lootCarry === 'function')) return _warFoodMove(D, A, amount);
     const t = _warFoodTake(D, amount, FOOD);
-    if (t.got > 0) { let ok = false; try { ok = !!opts.lootCarry(w, t.items, kind); } catch (_) { ok = false; } if (!ok) _warFoodGive(A, t.items, 1, t.lots); }
+    if (t.got > 0) { let ok = false; try { ok = !!opts.lootCarry(w, t.items, kind, t.lots || null); } catch (_) { ok = false; } if (!ok) _warFoodGive(A, t.items, 1, t.lots); }   // ★[T748] 뗀 레코드째 몸에(호스트 · 끄면 넷째 인수 null)
     return t.got;
   }
   // 몸이 다 싣지 못한 곳간 몫은 **그 곳간에 그대로**(뗀 품목 그대로 되돌림) · 몸이 집에 닿으면 받은 쪽 곳간에 — 둘 다 같은 문.
-  function lootGive(e, items) { if (!e || !items) return 0; const fe = bagFE(items, { _world: e._world }); _warFoodGive(e, items, 1); return fe; }
+  function lootGive(e, items, lots) { if (!e || !items) return 0; const fe = bagFE(items, { _world: e._world }); _warFoodGive(e, items, 1, lots || null); return fe; }   // ★[T748] 레코드째(없으면 종전 그대로)
 
   // ═══════════ ★★[T423] 짐이 먹는다 — 군량 = 행위 ⓐ(설계_군량_행위 §1-ⓐ · PM #68) ═══════════
   //   싣기는 무변(`_opPackLoad` 가 곳간에서 섭식 정본 순서로 뗀다) → 호스트가 그 팩을 **병사 몸의 inventory** 로 나눠 싣고
@@ -830,6 +830,8 @@ function createWar(opts) {
     const one = {}; for (const k in items) { const q = (items[k] || 0) * frac; if (q > 0) one[k] = q; }
     const book = w._rationBook = { load, split: (w._packRem || 0) * per, eaten: 0, back: 0, drop: 0, ledgerEaten: load - (w._packRem || 0) * per, days: [] };
     w._packOnBodies = n; w._packKeys = Object.keys(one); w._packShare = (w.force || 0) / n;
+    //   ★[T748] 팩 레코드도 몸으로 — 몸에 싣기 전에 장부로 먹은 몫은 오래된 것부터였다(남은 것 = 새 쪽 꼬리) · 몸마다 고르게(호스트가 몸 짐 줄에 싣는다 · 끄면 이 줄 무동작)
+    if (_LOTH && w._packLots && _LOTH.packKeep) { const kept = _LOTH.packKeep(w._packLots, frac * n); if (kept) { const o = {}; for (const r in kept) o[r] = kept[r].map((x) => Object.assign({}, x, { u: x.u / n })); w._packSplitLots = o; } }
     w._packItems = null; w._packLoad = 0; if (w._packLots) w._packLots = null;
     return one;
   }
@@ -844,10 +846,10 @@ function createWar(opts) {
     return Math.max(0, _feOf({ storage: st, _world: ctx && ctx._world }) || 0);
   }
   // 귀환 몸이 짐을 내려놓는다 — 환급과 **같은 문**(`_warFoodGive` · 품목 그대로 · 세금 0).
-  function rationLayDown(w, items) {
+  function rationLayDown(w, items, lots) {
     const A = w && w.atk && w.atk.econ; if (!A || !items) return 0;
     const fe = bagFE(items, { _world: A._world });
-    _warFoodGive(A, items, 1);
+    _warFoodGive(A, items, 1, lots || null);   // ★[T748] 몸 짐 레코드째(호스트가 몸 짐 줄에서 모았다 · 없으면 종전 그대로 — 레코드 없는 줌으로 센다)
     if (w._rationBook) w._rationBook.back += fe;
     log(world.day, w.atk.name + ' 짐을 곳간에 내려놓는다 — ' + fe.toFixed(1));
     return fe;
@@ -855,7 +857,7 @@ function createWar(opts) {
   // war-core 귀환 도착 — 아직 몸에 남은 짐을 호스트가 모아 주면 내려놓고 팩을 닫는다(두 번 안 준다).
   function _rationLayDownAll(w) {
     let back = 0;
-    if (typeof opts.rationCollect === 'function') { let items = null; try { items = opts.rationCollect(w); } catch (_) { items = null; } if (items) back = rationLayDown(w, items); }
+    if (typeof opts.rationCollect === 'function') { let items = null; try { items = opts.rationCollect(w); } catch (_) { items = null; } const _ll = (_LOTH && w._layLots) ? w._layLots : null; if (w._layLots) w._layLots = null; if (items) back = rationLayDown(w, items, _ll); }   // ★[T748] 호스트가 모은 몸 짐 레코드
     w._packRem = 0; w._packItems = null; w._packLoad = 0; if (w._packLots) w._packLots = null;
     return back;
   }
@@ -1212,6 +1214,7 @@ function createWar(opts) {
     warDraftBind, warDraftFill, warDraftReleasePid, warDraftReleaseWar, warDraftCount, warRationRefund,
     packSplit, bodyEat, bagFE, rationLayDown, rationActOn: _rationActOn,
     lootGive, lootActOn: _lootActOn, warLog: (day, m) => log(day, m),   // ★[T466] 약탈 = 행위(손잡이 끔 · 끔이면 호스트 훅을 안 부른다)   // ★[T423] 짐이 먹는다(손잡이 끔이면 packSplit 이 null)
+    _rationLayDownAll,   // ★[T748] 귀환 도착 내려놓기 — 하네스(`test-moment-lot` ⑨)가 **이 함수**를 그대로 부른다(몸 짐 레코드째 · 사본 0)
     // ★[3파 포로] 접점
     CAP_ON: WAR_CAP_ON, warCaptiveDaily,
     get WARS() { return WARS; }, get TRIBUTES() { return TRIBUTES; },

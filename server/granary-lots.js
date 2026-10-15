@@ -46,7 +46,10 @@ let _suspend = 0;
 let _tickK = null;   // 하루 마감의 순간(게임 ms) — 마감 동안 econ 이 얻은 것의 열쇠
 let _door = null;    // 사람의 문 — { held: Map(v → {재화: 단위}), cap: Map(v → {재화: rec[]}), tx: Set(v) }
 const ST = { attached: 0, seeded: 0, seededU: 0, restored: 0, t716In: 0, newLots: 0, moved: 0, outRecs: 0, debtU: 0,
-  wrappedLate: 0, adopted: 0, drift: 0, driftU: 0, cargoIn: 0, cargoOut: 0, txRollback: 0, doors: 0, doorNoRec: 0, doorStale: 0, giveNoRec: 0, giveNoRecU: 0 };
+  wrappedLate: 0, adopted: 0, drift: 0, driftU: 0, cargoIn: 0, cargoOut: 0, txRollback: 0, doors: 0, doorNoRec: 0, doorStale: 0, giveNoRec: 0, giveNoRecU: 0,
+  // ★[T748] 켬 전용 일곱 길 — 손 · 대기 칸 · 몸 짐 · 갱 비축 · 존 경계(센다 · 판정 0)
+  handRecs: 0, handU: 0, pockIn: 0, pockNew: 0, pockOut: 0, pockSeed: 0, pockDrift: 0, pockDriftU: 0,
+  bagIn: 0, bagNew: 0, bagOut: 0, gangIn: 0, gangOut: 0, gangSeed: 0, gangDrift: 0, gangDriftU: 0, denIn: 0, xzOut: 0, xzIn: 0 };
 
 let _gpf = null, _cpf = null;
 function _gran() { return _gpf || (_gpf = Spoil.placeFields('granary')); }
@@ -176,6 +179,15 @@ function attach(v, saved, seedK) {
     delete v._t716Lots;
   }
   for (const res of Object.keys(v.storage)) _wrap(v, res, k);
+  // ★[T748] 대기 칸 줄 — 저장된 것이 있으면 그것 · 없으면 지금 칸 값을 `seedK` 순간의 레코드 하나로(나이 모름 — 첫 부팅 · 끔에서 켬으로)
+  const SP = (saved && saved.P && typeof saved.P === 'object') ? saved.P : null;
+  for (const key of Object.keys(POCK_KEYS)) for (const res of _pockRes(v, key)) {
+    const want = _pockVal(v, key, res); if (!(want > EPS)) continue;
+    const arr = _pock(v, key, res, true); if (arr.length) continue;
+    const rec = SP && SP[key] && SP[key][res];
+    if (Array.isArray(rec) && rec.length) arr.push(...rec.filter((r) => r && r.u > EPS).map((r) => Object.assign({}, r)));
+    else { arr.push(_recAt(k, want, _pf(POCK_KEYS[key]))); ST.pockSeed++; }
+  }
   return true;
 }
 // econ 하루 뒤(같은 턴) — 새 마을 · 새 칸을 감싸고, 장부 합 = 곳간 값을 맞대 본다(어긋나면 고치고 센다)
@@ -199,6 +211,7 @@ function sync(econVillages) {
         _suspend = s;
       }
     }
+    _pockSync(v);   // ★[T748] 대기 칸 줄도 같이 맞댄다(어긋남 = 막지 못한 길 · 센다)
   }
   return { late, drift };
 }
@@ -381,13 +394,173 @@ function giveBegin(v, byRes, frac) {
 function giveEnd(v) { clearIn(v); }
 // 레코드 없이 곳간에 드는 줌(전쟁 짐을 몸이 내려놓기 T423 · 노획 운반 T466 · 장부 없는 그릇에서 온 노획 — 기본 끔 갈래) — 그 순간의 새 로트가 된다 · 센다
 function giveNoRec(v, items) { if (!LED.has(v)) return; let q = 0; for (const k in (items || {})) if (Lots.isLot(k)) q += +items[k] || 0; if (q > 0) { ST.giveNoRec++; ST.giveNoRecU += q; } }
-const hooks = { capBegin, capEnd, cargo, unload, bounce, pushIn, clearIn, packFrom, packKeep, giveBegin, giveEnd, giveNoRec };
+// ══ ★★[T748 2026-10-14] 켬 전용 일곱 길 — 로트를 그대로 넘긴다(손잡이 `T732_MOMENT_LOT=1` 안 · 그 길의 손잡이가 켜졌을 때만 닿는다) ══════
+//   PM 10-14(족보 639): T732 §8 ④ 는 **이 손잡이 안에서 막는다**(그 손잡이가 켤 때 다시 열 일 0). 새 수 0 · 판정 0 · 끔이면 아무도 안 부른다.
+//   ① 손 → 곳간(어부 T312 · 채집 T347 · 농부 T368): 몸의 로트(사람 `p.lots` · NPC 곁 장부)를 오래된 것부터 떼어 곳간 레코드로(`handRecs`).
+//      입구가 그날 몫까지만 받으면(수요 문) **받은 만큼만** 떼야 하니 입구 줄 앞에서 문을 열고 받은 몫을 본 뒤 뗀다(`doorOpen` · `doorShut`).
+//   ② 날짜 없던 대기 칸(채집 짐 `_t544Pack` · 고르게 `_t368Pend` · `_t100Pend`) — 칸마다 레코드 줄(`POCK`): 넣을 때 그 순간(손이 넘긴 레코드가 있으면 그것) ·
+//      뺄 때 오래된 것부터 곳간에(`pushIn`). econ 이 쓰는 값은 그대로 · 같은 양을 줄에(관측자).
+//   ③ 전쟁 짐(T423 · T441 · T466): 팩 레코드를 몸 짐 줄(`BAG` — 몸 밖 · 몸 필드 0)로 나눠 싣고 · 먹으면 오래된 것부터 · 내려놓으면 레코드째 곳간에.
+//      노획(T466)은 적 곳간에서 뗀 레코드째 몸에 · 전장 더미(전사자의 짐)도 레코드째 · 못 실은 곳간 몫은 레코드째 그 곳간에 되돌린다.
+//   ④ 소굴(T476): 갱 비축에 레코드 줄(`GANG`) — 장물아비 환산 몫은 그 순간 얻은 것(장물아비가 내준 식량) · 유지비는 오래된 것부터 ·
+//      토벌 땐 소굴 어댑터(econ 꼴)에 그 줄을 붙여 곳간처럼 뗀다(정본 `_warFoodTake` 그대로) · 싸운 뒤 남은 줄을 갱에 되비춘다.
+//   ⑤ 존 경계(T525): 짐 레코드가 기록('arrive' · 'return')에 실려 이웃 존으로 간다(`cargoDump` · `cargoLoad` — 받는 존이 그 캐러밴에 다시 싣는다).
+const POCK = new WeakMap();   // econ 마을 → { [칸]: { [품목]: rec[] } } — 날짜 없던 대기 칸의 레코드 줄
+const BAG = new WeakMap();    // 몸 → { [재화]: rec[] } — 전쟁 짐의 레코드 줄(몸 밖)
+const GANG = new WeakMap();   // 갱 → rec[] — 비축(식량 하나)의 레코드 줄
+// 대기 칸 — 이름 → 자리(짐은 몸에 지님 · 고르게 대기는 곳간 더미). 숫자 칸(`_t100Pend`)은 품목 'food' 하나다.
+const POCK_KEYS = { _t544Pack: 'carry', _t368Pend: 'granary', _t100Pend: 'granary' };
+function _pf(place) { return place === 'carry' ? _carry() : _gran(); }
+function _recAt(k, u, pf) { return { k, u, f0: 1, e: 0, t: k / _day(), m: pf.m, w: pf.w }; }
+function _sumU(arr) { let s = 0; for (const r of (arr || [])) s += +r.u || 0; return s; }
+function _fifo(arr, u) {   // 오래된 것부터 u 를 뗀다(뗀 복사를 돌려준다 · 모자라면 있는 만큼)
+  const out = []; let left = u;
+  while (left > EPS && arr.length) { const r = arr[0], t = Math.min(left, +r.u || 0); if (t > EPS) out.push(_copy(r, t)); r.u -= t; left -= t; if (r.u <= EPS) arr.shift(); }
+  return out;
+}
+function _scaleTo(recs, u) { const S = _sumU(recs); if (S > EPS && u >= 0) { const f = u / S; for (const r of recs) r.u *= f; } return recs; }
+function _merge(arr, recs, pf, nf) { for (const r of (recs || [])) if ((+r.u || 0) > EPS) arr.push(_restamp(_copy(r, +r.u), pf, nf)); return _sortK(arr); }
+// ① 몸의 손 → 레코드(오래된 것부터 `n` 개를 몸의 로트 장부에서 뺀다) · `per` = 낱개 하나의 econ 단위(손이 단위를 들면 1)
+function handRecs(p, item, n, per) {
+  if (!ON || !Lots.momentOn() || !p || !(n > EPS)) return [];
+  let out = [];
+  try { out = Lots.moveOut(p, item, n, p.inventory || {}, Math.floor(_nowFrac())) || []; } catch (e) { out = []; }
+  const W = Number(per) > 0 ? +per : 1;
+  const recs = [];
+  for (const r of out) {
+    const q = +r.n || 0; if (!(q > EPS)) continue;
+    const k = Number.isFinite(r.k) ? r.k : Math.floor(+r.d || 0) * _day();
+    recs.push({ k, u: q * W, f0: 1, e: +r.e || 0, t: (r.t == null) ? k / _day() : +r.t, m: r.m == null ? 1 : r.m, w: r.w == null ? 0 : r.w });
+  }
+  if (recs.length) { ST.handRecs += recs.length; ST.handU += _sumU(recs); }
+  return recs;
+}
+// 곳간 입구(econ 정본 한 줄)를 문으로 감싼다 — 그 줄 앞에서 열고(`doorOpen`) · 뒤에서 닫으며 늘어난 몫(세금 뗀 것)을
+//   입구가 받은 만큼 뗀 레코드로 채운다(`doorShut`). 입구 줄은 글자 그대로 둔다(하네스가 그 줄을 읽는다 · 사본 0).
+//   닫는 줄을 못 타면(입구가 던졌다) 다음 문 · 마감이 그 문을 닫고 잡아 둔 몫을 그 순간의 로트로 적는다(T732 `_doorStale` · 센다).
+function doorOpen(v) { return !!(ON && LED.has(v) && doorBegin()); }
+function doorShut(v, res, recs) { const d = doorEnd(true); if (d) { doorIn(d, v, res, recs || []); doorRest(d); } }
+// ② 대기 칸
+function _pock(v, key, res, make) {
+  let P = POCK.get(v); if (!P) { if (!make) return null; P = {}; POCK.set(v, P); }
+  let K = P[key]; if (!K) { if (!make) return null; K = P[key] = {}; }
+  if (!K[res]) { if (!make) return null; K[res] = []; }
+  return K[res];
+}
+function _pockVal(v, key, res) { const S = v && v[key]; if (S == null) return 0; if (typeof S === 'number') return res === 'food' ? S : 0; return Number(S[res]) || 0; }
+function _pockRes(v, key) {   // econ 칸의 품목 ∪ 줄의 품목(econ 이 칸을 지웠는데 줄이 남은 것도 본다)
+  const S = v && v[key], out = new Set();
+  if (S != null) { if (typeof S === 'number') out.add('food'); else for (const r of Object.keys(S)) out.add(r); }
+  const P = POCK.get(v), K = P && P[key]; if (K) for (const r of Object.keys(K)) out.add(r);
+  return [...out];
+}
+function pockPut(v, key, res, u, recs) {
+  if (!ON || !LED.has(v) || !POCK_KEYS[key] || !(u > EPS)) return;
+  const arr = _pock(v, key, res, true), pf = _pf(POCK_KEYS[key]), nf = _nowFrac();
+  if (recs && recs.length) { _merge(arr, _scaleTo(recs.map((r) => _copy(r, +r.u || 0)), u), pf, nf); ST.pockIn++; }
+  else { arr.push(_recAt(_kNow(), u, pf)); _sortK(arr); ST.pockNew++; }
+}
+function pockTake(v, key, res, u) {
+  const arr = (ON && LED.has(v)) ? _pock(v, key, res, false) : null;
+  if (!arr || !(u > EPS)) return [];
+  const out = _fifo(arr, u);
+  if (!arr.length) delete POCK.get(v)[key][res];
+  if (out.length) ST.pockOut++;
+  return out;
+}
+// econ 훅 — 고르게 대기 칸에 든다(손이 넘긴 레코드가 `pushIn` 으로 와 있으면 그것 · 없으면 그 순간 얻은 것) / 대기 칸에서 푼다(오래된 것부터 → 곳간)
+function pendIn(v, key, res, units) {
+  if (!ON || !LED.has(v)) return;
+  const P = PEND.get(v), q = P && P[res];
+  const recs = (q && q.length) ? q.splice(0) : null;
+  if (P && P[res] && !P[res].length) delete P[res];
+  pockPut(v, key, res, units, recs);
+}
+function pendOut(v, key, res, units) { const recs = pockTake(v, key, res, units); if (recs.length) pushIn(v, res, recs); }
+// 대기 칸 맞대기 — 줄 합 = econ 값(어긋나면 고치고 센다 · 길을 다 막았으면 0)
+function _pockSync(v) {
+  for (const key of Object.keys(POCK_KEYS)) for (const res of _pockRes(v, key)) {
+    const want = _pockVal(v, key, res), arr = _pock(v, key, res, want > EPS);
+    const have = _sumU(arr), dd = want - have;
+    if (!(Math.abs(dd) > 1e-9)) continue;
+    //   칸 값의 자릿수 자름(`toFixed(6)`)만큼은 조용히 맞춘다(비율 · 나이 무변) — 그보다 크면 막지 못한 길이다(센다 · 고친다)
+    if (arr && arr.length && have > EPS && Math.abs(dd) <= 1e-4 * Math.max(1, Math.abs(want))) { _scaleTo(arr, Math.max(0, want)); continue; }
+    ST.pockDrift++; ST.pockDriftU += Math.abs(dd);
+    if (dd > 0) { arr.push(_recAt(_kNow(), dd, _pf(POCK_KEYS[key]))); _sortK(arr); } else if (arr) _fifo(arr, -dd);
+  }
+}
+// ③ 몸 짐
+function bagPut(p, byRes) {
+  if (!ON || !p || !byRes) return;
+  let B = BAG.get(p); if (!B) { B = {}; BAG.set(p, B); }
+  const nf = _nowFrac(), c = _carry();
+  for (const [res, recs] of Object.entries(byRes)) if (recs && recs.length) { _merge(B[res] || (B[res] = []), recs, c, nf); ST.bagIn++; }
+}
+function bagNote(p, res, u) {   // 길에서 딴 것(T441) — 그 순간 얻은 것
+  if (!ON || !p || !(u > EPS) || !Lots.isLot(res)) return;
+  let B = BAG.get(p); if (!B) { B = {}; BAG.set(p, B); }
+  (B[res] || (B[res] = [])).push(_recAt(_now(), u, _carry())); _sortK(B[res]); ST.bagNew++;
+}
+function bagOut(p, res, u) { const B = BAG.get(p), arr = B && B[res]; if (!arr || !(u > EPS)) return []; const out = _fifo(arr, u); if (!arr.length) delete B[res]; if (out.length) ST.bagOut++; return out; }
+function bagTake(p, keys) {   // 짐을 다 내린다 — { 재화: rec[] }(내려놓기 · 전사 더미 · 노획 운반 끝)
+  const B = BAG.get(p); if (!B) return null;
+  const out = {};
+  for (const res of (keys || Object.keys(B))) if (B[res] && B[res].length) { out[res] = B[res]; delete B[res]; }
+  if (!Object.keys(B).length) BAG.delete(p);
+  return Object.keys(out).length ? out : null;
+}
+function bagOf(p) { return BAG.get(p) || null; }
+// 레코드 묶음 { 재화: rec[] } 끼리 — 더하기 · 품목 u 만큼 오래된 것부터 떼기(묶음에서 빠진다)
+function lotsAdd(into, add) { if (!add) return into; const o = into || {}; for (const [res, recs] of Object.entries(add)) if (recs && recs.length) (o[res] || (o[res] = [])).push(...recs.map((r) => _copy(r, +r.u || 0))); for (const res of Object.keys(o)) _sortK(o[res]); return o; }
+function lotsTake(lots, res, u) { const arr = lots && lots[res]; if (!arr || !(u > EPS)) return []; const out = _fifo(arr, u); if (!arr.length) delete lots[res]; return out; }
+// ④ 갱 비축
+function gangIn(g, u, seed) { if (!ON || !g || !(u > EPS) || !Lots.momentOn()) return; let a = GANG.get(g); if (!a) { a = []; GANG.set(g, a); } a.push(_recAt(_kNow(), u, _gran())); _sortK(a); if (seed) ST.gangSeed++; else ST.gangIn++; }
+function gangOut(g, u) { const a = GANG.get(g); if (!a || !(u > EPS)) return; _fifo(a, u); ST.gangOut++; }
+function gangSync(g) {   // 줄 합 = 갱 비축(어긋나면 고치고 센다 — 비축을 바꾸는 길을 다 막았으면 0)
+  if (!ON || !g || !Lots.momentOn()) return;
+  const want = Math.max(0, +g.food || 0), a = GANG.get(g) || [], have = _sumU(a), dd = want - have;
+  if (Math.abs(dd) > 1e-6 * Math.max(1, want)) { ST.gangDrift++; ST.gangDriftU += Math.abs(dd); if (dd > 0) { a.push(_recAt(_kNow(), dd, _gran())); _sortK(a); } else _fifo(a, -dd); GANG.set(g, a); }
+}
+function gangDump(g) { const a = GANG.get(g); return (a && a.length) ? a.map((r) => ({ k: r.k, u: +r.u.toFixed(9), f0: r.f0 == null ? 1 : r.f0, e: r.e, t: r.t, m: r.m, w: r.w })) : null; }
+function gangLoad(g, saved) { if (g && Array.isArray(saved) && saved.length) GANG.set(g, saved.filter((r) => r && r.u > EPS).map((r) => Object.assign({}, r))); }
+function gangOf(g) { return GANG.get(g) || null; }
+// 소굴 어댑터(econ 꼴 `{ storage }`)에 갱 줄을 붙인다 — 곳간처럼 뗀다(전쟁 정본 `_warFoodTake` 의 capBegin/capEnd 가 레코드를 모은다)
+const DEN_RES = ['food', 'fish', 'meat', 'cooked_food', 'vegetable'];
+function denAttach(e, g) {
+  if (!ON || !e || !e.storage || !g || !Lots.momentOn()) return false;
+  gangSync(g);
+  if (!LED.has(e)) LED.set(e, {});
+  const L = LED.get(e);
+  for (const k of Object.keys(L)) delete L[k];
+  DEBT.delete(e);
+  const food = Number(e.storage.food) || 0, a = GANG.get(g) || [];
+  if (food > EPS && a.length) L.food = _scaleTo(a.map((r) => _copy(r, +r.u)), food);
+  for (const res of DEN_RES) if (res in e.storage) _wrap(e, res, _kNow());
+  ST.denIn++;
+  return true;
+}
+function denSync(e, g) {   // 싸운 뒤 — 어댑터 줄(식량 칸 다 · 갱 비축은 하나)을 갱에 되비춘다
+  if (!ON || !e || !g || !LED.has(e)) return;
+  const L = LED.get(e), all = [];
+  for (const res of DEN_RES) if (L[res]) all.push(...L[res].map((r) => _copy(r, +r.u)));
+  GANG.set(g, _scaleTo(_sortK(all), Math.max(0, +g.food || 0)));
+  gangSync(g);
+}
+// ⑤ 존 경계 — 기록에 실을 짐 레코드 · 받은 기록의 짐 레코드를 그 캐러밴에(센다)
+function xzOut(c) { const K = cargoDump(c); if (K) ST.xzOut++; return K; }
+function xzIn(c, saved) { if (c && saved && typeof saved === 'object') { cargoLoad(c, saved); ST.xzIn++; } }
+const hooks = { capBegin, capEnd, cargo, unload, bounce, pushIn, clearIn, packFrom, packKeep, giveBegin, giveEnd, giveNoRec,
+  pendIn, pendOut, xzOut, xzIn };   // ★[T748] 대기 칸(econ 고르게) · 존 경계 기록
 
 // ══ 영속 · 보기 · 자 ═════════════════════════════════════════════════════════════════════════════
 function dump(v) {
   const L = LED.get(v); if (!L) return null;
   const out = { L: {}, D: Object.assign({}, DEBT.get(v) || {}) };
-  for (const [res, recs] of Object.entries(L)) if (recs && recs.length) out.L[res] = recs.map((r) => ({ k: r.k, u: +r.u.toFixed(9), f0: r.f0 == null ? 1 : r.f0, e: r.e, t: r.t, m: r.m, w: r.w }));
+  const _rd = (r) => ({ k: r.k, u: +r.u.toFixed(9), f0: r.f0 == null ? 1 : r.f0, e: r.e, t: r.t, m: r.m, w: r.w });
+  for (const [res, recs] of Object.entries(L)) if (recs && recs.length) out.L[res] = recs.map(_rd);
+  // ★[T748] 대기 칸 줄(있을 때만 — 없으면 칸이 안 생긴다)
+  const P = POCK.get(v);
+  if (P) for (const [key, K] of Object.entries(P)) for (const [res, recs] of Object.entries(K)) if (recs && recs.length) { const o = out.P || (out.P = {}); (o[key] || (o[key] = {}))[res] = recs.map(_rd); }
   return out;
 }
 function ledger(v, res) { const L = LED.get(v); return L ? (res == null ? L : (L[res] || [])) : null; }
@@ -412,11 +585,34 @@ function check(econVillages, tol) {
       const want = Number(v.storage[res]) || 0, have = (L[res] || []).reduce((a, r) => a + r.u, 0) - (D[res] || 0);
       if (Math.abs(want - have) > (tol || 1e-6) * Math.max(1, Math.abs(want))) bad.push({ v: v.name, res, want, have });
     }
+    // ★[T748] 대기 칸 — 줄 합 = econ 칸 값
+    for (const key of Object.keys(POCK_KEYS)) for (const res of _pockRes(v, key)) {
+      const want = _pockVal(v, key, res); const arr = _pock(v, key, res, false);
+      if (!(want > EPS) && !(arr && arr.length)) continue;
+      cells++;
+      const have = _sumU(arr);
+      if (Math.abs(want - have) > Math.max(tol || 1e-6, 1e-4) * Math.max(1, Math.abs(want))) bad.push({ v: v.name, res, pock: key, want, have });   // 칸 값 자릿수 자름(6자리) 몫은 같다고 본다(맞대기와 같은 문턱)
+    }
   }
   return { cells, bad };
 }
+// ★[T748] 몸 짐 · 갱 비축 불변식 — 줄 합 = 몸의 그 칸(짐 칸 목록) · 갱 비축
+function checkBag(p, keys, tol) {
+  const B = BAG.get(p) || {}, inv = (p && p.inventory) || {}, bad = [];
+  for (const res of (keys || Object.keys(B))) {
+    if (!Lots.isLot(res)) continue;
+    const want = Number(inv[res]) || 0, have = _sumU(B[res]);
+    if (Math.abs(want - have) > (tol || 1e-6) * Math.max(1, Math.abs(want))) bad.push({ res, want, have });
+  }
+  return bad;
+}
+function checkGang(g, tol) { const want = Math.max(0, +g.food || 0), have = _sumU(GANG.get(g)); return Math.abs(want - have) > (tol || 1e-6) * Math.max(1, want) ? { want, have } : null; }
 
 module.exports = { ON, attach, sync, pushIn, clearIn, capBegin, capEnd, suspend, txBegin, txEnd, isWrapped,
   tickBegin, tickEnd, doorBegin, doorEnd, doorIn, doorRest, doorCap,
   recsFromPlayer, recsToPlayer, hooks, cargo, unload, bounce, cargoDump, cargoLoad, packFrom, packKeep, giveBegin, giveEnd,
-  dump, ledger, attached, freshOf, stats, check };
+  dump, ledger, attached, freshOf, stats, check,
+  // ★[T748] 켬 전용 일곱 길
+  POCK_KEYS, handRecs, doorOpen, doorShut, pockPut, pockTake, pendIn, pendOut, pock: (v, key, res) => _pock(v, key, res, false),
+  bagPut, bagNote, bagOut, bagTake, bagOf, lotsAdd, lotsTake, checkBag,
+  gangIn, gangOut, gangSync, gangDump, gangLoad, gangOf, checkGang, denAttach, denSync, xzOut, xzIn };
