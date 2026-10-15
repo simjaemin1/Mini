@@ -8504,7 +8504,7 @@ function weatherFor(p, now) {
   // ★[T761] 켬(`temp`)이면 화면의 바깥 ℃ 도 몸과 같은 **그 자리 현지 위상**으로(`hintOf` 같은 식 · 몸이 읽는 값과 한 값) — 끔 = 존 하나 값(`weatherNow`) 그대로.
   let _wl = null;
   if (T761_CLOCKS.temp && !(_e2eClock && Number.isFinite(_e2eClock.day))) {
-    try { const _n = now || Date.now(), _d = gameDayT(_n), h = require('./weather').hintOf(gameDayNow(), bodyNight(_n), 0, _d.t, localPhase(ZONE.worldOffsetX + p.x, _n));
+    try { const _n = now || Date.now(), _d = gameDayT(_n), h = require('./weather').hintOf(day, bodyNight(_n), 0, _d.t, localPhase(ZONE.worldOffsetX + p.x, _n));
       if (h) _wl = { cold: h.cold, ko: h.ko, emo: h.emo, tempC: h.tempC }; } catch (e) { _wl = null; }
   }
   return Object.assign({}, w, _wl, { shelter: sh, cut, insC: +insC.toFixed(2),
