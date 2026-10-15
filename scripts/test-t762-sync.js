@@ -8,7 +8,8 @@
 //
 // 재는 것:
 //   ① 술어 — `=== '1'` 만 켬 · 읽는 자리 = `server/villages.js` 하나(sim · public · 다른 server 파일은 안 읽는다)
-//   ② 두 문(`_openDayJobs` · `_t731Jobs`) 모두: 명부 `_cl` 로 한 대씩 → (켬) 새 캐러밴 조각 → 쓸기 — 이 차례
+//   ② 두 문(`_openDayJobs` · `_t731Jobs`) 모두: 명부 `_cl` 로 한 대씩 → 끔: 쓸기(종전) · 켬: 쓸기 → 새 캐러밴 조각 — 이 차례
+//      (켬에서 쓸기가 앞인 까닭: 어제 집에 닿은 몸이 자리를 쥔 채면 새 몸이 상한 60 에 걸린다 · 쓸기는 몸만 훑어 새 캐러밴과 무관)
 //   ③ 끔 = 종전 — 한 대씩 조각은 명부 `_cl` 만 돈다(그 밖의 캐러밴 조각 0) · 손잡이가 안 켜지면 덧 조각이 안 선다(글자)
 //   ④ 덧 조각의 행동(정본 함수 글자를 그대로 평가 · 가짜 세계):
 //      ⓐ 명부에 있던 캐러밴은 건너뛴다 · ⓑ 명부는 **조각이 처음 돌 때** 뜬다(문을 연 뒤 econ 이 띄운 것까지) ·
@@ -37,15 +38,17 @@ console.log('\n① 술어 · 읽는 자리');
 
 console.log('\n② ③ 두 문의 차례 · 끔 글자');
 {
-  const blk = /\{ const _cl = state\.world\.caravans\.slice\(\);\n\s+for \(const c of _cl\) add\('caravan', \(\) => _caravanSyncOne\(C\.now, c, C\.car\)\);[^\n]*\n\s+if \(T762_CARAVAN_BODY\) add\('caravan', _t762SyncNewJob\(C, new Set\(_cl\)\)\); \}[^\n]*\n\s+add\('caravan', \(\) => \{ _caravanSyncSweep\(C\.car\); \}\);/g;
+  const blk = /\{ const _cl = state\.world\.caravans\.slice\(\);\n\s+for \(const c of _cl\) add\('caravan', \(\) => _caravanSyncOne\(C\.now, c, C\.car\)\);[^\n]*\n\s+if \(T762_CARAVAN_BODY\) \{ add\('caravan', \(\) => \{ _caravanSyncSweep\(C\.car\); \}\); add\('caravan', _t762SyncNewJob\(C, new Set\(_cl\)\)\); \}[^\n]*\n\s+else add\('caravan', \(\) => \{ _caravanSyncSweep\(C\.car\); \}\); \}/g;
   const n = (V.match(blk) || []).length;
-  ok(n === 2, '② 두 문 모두 — 명부 한 대씩 → (켬) 새 캐러밴 조각 → 쓸기', `${n}/2`);
+  ok(n === 2, '② 두 문 모두 — 명부 한 대씩 → 끔: 쓸기 · 켬: 쓸기 → 새 캐러밴 조각(집에 닿은 몸이 자리를 먼저 비운다)', `${n}/2`);
   const perCar = (codeOnly(V).match(/add\('caravan', \(\) => _caravanSyncOne\(/g) || []).length;
   const fromCl = (codeOnly(V).match(/for \(const c of _cl\) add\('caravan', \(\) => _caravanSyncOne\(/g) || []).length;
   ok(perCar === 2 && fromCl === 2, '③ 끔 = 종전 — 한 대씩 조각은 문을 연 명부(`_cl`)만 돈다', `한 대씩 ${perCar} · 명부 ${fromCl}`);
   const extra = (codeOnly(V).match(/_t762SyncNewJob\(/g) || []).length;
-  const guarded = (codeOnly(V).match(/if \(T762_CARAVAN_BODY\) add\('caravan', _t762SyncNewJob\(/g) || []).length;
+  const guarded = (codeOnly(V).match(/if \(T762_CARAVAN_BODY\) \{ add\('caravan', \(\) => \{ _caravanSyncSweep\(C\.car\); \}\); add\('caravan', _t762SyncNewJob\(/g) || []).length;
   ok(extra === 3 && guarded === 2, '③ 덧 조각은 손잡이 아래에서만 선다(정의 1 · 부름 2 = 둘 다 `if (T762_CARAVAN_BODY)`)', `글자 ${extra} · 손잡이 아래 ${guarded}`);
+  const sweeps = (codeOnly(V).match(/add\('caravan', \(\) => \{ _caravanSyncSweep\(C\.car\); \}\)/g) || []).length;
+  ok(sweeps === 4, '③ 쓸기는 문마다 한 번만 선다(켬 갈래 하나 · 끔 갈래 하나 × 두 문)', `쓸기 글자 ${sweeps}`);
 }
 
 console.log('\n④ 덧 조각의 행동(정본 글자 · 가짜 세계)');
