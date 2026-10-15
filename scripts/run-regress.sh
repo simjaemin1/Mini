@@ -34,6 +34,10 @@ set -u
 
 DRAIN_SEC="${DRAIN_SEC:-8}"
 TIMEOUT_SEC="${TIMEOUT_SEC:-2400}"
+# ★[T760 · T751 회부 4] 하네스별 상한 표 — 표에 있는 것만 그 수(기본보다 클 때만) · 나머지는 `TIMEOUT_SEC` 그대로.
+#   랩 둘은 단독 판이 2,042초(mining) · 1,468초(psite)라 기본 2,400초와 여유가 적다(다른 판과 같이 돌면 넘는다 · T735 회부 4).
+#   `@regress` 표식은 안 붙인다 — 야간 목록은 그대로고, 이름을 주고 돌릴 때만 이 표가 쓰인다.
+declare -A TIMEOUT_OF=( [test-lab-mining.js]=3600 [test-lab-psite.js]=3600 )
 FAILED=()
 PASSED=()
 
@@ -49,7 +53,8 @@ run_one() {
   echo "##### $f #####"
   # ★종료코드를 파이프 **앞에서** 잡는다. 이 한 줄이 이 파일의 존재 이유다.
   local out rc
-  out="$(timeout "$TIMEOUT_SEC" node "scripts/$f" 2>&1)"
+  local t="$TIMEOUT_SEC"; [ -n "${TIMEOUT_OF[$f]:-}" ] && [ "${TIMEOUT_OF[$f]}" -gt "$t" ] && t="${TIMEOUT_OF[$f]}"
+  out="$(timeout "$t" node "scripts/$f" 2>&1)"
   rc=$?
   # ★실패한 줄이 **자기 이름을 말하게** 한다 [2026-08-26] —
   #   종전엔 요약줄만 `tail -5` 로 남아서 "72/1 실패"만 보이고 **무엇이** 실패했는지는

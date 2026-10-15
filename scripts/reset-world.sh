@@ -166,7 +166,11 @@ backup_and_stop() {   # 멈춤 → 백업 → 확인 · 전역 B 에 폴더
   mkdir -p "$BACKUP_ROOT" 2>/dev/null || { say "  ✗ 백업 자리를 못 만든다: $BACKUP_ROOT"; return 1; }
   av="$(free_at "$BACKUP_ROOT")"
   [ "$av" -ge "$need" ] || { say "  ✗ 백업 자리가 모자란다($(human "$av") < $(human "$need"))"; return 1; }
-  B="$BACKUP_ROOT/$(date -u +%Y%m%d-%H%M%S)-$TARGET"
+  # ★[T760] 같은 UTC 초에 두 번째 백업이면 순번을 붙인다(`<초>.2-<대상>` · 끝 `-<대상>` 그대로 · `.` 이 `-` 보다 뒤라 이름순 = 시각순).
+  #   종전: 거절된 `--apply`(둘째 글자 틀림)가 이미 그 초의 폴더를 만든 뒤 같은 초 둘째 `--apply` 가 `mkdir: File exists` 로 멈췄다(T751 회부 5).
+  local TS; TS="$(date -u +%Y%m%d-%H%M%S)"; local SEQ=1
+  B="$BACKUP_ROOT/$TS-$TARGET"
+  while [ -e "$B" ]; do SEQ=$((SEQ + 1)); B="$BACKUP_ROOT/$TS.$SEQ-$TARGET"; done
   mkdir "$B" || { say "  ✗ 백업 폴더를 못 만든다: $B"; return 1; }
   local f
   for f in ${DBF[@]+"${DBF[@]}"}; do cp -p -- "$VOL/$f" "$B/$f" || { say "  ✗ 복사 실패: $f"; return 1; }; done
