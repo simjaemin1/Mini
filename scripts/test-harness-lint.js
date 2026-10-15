@@ -57,6 +57,18 @@ function judgeHits(src, file) {
       text: node.regex ? '/' + node.regex.pattern + '/' : (node.value != null ? String(node.value) : node.quasis.map((q) => q.value.cooked).join('${}')) });
     for (const k of Object.keys(node)) if (k !== 'loc' && k !== 'range') scan(node[k], why);
   };
+  // ★[T751] **이름 먼저 꼴** — 그 파일이 `function ok(name, cond, …)`(또는 `const ok = (n, c, d) =>`)로 스스로 선언하면
+  //   판정 자리는 **둘째** 인자다(`e2e-mtcut` · `e2e-mtfoot` · `e2e-mtocc` · `e2e-mtfuzz`). 첫 매개 = 이름 꼴 **그리고**
+  //   둘째 매개 = 조건 꼴(`c`·`cond`·`condition`) 둘 다일 때만이다. 종전엔 첫 인자(= 이름 · 장식)를 조건으로 읽어
+  //   라벨의 ★를 판정으로 물었고(린트 탄생 `00b3094a` 09-04 부터) **진짜 조건은 안 읽었다**. 선언이 없거나 첫 인자가
+  //   이름 꼴이 아니면 종전 그대로 첫 인자다(느슨하게 풀지 않는다 — 읽는 자리를 바로잡을 뿐 · 아래 ④e·④f 미끼).
+  const NAME_FIRST = /^(n|name|label|msg|message|title|desc|what)$/, COND_2ND = /^(c|cond|condition)$/;
+  const condIdx = {};
+  for (const st of ast.body) {
+    const decl = st.type === 'FunctionDeclaration' ? [[st.id && st.id.name, st.params]]
+      : st.type === 'VariableDeclaration' ? st.declarations.map((d) => [d.id && d.id.name, d.init && /FunctionExpression$/.test(d.init.type) ? d.init.params : null]) : [];
+    for (const [nm, ps] of decl) if (/^(ok|chk|assert)$/.test(nm || '') && ps && ps.length >= 2 && ps[0].type === 'Identifier' && NAME_FIRST.test(ps[0].name) && ps[1].type === 'Identifier' && COND_2ND.test(ps[1].name)) condIdx[nm] = 1;
+  }
   const walk = (n) => {
     if (!n || typeof n !== 'object') return;
     if (Array.isArray(n)) { n.forEach(walk); return; }
@@ -64,7 +76,7 @@ function judgeHits(src, file) {
       const c = n.callee, mem = c && c.type === 'MemberExpression', prop = mem && c.property && c.property.name;
       if (prop && JUDGE_PRED.has(prop)) { n.arguments.forEach((a) => scan(a, `.${prop}()`)); if (mem && has(c.object)) scan(c.object, `.${prop}() 수신자`); }
       if (prop && JUDGE_SEL.has(prop)) n.arguments.forEach((a) => scan(a, `${prop}() 셀렉터`));
-      if (c && c.type === 'Identifier' && /^(ok|chk|assert)$/.test(c.name) && n.arguments.length) scan(n.arguments[0], 'ok() 조건');
+      if (c && c.type === 'Identifier' && /^(ok|chk|assert)$/.test(c.name) && n.arguments.length > (condIdx[c.name] || 0)) scan(n.arguments[condIdx[c.name] || 0], 'ok() 조건');
     }
     if (n.type === 'BinaryExpression' && /^(===|!==|==|!=)$/.test(n.operator)) { scan(n.left, `${n.operator} 비교`); scan(n.right, `${n.operator} 비교`); }
     for (const k of Object.keys(n)) if (k !== 'loc' && k !== 'range') walk(n[k]);
@@ -118,6 +130,15 @@ ok(bad.length === 0, '② ★판정 자리에 이모지 0 (정규식 · 술어 �
   ok(F && F.length === 1, '④c 술어 인자(`includes`)도 잡는다');
   const S = mut("page.$('button:has-text(\"\u{1F3E0} 집\")');");
   ok(S && S.length === 1, '④d 셀렉터 안의 이모지도 잡는다');
+  // ★[T751] 이름 먼저 꼴 — 조건(둘째)의 이모지는 **잡고**, 이름(첫째)의 ★ 장식은 **안 잡는다**. 선언이 없으면 종전대로 첫 인자.
+  const NF = mut("function ok(name, cond, detail) {} const x = 'a'; ok('\u2605 이름', x.includes('\u{1F4CB}'), 'd');");
+  ok(NF && NF.length === 1 && /includes/.test(NF[0].why + NF[0].text) === false && NF[0].text === '\u{1F4CB}',
+    '④e ★이름 먼저 꼴(`function ok(name, cond, …)`)이면 **둘째 인자**의 이모지를 잡는다', NF ? NF.map((h) => `${h.why} ${JSON.stringify(h.text)}`).join(' · ') : '픽스처 파싱 실패');
+  const NP = mut("function ok(name, cond, detail) {} ok('\u2605 \u2705 장식', true, '\u2705');");
+  const NO = mut("ok('\u2605 \u2705 첫 인자', true);");
+  const NX = mut("const ok = (label, extra) => 0; ok('\u2605 둘째가 조건 꼴이 아니면 종전대로', true);");
+  ok(NP && NP.length === 0 && NO && NO.length === 1 && NX && NX.length === 1,
+    '④f ★★그 꼴의 이름(첫 인자) 장식은 **안 잡고** · 선언이 없는 파일은 **종전대로** 첫 인자를 잡는다(느슨하게 풀지 않았다)', `이름 먼저 ${NP ? NP.length : '?'}자리 · 선언 없음 ${NO ? NO.length : '?'}자리 · 둘째가 조건 꼴 아님 ${NX ? NX.length : '?'}자리`);
 }
 
 // ═══ ⑤ [T104 2026-09-05 · T98 회부 8] **프레임을 화소로 재는 하네스는 표를 단다** ═══════

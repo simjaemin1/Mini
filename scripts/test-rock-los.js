@@ -141,10 +141,20 @@ console.log('\n[④ 서버/클라 바위 판정 거울 — 계곡을 한쪽만 �
   ok(!!m && +m[1] === R && +m[2] === MAX_ROCK_SEGS, '상수 일치 — client(' + (m ? m[1] + ',' + m[2] : '못 찾음') + ') vs 하네스(' + R + ',' + MAX_ROCK_SEGS + ')');
   // ★강이 산보다 위 — 세 갈래 렌더 경로가 전부 '물 먼저'여야 한다(판정도 물 우선이라 안 맞으면 지도가 거짓말한다)
   ok(/const isRock = !isWater && isRockAtAbs/.test(cj), '월드 타일: 물이 바위를 이긴다');
-  ok(/isWaterCellLocal\(zid, lx \+ 16, ly \+ 16\)\) col = waterColor;[\s\S]{0,120}isRockCellLocal/.test(cj), '전체지도 셀 경로: 물 먼저');
-  const vi = cj.indexOf('5. ridge(산맥) stroke'), li = cj.indexOf('6. lake'), ri = cj.indexOf('7. river stroke');
-  ok(vi > 0 && vi < li && li < ri, '전체지도 벡터 경로: 산맥 → 호수 → 강 순서(나중에 그린 물이 위)');
-  ok(/destination-out/.test(cj) && /for \(const v of \(td\.valleys\|\|\[\]\)\)/.test(cj), '전체지도가 고개·계곡을 산맥에서 도로 뚫는다');
+  // ★[T751 · T565 `b607600d` 09-30] 큰 지도는 더 이상 클라가 벡터(산맥 stroke · 호수 · 강)로 칠하지 않는다 —
+  //   존이 **제 걷기 술어**(`isRockTileLocal` = terrain `isRockCellLocal`)를 셀 중심에서 표본해 굽는다(`server/bigmap-bake.js`).
+  //   그래서 아래 셋의 뜻("지도가 판정과 같은 답 · 물 먼저 · 고개·계곡은 뚫림")을 **새 자리 이름**으로 못 박는다.
+  const tsv = fs.readFileSync(path.join(__dirname, '..', 'server', 'terrain.js'), 'utf8');
+  const zsv = fs.readFileSync(path.join(__dirname, '..', 'server', 'zone.js'), 'utf8');
+  const bk = fs.readFileSync(path.join(__dirname, '..', 'server', 'bigmap-bake.js'), 'utf8');
+  const rc = (tsv.match(/function isRockCellLocal\([\s\S]*?\n\}/) || [''])[0];
+  ok(/rock: \(x, y\) => isRockTileLocal\(x, y\), water: \(x, y\) => isWaterTileLocal\(x, y\)/.test(zsv) &&
+     /function classAt\(q, tx, ty\) \{[\s\S]{0,80}if \(q\.rock\(x, y\)\) return K\.rock;\s*if \(q\.water\(x, y\)\)/.test(bk),
+     '전체지도 셀 경로: 존 걷기 술어 그대로(`_BM_Q` → `classAt` 바위 → 물 = `_terrBlocked0` 순서)');
+  ok(/if \(isWaterCellLocal\(zoneId, localX, localY\)\) return false;\s*return true;\s*\}$/.test(rc),
+     '전체지도 물 먼저: 바위 술어가 물 셀을 바위에서 뺀다(나중에 그린 물이 위 — 같은 뜻) · 클라 벡터 산맥 stroke 0: ' + !/ridge\(산맥\) stroke/.test(cj));
+  ok(!/ridge\(산맥\) stroke/.test(cj) && /for \(const q of t\.passes \|\| \[\]\)[\s\S]{0,140}return false;/.test(rc) && /for \(const v of t\.valleys \|\| \[\]\) \{\s*if \(_isPointInRiver\(localX, localY, v\)\) return false;/.test(rc),
+     '전체지도가 고개·계곡을 산맥에서 도로 뚫는다(바위 술어 = 능선 − 고개 − 계곡 · 클라 벡터 산맥 0)');
 }
 
 console.log('\n결과: ' + (fail ? 'FAIL(' + fail + ')' : 'PASS'));
