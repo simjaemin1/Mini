@@ -14,7 +14,7 @@ if (!DIR) { console.error('쓰는 법: node scripts/t766-table.js <판 디렉터
 const JOUT = process.argv.includes('--json') ? process.argv[process.argv.indexOf('--json') + 1] : null;
 const SEEDS = [1020, 7, 42];
 const RUNS = [
-  ['ⓐ', 'base', '지금 main'], ['ⓑ', 'enable_bandits0', '도적 층 끔'], ['ⓑ′', 't766_raid_off1', '길 훅만 끔(습격 · 길 위험 0)'],
+  ['ⓐ', 'base', '지금 main'], ['ⓐ″', 'base_rep', '지금 main 다시(잡음 바닥)'], ['ⓑ', 'enable_bandits0', '도적 층 끔'], ['ⓑ′', 't766_raid_off1', '길 훅만 끔(습격 · 길 위험 0)'],
   ['ⓒ', 't766_dissolve_incoming1', '해체 문 + 오는 식량'], ['ⓓ', 'enable_bandits0-t766_dissolve_incoming1', 'ⓑ + ⓒ'],
 ];
 const rd = (f) => { try { return JSON.parse(fs.readFileSync(path.join(DIR, f), 'utf8')); } catch (e) { return null; } };
@@ -97,18 +97,39 @@ for (const [k] of RUNS) for (const s of SEEDS) {
   }
 }
 
-// ── ⓒ 가 살린 마을 / 못 살린 마을 — 시드마다 ⓐ 의 해체 마을을 ⓒ 에서 찾는다(판은 바이트 결정론이 아니다 — 같은 시드 다른 판) ──
-console.log('\n### ⓒ 가 살린 마을 / 못 살린 마을(시드마다 ⓐ 해체 마을 기준)\n');
-console.log('| 시드 | ⓐ 해체 마을 | ⓒ 에서 해체 안 됨(살림 · 보류 날 수) | ⓒ 에서도 해체(못 살림 · 까닭) | ⓒ 에서만 해체 |');
-console.log('|---|---|---|---|---|');
-const SAVE = [];
-for (const s of SEEDS) {
-  const A = R[`ⓐ|${s}`], C = R[`ⓒ|${s}`]; if (!A || !C) continue;
-  const aN = new Set(A.dis.map((d) => d.name)), cN = new Map(C.dis.map((d) => [d.name, d]));
-  const heldBy = {}; for (const h of C.held) heldBy[h.name] = (heldBy[h.name] || 0) + 1;
-  const saved = [...aN].filter((n) => !cN.has(n)), not = [...aN].filter((n) => cN.has(n)), onlyC = [...cN.keys()].filter((n) => !aN.has(n));
-  const why = (d) => (d.inc > 0 ? `오는 ${d.inc} — ${d.fe}+${d.inc} < ${d.need}` : `오는 식량 0(곳간 ${d.fe} < ${d.need})`);
-  SAVE.push({ seed: s, saved, not: not.map((n) => ({ name: n, why: why(cN.get(n)) })), onlyC });
-  console.log(`| ${s} | ${[...aN].join(' · ')} (${aN.size}) | ${saved.map((n) => `${n}${heldBy[n] ? `(보류 ${heldBy[n]}일)` : ''}`).join(' · ') || '—'} (${saved.length}) | ${not.map((n) => `${n}(${why(cN.get(n))})`).join(' · ') || '—'} (${not.length}) | ${onlyC.map((n) => `${n}(${why(cN.get(n))})`).join(' · ') || '—'} (${onlyC.length}) |`);
+// ── 갈린 마을 — 시드마다 X 의 해체 마을을 Y 에서 찾는다(판은 바이트 결정론이 아니다 — 같은 시드 다른 판 · ⓐ↔ⓐ″ 가 잡음 바닥) ──
+function compare(kx, ky, title) {
+  console.log(`\n### ${title}\n`);
+  console.log(`| 시드 | ${kx} 해체 마을 | ${ky} 에서 해체 안 됨(보류 날 수 · 보류 없으면 판 갈림) | ${ky} 에서도 해체(까닭) | ${ky} 에서만 해체 |`);
+  console.log('|---|---|---|---|---|');
+  const out = [];
+  for (const s of SEEDS) {
+    const A = R[`${kx}|${s}`], C = R[`${ky}|${s}`]; if (!A || !C) continue;
+    const aN = new Set(A.dis.map((d) => d.name)), cN = new Map(C.dis.map((d) => [d.name, d]));
+    const heldBy = {}; for (const h of C.held) heldBy[h.name] = (heldBy[h.name] || 0) + 1;
+    const saved = [...aN].filter((n) => !cN.has(n)), not = [...aN].filter((n) => cN.has(n)), onlyC = [...cN.keys()].filter((n) => !aN.has(n));
+    const why = (d) => (d.inc > 0 ? `오는 ${d.inc} — ${d.fe}+${d.inc} < ${d.need}` : `오는 0 · 곳간 ${d.fe} < ${d.need}`);
+    out.push({ seed: s, saved: saved.map((n) => ({ name: n, held: heldBy[n] || 0 })), not: not.map((n) => ({ name: n, why: why(cN.get(n)) })), onlyC });
+    console.log(`| ${s} | ${[...aN].join(' · ')} (${aN.size}) | ${saved.map((n) => `${n}${heldBy[n] ? `(**보류 ${heldBy[n]}일**)` : ''}`).join(' · ') || '—'} (${saved.length}) | ${not.map((n) => `${n}(${why(cN.get(n))})`).join(' · ') || '—'} (${not.length}) | ${onlyC.map((n) => `${n}(${why(cN.get(n))})`).join(' · ') || '—'} (${onlyC.length}) |`);
+  }
+  return out;
 }
-if (JOUT) fs.writeFileSync(JOUT, JSON.stringify({ dir: DIR, runs: Object.fromEntries(Object.entries(R).map(([key, r]) => [key, { empty: r.o.empty, dissolved: r.o.dissolved, firstEmpty: r.o.firstEmpty, bandit: r.o.bandit, eight: r.o.eight, pop400: r.pop400, pop800: r.pop800, dis: r.dis, held: r.held.length, heldVillages: [...new Set(r.held.map((h) => h.name))], empties: r.empties, cargoLost: +r.cargoLost.toFixed(1), tradersKilled: r.tradersKilled, supDead: r.st.supDead ?? null, t766Held: r.st.t766Held ?? null }])), sum: SUM, save: SAVE }, null, 1));
+const SAVE = compare('ⓐ', 'ⓒ', 'ⓐ → ⓒ 갈린 해체 마을(시드마다 ⓐ 해체 마을 기준)');
+const NOISE = compare('ⓐ', 'ⓐ″', 'ⓐ → ⓐ″ 갈린 해체 마을(같은 main 두 판 — 잡음 바닥)');
+
+// ── 해체 문이 직접 막은 마을(ⓒ · ⓓ 의 보류 줄) — 막은 뒤 어찌 됐나 ──
+console.log('\n### 해체 문이 직접 막은 마을(보류 줄) — 막은 뒤\n');
+console.log('| 판 | 시드 | 마을 | 보류 날(첫~끝 · 날 수) | 그때 곳간 + 오는 식량 | 뒤에 해체? | 끝 날 인구 | 빈 마을? |');
+console.log('|---|---|---|---|---|---|---|---|');
+const HELD = [];
+for (const k of ['ⓒ', 'ⓓ']) for (const s of SEEDS) {
+  const r = R[`${k}|${s}`]; if (!r) continue;
+  const by = new Map(); for (const h of r.held) { if (!by.has(h.name)) by.set(h.name, []); by.get(h.name).push(h); }
+  if (!by.size) { console.log(`| ${k} | ${s} | — |||||| `); continue; }
+  for (const [n, hs] of by) {
+    const i = r.o.names.indexOf(n), d = r.dis.find((x) => x.name === n), endN = r.o.rows[r.o.rows.length - 1][1][i];
+    HELD.push({ k, seed: s, name: n, first: hs[0].day, last: hs[hs.length - 1].day, days: hs.length, laterDis: d ? d.day : null, endN });
+    console.log(`| ${k} | ${s} | ${n} | ${hs[0].day}~${hs[hs.length - 1].day} · ${hs.length} | ${hs[0].fe} + ${hs[0].inc} | ${d ? `D${d.day}(${d.day - hs[hs.length - 1].day}일 뒤)` : '안 됨'} | ${endN} | ${endN === 0 ? '빔' : ''} |`);
+  }
+}
+if (JOUT) fs.writeFileSync(JOUT, JSON.stringify({ dir: DIR, runs: Object.fromEntries(Object.entries(R).map(([key, r]) => [key, { empty: r.o.empty, dissolved: r.o.dissolved, firstEmpty: r.o.firstEmpty, bandit: r.o.bandit, eight: r.o.eight, pop400: r.pop400, pop800: r.pop800, dis: r.dis, held: r.held.length, heldVillages: [...new Set(r.held.map((h) => h.name))], empties: r.empties, cargoLost: +r.cargoLost.toFixed(1), tradersKilled: r.tradersKilled, supDead: r.st.supDead ?? null, t766Held: r.st.t766Held ?? null }])), sum: SUM, save: SAVE, noise: NOISE, held: HELD }, null, 1));
