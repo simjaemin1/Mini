@@ -40,6 +40,21 @@ def cap_violation(caps, *, elapsed, rss_bytes, free_disk_bytes, mps_driver_bytes
     return None
 
 
+def ready_mps_driver_bytes(torch):
+    """An outer watchdog may observe torch before its import has completed."""
+    if torch is None:
+        return 0
+    namespace = vars(torch)
+    if getattr(namespace.get("__spec__"), "_initializing", False):
+        return 0
+    backend = getattr(namespace.get("backends"), "mps", None)
+    available = getattr(backend, "is_available", None)
+    driver_memory = getattr(namespace.get("mps"), "driver_allocated_memory", None)
+    if callable(available) and callable(driver_memory) and available():
+        return int(driver_memory())
+    return 0
+
+
 class ResourceGuard:
     """Poll the actual process; a hard breach terminates it, never retries MPS.
 
@@ -56,10 +71,7 @@ class ResourceGuard:
 
     def snapshot(self):
         import psutil
-        torch = sys.modules.get("torch")
-        mps_bytes = 0
-        if torch is not None and torch.backends.mps.is_available():
-            mps_bytes = int(torch.mps.driver_allocated_memory())
+        mps_bytes = ready_mps_driver_bytes(sys.modules.get("torch"))
         return {"elapsed": time.monotonic() - self.started,
                 "rss_bytes": psutil.Process().memory_info().rss,
                 "mps_driver_bytes": mps_bytes,
@@ -81,7 +93,8 @@ class ResourceGuard:
                 state = self.snapshot()
                 reason = cap_violation(self.caps, **state)
             except Exception as exc:
-                state, reason = {"error_type": type(exc).__name__}, "watchdog_failed"
+                state, reason = {"error_type": type(exc).__name__,
+                                 "error_message": str(exc)[:300]}, "watchdog_failed"
             if reason:
                 print(json.dumps({"status": "resource_aborted", "reason": reason,
                                   **state}), file=sys.stderr, flush=True)

@@ -30,6 +30,7 @@ def offline_environment(checkpoint_dir):
     os.environ["HF_HUB_DISABLE_TELEMETRY"] = "1"
     checkpoints = Path(checkpoint_dir).resolve(strict=True)
     os.environ["ACESTEP_CHECKPOINTS_DIR"] = str(checkpoints)
+    os.environ["ACESTEP_PROJECT_ROOT"] = str(checkpoints.parent)
     cache = checkpoints.parent / "runtime-cache"
     for key, folder in (("HF_HOME", "huggingface"), ("HF_MODULES_CACHE", "hf-modules"),
                         ("TORCH_HOME", "torch"), ("MPLCONFIGDIR", "matplotlib")):

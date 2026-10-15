@@ -48,7 +48,9 @@ weights, model cache, or private manifests belong in Git.
 3. Run `run_trial.py --source ... --checkpoints ... --inputs ... --assets
    .../asset_manifest.json --output NEW_DIRECTORY`. The disposable process
    performs codec reconstruction and then the new-score cover. `--mode cover`
-   is an explicit separate run, not an automatic fallback.
+   is an explicit separate run, not an automatic fallback. Optional
+   `--guide-gain-db 16` creates a separate constant-gain guide copy without
+   changing notes or exact rests; its gain and input/output hashes are recorded.
 4. Use `compare_audio.py --help` for same-length, same-integrated-loudness AAC
    comparison. Preserve unnormalized raw WAVs and all failed-run diagnostics.
 
@@ -76,3 +78,17 @@ approved, with the NIKL credit:
 
 Synthetic tests do not download weights or run the music model. Real inference
 reports and frozen input/asset manifests remain in the private workspace.
+
+## 2026-10-15 actual result
+
+Three local 19.2-second cover renders completed: guide strength 1.0, strength
+0.8, and strength 1.0 with explicit +16 dB guide calibration. A separate
+five-second original codec reconstruction also completed. Same-duration AAC
+comparisons were decoded and measured at -24 LUFS using static gain only.
+
+These cover trials did **not** demonstrate exact score or breath adherence:
+the first three written rests retained sound; guide-level calibration did not
+resolve this. Monophonic YIN also disagreed with much of the authored pitch,
+but mixture/subharmonic tracking errors mean its near-pitch fraction is not a
+literal melody-accuracy score. No listening-quality or game-asset approval was
+granted. Do not substitute codec reconstruction for a generated performance.

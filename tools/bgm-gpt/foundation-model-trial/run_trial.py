@@ -6,6 +6,7 @@ The private output directory must be new. Musical quality requires listening.
 import argparse
 from importlib.metadata import version
 import json
+import math
 import os
 from pathlib import Path
 import time
@@ -56,6 +57,25 @@ def validate_inputs(inputs, assets, checkpoints):
             "AIHub_or_DDSP_Gugak_used": False}
 
 
+def prepare_guide(inputs, output, gain_db):
+    """Explicit static level calibration, preserving notes and exact rests."""
+    import numpy as np
+    import soundfile as sf
+    if not math.isfinite(gain_db) or not 0 <= gain_db <= 20:
+        raise ValueError("Guide gain must be finite and between 0 and 20 dB")
+    source = inputs / "public_b0_sine_guide_19p2s_48k_stereo.wav"
+    path = source
+    if gain_db:
+        audio, rate = sf.read(source, dtype="float32", always_2d=True)
+        audio *= 10 ** (gain_db / 20)
+        if not np.isfinite(audio).all() or np.max(np.abs(audio)) > .95:
+            raise ValueError("Calibrated guide would exceed safe peak")
+        path = output / "guide_static_gain.wav"
+        sf.write(path, audio, rate, subtype="FLOAT")
+    return path, {"static_gain_db": gain_db, "source_sha256": sha256_file(source),
+                  "effective_sha256": sha256_file(path), "notes_or_rests_edited": False}
+
+
 def run(args):
     os.umask(0o077)
     args.output.mkdir(mode=0o700, parents=False, exist_ok=False)
@@ -66,6 +86,7 @@ def run(args):
     write_json(report_path, report)
     try:
         report["provenance"] = validate_inputs(args.inputs, args.assets, args.checkpoints)
+        guide, report["guide_level_adjustment"] = prepare_guide(args.inputs, args.output, args.guide_gain_db)
         print(json.dumps({"stage": "inputs_and_assets_verified"}), flush=True)
         with ResourceGuard(args.output, ResourceCaps(max_seconds=1800)):
             handler = initialize_runtime(args.source, args.checkpoints, args.output)
@@ -91,7 +112,7 @@ def run(args):
             cover_dir = args.output / "cover"
             cover_dir.mkdir(mode=0o700)
             result, facts = cover_once(
-                handler, args.inputs / "public_b0_sine_guide_19p2s_48k_stereo.wav",
+                handler, guide,
                 args.inputs / "ngc_002_reference_full_19p2s_48k_stereo.wav", cover_dir,
                 cover_strength=args.cover_strength, seed=args.seed)
             saved = result.audios[0].get("path")
@@ -115,4 +136,5 @@ if __name__ == "__main__":
     parser.add_argument("--mode", choices=("both", "cover"), default="both")
     parser.add_argument("--cover-strength", type=float, default=0.8)
     parser.add_argument("--seed", type=int, default=20261015)
+    parser.add_argument("--guide-gain-db", type=float, default=0.0)
     run(parser.parse_args())
