@@ -312,6 +312,9 @@ console.log('\n⑥ ★게이트 — 같은 씨 · 51마을 7게임일 · 좌표 
       // ★[T732] 어부의 8초 한 마리 줄에 로트 적기(`if (T732_MOMENT) Lots.note(…)`)가 섰다 — 손잡이는 **제품 기본(끔)** 그대로 싣는다
       //   (끔이면 그 줄이 아무것도 안 한다 · 이 게이트의 두 판 비트 동일은 끔 세계의 것).
       T732_MOMENT: false,
+      // ★[T761 · PM 착지 10-15] 몸 기온 곡선의 현지 시계 갈래(`T761_CLOCKS.temp && …`)가 섰다 — 손잡이는 **제품 기본(끔)** 그대로 싣는다
+      //   (`server/zone-config.js` `T761_CLOCKS` 끔 꼴 그대로 · 끔이면 종전 `_dT.ph` 를 쓴다 · 두 판 비트 동일은 끔 세계의 것).
+      T761_CLOCKS: { on: false, wx: false, mob: false, temp: false },
     };
     const keys = Object.keys(env);
     const fn = new Function(...keys, src + '\nreturn decideNpcBehavior;')(...keys.map((k) => env[k]));
@@ -649,6 +652,8 @@ let RUN9 = null;
       players: world.players, mobs: world.mobs, buildings: world.buildings, activeChunkKeys, chunkManager, stairCellCache, qtBuildings,
       qtColl: qtBuildings,   // ★[T449 ③] 받침 술어(`hasFloorSupportAt`)가 이제 벽 질의 격자를 본다 — 여기선 같은 모의 격자(종류는 술어가 거른다 · 판정은 `test-coll-grid`)
       T385_ONE_SWEEP: on, T689_GC: GC9, BUILDING_SIZE: BS, FLOOR_HEIGHT: FH, HUNGER_MAX: 100, THIRST_MAX: 100,
+      T761_CLOCKS: { on: false, wx: false, mob: false, temp: false },   // ★[T761 · PM 착지 10-15] 몸 기온 · 몹 밤 현지 시계 갈래 — 제품 기본(끔) 그대로
+
       COLD_CLOTH_WEAR_MS: 60000, CARRIER_WEAR_MS: 60000, VP_DECAY_PER_SEC: 0.5,
       send: (ws, m) => log.push('S' + ws.id + ':' + m.type + ':' + (m.hp ?? m.floor ?? '') + (m.follow ? ':' + JSON.stringify(m.follow) : '')),
       broadcast: (m) => log.push('B:' + m.type + ':' + m.pid + ':' + (m.floor ?? m.hp ?? '')),
