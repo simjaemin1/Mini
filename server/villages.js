@@ -10348,13 +10348,49 @@ function _t720Ct(vil) { return vil._t720C || (vil._t720C = { go: 0, done: 0, giv
 function _t720Logger(vil, npc) { return npc.simJob === 'lumberjack' && !(vil._t400Crew && vil._t400Crew.indexOf(npc.pid) >= 0); }
 function _t720Held(vil, npc) {
   if (!vil.econ) return 0;
+  if (T737_HELD_CACHE) return _t737Held(vil, npc);   // ★[T737 ②] 같은 합 · 빈 손 절은 문(손잡이 술어)을 안 묻는다
   const E = _lifeEcon(), inv = npc.inventory || {};
   let u = 0;
   if (E.fishActOn(vil.econ)) u += npc._t312U || 0;
   if (_t368ItemsOn() && npc._t368H) for (const c in npc._t368H) u += npc._t368H[c] || 0;
   if (E.T325_WOOD_ACT && E.woodActOn(vil.econ) && _t720Logger(vil, npc)) u += inv.wood || 0;
-  if (E.T347_FORAGE_ACT && E.forageActOn(vil.econ)) { for (const k of (_t347KeepOf(vil) || [])) for (const h of _t347HandsOf(k)) u += inv[h] || 0; }
+  if (E.T347_FORAGE_ACT && E.forageActOn(vil.econ)) {
+    for (const k of (_t347KeepOf(vil) || [])) for (const h of _t347HandsOf(k)) u += inv[h] || 0;
+  }
   return u;
+}
+// ★★[T737 ② 2026-10-15 · 세션4] **손 다시 세기 — 빈 손 절은 문을 안 묻는다 · 손 이름 목록은 한 번만 짓는다**(손잡이 `T737_HELD_CACHE` · 기본 끔 = 위 종전 줄 그대로).
+//   `_t720Held` 는 해 질 녘부터 그날 아직 안 나선 몸마다 **결정마다** 불린다 — 빈손인 몸(T737 판 54분 62.9만 번 중 거의 전부)은 밤 내내 부른다.
+//   종전은 절마다 손잡이 술어(`fishActOn` · `_t368ItemsOn` · `woodActOn` · 나무꾼 명부)를 먼저 묻고 손을 읽었다.
+//   ⓐ 물고기 · 볏단 · 통나무 절 — **손을 먼저 읽고** 0 이 아니면 그때 술어를 묻는다. 술어는 읽기만 한다(필드 · 명부 `indexOf`) ⇒
+//     손이 0 이면 그 절은 종전에도 `u += 0`(같은 합 · `x || 0` 은 NaN · −0 도 +0 으로 든다) — 차례 그대로 더한다.
+//   ⓑ 채집 절 — 걷는 품목마다 `_t347HandsOf(k)`(짝 표를 훑어 새 배열)를 짓던 것을 마을마다 한 번(`_t737Hands`):
+//     열쇠 = 걷는 목록 배열 · 길이 · 짝 표 배열(다시 셀 때 **새 배열**이 된다 · 바뀌면 다시 짓는다) · 같은 손 이름을 같은 차례로(겹친 이름도 두 번).
+//     ⚠채집 행위 층(`T347_FORAGE_ACT`)은 기본 끔이다 — 그 절은 켠 세계에서만 돈다(술어가 먼저라 끔 세계는 이름 목록을 안 짓는다 · 종전과 같은 차례).
+//   ★같은 값: 같은 항을 같은 차례로 더한다 ⇒ 같은 합(부동소수 차례까지). 몸 · 마을 필드 0(그릇은 모듈 `WeakMap`). 새 수 0.
+const T737_HELD_CACHE = process.env.T737_HELD_CACHE === '1';
+function _t737Held(vil, npc) {
+  const inv = npc.inventory || {};
+  let u = 0, E = null;
+  const f = npc._t312U || 0;
+  if (f) { E = _lifeEcon(); if (E.fishActOn(vil.econ)) u += f; }
+  const H = npc._t368H;
+  if (H && _t368ItemsOn()) for (const c in H) u += H[c] || 0;
+  const w = inv.wood || 0;
+  if (w) { E = E || _lifeEcon(); if (E.T325_WOOD_ACT && E.woodActOn(vil.econ) && _t720Logger(vil, npc)) u += w; }
+  E = E || _lifeEcon();
+  if (E.T347_FORAGE_ACT && E.forageActOn(vil.econ)) { const hs = _t737Hands(vil, _t347KeepOf(vil)); for (let i = 0; i < hs.length; i++) u += inv[hs[i]] || 0; }
+  return u;
+}
+const _t737HM = new WeakMap(), _T737_NONE = [];
+function _t737Hands(vil, keep) {
+  const K = keep || _T737_NONE, P = _t347PairsC;
+  let c = _t737HM.get(vil);
+  if (!c || c.keep !== K || c.n !== K.length || c.P !== P) {
+    const hs = []; for (const k of K) for (const h of _t347HandsOf(k)) hs.push(h);
+    _t737HM.set(vil, c = { keep: K, n: K.length, P, hs });
+  }
+  return c.hs;
 }
 // ★★★[T743 ① 2026-10-14] **해 질 녘 통나무 도장 — 그날 새로 벴나**(T717 ② 셈과 같은 술어 · T733 ② 채집 해 질 녘 도장과 같은 꼴).
 //   "그날 걸은 몸" 수는 헤드리스 일괄을 막는 문이다(T475 `_t325PreWalked` · 몸 XOR 일괄 — 한 날 한 갈래).
