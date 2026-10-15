@@ -6497,7 +6497,12 @@ function onGameTick(now) {
     // ★[T590] 줄어드는 몸 — 누운 몸의 시간 · 걸어 나가는 몸의 걸음(캐러밴 곁 · 같은 마감 정지)
     try { tickBodyExits(now); } catch (e) { console.error(`[${state.zoneId}] 🪦 줄어드는 몸 틱 실패:`, e.message); }
     // P2: 실체 전투 30Hz 스텝 — 캐러밴 직후(설계 위치). 무인 존에서도 진행 중 전투 완주(idle 스킵보다 앞).
-    try { tickWarBodies(now); } catch (e) { console.error(`[${state.zoneId}] ⚔️ 실체 전투 틱 실패:`, e.message); }
+    //   ★★[T755] 켬(현지 자정 창)이면 **창이 열린 동안(머리 → 꼬리)은 전쟁 몸이 쉰다** — 종전 "마감 중 얼림"(위)의 그 뜻이다.
+    //     창 머리에서 econ 날이 오르고(전쟁 몸 하루 몫도 새 날) 전쟁 결단 · 방어 태세는 꼬리(econ 꼬리)에서 선다. 그 사이(한반도 ≤156초) 몸이 걸으면
+    //     **어제 결단으로 오늘 몫을 쓴다**: 실측 — 방어가 태세 결단 전에 응전 기본값으로 나가 들판에 서고, 꼬리에서 버티기가 서자 그 자리에 굳었다
+    //     (공격 대형과 22칸 · 곧은 길 막힘 · 돌격이 날마다 다시 서도 못 푼다 = `test-war-world ⓖ` 켬 빨강). 쉰 걸음은 잃지 않는다 — T681 하루 몫이라
+    //     다음 창 머리(`_t681Flush`)가 그날 남은 몫을 채운다(차례 · 값 그대로 · 끔 = 이 줄 무동작).
+    if (!(T731_ON && state._t731 && state._t731.headDone)) { try { tickWarBodies(now); } catch (e) { console.error(`[${state.zoneId}] ⚔️ 실체 전투 틱 실패:`, e.message); } }
   }
   // ★[곳간② 클라 표시] 물리 재고 델타 방송(1초 스로틀 — 변한 곳간만). 실패해도 틱을 죽이지 않는다.
   try { _granBroadcast(now); } catch (e) { console.error(`[${state.zoneId}] 🏘️ 곳간 재고 방송 실패:`, e.message); }
@@ -6686,7 +6691,7 @@ function _t731Jobs(now, T) {
     if (state.xzone) addH('xzone', () => _xzDayIn());
     if (T681_ON) addH('econ', () => _t681Flush());
     W.P = state.econV2.tickWorldV2Parts(state.world);   // econ 정본 조각 한 벌(`tickWorldV2` 가 부르는 그것 — 조각 손잡이와 무관하게 켬 판은 조각으로만 간다)
-    addH('econ', () => { _econDayFixture(); mute(() => W.P.head()); }, 'econ:head');
+    addH('econ', () => { _econDayFixture(); mute(() => W.P.head()); W.headDone = true; }, 'econ:head');   // ★[T755] 머리 뒤 ~ 꼬리 = 전쟁 몸 쉼(onGameTick)
     addH('life', () => { for (const k in _lifeSub) _lifeSub[k] = 0; for (const k in _lifeSubMax) delete _lifeSubMax[k]; _lifeMax = 0; _lifeMaxName = ''; });
   }
   const _popOne = (vil) => {
@@ -7145,8 +7150,9 @@ function _warFixtureOne(kind, V, U, bd) {
   if (kind === 'assault' || kind === 'auto') { const D = U.econ; mkWar(D, 4); D.storage.weapon = (D.storage.weapon || 0) + 10; } // 본격전 규모(목표배수 역산이 병력을 키움 — 사상·포로 발화)
   if (kind === 'siege') { const D = U.econ; for (const r of ['food', 'fish', 'meat', 'cooked_food', 'vegetable']) if (D.storage[r]) D.storage[r] = 0; U._defPolicy = 'hold'; } // 곳간 바닥+농성 → 봉쇄·항복 경로
   if (kind === 'siegehold') { U.econ.storage.food = (U.econ.storage.food || 0) + 900; U._defPolicy = 'hold'; } // 곳간 넉넉+농성 → 항복 없음 → 팩 소진 철수 경로
+  if (kind === 'assaulthold') { const D = U.econ; mkWar(D, 4); D.storage.weapon = (D.storage.weapon || 0) + 10; U._defPolicy = 'hold'; } // ★[T755] 돌격 + 농성(방어 버티기) — 끔 판에서도 농성 갈래를 세운다(assault 그대로 + 방어 태세만 hold)
   const ok = state.war.warMobilize(V, U, 'trade', bd, state.world.day);
-  if (ok && kind !== 'auto') { const w = state.war.WARS[state.war.WARS.length - 1]; if (w && w.atk === V) w._opPolicy = (kind === 'assault') ? 'assault' : 'siege'; }
+  if (ok && kind !== 'auto') { const w = state.war.WARS[state.war.WARS.length - 1]; if (w && w.atk === V) w._opPolicy = (kind === 'assault' || kind === 'assaulthold') ? 'assault' : 'siege'; }
   state._warFixtureDef = U;
   console.log(`[${state.zoneId}] ⚔️ [FIXTURE=${kind}] ${V.name}(${e.npcs.length}명)→${U.name}(${U.econ.npcs.length}명) 선포 ${ok ? '성공' : '실패(plan 미달)'} · 거리 ${bd | 0}셀`);
 }
@@ -12387,6 +12393,7 @@ function _starvedToday() { const out = _evStarved.slice(); _evStarved.length = 0
 function _scanEventsDaily() { const g = _scanEventsSteps(); while (!g.next().done); }   // ★[T698] 몸통은 아래 발생기 하나(끔 = 끝까지 한 번에 · 종전 그대로)
 function* _scanEventsSteps() {
   if (!state.ledger) return;
+  if (state._e2eShortHold && state._e2eShortHold.size) _e2eShortHoldApply();   // ★[T755] 테스트 전용 부족 픽스처의 "설 때까지"(`__e2eForceShortage` 가 걸었을 때만 · 운영 = 빈 칸)
   const t0 = Date.now();
   try { _noteTradeDays(state.world); } catch (e) {}   // ★[T577 ④] 마지막 교역일 — 장부와 같은 하루 경계
   const _x = { caravanDelays: _caravanDelaysToday(), builds: _buildsToday(),
@@ -12883,6 +12890,10 @@ function __e2eForceShortage(vid, skip) {
   //   실제로 `wood 0→1.55` 인 판에서 30회를 걸어도 게시판이 비어 있었다.
   //   부족의 **정의**(재고 < 소비EMA×SHORT_DAYS)는 그대로 지키면서 시세만 온전하게 둔다.
   v.storage[best.r] = +(thr * 0.9).toFixed(3);
+  //   ★★[T755] **상황으로 건다 — 값이 아니라.** 문턱 바로 아래(0.9)로 내려도 장부가 읽기 전에 그날 마을 결산(생산 · 생활층)이 다시 채우면
+  //     래치가 안 선다(실측: 나무 3.2 → 다음 판 6.6~44 · 끔 · 켬 둘 다 — 켬은 생활층이 사건 장부 앞이라 더 자주). ⇒ 그 품목의 의뢰가 **설 때까지**
+  //     장부가 읽기 직전마다 같은 값 아래로 다시 둔다(그 아래면 손대지 않는다 · 의뢰가 서면 놓는다 · 테스트 전용 `E2E_GIVE` 문 안의 손 · 새 수 0).
+  (state._e2eShortHold || (state._e2eShortHold = new Map())).set((vid | 0) + ':' + best.r, { vid: vid | 0, item: best.r, val: v.storage[best.r] });
   // ★★[2026-08-26 · B-1 물리 상한 이후] 잉여가 **있기만** 해서는 의뢰가 안 선다 —
   //   이제 마을은 **전액 갚을 수 있을 때만** 건다(못 갚으면 축소하거나 안 건다).
   //   이 픽스처의 목적은 "게시판 납품 흐름을 실화면으로 재는 것"이지 마을 살림 형편을 재는 게
@@ -12893,6 +12904,15 @@ function __e2eForceShortage(vid, skip) {
   return { ok: true, vid: vid | 0, name: vil.name, item: best.r, ema: +best.e.toFixed(3), thr: +thr.toFixed(3),
     before: +before.toFixed(3), after: v.storage[best.r], day: state.world.day | 0,
     payWith: best.sur, payStock: v.storage[best.sur], lockedRew: [...lockedRew] };
+}
+
+function _e2eShortHoldApply() {   // ★[T755] 장부가 읽기 직전 — 의뢰가 선 품목은 놓고, 아직이면 픽스처 값 아래로(그 아래면 그대로)
+  for (const [k, h] of [...state._e2eShortHold]) {
+    const vil = state.byDbId && state.byDbId.get(h.vid), v = vil && vil.econ;
+    const up = ((state.ledger.board(h.vid)) || []).some((r) => r.item === h.item);
+    if (!v || up) { state._e2eShortHold.delete(k); continue; }
+    if ((+(v.storage[h.item]) || 0) > h.val) v.storage[h.item] = h.val;
+  }
 }
 
 // ★★[T50 2026-09-02] 테스트 전용 — 세계의 "일" 픽스처.
