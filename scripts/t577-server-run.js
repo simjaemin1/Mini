@@ -83,7 +83,7 @@ const PAR = parseInt(process.env.T577_PAR || '', 10) || Math.max(1, Math.min(3, 
 const DIR = process.env.T577_DIR || `/tmp/t577-${process.pid}`;
 fs.mkdirSync(DIR, { recursive: true });
 // ★[T577 추신] 판 이름 — 판을 가르는 손잡이(후보 · 층 끄기)만 이름에 싣는다(`T577_TAG` 로 덮을 수 있다)
-const TAG = process.env.T577_TAG || Object.keys(process.env).filter((k) => /^(T577_(?!SEED$|DAYS$|OUT$|DIR$|PAR$|TAG$)|VILLAGE_LIFE$|ENABLE_BANDITS$|VILLAGE_CARAVAN_MAX$|T513_DAY_SLICE$|WAR_MINDAY$)/.test(k)).sort().map((k) => `${k.replace(/^T577_(CAND_)?/, '').toLowerCase()}${process.env[k]}`).join('-') || 'base';
+const TAG = process.env.T577_TAG || Object.keys(process.env).filter((k) => /^(T577_(?!SEED$|DAYS$|OUT$|DIR$|PAR$|TAG$)|VILLAGE_LIFE$|ENABLE_BANDITS$|VILLAGE_CARAVAN_MAX$|T513_DAY_SLICE$|WAR_MINDAY$|T766_[A-Z_]+$)/.test(k)).sort().map((k) => `${k.replace(/^T577_(CAND_)?/, '').toLowerCase()}${process.env[k]}`).join('-') || 'base';
 
 function runOne(seed, k) {
   return new Promise((resolve) => {

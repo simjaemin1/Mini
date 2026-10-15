@@ -1,0 +1,3718 @@
+{
+ "dir": "/tmp/claude-0/t766/runs",
+ "runs": {
+  "ⓐ|1020": {
+   "empty": 5,
+   "dissolved": 12,
+   "firstEmpty": 430,
+   "bandit": {
+    "conv": 89,
+    "exo": 29,
+    "starve": 38,
+    "disband": 37,
+    "denForm": 25,
+    "loot": 210,
+    "peak": 3
+   },
+   "eight": {
+    "pop": 5602,
+    "dead": 5,
+    "ever": 51,
+    "weapQ": 674,
+    "expand": 4255,
+    "board": 2197,
+    "toolQ": 8275.1,
+    "preserve": 1272.1,
+    "grain": 27621.7
+   },
+   "pop400": 3606,
+   "pop800": 5602,
+   "dis": [
+    {
+     "day": 380,
+     "name": "농촌19",
+     "n": 20,
+     "nRow": 20,
+     "peak": 97,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 393,
+     "name": "농촌9",
+     "n": 8,
+     "nRow": 8,
+     "peak": 52,
+     "gang": 3,
+     "fe": 0,
+     "inc": 0,
+     "need": 24,
+     "emptyEnd": true
+    },
+    {
+     "day": 459,
+     "name": "어촌9",
+     "n": 20,
+     "nRow": 20,
+     "peak": 73,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0.1,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 475,
+     "name": "농촌20",
+     "n": 15,
+     "nRow": 15,
+     "peak": 54,
+     "gang": 6,
+     "fe": 15.8,
+     "inc": 0.1,
+     "need": 45,
+     "emptyEnd": false
+    },
+    {
+     "day": 483,
+     "name": "광산4",
+     "n": 20,
+     "nRow": 20,
+     "peak": 77,
+     "gang": 8,
+     "fe": 0,
+     "inc": 1626.9,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 493,
+     "name": "어촌12",
+     "n": 19,
+     "nRow": 19,
+     "peak": 134,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 57,
+     "emptyEnd": false
+    },
+    {
+     "day": 505,
+     "name": "농촌11",
+     "n": 20,
+     "nRow": 20,
+     "peak": 132,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 562,
+     "name": "농촌10",
+     "n": 20,
+     "nRow": 20,
+     "peak": 59,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 680,
+     "name": "어촌8",
+     "n": 20,
+     "nRow": 20,
+     "peak": 106,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": true
+    },
+    {
+     "day": 710,
+     "name": "농촌15",
+     "n": 20,
+     "nRow": 20,
+     "peak": 77,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 762,
+     "name": "어촌16",
+     "n": 20,
+     "nRow": 20,
+     "peak": 95,
+     "gang": 8,
+     "fe": 0,
+     "inc": 42.2,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 765,
+     "name": "광산7",
+     "n": 20,
+     "nRow": 20,
+     "peak": 56,
+     "gang": 8,
+     "fe": 1.1,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    }
+   ],
+   "held": 0,
+   "heldVillages": [],
+   "empties": [
+    {
+     "name": "어촌8",
+     "day": 714,
+     "dis": 680,
+     "condDay": 379,
+     "lastN3": 696,
+     "deaths": 233,
+     "peak": 106
+    },
+    {
+     "name": "농촌9",
+     "day": 472,
+     "dis": 393,
+     "condDay": 378,
+     "lastN3": 403,
+     "deaths": 51,
+     "peak": 52
+    },
+    {
+     "name": "농촌13",
+     "day": 456,
+     "dis": null,
+     "condDay": 381,
+     "lastN3": 414,
+     "deaths": 98,
+     "peak": 98
+    },
+    {
+     "name": "농촌16",
+     "day": 501,
+     "dis": null,
+     "condDay": null,
+     "lastN3": 500,
+     "deaths": 231,
+     "peak": 127
+    },
+    {
+     "name": "농촌18",
+     "day": 430,
+     "dis": null,
+     "condDay": 377,
+     "lastN3": 404,
+     "deaths": 42,
+     "peak": 45
+    }
+   ],
+   "cargoLost": 12011.9,
+   "tradersKilled": 198,
+   "supDead": 30,
+   "t766Held": null
+  },
+  "ⓐ|7": {
+   "empty": 8,
+   "dissolved": 8,
+   "firstEmpty": 453,
+   "bandit": {
+    "conv": 59,
+    "exo": 37,
+    "starve": 34,
+    "disband": 34,
+    "denForm": 28,
+    "loot": 482,
+    "peak": 5
+   },
+   "eight": {
+    "pop": 5451,
+    "dead": 8,
+    "ever": 51,
+    "weapQ": 682,
+    "expand": 3700,
+    "board": 2401,
+    "toolQ": 8837.3,
+    "preserve": 1016.4,
+    "grain": 33678.4
+   },
+   "pop400": 3902,
+   "pop800": 5451,
+   "dis": [
+    {
+     "day": 379,
+     "name": "농촌19",
+     "n": 20,
+     "nRow": 20,
+     "peak": 89,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 451,
+     "name": "농촌20",
+     "n": 8,
+     "nRow": 8,
+     "peak": 59,
+     "gang": 3,
+     "fe": 20.9,
+     "inc": 0,
+     "need": 24,
+     "emptyEnd": true
+    },
+    {
+     "day": 487,
+     "name": "광산4",
+     "n": 20,
+     "nRow": 21,
+     "peak": 78,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 490,
+     "name": "농촌11",
+     "n": 20,
+     "nRow": 20,
+     "peak": 104,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": true
+    },
+    {
+     "day": 506,
+     "name": "어촌12",
+     "n": 19,
+     "nRow": 19,
+     "peak": 148,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 57,
+     "emptyEnd": false
+    },
+    {
+     "day": 510,
+     "name": "광산2",
+     "n": 20,
+     "nRow": 21,
+     "peak": 102,
+     "gang": 8,
+     "fe": 2.9,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 526,
+     "name": "광산6",
+     "n": 19,
+     "nRow": 21,
+     "peak": 77,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 57,
+     "emptyEnd": true
+    },
+    {
+     "day": 728,
+     "name": "광산5",
+     "n": 19,
+     "nRow": 21,
+     "peak": 152,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 57,
+     "emptyEnd": false
+    }
+   ],
+   "held": 0,
+   "heldVillages": [],
+   "empties": [
+    {
+     "name": "광산6",
+     "day": 556,
+     "dis": 526,
+     "condDay": null,
+     "lastN3": 546,
+     "deaths": 123,
+     "peak": 77
+    },
+    {
+     "name": "농촌6",
+     "day": 491,
+     "dis": null,
+     "condDay": null,
+     "lastN3": 490,
+     "deaths": 191,
+     "peak": 103
+    },
+    {
+     "name": "농촌7",
+     "day": 453,
+     "dis": null,
+     "condDay": 379,
+     "lastN3": 428,
+     "deaths": 127,
+     "peak": 101
+    },
+    {
+     "name": "농촌10",
+     "day": 555,
+     "dis": null,
+     "condDay": 378,
+     "lastN3": 530,
+     "deaths": 68,
+     "peak": 53
+    },
+    {
+     "name": "농촌11",
+     "day": 512,
+     "dis": 490,
+     "condDay": 379,
+     "lastN3": 505,
+     "deaths": 167,
+     "peak": 104
+    },
+    {
+     "name": "농촌15",
+     "day": 465,
+     "dis": null,
+     "condDay": 379,
+     "lastN3": 439,
+     "deaths": 88,
+     "peak": 66
+    },
+    {
+     "name": "농촌18",
+     "day": 481,
+     "dis": null,
+     "condDay": 374,
+     "lastN3": 462,
+     "deaths": 32,
+     "peak": 35
+    },
+    {
+     "name": "농촌20",
+     "day": 535,
+     "dis": 451,
+     "condDay": 385,
+     "lastN3": 467,
+     "deaths": 68,
+     "peak": 59
+    }
+   ],
+   "cargoLost": 30489.9,
+   "tradersKilled": 461,
+   "supDead": 30,
+   "t766Held": null
+  },
+  "ⓐ|42": {
+   "empty": 4,
+   "dissolved": 13,
+   "firstEmpty": 482,
+   "bandit": {
+    "conv": 90,
+    "exo": 43,
+    "starve": 36,
+    "disband": 40,
+    "denForm": 28,
+    "loot": 207,
+    "peak": 4
+   },
+   "eight": {
+    "pop": 5623,
+    "dead": 4,
+    "ever": 51,
+    "weapQ": 729,
+    "expand": 3968,
+    "board": 2352,
+    "toolQ": 8684,
+    "preserve": 1425.3,
+    "grain": 34829.8
+   },
+   "pop400": 4200,
+   "pop800": 5623,
+   "dis": [
+    {
+     "day": 379,
+     "name": "농촌19",
+     "n": 20,
+     "nRow": 20,
+     "peak": 87,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 393,
+     "name": "농촌9",
+     "n": 10,
+     "nRow": 10,
+     "peak": 59,
+     "gang": 4,
+     "fe": 0,
+     "inc": 224,
+     "need": 30,
+     "emptyEnd": false
+    },
+    {
+     "day": 435,
+     "name": "광산1",
+     "n": 6,
+     "nRow": 6,
+     "peak": 35,
+     "gang": 3,
+     "fe": 21.1,
+     "inc": 0,
+     "need": 18,
+     "emptyEnd": false
+    },
+    {
+     "day": 476,
+     "name": "농촌11",
+     "n": 20,
+     "nRow": 20,
+     "peak": 131,
+     "gang": 8,
+     "fe": 3.3,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 482,
+     "name": "농촌18",
+     "n": 3,
+     "nRow": 3,
+     "peak": 58,
+     "gang": 3,
+     "fe": 0,
+     "inc": 0,
+     "need": 9,
+     "emptyEnd": true
+    },
+    {
+     "day": 486,
+     "name": "광산6",
+     "n": 20,
+     "nRow": 20,
+     "peak": 83,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 503,
+     "name": "어촌12",
+     "n": 20,
+     "nRow": 20,
+     "peak": 148,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 522,
+     "name": "광산4",
+     "n": 20,
+     "nRow": 21,
+     "peak": 78,
+     "gang": 8,
+     "fe": 15.1,
+     "inc": 0.1,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 534,
+     "name": "농촌15",
+     "n": 20,
+     "nRow": 20,
+     "peak": 55,
+     "gang": 8,
+     "fe": 8.4,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 562,
+     "name": "농촌14",
+     "n": 19,
+     "nRow": 19,
+     "peak": 61,
+     "gang": 8,
+     "fe": 43.2,
+     "inc": 0,
+     "need": 57,
+     "emptyEnd": false
+    },
+    {
+     "day": 608,
+     "name": "어촌9",
+     "n": 20,
+     "nRow": 20,
+     "peak": 119,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 638,
+     "name": "농촌16",
+     "n": 20,
+     "nRow": 20,
+     "peak": 89,
+     "gang": 8,
+     "fe": 9.2,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": true
+    },
+    {
+     "day": 656,
+     "name": "광산7",
+     "n": 20,
+     "nRow": 20,
+     "peak": 89,
+     "gang": 8,
+     "fe": 0,
+     "inc": 149.1,
+     "need": 60,
+     "emptyEnd": true
+    }
+   ],
+   "held": 0,
+   "heldVillages": [],
+   "empties": [
+    {
+     "name": "광산7",
+     "day": 748,
+     "dis": 656,
+     "condDay": 379,
+     "lastN3": 722,
+     "deaths": 184,
+     "peak": 89
+    },
+    {
+     "name": "농촌10",
+     "day": 613,
+     "dis": null,
+     "condDay": 378,
+     "lastN3": 411,
+     "deaths": 65,
+     "peak": 64
+    },
+    {
+     "name": "농촌16",
+     "day": 737,
+     "dis": 638,
+     "condDay": 386,
+     "lastN3": 652,
+     "deaths": 239,
+     "peak": 89
+    },
+    {
+     "name": "농촌18",
+     "day": 482,
+     "dis": 482,
+     "condDay": 378,
+     "lastN3": 481,
+     "deaths": 62,
+     "peak": 58
+    }
+   ],
+   "cargoLost": 11193.7,
+   "tradersKilled": 202,
+   "supDead": 0,
+   "t766Held": null
+  },
+  "ⓐ″|1020": {
+   "empty": 5,
+   "dissolved": 10,
+   "firstEmpty": 430,
+   "bandit": {
+    "conv": 73,
+    "exo": 28,
+    "starve": 35,
+    "disband": 38,
+    "denForm": 28,
+    "loot": 142,
+    "peak": 3
+   },
+   "eight": {
+    "pop": 5507,
+    "dead": 5,
+    "ever": 51,
+    "weapQ": 726,
+    "expand": 4040,
+    "board": 2247,
+    "toolQ": 8732.4,
+    "preserve": 1485.1,
+    "grain": 31097.2
+   },
+   "pop400": 3606,
+   "pop800": 5507,
+   "dis": [
+    {
+     "day": 380,
+     "name": "농촌19",
+     "n": 20,
+     "nRow": 20,
+     "peak": 97,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 393,
+     "name": "농촌9",
+     "n": 8,
+     "nRow": 8,
+     "peak": 52,
+     "gang": 3,
+     "fe": 0,
+     "inc": 0,
+     "need": 24,
+     "emptyEnd": true
+    },
+    {
+     "day": 459,
+     "name": "어촌9",
+     "n": 20,
+     "nRow": 20,
+     "peak": 73,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0.1,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 475,
+     "name": "농촌20",
+     "n": 15,
+     "nRow": 15,
+     "peak": 54,
+     "gang": 6,
+     "fe": 15.8,
+     "inc": 0.1,
+     "need": 45,
+     "emptyEnd": true
+    },
+    {
+     "day": 495,
+     "name": "어촌12",
+     "n": 20,
+     "nRow": 20,
+     "peak": 134,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0.1,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 505,
+     "name": "농촌11",
+     "n": 19,
+     "nRow": 19,
+     "peak": 132,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 57,
+     "emptyEnd": false
+    },
+    {
+     "day": 663,
+     "name": "광산1",
+     "n": 20,
+     "nRow": 22,
+     "peak": 51,
+     "gang": 8,
+     "fe": 0,
+     "inc": 315.7,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 714,
+     "name": "농촌6",
+     "n": 20,
+     "nRow": 20,
+     "peak": 108,
+     "gang": 8,
+     "fe": 0,
+     "inc": 1394.2,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 733,
+     "name": "농촌7",
+     "n": 20,
+     "nRow": 20,
+     "peak": 96,
+     "gang": 8,
+     "fe": 2.8,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 763,
+     "name": "광산3",
+     "n": 20,
+     "nRow": 21,
+     "peak": 68,
+     "gang": 8,
+     "fe": 0,
+     "inc": 6.4,
+     "need": 60,
+     "emptyEnd": false
+    }
+   ],
+   "held": 0,
+   "heldVillages": [],
+   "empties": [
+    {
+     "name": "농촌9",
+     "day": 472,
+     "dis": 393,
+     "condDay": 378,
+     "lastN3": 403,
+     "deaths": 51,
+     "peak": 52
+    },
+    {
+     "name": "농촌13",
+     "day": 456,
+     "dis": null,
+     "condDay": 381,
+     "lastN3": 414,
+     "deaths": 98,
+     "peak": 98
+    },
+    {
+     "name": "농촌16",
+     "day": 501,
+     "dis": null,
+     "condDay": null,
+     "lastN3": 500,
+     "deaths": 231,
+     "peak": 127
+    },
+    {
+     "name": "농촌18",
+     "day": 430,
+     "dis": null,
+     "condDay": 377,
+     "lastN3": 404,
+     "deaths": 42,
+     "peak": 45
+    },
+    {
+     "name": "농촌20",
+     "day": 789,
+     "dis": 475,
+     "condDay": 380,
+     "lastN3": 707,
+     "deaths": 146,
+     "peak": 54
+    }
+   ],
+   "cargoLost": 5910,
+   "tradersKilled": 133,
+   "supDead": 10,
+   "t766Held": null
+  },
+  "ⓐ″|7": {
+   "empty": 8,
+   "dissolved": 7,
+   "firstEmpty": 453,
+   "bandit": {
+    "conv": 51,
+    "exo": 47,
+    "starve": 29,
+    "disband": 31,
+    "denForm": 28,
+    "loot": 820,
+    "peak": 6
+   },
+   "eight": {
+    "pop": 5061,
+    "dead": 8,
+    "ever": 51,
+    "weapQ": 685,
+    "expand": 3357,
+    "board": 2306,
+    "toolQ": 8103.2,
+    "preserve": 1248.2,
+    "grain": 27485.9
+   },
+   "pop400": 3902,
+   "pop800": 5061,
+   "dis": [
+    {
+     "day": 379,
+     "name": "농촌19",
+     "n": 20,
+     "nRow": 20,
+     "peak": 89,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": true
+    },
+    {
+     "day": 451,
+     "name": "농촌20",
+     "n": 8,
+     "nRow": 8,
+     "peak": 59,
+     "gang": 3,
+     "fe": 20.9,
+     "inc": 0,
+     "need": 24,
+     "emptyEnd": true
+    },
+    {
+     "day": 487,
+     "name": "광산4",
+     "n": 20,
+     "nRow": 21,
+     "peak": 78,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 490,
+     "name": "농촌11",
+     "n": 20,
+     "nRow": 20,
+     "peak": 104,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 528,
+     "name": "어촌12",
+     "n": 19,
+     "nRow": 19,
+     "peak": 148,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 57,
+     "emptyEnd": false
+    },
+    {
+     "day": 533,
+     "name": "광산6",
+     "n": 20,
+     "nRow": 21,
+     "peak": 77,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": true
+    },
+    {
+     "day": 743,
+     "name": "농촌2",
+     "n": 20,
+     "nRow": 20,
+     "peak": 162,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    }
+   ],
+   "held": 0,
+   "heldVillages": [],
+   "empties": [
+    {
+     "name": "광산6",
+     "day": 725,
+     "dis": 533,
+     "condDay": null,
+     "lastN3": 547,
+     "deaths": 121,
+     "peak": 77
+    },
+    {
+     "name": "농촌6",
+     "day": 491,
+     "dis": null,
+     "condDay": null,
+     "lastN3": 490,
+     "deaths": 191,
+     "peak": 103
+    },
+    {
+     "name": "농촌7",
+     "day": 453,
+     "dis": null,
+     "condDay": 379,
+     "lastN3": 428,
+     "deaths": 127,
+     "peak": 101
+    },
+    {
+     "name": "농촌10",
+     "day": 538,
+     "dis": null,
+     "condDay": 378,
+     "lastN3": 532,
+     "deaths": 65,
+     "peak": 53
+    },
+    {
+     "name": "농촌15",
+     "day": 465,
+     "dis": null,
+     "condDay": 379,
+     "lastN3": 439,
+     "deaths": 88,
+     "peak": 66
+    },
+    {
+     "name": "농촌18",
+     "day": 481,
+     "dis": null,
+     "condDay": 374,
+     "lastN3": 462,
+     "deaths": 32,
+     "peak": 35
+    },
+    {
+     "name": "농촌19",
+     "day": 730,
+     "dis": 379,
+     "condDay": 378,
+     "lastN3": 713,
+     "deaths": 189,
+     "peak": 89
+    },
+    {
+     "name": "농촌20",
+     "day": 538,
+     "dis": 451,
+     "condDay": 385,
+     "lastN3": 467,
+     "deaths": 68,
+     "peak": 59
+    }
+   ],
+   "cargoLost": 53139,
+   "tradersKilled": 778,
+   "supDead": 1,
+   "t766Held": null
+  },
+  "ⓐ″|42": {
+   "empty": 4,
+   "dissolved": 13,
+   "firstEmpty": 482,
+   "bandit": {
+    "conv": 90,
+    "exo": 43,
+    "starve": 36,
+    "disband": 39,
+    "denForm": 28,
+    "loot": 203,
+    "peak": 4
+   },
+   "eight": {
+    "pop": 5645,
+    "dead": 4,
+    "ever": 51,
+    "weapQ": 721,
+    "expand": 4020,
+    "board": 2359,
+    "toolQ": 8740,
+    "preserve": 1371.7,
+    "grain": 35739
+   },
+   "pop400": 4200,
+   "pop800": 5645,
+   "dis": [
+    {
+     "day": 379,
+     "name": "농촌19",
+     "n": 20,
+     "nRow": 20,
+     "peak": 87,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 393,
+     "name": "농촌9",
+     "n": 10,
+     "nRow": 10,
+     "peak": 59,
+     "gang": 4,
+     "fe": 0,
+     "inc": 224,
+     "need": 30,
+     "emptyEnd": false
+    },
+    {
+     "day": 435,
+     "name": "광산1",
+     "n": 6,
+     "nRow": 6,
+     "peak": 35,
+     "gang": 3,
+     "fe": 21.1,
+     "inc": 0,
+     "need": 18,
+     "emptyEnd": false
+    },
+    {
+     "day": 476,
+     "name": "농촌11",
+     "n": 20,
+     "nRow": 20,
+     "peak": 131,
+     "gang": 8,
+     "fe": 3.3,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 482,
+     "name": "농촌18",
+     "n": 3,
+     "nRow": 3,
+     "peak": 58,
+     "gang": 3,
+     "fe": 0,
+     "inc": 0,
+     "need": 9,
+     "emptyEnd": true
+    },
+    {
+     "day": 486,
+     "name": "광산6",
+     "n": 20,
+     "nRow": 20,
+     "peak": 83,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 503,
+     "name": "어촌12",
+     "n": 20,
+     "nRow": 20,
+     "peak": 148,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 522,
+     "name": "광산4",
+     "n": 20,
+     "nRow": 21,
+     "peak": 78,
+     "gang": 8,
+     "fe": 15.1,
+     "inc": 0.1,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 534,
+     "name": "농촌15",
+     "n": 20,
+     "nRow": 20,
+     "peak": 55,
+     "gang": 8,
+     "fe": 8.4,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 562,
+     "name": "농촌14",
+     "n": 19,
+     "nRow": 19,
+     "peak": 61,
+     "gang": 8,
+     "fe": 43.2,
+     "inc": 0,
+     "need": 57,
+     "emptyEnd": false
+    },
+    {
+     "day": 608,
+     "name": "어촌9",
+     "n": 20,
+     "nRow": 20,
+     "peak": 119,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 638,
+     "name": "농촌16",
+     "n": 20,
+     "nRow": 20,
+     "peak": 89,
+     "gang": 8,
+     "fe": 9.2,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": true
+    },
+    {
+     "day": 656,
+     "name": "광산7",
+     "n": 20,
+     "nRow": 20,
+     "peak": 89,
+     "gang": 8,
+     "fe": 0,
+     "inc": 149.1,
+     "need": 60,
+     "emptyEnd": true
+    }
+   ],
+   "held": 0,
+   "heldVillages": [],
+   "empties": [
+    {
+     "name": "광산7",
+     "day": 748,
+     "dis": 656,
+     "condDay": 379,
+     "lastN3": 722,
+     "deaths": 184,
+     "peak": 89
+    },
+    {
+     "name": "농촌10",
+     "day": 613,
+     "dis": null,
+     "condDay": 378,
+     "lastN3": 411,
+     "deaths": 65,
+     "peak": 64
+    },
+    {
+     "name": "농촌16",
+     "day": 737,
+     "dis": 638,
+     "condDay": 386,
+     "lastN3": 652,
+     "deaths": 239,
+     "peak": 89
+    },
+    {
+     "name": "농촌18",
+     "day": 482,
+     "dis": 482,
+     "condDay": 378,
+     "lastN3": 481,
+     "deaths": 62,
+     "peak": 58
+    }
+   ],
+   "cargoLost": 11273.9,
+   "tradersKilled": 198,
+   "supDead": 0,
+   "t766Held": null
+  },
+  "ⓑ|1020": {
+   "empty": 1,
+   "dissolved": 0,
+   "firstEmpty": 535,
+   "bandit": {
+    "conv": 0,
+    "exo": 0,
+    "starve": 0,
+    "disband": 0,
+    "denForm": 0,
+    "loot": 0,
+    "peak": 0
+   },
+   "eight": {
+    "pop": 5652,
+    "dead": 1,
+    "ever": 51,
+    "weapQ": 639,
+    "expand": 3020,
+    "board": 2074,
+    "toolQ": 8502.2,
+    "preserve": 984.8,
+    "grain": 31671.6
+   },
+   "pop400": 4009,
+   "pop800": 5652,
+   "dis": [],
+   "held": 0,
+   "heldVillages": [],
+   "empties": [
+    {
+     "name": "농촌14",
+     "day": 535,
+     "dis": null,
+     "condDay": null,
+     "lastN3": 509,
+     "deaths": 42,
+     "peak": 37
+    }
+   ],
+   "cargoLost": 0,
+   "tradersKilled": 0,
+   "supDead": 0,
+   "t766Held": null
+  },
+  "ⓑ|7": {
+   "empty": 3,
+   "dissolved": 0,
+   "firstEmpty": 434,
+   "bandit": {
+    "conv": 0,
+    "exo": 0,
+    "starve": 0,
+    "disband": 0,
+    "denForm": 0,
+    "loot": 0,
+    "peak": 0
+   },
+   "eight": {
+    "pop": 5475,
+    "dead": 3,
+    "ever": 51,
+    "weapQ": 700,
+    "expand": 3693,
+    "board": 2538,
+    "toolQ": 8127,
+    "preserve": 1241.8,
+    "grain": 31815.3
+   },
+   "pop400": 3750,
+   "pop800": 5475,
+   "dis": [],
+   "held": 0,
+   "heldVillages": [],
+   "empties": [
+    {
+     "name": "농촌10",
+     "day": 511,
+     "dis": null,
+     "condDay": null,
+     "lastN3": 486,
+     "deaths": 43,
+     "peak": 41
+    },
+    {
+     "name": "농촌14",
+     "day": 434,
+     "dis": null,
+     "condDay": null,
+     "lastN3": 409,
+     "deaths": 43,
+     "peak": 43
+    },
+    {
+     "name": "농촌20",
+     "day": 504,
+     "dis": null,
+     "condDay": null,
+     "lastN3": 479,
+     "deaths": 61,
+     "peak": 52
+    }
+   ],
+   "cargoLost": 0,
+   "tradersKilled": 0,
+   "supDead": 0,
+   "t766Held": null
+  },
+  "ⓑ|42": {
+   "empty": 3,
+   "dissolved": 0,
+   "firstEmpty": 440,
+   "bandit": {
+    "conv": 0,
+    "exo": 0,
+    "starve": 0,
+    "disband": 0,
+    "denForm": 0,
+    "loot": 0,
+    "peak": 0
+   },
+   "eight": {
+    "pop": 5860,
+    "dead": 3,
+    "ever": 51,
+    "weapQ": 836,
+    "expand": 5039,
+    "board": 2236,
+    "toolQ": 9677.1,
+    "preserve": 1059.3,
+    "grain": 33944.7
+   },
+   "pop400": 4317,
+   "pop800": 5860,
+   "dis": [],
+   "held": 0,
+   "heldVillages": [],
+   "empties": [
+    {
+     "name": "광산1",
+     "day": 440,
+     "dis": null,
+     "condDay": null,
+     "lastN3": 415,
+     "deaths": 52,
+     "peak": 52
+    },
+    {
+     "name": "농촌8",
+     "day": 617,
+     "dis": null,
+     "condDay": null,
+     "lastN3": 616,
+     "deaths": 199,
+     "peak": 111
+    },
+    {
+     "name": "농촌10",
+     "day": 622,
+     "dis": null,
+     "condDay": null,
+     "lastN3": 563,
+     "deaths": 58,
+     "peak": 55
+    }
+   ],
+   "cargoLost": 0,
+   "tradersKilled": 0,
+   "supDead": 0,
+   "t766Held": null
+  },
+  "ⓑ′|1020": {
+   "empty": 4,
+   "dissolved": 16,
+   "firstEmpty": 564,
+   "bandit": {
+    "conv": 119,
+    "exo": 80,
+    "starve": 213,
+    "disband": 31,
+    "denForm": 19,
+    "loot": 0,
+    "peak": 7
+   },
+   "eight": {
+    "pop": 5533,
+    "dead": 4,
+    "ever": 51,
+    "weapQ": 651,
+    "expand": 3946,
+    "board": 2058,
+    "toolQ": 8852.9,
+    "preserve": 947.3,
+    "grain": 29711.8
+   },
+   "pop400": 4009,
+   "pop800": 5533,
+   "dis": [
+    {
+     "day": 435,
+     "name": "광산1",
+     "n": 10,
+     "nRow": 10,
+     "peak": 80,
+     "gang": 4,
+     "fe": 0,
+     "inc": 819.3,
+     "need": 30,
+     "emptyEnd": false
+    },
+    {
+     "day": 469,
+     "name": "광산4",
+     "n": 20,
+     "nRow": 21,
+     "peak": 76,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 489,
+     "name": "농촌18",
+     "n": 20,
+     "nRow": 20,
+     "peak": 40,
+     "gang": 8,
+     "fe": 5.9,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 496,
+     "name": "농촌9",
+     "n": 20,
+     "nRow": 20,
+     "peak": 68,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 523,
+     "name": "광산2",
+     "n": 20,
+     "nRow": 22,
+     "peak": 101,
+     "gang": 8,
+     "fe": 24.3,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 537,
+     "name": "농촌20",
+     "n": 20,
+     "nRow": 20,
+     "peak": 53,
+     "gang": 8,
+     "fe": 6.4,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": true
+    },
+    {
+     "day": 564,
+     "name": "농촌15",
+     "n": 3,
+     "nRow": 3,
+     "peak": 41,
+     "gang": 3,
+     "fe": 4,
+     "inc": 0,
+     "need": 9,
+     "emptyEnd": true
+    },
+    {
+     "day": 577,
+     "name": "농촌13",
+     "n": 19,
+     "nRow": 19,
+     "peak": 94,
+     "gang": 8,
+     "fe": 130.2,
+     "inc": 0,
+     "need": 57,
+     "emptyEnd": true
+    },
+    {
+     "day": 642,
+     "name": "농촌7",
+     "n": 20,
+     "nRow": 20,
+     "peak": 91,
+     "gang": 8,
+     "fe": 31.9,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 679,
+     "name": "어촌8",
+     "n": 19,
+     "nRow": 19,
+     "peak": 105,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 57,
+     "emptyEnd": true
+    },
+    {
+     "day": 693,
+     "name": "농촌10",
+     "n": 20,
+     "nRow": 20,
+     "peak": 73,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 707,
+     "name": "광산7",
+     "n": 20,
+     "nRow": 21,
+     "peak": 65,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 710,
+     "name": "농촌8",
+     "n": 20,
+     "nRow": 20,
+     "peak": 112,
+     "gang": 8,
+     "fe": 2.4,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 721,
+     "name": "농촌19",
+     "n": 20,
+     "nRow": 20,
+     "peak": 96,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 732,
+     "name": "농촌14",
+     "n": 20,
+     "nRow": 20,
+     "peak": 49,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 760,
+     "name": "광산3",
+     "n": 20,
+     "nRow": 22,
+     "peak": 118,
+     "gang": 8,
+     "fe": 0.3,
+     "inc": 75.9,
+     "need": 60,
+     "emptyEnd": false
+    }
+   ],
+   "held": 0,
+   "heldVillages": [],
+   "empties": [
+    {
+     "name": "어촌8",
+     "day": 737,
+     "dis": 679,
+     "condDay": 379,
+     "lastN3": 712,
+     "deaths": 234,
+     "peak": 105
+    },
+    {
+     "name": "농촌13",
+     "day": 752,
+     "dis": 577,
+     "condDay": 379,
+     "lastN3": 727,
+     "deaths": 183,
+     "peak": 94
+    },
+    {
+     "name": "농촌15",
+     "day": 564,
+     "dis": 564,
+     "condDay": 376,
+     "lastN3": 563,
+     "deaths": 41,
+     "peak": 41
+    },
+    {
+     "name": "농촌20",
+     "day": 788,
+     "dis": 537,
+     "condDay": 379,
+     "lastN3": 713,
+     "deaths": 177,
+     "peak": 72
+    }
+   ],
+   "cargoLost": 0,
+   "tradersKilled": 0,
+   "supDead": 0,
+   "t766Held": null
+  },
+  "ⓑ′|7": {
+   "empty": 3,
+   "dissolved": 15,
+   "firstEmpty": 434,
+   "bandit": {
+    "conv": 109,
+    "exo": 69,
+    "starve": 199,
+    "disband": 31,
+    "denForm": 19,
+    "loot": 0,
+    "peak": 8
+   },
+   "eight": {
+    "pop": 5302,
+    "dead": 3,
+    "ever": 51,
+    "weapQ": 726,
+    "expand": 4139,
+    "board": 2387,
+    "toolQ": 8245.7,
+    "preserve": 1436.4,
+    "grain": 30874.4
+   },
+   "pop400": 3741,
+   "pop800": 5302,
+   "dis": [
+    {
+     "day": 393,
+     "name": "농촌9",
+     "n": 9,
+     "nRow": 9,
+     "peak": 63,
+     "gang": 4,
+     "fe": 0,
+     "inc": 0,
+     "need": 27,
+     "emptyEnd": false
+    },
+    {
+     "day": 397,
+     "name": "어촌9",
+     "n": 17,
+     "nRow": 17,
+     "peak": 107,
+     "gang": 7,
+     "fe": 1.1,
+     "inc": 0,
+     "need": 51,
+     "emptyEnd": false
+    },
+    {
+     "day": 438,
+     "name": "광산1",
+     "n": 14,
+     "nRow": 14,
+     "peak": 33,
+     "gang": 6,
+     "fe": 43.3,
+     "inc": 106.8,
+     "need": 42,
+     "emptyEnd": false
+    },
+    {
+     "day": 458,
+     "name": "농촌8",
+     "n": 20,
+     "nRow": 20,
+     "peak": 96,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 467,
+     "name": "농촌20",
+     "n": 11,
+     "nRow": 11,
+     "peak": 52,
+     "gang": 4,
+     "fe": 25.6,
+     "inc": 0,
+     "need": 33,
+     "emptyEnd": true
+    },
+    {
+     "day": 495,
+     "name": "농촌11",
+     "n": 19,
+     "nRow": 19,
+     "peak": 103,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 57,
+     "emptyEnd": false
+    },
+    {
+     "day": 503,
+     "name": "농촌19",
+     "n": 19,
+     "nRow": 19,
+     "peak": 96,
+     "gang": 8,
+     "fe": 29.3,
+     "inc": 0,
+     "need": 57,
+     "emptyEnd": false
+    },
+    {
+     "day": 504,
+     "name": "광산6",
+     "n": 20,
+     "nRow": 20,
+     "peak": 80,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 505,
+     "name": "어촌7",
+     "n": 20,
+     "nRow": 20,
+     "peak": 136,
+     "gang": 8,
+     "fe": 17.2,
+     "inc": 0.1,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 651,
+     "name": "광산7",
+     "n": 19,
+     "nRow": 19,
+     "peak": 79,
+     "gang": 8,
+     "fe": 4.5,
+     "inc": 0,
+     "need": 57,
+     "emptyEnd": false
+    },
+    {
+     "day": 685,
+     "name": "농촌16",
+     "n": 19,
+     "nRow": 19,
+     "peak": 119,
+     "gang": 8,
+     "fe": 42.7,
+     "inc": 0,
+     "need": 57,
+     "emptyEnd": false
+    },
+    {
+     "day": 712,
+     "name": "농촌7",
+     "n": 20,
+     "nRow": 20,
+     "peak": 104,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 713,
+     "name": "어촌3",
+     "n": 20,
+     "nRow": 20,
+     "peak": 155,
+     "gang": 8,
+     "fe": 44.1,
+     "inc": 0.1,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 733,
+     "name": "농촌18",
+     "n": 20,
+     "nRow": 20,
+     "peak": 80,
+     "gang": 8,
+     "fe": 0,
+     "inc": 227.5,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 761,
+     "name": "농촌13",
+     "n": 20,
+     "nRow": 20,
+     "peak": 109,
+     "gang": 8,
+     "fe": 37.2,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    }
+   ],
+   "held": 0,
+   "heldVillages": [],
+   "empties": [
+    {
+     "name": "농촌10",
+     "day": 514,
+     "dis": null,
+     "condDay": 376,
+     "lastN3": 409,
+     "deaths": 42,
+     "peak": 41
+    },
+    {
+     "name": "농촌14",
+     "day": 434,
+     "dis": null,
+     "condDay": 376,
+     "lastN3": 409,
+     "deaths": 43,
+     "peak": 43
+    },
+    {
+     "name": "농촌20",
+     "day": 506,
+     "dis": 467,
+     "condDay": 379,
+     "lastN3": 481,
+     "deaths": 59,
+     "peak": 52
+    }
+   ],
+   "cargoLost": 0,
+   "tradersKilled": 0,
+   "supDead": 0,
+   "t766Held": null
+  },
+  "ⓑ′|42": {
+   "empty": 3,
+   "dissolved": 6,
+   "firstEmpty": 440,
+   "bandit": {
+    "conv": 44,
+    "exo": 40,
+    "starve": 125,
+    "disband": 23,
+    "denForm": 19,
+    "loot": 0,
+    "peak": 4
+   },
+   "eight": {
+    "pop": 5910,
+    "dead": 3,
+    "ever": 51,
+    "weapQ": 798,
+    "expand": 4026,
+    "board": 2213,
+    "toolQ": 9699.5,
+    "preserve": 978.7,
+    "grain": 36586
+   },
+   "pop400": 4332,
+   "pop800": 5910,
+   "dis": [
+    {
+     "day": 380,
+     "name": "농촌19",
+     "n": 20,
+     "nRow": 20,
+     "peak": 95,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 393,
+     "name": "농촌9",
+     "n": 9,
+     "nRow": 9,
+     "peak": 64,
+     "gang": 4,
+     "fe": 0,
+     "inc": 0,
+     "need": 27,
+     "emptyEnd": false
+    },
+    {
+     "day": 505,
+     "name": "농촌11",
+     "n": 20,
+     "nRow": 20,
+     "peak": 96,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0.1,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 537,
+     "name": "농촌20",
+     "n": 20,
+     "nRow": 20,
+     "peak": 57,
+     "gang": 8,
+     "fe": 43.7,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 724,
+     "name": "농촌7",
+     "n": 20,
+     "nRow": 20,
+     "peak": 91,
+     "gang": 8,
+     "fe": 5.3,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 732,
+     "name": "농촌18",
+     "n": 20,
+     "nRow": 20,
+     "peak": 53,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    }
+   ],
+   "held": 0,
+   "heldVillages": [],
+   "empties": [
+    {
+     "name": "광산1",
+     "day": 440,
+     "dis": null,
+     "condDay": 382,
+     "lastN3": 415,
+     "deaths": 52,
+     "peak": 52
+    },
+    {
+     "name": "농촌8",
+     "day": 538,
+     "dis": null,
+     "condDay": null,
+     "lastN3": 537,
+     "deaths": 154,
+     "peak": 111
+    },
+    {
+     "name": "농촌10",
+     "day": 555,
+     "dis": null,
+     "condDay": 378,
+     "lastN3": 530,
+     "deaths": 71,
+     "peak": 55
+    }
+   ],
+   "cargoLost": 0,
+   "tradersKilled": 0,
+   "supDead": 0,
+   "t766Held": null
+  },
+  "ⓒ|1020": {
+   "empty": 4,
+   "dissolved": 8,
+   "firstEmpty": 430,
+   "bandit": {
+    "conv": 56,
+    "exo": 32,
+    "starve": 35,
+    "disband": 34,
+    "denForm": 29,
+    "loot": 129,
+    "peak": 3
+   },
+   "eight": {
+    "pop": 5554,
+    "dead": 4,
+    "ever": 51,
+    "weapQ": 696,
+    "expand": 3936,
+    "board": 2269,
+    "toolQ": 8818,
+    "preserve": 1508.9,
+    "grain": 29205.1
+   },
+   "pop400": 3606,
+   "pop800": 5554,
+   "dis": [
+    {
+     "day": 380,
+     "name": "농촌19",
+     "n": 20,
+     "nRow": 20,
+     "peak": 97,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 393,
+     "name": "농촌9",
+     "n": 8,
+     "nRow": 8,
+     "peak": 52,
+     "gang": 3,
+     "fe": 0,
+     "inc": 0,
+     "need": 24,
+     "emptyEnd": true
+    },
+    {
+     "day": 459,
+     "name": "어촌9",
+     "n": 20,
+     "nRow": 20,
+     "peak": 73,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0.1,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 475,
+     "name": "농촌20",
+     "n": 15,
+     "nRow": 15,
+     "peak": 54,
+     "gang": 6,
+     "fe": 15.8,
+     "inc": 0.1,
+     "need": 45,
+     "emptyEnd": false
+    },
+    {
+     "day": 495,
+     "name": "어촌12",
+     "n": 20,
+     "nRow": 20,
+     "peak": 134,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0.1,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 505,
+     "name": "농촌11",
+     "n": 19,
+     "nRow": 19,
+     "peak": 132,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 57,
+     "emptyEnd": false
+    },
+    {
+     "day": 680,
+     "name": "광산1",
+     "n": 20,
+     "nRow": 21,
+     "peak": 51,
+     "gang": 8,
+     "fe": 0.1,
+     "inc": 0.1,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 736,
+     "name": "농촌7",
+     "n": 18,
+     "nRow": 18,
+     "peak": 96,
+     "gang": 7,
+     "fe": 51.4,
+     "inc": 0,
+     "need": 54,
+     "emptyEnd": false
+    }
+   ],
+   "held": 3,
+   "heldVillages": [
+    "광산1",
+    "농촌7"
+   ],
+   "empties": [
+    {
+     "name": "농촌9",
+     "day": 472,
+     "dis": 393,
+     "condDay": 378,
+     "lastN3": 403,
+     "deaths": 51,
+     "peak": 52
+    },
+    {
+     "name": "농촌13",
+     "day": 456,
+     "dis": null,
+     "condDay": 381,
+     "lastN3": 414,
+     "deaths": 98,
+     "peak": 98
+    },
+    {
+     "name": "농촌16",
+     "day": 501,
+     "dis": null,
+     "condDay": null,
+     "lastN3": 500,
+     "deaths": 231,
+     "peak": 127
+    },
+    {
+     "name": "농촌18",
+     "day": 430,
+     "dis": null,
+     "condDay": 377,
+     "lastN3": 404,
+     "deaths": 42,
+     "peak": 45
+    }
+   ],
+   "cargoLost": 5719.6,
+   "tradersKilled": 123,
+   "supDead": 11,
+   "t766Held": 3
+  },
+  "ⓒ|7": {
+   "empty": 5,
+   "dissolved": 7,
+   "firstEmpty": 453,
+   "bandit": {
+    "conv": 51,
+    "exo": 42,
+    "starve": 36,
+    "disband": 32,
+    "denForm": 28,
+    "loot": 481,
+    "peak": 5
+   },
+   "eight": {
+    "pop": 5765,
+    "dead": 5,
+    "ever": 51,
+    "weapQ": 763,
+    "expand": 4761,
+    "board": 2309,
+    "toolQ": 9310.2,
+    "preserve": 1371.5,
+    "grain": 34469.5
+   },
+   "pop400": 3902,
+   "pop800": 5765,
+   "dis": [
+    {
+     "day": 379,
+     "name": "농촌19",
+     "n": 20,
+     "nRow": 20,
+     "peak": 89,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 451,
+     "name": "농촌20",
+     "n": 8,
+     "nRow": 8,
+     "peak": 59,
+     "gang": 3,
+     "fe": 20.9,
+     "inc": 0,
+     "need": 24,
+     "emptyEnd": true
+    },
+    {
+     "day": 488,
+     "name": "광산4",
+     "n": 19,
+     "nRow": 20,
+     "peak": 78,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 57,
+     "emptyEnd": false
+    },
+    {
+     "day": 490,
+     "name": "농촌11",
+     "n": 20,
+     "nRow": 20,
+     "peak": 104,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 528,
+     "name": "어촌12",
+     "n": 20,
+     "nRow": 20,
+     "peak": 148,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 532,
+     "name": "광산6",
+     "n": 20,
+     "nRow": 20,
+     "peak": 77,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 734,
+     "name": "광산1",
+     "n": 19,
+     "nRow": 20,
+     "peak": 65,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 57,
+     "emptyEnd": false
+    }
+   ],
+   "held": 5,
+   "heldVillages": [
+    "광산2"
+   ],
+   "empties": [
+    {
+     "name": "농촌6",
+     "day": 491,
+     "dis": null,
+     "condDay": null,
+     "lastN3": 490,
+     "deaths": 191,
+     "peak": 103
+    },
+    {
+     "name": "농촌7",
+     "day": 453,
+     "dis": null,
+     "condDay": 379,
+     "lastN3": 428,
+     "deaths": 127,
+     "peak": 101
+    },
+    {
+     "name": "농촌15",
+     "day": 465,
+     "dis": null,
+     "condDay": 379,
+     "lastN3": 439,
+     "deaths": 88,
+     "peak": 66
+    },
+    {
+     "name": "농촌18",
+     "day": 481,
+     "dis": null,
+     "condDay": 374,
+     "lastN3": 462,
+     "deaths": 32,
+     "peak": 35
+    },
+    {
+     "name": "농촌20",
+     "day": 541,
+     "dis": 451,
+     "condDay": 385,
+     "lastN3": 533,
+     "deaths": 67,
+     "peak": 59
+    }
+   ],
+   "cargoLost": 27553.3,
+   "tradersKilled": 457,
+   "supDead": 23,
+   "t766Held": 5
+  },
+  "ⓒ|42": {
+   "empty": 4,
+   "dissolved": 12,
+   "firstEmpty": 524,
+   "bandit": {
+    "conv": 81,
+    "exo": 55,
+    "starve": 39,
+    "disband": 36,
+    "denForm": 28,
+    "loot": 157,
+    "peak": 4
+   },
+   "eight": {
+    "pop": 5270,
+    "dead": 4,
+    "ever": 51,
+    "weapQ": 748,
+    "expand": 3863,
+    "board": 2475,
+    "toolQ": 8738.1,
+    "preserve": 1659.6,
+    "grain": 32126.3
+   },
+   "pop400": 4201,
+   "pop800": 5270,
+   "dis": [
+    {
+     "day": 379,
+     "name": "농촌19",
+     "n": 20,
+     "nRow": 20,
+     "peak": 87,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 427,
+     "name": "농촌20",
+     "n": 11,
+     "nRow": 11,
+     "peak": 38,
+     "gang": 4,
+     "fe": 31.5,
+     "inc": 0.1,
+     "need": 33,
+     "emptyEnd": false
+    },
+    {
+     "day": 482,
+     "name": "농촌18",
+     "n": 10,
+     "nRow": 10,
+     "peak": 58,
+     "gang": 4,
+     "fe": 0,
+     "inc": 0,
+     "need": 30,
+     "emptyEnd": false
+    },
+    {
+     "day": 487,
+     "name": "농촌9",
+     "n": 20,
+     "nRow": 20,
+     "peak": 59,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 489,
+     "name": "광산4",
+     "n": 20,
+     "nRow": 21,
+     "peak": 78,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 498,
+     "name": "광산6",
+     "n": 19,
+     "nRow": 19,
+     "peak": 83,
+     "gang": 8,
+     "fe": 0,
+     "inc": 0.1,
+     "need": 57,
+     "emptyEnd": false
+    },
+    {
+     "day": 540,
+     "name": "농촌11",
+     "n": 20,
+     "nRow": 20,
+     "peak": 131,
+     "gang": 8,
+     "fe": 3,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 629,
+     "name": "농촌7",
+     "n": 6,
+     "nRow": 6,
+     "peak": 97,
+     "gang": 3,
+     "fe": 17.1,
+     "inc": 0,
+     "need": 18,
+     "emptyEnd": false
+    },
+    {
+     "day": 656,
+     "name": "농촌6",
+     "n": 15,
+     "nRow": 15,
+     "peak": 99,
+     "gang": 6,
+     "fe": 28.2,
+     "inc": 0,
+     "need": 45,
+     "emptyEnd": false
+    },
+    {
+     "day": 723,
+     "name": "어촌12",
+     "n": 20,
+     "nRow": 20,
+     "peak": 155,
+     "gang": 8,
+     "fe": 27.8,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    },
+    {
+     "day": 747,
+     "name": "광산7",
+     "n": 20,
+     "nRow": 20,
+     "peak": 82,
+     "gang": 8,
+     "fe": 0,
+     "inc": 54.9,
+     "need": 60,
+     "emptyEnd": true
+    },
+    {
+     "day": 758,
+     "name": "광산1",
+     "n": 20,
+     "nRow": 21,
+     "peak": 68,
+     "gang": 8,
+     "fe": 5.5,
+     "inc": 0,
+     "need": 60,
+     "emptyEnd": false
+    }
+   ],
+   "held": 2,
+   "heldVillages": [
+    "농촌9",
+    "어촌3"
+   ],
+   "empties": [
+    {
+     "name": "광산7",
+     "day": 777,
+     "dis": 747,
+     "condDay": 379,
+     "lastN3": 763,
+     "deaths": 182,
+     "peak": 82
+    },
+    {
+     "name": "어촌10",
+     "day": 751,
+     "dis": null,
+     "condDay": null,
+     "lastN3": 750,
+     "deaths": 198,
+     "peak": 110
+    },
+    {
+     "name": "농촌10",
+     "day": 572,
+     "dis": null,
+     "condDay": 378,
+     "lastN3": 411,
+     "deaths": 65,
+     "peak": 64
+    },
+    {
+     "name": "농촌14",
+     "day": 524,
+     "dis": null,
+     "condDay": 466,
+     "lastN3": 499,
+     "deaths": 84,
+     "peak": 47
+    }
+   ],
+   "cargoLost": 7885,
+   "tradersKilled": 148,
+   "supDead": 1,
+   "t766Held": 2
+  },
+  "ⓓ|1020": {
+   "empty": 2,
+   "dissolved": 0,
+   "firstEmpty": 575,
+   "bandit": {
+    "conv": 0,
+    "exo": 0,
+    "starve": 0,
+    "disband": 0,
+    "denForm": 0,
+    "loot": 0,
+    "peak": 0
+   },
+   "eight": {
+    "pop": 5822,
+    "dead": 2,
+    "ever": 51,
+    "weapQ": 702,
+    "expand": 3810,
+    "board": 2114,
+    "toolQ": 9146.3,
+    "preserve": 702.3,
+    "grain": 32860.3
+   },
+   "pop400": 4009,
+   "pop800": 5822,
+   "dis": [],
+   "held": 0,
+   "heldVillages": [],
+   "empties": [
+    {
+     "name": "광산7",
+     "day": 575,
+     "dis": null,
+     "condDay": null,
+     "lastN3": 550,
+     "deaths": 128,
+     "peak": 65
+    },
+    {
+     "name": "농촌20",
+     "day": 776,
+     "dis": null,
+     "condDay": null,
+     "lastN3": 730,
+     "deaths": 176,
+     "peak": 67
+    }
+   ],
+   "cargoLost": 0,
+   "tradersKilled": 0,
+   "supDead": 0,
+   "t766Held": null
+  },
+  "ⓓ|7": {
+   "empty": 3,
+   "dissolved": 0,
+   "firstEmpty": 434,
+   "bandit": {
+    "conv": 0,
+    "exo": 0,
+    "starve": 0,
+    "disband": 0,
+    "denForm": 0,
+    "loot": 0,
+    "peak": 0
+   },
+   "eight": {
+    "pop": 5475,
+    "dead": 3,
+    "ever": 51,
+    "weapQ": 700,
+    "expand": 3693,
+    "board": 2538,
+    "toolQ": 8127,
+    "preserve": 1241.8,
+    "grain": 31815.3
+   },
+   "pop400": 3750,
+   "pop800": 5475,
+   "dis": [],
+   "held": 0,
+   "heldVillages": [],
+   "empties": [
+    {
+     "name": "농촌10",
+     "day": 511,
+     "dis": null,
+     "condDay": null,
+     "lastN3": 486,
+     "deaths": 43,
+     "peak": 41
+    },
+    {
+     "name": "농촌14",
+     "day": 434,
+     "dis": null,
+     "condDay": null,
+     "lastN3": 409,
+     "deaths": 43,
+     "peak": 43
+    },
+    {
+     "name": "농촌20",
+     "day": 504,
+     "dis": null,
+     "condDay": null,
+     "lastN3": 479,
+     "deaths": 61,
+     "peak": 52
+    }
+   ],
+   "cargoLost": 0,
+   "tradersKilled": 0,
+   "supDead": 0,
+   "t766Held": null
+  },
+  "ⓓ|42": {
+   "empty": 3,
+   "dissolved": 0,
+   "firstEmpty": 440,
+   "bandit": {
+    "conv": 0,
+    "exo": 0,
+    "starve": 0,
+    "disband": 0,
+    "denForm": 0,
+    "loot": 0,
+    "peak": 0
+   },
+   "eight": {
+    "pop": 6036,
+    "dead": 3,
+    "ever": 51,
+    "weapQ": 839,
+    "expand": 5007,
+    "board": 2234,
+    "toolQ": 9754,
+    "preserve": 858.5,
+    "grain": 33468.9
+   },
+   "pop400": 4317,
+   "pop800": 6036,
+   "dis": [],
+   "held": 0,
+   "heldVillages": [],
+   "empties": [
+    {
+     "name": "광산1",
+     "day": 440,
+     "dis": null,
+     "condDay": null,
+     "lastN3": 415,
+     "deaths": 52,
+     "peak": 52
+    },
+    {
+     "name": "농촌8",
+     "day": 617,
+     "dis": null,
+     "condDay": null,
+     "lastN3": 616,
+     "deaths": 199,
+     "peak": 111
+    },
+    {
+     "name": "농촌10",
+     "day": 622,
+     "dis": null,
+     "condDay": null,
+     "lastN3": 563,
+     "deaths": 58,
+     "peak": 55
+    }
+   ],
+   "cargoLost": 0,
+   "tradersKilled": 0,
+   "supDead": 0,
+   "t766Held": null
+  }
+ },
+ "sum": {
+  "ⓐ": {
+   "empty": [
+    5,
+    8,
+    4
+   ],
+   "dis": [
+    12,
+    8,
+    13
+   ],
+   "first": [
+    430,
+    453,
+    482
+   ],
+   "conv": [
+    89,
+    59,
+    90
+   ],
+   "pop": [
+    5602,
+    5451,
+    5623
+   ]
+  },
+  "ⓐ″": {
+   "empty": [
+    5,
+    8,
+    4
+   ],
+   "dis": [
+    10,
+    7,
+    13
+   ],
+   "first": [
+    430,
+    453,
+    482
+   ],
+   "conv": [
+    73,
+    51,
+    90
+   ],
+   "pop": [
+    5507,
+    5061,
+    5645
+   ]
+  },
+  "ⓑ": {
+   "empty": [
+    1,
+    3,
+    3
+   ],
+   "dis": [
+    0,
+    0,
+    0
+   ],
+   "first": [
+    535,
+    434,
+    440
+   ],
+   "conv": [
+    0,
+    0,
+    0
+   ],
+   "pop": [
+    5652,
+    5475,
+    5860
+   ]
+  },
+  "ⓑ′": {
+   "empty": [
+    4,
+    3,
+    3
+   ],
+   "dis": [
+    16,
+    15,
+    6
+   ],
+   "first": [
+    564,
+    434,
+    440
+   ],
+   "conv": [
+    119,
+    109,
+    44
+   ],
+   "pop": [
+    5533,
+    5302,
+    5910
+   ]
+  },
+  "ⓒ": {
+   "empty": [
+    4,
+    5,
+    4
+   ],
+   "dis": [
+    8,
+    7,
+    12
+   ],
+   "first": [
+    430,
+    453,
+    524
+   ],
+   "conv": [
+    56,
+    51,
+    81
+   ],
+   "pop": [
+    5554,
+    5765,
+    5270
+   ]
+  },
+  "ⓓ": {
+   "empty": [
+    2,
+    3,
+    3
+   ],
+   "dis": [
+    0,
+    0,
+    0
+   ],
+   "first": [
+    575,
+    434,
+    440
+   ],
+   "conv": [
+    0,
+    0,
+    0
+   ],
+   "pop": [
+    5822,
+    5475,
+    6036
+   ]
+  }
+ },
+ "save": [
+  {
+   "seed": 1020,
+   "saved": [
+    {
+     "name": "광산4",
+     "held": 0
+    },
+    {
+     "name": "농촌10",
+     "held": 0
+    },
+    {
+     "name": "어촌8",
+     "held": 0
+    },
+    {
+     "name": "농촌15",
+     "held": 0
+    },
+    {
+     "name": "어촌16",
+     "held": 0
+    },
+    {
+     "name": "광산7",
+     "held": 0
+    }
+   ],
+   "not": [
+    {
+     "name": "농촌19",
+     "why": "오는 0 · 곳간 0 < 60"
+    },
+    {
+     "name": "농촌9",
+     "why": "오는 0 · 곳간 0 < 24"
+    },
+    {
+     "name": "어촌9",
+     "why": "오는 0.1 — 0+0.1 < 60"
+    },
+    {
+     "name": "농촌20",
+     "why": "오는 0.1 — 15.8+0.1 < 45"
+    },
+    {
+     "name": "어촌12",
+     "why": "오는 0.1 — 0+0.1 < 60"
+    },
+    {
+     "name": "농촌11",
+     "why": "오는 0 · 곳간 0 < 57"
+    }
+   ],
+   "onlyC": [
+    "광산1",
+    "농촌7"
+   ]
+  },
+  {
+   "seed": 7,
+   "saved": [
+    {
+     "name": "광산2",
+     "held": 5
+    },
+    {
+     "name": "광산5",
+     "held": 0
+    }
+   ],
+   "not": [
+    {
+     "name": "농촌19",
+     "why": "오는 0 · 곳간 0 < 60"
+    },
+    {
+     "name": "농촌20",
+     "why": "오는 0 · 곳간 20.9 < 24"
+    },
+    {
+     "name": "광산4",
+     "why": "오는 0 · 곳간 0 < 57"
+    },
+    {
+     "name": "농촌11",
+     "why": "오는 0 · 곳간 0 < 60"
+    },
+    {
+     "name": "어촌12",
+     "why": "오는 0 · 곳간 0 < 60"
+    },
+    {
+     "name": "광산6",
+     "why": "오는 0 · 곳간 0 < 60"
+    }
+   ],
+   "onlyC": [
+    "광산1"
+   ]
+  },
+  {
+   "seed": 42,
+   "saved": [
+    {
+     "name": "농촌15",
+     "held": 0
+    },
+    {
+     "name": "농촌14",
+     "held": 0
+    },
+    {
+     "name": "어촌9",
+     "held": 0
+    },
+    {
+     "name": "농촌16",
+     "held": 0
+    }
+   ],
+   "not": [
+    {
+     "name": "농촌19",
+     "why": "오는 0 · 곳간 0 < 60"
+    },
+    {
+     "name": "농촌9",
+     "why": "오는 0 · 곳간 0 < 60"
+    },
+    {
+     "name": "광산1",
+     "why": "오는 0 · 곳간 5.5 < 60"
+    },
+    {
+     "name": "농촌11",
+     "why": "오는 0 · 곳간 3 < 60"
+    },
+    {
+     "name": "농촌18",
+     "why": "오는 0 · 곳간 0 < 30"
+    },
+    {
+     "name": "광산6",
+     "why": "오는 0.1 — 0+0.1 < 57"
+    },
+    {
+     "name": "어촌12",
+     "why": "오는 0 · 곳간 27.8 < 60"
+    },
+    {
+     "name": "광산4",
+     "why": "오는 0 · 곳간 0 < 60"
+    },
+    {
+     "name": "광산7",
+     "why": "오는 54.9 — 0+54.9 < 60"
+    }
+   ],
+   "onlyC": [
+    "농촌20",
+    "농촌7",
+    "농촌6"
+   ]
+  }
+ ],
+ "noise": [
+  {
+   "seed": 1020,
+   "saved": [
+    {
+     "name": "광산4",
+     "held": 0
+    },
+    {
+     "name": "농촌10",
+     "held": 0
+    },
+    {
+     "name": "어촌8",
+     "held": 0
+    },
+    {
+     "name": "농촌15",
+     "held": 0
+    },
+    {
+     "name": "어촌16",
+     "held": 0
+    },
+    {
+     "name": "광산7",
+     "held": 0
+    }
+   ],
+   "not": [
+    {
+     "name": "농촌19",
+     "why": "오는 0 · 곳간 0 < 60"
+    },
+    {
+     "name": "농촌9",
+     "why": "오는 0 · 곳간 0 < 24"
+    },
+    {
+     "name": "어촌9",
+     "why": "오는 0.1 — 0+0.1 < 60"
+    },
+    {
+     "name": "농촌20",
+     "why": "오는 0.1 — 15.8+0.1 < 45"
+    },
+    {
+     "name": "어촌12",
+     "why": "오는 0.1 — 0+0.1 < 60"
+    },
+    {
+     "name": "농촌11",
+     "why": "오는 0 · 곳간 0 < 57"
+    }
+   ],
+   "onlyC": [
+    "광산1",
+    "농촌6",
+    "농촌7",
+    "광산3"
+   ]
+  },
+  {
+   "seed": 7,
+   "saved": [
+    {
+     "name": "광산2",
+     "held": 0
+    },
+    {
+     "name": "광산5",
+     "held": 0
+    }
+   ],
+   "not": [
+    {
+     "name": "농촌19",
+     "why": "오는 0 · 곳간 0 < 60"
+    },
+    {
+     "name": "농촌20",
+     "why": "오는 0 · 곳간 20.9 < 24"
+    },
+    {
+     "name": "광산4",
+     "why": "오는 0 · 곳간 0 < 60"
+    },
+    {
+     "name": "농촌11",
+     "why": "오는 0 · 곳간 0 < 60"
+    },
+    {
+     "name": "어촌12",
+     "why": "오는 0 · 곳간 0 < 57"
+    },
+    {
+     "name": "광산6",
+     "why": "오는 0 · 곳간 0 < 60"
+    }
+   ],
+   "onlyC": [
+    "농촌2"
+   ]
+  },
+  {
+   "seed": 42,
+   "saved": [],
+   "not": [
+    {
+     "name": "농촌19",
+     "why": "오는 0 · 곳간 0 < 60"
+    },
+    {
+     "name": "농촌9",
+     "why": "오는 224 — 0+224 ≥ 30"
+    },
+    {
+     "name": "광산1",
+     "why": "오는 0 · 곳간 21.1 ≥ 18"
+    },
+    {
+     "name": "농촌11",
+     "why": "오는 0 · 곳간 3.3 < 60"
+    },
+    {
+     "name": "농촌18",
+     "why": "오는 0 · 곳간 0 < 9"
+    },
+    {
+     "name": "광산6",
+     "why": "오는 0 · 곳간 0 < 60"
+    },
+    {
+     "name": "어촌12",
+     "why": "오는 0 · 곳간 0 < 60"
+    },
+    {
+     "name": "광산4",
+     "why": "오는 0.1 — 15.1+0.1 < 60"
+    },
+    {
+     "name": "농촌15",
+     "why": "오는 0 · 곳간 8.4 < 60"
+    },
+    {
+     "name": "농촌14",
+     "why": "오는 0 · 곳간 43.2 < 57"
+    },
+    {
+     "name": "어촌9",
+     "why": "오는 0 · 곳간 0 < 60"
+    },
+    {
+     "name": "농촌16",
+     "why": "오는 0 · 곳간 9.2 < 60"
+    },
+    {
+     "name": "광산7",
+     "why": "오는 149.1 — 0+149.1 ≥ 60"
+    }
+   ],
+   "onlyC": []
+  }
+ ],
+ "held": [
+  {
+   "k": "ⓒ",
+   "seed": 1020,
+   "name": "광산1",
+   "first": 663,
+   "last": 663,
+   "days": 1,
+   "laterDis": 680,
+   "endN": 60
+  },
+  {
+   "k": "ⓒ",
+   "seed": 1020,
+   "name": "농촌7",
+   "first": 731,
+   "last": 732,
+   "days": 2,
+   "laterDis": 736,
+   "endN": 19
+  },
+  {
+   "k": "ⓒ",
+   "seed": 7,
+   "name": "광산2",
+   "first": 564,
+   "last": 568,
+   "days": 5,
+   "laterDis": null,
+   "endN": 89
+  },
+  {
+   "k": "ⓒ",
+   "seed": 42,
+   "name": "농촌9",
+   "first": 393,
+   "last": 393,
+   "days": 1,
+   "laterDis": 487,
+   "endN": 38
+  },
+  {
+   "k": "ⓒ",
+   "seed": 42,
+   "name": "어촌3",
+   "first": 722,
+   "last": 722,
+   "days": 1,
+   "laterDis": null,
+   "endN": 83
+  }
+ ],
+ "emptyMatrix": [
+  {
+   "seed": 1020,
+   "name": "광산7",
+   "cells": {
+    "ⓐ": "",
+    "ⓐ″": "",
+    "ⓑ": "",
+    "ⓑ′": "",
+    "ⓒ": "",
+    "ⓓ": "**575**"
+   }
+  },
+  {
+   "seed": 1020,
+   "name": "농촌13",
+   "cells": {
+    "ⓐ": "**456**",
+    "ⓐ″": "**456**",
+    "ⓑ": "",
+    "ⓑ′": "**752** h",
+    "ⓒ": "**456**",
+    "ⓓ": ""
+   }
+  },
+  {
+   "seed": 1020,
+   "name": "농촌14",
+   "cells": {
+    "ⓐ": "",
+    "ⓐ″": "",
+    "ⓑ": "**535**",
+    "ⓑ′": "",
+    "ⓒ": "",
+    "ⓓ": ""
+   }
+  },
+  {
+   "seed": 1020,
+   "name": "농촌15",
+   "cells": {
+    "ⓐ": "",
+    "ⓐ″": "",
+    "ⓑ": "",
+    "ⓑ′": "**564** h",
+    "ⓒ": "",
+    "ⓓ": ""
+   }
+  },
+  {
+   "seed": 1020,
+   "name": "농촌16",
+   "cells": {
+    "ⓐ": "**501**",
+    "ⓐ″": "**501**",
+    "ⓑ": "",
+    "ⓑ′": "",
+    "ⓒ": "**501**",
+    "ⓓ": ""
+   }
+  },
+  {
+   "seed": 1020,
+   "name": "농촌18",
+   "cells": {
+    "ⓐ": "**430**",
+    "ⓐ″": "**430**",
+    "ⓑ": "",
+    "ⓑ′": "",
+    "ⓒ": "**430**",
+    "ⓓ": ""
+   }
+  },
+  {
+   "seed": 1020,
+   "name": "농촌20",
+   "cells": {
+    "ⓐ": "",
+    "ⓐ″": "**789** h",
+    "ⓑ": "",
+    "ⓑ′": "**788** h",
+    "ⓒ": "",
+    "ⓓ": "**776**"
+   }
+  },
+  {
+   "seed": 1020,
+   "name": "농촌9",
+   "cells": {
+    "ⓐ": "**472** h",
+    "ⓐ″": "**472** h",
+    "ⓑ": "",
+    "ⓑ′": "",
+    "ⓒ": "**472** h",
+    "ⓓ": ""
+   }
+  },
+  {
+   "seed": 1020,
+   "name": "어촌8",
+   "cells": {
+    "ⓐ": "**714** h",
+    "ⓐ″": "",
+    "ⓑ": "",
+    "ⓑ′": "**737** h",
+    "ⓒ": "",
+    "ⓓ": ""
+   }
+  },
+  {
+   "seed": 7,
+   "name": "광산6",
+   "cells": {
+    "ⓐ": "**556** h",
+    "ⓐ″": "**725** h",
+    "ⓑ": "",
+    "ⓑ′": "",
+    "ⓒ": "",
+    "ⓓ": ""
+   }
+  },
+  {
+   "seed": 7,
+   "name": "농촌10",
+   "cells": {
+    "ⓐ": "**555**",
+    "ⓐ″": "**538**",
+    "ⓑ": "**511**",
+    "ⓑ′": "**514**",
+    "ⓒ": "",
+    "ⓓ": "**511**"
+   }
+  },
+  {
+   "seed": 7,
+   "name": "농촌11",
+   "cells": {
+    "ⓐ": "**512** h",
+    "ⓐ″": "",
+    "ⓑ": "",
+    "ⓑ′": "",
+    "ⓒ": "",
+    "ⓓ": ""
+   }
+  },
+  {
+   "seed": 7,
+   "name": "농촌14",
+   "cells": {
+    "ⓐ": "",
+    "ⓐ″": "",
+    "ⓑ": "**434**",
+    "ⓑ′": "**434**",
+    "ⓒ": "",
+    "ⓓ": "**434**"
+   }
+  },
+  {
+   "seed": 7,
+   "name": "농촌15",
+   "cells": {
+    "ⓐ": "**465**",
+    "ⓐ″": "**465**",
+    "ⓑ": "",
+    "ⓑ′": "",
+    "ⓒ": "**465**",
+    "ⓓ": ""
+   }
+  },
+  {
+   "seed": 7,
+   "name": "농촌18",
+   "cells": {
+    "ⓐ": "**481**",
+    "ⓐ″": "**481**",
+    "ⓑ": "",
+    "ⓑ′": "",
+    "ⓒ": "**481**",
+    "ⓓ": ""
+   }
+  },
+  {
+   "seed": 7,
+   "name": "농촌19",
+   "cells": {
+    "ⓐ": "",
+    "ⓐ″": "**730** h",
+    "ⓑ": "",
+    "ⓑ′": "",
+    "ⓒ": "",
+    "ⓓ": ""
+   }
+  },
+  {
+   "seed": 7,
+   "name": "농촌20",
+   "cells": {
+    "ⓐ": "**535** h",
+    "ⓐ″": "**538** h",
+    "ⓑ": "**504**",
+    "ⓑ′": "**506** h",
+    "ⓒ": "**541** h",
+    "ⓓ": "**504**"
+   }
+  },
+  {
+   "seed": 7,
+   "name": "농촌6",
+   "cells": {
+    "ⓐ": "**491**",
+    "ⓐ″": "**491**",
+    "ⓑ": "",
+    "ⓑ′": "",
+    "ⓒ": "**491**",
+    "ⓓ": ""
+   }
+  },
+  {
+   "seed": 7,
+   "name": "농촌7",
+   "cells": {
+    "ⓐ": "**453**",
+    "ⓐ″": "**453**",
+    "ⓑ": "",
+    "ⓑ′": "",
+    "ⓒ": "**453**",
+    "ⓓ": ""
+   }
+  },
+  {
+   "seed": 42,
+   "name": "광산1",
+   "cells": {
+    "ⓐ": "",
+    "ⓐ″": "",
+    "ⓑ": "**440**",
+    "ⓑ′": "**440**",
+    "ⓒ": "",
+    "ⓓ": "**440**"
+   }
+  },
+  {
+   "seed": 42,
+   "name": "광산7",
+   "cells": {
+    "ⓐ": "**748** h",
+    "ⓐ″": "**748** h",
+    "ⓑ": "",
+    "ⓑ′": "",
+    "ⓒ": "**777** h",
+    "ⓓ": ""
+   }
+  },
+  {
+   "seed": 42,
+   "name": "농촌10",
+   "cells": {
+    "ⓐ": "**613**",
+    "ⓐ″": "**613**",
+    "ⓑ": "**622**",
+    "ⓑ′": "**555**",
+    "ⓒ": "**572**",
+    "ⓓ": "**622**"
+   }
+  },
+  {
+   "seed": 42,
+   "name": "농촌14",
+   "cells": {
+    "ⓐ": "",
+    "ⓐ″": "",
+    "ⓑ": "",
+    "ⓑ′": "",
+    "ⓒ": "**524**",
+    "ⓓ": ""
+   }
+  },
+  {
+   "seed": 42,
+   "name": "농촌16",
+   "cells": {
+    "ⓐ": "**737** h",
+    "ⓐ″": "**737** h",
+    "ⓑ": "",
+    "ⓑ′": "",
+    "ⓒ": "",
+    "ⓓ": ""
+   }
+  },
+  {
+   "seed": 42,
+   "name": "농촌18",
+   "cells": {
+    "ⓐ": "**482** h",
+    "ⓐ″": "**482** h",
+    "ⓑ": "",
+    "ⓑ′": "",
+    "ⓒ": "",
+    "ⓓ": ""
+   }
+  },
+  {
+   "seed": 42,
+   "name": "농촌8",
+   "cells": {
+    "ⓐ": "",
+    "ⓐ″": "",
+    "ⓑ": "**617**",
+    "ⓑ′": "**538**",
+    "ⓒ": "",
+    "ⓓ": "**617**"
+   }
+  },
+  {
+   "seed": 42,
+   "name": "어촌10",
+   "cells": {
+    "ⓐ": "",
+    "ⓐ″": "",
+    "ⓑ": "",
+    "ⓑ′": "",
+    "ⓒ": "**751**",
+    "ⓓ": ""
+   }
+  }
+ ]
+}
