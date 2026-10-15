@@ -23,7 +23,9 @@ const acorn = require(path.join(__dirname, '..', 'node_modules', 'acorn'));
 
 let pass = 0, fail = 0;
 const ok = (c, m, extra) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (extra ? `  ${extra}` : '')); };
-const EMO = /\p{Extended_Pictographic}/u;
+// ★[T760 · PM 정함] 이모지 = 기본 표시가 이모지인 코드 포인트(`Emoji_Presentation` · VS16) — 정의 정본 `lib-emoji.js` 한 벌(사본 0).
+//   ★ · ◆ · ⚑ 같은 글자 기호는 판정 자리에 있어도 통과다(종전 `Extended_Pictographic` 은 그것까지 물었다 · T751 회부 1).
+const { EMOJI: EMO } = require('./lib-emoji');
 const SCRIPTS = path.join(__dirname);
 const ROOT = path.resolve(__dirname, '..');   // ★[T171] ⑦ 이 `server/villages.js` 를 대조군으로 읽는다
 
@@ -126,17 +128,22 @@ ok(bad.length === 0, '② ★판정 자리에 이모지 0 (정규식 · 술어 �
   const p = mut(PRINT_SRC);
   ok(j && j.length >= 1, '④ ★판정에 이모지를 되살리면 **잡는다**(잡을 수 있는 검사다)', j ? `${j.length}자리` : '픽스처 파싱 실패');
   ok(p && p.length === 0, '④b ★★그런데 **장식은 안 잡는다** — `console.log` 와 `ok()` 의 메시지는 통과', p ? `${p.length}자리` : '픽스처 파싱 실패');
-  const F = mut("const s='x'; ok(s.includes('\u{1F3D8}'), 'm');");
+  const F = mut("const s='x'; ok(s.includes('\u{1F3E0}'), 'm');");   // ★[T760] 🏘(U+1F3D8)는 VS16 없이 글자 표시 — 기본 그림 글자 🏠 로
   ok(F && F.length === 1, '④c 술어 인자(`includes`)도 잡는다');
   const S = mut("page.$('button:has-text(\"\u{1F3E0} 집\")');");
   ok(S && S.length === 1, '④d 셀렉터 안의 이모지도 잡는다');
+  // ★[T760] 글자 기호는 통과 · 진짜 이모지 한 자는 그대로 문다(정의가 느슨해진 것이 아니라 **그림 글자**만 센다)
+  const GS = mut("const s='x'; ok(/\u2605\[T527\]/.test(s) && s.startsWith('## \u25C6') && s.includes('\u2691'), 'm');");
+  const VS = mut("const s='x'; ok(s.includes('\u2600\uFE0F'), 'm');");
+  ok(GS && GS.length === 0 && VS && VS.length === 1 && F && F.length === 1,
+    '④g ★[T760] 글자 기호(★ · ◆ · ⚑)는 판정 자리에서도 **통과** · VS16 붙은 ☀️ 와 🏠 는 **문다**', `글자 기호 ${GS ? GS.length : '?'}자리 · ☀️ ${VS ? VS.length : '?'} · 🏠 ${F ? F.length : '?'}`);
   // ★[T751] 이름 먼저 꼴 — 조건(둘째)의 이모지는 **잡고**, 이름(첫째)의 ★ 장식은 **안 잡는다**. 선언이 없으면 종전대로 첫 인자.
   const NF = mut("function ok(name, cond, detail) {} const x = 'a'; ok('\u2605 이름', x.includes('\u{1F4CB}'), 'd');");
   ok(NF && NF.length === 1 && /includes/.test(NF[0].why + NF[0].text) === false && NF[0].text === '\u{1F4CB}',
     '④e ★이름 먼저 꼴(`function ok(name, cond, …)`)이면 **둘째 인자**의 이모지를 잡는다', NF ? NF.map((h) => `${h.why} ${JSON.stringify(h.text)}`).join(' · ') : '픽스처 파싱 실패');
   const NP = mut("function ok(name, cond, detail) {} ok('\u2605 \u2705 장식', true, '\u2705');");
   const NO = mut("ok('\u2605 \u2705 첫 인자', true);");
-  const NX = mut("const ok = (label, extra) => 0; ok('\u2605 둘째가 조건 꼴이 아니면 종전대로', true);");
+  const NX = mut("const ok = (label, extra) => 0; ok('\u2705 둘째가 조건 꼴이 아니면 종전대로', true);");
   ok(NP && NP.length === 0 && NO && NO.length === 1 && NX && NX.length === 1,
     '④f ★★그 꼴의 이름(첫 인자) 장식은 **안 잡고** · 선언이 없는 파일은 **종전대로** 첫 인자를 잡는다(느슨하게 풀지 않았다)', `이름 먼저 ${NP ? NP.length : '?'}자리 · 선언 없음 ${NO ? NO.length : '?'}자리 · 둘째가 조건 꼴 아님 ${NX ? NX.length : '?'}자리`);
 }
