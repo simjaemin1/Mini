@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(표 없으면 안 돈다)
-// === scripts/test-t762-sync.js — 손잡이 `T762_SYNC_NEW`(기본 끔): 그날 econ 이 띄운 캐러밴도 **그날** 캐러밴 몸 동기에 든다 [T762] ==========
+// === scripts/test-t762-sync.js — 손잡이 `T762_CARAVAN_BODY`(기본 끔): ① 그날 econ 이 띄운 캐러밴도 **그날** 몸 동기에 · ② 재라우팅 몸은 옛 길 끝에서 [T762] ==========
 //
 // ★왜 [T762 실제 날 판] 하루 문은 캐러밴 동기 조각을 문을 여는 순간의 명부(`world.caravans.slice()`)로 세운다 — econ 틱(같은 문의 앞 조각)이
 //   띄운 캐러밴은 그 명부에 없어 **다음 경계**에야 몸이 선다. `T474_CARAVAN_WALK` 켬(다리 거의 다 1일)이면 가는 길이 통째로 장부만 간다.
@@ -14,6 +14,7 @@
 //      ⓐ 명부에 있던 캐러밴은 건너뛴다 · ⓑ 명부는 **조각이 처음 돌 때** 뜬다(문을 연 뒤 econ 이 띄운 것까지) ·
 //      ⓒ `'retry'` 면 같은 자리에서 멈추고 다음 부름이 그 자리부터 잇는다(T85 계약) · ⓓ 차례 = `world.caravans` 차례
 //   ⑤ 자명 통과 금지 — 덧 조각이 없는 문(돌연변이: 명부만)이면 ④ⓑ 의 새 캐러밴이 한 대도 안 불린다
+//   ⑥ ② 재라우팅 — 켬이면 다시 떠나는 자리 = 옛 장부 길 끝(`path.len`) · 남은 구간 답압 한 번(길이 다 파인 뒤 · 재진입 0) · 끔이면 종전 `body._t661.L`
 'use strict';
 const path = require('path');
 const fs = require('fs');
@@ -25,26 +26,26 @@ const codeOnly = require('./code-only.js');   // 주석 제거기 정본(T171 ·
 
 console.log('\n① 술어 · 읽는 자리');
 {
-  const decl = V.match(/const T762_SYNC_NEW = process\.env\.T762_SYNC_NEW === '1';/g) || [];
+  const decl = V.match(/const T762_CARAVAN_BODY = process\.env\.T762_CARAVAN_BODY === '1';/g) || [];
   ok(decl.length === 1, '① 선언 하나 · `=== \'1\'` 만 켬(기본 끔)', `선언 ${decl.length}`);
   const files = [];
   const walk = (d) => { for (const f of fs.readdirSync(d)) { const p = path.join(d, f); const st = fs.statSync(p); if (st.isDirectory()) walk(p); else if (/\.js$/.test(f)) files.push(p); } };
   for (const d of ['server', 'sim', 'public']) walk(path.join(ROOT, d));
-  const readers = files.filter((p) => codeOnly(fs.readFileSync(p, 'utf8')).includes('T762_SYNC_NEW')).map((p) => path.relative(ROOT, p));
+  const readers = files.filter((p) => codeOnly(fs.readFileSync(p, 'utf8')).includes('T762_CARAVAN_BODY')).map((p) => path.relative(ROOT, p));
   ok(readers.length === 1 && readers[0] === path.join('server', 'villages.js'), '① 읽는 자리 = server/villages.js 하나', readers.join(','));
 }
 
 console.log('\n② ③ 두 문의 차례 · 끔 글자');
 {
-  const blk = /\{ const _cl = state\.world\.caravans\.slice\(\);\n\s+for \(const c of _cl\) add\('caravan', \(\) => _caravanSyncOne\(C\.now, c, C\.car\)\);[^\n]*\n\s+if \(T762_SYNC_NEW\) add\('caravan', _t762SyncNewJob\(C, new Set\(_cl\)\)\); \}[^\n]*\n\s+add\('caravan', \(\) => \{ _caravanSyncSweep\(C\.car\); \}\);/g;
+  const blk = /\{ const _cl = state\.world\.caravans\.slice\(\);\n\s+for \(const c of _cl\) add\('caravan', \(\) => _caravanSyncOne\(C\.now, c, C\.car\)\);[^\n]*\n\s+if \(T762_CARAVAN_BODY\) add\('caravan', _t762SyncNewJob\(C, new Set\(_cl\)\)\); \}[^\n]*\n\s+add\('caravan', \(\) => \{ _caravanSyncSweep\(C\.car\); \}\);/g;
   const n = (V.match(blk) || []).length;
   ok(n === 2, '② 두 문 모두 — 명부 한 대씩 → (켬) 새 캐러밴 조각 → 쓸기', `${n}/2`);
   const perCar = (codeOnly(V).match(/add\('caravan', \(\) => _caravanSyncOne\(/g) || []).length;
   const fromCl = (codeOnly(V).match(/for \(const c of _cl\) add\('caravan', \(\) => _caravanSyncOne\(/g) || []).length;
   ok(perCar === 2 && fromCl === 2, '③ 끔 = 종전 — 한 대씩 조각은 문을 연 명부(`_cl`)만 돈다', `한 대씩 ${perCar} · 명부 ${fromCl}`);
   const extra = (codeOnly(V).match(/_t762SyncNewJob\(/g) || []).length;
-  const guarded = (codeOnly(V).match(/if \(T762_SYNC_NEW\) add\('caravan', _t762SyncNewJob\(/g) || []).length;
-  ok(extra === 3 && guarded === 2, '③ 덧 조각은 손잡이 아래에서만 선다(정의 1 · 부름 2 = 둘 다 `if (T762_SYNC_NEW)`)', `글자 ${extra} · 손잡이 아래 ${guarded}`);
+  const guarded = (codeOnly(V).match(/if \(T762_CARAVAN_BODY\) add\('caravan', _t762SyncNewJob\(/g) || []).length;
+  ok(extra === 3 && guarded === 2, '③ 덧 조각은 손잡이 아래에서만 선다(정의 1 · 부름 2 = 둘 다 `if (T762_CARAVAN_BODY)`)', `글자 ${extra} · 손잡이 아래 ${guarded}`);
 }
 
 console.log('\n④ 덧 조각의 행동(정본 글자 · 가짜 세계)');
@@ -79,6 +80,16 @@ if (src) {
     W.caravans = [A, B, N1]; for (const j of jobs) j(); return seen.splice(0); };
   const off = day(false), on = day(true);
   ok(!off.includes('n1') && on.includes('n1'), '⑤ 자명 통과 금지 — 명부만인 문은 그날 econ 이 띄운 캐러밴을 못 본다 · 덧 조각이 있으면 본다', `끔 ${off.join(',')} · 켬 ${on.join(',')}`);
+}
+
+console.log('\n⑥ ② 재라우팅 자리');
+{
+  const C = codeOnly(V);
+  const gate = /const _t762End = T762_CARAVAN_BODY && T661_ON && body\._t661 && body\._t661\.leg === 'outbound';/.test(C);
+  const pos = /caravanPointAt\(body\._t661\.path, _t762End \? body\._t661\.path\.len : body\._t661\.L, \{ segIdx: 0 \}\)/.test(C);
+  ok(gate && pos, '⑥ 켬이면 다시 떠나는 자리 = 옛 길 끝 · 끔이면 종전 장부 자리(`body._t661.L`) — 한 식 두 갈래');
+  const i0 = C.indexOf('const rr2 = getRouteResumable(oldToVil, newToVil, _pb);'), i1 = C.indexOf('if (_t762End && body._t661.L < body._t661.path.len) { _t661Stamp(body, body._t661.L, body._t661.path.len); body._t661.L = body._t661.path.len; }'), i2 = C.indexOf('setBodyPts(body, pts);', i1);
+  ok(i0 > 0 && i1 > i0 && i2 > i1, '⑥ 남은 구간 답압은 길이 다 파인 뒤(`retry` 갈래 뒤) · 몸 길을 바꾸기 앞 — 재진입해도 두 번 안 찍는다', `${i0} < ${i1} < ${i2}`);
 }
 
 console.log(`\n=== 결과: ${pass} PASS / ${fail} FAIL ===`);
