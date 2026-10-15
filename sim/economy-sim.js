@@ -165,7 +165,8 @@ function srand() {
 function setSeed(s) { _seed = s >>> 0; _seed0 = _seed; }
 function _t731StreamInit(v) {
   if (typeof v._rs === 'number') return;
-  let x = _seed0 >>> 0; const id = String(v.id != null ? v.id : (v.name || ''));
+  //   ★[T744] 재료 = 세계 씨 × 마을 **이름**(세계 안에서 하나 · 프로세스 계수기 `v.id` 는 앞서 만든 세계 수에 따라 바뀐다 — 같은 세계가 프로세스마다 다른 흐름을 받았다)
+  let x = _seed0 >>> 0; const id = String(v.name != null && v.name !== '' ? v.name : (v.id != null ? v.id : ''));
   for (let i = 0; i < id.length; i++) x = ((x ^ id.charCodeAt(i)) * 1664525 + 1013904223) >>> 0;
   v._rs = x;
 }
@@ -1276,6 +1277,11 @@ function _t100Credit(v, amt) {
   v._t100InflowToday = (v._t100InflowToday || 0) + amt;         // 오늘치 — ⓒ 텃밭 하한이 이걸 보고 모자란 만큼만 댄다
   return amt;
 }
+// ★★[T748 2026-10-14] **고르게 대기 칸에도 로트가 따라간다** — 호스트(존 서버 · 손잡이 `T732_MOMENT_LOT=1`)가 곳간 장부 훅을 꽂을 때만.
+//   랩 · CLI · 브라우저 · 끈 서버는 안 꽂는다 = `_LOTH` null = 아래 훅 줄이 전부 무동작(비트 동일). 훅은 **관측자**다(값 무변):
+//   대기 칸(`_t368Pend` · `_t100Pend`)에 들 때 그 레코드(손이 넘긴 것 · 없으면 그 순간)를 칸의 줄에 · 풀 때 오래된 것부터 곳간 레코드로.
+let _LOTH = null;
+function setLotHook(h) { _LOTH = (h && typeof h === 'object') ? h : null; }
 function harvestToGranary(v, n, mul, crop, ev) {
   if (!T100_FIELD_YIELD || !v || !v.storage) return 0;
   const _m = (typeof mul === 'number' && mul >= 0) ? mul : 1;   // ★[T179] 미전달 = 1(종전 비트) · 음수·NaN 도 1
@@ -1287,6 +1293,7 @@ function harvestToGranary(v, n, mul, crop, ev) {
     const units = (n > 0 ? n : 0) * _m;
     v._t100HarvestN = (v._t100HarvestN || 0) + ((ev > 0) ? ev : 1);   // 계측·배율 라운드로빈 누계 — 종전과 같은 칸(수확 횟수)
     v._t368KTot = (v._t368KTot || 0) + ((ev > 0) ? ev : 1) * T100_K * _m;   // ★대조 자 — 같은 수확을 종전 입구가 냈을 식량등가(계측 전용 · 회계 아님)
+    if (T227_EVEN && _LOTH) _LOTH.pendIn(v, '_t368Pend', crop, units);   // ★[T748] 대기 칸 줄 — 손이 넘긴 레코드(없으면 그 순간)를 그 칸에(관측자 · 끄면 무동작)
     if (T227_EVEN) { const P = v._t368Pend || (v._t368Pend = {}); P[crop] = (P[crop] || 0) + units; return units; }
     return _t368Credit(v, crop, units);
   }
@@ -1296,6 +1303,7 @@ function harvestToGranary(v, n, mul, crop, ev) {
   //   T218 이 잰 것: 켠 팔의 볏짚은 원량의 29~33% 가 **그날 상한을 넘어 버려진다**(끈 팔은 버림 0 —
   //   추상 농부는 매일 조금씩 내기 때문이다). 총량은 같은데 **몰려 오는 것**이 값을 깎고 있었다.
   //   ⚠총량 무변: 여기서 안 적은 것은 전부 `_t100Pend` 에 남아 있다(질량 누수 0 — 하네스가 항등식으로 문다).
+  if (T227_EVEN && _LOTH) _LOTH.pendIn(v, '_t100Pend', 'food', amt);   // ★[T748] 대기 칸 줄 — 그 순간 거둔 것(관측자 · 끄면 무동작)
   if (T227_EVEN) { v._t100Pend = (v._t100Pend || 0) + amt; return amt; }
   return _t100Credit(v, amt);
 }
@@ -1310,7 +1318,10 @@ function t100EvenRelease(v) {
   const d = seedFoodDays(0);
   const give = (d > 1) ? p / d : p;
   v._t100Pend = p - give;
-  return _t100Credit(v, give);
+  if (_LOTH) _LOTH.pendOut(v, '_t100Pend', 'food', give);   // ★[T748] 오래된 것부터 곳간 레코드로(끄면 무동작)
+  const out = _t100Credit(v, give);
+  if (_LOTH) _LOTH.clearIn(v, 'food');
+  return out;
 }
 // ★★[T368] **밭이 품목으로 적는 몸통** — `_t100Credit` 와 **같은 넷**(볏짚 밑변 · 곳간 · 금고 세금 · 오늘치)을
 //   품목으로 적는다. 볏짚 밑변과 오늘치는 **식량등가**(단위가 T100 과 같아야 짚·텃밭 하한이 같은 수를 본다),
@@ -1341,7 +1352,9 @@ function t368EvenRelease(v) {
     if (!(p > 0)) continue;
     const give = (d > 1) ? p / d : p;
     v._t368Pend[c] = p - give;
+    if (_LOTH) _LOTH.pendOut(v, '_t368Pend', c, give);   // ★[T748] 오래된 것부터 곳간 레코드로(끄면 무동작)
     out += _t368Credit(v, c, give);
+    if (_LOTH) _LOTH.clearIn(v, c);
   }
   return out;
 }
@@ -2756,6 +2769,7 @@ function createVillage(opts) {
   //   ⇒ 소멸(P) 는 **≥1 에 도달한 뒤 0 이 된 마을**만 센다. 아직 아무도 안 온 빈 터는 '소멸'이 아니라
   //     '아직 시작 안 함'이다. NPC 마을은 initN=8 이라 언제나 1 — 기존 판정과 완전히 같다.
   v._everPop = initN > 0 ? 1 : 0;
+  if (T731_LOCAL_MIDNIGHT) _t731StreamInit(v);   // ★[T744] 켬 = 마을 흐름 씨를 **만드는 순간**에 — 그 세계의 씨(`setSeed`)로(첫 틱까지 미루면 그 사이 만든 다른 세계의 씨를 받았다)
   return v;
 }
 
@@ -5739,6 +5753,7 @@ module.exports = {
   mineToGranary, mineDemandLeft, mineActOn, T724_MINE_ACT,
   forageToGranary, forageActOn, forageActItemsOf, foragerYieldsFor, T347_FORAGE_ACT,   // ★[T347] 채집 행위 — 문 셋 + 믹스 정본 + 손잡이(하네스가 표를 옮겨 적지 않는다)
   actDemandLeft, actDemandCap, fishDemandLeft, woodDemandLeft, forageDemandLeft, T374_DEMAND_STOP,
+  setLotHook,   // ★[T748] 고르게 대기 칸 로트 훅(존 서버 켬만 꽂는다 · 랩 null)
   T368_FARM_ACT, t368EvenRelease, totalFoodProductionEquivalent,   // ★[T368] 농부 행위 — 손잡이 + 품목별 고르게 푸는 자리 + 생산 환산(하네스가 옮겨 적지 않는다 · 입구는 `harvestToGranary` 그대로)   // ★[T374] 그날 수요 — 몸통 하나 + 품목별 `D` 자리 셋 + 손잡이
   forageRegrowR, forageRegrowPerDay, actRegrowPerDay,   // ★[T347] 재생 — T341 과 **같은 몸통**(`_actRegrowR`), 분자만 갈린다   // ★[T325] 나무꾼 행위 · ★[T341] 예산식은 지웠다(나무는 개체다) — 남은 것은 게이트와 **재생 유도 둘**
   T100_ANCHOR_N, T100_HARVEST_PER_FARMER_YEAR, T100_K, T100_FIELD_YIELD,   // ★[T100 4판] 앵커 하나 · 실측 하나 · 유도값 하나 · 손잡이 — 생활층(`villages.js`)과 하네스가 **여기서만** 읽는다(사본 0)

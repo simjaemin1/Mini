@@ -37,6 +37,16 @@ const Events = require('./events');
 const _T732_ON = (typeof process !== 'undefined' && process.env && process.env.T732_MOMENT_LOT === '1');
 let _t732G = null;
 function _t732Pause(on) { if (!_T732_ON) return; if (_t732G === null) { try { _t732G = require('./granary-lots'); } catch (e) { _t732G = false; } } if (_t732G) _t732G.suspend(on); }
+// ★★[T748 2026-10-14 · PM 10-14(족보 639) · 같은 손잡이 안 — 호스트가 `takeKcal`(kcal 정본 모듈)을 넘길 때만 · 끔/랩 = 종전 그대로] **거래소 받기 = 열량 짝.**
+//   종전: 받는 쪽만 1개 = 1단위(`inventory[takeItem] += take`) — 꺼내기 · 게시판 보상은 T59 부터 `kcal.itemsOf`(1단위 = 하루치 2,450kcal)라
+//     같은 곳간 몫이 문마다 다른 낱개로 나왔다(T732 §7-2). 넣는 쪽은 이미 열량이다(`_unitsOfFor` · 회관 = 거래소와 같은 문 · T725).
+//   켬: 받을 단위 → 낱개 = `itemsOf`(꺼내기 · 게시판 보상과 **같은 함수**) · 받을 개수 → 단위 = `econUnitsOf`(넣기와 같은 열량 축) ·
+//     낱개로 안 떨어지는 몫은 곳간에 남는다(종전 `Math.floor` 의 "넘치는 소수는 거래소 몫"과 같은 뜻 · 소멸 0).
+//     열량이 없는 것(나무 · 돌 · 광물)은 종전 그대로 1개 = 1단위(`itemsOf` 가 다루지 않는 품목).
+function _takeConv(K, item) {
+  if (!K || !item || typeof K.itemsOf !== 'function' || !(K.kcalOf(item) > 0)) return null;
+  return { items: (u) => K.itemsOf(item, u), units: (n) => K.econUnitsOf(item, n) };
+}
 
 const _num = (k, d) => { const v = parseFloat(process.env[k]); return Number.isFinite(v) ? v : d; };
 const CFG = {
@@ -115,7 +125,7 @@ function gluttedAt(econV2, v, res, stock) {
 
 // ── 시세표 — 그 마을 앞에서만 부른다(원격 조회 API 를 만들지 않는다 · §3.2 정보 비대칭) ──
 //   ★표시 세 칸이면 충분하다: 시세(기준 품목 환산) · 마을이 **사줄 여력** · 마을이 **팔 재고**.
-function board(ledger, econV2, vil, vid, inventory, numeraire) {
+function board(ledger, econV2, vil, vid, inventory, numeraire, takeKcal) {
   const v = vil.econ;
   const prices = Events.pricesFresh(econV2, v);   // ★지금 재고의 함수 — 하루 캐시가 아니다(머리 주석)
   const D = ledger.deliverable;
@@ -142,7 +152,7 @@ function board(ledger, econV2, vil, vid, inventory, numeraire) {
       // 기준 품목 환산 — **낼 물건 몇 개** 값인가(기준 행 자신은 정확히 1). **표시일 뿐**이다.
       num: pn > 0 ? sig(p / pn) : null,
       stock: +stock.toFixed(2),
-      sell: Events.payableQty(stock, CFG.STOCK_FRAC),   // 마을이 지금 내줄 수 있는 양(물리 상한)
+      sell: (() => { const q = Events.payableQty(stock, CFG.STOCK_FRAC); const cv = takeKcal ? _takeConv(takeKcal, D.toEcon.get(res)) : null; return cv ? cv.items(q).items : q; })(),   // 마을이 지금 내줄 수 있는 양(물리 상한) · ★[T748] 켬이면 받을 낱개(열량 짝)
       mine: inventory ? (D.items.get(res) || []).reduce((n, it) => n + Math.floor(Number(inventory[it]) || 0), 0) : 0,
       glut: gluttedAt(econV2, v, res, stock),           // ★넘침 — 아래 함수 주석 참조
     });
@@ -274,7 +284,8 @@ function quote(ledger, econV2, vil, vid, giveRes, takeRes, giveQty, opts) {
   // 한계비율(첫 조각) — 표시용. 실제 수령량은 아래 planSliced 가 곡선을 따라 낸다.
   const ratio = (pA * (1 - s)) / (pB * (1 + s));
   const plan = q > 0 ? planSliced(econV2, v, giveRes, takeRes, q, cap) : { gave: 0, took: 0 };
-  const take = Math.floor(plan.took);
+  const conv = (opts && opts.takeKcal) ? _takeConv(opts.takeKcal, ledger.deliverable.toEcon.get(takeRes)) : null;   // ★[T748] 받는 쪽 열량 짝(끔 = null)
+  const take = conv ? conv.items(plan.took).items : Math.floor(plan.took);
   // 상한을 다 쓰는 최대 낼 양 — 이분 탐색(곡선이라 나눗셈으로 못 낸다). 표시·절삭에 쓴다.
   let lo = 0, hi = Math.max(1, Math.ceil(cap / Math.max(1e-9, ratio)) * 4);
   for (let i = 0; i < 24; i++) {
@@ -288,7 +299,7 @@ function quote(ledger, econV2, vil, vid, giveRes, takeRes, giveQty, opts) {
     ok: true, giveRes, takeRes, ratio: +ratio.toFixed(6), spread: s,
     avgRatio: q > 0 ? +(plan.took / Math.max(1e-9, plan.gave)).toFixed(6) : null,
     priceGive: +pA.toFixed(6), priceTake: +pB.toFixed(6),
-    stock: +stock.toFixed(2), cap, maxGive,
+    stock: +stock.toFixed(2), cap: conv ? conv.items(cap).items : cap, maxGive,
     give: q, take,
     // ★★[T83 ⓪ · T69 §7 이 적어 둔 표시 결함] 종전은 `Math.floor(plan.gave) < q` 였다.
     //   `q` 는 **재화 단위**라 소수다(생선 1개 = 0.18단위) ⇒ 상한에 안 걸렸는데도 `floor(2.18)=2 < 2.18`
@@ -300,6 +311,7 @@ function quote(ledger, econV2, vil, vid, giveRes, takeRes, giveQty, opts) {
     numGive: (+prices[CFG.NUMERAIRE] || 0) > 0 ? sig(pA / prices[CFG.NUMERAIRE]) : null,
     numTake: (+prices[CFG.NUMERAIRE] || 0) > 0 ? sig(pB / prices[CFG.NUMERAIRE]) : null,
   };
+  if (conv) out.capU = cap;   // ★[T748] 단위 상한(실행이 조각 계획에 쓴다 · 화면 `cap` 은 받을 낱개)
 
   // ── ★받을 양으로 물었다면: 내야 할 양(올림) ───────────────────────────────
   const o = opts || {};
@@ -311,15 +323,16 @@ function quote(ledger, econV2, vil, vid, giveRes, takeRes, giveQty, opts) {
     //     들어올 자리이고, 그때는 이 수를 그대로 쓰면 된다.
     const perItem = (Number(o.perItem) > 0) ? Number(o.perItem) : 1;
     out.want = want;
-    if (!(want <= cap + 1e-9)) {
+    const wantU = conv ? conv.units(want) : want;   // ★[T748] 받을 낱개 → 단위(열량 짝 · 끔 = 그대로)
+    if (!(wantU <= cap + 1e-9)) {
       // 마을이 그만큼을 못 내준다 — 값이 아니라 **물리 상한**의 문제다(`cap` 은 B-1 과 같은 함수).
       out.giveNeeded = null; out.giveNeededUnits = null; out.takeAtNeeded = null; out.wantCapped = true;
     } else {
-      const gu = _giveForTake(econV2, v, giveRes, takeRes, want, cap, hiCap);
+      const gu = _giveForTake(econV2, v, giveRes, takeRes, wantU, cap, hiCap);
       // ★연속해(`gu`)를 그냥 `ceil` 하면 안 된다: 이분 탐색의 상계는 참값보다 (hi−lo)만큼 크게
       //   끝나므로, 참값이 마침 정수면 `ceil` 이 **한 칸 더** 올라가 올림이 최소가 아니게 된다
       //   (엡실론 눈대중은 답이 아니다). ⇒ **한 칸 아래에서 출발해 위 `_climbToWant` 로 올라간다.**
-      const _takeAt = (u) => Math.floor(planSliced(econV2, v, giveRes, takeRes, Math.max(0, u), cap).took);
+      const _takeAt = (u) => { const t = planSliced(econV2, v, giveRes, takeRes, Math.max(0, u), cap).took; return conv ? conv.items(t).items : Math.floor(t); };
       const n = _climbToWant(Math.floor(gu / perItem), want, (c) => c * perItem, _takeAt, Infinity);
       out.giveNeeded = n;
       out.giveNeededUnits = +gu.toFixed(6);
@@ -354,6 +367,10 @@ function exchange(a) {
     return w;
   };
   const _units = (w) => { let u = 0; for (const [it, n] of Object.entries(w)) u += unitsOf ? Number(unitsOf(it, n)) || n : n; return u; };
+  //   ★[T748] 받는 쪽 열량 짝 — 호스트가 `takeKcal` 을 넘길 때만(켬 · 끔/랩 = null = 종전 `Math.floor` 그대로)
+  const conv = a.takeKcal ? _takeConv(a.takeKcal, D.toEcon.get(takeRes)) : null;
+  const _qo = conv ? { takeKcal: a.takeKcal } : undefined;
+  const _takeN = (t) => (conv ? conv.items(t).items : Math.floor(t));
 
   // ★★[T69 · 캐논 §3②] **받을 양으로 들어온 주문** — 내는 양은 위 `quote` 의 올림이다.
   //   여기서 값을 새로 짓지 않는다: `quote({want})` 가 같은 `planSliced` 로 낸 `giveNeeded` 를 받는다.
@@ -365,7 +382,7 @@ function exchange(a) {
   let q0;
   if (wantTake > 0) {
     const per1 = _units(_pick(1)) || 1;
-    const qw = quote(ledger, econV2, vil, vid, giveRes, takeRes, per1, { want: wantTake, perItem: per1 });
+    const qw = quote(ledger, econV2, vil, vid, giveRes, takeRes, per1, conv ? { want: wantTake, perItem: per1, takeKcal: a.takeKcal } : { want: wantTake, perItem: per1 });
     if (qw.err) return { ok: false, err: qw.err };
     if (!(qw.giveNeeded > 0)) {
       return { ok: false, err: `마을이 ${Events.koRes(takeRes)} ${wantTake}개를 못 내준다`
@@ -375,7 +392,7 @@ function exchange(a) {
     //   걸음은 견적과 **같은 함수**다(`_climbToWant`) — 자만 어림에서 실측으로 바뀐다.
     q0 = _climbToWant(qw.giveNeeded, wantTake,
       (c) => _units(_pick(c)),
-      (u) => Math.floor(planSliced(econV2, v, giveRes, takeRes, u, qw.cap).took),
+      (u) => _takeN(planSliced(econV2, v, giveRes, takeRes, u, (qw.capU != null) ? qw.capU : qw.cap).took),
       have);
   } else {
     q0 = Math.max(0, Math.floor(Number(a.giveQty) || 0));       // ★플레이어가 내는 건 **개수**다
@@ -390,7 +407,8 @@ function exchange(a) {
   const u0 = _units(_pick(q0));
   const perItem = q0 > 0 ? u0 / q0 : 1;           // 이 제안의 **평균 단위/개** — 견적을 세우는 데만 쓴다
 
-  const qt = quote(ledger, econV2, vil, vid, giveRes, takeRes, u0);
+  const qt = quote(ledger, econV2, vil, vid, giveRes, takeRes, u0, _qo);
+  const capU = (qt.capU != null) ? qt.capU : qt.cap;   // ★[T748] 조각 계획은 단위 상한(화면 `cap` 은 켬이면 받을 낱개)
   if (qt.err) return { ok: false, err: qt.err };
 
   // 물리 상한 — 넘치면 **거절이 아니라 절삭**이다(살 수 있는 만큼은 산다).
@@ -400,8 +418,10 @@ function exchange(a) {
   if (qt.capped && perItem > 0) give = Math.min(q0, Math.floor(qt.maxGive / perItem));
   const wantW = _pick(give);
   const giveUnits = _units(wantW);                // ★실행은 **고른 그 개체들의 실제 무게**로 다시 잰다
-  const pl = giveUnits > 0 ? planSliced(econV2, v, giveRes, takeRes, giveUnits, qt.cap) : { took: 0 };
-  let take = Math.floor(pl.took);
+  const pl = giveUnits > 0 ? planSliced(econV2, v, giveRes, takeRes, giveUnits, capU) : { took: 0 };
+  let take = _takeN(pl.took);
+  //   ★[T748] 곳간에서 실제로 나가는 단위 — 켬이면 낱개에 든 열량만(낱개로 안 떨어지는 몫은 곳간에 남는다) · 끔 = 받는 개수 그대로(1개 = 1단위)
+  const spend = conv ? +(pl.took - (conv.items(pl.took).leftUnits || 0)).toFixed(4) : take;
   if (!(give > 0) || !(take > 0)) {
     // ★★여기 메시지가 거짓말을 하면 안 된다. 1차 실장에서 "더 내야 한다"고 했는데,
     //   실제로는 **덜 내야** 하는(혹은 아예 못 하는) 상황이었다 — 원인이 정반대였다.
@@ -417,8 +437,8 @@ function exchange(a) {
 
   // ② 재고를 **먼저** 잡는다(동시 경쟁의 관문)
   const before = +((v.storage || {})[takeRes] || 0);
-  if (before < take) return { ok: false, err: '마을 재고가 방금 줄었다 — 다시 해 보라' };
-  v.storage[takeRes] = +(before - take).toFixed(3);
+  if (before < spend) return { ok: false, err: '마을 재고가 방금 줄었다 — 다시 해 보라' };
+  v.storage[takeRes] = +(before - spend).toFixed(3);
 
   // ③④ 내 물건 → 곳간(정본 deposit). 실패하면 ⑤ 되돌린다.
   const want = wantW;
@@ -435,7 +455,7 @@ function exchange(a) {
            gaveItems: dep.taken, tookItem: takeItem, ratio: qt.ratio,
            giveUnits: +giveUnits.toFixed(3), perItem: +perItem.toFixed(3),
            capped: q0 !== give, wanted: q0, wantTake: wantTake > 0 ? wantTake : null,
-           stockAfter: +v.storage[takeRes].toFixed(3) };
+           stockAfter: +v.storage[takeRes].toFixed(3), ...(conv ? { takeUnits: spend } : {}) };   // ★[T748] 켬이면 나간 단위도
 }
 
 module.exports = { CFG, KO_NUM, board, quote, exchange, tradableIn, tradableOut, lockedRewards };

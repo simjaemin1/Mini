@@ -103,6 +103,14 @@ function _t577Walk(vil, day) {   // ⓐ 남은 사람 → 가장 가까운 산 �
 const ARMS_RES = new Set(['weapon', 'armor', 'tool', 'iron_tool', 'bronze_tool']);
 function _t521On() { return typeof process !== 'undefined' && !!process.env && process.env.T521_GANG_ARMS === '1'; }
 function armsHeld(g) { const w = (g && g.arms && g.arms.weapon) || 0; return Math.min(Math.max(0, g ? g.n | 0 : 0), w); }   // 손 = 한 사람 한 무기 // 테스트 전용(헤더 주석) — 운영 무설정
+// ★★[T748 2026-10-14 · 손잡이 `T732_MOMENT_LOT=1` 안 — 끄면 이 파일은 곳간 장부를 싣지도 않는다(바이트 같음)] **갱 비축에도 로트가 있다.**
+//   장물아비 환산 몫은 그 순간 얻은 것(장물아비가 내준 식량) · 결성 비축은 그 순간(씨앗) · 유지비는 오래된 것부터 — 줄은 `granary-lots` 의 갱 줄(몸 밖 · 갱 객체 칸 0).
+//   토벌(T476)의 소굴 어댑터가 이 줄을 곳간처럼 뗀다(노획 레코드째 · 소굴 토벌 노획이 레코드 없는 줌이던 길 · T732 §2 끝 표).
+const _T748_ON = (typeof process !== 'undefined' && !!process.env && process.env.T732_MOMENT_LOT === '1');
+let _glM = null;
+function _gl() { if (!_T748_ON) return null; if (_glM === null) { try { _glM = { G: require('./granary-lots'), L: require('./lots') }; } catch (e) { _glM = false; } } return (_glM && _glM.L.momentOn()) ? _glM.G : null; }
+// 부팅 — 복원한 갱의 줄을 꽂는다(저장 칸을 떼어 갱 줄로) · 줄이 없는 갱은 지금 비축을 씨앗 하나로(나이 모름 — 끔에서 켬으로)
+function lotsBoot(G) { if (!G) return 0; let n = 0; for (const g of S.GANGS) { if (g._t748Lots) { G.gangLoad(g, g._t748Lots); delete g._t748Lots; n++; } else if (!G.gangOf(g) && (g.food || 0) > 0) G.gangIn(g, g.food, true); } return n; }
 
 const S = {
   ready: false,
@@ -403,7 +411,9 @@ function installHooks() { // econ 계약 훅(★v2 주사위는 이미 서버 �
     }
     const foody = res === 'food' || res === 'fish' || res === 'meat' || res === 'cooked_food' || res === 'vegetable';
     const gain = amt * (foody ? BDT_FENCE_F : BDT_FENCE_G); // 장물아비 수수료 환산
+    const _G = _gl(), _f0 = _G ? gs.map((g) => g.food) : null;   // ★[T748] 장물아비가 내준 순간 — 늘어난 몫만 갱 줄에(끄면 null)
     for (const g of gs) { g.food = Math.min(g.n * BDT_CAP, g.food + gain / gs.length); g.lootN++; g.lastLoot = day; }
+    if (_G) gs.forEach((g, i) => { if (g.food > _f0[i]) _G.gangIn(g, g.food - _f0[i]); });
     victim._banditRisk = Math.min(0.6, (victim._banditRisk || 0) + BDT_RISK_UP);      // 화주 학습 → 호위·전사·무기 수요 연쇄
     other._banditRisk = Math.min(0.6, (other._banditRisk || 0) + BDT_RISK_UP * 0.5);  // 맞은편 절반 학습(소문·목격)
     S.stats.loot++; S.stats.lootAmt += amt;
@@ -427,6 +437,7 @@ function formGang(vil, size, day, why) { // econ 인구에서 *살아있는* siz
   }
   const g = { id: S.seq++, camp, n: size, food: size * 6, zero: 0, born: day, home: vil.name, why, lootN: 0, lastLoot: day, den: null, _sup: null, _supKill: 0 };
   S.GANGS.push(g);
+  { const _G = _gl(); if (_G) _G.gangIn(g, g.food, true); }   // ★[T748] 결성 비축 — 그 순간(씨앗 · 끄면 null)
   if (S.host.noteBodyExit) S.host.noteBodyExit(vil, 'bandit', size, camp);   // ★[T590] 몸은 은거지까지 걷는다(몸 층 · econ 무접촉)
   S.stats.conv += size;
   if (S.GANGS.length > S.stats.peak) S.stats.peak = S.GANGS.length;
@@ -499,13 +510,16 @@ function daily(day) { // 하루 1회(villages econ 틱 직후): 위기 추적→
     const sz = BDT_DEN_SZ0 + Math.floor(denRng(dn.id, dn.gen * 7 + 3) * (BDT_DEN_SZ1 - BDT_DEN_SZ0 + 1));
     const g = { id: S.seq++, camp: { cx: dn.cx, cy: dn.cy }, n: sz, food: sz * BDT_DEN_FOOD, zero: 0, born: day, home: '황야', why: `주둔지 ${dn.gen + 1}대`, lootN: 0, lastLoot: day, den: dn.id, _sup: null, _supKill: 0 };
     S.GANGS.push(g); dn.gen++; dn.next = 0;
+    { const _G = _gl(); if (_G) _G.gangIn(g, g.food, true); }   // ★[T748] 재결성 비축 — 그 순간(씨앗 · 끄면 null)
     S.stats.denForm++;
     if (S.GANGS.length > S.stats.peak) S.stats.peak = S.GANGS.length;
     log(day, `소굴#${dn.id} 도적단#${g.id} ${sz}명 재결성(${dn.gen}대 — 비축 ${sz * BDT_DEN_FOOD})`);
   }
   for (let i = S.GANGS.length - 1; i >= 0; i--) { // ── 유지비·자기조절 + 토벌 교전 판정 ──
     const g = S.GANGS[i];
+    const _f0 = g.food;
     g.food = Math.max(0, g.food - g.n * BDT_UPKEEP);
+    { const _G = _gl(); if (_G && _f0 > g.food) _G.gangOut(g, _f0 - g.food); }   // ★[T748] 유지비 — 오래된 것부터(끄면 null)
     if (g.food <= 0) g.zero++; else g.zero = 0;
     if (g.zero >= BDT_STARVE) { g.n--; g.zero = Math.max(0, g.zero - 5); S.stats.starve++; log(day, `도적단#${g.id} 굶주림 이탈 1명(${g.n}명 잔류)`); }
     if (g._sup && day >= g._sup.eta) { // 토벌 교전(추상 판정 — 랩 동형 계수): 무장 원정대 우세, 도적 드물게 반격 전사
@@ -589,6 +603,7 @@ function daily(day) { // 하루 1회(villages econ 틱 직후): 위기 추적→
 function save(day) {
   try {
     const gangs = S.GANGS.map(g => ({ id: g.id, camp: g.camp, n: g.n, food: g.food, zero: g.zero, born: g.born, home: g.home, why: g.why, lootN: g.lootN, lastLoot: g.lastLoot, den: g.den != null ? g.den : null, _sup: g._sup || null, _supKill: g._supKill || 0 , arms: g.arms || undefined }));
+    { const _G = _gl(); if (_G) for (let i = 0; i < gangs.length; i++) { const L = _G.gangDump(S.GANGS[i]); if (L) gangs[i]._t748Lots = L; } }   // ★[T748] 갱 비축 줄(켬만 칸이 선다)
     S.db.upsertBanditState(S.zoneId, JSON.stringify({ seq: S.seq, denSeq: S.denSeq, dens: S.DENS, gangs, stats: { ...S.stats, log: undefined } }), day);
   } catch (e) {
     console.error(`[${S.zoneId}] 🏴 [도적] 저장 실패(다음 날 재시도):`, e.message);
@@ -704,6 +719,7 @@ function _bindRest(host, day0) {
   pairSync();
   S.lastDay = day0; // 다음 econ 경계부터 데일리(재부팅 당일 이중 실행 방지) · ★[T640] 조각 판이면 부팅 날(그 사이 넘긴 경계는 다음 틱이 잇는다)
   S.ready = true;
+  lotsBoot(_gl());   // ★[T748] 복원한 갱 줄(켬 · 시계가 꽂힌 뒤 — 아니면 villages 의 장부 붙이기가 다시 부른다 · 끄면 null)
   save(day0);
   syncBodies();   // ★[2파] 부팅 실체화(복원 단 포함 — pid 비영속이라 여기서 재스폰)
   if (_bTickKeep != null) { _bTick = _bTickKeep; _bTickKeep = null; }   // ★[T742] 몸을 다시 세운 뒤 — 주사위 차례를 멈추기 전 값으로(위 `_bTick` 주석 · 끔이면 늘 null)
@@ -806,4 +822,4 @@ function onGameTick() {
   }
 }
 
-module.exports = { init, onGameTick, clientCamps, stats: () => S.stats, armsHeld, ARMS_RES, bootSlice: () => (S._boot ? { running: true, pairs: S._boot.pairs, slices: S._boot.slices, i: S._boot.i } : (S.bootSlice || null)) };   // ★[T521] 손 규칙 하나(villages 소굴 어댑터가 같은 함수를 읽는다)
+module.exports = { init, onGameTick, clientCamps, stats: () => S.stats, armsHeld, ARMS_RES, lotsBoot, gangs: () => S.GANGS, bootSlice: () => (S._boot ? { running: true, pairs: S._boot.pairs, slices: S._boot.slices, i: S._boot.i } : (S.bootSlice || null)) };   // ★[T521] 손 규칙 하나(villages 소굴 어댑터가 같은 함수를 읽는다)

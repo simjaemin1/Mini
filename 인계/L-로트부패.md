@@ -6,6 +6,38 @@
 
 ---
 
+## 12-순간로트따라잡기. ★★2026-10-14 [T748] — **켬 전용 일곱 길 막기 · 거래소 받기 = 열량 짝**(같은 손잡이 `T732_MOMENT_LOT=1` 안 · 없음 = 끔 = main 바이트 · 가지 `batch/moment-lot2-1014` · 승인 대기)
+
+> 전문 `보고/T748_2026-10-14.md` · 하네스 `scripts/test-moment-lot.js` ⑨⑩⑪(일곱 길 켬 · 끔 아이 판 · 거래소 두 판 · 배선 글자) · `scripts/test-granary-age.js` ⑤ E2(거래소 받기 열량 짝 · 문 레코드째) · 자 `scripts/t732-lot-check.js`(대기 칸 줄 · 몸 짐 줄 · 갱 줄 · 재기동 갱 줄 · 길 손잡이는 env 그대로).
+
+```
+손 → 곳간   어부 _t312Deliver · 채집 _t347Deliver · 짐 _t544PackIn — 입구 줄 앞 doorOpen · 뒤 doorShut(받은 몫만큼 뗀 레코드) — 입구 줄은 글자 그대로
+            농부 _t368Hold(거둔 순간 → NPC 곁 장부 noteNow) → _t368Deliver = handRecs → pushIn → _farmGranary → clearIn
+            handRecs(p, item, n, per) = Lots.moveOut(오래된 것부터 n) → 곳간 레코드(u = n × per · per = 낱개의 econ 단위 · 손이 단위를 들면 1)
+대기 칸     POCK(econ 마을 → { _t544Pack | _t368Pend | _t100Pend : { 품목: rec[] } }) — 몸 밖 · 저장 = econ 줄 _t732Lots.P(곳간 장부와 같은 줄)
+            econ setLotHook(존 _t732Boot 가 꽂는다 · 랩 null) — pendIn(들 때 · PEND 에 손 레코드가 있으면 그것 · 없으면 그 순간) · pendOut(풀 때 오래된 것부터 → pushIn)
+            sync 가 맞댄다 — 칸 값 toFixed(6) 끝수(≤1e-4)는 조용히 · 그보다 크면 pockDrift 센다(막지 못한 길)
+몸 짐       BAG(몸 → { 재화: rec[] }) — _warRationLoad(팩 꼬리 ÷ 몸 수 + 몸이 이미 든 같은 칸의 손 로트 _t748HandOf) · 먹기 bagOut(오래된 것부터)
+            길 채집 T441 = bagNote(짐 칸) / noteNow(짐 밖 손) · 내려놓기 _t748BagsOf(몸 표식 지우기 전에) → rationLayDown(w, items, lots)
+            귀환 도착 war-core _rationLayDownAll ← 호스트 _warRationCollect 가 둔 w._layLots · 쓰러짐 _warBagDrop → w._lootPileLots
+노획        war-core _warLootMove → lootCarry(w, items, kind, t.lots) → w._lootPendLots · 줍기 _warLootLoad(lotsTake → bagPut · 모자라면 bagNote) · 못 실은 몫 lootGive(e, items, lots)
+갱 비축     GANG(갱 → rec[]) — bandits 네 자리(장물아비 gangIn · 결성 · 재결성 씨앗 · 유지비 gangOut) · 저장 gangs[i]._t748Lots · 복원 lotsBoot(_bindRest · _t732Boot 둘 다 — 먼저 선 쪽)
+            소굴 _t476DenRefresh → suspend + denAttach(갱 줄 → 어댑터 곳간 줄) · _t476DenSync → denSync(어댑터 → 갱) · 흩어진 갱 gangOut(전부)
+존 경계     _xzHandOff · _xzHandBack 기록에 lots(xzOut = cargoDump) · _xzArrive · _xzReturn 이 xzIn(cargoLoad) · 받는 마을 없음 · 경계 고립 = bounce
+거래소      trade _takeConv(K, item) — board(sell) · quote(take · cap = 낱개 · capU = 단위) · exchange(take = itemsOf · spend = 낱개 열량 · takeUnits)
+            호스트 villages 세 문(시세 · 견적 · 실행)이 _T732_ON 일 때만 takeKcal: _kcal() 을 넘긴다 · 끔 = 종전 Math.floor(1개 = 1단위)
+셈          giveNoRec(레코드 없는 줌) · doorNoRec(문이 레코드 없이 받음) · pockDrift · gangDrift — 길을 다 막았으면 넷 다 0(t732-lot-check)
+```
+
+**★★다음 세션이 알아야 할 것**
+
+1. ★곳간에 넣는 새 길은 셋 중 하나를 지나라 — 사람 손이면 문(`_t732DoorBegin/End` 또는 `doorOpen`/`doorShut` + `handRecs`) · 곳간 → 곳간이면 훅(`capBegin`/`capEnd` → `pushIn` → 늘림 → `clearIn`) · 날짜 없는 칸이면 대기 칸 줄(`POCK_KEYS` 에 한 줄 + 들 때 `pockPut` · 뺄 때 `pockTake`). 안 지나면 셈 넷 중 하나가 선다.
+2. ★곳간 입구 줄(`fishToGranary` · `forageToGranary` · `harvestToGranary` T227 두 줄)은 글자 그대로 둔다 — `test-forage-act` ④ · `test-econ-fieldyield` ⑳ 이 그 줄을 읽는다. 훅은 그 줄 앞뒤 별 줄로.
+3. ★민물고기 열 종 중 아홉(붕어 · 메기 · 가물치 · 쏘가리 · 누치 · 피라미 · 은어 · 뱀장어 · 미꾸라지)은 특산 표 밖이라 `isLot` false(부패 표엔 5일) — 손에서 안 늙고 레코드도 없다. 어부가 그것만 든 손을 넣으면 곳간엔 그 순간의 새 로트(`doorNoRec` 센다 · 보고 재민 칸 ①).
+4. 몸 짐 줄은 몸 밖이라 **저장 안 된다** — 원정 중 재기동하면 그 짐(몸이 다시 서면)은 레코드 없는 줌으로 센다(`giveNoRec`). 대기 칸 줄 · 갱 줄은 저장된다.
+5. 거래소 받기(켬) = 꺼내기 · 게시판 보상과 같은 `itemsOf` — 남는 몫은 곳간에. 열량 표에 없는 먹거리(도토리 · 밤 · 포도 · 오디 · 익힌 음식)는 꺼내기처럼 1개 = 1단위(같은 거르개 `kcalOf > 0` — 표를 채우면 셋이 같이 바뀐다).
+6. 빠른 시계 서버(몸 상한 1)는 손 · 대기 칸 길을 거의 안 탄다(몸이 안 걷고 밭이 안 돈다) — 그 길은 하네스 ⑨ 가 운영 함수로 잰다. 일곱 길 손잡이를 다 켠 빠른 시계 400일은 인구가 무너진다(T100 밭이 몸 없이 안 돈다 — 기본 세계와 무관 · 보고 §3).
+
 ## 11-순간로트. ★★2026-10-14 [T732] — **로트 = 얻은 순간 · 곳간 칸 전부가 로트 장부 · 모든 길에서 로트가 따라간다 · T716 임시 고침 걷음**(손잡이 `T732_MOMENT_LOT=1` · 없음 = 끔 = main 바이트 · 가지 `batch/moment-lot-1014` · 승인 대기)
 
 > 전문 `보고/T732_2026-10-14.md` · 새 모듈 `server/granary-lots.js` · 하네스 `scripts/test-moment-lot.js`(@regress · 포트 0) · `scripts/test-granary-age.js`(@regress · T716 단언을 본 구현으로 다시 씀) · 자 `scripts/t732-lot-check.js`(실서버 판 끝 · 재기동 뒤 불변식 · 러너 밖).

@@ -28,6 +28,7 @@ const FB = require('./fixture-boot');   // ★T349 기동 기다리기 정본(�
 const ROOT = path.join(__dirname, '..');
 const CPORT = 3010, ZPORT = 3020;
 const DAY_MS = parseInt(process.env.SLICER_DAY_MS || '', 10) || 5000;
+const T731 = process.env.T731_LOCAL_MIDNIGHT === '1';   // ★[T744] 켬 판(마을 현지 자정 창) — 그 판의 계약은 창 꼴(①·④·⑨·⑩ 갈래)
 const DAYS = parseInt(process.env.SLICER_DAYS || '', 10) || 6;
 // ★DB 를 **재사용**한다 — 50마을 시딩이 첫 부팅에 수 분 걸린다(그건 재는 대상이 아니다).
 //   두 팔이 같은 세계에서 출발하도록 스냅샷을 팔마다 복사한다.
@@ -160,8 +161,15 @@ async function arm(label, sliceMs, extraEnv) {
   // ① ★상황 선행 — 대조군이 정말 한 덩어리인가(아니면 이 하네스는 아무것도 안 재고 있다)
   //   ★판정 잣대는 '조각'이 아니라 **한 프레임**이다. 조각 크기는 두 팔이 같다(같은 일을 한다) —
   //     달라지는 건 *한 프레임에 몇 개를 몰아 넣느냐*뿐이고, RTT 를 정하는 건 그 값이다.
-  ok(a.frames === 1, '① [상황] 대조군은 일틱을 **한 프레임**에 몬다', `프레임 ${a.frames}`);
-  ok(a.frameMax >= a.total * 0.9, '① [상황] 그 한 프레임이 하루 전부를 먹는다', `${a.frameMax}/${a.total}ms`);
+  //   ★[T744] 켬 판(`T731_LOCAL_MIDNIGHT=1` · 마을 현지 자정 창)은 하루가 **미니 마감 여럿**(마을 자정마다)이다 — 대조군(끈 뽑음)은 미니 마감마다 한 프레임에 몬다.
+  //     "하루 전부를 한 프레임" 은 켬 판엔 뜻이 없다(창이 156초에 걸쳐 열린다 · 설계) ⇒ 켬은 프레임 수 = 미니 마감 수 로 같은 뜻(끈 뽑음 = 나눠 쉬지 않는다)을 문다.
+  if (!T731) {
+    ok(a.frames === 1, '① [상황] 대조군은 일틱을 **한 프레임**에 몬다', `프레임 ${a.frames}`);
+    ok(a.frameMax >= a.total * 0.9, '① [상황] 그 한 프레임이 하루 전부를 먹는다', `${a.frameMax}/${a.total}ms`);
+  } else {
+    ok(a.t731Opens >= 1 && a.frames === a.t731Opens, '① [상황 · 켬 창] 대조군은 미니 마감마다 **한 프레임**에 몬다(프레임 = 미니 마감)', `프레임 ${a.frames} · 미니 마감 ${a.t731Opens}`);
+    ok(b.t731Opens >= 1 && b.frames > b.t731Opens, '① [상황 · 켬 창] 조각내기 팔은 미니 마감보다 프레임이 많다(나눠 쉰다 · 자명 통과 금지)', `프레임 ${b.frames} · 미니 마감 ${b.t731Opens}`);
+  }
   // ★★[T513 2026-09-29] **"잴 만큼 무거운 하루"의 문턱을 유도한다**(새 수 0). 종전 `≥300ms` 는 지은 수였고
   //   컨테이너가 빨라지자 야간 3밤 상시 빨강이 됐다(하루 131~213ms — 제품이 아니라 **자가 못 잰 것**).
   //   조각내기가 벌 수 있는 몫 = 대조군 한 프레임(≈ 하루 전부) ÷ 조각내기 팔의 가장 큰 조각(더는 못 자른다).
@@ -211,7 +219,10 @@ async function arm(label, sliceMs, extraEnv) {
   console.log(`  · 남은 바닥: 가장 큰 조각 ${b.maxChunk}ms(${b.maxChunkAt}) — 예산 16ms 의 ×${(b.maxChunk / 16).toFixed(1)} (회부 §4-A)`);
 
   // ④ ★순서 불변 — 조각내기는 *언제*를 바꾸지 *무엇을*은 안 바꾼다
-  const CANON = ['econ', 'pop', 'terr', 'ore', 'wx', 'bcast', 'caravan', 'events', 'save', 'life', 'dist'];
+  const CANON0 = ['econ', 'pop', 'terr', 'ore', 'wx', 'bcast', 'caravan', 'events', 'save', 'life', 'dist'];
+  //   ★[T744] 켬 판 정본 = 창 꼴 — 머리(econ · 생활층 계측 비움) → 마을마다(econ · 인구 · 생활층 — 마을 수만큼) → 꼬리(끔 정본에서 인구 · 생활층을 뺀 차례 + 창 닫음).
+  //     차례 자체(머리 · 마을 · 꼬리의 뜻)는 `test-local-midnight-window` 가 문다 — 여기선 끔 정본에서 유도한 글자 그대로를 본다(사본 0 · 새 수 0).
+  const CANON = T731 ? ['econ', 'life', ...[].concat(...Array.from({ length: b.villages }, () => ['econ', 'pop', 'life'])), ...CANON0.filter((x) => x !== 'pop' && x !== 'life'), 't731'] : CANON0;
   ok(JSON.stringify(b.order) === JSON.stringify(CANON), '④ 단계 순서가 정본과 같다', JSON.stringify(b.order));
   ok(JSON.stringify(a.order) === JSON.stringify(b.order), '④ 대조군과 조각내기의 순서가 같다', '');
 
@@ -397,9 +408,14 @@ async function arm(label, sliceMs, extraEnv) {
       const rdE = (lb) => { try { return fs.readFileSync(`/tmp/slicer-${lb}-econ.jsonl`, 'utf8').trim().split('\n').filter(Boolean).map((l) => JSON.parse(l)); } catch (e) { return []; } };
       const EH = rdE('head'), E0 = rdE('day0');
       const judge9 = (E, nv) => E.length >= 1 && E.every((e) => e.vil === nv && e.calls === nv);
+      if (T731) {   // ★[T744] 켬 창은 econ 을 늘 마을 조각으로 연다(`T513_DAY_SLICE` 와 무관 — 창 꼴의 뜻) ⇒ 두 팔 다 마을 수만큼 · 미끼 = 마을 수 하나 더면 빨강
+        ok(judge9(EH, d0.villages) && judge9(E0, d0.villages), '⑨ [켬 창] 두 팔 모두 econ 을 **마을 수만큼** 따로 나눴다(창은 T513 손잡이와 무관)', `켬 ${EH.length} · 되돌림 ${E0.length}마감 · 마을 ${d0.villages}`);
+        ok(!judge9(EH, d0.villages + 1), '⑨ [켬 창] ★미끼 — 마을 수를 하나 늘린 판정은 빨강(자명 통과 금지)');
+      } else {
       ok(judge9(EH, d0.villages) && E0.length === 0, '⑨ 켬(기본)이 econ 을 **마을 수만큼** 따로 나눴다(마을 칸 이름 집합 · 시간 무관)',
         `켬 ${EH.length}마감 × 따로 불린 마을 ${[...new Set(EH.map((e) => e.vil))].join('/')}(부름 ${[...new Set(EH.map((e) => e.calls))].join('/')} · 마을 ${d0.villages}) · 되돌림 마감 ${E0.length}줄 · 참고 조각 수 ${d0.chunks} → ${b.chunks}`);
       ok(!judge9(E0, d0.villages), '⑨ ★미끼 — 같은 판정을 되돌림 팔(켬 끔)에 대면 빨강이다(자명 통과 금지)', `되돌림 ${E0.length}줄`);
+      }
       ok(JSON.stringify(d0.order) === JSON.stringify(CANON), '⑨ 되돌림도 단계 순서가 정본과 같다', JSON.stringify(d0.order));
       ok(D2.econTick.days >= DAYS, `⑨ 되돌림 ${DAYS}일이 모두 마감됐다`, `${D2.econTick.days}일`);
       const bEcon = (d0.stages && d0.stages.econ) || 0;

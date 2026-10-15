@@ -11,6 +11,8 @@
 //     · 셈 — 근사(사람 · NPC 맞추기) · 뭉개기(상한) · 곳간 장부의 씨앗 · 새 로트 · 넘김 · 늦게 감싼 칸 · 어긋남 · 레코드 없이 든 문/줌
 //     · 크기 — 곳간 레코드 수(마을 · 칸) · 저장 바이트(econ 줄에 실리는 장부 JSON)
 //   그리고 SIGTERM(T728 종료 저장 — 켬 기본) → 같은 DB 로 다시 띄워 **부팅 직후**(장부를 붙인 그 순간) 저장된 장부와 붙은 장부가 같은지 · 불변식.
+//   ★[T748] 켬 전용 일곱 길 — 대기 칸 줄(짐 · 고르게 대기 · `GL.check` 안 · 재기동 비교에 실린다) · 원정 짐꾼의 몸 짐 줄(줄 합 = 짐 ·
+//     짐 칸은 NPC 곁 장부 셈에서 뺀다) · 갱 비축 줄(줄 합 = 비축 · 재기동 뒤 도적 행에 저장된 줄 = 붙은 줄). 길의 손잡이는 부르는 쪽 env 그대로 넘긴다.
 //
 // 쓰는 법: node scripts/t732-lot-check.js [일수=200] [시드=1020] [--out 계측/T732_불변식_<시드>.json]
 'use strict';
@@ -69,8 +71,31 @@ if (process.env.T732C_PHASE) {
       const out = { phase: 1, day, villages: world.villages.length, attachedAll: world.villages.every((v) => GL.attached(v)) };
       out.granary = GL.check(world.villages, 1e-6);
       out.granary.bad = out.granary.bad.slice(0, 10);
+      // ★[T748] 원정 짐꾼의 몸 짐 줄(몸 밖) — 짐 칸은 몸 짐 줄이 센다(곁 장부 셈에서 뺀다) · 줄 합 = 짐
+      const bag = { bodies: 0, cells: 0, bad: 0, ex: [] };
+      const bearer = new Map();
+      try {
+        const VS = Z.SimVillages && Z.SimVillages.__p3Bind ? Z.SimVillages.__p3Bind({}).state : null;
+        if (VS && VS.warBodies) for (const body of VS.warBodies.values()) {
+          const w = body && body.w; if (!w || !w._packOnBodies) continue;
+          for (const pid of (body.pids || [])) {
+            const p = Z.players.get(pid); if (!p || p._warPackOf !== w.id) continue;
+            const keys = w._packKeys || []; bearer.set(p, new Set(keys)); bag.bodies++; bag.cells += keys.length;
+            const b = GL.checkBag(p, keys); if (b.length) { bag.bad += b.length; if (bag.ex.length < 4) bag.ex.push(b[0]); }
+          }
+        }
+      } catch (e) { bag.err = e.message; }
+      out.bags = bag;
+      // ★[T748] 갱 비축 줄 — 줄 합 = 비축(갱마다)
+      const gangs = { n: 0, recs: 0, bad: 0, ex: [] };
+      try { const B = require(path.join(ROOT, 'server', 'bandits')); for (const g of (B.gangs ? B.gangs() : [])) { gangs.n++; const a = GL.gangOf(g); gangs.recs += a ? a.length : 0; const c = GL.checkGang(g); if (c) { gangs.bad++; if (gangs.ex.length < 4) gangs.ex.push(Object.assign({ id: g.id }, c)); } } } catch (e) { gangs.err = e.message; }
+      out.gangs = gangs;
+      // ★[T748] 대기 칸 줄(짐 · 고르게 대기) — 불변식은 `GL.check` 안 · 여기선 크기만
+      const pock = { cells: 0, recs: 0 };
+      for (const v of world.villages) { const D = GL.dump(v); if (D && D.P) for (const K of Object.values(D.P)) for (const a of Object.values(K)) { pock.cells++; pock.recs += a.length; } }
+      out.pock = pock;
       // NPC 몸(곁 장부) · 사람(있으면)
-      const npc = { bodies: 0, withLots: 0, items: 0, short: 0, over: 0, shortEx: [], overEx: [], lots: 0, maxPerItem: 0 };
+      const npc = { bodies: 0, withLots: 0, items: 0, short: 0, over: 0, shortEx: [], overEx: [], lots: 0, maxPerItem: 0, bagSkip: 0 };
       const ppl = { bodies: 0, items: 0, short: 0, over: 0 };
       for (const p of Z.players.values()) {
         const inv = p.inventory || {}; const isN = !!p.isNpc;
@@ -78,6 +103,7 @@ if (process.env.T732C_PHASE) {
         let any = false;
         for (const it of Object.keys(inv)) {
           if (!Lots.isLot(it)) continue;
+          if (bearer.has(p) && bearer.get(p).has(it)) { npc.bagSkip++; continue; }   // 짐 칸 — 몸 짐 줄이 센다(위)
           const have = Math.floor(+inv[it] || 0);
           const L = (Lots.all(p) || {})[it] || [];
           const s = Math.floor(sumN(L) + 1e-6);
@@ -141,8 +167,9 @@ if (process.env.T732C_PHASE) {
         const want = EXP.L[v.name];
         const got = GL.dump(v);
         if (!want) { out.missingSaved++; continue; }
-        const a = JSON.stringify(want.L), b = JSON.stringify(got ? got.L : {});
+        const a = JSON.stringify(want.L) + JSON.stringify(want.P || null), b = JSON.stringify(got ? got.L : {}) + JSON.stringify((got && got.P) || null);   // ★[T748] 대기 칸 줄도
         if (a === b) out.same++; else { out.diff++; if (out.diffEx.length < 3) out.diffEx.push(v.name); }
+        if (want.P) out.withP = (out.withP || 0) + 1;
       }
       out.granary = GL.check(seen, 1e-6); out.granary.bad = out.granary.bad.slice(0, 10);
       out.gl = GL.stats();
@@ -161,9 +188,26 @@ if (process.env.T732C_PHASE) {
       } catch (e) { out.carErr = e.message; }
       write(out);
       console.log(`[t732-check] 재기동 — 마을 ${out.n} · 장부 같음 ${out.same} 다름 ${out.diff} · 불변식 어긋남 ${out.granary.bad.length}`);
-      setImmediate(() => {
+      //   ★[T748] 갱 비축 줄 — 도적은 마을 준비 뒤에 복원된다(늦게 · 조각) · 저장된 갱 수가 다 서면(또는 30초) 저장된 줄 = 붙은 줄을 본다
+      const GN = EXP.gangs ? Object.keys(EXP.gangs).length : 0;
+      const t0 = Date.now();
+      const gangCheck = () => {
+        let B = null; try { B = require(path.join(ROOT, 'server', 'bandits')); } catch (e) { B = null; }
+        const gs = (B && B.gangs) ? B.gangs() : [];
+        if (GN > 0 && gs.length < EXP.gangsN && Date.now() - t0 < 30000) { setTimeout(gangCheck, 200); return; }
+        const gc = { saved: GN, live: gs.length, same: 0, diff: 0, ex: [], bad: 0 };
+        for (const g of gs) {
+          const want = EXP.gangs && EXP.gangs[String(g.id)];
+          const got = GL.gangDump(g);
+          if (want) { if (JSON.stringify(want) === JSON.stringify(got)) gc.same++; else { gc.diff++; if (gc.ex.length < 3) gc.ex.push({ id: g.id, want: JSON.stringify(want).slice(0, 200), got: JSON.stringify(got).slice(0, 200) }); } }
+          if (GL.checkGang(g)) gc.bad++;
+        }
+        out.gangs = gc; out.gl = GL.stats();
+        write(out);
+        console.log(`[t732-check] 재기동 갱 — 저장 ${gc.saved} · 선 ${gc.live} · 같음 ${gc.same} 다름 ${gc.diff} · 불변식 어긋남 ${gc.bad}`);
         setTimeout(() => process.exit(0), 20);
-      });
+      };
+      setImmediate(gangCheck);
     }
   }
   return;
@@ -216,12 +260,17 @@ function run(phase, extra, upRe, capMs) {
   for (const r of rows) { if (!r.econ_state) continue; const e = JSON.parse(r.econ_state); EXP.n++; if (e._t732Lots) EXP.L[e.name || r.name] = e._t732Lots; }
   const meta = db.prepare('SELECT data FROM world_meta').all();
   for (const m of meta) { const M = JSON.parse(m.data); for (const c of (M.caravans || [])) { EXP.metaCaravans++; if (c._t732Cargo) EXP.cargo[String(c.id)] = c._t732Cargo; } }
+  //   ★[T748] 갱 비축 줄(도적 행 · 켬만 칸이 선다)
+  EXP.gangs = {}; EXP.gangsN = 0;
+  try { for (const r of db.prepare('SELECT data FROM bandit_state').all()) { const B = JSON.parse(r.data); for (const g of (B.gangs || [])) { EXP.gangsN++; if (g._t748Lots) EXP.gangs[String(g.id)] = g._t748Lots; } } } catch (e) { EXP.gangErr = e.message; }
   db.close();
   const expf = path.join(DIR, 'expect.json');
   fs.writeFileSync(expf, JSON.stringify(EXP));
-  console.log(`  저장: 마을 줄 ${EXP.n} · 장부 실린 줄 ${Object.keys(EXP.L).length} · 메타 캐러밴 ${EXP.metaCaravans}(짐 레코드 ${Object.keys(EXP.cargo).length})`);
+  console.log(`  저장: 마을 줄 ${EXP.n} · 장부 실린 줄 ${Object.keys(EXP.L).length} · 메타 캐러밴 ${EXP.metaCaravans}(짐 레코드 ${Object.keys(EXP.cargo).length}) · 갱 ${EXP.gangsN}(줄 실린 ${Object.keys(EXP.gangs).length})`);
   const r2 = await run(2, { T732C_EXPECT: expf }, null, 15 * 60 * 1000);
-  const res = { days: DAYS, wallMs: WALL_MS, seed: SEED, p1: r1.o, p2: r2.o, saved: { rows: EXP.n, ledgers: Object.keys(EXP.L).length, metaCaravans: EXP.metaCaravans, cargo: Object.keys(EXP.cargo).length } };
+  const KN = ['T312_FISH_ACT', 'T347_FORAGE_ACT', 'T368_FARM_ACT', 'T100_FIELD_YIELD', 'T227_EVEN', 'T423_RATION_ACT', 'T466_LOOT_ACT', 'T476_PUNITIVE', 'T525_CROSS_ZONE', 'T441_FORAGE_MARCH', 'BANDIT_MINDAY'];
+  const res = { days: DAYS, wallMs: WALL_MS, seed: SEED, knobs: Object.fromEntries(KN.filter((k) => process.env[k] != null).map((k) => [k, process.env[k]])), p1: r1.o, p2: r2.o,
+    saved: { rows: EXP.n, ledgers: Object.keys(EXP.L).length, metaCaravans: EXP.metaCaravans, cargo: Object.keys(EXP.cargo).length, gangs: EXP.gangsN, gangLots: Object.keys(EXP.gangs).length } };
   fs.mkdirSync(path.dirname(OUTF), { recursive: true });
   fs.writeFileSync(OUTF, JSON.stringify(res, null, 1));
   const p1 = r1.o, p2 = r2.o || {};
@@ -232,6 +281,7 @@ function run(phase, extra, upRe, capMs) {
   console.log(`  셈: 근사 ${p1.lots.approx} ${JSON.stringify(p1.lots.approxBy)} · 뭉개기 ${p1.lots.coalesced}`);
   console.log(`  곳간 장부: ${JSON.stringify(p1.gl)}`);
   console.log(`  크기: 레코드 ${p1.size.recs} · 칸 ${p1.size.cells} · 저장 ${(p1.size.bytes / 1024).toFixed(1)}KB · 마을 최대 ${p1.size.maxV}개 ${(p1.size.maxVB / 1024).toFixed(1)}KB · 칸 최대 ${p1.size.maxCell}(${p1.size.maxCellRes})`);
-  console.log(`  재기동: 마을 ${p2.n} · 장부 같음 ${p2.same} 다름 ${p2.diff} · 불변식 어긋남 ${p2.granary ? p2.granary.bad.length : '—'} · 캐러밴 ${JSON.stringify(p2.caravans || null)}`);
+  console.log(`  [T748] 몸 짐 줄: 짐꾼 ${(p1.bags || {}).bodies} · 칸 ${(p1.bags || {}).cells} · 어긋남 ${(p1.bags || {}).bad} · 갱 ${(p1.gangs || {}).n}(레코드 ${(p1.gangs || {}).recs} · 어긋남 ${(p1.gangs || {}).bad}) · 대기 칸 줄 ${(p1.pock || {}).cells}(레코드 ${(p1.pock || {}).recs}) · 짐 칸 뺀 NPC 품목 ${p1.npc.bagSkip}`);
+  console.log(`  재기동: 마을 ${p2.n} · 장부 같음 ${p2.same} 다름 ${p2.diff}(대기 칸 줄 실린 마을 ${p2.withP || 0}) · 불변식 어긋남 ${p2.granary ? p2.granary.bad.length : '—'} · 캐러밴 ${JSON.stringify(p2.caravans || null)} · 갱 ${JSON.stringify(p2.gangs || null)}`);
   console.log(`\n  → ${OUTF}`);
 })().catch((e) => { console.error(e); process.exit(1); });

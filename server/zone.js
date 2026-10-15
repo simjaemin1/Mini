@@ -1151,6 +1151,7 @@ const T734_ASTAR_SLICE = process.env.T734_ASTAR_SLICE !== '0';   // ★[PM 10-14
 const T734_VERIFY = process.env.T734_VERIFY === '1';   // ★[T734] 견줌(계측 · 켬 위에서만) — 표 비트 A* = 술어 A* 인가
 const _t734V = { n: 0, diff: 0, ex: [] }; globalThis.__T734V = _t734V;
 Object.defineProperty(_t734V, 'gates', { enumerable: true, get() { try { const s = _t678G && _t678G.stats(); return s ? { fastAns: s.fastAns, fastUnk: s.fastUnk, recs: s.recs, queries: s.queries, unknown: s.unknown, found: s.found } : null; } catch (e) { return null; } } });   // ★[T734] 판 끝 셈(표 비트 답 · 모름 · 문 그래프 묻기)   // ★[T734] 남은 한 방(문 그래프 이완 · 넓히기 길들임) — 기본 끔 = main 바이트 · `=1` 켬
+const T750_CAST_SLICE_Z = process.env.T750_CAST_SLICE !== '0';   // ★[PM 10-15] 켬 기본   // ★[T750] 어부 던짐 지형 자리 미리 세기(틱 꼬리) — 기본 끔 · `=1` 켬
 const T719_REACH_PRE_Z = process.env.T719_REACH_PRE !== '0';   // ★[T719] 닿는 칸 집합 미리 넓히기(틱 꼬리) — villages.js `t719ReachPre`   // (머리에 둔다 — 벽·바닥 술어가 모듈 평가 중 불려도 TDZ 0)
 const _t689SOC = { cx: 0, cy: 0 }, _t689SNC = { cx: 0, cy: 0 };   // ★[T689] 켬: 계단 측면 술어가 빌려 쓰는 칸 둘(재진입 0 — 이 함수는 안에서 자기를 안 부른다)
 const _t689WOC = { cx: 0, cy: 0 }, _t689WNC = { cx: 0, cy: 0 };   // ★[T689] 켬: 벽 술어가 빌려 쓰는 칸 둘
@@ -15107,7 +15108,8 @@ setInterval(() => {
   // ★[RTT 상관 계측] 틱 전체가 예산(33ms)을 넘긴 순간도 남긴다 — 원인이 위 둘이 아닐 수도 있다.
   // ★★[T43] 쓰러짐 사슬 — 업고 걷기 · 붙들기 진행 · 창 소진 · 깨어남(내부에서 1초에 한 번만 돈다).
   tickDowned(now);
-  if (T719_REACH_PRE_Z) { const _h7 = process.hrtime(_tickHr0), _el = _h7[0] * 1e3 + _h7[1] / 1e6; if (_el < 10) SimVillages.t719ReachPre(Math.min(2, 10 - _el)); }   // ★[T719] 남는 시간에 닿는 칸 집합 미리(villages.js `t719ReachPre` 머리 · 끔이면 이 줄만 거친다)
+  if (T719_REACH_PRE_Z) { const _h7 = process.hrtime(_tickHr0), _el = _h7[0] * 1e3 + _h7[1] / 1e6; if (_el < 10) SimVillages.t719ReachPre(Math.min(2, 10 - _el)); }
+  if (T750_CAST_SLICE_Z) { const _h8 = process.hrtime(_tickHr0), _el8 = _h8[0] * 1e3 + _h8[1] / 1e6; if (_el8 < 10) SimVillages.t750CastPre(Math.min(2, 10 - _el8)); }   // ★[T750] 남는 시간에 어부 던질 칸의 지형 자리 미리(villages.js `t750CastPre` · 끔이면 이 줄만 거친다)   // ★[T719] 남는 시간에 닿는 칸 집합 미리(villages.js `t719ReachPre` 머리 · 끔이면 이 줄만 거친다)
   { const _tot = Date.now() - now; if (_tot >= 33) perfMark('tick', _tot); }
   { const _td = Date.now() - now; global._tt = (global._tt||0)+_td; global._tn = (global._tn||0)+1; if (_td > (global._tmx||0)) global._tmx = _td; }
   { const _h = process.hrtime(_tickHr0); _tickMs.ring[_tickMs.i++ % _tickMs.ring.length] = _h[0] * 1e3 + _h[1] / 1e6; _tickMs.n++;   // ★[T284 ④]
