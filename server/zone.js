@@ -1151,7 +1151,7 @@ const T734_ASTAR_SLICE = process.env.T734_ASTAR_SLICE !== '0';   // ★[PM 10-14
 const T734_VERIFY = process.env.T734_VERIFY === '1';   // ★[T734] 견줌(계측 · 켬 위에서만) — 표 비트 A* = 술어 A* 인가
 const _t734V = { n: 0, diff: 0, ex: [] }; globalThis.__T734V = _t734V;
 Object.defineProperty(_t734V, 'gates', { enumerable: true, get() { try { const s = _t678G && _t678G.stats(); return s ? { fastAns: s.fastAns, fastUnk: s.fastUnk, recs: s.recs, queries: s.queries, unknown: s.unknown, found: s.found } : null; } catch (e) { return null; } } });   // ★[T734] 판 끝 셈(표 비트 답 · 모름 · 문 그래프 묻기)   // ★[T734] 남은 한 방(문 그래프 이완 · 넓히기 길들임) — 기본 끔 = main 바이트 · `=1` 켬
-const T750_CAST_SLICE_Z = process.env.T750_CAST_SLICE === '1';   // ★[T750] 어부 던짐 지형 자리 미리 세기(틱 꼬리) — 기본 끔 · `=1` 켬
+const T750_CAST_SLICE_Z = process.env.T750_CAST_SLICE !== '0';   // ★[PM 10-15] 켬 기본   // ★[T750] 어부 던짐 지형 자리 미리 세기(틱 꼬리) — 기본 끔 · `=1` 켬
 const T719_REACH_PRE_Z = process.env.T719_REACH_PRE !== '0';   // ★[T719] 닿는 칸 집합 미리 넓히기(틱 꼬리) — villages.js `t719ReachPre`   // (머리에 둔다 — 벽·바닥 술어가 모듈 평가 중 불려도 TDZ 0)
 const _t689SOC = { cx: 0, cy: 0 }, _t689SNC = { cx: 0, cy: 0 };   // ★[T689] 켬: 계단 측면 술어가 빌려 쓰는 칸 둘(재진입 0 — 이 함수는 안에서 자기를 안 부른다)
 const _t689WOC = { cx: 0, cy: 0 }, _t689WNC = { cx: 0, cy: 0 };   // ★[T689] 켬: 벽 술어가 빌려 쓰는 칸 둘

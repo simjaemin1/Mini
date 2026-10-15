@@ -1668,8 +1668,8 @@ console.log('\n⑮ T427 ① — 닿는 현장만(배정 순간 집 → 후보 ·
     ok(on.r > 0 && on.castCalls === 0 && on.same && off.r === 0 && off.c0 === 0 && off.castCalls > 0 && off.same && on.st.checked === 1,
        '⑮-m ★[T750 ①] 던질 칸 지형 자리 미리 세기 — 켜면 던질 때 `spotAt` 0번(기억에서 같은 값) · 끄면 꼬리 0 · 농부는 안 센다',
        `칸 ${on.n} · 미리 ${on.r} · 켬 던짐 때 ${on.castCalls} · 끔 던짐 때 ${off.castCalls} · 같은 값 ${on.same && off.same}`);
-    ok(/const T750_CAST_SLICE = process\.env\.T750_CAST_SLICE === '1';/.test(V) && /const T750_CAST_SLICE_Z = process\.env\.T750_CAST_SLICE === '1';/.test(Z) && /if \(T750_CAST_SLICE_Z\) \{[^\n]*SimVillages\.t750CastPre\(/.test(Z),
-       '⑮-m 손잡이 `T750_CAST_SLICE` — 기본 끔(`=1` 만 켬) · 존은 틱 꼬리(10 ms 안이면 남은 몫 ≤2 ms)에서만 부른다');
+    ok(/const T750_CAST_SLICE = process\.env\.T750_CAST_SLICE !== '0';/.test(V) && /const T750_CAST_SLICE_Z = process\.env\.T750_CAST_SLICE !== '0';/.test(Z) && /if \(T750_CAST_SLICE_Z\) \{[^\n]*SimVillages\.t750CastPre\(/.test(Z),
+       '⑮-m 손잡이 `T750_CAST_SLICE` — 기본 켬(`=0` 만 끔 · PM 10-15) · 존은 틱 꼬리(10 ms 안이면 남은 몫 ≤2 ms)에서만 부른다');
   }
   // ⓘ 미끼 — 술어가 늘 "닿는다"(= 안 본다)면 못 닿는 현장이 다시 배정된다
   {

@@ -36,7 +36,7 @@ const body = (name) => (VC.match(new RegExp('function\\*? ' + name + '\\([^)]*\\
 const noNum = (s) => !/[^\w.](?:[1-9]|\d{2,})(?:\.\d+)?(?![\w])/.test(s);
 const ON = '1';
 //   손잡이는 기본값 그대로(T717 ② · T720 · T733 켬) · 행위 층(T325)은 연다 · 몸 명부 손잡이들은 끔(test-fell-loot 와 같은 바탕)
-const BASE = { T743_DUSK_STAMP: undefined, T325_WOOD_ACT: '1', T347_FORAGE_ACT: '', T374_DEMAND_STOP: '1', T449_BODY_DAY: '', T491_BATCH_FROM_BODY: '', T561_ROSTER_BODY: '',
+const BASE = { T743_DUSK_STAMP: '0',   /* ★[PM 10-15] 기본 켬 — 끔 = '0' */ T325_WOOD_ACT: '1', T347_FORAGE_ACT: '', T374_DEMAND_STOP: '1', T449_BODY_DAY: '', T491_BATCH_FROM_BODY: '', T561_ROSTER_BODY: '',
   T717_WOOD_HAND: undefined, T720_LON_DAY: undefined, T733_FELL_LOOT: undefined, T490_FORAGE_REACH: '0' };
 const env = (o) => Object.assign({}, BASE, o || {});
 
@@ -46,7 +46,7 @@ console.log('\n=== 해 질 녘 통나무 도장 = T717 ② 셈(T743 ①) ===');
 console.log('\n① 정적');
 {
   const settle = body('_t720Settle'), gap = body('_t743Gap'), hands = body('_lifeHandsIn'), daily = body('_lifeDailySteps'), ladder = body('_t561Ladder');
-  ok(/const T743_DUSK_STAMP = process\.env\.T743_DUSK_STAMP === '1';/.test(VC), 'ⓐ 손잡이 `T743_DUSK_STAMP` — 기본 끔(`1` 만 켬)');
+  ok(/const T743_DUSK_STAMP = process\.env\.T743_DUSK_STAMP !== '0';/.test(VC), 'ⓐ 손잡이 `T743_DUSK_STAMP` — 기본 켬(`0` 만 끔 · PM 10-15)');
   ok(/if \(!T743_DUSK_STAMP\) \{ _t325Deliver\(vil, npc\); _t561Walked\(vil, npc, now\); \}/.test(settle),
     'ⓐ ★★끔 = 종전 글자 그대로(`_t325Deliver(vil, npc); _t561Walked(vil, npc, now);` — 손에 통나무가 있으면 도장)');
   const on = (settle.match(/else \{ const nw = _t717NewWood\(npc\); _t325Deliver\(vil, npc\); if \(nw\) _t561Walked\(vil, npc, now\); else _t743Gap\(vil, npc, now\); \}/) || [''])[0];

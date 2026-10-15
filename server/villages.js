@@ -7440,7 +7440,7 @@ function _t677Spot(F, cx, cy) {
 //     자리를 T677 기억(`_t677Spot` — 같은 함수 · 같은 열쇠 · 같은 판본)에 미리 넣는다. 던질 때는 기억에서 꺼낸다(같은 객체 — 같은 값).
 //   ★같은 값인 까닭: `spotAt` 는 지형과 칸만의 순수 함수다(T677 ② 증인 ⓐ) — 언제 재든 같다. 예외가 나면 기억 안 함(종전과 같다).
 //   쪼개기(한 번의 `spotAt` 를 틱마다 이어 재기)는 안 골랐다 — 강 마디 고리를 나누면 최솟값 동률 차례를 지켜야 해서 정본(`fishing.js`)을 고쳐야 한다. 미리 세기는 정본 무접촉.
-const T750_CAST_SLICE = process.env.T750_CAST_SLICE === '1';
+const T750_CAST_SLICE = process.env.T750_CAST_SLICE !== '0';   // ★[PM 10-15] 켬 기본(같은 값) · 되돌림 `=0`
 const _t750Stat = { checked: 0, cells: 0, filled: 0, had: 0 };
 let _t750It = null;
 function t750CastPre(budgetMs) {
@@ -10365,7 +10365,7 @@ function _t720Held(vil, npc) {
 //   ⚠손잡이 `T743_DUSK_STAMP=1` · 끔(미설정) = 종전 글자(손에 통나무가 있으면 도장 · 비트 동일). 행위 층(`T325_WOOD_ACT`) · T720 을 끈 세계엔 부르는 자리가 없다.
 //   ⚠새 수 0 · 새 몸 필드 0(도장은 몸의 `_t561Wd` 그대로) · T717 ② 를 끄면(`T717_WOOD_HAND=0`) 술어가 "손에 있나"라 켬 = 끔이다.
 //   ⚠T561 사다리(`_t561Ladder` — 켠 팔만 · 기본 끔)는 안 만진다: T561 의 걸은 몸은 "그날 나섰나"(ⓓ 현장을 잡아 나선 몸)라는 다른 술어다.
-const T743_DUSK_STAMP = process.env.T743_DUSK_STAMP === '1';
+const T743_DUSK_STAMP = process.env.T743_DUSK_STAMP !== '0';   // ★[PM 10-15] 켬 기본(통나무 셈 한 뜻) · 되돌림 `=0`
 //   계측 전용(켠 팔만) — 종전 글자였다면 도장이 찍혔을 몸(남긴 몫만 든 손 · 그날 아직 도장 없는 몸)을 마을에 센다. 하루 손이 그날 셈과 함께 거둔다(`_lifeDaily` · `_t743W`).
 function _t743Gap(vil, npc, now) {
   const d = state.dayMs ? _bodyDay(npc, now) : 0;

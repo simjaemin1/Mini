@@ -7299,6 +7299,11 @@ function _t100Credit(v, amt) {
   v._t100InflowToday = (v._t100InflowToday || 0) + amt;         // 오늘치 — ⓒ 텃밭 하한이 이걸 보고 모자란 만큼만 댄다
   return amt;
 }
+// ★★[T748 2026-10-14] **고르게 대기 칸에도 로트가 따라간다** — 호스트(존 서버 · 손잡이 `T732_MOMENT_LOT=1`)가 곳간 장부 훅을 꽂을 때만.
+//   랩 · CLI · 브라우저 · 끈 서버는 안 꽂는다 = `_LOTH` null = 아래 훅 줄이 전부 무동작(비트 동일). 훅은 **관측자**다(값 무변):
+//   대기 칸(`_t368Pend` · `_t100Pend`)에 들 때 그 레코드(손이 넘긴 것 · 없으면 그 순간)를 칸의 줄에 · 풀 때 오래된 것부터 곳간 레코드로.
+let _LOTH = null;
+function setLotHook(h) { _LOTH = (h && typeof h === 'object') ? h : null; }
 function harvestToGranary(v, n, mul, crop, ev) {
   if (!T100_FIELD_YIELD || !v || !v.storage) return 0;
   const _m = (typeof mul === 'number' && mul >= 0) ? mul : 1;   // ★[T179] 미전달 = 1(종전 비트) · 음수·NaN 도 1
@@ -7310,6 +7315,7 @@ function harvestToGranary(v, n, mul, crop, ev) {
     const units = (n > 0 ? n : 0) * _m;
     v._t100HarvestN = (v._t100HarvestN || 0) + ((ev > 0) ? ev : 1);   // 계측·배율 라운드로빈 누계 — 종전과 같은 칸(수확 횟수)
     v._t368KTot = (v._t368KTot || 0) + ((ev > 0) ? ev : 1) * T100_K * _m;   // ★대조 자 — 같은 수확을 종전 입구가 냈을 식량등가(계측 전용 · 회계 아님)
+    if (T227_EVEN && _LOTH) _LOTH.pendIn(v, '_t368Pend', crop, units);   // ★[T748] 대기 칸 줄 — 손이 넘긴 레코드(없으면 그 순간)를 그 칸에(관측자 · 끄면 무동작)
     if (T227_EVEN) { const P = v._t368Pend || (v._t368Pend = {}); P[crop] = (P[crop] || 0) + units; return units; }
     return _t368Credit(v, crop, units);
   }
@@ -7319,6 +7325,7 @@ function harvestToGranary(v, n, mul, crop, ev) {
   //   T218 이 잰 것: 켠 팔의 볏짚은 원량의 29~33% 가 **그날 상한을 넘어 버려진다**(끈 팔은 버림 0 —
   //   추상 농부는 매일 조금씩 내기 때문이다). 총량은 같은데 **몰려 오는 것**이 값을 깎고 있었다.
   //   ⚠총량 무변: 여기서 안 적은 것은 전부 `_t100Pend` 에 남아 있다(질량 누수 0 — 하네스가 항등식으로 문다).
+  if (T227_EVEN && _LOTH) _LOTH.pendIn(v, '_t100Pend', 'food', amt);   // ★[T748] 대기 칸 줄 — 그 순간 거둔 것(관측자 · 끄면 무동작)
   if (T227_EVEN) { v._t100Pend = (v._t100Pend || 0) + amt; return amt; }
   return _t100Credit(v, amt);
 }
@@ -7333,7 +7340,10 @@ function t100EvenRelease(v) {
   const d = seedFoodDays(0);
   const give = (d > 1) ? p / d : p;
   v._t100Pend = p - give;
-  return _t100Credit(v, give);
+  if (_LOTH) _LOTH.pendOut(v, '_t100Pend', 'food', give);   // ★[T748] 오래된 것부터 곳간 레코드로(끄면 무동작)
+  const out = _t100Credit(v, give);
+  if (_LOTH) _LOTH.clearIn(v, 'food');
+  return out;
 }
 // ★★[T368] **밭이 품목으로 적는 몸통** — `_t100Credit` 와 **같은 넷**(볏짚 밑변 · 곳간 · 금고 세금 · 오늘치)을
 //   품목으로 적는다. 볏짚 밑변과 오늘치는 **식량등가**(단위가 T100 과 같아야 짚·텃밭 하한이 같은 수를 본다),
@@ -7364,7 +7374,9 @@ function t368EvenRelease(v) {
     if (!(p > 0)) continue;
     const give = (d > 1) ? p / d : p;
     v._t368Pend[c] = p - give;
+    if (_LOTH) _LOTH.pendOut(v, '_t368Pend', c, give);   // ★[T748] 오래된 것부터 곳간 레코드로(끄면 무동작)
     out += _t368Credit(v, c, give);
+    if (_LOTH) _LOTH.clearIn(v, c);
   }
   return out;
 }
@@ -11763,6 +11775,7 @@ module.exports = {
   mineToGranary, mineDemandLeft, mineActOn, T724_MINE_ACT,
   forageToGranary, forageActOn, forageActItemsOf, foragerYieldsFor, T347_FORAGE_ACT,   // ★[T347] 채집 행위 — 문 셋 + 믹스 정본 + 손잡이(하네스가 표를 옮겨 적지 않는다)
   actDemandLeft, actDemandCap, fishDemandLeft, woodDemandLeft, forageDemandLeft, T374_DEMAND_STOP,
+  setLotHook,   // ★[T748] 고르게 대기 칸 로트 훅(존 서버 켬만 꽂는다 · 랩 null)
   T368_FARM_ACT, t368EvenRelease, totalFoodProductionEquivalent,   // ★[T368] 농부 행위 — 손잡이 + 품목별 고르게 푸는 자리 + 생산 환산(하네스가 옮겨 적지 않는다 · 입구는 `harvestToGranary` 그대로)   // ★[T374] 그날 수요 — 몸통 하나 + 품목별 `D` 자리 셋 + 손잡이
   forageRegrowR, forageRegrowPerDay, actRegrowPerDay,   // ★[T347] 재생 — T341 과 **같은 몸통**(`_actRegrowR`), 분자만 갈린다   // ★[T325] 나무꾼 행위 · ★[T341] 예산식은 지웠다(나무는 개체다) — 남은 것은 게이트와 **재생 유도 둘**
   T100_ANCHOR_N, T100_HARVEST_PER_FARMER_YEAR, T100_K, T100_FIELD_YIELD,   // ★[T100 4판] 앵커 하나 · 실측 하나 · 유도값 하나 · 손잡이 — 생활층(`villages.js`)과 하네스가 **여기서만** 읽는다(사본 0)
@@ -13526,7 +13539,7 @@ function tickCaravansV2(world, day) {
 //   짐은 **출발 때 그대로**(약탈은 도착 존이 도착 때 정한다 · 같은 존과 같은 시점). ★[T533] 남은 일수·돌아올 일수·경계 칸을 싣는다.
 function _xzHandOff(world, c, day) {
   const X = world.xzone, xc = c._xzCross || null;
-  X.out.push({
+  const _m = {
     kind: 'arrive', id: c.id, fromZone: X.zone, toZone: c.to.zone, to: c.to.name,
     home: xzoneSnapshot(c.from, day, true),   // 집 값표 — 같은 존 도착이 그날 `computeShadowPrices(c.from)` 로 보는 그것(도착 존은 도착일 스텁이 있으면 그것을 쓴다)
     giveRes: c.giveRes, giveAmt: c.giveAmt, giveRes2: c.giveRes2 || null, giveAmt2: c.giveAmt2 || 0, pFrom2: c.pFrom2_at_depart || 0,
@@ -13535,7 +13548,10 @@ function _xzHandOff(world, c, day) {
     remain: Math.max(0, c.arriveDay - day), returnDays: c.travelDays,   // ★[T533] 남은 일수만(받는 존이 제 날에 더한다) · 돌아오는 길(거리 대칭)
     fHome: xc ? xc.f : null, ptPeer: xc ? xc.ptPeer : null,              // ★[T533] 길 중 집 존 몫 · 경계 칸(받는 존 로컬 px — 몸을 세울 자리)
     ptHome: xc ? xc.ptLocal : null,                                      // ★[T533] 같은 경계 칸의 집 존 로컬 px(되짚어 돌아올 때 몸이 설 자리)
-  });
+  };
+  //   ★[T748] 짐 레코드가 기록에 실려 간다(받는 존이 그 캐러밴에 다시 싣는다 · 이 존 짐 줄은 'return' 이 올 때까지 그대로 — 못 넘기면 경계 되돌림이 쓴다) · 끄면 칸이 안 선다
+  if (_LOTH && _LOTH.xzOut) { const L = _LOTH.xzOut(c); if (L) _m.lots = L; }
+  X.out.push(_m);
   c.state = 'xzone'; c._xzSentDay = day;   // 상인은 계속 묶여 있다(`_tradingUntil` 무변) · 'return' 이 올 때까지 이 존은 이 몸을 안 건드린다
 }
 // 스텁이 목적지인데 넘길 문이 없다(팔 끔 · 호스트 없음) — 짐을 집으로 되돌린다(빈손 귀환과 같은 뜻 · 질량 보존).
@@ -13554,7 +13570,7 @@ function _xzHandBack(world, c, day, row, remain) {
   const d = c.to ? _xzDist(world, c.to, c.from) : Infinity;
   const dist = (typeof d === 'number' && isFinite(d)) ? d : (c.distance || 0);
   const rem = (remain != null) ? remain : travelDaysForDistance(dist);
-  X.out.push({
+  const _m = {
     kind: 'return', id: c._xzHome.id, fromZone: X.zone, toZone: c._xzHome.zone, lastTo: c.to ? c.to.name : null,
     returningRes: c._returningRes || null, returningAmt: c._returningAmt || 0,
     returningRes2: c._returningRes2 || null, returningAmt2: c._returningAmt2 || 0,
@@ -13563,7 +13579,9 @@ function _xzHandBack(world, c, day, row, remain) {
     distance: dist, returnDays: rem, remain: rem,   // ★[T533] 남은 일수만(집 존이 제 날에 더한다)
     ptPeer: c._xzBack ? c._xzBack.ptPeer : null,   // ★[T533] 경계 칸(집 존 로컬 px — 몸을 세울 자리)
     row: row ? Object.assign({}, row) : null,
-  });
+  };
+  if (_LOTH && _LOTH.xzOut) { const L = _LOTH.xzOut(c); if (L) _m.lots = L; }   // ★[T748] 되사 온 짐 · 안 판 짐의 레코드(끄면 칸이 안 선다)
+  X.out.push(_m);
   c._done = true; c._xzHandedBack = true;
 }
 // 이웃 존 캐러밴이 이 존 마을에 닿았다(도착일 · 우회 뒤 도착도) — 같은 도착 함수 → 팔고 산 뒤 돌아가는 길을 적는다.
@@ -13603,7 +13621,9 @@ function _xzArrive(world, r, day) {
     state: 'outbound', _rerouted: r.rerouted || 0, _xzHome: { zone: r.fromZone, id: r.id },
     _xzPt: r.ptPeer || null, _xzPtHome: r.ptHome || null, _xzFHome: (r.fHome != null) ? r.fHome : null,   // 넘어온 경계 칸(이 존 · 집 존 px) · 길 중 집 몫
   };
+  if (_LOTH && _LOTH.xzIn && r.lots) _LOTH.xzIn(c, r.lots);   // ★[T748] 넘어온 짐 레코드(끄면 무동작)
   if (!to || !to.npcs || to.npcs.length === 0) {   // 그 마을이 없다(사라졌다 · 인구 0) — 경계에서 짐을 되돌린다(걸어 온 만큼 되걷는다)
+    if (_LOTH) _LOTH.bounce(c);   // ★[T748] 안 판 짐이 그대로 돌아간다(give → ret)
     c._returningRes = c.giveRes; c._returningAmt = c.giveAmt;
     if (c.giveRes2 && c.giveAmt2 > 0) { c._returningRes2 = c.giveRes2; c._returningAmt2 = c.giveAmt2; }
     c._abandoned = true; c.state = 'inbound';
@@ -13623,6 +13643,7 @@ function _xzReturn(world, r, day) {
   if (c.from.tradeStats && r.tradeStats) for (const k in r.tradeStats) c.from.tradeStats[k] = (c.from.tradeStats[k] || 0) + (+r.tradeStats[k] || 0);
   if (r.row) world.tradeLog.push(Object.assign({}, r.row, { xzone: r.fromZone }));   // 집 장부도 그 도착을 본다(되사 온 물건의 '처음 들어옴')
   if (r.traderDead) { killTrader(c, c.from); return; }   // 도착 존에서 상인이 죽었다 — 짐 전손(같은 존 약탈과 같은 끝)
+  if (_LOTH && _LOTH.xzIn && r.lots) _LOTH.xzIn(c, r.lots);   // ★[T748] 돌아온 짐 레코드(이웃 존이 되사 온 것 · 안 판 것 — 이 캐러밴의 짐 줄을 갈아 끼운다 · 끄면 무동작)
   c._returningRes = r.returningRes; c._returningAmt = r.returningAmt;
   if (r.returningRes2 && r.returningAmt2 > 0) { c._returningRes2 = r.returningRes2; c._returningAmt2 = r.returningAmt2; }
   if (r.abandoned) c._abandoned = true;
@@ -14229,6 +14250,7 @@ module.exports = {
   // ★★[T525] 존 경계 넘기 뼈대 — 호스트(존 서버·자)가 **같은 두 함수**로 스텁을 만든다(답하는 쪽 스냅 · 받는 쪽 스텁 · 사본 0)
   T525_CROSS_ZONE, xzoneSnapshot, xzoneStub,
   xzoneBounce: _xzBounce, xzoneLeg: _xzLeg,   // ★[T533] 서버 호스트가 부르는 둘 — 이웃 존이 안 받은 넘김을 경계에서 되돌림 · 제 존 몫 일수(몸이 되짚을 때) — 사본 0
+  _xzProbe: { handOff: _xzHandOff, arrive: _xzArrive, arriveLoop: _xzArriveLoop, handBack: _xzHandBack, ret: _xzReturn },   // ★[T748] 존 경계 짐 레코드 — 하네스가 **이 함수들**을 그대로 부른다(사본 0 · 값 무변)
   setLotHook,   // ★[T732] 곳간 로트 장부 훅(서버 켬일 때만 꽂는다 · 랩·CLI 는 안 꽂는다 = 무동작)
 };
 
