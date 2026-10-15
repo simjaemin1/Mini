@@ -10319,11 +10319,29 @@ function _t720Held(vil, npc) {
   if (E.T347_FORAGE_ACT && E.forageActOn(vil.econ)) { for (const k of (_t347KeepOf(vil) || [])) for (const h of _t347HandsOf(k)) u += inv[h] || 0; }
   return u;
 }
+// ★★★[T743 ① 2026-10-14] **해 질 녘 통나무 도장 — 그날 새로 벴나**(T717 ② 셈과 같은 술어 · T733 ② 채집 해 질 녘 도장과 같은 꼴).
+//   "그날 걸은 몸" 수는 헤드리스 일괄을 막는 문이다(T475 `_t325PreWalked` · 몸 XOR 일괄 — 한 날 한 갈래).
+//   통나무 손을 세는 자리는 셋이다 — 틱 앞 손 입고 `_lifeHandsIn`(T720 끔) · 하루 손 `_lifeDaily`(경계 셈) · **T720 해 질 녘 정산**(아래 · T720 켬 = 기본).
+//   종전: 앞의 둘은 T717 ② 술어(`_t717NewWood` — 지난 입고 뒤 남긴 몫 `_t717L` 보다 많이 들었나)로 셌는데 해 질 녘 도장만 손에 통나무가
+//     **있기만 하면** 찍었다(`_t561Walked`) ⇒ 곳간이 안 받아 손에 남긴 몫만 든 나무꾼이 경계 셈엔 안 걸은 몸 · 해 질 녘엔 걸은 몸이었다(한 몸 두 뜻).
+//   켬: 넣기 **전에** 같은 술어로 묻고 그날 새로 벤 손만 도장 · 넣기는 그대로(남긴 몫만 든 손도 곳간 문에는 간다 · 받은 만큼 손에서 빠진다).
+//   ⚠손잡이 `T743_DUSK_STAMP=1` · 끔(미설정) = 종전 글자(손에 통나무가 있으면 도장 · 비트 동일). 행위 층(`T325_WOOD_ACT`) · T720 을 끈 세계엔 부르는 자리가 없다.
+//   ⚠새 수 0 · 새 몸 필드 0(도장은 몸의 `_t561Wd` 그대로) · T717 ② 를 끄면(`T717_WOOD_HAND=0`) 술어가 "손에 있나"라 켬 = 끔이다.
+//   ⚠T561 사다리(`_t561Ladder` — 켠 팔만 · 기본 끔)는 안 만진다: T561 의 걸은 몸은 "그날 나섰나"(ⓓ 현장을 잡아 나선 몸)라는 다른 술어다.
+const T743_DUSK_STAMP = process.env.T743_DUSK_STAMP === '1';
+//   계측 전용(켠 팔만) — 종전 글자였다면 도장이 찍혔을 몸(남긴 몫만 든 손 · 그날 아직 도장 없는 몸)을 마을에 센다. 하루 손이 그날 셈과 함께 거둔다(`_lifeDaily` · `_t743W`).
+function _t743Gap(vil, npc, now) {
+  const d = state.dayMs ? _bodyDay(npc, now) : 0;
+  if (npc._t561Wd !== d) vil._t743G = (vil._t743G | 0) + 1;
+}
 function _t720Settle(vil, npc, now, S) {
   const E = _lifeEcon();
   if (E.fishActOn(vil.econ) && (npc._t312U || 0) > 0) _t312Deliver(vil, npc);
   if (_t368ItemsOn() && npc._t368H) _t368Deliver(vil, npc, 'gran');
-  if (E.T325_WOOD_ACT && E.woodActOn(vil.econ) && _t720Logger(vil, npc) && npc.inventory && (npc.inventory.wood || 0) > 0) { _t325Deliver(vil, npc); _t561Walked(vil, npc, now); }
+  if (E.T325_WOOD_ACT && E.woodActOn(vil.econ) && _t720Logger(vil, npc) && npc.inventory && (npc.inventory.wood || 0) > 0) {
+    if (!T743_DUSK_STAMP) { _t325Deliver(vil, npc); _t561Walked(vil, npc, now); }   // 끔 = 종전 글자(손에 통나무가 있으면 도장)
+    else { const nw = _t717NewWood(npc); _t325Deliver(vil, npc); if (nw) _t561Walked(vil, npc, now); else _t743Gap(vil, npc, now); }   // ★[T743 ①] 켬 = 그날 새로 벤 손만 도장(넣기는 그대로)
+  }
   if (E.T347_FORAGE_ACT && E.forageActOn(vil.econ) && npc.inventory) {
     let u = 0; for (const k of (_t347KeepOf(vil) || [])) for (const h of _t347HandsOf(k)) u += npc.inventory[h] || 0;
     //   ★[T733 ②] 켬 = 그날 새로 딴 손만 걸은 몸 도장(남긴 몫만 든 손은 넣기만 한다) · 끔 = 옛 줄(손에 걷는 품목이 있으면 도장)
@@ -11327,6 +11345,11 @@ function* _lifeDailySteps(vil) {   // 게임일 경계: 크루·클레임 재대
       N: _S.N | 0, K: _S.K | 0, wBar: +(_S.wBar || 0).toFixed(3), cap: 0, trips: 0, perLoad: 0, cut: 0, noloot: 0, grow: 0, back: 0, stop: 0,
       dem: (() => { const d = _lifeEcon().woodDemandLeft(vil.econ); return d === Infinity ? -1 : +d.toFixed(4); })() };
     if (_t561W) vil._t325Dbg.t561 = { crew: _t561W.length, econ: (vil.econ.counts && vil.econ.counts.lumberjack) || 0, lad: +(vil._t561Lad || 0).toFixed(4) };   // ★[T561 계측 전용] 켠 판에만 서는 칸(나선 몸 · econ 수 · 사다리에서 든 단 누계)
+    //   ★[T743 계측 전용 · 켠 팔만] 종전 글자(해 질 녘 손이 있기만 하면 도장)였다면의 걸은 몸 = 지금 셈 + 그날 갈린 몸 — [옛 · 새] · 누계 `_t743W`(갈린 날 · 옛 글자면 막혔을 일괄이 선 날 · 갈린 몸)
+    if (T743_DUSK_STAMP) {
+      const g = vil._t743G | 0; vil._t743G = 0; vil._t325Dbg.t743 = [_walked + g, _walked];
+      if (g) { const W = vil._t743W || (vil._t743W = { d: 0, un: 0, n: 0 }); W.d++; W.n += g; if (_on && _walked === 0 && _ln > 0 && _tr.length) W.un++; }
+    }
     if (_on && _walked === 0 && _ln > 0 && _tr.length) {
       //   ⓐ 하루 한도 — **걸음**이 정한다. 거리는 가장 가까운 나무 셀까지(색인 순서 첫 칸이 아니라 실제 최근접).
       let _best = _tr[0], _bd = Infinity;
@@ -13207,6 +13230,9 @@ module.exports = { t719ReachPre, t719Stat: () => _t719Stat, t731Stat: () => _t73
       put: (vil, k, u) => _t733PackPut(vil, k, u), packIn: (vil) => _t733PackIn(vil), newForage: (p, u) => _t733NewForage(p, u),
       deliver: (vil, npc) => _t325Deliver(vil, npc), fdeliver: (vil, npc) => _t347Deliver(vil, npc), settle: (vil, npc, now, S) => _t720Settle(vil, npc, now, S),
       handsIn: (vil) => _lifeHandsIn(vil), daily: (vil) => _lifeDaily(vil), get ON() { return T733_FELL_LOOT; }, get T720() { return T720_LON_DAY; } },
+    // ★[T743] 해 질 녘 통나무 도장 — 같은 규약(최소 주입구 하나 · 정본 함수를 그대로 부른다 · 하네스가 도장 규칙을 다시 적으면 그게 사본이다)
+    _t743Probe: { settle: (vil, npc, now, S) => _t720Settle(vil, npc, now, S), daily: (vil) => _lifeDaily(vil), handsIn: (vil) => _lifeHandsIn(vil), newWood: (p) => _t717NewWood(p),
+      get ON() { return T743_DUSK_STAMP; }, get T717() { return T717_WOOD_HAND; }, get T720() { return T720_LON_DAY; } },
     // ★[T449] 결산 문 하네스용 — 같은 규약(최소 주입구 하나). 하네스는 문·명부 규칙을 다시 적지 않는다 — 정본 `_t449Seen`·`_lifeDaily` 를 그대로 부른다.
     _t449Probe: { seen: (vil) => _t449Seen(vil), daily: (vil) => _lifeDaily(vil), get T449_BODY_DAY() { return T449_BODY_DAY; } },
     // ★[T491] 일괄 = 몸의 하루 하네스용 — 같은 규약(최소 주입구 하나). 하네스는 명부·짐 규칙을 다시 적지 않는다 — 정본 `_t491Crew`·`_t491BodyDay` 를 그대로 부른다.
