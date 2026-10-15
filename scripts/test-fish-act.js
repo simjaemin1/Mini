@@ -75,7 +75,8 @@ console.log("\n③ ⓒ 이중 0 — 켠 마을에서 `addProduce('fish')` 가 �
   // ★[T325 2026-09-19] 그 한 줄에 **나무꾼 절이 셋째로 붙었다.** 어부 절을 느슨하게 풀지 않는다 —
   //   절 하나를 그대로 요구하고(`fisher && fishActOn(v)`), 산출 호출이 그 절들 **뒤에** 있음도 같이 문다.
   ok(/&& !\(npc\.currentJob === 'fisher' && fishActOn\(v\)\)/.test(C.replace(/\s+/g, ' '))
-     && /woodActOn\(v\)\)\) addProduce\(jdef\.output, baseAmt\)/.test(C.replace(/\s+/g, ' ')),
+     // ★[T751 · T635 `a6e7b1e3` 10-04] 절들 뒤의 몸이 블록이 됐다(바다 마을 어부 = 종으로 · 나머지 = 종전 줄) — 그 몸을 **꼴 그대로** 문다.
+     && /woodActOn\(v\)\)\) \{ if \(T635_SEA_SPECIES && npc\.currentJob === 'fisher' && v\.land && v\.land\.seaMix\) _t635SeaProduce\(addProduce, v\.land\.seaMix, baseAmt\); else addProduce\(jdef\.output, baseAmt\); \}/.test(C.replace(/\s+/g, ' ')),
     '③ ★★★그 한 줄이 **어부를 걷어낸다**(T100 4판이 농부에게 한 그 문법) · ★[T325] 나무꾼 절이 그 뒤에 붙었다');
   ok(!/addProduce\('fish'/.test(C), "③ ★`addProduce('fish')` 를 **직접 부르는 자리가 없다**(산출은 위 한 줄뿐)");
   ok(/byproduct/.test(SRC) && /salmon: 0\.15/.test(SRC), '③ ★부산물(연어·새우·게·굴·미역·소금)은 **손 안 댔다** — 바다 계열 무변');

@@ -87,6 +87,15 @@ const ROUTES = {
   'zone POST =/handoff_prepare': ['안문', '닫힘'],
   'zone POST =/kick_player': ['안문', '닫힘'],
   'zone POST =/handoff_ack': ['안문', '닫힘'],
+  // ★[T751] 표밖 문 넷을 올렸다(첫 표밖 = T540 `3bbb8735` 09-30 · 야간 6밤). 갈래 · 판정은 **새로 정한 것이 아니다** —
+  //   그 문을 낸 카드가 코드에 스스로 적은 것을 옮겼다(정책 바뀌면 그 카드 몫 · PM 확인):
+  //   · `/bigmap.png` · `?tile=` — T565 `b607600d` `zone.js` "큰 지도 … (공개 · 지형은 클라도 이미 가진 공개 정보 · CORS *)"
+  //   · `/streams.bin` — T585 `ae8d2da8` 문 앞 겹 없음 · 클라(`public/client`)가 그림 · 걸음 예측에 받아 간다(지형 래스터)
+  //   · `/walkdbg` — T540 `3bbb8735` "주민 걸음 관측창(안 문)" · `InternalDoor.isInternal` 겹
+  'zone GET =/bigmap.png':                   ['공개', '공개뜻'],
+  'zone GET ^/bigmap.png?':                  ['공개', '공개뜻'],
+  'zone GET =/streams.bin':                  ['공개', '공개뜻'],
+  'zone GET ^/walkdbg':                      ['안문', '닫힘'],
   // ── dispatcher ───────────────────────────────────────────────────────
   'dispatcher GET =/health/zones':           ['공개', '공개뜻'],
 };

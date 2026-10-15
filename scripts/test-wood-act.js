@@ -95,7 +95,9 @@ console.log("\n③ ⓒ 이중 0 — 켠 마을에서 `addProduce('wood')` 가 �
   const C = codeOf(SRC);
   const gate = C.split('\n').filter((l) => l.indexOf('addProduce(jdef.output, baseAmt)') >= 0);
   ok(gate.length === 1, '③ 산출 한 줄이 그 자리 하나다', `${gate.length}줄`);
-  ok(/&& !\(npc\.currentJob === 'lumberjack' && woodActOn\(v\)\)\) addProduce\(jdef\.output, baseAmt\);/.test(C),
+  // ★[T751 · T635 `a6e7b1e3` 10-04 · T717 회부 7] 그 한 줄의 몸이 블록이 됐다(`{ if (T635_SEA_SPECIES …) … else addProduce(…); }`) —
+  //   나무꾼 절 바로 뒤가 그 블록이고 종전 산출 줄은 그 `else` 다. 꼴 그대로 문다(느슨하게 풀지 않는다).
+  ok(/&& !\(npc\.currentJob === 'lumberjack' && woodActOn\(v\)\)\) \{ if \(T635_SEA_SPECIES && npc\.currentJob === 'fisher' && v\.land && v\.land\.seaMix\) _t635SeaProduce\(addProduce, v\.land\.seaMix, baseAmt\); else addProduce\(jdef\.output, baseAmt\); \}/.test(C.replace(/\s+/g, ' ')),
     '③ ★★★그 한 줄이 **나무꾼을 걷어낸다**(T100 4판·T312 가 쓴 그 문법)');
   ok(!/addProduce\('wood'/.test(C), "③ ★`addProduce('wood')` 를 **직접 부르는 자리가 없다**(산출은 위 한 줄뿐)");
   ok(/byproduct: \{ resin: 0\.08, bark: 0\.10, acorn: 0\.06 \}/.test(SRC),

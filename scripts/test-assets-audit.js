@@ -692,7 +692,8 @@ console.log('\n⑩ R&D 보관소 `tools/_rnd_archive/` 는 배포 밖 — 이미
 //   ⓒ `.dockerignore` 의 `sim/out/` 줄을 (가상으로) 빼면 ⑪a 가 그 산물 수만큼 더 · ⓓ 존 COPY 에서 `CREDITS.md` 를 빼면 ⑪b 가 문다
 console.log('\n⑪ 실리는 것은 닿아야 한다 · 닿는 것은 실려야 한다 — 이미지 전수 [T456]');
 {
-  const T456_BASE = 53;       // ★기준 = T456 뒤 수. 줄면 내려 적는다 · 올리려면 그 파일이 왜 실려야 하는지 보고에 적고 올린다
+  const T456_BASE = 52;       // ★기준 = T456 뒤 수. 줄면 내려 적는다 · 올리려면 그 파일이 왜 실려야 하는지 보고에 적고 올린다
+                              //   [T751] 53 → 52 — T585 앞 판이 이미 52 였다(bisect) · 개울 래스터 3장은 `server/streams.js` fileOf 가 읽는다(폴더·끝 꼴)
   const { excluded } = DOCKER_RULES;
   const { PATS, IMAGES, copiedBy, ships } = DOCKER_SHIP;
   let acorn = null, tracked = null;
@@ -746,7 +747,7 @@ console.log('\n⑪ 실리는 것은 닿아야 한다 · 닿는 것은 실려야 
     const flatPlus = (n, out) => { if (n.type === 'BinaryExpression' && n.operator === '+') { flatPlus(n.left, out); flatPlus(n.right, out); } else out.push(n); return out; };
     const jsCache = new Map();
     const analyzeJS = (text) => {
-      const res = { text, strings: [], dyn: [], requires: [], dataJoins: [], tokens: new Set() };
+      const res = { text, strings: [], dyn: [], requires: [], dataJoins: [], dirJoins: [], tokens: new Set() };
       const ast = parseJS(text);
       if (!ast) { for (const t of text.match(TOKENS) || []) res.tokens.add(t); return res; }   // 못 읽으면 낱말만(닿음은 못 준다)
       const inner = new Set();
@@ -775,12 +776,27 @@ console.log('\n⑪ 실리는 것은 닿아야 한다 · 닿는 것은 실려야 
           else if (isPathCall(a) && isDirname(a.arguments[0]) && a.arguments.slice(1).every((x) => strOf(x) != null)) res.requires.push({ joined: path.posix.join(...a.arguments.slice(1).map(strOf)), line });
         }
         if (isPathCall(n) && isDirname(n.arguments[0]) && n.arguments.slice(1).every((x) => strOf(x) != null)) res.dataJoins.push({ rel: path.posix.join(...n.arguments.slice(1).map(strOf)), line });
+        // ★[T751 · T585 `ae8d2da8` 10-03] 폴더 글자 + 이름 변수 + 끝 글자 — `path.join(__dirname, 'streams', zoneId + '.bin')`.
+        //   그 폴더 **바로 안**에서 그 끝 글자(와 앞 글자)로 끝나는 파일만 닿음으로 친다(하위 폴더 · 다른 끝 글자 0 — 아래 ⓔ 미끼).
+        if (isPathCall(n) && isDirname(n.arguments[0]) && n.arguments.length >= 3) {
+          const mid = n.arguments.slice(1, -1), last = n.arguments[n.arguments.length - 1];
+          if (mid.every((x) => strOf(x) != null) && last.type === 'BinaryExpression' && last.operator === '+') {
+            const parts = flatPlus(last, []);
+            let i = 0, pre = ''; while (i < parts.length && strOf(parts[i]) != null) pre += strOf(parts[i++]);
+            let j = parts.length - 1, suf = ''; while (j > i && strOf(parts[j]) != null) suf = strOf(parts[j--]) + suf;
+            if (i <= j && suf && !/[\/]/.test(pre + suf)) res.dirJoins.push({ dir: path.posix.join(...mid.map(strOf)), prefix: pre, suffix: suf, line });
+          }
+        }
       });
       return res;
     };
     const jsOf = (f) => { if (!jsCache.has(f)) jsCache.set(f, analyzeJS(read(f))); return jsCache.get(f); };
     // ── 서버 — 이미지마다 CMD 진입에서
     const tryFile = (p) => { for (const c of [p, p + '.js', p + '.json', p + '/index.js']) if (TR.has(c)) return c; return null; };
+    // ★[T751] 폴더+끝 글자 꼴의 짝 — 폴더 바로 안 · 앞 글자로 시작 · 끝 글자로 끝 · 그 사이 이름이 한 글자 이상
+    const dirJoinHit = (dirAbs, d, t) => path.posix.dirname(t) === dirAbs
+      && path.posix.basename(t).length > d.prefix.length + d.suffix.length
+      && path.posix.basename(t).startsWith(d.prefix) && path.posix.basename(t).endsWith(d.suffix);
     const serverWalk = (entries) => {
       const got = new Map(entries.map((e) => [e, { how: 'CMD', from: null }]));
       const q = [...entries];
@@ -797,6 +813,10 @@ console.log('\n⑪ 실리는 것은 닿아야 한다 · 닿는 것은 실려야 
         for (const d of a.dataJoins) {
           const t = path.posix.normalize(path.posix.join(dir, d.rel));
           if (TR.has(t) && !got.has(t)) { got.set(t, { how: '자료 읽기', from: `${f}:${d.line}` }); if (/\.js$/.test(t)) q.push(t); }
+        }
+        for (const d of a.dirJoins) {
+          const dirAbs = path.posix.normalize(path.posix.join(dir, d.dir));
+          for (const t of TR) if (!got.has(t) && dirJoinHit(dirAbs, d, t)) got.set(t, { how: '자료 읽기(폴더·끝)', from: `${f}:${d.line}` });
         }
       }
       return got;
@@ -967,6 +987,16 @@ console.log('\n⑪ 실리는 것은 닿아야 한다 · 닿는 것은 실려야 
     ok(missD.includes('CREDITS.md') && missD.length === missOf(IMGS).length + 1,
        'ⓓ 미끼 — 존 COPY 에서 `CREDITS.md` 를 (가상으로) 빼면 ⑪b 가 그 파일을 문다(T446 이 찾은 구멍 · 배포판 `/크레딧` 이 못 읽었다)',
        `${missOf(IMGS).length}→${missD.length} · ${missD.join(' ') || '없음'}`);
+
+    // ⓔ⑪ [T751] 폴더·끝 꼴이 **그 꼴만** 문다 — 개울 래스터는 그 꼴로 닿고, 같은 폴더의 다른 끝 글자 · 하위 폴더 · 다른 폴더는 안 닿는다
+    const SJ = jsOf('server/streams.js').dirJoins.find((d) => d.dir === 'streams' && d.suffix === '.bin');
+    const viaDJ = [...SRV].filter(([, v]) => v.how === '자료 읽기(폴더·끝)').map(([f]) => f).sort();
+    const hitE = (t) => !!SJ && dirJoinHit('server/streams', SJ, t);
+    ok(!!SJ && viaDJ.length >= 3 && viaDJ.every((f) => /^server\/streams\/[^/]+\.bin$/.test(f))
+       && hitE('server/streams/zz_t751_ghost.bin') && !hitE('server/streams/zz_t751_ghost.txt')
+       && !hitE('server/streams/sub/zz_t751_ghost.bin') && !hitE('server/zz_t751_ghost.bin') && !hitE('server/streams/.bin'),
+       'ⓔ⑪ 미끼 — 폴더·끝 꼴(`path.join(__dirname, \'streams\', id + \'.bin\')`)은 그 폴더 바로 안 `.bin` 만 문다(다른 끝 · 하위 폴더 · 다른 폴더 · 빈 이름 0)',
+       `${viaDJ.join(' ') || '없음'} · 꼴 ${SJ ? `streams.js:${SJ.line}` : '★못 찾음'}`);
 
     // 표만 — 동적 접두만(키가 원천에 없다 · 닿음으로 친다 · 빨강 아님)
     console.log(`     · 동적 접두만(키 없음 · 표만) ${DYN.length}장 · ${mbOf(DYN)} MB`);

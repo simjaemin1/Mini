@@ -239,7 +239,10 @@ console.log('\n=== 겨울 이펙트 셋 정본 하네스 (T500) ===\n');
   ok(calls.length === 1 && /drawBreath\(s\.x, s\.y, item, fvx, fvy, downFlag, now\);/.test(calls[0]) && callAt > elseAt && callAt - elseAt < 900,
     '⑤s 렌더루프 호출은 **한 자리** — 시트가 그린 몸의 `else` 안(표식·이름표 앞)', calls.map((l) => l.trim()).join(''));
   const mo = fnBody(CH, 'charMouthOffset');
-  ok(/m\.mouthScreen/.test(mo) && /st\.drawn/.test(mo) && /_charAnim\.get\(opts\.pid\)\.drawn = \[stt\.clip, stt\.frame, row\];/.test(CH),
+  // ★[T751 · T539 `53ead486` 09-30] 그린 판의 이름이 `stt.clip · stt.frame` → `_clip · _frame` 이 됐다 — 기본은 `stt` 그대로고
+  //   3D 타일이 서면 **그 타일이 그린 판**으로 갈아 끼운다(그래야 입 자리가 실제로 그린 판을 본다 · 뜻 그대로). 두 줄을 같이 문다.
+  ok(/m\.mouthScreen/.test(mo) && /st\.drawn/.test(mo) && /let _clip = stt\.clip, _frame = stt\.frame;/.test(CH)
+     && /_charAnim\.get\(opts\.pid\)\.drawn = \[_clip, _frame, row\];/.test(CH),
     '⑤t 입 자리 = 그 몸이 **방금 그린 판**(클립·판·방향)의 메타 값 — 클라가 지어낸 수 0');
 }
 

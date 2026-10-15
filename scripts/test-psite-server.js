@@ -30,9 +30,11 @@ console.log('=== 11차 T4 · 플레이어 의뢰 집 건설(서버 이식) 계�
 
 console.log('\n[① 자리 필터 공유 — 마을 자동 배치와 의뢰가 같은 코드를 쓴다(복제 금지)]');
 {
-  chk(/function _lifeSiteFilters\(vil\)/.test(VIL), '_lifeSiteFilters 추출 실재');
+  // ★[T751 · T620 `52f55f74` 10-03] 필터가 둘째 인자 `M`(한 번의 집터 찾기 동안만 사는 셀 술어 메모 · 없으면 종전 그대로)을 받는다 —
+  //   자동 배치는 그 메모를 넘기고(`_t620SiteMemo()`) 의뢰는 안 넘긴다. **같은 함수**라는 뜻은 그대로다 → 새 꼴을 이름으로 문다.
+  chk(/function _lifeSiteFilters\(vil, M\)/.test(VIL), '_lifeSiteFilters 추출 실재(T620 `M` 메모 인자)');
   const add = VIL.slice(VIL.indexOf('function _lifeAddHouseSite(vil) {'), VIL.indexOf('function _lifeAdvanceSite'));
-  chk(/_lifeSiteFilters\(vil\)/.test(add), '마을 자동 배치가 그 필터를 쓴다');
+  chk(/_lifeSiteFilters\(vil, _t620SiteMemo\(\)\)/.test(add), '마을 자동 배치가 그 필터를 쓴다(T620 메모를 넘겨서)');
   const req = VIL.slice(VIL.indexOf('function lifeRequestPlayerSite('), VIL.indexOf('function villageOwningCell'));
   chk(/_lifeSiteFilters\(vil\)/.test(req), '플레이어 의뢰도 **같은** 필터를 쓴다');
   chk(/F\.reject\(/.test(add) && /F\.reject\(/.test(req), '두 경로 모두 reject() 단일 술어로 판정');

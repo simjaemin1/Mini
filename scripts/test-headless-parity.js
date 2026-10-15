@@ -27,9 +27,14 @@ const consts = src.match(/const LIFE_TASK_SEC = [\d.]+;/)[0];
 const CLEAR_PDAY = +src.match(/const LIFE_CLEAR_PDAY = (\d+)/)[1];
 const STAGE_PDAY = +src.match(/const LIFE_STAGE_PDAY = (\d+)/)[1];
 const CREW = +src.match(/const LIFE_CREW = (\d+)/)[1];
+// ★[T751 · T627 `203c767b` 10-04] `_lifeTasksPerFarmerDay` 의 하루 길이가 `_tripDayMs()` 를 거친다(손잡이 T627_TRIP_DAY ·
+//   끔 = `state.dayMs` 그대로). 그 함수와 손잡이 줄을 **이름으로** 같이 떼어 온다 — 손잡이는 끔으로 못 박는다
+//   (켬이면 정본 운영 하루라 아래 ①의 "날 길이 2배 = 처리량 2배"가 뜻을 잃는다 · 이 하네스는 판 시계 쪽을 잰다).
+const t627 = src.match(/const T627_TRIP_DAY = process\.env\.T627_TRIP_DAY === '1';/);
+if (!t627) throw new Error('손잡이 줄 없음: T627_TRIP_DAY');
 const state = { dayMs: 0, deps: { dayPhaseRatio: 0.7 } };
-const ctx = vm.createContext({ state, Math, console });
-vm.runInContext([consts, cut('_lifeTasksPerFarmerDay'),
+const ctx = vm.createContext({ state, Math, console, process: { env: {} }, require });
+vm.runInContext([consts, t627[0], cut('_tripDayMs'), cut('_lifeTasksPerFarmerDay'),
   'globalThis.__api = { _lifeTasksPerFarmerDay, LIFE_TASK_SEC };'].join('\n'), ctx);
 const A = ctx.__api;
 
@@ -40,6 +45,8 @@ console.log(`LIFE_TASK_SEC=${A.LIFE_TASK_SEC}s · LIFE_CLEAR_PDAY=${CLEAR_PDAY} 
 
 console.log('\n[① 작물 예산이 날 길이에서 파생된다 — 구 고정 30의 결함 재발 방지]');
 {
+  // ★[T751] 하루 길이는 `_tripDayMs()` 한 문으로 들어온다(T627 꼴 · 이름으로 못 박는다 — 다른 길로 새면 여기서 문다).
+  chk(/const dayMs = _tripDayMs\(\) \|\| 600000;/.test(cut('_lifeTasksPerFarmerDay')), '작물 예산의 하루 길이 = `_tripDayMs()`(T627 문 · 끔 = 판 시계)');
   const at = (min) => { state.dayMs = min * 60000; return A._lifeTasksPerFarmerDay(); };
   const p24 = at(24), p12 = at(12), p2 = at(2);
   chk(p24 !== 30 && p12 !== 30, `고정값 아님: 24분/일 ${p24} · 12분/일 ${p12} · 2분/일 ${p2}`);

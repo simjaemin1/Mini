@@ -164,10 +164,12 @@ async function roundTrip(tag) {
   if (!handoffMsg) return { crossed: false };
   // ★넘는 순간의 몸(출발 존은 ACK 까지 몸을 들고 있다) — 생명값·신체 비교의 기준점이다.
   const beforeCross = pick(await jget(`http://localhost:${HPORT}/bodydbg`));
+  const tX = Date.now();   // ★[T751] 넘는 순간 몸을 읽은 때 — ② HP 허용치가 이 사이 실제 걸린 시간에서 나온다
   try { a.ws.close(); } catch (e) {}
   const b = await open(`${nip.wsUrl}/?handoff_token=${encodeURIComponent(handoffMsg.token)}`);
   await sleep(900);
   const after = pick(await jget(`http://localhost:${NPORT}/bodydbg`));
+  const tA = Date.now();   // ★[T751] 도착한 몸을 읽은 때
   await sleep(1500);   // 도착 존이 savePlayer 를 돌릴 시간
   try { b.ws.close(); } catch (e) {}
   await sleep(900);
@@ -175,7 +177,7 @@ async function roundTrip(tag) {
   await sleep(900);
   const again = pick(await jget(`http://localhost:${HPORT}/bodydbg`));
   try { c.ws.close(); } catch (e) {}
-  return { crossed: true, before, beforeCross, after, again, welcomeTools: b.tools, SET_HP, SET_COLD };
+  return { crossed: true, before, beforeCross, after, again, welcomeTools: b.tools, SET_HP, SET_COLD, crossMs: tA - tX };
 }
 
 (async () => {
@@ -218,7 +220,18 @@ async function roundTrip(tag) {
   //   (같은 존 안에서는 `_takeover` 가 이미 HP 를 잇고 있었다 — 존을 넘을 때만 회복되던 게 이상했다.)
   const hpX = ((R.beforeCross || {}).vital || {}).hp, hpA = ((R.after || {}).vital || {}).hp;
   ok(hpX < 90, '★[상황] 넘는 순간 HP 가 깎여 있다(100 이면 회복인지 보존인지 못 가른다)', `${hpX}`);
-  ok(Math.abs(hpA - hpX) <= 12, '② ★★HP 가 존을 넘어 **이어진다**(풀피로 안 튄다)', `${hpX} → ${hpA}`);
+  // ★[T751] 허용치 = 그 사이 **실제로 걸린 시간** × 제품의 자연 회복률(+1 반올림) — 종전 고정 12 는 "넘는 데 1.2초"에 건 수였다.
+  //   도착 존은 몸을 받자마자 초당 ~10HP 로 아문다(피해 1초 뒤 · `_hpRegenStep`) — 넘는 시간이 상자마다 다르다
+  //   (야간 상자 6밤 내내 43 → 56 = +13 · 이 상자 +12 안 · 같은 main). 뜻("이어진다 · 풀피로 안 튄다")은 그대로 —
+  //   풀피로 튀면(43 → 100) 허용치(넘는 시간 1~2초면 11~21)를 한참 넘어 여전히 빨강이다(아래 ②b 가 그 수를 같이 찍는다).
+  const zsrc = fs.readFileSync(path.join(__dirname, '..', 'server', 'zone.js'), 'utf8');
+  const rg = zsrc.match(/setHp\(p, p\.hp \+ (\d+) \* dt \* (\d+) \* _rm, 'regen'\)/);
+  const REGEN_PS = rg ? +rg[1] * +rg[2] : NaN;   // 초당 회복(만복 기준) — 제품 식 그대로
+  const hpTol = REGEN_PS * (R.crossMs || 0) / 1000 + 1;
+  ok(Number.isFinite(REGEN_PS) && REGEN_PS > 0, '②a 자연 회복률을 제품 식에서 읽었다(`setHp(p, p.hp + 2 * dt * 5 * _rm, \'regen\')`)', `${REGEN_PS}/초`);
+  ok(hpA >= hpX - 1 && hpA - hpX <= hpTol, '② ★★HP 가 존을 넘어 **이어진다**(풀피로 안 튄다)',
+    `${hpX} → ${hpA} · 넘는 시간 ${R.crossMs}ms × ${REGEN_PS}/초 + 1 = 허용 ${hpTol.toFixed(1)}`);
+  ok(hpA < 100 || hpX + hpTol >= 100, '②b ★풀피(100)가 아니다 — 허용치가 100 에 닿지 않는 한', `${hpA}`);
   // ★★[T43 2026-09-02 재민 확정 · §12] **뒤집었다.** 이 줄은 종전 *"재접속은 여전히 풀피다 —
   //   정책 무변(T8 소관)"* 이었고, 그 T8 소관이 T43 이다. §12: *"로그아웃 ≠ 부활."*
   //   ⇒ 재접속도 이제 **HP 를 잇는다**(`_acceptConnection` 의 `parseBody(.., {vitals:true})`).

@@ -143,8 +143,8 @@ const call = async (port, meth, p, hdr, body) => {
     }
     if (!맞나) 어긋남.push(`${key}→${r.s}(기대 ${기대} · ${JSON.stringify(r.d || {}).slice(0, 60)})`);
   }
-  ok(어긋남.length === 0, `ⓐ ★★61 문이 갈래대로 답한다(디스패처 1 은 별 프로세스라 제외) · 어긋남 ${어긋남.length}건 ` + (어긋남.join(' · ') || ''));
-  ok(안문목록.length === 41 && 안문목록.every(([, s]) => s === 404 || s === 401),   // ★[T363] 40 → 41(`/check_username` 이 들어왔다)
+  ok(어긋남.length === 0, `ⓐ ★★65 문이 갈래대로 답한다(디스패처 1 은 별 프로세스라 제외) · 어긋남 ${어긋남.length}건 ` + (어긋남.join(' · ') || ''));
+  ok(안문목록.length === 42 && 안문목록.every(([, s]) => s === 404 || s === 401),   // ★[T363] 40 → 41(`/check_username` 이 들어왔다) · ★[T751] 41 → 42(T540 `/walkdbg`)
     `ⓐ2 ★안 문 ${안문목록.length} 이 전부 404·401 — ` + 안문목록.map(([k, s]) => LR.parseKey(k).path + ':' + s).join(' '));
 
   // ── 투영 — **칸 목록이 일치하나**(줄여 주는 것이 뜻이라 늘어나면 사고다) ──
@@ -241,7 +241,9 @@ const call = async (port, meth, p, hdr, body) => {
     const c = LR.counts();
     // ★[T363] 남음이 **1 → 0** 이다 — `/check_username`(#48)을 안 문으로 옮겼다. 회부된 둘이 다 닫혔다.
     //   ⚠라우트 수는 **62 그대로**다(지운 게 아니라 바깥만 닫았다 · 갈래가 공개 → 안문).
-    ok(c.n === 62 && c.공개 === 15 && c.안문 === 41 && c.본인 === 3 && c.투영 === 3 && c.남음 === 0 && c.회부됨 === 0,
+    // ★[T751] 표밖 문 넷(T540 `/walkdbg` 안문 · T565 `/bigmap.png` 둘 공개 · T585 `/streams.bin` 공개)을 표에 올려 62 → 66 ·
+    //   공개 15 → 18 · 안문 41 → 42. 남음 · 회부됨 0 은 그대로다(넷 다 바깥에서 닫혔거나 공개가 뜻이다 — 아래 ⓐⓑ 가 두드려 본다).
+    ok(c.n === 66 && c.공개 === 18 && c.안문 === 42 && c.본인 === 3 && c.투영 === 3 && c.남음 === 0 && c.회부됨 === 0,
       `ⓓ ★T245 의 그 줄 · T319·T363 이 둘을 닫았다 — 라우트 ${c.n} · 공개 ${c.공개} · 안문 ${c.안문} · 본인 ${c.본인} · 투영 ${c.투영} · 남음 ${c.남음}(쓰기 ${c.쓰기남음} · 읽힘 ${c.읽힘남음} · 회부됨 ${c.회부됨})`);
     ok(LR.ROUTES['zone GET ^/startinfo'][1] === '닫힘DEV_AS' && LR.ROUTES['central POST =/check_username'][0] === '안문',
       'ⓓ2 표가 그 둘을 그렇게 적고 있다 — `/startinfo` 는 `닫힘DEV_AS` · `/check_username` 은 **안문**(아래 ⓔ·ⓖ 가 그 말이 참인지 본다)');
@@ -320,13 +322,24 @@ const call = async (port, meth, p, hdr, body) => {
       'ⓕ7 ★마을 수도 정본 목록(`SimVillages.clientVillages`)에서 **센다** — 여기서 목록을 다시 만들지 않는다');
     // ⓕ9 ★★값이 **같은 수**다 — 소스 계약만이 아니라 두 문이 같은 순간에 같은 답을 낸다.
     //   `/perf` 는 안 문이라 비밀 헤더로 묻는다(그 문의 규약 그대로).
+    //   ★[T751] "같은 순간" 을 **증인으로** 잡는다 — 두 문을 차례로 부르는 사이에 틱 표본이 하나 들면 p50 이 셋째 자리에서
+    //     갈린다(야간 6밤 중 3번: n=54 0.235 vs 0.233 · n=59 0.282 vs 0.283 · n=79 0.263 vs 0.265 = 결함이 아니라 판 사이 틱).
+    //     그래서 `/health` 를 `/perf` **둘 사이**에 끼우고, 앞뒤 `/perf` 가 같은 답(n · p50)일 때만 그 판을 잰다(최대 20판).
+    //     비교 자체는 그대로 **완전 일치**다(허용 오차 0 — 느슨하게 풀지 않는다). 20판 내내 틱이 끼면 빨강(못 쟀다고 말한다).
     {
-      const pf = (await call(ZPORT, 'GET', '/perf', IN)).d;
-      const h2 = (await call(ZPORT, 'GET', '/health', OUT)).d || {};
-      const p50 = pf && pf.tick && pf.tick.ms ? pf.tick.ms.p50 : undefined;
-      const n = pf && pf.tick && pf.tick.ms ? (pf.tick.ms.n | 0) : -1;
-      ok(n === 0 ? h2.tickP50Ms === null : (p50 !== undefined && p50 === h2.tickP50Ms),
-        'ⓕ9 ★★`/perf` tick.ms.p50 과 `/health` tickP50Ms 이 **같은 답**이다(표본 0 이면 둘 다 "없다") · n=' + n + ' · ' + JSON.stringify(p50) + ' vs ' + JSON.stringify(h2.tickP50Ms));
+      const msOf = (d) => (d && d.tick && d.tick.ms ? d.tick.ms : null);
+      let pf = null, h2 = {}, tries = 0, still = false;
+      for (; tries < 20 && !still; tries++) {
+        pf = (await call(ZPORT, 'GET', '/perf', IN)).d;
+        h2 = (await call(ZPORT, 'GET', '/health', OUT)).d || {};
+        const pfB = (await call(ZPORT, 'GET', '/perf', IN)).d;
+        const a = msOf(pf), b = msOf(pfB);
+        still = !!(a && b && (a.n | 0) === (b.n | 0) && a.p50 === b.p50);
+      }
+      const p50 = msOf(pf) ? msOf(pf).p50 : undefined;
+      const n = msOf(pf) ? (msOf(pf).n | 0) : -1;
+      ok(still && (n === 0 ? h2.tickP50Ms === null : (p50 !== undefined && p50 === h2.tickP50Ms)),
+        'ⓕ9 ★★`/perf` tick.ms.p50 과 `/health` tickP50Ms 이 **같은 답**이다(표본 0 이면 둘 다 "없다") · n=' + n + ' · ' + JSON.stringify(p50) + ' vs ' + JSON.stringify(h2.tickP50Ms) + ` · 고요한 판 ${still ? tries + '번째' : '★못 잡음(20판)'}`);
       // 그리고 안부를 물은 뒤에도 계측 창이 살아 있다(영점 조정 안 함 — ⓕ6 의 값 판)
       const pf2 = (await call(ZPORT, 'GET', '/perf', IN)).d;
       ok(pf2 && pf2.tick && pf2.tick.ms && pf2.tick.ms.n >= (pf.tick.ms.n | 0),
