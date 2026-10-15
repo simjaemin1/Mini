@@ -165,7 +165,8 @@ function srand() {
 function setSeed(s) { _seed = s >>> 0; _seed0 = _seed; }
 function _t731StreamInit(v) {
   if (typeof v._rs === 'number') return;
-  let x = _seed0 >>> 0; const id = String(v.id != null ? v.id : (v.name || ''));
+  //   ★[T744] 재료 = 세계 씨 × 마을 **이름**(세계 안에서 하나 · 프로세스 계수기 `v.id` 는 앞서 만든 세계 수에 따라 바뀐다 — 같은 세계가 프로세스마다 다른 흐름을 받았다)
+  let x = _seed0 >>> 0; const id = String(v.name != null && v.name !== '' ? v.name : (v.id != null ? v.id : ''));
   for (let i = 0; i < id.length; i++) x = ((x ^ id.charCodeAt(i)) * 1664525 + 1013904223) >>> 0;
   v._rs = x;
 }
@@ -2768,6 +2769,7 @@ function createVillage(opts) {
   //   ⇒ 소멸(P) 는 **≥1 에 도달한 뒤 0 이 된 마을**만 센다. 아직 아무도 안 온 빈 터는 '소멸'이 아니라
   //     '아직 시작 안 함'이다. NPC 마을은 initN=8 이라 언제나 1 — 기존 판정과 완전히 같다.
   v._everPop = initN > 0 ? 1 : 0;
+  if (T731_LOCAL_MIDNIGHT) _t731StreamInit(v);   // ★[T744] 켬 = 마을 흐름 씨를 **만드는 순간**에 — 그 세계의 씨(`setSeed`)로(첫 틱까지 미루면 그 사이 만든 다른 세계의 씨를 받았다)
   return v;
 }
 
