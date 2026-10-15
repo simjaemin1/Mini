@@ -6,6 +6,7 @@
 //     T577_OUT=<판>          → `<판>.t740.json` — 날마다 { d, f: { 칸: 마을마다 6자 해시를 이은 줄 } }
 //     T740_DUMP_DAYS=a,b     그 날엔 칸 값을 통째로(풀어 쓴 JSON) `<판>.t740.d<날>.json` 에(첫 갈림 들여다보기)
 //     T740_CONT_K=K          (대조 판 · t722 훅 `T722_CONT=1`) 멈춤 판과 같은 자리에서 벽시계 · econ 날을 K 날 밀고 재기동 없이 이어 간다(`__t740Cont`).
+//     T742_CONT_SYNC=0       (대조 판) 도적 마지막 날을 안 맞춘다(종전 대조 · ★기본은 맞춘다 — T754 · 아래)
 //     T740_CLOCK_AT=<ms>     (다시 뜬 판) 부팅 동안 벽시계를 그 값에 얼린다(아래 시계).
 //     T740_FORCE_JUMP=K      (계측 사본) 다시 뜬 판의 날 뜀을 벽시계 대신 K 로 고정(빠른 시계 자에선 부팅 시간만으로 수백 날이 뛴다).
 //   해시 규약(`canon`): Map → ['M', [[k, v] …]](차례 그대로) · Set → ['S', […]] · 마을 · econ 마을 · econ 주민 · 몸 · world 는 이름표(@v · @e · @n · @p · @W) ·
@@ -64,13 +65,32 @@ let CLK_OFF = 0, CLK_FROZEN = process.env.T740_CLOCK_AT ? +process.env.T740_CLOC
   global.__t740Unfreeze = () => { if (CLK_FROZEN == null) return; CLK_OFF = CLK_FROZEN - _prevNow(); console.log(`[t740] 시계 풀림 — 첫 틱 · ${CLK_FROZEN}(얼린 값)부터`); CLK_FROZEN = null; };
 }
 global.__t740Pause = () => { CLK_PAUSE = Date.now(); };
+// ★[T754 · T742 회부 2] 대조 판 도적 날 맞추기 — **기본 켬**(`T742_CONT_SYNC=0` 이면 종전 대조 판 · 끄는 갈래).
+//   대조 판(`__t740Cont`)이 econ 날을 K 날 뛸 때 **econ 날을 따로 세는 층**(도적 `S.lastDay`)도 그 날로 둔다 — 제품이 다시 뜰 때 하는 그대로
+//   (`bandits.bindHost` → `S.lastDay = day0` "재부팅 당일 이중 실행 방지"). 안 맞추면 대조 판만 뛴 날의 도적 데일리를 한 번 더 돌아
+//   `_banditRisk` 감쇠가 한 번 더 → T740 의 291 · 318 날 갈림(T742 ①). 계측 사본 — 이 프로세스의 bandits.js 끝에 `S` 읽기 한 줄(제품 파일 무변).
+const CONT_SYNC = process.env.T742_CONT_SYNC !== '0';
+global.__t754ContSync = CONT_SYNC;
+const BAND = path.join(ROOT, 'server', 'bandits.js');
+{
+  const _p3 = Module._extensions['.js'];
+  Module._extensions['.js'] = function (m, filename) {
+    if (filename !== BAND || !CONT_SYNC) return _p3(m, filename);
+    const _c = m._compile;
+    m._compile = function (src, fn) { if (src.indexOf('__t754S') < 0) src += '\n;module.exports.__t754S = function () { return S; };\n'; return _c.call(this, src, fn); };
+    return _p3(m, filename);
+  };
+}
 global.__t740Cont = (st) => {
   const K = parseInt(process.env.T740_CONT_K || '0', 10) || 0;
   const at = CLK_PAUSE != null ? CLK_PAUSE : Date.now(); CLK_PAUSE = null;
   CLK_OFF += (at + K * st.dayMs) - Date.now();
   if (K) st.world.day = (st.world.day | 0) + K;
   st.lastGameDay = Math.floor((Date.now() - st.epoch) / st.dayMs);
-  console.log(`[t740] 대조 — 벽시계 +${K} 날 · econ 날 ${st.world.day} · 앵커 ${st.lastGameDay}`);
+  let sync = '끔(T742_CONT_SYNC=0)';
+  if (CONT_SYNC) { try { const B = require.cache[BAND]; const S = B && B.exports && B.exports.__t754S && B.exports.__t754S();
+    if (S && S.ready) { const was = S.lastDay; S.lastDay = st.world.day; sync = `도적 마지막 날 ${was} → ${S.lastDay}`; } else sync = '도적 층 없음'; } catch (e) { sync = '실패 ' + e.message; } }
+  console.log(`[t740] 대조 — 벽시계 +${K} 날 · econ 날 ${st.world.day} · 앵커 ${st.lastGameDay} · 도적 날 맞추기: ${sync}`);
   st.dayFreeze = false;
 };
 const H6 = (s) => crypto.createHash('sha1').update(s).digest('hex').slice(0, 6);
