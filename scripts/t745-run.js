@@ -11,6 +11,7 @@
 //                     벽시계 6~7 날이라 T728 ⑥ 시계 셈이 그 날들까지 뛴다 · 대조 판은 econ 날을 K 만 민다 — 둘을 같은 뜀에 둔다).
 //                   실제 시계: T740 그대로(`T740_CLOCK_AT` 얼림 · `T740_FORCE_JUMP` 사본).
 //     --bodykeep    (멈춤 판) 몸의 JSON 칸을 명부 자리마다 덤프해 다시 뜬 몸에 되돌린다(T740 몸 영속 흉내 · 계측 사본)
+//     (대조 판은 도적 마지막 날도 econ 날과 같이 민다 — ★T754 기본 · `T742_CONT_SYNC=0` 이면 종전 · `t740-side-hook`)
 //     --stop S --cont  대조 판 — 같은 자리에서 재기동 없이 벽시계 · econ 날을 K 날 밀고 이어 간다(`__t740Cont`).
 //   ⇒ $T745_DIR/<판>/ — all.t650.json(econ 지문) · all.t740.json(마을 칸 지문) · p1.log · (멈춤 판) stop.json · resume.json · p2.log
 //   판 조건: VILLAGE_DAY_MS=250 · T315_MAPBEDS=0 · VILLAGE_NPC_CAP=1 · T400_BUILD_ACT=0 · VILLAGE_CARAVAN_MAX=0 · T640_BOOT_SLICE=0 (T650 자 그대로)

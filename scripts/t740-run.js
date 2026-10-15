@@ -7,6 +7,7 @@
 //                    다시 뜬 판은 부팅 동안 벽시계를 "멈춘 순간 + K 날"에 얼리고(`T740_CLOCK_AT`) 날 뜀을 K 로 고정한다(`T740_FORCE_JUMP` 사본) —
 //                    K = 멈춘 실분 N 의 게임일 몫(N ÷ 24 · T728 ⑥ 캐논: 멈춘 시간은 버리고 날은 시계에서) · 빠른 시계 자에서 부팅 시간이 날을 뛰지 않게.
 //     --bodykeep     (멈춤 판) 몸의 JSON 칸을 명부 자리마다 덤프해 다시 뜬 몸에 되돌린다(몸 영속 흉내 · 계측 사본 — T728 회부 2 의 크기)
+//     (대조 판은 도적 마지막 날도 econ 날과 같이 민다 — ★T754 기본 · `T742_CONT_SYNC=0` 이면 종전 · `t740-side-hook`)
 //     --stop S --cont  대조 판 — 같은 자리(얼림 · 드레인 · 덤프)에서 **재기동 없이** 벽시계와 econ 날을 K 날 밀고 이어 간다(`T722_CONT` · `__t740Cont`).
 //   ⇒ $T740_DIR/<판>/ — all.t650.json(econ 지문) · all.t740.json(마을 칸 지문) · stop.json · resume.json
 //   판 조건: VILLAGE_DAY_MS=250 · T315_MAPBEDS=0 · VILLAGE_NPC_CAP=1 · T400_BUILD_ACT=0 · VILLAGE_CARAVAN_MAX=0 · T640_BOOT_SLICE=0 (T650 자 그대로)

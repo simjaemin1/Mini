@@ -106,7 +106,7 @@ function flush() { try { fs.writeFileSync(OUT, JSON.stringify({ msTot, days }));
 process.on('exit', flush);
 // [T742_CONT_SYNC=1] 대조 판(`T722_CONT` · `__t740Cont`)이 econ 날을 K 날 뛸 때, **econ 날을 따로 세는 층**의 "마지막 날"도 같이 그 날로 둔다 —
 //   제품이 다시 뜰 때 하는 그대로(도적 `bindHost` → `S.lastDay = day0` "재부팅 당일 이중 실행 방지"). 안 그러면 대조 판만 뛴 날의 도적 데일리를 한 번 더 돈다.
-if (process.env.T742_CONT_SYNC === '1') {
+if (process.env.T742_CONT_SYNC === '1' && !global.__t754ContSync) {   // ★[T754] 기본은 `t740-side-hook` 이 맞춘다(이 블록은 그 훅 없이 쓸 때만)
   const iv = setInterval(() => {
     if (!global.__t740Cont || global.__t740Cont.__t742) return;
     clearInterval(iv);
