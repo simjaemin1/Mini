@@ -41,9 +41,11 @@ const eq = (a, b, m) => ok(a === b, `${m} (${JSON.stringify(a)} === ${JSON.strin
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // 스트레이 서버 정리 — 고정 포트라 옛 서버에 붙으면 딴 세계를 잰다
-try { execSync(`pkill -f "serve[r]/zone.js" ; pkill -f "centra[l].js" ; pkill -f "zone-wra[p]"`, { stdio: 'ignore' }); } catch (e) {}
+// ★[T773] 시작 때 남의 존을 죽이지 않는다(옛 일괄 죽이기는 머신의 모든 존을 죽였다) — 포트가 쥐여 있으면 알리고 실패 · 아이는 내가 띄운 것만 끝낸다(`fixture-boot`).
+FB.mustBeFree([CPORT, ZPORT], 'e2e-cutaway');
 
 const procs = [];
+FB.reapOnExit(procs);   // ★[T773] 내가 띄운 아이만 끝낸다 — 정상 · 예외 · 신호(러너 시간 초과)
 function boot(name, file, env) {
   const p = spawn('node', [file], { env: { ...process.env, ...env }, stdio: ['ignore', 'pipe', 'pipe'], cwd: ROOT });
   p.stdout.on('data', (d) => { const s = d.toString(); if (/시딩 완료|server up|Error/i.test(s)) process.stdout.write(`  [${name}] ` + s.slice(0, 200)); });

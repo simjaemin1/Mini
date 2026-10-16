@@ -31,9 +31,8 @@ const HEADED = process.argv.includes('--headed');
 const CPORT = 3010, ZPORT = 3020;
 const CDB = `/tmp/e2egr-central-${process.pid}.db`, ZDB = `/tmp/e2egr-zone-${process.pid}.db`;
 for (const f of [CDB, ZDB, CDB + '-wal', ZDB + '-wal', CDB + '-shm', ZDB + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
-if (process.platform === 'linux') {
-  try { require('child_process').execSync("pkill -f 'node .*server/zone[.]js' || true; pkill -f 'node .*server/central[.]js' || true", { stdio: 'ignore', shell: '/bin/bash' }); } catch (e) {}
-}
+// ★[T773] 시작 때 남의 존을 죽이지 않는다(옛 일괄 죽이기는 머신의 모든 존을 죽였다) — 포트가 쥐여 있으면 알리고 실패 · 아이는 내가 띄운 것만 끝낸다(`fixture-boot`).
+FB.mustBeFree([CPORT, ZPORT], 'e2e-guest-reconnect');
 
 let pass = 0, fail = 0;
 const shots = [];
@@ -41,6 +40,7 @@ const ok = (c, m) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ '
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const procs = [];
+FB.reapOnExit(procs);   // ★[T773] 내가 띄운 아이만 끝낸다 — 정상 · 예외 · 신호(러너 시간 초과)
 function boot(name, file, env) {
   const p = spawn(process.execPath, [path.join(ROOT, 'server', file)], {
     cwd: ROOT, env: Object.assign({}, process.env, env), stdio: ['ignore', 'pipe', 'pipe'],

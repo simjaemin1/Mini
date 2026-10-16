@@ -46,8 +46,10 @@ let pass = 0, fail = 0;
 const say = (s) => console.log(s);
 const ok = (c, m) => { if (c) { pass++; say(`  ✓ ${m}`); } else { fail++; say(`  ✗ ${m}`); } };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-try { execSync(`pkill -f "serve[r]/zone.js" ; pkill -f "centra[l].js" ; pkill -f "zone-wra[p]"`, { stdio: 'ignore' }); } catch (e) {}
+// ★[T773] 시작 때 남의 존을 죽이지 않는다(옛 일괄 죽이기는 머신의 모든 존을 죽였다) — 포트가 쥐여 있으면 알리고 실패 · 아이는 내가 띄운 것만 끝낸다(`fixture-boot`).
+FB.mustBeFree([CPORT, ZPORT], 'e2e-terrain');
 const procs = [];
+FB.reapOnExit(procs);   // ★[T773] 내가 띄운 아이만 끝낸다 — 정상 · 예외 · 신호(러너 시간 초과)
 function boot(name, file, env) {
   const p = spawn('node', [file], { env: { ...process.env, ...env }, stdio: ['ignore', 'pipe', 'pipe'], cwd: ROOT });
   // ★[T84] 서버 콘솔 줄은 **말**로 거른다(로그의 이모지가 빠지면 필터가 조용히 죽는다).

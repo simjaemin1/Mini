@@ -32,10 +32,9 @@ const CDB = `/tmp/e2ev-central-${process.pid}.db`, ZDB = `/tmp/e2ev-zone-${proce
 for (const f of [CDB, ZDB, CDB + '-wal', ZDB + '-wal', CDB + '-shm', ZDB + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
 // ★포트가 고정(3010/3020)이라 **앞선 실행의 서버가 살아 있으면 브라우저가 그리로 붙는다** —
 //   실제로 그렇게 됐고, 이전 판이 만든 플레이어 마을이 남아 "마을 수 상한"으로 **거짓 실패**를 냈다.
-//   ⇒ 시작 전에 남은 서버를 정리한다(포트를 랜덤화하지 않는 이유는 로비 헬스 폴링 — 파일 헤더 참조).
-if (process.platform === 'linux') {
-  try { require('child_process').execSync("pkill -f 'node .*server/zone[.]js' || true; pkill -f 'node .*server/central[.]js' || true", { stdio: 'ignore', shell: '/bin/bash' }); } catch (e) {}
-}
+//   ⇒ 시작 전에 포트를 본다 — 남아 있으면 죽이지 않고 알리고 실패한다(T773 · 포트를 랜덤화하지 않는 이유는 로비 헬스 폴링 — 파일 헤더 참조).
+// ★[T773] 시작 때 남의 존을 죽이지 않는다(옛 일괄 죽이기는 머신의 모든 존을 죽였다) — 포트가 쥐여 있으면 알리고 실패 · 아이는 내가 띄운 것만 끝낸다(`fixture-boot`).
+FB.mustBeFree([CPORT, ZPORT], 'e2e-village');
 
 let pass = 0, fail = 0;
 const shots = [];
@@ -43,6 +42,7 @@ const ok = (c, m) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ '
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const procs = [];
+FB.reapOnExit(procs);   // ★[T773] 내가 띄운 아이만 끝낸다 — 정상 · 예외 · 신호(러너 시간 초과)
 function boot(name, file, env) {
   const p = spawn(process.execPath, [path.join(ROOT, 'server', file)], {
     cwd: ROOT, env: Object.assign({}, process.env, env), stdio: ['ignore', 'pipe', 'pipe'],
