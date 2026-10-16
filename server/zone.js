@@ -4938,6 +4938,7 @@ Membership.init({ SimVillages, ZONE_ID, send, players, gameDay: gameDayNow,
   //     ⚠이름표는 **함수로** 넘긴다 — 표가 이 줄보다 뒤에서 완성된다(`Rescue.init` 선례).
   central, itemLabel: () => ITEM_LABEL_SERVER,
   afterWithdraw: (player, r) => _afterWithdraw(player, r),
+  donate: (player, vid, want) => tryVillageDonate(player, vid, want),   // ★[T769] `/기부` 의 실물 길(켬에서만 불린다)
   //   ★[T732] 곳간 문 감싸개 — 켬일 때만 준다(끄면 이 칸이 없다 = membership 이 종전 그대로 부른다). UI · 채팅 인출이 다 이 문을 지난다.
   ...(process.env.T732_MOMENT_LOT === '1' ? { wrapWithdraw: (player, fn) => _t732Wrap(player, fn) } : {}) });
 
@@ -6554,6 +6555,7 @@ async function _acceptConnection(ws, req, C) {
 const VILLAGE_BOOK_MSG = new Set([
   'village_inventory', 'village_deposit', 'village_brief', 'village_board', 'village_deliver',
   'village_trade', 'village_trade_exec', 'village_trade_quote', 'village_withdraw',   // ★[T11] 인출도 마을 장부다
+  'village_donate',   // ★[T769] 기부도 마을 장부다(켬에서만 오는 메시지 · 끔 = 아무도 안 보낸다)
   'village_welcome',   // ★[T19] 이방인 받기 스위치도 마을 장부다
   'sell_relic', 'shop_info', 'craft_buy', 'craft_sell',
   'village_start', 'village_advance', 'request_village_house',
@@ -6731,6 +6733,7 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'village_chronicle') tryVillageChronicle(player, msg.vid, msg.year);   // ★[T18] 연대기
   else if (msg.type === 'village_deliver') tryVillageDeliver(player, msg.vid, msg.item, msg.want);
   else if (msg.type === 'village_withdraw') tryVillageWithdraw(player, msg.vid, msg.res, msg.qty);   // ★[T11] 곳간 인출(소속만)
+  else if (msg.type === 'village_donate' && T769) tryVillageDonate(player, msg.vid, msg.want);   // ★[T769] 기부 — 누구나 · 상시 · 받는 것 없음(켬에서만)
   else if (msg.type === 'onboarding_state' || msg.type === 'onboarding_greet' || msg.type === 'onboarding_day') Onboarding.handleMsg(player, msg);   // ★[온보딩 v2] 대본 상태·촌장 첫 마디·하루 정산
   else if (msg.type === 'village_trade') tryVillageTrade(player, msg.vid, msg.numeraire);                     // ★[거래소] 시세표(T69 기준 품목)
   else if (msg.type === 'village_trade_exec') tryVillageTradeExec(player, msg.vid, msg.give, msg.take, msg.qty, msg.want, msg.numeraire);  // ★[거래소] 교환(T69 받을 양)
@@ -11469,6 +11472,7 @@ function tryVillageInventory(player, buildingId) {
   if (!inv) { send(player.ws, { type: 'notice', text: '재고를 읽지 못했다' }); return; }
   inv.welcome = _welcomeLine(vil.dbId);   // ★[T19] 이방인 받기 — **기존 payload 한 줄**(새 창구 0)
   inv.hallId = buildingId;
+  if (T769) inv.donate = true;            // ★[T769] 켬 = "넣기" 를 "기부"로(받는 것 없음) — 끔이면 이 칸이 없다
   send(player.ws, { type: 'village_inventory', inv });
 }
 // ★[T19] 촌장 화면이 그릴 "이방인 받기" 한 줄. 판정은 `newcomers.js` 정본 하나가 낸 것을 그대로 준다.
@@ -11503,14 +11507,26 @@ function tryVillageWelcome(player, buildingId, on) {
 //   켬: ① 상한 것 거절(`_spoiledGuardItems` — 게시판·거래소와 같은 판정 · 같은 함수) ② 단위 = `_unitsOfFor`(열량 × 신선도 — 거래소·게시판이 쓰는 그 환산 하나)
 //       ③ 낸 개체를 무게 장부에서 뺀다(`Carry.takeKg` — 환산이 `peekKg` 로 본 그 개체 · 게시판 납품과 같은 뒷정리). 새 수 0 · 새 함수 0.
 const T725_HALL = process.env.T725_HALL_UNITS !== '0';   // ★[PM 10-14] 켬 기본(왕복 불어남 ×102 고침) · 되돌림 `=0`
-function tryVillageDeposit(player, buildingId, want) {
+// ★★[T769 2026-10-15 · 재민 판정] *"기부는 가능해. 마음대로 빼는 건 안 돼. 그러니까 거래와 기부를 따로 둬야 하고, 관리자만 뺄 수 있어."* ·
+//   *"겨울 프로젝트 없어. 기부는 상시 되고 보상도 없음."* — 손잡이 `T769_DONATE`('1' 만 켬 · 없음 · 다른 값 = 끔 = main 바이트).
+//   켬: ① 회관 넣기 = **기부** — 관리자 게이트를 뗀다(근접 200 그대로 · 누구나) · NPC 마을(회관 없음)은 게시판과 같은 근접 게이트
+//       (`villageWithdrawGate`)로 받는다(`/기부` · 거래소 패널 한 줄 → `tryVillageDonate`) · 실물 길은 아래 `tryVillageDeposit` 본문 하나
+//       (T725 상한 것 거절 · 열량 단위 · T732 곳간 문 감싸개 그대로) · **기여 · 보상 · 대가 0**(기여는 지금처럼 게시판 납품만 센다).
+//     ② 거래소(맞바꿈) · 게시판(의뢰 · 보상)은 무접촉 — 말도 섞지 않는다("기부 … 받는 것 없음").
+//     ③ 꺼내기 = 촌장만(`membership.withdrawChief`) · ④ 겨울 프로젝트 0(`winter.js` off 와 같은 길).
+const T769 = process.env.T769_DONATE === '1';
+function tryVillageDeposit(player, buildingId, want, _donVil) {
+  let vil = null;
+  if (_donVil) vil = _donVil;   // ★[T769] 기부 문(`tryVillageDonate` · 켬에서만) — 근접 게이트를 이미 지난 마을. 아래 실물 길은 회관과 **같은 본문**(사본 0)
+  else {
   const b = buildings.get(buildingId);
   if (!b || b.type !== 'village_hall') return;
   if (Math.hypot(b.x - player.x, b.y - player.y) > 200) { send(player.ws, { type: 'notice', text: '회관에서 너무 멀리 있습니다' }); return; }
-  if (!_furnaceCanUse(player, b)) { send(player.ws, { type: 'notice', text: '이 마을의 관리자가 아닙니다' }); return; }
+  if (!T769 && !_furnaceCanUse(player, b)) { send(player.ws, { type: 'notice', text: '이 마을의 관리자가 아닙니다' }); return; }   // ★[T769] 켬 = 누구나 기부(근접만)
   const d = b.data || {};
-  const vil = SimVillages.playerVillageAt ? SimVillages.playerVillageAt(d.x0, d.y0) : null;
+  vil = SimVillages.playerVillageAt ? SimVillages.playerVillageAt(d.x0, d.y0) : null;
   if (!vil) { send(player.ws, { type: 'notice', text: '이 회관에 딸린 마을을 찾지 못했다' }); return; }
+  }
   if (T725_HALL) {   // ★[T725 ①] 상한 것은 회관도 안 받는다 — 낼 품목(곳간이 받는 것 · 1개 이상)만 묻는다
     const _map = SimVillages.playerVillageDepositMap() || {};
     const _sp = _spoiledGuardItems(player, Object.keys(want || {}).filter((it) => _map[it] && Number(want[it]) >= 1));
@@ -11526,9 +11542,29 @@ function tryVillageDeposit(player, buildingId, want) {
   savePlayer(player);
   sendInventory(player);
   const kv = Object.entries(r.taken).map(([k, q]) => `${ITEM_LABEL_SERVER[k] || k} ${q}`).join(' · ');
-  send(player.ws, { type: 'notice', text: `🏘️ 곳간에 넣었다 — ${kv}` });
+  //   ★[T769] 켬 = 기부 — 받는 것 없음이 한 줄에 보이게(거래 · 납품과 말을 섞지 않는다)
+  send(player.ws, { type: 'notice', text: T769 ? `🏘️ ${vil.name ? vil.name + ' ' : ''}곳간에 기부했다 — ${kv} · 받는 것 없음` : `🏘️ 곳간에 넣었다 — ${kv}` });
+  if (_donVil) {   // ★[T769] 기부 문(채팅 · 패널) — 거래소 창이 열려 있으면 그 창을 다시 보낸다(꺼내기 뒷정리와 같은 규약)
+    try {
+      const _v = player._memberNearVid;
+      if (_v != null && SimVillages.villageTradeBoard) {
+        const tb = SimVillages.villageTradeBoard(_v | 0, player.x, player.y, player.inventory);
+        if (!tb.err) { tb.member = _memberLine(player, _v | 0); send(player.ws, { type: 'village_trade', trade: tb }); }
+      }
+    } catch (e) {}
+    return r;
+  }
   const inv2 = SimVillages.playerVillageInventory(vil);
-  if (inv2) send(player.ws, { type: 'village_inventory', inv: inv2 });   // 넣은 즉시 화면이 갱신된다
+  if (inv2) { if (T769) inv2.donate = true; send(player.ws, { type: 'village_inventory', inv: inv2 }); }   // 넣은 즉시 화면이 갱신된다(★[T769] 켬 = 기부 말)
+}
+// ★★[T769] 기부 문 — 누구나 · 상시 · 보상 0 · 기여 0. **켬에서만** 열린다. 근접 = 게시판 · 브리핑 · 거래소와 같은 술어(`villageWithdrawGate` · 260px).
+//   NPC 마을(회관 없음)도 사람 마을도 받는다 · 실물 길은 회관과 같은 `tryVillageDeposit` 본문(마을을 넷째 인자로 넘긴다).
+function tryVillageDonate(player, vid, want) {
+  if (!T769) return;
+  if (!SimVillages.villageWithdrawGate) { send(player.ws, { type: 'notice', text: '🏘️ 곳간을 찾지 못했다' }); return; }
+  const g = SimVillages.villageWithdrawGate(vid | 0, player.x, player.y);
+  if (g.err) { send(player.ws, { type: 'notice', text: `🏘️ ${g.err}` }); return; }
+  return tryVillageDeposit(player, null, want || {}, g.vil);   // 회관과 같은 본문(사본 0)
 }
 // ═══[2026-08-25 사건 레이어] 촌장 브리핑 · 마을 게시판 · 납품 ═══════════════
 //   설계 §3.2: **대시보드 UI 금지 — 촌장 대사·게시판 의뢰로 번역**한다.
@@ -11667,7 +11703,7 @@ function _afterWithdraw(player, r) {
   savePlayer(player);
   sendInventory(player);
   send(player.ws, { type: 'notice', text: `🏘️ ${r.name} 곳간에서 ${ITEM_LABEL_SERVER[r.item] || r.item} ${r.qty} 꺼냈다`
-    + ` — 오늘 남은 몫 ${r.remain}/${r.limit}`
+    + (r.limit == null ? ' — 촌장 몫(한도 없음)' : ` — 오늘 남은 몫 ${r.remain}/${r.limit}`)   // ★[T769] 켬 = 촌장 꺼내기 · 끔 = 종전 그대로
     + (_g732 ? _t732GotLine(player, _g732) : '') });
   // ★거래소 창이 열려 있으면 **그 창을 다시 보내 준다** — 방금 곳간이 줄었고 남은 몫도 줄었다
   //   (거래소 실행이 시세를 다시 보내 주는 것과 같은 규약: 화면이 낡은 값을 들고 있으면 그게 거짓말이다).
@@ -11689,12 +11725,24 @@ function _memberLine(player, vid) {
     const stock = g.err ? 0
       : Math.max(SimVillages.playerVillageWithdrawStock(g.vil, 'food'),
                  (SimVillages.playerVillageWithdrawStockFoodEq ? SimVillages.playerVillageWithdrawStockFoodEq(g.vil) : 0));
-    const st = Membership.publicState(player, stock);
+    const st = Membership.publicState(player, stock, g.err ? null : g.vil);   // ★[T769] 마을을 넘긴다(켬에서만 읽는다 — 촌장 판정 캐시)
     st.stock = stock;
     return st;
   } catch (e) { return null; }
 }
 function tryVillageWithdraw(player, vid, res, qty) {
+  if (T769) {   // ★[T769] 켬 = 촌장만 — 판정이 그 자리에서 서면 동기(종전 문과 같은 때) · 길드 촌장을 central 에 물으면 그 뒤 · 실물 길 · 뒷정리는 같은 정본
+    const fin = (r) => {
+      if (!r || !r.ok) { send(player.ws, { type: 'notice', text: `🏘️ ${(r && r.err) || '곳간을 열지 못했다'}` }); return r; }
+      _afterWithdraw(player, r);
+      return r;
+    };
+    const r = Membership.withdrawChief(player, vid | 0, res, qty);
+    if (r && typeof r.then === 'function') {
+      return r.then(fin).catch(() => { send(player.ws, { type: 'notice', text: '🏘️ 곳간을 열지 못했다 — 잠시 뒤 다시' }); return null; });
+    }
+    return fin(r);
+  }
   const r = Membership.withdraw(player, vid | 0, res, qty);
   if (!r.ok) { send(player.ws, { type: 'notice', text: `🏘️ ${r.err}` }); return; }
   _afterWithdraw(player, r);
@@ -11992,6 +12040,7 @@ function __testBind() {
     // ── 무게 모델(2026-08-27) ── 정본 모듈을 그대로 내준다(하네스가 곡선을 다시 짜면 사본이다)
     Weights, Carry, Lots, moveMultOf, zoneGameDay, COOK_RECIPES, doCook, _unitsOfFor,
     doEatDish,   // ★[T705] 요리 먹기 — 상한 재료 요리의 독소가 배탈 지수로 가는지(test-food-sick · 읽기·부르기만)
+    T769, tryVillageDonate, tryVillageInventory, central,   // ★[T769] 기부 · 촌장 꺼내기 하네스(`test-donate` · 회관 넣기는 아래 T725 줄의 `tryVillageDeposit`)
     T732_MOMENT, GL, _t732DoorBegin, _t732DoorEnd, _t732Wrap, _afterWithdraw, tryVillageWithdraw, tryVillageDeliver, Membership, doSellIronRelic,   // ★[T732] 곳간 문(test-granary-age · test-moment-lot · 읽기·부르기만)
     T725_HALL, tryVillageDeposit, tryVillageTradeExec,   // ★[T725 ①] 회관 넣기 문(test-hall-units · 읽기·부르기만)
     // ★[부패·보존 배치 2026-08-31] 하네스가 잡을 손잡이들

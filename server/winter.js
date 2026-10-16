@@ -59,7 +59,11 @@ function init(host) {
   return true;
 }
 function ready() { return !!(H && H.db && typeof H.gameDay === 'function'); }
-const off = () => !!CFG.OFF;
+// ★★[T769 2026-10-15 · 재민 판정 "겨울 프로젝트 없어. 기부는 상시 되고 보상도 없음" · 손잡이 `T769_DONATE`('1' 만 켬 · 끔 = main 바이트)]
+//   켬이면 이 파일 전부를 **`EV_WINTER_OFF=1` 과 같은 길**로 끈다 — 공표 · 적립 · 판정 · 보상 · 머리줄 · 납품 안 겨울 몫 갈래(`goalRes` → `deliverable`) 0.
+//   파일을 걷는 일은 뒤집은 뒤의 몫이다(카드 밖).
+const T769 = process.env.T769_DONATE === '1';
+const off = () => !!CFG.OFF || T769;
 function _day() { try { return H.gameDay() | 0; } catch (e) { return 0; } }
 function _ledger() { try { return H.ledger ? H.ledger() : null; } catch (e) { return null; } }
 

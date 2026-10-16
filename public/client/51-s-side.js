@@ -910,14 +910,16 @@
     //   목록은 서버가 준 `accepts` 그대로다(클라가 제 목록을 따로 갖지 않는다 — 사본 금지).
     const acc = inv.accepts || {};
     const mine = Object.keys(acc).filter((k) => (inventory[k] || 0) > 0);
-    h += `<div style="padding:6px 10px;border-top:1px solid var(--inset);color:var(--dim-2)">곳간에 넣기 (내 짐)</div>`;
+    //   ★[T769] 켬(서버가 `inv.donate` 를 실어 줄 때만) — "넣기"를 "기부"로 · 받는 것 없음이 한 줄에 보이게. 끔 = 종전 글 그대로.
+    const _dn = !!inv.donate;
+    h += `<div style="padding:6px 10px;border-top:1px solid var(--inset);color:var(--dim-2)">${_dn ? '곳간에 기부 (내 짐 · 받는 것 없음)' : '곳간에 넣기 (내 짐)'}</div>`;
     if (!mine.length) {
-      h += `<div style="padding:0 10px 8px;color:var(--dim-2);font-size:11px">넣을 만한 걸 안 들고 있다.</div>`;
+      h += `<div style="padding:0 10px 8px;color:var(--dim-2);font-size:11px">${_dn ? '기부할 만한 걸 안 들고 있다.' : '넣을 만한 걸 안 들고 있다.'}</div>`;
     } else {
       h += `<div style="padding:0 10px 10px;display:flex;flex-wrap:wrap;gap:6px">`;
       for (const k of mine) {
         h += `<button data-pvi-put="${esc(k)}" style="padding:5px 8px;background:var(--line);color:var(--fg);border:1px solid var(--line);border-radius: 0;cursor:pointer;font-size:12px">`
-          + `${esc(_pviKo(acc[k]))} ${inventory[k]} 넣기</button>`;
+          + `${esc(_pviKo(acc[k]))} ${inventory[k]} ${_dn ? '기부' : '넣기'}</button>`;
       }
       h += `</div>`;
     }

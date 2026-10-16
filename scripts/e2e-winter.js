@@ -33,6 +33,10 @@ for (const f of [CDB, ZDB, CDB + '-wal', ZDB + '-wal', CDB + '-shm', ZDB + '-shm
 const MEMBER_N = 1;    // 통로 검사용으로 낮춘 소속 문턱(값 자체는 `test-membership ①` 이 정본으로 잰다)
 const WINTER_D = 1;    // 목표 = 마을 하루치(닿을 수 있는 크기 — 값 자체는 `winter-metrics` 가 잰다)
 const DAY_MS = 120;    // 한 해 365일 ⇒ 겨울 첫날까지 실시간 약 32초
+// ★[T769 2026-10-15 · 재민 판정 "겨울 프로젝트 없어. 기부는 상시 되고 보상도 없음"] 켬(`T769_DONATE=1` — 존은 이 판의 환경을 그대로 물려받는다)
+//   = 겨울 프로젝트 0. ③ 부터 켬에서는 **겨울 0 을 단언한다**(카드 ⑤): 머리줄 · 공표 말 · 겨울 몫 납품 · 판정 · 연표 · 한도 가산이 하나도 안 선다.
+//   ⚠자명 통과 금지 — 게임일이 가을 첫날(공표일)과 그 뒤 겨울 첫날(판정일)을 **실제로 지났다**는 것을 먼저 잰다(달력 유도자 `winter.isAnnounceDay`·`isJudgeDay` 그대로).
+const T769 = process.env.T769_DONATE === '1';
 
 let pass = 0, fail = 0;
 const shots = [];
@@ -184,10 +188,12 @@ async function waitHttp(url, tries = 900) {
     return null;
   };
   const say = async (t) => { await page.evaluate((s) => window.__sendPrimary({ type: 'chat', text: s }), t); await sleep(900); };
+  //   ★[T769 곁 · 하네스만 · 판정 무변] 거래소 답을 **올 때까지** 기다린다(고정 900ms 한 번 읽기 → 부하에서 답 전에 읽어 ② 가 'X' 로 빨갰다 — 위 "고정 sleep 금지" 규약).
   const openTrade = async () => {
+    await page.evaluate(() => { window.__tradeBoard = null; });
     await page.evaluate((vid) => window.__sendPrimary({ type: 'village_trade', vid }), V.id);
-    await sleep(900);
-    return await page.evaluate(() => (window.__tradeBoard && window.__tradeBoard.member) || null);
+    for (let i = 0; i < 30; i++) { await sleep(300); const m = await page.evaluate(() => (window.__tradeBoard && window.__tradeBoard.member) || null); if (m) return m; }
+    return null;
   };
 
   ok(await warpTo(V, 30), `① ${V.name} 마을 중심 도착`);
@@ -216,12 +222,94 @@ async function waitHttp(url, tries = 900) {
     }
     return false;
   }
-  await deliverBoardOnce();
+  //   ★[T769 곁 · 하네스만 · 판정 무변] 소속 문턱(`MEMBER_N`)에 닿을 때까지 의뢰를 채운다 — 한 번에 안 걸리는 판이 있었다
+  //     (픽스처 부족이 안 선 판 · "지금 낼 수 있는 의뢰가 없다" → ② · ⑦ 빨강). 계량기는 대본 상태(`__onbState.contrib`)로 읽는다(`e2e-membership` 과 같은 자리).
+  const contribNow = () => page.evaluate(() => ((window.__onbState || {}).contrib | 0));
+  for (let i = 0; i < 6 && (await contribNow()) < MEMBER_N; i++) await deliverBoardOnce();
   await clearNotices();
   await say('/소속');
   const m0 = await openTrade();
   ok(!!m0 && m0.vid === V.id, '② 마을 사람이 됐다(⑥ 인출 한도 검사의 전제)', m0 ? `한도 ${m0.limit}` : 'X');
   const limit0 = m0 ? (m0.limit | 0) : 0;
+
+  if (T769) {
+    const W = require(path.join(ROOT, 'server', 'winter.js'));   // 달력 유도자만 쓴다(손잡이와 무관한 순수 함수 — 계산 사본 0)
+    const d0 = await gameDay();
+    let dA = d0 + 1; while (!W.isAnnounceDay(dA)) dA++;
+    let dJ = dA + 1; while (!W.isJudgeDay(dJ)) dJ++;
+    let heads = 0, annLines = 0, maxDay = d0, autumnSeen = false, tried = null, polls = 0;
+    //   가을에 곡식을 내 본다 — 의뢰 없는 곡식(겨울 몫 갈래가 서 있으면 받았을 자리 · 끔 판 ⑤ 그 자리).
+    //   ★지금이 가을이면 **지금** 낸다(끔 판 ⑤ 와 같은 때 — 손에 든 오래된 곡식이 아직 안 상했다). 아니면 다음 가을에.
+    //   ⚠자명 통과 금지: 거절 까닭이 "상했다"(상한 것 거절 · T17)면 겨울 갈래를 잰 것이 아니다 — 아래 ⑤b 가 그 말을 막는다.
+    //   ★손의 곡식은 **멎을 때까지** 읽는다 — 버리기는 한 번에 99 까지라(`tryDropItem`) 손이 크면 지급이 늦게 닿는다(같은 판 두 번 읽어 같으면 멎은 것).
+    const settled = async () => { let a = await invFood(); for (let i = 0; i < 20; i++) { await sleep(400); const b2 = await invFood(); if (b2 === a) return a; a = b2; } return a; };
+    //   ★손의 곡식을 **다 버린다** — 소속을 얻는 의뢰가 곡식이었던 판은 손이 수천이고(픽스처 지급) 그중 일부는 상했다(상한 것 거절이 먼저 막는다).
+    //     버리기는 한 번에 99 까지다(`tryDropItem`) — 끝 몫은 남은 만큼(99 를 달라 하면 "부족"으로 안 버린다).
+    const dropAllFood = async () => {
+      for (let k = 0; k < 4; k++) {
+        let have = await invFood();
+        if (have <= 0) return true;
+        while (have > 0) { const q = Math.min(99, have); await page.evaluate((n) => window.__sendPrimary({ type: 'drop_item', item: 'food', amount: n }), q); have -= q; }
+        for (let i = 0; i < 40; i++) { await sleep(250); if ((await invFood()) <= 0) return true; }
+      }
+      return (await invFood()) <= 0;
+    };
+    const tryFood = async (b) => {
+      await freeze(true);
+      const foodReqs = ((b && b.rows) || []).filter((r) => r.item === 'food').length;
+      const before = await invFood();
+      await dropAllFood();
+      await clearNotices();
+      const gave = await giveFood(10);
+      //   지급이 **닿은 뒤에** 잰다(서버 답 "[E2E] 재료 지급" — 손이 크면 `giveFood` 가 지급 전에 돌아온다 · 부하에서 납품보다 늦게 닿은 판이 있었다)
+      for (let i = 0; i < 40; i++) { if ((await notices()).some((t) => /재료 지급/.test(t))) break; await sleep(250); }
+      const f0 = await settled();
+      const nt = await deliverFood(5);
+      const f1 = await settled();
+      await freeze(false);
+      return { foodReqs, before, gave, f0, f1, nt: nt.slice(-2), day: await gameDay() };
+    };
+    { let a0 = d0; while (a0 > 0 && !W.isAnnounceDay(a0)) a0--;
+      let j0 = a0 + 1; while (!W.isJudgeDay(j0)) j0++;
+      if (a0 > 0 && d0 < j0 - 3) tried = await tryFood(await askBoard(V.id)); }
+    const t0 = Date.now();
+    while (maxDay < dJ + 2 && Date.now() - t0 < 240000) {
+      const b = await askBoard(V.id);
+      polls++;
+      const d = await gameDay(); if (d > maxDay) maxDay = d;
+      if (b && b.head) heads++;
+      if (b && (b.news || []).some((r) => /올겨울/.test(r.line))) annLines++;
+      if (d >= dA && d < dJ) {
+        autumnSeen = true;
+        if (!tried && d >= dA + 2) tried = await tryFood(b);
+      }
+      await sleep(250);
+    }
+    ok(maxDay >= dJ + 1 && autumnSeen, '③ [T769] 전제: 게임일이 가을 첫날(공표일)과 겨울 첫날(판정일)을 실제로 지났다(달력 정본)',
+      `day ${d0} → ${maxDay} · 공표일 ${dA} · 판정일 ${dJ} · 게시판 ${polls}회`);
+    ok(heads === 0, '③b [T769] ★가을이 와도 게시판에 올겨울 머리줄이 안 선다', `${heads}회 / ${polls}`);
+    ok(annLines === 0, '③c [T769] ★촌장의 공표 말 · 판정 말 0(게시판 소식에 "올겨울" 줄 없음)', `${annLines}회`);
+    ok(!!tried && tried.gave && tried.f0 > 0 && tried.nt.length > 0 && !tried.nt.some((t) => /상했다/.test(t)),
+      '⑤ [T769] 전제: 가을에 성한 곡식을 손에 쥐고 냈다(거절 까닭이 "상했다"가 아니다 — 겨울 갈래를 잰다)',
+      JSON.stringify(tried && { day: tried.day, before: tried.before, f0: tried.f0, reqs: tried.foodReqs, nt: tried.nt }));
+    ok(!!tried && tried.foodReqs === 0 && !tried.nt.some((t) => /올겨울 몫/.test(t)) && tried.f1 === tried.f0,
+      '⑤b [T769] ★곡식 의뢰가 없으면 안 받는다 — 겨울 몫 갈래 0(손의 곡식 그대로)', JSON.stringify(tried && { f0: tried.f0, f1: tried.f1 }));
+    await freeze(true);
+    const ch = await askChron(V.id, null);
+    const items = [].concat(...(((ch && ch.seasons) || []).map((x) => x.items)));
+    ok(!!ch && !items.some((x) => /^WINTER_/.test(String(x.type || ''))), '⑥ [T769] ★판정 0 — 연표에 겨울 줄(`WINTER_KEPT` · `WINTER_SHORT`) 없음', `연표 ${items.length}줄`);
+    const m1 = await openTrade();
+    ok(!!m1 && m1.limit == null, '⑦ [T769] ★보상 0 — 곳간 몫(한도) 칸 자체가 없다(꺼내기는 촌장만)', m1 ? `한도 ${m1.limit} · 촌장 ${m1.chief}` : 'X');
+    await snap('wt-01-t769');
+    const fatal = errs.filter((e) => !/Failed to load resource/.test(e));
+    ok(fatal.length === 0, `클라 JS 에러 0 ${fatal.length ? '— ' + fatal.slice(0, 3).join(' / ') : ''}`);
+    await browser.close();
+    shutdown();
+    console.log(`\n  스크린샷: ${shots.join(' ')}`);
+    console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
+    for (const f of [CDB, ZDB, CDB + '-wal', ZDB + '-wal', CDB + '-shm', ZDB + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
+    process.exit(fail ? 1 : 0);
+  }
 
   // ── ③ 가을이 오면 **촌장이 올겨울 목표를 공표한다** ─────────────────────────
   //   ★게시판 머리줄(`head`)이 서는 것이 곧 "공표가 살아 있다"의 신호다 — 가을 내내 뜬다.

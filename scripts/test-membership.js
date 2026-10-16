@@ -81,6 +81,17 @@ function deliver(p, n) {
   }
 }
 const stockOf = (res) => Villages.playerVillageWithdrawStock(VIL, res || 'food');
+// ★[T769 2026-10-15 · 재민 판정 "관리자만 뺄 수 있어"] 켬(`T769_DONATE=1`) = 꺼내기는 **촌장만** · 한도 없음.
+//   꺼내기를 재는 절(④ · ⑥ · ⑪)은 켬에서 **촌장 문**(`withdrawChief` — 존 · 채팅이 부르는 그 문)으로 잰다.
+//   촌장 = 이미 있는 표지(길드 칸 없는 마을 = 창설자 `econ.founder`) — 그 칸 하나만 그 사람으로 앉혔다가 되돌린다(회관 하네스가 `owner` 를 앉히는 꼴).
+const T769 = M.T769 === true;
+const asChief = (p, fn) => {
+  const had = Object.prototype.hasOwnProperty.call(VIL.econ, 'founder'), f0 = VIL.econ.founder;
+  VIL.econ.founder = p.playerId;
+  try { const r = fn(); return (r && typeof r.then === 'function') ? { ok: false, err: '(랩 마을은 길드 마을이 아니다 — 판정이 그 자리에서 서야 한다)' } : r; }
+  finally { if (had) VIL.econ.founder = f0; else delete VIL.econ.founder; }
+};
+const wdChief = (p, vid, res, q) => asChief(p, () => M.withdrawChief(p, vid, res, q));
 
 console.log('\n=== 마을 소속 · 곳간 인출 (T11) ===');
 
@@ -164,6 +175,29 @@ console.log('\n④ 인출 — 누가 · 얼마나 · 어디서');
   M.accept(out, VID);
   const lim = M.limitOf(M.contribOf(out.playerId), stockOf());
   ok(lim > 0, `상황 assert — 오늘 한도가 0이 아니다(아래가 자명 통과가 아니다)`, `한도 ${lim}`);
+  if (T769) {
+    // ★[T769] 켬 — 누가 = 촌장만 · 얼마나 = 한도 없음(재고 안에서) · 어디서 = 근접 그대로
+    const m1 = asChief({ playerId: 'mb_chief_other' }, () => M.withdrawChief(out, VID, 'food', 1));   // 촌장은 딴 사람
+    ok(!m1.ok && /촌장만/.test(m1.err || '') && M.isMemberHere(out, VID), `[T769] 마을 사람(촌장 아님)은 못 꺼낸다 — 소속은 그대로`, m1.err);
+    const c1 = wdChief(out, VID, 'food', 1);
+    ok(c1.ok && c1.qty === 1 && c1.limit == null && c1.remain == null, `[T769] 촌장은 1 꺼낸다 — 남은 몫 · 한도 칸 없음`, `${c1.qty} · ${c1.remain}/${c1.limit}`);
+    const c2 = wdChief(out, VID, 'food', lim * 100);
+    ok(c2.ok && c2.qty === lim * 100, `[T769] ★한도 없음 — 종전 하루 몫의 100배를 달라 해도 그만큼 나간다(재고 안에서)`, `종전 몫 ${lim} · 요청 ${lim * 100} → ${c2.qty}`);
+    const c3 = wdChief(out, VID, 'food', 1);
+    ok(c3.ok, `[T769] 같은 날 또 꺼내도 막지 않는다(하루 몫 장부 없음)`, c3.ok ? `${c3.qty}` : c3.err);
+    _day += 1;                                     // 날이 바뀐다
+    const c4 = wdChief(out, VID, 'food', 1);
+    ok(c4.ok, `[T769] 하루가 지나도 그대로 열린다`);
+    out.x = FAR.x; out.y = FAR.y;
+    const c5 = wdChief(out, VID, 'food', 1);
+    ok(!c5.ok, `[T769] 마을에서 멀면 거절 — 촌장도 곳간은 걸어가서 연다`, c5.err);
+    out.x = AT.x; out.y = AT.y;
+    const AT2 = P.anchorPx(vils[VID2]);
+    out.x = AT2.x; out.y = AT2.y;                // 남의 마을 앞에 선다(근접 게이트가 아니라 촌장 판정이 막는지 본다)
+    const c6 = wdChief(out, VID2, 'food', 1);    // 촌장 표지는 VID 에만 앉았다
+    ok(!c6.ok && !Villages.villageWithdrawGate(VID2, out.x, out.y).err, `[T769] 남의 마을 곳간은 못 연다(제 마을 촌장이라도 — 그 마을 앞에서)`, c6.err);
+    out.x = AT.x; out.y = AT.y;
+  } else {
   const r1 = M.withdraw(out, VID, 'food', 1);
   ok(r1.ok && r1.qty === 1, `마을 사람은 1 꺼낸다`, `남은 몫 ${r1.remain}/${r1.limit}`);
   const r2 = M.withdraw(out, VID, 'food', lim * 100);
@@ -180,6 +214,7 @@ console.log('\n④ 인출 — 누가 · 얼마나 · 어디서');
   // 남의 마을 곳간
   const r6 = M.withdraw(out, VID2, 'food', 1);
   ok(!r6.ok, `남의 마을 곳간은 못 연다`, r6.err);
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -222,7 +257,7 @@ console.log('\n⑥ 취득일 = 출고일 — 새 규약을 만들지 않았다')
   deliver(p, M.CFG.N_MEMBER);
   M.accept(p, VID);
   const today = 500;
-  const r = M.withdraw(p, VID, 'food', 1);
+  const r = T769 ? wdChief(p, VID, 'food', 1) : M.withdraw(p, VID, 'food', 1);   // ★[T769] 켬 = 촌장 문(취득일 규약은 같다)
   ok(r.ok, `상황 assert — 인출이 실제로 났다`, `${r.item} ${r.qty}`);
   ok(Lots.isLot(r.item), `꺼낸 것이 로트 품목이다(아니면 아래는 자명 통과다)`, r.item);
   Lots.reconcile(p, r.item, p.inventory, today);        // ★zone.js `_afterWithdraw` 가 하는 그 한 줄
@@ -344,20 +379,21 @@ console.log('\n⑩ ★이 하네스가 실패할 줄 아는가 — 일부러 틀
   //   ⓐ 굶지 않는 날 — 꺼내진다(자명 통과 금지의 앞면)
   delete VIL.econ._dpDebug;
   ok(!Villages.villageFamine(VIL), '⑪a 전제: 아직 굶는다는 판단이 없다(모르면 막지 않는다)');
-  const w0 = M.withdraw(p, VID, 'food', 1);
+  const wd11 = T769 ? wdChief : M.withdraw;     // ★[T769] 켬 = 촌장 문 — 굶는 마을 막음은 촌장에게도 그대로다(카드 ③ "남는 막음은 근접 · 굶는 마을 · 재고")
+  const w0 = wd11(p, VID, 'food', 1);
   ok(w0.ok, '⑪a2 전제: 평시엔 꺼내진다', w0.ok ? `${w0.item} ${w0.qty}` : w0.err);
   ok(+VIL.econ.storage.food < before, '⑪a3 전제: 그때 곳간이 실제로 줄었다', `${before} → ${+VIL.econ.storage.food}`);
   //   ⓑ 굶는 날 — 엔진이 제 판단을 적어 두면(`_dpDebug.hunger < 0`) 곳간이 안 열린다
   VIL.econ._dpDebug = { hunger: -0.42, dP: -0.4 };
   ok(Villages.villageFamine(VIL), '⑪b 전제: 엔진의 판단을 **읽었다**(다시 세지 않았다)', VIL.econ._dpDebug.hunger);
   const mid = +VIL.econ.storage.food;
-  const w1 = M.withdraw(p, VID, 'food', 1);
+  const w1 = wd11(p, VID, 'food', 1);
   ok(!w1.ok && /굶고 있다/.test(w1.err || ''), '★★⑪b2 굶는 마을은 **곳간을 안 연다**', w1.err);
   ok(+VIL.econ.storage.food === mid, '★⑪b3 그리고 곳간은 **한 톨도 안 줄었다**(거절이 진짜다)', `${mid} → ${+VIL.econ.storage.food}`);
   //   ⓒ 판단이 양수면(굶지 않는다) 다시 열린다 — 부호 하나가 문이다
   VIL.econ._dpDebug = { hunger: 0, dP: 0.1 };
   ok(!Villages.villageFamine(VIL), '⑪c 굶주림 항이 0 이면 기근이 아니다(부호 하나가 문이다)');
-  const w2 = M.withdraw(p, VID, 'food', 1);
+  const w2 = wd11(p, VID, 'food', 1);
   ok(w2.ok, '⑪c2 ★★그러면 다시 열린다 — 이 게이트는 **그 판단만** 본다', w2.ok ? `${w2.item} ${w2.qty}` : w2.err);
 
   //   ⓓ 품목 이름 — 사람이 부르는 말로 재화를 찾는다(표는 남의 정본 셋)
