@@ -26,7 +26,12 @@ const LC = require('./fixture-lab-clock');
 const CHROME = process.env.CHROME_PATH || undefined;
 // ★랩 파일 경로: LAB_FILE 환경변수(기본 `lab/전쟁실험실.html`).
 //   ⚠[T123 2026-09-05] 종전 기본값은 레포 밖 `~/Mini/…` 였다 — 랩이 레포 안으로 들어온 뒤에도 남아 조용히 어긋났다.
-const LAB = 'file://' + (process.env.LAB_FILE || path.resolve(__dirname, '..', 'lab', '전쟁실험실.html'));
+// ★[T758 2026-10-15] 이 하네스가 재는 세계 = **T707 장마당 끔**(URL `?T707_MARKET=0` — 랩 env 문 T641 · 서버와 같은 이름 · 같은 되돌림 값).
+//   ③④ 는 "이 씨 · 이 시계에서 첫 광부가 41~50일에 선다"는 **종전 세계 단언**이다(T684 머리말) — 10-13 T707 켬 기본(f55e4880 · 번들은 process 가 없어 켬)
+//   뒤 기본 판은 60일 안에 광부가 안 선다(T751 §2 · T758 §3). f55e4880 의 "하네스 끔 판 '=0' · 종전 세계 단언은 끔으로 묶음" 꼴로 끔 세계에 묶는다.
+//   켬(기본) 세계로 돌리려면 `LAB_QS=`(빈 값) · 다른 손잡이를 같이 주려면 `LAB_QS='T707_MARKET=0&…'`.
+const LAB_QS = process.env.LAB_QS != null ? process.env.LAB_QS : 'T707_MARKET=0';
+const LAB = 'file://' + (process.env.LAB_FILE || path.resolve(__dirname, '..', 'lab', '전쟁실험실.html')) + (LAB_QS ? '?' + LAB_QS : '');
 const SPEED = parseInt(process.env.SPEED || '119', 10);
 const NVIL = 3, POP = parseInt(process.env.POP || '40', 10), SEED = 7;
 const RUN_DAYS = parseInt(process.env.RUN_DAYS || '60', 10);
@@ -118,7 +123,7 @@ const SNAP = () => {
   ok(RG.toFull > 60000 && RG.toFull < 80000, '완전회복 69,315 게임일 부근');
 
   // ── 부팅 ──
-  console.log('③~⑥ 실행 (마을 ' + NVIL + ' — 광산촌 대상 · 인구 ' + POP + ' · ' + RUN_DAYS + ' 게임일)');
+  console.log('③~⑥ 실행 (마을 ' + NVIL + ' — 광산촌 대상 · 인구 ' + POP + ' · ' + RUN_DAYS + ' 게임일 · 랩 env ' + (LAB_QS || '없음(기본)') + ')');   // ★[T758] 어느 세계인지 찍는다
   await page.evaluate(({ nv, pop, seed, sp }) => {
     document.getElementById('nvil').value = String(nv);
     document.getElementById('pop').value = String(pop);
