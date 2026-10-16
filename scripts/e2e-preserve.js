@@ -25,6 +25,7 @@ const ROOT = path.join(__dirname, '..');
 const SHOTS = '/tmp/e2e-preserve-shots';
 fs.mkdirSync(SHOTS, { recursive: true });
 const HEADED = process.argv.includes('--headed');
+const T767 = process.env.T767_PRESERVE_CARRY === '1';   // ★[T767] 보존 가공 개수 그대로 · 신선도 이어받기(서버 손잡이 — 이 하네스는 단언만 갈래)
 const CPORT = 3010, ZPORT = 3020;
 const CDB = `/tmp/e2e-pv-c-${process.pid}.db`, ZDB = `/tmp/e2e-pv-z-${process.pid}.db`;
 const DAY_MS = 24 * 60 * 1000;            // 게임일 기본값(안 건드린다)
@@ -177,7 +178,10 @@ async function waitHttp(u, n = 900) { for (let i = 0; i < n; i++) { try { const 
   const ptxt = await page.evaluate(() => window.__panelText());
   ok(/말리기/.test(ptxt), '★★② 목록에 **말리기**가 있다', (ptxt.match(/[^\n]{0,30}말리기[^\n]{0,30}/) || [''])[0].trim());
   ok(!/훈제|절임|도구/.test(ptxt), '★★② 그리고 **훈제·절임은 안 섞인다** — 시설의 창이지 대목록이 아니다');
-  ok(/수율/.test(ptxt) && /보관/.test(ptxt), '★② 재료 신선도·수율·보관일이 미리 보인다(재료 선택 = 판단)',
+  // ★[T767] 켬(`T767_PRESERVE_CARRY=1` · 서버에 그대로 넘어간다)이면 수율 칸이 걷히고 **나올 것의 신선도**가 그 자리에 선다 — 끄면 종전 단언 그대로
+  if (T767) ok(/나오면/.test(ptxt) && !/수율/.test(ptxt) && /보관/.test(ptxt), '★② [T767 켬] 수율 대신 **나올 것의 신선도**·보관일이 미리 보인다(재료 선택 = 판단)',
+    (ptxt.match(/[^\n]{0,40}나오면[^\n]{0,24}/) || [''])[0].trim());
+  else ok(/수율/.test(ptxt) && /보관/.test(ptxt), '★② 재료 신선도·수율·보관일이 미리 보인다(재료 선택 = 판단)',
     (ptxt.match(/[^\n]{0,40}수율[^\n]{0,24}/) || [''])[0].trim());
   const inv0 = await inv();
   await page.evaluate(() => { const b = document.querySelector('[data-fmake="dry_fish"]'); if (b) b.click(); });
@@ -197,7 +201,8 @@ async function waitHttp(u, n = 900) { for (let i = 0; i < n; i++) { try { const 
   ok((inv2.dried_fish || 0) >= 1, '★★② **건어물을 받았다**', `건어물 ${inv2.dried_fish}`);
   const L2 = await lots();
   ok(!!L2.dried_fish && L2.dried_fish[0] && L2.dried_fish[0].stage === 'fresh',
-    '★★② 그리고 **부패 시계가 리셋됐다** — 갓 만든 건어물은 신선', JSON.stringify(L2.dried_fish && L2.dried_fish[0]));
+    T767 ? '★★② [T767 켬] 그리고 **신선도를 이어받았다** — 갓 잡은 걸 말린 건어물은 신선' : '★★② 그리고 **부패 시계가 리셋됐다** — 갓 만든 건어물은 신선', JSON.stringify(L2.dried_fish && L2.dried_fish[0]));
+  if (T767) ok((inv2.dried_fish || 0) === 1, '★★② [T767 켬] 넣은 1마리 → 건어물 **1**(개수 그대로)', `건어물 ${inv2.dried_fish}`);
   await snap('pv-03-dried');
 
   // ── ③ 상한 재료는 **버튼이 꺼져 있다**(화면이 거짓말하지 않는다) ────────

@@ -1263,6 +1263,8 @@ function itemKo(k) {
             r.preserve ? ` <span style="color:var(--dim-2);font-weight:normal">· ${r.outKo} · ${r.days}일`
               + (r.stageKo ? ` · 재료 ${r.stageKo}` : '')
               + (r.yieldPct != null ? ` 수율 ${r.yieldPct}%` : '')
+              // ★[T767] 켬이면 서버가 수율을 비우고 **나올 것의 신선도**(넣은 것의 그 순간 신선도를 이어받은 값)를 준다 — 펼친 로트 줄과 같은 꼴(단계 색 · 단계 · %)
+              + (r.outFresh != null ? ` · 나오면 <span style="color:${PRESERVE_STAGE_COLOR[r.outStage] || 'var(--dim-2)'}">${PRESERVE_STAGE_KO[r.outStage] || ''}${r.outStage === 'spoiled' ? '' : ` ${Math.round((r.outFresh || 0) * 100)}%`}</span>` : '')
               // ★[T38 2026-09-01] 보존 행이 `보관 ${shelfDays}일` 을 **무조건** 찍고 있었다.
               //   소금은 안 썩어서 서버가 '∞' 를 넣는데, 그러면 화면에 "보관 ∞일" 이 뜬다(회부 D-2).
               //   ⇒ 값에 따라 갈래를 나눈다. 서버는 그대로 두고 **표기만** 고친다.

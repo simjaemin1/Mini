@@ -7516,6 +7516,8 @@ function doCook(player, recipeName) {
 //     수령일로 잡으면 건조대가 **무한 정지 상자**가 된다(걸어 두면 안 상하는 창고).
 //     완성일로 잡으면 "말렸으면 가져가라"가 성립한다 — 그게 보존식이지 마법 상자가 아니다.
 //   ⇒ 이 차이는 알고 낸 것이고 `회부_부패_다음층.md` D 에 적었다.
+// ★★[T767 2026-10-16 · 손잡이 `T767_PRESERVE_CARRY=1` · 끔 = 위 그대로] 재민 10-15: **리셋이 아니라 이어받기** — 산출 = 넣은 개수 ·
+//   산출 로트는 다 된 순간(종전 그 자리)에 **넣은 레코드의 신선도**로 서서 보존식 곡선으로 늙는다(`Spoil.carryOf` · `_t767Land`).
 function doPreserve(player, recipeKey, amount) {
   // ★[T59] `from` 이 어종 집합이면 **손에 있는 것 하나로 풀어** 받는다(정본이 고른다 · 주사위 0).
   const r = Spoil.resolveFrom(Spoil.PRESERVE[recipeKey], player.inventory);
@@ -7558,7 +7560,8 @@ function doPreserve(player, recipeKey, amount) {
   };
   const gate = Spoil.canPreserve(recipeKey, fr.fresh);
   if (!gate.ok) { _undo(); send(player.ws, { type: 'notice', text: gate.err }); return; }   // 상한 재료는 삼키지 않는다
-  const outQty = Spoil.outputQty(got.taken, fr.fresh);
+  // ★[T767] 켬이면 **넣은 개수 그대로**(수율 곱 · 바닥 걷음) — 시든 몫은 개수가 아니라 산출 신선도로 말한다(`Spoil.carryOf`)
+  const outQty = Spoil.T767_CARRY ? Math.floor(got.taken + 1e-6) : Spoil.outputQty(got.taken, fr.fresh);
   if (outQty < 1) {
     _undo();
     send(player.ws, { type: 'notice', text: `너무 적거나 시들어 ${r.label} 한 개도 안 나온다` }); return;
@@ -7566,11 +7569,14 @@ function doPreserve(player, recipeKey, amount) {
   for (const [k, n] of Object.entries(r.needs || {})) consumeItem(player, k, n * take);
   // ⑤ 대기열 — 시간은 **게임일로 적고** 하루 길이로 환산한다(새 시계 금지).
   const ms = Spoil.preserveMs(recipeKey, _SEASON_DAY_MS);
-  const rk = Facility.enqueue(fc.b, {
+  const _pvJob = {
     id: genEquipId(), kind: 'preserve', label: `${r.label}(${Spoil.PRESERVED_ITEMS[r.out].ko} ×${outQty})`,
     owner: player.playerId, ms,
     items: { [r.out]: outQty }, lotItems: { [r.out]: outQty },   // ★lotItems = 수령 때 로트로 적을 것
-  }, Date.now());
+  };
+  // ★[T767] 켬이면 넣은 레코드마다 그 순간 신선도를 대기열 주문에 싣는다(건물 저장에 같이 실린다) — 수령 때 그 신선도로 선다(`_t767Land`)
+  if (Spoil.T767_CARRY) _pvJob.lotFresh = { [r.out]: Spoil.carryOf(r.from, got.ages, today) };
+  const rk = Facility.enqueue(fc.b, _pvJob, Date.now());
   if (!rk.ok) {
     // ★위에서 자리를 미리 봤으니 여기는 사실상 도달 불가다 — 그래도 방어한다(재료를 삼키지 않는다).
     _undo();
@@ -7584,6 +7590,7 @@ function doPreserve(player, recipeKey, amount) {
   const _stg = Spoil.stageOf(fr.fresh);
   send(player.ws, { type: 'notice',
     text: `${fc.ko}에 걸었다 — ${r.label} · ${r.from} ${got.taken}(${Spoil.STAGE_KO[_stg]}) → ${Spoil.PRESERVED_ITEMS[r.out].ko} ${outQty}개`
+        + (Spoil.T767_CARRY ? '(신선도 그대로)' : '')   // ★[T767]
         + ` · ${r.days}일(${Math.ceil(ms / 60000)}분)${rk.ahead ? ` (앞에 ${rk.ahead}개)` : ''}` });
   savePlayer(player);
 }
@@ -8164,6 +8171,21 @@ function _enqueueCraft(player, fac, kind, inst, label, skill) {
   sendCraftQueue(player);
   return r;
 }
+// ★★[T767 2026-10-16 · 손잡이 `T767_PRESERVE_CARRY=1`(spoil.js) — 끔이면 주문에 `lotFresh` 칸이 안 생겨 이 함수를 아무도 안 부른다(main 바이트)]
+//   **보존식 산출 로트 = 넣은 레코드마다 그 신선도에서 시작.** 다 된 순간(`_d` · 켬 T732 면 순간 `_kDone`)에 서고, 노출은 산출 품목 곡선 위
+//   같은 신선도의 자리(`Spoil.carryExposure`) — 그 뒤엔 보존식 보관일로 늙는다. 꽂기는 T705 상한 몫 줄과 같은 길(`Lots.moveIn` · 같은 순간 ·
+//   같은 노출만 합친다 — 신선도가 다른 레코드는 안 섞인다 · 평균 0). 날 문법(T732 끔)이면 `t = 다 된 날` 로 서서 그날부터 늙는다(종전 `note` 와 같은 뜻).
+function _t767Land(player, item, carry, d, kDone) {
+  const recs = [];
+  for (const c of carry) {
+    const n = Number(c && c.n) || 0;
+    if (!(n > 0)) continue;
+    const e = Spoil.carryExposure(item, c.f);
+    recs.push(T732_MOMENT ? { d, k: kDone, n, e, t: kDone / _SEASON_DAY_MS } : { d, n, e, t: d });
+  }
+  if (recs.length) Lots.moveIn(player, item, recs, T732_MOMENT ? zoneGameDay() : d, 0, 'carry');
+  return recs.length;
+}
 // 수령 — 끝난 것만, 내 것만, 시설 앞에서.
 function doCraftCollect(player, buildingId) {
   ensurePlayerItems(player);
@@ -8194,7 +8216,12 @@ function doCraftCollect(player, buildingId) {
       if (j.lotItems) {
         const _d = _gameDayAt(j.doneAt || Date.now());
         const _kDone = T732_MOMENT ? zoneGameMsAt(j.doneAt || Date.now()) : undefined;   // ★[T732] 다 된 **순간**(끄면 날)
-        for (const [k, n] of Object.entries(j.lotItems)) if (Lots.isLot(k)) Lots.note(player, k, n, _d, 'carry', _kDone);
+        for (const [k, n] of Object.entries(j.lotItems)) {
+          if (!Lots.isLot(k)) continue;
+          // ★[T767] 주문이 신선도를 실었으면(켬에서 건 것) 그 신선도로 선다 — 끔에서 건 주문엔 이 칸이 없다(= 종전 · 갓 만든 것)
+          if (j.lotFresh && Array.isArray(j.lotFresh[k]) && j.lotFresh[k].length) { _t767Land(player, k, j.lotFresh[k], _d, _kDone); continue; }
+          Lots.note(player, k, n, _d, 'carry', _kDone);
+        }
         // ★[T705] 상한 몫으로 익힌 것 — **이미 상한 로트**로 꽂는다(노출 = 그 품목 보관일 ⇒ f = 0 · 날짜는 보관일만큼 앞 —
         //   같은 날 갓 익힌 로트와 섞이지 않게: `note` 는 같은 날·같은 자리면 노출을 평균한다). 끄면 이 칸이 없다.
         if (j.lotSpoiled) for (const [k, n] of Object.entries(j.lotSpoiled)) {
@@ -9483,14 +9510,17 @@ function _facilityRecipes(player, kind) {
       const r = Spoil.resolveFrom(r0, inv);   // ★[T59] 어종 집합 → 손에 있는 것 하나(화면도 그걸 보여 준다)
       const have = Math.floor(Lots.sum(player, r.from));
       const off = Spoil.peekOffer(r.from, Lots.of(player, r.from), Math.max(1, have), today);
-      push({ id, label: r.label, kind: 'preserve', preserve: true,
+      const _pvRow = { id, label: r.label, kind: 'preserve', preserve: true,
              cost: Object.assign({ [r.from]: 1 }, r.needs),
              from: r.from, out: r.out, outKo: Spoil.PRESERVED_ITEMS[r.out].ko,
              days: r.days, shelfDays: Spoil.shelfOf(r.out),
              fresh: have > 0 ? off.fresh : null,
              stage: have > 0 ? Spoil.stageOf(off.fresh) : null,
              stageKo: have > 0 ? Spoil.STAGE_KO[Spoil.stageOf(off.fresh)] : null,
-             yieldPct: have > 0 ? Math.round(Spoil.yieldMult(off.fresh) * 100) : null });
+             yieldPct: (have > 0 && !Spoil.T767_CARRY) ? Math.round(Spoil.yieldMult(off.fresh) * 100) : null };
+      // ★[T767] 켬이면 "수율 %" 대신 **나올 것의 신선도**(이어받은 값) — 만들기 단추가 보내는 한 개(오래된 것부터 · `doPreserve` 의 그 차례)의 값을 미리 본다
+      if (Spoil.T767_CARRY && have > 0) { const o1 = Spoil.peekOffer(r.from, Lots.of(player, r.from), 1, today); _pvRow.outFresh = o1.fresh; _pvRow.outStage = Spoil.stageOf(o1.fresh); }
+      push(_pvRow);
       // ★상한 재료는 **버튼이 꺼져 있어야** 한다 — 눌러 보고 거절당하는 건 화면이 거짓말한 것이다.
       //   (`doPreserve` 가 서버 게이트로 다시 막는다 — 화면은 게이트가 아니라 안내다.)
       const row = rows[rows.length - 1];
