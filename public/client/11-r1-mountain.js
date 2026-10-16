@@ -120,7 +120,7 @@
     //   셀마다 corS 를 49회 부르고 잡음까지 얹는다. cut.cache 가 오면 한 번 짜서 들고 쓴다.
     const CA = cut && cut.cache;
     if (CA && CA.V) {
-      _mt3BandD = [CA.dLo, CA.dHi, CA.sLo, CA.sHi, CA.hHi];
+      _mt3BandD = [CA.dLo, CA.dHi, CA.sLo, CA.sHi, CA.hHi, CA.hLo];
       return _mt3GlDraw(g2d, F, key, CA.V, CA.n, x0, y0, bw, bh, clip, cut);
     }
     const sub = MT3_GSUB, S = sub + 1, OV = MT3_OV, SP = (1 + 2 * OV) / sub;
@@ -130,10 +130,10 @@
     const V = _mgl.buf; let n = 0;
     // ★띠의 **지면 깊이 범위**(sLo/sHi)와 깊이 범위(dLo/dHi), 높이 상한(hHi)을 정점에서 모은다.
     //   삼각형 안의 값은 꼭짓점 값의 선형 보간이라 이 min/max 를 못 벗어난다 ⇒ 3분류의 근거.
-    let dLo = Infinity, dHi = -Infinity, sLo = Infinity, sHi = -Infinity, hHi = 0;
+    let dLo = Infinity, dHi = -Infinity, sLo = Infinity, sHi = -Infinity, hHi = 0, hLo = 0;
     const dAcc = (pyv, hv) => { const d = pyv + y0 + 64 * hv; if (d < dLo) dLo = d; if (d > dHi) dHi = d;
       const sv = pyv + y0 + 32 * hv; if (sv < sLo) sLo = sv; if (sv > sHi) sHi = sv;
-      if (hv > hHi) hHi = hv; };
+      if (hv > hHi) hHi = hv; if (hv < hLo) hLo = hv; };   // ★[T770] hLo = 꼭짓점 높이 최솟값(≤ 0 · Catmull-Rom 밑돌기)
     const px = new Float32Array(S * S), py = new Float32Array(S * S), ph = new Float32Array(S * S);
     for (const cell of cells) {
       const i = cell[0], j = cell[1];
@@ -246,8 +246,8 @@
       }
     }
     if (n === 0) { _mt3BandD = null; return false; }
-    _mt3BandD = [dLo, dHi, sLo, sHi, hHi];
-    if (CA) { CA.V = V.slice(0, n); CA.n = n; CA.dLo = dLo; CA.dHi = dHi; CA.sLo = sLo; CA.sHi = sHi; CA.hHi = hHi;
+    _mt3BandD = [dLo, dHi, sLo, sHi, hHi, hLo];
+    if (CA) { CA.V = V.slice(0, n); CA.n = n; CA.dLo = dLo; CA.dHi = dHi; CA.sLo = sLo; CA.sHi = sHi; CA.hHi = hHi; CA.hLo = hLo;
               return _mt3GlDraw(g2d, F, key, CA.V, CA.n, x0, y0, bw, bh, clip, cut); }
     return _mt3GlDraw(g2d, F, key, V, n, x0, y0, bw, bh, clip, cut);
   }
@@ -434,11 +434,11 @@
         }
       }
       // 픽셀 절단용 — 세그먼트의 깊이·지면·높이 범위와 **되그릴 재료**(같은 순서로 다시 그린다)
-      let bLo = Infinity, bHi = -Infinity, sLo2 = Infinity, sHi2 = -Infinity, hHi2 = 0, glAll = true, recipe = [];
+      let bLo = Infinity, bHi = -Infinity, sLo2 = Infinity, sHi2 = -Infinity, hHi2 = 0, hLo2 = 0, glAll = true, recipe = [];
       for (const k of [...byK.keys()].sort((a, b) => a - b)) {
         const cells = byK.get(k), cutCells = cutK.get(k) || [];
         if (!cells.length && !cutCells.length) continue;
-        if (!U) { bLo = Infinity; bHi = -Infinity; sLo2 = Infinity; sHi2 = -Infinity; hHi2 = 0; glAll = true; recipe = []; }
+        if (!U) { bLo = Infinity; bHi = -Infinity; sLo2 = Infinity; sHi2 = -Infinity; hHi2 = 0; hLo2 = 0; glAll = true; recipe = []; }
         let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
         for (const [i, j] of cells) for (const o of [[0,0],[1,0],[1,1],[0,1]]) {
           const gi = F.i0 + i + o[0], gj = F.j0 + j + o[1];
@@ -498,7 +498,7 @@
         if (!drawn || !_mt3BandD) { glAll = false; }
         else { if (_mt3BandD[0] < bLo) bLo = _mt3BandD[0]; if (_mt3BandD[1] > bHi) bHi = _mt3BandD[1];
                if (_mt3BandD[2] < sLo2) sLo2 = _mt3BandD[2]; if (_mt3BandD[3] > sHi2) sHi2 = _mt3BandD[3];
-               if (_mt3BandD[4] > hHi2) hHi2 = _mt3BandD[4]; }
+               if (_mt3BandD[4] > hHi2) hHi2 = _mt3BandD[4]; if (_mt3BandD[5] < hLo2) hLo2 = _mt3BandD[5]; }
         if (!drawn) {
           g.save(); g.translate(-x0, -y0);
           const RP = pat ? g.createPattern(pat, 'repeat') : null;
@@ -596,7 +596,7 @@
         _mt3BandN++;
         segs.push({ img: cv, x: wx, y: wy, ox: rp.x - x0, oy: rp.y - y0, sc: 1, mt3: 1, colT, colB, pb, merged: 0,
                     dLo: glAll ? bLo : null, dHi: glAll ? bHi : null,
-                    sLo: glAll ? sLo2 : null, sHi: glAll ? sHi2 : null, hHi: glAll ? hHi2 : 0,
+                    sLo: glAll ? sLo2 : null, sHi: glAll ? sHi2 : null, hHi: glAll ? hHi2 : 0, hLo: glAll ? hLo2 : 0,
                     rec: glAll ? { F, key, x0, y0, bw: BW, bh: BH, bands: recipe } : null });
       }
       // ── 병합: 청크 하나를 **세그먼트 한 장**으로 낸다 ─────────────────────
@@ -620,7 +620,7 @@
         segs.push({ img: U.cv, x: wx, y: wy, ox: rp.x - U.x0, oy: rp.y - U.y0, sc: 1, mt3: 1,
                     colT: U.colT, colB: U.colB, pb, merged: 1,
                     dLo: glAll ? bLo : null, dHi: glAll ? bHi : null,
-                    sLo: glAll ? sLo2 : null, sHi: glAll ? sHi2 : null, hHi: glAll ? hHi2 : 0,
+                    sLo: glAll ? sLo2 : null, sHi: glAll ? sHi2 : null, hHi: glAll ? hHi2 : 0, hLo: glAll ? hLo2 : 0,
                     rec: glAll ? { F, key, x0: U.x0, y0: U.y0, bw: U.bw, bh: U.bh, bands: recipe } : null });
       }
     }
@@ -1085,7 +1085,12 @@
       return [rT, rB, -1];
     }
     const rT = Math.max(0, Math.min(R.bh, Math.floor(c - 32 * (sg.hHi || 0) - R.y0)));
-    const rB = Math.max(rT, Math.min(R.bh, Math.ceil(c - R.y0) + 1));
+    // ★★[T770] 아래 끝 — 지면 깊이 s = 화면y + 32h 가 문턱 c 를 넘을 수 있는 마지막 행은 **c − 32·hLo** 다.
+    //   종전(끔)은 h ≥ 0 으로 보고 c 에서 끊었다. 바위 옆 비바위 셀은 Catmull-Rom 이 0 밑으로 내려가(실측 −0.13m)
+    //   그 행의 s 가 c 보다 작아도 지름길이 통째로 앞쪽(흐림)에 놓았다 — 전 화소 가리개와 14화소 갈림(e2e-mtcut ⓒ2d · ⓐ1).
+    //   켬 = 꼭짓점 높이 최솟값만큼 내려 잡는다(삼각형 안의 vH 는 꼭짓점 값의 선형 보간이라 이 값을 못 밑돈다).
+    const hLo = MT3_CUT_HLO ? Math.min(0, sg.hLo || 0) : 0;
+    const rB = Math.max(rT, Math.min(R.bh, Math.ceil(c - 32 * hLo - R.y0) + 1));
     return [rT, rB, 1];
   }
   // ── 가리개 한 판 ──────────────────────────────────────────────────────
@@ -1204,7 +1209,7 @@
     _mtCutRenderN++;
     return true;
   }
-  window.__mtCutN = () => ({ cut: MT_FADE_CUT, cq: MT_FADE_CQ, plane: MT_FADE_PLANE, split: _mtSplitN,
+  window.__mtCutN = () => ({ cut: MT_FADE_CUT, cq: MT_FADE_CQ, plane: MT_FADE_PLANE, split: _mtSplitN, hlo: MT3_CUT_HLO,
                              rendered: _mtCutRenderN, built: _mtCutBuiltN, fail: _mtCutFailN,
                              hold: _mtCutHold.length });
   window.__mtFadeCut = (v) => { MT_FADE_CUT = v ? 1 : 0; needsRedraw = true; return MT_FADE_CUT; };
