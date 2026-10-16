@@ -8941,18 +8941,18 @@ function _t374Done(vil, job) {
 //   ⇒ 손을 **틱 앞에서** 곳간에 넣는다 — 같은 두 다리(`_t347Deliver`·`_t325Deliver`) · 새 수 0 · 새 단계 0(조각 순서 캐논 무변).
 //   ⚠헤드리스는 손이 비어 있어 아무것도 안 한다 · 손잡이가 꺼져 있으면 첫 줄에서 돌아간다(끈 팔 비트 동일).
 //   ⚠사람 수만 `_lifeDaily` 로 넘긴다(`_t347PreWalked`·`_t325PreWalked` — "몸이 걷는 마을은 헤드리스로 안 딴다" 판정 무변).
-function _lifeHandsIn(vil) {
-  if (T720_LON_DAY) return;   // ★[T720 ③] 켬 = 경계 일괄 없음 — 손은 곳간에 닿는 순간 든다(`_t720Step`)
+// ★★[T724 ②③ · T757] 광부의 손도 econ 틱 **앞**에서 곳간에(나무 · 채집 절과 같은 자리 · 같은 까닭 — 두 시계 한 줄) — 곳간이 안 받은 몫은 손에 남는다.
+//   그리고 **그날 몸이 쳤나**를 econ 마을에 심는다(`_t724Walk` — econ 게이트 `mineActOn` 과 `_oreMineDaily` 의 셀 깎기 문이 읽는다 · 몸 XOR 일괄).
+//   ★[T757] T720 켬이면 손은 안 넣는다(해 질 녘 `_t720Settle` 이 넣었다 · 못 닿은 손은 든 채) — 표식 · 손 합 · 타수 셈만(같은 뜻 · 같은 줄).
+function _t724DayMark(vil) {
   const E = _lifeEcon();
-  if (!(E.T347_FORAGE_ACT || E.T325_WOOD_ACT || E.T724_MINE_ACT) || !vil || !vil.econ) return;   // ★[T724] 셋째 항(끄면 종전 두 항 그대로)
+  if (!E.T724_MINE_ACT || !vil || !vil.econ) return;
   const pl = state.deps.players; if (!pl) return;
-  // ★★[T724 ②③] 광부의 손도 econ 틱 **앞**에서 곳간에(나무 · 채집 절과 같은 자리 · 같은 까닭 — 두 시계 한 줄) — 곳간이 안 받은 몫은 손에 남는다.
-  //   그리고 **그날 몸이 쳤나**를 econ 마을에 심는다(`_t724Walk` — econ 게이트 `mineActOn` 과 `_oreMineDaily` 의 셀 깎기 문이 읽는다 · 몸 XOR 일괄).
-  if (E.T724_MINE_ACT) {
+  {
     let held = 0, n = 0;
     for (const pid of (vil.npcPids || [])) {
       const p = pl.get(pid); if (!p || !p.inventory || !(p.inventory.ore_chunk > 0)) continue;
-      _t724Deliver(vil, p, 'dusk', 0); n++;
+      if (!T720_LON_DAY) { _t724Deliver(vil, p, 'dusk', 0); n++; }
       held += p.inventory.ore_chunk || 0;
     }
     vil._t724HeldKg = held;                                     // 손 합을 다시 센다(몸이 바꾼 칸이 갈렸어도 여기서 맞춘다)
@@ -8966,6 +8966,17 @@ function _lifeHandsIn(vil) {
     }
     if (n) _t724P().duskDays++;
   }
+}
+function _lifeHandsIn(vil) {
+  //   ★★[T757] T720 켬(경계 일괄 없음 — 손은 해 질 녘 `_t720Step` 에서 든다)이어도 **그날 광부 몸이 쳤나**는 여기서 심는다 —
+  //     표식(`_t724Walk`)은 손이 아니라 **타수**의 뜻이고, 읽는 둘(econ 원석 게이트 `mineActOn` · `_oreMineDaily` 셀 깎기 문)이 바로 뒤 econ · 채굴 조각이다.
+  //     종전(T720 · T724 를 10-14 같이 켬): 이 함수 첫 줄에서 돌아가 표식이 한 번도 안 섰다 ⇒ 몸이 친 마을에서도 econ 수식 원석 + 일괄 셀 깎기가 돌았다(몸 XOR 일괄 위반 · 보고/T757).
+  //     같은 함수 · 같은 줄(`_t724DayMark`) — T720 켬이면 손은 안 넣고(해 질 녘에 넣었다) 표식 · 셈만. T720 끔 = 종전 글자 차례 그대로.
+  if (T720_LON_DAY) { _t724DayMark(vil); return; }   // ★[T720 ③] 켬 = 경계 일괄 없음 — 손은 곳간에 닿는 순간 든다(`_t720Step`)
+  const E = _lifeEcon();
+  if (!(E.T347_FORAGE_ACT || E.T325_WOOD_ACT || E.T724_MINE_ACT) || !vil || !vil.econ) return;   // ★[T724] 셋째 항(끄면 종전 두 항 그대로)
+  const pl = state.deps.players; if (!pl) return;
+  _t724DayMark(vil);
   //   ★[T733 ①] 켬 = 통나무 손(잔가지 · 도토리 함께 — `_t325Deliver`)을 채집 손보다 **먼저** 넣는다 — 나무꾼이 벤 잔가지는 통나무 문으로 든다
   //     (채집 문이 먼저 받으면 채집 수요를 먹고 그 나무꾼이 채집 걸은 몸으로 세인다 · 해 질 녘 정산 `_t720Settle` · 하루 손 `_lifeDaily` 는 이미 통나무가 먼저다). 끔 = 옛 차례.
   const _wood = () => {
@@ -10419,6 +10430,7 @@ function _t720Held(vil, npc) {
   if (_t368ItemsOn() && npc._t368H) for (const c in npc._t368H) u += npc._t368H[c] || 0;
   if (E.T325_WOOD_ACT && E.woodActOn(vil.econ) && _t720Logger(vil, npc)) u += inv.wood || 0;
   if (E.T347_FORAGE_ACT && E.forageActOn(vil.econ)) { for (const k of (_t347KeepOf(vil) || [])) for (const h of _t347HandsOf(k)) u += inv[h] || 0; }
+  if (E.T724_MINE_ACT) u += inv.ore_chunk || 0;   // ★[T757] 광부의 손(원석 kg) — T724 의 경계 손 일괄이 T720 켬에선 안 돈다 ⇒ 해 질 녘 곳간 정산이 그 짐도 든다(있나만 본다 · 단위 무관)
   return u;
 }
 // ★★★[T743 ① 2026-10-14] **해 질 녘 통나무 도장 — 그날 새로 벴나**(T717 ② 셈과 같은 술어 · T733 ② 채집 해 질 녘 도장과 같은 꼴).
@@ -10438,6 +10450,7 @@ function _t743Gap(vil, npc, now) {
 }
 function _t720Settle(vil, npc, now, S) {
   const E = _lifeEcon();
+  if (E.T724_MINE_ACT && npc.inventory && npc.inventory.ore_chunk > 0) _t724Deliver(vil, npc, 'dusk', now);   // ★[T757] 원석 손 → 곳간(T724 곳간 입구 그대로 · 곳간이 안 받은 몫은 손에 남는다)
   if (E.fishActOn(vil.econ) && (npc._t312U || 0) > 0) _t312Deliver(vil, npc);
   if (_t368ItemsOn() && npc._t368H) _t368Deliver(vil, npc, 'gran');
   if (E.T325_WOOD_ACT && E.woodActOn(vil.econ) && _t720Logger(vil, npc) && npc.inventory && (npc.inventory.wood || 0) > 0) {
