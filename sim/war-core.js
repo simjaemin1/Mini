@@ -604,6 +604,16 @@ function createWar(opts) {
 
   function stats() { return world._warStats || (world._warStats = { decl: 0, battle: 0, atkWin: 0, defWin: 0, cas: 0, loot: 0, tribute: 0, palisade: 0, weaponLoot: 0, unjust: 0, byCasus: { trade: 0, territory: 0, prestige: 0, feud: 0 }, active: 0, tributes: 0, siege: 0, assault: 0, withdraw: 0, surrender: 0, sortie: 0, walkover: 0, captured: 0, capFreed: 0, escaped: 0, assimilated: 0, ransomed: 0, log: [] }); }   // ★[2파] 작전층 + ★[3파] 포로 카운터(랩 warStats 재동기)
   function log(day, m) { const st = stats(); if (st && st.log.length < 500) st.log.push('D' + day + ' ' + m); if (userLog) userLog(day, m); }
+  // ★★[T764 2026-10-15] **원정 짐의 무기 거울**(T403 켬에서만 선다) — 공격 마을 econ 에 "지금 원정 짐에 나가 있는 무기" 합을 적는다(`_warArmsOut`).
+  //   진행 중 전쟁(`_warWars`)은 재기동에 안 실린다(T742 회부 1) — 짐(`w._arms`)이 전쟁째 사라지면 반출한 무기가 세계에서 없어진다(소멸).
+  //   econ 칸은 `serializeEcon` 이 그대로 싣는다(새 표 0) ⇒ 다시 뜨면 `rebuildFromEcon` 이 거울에서 그때 짐이 쥔 몫을 뺀 나머지를 곳간에 내려놓는다.
+  //   거울은 늘 짐에서 다시 센다(`_syncTribToEcon` 꼴 — 두 번째 장부 0): 반출 · 결판(공격 패 — 짐에서 빠진 몫) · 귀환 반납 뒤.
+  //   ⚠끔이면 `w._arms` 가 안 생겨 이 함수를 부르는 줄이 없다(칸 0 · 비트 동일) · 새 수 0.
+  function _syncArmsToEcon(vil) {
+    const e = vil && vil.econ; if (!e) return;
+    let s = 0; for (const w of WARS) if (w.atk === vil && w._arms && !w._arms.done) s += Math.max(0, w._arms.weapon || 0);
+    if (s > 0) e._warArmsOut = s; else if (e._warArmsOut != null) delete e._warArmsOut;   // 반올림 0 — 짐의 수 그대로(되돌릴 때 한 점도 안 어긋나게)
+  }
   function warTerrR(v) { return Math.sqrt(territoryOf(v) / Math.PI); }
   function _battleRng(day, id) { return makeRng(hash2(baseSeed ^ 0x5ca1ab1e, hash2(day | 0, id | 0))); }
 
@@ -698,6 +708,7 @@ function createWar(opts) {
     //   이것이 옛 `_laborMul` 동원 항의 자리다: 생산은 이제 "사람이 없어서" 준다(엔진 한 줄).
     _war._draftN = warDraftFill(V, _actualForce, _war.id);
     WARS.push(_war);
+    if (_war._arms) _syncArmsToEcon(V);   // ★[T764] 짐에 나간 무기 거울(끔이면 `_arms` 가 없다 — 안 부른다)
     st.decl++; st.byCasus[casus] = (st.byCasus[casus] || 0) + 1;
     log(day, V.name + '→' + U.name + ' 선전포고[' + casus + '·' + mode + '] 병력' + _actualForce + '(전사' + warriors + '·승산' + (plan.pWin * 100 | 0) + '%·' + plan.capReason + ')·행군' + marchDays + '일' + (_war._packDays > 0 ? '·군량 ' + _war._packDays.toFixed(1) + '일분' : ''));
     return true;
@@ -1089,7 +1100,7 @@ function createWar(opts) {
       if (J < WAR_REP_TH) { A._warFatigue = (A._warFatigue || 0) + (WAR_REP_TH - J) * WAR_J_FAT; outcome += ' [불의전 피로]'; }
     } else { st.defWin++; warAddTrauma(A, w.def.name, WAR_TRAUMA_UP); A._warCaution = Math.min(1, (A._warCaution || 0) + 0.5); }
     if (!_den) warThirdPartyRep(w.atk, w.def, J, day);   // ★[T476] 소굴 토벌엔 관전 마을의 평판 소문이 없다
-    { const _ls = atkWin ? _res.defStart : _res.atkStart, _ld = atkWin ? _defDead : _atkDead; const _rn = atkWin ? (_res.routB || 0) : (_res.routA || 0), _rm = atkWin ? _res.routMrlB : _res.routMrlA; const _wf = warWeaponFlow(winnerE, loserE, _ls, _ld, _rn, _rm, st, (!atkWin && w._arms) ? w._arms : undefined); if (_wf) outcome += ' +노획' + _wf.gain.toFixed(1) + (_wf.qUp ? '·품질↑' + _wf.newQ.toFixed(2) : ''); }
+    { const _ls = atkWin ? _res.defStart : _res.atkStart, _ld = atkWin ? _defDead : _atkDead; const _rn = atkWin ? (_res.routB || 0) : (_res.routA || 0), _rm = atkWin ? _res.routMrlB : _res.routMrlA; const _wf = warWeaponFlow(winnerE, loserE, _ls, _ld, _rn, _rm, st, (!atkWin && w._arms) ? w._arms : undefined); if (_wf) outcome += ' +노획' + _wf.gain.toFixed(1) + (_wf.qUp ? '·품질↑' + _wf.newQ.toFixed(2) : ''); if (w._arms) _syncArmsToEcon(w.atk); }   // ★[T764] 짐에서 빠진 몫을 거울에(끔 = 칸 없음)
     // ★[3파 포로] 화면 층 인계 스태시 — villages._warOnResolved가 패자측 사상 표본 pid 일부를 호송 실체로 전환(승자 마을 이관).
     if (_cap.take.length || _cap.freed) {
       w._capResolve = { side: atkWin ? 'B' : 'A', npcs: _cap.take.slice(), freedN: _cap.freed, day };
@@ -1157,6 +1168,7 @@ function createWar(opts) {
         if (w._rationBook) { const b = w._rationBook; log(day, w.atk.name + ' 짐 장부 — 적재 ' + b.load.toFixed(1) + (b.pickFE ? ' + 길에서 딴 ' + b.pickFE.toFixed(1) : '') + ((b.lootG || b.lootP) ? ' + 노획 ' + ((b.lootG || 0) + (b.lootP || 0)).toFixed(1) : '') + ' = 장부 ' + b.ledgerEaten.toFixed(1) + ' + 몸이 먹음 ' + b.eaten.toFixed(1) + ' + 내려놓음 ' + b.back.toFixed(1) + ' + 드랍 ' + b.drop.toFixed(1)); }
         if (w._arms) log(day, w.atk.name + ' 귀환 — 무기 반납 ' + _armsBack + '/' + w._arms.out + '(민병 ' + w._arms.militia + ')');
         WARS.splice(i, 1);
+        if (w._arms) _syncArmsToEcon(w.atk);   // ★[T764] 반납 뒤 거울(그 마을의 다른 원정 짐만 남는다)
       }
     }
     // 4) 원한 교역제재 발행(원한>문턱 상대 교역 기피)
@@ -1202,6 +1214,17 @@ function createWar(opts) {
     TRIBUTES.length = 0;
     const byName = new Map(villages.map(v => [v.name, v]));
     for (const vil of villages) { const e = vil.econ; if (!e || !Array.isArray(e._warTribOut)) continue; for (const t of e._warTribOut) { const payee = byName.get(t.payee); if (payee) TRIBUTES.push({ payer: vil, payee, until: t.until, next: t.next }); } }
+    // ★★[T764] 원정 짐의 무기 — 진행 중 전쟁은 안 실렸다(T742 회부 1). 거울(`_warArmsOut` — T403 켬이 남긴 칸)에서 지금 짐이 쥔 몫을 뺀 나머지를
+    //   곳간에 내려놓는다(원정이 끝났다 — 무기는 그 마을 것이다 · 소멸 0 · 새 수 0). 칸이 없으면(끔으로만 돈 세계) 한 줄도 안 돈다.
+    //   손잡이가 아니라 **칸**을 본다 — 켬으로 저장하고 끔으로 다시 떠도 반출분이 곳간으로 돌아온다.
+    for (const vil of villages) {
+      const e = vil.econ; if (!e || !(e._warArmsOut > 0)) continue;
+      let held = 0; for (const w of WARS) if (w.atk === vil && w._arms && !w._arms.done) held += Math.max(0, w._arms.weapon || 0);
+      const back = Math.max(0, e._warArmsOut - held);
+      if (back > 0 && e.storage) e.storage.weapon = (e.storage.weapon || 0) + back;
+      if (held > 0) e._warArmsOut = held; else delete e._warArmsOut;
+      if (back > 0) log(world.day || 0, vil.name + ' 다시 뜸 — 원정 짐 무기 ' + back + ' 곳간에(진행 중 전쟁은 안 실린다)');
+    }
     return TRIBUTES.length;
   }
 
