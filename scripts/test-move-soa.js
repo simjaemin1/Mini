@@ -314,6 +314,7 @@ console.log('\n⑥ ★게이트 — 같은 씨 · 51마을 7게임일 · 좌표 
       T732_MOMENT: false,
       // ★[T761 · PM 착지 10-15] 몸 기온 곡선의 현지 시계 갈래(`T761_CLOCKS.temp && …`)가 섰다 — 손잡이는 **제품 기본(끔)** 그대로 싣는다
       //   (`server/zone-config.js` `T761_CLOCKS` 끔 꼴 그대로 · 끔이면 종전 `_dT.ph` 를 쓴다 · 두 판 비트 동일은 끔 세계의 것).
+      T774_ACTIVE_COL: false, _t774I: 0, _t774Act: null,   // ★[T774] 활성 열 — 한 바퀴(`_sweepOne`)가 읽는 손잡이 · 이 판은 끔 갈래(열 증인은 `T774_ACTIVE_COL=1 node scripts/t738-witness.js`)
       T761_CLOCKS: { on: false, wx: false, mob: false, temp: false },
     };
     const keys = Object.keys(env);
@@ -652,6 +653,7 @@ let RUN9 = null;
       players: world.players, mobs: world.mobs, buildings: world.buildings, activeChunkKeys, chunkManager, stairCellCache, qtBuildings,
       qtColl: qtBuildings,   // ★[T449 ③] 받침 술어(`hasFloorSupportAt`)가 이제 벽 질의 격자를 본다 — 여기선 같은 모의 격자(종류는 술어가 거른다 · 판정은 `test-coll-grid`)
       T385_ONE_SWEEP: on, T689_GC: GC9, BUILDING_SIZE: BS, FLOOR_HEIGHT: FH, HUNGER_MAX: 100, THIRST_MAX: 100,
+      T774_ACTIVE_COL: false, _t774I: 0, _t774Act: null,   // ★[T774] 활성 열 — 한 바퀴(`_sweepOne`)가 읽는 손잡이 · 이 판은 끔 갈래(열 증인은 `T774_ACTIVE_COL=1 node scripts/t738-witness.js`)
       T761_CLOCKS: { on: false, wx: false, mob: false, temp: false },   // ★[T761 · PM 착지 10-15] 몸 기온 · 몹 밤 현지 시계 갈래 — 제품 기본(끔) 그대로
 
       COLD_CLOTH_WEAR_MS: 60000, CARRIER_WEAR_MS: 60000, VP_DECAY_PER_SEC: 0.5,
@@ -1299,7 +1301,7 @@ console.log('\n⑭ T421_SPATIAL_INC 격자 증분 — 조회 결과 비트 동�
     if (twist === 'nokeys') src = src.replace('if (keysSame && S.ref[i] === p', 'if (S.ref[i] === p');
     if (twist && src === SRC.join('\n')) throw new Error('미끼를 못 만들었다: ' + twist);
     const env = { players: w.players, mobs: w.mobs, resources: w.resources, chunkManager: w.chunkManager, Quadtree, QuadtreeInc,
-      ZONE: { zoneWidth: W, zoneHeight: H }, T421_SPATIAL_INC: on };
+      ZONE: { zoneWidth: W, zoneHeight: H }, T421_SPATIAL_INC: on, T774_ACTIVE_COL: false };   // ★[T774] 색인이 활성 열을 같이 적는 손잡이 — 이 판은 끔 갈래
     const keys = Object.keys(env);
     return new Function(...keys,
       'let activeChunkKeys = new Set(), qtPlayers = null, qtMobs = null, qtBuildings = null, qtResources = null, qtColl = null, resourcesDirty = true, _lastResRebuild = 0, _WW = null, _wwRes = null;\n' +   // ★[T461] 자원 문이 커널 목록을 적는다(끔 = null)
@@ -1890,7 +1892,7 @@ console.log('\n⑳ T461 걸음 문 WASM 커널 — 1,000틱 뒤 전원 좌표 �
   // ★제품 글자를 뜬다: 이동 문(`movePlayerStep`) · 커널 앞문(`_wwPre`) · 뒷문(`_wwPost`) — 커널은 `server/walk-wasm.js`(제품 껍데기) 그대로.
   const MV = body('movePlayerStep'), POST = body('_wwPost');
   //   ★[T689] 앞문 몸통이 `_wwPreOne` 으로 나뉘었다(손잡이 `T689_GC` · 켬 = `players.forEach`) — 둘을 같이 뜬다 · 판 손잡이는 이 프로세스 env(끔·켬 두 번 돌린다)
-  const PRE = 'const T689_GC = ' + (process.env.T689_GC === '1') + ';\nlet _wwCut = false;\n' + body('_wwPre') + '\n' + body('_wwPreOne');
+  const PRE = 'const T689_GC = ' + (process.env.T689_GC === '1') + ';\nlet _wwCut = false;\nconst T774_ACTIVE_COL = false; let _t774I = 0; const _t774Act = null;\n' + body('_wwPre') + '\n' + body('_wwPreOne');   // ★[T774] 앞문이 읽는 활성 열 손잡이 — 이 판은 끔 갈래
   const ISS = body('_wwIsStill'), SPOST = body('_wwStillPost');   // ★[T672] 서 있는 몸 거름 · 뒷일(앞문이 부른다 · 끔이면 안 열린다)
   const T672P = ['T672_WALK_CUT', '_wwStill', '_wwStill0', '_wwNoRes', '_wwTC', '_wwResGen', '_wwVerify'];
   const t672A = (on, gen) => [!!on, [], [], [], { src: null, rx: null, gen: -1, k: 0, hit: 0, miss: 0, treeBad: 0, still: 0, stillBad: 0 }, gen || 0, false];

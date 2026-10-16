@@ -9,7 +9,8 @@
 'use strict';
 const path = require('path'), fs = require('fs');
 const ROOT = path.join(__dirname, '..');
-if (process.env.T738_SOA_XY !== '1') { console.error('T738_SOA_XY=1 로 띄워라'); process.exit(2); }
+const T774 = process.env.T774_ACTIVE_COL === '1';   // ★[T774] 활성 열 증인 — `T774_ACTIVE_COL=1 node scripts/t738-witness.js`(x·y 접근자 판과 따로)
+if (process.env.T738_SOA_XY !== '1' && !T774) { console.error('T738_SOA_XY=1 또는 T774_ACTIVE_COL=1 로 띄워라'); process.exit(2); }
 const TMP = `/tmp/t738w-${process.pid}.db`;
 const rm = () => { for (const s of ['', '-wal', '-shm']) { try { fs.unlinkSync(TMP + s); } catch (e) {} } };
 rm(); process.on('exit', rm);
@@ -21,6 +22,27 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 (async () => {
   const Zone = require(path.join(ROOT, 'server', 'zone.js'));
   const H = Zone.__testBind();
+  if (T774) {   // ★[T774] ⓐ 열 = 술어(틱마다 · 채운 그대로인 슬롯) ⓑ 몸 바이트 무변(열은 몸 밖) ⓒ 걸음 문이 열로 답했다(hit > 0)
+    for (let i = 0; i < 600; i++) { let n = 0; for (const p of H.players.values()) if (p.isNpc && p.simVillageId != null) n++; if (n > 50) break; await sleep(200); }
+    const npcs = [...H.players.values()].filter((p) => p.isNpc && p.simVillageId != null);
+    ok(npcs.length > 50, '[전제] 주민 몸이 섰다', `${npcs.length}명`);
+    const keys0 = npcs.map((p) => Object.keys(p).join(','));
+    //   관측자 셋을 마을 몸 셋 자리에 세운다(활성 청크가 생겨야 열에 1 이 든다 · 증인만 · 소켓 없는 칸)
+    for (let i = 0; i < 3; i++) { const p = npcs[Math.floor(i * npcs.length / 3)]; H.observers.set({ __t774: i, readyState: 0, send() {} }, { viewerX: p.x, viewerY: p.y, lastSeen: Date.now() + 1e9 }); }
+    let chk = 0, bad = 0, act1 = 0, looks = 0;
+    for (let k = 0; k < 120; k++) {
+      await sleep(50);
+      const T = H._t774(); if (!T.same) continue; looks++;
+      for (let j = 0; j < T.n; j++) { const p = T.ref[j]; if (!p || T.X[j] !== p.x || T.Y[j] !== p.y) continue; chk++; const a = H.isPositionActive(p.x, p.y); if (a) act1++; if (!!T.act[j] !== a) bad++; }
+    }
+    ok(looks > 10 && chk > 1000 && bad === 0, 'ⓐ 열 = 술어 — 공간 색인이 적은 그대로인 슬롯마다 `isPositionActive` 와 같은 답', `본 판 ${looks} · 견줌 ${chk} · 활성 ${act1} · 어긋남 ${bad}`);
+    const keys1 = npcs.map((p) => Object.keys(p).join(','));
+    ok(keys0.every((k, i) => k === keys1[i]), 'ⓑ 몸 키 차례 무변(열은 몸 밖 · 새 몸 필드 0)');
+    const T = H._t774();
+    ok(T.hit > 0, 'ⓒ 뒤 문들이 열로 답했다', `열 ${T.hit} · 종전 술어 ${T.miss}`);
+    log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===`);
+    process.exit(fail ? 1 : 0);
+  }
   log('ⓐ 값 왕복');
   const V = [0, -0, NaN, Infinity, -Infinity, 1, -1, 0.1, 1e-310, 5e-324, -5e-324, Number.MAX_VALUE, 2 ** 53 + 2, 31871.123456789, -0.000001];
   const d = { x: 1, y: 2 }; H._t738Adopt(d);

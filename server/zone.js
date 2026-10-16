@@ -1230,6 +1230,26 @@ function _spKeep(qt, seq, j, ref, x, y) {
   if (e.x !== x || e.y !== y) { if (qt.nodeFor(x, y) !== e._n) return false; e.x = x; e.y = y; }
   return true;
 }
+// ★★[T774 2026-10-16 · 세션4] **`active` 열** — 손잡이 `T774_ACTIVE_COL`('1' 만 켬 · 끔 = 아래 글자가 안 돈다 · main 바이트).
+//   틱 머리 공간 색인(`_rebuildSpatialInc` · 몸 차례 = `players` 차례)이 몸마다 이미 `act`(= `isPositionActive(p.x, p.y)`)를 센다(`S.act` · T421).
+//   그 판의 몸 x · y 를 조밀 열 둘(`Float64Array` · 슬롯 = 그 차례 번호)에 같이 적어 두고, 같은 차례로 도는 뒤 문들은 **슬롯 번호로 읽는다**: 그 슬롯의 몸이 같고(`S.ref`) · x · y 가 그 판 값과 같고(`===`) · 활성 집합이 같은 판(정체)이면 `S.act`.
+//   아니면(그 사이 움직였다 · 몸 차례가 어긋났다 · 집합이 갈렸다) 종전 술어를 부른다 ⇒ **같은 답**(같은 자리 · 같은 집합 = 같은 청크 = 같은 답).
+//   ★무효화는 한 곳 — 공간 색인이 틱마다 다시 적는다(활성 집합이 갈아 끼워지면 `_t774Src` 가 어긋나 술어로 간다). 새 수 0 · 몸 필드 0.
+//   ★읽는 문 둘: 이동 문 앞 거름(`_wwPreOne`) · 한 바퀴(`_sweepOne`) — 둘 다 `players` 차례다. 이동 문 거름(`_moveOne`)은 자들이 그 글자를 떠 쓰므로(test-move-soa ⑳ · test-fish-act) 안 건드린다.
+//   ⚠결정 문(`npcs` 차례)과 서로 비키기(`sepNpcs` · `npcs` 차례)는 차례가 달라 이 열을 안 읽는다(보고 §2).
+const T774_ACTIVE_COL = process.env.T774_ACTIVE_COL === '1';
+let _t774X = T774_ACTIVE_COL ? new Float64Array(1024) : null, _t774Y = T774_ACTIVE_COL ? new Float64Array(1024) : null, _t774N = 0, _t774Src = null;
+const _t774Stat = { hit: 0, miss: 0 };
+function _t774Put(i, p) {
+  if (i >= _t774X.length) { const n = Math.max(i + 1, _t774X.length * 2), X = new Float64Array(n), Y = new Float64Array(n); X.set(_t774X); Y.set(_t774Y); _t774X = X; _t774Y = Y; }
+  _t774X[i] = p.x; _t774Y[i] = p.y;
+}
+function _t774Act(p, i) {
+  const S = _spInc;
+  if (i < _t774N && S.ref[i] === p && _t774X[i] === p.x && _t774Y[i] === p.y && _t774Src === activeChunkKeys) { _t774Stat.hit++; return S.act[i]; }
+  _t774Stat.miss++; return isPositionActive(p.x, p.y);
+}
+let _t774I = 0;   // 뒤 문이 도는 슬롯 번호(그 문 머리에서 0)
 function _rebuildSpatialInc(nowIT, W, H) {
   const S = _spInc;
   // ── 활성 청크 집합이 **순서까지** 지난 판과 같은가(같으면 몸마다 청크만 보면 된다)
@@ -1245,12 +1265,14 @@ function _rebuildSpatialInc(nowIT, W, H) {
     let act;
     if (keysSame && S.ref[i] === p && S.cx[i] === cx && S.cy[i] === cy) act = S.act[i];
     else { act = activeChunkKeys.has(chunkManager.keyOf(cx, cy)); S.ref[i] = p; S.cx[i] = cx; S.cy[i] = cy; S.act[i] = act; }   // = isPositionActive(p.x, p.y)
+    if (T774_ACTIVE_COL) _t774Put(i, p);   // ★[T774] 그 몸의 x · y(이 판 값) — 뒤 문이 "그 뒤 안 움직였나"를 본다
     i++;
     if (p.isNpc && !p.canadiaVillage && !act) continue;
     if (ok && !_spKeep(qtPlayers, S.pl, j, p, p.x, p.y)) ok = false;
     j++;
   }
   if (i < S.ref.length) { S.ref.length = i; S.cx.length = i; S.cy.length = i; S.act.length = i; }
+  if (T774_ACTIVE_COL) { _t774N = i; _t774Src = activeChunkKeys; }
   if (ok && j !== S.pl.length) ok = false;
   if (!ok) {   // 통째로 — 종전과 같은 차례(활성 여부는 위에서 이번 판 값으로 적어 두었다)
     qtPlayers = new QuadtreeInc(0, 0, W, H); S.pl = []; let ii = 0;
@@ -1624,6 +1646,7 @@ function walkPerf(reset) {
     if (T672_WALK_CUT) { o.ww.t672 = { treeHit: _wwTC.hit, treeMiss: _wwTC.miss, treeBad: _wwTC.treeBad, still: _wwTC.still, stillBad: _wwTC.stillBad, k: _wwTC.k };   // ★[T672] 관측
       if (reset) { _wwTC.hit = 0; _wwTC.miss = 0; _wwTC.treeBad = 0; _wwTC.still = 0; _wwTC.stillBad = 0; } }
     if (reset) { _wwStat.ticks = 0; _wwStat.steps = 0; _wwStat.bad = 0; _wwStat.badTicks = 0; _wwStat.gateBad = 0; _wwStat.sample.length = 0; } }   // ★[T461]
+  if (T774_ACTIVE_COL) o.t774 = Object.assign({}, _t774Stat);   // ★[T774] 열에서 읽은 수 · 술어로 간 수
   if (T676_STAMP || T676_VERIFY) { o.t676 = Object.assign({ mode: T676_STAMP ? 'on' : 'verify' }, _t676Stat); if (reset) { _t676Stat.ipaN = 0; _t676Stat.ipaBad = 0; _t676Stat.pvN = 0; _t676Stat.pvBad = 0; } }   // ★[T676] 견줌 셈
   if (_t678o) o.t678 = _t678o;   // ★[T678] 문 그래프 관측(끔이면 칸 없음)
   if (reset) { _walk.steps = 0; _walk.ej = 0; _walk.ejQ = 0; _walk.ejFail = 0; _walk.terrQ = 0; _walk.waterQ = 0; _walk.wallQ = 0; _walk.cut = 0; _walk.ejPids.clear(); }
@@ -11958,7 +11981,8 @@ function tryFurnaceSmelt(player, buildingId) {
 function __testBind() {
   return {
     claims, buildings, players, BUILDING_SIZE, Specialty,
-    _t738Adopt, _t738: () => _t738,   // ★[T738] SoA x·y 증인(`scripts/t738-witness.js` · 읽기 · 부르기만)
+    _t738Adopt, _t738: () => _t738, observers, isPositionActive: (x, y) => isPositionActive(x, y), _t774: () => ({ X: _t774X, Y: _t774Y, n: _t774N, src: _t774Src, ref: _spInc.ref, act: _spInc.act, hit: _t774Stat.hit, miss: _t774Stat.miss, same: _t774Src === activeChunkKeys }),   // ★[T774] 활성 열 증인(읽기)
+      // ★[T738] SoA x·y 증인(`scripts/t738-witness.js` · 읽기 · 부르기만)
     FURNACE_STAGES, FURNACE_KINDS, FURNACE_FUEL_PER_ORE, CHARCOAL_KILN_STAGES, CHARCOAL_KILN_YIELD, CHARCOAL_KILN_WOOD,
     tryFurnaceStart, tryFurnaceAdvance, tryFurnaceSmelt,
     tryKilnStart, tryKilnAdvance, tryKilnBurn,
@@ -13682,10 +13706,11 @@ if ((_wwOn || _wwVerify) && !ZONE.isOcean) {
 //     T461 첫 판이 26존 판에서 걷는 몸이 적을 때 **더 무거워진** 까닭이 그 두 번이었다 — 보고 §3).
 let _wwCut = false;   // ★[T689] `_wwPreOne` 이 읽는 그 틱의 `cut`(forEach 콜백은 인자를 몸 하나만 받는다)
 function _wwPreOne(p) {   // 종전 `_wwPre` 고리 몸통 글자 그대로(`continue` → `return`) — 끔이면 고리가, 켬이면 `forEach` 가 부른다
+  const _si = T774_ACTIVE_COL ? _t774I++ : 0;   // ★[T774] 슬롯 번호(players 차례 — 공간 색인과 같은 차례)
   if (p.handingOff || !p.isNpc || p.simCaravan || p.simWar) return;
   const cut = _wwCut;
   let c = 1;
-  if (!p.canadiaVillage && !_t316WalkAlways(p) && !isPositionActive(p.x, p.y)) c = 0;   // 이동 문의 그 거름(몸이 안 움직인 자리에서)
+  if (!p.canadiaVillage && !_t316WalkAlways(p) && !(T774_ACTIVE_COL ? _t774Act(p, _si) : isPositionActive(p.x, p.y))) c = 0;   // 이동 문의 그 거름(몸이 안 움직인 자리에서)
   else if (p.floor || p.onStairId) c = 2;                                                // 위층·계단 = JS 정본
   else if (cut && p.vx === 0 && p.vy === 0 && _wwIsStill(p)) { c = 3; _streamWalkMul(p); }   // ★[T672 ⓑ] 서 있는 몸 = 뒷일만(개울 메모는 종전처럼 갱신)
   _wwSeq.push(p); _wwCode.push(c);
@@ -13694,6 +13719,7 @@ function _wwPreOne(p) {   // 종전 `_wwPre` 고리 몸통 글자 그대로(`con
 }
 function _wwPre(moveDt) {
   _wwList.length = 0; _wwSeq.length = 0; _wwCode.length = 0;
+  if (T774_ACTIVE_COL) _t774I = 0;
   const cut = T672_WALK_CUT && Number.isFinite(moveDt);                                    // ★[T672 ⓑ] 서 있는 몸 거름(끔이면 안 열린다)
   _wwCut = cut;
   _wwStill.length = 0; _wwStill0.length = 0;
@@ -14802,8 +14828,10 @@ setInterval(() => {
   if (T385_ONE_SWEEP) {
     if (stairCellDirty) rebuildStairCellCache();   // ③ 있음/없음을 재기 전에 캐시를 맞춘다(종전엔 첫 조회가 했다 — 같은 일)
     _stairNone = stairCellCache.size === 0;
+    if (T774_ACTIVE_COL) _t774I = 0;
     const _sweepOne = (p) => {
-      const act = _needAct(p) ? isPositionActive(p.x, p.y) : true;
+      const _si = T774_ACTIVE_COL ? _t774I++ : 0;   // ★[T774] 슬롯 번호(players 차례)
+      const act = _needAct(p) ? (T774_ACTIVE_COL ? _t774Act(p, _si) : isPositionActive(p.x, p.y)) : true;
       _stairStepP(p);
       _fallStepP(p, act);
       _gaugeStep(p);
