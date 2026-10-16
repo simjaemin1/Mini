@@ -3339,6 +3339,50 @@ function _caravanNpcs(c, x, y, tribeId, tribeName, simVid) {
   }
   return { p, escorts };
 }
+// ★★[T775 2026-10-16 · 세션15 · T762 §2-6] **다시 뜬 판 — 길 위 캐러밴 몸은 장부가 말하는 그 자리에 선다**(손잡이 `T775_CARAVAN_RESUME` · '1' 만 켬 · 끔 = main 바이트).
+//   종전: ⓐ 몸은 하루 경계 동기(`_caravanSyncOne`)에서만 선다 — 다시 뜬 판은 첫 경계까지 몸이 없고, 그 사이 귀환을 마친 캐러밴은 **몸 없이 집에 닿는다**(소멸)
+//         ⓑ 선 몸의 장부는 `_t661Anchor` 가 **오늘 · L 0** 에서 연다 — 이틀 전 떠난 캐러밴도 **길 첫 점**에서 선다(다리 중간 · 순간이동의 다른 꼴).
+//   켬: ⓐ 다시 뜬 뒤 첫 틱부터 장부에 든 캐러밴(가는 길 · 귀환 길)마다 몸을 세운다(틱 예산 안 · 길이 아직이면 다음 틱 · 몸 상한에 걸리면 센다 — `_probe.t775Cap`)
+//       ⓑ 그 구간이 오늘 앞에 시작했으면(가는 길 = `departDay` · 귀환 길 = `arriveDay`) 장부의 시작 날을 그날로 두고, 장부 자리 `T.L` = 오늘 경계의 목표 ·
+//          몸 = **`_t661Vis`**(보이는 몸 보간 — 틱 판이 쫓는 그 함수 · 사본 0) 자리에 세운다. 호위는 답압 표본과 같은 꼴(상인 뒤 20px × 차례)로 그 뒤에.
+//       오늘 떠난 몸 · 장 마당 몸(T707) · 이웃 존 몸(T533)은 종전 그대로다(시작 날 = 오늘이면 같은 수).
+const T775_RESUME = process.env.T775_CARAVAN_RESUME === '1';
+function _t775Place(body, c, outbound, p, now) {
+  const T = body._t661, d = state.world.day;
+  const D0 = outbound ? c.departDay : c.arriveDay;
+  if (!(D0 < d)) return;   // 오늘 시작한 구간 = 종전 그대로(첫 점에서 · 같은 수)
+  const D1 = _t661End(body);
+  T.D0 = D0;
+  T.ppd = T.path.len / Math.max(1, D1 - D0);
+  T.L = Math.min(T.path.len, _t661Target(T, d, D1));   // 장부 자리 = 오늘 경계의 그 자리(지나간 구간은 그날그날 이미 답압했다 — 다시 안 찍는다)
+  const at = _t661Vis(body, now);
+  body.prog = at;
+  const players = state.deps.players;
+  const pt = caravanPointAt(T.path, at, { segIdx: 0 });
+  if (p) { p.x = pt.x; p.y = pt.y; p.vx = 0; p.vy = 0; }
+  if (body.escorts) for (let i = 0; i < body.escorts.length; i++) {
+    const e = players.get(body.escorts[i].pid); if (!e) continue;
+    const q = caravanPointAt(T.path, Math.max(0, at - 20 * (i + 1)), { segIdx: 0 });
+    e.x = q.x; e.y = q.y; e.vx = 0; e.vy = 0;
+  }
+  _probe.t775Placed = (_probe.t775Placed || 0) + 1;
+}
+// 다시 뜬 판의 첫 틱부터 — 장부에 든 캐러밴마다 몸 한 번(차례 = `world.caravans` 차례 · 길이 아직이면 그 자리에서 다음 틱 · 다 돌면 다시 안 돈다)
+function _t775Resume(now) {
+  const R = state._t775 || (state._t775 = { i: 0, done: false });
+  if (R.done || !state.world || !state.world.caravans) return;
+  const list = state.world.caravans, bodies = state.caravanBodies;
+  for (; R.i < list.length; R.i++) {
+    const c = list[R.i];
+    if (!c || c._done || bodies.has(c.id) || !(c.state === 'outbound' || c.state === 'inbound')) continue;
+    if (state.xzone && ((c.to && c.to._xz) || (c.from && c.from._xz))) continue;   // 이웃 존 몸은 T533 길이 맡는다
+    if (bodies.size >= CARAVAN_BODY_MAX) { _probe.t775Cap = (_probe.t775Cap || 0) + 1; continue; }   // 몸 상한(E2) — 몸 없이 장부만 간다(센다)
+    const r = spawnCaravanBody(c, now);
+    if (r === 'wait') return;   // 길이 아직 — 다음 틱 같은 자리부터
+    if (r) { _probe.t775Spawned = (_probe.t775Spawned || 0) + 1; if (c.state === 'inbound') _probe.t775Inbound = (_probe.t775Inbound || 0) + 1; }
+  }
+  R.done = true;
+}
 function spawnCaravanBody(c, now, budgetMs) {
   if (state.xzone && ((c.to && c.to._xz) || (c.from && c.from._xz))) return _xzSpawnBody(c, now);   // ★★[T533] 이웃 존이 낀 캐러밴(팔 켬 + 호스트 — 끔이면 이 줄 무동작)
   const fromVil = state.byEcon.get(c.from), toVil = state.byEcon.get(c.to);
@@ -3373,6 +3417,7 @@ function spawnCaravanBody(c, now, budgetMs) {
   body.nomPxMs = body.len / Math.max(1, body.arriveAt - now); // 페이싱 상한(×4)의 기준
   body.escorts = N.escorts;   // ★[convoy 물리 행군] 호위 전사 실체(위 `_caravanNpcs` 가 상인 뒤에 세웠다 — 주석은 그 자리에)
   if (T661_ON) _t661Anchor(body, pts, body.phase);   // ★[T661] 장부는 오늘(econ 날)부터 — 세운 날은 안 움직인다
+  if (T775_RESUME && T661_ON && !_t707Mk) _t775Place(body, c, outbound, p, now);   // ★[T775] 오늘 앞에 시작한 구간 = 장부 자리에 선다(끔 = 이 줄 무동작)
   if (_t707Mk) { const vil = state.byEcon.get(c.to), rec = vil && vil._mkt; body.phase = 'linger'; body.lingerUntil = (rec && rec.cars.has(c.id)) ? rec.end : now + state.dayMs * CARAVAN_LINGER_DAY_FRAC; p.x = pts[0].x; p.y = pts[0].y; _t707Stat.spawnLinger++; }
   state.caravanBodies.set(c.id, body);
   console.log(`[${state.zoneId}] 🐂 캐러밴#${c.id} 출발: ${c.from.name}→${c.to.name} ${c.giveRes}×${Math.round(c.giveAmt)} 호위${c.escort}(실체 ${body.escorts.length}) — 경로 ${pts.length}정점 ${Math.round(body.len)}px ${legDays}게임일(econ d${c.departDay}→d${c.arriveDay})`);
@@ -3590,6 +3635,7 @@ function tickCaravanBodies(now) {
   const bodies = state.caravanBodies;
   const dtMs = Math.min(500, Math.max(1, now - (state._carTickAt || now)));
   state._carTickAt = now;
+  if (T775_RESUME && T661_ON && state.ready) _t775Resume(now);   // ★[T775] 다시 뜬 판 — 첫 경계를 기다리지 않는다(끔 = 이 줄 무동작)
   if (!bodies || !bodies.size) return;
   const { players, isPositionActive, isBlockedByWall } = state.deps;
   for (const body of bodies.values()) {
@@ -6527,6 +6573,7 @@ function probeStats() { return { siteLog: _probe.siteLog.slice(-400), auditN: _p
   pathJobs: _probe.pathJobs, pathSliceMax: _probe.pathSliceMax, pathChunkMax: _probe.pathChunkMax, pathDrop: _probe.pathDrop, pathWait: _probe.pathWait, pathStepNodes: PATH_STEP_NODES,
   routePlain: _probe.routePlain | 0, routeRedigPass: _probe.routeRedigPass | 0, routeRedig: _probe.routeRedig | 0, routeRedigChanged: _probe.routeRedigChanged | 0, pathBootWait: _probe.pathBootWait | 0, t714Yield: _probe.t714Yield | 0, t714Due: _probe.t714Due | 0, walkBuilt: _probe.walkBuilt | 0, walkStraight: _probe.walkStraight | 0, walkFar: _probe.walkFar | 0,   // ★[T578]
   oreCold: _probe.oreCold, oreMs: _probe.oreMs, oreMax: _probe.oreMax,
+  ...(T775_RESUME ? { t775: { placed: _probe.t775Placed | 0, spawned: _probe.t775Spawned | 0, inbound: _probe.t775Inbound | 0, cap: _probe.t775Cap | 0, done: !!(state._t775 && state._t775.done) } } : {}),   // ★[T775] 켬일 때만 칸이 선다(끔 = 종전 글자)
   t620MemoN: _probe.t620MemoN | 0, t620MemoBad: _probe.t620MemoBad | 0, t620MemoFirst: _probe.t620MemoFirst || '',   // ★[T620 ①] 검사용
   t620WfHit: _probe.t620WfHit | 0, t620WfN: _probe.t620WfN | 0, t620WfBad: _probe.t620WfBad | 0, t620Prewarm: _probe.t620Prewarm | 0,
   oreWarm: _probe.oreWarm | 0, oreWarmRows: _probe.oreWarmRows | 0, oreWarmMs: _probe.oreWarmMs | 0, oreAuditN: _probe.oreAuditN | 0, oreAuditBad: _probe.oreAuditBad | 0,   // ★[T620 ②]
