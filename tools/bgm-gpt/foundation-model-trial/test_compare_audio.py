@@ -30,6 +30,22 @@ def fixture(path: Path, amplitude=.05, seconds=5.2, envelope=False):
 
 
 class StaticComparisonTests(unittest.TestCase):
+    def test_full_19p2_second_comparison_preserves_duration_and_static_gain(self):
+        with tempfile.TemporaryDirectory() as folder:
+            base = Path(folder)
+            first, second = base / "first.wav", base / "second.wav"
+            fixture(first, .04, seconds=19.2)
+            fixture(second, .02, seconds=19.2)
+            with patch.object(prep, "PRIVATE_ROOT", base):
+                report = comparison.compare([f"baseline={first}", f"new_score={second}"],
+                                            base / "out", seconds=19.2)
+            self.assertEqual(report["seconds"], 19.2)
+            for row in report["outputs"]:
+                self.assertEqual(row["programme_frames"], 921600)
+                self.assertAlmostEqual(row["decoded"]["integrated_lufs"], -24, delta=.3)
+                self.assertNotIn("source_first4p8s", row)
+            self.assertEqual(len(comparison.decode(base / "out/01.m4a", False, 19.2)), 921600)
+
     def test_common_target_is_lowered_for_every_input_not_individual_limiting(self):
         measurements = [{"integrated_lufs": -40, "true_peak_dbfs": -8},
                         {"integrated_lufs": -20, "true_peak_dbfs": -15}]

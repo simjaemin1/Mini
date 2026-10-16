@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Local-only 4.8s comparisons: static LUFS gain, never compression/AGC/EQ.
+"""Local-only 4.8s or 19.2s comparisons: static gain, no compression/AGC/EQ.
 
 Use explicit labels such as original_reference, codec_only, novel_score and
 historical_baseline. Labels describe the caller's provenance, not a model test.
@@ -33,13 +33,13 @@ def ffmpeg(args: list[str], data: bytes | None = None) -> subprocess.CompletedPr
     return process
 
 
-def decode(path: Path, trim: bool) -> np.ndarray:
+def decode(path: Path, trim: bool, seconds: float = SECONDS) -> np.ndarray:
     arguments = ["-v", "error", "-i", str(path), "-map", "0:a:0", "-vn", "-sn", "-dn"]
     if trim:
-        arguments += ["-t", str(SECONDS)]
+        arguments += ["-t", str(seconds)]
     result = ffmpeg(arguments + ["-ar", str(SR), "-ac", str(CHANNELS), "-f", "f32le", "pipe:1"])
     audio = np.frombuffer(result.stdout, dtype="<f4").reshape(-1, CHANNELS)
-    if not np.all(np.isfinite(audio)) or len(audio) < FRAMES:
+    if not np.all(np.isfinite(audio)) or len(audio) < round(SR * seconds):
         raise ValueError("finite_audio_at_least_4p8s_required")
     return audio
 
@@ -88,13 +88,16 @@ def encode(audio: np.ndarray, path: Path, gain_db: float) -> None:
         "-movflags", "+faststart", str(path)], audio.astype("<f4").tobytes())
 
 
-def compare(items: list[str], output_dir: Path) -> dict:
+def compare(items: list[str], output_dir: Path, seconds: float = SECONDS) -> dict:
+    if seconds not in (4.8, 19.2):
+        raise ValueError("supported_excerpt_is_4p8_or_19p2_seconds")
+    frames = round(SR * seconds)
     parsed = parse_items(items)
     inputs = []
     for label, path in parsed:
         digest = sha256(path)
-        audio = decode(path, trim=True)
-        if len(audio) != FRAMES:
+        audio = decode(path, trim=True, seconds=seconds)
+        if len(audio) != frames:
             raise ValueError("source_excerpt_frame_count_invalid")
         inputs.append({"label": label, "path": path, "sha256": digest,
                        "audio": audio, "measurement": measure(audio)})
@@ -110,18 +113,18 @@ def compare(items: list[str], output_dir: Path) -> dict:
                     path = Path(temporary) / f"attempt{attempt}_{index:02d}.m4a"
                     gain = target - row["measurement"]["integrated_lufs"]
                     encode(row["audio"], path, gain)
-                    decoded = decode(path, trim=False)
+                    decoded = decode(path, trim=False, seconds=seconds)
                     # AAC tail padding is not programme audio; require exact container duration too.
                     probe = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "a:0", "-show_entries",
                         "stream=duration,sample_rate,channels", "-of", "json", str(path)],
                         capture_output=True, check=True, timeout=20)
                     stream = json.loads(probe.stdout)["streams"][0]
-                    if (abs(float(stream["duration"]) - SECONDS) > 1 / SR or int(stream["sample_rate"]) != SR
-                            or int(stream["channels"]) != CHANNELS or len(decoded) > FRAMES + 1023):
+                    if (abs(float(stream["duration"]) - seconds) > 1 / SR or int(stream["sample_rate"]) != SR
+                            or int(stream["channels"]) != CHANNELS or len(decoded) > frames + 1023):
                         raise ValueError("aac_duration_or_decoded_padding_invalid")
                     stats = measure(decoded)
                     results.append({"path": path, "gain_db": gain, "measurement": stats,
-                                    "decoded_frames": len(decoded), "programme_frames": FRAMES})
+                                    "decoded_frames": len(decoded), "programme_frames": frames})
                 excess = max(row["measurement"]["true_peak_dbfs"] - PEAK_MARGIN_DBFS for row in results)
                 attempts.append({"common_target_lufs": target, "max_peak_excess_db": max(0.0, excess)})
                 if excess <= 1e-9:
@@ -140,19 +143,20 @@ def compare(items: list[str], output_dir: Path) -> dict:
                 with os.fdopen(descriptor, "wb") as handle:
                     handle.write(result["path"].read_bytes())
                 outputs.append({"label": source["label"], "source_path": str(source["path"]),
-                    "source_sha256": source["sha256"], "source_first4p8s": source["measurement"],
+                    "source_sha256": source["sha256"], "source_excerpt_measurement": source["measurement"],
+                    **({"source_first4p8s": source["measurement"]} if seconds == 4.8 else {}),
                     "static_gain_db": result["gain_db"], "file": path.name, "sha256": sha256(path),
                     "decoded": result["measurement"], "decoded_frames": result["decoded_frames"],
                     "programme_frames": result["programme_frames"]})
         report = {"schema": "mini.foundation-local-static-lufs-comparison.v1", "status": "ready",
-            "seconds": SECONDS, "sample_rate_hz": SR, "channels": CHANNELS,
+            "seconds": seconds, "sample_rate_hz": SR, "channels": CHANNELS,
             "requested_target_lufs": REQUESTED_LUFS, "actual_common_target_lufs": target,
             "true_peak_ceiling_dbfs": -1.0, "measurement_margin_db": .1, "attempts": attempts,
-            "processing": "first4.8s; 48k stereo conversion; one constant gain per input; AAC192k",
+            "processing": f"first{seconds:g}s; 48k stereo conversion; one constant gain per input; AAC192k",
             "no_compression_AGC_EQ_pitch_time_edits": True, "labels_are_caller_provenance": True,
             "codec_only_is_not_new_music": True, "historical_baseline_is_not_model_input": True,
             "model_inference_or_external_upload": False, "script_sha256": sha256(Path(__file__)),
-            "aac_tail_padding_policy": "container exactly4.8s; record full decoded frames; peak/LUFS measured including codec tail padding",
+            "aac_tail_padding_policy": f"container exactly{seconds:g}s; full decoded frames recorded; peak/LUFS include codec tail padding",
             "outputs": outputs}
         descriptor = os.open(destination / "comparison.json", os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
@@ -166,10 +170,11 @@ def compare(items: list[str], output_dir: Path) -> dict:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--seconds", type=float, choices=(4.8, 19.2), default=4.8)
     parser.add_argument("items", nargs="+")
     args = parser.parse_args()
     try:
-        report = compare(args.items, args.output_dir)
+        report = compare(args.items, args.output_dir, args.seconds)
         print(json.dumps({"status": report["status"], "outputs": len(report["outputs"]),
                           "actual_common_target_lufs": report["actual_common_target_lufs"]}))
         return 0
