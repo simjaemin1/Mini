@@ -1,0 +1,319 @@
+{
+ "days": 1,
+ "wallMs": 3300000,
+ "seed": 1020,
+ "knobs": {
+  "T312_FISH_ACT": "1",
+  "T347_FORAGE_ACT": "1",
+  "T368_FARM_ACT": "1",
+  "T100_FIELD_YIELD": "1",
+  "T227_EVEN": "1",
+  "T423_RATION_ACT": "1",
+  "T466_LOOT_ACT": "1",
+  "T476_PUNITIVE": "1",
+  "T525_CROSS_ZONE": "1",
+  "T441_FORAGE_MARCH": "1"
+ },
+ "p1": {
+  "phase": 1,
+  "day": 3,
+  "villages": 51,
+  "attachedAll": true,
+  "granary": {
+   "cells": 3213,
+   "bad": []
+  },
+  "items": {
+   "items": 6,
+   "tagged": 0,
+   "bad": [],
+   "byItem": {},
+   "eaten": {
+    "crab": 1.1670355722205452,
+    "herring": 1.2818991497705379,
+    "sardine": 0.844716633208553,
+    "anchovy": 0.24690163537135706,
+    "squid": 1.853142384845983,
+    "shrimp": 0.9729170845830232
+   }
+  },
+  "bags": {
+   "bodies": 0,
+   "cells": 0,
+   "bad": 0,
+   "ex": []
+  },
+  "gangs": {
+   "n": 0,
+   "recs": 0,
+   "bad": 0,
+   "ex": []
+  },
+  "pock": {
+   "cells": 0,
+   "recs": 0
+  },
+  "npc": {
+   "bodies": 424,
+   "withLots": 5,
+   "items": 20,
+   "short": 0,
+   "over": 0,
+   "shortEx": [],
+   "overEx": [],
+   "lots": 69,
+   "maxPerItem": 12,
+   "bagSkip": 0
+  },
+  "people": {
+   "bodies": 0,
+   "items": 0,
+   "short": 0,
+   "over": 0
+  },
+  "ground": {
+   "items": 0,
+   "lot": 0,
+   "withLots": 0,
+   "mismatch": 0
+  },
+  "chest": {
+   "n": 3,
+   "cells": 0,
+   "mismatch": 0
+  },
+  "caravans": {
+   "n": 30,
+   "give": 18,
+   "giveBad": 0,
+   "ret": 0,
+   "retBad": 0,
+   "ex": []
+  },
+  "warPacks": {
+   "packs": 0,
+   "bad": 0,
+   "wars": 0
+  },
+  "lots": {
+   "approx": 0,
+   "approxBy": {},
+   "coalesced": 67
+  },
+  "gl": {
+   "attached": 51,
+   "seeded": 238,
+   "seededU": 22801.65485707812,
+   "restored": 0,
+   "t716In": 0,
+   "newLots": 795,
+   "moved": 21,
+   "outRecs": 50,
+   "debtU": 0,
+   "wrappedLate": 2856,
+   "adopted": 0,
+   "drift": 0,
+   "driftU": 0,
+   "cargoIn": 9,
+   "cargoOut": 44,
+   "txRollback": 0,
+   "doors": 336,
+   "doorNoRec": 324,
+   "doorStale": 0,
+   "giveNoRec": 0,
+   "giveNoRecU": 0,
+   "handRecs": 220,
+   "handU": 3.7418280000000004,
+   "pockIn": 0,
+   "pockNew": 0,
+   "pockOut": 0,
+   "pockSeed": 0,
+   "pockDrift": 0,
+   "pockDriftU": 0,
+   "bagIn": 0,
+   "bagNew": 0,
+   "bagOut": 0,
+   "gangIn": 0,
+   "gangOut": 0,
+   "gangSeed": 0,
+   "gangDrift": 0,
+   "gangDriftU": 0,
+   "denIn": 0,
+   "xzOut": 0,
+   "xzIn": 0,
+   "itemTag": 220,
+   "itemTagU": 3.7418280000000004,
+   "itemInU": 6.366612459999992,
+   "itemOutU": 6.366612459999999,
+   "itemEatU": 6.366612459999999,
+   "itemGiveU": 0,
+   "itemSwapU": 0,
+   "itemSwapRecs": 0,
+   "itemCargoU": 0
+  },
+  "size": {
+   "recs": 748,
+   "cells": 252,
+   "bytes": 69773,
+   "maxV": 27,
+   "maxVB": 2504,
+   "maxCell": 11,
+   "maxCellRes": "광산4·fish",
+   "top": [
+    [
+     "fish",
+     132
+    ],
+    [
+     "food",
+     108
+    ],
+    [
+     "crab",
+     72
+    ],
+    [
+     "oyster",
+     72
+    ],
+    [
+     "shrimp",
+     68
+    ],
+    [
+     "seaweed",
+     65
+    ],
+    [
+     "salmon",
+     61
+    ],
+    [
+     "rice",
+     56
+    ]
+   ]
+  },
+  "sizes": [
+   [
+    1,
+    {
+     "recs": 92,
+     "cells": 73,
+     "bytes": 9324,
+     "maxV": 2,
+     "maxVB": 205,
+     "maxCell": 2,
+     "maxCellRes": "광산1·food",
+     "top": [
+      [
+       "food",
+       70
+      ],
+      [
+       "fish",
+       17
+      ],
+      [
+       "meat",
+       5
+      ]
+     ]
+    }
+   ]
+  ],
+  "econDay": 3
+ },
+ "p2": {
+  "phase": 2,
+  "n": 51,
+  "same": 51,
+  "diff": 0,
+  "diffEx": [],
+  "missingSaved": 0,
+  "granary": {
+   "cells": 3213,
+   "bad": []
+  },
+  "items": {
+   "items": 0,
+   "tagged": 0,
+   "bad": []
+  },
+  "gl": {
+   "attached": 51,
+   "seeded": 0,
+   "seededU": 0,
+   "restored": 51,
+   "t716In": 0,
+   "newLots": 0,
+   "moved": 0,
+   "outRecs": 0,
+   "debtU": 0,
+   "wrappedLate": 0,
+   "adopted": 0,
+   "drift": 0,
+   "driftU": 0,
+   "cargoIn": 0,
+   "cargoOut": 0,
+   "txRollback": 0,
+   "doors": 0,
+   "doorNoRec": 0,
+   "doorStale": 0,
+   "giveNoRec": 0,
+   "giveNoRecU": 0,
+   "handRecs": 0,
+   "handU": 0,
+   "pockIn": 0,
+   "pockNew": 0,
+   "pockOut": 0,
+   "pockSeed": 0,
+   "pockDrift": 0,
+   "pockDriftU": 0,
+   "bagIn": 0,
+   "bagNew": 0,
+   "bagOut": 0,
+   "gangIn": 0,
+   "gangOut": 0,
+   "gangSeed": 0,
+   "gangDrift": 0,
+   "gangDriftU": 0,
+   "denIn": 0,
+   "xzOut": 0,
+   "xzIn": 0,
+   "itemTag": 0,
+   "itemTagU": 0,
+   "itemInU": 0,
+   "itemOutU": 0,
+   "itemEatU": 0,
+   "itemGiveU": 0,
+   "itemSwapU": 0,
+   "itemSwapRecs": 0,
+   "itemCargoU": 0
+  },
+  "caravans": {
+   "n": 30,
+   "withCargo": 30,
+   "same": 30,
+   "diff": 0,
+   "ex": []
+  },
+  "metaCaravans": 30,
+  "gangs": {
+   "saved": 0,
+   "live": 0,
+   "same": 0,
+   "diff": 0,
+   "ex": [],
+   "bad": 0
+  }
+ },
+ "saved": {
+  "rows": 51,
+  "ledgers": 51,
+  "metaCaravans": 30,
+  "cargo": 30,
+  "gangs": 0,
+  "gangLots": 0
+ }
+}
