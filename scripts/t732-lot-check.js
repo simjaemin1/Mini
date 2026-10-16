@@ -71,6 +71,12 @@ if (process.env.T732C_PHASE) {
       const out = { phase: 1, day, villages: world.villages.length, attachedAll: world.villages.every((v) => GL.attached(v)) };
       out.granary = GL.check(world.villages, 1e-6);
       out.granary.bad = out.granary.bad.slice(0, 10);
+      //   ★[T768] 품목 불변식(마을마다 품목 레코드 합 = 든 것 − 난 것) · 품목별 장부 합 · 마을이 먹은 품목
+      if (GL.checkItems) {
+        out.items = GL.checkItems(world.villages, 1e-6); out.items.bad = out.items.bad.slice(0, 10);
+        const byIt = {}; for (const v of world.villages) for (const [k, u] of Object.entries(GL.itemSums(v) || {})) if (k[0] !== '*') byIt[k] = +((byIt[k] || 0) + u).toFixed(6);
+        out.items.byItem = byIt; out.items.eaten = GL.eaten();
+      }
       // ★[T748] 원정 짐꾼의 몸 짐 줄(몸 밖) — 짐 칸은 몸 짐 줄이 센다(곁 장부 셈에서 뺀다) · 줄 합 = 짐
       const bag = { bodies: 0, cells: 0, bad: 0, ex: [] };
       const bearer = new Map();
@@ -172,6 +178,7 @@ if (process.env.T732C_PHASE) {
         if (want.P) out.withP = (out.withP || 0) + 1;
       }
       out.granary = GL.check(seen, 1e-6); out.granary.bad = out.granary.bad.slice(0, 10);
+      if (GL.checkItems) { out.items = GL.checkItems(seen, 1e-6); out.items.bad = out.items.bad.slice(0, 10); }   // ★[T768] 재기동 뒤 품목 불변식(든 것 = 복원한 것)
       out.gl = GL.stats();
       // 캐러밴 짐(T728 메타가 같은 날이면 길 위 캐러밴이 돌아온다) — `_t728Restore` 는 붙이기보다 먼저 돈다 · 같은 차례에서 본다(틱이 끼면 짐이 움직인다)
       try {
@@ -280,6 +287,7 @@ function run(phase, extra, upRe, capMs) {
   console.log(`  캐러밴 ${p1.caravans.n}(가는 짐 ${p1.caravans.give} 어긋남 ${p1.caravans.giveBad} · 오는 짐 ${p1.caravans.ret} 어긋남 ${p1.caravans.retBad}) · 전쟁 팩 ${p1.warPacks.packs} 어긋남 ${p1.warPacks.bad}`);
   console.log(`  셈: 근사 ${p1.lots.approx} ${JSON.stringify(p1.lots.approxBy)} · 뭉개기 ${p1.lots.coalesced}`);
   console.log(`  곳간 장부: ${JSON.stringify(p1.gl)}`);
+  if (p1.items) console.log(`  [T768] 품목: 마을·품목 ${p1.items.items} · 품목 실은 단위 ${p1.items.tagged} · 어긋남 ${p1.items.bad.length} · 품목별 ${JSON.stringify(p1.items.byItem)} · 먹은 품목 ${JSON.stringify(p1.items.eaten)} · 재기동 어긋남 ${p2.items ? p2.items.bad.length : '—'}`);
   console.log(`  크기: 레코드 ${p1.size.recs} · 칸 ${p1.size.cells} · 저장 ${(p1.size.bytes / 1024).toFixed(1)}KB · 마을 최대 ${p1.size.maxV}개 ${(p1.size.maxVB / 1024).toFixed(1)}KB · 칸 최대 ${p1.size.maxCell}(${p1.size.maxCellRes})`);
   console.log(`  [T748] 몸 짐 줄: 짐꾼 ${(p1.bags || {}).bodies} · 칸 ${(p1.bags || {}).cells} · 어긋남 ${(p1.bags || {}).bad} · 갱 ${(p1.gangs || {}).n}(레코드 ${(p1.gangs || {}).recs} · 어긋남 ${(p1.gangs || {}).bad}) · 대기 칸 줄 ${(p1.pock || {}).cells}(레코드 ${(p1.pock || {}).recs}) · 짐 칸 뺀 NPC 품목 ${p1.npc.bagSkip}`);
   console.log(`  재기동: 마을 ${p2.n} · 장부 같음 ${p2.same} 다름 ${p2.diff}(대기 칸 줄 실린 마을 ${p2.withP || 0}) · 불변식 어긋남 ${p2.granary ? p2.granary.bad.length : '—'} · 캐러밴 ${JSON.stringify(p2.caravans || null)} · 갱 ${JSON.stringify(p2.gangs || null)}`);

@@ -10,6 +10,7 @@
 //
 //  ① 손잡이 — '1' 하나만 켬 · 끄면 장부가 안 붙고 꺼낸 것은 오늘 것(main 그대로 — 구멍이 그대로 있다는 것도 잰다)
 //  ② 켬 — 진짜 회관 문으로 넣기 → 장부 레코드(그 순간 · 단위 무게 · 접힌 신선도 f0) → 진짜 꺼내기 문 → 대표 품목이 **그 나이째**
+//         ★[T768 · 재민 10-15 ⓑ] → **넣은 품목 그대로**(곰고기를 넣으면 곰고기 · 낱개는 곰고기 열량 · 나이째) — 대표 품목(사슴·들짐승고기)은 econ 몫에서만
 //         · 접힌 신선도를 편다(낱개 = 문 몫 ÷ f0 — 두 번 깎으면 소멸) · 단위 보존(열량 × 신선도 = 꺼낸 단위)
 //  ③ 마을이 먹은 몫 — 오래된 것부터(넣은 시든 고기가 먼저 먹힌다) · 섞인 꺼내기 — 넣은 몫(그 나이) + econ 이 만든 몫(그 순간)
 //  ④ 오래된 것부터 — 두 번 넣은 장부에서 먼저 넣은 것이 먼저 나온다
@@ -101,7 +102,8 @@ if (process.env.T732_SUB === 'zone') {
     out.Aledger = ledger();
     const ga0 = Math.floor(+a.inventory.meat_game || 0);
     out.Awd = withdraw(a, 3);
-    out.A = { inv: Object.assign({}, a.inventory), game: lotsOf(a, 'meat_game'), got: Math.floor(+a.inventory.meat_game || 0) - ga0, ledger: ledger(), note: notes[notes.length - 1] || '' };
+    out.A = { inv: Object.assign({}, a.inventory), game: lotsOf(a, 'meat_game'), got: Math.floor(+a.inventory.meat_game || 0) - ga0, ledger: ledger(), note: notes[notes.length - 1] || '',
+      bear: lotsOf(a, 'meat_bear'), invBear: +(a.inventory.meat_bear || 0) };   // ★[T768] 넣은 품목 그대로
 
     // ── B. 마을이 먹은 몫 — 넣은 뒤 재고를 1.2 로 줄이고(오래된 것부터) 1 단위 꺼낸다 ─────────────────
     VIL.econ.storage[RES] = 0; VIL.econ.storage[RES] = 50;
@@ -112,7 +114,7 @@ if (process.env.T732_SUB === 'zone') {
     VIL.econ.storage[RES] = 1.2;               // NPC 가 먹었다(econ 의 줄이기 — 장부는 오래된 것부터)
     out.Bledger1 = ledger();
     out.Bwd = withdraw(b, 1);
-    out.B = { game: lotsOf(b, 'meat_game') };
+    out.B = { game: lotsOf(b, 'meat_game'), bear: lotsOf(b, 'meat_bear') };
 
     // ── C. 섞인 꺼내기 — 작게 넣고(2) 크게 꺼낸다(3 단위) ─────────────────────────
     VIL.econ.storage[RES] = 0; VIL.econ.storage[RES] = 100;
@@ -120,7 +122,7 @@ if (process.env.T732_SUB === 'zone') {
     give(c, 'meat_bear', 2, 0.5, 2);
     out.Cdep = hall(c, { meat_bear: 2 });
     out.Cwd = withdraw(c, 3);
-    out.C = { game: lotsOf(c, 'meat_game'), inv: Math.floor(+c.inventory.meat_game || 0) };
+    out.C = { game: lotsOf(c, 'meat_game'), inv: Math.floor(+c.inventory.meat_game || 0), bear: lotsOf(c, 'meat_bear'), invBear: +(c.inventory.meat_bear || 0) };
 
     // ── D. 오래된 것부터 — 두 번 넣는다(먼저 10개 f 0.3 · 나흘 전 / 나중 4개 f 0.8 · 하루 전) → 1 단위 꺼낸다 ─────────────
     VIL.econ.storage[RES] = 0; VIL.econ.storage[RES] = 100;
@@ -129,7 +131,7 @@ if (process.env.T732_SUB === 'zone') {
     give(d2, 'meat_bear', 4, 0.8, 1); out.Ddep2 = hall(d2, { meat_bear: 4 });
     out.Dledger0 = ledger();
     out.Dwd = withdraw(d3, 1);
-    out.D = { game: lotsOf(d3, 'meat_game'), ledger: ledger() };
+    out.D = { game: lotsOf(d3, 'meat_game'), ledger: ledger(), bear: lotsOf(d3, 'meat_bear') };
 
     // ── E. 거래소 — 곰고기를 내고 곡식을 받는다(받는 곡식 = 곳간에 먼저 든 시든 곡식 · 오래된 것부터 그 나이째) ─────────────
     const e1 = mkP(); give(e1, 'food', 30, 0.7, 2);
@@ -173,6 +175,7 @@ if (process.env.T732_SUB === 'zone') {
 
     // ── G. 불변식 · 근사 ─────────────
     out.check = GL ? GL.check(vils.map((v) => v.econ)) : null;
+    out.checkItems = (GL && GL.checkItems) ? GL.checkItems(vils.map((v) => v.econ)) : null;   // ★[T768] 품목 불변식
     out.glStats = GL ? GL.stats() : null;
     out.approx = H.Lots.stats().approx - a0;
   } catch (e) { out.err = String(e && e.stack || e); }
@@ -220,12 +223,13 @@ say('\n② 켬 — 회관 넣기 → 장부 레코드 → 꺼내기: 그 나이�
   ok(Array.isArray(led) && led.length === 2 && bear.length === 1 && near(bear[0].u, zOn.Adep, 1e-6) && near(bear[0].f0, 0.5, 1e-3) && bear[0].m === 0.7 && bear[0].w === 0.55 && led[0] === led.find((r) => r.f0 < 1) || (led && led[0].f0 < 1),
     '★★② 장부 — 넣은 곰고기 레코드 하나(단위 = 칸의 실제 증가 · 접힌 신선도 f0 0.5 · 곳간 자리) + econ 몫 레코드(f0 1) · 곰고기가 앞(사흘 전 순간)', JSON.stringify(led));
   pre(zOn.Awd > 2 && zOn.Awd < zOn.Adep, '꺼낸 단위 < 넣은 곰고기 단위(곰고기 레코드에서만 나온다)', `${zOn.Awd} < ${zOn.Adep}`);
-  ok(A.game.length >= 1 && A.game.every((l) => near(l.f, 0.5, 1e-3)), '★★② 꺼낸 사슴·들짐승고기는 **곰고기의 나이째**(f 0.5 · 오늘 것으로 안 바뀐다)', JSON.stringify(A.game));
-  const n = A.game.reduce((s, l) => s + l.n, 0);
-  const unitsBack = n * zOn.kcal.game * 0.5 / D;
-  ok(near(unitsBack, zOn.Awd, 0.02 * zOn.Awd), '★★② 단위 보존 — 나온 낱개의 열량 × 신선도 = 꺼낸 단위(곳간이 환전소가 아니다 · 두 번 깎지 않는다)', `${n.toFixed(4)} × ${zOn.kcal.game} × 0.5 ÷ ${D} = ${unitsBack.toFixed(4)} ≈ ${zOn.Awd}`);
-  ok(A.got >= 2 * Math.floor(zOn.Awd * D / zOn.kcal.game) - 1, '② 접힌 신선도를 편 만큼 낱개가 는다(문 몫 ÷ f0 — 넣은 곰고기 그 몫 그대로)', `받은 낱개 ${A.got}`);
-  ok(/곳간 나이째/.test(A.note), '② 화면이 그렇게 말한다(곳간 나이째 · 가장 늙은 몫 신선도)', A.note.slice(0, 120));
+  // ★[T768 · 재민 10-15 ⓑ] 넣은 물건 그대로 — 곰고기 레코드는 곰고기로(낱개 = 그 품목의 열량 · 나이는 레코드째) · 대표 품목은 econ 몫에서만
+  ok(A.bear.length >= 1 && A.bear.every((l) => near(l.f, 0.5, 1e-3)) && A.game.length === 0, '★★② [T768] 꺼낸 것은 **넣은 곰고기 그대로**(곰고기 · 그 나이 f 0.5 · 오늘 것으로 안 바뀐다) — 대표 품목(사슴·들짐승고기)으로 안 바뀐다', JSON.stringify({ bear: A.bear, game: A.game }));
+  const n = A.bear.reduce((s, l) => s + l.n, 0);
+  const unitsBack = n * zOn.kcal.bear * 0.5 / D;
+  ok(near(unitsBack, zOn.Awd, 0.02 * zOn.Awd), '★★② 단위 보존 — 나온 곰고기 낱개 × 곰고기 열량 × 신선도 = 꺼낸 단위(낱개 환산은 그 품목의 열량 · 곳간이 환전소가 아니다 · 두 번 깎지 않는다)', `${n.toFixed(4)} × ${zOn.kcal.bear} × 0.5 ÷ ${D} = ${unitsBack.toFixed(4)} ≈ ${zOn.Awd}`);
+  ok(Math.floor(A.invBear + 1e-9) === Math.floor(n + 1e-6) && A.got === 0, '② 인벤 = ⌊곰고기 로트 합⌋(접힌 신선도를 편 그 몫) · 사슴·들짐승고기는 안 늘었다(문이 더한 대표 몫이 곰고기로 갈렸다)', `곰고기 ${A.invBear} · 로트 ${n.toFixed(4)} · 사슴 +${A.got}`);
+  ok(/곳간 나이째/.test(A.note) && /넣은 물건 그대로/.test(A.note), '② 화면이 그렇게 말한다(넣은 물건 그대로 · 곳간 나이째 · 가장 늙은 몫 신선도)', A.note.slice(0, 160));
 }
 
 say('\n③ 마을이 먹은 몫(오래된 것부터) · 섞인 꺼내기');
@@ -233,19 +237,19 @@ say('\n③ 마을이 먹은 몫(오래된 것부터) · 섞인 꺼내기');
   const L0 = zOn.Bledger0, L1 = zOn.Bledger1;
   pre(Array.isArray(L0) && L0.length === 2 && L0[0].f0 < 1, '넣은 뒤 장부 — 곰고기(이틀 전 순간 · 앞) + econ 몫', JSON.stringify(L0 && L0.map((r) => [r.f0, +r.u.toFixed(3)])));
   ok(Array.isArray(L1) && L1.length === 1 && L1[0].f0 === 1 && near(L1[0].u, 1.2, 1e-6), '★★③ 마을이 먹었다(재고 1.2) — **오래된 것부터**: 넣은 시든 곰고기가 먼저 먹혔다', JSON.stringify(L1));
-  ok(zOn.B.game.length >= 1 && zOn.B.game.every((l) => l.f === 1), '③ 그래서 꺼낸 것은 econ 몫(지금 순간 — 이 판의 얼린 시계로 f 1)', JSON.stringify(zOn.B.game));
-  const C = zOn.C.game;
-  const half = C.filter((l) => near(l.f, 0.5, 1e-3)), one = C.filter((l) => l.f === 1);
-  ok(half.length >= 1 && one.length >= 1, '★★③ 섞인 꺼내기 — 넣은 몫(곰고기 나이 f 0.5) + econ 몫(f 1) · 각자 제 나이', JSON.stringify(C));
-  const U = (half.reduce((s, l) => s + l.n, 0) * 0.5 + one.reduce((s, l) => s + l.n, 0)) * zOn.kcal.game / zOn.dayKcal;
-  ok(near(U, zOn.Cwd, 0.03 * zOn.Cwd), '③ 단위 보존(섞여도)', `${U.toFixed(4)} ≈ ${zOn.Cwd}`);
+  ok(zOn.B.game.length >= 1 && zOn.B.game.every((l) => l.f === 1) && zOn.B.bear.length === 0, '③ 그래서 꺼낸 것은 econ 몫(대표 품목 · 지금 순간 — 이 판의 얼린 시계로 f 1 · 곰고기 0)', JSON.stringify(zOn.B));
+  const CB = zOn.C.bear, CG = zOn.C.game;
+  ok(CB.length >= 1 && CB.every((l) => near(l.f, 0.5, 1e-3)) && CG.length >= 1 && CG.every((l) => l.f === 1),
+    '★★③ [T768] 섞인 꺼내기 — 넣은 몫은 **곰고기**(그 나이 f 0.5) + econ 몫은 대표 품목(사슴·들짐승고기 f 1) · 각자 제 품목 · 제 나이(오래된 것부터 그 차례)', JSON.stringify({ bear: CB, game: CG }));
+  const U = (CB.reduce((s, l) => s + l.n, 0) * 0.5 * zOn.kcal.bear + CG.reduce((s, l) => s + l.n, 0) * zOn.kcal.game) / zOn.dayKcal;
+  ok(near(U, zOn.Cwd, 0.03 * zOn.Cwd), '③ 단위 보존(섞여도 · 품목마다 그 열량)', `${U.toFixed(4)} ≈ ${zOn.Cwd}`);
 }
 
 say('\n④ 오래된 것부터');
 {
   const L0 = zOn.Dledger0;
   pre(Array.isArray(L0) && L0.length === 3 && L0[0].f0 < L0[1].f0 && L0[0].k < L0[1].k, '장부에 셋 — 먼저(나흘 전 · f 0.3) · 나중(하루 전 · f 0.8) · econ 몫', JSON.stringify(L0 && L0.map((r) => [+r.f0.toFixed(3), +r.u.toFixed(3)])));
-  ok(zOn.D.game.length >= 1 && zOn.D.game.every((l) => near(l.f, 0.3, 1e-3)), '★★④ 작게 꺼내면 먼저 넣은 것(f 0.3)만 나온다', JSON.stringify(zOn.D.game));
+  ok(zOn.D.bear.length >= 1 && zOn.D.bear.every((l) => near(l.f, 0.3, 1e-3)) && zOn.D.game.length === 0, '★★④ 작게 꺼내면 먼저 넣은 것(곰고기 f 0.3)만 나온다 — 넣은 품목 그대로(T768)', JSON.stringify({ bear: zOn.D.bear, game: zOn.D.game }));
   const LD = zOn.D.ledger;
   ok(Array.isArray(LD) && LD.length === 3 && near(LD[1].u, L0[1].u, 1e-9) && near(LD[2].u, L0[2].u, 1e-9), '④ 나중 레코드 · econ 몫은 그대로', JSON.stringify(LD && LD.map((r) => +r.u.toFixed(3))));
 }
@@ -275,6 +279,7 @@ say('\n⑥ 불변식 · 근사');
   ok(zOn.check && zOn.check.bad.length === 0 && zOn.check.cells > 0, '★★⑥ 장부 합 − 빚 = 곳간(감싼 칸 전부)', JSON.stringify(zOn.check && { cells: zOn.check.cells, bad: zOn.check.bad.slice(0, 3) }));
   ok(zOn.glStats && zOn.glStats.doorNoRec === 0, '★⑥ 문이 레코드 없이 넣은 몫 0(넣은 것은 다 사람의 레코드째)', JSON.stringify(zOn.glStats && { doors: zOn.glStats.doors, doorNoRec: zOn.glStats.doorNoRec, moved: zOn.glStats.moved }));
   ok(zOn.approx === 0, '★⑥ 사람 쪽 근사 0 — 꺼낸 것이 맞추기의 "지금 얻은 것"으로 안 잡힌다', `approx ${zOn.approx}`);
+  ok(zOn.checkItems && zOn.checkItems.bad.length === 0 && zOn.checkItems.items > 0, '★★⑥ [T768] 품목 불변식 — 마을마다 장부의 품목 레코드 합 = 든 것 − 난 것', JSON.stringify(zOn.checkItems && { items: zOn.checkItems.items, tagged: zOn.checkItems.tagged, bad: zOn.checkItems.bad.slice(0, 3) }));
   ok(zOn.errs.every((e) => /playerVillageInventory|econ|undefined|null/.test(e)) && zOff.errs.length === zOn.errs.length, '⑥ (랩 마을이라 회관 맨 끝 화면 갱신만 던진다 — 끔 · 켬 같은 수)', `${zOn.errs.length} · ${zOn.errs[0] || ''}`.slice(0, 120));
 }
 
