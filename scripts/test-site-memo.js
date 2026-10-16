@@ -44,7 +44,9 @@ const { seedPaths, ensureSeed } = require('./slicer-seed.js');
 //   · `T230_TERR_HOUSING=0` — 영토가 안 자란다(T342 가 세운 이유 · 아래 arm 주석).
 //   · `T219_HOUSE_TRIGGER=0` — 방아쇠가 헛수고를 먼저 없애지 않는다(`8441adaa` T298 이후 연속 6밤 빨강의 주인).
 //   · `T315_HOUSE_GAP=0` — 간격 18(T41 이 기억을 만든 세계는 거부의 92%가 `<18` 이었다 · `c85eab41` T326 이 15 로 내렸다).
-const PINS = { T230_TERR_HOUSING: '0', T219_HOUSE_TRIGGER: '0', T315_HOUSE_GAP: '0' };
+//   · `T400_BUILD_ACT=0` — ★[T751] 집 = 행위(통나무 10 · `T497_HUT_COST` 2)가 **켬 기본**이 됐다(T537 추신2 ⓐ `5e8092e7` 09-30 · 야간 10-01~ 빨강의 주인 ·
+//     이 상자 bisect: 앞 `e735637d` 244회/9일 · 그 커밋 0회/9일 · main 9회/9일 · main + 이 문 312회/9일). 기억이 태어난 세계는 집이 econ 값으로 서던 세계다.
+const PINS = { T230_TERR_HOUSING: '0', T219_HOUSE_TRIGGER: '0', T315_HOUSE_GAP: '0', T400_BUILD_ACT: '0' };
 // ★★[T383] **씨앗에 제품의 지문을 붙인다.** 로컬 초록 · 밤 빨강이 갈린 까닭이 이것이었다 —
 //   `/tmp/slicer-seed-sitememo-*` 가 09-03 에 만든 **포화 세계**로 남아 있어 로컬(T342 의 19/0)은 그 위에서 쟀고,
 //   밤 러너는 새 씨앗으로 쟀다. 씨앗은 **제품이 바뀌면 다시 길러야** 하는 픽스처다 ⇒ 세계를 정하는 파일 넷의
@@ -252,6 +254,10 @@ const st = (E, k) => (E && E.stages && E.stages[k]) ? E.stages[k] : { p50: 0, p9
       ok(door.test(VS) && PINS[k] === '0' && /\.\.\.PINS,/.test(HS) && /Object\.assign\(process\.env, PINS\)/.test(HS),
         `⑤ [T383] 씨앗과 팔이 **같은 표**로 \`${k}='0'\` 을 준다 — 그리고 제품의 되돌림 문이 **그 글자**다(문이 바뀌면 고정이 헛돈다)`);
     }
+    // ★[T751] 넷째 문은 econ 쪽(`sim/economy-sim.js`)에 있다 — 같은 규약으로 그 글자를 문다.
+    const ES = fs.readFileSync(path.join(ROOT, 'sim', 'economy-sim.js'), 'utf8');
+    ok(/const T400_BUILD_ACT = process\.env\.T400_BUILD_ACT !== '0';/.test(ES) && PINS.T400_BUILD_ACT === '0' && /\.\.\.PINS,/.test(HS) && /Object\.assign\(process\.env, PINS\)/.test(HS),
+      '⑤ [T751] 씨앗과 팔이 **같은 표**로 `T400_BUILD_ACT=\'0\'` 을 준다 — 그리고 econ 의 되돌림 문이 **그 글자**다(문이 바뀌면 고정이 헛돈다)');
   }
 
   // ④ 표지를 놓쳐도 회복하는가 — 안전망 픽스처

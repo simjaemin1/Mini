@@ -35,8 +35,10 @@
       } else {
         ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = col;
         ctx.strokeStyle = 'rgba(0,0,0,0.85)'; ctx.lineWidth = 3;
+        //   ★[T759 2026-10-15] 종료 표식의 그림 글자(깃발 · U+2691)를 걷었다 — 먹선 캐논(이모지 0 · 선 아이콘은 UI 틀에만 · 여긴 세계 캔버스).
+        //     이웃 표기(교전 중 `A 3 : 2 B` · 화면 밖 화살 `3:2`)가 글자뿐이라 글자뿐으로 맞춘다 — 종료는 글(`종료`)과 색이 말한다.
         const txt = (b.phase === 'resolved')
-          ? `⚑ ${b.atk || ''} vs ${b.def || ''} 종료`
+          ? `${b.atk || ''} vs ${b.def || ''} 종료`
           : `${b.atk || ''} ${b.aliveA} : ${b.aliveB} ${b.def || ''}`;
         ctx.strokeText(txt, s.x, s.y - 44); ctx.fillText(txt, s.x, s.y - 44); ctx.textAlign = 'start';
       }

@@ -265,7 +265,14 @@ const CV = path.join(SRV, 'central'); fs.mkdirSync(CV, { recursive: true });
   r = run(['central', '--apply', '--keep-accounts'], 'central\n지운다\n');
   ok(r.rc !== 0 && fs.existsSync(path.join(CV, 'central.db')), '둘째 글자가 "계정만" 이 아니면 안 한다');
   const S3 = st(); S3.containers['durango-central'].state = 'running'; fs.writeFileSync(STATE, JSON.stringify(S3));
+  //   ★[T760] 바로 위 거절 판이 이미 그 초의 백업 폴더를 만들었다 — 도구가 같은 초 둘째에 순번(`<초>.2-central`)을 붙인다(T751 의 기다림 손은 걷었다).
+  //     그 길을 **반드시** 타게 지금부터 4초의 `<초>-central` 자리를 빈 폴더로 먼저 세운다(판이 몇 초에 떨어지든 같은 초 충돌).
+  const tsOf = (ms) => new Date(ms).toISOString().replace(/[-:]/g, '').replace('T', '-').slice(0, 15);
+  const pre = []; for (let k = 0; k < 4; k++) { const d = path.join(BK, tsOf(Date.now() + k * 1000) + '-central'); if (!fs.existsSync(d)) { fs.mkdirSync(d, { recursive: true }); pre.push(d); } }
   r = run(['central', '--apply', '--keep-accounts'], 'central\n계정만\n');
+  const seqDirs = fs.readdirSync(BK).filter((d) => /^\d{8}-\d{6}\.\d+-central$/.test(d));
+  ok(r.rc === 0 && seqDirs.length >= 1, '⑨b ★[T760] 같은 초 백업 자리가 이미 있으면 순번(`<초>.N-central`)으로 비켜 선다 — 멈추지 않는다', `rc=${r.rc} · ${seqDirs.join(' ') || '순번 폴더 없음'}`);
+  for (const d of pre) { try { fs.rmdirSync(d); } catch (e) {} }
   const d2 = new DatabaseSync(path.join(CV, 'central.db'), { readOnly: true });
   const al = d2.prepare("SELECT * FROM players WHERE player_id='alice'").get(), gx = d2.prepare("SELECT * FROM players WHERE player_id='anon_x'").get();
   const cnt = (t) => d2.prepare(`SELECT COUNT(*) n FROM ${t}`).get().n;

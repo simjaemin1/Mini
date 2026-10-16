@@ -62,6 +62,9 @@ say()  { printf '%(%Y-%m-%dT%H:%M:%S%z)T %s\n' -1 "$*" >> "$LOG"; }
 
 state "starting"
 say "===== nightly-run 시작 · TZ=$TZ · base=$(git rev-parse --short HEAD 2>/dev/null || echo '?') ====="
+# ★[T760 · T751 회부 6] 이 상자의 판 — 정규식 유니코드 속성(\p{…})은 Node · ICU · Unicode 판을 따른다.
+#   야간 상자만 10-02 밤에 하네스 둘이 같이 돌았다(글자 무변) — 다음엔 이 한 줄로 가른다. 보고가 머리로 옮긴다.
+say "  [판] $(node -p "'node ' + process.version + ' · icu ' + process.versions.icu + ' · unicode ' + process.versions.unicode + ' · v8 ' + process.versions.v8" 2>/dev/null || echo 'node 없음')"
 
 # ── 오늘 돌 목록 — **나는 안 만든다**. 분할기에게 묻는다(사본 0).
 #   `auto` 를 두 번 부르지 않는다: 한 번 물어 **글자**를 받고, 돌릴 땐 그 글자로 부른다(날짜가

@@ -353,7 +353,9 @@ function makeTerrainAdapter(terrain, ZONE, deps) {
   //   ★[11차] 수식과 장(場) 구성은 server/fertility.js 로 옮겼다 — 셀 지도(build-cell-map.js)가
   //   같은 함수를 써야 게임과 지도가 같은 땅을 보여 준다. 여기 있던 사본은 지웠다.
   let _FF = null;   // { at(x,y) }
+  let _FFArgs = null;   // ★[T753] 마지막으로 깐 상자(중심 · 반경) — 다시 뜰 때 같은 상자를 다시 깐다(`T742_ZONE_KEEP` 메타 이름표 `villages.fertBox`)
   const prepareFert = (ccx, ccy, R) => {
+    _FFArgs = [ccx, ccy, R];
     const VL = require('./village-layout');
     if (!VL.maskEDT) { _FF = null; return; }
     const FERT = require('./fertility');
@@ -465,7 +467,7 @@ function makeTerrainAdapter(terrain, ZONE, deps) {
   };
   // ★★[T585] 개울 — 술어 하나(`server/streams.js isStreamCell` · 존이 `deps.isStreamLocal` 로 넘긴다). 안 넘어오면(자 · 옛 배선) **없다**(키 자체가 없다 → 개울을 보는 자리 전부 무변).
   //   개울은 통행(`isBlocked` 무변 · 건넌다)이고 물(`isWater` 무변 — 둑·논 존닝·물거리장·낚시는 큰 물만 본다)도 아니다.
-  const _ta = { isBlocked, isWater, isRock, isOre, isBridgeCell, oreMinerals, oreMix, forestMult, fert, elev, nearestWaterDist, prepareFert, fertField: () => _FF };
+  const _ta = { isBlocked, isWater, isRock, isOre, isBridgeCell, oreMinerals, oreMix, forestMult, fert, elev, nearestWaterDist, prepareFert, fertField: () => _FF, fertBox: () => _FFArgs };
   if (deps.isStreamLocal) _ta.isStream = (cx, cy) => { const x = px(cx), y = px(cy); if (x < 0 || y < 0 || x >= W || y >= H) return false; return !!deps.isStreamLocal(x, y); };
   return _ta;
 }
@@ -627,6 +629,7 @@ function extractLandParamsApprox(ta, ccx, ccy, layout) {
 //      그 존 단계 ÷ '많음'(0~1 — 옥 `land.jade` 와 같은 눈금) · **바다가 어장권(140셀) 안인 마을만** · 표 줄이 그 존에 없으면 0.
 //   ② `T635_SEA_SPECIES=1` · 같은 바다 마을의 해안 종 비 `seaMix` — T602 해안 표(`seafish.poolOf` — 그 자리 구간의 해역 · 갯가 자리 · 철 무시)의
 //      흔함 가중(`seafish.weightOf` — region-profiles 단계 수 · 새 수 0)을 합 1 로. 해역을 모르면(표 밖 구간) 고르게(그 파일 규약).
+const T711_SHELL_SOURCE = process.env.T711_SHELL_SOURCE === '1';   // ★[T711] 조개 산지 = `jp_s` 바다 마을만(기본 끔 = 종전)
 function _t635Land(ccx, ccy) {
   const shellOn = process.env.T635_SHELL_ORNAMENT === '1', seaOn = process.env.T635_SEA_SPECIES === '1';
   if (!shellOn && !seaOn) return {};
@@ -634,7 +637,12 @@ function _t635Land(ccx, ccy) {
   if (!(seaDistPx(zid, ccx, ccy) <= LAND_SCAN_R * SZ)) return {};   // 바다가 **어장권** 안(물 감쇠 · 자원권과 같은 140셀) — 자염 문턱(30셀)이면 닛폰 0곳
   const out = {};
   const px = ccx * SZ + SZ / 2, py = ccy * SZ + SZ / 2;
-  if (shellOn) {
+  // ★[T711 2026-10-15 · 재민 10-12 T667 판정 B] 조개 팔찌감 산지 = **"조개의 길"의 가공·집산지 — 닛폰 남(세토·규슈 · 구간 `jp_s`) 바다 마을만**.
+  //   손잡이 `T711_SHELL_SOURCE`(기본 끔 = 종전 — 조개 줄이 있는 존의 어장권 안 바다 마을 전부). 켜면 그 마을 자리의 해안 구간이
+  //   `jp_s` 일 때만 산지 단계가 선다 — 구간 읽기는 `seafish.sectionAt`(T588 `SECTIONS` 정본 · 사본 0). 한반도는 교역으로만(T635 그대로).
+  //   실제 서식지(아마미 이남 산호초)는 지도 밖 — 남쪽 존(류큐)이 생기면 그 존이 산지(그때 다시 · `설계/고증_조개팔찌_산지.md`).
+  if (shellOn && T711_SHELL_SOURCE && require('./seafish').sectionAt(zid, px, py) !== 'jp_s') { /* 산지 밖 — shellBangle 칸 없음 */ }
+  else if (shellOn) {
     const RP = require('./region-profiles'), col = RP.COLS[zid];
     const row = RP.NOTES.find((r) => r.id === 'shell_bangle');
     const lv = (row && col && row[col]) ? (RP.LV[row[col]] || 0) : 0;
@@ -6522,7 +6530,12 @@ function onGameTick(now) {
     // ★[T590] 줄어드는 몸 — 누운 몸의 시간 · 걸어 나가는 몸의 걸음(캐러밴 곁 · 같은 마감 정지)
     try { tickBodyExits(now); } catch (e) { console.error(`[${state.zoneId}] 🪦 줄어드는 몸 틱 실패:`, e.message); }
     // P2: 실체 전투 30Hz 스텝 — 캐러밴 직후(설계 위치). 무인 존에서도 진행 중 전투 완주(idle 스킵보다 앞).
-    try { tickWarBodies(now); } catch (e) { console.error(`[${state.zoneId}] ⚔️ 실체 전투 틱 실패:`, e.message); }
+    //   ★★[T755] 켬(현지 자정 창)이면 **창이 열린 동안(머리 → 꼬리)은 전쟁 몸이 쉰다** — 종전 "마감 중 얼림"(위)의 그 뜻이다.
+    //     창 머리에서 econ 날이 오르고(전쟁 몸 하루 몫도 새 날) 전쟁 결단 · 방어 태세는 꼬리(econ 꼬리)에서 선다. 그 사이(한반도 ≤156초) 몸이 걸으면
+    //     **어제 결단으로 오늘 몫을 쓴다**: 실측 — 방어가 태세 결단 전에 응전 기본값으로 나가 들판에 서고, 꼬리에서 버티기가 서자 그 자리에 굳었다
+    //     (공격 대형과 22칸 · 곧은 길 막힘 · 돌격이 날마다 다시 서도 못 푼다 = `test-war-world ⓖ` 켬 빨강). 쉰 걸음은 잃지 않는다 — T681 하루 몫이라
+    //     다음 창 머리(`_t681Flush`)가 그날 남은 몫을 채운다(차례 · 값 그대로 · 끔 = 이 줄 무동작).
+    if (!(T731_ON && state._t731 && state._t731.headDone)) { try { tickWarBodies(now); } catch (e) { console.error(`[${state.zoneId}] ⚔️ 실체 전투 틱 실패:`, e.message); } }
   }
   // ★[곳간② 클라 표시] 물리 재고 델타 방송(1초 스로틀 — 변한 곳간만). 실패해도 틱을 죽이지 않는다.
   try { _granBroadcast(now); } catch (e) { console.error(`[${state.zoneId}] 🏘️ 곳간 재고 방송 실패:`, e.message); }
@@ -6711,7 +6724,7 @@ function _t731Jobs(now, T) {
     if (state.xzone) addH('xzone', () => _xzDayIn());
     if (T681_ON) addH('econ', () => _t681Flush());
     W.P = state.econV2.tickWorldV2Parts(state.world);   // econ 정본 조각 한 벌(`tickWorldV2` 가 부르는 그것 — 조각 손잡이와 무관하게 켬 판은 조각으로만 간다)
-    addH('econ', () => { _econDayFixture(); mute(() => W.P.head()); }, 'econ:head');
+    addH('econ', () => { _econDayFixture(); mute(() => W.P.head()); W.headDone = true; }, 'econ:head');   // ★[T755] 머리 뒤 ~ 꼬리 = 전쟁 몸 쉼(onGameTick)
     addH('life', () => { for (const k in _lifeSub) _lifeSub[k] = 0; for (const k in _lifeSubMax) delete _lifeSubMax[k]; _lifeMax = 0; _lifeMaxName = ''; });
   }
   const _popOne = (vil) => {
@@ -7174,8 +7187,9 @@ function _warFixtureOne(kind, V, U, bd) {
   if (kind === 'assault' || kind === 'auto') { const D = U.econ; mkWar(D, 4); D.storage.weapon = (D.storage.weapon || 0) + 10; } // 본격전 규모(목표배수 역산이 병력을 키움 — 사상·포로 발화)
   if (kind === 'siege') { const D = U.econ; for (const r of ['food', 'fish', 'meat', 'cooked_food', 'vegetable']) if (D.storage[r]) D.storage[r] = 0; U._defPolicy = 'hold'; } // 곳간 바닥+농성 → 봉쇄·항복 경로
   if (kind === 'siegehold') { U.econ.storage.food = (U.econ.storage.food || 0) + 900; U._defPolicy = 'hold'; } // 곳간 넉넉+농성 → 항복 없음 → 팩 소진 철수 경로
+  if (kind === 'assaulthold') { const D = U.econ; mkWar(D, 4); D.storage.weapon = (D.storage.weapon || 0) + 10; U._defPolicy = 'hold'; } // ★[T755] 돌격 + 농성(방어 버티기) — 끔 판에서도 농성 갈래를 세운다(assault 그대로 + 방어 태세만 hold)
   const ok = state.war.warMobilize(V, U, 'trade', bd, state.world.day);
-  if (ok && kind !== 'auto') { const w = state.war.WARS[state.war.WARS.length - 1]; if (w && w.atk === V) w._opPolicy = (kind === 'assault') ? 'assault' : 'siege'; }
+  if (ok && kind !== 'auto') { const w = state.war.WARS[state.war.WARS.length - 1]; if (w && w.atk === V) w._opPolicy = (kind === 'assault' || kind === 'assaulthold') ? 'assault' : 'siege'; }
   state._warFixtureDef = U;
   console.log(`[${state.zoneId}] ⚔️ [FIXTURE=${kind}] ${V.name}(${e.npcs.length}명)→${U.name}(${U.econ.npcs.length}명) 선포 ${ok ? '성공' : '실패(plan 미달)'} · 거리 ${bd | 0}셀`);
 }
@@ -9463,6 +9477,7 @@ function _t620Wf(vil) {
     }
   }
   else vil._wf = _lifeVL().waterEDT(state.ta, b[0] - 32, b[1] - 32, b[2] + 32, b[3] + 32);
+  if (vil._wf) Object.defineProperty(vil._wf, '_t753B', { value: b, writable: true, configurable: true });   // ★[T753] (안 세는 칸 — 마을 칸 해시 · 다른 칸 무변) 이 EDT 를 만든 영토 상자 — 다시 뜰 때 같은 상자로 다시 만든다(`T742_ZONE_KEEP` 메타 이름표 `villages.wfBox`)
   return vil._wf;
 }
 function _lifeSiteFilters(vil, M) {   // ★[T620 ①] `M` = 한 번의 집터 찾기 동안만 사는 셀 술어 메모(`_t620SiteMemo`) — 없으면 종전 그대로
@@ -12416,6 +12431,7 @@ function _starvedToday() { const out = _evStarved.slice(); _evStarved.length = 0
 function _scanEventsDaily() { const g = _scanEventsSteps(); while (!g.next().done); }   // ★[T698] 몸통은 아래 발생기 하나(끔 = 끝까지 한 번에 · 종전 그대로)
 function* _scanEventsSteps() {
   if (!state.ledger) return;
+  if (state._e2eShortHold && state._e2eShortHold.size) _e2eShortHoldApply();   // ★[T755] 테스트 전용 부족 픽스처의 "설 때까지"(`__e2eForceShortage` 가 걸었을 때만 · 운영 = 빈 칸)
   const t0 = Date.now();
   try { _noteTradeDays(state.world); } catch (e) {}   // ★[T577 ④] 마지막 교역일 — 장부와 같은 하루 경계
   const _x = { caravanDelays: _caravanDelaysToday(), builds: _buildsToday(),
@@ -12912,6 +12928,10 @@ function __e2eForceShortage(vid, skip) {
   //   실제로 `wood 0→1.55` 인 판에서 30회를 걸어도 게시판이 비어 있었다.
   //   부족의 **정의**(재고 < 소비EMA×SHORT_DAYS)는 그대로 지키면서 시세만 온전하게 둔다.
   v.storage[best.r] = +(thr * 0.9).toFixed(3);
+  //   ★★[T755] **상황으로 건다 — 값이 아니라.** 문턱 바로 아래(0.9)로 내려도 장부가 읽기 전에 그날 마을 결산(생산 · 생활층)이 다시 채우면
+  //     래치가 안 선다(실측: 나무 3.2 → 다음 판 6.6~44 · 끔 · 켬 둘 다 — 켬은 생활층이 사건 장부 앞이라 더 자주). ⇒ 그 품목의 의뢰가 **설 때까지**
+  //     장부가 읽기 직전마다 같은 값 아래로 다시 둔다(그 아래면 손대지 않는다 · 의뢰가 서면 놓는다 · 테스트 전용 `E2E_GIVE` 문 안의 손 · 새 수 0).
+  (state._e2eShortHold || (state._e2eShortHold = new Map())).set((vid | 0) + ':' + best.r, { vid: vid | 0, item: best.r, val: v.storage[best.r] });
   // ★★[2026-08-26 · B-1 물리 상한 이후] 잉여가 **있기만** 해서는 의뢰가 안 선다 —
   //   이제 마을은 **전액 갚을 수 있을 때만** 건다(못 갚으면 축소하거나 안 건다).
   //   이 픽스처의 목적은 "게시판 납품 흐름을 실화면으로 재는 것"이지 마을 살림 형편을 재는 게
@@ -12922,6 +12942,15 @@ function __e2eForceShortage(vid, skip) {
   return { ok: true, vid: vid | 0, name: vil.name, item: best.r, ema: +best.e.toFixed(3), thr: +thr.toFixed(3),
     before: +before.toFixed(3), after: v.storage[best.r], day: state.world.day | 0,
     payWith: best.sur, payStock: v.storage[best.sur], lockedRew: [...lockedRew] };
+}
+
+function _e2eShortHoldApply() {   // ★[T755] 장부가 읽기 직전 — 의뢰가 선 품목은 놓고, 아직이면 픽스처 값 아래로(그 아래면 그대로)
+  for (const [k, h] of [...state._e2eShortHold]) {
+    const vil = state.byDbId && state.byDbId.get(h.vid), v = vil && vil.econ;
+    const up = ((state.ledger.board(h.vid)) || []).some((r) => r.item === h.item);
+    if (!v || up) { state._e2eShortHold.delete(k); continue; }
+    if ((+(v.storage[h.item]) || 0) > h.val) v.storage[h.item] = h.val;
+  }
 }
 
 // ★★[T50 2026-09-02] 테스트 전용 — 세계의 "일" 픽스처.
@@ -12979,6 +13008,15 @@ function t742Bind(name, get, set) {
 //   번호는 앞으로만(겹친 번호 0) · 셈은 그대로. 진행 중 전쟁 자체(`_warWars`)는 교전 몸에 묶여 싣지 않는다(회부).
 t742Bind('world.warSeq', () => (state.world ? state.world._warSeq : null), (v) => { if (state.world && Number.isFinite(+v)) state.world._warSeq = Math.max(state.world._warSeq || 1, +v | 0); });
 t742Bind('world.warStats', () => (state.world ? state.world._warStats : null), (v) => { if (state.world && v && typeof v === 'object') state.world._warStats = v; });
+//   ★★[T753] 비옥도 장 `_FF` — 마을마다 갈아 끼우는 **하나**라 부팅 뒤엔 마지막으로 깐 마을 상자만 남는다(위 T237 주석). 새 세계는 시딩 루프의
+//   마지막 마을(농촌22) 상자를 쥔 채 돌고, 다시 뜬 세계는 시딩을 안 하니 장이 없다(중립 0.5) ⇒ 그 마을 영토 늘리기의 후보 점수(`fertOf`)가 갈렸다
+//   (T745 가상 시계 224 날 · 농촌22 영토 60 칸 중 38 칸). 장 자체는 지형에서 다시 셈이라 **상자(중심 · 반경)만** 싣고 같은 함수로 다시 깐다.
+t742Bind('villages.fertBox', () => (state.ta && state.ta.fertBox ? state.ta.fertBox() : null), (a) => { if (Array.isArray(a) && a.length === 3 && state.ta && state.ta.prepareFert) state.ta.prepareFert(a[0], a[1], a[2]); });
+//   ★★[T753] 물거리 EDT `vil._wf` — 마을마다 **처음 쓸 때의 영토 상자**(±32)로 한 번 만들고, 영토가 자라도 버리지 않는다(무효화는 `_terrBackfillOne` 한 곳).
+//     안 멈춘 판은 그 묵은 상자를 계속 쓰는데 다시 뜬 판은 `_wf` 가 비어 **지금 상자**로 새로 만든다 → 상자 가장자리 근처 물거리(`wd < 99` 벌점)가 달라
+//     집터 점수가 갈린다(T745 가상 시계 225 날 · 어촌2 집터 자리). 값은 지형 + 상자만의 함수 → 상자만 싣고 다시 뜰 때 같은 상자로 다시 만든다(새 수 0).
+t742Bind('villages.wfBox', () => { const o = {}; for (const v of state.villages || []) if (v && v.dbId != null && v._wf && v._wf._t753B) o[v.dbId] = v._wf._t753B; return o; },
+  (o) => { if (!o || typeof o !== 'object' || !state.ta) return; for (const id of Object.keys(o)) { const v = state.byDbId && state.byDbId.get(+id), b = o[id]; if (!v || !Array.isArray(b) || b.length !== 4) continue; v._wf = _lifeVL().waterEDT(state.ta, b[0] - 32, b[1] - 32, b[2] + 32, b[3] + 32); if (v._wf) Object.defineProperty(v._wf, '_t753B', { value: b.slice(), writable: true, configurable: true }); v._t620Wf = null; } });
 function _t742MetaOut() {
   const o = Object.assign({}, _t742Pend || {});   // 아직 안 걸린 이름은 읽은 그대로 다시 싣는다(저장이 먼저 와도 잃지 않게)
   for (const [n, r] of _t742Reg) { try { o[n] = _t740Enc(r.get()); } catch (e) {} }

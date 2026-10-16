@@ -111,7 +111,7 @@ function windowContract(R) {
   const t0 = Date.now();
   while (wins.length < WINDOWS && Date.now() - t0 < DAY_MS * (WINDOWS + 2)) await sleep(500);
   killAll();
-  ok(!!bootLine, '[전제] 켬 판 부팅 증인(마을 날을 시계에서)', bootLine ? bootLine.slice(bootLine.indexOf('🕛'), bootLine.indexOf('🕛') + 80) : '없음');
+  ok(!!bootLine, '[전제] 켬 판 부팅 증인(마을 날을 시계에서)', bootLine ? bootLine.slice(bootLine.indexOf('[T731]'), bootLine.indexOf('[T731]') + 80) : '없음');   // ★[T760] 자르는 표식 = 고정 글자 `[T731]`(제품 로그의 🕛 는 그대로 · 판정 자리 이모지 0)
   ok(wins.length >= WINDOWS, `[전제] 창 증인 ${WINDOWS}개`, wins.length);
   for (const R of wins.slice(0, WINDOWS)) {
     const bad = windowContract(R);

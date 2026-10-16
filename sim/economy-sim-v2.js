@@ -1915,9 +1915,14 @@ const WEATHER_KINDS = [
 ];
 function tickWeather(world, day) {
   // v2 r7: 마을마다 독립 phase로 다양화 — 좌표를 seed offset으로 사용해 동조화 방지.
-  for (let i = 0; i < world.villages.length; i++) {
-    const v = world.villages[i];
-    if (v._weather && v._weather.untilDay >= day) continue;
+  for (let i = 0; i < world.villages.length; i++) _weatherRollOne(world.villages[i], day);
+}
+// ★[T761] 마을 하나의 날씨 굴림(종전 `tickWeather` 고리 몸통 그대로 — 끔 = 고리가 이 함수를 차례대로 부른다 · 같은 글자 · 같은 차례)
+//   켬(`T761_LOCAL_CLOCKS` 의 `wx`)이면 머리에서 안 굴리고 마을 조각(`P.village` — T731 켬이면 그 마을 현지 자정)에서 굴린다.
+const T761_WX = !!(((() => { try { return require('../server/zone-config'); } catch (e) { return null; } })() || {}).T761_CLOCKS || {}).wx;
+function _weatherRollOne(v, day) {
+  {
+    if (v._weather && v._weather.untilDay >= day) return;
     // 마을마다 다른 phase로 trigger 결정 — index 기반 분산
     if (v1.useVillageStream) v1.useVillageStream(v);   // ★[T731] 켬 = 그 마을 흐름(끔 = 무동작)
     const triggerRoll = v1.srand();
@@ -1970,12 +1975,13 @@ function tickWorldV2Parts(world) {
       if (_t707On(world)) settleMarketsV2(world);   // ★[T707] 어제 선 장의 떠날 때 정산 — 날을 올린 **바로 뒤**(마을 틱 앞 · 교역 기록의 날 = 장부에 든 날 · 끔 = 이 줄 무동작)
       v1.processEvents(world, world.day);
       // DEBUG flags — 각 효과 on/off
-      if (world._dbg?.weather !== false) tickWeather(world, world.day);
+      if (world._dbg?.weather !== false && !T761_WX) tickWeather(world, world.day);   // ★[T761] 켬(wx) = 마을 조각에서
       if (world._dbg?.yearShock !== false) tickYearShock(world, world.day);
       season = seasonOf(world.day);
       useSeason = world._dbg?.season !== false;
     },
     village(v) {
+      if (T761_WX && world._dbg?.weather !== false) _weatherRollOne(v, world.day);   // ★[T761] 켬(wx) = 그 마을 조각에서 그 마을 날씨를 굴린다(씨 = T731 마을 흐름 · 끔 = 무동작)
       if (v1.useVillageStream) v1.useVillageStream(v);   // ★[T731] 켬 = 이 마을의 일은 이 마을 흐름으로(끝에서 세계 흐름으로 돌려준다 · 끔 = 무동작)
       try { _villageBody(v); } finally { if (v1.useVillageStream) v1.useVillageStream(null); }
     },

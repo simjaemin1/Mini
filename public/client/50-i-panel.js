@@ -465,10 +465,12 @@ function itemKo(k) {
   //   종전엔 누른 뒤에도 버튼이 그대로 살아 "자동 부활 없음 — 직접 선택해야 합니다" 를 띄웠다 —
   //   깨어남은 서버가 정한 초(T88: 기본 + 거리 ÷ 이속) 뒤인데 화면은 **아직 안 골랐다**고 말한 셈이라 사람은 또 눌렀다.
   //   ⇒ 누르면 버튼을 닫고, 서버의 `down_wake`(남은 ms · 자리 이름)가 오면 초를 센다. 규칙은 안 바꾼다(말만).
+  //   ★[T759 2026-10-15] 머리의 그림 글자(모래시계 · U+23F3)를 걷었다 — 먹선 캐논(이모지 0). 같은 칸의 이웃 줄(쓰러졌다 … · 구조를 기다리는 중 …)이
+  //     글자뿐이라 글자뿐으로 맞춘다. 말은 그대로(기다림은 글이 이미 말한다).
   function _downWaitText() {
-    if (!myDownWakeAt) return myDownChosen ? '⏳ 골랐다 — 서버의 답을 기다린다…' : '';
+    if (!myDownWakeAt) return myDownChosen ? '골랐다 — 서버의 답을 기다린다…' : '';
     const s = Math.max(0, Math.ceil((myDownWakeAt - performance.now()) / 1000));
-    return `⏳ 약 ${s}초 뒤 ${myDownWakeName || '고른 자리'}에서 깨어난다 — 기다리면 된다(다시 누를 것 없다)`;
+    return `약 ${s}초 뒤 ${myDownWakeName || '고른 자리'}에서 깨어난다 — 기다리면 된다(다시 누를 것 없다)`;
   }
   function _renderDownWait() {
     const optBox = document.getElementById('downOptions');

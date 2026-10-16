@@ -222,7 +222,10 @@ console.log('\n=== [T66] 화면 규칙 B — 이모지 0 · 색은 토큰 하나
   const CLI = path.join(ROOT, 'public', 'client');
   const files = fs.readdirSync(CLI).map((f) => ['client/' + f, stripJs(fs.readFileSync(path.join(CLI, f), 'utf8'))]);
   files.push(['index.html', fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8').replace(/<!--[\s\S]*?-->/g, '')]);
-  const EMO = /\p{Extended_Pictographic}/gu;
+  // ★[T751] `g` 를 뺐다 — 전역 정규식의 `.test()` 는 `lastIndex` 를 들고 다녀 **다음 파일**을 그 자리부터 훑는다
+  //   (앞 파일에서 맞으면 뒤 파일의 앞부분을 건너뛴다 · `client/35-x-war.js` 의 ⚑ 가 그렇게 목록에서 빠졌다). 자를 조인다(느슨 0).
+  //   ★[T760 · PM 정함] 정의는 `lib-emoji.js` 한 벌(린트와 같은 함수) — 기본 표시가 이모지인 코드 포인트만. ★ · ⚑ 같은 글자 기호는 화면에 써도 된다.
+  const { EMOJI: EMO } = require('./lib-emoji');
   const emoHits = files.filter(([, t]) => EMO.test(t)).map(([f]) => f);
   ok(emoHits.length === 0, '★★⑫ 클라 소스에 **이모지 0**(UI 틀 · 예외 목록 0)',
      emoHits.length ? emoHits.join(' · ') : `${files.length}개 파일 전부`);

@@ -114,11 +114,16 @@ const ROUTE_CACHE = RC0 === 'off' ? null : RC0;
 // ★[T745] `--vclock` — 아이 존을 가상 시계(`scripts/t745-vclock.js`)로 띄운다(판 조건은 그대로 · 시간만 하나로). 지문 · 견줌 문법은 같다.
 //   손잡이가 아니라 자 옵션이다(제품 무변). 실제 시계 기준선과 견주면 econ 이 같은지가 곧 "가상 시계가 econ 을 안 바꾼다"의 증인이다.
 const VCLOCK = A.includes('--vclock');
+// ★[T754] 마을 칸 지문 — 서버 마을 칸(`state.villages[i].*` · econ 밖 · Map · Set 풀어서)을 날마다(`scripts/t740-side-hook.js` · T740 · T745 문법).
+//   가상 시계 판에서만 바이트 결정론이라(실제 시계 판은 2 날부터 흔들린다 — T745 §2) `--vclock` 이면 기본으로 켠다 · `--side off` 로 끈다.
+//   기준선에 `side` 가 있으면 견주기도 그 칸까지 본다(첫 갈림 날 · 그날 갈린 칸).
+const SIDE = VCLOCK && opt('--side', 'on') !== 'off';
 
 function runOne(dir, seed, days, dumpDay) {
   return new Promise((resolve) => {
     const env = Object.assign({}, process.env, COND, { SBC_HOOK: '1', T577_DIR: dir, T577_TAG: 'sbc', T577_PAR: '1',
-      NODE_OPTIONS: ((VCLOCK ? `--require ${path.join(__dirname, 't745-vclock.js')} ` : '') + (process.env.NODE_OPTIONS || '') + ` --require ${__filename}`).trim() });
+      NODE_OPTIONS: ((VCLOCK ? `--require ${path.join(__dirname, 't745-vclock.js')} ` : '') + (process.env.NODE_OPTIONS || '') + ` --require ${__filename}`
+        + (SIDE ? ` --require ${path.join(__dirname, 't740-side-hook.js')}` : '')).trim() });
     if (VCLOCK) env.T745_VCLOCK = '1';   // ★[T745] 가상 시계 갈래(아이 존만 · 프리로드 맨 앞 — 벽시계 · 타이머를 econ 날에 묶는다)
     if (ROUTE_CACHE) env.T699_ROUTE_CACHE = ROUTE_CACHE; else delete env.T699_ROUTE_CACHE;
     if (dumpDay) env.SBC_DUMP_DAY = String(dumpDay);   // 없으면 바깥 env 의 SBC_DUMP_DAY 를 그대로 넘긴다
@@ -126,6 +131,27 @@ function runOne(dir, seed, days, dumpDay) {
     const ch = spawn(process.execPath, [path.join(__dirname, 't577-server-run.js'), String(days), String(seed)], { cwd: ROOT, env, stdio: 'ignore' });
     ch.on('exit', (code) => resolve({ seed, code, sec: Math.round((Date.now() - t0) / 1000) }));
   });
+}
+//   마을 칸 지문 줄이기: 날마다 [날 · 그날 전체 sha1 12 · 칸마다 sha1 8(칸 차례 = keys)] — 칸 하나는 마을 51 의 6자 해시를 이은 줄(t740-side-hook)
+function sideCondense(S) {
+  const keys = [...new Set(S.days.flatMap((r) => Object.keys(r.f)))].sort();
+  const days = S.days.map((r) => { const hs = keys.map((k) => H(r.f[k] || '∅', 8)); return [r.d, H(hs.join(''), 12), hs]; });
+  return { names: S.names, keys, days };
+}
+function sideCompare(o, b, n) {   // → null(같음) | { day, fields: [칸 이름] }
+  if (!o || !b) return { skip: true };
+  const bm = new Map(b.days.map((r) => [r[0], r])), ok = new Map(o.keys.map((k, i) => [k, i])), bk = new Map(b.keys.map((k, i) => [k, i]));
+  let cmpd = 0;
+  for (const r of o.days) {
+    if (r[0] > n) break;
+    const q = bm.get(r[0]); if (!q) continue; cmpd++;
+    if (r[1] === q[1] && o.keys.length === b.keys.length) continue;
+    //   한쪽 판에 아예 안 선 칸(그 판 날 동안 어느 마을도 그 칸을 안 가짐 — 짧은 판)은 '없음'(∅)으로 견준다 = 그날 칸이 없는 판의 값과 같다
+    const E8 = H('∅', 8);
+    const ks = [...new Set([...o.keys, ...b.keys])].filter((k) => (ok.has(k) ? r[2][ok.get(k)] : E8) !== (bk.has(k) ? q[2][bk.get(k)] : E8));
+    if (ks.length) return { day: r[0], fields: ks, cmpd };
+  }
+  return { same: true, cmpd };
 }
 async function runSet(dir, dumpDay) {
   fs.mkdirSync(dir, { recursive: true });
@@ -142,6 +168,9 @@ async function runSet(dir, dumpDay) {
     if (!run || !fp) { out[s] = null; continue; }
     const strip = Object.assign({}, run); delete strip.env; delete strip.days;
     out[s] = { eight: run.eight, dissolved: run.dissolved, empty: run.empty, runHash: H(JSON.stringify(strip), 16), names: fp.names, days: fp.days, dump: fp.dump };
+    if (SIDE) { try { out[s].side = sideCondense(JSON.parse(fs.readFileSync(f + '.t740.json', 'utf8'))); } catch (e) { out[s].side = null; } }
+    //   ★[T754] 판 DB(+WAL · 400 날 판 하나 1~2 GB)는 지문을 다 읽은 뒤 지운다(가상 시계 · 마을 칸 판만 — 종전 판은 종전 그대로)
+    if (SIDE) for (const x of fs.readdirSync(dir)) if (/^sbc-\d+\.db(-wal|-shm)?$/.test(x)) { try { fs.unlinkSync(path.join(dir, x)); } catch (e) {} }
   }
   return { sec, out, per };
 }
@@ -153,11 +182,14 @@ const R = await runSet(tmp);
 console.log(`  판 모두 ${R.sec}초`);
 if (MAKE) {
   const seeds = {};
-  for (const s of SEEDS) { const o = R.out[s]; if (!o) { console.log(`  ✗ 시드 ${s} 판 실패`); process.exit(2); } seeds[s] = { eight: o.eight, dissolved: o.dissolved, empty: o.empty, runHash: o.runHash, names: o.names, days: o.days }; }
+  for (const s of SEEDS) { const o = R.out[s]; if (!o) { console.log(`  ✗ 시드 ${s} 판 실패`); process.exit(2); } seeds[s] = { eight: o.eight, dissolved: o.dissolved, empty: o.empty, runHash: o.runHash, names: o.names, days: o.days };
+    if (SIDE) { if (!o.side) { console.log(`  ✗ 시드 ${s} 마을 칸 지문 없음`); process.exit(2); } seeds[s].side = o.side; } }
   let head = ''; try { head = require('child_process').execSync('git rev-parse --short=8 HEAD', { cwd: ROOT, encoding: 'utf8' }).trim(); } catch (e) {}
   const doc = { made: new Date().toISOString().slice(0, 10), head, days: DAYS, seeds: SEEDS, cond: COND, clock: 'VILLAGE_DAY_MS=250(t577 기본)' + (VCLOCK ? ' · 가상 시계(T745 --vclock)' : ''), sec: R.sec,
-    how: `node scripts/server-baseline-check.js --make ${MAKE} --days ${DAYS} --seeds ${SEEDS.join(',')}`,
-    note: '날 지문 = [scanDay 날 · econ world.day · 그날 전체 sha1 12 · 마을마다 칸 넷(st·pp·hs·tr) sha1 4자리씩]', byseed: seeds };
+    how: `node scripts/server-baseline-check.js --make ${MAKE} --days ${DAYS} --seeds ${SEEDS.join(',')}${VCLOCK ? ' --vclock' : ''}${VCLOCK && !SIDE ? ' --side off' : ''}`,
+    note: '날 지문 = [scanDay 날 · econ world.day · 그날 전체 sha1 12 · 마을마다 칸 넷(st·pp·hs·tr) sha1 4자리씩]'
+      + (SIDE ? ' · 마을 칸 지문(side) = [날 · 그날 전체 sha1 12 · 칸마다 sha1 8(차례 = keys)] — 칸 = 서버 마을 칸(Map · Set 풀어서 · 마을 51 의 6자 해시를 이은 줄 · t740-side-hook)' : ''),
+    vclock: VCLOCK, side: SIDE, byseed: seeds };
   fs.writeFileSync(MAKE, JSON.stringify(doc));
   for (const s of SEEDS) { const e = seeds[s].eight; console.log(`  시드 ${s}: 인구 ${e.pop} · 소멸 ${e.dead}/${e.ever} · 무기Q ${e.weapQ} · 확장 ${e.expand} · 게시 ${e.board} · 도구Q ${e.toolQ} · 보존 ${e.preserve} · 곡물 ${e.grain} · 해체 ${seeds[s].dissolved} · 빈 ${seeds[s].empty} · 날 ${seeds[s].days.length}`); }
   console.log(`\n→ ${MAKE} (${fs.statSync(MAKE).size.toLocaleString()} B)`);
@@ -179,7 +211,12 @@ for (const s of SEEDS) {
   const full = DS >= base.days;
   const endSame = full ? (o.runHash === b.runHash && JSON.stringify(o.eight) === JSON.stringify(b.eight)) : null;
   if (fd == null && o.days.length < Math.min(DS, b.days.length)) fd = o.days.length;   // 판이 짧게 끝났다
-  if (fd == null && endSame !== false) { console.log(`  ○ 시드 ${s}: 날 지문 ${n}일 같음${full ? ` · 판 JSON · 여덟 수 같음(인구 ${o.eight.pop})` : ' (짧은 판 — 앞 날만)'}`); res[s] = { same: true, days: n }; continue; }
+  //   ★[T754] 마을 칸 지문(기준선에 있고 이 판이 가상 시계 · 마을 칸 판일 때)
+  const sc = (b.side && SIDE) ? sideCompare(o.side, b.side, DS) : null;
+  if (sc && sc.day != null) { bad++; console.log(`  ✗ 시드 ${s}: econ 날 지문 ${fd == null ? n + '일 같음' : '날 ' + o.days[fd][0] + ' 갈림'} · 마을 칸 첫 갈림 = 날 ${sc.day} · 칸 ${sc.fields.length} — ${sc.fields.slice(0, 8).join(' · ')}${sc.fields.length > 8 ? ' …' : ''}`);
+    res[s] = { same: false, sideDay: sc.day, sideFields: sc.fields, econDay: fd == null ? null : o.days[fd][0] }; if (!firstBad || sc.day < firstBad.day) firstBad = { seed: s, day: sc.day }; continue; }
+  const sideTxt = sc ? (sc.same ? ` · 마을 칸 지문 ${sc.cmpd}일 같음` : ' · 마을 칸 지문 없음(판)') : '';
+  if (fd == null && endSame !== false) { console.log(`  ○ 시드 ${s}: 날 지문 ${n}일 같음${full ? ` · 판 JSON · 여덟 수 같음(인구 ${o.eight.pop})` : ' (짧은 판 — 앞 날만)'}${sideTxt}`); res[s] = { same: true, days: n }; continue; }
   bad++;
   if (fd == null) { console.log(`  ✗ 시드 ${s}: 날 지문 ${n}일은 같은데 판 끝이 다르다(판 JSON ${o.runHash} / ${b.runHash} · 인구 ${o.eight.pop} / ${b.eight.pop})`); res[s] = { same: false, end: true }; continue; }
   const od = o.days[fd], bd = b.days[fd];

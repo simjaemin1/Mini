@@ -61,6 +61,10 @@ const putHarvest = (v, n, mul) => {
 //   코드는 멀쩡했는데 **자가 틀렸다**). 순서를 바꾸면 그 함정이 구조적으로 사라진다.
 const codeOf = (src) => src.split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n')
   .replace(/\/\*[\s\S]*?\*\//g, ' ');
+// ★[T751 · T635 `a6e7b1e3` 10-04] 대체 게이트 셋째 절 **뒤의 몸** — 종전 `) addProduce(jdef.output, baseAmt);` 한 줄이
+//   `) { if (T635_SEA_SPECIES … seaMix) _t635SeaProduce(…); else addProduce(jdef.output, baseAmt); }` 로 나뉘었다.
+//   느슨하게 풀지 않는다: 셋째 절 · 바다 갈래 · `else` 종전 줄 · 닫는 괄호를 **각각 그 꼴로** 문다(주석 뺀 판에서도 같은 꼴).
+const T635_GATE_BODY = /&& !\(npc\.currentJob === 'lumberjack' && woodActOn\(v\)\)\) \{[ \t]*\n\s*if \(T635_SEA_SPECIES && npc\.currentJob === 'fisher' && v\.land && v\.land\.seaMix\) _t635SeaProduce\(addProduce, v\.land\.seaMix, baseAmt\);[^\n]*\n\s*else addProduce\(jdef\.output, baseAmt\);[ \t]*\n\s*\}/;
 
 console.log('\n=== 밭이 곳간에 닿는다 (ECON 수술 2-b · T100 4판) ===');
 console.log(`  손잡이: T100_FIELD_YIELD=${ON ? '켬' : '끔'}${MUT ? '  ⚠변조 사본 ' + MUT : ''}`);
@@ -116,9 +120,11 @@ console.log('\n③ 대체 — 얹지 않는다(둘 다 넣으면 곡물가가 �
   //   ★[T325 2026-09-19] **나무꾼 절이 셋째로 붙었다.** 이 하네스가 지키는 것은 "농부의 `food` 가 막힌다"이고
   //     그건 그대로다 — 절이 는 것은 **다른 직업**이다.
   //   ⚠느슨하게 풀지 않는다: 농부 절 · 어부 절 · 나무꾼 절이 **각각 정확히 그 꼴**임을 따로 문다.
+  //   ★[T751 · T635 `a6e7b1e3` 10-04] 그 한 줄의 **몸**이 블록이 됐다 — 바다 마을 어부만 종으로 나눠 넣고(`_t635SeaProduce` · 합 kg 무변)
+  //     나머지는 종전 `addProduce(jdef.output, baseAmt)` 그대로다. 게이트 셋은 한 글자도 안 바뀌었다 → 그 몸을 **이름으로** 문다(`T635_GATE_BODY`).
   ok(/if \(!\(T100_FIELD_YIELD && npc\.currentJob === 'farmer'\)/.test(SRC)
      && /&& !\(npc\.currentJob === 'fisher' && fishActOn\(v\)\)/.test(SRC)
-     && /&& !\(npc\.currentJob === 'lumberjack' && woodActOn\(v\)\)\) addProduce\(jdef\.output, baseAmt\);/.test(SRC),
+     && T635_GATE_BODY.test(SRC),
     '③ ★★★켜면 농부의 추상 식량 산출 한 줄이 **막힌다**(대체 · 얹기 0) · ★[T312] 어부 · ★[T325] 나무꾼 절도 같은 자리다');
   ok(/addProduce\(r, baseAmt \* rate\);/.test(SRC) && !/T100_FIELD_YIELD[^\n]*addProduce\(r,/.test(SRC),
     '③ ★★부산물(밀·쌀·보리·삼·모시)은 **안 막는다** — 곡물·섬유 사슬은 T86 그대로다');
@@ -252,11 +258,12 @@ if (!process.env.T100_CHILD) {
   let made3 = false;
   try {
     // ★[T312] 게이트가 **두 줄**이 됐다 · ★[T325] **세 줄**이 됐다 — 변조는 그 세 줄을 통째로 갈아 끼운다.
+    //   ★[T751 · T635] 게이트 뒤 몸이 블록이 됐다 — 변조는 **게이트 셋을 걷어내고 블록은 그대로** 남긴다(바다 갈래 포함 · 두 번 넣는 판 그대로).
     const _GATE2 = "      if (!(T100_FIELD_YIELD && npc.currentJob === 'farmer')\n"
                  + "       && !(npc.currentJob === 'fisher' && fishActOn(v))\n"
-                 + "       && !(npc.currentJob === 'lumberjack' && woodActOn(v))) addProduce(jdef.output, baseAmt);";
+                 + "       && !(npc.currentJob === 'lumberjack' && woodActOn(v))) {\n";
     const mutSrc3 = SRC.replace(_GATE2,
-      '      addProduce(jdef.output, baseAmt);   // 하네스 변조본 — 대체를 걷어내 **두 번** 넣는다');
+      '      {   // 하네스 변조본 — 대체를 걷어내 **두 번** 넣는다\n');
     ok(mutSrc3 !== SRC, '⑦ [T183] 두 번 넣기의 변조 지점(대체 게이트)이 소스에 **실재한다**');
     fs.writeFileSync(MUTPATH, mutSrc3); made3 = true;
     ok(run({ T100_FIELD_YIELD: '1', T100_MUT_MOD: MUTNAME }) !== 0,
@@ -568,7 +575,7 @@ console.log('\n⑮ 장부 — 밭이 곳간에 넣은 그 양이 **실현 흐름
     ok(p.led === 0, '⑮ [끔] 밭 입구가 아예 안 열리므로 장부도 0 이다');
   }
   ok(/if \(!\(T100_FIELD_YIELD && npc\.currentJob === 'farmer'\)/.test(C)
-     && /\) addProduce\(jdef\.output, baseAmt\);/.test(C),
+     && T635_GATE_BODY.test(C),   // ★[T751] 게이트 뒤 몸 = T635 블록(주석 뺀 판에서도 같은 꼴)
     '⑮ ★이중 0 — 켠 팔에서 농부의 `food` 는 `addProduce` 를 **안 탄다**(들어오는 길이 하나뿐이다)');
   // ⓓ `totalFoodProductionEquivalent` 이 보는 것 — `food` 만이 아니다(§0-ⓐ 의 셋째 물음)
   ok(/if \(T73_RAWGRAIN\) for \(const r of RAW_GRAINS\) total \+= \(prod\[r\] \|\| 0\) \* RAW_GRAIN_FOOD_FACTOR;/.test(C),
@@ -846,7 +853,8 @@ console.log('\n⑬ 배율 자리 [T179] — 대체가 삼킨 배율 셋을 문�
     '⑬ ★[T312] 그 넷째 자리가 **어부**다(이름으로 못 박는다)');
   ok(/if \(npc\.currentJob === 'lumberjack' && woodActOn\(v\)\) npc\._t172mul = skillMul \* toolBoost \* inputMult;/.test(CODE),
     '⑬ ★[T325] 그 다섯째 자리가 **나무꾼 행위**다 — T166 `woodIncomeFn` 문과 **같은 필드**를 쓴다(정본 하나)');
-  ok(!/npc\._t172mul[^\n]*addProduce/.test(CODE) && /\) addProduce\(jdef\.output, baseAmt\);\n[\s\S]{0,900}?\n\s*if \(T100_FIELD_YIELD && npc\.currentJob === 'farmer'\) npc\._t172mul/.test(SRC),
+  //   ★[T751 · T635] "바로 뒤" = 게이트 몸 블록(`else addProduce(…); }`)이 닫힌 바로 뒤 — 거리 900 자는 그대로다.
+  ok(!/npc\._t172mul[^\n]*addProduce/.test(CODE) && /else addProduce\(jdef\.output, baseAmt\);[ \t]*\n\s*\}\n[\s\S]{0,900}?\n\s*if \(T100_FIELD_YIELD && npc\.currentJob === 'farmer'\) npc\._t172mul/.test(SRC),
     '⑬ ★심기만 하고 **여기서 곱하지 않는다**(배율은 실체가 나는 곳에 한 번 · 대체 게이트 **바로 뒤**)');
   // ⓓ 실측 — 숙련 10(×1.5) 이 실체에서 갈린다 · `inputMult=0` → 실체 0 · 미전달 비트 동일
   const mk = () => econ.createVillage({ initialPop: 0, name: 'T179', fertility: 1.0 });

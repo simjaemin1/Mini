@@ -99,6 +99,29 @@ function _t577Walk(vil, day) {   // ⓐ 남은 사람 → 가장 가까운 산 �
   log(day, `${vil.name} 해체 뒤 남은 ${moved.length}명 → ${best.name}(${Math.round(bd)}셀) [T577 ⓐ]`);
   return moved.length;
 }
+// ★★[T766 2026-10-15 · 재민 "도적을 줄여야 하나?"] **해체 문 손잡이 — `T766_DISSOLVE_INCOMING=1`(기본 끔 = 종전 글자 그대로)**.
+//   해체 조건 "식량 < 인구 × 3일치"(`BDT_DIS_FOOD`)의 식량은 곳간만 본다 — **그 마을로 오는 식량**은 안 본다(T727 회부 2).
+//   켬: 곳간 식량에 오는 식량을 더해 문턱을 다시 본다(문턱 그대로 · 새 수 0). 오는 식량 = T727 관찰기가 이미 센 두 칸, 식량류(곳간 잣대 넷)만:
+//     ⓐ 귀환 중 화물 — `state==='inbound'` · 집(`from`)이 이 마을 · `_returningRes` 가 식량류 → `_returningAmt`
+//     ⓑ 장마당 대기 짐 — `_t707` 이 찍힌(정산 전) 캐러밴 · 도착(`to`)이 이 마을 · `giveRes` 가 식량류 → `_t707.give`(정산 때 이 마을 곳간에 든다)
+//   끔이면 `_t766Held` 는 한 번도 안 불린다(조건 맨 끝 단락 평가) · 셈(`stats.t766Held`)도 안 선다 = main 바이트.
+const T766_INCOMING = typeof process !== 'undefined' && !!process.env && process.env.T766_DISSOLVE_INCOMING === '1';
+const T766_FOOD = { food: 1, fish: 1, meat: 1, cooked_food: 1 };   // 곳간 잣대(`daily` 의 fe)와 같은 넷
+function incomingFood(world, e) {   // 이 econ 마을로 오는 식량(위 두 칸 · 읽기만)
+  let a = 0;
+  for (const c of (world && world.caravans) || []) {
+    if (c._t707 && c.to === e && T766_FOOD[c.giveRes]) a += c._t707.give || 0;
+    if (c.state === 'inbound' && c.from === e && c._returningRes && T766_FOOD[c._returningRes]) a += c._returningAmt || 0;
+  }
+  return a;
+}
+function _t766Held(world, vil, fe, n, day) {   // 켬 전용 — 오는 식량을 더하면 문턱을 넘나(넘으면 오늘 해체 안 함)
+  const inc = incomingFood(world, vil.econ);
+  if (!(fe + inc >= n * BDT_DIS_FOOD)) return false;
+  S.stats.t766Held = (S.stats.t766Held || 0) + 1;
+  log(day, `${vil.name} 해체 보류 — 곳간 ${fe.toFixed(1)} + 오는 식량 ${inc.toFixed(1)} ≥ ${n}명×${BDT_DIS_FOOD}일 [T766]`);
+  return true;
+}
 // ★[T521] 단이 실물로 드는 품목 — econ 재화 이름 그대로(무기·갑옷·도구 셋 · 새 이름 0)
 const ARMS_RES = new Set(['weapon', 'armor', 'tool', 'iron_tool', 'bronze_tool']);
 function _t521On() { return typeof process !== 'undefined' && !!process.env && process.env.T521_GANG_ARMS === '1'; }
@@ -481,7 +504,8 @@ function daily(day) { // 하루 1회(villages econ 틱 직후): 위기 추적→
     }
     e._bdtLastN = n;
     if (day >= _open && !e._banditized && (e._bdtFall || 0) >= BDT_DIS_FALL && fe < n * BDT_DIS_FOOD
-        && n >= BDT_GMIN && n <= Math.max(4, Math.min(20, (e._bdtPeak || n) * 0.55))) { // 죽어가는 미끄럼+곳간 바닥+잔존 소수 = 해체
+        && n >= BDT_GMIN && n <= Math.max(4, Math.min(20, (e._bdtPeak || n) * 0.55)) // 죽어가는 미끄럼+곳간 바닥+잔존 소수 = 해체
+        && !(T766_INCOMING && _t766Held(host.world, vil, fe, n, day))) {   // ★[T766] 켬만 — 오는 식량이 문턱을 채우면 보류(끔 = 이 칸 무평가)
       const size = Math.min(n, Math.max(BDT_GMIN, Math.min(BDT_GMAX, Math.round(n * BDT_CONV))));
       if (formGang(vil, size, day, `해체(순감 ${e._bdtFall || 0}일·잔존 ${n}명·피크 ${e._bdtPeak || n})`)) {
         e._banditized = 1;
@@ -822,4 +846,4 @@ function onGameTick() {
   }
 }
 
-module.exports = { init, onGameTick, clientCamps, stats: () => S.stats, armsHeld, ARMS_RES, lotsBoot, gangs: () => S.GANGS, bootSlice: () => (S._boot ? { running: true, pairs: S._boot.pairs, slices: S._boot.slices, i: S._boot.i } : (S.bootSlice || null)) };   // ★[T521] 손 규칙 하나(villages 소굴 어댑터가 같은 함수를 읽는다)
+module.exports = { init, onGameTick, clientCamps, stats: () => S.stats, incomingFood, t766On: () => T766_INCOMING, armsHeld, ARMS_RES, lotsBoot, gangs: () => S.GANGS, bootSlice: () => (S._boot ? { running: true, pairs: S._boot.pairs, slices: S._boot.slices, i: S._boot.i } : (S.bootSlice || null)) };   // ★[T521] 손 규칙 하나(villages 소굴 어댑터가 같은 함수를 읽는다)

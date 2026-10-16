@@ -817,80 +817,10 @@ def retarget_clip(rig, prefix, clip_name, spec, sheet, align, gait=None, body=No
                 Mw[b.name] = (rest[b.name] @ Lb) if b.parent is None else (Mw[b.parent.name] @ rest[b.parent.name].inverted() @ rest[b.name] @ Lb)
             return skin_world(Mw), Mw[order_b[0].name].translation.z
         duty = gait["duty"]
-        on = lambda kk, off: ((ph0 + kk / float(K) + off) % 1.0) < duty           # 자료 디딤 구간(왼 0 · 오른 ½)
-        SIDES = (("L", "Left"), ("R", "Right"))
-        st = [(on(kk, 0.0), on(kk, 0.5)) for kk in range(K)]
-
-        def solve(f):
-            """f(d) ≥ 0 이 되는 가장 작은 d ≥ 0(°) — 이분법(부동소수 자리까지 · 넓적다리 90° 넘으면 죽는다)."""
-            if f(0.0) >= 0.0:
-                return 0.0
-            hi = 1.0
-            while f(hi) < 0.0:
-                hi *= 2.0
-                if hi > 90.0:
-                    raise SystemExit(f"[char3d] ★{clip_name} 흔드는 발을 넓적다리로 못 든다")
-            lo_d = 0.0
-            for _ in range(40):
-                mid = 0.5 * (lo_d + hi)
-                if f(mid) < 0.0:
-                    lo_d = mid
-                else:
-                    hi = mid
-            return hi
-        # ⓐ 디딘 열쇠 — 흔드는 발을 디딘 발 높이까지 든다(넓적다리 · 몸 높이와 무관한 두 발 높이 차로 푼다 — `locals_at` 의 관절 접지가 들림에 따라 몸을 옮기므로) → 디딘 발 = 0
-        lift = [dict() for _ in range(K)]
-        sft, hip = [None] * K, [None] * K
-        for kk in range(K):
-            dd = [sd for (sd, _n), f in zip(SIDES, st[kk]) if f]
-            if not dd:
-                continue
-            lk = {}
-            for (sd, side), f in zip(SIDES, st[kk]):
-                if f:
-                    continue
-
-                def gap(d, sd=sd, side=side):
-                    lo = eval_key(kk, dict(lk, **{side: d}))[0]
-                    return lo[sd] - min(lo[x] for x in dd)
-                d = solve(gap)
-                if d > 0.0:
-                    lk[side] = d
-            lo, hz = eval_key(kk, lk)
-            lift[kk], sft[kk], hip[kk] = lk, -min(lo[x] for x in dd), hz
-        # ⓑ 공중(디딘 발 없음) — 엉덩이 높이 = 앞 디딘 열쇠 + (자료 골반 높이 곡선 차) + 두 끝을 맞추는 곧은 보정(뒤 디딘 열쇠 높이에 닿게) · 땅 밑 발은 든다
-        air = [kk for kk in range(K) if sft[kk] is None]
-        if air:
-            if not gait.get("pelvisRise"):
-                raise SystemExit(f"[char3d] ★{clip_name} 디딘 발이 없는 열쇠가 있는데 자료 골반 높이 곡선(`pelvisRise`)이 없다")
-            Rz = lambda j: MR.gait_cyc(gait["pelvisRise"], ph0 + j / float(K)) * H_PERSON
-            hh = lambda j: hip[j % K] + sft[j % K]
-            target = {}
-            for k0 in air:
-                if k0 in target:
-                    continue
-                a, b2 = k0 - 1, k0 + 1
-                while sft[a % K] is None:
-                    a -= 1
-                while sft[b2 % K] is None:
-                    b2 += 1
-                Ha, Hb, n = hh(a), hh(b2), b2 - a
-                for j in range(a + 1, b2):
-                    target[j % K] = Ha + (Rz(j) - Rz(a)) + (j - a) / float(n) * ((Hb - Ha) - (Rz(b2) - Rz(a)))
-            for kk in air:
-                lk = {}
-                for sd, side in SIDES:
-
-                    def above(d, sd=sd, side=side):
-                        lo, hz = eval_key(kk, dict(lk, **{side: d}))
-                        return lo[sd] + (target[kk] - hz)
-                    d = solve(above)
-                    if d > 0.0:
-                        lk[side] = d
-                lo, hz = eval_key(kk, lk)
-                lift[kk], sft[kk], hip[kk] = lk, target[kk] - hz, hz
-        plan = {"st": st, "sft": sft, "lift": lift}
-        gi.update({"duty": duty, "air": len(air)})
+        Rz = (lambda j: MR.gait_cyc(gait["pelvisRise"], ph0 + j / float(K)) * H_PERSON) if gait.get("pelvisRise") else None
+        # ★[T746] 접지 계획의 정본 = `mocap_retarget.contact_plan`(2D 시트 굽기도 같은 함수 · 사본 0) — 디딘 발 = 0 · 흔드는 발 들림(넓적다리) · 공중 = 골반 높이 곡선
+        plan = MR.contact_plan(K, ph0, duty, eval_key, Rz, label=f"3D {clip_name}")
+        gi.update({"duty": duty, "air": len(plan["air"])})
 
     for k in range(nkeys):
         kk = k % K if loop else k

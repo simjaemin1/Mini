@@ -275,11 +275,15 @@ if (process.argv[2] === '--grow') { growChild().then(() => process.exit(0), (e) 
     const { spawnSync } = require('child_process');
     const t0 = Date.now();
     //   ★[T566] 자식은 **끔**으로 띄운다 — 켬이면 영토 안 재생이 0 이라 이 절의 전제(다시 선 그루)가 없다(그 답은 `test-regrow-block` 이 잰다)
-    spawnSync(process.execPath, [__filename, '--grow', OUTG], { cwd: ROOT, stdio: 'ignore', timeout: 600000, env: Object.assign({}, process.env, { T566_REGROW_BLOCK: '0' }) });
+    //   ★[T751 · T559 ⓪ `88499f85` 09-30] 영토 상한(`T538_TERR_CAP`)이 NPC 마을에 **켬 기본**이 된 뒤 새 세계의 NPC 마을 51 은
+    //     처음부터 상한에 걸려 **영토가 안 자란다**(이 상자 241일 · 자란 마을-날 0 · 야간 10-01~ 600초 시간 초과의 주인).
+    //     이 절이 재는 것은 "영토가 자라는 날 옛 영토의 다시 선 그루를 그날 다 벤다"는 **훑기의 짝**이다 — 상한은 그 짝과 무관한 다른 문이다.
+    //     ⇒ T566 처럼 **되돌림 문**을 박아 T440 의 세계(영토가 자라는 세계)를 다시 세운다(새 수 0 · 제품 무변 · 유저 마을은 원래 상한 밖).
+    spawnSync(process.execPath, [__filename, '--grow', OUTG], { cwd: ROOT, stdio: 'ignore', timeout: 600000, env: Object.assign({}, process.env, { T566_REGROW_BLOCK: '0', T538_TERR_CAP: '0' }) });
     let G = null; try { G = JSON.parse(fs.readFileSync(OUTG, 'utf8')); } catch (e) { G = { err: 'no json' }; }
     try { fs.unlinkSync(OUTG); } catch (e) {}
     //   자식은 하루마다 중간 결과를 적는다 — 끝을 못 봤으면(시간 초과) 그 줄까지를 말한다
-    pre(!G.err && G.done, `⑧ 자식(T566 끔 — T440 갈래) — 새 세계 · 마을 ${G.vils || 0} · 첫 창 시계 ${G.day0} · 하루 마감 ${G.steps || 0}번(econ ${G.econ ? G.econ.join('→') : '?'}) · 시계 당김 ${G.pulls || 0}번 · ${((Date.now() - t0) / 1000).toFixed(0)}초`
+    pre(!G.err && G.done, `⑧ 자식(T566 끔 · T538 상한 끔 — T440 갈래) — 새 세계 · 마을 ${G.vils || 0} · 첫 창 시계 ${G.day0} · 하루 마감 ${G.steps || 0}번(econ ${G.econ ? G.econ.join('→') : '?'}) · 시계 당김 ${G.pulls || 0}번 · ${((Date.now() - t0) / 1000).toFixed(0)}초`
       + (G.done ? '' : ' · ★끝을 못 봤다(상한 · 시간 초과)'), G.err ? String(G.err).slice(0, 200) : '');
     if (!G.err && G.rows) {
       const gS = G.rows.filter((r) => r.grew && r.before > 0), sS = G.rows.filter((r) => !r.grew && r.before > 0);
@@ -336,8 +340,11 @@ async function growChild() {
   const TR = require(path.join(ROOT, 'server', 'trees.js'));
   const YD = require(path.join(ROOT, 'server', 'events.js')).yearDaysOf();
   const Zc = require(path.join(ROOT, 'server', 'zone-config.js')).ZONES.hanbando;
-  const Database = require(path.join(ROOT, 'node_modules', 'better-sqlite3'));
-  const readDb = () => { const D = new Database(TMPG, { readonly: true });
+  // ★[T751] 읽기 연결은 존과 **같은 SQLite**(`node:sqlite`)로 연다. 종전 `better-sqlite3` 는 같은 프로세스에 SQLite 를 **한 벌 더** 싣는다 —
+  //   POSIX 잠금은 프로세스 단위라 두 벌이 같은 WAL 파일을 쥐면 서로의 잠금을 모른다. T696 WAL 일꾼이 켬 기본이 된 뒤(`f432a2f7` 10-12)
+  //   자식이 40초 안에 **SIGBUS** 로 죽었다(야간 10-13~ · 이 상자 재현 rc=135). 같은 벌이면 한 프로세스 안 연결끼리 잠금을 나눈다(값 무변 · 읽기만).
+  const { DatabaseSync } = require('node:sqlite');
+  const readDb = () => { const D = new DatabaseSync(TMPG, { readOnly: true });
     const v = D.prepare('SELECT id, name FROM villages').all();
     const t = D.prepare("SELECT village_id, cx, cy FROM village_buildings WHERE type = 'terr'").all();
     const l = new Map(D.prepare('SELECT seed_key, harvested_day FROM harvested_seeds').all().map((r) => [r.seed_key, r.harvested_day]));
