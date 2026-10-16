@@ -92,3 +92,26 @@ resolve this. Monophonic YIN also disagreed with much of the authored pitch,
 but mixture/subharmonic tracking errors mean its near-pitch fraction is not a
 literal melody-accuracy score. No listening-quality or game-asset approval was
 granted. Do not substitute codec reconstruction for a generated performance.
+
+## 2026-10-16 performance-guide follow-up
+
+`run_performance_trial.py` uses our own AI Hub-trained model's authored B1
+performance as guide (not an AI Hub recording and not DDSP-Gugak), with explicit
+lineage and +2-semitone plan mapping. It keeps the frozen ACE source/assets,
+one initialization, seed 20261016, strength 1.0, and tests source-latent noise
+strengths 0.5/0.8. Raw runs remain unchanged. No new training occurs here.
+
+`evaluate_score_preservation.py` checks guide and candidate against the +2
+nominal score, candidate against guide, each note and first4.8s as well as the
+whole19.2s. All voiced/near-pitch fractions must reach 95%; octave-folded
+diagnostics cannot pass the gate. Four exact-rest guides imply a strict raw
+leakage gate; actual raw candidates failed that gate despite quiet residuals.
+
+Both actual candidates preserved all 28 notes at the tested 50-cent tolerance.
+`apply_authored_rests.py` made separate copies with explicit ten-millisecond
+release/attack around the four written rests; these are not learned breathing.
+The processed copies passed the full and preview numerical gates. The authored
+final vibrato was also retained in a short fixed-rate diagnostic. This does not
+demonstrate perceptual improvement: spectral envelopes remained very close to
+the guide, and codec vs reference-style causality was not separated. Listening
+is required; none of these files is approved as game BGM.
