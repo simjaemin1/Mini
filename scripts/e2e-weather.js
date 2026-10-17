@@ -40,9 +40,11 @@ const ok = (c, m, extra) => { if (c) { pass++; say(`  ✓ ${m}` + (extra !== und
                               else { fail++; say(`  ✗ ${m}` + (extra !== undefined ? `  ${extra}` : '')); } };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const med = (a) => { const b = a.slice().sort((x, y) => x - y); return b[b.length >> 1]; };
-try { execSync(`pkill -f "serve[r]/zone.js" ; pkill -f "centra[l].js" ; pkill -f "zone-wra[p]"`, { stdio: 'ignore' }); } catch (e) {}
+// ★[T773] 시작 때 남의 존을 죽이지 않는다(옛 일괄 죽이기는 머신의 모든 존을 죽였다) — 포트가 쥐여 있으면 알리고 실패 · 아이는 내가 띄운 것만 끝낸다(`fixture-boot`).
+FB.mustBeFree([CPORT, ZPORT], 'e2e-weather');
 
 const procs = [];
+FB.reapOnExit(procs);   // ★[T773] 내가 띄운 아이만 끝낸다 — 정상 · 예외 · 신호(러너 시간 초과)
 function boot(name, file, env) {
   const p = spawn('node', [file], { env: { ...process.env, ...env }, stdio: ['ignore', 'pipe', 'pipe'], cwd: ROOT });
   p.stdout.on('data', (d) => { const s = d.toString(); if (/server up/i.test(s)) process.stdout.write(`  [${name}] ` + s.slice(0, 120)); });

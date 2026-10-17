@@ -41,9 +41,13 @@ declare -A TIMEOUT_OF=( [test-lab-mining.js]=3600 [test-lab-psite.js]=3600 )
 FAILED=()
 PASSED=()
 
+# ★★[T773 2026-10-16] **러너도 남의 판을 죽이지 않는다 — 내가 띄운 것만.** (T765 회부 7 · T764 §0)
+#   종전 `drain` 은 하네스 사이마다 이름으로 일괄 죽이기(`server/zone.js` · `central.js` 를 이름으로 찾아 죽였다)라
+#   **머신의 모든 존**을 죽였다 — 옆에서 돌던 서버 기준선 · 실제 하루 판이 같이 죽는다.
+#   ⇒ 하네스 하나를 `timeout` 아래 **제 프로세스 무리**(timeout 이 스스로 새 무리를 연다)로 띄우고,
+#     끝나면 **그 무리만** 내린다(`kill -- -<무리>`) — 남은 아이가 있어도 내 아이만 죽는다.
+#     `drain` 은 이제 기다리기만 한다(포트가 아직 쥐여 있으면 다음 하네스가 `fixture-boot.mustBeFree` 로 이름 붙여 실패한다).
 drain() {
-  pkill -f "server/zon[e].js" 2>/dev/null || true
-  pkill -f "server/centra[l].js" 2>/dev/null || true
   sleep "$DRAIN_SEC"
 }
 
@@ -54,8 +58,13 @@ run_one() {
   # ★종료코드를 파이프 **앞에서** 잡는다. 이 한 줄이 이 파일의 존재 이유다.
   local out rc
   local t="$TIMEOUT_SEC"; [ -n "${TIMEOUT_OF[$f]:-}" ] && [ "${TIMEOUT_OF[$f]}" -gt "$t" ] && t="${TIMEOUT_OF[$f]}"
-  out="$(timeout "$t" node "scripts/$f" 2>&1)"
+  local tmp; tmp="$(mktemp)"
+  timeout "$t" node "scripts/$f" > "$tmp" 2>&1 < /dev/null &
+  local tp=$!
+  wait "$tp"
   rc=$?
+  kill -KILL -- "-$tp" 2>/dev/null || true   # ★[T773] 내가 띄운 무리만 — 남은 아이(존 · central)까지 · 남의 판은 무접촉
+  out="$(cat "$tmp")"; rm -f "$tmp"
   # ★실패한 줄이 **자기 이름을 말하게** 한다 [2026-08-26] —
   #   종전엔 요약줄만 `tail -5` 로 남아서 "72/1 실패"만 보이고 **무엇이** 실패했는지는
   #   로그를 다시 돌려야 알 수 있었다(실제로 두 번 그랬다). ✗ 줄을 먼저, 따로 보여 준다.

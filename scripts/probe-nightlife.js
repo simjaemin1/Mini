@@ -23,6 +23,7 @@
 const path = require('path');
 const fs = require('fs');
 const { spawn, execSync } = require('child_process');
+const FB = require('./fixture-boot');   // ★T773 남의 판을 안 죽이는 정본(사본 0)
 const ROOT = path.join(__dirname, '..');
 const CPORT = 3010, ZPORT = 3020;
 const ZDB = process.env.ZDB || '/tmp/probe-nightlife.db';
@@ -31,8 +32,10 @@ const TOTAL = parseInt(process.argv[2] || '400', 10);
 const EVERY = parseInt(process.argv[3] || '3', 10);
 const OUT = process.env.OUT || '/tmp/nightlife.json';
 
-try { execSync(`pkill -f "serve[r]/zone.js" ; pkill -f "centra[l].js" ; pkill -f "zone-wra[p]"`, { stdio: 'ignore' }); } catch (e) {}
+// ★[T773] 시작 때 남의 존을 죽이지 않는다(옛 일괄 죽이기는 머신의 모든 존을 죽였다) — 포트가 쥐여 있으면 알리고 실패 · 아이는 내가 띄운 것만 끝낸다(`fixture-boot`).
+FB.mustBeFree([CPORT, ZPORT], 'probe-nightlife');
 const procs = [];
+FB.reapOnExit(procs);   // ★[T773] 내가 띄운 아이만 끝낸다 — 정상 · 예외 · 신호(러너 시간 초과)
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 function boot(name, file, env) {
   const p = spawn('node', [file], { env: { ...process.env, ...env }, stdio: ['ignore', 'pipe', 'pipe'], cwd: ROOT });

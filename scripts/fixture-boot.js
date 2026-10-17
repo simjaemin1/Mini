@@ -67,4 +67,34 @@ function waitUp(child, re, opts) {
   });
 }
 
-module.exports = { waitUp };
+// ★★[T773 2026-10-16] **남의 판을 죽이지 않는다 — 내가 띄운 것만.** (T765 회부 7 · T764 §0)
+//   예전 하네스 아홉이 시작 때 이름으로 일괄 죽이기(`server/zone.js` 를 이름으로 찾아 죽이는 명령)로 **머신의 모든 존**을 죽였다 — 옆에서 돌던
+//   서버 기준선 · 실제 하루 판이 같이 죽었다. 고정 포트(3010/3020)에 앞 판이 붙어 있으면 "딴 세계를 잰다"는 걱정은
+//   맞지만 답은 죽이기가 아니라 **알리기**다: 포트가 이미 쥐여 있으면 아무것도 안 죽이고 이름을 붙여 실패한다.
+//   (포트를 바꾸지 않는 이유 — central 이 zone-config 포트로 존 헬스를 폴링한다 · 제품 0 이라 그 길을 안 연다.)
+//   · `mustBeFree(ports, name)` — 동기. 하나라도 쥐여 있으면 종료코드 2(러너가 빨강으로 센다) · 아무도 안 건드린다.
+//   · `reapOnExit(procs)` — 내가 띄운 아이(`procs`)만 끝낸다: 정상 종료 · 예외 종료 · SIGINT/SIGTERM/SIGHUP(러너 시간 초과).
+function heldPorts(ports) {
+  const { spawnSync } = require('child_process');
+  // 듣기를 **실제로 해 본다**(`EADDRINUSE` 가 곧 증인) — 서버와 같은 꼴(호스트 없이 listen)이라 v4·v6 어느 쪽이든 잡힌다.
+  const src = "const net=require('net');const ps=" + JSON.stringify(ports) + ";(async()=>{const h=[];for(const p of ps){await new Promise((r)=>{const s=net.createServer();s.once('error',(e)=>{if(e.code==='EADDRINUSE')h.push(p);r();});s.listen(p,()=>s.close(()=>r()));});}process.stdout.write(JSON.stringify(h));})();";
+  const r = spawnSync(process.execPath, ['-e', src], { encoding: 'utf8', timeout: 15000 });
+  try { return JSON.parse(r.stdout || '[]'); } catch (e) { return []; }
+}
+function mustBeFree(ports, name) {
+  const h = heldPorts(ports);
+  if (!h.length) return;
+  console.error(`  ✗ [${name}] 포트 ${h.join('·')} 를 이미 누가 쥐고 있다 — 남의 판은 죽이지 않는다(T773).`
+    + ' 그 판이 끝나면 다시 돌리거나, 내 판의 잔재라면 손으로 내려라(`ss -ltnp` 로 주인을 본다).');
+  process.exit(2);
+}
+function reapOnExit(procs) {
+  const reap = () => { for (const p of procs) { try { if (p.exitCode === null && p.signalCode === null) p.kill('SIGKILL'); } catch (e) {} } };
+  process.on('exit', reap);
+  for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
+    process.once(sig, () => { reap(); process.exit(128 + ((require('os').constants.signals || {})[sig] || 0)); });
+  }
+  return reap;
+}
+
+module.exports = { waitUp, heldPorts, mustBeFree, reapOnExit };
