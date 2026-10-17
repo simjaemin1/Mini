@@ -44,6 +44,7 @@ function snap() {
     inF++; if (!B.has(c.id)) noB++;
     if (!seen.has(c.id)) { seen.add(c.id); N.push([c.id, c.departDay, c.arriveDay, c.returnArriveDay, r1(c.distance), c.travelDays, B.has(c.id) ? 1 : 0, c.state[0]]); }
   }
-  fs.appendFileSync(OUT, JSON.stringify({ t: now, d, f, inF, nB: B.size, ph, noB, B: rows, N }) + '\n');
+  const t772 = V.__labProbe.t772Stat || undefined;   // ★[T772] 켬만 — 귀환 다리 · 집 도착 · 늦음(끔이면 칸 없음)
+  fs.appendFileSync(OUT, JSON.stringify({ t: now, d, f, inF, nB: B.size, ph, noB, B: rows, N, t772 }) + '\n');
 }
 setTimeout(function tick() { try { snap(); } catch (e) { try { fs.appendFileSync(OUT, JSON.stringify({ err: String(e && e.message) }) + '\n'); } catch (e2) {} } setTimeout(tick, EVERY).unref(); }, EVERY).unref();

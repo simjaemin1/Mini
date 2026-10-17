@@ -241,6 +241,15 @@ const _t707Stat = { markets: 0, joins: 0, roster: 0, carNoBody: 0, mktNoBody: 0,
 //      `seen` 에 없어도 안 닿는다. (끔의 같은 차례 — 새 몸이 쓸기 앞 — 는 종전 그대로 · 보고 T762 §2.)
 //   ⚠끔 = main 바이트(이 손잡이 줄이 안 닿는다 — 문을 여는 명부 글자 그대로). 몸 0 판(서버 기준선 자 · `VILLAGE_CARAVAN_MAX=0`)은 켬에서도 같아야 한다(보고 T762).
 const T762_CARAVAN_BODY = process.env.T762_CARAVAN_BODY === '1';
+// ★★[T772 2026-10-16 · 세션5] **귀환 몸 — 장 뒤 따라잡기 질주 없애기**(보고 T762 §2-4 · §3 ⓑ) · 손잡이 하나 `T772_LEG_FROM_LINGER`('1' 만 켬 · 끔 = main 바이트).
+//   결함: T661 보이는 몸이 귀환 일정을 **그날 머리부터** 보간한다(`_t661Vis` — `(지금 − econ 날 머리) ÷ 하루`). T707 장이 하루 4/24 를 머물게 하니
+//     1일 다리 몸은 장이 끝나는 순간 길의 17~21 % 뒤에 서 있고, 따라잡기 상한(명목 ×4)으로 몇 분에 메운다 — 실제 날 판 최대 171 px/s(몸 걸음 64 의 2.7배).
+//   켜면 ① 귀환 보간의 출발 시각 = **장 끝**(`lingerUntil` — 머묾이 끝나 `startReturnLeg` 가 부른 그 몫)부터 econ 도착(`arriveAt`)까지
+//     ② 귀환 걸음 상한 = **몸 걸음**(존 `moveSpeed` 정본 — 따라잡기 ×4 아님) — 일정이 몸 걸음보다 빠르면 몸은 몸 걸음 그대로 걷고 뒤처진다.
+//        econ 이 집 도착(쓸기)을 낼 때 몸이 아직 길 위면 그 사실을 센다(`_t772Stat.late`) — 순간이동으로 메우지 않는다(회수 자리는 종전 그대로).
+//   econ 도착일 · 장부(`_t661Day` 의 `T.L` · 답압 · 가드)는 무변 — 그림 · 몸 자리만 바뀐다. 새 수 0.
+const T772_ON = process.env.T772_LEG_FROM_LINGER === '1';
+const _t772Stat = { legs: 0, home: 0, late: 0, lateMaxPx: 0, lateSumPx: 0 };
 function _t762SyncNewJob(C, had) {   // 명부(문을 연 순간)에 없던 캐러밴 — 이 조각이 도는 때의 `world.caravans` 차례로 · 'retry' 면 같은 자리부터
   let q = null, i = 0;
   return () => {
@@ -3452,6 +3461,7 @@ function startReturnLeg(body, now) { // 도착 머묾(linger) 종료 → 귀환 
     body.arriveAt = Math.max(now + 1, econDayToMs(c.returnArriveDay));
     body.pxPerDay = body._t661.ppd;
     body.nomPxMs = body.len / Math.max(1, body.arriveAt - now);
+    if (T772_ON) { body._t661.t0 = Number.isFinite(body.lingerUntil) ? Math.min(now, body.lingerUntil) : now; _t772Stat.legs++; }   // ★[T772 ①] 귀환 보간은 장 끝에서 연다(끔 = 이 줄 무동작)
     console.log(`[${state.zoneId}] 🐂 캐러밴#${c.id} 귀환 출발: ${c.to.name}→${c.from.name}${c._t707 ? ' (정산은 다음 econ 틱 · T707)' : (c._returningRes ? ` ${c._returningRes}×${Math.round(c._returningAmt || 0)}` : ' (빈손)')} — econ d${c.returnArriveDay} 도착 예정`);
     return;
   }
@@ -3631,6 +3641,7 @@ function _t661Day(body, now) {
 function _t661Vis(body, now) {
   const T = body._t661;
   if (T.stall) return T.L;
+  if (T772_ON && T.leg === 'inbound' && T.t0 != null) return T.path.len * Math.min(1, Math.max(0, (now - T.t0) / Math.max(1, body.arriveAt - T.t0)));   // ★[T772 ①] 장 끝 → econ 도착(장부 `T.L` 을 안 끌어온다 — 그림만)
   const f = Math.min(1, Math.max(0, (now - econDayToMs(state.world.day)) / Math.max(1, state.dayMs)));
   return Math.max(T.L, _t661Target(T, state.world.day + f, _t661End(body)));
 }
@@ -3685,7 +3696,8 @@ function tickCaravanBodies(now) {
     if (T661_ON && body._t661) {   // ★★[T661] 보이는 몸 — 장부 일정을 따라 걷기만 한다(가드 · 답압 · 재경로는 하루 경계 `_t661Day`)
       const T = body._t661;
       const tgt = (T.path.pts === body.pts) ? _t661Vis(body, now) : body.prog;   // 머묾 뒤 아직 옛 길이면(방어) 선다
-      const step = Math.min(remainPx, Math.max(0, tgt - body.prog), body.nomPxMs * 4 * dtMs);
+      const _cap = (T772_ON && T.leg === 'inbound' && state.deps.moveSpeed > 0) ? state.deps.moveSpeed / 1000 : body.nomPxMs * 4;   // ★[T772 ②] 귀환 상한 = 몸 걸음(존 정본) · 끔 = 따라잡기 명목 ×4
+      const step = Math.min(remainPx, Math.max(0, tgt - body.prog), _cap * dtMs);
       if (!(step > 0)) { p.vx = 0; p.vy = 0; _escortMarch(body, dtMs, players); continue; }
       const next = caravanPointAt(body, body.prog + step);
       if (isPositionActive && isPositionActive(p.x, p.y) && isBlockedByWall && isBlockedByWall(next.x, next.y, p.x, p.y, 0)) { p.vx = 0; p.vy = 0; continue; }   // 벽 앞에선 선다(재경로는 장부가)
@@ -3823,6 +3835,12 @@ function _caravanSyncSweep(S) {
     if (body._xzHanding || (body.c && body.c._xzPending)) continue;   // ★[T533] 경계 문 앞(이웃 존 답을 기다린다) · 받은 몸(기록이 다음 경계에 든다) — 끔이면 없다
     const c = body.c;
     const killed = c && c.trader && c.from && Array.isArray(c.from.npcs) && c.from.npcs.indexOf(c.trader) < 0;
+    if (T772_ON && T661_ON && body._t661 && !killed && body._t661.leg === 'inbound') {   // ★[T772 ②] econ 이 집 도착을 냈는데 몸이 아직 길 위(또는 장) — 센다(메우지 않는다)
+      _t772Stat.home++;
+      const rem = body.phase === 'linger' ? body._t661.path.len : Math.max(0, (body.len || 0) - (body.prog || 0));
+      if (rem > 0.5) { _t772Stat.late++; _t772Stat.lateSumPx += rem; if (rem > _t772Stat.lateMaxPx) _t772Stat.lateMaxPx = rem;
+        console.log(`[${state.zoneId}] 🐂 캐러밴#${id} T772 늦음 — econ 집 도착인데 몸이 ${Math.round(rem)}px 남은 길 위(몸 걸음 그대로 · 메우지 않음)`); }
+    }
     if (T661_ON && body._t661 && !killed && body._t661.leg === 'inbound') { _t661Stamp(body, body._t661.L, body._t661.path.len); body._t661.L = body._t661.path.len; }   // ★[T661] 집에 닿은 날 — 마지막 구간 답압(장부 끝까지)
     despawnCaravanNpc(body);
     bodies.delete(id);
@@ -8252,7 +8270,7 @@ function lifeDebug() {   // ★[직접 서버 디버깅 — 사용자 요청] zo
     totals: { pop: tN, actN: tAct, actPct: tN ? +(tAct / tN * 100).toFixed(1) : 0, vgStuck: _vgStuckN, t562: _t562Stat,
               tkPday: _lifeTasksPerFarmerDay(), taskSec: LIFE_TASK_SEC,   // ★결산 정합 진단: 헤드리스가 쓰는 농부 1인 하루 작물 셀(날 길이 파생)
               dormant: out.filter(v => !v.terr).length, noFarmer: out.filter(v => !(v.jobs && v.jobs.farmer)).length,
-              ...(T707_ON ? { t707: Object.assign({}, _t707Stat) } : {}) },   // ★[T707] 켬만 — 장 · 명부 · 몸 없는 장 · 정산 누계
+              ...(T707_ON ? { t707: Object.assign({}, _t707Stat) } : {}), ...(T772_ON ? { t772: Object.assign({}, _t772Stat) } : {}) },   // ★[T707] 켬만 — 장 · 명부 · 몸 없는 장 · 정산 누계
     villages: out };
 }
 function _lifeDropTask(vil, npc) {   // 진행 중 작업 즉시 반납(요양 진입·반일 퇴근·야간 — 크루 카운터·클레임 정리. 일일 자가치유의 즉시판)
@@ -13438,6 +13456,7 @@ module.exports = { t750CastPre, t750Stat: () => _t750Stat, t719ReachPre, t719Sta
     vbFootprint: (t, cx, cy) => _vbFootprint(t, cx, cy) },   // ★[T315] 발자국 정본(순수) — 간격 유도 ⓐ항이 발자국을 덮나 하네스가 직접 본다
   LAND_SCAN_R,   // ★[T135] 부존 스캔 반경 — 나무 층이 생활권 숲 셀 수를 유도할 때 읽는다(사본 0)
   __labProbe: {
+    get t772Stat() { return T772_ON ? Object.assign({}, _t772Stat) : null; },   // ★[T772] 켬만 — 귀환 다리 · 집 도착 · 늦음(관찰기가 읽는다)
     makeTerrainAdapter, extractLandParamsApprox, findOpenCenter, pickSeedVillages,
     t593Namer: _t593Namer, t593Kind: _t593Kind, get T593_LABEL() { return T593_LABEL; },   // ★[T593 ⑤] 자·표 기계가 **그 함수**로 이름을 짓는다(사본 0)
     t593SeaBank: (cx, cy) => _t593SeaBank(cx, cy),   // ★[T593 ④] NPC 어부 물가 판정 — 하네스가 같은 함수를 부른다(술어는 `_t374Probe.setDeps` 로 꽂는다)
