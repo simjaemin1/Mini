@@ -78,3 +78,39 @@ all28 steady-note loudness differences after programme matching were within
 perceptual authenticity. One of two diagnostic source-copy crops remained
 5.03dB too loud; do not claim universal reconstruction or generalization.
 No game assets/default player or upstream originals were modified.
+
+## 2026-10-17 listening rejection — do not promote this pilot
+
+The user rejected the latest comparison: “하면 할수록 대금소리가 더더욱 아닌데?
+그냥 기계음이 됐어”. Treat the latest NSF audition as a timbre failure, not
+an improvement justified by pitch accuracy or lower validation loss. Do not
+continue this tiny pilot's training, add noise/EQ/vibrato, or promote its score
+renders as a solution without a new, independently justified experiment.
+
+The default learned filter sees only127 internal48k samples (2.65ms); including
+the65-tap fixed FIR gives191samples (3.98ms). A320ms training crop does not
+give this network320ms of learned context. Four conditioning values, a fixed
+1/k eight-harmonic excitation and independent white noise are not an observed
+time-varying spectral envelope, aperiodicity, or articulation representation.
+Nonlinear filtering can generate more than eight output harmonics; the output
+is **not** hard-limited to eight. These are verified architecture limitations,
+not a controlled causal proof of the user's perceptual result.
+
+The stored same-recording copy diagnostics already have substantial spectral
+and level errors. A read-only follow-up found high-band energy increased in
+both copies, while off-harmonic energy decreased in the second; do not reduce
+this failure to simply “missing treble” or “not enough noise”. These features
+do not isolate breath or membrane vibration and are not naturalness scores.
+
+Before any future new-score audition, establish same-recording reconstruction
+quality separately from score control, on source-bound, level-matched examples
+covering attacks, sustained tone, transitions and breath. Listening identity
+must be evaluated independently; F0/rest/unit tests cannot approve it. Reused
+diagnostic files are not blind evaluation. Keep the failed pilot and its logs
+for reproducibility; no original recordings or game defaults are changed.
+
+The published SiFi-GAN is **not** the architecture trained here. Its paper uses
+spectral-envelope and band-aperiodicity conditioning, adversarial training and
+a much larger network; it separately measures perceptual quality and pitch.
+That speech/singing result does not establish daegeum quality or authorize
+using external weights: https://arxiv.org/html/2210.15533v3.
