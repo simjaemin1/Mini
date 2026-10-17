@@ -235,23 +235,41 @@ async function waitHttp(u, n = 900) { for (let i = 0; i < n; i++) { try { const 
   ok(/성한 것/.test(ftxt), '★③ 그리고 **무엇이 모자란지** 말한다', (ftxt.match(/[^\n]{0,40}성한 것[^\n]{0,16}/) || [''])[0].trim());
   await snap('pv-04-disabled');
 
-  // ── ④ 상한 걸 먹으면 **탈이 난다** ──────────────────────────────────────
-  console.log('\n④ 상한 걸 먹으면 탈이 난다 — HP 는 안 깎인다');
+  // ── ④ 상한 걸 먹으면 **탈이 난다** — T705 축(식중독 지수 P → 배탈 지수 B · 잠복) ─────────────
+  //   ★★[T776 2026-10-16] 옛 계약은 "먹은 자리에서 부상 축(`injury`)이 오른다 + 화면이 '탈이 났다'"였다(T56 · T705 이전).
+  //   T705(PM 10-13 켬 기본 · 재민 10-12 "먹는 즉시 체력이 까이는 게 아니다")는 상한 걸 먹으면 **독(kg × 개수 × (1 − f))을 몸의 P 에 얹고**
+  //   즉시 부상은 없다(`zone.doEat` — 켬이면 `Spoil.illnessFor` 줄을 안 탄다 · 끔 `T705_FOOD_SICK=0` 이면 옛 줄). 그래서 ④ 를 그 축으로 다시 쓴다.
+  //   P 는 몸 틱마다 닫힌 해로 줄어든다(`sick.step` · a/게임시간) — 먹은 직후 읽은 P 는 [얹은 값 × e^(−a·h), 얹은 값] 사이다(h = 읽기까지 흐른 게임시간 상한).
+  //   화면은 지금 배탈을 따로 그리지 않는다(T705 회부 "클라 무들") — 화면이 말하는 것은 "상한 걸 먹었다 · 허기 0"까지다.
+  console.log('\n④ 상한 걸 먹으면 탈이 난다(T705 — 독이 몸에 얹힌다 · 잠복) — HP 는 안 깎인다');
   // ★③이 준 상한 과실을 그대로 먹는다(같은 픽스처 재사용 — 중복 지급이 상황을 흐리지 않게).
   // ★HP 는 **화면(DOM)에서** 읽는다 — `__getMyAbs()` 엔 hp 가 없어 1차 실행이 `null → null` 로
   //   **자명 통과**했다(레포가 못 박은 그 함정). HUD 의 `#hpText` 가 진짜 화면 값이다.
+  const Sick = require(path.join(ROOT, 'server', 'sick.js'));
+  const Wt = require(path.join(ROOT, 'server', 'weights.js'));
   const readHp = () => page.evaluate(() => (document.getElementById('hpText') || {}).textContent || null);
+  const sickP = (b) => (b && b.sick && Number(b.sick.P)) || 0;
   const b0 = await body();
   const hp0 = await readHp();
   pre(!!hp0 && /\d/.test(hp0), 'HUD 에서 **HP 숫자를 실제로 읽었다**(null 이면 아래가 자명 통과)', String(hp0));
+  pre(Sick.ON, '배탈 손잡이 켬(`T705_FOOD_SICK` 기본 · 끔 판이면 이 절의 계약이 다르다)', String(Sick.ON));
+  pre(sickP(b0) === 0, '먹기 전 식중독 지수 P = 0(오르는 것이 이 한 끼 때문이다)', String(sickP(b0)));
+  const L4 = await lots(), f0 = Math.max(0, ...((L4.berry || []).map((l) => Number(l.fresh) || 0)));   // 먹기 직전 서버가 낸 신선도 — 먹을 때는 이것보다 더 시들었다(f 는 시간에 단조 감소)
   const n0 = await page.evaluate(() => (window.__notices || []).length);
+  const tEat = Date.now();
   await page.evaluate(() => window.__sendPrimary({ type: 'eat', item: 'berry' }));
   await sleep(1500);
   const b1 = await body();
+  const tRead = Date.now();
   const said = await page.evaluate((k) => (window.__notices || []).slice(k), n0);
-  ok(!!b1 && (b1.injury || 0) > ((b0 && b0.injury) || 0),
-    '★★④ **부상 축이 올랐다** — 탈이 났다(새 축 없음)', `${(b0 && b0.injury) || 0} → ${b1 && b1.injury}`);
-  ok(said.some((t) => /탈이 났다/.test(t)), '★★④ 그리고 화면이 그렇게 말한다', (said.find((t) => /탈/.test(t)) || '').slice(0, 50));
+  const kgB = Wt.kgOfOrDefault('berry'), hMax = Sick.hoursOf((tRead - tEat) / 1000, DAY_MS), P1 = sickP(b1);
+  //   얹은 독 = 무게 × 1 개 × (1 − f_먹을 때) ∈ [무게 × (1 − f0), 무게] · 읽을 때까지 틱 감쇠 ≤ e^(−a·h) — 그 사이에 있어야 한다(느슨함 0 · 몸 칸은 소수 넷째 자리).
+  const lo = kgB * (1 - f0) * Math.exp(-Sick.PARAM.a * hMax), hi = kgB;
+  ok(P1 > 0 && P1 >= lo - 1e-4 && P1 <= hi + 1e-4,
+    '★★④ **식중독 지수 P 가 올랐다** — 상한 과실 1 개의 독(무게 × (1 − f))이 몸에 얹혔다', `${sickP(b0)} → ${P1} ∈ [${lo.toFixed(4)}, ${hi}](f0 ${f0.toFixed(4)} · 흐른 ${hMax.toFixed(3)} 게임시간)`);
+  ok(!!b1 && ((b1.injury || 0) === ((b0 && b0.injury) || 0)),
+    '★★④ 먹은 자리에서 **부상은 없다**(T705 — 잠복이 있다 · 즉시 부상 줄은 끔 판에만)', `${(b0 && b0.injury) || 0} → ${b1 && b1.injury}`);
+  ok(said.some((t) => /상함/.test(t)), '★★④ 그리고 화면이 **상한 걸 먹었다**고 말한다', (said.find((t) => /상함/.test(t)) || '').slice(0, 50));
   ok(said.some((t) => /허기 0/.test(t)), '★④ 회복은 0 이었다', (said.find((t) => /허기/.test(t)) || '').slice(0, 46));
   const hp1 = await readHp();
   ok(!!hp0 && hp1 === hp0, '★★④ **HP 는 안 깎인다**(아사 폐지 캐논과 같은 결) — 화면 HUD 로 확인', `${hp0} → ${hp1}`);

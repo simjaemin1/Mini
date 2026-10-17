@@ -17,13 +17,19 @@ const path = require('path');
 const fs = require('fs');
 
 // ───────────────────────────── 존 안(preload) ─────────────────────────────
-if (process.env.T538_CHILD) {
+//   ★[T776] 존 **본 스레드에서만**. 일꾼 스레드(worker_threads — T696 WAL 체크포인트 일꾼 · xzone 걸음표 일꾼)는 부모의 `-r` 과 env 를 물려받아
+//     이 preload 를 한 번 더 돈다 — 그러면 일꾼도 제 빈 기록을 같은 `rec.json` 에 1 초마다 덮어써, 부모가 SIGKILL 직전에 읽는 파일이
+//     일꾼 것(지문 없음 · 힙 몇 MB)이거나 두 스레드가 겹쳐 쓴 깨진 JSON 이 된다(`test-village-boot-mem` "길이 51 vs null" 간헐 빨강의 주인).
+//     또 쓰기는 임시 파일 → 이름 바꾸기(원자적)로 — SIGKILL 이 쓰는 도중에 와도 읽는 쪽은 온전한 앞 판을 본다.
+const _t538Main = (() => { try { return require('worker_threads').isMainThread; } catch (e) { return true; } })();
+if (process.env.T538_CHILD && !_t538Main) return;   // 일꾼 스레드 — 아무것도 안 한다(아래 쓰는 법 줄도 안 찍는다)
+if (process.env.T538_CHILD && _t538Main) {
   const OUT = process.env.T538_CHILD;
   const T0 = Date.now();
   const rec = { stages: [], vil: [], heapMax: 0, rssMax: 0, heapMaxAt: '', dump: null };
   let lastLine = '(시작)';
   const mu = () => process.memoryUsage();
-  const flush = () => { try { fs.writeFileSync(OUT, JSON.stringify(rec)); } catch (e) {} };
+  const flush = () => { try { fs.writeFileSync(OUT + '.tmp', JSON.stringify(rec)); fs.renameSync(OUT + '.tmp', OUT); } catch (e) {} };   // ★[T776] 원자적(임시 → 이름 바꾸기)
   const samp = () => { const m = mu(); if (m.heapUsed > rec.heapMax) { rec.heapMax = m.heapUsed; rec.heapMaxAt = lastLine; } if (m.rss > rec.rssMax) rec.rssMax = m.rss; };
   setInterval(samp, 50).unref();
   setInterval(flush, 1000).unref();
