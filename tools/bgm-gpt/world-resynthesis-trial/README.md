@@ -54,3 +54,44 @@ and [WORLD modified-BSD](https://github.com/mmorise/World/blob/master/LICENSE.tx
 retain their notices when distributing software. Recording rights remain
 separate. Preserve the source-credit and local-research scope in the input
 manifest. [Official API/threshold documentation](https://github.com/JeremyCCHsu/Python-Wrapper-for-World-Vocoder/blob/master/pyworld/pyworld.pyx).
+
+## Actual 2026-10-18 tests, not a timbre approval
+
+All three fixed source-copy cases completed in3.96s. Sus/vibrato source-fixed
+independent YIN masks retained378/470steady frames with100%voicing and±50-cent
+agreement. The Arirang case failed at78.95%of285frames; it was not hidden by
+changing the mask or a pitch-class comparison. All files and original hashes
+were retained. Each source/copy AAC is4.8s with static-24LUFS matching.
+
+The same two saved1s sources used in the rejected NSF diagnostics were also
+resynthesized with WORLD. `build_saved_copy_comparison.py` creates source1s,
+silence0.4s, rejectedNSF1s, silence0.4s, WORLD1s. Each excerpt is-24LUFS;
+the whole3.8s file has lower integrated loudness because of the gaps. This is
+a controlled reconstruction comparison, not a new tune or a blind evaluation.
+
+A separate+1semitone run preserved original F0/time/SP/AP hashes and changed
+only positive synthesis F0. The two low-register cases retained pitch; the
+high Arirang case still failed. No claim of learned composition or vibrato
+placement follows from this small parameter-control test.
+
+### Isolated high-register D4C gate ablation
+
+The default speech D4C gate set all aperiodicity bins≈1 for16.28%of voiced
+Arirang controls. On the same affected time frames the source was predominantly
+YIN-voiced but output was not; this was not explained by a level drop alone.
+`run_aperiodicity_ablation.py` therefore reads the bound original controls and
+source, recomputes **only** AP with the documented legacy `threshold=0`, and
+synthesizes each of the same three cases. It never re-extracts/repairs F0,
+modifies SP, overwrites the original run, or silently retries parameters.
+
+All three ablations completed in1.72s. The low cases were unchanged; high-case
+APall1 declined to0 and same-mask pitch/voicing agreement became100%of285frames
+(median0.99c,p955.40c). This isolates an avoidable dropout in this WORLD
+configuration, **not** the cause or cure of all earlier NSF mechanical timbre.
+Threshold0 bypasses the extra voiced/unvoiced rejection, not measured noise.
+Subjective daegeum identity still requires its own listening judgement.
+
+The ablation is bounded to300s/40MB and keeps new AP-only NPZ,24kmono/48kstereo
+FLOAT WAVs, input/control/source SHA bindings and10ms source/default/ablation
+RMS traces. Failed pilot models, original recordings and game defaults remain
+unchanged; there is no new ML training, model download or audio upload.
