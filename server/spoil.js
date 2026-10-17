@@ -307,6 +307,29 @@ function outputQty(n, fresh) {
   const q = Math.floor((Number(n) || 0) * yieldMult(fresh) + 1e-9);
   return q > 0 ? q : 0;
 }
+// ★★[T767 2026-10-16 · 손잡이 `T767_PRESERVE_CARRY=1` — 없음·빈 값·0 = 끔 = 아래 둘을 아무도 안 부른다(수율 갈래 그대로 · main 바이트)]
+//   **개수 그대로 · 신선도 이어받기 · 썩는 속도만 느리게.** 재민 10-15: "애초에 갓 잡은 걸로 가공이 안 되는 게 문제 · 신선도가 떨어진다고
+//   양이 떨어지는 거 아니잖아 · 신선도를 그대로 가져와야 · 건어물은 신선도 감소 속도가 느려지는 것뿐이어야".
+//   위 수율(`outputQty`)은 로트가 `{d, n}` 둘뿐이던 때 "시든 걸로 만든 건 하급"을 **개수로 대신 말한** 우회였다(위 주석 그대로) —
+//   켬이면 산출 = 넣은 개수 · 산출 로트는 넣은 레코드마다 **그 순간의 신선도**에서 시작해 보존식 곡선(`shelf`)으로 늙는다.
+//   ★이어받는 자리 = 곡선 위 **같은 신선도**: 노출 = (1 − f) × 산출 보관일(`freshnessOf` 의 역 — 새 곡선 0 · 새 수 0).
+//     노출(일수)을 그대로 옮기면 신선도가 안 이어진다 — 시든 생선(노출 1.5 · f 0.40)이 건어물 f 0.967 로 둔갑한다(보고/T767 §1).
+//   ★평균 0 — 넣은 레코드마다 한 줄(T732 규약: 같은 순간 · 같은 노출만 합친다). 상한 레코드는 상한 채로 나온다(게이트 `canPreserve` 는 그대로).
+//   ★가공하는 며칠(건조대 위)은 종전처럼 세지 않는다 — 산출 로트는 다 된 순간에 그 신선도로 선다(종전 = 그 순간 신선도 1).
+const T767_CARRY = process.env.T767_PRESERVE_CARRY === '1';
+function carryOf(item, ages, today) {   // 넣은 레코드마다 [{n, f}] — f = 그 순간(오늘 · 켬이면 지금 순간)의 신선도
+  const out = [];
+  for (const a of (ages || [])) {
+    const n = Number(a && a.n) || 0;
+    if (!(n > 0)) continue;
+    out.push({ n: +n.toFixed(6), f: freshnessOf(item, exposureOf(a, today)) });
+  }
+  return out;
+}
+function carryExposure(outItem, fresh) {   // 산출 품목 곡선에서 신선도 f 인 자리의 노출
+  const f = Math.max(0, Math.min(1, Number(fresh) || 0));
+  return +((1 - f) * shelfOf(outItem)).toFixed(6);
+}
 // 가공 시간(ms) — 하루 길이를 주입받는다(새 시계 금지).
 function preserveMs(recipeKey, dayMs) {
   const r = PRESERVE[recipeKey];
@@ -587,5 +610,6 @@ module.exports = {
   setMomentClock, momentNow, exposureAt,   // ★[T732] 순간 로트(소수 날 노출)
   nutritionMult, illnessFor, ofAges, bestOf, peekAges, peekOffer,
   yieldMult, canPreserve, outputQty, preserveMs,
+  T767_CARRY, carryOf, carryExposure,   // ★[T767] 개수 그대로 · 신선도 이어받기(손잡이 · 넣은 레코드 → 산출 신선도 · 곡선 위 자리)
   shelfTable, winterMath, orderCheck, resolveFrom,
 };
