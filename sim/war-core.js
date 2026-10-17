@@ -973,6 +973,9 @@ function createWar(opts) {
   // 방어 AI 일일 틱(태세 히스테리시스 + sortie 결단) — 랩 _opDefenseTick의 일 단위 어댑터(추상층: respond=상비 포진 간주)
   function _opDefenseDaily(w, day) {
     if (w._defEvalDay != null && day <= w._defEvalDay) return; w._defEvalDay = day;
+    // ★[T771] 출격 헛걸음 — 몸 층이 남긴 사실(`_sortieMiss` — 접촉 없이 대치 · 호스트 손잡이 `T771_SORTIE_MISS` 켬에서만 선다)이면
+    //   오늘은 버티기다(태세를 바꾸고 히스테리시스 `WAR_DEF_HYST` 그대로 — 그동안 출격이 안 나서 공격 쪽 결단이 돈다). 칸이 없으면 이 줄은 안 돈다(끔 = 종전 비트).
+    if (w._sortieMiss != null) { const md = w._sortieMiss; delete w._sortieMiss; w._defMode = 'hold'; w._defModeDay = day; log(day, w.def.name + ' 방어 태세: 버티기(D' + md + ' 출격이 닿지 못했다)'); return; }
     if (w._defMode == null || day - ((w._defModeDay != null) ? w._defModeDay : -99) >= WAR_DEF_HYST) {
       const stance = _opDefStance(w.def, w.force || 0, day, w);
       if (stance !== w._defMode) { w._defMode = stance; w._defModeDay = day; log(day, w.def.name + ' 방어 태세: ' + (stance === 'respond' ? '응전 소집' : '버티기(농성 — 소집 안 함)')); }

@@ -5655,6 +5655,14 @@ function _warEnsureDefense(body, sortie) {   // sortie=true — 출격 결단: �
 }
 function _warGroupCentroid(g) { let x = 0, y = 0, n = 0; for (const u of g.units) { if (u.dead) continue; x += u.x; y += u.y; n++; } return n ? { cx: x / n, cy: y / n } : { cx: g.cmd.cx, cy: g.cmd.cy }; }
 
+// ★★[T771 2026-10-16] **출격 헛걸음을 결단에 돌려준다** — 손잡이 `T771_SORTIE_MISS=1`(기본 끔 · 끔 = 종전 글자 그대로).
+//   방어 출격(`_warEngage` 'sortie' — 방어 쪽이 나선다 · 공격은 holder 라 쫓지 않는다)이 **접촉 한 번 없이** 대치로 끝나면(`_warToStandoff`),
+//   그 사실(몸 층)을 전쟁에 남긴다(`w._sortieMiss` = 그날). war-core 가 이튿날 그 칸을 보고 버티기로 돌린다(`_opDefenseDaily` — 태세 히스테리시스 그대로).
+//   ★왜(T764 회부 4 · 전쟁 자 1020 W6 — 41일 교착): 화살 다 쓴 궁수 하나(몸 상한 1 · 징발 차례가 원거리 먼저)가 날마다 출격했다 —
+//     탄 없는 사수는 집으로 물러나고(battle-core `flee`) 공격 청동전사는 holder 라 다가오지 않는다 ⇒ 접촉 0 · 7초 뒤 대치 · 이튿날 또 출격.
+//     war-core 날 틱은 출격이 나면 공격 쪽 결단(`_opNpcDecide` — 군량 소진 철수 · 돌격)을 건너뛴다(`continue`) ⇒ 공격은 41일 동안 한 번도 결단을 못 했다.
+//   새 수 0 · 새 손잡이 하나 · 칸 둘(몸 `_t771C0` = 출격 시작의 접촉 수 · 전쟁 `_sortieMiss`).
+const T771_SORTIE_MISS = process.env.T771_SORTIE_MISS === '1';
 // ── 교전 계기 — war-core onEngage(assault·sortie 결단)에서 부른다 ──
 //   true = 실체가 맡았다(w.phase='battle' — war-core 훅 계약). 군대 몸이 없으면(징발 0) 철수 처리(아래 _warNoArmy).
 function _warEngage(w, day, why) {
@@ -5668,6 +5676,7 @@ function _warEngage(w, day, why) {
   _warBuildRectIndex();                                      // 그날 첫 교전이면 건물 행 색인 갱신(발자국 행만 · 하루 한 번)
   const side = (why === 'sortie' && body.defGroup) ? 'B' : 'A';
   f.holder = side === 'A' ? 'B' : 'A';
+  if (T771_SORTIE_MISS) body._t771C0 = side === 'B' ? (f.contacts | 0) : null;   // ★[T771] 방어 출격이 시작될 때의 접촉 수(대치 때 그대로면 헛걸음)
   state.warLive.orderAdvance(f, side);
   state.warLive.setSideCtl(f, side, true);   // 먼저 행군로 위를 대형으로 걷는다 — 곧은 길이 열리고 교전 거리에 들면 풀린다(_warAdvanceMarch)
   f.adv = { side, released: false, s: null };
@@ -5693,6 +5702,7 @@ function _warToStandoff(body) {
   if (body.atkGroup) { WL.regroup(body.atkGroup); const cp = caravanPointAt(body, body.campProg != null ? body.campProg : body.prog); body.campPt = { cx: cp.x / SZ, cy: cp.y / SZ }; body.atkGroup.heading = body.heading; }
   if (body.defGroup) { WL.regroup(body.defGroup); if (!body.defGroup.holdPt) body.defGroup.holdPt = { cx: body.defGroup.cmd.cx, cy: body.defGroup.cmd.cy }; }
   body.mode = 'camp';
+  if (T771_SORTIE_MISS && body._t771C0 != null) { if (!f || (f.contacts | 0) === body._t771C0) w._sortieMiss = state.world.day; body._t771C0 = null; }   // ★[T771] 출격이 접촉 없이 끝났다 — 그날을 전쟁에 남긴다
   w.phase = 'march'; w.op = 'camp'; w._sortie = false;
   state._warStat.standoff++;
   if (f) f.standoffs = (f.standoffs || 0) + 1;
