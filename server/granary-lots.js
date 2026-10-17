@@ -15,6 +15,12 @@
 //   `f0` = 곳간에 들 때 단위에 이미 접힌 신선도. 사람이 내는 문(회관 · 거래소 · 게시판)은 단위를 **열량 × 신선도**로 잰다(T725 · 부패 배치) —
 //     그 몫을 다시 나이로 깎으면 두 번 깎는다. 그래서 꺼낼 때 낱개 = (문이 정한 낱개 몫) ÷ f0 · 나이는 레코드째(넣은 그대로 늙어 간다).
 //     econ 이 만든 것은 f0 = 1(단위가 곧 갓 난 양).
+//   ★★[T768 2026-10-16 · 같은 손잡이 안 · 새 손잡이 0] `it` = **넣은 그 품목**(재민 10-15 ⓑ — T732 §8 ①: "꺼낼 때 넣은 물건 그대로").
+//     사람의 문(`recsFromPlayer`)과 손(`handRecs`)이 싣는다 · 옮김(`_copy` — 캐러밴 · 대기 칸 · 몸 짐 · 갱 · 되돌림)은 그대로 따라간다 ·
+//     econ 이 만든 것 · 옛 레코드(칸 없음) = 문이 정한 **대표 품목**(읽는 쪽이 그렇게 읽는다 — 지우지 않는다).
+//     econ 칸은 지금처럼 대표 단위로 센다(값 무변). 꺼낼 때(`recsToItems`) 품목이 대표 품목과 다르면 그 품목의 열량으로 낱개를 바꾼다
+//     (문이 정한 낱개 몫 × 대표 열량 ÷ 그 품목 열량 — `kcal.itemsOf` 의 바닥 없는 꼴 · 레코드는 소수 낱개를 든다 · 새 수 0).
+//     품목 셈(`ITM` — 마을마다 든 · 난 단위)이 장부 옆에 선다: 감싼 장부에서 그 품목 레코드 합 = 든 것 − 난 것(`checkItems`).
 //
 // ── 일시 변경 ────────────────────────────────────────────────────────────────────────────────────
 //   거래소 견적(`trade.planSliced` · `gluttedAt`)은 곳간을 잠깐 바꿨다 되돌린다 — 그동안은 장부를 멈춘다(`suspend`).
@@ -49,7 +55,17 @@ const ST = { attached: 0, seeded: 0, seededU: 0, restored: 0, t716In: 0, newLots
   wrappedLate: 0, adopted: 0, drift: 0, driftU: 0, cargoIn: 0, cargoOut: 0, txRollback: 0, doors: 0, doorNoRec: 0, doorStale: 0, giveNoRec: 0, giveNoRecU: 0,
   // ★[T748] 켬 전용 일곱 길 — 손 · 대기 칸 · 몸 짐 · 갱 비축 · 존 경계(센다 · 판정 0)
   handRecs: 0, handU: 0, pockIn: 0, pockNew: 0, pockOut: 0, pockSeed: 0, pockDrift: 0, pockDriftU: 0,
-  bagIn: 0, bagNew: 0, bagOut: 0, gangIn: 0, gangOut: 0, gangSeed: 0, gangDrift: 0, gangDriftU: 0, denIn: 0, xzOut: 0, xzIn: 0 };
+  bagIn: 0, bagNew: 0, bagOut: 0, gangIn: 0, gangOut: 0, gangSeed: 0, gangDrift: 0, gangDriftU: 0, denIn: 0, xzOut: 0, xzIn: 0,
+  // ★[T768] 품목 실은 레코드 — 싣기(문 · 손) · 장부에 든/난 단위 · 마을이 먹은(econ 줄이기) · 사람에게 그 품목으로 준 · 대표 품목과 달라 바꿔 준 · 짐에 실린
+  itemTag: 0, itemTagU: 0, itemInU: 0, itemOutU: 0, itemEatU: 0, itemGiveU: 0, itemSwapU: 0, itemSwapRecs: 0, itemCargoU: 0 };
+// ★★[T768] 품목 셈 — econ 마을 → { in: {품목: 단위}, out: {품목: 단위} }(그 장부에 든 · 난 품목 실은 레코드의 단위) · 되돌림 스냅숏
+const ITM = new WeakMap();
+const TXI = new WeakMap();
+const EAT = {};   // 품목 → 마을이 먹은(econ 줄이기 · 문 · 싣기 밖) 단위 — "NPC 는 넣은 그 품목을 먹는다"
+function _itm(v) { let o = ITM.get(v); if (!o) { o = { in: {}, out: {} }; ITM.set(v, o); } return o; }
+function _itIn(v, it, u) { if (it == null || !(u > EPS)) return; const o = _itm(v); o.in[it] = (o.in[it] || 0) + u; ST.itemInU += u; }
+function _itOut(v, it, u) { if (it == null || !(u > EPS)) return; const o = _itm(v); o.out[it] = (o.out[it] || 0) + u; ST.itemOutU += u; }
+function _itSnap(v) { if (TXI.has(v)) return; const o = ITM.get(v); TXI.set(v, o ? { in: Object.assign({}, o.in), out: Object.assign({}, o.out) } : null); }
 
 let _gpf = null, _cpf = null;
 function _gran() { return _gpf || (_gpf = Spoil.placeFields('granary')); }
@@ -63,7 +79,7 @@ function _rec(k, u) { const g = _gran(); return { k, u, f0: 1, e: 0, t: k / _day
 function _settle(r, nf) { const t0 = (r.t == null) ? r.k / _day() : +r.t; if (t0 < nf) { r.e = +Spoil.exposureAt(r, nf, 0).toFixed(6); r.t = nf; } return r; }
 // 자리를 바꾼다 — 정산 먼저(지난 구간에 새 배율이 소급되지 않게)
 function _restamp(r, pf, nf) { _settle(r, nf); r.m = pf.m; r.w = pf.w; return r; }
-function _copy(r, u) { return { k: r.k, u, f0: r.f0 == null ? 1 : r.f0, e: r.e, t: r.t, m: r.m, w: r.w }; }
+function _copy(r, u) { const o = { k: r.k, u, f0: r.f0 == null ? 1 : r.f0, e: r.e, t: r.t, m: r.m, w: r.w }; if (r.it != null) o.it = r.it; return o; }   // ★[T768] 품목은 따라간다(없으면 칸도 없다 — 옛 꼴 그대로)
 function _sortK(arr) { arr.sort((a, b) => (a.k - b.k) || ((+b.e || 0) - (+a.e || 0))); return arr; }
 
 // ══ 접근자 — econ 이 쓰는 값은 그대로 · 같은 양을 장부에 ════════════════════════════════════════
@@ -101,7 +117,7 @@ function _in(v, res, du) {
     const W = q.reduce((a, r) => a + (+r.u || 0), 0);
     if (W > EPS) {
       const nf = _nowFrac(), g = _gran();
-      for (const r of q) { const u = left * (+r.u || 0) / W; if (u > EPS) arr.push(_restamp(_copy(r, u), g, nf)); }
+      for (const r of q) { const u = left * (+r.u || 0) / W; if (u > EPS) { arr.push(_restamp(_copy(r, u), g, nf)); _itIn(v, r.it, u); } }   // ★[T768] 든 품목 셈
       q.length = 0; delete P[res];
       ST.moved++;
       _sortK(arr);
@@ -110,7 +126,7 @@ function _in(v, res, du) {
   }
   const k = _kNow(), g = _gran();                       // 얻음 — 지금 순간의 새 로트(같은 순간 · 같은 자리 · 갓 난 것이면 합친다)
   const last = arr.length ? arr[arr.length - 1] : null;
-  if (last && last.k === k && last.m === g.m && last.w === g.w && !(+last.e > 0) && (last.f0 == null || last.f0 === 1)) last.u += left;
+  if (last && last.k === k && last.m === g.m && last.w === g.w && !(+last.e > 0) && (last.f0 == null || last.f0 === 1) && last.it == null) last.u += left;   // ★[T768] 품목 실은 레코드엔 안 합친다(econ 이 만든 몫 = 대표 품목)
   else { arr.push(_rec(k, left)); ST.newLots++; if (last && last.k > k) _sortK(arr); }
 }
 function _out(v, res, du) {
@@ -123,6 +139,7 @@ function _out(v, res, du) {
   while (left > EPS && arr.length) {
     const r = arr[0], take = Math.min(left, r.u);
     if (taken) taken.push(_copy(r, take));
+    if (r.it != null) { _itOut(v, r.it, take); if (!taken) { ST.itemEatU += take; EAT[r.it] = (EAT[r.it] || 0) + take; } }   // ★[T768] 난 품목 셈 · 문 · 싣기 밖이면 마을이 먹은 것(그 품목 그대로)
     r.u -= take; left -= take;
     if (r.u <= EPS) arr.shift();
   }
@@ -146,7 +163,7 @@ function _hold(v, res, du) {
 // 되돌림 스냅숏 — 교환이 실패하면 곳간 값도 되돌아가니 장부도 그 순간으로
 function _txTouch(v, res) {
   let T = TX.get(v);
-  if (!T && _door && LED.has(v)) { T = {}; TX.set(v, T); _door.tx.add(v); }
+  if (!T && _door && LED.has(v)) { T = {}; TX.set(v, T); _door.tx.add(v); TXI.delete(v); _itSnap(v); }   // ★[T768] 품목 셈도 그 순간으로 되돌릴 수 있게
   if (!T || T[res]) return;
   const L = LED.get(v), D = DEBT.get(v);
   T[res] = { arr: (L && L[res]) ? L[res].map((r) => Object.assign({}, r)) : null, debt: D ? (D[res] || 0) : 0 };
@@ -160,7 +177,7 @@ function attach(v, saved, seedK) {
   const L = LED.get(v);
   const k = Number.isFinite(seedK) ? seedK : _kNow();
   if (saved && saved.L && typeof saved.L === 'object') {
-    for (const [res, recs] of Object.entries(saved.L)) if (Array.isArray(recs) && recs.length && !L[res]) L[res] = recs.filter((r) => r && r.u > EPS).map((r) => Object.assign({}, r));
+    for (const [res, recs] of Object.entries(saved.L)) if (Array.isArray(recs) && recs.length && !L[res]) { L[res] = recs.filter((r) => r && r.u > EPS).map((r) => Object.assign({}, r)); for (const r of L[res]) _itIn(v, r.it, r.u); }   // ★[T768] 저장된 품목 칸째 · 셈은 붙은 그 순간부터(든 것 = 복원한 것)
     if (saved.D && typeof saved.D === 'object') DEBT.set(v, Object.assign({}, saved.D));
     ST.restored++;
   } else if (v._t716Lots && typeof v._t716Lots === 'object') {
@@ -239,6 +256,7 @@ function _adopt(v, res, recs) {
   if (!L[res] && q > EPS && W > EPS) {
     const nf = _nowFrac(), g = _gran();
     L[res] = _sortK(recs.filter((r) => (+r.u || 0) > EPS).map((r) => _restamp(_copy(r, q * (+r.u) / W), g, nf)));
+    for (const r of L[res]) _itIn(v, r.it, r.u);   // ★[T768] 든 품목 셈(새 칸의 첫 몫 = 옮겨 온 레코드)
     ST.adopted++;
   }
   _wrap(v, res, _kNow());
@@ -252,10 +270,12 @@ function capEnd(v, res) {
   return got;
 }
 function suspend(on) { _suspend = Math.max(0, _suspend + (on ? 1 : -1)); }
-function txBegin(v) { if (LED.has(v)) TX.set(v, {}); }
+function txBegin(v) { if (LED.has(v)) { TX.set(v, {}); TXI.delete(v); _itSnap(v); } }
 function txEnd(v, commit) {
   const T = TX.get(v); TX.delete(v);
+  const SI = TXI.get(v); TXI.delete(v);   // ★[T768] 품목 셈 스냅숏
   if (!T || commit) return;
+  if (SI) ITM.set(v, SI); else ITM.delete(v);
   const L = LED.get(v); let D = DEBT.get(v);
   for (const [res, snap] of Object.entries(T)) {
     if (snap.arr && snap.arr.length) L[res] = snap.arr; else delete L[res];
@@ -317,8 +337,10 @@ function recsFromPlayer(recs, item, units, unitsMode, today) {
   recs.forEach((r, i) => {
     if (!(ws[i] > EPS)) return;
     out.push({ k: Number.isFinite(r.k) ? r.k : Math.floor(r.d) * _day(), u: units * ws[i] / W, f0: unitsMode ? Math.max(1e-6, fs[i]) : 1,
-      e: +r.e || 0, t: (r.t == null) ? (Number.isFinite(r.k) ? r.k / _day() : Math.floor(r.d)) : +r.t, m: r.m == null ? 1 : r.m, w: r.w == null ? 0 : r.w });
+      e: +r.e || 0, t: (r.t == null) ? (Number.isFinite(r.k) ? r.k / _day() : Math.floor(r.d)) : +r.t, m: r.m == null ? 1 : r.m, w: r.w == null ? 0 : r.w,
+      it: item });   // ★[T768] 넣은 그 품목
   });
+  if (out.length) { ST.itemTag += out.length; ST.itemTagU += units; }
   return out;
 }
 //   꺼내기: 곳간에서 빠진 레코드 → 사람 로트(문이 정한 낱개 `give` 를 단위 비율로 나눠 · f0 로 편다 · 나이는 레코드째).
@@ -343,6 +365,32 @@ function recsToPlayer(recs, give) {
   if (allOne && big) { const fix = +(give - S).toFixed(6); if (fix !== 0) big.n = +(big.n + fix).toFixed(6); }
   return out;
 }
+//   ★★[T768] 꺼내기 — **레코드의 품목 그대로**(재민 10-15 ⓑ). 문이 정한 낱개 `give`(대표 품목 `item` 기준)를 단위 비율로 나눈다(오래된 것부터 뗀 그 차례 ·
+//     레코드째). 품목 칸(`it`)이 없거나 대표 품목이면 그 몫은 대표 품목(종전 `recsToPlayer` 그대로 — 품목이 다 같으면 그 함수 하나를 그대로 부른다 · 바이트) ·
+//     다른 품목이면 그 품목으로: 낱개 = 문 몫 × 대표 열량 ÷ 그 품목 열량 ÷ f0(같은 열량 · `kcal.itemsOf` 의 바닥 없는 꼴 — 문이 열량으로 낱개를 정했으면
+//     곧 단위 × 하루치 ÷ 그 품목 열량 · 둘 중 하나라도 열량이 없으면 낱개째). 반환 = { [품목]: [{ d, k, n, e, t, m, w }] }(사람 쪽 `Lots.moveIn` 이 그대로 받는다).
+function recsToItems(recs, give, item, kcalOf) {
+  const by = {};
+  if (!Array.isArray(recs) || !recs.length || !(give > 0)) return by;
+  const own = [], other = [];
+  for (const r of recs) { ((r && r.it != null && r.it !== item) ? other : own).push(r); if (r && r.it != null) ST.itemGiveU += +r.u || 0; }
+  if (!other.length) { const pr = recsToPlayer(recs, give); if (pr.length) by[item] = pr; return by; }
+  const U = recs.reduce((a, r) => a + (+r.u || 0), 0);
+  if (!(U > EPS)) return by;
+  const per = give / U;
+  if (own.length) { const pr = recsToPlayer(own, per * own.reduce((a, r) => a + (+r.u || 0), 0)); if (pr.length) by[item] = pr; }
+  const kD = kcalOf ? (+kcalOf(item) || 0) : 0, nf = _nowFrac();
+  for (const r0 of other) {
+    const r = _settle(_copy(r0, r0.u), nf);
+    const f0 = r.f0 == null ? 1 : +r.f0;
+    const kX = kcalOf ? (+kcalOf(r.it) || 0) : 0;
+    const n = +(per * r.u * ((kD > 0 && kX > 0) ? kD / kX : 1) / Math.max(1e-6, f0)).toFixed(6);
+    if (!(n > 0)) continue;
+    (by[r.it] || (by[r.it] = [])).push({ d: Math.floor(r.k / _day()), k: r.k, n, e: r.e, t: r.t, m: r.m, w: r.w });
+    ST.itemSwapU += r.u; ST.itemSwapRecs++;
+  }
+  return by;
+}
 
 // ══ 캐러밴 · 전쟁 짐(sim 훅이 부른다 — `setLotHook`) ════════════════════════════════════════════
 //   짐은 길 위에서 늙는다 — 자리 = 몸에 지님(정산은 꺼낼 때 조회 함수가 한다 · 새 수 0).
@@ -352,6 +400,7 @@ function cargo(c, slot, recs) {
   let K = CARGO.get(c); if (!K) { K = {}; CARGO.set(c, K); }
   K[slot] = _toCarry(recs.map((r) => _copy(r, r.u)));
   ST.cargoOut++;
+  for (const r of recs) if (r && r.it != null) ST.itemCargoU += +r.u || 0;   // ★[T768] 짐에 실린 품목 레코드(품목째 길을 간다)
 }
 function unload(c, slot, v, res, amt) {
   const K = c && CARGO.get(c), recs = K && K[slot];
@@ -430,9 +479,9 @@ function handRecs(p, item, n, per) {
   for (const r of out) {
     const q = +r.n || 0; if (!(q > EPS)) continue;
     const k = Number.isFinite(r.k) ? r.k : Math.floor(+r.d || 0) * _day();
-    recs.push({ k, u: q * W, f0: 1, e: +r.e || 0, t: (r.t == null) ? k / _day() : +r.t, m: r.m == null ? 1 : r.m, w: r.w == null ? 0 : r.w });
+    recs.push({ k, u: q * W, f0: 1, e: +r.e || 0, t: (r.t == null) ? k / _day() : +r.t, m: r.m == null ? 1 : r.m, w: r.w == null ? 0 : r.w, it: item });   // ★[T768] 손이 넣은 그 품목
   }
-  if (recs.length) { ST.handRecs += recs.length; ST.handU += _sumU(recs); }
+  if (recs.length) { ST.handRecs += recs.length; ST.handU += _sumU(recs); ST.itemTag += recs.length; ST.itemTagU += _sumU(recs); }
   return recs;
 }
 // 곳간 입구(econ 정본 한 줄)를 문으로 감싼다 — 그 줄 앞에서 열고(`doorOpen`) · 뒤에서 닫으며 늘어난 몫(세금 뗀 것)을
@@ -521,7 +570,7 @@ function gangSync(g) {   // 줄 합 = 갱 비축(어긋나면 고치고 센다 �
   const want = Math.max(0, +g.food || 0), a = GANG.get(g) || [], have = _sumU(a), dd = want - have;
   if (Math.abs(dd) > 1e-6 * Math.max(1, want)) { ST.gangDrift++; ST.gangDriftU += Math.abs(dd); if (dd > 0) { a.push(_recAt(_kNow(), dd, _gran())); _sortK(a); } else _fifo(a, -dd); GANG.set(g, a); }
 }
-function gangDump(g) { const a = GANG.get(g); return (a && a.length) ? a.map((r) => ({ k: r.k, u: +r.u.toFixed(9), f0: r.f0 == null ? 1 : r.f0, e: r.e, t: r.t, m: r.m, w: r.w })) : null; }
+function gangDump(g) { const a = GANG.get(g); return (a && a.length) ? a.map((r) => { const o = { k: r.k, u: +r.u.toFixed(9), f0: r.f0 == null ? 1 : r.f0, e: r.e, t: r.t, m: r.m, w: r.w }; if (r.it != null) o.it = r.it; return o; }) : null; }   // ★[T768] 품목 칸째(있을 때만)
 function gangLoad(g, saved) { if (g && Array.isArray(saved) && saved.length) GANG.set(g, saved.filter((r) => r && r.u > EPS).map((r) => Object.assign({}, r))); }
 function gangOf(g) { return GANG.get(g) || null; }
 // 소굴 어댑터(econ 꼴 `{ storage }`)에 갱 줄을 붙인다 — 곳간처럼 뗀다(전쟁 정본 `_warFoodTake` 의 capBegin/capEnd 가 레코드를 모은다)
@@ -556,7 +605,7 @@ const hooks = { capBegin, capEnd, cargo, unload, bounce, pushIn, clearIn, packFr
 function dump(v) {
   const L = LED.get(v); if (!L) return null;
   const out = { L: {}, D: Object.assign({}, DEBT.get(v) || {}) };
-  const _rd = (r) => ({ k: r.k, u: +r.u.toFixed(9), f0: r.f0 == null ? 1 : r.f0, e: r.e, t: r.t, m: r.m, w: r.w });
+  const _rd = (r) => { const o = { k: r.k, u: +r.u.toFixed(9), f0: r.f0 == null ? 1 : r.f0, e: r.e, t: r.t, m: r.m, w: r.w }; if (r.it != null) o.it = r.it; return o; };   // ★[T768] 품목 칸째(있을 때만 — 옛 꼴은 칸이 없다)
   for (const [res, recs] of Object.entries(L)) if (recs && recs.length) out.L[res] = recs.map(_rd);
   // ★[T748] 대기 칸 줄(있을 때만 — 없으면 칸이 안 생긴다)
   const P = POCK.get(v);
@@ -607,10 +656,35 @@ function checkBag(p, keys, tol) {
   return bad;
 }
 function checkGang(g, tol) { const want = Math.max(0, +g.food || 0), have = _sumU(GANG.get(g)); return Math.abs(want - have) > (tol || 1e-6) * Math.max(1, want) ? { want, have } : null; }
+// ★★[T768] 품목 불변식 — 감싼 장부마다 그 품목 레코드의 단위 합 = 든 것 − 난 것(`ITM`) · 장부의 품목별 합(대표 품목 몫 = 칸 없는 레코드는 `'*'`)
+function itemSums(v) {
+  const L = LED.get(v); if (!L) return null;
+  const out = {};
+  for (const [res, recs] of Object.entries(L)) for (const r of (recs || [])) { const k = r.it != null ? r.it : `*${res}`; out[k] = (out[k] || 0) + (+r.u || 0); }
+  return out;
+}
+function checkItems(econVillages, tol) {
+  const bad = []; let items = 0, tagged = 0;
+  for (const v of (econVillages || [])) {
+    if (!LED.has(v)) continue;
+    const S = itemSums(v) || {}, M = ITM.get(v) || { in: {}, out: {} };
+    const keys = new Set([...Object.keys(M.in), ...Object.keys(M.out), ...Object.keys(S).filter((k) => k[0] !== '*')]);
+    for (const it of keys) {
+      items++;
+      const have = S[it] || 0, want = (M.in[it] || 0) - (M.out[it] || 0);
+      tagged += have;
+      if (Math.abs(have - want) > (tol || 1e-6) * Math.max(1, Math.abs(want))) bad.push({ v: v.name, it, have, want });
+    }
+  }
+  return { items, tagged: +tagged.toFixed(6), bad };
+}
+function itemFlow(v) { const M = ITM.get(v); return M ? { in: Object.assign({}, M.in), out: Object.assign({}, M.out) } : null; }
+function eaten(reset) { const o = Object.assign({}, EAT); if (reset) for (const k of Object.keys(EAT)) delete EAT[k]; return o; }
 
 module.exports = { ON, attach, sync, pushIn, clearIn, capBegin, capEnd, suspend, txBegin, txEnd, isWrapped,
   tickBegin, tickEnd, doorBegin, doorEnd, doorIn, doorRest, doorCap,
-  recsFromPlayer, recsToPlayer, hooks, cargo, unload, bounce, cargoDump, cargoLoad, packFrom, packKeep, giveBegin, giveEnd,
+  recsFromPlayer, recsToPlayer, recsToItems, hooks, cargo, unload, bounce, cargoDump, cargoLoad, packFrom, packKeep, giveBegin, giveEnd,
+  itemSums, checkItems, itemFlow, eaten,   // ★[T768] 품목 칸 · 품목 불변식 · 마을이 먹은 품목
   dump, ledger, attached, freshOf, stats, check,
   // ★[T748] 켬 전용 일곱 길
   POCK_KEYS, handRecs, doorOpen, doorShut, pockPut, pockTake, pendIn, pendOut, pock: (v, key, res) => _pock(v, key, res, false),

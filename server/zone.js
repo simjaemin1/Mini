@@ -11601,6 +11601,8 @@ function tryVillageBrief(player, vid) {
 //       (f0 < 1 인 레코드의 낱개 = 문 몫 ÷ f0 — 두 번 깎으면 소멸이다 · 넘는 정수 몫만 인벤에 더한다). 문이 실패하면 장부도 문 앞으로.
 //   ⚠품목: 꺼낼 때 나오는 것은 문이 정한 **대표 품목**이다(곳간 재화 하나 = econ 칸 하나 — 곰고기를 넣으면 사슴·들짐승고기로 나온다 · 나이는 곰고기의 것).
 //     넣은 물건 그대로 돌려주는 길(T716 이 했던 것)은 문이 정하는 품목을 바꾸는 일이라 재민 칸에 둔다(보고 §재민 칸).
+//   ★★[T768 2026-10-16 · 같은 손잡이 안] 재민 10-15 ⓑ: **넣은 물건 그대로** — 레코드가 넣은 품목(`it`)을 싣고(`recsFromPlayer` · `handRecs`),
+//     ② 에서 그 품목으로 준다(`GL.recsToItems` — 낱개는 그 품목의 열량 · 나이는 레코드째). 문이 정하는 개수 · 단위(정본 함수)는 그대로 · econ 칸 값 무변.
 const GL = T732_MOMENT ? require('./granary-lots') : null;
 function _t732DoorBegin(player, giveItems) {
   if (!GL || !player || !player.inventory) return null;
@@ -11653,12 +11655,30 @@ function _t732DoorEnd(ctx, player, ok, vil, unitsOf) {
     let recs = [];
     for (const M of d.cap.values()) if (M[res] && M[res].length) { recs = recs.concat(M[res]); delete M[res]; }
     if (!recs.length) continue;
-    const pr = GL.recsToPlayer(recs, add);
-    if (!pr.length) continue;
-    Lots.moveIn(player, it, pr, today, 0, 'carry');
-    const extra = Math.floor(Lots.sum(player, it) + 1e-6) - Math.floor((Number(inv[it]) || 0) + 1e-6);
-    if (extra > 0) inv[it] = (Number(inv[it]) || 0) + extra;
-    out.got[it] = { n: +pr.reduce((a, r) => a + r.n, 0).toFixed(6), add, extra: Math.max(0, extra), recs: pr.length };
+    // ★★[T768] **레코드의 품목 그대로**(재민 10-15 ⓑ) — 레코드가 다 대표 품목(칸 없음 · 같은 품목)이면 아래 종전 줄 그대로(`recsToItems` 가 `recsToPlayer` 를 그대로 부른다).
+    //   다른 품목의 레코드(곰고기를 넣었는데 문은 사슴·들짐승고기를 셌다)는 그 품목으로 — 낱개는 그 품목의 열량 · 나이는 레코드째 ·
+    //   인벤 = ⌊로트 합⌋(대표 품목은 문이 더한 몫에서 다른 품목 몫이 빠진다 · 그 품목은 그만큼 는다 — 근사 0).
+    const by = GL.recsToItems(recs, add, it, Kcal.kcalOf);
+    const its = Object.keys(by);
+    if (!its.length) continue;
+    if (its.length === 1 && its[0] === it) {
+      const pr = by[it];
+      Lots.moveIn(player, it, pr, today, 0, 'carry');
+      const extra = Math.floor(Lots.sum(player, it) + 1e-6) - Math.floor((Number(inv[it]) || 0) + 1e-6);
+      if (extra > 0) inv[it] = (Number(inv[it]) || 0) + extra;
+      out.got[it] = { n: +pr.reduce((a, r) => a + r.n, 0).toFixed(6), add, extra: Math.max(0, extra), recs: pr.length };
+      continue;
+    }
+    for (const it2 of its) {
+      const pr = by[it2];
+      const q0 = Number(inv[it2]) || 0;
+      Lots.moveIn(player, it2, pr, today, 0, 'carry');
+      const q = Math.floor(Lots.sum(player, it2) + 1e-6);
+      if (q > 0 || inv[it2] != null) inv[it2] = q;
+      out.got[it2] = { n: +pr.reduce((a, r) => a + r.n, 0).toFixed(6), add: it2 === it ? add : 0, extra: it2 === it ? Math.max(0, q - q0) : 0, recs: pr.length,
+        from: it2 === it ? undefined : it, swap: it2 !== it };
+    }
+    if (!by[it]) { const q = Math.floor(Lots.sum(player, it) + 1e-6); inv[it] = q; }   // 대표 품목 레코드가 하나도 없으면 문이 더한 몫이 다 빠진다
   }
   // ③ 아무도 안 채운 늘어남 — 그 순간의 새 로트(센다 · 문 표를 다 막았으면 0) · ④ 사람 쪽 — 낸 품목의 로트를 오래된 것부터 지운다
   GL.doorRest(d);
@@ -11671,7 +11691,7 @@ function _t732GotLine(player, got) {
   const today = zoneGameDay(), parts = [];
   for (const [it, g] of Object.entries(got.got)) {
     let fmin = 1; for (const l of Lots.of(player, it)) fmin = Math.min(fmin, Spoil.freshnessOf(it, Spoil.exposureOf(l, today)));
-    parts.push(`${ITEM_LABEL_SERVER[it] || it} ${+g.n.toFixed(2)}${g.extra > 0 ? `(넣을 때 시든 몫을 펴 +${g.extra})` : ''} · 곳간 나이째(가장 늙은 몫 신선도 ${fmin.toFixed(2)})`);
+    parts.push(`${ITEM_LABEL_SERVER[it] || it} ${+g.n.toFixed(2)}${g.swap ? '(넣은 물건 그대로)' : ''}${g.extra > 0 ? `(넣을 때 시든 몫을 펴 +${g.extra})` : ''} · 곳간 나이째(가장 늙은 몫 신선도 ${fmin.toFixed(2)})`);   // ★[T768] 다른 품목으로 나온 몫
   }
   return parts.length ? ` · ${parts.join(' · ')}` : '';
 }
@@ -11696,7 +11716,8 @@ function _afterWithdraw(player, r) {
   Carry.reconcile(player, player.inventory);
   savePlayer(player);
   sendInventory(player);
-  send(player.ws, { type: 'notice', text: `🏘️ ${r.name} 곳간에서 ${ITEM_LABEL_SERVER[r.item] || r.item} ${r.qty} 꺼냈다`
+  const _sw768 = !!(_g732 && Object.values(_g732.got || {}).some((g) => g && g.swap));   // ★[T768] 넣은 물건 그대로 나온 몫이 있다(켬 · 없으면 종전 글자)
+  send(player.ws, { type: 'notice', text: `🏘️ ${r.name} 곳간에서 ${ITEM_LABEL_SERVER[r.item] || r.item} ${r.qty}${_sw768 ? ' 몫(넣은 물건 그대로)' : ''} 꺼냈다`
     + ` — 오늘 남은 몫 ${r.remain}/${r.limit}`
     + (_g732 ? _t732GotLine(player, _g732) : '') });
   // ★거래소 창이 열려 있으면 **그 창을 다시 보내 준다** — 방금 곳간이 줄었고 남은 몫도 줄었다
