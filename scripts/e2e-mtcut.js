@@ -73,7 +73,9 @@ require(path.join(ROOT,'server','zone.js'));`);
   const browser = await chromium.launch({ headless: true });
   const page = await (await browser.newContext({ viewport: { width: 1400, height: 900 } })).newPage();
   page.on('pageerror', (e) => console.log('[err]', String(e.message).slice(0, 200)));
-  await page.goto(`http://localhost:${CPORT}/`); await sleep(2500);
+  // ★[T770] 렌더 손잡이 `T770_CUT_HLO`(절단 행 구간에 음의 높이 · 기본 끔)는 URL 로 간다 — env 가 `1` 일 때만 붙인다(없으면 종전 주소 그대로).
+  //   판정은 하나도 안 바꾼다 — `[절단]` 줄의 `hlo` 칸이 실제로 켜졌는지 말한다.
+  await page.goto(`http://localhost:${CPORT}/${process.env.T770_CUT_HLO === '1' ? '?T770_CUT_HLO=1' : ''}`); await sleep(2500);
   // ★[T84] 로비 버튼은 글자가 아니라 **id**(`#enter`) 로 집는다 — 라벨이 바뀌어도 안 죽는다.
   //   ⚠옛 사다리(`#startBtn`·"시작"·"입장"·게스트) 네 칸 중 실제로 문 것은 **"입장" 한 칸**이었다.
   //   앞 칸 "시작"은 숨은 「새로 시작」에 걸려 click 이 **시간초과**로 죽었고, 그 30초가 **우연히**
