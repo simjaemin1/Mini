@@ -136,7 +136,9 @@ console.log('\n③ 증분(T421) — 켬(그대로 두기 · 통째로) ↔ 끔(�
   ok(src.length > 3000 && SPDEF.length > 50, '③ [전제] 제품의 격자 글자 넷 + 상태 한 줄을 떴다');
   const CS = 512;
   const mk = (on, w, twist) => new Function('players', 'mobs', 'resources', 'chunkManager', 'Quadtree', 'QuadtreeInc', 'ZONE', 'T421_SPATIAL_INC', '_inputTOStep',
-    'let activeChunkKeys = new Set(), qtPlayers = null, qtMobs = null, qtBuildings = null, qtResources = null, qtColl = null, resourcesDirty = true, _lastResRebuild = 0, _WW = null, _wwRes = null;\n' +   // ★[T537 ⓪] T461 커널 두 칸(끔 = null — 제품 선언 그대로 · `_rebuildResources` 가 읽는다)
+    'let activeChunkKeys = new Set(), qtPlayers = null, qtMobs = null, qtBuildings = null, qtResources = null, qtColl = null, resourcesDirty = true, _lastResRebuild = 0, _WW = null, _wwRes = null;\n' +
+    'const T774_ACTIVE_COL = false; let _t774N = 0, _t774Src = null;\n' +   // ★[T774 · PM 착지 10-17] 틱 머리 활성 열 갈래 — 제품 기본(끔) 그대로
+   // ★[T537 ⓪] T461 커널 두 칸(끔 = null — 제품 선언 그대로 · `_rebuildResources` 가 읽는다)
     
     SPDEF + '\n' + COLLDEF[0] + '\n' + (twist ? src.replace('S.bld.push(e); if (COLL_TYPES.has(b.type)) qtColl.insert({ x: b.x, y: b.y, ref: b });', 'S.bld.push(e);') : src) + '\nreturn { setKeys: (s) => { activeChunkKeys = s; }, rebuild: () => rebuildSpatialIndex(undefined), coll: () => qtColl, bld: () => qtBuildings, S: _spInc };')(
     new Map(), new Map(), new Map(), w.cm, Quadtree, QuadtreeInc, { zoneWidth: W, zoneHeight: H }, on, () => {});

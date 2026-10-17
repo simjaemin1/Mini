@@ -234,8 +234,11 @@ console.log('\n⑦ 걷기 술어 — `_t316WalkAlways` 에 **농부 항 하나**
   const _gate = '!p.canadiaVillage && !_t316WalkAlways(p) && !isPositionActive(p.x, p.y)';
   //   ★[T703] T689 가 앞문 고리 몸통을 `_wwPreOne` 으로 떼어 냈다(끔 = 고리 · 켬 = forEach · 같은 몸통 글자) — 앞문 = 두 몸통을 합친 것
   const _pre = bodyOf(ZC, '_wwPre') + '\n' + bodyOf(ZC, '_wwPreOne');
-  ok((ZC.match(/_t316WalkAlways\(/g) || []).length === 4 && (_pre.match(/_t316WalkAlways\(/g) || []).length === 1 && _pre.includes(_gate)
-     && ZC.split(_gate).length - 1 === 2,
+  //   ★[T774 · PM 착지 10-17] 앞문 거울의 활성 판정은 손잡이 갈래(`T774_ACTIVE_COL ? _t774Act(p, _si) : isPositionActive(…)`)로 감싼다 —
+  //     끔 갈래 글자가 이동 문의 그 식 그대로다(같은 값 · T774 증인). 셈: 이동 문 글자 1 + 거울(감싼 꼴) 1 = 둘.
+  const _gate774 = '!p.canadiaVillage && !_t316WalkAlways(p) && !(T774_ACTIVE_COL ? _t774Act(p, _si) : isPositionActive(p.x, p.y))';
+  ok((ZC.match(/_t316WalkAlways\(/g) || []).length === 4 && (_pre.match(/_t316WalkAlways\(/g) || []).length === 1 && (_pre.includes(_gate) || _pre.includes(_gate774))
+     && (ZC.split(_gate).length - 1) + (ZC.split(_gate774).length - 1) === 2,
      '⑦ 그 술어를 부르는 **문**은 그대로 **둘**(결정 · 이동 — 셋째 문 0) · 넷째 글자는 이동 문의 **거울**(`_wwPre` · 같은 거름 식 글자 그대로 · T499)');
   ok(/farm: \(\(\) => \{ try \{ return SimVillages\.farmPerf \? SimVillages\.farmPerf\(\) : null; \} catch \(e\) \{ return null; \} \}\)\(\),/.test(ZC),
     '⑦ `/perf` 에 농부 관측 한 줄(끔이면 `null` — 끈 팔 페이로드 무변)');
