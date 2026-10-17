@@ -89,7 +89,9 @@ if (process.env.T732_SUB === 'zone') {
       try { H.tryVillageDeposit(p, HALL, want); } catch (e) { out.errs.push('hall:' + String(e && e.message || e)); }   // (랩엔 맨 끝 화면 갱신이 던질 수 있다 — 넣기·장부는 그 앞에서 끝난다)
       return +((Number(VIL.econ.storage[RES]) || 0) - s0).toFixed(6);
     };
-    const withdraw = (p, q, res) => { const r = res || RES; const s0 = Number(VIL.econ.storage[r]) || 0; H.tryVillageWithdraw(p, VID, r, q); return +(s0 - (Number(VIL.econ.storage[r]) || 0)).toFixed(6); };
+    const withdraw = (p, q, res) => { const r = res || RES; const s0 = Number(VIL.econ.storage[r]) || 0;
+      if (H.T769) VIL.econ.founder = p.playerId;   // ★[T769] 켬 = 꺼내기는 촌장만 — 진짜 곳간 문에 꺼내는 사람을 촌장(창설자 표지)으로 앉힌다(회관 `owner` 와 같은 꼴)
+      H.tryVillageWithdraw(p, VID, r, q); return +(s0 - (Number(VIL.econ.storage[r]) || 0)).toFixed(6); };
     const a0 = H.Lots.stats().approx;
     if (GL) GL.stats(true);
 

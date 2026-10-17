@@ -97,6 +97,7 @@ if (process.env.T725_SUB === 'zone') {
       // 꺼내기 — 넣은 단위의 정수 몫 전부(진짜 문 · 한도 손잡이만 넓힘)
       const q = Math.floor(du / RATE + 1e-9);
       const before = rep ? Math.floor(+p.inventory[rep] || 0) : 0;
+      if (H.T769) VIL.econ.founder = p.playerId;   // ★[T769] 켬 = 꺼내기는 촌장만 — 꺼내는 사람을 촌장(창설자 표지)으로 앉힌다(회관 `owner` 와 같은 꼴)
       if (q >= 1) H.tryVillageWithdraw(p, VID, res, q);
       const got = rep ? Math.floor(+p.inventory[rep] || 0) - before : 0;
       const leftU = +(+VIL.econ.storage[res] || 0).toFixed(6);

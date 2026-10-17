@@ -46,6 +46,16 @@ const CFG = {
   GRAN_TTL_MS: _num('MEMBER_GRAN_TTL_MS', 60000),
 };
 
+// ★★[T769 2026-10-15 · 재민 판정] *"기부는 가능해. 마음대로 빼는 건 안 돼. 그러니까 거래와 기부를 따로 둬야 하고, 관리자만 뺄 수 있어."*
+//   손잡이 `T769_DONATE`('1' 만 켬 · 없음 · 다른 값 = 끔 = main 바이트). 켬이면:
+//   ⓐ 꺼내기 = **촌장 한 사람**(소속 게이트 대신 — 길드 마을 = central `GET /tribe/:id` 의 `leader_id` · 길드 칸 없는 사람 마을 = 창설자 `econ.founder` ·
+//      NPC 마을 = 사람 꺼내기 0) · 기여 한도(`limitOf` · `Winter.bonusOf`)는 안 쓴다 — 남는 막음은 있던 것만(근접 · 굶는 마을 · 재고) ·
+//      central 을 못 물으면 **막는다**(빼는 문은 닫힌 쪽이 안전 — 곳간 짓기의 관용과 반대).
+//   ⓑ `/기부 <품목> [양]` — 누구나 · 상시 · 보상 0 · 기여 0(실물 길은 존의 회관 넣기와 같은 문 · `H.donate`).
+//   ⓒ `/곳간 열기|잠금` 은 켬에서 한 줄로 답한다(촌장 혼자 꺼내니 문을 정할 일이 없다) · 마을 사람에게 가던 "곳간을 열어 두겠네" 말은 뺀다.
+//   소속 · 빈터 · 추방은 무접촉.
+const T769 = process.env.T769_DONATE === '1';
+
 let H = null;
 function init(host) { H = host || {}; return true; }
 function ready() { return !!H; }
@@ -204,11 +214,13 @@ function expel(byPlayer, targetPlayer) {
 //   ★실물 이동은 `villages.playerVillageWithdraw`(납품의 역연산) 하나다. 여기서 정하는 것은
 //     **누가·얼마나**이고, 그 둘 다 기여의 함수다.
 //   반환: { ok, res, item, qty, stockAfter, remain } · 막을 이유가 있으면 { ok:false, err }
-function withdraw(player, vid, res, qty) {
+function withdraw(player, vid, res, qty, chiefOk) {
   if (!ready()) return { ok: false, err: '아직 준비되지 않았다' };
   const V = H.SimVillages;
   if (!V || !V.villageWithdrawGate || !V.playerVillageWithdraw) return { ok: false, err: '곳간을 찾지 못했다' };
-  if (!isMemberHere(player, vid)) return { ok: false, err: '이 마을 사람이 아니다 — 곳간은 마을 사람만 연다' };
+  //   ★[T769] 켬 = 촌장만 — 판정은 `withdrawChief`(길드 촌장은 central 을 물을 수 있다)가 먼저 하고 `chiefOk` 로 넘긴다. 안 거쳐 온 부름은 막는다.
+  if (T769) { if (chiefOk !== true) return { ok: false, err: '곳간은 촌장만 꺼낸다' }; }
+  else if (!isMemberHere(player, vid)) return { ok: false, err: '이 마을 사람이 아니다 — 곳간은 마을 사람만 연다' };
   const g = V.villageWithdrawGate(vid | 0, player.x, player.y);   // ★브리핑·게시판과 **같은 근접 게이트**
   if (g.err) return { ok: false, err: g.err };
   // ★★[T159] **굶는 마을은 곳간을 안 연다.** 판정은 엔진이 매일 적어 둔 것을 읽는다(`villageFamine`).
@@ -221,10 +233,19 @@ function withdraw(player, vid, res, qty) {
   //   못 물어봤으면 열린 것으로 본다 — central 이 잠깐 안 뜬 것을 사람의 죄로 삼지 않는다.
   //   ★[T197] `_tribeId` 의 집은 `vil` 이다(`vil.econ` 이 아니다 — `zone.introOfVillage` 와 같은 오독이었다).
   const _tid = (g.vil && g.vil._tribeId) | 0;
-  if (_tid && !granaryOpen(_tid)) {
+  if (!T769 && _tid && !granaryOpen(_tid)) {   // ★[T769] 켬 = 꺼내는 사람이 곧 문을 정할 사람(촌장) — 잠금 문은 안 쓴다
     return { ok: false, err: '길드장이 곳간을 잠갔다' };
   }
   const r0 = String(res || 'food');
+  // ★★[T769] 켬 — 한도 없음(기여 · 겨울 보상 안 씀). 양을 안 적었으면 **한 단위**(아래 종전 `Math.max(1, …)` 의 바닥 그대로 · 새 수 0).
+  //   하루 몫 장부(`wdDay` · `wdUsed`)도 안 센다(셀 한도가 없다). 실물 길 · 곳간 문 감싸개 · 재고 막음은 그대로다.
+  if (T769) {
+    const take1 = Math.max(1, Math.floor(Number(qty) || 0) || 1);
+    const _wd1 = () => V.playerVillageWithdraw(g.vil, player.inventory, r0, take1);
+    const r1 = (typeof H.wrapWithdraw === 'function') ? H.wrapWithdraw(player, _wd1) : _wd1();
+    if (!r1.ok) return r1;
+    return Object.assign({ ok: true, name: g.vil.name, remain: null, limit: null, chief: true }, r1);
+  }
   const stock = V.playerVillageWithdrawStock(g.vil, r0);
   // ★[T20-ⓑ 재민 확정 2026-09-03] **한도의 밑변**은 곡식 한 칸이 아니라 econ 의 식량 등가다
   //   (겨울 곳간은 보존식으로 갈무리돼 있다 — `playerVillageWithdrawStockFoodEq` 머리 주석).
@@ -250,6 +271,64 @@ function withdraw(player, vid, res, qty) {
   m.wdUsed = (Number(m.wdUsed) || 0) + _spent;
   return Object.assign({ ok: true, name: g.vil.name, remain: +Math.max(0, remain - _spent).toFixed(2),
     limit: limitOf(contribOf(player.playerId), basis, vid) }, r);
+}
+
+// ── ★★[T769] 촌장 판정 — **이미 있는 두 표지**만 읽는다(새 권한 개념 0) ─────────────────
+//   ① 길드 마을(`vil._tribeId`) = central `GET /tribe/:id` 의 `leader_id`(곳간 짓기 `zone.tryBuildGuildGranary` 그 검사) ·
+//      캐시 창은 `GRAN_TTL_MS`(길드 곳간 문과 같은 창 · 새 수 0) · 못 물으면 **막는다**(빼는 문은 닫힌 쪽이 안전).
+//   ② 길드 칸 없는 사람 마을 = 창설자(`econ.founder`) · ③ NPC 마을(창설자 없음) = 사람 꺼내기 0.
+//   ★판정이 그 자리에서 서면(② · ③ · ① 캐시 창 안) **동기**다 — 종전 꺼내기 문과 같은 때에 끝난다. ① 캐시가 비었을 때만 central 을 묻는다(비동기).
+const _lead = new Map();      // tribeId → { leader, at }
+async function _leaderOf(tid) {
+  const id = tid | 0;
+  const hit = _lead.get(id);
+  if (hit && Date.now() - hit.at < CFG.GRAN_TTL_MS) return hit.leader;
+  if (!H || !H.central || typeof H.central.request !== 'function') return null;
+  try {
+    const r = await H.central.request('GET', `/tribe/${id}`);
+    const lid = r && r.data && r.data.tribe && r.data.tribe.leader_id;
+    if (lid == null || lid === '') return null;
+    _lead.set(id, { leader: String(lid), at: Date.now() });
+    return String(lid);
+  } catch (e) { return null; }
+}
+const _NOT_CHIEF = '곳간은 촌장만 꺼낸다';
+/** 그 자리에서 서는 판정 — `{ ok, err }` · 모르면 `null`(길드 촌장 캐시가 비었다 — central 을 물어야 한다). */
+function _chiefNow(player, vil) {
+  if (!vil || !vil.econ || !vil.econ.founder) return { ok: false, err: '이 마을 곳간은 사람이 꺼내지 않는다' };
+  const pid = String(player && player.playerId);
+  const tid = vil._tribeId | 0;
+  if (!tid) return String(vil.econ.founder) === pid ? { ok: true } : { ok: false, err: _NOT_CHIEF };
+  const hit = _lead.get(tid);
+  if (hit && Date.now() - hit.at < CFG.GRAN_TTL_MS) return hit.leader === pid ? { ok: true } : { ok: false, err: _NOT_CHIEF };
+  return null;
+}
+/** 캐시만 본다(화면 한 줄용 · 동기) — 모르면 `null`(그때는 묻기를 걸어 둔다). */
+function chiefCached(player, vil) {
+  if (!player) return false;
+  const now = _chiefNow(player, vil);
+  if (now) return now.ok;
+  _leaderOf(vil._tribeId | 0).catch(() => {});
+  return null;
+}
+async function chiefCheck(player, vil) {
+  const now = _chiefNow(player, vil);
+  if (now) return now;
+  const lid = await _leaderOf(vil._tribeId | 0);
+  if (lid == null) return { ok: false, err: '촌장을 확인하지 못했다 — 곳간을 열지 않는다(잠시 뒤 다시)' };
+  return lid === String(player.playerId) ? { ok: true } : { ok: false, err: _NOT_CHIEF };
+}
+// 켬의 꺼내기 문 — 근접 게이트로 마을을 찾고 → 촌장 판정 → `withdraw` 정본(같은 실물 길).
+//   반환 = 판정이 그 자리에서 서면 결과 그대로(동기) · central 을 물어야 하면 그 결과의 Promise(부르는 쪽 둘 — 존의 문 · 채팅 — 이 둘 다 받는다).
+function withdrawChief(player, vid, res, qty) {
+  if (!ready()) return { ok: false, err: '아직 준비되지 않았다' };
+  const V = H.SimVillages;
+  if (!V || !V.villageWithdrawGate) return { ok: false, err: '곳간을 찾지 못했다' };
+  const g = V.villageWithdrawGate(vid | 0, player.x, player.y);
+  if (g.err) return { ok: false, err: g.err };
+  const now = _chiefNow(player, g.vil);
+  if (now) return now.ok ? withdraw(player, vid, res, qty, true) : now;
+  return chiefCheck(player, g.vil).then((c) => (c.ok ? withdraw(player, vid, res, qty, true) : c));
 }
 
 // ── ★★[T159 2026-09-07] 품목 이름 → 곳간 재화 ────────────────────────────────
@@ -278,6 +357,27 @@ function resolveRes(word) {
       if (ko && (ko === w || _stripEmo(ko) === w)) return dep[item];
     }
   }
+  return null;
+}
+// ★[T769] `/기부` 가 낼 **품목**(손에 든 것) — 표는 위 `resolveRes` 와 같은 셋(대응표 · 품목 이름표 · 재화 우리말)이다(사본 0).
+//   ① 품목 키 · ② 품목의 우리말 · ③ 재화 말(키 · 우리말) → 그 재화로 접히는 품목 중 손에 든 첫 것.
+function resolveItem(word, inventory) {
+  const w = String(word || '').trim();
+  if (!w) return null;
+  const V = H && H.SimVillages;
+  const dep = (V && V.playerVillageDepositMap) ? V.playerVillageDepositMap() : {};
+  if (dep[w]) return w;
+  let labels = null;
+  try { labels = (H && typeof H.itemLabel === 'function') ? H.itemLabel() : null; } catch (e) { labels = null; }
+  if (labels) {
+    for (const item of Object.keys(dep)) {
+      const ko = ItemLabel.koOfLabel(labels[item] || '');
+      if (ko && (ko === w || _stripEmo(ko) === w)) return item;
+    }
+  }
+  const res = resolveRes(w);
+  if (!res) return null;
+  for (const item of Object.keys(dep)) if (dep[item] === res && (Number((inventory || {})[item]) || 0) >= 1) return item;
   return null;
 }
 /** 사람이 읽을 재화 이름 — 없으면 키 그대로. */
@@ -336,7 +436,9 @@ function handleChat(player, text) {
     if (m) { _send(player, `🏘️ ${m.name || '마을'} 사람 — ${_day() - (m.since | 0)}일째 · 누적 기여 ${contribOf(player.playerId)}`); return true; }
     const r = accept(player, null);
     if (!r.ok) { _send(player, `🏘️ ${r.err}`); return true; }
-    _send(player, `🧓 ${r.member.name || ''} 촌장 — 오늘부터 자네는 우리 마을 사람일세. 곳간을 열어 두겠네("/인출").`);
+    //   ★[T769] 켬 — 곳간은 촌장만 꺼낸다(마을 사람에게 곳간을 연다는 말은 안 한다)
+    _send(player, T769 ? `🧓 ${r.member.name || ''} 촌장 — 오늘부터 자네는 우리 마을 사람일세.`
+      : `🧓 ${r.member.name || ''} 촌장 — 오늘부터 자네는 우리 마을 사람일세. 곳간을 열어 두겠네("/인출").`);
     return true;
   }
   if (cmd === '/탈퇴') {
@@ -360,6 +462,8 @@ function handleChat(player, text) {
     const vid = m ? (m.vid | 0) : near;
     const a0 = (rest[0] || '').trim();
     // ⓐ `/곳간 열기|잠금` — 길드장이 그 마을 곳간의 문을 정한다
+    //   ★[T769] 켬 — 촌장 혼자 꺼내니 문을 정할 일이 없다(한 줄로 답한다 · central 무접촉)
+    if (T769 && (a0 === '열기' || a0 === '잠금')) { _send(player, '🏘️ 곳간은 촌장만 꺼낸다'); return true; }
     if (a0 === '열기' || a0 === '잠금') {
       if (!H.central || !H.central.tribeGranarySet) { _send(player, '🏘️ 지금은 곳간 문을 못 만진다'); return true; }
       H.central.tribeGranarySet(player.playerId, a0 === '열기').then((r) => {
@@ -375,6 +479,16 @@ function handleChat(player, text) {
       return true;
     }
     // ⓑ `/곳간` — 지금 형편 한 줄(꺼내지 않는다)
+    //   ★[T769] 켬 — 한도가 없다(오늘 남은 몫 · 기여 문턱을 안 적는다) · 누구나 그 마을 앞에서 형편을 본다
+    if (!a0 && T769) {
+      if (vid == null) { _send(player, '🏘️ 마을이 멀다 — 곳간 앞으로 가라'); return true; }
+      const V = H.SimVillages; const g = V.villageWithdrawGate(vid | 0, player.x, player.y);
+      if (g.err) { _send(player, `🏘️ ${g.err}`); return true; }
+      const st = V.playerVillageWithdrawStock(g.vil, 'food');
+      _send(player, `🏘️ ${g.vil.name || '마을'} 곳간 — 식량 재고 ${st} · 꺼내기는 촌장만 · 기부는 누구나("/기부 <품목> [양]" — 받는 것 없음)`
+        + (V.villageFamine && V.villageFamine(g.vil) ? ' · **마을이 굶는 중이다**' : ''));
+      return true;
+    }
     if (!a0) {
       const k = contribOf(player.playerId);
       if (!m) { _send(player, `🏘️ 아직 마을 사람이 아니다 — 누적 기여 ${k}/${CFG.N_MEMBER}`); return true; }
@@ -391,6 +505,7 @@ function handleChat(player, text) {
     const r0 = resolveRes(a0);
     if (!r0) { _send(player, `🏘️ 곳간에 그런 물건은 없다 — "${a0}"`); return true; }
     const n = parseInt(rest[1], 10);
+    if (T769) { _chiefWithdrawSay(player, vid, r0, n); return true; }   // ★[T769] 켬 = 촌장 판정 뒤 같은 정본
     const r = withdraw(player, vid, r0, n);
     if (!r.ok) { _send(player, `🏘️ ${r.err}`); return true; }
     if (H.afterWithdraw) H.afterWithdraw(player, r);
@@ -400,28 +515,68 @@ function handleChat(player, text) {
     const m = memberOf(player);
     const vid = m ? (m.vid | 0) : near;
     if (vid == null) { _send(player, '🏘️ 마을이 멀다 — 곳간 앞으로 가라'); return true; }
+    if (T769) { _chiefWithdrawSay(player, vid, rest[1] || 'food', parseInt(rest[0], 10)); return true; }   // ★[T769]
     const r = withdraw(player, vid, rest[1] || 'food', parseInt(rest[0], 10));
     if (!r.ok) { _send(player, `🏘️ ${r.err}`); return true; }
     if (H.afterWithdraw) H.afterWithdraw(player, r);
     return true;
   }
+  // ★★[T769] `/기부 <품목> [양]` — 누구나 · 상시 · 보상 0 · 기여 0. **켬에서만** 명령이다(끔 = 종전처럼 말로 흘러간다 · main 바이트).
+  //   어느 마을인가 = **지금 앞에 선 마을**(브리핑 · 거래소가 적어 둔 자리) — 없으면 소속 마을. 근접 게이트는 존의 문(`H.donate`)이 다시 잰다.
+  //   양을 안 적으면 든 것 전부(회관 패널의 넣기 단추와 같은 문법 — 서버가 최종 판정).
+  if (cmd === '/기부' && T769) {
+    const m = memberOf(player);
+    const vid = (near != null) ? near : (m ? (m.vid | 0) : null);
+    if (vid == null) { _send(player, '🏘️ 마을이 멀다 — 마을 앞으로 가라'); return true; }
+    const a0 = (rest[0] || '').trim();
+    if (!a0) { _send(player, '🏘️ 무엇을 기부할 것인가 — "/기부 <품목> [양]" (받는 것 없음)'); return true; }
+    const item = resolveItem(a0, player.inventory);
+    if (!item) { _send(player, `🏘️ 곳간이 받는 물건이 아니다 — "${a0}"`); return true; }
+    const have = Math.floor(Number((player.inventory || {})[item]) || 0);
+    if (have < 1) { _send(player, `🏘️ ${a0} 을(를) 안 들고 있다`); return true; }
+    const n = parseInt(rest[1], 10);
+    const q = (Number.isFinite(n) && n > 0) ? Math.min(n, have) : have;
+    if (typeof H.donate !== 'function') { _send(player, '🏘️ 지금은 기부를 받을 수 없다'); return true; }
+    H.donate(player, vid, { [item]: q });
+    return true;
+  }
   return false;
+}
+// ★[T769] 켬의 채팅 꺼내기 — 촌장 판정 뒤 결과를 말한다(실물 · 뒷정리는 같은 정본 · 같은 `afterWithdraw`). 판정이 그 자리에서 서면 동기 · central 을 물으면 그 뒤.
+function _chiefWithdrawSay(player, vid, res, qty) {
+  const say = (r) => {
+    if (!r || !r.ok) { _send(player, `🏘️ ${(r && r.err) || '곳간을 열지 못했다'}`); return; }
+    if (H.afterWithdraw) H.afterWithdraw(player, r);
+  };
+  const r = withdrawChief(player, vid, res, qty);
+  if (r && typeof r.then === 'function') r.then(say).catch(() => _send(player, '🏘️ 곳간을 열지 못했다 — 잠시 뒤 다시'));
+  else say(r);
 }
 
 // ── 클라에 실어 보내는 상태(거래소 패널 한 줄이 읽는다 — 새 패널 0) ───────────
-function publicState(player, stock) {
+function publicState(player, stock, vil) {
   const m = memberOf(player);
   const k = contribOf(player.playerId);
-  return {
+  const out = {
     vid: m ? (m.vid | 0) : null, name: m ? (m.name || '') : '',
     since: m ? (m.since | 0) : null, contrib: k, need: CFG.N_MEMBER,
     limit: m ? limitOf(k, stock, m.vid) : 0, remain: m ? remainOf(player, stock) : 0,
     offer: (!m && player._memberOfferVid != null) ? (player._memberOfferVid | 0) : null,
   };
+  // ★[T769] 켬에서만 두 칸 — 패널이 "꺼내기 = 촌장만" · "기부 = 누구나 · 받는 것 없음" 을 그린다(값은 서버가 · 클라 재계산 0).
+  //   `chief` = 캐시된 판정(모르면 null — 묻기를 걸어 둔다 · 꺼내기 문은 언제나 다시 묻는다) · `donate` = 곳간이 받는 품목(대응표 정본의 키).
+  if (T769) {
+    out.chief = vil ? chiefCached(player, vil) : false;
+    const V = H && H.SimVillages;
+    out.donate = Object.keys((V && V.playerVillageDepositMap) ? V.playerVillageDepositMap() : {});
+    out.limit = null; out.remain = null;
+  }
+  return out;
 }
 
 module.exports = {
   CFG, init, ready, contribOf, memberOf, isMemberHere, limitOf, remainOf,
   onDeliver, accept, seatFounder, seatGuildMember, leave, expel, withdraw, orderBrief, handleChat, publicState,   // ★[T197] 창설 = 소속 · ★[T202] 길드원도
   resolveRes, resKo, granaryOpen, granaryBust,   // ★[T159] 품목 해석 · 길드 곳간 문
+  T769, withdrawChief, chiefCheck, chiefCached, resolveItem,   // ★[T769] 기부 · 촌장 꺼내기
 };

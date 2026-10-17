@@ -74,6 +74,40 @@ console.log('\n=== 겨울나기 공동 프로젝트 하네스 ===\n');
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ★[T769 2026-10-15 · 재민 판정 "겨울 프로젝트 없어"] 켬(`T769_DONATE=1`) = 겨울 프로젝트 0 — `EV_WINTER_OFF=1` 과 같은 길.
+//   공표 · 적립 · 판정 · 보상 · 머리줄 · 납품 안 겨울 갈래가 전부 0 인지를 재고 끝낸다(② 부터는 프로젝트가 서 있는 판 — 끔에서 그대로 돈다).
+//   ⚠자명 통과 금지: 묶임(`ready`)이 살아 있고 · 800일이 공표일 · 판정일을 실제로 지났다는 것을 먼저 잰다(대조 = 같은 하네스의 끔 판 ②).
+// ─────────────────────────────────────────────────────────────────────────────
+if (process.env.T769_DONATE === '1') {
+  console.log('\n[T769 켬] 겨울 프로젝트 0');
+  const world = makeWorld(0, 7);
+  const L = mkLedger(world); bindWinter(L);
+  const vils = wrap(world, 100);
+  const DAYS = 800;
+  let annDays = 0, judDays = 0, extra = 0, heads = 0, goals = 0;
+  for (let d = 1; d <= DAYS; d++) {
+    NOW = d;
+    if (Winter.isAnnounceDay(d)) annDays++;
+    if (Winter.isJudgeDay(d)) judDays++;
+    if (Winter.dailyExtra(d, vils)) extra++;
+    for (const v of vils) { if (Winter.headLine(v.dbId, d)) heads++; if (Winter.goalRes(v.dbId)) goals++; }
+  }
+  ok(Winter.ready(), '[T769] 전제: 겨울 모듈이 묶여 있다(꺼진 까닭이 묶임이 아니라 손잡이다)');
+  ok(annDays >= 2 && judDays >= 2, '[T769] 전제: 800일이 공표일 · 판정일을 두 번 넘게 지났다(달력 정본)', `공표일 ${annDays} · 판정일 ${judDays}`);
+  ok(extra === 0, '[T769] ★공표 · 판정 0 — 하루 경계 훅이 800일 동안 한 번도 안 낸다', `${extra}`);
+  ok(heads === 0 && goals === 0, '[T769] ★머리줄 0 · 겨울 몫 품목 0(납품 안 겨울 갈래가 안 선다)', `머리줄 ${heads} · 품목 ${goals}`);
+  const aDay = [...Array(Events.yearDaysOf()).keys()].map((i) => i + 1).find((d) => Winter.isAnnounceDay(d));
+  NOW = aDay + 1;
+  const res = 'food';
+  ok(Winter.onDeliver({ playerId: 'p-t769', name: 't769' }, { ok: true, done: true, moved: { [res]: 50 } }, 100) === 0, '[T769] ★적립 0 — 낸 양을 세지 않는다', res);
+  ok(vils.every((v) => Winter.bonusOf(v.dbId) === 0), '[T769] ★보상 0 — 인출 한도 가산 없음');
+  ok(Winter.deliverable(100, null, L, { rice: 5, barley: 5 }) === null, '[T769] ★납품 안 겨울 몫 갈래 0(의뢰 없는 납품 길이 안 열린다)');
+  console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
+  try { fs.unlinkSync(process.env.DB_PATH); } catch (e) {}
+  process.exit(fail ? 1 : 0);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // ② 계절 경계 스윕 — 공표·판정은 **해마다 정확히 한 번**
 //    ★합격 기준 2·3. 800일이면 두 해를 넘긴다.
 // ─────────────────────────────────────────────────────────────────────────────
