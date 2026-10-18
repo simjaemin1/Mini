@@ -126,6 +126,9 @@ const Claims = require('./claims');           // ★[T45 2026-09-02] 사유지 v
 const Newcomers = require('./newcomers');     // ★[T19 2026-09-02] 유저 마을 시작지 등록 — "이방인 받기"(§9.3 나머지 절반)
 const Friends = require('./friends');         // ★[T115 2026-09-05] 친구 — 서로 수락한 쌍(T23 소셜 첫 칸)
 const Guild = require('./guild');             // ★[T128 2026-09-05] 길드 모집 — 초대·승인제·마을 소개문
+// ★★[T785 2026-10-18 · 재민 10-18 ⓑ] **마을이 유일한 무리** — 손잡이 `T785_VILLAGE_ONLY`('1' 만 켬 · 끔 = main 바이트).
+//   켬이면 존이 마을 일로 central `/tribe…` · `/war…` 를 안 부른다(아래 `VillageKin.ON` 갈래 전부) · 칸은 회관 행(`server/village-kin.js`).
+const VillageKin = require('./village-kin');
 const Rescue = require('./rescue');           // ★[T56 2026-09-02] 외침·구조 동사 둘. 판정은 전부 정본을 부른다(사본 0)
 const Credits = require('./credits');         // ★[T168 2026-09-10] `/크레딧` — `CREDITS.md` 를 읽어 요구 문구를 띄운다(사본 0)
 // ★★[T122 2026-09-05] **Map 이다** — 키 → 벤 게임일. 종전엔 Set(=영원히 없음)이었다.
@@ -4944,6 +4947,7 @@ Onboarding.init({ SimVillages, terrain: _terrain, ZONE, ZONE_ID, db: db.db, send
   //   ⚠**캐시로만** 답한다(요청 경로에서 central 을 안 기다린다 — T115 가 여기서 물렸다).
   introOfVillage: (vid) => {
     try {
+      if (VillageKin.ON) return VillageKin.introOfVid(vid);   // ★[T785] 켬 — 소개는 마을 칸(central 소개문 캐시 무접촉)
       const vil = SimVillages.villageByDbId ? SimVillages.villageByDbId(vid) : null;
       //   ★★[T197] `_tribeId` 는 **`vil` 에 산다**(`villages.js` 가 `_founder` 옆에 적는다) — `vil.econ` 이 아니다.
       //     여태 `vil.econ._tribeId` 를 읽어서, 값이 서 있었더라도 **언제나 undefined** 였다.
@@ -5032,6 +5036,7 @@ Guild.init({
   //   ★들었으면 **이 판의 몸에도** 길드를 얹는다 — 종전 `tribe_set` 이 하던 일과 같은 자리다
   //     (클라가 central 을 거쳐 알려 주던 길을 서버가 직접 걷는다 · 새 메시지 축 0).
   refreshTribe: (pid) => {
+    if (VillageKin.ON) return;   // ★[T785] 켬 — 길드는 마을 일이 아니다(부름은 `village-kin` 이 받는다 · central 무접촉)
     (async () => {
       try {
         const row = await central.getPlayer(String(pid));
@@ -5047,6 +5052,14 @@ Guild.init({
     })();
   },
 });
+// ★★[T785] 켬 — 마을 칸 문(촌장 · 곳간 문 · 가입 문 · 소개 · 부르기 · 전쟁)과 부팅 이행(옛 tribe 칸 → 마을 칸 · 한 번).
+//   이행만 central 을 한 번 묻는다(`GET /tribe/:id` · 같은 길드 id 는 한 번) — 못 물으면 표지를 안 달고 생산 틱이 다시 묻는다(새 타이머 0).
+if (VillageKin.ON) {
+  VillageKin.init({ SimVillages, Membership, Guild, players, send, ZONE_ID, gameDay: gameDayNow });
+  VillageKin.migrate((id) => central.request('GET', `/tribe/${id | 0}`))
+    .then((r) => console.log(`[${ZONE_ID}] 🏘️ [T785] 마을 칸 이행 — 옮김 ${r.done | 0} · 못 물음 ${r.fail | 0}`))
+    .catch((e) => console.error(`[${ZONE_ID}] 🏘️ [T785] 마을 칸 이행 실패(다음 틱에 다시):`, e.message));
+}
 
 // ★★[T147 2026-09-07] 따라가기 — 회부 A-1 의 마지막 칸. **새 패널 0 · 새 표 0 · 새 수 0.**
 //   ⓐ 거리·방위·화살은 전부 **T110 의 정본을 부른다**(사본 0):
@@ -5371,9 +5384,10 @@ const server = http.createServer((req, res) => {
     //   ⚠`?warm=1` 이면 **캐시를 한 번 건드린다**(값을 바꾸는 게 아니라 낡았으면 뒤에서 다시 묻게 한다).
     //     소개문 캐시는 게을러서(요청 경로에서 안 기다린다) 아무도 안 부르면 영영 비어 있다 —
     //     관측창이 "없다"와 "아무도 안 물었다"를 못 가르면 그 창은 거짓말을 한다.
-    if (/(?:^|[?&])warm=1(?:&|$)/.test(req.url)) { try { Guild.introMap(); } catch (e) {} }
+    if (!VillageKin.ON && /(?:^|[?&])warm=1(?:&|$)/.test(req.url)) { try { Guild.introMap(); } catch (e) {} }
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
-    res.end(JSON.stringify(Guild.debug()));
+    //   ★[T785] 켬 — 길드 = 마을 ⇒ 이 창은 **마을 칸**을 낸다(촌장 · 곳간 문 · 가입 문 · 소개 · 전쟁 · 이행 표지 · 새 문 0) · 끔 = 종전 글자.
+    res.end(JSON.stringify(VillageKin.ON ? Object.assign({ zone: ZONE_ID }, VillageKin.snapshot()) : Guild.debug()));
     return;
   }
   // ★[T19] 이방인 받기 상태 읽기 전용 JSON — 하네스 관측창(`/claimdbg` 와 같은 규약).
@@ -6163,14 +6177,14 @@ async function _acceptConnection(ws, req, C) {
       initHomeZone = acct.home_zone || null;
       initHomeX = (typeof acct.home_x === 'number') ? acct.home_x : null;
       initHomeY = (typeof acct.home_y === 'number') ? acct.home_y : null;
-      if (initTribeId) {
+      if (initTribeId && !VillageKin.ON) {   // ★[T785] 켬 — 길드 이름을 central 에 안 묻는다(마을이 유일한 무리)
         // 부족 이름 한 번 더 조회 (캐시 가능)
         try {
           const tr = await central.request('GET', `/tribe/${initTribeId}`);
           if (tr.status === 200 && tr.data?.tribe) initTribeName = tr.data.tribe.name;
         } catch (e) {}
       }
-      if (initTribeId) {
+      if (initTribeId && !VillageKin.ON) {   // ★[T785] 켬 — 길드 이름을 central 에 안 묻는다(마을이 유일한 무리)
         // 부족 이름 한 번 더 조회 (캐시 가능)
         try {
           const tr = await central.request('GET', `/tribe/${initTribeId}`);
@@ -6367,7 +6381,7 @@ async function _acceptConnection(ws, req, C) {
   //     여기인 이유: `player.tribeId` 가 방금 섰고(계정 행 또는 핸드오프), `_takeover.member` 도 방금
   //     얹혔다 — **소속을 정할 재료가 다 모인 첫 지점**이고, welcome·`startinfo` 보다 앞이라
   //     이름표(`마을`)·소속 칸이 그 판부터 참이다. 빈자리일 때만 앉는다(그 이유는 `membership.js`).
-  try { Membership.seatGuildMember(player); } catch (e) {}
+  if (!VillageKin.ON) { try { Membership.seatGuildMember(player); } catch (e) {} }   // ★[T785] 켬 — 길드원 앉히기 없음(소속 = 몸 `member` 하나)
   C.stage = 'spawn'; _connFailPoint('spawn');
   players.set(pid, player);
   C.pid = pid;   // ★뒤에서 던지면 이 반쪽 등록을 치워야 한다(안 치우면 유령 몸이 남는다)
@@ -6396,7 +6410,7 @@ async function _acceptConnection(ws, req, C) {
     //     다음에 로비를 열면 이미 답이 있다.
     if (player.name) Friends.nameVids(player.name);
     //   ★[T128] 길드 소개문도 같이 데운다 — 시작 화면은 **로그인 전**에 묻고, 거기서 기다릴 수 없다.
-    Guild.introMap();
+    if (!VillageKin.ON) Guild.introMap();   // ★[T785] 켬 — 소개는 마을 칸(데울 캐시 없음 · central 무접촉)
   } catch (e) {}
 
   // 환영 메시지 — 존 정보와 현재 상태 모두 전달
@@ -6547,7 +6561,7 @@ async function _acceptConnection(ws, req, C) {
     try {
       const [fr, gu] = await Promise.all([
         Friends.pendingLines(player.playerId).catch(() => []),
-        Guild.pendingLines(player.playerId).catch(() => []),
+        VillageKin.ON ? Promise.resolve([]) : Guild.pendingLines(player.playerId).catch(() => []),   // ★[T785] 켬 — 길드 부름 묻기 없음(부름은 접속 중 몸의 칸)
       ]);
       let lines = [].concat(fr || [], gu || []);
       if (!lines.length) return;
@@ -6694,6 +6708,7 @@ function handlePlayerInput(player, raw) {
     metrics.chats++;
     // ★[T11] 마을 소속 명령 — `/소속` `/탈퇴` `/추방 <이름>` `/인출 [수량] [재화]`.
     //   **새 클라 조건 0**: 채팅은 이미 있다. 명령은 말이 아니므로 방송하지 않는다.
+    if (VillageKin.ON && VillageKin.handleChat(player, text)) return;   // ★[T785] 켬 — `/촌장` `/곳간 열기|잠금` `/소개` `/길드 초대제|공개` `/초대` `/수락` `/전쟁` `/종전` · 촌장 자리 지킴(`/탈퇴` `/추방`)
     if (Membership.handleChat(player, text)) return;
     if (Newcomers.handleChat(player, text)) return;   // ★[T19] `/이방인` — 새 클라 조건 0
     if (Friends.handleChat(player, text)) return;     // ★[T115] `/친구` — 새 패널 0 · 새 클라 조건 0
@@ -6939,7 +6954,7 @@ function handlePlayerInput(player, raw) {
   // ★[T148 2026-09-07] 개명 `feed` → `tame_feed`(짐승 길들이기). **옛 이름 폴백 0.**
   //   사람 먹이기는 `{type:'verb', name:'feed'}`(`Rescue.verb`)라 봉투가 다르고, 이제 이름도 안 겹친다.
   else if (msg.type === 'tame_feed') tryFeed(player);
-  else if (msg.type === 'tribe_set') {
+  else if (msg.type === 'tribe_set' && !VillageKin.ON) {   // ★[T785] 켬 — 클라가 알리는 길드를 몸에 안 적는다(마을이 유일한 무리)
     // 클라가 central에 길드 만들기/가입/탈퇴 후 자기 zone에 알림
     player.tribeId = msg.tribeId || null;
     player.tribeName = msg.tribeName || null;
@@ -6965,8 +6980,9 @@ function handlePlayerInput(player, raw) {
     if (door === 'market/order') reply(central.marketOrder(player.playerId, msg.order || {}));
     else if (door === 'market/cancel') reply(central.marketCancel(player.playerId, msg.order_id));
     //   ★전쟁은 **내 길드**로만 건다 — 공격자 길드를 클라가 고르지 못한다(그게 ③ 의 구멍이었다).
-    else if (door === 'war/declare') reply(central.warDeclare(player.playerId, player.tribeId, msg.defender_guild_id | 0));
-    else if (door === 'war/end') reply(central.warEnd(msg.war_id));
+    //   ★[T785] 켬 — 전쟁은 **마을 사이**(열쇠 = 마을 id · `village-kin` 칸) · 촌장이 채팅으로 건다. 길드 id 문은 안 연다(두 id 공간을 안 섞는다).
+    else if (door === 'war/declare') reply(VillageKin.ON ? Promise.resolve({ ok: false, error: '전쟁은 마을 사이 — 촌장이 `/전쟁 <마을 이름>`' }) : central.warDeclare(player.playerId, player.tribeId, msg.defender_guild_id | 0));
+    else if (door === 'war/end') reply(VillageKin.ON ? Promise.resolve({ ok: false, error: '전쟁은 마을 사이 — 촌장이 `/종전 <마을 이름>`' }) : central.warEnd(msg.war_id));
     else if (door === 'tribe/leave') reply(central.tribeLeave(player.playerId));
     //   ★★[T245] 클라가 직접 부르던 넷이 여기로 왔다 — **문만 늘고 문법은 그대로다**(T235 §1).
     //     ⚠`player_id`·`tribe_id` 를 클라가 안 고른다: 주문 목록은 신원이 없고, 길드 상세는 **내 길드**뿐이고,
@@ -11412,7 +11428,7 @@ const VILLAGE_SPEC = {
       //       거기 달린 T128 소개문·T159 곳간문이 **둘 다 죽어 있었다**(T192 §0-ⓐ 실측).
       //     땅 규약은 안 바꾼다(그건 큰 판이다). 대신 **창설자의 길드**를 그대로 싣는다.
       //     ⚠무길드면 `null` 그대로다 — 소개문 없음 · 곳간문 열림(지금과 같다 · T19 "무길드는 죄가 아니다").
-      ? SimVillages.foundPlayerVillage({ ccx, ccy, founder: player.playerId, founderName: player.name, tribeId: ctx.tribeId || player.tribeId || null, name: player.name ? `${player.name}의 마을` : null })
+      ? SimVillages.foundPlayerVillage({ ccx, ccy, founder: player.playerId, founderName: player.name, tribeId: VillageKin.ON ? null : (ctx.tribeId || player.tribeId || null), name: player.name ? `${player.name}의 마을` : null })
       : { ok: false, err: '마을 시뮬이 이 서버에 없다' };
     if (!r.ok) { send(player.ws, { type: 'notice', text: `🏘️ 회관은 섰지만 마을이 서지 못했다 — ${r.err}` }); return; }
     done.data.villageDbId = r.dbId;   // 회관 ↔ 마을 결속(재고 UI 가 이 셀로 마을을 찾는다)
@@ -11946,7 +11962,8 @@ function tryVillageDeliver(player, vid, item, want) {
   send(player.ws, { type: 'notice', text: (r.winter ? `🧊 ${r.name} 올겨울 몫 — ${gave}` :   // ★[T20] 겨울 몫은 보상이 없다(그 대가는 겨울 보상)
     `📋 ${r.name}에 납품 — ${gave}${got}${r.refused > 0 ? ` (${r.refused}개는 남은 몫을 넘어 돌려받음)` : ''}`) + (_g732 ? _t732GotLine(player, _g732) : '') });
   Onboarding.onDeliver(player, r, vid | 0);   // ★[온보딩 v2] 누적 기여(=T11 이 재사용할 하나의 카운터)·곳간 이펙트·훅 대사·빈터 권리
-  Membership.onDeliver(player, r, vid | 0);   // ★[T11] **그 다음**이다 — 기여가 오른 뒤라야 소속 문턱을 정확히 본다
+  //   ★[T785] 켬 — 가입 문이 '초대제'인 마을은 기여로 권하지 않는다(부름 `/초대` → `/수락` 만 · 문은 마을 칸)
+  if (!(VillageKin.ON && VillageKin.joinModeOfVid(vid | 0) === 'invite')) Membership.onDeliver(player, r, vid | 0);   // ★[T11] **그 다음**이다 — 기여가 오른 뒤라야 소속 문턱을 정확히 본다
   Winter.onDeliver(player, r, vid | 0);      // ★[T20] 겨울나기 — **양**을 센다(횟수는 위 온보딩 정본 하나다)
   // 낸 즉시 게시판이 갱신된다(다 찼으면 목록에서 빠진다)
   const b = SimVillages.villageBoard(vid | 0, player.x, player.y);
@@ -12373,6 +12390,11 @@ async function tryChestTake(player, buildingId, item, amount) {
     // 적 길드 chest? — owner의 tribeId 알아내야. owner도 player일 수 있고 NPC일 수도.
     // ★길드 곳간은 소유 길드가 data에 박제 — 즉시. (전쟁 시 약탈 물리 목표[사용자 확정]: loot-raid-vision 파이프라인의 1단)
     let ownerTribeId = null;
+    const _myWk = _warKeyOf(player);   // ★[T785] 켬 = 내 마을 id · 끔 = 종전 `player.tribeId`
+    if (VillageKin.ON) {
+      //   ★[T785] 켬 — 주인의 전쟁 열쇠 = 접속 중인 주인의 마을(몸 `member`). 안 접속한 주인 · 길드 곳간은 모른다 = 약탈 없음(central 무접촉).
+      for (const p of players.values()) if (!p.isNpc && p.playerId === b.ownerId) { ownerTribeId = _warKeyOf(p); break; }
+    } else {
     if (b.type === 'guild_granary') ownerTribeId = (b.data && b.data.tribe_id) || null;
     if (ownerTribeId === null) for (const p of players.values()) {
       if (p.playerId === b.ownerId) { ownerTribeId = p.tribeId; break; }
@@ -12384,15 +12406,16 @@ async function tryChestTake(player, buildingId, item, amount) {
         ownerTribeId = op?.tribe_id || null;
       } catch (e) {}
     }
-    if (!ownerTribeId || !player.tribeId || ownerTribeId === player.tribeId) {
+    }
+    if (!ownerTribeId || !_myWk || ownerTribeId === _myWk) {
       send(player.ws, { type: 'notice', text: '내 상자가 아닙니다' }); return;
     }
-    const atWar = await isAtWar(player.tribeId, ownerTribeId);
+    const atWar = await isAtWar(_myWk, ownerTribeId);
     if (!atWar) {
       send(player.ws, { type: 'notice', text: '전쟁 중이어야 약탈 가능' }); return;
     }
     // 활성 전쟁의 loot_rate 가져오기
-    const wars = await getActiveWars();
+    const wars = VillageKin.ON ? [] : await getActiveWars();   // ★[T785] 켬 — 마을 전쟁엔 다이얼 칸이 없다(아래 종전 바닥 그대로)
     const war = wars.find(w =>
       (w.attacker_guild_id === player.tribeId && w.defender_guild_id === ownerTribeId) ||
       (w.defender_guild_id === player.tribeId && w.attacker_guild_id === ownerTribeId));
@@ -12665,7 +12688,7 @@ async function tryAttack(player) {
     } else {
       const victimGuildArea = findGuildClaimContaining(bestPlayer.x, bestPlayer.y, bestPlayer.tribeId);
       if (victimGuildArea) {
-        const atWar = await isAtWar(player.tribeId, bestPlayer.tribeId);
+        const atWar = await isAtWar(_warKeyOf(player), _warKeyOf(bestPlayer));   // ★[T785] 켬 = 마을 id · 끔 = 종전 tribeId
         if (!atWar) {
           // 길드 영토 보호 — player 공격 X, 단 wall은 공격 가능 (공성)
           playerAttackBlocked = true;
@@ -12735,7 +12758,7 @@ async function applyPvpAttackPenalty(attacker, victim) {
     else { multiplier = 0.5; guildAdd = 0; tag = 'evil-victim (정의구현)'; }
   }
   // 전쟁 중이면 면제
-  if (await isAtWar(attacker.tribeId, victim.tribeId)) {
+  if (await isAtWar(_warKeyOf(attacker), _warKeyOf(victim))) {   // ★[T785] 켬 = 마을 id · 끔 = 종전 tribeId
     multiplier = 0; guildAdd = 0; tag = 'at-war (면제)';
   }
   const personalGain = Math.round(VP_ATTACK_PLAYER * multiplier);
@@ -12775,7 +12798,10 @@ async function getActiveWars() {
     return activeWarsCache.wars;
   } catch (e) { return []; }
 }
+// ★[T785] 전쟁 열쇠 — 켬 = 그 사람의 마을 id(몸 `member` · 이 존) · 끔 = 종전 `tribeId`(main 바이트).
+function _warKeyOf(p) { return VillageKin.ON ? VillageKin.warKey(p) : (p ? p.tribeId : undefined); }
 async function isAtWar(guildA, guildB) {
+  if (VillageKin.ON) return VillageKin.isAtWar(guildA, guildB);   // ★[T785] 켬 — 마을 칸(central `/wars/active` 무접촉)
   if (!guildA || !guildB || guildA === guildB) return false;
   const wars = await getActiveWars();
   return wars.some(w =>
@@ -14091,6 +14117,7 @@ setTimeout(() => { reconcileGuildGranaries('부팅').catch(() => { }); }, 8000);
 
 setInterval(async () => {
   reconcileGuildGranaries('주기').catch(() => { });   // ★생산 틱과 같은 주기(신규 타이머 없음)
+  if (VillageKin.ON) { try { const _rp = VillageKin.retry(); if (_rp) _rp.catch(() => { }); } catch (e) { } }   // ★[T785] 못 옮긴 이행이 있으면 다시(같은 틱 · 새 타이머 0)
   if (villageGuildIds.size === 0) return;
   const tally = tallyVillageJobs();
   const zoneSum = {};

@@ -122,6 +122,10 @@ const ENABLED = process.env.ENABLE_VILLAGES !== '0'; // 기본 켜짐. '0'만 �
 //   `_t340Rng`(T340 낚시 흐름)·`_pidHash`(신원 해시)는 **한 글자도 안 바뀐다** — 옮긴 것뿐이고,
 //   `test-fish-act` 73 과 `test-move-soa ④` 가 그 바이트 동일을 건다. 머리에 두는 이유는 TDZ 다(T324).
 const { seedRand: _t340Rng, pidHash: _pidHash, seedOf: _seedOf, makeStream: _makeStream } = require('./seed-rand');
+// ★★[T785 2026-10-18 · 재민 10-18 ⓑ "길드 = 마을"] 마을이 유일한 무리 — 촌장 · 곳간 문 · 가입 문 · 소개 · 전쟁은 **회관 행의 칸**(`server/village-kin.js`).
+//   손잡이 `T785_VILLAGE_ONLY` '1' 만 켬 · 끔 = main 바이트(아래 T785 줄은 전부 `T785 &&` · 끔이면 회관 행에 칸을 안 쓰고 `_tribeId` 도 종전 그대로).
+const T785 = process.env.T785_VILLAGE_ONLY === '1';
+const VillageKin = require('./village-kin');
 const TB = require('./tick-budget');   // ★[T687] 한 틱 공용 예산(손잡이 `T687_SHARED_BUDGET` · 끔 = 문마다 제 예산 그대로)
 //   ★[T687 ②] 같은 손잡이로 하루 마감 통짜를 더 잘게 — 생활층 한 마을의 갈래 경계 쉼표 · 사냥 밴드 짓기 뒤 · 인구 재동기 마을 하나씩(차례 그대로 · 끔 = 종전 글자)
 const T687_ON = TB.ON;
@@ -2091,16 +2095,20 @@ function foundPlayerVillage(opts) {
   ev._world = world;
   ev.coord = { x: ccx * 2.5, y: ccy * 2.5 };   // econ 좌표 = 셀×2.5 (시딩·랩과 같은 환산)
   // ── DB — 마을 1행 + 회관 1행 + 영토 셀(시딩과 같은 스키마) ─────────────────
-  let dbId;
+  let dbId, _hallObj = null, _hallRow = null;   // ★[T785] 회관 행(켬이면 마을 칸이 사는 자리)
   try {
     db.db.exec('BEGIN');
     dbId = db.insertVillage({ zone: state.zoneId, name, cx: ccx, cy: ccy, population: 0, econ_state: serializeEcon(ev), day });
-    db.insertVillageBuilding({
+    //   ★[T197] `tribeId` 도 **있는 `data` 칸에** 실어 둔다(새 열 0) — 안 그러면 재시작 한 번에
+    //     마을이 길드를 잊고 소개문·곳간문이 다시 죽는다(`_founder` 옆에 `founder` 가 이미 이렇게 산다).
+    //   ★[T203] `founderName` 도 같은 칸에 — 재시작 뒤에도 시작 화면이 창설자를 안다(새 열 0).
+    //   ★[T785] 켬 — 같은 칸에 촌장(= 세운 사람) · 표지를 얹는다(`VillageKin.hallKeysFresh` · 새 열 0) · 길드는 안 싣는다(존이 `tribeId: null` 을 준다).
+    //     끔이면 이 객체는 종전 리터럴 그대로라 `data` 바이트가 같다.
+    _hallObj = { typeLabel: 'player', land: lp, seedType: 'player', founder, founderName: opts.founderName || null, tribeId: opts.tribeId || null, bnd: territoryBoundary(territory, ccx, ccy) };
+    if (T785) Object.assign(_hallObj, VillageKin.hallKeysFresh(founder));
+    _hallRow = db.insertVillageBuilding({
       village_id: dbId, type: 'hall', cx: ccx, cy: ccy, floors: 1,
-      //   ★[T197] `tribeId` 도 **있는 `data` 칸에** 실어 둔다(새 열 0) — 안 그러면 재시작 한 번에
-      //     마을이 길드를 잊고 소개문·곳간문이 다시 죽는다(`_founder` 옆에 `founder` 가 이미 이렇게 산다).
-      //   ★[T203] `founderName` 도 같은 칸에 — 재시작 뒤에도 시작 화면이 창설자를 안다(새 열 0).
-      data: JSON.stringify({ typeLabel: 'player', land: lp, seedType: 'player', founder, founderName: opts.founderName || null, tribeId: opts.tribeId || null, bnd: territoryBoundary(territory, ccx, ccy) }),
+      data: JSON.stringify(_hallObj),
     });
     for (const c of territory) db.insertVillageBuilding({ village_id: dbId, type: 'terr', cx: c[0], cy: c[1], floors: 0, data: null });
     db.db.exec('COMMIT');
@@ -2119,6 +2127,7 @@ function foundPlayerVillage(opts) {
     _crop: new Map(), _cropClaim: new Set(), _ditch: [], _pHouses: [], _pSiteRows: [], _psite: null, _psiteCrew: 0,
     _founder: founder, _tribeId: opts.tribeId || null,
   };
+  if (T785) VillageKin.attach(vil, _hallObj, _hallRow);   // ★[T785] 켬 — 마을 칸(촌장 = 세운 사람 · 나머지 기본값)
   ev._fieldCells = 0;   // ★[T100] 새 마을은 밭 0칸에서 시작한다 — econ 은 텃밭 하한으로 받는다(굶기지 마라)
   { const _cw = Math.ceil((state.deps && state.deps.zoneWidth ? state.deps.zoneWidth : (require('./zone-config').ZONES[state.zoneId] || {}).zoneWidth || 1) / SZ);
     vil._lonOff = T720_LON_DAY ? _t720LonOff(ccx) : +((ccx / Math.max(1, _cw)) * 0.045).toFixed(4); }   // ★[T720] 켬 = 원통 경도
@@ -4857,7 +4866,7 @@ function init(deps) {
       const housesPx = [];
       // ★[생활 층] 부팅 시 상태 집합 재구성 — terr/nongzone(시딩 영속) + 개간 실상태(farm/dry) + 집·곳간 셀
       const terrSet = new Set(), potSet = new Set(), farmSet = new Set(), drySet = new Set(), granList = [], houseCells = [], siteRows = [], ditchCells = [], pHouseRows = [], pSiteRows = [];
-      let farmN = 0, dryN = 0, hallData = null, maxCellR = 4, shelterCell = null;
+      let farmN = 0, dryN = 0, hallData = null, maxCellR = 4, shelterCell = null, _t785Row = null;
       if (_bLite) {   // ★[T538] 좌표 셋 — 종전 루프의 그 갈래들을 같은 순서(id)로
         for (const f of db.getVillageFarthest(row.id, row.cx, row.cy)) { const r = Math.hypot(f.cx - row.cx, f.cy - row.cy); if (r > maxCellR) maxCellR = r; }
         db.eachVillageCell(row.id, 'farm', (cx, cy, ty) => {
@@ -4882,7 +4891,7 @@ function init(deps) {
         // ★★[T62 2026-09-03] **공용 쉼터** — 마을당 최대 하나. 종류를 잃지 않게 행에서 그대로 복구한다
         //   (T45 가 사유지 `kind` 를 잃던 결함을 여기서 반복하지 않는다 — 처음부터 열이 아니라 **행**이다).
         else if (b.type === 'shelter') shelterCell = { cx: b.cx, cy: b.cy };
-        else if (b.type === 'hall' && b.data) { try { hallData = JSON.parse(b.data); } catch {} }
+        else if (b.type === 'hall' && b.data) { try { hallData = JSON.parse(b.data); } catch {} if (T785) _t785Row = b.id; }   // ★[T785] 켬 — 마을 칸을 쓸 회관 행
       }
       for (const k of farmSet) potSet.delete(k);   // 이미 개간된 존닝 셀 제외(미개간 잔여만 potSet)
       // Stage 4A: 영토 경계(시딩 때 hall data.bnd로 영속). 구DB(Stage1~3)엔 없음 → 반경 원 근사 폴백.
@@ -4899,13 +4908,15 @@ function init(deps) {
         _crop: new Map(), _cropClaim: new Set(), _ditch: ditchCells,
         _pHouses: pHouseRows, _pSiteRows: pSiteRows, _psite: null, _psiteCrew: 0,
         //   ★[T197] 회관 행에 실어 둔 길드를 되살린다 — 없으면 null(무길드 마을·NPC 마을·구DB 전부 여기).
-        _tribeId: (hallData && hallData.tribeId != null) ? hallData.tribeId : null,
+        //   ★[T785] 켬 — 런타임엔 안 싣는다(마을이 유일한 무리 · 옛 칸 `tribeId` 는 회관 행에 그대로 · 이행이 읽는다).
+        _tribeId: (!T785 && hallData && hallData.tribeId != null) ? hallData.tribeId : null,
         _shelter: shelterCell });   // ★[T62] 공용 쉼터 셀(없으면 null — 좌표를 지어내지 않는다)
       //   ★[T203] 창설자 이름도 되살린다 — 읽는 자리가 `econ` 이므로 `econ` 에 얹는다(`_tribeId` 와 같은 짝).
       //     ⚠**있을 때만** 얹는다: NPC 마을엔 이 칸이 아예 없고, 그래서 랩·기준선은 한 비트도 안 움직인다.
       if (hallData && hallData.founderName) ev.founderName = String(hallData.founderName);
       //   ★[T593 ⑤] 이름표를 바꿔 심은 판이면 후보 이름을 곁에 둔다(레거시 디듀프가 후보 이름으로 묻는다 · 없으면 칸 자체를 안 만든다).
       if (hallData && hallData.seedName) state.villages[state.villages.length - 1]._seedName = String(hallData.seedName);
+      if (T785) VillageKin.attach(state.villages[state.villages.length - 1], hallData, _t785Row);   // ★[T785] 켬 — 회관 행의 마을 칸을 되살린다(표지 없는 사람 마을 = 이행 대기)
       _fieldBridge({ econ: ev, _farmSet: farmSet, _potSet: potSet, _drySet: drySet });   // ★[T100] 밭 브리지 초기값(영속 행에서 — 개간 전에도 밭은 있다) · ★[T198] 두 칸도 같은 줄에서
       // ★[11차 재민 확정] 마을 안엔 숲이 없다 — 영토 셀의 나무를 벤다(개간).
       //   부팅 때마다 부르지만 이미 벤 나무는 harvestedSeeds 에 있어 다시 생성되지 않는다(멱등).
@@ -12381,6 +12392,11 @@ function _t529Chief(vil) {
 }
 /** 촌장 몸(없으면 null) — 하네스·관측용. */
 function chiefOf(vid) { const vil = state.byDbId && state.byDbId.get(vid | 0); return vil ? _t529Chief(vil) : null; }
+// ★[T785] 마을 칸 쓰기 — 회관 행(`village_buildings.id`) 한 줄의 `data` 를 통째로 갈아 끼운다(합친 JSON 은 `village-kin.js` 가 만든다 · 켬에서만 불린다).
+function kinWrite(row, json) {
+  if (!T785 || row == null || !state.db || typeof state.db.updateVillageBuildingData !== 'function') return false;
+  try { state.db.updateVillageBuildingData(row, json); return true; } catch (e) { console.error(`[${state.zoneId || 'zone'}] 🏘️ [T785] 마을 칸 쓰기 실패:`, e.message); return false; }
+}
 /** 새 사람 도착 → 촌장 줄에 선다. 손잡이 끔 · 촌장 없음 · 생활층이 안 도는 마을이면 false(종전 인사 그대로). */
 function chiefGreetAsk(vid, pid) {
   if (process.env.T529_CHIEF_WALKS !== '1') return false;
@@ -13383,7 +13399,7 @@ module.exports = { t750CastPre, t750Stat: () => _t750Stat, t719ReachPre, t719Sta
   t740On: () => T740_SIDE, t740Stat: () => _t740Stat,
   t742Bind, t742On: () => T742_ZONE, t742Stat: () => _t742Stat,   // ★[T742] 존 · 모듈 메모리 영속(손잡이 · 거는 문 · 계측)   // ★[T740] 메모리 전용 마을 칸 영속(손잡이 · 계측)
   init, onGameTick, deferLate, invalidateTradeDistances, npcLifeTick, lifeDebug, econDay, econDayT,
-  chiefOf, chiefGreetAsk, chiefGreetHas, chiefWalking,
+  chiefOf, chiefGreetAsk, chiefGreetHas, chiefWalking, kinWrite,   // ★[T785] 마을 칸 쓰기(회관 행)
   bedSlotOf,   // ★[T540] 관측 — 침대 슬롯·집(`/walkdbg`)   // ★[T529] 촌장이 온다(손잡이 `T529_CHIEF_WALKS` · 읽는 곳 하나)
   tickPerf,   // ★[T1 §0] 일틱 단계별 소요 — zone.js `/perf` 가 소비(계측 전용)
   xzoneReceive, xzonePerf,   // ★[T533] 존 경계 — `/handoff_prepare` 의 `kind`(caravan·snap) 받는 문 · `/perf` 의 `xzone` 칸(끔이면 null)

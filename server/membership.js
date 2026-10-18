@@ -27,6 +27,7 @@ const Events = require(path.join(__dirname, 'events'));
 const Onb = require(path.join(__dirname, 'onboarding'));
 const Winter = require(path.join(__dirname, 'winter'));   // ★[T20] 겨울나기 달성 보상(그 해 한정 가산)
 const ItemLabel = require(path.join(__dirname, 'itemlabel'));   // ★[T159] 재화의 우리말 — 표는 여기 하나(사본 0)
+const VillageKin = require(path.join(__dirname, 'village-kin'));   // ★[T785] 마을 칸(촌장 · 곳간 문) — 켬에서만 읽는다(끔 = 이 줄들 무동작)
 
 const _num = (k, d) => { const v = parseFloat(process.env[k]); return Number.isFinite(v) ? v : d; };
 const CFG = {
@@ -184,6 +185,15 @@ function seatGuildMember(player) {
   _seat(player, best.dbId | 0);
   return player.member;
 }
+// ★[T785] 켬 — 부름(`/초대` → `/수락` · `village-kin.js`)으로 드는 문. 옛 길드 부름은 기여 문턱 없이 길드에 들었고(그 뒤 T202 가 길드 마을에 앉혔다)
+//   마을이 곧 길드이니 같은 사람이 같은 문턱 없이 마을에 든다 · 이미 어느 마을 사람이면 안 앉힌다(한 사람은 한 마을 · K-1).
+function seatByInvite(player, vid) {
+  if (!ready() || !player || vid == null) return { ok: false, err: '아직 준비되지 않았다' };
+  if (memberOf(player)) return { ok: false, err: '이미 소속이 있다' };
+  _seat(player, vid | 0);
+  player._memberOfferVid = null;
+  return { ok: true, member: player.member };
+}
 function seatFounder(player, vid) {
   if (!ready() || !player || vid == null) return { ok: false, err: '아직 준비되지 않았다' };
   const was = memberOf(player);
@@ -236,6 +246,8 @@ function withdraw(player, vid, res, qty, chiefOk) {
   if (!T769 && _tid && !granaryOpen(_tid)) {   // ★[T769] 켬 = 꺼내는 사람이 곧 문을 정할 사람(촌장) — 잠금 문은 안 쓴다
     return { ok: false, err: '길드장이 곳간을 잠갔다' };
   }
+  //   ★[T785] 켬 — 곳간 문은 **마을 칸**이다(촌장이 `/곳간 열기|잠금` · central 무접촉 · 런타임 `_tribeId` 는 켬에서 null 이라 위 줄은 안 닿는다).
+  if (!T769 && VillageKin.ON && !VillageKin.granaryOpenOf(g.vil)) return { ok: false, err: '촌장이 곳간을 잠갔다' };
   const r0 = String(res || 'food');
   // ★★[T769] 켬 — 한도 없음(기여 · 겨울 보상 안 씀). 양을 안 적었으면 **한 단위**(아래 종전 `Math.max(1, …)` 의 바닥 그대로 · 새 수 0).
   //   하루 몫 장부(`wdDay` · `wdUsed`)도 안 센다(셀 한도가 없다). 실물 길 · 곳간 문 감싸개 · 재고 막음은 그대로다.
@@ -576,7 +588,7 @@ function publicState(player, stock, vil) {
 
 module.exports = {
   CFG, init, ready, contribOf, memberOf, isMemberHere, limitOf, remainOf,
-  onDeliver, accept, seatFounder, seatGuildMember, leave, expel, withdraw, orderBrief, handleChat, publicState,   // ★[T197] 창설 = 소속 · ★[T202] 길드원도
+  onDeliver, accept, seatFounder, seatGuildMember, seatByInvite, leave, expel, withdraw, orderBrief, handleChat, publicState,   // ★[T197] 창설 = 소속 · ★[T202] 길드원도 · ★[T785] 부름으로 드는 문
   resolveRes, resKo, granaryOpen, granaryBust,   // ★[T159] 품목 해석 · 길드 곳간 문
   T769, withdrawChief, chiefCheck, chiefCached, resolveItem,   // ★[T769] 기부 · 촌장 꺼내기
 };

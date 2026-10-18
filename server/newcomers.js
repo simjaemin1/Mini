@@ -27,6 +27,7 @@
 //   이 파일은 **이미 선 마을을 지도에 올릴지**만 정한다.
 
 const path = require('path');
+const VillageKin = require(path.join(__dirname, 'village-kin'));   // ★[T785] 켬이면 길드 벌점을 안 묻는다(마을엔 길드가 없다)
 const _num = (k, d) => { const v = parseFloat(process.env[k]); return Number.isFinite(v) ? v : d; };
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -148,7 +149,8 @@ async function scan() {
           //   ⚠0·음수는 **측정이 아니다** — 모르는 것으로 둔다(막지 않는다).
           const _ls = Number(p && p.last_seen);
           if (Number.isFinite(_ls) && _ls > 0) rec.idleDays = (now - _ls) / DAY_MS;
-          const tid = (vil._tribeId != null) ? vil._tribeId : (p && p.tribe_id);
+          //   ★[T785] 켬 — 마을엔 길드가 없다(길드 = 마을) ⇒ 길드 벌점을 central 에 안 묻는다(무길드 마을과 같다 · VP 를 마을로 옮길지는 T787 표).
+          const tid = VillageKin.ON ? null : ((vil._tribeId != null) ? vil._tribeId : (p && p.tribe_id));
           if (tid) { const t = await H.central.getTribe(tid); if (t && t.tribe && Number.isFinite(t.tribe.vp)) rec.vp = +t.tribe.vp; }
         } catch (e) { /* central down — 이번 판은 모른 채로 둔다(막지 않는다) */ }
       }
