@@ -4,7 +4,7 @@
 //
 // 읽는 것(`T577_DIR` · 판 이름 = `T577_TAG`): `<판>-<시드>.json`(t577 훅 — 이름 · 빈 날 · 해체 날 · 인구 줄) · `<판>-<시드>.t796.json`(t796 관찰기)
 // 대상 = ⓐ 에서 끝 날 빈 마을 중 해체 표가 없는 곳(T766 §3-① "해체 없이 굶어 빔").
-// 굶기 시작 = 빈 날 앞 300일 안에서 인구가 가장 많던 날(마지막 내리막의 머리). 창 = 그 앞 60일(달력 날 그대로 — 판 넷이 같은 날을 본다).
+// 꼭대기 = 빈 날 앞 300일 안에서 인구가 가장 많던 날. 굶기 시작 = 꼭대기 뒤 처음으로 곳간 식량 < 인구(하루치)인 날. 창 = 그 앞 60일(달력 날 그대로 — 판 넷이 같은 날을 본다).
 // 쓰는 법: node scripts/t796-table.js <판 디렉터리> [--json out.json]
 'use strict';
 const fs = require('fs');
@@ -60,17 +60,35 @@ for (const s of SEEDS) {
     const ed = o.emptyDay[i];
     let best = -1, bd = null;
     for (const r of o.rows) { if (r[0] < ed - 300 || r[0] >= ed) continue; if (r[1][i] >= best) { best = r[1][i]; bd = r[0]; } }
-    T.push({ seed: s, name: n, empty: ed, onset: bd, peak: best });
+    // 곳간 바닥 날 = 꼭대기 뒤 처음으로 곳간 식량 < 인구(하루치) — 굶기 시작(관찰기 줄 · 없으면 꼭대기 날)
+    let floor = null; for (const r of A.ob.rows) { if (r[0] <= bd || r[0] >= ed) continue; const v = r[1][A.ob.names.indexOf(n)]; if (v[1] < v[0]) { floor = r[0]; break; } }
+    T.push({ seed: s, name: n, empty: ed, peakDay: bd, peak: best, onset: floor != null ? floor : bd });
   });
 }
 
 console.log(`\n### 대상 — ⓐ 에서 해체 없이 굶어 빈 마을(${T.length}곳) · 다른 판에서 그 마을\n`);
-console.log('| 시드 | 마을 | ⓐ 빈 날 | 굶기 시작(인구 마지막 꼭대기 · 명) | ⓑ′ 끝 인구(빈 날) | ⓔ 끝 인구(빈 날) | ⓕ 끝 인구(빈 날) |');
-console.log('|---|---|---|---|---|---|---|');
+console.log('| 시드 | 마을 | ⓐ 빈 날 | ⓐ 꼭대기(날 · 명) | ⓐ 굶기 시작(곳간 바닥) | ⓑ′ 끝 인구(빈 날) | ⓔ 끝 인구(빈 날) | ⓕ 끝 인구(빈 날) |');
+console.log('|---|---|---|---|---|---|---|---|');
 for (const t of T) {
   const cell = (k) => { const r = R[`${k}|${t.seed}`]; if (!r) return '·'; const i = r.o.names.indexOf(t.name), n = r.o.rows[r.o.rows.length - 1][1][i];
     return n === 0 ? `**0**(${r.o.emptyDay[i]}${r.o.bdtDay[i] != null ? ' h' : ''})` : String(n); };
-  console.log(`| ${t.seed} | ${t.name} | ${t.empty} | ${t.onset} · ${t.peak} | ${cell('ⓑ′')} | ${cell('ⓔ')} | ${cell('ⓕ')} |`);
+  console.log(`| ${t.seed} | ${t.name} | ${t.empty} | ${t.peakDay} · ${t.peak} | ${t.onset} | ${cell('ⓑ′')} | ${cell('ⓔ')} | ${cell('ⓕ')} |`);
+}
+
+// ── 궤적 — 대상 마을마다 판 넷의 인구 · 식량 부양력 · 곳간(겨울 바닥) ──
+console.log('\n### 궤적 — 대상 마을 · 판 넷(인구 · 괄호 = 식량 부양력 K)\n');
+const DAYS = [100, 200, 300, 365, 400, 500, 800];
+console.log(`| 시드 | 마을 | 판 | ${DAYS.map((d) => d + '일').join(' | ')} | 꼭대기(날) | 식량 일꾼 몫(꼭대기) | 받은 식량 누계(꼭대기) |`);
+console.log(`|---|---|---|${DAYS.map(() => '---').join('|')}|---|---|---|`);
+const TRAJ = [];
+for (const t of T) for (const [k] of RUNS) {
+  const r = R[`${k}|${t.seed}`]; if (!r) continue; const i = r.ob.names.indexOf(t.name);
+  const at = (d) => { for (let x = d; x >= 0; x--) { const q = r.byDay.get(x); if (q) return q[i]; } return null; };
+  let pk = -1, pd = 0; for (const q of r.ob.rows) if (q[1][i][0] > pk) { pk = q[1][i][0]; pd = q[0]; }
+  const P = at(pd), share = P && P[0] ? P[16].reduce((a, x) => a + x, 0) / P[0] : 0;
+  const cells = DAYS.map((d) => { const v = at(d); return v ? `${v[0]}(${v[5] != null ? v[5].toFixed(0) : '—'})` : '—'; });
+  TRAJ.push({ seed: t.seed, name: t.name, k, pop: DAYS.map((d) => { const v = at(d); return v ? v[0] : null; }), peak: pk, peakDay: pd, share, imp: P ? P[9] : 0 });
+  console.log(`| ${t.seed} | ${t.name} | ${k} | ${cells.join(' | ')} | ${pk}(${pd}) | ${(100 * share).toFixed(0)}% | ${P ? f1(P[9]) : '—'} |`);
 }
 
 // ── 굶기 전 60일 — 마을마다 판 넷 ──
@@ -130,4 +148,4 @@ for (const [k, , lab] of RUNS) {
   WHOLE[k] = { emp, starve, dis, car, carR, raid, lost, kill };
   console.log(`| ${k} ${lab} | ${emp.join(' / ')} (${emp.reduce((a, x) => a + x, 0)}) | ${starve} | ${dis} | ${car} | ${carR}(${car ? (100 * carR / car).toFixed(1) : 0}%) | ${raid} | ${f1(lost)} | ${kill} |`);
 }
-if (JOUT) fs.writeFileSync(JOUT, JSON.stringify({ dir: DIR, targets: T, agg: AGG, year1: Y1, whole: WHOLE }, null, 1));
+if (JOUT) fs.writeFileSync(JOUT, JSON.stringify({ dir: DIR, targets: T, traj: TRAJ, agg: AGG, year1: Y1, whole: WHOLE }, null, 1));
