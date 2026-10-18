@@ -39,6 +39,8 @@ const CFG = {
 };
 
 let H = null;
+// ★[T786] T785 손잡이(`T785_VILLAGE_ONLY`)를 같은 식 하나로 읽는다(`village-kin` 의 `ON` — 순수 모듈 · require 0).
+const _KIN_ON = require('./village-kin').ON;
 function init(host) { H = host || {}; return true; }
 function ready() { return !!H && !!H.claims; }
 const SZ = () => (H && H.BUILDING_SIZE) || 32;
@@ -131,7 +133,7 @@ function stageFor(c, absentMs) {
 //   ⚠소속은 **T11 이 몸에 실어 둔 그 필드**를 읽는다(`tools_json` → `member`). 새 저장소 0.
 function heldByOf(row) {
   if (!row) return null;
-  if (row.tribe_id) return `guild:${row.tribe_id}`;
+  if (row.tribe_id && !_KIN_ON) return `guild:${row.tribe_id}`;   // ★[T786 C14] T785 켬 = 길드는 마을로 접혔다 — 맡는 쪽은 **그 사람의 마을**(아래 `member` 갈래)
   try {
     const b = JSON.parse(row.tools_json || '{}');
     const m = b && b.member;
@@ -223,6 +225,7 @@ function takeableBy(player, c) {
   if (st === 'free') return { ok: true, why: '개방된 땅' };
   if (st !== 'pref') return { ok: false, why: st === 'held' ? '주인이 맡겨 둔 땅이다(보관 중)' : '남의 사유지다' };
   const hb = String(c.heldBy || '');
+  if (hb.startsWith('guild:') && _KIN_ON) return { ok: false, why: '맡아 둔 길드가 이제 없다 — 개방을 기다려야 한다' };   // ★[T786 C14] 켬 — 옛 길드 보관 줄(새로는 안 생긴다)
   if (hb.startsWith('guild:')) {
     const gid = hb.slice(6);
     return (player.tribeId && String(player.tribeId) === gid)

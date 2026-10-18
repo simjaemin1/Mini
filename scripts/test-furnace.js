@@ -38,6 +38,7 @@ console.log = (...a) => { if (!quiet) _log(...a); };
 console.warn = () => {}; console.error = () => {};
 const Zone = require(path.join(__dirname, '..', 'server', 'zone.js'));
 const Era = require(path.join(__dirname, '..', 'server', 'era.js'));
+const KIN = require(path.join(__dirname, '..', 'server', 'village-kin.js')).ON;   // ★[T786] T785 켬 = 길드 사유지 → 마을 땅
 quiet = false; console.log = _log;
 
 const H = Zone.__testBind();
@@ -221,25 +222,37 @@ say('\n[④ 권한 거부 — 개인 노엔 타인 관여 불가]');
     const gLeader = mkPlayer('길드장', { inv: { stone: 20, wood: 10, hide: 8 }, tools: ['pickaxe'], tribeId: 'guildA' });
     at(gLeader, spot2.cx, spot2.cy);
     layClaims(spot2.cx, spot2.cy, 'village_x', '길드A 영토', 'guild', 'guildA');
+    //   ★[T786] T785 켬 — 길드 사유지는 **마을 땅**으로 접혔다 ⇒ 같은 2×2 를 랩 마을 땅으로도 깐다(`_terrSet` 정본 칸) ·
+    //     길드A = 마을 8001 사람 · 길드B = 마을 8002 사람(몸 `member`). 끔이면 아무것도 안 깐다(종전 판 그대로).
+    if (KIN) {
+      const lv = (dbId, cells) => ({ name: `랩마을${dbId}`, dbId, econ: { founder: `lab_f${dbId}` }, _terrSet: new Set(cells) });
+      const cells = []; for (let x = spot2.cx; x <= spot2.cx + 1; x++) for (let y = spot2.cy; y <= spot2.cy + 1; y++) cells.push(x + ',' + y);
+      const vs = [lv(8001, cells), lv(8002, [])];
+      H.SimVillages.__labProbe._t740Probe.setup({ villages: vs, byDbId: new Map(vs.map((v) => [v.dbId, v])) });
+      gLeader.member = { vid: 8001, zone: process.env.ZONE_ID };
+    }
     H.tryFurnaceStart(gLeader, spot2.cx * SZ + 1, spot2.cy * SZ + 1);
     const gs = findBuilding('furnace_site');
     ok(gs.length === 1, '길드 사유지 위 노 터 생성');
     if (gs.length) {
-      eq(gs[0].data.tribeId, 'guildA', '★길드 땅에 지으면 길드 노(tribeId 기록)');
+      if (KIN) ok(gs[0].data.tribeId == null && gs[0].data.vid === 8001, '★[켬] 마을 땅에 지으면 마을 노(`vid` 기록 · 길드 id 안 실음)', JSON.stringify({ t: gs[0].data.tribeId, v: gs[0].data.vid }));
+      else eq(gs[0].data.tribeId, 'guildA', '★길드 땅에 지으면 길드 노(tribeId 기록)');
       H.tryFurnaceAdvance(gLeader, gs[0].id);
       H.tryFurnaceAdvance(gLeader, gs[0].id);
-      const gf = findBuilding('furnace').find((b) => b.data.tribeId === 'guildA');
+      const gf = findBuilding('furnace').find((b) => (KIN ? b.data.vid === 8001 : b.data.tribeId === 'guildA'));
       ok(!!gf, '길드 노 완공');
       if (gf) {
         const mate = mkPlayer('같은길드원', { inv: { iron_ore: 2, charcoal: 10 }, tribeId: 'guildA' });
+        if (KIN) mate.member = { vid: 8001, zone: process.env.ZONE_ID };
         at(mate, spot2.cx, spot2.cy);
         H.tryFurnaceSmelt(mate, gf.id);
         eq(mate.inventory.iron_ore, 1, '같은 길드원은 길드 노를 쓴다');
         const enemy = mkPlayer('다른길드원', { inv: { iron_ore: 2, charcoal: 10 }, tribeId: 'guildB' });
+        if (KIN) enemy.member = { vid: 8002, zone: process.env.ZONE_ID };
         at(enemy, spot2.cx, spot2.cy);
         H.tryFurnaceSmelt(enemy, gf.id);
         eq(enemy.inventory.iron_ore, 2, '★다른 길드원은 못 쓴다(재료 무변화)');
-        ok(/우리 길드의 노가 아닙니다/.test(lastNotice(enemy)), `거부 사유 — "${lastNotice(enemy)}"`);
+        ok((KIN ? /우리 마을의 노가 아닙니다/ : /우리 길드의 노가 아닙니다/).test(lastNotice(enemy)), `거부 사유 — "${lastNotice(enemy)}"`);
       }
     }
   }

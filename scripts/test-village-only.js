@@ -4,6 +4,7 @@
 //
 // ★[재민 10-18 ⓑ · 카드 T785 ④] 잰다: 창설(켬) · 가입 · 촌장(사람 마을 칸 · NPC 마을 = 촌장 몸) · 곳간 문 · 소개 · 가입 문 · 전쟁 ·
 //   **이행** · 재기동 · 다시 붙기 · **존 넘김**(2존 실핸드오프 — 몸 `member` 가 실려 간다) · **central 호출 0 셈**.
+//   ★[T786 2026-10-18] **권한 자리 표본**(Ⓣ1–Ⓣ13 · 켬 판) — 술어 둘(마을 사람 · 촌장) · 길드 사유지 → 마을 땅(C1 · C5 · C9 · C11 · C12 · C14 · C18 · C20).
 // ★어떻게 — central 과 존 사이에 **세는 문**(프록시)을 둔다. 존은(두 존 다) central 을 그 문으로만 본다(`CENTRAL_URL`).
 //   하네스가 central 에 직접 치는 것(판 깔기 — 길드 만들기 · 행 읽기 · 존 표)은 그 문을 안 지나므로 셈에 안 든다.
 // ★판 셋 — ① **끔**으로 옛 판을 깐다(길드 하나 · 길드 칸 셋(곳간 잠금 · 초대제 · 소개) · 그 길드 사람이 세운 마을 하나)
@@ -357,6 +358,51 @@ async function found(C, base, centers) {
   const cb = await bodyOf('kinC');
   ok(!!(cb && cb.member && VIDC != null && (cb.member.vid | 0) === (VIDC | 0)), '⑧d 켬 창설 — 세운 사람은 제 마을 사람(몸 `member`)', JSON.stringify(cb && cb.member));
   ok(await sayWait(Cc, '/촌장', /촌장 — kinC/), '⑧e 켬 창설 — `/촌장` 이 세운 사람을 안다', lastN(Cc));
+
+  // ══ T786 — 권한 자리 표본(술어 둘: **마을 사람** = 몸 `member` · **촌장** = 마을 칸 · 길드 사유지 → **마을 땅**) ═══════════
+  //   지금 A = VID 마을 사람(촌장 아님) · B = VID 촌장 · C = VIDC 촌장(VID 엔 남). 자리 번호 = T777 C 표(보고 T786 §1).
+  ok(await sayWait(A, '/추방 kinC', /촌장만/), 'Ⓣ1 [C5] 내보내기는 **촌장**만(마을 사람이어도 촌장이 아니면 못 한다)', lastN(A));
+  const hid = F.hall && F.hall.id;
+  A.notices.length = 0; snd(A, { type: 'village_welcome', buildingId: hid, on: true }); await sleep(900);
+  ok(A.notices.some((t) => /촌장만/.test(t)), 'Ⓣ2 [C1] 이방인 받기 스위치는 **촌장**만', lastN(A));
+  B.notices.length = 0; snd(B, { type: 'village_welcome', buildingId: hid, on: true }); await sleep(900);
+  ok(B.notices.some((t) => /이방인을 받/.test(t)), 'Ⓣ3 [C1] 촌장은 켠다(그 다음 문은 종전 그대로)', lastN(B));
+  snd(B, { type: 'village_welcome', buildingId: hid, on: false }); await sleep(600);
+  A.msgs.length = 0; snd(A, { type: 'village_inventory', buildingId: hid }); await sleep(900);
+  ok(A.msgs.some((m) => m.type === 'village_inventory'), 'Ⓣ4 [C1] 회관 열람 = **마을 사람**(촌장 아닌 A 도 본다)');
+  snd(Cc, { type: 'teleport_debug', x: hx + 40, y: hy + 40 }); await sleep(800);
+  Cc.notices.length = 0; Cc.msgs.length = 0; snd(Cc, { type: 'village_inventory', buildingId: hid }); await sleep(900);
+  ok(!Cc.msgs.some((m) => m.type === 'village_inventory') && Cc.notices.some((t) => /볼 수 없다/.test(t)), 'Ⓣ5 [C1] 남의 마을 사람은 못 본다', lastN(Cc));
+  B.msgs.length = 0; Cc.msgs.length = 0;
+  chat(A, '/t 물레 소식'); await sleep(1200);
+  const tB = B.msgs.find((m) => m.type === 'chat' && m.text === '물레 소식'), tC = Cc.msgs.find((m) => m.type === 'chat' && m.text === '물레 소식');
+  ok(!!tB && !!tB.tribe, 'Ⓣ6 [C20] 무리 채팅 `/t` = **같은 마을 사람**에게 간다(이름표 = 마을 이름)', JSON.stringify(tB && { tribe: tB.tribe }));
+  ok(!tC, 'Ⓣ7 [C20] 남의 마을 사람에겐 안 간다');
+  A.notices.length = 0; snd(A, { type: 'claim', kind: 'guild' }); await sleep(800);
+  ok(A.notices.some((t) => /마을 땅은 그 마을의 영토다/.test(t)), 'Ⓣ8 [C11] 길드 사유지 문은 닫혔다(마을 땅 = 그 마을 영토)', lastN(A));
+  A.notices.length = 0; snd(A, { type: 'build_guild_granary', atX: hx + 80, atY: hy + 80 }); await sleep(900);
+  ok(A.notices.some((t) => /곳간은 마을의 것이다/.test(t)), 'Ⓣ9 [C9] 길드 곳간 문은 닫혔다(→ 마을 곳간)', lastN(A));
+  //   C12 — 첫 셀(인접 예외 ⓐ · 땅 0칸)인 새 사람 D 로 잰다(A · C 는 회관 터 4칸이 있어 T45 인접 문이 먼저 답한다)
+  const D = await connect('kinD');
+  snd(D, { type: '__e2e_give', items: { stone: 50, wood: 50 } }); await sleep(500);
+  snd(D, { type: 'teleport_debug', x: hx + 40, y: hy + 40 }); await sleep(800);
+  D.notices.length = 0; snd(D, { type: 'claim', kind: 'personal' }); await sleep(900);
+  ok(D.notices.some((t) => /내 마을 땅 안에만/.test(t)), 'Ⓣ10 [C12] 개인 사유지는 **내 마을 땅** 안에만(마을 사람이 아니면 남의 마을 땅에 못 놓는다)', lastN(D, 2));
+  await close(D);
+  //   C14 — 옛 길드 보관 줄(`guild:`)은 켬에서 길드 우선권이 아니다(새로는 안 생긴다) · 끔 = 종전 그대로(같은 줄 · 같은 사람)
+  const _tk = (on) => { try { return JSON.parse(require('child_process').execFileSync(process.execPath, ['-e',
+    `const C=require(${JSON.stringify(path.join(ROOT, 'server', 'claims.js'))});console.log(JSON.stringify(C.takeableBy({playerId:'x',tribeId:7},{kind:'personal',ownerPid:'y',state:'pref',heldBy:'guild:7'})))`],
+    { env: Object.assign({}, process.env, { T785_VILLAGE_ONLY: on ? '1' : '0' }), encoding: 'utf8' }).trim().split('\n').pop()); } catch (e) { return { err: e.message.slice(0, 120) }; } };
+  const tk1 = _tk(true), tk0 = _tk(false);
+  ok(tk1.ok === false && /길드가 이제 없다/.test(tk1.why) && tk0.ok === true, 'Ⓣ11 [C14] 옛 길드 보관 줄 — 켬 = 우선권 없음 · 끔 = 같은 길드 우선권(종전)', JSON.stringify({ on: tk1, off: tk0 }));
+  //   C18 — 이방인 받기 활동 셈("촌장이 N일째 안 온다")이 묻는 사람 = **촌장**(승계된 B) · 창설자 A 가 아니다
+  phase = 'scan';
+  await jget(`${ZON}/welcomedbg?scan=1`); await sleep(500);
+  const sc = calls.filter((c) => c.phase === 'scan' && /^\/player\//.test(c.u)).map((c) => decodeURIComponent(c.u.split('?')[0].slice(8)));
+  ok(sc.includes(String(B.playerId)) && !sc.includes(String(A.playerId)), 'Ⓣ12 [C18] 활동 셈이 묻는 사람 = 지금 촌장(B) · 창설자(A) 아님', JSON.stringify(sc));
+  ok(tribeCalls('scan').length === 0, 'Ⓣ13 [C18] 그 셈도 central tribe·war 0', JSON.stringify(tribeCalls('scan').map((c) => c.u)));
+  phase = 'on';
+
   const on1 = tribeCalls('on');
   ok(on1.length === 0, '⑨ ★★켬 판 내내 central `/tribe…` · `/war…` 호출 0', `${on1.length} — ${JSON.stringify(on1.slice(0, 5).map((c) => `${c.m} ${c.u}`))} · central 전체 ${calls.filter((c) => c.phase === 'on').length}건`);
   await close(A); await close(B); await close(Cc); await sleep(2000);

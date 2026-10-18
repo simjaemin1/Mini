@@ -139,7 +139,9 @@ async function scan() {
     for (const vil of vils) {
       const vid = vil.dbId | 0;
       const rec = { vp: null, idleDays: null, at: now };
-      const founder = vil.econ && vil.econ.founder;
+      //   ★[T786 C18] T785 켬 — "촌장이 N일째 안 온다"의 촌장은 **마을 칸의 촌장**(`VillageKin.chiefOf` · 승계되면 그 사람) · 끔 = 창설자.
+      const _ch = VillageKin.ON ? VillageKin.chiefOf(vil) : null;
+      const founder = VillageKin.ON ? (_ch && !_ch.npc ? _ch.id : null) : (vil.econ && vil.econ.founder);
       if (founder) {
         try {
           const p = await H.central.getPlayer(founder);

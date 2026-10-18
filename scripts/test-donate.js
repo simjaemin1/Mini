@@ -55,6 +55,11 @@ if (process.env.T769_SUB === 'zone') {
     vils[0].econ.founder = CHIEF;
     vils[1].econ.founder = 'anon_t769_f1'; vils[1]._tribeId = 77;
     vils[2].econ.founder = 'anon_t769_f2'; vils[2]._tribeId = 78;
+    //   ★[T786] T785 켬 — 사람 마을의 촌장은 **마을 칸**(부팅 복원 · 창설이 붙이는 칸 `VillageKin.attach` · 촌장 = 창설자). 랩은 `Villages.init` 을
+    //     안 불러 칸이 비어 있다 ⇒ 정본 함수로 같은 칸을 붙인다(회관 행 data 없음 = 기본값 · 끔이면 안 붙인다 = 종전 판 그대로).
+    const VK = require(SV('village-kin.js'));
+    out.kin = VK.ON;
+    if (VK.ON) for (const v of vils) VK.attach(v, {}, null);
     const AT = vils.map((v) => P.anchorPx(v));
     for (const v of vils) { v.econ.storage.food = 4000; v.econ.storage.wood = 500; }
     const HALL = 'b_t769_hall';
@@ -134,6 +139,7 @@ if (process.env.T769_SUB === 'zone') {
     out.wdG = { took: await wd(pG, 1, 2), note: last(pG), prom: lastProm };
     out.wdX = { took: await wd(pX, 1, 2), note: last(pX), prom: lastProm };
     out.wdG2 = { took: await wd(pG, 1, 1), prom: lastProm };   // 캐시 창 안 — 다시 안 묻는다
+    if (out.kin) { const pF1 = mkP('anon_t769_f1', 1); out.wdF1 = { took: await wd(pF1, 1, 2), note: last(pF1), prom: lastProm }; }   // ★[T786] 켬 = 촌장은 창설자(마을 칸)
     // ⑧ central 불가
     const pH = mkP('anon_t769_f2', 2);
     out.wdH = { took: await wd(pH, 2, 2), note: last(pH) };
@@ -206,10 +212,20 @@ ok(ON.wdP1.took === 0 && /촌장/.test(ON.wdP1.note), '★비관리자 꺼내기
 ok(ON.wdC1.took > 0 && ON.wdC2.took > 0 && /한도 없음/.test(ON.wdC1.note), `★촌장(창설자) 꺼내기 ok — 하루 두 번 · 종전 한도(${ON.limit0}) 넘게`, `${ON.wdC1.took} · ${ON.wdC2.took} · ${ON.wdC1.note}`);
 ok(ON.accept && ON.accept.ok && ON.wdM.member && ON.wdM.took === 0 && /촌장/.test(ON.wdM.note), '★마을 사람(촌장 아님) 꺼내기 거절 — 소속은 그대로', ON.wdM.note);
 ok(!/곳간을 열어/.test(ON.acceptNote.note), '마을 사람에게 "곳간을 열어 두겠네" 말이 안 간다', ON.acceptNote.note);
+//   ★[T786 ②] T785 켬 — 촌장은 **마을 칸 하나**(이행 뒤 촌장 = 창설자 · 넘기기는 `/촌장`) · central `leader_id` 조회 · 캐시 창이 없다.
+if (ON.kin) {
+  ok(ON.wdG.took === 0 && /촌장/.test(ON.wdG.note) && ON.wdX.took === 0 && ON.wdF1 && ON.wdF1.took > 0,
+    '★[켬 T785] 옛 길드 마을 — 촌장 = 마을 칸(창설자) · 옛 길드장(central `leader_id`)은 촌장이 아니다', `길드장 ${ON.wdG.took} · 남 ${ON.wdX.took} · 창설자 ${ON.wdF1 && ON.wdF1.took}`);
+  ok(ON.wdH.took > 0, '★[켬 T785] central 불가여도 촌장(창설자)은 꺼낸다 — 촌장 판정이 central 을 안 묻는다', `${ON.wdH.took} · ${ON.wdH.note}`);
+} else {
 ok(ON.wdG.took > 0 && ON.wdX.took === 0 && /촌장/.test(ON.wdX.note), '★길드 마을 — central `leader_id` 가 촌장(맞으면 ok · 아니면 거절)', `${ON.wdG.took} · ${ON.wdX.note}`);
 ok(ON.wdH.took === 0 && /확인하지 못했다/.test(ON.wdH.note), '★central 불가 = 거절(빼는 문은 닫힌 쪽)', ON.wdH.note);
+}
 ok(ON.sync.prom === false && ON.sync.took > 0, '창설자 촌장 판정은 그 자리에서 선다(동기 — 종전 꺼내기 문과 같은 때)', JSON.stringify(ON.sync));
-ok(ON.wdG.prom === true && ON.wdX.prom === false && ON.wdG2.prom === false && ON.wdG2.took > 0 && ON.cAsk === 2,
+if (ON.kin) ok(ON.wdG.prom === false && ON.wdX.prom === false && ON.wdG2.prom === false && ON.wdF1 && ON.wdF1.prom === false && ON.cAsk === 0,
+  '★[켬 T785] 촌장 판정은 늘 그 자리에서(동기) — central 묻기 0 · 캐시 창 없음',
+  `묻기 ${ON.cAsk} · ${[ON.wdG, ON.wdX, ON.wdG2, ON.wdF1].map((x) => x && x.prom).join('/')}`);
+else ok(ON.wdG.prom === true && ON.wdX.prom === false && ON.wdG2.prom === false && ON.wdG2.took > 0 && ON.cAsk === 2,
   '길드 촌장 — 캐시가 비면 central 을 묻고 그 뒤(비동기) · 캐시 창(`GRAN_TTL_MS`) 안이면 그 자리에서 · 묻는 수 = 빈 캐시 둘(77 · 78)',
   `묻기 ${ON.cAsk} · 첫 ${ON.wdG.prom} · 남 ${ON.wdX.prom} · 둘째 ${ON.wdG2.prom}/${ON.wdG2.took}`);
 ok(ON.wdN.took === 0 && /사람이 꺼내지 않는다/.test(ON.wdN.note), 'NPC 마을 = 사람 꺼내기 0', ON.wdN.note);

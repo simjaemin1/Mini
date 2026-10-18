@@ -268,8 +268,10 @@ function handleChat(player, text) {
     return false;
   }
   if (cmd === '/추방') {
+    //   ★[T786 C5] 내보내는 것은 **촌장**이다(membership `expel` 머리 주석 "촌장이 한다" — 종전 술어는 "쫓는 쪽도 그 마을 사람"이었다).
     const tgt = arg ? _online(arg) : null;
     if (tgt && mine && isChief(tgt, mine)) { _send(player, '🏘️ 촌장은 내보낼 수 없다'); return true; }
+    if (mine && !chiefHere) return notChief();
     return false;
   }
   //   전쟁 — 마을 사이(열쇠 = 마을 id). 거는 것도 끝내는 것도 그 마을 촌장. 상대는 이 존의 마을(사람 · NPC).

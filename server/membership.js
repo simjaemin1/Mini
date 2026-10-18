@@ -308,6 +308,8 @@ const _NOT_CHIEF = '곳간은 촌장만 꺼낸다';
 /** 그 자리에서 서는 판정 — `{ ok, err }` · 모르면 `null`(길드 촌장 캐시가 비었다 — central 을 물어야 한다). */
 function _chiefNow(player, vil) {
   if (!vil || !vil.econ || !vil.econ.founder) return { ok: false, err: '이 마을 곳간은 사람이 꺼내지 않는다' };
+  //   ★[T786 ②] T785 켬 = 촌장은 마을 칸 하나(`VillageKin.isChief`) — central `leader_id` 조회 · 캐시 창(①)을 안 탄다(늘 그 자리에서 선다).
+  if (VillageKin.ON) return VillageKin.isChief(player, vil) ? { ok: true } : { ok: false, err: _NOT_CHIEF };
   const pid = String(player && player.playerId);
   const tid = vil._tribeId | 0;
   if (!tid) return String(vil.econ.founder) === pid ? { ok: true } : { ok: false, err: _NOT_CHIEF };
