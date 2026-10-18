@@ -159,7 +159,7 @@ if (OUT) {
     grow();
     CLOCK = day * DAYMS;
     wrec = new Float64Array(WG.length * 5);
-    if (LEDGER) G.tickBegin();
+    if (LEDGER) G.tickBegin(world.villages);   // ★[T789] 하루 마감 머리에 econ 마을 목록(켬이면 그 순간 상한 레코드를 버린다 · 끄면 안 읽힌다)
     // 마을이 head 에서 늘 수 있다 — 훅은 vidx 에 없는 마을을 건너뛴다(다음 날부터 적는다)
     const r = _tick.apply(this, arguments);
     if (LEDGER) { G.sync(world.villages); G.tickEnd(); }

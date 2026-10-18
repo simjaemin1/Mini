@@ -89,6 +89,8 @@ const _t732Saved = new WeakMap();   // econ 마을 → 저장된 곳간 장부(�
 function _t748Gran(vil) { const G = _T732_ON ? _t732Gran() : null; return (G && vil && vil.econ && G.attached(vil.econ)) ? G : null; }
 function _t748G() { return _T732_ON ? _t732Gran() : null; }   // 마을 없이 — 몸 짐 · 갱 비축(시계가 꽂힌 뒤에만)
 function _t748Nz(o) { return (o && Object.keys(o).length) ? o : null; }   // 빈 묶음은 null(레코드 없는 줌으로 센다)
+// ★[T789] 사람이 보는 시세 · 견적 = 사람의 문과 같은 눈(곳간 칸이 상한 몫을 뺀 값으로 보인다 — 견적 = 실행) · 손잡이는 곳간 장부 한 자리(`G.T789`) · 끄면 `fn()` 그대로
+function _t789View(fn) { const G = _T732_ON ? _t732Gran() : null; if (!G || !G.T789) return fn(); G.viewBegin(); try { return fn(); } finally { G.viewEnd(); } }
 //   몸 손에 든 그 칸들의 로트(곁 장부) → 짐 레코드 묶음(손이 단위를 든다 — 짐 거울과 같은 수) · 짐을 얹기 **전에** 부른다
 function _t748HandOf(G, p, keys) {
   const o = {}, inv = (p && p.inventory) || {};
@@ -7063,7 +7065,7 @@ function _lifeDayJobs(vils, add) {
 
 // 하루 경계: 그날 할 일을 조각 목록으로 **세우기만** 한다(아무것도 실행하지 않는다).
 function _openDayJobs(now, T) {
-  if (_T732_ON) { const G = _t732Gran(); if (G) G.tickBegin(); }   // ★[T732] 하루 마감 = 한 순간 — 마감 동안 econ 이 얻은 것의 열쇠   // ★[PM 10-14 합침] T731 켬 판에도 같은 머리에서(둘 다 기본 끔 — 짝 켬 판은 미검)
+  if (_T732_ON) { const G = _t732Gran(); if (G) G.tickBegin(state.world && state.world.villages); }   // ★[T732] 하루 마감 = 한 순간 — 마감 동안 econ 이 얻은 것의 열쇠 · ★[T789] 켬이면 그 순간 상한 레코드를 버린다(econ 마을 목록 · 끄면 안 읽힌다)   // ★[PM 10-14 합침] T731 켬 판에도 같은 머리에서(둘 다 기본 끔 — 짝 켬 판은 미검)
   if (T) return _t731Jobs(now, T);   // ★[T731] 켬 — 창의 머리 · 마을 · 꼬리 조각(끔이면 T 가 없다 = 아래 종전 그대로)
   const t0 = Date.now();
   const C = { now, t0, stg: {}, econPop: 0, npcCount: 0, jobChanges: {}, pops: {}, terr: {}, wx: {},
@@ -12818,7 +12820,7 @@ function villageTradeBoard(vid, px, py, inventory, numeraire) {   // ★[T69] �
   if (!state.ledger) return { err: '아직 장부가 없다' };
   const g = _villageNear(vid, px, py);
   if (g.err) return g;
-  return Object.assign({ ok: true }, _T732_ON ? Trade.board(state.ledger, state.econV2, g.vil, vid | 0, inventory, numeraire, _kcal()) : Trade.board(state.ledger, state.econV2, g.vil, vid | 0, inventory, numeraire));   // ★[T748] 켬 = 마을 몫을 받을 낱개로(열량 짝)
+  return _t789View(() => Object.assign({ ok: true }, _T732_ON ? Trade.board(state.ledger, state.econV2, g.vil, vid | 0, inventory, numeraire, _kcal()) : Trade.board(state.ledger, state.econV2, g.vil, vid | 0, inventory, numeraire)));   // ★[T748] 켬 = 마을 몫을 받을 낱개로(열량 짝) · ★[T789] 사람의 눈(끄면 그대로)
 }
 
 // 견적(마른 실행) — 패널이 "확정" 전에 비율·최대량을 보여 주려면 필요하다. 실행과 **같은 게이트**를 통과한다.
@@ -12836,8 +12838,8 @@ function villageTradeQuote(vid, px, py, giveRes, takeRes, qty, unitsOf, opts) { 
   // ★[T69] 위에서 이미 잰 **개당 단위**(`u/qty`)가 곧 견적의 `perItem` 이다 — 새로 재지 않는다.
   const _n = Math.max(0, Number(qty) || 0);
   const per = (_n > 0 && u > 0) ? (u / _n) : 1;
-  const q = Trade.quote(state.ledger, state.econV2, g.vil, vid | 0, String(giveRes || ''), String(takeRes || ''), u,
-    _T732_ON ? { want: (opts && opts.want) || 0, perItem: per, takeKcal: _kcal() } : { want: (opts && opts.want) || 0, perItem: per });   // ★[T748] 켬 = 받는 쪽 열량 짝
+  const q = _t789View(() => Trade.quote(state.ledger, state.econV2, g.vil, vid | 0, String(giveRes || ''), String(takeRes || ''), u,
+    _T732_ON ? { want: (opts && opts.want) || 0, perItem: per, takeKcal: _kcal() } : { want: (opts && opts.want) || 0, perItem: per }));   // ★[T748] 켬 = 받는 쪽 열량 짝 · ★[T789] 사람의 눈(견적 = 실행 · 끄면 그대로)
   if (q && !q.err) { q.giveItems = Math.max(0, Math.floor(Number(qty) || 0)); q.giveUnits = +u.toFixed(3); }
   return q;
 }
