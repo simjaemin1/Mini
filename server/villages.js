@@ -9962,6 +9962,8 @@ function playerVillageWithdraw(vil, inventory, res, qty) {
 //   ⇒ 밑변은 econ **정본 함수** `totalFoodEquivalent` 그대로 쓴다(사본 금지 · 새 규칙 0).
 //   ⚠여기서 정하는 건 **한도**뿐이다. 실제로 꺼내지는 양은 여전히 그 품목의 실재고가 정한다
 //     (`playerVillageWithdraw` — 없는 건 못 꺼낸다). 한도가 재고를 만들어 내지 않는다.
+//   ★[T779 2026-10-18] 인출 한도 · 겨울 보상은 걷었다(꺼내기 = 촌장만 · 한도 없음) — 지금 이 함수를 묻는 곳은
+//     쓰러진 사람 구제 죽(`zone._villageMeal` — 곳간이 비었나) 하나다.
 function playerVillageWithdrawStockFoodEq(vil) {
   const v = vil && vil.econ;
   if (!v) return 0;
@@ -12484,8 +12486,8 @@ function _t529Step(vil, npc, now) {
 //   판정 산수는 전부 events.js 에 있다 — 두 군데 적으면 그게 사본이다.
 const EV_BRIEF_PX = Math.max(32, parseInt(process.env.EV_BRIEF_PX || '260', 10));   // 촌장 목소리가 닿는 거리(px)
 let Events = null;
-// ★[T20 2026-09-02] 겨울나기 공동 프로젝트 — 정본은 `server/winter.js` 하나. 이 파일은 **부르기만** 한다.
-const Winter = require('./winter');
+// ★[T779 2026-10-18 · 재민 10-15 "겨울 프로젝트 없어"] 겨울나기 공동 프로젝트(T20 `server/winter.js`)를 걷었다 — 공표 · 적립 · 판정 · 보상 · 머리줄 · 납품 안 겨울 갈래 0.
+//   연표에 이미 쓰인 옛 `WINTER_KEPT` · `WINTER_SHORT` 는 그대로 읽힌다(`events.js` 읽기 자리 · 연표는 영구).
 function _initLedger() {
   try { Events = require('./events'); } catch (e) { console.error(`[${state.zoneId}] 📜 events.js 로드 실패:`, e.message); return; }
   const zone = state.zoneId;
@@ -12541,9 +12543,6 @@ function _initLedger() {
       const cn = state.ledger.loadChronicle(crows);
       if (cn) console.log(`[${state.zoneId}] 📜 연대기 ${cn}행 복구(잘리지 않는 표 · 총 ${state.db.countVillageChronicle(zone)}행)`);
     } catch (e) { console.error(`[${state.zoneId}] 📜 연대기 복구 실패:`, e.message); }
-    // ★[T20 2026-09-02] 겨울나기 — 장부가 선 뒤에 붙인다(달성 여부를 **연표에** 물어보므로).
-    //   ⚠시계는 **econ 게임일**(`econDay`)이다 — 벽시계 파생을 주면 서버가 꺼져 있던 만큼 영구히 벌어진다.
-    Winter.init({ db: state.db, zoneId: state.zoneId, ledger: () => state.ledger, gameDay: econDay });
     console.log(`[${state.zoneId}] 📜 사건 장부 — 과거 ${n}건 복구 · 마을 ${state.villages.length}곳 프라이밍 · 문턱 부족 ${state.ledger.cfg.SHORT_DAYS}일치·글럿 ${state.ledger.cfg.GLUT_DAYS}일치·가격 ±${(state.ledger.cfg.PRICE_UP * 100) | 0}%`);
   } catch (e) { console.error(`[${state.zoneId}] 📜 사건 장부 복구 실패(빈 장부로 시작):`, e.message); }
   // 게시판 의뢰 복구 — 저장된 진척(filled)을 되돌린다. 실물은 이미 곳간에 들어갔으므로
@@ -12619,8 +12618,7 @@ function* _scanEventsSteps() {
   try { _noteTradeDays(state.world); } catch (e) {}   // ★[T577 ④] 마지막 교역일 — 장부와 같은 하루 경계
   const _x = { caravanDelays: _caravanDelaysToday(), builds: _buildsToday(),
     rescues: _rescuesToday(),                                      // ★[T119] 구조 — 완공과 같은 자리
-    starved: _starvedToday(),                                      // ★[T590] 굶어 죽음 — 구조와 같은 자리
-    winter: Winter.dailyExtra(state.world.day, state.villages) };   // ★[T20] 겨울나기 — 공표(가을 첫날)·판정(겨울 첫날)
+    starved: _starvedToday() };                                    // ★[T590] 굶어 죽음 — 구조와 같은 자리 · ★[T779] 겨울나기 칸(`winter`)은 걷었다
   let evs;
   if (T698_BOUNDARY_SLICE) {   // ★[T698] 장부 발생기를 쉼표마다 넘긴다 — 꼬리만 감싼 `scanDay` 문으로(아래)
     const lg = state.ledger.scanSteps(state.world, state.world.day, _x);   // 앞(도착 절 · 마을 하나씩)은 안 감싼 문
@@ -12703,9 +12701,8 @@ function villageBoard(vid, px, py) {
     give: (state.ledger.deliverable.items.get(r.item) || []),   // 어떤 플레이어 아이템으로 낼 수 있나
     take: state.ledger.deliverable.toEcon.get(r.rewItem) || null,
   }));
-  //   ★[T20] `head` = 겨울나기 진행 한 줄(서버가 만든 문장 · 공표~판정 사이에만 · 그 밖엔 null).
-  return { ok: true, vid: vid | 0, name: g.vil.name, rows, news: _newsRows(vid, BOARD_NEWS_N),
-    head: Winter.headLine(vid | 0, state.world.day) };
+  //   ★[T779] 겨울나기 머리줄(`head`)은 걷었다 — 게시판은 의뢰 줄 · 소식 줄 둘이다.
+  return { ok: true, vid: vid | 0, name: g.vil.name, rows, news: _newsRows(vid, BOARD_NEWS_N) };
 }
 
 // ★★[T7] 사건 목록 — **가시성 술어 하나를 통과한 것만**. 게시판·근황이 같은 이 함수를 쓴다.
@@ -12778,20 +12775,9 @@ function villageDeliver(vid, px, py, inventory, item, want, unitsOf) {
     const rows = state.ledger.board(vid | 0)
       .filter((r) => (state.ledger.deliverable.items.get(r.item) || []).some((it) => (Number(inventory[it]) || 0) >= 1))
       .sort((a, b) => (b.remain / Math.max(1, b.qty)) - (a.remain / Math.max(1, a.qty)));
-    // ★[T20] 걸린 의뢰가 없으면 **올겨울 몫**을 고른다(공표된 품목 · 아래 겨울 갈래가 받는다).
-    item = rows.length ? rows[0].item : Winter.goalRes(vid | 0);
+    // ★[T779] 걸린 의뢰가 없으면 낼 것이 없다(겨울 몫 갈래는 걷었다 — 의뢰 없는 곳간 넣기는 기부 문이 받는다 · T769).
+    item = rows.length ? rows[0].item : null;
     if (!item) return { err: '지금 낼 수 있는 의뢰가 없다' };
-  }
-  // ★★[T20] **겨울 몫은 의뢰가 아니다** — 공표된 품목은 게시판에 의뢰가 없어도 받는다.
-  //   근거는 `server/winter.js` ①b 절: econ 이 식량 소비를 flow-EMA 에 안 담아 **게시판이 식량 의뢰를
-  //   한 건도 안 낸다** ⇒ 이 갈래가 없으면 겨울 목표(곡식)를 낼 길이 아예 없다(§0 실측).
-  //   실물 이동은 **납품과 같은 정본 함수**(`playerVillageDeposit`)다 — 곳간이 둘이 되지 않는다.
-  const wd = Winter.deliverable(vid | 0, item, state.ledger, inventory);
-  if (wd) {
-    const dep = playerVillageDeposit(g.vil, inventory, wd.give, unitsOf);
-    if (!dep || !dep.ok) return { err: (dep && dep.err) || '곳간이 받지 않았다' };
-    return { ok: true, vid: vid | 0, name: g.vil.name, winter: true, item: wd.res,
-      taken: dep.taken, moved: dep.moved, rew: 0, rewItem: null, refused: 0, done: false };
   }
   const r = Events.deliverToVillage({
     ledger: state.ledger, vil: g.vil, vid: vid | 0, inventory,

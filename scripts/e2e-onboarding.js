@@ -660,7 +660,7 @@ async function waitHttp(url, tries = 900) {
       step('⑤ 곳간 3일치', false, '손잡이 뒤 — 미측정');
       step('⑥ /이방인 받기 · ⑦ 시작 화면', false, '손잡이 뒤 — 미측정');
       step('⑧ 소개문이 시작 화면과 인사에 뜬다', false, '손잡이 뒤 — 미측정');
-      step('⑨ 인출(세운 사람) · ⑨b 잠금 · ⑨c 열기', false, '손잡이 뒤 — 미측정');
+      step('⑨ 꺼내기(세운 사람 = 촌장) · ⑨b 길드 곳간 잠금 걷음 · ⑨c 그 뒤에도 촌장은 꺼낸다', false, '손잡이 뒤 — 미측정');
       step('⑩ 무길드 대조 팔', false, '손잡이 뒤 — 미측정');
       step('⑪ 길드원 도착 → 소속(+비길드원 대조 · 옮김 여부)', false, '손잡이 뒤 — 미측정');
     } else {
@@ -777,6 +777,7 @@ async function waitHttp(url, tries = 900) {
     };
     //   ★등짐의 밥 — 인출이 **실제로 주는지**는 곳간이 아니라 여기서 잰다(T174 ⑦f2 가 배운 것:
     //     살아 있는 마을은 제 곳간을 저 혼자 축낸다 — 곳간의 감소는 인출의 증거가 못 된다).
+    //   ★[T779 2026-10-18] 꺼내기 = 촌장 한 사람(길드 마을 = central 길드장 · 무길드 = 창설자) · 한도 없음 — 옛 하루 몫 · 길드 곳간 잠금은 걷었다.
     const packFood = (C) => { const m = C.msgs.slice().reverse().find((x) => x.type === 'inventory' && x.inventory); return m ? (+m.inventory.food || 0) : NaN; };
     const withdrawOnce = async (C, hall) => {
       await warp(C, Math.round(hall.x) + 40, Math.round(hall.y) + 40);
@@ -788,28 +789,32 @@ async function waitHttp(url, tries = 900) {
       snd(C, { type: '__e2e_give', items: { stone: 1 } }); await sleep(700);
       const notes = lastN(C, 2), p1 = packFood(C);
       return { p0, p1, notes, gave: Number.isFinite(p0) && Number.isFinite(p1) && p1 > p0,
-        locked: /잠갔다/.test(notes), quota: /오늘 몫은 다 꺼냈다/.test(notes),
+        //   ★[T779] 촌장 판정 거절 셋(촌장 아님 · 사람 촌장 없음 · central 못 물음) — 판정 자리 `membership._chiefNow` · `chiefCheck` 의 그 말
+        chiefNo: /곳간은 촌장만 꺼낸다|사람이 꺼내지 않는다|촌장을 확인하지 못했다/.test(notes),
         //   ★[T202] **기근은 잠금이 아니다**(T159 의 다른 문 · 마을의 형편). 셋을 갈라 놓지 않으면
         //     대조 팔이 "곳간이 잠겼다"와 "마을이 굶는다"를 구별 못 하고 거짓 빨강이 난다(실측).
         famine: /마을이 굶고 있다/.test(notes) };
     };
-    //   ★★[T197] 한 번으로 판정하지 않는 이유 **둘 다 설계다**:
-    //     ⓐ 곳간문도 **캐시**다 — `granaryBust` 뒤 첫 물음은 "모른다 ⇒ 안 막는다"(membership 규약 ②).
-    //     ⓑ 하루 몫이 1 이라 같은 게임일에 두 번째는 `오늘 몫은 다 꺼냈다` 가 온다 — 그건 잠금도
-    //        열림도 아닌 **판정 불가**다. 그 판은 세지 않고 다음 날을 기다린다(게임일 0.5초).
+    //   ★★[T197] 한 번으로 판정하지 않는다 — 등짐 답(`inventory`)이 늦게 닿는 판이 있다(아래 고리 그대로).
+    //     ★[T779] 옛 까닭 둘(길드 곳간문 캐시 · 하루 몫 1)은 걷혔다 — 남은 판정 불가는 없다 · 촌장 거절은 **그 자리에서** 돌려준다(기다려도 안 풀린다).
     const withdrawUntil = async (C, hall, want) => {
       let last = null;
       for (let k = 0; k < 8; k++) {
         const r = await withdrawOnce(C, hall);
         last = r;
-        if (r.quota) { await sleep(1200); continue; }
         if (r.famine) return { ...r, n: k + 1 };            // 기근은 기다려도 안 풀린다 — 그 자리에서 돌려준다
         if (want === 'give' && r.gave) return { ...r, n: k + 1 };
-        if (want === 'lock' && r.locked) return { ...r, n: k + 1 };
+        if (want === 'refuse' && r.chiefNo) return { ...r, n: k + 1 };
+        if (want === 'give' && r.chiefNo) return { ...r, n: k + 1 };   // ★[T779] 촌장 거절도 기다려 안 풀린다
         await sleep(1200);
       }
       return { ...last, n: 8 };
     };
+    //   ★[T779] 소속을 재는 자리 — `/소속`(마을 사람이면 형편을 되읊는다: "… 사람 — N일째" · 아니면 권함이 없다는 말).
+    //     옛 자리 `/곳간`("아직 마을 사람이 아니다")은 걷혔다 — 곳간 형편 한 줄은 이제 누구에게나 선다(꺼내기는 촌장만).
+    //     ⚠권함이 걸린 비소속에게 `/소속` 은 수락이다 — 이 호의 비소속 셋(⑪b 낯선 이 · ⑫a 탈퇴 직후)은 권함이 없다(`leave` 가 지운다 · 납품 0).
+    const memberLine = async (C) => { C.notices.length = 0; chat(C, '/소속'); await sleep(1300); return C.notices.slice(-2).join(' | '); };
+    const isMember = (line) => /사람 — .*일째/.test(line);
 
     try {
         let si0 = null;
@@ -881,10 +886,8 @@ async function waitHttp(url, tries = 900) {
 
           // ── ③c ★★[T197] **창설 = 소속** — 픽스처 없이, 세운 그 순간 제 마을 사람이다 ──
           A.msgs.length = 0; snd(A, { type: 'onboarding_state' }); await sleep(600);
-          A.notices.length = 0; chat(A, '/곳간'); await sleep(1200);
-          const memLine = A.notices.slice(-2).join(' | ');
-          step('③c ★창설 = 소속(픽스처 0 — 기여 12 를 지어내지 않는다)',
-            !/아직 마을 사람이 아니다/.test(memLine) && /곳간|몫|자립|남은/.test(memLine), memLine);
+          const memLine = await memberLine(A);   // ★[T779] 소속은 `/소속` 으로 잰다(위 `memberLine`)
+          step('③c ★창설 = 소속(픽스처 0 — 기여 12 를 지어내지 않는다)', isMember(memLine), memLine);
 
           await fillGranary(A, HALL);
           let elig = null;
@@ -941,24 +944,22 @@ async function waitHttp(url, tries = 900) {
           !!(introCol === INTRO && Array.isArray(greetSaw) && greetSaw.some((l) => String(l).includes(INTRO))),
           `시작 화면 intro = ${JSON.stringify(introCol)} · 인사 ${JSON.stringify(greetSaw)}`);
 
-        // ── ⑨ 인출 — **픽스처 소속 없이**, 세운 사람이 제 곳간을 연다 ─────────
+        // ── ⑨ 꺼내기 — **픽스처 소속 없이**, 세운 사람(= 길드장 = 촌장)이 제 곳간을 연다 ─────────
         const w1 = await withdrawUntil(A, HALL, 'give');
-        step('⑨ 인출 — 세운 사람이 제 곳간을 연다(픽스처 0)', w1.gave, `등짐 밥 ${w1.p0} → ${w1.p1} · ${w1.n}판 · ${w1.notes}`);
+        step('⑨ 꺼내기 — 세운 사람(길드장 = 촌장)이 제 곳간을 연다(픽스처 0)', w1.gave, `등짐 밥 ${w1.p0} → ${w1.p1} · ${w1.n}판 · ${w1.notes}`);
 
-        // ── ⑨b ★[T159 절이 유저 마을에서 실제로 산다] 길드장이 곳간을 잠근다 ──
+        // ── ⑨b ★[T779] 길드 곳간 잠금(T159)은 걷었다 — 촌장 혼자 꺼내니 정할 문이 없다 · 명령은 한 줄로 답한다 ──
         A.notices.length = 0; chat(A, '/곳간 잠금'); await sleep(1800);
-        const lockSaid = A.notices.some((t) => /곳간을 잠갔다/.test(t));
-        const w2 = await withdrawUntil(A, HALL, 'lock');
-        step('⑨b 길드장이 잠그면 **인출이 막힌다**(T159 가 죽어 있던 가지)',
-          lockSaid && w2.locked && !w2.gave, `잠금 ${lockSaid} · 등짐 ${w2.p0} → ${w2.p1} · ${w2.n}판 · ${w2.notes}`);
-        A.notices.length = 0; chat(A, '/곳간 열기'); await sleep(1800);
+        const lockLine = A.notices.slice(-2).join(' | ');
+        step('⑨b ★[T779] `/곳간 잠금` 은 한 줄로 답한다(길드 곳간 잠금 걷음 — "곳간은 촌장만 꺼낸다")',
+          /곳간은 촌장만 꺼낸다/.test(lockLine) && !/잠갔다/.test(lockLine), lockLine);
         const w3 = await withdrawUntil(A, HALL, 'give');
-        step('⑨c 다시 열면 **도로 준다**(자명 통과 금지 — 잠금이 늘 막는 게 아니다)',
+        step('⑨c 그 뒤에도 촌장은 **그대로 꺼낸다**(잠근 문이 없다)',
           w3.gave, `등짐 밥 ${w3.p0} → ${w3.p1} · ${w3.n}판 · ${w3.notes}`);
 
-        // ── ⑩ ★대조 팔 — **무길드 창설자**: 소개문 없이, 곳간은 열린 채 ────────
-        //   ⑧⑨b 가 자명 통과가 아님을 지키는 줄이다. 무길드는 죄가 아니다(T19) —
-        //   `_tribeId` 가 null 이면 소개문은 빈 칸이고 곳간문은 **열린 것으로 본다**(종전 그대로).
+        // ── ⑩ ★대조 팔 — **무길드 창설자**: 소개문 없이, 촌장(창설자)이 제 곳간을 연다 ────────
+        //   ⑧ 이 자명 통과가 아님을 지키는 줄이다. 무길드는 죄가 아니다(T19) —
+        //   `_tribeId` 가 null 이면 소개문은 빈 칸이고 촌장은 **창설자**다(central 을 안 묻는다 · T769).
         const D = await wsConnect('arcsolo', 'arcpw', V.vid | 0);
         await sleep(1200);
         const centers2 = NPC.concat([{ cx: 0, cy: 0, vid: NEWVID | 0 }]);
@@ -975,12 +976,12 @@ async function waitHttp(url, tries = 900) {
           //   ★대조가 참이려면 **표가 데워져 있어야** 한다 — 길드 마을 줄이 여전히 소개문을 갖는지 같이 본다.
           const slineA = await startLineOf(NEWVID, false);
           const w4 = await withdrawUntil(D, f2.hall, 'give');
-          //   ★재는 것은 **길드 문이 안 걸린다**는 것이다(`_tid` 가 0 이라 그 가지를 안 탄다).
+          //   ★재는 것은 **창설자가 촌장이다**(길드 칸이 없다 — 촌장 거절이 안 난다)는 것이다.
           //     밥이 실제로 나오느냐는 **마을의 형편**(T159 기근 문)이 따로 정한다 — 갓 선 마을은
           //     굶는 날이 있고, 그건 이 대조가 재는 것이 아니다(실측: `마을이 굶고 있다` 로 빨개졌었다).
-          step('⑩ 무길드 마을 — **소개문은 빈 칸 · 길드 잠금은 안 걸린다**(대조: ⑧⑨b 가 자명 통과가 아니다)',
-            !!(sline2 && String(sline2.intro || '') === '' && !w4.locked && (w4.gave || w4.famine) && slineA && String(slineA.intro || '') === INTRO),
-            sline2 ? `무길드 intro=${JSON.stringify(sline2.intro)} · 같은 표에서 길드 마을 intro=${JSON.stringify(slineA && slineA.intro)} · 잠금=${w4.locked} · ${w4.gave ? `등짐 밥 ${w4.p0} → ${w4.p1}` : (w4.famine ? '기근(길드 문 아님)' : w4.notes)}` : '줄이 안 떴다');
+          step('⑩ 무길드 마을 — **소개문은 빈 칸 · 창설자가 촌장이다**(대조: ⑧ 이 자명 통과가 아니다)',
+            !!(sline2 && String(sline2.intro || '') === '' && !w4.chiefNo && (w4.gave || w4.famine) && slineA && String(slineA.intro || '') === INTRO),
+            sline2 ? `무길드 intro=${JSON.stringify(sline2.intro)} · 같은 표에서 길드 마을 intro=${JSON.stringify(slineA && slineA.intro)} · 촌장 거절=${w4.chiefNo} · ${w4.gave ? `등짐 밥 ${w4.p0} → ${w4.p1}` : (w4.famine ? '기근(촌장 문 아님)' : w4.notes)}` : '줄이 안 떴다');
           //   뒷정리 — 이 마을도 받기를 끈다
           await warp(D, Math.round(f2.hall.x) + 40, Math.round(f2.hall.y) + 40);
           chat(D, '/이방인 막기'); await sleep(900);
@@ -1000,7 +1001,7 @@ async function waitHttp(url, tries = 900) {
           if (seatFirstVid != null) {
             //   ★선행 조건만 픽스처로 세운다(T11 `__e2e_body` — `test-handoff-body` 가 쓰는 그 문).
             //     재는 것은 **그 뒤에 도착 훅이 무엇을 하는가**다.
-            snd(C, { type: '__e2e_body', member: { zone: 'hanbando', vid: seatFirstVid | 0, name: 'NPC마을', since: 0, wdDay: -1, wdUsed: 0 }, quiet: true });
+            snd(C, { type: '__e2e_body', member: { zone: 'hanbando', vid: seatFirstVid | 0, name: 'NPC마을', since: 0 }, quiet: true });   // ★[T779] 하루 몫 칸 0
             await sleep(700);
           }
           const pid2 = C.playerId;
@@ -1009,27 +1010,22 @@ async function waitHttp(url, tries = 900) {
           C = await wsConnect(name, 'arcpw', NEWVID | 0); await sleep(1600);
           return { C, joined: !!(jr && jr.ok) };
         };
-        //   ⑪a 길드원 — 도착만으로 곳간이 열린다
+        //   ⑪a 길드원 — 도착만으로 제 길드 마을 사람이다 · ★[T779] 곳간은 촌장(길드장)만 꺼낸다
         const E = await joinAndReconnect('arcmate', null);
         step('⑪a 길드원이 길드에 들었다(종전 경로 · central `/tribe/join`)', E.joined, `tribe ${TID}`);
         await warp(E.C, HX2 + 40, HY2 + 40);
-        E.C.notices.length = 0; chat(E.C, '/곳간'); await sleep(1300);
-        const mateLine = E.C.notices.slice(-2).join(' | ');
-        //   ★★[T235] **기근은 잠금이 아니다** — T202 가 ⑩ 에서 배운 그 한 줄을 여기도 건다.
-        //     재는 것은 **소속**이다(`/곳간` 이 곳간 이름을 부르는가 · `아직 마을 사람이 아니다` 가 없는가).
-        //     밥이 실제로 나오느냐는 **마을의 형편**(T159 기근 문)이 따로 정하고, 갓 선 마을은 굶는 날이 있다 —
-        //     그걸 소속의 실패로 세면 거짓 빨강이다(실측: `식량 재고 0 · 마을이 굶는 중이다` 로 ● 였다).
-        const w5 = await withdrawUntil(E.C, HALL, 'give');
-        step('⑪ ★길드원은 **도착만으로** 제 길드 마을 곳간을 연다(픽스처 0)',
-          !/아직 마을 사람이 아니다/.test(mateLine) && (w5.gave || w5.famine),
-          `/곳간 → ${mateLine} · ${w5.gave ? `등짐 밥 ${w5.p0} → ${w5.p1} · ${w5.n}판` : '기근(소속은 섰다 · 곳간 문 아님)'}`);
-        //   ⑪b 대조 — 비길드원은 **기여 문** 그대로다(자명 통과 금지)
+        const mateLine = await memberLine(E.C);
+        //   ★★[T235] **기근은 촌장 거절이 아니다** — 거절 까닭을 갈라 잰다(⑩ 이 배운 그 한 줄).
+        const w5 = await withdrawUntil(E.C, HALL, 'refuse');
+        step('⑪ ★길드원은 **도착만으로** 제 길드 마을 사람이다(픽스처 0) · 그래도 꺼내기는 촌장(길드장)만 — 등짐 그대로',
+          isMember(mateLine) && /곳간은 촌장만 꺼낸다/.test(w5.notes || '') && !w5.gave,
+          `/소속 → ${mateLine} · 꺼내기 → ${w5.notes} · 등짐 밥 ${w5.p0} → ${w5.p1}`);
+        //   ⑪b 대조 — 비길드원은 **기여 문** 그대로다(자명 통과 금지 — 권함이 없다)
         const F = await wsConnect('arcstranger', 'arcpw', NEWVID | 0); await sleep(1500);
         await warp(F, HX2 + 40, HY2 + 40);
-        F.notices.length = 0; chat(F, '/곳간'); await sleep(1300);
-        const strLine = F.notices.slice(-2).join(' | ');
-        step('⑪b 대조 — 비길드원에겐 **기여 문**이 그대로 있다',
-          /아직 마을 사람이 아니다/.test(strLine), strLine);
+        const strLine = await memberLine(F);
+        step('⑪b 대조 — 비길드원에겐 **기여 문**이 그대로 있다(촌장이 아직 권하지 않았다)',
+          !isMember(strLine) && /촌장이 아직 권하지 않았다/.test(strLine), strLine);
         shut(F);
         //   ⑪c ★이미 남의 마을 사람이던 길드원은 **안 끌려온다**(카드의 "옮긴다"를 안 했다 — 회부 1)
         //   ⚠재는 자리를 **NPC 마을 줄**로 잡는다: 유저 마을 줄은 `listable`(받기·쉼터·인구·곳간·활동)을
@@ -1044,18 +1040,13 @@ async function waitHttp(url, tries = 900) {
 
         // ── ⑫ ★[T202 §0-ⓑ] **탈퇴·이적·해체 때 마을 소속은?** — 표를 만들 뿐, 아무것도 안 바꾼다 ──
         //   카드 §1: "탈퇴·이적·해체는 **표만**". 여기서는 **지금 코드가 하는 일을 잰다**.
-        //   ★재는 자리는 `/곳간` **문장**이다 — 사람이 실제로 보는 것이고, 시작 화면 줄과 달리
-        //     `listable` 에 안 매인다(위 ⑪c 의 그 이유).
-        const granaryLine = async (C) => {
-          await warp(C, HX2 + 40, HY2 + 40);
-          C.notices.length = 0; chat(C, '/곳간'); await sleep(1300);
-          return C.notices.slice(-2).join(' | ');
-        };
-        const isMember = (line) => /곳간 —/.test(line) && !/아직 마을 사람이 아니다/.test(line);
+        //   ★재는 자리는 `/소속` **문장**이다(★[T779] 옛 자리 `/곳간` 은 누구에게나 형편을 말한다 — 위 `memberLine`) — 사람이 실제로 보는 것이고,
+        //     시작 화면 줄과 달리 `listable` 에 안 매인다(위 ⑪c 의 그 이유).
+        const granaryLine = async (C) => { await warp(C, HX2 + 40, HY2 + 40); return memberLine(C); };
         //   ⑫a 마을 탈퇴(`/탈퇴`) — 소속은 사라지고 **기여는 남는다**
         E.C.notices.length = 0; chat(E.C, '/탈퇴'); await sleep(1300);
         const l1 = await granaryLine(E.C);
-        step('⑫a 마을 `/탈퇴` → 소속은 사라진다(기여 문이 도로 선다)', !isMember(l1) && /아직 마을 사람이 아니다/.test(l1), l1);
+        step('⑫a 마을 `/탈퇴` → 소속은 사라진다(기여 문이 도로 선다)', !isMember(l1) && /촌장이 아직 권하지 않았다/.test(l1), l1);
         //   ⑫b 재접속 — 도착 훅이 **빈자리**를 다시 앉힌다. 그게 이 규약의 얼굴이다:
         //     `/탈퇴` 는 "지금 이 판에서 빠진다"이고, 다음 접속에 제 길드 마을로 돌아온다.
         shut(E.C); await sleep(900);
@@ -1096,11 +1087,11 @@ async function waitHttp(url, tries = 900) {
       step('⑥ /이방인 받기 — 스위치가 켜졌다', false, '③ 미도달 — 미측정');
       step('⑦ 시작 화면에 뜬다(`?start_vid=` 가 가리킬 줄이 섰다)', false, '③ 미도달 — 미측정');
       step('⑧ 소개문이 시작 화면과 인사에 뜬다', false, '③ 미도달 — 미측정');
-      step('⑨ 인출 — 세운 사람이 제 곳간을 연다(픽스처 0)', false, '③ 미도달 — 미측정');
-      step('⑨b 길드장이 잠그면 인출이 막힌다', false, '③ 미도달 — 미측정');
-      step('⑨c 다시 열면 도로 준다', false, '③ 미도달 — 미측정');
-      step('⑩ 무길드 마을 — 소개문 빈 칸 · 길드 잠금 안 걸림', false, '③ 미도달 — 미측정');
-      step('⑪ 길드원은 도착만으로 제 길드 마을 곳간을 연다', false, '③ 미도달 — 미측정');
+      step('⑨ 꺼내기 — 세운 사람(길드장 = 촌장)이 제 곳간을 연다(픽스처 0)', false, '③ 미도달 — 미측정');
+      step('⑨b `/곳간 잠금` 은 한 줄로 답한다(길드 곳간 잠금 걷음)', false, '③ 미도달 — 미측정');
+      step('⑨c 그 뒤에도 촌장은 그대로 꺼낸다', false, '③ 미도달 — 미측정');
+      step('⑩ 무길드 마을 — 소개문 빈 칸 · 창설자가 촌장', false, '③ 미도달 — 미측정');
+      step('⑪ 길드원은 도착만으로 제 길드 마을 사람이다 · 꺼내기는 촌장만', false, '③ 미도달 — 미측정');
     }
     }
     if (A) shut(A);

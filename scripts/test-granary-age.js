@@ -36,8 +36,7 @@ if (process.env.T732_SUB === 'zone') {
   process.env.PORT = String(42600 + (process.pid % 90));
   process.env.DB_PATH = TMP;
   process.env.ENABLE_VILLAGES = '0'; process.env.ENABLE_WILDLIFE = '0'; process.env.ENABLE_BANDITS = '0'; process.env.ENABLE_ROADS = '0';
-  process.env.MEMBER_WD_MIN = '100000';   // ★한도 손잡이만 — 꺼내는 양이 하루 몫에 막히지 않게(곳간·환산·나이는 그대로)
-  process.env.MEMBER_WD_FRAC = '1';
+  //   ★[T779] 옛 한도 손잡이(`MEMBER_WD_*` — 꺼내는 양이 하루 몫에 막히지 않게 풀던 둘)는 걷었다 — 꺼내기는 촌장 · 한도 없음.
   const _log = console.log; console.log = () => {}; console.warn = () => {}; console.error = () => {};
   const Zone = require(SV('zone.js'));
   const H = Zone.__testBind();
@@ -90,7 +89,7 @@ if (process.env.T732_SUB === 'zone') {
       return +((Number(VIL.econ.storage[RES]) || 0) - s0).toFixed(6);
     };
     const withdraw = (p, q, res) => { const r = res || RES; const s0 = Number(VIL.econ.storage[r]) || 0;
-      if (H.T769) VIL.econ.founder = p.playerId;   // ★[T769] 켬 = 꺼내기는 촌장만 — 진짜 곳간 문에 꺼내는 사람을 촌장(창설자 표지)으로 앉힌다(회관 `owner` 와 같은 꼴)
+      VIL.econ.founder = p.playerId;   // ★[T769 · T779] 꺼내기는 촌장만 — 진짜 곳간 문에 꺼내는 사람을 촌장(창설자 표지)으로 앉힌다(회관 `owner` 와 같은 꼴)
       H.tryVillageWithdraw(p, VID, r, q); return +(s0 - (Number(VIL.econ.storage[r]) || 0)).toFixed(6); };
     const a0 = H.Lots.stats().approx;
     if (GL) GL.stats(true);
@@ -290,7 +289,7 @@ say('\n⑦ 배선 — 문 앞 · 문 뒤 · 전부 손잡이 뒤 · T716 임시 
   const fnOf = (src, name) => { const i = src.indexOf(`function ${name}(`); return i < 0 ? '' : src.slice(i, src.indexOf('\n}\n', i)); };
   const doors = [['tryVillageDeposit', /SimVillages\.playerVillageDeposit\(/], ['tryVillageTradeExec', /SimVillages\.villageTradeExec\(/], ['tryVillageDeliver', /SimVillages\.villageDeliver\(/], ['doSellIronRelic', /SimVillages\.lifeSellIronRelic\(/]];
   const bad = doors.filter(([n, re]) => { const f = fnOf(ZSRC, n); const a = f.indexOf('_t732DoorBegin('), b = f.search(re), c = f.indexOf('_t732DoorEnd(', b); return !(a > 0 && b > a && c > b); });
-  ok(bad.length === 0, '★⑦ 문 넷(회관 · 거래소 · 게시판·겨울 몫 · 위세품 값) — 정본 함수 **앞**에서 `_t732DoorBegin` · **뒤**에서 `_t732DoorEnd`', bad.map((x) => x[0]).join(',') || '넷 다');
+  ok(bad.length === 0, '★⑦ 문 넷(회관 · 거래소 · 게시판 · 위세품 값) — 정본 함수 **앞**에서 `_t732DoorBegin` · **뒤**에서 `_t732DoorEnd`', bad.map((x) => x[0]).join(',') || '넷 다');
   const mw = fnOf(MSRC, 'withdraw');
   ok(/H\.wrapWithdraw\(player, _wd\)/.test(mw) && /\.\.\.\(process\.env\.T732_MOMENT_LOT !== '0' \? \{ wrapWithdraw: \(player, fn\) => _t732Wrap\(player, fn\) \} : \{\}\)/.test(ZSRC),   // ★[T778] 켬 기본
     '★⑦ 꺼내기 — membership 의 정본 꺼내기가 존의 감싸개 안에서 돈다(UI · 채팅 `/곳간` · `/인출` 다) · 켬일 때만 감싸개를 준다');

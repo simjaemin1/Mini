@@ -846,8 +846,6 @@ html, body { margin: 0; padding: 0; height: 100%; font-family: var(--font); back
   width:520px;max-width:44vw;max-height:74vh;overflow:auto;
   background:var(--pane);border:1px solid var(--line);color:var(--fg)}
 .bp-body{padding:10px 12px;font-size:12px;color:var(--fg)}
-.bp-head{margin:2px 0 8px;padding:6px 8px;background:var(--inset);
-  color:var(--fg);font:500 12px/1.5 var(--font)}
 .bp-hdr,.bp-row{display:grid;grid-template-columns:24px 1fr 44px 56px 1fr 56px;gap:6px;align-items:center}
 .bp-hdr{padding:0 6px 4px;font:600 10px/1.2 var(--font);color:var(--dim-2);
   border-bottom:1px solid var(--line)}

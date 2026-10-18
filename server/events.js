@@ -203,6 +203,7 @@ const TYPES = ['STOCK_SHORTAGE', 'STOCK_GLUT', 'PRICE_SPIKE', 'PRICE_DROP', 'CAR
   // ★[T50 2026-09-02] 2차 — 세계의 "일". 원천이 §0 에서 실증된 것만 여기 있다(원천 없는 후보는 회부).
   'HARVEST_BOON', 'HARVEST_BLIGHT', 'WEATHER', 'POP_COLLAPSE', 'CARAVAN_RAIDED', 'TRADER_KILLED', 'BUILT', 'FIRST_GOODS',
   // ★[T20 2026-09-02] 겨울나기 공동 프로젝트의 **판정**. 공표는 사건이 아니라 `SEASON_CHANGE` 의 meta 다.
+  //   ★[T779 2026-10-18] 프로젝트는 걷었다(새로 생기지 않는다) — 이미 연표에 쓰인 옛 판정을 읽으려고 유형 이름은 남긴다(연표는 영구).
   'WINTER_KEPT', 'WINTER_SHORT',
   // ★[T119 2026-09-05] **구조** — 쓰러진 사람이 살아난 그 순간. 원천 둘 다 실데이터다(§0-ⓐ):
   //   `zone.js` `resolveDowned`(마을 이송) · `tickDowned`(사람이 업어 일으킴). 각본 0.
@@ -717,8 +718,8 @@ function createLedger(opts) {
     const season = seasonOf(day);
     const seasonTurned = (lastSeason != null && season !== lastSeason);
     lastSeason = season;
-    // ★[T20] 겨울나기 — 호스트(`server/winter.js`)가 오늘치를 넘긴다. 장부는 실어 나르기만 한다.
-    const wGoal = (extra && extra.winter && extra.winter.goal) || null;
+    // ★[T779 2026-10-18] 겨울나기(T20)를 걷었다 — 호스트가 넘기던 `extra.winter`(공표 · 판정)를 장부가 더는 싣지 않는다.
+    //   이미 쓰인 옛 판정(`WINTER_KEPT` · `WINTER_SHORT`)은 그대로 읽는다(아래 `briefLine` — 연표는 영구) · 옛 가을 사건의 `meta.winter`(공표)는 안 읽는다.
     // ★[T50] 거래 기록은 마을을 **이름**으로 적는다(econ 정본 필드) — 이름↔마을 색인이 필요하다.
     //   마을 구성이 바뀔 때만 다시 짓는다(`itemsOf` 와 같은 절약 문법).
     if (_nameVid.size !== world.villages.length) {
@@ -800,10 +801,8 @@ function createLedger(opts) {
       }
 
       // ⑤ 계절 전환 — 전환일에 마을당 1건(촌장 인사의 근거)
-      //    ★[T20] 가을 첫날이면 호스트가 넘긴 **겨울 목표**를 같이 싣는다(새 사건 종류 0).
-      //      ⚠연표는 이 meta 를 못 본다(㉝) — 그래서 **공표는 브리핑·게시판의 일**이고 연표에 남는 건 판정이다.
-      if (seasonTurned) mine.push({ day, vid, type: 'SEASON_CHANGE', item: null, mag: 1,
-        meta: (wGoal && wGoal[vid]) ? { season, winter: wGoal[vid] } : { season } });
+      //    ★[T779] 가을 첫날의 겨울 목표(`meta.winter` · T20)는 걷었다 — 계절 하나만 싣는다.
+      if (seasonTurned) mine.push({ day, vid, type: 'SEASON_CHANGE', item: null, mag: 1, meta: { season } });
 
       // ⑥ ★[T50] 세계의 "일" — 풍흉·날씨·인구·약탈. econ 상태의 에지만 읽는다(위 절 참조).
       deeds(s, v, day, mine);
@@ -831,13 +830,7 @@ function createLedger(opts) {
       commit(st(b.vid), [{ day, vid: b.vid | 0, type: 'BUILT', item: b.kind || 'house', mag: 1, meta: null }], out);
     }
 
-    // ⑩ ★[T20] **겨울나기 판정** — 호스트가 넘긴 것만. 장부가 겨울을 판정하지 않는다(완공과 같은 자리).
-    //    ⚠참여 0 인 마을은 호스트가 아예 안 넘긴다 ⇒ 플레이어 없는 랩에서 구조적으로 0 건이다.
-    for (const e of ((extra && extra.winter && extra.winter.emit) || [])) {
-      if (e == null || e.vid == null) continue;
-      commit(st(e.vid), [{ day, vid: e.vid | 0, type: String(e.type), item: e.item || null,
-        mag: +e.mag || 1, meta: e.meta || null }], out);
-    }
+    // ⑩ ★[T779] 겨울나기 판정(T20 · 호스트가 넘기던 `extra.winter.emit`)은 걷었다 — 새 `WINTER_*` 사건은 안 생긴다(옛 것은 읽는다).
 
     // ⑪ ★[T119] **구조** — 호스트가 넘긴 것만(완공·겨울 판정과 **같은 자리·같은 문법**).
     //    장부는 쓰러짐도 구조도 모른다 — 살아난 그 순간을 실체 층이 알려 줄 뿐이다.
@@ -1372,14 +1365,9 @@ const LINES = {
   CARAVAN_LATE: (ev) => `행상이 여태 안 오는군. 고갯길에 무슨 일이 있나.`,
   SEASON_CHANGE: (ev) => {
     const s = ev.meta && ev.meta.season;
-    // ★[T20] 가을이면 **올겨울 목표를 함께 말한다**(새 사건 종류 0 — 설계안 §2.3).
-    //   ⚠`SEASON_CHANGE` 는 연표에 안 실린다(`CHRON_TYPES` 밖) ⇒ meta 에 기대도 ㉝ 계약을 안 깬다.
-    //     그래서 **공표는 브리핑·게시판의 일**이고, 연표에 남는 것은 판정(`WINTER_KEPT`)이다.
-    const w = ev.meta && ev.meta.winter;
-    if (s === 'autumn' && w && w.target > 0) {
-      const n = koRes(w.res);
-      return `가을일세. 올겨울 ${n}${josa(n, '을', '를')} ${w.target}만큼 모아 두려 하네 — 손을 보태 주게.`;
-    }
+    // ★[T779 2026-10-18] 가을의 **올겨울 목표 공표**(T20 — `meta.winter` 를 읽어 "올겨울 … 모아 두려 하네")는 걷었다.
+    //   새 사건엔 그 칸이 없고, 이미 쓰인 옛 가을 사건(`village_events` 90일 창)에 남은 칸도 안 읽는다 —
+    //   없어진 프로젝트를 다시 공표하지 않는다. 옛 가을 사건은 아래 가을 한 줄로 읽힌다(판정 `WINTER_*` 줄은 그대로 — 연표는 영구).
     return s === 'spring' ? '봄일세. 밭에 나갈 때야.'
       : s === 'summer' ? '여름이군. 물가를 조심하게.'
         : s === 'autumn' ? '가을일세. 거둘 것이 많아.'
