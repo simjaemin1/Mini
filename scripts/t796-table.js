@@ -47,7 +47,7 @@ function flows(run, name, d0, d1) {
     if (c[2] === i) { toMe++; if (c[6] > 0) toMeRisk++; } }
   return { nd, pop: pop / nd, tfe: tfe / nd, eatPC: pop ? eat / pop : 0, death, sur: sur / nd, kprod: kprod / nd, prodm: prodm / nd, risk: risk / nd, jobs: jobs / nd,
     imp: dc(9), sentN: dc(10), raided: dc(12), lost: dc(13), killed: dc(14),
-    inSell, inBuy, outFood, tIn, tOut, raidedT, sent, sentRisk, toMe, toMeRisk, sentFood, popEnd: Z ? Z[0] : null, popStart: A ? A[0] : null };
+    inSell, inBuy, outFood, tIn, tOut, raidedT, sent, sentRisk, toMe, toMeRisk, sentFood, popEnd: Z ? Z[0] : null, popStart: A ? A[0] : null, arr: Z && A ? Z[0] - A[0] + death : 0 };
 }
 
 // ── 대상 고르기 ──
@@ -93,7 +93,7 @@ for (const t of T) for (const [k] of RUNS) {
 
 // ── 굶기 전 60일 — 마을마다 판 넷 ──
 const COLS = [['인구', (f) => f1(f.pop)], ['곳간 식량', (f) => f1(f.tfe)], ['1인 먹음/일', (f) => f.eatPC.toFixed(2)], ['죽음', (f) => f.death],
-  ['식량 일꾼', (f) => f1(f.jobs)], ['부양력 K(식량)', (f) => f1(f.kprod)], ['받은 식량(귀환)', (f) => f1(f.imp)],
+  ['식량 일꾼', (f) => f1(f.jobs)], ['인구 처음→끝 · 든 사람(Δ+죽음)', (f) => `${f.popStart}→${f.popEnd} · ${f.arr}`], ['부양력 K(식량)', (f) => f1(f.kprod)], ['받은 식량(귀환)', (f) => f1(f.imp)],
   ['교역 듦(남이 팜 · 내가 사 옴)', (f) => `${f1(f.inSell)} · ${f1(f.inBuy)}`], ['나간 식량', (f) => f1(f.outFood)],
   ['띄운 캐러밴(위험 길)', (f) => `${f.sent}(${f.sentRisk})`], ['오는 캐러밴(위험 길)', (f) => `${f.toMe}(${f.toMeRisk})`],
   ['습격 · 잃은 짐 · 행상 피살', (f) => `${f.raided} · ${f1(f.lost)} · ${f.killed}`], ['위험 학습', (f) => f.risk.toFixed(2)]];
@@ -108,6 +108,21 @@ for (const t of T) {
     const r = R[`${k}|${t.seed}`]; if (!r) continue;
     const f = flows(r, t.name, d0, d1); if (!f) continue;
     (AGG[k] || (AGG[k] = [])).push(f);
+    console.log(`| ${k} | ${COLS.map((c) => c[1](f)).join(' | ')} |`);
+  }
+}
+// ── 무너진 뒤 — 366일 ~ ⓐ 빈 날(첫해 겨울 바닥 다음 · 도적 보호기 365~729 가 마을마다 걷히는 창) ──
+console.log('\n### 무너진 뒤 — 366일 ~ ⓐ 빈 날 · 마을마다 판 넷(같은 달력 창)\n');
+const POST = {};
+for (const t of T) {
+  const d0 = 366, d1 = t.empty;
+  console.log(`\n**${t.seed} ${t.name}** — 창 ${d0}~${d1 - 1}\n`);
+  console.log(`| 판 | ${COLS.map((c) => c[0]).join(' | ')} |`);
+  console.log(`|---|${COLS.map(() => '---').join('|')}|`);
+  for (const [k] of RUNS) {
+    const r = R[`${k}|${t.seed}`]; if (!r) continue;
+    const f = flows(r, t.name, d0, d1); if (!f) continue;
+    (POST[k] || (POST[k] = [])).push(f);
     console.log(`| ${k} | ${COLS.map((c) => c[1](f)).join(' | ')} |`);
   }
 }
@@ -148,4 +163,4 @@ for (const [k, , lab] of RUNS) {
   WHOLE[k] = { emp, starve, dis, car, carR, raid, lost, kill };
   console.log(`| ${k} ${lab} | ${emp.join(' / ')} (${emp.reduce((a, x) => a + x, 0)}) | ${starve} | ${dis} | ${car} | ${carR}(${car ? (100 * carR / car).toFixed(1) : 0}%) | ${raid} | ${f1(lost)} | ${kill} |`);
 }
-if (JOUT) fs.writeFileSync(JOUT, JSON.stringify({ dir: DIR, targets: T, traj: TRAJ, agg: AGG, year1: Y1, whole: WHOLE }, null, 1));
+if (JOUT) fs.writeFileSync(JOUT, JSON.stringify({ dir: DIR, targets: T, traj: TRAJ, agg: AGG, post: POST, year1: Y1, whole: WHOLE }, null, 1));
