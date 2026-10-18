@@ -331,14 +331,33 @@ async function waitHttp(url, tries = 900) {
   }
   await snap('06-inv-empty');
 
+  // ★★[T794 2026-10-18] **베리 넘기기 = 언 날 안에서 한 번에.** 이 존은 하루 0.5초다(`VILLAGE_DAY_MS=500`) — 베리는
+  //   엿새면 상한다(`SPOIL_D_PRODUCE` 6 = **3초**). 종전 판은 지급 → `sleep(400)` → 넣기를 따로 보냈고, 이 상자는 `evaluate`
+  //   한 번이 수 초라 넣기가 서버에 닿을 때 이미 상한 판이 있었다. 회관은 상한 것을 안 받고("먼저 버려라" — T725 ① · 10-14 켬 기본)
+  //   하네스는 안 버리므로 **한 번 늦으면 그 뒤 넣기가 전부 거절**된다. 실측(T794 진단 소켓 기록 · 단독 다섯 판):
+  //   첫 거절 때 그 판 나이 17일 · 9일 → 그 뒤 넣기 19번 · 20번 **내리** "베리 중 300개가 상했다" · 베리 5,700 · 6,000개가 손에 쌓이고
+  //   곳간은 그대로 → 인구 0 → ⓓ-0 · ⓓ′ · ⓓ″ 빨강(다섯 판 중 셋). 제품은 규칙대로 굴렀다 — 하네스의 "갓 딴 베리" 전제가 시계를 못 이겼다.
+  //   ⇒ 이미 있는 손잡이(`__e2e_day_freeze` · E2E_GIVE 게이트 · 새 손잡이 0 · e2e-npcsprite T276 · e2e-events 와 같은 시간 모드 규약)로
+  //     **얼리고 · 주고 · 넣는다**(한 `evaluate` = 한 소켓에 차례대로 · 서버도 그 차례) → 넣기 답(`village_inventory`)을 들은 뒤 푼다.
+  //     기다림은 종전 넣기 기다림(`20 × 700ms`) 그대로 · 판정은 한 글자도 안 바뀐다.
+  const handOff = async (id, n) => {
+    await page.evaluate(() => { window.__villageInv = null; });
+    await page.evaluate(([bid, q]) => {
+      window.__sendPrimary({ type: '__e2e_day_freeze', on: true });
+      window.__sendPrimary({ type: '__e2e_give', items: { berry: q } });
+      window.__sendPrimary({ type: 'village_deposit', buildingId: bid, want: { berry: q } });
+      return true;
+    }, [id, n]);
+    for (let i = 0; i < 20 && !(await page.evaluate(() => window.__villageInv)); i++) await sleep(700);
+    const r = await page.evaluate(() => window.__villageInv);
+    await send({ type: '__e2e_day_freeze', on: false });
+    return r;
+  };
+
   // ── 식량 투입 → 첫 주민 ─────────────────────────────────────────────────────
   if (hall) {
-    await page.evaluate(() => { window.__villageInv = null; });
-    await send({ type: '__e2e_give', items: { berry: 1000 } });   // ★[PM 10-14 · T725 켬] 갓 딴 베리(위 주석) · 회관 = 거래소와 같은 무게(열량 × 신선도) — 베리 300 = 식량 4.7 이라 문턱 15 를 넘게 1000
-    await sleep(400);
-    await send({ type: 'village_deposit', buildingId: hall.id, want: { berry: 1000 } });
-    for (let i = 0; i < 20 && !(await page.evaluate(() => window.__villageInv)); i++) await sleep(700);
-    inv = await page.evaluate(() => window.__villageInv);
+    // ★[PM 10-14 · T725 켬] 갓 딴 베리(위 주석) · 회관 = 거래소와 같은 무게(열량 × 신선도) — 베리 300 = 식량 4.7 이라 문턱 15 를 넘게 1000
+    inv = await handOff(hall.id, 1000);
     const fruitQ = inv && ((inv.groups.find((g) => g.key === 'food') || { items: [] }).items.find((i) => i.r === 'fruit') || {}).q;
     ok((fruitQ || 0) > 0, `★곳간에 들어갔다 — 과일 ${fruitQ} (플레이어 노동이 econ 곳간에 도달한다)`);
     ok((inv && inv.foodEquiv) > 0, `식량 환산이 선다 — ${inv && inv.foodEquiv} (엔진 정본 totalFoodEquivalent)`);
@@ -403,12 +422,7 @@ async function waitHttp(url, tries = 900) {
     //   닿기 전에 문턱 아래로 내려간다. 1차 실행이 정확히 그래서 실패했다.
     //   재민의 문장은 *"농사지어서 식량 확보하면"* 이다 — 계속 농사짓는다. 그래서 계속 붓는다.
     for (let i = 0; i < 80; i++) {
-      if (i % 2 === 0) {
-        await send({ type: '__e2e_give', items: { berry: 200 } });
-        await sleep(400);
-        await send({ type: 'village_deposit', buildingId: hall.id, want: { berry: 200 } });
-        await sleep(400);
-      }
+      if (i % 2 === 0) await handOff(hall.id, 200);   // ★[T794] 언 날 안에서 주고 넣는다(위 `handOff` 주석)
       const cur = await openInv(hall.id, 2);
       if (cur && cur.pop > 0) { popped = cur; break; }
       if (cur && i % 10 === 0) console.log(`    [대기] day ${cur.day} · 식량 ${cur.nextResidentHave}/${cur.nextResidentAt} · 인구 ${cur.pop}`);
@@ -419,8 +433,18 @@ async function waitHttp(url, tries = 900) {
   ok(!!popped, `★식량이 사람을 불렀다 — 인구 ${popped ? popped.pop : 0}명${popped ? '' : ` (마지막 관측: day ${lastSeen && lastSeen.day} · 식량 ${lastSeen && lastSeen.nextResidentHave}/${lastSeen && lastSeen.nextResidentAt})`} (재민 확정 (마): "농사지어서 식량 확보하면 그냥 늘어나는 거 아냐?")`);
   if (popped) {
     ok(popped.day >= 100, `회복 창을 실제로 지났다 — day ${popped.day} (100 미만이면 이 검사는 자명하다)`);
-    const panelTxt = await page.evaluate(() => (document.getElementById('villageInvPanel') || {}).innerText || '');
-    ok(/인구/.test(panelTxt) && new RegExp(`인구\\s*${popped.pop}`).test(panelTxt.replace(/\s+/g, ' ')), `화면 인구 표시 = 서버 인구 ${popped.pop}`);
+    // ★★[T794 2026-10-18] **화면과 서버 답을 같은 순간에 읽는다.** 종전엔 `popped`(그때 받은 답)를 쥐고
+    //   **한 번 더 왕복한 뒤** 패널을 읽었다. 그 사이 서버 답이 한 번 더 온다 — 위 `openInv` 가 보낸 둘째 열람의 답 ·
+    //   넣기 뒤 갱신(zone.js 넣기 끝 `village_inventory`). 패널은 그 **나중 답**을 그린다(51-s-side.js
+    //   `showVillageInventory` 가 `__villageInv` 와 패널을 한 호출에서 같이 쓴다). 실측(T794 진단 소켓 기록 · 단독 다섯 판):
+    //   한 판(판 2)에서 `popped` 를 쥔 뒤 열람 답이 한 번 더 왔다(day 337 → 348 · 인구는 그대로 1) · T779 판은 그 사이 인구가
+    //   1 → 2 로 늘어 "서버 1 · 패널 2" 로 빨갰다 — 제품은 옳게 그렸다(패널 = 마지막 서버 답).
+    //   ⇒ 판정 그대로(화면 인구 = 서버 인구 · 인구 1 이상) — **짝만 바로잡는다**: 한 `evaluate` 안에서 패널과 그 패널이 그린 답을 같이 읽는다.
+    const pv = await page.evaluate(() => ({ inv: window.__villageInv || null,
+      txt: (document.getElementById('villageInvPanel') || {}).innerText || '' }));
+    const svPop = pv.inv ? pv.inv.pop : null;
+    ok(!!pv.inv && svPop > 0 && /인구/.test(pv.txt) && new RegExp(`인구\\s*${svPop}`).test(pv.txt.replace(/\s+/g, ' ')),
+      `화면 인구 표시 = 서버 인구 ${svPop}` + (svPop !== popped.pop ? ` (첫 관측 ${popped.pop} 뒤 서버 답이 한 번 더 왔다 — 같은 순간의 짝으로 잼)` : ''));
   }
   await snap('08-first-resident');
 
@@ -457,7 +481,12 @@ async function waitHttp(url, tries = 900) {
     // ⓒ 촌장 화면에서 켠다 — **정본 경로**(회관 패널의 그 메시지)로
     await page.evaluate(() => { window.__notices = []; });
     await send({ type: 'village_welcome', buildingId: hall.id, on: true });
-    await sleep(1200);
+    // ★★[T794 2026-10-18] **고정 1.2초 → 그 답이 올 때까지.** 스위치는 마을 장부 문(`VILLAGE_BOOK_MSG`)이라 하루 마감 중이면
+    //   줄을 서고("마감하는 중이다 — 곧 처리된다"), 이 상자는 `evaluate` 한 번이 수 초다. 실측(T794 진단 소켓 기록 · 단독 다섯 판):
+    //   보낸 뒤 그 알림이 오기까지 2.5~3.9초 — 1.2초 뒤 한 번 읽기는 운에 맡긴 것이다(T779 둘째 판: 알림 `(없음)` ·
+    //   같은 판 ⓒ′ "스위치가 실제로 켜졌다" ✓ = 서버는 옳게 답했다). ⇒ 판정 그대로 · 기다림만 넣기 기다림(위 `village_deposit`
+    //   뒤 `20 × 700ms`)과 같은 모양으로. 다시 보내지 않는다(켜기는 읽기가 아니다).
+    for (let i = 0; i < 20 && !(await page.evaluate(() => (window.__notices || []).some((t) => /이방인을 받/.test(t)))); i++) await sleep(700);
     const ntw = await page.evaluate(() => (window.__notices || []).slice());
     ok(ntw.some((t) => /이방인을 받/.test(t)), `★[T19] ⓒ 촌장 화면이 답한다 — ${JSON.stringify(ntw.filter((t) => /이방인/.test(t)).slice(-1)[0] || '(없음)')}`);
     const w1 = await wdbg(true);
@@ -473,9 +502,7 @@ async function waitHttp(url, tries = 900) {
         const w = await wdbg(true);
         const r = w && (w.villages || [])[0];
         if (r && (r.foodDays || 0) >= 4 && (r.pop || 0) >= 1) break;
-        await send({ type: '__e2e_give', items: { berry: 300 } });
-        await sleep(400);
-        await send({ type: 'village_deposit', buildingId: hall.id, want: { berry: 300 } });
+        await handOff(hall.id, 300);   // ★[T794] 언 날 안에서 주고 넣는다(위 `handOff` 주석) — 푼 뒤 기다림은 그대로
         await sleep(900);
       }
     };
