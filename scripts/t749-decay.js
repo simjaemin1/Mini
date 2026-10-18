@@ -171,6 +171,7 @@ if (OUT) {
     try {
       T.meta.names = names;
       if (LEDGER) { T.ledgerStats = G.stats(); const ck = G.check(W ? W.villages : [], 1e-6); T.ledgerCheck = { cells: ck.cells, bad: ck.bad.length, badSample: ck.bad.slice(0, 5) }; }
+      if (LEDGER && typeof G.rotOf === 'function') T.ledgerRot = G.rotOf();   // ★[T789] 썩어 없어진 품목(켬일 때만 칸이 찬다)
       const body = JSON.stringify(T);
       fs.writeFileSync(OUT, /\.gz$/.test(OUT) ? require('zlib').gzipSync(body) : body);
     } catch (e) { process.stderr.write('[t749-decay] 쓰기 실패 ' + e.message + '\n'); }
