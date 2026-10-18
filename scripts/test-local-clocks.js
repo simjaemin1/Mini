@@ -6,7 +6,7 @@
 //   손잡이 하나 `T761_LOCAL_CLOCKS`(기본 끔 = main 바이트) · 값 `1`·`all` = 셋 · 쉼표 목록 = 고른 갈래(`wx` · `mob` · `temp`).
 //
 // ★이 하네스가 지키는 계약:
-//   ① **손잡이 읽기** — env 없음 · `0` = 셋 다 끔 · `1`·`all` = 셋 · 쉼표 목록 = 고른 것만 · 모르는 낱말 = 끔(미끼).
+//   ① **손잡이 읽기** — ★[T792] env 없음 = 셋 다 켬(켬 기본) · `0` = 셋 다 끔 · `1`·`all` = 셋 · 쉼표 목록 = 고른 것만 · 모르는 낱말 = 끔(미끼).
 //   ② **한 식** — 몹 밤(존 몹 AI) = `localPhase(x) > 낮 몫` 이 ¾W(경도 0 · 해 몫 기준 자리)에서 `isNight` 와 같다 · 서·동 끝은 다르다(자명 통과 금지).
 //      야생 시계(`wildlife` lifeGM)의 해 몫 = 종전 해 몫 + `lonPhaseOff(x)` = `localPhase(x)` (같은 식).
 //      기온 일교차 — 같은 분수 일 `t` 에 위상만 현지(`tempAtT(t, 0, localPhase)`) · 현지 정오가 현지 자정보다 따뜻하다 · ¾W 는 종전 값과 같다.
@@ -40,8 +40,8 @@ say('\n① 손잡이 읽기');
 { const probe = (v) => { const e = Object.assign({}, env0); if (v !== undefined) e.T761_LOCAL_CLOCKS = v;
     return JSON.parse(execFileSync(process.execPath, ['-e', `console.log(JSON.stringify(require(${JSON.stringify(path.join(ROOT, 'server', 'zone-config.js'))}).T761_CLOCKS))`], { env: e, encoding: 'utf8' })); };
   const s = (o) => `${+o.on}${+o.wx}${+o.mob}${+o.temp}`;
-  ok(s(probe()) === '0000', '★env 없음 → 셋 다 끔', s(probe()));
-  ok(s(probe('0')) === '0000', '`0` → 셋 다 끔');
+  ok(s(probe()) === '1111', '★[T792] env 없음 → 셋 다 켬(켬 기본)', s(probe()));
+  ok(s(probe('0')) === '0000', '★끔 탐침 — `0` → 셋 다 끔(되돌림)');
   ok(s(probe('1')) === '1111' && s(probe('all')) === '1111', '`1` · `all` → 셋 다');
   ok(s(probe('wx')) === '1100' && s(probe('mob')) === '1010' && s(probe('temp')) === '1001', '갈래 하나씩(wx · mob · temp)');
   ok(s(probe('mob, temp')) === '1011', '쉼표 목록 → 고른 것만(빈칸 무시)');
@@ -74,7 +74,7 @@ const w=v2.createWorldV2({seed:7,villageCount:8});let rolls=0;
 for(let d=0;d<40;d++){const P=v2.tickWorldV2Parts(w);P.head();const pre=w.villages.map(v=>v._weather?v._weather.untilDay:-1).join();const L=w.villages.slice();if(REV)L.reverse();for(const v of L)P.village(v);P.trade();P.caravans();P.tail();if(w.villages.map(v=>v._weather?v._weather.untilDay:-1).join()!==pre)rolls++;}
 const s=w.villages.map(v=>JSON.stringify([v.name,v._weather||null,Object.keys(v.storage).sort().map(k=>[k,+(+v.storage[k]).toFixed(6)]),v.npcs.map(n=>[n.id,+(+n.age).toFixed(4),n.currentJob])])).join('\\n');
 console.log=_l;console.log(crypto.createHash('sha1').update(s).digest('hex').slice(0,12)+' '+rolls);`;
-  const run = (wx, t731, rev) => { const e = Object.assign({}, env0); if (wx) e.T761_LOCAL_CLOCKS = 'wx'; if (t731) e.T731_LOCAL_MIDNIGHT = '1';
+  const run = (wx, t731, rev) => { const e = Object.assign({}, env0); e.T761_LOCAL_CLOCKS = wx ? 'wx' : '0'; e.T731_LOCAL_MIDNIGHT = t731 ? '1' : '0';   // ★[T792] 켬 기본 — 끔 팔은 `=0` 을 적는다
     return execFileSync(process.execPath, ['-e', kid, rev ? '1' : '0'], { env: e, encoding: 'utf8', maxBuffer: 1 << 24 }).trim().split('\n').pop().split(' '); };
   const offA = run(0, 0, 0), offB = run(0, 0, 0), wxA = run(1, 0, 0), wxB = run(1, 0, 0), on = run(1, 1, 0), onR = run(1, 1, 1), off731R = run(0, 1, 1);
   ok(offA[0] === offB[0], '끔 — 같은 env 두 판 = 같은 40일 지문(결정론)', offA[0]);

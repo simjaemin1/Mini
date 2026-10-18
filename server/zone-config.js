@@ -591,11 +591,13 @@ function localDay(xAbs, nowMs = Date.now(), dayMs = WORLD.dayLengthMs, epoch = W
 }
 /** ★[T731] 현지 자정 날 — 그 자리 현지 시각이 00:00 을 지나는 순간 하나 는다(재민 10-13: 마을 정산은 현지 00:00 · 동쪽 먼저).
  *  = floor((t − 기점) ÷ 하루 + λ) — `localDay` 와 해 뜸 몫(¼)만 다르다(새 수 0). 동쪽(λ 큰 쪽)이 먼저 넘는다. */
-/** ★★[T761] 남은 세계 시계 셋을 현지로 — 손잡이 하나 `T761_LOCAL_CLOCKS`(기본 끔 = 아무 갈래도 안 선다 · main 바이트).
+/** ★★[T761] 남은 세계 시계 셋을 현지로 — 손잡이 하나 `T761_LOCAL_CLOCKS`(★T792 켬 기본 · `=0` = 아무 갈래도 안 선다 = 종전).
  *  값: `1` · `all` = 셋 다 · 쉼표 목록 = 고른 갈래만(`wx` 날씨 굴림 · `mob` 몹 밤 · `temp` 기온 일교차) — 재민이 칸마다 고를 수 있게.
  *  셋 다 같은 식 하나(`localPhase` · T731 마을 현지 자정)를 부른다 — 새 수 0. */
 const T761_CLOCKS = (() => {
-  const v = String((typeof process !== 'undefined' && process.env && process.env.T761_LOCAL_CLOCKS) || '').trim();
+  //   ★[T792 · PM 10-18] 켬 기본 — env 없음 = 셋 다(`1`) · `0` = 끔 · 쉼표 목록 = 고른 갈래만. 브라우저(`process` 없음)는 끔(랩 엔진 묶음 · 종전 그대로).
+  const _hasEnv = typeof process !== 'undefined' && process.env;
+  const v = String(_hasEnv ? (process.env.T761_LOCAL_CLOCKS != null ? process.env.T761_LOCAL_CLOCKS : '1') : '0').trim();
   if (!v || v === '0') return { on: false, wx: false, mob: false, temp: false };
   const all = v === '1' || v === 'all', S = new Set(v.split(',').map((x) => x.trim()));
   const o = { wx: all || S.has('wx'), mob: all || S.has('mob'), temp: all || S.has('temp') };

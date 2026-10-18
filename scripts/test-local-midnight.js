@@ -9,7 +9,7 @@
 //   ① **현지 자정 날** — 현지 시각(`localTod`)이 0 을 지나는 1초 창에서 하나 는다 · 해 뜸 날(`localDay`)보다 해 뜸 몫(¼일)만큼 먼저 바뀐다.
 //   ② **동쪽 먼저** — 같은 날 D 로 넘는 실제 시각이 x 가 클수록(동쪽) 이르다 · 한반도 존 폭의 퍼짐 = 존 폭 ÷ 세계 폭 × 하루(유도 · 새 수 0).
 //   ③ **econ 씨 흐름 가르기** — 손잡이 켬이면 마을 조각 차례(정 · 역)를 바꿔도 세계 지문이 같다 · 끔은 갈린다(미끼 — 공유 흐름).
-//   ④ **끔 = 아무도 안 부른다** — env 없으면 손잡이 거짓 · 서버 창 · 장부 날 · 부팅 증인을 부르는 줄은 모두 손잡이 뒤(소스 검사) · 랩도 env 칸 뒤.
+//   ④ **끔 = 아무도 안 부른다** — ★[T792] env 없음 = 켬 기본 · `=0` 이면 손잡이 거짓 · 서버 창 · 장부 날 · 부팅 증인을 부르는 줄은 모두 손잡이 뒤(소스 검사) · 랩도 env 칸 뒤.
 //
 // 실행: node scripts/test-local-midnight.js
 'use strict';
@@ -66,9 +66,9 @@ console.log=_l;console.log(crypto.createHash('sha1').update(s).digest('hex').sli
 say('\n④ 끔 = 아무도 안 부른다');
 { const env0 = Object.assign({}, process.env); delete env0.T731_LOCAL_MIDNIGHT;
   const probe = (env) => execFileSync(process.execPath, ['-e', `const E=require(${JSON.stringify(path.join(ROOT, 'sim', 'economy-sim.js'))});console.log(JSON.stringify([E.T731_LOCAL_MIDNIGHT,Object.keys(E.rngState()).length]))`], { env, encoding: 'utf8' }).trim().split('\n').pop();
-  const off = JSON.parse(probe(env0)), on = JSON.parse(probe(Object.assign({}, env0, { T731_LOCAL_MIDNIGHT: '1' })));
-  ok(off[0] === false && off[1] === 3, '★env 없음 → econ 손잡이 끔 · 난수 상태 칸 셋(종전)', JSON.stringify(off));
-  ok(on[0] === true && on[1] === 4, '미끼 — `T731_LOCAL_MIDNIGHT=1` → 켬 · 세계 씨 칸이 는다(손잡이가 실제로 읽힌다)', JSON.stringify(on));
+  const off = JSON.parse(probe(Object.assign({}, env0, { T731_LOCAL_MIDNIGHT: '0' }))), on = JSON.parse(probe(env0));   // ★[T792] 켬 기본 — env 없음 = 켬 · `=0` = 끔
+  ok(off[0] === false && off[1] === 3, '★끔 탐침 — `T731_LOCAL_MIDNIGHT=0` → econ 손잡이 끔 · 난수 상태 칸 셋(종전)', JSON.stringify(off));
+  ok(on[0] === true && on[1] === 4, '★[T792] env 없음 → 켬 기본 · 세계 씨 칸이 는다(손잡이가 실제로 읽힌다)', JSON.stringify(on));
   const V = codeOnly(fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8')).split('\n');
   //   부르는 줄(정의 줄 · 켬 판만 도는 `_t731Boot` 안의 첫 줄은 뺀다 — 그 함수를 부르는 줄이 손잡이 뒤다)
   const hit = V.filter((l) => /_t731Tick\(|_t731Boot\(|_ledgerDay\(vil|_t731Due\(now\)|_t731Lam\(ccx\)|_t731Lam\(vil\.ccx\)/.test(l) && !/^\s*function /.test(l) && !/vil\._lonMid == null\) vil\._lonMid = _t731Lam/.test(l));
