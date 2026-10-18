@@ -93,12 +93,13 @@ if (process.env.T768_SUB === 'zone') {
         note: notes[notes.length - 1] || '', ledAfter: led() };
 
       // ── B. 거래소 받기 — 곡식을 내고 meat_game 칸에서 받는다(그 칸의 앞 = 넣은 곰고기) ─────────────
+      //   ★[T792] 받을 낱개로 주문(`want` 15 — 종전 판이 곡식 6 으로 받던 그 수) — 값이 세계마다 달라도(켬 기본 판 · 곡식 6 = 4개) 앞 레코드(곰고기 6)를 넘겨 받는다(상황 · 단언 그대로)
       VIL.econ.storage[RES] = 0; VIL.econ.storage[RES] = 30;
       const b1 = mkP(); give(b1, 'meat_bear', 6, 0.8, 2); out.Bdep = hall(b1, { meat_bear: 6 });
       const b = mkP(); give(b, 'food', 40, 1, 1);
       const _uo = H._unitsOfFor(b);
       const ctx = H._t732DoorBegin(b, null);
-      const r = Trade.exchange({ ledger: L, econV2, vil: VIL, vid: VID, inventory: b.inventory, giveRes: 'food', takeRes: RES, giveQty: 6, want: 0, unitsOf: _uo, deposit: V.playerVillageDeposit, takeKcal: H.Kcal });
+      const r = Trade.exchange({ ledger: L, econV2, vil: VIL, vid: VID, inventory: b.inventory, giveRes: 'food', takeRes: RES, giveQty: 6, want: 15, unitsOf: _uo, deposit: V.playerVillageDeposit, takeKcal: H.Kcal });
       const gb = H._t732DoorEnd(ctx, b, !!(r && r.ok), VIL, _uo);
       out.B = { r: r && { ok: r.ok, err: r.err, take: r.take, takeUnits: r.takeUnits, took: r.tookItem }, bear: lotsOf(b, 'meat_bear'), game: lotsOf(b, 'meat_game'),
         invBear: +b.inventory.meat_bear || 0, invGame: +b.inventory.meat_game || 0, got: gb && gb.got };
