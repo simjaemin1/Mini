@@ -299,7 +299,7 @@ if (process.env.T732_SUB === 't748') {
       const cand = ['salmon', 'rice', 'wheat', 'shrimp', 'crab', 'oyster', 'seaweed', 'fish', 'meat', 'fruit'].filter((r) => D.toEcon.get(r) && (+v0.storage[r] || 0) > 5);
       cand.sort((a, b) => (+v0.storage[b] || 0) - (+v0.storage[a] || 0));
       const res = cand[0] || null, item = res ? D.toEcon.get(res) : null;
-      const give = 'wood', gItem = D.toEcon.get(give);
+      let give = 'wood', gItem = D.toEcon.get(give);
       const run = (takeRes, qty, want) => {
         const { L, vil } = fresh(), v = vil.econ, inv = { [gItem]: 400 };
         const opts = TK ? { want: want || 0, perItem: 1, takeKcal: TK } : { want: want || 0, perItem: 1 };
@@ -309,12 +309,20 @@ if (process.env.T732_SUB === 't748') {
         return { q: q && { take: q.take, cap: q.cap, capU: q.capU, avg: q.avgRatio, give: q.give, giveNeeded: q.giveNeeded, err: q.err }, x: x && { ok: x.ok, err: x.err, give: x.give, take: x.take, takeUnits: x.takeUnits, item: x.tookItem },
           dStock: R6(s0 - (+v.storage[takeRes] || 0)), got: R6(inv[D.toEcon.get(takeRes)] || 0) };
       };
+      //   ★[T795] 낼 것 — 종전 나무. 나무가 귀한 세계(T784 켬 기본 — 시드 7 · 200일 마을0 나무 한 개 값 > 내줄 밀 전부)에선 거래소가 규칙대로
+      //     거절해 표본이 안 선다 ⇒ 받기가 서는 첫 재료(차례 고정 · 결정론 · 나무가 서면 종전 그대로).
+      for (const g of ['wood', 'stone', 'flint', 'hide', 'bone', 'clay', 'fiber', 'leather']) {
+        if (!D.toEcon.get(g)) continue;
+        give = g; gItem = D.toEcon.get(g);
+        const t = res ? run(res, 6, 0) : null;
+        if (!t || (t.x && t.x.ok)) break;
+      }
       const b = Trade.board(W0.L, econV2, W0.vil, 0, null, null, TK);
       const row = (r) => { const o = (b.rows || []).find((x) => x.res === r); return o ? { sell: o.sell, stock: o.stock } : null; };
       //   열량 없는 것(광물 · 가죽 · 도구 …) — 종전 그대로 1개 = 1단위(`itemsOf` 가 다루지 않는다) · 재고가 넉넉하고 값이 닿는 것 하나
       const nk = (b.rows || []).filter((o) => o.res !== give && D.toEcon.get(o.res) && !(K.kcalOf(D.toEcon.get(o.res)) > 0) && o.sell >= 5).sort((x, y) => (x.num || 0) - (y.num || 0) || y.sell - x.sell)[0];
       const nres = nk ? nk.res : null;
-      out.trade = { res, item, kcal: item ? K.kcalOf(item) : 0, DAY: K.DAY_KCAL, nres, board: { res: row(res), food: row('food'), nk: nres ? row(nres) : null },
+      out.trade = { give, res, item, kcal: item ? K.kcalOf(item) : 0, DAY: K.DAY_KCAL, nres, board: { res: row(res), food: row('food'), nk: nres ? row(nres) : null },
         a: res ? run(res, 6, 0) : null, food: run('food', 12, 0), nk: nres ? run(nres, 6, 0) : null, want: res ? run(res, 0, 5) : null };
     }
     out.gl = GL.stats();
@@ -737,7 +745,7 @@ say('\n⑩ [T748] 거래소 받기 — 열량 짝(꺼내기 · 게시판 보상�
 {
   const T0 = sub748('trade', {}, true, { T748_TK: '0' }), T1 = sub748('trade', {}, true, { T748_TK: '1' });
   const a = (T0.trade || {}), b = (T1.trade || {});
-  ok(!T0.err && !T1.err && a.res && a.res === b.res && a.kcal > 0 && Math.abs(a.kcal - a.DAY) > 1, '⑩ [상황] 두 판 — 낱개 열량이 하루치와 다른 식량을 받는다', `${a.res}(${a.kcal}kcal · 하루치 ${a.DAY})`);
+  ok(!T0.err && !T1.err && a.res && a.res === b.res && a.give === b.give && a.kcal > 0 && Math.abs(a.kcal - a.DAY) > 1, '⑩ [상황] 두 판 — 낱개 열량이 하루치와 다른 식량을 받는다(같은 것을 내고)', `${a.give} → ${a.res}(${a.kcal}kcal · 하루치 ${a.DAY})`);
   const A0 = a.a || {}, A1 = b.a || {};
   ok(A0.x && A0.x.ok && A0.q.take === A0.x.take && near(A0.dStock, A0.x.take, 2e-3), '⑩ 종전(`takeKcal` 없음) — 받는 낱개 = 곳간에서 나간 단위(1개 = 1단위) · 견적 = 실행', `${A0.x && A0.x.take}개 · ${A0.dStock}단위`);
   const per = b.kcal / b.DAY;

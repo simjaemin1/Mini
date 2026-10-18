@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 // @regress
-// === scripts/test-cargo-age.js — 캐러밴 짐이 길 위에서 늙는다: 값으로 (T784 · 재민 10-14 · 손잡이 T784_CARGO_AGE='1' · 없음 = 끔 = main 바이트) ===
+// === scripts/test-cargo-age.js — 캐러밴 짐이 길 위에서 늙는다: 값으로 (T784 · 재민 10-14 · 손잡이 T784_CARGO_AGE · T795 켬 기본 · `=0` = 끔 = T784 앞 바이트) ===
 //
 // ★왜 T732 는 짐 로트를 관측만 했다(자리 = 몸에 지님 · 도착 때 f 를 값에 쓰는 것은 미뤘다). 생선을 열흘 길에 실어도 출발 결정은
 //   도착지 값 그대로를 기대했고, 도착해서도 갓 잡은 값으로 팔았다. 켬이면 econ v2 세 자리가 **같은 곡선**(`spoil.freshnessOf` 정본)을 곱한다:
 //   출발 결정(첫째 · 둘째 짐의 기대 값 — 다리 날 수) · 도착 매도(첫째 · 둘째 판 값 — 길 위 실제 날 수). 짐 수량은 그대로 곳간에 든다.
 //
-//  ① 손잡이 — '1' 하나만 켬('0' · 'true' · 없음 = 끔 · 끔끼리 세계 지문 같다) · 켬은 세계를 바꾼다(자명 통과 금지)
+//  ① 손잡이 — 켬 기본(T795) · '0' 하나만 끔(없음 · '1' · 'true' = 켬 · 켬끼리 세계 지문 같다) · 끔은 세계를 바꾼다(자명 통과 금지)
 //  ② 곡선 정본 — 늙는 품목(`lots.isLot`)은 `spoil.freshnessOf` 와 한 자리도 안 다르다 · 그 밖은 1 · 0 아래로 안 간다 · 날이 늘면 안 오른다
 //  ③ 도착 날 셈 — 떠난 날부터 도착 날까지(우회로 늘어난 날까지 늙는다) · 이웃 존에서 넘어온 짐은 길 날 수 이상
 //  ④ 배선 — 네 자리(첫째 · 둘째 기대 값 · 첫째 · 둘째 판 값) · 끔 갈래는 종전 식 글자 그대로 · 판 값은 장부 내려놓기 앞에서 센다 · 곳간 가산 줄 무변
@@ -52,14 +52,14 @@ let pass = 0, fail = 0;
 const ok = (c, m, x) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (x !== undefined && x !== '' ? `  ${x}` : '')); };
 const say = (m) => console.log(m);
 
-say('=== 캐러밴 짐이 길 위에서 늙는다 — 값으로 (T784 · 손잡이 T784_CARGO_AGE=1) ===');
+say('=== 캐러밴 짐이 길 위에서 늙는다 — 값으로 (T784 · T795 켬 기본 · 되돌림 T784_CARGO_AGE=0) ===');
 
 // ① 손잡이
-say('\n① 손잡이 — \'1\' 하나만 켬');
-const U = sub(undefined, 7, 200), Z = sub('0', 7, 200), T = sub('true', 7, 200), O = sub('1', 7, 200);
-ok(!U.err && !Z.err && !T.err && !O.err && U.on === false && Z.on === false && T.on === false && O.on === true, '① 없음 · \'0\' · \'true\' = 끔 · \'1\' = 켬', [U, Z, T, O].map((x) => x.err || x.on).join(' · '));
-ok(U.fp && U.fp === Z.fp && U.fp === T.fp && JSON.stringify(U.dep) === JSON.stringify(Z.dep), '① 끔끼리 세계 지문 · 출발 표본 같다(200일)', U.fp);
-ok(O.fp && O.fp !== U.fp, '① [자명 통과 금지] 켬은 세계를 바꾼다', O.fp);
+say('\n① 손잡이 — 켬 기본(T795) · \'0\' 하나만 끔');
+const U = sub('0', 7, 200), O = sub(undefined, 7, 200), T = sub('true', 7, 200), I = sub('1', 7, 200);
+ok(!U.err && !O.err && !T.err && !I.err && U.on === false && O.on === true && T.on === true && I.on === true, '① \'0\' = 끔 · 없음 · \'true\' · \'1\' = 켬', [U, O, T, I].map((x) => x.err || x.on).join(' · '));
+ok(O.fp && O.fp === T.fp && O.fp === I.fp && JSON.stringify(O.dep) === JSON.stringify(I.dep), '① 켬끼리 세계 지문 · 출발 표본 같다(200일)', O.fp);
+ok(U.fp && U.fp !== O.fp, '① [자명 통과 금지] 끔(`=0`)은 세계를 바꾼다(T784 앞 세계)', U.fp);
 
 // ② 곡선 정본
 say('\n② 곡선 정본 — `spoil.freshnessOf` 하나 · 늙는 품목만');
@@ -92,7 +92,7 @@ ok(AR({ departDay: 10 }, 'stone', 99) === 1 && AR({ departDay: 10 }, r0, 9) === 
 // ④ 배선(소스)
 say('\n④ 배선 — 네 자리 · 끔 갈래는 종전 식 그대로');
 const src = fs.readFileSync(V2P, 'utf8');
-ok(/const T784_CARGO_AGE = \(typeof process !== 'undefined' && process\.env && process\.env\.T784_CARGO_AGE === '1'\);/.test(src), '④ 손잡이는 `=== \'1\'` 하나');
+ok(/const T784_CARGO_AGE = !\(typeof process !== 'undefined' && process\.env && process\.env\.T784_CARGO_AGE === '0'\);/.test(src), '④ 손잡이는 켬 기본 · 되돌림 `=== \'0\'` 하나(채택 꼴 — lab-wiring-check [F]④)');
 const uses = (src.match(/T784_CARGO_AGE \?|if \(T784_CARGO_AGE\)/g) || []).length;
 ok(uses === 4, '④ 손잡이를 읽는 자리 넷(첫째 · 둘째 기대 값 · 첫째 · 둘째 판 값)', `${uses}`);
 ok(src.includes('_legProfitPerUnit(pFrom, T784_CARGO_AGE ? pTo * _t784F(cand.res, travelDaysForDistance(dist)) : pTo, transportCostPerUnit, expectedLossRatio)'),
@@ -121,7 +121,7 @@ const stat = (X) => {
   return { rot, n, f: U > 0 ? +(W / U).toFixed(4) : null, all: (X.dep || []).length };
 };
 const S7 = [stat(U), stat(O)];
-const U42 = sub(undefined, 42, 200), O42 = sub('1', 42, 200);
+const U42 = sub('0', 42, 200), O42 = sub(undefined, 42, 200);
 const S42 = [stat(U42), stat(O42)];
 ok(S7[1].rot === 0 && S42[1].rot === 0, '⑤ 켬 — 도착 때 f = 0 인 짐을 실은 출발 0(시드 7 · 42 · 200일)', `끔 ${S7[0].rot} · ${S42[0].rot} → 켬 ${S7[1].rot} · ${S42[1].rot}`);
 ok(S7[1].f != null && S42[1].f != null && S7[1].f >= S7[0].f && S42[1].f >= S42[0].f, '⑤ 늙는 짐의 도착 신선도(단위 가중) 켬 ≥ 끔',
@@ -140,7 +140,7 @@ const runB = (knob, seed, days) => {
   for (let d = 0; d < days; d++) B.tickWorldV2(w);
   return { on: B.T784_CARGO_AGE, fp: w.villages.map((v) => `${v.name}:${v.npcs.length}/f${Math.floor(v.storage.food)}/c${Math.round(v.storage.fish || 0)}`).join(' ') };
 };
-const B0 = runB(null, 7, 200), B1 = runB('1', 7, 200), B42 = runB('1', 42, 200);
+const B0 = runB('0', 7, 200), B1 = runB(null, 7, 200), B42 = runB(null, 42, 200);   // 덧대기 env 가 비면 켬(T795)
 ok(B0.on === false && B0.fp === U.fp, '⑥ 끔 — 번들 세계 = 정본 세계(시드 7 · 200일)', B0.fp);
 ok(B1.on === true && B1.fp === O.fp && B42.fp === O42.fp, '⑥ 켬 — 번들 세계 = 정본 세계(시드 7 · 42) — 곡선 표가 서버와 한 벌', B1.fp);
 const body = bsrc.trim();

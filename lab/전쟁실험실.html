@@ -14647,7 +14647,7 @@ const T726_ONE_TARGET = (typeof process !== 'undefined' && process.env && proces
 //   짐은 길 위에서 늙는다(자리 = 몸에 지님 · 정산은 꺼낼 때 조회 함수가 한다 — 도착 때 f 를 값에 쓰는 것은 T730 몫).
 let _LOTH = null;
 function setLotHook(h) { _LOTH = (h && typeof h === 'object') ? h : null; }
-// ★★[T784 2026-10-18 · 재민 10-14 · 손잡이 `T784_CARGO_AGE`('1' 만 켬 · 끔 = 아래 세 자리가 종전 식 = main 바이트)] **짐이 길 위에서 늙는다 — 값으로.**
+// ★★[T784 2026-10-18 · 재민 10-14 · 손잡이 `T784_CARGO_AGE`(T795 켬 기본 · `=0` 끔 = 아래 네 자리가 종전 식 = T784 앞 바이트)] **짐이 길 위에서 늙는다 — 값으로.**
 //   T732 는 짐 로트를 관측만 했다(자리 = 몸에 지님 · 도착 때 f 를 값에 쓰는 것은 미뤘다). 켬이면:
 //   ⓐ 출발 결정 — 기대 값의 도착 쪽 값 `pTo` 에 **도착 날 신선도**를 곱한다(다리 날 수 `travelDaysForDistance` · 품목 곡선 `spoil.freshnessOf` 정본).
 //   ⓑ 도착 매도 — 판 값(`_impactSellV2`)에 **그 짐의 도착 날 신선도**를 곱한다(길 위 실제 날 수 · 우회로 늘어난 날까지 · 같은 곡선).
@@ -14655,7 +14655,8 @@ function setLotHook(h) { _LOTH = (h && typeof h === 'object') ? h : null; }
 //   짐 수량은 그대로 받는 곳간에 든다(소멸 · 생성 0) — 상한 몫이 곳간에서 어떻게 되는지는 econ 의 상한 규칙 그대로.
 //   늙는 품목 = `lots.isLot`(먹을 것 + 썩는 것 · T725) — 그 밖(돌 · 도구 · 원석 …)은 1(spoil 기본 5일을 안 먹는다).
 //   랩: 번들이 spoil · lots 를 같이 싣는다(`sim/build-econ-bundle.js` — 곡선 표가 서버와 한 벌).
-const T784_CARGO_AGE = (typeof process !== 'undefined' && process.env && process.env.T784_CARGO_AGE === '1');
+//   ★[T795 2026-10-18 · PM · 재민 10-14 판정의 결과라 켬 기본] 없음 = 켬 · 되돌림 `T784_CARGO_AGE=0`(= main 10-18 앞 바이트).
+const T784_CARGO_AGE = !(typeof process !== 'undefined' && process.env && process.env.T784_CARGO_AGE === '0');
 let _t784M;
 function _t784Mods() {
   if (_t784M === undefined) {

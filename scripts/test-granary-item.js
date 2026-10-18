@@ -98,7 +98,9 @@ if (process.env.T768_SUB === 'zone') {
       const b = mkP(); give(b, 'food', 40, 1, 1);
       const _uo = H._unitsOfFor(b);
       const ctx = H._t732DoorBegin(b, null);
-      const r = Trade.exchange({ ledger: L, econV2, vil: VIL, vid: VID, inventory: b.inventory, giveRes: 'food', takeRes: RES, giveQty: 6, want: 0, unitsOf: _uo, deposit: V.playerVillageDeposit, takeKcal: H.Kcal });
+      //   ★[T795] 받을 개수로 주문(10 > 넣은 곰고기 6 — 앞 레코드를 다 받고 econ 몫까지 닿는다). 종전 "곡식 6 을 낸다"는 값에 따라
+      //     곰고기 6 에 못 닿는다(T784 켬 기본 세계 — 사슴·들짐승고기 값이 올라 곡식 6 → 2.8 낱개).
+      const r = Trade.exchange({ ledger: L, econV2, vil: VIL, vid: VID, inventory: b.inventory, giveRes: 'food', takeRes: RES, giveQty: 0, want: 10, unitsOf: _uo, deposit: V.playerVillageDeposit, takeKcal: H.Kcal });
       const gb = H._t732DoorEnd(ctx, b, !!(r && r.ok), VIL, _uo);
       out.B = { r: r && { ok: r.ok, err: r.err, take: r.take, takeUnits: r.takeUnits, took: r.tookItem }, bear: lotsOf(b, 'meat_bear'), game: lotsOf(b, 'meat_game'),
         invBear: +b.inventory.meat_bear || 0, invGame: +b.inventory.meat_game || 0, got: gb && gb.got };
