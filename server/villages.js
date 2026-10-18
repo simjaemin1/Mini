@@ -248,7 +248,7 @@ const T762_CARAVAN_BODY = process.env.T762_CARAVAN_BODY === '1';
 //     ② 귀환 걸음 상한 = **몸 걸음**(존 `moveSpeed` 정본 — 따라잡기 ×4 아님) — 일정이 몸 걸음보다 빠르면 몸은 몸 걸음 그대로 걷고 뒤처진다.
 //        econ 이 집 도착(쓸기)을 낼 때 몸이 아직 길 위면 그 사실을 센다(`_t772Stat.late`) — 순간이동으로 메우지 않는다(회수 자리는 종전 그대로).
 //   econ 도착일 · 장부(`_t661Day` 의 `T.L` · 답압 · 가드)는 무변 — 그림 · 몸 자리만 바뀐다. 새 수 0.
-const T772_ON = process.env.T772_LEG_FROM_LINGER === '1';
+const T772_ON = process.env.T772_LEG_FROM_LINGER !== '0';   // ★[T782 · PM 10-18] 켬 기본 · 되돌림 `=0`
 const _t772Stat = { legs: 0, home: 0, late: 0, lateMaxPx: 0, lateSumPx: 0 };
 function _t762SyncNewJob(C, had) {   // 명부(문을 연 순간)에 없던 캐러밴 — 이 조각이 도는 때의 `world.caravans` 차례로 · 'retry' 면 같은 자리부터
   let q = null, i = 0;
@@ -3355,7 +3355,7 @@ function _caravanNpcs(c, x, y, tribeId, tribeName, simVid) {
 //       ⓑ 그 구간이 오늘 앞에 시작했으면(가는 길 = `departDay` · 귀환 길 = `arriveDay`) 장부의 시작 날을 그날로 두고, 장부 자리 `T.L` = 오늘 경계의 목표 ·
 //          몸 = **`_t661Vis`**(보이는 몸 보간 — 틱 판이 쫓는 그 함수 · 사본 0) 자리에 세운다. 호위는 답압 표본과 같은 꼴(상인 뒤 20px × 차례)로 그 뒤에.
 //       오늘 떠난 몸 · 장 마당 몸(T707) · 이웃 존 몸(T533)은 종전 그대로다(시작 날 = 오늘이면 같은 수).
-const T775_RESUME = process.env.T775_CARAVAN_RESUME === '1';
+const T775_RESUME = process.env.T775_CARAVAN_RESUME !== '0';   // ★[T782 · PM 10-18] 켬 기본 · 되돌림 `=0`
 function _t775Place(body, c, outbound, p, now) {
   const T = body._t661, d = state.world.day;
   const D0 = outbound ? c.departDay : c.arriveDay;
