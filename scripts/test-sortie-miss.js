@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다
-// === scripts/test-sortie-miss.js — 접촉 없이 끝난 출격은 이튿날 결단을 공격 쪽에 돌려준다(T771 · 손잡이 `T771_SORTIE_MISS`) ==========
+// === scripts/test-sortie-miss.js — 접촉 없이 끝난 출격은 이튿날 결단을 공격 쪽에 돌려준다(T771 · 손잡이 `T771_SORTIE_MISS` · T781 켬 기본 · 되돌림 `=0`) ==========
 //
 // ★왜 [지시 T771 · T764 회부 4 — 전쟁 자 시드 1020 W6 41일 교착]
 //   방어 출격(`_warEngage` 'sortie')은 방어 쪽이 나서고 공격은 holder(쫓지 않음)다. 몸 상한 1 에서 방어 몸은 궁수 하나였다(징발 차례 원거리 먼저).
 //   화살 20 을 다 쓴 궁수는 탄이 없으면 집으로 물러난다(battle-core `flee`) — 접촉 0 · 7초 뒤 대치(`_warToStandoff`) · 이튿날 war-core 가 **또 출격**을 정했다.
 //   war-core 날 틱은 출격이 나면 공격 쪽 결단(`_opNpcDecide` — 군량 소진 철수 · 돌격)을 건너뛴다(`continue`) ⇒ 공격은 41일 동안 결단을 한 번도 못 했다.
-//   고침(손잡이 켬에서만 · 끔 = 종전 글자): 몸 층이 "출격이 접촉 없이 끝났다"를 전쟁에 남기고(`w._sortieMiss`), war-core 가 이튿날 그 칸을 보고
+//   고침(손잡이 켬에서만 · 끔 = 종전 글자 · ★T781 부터 켬 기본 — 끔은 `T771_SORTIE_MISS=0`): 몸 층이 "출격이 접촉 없이 끝났다"를 전쟁에 남기고(`w._sortieMiss`), war-core 가 이튿날 그 칸을 보고
 //   버티기로 돌린다(태세 히스테리시스 `WAR_DEF_HYST` 그대로) — 그날부터 공격 쪽 결단이 돈다.
-//   지키는 것: ⓐ 정적(손잡이 문 · 칸 둘 · 새 수 0) · ⓑ 몸 층 — 접촉 수가 그대로면 칸이 선다 · 늘었으면 안 선다 · 돌격(공격이 나선) 대치는 안 본다 · ★끔이면 칸 0 ·
+//   지키는 것: ⓐ 정적(손잡이 문 — 켬 기본 · 칸 둘 · 새 수 0) · ⓑ 몸 층 — 기본(미설정)에서 접촉 수가 그대로면 칸이 선다 · 늘었으면 안 선다 · 돌격(공격이 나선) 대치는 안 본다 · `=1` 도 같다 · ★끔 탐침(`=0`)이면 칸 0 ·
 //             ⓒ war-core — 칸이 있으면 출격 대신 버티기 · 공격 결단이 돈다 · 칸은 한 번 쓰고 지운다 · ★대조(칸 없음) = 출격이 결단을 막는다(종전).
 // ⚠존을 부팅하지 않는다 — war-core 정본(`daily`)과 존 정본(`_warToStandoff` — `__p3Bind`)을 그대로 부른다(규칙 사본 0).
 // 실행: node scripts/test-sortie-miss.js
@@ -30,7 +30,7 @@ console.log('\n=== 접촉 없이 끝난 출격은 이튿날 결단을 공격 쪽
 // ── ⓐ 정적 ──────────────────────────────────────────────────────────────────
 console.log('\n[ⓐ] 정적 — 손잡이 문 · 칸 둘 · 새 수 0');
 {
-  ok(/const T771_SORTIE_MISS = process\.env\.T771_SORTIE_MISS === '1';/.test(CV), "ⓐ 손잡이 하나 — `T771_SORTIE_MISS === '1'`(기본 끔)");
+  ok(/const T771_SORTIE_MISS = process\.env\.T771_SORTIE_MISS !== '0';/.test(CV), "ⓐ 손잡이 하나 — `T771_SORTIE_MISS !== '0'`(T781 켬 기본 · 되돌림 `=0`)");
   const eng = fnBody(CV, '_warEngage'), so = fnBody(CV, '_warToStandoff');
   ok(/if \(T771_SORTIE_MISS\) body\._t771C0 = side === 'B' \? \(f\.contacts \| 0\) : null;/.test(eng), 'ⓐ 출격 시작 — 방어가 나설 때(쪽 B)만 그때의 접촉 수를 몸에 적는다(손잡이 문 안)');
   ok(/if \(T771_SORTIE_MISS && body\._t771C0 != null\) \{ if \(!f \|\| \(f\.contacts \| 0\) === body\._t771C0\) w\._sortieMiss = state\.world\.day; body\._t771C0 = null; \}/.test(so), 'ⓐ 대치 — 접촉 수가 그대로면 그날을 전쟁에 남긴다(`w._sortieMiss`) · 몸 칸은 지운다(손잡이 문 안)');
@@ -44,8 +44,8 @@ console.log('\n[ⓐ] 정적 — 손잡이 문 · 칸 둘 · 새 수 0');
 // ── ⓑ 몸 층(존 정본 `_warToStandoff` — `__p3Bind`) ────────────────────────────────
 console.log('\n[ⓑ] 몸 층 — 출격 대치에서 접촉 수를 본다');
 const probeStandoff = (knob, c0, cNow) => {
-  //   손잡이는 모듈을 싣는 순간 읽는다 ⇒ 판마다 아이 프로세스(같은 정본 · 다른 env)
-  const env = Object.assign({}, process.env); if (knob) env.T771_SORTIE_MISS = '1'; else delete env.T771_SORTIE_MISS;
+  //   손잡이는 모듈을 싣는 순간 읽는다 ⇒ 판마다 아이 프로세스(같은 정본 · 다른 env) · knob = null(미설정 — 기본) · '1' · '0'(끔 탐침)
+  const env = Object.assign({}, process.env); if (knob == null) delete env.T771_SORTIE_MISS; else env.T771_SORTIE_MISS = knob;
   const js = `const V=require(${JSON.stringify(path.join(ROOT, 'server', 'villages.js'))});const H=V.__p3Bind({world:{day:12},_warStat:{standoff:0}});`
     + `const w={phase:'battle',op:'camp',_sortie:true};const b={w,fight:{contacts:${cNow}},_t771C0:${c0 === null ? 'null' : c0}};H._warToStandoff(b);`
     + `process.stdout.write(JSON.stringify({miss:w._sortieMiss===undefined?null:w._sortieMiss,c0:b._t771C0===undefined?'undef':b._t771C0,phase:w.phase,op:w.op,sortie:w._sortie,mode:b.mode,st:H.state._warStat.standoff}));`;
@@ -53,15 +53,17 @@ const probeStandoff = (knob, c0, cNow) => {
   return JSON.parse(out.slice(out.lastIndexOf('{')));
 };
 {
-  const a = probeStandoff(true, 3, 3);
+  const a = probeStandoff(null, 3, 3);
   ok(a.miss === 12 && a.c0 === null && a.phase === 'march' && a.op === 'camp' && a.sortie === false && a.mode === 'camp' && a.st === 1,
-    'ⓑ 켬 — 출격 뒤 접촉 0(3 → 3) 대치 → 그날(12)이 전쟁에 선다 · 몸 칸 지움 · 대치 전이는 종전 그대로', JSON.stringify(a));
-  const b = probeStandoff(true, 3, 4);
-  ok(b.miss === null && b.c0 === null && b.phase === 'march', 'ⓑ 켬 — 출격 뒤 한 번이라도 붙었으면(3 → 4) 칸이 안 선다', JSON.stringify(b));
-  const c = probeStandoff(true, null, 3);
-  ok(c.miss === null && c.c0 === null && c.phase === 'march', 'ⓑ 켬 — 공격이 나선 판(몸 칸 없음 — 돌격)의 대치는 안 본다', JSON.stringify(c));
-  const d = probeStandoff(false, 3, 3);
-  ok(d.miss === null && d.c0 === 3 && d.phase === 'march' && d.op === 'camp' && d.sortie === false && d.st === 1, 'ⓑ ★끔 — 같은 몸이어도 칸이 안 선다 · 몸 칸도 안 건드린다(종전 글자)', JSON.stringify(d));
+    'ⓑ 기본(켬) — 출격 뒤 접촉 0(3 → 3) 대치 → 그날(12)이 전쟁에 선다 · 몸 칸 지움 · 대치 전이는 종전 그대로', JSON.stringify(a));
+  const b = probeStandoff(null, 3, 4);
+  ok(b.miss === null && b.c0 === null && b.phase === 'march', 'ⓑ 기본(켬) — 출격 뒤 한 번이라도 붙었으면(3 → 4) 칸이 안 선다', JSON.stringify(b));
+  const c = probeStandoff(null, null, 3);
+  ok(c.miss === null && c.c0 === null && c.phase === 'march', 'ⓑ 기본(켬) — 공격이 나선 판(몸 칸 없음 — 돌격)의 대치는 안 본다', JSON.stringify(c));
+  const e = probeStandoff('1', 3, 3);
+  ok(e.miss === 12 && e.c0 === null && e.st === 1, 'ⓑ 켬 명시(`=1`) — 기본과 같다(그날이 선다)', JSON.stringify(e));
+  const d = probeStandoff('0', 3, 3);
+  ok(d.miss === null && d.c0 === 3 && d.phase === 'march' && d.op === 'camp' && d.sortie === false && d.st === 1, 'ⓑ ★끔 탐침(`=0`) — 같은 몸이어도 칸이 안 선다 · 몸 칸도 안 건드린다(종전 글자)', JSON.stringify(d));
 }
 
 // ── ⓒ war-core 날 틱(정본 `daily`) ──────────────────────────────────────────────
