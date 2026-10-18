@@ -1237,7 +1237,7 @@ function _spKeep(qt, seq, j, ref, x, y) {
 //   ★무효화는 한 곳 — 공간 색인이 틱마다 다시 적는다(활성 집합이 갈아 끼워지면 `_t774Src` 가 어긋나 술어로 간다). 새 수 0 · 몸 필드 0.
 //   ★읽는 문 둘: 이동 문 앞 거름(`_wwPreOne`) · 한 바퀴(`_sweepOne`) — 둘 다 `players` 차례다. 이동 문 거름(`_moveOne`)은 자들이 그 글자를 떠 쓰므로(test-move-soa ⑳ · test-fish-act) 안 건드린다.
 //   ⚠결정 문(`npcs` 차례)과 서로 비키기(`sepNpcs` · `npcs` 차례)는 차례가 달라 이 열을 안 읽는다(보고 §2).
-const T774_ACTIVE_COL = process.env.T774_ACTIVE_COL === '1';
+const T774_ACTIVE_COL = process.env.T774_ACTIVE_COL !== '0';   // ★[T780 · PM 10-18] 켬 기본(같은 값 · 증인 바이트 같음) · 되돌림 `=0`
 let _t774X = T774_ACTIVE_COL ? new Float64Array(1024) : null, _t774Y = T774_ACTIVE_COL ? new Float64Array(1024) : null, _t774N = 0, _t774Src = null;
 const _t774Stat = { hit: 0, miss: 0 };
 function _t774Put(i, p) {

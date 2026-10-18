@@ -10553,7 +10553,7 @@ function _t720Held(vil, npc) {
 //     열쇠 = 걷는 목록 배열 · 길이 · 짝 표 배열(다시 셀 때 **새 배열**이 된다 · 바뀌면 다시 짓는다) · 같은 손 이름을 같은 차례로(겹친 이름도 두 번).
 //     ⚠채집 행위 층(`T347_FORAGE_ACT`)은 기본 끔이다 — 그 절은 켠 세계에서만 돈다(술어가 먼저라 끔 세계는 이름 목록을 안 짓는다 · 종전과 같은 차례).
 //   ★같은 값: 같은 항을 같은 차례로 더한다 ⇒ 같은 합(부동소수 차례까지). 몸 · 마을 필드 0(그릇은 모듈 `WeakMap`). 새 수 0.
-const T737_HELD_CACHE = process.env.T737_HELD_CACHE === '1';
+const T737_HELD_CACHE = process.env.T737_HELD_CACHE !== '0';   // ★[T780 · PM 10-18] 켬 기본(같은 값 · 증인 바이트 같음) · 되돌림 `=0`
 function _t737Held(vil, npc) {
   const inv = npc.inventory || {};
   let u = 0, E = null;
