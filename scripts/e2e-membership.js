@@ -1,13 +1,16 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
 // @nightly C   ← 야간 **세 밤** 분할(T238 · 소요로 균등) · `run-regress.sh --list "nightly C"`
-// === scripts/e2e-membership.js — 마을 소속·곳간 인출 **실클라** E2E [T11] =======
+// === scripts/e2e-membership.js — 마을 소속 · 곳간(꺼내기 촌장만 · 기부 누구나) **실클라** E2E [T11 · ★T779 새 세계] =======
 //
-// ★왜: `test-membership` 은 **판정 층**에서 계약을 잰다(게이트·한도·역연산·직렬화).
+// ★왜: `test-membership` 은 **판정 층**에서 계약을 잰다(게이트·촌장 도장·역연산·직렬화).
 //   그런데 이 카드가 플레이어에게 약속하는 것은 그게 아니다:
-//     *"몇 번 갖다 주면 촌장이 마을 사람으로 받아 주고, 그때부터 곳간에서 곡식을 꺼내 먹을 수 있다."*
-//   그 문장은 **납품 훅 → 계량기 → 문턱 → 채팅 명령 → 거래소 창 한 줄 → 인출 통로**가
+//     *"몇 번 갖다 주면 촌장이 마을 사람으로 받아 준다. 곳간에는 누구나 기부할 수 있고(받는 것 없음), 꺼내는 건 촌장만이다."*
+//   그 문장은 **납품 훅 → 계량기 → 문턱 → 채팅 명령 → 거래소 창 한 줄 → 기부 · 꺼내기 통로**가
 //   전부 맞물려야 참이 된다. 판정이 다 맞아도 화면에 줄이 없으면 플레이어에겐 없는 기능이다.
+// ★[T779 2026-10-18 · 재민 10-15 "마음대로 빼는 건 안 돼 · 관리자만 뺄 수 있어" · "기부는 상시 되고 보상도 없음"]
+//   옛 "마을 사람 = 오늘 몫만큼 꺼낸다"(기여 한도)는 걷었다 — 꺼내기는 촌장 한 사람 · 기부는 기본으로 열려 있다(`T769_DONATE` 기본 켬).
+//   시딩 마을은 NPC 마을(창설자 없음 = 사람 촌장 없음)이라 이 사람은 마을 사람이 되어도 곳간을 못 연다 — 그 말을 그대로 잰다.
 //
 // ★★문턱을 낮춰 돌린다 — 그리고 그 사실을 여기 적는다(`e2e-chronicle` 과 같은 규약).
 //   소속 문턱 12(K-2 확정)를 실클라에서 채우려면 **의뢰 12건을 완수**해야 하고, 의뢰는 하루
@@ -15,14 +18,14 @@
 //   ⇒ `MEMBER_N=3` 으로 낮춰 켠다. **문턱의 값 자체는 `test-membership ①` 이 정본으로 잰다**
 //     (거기서는 11 거절 / 12 제안을 실제 상수로 검사한다). 여기서 재는 것은 **통로**다.
 //
-// ★재는 것 — 실기 3줄 그대로
+// ★재는 것 — 실기 그대로
 //   ① 마을에 도착해 의뢰를 채운다 → 계량기가 오른다 → 촌장이 **먼저** 권한다.
-//   ② 채팅에 `/소속` — **새 클라 조건 0**(채팅은 이미 있다). 마을 사람이 된다.
-//   ③ 거래소 창에 **소속 한 줄**이 뜨고, 거기 있는 버튼으로 곳간에서 곡식을 꺼낸다.
-//   ④ 오늘 몫을 다 쓰면 거절당한다(한도가 살아 있다).
+//   ② 채팅에 `/소속` — **새 클라 조건 0**(채팅은 이미 있다). 마을 사람이 된다(받아들이는 말에 곳간 말 없음).
+//   ③ 거래소 창에 **소속 한 줄 · "곳간 꺼내기 — 촌장만" · 기부 한 줄**이 뜨고, 기부 단추를 누르면 짐이 곳간으로 간다(기여 그대로).
+//   ④ 마을 사람이 되어도 `/인출` 은 거절된다(촌장 판정) · `/곳간` 형편 한 줄(꺼내기 촌장만 · 기부 누구나 · 한도 말 없음).
 //   ⑤ 재접속해도 소속이 살아 있다(몸에 실려 있다).
-//   ⑥ `/탈퇴` 하면 나가지되 **누적 기여는 남는다**.
-//   ⑦ ★자명 통과 방지 — 소속 전에는 인출이 거절되는가.
+//   ⑥ `/탈퇴` 하면 나가지되 **누적 기여는 남는다** · 그 뒤에도 곳간은 촌장만.
+//   ⑦ ★자명 통과 방지 — 소속 전에도 `/인출` 은 거절된다(같은 촌장 문 · 곡식이 안 들어온다).
 //
 // 실행: node scripts/e2e-membership.js [--headed]
 'use strict';
@@ -40,10 +43,9 @@ const CDB = `/tmp/e2e-mb-central-${process.pid}.db`, ZDB = `/tmp/e2e-mb-zone-${p
 for (const f of [CDB, ZDB, CDB + '-wal', ZDB + '-wal', CDB + '-shm', ZDB + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
 
 const MEMBER_N = 3;          // ★위 머리 주석 — 통로 검사용으로 낮춘 문턱(값 자체는 test-membership ①)
-// ★[T769 2026-10-15 · 재민 판정 "관리자만 뺄 수 있어" · "기부는 상시 되고 보상도 없음"] 켬(`T769_DONATE=1` — 존은 이 판의 환경을 그대로 물려받는다)
-//   = 꺼내기는 **촌장만** · 기부는 누구나 · 받는 것 없음. 시딩 마을은 NPC 마을(창설자 없음 = 사람 촌장 없음)이라 켬에서 이 사람은 곳간을 못 연다 —
-//   ⑦ · ③ · ④ · ⑥c 를 켬에서 그 말로 잰다. ③ 은 켬에서 거래소 창의 **기부 한 줄**을 실제로 눌러 본다(곳간이 받고 · 손이 비고 · 기여는 그대로).
-const T769 = process.env.T769_DONATE === '1';
+// ★[T779] 이 판이 재는 것은 **기본 세계**다 — 존에 기부 손잡이(`T769_DONATE`)를 물려주지 않는다(바깥 셸에 '0' 이 남아 있어도 기본 켬으로 뜬다).
+//   NPC 마을의 꺼내기 거절 말 — `membership._chiefNow` 의 그 한 줄(창설자 없음 = 사람 촌장 없음).
+const NPC_NO = /이 마을 곳간은 사람이 꺼내지 않는다/;
 let pass = 0, fail = 0;
 const shots = [];
 const ok = (c, m, extra) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (extra !== undefined && extra !== '' ? `  ${extra}` : '')); };
@@ -51,8 +53,10 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const procs = [];
 function boot(name, file, env) {
+  const e = Object.assign({}, process.env, env);
+  delete e.T769_DONATE;   // ★[T779] 기본 세계(위)
   const p = spawn(process.execPath, [path.join(ROOT, 'server', file)], {
-    cwd: ROOT, env: Object.assign({}, process.env, env), stdio: ['ignore', 'pipe', 'pipe'],
+    cwd: ROOT, env: e, stdio: ['ignore', 'pipe', 'pipe'],
   });
   p.stdout.on('data', (b) => { const s = String(b); if (/up on|시딩|마을 시뮬 준비/.test(s)) process.stdout.write(`  [${name}] ${s.trim().slice(0, 120)}\n`); });
   p.stderr.on('data', () => {});
@@ -67,7 +71,7 @@ async function waitHttp(url, tries = 900) {
 }
 
 (async () => {
-  console.log('\n=== 마을 소속 · 곳간 인출 실클라 E2E (Chromium) ===');
+  console.log('\n=== 마을 소속 · 곳간(꺼내기 촌장만 · 기부 누구나) 실클라 E2E (Chromium) ===');
   console.log(`    ★문턱을 MEMBER_N=${MEMBER_N} 으로 낮춰 켠다 — 이 검사가 재는 것은 통로다(머리 주석).`);
   const _central = boot('central', 'central.js', { PORT: String(CPORT), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });
   // ★★[T349 2026-09-21] 기동 증인은 **아이의 입**이다(정본 `fixture-boot.waitUp` · T344).
@@ -200,14 +204,13 @@ async function waitHttp(url, tries = 900) {
   ok(await warpTo(V, 30), `① ${V.name} 마을 중심 도착`);
   ok((await contrib()) === 0, `① 처음엔 누적 기여 0 (아래가 자명 통과가 아니다)`);
 
-  // ── ⑦ 자명 통과 방지 — 소속 전에는 곳간이 안 열린다 ────────────────────────
+  // ── ⑦ 자명 통과 방지 — 소속 전에도 곳간은 안 열린다(촌장 문) ────────────────────────
   {
     const before = await inv();
     await clearNotices();
     await say('/인출');
     const n = await notices();
-    if (T769) ok(n.some((t) => /사람이 꺼내지 않는다|촌장만/.test(t)), `⑦ [T769] 곳간은 촌장만 — 인출이 거절된다(NPC 마을 = 사람 촌장 없음)`, JSON.stringify(n.filter((t) => /사람이 꺼내지 않는다|촌장만|마을이 멀다/.test(t)).slice(-1)));
-    else ok(n.some((t) => /사람이 아니다/.test(t)), `⑦ 소속 전에는 인출이 거절된다`, JSON.stringify(n.filter((t) => /사람이 아니다|마을이 멀다/.test(t)).slice(-1)));
+    ok(n.some((t) => NPC_NO.test(t)), `⑦ 곳간은 촌장만 — \`/인출\` 이 거절된다(NPC 마을 = 사람 촌장 없음)`, JSON.stringify(n.filter((t) => /사람이 꺼내지 않는다|촌장만|마을이 멀다/.test(t)).slice(-1)));
     const after = await inv();
     ok((after.food | 0) === (before.food | 0), `⑦b 거절이 말뿐이 아니다 — 곡식이 안 들어왔다`, `food ${before.food | 0} → ${after.food | 0}`);
   }
@@ -261,62 +264,43 @@ async function waitHttp(url, tries = 900) {
     // ★"오늘부터" — **수락 대사에만** 있는 말이다(제안 대사는 "이만하면"). 둘을 구별 못 하면 자명 통과다.
     ok(n.some((t) => /오늘부터 자네는/.test(t)), `② "/소속" 한 줄로 마을 사람이 된다(새 클라 조건 0)`,
        JSON.stringify(n.filter((t) => /오늘부터|사람 —/.test(t)).slice(-1)));
-    if (T769) ok(!n.some((t) => /오늘부터 자네는/.test(t) && /곳간을 열어/.test(t)), `②b [T769] 받아들이는 말에 "곳간을 열어 두겠네"가 없다(꺼내기는 촌장만)`,
+    ok(!n.some((t) => /오늘부터 자네는/.test(t) && /곳간을 열어|\/인출/.test(t)), `②b 받아들이는 말에 "곳간을 열어 두겠네(/인출)"가 없다(꺼내기는 촌장만)`,
        JSON.stringify(n.filter((t) => /오늘부터/.test(t)).slice(-1)));
   }
 
-  // ── ③ 거래소 창의 소속 한 줄 · 인출 ─────────────────────────────────────────
-  //   ★[T769] 켬 — 기부 단추가 서도록 곳간이 받는 것 하나(나무)를 먼저 쥐여 준다(창이 그 짐으로 단추를 만든다)
-  if (T769) { await page.evaluate(() => window.__sendPrimary({ type: '__e2e_give', items: { wood: 3 } })); await sleep(900); }
+  // ── ③ 거래소 창의 소속 한 줄 · 촌장 줄 · 기부 ─────────────────────────────────────────
+  //   기부 단추가 서도록 곳간이 받는 것 하나(나무)를 먼저 쥐여 준다(창이 그 짐으로 단추를 만든다)
+  await page.evaluate(() => window.__sendPrimary({ type: '__e2e_give', items: { wood: 3 } })); await sleep(900);
   const t1 = await openTrade();
   ok(t1.open, `③ 거래소 창이 열린다`);
-  if (T769) {
-    ok(/사람/.test(t1.body) && /촌장만/.test(t1.body) && !/곳간 몫/.test(t1.body), `③b [T769] 소속 한 줄 + "곳간 꺼내기 — 촌장만"(한도 말 없음 · 새 패널 0)`,
-       JSON.stringify((t1.body.match(/[^\n]*촌장만[^\n]{0,20}/) || [''])[0]));
-    ok(!!t1.member && t1.member.vid === V.id && t1.member.limit == null && Array.isArray(t1.member.donate), `③c [T769] 그 줄의 값은 서버가 준 것이다(한도 칸 null · 기부 품목 표)`,
-       t1.member ? `한도 ${t1.member.limit} · 기부 품목 ${(t1.member.donate || []).length} · 촌장 ${t1.member.chief}` : 'X');
-    ok(!t1.hasBtn && !!t1.member && t1.member.chief !== true, `③d [T769] 촌장이 아니면 꺼내는 단추가 없다`);
-    const dnBtn = await page.$('[data-dn="wood"]');
-    ok(!!dnBtn && /받는 것 없음/.test(t1.body), `③e [T769] 같은 창에 "곳간에 기부 — 받는 것 없음" 줄과 기부 단추가 있다`,
-       JSON.stringify((t1.body.match(/[^\n]*받는 것 없음[^\n]{0,30}/) || [''])[0]));
-    await snap('mb-02-panel');
+  ok(/사람/.test(t1.body) && /곳간 꺼내기 — 촌장만/.test(t1.body) && /촌장이 아니다/.test(t1.body) && !/곳간 몫/.test(t1.body),
+     `③b 소속 한 줄 + "곳간 꺼내기 — 촌장만 · 촌장이 아니다"(한도 말 없음 · 새 패널 0)`,
+     JSON.stringify((t1.body.match(/[^\n]*촌장만[^\n]{0,20}/) || [''])[0]));
+  ok(!!t1.member && t1.member.vid === V.id && t1.member.chief === false && !('limit' in t1.member) && !('remain' in t1.member) && Array.isArray(t1.member.donate),
+     `③c 그 줄의 값은 서버가 준 것이다(촌장 false · 한도 칸 없음 · 기부 품목 표)`,
+     t1.member ? `촌장 ${t1.member.chief} · 기부 품목 ${(t1.member.donate || []).length} · 칸 ${Object.keys(t1.member).sort().join(',')}` : 'X');
+  ok(!t1.hasBtn, `③d 촌장이 아니면 꺼내는 단추가 없다`);
+  const dnBtn = await page.$('[data-dn="wood"]');
+  ok(!!dnBtn && /곳간에 기부 — 받는 것 없음/.test(t1.body), `③e 같은 창에 "곳간에 기부 — 받는 것 없음" 줄과 기부 단추가 있다`,
+     JSON.stringify((t1.body.match(/[^\n]*받는 것 없음[^\n]{0,30}/) || [''])[0]));
+  await snap('mb-02-panel');
+  {
     const k0 = await contrib(), iv0 = await inv();
     await clearNotices();
     if (dnBtn) await dnBtn.click();
     let iv1 = iv0;
     for (let i = 0; i < 20; i++) { await sleep(300); iv1 = await inv(); if ((iv1.wood | 0) < (iv0.wood | 0)) break; }
     const k1 = await contrib();
-    ok((iv1.wood | 0) < (iv0.wood | 0), `③f [T769] 눌렀더니 **짐이 실제로 곳간으로 갔다**`, `wood ${iv0.wood | 0} → ${iv1.wood | 0}`);
+    ok((iv1.wood | 0) < (iv0.wood | 0), `③f 눌렀더니 **짐이 실제로 곳간으로 갔다**`, `wood ${iv0.wood | 0} → ${iv1.wood | 0}`);
     let dn = '';
     for (let i = 0; i < 10 && !dn; i++) { dn = (await notices()).find((t) => /기부했다/.test(t)) || ''; if (!dn) await sleep(300); }
-    ok(/기부했다/.test(dn) && /받는 것 없음/.test(dn), `③g [T769] 결과 알림 — "기부했다 … 받는 것 없음"`, JSON.stringify(dn));
-    ok(k1 === k0, `③h [T769] 기부는 기여를 안 올린다(기여는 게시판 납품만 센다)`, `${k0} → ${k1}`);
-    await snap('mb-03-withdrawn');
-  } else {
-  ok(/사람/.test(t1.body) && /곳간 몫/.test(t1.body), `③b 소속 한 줄이 **화면에 그려진다**(새 패널 0)`,
-     // ★[T84] 증거 줄을 이모지로 자르지 않는다 — 클라 판의 이모지는 T66 이 지웠고, 그러면 이 증거가 빈다.
-     JSON.stringify((t1.body.match(/[^\n]*사람[^\n]{0,40}/) || [''])[0]));
-  ok(!!t1.member && t1.member.vid === V.id, `③c 그 줄의 값은 서버가 준 것이다(클라 재계산 0)`,
-     t1.member ? `한도 ${t1.member.limit} · 남은 몫 ${t1.member.remain} · 곳간 ${t1.member.stock}` : 'X');
-  ok(t1.member && t1.member.limit > 0, `③d 상황 assert — 오늘 한도가 0이 아니다(아래가 자명 통과가 아니다)`);
-  ok(t1.hasBtn, `③e 곳간에서 꺼내는 버튼이 그 줄에 있다`);
-  await snap('mb-02-panel');
-  const invB = await inv();
-  await page.click('#mbWd');
-  await sleep(1600);
-  const invA = await inv();
-  ok((invA.food | 0) > (invB.food | 0), `③f 눌렀더니 **곡식이 실제로 손에 들어왔다**`,
-     `food ${invB.food | 0} → ${invA.food | 0}`);
-  {
-    const n = await notices();
-    ok(n.some((t) => /곳간에서/.test(t) && /꺼냈다/.test(t)), `③g 결과가 화면 알림으로 돌아온다`, JSON.stringify(n.filter((t) => /꺼냈다/.test(t)).slice(-1)));
+    ok(/기부했다/.test(dn) && /받는 것 없음/.test(dn), `③g 결과 알림 — "기부했다 … 받는 것 없음"`, JSON.stringify(dn));
+    ok(k1 === k0, `③h 기부는 기여를 안 올린다(기여는 게시판 납품만 센다)`, `${k0} → ${k1}`);
   }
-  await snap('mb-03-withdrawn');
-  }
+  await snap('mb-03-donated');
 
-  // ── ④ 한도 — 오늘 몫을 다 쓰면 거절 ─────────────────────────────────────────
-  //   ★**날을 얼린다.** 이 존은 검사용으로 하루가 0.6초다 — 안 얼리면 인출할 때마다 날이 바뀌어
-  //     한도가 매번 새로 열리고, 이 절은 "한도가 없다"를 보게 된다(재는 것이 한도가 아니라 시계다).
+  // ── ④ 마을 사람이 되어도 꺼내기는 촌장만 ─────────────────────────────────────────
+  //   ★**날을 얼린다**(옛 절 그대로). 이 존은 검사용으로 하루가 0.6초다 — 얼려 두면 브리핑 · 게시판 알림이 덜 밀려든다.
   await clearNotices();
   // ★★[T214 2026-09-12] **답이 올 때까지** 기다린다 — 정해진 초를 자고 한 번 보지 않는다(족보 ⑩).
   //   러너 빨강 실측: `④-0 … ""` — 서버 회신이 900ms 안에 안 왔을 뿐이고 단독이면 25/0 이다.
@@ -336,24 +320,13 @@ async function waitHttp(url, tries = 900) {
     ok(!!froze, `④-0 게임일 정지(상호작용 구간) — 여기부터 시계가 검사를 앞지르지 않는다`,
        `${JSON.stringify(froze.slice(0, 60))} · ${Date.now() - t0}ms 만에`);
   }
-  if (T769) {
-    //   ★[T769] 켬 — 한도가 없다(꺼내기는 촌장만). 마을 사람이 된 뒤에도 `/인출` 은 촌장 판정이 막고, `/곳간` 형편 줄은 그 말을 한다.
+  {
     let refused = '';
-    for (let i = 0; i < 6 && !refused; i++) { await clearNotices(); await say('/인출'); refused = (await notices()).find((t) => /사람이 꺼내지 않는다|촌장만/.test(t)) || ''; }
-    ok(!!refused, `④ [T769] 마을 사람이 되어도 꺼내기는 촌장만 — 거절된다(한도 대신 촌장 판정)`, JSON.stringify(refused));
+    for (let i = 0; i < 6 && !refused; i++) { await clearNotices(); await say('/인출'); refused = (await notices()).find((t) => NPC_NO.test(t)) || ''; }
+    ok(!!refused, `④ 마을 사람이 되어도 꺼내기는 촌장만 — \`/인출\` 이 거절된다(옛 오늘 몫 갈래 없음)`, JSON.stringify(refused));
     let look = '';
     for (let i = 0; i < 6 && !look; i++) { await clearNotices(); await say('/곳간'); look = (await notices()).find((t) => /꺼내기는 촌장만/.test(t)) || ''; }
-    ok(!!look && /기부는 누구나/.test(look) && !/남은 몫/.test(look), `④b [T769] "/곳간" 형편 한 줄 — 꺼내기 촌장만 · 기부 누구나 · 한도 말 없음`, JSON.stringify(look));
-  } else {
-    let refused = '';
-    for (let i = 0; i < 12 && !refused; i++) {
-      await clearNotices();
-      await say('/인출');
-      const n = await notices();
-      refused = n.find((t) => /다 꺼냈다/.test(t)) || '';
-    }
-    ok(!!refused, `④ 오늘 몫을 다 쓰면 거절된다 — 한도가 살아 있다`, JSON.stringify(refused));
-    if (!refused) console.log(`    (진단) 알림 전체: ${JSON.stringify(await page.evaluate(() => (window.__notices || []).slice(-6)))}`);
+    ok(!!look && /기부는 누구나/.test(look) && !/남은 몫|누적 기여/.test(look), `④b "/곳간" 형편 한 줄 — 꺼내기 촌장만 · 기부 누구나 · 한도 말 없음`, JSON.stringify(look));
   }
 
   // ── ⑤ 재접속 — 소속이 몸을 따라간다 ────────────────────────────────────────
@@ -387,8 +360,7 @@ async function waitHttp(url, tries = 900) {
     await clearNotices();
     await say('/인출');
     const n2 = await notices();
-    if (T769) ok(n2.some((t) => /사람이 꺼내지 않는다|촌장만/.test(t)), `⑥c [T769] 나간 뒤에도 곳간은 촌장만 — 거절된다`, JSON.stringify(n2.filter((t) => /사람이 꺼내지 않는다|촌장만/.test(t)).slice(-1)));
-    else ok(n2.some((t) => /사람이 아니다/.test(t)), `⑥c 나간 뒤엔 곳간이 다시 닫힌다`, JSON.stringify(n2.filter((t) => /사람이 아니다/.test(t)).slice(-1)));
+    ok(n2.some((t) => NPC_NO.test(t)), `⑥c 나간 뒤에도 곳간은 촌장만 — 거절된다`, JSON.stringify(n2.filter((t) => /사람이 꺼내지 않는다|촌장만/.test(t)).slice(-1)));
   }
   await snap('mb-04-left');
 

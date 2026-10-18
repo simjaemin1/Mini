@@ -32,7 +32,7 @@ if (process.env.T768_SUB === 'zone') {
   process.env.PORT = String(42700 + (process.pid % 90));
   process.env.DB_PATH = TMP;
   process.env.ENABLE_VILLAGES = '0'; process.env.ENABLE_WILDLIFE = '0'; process.env.ENABLE_BANDITS = '0'; process.env.ENABLE_ROADS = '0';
-  process.env.MEMBER_WD_MIN = '100000'; process.env.MEMBER_WD_FRAC = '1';   // 한도 손잡이만(곳간 · 환산 · 나이는 그대로)
+  //   ★[T779] 옛 한도 손잡이(`MEMBER_WD_*`)는 걷었다 — 꺼내기는 촌장 · 한도 없음(꺼내는 사람을 촌장 표지로 앉힌다 — 아래 `asChief`).
   const _log = console.log; console.log = () => {}; console.warn = () => {}; console.error = () => {};
   const out = { on: null, errs: [] };
   try {
@@ -81,6 +81,8 @@ if (process.env.T768_SUB === 'zone') {
       const led = (res) => JSON.parse(JSON.stringify(GL.ledger(VIL.econ, res || RES)));
       const hall = (p, want) => { H.buildings.get(HALL).data.owner = p.playerId; const s0 = +VIL.econ.storage[RES] || 0; try { H.tryVillageDeposit(p, HALL, want); } catch (e) { out.errs.push('hall:' + String(e && e.message || e)); } return R6((+VIL.econ.storage[RES] || 0) - s0); };
       const a0 = H.Lots.stats().approx;
+      //   ★[T769 · T779] 꺼내기는 촌장만 — 진짜 곳간 문에 꺼내는 사람을 촌장(창설자 표지)으로 앉힌다(회관 `owner` 와 같은 꼴 · test-granary-age 그 줄)
+      const asChief = (p) => { VIL.econ.founder = p.playerId; };
 
       // ── A. 회관 넣기 곰고기 8(f 0.6 · 사흘 전) → 꺼내기(대표 품목 문) — econ 몫(새것)은 뒤에 ─────────────
       VIL.econ.storage[RES] = 0; VIL.econ.storage[RES] = 40;
@@ -88,7 +90,7 @@ if (process.env.T768_SUB === 'zone') {
       out.Adep = hall(a, { meat_bear: 8 });
       out.Aled = led();
       const g0 = +a.inventory.meat_game || 0, b0 = +a.inventory.meat_bear || 0, s0 = +VIL.econ.storage[RES];
-      H.tryVillageWithdraw(a, VID, RES, 2);
+      asChief(a); H.tryVillageWithdraw(a, VID, RES, 2);
       out.A = { wdU: R6(s0 - VIL.econ.storage[RES]), bear: lotsOf(a, 'meat_bear'), game: lotsOf(a, 'meat_game'), invBear: +a.inventory.meat_bear || 0, invGame: +a.inventory.meat_game || 0, g0, b0,
         note: notes[notes.length - 1] || '', ledAfter: led() };
 
@@ -121,7 +123,7 @@ if (process.env.T768_SUB === 'zone') {
       out.Dled = led();
       out.E = { dump: GL.dump(VIL.econ) };   // 저장 줄 — 품목 실은 레코드가 있을 때(꺼내기 전)
       const d = mkP(); const sD = +VIL.econ.storage[RES];
-      H.tryVillageWithdraw(d, VID, RES, 6);
+      asChief(d); H.tryVillageWithdraw(d, VID, RES, 6);
       out.D = { wdU: R6(sD - VIL.econ.storage[RES]), bear: lotsOf(d, 'meat_bear'), game: lotsOf(d, 'meat_game'), invBear: +d.inventory.meat_bear || 0, invGame: +d.inventory.meat_game || 0, note: notes[notes.length - 1] || '' };
 
       out.check = GL.check(vils.map((v) => v.econ));

@@ -32,8 +32,7 @@ if (process.env.T725_SUB === 'zone') {
   process.env.PORT = String(42700 + (process.pid % 90));
   process.env.DB_PATH = TMP;
   process.env.ENABLE_VILLAGES = '0'; process.env.ENABLE_WILDLIFE = '0'; process.env.ENABLE_BANDITS = '0'; process.env.ENABLE_ROADS = '0';
-  process.env.MEMBER_WD_MIN = '100000';   // ★한도 손잡이만 — 넣은 만큼 다 꺼내 보려고(곳간·환산은 그대로)
-  process.env.MEMBER_WD_FRAC = '1';
+  //   ★[T779] 옛 한도 손잡이(`MEMBER_WD_*` — 넣은 만큼 다 꺼내 보려고 풀던 둘)는 걷었다 — 꺼내기는 촌장 · 한도 없음.
   const _log = console.log; console.log = () => {}; console.warn = () => {}; console.error = () => {};
   const Zone = require(SV('zone.js'));
   const H = Zone.__testBind();
@@ -97,7 +96,7 @@ if (process.env.T725_SUB === 'zone') {
       // 꺼내기 — 넣은 단위의 정수 몫 전부(진짜 문 · 한도 손잡이만 넓힘)
       const q = Math.floor(du / RATE + 1e-9);
       const before = rep ? Math.floor(+p.inventory[rep] || 0) : 0;
-      if (H.T769) VIL.econ.founder = p.playerId;   // ★[T769] 켬 = 꺼내기는 촌장만 — 꺼내는 사람을 촌장(창설자 표지)으로 앉힌다(회관 `owner` 와 같은 꼴)
+      VIL.econ.founder = p.playerId;   // ★[T769 · T779] 꺼내기는 촌장만 — 꺼내는 사람을 촌장(창설자 표지)으로 앉힌다(회관 `owner` 와 같은 꼴)
       if (q >= 1) H.tryVillageWithdraw(p, VID, res, q);
       const got = rep ? Math.floor(+p.inventory[rep] || 0) - before : 0;
       const leftU = +(+VIL.econ.storage[res] || 0).toFixed(6);
