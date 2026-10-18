@@ -1935,8 +1935,9 @@
   let MT3_CV0 = 128;                   // GL 캔버스 초깃값. 띠가 크면 128 배수로 자란다
   let MT3_HTOP = MT3_HMAX * 1.55;    // 실제 최대 높이 상한(수집 여유용). 실측 최대 48.8m
   // ★★[T770 2026-10-16] 절단 행 구간의 아래 끝에 **꼭짓점 높이 최솟값**(음수 = Catmull-Rom 밑돌기)을 넣는다 — `_mt3CutRows` ·
-  //   손잡이 `T770_CUT_HLO`(URL `?T770_CUT_HLO=1` · 기본 끔 = 종전 바이트 · 읽기 `__mtCutN().hlo`).
-  const MT3_CUT_HLO = (() => { try { return new URLSearchParams(location.search).get('T770_CUT_HLO') === '1' ? 1 : 0; } catch (e) { return 0; } })();
+  //   손잡이 `T770_CUT_HLO` · 읽기 `__mtCutN().hlo`.
+  //   ★[T783 2026-10-18] **켬이 기본**이다 — 끄는 것은 URL `?T770_CUT_HLO=0` 만(= 종전 바이트). T770 은 `=1` 만 켰다.
+  const MT3_CUT_HLO = (() => { try { return new URLSearchParams(location.search).get('T770_CUT_HLO') !== '0' ? 1 : 0; } catch (e) { return 1; } })();
   let MT3_DUAL = 1;                    // ⑶ 마스크 이원화 — 0 이면 옛 판(파괴가 높이를 낮춘다)
   // ★[재민 확정 2026-08-25] 자락 톱니 **1안 채택**(경계선 잡음). 0=옛 현행 · 2=알파 페더(기각).
   //   기각 근거: 2안은 judge-grid 세분6 대역 봉우리 8.12 — **새 주기를 만든다**.
