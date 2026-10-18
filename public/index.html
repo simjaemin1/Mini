@@ -82,7 +82,7 @@
       <div class="sb-icon" data-side="trade" data-ico="trade"><span class="sb-emo"></span><span class="sb-hint">거래소 (Shift+T)</span></div>
       <div class="sb-icon" data-side="skills" data-ico="skill"><span class="sb-emo"></span><span class="sb-hint">스킬 (P)</span></div>
       <div class="sb-icon" data-side="claims" data-ico="claim"><span class="sb-emo"></span><span class="sb-hint">사유지 (Y)</span></div>
-      <div class="sb-icon" data-side="tribe" data-ico="guild"><span class="sb-emo"></span><span class="sb-hint">길드 (N)</span></div>
+      <div class="sb-icon" data-side="tribe" data-ico="guild"><span class="sb-emo"></span><span class="sb-hint">마을 (N)</span></div>
       <div class="sb-icon" data-side="market" data-ico="price"><span class="sb-emo"></span><span class="sb-hint">시세 (Q)</span></div>
       <div class="sb-icon" data-side="chronicle" data-ico="scroll"><span class="sb-emo"></span><span class="sb-hint">연대기 (Shift+J)</span></div>
     </div>
@@ -195,11 +195,11 @@
         <button data-action="furnace_start" data-kind="bloomery" data-era-tech="bloomery" style="display:none">괴련로 터 잡기</button>
         <button data-action="kiln_start">숯가마 터 잡기</button>
         <button data-action="well_start" style="display:none" title="임업4·농촌10·광산1·임업1 마을 땅의 내 사유지 2×2 — 곡괭이로 파고 자갈 20 · 20 으로 두 단 벽">우물 터 잡기</button>
-        <button data-action="village_start" title="내 사유지/길드 사유지 안 2×2 — 완공하면 마을이 선다(인구 0). 곳간에 식량을 채우면 사람이 깃든다">마을 회관 터 잡기</button>
+        <button data-action="village_start" title="내 사유지/마을 땅 안 2×2 — 완공하면 마을이 선다(인구 0). 곳간에 식량을 채우면 사람이 깃든다">마을 회관 터 잡기</button>
         <button data-action="psite_request" title="마을 영토 안을 클릭 — 그 마을 크루가 지어 준다(재료 선납)">마을에 집 의뢰</button>
         <button data-action="harvest">수확</button>
         <button data-action="tame_feed">먹이</button>
-        <button data-action="tribe">길드 (N)</button>
+        <button data-action="tribe">마을 (N)</button>
         <button data-action="pvp_toggle">PvP (V)</button>
         <button data-action="cook">요리 (R)</button>
         <button data-action="market">거래소 (M)</button>
@@ -259,7 +259,7 @@
     <div id="tribePanel" class="modal hidden">
       <div class="modal-card craft-card">
         <div class="modal-head pane-head">
-          <span data-ico="guild">길드</span>
+          <span data-ico="guild">마을</span>
           <button id="tribeCloseBtn">닫기</button>
         </div>
         <div class="modal-body">
@@ -287,7 +287,7 @@
         <div class="modal-head pane-head"><span data-ico="heart">다운</span></div>
         <div class="modal-body">
           <div class="down-status" id="downStatusText">사망. 부활 위치를 선택하세요.</div>
-          <div class="down-rescue-hint" id="downRescueHint">길드원이 R 키로 구조 가능합니다 (남은 시간: <b id="downTimer">10</b>초)</div>
+          <div class="down-rescue-hint" id="downRescueHint">다른 사람이 R 키로 구조할 수 있습니다 (남은 시간: <b id="downTimer">10</b>초)</div>
           <div class="down-options" id="downOptions"></div>
           <div class="down-foot">고르지 않으면 구조 창이 끝날 때 정해진다(마을 안 = 쉼터로 이송 · 야생 = 정신을 잃는다). 고르면 기다리지 않는다 — 깨어나는 데는 몇 분이 걸린다.</div>
         </div>

@@ -1421,10 +1421,10 @@ const server = http.createServer(async (req, res) => {
       const playerId = data.player_id;
       const name = (data.name || '').trim().slice(0, 20);
       if (!playerId || playerId.startsWith('anon_')) return jsonResp(res, 400, { error: '로그인 필요' });
-      if (!name) return jsonResp(res, 400, { error: '길드 이름 필요' });
+      if (!name) return jsonResp(res, 400, { error: '마을 이름 필요' });
       const p = stmtGetPlayer.get(playerId);
       if (!p) return jsonResp(res, 404, { error: 'player not found' });
-      if (p.tribe_id) return jsonResp(res, 400, { error: '이미 길드에 소속됨 — 먼저 탈퇴' });
+      if (p.tribe_id) return jsonResp(res, 400, { error: '이미 마을 사람이다 — 먼저 탈퇴' });
       try {
         const r = db.prepare('INSERT INTO tribes (name, leader_id, created_at) VALUES (?, ?, ?)').run(name, playerId, Date.now());
         const newId = Number(r.lastInsertRowid);
@@ -1432,7 +1432,7 @@ const server = http.createServer(async (req, res) => {
         console.log(`[central] 길드 생성: ${name} (id=${newId}) leader=${playerId}`);
         return jsonResp(res, 200, { ok: true, tribe_id: newId, name });
       } catch (e) {
-        return jsonResp(res, 400, { error: '같은 이름 길드 존재 (' + e.message + ')' });
+        return jsonResp(res, 400, { error: '같은 이름 마을 있음 (' + e.message + ')' });
       }
     }
     if (req.url === '/tribe/join' && req.method === 'POST') {
@@ -1444,13 +1444,13 @@ const server = http.createServer(async (req, res) => {
       if (!playerId || playerId.startsWith('anon_')) return jsonResp(res, 400, { error: '로그인 필요' });
       const p = stmtGetPlayer.get(playerId);
       if (!p) return jsonResp(res, 404, { error: 'player not found' });
-      if (p.tribe_id) return jsonResp(res, 400, { error: '이미 길드에 소속됨' });
+      if (p.tribe_id) return jsonResp(res, 400, { error: '이미 마을 사람이다' });
       const t = db.prepare('SELECT * FROM tribes WHERE id = ?').get(tribeId);
-      if (!t) return jsonResp(res, 404, { error: '길드 없음' });
+      if (!t) return jsonResp(res, 404, { error: '그런 마을 없음' });
       // ★★[T128] 승인제 — **초대제 길드는 부름 없이는 못 든다.** 열린 길드는 종전 그대로다
       //   (기본값이 'open' 이라 이미 있는 길드의 행동이 한 줄도 안 바뀐다).
       if (tribeClosed(t) && !stmtInvHas.get(tribeId, playerId)) {
-        return jsonResp(res, 200, { ok: false, reason: 'invite_only', error: '초대를 받아야 드는 길드다' });
+        return jsonResp(res, 200, { ok: false, reason: 'invite_only', error: '부름을 받아야 드는 마을이다' });
       }
       db.prepare('UPDATE players SET tribe_id = ? WHERE player_id = ?').run(tribeId, playerId);
       stmtInvDel.run(tribeId, playerId);          // 부름으로 들어왔으면 그 문은 치운다
@@ -1474,7 +1474,7 @@ const server = http.createServer(async (req, res) => {
       const playerId = data.player_id;
       if (!playerId || playerId.startsWith('anon_')) return jsonResp(res, 400, { error: '로그인 필요' });
       const p = stmtGetPlayer.get(playerId);
-      if (!p || !p.tribe_id) return jsonResp(res, 400, { error: '길드 소속 아님' });
+      if (!p || !p.tribe_id) return jsonResp(res, 400, { error: '마을 사람이 아니다' });
       const tribeId = p.tribe_id;
       db.prepare('UPDATE players SET tribe_id = NULL WHERE player_id = ?').run(playerId);
       // leader가 탈퇴하고 남은 멤버 없으면 부족 자체 삭제

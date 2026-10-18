@@ -123,9 +123,10 @@ const ENABLED = process.env.ENABLE_VILLAGES !== '0'; // 기본 켜짐. '0'만 �
 //   `test-fish-act` 73 과 `test-move-soa ④` 가 그 바이트 동일을 건다. 머리에 두는 이유는 TDZ 다(T324).
 const { seedRand: _t340Rng, pidHash: _pidHash, seedOf: _seedOf, makeStream: _makeStream } = require('./seed-rand');
 // ★★[T785 2026-10-18 · 재민 10-18 ⓑ "길드 = 마을"] 마을이 유일한 무리 — 촌장 · 곳간 문 · 가입 문 · 소개 · 전쟁은 **회관 행의 칸**(`server/village-kin.js`).
-//   손잡이 `T785_VILLAGE_ONLY` '1' 만 켬 · 끔 = main 바이트(아래 T785 줄은 전부 `T785 &&` · 끔이면 회관 행에 칸을 안 쓰고 `_tribeId` 도 종전 그대로).
-const T785 = process.env.T785_VILLAGE_ONLY === '1';
+//   손잡이 `T785_VILLAGE_ONLY` — ★[T787] 켬 기본(`'0'` 만 끔 · 끔이면 회관 행에 칸을 안 쓰고 `_tribeId` 도 옛 그대로).
+//   식은 `village-kin.js` 의 `ON` 하나(사본 0 — T785 땐 같은 식 두 벌이었다).
 const VillageKin = require('./village-kin');
+const T785 = VillageKin.ON;
 const TB = require('./tick-budget');   // ★[T687] 한 틱 공용 예산(손잡이 `T687_SHARED_BUDGET` · 끔 = 문마다 제 예산 그대로)
 //   ★[T687 ②] 같은 손잡이로 하루 마감 통짜를 더 잘게 — 생활층 한 마을의 갈래 경계 쉼표 · 사냥 밴드 짓기 뒤 · 인구 재동기 마을 하나씩(차례 그대로 · 끔 = 종전 글자)
 const T687_ON = TB.ON;

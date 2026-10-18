@@ -7,7 +7,8 @@
 // ★★이 하네스가 재는 것 — 순서가 곧 카드다
 //   ⓪ **검사 상황 assert** — 랩이 라이브와 같은 것을 보고 있나(곳간에 실물이 있고, 게이트가 살아 있나).
 //   ① 전이 게이트: 11회는 거절 · 12회에 제안 · 수락하면 소속.
-//   ② 직교(M-1): 길드 가입·탈퇴가 소속을 건드리지 않는다(양방향).
+//   ② ★[T787] 무리는 마을 하나(길드 = 마을 · 재민 10-18 ⓑ — T11 의 M-1 "직교"는 PM 오판으로 걷혔다):
+//      소속의 정본은 몸 `member` 하나 · 옛 길드 칸(`tribeId`)은 소속을 정하지도 바꾸지도 못한다 · 켬 기본 · 길드 → 마을 다리 0.
 //   ③ 한도: 기여에 대해 **단조** · 곳간이 비면 줄어든다(자명 통과 금지).
 //   ④ 거절: 비소속 거절 · 한도 초과는 **깎여서** 나가고 그 다음은 0 · 멀면 거절.
 //   ⑤ **사본 0**: 곳간 차감이 정본 장부에서 일어나고, 납품의 **정확한 역연산**이다
@@ -126,18 +127,28 @@ console.log('\n① 전이 — 누적 기여 12회에 촌장이 권한다');
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-console.log('\n② 직교 — 길드와 마을은 서로를 건드리지 않는다 (M-1)');
+console.log('\n② ★[T787] 무리는 마을 하나 — 길드 = 마을(재민 10-18 ⓑ · M-1 "직교"는 걷혔다)');
 {
-  const p = mkPlayer('mb_orth');
+  //   ⓐ 켬 기본 — 손잡이를 안 주면 마을이 유일한 무리다('0' 만 옛 길). 이 프로세스의 env 와 무관하게 **자식으로** 잰다.
+  const { execFileSync } = require('child_process');
+  const onOf = (v) => { const env = Object.assign({}, process.env); if (v === undefined) delete env.T785_VILLAGE_ONLY; else env.T785_VILLAGE_ONLY = v;
+    try { return execFileSync(process.execPath, ['-e', "process.stdout.write(String(require('./server/village-kin').ON))"], { cwd: path.join(__dirname, '..'), env, encoding: 'utf8' }).trim(); } catch (e) { return 'err'; } };
+  ok(onOf(undefined) === 'true', `ⓐ 손잡이 없음 = **켬**(마을이 유일한 무리)`, onOf(undefined));
+  ok(onOf('0') === 'false' && onOf('1') === 'true', `ⓐ' '0' 만 끔(옛 길드 길 · 되돌림) · '1' 켬`, `${onOf('0')} · ${onOf('1')}`);
+  //   ⓑ 소속의 정본은 몸 \`member\` 하나 — 옛 길드 칸이 있어도 없어도 소속 판정은 같다(옛 칸은 소속을 **정하지 못한다**)
+  const p = mkPlayer('mb_one');
   deliver(p, M.CFG.N_MEMBER);
-  p.tribeId = 'guild_A'; p.tribeName = '길드A';       // 길드 가입 = 소속 판정에 영향 없다
-  ok(M.accept(p, VID).ok, `길드원이어도 마을 사람이 될 수 있다`);
-  p.tribeId = null; p.tribeName = null;               // 길드 탈퇴
-  ok(M.isMemberHere(p, VID), `길드를 나가도 마을 소속은 그대로다`);
+  p.tribeId = 'guild_A'; p.tribeName = '길드A';       // 옛 몸 칸(켬이면 존이 런타임에 안 싣는다 — 여기선 일부러 얹어 본다)
+  ok(M.accept(p, VID).ok && M.isMemberHere(p, VID), `ⓑ 옛 길드 칸이 있어도 소속은 기여 문 하나로 선다`);
+  p.tribeId = null; p.tribeName = null;
+  ok(M.isMemberHere(p, VID), `ⓑ' 옛 칸을 지워도 소속은 그대로 — 소속을 바꾸는 문은 마을 문(가입 · 탈퇴 · 추방)뿐`);
   const r = M.leave(p);
-  ok(r.ok, `마을을 나간다`);
-  p.tribeId = 'guild_A';
-  ok(!M.memberOf(p) && p.tribeId === 'guild_A', `마을을 나가도 길드는 그대로다`);
+  ok(r.ok && !M.memberOf(p), `ⓑ" 마을을 나가면 무리가 없다(따로 남는 길드가 없다)`);
+  //   ⓒ 길드 → 마을 다리 0(켬) — 존이 길드원을 마을에 앉히지 않는다 · 창설이 길드를 싣지 않는다 · 사람 몸에 길드가 없다(소스로 못 박는다)
+  const zsrc = fs.readFileSync(path.join(__dirname, '..', 'server', 'zone.js'), 'utf8');
+  ok(/if \(!VillageKin\.ON\) \{ try \{ Membership\.seatGuildMember\(player\)/.test(zsrc), `ⓒ 켬 — 길드원 앉히기(D2) 안 부른다`);
+  ok(/tribeId: VillageKin\.ON \? null : \(ctx\.tribeId \|\| player\.tribeId \|\| null\)/.test(zsrc), `ⓒ' 켬 — 창설이 길드를 싣지 않는다(D1)`);
+  ok(/tribeId: VillageKin\.ON \? null : initTribeId/.test(zsrc), `ⓒ" 켬 — 사람 몸의 런타임 길드 칸 = null(옛 칸은 \`_tribe0\` 로 실어 나르기만)`);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

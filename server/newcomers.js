@@ -98,7 +98,7 @@ function eligibility(vid) {
   else if (out.foodDays < CFG.MIN_FOOD_DAYS) why.push(`곳간이 얇다 (자립 ${out.foodDays}일)`);
   // ② 길드 벌점 — 길드가 없으면 벌점도 없다(무길드를 죄로 삼지 않는다)
   const r = _remote.get(vid | 0) || null;
-  if (r && r.vp != null) { out.vp = +r.vp.toFixed(1); if (r.vp >= CFG.MAX_GUILD_VP) why.push(`길드 벌점이 높다 (${out.vp})`); }
+  if (r && r.vp != null) { out.vp = +r.vp.toFixed(1); if (r.vp >= CFG.MAX_GUILD_VP) why.push(`명성 벌점이 높다 (${out.vp})`); }
   // ③ 최근 활동 — 창설자가 얼마나 안 왔나
   if (r && r.idleDays != null) {
     out.idleDays = +r.idleDays.toFixed(1);
@@ -192,7 +192,7 @@ function handleChat(player, text) {
   const e = listable(vid);
   say(`🏘️ 이방인 받기 ${e.on ? '켬' : '끔'}${e.listed ? ' · 시작 지도에 올라 있다' : ''}`
     + ` — 인구 ${e.pop} · 자립 ${e.foodDays}일`
-    + (e.vp != null ? ` · 길드 벌점 ${e.vp}` : '')
+    + (e.vp != null ? ` · 명성 벌점 ${e.vp}` : '')
     + (e.idleDays != null ? ` · 촌장 ${Math.round(e.idleDays)}일 전` : '')
     + (e.ok ? '' : ` · 아직: ${e.why.join(' · ')}`));
   return true;

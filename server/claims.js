@@ -219,17 +219,17 @@ function onPlayerActive(player) {
 // ── 남의 땅을 가져가기 ───────────────────────────────────────────────────────
 //   `pref` = `held_by` 가 가리키는 쪽만 · `free` = 아무나. 그 밖에는 아무도 못 가져간다.
 function takeableBy(player, c) {
-  if (!c || !isOwnKind(c)) return { ok: false, why: '길드 영토는 개인이 가져갈 수 없다' };
+  if (!c || !isOwnKind(c)) return { ok: false, why: '마을 땅은 개인이 가져갈 수 없다' };
   if (c.ownerPid === player.playerId) return { ok: false, why: '이미 내 땅이다' };
   const st = c.state || 'active';
   if (st === 'free') return { ok: true, why: '개방된 땅' };
   if (st !== 'pref') return { ok: false, why: st === 'held' ? '주인이 맡겨 둔 땅이다(보관 중)' : '남의 사유지다' };
   const hb = String(c.heldBy || '');
-  if (hb.startsWith('guild:') && _KIN_ON) return { ok: false, why: '맡아 둔 길드가 이제 없다 — 개방을 기다려야 한다' };   // ★[T786 C14] 켬 — 옛 길드 보관 줄(새로는 안 생긴다)
+  if (hb.startsWith('guild:') && _KIN_ON) return { ok: false, why: '옛 보관 줄은 이제 없다 — 개방을 기다려야 한다' };   // ★[T786 C14] 켬 — 옛 길드 보관 줄(새로는 안 생긴다)
   if (hb.startsWith('guild:')) {
     const gid = hb.slice(6);
     return (player.tribeId && String(player.tribeId) === gid)
-      ? { ok: true, why: '같은 길드의 우선권' } : { ok: false, why: '그 길드 사람만 가져갈 수 있다' };
+      ? { ok: true, why: '같은 마을의 우선권' } : { ok: false, why: '그 마을 사람만 가져갈 수 있다' };
   }
   if (hb.startsWith('village:')) {
     const vid = hb.slice(8) | 0;

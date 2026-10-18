@@ -9,6 +9,11 @@
 // ★★브라우저를 안 띄우는 이유는 `e2e-friends`(T115) 머리말과 같다 — 재는 것이 그림이 아니라 **계약**이고,
 //   길드는 **셋**이 필요하다(부르는 사람 · 불린 사람 · 남). 계약은 ws 로 재고, 화면 쪽은 소스로 못 박는다.
 //
+// ★★[T787 2026-10-18 · 길드 = 마을 · 켬 기본] 이 하네스는 **옛 길드 길**(central `tribes` 문)을 잰다 — 그 길은 이제
+//   손잡이 끔(`T785_VILLAGE_ONLY=0` · 되돌림 길)에서만 산다. 그래서 존을 **끔으로** 띄운다(켬의 같은 일 —
+//   부름 · 가입 문 · 소개 · 촌장 · 곳간 문 · 전쟁 — 은 `test-village-only` 가 잰다).
+//   말은 새 캐논이다: 명령 `/마을 초대제|공개`(옛 `/길드` 는 한 줄 안내) · "촌장만" · "부른 마을이 없다".
+//
 // 실행: node scripts/e2e-guild.js
 'use strict';
 const path = require('path');
@@ -106,6 +111,7 @@ const last = (C) => JSON.stringify(C.notices.slice(-1));
     //   이 하네스는 그 칸을 **쓰는 쪽**이라 손잡이를 켜고 띄운다 — 켜야 검사가 성립하고,
     //   안 켜지면 그 절이 조용히 자명 통과가 아니라 **빨개진다**(그게 맞는 신호다).
     DEV_AS: '1',
+    T785_VILLAGE_ONLY: '0',   // ★[T787] 옛 길드 길(되돌림 길)을 잰다 — 켬 기본이라 **명시해서** 끈다
     CENTRAL_URL: `http://localhost:${CPORT}`,
     VILLAGE_MAX: '2', VILLAGE_DAY_MS: '2000',
     E2E_GIVE: '1',        // ★[T159] `__e2e_body` 로 소속을 앉힌다(T11 이 낸 검사 전용 손잡이)
@@ -157,12 +163,16 @@ const last = (C) => JSON.stringify(C.notices.slice(-1));
   ok(!!invLeft && invLeft.invites.length === 0, '①e ★들어갔으면 **문을 치운다** — 부름 행이 안 남는다', JSON.stringify(invLeft && invLeft.invites));
   // ★자명 통과 금지 — 부름이 없는 사람은 `/수락` 해도 못 든다
   O.notices.length = 0; say(O, '/수락'); await sleep(1200);
-  ok(O.notices.some((t) => /부른 길드가 없다/.test(t)), '①f ★★부름이 없으면 `/수락` 은 아무것도 안 한다', last(O));
+  ok(O.notices.some((t) => /부른 마을이 없다/.test(t)), '①f ★★부름이 없으면 `/수락` 은 아무것도 안 한다', last(O));
 
   // ── ② 승인제 — 초대 없이는 못 든다(대조: 열린 길드는 된다) ──────────────
   L.notices.length = 0;
-  say(L, '/길드 초대제'); await sleep(1500);
-  ok(L.notices.some((t) => /부름을 받아야/.test(t)), '② 길드장이 문을 걸었다', last(L));
+  say(L, '/길드 초대제'); await sleep(1200);
+  ok(L.notices.some((t) => /길드는 이제 마을이다/.test(t)) && !L.notices.some((t) => /부름을 받아야/.test(t)),
+    '②⁰ ★[T787] 옛 명령 `/길드` 는 **한 줄 안내**만 — 문은 안 걸린다', last(L));
+  L.notices.length = 0;
+  say(L, '/마을 초대제'); await sleep(1500);
+  ok(L.notices.some((t) => /부름을 받아야/.test(t)), '② 촌장(옛 길드장)이 문을 걸었다 — `/마을 초대제`', last(L));
   const joinClosed = await jpost(`${CEN}/tribe/join`, { player_id: O.playerId, tribe_id: TID });
   ok(!!joinClosed && joinClosed.ok === false && joinClosed.reason === 'invite_only',
     '② ★초대제 길드에는 **부름 없이 못 든다**', JSON.stringify(joinClosed));
@@ -175,8 +185,8 @@ const last = (C) => JSON.stringify(C.notices.slice(-1));
   ok(!!joinInvited && joinInvited.ok, '②c 부름을 받은 사람은 잠긴 문도 지난다', JSON.stringify(joinInvited && joinInvited.ok));
   await jpost(`${CEN}/tribe/leave`, { player_id: O.playerId });
   // ★길드장만 문을 건다
-  M.notices.length = 0; say(M, '/길드 공개'); await sleep(1200);
-  ok(M.notices.some((t) => /길드장만/.test(t)), '②d ★길드원이라도 **길드장이 아니면** 문을 못 건다', last(M));
+  M.notices.length = 0; say(M, '/마을 공개'); await sleep(1200);
+  ok(M.notices.some((t) => /촌장만/.test(t)), '②d ★길드원이라도 **길드장이 아니면** 문을 못 건다', last(M));
 
   // ── ③ 마을 소개문 ───────────────────────────────────────────────────────
   L.notices.length = 0;
@@ -194,7 +204,7 @@ const last = (C) => JSON.stringify(C.notices.slice(-1));
   const row2 = intros2 && intros2.intros.find((r) => r.id === TID);
   ok(!!row2 && row2.intro.length === 60, '③d ★길이 상한이 **서버 한 자리**에서 걸린다(60자)', row2 && row2.intro.length);
   M.notices.length = 0; say(M, '/소개 나도 쓴다'); await sleep(1200);
-  ok(M.notices.some((t) => /길드장만/.test(t)), '③e ★길드원이라도 소개는 못 쓴다');
+  ok(M.notices.some((t) => /촌장만/.test(t)), '③e ★길드원이라도 소개는 못 쓴다');
   // ★시작 화면 줄에 칸이 있다(NPC 마을은 빈 문자열 — 세운 길드가 없다)
   const si = await jget(`http://localhost:${ZPORT}/startinfo`);
   ok(!!si && si.ok && si.villages.every((v) => typeof v.intro === 'string'),

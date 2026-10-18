@@ -8680,7 +8680,7 @@ function createVillage(opts) {
     // 길드 — 기본 세율 3%, NPC AI가 자동 조절 (hill climbing)
     guild: {
       taxRate: 0.03,
-      master: null,
+      // ★[T787 2026-10-18 · 길드 = 마을] `master` 칸을 걷었다 — 쓰는 줄 0(초기값 null 뿐 · 50/50 null) · 우두머리는 촌장 하나(T785 마을 칸 · NPC = 촌장 몸).
       _lastIncome: 0,
       _lastRate: 0.03,
       _direction: 0.005,   // 다음 조정 방향 (+ 또는 -)

@@ -323,7 +323,7 @@ console.log('\n⑥ 승계 — 셀을 이어받으면 그 위 시설도 따라온
   const stranger = mkPlayer('stranger');
   join(stranger, 902);                          // 길드 영토(켬 = 마을 땅) 요건은 통과시키되(자리 문제 아님)
   const note2 = claimAt(stranger, CX + 20, CY); // 우선권은 `guild:99` 라 이 사람에겐 없다
-  ok(KIN ? /길드가 이제 없다/.test(note2) : /길드 사람만/.test(note2), '⑥ 우선권이 없으면 거절', JSON.stringify(note2));
+  ok(KIN ? /옛 보관 줄은 이제 없다/.test(note2) : /마을 사람만/.test(note2), '⑥ 우선권이 없으면 거절', JSON.stringify(note2));
   ok(claims.get(c2id).ownerPid === owner.playerId, '⑥ 거절이 말뿐이 아니다 — 주인이 안 바뀌었다');
   buildings.delete('bf1'); wipe(owner); wipe(heir); wipe(stranger); claims.delete(gl);
 }

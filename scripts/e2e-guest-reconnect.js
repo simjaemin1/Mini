@@ -350,7 +350,7 @@ async function waitHttp(url, tries = 900) {
     await send({ type: 'furnace_smelt', buildingId: furnace.id });
     await sleep(900);
     const nt = await page.evaluate(() => (window.__notices || []).slice());
-    ok(nt.length > 0 && !nt.some((t) => /이 노의 주인이 아닙니다|우리 길드의 노가 아닙니다|노에서 너무 멀리/.test(t)),
+    ok(nt.length > 0 && !nt.some((t) => /이 노의 주인이 아닙니다|우리 마을의 노가 아닙니다|노에서 너무 멀리/.test(t)),
       `★★재접속한 게스트가 **제 노를 쓴다** — 응답: "${nt.slice(-1)[0] || '(응답 없음 — 거리·소유 어느 쪽인지 불명)'}"`);
   }
   if (hut) {
@@ -391,7 +391,7 @@ async function waitHttp(url, tries = 900) {
     const inv3 = await page3.evaluate(() => window.__villageInv);
     const nt3 = await page3.evaluate(() => (window.__notices || []).slice());
     ok(inv3 == null, '★★남의 마을 재고는 **여전히 안 열린다**(응답 자체가 없다)');
-    ok(nt3.some((t) => /관리자가 아닙니다|길드의 마을이 아닙니다/.test(t)),
+    ok(nt3.some((t) => /관리자가 아닙니다|우리 마을이 아닙니다/.test(t)),
       `★거부 사유가 **권한**이다(거리가 아니다) — "${nt3.slice(-1)[0] || '(없음)'}"`);
   }
   if (hut) {
@@ -447,7 +447,7 @@ async function waitHttp(url, tries = 900) {
       await send({ type: 'furnace_smelt', buildingId: furnace.id });
       await sleep(900);
       const nt = await page.evaluate(() => (window.__notices || []).slice());
-      ok(nt.length > 0 && !nt.some((t) => /주인이 아닙니다|길드의 노가 아닙니다|노에서 너무 멀리/.test(t)),
+      ok(nt.length > 0 && !nt.some((t) => /주인이 아닙니다|마을의 노가 아닙니다|노에서 너무 멀리/.test(t)),
         `★★승계 뒤에도 **제 노를 쓴다** — "${nt.slice(-1)[0] || '(응답 없음)'}"`);
     }
     { const n = (await claimCells()).length; ok(n === myClaims1, `★승계 뒤에도 사유지가 그대로다 — ${n}칸`); }

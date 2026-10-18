@@ -52,12 +52,12 @@ function introOfTribe(tribeId) {
 function handleChat(player, text) {
   if (!player) return false;
   const t = String(text || '').trim();
-  const isCmd = t.startsWith('/초대') || t.startsWith('/수락') || t.startsWith('/소개') || t.startsWith('/길드');
+  const isCmd = t.startsWith('/초대') || t.startsWith('/수락') || t.startsWith('/소개') || t.startsWith('/마을') || t.startsWith('/길드');
   if (!isCmd) return false;
   const say = (m) => { try { if (H && H.send && player.ws) H.send(player.ws, { type: 'notice', text: m, kind: 'guild' }); } catch (e) {} };
-  if (!ready()) { say('길드는 지금 물어볼 수 없다'); return true; }
+  if (!ready()) { say('마을 일은 지금 물어볼 수 없다'); return true; }
   const me = player.playerId;
-  if (!me) { say('손님은 아직 길드를 다룰 수 없다'); return true; }
+  if (!me) { say('손님은 아직 마을 일을 다룰 수 없다'); return true; }
 
   if (t.startsWith('/초대')) {
     const name = t.slice('/초대'.length).trim();
@@ -65,9 +65,9 @@ function handleChat(player, text) {
     H.central.tribeInvite(me, name).then((r) => {
       if (!r || !r.ok) {
         say(r && r.reason === 'no_such_name' ? `'${name}' 은 없는 이름이다`
-          : r && r.reason === 'not_in_tribe' ? '길드에 든 사람만 부를 수 있다'
-          : r && r.reason === 'already_member' ? `${name} 은(는) 이미 우리 길드다`
-          : r && r.reason === 'in_other_tribe' ? `${name} 은(는) 다른 길드에 있다 — 먼저 나와야 한다`
+          : r && r.reason === 'not_in_tribe' ? '마을 사람만 부를 수 있다'
+          : r && r.reason === 'already_member' ? `${name} 은(는) 이미 우리 마을 사람이다`
+          : r && r.reason === 'in_other_tribe' ? `${name} 은(는) 다른 마을 사람이다 — 먼저 나와야 한다`
           : r && r.reason === 'self' ? '자기 자신은 못 부른다'
           : '지금은 못 불렀다 — 잠시 뒤 다시');
         return;
@@ -88,8 +88,8 @@ function handleChat(player, text) {
     const go = (tribeId) => {
       H.central.tribeInviteAccept(me, tribeId).then((r) => {
         if (!r || !r.ok) {
-          say(r && r.reason === 'no_invite' ? '자네를 부른 길드가 없다'
-            : r && r.reason === 'already_in_tribe' ? '이미 길드에 들어 있다 — 먼저 `/탈퇴`'
+          say(r && r.reason === 'no_invite' ? '자네를 부른 마을이 없다'
+            : r && r.reason === 'already_in_tribe' ? '이미 마을 사람이다 — 먼저 `/탈퇴`'
             : '지금은 못 들었다 — 잠시 뒤 다시');
           return;
         }
@@ -100,7 +100,7 @@ function handleChat(player, text) {
     if (!want) { go(null); return true; }        // 안 고르면 종전 그대로(가장 최근)
     H.central.tribeInvites(me).then((r) => {
       const list = (r && r.ok && Array.isArray(r.invites)) ? r.invites : [];
-      if (!list.length) { say('자네를 부른 길드가 없다'); return; }
+      if (!list.length) { say('자네를 부른 마을이 없다'); return; }
       const pick = list.find((x) => String(x.name || '').trim() === want);
       if (!pick) { say(`[${want}] 은(는) 자네를 부르지 않았다 — 부른 곳: ${list.map((x) => `[${x.name}]`).join(' ')}`); return; }
       go(pick.tribe_id);
@@ -108,13 +108,15 @@ function handleChat(player, text) {
     return true;
   }
 
-  if (t.startsWith('/길드')) {
-    const arg = t.slice('/길드'.length).trim();
-    if (arg !== '초대제' && arg !== '공개') { say('길드의 문 — `/길드 초대제` 또는 `/길드 공개`'); return true; }
+  //   ★[T787] 명령 이름 `/길드` → `/마을`(길드 = 마을) · 옛 이름은 한 줄 안내만.
+  if (t.startsWith('/길드')) { say('길드는 이제 마을이다 — `/마을 초대제` · `/마을 공개`'); return true; }
+  if (t.startsWith('/마을')) {
+    const arg = t.slice('/마을'.length).trim();
+    if (arg !== '초대제' && arg !== '공개') { say('마을의 문 — `/마을 초대제` 또는 `/마을 공개`'); return true; }
     H.central.tribeMode(me, arg === '초대제' ? 'invite' : 'open').then((r) => {
       if (!r || !r.ok) {
-        say(r && r.reason === 'not_leader' ? '길드장만 문을 걸 수 있다'
-          : r && r.reason === 'not_in_tribe' ? '길드에 든 사람만 쓸 수 있다'
+        say(r && r.reason === 'not_leader' ? '촌장만 문을 걸 수 있다'
+          : r && r.reason === 'not_in_tribe' ? '마을 사람만 쓸 수 있다'
           : '지금은 못 바꿨다 — 잠시 뒤 다시');
         return;
       }
@@ -128,8 +130,8 @@ function handleChat(player, text) {
     const line = t.slice('/소개'.length).trim();
     H.central.tribeIntro(me, line).then((r) => {
       if (!r || !r.ok) {
-        say(r && r.reason === 'not_leader' ? '길드장만 소개를 쓸 수 있다'
-          : r && r.reason === 'not_in_tribe' ? '길드에 든 사람만 쓸 수 있다'
+        say(r && r.reason === 'not_leader' ? '촌장만 소개를 쓸 수 있다'
+          : r && r.reason === 'not_in_tribe' ? '마을 사람만 쓸 수 있다'
           : '지금은 못 썼다 — 잠시 뒤 다시');
         return;
       }

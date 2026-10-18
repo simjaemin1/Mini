@@ -129,6 +129,13 @@ const Guild = require('./guild');             // ★[T128 2026-09-05] 길드 모
 // ★★[T785 2026-10-18 · 재민 10-18 ⓑ] **마을이 유일한 무리** — 손잡이 `T785_VILLAGE_ONLY`('1' 만 켬 · 끔 = main 바이트).
 //   켬이면 존이 마을 일로 central `/tribe…` · `/war…` 를 안 부른다(아래 `VillageKin.ON` 갈래 전부) · 칸은 회관 행(`server/village-kin.js`).
 const VillageKin = require('./village-kin');
+// ★★[T787 2026-10-18 · 켬 기본] 사람 몸의 옛 길드 칸 — 켬이면 **실어 나르기만** 한다(`_tribe0` = 계정 행 `tribe_id`).
+//   저장 · 핸드오프에 그대로 싣는다(central `players.tribe_id` 를 존이 지우지 않는다 — 표 걷기는 재민 배포 판단).
+//   런타임 `tribeId` · `tribeName` 은 사람에게 null 이다 — 마을 일 · 이름표 · 채팅 · VP · 금고 어느 자리도 길드를 안 읽는다.
+const _T787_GUILD_GONE = '길드는 이제 마을이다 — `/마을` 로 본다';
+function _t787Tribe0(p) { return p ? (VillageKin.ON ? (p._tribe0 ?? null) : (p.tribeId ?? null)) : null; }
+//   이름표 머리 `[이름]` — 켬 = 사람은 **그 사람의 마을**(몸 `member` · 이 존) · NPC 는 종전 그대로(그 NPC 의 마을). 뜻이 하나다.
+function _t787Label(p) { if (!p) return null; if (VillageKin.ON && !p.isNpc) { const v = VillageKin.memberVil(p); return v ? (v.name || null) : null; } return p.tribeName || null; }
 const Rescue = require('./rescue');           // ★[T56 2026-09-02] 외침·구조 동사 둘. 판정은 전부 정본을 부른다(사본 0)
 const Credits = require('./credits');         // ★[T168 2026-09-10] `/크레딧` — `CREDITS.md` 를 읽어 요구 문구를 띄운다(사본 0)
 // ★★[T122 2026-09-05] **Map 이다** — 키 → 벤 게임일. 종전엔 Set(=영원히 없음)이었다.
@@ -1475,7 +1482,7 @@ function _savePatch(player, extra = {}) {
     hunger: Math.round(player.hunger ?? 100),
     thirst: Math.round(player.thirst ?? 100),
     violation_points: Math.round(player.vp ?? 0),
-    tribe_id: player.tribeId ?? null,
+    tribe_id: _t787Tribe0(player),   // ★[T787] 켬 = 실어 나른 옛 칸 그대로(존이 central 칸을 안 지운다)
     floor: player.floor || 0,
     // ★[T47] 몸의 직렬화는 `serializeBody` **하나**다(위 주석) — 저장·핸드오프가 같은 것을 쓴다.
     tools_json: JSON.stringify(serializeBody(player)),
@@ -3305,6 +3312,7 @@ const NPC_PER_VILLAGE = ZONE.npcPerVillage || 12;
 // 멤버는 일단 메모리 NPC. tribe_id는 central에서 받아와서 시각용으로만 사용.
 const villageGuildIds = new Map(); // villageName → central tribe_id
 async function registerVillageGuilds() {
+  if (VillageKin.ON) return;   // ★[T787] 켬 — 마을은 central 길드가 아니다(`/tribe/npc_upsert` 0 · 한반도는 원래 0)
   for (let v = 0; v < VILLAGES.length; v++) {
     const village = VILLAGES[v];
     // §4-4 Stage 4A 디듀프: 시뮬 마을은 central 길드 등록·금고·영토 제외 (econ 마을 생산은 economy-sim이 진실)
@@ -3365,7 +3373,7 @@ function spawnGuildClaimsForVillage(village, centralTribeId) {
   for (const [cx, cy] of cells) { if (cx < minx) minx = cx; if (cy < miny) miny = cy; if (cx > maxx) maxx = cx; if (cy > maxy) maxy = cy; }
   const id = `c${nextClaimId++}`;
   const claim = {
-    id, ownerPid: npcOwnerId, ownerName: `${village.name} 길드 영토`,
+    id, ownerPid: npcOwnerId, ownerName: `${village.name} 마을 땅`,
     x: minx * SZ, y: miny * SZ, w: (maxx - minx + 1) * SZ, h: (maxy - miny + 1) * SZ, kind: 'guild',
     cells,                                  // ← 셀 집합 (격자 단위)
     guildTribeId: centralTribeId,
@@ -6323,7 +6331,8 @@ async function _acceptConnection(ws, req, C) {
     //     · central 불가 시의 **1회용 폴백** — 저장할 대상이 아니다(다음 접속에 다른 사람이 된다)
     //   접두사로는 둘을 못 가른다 ⇒ 접속 때 정해진 이 불리언이 유일한 정답이다.
     persistent: _persistentIdentity,
-    tribeId: initTribeId, tribeName: initTribeName,
+    tribeId: VillageKin.ON ? null : initTribeId, tribeName: VillageKin.ON ? null : initTribeName,   // ★[T787] 켬 — 사람 몸에 길드 없음
+    ...(VillageKin.ON ? { _tribe0: initTribeId } : {}),
     pvpEnabled: false,
     floor: initFloor, // 2.5D — 현재 캐릭터 층 (영속화 + 핸드오프 캐리)
     // 14.42-a: home (영구 부활 fallback)
@@ -6517,6 +6526,7 @@ async function _acceptConnection(ws, req, C) {
       ...(process.env.T492_SEASON_AMB === 'on' ? { seasonAmb: true } : {}),   // [T492] 계절 환경음 손잡이 — 끔이면 칸이 없다(welcome 바이트 동일)
       ...(_t507On() ? { t507Verbs: true } : {}),
       ...(_streamOn() ? { streams: Streams.wireOf(ZONE_ID) ? Streams.wireOf(ZONE_ID).ver : true, streamSlow: Streams.STREAM_SLOW0 } : {}),   // [T585] 개울 — 클라가 `/streams.bin` 을 받아 그리고 걸음 예측에 쓴다(배율도 서버 정본 수)
+      ...(VillageKin.ON ? { villageOnly: true } : {}),   // [T787] 길드 = 마을(켬 기본) — 클라 무리 패널이 마을 패널이 된다 · `T785_VILLAGE_ONLY=0` 이면 칸이 없다(옛 길드 패널)
       ...(T509_WELL ? { wellAct: true } : {}),   // [T557] 우물 터 잡기 버튼 — 기본 켬 · `T509_WELL=0` 이면 칸이 없어 버튼이 숨는다   // [T507] 첫 30분의 문법(우클릭·이름표·회색) — 기본 켬 · `T507_VERBS=0` 이면 칸이 없다(옛 화면)
       coast588: ((v) => (v === '0' ? '0' : (v === 'a' ? 'a' : 'b')))(process.env.T588_COAST),   // [T588 · ★T604 추신3 기본 b] 해안 — 클라가 같은 파일(`public/coast-shape.js`)로 굽는다 · 칸은 늘 실린다('0' = 지금 식 · 클라 `uiCfg` 기본도 'b' — 다르면 welcome 에서 다시 굽는다)
     },
@@ -6526,7 +6536,7 @@ async function _acceptConnection(ws, req, C) {
     self: { x: player.x, y: player.y, hp: player.hp, maxHp: player.maxHp,
             hunger: Math.round(player.hunger), thirst: Math.round(player.thirst),
             vp: Math.round(player.vp ?? 0),
-            tribeId: player.tribeId || null, tribeName: player.tribeName || null,
+            tribeId: player.tribeId || null, tribeName: _t787Label(player),   // ★[T787] 켬 = 내 마을 이름
             floor: player.floor || 0,
             // 14.42-a — home 위치 (클라가 부활 옵션 UI 등에 사용)
             homeZone: player._homeZone || null,
@@ -6731,12 +6741,12 @@ function handlePlayerInput(player, raw) {
       return;
     }
     if (text.startsWith('/t ')) {
-      if (!player.tribeId) { send(player.ws, { type: 'notice', text: '길드 소속이 아닙니다' }); return; }
+      if (!player.tribeId) { send(player.ws, { type: 'notice', text: '마을 사람이 아닙니다' }); return; }
       const tribeText = text.slice(3).trim();
       if (!tribeText) return;
       broadcastToTribe(player, {
         type: 'chat', pid: player.pid, name: player.name, color: player.color,
-        text: tribeText, t: Date.now(), tribe: player.tribeName || '길드',
+        text: tribeText, t: Date.now(), tribe: player.tribeName || '마을',
       });
       console.log(`[${ZONE_ID}] 💬[${player.tribeName}] ${player.name}: ${tribeText}`);
       return;
@@ -6972,7 +6982,7 @@ function handlePlayerInput(player, raw) {
     player.tribeId = msg.tribeId || null;
     player.tribeName = msg.tribeName || null;
     savePlayer(player);
-    send(player.ws, { type: 'notice', text: player.tribeId ? `길드 [${player.tribeName}] 적용` : '길드 탈퇴됨' });
+    send(player.ws, { type: 'notice', text: player.tribeId ? `마을 [${player.tribeName}] 적용` : '마을에서 나왔다' });
   }
   // ═══ ★★[T235 2026-09-13] **클라가 central 을 직접 부르던 다섯 — 존이 대신 부른다** ═══
   //   여태 그 다섯(`/market/order`·`/market/cancel`·`/war/declare`·`/war/end`·`/tribe/leave`)은
@@ -6996,6 +7006,8 @@ function handlePlayerInput(player, raw) {
     //   ★[T785] 켬 — 전쟁은 **마을 사이**(열쇠 = 마을 id · `village-kin` 칸) · 촌장이 채팅으로 건다. 길드 id 문은 안 연다(두 id 공간을 안 섞는다).
     else if (door === 'war/declare') reply(VillageKin.ON ? Promise.resolve({ ok: false, error: '전쟁은 마을 사이 — 촌장이 `/전쟁 <마을 이름>`' }) : central.warDeclare(player.playerId, player.tribeId, msg.defender_guild_id | 0));
     else if (door === 'war/end') reply(VillageKin.ON ? Promise.resolve({ ok: false, error: '전쟁은 마을 사이 — 촌장이 `/종전 <마을 이름>`' }) : central.warEnd(msg.war_id));
+    //   ★[T787] 켬 — 길드 문 넷(tribe/leave · info · create · join)은 닫는다: 길드 = 마을(마을 일은 채팅 문 `/마을` · central 무접촉).
+    else if (VillageKin.ON && (door === 'tribe/leave' || door === 'tribe/info' || door === 'tribe/create' || door === 'tribe/join')) reply(Promise.resolve({ ok: false, error: _T787_GUILD_GONE }));
     else if (door === 'tribe/leave') reply(central.tribeLeave(player.playerId));
     //   ★★[T245] 클라가 직접 부르던 넷이 여기로 왔다 — **문만 늘고 문법은 그대로다**(T235 §1).
     //     ⚠`player_id`·`tribe_id` 를 클라가 안 고른다: 주문 목록은 신원이 없고, 길드 상세는 **내 길드**뿐이고,
@@ -7797,7 +7809,8 @@ function handleObserverMessage(ws, raw) {
       hunger: typeof pending.hunger === 'number' ? pending.hunger : HUNGER_MAX,
       thirst: typeof pending.thirst === 'number' ? pending.thirst : THIRST_MAX,
       vp: typeof pending.vp === 'number' ? pending.vp : 0,
-      tribeId: pending.tribeId || null, tribeName: pending.tribeName || null,
+      tribeId: VillageKin.ON ? null : (pending.tribeId || null), tribeName: VillageKin.ON ? null : (pending.tribeName || null),   // ★[T787]
+      ...(VillageKin.ON ? { _tribe0: pending.tribeId || null } : {}),
       pvpEnabled: !!pending.pvpEnabled,
       floor: pending.floor || 0,
       _homeZone: pending.home_zone || null,
@@ -7837,7 +7850,7 @@ function handleObserverMessage(ws, raw) {
       self: { x: player.x, y: player.y, hp: player.hp, maxHp: player.maxHp,
               hunger: Math.round(player.hunger), thirst: Math.round(player.thirst),
               vp: Math.round(player.vp ?? 0),
-              tribeId: player.tribeId || null, tribeName: player.tribeName || null,
+              tribeId: player.tribeId || null, tribeName: _t787Label(player),   // ★[T787] 켬 = 내 마을 이름
               floor: player.floor || 0,
               homeZone: player._homeZone || null,
               homeX: player._homeX, homeY: player._homeY },
@@ -9751,7 +9764,7 @@ function tryPlantTree(player, x, y, item) {
   const foreign = foreignClaimAt(player, px, py);
   if (foreign) {
     send(player.ws, { type: 'notice',
-      text: `${foreign.ownerName || '남'}의 ${foreign.kind === 'guild' ? '길드 영토' : '사유지'}다 — 남의 땅엔 못 심는다`, kind: 'plant' });
+      text: `${foreign.ownerName || '남'}의 ${foreign.kind === 'guild' ? '마을 땅이다' : '사유지다'} — 남의 땅엔 못 심는다`, kind: 'plant' });
     return;
   }
   // ⓒ 그 칸이 비었나 — 자원·건물이 있으면 안 된다(같은 칸에 둘이 서면 그게 결함이다)
@@ -9940,7 +9953,7 @@ function tryLook(player, x, y) {
     parts.push(src ? `${src.where} — E 로 ${lab(src.kind)}` : '빈 땅 — 주울 것 없음');
   }
   const f = foreignClaimAt(player, px, py);
-  if (f) parts.push(`${f.ownerName || '남'}의 ${f.kind === 'guild' ? '길드 영토' : '사유지'}`);
+  if (f) parts.push(`${f.ownerName || '남'}의 ${f.kind === 'guild' ? '마을 땅' : '사유지'}`);
   else {
     let covered = false;
     for (const c of claims.values()) if (px >= c.x && px < c.x + c.w && py >= c.y && py < c.y + c.h) { covered = true; break; }
@@ -10179,7 +10192,7 @@ function tryClaim(player, kind = 'personal') {
   //   ★[T786 C11] T785 켬 — 길드 사유지는 **마을 땅**(그 마을 영토)으로 접혔다 · 따로 놓는 문은 닫는다(영토는 마을이 넓힌다).
   if (kind === 'guild' && VillageKin.ON) { send(player.ws, { type: 'notice', text: '🏘️ 마을 땅은 그 마을의 영토다 — 따로 놓지 않는다' }); return; }
   if (kind === 'guild') {
-    if (!player.tribeId) { send(player.ws, { type: 'notice', text: '길드 소속이 아닙니다 — 길드 영토 만들 수 없음' }); return; }
+    if (!player.tribeId) { send(player.ws, { type: 'notice', text: '마을 사람이 아닙니다 — 마을 땅을 못 정한다' }); return; }
     // leader 체크는 central 호출 필요. 일단 단순화: 길드원이면 누구나 (TODO: leader만)
     // 14.42-a: 길드당 단 하나의 길드 사유지(메인 거점). 기존 거 있으면 자동 옮기기 (제거 후 새로 만듦).
     const existingGuildClaims = [];
@@ -10192,7 +10205,7 @@ function tryClaim(player, kind = 'personal') {
         claims.delete(id);
         broadcast({ type: 'claim_removed', id });
       }
-      send(player.ws, { type: 'notice', text: `🏛️ 길드 메인 사유지 ${existingGuildClaims.length}개 → 새 위치로 이동` });
+      send(player.ws, { type: 'notice', text: `🏛️ 마을 땅 ${existingGuildClaims.length}개 → 새 위치로 이동` });
     }
   }
   // 슬롯 한도 체크
@@ -10200,7 +10213,7 @@ function tryClaim(player, kind = 'personal') {
   const usedCount = kind === 'temporary' ? used.temporary : (kind === 'guild' ? used.guild : used.personal);
   const max = kind === 'temporary' ? CLAIM_SLOT_TEMPORARY_START : (kind === 'guild' ? CLAIM_SLOT_GUILD_START : CLAIM_SLOT_PERSONAL_START);
   if (usedCount >= max) {
-    const kName = { personal: '개인', temporary: '임시', guild: '길드' }[kind];
+    const kName = { personal: '개인', temporary: '임시', guild: '마을' }[kind];
     send(player.ws, { type: 'notice', text: `${kName} 사유지 슬롯 한도 (${max}) 초과` });
     return;
   }
@@ -10280,12 +10293,12 @@ function tryClaim(player, kind = 'personal') {
   } else
   if (kind === 'personal' && !_onbLot) {
     if (!player.tribeId) {
-      send(player.ws, { type: 'notice', text: '개인 사유지는 길드 영토 안에만 설치 가능 (길드 가입 또는 임시 사유지 T 사용)' });
+      send(player.ws, { type: 'notice', text: '개인 사유지는 마을 땅 안에만 설치 가능 (마을에 들거나 임시 사유지 T 사용)' });
       return;
     }
     const myGuildArea = findGuildClaimContaining(cx + SZ/2, cy + SZ/2, player.tribeId);
     if (!myGuildArea) {
-      send(player.ws, { type: 'notice', text: '내 길드 영토 안에서만 개인 사유지 설치 가능' });
+      send(player.ws, { type: 'notice', text: '내 마을 땅 안에서만 개인 사유지 설치 가능' });
       return;
     }
   }
@@ -10313,7 +10326,7 @@ function tryClaim(player, kind = 'personal') {
   claim.dbId = dbId;
   savePlayer(player);
   sendInventory(player);
-  const kIcon = { personal: '🏠 개인', temporary: '⛺ 임시', guild: '🏛️ 길드' }[kind];
+  const kIcon = { personal: '🏠 개인', temporary: '⛺ 임시', guild: '🏛️ 마을' }[kind];
   send(player.ws, { type: 'notice', text: `${kIcon} 사유지 설치 (${usedCount + 1}/${max})` });
   broadcast({ type: 'claim_added', claim });
 }
@@ -10621,7 +10634,7 @@ function tryRepairBuilding(player) {
       if (p.playerId === best.ownerId) { ownerTribe = p.tribeId; break; }
     }
     if (!player.tribeId || ownerTribe !== player.tribeId) {
-      send(player.ws, { type: 'notice', text: '내/우리 길드 건축물만 수리 가능' }); return;
+      send(player.ws, { type: 'notice', text: '내/우리 마을 건축물만 수리 가능' }); return;
     }
   }
   // 비용 — 건축 비용 절반 (반올림 올림)
@@ -11295,7 +11308,7 @@ function _claimFootprint(player, x0, y0, x1, y1) {
   for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) {
     const px = x * SZg + SZg / 2, py = y * SZg + SZg / 2;
     const c = _furnaceClaimOf(player, px, py);
-    if (!c) return { err: '발자국 2×2 전체가 내 사유지(또는 내 길드 사유지) 안에 있어야 한다' };
+    if (!c) return { err: '발자국 2×2 전체가 내 사유지(또는 내 마을 땅) 안에 있어야 한다' };
     if (c.kind === 'village') { if (guildId == null) guildId = c.vid; }   // ★[T786 C3] 켬 — 마을 땅 칸(아래 반환은 `vid`)
     else if (c.kind === 'guild') { if (guildId == null) guildId = c.guildTribeId; }
     else anyPersonal = true;   // 개인·임시 사유지가 한 칸이라도 물리면 **개인 소유**로 굳는다
@@ -11344,7 +11357,7 @@ function _siteStart(player, atX, atY, spec) {
 }
 function _siteAdvance(player, b, spec) {
   if (Math.hypot(b.x - player.x, b.y - player.y) > 120) { send(player.ws, { type: 'notice', text: `${spec.ko} 터에서 너무 멀리 있습니다` }); return; }
-  if (!_furnaceCanUse(player, b)) { send(player.ws, { type: 'notice', text: b.data.tribeId ? `우리 길드의 ${spec.ko} 터가 아닙니다` : (b.data.vid != null ? `우리 마을의 ${spec.ko} 터가 아닙니다` : `내 ${spec.ko} 터가 아닙니다`) }); return; }   // ★[T786] `vid` = 마을 시설(켬에서만 선다 · 끔 = 종전 두 갈래)
+  if (!_furnaceCanUse(player, b)) { send(player.ws, { type: 'notice', text: b.data.tribeId ? `우리 마을의 ${spec.ko} 터가 아닙니다` : (b.data.vid != null ? `우리 마을의 ${spec.ko} 터가 아닙니다` : `내 ${spec.ko} 터가 아닙니다`) }); return; }   // ★[T786] `vid` = 마을 시설(켬에서만 선다 · 끔 = 종전 두 갈래)
   const stage = b.data.stage | 0;
   const st = spec.stages[stage];
   if (!st) return;
@@ -11593,7 +11606,7 @@ function tryVillageInventory(player, buildingId) {
   if (!b || b.type !== 'village_hall') return;
   if (Math.hypot(b.x - player.x, b.y - player.y) > 200) { send(player.ws, { type: 'notice', text: '회관에서 너무 멀리 있습니다' }); return; }
   if (!_furnaceCanUse(player, b)) {
-    send(player.ws, { type: 'notice', text: b.data && b.data.tribeId ? '우리 길드의 마을이 아닙니다 — 재고를 볼 수 없다' : '이 마을의 관리자가 아닙니다 — 재고를 볼 수 없다' });
+    send(player.ws, { type: 'notice', text: b.data && b.data.tribeId ? '우리 마을이 아닙니다 — 재고를 볼 수 없다' : '이 마을의 관리자가 아닙니다 — 재고를 볼 수 없다' });
     return;
   }
   const d = b.data || {};
@@ -12041,7 +12054,7 @@ function tryKilnBurn(player, buildingId) {
   const b = buildings.get(buildingId);
   if (!b || b.type !== 'charcoal_kiln') return;
   if (Math.hypot(b.x - player.x, b.y - player.y) > 120) { send(player.ws, { type: 'notice', text: '숯가마에서 너무 멀리 있습니다' }); return; }
-  if (!_furnaceCanUse(player, b)) { send(player.ws, { type: 'notice', text: b.data.tribeId ? '우리 길드의 숯가마가 아닙니다' : (b.data.vid != null ? '우리 마을의 숯가마가 아닙니다' : '이 숯가마의 주인이 아닙니다') }); return; }   // ★[T786] `vid` = 마을 시설(켬에서만 선다 · 끔 = 종전 두 갈래)
+  if (!_furnaceCanUse(player, b)) { send(player.ws, { type: 'notice', text: b.data.tribeId ? '우리 마을의 숯가마가 아닙니다' : (b.data.vid != null ? '우리 마을의 숯가마가 아닙니다' : '이 숯가마의 주인이 아닙니다') }); return; }   // ★[T786] `vid` = 마을 시설(켬에서만 선다 · 끔 = 종전 두 갈래)
   // ★★[2026-08-02e ⑤] 숯가마도 노와 **같은 진척 계약**이다 — 장입 → 시간 → 수거.
   const nowK = Date.now();
   if (b.data && b.data.job) {
@@ -12085,7 +12098,7 @@ function tryFurnaceSmelt(player, buildingId) {
   const b = buildings.get(buildingId);
   if (!b || b.type !== 'furnace') return;
   if (Math.hypot(b.x - player.x, b.y - player.y) > 120) { send(player.ws, { type: 'notice', text: '노에서 너무 멀리 있습니다' }); return; }
-  if (!_furnaceCanUse(player, b)) { send(player.ws, { type: 'notice', text: b.data.tribeId ? '우리 길드의 노가 아닙니다' : (b.data.vid != null ? '우리 마을의 노가 아닙니다' : '이 노의 주인이 아닙니다 — 개인 노엔 타인 관여 불가') }); return; }   // ★[T786] `vid` = 마을 시설(켬에서만 선다 · 끔 = 종전 두 갈래)
+  if (!_furnaceCanUse(player, b)) { send(player.ws, { type: 'notice', text: b.data.tribeId ? '우리 마을의 노가 아닙니다' : (b.data.vid != null ? '우리 마을의 노가 아닙니다' : '이 노의 주인이 아닙니다 — 개인 노엔 타인 관여 불가') }); return; }   // ★[T786] `vid` = 마을 시설(켬에서만 선다 · 끔 = 종전 두 갈래)
   const now = Date.now();
   const kind = (b.data && b.data.kind) || 'crucible';
   // ★★[2026-08-02e ⑤] 조업 중이면 — 아직이면 남은 시간을, 끝났으면 **출탕**한다.
@@ -12275,17 +12288,17 @@ const GRANARY_COST = GranaryStages.GRANARY_COST;   // ★[T435] 판자 12·돌 8
 async function tryBuildGuildGranary(player, atX, atY) {
   //   ★[T786 C9] T785 켬 — 길드 곳간(A17)은 **마을 곳간**으로 접혔다(곳간 증설 · 넣기 · 꺼내기는 마을 문) · 길드 금고(`treasury_json`)는 없앨 추상(T787) — 짓는 문은 닫는다.
   if (VillageKin.ON) { send(player.ws, { type: 'notice', text: '🏘️ 곳간은 마을의 것이다 — 마을 곳간에 넣고, 꺼내는 것은 마을 문으로' }); return; }
-  if (!player.tribeId) { send(player.ws, { type: 'notice', text: '길드 소속이 아닙니다' }); return; }
+  if (!player.tribeId) { send(player.ws, { type: 'notice', text: '마을 사람이 아닙니다' }); return; }
   // 리더 검사(central)
   try {
     const tr = await central.request('GET', `/tribe/${player.tribeId}`);
     const leaderId = tr?.data?.tribe?.leader_id;
-    if (leaderId && leaderId !== player.playerId) { send(player.ws, { type: 'notice', text: '길드 곳간은 리더만 지을 수 있습니다' }); return; }
+    if (leaderId && leaderId !== player.playerId) { send(player.ws, { type: 'notice', text: '마을 곳간은 촌장만 지을 수 있습니다' }); return; }
   } catch (e) { /* central 불가 시 관용(리더 검사 생략) */ }
   // 길드당 1동 — DB 전수(비활성 청크 포함)
   try {
     const rows = db.db.prepare("SELECT data FROM buildings WHERE type='guild_granary'").all();
-    for (const r of rows) { try { const d = JSON.parse(r.data || '{}'); if (d.tribe_id === player.tribeId) { send(player.ws, { type: 'notice', text: '길드 곳간은 이미 있습니다 (길드당 1동)' }); return; } } catch (_) {} }
+    for (const r of rows) { try { const d = JSON.parse(r.data || '{}'); if (d.tribe_id === player.tribeId) { send(player.ws, { type: 'notice', text: '마을 곳간은 이미 있습니다 (마을당 1동)' }); return; } } catch (_) {} }
   } catch (e) {}
   const SZg = BUILDING_SIZE;
   let gx, gy;
@@ -12305,7 +12318,7 @@ async function tryBuildGuildGranary(player, atX, atY) {
     return false;
   };
   for (const [ex, ey] of [[gx - 2, gy - 1], [gx + 2, gy - 1], [gx - 2, gy + 1], [gx + 2, gy + 1]]) {
-    if (!inMyGuildClaim(ex * SZg + SZg / 2, ey * SZg + SZg / 2)) { send(player.ws, { type: 'notice', text: '길드영토(Shift+C) 안에서만 지을 수 있습니다' }); return; }
+    if (!inMyGuildClaim(ex * SZg + SZg / 2, ey * SZg + SZg / 2)) { send(player.ws, { type: 'notice', text: '마을 땅(Shift+C) 안에서만 지을 수 있습니다' }); return; }
   }
   // 부지 무결: 발자국+테두리 1칸 — 지형(물·바위)·기존 건물 없음
   for (let dx = -3; dx <= 3; dx++) for (let dy = -2; dy <= 2; dy++) {
@@ -12326,7 +12339,7 @@ async function tryBuildGuildGranary(player, atX, atY) {
   }
   inv.plank -= GRANARY_COST.plank; inv.stone -= GRANARY_COST.stone;
   // 실물 생성: 밀폐 벽 16변 + 바닥 15 + 앵커 1 (DB+메모리+청크+일괄 방송)
-  const ownerId = `tribe_${player.tribeId}`, ownerName = `[${player.tribeName || '길드'}] 곳간`;
+  const ownerId = `tribe_${player.tribeId}`, ownerName = `[${player.tribeName || '마을'}] 곳간`;
   const made = [];
   const mk = (type, x, y, data) => _liveBuildRow(type, x, y, data, ownerId, ownerName, made);
   const _gr = { gran: [gx - 2, gy - 1, gx + 2, gy + 1] };   // ★[에셋 2차] 클라 고상 통짜 스킨 태그(마을 곳간과 동일 — 벽·바닥 시각 억제, 콜라이더 불변)
@@ -12337,7 +12350,7 @@ async function tryBuildGuildGranary(player, atX, atY) {
   broadcast({ type: 'buildings_spawn', buildings: made });
   savePlayer(player);
   sendInventory(player);
-  send(player.ws, { type: 'notice', text: `🏚️ 길드 곳간 완공! (E로 입출고 — 멤버 공유, 전쟁 시 약탈 목표가 됩니다)` });
+  send(player.ws, { type: 'notice', text: `🏚️ 마을 곳간 완공! (E로 입출고 — 마을 사람 공유, 전쟁 시 약탈 목표가 됩니다)` });
   console.log(`[${ZONE_ID}] 🏚️ ${player.name} 길드 곳간 건설 tribe=${player.tribeId} @(${gx},${gy})`);
 }
 
@@ -12351,6 +12364,7 @@ function _guildTreasuryOpts() {
 }
 function syncGuildGranary(b) {
   if (!b || b.type !== 'guild_granary') return;
+  if (VillageKin.ON) return;   // ★[T787] 켬 — 길드 금고(`treasury_json`)는 없앨 추상: 옛 길드 곳간의 물건은 곳간 칸에 그대로 · central 회계엔 안 올린다
   GuildTreasury.syncGranary(b, _guildTreasuryOpts())
     .then((r) => { if (r && !r.ok) console.warn(`[${ZONE_ID}] 💰 길드 금고 반영 보류(다음 기회 재시도):`, r.err); })
     .catch(() => { });
@@ -12362,7 +12376,7 @@ function tryChestPut(player, buildingId, item, amount) {
   // ★길드 곳간[실물화]: 소유=길드 자체(data.tribe_id) — 멤버=자유 입출, 적=전쟁 중 약탈(아래 공용 경로)
   if (b.type === 'guild_granary') {
     if (VillageKin.ON ? !(_kinLandOf(b.x, b.y) && _kinIsMemberOf(player, _kinLandOf(b.x, b.y).dbId)) : !(player.tribeId && b.data && b.data.tribe_id === player.tribeId)) {   // ★[T786 C10] 켬 = 선 땅의 마을 사람(옛 길드 곳간)
-      send(player.ws, { type: 'notice', text: '길드 곳간 — 소속 길드원만 넣을 수 있습니다' }); return;
+      send(player.ws, { type: 'notice', text: '마을 곳간 — 그 마을 사람만 넣을 수 있습니다' }); return;
     }
   }
   // Phase 14.20+14.28: public 또는 본인 또는 같은 길드 멤버
@@ -12379,7 +12393,7 @@ function tryChestPut(player, buildingId, item, amount) {
     }
   }
   if (!isOwn && !isPublic && !isGuildmate) {
-    send(player.ws, { type: 'notice', text: '내 상자/길드 상자가 아닙니다' }); return;
+    send(player.ws, { type: 'notice', text: '내 상자/마을 상자가 아닙니다' }); return;
   }
   // 가까이 있어야 (64px)
   if (Math.hypot(b.x - player.x, b.y - player.y) > 64) {
@@ -12800,7 +12814,7 @@ async function tryAttack(player) {
       if (p.playerId === bestWall.ownerId) { ownerTribe = p.tribeId; _ownerP = p; break; }
     }
     if (VillageKin.ON ? !!(_ownerP && _kinSameVil(player, _ownerP)) : (player.tribeId && ownerTribe === player.tribeId)) {   // ★[T786 C16] 켬 = 같은 마을 사람의 건축물
-      send(player.ws, { type: 'notice', text: '내 길드 건축물은 공격 못 함' }); return;
+      send(player.ws, { type: 'notice', text: '내 마을 건축물은 공격 못 함' }); return;
     }
     const maxHp = BUILDING_MAX_HP[bestWall.type] || 50;
     if (typeof bestWall.data !== 'object' || bestWall.data === null) bestWall.data = {};
@@ -12826,8 +12840,11 @@ async function applyPvpAttackPenalty(attacker, victim) {
   let multiplier = 1.0;
   let guildAdd = 5;
   let tag = 'normal';
-  const victimGuildVp = await getCachedGuildVp(victim.tribeId);
-  if (victim.tribeId) {
+  //   ★[T787] 켬 — 길드 VP(A3)는 없앨 추상: 피해자 길드 vp 를 central 에 안 묻고 · 공격자 길드 vp 도 안 올린다(값 0 · 사람 몸 `tribeId` = null).
+  //     마을 칸으로 옮길지는 보고 표(T787 §2) — 지금은 다이얼이 '길드 없음' 갈래(배수 1 · 가산 0)로 간다.
+  if (VillageKin.ON) guildAdd = 0;
+  const victimGuildVp = VillageKin.ON ? 0 : await getCachedGuildVp(victim.tribeId);
+  if (victim.tribeId && !VillageKin.ON) {
     if (victimGuildVp < 30) { multiplier = 2.0; guildAdd = 20; tag = 'clean-victim'; }
     else if (victimGuildVp < 80) { multiplier = 1.0; guildAdd = 5; tag = 'normal-victim'; }
     else { multiplier = 0.5; guildAdd = 0; tag = 'evil-victim (정의구현)'; }
@@ -12838,11 +12855,11 @@ async function applyPvpAttackPenalty(attacker, victim) {
   }
   const personalGain = Math.round(VP_ATTACK_PLAYER * multiplier);
   attacker.vp = Math.min(VP_MAX, (attacker.vp ?? 0) + personalGain);
-  send(attacker.ws, { type: 'notice', text: `${victim.name} 공격 [${tag}] 개인 +${personalGain}${guildAdd ? `, 길드 +${guildAdd}` : ''}` });
+  send(attacker.ws, { type: 'notice', text: `${victim.name} 공격 [${tag}] 개인 +${personalGain}${guildAdd ? `, 마을 명성 +${guildAdd}` : ''}` });
   send(attacker.ws, { type: 'gauges', hunger: Math.round(attacker.hunger), thirst: Math.round(attacker.thirst), vp: Math.round(attacker.vp) });
   savePlayer(attacker);
   // 길드 vp는 central 비동기 (실패해도 게임 진행)
-  if (attacker.tribeId && guildAdd > 0) {
+  if (attacker.tribeId && guildAdd > 0 && !VillageKin.ON) {
     central.tribeAddVp(attacker.tribeId, guildAdd, `pvp_attack:${tag}`).catch(() => {});
   }
 }
@@ -14183,6 +14200,7 @@ function villageProduction(villageName, jobCounts) {
 // ★[길드 금고 통합] 곳간 재동기 — DB 전수(메모리 미로드 곳간 포함). 부팅 1회 + 생산 틱마다 1회.
 //   central이 죽어 있던 동안 쌓인 델타를 자가 치유로 올린다(정확히 한 번 — data._tr 스냅샷 규약).
 async function reconcileGuildGranaries(tag) {
+  if (VillageKin.ON) return;   // ★[T787] 켬 — 길드 금고 재동기 0(central `/tribe/treasury` 무접촉)
   let rows = [];
   try { rows = db.db.prepare("SELECT id, data FROM buildings WHERE type='guild_granary'").all(); } catch (e) { return; }
   if (!rows.length) return;
@@ -14204,7 +14222,7 @@ setTimeout(() => { reconcileGuildGranaries('부팅').catch(() => { }); }, 8000);
 setInterval(async () => {
   reconcileGuildGranaries('주기').catch(() => { });   // ★생산 틱과 같은 주기(신규 타이머 없음)
   if (VillageKin.ON) { try { const _rp = VillageKin.retry(); if (_rp) _rp.catch(() => { }); } catch (e) { } }   // ★[T785] 못 옮긴 이행이 있으면 다시(같은 틱 · 새 타이머 0)
-  if (villageGuildIds.size === 0) return;
+  if (VillageKin.ON || villageGuildIds.size === 0) return;   // ★[T787] 켬 — 레거시 마을 금고 틱(central `/tribe/treasury`) 0 · 한반도는 원래 0
   const tally = tallyVillageJobs();
   const zoneSum = {};
   for (const [villageName, tribeId] of villageGuildIds) {
@@ -15265,7 +15283,7 @@ setInterval(() => {
       // §18 3파: 포로 표식(회색 테두리·밧줄) — 동적 1비트(호송 전환·해제가 일중 일어남: br 패턴)
       if (o.simCaptive) e.cap = 1;
       // §4-4 Stage 4A: simJob(마을 시뮬 NPC 직업 — npcJob과 별개)도 메타로 1회. 일중 변경분은 sim_village_day 브로드캐스트가 갱신.
-      if (isNew) { e.name = o.name; e.color = o.color; e.maxHp = o.maxHp; e.tribeName = o.tribeName || null; if (o.simJob) e.simJob = o.simJob;
+      if (isNew) { e.name = o.name; e.color = o.color; e.maxHp = o.maxHp; e.tribeName = _t787Label(o); if (o.simJob) e.simJob = o.simJob;
         // ★[캐릭 시트 2026-08-30] **신원 1비트**(애니 상태가 아니다 — 애니는 기존 값에서 유도한다).
         //   이게 없으면 클라가 NPC 와 사람 플레이어를 못 가른다(`simJob` 은 마을 시뮬 NPC 에만 있다).
         //   ⇒ 사람 시트가 마을 주민에게까지 입혀진다 = **회부된 별도 배치를 몰래 하는 것**이다. 그래서 실어 보낸다.
@@ -15538,8 +15556,8 @@ async function fireHandoff(player, targetZoneId, newX, newY) {
       hunger: Math.round(player.hunger ?? HUNGER_MAX),
       thirst: Math.round(player.thirst ?? THIRST_MAX),
       vp: Math.round(player.vp ?? 0),
-      tribeId: player.tribeId || null,
-      tribeName: player.tribeName || null,
+      tribeId: VillageKin.ON ? (player._tribe0 || null) : (player.tribeId || null),   // ★[T787] 켬 = 옛 칸을 실어 나른다(도착 존도 런타임엔 안 쓴다)
+      tribeName: VillageKin.ON ? null : (player.tribeName || null),
       pvpEnabled: !!player.pvpEnabled,
       floor: player.floor || 0,
       // 14.42-a: home carryover (cross-zone에서도 home 유지)

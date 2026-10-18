@@ -244,7 +244,7 @@ function withdraw(player, vid, res, qty, chiefOk) {
   //   ★[T197] `_tribeId` 의 집은 `vil` 이다(`vil.econ` 이 아니다 — `zone.introOfVillage` 와 같은 오독이었다).
   const _tid = (g.vil && g.vil._tribeId) | 0;
   if (!T769 && _tid && !granaryOpen(_tid)) {   // ★[T769] 켬 = 꺼내는 사람이 곧 문을 정할 사람(촌장) — 잠금 문은 안 쓴다
-    return { ok: false, err: '길드장이 곳간을 잠갔다' };
+    return { ok: false, err: '촌장이 곳간을 잠갔다' };
   }
   //   ★[T785] 켬 — 곳간 문은 **마을 칸**이다(촌장이 `/곳간 열기|잠금` · central 무접촉 · 런타임 `_tribeId` 는 켬에서 null 이라 위 줄은 안 닿는다).
   if (!T769 && VillageKin.ON && !VillageKin.granaryOpenOf(g.vil)) return { ok: false, err: '촌장이 곳간을 잠갔다' };
@@ -482,13 +482,13 @@ function handleChat(player, text) {
       if (!H.central || !H.central.tribeGranarySet) { _send(player, '🏘️ 지금은 곳간 문을 못 만진다'); return true; }
       H.central.tribeGranarySet(player.playerId, a0 === '열기').then((r) => {
         if (!r || !r.ok) {
-          _send(player, `🏘️ ${r && r.reason === 'not_leader' ? '길드장만 곳간 문을 정할 수 있다'
-            : r && r.reason === 'not_in_tribe' ? '길드에 든 사람만 쓸 수 있다' : '지금은 못 바꿨다 — 잠시 뒤 다시'}`);
+          _send(player, `🏘️ ${r && r.reason === 'not_leader' ? '촌장만 곳간 문을 정할 수 있다'
+            : r && r.reason === 'not_in_tribe' ? '마을 사람만 쓸 수 있다' : '지금은 못 바꿨다 — 잠시 뒤 다시'}`);
           return;
         }
         granaryBust(r.tribe_id);
         _send(player, r.open ? `🏘️ [${r.name}] 곳간을 열었다 — 마을 사람이 제 몫을 꺼낼 수 있다`
-                             : `🏘️ [${r.name}] 곳간을 잠갔다 — 길드장이 열기 전엔 아무도 못 꺼낸다`);
+                             : `🏘️ [${r.name}] 곳간을 잠갔다 — 촌장이 열기 전엔 아무도 못 꺼낸다`);
       }).catch(() => _send(player, '🏘️ 지금은 못 바꿨다 — 잠시 뒤 다시'));
       return true;
     }

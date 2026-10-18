@@ -253,7 +253,7 @@
       if (b.data && b.data.isExchange && b.data.village && typeof window.openVillageMarket === 'function') {
         out.push({ label: '열기 — 마을 거래소', send: () => window.openVillageMarket(b.data.village) });
       } else if (typeof openInvWithContainer === 'function') {
-        out.push({ label: b.type === 'guild_granary' ? '열기 — 길드 곳간' : '열기 — 상자',
+        out.push({ label: b.type === 'guild_granary' ? '열기 — 마을 곳간' : '열기 — 상자',
                    send: () => openInvWithContainer(b.id) });
       }
     }

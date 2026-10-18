@@ -252,7 +252,7 @@ say('\n[④ 권한 거부 — 개인 노엔 타인 관여 불가]');
         at(enemy, spot2.cx, spot2.cy);
         H.tryFurnaceSmelt(enemy, gf.id);
         eq(enemy.inventory.iron_ore, 2, '★다른 길드원은 못 쓴다(재료 무변화)');
-        ok((KIN ? /우리 마을의 노가 아닙니다/ : /우리 길드의 노가 아닙니다/).test(lastNotice(enemy)), `거부 사유 — "${lastNotice(enemy)}"`);
+        ok(/우리 마을의 노가 아닙니다/.test(lastNotice(enemy)), `거부 사유 — "${lastNotice(enemy)}"`);
       }
     }
   }

@@ -74,7 +74,7 @@
   function renderClaimsPanel(body) {
     // ★[T66 2차] 자리의 갈래 — **선 아이콘 이름**(이모지 0). 빈 문자열로 두면 칸이 통째로 빈다.
     const KIND_ICON = { personal: 'home', temporary: 'flag', guild: 'guild' };
-    const KIND_NAME = { personal: '개인', temporary: '임시', guild: '길드영토' };
+    const KIND_NAME = { personal: '개인', temporary: '임시', guild: '마을 땅' };
     const my = [];
     for (const c of conns.values()) {
       for (const cl of c.claims.values()) {
@@ -95,9 +95,9 @@
           </div>`;
         }).join('');
     body.innerHTML = `
-      <div class="hint">슬롯 사용: 개인 ${counts.personal}/9 · 임시 ${counts.temporary}/4 · 길드영토 ${counts.guild}/50</div>
+      <div class="hint">슬롯 사용: 개인 ${counts.personal}/9 · 임시 ${counts.temporary}/4 · 마을 땅 ${counts.guild}/50</div>
       <div class="hint" style="font-size:11px;opacity:0.7;margin-bottom:10px">
-        <b>C</b>=개인 사유지 (길드 영토 안만) · <b>T</b>=임시 (어디든) · <b>Shift+C</b>=길드 영토 (멤버만)<br/>
+        <b>C</b>=개인 사유지 (마을 땅 안만) · <b>T</b>=임시 (어디든) · <b>Shift+C</b>=마을 땅 (마을 사람만)<br/>
         해제하면 슬롯 회수. 자원은 환불 안 됨. 다른 위치 가서 다시 설치 가능.
       </div>
       <div class="inv-col-head">내 사유지 목록 (${my.length}개)</div>
@@ -166,7 +166,7 @@
         else p++;
       }
     }
-    return `개인 ${p}/9 · 임시 ${t}/4 · 길드영토 ${g}/50`;
+    return `개인 ${p}/9 · 임시 ${t}/4 · 마을 땅 ${g}/50`;
   }
 
   // 근처 ground items (80px 반경) — 바닥 pseudo-container 내용

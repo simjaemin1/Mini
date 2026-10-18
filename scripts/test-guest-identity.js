@@ -312,7 +312,7 @@ const closeWs = (st) => new Promise((r) => { st.ws.on('close', r); try { st.ws.c
     const CHECKS = [
       ['사유지(해제)', /c\.ownerPid !== player\.playerId/, z],
       ['사유지(발자국 권리)', /c\.ownerPid === player\.playerId/, z],
-      ['노·숯가마·회관 공용 술어', /function _furnaceCanUse[\s\S]{0,300}d\.owner === player\.playerId/, z],
+      ['노·숯가마·회관 공용 술어', /function _furnaceCanUse[\s\S]{0,900}d\.owner === player\.playerId/, z],
       ['움집터', /b\.data\.owner !== player\.playerId/, z],
       ['회관 재고(같은 술어 재사용)', /function tryVillageInventory[\s\S]{0,600}_furnaceCanUse\(player, b\)/, z],
       ['마을 창설자', /founder: player\.playerId/, z],

@@ -5,7 +5,7 @@
 //   T11 의 "마을과 길드는 직교"(M-1)는 PM 오판이었다. 정본 지도 = `설계/조사_길드마을_T777.md`(자리 100 · ⓑ 칸).
 //   셋으로 나눈다 — **T785 데이터 · central(이 파일)** → T786 권한(술어 접기 C 22) → T787 말 · 하네스 · 켬 기본 · 옛 길 걷기.
 //
-// ★손잡이 `T785_VILLAGE_ONLY` — **'1' 만 켬** · 없음 · 다른 값 = 끔 = **main 바이트**.
+// ★손잡이 `T785_VILLAGE_ONLY` — ★[T787] **켬 기본**(`'0'` 만 끔). 끔이면 옛 길드 길(T785 앞 글자 그대로).
 //   끔이면 이 파일의 문은 아무도 안 부른다(부르는 자리 전부 `ON &&` 뒤) · 회관 행에 칸을 안 쓴다 · 부팅 이행도 없다.
 //
 // ★★무엇이 어디 사나(켬)
@@ -25,7 +25,8 @@
 //   곳간 문 · 소개 · 가입 문 · 촌장 넘기기 · 전쟁 = 촌장 · 부르기 = 마을 사람(옛 문 = 길드원). 나머지 C 자리는 T786.
 // ★결정론 — 시각은 **게임일**(`H.gameDay`)로 적는다(벽시계 0) · 새 수 0(소개 길이 상한은 `guild.js CFG.INTRO_MAX` 그 수).
 
-const ON = process.env.T785_VILLAGE_ONLY === '1';
+// ★★[T787 2026-10-18] **켬 기본** — `'0'` 만 끔(그때만 옛 길드 길 · main 의 옛 바이트). 없음 · 다른 값 = 켬.
+const ON = process.env.T785_VILLAGE_ONLY !== '0';
 
 let H = null;   // { SimVillages, Membership, Guild, players, send, ZONE_ID, gameDay }
 function init(host) { H = host || null; return ON; }
@@ -209,7 +210,17 @@ function handleChat(player, text) {
     _send(player, mine._kin.intro ? `🏘️ [${mine.name}] 소개를 적었다 — "${mine._kin.intro}"` : `🏘️ [${mine.name}] 소개를 지웠다`);
     return true;
   }
-  if (cmd === '/길드' && (arg === '초대제' || arg === '공개')) {
+  //   ★[T787] 마을 보기 · 가입 문 — 옛 `/길드 초대제|공개` 는 `/마을 …` 이다(길드 = 마을). 옛 명령은 한 줄 안내만.
+  if (cmd === '/길드') { _send(player, '🏘️ 길드는 이제 마을이다 — `/마을` (가입 문은 `/마을 초대제` · `/마을 공개`)'); return true; }
+  if (cmd === '/마을' && !arg) {
+    if (!mine) { _send(player, '🏘️ 아직 어느 마을 사람도 아니다 — 마을 곳간에 보태면 `/소속` 으로 든다'); return true; }
+    const c = chiefOf(mine);
+    const k = mine._kin || {};
+    _send(player, `🏘️ [${mine.name}] 촌장 ${c ? (c.name || c.id) : '없다'} · 곳간 ${k.granaryOpen === false ? '잠김' : '열림'} · `
+      + `${k.joinMode === 'invite' ? '부름을 받아야 든다' : '아무나 든다'}${k.intro ? ` · "${k.intro}"` : ''}`);
+    return true;
+  }
+  if (cmd === '/마을' && (arg === '초대제' || arg === '공개')) {
     if (!mine) return notMine();
     if (!chiefHere) return notChief();
     mine._kin.joinMode = (arg === '초대제') ? 'invite' : 'open';
@@ -217,6 +228,7 @@ function handleChat(player, text) {
     _send(player, mine._kin.joinMode === 'invite' ? `🏘️ [${mine.name}] 은 이제 **부름을 받아야** 든다` : `🏘️ [${mine.name}] 은 이제 아무나 들 수 있다`);
     return true;
   }
+  if (cmd === '/마을') { _send(player, '🏘️ `/마을` (보기) · `/마을 초대제` · `/마을 공개`'); return true; }
   //   부르기 — 마을 사람이 **접속해 있는 사람**을 부른다(이름 → 사람은 존이 아는 이름뿐 · 안 접속한 이름은 central 명부가 필요하다 → 회부).
   //   부름은 몸의 메모리 칸(`_kinCall` · 마을 id → 게임일)이다 — 저장 0(접속을 끊으면 사라진다 · 옛 central 부름 표의 몫은 회부).
   if (cmd === '/초대') {

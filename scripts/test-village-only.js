@@ -219,9 +219,9 @@ async function found(C, base, centers) {
   ok(!!TID, '① 끔 — 길드를 하나 세웠다(옛 길 · 하네스가 central 에 직접)', JSON.stringify(cr));
   A.notices.length = 0;
   snd(A, { type: 'tribe_set', tribeId: TID, tribeName: '물레' }); await sleep(800);
-  ok(A.notices.some((t) => /길드 \[물레\] 적용/.test(t)), '①a 끔 — 존이 길드를 몸에 얹었다(`tribe_set` 종전 그대로)', lastN(A));
+  ok(A.notices.some((t) => /마을 \[물레\] 적용/.test(t)), '①a 끔 — 존이 길드를 몸에 얹었다(`tribe_set` 종전 그대로)', lastN(A));
   ok(await sayWait(A, '/곳간 잠금', /곳간을 잠갔다/), '①b 끔 — 길드장이 곳간을 잠갔다(central 칸)', lastN(A));
-  ok(await sayWait(A, '/길드 초대제', /부름을 받아야/), '①c 끔 — 길드장이 문을 걸었다(central 칸)', lastN(A));
+  ok(await sayWait(A, '/마을 초대제', /부름을 받아야/), '①c 끔 — 길드장이 문을 걸었다(central 칸)', lastN(A));
   ok(await sayWait(A, '/소개 물레방아 곁에 산다', /소개를 적었다/), '①d 끔 — 길드장이 소개를 적었다(central 칸)', lastN(A));
   const tr0 = await jget(`${CEN}/tribe/${TID}`);
   const t0 = tr0 && tr0.tribe;
@@ -309,10 +309,17 @@ async function found(C, base, centers) {
   // 소개 · 가입 문
   ok(await sayWait(A, '/소개 남이 쓴 줄', /촌장만/), '⑥ 촌장이 아니면 소개를 못 쓴다', lastN(A));
   ok(await sayWait(B, '/소개   새   물레  소리  ', /소개를 적었다/), '⑥a 촌장이 소개를 쓴다', lastN(B));
-  ok(await sayWait(B, '/길드 공개', /아무나 들 수 있다/), '⑥b 촌장이 가입 문을 연다', lastN(B));
+  ok(await sayWait(B, '/마을 공개', /아무나 들 수 있다/), '⑥b 촌장이 가입 문을 연다', lastN(B));
   const K6 = await kinOf(VID);
   ok(!!K6 && K6.intro === '새 물레 소리' && K6.joinMode === 'open' && K6.granaryOpen === false,
     '⑥c ★마을 칸 — 소개(공백 접기 · 다듬기) · 가입 문 열림 · 곳간 잠금', JSON.stringify(K6 && { i: K6.intro, j: K6.joinMode, g: K6.granaryOpen }));
+  //   ★[T787] 말 — 명령 이름 `/마을`(보기 · 가입 문) · 옛 `/길드` 는 한 줄 안내만(칸을 안 바꾼다 — 자명 통과 금지: 잠근 뒤 옛 명령으로 열어 본다)
+  ok(await sayWait(B, '/마을', /촌장 .* · 곳간 잠김 · 아무나 든다 · "새 물레 소리"/), '⑥d ★[T787] `/마을` — 내 마을 한 줄(촌장 · 곳간 문 · 가입 문 · 소개)', lastN(B));
+  ok(await sayWait(B, '/마을 초대제', /부름을 받아야/), '⑥e ★[T787] `/마을 초대제` — 촌장이 문을 건다', lastN(B));
+  ok(await sayWait(B, '/길드 공개', /길드는 이제 마을이다/), '⑥f ★[T787] 옛 명령 `/길드 공개` = 한 줄 안내', lastN(B));
+  const K6b = await kinOf(VID);
+  ok(!!K6b && K6b.joinMode === 'invite', '⑥g ★옛 명령은 칸을 **안 바꿨다**(초대제 그대로)', K6b && K6b.joinMode);
+  ok(await sayWait(B, '/마을 공개', /아무나 들 수 있다/), '⑥h 다시 연다(아래 절의 전제 그대로)', lastN(B));
   // 전쟁 — 열쇠 = 마을 id
   const kd6 = await kin();
   const npc = (kd6 && kd6.villages || []).find((v) => !v.player);
@@ -336,7 +343,7 @@ async function found(C, base, centers) {
   ok(!!wr && wr.ok === false && /마을 사이/.test(String(wr.data && wr.data.error || '')), '⑦h 길드 id 전쟁 문은 닫혔다(두 id 공간을 안 섞는다)', JSON.stringify(wr && wr.data));
   Cc.notices.length = 0;
   snd(Cc, { type: 'tribe_set', tribeId: TID, tribeName: '물레' }); await sleep(1200);
-  ok(!Cc.notices.some((t) => /길드 \[물레\] 적용/.test(t)), '⑧ ★`tribe_set` 을 안 받는다(클라가 알리는 길드를 몸에 안 적는다)', lastN(Cc));
+  ok(!Cc.notices.some((t) => /마을 \[물레\] 적용/.test(t)), '⑧ ★`tribe_set` 을 안 받는다(클라가 알리는 길드를 몸에 안 적는다)', lastN(Cc));
   // 켬 창설 — 새 마을은 처음부터 마을 칸(촌장 = 세운 사람 · 표지) · 길드를 안 싣는다 · central 무접촉(아래 ⑨ 가 센다)
   for (let i = 0; i < 30 && !Cc.pos; i++) await sleep(100);
   const baseC = Cc.pos ? { cx: Math.floor(Cc.pos.x / CELL), cy: Math.floor(Cc.pos.y / CELL) } : base;
@@ -394,7 +401,7 @@ async function found(C, base, centers) {
     `const C=require(${JSON.stringify(path.join(ROOT, 'server', 'claims.js'))});console.log(JSON.stringify(C.takeableBy({playerId:'x',tribeId:7},{kind:'personal',ownerPid:'y',state:'pref',heldBy:'guild:7'})))`],
     { env: Object.assign({}, process.env, { T785_VILLAGE_ONLY: on ? '1' : '0' }), encoding: 'utf8' }).trim().split('\n').pop()); } catch (e) { return { err: e.message.slice(0, 120) }; } };
   const tk1 = _tk(true), tk0 = _tk(false);
-  ok(tk1.ok === false && /길드가 이제 없다/.test(tk1.why) && tk0.ok === true, 'Ⓣ11 [C14] 옛 길드 보관 줄 — 켬 = 우선권 없음 · 끔 = 같은 길드 우선권(종전)', JSON.stringify({ on: tk1, off: tk0 }));
+  ok(tk1.ok === false && /옛 보관 줄은 이제 없다/.test(tk1.why) && tk0.ok === true, 'Ⓣ11 [C14] 옛 길드 보관 줄 — 켬 = 우선권 없음 · 끔 = 같은 길드 우선권(종전)', JSON.stringify({ on: tk1, off: tk0 }));
   //   C18 — 이방인 받기 활동 셈("촌장이 N일째 안 온다")이 묻는 사람 = **촌장**(승계된 B) · 창설자 A 가 아니다
   phase = 'scan';
   await jget(`${ZON}/welcomedbg?scan=1`); await sleep(500);
@@ -470,6 +477,38 @@ async function found(C, base, centers) {
     await close(B3);
   } else await close(B2);
   ok(tribeCalls('hand').length === 0, '⑫f ★존 넘김 내내(두 존) central tribe·war 0', JSON.stringify(tribeCalls('hand').map((c) => c.u)));
+
+  // ═══ ⑬ ★★[T787] 말 — 사람이 읽는 글에 "길드 · 길드장 · 길드원 · 리더"가 없다(길드 = 마을 · 호칭 "마을" · 우두머리 "촌장") ═══
+  //   세는 법(소스 · 판정 0): 주석은 `code-only` 정본으로 덮고, 남은 줄 가운데 그 낱말이 있는 줄 = 문자열 · 틀 · 정규식 리터럴뿐이다(식별자에 한글 0).
+  //   빼는 줄 — 운영 로그(`console.*` · 사람 화면이 아니다) · SQL 주석(템플릿 안 `--`) · 옛 명령 한 줄 안내("길드는 이제 마을이다") · 옛 명령 이름 `'/길드'` 를 알아보는 줄.
+  {
+    const codeOnly = require('./code-only.js');
+    const WORD = /길드|리더/;
+    const EXEMPT = (ln) => /console\.(log|warn|error)/.test(ln) || /^\s*--/.test(ln) || /길드는 이제 마을이다/.test(ln) || /'\/길드'/.test(ln);   // 마지막 = 옛 명령 이름을 알아보는 자리(안내로 받는다)
+    const scan = (src, isHtml) => {
+      const body = isHtml ? String(src).replace(/<!--[\s\S]*?-->/g, (m) => m.replace(/[^\n]/g, ' ')).replace(/<script[\s\S]*?<\/script>/g, (m) => m.replace(/[^\n]/g, ' ')) : codeOnly(src);
+      const hits = [];
+      body.split('\n').forEach((ln, i) => { if (WORD.test(ln) && !EXEMPT(ln)) hits.push(`${i + 1}: ${ln.trim().slice(0, 90)}`); });
+      return hits;
+    };
+    const files = [];
+    for (const d of ['server', path.join('public', 'client')]) for (const f of fs.readdirSync(path.join(ROOT, d))) if (/\.js$/.test(f)) files.push(path.join(d, f));
+    files.push(path.join('public', 'index.html'));
+    const all = [];
+    for (const f of files) { const h = scan(fs.readFileSync(path.join(ROOT, f), 'utf8'), /\.html$/.test(f)); for (const x of h) all.push(`${f}:${x}`); }
+    ok(files.length > 20 && all.length === 0, `⑬ ★[T787] 사람이 읽는 글(서버 ${files.filter((f) => f.startsWith('server')).length} · 클라 ${files.length - files.filter((f) => f.startsWith('server')).length} 파일)에 "길드 · 리더" 0줄`, JSON.stringify(all.slice(0, 6)));
+    //   자명 통과 금지 — 같은 세는 법이 미끼를 **문다**(주석 속 미끼는 안 문다)
+    const bait = scan("// 길드 주석은 세지 않는다\nsend(ws, { type: 'notice', text: '길드 곳간이 섰다' });\n", false);
+    ok(bait.length === 1 && /길드 곳간이 섰다/.test(bait[0]), '⑬a 자명 통과 금지 — 문자열 속 "길드"는 물고 주석 속은 안 문다', JSON.stringify(bait));
+    //   ⑭ 클라 무리 패널 = 마을 패널(켬 · `uiCfg.villageOnly`) — 그 갈래는 central 길드 문 · `/tribes` · `/wars/active` 를 안 부른다
+    const pan = fs.readFileSync(path.join(ROOT, 'public', 'client', '50-i-panel.js'), 'utf8');
+    const i0 = pan.indexOf('if (uiCfg && uiCfg.villageOnly) {'), i1 = i0 >= 0 ? pan.indexOf('\n    if (myTribeId) {', i0) : -1;
+    const vb = (i0 >= 0 && i1 > i0) ? pan.slice(i0, i1) : '';
+    ok(!!vb && /return;\s*\}\s*$/.test(vb) && !/__centralCall|fetch\(|tribe_set/.test(vb) && /\/마을/.test(vb),
+      '⑭ ★[T787] 켬 — 클라 무리 패널은 **마을 패널**(채팅 문 안내 · `/마을` 단추) · central 길드 문 · 명부 · 전쟁 목록 0', vb ? `${vb.length}자` : '갈래 없음');
+    const zsrc = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
+    ok(/\.\.\.\(VillageKin\.ON \? \{ villageOnly: true \} : \{\}\)/.test(zsrc), '⑭a 서버가 켬일 때만 `uiCfg.villageOnly` 를 싣는다(끔 = 칸 없음 = 옛 패널)');
+  }
 
   // 회부용 — 켬 판에서도 존이 central 에 묻는 문(마을 일 밖 · 이름만 · id 는 :n 으로 접는다)
   const doors = (ph) => [...new Set(calls.filter((c) => ph.includes(c.phase)).map((c) => `${c.m} ${String(c.u).split('?')[0].replace(/\/\d+(?=\/|$)/g, '/:n').replace(/\/kin[A-Z](?=\/|$)/g, '/:이름')}`))].sort();
