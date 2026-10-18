@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
 // === scripts/test-preserve-carry.js — T767: 보존 가공 = **개수 그대로 · 신선도 이어받기 · 썩는 속도만 느리게** ===
-//     (손잡이 `T767_PRESERVE_CARRY=1` — 없음 = 끔 = main 바이트)
+//     (손잡이 `T767_PRESERVE_CARRY` — ★[T778] 켬 기본 · `=0` 이 끔 = 종전 바이트 · 순간 로트 `T732_MOMENT_LOT` 도 켬 기본)
 //
 // ★재민 10-15 판정: "애초에 갓 잡은 걸로 가공이 안 되는 게 문제 · 신선도가 떨어진다고 양이 떨어지는 거 아니잖아 ·
 //   신선도를 그대로 가져와야 · 건어물은 신선도 감소 속도가 느려지는 것뿐이어야".
@@ -147,10 +147,11 @@ function child(env) {
 console.log('\n=== T767 보존 가공 — 개수 그대로 · 신선도 이어받기 · 썩는 속도만 느리게 ===');
 const Spoil = require(SV('spoil.js'));
 const RUNS = {
-  off_day: child({}),
-  off_mom: child({ T732_MOMENT_LOT: '1' }),
-  on_day: child({ T767_PRESERVE_CARRY: '1' }),
-  on_mom: child({ T767_PRESERVE_CARRY: '1', T732_MOMENT_LOT: '1' }),
+  // ★[T778] 두 손잡이 켬 기본 — 끔 갈래는 명시 `=0` · 켬·순간 = 기본(손잡이 없음)
+  off_day: child({ T767_PRESERVE_CARRY: '0', T732_MOMENT_LOT: '0' }),
+  off_mom: child({ T767_PRESERVE_CARRY: '0' }),
+  on_day: child({ T732_MOMENT_LOT: '0' }),
+  on_mom: child({}),
 };
 for (const [k, r] of Object.entries(RUNS)) pre(!r.err && r.knob, `아이 판 ${k} 이 끝까지 돌았다`, r.err ? r.err.split('\n')[0] : JSON.stringify(r.knob));
 pre(!RUNS.off_day.knob.carry && !RUNS.off_day.knob.moment && !RUNS.off_mom.knob.carry && RUNS.off_mom.knob.moment
@@ -255,8 +256,8 @@ console.log('\n⑧ 글자');
     '⑧ 주문 신선도 칸은 켬에서만 · 그 칸이 없으면 수령은 종전 `Lots.note`(리셋)');
   ok(/yieldPct: \(have > 0 && !Spoil\.T767_CARRY\)/.test(z) && /if \(Spoil\.T767_CARRY && have > 0\)/.test(z),
     '⑧ 화면 줄 — 끔이면 수율 그대로 · 새 칸은 켬에서만');
-  ok((s.match(/process\.env\.T767_PRESERVE_CARRY/g) || []).length === 1 && /T767_PRESERVE_CARRY === '1'/.test(s),
-    "⑧ 손잡이는 spoil.js 한 자리(`=== '1'` · 없음 = 끔)");
+  ok((s.match(/process\.env\.T767_PRESERVE_CARRY/g) || []).length === 1 && /T767_PRESERVE_CARRY !== '0'/.test(s),
+    "⑧ 손잡이는 spoil.js 한 자리(`!== '0'` · ★[T778] 켬 기본 · `=0` 이 끔)");
 }
 
 console.log(`\n=== 결과: ${pass} PASS / ${fail} FAIL ===`);

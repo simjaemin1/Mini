@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // @regress
-// === scripts/test-granary-age.js — 곳간에서 꺼내면 새것이 되던 구멍 · 본 구현 (T732 · 손잡이 T732_MOMENT_LOT=1 · 없음 = 끔 = main 바이트) ===
+// === scripts/test-granary-age.js — 곳간에서 꺼내면 새것이 되던 구멍 · 본 구현 (T732 · 손잡이 T732_MOMENT_LOT · ★[T778] 켬 기본 — `=0` 이 끔 = 종전 바이트) ===
 //
 // ★왜 [T716 ① 실측 → T732 본 구현 · 족보 631 ①] econ 곳간(`v.storage[재화]`)은 날짜 없는 총량이었다. 넣은 음식은 단위로 녹고, 꺼내면
 //   `_afterWithdraw` 의 `Lots.reconcile(…, 오늘)` 이 **오늘 얻은 것**으로 잡았다 — 시든 고기를 넣었다 꺼내면 갓 잡은 고기가 됐다.
@@ -8,7 +8,7 @@
 //   **곳간 칸 전부를 얻은 순간 로트 장부**로 만든다(`granary-lots.js`) — econ 이 만든 것도 그 순간의 로트 · 마을이 먹으면 오래된 것부터 ·
 //   사람의 문(회관 · 거래소 · 게시판 · 겨울 몫 · 꺼내기 · 마을 밥 · 위세품 값)은 정본 함수가 정한 개수 · 단위 앞뒤에서 레코드만 옮긴다.
 //
-//  ① 손잡이 — '1' 하나만 켬 · 끄면 장부가 안 붙고 꺼낸 것은 오늘 것(main 그대로 — 구멍이 그대로 있다는 것도 잰다)
+//  ① 손잡이 — ★[T778] 켬 기본 · '0' 하나만 끔 · 끄면 장부가 안 붙고 꺼낸 것은 오늘 것(종전 그대로 — 구멍이 그대로 있다는 것도 잰다)
 //  ② 켬 — 진짜 회관 문으로 넣기 → 장부 레코드(그 순간 · 단위 무게 · 접힌 신선도 f0) → 진짜 꺼내기 문 → 대표 품목이 **그 나이째**
 //         ★[T768 · 재민 10-15 ⓑ] → **넣은 품목 그대로**(곰고기를 넣으면 곰고기 · 낱개는 곰고기 열량 · 나이째) — 대표 품목(사슴·들짐승고기)은 econ 몫에서만
 //         · 접힌 신선도를 편다(낱개 = 문 몫 ÷ f0 — 두 번 깎으면 소멸) · 단위 보존(열량 × 신선도 = 꺼낸 단위)
@@ -199,17 +199,17 @@ const SRC = (f) => fs.readFileSync(SV(f), 'utf8');
 const ZSRC = SRC('zone.js'), VSRC = SRC('villages.js'), MSRC = SRC('membership.js');
 const code = (s) => s.split('\n').filter((l) => !/^\s*\/\//.test(l)).map((l) => l.replace(/\/\/.*$/, '')).join('\n');   // 주석 뺀 코드
 
-say('\n=== 곳간 나이 — 꺼내면 새것이 되던 구멍 · 본 구현 (T732 · 손잡이 T732_MOMENT_LOT=1) ===');
-const zOff = sub({});
-const zOn = sub({ T732_MOMENT_LOT: '1' });
+say('\n=== 곳간 나이 — 꺼내면 새것이 되던 구멍 · 본 구현 (T732 · 손잡이 T732_MOMENT_LOT · 켬 기본 · T778) ===');
+const zOff = sub({ T732_MOMENT_LOT: '0' });   // ★[T778] 끔 = 명시 `=0`
+const zOn = sub({});                          // ★[T778] 켬 = 기본(손잡이 없음)
 
 say('\n① 손잡이 · 끔 = 종전(구멍이 그대로 있다)');
 {
   pre(!zOff.err && !zOn.err, '존 두 판이 떴다', zOff.err || zOn.err || '');
   const knob = (v) => JSON.parse(execFileSync(process.execPath, [__filename], { env: Object.assign({}, BASE_ENV, v === undefined ? {} : { T732_MOMENT_LOT: v }, { T732_SUB: 'zone' }), stdio: 'pipe', maxBuffer: 64 << 20 }).toString().trim().split('\n').pop());
-  const kE = knob(''), k0 = knob('0'), kT = knob('true');
-  ok(zOff.on === false && zOn.on === true && zOff.gl === false && zOn.gl === true && [kE, k0, kT].every((k) => k.on === false && k.gl === false),
-    "★① 손잡이 — '1' 하나만 켬(없음·빈 값·'0'·'true' = 끔 · 끄면 곳간 장부 모듈을 싣지도 않는다)");
+  const kE = knob(''), k0 = knob('0'), kT = knob('true'), k1 = knob('1');
+  ok(zOff.on === false && zOn.on === true && zOff.gl === false && zOn.gl === true && [kE, kT, k1].every((k) => k.on === true && k.gl === true) && k0.on === false && k0.gl === false,
+    "★① 손잡이 — [T778] 켬 기본 · '0' 하나만 끔(없음·빈 값·'1'·'true' = 켬 · 끄면 곳간 장부 모듈을 싣지도 않는다)");
   pre(zOff.toEcon === 'meat_game' && zOff.rate > 0, '곳간 재화 meat_game 의 대표 품목 = 사슴·들짐승고기(대응 정본 · T694 켬)', `${zOff.toEcon} · 환산율 ${zOff.rate}`);
   pre(zOff.A0.length === 1 && near(zOff.A0[0].f, 0.5, 1e-3), '넣을 곰고기 10 — 시든 것(f 0.5)', JSON.stringify(zOff.A0));
   ok(zOff.Aledger === null && zOff.A.ledger === null, '① 끔 — 곳간 장부가 없다(econ 칸 그대로)');
@@ -292,7 +292,7 @@ say('\n⑦ 배선 — 문 앞 · 문 뒤 · 전부 손잡이 뒤 · T716 임시 
   const bad = doors.filter(([n, re]) => { const f = fnOf(ZSRC, n); const a = f.indexOf('_t732DoorBegin('), b = f.search(re), c = f.indexOf('_t732DoorEnd(', b); return !(a > 0 && b > a && c > b); });
   ok(bad.length === 0, '★⑦ 문 넷(회관 · 거래소 · 게시판·겨울 몫 · 위세품 값) — 정본 함수 **앞**에서 `_t732DoorBegin` · **뒤**에서 `_t732DoorEnd`', bad.map((x) => x[0]).join(',') || '넷 다');
   const mw = fnOf(MSRC, 'withdraw');
-  ok(/H\.wrapWithdraw\(player, _wd\)/.test(mw) && /\.\.\.\(process\.env\.T732_MOMENT_LOT === '1' \? \{ wrapWithdraw: \(player, fn\) => _t732Wrap\(player, fn\) \} : \{\}\)/.test(ZSRC),
+  ok(/H\.wrapWithdraw\(player, _wd\)/.test(mw) && /\.\.\.\(process\.env\.T732_MOMENT_LOT !== '0' \? \{ wrapWithdraw: \(player, fn\) => _t732Wrap\(player, fn\) \} : \{\}\)/.test(ZSRC),   // ★[T778] 켬 기본
     '★⑦ 꺼내기 — membership 의 정본 꺼내기가 존의 감싸개 안에서 돈다(UI · 채팅 `/곳간` · `/인출` 다) · 켬일 때만 감싸개를 준다');
   ok(/T732_MOMENT \? _t732Wrap\(p, \(\) => SimVillages\.playerVillageWithdraw\(vil, p\.inventory, 'food', 1\)\)/.test(fnOf(ZSRC, '_villageMeal')), '⑦ 마을 밥(구제 한 끼)도 같은 감싸개');
   ok(/const GL = T732_MOMENT \? require\('\.\/granary-lots'\) : null;/.test(ZSRC) && /function _t732DoorBegin\(player, giveItems\) \{\n  if \(!GL /.test(ZSRC), '⑦ 끄면 곳간 장부 모듈을 안 싣는다 · 문 도우미는 첫 줄에서 돌아간다(main 바이트)');

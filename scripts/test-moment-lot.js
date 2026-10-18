@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // @regress
-// === scripts/test-moment-lot.js — T732: 로트 = 얻은 순간 · 모든 길에서 로트가 따라간다 (손잡이 T732_MOMENT_LOT=1 · 없음 = 끔 = main 바이트) ===
+// === scripts/test-moment-lot.js — T732: 로트 = 얻은 순간 · 모든 길에서 로트가 따라간다 (손잡이 T732_MOMENT_LOT · ★[T778] 켬 기본 — `=0` 이 끔 = 종전 바이트) ===
 //
 // ★왜 [T732 · 재민 10-12 · 10-14 재확인(족보 631 ①)] 신선도는 아이템마다다 — 같은 순간에 얻은 것만 합친다 · 곳간 포함.
 //   종전 로트 열쇠는 **날**이었고(0시 것과 23시 것이 한 로트) · econ 곳간은 날짜 없는 총량이라 넣은 음식이 녹고 나온 음식은 '오늘 것'이었다
@@ -598,18 +598,18 @@ say('\n⑦ 전쟁 군량 — 팩 싣기 · 환급 꼬리 · 항복 공납');
   } finally { WarCore.setLotHook(null); }
 }
 
-say('\n⑧ 끔 — 손잡이 \'1\' 하나만 켬');
+say('\n⑧ 손잡이 — ★[T778] 켬 기본 · \'0\' 하나만 끔');
 {
   const run = (val) => {
     const env = Object.assign({}, process.env, { T732_SUB: 'knob' });
     if (val === undefined) delete env.T732_MOMENT_LOT; else env.T732_MOMENT_LOT = val;
     return JSON.parse(execFileSync(process.execPath, [__filename], { env, stdio: 'pipe' }).toString().trim().split('\n').pop());
   };
-  const off = run(undefined), on = run('1'), z = run('0'), t = run('true');
+  const dflt = run(undefined), on = run('1'), off = run('0'), t = run('true'), e = run('');
   ok(off.on === false && off.momentOn === false && off.att === false && off.getter === false && off.lot && off.lot.k === undefined,
-    '★⑧ 끔(없음) — 시계를 안 받는다 · 곳간 장부 안 붙는다 · 로트는 날 꼴 그대로(main)', JSON.stringify(off.lot));
-  ok(z.on === false && t.on === false && z.att === false && t.att === false, "⑧ '0' · 'true' 도 끔");
-  ok(on.on === true && on.momentOn === true && on.att === true && on.getter === true && on.lot && Number.isFinite(on.lot.k), "⑧ '1' 이면 켬 — 순간 열쇠 · 곳간 장부");
+    "★⑧ 끔('0') — 시계를 안 받는다 · 곳간 장부 안 붙는다 · 로트는 날 꼴 그대로(종전 바이트)", JSON.stringify(off.lot));
+  ok([dflt, t, e].every((x) => x.on === true && x.momentOn === true && x.att === true), "⑧ 없음 · 빈 값 · 'true' 도 켬([T778] 켬 기본)");
+  ok(on.on === true && on.momentOn === true && on.att === true && on.getter === true && on.lot && Number.isFinite(on.lot.k) && JSON.stringify(dflt) === JSON.stringify(on), "⑧ '1' = 없음(기본) — 순간 열쇠 · 곳간 장부(두 판 같은 줄)");
 }
 
 // ══ [T748] 켬 전용 일곱 길 · 거래소 받기 ══════════════════════════════════════════════════
@@ -620,7 +620,7 @@ const T748_KNOBS = ['T732_MOMENT_LOT', 'T732_SUB', 'T748_PART', 'T748_TK', 'T312
 const T748_BASE = (() => { const e = Object.assign({}, process.env); for (const k of T748_KNOBS) delete e[k]; return e; })();
 const sub748 = (part, knobs, on, extra) => {
   const env = Object.assign({}, T748_BASE, knobs || {}, extra || {}, { T732_SUB: 't748', T748_PART: part });
-  if (on) env.T732_MOMENT_LOT = '1';
+  env.T732_MOMENT_LOT = on ? '1' : '0';   // ★[T778] 켬 기본 — 끈 판은 명시 `=0`
   try { return JSON.parse(execFileSync(process.execPath, [__filename], { env, stdio: 'pipe', maxBuffer: 64 << 20 }).toString().trim().split('\n').pop()); }
   catch (e) { return { err: String((e && e.message) || e).slice(0, 400) }; }
 };
@@ -771,7 +771,7 @@ say('\n⑪ [T748] 배선 — 켬일 때만 닿는 줄 · 끄면 안 꽂는다(�
     && (ES.match(/if \(_LOTH\) _LOTH\.pendOut\(/g) || []).length === 2 && /let _LOTH = null;/.test(ES) && /setLotHook,/.test(ES),
     '⑨③ econ 고르게 대기 — 훅 줄 넷(들기 둘 · 풀기 둘) · 호스트가 안 꽂으면 무동작(랩 · CLI)');
   ok(/E1\.setLotHook\(G\.hooks\)/.test(VS) && /B\.lotsBoot\(G\)/.test(VS), '⑨ 존 부팅(`_t732Boot` — 켬만 도는 그 함수)이 econ 대기 칸 훅 · 갱 줄을 꽂는다');
-  ok(/const _T748_ON = \(typeof process !== 'undefined' && !!process\.env && process\.env\.T732_MOMENT_LOT === '1'\);/.test(BS)
+  ok(/const _T748_ON = \(typeof process !== 'undefined' && !!process\.env && process\.env\.T732_MOMENT_LOT !== '0'\);/.test(BS)   // ★[T778] 켬 기본
     && /function _gl\(\) \{ if \(!_T748_ON\) return null;/.test(BS)
     && /if \(_G\) gs\.forEach\(\(g, i\) => \{ if \(g\.food > _f0\[i\]\) _G\.gangIn\(g, g\.food - _f0\[i\]\); \}\);/.test(BS)
     && (BS.match(/_G\.gangIn\(g, g\.food, true\)/g) || []).length === 2 && /_G\.gangOut\(g, _f0 - g\.food\)/.test(BS) && /gangs\[i\]\._t748Lots = L/.test(BS) && /lotsBoot\(_gl\(\)\);/.test(BS),

@@ -7,7 +7,7 @@
 //   존 모듈이 실리는 순간 존 날을 얼린다(`__e2eFreezeZoneDay(true)` — 제품의 테스트 문 그대로 · 순간 시계가 그 날 0시에 선다).
 //   얼린 판에서 켬 = 끔이면 갈림은 지난 시간 몫이다. 세계 · 제품은 한 글자도 안 바꾼다(문을 부를 뿐).
 //
-// 쓰는 법: T732_MOMENT_LOT=1 NODE_OPTIONS="--require ./scripts/t732-freeze-hook.js" node scripts/test-food-sick.js
+// 쓰는 법: NODE_OPTIONS="--require ./scripts/t732-freeze-hook.js" node scripts/test-food-sick.js   (★[T778] 순간 로트 켬 기본 — 끔 판은 `T732_MOMENT_LOT=0`)
 //   (하위 실행이 env 를 물려받으면 아이 존도 얼린다.)
 const Module = require('module');
 const path = require('path');

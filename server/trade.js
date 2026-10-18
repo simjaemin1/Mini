@@ -32,9 +32,9 @@
 'use strict';
 const path = require('path');
 const Events = require('./events');
-// ★[T732 · 손잡이 `T732_MOMENT_LOT=1`] 곳간 로트 장부 — 견적(`gluttedAt` · `planSliced`)이 곳간을 잠깐 바꿨다 되돌리는 동안은 장부를 멈춘다.
+// ★[T732 · 손잡이 `T732_MOMENT_LOT` · ★[T778] 켬 기본(`=0` 끔)] 곳간 로트 장부 — 견적(`gluttedAt` · `planSliced`)이 곳간을 잠깐 바꿨다 되돌리는 동안은 장부를 멈춘다.
 //   늦게 · 켬일 때만 싣는다(끄면 · 랩이면 안 싣는다 — main 바이트 · 랩 모듈 무변). 값은 한 자리도 안 바꾼다.
-const _T732_ON = (typeof process !== 'undefined' && process.env && process.env.T732_MOMENT_LOT === '1');
+const _T732_ON = (typeof process !== 'undefined' && process.env && process.env.T732_MOMENT_LOT !== '0');   // ★[T778] 켬 기본 · 되돌림 `=0`
 let _t732G = null;
 function _t732Pause(on) { if (!_T732_ON) return; if (_t732G === null) { try { _t732G = require('./granary-lots'); } catch (e) { _t732G = false; } } if (_t732G) _t732G.suspend(on); }
 // ★★[T748 2026-10-14 · PM 10-14(족보 639) · 같은 손잡이 안 — 호스트가 `takeKcal`(kcal 정본 모듈)을 넘길 때만 · 끔/랩 = 종전 그대로] **거래소 받기 = 열량 짝.**

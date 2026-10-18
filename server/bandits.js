@@ -167,10 +167,10 @@ function _t766Held(world, vil, fe, n, day) {   // 켬 전용 — 오는 식량�
 const ARMS_RES = new Set(['weapon', 'armor', 'tool', 'iron_tool', 'bronze_tool']);
 function _t521On() { return typeof process !== 'undefined' && !!process.env && process.env.T521_GANG_ARMS === '1'; }
 function armsHeld(g) { const w = (g && g.arms && g.arms.weapon) || 0; return Math.min(Math.max(0, g ? g.n | 0 : 0), w); }   // 손 = 한 사람 한 무기 // 테스트 전용(헤더 주석) — 운영 무설정
-// ★★[T748 2026-10-14 · 손잡이 `T732_MOMENT_LOT=1` 안 — 끄면 이 파일은 곳간 장부를 싣지도 않는다(바이트 같음)] **갱 비축에도 로트가 있다.**
+// ★★[T748 2026-10-14 · 손잡이 `T732_MOMENT_LOT` · ★[T778] 켬 기본(`=0` 끔) 안 — 끄면 이 파일은 곳간 장부를 싣지도 않는다(바이트 같음)] **갱 비축에도 로트가 있다.**
 //   장물아비 환산 몫은 그 순간 얻은 것(장물아비가 내준 식량) · 결성 비축은 그 순간(씨앗) · 유지비는 오래된 것부터 — 줄은 `granary-lots` 의 갱 줄(몸 밖 · 갱 객체 칸 0).
 //   토벌(T476)의 소굴 어댑터가 이 줄을 곳간처럼 뗀다(노획 레코드째 · 소굴 토벌 노획이 레코드 없는 줌이던 길 · T732 §2 끝 표).
-const _T748_ON = (typeof process !== 'undefined' && !!process.env && process.env.T732_MOMENT_LOT === '1');
+const _T748_ON = (typeof process !== 'undefined' && !!process.env && process.env.T732_MOMENT_LOT !== '0');   // ★[T778] 켬 기본 · 되돌림 `=0`
 let _glM = null;
 function _gl() { if (!_T748_ON) return null; if (_glM === null) { try { _glM = { G: require('./granary-lots'), L: require('./lots') }; } catch (e) { _glM = false; } } return (_glM && _glM.L.momentOn()) ? _glM.G : null; }
 // 부팅 — 복원한 갱의 줄을 꽂는다(저장 칸을 떼어 갱 줄로) · 줄이 없는 갱은 지금 비축을 씨앗 하나로(나이 모름 — 끔에서 켬으로)

@@ -39,6 +39,9 @@ if (process.env.T636_SUB === 'butcher') {
   const _log = console.log; console.log = () => {}; console.warn = () => {}; console.error = () => {};
   const Zone = require(SV('zone.js'));
   const H = Zone.__testBind();
+  // ★[T778] 순간 로트 켬 기본 — 순간 열쇠는 "같은 날 = 나이 0"을 깬다(갓 바른 고기도 사체가 선 뒤 지난 몇 분만큼 늙는다 — P 0.00005).
+  //   값 단언은 그대로 두고 지난 시간만 뺀다 — 존 날을 얼린다(제품의 테스트 문 · 날 문법(`T732_MOMENT_LOT=0`)엔 같은 날).
+  H.__e2eFreezeZoneDay(true);
   const notes = [];
   const out = {};
   const mkP = (tag) => ({ pid: `p_${tag}`, playerId: `anon_t636_${tag}`, name: '사냥꾼', persistent: false,
@@ -223,6 +226,7 @@ say('\n⑥ 실기 — 존을 띄워 사체 → 도살(butcherCorpse) → 먹기(
   const hb = sub({ T636_SUB: 'butcher', T636_SUB_ZONE: 'hanbando' });
   const np = sub({ T636_SUB: 'butcher', T636_SUB_ZONE: 'nippon' });
   const off = sub({ T636_SUB: 'butcher', T636_SUB_ZONE: 'hanbando', T636_DROP_KG: '0' });
+  const hbLot0 = sub({ T636_SUB: 'butcher', T636_SUB_ZONE: 'hanbando', T732_MOMENT_LOT: '0' });   // ★[T778] 끔 탐침 — 순간 로트 끔(날 로트)
   pre(off.out.deer && off.out.deer.inv.meat_game === 3 && !off.out.deer.left, '되돌림 — 사슴을 도살하면 고기 3(카탈로그 · 이게 아니면 아래가 자명 통과)', JSON.stringify(off.out.deer && off.out.deer.inv));
   ok(hb.out.deer.inv.meat_game === 33 && hb.out.deer.inv.leather === 2 && hb.out.deer.inv.horn === 1, '★★⑥ 한반도(기본 켬) — 사슴 도살 인벤 고기 33 · 가죽 2 · 뿔 1', JSON.stringify(hb.out.deer.inv));
   ok(np.out.deer.inv.meat_game === 21, '★★⑥ 닛폰 — 사슴 도살 고기 21(일본아종)', JSON.stringify(np.out.deer.inv));
@@ -238,6 +242,9 @@ say('\n⑥ 실기 — 존을 띄워 사체 → 도살(butcherCorpse) → 먹기(
   ok(e.n1 === 32 && Math.abs((e.h1 - e.h0) - e.eff.hunger) < 1e-6, '★★⑥ [T647] 존 판에서 진짜로 먹었다 — 손 33 → 32 · 허기 +24.49', `허기 ${e.h0} → ${+e.h1.toFixed(2)}`);
   ok(e.hp1 === e.hp0 && !(e.eff.hpDelta < 0) && e.eff.thirst === 0 && e.sick === null,
     '⑥ 날고기 줄 — 즉시 HP 칸 없음(T705 · 해는 배탈 지수 — 갓 잡은 고기는 독 0 · 몸에 배탈 칸도 안 선다) · 갈증 0', `HP ${e.hp0} → ${e.hp1} · sick ${JSON.stringify(e.sick)}`);
+  const e0 = (hbLot0.out && hbLot0.out.eat) || {};
+  ok(e0.n1 === e.n1 && e0.sick === null && e.sick === null && Math.abs((e0.h1 - e0.h0) - (e.h1 - e.h0)) < 1e-9 && JSON.stringify(hbLot0.out.deer.inv) === JSON.stringify(hb.out.deer.inv),
+    '⑥ [T778 끔 탐침] 순간 로트 끔(`T732_MOMENT_LOT=0`)에서도 같은 도살 · 같은 먹기(손 33 → 32 · 허기 · 독 0)', JSON.stringify({ n1: e0.n1, sick: e0.sick }));
   const oe = off.out.eat || {};
   ok(!oe.eff && oe.n1 === oe.n0 && oe.h1 === oe.h0 && (off.notes || []).some((s) => /먹을 수 없는 아이템: meat_game/.test(s)), '★⑥ 되돌림 — 먹기 표에 없다("먹을 수 없는 아이템" · 허기 · 손 그대로 = main)', `손 ${oe.n0} → ${oe.n1}`);
   // ★곳간·거래 무변 — meat_game 은 곳간 넣기 표 밖 · 표의 품목 환산은 켬 · 되돌림 같다

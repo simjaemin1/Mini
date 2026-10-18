@@ -4963,7 +4963,7 @@ Membership.init({ SimVillages, ZONE_ID, send, players, gameDay: gameDayNow,
   afterWithdraw: (player, r) => _afterWithdraw(player, r),
   donate: (player, vid, want) => tryVillageDonate(player, vid, want),   // ★[T769] `/기부` 의 실물 길(켬에서만 불린다)
   //   ★[T732] 곳간 문 감싸개 — 켬일 때만 준다(끄면 이 칸이 없다 = membership 이 종전 그대로 부른다). UI · 채팅 인출이 다 이 문을 지난다.
-  ...(process.env.T732_MOMENT_LOT === '1' ? { wrapWithdraw: (player, fn) => _t732Wrap(player, fn) } : {}) });
+  ...(process.env.T732_MOMENT_LOT !== '0' ? { wrapWithdraw: (player, fn) => _t732Wrap(player, fn) } : {}) });   // ★[T778] 켬 기본
 
 // ★[T45 2026-09-02] 사유지 v2 — **이미 있는 것만 넘긴다**(사본 금지).
 //   ⚠`gameDay` 를 일부러 안 넘긴다 — 부재 시계는 **실시간**이고 세계의 시간이 아니다(claims.js 제3 규약).
@@ -7542,7 +7542,7 @@ function doCook(player, recipeName) {
 //     수령일로 잡으면 건조대가 **무한 정지 상자**가 된다(걸어 두면 안 상하는 창고).
 //     완성일로 잡으면 "말렸으면 가져가라"가 성립한다 — 그게 보존식이지 마법 상자가 아니다.
 //   ⇒ 이 차이는 알고 낸 것이고 `회부_부패_다음층.md` D 에 적었다.
-// ★★[T767 2026-10-16 · 손잡이 `T767_PRESERVE_CARRY=1` · 끔 = 위 그대로] 재민 10-15: **리셋이 아니라 이어받기** — 산출 = 넣은 개수 ·
+// ★★[T767 2026-10-16 · 손잡이 `T767_PRESERVE_CARRY` · ★[T778] 켬 기본(`=0` 끔) · 끔 = 위 그대로] 재민 10-15: **리셋이 아니라 이어받기** — 산출 = 넣은 개수 ·
 //   산출 로트는 다 된 순간(종전 그 자리)에 **넣은 레코드의 신선도**로 서서 보존식 곡선으로 늙는다(`Spoil.carryOf` · `_t767Land`).
 function doPreserve(player, recipeKey, amount) {
   // ★[T59] `from` 이 어종 집합이면 **손에 있는 것 하나로 풀어** 받는다(정본이 고른다 · 주사위 0).
@@ -8197,7 +8197,7 @@ function _enqueueCraft(player, fac, kind, inst, label, skill) {
   sendCraftQueue(player);
   return r;
 }
-// ★★[T767 2026-10-16 · 손잡이 `T767_PRESERVE_CARRY=1`(spoil.js) — 끔이면 주문에 `lotFresh` 칸이 안 생겨 이 함수를 아무도 안 부른다(main 바이트)]
+// ★★[T767 2026-10-16 · 손잡이 `T767_PRESERVE_CARRY` · ★[T778] 켬 기본(`=0` 끔)(spoil.js) — 끔이면 주문에 `lotFresh` 칸이 안 생겨 이 함수를 아무도 안 부른다(main 바이트)]
 //   **보존식 산출 로트 = 넣은 레코드마다 그 신선도에서 시작.** 다 된 순간(`_d` · 켬 T732 면 순간 `_kDone`)에 서고, 노출은 산출 품목 곡선 위
 //   같은 신선도의 자리(`Spoil.carryExposure`) — 그 뒤엔 보존식 보관일로 늙는다. 꽂기는 T705 상한 몫 줄과 같은 길(`Lots.moveIn` · 같은 순간 ·
 //   같은 노출만 합친다 — 신선도가 다른 레코드는 안 섞인다 · 평균 0). 날 문법(T732 끔)이면 `t = 다 된 날` 로 서서 그날부터 늙는다(종전 `note` 와 같은 뜻).
@@ -8402,7 +8402,7 @@ function __e2eFreezeZoneDay(on) {
   else if (_e2eDayFrozen !== null) { _e2eDayOffset += _rawGameDay() - _e2eDayFrozen; _e2eDayFrozen = null; }
   return { frozen: _e2eDayFrozen !== null, day: zoneGameDay() };
 }
-// ★★[T732 2026-10-14 · 손잡이 `T732_MOMENT_LOT=1` — 없음·빈 값·0 = 끔 = 시계를 안 꽂는다(로트·곳간 장부가 날 문법 그대로 · main 바이트)]
+// ★★[T732 2026-10-14 · 손잡이 `T732_MOMENT_LOT` — ★[T778] 켬 기본 · `=0` 만 끔 = 시계를 안 꽂는다(로트·곳간 장부가 날 문법 그대로 · main 바이트)]
 //   **얻은 순간의 시계 = 절대 게임 ms.** `zoneGameDay` 와 같은 산수(세계 기점 · 얼림 · 얼었던 날수)를 ms 로 — 수를 두 벌로 적지 않는다.
 //   얼면 그 날 0시에 멈춘다(녹은 뒤 순간이 뒤로 가지 않는다 — 얼었던 날수는 정수라 녹은 순간 ≥ 그 날 0시).
 function zoneGameMsAt(realMs) {
@@ -8410,7 +8410,7 @@ function zoneGameMsAt(realMs) {
   return (Number(realMs) - ((WORLD && WORLD.worldEpoch) || 0)) - _e2eDayOffset * _SEASON_DAY_MS;
 }
 function zoneGameMs() { return zoneGameMsAt(Date.now()); }
-const T732_MOMENT = process.env.T732_MOMENT_LOT === '1';   // 시계는 `Lots` 를 부른 줄 바로 뒤에서 꽂는다(아래 `require('./lots')`)
+const T732_MOMENT = process.env.T732_MOMENT_LOT !== '0';   // ★[T778] 켬 기본 · 되돌림 `=0` · 시계는 `Lots` 를 부른 줄 바로 뒤에서 꽂는다(아래 `require('./lots')`)
 // ★★[T1 §2-④ 2026-09-01] **이벤트 루프 지연** — RTT 스파이크의 직접 원인을 서버 쪽에서 그대로 재는 자.
 //   `econ_day 2000ms` 는 "그 일이 2초 걸렸다"만 말한다. 루프가 실제로 **얼마나 막혔나**는 이게 답한다.
 //   조각내기가 통했다면 총 일 시간은 그대로여도 **p99 가 내려간다** — 그게 이 배치의 판정선이다.
@@ -11648,7 +11648,7 @@ function tryVillageBrief(player, vid) {
   }
   send(player.ws, { type: 'village_brief', brief: r });
 }
-// ★★[T732 2026-10-14 · 손잡이 `T732_MOMENT_LOT=1` — 없음·빈 값·0 = 끔 = 아래 T732 문 줄들이 아무것도 안 한다(main 바이트)] **곳간 문 — 사람 ↔ 곳간 로트.**
+// ★★[T732 2026-10-14 · 손잡이 `T732_MOMENT_LOT` — ★[T778] 켬 기본 · `=0` 만 끔 = 아래 T732 문 줄들이 아무것도 안 한다(main 바이트)] **곳간 문 — 사람 ↔ 곳간 로트.**
 //   T716 ⑤ 임시 고침(넣은 몫만 마을 곁 장부 `econ._t716Lots` · 꺼낼 때 대표 품목 k 개를 넣은 물건으로 갈아 끼움 · 손잡이 `T716_GRANARY_AGE`)을 **걷었다**(족보 631 ①).
 //   본 구현: 곳간 칸 전부가 얻은 순간 로트 장부다(`granary-lots.js` — econ 이 만든 것 · 캐러밴 · 전쟁 짐 · 사람이 넣은 것 · 마을이 먹은 것이 다 지난다).
 //   문(회관 넣기 · 거래소 · 게시판 납품과 보상 · 겨울 몫 · 꺼내기 · 마을 밥 · 위세품 값)은 **정본 함수 그대로** 몇 개 · 몇 단위인지를 정하고,
