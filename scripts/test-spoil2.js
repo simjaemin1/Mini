@@ -38,6 +38,9 @@ console.log = () => {}; console.warn = () => {}; console.error = () => {};
 const Zone = require(path.join(ROOT, 'server', 'zone.js'));
 console.log = _l; console.warn = _w; console.error = _e;
 const H = Zone.__testBind();
+// ★[T778] 순간 로트 켬 기본 — 순간 열쇠는 "같은 날 = 나이 0"을 깬다(옛 `{d,n}` 나이가 그 날 0시부터 · `t` 가 소수 날).
+//   값 단언은 그대로 두고 지난 시간만 뺀다 — 존 날을 얼린다(제품의 테스트 문 · 날 문법(`T732_MOMENT_LOT=0`)엔 같은 날).
+H.__e2eFreezeZoneDay(true);
 const Spoil = require(path.join(ROOT, 'server', 'spoil.js'));
 const Lots = require(path.join(ROOT, 'server', 'lots.js'));
 const Weather = require(path.join(ROOT, 'server', 'weather.js'));
@@ -296,6 +299,14 @@ const SUMMER = Math.round(A.summerMid), WINTER = Math.round(A.winterMid);
        String(Lots.of(q, 'fish')[0].m));
   }
 
+  // ★[T778] 끔 탐침 — 같은 하네스를 순간 로트 끔(`T732_MOMENT_LOT=0` · 날 문법)으로 한 번 더(아이 판 · 탐침은 한 번만)
+  if (process.env.T778_PROBE !== '1') {
+    let r = '';
+    try { r = require('child_process').execFileSync(process.execPath, [__filename], { env: Object.assign({}, process.env, { T732_MOMENT_LOT: '0', T778_PROBE: '1' }), encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 600000 }); }
+    catch (e) { r = String((e && e.stdout) || ''); }
+    const m = /결과: (\d+) PASS \/ (\d+) FAIL/.exec(r);
+    ok(!!m && +m[2] === 0 && +m[1] === pass, '[T778 끔 탐침] 순간 로트 끔(`T732_MOMENT_LOT=0`)으로 같은 하네스 — 같은 줄 수 다 통과', m ? `${m[1]} / ${m[2]}` : r.slice(-120));
+  }
   console.log(`\n=== 결과: ${pass} PASS / ${fail} FAIL ===`);
   process.exit(fail ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });

@@ -43,6 +43,11 @@ const Zone = require(path.join(ROOT, 'server', 'zone.js'));
 console.log = _l; console.warn = _w; console.error = _e;
 const H = Zone.__testBind();
 const W = H.Weights, C = H.Carry, L = H.Lots, V = H.SimVillages;
+// ★[T778 2026-10-18] 순간 로트 켬 기본 — 순간 열쇠는 "같은 날 = 나이 0"을 깬다(로트 없이 인벤만 든 곡식도 맞추는 순간 "지금 얻은 것"이고
+//   그 뒤 흐른 몇 ms 만큼 늙어 ⑤ 한 입 회복이 벽시계 순간에 따라 흔들린다 — T768 보고 회부 4).
+//   값 단언은 그대로 두고 지난 시간만 뺀다 — 존 날을 얼린다(제품의 테스트 문 · 순간 시계가 그 날 0시에 선다 · 날 문법(`T732_MOMENT_LOT=0`)엔 같은 날).
+H.__e2eFreezeZoneDay(true);
+const K = require(path.join(ROOT, 'server', 'kcal.js'));   // ★[T778] ⑧ 짝 고르기 — 시세표 `sell` 을 단위로 되돌리는 정본(`econUnitsOf` · 거래소 받기 열량 짝과 같은 함수)
 const Specialty = require(path.join(ROOT, 'server', 'specialty.js'));
 
 function mkPlayer(name) {
@@ -237,7 +242,10 @@ function mkPlayer(name) {
     const saved = JSON.parse(JSON.stringify({ lots: L.toSave(p), kg: C.toSave(p) }));
     const p3 = mkPlayer('w7c');
     L.fromSave(p3, saved.lots); C.fromSave(p3, saved.kg);
-    ok(JSON.stringify(L.of(p3, 'food')) === JSON.stringify(L.of(p, 'food')),
+    //   ★[T778] 칸 **값**을 견준다(칸 차례 무관) — 순간 로트의 복원(`fromSave`)은 얻은 순간 `k` 를 레코드 끝에 싣는다
+    //     (`{d,n,e,t,m,w,k}` · 메모리는 `{d,k,n,e,t,m,w}`). 값은 칸마다 같다 — 날 로트(끔)에선 종전 글자 비교와 같은 답이다.
+    const canon = (arr) => JSON.stringify((arr || []).map((l) => Object.fromEntries(Object.keys(l).sort().map((k) => [k, l[k]]))));
+    ok(canon(L.of(p3, 'food')) === canon(L.of(p, 'food')),
       '★★⑦ **재접속을 넘어 로트·취득일이 살아남는다**', JSON.stringify(L.of(p3, 'food')));
     // reconcile — 로트를 안 거친 경로가 인벤을 늘려도 수량이 안 틀린다
     const p4 = mkPlayer('w7d');
@@ -262,7 +270,11 @@ function mkPlayer(name) {
     //   1차 실행은 생선↔돌로 고정했다가 "생선 한 개가 마을 돌 전량보다 비싸다"로 두 판 다 거절당했고,
     //   그걸 "환산이 안 통한다"로 읽을 뻔했다 — 거절과 무변화는 겉이 똑같다.
     const rows = board.rows || [];
-    const payPower = (t) => t.sell * t.num;
+    //   ★[T778] 켬(순간 로트 기본 · T748 "거래소 받기 = 열량 짝")이면 시세표 `sell` 은 **받을 낱개**다(열량 있는 품목 — 약초 1단위 = 102낱개).
+    //     `num` 은 단위 값이라 둘을 곱하면 치를 힘이 낱개 수만큼 부푼다(켬 첫 판: 약초를 골라 "곡식 한 개 값이 약초 전부(102)보다 비싸다").
+    //     ⇒ 치를 힘은 **단위로** 잰다(정본 `kcal.econUnitsOf` — 거래소가 받는 쪽을 되돌리는 그 함수) · 끔이면 `sell` 이 이미 단위다(종전 그대로).
+    const sellU = (t) => (H.T732_MOMENT && t.item && K.kcalOf(t.item) > 0) ? K.econUnitsOf(t.item, t.sell) : t.sell;
+    const payPower = (t) => sellU(t) * t.num;
     //   조건 셋을 다 만족해야 **비례가 정수에서 보인다**:
     //     ⓐ 마을이 값을 치를 수 있다(상한 × 시세 > 낼 것 값 × 3)
     //     ⓑ 한 개를 내면 **여러 개**를 받는다(g.num ≥ t.num × 4) — 안 그러면 0개/0개로 비교가 없다
@@ -273,7 +285,7 @@ function mkPlayer(name) {
         if (!(payPower(t) > g.num * 3)) continue;         // ⓐ
         const expect = g.num / t.num;
         if (!(expect >= 4)) continue;                      // ⓑ
-        const score = Math.min(expect, t.sell);            // ⓒ
+        const score = Math.min(expect, sellU(t));          // ⓒ(★[T778] 단위로)
         if (score > best) { best = score; pick = { g, t, expect }; }
       }
     }
@@ -321,6 +333,14 @@ function mkPlayer(name) {
     ok(bad.length === 0, '★★⑨ 클라 조각 어디에도 상한표가 없다', bad.join(' ') || '0건');
   }
 
+  // ★[T778] 끔 탐침 — 같은 하네스를 순간 로트 끔(`T732_MOMENT_LOT=0` · 날 문법)으로 한 번 더(아이 판 · 탐침은 한 번만 · 포트 · DB 는 pid 로 갈린다)
+  if (process.env.T778_PROBE !== '1') {
+    let r = '';
+    try { r = require('child_process').execFileSync(process.execPath, [__filename], { env: Object.assign({}, process.env, { T732_MOMENT_LOT: '0', T778_PROBE: '1' }), encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 900000 }); }
+    catch (e) { r = String((e && e.stdout) || ''); }
+    const m = /(\d+)건 중 PASS (\d+) · FAIL (\d+)/.exec(r);
+    ok(!!m && +m[3] === 0 && +m[2] === pass, '[T778 끔 탐침] 순간 로트 끔(`T732_MOMENT_LOT=0`)으로 같은 하네스 — 같은 줄 수 다 통과', m ? `${m[2]} / ${m[3]}` : r.slice(-120));
+  }
   say(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
   for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
   process.exit(fail ? 1 : 0);

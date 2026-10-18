@@ -97,7 +97,7 @@ function of(p, item) { const L = all(p); if (!Array.isArray(L[item])) L[item] = 
 function sum(p, item) { let s = 0; for (const l of of(p, item)) s += l.n; return +s.toFixed(6); }
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════════
-// ★★★[T732 2026-10-14 · 손잡이 `T732_MOMENT_LOT=1` — 없음·빈 값·0 = 끔 = 아래 순간 갈래를 하나도 안 탄다(main 바이트)]
+// ★★★[T732 2026-10-14 · 손잡이 `T732_MOMENT_LOT` — ★[T778] 켬 기본 · `=0` 만 끔 = 아래 순간 갈래를 하나도 안 탄다(main 바이트)]
 //   **로트 = 얻은 순간.** 재민 10-12 · 10-14 재확인(족보 631 ①): 신선도는 아이템마다 — **같은 순간에 얻은 것만 합친다.**
 //   종전 열쇠는 **날**이었다: 같은 날 · 같은 자리 것은 노출을 개수 가중 평균해 한 로트로 뭉쳤고(0시 것과 23시 것이 하나),
 //   노출은 정수 날로 쌓였다(그날 얻은 것은 그날 0시부터 늙는다 — T716 ① 뭉개지는 자리 ①·⑪). 켬이면:
@@ -109,7 +109,7 @@ function sum(p, item) { let s = 0; for (const l of of(p, item)) s += l.n; return
 //       **가장 오래된 둘 · 더 이른 순간 · 큰 노출** → 음식이 실제보다 싱싱해 보이는 일 0(같은 순간으로 정산한 뒤 견준다).
 //     · 맞추기(`reconcile`)가 남는 몫을 "지금 얻은 것"으로 잡으면 **근사 한 번**으로 센다(`stats().approx`) — 길을 다 고쳤으면 0 이다.
 //     · 몸 필드 0: NPC 몸엔 `lots` 칸이 없다 — NPC 의 로트는 몸 밖 곁 장부(`WeakMap`)에 둔다(죽음 드롭이 그 레코드를 바닥에 싣는다).
-const T732_MOMENT = process.env.T732_MOMENT_LOT === '1';
+const T732_MOMENT = process.env.T732_MOMENT_LOT !== '0';   // ★[T778] 켬 기본 · 되돌림 `=0`
 let _mClk = null, _mDay = 0;
 const _mNpc = new WeakMap();
 const _mStat = { approx: 0, approxBy: {}, coalesced: 0 };

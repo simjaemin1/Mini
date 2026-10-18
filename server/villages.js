@@ -74,8 +74,8 @@
 //   둘 다 invalidate 호출로 행렬 재계산 로그까지 확인).
 // =============================================================================
 'use strict';
-// ★[T732 · 손잡이 `T732_MOMENT_LOT=1`] 로트 장부는 **늦게 · 켬일 때만** 부른다 — 끄면(랩 포함) `lots.js` 를 싣지도 않는다(main 바이트 · 랩 모듈 무변).
-const _T732_ON = (typeof process !== 'undefined' && process.env && process.env.T732_MOMENT_LOT === '1');
+// ★[T732 · 손잡이 `T732_MOMENT_LOT` · ★[T778] 켬 기본(`=0` 끔)] 로트 장부는 **늦게 · 켬일 때만** 부른다 — 끄면(랩 포함) `lots.js` 를 싣지도 않는다(main 바이트 · 랩 모듈 무변).
+const _T732_ON = (typeof process !== 'undefined' && process.env && process.env.T732_MOMENT_LOT !== '0');   // ★[T778] 켬 기본 · 되돌림 `=0`
 let _t732LotsM = null;
 function _t732Lots() { if (!_T732_ON) return null; if (_t732LotsM === null) { try { _t732LotsM = require('./lots'); } catch (e) { _t732LotsM = false; } } return (_t732LotsM && _t732LotsM.momentOn()) ? _t732LotsM : null; }
 // 곳간 로트 장부(`granary-lots.js`) — 같은 규약(늦게 · 켬일 때만 · 존이 시계를 꽂은 뒤에만)
@@ -84,7 +84,7 @@ function _t732GranMod() { if (!_T732_ON) return null; if (_t732GranM === null) {
 function _t732Gran() { return _t732Lots() ? _t732GranMod() : null; }
 let _t732BootWait = false;   // 마을 init 이 존의 시계보다 먼저 돈다(존 모듈이 다 읽힌 뒤에 꽂는다) — 붙이기를 첫 틱 머리로 미룬다
 const _t732Saved = new WeakMap();   // econ 마을 → 저장된 곳간 장부(복원 문이 econ 객체에서 떼어 둔다 · 붙이기가 읽는다)
-// ★★[T748 2026-10-14 · 같은 손잡이 `T732_MOMENT_LOT=1` 안 — 끄면 아래 둘은 null/빈 줄만 낸다(종전 줄 그대로)] **켬 전용 일곱 길 막기.**
+// ★★[T748 2026-10-14 · 같은 손잡이 `T732_MOMENT_LOT` · ★[T778] 켬 기본(`=0` 끔) 안 — 끄면 아래 둘은 null/빈 줄만 낸다(종전 줄 그대로)] **켬 전용 일곱 길 막기.**
 //   그 마을 곳간에 장부가 붙어 있을 때만 장부 모듈을 낸다(붙기 전 · 랩 · 끔 = null).
 function _t748Gran(vil) { const G = _T732_ON ? _t732Gran() : null; return (G && vil && vil.econ && G.attached(vil.econ)) ? G : null; }
 function _t748G() { return _T732_ON ? _t732Gran() : null; }   // 마을 없이 — 몸 짐 · 갱 비축(시계가 꽂힌 뒤에만)
@@ -13234,7 +13234,7 @@ function _t728SaveMeta() {
   if (!state.db || !state.db.upsertWorldMeta || !state.world) return;
   state.db.upsertWorldMeta(state.zoneId, _t728Meta(), state.world.day | 0); _t728Stat.metaSaves++;
 }
-// ★★[T732 2026-10-14 · 손잡이 `T732_MOMENT_LOT=1` — 끄면 이 함수를 안 부른다] **곳간 로트 장부를 econ 마을에 붙인다**(부팅 한 번).
+// ★★[T732 2026-10-14 · 손잡이 `T732_MOMENT_LOT` · ★[T778] 켬 기본(`=0` 끔) — 끄면 이 함수를 안 부른다] **곳간 로트 장부를 econ 마을에 붙인다**(부팅 한 번).
 //   저장된 장부(`serializeEcon` 의 `_t732Lots` — 복원 문이 econ 객체에서 떼어 둔 것)가 있으면 그것을, 없으면 지금 곳간 값을
 //   지금 순간의 로트 하나로(나이 모름 — 첫 부팅 · 끔에서 켬으로 · `seeded` 로 센다). 그리고 econ 캐러밴 · 전쟁 군량 짐에 훅을 꽂는다
 //   (훅은 관측자 — econ 값 무변 · 랩 · CLI 는 안 꽂는다).

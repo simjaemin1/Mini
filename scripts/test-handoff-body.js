@@ -15,6 +15,8 @@
 //     ③ **행 폴백 픽스처** — 페이로드에 몸을 일부러 안 실어(`E2E_HANDOFF_NO_BODY=1`) central 행
 //        경로를 실제로 밟는다. 밟아 보지 않은 폴백은 "있다고 적혀만 있는 코드"다.
 //     ④ 재접속 후에도 같다 — 도착 존이 빈 몸으로 계정을 덮지 않는다(N.6 의 '영구 소실' 부분)
+//   ★[T778 2026-10-18] 순간 로트 켬 기본 — 로트의 정산 칸 `e·t` 는 흐른 시간만큼 자라므로 ⓑ(이어졌나)로 옮겼다 ·
+//     `d·k·n·m·w` 는 ⓐ(비트 동일) 그대로 · 끔 탐침(`T732_MOMENT_LOT=0`) 한 판이 로트 통째 비트 동일(종전 단언)을 잰다.
 //   ★상황 선행 assert: 왕복이 **실제로 존 경계를 넘었는지**(handoff 메시지를 받았는지) 먼저 본다.
 //     안 넘었으면 이 하네스는 아무것도 재고 있지 않다.
 //
@@ -74,20 +76,54 @@ function open(url, onMsg) {
 //   ⓑ **연속 상태**: 추위·피로·부상. 매 틱 변한다 ⇒ 왕복 몇 초 사이에 값이 같을 수 없다.
 //      여기서 물을 것은 "같은가"가 아니라 **"이어졌는가"** — 0 으로 리셋되지 않았는가다.
 //      (그 둘을 한 잣대로 재면 통과하든 실패하든 뜻이 없다.)
-const durableKey = (b) => b ? JSON.stringify({
+// ★★[T778 2026-10-18 · 순간 로트 켬 기본] **로트도 같은 잣대로 두 칸으로 가른다.**
+//   켬 세계의 로트 레코드는 `{d, k, n, e, t, m, w}` 다 — `d·k·n·m·w`(얻은 날 · 얻은 순간 · 개수 · 자리)는 시간이 안 바꾼다 ⇒ ⓐ 내구(비트 동일).
+//   `e·t`(정산된 노출 · 마지막 정산 순간)는 **정산할 때마다 흐른 시간만큼 자란다** ⇒ ⓑ 연속 상태 — "같은가"가 아니라 "이어졌는가"(아래 `lotsFlow`).
+//   (T732 보고 §5-3 실측: 넘기는 동안 늙어 `e` 만 0.000312 → 0.009871 · `k·n·d` 비트 같음 — 둘을 한 잣대로 재면 켬 세계에선 뜻이 없다.)
+//   끔(`T732_MOMENT_LOT=0` · 날 로트)은 같은 날엔 정산이 안 일어나 `e·t` 까지 비트 같다 — 맨 끝 끔 탐침 한 판이 그 종전 단언(`lots` 통째)을 그대로 잰다.
+const LOT_DURABLE = ['d', 'k', 'n', 'm', 'w', 'coalesced'];
+const lotsKey = (L) => {
+  if (!L) return null;
+  const o = {};
+  for (const [it, arr] of Object.entries(L)) o[it] = (arr || []).map((l) => { const r = {}; for (const f of LOT_DURABLE) if (l && l[f] !== undefined) r[f] = l[f]; return r; });
+  return o;
+};
+const durableKey = (b, fullLots) => b ? JSON.stringify({
   toolItems: (b.toolItems || []).map((t) => `${t.type}/${t.d}/${t.max}`).sort(),
   equipment: (b.equipment || []).map((e) => `${e.type}/${e.q}`).sort(),
   equipSlots: b.equipSlots || {}, craftSkill: b.craftSkill || {}, craftLog: b.craftLog || {},
   oreLedger: b.oreLedger || {}, oreCarry: b.oreCarry || {}, fishStats: b.fishStats || null,
-  kgLedger: b.kgLedger || null, lots: b.lots || null,
+  kgLedger: b.kgLedger || null, lots: fullLots ? (b.lots || null) : lotsKey(b.lots),   // ★[T778] 정산 칸 `e·t` 는 ⓑ 로(끔 탐침만 통째)
   member: b.member || null,   // ★[T11] 마을 소속 — 시간이 안 바꾼다 ⇒ 내구 쪽이다
 }) : '(없음)';
+// ★[T778] ⓑ 로트 정산 칸이 **이어졌나** — 같은 레코드마다(같은 품목 · 같은 순서 — 내구 쪽 비트 같음이 그 짝을 이미 보증한다)
+//   `t` 가 거꾸로 안 가고 · `e` 가 그 사이 흐른 시간(`Δt` 게임 날) × **제품 속도 클램프**(`Spoil.EXP.R_MIN` ~ `R_MAX` × 자리 seal `m`) 안에서만 자랐다.
+//   새 수 0: 클램프는 제품이 하루치 노출을 자르는 그 값(`rateAtC`)이고 ε 는 제품이 `e` 를 적는 자리(`toFixed(6)`) 하나다.
+//   깨지는 꼴: 0 으로 리셋(B6 "로트 잃음 → 쓸개 오늘") = 아래쪽 · 옛 꼴로 읽혀 그 날 0시부터 다시 늙음 = 위쪽 · 정산 순간이 뒤로 감 = `t`.
+const Spoil = require(path.join(ROOT, 'server', 'spoil.js'));
+const lotsFlow = (a, b) => {
+  const A = (a && a.lots) || {}, B = (b && b.lots) || {};
+  const bad = []; let n = 0, deMax = 0;
+  for (const it of Object.keys(A)) {
+    const xa = A[it] || [], xb = B[it] || [];
+    for (let i = 0; i < xa.length; i++) {
+      const p = xa[i], q = xb[i];
+      if (!p || !q) { bad.push(`${it}[${i}] 짝 없음`); continue; }
+      n++;
+      const dt = (+q.t || 0) - (+p.t || 0), de = (+q.e || 0) - (+p.e || 0), m = Number.isFinite(+p.m) ? +p.m : 1;
+      const lo = Spoil.EXP.R_MIN * m * dt - 1e-6, hi = Spoil.EXP.R_MAX * m * dt + 1e-6;
+      deMax = Math.max(deMax, de);
+      if (!(dt >= 0) || !(de >= lo && de <= hi)) bad.push(`${it}[${i}] t ${p.t}→${q.t} · e ${p.e}→${q.e} (Δe 허용 ${lo.toExponential(2)}~${hi.toExponential(2)})`);
+    }
+  }
+  return { n, bad, deMax };
+};
 // ★[T11] 존을 넘겨 볼 소속 픽스처. `serializeBody` 가 그대로 싣고 `parseBody` 가 그대로 돌려줘야 한다.
 const MEMBER_FIX = { zone: 'hanbando', vid: 7, name: '검사마을', since: 33, wdDay: 33, wdUsed: 2 };
 const softOf = (b) => (b && b.body) ? { cold: +(b.body.cold || 0), fatigue: +(b.body.fatigue || 0), injury: +(b.body.injury || 0) } : null;
 const softNear = (x, y, tol) => !!x && !!y && Math.abs(x.cold - y.cold) <= tol && Math.abs(x.fatigue - y.fatigue) <= tol && Math.abs(x.injury - y.injury) <= tol;
 
-async function startZones(extraH) {
+async function startZones(extraH, extraBoth) {   // ★[T778] extraBoth = 두 존 모두(끔 탐침의 손잡이)
   fs.mkdirSync(DDIR, { recursive: true });
   for (const f of fs.readdirSync(DDIR)) { try { fs.unlinkSync(path.join(DDIR, f)); } catch (e) {} }
   const _central = boot('central.js', { PORT: String(CPORT), DB_PATH: `${DDIR}/central.db`, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando,nippon' });
@@ -98,7 +134,7 @@ async function startZones(extraH) {
   const _upP = FB.waitUp(_central, /central server up on/, { name: 'central' });
   const _up = await _upP;
   if (!_up.ok) { console.log(`  ★${_up.why}`); return false; }
-  const common = { CENTRAL_URL: `http://localhost:${CPORT}`, ENABLE_VILLAGES: '0', ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0' };
+  const common = Object.assign({ CENTRAL_URL: `http://localhost:${CPORT}`, ENABLE_VILLAGES: '0', ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0' }, extraBoth || {});
   const _zone = boot('zone.js', Object.assign({ PORT: String(HPORT), ZONE_ID: 'hanbando', DB_PATH: `${DDIR}/w-han.db`, E2E_GIVE: '1' }, common, extraH || {}));
   // ★★[T355 2026-09-22] 존 기동도 **아이의 입**으로 듣는다(정본 `fixture-boot.waitUp` · T344·T349).
   //   포트 응답은 증인이 아니다 — 앞 판 존이 포트를 쥔 채면 새 존은 `EADDRINUSE` 로 죽고 폴링은
@@ -201,11 +237,18 @@ async function roundTrip(tag) {
   // ★[T11] 상황 assert — 소속이 실제로 출발 몸에 앉았나(0 이면 아래 왕복 검사가 자명 통과다)
   ok(!!(R.before && R.before.member && R.before.member.vid === MEMBER_FIX.vid),
     '★[상황·T11] 출발 몸에 마을 소속이 앉아 있다', JSON.stringify((R.before || {}).member));
+  // ★[T778] 상황 assert — 로트가 실제로 있고 **얻은 순간 `k`** 가 앉았다(켬 기본 · 없으면 아래 정산 칸 줄이 자명 통과다)
+  const recsB = Object.values((R.before || {}).lots || {}).flat();
+  ok(recsB.length > 0 && recsB.every((l) => Number.isFinite(l.k)),
+    '★[상황·T778] 출발 몸에 로트가 있고 얻은 순간 `k` 가 앉았다(순간 로트 켬 기본)', `${recsB.length}개 · ${JSON.stringify(recsB[0] || null)}`);
 
   // ② 왕복 후 — 내구는 비트 동일, 연속 상태는 이어진다
   const dEq = durableKey(R.after) === durableKey(R.before);
-  ok(dEq, '② ★★도착한 몸의 **내구 부분이 비트 동일**(도구·장비·숙련·원장·로트)',
+  ok(dEq, '② ★★도착한 몸의 **내구 부분이 비트 동일**(도구·장비·숙련·원장·로트 `d·k·n·m·w`)',
     dEq ? '' : `\n      출발 ${durableKey(R.before)}\n      도착 ${durableKey(R.after)}`);
+  const fA = lotsFlow(R.before, R.after);
+  ok(fA.n > 0 && !fA.bad.length, '② ★[T778] 로트 정산 칸(`e·t`)이 존을 넘어 **이어진다** — 흐른 시간만큼만 늙었다(제품 속도 클램프 안 · 0 으로 안 튄다)',
+    `${fA.n}개 · Δe 최대 ${fA.deMax.toFixed(6)}${fA.bad.length ? ' · ' + fA.bad.join(' | ') : ''}`);
   //   ★기준점은 **넘는 순간의 몸**(`beforeCross`)이다 — 출발 때 값이 아니라. 추위는 계속 움직인다.
   ok((softOf(R.beforeCross) || {}).cold >= R.SET_COLD - 0.05, `★[상황] 넘는 순간 추위를 ${R.SET_COLD} 로 세워 뒀다(0 이면 자명 통과)`,
     `${JSON.stringify(softOf(R.beforeCross))}`);
@@ -245,6 +288,9 @@ async function roundTrip(tag) {
   const aEq = durableKey(R.again) === durableKey(R.before);
   ok(aEq, '④ ★★재접속한 몸의 내구 부분도 **비트 동일**(영구 소실이 없다)',
     aEq ? '' : `\n      출발   ${durableKey(R.before)}\n      재접속 ${durableKey(R.again)}`);
+  const fR = lotsFlow(R.before, R.again);
+  ok(fR.n > 0 && !fR.bad.length, '④ ★[T778] 재접속한 몸의 로트 정산 칸도 **이어진다**(흐른 시간만큼만 · 0 으로 안 튄다)',
+    `${fR.n}개 · Δe 최대 ${fR.deMax.toFixed(6)}${fR.bad.length ? ' · ' + fR.bad.join(' | ') : ''}`);
   ok(JSON.stringify((R.again || {}).member) === JSON.stringify(MEMBER_FIX),
     '④ ★[T11] 재접속해도 마을 소속이 그대로다', JSON.stringify((R.again || {}).member));
 
@@ -259,7 +305,21 @@ async function roundTrip(tag) {
     ok(fEq, '③ ★★몸 없는 페이로드에서도 **central 행 폴백**이 몸을 살린다',
       fEq ? '' : `\n      출발 ${durableKey(F.before)}\n      도착 ${durableKey(F.after)}`);
     ok(durableKey(F.again) === durableKey(F.before), '③ [픽스처] 재접속도 동일');
+    const fF = lotsFlow(F.before, F.after);
+    ok(fF.n > 0 && !fF.bad.length, '③ ★[T778] [픽스처] central 행 폴백도 로트 정산 칸을 **잇는다**(흐른 시간만큼만)',
+      `${fF.n}개 · Δe 최대 ${fF.deMax.toFixed(6)}${fF.bad.length ? ' · ' + fF.bad.join(' | ') : ''}`);
   }
+  killAll(); await sleep(4000);
+
+  // ★[T778] 끔 탐침 '0' 한 판 — 두 존 모두 `T732_MOMENT_LOT=0`(날 로트 · 되돌림 손잡이).
+  //   끔 세계는 같은 날 안에서 정산이 안 일어나므로 **종전 단언 그대로**(로트 통째 · `e·t` 까지) 비트 동일이어야 하고,
+  //   레코드에 얻은 순간 `k` 가 없어야 한다(손잡이가 먹었다). 켬 판의 ②가 정산 칸을 ⓑ 로 옮긴 것이 끔의 비트 동일을 가리지 않는다는 증인이다.
+  if (!await startZones(null, { T732_MOMENT_LOT: '0' })) { console.log('  ✗ 끔 탐침 기동 실패'); process.exit(1); }
+  const C = await roundTrip('C');
+  const recsC = Object.values(((C || {}).before || {}).lots || {}).flat();
+  const cEq = !!C.crossed && recsC.length > 0 && !recsC.some((l) => l.k !== undefined) && durableKey(C.after, true) === durableKey(C.before, true);
+  ok(cEq, "★[T778 끔 탐침 '0'] 날 로트 세계 — 도착한 몸이 로트 **통째(`e·t` 까지)** 비트 동일 · 레코드에 `k` 없음(종전 단언 그대로)",
+    cEq ? `${recsC.length}개` : `\n      넘음 ${!!C.crossed} · 로트 ${recsC.length} · k ${recsC.filter((l) => l.k !== undefined).length}\n      출발 ${durableKey(C.before, true)}\n      도착 ${durableKey(C.after, true)}`);
   killAll();
 
   console.log(`\n=== ${pass} 통과 / ${fail} 실패 ===\n`);
