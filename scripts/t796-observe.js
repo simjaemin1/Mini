@@ -7,6 +7,9 @@
 //     NODE_OPTIONS=… T796_RISK_OFF=1 T796_GANG_OFF=1 node scripts/t577-server-run.js 800 1020,7,42                     # ⓑ′ 길 훅 둘 다 끔(T766 ⓑ′ 와 같은 두 줄)
 //     NODE_OPTIONS=… T796_RISK_OFF=1 node scripts/t577-server-run.js 800 1020,7,42                                     # ⓔ 길 위험만 0(`banditRouteRisk` — 교역 결정이 읽는 위험)
 //     NODE_OPTIONS=… T796_GANG_OFF=1 node scripts/t577-server-run.js 800 1020,7,42                                     # ⓕ 습격만 0(`banditGang` = null — 길목 갱 전투 · 장물 · 피해 학습)
+//     NODE_OPTIONS=… T796_RAID_ONLY_OFF=1 node scripts/t577-server-run.js 800 1020,7,42                                # ⓖ 갱 전투만 0 — `banditGang` 을 부른 자리가
+//       econ 캐러밴 도착 · 귀환(`_caravanArrive` · `tickCaravansV2` = 습격 전투)이면 null, 교역 결정(`tickTradeV2Steps` · `netExportValue` = 기대손실 · 호위 요청)과
+//       호스트(소굴 사건)는 원래 값 그대로. 부른 자리는 호출 스택 한 칸으로 읽는다(제품 손잡이 0 · 이 프리로드만).
 //   (`T577_SEED` 가 있는 아이 서버만 잰다 · 판 JSON 곁 `<판>-<시드>.t796.json`)
 //   갈래는 장부 `scanDay` 마다 econ 이 읽는 도적 훅을 갈아 끼운다 — 해체 · 절망 이탈 · 소굴 · 유지비 · 토벌은 그대로 돈다(T766 ⓑ′ 와 같은 자리).
 //
@@ -21,13 +24,14 @@ const path = require('path');
 const fs = require('fs');
 if (!process.env.T577_SEED) return;   // 부모 러너 — 아무것도 안 한다
 const OUT = process.env.T796_OUT || (process.env.T577_OUT ? process.env.T577_OUT.replace(/\.json$/, '') + '.t796.json' : '');
-const RISK_OFF = process.env.T796_RISK_OFF === '1', GANG_OFF = process.env.T796_GANG_OFF === '1';
+const RISK_OFF = process.env.T796_RISK_OFF === '1', GANG_OFF = process.env.T796_GANG_OFF === '1', RAID_ONLY_OFF = process.env.T796_RAID_ONLY_OFF === '1';
+const RAID_CALLERS = new Set(['_caravanArrive', 'tickCaravansV2']);
 const ROOT = path.join(__dirname, '..');
 const V1 = require(path.join(ROOT, 'sim', 'economy-sim'));
 const Ev = require(path.join(ROOT, 'server', 'events'));
 const B = require(path.join(ROOT, 'server', 'bandits'));
 const FOOD_JOBS = ['farmer', 'fisher', 'hunter', 'gatherer', 'forager'];
-const rec = { names: null, riskOff: RISK_OFF, gangOff: GANG_OFF, foodJobs: FOOD_JOBS, rows: [], caravans: [], trades: [], fw: {} };
+const rec = { names: null, riskOff: RISK_OFF, gangOff: GANG_OFF, raidOnlyOff: RAID_ONLY_OFF, foodJobs: FOOD_JOBS, rows: [], caravans: [], trades: [], fw: {}, gangCalls: {}, gangSeen: {} };
 const r2 = (x) => Math.round((+x || 0) * 100) / 100;
 const seenC = new WeakSet(), seenT = new WeakSet();
 // 품목 하나의 식량 환산(곳간 잣대 `totalFoodEquivalent` 그대로 — 그 품목 1 만 든 빈 곳간에 묻는다 · 사본 0)
@@ -46,10 +50,11 @@ Ev.createLedger = function () {
   const sd = L.scanDay;
   L.scanDay = function (world, day) {
     try {
-      if ((RISK_OFF || GANG_OFF) && world.banditRouteRisk && !world.banditRouteRisk._t796) {
+      if ((RISK_OFF || GANG_OFF || RAID_ONLY_OFF) && world.banditRouteRisk && !world.banditRouteRisk._t796) {
         hooked = { risk: world.banditRouteRisk, gang: world.banditGang };
         if (RISK_OFF) { world.banditRouteRisk = () => 0; } else { const f = hooked.risk; world.banditRouteRisk = (a, b) => f(a, b); }
         if (GANG_OFF) world.banditGang = () => null;
+        else if (RAID_ONLY_OFF && hooked.gang) { const g = hooked.gang; world.banditGang = function (a, b) { const who = caller(); const r = RAID_CALLERS.has(who) ? null : g(a, b); tally(who, r, a); return r; }; }
         world.banditRouteRisk._t796 = 1;
       }
       snap(world, day | 0);
@@ -58,6 +63,16 @@ Ev.createLedger = function () {
   };
   return L;
 };
+// 훅을 부른 econ 함수 이름(스택 한 칸 — ⓖ 갈래만 쓴다)
+const _hold = { stack: '' };
+function caller() {
+  const L = Error.stackTraceLimit; Error.stackTraceLimit = 3; Error.captureStackTrace(_hold, caller); Error.stackTraceLimit = L;
+  const m = /at (?:Object\.)?([A-Za-z_$][\w$]*)/.exec(String(_hold.stack).split('\n')[2] || ''); return m ? m[1] : '?';
+}
+function tally(who, r, a) {   // 부른 자리별 [부름 · 갱 있음] · 교역 결정이 갱을 본 출발 마을(이름 → [부름 · 갱 있음])
+  const c = rec.gangCalls[who] || (rec.gangCalls[who] = [0, 0]); c[0]++; if (r && r.n > 0) c[1]++;
+  if (who === 'tickTradeV2Steps' && a && a.name) { const v = rec.gangSeen[a.name] || (rec.gangSeen[a.name] = [0, 0]); v[0]++; if (r && r.n > 0) v[1]++; }
+}
 function snap(world, day) {
   const V = world.villages;
   if (!rec.names) { rec.names = V.map((v) => v.name); for (const r of ['food', 'fish', 'meat', 'cooked_food', 'wheat', 'rice', 'barley', 'millet', 'fruit', 'vegetable', 'mushroom']) fw(r); }

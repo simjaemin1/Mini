@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 // (@regress 없음 — 러너 밖 · T796 표 · 판 JSON 만 읽는다 · 세계를 안 세운다)
-// === scripts/t796-table.js — 빈 마을(해체 없이 굶어 빔)마다 굶기 전 60일 식량 흐름 · 판 넷(ⓐ main · ⓑ′ 길 훅 둘 끔 · ⓔ 길 위험만 끔 · ⓕ 습격만 끔) ===
+// === scripts/t796-table.js — 빈 마을(해체 없이 굶어 빔)마다 굶기 전 60일 식량 흐름 · 판 다섯(ⓐ main · ⓑ′ 길 훅 둘 끔 · ⓔ 길 위험만 끔 · ⓕ 갱 훅 끔 · ⓖ 갱 전투만 끔 — 교역 결정은 갱을 본다) ===
 //
 // 읽는 것(`T577_DIR` · 판 이름 = `T577_TAG`): `<판>-<시드>.json`(t577 훅 — 이름 · 빈 날 · 해체 날 · 인구 줄) · `<판>-<시드>.t796.json`(t796 관찰기)
 // 대상 = ⓐ 에서 끝 날 빈 마을 중 해체 표가 없는 곳(T766 §3-① "해체 없이 굶어 빔").
-// 꼭대기 = 빈 날 앞 300일 안에서 인구가 가장 많던 날. 굶기 시작 = 꼭대기 뒤 처음으로 곳간 식량 < 인구(하루치)인 날. 창 = 그 앞 60일(달력 날 그대로 — 판 넷이 같은 날을 본다).
+// 꼭대기 = 빈 날 앞 300일 안에서 인구가 가장 많던 날. 굶기 시작 = 꼭대기 뒤 처음으로 곳간 식량 < 인구(하루치)인 날. 창 = 그 앞 60일(달력 날 그대로 — 판마다이 같은 날을 본다).
 // 쓰는 법: node scripts/t796-table.js <판 디렉터리> [--json out.json]
 'use strict';
 const fs = require('fs');
@@ -13,7 +13,7 @@ const DIR = process.argv[2];
 if (!DIR) { console.error('쓰는 법: node scripts/t796-table.js <판 디렉터리> [--json out.json]'); process.exit(2); }
 const JOUT = process.argv.includes('--json') ? process.argv[process.argv.indexOf('--json') + 1] : null;
 const SEEDS = [1020, 7, 42];
-const RUNS = [['ⓐ', 'a_main', '지금 main'], ['ⓑ′', 'b_hookoff', '길 훅 둘 끔'], ['ⓔ', 'e_riskoff', '길 위험만 끔'], ['ⓕ', 'f_gangoff', '습격만 끔']];
+const RUNS = [['ⓐ', 'a_main', '지금 main'], ['ⓑ′', 'b_hookoff', '길 훅 둘 끔'], ['ⓔ', 'e_riskoff', '길 위험만 끔'], ['ⓕ', 'f_gangoff', '갱 훅 끔'], ['ⓖ', 'g_raidoff', '갱 전투만 끔']];
 const WIN = 60;
 const rd = (f) => { try { return JSON.parse(fs.readFileSync(path.join(DIR, f), 'utf8')); } catch (e) { return null; } };
 const R = {};
@@ -67,16 +67,17 @@ for (const s of SEEDS) {
 }
 
 console.log(`\n### 대상 — ⓐ 에서 해체 없이 굶어 빈 마을(${T.length}곳) · 다른 판에서 그 마을\n`);
-console.log('| 시드 | 마을 | ⓐ 빈 날 | ⓐ 꼭대기(날 · 명) | ⓐ 굶기 시작(곳간 바닥) | ⓑ′ 끝 인구(빈 날) | ⓔ 끝 인구(빈 날) | ⓕ 끝 인구(빈 날) |');
-console.log('|---|---|---|---|---|---|---|---|');
+const OTH = RUNS.slice(1).map((r) => r[0]);
+console.log(`| 시드 | 마을 | ⓐ 빈 날 | ⓐ 꼭대기(날 · 명) | ⓐ 굶기 시작(곳간 바닥) | ${OTH.map((k) => k + ' 끝 인구(빈 날)').join(' | ')} |`);
+console.log(`|---|---|---|---|---|${OTH.map(() => '---').join('|')}|`);
 for (const t of T) {
   const cell = (k) => { const r = R[`${k}|${t.seed}`]; if (!r) return '·'; const i = r.o.names.indexOf(t.name), n = r.o.rows[r.o.rows.length - 1][1][i];
     return n === 0 ? `**0**(${r.o.emptyDay[i]}${r.o.bdtDay[i] != null ? ' h' : ''})` : String(n); };
-  console.log(`| ${t.seed} | ${t.name} | ${t.empty} | ${t.peakDay} · ${t.peak} | ${t.onset} | ${cell('ⓑ′')} | ${cell('ⓔ')} | ${cell('ⓕ')} |`);
+  console.log(`| ${t.seed} | ${t.name} | ${t.empty} | ${t.peakDay} · ${t.peak} | ${t.onset} | ${OTH.map(cell).join(' | ')} |`);
 }
 
-// ── 궤적 — 대상 마을마다 판 넷의 인구 · 식량 부양력 · 곳간(겨울 바닥) ──
-console.log('\n### 궤적 — 대상 마을 · 판 넷(인구 · 괄호 = 식량 부양력 K)\n');
+// ── 궤적 — 대상 마을마다 판마다의 인구 · 식량 부양력 · 곳간(겨울 바닥) ──
+console.log('\n### 궤적 — 대상 마을 · 판마다(인구 · 괄호 = 식량 부양력 K)\n');
 const DAYS = [100, 200, 300, 365, 400, 500, 800];
 console.log(`| 시드 | 마을 | 판 | ${DAYS.map((d) => d + '일').join(' | ')} | 꼭대기(날) | 식량 일꾼 몫(꼭대기) | 받은 식량 누계(꼭대기) |`);
 console.log(`|---|---|---|${DAYS.map(() => '---').join('|')}|---|---|---|`);
@@ -91,13 +92,13 @@ for (const t of T) for (const [k] of RUNS) {
   console.log(`| ${t.seed} | ${t.name} | ${k} | ${cells.join(' | ')} | ${pk}(${pd}) | ${(100 * share).toFixed(0)}% | ${P ? f1(P[9]) : '—'} |`);
 }
 
-// ── 굶기 전 60일 — 마을마다 판 넷 ──
+// ── 굶기 전 60일 — 마을마다 판마다 ──
 const COLS = [['인구', (f) => f1(f.pop)], ['곳간 식량', (f) => f1(f.tfe)], ['1인 먹음/일', (f) => f.eatPC.toFixed(2)], ['죽음', (f) => f.death],
   ['식량 일꾼', (f) => f1(f.jobs)], ['인구 처음→끝 · 든 사람(Δ+죽음)', (f) => `${f.popStart}→${f.popEnd} · ${f.arr}`], ['부양력 K(식량)', (f) => f1(f.kprod)], ['받은 식량(귀환)', (f) => f1(f.imp)],
   ['교역 듦(남이 팜 · 내가 사 옴)', (f) => `${f1(f.inSell)} · ${f1(f.inBuy)}`], ['나간 식량', (f) => f1(f.outFood)],
   ['띄운 캐러밴(위험 길)', (f) => `${f.sent}(${f.sentRisk})`], ['오는 캐러밴(위험 길)', (f) => `${f.toMe}(${f.toMeRisk})`],
   ['습격 · 잃은 짐 · 행상 피살', (f) => `${f.raided} · ${f1(f.lost)} · ${f.killed}`], ['위험 학습', (f) => f.risk.toFixed(2)]];
-console.log(`\n### 굶기 전 ${WIN}일 — 마을마다 판 넷(같은 달력 창 · 흐름은 창 합 · 인구 · 곳간 · 일꾼 · K · 위험은 창 평균)\n`);
+console.log(`\n### 굶기 전 ${WIN}일 — 마을마다 판마다(같은 달력 창 · 흐름은 창 합 · 인구 · 곳간 · 일꾼 · K · 위험은 창 평균)\n`);
 const AGG = {};
 for (const t of T) {
   const d0 = t.onset - WIN, d1 = t.onset;
@@ -112,7 +113,7 @@ for (const t of T) {
   }
 }
 // ── 무너진 뒤 — 366일 ~ ⓐ 빈 날(첫해 겨울 바닥 다음 · 도적 보호기 365~729 가 마을마다 걷히는 창) ──
-console.log('\n### 무너진 뒤 — 366일 ~ ⓐ 빈 날 · 마을마다 판 넷(같은 달력 창)\n');
+console.log('\n### 무너진 뒤 — 366일 ~ ⓐ 빈 날 · 마을마다 판마다(같은 달력 창)\n');
 const POST = {};
 for (const t of T) {
   const d0 = 366, d1 = t.empty;
@@ -126,6 +127,14 @@ for (const t of T) {
     console.log(`| ${k} | ${COLS.map((c) => c[1](f)).join(' | ')} |`);
   }
 }
+console.log(`\n### 무너진 뒤 합(대상 ${T.length}곳 · 366일 ~ ⓐ 빈 날)\n`);
+console.log('| 판 | 죽음 | 든 사람(Δ+죽음) | 받은 식량(귀환) | 교역 듦(남이 팜 · 내가 사 옴) | 나간 식량 | 띄운 캐러밴 | 오는 캐러밴 | 습격 · 잃은 짐 · 행상 피살 | ⓐ 빈 날 인구 합 | 800일 산 마을 |');
+console.log('|---|---|---|---|---|---|---|---|---|---|---|');
+const _s = (a, g) => a.reduce((x, f) => x + g(f), 0);
+for (const [k, , lab] of RUNS) { const a = POST[k]; if (!a) continue;
+  const alive = T.filter((t) => { const r = R[`${k}|${t.seed}`]; if (!r) return false; const i = r.o.names.indexOf(t.name); return r.o.rows[r.o.rows.length - 1][1][i] > 0; }).length;
+  console.log(`| ${k} ${lab} | ${_s(a, (f) => f.death)} | ${_s(a, (f) => f.arr)} | ${f1(_s(a, (f) => f.imp))} | ${f1(_s(a, (f) => f.inSell))} · ${f1(_s(a, (f) => f.inBuy))} | ${f1(_s(a, (f) => f.outFood))}`
+    + ` | ${_s(a, (f) => f.sent)} | ${_s(a, (f) => f.toMe)} | ${_s(a, (f) => f.raided)} · ${f1(_s(a, (f) => f.lost))} · ${_s(a, (f) => f.killed)} | ${_s(a, (f) => f.popEnd || 0)} | ${alive}/${T.length} |`); }
 console.log(`\n### 합(대상 ${T.length}곳 · 굶기 전 ${WIN}일)\n`);
 const sum = (a, g) => a.reduce((x, f) => x + g(f), 0);
 console.log('| 판 | 인구(평균 합) | 곳간 식량(평균 합) | 1인 먹음/일 | 죽음 | 식량 일꾼 | 받은 식량 | 교역 듦(남이 팜 · 내가 사 옴) | 나간 식량 | 띄운 캐러밴(위험 길) | 오는 캐러밴(위험 길) | 습격 · 잃은 짐 · 피살 |');
@@ -137,7 +146,7 @@ for (const [k, , lab] of RUNS) { const a = AGG[k]; if (!a) continue;
     + ` | ${sum(a, (f) => f.raided)} · ${f1(sum(a, (f) => f.lost))} · ${sum(a, (f) => f.killed)} |`); }
 
 // ── 첫해(0~365) — 세계가 갈리는 자리(T766 §3-①) ──
-console.log('\n### 첫해(0~365일) — 대상 마을 합 · 판 넷\n');
+console.log('\n### 첫해(0~365일) — 대상 마을 합 · 판마다\n');
 console.log('| 판 | 365일 인구 합 | 곳간 식량(365일) | 받은 식량 | 교역 듦(남이 팜 · 내가 사 옴) | 나간 식량 | 띄운 캐러밴(위험 길) | 오는 캐러밴(위험 길) | 습격 · 잃은 짐 · 피살 |');
 console.log('|---|---|---|---|---|---|---|---|---|');
 const Y1 = {};
@@ -162,5 +171,15 @@ for (const [k, , lab] of RUNS) {
     const L = r.ob.rows[r.ob.rows.length - 1][1]; for (const v of L) { raid += v[12]; lost += v[13]; kill += v[14]; } }
   WHOLE[k] = { emp, starve, dis, car, carR, raid, lost, kill };
   console.log(`| ${k} ${lab} | ${emp.join(' / ')} (${emp.reduce((a, x) => a + x, 0)}) | ${starve} | ${dis} | ${car} | ${carR}(${car ? (100 * carR / car).toFixed(1) : 0}%) | ${raid} | ${f1(lost)} | ${kill} |`);
+}
+// ── ⓖ 갈래만 — 갱 훅을 부른 자리 · 교역 결정이 갱을 본 횟수(대상 마을 출발) ──
+const G = SEEDS.map((sd) => [sd, R[`ⓖ|${sd}`]]).filter((x) => x[1] && x[1].ob.gangCalls);
+if (G.length) {
+  console.log('\n### ⓖ — `banditGang` 을 부른 자리(800일 · 부름 · 갱 있음)\n');
+  console.log('| 시드 | 교역 결정 `tickTradeV2Steps` | 수출값 `netExportValue` | 가는 길 전투 `_caravanArrive`(null) | 귀환 전투 `tickCaravansV2`(null) |');
+  console.log('|---|---|---|---|---|');
+  const c2 = (c) => (c ? `${c[0]} · ${c[1]}(${c[0] ? (100 * c[1] / c[0]).toFixed(1) : 0}%)` : '—');
+  for (const [sd, r] of G) { const C = r.ob.gangCalls; console.log(`| ${sd} | ${c2(C.tickTradeV2Steps)} | ${c2(C.netExportValue)} | ${c2(C._caravanArrive)} | ${c2(C.tickCaravansV2)} |`); }
+  console.log('\n대상 마을이 띄우려던 교역 결정 중 길목에 갱이 선 몫(ⓖ · 800일): ' + T.map((t) => { const r = R[`ⓖ|${t.seed}`]; const v = r && r.ob.gangSeen && r.ob.gangSeen[t.name]; return `${t.seed} ${t.name} ${v ? `${v[1]}/${v[0]}` : '—'}`; }).join(' · '));
 }
 if (JOUT) fs.writeFileSync(JOUT, JSON.stringify({ dir: DIR, targets: T, traj: TRAJ, agg: AGG, post: POST, year1: Y1, whole: WHOLE }, null, 1));
