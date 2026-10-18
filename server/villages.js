@@ -3434,6 +3434,9 @@ function spawnCaravanBody(c, now, budgetMs) {
   if (T661_ON) _t661Anchor(body, pts, body.phase);   // ★[T661] 장부는 오늘(econ 날)부터 — 세운 날은 안 움직인다
   if (T775_RESUME && T661_ON && !_t707Mk) _t775Place(body, c, outbound, p, now);   // ★[T775] 오늘 앞에 시작한 구간 = 장부 자리에 선다(끔 = 이 줄 무동작)
   if (_t707Mk) { const vil = state.byEcon.get(c.to), rec = vil && vil._mkt; body.phase = 'linger'; body.lingerUntil = (rec && rec.cars.has(c.id)) ? rec.end : now + state.dayMs * CARAVAN_LINGER_DAY_FRAC; p.x = pts[0].x; p.y = pts[0].y; _t707Stat.spawnLinger++; }
+  //   ★[T782 · T775 갈래] 장 마당 몸인데 **장이 이미 끝났다**(다시 뜬 판 · 늦게 선 몸 — `lingerUntil` ≤ 지금) — 종전엔 마당(길 머리)에 섰다가 다음 틱에 귀환을 열어
+  //     길 전체를 따라잡았다(끔 = 명목 ×4 질주 · T772 켬 = 몸 걸음이라 집 도착에 길 위 = 늦음). 귀환을 여기서 열고 **장부 자리**(`_t775Place` · `_t661Vis` 같은 식)에 세운다(T775 계약 그대로 · 새 수 0).
+  if (T775_RESUME && T661_ON && _t707Mk && Number.isFinite(body.lingerUntil) && body.lingerUntil <= now) { startReturnLeg(body, now); _t775Place(body, c, false, p, now); _probe.t782MktLate = (_probe.t782MktLate || 0) + 1; }
   state.caravanBodies.set(c.id, body);
   console.log(`[${state.zoneId}] 🐂 캐러밴#${c.id} 출발: ${c.from.name}→${c.to.name} ${c.giveRes}×${Math.round(c.giveAmt)} 호위${c.escort}(실체 ${body.escorts.length}) — 경로 ${pts.length}정점 ${Math.round(body.len)}px ${legDays}게임일(econ d${c.departDay}→d${c.arriveDay})`);
   return true;
@@ -6607,7 +6610,7 @@ function probeStats() { return { siteLog: _probe.siteLog.slice(-400), auditN: _p
   pathJobs: _probe.pathJobs, pathSliceMax: _probe.pathSliceMax, pathChunkMax: _probe.pathChunkMax, pathDrop: _probe.pathDrop, pathWait: _probe.pathWait, pathStepNodes: PATH_STEP_NODES,
   routePlain: _probe.routePlain | 0, routeRedigPass: _probe.routeRedigPass | 0, routeRedig: _probe.routeRedig | 0, routeRedigChanged: _probe.routeRedigChanged | 0, pathBootWait: _probe.pathBootWait | 0, t714Yield: _probe.t714Yield | 0, t714Due: _probe.t714Due | 0, walkBuilt: _probe.walkBuilt | 0, walkStraight: _probe.walkStraight | 0, walkFar: _probe.walkFar | 0,   // ★[T578]
   oreCold: _probe.oreCold, oreMs: _probe.oreMs, oreMax: _probe.oreMax,
-  ...(T775_RESUME ? { t775: { placed: _probe.t775Placed | 0, spawned: _probe.t775Spawned | 0, inbound: _probe.t775Inbound | 0, cap: _probe.t775Cap | 0, lost: _probe.t775Lost | 0, wait: (state._t775 && state._t775.q) ? state._t775.q.length : 0, done: !!(state._t775 && state._t775.done) } } : {}),   // ★[T775] 켬일 때만 칸이 선다(끔 = 종전 글자)
+  ...(T775_RESUME ? { t775: { mktLate: _probe.t782MktLate | 0, placed: _probe.t775Placed | 0, spawned: _probe.t775Spawned | 0, inbound: _probe.t775Inbound | 0, cap: _probe.t775Cap | 0, lost: _probe.t775Lost | 0, wait: (state._t775 && state._t775.q) ? state._t775.q.length : 0, done: !!(state._t775 && state._t775.done) } } : {}),   // ★[T775] 켬일 때만 칸이 선다(끔 = 종전 글자)
   t620MemoN: _probe.t620MemoN | 0, t620MemoBad: _probe.t620MemoBad | 0, t620MemoFirst: _probe.t620MemoFirst || '',   // ★[T620 ①] 검사용
   t620WfHit: _probe.t620WfHit | 0, t620WfN: _probe.t620WfN | 0, t620WfBad: _probe.t620WfBad | 0, t620Prewarm: _probe.t620Prewarm | 0,
   oreWarm: _probe.oreWarm | 0, oreWarmRows: _probe.oreWarmRows | 0, oreWarmMs: _probe.oreWarmMs | 0, oreAuditN: _probe.oreAuditN | 0, oreAuditBad: _probe.oreAuditBad | 0,   // ★[T620 ②]
