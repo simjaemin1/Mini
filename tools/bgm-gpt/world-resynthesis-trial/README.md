@@ -95,3 +95,30 @@ The ablation is bounded to300s/40MB and keeps new AP-only NPZ,24kmono/48kstereo
 FLOAT WAVs, input/control/source SHA bindings and10ms source/default/ablation
 RMS traces. Failed pilot models, original recordings and game defaults remain
 unchanged; there is no new ML training, model download or audio upload.
+
+### User-confirmed 029 transient: separate local listening trial
+
+The user identified the second resynthesis (`029`) as containing a collision-like
+sound near 2 seconds. The source also has a transition there, but this does not
+establish its physical cause or make the resynthesis acceptable. Excess total
+high-frequency energy was **not** established as the cause.
+
+`render_local_transient_trial.py` reads the saved SHA-bound 029 native WAV and
+original comparison gain, and writes a new private directory without modifying
+029. Two fixed trials attenuate only a 3 kHz high-pass component by 2 or 4 dB
+inside 2.040–2.100 s. A symmetric 129-tap Kaiser FIR is center-aligned; quintic
+edges reach the fixed plateau at 2.055–2.085 s. No model, original-waveform
+insertion, pitch/time edit, global EQ, nonlinear limiter or AGC is used. Native
+float32 samples outside the envelope are byte-identical; subsequent sample-rate
+conversion and AAC encoding do not preserve that byte identity.
+
+The actual before/soft2/soft4 AACs are each 4.8 s, 48 kHz stereo, measured
+−24.0 LUFS with the same original −11.8 dB static gain, not independently
+renormalized. At 2.070–2.075 s their decoded peaks are −21.55/−22.55/−23.46
+dBFS. The stronger trial's maximum 5 ms RMS reduction within the edit is
+0.712 dB (10 ms: 0.597 dB). This is a narrow softening trial, **not proof that
+the sound has been removed or that daegeum naturalness is solved**. Independent
+pitch comparison retains all 289 source-fixed stable frames; uncertain transition
+frames are excluded, not certified. Original recordings, old 029 and game
+defaults remain unchanged. Six new pure-DSP tests and all 24 WORLD-folder tests
+pass; auditory approval remains pending.
