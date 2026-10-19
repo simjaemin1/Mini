@@ -562,15 +562,37 @@ function _t784Mods() {
   }
   return _t784M;
 }
-function _t784F(res, days) {   // 품목 · 길 위 날 수 → 신선도(늙지 않는 품목 1)
+// ★★[T812 2026-10-19 · T795 회부 2 · 손잡이 `T812_CARGO_TEMP`('1' 만 켬 · 끔 = 아래 두 함수가 날 수 그대로 = main 바이트)] **짐은 장부 시계로 늙는다.**
+//   T784 는 길 위 **달력 날 수**를 곡선에 넣었다 — 장부(T732)는 같은 짐을 **기온 가중 노출**(`spoil` · 몸에 지님 seal 1 · damp 0)로 늙힌다.
+//   한 해 평균은 같고 철 · 빨리 상하는 짐에서 갈렸다(T795 §3 — 여름 1.76배 · 겨울 0.41배 · 생선 −0.28).
+//   켬이면 다리의 나이 = 그 다리 날들의 **하루 노출 합**(`spoil.dayExposure` — `cumExposure` 가 쌓는 그 하루치 · 기온은 날씨 정본 `server/weather.js`).
+//   고도 0 · 자리 carry(`spoil.placeFields`) — 장부가 짐에 매기는 그 자리(장부의 정산 `_settle` 도 고도 0). 새 수 0.
+//   ⚠공유 누적표(`cumExposure` 의 `_cum`)는 안 건드린다 — 장부는 순간 날(벽시계)로, econ 은 econ 날로 같은 표를 물어 창이 앞뒤로 뛰지 않게(T795 §3 · 벤치 시계 비 5~8).
+//     같은 하루치의 합이라 값은 `cumExposure(d0 + n) − cumExposure(d0)` 와 같다(test-cargo-age ⑦).
+//   랩: 번들이 날씨 정본을 싣는다(없으면 하루 노출 1 = 날 수 — 서버와 갈린다).
+const T812_CARGO_TEMP = (typeof process !== 'undefined' && process.env && process.env.T812_CARGO_TEMP === '1');
+const _t812Pre = new Map();   // 떠난 날 → [0, 첫날 노출, 둘째 날까지 …] (그 날부터의 누적 · 날마다 한 번만 센다)
+function _t812Exp(day0, days) {   // 떠난 날 · 날 수 → 길 위 노출(소수 날이면 그 몫만큼 다음 날 하루치)
+  const M = _t784Mods(), S = M && M.S;
+  if (!S || typeof S.dayExposure !== 'function') return days;
+  const d0 = Math.floor(Number(day0) || 0), x = Math.max(0, Number(days) || 0), n = Math.floor(x), fr = x - n;
+  let P = _t812Pre.get(d0);
+  if (!P) { P = [0]; _t812Pre.set(d0, P); if (_t812Pre.size > 64) _t812Pre.delete(_t812Pre.keys().next().value); }
+  const pf = S.placeFields('carry');
+  const need = fr > 0 ? n + 1 : n;
+  while (P.length <= need) P.push(P[P.length - 1] + S.dayExposure(d0 + P.length - 1, 0, pf.w) * pf.m);
+  return fr > 0 ? P[n] + fr * (P[n + 1] - P[n]) : P[n];
+}
+function _t784F(res, days, day0) {   // 품목 · 길 위 날 수(· 떠난 날 — T812 켬이면 그 날부터의 노출) → 신선도(늙지 않는 품목 1)
   const M = _t784Mods();
   if (!M || !M.L.isLot(res)) return 1;
-  const f = M.S.freshnessOf(res, days);
+  const f = M.S.freshnessOf(res, (T812_CARGO_TEMP && day0 != null) ? _t812Exp(day0, days) : days);
   return f > 0 ? f : 0;
 }
 function _t784Arrive(c, res, day) {   // 도착 순간 그 짐의 신선도 — 길 위 날 수(출발 결정과 같은 곡선 · 같은 날 셈)
   const d0 = day - c.departDay;
-  return _t784F(res, Math.max(0, c._xzHome ? Math.max(d0, +c.travelDays || 0) : d0));   // 이웃 존에서 넘어온 짐은 departDay 가 넘어온 날이다
+  const n = Math.max(0, c._xzHome ? Math.max(d0, +c.travelDays || 0) : d0);   // 이웃 존에서 넘어온 짐은 departDay 가 넘어온 날이다
+  return _t784F(res, n, day - n);   // ★[T812] 떠난 날 = 도착 날 − 길 날 수(이웃 존 짐도 같은 셈)
 }
 // 마을 하나의 문맥 — 자본재 커버리지(결정층 식 그대로).
 function _targetCtxV2(v) {
@@ -1049,7 +1071,7 @@ function* tickTradeV2Steps(world, day) {
           //   진짜 정합은 '귀환 leg 기대가치 모델링'과 세트(후속 설계 후보) — 그 전까지 기대는 근사, 정산은 진실.
           //   ★[T233] 세 줄을 `_legProfitPerUnit` 으로 **이름만 올렸다** — 곱·뺄셈 순서 그대로라 비트 동일.
           //     첫째와 둘째가 **같은 함수**를 부르게 하려면 식이 이름을 가져야 한다(사본 금지 · T200 문법).
-          const profitPerUnit = _legProfitPerUnit(pFrom, T784_CARGO_AGE ? pTo * _t784F(cand.res, travelDaysForDistance(dist)) : pTo, transportCostPerUnit, expectedLossRatio);   // ★[T784] 켬 = 도착 날 신선도 곱
+          const profitPerUnit = _legProfitPerUnit(pFrom, T784_CARGO_AGE ? pTo * _t784F(cand.res, travelDaysForDistance(dist), day) : pTo, transportCostPerUnit, expectedLossRatio);   // ★[T784] 켬 = 도착 날 신선도 곱
           const totalProfit = profitPerUnit * N_units;
           if (totalProfit <= 0) continue;
           if (!best || totalProfit > best.profit) {
@@ -1125,7 +1147,7 @@ function* tickTradeV2Steps(world, day) {
             //     목적지·거리·운반비·손실률은 **첫째가 정한 그대로**(같은 수레다) — 새 수 0 · 사본 0.
             //     왜: T231 §ⓐ — 첫째는 `totalProfit<=0` 관문을 지나는데 둘째는 관문이 **아예 없어서**
             //     `TRADABLE` 선언 순서상 첫 품목을 적자로도 싣는다(단위의 62~74%가 단위당 적자).
-            const _pu2 = _legProfitPerUnit(a.prices[c2.res] || 0, T784_CARGO_AGE ? ((b.prices && b.prices[c2.res]) || 0) * _t784F(c2.res, travelDaysForDistance(best.dist)) : ((b.prices && b.prices[c2.res]) || 0),   // ★[T784]
+            const _pu2 = _legProfitPerUnit(a.prices[c2.res] || 0, T784_CARGO_AGE ? ((b.prices && b.prices[c2.res]) || 0) * _t784F(c2.res, travelDaysForDistance(best.dist), day) : ((b.prices && b.prices[c2.res]) || 0),   // ★[T784]
                                            best.transportCostPerUnit, best.expectedLossRatio);
             if (_c2gate && !(_pu2 * _q > 0)) { if (!_picked) _gateBlocked++; continue; }   // ★걸리면 **다음 후보**로 · ★[T299] 기본 끔
             if (!_picked) {                           // ★선언 순서상 첫 개 — T206~T233 이 싣던 그것
@@ -2446,5 +2468,6 @@ module.exports = {
   xzoneBounce: _xzBounce, xzoneLeg: _xzLeg,   // ★[T533] 서버 호스트가 부르는 둘 — 이웃 존이 안 받은 넘김을 경계에서 되돌림 · 제 존 몫 일수(몸이 되짚을 때) — 사본 0
   _xzProbe: { handOff: _xzHandOff, arrive: _xzArrive, arriveLoop: _xzArriveLoop, handBack: _xzHandBack, ret: _xzReturn },   // ★[T748] 존 경계 짐 레코드 — 하네스가 **이 함수들**을 그대로 부른다(사본 0 · 값 무변)
   setLotHook,   // ★[T732] 곳간 로트 장부 훅(서버 켬일 때만 꽂는다 · 랩·CLI 는 안 꽂는다 = 무동작)
-  T784_CARGO_AGE, _t784Probe: { F: _t784F, arrive: _t784Arrive },   // ★[T784] 짐 늙음 — 하네스가 **이 두 함수**를 그대로 부른다(사본 0 · 값 무변)
+  T784_CARGO_AGE, _t784Probe: { F: _t784F, arrive: _t784Arrive },
+  T812_CARGO_TEMP, _t812Probe: { exp: _t812Exp },   // ★[T812] 길 위 노출 — 하네스가 이 함수를 그대로 부른다(사본 0)   // ★[T784] 짐 늙음 — 하네스가 **이 두 함수**를 그대로 부른다(사본 0 · 값 무변)
 };
