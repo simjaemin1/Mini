@@ -1,0 +1,684 @@
+{
+ "days": 400,
+ "wallMs": 0,
+ "seed": 1020,
+ "knobs": {},
+ "env": {
+  "T789_DISCARD": "1"
+ },
+ "p1": {
+  "phase": 1,
+  "day": 400,
+  "villages": 51,
+  "attachedAll": true,
+  "granary": {
+   "cells": 3264,
+   "bad": []
+  },
+  "items": {
+   "items": 0,
+   "tagged": 0,
+   "bad": [],
+   "byItem": {},
+   "eaten": {}
+  },
+  "bags": {
+   "bodies": 0,
+   "cells": 0,
+   "bad": 0,
+   "ex": []
+  },
+  "gangs": {
+   "n": 0,
+   "recs": 0,
+   "bad": 0,
+   "ex": []
+  },
+  "pock": {
+   "cells": 0,
+   "recs": 0
+  },
+  "npc": {
+   "bodies": 117,
+   "withLots": 0,
+   "items": 0,
+   "short": 0,
+   "over": 0,
+   "shortEx": [],
+   "overEx": [],
+   "lots": 0,
+   "maxPerItem": 0,
+   "bagSkip": 0
+  },
+  "people": {
+   "bodies": 0,
+   "items": 0,
+   "short": 0,
+   "over": 0
+  },
+  "ground": {
+   "items": 0,
+   "lot": 0,
+   "withLots": 0,
+   "mismatch": 0
+  },
+  "chest": {
+   "n": 3,
+   "cells": 0,
+   "mismatch": 0
+  },
+  "caravans": {
+   "n": 51,
+   "give": 16,
+   "giveBad": 0,
+   "ret": 8,
+   "retBad": 0,
+   "ex": []
+  },
+  "warPacks": {
+   "packs": 2,
+   "bad": 0,
+   "wars": 2
+  },
+  "lots": {
+   "approx": 0,
+   "approxBy": {},
+   "coalesced": 0
+  },
+  "gl": {
+   "attached": 51,
+   "seeded": 239,
+   "seededU": 18722.65074831674,
+   "restored": 0,
+   "t716In": 0,
+   "newLots": 215687,
+   "moved": 1937,
+   "outRecs": 8823,
+   "debtU": 0,
+   "wrappedLate": 2907,
+   "adopted": 0,
+   "drift": 0,
+   "driftU": 0,
+   "cargoIn": 1937,
+   "cargoOut": 5142,
+   "txRollback": 0,
+   "doors": 0,
+   "doorNoRec": 0,
+   "doorStale": 0,
+   "giveNoRec": 0,
+   "giveNoRecU": 0,
+   "handRecs": 0,
+   "handU": 0,
+   "pockIn": 0,
+   "pockNew": 0,
+   "pockOut": 0,
+   "pockSeed": 0,
+   "pockDrift": 0,
+   "pockDriftU": 0,
+   "bagIn": 0,
+   "bagNew": 0,
+   "bagOut": 0,
+   "gangIn": 56,
+   "gangOut": 650,
+   "gangSeed": 10,
+   "gangDrift": 0,
+   "gangDriftU": 0,
+   "denIn": 0,
+   "xzOut": 0,
+   "xzIn": 0,
+   "itemTag": 0,
+   "itemTagU": 0,
+   "itemInU": 0,
+   "itemOutU": 0,
+   "itemEatU": 0,
+   "itemGiveU": 0,
+   "itemSwapU": 0,
+   "itemSwapRecs": 0,
+   "itemCargoU": 0,
+   "t789Rot": 12959,
+   "t789RotU": 161680.7978016701,
+   "t789RotItemU": 0,
+   "t789RotDays": 397,
+   "t789Hid": 0,
+   "t789HidU": 0,
+   "t789Skip": 0,
+   "t789Views": 0
+  },
+  "size": {
+   "recs": 2304,
+   "cells": 179,
+   "bytes": 200810,
+   "maxV": 171,
+   "maxVB": 14734,
+   "maxCell": 62,
+   "maxCellRes": "어촌2·food",
+   "top": [
+    [
+     "food",
+     1238
+    ],
+    [
+     "rice",
+     357
+    ],
+    [
+     "barley",
+     348
+    ],
+    [
+     "wheat",
+     300
+    ],
+    [
+     "vegetable",
+     24
+    ],
+    [
+     "fruit",
+     15
+    ],
+    [
+     "mushroom",
+     14
+    ],
+    [
+     "meat",
+     6
+    ]
+   ]
+  },
+  "sizes": [
+   [
+    1,
+    {
+     "recs": 99,
+     "cells": 80,
+     "bytes": 9504,
+     "maxV": 2,
+     "maxVB": 197,
+     "maxCell": 2,
+     "maxCellRes": "광산1·food",
+     "top": [
+      [
+       "food",
+       70
+      ],
+      [
+       "fish",
+       24
+      ],
+      [
+       "meat",
+       5
+      ]
+     ]
+    }
+   ],
+   [
+    50,
+    {
+     "recs": 2119,
+     "cells": 221,
+     "bytes": 184361,
+     "maxV": 80,
+     "maxVB": 6881,
+     "maxCell": 41,
+     "maxCellRes": "임업6·food",
+     "top": [
+      [
+       "food",
+       1242
+      ],
+      [
+       "rice",
+       320
+      ],
+      [
+       "wheat",
+       236
+      ],
+      [
+       "barley",
+       207
+      ],
+      [
+       "salmon",
+       16
+      ],
+      [
+       "shrimp",
+       15
+      ],
+      [
+       "crab",
+       15
+      ],
+      [
+       "seaweed",
+       15
+      ]
+     ]
+    }
+   ],
+   [
+    100,
+    {
+     "recs": 1569,
+     "cells": 164,
+     "bytes": 136944,
+     "maxV": 77,
+     "maxVB": 6643,
+     "maxCell": 35,
+     "maxCellRes": "광산4·food",
+     "top": [
+      [
+       "food",
+       885
+      ],
+      [
+       "rice",
+       273
+      ],
+      [
+       "wheat",
+       197
+      ],
+      [
+       "barley",
+       184
+      ],
+      [
+       "crab",
+       5
+      ],
+      [
+       "shrimp",
+       4
+      ],
+      [
+       "meat",
+       4
+      ],
+      [
+       "salmon",
+       3
+      ]
+     ]
+    }
+   ],
+   [
+    150,
+    {
+     "recs": 828,
+     "cells": 101,
+     "bytes": 72879,
+     "maxV": 88,
+     "maxVB": 7551,
+     "maxCell": 37,
+     "maxCellRes": "임업2·food",
+     "top": [
+      [
+       "food",
+       472
+      ],
+      [
+       "barley",
+       112
+      ],
+      [
+       "rice",
+       109
+      ],
+      [
+       "wheat",
+       94
+      ],
+      [
+       "mushroom",
+       11
+      ],
+      [
+       "salmon",
+       6
+      ],
+      [
+       "shrimp",
+       6
+      ],
+      [
+       "crab",
+       6
+      ]
+     ]
+    }
+   ],
+   [
+    200,
+    {
+     "recs": 1012,
+     "cells": 129,
+     "bytes": 89453,
+     "maxV": 162,
+     "maxVB": 14228,
+     "maxCell": 84,
+     "maxCellRes": "임업2·food",
+     "top": [
+      [
+       "food",
+       584
+      ],
+      [
+       "barley",
+       144
+      ],
+      [
+       "rice",
+       138
+      ],
+      [
+       "wheat",
+       124
+      ],
+      [
+       "mushroom",
+       11
+      ],
+      [
+       "vegetable",
+       8
+      ],
+      [
+       "meat",
+       3
+      ]
+     ]
+    }
+   ],
+   [
+    250,
+    {
+     "recs": 1891,
+     "cells": 167,
+     "bytes": 165539,
+     "maxV": 187,
+     "maxVB": 16147,
+     "maxCell": 60,
+     "maxCellRes": "임업2·food",
+     "top": [
+      [
+       "food",
+       1011
+      ],
+      [
+       "barley",
+       293
+      ],
+      [
+       "rice",
+       280
+      ],
+      [
+       "wheat",
+       275
+      ],
+      [
+       "vegetable",
+       12
+      ],
+      [
+       "mushroom",
+       10
+      ],
+      [
+       "meat",
+       5
+      ],
+      [
+       "fruit",
+       4
+      ]
+     ]
+    }
+   ],
+   [
+    300,
+    {
+     "recs": 2059,
+     "cells": 141,
+     "bytes": 178927,
+     "maxV": 209,
+     "maxVB": 18061,
+     "maxCell": 57,
+     "maxCellRes": "임업2·food",
+     "top": [
+      [
+       "food",
+       1006
+      ],
+      [
+       "barley",
+       352
+      ],
+      [
+       "wheat",
+       351
+      ],
+      [
+       "rice",
+       294
+      ],
+      [
+       "fruit",
+       20
+      ],
+      [
+       "vegetable",
+       20
+      ],
+      [
+       "mushroom",
+       9
+      ],
+      [
+       "meat",
+       6
+      ]
+     ]
+    }
+   ],
+   [
+    350,
+    {
+     "recs": 1735,
+     "cells": 115,
+     "bytes": 150653,
+     "maxV": 191,
+     "maxVB": 16499,
+     "maxCell": 49,
+     "maxCellRes": "어촌2·food",
+     "top": [
+      [
+       "food",
+       831
+      ],
+      [
+       "barley",
+       329
+      ],
+      [
+       "wheat",
+       277
+      ],
+      [
+       "rice",
+       246
+      ],
+      [
+       "mushroom",
+       16
+      ],
+      [
+       "fruit",
+       15
+      ],
+      [
+       "vegetable",
+       13
+      ],
+      [
+       "meat",
+       8
+      ]
+     ]
+    }
+   ],
+   [
+    400,
+    {
+     "recs": 2304,
+     "cells": 179,
+     "bytes": 200810,
+     "maxV": 171,
+     "maxVB": 14734,
+     "maxCell": 62,
+     "maxCellRes": "어촌2·food",
+     "top": [
+      [
+       "food",
+       1238
+      ],
+      [
+       "rice",
+       357
+      ],
+      [
+       "barley",
+       348
+      ],
+      [
+       "wheat",
+       300
+      ],
+      [
+       "vegetable",
+       24
+      ],
+      [
+       "fruit",
+       15
+      ],
+      [
+       "mushroom",
+       14
+      ],
+      [
+       "meat",
+       6
+      ]
+     ]
+    }
+   ]
+  ],
+  "econDay": 400
+ },
+ "p2": {
+  "phase": 2,
+  "n": 51,
+  "same": 51,
+  "diff": 0,
+  "diffEx": [],
+  "missingSaved": 0,
+  "granary": {
+   "cells": 3264,
+   "bad": []
+  },
+  "items": {
+   "items": 0,
+   "tagged": 0,
+   "bad": []
+  },
+  "gl": {
+   "attached": 51,
+   "seeded": 0,
+   "seededU": 0,
+   "restored": 51,
+   "t716In": 0,
+   "newLots": 0,
+   "moved": 0,
+   "outRecs": 0,
+   "debtU": 0,
+   "wrappedLate": 0,
+   "adopted": 0,
+   "drift": 0,
+   "driftU": 0,
+   "cargoIn": 0,
+   "cargoOut": 0,
+   "txRollback": 0,
+   "doors": 0,
+   "doorNoRec": 0,
+   "doorStale": 0,
+   "giveNoRec": 0,
+   "giveNoRecU": 0,
+   "handRecs": 0,
+   "handU": 0,
+   "pockIn": 0,
+   "pockNew": 0,
+   "pockOut": 0,
+   "pockSeed": 0,
+   "pockDrift": 0,
+   "pockDriftU": 0,
+   "bagIn": 0,
+   "bagNew": 0,
+   "bagOut": 0,
+   "gangIn": 0,
+   "gangOut": 0,
+   "gangSeed": 0,
+   "gangDrift": 0,
+   "gangDriftU": 0,
+   "denIn": 0,
+   "xzOut": 0,
+   "xzIn": 0,
+   "itemTag": 0,
+   "itemTagU": 0,
+   "itemInU": 0,
+   "itemOutU": 0,
+   "itemEatU": 0,
+   "itemGiveU": 0,
+   "itemSwapU": 0,
+   "itemSwapRecs": 0,
+   "itemCargoU": 0,
+   "t789Rot": 603,
+   "t789RotU": 37587.03779744338,
+   "t789RotItemU": 0,
+   "t789RotDays": 1,
+   "t789Hid": 0,
+   "t789HidU": 0,
+   "t789Skip": 0,
+   "t789Views": 0
+  },
+  "caravans": {
+   "n": 51,
+   "withCargo": 51,
+   "same": 51,
+   "diff": 0,
+   "ex": []
+  },
+  "metaCaravans": 51,
+  "gangs": {
+   "saved": 0,
+   "live": 0,
+   "same": 0,
+   "diff": 0,
+   "ex": [],
+   "bad": 0
+  }
+ },
+ "saved": {
+  "rows": 51,
+  "ledgers": 51,
+  "metaCaravans": 51,
+  "cargo": 51,
+  "gangs": 0,
+  "gangLots": 0
+ }
+}

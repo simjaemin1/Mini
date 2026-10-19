@@ -326,24 +326,6 @@
    },
    {
     "c": [
-     47504,
-     129040
-    ],
-    "now": "tin",
-    "was": {
-     "name": "광맥140",
-     "center": [
-      47504,
-      129040
-     ],
-     "radius": 288,
-     "mineral": "jade_raw",
-     "pk": 0.051,
-     "minor": 1
-    }
-   },
-   {
-    "c": [
      5904,
      14736
     ],
@@ -469,24 +451,6 @@
      "radius": 160,
      "mineral": "jade_raw",
      "pk": 0.0228,
-     "minor": 1
-    }
-   },
-   {
-    "c": [
-     46992,
-     128272
-    ],
-    "now": "copper",
-    "was": {
-     "name": "광맥174",
-     "center": [
-      46992,
-      128272
-     ],
-     "radius": 224,
-     "mineral": "jade_raw",
-     "pk": 0.0386,
      "minor": 1
     }
    },
@@ -1530,24 +1494,6 @@
    },
    {
     "c": [
-     19856,
-     128144
-    ],
-    "now": "obsidian",
-    "was": {
-     "name": "광맥538",
-     "center": [
-      19856,
-      128144
-     ],
-     "radius": 320,
-     "mineral": "jade_raw",
-     "pk": 0.0209,
-     "minor": 1
-    }
-   },
-   {
-    "c": [
      45968,
      72208
     ],
@@ -1786,24 +1732,6 @@
      "radius": 224,
      "mineral": "jade_raw",
      "pk": 0.0166,
-     "minor": 1
-    }
-   },
-   {
-    "c": [
-     31376,
-     128784
-    ],
-    "now": "gold",
-    "was": {
-     "name": "광맥627",
-     "center": [
-      31376,
-      128784
-     ],
-     "radius": 224,
-     "mineral": "jade_raw",
-     "pk": 0.0123,
      "minor": 1
     }
    },
@@ -2204,6 +2132,42 @@
      "radius": 384,
      "mineral": "iron",
      "pk": 0.0426,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     47376,
+     127440
+    ],
+    "now": "sulfur",
+    "was": {
+     "name": "광맥284",
+     "center": [
+      47376,
+      127440
+     ],
+     "radius": 288,
+     "mineral": "iron",
+     "pk": 0.1145,
+     "minor": 1
+    }
+   },
+   {
+    "c": [
+     67856,
+     127024
+    ],
+    "now": "obsidian",
+    "was": {
+     "name": "광맥441",
+     "center": [
+      67856,
+      127024
+     ],
+     "radius": 288,
+     "mineral": "jade_raw",
+     "pk": 0.0123,
      "minor": 1
     }
    }

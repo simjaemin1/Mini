@@ -8,6 +8,7 @@
 //   econ 값을 **한 자리도 안 바꾼다.** 곳간 칸(`v.storage[재화]` — 로트 재화만)에 접근자를 걸어, econ 이 쓰는 그 값을 그대로 두고
 //   같은 양을 장부에 적는다: **늘면 그 순간의 새 로트**(얻음 · 같은 순간이면 합친다) · **줄면 오래된 것부터**(먹음 · 썩음 · 세금 — FIFO).
 //   ⇒ "NPC 는 오래된 것부터 먹는다"가 장부의 뜻이다. 상한 것을 버리는 것 · 먹을까 팔까는 econ 의 결정이라 이 카드 밖(T730 — 족보 631 ②).
+//     ★[T789] 상한 것 버리기 · 사람에게 안 내주기는 아래 T789 갈래(손잡이 `T789_DISCARD`) — 먹을까 팔까는 그대로 T730.
 //   옮김(사람 ↔ 곳간 · 캐러밴 · 전쟁 짐)은 **문이 레코드를 넘긴다** — 새 로트 = 얻은 순간 하나뿐.
 //
 // ── 레코드 ──────────────────────────────────────────────────────────────────────────────────────────
@@ -37,10 +38,25 @@
 //   문이 몇 개를 넣고 몇 단위를 꺼낼지는 **문이 정한다**(정본 함수 무변). 문 동안(`doorBegin`~`doorEnd`) 늘어난 몫은 잡아 두고(장부에 아직 안 적음),
 //   줄어든 몫은 오래된 것부터 떼어 모은다. 문이 끝나면 존이 사람 쪽에서 실제로 나간 레코드(오래된 것부터)로 늘어난 몫을 채우고(`doorIn`),
 //   모은 레코드를 사람에게 싣는다(`recsToPlayer`). 문이 실패해 곳간을 되돌리면 장부도 문 앞으로(스냅숏).
+//
+// ── ★★[T789 2026-10-18 · 손잡이 `T789_DISCARD` — '1' 만 켬 · 끔 = 아래 갈래를 아무도 안 탄다(main 바이트) · 순간 로트(T732) 켬 안에서만] ──
+//   재민 10-12 캐논(족보 631): NPC 는 가장 오래된 음식부터 먹고 **상하면 즉시 버린다** · 곳간은 상한 것을 사람에게 **내주지 않는다**(T732 §7 ⑦ —
+//   켬 거래소에서 받은 날고기가 신선도 0.00 · 400일 어촌6 굴 칸 237 레코드가 한 번도 안 줄었다).
+//   상한 문턱 = spoil 정본의 그 판정 하나(`Spoil.isSpoiled(품목, 노출)` — f ≤ 0 · 보관일에 닿은 자리 · 새 수 0) · 품목 = 레코드의 품목(`it` — T768 · 넣은 그 물건의
+//   보관일)이 있으면 그것 · 없으면 칸의 재화 · 노출 = 그 순간까지(`Spoil.exposureAt` — 레코드의 자리 배율 그대로 · 정산과 같은 함수).
+//   ① 버림 — econ 하루 마감 순간(`tickBegin` 이 잡는 그 순간 · econ 이 그날 먹기 **전**): 감싼 칸의 상한 레코드를 장부에서 빼고 econ 칸도 그 단위만큼 뺀다
+//      (장부 합 − 빚 = 곳간 값 그대로 · 칸 값 아래로는 못 뺀다 — 남은 몫은 다음 마감) · 버린 몫은 **썩어 없어짐** 사건으로 센다(`t789Rot` · 소멸이 아니다).
+//   ② 사람의 눈 — 사람의 문(`doorBegin` ~ `doorEnd` — 꺼내기 · 거래소 받기 · 게시판 보상 · 마을 밥 · 위세품 값 · 회관 넣기)과 사람이 보는 시세 · 견적
+//      (`viewBegin`/`viewEnd`) 동안 감싼 칸은 **상한 몫을 뺀 값**으로 보인다 — econ 정본 함수가 그 값으로 몇 개 · 몇 단위인지를 정하고(함수 무변),
+//      줄어든 몫은 성한 레코드에서만 오래된 것부터 뗀다(상한 레코드는 건너뛴다 — 그 자리에 남아 다음 마감에 버려진다 · 문은 버리지 않는다).
+//      몸 손 문(`doorOpen` — T748 어부 · 채집 · 농부가 곳간에 넣는 문)은 사람의 문이 아니다 — 눈을 안 연다.
 const Lots = require('./lots');
 const Spoil = require('./spoil');
 const ON = Lots.T732_MOMENT;
 const EPS = 1e-9;
+const T789 = ON && process.env.T789_DISCARD === '1';   // ★[T789] 손잡이(한 자리)
+let _vw = null;     // ★[T789] 사람의 눈 — { nf, hid: Map(econ 마을 → {재화: 숨긴 상한 단위}), bad: WeakSet(상한 레코드), n: 겹친 수 }
+const ROT = {};     // ★[T789] 품목 → 썩어 없어진 단위(econ 하루 마감 · `rotOf`)
 const LED = new WeakMap();      // econ 마을 → { [재화]: rec[] }
 const DEBT = new WeakMap();     // econ 마을 → { [재화]: 곳간이 0 아래로 내려간 몫(장부가 줄 수 없는 몫) }
 const PEND = new WeakMap();     // econ 마을 → { [재화]: rec[] } — 다음 늘어남이 받을 레코드(옮김 · 무게 = u)
@@ -58,6 +74,8 @@ const ST = { attached: 0, seeded: 0, seededU: 0, restored: 0, t716In: 0, newLots
   bagIn: 0, bagNew: 0, bagOut: 0, gangIn: 0, gangOut: 0, gangSeed: 0, gangDrift: 0, gangDriftU: 0, denIn: 0, xzOut: 0, xzIn: 0,
   // ★[T768] 품목 실은 레코드 — 싣기(문 · 손) · 장부에 든/난 단위 · 마을이 먹은(econ 줄이기) · 사람에게 그 품목으로 준 · 대표 품목과 달라 바꿔 준 · 짐에 실린
   itemTag: 0, itemTagU: 0, itemInU: 0, itemOutU: 0, itemEatU: 0, itemGiveU: 0, itemSwapU: 0, itemSwapRecs: 0, itemCargoU: 0 };
+// ★[T789] 켬일 때만 칸이 선다(끄면 `stats()` 꼴 그대로) — 버린 레코드 · 단위 · 그중 품목 실은 단위 · 버린 마감 · 사람의 눈이 숨긴 칸 · 단위 · 문이 건너뛴 레코드
+if (T789) Object.assign(ST, { t789Rot: 0, t789RotU: 0, t789RotItemU: 0, t789RotDays: 0, t789Hid: 0, t789HidU: 0, t789Skip: 0, t789Views: 0 });
 // ★★[T768] 품목 셈 — econ 마을 → { in: {품목: 단위}, out: {품목: 단위} }(그 장부에 든 · 난 품목 실은 레코드의 단위) · 되돌림 스냅숏
 const ITM = new WeakMap();
 const TXI = new WeakMap();
@@ -82,6 +100,63 @@ function _restamp(r, pf, nf) { _settle(r, nf); r.m = pf.m; r.w = pf.w; return r;
 function _copy(r, u) { const o = { k: r.k, u, f0: r.f0 == null ? 1 : r.f0, e: r.e, t: r.t, m: r.m, w: r.w }; if (r.it != null) o.it = r.it; return o; }   // ★[T768] 품목은 따라간다(없으면 칸도 없다 — 옛 꼴 그대로)
 function _sortK(arr) { arr.sort((a, b) => (a.k - b.k) || ((+b.e || 0) - (+a.e || 0))); return arr; }
 
+// ══ ★[T789] 상한 레코드 — 판정 · 사람의 눈 · 하루 마감 버림 ═══════════════════════════════════════════════
+//   판정은 spoil 정본 하나(`isSpoiled` — f ≤ 0) · 품목 = 레코드의 품목(넣은 그 물건) · 없으면 칸의 재화 · 노출 = 그 순간까지(레코드의 자리 배율 · `_settle` 과 같은 함수)
+function _rotten(r, res, nf) { return Spoil.isSpoiled(r.it != null ? r.it : res, Spoil.exposureAt(r, nf, 0)); }
+//   사람의 눈이 그 칸에서 숨기는 몫 — 그 눈이 처음 그 칸을 볼 때 한 번 센다(눈 동안 상한 레코드는 안 움직인다 · 문은 성한 것만 뗀다) · 칸 값 바닥
+function _hid(v, res, val) {
+  let H = _vw.hid.get(v); if (!H) { H = {}; _vw.hid.set(v, H); }
+  if (H[res] !== undefined) return H[res];
+  const L = LED.get(v), arr = L && L[res];
+  let s = 0;
+  if (arr) for (const r of arr) if ((+r.u || 0) > EPS && _rotten(r, res, _vw.nf)) { s += r.u; _vw.bad.add(r); }
+  const cap = Math.max(0, Number(val) || 0);
+  H[res] = s > cap ? cap : s;
+  if (H[res] > EPS) { ST.t789Hid++; ST.t789HidU += H[res]; }
+  return H[res];
+}
+function _viewOpen() {
+  if (!T789 || !Lots.momentOn()) return false;
+  if (_vw) { _vw.n++; return true; }
+  _vw = { nf: _nowFrac(), hid: new Map(), bad: new WeakSet(), n: 1 }; ST.t789Views++;
+  return true;
+}
+function _viewClose() { if (_vw && --_vw.n <= 0) _vw = null; }
+// 사람이 보는 시세 · 견적(문 밖 · 마른 셈) — 문과 같은 눈으로(견적 = 실행 · 상한 몫은 내줄 것에 안 든다). 끄면 아무 일 없다.
+function viewBegin() { return _viewOpen(); }
+function viewEnd() { _viewClose(); }
+//   ① econ 하루 마감 순간 — 감싼 칸마다 상한 레코드를 빼고 econ 칸도 그만큼(빚 몫 아래로는 못 뺀다) · 썩어 없어짐으로 센다
+function _rot(econVillages, nf) {
+  let any = false;
+  for (const v of (econVillages || [])) {
+    const L = v && LED.get(v), W = v && WRAPPED.get(v);
+    if (!L || !W) continue;
+    for (const res of W) {
+      const arr = L[res]; if (!arr || !arr.length) continue;
+      let room = Math.max(0, Number(v.storage[res]) || 0), gone = 0;
+      for (let i = 0; i < arr.length && room > EPS; ) {
+        const r = arr[i];
+        if (!((+r.u || 0) > EPS) || !_rotten(r, res, nf)) { i++; continue; }
+        const x = Math.min(r.u, room);
+        room -= x; gone += x;
+        const key = r.it != null ? r.it : res;
+        ROT[key] = (ROT[key] || 0) + x;
+        if (r.it != null) { _itOut(v, r.it, x); ST.t789RotItemU += x; }   // ★[T768] 품목 셈 — 난 것(먹은 것이 아니다)
+        ST.t789Rot++;
+        r.u -= x;
+        if (r.u <= EPS) arr.splice(i, 1); else i++;
+      }
+      if (gone > EPS) {
+        _suspend++;
+        try { v.storage[res] = (Number(v.storage[res]) || 0) - gone; } finally { _suspend--; }
+        if (!arr.length) delete L[res];
+        ST.t789RotU += gone; any = true;
+      }
+    }
+  }
+  if (any) ST.t789RotDays++;
+}
+
 // ══ 접근자 — econ 이 쓰는 값은 그대로 · 같은 양을 장부에 ════════════════════════════════════════
 function _wrap(v, res, seedK) {
   if (!Lots.isLot(res)) return false;
@@ -91,7 +166,18 @@ function _wrap(v, res, seedK) {
   let val = d.value;
   const L = LED.get(v);
   if (!L[res]) { const q = Number(val) || 0; if (q > EPS) { L[res] = [_rec(seedK, q)]; ST.seeded++; ST.seededU += q; } }
-  Object.defineProperty(st, res, {
+  Object.defineProperty(st, res, T789 ? {
+    // ★[T789] 켬 — 사람의 눈(`_vw`)이 열려 있으면 상한 몫을 뺀 값으로 보이고, 그 눈으로 쓴 값은 실제 값으로 되돌려 적는다(상한 몫은 그 자리에 남는다)
+    enumerable: d.enumerable !== false, configurable: true,
+    get() { return _vw ? val - _hid(v, res, val) : val; },
+    set(x) {
+      if (_vw) x = (Number(x) || 0) + _hid(v, res, val);
+      const a = Number(val) || 0; val = x; const b = Number(x) || 0;
+      if (_suspend) return;
+      if (b > a + EPS) { if (_door) _hold(v, res, b - a); else _in(v, res, b - a); }
+      else if (b < a - EPS) _out(v, res, a - b);
+    },
+  } : {
     enumerable: d.enumerable !== false, configurable: true,
     get() { return val; },
     set(x) {
@@ -136,6 +222,18 @@ function _out(v, res, du) {
   let left = du;
   const C = CAP.get(v), cap = C && (C[res] || C['*']);
   const taken = (cap || _door) ? [] : null;
+  if (T789 && _vw) {   // ★[T789] 사람의 눈 — 상한 레코드는 건너뛴다(오래된 것부터 · 성한 것만 · 상한 것은 그 자리에 남아 다음 마감에 버려진다)
+    let i = 0;
+    while (left > EPS && i < arr.length) {
+      const r = arr[i];
+      if (_vw.bad.has(r)) { i++; ST.t789Skip++; continue; }
+      const take = Math.min(left, r.u);
+      if (taken) taken.push(_copy(r, take));
+      if (r.it != null) { _itOut(v, r.it, take); if (!taken) { ST.itemEatU += take; EAT[r.it] = (EAT[r.it] || 0) + take; } }
+      r.u -= take; left -= take;
+      if (r.u <= EPS) arr.splice(i, 1); else i++;
+    }
+  } else
   while (left > EPS && arr.length) {
     const r = arr[0], take = Math.min(left, r.u);
     if (taken) taken.push(_copy(r, take));
@@ -284,13 +382,22 @@ function txEnd(v, commit) {
   ST.txRollback++;
 }
 // 하루 마감 — 그 동안 econ 이 얻은 것은 그 순간 하나(villages.js 가 마감을 열 때 · 다 비웠을 때 부른다)
-function tickBegin() { if (_door) _doorStale(); if (ON && Lots.momentOn()) _tickK = _now(); }
+//   ★[T789] 켬이면 그 순간(econ 이 그날 먹기 전) 상한 레코드를 버린다 — 부르는 쪽이 econ 마을 목록을 넘긴다(끄면 인자는 안 읽힌다)
+function tickBegin(econVillages) {
+  if (_door) _doorStale();
+  if (ON && Lots.momentOn()) {
+    _tickK = _now();
+    if (T789 && econVillages) { _vw = null; _rot(econVillages, _tickK / _day()); }   // 마감엔 사람의 눈이 없다(남은 눈은 닫는다)
+  }
+}
 function tickEnd() { _tickK = null; }
 // 사람의 문 — 열기 · 닫기(실패면 장부를 문 앞으로 되돌린다). 닫으면 { held, cap } 을 낸다(존이 레코드를 채우고 싣는다).
-function doorBegin() {
+//   ★[T789] `hands` = 몸 손 문(`doorOpen` — 사람의 문이 아니다) · 사람의 문이면 눈을 연다(켬일 때만)
+function doorBegin(hands) {
   if (!ON || !Lots.momentOn()) return false;
   if (_door) _doorStale();
   _door = { held: new Map(), cap: new Map(), tx: new Set() }; ST.doors++;
+  if (T789 && !hands && _viewOpen()) _door.view = true;
   return true;
 }
 // 안 닫힌 문(문 사이에서 던져 닫는 줄을 못 탄 경우 — 존 문은 finally 로 닫는다) — 잡아 둔 늘어남을 그 순간의 새 로트로 적고 닫는다(센다 · 문이 영영 열려 econ 늘어남을 삼키지 않게)
@@ -298,6 +405,7 @@ function _doorStale() { const d = doorEnd(true); doorRest(d); ST.doorStale++; }
 function doorEnd(commit) {
   const d = _door; _door = null;
   if (!d) return null;
+  if (d.view) { _viewClose(); d.view = false; }   // ★[T789] 문의 눈을 닫는다(문 뒤 채우기 · 싣기는 장부만 만진다)
   for (const v of d.tx) txEnd(v, !!commit);
   if (!commit) return null;
   return d;
@@ -487,7 +595,7 @@ function handRecs(p, item, n, per) {
 // 곳간 입구(econ 정본 한 줄)를 문으로 감싼다 — 그 줄 앞에서 열고(`doorOpen`) · 뒤에서 닫으며 늘어난 몫(세금 뗀 것)을
 //   입구가 받은 만큼 뗀 레코드로 채운다(`doorShut`). 입구 줄은 글자 그대로 둔다(하네스가 그 줄을 읽는다 · 사본 0).
 //   닫는 줄을 못 타면(입구가 던졌다) 다음 문 · 마감이 그 문을 닫고 잡아 둔 몫을 그 순간의 로트로 적는다(T732 `_doorStale` · 센다).
-function doorOpen(v) { return !!(ON && LED.has(v) && doorBegin()); }
+function doorOpen(v) { return !!(ON && LED.has(v) && doorBegin(true)); }   // ★[T789] 몸 손 문 — 사람의 눈을 안 연다
 function doorShut(v, res, recs) { const d = doorEnd(true); if (d) { doorIn(d, v, res, recs || []); doorRest(d); } }
 // ② 대기 칸
 function _pock(v, key, res, make) {
@@ -680,11 +788,14 @@ function checkItems(econVillages, tol) {
 }
 function itemFlow(v) { const M = ITM.get(v); return M ? { in: Object.assign({}, M.in), out: Object.assign({}, M.out) } : null; }
 function eaten(reset) { const o = Object.assign({}, EAT); if (reset) for (const k of Object.keys(EAT)) delete EAT[k]; return o; }
+// ★[T789] 썩어 없어진 품목(econ 하루 마감에 버린 단위 — 하네스 · 자가 읽는다) · 끄면 늘 빈 묶음
+function rotOf(reset) { const o = Object.assign({}, ROT); if (reset) for (const k of Object.keys(ROT)) delete ROT[k]; return o; }
 
 module.exports = { ON, attach, sync, pushIn, clearIn, capBegin, capEnd, suspend, txBegin, txEnd, isWrapped,
   tickBegin, tickEnd, doorBegin, doorEnd, doorIn, doorRest, doorCap,
   recsFromPlayer, recsToPlayer, recsToItems, hooks, cargo, unload, bounce, cargoDump, cargoLoad, packFrom, packKeep, giveBegin, giveEnd,
   itemSums, checkItems, itemFlow, eaten,   // ★[T768] 품목 칸 · 품목 불변식 · 마을이 먹은 품목
+  T789, viewBegin, viewEnd, rotOf,         // ★[T789] 손잡이 · 사람의 눈(시세 · 견적) · 썩어 없어진 품목
   dump, ledger, attached, freshOf, stats, check,
   // ★[T748] 켬 전용 일곱 길
   POCK_KEYS, handRecs, doorOpen, doorShut, pockPut, pockTake, pendIn, pendOut, pock: (v, key, res) => _pock(v, key, res, false),

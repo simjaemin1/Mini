@@ -6,14 +6,15 @@
 //   손잡이 하나 `T761_LOCAL_CLOCKS`(기본 끔 = main 바이트) · 값 `1`·`all` = 셋 · 쉼표 목록 = 고른 갈래(`wx` · `mob` · `temp`).
 //
 // ★이 하네스가 지키는 계약:
-//   ① **손잡이 읽기** — env 없음 · `0` = 셋 다 끔 · `1`·`all` = 셋 · 쉼표 목록 = 고른 것만 · 모르는 낱말 = 끔(미끼).
+//   ① **손잡이 읽기** — ★[T792] env 없음 = 셋 다 켬(켬 기본) · `0` = 셋 다 끔 · `1`·`all` = 셋 · 쉼표 목록 = 고른 것만 · 모르는 낱말 = 끔(미끼).
 //   ② **한 식** — 몹 밤(존 몹 AI) = `localPhase(x) > 낮 몫` 이 ¾W(경도 0 · 해 몫 기준 자리)에서 `isNight` 와 같다 · 서·동 끝은 다르다(자명 통과 금지).
 //      야생 시계(`wildlife` lifeGM)의 해 몫 = 종전 해 몫 + `lonPhaseOff(x)` = `localPhase(x)` (같은 식).
 //      기온 일교차 — 같은 분수 일 `t` 에 위상만 현지(`tempAtT(t, 0, localPhase)`) · 현지 정오가 현지 자정보다 따뜻하다 · ¾W 는 종전 값과 같다.
 //   ③ **날씨 굴림 = 마을 조각** — 켬(wx)이면 머리에서 안 굴리고 마을 조각에서 굴린다:
 //      T731 켬(마을 흐름) 위에서는 마을 조각 차례를 뒤집어도 40일 지문이 같다 · 굴림이 그 마을 흐름에서 나온다.
 //      wx 끔은 머리 굴림 그대로(같은 env 두 판 = 같은 지문 · 결정론).
-//      ⚠T731 위에서 wx 켬 = 끔 수열은 **가을 첫날 앞까지만**이다 — 그날 머리의 풍흉 굴림(`tickYearShock` · 같은 마을 흐름)이
+//      ★[T792] 풍흉 굴림(`tickYearShock`)도 wx 켬이면 마을 조각(날씨 뒤)에서 돈다 ⇒ T731 위 wx 켬 = 끔 수열이 가을 첫날 뒤에도 같다(아래 옛 단서는 T761 판 기록).
+//      (옛) T731 위에서 wx 켬 = 끔 수열은 **가을 첫날 앞까지만**이었다 — 그날 머리의 풍흉 굴림(`tickYearShock` · 같은 마을 흐름)이
 //        날씨 굴림보다 먼저 돌게 되어(끔 = 날씨 → 풍흉 · 켬 = 풍흉 → 날씨) 그 뒤 수열이 갈린다(결정론 · 서버 3시드 모두 날 184 · 보고 §3).
 //   ④ **끔 = 아무도 안 부른다**(소스) — 세 자리(존 몹 AI · 야생 시계 · 몸·화면 기온) · econ 머리/마을 조각이 모두 손잡이 뒤.
 //
@@ -40,8 +41,8 @@ say('\n① 손잡이 읽기');
 { const probe = (v) => { const e = Object.assign({}, env0); if (v !== undefined) e.T761_LOCAL_CLOCKS = v;
     return JSON.parse(execFileSync(process.execPath, ['-e', `console.log(JSON.stringify(require(${JSON.stringify(path.join(ROOT, 'server', 'zone-config.js'))}).T761_CLOCKS))`], { env: e, encoding: 'utf8' })); };
   const s = (o) => `${+o.on}${+o.wx}${+o.mob}${+o.temp}`;
-  ok(s(probe()) === '0000', '★env 없음 → 셋 다 끔', s(probe()));
-  ok(s(probe('0')) === '0000', '`0` → 셋 다 끔');
+  ok(s(probe()) === '1111', '★[T792] env 없음 → 셋 다 켬(켬 기본)', s(probe()));
+  ok(s(probe('0')) === '0000', '★끔 탐침 — `0` → 셋 다 끔(되돌림)');
   ok(s(probe('1')) === '1111' && s(probe('all')) === '1111', '`1` · `all` → 셋 다');
   ok(s(probe('wx')) === '1100' && s(probe('mob')) === '1010' && s(probe('temp')) === '1001', '갈래 하나씩(wx · mob · temp)');
   ok(s(probe('mob, temp')) === '1011', '쉼표 목록 → 고른 것만(빈칸 무시)');
@@ -71,17 +72,17 @@ say('\n③ 날씨 굴림 = 마을 조각 (econ)');
 { const kid = `const path=require('path'),crypto=require('crypto');const _l=console.log;console.log=()=>{};
 const v2=require(path.join(${JSON.stringify(ROOT)},'sim','economy-sim-v2.js'));const REV=process.argv[1]==='1';
 const w=v2.createWorldV2({seed:7,villageCount:8});let rolls=0;
-for(let d=0;d<40;d++){const P=v2.tickWorldV2Parts(w);P.head();const pre=w.villages.map(v=>v._weather?v._weather.untilDay:-1).join();const L=w.villages.slice();if(REV)L.reverse();for(const v of L)P.village(v);P.trade();P.caravans();P.tail();if(w.villages.map(v=>v._weather?v._weather.untilDay:-1).join()!==pre)rolls++;}
+for(let d=0;d<(+process.argv[2]||40);d++){const P=v2.tickWorldV2Parts(w);P.head();const pre=w.villages.map(v=>v._weather?v._weather.untilDay:-1).join();const L=w.villages.slice();if(REV)L.reverse();for(const v of L)P.village(v);P.trade();P.caravans();P.tail();if(w.villages.map(v=>v._weather?v._weather.untilDay:-1).join()!==pre)rolls++;}
 const s=w.villages.map(v=>JSON.stringify([v.name,v._weather||null,Object.keys(v.storage).sort().map(k=>[k,+(+v.storage[k]).toFixed(6)]),v.npcs.map(n=>[n.id,+(+n.age).toFixed(4),n.currentJob])])).join('\\n');
 console.log=_l;console.log(crypto.createHash('sha1').update(s).digest('hex').slice(0,12)+' '+rolls);`;
-  const run = (wx, t731, rev) => { const e = Object.assign({}, env0); if (wx) e.T761_LOCAL_CLOCKS = 'wx'; if (t731) e.T731_LOCAL_MIDNIGHT = '1';
-    return execFileSync(process.execPath, ['-e', kid, rev ? '1' : '0'], { env: e, encoding: 'utf8', maxBuffer: 1 << 24 }).trim().split('\n').pop().split(' '); };
-  const offA = run(0, 0, 0), offB = run(0, 0, 0), wxA = run(1, 0, 0), wxB = run(1, 0, 0), on = run(1, 1, 0), onR = run(1, 1, 1), off731R = run(0, 1, 1);
+  const run = (wx, t731, rev, days) => { const e = Object.assign({}, env0); e.T761_LOCAL_CLOCKS = wx ? 'wx' : '0'; e.T731_LOCAL_MIDNIGHT = t731 ? '1' : '0';   // ★[T792] 켬 기본 — 끔 팔은 `=0` 을 적는다
+    return execFileSync(process.execPath, ['-e', kid, rev ? '1' : '0', String(days || 40)], { env: e, encoding: 'utf8', maxBuffer: 1 << 24 }).trim().split('\n').pop().split(' '); };
+  const offA = run(0, 0, 0), offB = run(0, 0, 0), wxA = run(1, 0, 0), wxB = run(1, 0, 0), on = run(1, 1, 0), onR = run(1, 1, 1), on200 = run(1, 1, 0, 200), off731 = run(0, 1, 0, 200)   /* ★[T792] 200일 — 가을 첫날(풍흉 굴림)을 지난다(같은 차례 · 차례 뒤집기는 40일 — T731 의 차례 무관은 그 앞까지다 · 보고 T792) */;
   ok(offA[0] === offB[0], '끔 — 같은 env 두 판 = 같은 40일 지문(결정론)', offA[0]);
   ok(offA[1] === '0', '끔 — 날씨가 바뀐 날은 머리에서만(마을 조각 동안 굴림 0)', `마을 조각 굴림 날 ${offA[1]}`);
   ok(wxA[0] === wxB[0] && +wxA[1] > 0, '★켬(wx) — 굴림이 마을 조각에서 난다 · 두 판 같은 지문', `${wxA[0]} · 마을 조각 굴림 날 ${wxA[1]}/40`);
   ok(on[0] === onR[0], '★켬(wx) + T731 마을 흐름 — 마을 조각 차례를 뒤집어도 40일 지문이 같다', `${on[0]} = ${onR[0]}`);
-  ok(on[0] === off731R[0], '★T731 위에서 wx 켬 = 끔과 같은 40일 수열(같은 마을 흐름 · 그 흐름 안 같은 차례 — 때만 마을 조각으로 옮는다 · 가을 첫날 풍흉 굴림부터는 차례가 바뀐다 — 보고 §3)', `${on[0]} = ${off731R[0]}`); }
+  ok(on200[0] === off731[0], '★T731 위에서 wx 켬 = 끔과 같은 200일 수열(같은 마을 흐름 · 그 흐름 안 같은 차례 — 날씨 · 풍흉(가을 첫날)이 함께 마을 조각으로 옮는다 · T792)', `${on200[0]} = ${off731[0]}`); }
 
 say('\n④ 끔 = 아무도 안 부른다(소스)');
 { const Z = codeOnly(fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8')).split('\n');

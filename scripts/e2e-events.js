@@ -211,7 +211,48 @@ async function waitHttp(url, tries = 900) {
   //     서버가 한 말은 사라지지 않으므로, 언제 도착했든 증인은 증인이다. 판정 문장은 그대로다.
   const shWitness = () => page.evaluate(() => (window.__notices || [])
     .filter((t) => /문턱 .*갚을거/.test(t) && !/없다|미지원|없음/.test(t)).slice(-1)[0] || null);
+  // ★★[T794 2026-10-18] **언 날의 손 셋** — 아래 `ensureBoard` 언 날 갈래 · ④-c 가 같이 쓴다(사본 0).
+  let dayFrozen = false;                 // 하네스가 보낸 얼림의 상태(아래 ① 얼림 · ⑤-b 해동 — `stepDay` 는 언 채로 돌아온다)
+  const readBoard = async () => {        // 판을 **새로** 읽는다 — 묵은 답을 안 쓴다(지우고 · 묻고 · 새 답이 올 때까지 · ⑤-b 와 같은 `12 × 200ms`)
+    await page.evaluate(() => { window.__evLastBoard = null; });
+    await page.evaluate((vid) => window.__sendPrimary({ type: 'village_board', vid }), V.id);
+    for (let j = 0; j < 12 && !(await page.evaluate(() => !!window.__evLastBoard)); j++) await sleep(200);
+    return await page.evaluate(() => window.__evLastBoard || null);
+  };
+  //   언 날을 **하루만** 흘린다 — 풀고, 다음 `sim_village_day` 가 `window.__evGameDay` 에 닿는 **그 자리**(같은 브라우저 일 · 왕복 0)에서
+  //   다시 얼린다. 하루 일의 차례는 방송(`bcast`) → 사건 장부(`events` · 게시 · 철회)이고 이미 연 마감은 얼려도 끝까지 돈다
+  //   (villages.js 하루 일 목록 · 틱 머리 `tickJobs` 가 얼림 검사보다 앞) ⇒ 다시 언 판 = **그 하루 경계의 판**이다. `cap` 은 안전망(판정 아님).
+  const stepDay = (cap) => page.evaluate((c) => new Promise((res) => {
+    const d0 = window.__evGameDay | 0;
+    let v = window.__evGameDay, done = false;
+    const fin = (x) => {
+      if (done) return; done = true;
+      delete window.__evGameDay; window.__evGameDay = v;   // 훅을 걷고 종전 값 칸으로 되돌린다
+      window.__sendPrimary({ type: '__e2e_day_freeze', on: true });
+      res(x);
+    };
+    Object.defineProperty(window, '__evGameDay', { configurable: true, enumerable: true,
+      get() { return v; }, set(x) { v = x; if ((x | 0) > d0) fin(x | 0); } });
+    window.__sendPrimary({ type: '__e2e_day_freeze', on: false });
+    setTimeout(() => fin(-1), Math.max(0, c));            // 날이 안 오면 얼려 두고 돌아온다
+  }), cap);
+  //   ★언 날의 `ensureBoard` — 언 날엔 게임일이 안 가서 아래 예산(게임일)이 안 줄고, 판이 비면 픽스처만 거듭 부르며 안전망 6분까지 돈다.
+  //     실측(T794 진단 소켓 기록): ④-c `ensureBoard(6)` 360,458 · 360,378ms(단독 다섯 판 중 판 1 · 3 — 끝 판 `[]`) · ③ 판 고리
+  //     `ensureBoard(4)` 361,615ms(부하 판 — ① 얼림이 닿기 전 경계가 하나뿐인 의뢰를 거둠 · 끝 판 `[]`).
+  //     ⇒ 언 날엔 판을 새로 읽고, 비었으면 **같은 픽스처**를 부르고 하루만 흘린다(`stepDay`) — 예산은 그대로 `tries` 게임일 · 안전망도 그대로 6분.
+  async function ensureBoardFrozen(tries) {
+    const deadline = Date.now() + 6 * 60 * 1000;
+    let b = await readBoard();
+    for (let i = 0; i < (tries || 30) && !(b && b.rows && b.rows.length) && Date.now() < deadline; i++) {
+      await page.evaluate((vid) => window.__sendPrimary({ type: '__e2e_village_short', vid }), V.id);
+      if ((await stepDay(deadline - Date.now())) < 0) break;
+      sh = sh || (await shWitness());
+      b = await readBoard();
+    }
+    return b;
+  }
   async function ensureBoard(tries) {
+    if (dayFrozen) return await ensureBoardFrozen(tries);   // ★[T794] 언 날 갈래(위) — 푼 날은 아래 종전 그대로
     const d0 = await gday();
     const dayBudget = (tries || 30);          // 시도 횟수를 **게임일 예산**으로 그대로 읽는다(새 수 0)
     //   ⚠아래 `deadline` 은 **판정이 아니라 안전망**이다(게임일이 아예 안 오는 판에서 안 멈추면
@@ -251,6 +292,7 @@ async function waitHttp(url, tries = 900) {
   let board = await ensureBoard(30);
   // ★여기서부터 상호작용 — **날을 얼린다.** 이 아래로는 의뢰가 제 발로 철회되거나 품목이 바뀌지 않는다.
   await page.evaluate(() => window.__sendPrimary({ type: '__e2e_day_freeze', on: true }));
+  dayFrozen = true;   // ★[T794]
   await sleep(800);
   ok((await page.evaluate(() => (window.__notices || []).slice(-4).join(' | '))).includes('게임일 정지'),
     '★게임일 정지(상호작용 구간) — 여기부터 경제가 검사를 앞지르지 않는다');
@@ -405,10 +447,6 @@ async function waitHttp(url, tries = 900) {
     //   ⓑ 의뢰는 **하루 경계에서** 걸린다. 이 구간은 날이 얼어 있어(위 ①) 재고를 깎아도 게시가 안 된다
     //      (실측: 얼린 채로는 0건, ⑤-b 가 날을 푼 순간 "게시판 2건"이 로그에 떴다).
     //      ⇒ **세우는 동안만 푼다.** 다 세우면 다시 얼리고 상호작용을 잰다(시간 모드 규약 그대로).
-    await page.evaluate(() => window.__sendPrimary({ type: '__e2e_day_freeze', on: false }));
-    await sleep(600);
-    let bd = await ensureBoard(20);
-    const canGive = (b) => ((b && b.rows) || []).filter((r) => (r.give || []).length > 0 && r.remain > 0);
     // ★★[T349 2026-09-21] 20회 예산 → **둘이 걸릴 때까지**(상한은 표에만).
     //   이 카드가 기동 게이트를 정본으로 옮기자 이 줄이 빨개졌다(`["herb 1/1","wood 2/2"]` → `["stone 3/3"]`).
     //   원인은 게이트가 아니라 **옛 게이트가 우연히 벌어 주던 1초**다 — 옛 폴링은 1초 간격이라 대개
@@ -419,41 +457,52 @@ async function waitHttp(url, tries = 900) {
     //   실측(이 카드): 루프는 `낼 수 있는 줄 2개`로 나왔는데 얼리고 다시 읽으니 `["stone 3/3"]` 하나였다
     //   ⇒ 기다린 상태와 잰 상태가 **달랐다**(T349 가 `e2e-conn ②-b` 에서 겪은 그 자리와 같다).
     //   ⇒ **얼리고 다시 읽은 판에 둘이 있을 때까지** 한 바퀴를 통째로 돈다(상한은 표에만).
-    const SHORT_CAP = 90000, tShort = Date.now(); let shortN = 0, rows = [];
     //   ★[T704 추신] 부족을 **한 품목에 매달지 않는다.** 픽스처는 소비EMA 최댓값 품목을 문턱 아래로 내리는데, 하루 생산이 문턱의 10% 를
     //     넘는 품목(T661 켠 세계의 나무)이면 다음 하루 마감 전에 다시 위라 부족 래치가 안 서고 의뢰가 안 걸린다 — 같은 품목에 두 번 주입해도
     //     안 걸리면 그 품목을 `skip` 에 **붙박이로** 넣어 다음 품목으로 간다(`skip` 은 T80 의 종전 인자 · 제품 코드 0). 품목은 알림 줄에서 읽는다.
-    const stuck = []; let lastIt = null, sameIt = 0;
-    while (Date.now() - tShort < SHORT_CAP) {
-      if (canGive(bd).length < 2) {                                  // ⓐ 날을 푼 채로 세운다
-        const skip = ((bd && bd.rows) || []).map((r) => r.item).concat(stuck);
-        await page.evaluate(([vid, sk]) => window.__sendPrimary({ type: '__e2e_village_short', vid, skip: sk }), [V.id, skip]);
-        await sleep(700);
-        { const nl = await page.evaluate(() => (window.__notices || []).filter((t) => /\(문턱 /.test(t)).slice(-1)[0] || '');
-          const m = /\s(\S+) [-\d.]+→[-\d.]+ \(문턱/.exec(nl), it = m ? m[1] : null;
-          if (it && it === lastIt) sameIt++; else { lastIt = it; sameIt = 1; }
-          if (it && sameIt >= 2 && !stuck.includes(it)) { stuck.push(it); lastIt = null; sameIt = 0; } }
-        bd = await ensureBoard(4);
-        shortN++;
-        continue;
+    // ★★★[T794 2026-10-18] **푸는 것은 하루 한 번 — 다음 날 방송을 받는 그 자리에서 다시 얼린다.**
+    //   종전 판은 푼 채로 판을 읽다가 둘이 보이면 얼렸다. 실측(T794 진단 소켓 기록 · 단독 다섯 판 · 얼림 열한 번): 판을 읽고 얼림을
+    //   보내기까지 0.33~0.61초 — **매번** 그 사이 하루 경계가 하나 끼었고, `wood` · `hide` 가 낀 일곱 번은 그 경계 마감이 그 줄을 거뒀다
+    //   (둘 다 지킨 넷은 전부 `stone` + `herb` · 판 1 실측: 나무 재고 3.956 → 사흘 뒤 7.799 > 문턱 4.413 × 1.6 = 래치가 풀리면 거둔다).
+    //   그 다음이 더 컸다: 둘 다 빠진 두 번(판 1 · 3 · `["herb 1/1","wood 1/1"]` → `[]`)은 `ensureBoard(6)` 가 **언 날에** 픽스처를 다시 부르며
+    //   돌았다 — 게임일 예산은 언 날엔 안 줄어서 안전망 6분(`360,458` · `360,378ms`)까지 돌았고 `SHORT_CAP` 90초는 첫 바퀴에 지났다
+    //   → "둘 이상" 빨강(다섯 판 중 둘 · main 같은 자리). 제품은 규칙대로 굴렀다
+    //   (부족이 풀리면 거둔다 — events.js 래치 · 이력 1.6). 하네스가 "본 판"과 "얼린 판" 사이에 하루를 흘린 것이다.
+    //   ⇒ ⓐ **언 채로** 부족 둘을 건다(픽스처의 "설 때까지" 붙잡기 — T755 — 가 언 날엔 그대로 남는다) ⓑ 하루만 흘린다(`stepDay` — 위 언 날의
+    //     손 셋 · 다음 날 방송을 받는 그 자리에서 다시 얼림) ⇒ 언 판 = **게시한 그 경계의 판**이다 ⓒ 언 판을 **새로** 읽는다(`readBoard` · 주입 0)
+    //     ⓓ 두 번 걸어도 안 선 품목은 T704 붙박이로 뺀다. 판정은 한 글자도 안 바뀐다(언 판에 낼 수 있는 줄 둘 이상).
+    const canGive = (b) => ((b && b.rows) || []).filter((r) => (r.give || []).length > 0 && r.remain > 0);
+    const SHORT_CAP = 90000, tShort = Date.now(); let shortN = 0, stepN = 0, rows = [];
+    const stuck = [], miss = {};
+    const shortOnce = async (skip) => {   // ★[T794] 언 채로 한 품목 — 그 답(픽스처 알림)을 듣고 품목을 읽는다
+      await page.evaluate(() => { window.__notices && (window.__notices.length = 0); });
+      await page.evaluate(([vid, sk]) => window.__sendPrimary({ type: '__e2e_village_short', vid, skip: sk }), [V.id, skip]);
+      let nl = '';
+      for (let j = 0; j < 12 && !nl; j++) {
+        await sleep(200);
+        nl = await page.evaluate(() => (window.__notices || []).filter((t) => /\(문턱 |소비 품목이 없다/.test(t)).slice(-1)[0] || '');
       }
-      await page.evaluate(() => window.__sendPrimary({ type: '__e2e_day_freeze', on: true }));   // ⓑ 얼리고
-      await sleep(700);
-      bd = await ensureBoard(6);                                     // ⓒ **판정이 읽을 그 판**을 읽는다
-      rows = canGive(bd);
-      if (rows.length >= 2) break;                                   // ⓓ 그 판에 둘이 있어야 끝난다
-      await page.evaluate(() => window.__sendPrimary({ type: '__e2e_day_freeze', on: false }));  // 아니면 다시 푼다
-      await sleep(600);
-      bd = await ensureBoard(4);
+      shortN++;
+      const m = /\s(\S+) [-\d.]+→[-\d.]+ \(문턱/.exec(nl);
+      return m ? m[1] : null;
+    };
+    let bd = await readBoard();
+    rows = canGive(bd);
+    while (rows.length < 2 && Date.now() - tShort < SHORT_CAP) {
+      const held = [];
+      for (let k = 0; k < 2; k++) {                                  // ⓐ 언 채로 — 판정이 요구하는 둘을 새로 건다
+        const it = await shortOnce(rows.map((r) => r.item).concat(stuck, held));
+        if (!it) break;
+        held.push(it);
+      }
+      const dd = await stepDay(SHORT_CAP - (Date.now() - tShort)); stepN++;   // ⓑ 하루만(위 `stepDay`)
+      if (dd < 0) break;
+      bd = await readBoard(); rows = canGive(bd);                    // ⓒ **판정이 읽을 그 판**(언 판)
+      for (const it of held) if (!rows.some((r) => r.item === it) && (miss[it] = (miss[it] || 0) + 1) >= 2 && !stuck.includes(it)) stuck.push(it);   // ⓓ 두 번 걸어도 안 선 것은 붙박이로 뺀다(T704 그대로)
     }
-    console.log(`    (의뢰 세우기 — ${shortN}회 주입 · ${Date.now() - tShort}ms · **얼린 뒤** 낼 수 있는 줄 ${rows.length}개`
-      + ` · 상한 ${(SHORT_CAP / 1000) | 0}초 · 판정 아님)`);
-    if (rows.length < 2) {   // 상한에 걸려 나왔으면 날이 풀린 채일 수 있다 — 시간 모드 규약대로 얼려 둔다
-      await page.evaluate(() => window.__sendPrimary({ type: '__e2e_day_freeze', on: true }));
-      await sleep(700);
-      bd = await ensureBoard(6); rows = canGive(bd);
-      console.log('    ★상한까지 얼린 판에서 둘을 못 세웠다 — 아래가 조용히 빨개지지 않게 이름을 붙인다');
-    }
+    console.log(`    (의뢰 세우기 — ${shortN}회 주입 · 하루 ${stepN}번 흘림 · ${Date.now() - tShort}ms · **얼린 뒤** 낼 수 있는 줄 ${rows.length}개`
+      + ` · 붙박이 뺌 ${JSON.stringify(stuck)} · 상한 ${(SHORT_CAP / 1000) | 0}초 · 판정 아님)`);
+    if (rows.length < 2) console.log('    ★상한까지 얼린 판에서 둘을 못 세웠다 — 아래가 조용히 빨개지지 않게 이름을 붙인다');
     ok(rows.length >= 2, '★④-c (상황) 낼 수 있는 의뢰가 **둘 이상** 걸렸다 — 하나면 이 절은 자명 통과다',
       JSON.stringify(((bd && bd.rows) || []).map((r) => `${r.item} ${r.remain}/${r.qty}`)));
     if (rows.length >= 2) {
@@ -502,6 +551,7 @@ async function waitHttp(url, tries = 900) {
     // ⚠날이 멈춰 있으면(위 ① 이 얼렸다) 사건이 **날 수가 없다** — 날씨는 하루 경계에서 장부에 적힌다.
     //   그래서 여기서만 푼다(뒤따르는 ⑥ 거리 게이트는 시간과 무관하다).
     await page.evaluate(() => window.__sendPrimary({ type: '__e2e_day_freeze', on: false }));
+    dayFrozen = false;   // ★[T794]
     await sleep(800);
     await page.evaluate((vid) => window.__sendPrimary({ type: '__e2e_village_deed', vid, kind: '가뭄' }), V.id);
     await sleep(1500);
