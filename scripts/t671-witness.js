@@ -8,6 +8,8 @@
 //   ⓒ `followNpcPath` — 종전 ↔ 지금(10px 경계 · 다점 경로 · 돌려준 값 · vx/vy 비트)
 //   ⓓ `computeNpcPath` — 종전 ↔ 지금(48px 경계 · 뒤 갈래는 같은 결정론 대역으로 — 돌려준 길 내용 · 사람 필드)
 //   ⓔ `_t671Shape` — 목록이 리터럴·스폰 대입과 겹치지 않는다(값을 덮지 않는다) · 이름 붙은 쓰기만 · 중복 0 · 켬/끔 손잡이 한 자리
+// ★[T814 · 2026-10-19] 지금 main 의 `computeNpcPath` 는 T678 문 그래프 · T734 표 손잡이를 읽는다 — ⓓ 의 대역 `env` 에 그 손잡이를 제품 기본값으로 싣는다(아래 ⓓ 주석).
+//   종전 `88bd5795` = T671 깎기 직전 기준(T670 가지 끝) — 그대로 고정.
 // 실행: node scripts/t671-witness.js [ref=88bd5795]
 'use strict';
 const path = require('path');
@@ -114,7 +116,11 @@ console.log('\n=== T671 ② 바이트 같음 증인 · 종전', REF, '===');
   const env = { straightPathClear: (ax, ay, bx, by) => h(ax, ay, bx, by) % 3 === 0, T381_PATH_DEAD: true, BUILDING_SIZE: 32,
     isTerrainBlockedLocal: (a, b) => h(a, b) % 7 === 0, _pfRadius: (v) => v ? 64 : 24, T399_CELL_CAP: false, isBlockedByWall: () => false,
     pfFindPath: (sx, sy, ex, ey) => h(sx, sy, ex, ey) % 5 === 0 ? null : [{ x: sx, y: sy }, { x: (sx + ex) / 2, y: (sy + ey) / 2 }, { x: ex, y: ey }],
-    _roadPrefer: null, _streamOn: () => false, _streamCost: null, PathCore: { smoothPath: (wp) => wp.slice() }, Roads: { ENABLED: false }, _roadKeep: null };
+    _roadPrefer: null, _streamOn: () => false, _streamCost: null, PathCore: { smoothPath: (wp) => wp.slice() }, Roads: { ENABLED: false }, _roadKeep: null,
+    // ★[T814] 지금 main 의 `computeNpcPath` 가 읽는 손잡이 · 도우미 — 값은 **제품 기본** 그대로(`server/zone.js`: `T678_ON` 켬 · `T678_VERIFY` 끔 · `T734_ASTAR_SLICE` 켬 · `T734_VERIFY` 끔).
+    //   문 그래프(`_t678Route`)는 "이 자리에 답 없음(`undefined`)" 대역 → 종전과 같은 A* 갈래로 떨어진다(이 증인의 몫은 48px 경계 · 앞 갈래 — 뒤 갈래는 같은 결정론 대역).
+    T678_ON: true, T678_VERIFY: false, _t678Now: () => 0, _t678Route: () => undefined, _t678Q: { calls: 0, ms: 0, maxMs: 0, nullFast: 0, gatePath: 0, fallback: 0 },
+    T734_ASTAR_SLICE: true, _t678G: null, _t734Stamp: 0, T734_VERIFY: false, _t734V: undefined };
   const K = Object.keys(env);
   const Fo = new Function(...K, so + '\nreturn computeNpcPath;')(...K.map((k) => env[k])), Fn = new Function(...K, sn + '\nreturn computeNpcPath;')(...K.map((k) => env[k]));
   let n = 0, d = null, near = 0;

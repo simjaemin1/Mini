@@ -8,15 +8,21 @@
 //   ⓒ 끔 = 종전 글자 그대로(첫 줄 단락)
 //   ⓓ `_stuckPos` 를 읽고 쓰는 자리 = 서버 전체에서 이 함수들뿐
 //   ⓔ 미끼 — 칸 번호를 바꾸면(x↔y) 문다 · `_stuckN` 을 안 쓰면 문다
-// 실행: node scripts/t700-witness.js [ref=origin/main]
+// ★[T814 · 2026-10-19] 두 글자를 **그 카드 때의 커밋**으로 고정 — 종전 = `f50cf0a4`(= T700 커밋의 부모 · 깎기 직전) · 지금 = `161bd406`
+//   (T700 커밋, 가지 `batch/stuck-cut-1011`). `T700_STUCK` 코드는 main 이 안 받았다(PM 10-14 "손잡이 코드는 안 받음 · 족보 규칙") — main 의 `zone.js` 에는
+//   `_t700Set`·`_t700Detect` 가 없어 "작업본 `server/zone.js`" 를 NEW 로 읽던 옛 글자는 첫 줄에서 멈췄다. 가지가 지워지면 이 증인은 `git cat-file -t 161bd406` 에서 멈춘다(그때는 카드째 접는다).
+//   ⓓ 의 서버 전체 훑기도 **같은 커밋의 `server/*.js`** 를 훑는다(작업본이 아니라).
+// 실행: node scripts/t700-witness.js [ref=f50cf0a4] [newref=161bd406]
 'use strict';
 const path = require('path');
 const fs = require('fs');
 const { execFileSync } = require('child_process');
 const ROOT = path.join(__dirname, '..');
-const REF = process.argv[2] || 'origin/main';
+const REF = process.argv[2] || 'f50cf0a4';   // ★[T814] 깎기 직전 커밋(T700 `161bd406`^)
+const NEWREF = process.argv[3] || '161bd406';   // ★[T814] T700 커밋(가지 `batch/stuck-cut-1011`)
 const OLD = execFileSync('git', ['show', `${REF}:server/zone.js`], { cwd: ROOT, encoding: 'utf8', maxBuffer: 1 << 28 });
-const NEW = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
+const gitShow = (ref, f) => execFileSync('git', ['show', `${ref}:${f}`], { cwd: ROOT, encoding: 'utf8', maxBuffer: 1 << 28 });
+const NEW = gitShow(NEWREF, 'server/zone.js');
 let pass = 0, fail = 0;
 const ok = (c, m, x) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (x != null ? '  ' + x : '')); };
 const fnSrc = (S, name) => { const i = S.indexOf(`function ${name}(`); if (i < 0) throw new Error('없음 ' + name); const j = S.indexOf('\n}\n', i); return S.slice(i, j + 2); };
@@ -63,7 +69,7 @@ function run(Fo, Fn, opts) {
   }
   return { n, d, kinds };
 }
-console.log('\n=== T700 막힘 갈래 깎기 — 바이트 같음 증인 · 종전', REF, '===');
+console.log('\n=== T700 막힘 갈래 깎기 — 바이트 같음 증인 · 종전', REF, '· 지금', NEWREF, '===');
 ok(/const T700_STUCK = process\.env\.T700_STUCK === '1';/.test(NEW) && /  if \(T700_STUCK\) return _t700Detect\(npc, now\);/.test(NEW), '[전제] 손잡이 `T700_STUCK` 기본 끔 · `detectStuck` 첫 줄 단락');
 const Fo = build(OLD), Fon = build(NEW, true), Foff = build(NEW, false);
 { const r = run(Fo, Fon, { ticks: 6000, odd: 0 });
@@ -75,8 +81,8 @@ const Fo = build(OLD), Fon = build(NEW, true), Foff = build(NEW, false);
 { const r = run(Fo, Foff, { ticks: 2000, odd: 0.02 });
   ok(!r.d, 'ⓒ 끔 ↔ 종전 — 같다(그릇도 같은 객체)', r.d ? JSON.stringify(r.d) : null); }
 { const hits = [];
-  for (const f of fs.readdirSync(path.join(ROOT, 'server')).filter((f) => f.endsWith('.js'))) {
-    const S = fs.readFileSync(path.join(ROOT, 'server', f), 'utf8'); let i = -1;
+  for (const f of execFileSync('git', ['ls-tree', '--name-only', NEWREF, 'server/'], { cwd: ROOT, encoding: 'utf8' }).split('\n').filter((f) => /^server\/[^/]+\.js$/.test(f)).map((f) => f.slice(7))) {
+    const S = gitShow(NEWREF, 'server/' + f); let i = -1;
     while ((i = S.indexOf('_stuckPos', i + 1)) >= 0) { const ln = S.slice(S.lastIndexOf('\n', i) + 1, S.indexOf('\n', i)); if (/^\s*\/\//.test(ln)) continue;
       const fnStart = S.lastIndexOf('\nfunction ', i), fn = S.slice(fnStart + 10, S.indexOf('(', fnStart + 10)); hits.push(f + ':' + fn); } }
   const okFns = new Set(['zone.js:_t670Stuck', 'zone.js:detectStuck', 'zone.js:_t700Set', 'zone.js:_t700Detect', 'zone.js:_t671Shape']);
