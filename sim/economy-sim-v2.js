@@ -1910,6 +1910,10 @@ function tickDecay(v) {
   for (const [r, baseRate] of Object.entries(DECAY_V2)) {
     const s = v.storage[r] || 0;
     if (s <= 0) continue;
+    // ★★[T803] 부패는 한 길 — 호스트(존 서버 · `T789_DISCARD` 켬)의 곳간 로트 장부가 이 칸의 부패를 쥐면(상한 레코드를 마감에 버린다 ·
+    //   spoil 정본 곡선 하나) econ 일일 부패는 이 칸에서 **안 돈다**(장부가 정본 · 이 줄은 그 사본이었다 — T789 회부 ①②).
+    //   훅이 없거나(랩 · CLI · 끔) 그 칸을 안 쥐면 종전 그대로.
+    if (_LOTH && _LOTH.decayOwned && _LOTH.decayOwned(v, r)) continue;
     let target;
     if (_t726) target = _targetV2(v, r, _t726).target;
     else {

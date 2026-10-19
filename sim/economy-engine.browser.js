@@ -7306,7 +7306,7 @@ function outputQty(n, fresh) {
   const q = Math.floor((Number(n) || 0) * yieldMult(fresh) + 1e-9);
   return q > 0 ? q : 0;
 }
-// ★★[T767 2026-10-16 · 손잡이 `T767_PRESERVE_CARRY=1` — 없음·빈 값·0 = 끔 = 아래 둘을 아무도 안 부른다(수율 갈래 그대로 · main 바이트)]
+// ★★[T767 2026-10-16 · 손잡이 `T767_PRESERVE_CARRY` — ★[T778] 켬 기본 · `=0` 만 끔 = 아래 둘을 아무도 안 부른다(수율 갈래 그대로 · main 바이트)]
 //   **개수 그대로 · 신선도 이어받기 · 썩는 속도만 느리게.** 재민 10-15: "애초에 갓 잡은 걸로 가공이 안 되는 게 문제 · 신선도가 떨어진다고
 //   양이 떨어지는 거 아니잖아 · 신선도를 그대로 가져와야 · 건어물은 신선도 감소 속도가 느려지는 것뿐이어야".
 //   위 수율(`outputQty`)은 로트가 `{d, n}` 둘뿐이던 때 "시든 걸로 만든 건 하급"을 **개수로 대신 말한** 우회였다(위 주석 그대로) —
@@ -7315,7 +7315,7 @@ function outputQty(n, fresh) {
 //     노출(일수)을 그대로 옮기면 신선도가 안 이어진다 — 시든 생선(노출 1.5 · f 0.40)이 건어물 f 0.967 로 둔갑한다(보고/T767 §1).
 //   ★평균 0 — 넣은 레코드마다 한 줄(T732 규약: 같은 순간 · 같은 노출만 합친다). 상한 레코드는 상한 채로 나온다(게이트 `canPreserve` 는 그대로).
 //   ★가공하는 며칠(건조대 위)은 종전처럼 세지 않는다 — 산출 로트는 다 된 순간에 그 신선도로 선다(종전 = 그 순간 신선도 1).
-const T767_CARRY = process.env.T767_PRESERVE_CARRY === '1';
+const T767_CARRY = process.env.T767_PRESERVE_CARRY !== '0';   // ★[T778] 켬 기본 · 되돌림 `=0`
 function carryOf(item, ages, today) {   // 넣은 레코드마다 [{n, f}] — f = 그 순간(오늘 · 켬이면 지금 순간)의 신선도
   const out = [];
   for (const a of (ages || [])) {
@@ -7562,7 +7562,7 @@ function _cumReset() { _cum.clear(); _meanC.clear(); _ref = null; }
 //     `Lots.settle` 이 처음 만질 때 `e = today − d · t = today` 로 옮겨 적는다 — 그 순간 값이 **연속**이다.
 //   ⚠`d` 를 정산일로 재활용하지 않은 이유: 그러면 모든 로트의 `d` 가 오늘로 뭉개져
 //     화면의 나이 표시와 "이 로트를 먹는다"(`consumeFrom`)가 **조용히 같은 로트를 가리키게** 된다.
-// ★★[T732 2026-10-14 · 손잡이 `T732_MOMENT_LOT=1` — 시계가 안 꽂히면(끔) 아래 두 함수는 안 불린다(main 바이트)] **순간 로트의 노출.**
+// ★★[T732 2026-10-14 · 손잡이 `T732_MOMENT_LOT` · ★[T778] 켬 기본(`=0` 끔) — 시계가 안 꽂히면(끔) 아래 두 함수는 안 불린다(main 바이트)] **순간 로트의 노출.**
 //   레코드에 얻은 순간 `k`(게임 ms)가 있으면 정산 순간 `t` 와 지금을 **소수 날**로 잰다 — `cumExposure` 가 이미 소수 날을 받는다
 //   (하루치 노출 × 그날 지난 몫 · 새 곡선 0 · 새 수 0). 지금 = 시계가 가리키는 순간(부르는 쪽이 넘긴 날이 오늘일 때) · 아니면 그 날 0시.
 let _mClk = null, _mDay = 0;
@@ -7714,7 +7714,7 @@ function of(p, item) { const L = all(p); if (!Array.isArray(L[item])) L[item] = 
 function sum(p, item) { let s = 0; for (const l of of(p, item)) s += l.n; return +s.toFixed(6); }
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════════
-// ★★★[T732 2026-10-14 · 손잡이 `T732_MOMENT_LOT=1` — 없음·빈 값·0 = 끔 = 아래 순간 갈래를 하나도 안 탄다(main 바이트)]
+// ★★★[T732 2026-10-14 · 손잡이 `T732_MOMENT_LOT` — ★[T778] 켬 기본 · `=0` 만 끔 = 아래 순간 갈래를 하나도 안 탄다(main 바이트)]
 //   **로트 = 얻은 순간.** 재민 10-12 · 10-14 재확인(족보 631 ①): 신선도는 아이템마다 — **같은 순간에 얻은 것만 합친다.**
 //   종전 열쇠는 **날**이었다: 같은 날 · 같은 자리 것은 노출을 개수 가중 평균해 한 로트로 뭉쳤고(0시 것과 23시 것이 하나),
 //   노출은 정수 날로 쌓였다(그날 얻은 것은 그날 0시부터 늙는다 — T716 ① 뭉개지는 자리 ①·⑪). 켬이면:
@@ -7726,7 +7726,7 @@ function sum(p, item) { let s = 0; for (const l of of(p, item)) s += l.n; return
 //       **가장 오래된 둘 · 더 이른 순간 · 큰 노출** → 음식이 실제보다 싱싱해 보이는 일 0(같은 순간으로 정산한 뒤 견준다).
 //     · 맞추기(`reconcile`)가 남는 몫을 "지금 얻은 것"으로 잡으면 **근사 한 번**으로 센다(`stats().approx`) — 길을 다 고쳤으면 0 이다.
 //     · 몸 필드 0: NPC 몸엔 `lots` 칸이 없다 — NPC 의 로트는 몸 밖 곁 장부(`WeakMap`)에 둔다(죽음 드롭이 그 레코드를 바닥에 싣는다).
-const T732_MOMENT = process.env.T732_MOMENT_LOT === '1';
+const T732_MOMENT = process.env.T732_MOMENT_LOT !== '0';   // ★[T778] 켬 기본 · 되돌림 `=0`
 let _mClk = null, _mDay = 0;
 const _mNpc = new WeakMap();
 const _mStat = { approx: 0, approxBy: {}, coalesced: 0 };
@@ -15903,6 +15903,10 @@ function tickDecay(v) {
   for (const [r, baseRate] of Object.entries(DECAY_V2)) {
     const s = v.storage[r] || 0;
     if (s <= 0) continue;
+    // ★★[T803] 부패는 한 길 — 호스트(존 서버 · `T789_DISCARD` 켬)의 곳간 로트 장부가 이 칸의 부패를 쥐면(상한 레코드를 마감에 버린다 ·
+    //   spoil 정본 곡선 하나) econ 일일 부패는 이 칸에서 **안 돈다**(장부가 정본 · 이 줄은 그 사본이었다 — T789 회부 ①②).
+    //   훅이 없거나(랩 · CLI · 끔) 그 칸을 안 쥐면 종전 그대로.
+    if (_LOTH && _LOTH.decayOwned && _LOTH.decayOwned(v, r)) continue;
     let target;
     if (_t726) target = _targetV2(v, r, _t726).target;
     else {
