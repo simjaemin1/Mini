@@ -190,7 +190,9 @@ say('\n⑥ 실기 — 뷰 사냥꾼을 진짜로 돌린다(예산 0 / n / 되돌
     const keys = new Set(); for (let cy = 0; cy < N / CC; cy++) for (let cx = 0; cx < N / CC; cx++) keys.add(cx + '_' + cy);
     W.init({
       ZONE_ID: 'hanbando', TICK_HZ: 30,
-      ZONE: { zoneWidth: 32 * N, zoneHeight: 32 * N },
+      //   ★[T792] 가짜 존을 원통 위 **기준 경도(¾W · 현지 해 몫 = 세계 해 몫)** 가운데에 둔다 — T761 몹 밤(야생 `lifeGM` = 뷰 가운데 자리의 현지 시계 · 켬 기본)에서도
+      //     이 판이 세운 하루(세계 해 몫 0 에서 연 하루치)가 그대로 그 하루다(종전 원점 0 은 서쪽 끝 = 현지 시각 ¾일 어긋남 — 하네스의 뜻이 아니다).
+      ZONE: { zoneWidth: 32 * N, zoneHeight: 32 * N, worldOffsetX: Math.round(0.75 * require(path.join(ROOT, 'server', 'zone-config.js')).WORLD.worldWidth - 16 * N) },
       WORLD: { dayLengthMs: 1440000, dayPhaseRatio: 0.7, worldEpoch: 0 },
       isTerrainBlockedLocal: () => false, isRockTileLocal: () => false,
       terrainMod: { getForestMultiplier: () => 2 },

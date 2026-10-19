@@ -414,7 +414,7 @@ function makeTree(dir, probe, ref, seg) {
       ["  let speedMult = npc.behavior === 'flee'", S(5), false], ['  if (needPath && !_skip) {', S(0), false],
       ['  const isVil = !!npc.simVillageId;   // 마을 주민', S(7), false], ['  if (!arrived) return;\n', S(9), true],
       // [T700] 막힘 안 한 겹 — 서 있음 판정 · 처음 · 움직임 판정 · 타이머(쓰기 `_t670Stuck` 은 감싸서 31)
-      ['  if (npc.targetX != null && npc.targetY != null\n      && (!npc.path || npc.pathIndex >= npc.path.length)', S(30), false],
+      ['  if (npc.targetX != null && npc.targetY != null\n      && (!npc.path || npc.pathIndex >= ', S(30), false],   // [T791] 길 거울 뒤 글자도 받는다(앞머리만)
       ['  if (!npc._stuckPos) {\n    npc._stuckPos = { x: npc.x, y: npc.y, at: now };', S(32), false],
       ['  if (_t671Gt(npc.x - npc._stuckPos.x, npc.y - npc._stuckPos.y, 5)) {', S(33), false],
       ['  if (now - npc._stuckPos.at > 1500) {', S(34), false]]) {
@@ -443,6 +443,18 @@ function makeTree(dir, probe, ref, seg) {
   return SEGS.length;
 }
 
+// ★[T791] 걸음 몸통 줄 묶음 — 사본 zone.js 의 `function npcStep` 몸통을 닻 줄로 자른다(묶음 이름 · 첫 줄 · 끝 줄 · 1부터)
+function _t791Groups(dir) {
+  const L = fs.readFileSync(path.join(dir, 'server', 'zone.js'), 'utf8').split('\n');
+  const start = L.findIndex((x) => x.startsWith('function npcStep(')) + 1;
+  let end = start; while (end < L.length && L[end - 1] !== '}') end++;
+  const at = (pre) => { for (let i = start; i <= end; i++) if (L[i - 1].startsWith(pre)) return i; return -1; };
+  const marks = [['머리(결정 문 · 생활 손잡이 · 타이머)', start], ['대피 · 밤 귀가', at('  if (npc.simEvacUntil')], ['캐나디아 · 막힘', at("  if (npc.canadiaTask === 'traveling')")],
+    ['싸움', at("  if (npc.behavior === 'fight') {")], ['길 판정(배속 · 목표 키 · 되묻기)', at("  let speedMult = npc.behavior === 'flee'")], ['길 묻기 · 길 넣기', at('  if (needPath && !_skip) {')],
+    ['따라가기 · 도착 뒤 행동', at('  const arrived = followNpcPath(npc, speedMult);')]];
+  if (marks.some((m) => m[1] < 0)) throw new Error('T791 몸통 닻 ' + JSON.stringify(marks));
+  return { start, end, groups: marks.map((m, i) => [m[0], m[1], i + 1 < marks.length ? marks[i + 1][1] - 1 : end]) };
+}
 async function run(conf, tag, probe) {
   const out = path.join(DIR, `${tag}.json`);
   if (fs.existsSync(out)) { console.log('있음', out); return; }
@@ -455,7 +467,10 @@ async function run(conf, tag, probe) {
   for (const s of ['', '-wal', '-shm']) { try { fs.copyFileSync(TPL + s, DB + s); } catch (e) {} }
   const at = (Math.floor(fs.statSync(TPL).mtimeMs / DAY) + 2) * DAY - LEAD_S * 1000;   // T455 고정 원점(하루 경계 LEAD 초 앞)
   const logp = path.join(DIR, `${tag}.log`), logf = fs.openSync(logp, 'w');
-  const env0 = Object.assign({}, process.env, { NODE_OPTIONS: `--require ${path.join(__dirname, 't455-clock.js')}` + (process.env.T646_PRELOAD ? ` --require ${process.env.T646_PRELOAD}` : ''), T455_CLOCK_PRE: '1', T455_CLOCK_AT: String(at) });   // ★[T719] 덧 preload(계측 · 없으면 종전)
+  //   ★[T791] --lines — 걸음 몸통 표본 해부(scripts/t791-lines.js · 감싸기 없이 V8 표본) · 몸통 줄 묶음 경계는 사본 글자에서 센다
+  const LINES = process.argv.includes('--lines') ? path.join(DIR, `lines-${tag}.jsonl`) : null, LG = LINES ? _t791Groups(dir) : null;
+  if (LINES) { try { fs.unlinkSync(LINES); } catch (e) {} }
+  const env0 = Object.assign({}, process.env, LINES ? { T791_LINES: LINES, T791_NPCSTEP_LINE: String(LG.start) } : {}, { NODE_OPTIONS: `--require ${path.join(__dirname, 't455-clock.js')}` + (process.env.T646_PRELOAD ? ` --require ${process.env.T646_PRELOAD}` : '') + (LINES ? ` --require ${path.join(__dirname, 't791-lines.js')}` : ''), T455_CLOCK_PRE: '1', T455_CLOCK_AT: String(at) });   // ★[T719] 덧 preload(계측 · 없으면 종전)
   const c = spawn(process.execPath, [path.join(dir, 'server/central.js')], { cwd: dir, stdio: 'ignore',
     env: Object.assign({}, env0, { PORT: String(CP), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando', CENTRAL_SECRET: SECRET }) });
   const PROF = process.argv.includes('--prof') ? path.join(DIR, `prof-${tag}`) : null;   // 기본 끔 — 켜면 존에 V8 CPU 프로파일(10ms 표본 · 자기 시간으로 빈 몫을 찾는다)
@@ -481,13 +496,14 @@ async function run(conf, tag, probe) {
     const slices = [];
     for (let k = 0; k < SLICES; k++) {
       await getj('/perf?reset=1');
+      const mt0 = Number(process.hrtime.bigint() / 1000n);   // [T791] 단조 µs(존 표본 토막과 같은 시계)
       const mark = fs.statSync(logp).size;
       await sleep(SLICE_S * 1000);
       const p = await getj('/perf'), L = await getj('/lifedbg');
       const buf = fs.readFileSync(logp).subarray(mark).toString('utf8');
       const ana = buf.split('\n').filter((x) => x.startsWith('[T646] ')).map((x) => { try { return JSON.parse(x.slice(7)); } catch (e) { return null; } }).filter(Boolean);
       const t = p && p.tick && p.tick.ms;
-      slices.push({ k, phase: L && L.phase, p50: t && t.p50, p95: t && t.p95, max: t && t.max, ticks: p && p.tick && p.tick.n, npcs: null, ana, t678: (p && p.walk && p.walk.t678) || null });   // [T678] 문 그래프 관측(켬·견줌 판만)
+      slices.push({ k, mt0, mt1: Number(process.hrtime.bigint() / 1000n), phase: L && L.phase, p50: t && t.p50, p95: t && t.p95, max: t && t.max, ticks: p && p.tick && p.tick.n, npcs: null, ana, t678: (p && p.walk && p.walk.t678) || null });   // [T678] 문 그래프 관측(켬·견줌 판만)
       say(`${W} 조각 ${k} · p50 ${t ? t.p50 : '?'} · p95 ${t ? t.p95 : '?'} · 줄 ${ana.length}`);
     }
     windows.push({ W, slices });
@@ -497,7 +513,7 @@ async function run(conf, tag, probe) {
   try { z.kill('SIGKILL'); } catch (e) {} try { c.kill('SIGKILL'); } catch (e) {}
   await sleep(1500); rmdb(DB); rmdb(CDB);
   try { execFileSync('git', ['worktree', 'remove', '--force', dir], { cwd: ROOT, stdio: 'ignore' }); } catch (e) {}
-  fs.writeFileSync(out, JSON.stringify({ conf, tag, probe, ref: REF, seg: SEG, at: new Date().toISOString(), wallS: Math.round((Date.now() - t0) / 1000), windows }));
+  fs.writeFileSync(out, JSON.stringify({ conf, tag, probe, ref: REF, seg: SEG, lines: LINES ? { file: LINES, groups: LG } : null, at: new Date().toISOString(), wallS: Math.round((Date.now() - t0) / 1000), windows }));
   say('끝', Math.round((Date.now() - t0) / 1000), 's');
 }
 
@@ -535,6 +551,24 @@ function table() {
       hq: Object.fromEntries(Object.entries(A.hq).map(([k, h]) => [k, { n: h.n, sameRate: +(h.same / Math.max(1, h.n)).toFixed(3), gatedRate: +(h.gated / Math.max(1, h.n)).toFixed(3), sameUs: us(h.msSame), diffUs: us(h.msDiff),
         changes: h.cause, runP50: pct(A.runs[k], 0.5), runP95: pct(A.runs[k], 0.95) }])),
       ast: A.ast ? Object.assign({}, A.ast, { insideRate: +(A.ast.inside / Math.max(1, A.ast.inside + A.ast.outside)).toFixed(3), cats: Object.fromEntries(['near', 'beeline', 'straight', 'cooldown', 'fail', 'found'].map((k) => [k, { n: A.ast[k][0], us: us(A.ast[k][1]), perCallUs: A.ast[k][0] ? +(A.ast[k][1] * 1000 / A.ast[k][0]).toFixed(1) : 0 }])) }) : null };
+    //   ★[T791] 걸음 몸통 표본(--lines) — 창 안 토막만 모아 몸통 줄 묶음 · 부른 함수 몫을 µs 로(결정 문 µs/사람 × npcStep 몫 × 그 칸 몫)
+    if (j.lines && j.lines.file && fs.existsSync(j.lines.file)) {
+      const lo = Math.min(...w.slices.map((x) => x.mt0 || Infinity)), hi = Math.max(...w.slices.map((x) => x.mt1 || 0));
+      const C = fs.readFileSync(j.lines.file, 'utf8').trim().split('\n').map((x) => { try { return JSON.parse(x); } catch (e) { return null; } }).filter((x) => x && x.t0 >= lo && x.t1 <= hi);
+      const T = { chunks: C.length, tot: 0, dec: 0, ns: 0, nsSelf: 0, self: {}, call: {}, dF: {}, dL: {}, c2: {} };
+      for (const c of C) { T.tot += c.tot; T.dec += c.dec; T.ns += c.ns; T.nsSelf += c.nsSelf; for (const [k, v] of Object.entries(c.self)) T.self[k] = (T.self[k] || 0) + v; for (const [k, v] of Object.entries(c.call)) T.call[k] = (T.call[k] || 0) + v;
+        //   [T791 ①-b] 부른 함수 안쪽(자기 줄 · 두 층 사슬) — 표본기 판에 있을 때만
+        for (const [f, o] of Object.entries(c.deep || {})) for (const [ln, v] of Object.entries(o)) { T.dF[f] = (T.dF[f] || 0) + v; T.dL[f + ' #' + ln] = (T.dL[f + ' #' + ln] || 0) + v; }
+        for (const [k, v] of Object.entries(c.call2 || {})) T.c2[k] = (T.c2[k] || 0) + v; }
+      const decUs = r.segUs['결정 문(순회)'] || 0, stepUs = T.dec ? decUs * T.ns / T.dec : 0, u = (n) => +(T.ns ? stepUs * n / T.ns : 0).toFixed(3);
+      const G = j.lines.groups.groups.map(([nm, a0, a1]) => { let n = 0; for (const [ln, v] of Object.entries(T.self)) if (+ln >= a0 && +ln <= a1) n += v; return [nm + ' (' + a0 + '~' + a1 + ')', n, u(n)]; });
+      const calls = Object.entries(T.call).sort((x, y) => y[1] - x[1]).map(([k, n]) => [k, n, u(n)]);
+      { const inG = G.reduce((t, g) => t + g[1], 0); G.push(['몸통 밖 줄(인라인된 함수 · 다른 파일)', T.nsSelf - inG, u(T.nsSelf - inG)]); }
+      const selfTop = Object.entries(T.self).sort((x, y) => y[1] - x[1]).slice(0, 15).map(([ln, n]) => [+ln, n, u(n)]);
+      const top = (o, n) => Object.entries(o).sort((x, y) => y[1] - x[1]).slice(0, n).map(([k, v]) => [k, v, u(v)]);
+      r.lines = { chunks: T.chunks, samples: T.tot, decSamples: T.dec, stepSamples: T.ns, decUs, stepUs: +stepUs.toFixed(3), selfUs: u(T.nsSelf), groups: G, calls: calls.slice(0, 20), selfTop,
+        deepFn: top(T.dF, 20), deepTop: top(T.dL, 25), call2: top(T.c2, 15) };
+    }
     out.runs.push(r);
   }
   // 목적지

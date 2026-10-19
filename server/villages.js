@@ -89,6 +89,8 @@ const _t732Saved = new WeakMap();   // econ 마을 → 저장된 곳간 장부(�
 function _t748Gran(vil) { const G = _T732_ON ? _t732Gran() : null; return (G && vil && vil.econ && G.attached(vil.econ)) ? G : null; }
 function _t748G() { return _T732_ON ? _t732Gran() : null; }   // 마을 없이 — 몸 짐 · 갱 비축(시계가 꽂힌 뒤에만)
 function _t748Nz(o) { return (o && Object.keys(o).length) ? o : null; }   // 빈 묶음은 null(레코드 없는 줌으로 센다)
+// ★[T789] 사람이 보는 시세 · 견적 = 사람의 문과 같은 눈(곳간 칸이 상한 몫을 뺀 값으로 보인다 — 견적 = 실행) · 손잡이는 곳간 장부 한 자리(`G.T789`) · 끄면 `fn()` 그대로
+function _t789View(fn) { const G = _T732_ON ? _t732Gran() : null; if (!G || !G.T789) return fn(); G.viewBegin(); try { return fn(); } finally { G.viewEnd(); } }
 //   몸 손에 든 그 칸들의 로트(곁 장부) → 짐 레코드 묶음(손이 단위를 든다 — 짐 거울과 같은 수) · 짐을 얹기 **전에** 부른다
 function _t748HandOf(G, p, keys) {
   const o = {}, inv = (p && p.inventory) || {};
@@ -5280,8 +5282,33 @@ function _warDraftPids(vil, comp, seed, warId) {
 //     무저항·소굴 전투 문(공격 무게중심이 교전 반경 안)이 그 한 명을 끝까지 기다렸다(재현 판: 소굴 원정 10건 중 3건 · 3건 중 2건).
 //     나선은 존 정본 하나(`_standCellNear` · deps 주입 · 사본 0) · 술어는 전쟁 술어(`_warBlockedCell` — 발자국·지형·나무).
 //     나선이 못 찾거나(24칸 안이 전부 막힘) 술어 미주입(랩·구 존)이면 종전대로 제자리.
+// ★★[T790 2026-10-18] **전쟁 몸 튐 둘 없애기** — 손잡이 `T790_NO_SNAP`('1' 만 켬 · 끔 = main 바이트) · T781 회부 2 · 캐논: 순간이동 금지(모든 NPC 는 물리 몸).
+//   ① 지휘 몸 놓기 — war-live `_muStepFollow` 가 지휘 몸을 대형 원점에 바로 놓는다(귀환 첫 틱 결판 자리 → 길 머리 55~87 m/s · T681 날 장부가 옮긴 원점).
+//   ② 슬롯 놓기 — 이 함수(징발 `_warInstantiateAttackers` · 방어 소집 `_warEnsureDefense` · T703 날마다 행군 대형)가 몸을 슬롯에 바로 놓는다(픽스처는 마을 → 진 1,408 m).
+//   켜면 두 자리 모두 **몸이 걸어서** 간다: 대형마다 몸 걸음(`g._t790Walk` = 존 걸음 정본 `moveSpeed` px/s ÷ 셀 px × 교전 스텝 초 = 셀/스텝)을 달고,
+//     war-live 추종이 지휘 몸도 그 걸음으로 원점까지 옮기고 병사 걸음도 그 걸음을 안 넘긴다. 슬롯 놓기는 안 한다(추종이 걸어서 붙는다).
+//   늦음 셈(`state._warStat.t790Late` · `_t790Stat`): 하루 경계(`_t681Day`)에 대형 몸이 아직 제 자리(지휘 = 원점 · 병사 = 슬롯 · 반경 `FOLLOW_SNAP`) 밖이면 하나 —
+//     메우기 0(순간이동으로 따라잡지 않는다). 교전에 풀린 몸(battle-core 가 모는 몸)은 안 센다. 새 수 0.
+const T790_NO_SNAP = process.env.T790_NO_SNAP === '1';
+const _t790Stat = { walk: 0, late: 0, lateMaxM: 0, lateSumM: 0 };
+function _t790Mark(g) { const sp = state.deps && state.deps.moveSpeed; if (T790_NO_SNAP && g && sp > 0 && state.warLive) g._t790Walk = sp / SZ * state.warLive.STEP_DT; return g; }   // 셀/스텝 = (px/s ÷ px/셀) × s/스텝
+function _t790Lag(g) {   // 하루 경계 — 대형 몸이 제 자리 밖인가(걸음 셈 · 상태 무변)
+  if (!g || !g.units || !(g._t790Walk > 0)) return 0;
+  const WL = state.warLive; let m = 0;
+  for (const u of g.units) {
+    if (u.dead || (u.bu && !u.bu.ctl)) continue;
+    let tx = g.cmd.cx, ty = g.cmd.cy; if (!u.cmd) { const s = WL._muSlotXY(g, u); tx = s[0] + (u.jx || 0); ty = s[1] + (u.jy || 0); }
+    const dd = Math.hypot(tx - u.x, ty - u.y); if (dd > m) m = dd;
+  }
+  if (!(m > WL.MU.FOLLOW_SNAP)) return 0;
+  const mM = m * WL.M_PER_CELL;
+  _t790Stat.late++; _t790Stat.lateSumM += mM; if (mM > _t790Stat.lateMaxM) _t790Stat.lateMaxM = mM;
+  state._warStat.t790Late = state._warStat.t790Late || 0; state._warStat.t790Late++;   // 전쟁 셈 칸(켬에서만 선다 — 끔 = 칸 0)
+  return mM;
+}
 function _warSnapToSlots(g) {
   if (!g || !g.units) return;
+  if (T790_NO_SNAP && _t790Mark(g)._t790Walk > 0) { _t790Stat.walk++; return; }   // ★[T790 ②] 켬 — 놓지 않는다(몸이 걸어서 슬롯에 붙는다 · 대형 몸 걸음만 단다) · 걸음 정본이 없는 판(하네스 목)은 종전대로 놓는다
   const blocked = _warBlockedCell;
   for (const u of g.units) { if (u.cmd) { u.x = g.cmd.cx; u.y = g.cmd.cy; continue; } const s = state.warLive._muSlotXY(g, u);
     if (!blocked(s[0], s[1])) { u.x = s[0]; u.y = s[1]; continue; }
@@ -5656,6 +5683,7 @@ function _warEnsureDefense(body, sortie) {   // sortie=true — 출격 결단: �
   const th = Math.atan2(ac.cy - dc.cy, ac.cx - dc.cx), so = scram ? WAR_SCRAM_STANDOFF : WL.WAR_DEF_STANDOFF;
   const rally = { cx: dc.cx + Math.cos(th) * so, cy: dc.cy + Math.sin(th) * so };
   const g = WL.buildGroup(d.units, comp.form, rally, th, seed); if (!g) return;
+  _t790Mark(g);   // ★[T790] 켬 — 방어 대형도 몸 걸음(긴급 소집은 슬롯 놓기를 안 거친다 · 끔 = 무동작)
   g.holdPt = { cx: rally.cx, cy: rally.cy };
   g._scram = scram; g.detour = _warDetourFor(body);
   if (scram) console.log(`[${state.zoneId}] ⚔️ ${w.def.name} ★긴급 소집(scramble) — 적 돌격 임박(거리 ${dCmd.toFixed(0)}셀): 주민 ${d.pids.length}명 회관 앞 집결`);
@@ -5821,6 +5849,7 @@ function _warSetupReturn(body, survPids, isRout) {
   const c = caravanPointAt(body, 0); body.cmd = { cx: c.x / SZ, cy: c.y / SZ }; body.heading = Math.atan2(w.atk.ccy - body.cmd.cy, w.atk.ccx - body.cmd.cx);
   const units = []; for (const pid of survPids) { const p = players.get(pid); if (!p) continue; const gu = { type: p._muType || 'militia', pid }; WL.bindGroupUnit(gu, p); units.push(gu); }
   body.retGroup = units.length ? WL.buildGroup(units, 'open', { cx: body.cmd.cx, cy: body.cmd.cy }, body.heading, (w.id || 1) * 523 + 7) : null;
+  _t790Mark(body.retGroup);   // ★[T790 ①] 켬 — 귀환 지휘 몸은 결판 자리에서 길 머리까지 걷는다(끔 = 무동작 · 첫 틱에 놓인다)
   if (body.retGroup) body.retGroup.detour = _warDetourFor(body);
   if (body.retGroup) _warSyncMeta(body.retGroup, 0, isRout);
 }
@@ -6386,6 +6415,7 @@ function _t681Day(now) {
   if (state.warBodies) for (const body of [...state.warBodies.values()]) {
     const T = body._t681; if (!T || T.day === d) { if (body) body._t681V = { vx: 0, vy: 0 }; continue; }
     T.day = d;
+    if (T790_NO_SNAP) { _t790Lag(body.atkGroup); _t790Lag(body.defGroup); _t790Lag(body.retGroup); }   // ★[T790] 하루 경계 — 아직 제 자리 밖이면 늦음 하나(장부가 옮기기 전 · 메우기 0)
     const prev = body.cmd ? { cx: body.cmd.cx, cy: body.cmd.cy } : null;
     if (T.leg === 'march' && body.w.phase === 'march') {
       _t681MarchTo(body, d);
@@ -6803,7 +6833,7 @@ function _bodyDay(npc, now) {   // 몸의 날 — 끔 = 세계 날(종전) · �
 //     꼬리  = 종전 차례 그대로(교역 → 캐러밴 → econ 꼬리 → 존 경계 냄 → 영토 → 채굴 → 날씨 → 방송 → 캐러밴 동기 → 사건 → 저장 → 거리)
 //   창 가운데 머리 · 마을 조각은 미니 마감(`C.t731mini` — T690 문법: 마감 꼬리 로그 없이 대기 요청만 방류). 창 하나 = `_closeDay` 한 줄.
 //   ⚠econ 결산 차례가 마을마다 바뀌는 것은 econ 씨 가르기(`sim/economy-sim.js useVillageStream`)가 받친다 — 한 마을의 하루가 다른 마을 수열을 안 바꾼다.
-const T731_ON = process.env.T731_LOCAL_MIDNIGHT === '1';
+const T731_ON = process.env.T731_LOCAL_MIDNIGHT !== '0';   // ★[T792 · PM 10-18] 켬 기본(재민 10-13 시간 캐논) · 되돌림 `=0`
 const _t731Stat = { windows: 0, vils: 0, late: 0, lateMax: 0, orderBad: 0, last: null, boot: null };
 function _t731Lam(ccx) { const Z = _zc720(), zo = ((Z.ZONES[state.zoneId] || {}).worldOffsetX) || 0; return Z.lonOf(zo + ccx * SZ + SZ / 2); }
 function _t731LD(vil, t) { return Math.floor((t - state.epoch) / state.dayMs + (vil._lonMid || 0)); }
@@ -7079,7 +7109,7 @@ function _lifeDayJobs(vils, add) {
 
 // 하루 경계: 그날 할 일을 조각 목록으로 **세우기만** 한다(아무것도 실행하지 않는다).
 function _openDayJobs(now, T) {
-  if (_T732_ON) { const G = _t732Gran(); if (G) G.tickBegin(); }   // ★[T732] 하루 마감 = 한 순간 — 마감 동안 econ 이 얻은 것의 열쇠   // ★[PM 10-14 합침] T731 켬 판에도 같은 머리에서(둘 다 기본 끔 — 짝 켬 판은 미검)
+  if (_T732_ON) { const G = _t732Gran(); if (G) G.tickBegin(state.world && state.world.villages); }   // ★[T732] 하루 마감 = 한 순간 — 마감 동안 econ 이 얻은 것의 열쇠 · ★[T789] 켬이면 그 순간 상한 레코드를 버린다(econ 마을 목록 · 끄면 안 읽힌다)   // ★[PM 10-14 합침] T731 켬 판에도 같은 머리에서(둘 다 기본 끔 — 짝 켬 판은 미검)
   if (T) return _t731Jobs(now, T);   // ★[T731] 켬 — 창의 머리 · 마을 · 꼬리 조각(끔이면 T 가 없다 = 아래 종전 그대로)
   const t0 = Date.now();
   const C = { now, t0, stg: {}, econPop: 0, npcCount: 0, jobChanges: {}, pops: {}, terr: {}, wx: {},
@@ -7239,6 +7269,14 @@ function villageWait(fn) {
   if (state.tickCtx) state.tickCtx.queued = state.waitQ.length;
   return true;
 }
+// ★★[T792 · PM 10-18 판정 ⓐ] 섞인 날 — 현지 자정 창(T731 · 머리 → 마을 조각) 안에 온 **사람 장부 요청**은 줄 세우지 않고 바로 처리한다.
+//   마을마다 장부 날이 제 날(`_ledgerDay` — 그 마을이 정산한 날)이라 캐논 그대로다(대기 큐 0). 창 꼬리(교역 · 캐러밴 · econ 꼬리 · 저장 —
+//   모든 마을이 같은 날로 선 뒤의 마감)는 종전 T1 줄 그대로다(반쯤 넘어간 장부를 안 건드린다). 끔(`T731_LOCAL_MIDNIGHT=0`) = `villageWait` 그대로.
+function villageBookWait(fn) {
+  const C = state.tickCtx;
+  if (T731_ON && state.tickJobs && C && C.t731D != null && C.t731mini) { _t731Stat.bookNow = (_t731Stat.bookNow | 0) + 1; return false; }
+  return villageWait(fn);
+}
 function _drainVillageWaitQ() {
   const Q = state.waitQ;
   if (!Q || !Q.length) return;
@@ -7353,6 +7391,7 @@ function __p3Bind(mock) {
     _t765Depart, _t765Join,   // ★[T765] 후보 걷기 몸 문 둘(하네스 `test-cand-walk` 가 운영과 같은 문을 부른다)
     _t681Day, _t681Flush, T681_ON, T703_MARCH,   // ★[T703] T681 켬(기본) 판의 하루 경계 두 자리 — 하네스가 운영 하루 마감과 같은 차례(econ 앞 `_t681Flush` · 캐러밴 앞 `_t681Day`)로 부른다(값 무변 · 내보내기만)
     _warEngage, _warAfterDaily, _warEndFight, _warBuildRectIndex, _warBlockedCell, _warWorld, warPerf, _warOrderFallback, _warToStandoff,
+    T790_NO_SNAP, _t790Stat, _t790Mark, _t790Lag, _warSetupReturn, _warPaceReturn,   // ★[T790] 하네스(`test-war-nosnap`)가 운영과 같은 문을 부른다(내보내기만)
     _warDraftPids, _warReleasePid, econDayToMs, _warEnsureBody, _warSampleComp, _vbFootprint,
     threatOf, _warWriteThreats, _warOutMul, _lifeJobSites, _lifeJobSiteOK, _warRoutePts, _warTreeCell, computeRoutePts,
     _t619Region, _t619RedigKeep,   // ★[T619] 쌍 둘레 · 다시 파기 거르개 — 자(`t619-h-audit`)가 **이 함수**로 센다(사본 0)
@@ -12825,7 +12864,7 @@ function villageTradeBoard(vid, px, py, inventory, numeraire) {   // ★[T69] �
   if (!state.ledger) return { err: '아직 장부가 없다' };
   const g = _villageNear(vid, px, py);
   if (g.err) return g;
-  return Object.assign({ ok: true }, _T732_ON ? Trade.board(state.ledger, state.econV2, g.vil, vid | 0, inventory, numeraire, _kcal()) : Trade.board(state.ledger, state.econV2, g.vil, vid | 0, inventory, numeraire));   // ★[T748] 켬 = 마을 몫을 받을 낱개로(열량 짝)
+  return _t789View(() => Object.assign({ ok: true }, _T732_ON ? Trade.board(state.ledger, state.econV2, g.vil, vid | 0, inventory, numeraire, _kcal()) : Trade.board(state.ledger, state.econV2, g.vil, vid | 0, inventory, numeraire)));   // ★[T748] 켬 = 마을 몫을 받을 낱개로(열량 짝) · ★[T789] 사람의 눈(끄면 그대로)
 }
 
 // 견적(마른 실행) — 패널이 "확정" 전에 비율·최대량을 보여 주려면 필요하다. 실행과 **같은 게이트**를 통과한다.
@@ -12843,8 +12882,8 @@ function villageTradeQuote(vid, px, py, giveRes, takeRes, qty, unitsOf, opts) { 
   // ★[T69] 위에서 이미 잰 **개당 단위**(`u/qty`)가 곧 견적의 `perItem` 이다 — 새로 재지 않는다.
   const _n = Math.max(0, Number(qty) || 0);
   const per = (_n > 0 && u > 0) ? (u / _n) : 1;
-  const q = Trade.quote(state.ledger, state.econV2, g.vil, vid | 0, String(giveRes || ''), String(takeRes || ''), u,
-    _T732_ON ? { want: (opts && opts.want) || 0, perItem: per, takeKcal: _kcal() } : { want: (opts && opts.want) || 0, perItem: per });   // ★[T748] 켬 = 받는 쪽 열량 짝
+  const q = _t789View(() => Trade.quote(state.ledger, state.econV2, g.vil, vid | 0, String(giveRes || ''), String(takeRes || ''), u,
+    _T732_ON ? { want: (opts && opts.want) || 0, perItem: per, takeKcal: _kcal() } : { want: (opts && opts.want) || 0, perItem: per }));   // ★[T748] 켬 = 받는 쪽 열량 짝 · ★[T789] 사람의 눈(견적 = 실행 · 끄면 그대로)
   if (q && !q.err) { q.giveItems = Math.max(0, Math.floor(Number(qty) || 0)); q.giveUnits = +u.toFixed(3); }
   return q;
 }
@@ -13394,7 +13433,7 @@ module.exports = { t750CastPre, t750Stat: () => _t750Stat, t719ReachPre, t719Sta
   bedSlotOf,   // ★[T540] 관측 — 침대 슬롯·집(`/walkdbg`)   // ★[T529] 촌장이 온다(손잡이 `T529_CHIEF_WALKS` · 읽는 곳 하나)
   tickPerf,   // ★[T1 §0] 일틱 단계별 소요 — zone.js `/perf` 가 소비(계측 전용)
   xzoneReceive, xzonePerf,   // ★[T533] 존 경계 — `/handoff_prepare` 의 `kind`(caravan·snap) 받는 문 · `/perf` 의 `xzone` 칸(끔이면 null)
-  villagesBusy, villageWait,   // ★[T1 §2-②] "장부 마감 중" 큐 — zone.js 가 마을 요청만 이 문으로 보낸다
+  villagesBusy, villageWait, villageBookWait,   // ★[T792] 사람 장부 문(창 안 = 바로)   // ★[T1 §2-②] "장부 마감 중" 큐 — zone.js 가 마을 요청만 이 문으로 보낸다
   dayNow: _dayNow,   // ★[T1] 마감 중이면 **경계의 순간**을 돌려준다 — 벽시계 적분(광맥 재생)이 조각 순서에 흔들리지 않게
   routeDebug,   // ★[T42] 교역로 캐시 관측·감사 — zone.js `/routedbg` 가 E2E_GIVE 로 게이트
   routeWorldSig,   // ★[T619 ②] 세계 서명(교역로 입력 내용 해시) — 하네스가 '다른 칸은 안 바꾼다'를 순수 함수로 잰다

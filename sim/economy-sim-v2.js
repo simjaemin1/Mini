@@ -542,7 +542,7 @@ const T726_ONE_TARGET = (typeof process !== 'undefined' && process.env && proces
 //   짐은 길 위에서 늙는다(자리 = 몸에 지님 · 정산은 꺼낼 때 조회 함수가 한다 — 도착 때 f 를 값에 쓰는 것은 T730 몫).
 let _LOTH = null;
 function setLotHook(h) { _LOTH = (h && typeof h === 'object') ? h : null; }
-// ★★[T784 2026-10-18 · 재민 10-14 · 손잡이 `T784_CARGO_AGE`('1' 만 켬 · 끔 = 아래 세 자리가 종전 식 = main 바이트)] **짐이 길 위에서 늙는다 — 값으로.**
+// ★★[T784 2026-10-18 · 재민 10-14 · 손잡이 `T784_CARGO_AGE`(T795 켬 기본 · `=0` 끔 = 아래 네 자리가 종전 식 = T784 앞 바이트)] **짐이 길 위에서 늙는다 — 값으로.**
 //   T732 는 짐 로트를 관측만 했다(자리 = 몸에 지님 · 도착 때 f 를 값에 쓰는 것은 미뤘다). 켬이면:
 //   ⓐ 출발 결정 — 기대 값의 도착 쪽 값 `pTo` 에 **도착 날 신선도**를 곱한다(다리 날 수 `travelDaysForDistance` · 품목 곡선 `spoil.freshnessOf` 정본).
 //   ⓑ 도착 매도 — 판 값(`_impactSellV2`)에 **그 짐의 도착 날 신선도**를 곱한다(길 위 실제 날 수 · 우회로 늘어난 날까지 · 같은 곡선).
@@ -550,7 +550,8 @@ function setLotHook(h) { _LOTH = (h && typeof h === 'object') ? h : null; }
 //   짐 수량은 그대로 받는 곳간에 든다(소멸 · 생성 0) — 상한 몫이 곳간에서 어떻게 되는지는 econ 의 상한 규칙 그대로.
 //   늙는 품목 = `lots.isLot`(먹을 것 + 썩는 것 · T725) — 그 밖(돌 · 도구 · 원석 …)은 1(spoil 기본 5일을 안 먹는다).
 //   랩: 번들이 spoil · lots 를 같이 싣는다(`sim/build-econ-bundle.js` — 곡선 표가 서버와 한 벌).
-const T784_CARGO_AGE = (typeof process !== 'undefined' && process.env && process.env.T784_CARGO_AGE === '1');
+//   ★[T795 2026-10-18 · PM · 재민 10-14 판정의 결과라 켬 기본] 없음 = 켬 · 되돌림 `T784_CARGO_AGE=0`(= main 10-18 앞 바이트).
+const T784_CARGO_AGE = !(typeof process !== 'undefined' && process.env && process.env.T784_CARGO_AGE === '0');
 let _t784M;
 function _t784Mods() {
   if (_t784M === undefined) {
@@ -1974,7 +1975,14 @@ function tickYearShock(world, day) {
   // 가을 시작 (day%365==180)에 풍년/흉년 결정
   if (CAL.ON ? !(seasonOf(day) === 'autumn' && seasonOf(day - 1) !== 'autumn') : (day % 365 !== 180)) return;   // ★[T570] 켬 = 가을 첫날(9월 1일)
   const _shockDays = CAL.ON ? CAL.seasonLen(day) : 90;   // ★[T570] 그 가을의 길이(켬 91 · 끔 = 옛 90 글자 그대로)
-  for (const v of world.villages) {
+  for (const v of world.villages) _yearShockOne(v, day, _shockDays);
+}
+// ★[T792] 마을 하나의 풍흉 굴림(종전 `tickYearShock` 고리 몸통 그대로 — 끔 = 고리가 이 함수를 차례대로 부른다 · 같은 글자 · 같은 차례).
+//   켬(`T761_LOCAL_CLOCKS` 의 `wx`)이면 날씨 굴림과 함께 **마을 조각**에서 굴린다 — 그 마을 흐름 안 차례가 끔과 같다(날씨 → 풍흉 → 마을 몸 ·
+//   T761 보고 §3-2 의 가을 첫날 차례 바뀜 없앰 · 회부 ⓐ — 재민 10-13 캐논 "마을 정산은 현지 00:00" 의 같은 갈래).
+function _yearShockDay(day) { return !(CAL.ON ? !(seasonOf(day) === 'autumn' && seasonOf(day - 1) !== 'autumn') : (day % 365 !== 180)); }
+function _yearShockOne(v, day, _shockDays) {
+  {
     if (v1.useVillageStream) v1.useVillageStream(v);   // ★[T731] 켬 = 그 마을 흐름
     const roll = v1.srand();
     if (v1.useVillageStream) v1.useVillageStream(null);
@@ -2006,12 +2014,13 @@ function tickWorldV2Parts(world) {
       v1.processEvents(world, world.day);
       // DEBUG flags — 각 효과 on/off
       if (world._dbg?.weather !== false && !T761_WX) tickWeather(world, world.day);   // ★[T761] 켬(wx) = 마을 조각에서
-      if (world._dbg?.yearShock !== false) tickYearShock(world, world.day);
+      if (world._dbg?.yearShock !== false && !T761_WX) tickYearShock(world, world.day);   // ★[T792] 켬(wx) = 마을 조각에서(날씨 굴림 뒤)
       season = seasonOf(world.day);
       useSeason = world._dbg?.season !== false;
     },
     village(v) {
       if (T761_WX && world._dbg?.weather !== false) _weatherRollOne(v, world.day);   // ★[T761] 켬(wx) = 그 마을 조각에서 그 마을 날씨를 굴린다(씨 = T731 마을 흐름 · 끔 = 무동작)
+      if (T761_WX && world._dbg?.yearShock !== false && _yearShockDay(world.day)) _yearShockOne(v, world.day, CAL.ON ? CAL.seasonLen(world.day) : 90);   // ★[T792] 켬(wx) = 풍흉도 그 마을 조각에서(날씨 뒤 · 끔 = 무동작)
       if (v1.useVillageStream) v1.useVillageStream(v);   // ★[T731] 켬 = 이 마을의 일은 이 마을 흐름으로(끝에서 세계 흐름으로 돌려준다 · 끔 = 무동작)
       try { _villageBody(v); } finally { if (v1.useVillageStream) v1.useVillageStream(null); }
     },

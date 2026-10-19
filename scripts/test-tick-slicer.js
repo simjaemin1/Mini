@@ -28,7 +28,7 @@ const FB = require('./fixture-boot');   // ★T349 기동 기다리기 정본(�
 const ROOT = path.join(__dirname, '..');
 const CPORT = 3010, ZPORT = 3020;
 const DAY_MS = parseInt(process.env.SLICER_DAY_MS || '', 10) || 5000;
-const T731 = process.env.T731_LOCAL_MIDNIGHT === '1';   // ★[T744] 켬 판(마을 현지 자정 창) — 그 판의 계약은 창 꼴(①·④·⑨·⑩ 갈래)
+const T731 = process.env.T731_LOCAL_MIDNIGHT !== '0';   // ★[T792] 켬 기본(env 없음 = 켬 · `=0` = 끔 판 계약)   // ★[T744] 켬 판(마을 현지 자정 창) — 그 판의 계약은 창 꼴(①·④·⑨·⑩ 갈래)
 const DAYS = parseInt(process.env.SLICER_DAYS || '', 10) || 6;
 // ★DB 를 **재사용**한다 — 50마을 시딩이 첫 부팅에 수 분 걸린다(그건 재는 대상이 아니다).
 //   두 팔이 같은 세계에서 출발하도록 스냅샷을 팔마다 복사한다.
