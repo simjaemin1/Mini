@@ -467,8 +467,21 @@ async function runDays(n) {
   console.log(`  5판(선계산 뒤 3일)  콜드 증분 **${dCold}** (누계 ${cold0} → ${pr6.routeCold}) · 적중 ${pr6.routeHit}`
     + ` · 조각 최대 ${P6 && P6.econTick.last ? P6.econTick.last.maxChunk + 'ms(' + P6.econTick.last.maxChunkAt + ')' : '?'}`);
   ok(dCold <= 5, '⑥ ★★선계산 뒤 경계에서 **거의 안 판다**', `3일 동안 새로 판 길 ${dCold}쌍`);
-  ok(P6 && P6.econTick.last && P6.econTick.last.maxChunkAt !== 'caravan', '⑥ ★★가장 큰 조각이 더는 **캐러밴이 아니다**',
-    P6 && P6.econTick.last ? `${P6.econTick.last.maxChunk}ms(${P6.econTick.last.maxChunkAt})` : '?');
+  // ★★[T797 2026-10-18] 이 줄은 **콜드 A\* 가 가장 큰 조각이던 시절**(T42 — 캐러밴 조각 242~482ms)의 증인이었다.
+  //   지금은 선계산 뒤 조각이 모두 예산 근처(16~67ms)이고 '캐러밴' 꼬리표 아래엔 A* 말고도 일이 있다
+  //   (몸 장부 `_t681Day` · 어장 상한 `refreshAllFishSustain` · 캐러밴 동기). 그래서 **꼬리표가 무엇이냐**는 벽시계 경주다 —
+  //   단독 판 착지 앞(`1e22aa3b`) 2/7 · 뒤(`1d10c0cf`) 3/7 · 머지 점마다 0~1/3~4 · T661·T681 을 꺼도 빨강(16ms caravan · 보고/T797).
+  //   ⇒ 뜻(캐러밴 조각이 크다 = 그 조각이 A* 를 팠다)을 **벽시계 아닌 셈**으로 잰다: 하루를 더 돌려 그 하루가 낀 창의
+  //     콜드 증분(`routeCold` — 위 줄과 같은 셈)을 읽고, 그날 가장 큰 조각이 캐러밴이면 그 창의 콜드가 0 이어야 한다
+  //     (A* 를 안 팠으면 그 조각은 A* 가 아니다). 창은 앞 읽기 뒤 ~ 이 읽기까지라 그날을 반드시 덮는다 — 콜드가 다른 날에 났어도
+  //     빨강 쪽으로 센다(무르게 만들지 않는다). 새 수 0 — 날 하나 · `routeCold` · `maxChunkAt` 는 이 하네스가 이미 읽는 값.
+  const _d6 = P6 && P6.econTick ? P6.econTick.days : 0;
+  const P6L = await runDays(_d6 + 1);
+  const _prL = P6L && P6L.econTick ? P6L.econTick.probe : {};
+  const dLast = (_prL.routeCold || 0) - (pr6.routeCold || 0);
+  const _mAt = P6L && P6L.econTick.last ? P6L.econTick.last.maxChunkAt : null;
+  ok(!!_mAt && (_mAt !== 'caravan' || dLast === 0), '⑥ ★★가장 큰 조각이 더는 **캐러밴 A\*가 아니다**(캐러밴 꼬리표면 그날 낀 창의 콜드 0)',
+    P6L && P6L.econTick.last ? `${P6L.econTick.last.maxChunk}ms(${_mAt}) · 그 창 콜드 ${dLast}` : '?');
 
   // ── ★★[T85 2026-09-03] ⑧ 재개 가능 A* — **정본 시드 세계 전 쌍이 비트 동일** ──────────────
   //   ★왜 여기인가: 579쌍은 **이 세계가 실제로 쓰는 쌍**이다(선계산 큐가 세운 그것).
