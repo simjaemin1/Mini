@@ -90,6 +90,7 @@ if (process.env.T732_SUB === 'zone') {
     };
     const withdraw = (p, q, res) => { const r = res || RES; const s0 = Number(VIL.econ.storage[r]) || 0;
       VIL.econ.founder = p.playerId;   // ★[T769 · T779] 꺼내기는 촌장만 — 진짜 곳간 문에 꺼내는 사람을 촌장(창설자 표지)으로 앉힌다(회관 `owner` 와 같은 꼴)
+      { const _VK = require(SV('village-kin.js')); if (_VK.ON) { VIL._kin = VIL._kin || {}; VIL._kin.chief = String(p.playerId); } }   // ★[T809] T785 켬(T787 기본) = 촌장은 마을 칸 하나(`VillageKin.isChief` — `_kin.chief`) — 같은 사람을 그 칸에도 앉힌다(test-membership `asChief` 꼴 · 판정 함수 무변)
       H.tryVillageWithdraw(p, VID, r, q); return +(s0 - (Number(VIL.econ.storage[r]) || 0)).toFixed(6); };
     const a0 = H.Lots.stats().approx;
     if (GL) GL.stats(true);

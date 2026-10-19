@@ -208,7 +208,7 @@ function handleChat(player, text) {
     if (!mine) { _send(player, '🏘️ 아직 어느 마을 사람도 아니다 — 마을 곳간에 보태면 `/소속` 으로 든다'); return true; }
     const c = chiefOf(mine);
     const k = mine._kin || {};
-    _send(player, `🏘️ [${mine.name}] 촌장 ${c ? (c.name || c.id) : '없다'} · 곳간 ${k.granaryOpen === false ? '잠김' : '열림'} · `
+    _send(player, `🏘️ [${mine.name}] 촌장 ${c ? (c.name || c.id) : '없다'} · 곳간 촌장만 · `   // ★[T809] T779 — 곳간 잠금 문을 걷었다(꺼내기는 촌장 한 사람) ⇒ 곳간 칸은 "열림 · 잠김" 대신 그 사실 한 마디(T779 의 말 '곳간은 촌장만 꺼낸다')
       + `${k.joinMode === 'invite' ? '부름을 받아야 든다' : '아무나 든다'}${k.intro ? ` · "${k.intro}"` : ''}`);
     return true;
   }

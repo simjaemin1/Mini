@@ -129,6 +129,7 @@ function zoneRun() {
     const fmin = (p, item) => { H.Lots.reconcile(p, item, p.inventory, today); let m = null; for (const l of H.Lots.of(p, item)) { const f = H.Spoil.freshnessOf(item, H.Spoil.exposureOf(l, today)); m = m == null ? f : Math.min(m, f); } return m == null ? null : +m.toFixed(4); };
     const withdraw = (p, q, res) => { const r = res || RES; const s0 = Number(VIL.econ.storage[r]) || 0;
       if (H.T769) VIL.econ.founder = p.playerId;   // ★[T769] 켬 = 꺼내기는 촌장만(test-granary-age 꼴)
+      { const _VK = require(SV('village-kin.js')); if (_VK.ON) { VIL._kin = VIL._kin || {}; VIL._kin.chief = String(p.playerId); } }   // ★[T809] T785 켬(T787 기본) = 촌장은 마을 칸 하나(`VillageKin.isChief` — `_kin.chief`) — 같은 사람을 그 칸에도 앉힌다(test-membership `asChief` 꼴 · 판정 함수 무변)
       H.tryVillageWithdraw(p, VID, r, q); return R6(s0 - (Number(VIL.econ.storage[r]) || 0)); };
     // 칸을 비우고 상한 몫 · 성한 몫을 세운다 — 상한 몫은 옮김(대기 레코드 → 늘어남)으로 노출째 · 성한 몫은 지금 얻은 것(그 날 0시)
     const fill = (res, badU, badE, goodU) => {

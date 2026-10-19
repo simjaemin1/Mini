@@ -220,13 +220,14 @@ async function found(C, base, centers) {
   A.notices.length = 0;
   snd(A, { type: 'tribe_set', tribeId: TID, tribeName: '물레' }); await sleep(800);
   ok(A.notices.some((t) => /마을 \[물레\] 적용/.test(t)), '①a 끔 — 존이 길드를 몸에 얹었다(`tribe_set` 종전 그대로)', lastN(A));
-  ok(await sayWait(A, '/곳간 잠금', /곳간을 잠갔다/), '①b 끔 — 길드장이 곳간을 잠갔다(central 칸)', lastN(A));
+  // ★[T809] T779(main) — 길드 곳간 잠금은 걷었다(꺼내기는 촌장 한 사람 · 정할 문이 없다) · `/곳간 열기|잠금` 은 한 줄로 답하고 central 칸을 안 건드린다
+  ok(await sayWait(A, '/곳간 잠금', /곳간은 촌장만 꺼낸다/), '①b 끔 — `/곳간 잠금` 은 한 줄로 답한다(T779 · 잠금 문 없음 · central 무접촉)', lastN(A));
   ok(await sayWait(A, '/마을 초대제', /부름을 받아야/), '①c 끔 — 길드장이 문을 걸었다(central 칸)', lastN(A));
   ok(await sayWait(A, '/소개 물레방아 곁에 산다', /소개를 적었다/), '①d 끔 — 길드장이 소개를 적었다(central 칸)', lastN(A));
   const tr0 = await jget(`${CEN}/tribe/${TID}`);
   const t0 = tr0 && tr0.tribe;
-  ok(!!t0 && (t0.granary_open | 0) === 0 && t0.join_mode === 'invite' && t0.intro === '물레방아 곁에 산다',
-    '①e 끔 — central tribe 칸 셋이 실제로 섰다(곳간 0 · 초대제 · 소개)', JSON.stringify(t0 && { g: t0.granary_open, j: t0.join_mode, i: t0.intro }));
+  ok(!!t0 && (t0.granary_open | 0) === 1 && t0.join_mode === 'invite' && t0.intro === '물레방아 곁에 산다',
+    '①e 끔 — central tribe 칸 셋(곳간 칸은 종전 값 1 그대로 — T779 잠금 문 없음 · 초대제 · 소개)', JSON.stringify(t0 && { g: t0.granary_open, j: t0.join_mode, i: t0.intro }));
   const base = { cx: Math.floor(A.pos.x / CELL), cy: Math.floor(A.pos.y / CELL) };
   const F = await found(A, base, centers);
   ok(!!F.hall, '①f 끔 — 길드장이 마을을 세웠다(회관 완공)', F.hall ? `회관 ${F.hall.id} @ ${F.SITE.X},${F.SITE.Y}` : F.why);
@@ -253,11 +254,11 @@ async function found(C, base, centers) {
   for (let k = 0; k < 60; k++) { K = await kinOf(VID); if (K && K.t785) break; await sleep(1000); }
   ok(!!K && K.t785 && !K.pending, '② 켬 — 이행이 끝났다(표지 `t785`)', JSON.stringify(K));
   ok(!!K && K.chief === A.playerId, '②a ★촌장 = 창설자(마을 칸)', K && K.chief);
-  ok(!!K && K.granaryOpen === false && K.joinMode === 'invite' && K.intro === '물레방아 곁에 산다',
-    '②b ★★central tribe 칸 셋이 마을 칸으로 옮겨졌다(곳간 잠금 · 초대제 · 소개)', JSON.stringify(K && { g: K.granaryOpen, j: K.joinMode, i: K.intro }));
+  ok(!!K && K.granaryOpen === !!(t0 && t0.granary_open) && K.joinMode === 'invite' && K.intro === '물레방아 곁에 산다',
+    '②b ★★central tribe 칸 셋이 마을 칸으로 옮겨졌다(곳간 칸 = central 값 그대로 · 초대제 · 소개)', JSON.stringify(K && { g: K.granaryOpen, j: K.joinMode, i: K.intro }));
   ok(!!K && (K.tribe0 | 0) === (TID | 0) && K.tribeIdRuntime == null, '②c 옛 길드 id 는 이행 원천으로만(런타임 `_tribeId` = null)', JSON.stringify(K && { t0: K.tribe0, rt: K.tribeIdRuntime }));
   const hd2 = hallData(VID);
-  ok(!!hd2 && hd2.tribeId === TID && hd2.t785 === true && hd2.chief === A.playerId && hd2.granaryOpen === false && hd2.joinMode === 'invite',
+  ok(!!hd2 && hd2.tribeId === TID && hd2.t785 === true && hd2.chief === A.playerId && hd2.granaryOpen === !!(t0 && t0.granary_open) && hd2.joinMode === 'invite',
     '②d ★옛 칸은 지우지 않았다 — 회관 행에 `tribeId` 그대로 + 마을 칸', JSON.stringify(hd2 && Object.keys(hd2)));
   const b2 = tribeCalls('boot2');
   ok(b2.length === 1 && b2[0].m === 'GET' && b2[0].u === `/tribe/${TID}`, '②e ★이행이 central 을 **한 번** 물었다(GET /tribe/:id · 그 밖의 tribe·war 0)', JSON.stringify(b2.map((c) => `${c.m} ${c.u}`)));
@@ -288,11 +289,14 @@ async function found(C, base, centers) {
   snd(A, { type: 'village_deposit', buildingId: F.hall && F.hall.id, want: { food: 300 } }); await sleep(1200);
   B.notices.length = 0;
   snd(B, { type: 'village_withdraw', vid: VID, res: 'food', qty: 1 }); await sleep(1200);
-  ok(B.notices.some((t) => /촌장이 곳간을 잠갔다/.test(t)), '④ ★곳간 문 = 마을 칸 — 이행된 잠금이 마을 사람 꺼내기를 막는다', lastN(B, 2));
-  ok(await sayWait(A, '/곳간 열기', /곳간을 열었다/), '④a 촌장이 연다(`/곳간 열기` · central 무접촉)', lastN(A));
-  B.notices.length = 0;
-  snd(B, { type: 'village_withdraw', vid: VID, res: 'food', qty: 1 }); await sleep(1200);
-  ok(B.notices.length > 0 && !B.notices.some((t) => /잠갔다/.test(t)), '④b 열리면 그 문은 비킨다(다음 막음이 답한다)', lastN(B, 2));
+  // ★[T809] T779(main) — 꺼내기는 촌장 한 사람(마을 칸 촌장 `_kin.chief` · T786) · 잠금 문은 걷었다 ⇒ 마을 사람 B 의 꺼내기는 "촌장만" 으로 막힌다
+  ok(B.notices.some((t) => /곳간은 촌장만 꺼낸다/.test(t)), '④ ★곳간 문 = 마을 칸 촌장 — 촌장 아닌 마을 사람의 꺼내기는 막힌다(T779 · T786)', lastN(B, 2));
+  ok(await sayWait(A, '/곳간 열기', /곳간은 촌장만 꺼낸다/), '④a `/곳간 열기` 는 한 줄로 답한다(T779 · 잠금 문 없음 · central 무접촉)', lastN(A));
+  // ★[T809] 종전 ④b("열리면 그 문은 비킨다")는 잠금 문이 없어져 뜻이 "촌장은 꺼낸다" 로 옮겼다 — 같은 문(`village_withdraw`)을 촌장 A 가 부른다
+  A.notices.length = 0;
+  const _f0 = await (async () => { const b0 = await bodyOf('kinA'); return b0 && b0.inventory ? (b0.inventory.food | 0) : null; })();
+  snd(A, { type: 'village_withdraw', vid: VID, res: 'food', qty: 1 }); await sleep(1200);
+  ok(A.notices.length > 0 && !A.notices.some((t) => /촌장만/.test(t)), '④b ★촌장(마을 칸)은 같은 문으로 꺼낸다 — "촌장만" 으로 안 막힌다', lastN(A, 2) + ` · 손 food ${_f0}`);
   // 촌장
   ok(await sayWait(A, '/촌장', /촌장 — kinA/), '⑤ `/촌장` — 지금 촌장', lastN(A));
   ok(await sayWait(B, '/촌장 kinA', /촌장만/), '⑤a 촌장이 아니면 못 넘긴다', lastN(B));
@@ -303,7 +307,7 @@ async function found(C, base, centers) {
   const K5 = await kinOf(VID);
   ok(!!K5 && K5.chief === B.playerId, '⑤e ★마을 칸의 촌장 = B', K5 && K5.chief);
   ok(await sayWait(A, '/곳간 잠금', /촌장만/), '⑤f 넘긴 사람은 이제 곳간 문을 못 만진다', lastN(A));
-  ok(await sayWait(B, '/곳간 잠금', /곳간을 잠갔다/), '⑤g 새 촌장이 잠근다', lastN(B));
+  ok(await sayWait(B, '/곳간 잠금', /곳간은 촌장만 꺼낸다/), '⑤g `/곳간 잠금` 은 새 촌장에게도 한 줄로 답한다(T779 · 잠금 문 없음 · ★[T809])', lastN(B));
   ok(await sayWait(B, '/탈퇴', /먼저 자리를 넘기고/), '⑤h ★촌장 자리는 비우지 않는다(넘기고 떠난다)', lastN(B));
   ok(await sayWait(A, '/추방 kinB', /촌장은 내보낼 수 없다/), '⑤i 촌장은 내보내지 못한다', lastN(A));
   // 소개 · 가입 문
@@ -311,10 +315,10 @@ async function found(C, base, centers) {
   ok(await sayWait(B, '/소개   새   물레  소리  ', /소개를 적었다/), '⑥a 촌장이 소개를 쓴다', lastN(B));
   ok(await sayWait(B, '/마을 공개', /아무나 들 수 있다/), '⑥b 촌장이 가입 문을 연다', lastN(B));
   const K6 = await kinOf(VID);
-  ok(!!K6 && K6.intro === '새 물레 소리' && K6.joinMode === 'open' && K6.granaryOpen === false,
-    '⑥c ★마을 칸 — 소개(공백 접기 · 다듬기) · 가입 문 열림 · 곳간 잠금', JSON.stringify(K6 && { i: K6.intro, j: K6.joinMode, g: K6.granaryOpen }));
+  ok(!!K6 && K6.intro === '새 물레 소리' && K6.joinMode === 'open' && K6.granaryOpen === !!(t0 && t0.granary_open),
+    '⑥c ★마을 칸 — 소개(공백 접기 · 다듬기) · 가입 문 열림 · 곳간 칸은 이행 값 그대로(T779 잠금 문 없음 · ★[T809])', JSON.stringify(K6 && { i: K6.intro, j: K6.joinMode, g: K6.granaryOpen }));
   //   ★[T787] 말 — 명령 이름 `/마을`(보기 · 가입 문) · 옛 `/길드` 는 한 줄 안내만(칸을 안 바꾼다 — 자명 통과 금지: 잠근 뒤 옛 명령으로 열어 본다)
-  ok(await sayWait(B, '/마을', /촌장 .* · 곳간 잠김 · 아무나 든다 · "새 물레 소리"/), '⑥d ★[T787] `/마을` — 내 마을 한 줄(촌장 · 곳간 문 · 가입 문 · 소개)', lastN(B));
+  ok(await sayWait(B, '/마을', /촌장 .* · 곳간 촌장만 · 아무나 든다 · "새 물레 소리"/), '⑥d ★[T787] `/마을` — 내 마을 한 줄(촌장 · 곳간(★[T809] T779 — 촌장만) · 가입 문 · 소개)', lastN(B));
   ok(await sayWait(B, '/마을 초대제', /부름을 받아야/), '⑥e ★[T787] `/마을 초대제` — 촌장이 문을 건다', lastN(B));
   ok(await sayWait(B, '/길드 공개', /길드는 이제 마을이다/), '⑥f ★[T787] 옛 명령 `/길드 공개` = 한 줄 안내', lastN(B));
   const K6b = await kinOf(VID);
@@ -422,8 +426,8 @@ async function found(C, base, centers) {
   ok(await _nipUp, '⓪ 이웃 존 nippon 기동(켬 · 마을 0 — 존 넘김 도착지)');
   await sleep(3000);
   const K3 = await kinOf(VID);
-  ok(!!K3 && K3.chief === B.playerId && K3.granaryOpen === false && K3.joinMode === 'open' && K3.intro === '새 물레 소리' && K3.t785,
-    '⑩ ★재기동 — 마을 칸 같은 값(촌장 B · 곳간 잠금 · 문 열림 · 소개)', JSON.stringify(K3 && { c: K3.chief, g: K3.granaryOpen, j: K3.joinMode, i: K3.intro }));
+  ok(!!K3 && K3.chief === B.playerId && K3.granaryOpen === !!(t0 && t0.granary_open) && K3.joinMode === 'open' && K3.intro === '새 물레 소리' && K3.t785,
+    '⑩ ★재기동 — 마을 칸 같은 값(촌장 B · 곳간 칸 · 문 열림 · 소개)', JSON.stringify(K3 && { c: K3.chief, g: K3.granaryOpen, j: K3.joinMode, i: K3.intro }));
   if (npc) {
     const N3 = await kinOf(npc.vid);
     ok(!!K3 && K3.wars.includes(npc.vid) && !!N3 && N3.wars.includes(VID), '⑩a 재기동 — 전쟁도 그대로(두 마을 칸 양쪽)', JSON.stringify({ me: K3 && K3.wars, them: N3 && N3.wars }));
@@ -473,7 +477,8 @@ async function found(C, base, centers) {
     const bb4 = await bodyOf('kinB');
     ok(!!(bb4 && bb3 && JSON.stringify(bb4.member) === JSON.stringify(bb3.member)), '⑫c ★돌아와도 소속 그대로(nippon 이 적은 몸 → hanbando 접속)', JSON.stringify(bb4 && bb4.member));
     ok(await sayWait(B3, '/촌장', /촌장 — kinB/), '⑫d ★돌아온 촌장은 여전히 촌장(마을 칸이 사람을 안다)', lastN(B3));
-    ok(await sayWait(B3, '/곳간 열기', /곳간을 열었다/), '⑫e 돌아온 촌장이 곳간 문을 만진다', lastN(B3));
+    //   ★[T809] T779 — 곳간 문이 없어졌다 ⇒ 돌아온 촌장의 권한은 같은 촌장 문 하나(`/소개` — 촌장만)로 잰다(뜻 그대로: 돌아와도 촌장 일을 한다)
+    ok(await sayWait(B3, '/소개 돌아온 물레', /소개를 적었다/), '⑫e 돌아온 촌장이 촌장 일(`/소개`)을 한다', lastN(B3));
     await close(B3);
   } else await close(B2);
   ok(tribeCalls('hand').length === 0, '⑫f ★존 넘김 내내(두 존) central tribe·war 0', JSON.stringify(tribeCalls('hand').map((c) => c.u)));

@@ -82,7 +82,7 @@ if (process.env.T768_SUB === 'zone') {
       const hall = (p, want) => { H.buildings.get(HALL).data.owner = p.playerId; const s0 = +VIL.econ.storage[RES] || 0; try { H.tryVillageDeposit(p, HALL, want); } catch (e) { out.errs.push('hall:' + String(e && e.message || e)); } return R6((+VIL.econ.storage[RES] || 0) - s0); };
       const a0 = H.Lots.stats().approx;
       //   ★[T769 · T779] 꺼내기는 촌장만 — 진짜 곳간 문에 꺼내는 사람을 촌장(창설자 표지)으로 앉힌다(회관 `owner` 와 같은 꼴 · test-granary-age 그 줄)
-      const asChief = (p) => { VIL.econ.founder = p.playerId; };
+      const asChief = (p) => { VIL.econ.founder = p.playerId; const _VK = require(SV('village-kin.js')); if (_VK.ON) { VIL._kin = VIL._kin || {}; VIL._kin.chief = String(p.playerId); } };   // ★[T809] T785 켬(T787 기본) = 촌장은 마을 칸 하나(`_kin.chief`) — 같은 사람을 그 칸에도 앉힌다(test-membership `asChief` 꼴)
 
       // ── A. 회관 넣기 곰고기 8(f 0.6 · 사흘 전) → 꺼내기(대표 품목 문) — econ 몫(새것)은 뒤에 ─────────────
       VIL.econ.storage[RES] = 0; VIL.econ.storage[RES] = 40;
