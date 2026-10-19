@@ -35,6 +35,9 @@ if (process.env.T705_SUB === 'zone') {
   const _log = console.log; console.log = () => {}; console.warn = () => {}; console.error = () => {};
   const Zone = require(SV('zone.js'));
   const H = Zone.__testBind();
+  // ★[T778] 순간 로트 켬 기본 — 순간 열쇠는 "같은 날 = 나이 0"을 깬다(픽스처 `t: 오늘` = 그 날 0시라 지난 시간만큼 늙는다).
+  //   값 단언은 그대로 두고 지난 시간만 뺀다 — 존 날을 얼린다(제품의 테스트 문 · 순간 시계가 그 날 0시에 선다 · 날 문법(`T732_MOMENT_LOT=0`)엔 같은 날).
+  H.__e2eFreezeZoneDay(true);
   const out = {};
   const _sickLoaded = () => Object.keys(require.cache).some((k) => k.endsWith(path.join('server', 'sick.js')));
   const notes = [];
@@ -161,6 +164,7 @@ say('\n① 끔 = 종전 — 손잡이 · sick.js 안 부름 · 날고기 −3 ·
 const zOff = sub({});
 const zOn = sub({ T705_FOOD_SICK: '1' });
 const zBoth = sub({ T705_FOOD_SICK: '1', T694_GAME_MEAT: '1' });
+const zLot0 = sub({ T705_FOOD_SICK: '1', T732_MOMENT_LOT: '0' });   // ★[T778] 끔 탐침 — 순간 로트 끔(날 문법)에서도 같은 값
 {
   pre(!zOff.err && !zOn.err && !zBoth.err, '존 세 판이 떴다', zOff.err || zOn.err || zBoth.err || '');
   const knob = (v) => JSON.parse(execFileSync(process.execPath, ['-e', 'process.stdout.write(JSON.stringify(require(process.argv[1]).ON))', SV('sick.js')], { env: (() => { const e = Object.assign({}, BASE_ENV, v === undefined ? {} : { T705_FOOD_SICK: v }); if (v === undefined) delete e.T705_FOOD_SICK; return e; })() }).toString());
@@ -224,6 +228,8 @@ say('\n④ 실기(켬) — 먹기 → 잠복 → 몸 틱 → 극단 합산기 ·
   const z = zOn;
   ok(z.eff.meat_raw && !('hpDelta' in z.eff.meat_raw) && z.eff.meat_game && !('hpDelta' in z.eff.meat_game), '★★④ 날고기 −3 을 뺐다(⑤ T694 닫힘 · 먹기 표에 hpDelta 0)');
   ok(z.A.hp === 100 && z.A.sick === null && z.A.injury === 0, '★④ 갓 잡은 날것(f = 1) — 독 0 · 몸에 배탈 칸도 안 선다', JSON.stringify(z.A));
+  ok(!zLot0.err && JSON.stringify(zLot0.A) === JSON.stringify(z.A) && zLot0.B0.sick && near(zLot0.B0.sick.P, z.B0.sick.P, 1e-9) && near(zLot0.C0.sick.P, z.C0.sick.P, 1e-9),
+    '④ [T778 끔 탐침] 순간 로트 끔(`T732_MOMENT_LOT=0` · 날 로트)에서도 같은 값 — 갓 잡은 독 0 · 시든 P 0.4 · 상한 P 1', JSON.stringify({ A: zLot0.A, P: [zLot0.B0.sick && zLot0.B0.sick.P, zLot0.C0.sick && zLot0.C0.sick.P] }));
   ok(z.B0.hp === 100 && z.B0.injury === 0 && z.B0.sick && near(z.B0.sick.P, 0.4, 1e-6) && z.B0.sick.B === 0, '★★④ 시든 날것(f = 0.6) — 즉시 체력·부상 0 · P = 1kg × 0.4(잠복)', JSON.stringify(z.B0.sick));
   const pts = z.Bcurve;
   const at = (h) => pts.find((r) => near(r.h, h, 1e-6));

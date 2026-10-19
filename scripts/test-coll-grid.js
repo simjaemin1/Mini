@@ -135,9 +135,10 @@ console.log('\n③ 증분(T421) — 켬(그대로 두기 · 통째로) ↔ 끔(�
   const src = ['rebuildSpatialIndex', '_rebuildSpatialInc', '_spKeep', '_rebuildResources'].map((n) => body(n)).join('\n');
   ok(src.length > 3000 && SPDEF.length > 50, '③ [전제] 제품의 격자 글자 넷 + 상태 한 줄을 떴다');
   const CS = 512;
-  const mk = (on, w, twist) => new Function('players', 'mobs', 'resources', 'chunkManager', 'Quadtree', 'QuadtreeInc', 'ZONE', 'T421_SPATIAL_INC', '_inputTOStep',
+  const T774P = body('_t774Put');   // ★[T780] 활성 열 쓰기(제품 글자) — 켬이 새 기본이라 판에 싣는다
+  const mk = (on, w, twist, t774 = true) => new Function('players', 'mobs', 'resources', 'chunkManager', 'Quadtree', 'QuadtreeInc', 'ZONE', 'T421_SPATIAL_INC', '_inputTOStep',
     'let activeChunkKeys = new Set(), qtPlayers = null, qtMobs = null, qtBuildings = null, qtResources = null, qtColl = null, resourcesDirty = true, _lastResRebuild = 0, _WW = null, _wwRes = null;\n' +
-    'const T774_ACTIVE_COL = false; let _t774N = 0, _t774Src = null;\n' +   // ★[T774 · PM 착지 10-17] 틱 머리 활성 열 갈래 — 제품 기본(끔) 그대로
+    'const T774_ACTIVE_COL = ' + t774 + '; let _t774X = new Float64Array(1024), _t774Y = new Float64Array(1024), _t774N = 0, _t774Src = null;\n' + T774P + '\n' +   // ★[T780] 틱 머리 활성 열 갈래 — 제품 새 기본(켬) · `t774 = false` 는 끔 탐침 판
    // ★[T537 ⓪] T461 커널 두 칸(끔 = null — 제품 선언 그대로 · `_rebuildResources` 가 읽는다)
     
     SPDEF + '\n' + COLLDEF[0] + '\n' + (twist ? src.replace('S.bld.push(e); if (COLL_TYPES.has(b.type)) qtColl.insert({ x: b.x, y: b.y, ref: b });', 'S.bld.push(e);') : src) + '\nreturn { setKeys: (s) => { activeChunkKeys = s; }, rebuild: () => rebuildSpatialIndex(undefined), coll: () => qtColl, bld: () => qtBuildings, S: _spInc };')(
@@ -146,9 +147,9 @@ console.log('\n③ 증분(T421) — 켬(그대로 두기 · 통째로) ↔ 끔(�
   for (let cx = 0; cx < W / CS; cx++) for (let cy = 0; cy < H / CS; cy++) w.cm.chunks.set(`${cx}_${cy}`, { buildings: new Map() });
   const put = (b) => w.cm.chunks.get(`${Math.floor(b.x / CS)}_${Math.floor(b.y / CS)}`).buildings.set(b.id, b);
   for (const b of mkWorld(4210)) put(b);
-  const I0 = mk(false, w), I1 = mk(true, w), IX = mk(true, w, 'stale'), rr = rng(0x421);
+  const I0 = mk(false, w), I1 = mk(true, w), IX = mk(true, w, 'stale'), I1o = mk(true, w, null, false), rr = rng(0x421);   // ★[T780] I1o = 활성 열 끔 탐침
   const pts = []; for (const c of w.cm.chunks.values()) for (const b of c.buildings.values()) pts.push([b.x, b.y]);
-  let nQ = 0, dQ = 0, nonEmpty = 0, extra = 0, dX = 0, farmIn = 0, offSame = true;
+  let nQ = 0, dQ = 0, nonEmpty = 0, extra = 0, dX = 0, farmIn = 0, offSame = true, dO = 0;
   const COLLS = new Set(COLL);
   for (let t = 0; t < 900; t++) {
     //   관측자 둘 — 앞 40틱은 가만히(활성 집합이 같다 ⇒ 그대로 두는 길) · 뒤 20틱은 판 위를 옮겨 다닌다(통째로 세우는 길)
@@ -157,7 +158,7 @@ console.log('\n③ 증분(T421) — 켬(그대로 두기 · 통째로) ↔ 끔(�
       const cx = ox + dx + (ph ? 0 : (t % 3)), cy = oy + dy; if (cx >= 0 && cy >= 0 && cx < W / CS && cy < H / CS) keys.add(`${cx}_${cy}`); }
     if (t % 97 === 5) { const b = { id: 'x' + (extra++), type: t % 2 ? 'wall' : 'farmland', x: Math.floor(rr() * 200) * SZ, y: Math.floor(rr() * 200) * SZ, data: { side: 'N' }, floor: 0 }; put(b); }
     if (t % 131 === 9) { const c = w.cm.chunks.get([...keys][0]); const it = c && [...c.buildings.keys()].find((k) => c.buildings.get(k).type === 'wall'); if (it) c.buildings.delete(it); }
-    I0.setKeys(keys); I1.setKeys(keys); IX.setKeys(keys); I0.rebuild(); I1.rebuild(); IX.rebuild();
+    I0.setKeys(keys); I1.setKeys(keys); IX.setKeys(keys); I1o.setKeys(keys); I0.rebuild(); I1.rebuild(); IX.rebuild(); I1o.rebuild();
     const a = I0.coll(), b = I1.coll(), bx = IX.coll();
     if (a !== I0.bld()) offSame = false;   // 되돌림 판의 벽 질의 격자 = 옛 격자 그 물건
     //   ★벽 질의 종류만 · 이름 순 — 되돌림 판은 옛 격자(밭 섞임)를 물으니 **종류로 걸러** 견준다(술어가 하는 일 그대로 · 원 안은 `queryCircle` 이 거리로 자른다)
@@ -165,10 +166,12 @@ console.log('\n③ 증분(T421) — 켬(그대로 두기 · 통째로) ↔ 끔(�
     for (let k = 0; k < 60; k++) { const pt = pts[Math.floor(rr() * pts.length)], cx = pt[0] + (rr() - 0.5) * 200, cy = pt[1] + (rr() - 0.5) * 200, rad = 20 + rr() * 300;
       const qa = a.queryCircle(cx, cy, rad), ra = key(qa), rb = key(b.queryCircle(cx, cy, rad));
       nQ++; if (ra !== rb) dQ++; if (ra.length) nonEmpty++; if (qa.some((x) => !COLLS.has(x.type))) farmIn++;
-      if (key(bx.queryCircle(cx, cy, rad)) !== ra) dX++; }
+      if (key(bx.queryCircle(cx, cy, rad)) !== ra) dX++;
+      if (key(I1o.coll().queryCircle(cx, cy, rad)) !== rb) dO++; }   // ★[T780] 활성 열 끔 탐침 = 켬(새 기본) 답
   }
   ok(nonEmpty > nQ * 0.1 && I1.S.kept.bld > 200 && I1.S.rebuilt.bld > 20, '③ [상황] 질의가 실제로 걸렸고 켬 판이 **두 길을 다 밟았다**(그대로 둔 판 · 통째로 세운 판)',
     `빈 답 아님 ${nonEmpty}/${nQ} · 둠 ${I1.S.kept.bld} · 세움 ${I1.S.rebuilt.bld}`);
+  ok(dO === 0, '③ [T780] 활성 열 끔 탐침 — `T774_ACTIVE_COL` 끔 판의 답 = 켬(새 기본) 판의 답', `다름 ${dO}/${nQ}`);
   ok(dX > 0, '③ ★미끼 — 켬 판이 통째로 세울 때 새 격자를 **안 채우면** 답이 갈린다(같은 줄에서 같이 선다는 것이 이 절의 뜻)', `다름 ${dX}`);
   ok(offSame && farmIn > 0, '③ 되돌림 판(끔)의 벽 질의 격자는 **옛 격자 그 물건**이다(밭·마당이 섞여 나온다 — 옛 몸통 그대로)', `밭 섞인 질의 ${farmIn}/${nQ}`);
   ok(dQ === 0, '③ ★★★켬(새 격자 · 그대로 두기/통째로) ↔ 끔(옛 격자) — 벽 질의 종류의 답 **무엇이** 비트 동일(술어는 종류로 거르고 칸마다 하나라 차례는 안 문다 — ② 가 술어 글자로 견줬다)', `다름 ${dQ}/${nQ}`);

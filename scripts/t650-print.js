@@ -5,7 +5,7 @@
 //     ⇒ `<T577_OUT>.t650.json` — 날마다 [econ 난수 상태 · 마을마다 지문(곳간 · 인구 · econ 주민 · 몸 좌표 합)] + 그날 시간 읽기 셈(부른 자리별)
 //   ★재는 것(전부 읽기만 — 세계에 0):
 //     · econ 난수 상태 `_seed`(`sim/economy-sim.js` 모듈 안 LCG — 적재 때 이 모듈 끝에 읽기 함수 한 줄을 덧붙여 꺼낸다 · 제품 파일 무변)
-//     · 마을마다(econ `world.villages` · 서버 `state.villages` — `Winter.dailyExtra(day, state.villages)` 가 받는 그 배열):
+//     · 마을마다(econ `world.villages` · 서버 `state.villages` — ★[T779] villages.js 읽기 문으로 날마다 읽는 그 배열):
 //         곳간 = storage 전 칸(1e-6 반올림 · 해시와 칸 그대로) · 금고 = treasury 전 칸(그날 사본 — 객체를 참조로 담으면 끝날 값이 모든 날에 찍힌다) · 인구 = npcs.length · econ 주민 = 주민 칸 해시 · 몸 = 서버 마을의 몸 좌표 합(px) · 금고 · 교역 표 해시 · 마지막 교역일
 //     · 그날 시간 읽기: Date.now · performance.now · process.hrtime · Math.random — 부른 자리(server/·sim/ 파일:줄 첫 프레임)별 셈
 //       (Date.now 는 너무 잦아 1/64 표본으로 자리를 센다 · 총수는 전수)
@@ -78,9 +78,12 @@ if (OUT0) {
         return w; };
     } catch (e) {}
   }
-  // ── 서버 마을 배열 잡기 — 겨울나기 날 문이 받는 그 배열(읽기만)
+  // ── 서버 마을 배열 잡기 — 서버 `state.villages` 그 배열(읽기만)
+  //   ★[T779 2026-10-18] 옛 자리는 겨울나기 날 문(`Winter.dailyExtra(day, state.villages)`)을 감싸 그 인자를 잡았다 — 겨울나기(`server/winter.js`)를 걷어
+  //     그 문이 없다. 같은 배열을 villages.js 의 읽기 문(`__labProbe._t740Probe.setup()` — 인자 없이 부르면 칸을 읽어 돌려줄 뿐 아무것도 안 바꾼다)으로
+  //     장부 하루 문 안에서 날마다 읽는다(같은 때 — 옛 문도 그날 장부 스캔 직전이었다).
   let SV = null;
-  try { const W = require(path.join(ROOT, 'server', 'winter.js')); const de = W.dailyExtra; W.dailyExtra = function (day, vils) { SV = vils; return de.apply(this, arguments); }; } catch (e) {}
+  const _svNow = () => { try { const p = require(VILL).__labProbe; const k = p && p._t740Probe && p._t740Probe.setup(); if (k && Array.isArray(k.villages)) SV = k.villages; } catch (e) {} };
   let Econ = null;
   const H = (x) => crypto.createHash('sha1').update(typeof x === 'string' ? x : JSON.stringify(x)).digest('hex').slice(0, 12);
   const R6 = (v) => (typeof v === 'number' ? Math.round(v * 1e6) / 1e6 : v);
@@ -102,6 +105,7 @@ if (OUT0) {
         if (d !== last) {
           last = d;
           if (!Econ) { try { Econ = require(ECON); } catch (e) { Econ = {}; } }
+          _svNow();   // ★[T779] 서버 마을 배열(위)
           if (WR && wrapWorld) { try { wrapWorld(world); } catch (e) {} }   // 장부가 받은 world(새로 지은 객체여도 여기서 다시 감싼다)
           const V = world.villages || [];
           if (!keys) keys = { econVillage: V[0] ? Object.keys(V[0]).slice(0, 80) : [], econNpc: V[0] && V[0].npcs && V[0].npcs[0] && typeof V[0].npcs[0] === 'object' ? Object.keys(V[0].npcs[0]) : [],

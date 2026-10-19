@@ -72,7 +72,7 @@ const HOSTILES_ON = process.env.ENABLE_WILDLIFE !== '0';
 //     아니면 낡은 좌표 덮어쓰기가 뒷문으로 부활한다(그 갈래를 `test-guest-rejoin` 이 밟는다).
 const SAVE_INTERVAL_MS = Math.max(1000, parseInt(process.env.SAVE_INTERVAL_MS || '', 10) || 30000);
 const SAVE_MOVE_EPS = 2;   // 이만큼도 안 움직였으면 쓸 게 없다(px)
-const Winter = require('./winter');   // ★[T20] 겨울나기 — 초기화는 villages.js(장부 옆), 여기선 납품 훅 한 줄
+// ★[T779 2026-10-18] 겨울나기(T20 `server/winter.js`)는 걷었다 — 여기 있던 납품 훅 한 줄(양 적립)도 같이 걷었다.
 const Bandits = require('./bandits'); // §11 도적 캐논 1파(경제·수명주기 — 소굴·해체 전환·econ 약탈 훅). ENABLE_BANDITS=0 → 완전 no-op, ENABLE_VILLAGES=0이면 자동 휴면
 const TB = require('./tick-budget');   // ★[T687] 한 틱 공용 예산(손잡이 `T687_SHARED_BUDGET` · 끔 = 문마다 제 예산 그대로)
 const Roads = require('./roads'); // §16 답압 길 4파(희소맵·게으른 감쇠·DB 영속·A* 할인). ENABLE_ROADS=0 → 완전 no-op
@@ -1247,7 +1247,7 @@ function _spKeep(qt, seq, j, ref, x, y) {
 //   ★무효화는 한 곳 — 공간 색인이 틱마다 다시 적는다(활성 집합이 갈아 끼워지면 `_t774Src` 가 어긋나 술어로 간다). 새 수 0 · 몸 필드 0.
 //   ★읽는 문 둘: 이동 문 앞 거름(`_wwPreOne`) · 한 바퀴(`_sweepOne`) — 둘 다 `players` 차례다. 이동 문 거름(`_moveOne`)은 자들이 그 글자를 떠 쓰므로(test-move-soa ⑳ · test-fish-act) 안 건드린다.
 //   ⚠결정 문(`npcs` 차례)과 서로 비키기(`sepNpcs` · `npcs` 차례)는 차례가 달라 이 열을 안 읽는다(보고 §2).
-const T774_ACTIVE_COL = process.env.T774_ACTIVE_COL === '1';
+const T774_ACTIVE_COL = process.env.T774_ACTIVE_COL !== '0';   // ★[T780 · PM 10-18] 켬 기본(같은 값 · 증인 바이트 같음) · 되돌림 `=0`
 let _t774X = T774_ACTIVE_COL ? new Float64Array(1024) : null, _t774Y = T774_ACTIVE_COL ? new Float64Array(1024) : null, _t774N = 0, _t774Src = null;
 const _t774Stat = { hit: 0, miss: 0 };
 function _t774Put(i, p) {
@@ -4979,7 +4979,7 @@ Membership.init({ SimVillages, ZONE_ID, send, players, gameDay: gameDayNow,
   afterWithdraw: (player, r) => _afterWithdraw(player, r),
   donate: (player, vid, want) => tryVillageDonate(player, vid, want),   // ★[T769] `/기부` 의 실물 길(켬에서만 불린다)
   //   ★[T732] 곳간 문 감싸개 — 켬일 때만 준다(끄면 이 칸이 없다 = membership 이 종전 그대로 부른다). UI · 채팅 인출이 다 이 문을 지난다.
-  ...(process.env.T732_MOMENT_LOT === '1' ? { wrapWithdraw: (player, fn) => _t732Wrap(player, fn) } : {}) });
+  ...(process.env.T732_MOMENT_LOT !== '0' ? { wrapWithdraw: (player, fn) => _t732Wrap(player, fn) } : {}) });   // ★[T778] 켬 기본
 
 // ★[T45 2026-09-02] 사유지 v2 — **이미 있는 것만 넘긴다**(사본 금지).
 //   ⚠`gameDay` 를 일부러 안 넘긴다 — 부재 시계는 **실시간**이고 세계의 시간이 아니다(claims.js 제3 규약).
@@ -6793,7 +6793,7 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'village_board') tryVillageBoard(player, msg.vid);
   else if (msg.type === 'village_chronicle') tryVillageChronicle(player, msg.vid, msg.year);   // ★[T18] 연대기
   else if (msg.type === 'village_deliver') tryVillageDeliver(player, msg.vid, msg.item, msg.want);
-  else if (msg.type === 'village_withdraw') tryVillageWithdraw(player, msg.vid, msg.res, msg.qty);   // ★[T11] 곳간 인출(소속만)
+  else if (msg.type === 'village_withdraw') tryVillageWithdraw(player, msg.vid, msg.res, msg.qty);   // ★[T11] 곳간 인출 · ★[T779] 촌장만
   else if (msg.type === 'village_donate' && T769) tryVillageDonate(player, msg.vid, msg.want);   // ★[T769] 기부 — 누구나 · 상시 · 받는 것 없음(켬에서만)
   else if (msg.type === 'onboarding_state' || msg.type === 'onboarding_greet' || msg.type === 'onboarding_day') Onboarding.handleMsg(player, msg);   // ★[온보딩 v2] 대본 상태·촌장 첫 마디·하루 정산
   else if (msg.type === 'village_trade') tryVillageTrade(player, msg.vid, msg.numeraire);                     // ★[거래소] 시세표(T69 기준 품목)
@@ -7584,7 +7584,7 @@ function doCook(player, recipeName) {
 //     수령일로 잡으면 건조대가 **무한 정지 상자**가 된다(걸어 두면 안 상하는 창고).
 //     완성일로 잡으면 "말렸으면 가져가라"가 성립한다 — 그게 보존식이지 마법 상자가 아니다.
 //   ⇒ 이 차이는 알고 낸 것이고 `회부_부패_다음층.md` D 에 적었다.
-// ★★[T767 2026-10-16 · 손잡이 `T767_PRESERVE_CARRY=1` · 끔 = 위 그대로] 재민 10-15: **리셋이 아니라 이어받기** — 산출 = 넣은 개수 ·
+// ★★[T767 2026-10-16 · 손잡이 `T767_PRESERVE_CARRY` · ★[T778] 켬 기본(`=0` 끔) · 끔 = 위 그대로] 재민 10-15: **리셋이 아니라 이어받기** — 산출 = 넣은 개수 ·
 //   산출 로트는 다 된 순간(종전 그 자리)에 **넣은 레코드의 신선도**로 서서 보존식 곡선으로 늙는다(`Spoil.carryOf` · `_t767Land`).
 function doPreserve(player, recipeKey, amount) {
   // ★[T59] `from` 이 어종 집합이면 **손에 있는 것 하나로 풀어** 받는다(정본이 고른다 · 주사위 0).
@@ -8240,7 +8240,7 @@ function _enqueueCraft(player, fac, kind, inst, label, skill) {
   sendCraftQueue(player);
   return r;
 }
-// ★★[T767 2026-10-16 · 손잡이 `T767_PRESERVE_CARRY=1`(spoil.js) — 끔이면 주문에 `lotFresh` 칸이 안 생겨 이 함수를 아무도 안 부른다(main 바이트)]
+// ★★[T767 2026-10-16 · 손잡이 `T767_PRESERVE_CARRY` · ★[T778] 켬 기본(`=0` 끔)(spoil.js) — 끔이면 주문에 `lotFresh` 칸이 안 생겨 이 함수를 아무도 안 부른다(main 바이트)]
 //   **보존식 산출 로트 = 넣은 레코드마다 그 신선도에서 시작.** 다 된 순간(`_d` · 켬 T732 면 순간 `_kDone`)에 서고, 노출은 산출 품목 곡선 위
 //   같은 신선도의 자리(`Spoil.carryExposure`) — 그 뒤엔 보존식 보관일로 늙는다. 꽂기는 T705 상한 몫 줄과 같은 길(`Lots.moveIn` · 같은 순간 ·
 //   같은 노출만 합친다 — 신선도가 다른 레코드는 안 섞인다 · 평균 0). 날 문법(T732 끔)이면 `t = 다 된 날` 로 서서 그날부터 늙는다(종전 `note` 와 같은 뜻).
@@ -8445,7 +8445,7 @@ function __e2eFreezeZoneDay(on) {
   else if (_e2eDayFrozen !== null) { _e2eDayOffset += _rawGameDay() - _e2eDayFrozen; _e2eDayFrozen = null; }
   return { frozen: _e2eDayFrozen !== null, day: zoneGameDay() };
 }
-// ★★[T732 2026-10-14 · 손잡이 `T732_MOMENT_LOT=1` — 없음·빈 값·0 = 끔 = 시계를 안 꽂는다(로트·곳간 장부가 날 문법 그대로 · main 바이트)]
+// ★★[T732 2026-10-14 · 손잡이 `T732_MOMENT_LOT` — ★[T778] 켬 기본 · `=0` 만 끔 = 시계를 안 꽂는다(로트·곳간 장부가 날 문법 그대로 · main 바이트)]
 //   **얻은 순간의 시계 = 절대 게임 ms.** `zoneGameDay` 와 같은 산수(세계 기점 · 얼림 · 얼었던 날수)를 ms 로 — 수를 두 벌로 적지 않는다.
 //   얼면 그 날 0시에 멈춘다(녹은 뒤 순간이 뒤로 가지 않는다 — 얼었던 날수는 정수라 녹은 순간 ≥ 그 날 0시).
 function zoneGameMsAt(realMs) {
@@ -8453,7 +8453,7 @@ function zoneGameMsAt(realMs) {
   return (Number(realMs) - ((WORLD && WORLD.worldEpoch) || 0)) - _e2eDayOffset * _SEASON_DAY_MS;
 }
 function zoneGameMs() { return zoneGameMsAt(Date.now()); }
-const T732_MOMENT = process.env.T732_MOMENT_LOT === '1';   // 시계는 `Lots` 를 부른 줄 바로 뒤에서 꽂는다(아래 `require('./lots')`)
+const T732_MOMENT = process.env.T732_MOMENT_LOT !== '0';   // ★[T778] 켬 기본 · 되돌림 `=0` · 시계는 `Lots` 를 부른 줄 바로 뒤에서 꽂는다(아래 `require('./lots')`)
 // ★★[T1 §2-④ 2026-09-01] **이벤트 루프 지연** — RTT 스파이크의 직접 원인을 서버 쪽에서 그대로 재는 자.
 //   `econ_day 2000ms` 는 "그 일이 2초 걸렸다"만 말한다. 루프가 실제로 **얼마나 막혔나**는 이게 답한다.
 //   조각내기가 통했다면 총 일 시간은 그대로여도 **p99 가 내려간다** — 그게 이 배치의 판정선이다.
@@ -11656,13 +11656,15 @@ function tryVillageWelcome(player, buildingId, on) {
 //       ③ 낸 개체를 무게 장부에서 뺀다(`Carry.takeKg` — 환산이 `peekKg` 로 본 그 개체 · 게시판 납품과 같은 뒷정리). 새 수 0 · 새 함수 0.
 const T725_HALL = process.env.T725_HALL_UNITS !== '0';   // ★[PM 10-14] 켬 기본(왕복 불어남 ×102 고침) · 되돌림 `=0`
 // ★★[T769 2026-10-15 · 재민 판정] *"기부는 가능해. 마음대로 빼는 건 안 돼. 그러니까 거래와 기부를 따로 둬야 하고, 관리자만 뺄 수 있어."* ·
-//   *"겨울 프로젝트 없어. 기부는 상시 되고 보상도 없음."* — 손잡이 `T769_DONATE`('1' 만 켬 · 없음 · 다른 값 = 끔 = main 바이트).
+//   *"겨울 프로젝트 없어. 기부는 상시 되고 보상도 없음."* — 손잡이 `T769_DONATE`(T769 땐 '1' 만 켬 — ★T779 에서 뒤집었다: 아래).
 //   켬: ① 회관 넣기 = **기부** — 관리자 게이트를 뗀다(근접 200 그대로 · 누구나) · NPC 마을(회관 없음)은 게시판과 같은 근접 게이트
 //       (`villageWithdrawGate`)로 받는다(`/기부` · 거래소 패널 한 줄 → `tryVillageDonate`) · 실물 길은 아래 `tryVillageDeposit` 본문 하나
 //       (T725 상한 것 거절 · 열량 단위 · T732 곳간 문 감싸개 그대로) · **기여 · 보상 · 대가 0**(기여는 지금처럼 게시판 납품만 센다).
 //     ② 거래소(맞바꿈) · 게시판(의뢰 · 보상)은 무접촉 — 말도 섞지 않는다("기부 … 받는 것 없음").
 //     ③ 꺼내기 = 촌장만(`membership.withdrawChief`) · ④ 겨울 프로젝트 0(`winter.js` off 와 같은 길).
-const T769 = process.env.T769_DONATE === '1';
+// ★★[T779 2026-10-18] **켬 기본** — 되돌림 `T769_DONATE=0` 이 닫는 것은 **기부 문 셋**(회관 관리자 게이트 · `/기부` · 거래소 패널 한 줄 · 기부 말)뿐이다.
+//   꺼내기는 손잡이와 상관없이 **촌장만**(옛 기여 한도 인출 `limitOf` · `WD_*` 는 걷었다 — 끄더라도 돌아올 길이 없다) · 겨울 프로젝트는 걷었다(`winter.js` 없음).
+const T769 = process.env.T769_DONATE !== '0';
 function tryVillageDeposit(player, buildingId, want, _donVil) {
   let vil = null;
   if (_donVil) vil = _donVil;   // ★[T769] 기부 문(`tryVillageDonate` · 켬에서만) — 근접 게이트를 이미 지난 마을. 아래 실물 길은 회관과 **같은 본문**(사본 0)
@@ -11743,7 +11745,7 @@ function tryVillageBrief(player, vid) {
   }
   send(player.ws, { type: 'village_brief', brief: r });
 }
-// ★★[T732 2026-10-14 · 손잡이 `T732_MOMENT_LOT=1` — 없음·빈 값·0 = 끔 = 아래 T732 문 줄들이 아무것도 안 한다(main 바이트)] **곳간 문 — 사람 ↔ 곳간 로트.**
+// ★★[T732 2026-10-14 · 손잡이 `T732_MOMENT_LOT` — ★[T778] 켬 기본 · `=0` 만 끔 = 아래 T732 문 줄들이 아무것도 안 한다(main 바이트)] **곳간 문 — 사람 ↔ 곳간 로트.**
 //   T716 ⑤ 임시 고침(넣은 몫만 마을 곁 장부 `econ._t716Lots` · 꺼낼 때 대표 품목 k 개를 넣은 물건으로 갈아 끼움 · 손잡이 `T716_GRANARY_AGE`)을 **걷었다**(족보 631 ①).
 //   본 구현: 곳간 칸 전부가 얻은 순간 로트 장부다(`granary-lots.js` — econ 이 만든 것 · 캐러밴 · 전쟁 짐 · 사람이 넣은 것 · 마을이 먹은 것이 다 지난다).
 //   문(회관 넣기 · 거래소 · 게시판 납품과 보상 · 겨울 몫 · 꺼내기 · 마을 밥 · 위세품 값)은 **정본 함수 그대로** 몇 개 · 몇 단위인지를 정하고,
@@ -11872,9 +11874,9 @@ function _afterWithdraw(player, r) {
   sendInventory(player);
   const _sw768 = !!(_g732 && Object.values(_g732.got || {}).some((g) => g && g.swap));   // ★[T768] 넣은 물건 그대로 나온 몫이 있다(켬 · 없으면 종전 글자)
   send(player.ws, { type: 'notice', text: `🏘️ ${r.name} 곳간에서 ${ITEM_LABEL_SERVER[r.item] || r.item} ${r.qty}${_sw768 ? ' 몫(넣은 물건 그대로)' : ''} 꺼냈다`
-    + (r.limit == null ? ' — 촌장 몫(한도 없음)' : ` — 오늘 남은 몫 ${r.remain}/${r.limit}`)   // ★[T769] 켬 = 촌장 꺼내기 · 끔 = 종전 그대로
+    + ' — 촌장 몫(한도 없음)'   // ★[T769] 촌장 꺼내기 · ★[T779] 옛 "오늘 남은 몫 n/m"(기여 한도)은 걷었다
     + (_g732 ? _t732GotLine(player, _g732) : '') });
-  // ★거래소 창이 열려 있으면 **그 창을 다시 보내 준다** — 방금 곳간이 줄었고 남은 몫도 줄었다
+  // ★거래소 창이 열려 있으면 **그 창을 다시 보내 준다** — 방금 곳간이 줄었다
   //   (거래소 실행이 시세를 다시 보내 주는 것과 같은 규약: 화면이 낡은 값을 들고 있으면 그게 거짓말이다).
   try {
     const _v = player._memberNearVid;
@@ -11884,37 +11886,27 @@ function _afterWithdraw(player, r) {
     }
   } catch (e) {}
 }
-// ★[T11] 거래소 패널이 그릴 소속 한 줄. 곳간 재고는 **정본 함수**에게 묻는다(클라 재계산 0).
+// ★[T11] 거래소 패널이 그릴 소속 한 줄 — 값은 서버가(클라 재계산 0).
+//   ★[T779] 옛 "곳간 몫"(기여 한도 · 곳간 식량 등가 `stock`)은 걷었다 — 줄은 소속 · 촌장 판정 · 기부 품목(켬)이다.
 function _memberLine(player, vid) {
   try {
     const g = SimVillages.villageWithdrawGate(vid | 0, player.x, player.y);
-    // ★[T20-ⓑ 재민 확정 2026-09-03] 패널이 보여 주는 "곳간 몫"도 **식량 등가**다(보존식 포함) —
-    //   겨울에 곡식 칸만 보면 곳간이 빈 것처럼 보이고, 그러면 화면이 거짓말을 한다.
-    //   값은 여전히 **서버 정본 함수**가 낸다(클라 재계산 0 · 새 규칙 0).
-    const stock = g.err ? 0
-      : Math.max(SimVillages.playerVillageWithdrawStock(g.vil, 'food'),
-                 (SimVillages.playerVillageWithdrawStockFoodEq ? SimVillages.playerVillageWithdrawStockFoodEq(g.vil) : 0));
-    const st = Membership.publicState(player, stock, g.err ? null : g.vil);   // ★[T769] 마을을 넘긴다(켬에서만 읽는다 — 촌장 판정 캐시)
-    st.stock = stock;
-    return st;
+    return Membership.publicState(player, g.err ? null : g.vil);   // ★[T769] 마을을 넘긴다(촌장 판정 캐시)
   } catch (e) { return null; }
 }
+// ★[T769] 꺼내기 = 촌장만 — 판정이 그 자리에서 서면 동기(종전 문과 같은 때) · 길드 촌장을 central 에 물으면 그 뒤 · 실물 길 · 뒷정리는 같은 정본.
+//   ★[T779] 손잡이 밖이다(옛 소속 · 기여 한도 갈래는 걷었다).
 function tryVillageWithdraw(player, vid, res, qty) {
-  if (T769) {   // ★[T769] 켬 = 촌장만 — 판정이 그 자리에서 서면 동기(종전 문과 같은 때) · 길드 촌장을 central 에 물으면 그 뒤 · 실물 길 · 뒷정리는 같은 정본
-    const fin = (r) => {
-      if (!r || !r.ok) { send(player.ws, { type: 'notice', text: `🏘️ ${(r && r.err) || '곳간을 열지 못했다'}` }); return r; }
-      _afterWithdraw(player, r);
-      return r;
-    };
-    const r = Membership.withdrawChief(player, vid | 0, res, qty);
-    if (r && typeof r.then === 'function') {
-      return r.then(fin).catch(() => { send(player.ws, { type: 'notice', text: '🏘️ 곳간을 열지 못했다 — 잠시 뒤 다시' }); return null; });
-    }
-    return fin(r);
+  const fin = (r) => {
+    if (!r || !r.ok) { send(player.ws, { type: 'notice', text: `🏘️ ${(r && r.err) || '곳간을 열지 못했다'}` }); return r; }
+    _afterWithdraw(player, r);
+    return r;
+  };
+  const r = Membership.withdrawChief(player, vid | 0, res, qty);
+  if (r && typeof r.then === 'function') {
+    return r.then(fin).catch(() => { send(player.ws, { type: 'notice', text: '🏘️ 곳간을 열지 못했다 — 잠시 뒤 다시' }); return null; });
   }
-  const r = Membership.withdraw(player, vid | 0, res, qty);
-  if (!r.ok) { send(player.ws, { type: 'notice', text: `🏘️ ${r.err}` }); return; }
-  _afterWithdraw(player, r);
+  return fin(r);
 }
 function tryVillageBoard(player, vid) {
   if (!SimVillages.villageBoard) return;
@@ -11994,7 +11986,7 @@ function tryVillageTrade(player, vid, numeraire) {
   const r = SimVillages.villageTradeBoard(vid | 0, player.x, player.y, player.inventory, numeraire);
   if (r.err) { send(player.ws, { type: 'notice', text: `🏪 ${r.err}` }); return; }
   player._memberNearVid = vid | 0;                      // ★[T11] 채팅 `/인출` 이 어느 마을인지
-  r.member = _memberLine(player, vid | 0);              // ★[T11] 소속·오늘 남은 몫 — **기존 payload 한 줄**(새 창구 0)
+  r.member = _memberLine(player, vid | 0);              // ★[T11] 소속 한 줄 — **기존 payload 한 줄**(새 창구 0) · ★[T779] 촌장 판정 · 기부 품목(켬)
   send(player.ws, { type: 'village_trade', trade: r });
 }
 // ★교환 — 서버 권위. 비율도 상한도 서버가 정하고, 클라는 "이거 내고 저거 받겠다"만 말한다.
@@ -12038,12 +12030,11 @@ function tryVillageDeliver(player, vid, item, want) {
   sendInventory(player);
   const gave = Object.entries(r.taken || {}).map(([k, q]) => `${ITEM_LABEL_SERVER[k] || k} ${q}`).join(' · ');
   const got = r.rew > 0 ? ` → ${ITEM_LABEL_SERVER[r.rewItem] || r.rewItem} ${r.rew}` : '';
-  send(player.ws, { type: 'notice', text: (r.winter ? `🧊 ${r.name} 올겨울 몫 — ${gave}` :   // ★[T20] 겨울 몫은 보상이 없다(그 대가는 겨울 보상)
-    `📋 ${r.name}에 납품 — ${gave}${got}${r.refused > 0 ? ` (${r.refused}개는 남은 몫을 넘어 돌려받음)` : ''}`) + (_g732 ? _t732GotLine(player, _g732) : '') });
+  send(player.ws, { type: 'notice', text: `📋 ${r.name}에 납품 — ${gave}${got}${r.refused > 0 ? ` (${r.refused}개는 남은 몫을 넘어 돌려받음)` : ''}`
+    + (_g732 ? _t732GotLine(player, _g732) : '') });   // ★[T779] 겨울 몫 알림(T20 "올겨울 몫")은 걷었다
   Onboarding.onDeliver(player, r, vid | 0);   // ★[온보딩 v2] 누적 기여(=T11 이 재사용할 하나의 카운터)·곳간 이펙트·훅 대사·빈터 권리
   //   ★[T785] 켬 — 가입 문이 '초대제'인 마을은 기여로 권하지 않는다(부름 `/초대` → `/수락` 만 · 문은 마을 칸)
-  if (!(VillageKin.ON && VillageKin.joinModeOfVid(vid | 0) === 'invite')) Membership.onDeliver(player, r, vid | 0);   // ★[T11] **그 다음**이다 — 기여가 오른 뒤라야 소속 문턱을 정확히 본다
-  Winter.onDeliver(player, r, vid | 0);      // ★[T20] 겨울나기 — **양**을 센다(횟수는 위 온보딩 정본 하나다)
+  if (!(VillageKin.ON && VillageKin.joinModeOfVid(vid | 0) === 'invite')) Membership.onDeliver(player, r, vid | 0);   // ★[T11] **그 다음**이다 — 기여가 오른 뒤라야 소속 문턱을 정확히 본다 · ★[T779] 겨울나기 셈(`Winter.onDeliver`)은 걷었다
   // 낸 즉시 게시판이 갱신된다(다 찼으면 목록에서 빠진다)
   const b = SimVillages.villageBoard(vid | 0, player.x, player.y);
   if (b && b.ok) send(player.ws, { type: 'village_board', board: b });

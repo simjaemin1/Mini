@@ -21,11 +21,16 @@
 // ★새 패널 0. 전이 제안·수락·탈퇴·추방은 **이미 있는 통로**로만 간다:
 //   제안·통보 = `notice`(촌장의 말) · 수락·탈퇴·추방 = **채팅 명령**(클라 무접촉) ·
 //   인출 = 채팅 명령 + 거래소 패널 한 줄(P50).
+//
+// ★★[T779 2026-10-18 · 재민 10-15 "마음대로 빼는 건 안 돼 · 관리자만 뺄 수 있어" · "겨울 프로젝트 없어"]
+//   **꺼내기 = 촌장 한 사람**(T769 판정 그대로)이 이제 유일한 길이다 — 걷은 것: 마을 사람의 기여 한도 인출(`limitOf` · `remainOf` ·
+//   `WD_PER` · `WD_FRAC` · `WD_MIN` · 하루 몫 장부 `wdDay` · `wdUsed`) · 겨울 달성 보상(`Winter.bonusOf` — `winter.js` 째) ·
+//   길드 곳간 잠금(`granaryOpen` · `/곳간 열기|잠금` — 촌장 혼자 꺼내니 정할 문이 없다) · 마을 사람에게 가던 "/인출" 말.
+//   소속 · 빈터 · 추방 · 기여 계량기는 그대로다(소속은 이제 곳간 열쇠가 아니라 그 마을 사람이라는 표지다).
 
 const path = require('path');
 const Events = require(path.join(__dirname, 'events'));
 const Onb = require(path.join(__dirname, 'onboarding'));
-const Winter = require(path.join(__dirname, 'winter'));   // ★[T20] 겨울나기 달성 보상(그 해 한정 가산)
 const ItemLabel = require(path.join(__dirname, 'itemlabel'));   // ★[T159] 재화의 우리말 — 표는 여기 하나(사본 0)
 const VillageKin = require(path.join(__dirname, 'village-kin'));   // ★[T785] 마을 칸(촌장 · 곳간 문) — 켬에서만 읽는다(끔 = 이 줄들 무동작)
 
@@ -33,29 +38,24 @@ const _num = (k, d) => { const v = parseFloat(process.env[k]); return Number.isF
 const CFG = {
   // 소속 문턱 — K-2 확정(12). 빈터(3)는 온보딩 정본(`ONB_LOT_AFTER`)이 갖는다.
   N_MEMBER: Math.max(1, _num('MEMBER_N', 12) | 0),
-  // 일일 인출 한도 = min(기여 × 상수, 곳간의 작은 비율). **기여에 대해 단조**다.
-  //   ⚠지금은 **손잡이**다(§10 균형 실측은 T20 구현의 몫). 여기서 정한 것은 곡선의 **모양**이다:
-  //     기여가 늘면 늘고, 곳간이 비면 줄고, 아무리 기여해도 곳간을 통째로는 못 비운다.
-  WD_PER: _num('MEMBER_WD_PER', 0.25),
-  WD_FRAC: _num('MEMBER_WD_FRAC', 0.02),
-  // ★마을 사람의 **바닥 몫**. 실측에서 나왔다: 문턱을 낮춰 켠 실클라에서 갓 들어온 사람의 한도가
-  //   0 이었다 — 곳간을 못 여는 사람은 마을 사람이 아니다. 소속의 의미가 곧 이 한 줄이다.
-  //   ⚠곳간이 비면 이 바닥도 소용없다(아래 `min`) — 없는 것을 꺼낼 수는 없다.
-  WD_MIN: Math.max(0, _num('MEMBER_WD_MIN', 1) | 0),
-  // ★[T159] 길드 곳간 문의 캐시 수명 — **T128 소개문 캐시와 같은 값**(`guild.js INTRO_TTL_MS`).
+  // ★[T779] 일일 인출 한도 손잡이 셋(`MEMBER_WD_PER` · `MEMBER_WD_FRAC` · `MEMBER_WD_MIN`)은 걷었다 — 꺼내기는 촌장만 · 한도 없음.
+  // ★[T159] 길드 표 캐시 수명 — **T128 소개문 캐시와 같은 값**(`guild.js INTRO_TTL_MS`).
   //   새 수가 아니라 같은 종류의 창을 같은 크기로 쓴 것이다(둘 다 "길드 표를 얼마나 자주 다시 묻나").
+  //   ★[T769 · T779] 지금 이 창을 쓰는 것은 길드 촌장(`leader_id`) 캐시 하나다(길드 곳간 잠금은 걷었다).
   GRAN_TTL_MS: _num('MEMBER_GRAN_TTL_MS', 60000),
 };
 
 // ★★[T769 2026-10-15 · 재민 판정] *"기부는 가능해. 마음대로 빼는 건 안 돼. 그러니까 거래와 기부를 따로 둬야 하고, 관리자만 뺄 수 있어."*
-//   손잡이 `T769_DONATE`('1' 만 켬 · 없음 · 다른 값 = 끔 = main 바이트). 켬이면:
+//   손잡이 `T769_DONATE`(T769 땐 '1' 만 켬 — ★T779 에서 뒤집었다: 아래). 켬이면:
 //   ⓐ 꺼내기 = **촌장 한 사람**(소속 게이트 대신 — 길드 마을 = central `GET /tribe/:id` 의 `leader_id` · 길드 칸 없는 사람 마을 = 창설자 `econ.founder` ·
 //      NPC 마을 = 사람 꺼내기 0) · 기여 한도(`limitOf` · `Winter.bonusOf`)는 안 쓴다 — 남는 막음은 있던 것만(근접 · 굶는 마을 · 재고) ·
 //      central 을 못 물으면 **막는다**(빼는 문은 닫힌 쪽이 안전 — 곳간 짓기의 관용과 반대).
 //   ⓑ `/기부 <품목> [양]` — 누구나 · 상시 · 보상 0 · 기여 0(실물 길은 존의 회관 넣기와 같은 문 · `H.donate`).
 //   ⓒ `/곳간 열기|잠금` 은 켬에서 한 줄로 답한다(촌장 혼자 꺼내니 문을 정할 일이 없다) · 마을 사람에게 가던 "곳간을 열어 두겠네" 말은 뺀다.
 //   소속 · 빈터 · 추방은 무접촉.
-const T769 = process.env.T769_DONATE === '1';
+// ★★[T779 2026-10-18] **켬 기본**(`'0'` 만 끔). ⓐ ⓒ 는 손잡이 밖이 됐다(옛 기여 한도 인출 · 길드 곳간 잠금을 걷었다 — 끄더라도 돌아올 길이 없다).
+//   손잡이가 이제 가르는 것 = ⓑ 기부(`/기부` 명령 · 거래소 패널의 기부 품목 칸 · 존의 회관 관리자 게이트 · 기부 문 · 기부 말).
+const T769 = process.env.T769_DONATE !== '0';
 
 let H = null;
 function init(host) { H = host || {}; return true; }
@@ -67,7 +67,7 @@ function _send(player, text) { try { if (H && H.send && player && player.ws) H.s
 function contribOf(playerId) { try { return Onb.stateOf(playerId).contrib | 0; } catch (e) { return 0; } }
 
 // ── 소속 상태 — 몸에 실린다 ──────────────────────────────────────────────────
-//   { zone, vid, name, since, wdDay, wdUsed }
+//   { zone, vid, name, since } — ★[T779] 하루 몫 장부(`wdDay` · `wdUsed`)는 걷었다(옛 몸에 남은 칸은 안 읽는다).
 function memberOf(player) {
   const m = player && player.member;
   if (!m || m.vid == null) return null;
@@ -89,29 +89,8 @@ function _villageName(vid) {
   return '';
 }
 
-// ── 인출 한도 — f(기여) 단조 · 곳간의 작은 비율로 덮인다 ─────────────────────
-//   ★`Events.payableQty` 를 부른다(사본 금지 — 게시판 보상이 쓰는 그 함수다).
-//   ★인자는 **마을 사람의 기여**다(비소속은 여기까지 오지 않는다 — `withdraw` 가 먼저 막는다).
-//   ★★[T20 2026-09-02] 세 번째 인자 `vid` — **그 마을이 지난 겨울을 넉넉히 났으면** 한 몫 더 얹는다.
-//     값도 만료도 이 파일이 갖지 않는다(`server/winter.js` 하나) — 여기 있는 건 **더한다**는 사실뿐이다.
-//     ⚠`min(·, byStock)` 은 그대로다: 마을은 없는 걸 못 준다(물리 상한은 보상보다 위다).
-//     ⚠`vid` 를 안 주면 종전과 **비트 동일**이다(가산 0) — 옛 호출자를 깨지 않는다.
-function limitOf(contrib, stock, vid) {
-  const k = Math.max(0, contrib | 0);
-  const byContrib = Math.max(CFG.WD_MIN, Math.floor(k * CFG.WD_PER)) + (vid == null ? 0 : Winter.bonusOf(vid));
-  const byStock = Events.payableQty(stock, CFG.WD_FRAC);
-  return Math.max(0, Math.min(byContrib, byStock));
-}
-function remainOf(player, stock) {
-  const m = memberOf(player);
-  if (!m) return 0;
-  const lim = limitOf(contribOf(player.playerId), stock, m.vid);   // ★[T20] 겨울 보상은 **그 마을** 것이다
-  const d = _day();
-  // ★[T59] 하루 몫은 **econ 단위**로 센다(낱개가 아니다) — 열량 환산 뒤 둘은 더 이상 1:1 이 아니다.
-  //   `| 0` 을 쓰면 0.93단위 인출이 0 으로 세어져 한도가 사실상 무한이 된다.
-  const used = ((m.wdDay | 0) === d) ? Math.max(0, Number(m.wdUsed) || 0) : 0;
-  return Math.max(0, lim - used);
-}
+// ── ★[T779] 인출 한도(`limitOf` · `remainOf` — f(기여) 단조 · 곳간의 작은 비율 · 겨울 보상 가산)는 걷었다 ─────────
+//   꺼내기는 촌장 한 사람이고 한도가 없다(T769 판정) — 남는 막음은 근접 · 굶는 마을 · 재고(아래 `withdraw`).
 
 // ── 전이 — 납품 정본 훅 뒤에서 한 줄로 불린다(`zone.js tryVillageDeliver`) ────
 //   ★온보딩의 `onDeliver` **다음**에 온다: 기여가 오른 뒤라야 문턱을 정확히 본다.
@@ -132,7 +111,7 @@ function onDeliver(player, r, vid) {
 // ── 수락 · 탈퇴 · 추방 ───────────────────────────────────────────────────────
 //   ★소속을 앉히는 **한 줄**. `accept`(남의 마을에 드는 문)와 `seatFounder`(세운 사람)가 같이 쓴다 — 사본 0.
 function _seat(player, v) {
-  player.member = { zone: (H && H.ZONE_ID) || null, vid: v | 0, name: _villageName(v), since: _day(), wdDay: -1, wdUsed: 0 };
+  player.member = { zone: (H && H.ZONE_ID) || null, vid: v | 0, name: _villageName(v), since: _day() };   // ★[T779] 하루 몫 장부 칸 0
   return player.member;
 }
 function accept(player, vid) {
@@ -148,7 +127,7 @@ function accept(player, vid) {
 // ★★[T197 2026-09-12 · PM 판정 · 재민 거부권] **창설 = 소속.**
 //   기여 12(K-2)는 **남의 마을에 들어가는 문**이다. 세운 사람은 그 문을 지날 이유가 없다 —
 //   여태는 제 마을 곳간을 못 열었다(`isMemberHere` 가 먼저 막는다). 문턱을 **우회하지 않는다**:
-//   기여를 지어내지 않고(`contribOf` 무변 · 한도는 여전히 `limitOf(기여)`가 정한다) 소속만 앉힌다.
+//   기여를 지어내지 않고(`contribOf` 무변) 소속만 앉힌다. ★[T779] 곳간은 이제 소속이 아니라 촌장 판정이 연다(창설자 = 촌장).
 //   ⚠이미 다른 마을 사람이어도 **옮긴다** — 한 사람은 한 마을(K-1)이고, 제가 세운 마을을 두고
 //     남의 마을 사람으로 남는 쪽이 더 이상하다. 말은 안 보탠다(건립 알림이 이미 있다 · 새 메시지 0).
 // ★★[T202 2026-09-12] **길드원은 제 길드 마을 사람이다** — 마을이 길드 것이면(T197) 그 길드의
@@ -221,68 +200,32 @@ function expel(byPlayer, targetPlayer) {
 }
 
 // ── 인출 — 곳간에서 꺼낸다 ───────────────────────────────────────────────────
-//   ★실물 이동은 `villages.playerVillageWithdraw`(납품의 역연산) 하나다. 여기서 정하는 것은
-//     **누가·얼마나**이고, 그 둘 다 기여의 함수다.
-//   반환: { ok, res, item, qty, stockAfter, remain } · 막을 이유가 있으면 { ok:false, err }
+//   ★실물 이동은 `villages.playerVillageWithdraw`(납품의 역연산) 하나다. 여기서 정하는 것은 **누가**뿐이다 —
+//     촌장(아래 `withdrawChief` 가 판정해 `chiefOk` 로 넘긴다 · T769). 판정을 안 거쳐 온 부름은 막는다.
+//   ★[T779] **얼마나 = 한도 없음** — 옛 기여 한도 · 하루 몫 장부 · 겨울 보상 · 길드 곳간 잠금은 걷었다.
+//     남는 막음은 있던 것만: 근접(`villageWithdrawGate`) · 굶는 마을(`villageFamine`) · 재고(`playerVillageWithdraw`).
+//   반환: { ok, name, chief, res, item, qty, units, stockAfter } · 막을 이유가 있으면 { ok:false, err }
 function withdraw(player, vid, res, qty, chiefOk) {
   if (!ready()) return { ok: false, err: '아직 준비되지 않았다' };
   const V = H.SimVillages;
   if (!V || !V.villageWithdrawGate || !V.playerVillageWithdraw) return { ok: false, err: '곳간을 찾지 못했다' };
-  //   ★[T769] 켬 = 촌장만 — 판정은 `withdrawChief`(길드 촌장은 central 을 물을 수 있다)가 먼저 하고 `chiefOk` 로 넘긴다. 안 거쳐 온 부름은 막는다.
-  if (T769) { if (chiefOk !== true) return { ok: false, err: '곳간은 촌장만 꺼낸다' }; }
-  else if (!isMemberHere(player, vid)) return { ok: false, err: '이 마을 사람이 아니다 — 곳간은 마을 사람만 연다' };
+  if (chiefOk !== true) return { ok: false, err: '곳간은 촌장만 꺼낸다' };
   const g = V.villageWithdrawGate(vid | 0, player.x, player.y);   // ★브리핑·게시판과 **같은 근접 게이트**
   if (g.err) return { ok: false, err: g.err };
   // ★★[T159] **굶는 마을은 곳간을 안 연다.** 판정은 엔진이 매일 적어 둔 것을 읽는다(`villageFamine`).
-  //   왜 여기인가: 한도(기여)와 재고(실물) 위에 **마을의 형편**이 하나 더 있다. 곳간이 남아 있어도
-  //   그 남은 것이 마을을 겨울까지 살릴 몫이면 사람에게 내주는 것이 마을을 죽인다.
+  //   곳간이 남아 있어도 그 남은 것이 마을을 겨울까지 살릴 몫이면 사람에게 내주는 것이 마을을 죽인다 — 촌장에게도 그대로다.
   if (V.villageFamine && V.villageFamine(g.vil)) {
     return { ok: false, err: '마을이 굶고 있다 — 오늘은 곳간을 열지 않는다' };
   }
-  // ★★[T159] 길드 마을이면 **길드장이 문을 잠글 수 있다**(T128 `join_mode` 와 같은 문법).
-  //   못 물어봤으면 열린 것으로 본다 — central 이 잠깐 안 뜬 것을 사람의 죄로 삼지 않는다.
-  //   ★[T197] `_tribeId` 의 집은 `vil` 이다(`vil.econ` 이 아니다 — `zone.introOfVillage` 와 같은 오독이었다).
-  const _tid = (g.vil && g.vil._tribeId) | 0;
-  if (!T769 && _tid && !granaryOpen(_tid)) {   // ★[T769] 켬 = 꺼내는 사람이 곧 문을 정할 사람(촌장) — 잠금 문은 안 쓴다
-    return { ok: false, err: '촌장이 곳간을 잠갔다' };
-  }
-  //   ★[T785] 켬 — 곳간 문은 **마을 칸**이다(촌장이 `/곳간 열기|잠금` · central 무접촉 · 런타임 `_tribeId` 는 켬에서 null 이라 위 줄은 안 닿는다).
-  if (!T769 && VillageKin.ON && !VillageKin.granaryOpenOf(g.vil)) return { ok: false, err: '촌장이 곳간을 잠갔다' };
+  //   ★[T809] T785 의 마을 칸 곳간 문(`VillageKin.granaryOpenOf`)은 안 읽는다 — T779 가 곳간 잠금을 걷었다(꺼내기는 손잡이와 상관없이 촌장 혼자 · 정할 문이 없다).
   const r0 = String(res || 'food');
-  // ★★[T769] 켬 — 한도 없음(기여 · 겨울 보상 안 씀). 양을 안 적었으면 **한 단위**(아래 종전 `Math.max(1, …)` 의 바닥 그대로 · 새 수 0).
-  //   하루 몫 장부(`wdDay` · `wdUsed`)도 안 센다(셀 한도가 없다). 실물 길 · 곳간 문 감싸개 · 재고 막음은 그대로다.
-  if (T769) {
-    const take1 = Math.max(1, Math.floor(Number(qty) || 0) || 1);
-    const _wd1 = () => V.playerVillageWithdraw(g.vil, player.inventory, r0, take1);
-    const r1 = (typeof H.wrapWithdraw === 'function') ? H.wrapWithdraw(player, _wd1) : _wd1();
-    if (!r1.ok) return r1;
-    return Object.assign({ ok: true, name: g.vil.name, remain: null, limit: null, chief: true }, r1);
-  }
-  const stock = V.playerVillageWithdrawStock(g.vil, r0);
-  // ★[T20-ⓑ 재민 확정 2026-09-03] **한도의 밑변**은 곡식 한 칸이 아니라 econ 의 식량 등가다
-  //   (겨울 곳간은 보존식으로 갈무리돼 있다 — `playerVillageWithdrawStockFoodEq` 머리 주석).
-  //   ⚠꺼내지는 양은 그대로 `playerVillageWithdraw` 가 정한다 — 한도가 재고를 만들지 않는다.
-  const basis = (V.playerVillageWithdrawStockFoodEq && V._countsAsFoodEq && V._countsAsFoodEq(g.vil, r0))
-    ? Math.max(stock, V.playerVillageWithdrawStockFoodEq(g.vil)) : stock;
-  const remain = remainOf(player, basis);
-  if (remain <= 0) return { ok: false, err: `오늘 몫은 다 꺼냈다 (한도 ${limitOf(contribOf(player.playerId), basis, vid)})` };
-  const want = Math.max(1, Math.floor(Number(qty) || 0) || remain);
-  const take = Math.min(want, remain);
-  //   ★[T732] 존이 곳간 문 감싸개를 줬으면(로트 장부 켬 — 곳간이 뗀 레코드를 사람에게 싣는다) 그 안에서 부른다 · 안 줬으면(끔) 종전 그대로.
+  //   양을 안 적었으면 **한 단위**(옛 `Math.max(1, …)` 바닥 그대로 · 새 수 0).
+  const take = Math.max(1, Math.floor(Number(qty) || 0) || 1);
+  //   ★[T732] 존이 곳간 문 감싸개를 줬으면(로트 장부 켬 — 곳간이 뗀 레코드를 사람에게 싣는다) 그 안에서 부른다 · 안 줬으면 그대로.
   const _wd = () => V.playerVillageWithdraw(g.vil, player.inventory, r0, take);
   const r = (typeof H.wrapWithdraw === 'function') ? H.wrapWithdraw(player, _wd) : _wd();
   if (!r.ok) return r;
-  const m = memberOf(player);
-  const d = _day();
-  if ((m.wdDay | 0) !== d) { m.wdDay = d; m.wdUsed = 0; }
-  // ★★[T59 2026-09-03] **한도는 단위로, 안내는 낱개로.** 정본이 돌려주는 `units`(실제로 곳간에서 빠진 단위)를
-  //   센다 — `qty`(받은 낱개)로 세면 쌀처럼 1단위 < 1개인 품목에서 한도가 헐거워진다.
-  //   `units` 가 없는 옛 반환(비식량 재화)은 종전대로 `qty` 가 곧 단위다.
-  //   ⚠한도 계산 인자는 **T20 의 것을 그대로 쓴다**(`basis`·`vid` — 겨울 공동 프로젝트가 바꾼 자리다).
-  const _spent = (Number(r.units) > 0) ? Number(r.units) : (Number(r.qty) || 0);
-  m.wdUsed = (Number(m.wdUsed) || 0) + _spent;
-  return Object.assign({ ok: true, name: g.vil.name, remain: +Math.max(0, remain - _spent).toFixed(2),
-    limit: limitOf(contribOf(player.playerId), basis, vid) }, r);
+  return Object.assign({ ok: true, name: g.vil.name, chief: true }, r);
 }
 
 // ── ★★[T769] 촌장 판정 — **이미 있는 두 표지**만 읽는다(새 권한 개념 0) ─────────────────
@@ -397,24 +340,8 @@ function resolveItem(word, inventory) {
 /** 사람이 읽을 재화 이름 — 없으면 키 그대로. */
 function resKo(res) { return _stripEmo((ItemLabel.CATEGORY_KO || {})[res] || '') || String(res || ''); }
 
-// ── ★★[T159] 길드 마을의 곳간 문 ─────────────────────────────────────────────
-//   유저 마을은 **길드가 세운다**(T128 `_tribeId`). 그 곳간을 소속이 열 수 있는지는 길드장이 정한다.
-//   ⚠판정은 central 이 한다(`tribes.granary_open` 한 칸 · T128 `join_mode` 와 같은 문법).
-//     여기서는 **캐시된 답**을 본다 — 못 물어봤으면 **열린 것으로 본다**(막지 않는다 · T115 규약 ②).
-const _gran = new Map();      // tribeId → { open, at }
-function granaryOpen(tribeId) {
-  const id = tribeId | 0;
-  if (!id) return true;                                    // 길드가 없는 마을(NPC 마을) — 문이 없다
-  const hit = _gran.get(id);
-  if (hit && Date.now() - hit.at < CFG.GRAN_TTL_MS) return hit.open;
-  if (H && H.central && H.central.tribeGranary) {
-    H.central.tribeGranary(id).then((r) => {
-      if (r && r.ok) _gran.set(id, { open: r.open !== false, at: Date.now() });
-    }).catch(() => {});
-  }
-  return hit ? hit.open : true;                            // 모르면 막지 않는다
-}
-function granaryBust(tribeId) { if (tribeId) _gran.delete(tribeId | 0); }
+// ── ★[T779] 길드 곳간 잠금(T159 `granaryOpen` · `granaryBust` — 마을 사람이 꺼낼 수 있는지를 길드장이 정하던 문)은 걷었다 ──
+//   꺼내는 사람이 곧 촌장(길드 마을 = 길드장)이라 정할 문이 없다. central 의 `tribes.granary_open` 칸 · `tribeGranarySet` 은 그대로(central 무접촉).
 
 // ── 복귀 브리핑 — 소속 마을 사건이 앞줄 ───────────────────────────────────────
 //   ★T7 접점 하나. **줄을 새로 짜지 않는다** — `Events.briefLine`(정본)으로 다시 그린다.
@@ -450,9 +377,8 @@ function handleChat(player, text) {
     if (m) { _send(player, `🏘️ ${m.name || '마을'} 사람 — ${_day() - (m.since | 0)}일째 · 누적 기여 ${contribOf(player.playerId)}`); return true; }
     const r = accept(player, null);
     if (!r.ok) { _send(player, `🏘️ ${r.err}`); return true; }
-    //   ★[T769] 켬 — 곳간은 촌장만 꺼낸다(마을 사람에게 곳간을 연다는 말은 안 한다)
-    _send(player, T769 ? `🧓 ${r.member.name || ''} 촌장 — 오늘부터 자네는 우리 마을 사람일세.`
-      : `🧓 ${r.member.name || ''} 촌장 — 오늘부터 자네는 우리 마을 사람일세. 곳간을 열어 두겠네("/인출").`);
+    //   ★[T769 · T779] 곳간은 촌장만 꺼낸다 — 마을 사람에게 가던 "곳간을 열어 두겠네("/인출")" 말은 걷었다.
+    _send(player, `🧓 ${r.member.name || ''} 촌장 — 오늘부터 자네는 우리 마을 사람일세.`);
     return true;
   }
   if (cmd === '/탈퇴') {
@@ -470,69 +396,38 @@ function handleChat(player, text) {
     _send(player, r.ok ? `🏘️ ${nm} 을(를) 마을에서 내보냈다.` : `🏘️ ${r.err}`);
     return true;
   }
-  // ★★[T159] `/곳간` — 사람이 쓰는 말로 꺼낸다. **인출 경로는 하나다**(`withdraw`) — 여기서 다시 안 푼다.
+  // ★★[T159] `/곳간` — 사람이 쓰는 말로 꺼낸다. **인출 경로는 하나다**(촌장 문 `withdrawChief` → `withdraw`) — 여기서 다시 안 푼다.
   if (cmd === '/곳간') {
     const m = memberOf(player);
     const vid = m ? (m.vid | 0) : near;
     const a0 = (rest[0] || '').trim();
-    // ⓐ `/곳간 열기|잠금` — 길드장이 그 마을 곳간의 문을 정한다
-    //   ★[T769] 켬 — 촌장 혼자 꺼내니 문을 정할 일이 없다(한 줄로 답한다 · central 무접촉)
-    if (T769 && (a0 === '열기' || a0 === '잠금')) { _send(player, '🏘️ 곳간은 촌장만 꺼낸다'); return true; }
-    if (a0 === '열기' || a0 === '잠금') {
-      if (!H.central || !H.central.tribeGranarySet) { _send(player, '🏘️ 지금은 곳간 문을 못 만진다'); return true; }
-      H.central.tribeGranarySet(player.playerId, a0 === '열기').then((r) => {
-        if (!r || !r.ok) {
-          _send(player, `🏘️ ${r && r.reason === 'not_leader' ? '촌장만 곳간 문을 정할 수 있다'
-            : r && r.reason === 'not_in_tribe' ? '마을 사람만 쓸 수 있다' : '지금은 못 바꿨다 — 잠시 뒤 다시'}`);
-          return;
-        }
-        granaryBust(r.tribe_id);
-        _send(player, r.open ? `🏘️ [${r.name}] 곳간을 열었다 — 마을 사람이 제 몫을 꺼낼 수 있다`
-                             : `🏘️ [${r.name}] 곳간을 잠갔다 — 촌장이 열기 전엔 아무도 못 꺼낸다`);
-      }).catch(() => _send(player, '🏘️ 지금은 못 바꿨다 — 잠시 뒤 다시'));
-      return true;
-    }
-    // ⓑ `/곳간` — 지금 형편 한 줄(꺼내지 않는다)
-    //   ★[T769] 켬 — 한도가 없다(오늘 남은 몫 · 기여 문턱을 안 적는다) · 누구나 그 마을 앞에서 형편을 본다
-    if (!a0 && T769) {
-      if (vid == null) { _send(player, '🏘️ 마을이 멀다 — 곳간 앞으로 가라'); return true; }
-      const V = H.SimVillages; const g = V.villageWithdrawGate(vid | 0, player.x, player.y);
-      if (g.err) { _send(player, `🏘️ ${g.err}`); return true; }
-      const st = V.playerVillageWithdrawStock(g.vil, 'food');
-      _send(player, `🏘️ ${g.vil.name || '마을'} 곳간 — 식량 재고 ${st} · 꺼내기는 촌장만 · 기부는 누구나("/기부 <품목> [양]" — 받는 것 없음)`
-        + (V.villageFamine && V.villageFamine(g.vil) ? ' · **마을이 굶는 중이다**' : ''));
-      return true;
-    }
+    // ⓐ `/곳간 열기|잠금` — ★[T779] 길드 곳간 잠금은 걷었다(촌장 혼자 꺼내니 정할 문이 없다) · 한 줄로 답한다(central 무접촉)
+    if (a0 === '열기' || a0 === '잠금') { _send(player, '🏘️ 곳간은 촌장만 꺼낸다'); return true; }
+    // ⓑ `/곳간` — 지금 형편 한 줄(꺼내지 않는다) · 누구나 그 마을 앞에서 본다 · 한도가 없다(오늘 남은 몫 · 기여 문턱을 안 적는다)
+    //   ★[T779] 기부 말은 기부 문이 열린 판에서만(`T769_DONATE` — 끄면 그 꼬리만 빠진다)
     if (!a0) {
-      const k = contribOf(player.playerId);
-      if (!m) { _send(player, `🏘️ 아직 마을 사람이 아니다 — 누적 기여 ${k}/${CFG.N_MEMBER}`); return true; }
       if (vid == null) { _send(player, '🏘️ 마을이 멀다 — 곳간 앞으로 가라'); return true; }
       const V = H.SimVillages; const g = V.villageWithdrawGate(vid | 0, player.x, player.y);
       if (g.err) { _send(player, `🏘️ ${g.err}`); return true; }
       const st = V.playerVillageWithdrawStock(g.vil, 'food');
-      _send(player, `🏘️ ${m.name || '마을'} 곳간 — 오늘 남은 몫 ${remainOf(player, st)} · 누적 기여 ${k} · 식량 재고 ${st}`
+      _send(player, `🏘️ ${g.vil.name || '마을'} 곳간 — 식량 재고 ${st} · 꺼내기는 촌장만`
+        + (T769 ? ' · 기부는 누구나("/기부 <품목> [양]" — 받는 것 없음)' : '')
         + (V.villageFamine && V.villageFamine(g.vil) ? ' · **마을이 굶는 중이다**' : ''));
       return true;
     }
-    // ⓒ `/곳간 <품목> [양]` — 품목을 앞에 둔다(사람이 그렇게 말한다)
+    // ⓒ `/곳간 <품목> [양]` — 품목을 앞에 둔다(사람이 그렇게 말한다) · 촌장 판정 뒤 같은 정본
     if (vid == null) { _send(player, '🏘️ 마을이 멀다 — 곳간 앞으로 가라'); return true; }
     const r0 = resolveRes(a0);
     if (!r0) { _send(player, `🏘️ 곳간에 그런 물건은 없다 — "${a0}"`); return true; }
     const n = parseInt(rest[1], 10);
-    if (T769) { _chiefWithdrawSay(player, vid, r0, n); return true; }   // ★[T769] 켬 = 촌장 판정 뒤 같은 정본
-    const r = withdraw(player, vid, r0, n);
-    if (!r.ok) { _send(player, `🏘️ ${r.err}`); return true; }
-    if (H.afterWithdraw) H.afterWithdraw(player, r);
+    _chiefWithdrawSay(player, vid, r0, n);
     return true;
   }
   if (cmd === '/인출') {
     const m = memberOf(player);
     const vid = m ? (m.vid | 0) : near;
     if (vid == null) { _send(player, '🏘️ 마을이 멀다 — 곳간 앞으로 가라'); return true; }
-    if (T769) { _chiefWithdrawSay(player, vid, rest[1] || 'food', parseInt(rest[0], 10)); return true; }   // ★[T769]
-    const r = withdraw(player, vid, rest[1] || 'food', parseInt(rest[0], 10));
-    if (!r.ok) { _send(player, `🏘️ ${r.err}`); return true; }
-    if (H.afterWithdraw) H.afterWithdraw(player, r);
+    _chiefWithdrawSay(player, vid, rest[1] || 'food', parseInt(rest[0], 10));   // ★[T769 · T779] 촌장 판정 뒤 같은 정본
     return true;
   }
   // ★★[T769] `/기부 <품목> [양]` — 누구나 · 상시 · 보상 0 · 기여 0. **켬에서만** 명령이다(끔 = 종전처럼 말로 흘러간다 · main 바이트).
@@ -556,7 +451,7 @@ function handleChat(player, text) {
   }
   return false;
 }
-// ★[T769] 켬의 채팅 꺼내기 — 촌장 판정 뒤 결과를 말한다(실물 · 뒷정리는 같은 정본 · 같은 `afterWithdraw`). 판정이 그 자리에서 서면 동기 · central 을 물으면 그 뒤.
+// ★[T769] 채팅 꺼내기 — 촌장 판정 뒤 결과를 말한다(실물 · 뒷정리는 같은 정본 · 같은 `afterWithdraw`). 판정이 그 자리에서 서면 동기 · central 을 물으면 그 뒤.
 function _chiefWithdrawSay(player, vid, res, qty) {
   const say = (r) => {
     if (!r || !r.ok) { _send(player, `🏘️ ${(r && r.err) || '곳간을 열지 못했다'}`); return; }
@@ -568,29 +463,27 @@ function _chiefWithdrawSay(player, vid, res, qty) {
 }
 
 // ── 클라에 실어 보내는 상태(거래소 패널 한 줄이 읽는다 — 새 패널 0) ───────────
-function publicState(player, stock, vil) {
+//   ★[T769] `chief` = 캐시된 촌장 판정(모르면 null — 묻기를 걸어 둔다 · 꺼내기 문은 언제나 다시 묻는다).
+//   ★[T779] 옛 한도 칸(`limit` · `remain`)과 곳간 재고 인자는 걷었다 · `donate` = 곳간이 받는 품목(대응표 정본의 키)은 기부 문이 열린 판에서만.
+function publicState(player, vil) {
   const m = memberOf(player);
   const k = contribOf(player.playerId);
   const out = {
     vid: m ? (m.vid | 0) : null, name: m ? (m.name || '') : '',
     since: m ? (m.since | 0) : null, contrib: k, need: CFG.N_MEMBER,
-    limit: m ? limitOf(k, stock, m.vid) : 0, remain: m ? remainOf(player, stock) : 0,
     offer: (!m && player._memberOfferVid != null) ? (player._memberOfferVid | 0) : null,
+    chief: vil ? chiefCached(player, vil) : false,
   };
-  // ★[T769] 켬에서만 두 칸 — 패널이 "꺼내기 = 촌장만" · "기부 = 누구나 · 받는 것 없음" 을 그린다(값은 서버가 · 클라 재계산 0).
-  //   `chief` = 캐시된 판정(모르면 null — 묻기를 걸어 둔다 · 꺼내기 문은 언제나 다시 묻는다) · `donate` = 곳간이 받는 품목(대응표 정본의 키).
   if (T769) {
-    out.chief = vil ? chiefCached(player, vil) : false;
     const V = H && H.SimVillages;
     out.donate = Object.keys((V && V.playerVillageDepositMap) ? V.playerVillageDepositMap() : {});
-    out.limit = null; out.remain = null;
   }
   return out;
 }
 
 module.exports = {
-  CFG, init, ready, contribOf, memberOf, isMemberHere, limitOf, remainOf,
+  CFG, init, ready, contribOf, memberOf, isMemberHere,   // ★[T779] 한도 둘(`limitOf` · `remainOf`)은 걷었다
   onDeliver, accept, seatFounder, seatGuildMember, seatByInvite, leave, expel, withdraw, orderBrief, handleChat, publicState,   // ★[T197] 창설 = 소속 · ★[T202] 길드원도 · ★[T785] 부름으로 드는 문
-  resolveRes, resKo, granaryOpen, granaryBust,   // ★[T159] 품목 해석 · 길드 곳간 문
+  resolveRes, resKo,   // ★[T159] 품목 해석 · ★[T779] 길드 곳간 잠금 둘(`granaryOpen` · `granaryBust`)은 걷었다
   T769, withdrawChief, chiefCheck, chiefCached, resolveItem,   // ★[T769] 기부 · 촌장 꺼내기
 };

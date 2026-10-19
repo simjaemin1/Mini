@@ -192,16 +192,8 @@ function handleChat(player, text) {
     _send(tgt, `🏘️ 이제 자네가 [${mine.name}] 촌장일세`);
     return true;
   }
-  if (cmd === '/곳간' && (arg === '열기' || arg === '잠금')) {
-    if (H.Membership && H.Membership.T769) return false;   // ★[T769] 켬 — 곳간은 촌장 혼자 꺼낸다(문 없음) · 그 한 줄은 membership 이 답한다
-    if (!mine) return notMine();
-    if (!chiefHere) return notChief();
-    mine._kin.granaryOpen = (arg === '열기');
-    save(mine);
-    _send(player, mine._kin.granaryOpen ? `🏘️ [${mine.name}] 곳간을 열었다 — 마을 사람이 꺼낼 수 있다`
-      : `🏘️ [${mine.name}] 곳간을 잠갔다 — 촌장이 열기 전엔 아무도 못 꺼낸다`);
-    return true;
-  }
+  // ★[T809] T779 — 곳간 잠금을 걷었다(꺼내기는 손잡이와 상관없이 촌장 혼자 · 정할 문이 없다) · `/곳간 열기|잠금` 한 줄은 membership 이 답한다(마을 칸 `granaryOpen` 은 옛 판을 읽는 이행 칸으로만 남는다)
+  if (cmd === '/곳간' && (arg === '열기' || arg === '잠금')) return false;
   if (cmd === '/소개') {
     if (!mine) return notMine();
     if (!chiefHere) return notChief();

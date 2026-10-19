@@ -74,8 +74,8 @@
 //   둘 다 invalidate 호출로 행렬 재계산 로그까지 확인).
 // =============================================================================
 'use strict';
-// ★[T732 · 손잡이 `T732_MOMENT_LOT=1`] 로트 장부는 **늦게 · 켬일 때만** 부른다 — 끄면(랩 포함) `lots.js` 를 싣지도 않는다(main 바이트 · 랩 모듈 무변).
-const _T732_ON = (typeof process !== 'undefined' && process.env && process.env.T732_MOMENT_LOT === '1');
+// ★[T732 · 손잡이 `T732_MOMENT_LOT` · ★[T778] 켬 기본(`=0` 끔)] 로트 장부는 **늦게 · 켬일 때만** 부른다 — 끄면(랩 포함) `lots.js` 를 싣지도 않는다(main 바이트 · 랩 모듈 무변).
+const _T732_ON = (typeof process !== 'undefined' && process.env && process.env.T732_MOMENT_LOT !== '0');   // ★[T778] 켬 기본 · 되돌림 `=0`
 let _t732LotsM = null;
 function _t732Lots() { if (!_T732_ON) return null; if (_t732LotsM === null) { try { _t732LotsM = require('./lots'); } catch (e) { _t732LotsM = false; } } return (_t732LotsM && _t732LotsM.momentOn()) ? _t732LotsM : null; }
 // 곳간 로트 장부(`granary-lots.js`) — 같은 규약(늦게 · 켬일 때만 · 존이 시계를 꽂은 뒤에만)
@@ -84,7 +84,7 @@ function _t732GranMod() { if (!_T732_ON) return null; if (_t732GranM === null) {
 function _t732Gran() { return _t732Lots() ? _t732GranMod() : null; }
 let _t732BootWait = false;   // 마을 init 이 존의 시계보다 먼저 돈다(존 모듈이 다 읽힌 뒤에 꽂는다) — 붙이기를 첫 틱 머리로 미룬다
 const _t732Saved = new WeakMap();   // econ 마을 → 저장된 곳간 장부(복원 문이 econ 객체에서 떼어 둔다 · 붙이기가 읽는다)
-// ★★[T748 2026-10-14 · 같은 손잡이 `T732_MOMENT_LOT=1` 안 — 끄면 아래 둘은 null/빈 줄만 낸다(종전 줄 그대로)] **켬 전용 일곱 길 막기.**
+// ★★[T748 2026-10-14 · 같은 손잡이 `T732_MOMENT_LOT` · ★[T778] 켬 기본(`=0` 끔) 안 — 끄면 아래 둘은 null/빈 줄만 낸다(종전 줄 그대로)] **켬 전용 일곱 길 막기.**
 //   그 마을 곳간에 장부가 붙어 있을 때만 장부 모듈을 낸다(붙기 전 · 랩 · 끔 = null).
 function _t748Gran(vil) { const G = _T732_ON ? _t732Gran() : null; return (G && vil && vil.econ && G.attached(vil.econ)) ? G : null; }
 function _t748G() { return _T732_ON ? _t732Gran() : null; }   // 마을 없이 — 몸 짐 · 갱 비축(시계가 꽂힌 뒤에만)
@@ -253,7 +253,7 @@ const T762_CARAVAN_BODY = process.env.T762_CARAVAN_BODY === '1';
 //     ② 귀환 걸음 상한 = **몸 걸음**(존 `moveSpeed` 정본 — 따라잡기 ×4 아님) — 일정이 몸 걸음보다 빠르면 몸은 몸 걸음 그대로 걷고 뒤처진다.
 //        econ 이 집 도착(쓸기)을 낼 때 몸이 아직 길 위면 그 사실을 센다(`_t772Stat.late`) — 순간이동으로 메우지 않는다(회수 자리는 종전 그대로).
 //   econ 도착일 · 장부(`_t661Day` 의 `T.L` · 답압 · 가드)는 무변 — 그림 · 몸 자리만 바뀐다. 새 수 0.
-const T772_ON = process.env.T772_LEG_FROM_LINGER === '1';
+const T772_ON = process.env.T772_LEG_FROM_LINGER !== '0';   // ★[T782 · PM 10-18] 켬 기본 · 되돌림 `=0`
 const _t772Stat = { legs: 0, home: 0, late: 0, lateMaxPx: 0, lateSumPx: 0 };
 function _t762SyncNewJob(C, had) {   // 명부(문을 연 순간)에 없던 캐러밴 — 이 조각이 도는 때의 `world.caravans` 차례로 · 'retry' 면 같은 자리부터
   let q = null, i = 0;
@@ -3365,7 +3365,7 @@ function _caravanNpcs(c, x, y, tribeId, tribeName, simVid) {
 //       ⓑ 그 구간이 오늘 앞에 시작했으면(가는 길 = `departDay` · 귀환 길 = `arriveDay`) 장부의 시작 날을 그날로 두고, 장부 자리 `T.L` = 오늘 경계의 목표 ·
 //          몸 = **`_t661Vis`**(보이는 몸 보간 — 틱 판이 쫓는 그 함수 · 사본 0) 자리에 세운다. 호위는 답압 표본과 같은 꼴(상인 뒤 20px × 차례)로 그 뒤에.
 //       오늘 떠난 몸 · 장 마당 몸(T707) · 이웃 존 몸(T533)은 종전 그대로다(시작 날 = 오늘이면 같은 수).
-const T775_RESUME = process.env.T775_CARAVAN_RESUME === '1';
+const T775_RESUME = process.env.T775_CARAVAN_RESUME !== '0';   // ★[T782 · PM 10-18] 켬 기본 · 되돌림 `=0`
 function _t775Place(body, c, outbound, p, now) {
   const T = body._t661, d = state.world.day;
   const D0 = outbound ? c.departDay : c.arriveDay;
@@ -3444,6 +3444,9 @@ function spawnCaravanBody(c, now, budgetMs) {
   if (T661_ON) _t661Anchor(body, pts, body.phase);   // ★[T661] 장부는 오늘(econ 날)부터 — 세운 날은 안 움직인다
   if (T775_RESUME && T661_ON && !_t707Mk) _t775Place(body, c, outbound, p, now);   // ★[T775] 오늘 앞에 시작한 구간 = 장부 자리에 선다(끔 = 이 줄 무동작)
   if (_t707Mk) { const vil = state.byEcon.get(c.to), rec = vil && vil._mkt; body.phase = 'linger'; body.lingerUntil = (rec && rec.cars.has(c.id)) ? rec.end : now + state.dayMs * CARAVAN_LINGER_DAY_FRAC; p.x = pts[0].x; p.y = pts[0].y; _t707Stat.spawnLinger++; }
+  //   ★[T782 · T775 갈래] 장 마당 몸인데 **장이 이미 끝났다**(다시 뜬 판 · 늦게 선 몸 — `lingerUntil` ≤ 지금) — 종전엔 마당(길 머리)에 섰다가 다음 틱에 귀환을 열어
+  //     길 전체를 따라잡았다(끔 = 명목 ×4 질주 · T772 켬 = 몸 걸음이라 집 도착에 길 위 = 늦음). 귀환을 여기서 열고 **장부 자리**(`_t775Place` · `_t661Vis` 같은 식)에 세운다(T775 계약 그대로 · 새 수 0).
+  if (T775_RESUME && T661_ON && _t707Mk && Number.isFinite(body.lingerUntil) && body.lingerUntil <= now) { startReturnLeg(body, now); _t775Place(body, c, false, p, now); _probe.t782MktLate = (_probe.t782MktLate || 0) + 1; }
   state.caravanBodies.set(c.id, body);
   console.log(`[${state.zoneId}] 🐂 캐러밴#${c.id} 출발: ${c.from.name}→${c.to.name} ${c.giveRes}×${Math.round(c.giveAmt)} 호위${c.escort}(실체 ${body.escorts.length}) — 경로 ${pts.length}정점 ${Math.round(body.len)}px ${legDays}게임일(econ d${c.departDay}→d${c.arriveDay})`);
   return true;
@@ -5667,14 +5670,15 @@ function _warEnsureDefense(body, sortie) {   // sortie=true — 출격 결단: �
 }
 function _warGroupCentroid(g) { let x = 0, y = 0, n = 0; for (const u of g.units) { if (u.dead) continue; x += u.x; y += u.y; n++; } return n ? { cx: x / n, cy: y / n } : { cx: g.cmd.cx, cy: g.cmd.cy }; }
 
-// ★★[T771 2026-10-16] **출격 헛걸음을 결단에 돌려준다** — 손잡이 `T771_SORTIE_MISS=1`(기본 끔 · 끔 = 종전 글자 그대로).
+// ★★[T771 2026-10-16] **출격 헛걸음을 결단에 돌려준다** — 손잡이 `T771_SORTIE_MISS`(T771 은 기본 끔으로 들어왔다 · T781 부터 켬 기본 — 아래 · 끔 = 종전 글자 그대로).
 //   방어 출격(`_warEngage` 'sortie' — 방어 쪽이 나선다 · 공격은 holder 라 쫓지 않는다)이 **접촉 한 번 없이** 대치로 끝나면(`_warToStandoff`),
 //   그 사실(몸 층)을 전쟁에 남긴다(`w._sortieMiss` = 그날). war-core 가 이튿날 그 칸을 보고 버티기로 돌린다(`_opDefenseDaily` — 태세 히스테리시스 그대로).
 //   ★왜(T764 회부 4 · 전쟁 자 1020 W6 — 41일 교착): 화살 다 쓴 궁수 하나(몸 상한 1 · 징발 차례가 원거리 먼저)가 날마다 출격했다 —
 //     탄 없는 사수는 집으로 물러나고(battle-core `flee`) 공격 청동전사는 holder 라 다가오지 않는다 ⇒ 접촉 0 · 7초 뒤 대치 · 이튿날 또 출격.
 //     war-core 날 틱은 출격이 나면 공격 쪽 결단(`_opNpcDecide` — 군량 소진 철수 · 돌격)을 건너뛴다(`continue`) ⇒ 공격은 41일 동안 한 번도 결단을 못 했다.
 //   새 수 0 · 새 손잡이 하나 · 칸 둘(몸 `_t771C0` = 출격 시작의 접촉 수 · 전쟁 `_sortieMiss`).
-const T771_SORTIE_MISS = process.env.T771_SORTIE_MISS === '1';
+//   ★[T781 2026-10-18] 켬 기본(결함 고침 — PM) · 되돌림 `T771_SORTIE_MISS=0`(= 종전 글자 그대로).
+const T771_SORTIE_MISS = process.env.T771_SORTIE_MISS !== '0';   // ★[T781 10-18] 켬 기본 · 되돌림 `=0`
 // ── 교전 계기 — war-core onEngage(assault·sortie 결단)에서 부른다 ──
 //   true = 실체가 맡았다(w.phase='battle' — war-core 훅 계약). 군대 몸이 없으면(징발 0) 철수 처리(아래 _warNoArmy).
 function _warEngage(w, day, why) {
@@ -6619,7 +6623,7 @@ function probeStats() { return { siteLog: _probe.siteLog.slice(-400), auditN: _p
   pathJobs: _probe.pathJobs, pathSliceMax: _probe.pathSliceMax, pathChunkMax: _probe.pathChunkMax, pathDrop: _probe.pathDrop, pathWait: _probe.pathWait, pathStepNodes: PATH_STEP_NODES,
   routePlain: _probe.routePlain | 0, routeRedigPass: _probe.routeRedigPass | 0, routeRedig: _probe.routeRedig | 0, routeRedigChanged: _probe.routeRedigChanged | 0, pathBootWait: _probe.pathBootWait | 0, t714Yield: _probe.t714Yield | 0, t714Due: _probe.t714Due | 0, walkBuilt: _probe.walkBuilt | 0, walkStraight: _probe.walkStraight | 0, walkFar: _probe.walkFar | 0,   // ★[T578]
   oreCold: _probe.oreCold, oreMs: _probe.oreMs, oreMax: _probe.oreMax,
-  ...(T775_RESUME ? { t775: { placed: _probe.t775Placed | 0, spawned: _probe.t775Spawned | 0, inbound: _probe.t775Inbound | 0, cap: _probe.t775Cap | 0, lost: _probe.t775Lost | 0, wait: (state._t775 && state._t775.q) ? state._t775.q.length : 0, done: !!(state._t775 && state._t775.done) } } : {}),   // ★[T775] 켬일 때만 칸이 선다(끔 = 종전 글자)
+  ...(T775_RESUME ? { t775: { mktLate: _probe.t782MktLate | 0, placed: _probe.t775Placed | 0, spawned: _probe.t775Spawned | 0, inbound: _probe.t775Inbound | 0, cap: _probe.t775Cap | 0, lost: _probe.t775Lost | 0, wait: (state._t775 && state._t775.q) ? state._t775.q.length : 0, done: !!(state._t775 && state._t775.done) } } : {}),   // ★[T775] 켬일 때만 칸이 선다(끔 = 종전 글자)
   t620MemoN: _probe.t620MemoN | 0, t620MemoBad: _probe.t620MemoBad | 0, t620MemoFirst: _probe.t620MemoFirst || '',   // ★[T620 ①] 검사용
   t620WfHit: _probe.t620WfHit | 0, t620WfN: _probe.t620WfN | 0, t620WfBad: _probe.t620WfBad | 0, t620Prewarm: _probe.t620Prewarm | 0,
   oreWarm: _probe.oreWarm | 0, oreWarmRows: _probe.oreWarmRows | 0, oreWarmMs: _probe.oreWarmMs | 0, oreAuditN: _probe.oreAuditN | 0, oreAuditBad: _probe.oreAuditBad | 0,   // ★[T620 ②]
@@ -9970,6 +9974,8 @@ function playerVillageWithdraw(vil, inventory, res, qty) {
 //   ⇒ 밑변은 econ **정본 함수** `totalFoodEquivalent` 그대로 쓴다(사본 금지 · 새 규칙 0).
 //   ⚠여기서 정하는 건 **한도**뿐이다. 실제로 꺼내지는 양은 여전히 그 품목의 실재고가 정한다
 //     (`playerVillageWithdraw` — 없는 건 못 꺼낸다). 한도가 재고를 만들어 내지 않는다.
+//   ★[T779 2026-10-18] 인출 한도 · 겨울 보상은 걷었다(꺼내기 = 촌장만 · 한도 없음) — 지금 이 함수를 묻는 곳은
+//     쓰러진 사람 구제 죽(`zone._villageMeal` — 곳간이 비었나) 하나다.
 function playerVillageWithdrawStockFoodEq(vil) {
   const v = vil && vil.econ;
   if (!v) return 0;
@@ -10565,7 +10571,7 @@ function _t720Held(vil, npc) {
 //     열쇠 = 걷는 목록 배열 · 길이 · 짝 표 배열(다시 셀 때 **새 배열**이 된다 · 바뀌면 다시 짓는다) · 같은 손 이름을 같은 차례로(겹친 이름도 두 번).
 //     ⚠채집 행위 층(`T347_FORAGE_ACT`)은 기본 끔이다 — 그 절은 켠 세계에서만 돈다(술어가 먼저라 끔 세계는 이름 목록을 안 짓는다 · 종전과 같은 차례).
 //   ★같은 값: 같은 항을 같은 차례로 더한다 ⇒ 같은 합(부동소수 차례까지). 몸 · 마을 필드 0(그릇은 모듈 `WeakMap`). 새 수 0.
-const T737_HELD_CACHE = process.env.T737_HELD_CACHE === '1';
+const T737_HELD_CACHE = process.env.T737_HELD_CACHE !== '0';   // ★[T780 · PM 10-18] 켬 기본(같은 값 · 증인 바이트 같음) · 되돌림 `=0`
 function _t737Held(vil, npc) {
   const inv = npc.inventory || {};
   let u = 0, E = null;
@@ -12497,8 +12503,8 @@ function _t529Step(vil, npc, now) {
 //   판정 산수는 전부 events.js 에 있다 — 두 군데 적으면 그게 사본이다.
 const EV_BRIEF_PX = Math.max(32, parseInt(process.env.EV_BRIEF_PX || '260', 10));   // 촌장 목소리가 닿는 거리(px)
 let Events = null;
-// ★[T20 2026-09-02] 겨울나기 공동 프로젝트 — 정본은 `server/winter.js` 하나. 이 파일은 **부르기만** 한다.
-const Winter = require('./winter');
+// ★[T779 2026-10-18 · 재민 10-15 "겨울 프로젝트 없어"] 겨울나기 공동 프로젝트(T20 `server/winter.js`)를 걷었다 — 공표 · 적립 · 판정 · 보상 · 머리줄 · 납품 안 겨울 갈래 0.
+//   연표에 이미 쓰인 옛 `WINTER_KEPT` · `WINTER_SHORT` 는 그대로 읽힌다(`events.js` 읽기 자리 · 연표는 영구).
 function _initLedger() {
   try { Events = require('./events'); } catch (e) { console.error(`[${state.zoneId}] 📜 events.js 로드 실패:`, e.message); return; }
   const zone = state.zoneId;
@@ -12554,9 +12560,6 @@ function _initLedger() {
       const cn = state.ledger.loadChronicle(crows);
       if (cn) console.log(`[${state.zoneId}] 📜 연대기 ${cn}행 복구(잘리지 않는 표 · 총 ${state.db.countVillageChronicle(zone)}행)`);
     } catch (e) { console.error(`[${state.zoneId}] 📜 연대기 복구 실패:`, e.message); }
-    // ★[T20 2026-09-02] 겨울나기 — 장부가 선 뒤에 붙인다(달성 여부를 **연표에** 물어보므로).
-    //   ⚠시계는 **econ 게임일**(`econDay`)이다 — 벽시계 파생을 주면 서버가 꺼져 있던 만큼 영구히 벌어진다.
-    Winter.init({ db: state.db, zoneId: state.zoneId, ledger: () => state.ledger, gameDay: econDay });
     console.log(`[${state.zoneId}] 📜 사건 장부 — 과거 ${n}건 복구 · 마을 ${state.villages.length}곳 프라이밍 · 문턱 부족 ${state.ledger.cfg.SHORT_DAYS}일치·글럿 ${state.ledger.cfg.GLUT_DAYS}일치·가격 ±${(state.ledger.cfg.PRICE_UP * 100) | 0}%`);
   } catch (e) { console.error(`[${state.zoneId}] 📜 사건 장부 복구 실패(빈 장부로 시작):`, e.message); }
   // 게시판 의뢰 복구 — 저장된 진척(filled)을 되돌린다. 실물은 이미 곳간에 들어갔으므로
@@ -12632,8 +12635,7 @@ function* _scanEventsSteps() {
   try { _noteTradeDays(state.world); } catch (e) {}   // ★[T577 ④] 마지막 교역일 — 장부와 같은 하루 경계
   const _x = { caravanDelays: _caravanDelaysToday(), builds: _buildsToday(),
     rescues: _rescuesToday(),                                      // ★[T119] 구조 — 완공과 같은 자리
-    starved: _starvedToday(),                                      // ★[T590] 굶어 죽음 — 구조와 같은 자리
-    winter: Winter.dailyExtra(state.world.day, state.villages) };   // ★[T20] 겨울나기 — 공표(가을 첫날)·판정(겨울 첫날)
+    starved: _starvedToday() };                                    // ★[T590] 굶어 죽음 — 구조와 같은 자리 · ★[T779] 겨울나기 칸(`winter`)은 걷었다
   let evs;
   if (T698_BOUNDARY_SLICE) {   // ★[T698] 장부 발생기를 쉼표마다 넘긴다 — 꼬리만 감싼 `scanDay` 문으로(아래)
     const lg = state.ledger.scanSteps(state.world, state.world.day, _x);   // 앞(도착 절 · 마을 하나씩)은 안 감싼 문
@@ -12716,9 +12718,8 @@ function villageBoard(vid, px, py) {
     give: (state.ledger.deliverable.items.get(r.item) || []),   // 어떤 플레이어 아이템으로 낼 수 있나
     take: state.ledger.deliverable.toEcon.get(r.rewItem) || null,
   }));
-  //   ★[T20] `head` = 겨울나기 진행 한 줄(서버가 만든 문장 · 공표~판정 사이에만 · 그 밖엔 null).
-  return { ok: true, vid: vid | 0, name: g.vil.name, rows, news: _newsRows(vid, BOARD_NEWS_N),
-    head: Winter.headLine(vid | 0, state.world.day) };
+  //   ★[T779] 겨울나기 머리줄(`head`)은 걷었다 — 게시판은 의뢰 줄 · 소식 줄 둘이다.
+  return { ok: true, vid: vid | 0, name: g.vil.name, rows, news: _newsRows(vid, BOARD_NEWS_N) };
 }
 
 // ★★[T7] 사건 목록 — **가시성 술어 하나를 통과한 것만**. 게시판·근황이 같은 이 함수를 쓴다.
@@ -12791,20 +12792,9 @@ function villageDeliver(vid, px, py, inventory, item, want, unitsOf) {
     const rows = state.ledger.board(vid | 0)
       .filter((r) => (state.ledger.deliverable.items.get(r.item) || []).some((it) => (Number(inventory[it]) || 0) >= 1))
       .sort((a, b) => (b.remain / Math.max(1, b.qty)) - (a.remain / Math.max(1, a.qty)));
-    // ★[T20] 걸린 의뢰가 없으면 **올겨울 몫**을 고른다(공표된 품목 · 아래 겨울 갈래가 받는다).
-    item = rows.length ? rows[0].item : Winter.goalRes(vid | 0);
+    // ★[T779] 걸린 의뢰가 없으면 낼 것이 없다(겨울 몫 갈래는 걷었다 — 의뢰 없는 곳간 넣기는 기부 문이 받는다 · T769).
+    item = rows.length ? rows[0].item : null;
     if (!item) return { err: '지금 낼 수 있는 의뢰가 없다' };
-  }
-  // ★★[T20] **겨울 몫은 의뢰가 아니다** — 공표된 품목은 게시판에 의뢰가 없어도 받는다.
-  //   근거는 `server/winter.js` ①b 절: econ 이 식량 소비를 flow-EMA 에 안 담아 **게시판이 식량 의뢰를
-  //   한 건도 안 낸다** ⇒ 이 갈래가 없으면 겨울 목표(곡식)를 낼 길이 아예 없다(§0 실측).
-  //   실물 이동은 **납품과 같은 정본 함수**(`playerVillageDeposit`)다 — 곳간이 둘이 되지 않는다.
-  const wd = Winter.deliverable(vid | 0, item, state.ledger, inventory);
-  if (wd) {
-    const dep = playerVillageDeposit(g.vil, inventory, wd.give, unitsOf);
-    if (!dep || !dep.ok) return { err: (dep && dep.err) || '곳간이 받지 않았다' };
-    return { ok: true, vid: vid | 0, name: g.vil.name, winter: true, item: wd.res,
-      taken: dep.taken, moved: dep.moved, rew: 0, rewItem: null, refused: 0, done: false };
   }
   const r = Events.deliverToVillage({
     ledger: state.ledger, vil: g.vil, vid: vid | 0, inventory,
@@ -13247,7 +13237,7 @@ function _t728SaveMeta() {
   if (!state.db || !state.db.upsertWorldMeta || !state.world) return;
   state.db.upsertWorldMeta(state.zoneId, _t728Meta(), state.world.day | 0); _t728Stat.metaSaves++;
 }
-// ★★[T732 2026-10-14 · 손잡이 `T732_MOMENT_LOT=1` — 끄면 이 함수를 안 부른다] **곳간 로트 장부를 econ 마을에 붙인다**(부팅 한 번).
+// ★★[T732 2026-10-14 · 손잡이 `T732_MOMENT_LOT` · ★[T778] 켬 기본(`=0` 끔) — 끄면 이 함수를 안 부른다] **곳간 로트 장부를 econ 마을에 붙인다**(부팅 한 번).
 //   저장된 장부(`serializeEcon` 의 `_t732Lots` — 복원 문이 econ 객체에서 떼어 둔 것)가 있으면 그것을, 없으면 지금 곳간 값을
 //   지금 순간의 로트 하나로(나이 모름 — 첫 부팅 · 끔에서 켬으로 · `seeded` 로 센다). 그리고 econ 캐러밴 · 전쟁 군량 짐에 훅을 꽂는다
 //   (훅은 관측자 — econ 값 무변 · 랩 · CLI 는 안 꽂는다).

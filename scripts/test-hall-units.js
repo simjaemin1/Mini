@@ -32,11 +32,13 @@ if (process.env.T725_SUB === 'zone') {
   process.env.PORT = String(42700 + (process.pid % 90));
   process.env.DB_PATH = TMP;
   process.env.ENABLE_VILLAGES = '0'; process.env.ENABLE_WILDLIFE = '0'; process.env.ENABLE_BANDITS = '0'; process.env.ENABLE_ROADS = '0';
-  process.env.MEMBER_WD_MIN = '100000';   // ★한도 손잡이만 — 넣은 만큼 다 꺼내 보려고(곳간·환산은 그대로)
-  process.env.MEMBER_WD_FRAC = '1';
+  //   ★[T779] 옛 한도 손잡이(`MEMBER_WD_*` — 넣은 만큼 다 꺼내 보려고 풀던 둘)는 걷었다 — 꺼내기는 촌장 · 한도 없음.
   const _log = console.log; console.log = () => {}; console.warn = () => {}; console.error = () => {};
   const Zone = require(SV('zone.js'));
   const H = Zone.__testBind();
+  // ★[T778] 순간 로트 켬 기본 — 순간 열쇠는 "같은 날 = 나이 0"을 깬다(픽스처 `t: 오늘` = 그 날 0시라 지난 시간만큼 더 시든다).
+  //   값 단언은 그대로 두고 지난 시간만 뺀다 — 존 날을 얼린다(제품의 테스트 문 · 날 문법(`T732_MOMENT_LOT=0`)엔 같은 날).
+  H.__e2eFreezeZoneDay(true);
   const econV2 = require(path.join(ROOT, 'sim', 'economy-sim-v2'));
   const Events = require(SV('events.js'));
   const V = H.SimVillages;
@@ -97,7 +99,7 @@ if (process.env.T725_SUB === 'zone') {
       // 꺼내기 — 넣은 단위의 정수 몫 전부(진짜 문 · 한도 손잡이만 넓힘)
       const q = Math.floor(du / RATE + 1e-9);
       const before = rep ? Math.floor(+p.inventory[rep] || 0) : 0;
-      if (H.T769) VIL.econ.founder = p.playerId;   // ★[T769] 켬 = 꺼내기는 촌장만 — 꺼내는 사람을 촌장(창설자 표지)으로 앉힌다(회관 `owner` 와 같은 꼴)
+      VIL.econ.founder = p.playerId;   // ★[T769 · T779] 꺼내기는 촌장만 — 꺼내는 사람을 촌장(창설자 표지)으로 앉힌다(회관 `owner` 와 같은 꼴)
       if (q >= 1) H.tryVillageWithdraw(p, VID, res, q);
       const got = rep ? Math.floor(+p.inventory[rep] || 0) - before : 0;
       const leftU = +(+VIL.econ.storage[res] || 0).toFixed(6);
@@ -150,8 +152,8 @@ const say = (s) => console.log(s);
 const ok = (c, name, detail) => { if (c) pass++; else fail++; console.log(`  ${c ? '✓' : '✗'} ${name}${detail != null && detail !== '' ? '  ' + detail : ''}`); };
 const near = (a, b, tol) => Math.abs(Number(a) - Number(b)) <= tol;
 const KNOBS = ['T725_HALL_UNITS', 'T725_LOT_KINDS'];
-const run = (on) => {
-  const env = Object.assign({}, process.env, { T725_SUB: 'zone' });
+const run = (on, extra) => {
+  const env = Object.assign({}, process.env, { T725_SUB: 'zone' }, extra || {});
   for (const k of KNOBS) env[k] = '0';
   if (on) for (const k of KNOBS) env[k] = '1';
   const txt = execFileSync(process.execPath, [__filename], { env, encoding: 'utf8', maxBuffer: 64 << 20, timeout: 900000 });
@@ -159,6 +161,7 @@ const run = (on) => {
 };
 say('=== T725 — 회관 넣기 단위 짝 · 안 썩는 재료 (손잡이 둘 · 끔 = main 바이트) ===');
 const zOff = run(false), zOn = run(true);
+const zOnLot0 = run(true, { T732_MOMENT_LOT: '0' });   // ★[T778] 끔 탐침 — 순간 로트 끔(날 로트)에서도 같은 단위
 const ZSRC = fs.readFileSync(SV('zone.js'), 'utf8');
 const LSRC = fs.readFileSync(SV('lots.js'), 'utf8');
 if (process.env.T725_OUT) fs.writeFileSync(process.env.T725_OUT, JSON.stringify({ off: zOff, on: zOn }, null, 1));
@@ -213,6 +216,7 @@ say('\n③ 상한 것 · 시든 것(생선)');
     '★③ 켬 — 상한 것 거절(게시판·거래소와 같은 판정 · 같은 말) · 인벤 그대로', zOn.spoiled.note.slice(0, 90));
   const want = +(10 * zOn.wilt.kc / DAY * 0.5).toFixed(3);
   ok(zOff.wilt.du === 10 && near(zOn.wilt.du, want, 0.0011), '③ 시든 것(f 0.5) — 끔 = 10단위 · 켬 = 열량 × 신선도', `켬 ${zOn.wilt.du} = 10 × ${zOn.wilt.kc} ÷ ${DAY} × 0.5`);
+  ok(!zOnLot0.err && zOnLot0.wilt.du === zOn.wilt.du && zOnLot0.spoiled.du === zOn.spoiled.du, '③ [T778 끔 탐침] 순간 로트 끔(`T732_MOMENT_LOT=0`)에서도 같은 단위(시든 것 · 상한 것)', `${zOnLot0.wilt && zOnLot0.wilt.du} · ${zOnLot0.spoiled && zOnLot0.spoiled.du}`);
 }
 
 say('\n④ 안 썩는 재료 — 30일 묵힌 것');

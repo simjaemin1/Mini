@@ -14,7 +14,7 @@
 //  ⑤ 저장 · 재기동 — 품목 칸이 저장 줄에 실려 되돌아온다 · 옛 레코드(칸 없음) = 대표 품목으로 읽는다(지우지 않는다) · 되돌림(교환 실패)은 품목 셈도 그 순간으로
 //  ⑥ 랩 econ v2(5마을 · 200일) — 어부 손 대구 레코드를 곳간에 넣고 매일 불변식(장부 합 = 곳간 · 품목 합 = 든 것 − 난 것) · 대구는 대구로만 먹히고 실려 간다
 //  ⑦ 존(실제 문) — 거래소 받기 · 게시판 보상(문 감싸개 — 정본 두 줄) · 회관 넣기 → 꺼내기: 곰고기 → 곰고기 · 인벤 = ⌊로트 합⌋ · 근사 0 · 화면 글자
-//  ⑧ 끔 = main — 손잡이를 끄면 곳간 장부 모듈을 안 싣는다(존 · 마을) · 글자(대표 품목 갈래 = 종전 줄 그대로)
+//  ⑧ 끔(`T732_MOMENT_LOT=0` — ★[T778] 켬 기본) — 손잡이를 끄면 곳간 장부 모듈을 안 싣는다(존 · 마을) · 글자(대표 품목 갈래 = 종전 줄 그대로)
 //
 // 실행: node scripts/test-granary-item.js
 'use strict';
@@ -32,7 +32,7 @@ if (process.env.T768_SUB === 'zone') {
   process.env.PORT = String(42700 + (process.pid % 90));
   process.env.DB_PATH = TMP;
   process.env.ENABLE_VILLAGES = '0'; process.env.ENABLE_WILDLIFE = '0'; process.env.ENABLE_BANDITS = '0'; process.env.ENABLE_ROADS = '0';
-  process.env.MEMBER_WD_MIN = '100000'; process.env.MEMBER_WD_FRAC = '1';   // 한도 손잡이만(곳간 · 환산 · 나이는 그대로)
+  //   ★[T779] 옛 한도 손잡이(`MEMBER_WD_*`)는 걷었다 — 꺼내기는 촌장 · 한도 없음(꺼내는 사람을 촌장 표지로 앉힌다 — 아래 `asChief`).
   const _log = console.log; console.log = () => {}; console.warn = () => {}; console.error = () => {};
   const out = { on: null, errs: [] };
   try {
@@ -81,6 +81,8 @@ if (process.env.T768_SUB === 'zone') {
       const led = (res) => JSON.parse(JSON.stringify(GL.ledger(VIL.econ, res || RES)));
       const hall = (p, want) => { H.buildings.get(HALL).data.owner = p.playerId; const s0 = +VIL.econ.storage[RES] || 0; try { H.tryVillageDeposit(p, HALL, want); } catch (e) { out.errs.push('hall:' + String(e && e.message || e)); } return R6((+VIL.econ.storage[RES] || 0) - s0); };
       const a0 = H.Lots.stats().approx;
+      //   ★[T769 · T779] 꺼내기는 촌장만 — 진짜 곳간 문에 꺼내는 사람을 촌장(창설자 표지)으로 앉힌다(회관 `owner` 와 같은 꼴 · test-granary-age 그 줄)
+      const asChief = (p) => { VIL.econ.founder = p.playerId; };
 
       // ── A. 회관 넣기 곰고기 8(f 0.6 · 사흘 전) → 꺼내기(대표 품목 문) — econ 몫(새것)은 뒤에 ─────────────
       VIL.econ.storage[RES] = 0; VIL.econ.storage[RES] = 40;
@@ -88,7 +90,7 @@ if (process.env.T768_SUB === 'zone') {
       out.Adep = hall(a, { meat_bear: 8 });
       out.Aled = led();
       const g0 = +a.inventory.meat_game || 0, b0 = +a.inventory.meat_bear || 0, s0 = +VIL.econ.storage[RES];
-      H.tryVillageWithdraw(a, VID, RES, 2);
+      asChief(a); H.tryVillageWithdraw(a, VID, RES, 2);
       out.A = { wdU: R6(s0 - VIL.econ.storage[RES]), bear: lotsOf(a, 'meat_bear'), game: lotsOf(a, 'meat_game'), invBear: +a.inventory.meat_bear || 0, invGame: +a.inventory.meat_game || 0, g0, b0,
         note: notes[notes.length - 1] || '', ledAfter: led() };
 
@@ -121,7 +123,7 @@ if (process.env.T768_SUB === 'zone') {
       out.Dled = led();
       out.E = { dump: GL.dump(VIL.econ) };   // 저장 줄 — 품목 실은 레코드가 있을 때(꺼내기 전)
       const d = mkP(); const sD = +VIL.econ.storage[RES];
-      H.tryVillageWithdraw(d, VID, RES, 6);
+      asChief(d); H.tryVillageWithdraw(d, VID, RES, 6);
       out.D = { wdU: R6(sD - VIL.econ.storage[RES]), bear: lotsOf(d, 'meat_bear'), game: lotsOf(d, 'meat_game'), invBear: +d.inventory.meat_bear || 0, invGame: +d.inventory.meat_game || 0, note: notes[notes.length - 1] || '' };
 
       out.check = GL.check(vils.map((v) => v.econ));
@@ -340,7 +342,7 @@ say('\n⑥ 랩 econ v2(5마을 · 200일) — 대구는 대구로만 먹히고 �
 }
 
 say('\n⑦ 존 — 회관 넣기 · 꺼내기 · 거래소 받기 · 게시판 보상(실제 문)');
-const zOn = sub({ T732_MOMENT_LOT: '1' }), zOff = sub({});
+const zOn = sub({}), zOff = sub({ T732_MOMENT_LOT: '0' });   // ★[T778] 켬 = 기본(손잡이 없음) · 끔 = 명시 `=0`
 {
   pre(!zOn.err && zOn.on === true && zOn.gl === true, '켬 존이 떴다', zOn.err || '');
   const A = zOn.A, kB = zOn.kcal.bear, kG = zOn.kcal.game, D = zOn.day;
