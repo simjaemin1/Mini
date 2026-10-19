@@ -11,13 +11,13 @@
 //      · 모듈 끝에 내부 이름 몇을 읽는 표 `__T749_IN`(목표 함수 둘 · 표 넷 — 읽기만)
 //      훅은 값을 돌려주지 않고 세계를 안 만진다. 반사실 목표(끔 식 · 켬 식)를 같은 상태에서 다시 셀 때 결정층 함수가
 //      그날의 유효수요 캐시(`world._effDemCache`)를 처음 채울 수 있다 — 부른 뒤 캐시를 **부르기 전 그 객체로 되돌린다**.
-//   ② `T749_LEDGER=1`(+ `T732_MOMENT_LOT=1`)이면 제품의 곳간 로트 장부(T732 — 관측자 · econ 값 무변)를 CLI 세계에 붙인다:
+//   ② `T749_LEDGER=1`(순간 로트 켬 — ★[T778] 켬 기본 · `T732_MOMENT_LOT=0` 이면 못 붙인다)이면 제품의 곳간 로트 장부(T732 — 관측자 · econ 값 무변)를 CLI 세계에 붙인다:
 //      시계 = econ 날(하루 마감 = 한 순간 · 서버와 같은 규약) · `attach` · `setLotHook`(캐러밴 짐) · 하루 앞 `tickBegin` · 뒤 `sync`/`tickEnd`.
 //      부패 앞(`__T749_PRE`)에서 생선 · 고기 장부를 읽어 — 보관일(`spoil.shelfOf`)을 넘긴 몫(서 있는 상한 몫) · 오늘 넘긴 몫 ·
 //      단위 가중 나이를 센다(노출 = `spoil.exposureAt` 정본 · 곳간 자리 seal 0.70 · damp 0.55 · 고도 0 = 장부가 쓰는 그 값).
 //   검산: 훅 판(장부 포함)의 t17 JSON = 훅 없는 판(보고 §0).
 //
-// 쓰는 법: NODE_OPTIONS="--require <레포>/scripts/t749-decay.js" T749_OUT=/tmp/x.json [T749_LEDGER=1 T732_MOMENT_LOT=1] node scripts/t17-metrics.js 800 1020
+// 쓰는 법: NODE_OPTIONS="--require <레포>/scripts/t749-decay.js" T749_OUT=/tmp/x.json [T749_LEDGER=1] node scripts/t17-metrics.js 800 1020
 //   자리 갈래와 같이: NODE_OPTIONS="--require <레포>/scripts/t739-arms.js --require <레포>/scripts/t749-decay.js"(이 차례 — 이 문이 바깥이라야 둘 다 선다)
 // 결정론 — 새 수 0(보관일 · 자리 · 곡선은 정본에서 읽는다).
 'use strict';
@@ -55,7 +55,7 @@ if (OUT) {
   const LEDGER = process.env.T749_LEDGER === '1';
   let Lots = null, G = null;
   if (LEDGER) {
-    if (process.env.T732_MOMENT_LOT !== '1') throw new Error('t749-decay: T749_LEDGER=1 은 T732_MOMENT_LOT=1 과 같이(장부가 순간 시계를 쓴다)');
+    if (process.env.T732_MOMENT_LOT === '0') throw new Error('t749-decay: T749_LEDGER=1 은 T732_MOMENT_LOT=0 과 같이 못 쓴다(장부가 순간 시계를 쓴다)');   // ★[T778] 켬 기본 — 끔 = `=0` 만
     Lots = require(path.join(ROOT, 'server', 'lots.js'));
     G = require(path.join(ROOT, 'server', 'granary-lots.js'));
   }

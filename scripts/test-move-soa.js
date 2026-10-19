@@ -309,9 +309,10 @@ console.log('\n⑥ ★게이트 — 같은 씨 · 51마을 7게임일 · 좌표 
       //   결정론 모의 지형(세로 줄 강 — 7칸마다 2칸)을 준다. 이 게이트는 그 되짚기까지 **두 판 비트 동일**을 건다.
       T394_WORK_TERRAIN: true,
       _t394OpenTarget: _t394Fn,
-      // ★[T732] 어부의 8초 한 마리 줄에 로트 적기(`if (T732_MOMENT) Lots.note(…)`)가 섰다 — 손잡이는 **제품 기본(끔)** 그대로 싣는다
-      //   (끔이면 그 줄이 아무것도 안 한다 · 이 게이트의 두 판 비트 동일은 끔 세계의 것).
-      T732_MOMENT: false,
+      // ★[T732] 어부의 8초 한 마리 줄에 로트 적기(`if (T732_MOMENT) Lots.note(…)`)가 섰다 — 손잡이는 **제품 기본** 그대로 싣는다
+      //   ★[T778] 제품 기본이 켬이 됐다 — 그 줄이 돈다(`Lots` = 제품 모듈 그대로 · 로트는 몸 밖 곁 장부라 몸 필드가 안 바뀐다 ·
+      //   이 게이트의 두 판 비트 동일은 켬 세계의 것).
+      T732_MOMENT: true, Lots: require(path.join(ROOT, 'server', 'lots.js')),
       // ★[T761 · PM 착지 10-15] 몸 기온 곡선의 현지 시계 갈래(`T761_CLOCKS.temp && …`)가 섰다 — 손잡이는 **제품 기본(끔)** 그대로 싣는다
       //   (`server/zone-config.js` `T761_CLOCKS` 끔 꼴 그대로 · 끔이면 종전 `_dT.ph` 를 쓴다 · 두 판 비트 동일은 끔 세계의 것).
       T774_ACTIVE_COL: false, _t774I: 0, _t774Act: null,   // ★[T774] 활성 열 — 한 바퀴(`_sweepOne`)가 읽는 손잡이 · 이 판은 끔 갈래(열 증인은 `T774_ACTIVE_COL=1 node scripts/t738-witness.js`)

@@ -240,6 +240,7 @@ console.log('\n⑦ 걷기 술어 — `_t316WalkAlways` 에 **농부 항 하나**
   ok((ZC.match(/_t316WalkAlways\(/g) || []).length === 4 && (_pre.match(/_t316WalkAlways\(/g) || []).length === 1 && (_pre.includes(_gate) || _pre.includes(_gate774))
      && (ZC.split(_gate).length - 1) + (ZC.split(_gate774).length - 1) === 2,
      '⑦ 그 술어를 부르는 **문**은 그대로 **둘**(결정 · 이동 — 셋째 문 0) · 넷째 글자는 이동 문의 **거울**(`_wwPre` · 같은 거름 식 글자 그대로 · T499)');
+  ok(/const T774_ACTIVE_COL = process\.env\.T774_ACTIVE_COL !== '0';/.test(ZC), '⑦ [T780] 앞문 거울의 활성 열 손잡이는 새 기본 켬(`!== \'0\'`) — 끔 탐침 = `T774_ACTIVE_COL=0`(감싼 꼴의 끔 갈래 글자가 이동 문 식 그대로)');
   ok(/farm: \(\(\) => \{ try \{ return SimVillages\.farmPerf \? SimVillages\.farmPerf\(\) : null; \} catch \(e\) \{ return null; \} \}\)\(\),/.test(ZC),
     '⑦ `/perf` 에 농부 관측 한 줄(끔이면 `null` — 끈 팔 페이로드 무변)');
 }

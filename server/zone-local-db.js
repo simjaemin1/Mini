@@ -622,49 +622,9 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_village_chronicle ON village_chronicle (zone, day);
 `);
-// === [T20 2026-09-02 겨울나기] village_winter — 그 해 겨울 프로젝트의 **양** ==========
-//   ★★기여 **카운터**(횟수)는 여기 없다. 그건 `onboarding.contrib` 하나뿐이고(T11 제1 규약)
-//     이 표는 **양**만 센다 — 두 축이 서로를 오염시키면 "부자가 소속을 사는" 문이 열린다(설계안 W-7).
-//   ★행이 두 종류다(키가 갈라 준다):
-//     · `player_id = ''` → **마을 머리 행**. `qty` = 그 해 공표한 목표 N · `res` = 목표 품목.
-//       ⚠공표한 목표는 얼어야 한다 — 촌장이 가을에 한 약속을 겨울에 바꾸면 그게 거짓말이다.
-//         (`_consEMA` 같은 살아 있는 수에서 매번 다시 유도하면 목표가 계절 내내 흔들린다.)
-//     · 그 밖      → **사람 행**. `qty` = 그 해 그 사람이 낸 양(부분 납품도 센다).
-//   ★해가 바뀌면 새 (vid, year) 행이 선다 — 지난 해 행은 그대로 두고 **읽지 않는다**(그 해의 일이다).
-//   ★**달성 여부는 여기 없다** — 그건 사건(`WINTER_KEPT`)이고, 연표가 이미 영구히 들고 있다
-//     (T50 `FIRST_GOODS` 가 "처음"을 연표로 되돌린 것과 같은 자리 — 파생 상태를 두 번 적지 않는다).
-db.exec(`
-  CREATE TABLE IF NOT EXISTS village_winter (
-    zone      TEXT    NOT NULL,
-    vid       INTEGER NOT NULL,
-    year      INTEGER NOT NULL,
-    player_id TEXT    NOT NULL,
-    qty       REAL    NOT NULL DEFAULT 0,
-    res       TEXT,
-    PRIMARY KEY (zone, vid, year, player_id)
-  );
-`);
-// ★[T63 2026-09-03 · T20 회부 ⓪] 열 하나 — **기여자 이름**.
-//   양은 이미 여기 남는데 이름은 서버 메모리(`winter.js _names`)에만 있었다 ⇒ 재기동하면
-//   브리핑에서 **누가 냈는지가 사라진다**(양은 남고 이름만 빠지는, 조용한 반쪽 영속).
-//   ⚠`ALTER TABLE ADD COLUMN` 엔 IF NOT EXISTS 가 없다 — `claims.kind` 선례대로 PRAGMA 로 본다.
-//   ⚠이름은 **표시용**이다: 판정도 보상도 이 열을 안 읽는다(읽으면 이름이 규칙이 된다).
-{
-  const _wc = db.prepare('PRAGMA table_info(village_winter)').all().map((c) => c.name);
-  if (!_wc.includes('name')) db.exec('ALTER TABLE village_winter ADD COLUMN name TEXT');
-}
-const stmtUpsertVillageWinter = db.prepare(`INSERT INTO village_winter (zone, vid, year, player_id, qty, res, name)
-  VALUES (?, ?, ?, ?, ?, ?, ?)
-  ON CONFLICT(zone, vid, year, player_id) DO UPDATE SET qty = excluded.qty, res = excluded.res,
-    name = COALESCE(excluded.name, village_winter.name)`);
-const stmtGetVillageWinter = db.prepare('SELECT vid, year, player_id, qty, res, name FROM village_winter WHERE zone = ? AND year >= ?');
-// ★`name` 을 안 주면(null) **지우지 않는다**(`COALESCE`) — 이름 없는 갱신이 이름을 날리면
-//   "낸 사람이 다시 냈더니 이름이 사라졌다"가 된다.
-function upsertVillageWinter(zone, vid, year, playerId, qty, res, name) {
-  stmtUpsertVillageWinter.run(zone, vid | 0, year | 0, String(playerId == null ? '' : playerId), +qty || 0,
-    res == null ? null : String(res), name == null ? null : String(name));
-}
-function getVillageWinterSince(zone, year) { return stmtGetVillageWinter.all(zone, year | 0); }
+// === ★[T779 2026-10-18] 겨울나기(T20) 표 `village_winter`(그 해 겨울 프로젝트의 양 · 기여자 이름)는 걷었다 ===============
+//   겨울나기 공동 프로젝트가 없어졌다(재민 10-15) — 이 표를 쓰고 읽던 `server/winter.js` 도 걷었다.
+//   ⚠옛 DB 에 이미 있는 표는 **지우지 않는다**(DROP 0 — 아무도 안 읽을 뿐이다 · 판정은 연표의 `WINTER_*` 사건이 영구히 든다).
 
 const stmtInsertVillageChronicle = db.prepare('INSERT INTO village_chronicle (zone, vid, day, type, item, mag) VALUES (?, ?, ?, ?, ?, ?)');
 const stmtGetVillageChronicle = db.prepare('SELECT vid, day, type, item, mag FROM village_chronicle WHERE zone = ? ORDER BY day');
@@ -761,7 +721,6 @@ module.exports = {
   // [2026-08-25 사건 레이어] 사건 장부·게시판 (events.js / villages.js)
   insertVillageEvent, getVillageEventsSince, pruneVillageEvents,
   insertVillageChronicle, getVillageChronicle, countVillageChronicle,   // ★[T18] 연대기(prune 없음)
-  upsertVillageWinter, getVillageWinterSince,                          // ★[T20] 겨울나기 — 그 해의 **양**
   upsertVillageRequest, deleteVillageRequest, getVillageRequests,
   // §11 도적 (bandits.js)
   getBanditState, upsertBanditState,

@@ -1,15 +1,17 @@
 #!/usr/bin/env node
 // @regress
-// === scripts/test-donate.js — 기부 문(누구나 · 상시 · 보상 0) · 꺼내기 = 촌장만 · 겨울 프로젝트 0 (T769 · 손잡이 T769_DONATE='1' · 없음 = 끔 = main 바이트) ===
+// === scripts/test-donate.js — 기부 문(누구나 · 상시 · 보상 0) · 꺼내기 = 촌장만 · 겨울 프로젝트 없음 (T769 · ★T779 켬 기본 — 손잡이 T769_DONATE='0' 만 끔) ===
 //
 // ★왜 [재민 10-15 판정 · T732 §8 ⑥ "거래로만 넣는다"와 회관 넣기 · 겨울 몫] *"기부는 가능해. 마음대로 빼는 건 안 돼. 그러니까 거래와 기부를
 //   따로 둬야 하고, 관리자만 뺄 수 있어."* · *"겨울 프로젝트 없어. 기부는 상시 되고 보상도 없음."*
+// ★[T779 2026-10-18] 새 세계 — 기부 상시(기본 켬) · 꺼내기 촌장만(손잡이 밖 — 옛 기여 한도 인출은 걷었다) · 겨울 프로젝트 걷음(`server/winter.js` 없음).
 //
-//  켬 — ① 비관리자 회관 기부 ok(근접 200 · 관리자 게이트 없음) ② NPC 마을 `/기부 <품목> [양]` ok(게시판과 같은 근접 게이트 · 우리말 품목 이름)
-//       ③ 기여 안 오름(계량기 = 온보딩 정본 하나 · 대조: 게시판 납품 훅은 올린다) ④ 비관리자 꺼내기 거절 ⑤ 촌장(창설자) 꺼내기 ok — 한도 없음(하루 두 번 · 종전 한도 넘게)
-//       ⑥ 마을 사람(촌장 아님) 꺼내기 거절 ⑦ 길드 마을 = central `leader_id` 가 촌장(맞으면 ok · 아니면 거절) ⑧ central 불가 = 거절
-//       ⑨ NPC 마을 = 사람 꺼내기 0 ⑩ `/곳간 열기|잠금` 한 줄 ⑪ 겨울 공표 · 머리줄 · 겨울 몫 0 ⑫ 화면 칸(회관 `inv.donate` · 거래소 `member.donate`·`chief`)
-//  끔 — 같은 판을 그대로 돌려 **종전 동작**(비관리자 회관 거절 · `/기부` 는 명령이 아니다 · 마을 사람 한도 꺼내기 · 겨울 공표 있음 · 화면 칸 없음).
+//  기본(손잡이 없음) — ① 비관리자 회관 기부 ok(근접 200 · 관리자 게이트 없음) ② NPC 마을 `/기부 <품목> [양]` ok(게시판과 같은 근접 게이트 · 우리말 품목 이름)
+//       · 거래소 패널 한 줄(`village_donate`) ok · 먼 곳 거절 ③ 기여 안 오름(계량기 = 온보딩 정본 하나 · 대조: 게시판 납품 훅은 올린다)
+//       ④ 꺼내기 = 촌장만 — 비관리자 · 마을 사람(촌장 아님) 거절 · 촌장(창설자) 한도 없음 · 길드 마을 = central `leader_id` · central 불가 = 거절 ·
+//       NPC 마을 = 사람 꺼내기 0 · `/곳간 열기|잠금` 한 줄 · `/곳간` 형편 줄 · 채팅 꺼내기(`/곳간 <품목>` · `/인출`)
+//       ⑤ 겨울 프로젝트 없음(파일 · 게시판 머리줄 · 납품 안 겨울 갈래 · 한도 함수) ⑥ 화면 칸(회관 `inv.donate` · 거래소 `member.chief`·`donate`)
+//  끔('0') — ⑦ 기부 문 셋만 닫힌다(비관리자 회관 거절 · `/기부` 는 명령이 아니다 · 패널 문 닫힘 · 기부 말 없음) · 꺼내기는 그대로 촌장만.
 //
 // 포트 0: 존을 하위 실행에서 `PORT=0`(임시 포트)으로 적재한다 — 하네스가 포트를 쥐지 않는다(밤 러너 포트 충돌 교훈 · `test-terraincache` 꼴).
 // 실행: node scripts/test-donate.js
@@ -36,7 +38,6 @@ if (process.env.T769_SUB === 'zone') {
   const econV2 = require(path.join(ROOT, 'sim', 'economy-sim-v2'));
   const Events = require(SV('events.js'));
   const Onb = require(SV('onboarding.js'));
-  const Winter = require(SV('winter.js'));
   const V = H.SimVillages, M = H.Membership;
   const out = { knob: process.env.T769_DONATE == null ? null : process.env.T769_DONATE, on: H.T769, mOn: M.T769, errs: [] };
   (async () => {
@@ -97,7 +98,7 @@ if (process.env.T769_SUB === 'zone') {
     const n1 = st(3, 'wood');
     out.chatKo = safe('chat2', () => M.handleChat(p2, `/기부 ${out.woodKo} 1`));
     out.npcKo = { stockUp: +(st(3, 'wood') - n1).toFixed(4), invLeft: p2.inventory.wood || 0, note: last(p2) };
-    // 거래소 패널의 기부 메시지(`village_donate`) — 켬에서만 열린다
+    // 거래소 패널의 기부 메시지(`village_donate`) — 기부 문이 열린 판에서만
     p2.inventory.wood = (p2.inventory.wood || 0) + 2;
     const n2 = st(3, 'wood');
     safe('msg', () => H.tryVillageDonate(p2, 3, { wood: 2 }));
@@ -114,63 +115,69 @@ if (process.env.T769_SUB === 'zone') {
     out.contribCtrl = M.contribOf(pc.playerId);
     // ④ 비관리자 · 비소속 꺼내기
     out.wdP1 = { took: await wd(p1, 0, 3), note: last(p1) };
-    // ⑤ 촌장(창설자) — 종전 한도(기여 0 → 바닥 몫)보다 많이 · 하루 두 번
+    // 촌장(창설자) — 한도 없음 · 하루 여러 번
     const pC = mkP(CHIEF, 0);
     M.seatFounder(pC, 0);
-    out.limit0 = M.limitOf(0, 1e9, 0);
     out.wdC1 = { took: await wd(pC, 0, 5), note: last(pC) };
     out.wdC2 = { took: await wd(pC, 0, 5), note: last(pC) };
-    //   창설자 판정은 그 자리에서 선다 — 문이 Promise 를 안 내고, 돌아온 그때 곳간이 이미 줄었다(종전 문과 같은 때 · 기다림 0)
+    //   창설자 판정은 그 자리에서 선다 — 문이 Promise 를 안 내고, 돌아온 그때 곳간이 이미 줄었다(기다림 0)
     { const s0 = st(0); const r = safe('sync', () => H.tryVillageWithdraw(pC, 0, 'food', 1)); out.sync = { prom: !!(r && typeof r.then === 'function'), took: +(s0 - st(0)).toFixed(4) }; }
-    // ⑥ 마을 사람(촌장 아님) — 기여 12 로 든 사람
+    // 마을 사람(촌장 아님) — 기여 12 로 든 사람 · 드는 길 = 채팅 `/소속`(촌장이 권한 뒤)
     const pM = mkP('anon_t769_member', 0);
     for (let i = 0; i < M.CFG.N_MEMBER; i++) { Onb.onDeliver(pM, { ok: true, done: true, req: { item: 'food' } }, 0); M.onDeliver(pM, { ok: true, done: true, req: { item: 'food' } }, 0); }
-    //   드는 길 = 채팅 `/소속`(촌장이 권한 뒤 · 종전 경로 그대로) — 그 자리의 말이 "곳간을 열어 두겠네"였다
     out.acceptNote = { r: safe('acc', () => M.handleChat(pM, '/소속')), note: last(pM) };
     out.accept = { ok: !!M.isMemberHere(pM, 0) };
     out.wdM = { took: await wd(pM, 0, 1), note: last(pM), member: M.isMemberHere(pM, 0) };
-    // ⑦ 길드 마을 — central 이 아는 촌장 · 아닌 사람
+    // 길드 마을 — central 이 아는 촌장 · 아닌 사람 · 캐시 창
     const pG = mkP(GLEAD, 1); const pX = mkP('anon_t769_x', 1);
     out.wdG = { took: await wd(pG, 1, 2), note: last(pG), prom: lastProm };
     out.wdX = { took: await wd(pX, 1, 2), note: last(pX), prom: lastProm };
     out.wdG2 = { took: await wd(pG, 1, 1), prom: lastProm };   // 캐시 창 안 — 다시 안 묻는다
-    // ⑧ central 불가
+    // central 불가
     const pH = mkP('anon_t769_f2', 2);
     out.wdH = { took: await wd(pH, 2, 2), note: last(pH) };
-    // ⑨ NPC 마을 꺼내기
+    // NPC 마을 꺼내기
     const pN = mkP('anon_t769_npcw', 3);
     out.wdN = { took: await wd(pN, 3, 2), note: last(pN) };
-    // ⑩ `/곳간 열기` · `/곳간`(형편 한 줄)
+    // `/곳간 잠금` · `/곳간`(형편 한 줄)
     out.lock = { r: safe('lock', () => M.handleChat(pC, '/곳간 잠금')), note: last(pC) };
     pC._memberNearVid = 0;
     out.look = { r: safe('look', () => M.handleChat(pC, '/곳간')), note: last(pC) };
-    // 채팅 꺼내기(촌장) — 비동기 판정 뒤 같은 뒷정리
-    const s0c = st(0);
-    safe('chatwd', () => M.handleChat(pC, '/곳간 food 2'));
-    await new Promise((r) => setTimeout(r, 50));
-    out.chatWd = { took: +(s0c - st(0)).toFixed(4), note: last(pC) };
-    // ⑪ 겨울 — 공표일에 공표 · 머리줄 · 겨울 몫 갈래
-    const _wdb = new (require('better-sqlite3'))(':memory:');
-    let NOW = 1;
-    Winter.init({ db: _wdb, zoneId: 'lab', ledger: () => L, gameDay: () => NOW });
-    const YD = Events.calendarOf(1).yearDays;
-    const aDay = [...Array(YD).keys()].map((i) => i + 1).find((d) => Winter.isAnnounceDay(d));
-    NOW = aDay;
-    const x = safe('winter', () => Winter.dailyExtra(aDay, vils));
-    out.winter = { aDay, extra: x == null ? null : Object.keys(x), goalN: x && x.goal ? (Array.isArray(x.goal) ? x.goal.length : 1) : 0,
-      head: safe('head', () => Winter.headLine(0, aDay)), goalRes: safe('goal', () => Winter.goalRes(0)), bonus: safe('bonus', () => Winter.bonusOf(0)) };
-    // ⑫ 화면 칸 — 회관 재고(관리자) · 거래소 소속 줄
+    // 채팅 꺼내기(촌장) — `/곳간 <품목> [양]` · `/인출 [양]` — 같은 촌장 문 · 같은 뒷정리
+    { const s0 = st(0); safe('chatwd', () => M.handleChat(pC, '/곳간 food 2')); await new Promise((r) => setTimeout(r, 50)); out.chatWd = { took: +(s0 - st(0)).toFixed(4), note: last(pC) }; }
+    { const s0 = st(0); safe('chatwd2', () => M.handleChat(pC, '/인출 3')); await new Promise((r) => setTimeout(r, 50)); out.chatWd2 = { took: +(s0 - st(0)).toFixed(4), note: last(pC) }; }
+    //   마을 사람의 `/인출` 도 같은 촌장 문에서 막힌다(옛 "오늘 몫" 갈래 없음)
+    { const s0 = st(0); safe('chatwdM', () => M.handleChat(pM, '/인출')); await new Promise((r) => setTimeout(r, 50)); out.chatWdM = { took: +(s0 - st(0)).toFixed(4), note: last(pM) }; }
+    // ⑤ 겨울 프로젝트 없음 — 파일 · 게시판 머리줄 · 납품 안 겨울 갈래 · 한도 함수
+    out.winterFile = fs.existsSync(SV('winter.js'));
+    out.winterReq = (() => { try { require(SV('winter.js')); return 'loaded'; } catch (e) { return e && e.code; } })();
+    //   게시판 소식 줄이 오늘 날짜(`state.world.day`)를 읽는다 — 랩은 그 칸이 비어 있다. 이 한 번만 econ 세계를 꽂고 곧 되돌린다(⑥ 은 지금 값 그대로).
+    const E1 = require(path.join(ROOT, 'sim', 'economy-sim'));
+    V.__labProbe._distProbe.setup(null, null, world, E1);
+    const bd = safe('board', () => V.villageBoard(0, AT[0].x, AT[0].y));
+    V.__labProbe._distProbe.setup(null, null, null, E1);
+    out.board = bd ? { ok: !!bd.ok, keys: Object.keys(bd).sort(), head: Object.prototype.hasOwnProperty.call(bd, 'head') } : null;
+    //   납품 — 품목 미지정 길(서버가 고른다)을 그대로 부른다. 품목 지정 길은 곧장 장부 정본(`Events.deliverToVillage`)으로 가는데
+    //   랩은 villages.js 의 장부 모듈 칸을 안 세운다(`_initLedger` = 존 부팅) ⇒ 그 길은 본문(소스)으로 본다: 겨울 갈래 · 겨울 표지 0.
+    { const inv2 = { food: 5 }; const r2 = safe('deliver2', () => V.villageDeliver(3, AT[3].x, AT[3].y, inv2, null, null));
+      const src = String(V.villageDeliver);
+      out.deliver = { err2: r2 && r2.err, left2: inv2.food, winter2: !!(r2 && r2.winter), foodReq: (L.board(3) || []).filter((x) => x.item === 'food').length,
+        srcWinter: /Winter\.|winter\s*:\s*true|goalRes/.test(src), srcLedger: /Events\.deliverToVillage\(/.test(src) }; }
+    out.limitFns = [typeof M.limitOf, typeof M.remainOf, typeof M.granaryOpen];
+    // ⑥ 화면 칸 — 회관 재고(관리자) · 거래소 소속 줄
     safe('inv', () => H.tryVillageInventory(pC, HALL));
     const inv = (msgs.get(CHIEF) || []).filter((o) => o.type === 'village_inventory').pop();
     out.invDonate = inv && inv.inv ? (inv.inv.donate === undefined ? 'undefined' : inv.inv.donate) : 'none';
-    const ms = M.publicState(pC, 100, vils[0]);
-    out.pub = { keys: Object.keys(ms).sort(), chief: ms.chief === undefined ? 'undefined' : ms.chief, donateN: Array.isArray(ms.donate) ? ms.donate.length : 'undefined', limit: ms.limit };
+    const ms = M.publicState(pC, vils[0]);
+    const mm = M.publicState(pM, vils[0]);
+    out.pub = { keys: Object.keys(ms).sort(), chief: ms.chief === undefined ? 'undefined' : ms.chief, donateN: Array.isArray(ms.donate) ? ms.donate.length : 'undefined',
+      memberChief: mm.chief, hasLimit: ('limit' in ms) || ('remain' in ms) };
     out.cAsk = cAsk;
   })().then(() => done(out)).catch((e) => { out.errs.push('top:' + String(e && e.stack || e).slice(0, 400)); done(out); });
   return;
 }
 
-// ══ 본 실행 — 끔 · 켬 두 판을 같은 하위 실행으로 ═══════════════════════════════════════════════
+// ══ 본 실행 — 기본(손잡이 없음) · 끔('0') · 다른 값('true') 세 판을 같은 하위 실행으로 ═══════════════════════
 let pass = 0, fail = 0;
 const ok = (c, m, extra) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (extra !== undefined && extra !== '' ? `  ${extra}` : '')); };
 const BASE_ENV = (() => { const e = Object.assign({}, process.env); delete e.T769_DONATE; delete e.T769_SUB; return e; })();
@@ -178,17 +185,17 @@ const sub = (env) => {
   const txt = execFileSync(process.execPath, [__filename], { env: Object.assign({}, BASE_ENV, env, { T769_SUB: 'zone' }), stdio: 'pipe', maxBuffer: 64 << 20 }).toString().trim();
   return JSON.parse(txt.split('\n').filter((l) => l.startsWith('{')).pop());
 };
-console.log('\n=== T769 — 기부(누구나 · 상시 · 보상 0) · 꺼내기 = 촌장만 · 겨울 프로젝트 0 ===');
-const OFF = sub({});
-const ON = sub({ T769_DONATE: '1' });
+console.log('\n=== T769 · T779 — 기부(누구나 · 상시 · 보상 0) · 꺼내기 = 촌장만 · 겨울 프로젝트 없음 ===');
+const ON = sub({});
+const OFF = sub({ T769_DONATE: '0' });
 const KNOB = sub({ T769_DONATE: 'true' });
 
-console.log('\n① 손잡이');
-ok(OFF.on === false && OFF.mOn === false && ON.on === true && ON.mOn === true, "'1' 만 켬 — 없음 = 끔(존 · membership 같은 손잡이)", `끔 ${OFF.on}/${OFF.mOn} · 켬 ${ON.on}/${ON.mOn}`);
-ok(KNOB.on === false, "다른 값('true')은 끔", String(KNOB.on));
-ok(!OFF.errs.length && !ON.errs.length, '하위 실행 오류 0', JSON.stringify({ off: OFF.errs, on: ON.errs }).slice(0, 300));
+console.log('\n① 손잡이 — 켬 기본(T779) · `0` 만 끔');
+ok(ON.on === true && ON.mOn === true && OFF.on === false && OFF.mOn === false, "없음 = 켬 · '0' = 끔(존 · membership 같은 손잡이)", `없음 ${ON.on}/${ON.mOn} · '0' ${OFF.on}/${OFF.mOn}`);
+ok(KNOB.on === true && KNOB.mOn === true, "다른 값('true')도 켬 — 끄는 값은 '0' 하나", `${KNOB.on}/${KNOB.mOn}`);
+ok(!ON.errs.length && !OFF.errs.length && !KNOB.errs.length, '하위 실행 오류 0', JSON.stringify({ on: ON.errs, off: OFF.errs, t: KNOB.errs }).slice(0, 300));
 
-console.log('\n② 켬 — 기부 문 셋(회관 · `/기부` · 거래소 패널) · 누구나 · 받는 것 없음');
+console.log('\n② 기부 문 셋(회관 · `/기부` · 거래소 패널) · 누구나 · 받는 것 없음');
 ok(ON.hall.stockUp > 0 && ON.hall.invLeft === 0 && /기부했다/.test(ON.hall.note) && /받는 것 없음/.test(ON.hall.note),
   '★비관리자 회관 기부 ok — 곳간이 늘고 손이 비었다 · "기부했다 … 받는 것 없음"', `${ON.hall.stockUp} · ${ON.hall.note}`);
 ok(ON.chatKey === true && ON.npc.stockUp > 0 && ON.npc.invLeft === 1 && /기부했다/.test(ON.npc.note),
@@ -201,39 +208,49 @@ console.log('\n③ 기여 — 기부는 계량기를 안 올린다');
 ok(ON.contrib.p1 === 0 && ON.contrib.p2 === 0, '★기부한 두 사람의 기여 0 그대로', JSON.stringify(ON.contrib));
 ok(ON.contribCtrl === 1, '대조 — 게시판 납품 훅(`Onboarding.onDeliver`)은 같은 계량기를 1 올린다(자명 통과 금지)', String(ON.contribCtrl));
 
-console.log('\n④ 켬 — 꺼내기 = 촌장만(한도 없음)');
+console.log('\n④ 꺼내기 = 촌장만(한도 없음)');
 ok(ON.wdP1.took === 0 && /촌장/.test(ON.wdP1.note), '★비관리자 꺼내기 거절', ON.wdP1.note);
-ok(ON.wdC1.took > 0 && ON.wdC2.took > 0 && /한도 없음/.test(ON.wdC1.note), `★촌장(창설자) 꺼내기 ok — 하루 두 번 · 종전 한도(${ON.limit0}) 넘게`, `${ON.wdC1.took} · ${ON.wdC2.took} · ${ON.wdC1.note}`);
-ok(ON.accept && ON.accept.ok && ON.wdM.member && ON.wdM.took === 0 && /촌장/.test(ON.wdM.note), '★마을 사람(촌장 아님) 꺼내기 거절 — 소속은 그대로', ON.wdM.note);
-ok(!/곳간을 열어/.test(ON.acceptNote.note), '마을 사람에게 "곳간을 열어 두겠네" 말이 안 간다', ON.acceptNote.note);
+ok(ON.wdC1.took === 5 && ON.wdC2.took === 5 && /한도 없음/.test(ON.wdC1.note), '★촌장(창설자) 꺼내기 ok — 같은 날 5 · 5(하루 몫 없음)', `${ON.wdC1.took} · ${ON.wdC2.took} · ${ON.wdC1.note}`);
+ok(ON.sync.prom === false && ON.sync.took > 0, '창설자 촌장 판정은 그 자리에서 선다(동기 — 기다림 0)', JSON.stringify(ON.sync));
+ok(ON.accept.ok && ON.wdM.member && ON.wdM.took === 0 && /촌장/.test(ON.wdM.note), '★마을 사람(촌장 아님) 꺼내기 거절 — 소속은 그대로', ON.wdM.note);
+ok(ON.acceptNote.r === true && /오늘부터 자네는/.test(ON.acceptNote.note) && !/곳간을 열어|\/인출/.test(ON.acceptNote.note), '마을 사람에게 "곳간을 열어 두겠네(/인출)" 말이 안 간다(걷음)', ON.acceptNote.note);
 ok(ON.wdG.took > 0 && ON.wdX.took === 0 && /촌장/.test(ON.wdX.note), '★길드 마을 — central `leader_id` 가 촌장(맞으면 ok · 아니면 거절)', `${ON.wdG.took} · ${ON.wdX.note}`);
-ok(ON.wdH.took === 0 && /확인하지 못했다/.test(ON.wdH.note), '★central 불가 = 거절(빼는 문은 닫힌 쪽)', ON.wdH.note);
-ok(ON.sync.prom === false && ON.sync.took > 0, '창설자 촌장 판정은 그 자리에서 선다(동기 — 종전 꺼내기 문과 같은 때)', JSON.stringify(ON.sync));
 ok(ON.wdG.prom === true && ON.wdX.prom === false && ON.wdG2.prom === false && ON.wdG2.took > 0 && ON.cAsk === 2,
   '길드 촌장 — 캐시가 비면 central 을 묻고 그 뒤(비동기) · 캐시 창(`GRAN_TTL_MS`) 안이면 그 자리에서 · 묻는 수 = 빈 캐시 둘(77 · 78)',
   `묻기 ${ON.cAsk} · 첫 ${ON.wdG.prom} · 남 ${ON.wdX.prom} · 둘째 ${ON.wdG2.prom}/${ON.wdG2.took}`);
+ok(ON.wdH.took === 0 && /확인하지 못했다/.test(ON.wdH.note), '★central 불가 = 거절(빼는 문은 닫힌 쪽)', ON.wdH.note);
 ok(ON.wdN.took === 0 && /사람이 꺼내지 않는다/.test(ON.wdN.note), 'NPC 마을 = 사람 꺼내기 0', ON.wdN.note);
-ok(ON.lock.r === true && /촌장만 꺼낸다/.test(ON.lock.note), '`/곳간 잠금` 은 한 줄로 답한다', ON.lock.note);
-ok(/꺼내기는 촌장만/.test(ON.look.note) && !/남은 몫/.test(ON.look.note), '`/곳간` 형편 한 줄 — 한도 말 없음', ON.look.note);
-ok(ON.chatWd.took > 0, '채팅 꺼내기(촌장 `/곳간 food 2`) — 비동기 판정 뒤 같은 뒷정리', `${ON.chatWd.took} · ${ON.chatWd.note}`);
+ok(ON.lock.r === true && /촌장만 꺼낸다/.test(ON.lock.note), '`/곳간 잠금` 은 한 줄로 답한다(길드 곳간 잠금 걷음)', ON.lock.note);
+ok(/꺼내기는 촌장만/.test(ON.look.note) && /기부는 누구나/.test(ON.look.note) && !/남은 몫|누적 기여/.test(ON.look.note), '`/곳간` 형편 한 줄 — 한도 말 없음 · 기부 꼬리', ON.look.note);
+ok(ON.chatWd.took === 2 && ON.chatWd2.took === 3, '채팅 꺼내기(촌장 `/곳간 food 2` · `/인출 3`) — 같은 촌장 문 · 같은 뒷정리', `${ON.chatWd.took} · ${ON.chatWd2.took} · ${ON.chatWd2.note}`);
+ok(ON.chatWdM.took === 0 && /촌장/.test(ON.chatWdM.note), '마을 사람의 `/인출` 도 촌장 문에서 막힌다(옛 "오늘 몫" 갈래 없음)', ON.chatWdM.note);
 
-console.log('\n⑤ 켬 — 겨울 프로젝트 0');
-ok(ON.winter.extra === null && ON.winter.head === null && ON.winter.goalRes === null && ON.winter.bonus === 0,
-  '★공표일에 공표 0 · 머리줄 0 · 겨울 몫 갈래 0 · 보상 0', JSON.stringify(ON.winter));
-ok(OFF.winter.goalN > 0, '대조(끔) — 같은 날 공표가 선다(자명 통과 금지)', JSON.stringify(OFF.winter).slice(0, 200));
+console.log('\n⑤ 겨울 프로젝트 없음(T779 걷음) — 손잡이와 상관없다');
+for (const [tag, z] of [['켬', ON], ['끔', OFF]]) {
+  ok(z.winterFile === false && z.winterReq === 'MODULE_NOT_FOUND', `[${tag}] ★\`server/winter.js\` 가 없다(불러도 못 찾는다)`, `${z.winterFile} · ${z.winterReq}`);
+  ok(z.board && z.board.ok && !z.board.head, `[${tag}] ★게시판에 머리줄 칸이 없다(의뢰 · 소식 둘)`, JSON.stringify(z.board));
+  ok(z.deliver.foodReq === 0 && /의뢰/.test(z.deliver.err2 || '') && z.deliver.left2 === 5 && !z.deliver.winter2,
+    `[${tag}] ★의뢰 없는 곡식은 안 받는다 — 품목 미지정 납품이 겨울 몫을 고르지 않는다(손 5 그대로)`, JSON.stringify(z.deliver));
+  ok(z.deliver.srcWinter === false && z.deliver.srcLedger === true,
+    `[${tag}] 납품 본문 — 겨울 갈래 · 겨울 표지 0 · 품목 지정은 곧장 장부 정본(의뢰 납품 하나)`, `겨울 ${z.deliver.srcWinter} · 장부 ${z.deliver.srcLedger}`);
+  ok(z.limitFns.every((t) => t === 'undefined'), `[${tag}] 기여 한도 · 길드 곳간 잠금 함수가 없다(걷음)`, z.limitFns.join(' '));
+}
 
 console.log('\n⑥ 화면 칸');
-ok(ON.invDonate === true && ON.pub.donateN > 0 && ON.pub.chief === true && ON.pub.limit === null, '켬 — 회관 `inv.donate` · 거래소 소속 줄 `donate`·`chief`(창설자 = 촌장)', JSON.stringify({ inv: ON.invDonate, pub: ON.pub }));
-ok(OFF.invDonate === 'undefined' && OFF.pub.chief === 'undefined' && OFF.pub.donateN === 'undefined', '끔 — 칸이 없다(종전 payload)', JSON.stringify({ inv: OFF.invDonate, pub: OFF.pub }));
+ok(ON.invDonate === true && ON.pub.donateN > 0 && ON.pub.chief === true && ON.pub.memberChief === false && !ON.pub.hasLimit,
+  '켬 — 회관 `inv.donate` · 거래소 소속 줄 `chief`(창설자 true · 마을 사람 false) · `donate` · 한도 칸 없음', JSON.stringify({ inv: ON.invDonate, pub: ON.pub }));
+ok(OFF.invDonate === 'undefined' && OFF.pub.donateN === 'undefined' && OFF.pub.chief === true && !OFF.pub.hasLimit,
+  "끔('0') — 기부 칸만 없다(촌장 칸은 그대로 · 한도 칸 없음)", JSON.stringify({ inv: OFF.invDonate, pub: OFF.pub }));
 
-console.log('\n⑦ 끔 — 종전 동작 그대로');
+console.log("\n⑦ 끔('0') — 기부 문 셋만 닫힌다 · 꺼내기는 그대로 촌장만");
 ok(OFF.hall.stockUp === 0 && /관리자가 아닙니다/.test(OFF.hall.note), '비관리자 회관 넣기 거절(관리자 게이트)', OFF.hall.note);
 ok(OFF.chatKey === false && OFF.npc.stockUp === 0, '`/기부` 는 명령이 아니다(말로 흘러간다)', String(OFF.chatKey));
 ok(OFF.panel.stockUp === 0, '`village_donate` 문이 닫혀 있다', String(OFF.panel.stockUp));
-ok(OFF.wdM.took > 0 && OFF.wdM.took <= OFF.limit0 + 1e-9 + 2, '마을 사람이 한도 안에서 꺼낸다(종전)', `${OFF.wdM.took} · ${OFF.wdM.note}`);
-ok(/곳간을 열어/.test(OFF.acceptNote.note), '마을 사람에게 "곳간을 열어 두겠네" 말이 간다(종전)', OFF.acceptNote.note);
-ok(OFF.wdP1.took === 0 && /마을 사람만/.test(OFF.wdP1.note), '비소속 꺼내기 거절(종전 말)', OFF.wdP1.note);
-ok(OFF.cAsk === 0, '끔 — central 에 촌장을 묻지 않는다', String(OFF.cAsk));
+ok(OFF.wdP1.took === 0 && OFF.wdM.took === 0 && OFF.wdC1.took === 5 && OFF.chatWd2.took === 3 && OFF.wdN.took === 0,
+  '★꺼내기는 손잡이 밖 — 끔에서도 촌장만(비관리자 · 마을 사람 거절 · 창설자 5 · `/인출 3` · NPC 0)', `${OFF.wdP1.note} · ${OFF.wdM.note} · ${OFF.wdC1.took}`);
+ok(/꺼내기는 촌장만/.test(OFF.look.note) && !/기부/.test(OFF.look.note), '`/곳간` 형편 줄 — 기부 꼬리만 빠진다', OFF.look.note);
+ok(OFF.lock.r === true && /촌장만 꺼낸다/.test(OFF.lock.note) && OFF.cAsk === 2, '`/곳간 잠금` 한 줄 · central 묻기도 같은 둘(꺼내기 판정은 손잡이 밖)', `${OFF.lock.note} · 묻기 ${OFF.cAsk}`);
+ok(!/곳간을 열어|\/인출/.test(OFF.acceptNote.note) && /오늘부터 자네는/.test(OFF.acceptNote.note), '수락 말에 곳간 말 없음(걷음 — 끔에서도)', OFF.acceptNote.note);
 
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===`);
 process.exit(fail ? 1 : 0);

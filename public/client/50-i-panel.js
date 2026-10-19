@@ -1062,10 +1062,10 @@ function itemKo(k) {
     // ★★[T11 2026-09-02] **소속 한 줄** — 새 패널이 아니라 이 창의 머리 한 줄이다.
     //   값은 전부 서버가 준 `t.member` 그대로다(클라 재계산 0 — 한도 곡선을 여기서 다시 풀면 그게 사본이다).
     const mb = t.member || null;
-    // ★★[T769] 켬(서버가 `mb.donate` 를 실어 줄 때만) — 꺼내기 = 촌장만 · 기부 = 누구나 · 받는 것 없음. 거래(맞바꿈)와 말을 섞지 않는다.
-    //   끔이면 서버가 그 칸을 안 싣는다 ⇒ 아래 종전 줄 그대로(main 바이트).
+    // ★★[T769 · T779] 꺼내기 = 촌장만 · 기부 = 누구나 · 받는 것 없음. 거래(맞바꿈)와 말을 섞지 않는다.
+    //   ★[T779] 옛 "곳간 몫 n/m"(기여 한도)은 걷었다 — 촌장 줄은 늘 선다 · 기부 줄은 서버가 `mb.donate` 를 실어 줄 때만(`T769_DONATE` · 끄면 그 칸이 없다).
     const _dn = (mb && Array.isArray(mb.donate)) ? mb.donate : null;
-    if (mb && _dn) {
+    if (mb) {
       if (mb.vid != null) {
         h += `<div class="tr-head" style="border-top:1px solid var(--inset)"><span><b>${mb.name || '마을'}</b> 사람`
           + ` <span style="opacity:.7">· 기여 ${mb.contrib}</span></span><span></span></div>`;
@@ -1079,26 +1079,14 @@ function itemKo(k) {
       h += `<div class="tr-head" style="border-top:1px solid var(--inset)"><span>곳간 꺼내기 — 촌장만</span>`
         + `<span>${mb.chief === true ? '<button class="tr-btn" id="mbWd" style="padding:2px 8px">꺼낸다</button>'
           : (mb.chief === null ? '촌장 확인 중' : '촌장이 아니다')}</span></div>`;   // null = 길드 촌장을 central 에 묻는 중(서버 캐시가 비었다 — 다음 창에서 선다)
-      const _mine = _dn.filter((k) => (inventory[k] || 0) >= 1);
-      h += `<div class="tr-head" style="border-top:1px solid var(--inset)"><span>곳간에 기부 — 받는 것 없음</span>`
-        + `<span class="bd-dim">기여는 게시판 납품만 센다</span></div>`;
-      h += `<div class="tr-line" style="display:flex;flex-wrap:wrap;gap:6px">`
-        + (_mine.length ? _mine.map((k) => `<button class="tr-btn" data-dn="${k}" style="padding:2px 8px">${itemKo(k)} ${inventory[k]} 기부</button>`).join('')
-          : '<span class="bd-dim">곳간이 받는 걸 안 들고 있다</span>')
-        + `</div>`;
-    } else if (mb) {
-      if (mb.vid != null) {
-        h += `<div class="tr-head" style="border-top:1px solid var(--inset)"><span><b>${mb.name || '마을'}</b> 사람`
-          + ` <span style="opacity:.7">· 기여 ${mb.contrib}</span></span>`
-          + `<span>곳간 몫 <b>${mb.remain}</b>/${mb.limit}`
-          + (mb.remain > 0 ? ` <button class="tr-btn" id="mbWd" style="padding:2px 8px">꺼낸다</button>` : '')
-          + `</span></div>`;
-      } else if (mb.offer != null) {
-        h += `<div class="tr-head" style="border-top:1px solid var(--inset)"><span>촌장이 마을 사람으로 받아 주겠다 한다</span>`
-          + `<span>채팅에 <b>/소속</b></span></div>`;
-      } else {
-        h += `<div class="tr-head" style="border-top:1px solid var(--inset)"><span>아직 이 마을 사람이 아니다</span>`
-          + `<span>누적 기여 <b>${mb.contrib}</b>/${mb.need}</span></div>`;
+      if (_dn) {
+        const _mine = _dn.filter((k) => (inventory[k] || 0) >= 1);
+        h += `<div class="tr-head" style="border-top:1px solid var(--inset)"><span>곳간에 기부 — 받는 것 없음</span>`
+          + `<span class="bd-dim">기여는 게시판 납품만 센다</span></div>`;
+        h += `<div class="tr-line" style="display:flex;flex-wrap:wrap;gap:6px">`
+          + (_mine.length ? _mine.map((k) => `<button class="tr-btn" data-dn="${k}" style="padding:2px 8px">${itemKo(k)} ${inventory[k]} 기부</button>`).join('')
+            : '<span class="bd-dim">곳간이 받는 걸 안 들고 있다</span>')
+          + `</div>`;
       }
     }
     // ★[T69] 시세 열 머리는 **지금 기준 품목**을 말한다 — 나무를 낼 물건으로 고르면 "나무 기준".
@@ -1203,7 +1191,7 @@ function itemKo(k) {
         : { type: 'village_trade_exec', vid, give: trGive, take: trTake, qty: trQty, numeraire: trGive });
       trQuote = null;
     };
-    // ★[T11] 곳간에서 꺼내기 — 수량은 **서버가 오늘 남은 몫만큼** 준다(클라는 요청만 한다).
+    // ★[T11] 곳간에서 꺼내기 — 클라는 요청만 한다(★[T769 · T779] 촌장만 · 한 단위 · 서버가 최종 판정).
     const wd = document.getElementById('mbWd');
     if (wd) wd.onclick = () => { window.__sendPrimary({ type: 'village_withdraw', vid, res: 'food' }); };
     // ★[T769] 기부 — 든 것 전부(회관 패널의 넣기 단추와 같은 문법 · 서버가 최종 판정 · 받는 것 없음)

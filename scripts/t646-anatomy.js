@@ -75,7 +75,8 @@ function _A6end() {
     _A6reset();
   }
 }
-function _A6sub(k, ms) { _A6.sub[k] = (_A6.sub[k] || 0) + ms; _A6.subN[k] = (_A6.subN[k] || 0) + 1; }
+var _A6st = 0;   // ★[T780] 서 있는 몸의 걸음 안이면 1 — 갈래 칸을 "<칸>:서" 로도 센다(서 있는 몸이 걸음마다 무엇을 다시 묻나 · 자만)
+function _A6sub(k, ms) { _A6.sub[k] = (_A6.sub[k] || 0) + ms; _A6.subN[k] = (_A6.subN[k] || 0) + 1; if (_A6st && k.charCodeAt(0) !== 110) { const k2 = k + ':서'; _A6.sub[k2] = (_A6.sub[k2] || 0) + ms; _A6.subN[k2] = (_A6.subN[k2] || 0) + 1; } }
 function _A6run(br, npc, same, cause) {
   const f = '_a6r_' + br;
   if (same) { npc[f] = (npc[f] || 0) + 1; return; }
@@ -117,7 +118,7 @@ if (SimVillages.npcLifeTick) { const f0 = SimVillages.npcLifeTick;
 // npcStep 전체 · 따라가기 · 걸음
 var _A6arrT = 0, _A6ps = 0, _A6pb = 0;
 { const f0 = npcStep; npcStep = function (npc, dt, now) { const _st = !npc.path || npc.pathIndex >= npc.path.length;   // [T670] 서 있는 사람(길을 다 걸었다) / 걷는 사람
-    _A6arrT = 0; const s = _a6t(); f0(npc, dt, now); const e = _a6t(); _A6sub('npcStep', e - s); _A6sub(_st ? 'npcStep:서' : 'npcStep:걷', e - s); if (_A6arrT) _A6sub('arrive', e - _A6arrT); }; }
+    _A6arrT = 0; _A6st = _st ? 1 : 0; const s = _a6t(); try { f0(npc, dt, now); } finally { _A6st = 0; } const e = _a6t(); _A6sub('npcStep', e - s); _A6sub(_st ? 'npcStep:서' : 'npcStep:걷', e - s); if (_A6arrT) _A6sub('arrive', e - _A6arrT); }; }
 { const f0 = detectStuck; detectStuck = function (npc, now) { const s = _a6t(); const r = f0(npc, now); _A6sub('stuck', _a6t() - s); return r; }; }
 { const f0 = unstuckNpc; unstuckNpc = function (npc, now) { const s = _a6t(); const r = f0(npc, now); _A6sub('unstuck', _a6t() - s); return r; }; }
 { const f0 = followNpcPath;

@@ -54,6 +54,9 @@ console.log = () => {}; console.warn = () => {}; console.error = () => {};
 const Zone = require(path.join(ROOT, 'server', 'zone.js'));
 console.log = _l; console.warn = _w; console.error = _e;
 const H = Zone.__testBind();
+// ★[T778] 순간 로트 켬 기본 — 순간 열쇠는 "같은 날 = 나이 0"을 깬다(갓 얻은 것도 그 날 0시부터 지난 시간만큼 늙어 f < 1).
+//   값 단언은 그대로 두고 지난 시간만 뺀다 — 존 날을 얼린다(제품의 테스트 문 · 날 문법(`T732_MOMENT_LOT=0`)엔 같은 날 · ⑦ 이 녹였다 다시 언다).
+H.__e2eFreezeZoneDay(true);
 const Spoil = require(path.join(ROOT, 'server', 'spoil.js'));
 const Lots = require(path.join(ROOT, 'server', 'lots.js'));
 const Facility = require(path.join(ROOT, 'server', 'facility.js'));
@@ -477,9 +480,11 @@ function giveAged(p, item, n, ageDays) {
     //   늘어난 넷은 전부 **물리량**이다: `e` 누적 노출 · `t` 마지막 정산일 · `m` 자리 밀폐 · `w` 자리 완충.
     //   지켜야 할 규약은 "**신선도를 저장하지 않는다**"이고 그건 그대로다 —
     //   `fresh`·`stage` 는 어디에도 안 적히고 **매번 유도된다**(아래 두 검사가 그걸 못 박는다).
-    const ALLOW = new Set(['d', 'n', 'coalesced', 'e', 't', 'm', 'w']);
-    ok([...keys].every((k) => ALLOW.has(k)),
-      '★★⑥ⓔ 저장 레코드는 **물리량만** 있다(d·n·coalesced + 노출 넷 e·t·m·w)', [...keys].join(','));
+    //   ★[T778] 순간 로트 켬 기본 — 얻은 순간 `k`(게임 ms)가 하나 더 실린다. 그것도 물리량(시각)이다 — 신선도 · 단계가 아니다(유도값 0).
+    const MOM = Lots.momentOn();
+    const ALLOW = new Set(['d', 'n', 'coalesced', 'e', 't', 'm', 'w', ...(MOM ? ['k'] : [])]);
+    ok([...keys].every((k) => ALLOW.has(k)) && (!MOM || keys.has('k')),
+      '★★⑥ⓔ 저장 레코드는 **물리량만** 있다(d·n·coalesced + 노출 넷 e·t·m·w · 순간 로트면 얻은 순간 k)', [...keys].join(','));
     ok(!keys.has('fresh') && !keys.has('stage'),
       '★★⑥ⓔ-2 **신선도·단계는 저장하지 않는다** — 유도값이다(부패 배치의 제1 규약 유지)');
   }
@@ -507,6 +512,7 @@ function giveAged(p, item, n, ageDays) {
     const after = Lots.view(p, 'fish', p.inventory, H.zoneGameDay()).lots[0].fresh;
     H.__e2eFreezeZoneDay(false);
     ok(before === after && after === 1, '★★⑦ 얼어 있는 동안 **로트가 안 늙는다**', `${before} → ${after}`);
+    H.__e2eFreezeZoneDay(true);   // ★[T778] 하네스 머리의 얼림으로 되돌린다(이 절이 녹였다)
   }
   // ★★⑦-b **게임일 int32 오버플로** — `e2e-trade` 5건을 죽인 진짜 원인.
   //   하루가 짧은 하네스(`VILLAGE_DAY_MS=500`)에선 게임일이 35.8억이 되고, `day | 0` 이
@@ -545,6 +551,14 @@ function giveAged(p, item, n, ageDays) {
       `${w.unitsPerWeek}단위 · ${Spoil.shelfOf('dried_fish')}일`);
   }
 
+  // ★[T778] 끔 탐침 — 같은 하네스를 순간 로트 끔(`T732_MOMENT_LOT=0` · 날 문법)으로 한 번 더(아이 판 · 탐침은 한 번만)
+  if (process.env.T778_PROBE !== '1') {
+    let r = '';
+    try { r = require('child_process').execFileSync(process.execPath, [__filename], { env: Object.assign({}, process.env, { T732_MOMENT_LOT: '0', T778_PROBE: '1', DB_PATH: `/tmp/test-preserve-probe-${process.pid}.db` }), encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 600000 }); }
+    catch (e) { r = String((e && e.stdout) || ''); }
+    const m = /결과: (\d+) PASS \/ (\d+) FAIL/.exec(r);
+    ok(!!m && +m[2] === 0 && +m[1] === pass, '[T778 끔 탐침] 순간 로트 끔(`T732_MOMENT_LOT=0`)으로 같은 하네스 — 같은 줄 수 다 통과', m ? `${m[1]} / ${m[2]}` : r.slice(-120));
+  }
   console.log(`\n=== 결과: ${pass} PASS / ${fail} FAIL ===`);
   try { require('fs').unlinkSync(process.env.DB_PATH); } catch (e) {}
   process.exit(fail ? 1 : 0);

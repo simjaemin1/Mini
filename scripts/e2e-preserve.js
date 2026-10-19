@@ -14,6 +14,11 @@
 //     **취득일만** 과거로 적어서 만든다 — 서버 시계를 우회하지 않는다.
 //   · **가공 소요일만** env 로 줄인다(`PRESERVE_DAYS_*`). `e2e-craft` 가 `CRAFT_TOOL_MS` 를
 //     줄이는 것과 같은 결이고, 신선도·수율·가격에는 손대지 않는다.
+//   · ★★[T778 2026-10-18 · 순간 로트 켬 기본] **입장 직후 존 날을 얼린다**(`__e2e_day_freeze` — 제품의 E2E 문 · 순간 시계가 그 날 0시에 선다).
+//     순간 열쇠는 "같은 날 = 나이 0"을 깬다 — `[나이, 개수]` 픽스처는 그 날 0시에 적히고 **그 뒤 흐른 시간만큼 더 늙는다**.
+//     ①③ 의 나이 역산(`stageAtAge` · `berryStageAt`)은 날 정수라, 늦은 시각 · 여름엔 시듦 픽스처가 상함으로 넘어간다
+//     (fish_cooked 시듦 띠 = 노출 1.45 ~ 3.5 · 폭 2.05 < 여름 하루치 최대 2.16). 얼리면 서버 노출 = 하네스가 센 노출(날 정수 그대로).
+//     값 단언은 그대로다 — 흐른 시간 몫만 뺀다. 게임일 **길이**는 여전히 안 건드린다. 끔 탐침(`T732_MOMENT_LOT=0`) 한 판이 맨 끝에 같은 줄을 다시 돈다.
 //
 // 실행: node scripts/e2e-preserve.js [--headed]
 'use strict';
@@ -22,10 +27,10 @@ const fs = require('fs');
 const { spawn } = require('child_process');
 const FB = require('./fixture-boot');   // ★T349 기동 기다리기 정본(사본 0)
 const ROOT = path.join(__dirname, '..');
-const SHOTS = '/tmp/e2e-preserve-shots';
+const SHOTS = process.env.T778_PROBE ? '/tmp/e2e-preserve-shots-probe' : '/tmp/e2e-preserve-shots';   // ★[T778] 끔 탐침 판은 제 칸에(본 판 스크린샷을 안 덮는다)
 fs.mkdirSync(SHOTS, { recursive: true });
 const HEADED = process.argv.includes('--headed');
-const T767 = process.env.T767_PRESERVE_CARRY === '1';   // ★[T767] 보존 가공 개수 그대로 · 신선도 이어받기(서버 손잡이 — 이 하네스는 단언만 갈래)
+const T767 = process.env.T767_PRESERVE_CARRY !== '0';   // ★[T767] 보존 가공 개수 그대로 · 신선도 이어받기(서버 손잡이 — 이 하네스는 단언만 갈래) · ★[T778] 켬 기본(`=0` 이 끔)
 const CPORT = 3010, ZPORT = 3020;
 const CDB = `/tmp/e2e-pv-c-${process.pid}.db`, ZDB = `/tmp/e2e-pv-z-${process.pid}.db`;
 const DAY_MS = 24 * 60 * 1000;            // 게임일 기본값(안 건드린다)
@@ -119,6 +124,12 @@ async function waitHttp(u, n = 900) { for (let i = 0; i < n; i++) { try { const 
     const c = (await page.evaluate(() => (window.__getSrvAbs ? window.__getSrvAbs() : null))) || (await me());
     if (c && Math.hypot(c.x - (x + WOX), c.y - (y + WOY)) <= 200) return c; } return null; };
   await warp(site.x, site.y);
+  // ★[T778] 존 날을 얼린다(머리 주석 · 시간 모드) — 순간 시계가 그 날 0시에 서서 픽스처 나이 = 날 정수(하네스 역산과 같은 노출)
+  const nF = await page.evaluate(() => (window.__notices || []).length);
+  await page.evaluate(() => window.__sendPrimary({ type: '__e2e_day_freeze', on: true }));
+  await sleep(700);
+  const fz = await page.evaluate((k) => (window.__notices || []).slice(k), nF);
+  pre(fz.some((t) => /정지/.test(String(t))), '[T778] 존 날을 얼렸다(순간 시계가 그 날 0시에 선다 · 흐른 시간 몫 0)', (fz.find((t) => /게임일/.test(String(t))) || String(fz[0] || '알림 없음')).slice(0, 40));
 
   // ── ① 방치한 것이 화면에서 **시들고 상한다** ────────────────────────────
   console.log('\n① 방치 → 시듦 → 상함이 화면에 보인다');
@@ -282,9 +293,18 @@ async function waitHttp(u, n = 900) { for (let i = 0; i < n; i++) { try { const 
   ok(miss.length === 0, '★⑤ 자산 404 없음 — **무엇이** 없는지까지 적는다(새 아이콘 7종 포함)', miss.slice(0, 4).join(' '));
 
   console.log(`\n  스크린샷: ${shots.join(' ')}`);
-  console.log(`\n=== 결과: ${pass} PASS / ${fail} FAIL ===`);
   await browser.close();
   for (const p of procs) { try { p.kill('SIGKILL'); } catch (e) {} }
   for (const f of [CDB, ZDB]) { try { fs.unlinkSync(f); } catch (e) {} }
+  // ★[T778] 끔 탐침 — 같은 하네스를 순간 로트 끔(`T732_MOMENT_LOT=0` · 날 문법)으로 한 번 더(아이 판 · 탐침은 한 번만 · 서버가 내려간 뒤 같은 포트)
+  if (!process.env.T778_PROBE) {
+    await sleep(3000);
+    let r = '';
+    try { r = require('child_process').execFileSync(process.execPath, [__filename], { env: Object.assign({}, process.env, { T732_MOMENT_LOT: '0', T778_PROBE: '1' }), encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 900000 }); }
+    catch (e) { r = String((e && e.stdout) || '') + String((e && e.message) || ''); }
+    const m = r.match(/=== 결과: (\d+) PASS \/ (\d+) FAIL ===/);
+    ok(!!m && +m[2] === 0 && +m[1] === pass, '[T778 끔 탐침] 순간 로트 끔(`T732_MOMENT_LOT=0`)으로 같은 하네스 — 같은 줄 수 다 통과', m ? `${m[1]} / ${m[2]}` : r.slice(-160));
+  }
+  console.log(`\n=== 결과: ${pass} PASS / ${fail} FAIL ===`);
   process.exit(fail ? 1 : 0);
 })().catch((e) => { console.error('  ✗ E2E 예외:', e && e.message); process.exit(1); });
