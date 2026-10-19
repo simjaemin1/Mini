@@ -338,13 +338,21 @@ function meanLum(p, box) {
   ok(wdbg0.villages > 0, '마을 영토 정보가 클라에 있다(날씨 축의 좌표 원천)');
   // 시험 뙈기가 어느 마을의 날씨 반경 안에 들어올 때까지 그쪽으로 걸어간다(시험의 전제 조건)
   let inR = false, wxBase = null;
-  for (let tryN = 0; tryN < 4 && !inR; tryN++) {
+  for (let tryN = 0; tryN < 6 && !inR; tryN++) {
     const allDry = {}; for (const v of wdbg0.nearest) allDry[v.id] = ['🌵가뭄', 0.65];
     const near = (await page.evaluate(() => window.__wxDbg())).nearest[0];
     inR = near.d < near.R * 0.72;
     say(`    ${tryN}차 — 가장 가까운 마을까지 ${near.d}px (반경 ${near.R}) · 반경 안 ${inR}`);
     if (inR) break;
-    for (let i = 0; i < 6; i++) await pulse('w', 1600);   // 마을 쪽으로
+    //   ★[T795] 마을 쪽으로 — 네 방향을 한 번씩 디뎌 보고 그 마을까지 거리를 가장 줄이는 쪽으로 간다. 종전 'w' 고정은 마을이 북쪽이고
+    //     북쪽이 트였을 때만 닿았다(T784 켬 기본 세계 — 시험 뙈기가 다른 자리에 잡혀 북쪽 1,701px 에서 막혔다 · 4차 다 그 자리).
+    const dTo = async () => { const L = (await page.evaluate(() => window.__wxDbg())).nearest; const o = L.find((v) => v.id === near.id); return o ? o.d : Infinity; };
+    let bestK = 'w', bestD = Infinity;
+    for (const k of ['w', 'a', 's', 'd']) {
+      await pulse(k, 1600); const d1 = await dTo(); if (d1 < bestD) { bestD = d1; bestK = k; }
+      await pulse({ w: 's', s: 'w', a: 'd', d: 'a' }[k], 1600);   // 되짚기(막혔으면 덜 돌아온다 — 다음 차에서 다시 잰다)
+    }
+    for (let i = 0; i < 6; i++) await pulse(bestK, 1600);
   }
   ok(inR, '★시험 자리가 어느 마을의 날씨 반경 안이다 — 밖에서 재면 아무 변화도 안 나서 자명 통과가 된다');
   ok(await pickPatches('wx'), '★걸어간 자리에서 뙈기를 **다시 골랐다** — 옛 절대 셀을 그대로 쓰면 상자가 화면 밖으로 나가 |Δ| 가 NaN 이 된다');

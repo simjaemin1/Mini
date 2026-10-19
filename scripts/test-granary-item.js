@@ -98,10 +98,12 @@ if (process.env.T768_SUB === 'zone') {
       //   ★[T792] 받을 낱개로 주문(`want` 15 — 종전 판이 곡식 6 으로 받던 그 수) — 값이 세계마다 달라도(켬 기본 판 · 곡식 6 = 4개) 앞 레코드(곰고기 6)를 넘겨 받는다(상황 · 단언 그대로)
       VIL.econ.storage[RES] = 0; VIL.econ.storage[RES] = 30;
       const b1 = mkP(); give(b1, 'meat_bear', 6, 0.8, 2); out.Bdep = hall(b1, { meat_bear: 6 });
-      const b = mkP(); give(b, 'food', 40, 1, 1);
+      const b = mkP(); give(b, 'food', 200, 1, 1);   // [PM 착지 T792+T795] 두 켬 기본이 겹친 세계 = 값이 더 오름(곡식 81) — 낼 곡식만 넉넉히(상황 · 단언 그대로)
       const _uo = H._unitsOfFor(b);
       const ctx = H._t732DoorBegin(b, null);
-      const r = Trade.exchange({ ledger: L, econV2, vil: VIL, vid: VID, inventory: b.inventory, giveRes: 'food', takeRes: RES, giveQty: 6, want: 15, unitsOf: _uo, deposit: V.playerVillageDeposit, takeKcal: H.Kcal });
+      //   ★[T795] 받을 개수로 주문(10 > 넣은 곰고기 6 — 앞 레코드를 다 받고 econ 몫까지 닿는다). 종전 "곡식 6 을 낸다"는 값에 따라
+      //     곰고기 6 에 못 닿는다(T784 켬 기본 세계 — 사슴·들짐승고기 값이 올라 곡식 6 → 2.8 낱개).
+      const r = Trade.exchange({ ledger: L, econV2, vil: VIL, vid: VID, inventory: b.inventory, giveRes: 'food', takeRes: RES, giveQty: 0, want: 10, unitsOf: _uo, deposit: V.playerVillageDeposit, takeKcal: H.Kcal });
       const gb = H._t732DoorEnd(ctx, b, !!(r && r.ok), VIL, _uo);
       out.B = { r: r && { ok: r.ok, err: r.err, take: r.take, takeUnits: r.takeUnits, took: r.tookItem }, bear: lotsOf(b, 'meat_bear'), game: lotsOf(b, 'meat_game'),
         invBear: +b.inventory.meat_bear || 0, invGame: +b.inventory.meat_game || 0, got: gb && gb.got };
