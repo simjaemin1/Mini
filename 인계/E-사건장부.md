@@ -3,6 +3,21 @@
 > ★이 파일은 **영역 소유 세션만** 갱신한다. 다른 영역에 쓸 말이 생기면 `인계/회부.md` 에 한 줄.
 > 원문은 `_아카이브_2026-08_다음세션_인계.md` 에 그대로 동결돼 있다(족보 · 삭제 금지).
 > 이사할 때 **문장을 한 글자도 안 고쳤다** — 낡아 보이는 줄엔 `[낡음? 확인 필요]` 표만 붙였다.
+## T779. ★★2026-10-18 — **겨울나기 공동 프로젝트(T20 · 아래 5-겨울)를 걷었다** — 재민 10-15 "겨울 프로젝트 없어. 기부는 상시 되고 보상도 없음." · 손잡이 없이(꺼도 돌아오지 않는다) (승인 대기 · 보고/T779_2026-10-18.md · 세션8)
+
+| 걷은 것 | 자리 |
+|---|---|
+| 모듈 째 | `server/winter.js` — 가을 공표 · 양 적립 · 겨울 첫날 판정 · 달성 보상 · 게시판 머리줄 · 납품 안 겨울 몫 갈래 · 손잡이 `EV_WINTER_OFF` · `WINTER_D` · `WINTER_BONUS` · `WINTER_NAMES` · `WINTER_BAR` |
+| 장부가 쓰던 자리 | `events.js` `scanDay` — 가을 `SEASON_CHANGE` 의 `meta.winter` 싣기 · ⑩ `extra.winter.emit` 고리(새 `WINTER_*` 0) |
+| 공표를 읽던 자리 | `briefLine(SEASON_CHANGE)` 가을 "올겨울 … 모아 두려 하네" 갈래 — 이미 쓰인 옛 가을 사건(`village_events` 90일 창)도 **가을 한 줄**로 읽힌다(없어진 프로젝트를 다시 공표하지 않는다) |
+| 배선 | `villages.js` require · `Winter.init` · `scanDay` 몫 `winter` · `villageBoard.head` · `villageDeliver` 겨울 갈래(품목 미지정 = 걸린 의뢰만) · `zone.js` require · `Winter.onDeliver` · 납품 알림 `r.winter` · 클라 `bd.head` · `.bp-head` |
+| DB | `village_winter` 표 만들기 · 도우미 둘(`upsertVillageWinter` · `getVillageWinterSince`) — 옛 DB 의 표는 **DROP 0**(안 읽을 뿐) |
+| 계측기 | `scripts/winter-metrics.js` |
+
+* **남긴 것(연표는 영구)**: 유형 `WINTER_KEPT` · `WINTER_SHORT`(TYPES · 일 유형 · 이웃 연표 제외) · 두 줄(`LINES` — ㉝ 다섯 칸) — 이미 `village_chronicle` 에 쓰인 옛 판정은 복구 길(`loadChronicle`)로 그 마을 연표 겨울 칸에 그대로 선다(`test-winter` ④).
+* 곳간 식량 등가(`playerVillageWithdrawStockFoodEq` — 옛 한도 · 보상 밑변)는 남는다 — 지금 묻는 곳은 쓰러진 사람 구제 죽(`zone._villageMeal`) 하나.
+* 하네스: `test-winter`(새 판 — 배선 0 · 800일 스윕 · 옛 꼴 호스트 몫 무시 · 옛 연표 읽기 · 되살린 사본 자가 검사) · `e2e-winter`(실클라 겨울 0) · `test-events` ㊸(문장 파일 = `events.js` 하나 · 돌연변이 자리 옮김).
+
 ## T765. ★★2026-10-15 — **후보는 몸으로 걸어가 붙는다**(`T577_CAND_WALK=1` 안 · 끔 = main 바이트) · 추상 가2 F8 켜 본 기록 — 걷기 · 도적 무장(`T521_GANG_ARMS`) (승인 대기 · 보고/T765_2026-10-15.md · 세션1)
 
 * 고친 것(켬 경로 결함 · 캐논 "몸 XOR 일괄 · 소멸 · 생성 금지"): 종전 켬은 해체 그 순간 남은 사람 econ 항목을 받는 마을에 한꺼번에 넣었고(일괄), 몸은 하루 2명씩 걸어 닿으면 거둬졌고(소멸), 받는 마을은 econ 수를 따라 새 몸을 세웠다(생성).
@@ -750,6 +765,8 @@ EV_SAMPLE_TYPES / EV_SAMPLE_N        표본 문장(전 구간 같은 보폭) + �
   ⓒ 의 결론이 이 성질 위에 서 있어서 회귀로 걸었다. (1차 판은 절대 밀도로 짰다가 **자명 통과**했다.)
 
 ## 5-겨울. ★★★2026-09-02 [T20] — **겨울나기 공동 프로젝트** (완료 · 푸시 `3ad06f2d`)
+
+> ★[T779 2026-10-18] 이 절의 프로젝트는 **걷었다** — 맨 위 T779 절(남은 것 = 옛 판정 두 유형 읽기 · 곳간 식량 등가 함수). 아래는 기록이다.
 
 > 설계 정본 `설계/겨울나기_공동프로젝트_설계안.md` · 재민 판정 W-1ⓐ~W-7ⓐ.
 > 새 파일 하나(`server/winter.js`)와 **접점 몇 줄**이다. econ `sim/` diff **0줄**.

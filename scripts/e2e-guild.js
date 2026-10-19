@@ -404,10 +404,11 @@ const last = (C) => JSON.stringify(C.notices.slice(-1));
        (gj.match(/자네를 부른다/g) || []).length);
   }
 
-  // ── ⑦ [T159] 마을 소속 · 곳간 인출 — 길드 마을의 문 ─────────────────────
+  // ── ⑦ [T159] 마을 소속 · 곳간 — ★[T779] 꺼내기는 촌장만(소속은 곳간 열쇠가 아니다) ─────────────────────
   //   ⚠central 은 ⑤에서 죽였다 ⇒ 이 절은 **central 없이 되는 것만** 잰다:
-  //     소속 표지 · 인출 한 자리 · 곳간 실제 감소 · 비소속 거절. 길드 문(central 판정)은
-  //     `test-membership ⑪e` 가 "못 물어보면 열린 것으로 본다"까지, central 라우트 자체는 ⑧이 소스로 본다.
+  //     소속 표지 · 형편 한 줄(누구나) · 꺼내기 거절(이 마을 = NPC 마을 — 사람 촌장 없음 · 소속 앞뒤 둘 다) · 품목 이름 풀이 · 짐 불변.
+  //   ★[T779 2026-10-18 · 재민 10-15 "관리자만 뺄 수 있어"] 옛 "마을 사람이 되면 곳간이 열린다"(기여 한도 · 길드 곳간 잠금)는 걷었다 —
+  //     촌장 판정은 `test-membership ③④` · `test-donate ④` 가 정본으로 잰다(길드 촌장 = central `leader_id` · central 불가 = 거절).
   {
     const si7 = await jget(`http://localhost:${ZPORT}/startinfo`);
     ok(!!(si7 && si7.ok && si7.villages.length), '⑦ 전제: 시작 화면이 마을을 안다', si7 && si7.villages.length);
@@ -415,15 +416,12 @@ const last = (C) => JSON.stringify(C.notices.slice(-1));
        '★★⑦ 시작 화면의 **모든 줄에 소속 칸**이 있다(T115 `friendsHere` 와 같은 문법)');
     ok(si7.villages.every((v) => v.member === 0), '⑦b 아직 아무도 마을 사람이 아니다(자명 통과 금지의 앞면)');
     const V0 = si7.villages[0];
+    //   ⚠**곳간으로 재지 마라** — 마을은 살아 있어서 주민이 먹는다(실측: 두 번 읽는 사이 341 → 340).
+    //     "안 나왔다"를 재는 자리는 **짐**이다(곳간은 스스로 준다).
+    const packOf = (C) => Object.entries(C.inv || {}).reduce((a, [, v]) => a + (Number(v) || 0), 0);
+    const NPC_NO = /이 마을 곳간은 사람이 꺼내지 않는다/;
 
-    // ⓐ 소속이 없으면 곳간이 안 열린다
-    O.notices.length = 0; say(O, '/곳간'); await sleep(1200);
-    ok(O.notices.some((t) => /마을 사람이 아니다/.test(t)), '★⑦c 마을 사람이 아니면 **곳간을 못 연다**', last(O));
-
-    // ⓑ 소속을 앉히고(검사 전용 손잡이) 마을 앞에 선다
-    O.ws.send(JSON.stringify({ type: '__e2e_body', quiet: true,
-      member: { zone: 'hanbando', vid: V0.vid | 0, name: V0.name, since: 0, wdDay: -1, wdUsed: 0 } }));
-    await sleep(800);
+    // ⓐ 마을 앞에 선다
     //   ⚠`startInfo` 의 `cx,cy` 는 **존 로컬 셀**이다 — 텔레포트는 **px** 를 받는다(`cx*32+16` · e2e-verbs 규약).
     //     초안이 셀 값을 그대로 보내 "마을 중심에서 너무 멀다"를 받았다(근접 게이트가 제 일을 한 것이다).
     const AX = (V0.cx | 0) * 32 + 16, AY = (V0.cy | 0) * 32 + 16;
@@ -433,25 +431,33 @@ const last = (C) => JSON.stringify(C.notices.slice(-1));
       await sleep(400);
       if (O.notices.some((t) => /텔레포트 →/.test(t))) break;
     }
+    //   소속 전 — 형편은 누구나 본다 · 꺼내기는 거절(사람 촌장 없음)
+    //   ★"어느 마을 앞인가"는 근접 브리핑이 적어 둔다(`_memberNearVid` — 실클라는 다가가면 스스로 보낸다 · 이 손님은 한 번 청한다)
+    O.ws.send(JSON.stringify({ type: 'village_brief', vid: V0.vid | 0 })); await sleep(800);
     O.notices.length = 0; say(O, '/곳간'); await sleep(1500);
     const line0 = O.notices.find((t) => /곳간 —/.test(t)) || '';
-    ok(!!line0, '★⑦d 마을 사람이 되니 **곳간이 형편을 말한다**', JSON.stringify(line0));
+    ok(!!line0 && /꺼내기는 촌장만/.test(line0) && !/남은 몫|누적 기여/.test(line0), '★⑦c 마을 사람이 아니어도 **곳간이 형편을 말한다**(누구나 본다 · 꺼내기 촌장만 · 한도 말 없음)', JSON.stringify(line0));
     const stock0 = parseFloat((/식량 재고 ([\d.]+)/.exec(line0) || [])[1]);
-    ok(Number.isFinite(stock0) && stock0 > 0, '⑦d2 전제: 곳간에 식량이 실제로 있다', stock0);
+    ok(Number.isFinite(stock0) && stock0 > 0, '⑦c2 전제: 곳간에 식량이 실제로 있다(아래 거절이 빈 곳간 때문이 아니다)', stock0);
+    const packA = packOf(O);
+    O.notices.length = 0; say(O, '/곳간 식량 1'); await sleep(1500);
+    ok(O.notices.some((t) => NPC_NO.test(t)) && packOf(O) === packA, '★⑦c3 소속 전 꺼내기는 거절 — 짐 그대로', `${last(O)} · 짐 ${packA} → ${packOf(O)}`);
 
-    // ⓒ 사람 말로 꺼낸다 — 그리고 곳간이 **실제로 준다**
+    // ⓑ 소속을 앉힌다(검사 전용 손잡이) — 몸 칸 그대로(★[T779] 하루 몫 칸 0)
+    O.ws.send(JSON.stringify({ type: '__e2e_body', quiet: true,
+      member: { zone: 'hanbando', vid: V0.vid | 0, name: V0.name, since: 0 } }));
+    await sleep(800);
+    O.notices.length = 0; say(O, '/소속'); await sleep(1200);
+    ok(O.notices.some((t) => /사람 — .*일째/.test(t)), '⑦d 전제: 소속이 실제로 앉았다(`/소속` 이 상태를 되읊는다)', last(O));
+
+    // ⓒ 마을 사람이 되어도 꺼내기는 촌장만 — 우리말 품목은 풀리고(거절 까닭이 이름이 아니다) · 짐은 그대로
+    const pack1 = packOf(O);
     O.notices.length = 0; say(O, '/곳간 식량 1'); await sleep(1800);
     ok(!O.notices.some((t) => /그런 물건은 없다/.test(t)), '⑦e ★"식량"이라는 우리말이 재화로 풀린다', last(O));
-    O.notices.length = 0; say(O, '/곳간'); await sleep(1500);
-    const line1 = O.notices.find((t) => /곳간 —/.test(t)) || '';
-    const stock1 = parseFloat((/식량 재고 ([\d.]+)/.exec(line1) || [])[1]);
-    ok(Number.isFinite(stock1) && stock1 < stock0,
-       '★★⑦e2 곳간이 **실제로 줄었다** — 가짜 인출이 아니다', `${stock0} → ${stock1}`);
+    ok(O.notices.some((t) => NPC_NO.test(t)) && packOf(O) === pack1,
+       '★★⑦e2 마을 사람이 되어도 **곳간은 안 열린다**(꺼내기 = 촌장만 — 이 마을엔 사람 촌장이 없다) · 짐 그대로', `${last(O)} · 짐 ${pack1} → ${packOf(O)}`);
 
     // ⓓ 모르는 말은 아무것도 안 준다(자명 통과 금지의 뒷면)
-    //   ⚠**곳간으로 재지 마라** — 마을은 살아 있어서 주민이 먹는다(실측: 두 번 읽는 사이 341 → 340).
-    //     초안이 `stock2 === stock1` 로 재다 그 자연 감소에 걸렸다. 안 움직이는 자리는 **짐**이다.
-    const packOf = (C) => Object.entries(C.inv || {}).reduce((a, [, v]) => a + (Number(v) || 0), 0);
     const pack0 = packOf(O);
     O.notices.length = 0; say(O, '/곳간 없는물건 1'); await sleep(1500);
     ok(O.notices.some((t) => /그런 물건은 없다/.test(t)), '★⑦f 모르는 말엔 **아무것도 안 나온다**', last(O));
@@ -476,10 +482,11 @@ const last = (C) => JSON.stringify(C.notices.slice(-1));
     const added = (cen.match(/ALTER TABLE tribes ADD COLUMN (\w+)/g) || []).map((x) => x.split(' ').pop());
     ok(added.includes('granary_open'), '⑧ 길드 표에 **컬럼 하나**를 더했다', added.join(' '));
     ok(added.length === 8, '★⑧b `tribes` 컬럼 증설은 **여덟**이다(T128 일곱 + 이 카드 하나)', added.length);
-    //   ★인출 경로는 하나다 — `/곳간` 이 제 손으로 재고를 만지지 않는다
+    //   ★인출 경로는 하나다 — `/곳간` 이 제 손으로 재고를 만지지 않는다 · ★[T779] 그 길 = 촌장 문(`_chiefWithdrawSay` → `withdrawChief` → `withdraw`)
     const gran = mem.slice(mem.indexOf("if (cmd === '/곳간')"), mem.indexOf("if (cmd === '/인출')"));
     ok(gran.length > 400, '⑧c 전제: `/곳간` 절을 실제로 찾았다', gran.length);
-    ok(/withdraw\(player, vid, r0, n\)/.test(gran), '★★⑧c2 `/곳간` 은 **인출 정본을 부른다**(제 길을 안 낸다)');
+    ok(/_chiefWithdrawSay\(player, vid, r0, n\)/.test(gran) && /withdrawChief\(player, vid, res, qty\)/.test(mem),
+       '★★⑧c2 `/곳간` 은 **촌장 문을 부른다**(제 길을 안 낸다 — 촌장 판정 뒤 같은 인출 정본)');
     ok(!/storage\[/.test(gran) && !/playerVillageWithdraw\(/.test(gran),
        '★★⑧c3 그 절은 **곳간을 직접 안 만진다**(사본 0)');
     //   ★이름표 표지는 벗 비트와 같은 자리

@@ -542,6 +542,35 @@ const T726_ONE_TARGET = (typeof process !== 'undefined' && process.env && proces
 //   짐은 길 위에서 늙는다(자리 = 몸에 지님 · 정산은 꺼낼 때 조회 함수가 한다 — 도착 때 f 를 값에 쓰는 것은 T730 몫).
 let _LOTH = null;
 function setLotHook(h) { _LOTH = (h && typeof h === 'object') ? h : null; }
+// ★★[T784 2026-10-18 · 재민 10-14 · 손잡이 `T784_CARGO_AGE`('1' 만 켬 · 끔 = 아래 세 자리가 종전 식 = main 바이트)] **짐이 길 위에서 늙는다 — 값으로.**
+//   T732 는 짐 로트를 관측만 했다(자리 = 몸에 지님 · 도착 때 f 를 값에 쓰는 것은 미뤘다). 켬이면:
+//   ⓐ 출발 결정 — 기대 값의 도착 쪽 값 `pTo` 에 **도착 날 신선도**를 곱한다(다리 날 수 `travelDaysForDistance` · 품목 곡선 `spoil.freshnessOf` 정본).
+//   ⓑ 도착 매도 — 판 값(`_impactSellV2`)에 **그 짐의 도착 날 신선도**를 곱한다(길 위 실제 날 수 · 우회로 늘어난 날까지 · 같은 곡선).
+//      짐 로트(T732 · 켠 서버)는 종전대로 나이째 받는 곳간에 든다 — 값은 장부를 안 읽는다(훅은 관측자 그대로 · 서버 = 랩 = CLI 한 식).
+//   짐 수량은 그대로 받는 곳간에 든다(소멸 · 생성 0) — 상한 몫이 곳간에서 어떻게 되는지는 econ 의 상한 규칙 그대로.
+//   늙는 품목 = `lots.isLot`(먹을 것 + 썩는 것 · T725) — 그 밖(돌 · 도구 · 원석 …)은 1(spoil 기본 5일을 안 먹는다).
+//   랩: 번들이 spoil · lots 를 같이 싣는다(`sim/build-econ-bundle.js` — 곡선 표가 서버와 한 벌).
+const T784_CARGO_AGE = (typeof process !== 'undefined' && process.env && process.env.T784_CARGO_AGE === '1');
+let _t784M;
+function _t784Mods() {
+  if (_t784M === undefined) {
+    try {
+      const S = require('../server/spoil'), L = require('../server/lots');
+      _t784M = (S && typeof S.freshnessOf === 'function' && L && typeof L.isLot === 'function') ? { S, L } : null;
+    } catch (e) { _t784M = null; }
+  }
+  return _t784M;
+}
+function _t784F(res, days) {   // 품목 · 길 위 날 수 → 신선도(늙지 않는 품목 1)
+  const M = _t784Mods();
+  if (!M || !M.L.isLot(res)) return 1;
+  const f = M.S.freshnessOf(res, days);
+  return f > 0 ? f : 0;
+}
+function _t784Arrive(c, res, day) {   // 도착 순간 그 짐의 신선도 — 길 위 날 수(출발 결정과 같은 곡선 · 같은 날 셈)
+  const d0 = day - c.departDay;
+  return _t784F(res, Math.max(0, c._xzHome ? Math.max(d0, +c.travelDays || 0) : d0));   // 이웃 존에서 넘어온 짐은 departDay 가 넘어온 날이다
+}
 // 마을 하나의 문맥 — 자본재 커버리지(결정층 식 그대로).
 function _targetCtxV2(v) {
   const N = v.npcs.length || 1;
@@ -1019,7 +1048,7 @@ function* tickTradeV2Steps(world, day) {
           //   진짜 정합은 '귀환 leg 기대가치 모델링'과 세트(후속 설계 후보) — 그 전까지 기대는 근사, 정산은 진실.
           //   ★[T233] 세 줄을 `_legProfitPerUnit` 으로 **이름만 올렸다** — 곱·뺄셈 순서 그대로라 비트 동일.
           //     첫째와 둘째가 **같은 함수**를 부르게 하려면 식이 이름을 가져야 한다(사본 금지 · T200 문법).
-          const profitPerUnit = _legProfitPerUnit(pFrom, pTo, transportCostPerUnit, expectedLossRatio);
+          const profitPerUnit = _legProfitPerUnit(pFrom, T784_CARGO_AGE ? pTo * _t784F(cand.res, travelDaysForDistance(dist)) : pTo, transportCostPerUnit, expectedLossRatio);   // ★[T784] 켬 = 도착 날 신선도 곱
           const totalProfit = profitPerUnit * N_units;
           if (totalProfit <= 0) continue;
           if (!best || totalProfit > best.profit) {
@@ -1095,7 +1124,7 @@ function* tickTradeV2Steps(world, day) {
             //     목적지·거리·운반비·손실률은 **첫째가 정한 그대로**(같은 수레다) — 새 수 0 · 사본 0.
             //     왜: T231 §ⓐ — 첫째는 `totalProfit<=0` 관문을 지나는데 둘째는 관문이 **아예 없어서**
             //     `TRADABLE` 선언 순서상 첫 품목을 적자로도 싣는다(단위의 62~74%가 단위당 적자).
-            const _pu2 = _legProfitPerUnit(a.prices[c2.res] || 0, (b.prices && b.prices[c2.res]) || 0,
+            const _pu2 = _legProfitPerUnit(a.prices[c2.res] || 0, T784_CARGO_AGE ? ((b.prices && b.prices[c2.res]) || 0) * _t784F(c2.res, travelDaysForDistance(best.dist)) : ((b.prices && b.prices[c2.res]) || 0),   // ★[T784]
                                            best.transportCostPerUnit, best.expectedLossRatio);
             if (_c2gate && !(_pu2 * _q > 0)) { if (!_picked) _gateBlocked++; continue; }   // ★걸리면 **다음 후보**로 · ★[T299] 기본 끔
             if (!_picked) {                           // ★선언 순서상 첫 개 — T206~T233 이 싣던 그것
@@ -1464,7 +1493,7 @@ function _caravanTrade(world, c, day, deliveredGive, outboundLoss, pricesTo, pri
     // ★시장 충격 정산(2026-07-12): 매도 수익 = ∫p(s)ds(재고 증가 방향) — 대량 투하는 가격을 스스로
     //   누름(종전 flat deliveredGive×pTo는 호가 불변 가정 → 소시장 덤핑 과대수익). 재고 가산 '전' 계산.
     //   pTo는 결정·로그용 스냅샷으로 유지.
-    const grossCredit = _impactSellV2(c.to, c.giveRes, deliveredGive);
+    const grossCredit = T784_CARGO_AGE ? _impactSellV2(c.to, c.giveRes, deliveredGive) * _t784Arrive(c, c.giveRes, day) : _impactSellV2(c.to, c.giveRes, deliveredGive);   // ★[T784] 켬 = 판 값 × 짐 신선도(수량은 그대로 곳간에)
     // 도착 마을 chest에 들어옴 (거래 후)
     // ★★[2026-08-02b] 원석이면 **출발 마을의 조성**을 함께 싣는다 — 광석은 실어 와도 그 광석이다.
     //   폴드는 재고 가산 **전**에(기존 재고량이 가중치라 순서가 의미를 갖는다).
@@ -1479,6 +1508,7 @@ function _caravanTrade(world, c, day, deliveredGive, outboundLoss, pricesTo, pri
     if (c.giveRes2 && c.giveAmt2 > 0) {
       _delivered2 = c.giveAmt2 * (1 - outboundLoss);
       _gross2 = _impactSellV2(c.to, c.giveRes2, _delivered2);
+      if (T784_CARGO_AGE) _gross2 *= _t784Arrive(c, c.giveRes2, day);   // ★[T784]
       if (c.giveRes2 === 'ore' && v1.foldOreMix) v1.foldOreMix(c.to, c.to.storage.ore || 0, _delivered2, v1.oreMixOf(c.from));
       if (_LOTH) _LOTH.unload(c, 'give2', c.to, c.giveRes2, _delivered2);   // ★[T732]
       c.to.storage[c.giveRes2] = (c.to.storage[c.giveRes2] || 0) + _delivered2;
@@ -2407,4 +2437,5 @@ module.exports = {
   xzoneBounce: _xzBounce, xzoneLeg: _xzLeg,   // ★[T533] 서버 호스트가 부르는 둘 — 이웃 존이 안 받은 넘김을 경계에서 되돌림 · 제 존 몫 일수(몸이 되짚을 때) — 사본 0
   _xzProbe: { handOff: _xzHandOff, arrive: _xzArrive, arriveLoop: _xzArriveLoop, handBack: _xzHandBack, ret: _xzReturn },   // ★[T748] 존 경계 짐 레코드 — 하네스가 **이 함수들**을 그대로 부른다(사본 0 · 값 무변)
   setLotHook,   // ★[T732] 곳간 로트 장부 훅(서버 켬일 때만 꽂는다 · 랩·CLI 는 안 꽂는다 = 무동작)
+  T784_CARGO_AGE, _t784Probe: { F: _t784F, arrive: _t784Arrive },   // ★[T784] 짐 늙음 — 하네스가 **이 두 함수**를 그대로 부른다(사본 0 · 값 무변)
 };

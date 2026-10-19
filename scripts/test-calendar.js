@@ -231,7 +231,8 @@ console.log = _l;
   }
   say('\n⑩ [T570] 사본 0 — 계절 산수가 달력 정본 밖에 다시 적히지 않았다');
   {
-    const files = ['sim/economy-sim-v2.js', 'server/events.js', 'server/crops.js', 'server/freshfish.js', 'server/trees.js', 'server/winter.js', 'server/weather.js', 'server/zone.js', 'server/villages.js', 'server/chunk.js'];
+    //   ★[T779 2026-10-18] 겨울나기(`server/winter.js`)는 걷었다 — 그 파일이 없다(목록에서 뺐다 · 나머지 아홉은 그대로).
+    const files = ['sim/economy-sim-v2.js', 'server/events.js', 'server/crops.js', 'server/freshfish.js', 'server/trees.js', 'server/weather.js', 'server/zone.js', 'server/villages.js', 'server/chunk.js'];
     const hits = [];
     for (const f of files) {
       const src = codeOnly(fs.readFileSync(path.join(ROOT, f), 'utf8'));
@@ -242,7 +243,7 @@ console.log = _l;
     // 끔 갈래(옛 글자)는 같은 줄의 손잡이 갈래 안에 있다 — 그 밖의 `% 365`·`% 360` 은 사본이다.
     const evSrc = codeOnly(fs.readFileSync(path.join(ROOT, 'server', 'events.js'), 'utf8'));
     const evLegacy = (evSrc.match(/%\s*365/g) || []).length;
-    ok(hits.length === 0, '★★⑩ econ·작물·물고기·열매·겨울·존 — 손잡이 밖 `% 365`/`% 360` 0곳', hits.join(' ') || '0곳');
+    ok(hits.length === 0, '★★⑩ econ·작물·물고기·열매·날씨·존 — 손잡이 밖 `% 365`/`% 360` 0곳', hits.join(' ') || '0곳');
     ok(evLegacy <= 2, '⑩ events.js 의 `% 365` 는 끔 갈래(옛 거울 한 줄)뿐', `${evLegacy}회`);
     const bsrc = fs.readFileSync(path.join(ROOT, 'sim', 'build-econ-bundle.js'), 'utf8');
     ok(/server\/calendar\.js/.test(bsrc) && /modules\.cal/.test(bsrc), '★⑩ econ 번들이 달력 정본을 같이 싣는다(랩 인라인도 같은 소스)');

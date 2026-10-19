@@ -1582,7 +1582,8 @@ const mkLedgerGeo = (world, geo, cfg) => {
   }
   const emojiSites = (src) => stringsOf(src).filter((x) => EMO.test(x.v));
 
-  const FILES = ['server/events.js', 'server/winter.js'];
+  //   ★[T779 2026-10-18] 겨울나기(`server/winter.js`)는 걷었다 — 촌장 문장을 짓는 파일은 `events.js` 하나다.
+  const FILES = ['server/events.js'];
   const srcs = {};
   for (const rel of FILES) srcs[rel] = fs.readFileSync(path.join(__dirname, '..', rel), 'utf8');
 
@@ -1603,8 +1604,8 @@ const mkLedgerGeo = (world, geo, cfg) => {
 
   // 돌연변이 — 문장 하나에 이모지를 되살리면 잡는가
   {
-    const poisoned = srcs['server/winter.js'].replace('return `올겨울 — ', 'return `🧊 올겨울 — ');
-    ok(poisoned !== srcs['server/winter.js'], '㊸c 전제: 돌연변이를 실제로 심었다(치환이 먹었다)');
+    const poisoned = srcs['server/events.js'].replace("'봄일세. 밭에 나갈 때야.'", "'🌱 봄일세. 밭에 나갈 때야.'");
+    ok(poisoned !== srcs['server/events.js'], '㊸c 전제: 돌연변이를 실제로 심었다(치환이 먹었다)');
     ok(emojiSites(poisoned).length === 1, '㊸ ★문장 하나에 이모지를 되살리면 **잡는다**(잡을 수 있는 검사다)',
       `${emojiSites(poisoned).length}자리`);
   }

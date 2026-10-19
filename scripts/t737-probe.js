@@ -19,11 +19,7 @@ const VTAIL = `
   //   ★[T737 견줌] T737_VERIFY=1 — 부를 때마다 종전 글자(손 이름을 그 자리에서 짓는 줄)로 한 번 더 세어 같은 수인가(Object.is · 계측 · 세계는 앞 답)
   if (process.env.T737_VERIFY === '1') try { const f0 = _t720Held; const V = C.verify = { n: 0, diff: 0, pos: 0, ex: [] };
     _t720Held = function (vil, npc) { const a = f0(vil, npc);
-      let u = 0; if (vil.econ) { const E = _lifeEcon(), inv = npc.inventory || {};
-        if (E.fishActOn(vil.econ)) u += npc._t312U || 0;
-        if (_t368ItemsOn() && npc._t368H) for (const c in npc._t368H) u += npc._t368H[c] || 0;
-        if (E.T325_WOOD_ACT && E.woodActOn(vil.econ) && _t720Logger(vil, npc)) u += inv.wood || 0;
-        if (E.T347_FORAGE_ACT && E.forageActOn(vil.econ)) { for (const k of (_t347KeepOf(vil) || [])) for (const h of _t347HandsOf(k)) u += inv[h] || 0; } }
+      const u = _t720Held0(vil, npc);   // ★[T780] 종전 글자 = 제품 _t720Held 몸통에서 T737 갈래 한 줄만 뺀 사본(패치 때 그 자리 글자로 짓는다 · 새 절이 붙어도 따라온다)
       V.n++; if (a > 0) V.pos++; if (!Object.is(a, u)) { V.diff++; if (V.ex.length < 5) V.ex.push([npc.pid, a, u]); }
       //   지어낸 손(채집 손 이름마다 다른 값 · 겹친 이름도) — 빈손 몸만 보는 판에서도 채집 절의 합을 견준다(같은 차례 · 같은 합)
       if (vil.econ && (V.syn = V.syn || { n: 0, diff: 0 }).n < 200000) { const E = _lifeEcon(); if (E.T347_FORAGE_ACT && E.forageActOn(vil.econ)) {
@@ -37,11 +33,7 @@ const VTAIL = `
         try { for (const k of (_t347KeepOf(vil) || [])) for (const h of _t347HandsOf(k)) inv2[h] = 0.3 + (V.fake.n % 5) * 0.11; } catch (e) {}
         const F = Object.assign(Object.create(Object.getPrototypeOf(npc)), npc, { _t312U: 1.3 + (V.fake.n % 3) * 0.07, _t368H: { a: 0.2, b: 0.7 + (V.fake.n % 4) * 0.01 }, inventory: inv2 });
         const x = _t737Held(vil, F);
-        let y = 0; { const E = _lifeEcon(), inv = F.inventory || {};
-          if (E.fishActOn(vil.econ)) y += F._t312U || 0;
-          if (_t368ItemsOn() && F._t368H) for (const c in F._t368H) y += F._t368H[c] || 0;
-          if (E.T325_WOOD_ACT && E.woodActOn(vil.econ) && _t720Logger(vil, F)) y += inv.wood || 0;
-          if (E.T347_FORAGE_ACT && E.forageActOn(vil.econ)) { for (const k of (_t347KeepOf(vil) || [])) for (const h of _t347HandsOf(k)) y += inv[h] || 0; } }
+        const y = _t720Held0(vil, F);   // ★[T780] 종전 글자 사본
         V.fake.n++; if (y > 0) V.fake.pos++; if (!Object.is(x, y)) V.fake.diff++; }
       return a; }; } catch (e) {}
   try { _t720Settle = W('_t720Settle', _t720Settle); } catch (e) {}
@@ -67,7 +59,14 @@ const ZTAIL = `
 })();
 `;
 module.exports = function (dir) {
-  const vp = path.join(dir, 'server', 'villages.js'); fs.appendFileSync(vp, VTAIL);
+  const vp = path.join(dir, 'server', 'villages.js');
+  //   ★[T780] 견줌의 종전 글자 — 그 사본의 `_t720Held` 몸통 글자를 떠서 T737 갈래 한 줄만 빼고 `_t720Held0` 으로 붙인다(손으로 베낀 사본은 새 절(T757 원석)을 못 따라왔다)
+  { const src = fs.readFileSync(vp, 'utf8'), m = src.match(/\nfunction _t720Held\(vil, npc\) \{[\s\S]*?\n\}/);
+    if (!m) throw new Error('T737 탐침: _t720Held 몸통을 못 떴다');
+    const old = m[0].replace('function _t720Held(', 'function _t720Held0(').replace(/\n  if \(T737_HELD_CACHE\) return _t737Held\(vil, npc\);[^\n]*/, '');
+    if (old.includes('_t737Held')) throw new Error('T737 탐침: T737 갈래를 못 뺐다');
+    fs.appendFileSync(vp, '\n' + old + '\n'); }
+  fs.appendFileSync(vp, VTAIL);
   const zp = path.join(dir, 'server', 'zone.js'); fs.appendFileSync(zp, ZTAIL);
   for (const p of [vp, zp]) require('child_process').execFileSync(process.execPath, ['--check', p]);
 };

@@ -54,6 +54,9 @@ if (process.env.T694_SUB === 'zone') {
   const _log = console.log; console.log = () => {}; console.warn = () => {}; console.error = () => {};
   const Zone = require(SV('zone.js'));
   const H = Zone.__testBind();
+  // ★[T778] 순간 로트 켬 기본 — 순간 열쇠는 "같은 날 = 나이 0"을 깬다(갓 바른 고기도 지난 몇 분만큼 늙어 허기가 f 0.9999 만큼 준다).
+  //   값 단언은 그대로 두고 지난 시간만 뺀다 — 존 날을 얼린다(제품의 테스트 문 · 날 문법(`T732_MOMENT_LOT=0`)엔 같은 날).
+  if (process.env.T694_SUB === 'zone') H.__e2eFreezeZoneDay(true);
   const V = require(SV('villages.js'));
   const Ev = require(SV('events.js'));
   const notes = [];
@@ -219,6 +222,7 @@ say('\n④ 켬 — 열량 · 무게 · 보관일 · 로트');
 say('\n⑤ 실기 — 존을 띄워 도살 → 먹기 → 굽기·삶기 → 수령 → 먹기');
 const zOn = sub('zone', { T694_GAME_MEAT: '1' });
 const zOff = sub('zone', {});
+const zOnLot0 = sub('zone', { T694_GAME_MEAT: '1', T732_MOMENT_LOT: '0' });   // ★[T778] 끔 탐침 — 순간 로트 끔(날 로트)
 {
   pre(!zOn.err && !zOff.err, '존 두 판이 떴다', zOn.err || zOff.err || '');
   ok(zOn.inv0.meat_bear === 36 && zOn.inv0.meat_game === 33 && zOff.inv0.meat_game === 69 && !zOff.inv0.meat_bear,
@@ -226,6 +230,8 @@ const zOff = sub('zone', {});
   const k = zOn.kcal, bearH = k.meat_bear.hunger;
   ok(zOn.eatRaw.item === 'meat_bear' && Math.abs(zOn.eatRaw.dh - bearH) < 1e-6 && zOn.eatRaw.dhp === -3 && Math.abs(bearH - 1610 / 2450 * 50) < 0.01,
     '★★⑤ 곰고기 날로 먹기 — 허기 +32.86(1kg × 1,610 ÷ 2,450 × 50) · HP −3(날고기 줄 그대로)', `허기 +${zOn.eatRaw.dh} · HP ${zOn.eatRaw.dhp}`);
+  ok(!zOnLot0.err && zOnLot0.eatRaw.item === zOn.eatRaw.item && Math.abs(zOnLot0.eatRaw.dh - zOn.eatRaw.dh) < 1e-9 && zOnLot0.eatRaw.dhp === zOn.eatRaw.dhp && JSON.stringify(zOnLot0.inv0) === JSON.stringify(zOn.inv0),
+    '⑤ [T778 끔 탐침] 순간 로트 끔(`T732_MOMENT_LOT=0`)에서도 같은 도살 · 같은 날로 먹기(허기 · HP)', `허기 +${zOnLot0.eatRaw && zOnLot0.eatRaw.dh}`);
   ok(zOff.eatRaw.item === 'meat_game' && Math.abs(zOff.eatRaw.dh - 1200 / 2450 * 50) < 0.01 && zOff.eatRaw.dhp === -3, '⑤ 끔 — 곰 고기도 사슴 열량(+24.49 · T647 회부 ① 그대로)', `+${zOff.eatRaw.dh}`);
   ok(zOn.rows.meat_game_cooked && zOn.rows.meat_game_cooked.item === true && JSON.stringify(zOn.rows.meat_game_cooked.cost) === '{"meat_game":1}'
     && zOn.rows.meat_bear_cooked && JSON.stringify(zOn.rows.meat_bear_cooked.cost) === '{"meat_bear":1}' && zOn.facilityCook.includes('meat_game_cooked') && zOn.facilityCook.includes('meat_bear_cooked'),

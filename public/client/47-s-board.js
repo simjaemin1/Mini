@@ -100,9 +100,7 @@ function renderBoardPane() {
   if (title) title.textContent = `${bd.name} 게시판`;
 
   let h = '';
-  // ── 머리 — 서버가 만든 한 줄(T20 겨울나기). 공표~판정 사이에만 온다.
-  //   ⚠막대(`▓░`)도 **서버가 만든 글자**다 — 클라가 다시 그리지 않는다.
-  if (bd.head) h += `<div class="bp-head">${bd.head}</div>`;
+  // ── ★[T779] 머리 한 줄(T20 겨울나기 진행 막대)은 걷었다 — 서버가 더는 `head` 를 안 싣는다.
 
   // ── 의뢰 ─────────────────────────────────────────────────────────────────
   const rows = Array.isArray(bd.rows) ? bd.rows : [];

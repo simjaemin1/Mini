@@ -107,11 +107,14 @@ function save(vil) {
 }
 
 // ── 읽는 문 ─────────────────────────────────────────────────────────────────
+//   ★[T809] 사람 마을의 촌장 id — 칸이 있으면 칸 · **칸이 아직 없으면 창설자**(`attach` 가 앉히는 그 규칙 그대로 · 이행 전 · 칸 없이 선 마을).
+//     main(T779)의 "창설자 마을의 촌장 = 창설자"와 T785 의 "촌장 = 마을 칸(기본 창설자)"가 같은 사람을 가리키게 한 줄로 둔다(새 규칙 0).
+function _chiefId(vil) { const k = vil && vil._kin; return (k && k.chief != null && k.chief !== '') ? String(k.chief) : ((vil && vil.econ && vil.econ.founder != null) ? String(vil.econ.founder) : null); }
 /** 촌장 — 사람 마을 = 칸 · NPC 마을 = 촌장 몸(명부 맨 앞 · T529). `{ id, name, npc }` 또는 null. */
 function chiefOf(vil) {
   if (!vil) return null;
   if (_isPlayer(vil)) {
-    const id = (vil._kin && vil._kin.chief) || null;
+    const id = _chiefId(vil);
     if (!id) return null;
     const p = _byPid(id);
     return { id: String(id), name: (p && p.name) || null, npc: false };
@@ -121,7 +124,8 @@ function chiefOf(vil) {
   return b ? { id: String(b.pid != null ? b.pid : ''), name: b.name || null, npc: true } : null;
 }
 function isChief(player, vil) {
-  return !!(player && vil && _isPlayer(vil) && vil._kin && vil._kin.chief != null && String(vil._kin.chief) === String(player.playerId));
+  const id = (player && vil && _isPlayer(vil)) ? _chiefId(vil) : null;
+  return !!(id != null && String(id) === String(player.playerId));
 }
 /** 이 존에서 그 사람이 든 마을(몸 `member`) — 다른 존의 소속이면 null. */
 function memberVil(player) {
@@ -192,16 +196,9 @@ function handleChat(player, text) {
     _send(tgt, `🏘️ 이제 자네가 [${mine.name}] 촌장일세`);
     return true;
   }
-  if (cmd === '/곳간' && (arg === '열기' || arg === '잠금')) {
-    if (H.Membership && H.Membership.T769) return false;   // ★[T769] 켬 — 곳간은 촌장 혼자 꺼낸다(문 없음) · 그 한 줄은 membership 이 답한다
-    if (!mine) return notMine();
-    if (!chiefHere) return notChief();
-    mine._kin.granaryOpen = (arg === '열기');
-    save(mine);
-    _send(player, mine._kin.granaryOpen ? `🏘️ [${mine.name}] 곳간을 열었다 — 마을 사람이 꺼낼 수 있다`
-      : `🏘️ [${mine.name}] 곳간을 잠갔다 — 촌장이 열기 전엔 아무도 못 꺼낸다`);
-    return true;
-  }
+  //   ★[T809 · T779] `/곳간 열기|잠금` — 곳간 잠금은 걷었다(손잡이와 무관 — 촌장 혼자 꺼내니 정할 문이 없다) · 그 한 줄은 membership 이 답한다.
+  //     마을 칸 `granaryOpen` 은 이행이 옮겨 둔 값으로 남지만 꺼내기는 안 읽는다.
+  if (cmd === '/곳간' && (arg === '열기' || arg === '잠금')) return false;
   if (cmd === '/소개') {
     if (!mine) return notMine();
     if (!chiefHere) return notChief();
@@ -216,7 +213,7 @@ function handleChat(player, text) {
     if (!mine) { _send(player, '🏘️ 아직 어느 마을 사람도 아니다 — 마을 곳간에 보태면 `/소속` 으로 든다'); return true; }
     const c = chiefOf(mine);
     const k = mine._kin || {};
-    _send(player, `🏘️ [${mine.name}] 촌장 ${c ? (c.name || c.id) : '없다'} · 곳간 ${k.granaryOpen === false ? '잠김' : '열림'} · `
+    _send(player, `🏘️ [${mine.name}] 촌장 ${c ? (c.name || c.id) : '없다'} · `   // ★[T809] 곳간 문 칸은 안 적는다(T779 가 잠금을 걷었다 · 꺼내기 = 촌장)
       + `${k.joinMode === 'invite' ? '부름을 받아야 든다' : '아무나 든다'}${k.intro ? ` · "${k.intro}"` : ''}`);
     return true;
   }

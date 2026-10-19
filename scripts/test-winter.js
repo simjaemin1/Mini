@@ -1,12 +1,22 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
-// === scripts/test-winter.js — 겨울나기 공동 프로젝트 하네스 =====================
+// === scripts/test-winter.js — 겨울나기 공동 프로젝트를 걷었다 (★T779 새 세계: 겨울 0) =====================
 //
-// ★[재민 확정 2026-09-02 · T20] 설계 정본 `설계/겨울나기_공동프로젝트_설계안.md` · 합격 기준 §5.
+// ★[T779 2026-10-18 · 재민 10-15 "겨울 프로젝트 없어. 기부는 상시 되고 보상도 없음."]
+//   T20 겨울나기(`server/winter.js` — 가을 공표 · 양 적립 · 겨울 첫날 판정 · 달성 보상 · 게시판 머리줄 · 납품 안 겨울 갈래)를 걷었다.
+//   손잡이를 꺼도 돌아오지 않는다(`EV_WINTER_OFF` 째 걷음). 연표에 이미 쓰인 옛 판정(`WINTER_KEPT` · `WINTER_SHORT`)은 **그대로 읽힌다**(연표는 영구).
 //
-// ★★이 하네스의 제1 원칙: **검사 상황이 실제로 그 코드를 밟는지 먼저 assert 한다.**
-//   겨울나기는 "아무 일도 안 일어나는 것"이 정상인 갈래가 많다(참여 0 · 랩엔 플레이어가 없다).
-//   그래서 "사건이 0건이다"를 통과로 세기 전에 **날이 실제로 겨울 첫날을 지났는지**를 먼저 잰다.
+// ★★이 하네스의 제1 원칙(옛 판 그대로): **검사 상황이 실제로 그 날들을 밟는지 먼저 assert 한다.**
+//   "겨울 사건이 0건이다"를 통과로 세기 전에 **가을 첫날 · 겨울 첫날을 실제로 지났는지**를 먼저 잰다.
+//
+//   ① 모듈 · 배선이 없다 — 파일 · `require` · `Winter` 부름 · DB 표 도우미 · 게시판 머리줄(서버 · 화면) · 장부의 `.winter` 읽기
+//   ② 800일 스윕 — 가을 · 겨울 첫날을 해마다 지났다(전제) · 그동안 `WINTER_*` 0 · 가을 사건에 공표 칸 0 · 가을 줄에 공표 말 0
+//   ③ 옛 꼴 호스트 몫(`extra.winter` — 공표 · 판정)을 건네도 장부가 한 건도 안 싣는다(두 장부 대조 · 관측자 규약)
+//   ④ 옛 판정 두 유형은 연표에서 그대로 읽힌다 — 유형 표 · 일 유형 · 이웃 연표 제외 · 연표 한 해에 줄로 · ㉝ 계약
+//   ⑤ 옛 가을 사건(공표 칸 실린 것)은 공표 없이 가을 한 줄로 읽힌다
+//   ⑥ 옛 DB 표 `village_winter` 는 지우지 않는다(새 DB 엔 안 생긴다 · 도우미 0)
+//   ⑦ 곳간 식량 등가 — 쓰러진 사람 구제 죽(`zone._villageMeal`)이 "곳간이 비었나"를 묻는 밑변(옛 ⑧ 그대로 · 한도 · 보상 밑변은 걷었다)
+//   ⑧ ★자가 검사 — 장부에 옛 쓰는 자리(`extra.winter.emit`)를 되살린 사본을 같은 ③ 에 넣으면 **잡는가**
 //
 // 실행: node scripts/test-winter.js
 'use strict';
@@ -15,427 +25,263 @@ process.env.DB_PATH = process.env.DB_PATH || `/tmp/test-winter-${process.pid}.db
 
 const fs = require('fs');
 const path = require('path');
-const R = (p) => require(path.join(__dirname, '..', p));
+const Module = require('module');
+const { execFileSync } = require('child_process');
+const ROOT = path.resolve(__dirname, '..');
+const R = (p) => require(path.join(ROOT, p));
+const SV = (p) => path.join(ROOT, 'server', p);
 
 const econ = R('sim/economy-sim');
 const econV2 = R('sim/economy-sim-v2');
 const Events = R('server/events');
 const Villages = R('server/villages');
-const Winter = R('server/winter');
-const DB = R('server/zone-local-db');
-const Onb = R('server/onboarding');
+const acorn = require(path.join(ROOT, 'node_modules', 'acorn'));
 
 let pass = 0, fail = 0;
-const ok = (c, m, extra) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (extra ? `  ${extra}` : '')); };
+const ok = (c, m, extra) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (extra !== undefined && extra !== '' ? `  ${extra}` : '')); };
 
-const ZONE = 'test-winter';
-let NOW = 0;                                   // 이 하네스가 미는 게임일(호스트 시계)
 function makeWorld(days, seed) {
   const world = econV2.createWorldV2({ seed: seed || 7, villageCount: 4, picker: 'rational', infoRange: 5000, raidPer100: 0.005 });
   const _log = console.log; console.log = () => {};
   try { for (let d = 0; d < (days || 0); d++) econV2.tickWorldV2(world); } finally { console.log = _log; }
   return world;
 }
-// 마을 껍데기 — `villages.js state.villages` 와 같은 모양(dbId · name · econ)만 준다.
-const wrap = (world, base) => world.villages.map((v, i) => ({ dbId: base + i, name: v.name, econ: v }));
-function mkLedger(world) {
-  const L = Events.createLedger({ econV2, vidOf: (v, i) => i, depositMap: Villages.playerVillageDepositMap() });
+function mkLedger(world, E) {
+  const L = (E || Events).createLedger({ econV2, vidOf: (v, i) => i, depositMap: Villages.playerVillageDepositMap() });
   L.prime(world);
   return L;
-}
-function bindWinter(L) {
-  Winter.__reset();
-  Winter.init({ db: DB, zoneId: ZONE, ledger: () => L, gameDay: () => NOW });
 }
 // econ 상태 스냅샷 — 관측자 규약 검사용(곳간·인구·인구 누적)
 const snapEcon = (world) => JSON.stringify(world.villages.map((v) => [
   v.npcs.length, v._dPAccum, Object.entries(v.storage).sort().map(([k, q]) => [k, +(+q).toFixed(6)]),
 ]));
+// 주석을 뺀 코드 — acorn 이 준 주석 자리만 지운다(주석 속 옛 이름 · 경고 인용은 안 센다)
+function codeOf(src) {
+  const cuts = [];
+  acorn.parse(src, { ecmaVersion: 'latest', sourceType: 'script', allowHashBang: true, allowReturnOutsideFunction: true, onComment: (b, t, s, e) => cuts.push([s, e]) });
+  let out = '', at = 0;
+  for (const [s, e] of cuts) { out += src.slice(at, s); at = e; }
+  return out + src.slice(at);
+}
+const isWinterType = (t) => /^WINTER_/.test(String(t || ''));
+const winterTypes = Events.TYPES.filter(isWinterType);
+const winterIn = (L) => winterTypes.reduce((a, t) => a + ((L.stats.byType || {})[t] || 0), 0);
+const chronWinter = (L) => L.vids.reduce((a, v) => a + L.chronOf(v).filter((e) => isWinterType(e.type)).length, 0);
+// 옛 호스트(`winter.js dailyExtra`)가 장부에 넘기던 꼴 — 공표(`goal`)와 판정(`emit`)
+const OLD_EXTRA = (day) => ({ winter: {
+  goal: { 0: { res: 'food', target: 50, deadline: day + 30 }, 1: { res: 'food', target: 40, deadline: day + 30 } },
+  emit: [{ vid: 0, type: 'WINTER_KEPT', item: 'food', mag: 1.2, meta: { by: [] } }, { vid: 1, type: 'WINTER_SHORT', item: 'food', mag: 0.4, meta: null }],
+} });
 
-console.log('\n=== 겨울나기 공동 프로젝트 하네스 ===\n');
+console.log('\n=== 겨울나기 공동 프로젝트 걷음 (T779) ===\n');
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ① 목표는 **유도된다** — 소스에 달력·산수 상수가 없다 · 시계가 하나다
-//    ★합격 기준 1·8. 이건 "코드를 읽어 확인했다"가 아니라 **기계가 읽는다**(test-calendar ③ 문법).
+// ① 모듈 · 배선이 없다
 // ─────────────────────────────────────────────────────────────────────────────
 {
-  const src = fs.readFileSync(path.join(__dirname, '..', 'server', 'winter.js'), 'utf8');
-  const body = src.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');   // 주석 줄 제외
-  const banned = ['365', '270', '95', '158.4', '1.667', '90', '180'];
-  const hit = banned.filter((n) => new RegExp(`(^|[^\\w.])${n.replace('.', '\\.')}([^\\w.]|$)`).test(body));
-  ok(hit.length === 0, '① 소스에 달력·산수 상수가 하나도 없다(전부 정본에서 유도)', hit.length ? `발견: ${hit.join(' ')}` : '365·270·95·158.4·1.667·90·180 전부 0');
-  // ⚠**주석까지 훑으면 안 된다** — 자염 배치가 그렇게 틀렸다(머리말의 인용을 "사본"으로 오판).
-  //   여기서도 `winter.js` 머리말이 `zoneGameDay` 를 **경고로** 인용한다. 코드만 본다.
-  ok(!/zoneGameDay/.test(body), '①b 시계가 하나다 — 코드에 `zoneGameDay`(벽시계 파생) 호출 0');
-  ok(/zoneGameDay/.test(src), '①b2 (자명 통과 방지) 그 낱말이 파일에 **있긴 하다**(주석의 경고 — 검사가 주석을 안 본다는 증거)');
-  // ★자명 통과 방지 — 정본을 **실제로 부르는지** 같이 본다(상수가 없는 게 아니라 아무것도 안 하는 것일 수 있다)
-  ok(/Events\.calendarOf/.test(src), '①c (자명 통과 방지) 달력 정본 `Events.calendarOf` 를 실제로 부른다');
-  ok(/SUBSISTENCE_PER_NPC/.test(src), '①d (자명 통과 방지) 1인 하루치를 econ 정본 `SUBSISTENCE_PER_NPC` 에서 읽는다');
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ★[T769 2026-10-15 · 재민 판정 "겨울 프로젝트 없어"] 켬(`T769_DONATE=1`) = 겨울 프로젝트 0 — `EV_WINTER_OFF=1` 과 같은 길.
-//   공표 · 적립 · 판정 · 보상 · 머리줄 · 납품 안 겨울 갈래가 전부 0 인지를 재고 끝낸다(② 부터는 프로젝트가 서 있는 판 — 끔에서 그대로 돈다).
-//   ⚠자명 통과 금지: 묶임(`ready`)이 살아 있고 · 800일이 공표일 · 판정일을 실제로 지났다는 것을 먼저 잰다(대조 = 같은 하네스의 끔 판 ②).
-// ─────────────────────────────────────────────────────────────────────────────
-if (process.env.T769_DONATE === '1') {
-  console.log('\n[T769 켬] 겨울 프로젝트 0');
-  const world = makeWorld(0, 7);
-  const L = mkLedger(world); bindWinter(L);
-  const vils = wrap(world, 100);
-  const DAYS = 800;
-  let annDays = 0, judDays = 0, extra = 0, heads = 0, goals = 0;
-  for (let d = 1; d <= DAYS; d++) {
-    NOW = d;
-    if (Winter.isAnnounceDay(d)) annDays++;
-    if (Winter.isJudgeDay(d)) judDays++;
-    if (Winter.dailyExtra(d, vils)) extra++;
-    for (const v of vils) { if (Winter.headLine(v.dbId, d)) heads++; if (Winter.goalRes(v.dbId)) goals++; }
+  ok(!fs.existsSync(SV('winter.js')), '① `server/winter.js` 가 없다');
+  const req = (() => { try { require(SV('winter.js')); return 'loaded'; } catch (e) { return e && e.code; } })();
+  ok(req === 'MODULE_NOT_FOUND', '①b 불러도 못 찾는다', String(req));
+  const files = [];
+  for (const dir of ['server', path.join('public', 'client')]) {
+    for (const f of fs.readdirSync(path.join(ROOT, dir)).filter((n) => n.endsWith('.js'))) files.push(path.join(dir, f));
   }
-  ok(Winter.ready(), '[T769] 전제: 겨울 모듈이 묶여 있다(꺼진 까닭이 묶임이 아니라 손잡이다)');
-  ok(annDays >= 2 && judDays >= 2, '[T769] 전제: 800일이 공표일 · 판정일을 두 번 넘게 지났다(달력 정본)', `공표일 ${annDays} · 판정일 ${judDays}`);
-  ok(extra === 0, '[T769] ★공표 · 판정 0 — 하루 경계 훅이 800일 동안 한 번도 안 낸다', `${extra}`);
-  ok(heads === 0 && goals === 0, '[T769] ★머리줄 0 · 겨울 몫 품목 0(납품 안 겨울 갈래가 안 선다)', `머리줄 ${heads} · 품목 ${goals}`);
-  const aDay = [...Array(Events.yearDaysOf()).keys()].map((i) => i + 1).find((d) => Winter.isAnnounceDay(d));
-  NOW = aDay + 1;
-  const res = 'food';
-  ok(Winter.onDeliver({ playerId: 'p-t769', name: 't769' }, { ok: true, done: true, moved: { [res]: 50 } }, 100) === 0, '[T769] ★적립 0 — 낸 양을 세지 않는다', res);
-  ok(vils.every((v) => Winter.bonusOf(v.dbId) === 0), '[T769] ★보상 0 — 인출 한도 가산 없음');
-  ok(Winter.deliverable(100, null, L, { rice: 5, barley: 5 }) === null, '[T769] ★납품 안 겨울 몫 갈래 0(의뢰 없는 납품 길이 안 열린다)');
-  console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
-  try { fs.unlinkSync(process.env.DB_PATH); } catch (e) {}
-  process.exit(fail ? 1 : 0);
+  const bad = [], parseErr = [];
+  let nCode = 0;
+  for (const rel of files) {
+    let code;
+    try { code = codeOf(fs.readFileSync(path.join(ROOT, rel), 'utf8')); } catch (e) { parseErr.push(`${rel}:${e.message}`); continue; }
+    nCode++;
+    if (/require\(\s*['"`][^'"`]*\bwinter['"`]\s*\)/.test(code) || /\bWinter\b/.test(code)) bad.push(rel);
+  }
+  ok(nCode === files.length && nCode > 30, '①c 전제: 서버 · 화면 코드를 실제로 다 읽었다(주석을 뺀 코드)', `${nCode}/${files.length}` + (parseErr.length ? ` · 못 읽음 ${parseErr.slice(0, 2).join(' ')}` : ''));
+  ok(bad.length === 0, '①d ★서버 · 화면 코드 어디에도 겨울 모듈 `require` · `Winter` 부름이 없다', bad.join(' ') || '0곳');
+  const msrc = fs.readFileSync(SV('membership.js'), 'utf8');
+  ok(/\bWinter\b/.test(msrc) && !/\bWinter\b/.test(codeOf(msrc)), '①e (자명 통과 방지) 그 낱말이 `membership.js` 주석(걷은 것 목록)엔 **있다** — 위 검사가 주석을 안 본다는 증거');
+  const D = fs.readFileSync(SV('zone-local-db.js'), 'utf8');
+  ok(!/upsertVillageWinter|getVillageWinterSince|CREATE TABLE IF NOT EXISTS village_winter/.test(codeOf(D)), '①f DB 도우미 둘 · 표 만들기가 없다(`zone-local-db.js`)');
+  const evCode = codeOf(fs.readFileSync(SV('events.js'), 'utf8'));
+  ok(!/\.winter\b/.test(evCode), '①g ★장부(`events.js`)가 `.winter` 칸을 읽지도 쓰지도 않는다(호스트 몫 · 가을 공표 칸)');
+  ok(/'WINTER_KEPT'/.test(evCode) && /WINTER_SHORT:/.test(evCode), '①h (자명 통과 방지) 옛 판정 유형 이름 · 줄은 코드에 **남아 있다**(읽는 자리 — ④)');
+  const board = codeOf(fs.readFileSync(path.join(ROOT, 'public', 'client', '47-s-board.js'), 'utf8'));
+  const css = fs.readFileSync(path.join(ROOT, 'public', 'style.css'), 'utf8');
+  ok(!/\.head\b/.test(board) && !/\.bp-head\b/.test(css), '①i 게시판 화면에 머리줄 칸이 없다(`bd.head` · `.bp-head`)');
+  const knobs = [];
+  for (const rel of files) { const s = fs.readFileSync(path.join(ROOT, rel), 'utf8'); if (/EV_WINTER_OFF|EV_WINTER_[A-Z_]+/.test(codeOf(s))) knobs.push(rel); }
+  ok(knobs.length === 0, '①j 겨울 손잡이(`EV_WINTER_OFF` · `EV_WINTER_*`)를 읽는 코드가 없다(꺼도 돌아올 길 0)', knobs.join(' ') || '0곳');
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ② 계절 경계 스윕 — 공표·판정은 **해마다 정확히 한 번**
-//    ★합격 기준 2·3. 800일이면 두 해를 넘긴다.
+// ② 800일 스윕 + ③ 옛 꼴 호스트 몫 — 같은 세계에 두 장부(대조군 · 옛 꼴을 건넨 판)
+//    ⚠자명 통과 금지: 가을 첫날 · 겨울 첫날을 **실제로** 해마다 지났고, 그날 계절 사건이 **실제로** 났다는 것을 먼저 잰다.
 // ─────────────────────────────────────────────────────────────────────────────
 const YD = Events.yearDaysOf();
 {
   const world = makeWorld(0, 7);
-  const L = mkLedger(world); bindWinter(L);
-  const vils = wrap(world, 100);
+  const LA = mkLedger(world);
+  const LB = mkLedger(world);
   const DAYS = 800;
-  const ann = new Map(), jud = new Map();
-  let annCalls = 0, judCalls = 0, other = 0;
-  for (let d = 1; d <= DAYS; d++) {
-    NOW = d;
-    const x = Winter.dailyExtra(d, vils);
-    if (!x) { other++; continue; }
-    const y = Winter.yearOf(d);
-    if (x.goal) { annCalls++; ann.set(y, (ann.get(y) || 0) + 1); }
-    if (x.emit) { judCalls++; jud.set(y, (jud.get(y) || 0) + 1); }
-  }
-  const years = Math.floor(DAYS / YD);
-  ok(annCalls >= 2 && judCalls >= 2, '② 전제: 800일이 두 해를 넘겼다(공표·판정이 여러 번 온다)',
-    `한 해 ${YD}일 · 공표 ${annCalls}회 · 판정 ${judCalls}회`);
-  ok([...ann.values()].every((n) => n === 1), '② 공표는 **한 해에 정확히 한 번**', JSON.stringify([...ann]));
-  ok([...jud.values()].every((n) => n === 1), '②b 판정도 한 해에 정확히 한 번', JSON.stringify([...jud]));
-  ok(other === DAYS - annCalls - judCalls, '②c 그 밖의 날엔 아무 일도 안 한다(틱 비용 0)', `${other}일`);
-  // 겨울 안에 재공표 0 — 겨울의 모든 날에 대해 `goal` 이 안 나온다
-  let reAnn = 0;
-  for (let d = 1; d <= DAYS; d++) { if (Events.calendarOf(d).season !== 'winter') continue; NOW = d; const x = Winter.dailyExtra(d, vils); if (x && x.goal) reAnn++; }
-  ok(reAnn === 0, '②d 겨울 안에는 재공표가 없다', `${reAnn}회`);
-  // ★같은 공표일을 다시 밟아도 목표가 안 바뀐다(촌장이 말을 바꾸지 않는다)
-  const aDay = [...Array(YD).keys()].map((i) => i + 1).find((d) => Winter.isAnnounceDay(d));
-  NOW = aDay;
-  const g1 = Winter.dailyExtra(aDay, vils).goal;
-  const g2 = Winter.dailyExtra(aDay, vils).goal;
-  ok(JSON.stringify(g1) === JSON.stringify(g2) && Object.keys(g1).length > 0,
-    '②e 공표한 목표는 **얼어 있다** — 같은 날을 다시 밟아도 그대로다', `${Object.keys(g1).length}마을 · ${JSON.stringify(Object.values(g1)[0])}`);
-  ok(Object.values(g1).every((x) => x.target > 0 && x.res && x.deadline > aDay),
-    '②f 목표가 실제로 서 있다(품목·수량·마감)', `마감 ${Object.values(g1)[0].deadline} > 공표 ${aDay}`);
-  // 마감은 **겨울 첫날**이어야 한다 — 상수가 아니라 달력에서
-  ok(Object.values(g1).every((x) => Winter.isJudgeDay(x.deadline)),
-    '②g 마감일이 곧 **겨울 첫날**이다(달력에서 유도 — 상수 아님)');
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ③ ★**양과 횟수는 서로를 오염시키지 않는다**(합격 기준 4 · 설계안 W-7)
-//    ⚠자명 통과 금지: 둘이 **다른 수**이고 **순서까지 반대**임을 같이 잰다.
-// ─────────────────────────────────────────────────────────────────────────────
-{
-  const world = makeWorld(0, 7);
-  const L = mkLedger(world); bindWinter(L);
-  const vils = wrap(world, 200);
-  const aDay = [...Array(YD).keys()].map((i) => i + 1).find((d) => Winter.isAnnounceDay(d));
-  NOW = aDay;
-  const goal = Winter.dailyExtra(aDay, vils).goal;
-  const vid = 200, res = goal[vid].res;
-  ok(!!res && goal[vid].target > 0, '③ 전제: 공표가 섰다', `${res} ${goal[vid].target}`);
-
-  // 기여 **횟수** 정본을 그대로 쓴다(사본 금지) — 온보딩 표가 그 하나다.
-  Onb.init({ db: DB.db, gameDay: () => NOW, send: () => {}, warm: false, ZONE_ID: ZONE });
-  const P = (id) => ({ playerId: id, name: id, ws: null });
-  const A = P('t20-A'), B = P('t20-B');
-  const deliv = (pl, q, done) => {
-    const r = { ok: true, done: !!done, moved: { [res]: q }, req: { item: res } };
-    Onb.onDeliver(pl, r, vid); Winter.onDeliver(pl, r, vid);
-  };
-  NOW = aDay + 1;
-  deliv(A, 50, true);                                   // 큰 물량 한 번
-  for (let i = 0; i < 5; i++) deliv(B, 6, true);         // 작은 물량 다섯 번
-  const pr = Winter.probe(vid, Winter.yearOf(NOW));
-  const qA = (pr.by.find((x) => x.pid === 't20-A') || {}).qty;
-  const qB = (pr.by.find((x) => x.pid === 't20-B') || {}).qty;
-  const kA = Onb.stateOf('t20-A').contrib, kB = Onb.stateOf('t20-B').contrib;
-  ok(kA === 1 && kB === 5, '③ 횟수 축 — 큰 물량 1회 vs 작은 물량 5회', `A ${kA} · B ${kB}`);
-  ok(qA === 50 && qB === 30, '③b 양 축 — 같은 두 사람이 낸 **양**', `A ${qA} · B ${qB}`);
-  ok(kA < kB && qA > qB, '③ ★두 축의 **순서가 반대**다 — 서로를 오염시키지 않는다(자명 통과 아님)',
-    `횟수 ${kA}<${kB} · 양 ${qA}>${qB}`);
-  // 부분 납품 — 양은 오르고 횟수는 안 오른다
-  const k0 = Onb.stateOf('t20-A').contrib, q0 = qA;
-  deliv(A, 7, false);
-  ok(Onb.stateOf('t20-A').contrib === k0, '③c 부분 납품은 **횟수를 안 올린다**(완료 에지만 센다 — T11 규약)');
-  ok(Winter.probe(vid).by.find((x) => x.pid === 't20-A').qty === q0 + 7, '③d 그런데 **양은 센다**(부분도 겨울에 보탠 것이다)');
-  // 공표 품목이 아닌 것은 안 센다
-  const q1 = Winter.probe(vid).by.find((x) => x.pid === 't20-A').qty;
-  Winter.onDeliver(A, { ok: true, done: true, moved: { stone: 99 } }, vid);
-  ok(Winter.probe(vid).by.find((x) => x.pid === 't20-A').qty === q1, '③e 공표한 품목이 아니면 겨울 몫에 안 센다');
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ④ 해가 바뀌면 **그 해 것만** 센다(합격 기준 3 후반)
-// ─────────────────────────────────────────────────────────────────────────────
-{
-  const world = makeWorld(0, 42);
-  const L = mkLedger(world); bindWinter(L);
-  const vils = wrap(world, 300);
-  const a1 = [...Array(YD).keys()].map((i) => i + 1).find((d) => Winter.isAnnounceDay(d));
-  NOW = a1; Winter.dailyExtra(a1, vils);
-  const vid = 300, res = Winter.probe(vid).res;
-  NOW = a1 + 1;
-  Winter.onDeliver({ playerId: 'y1', name: 'y1' }, { ok: true, done: true, moved: { [res]: 12 } }, vid);
-  ok(Winter.probe(vid).got === 12, '④ 전제: 첫 해에 실제로 냈다', `${Winter.probe(vid).got}`);
-  const y1 = Winter.yearOf(NOW);
-  const a2 = a1 + YD;
-  NOW = a2; Winter.dailyExtra(a2, vils);
-  const y2 = Winter.yearOf(NOW);
-  ok(y2 === y1 + 1, '④b 전제: 해가 실제로 바뀌었다', `${y1} → ${y2}`);
-  ok(Winter.probe(vid, y2).got === 0, '④ 새 해의 진척은 **0에서 시작한다**(그 해의 일이다)');
-  ok(Winter.probe(vid, y1).got === 12, '④c 지난 해 기록은 지우지 않는다 — 읽지 않을 뿐이다');
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ⑤ ★**미달이 아무도 안 굶긴다** + 참여 0 인 해엔 사건이 없다(합격 기준 5·6 · W-4ⓐ)
-//    이게 3시드 기준선 불변의 회귀 가드다.
-// ─────────────────────────────────────────────────────────────────────────────
-{
-  const world = makeWorld(0, 1020);
-  const LA = mkLedger(world);                      // 겨울 없는 대조군
-  const LB = mkLedger(world);                      // 겨울 붙인 판
-  bindWinter(LB);
-  const vils = wrap(world, 400);
+  const firsts = { autumn: 0, winter: 0 };
+  let prevSeason = null, moved = 0;
+  const seasonEvA = [], seasonEvB = [];
   const _l = console.log; console.log = () => {};
-  const DAYS = YD + 40;                            // 공표와 판정을 한 번씩 넘긴다
-  let judged = 0;
-  for (let d = 1; d <= DAYS; d++) {
-    NOW = d;
-    econV2.tickWorldV2(world);
-    const s0 = snapEcon(world);
-    LA.scanDay(world, world.day, {});
-    const x = Winter.dailyExtra(world.day, vils);
-    if (x && x.emit) judged++;
-    LB.scanDay(world, world.day, { winter: x });
-    if (snapEcon(world) !== s0) { console.log = _l; ok(false, '⑤ econ 이 스캔 중에 움직였다', `day ${d}`); console.log = () => {}; }
-  }
-  console.log = _l;
-  const wEv = LB.TYPES.filter((t) => t.startsWith('WINTER_')).reduce((a, t) => a + (LB.stats.byType[t] || 0), 0);
-  ok(judged >= 1, '⑤ 전제: **판정일을 실제로 지났다**(0건이 그냥 안 지나서가 아니다)', `판정 호출 ${judged}회`);
-  ok(wEv === 0, '⑤ ★참여 0 인 해엔 겨울 사건이 **한 건도 없다**(아무도 안 나선 프로젝트는 연표에 없다)');
-  const byA = JSON.stringify(LA.stats.byType), byB = JSON.stringify(LB.stats.byType);
-  ok(byA === byB, '⑤b 1차 유형 건수가 **켜나 끄나 같다**(겨울이 옛 사건을 못 건드린다)');
-  ok(LA.stats.emitted === LB.stats.emitted, '⑤c 총 사건 수도 같다', `${LA.stats.emitted} = ${LB.stats.emitted}`);
-
-  // 참여가 있으면 — 사건이 나되 **econ 은 그대로**다
-  const world2 = makeWorld(0, 1020);
-  const L2 = mkLedger(world2); bindWinter(L2);
-  const v2 = wrap(world2, 500);
-  const aDay = [...Array(YD).keys()].map((i) => i + 1).find((d) => Winter.isAnnounceDay(d));
-  const jDay = [...Array(YD).keys()].map((i) => i + 1).find((d) => Winter.isJudgeDay(d));
-  NOW = aDay; L2.scanDay(world2, aDay, { winter: Winter.dailyExtra(aDay, v2) });
-  const vid = 500, res = Winter.probe(vid).res, target = Winter.probe(vid).target;
-  NOW = aDay + 1;
-  Winter.onDeliver({ playerId: 'p1', name: '재민' }, { ok: true, done: true, moved: { [res]: 1 } }, vid);  // 미달(1 / N)
-  NOW = jDay;
-  const before = snapEcon(world2);
-  const ex = Winter.dailyExtra(jDay, v2);
-  const evs = L2.scanDay(world2, jDay, { winter: ex });
-  ok(snapEcon(world2) === before, '⑤ ★★미달 판정이 econ 을 **한 글자도** 안 건드린다(W-4ⓐ)');
-  const shorts = evs.filter((e) => e.type === 'WINTER_SHORT');
-  ok(shorts.length === 1 && shorts[0].vid === vid, '⑤d 참여가 있으면 미달도 **말은 한다**("올해는 궁했다")',
-    shorts[0] ? `mag=${shorts[0].mag} (${1}/${target})` : '(없음)');
-  ok(evs.filter((e) => e.type === 'WINTER_KEPT').length === 0, '⑤e 미달인데 달성이라 하지 않는다');
-  ok(!!Events.briefLine(shorts[0]) && !/undefined|NaN/.test(Events.briefLine(shorts[0])),
-    '⑤f 촌장이 할 말이 있다', JSON.stringify(Events.briefLine(shorts[0])));
-  // 달성 갈래 — 목표를 채우면 KEPT 가 나고 인출 보너스가 실제로 선다
-  const world3 = makeWorld(0, 1020);
-  const L3 = mkLedger(world3); bindWinter(L3);
-  const v3 = wrap(world3, 600);
-  NOW = aDay; L3.scanDay(world3, aDay, { winter: Winter.dailyExtra(aDay, v3) });
-  const vid3 = 600, res3 = Winter.probe(vid3).res, tgt3 = Winter.probe(vid3).target;
-  NOW = aDay + 1;
-  Winter.onDeliver({ playerId: 'p2', name: '나그네' }, { ok: true, done: true, moved: { [res3]: tgt3 } }, vid3);
-  ok(Winter.bonusOf(vid3) === 0, '⑤g 전제: 판정 전엔 보상이 없다(자명 통과 방지)');
-  NOW = jDay;
-  const evs3 = L3.scanDay(world3, jDay, { winter: Winter.dailyExtra(jDay, v3) });
-  const kept = evs3.filter((e) => e.type === 'WINTER_KEPT');
-  ok(kept.length === 1 && kept[0].item === res3 && kept[0].mag >= 1,
-    '⑤h 목표를 채우면 달성 사건이 난다', kept[0] ? `${kept[0].item} mag=${kept[0].mag}` : '(없음)');
-  ok(Winter.bonusOf(vid3) === Winter.CFG.BONUS, '⑤ ★달성한 해엔 인출 한도 가산이 **실제로 선다**', `+${Winter.CFG.BONUS}`);
-  // 그리고 **다음 겨울 첫날이 오면 저절로 만료된다**(만료 타이머 0 — 연표에 물어보므로)
-  NOW = jDay + YD;
-  ok(Winter.bonusOf(vid3) === 0, '⑤i 다음 겨울이 오면 그 보상은 **저절로 만료된다**(그 해 한정 — W-6ⓐ)');
-  // 연표에는 남는다(일 유형이라 문턱 면제)
-  ok(L3.chronOf(vid3).some((e) => e.type === 'WINTER_KEPT'), '⑤j 달성은 **연표에 남는다**(일 유형 — sev 문턱 면제)');
-  ok(L3.isDeed({ type: 'WINTER_KEPT' }) && L3.isDeed({ type: 'WINTER_SHORT' }), '⑤k 두 유형 다 "일"로 등재돼 있다');
-  ok(L3.deedForeign.indexOf('WINTER_KEPT') < 0, '⑤l 남의 마을 겨울은 이웃 연표에 안 실린다(완공과 같은 자리)');
-  // ㉝ 계약 — 문장이 영속 필드만으로 재현되는가(연표 표는 meta 를 안 담는다)
-  for (const t of ['WINTER_KEPT', 'WINTER_SHORT']) {
-    const ev = { vid: vid3, day: jDay, type: t, item: res3, mag: t === 'WINTER_KEPT' ? 1.2 : 0.4 };
-    ok(!!Events.briefLine(ev) && Events.briefLine(ev) === Events.briefLine(Object.assign({}, ev, { meta: null })),
-      `⑤m ${t} 문장이 **vid·day·type·item·mag 만으로** 재현된다(㉝ 계약)`);
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ⑦ ★**겨울 몫은 의뢰가 없어도 받는다** — §0 실측이 뒤집은 전제
-//    게시판은 식량 의뢰를 한 건도 안 낸다(econ 이 식량을 flow-EMA 에 안 담는다) ⇒ 이 갈래가
-//    없으면 겨울 목표를 낼 길이 아예 없다. 그 사실 자체를 먼저 재고, 그 다음 갈래를 잰다.
-// ─────────────────────────────────────────────────────────────────────────────
-{
-  const world = makeWorld(300, 7);
-  const L = mkLedger(world); bindWinter(L);
-  const _l = console.log; console.log = () => {};
-  for (let d = 0; d < 60; d++) { econV2.tickWorldV2(world); L.scanDay(world, world.day, {}); }
-  console.log = _l;
-  // ★전제 — econ 은 식량을 flow-EMA 에 안 담는다(그래서 부족 래치도, 의뢰도 없다)
-  const v0 = world.villages[0];
-  const emaKeys = Object.keys(v0._consEMA || {});
-  ok(emaKeys.length > 0, '⑦ 전제: 소비EMA 가 실제로 차 있다(빈 표라서 통과하는 게 아니다)', `${emaKeys.length}종`);
-  ok(!emaKeys.includes('food'), '⑦ ★econ 은 **식량 소비를 flow-EMA 에 안 담는다** — `_consEMA` 에 곡식이 없다',
-    emaKeys.slice(0, 8).join(' ') + ' …');
-  let foodReq = 0, allReq = 0;
-  for (const vid of L.vids) for (const r of L.board(vid)) { allReq++; if (r.item === 'food') foodReq++; }
-  ok(allReq > 0, '⑦b 전제: 게시판에 의뢰가 실제로 걸려 있다', `${allReq}건`);
-  ok(foodReq === 0, '⑦ ★그래서 **게시판이 식량 의뢰를 한 건도 안 낸다**', `${foodReq}/${allReq}`);
-
-  // 겨울 갈래 — 공표 뒤에는 의뢰가 없어도 받는다
-  const vils = wrap(world, 800);
-  const aDay = world.day + ((() => { let d = world.day + 1; while (!Winter.isAnnounceDay(d)) d++; return d - world.day; })());
-  NOW = aDay; Winter.dailyExtra(aDay, vils);
-  const vid = 800, res = Winter.probe(vid).res;
-  ok(res === 'food', '⑦c 목표 품목은 곡식이다 — 곳간이 받는 식량 중 econ 이 사람 수대로 먹는 것은 그것뿐', res);
-  const inv = { food: 12, stone: 40 };
-  const w1 = Winter.deliverable(vid, res, L, inv);
-  ok(!!w1 && w1.res === res && w1.give.food === 12, '⑦ ★겨울 몫은 **의뢰가 없어도 받는다**', JSON.stringify(w1 && w1.give));
-  ok(Winter.deliverable(vid, 'stone', L, inv) === null, '⑦d 공표한 품목이 아니면 안 받는다(곳간 아무거나 받는 문이 아니다)');
-  ok(Winter.deliverable(vid, res, L, { stone: 40 }) === null, '⑦e 손에 없으면 못 낸다');
-  ok(Winter.deliverable(999999, res, L, inv) === null, '⑦f 공표가 없는 마을은 안 받는다');
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ⑥ ★돌연변이 — 판정을 두 번 부르면 하네스가 **실제로 잡는가**
-//    (검사가 잡을 수 있는 검사인지 스스로 확인한다 — 족보 (수리 확인))
-// ─────────────────────────────────────────────────────────────────────────────
-{
-  const world = makeWorld(0, 7);
-  const L = mkLedger(world); bindWinter(L);
-  const vils = wrap(world, 700);
-  const jud = new Map();
-  const sweep = (twice) => {
-    jud.clear();
-    for (let d = 1; d <= 800; d++) {
-      NOW = d;
-      const x = Winter.dailyExtra(d, vils);
-      if (x && x.emit) { const y = Winter.yearOf(d); jud.set(y, (jud.get(y) || 0) + 1); if (twice) jud.set(y, jud.get(y) + 1); }
+  try {
+    for (let d = 1; d <= DAYS; d++) {
+      econV2.tickWorldV2(world);
+      const day = world.day;
+      const sn = Events.calendarOf(day).season;
+      if (prevSeason != null && sn !== prevSeason && (sn in firsts)) firsts[sn]++;
+      prevSeason = sn;
+      const s0 = snapEcon(world);
+      const ea = LA.scanDay(world, day, {}) || [];
+      const eb = LB.scanDay(world, day, OLD_EXTRA(day)) || [];
+      if (snapEcon(world) !== s0) moved++;
+      for (const e of ea) if (e.type === 'SEASON_CHANGE') seasonEvA.push(e);
+      for (const e of eb) if (e.type === 'SEASON_CHANGE') seasonEvB.push(e);
     }
-    return [...jud.values()].every((n) => n === 1);
-  };
-  ok(sweep(false) === true, '⑥ 정상 판에서는 ②b 가 통과한다');
-  ok(sweep(true) === false, '⑥ ★판정을 두 번 부르면 **잡는다**(잡을 수 있는 검사다)');
+  } finally { console.log = _l; }
+  const autumnA = seasonEvA.filter((e) => e.meta && e.meta.season === 'autumn');
+  ok(firsts.autumn >= 2 && firsts.winter >= 2, '② 전제: 800일이 가을 첫날 · 겨울 첫날을 두 번 넘게 지났다(달력 정본)', `한 해 ${YD}일 · 가을 ${firsts.autumn} · 겨울 ${firsts.winter}`);
+  ok(autumnA.length >= 2 * world.villages.length, '②b 전제: 가을 첫날 계절 사건이 마을마다 **실제로** 났다(0건이 그냥 안 지나서가 아니다)', `가을 사건 ${autumnA.length} · 마을 ${world.villages.length}`);
+  ok(winterIn(LA) === 0 && chronWinter(LA) === 0, '② ★800일 동안 겨울 판정 사건이 **한 건도** 안 났다(장부 · 연표 둘 다)', `장부 ${winterIn(LA)} · 연표 ${chronWinter(LA)}`);
+  ok(seasonEvA.every((e) => !(e.meta && 'winter' in e.meta)), '②c 계절 사건에 공표 칸(`meta.winter`)이 없다', `${seasonEvA.length}건`);
+  ok(autumnA.every((e) => !/올겨울/.test(Events.briefLine(e) || '')), '②d 가을 줄에 공표 말("올겨울 …")이 없다', autumnA[0] ? Events.briefLine(autumnA[0]) : '');
+  ok(moved === 0, '③ 전제: 두 장부가 econ 을 한 글자도 안 건드렸다(관측자 규약)', `${moved}일`);
+  ok(winterIn(LB) === 0 && chronWinter(LB) === 0, '③ ★옛 꼴 호스트 몫(판정 `emit`)을 날마다 건네도 장부가 **한 건도 안 싣는다**', `장부 ${winterIn(LB)} · 연표 ${chronWinter(LB)}`);
+  ok(seasonEvB.length === seasonEvA.length && seasonEvB.every((e) => !(e.meta && 'winter' in e.meta)), '③b 옛 꼴 공표(`goal`)를 건네도 가을 사건에 공표 칸이 안 실린다', `${seasonEvB.length} = ${seasonEvA.length}`);
+  ok(JSON.stringify(LA.stats.byType) === JSON.stringify(LB.stats.byType) && LA.stats.emitted === LB.stats.emitted,
+    '③c 유형별 건수 · 총 건수가 **두 장부에서 같다**(옛 꼴 몫이 아무것도 못 바꾼다)', `${LA.stats.emitted} = ${LB.stats.emitted}`);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ⑧ ★[재민 확정 2026-09-03 · ⓑ] **인출 한도의 밑변은 econ 식량 등가다** — 보존식도 곳간의 식량이다.
-//    왜 이 검사가 필요한가: 겨울이면 곡식은 이미 **보존식으로 갈무리돼 있다**(T17 ②·T54 말리기).
-//    `storage.food` 한 칸만 보면 곳간이 빈 것처럼 보이고, 그러면 소속 한도도 겨울 달성 보상도
-//    `min(·, byStock)` 에서 **물리 상한에 가려 0** 이 된다 — 실은 마을이 겨울용으로 쟁여 둔 것이다.
-//    ⚠규칙을 새로 만들지 않았다: 밑변은 econ **정본** `totalFoodEquivalent` 그대로다(사본 0).
+// ④ 옛 판정 두 유형은 연표에서 그대로 읽힌다 — 연표는 영구(T18) · 재기동 복구(`loadChronicle`)가 그 길이다
+// ─────────────────────────────────────────────────────────────────────────────
+let L4 = null;
+{
+  const world = makeWorld(30, 1020);
+  L4 = mkLedger(world);
+  const d0 = (() => { for (let d = 1; d <= YD; d++) { const c = Events.calendarOf(d); if (c.season === 'winter' && c.dayOfSeason === 1) return d; } return -1; })();
+  ok(d0 > 0, '④ 전제: 첫해 겨울 첫날을 달력에서 찾았다(옛 판정이 쓰이던 날)', `${d0}일`);
+  const rows = [{ vid: 0, day: d0, type: 'WINTER_KEPT', item: 'food', mag: 1.2 }, { vid: 1, day: d0, type: 'WINTER_SHORT', item: 'food', mag: 0.4 }];
+  ok(L4.loadChronicle(rows) === 2, '④b 옛 판정 두 줄이 연표 복구 길로 들어간다(`loadChronicle` — 재기동 그 길)');
+  ok(winterTypes.length === 2 && Events.TYPES.includes('WINTER_KEPT') && Events.TYPES.includes('WINTER_SHORT'), '④c 유형 표에 두 이름이 남아 있다', winterTypes.join(' '));
+  ok(L4.isDeed({ type: 'WINTER_KEPT' }) && L4.isDeed({ type: 'WINTER_SHORT' }), '④d 두 유형 다 "일"로 등재돼 있다(연표 문턱 면제 — 옛 그대로)');
+  ok(L4.deedForeign.indexOf('WINTER_KEPT') < 0 && L4.deedForeign.indexOf('WINTER_SHORT') < 0, '④e 남의 마을 겨울은 이웃 연표에 안 실린다(옛 그대로)');
+  const items = (vid) => L4.chronicle(vid, { today: d0 + 3 }).seasons.reduce((a, b) => a.concat(b.items), []);
+  const k = items(0).find((x) => x.type === 'WINTER_KEPT');
+  const s = items(1).find((x) => x.type === 'WINTER_SHORT');
+  ok(!!k && k.line === Events.briefLine(rows[0]) && /올겨울은 넉넉하이/.test(k.line), '④ ★옛 달성 판정이 그 마을 연표 겨울 칸에 **줄로** 선다', k ? k.line : '(없음)');
+  ok(!!s && s.line === Events.briefLine(rows[1]) && /궁하겠어/.test(s.line), '④f 옛 미달 판정도 같다', s ? s.line : '(없음)');
+  for (const r of rows) {
+    ok(!!Events.briefLine(r) && Events.briefLine(r) === Events.briefLine(Object.assign({}, r, { meta: null })),
+      `④g ${r.type} 문장이 **vid·day·type·item·mag 만으로** 재현된다(㉝ 계약 — 연표 표는 meta 를 안 담는다)`);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ⑤ 옛 가을 사건(공표 칸 실린 것 — `village_events` 90일 창에 남은 것)은 공표 없이 가을 한 줄로 읽힌다
+// ─────────────────────────────────────────────────────────────────────────────
+{
+  const old = { vid: 0, day: 1, type: 'SEASON_CHANGE', item: null, mag: 1, meta: { season: 'autumn', winter: { res: 'food', target: 50, deadline: 91 } } };
+  const now = { vid: 0, day: 1, type: 'SEASON_CHANGE', item: null, mag: 1, meta: { season: 'autumn' } };
+  const a = Events.briefLine(old), b = Events.briefLine(now);
+  ok(!!a && a === b, '⑤ ★옛 가을 사건 = 지금 가을 사건과 같은 한 줄(공표 칸을 안 읽는다)', a);
+  ok(!/올겨울|모아 두려|손을 보태/.test(a), '⑤b 없어진 프로젝트를 다시 공표하지 않는다');
+  ok(/올겨울/.test(Events.briefLine({ vid: 0, day: 1, type: 'WINTER_KEPT', item: 'food', mag: 1 })), '⑤c (자명 통과 방지) 같은 낱말 검사가 옛 판정 줄에선 **걸린다**');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ⑥ 옛 DB 표는 지우지 않는다 · 새 DB 엔 안 생긴다 — 존 DB 정본(`zone-local-db`)을 하위 실행에서 연다(한 실행 = 한 DB)
+// ─────────────────────────────────────────────────────────────────────────────
+{
+  const { DatabaseSync } = require('node:sqlite');
+  const tmp = (k) => `/tmp/test-winter-${k}-${process.pid}.db`;
+  const OLD = tmp('old'), NEW = tmp('new');
+  for (const f of [OLD, NEW]) for (const x of ['', '-wal', '-shm']) { try { fs.unlinkSync(f + x); } catch (e) {} }
+  { const d = new DatabaseSync(OLD);
+    d.exec(`CREATE TABLE village_winter (zone TEXT NOT NULL, vid INTEGER NOT NULL, year INTEGER NOT NULL, player_id TEXT NOT NULL,
+      qty REAL NOT NULL DEFAULT 0, res TEXT, name TEXT, PRIMARY KEY (zone, vid, year, player_id));
+      INSERT INTO village_winter VALUES ('hanbando', 3, 0, '', 50, 'food', NULL), ('hanbando', 3, 0, 'anon_x', 12, 'food', '들풀');`);
+    d.close(); }
+  const code = `const D=require(${JSON.stringify(SV('zone-local-db.js'))});
+    const has=D.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='village_winter'").all().length>0;
+    const n=has?D.db.prepare('SELECT COUNT(*) AS c FROM village_winter').get().c:null;
+    const chron=D.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='village_chronicle'").all().length>0;
+    process.stdout.write('@@'+JSON.stringify({has,n,chron,fns:[typeof D.upsertVillageWinter,typeof D.getVillageWinterSince]}));`;
+  const run = (db) => { const o = execFileSync(process.execPath, ['-e', code], { env: Object.assign({}, process.env, { DB_PATH: db, ZONE_ID: 'hanbando' }), encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }); return JSON.parse(o.slice(o.lastIndexOf('@@') + 2)); };
+  let o = null, n = null;
+  try { o = run(OLD); n = run(NEW); } catch (e) { ok(false, '⑥ 하위 실행 오류', String(e && e.message || e).slice(0, 200)); }
+  if (o && n) {
+    ok(n.chron === true, '⑥ 전제: 하위 실행이 존 DB 정본을 실제로 열었다(연표 표가 섰다)');
+    ok(o.has === true && o.n === 2, '⑥ ★옛 DB 의 `village_winter` 표 · 행은 **그대로** 남는다(DROP 0)', `행 ${o.n}`);
+    ok(n.has === false, '⑥b 새 DB 엔 그 표가 안 생긴다');
+    ok(o.fns.every((t) => t === 'undefined'), '⑥c 그 표를 쓰고 읽던 도우미 둘이 없다', o.fns.join(' '));
+  }
+  for (const f of [OLD, NEW]) for (const x of ['', '-wal', '-shm']) { try { fs.unlinkSync(f + x); } catch (e) {} }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ⑦ ★[재민 확정 2026-09-03 · ⓑ] 곳간 식량 등가 — 보존식도 곳간의 식량이다(옛 ⑧ 그대로).
+//    ★[T779] 이 밑변을 쓰던 소속 인출 한도 · 겨울 달성 보상은 걷었다 — 지금 묻는 곳은 쓰러진 사람 구제 죽
+//    (`zone._villageMeal` — "곳간이 비었나") 하나다. 겨울이면 곡식은 이미 보존식으로 갈무리돼 있으니
+//    `storage.food` 한 칸만 보면 곳간이 빈 것으로 읽혀 구제가 막힌다 ⇒ 밑변은 econ 정본 `totalFoodEquivalent` 그대로(사본 0).
 // ─────────────────────────────────────────────────────────────────────────────
 {
   const world = makeWorld(0, 11);
   const vil = { dbId: 900, name: '겨울시험', econ: world.villages[0] };
   const st = vil.econ.storage;
   for (const k of Object.keys(st)) st[k] = 0;
-
-  // ⓐ 곡식 칸이 비었는데 보존식이 있는 겨울 곳간
+  //   ⓐ 곡식 칸이 비었는데 보존식이 있는 겨울 곳간
   st.dried_fish = 120;
   const raw = Villages.playerVillageWithdrawStock(vil, 'food');
   const feq = Villages.playerVillageWithdrawStockFoodEq(vil);
-  ok(raw === 0, '⑧ 전제: 곡식 칸은 **비어 있다**(아래가 자명 통과가 아니다)', `food ${raw}`);
-  ok(feq > 0, '⑧a ★그래도 곳간엔 식량이 있다 — 식량 등가가 보존식을 센다', `등가 ${feq}`);
-
-  // ⓑ 그 수는 내가 지어낸 게 아니라 econ 정본이 낸 수다(사본 금지 — 같은 함수로 대조)
+  ok(raw === 0, '⑦ 전제: 곡식 칸은 **비어 있다**(아래가 자명 통과가 아니다)', `food ${raw}`);
+  ok(feq > 0, '⑦a ★그래도 곳간엔 식량이 있다 — 식량 등가가 보존식을 센다', `등가 ${feq}`);
+  //   ⓑ 그 수는 econ 정본이 낸 수다(사본 금지 — 같은 함수로 대조)
   const canon = Math.floor((+econ.totalFoodEquivalent(vil.econ) || 0) / 1);
-  ok(feq === canon, '⑧b 그 수는 **econ 정본 `totalFoodEquivalent`** 그대로다(사본 0)', `${feq} vs ${canon}`);
-
-  // ⓒ 보존식을 빼면 등가도 같이 준다 — 상수를 심어 둔 게 아니다
+  ok(feq === canon, '⑦b 그 수는 **econ 정본 `totalFoodEquivalent`** 그대로다(사본 0)', `${feq} vs ${canon}`);
+  //   ⓒ 보존식을 빼면 등가도 같이 준다 — 상수를 심어 둔 게 아니다
   st.dried_fish = 0;
-  ok(Villages.playerVillageWithdrawStockFoodEq(vil) === 0, '⑧c 보존식을 비우면 등가도 0 이 된다(고정값이 아니다)');
-
-  // ⓓ "이 재화가 식량으로 세어지는가"도 **목록을 옮겨 적지 않고** econ 에게 묻는다
+  ok(Villages.playerVillageWithdrawStockFoodEq(vil) === 0, '⑦c 보존식을 비우면 등가도 0 이 된다(고정값이 아니다)');
+  //   ⓓ "이 재화가 식량으로 세어지는가"도 **목록을 옮겨 적지 않고** econ 에게 묻는다
   st.dried_fish = 50; st.stone = 50;
-  ok(Villages._countsAsFoodEq(vil, 'dried_fish') === true, '⑧d 보존식은 식량으로 센다(econ 에게 물어서 안다)');
-  ok(Villages._countsAsFoodEq(vil, 'stone') === false, '⑧e ★자명 통과 금지 — 돌은 식량이 아니다');
-
-  // ⓔ 한도는 밑변을 따라 오르지만, **꺼내지는 양은 여전히 실재고가 정한다**(한도가 재고를 만들지 않는다)
-  const before = { ...st };
-  ok(JSON.stringify(before) === JSON.stringify(st), '⑧f 이 절은 곳간을 **안 건드렸다**(관측만 했다)');
+  ok(Villages._countsAsFoodEq(vil, 'dried_fish') === true, '⑦d 보존식은 식량으로 센다(econ 에게 물어서 안다)');
+  ok(Villages._countsAsFoodEq(vil, 'stone') === false, '⑦e ★자명 통과 금지 — 돌은 식량이 아니다');
+  const zcode = codeOf(fs.readFileSync(SV('zone.js'), 'utf8'));
+  ok(/function _villageMeal[\s\S]{0,600}playerVillageWithdrawStockFoodEq\(/.test(zcode), '⑦f 그 밑변을 묻는 자리 = 구제 죽(`_villageMeal`) — 지금 남은 쓰임');
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ⑨ ★[T63 · T20 회부 ⓪] **기여자 이름이 재기동을 넘어간다** — 저장·로드 왕복
-//    왜: 양은 `village_winter` 에 남는데 이름은 서버 메모리에만 있었다. 그래서 재기동하면
-//    브리핑이 "누가 냈는지"를 조용히 잃었다(양은 맞는데 이름만 빠지는 반쪽 영속 — 제일 나쁜 종류다).
-//    ★재기동은 `bindWinter`(= `__reset()` + `init`)로 흉내 낸다 — 메모리를 비우고 **표에서만** 되살린다.
+// ⑧ ★자가 검사 — ③ 이 **잡을 수 있는 검사인가**: 장부의 옛 쓰는 자리(⑩ `extra.winter.emit` 고리)를 되살린 사본을 같은 꼴로 돌린다
+//    사본은 메모리에서만 짓는다(같은 파일 이름 · 같은 상대 경로로 — 저장소엔 손대지 않는다).
 // ─────────────────────────────────────────────────────────────────────────────
 {
-  const world = makeWorld(0, 4242);
-  const L = mkLedger(world); bindWinter(L);
-  const vils = wrap(world, 900);
-  let aDay = 0;
-  for (let d = 1; d <= YD; d++) { NOW = d; if (Winter.isAnnounceDay(d)) { aDay = d; break; } }
-  const goal = Winter.dailyExtra(aDay, vils).goal;
-  const vid = 900, res = goal[vid] && goal[vid].res;
-  ok(!!res, '⑨ 전제: 공표가 섰다(아래가 자명 통과가 아니다)', String(res));
-
-  NOW = aDay + 1;
-  Winter.onDeliver({ playerId: 'p-ko', name: '들풀' }, { ok: true, done: true, moved: { [res]: 9 } }, vid);
-  const before = Winter.probe(vid).by.find((x) => x.pid === 'p-ko');
-  ok(!!before && before.name === '들풀', '⑨a 낸 직후엔 이름이 있다', JSON.stringify(before));
-
-  // ★재기동 — 메모리를 통째로 비운다
-  bindWinter(L);
-  const after = Winter.probe(vid).by.find((x) => x.pid === 'p-ko');
-  ok(!!after, '⑨b 전제: 재기동 뒤에도 **양**은 남는다(종전부터 그랬다)', JSON.stringify(after));
-  ok(!!after && after.qty === before.qty, '⑨c 양이 그대로다', `${before && before.qty} → ${after && after.qty}`);
-  ok(!!after && after.name === '들풀', '⑨ ★재기동 뒤에도 **이름**이 남는다(이 절이 고친 것)', JSON.stringify(after && after.name));
-
-  // ★이름 없는 갱신이 이름을 지우지 않는다(COALESCE) — 낸 사람이 또 내면 이름이 사라지면 안 된다
-  NOW = aDay + 2;
-  Winter.onDeliver({ playerId: 'p-ko' }, { ok: true, done: true, moved: { [res]: 3 } }, vid);
-  bindWinter(L);
-  const again = Winter.probe(vid).by.find((x) => x.pid === 'p-ko');
-  ok(!!again && again.qty === +(before.qty + 3).toFixed(3), '⑨d 다시 내면 양이 는다', `${again && again.qty}`);
-  ok(!!again && again.name === '들풀', '⑨e ★이름 없는 갱신이 이름을 **안 지운다**(COALESCE)');
-
-  // ★자명 통과 금지 — 이름을 안 준 사람은 그대로 null 이다(모든 행에 이름을 심는 게 아니다)
-  Winter.onDeliver({ playerId: 'p-anon' }, { ok: true, done: true, moved: { [res]: 2 } }, vid);
-  bindWinter(L);
-  const anon = Winter.probe(vid).by.find((x) => x.pid === 'p-anon');
-  ok(!!anon && anon.name === null, '⑨f ★자명 통과 금지 — 이름을 안 준 사람은 여전히 이름이 없다');
+  const src = fs.readFileSync(SV('events.js'), 'utf8');
+  const MARK = '    // ⑩ ★[T779] 겨울나기 판정';
+  const at = src.indexOf(MARK);
+  ok(at > 0, '⑧ 전제: 걷은 자리(⑩ 표지)를 장부 소스에서 찾았다', at > 0 ? `@${at}` : '(없음)');
+  if (at > 0) {
+    const eol = src.indexOf('\n', at);
+    const revived = src.slice(0, at)
+      + '    for (const e of ((extra && extra.winter && extra.winter.emit) || [])) {\n'
+      + '      if (e == null || e.vid == null) continue;\n'
+      + '      commit(st(e.vid), [{ day, vid: e.vid | 0, type: String(e.type), item: e.item || null, mag: +e.mag || 1, meta: e.meta || null }], out);\n'
+      + '    }' + src.slice(eol);
+    const m = new Module(SV('events.js'), null);
+    m.filename = SV('events.js');
+    m.paths = Module._nodeModulePaths(path.dirname(m.filename));
+    let EM = null;
+    try { m._compile(revived, m.filename); EM = m.exports; } catch (e) { ok(false, '⑧ 되살린 사본을 못 지었다', String(e && e.message || e).slice(0, 200)); }
+    if (EM) {
+      const world = makeWorld(0, 7);
+      const LA = mkLedger(world), LM = mkLedger(world, EM);
+      const _l = console.log; console.log = () => {};
+      try { for (let d = 1; d <= 5; d++) { econV2.tickWorldV2(world); LA.scanDay(world, world.day, {}); LM.scanDay(world, world.day, OLD_EXTRA(world.day)); } } finally { console.log = _l; }
+      ok(winterIn(LM) > 0 && chronWinter(LM) > 0, '⑧ ★옛 쓰는 자리를 되살리면 같은 셈이 **겨울 판정을 잡는다**(③ 은 잡을 수 있는 검사다)', `되살린 판 ${winterIn(LM)} · 연표 ${chronWinter(LM)}`);
+      ok(JSON.stringify(LA.stats.byType) !== JSON.stringify(LM.stats.byType), '⑧b 그리고 ③c 의 두 장부 대조가 **갈린다**', `${LA.stats.emitted} ≠ ${LM.stats.emitted}`);
+    }
+  }
+  ok(chronWinter(L4) === 2, '⑧c 연표 셈(`chronWinter`)도 옛 판정을 실제로 센다(④ 의 복구 판에서 2)', String(chronWinter(L4)));
 }
 
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);

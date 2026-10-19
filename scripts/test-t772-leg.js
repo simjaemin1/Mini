@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(표 없으면 안 돈다)
-// === scripts/test-t772-leg.js — 손잡이 `T772_LEG_FROM_LINGER`(기본 끔): 캐러밴 귀환 몸 — 장 뒤 따라잡기 질주 없애기 [T772] ==========
+// === scripts/test-t772-leg.js — 손잡이 `T772_LEG_FROM_LINGER`(★T782 켬 기본 · 되돌림 `=0`): 캐러밴 귀환 몸 — 장 뒤 따라잡기 질주 없애기 [T772] ==========
 //
 // ★왜 [T762 §2-4] 1일 귀환 다리 몸이 장이 끝난 뒤(하루 17.8~20.9 %) 몸 걸음의 최대 2.7배(171 px/s)로 뛴다 —
 //   T661 보이는 몸이 일정을 **하루 머리부터** 보간하고(`_t661Vis`) 따라잡기 상한이 명목 ×4 라서다(T707 장이 하루 4/24 를 머물게 한다).
@@ -28,8 +28,16 @@ const C = codeOnly(V);
 
 console.log('\n=== 캐러밴 귀환 몸 — 장 뒤 따라잡기 질주 없애기 (T772) ===');
 console.log('\n① 술어 · 읽는 자리');
-{ const decl = V.match(/const T772_ON = process\.env\.T772_LEG_FROM_LINGER === '1';/g) || [];
-  ok(decl.length === 1, '① 선언 하나 · `=== \'1\'` 만 켬(기본 끔)', `선언 ${decl.length}`);
+{ const decl = V.match(/const T772_ON = process\.env\.T772_LEG_FROM_LINGER !== '0';/g) || [];
+  ok(decl.length === 1, '① 선언 하나 · `!== \'0\'` — 켬 기본(T782 · 되돌림 `=0`)', `선언 ${decl.length}`);
+  //   ★[T782] 끔 탐침 — 손잡이를 실제로 읽는가(기본 = 켬 · `=0` = 끔) · 마을 모듈을 그대로 불러 계기판 칸을 본다
+  const { execFileSync } = require('child_process');
+  const probe = (env, js) => { const e = Object.assign({}, process.env); delete e.T772_LEG_FROM_LINGER; delete e.T775_CARAVAN_RESUME; Object.assign(e, env);
+    return execFileSync(process.execPath, ['-e', `const V=require(${JSON.stringify(path.join(ROOT, 'server', 'villages.js'))});console.log(JSON.stringify(${js}))`], { env: e, encoding: 'utf8' }).trim().split('\n').pop(); };
+  const t772 = 'V.__labProbe.t772Stat !== null', t775 = "'t775' in V.tickPerf().probe";
+  ok(probe({}, t772) === 'true' && probe({ T772_LEG_FROM_LINGER: '0' }, t772) === 'false', '① ★끔 탐침(T772) — env 없음 = 켬(계기판 칸) · `=0` = 끔(칸 없음)');
+  ok(probe({}, t775) === 'true' && probe({ T775_CARAVAN_RESUME: '0' }, t775) === 'false', '① ★끔 탐침(T775) — env 없음 = 켬(`t775` 칸) · `=0` = 끔(칸 없음)');
+  ok((V.match(/const T775_RESUME = process\.env\.T775_CARAVAN_RESUME !== '0';/g) || []).length === 1, '① T775 선언 하나 · `!== \'0\'` — 켬 기본(T782)');
   const files = []; const walk = (d) => { for (const f of fs.readdirSync(d)) { const p = path.join(d, f); const st = fs.statSync(p); if (st.isDirectory()) walk(p); else if (/\.js$/.test(f)) files.push(p); } };
   for (const d of ['server', 'sim', 'public']) walk(path.join(ROOT, d));
   const readers = files.filter((p) => codeOnly(fs.readFileSync(p, 'utf8')).includes('T772_LEG_FROM_LINGER')).map((p) => path.relative(ROOT, p));
@@ -57,10 +65,10 @@ function world(on, lenPx) {
   const state = { caravanBodies: new Map(), deps: { players: new Map(), isPositionActive: null, isBlockedByWall: null, moveSpeed: zoneMove }, world: { day: D, caravans: [] },
     dayMs: DAY, epoch: 0, lastGameDay: D, zoneId: 't', roads: null, _carTickAt: 0, byEcon: new Map() };
   const stat = { legs: 0, home: 0, late: 0, lateMaxPx: 0, lateSumPx: 0 };
-  const names = ['state', 'T772_ON', '_t772Stat', 'T661_ON', 'T707_ON', 'T731_ON', 'CARAVAN_BLOCKTEST', 'SZ', '_escortMarch', 'despawnCaravanNpc', '_t707Tally', '_t661Stamp', 'console', 'T775_RESUME'];   // ★[T775 · PM 착지 10-17] 다시 뜬 판 갈래 — 제품 기본(끔)
+  const names = ['state', 'T772_ON', '_t772Stat', 'T661_ON', 'T707_ON', 'T731_ON', 'CARAVAN_BLOCKTEST', 'SZ', '_escortMarch', 'despawnCaravanNpc', '_t707Tally', '_t661Stamp', 'console', 'T775_RESUME'];   // ★[T775 · PM 착지 10-17] 다시 뜬 판 갈래 — ★[T782] 제품 기본 = 켬(가짜 세계엔 `state.ready` 가 없어 다시 뜸 문은 안 연다)
   const F = new Function(...names, SRC + '\nreturn { econDayToMs, setBodyPts, _t661Path, _t661Vis, startReturnLeg, tickCaravanBodies, _caravanSyncSweep };');
   const quiet = { log: () => {} };
-  const K = F(state, on, stat, true, false, false, 0, 32, () => {}, () => {}, () => {}, () => {}, quiet, false);
+  const K = F(state, on, stat, true, false, false, 0, 32, () => {}, () => {}, () => {}, () => {}, quiet, true);   // ★[T782] T775 = 제품 기본(켬)
   const head = K.econDayToMs(D), lingerEnd = head + DAY * 4 / 24;   // T707 장 머묾 하루 4/24(보고 T762)
   const pts = [{ x: 0, y: 0 }, { x: lenPx * 0.5, y: 0 }, { x: lenPx * 0.5, y: lenPx * 0.5 }];
   const c = { id: 1, from: { name: 'A' }, to: { name: 'B' }, arriveDay: D, returnArriveDay: D + 1 };
