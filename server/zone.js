@@ -6633,7 +6633,7 @@ function handlePlayerInput(player, raw) {
 
   // ★[T1 §2-②] 마을이 장부를 마감하는 중이면 마을 요청만 줄을 세운다(위 주석).
   if (VILLAGE_BOOK_MSG.has(msg.type) && SimVillages.villagesBusy && SimVillages.villagesBusy()
-      && SimVillages.villageWait(() => { try { handlePlayerInput(player, raw); } catch (e) {} })) {
+      && (SimVillages.villageBookWait || SimVillages.villageWait)(() => { try { handlePlayerInput(player, raw); } catch (e) {} })) {   // ★[T792] 현지 자정 창 안(섞인 날) = 바로 · 마을마다 제 장부 날
     if (ws && ws.readyState === 1) send(ws, { type: 'notice', text: '🏘️ 마을이 하루 장부를 마감하는 중이다 — 곧 처리된다' });
     return;
   }

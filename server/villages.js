@@ -6821,7 +6821,7 @@ function _bodyDay(npc, now) {   // 몸의 날 — 끔 = 세계 날(종전) · �
 //     꼬리  = 종전 차례 그대로(교역 → 캐러밴 → econ 꼬리 → 존 경계 냄 → 영토 → 채굴 → 날씨 → 방송 → 캐러밴 동기 → 사건 → 저장 → 거리)
 //   창 가운데 머리 · 마을 조각은 미니 마감(`C.t731mini` — T690 문법: 마감 꼬리 로그 없이 대기 요청만 방류). 창 하나 = `_closeDay` 한 줄.
 //   ⚠econ 결산 차례가 마을마다 바뀌는 것은 econ 씨 가르기(`sim/economy-sim.js useVillageStream`)가 받친다 — 한 마을의 하루가 다른 마을 수열을 안 바꾼다.
-const T731_ON = process.env.T731_LOCAL_MIDNIGHT === '1';
+const T731_ON = process.env.T731_LOCAL_MIDNIGHT !== '0';   // ★[T792 · PM 10-18] 켬 기본(재민 10-13 시간 캐논) · 되돌림 `=0`
 const _t731Stat = { windows: 0, vils: 0, late: 0, lateMax: 0, orderBad: 0, last: null, boot: null };
 function _t731Lam(ccx) { const Z = _zc720(), zo = ((Z.ZONES[state.zoneId] || {}).worldOffsetX) || 0; return Z.lonOf(zo + ccx * SZ + SZ / 2); }
 function _t731LD(vil, t) { return Math.floor((t - state.epoch) / state.dayMs + (vil._lonMid || 0)); }
@@ -7256,6 +7256,14 @@ function villageWait(fn) {
   state.waitQ.push(fn);
   if (state.tickCtx) state.tickCtx.queued = state.waitQ.length;
   return true;
+}
+// ★★[T792 · PM 10-18 판정 ⓐ] 섞인 날 — 현지 자정 창(T731 · 머리 → 마을 조각) 안에 온 **사람 장부 요청**은 줄 세우지 않고 바로 처리한다.
+//   마을마다 장부 날이 제 날(`_ledgerDay` — 그 마을이 정산한 날)이라 캐논 그대로다(대기 큐 0). 창 꼬리(교역 · 캐러밴 · econ 꼬리 · 저장 —
+//   모든 마을이 같은 날로 선 뒤의 마감)는 종전 T1 줄 그대로다(반쯤 넘어간 장부를 안 건드린다). 끔(`T731_LOCAL_MIDNIGHT=0`) = `villageWait` 그대로.
+function villageBookWait(fn) {
+  const C = state.tickCtx;
+  if (T731_ON && state.tickJobs && C && C.t731D != null && C.t731mini) { _t731Stat.bookNow = (_t731Stat.bookNow | 0) + 1; return false; }
+  return villageWait(fn);
 }
 function _drainVillageWaitQ() {
   const Q = state.waitQ;
@@ -13408,7 +13416,7 @@ module.exports = { t750CastPre, t750Stat: () => _t750Stat, t719ReachPre, t719Sta
   bedSlotOf,   // ★[T540] 관측 — 침대 슬롯·집(`/walkdbg`)   // ★[T529] 촌장이 온다(손잡이 `T529_CHIEF_WALKS` · 읽는 곳 하나)
   tickPerf,   // ★[T1 §0] 일틱 단계별 소요 — zone.js `/perf` 가 소비(계측 전용)
   xzoneReceive, xzonePerf,   // ★[T533] 존 경계 — `/handoff_prepare` 의 `kind`(caravan·snap) 받는 문 · `/perf` 의 `xzone` 칸(끔이면 null)
-  villagesBusy, villageWait,   // ★[T1 §2-②] "장부 마감 중" 큐 — zone.js 가 마을 요청만 이 문으로 보낸다
+  villagesBusy, villageWait, villageBookWait,   // ★[T792] 사람 장부 문(창 안 = 바로)   // ★[T1 §2-②] "장부 마감 중" 큐 — zone.js 가 마을 요청만 이 문으로 보낸다
   dayNow: _dayNow,   // ★[T1] 마감 중이면 **경계의 순간**을 돌려준다 — 벽시계 적분(광맥 재생)이 조각 순서에 흔들리지 않게
   routeDebug,   // ★[T42] 교역로 캐시 관측·감사 — zone.js `/routedbg` 가 E2E_GIVE 로 게이트
   routeWorldSig,   // ★[T619 ②] 세계 서명(교역로 입력 내용 해시) — 하네스가 '다른 칸은 안 바꾼다'를 순수 함수로 잰다

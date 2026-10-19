@@ -154,7 +154,7 @@ let _seed = 42;
 //   새 주민 번호는 마을 안 계수기(`v._nid` — 번호 `n<마을 id>.<k>`)에서 뽑는다. 마을 흐름의 첫 값은 세계 씨(`setSeed` 의 값)와 마을 id 를
 //   **같은 LCG 로 섞어** 정한다(새 수 0 · 차례 무관). 교역 · 캐러밴 · 회복 · 사건(마을 둘 이상)은 세계 흐름 그대로다.
 //   `v._rs` · `v._nid` 는 econ 마을 칸이라 서버 저장 줄(`serializeEcon`)이 그대로 싣는다(재기동 뒤 같은 수열).
-const T731_LOCAL_MIDNIGHT = (typeof process !== 'undefined' && process.env && process.env.T731_LOCAL_MIDNIGHT === '1');
+const T731_LOCAL_MIDNIGHT = (typeof process !== 'undefined' && process.env && process.env.T731_LOCAL_MIDNIGHT !== '0');   // ★[T792 · PM 10-18] 켬 기본 · 되돌림 `=0`(브라우저 = `process` 없음 = 끔 · 랩은 `LAB_ENV` 칸)
 let _seed0 = 42;     // 세계 씨(마을 흐름 첫 값의 재료 — 켬일 때만 읽는다)
 let _curV = null;    // 지금 흐름을 쥔 마을(켬일 때만 선다)
 function srand() {
