@@ -6531,6 +6531,7 @@ async function _acceptConnection(ws, req, C) {
       charRunMin: parseFloat(process.env.CHAR_RUN_MIN || '') || 102,
       ...(process.env.T492_SEASON_AMB === 'on' ? { seasonAmb: true } : {}),   // [T492] 계절 환경음 손잡이 — 끔이면 칸이 없다(welcome 바이트 동일)
       ...(_t507On() ? { t507Verbs: true } : {}),
+      ...(process.env.T813_RMB_PRESS === '1' ? { rmbPress: true } : {}),   // [T813] 우클릭 탭 메뉴는 **누른 순간의 화면**으로 짚는다(46-h-verbs) — 기본 끔 · 끔이면 칸이 없다(welcome 바이트 동일) · `1` 켬
       ...(_streamOn() ? { streams: Streams.wireOf(ZONE_ID) ? Streams.wireOf(ZONE_ID).ver : true, streamSlow: Streams.STREAM_SLOW0 } : {}),   // [T585] 개울 — 클라가 `/streams.bin` 을 받아 그리고 걸음 예측에 쓴다(배율도 서버 정본 수)
       ...(T509_WELL ? { wellAct: true } : {}),   // [T557] 우물 터 잡기 버튼 — 기본 켬 · `T509_WELL=0` 이면 칸이 없어 버튼이 숨는다   // [T507] 첫 30분의 문법(우클릭·이름표·회색) — 기본 켬 · `T507_VERBS=0` 이면 칸이 없다(옛 화면)
       coast588: ((v) => (v === '0' ? '0' : (v === 'a' ? 'a' : 'b')))(process.env.T588_COAST),   // [T588 · ★T604 추신3 기본 b] 해안 — 클라가 같은 파일(`public/coast-shape.js`)로 굽는다 · 칸은 늘 실린다('0' = 지금 식 · 클라 `uiCfg` 기본도 'b' — 다르면 welcome 에서 다시 굽는다)

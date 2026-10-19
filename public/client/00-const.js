@@ -181,8 +181,10 @@ function cropSprite(stage, crop) {
   //   ★렌더가 실제로 쓴 **카메라 iso 원점**(`_lastCamIso`)을 쓴다. 종전엔 `myAbsPredicted` 로 따로
   //   투영해서 보간 한 스텝만큼(수 px) 어긋나 있었고, 조준 시야 밀기가 들어오면 그 어긋남이
   //   오프셋(최대 180px)만큼 커진다 — 커서가 가리키는 곳과 실제 조준선이 갈린다.
-  function screenToWorldAbs(px, py) {
-    const cam = _lastCamIso || w2i(myAbsPredicted.x, myAbsPredicted.y);
+  //   ★[T813 2026-10-19] `camAt` — 부른 쪽이 붙잡아 둔 원점(우클릭을 **누른 순간**의 `_lastCamIso` · 46-h-verbs 손잡이 `T813_RMB_PRESS`).
+  //     안 주면(`undefined`·`null`) 종전 그대로 직전 프레임 원점이다 — 다른 부르는 자리는 한 글자도 안 바뀐다.
+  function screenToWorldAbs(px, py, camAt) {
+    const cam = camAt || _lastCamIso || w2i(myAbsPredicted.x, myAbsPredicted.y);
     // ★줌: 실제 화면에서 중심으로부터의 거리를 배율로 나눠 **가상 공간**으로 옮긴다.
     //   ZOOM=1 이면 아래 두 줄은 종전 식과 대수적으로 완전히 같다(층 항은 월드 양이라 나누지 않는다).
     const ix = (px - W0 / 2) / ZOOM + cam.x;

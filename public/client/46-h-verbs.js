@@ -346,6 +346,16 @@
   //     느린 기계의 사람도 같은 일을 겪는다 — 문턱이 낮으면 메뉴가 가끔 안 열린다.
   const RMB_TAP_MS = 400, RMB_TAP_PX = 6;
   let _rmbAt = 0, _rmbX = 0, _rmbY = 0;
+  // ★★[T813 2026-10-19] 손잡이 `T813_RMB_PRESS`(서버 env → welcome `uiCfg.rmbPress` · 기본 **끔** = 종전 그대로 · `1` 켬).
+  //   우클릭을 **누르는 순간** 조준이 켜지고(`_aiming` — 30-n-net · 위 ⚠ 그대로) 렌더 루프가 화면 원점을 커서 쪽으로 민다
+  //   (34-m 조준 시야 밀기 · 커서 거리의 절반 · 최대 `AIM_LOOK_PX` · τ `AIM_LOOK_TAU`). 종전 탭은 **뗄 때**의 원점(`_lastCamIso` = 직전
+  //   프레임 — 누른 동안 이미 밀린 원점)으로 커서 밑을 짚는다 ⇒ 누른 동안 밀린 만큼 누른 자리의 그것이 아니라 옆의 땅 · 바위 ·
+  //   다른 사람이 잡힌다(`e2e-verbs` ⑬ `["채굴"]` · ⑧-c — 실측 보고/T813 §2: 65ms 탭에 원점이 44px 밀려 짚은 점이 그 사람에서 23px ·
+  //   누른 순간의 원점으로 셈하면 3px).
+  //   켬 = 누를 때의 원점을 붙잡아 두고(프레임마다 새 객체라 붙잡은 값은 그대로다) 탭이면 그 원점으로 짚는다.
+  //   조준 · 밀기 · 홀드 문턱 · 메뉴 글자 · 다른 짚기 자리(커서 이름표 · 조준선) 0 변 — 탭 메뉴가 짚는 원점 하나만 바뀐다.
+  function t813On() { return !!(typeof uiCfg !== 'undefined' && uiCfg && uiCfg.rmbPress === true); }
+  let _rmbCam = null;                    // 끔 = 늘 null(종전 그대로)
   let _lastMenuX = 0, _lastMenuY = 0;
   function bindVerbMenu() {
     const cv = canvas;
@@ -353,6 +363,7 @@
     cv.addEventListener('mousedown', (e) => {
       if (e.button !== 2) return;
       _rmbAt = performance.now(); _rmbX = e.clientX; _rmbY = e.clientY;
+      _rmbCam = t813On() ? _lastCamIso : null;   // ★[T813] 누른 순간의 원점(같은 입력 차례 — 아직 이 누름의 밀기가 안 그려졌다)
     });
     // ★★[T507] 커서 이름표 — 커서 밑(`pickAt` · 우클릭과 같은 층)의 이름 한 낱말. 새 패널 0 · 화면 규칙 B(먹선).
     cv.addEventListener('mousemove', (e) => verbTagMove(e));
@@ -369,7 +380,7 @@
       const rect = cv.getBoundingClientRect();
       const px = (e.clientX - rect.left) * (cv.width / rect.width);
       const py = (e.clientY - rect.top) * (cv.height / rect.height);
-      const w = screenToWorldAbs(px, py);
+      const w = screenToWorldAbs(px, py, _rmbCam);   // ★[T813] 끔 = `_rmbCam` null → 종전 그대로(직전 프레임 원점)
       const t = pickAt(w.wx, w.wy, { live: true });
       // ★★[T507] **물 칸**이면 메뉴를 서버의 답으로 짓는다 — 민물이냐 짠물이냐는 서버 술어(`isSeaTileLocal`)가 가른다.
       //   클라의 `isWaterAtAbs` 는 "물이냐"(그리기용 거울)까지만 묻는다 — 짠물 판정을 여기 옮겨 적지 않는다.
