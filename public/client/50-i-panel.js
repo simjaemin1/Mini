@@ -1128,7 +1128,9 @@ function itemKo(k) {
       h += `<div class="tr-line">한 개당 ${trQuote.ratio}${trQuote.avgRatio && Math.abs(trQuote.avgRatio - trQuote.ratio) > 1e-4
         ? ` · 이 물량 평균 <b>${trQuote.avgRatio}</b>(많이 낼수록 값이 나빠진다)` : ''}</div>`;
       // ★상한 경고는 **낼 양 축의 말**이다 — 받을 양 축에선 위 `wantCapped` 가 그 자리를 맡는다.
-      if (!wantAxis && trQuote.capped) h += `<div class="tr-warn">마을이 내줄 수 있는 건 ${trQuote.cap}까지 — ${trQuote.maxGive}개만 받는다</div>`;
+      if (!wantAxis && trQuote.capped) h += trQuote.giveCut != null   // ★[T807] 서버가 실행과 같은 절삭으로 낸 '실제로 낼 개수'가 오면 그 수를(끔 = 칸이 없다 = 종전 줄)
+        ? `<div class="tr-warn">마을이 내줄 수 있는 건 ${trQuote.cap}까지 — ${gk} ${trQuote.giveCut}개만 내고 ${tk} ${trQuote.take}를 받는다</div>`
+        : `<div class="tr-warn">마을이 내줄 수 있는 건 ${trQuote.cap}까지 — ${trQuote.maxGive}개만 받는다</div>`;
       // ★★[무게 배치] **용량 초과 경고** — 막지는 않는다(과적은 플레이어 선택이다).
       //   넘치게 사서 뒤뚱거리며 나르는 것도 플레이라, 화면은 사실만 말하고 결정은 사람이 한다.
       //   ★[T69] 재는 수량도 **축이 말하는 그 거래**의 것이라야 한다.

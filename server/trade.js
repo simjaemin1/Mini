@@ -261,6 +261,13 @@ function _giveForTake(econV2, v, giveRes, takeRes, want, cap, hi0) {
   return hi;
 }
 
+// ★★[T807 2026-10-19 · 손잡이 `T807_QUOTE_CUT`('1' 만 켬 · 끔 = 아래 갈래를 아무도 안 탄다 = main 바이트)] **견적 = 실행 — 상한에 닿을 때.**
+//   T792 회부 2(`test-moment-lot ⑩` 이 고치기 전 세계에서 잡았다): 곡식 → 고기 6 을 내면 견적은 44(상한)를 받는다고 했고 실행은 36 을 줬다.
+//   까닭: 상한에 닿으면 조각 계획(`planSliced`)은 낼 양을 **소수에서** 멈춘다(gave 4.89 → took = 상한 44). 견적은 그 took 을 그대로 말했고,
+//   실행은 낱개만 낼 수 있어 낼 개수를 `⌊maxGive ÷ 개당 단위⌋` = 4 로 깎고 그 4개로 다시 계획해 36 을 줬다(넘치게 안 준다 — 실행이 맞다).
+//   ⇒ 깎는 셈을 함수 하나(`_capGive`)로 — 실행이 쓰던 그 식 그대로 · 견적도 켬이면 같은 함수로 깎은 개수에서 받을 양을 잰다(새 수 0 · 사본 0).
+const T807_QUOTE_CUT = process.env.T807_QUOTE_CUT === '1';
+function _capGive(q0, maxGive, perItem) { return Math.min(q0, Math.floor(maxGive / perItem)); }   // 상한 절삭 — 낼 개수(넘치게 주지 않는다 · 평균 단위/개로 나눈 뒤 내림)
 function quote(ledger, econV2, vil, vid, giveRes, takeRes, giveQty, opts) {
   const v = vil.econ;
   if (giveRes === takeRes) return { err: '같은 물건끼리는 바꿀 게 없다' };
@@ -312,6 +319,14 @@ function quote(ledger, econV2, vil, vid, giveRes, takeRes, giveQty, opts) {
     numTake: (+prices[CFG.NUMERAIRE] || 0) > 0 ? sig(pB / prices[CFG.NUMERAIRE]) : null,
   };
   if (conv) out.capU = cap;   // ★[T748] 단위 상한(실행이 조각 계획에 쓴다 · 화면 `cap` 은 받을 낱개)
+  //   ★[T807] 켬 — 낱개로 물었으면(`perItem` · 존 견적 문) 상한에 닿을 때 실행과 **같은 절삭**(`_capGive`)으로 낼 개수를 깎고 그 개수로 받을 양을 잰다.
+  //     실행은 견적의 `maxGive` 로 같은 함수를 부른다 — 사람에게 보인 값 = 실제 맞바꿈(개체 무게가 섞인 물건은 실행이 고른 그 개체의 실제 무게로 다시 잰다 · 종전 규약).
+  if (T807_QUOTE_CUT && out.capped && opts && Number(opts.perItem) > 0) {
+    const per = Number(opts.perItem), n = _capGive(Math.floor(q / per + 1e-9), maxGive, per);
+    const pc = n > 0 ? planSliced(econV2, v, giveRes, takeRes, n * per, cap) : { took: 0 };
+    out.take = conv ? conv.items(pc.took).items : Math.floor(pc.took);
+    out.giveCut = n;   // 실제로 낼 개수(화면 상한 줄이 이 수를 말한다)
+  }
 
   // ── ★받을 양으로 물었다면: 내야 할 양(올림) ───────────────────────────────
   const o = opts || {};
@@ -415,7 +430,7 @@ function exchange(a) {
   //   ★수량은 견적과 **같은 조각 계획**에서 나온다(견적과 실행이 다른 수를 쓰면 그게 보이지 않는 손이다).
   //   ★상한은 **단위**로 걸리므로 개수로 되돌린다(평균 단위/개로 나눈 뒤 내림 — 넘치게 주지 않는다).
   let give = q0;
-  if (qt.capped && perItem > 0) give = Math.min(q0, Math.floor(qt.maxGive / perItem));
+  if (qt.capped && perItem > 0) give = _capGive(q0, qt.maxGive, perItem);   // ★[T807] 견적과 같은 절삭 함수(식은 종전 그대로)
   const wantW = _pick(give);
   const giveUnits = _units(wantW);                // ★실행은 **고른 그 개체들의 실제 무게**로 다시 잰다
   const pl = giveUnits > 0 ? planSliced(econV2, v, giveRes, takeRes, giveUnits, capU) : { took: 0 };
@@ -458,4 +473,4 @@ function exchange(a) {
            stockAfter: +v.storage[takeRes].toFixed(3), ...(conv ? { takeUnits: spend } : {}) };   // ★[T748] 켬이면 나간 단위도
 }
 
-module.exports = { CFG, KO_NUM, board, quote, exchange, tradableIn, tradableOut, lockedRewards };
+module.exports = { CFG, KO_NUM, board, quote, exchange, tradableIn, tradableOut, lockedRewards, T807_QUOTE_CUT, _capGive };
