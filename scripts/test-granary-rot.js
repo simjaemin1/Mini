@@ -82,7 +82,7 @@ function modRun() {
   out.view.next = { st: R6(w.storage.fish), led: L(w, 'fish'), check: GL.check([w]).bad.length };
   out.stats = GL.stats();
 
-  // ── ⑥ [T803] 판정 순간 = econ 날의 머리(마을이 넘긴 날 × 하루 · 마감이 늦게 열린 벽시계 순간은 안 들어온다) ──────────
+  // ── ⑥ [T803] 판정 순간 = econ 날의 마감 머리(마을이 존 시계로 옮겨 넘긴 머리 · 마감이 늦게 열린 벽시계 순간은 안 들어온다) ──────────
   NOW = 950 * DAY;                                 // 그 날 머리(950일 0시)에 곳간에 든 생선 — 노출이 보관일 바로 밑
   const xv = { name: '병', storage: { fish: 0 } };
   GL.attach(xv, null, null);
@@ -90,7 +90,7 @@ function modRun() {
   doorPut(xv, 'fish', [{ k: 940 * DAY, u: 2, f0: 1, e: Spoil.shelfOf('fish') - 0.01, t: 950, m: 1, w: 0 }]);
   NOW = 950 * DAY + 600 * MIN;                     // 그 날 10시에야 마감이 열렸다(밀린 마감 · 틱 늦음)
   out.head = { DAY, pre: L(xv, 'fish') };
-  GL.tickBegin([xv], 950);                         // ★마을이 econ 날을 넘긴다 — 판정 = 950일 머리
+  GL.tickBegin([xv], 950 * DAY);                   // ★마을이 그 econ 날의 마감 머리(존 시계 · 950일 0시)를 넘긴다 — 판정 = 그 머리
   out.head.kept = L(xv, 'fish'); out.head.st = R6(xv.storage.fish);
   xv.storage.fish += 1;                            // 마감 동안 econ 이 얻은 것 — 열쇠 = 그 날 머리
   out.head.ks = (GL.ledger(xv, 'fish') || []).map((r) => r.k);
@@ -98,6 +98,24 @@ function modRun() {
   GL.tickBegin([xv]);                              // 날을 안 넘기면(종전 호출 꼴 · 랩 자 — 시계가 이미 econ 날) 판정 = 지금(10시)
   out.head.noDay = { led: L(xv, 'fish'), st: R6(xv.storage.fish), check: GL.check([xv]).bad.length };
   GL.tickEnd();
+  //   T731 창 — 머리 조각만 버린다 · 창 가운데 조각(`head === false`)은 열쇠만 그 머리(조각 나눔 = 벽시계 · 판정이 거기 걸리면 판이 갈린다)
+  NOW = 960 * DAY + 300 * MIN;
+  const xw = { name: '정', storage: { fish: 0 } };
+  GL.attach(xw, null, null);
+  doorPut(xw, 'fish', [{ k: 950 * DAY, u: 3, f0: 1, e: Spoil.shelfOf('fish') + 1, t: 960, m: 1, w: 0 }]);   // 이미 상한 생선 3
+  GL.tickBegin([xw], 960 * DAY, false);            // 창 가운데 조각
+  out.chunk = { mid: { st: R6(xw.storage.fish), n: L(xw, 'fish').length } };
+  xw.storage.fish += 1;                            // 그 조각 동안 econ 이 얻은 것 — 열쇠 = 머리
+  out.chunk.ks = (GL.ledger(xw, 'fish') || []).map((r) => r.k);
+  GL.tickEnd();
+  GL.tickBegin([xw], 961 * DAY, true);             // 다음 창 머리 조각 — 버린다
+  out.chunk.head = { st: R6(xw.storage.fish), led: L(xw, 'fish'), check: GL.check([xw]).bad.length };
+  GL.tickEnd();
+  //   벽시계 순간 → 존 게임 ms(`GL.msAt` — 존이 꽂은 `zoneGameMsAt` 산수 · 얼었던 날수 3 이면 950일 머리 = 947일 머리) · 안 꽂았으면 null
+  GL.setAt((ms) => ms - 3 * DAY);
+  out.msAt = { off3: GL.msAt(950 * DAY + 7) };
+  GL.setAt(null);
+  out.msAt.none = GL.msAt(950 * DAY);
 
   // ── ⑦ [T803] 부패 한 길 — econ 일일 부패(`tickDecay`)는 장부가 쥔 칸에서 안 돈다(로트 아닌 칸 · 끔은 종전 그대로) ──────────
   const V2 = require(path.join(ROOT, 'sim', 'economy-sim-v2'));
@@ -109,10 +127,16 @@ function modRun() {
   ev.storage.fish = 100; ev.storage.wood = 100;    // 장부가 쥘 칸(생선 — 로트) · 안 쥘 칸(나무 — 로트 아님)
   GL.attach(ev, null, null);
   V2.setLotHook(GL.hooks);
-  out.decay = { owned: { fish: GL.decayOwned(ev, 'fish'), wood: GL.decayOwned(ev, 'wood'), none: GL.decayOwned(ev, 'nope_res') }, s0: { fish: R6(ev.storage.fish), wood: R6(ev.storage.wood) } };
-  V2.tickDecay(ev);
+  const ew = wd.villages[1]; ew.storage.fish = 100; GL.attach(ew, null, null);   // 장부는 붙었지만 마감 목록을 못 받은 마을(버림이 안 닿는다)
+  out.decay = { pre: { fish: GL.decayOwned(ev, 'fish') } };
+  GL.tickBegin([ev]); GL.tickEnd();               // 마감 머리가 ev 를 넘겨 받았다 — 이제 장부 버림이 ev 에 닿는다
+  out.decay.owned = { fish: GL.decayOwned(ev, 'fish'), wood: GL.decayOwned(ev, 'wood'), none: GL.decayOwned(ev, 'nope_res') };
+  out.decay.unwired = { owned: GL.decayOwned(ew, 'fish') };
+  out.decay.s0 = { fish: R6(ev.storage.fish), wood: R6(ev.storage.wood) };
+  V2.tickDecay(ev); V2.tickDecay(ew);
   out.decay.s1 = { fish: R6(ev.storage.fish), wood: R6(ev.storage.wood) };
-  out.decay.check = GL.check([ev]).bad.length;
+  out.decay.unwired.fish = R6(ew.storage.fish);
+  out.decay.check = GL.check([ev, ew]).bad.length;
   V2.setLotHook(null);
   V2.tickDecay(ev);                                // 훅이 없으면(랩 · CLI) 장부가 붙어 있어도 econ 이 썩힌다(종전 그대로)
   out.decay.s2 = { fish: R6(ev.storage.fish) };
@@ -314,7 +338,12 @@ say('\n⑤ 글자 — 손잡이 한 자리 · 마감이 목록을 넘긴다 · �
   const G = fs.readFileSync(SV('granary-lots.js'), 'utf8'), VS = fs.readFileSync(SV('villages.js'), 'utf8');
   const all = ['granary-lots.js', 'villages.js', 'zone.js', 'trade.js', 'lots.js', 'spoil.js'].map((f) => fs.readFileSync(SV(f), 'utf8')).join('\n');
   ok((all.match(/process\.env\.T789_DISCARD/g) || []).length === 1 && /const T789 = ON && process\.env\.T789_DISCARD === '1';/.test(G), "⑤ 손잡이는 곳간 장부 한 자리(`=== '1'` · T732 켬 안)");
-  ok(/G\.tickBegin\(state\.world && state\.world\.villages, state\.lastGameDay\)/.test(VS), '⑤ 마을 하루 마감 머리가 econ 마을 목록을 넘긴다(그 순간 버린다) · ★[T803] econ 날도 넘긴다(그 날 머리가 판정 순간)');
+  ok(/G\.tickBegin\(state\.world && state\.world\.villages, G\.T789 \? _t803HeadK\(G\) : undefined, !T \|\| !!T\.head\)/.test(VS),
+    '⑤ 마을 하루 마감 머리가 econ 마을 목록을 넘긴다(그 순간 버린다) · ★[T803] 그 econ 날의 마감 머리(존 시계)와 머리 조각인지도 넘긴다(켬만)');
+  ok(/function _t803HeadK\(G\) \{[^\n]*G\.msAt\(econDayToMs\(state\.world\.day\)\)/.test(VS) && /const k0 = G\.T789 \? _t803HeadK\(G\) : null;/.test(VS) && /if \(G\.attach\(v, sv, k0\)\) n\+\+;/.test(VS)
+    && /G\.tickBegin\(state\.world && state\.world\.villages, G\.T789 \? _t803HeadK\(G\) : undefined, !T \|\| !!T\.head\)/.test(VS)
+    && /if \(GL\) GL\.setAt\(zoneGameMsAt\);/.test(fs.readFileSync(SV('zone.js'), 'utf8')),
+    '⑤ ★[T803] 마감 머리 = 마을 시계의 econ 날 앵커(`econDayToMs` — T731 켬 = 창 머리) → 존 시계(`zoneGameMsAt`) · 부팅 씨앗도 그 머리(켬만)');
   ok(/return _t789View\(\(\) => Object\.assign\(\{ ok: true \}, _T732_ON \? Trade\.board\(/.test(VS) && /const q = _t789View\(\(\) => Trade\.quote\(/.test(VS),
     '⑤ 시세표 · 견적이 사람의 문과 같은 눈(견적 = 실행)');
   ok(/function doorOpen\(v\) \{ return !!\(ON && LED\.has\(v\) && doorBegin\(true\)\); \}/.test(G) && /if \(T789 && !hands && _viewOpen\(\)\) _door\.view = true;/.test(G), '⑤ 몸 손 문은 눈을 안 연다 · 사람의 문만');
@@ -329,6 +358,11 @@ say('\n⑥ [T803] 판정 순간 = econ 날의 머리 — 마감이 늦게 열려
   ok(h && h.ks && h.ks.includes(940 * h.DAY) && h.ks.includes(950 * h.DAY) && h.ks.length === 2, '★⑥ 마감 동안 econ 이 얻은 것의 열쇠 = 그 날 머리(950일 0시 · 지금 10시가 아니다)', J(h && h.ks.map((k) => k / h.DAY)));
   ok(h && h.noDay && near(h.noDay.st, 1) && h.noDay.led.length === 1 && h.noDay.check === 0, '⑥ 날을 안 넘기면(종전 호출 꼴 · 랩 자) 판정 = 지금 — 같은 레코드가 10시엔 상해 버려진다(그 차이가 실제 시계에서 판이 갈리던 자리)', J(h && h.noDay));
   ok(ho && ho.ks && ho.ks.length === 2 && ho.ks.some((k) => k !== 940 * ho.DAY && k !== 950 * ho.DAY) && near(ho.noDay.st, 3), '★⑥ 끔 — 날은 안 읽힌다(열쇠 = 지금 순간 · 아무것도 안 버린다 · 종전 그대로)', J(ho && { ks: ho.ks.map((k) => +(k / ho.DAY).toFixed(4)), st: ho.noDay && ho.noDay.st }));
+  const c = mOn.chunk, co = mOff.chunk;
+  ok(c && near(c.mid.st, 3) && c.mid.n === 1 && J(c.ks) === J([950 * h.DAY, 960 * h.DAY]), '★★⑥ T731 창 가운데 조각 — 상한 3 을 안 버린다(버림은 머리 조각에서 한 번) · 그 조각 동안 얻은 것의 열쇠 = 그 머리(960일 0시)', J(c && { mid: c.mid, ks: c.ks.map((k) => k / h.DAY) }));
+  ok(c && near(c.head.st, 1) && c.head.led.length === 1 && c.head.check === 0, '★⑥ 다음 창 머리 조각 — 상한 3 을 버린다(남은 1 = 그 조각에 얻은 것) · 불변식', J(c && c.head));
+  ok(co && near(co.head.st, 4), '⑥ 끔 — 머리 조각이어도 안 버린다(4 그대로)', J(co && co.head && co.head.st));
+  ok(mOn.msAt && mOn.msAt.off3 === 947 * h.DAY + 7 && mOn.msAt.none === null, '★⑥ 벽시계 순간 → 존 게임 ms(`GL.msAt` — 존이 꽂은 `zoneGameMsAt` 산수 · 얼었던 날수 3 → 947일 머리) · 안 꽂았으면 null(종전 갈래)', J(mOn.msAt));
 }
 
 say('\n⑦ [T803] 부패는 한 길 — econ 일일 부패(`tickDecay`)는 곳간 장부가 쥔 칸에서 안 돈다(장부 버림이 그 몫)');
@@ -336,6 +370,7 @@ say('\n⑦ [T803] 부패는 한 길 — econ 일일 부패(`tickDecay`)는 곳�
   const d = mOn.decay, o = mOff.decay;
   pre(d && near(d.s0.fish, 100) && near(d.s0.wood, 100), '픽스처 — 랩 econ 마을(시드 7 · 30일) 곳간 생선 100(로트 · 장부가 쥔다) · 나무 100(로트 아님)', J(d && d.s0));
   ok(d && d.owned.fish === true && d.owned.wood === false && d.owned.none === false, '★⑦ 장부가 쥔 칸 = 감싼 로트 칸만(생선 예 · 나무 아니오 · 없는 칸 아니오)', J(d && d.owned));
+  ok(d && d.pre.fish === false && d.unwired && d.unwired.owned === false && d.unwired.fish < 100, '★⑦ 길은 늘 하나 — 장부 버림이 안 닿은 마을(마감 목록을 못 받았다 · 붙기만 한 처음)은 econ 이 종전대로 썩힌다(길 0 인 칸 0)', J(d && { pre: d.pre, unwired: d.unwired }));
   ok(d && near(d.s1.fish, 100) && d.s1.wood < 100 && d.check === 0, '★★⑦ 켬 — econ `tickDecay` 가 생선 칸을 안 썩힌다(100 그대로 · 상한 것은 장부가 마감에 버린다) · 나무는 종전대로 썩는다', J(d && d.s1));
   ok(d && d.s2 && d.s2.fish < 100, '⑦ 훅이 없으면(랩 · CLI) 장부가 붙어 있어도 econ 이 썩힌다(종전 그대로 — 사본 0 · 묻는 문 하나)', J(d && d.s2));
   ok(o && o.owned.fish === false && o.owned.wood === false && o.s1.fish < 100 && o.s1.wood < 100, '★⑦ 끔 — 장부는 아무 칸도 안 쥔다 · econ 이 생선 · 나무를 종전대로 썩힌다', J(o && { owned: o.owned, s1: o.s1 }));

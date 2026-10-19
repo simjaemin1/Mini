@@ -82,6 +82,9 @@ function _t732Lots() { if (!_T732_ON) return null; if (_t732LotsM === null) { tr
 let _t732GranM = null;
 function _t732GranMod() { if (!_T732_ON) return null; if (_t732GranM === null) { try { _t732GranM = require('./granary-lots'); } catch (e) { _t732GranM = false; } } return _t732GranM || null; }
 function _t732Gran() { return _t732Lots() ? _t732GranMod() : null; }
+// ★[T803] 켬(T789)만 — 이 econ 날의 마감 머리를 존 시계(`zoneGameMs`)로: 벽시계 머리 = `econDayToMs(world.day)`(T731 끔 = 경계 · 켬 = 창 머리 ·
+//   동쪽 끝 자정 — 마을 시계의 그 앵커 하나) → 곳간 장부 `msAt`(존이 꽂은 `zoneGameMsAt` — 얼림 · 얼었던 날수까지 같은 산수). 시계 없음 = null(종전 갈래)
+function _t803HeadK(G) { return (G && typeof G.msAt === 'function' && state.world) ? G.msAt(econDayToMs(state.world.day)) : null; }
 let _t732BootWait = false;   // 마을 init 이 존의 시계보다 먼저 돈다(존 모듈이 다 읽힌 뒤에 꽂는다) — 붙이기를 첫 틱 머리로 미룬다
 const _t732Saved = new WeakMap();   // econ 마을 → 저장된 곳간 장부(복원 문이 econ 객체에서 떼어 둔다 · 붙이기가 읽는다)
 // ★★[T748 2026-10-14 · 같은 손잡이 `T732_MOMENT_LOT` · ★[T778] 켬 기본(`=0` 끔) 안 — 끄면 아래 둘은 null/빈 줄만 낸다(종전 줄 그대로)] **켬 전용 일곱 길 막기.**
@@ -7097,7 +7100,7 @@ function _lifeDayJobs(vils, add) {
 
 // 하루 경계: 그날 할 일을 조각 목록으로 **세우기만** 한다(아무것도 실행하지 않는다).
 function _openDayJobs(now, T) {
-  if (_T732_ON) { const G = _t732Gran(); if (G) G.tickBegin(state.world && state.world.villages, state.lastGameDay); }   // ★[T732] 하루 마감 = 한 순간 — 마감 동안 econ 이 얻은 것의 열쇠 · ★[T789] 켬이면 그 순간 상한 레코드를 버린다(econ 마을 목록 · 끄면 안 읽힌다) · ★[T803] 켬이면 그 순간 = 이 econ 날의 머리(날 × 하루 · 끄면 날은 안 읽힌다)   // ★[PM 10-14 합침] T731 켬 판에도 같은 머리에서(둘 다 기본 끔 — 짝 켬 판은 미검)
+  if (_T732_ON) { const G = _t732Gran(); if (G) G.tickBegin(state.world && state.world.villages, G.T789 ? _t803HeadK(G) : undefined, !T || !!T.head); }   // ★[T732] 하루 마감 = 한 순간 — 마감 동안 econ 이 얻은 것의 열쇠 · ★[T789] 켬이면 그 순간 상한 레코드를 버린다(econ 마을 목록 · 끄면 안 읽힌다) · ★[T803] 켬이면 그 순간 = 이 econ 날의 마감 머리(존 시계 · `_t803HeadK`) · 버림은 머리 조각에서 한 번(T731 창 가운데 조각은 열쇠만 — 조각 나눔이 벽시계라 판정이 거기 걸리면 판이 갈린다) · 끄면 둘 다 안 읽힌다   // ★[PM 10-14 합침] T731 켬 판에도 같은 머리에서(둘 다 기본 끔 — 짝 켬 판은 미검)
   if (T) return _t731Jobs(now, T);   // ★[T731] 켬 — 창의 머리 · 마을 · 꼬리 조각(끔이면 T 가 없다 = 아래 종전 그대로)
   const t0 = Date.now();
   const C = { now, t0, stg: {}, econPop: 0, npcCount: 0, jobChanges: {}, pops: {}, terr: {}, wx: {},
@@ -13270,10 +13273,11 @@ function _t732Boot() {
   if (!_t732Lots()) { _t732BootWait = true; return null; }
   _t732BootWait = false;
   let n = 0, saved = 0;
+  const k0 = G.T789 ? _t803HeadK(G) : null;   // ★[T803] 켬 — 씨앗(나이 모름)의 순간 = 지금 econ 날의 마감 머리(첫 마감까지 늘 하루 · 부팅 벽시계가 안 들어온다) · 끄면 종전(null)
   for (const v of ((state.world && state.world.villages) || [])) {
     const sv = _t732Saved.get(v) || null;
     if (sv) { saved++; _t732Saved.delete(v); }
-    if (G.attach(v, sv, null)) n++;
+    if (G.attach(v, sv, k0)) n++;
   }
   if (state.econV2 && typeof state.econV2.setLotHook === 'function') state.econV2.setLotHook(G.hooks);
   try { require('../sim/war-core').setLotHook(G.hooks); } catch (e) {}

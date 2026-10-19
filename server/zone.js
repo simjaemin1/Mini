@@ -11698,6 +11698,7 @@ function tryVillageBrief(player, vid) {
 //   ★★[T768 2026-10-16 · 같은 손잡이 안] 재민 10-15 ⓑ: **넣은 물건 그대로** — 레코드가 넣은 품목(`it`)을 싣고(`recsFromPlayer` · `handRecs`),
 //     ② 에서 그 품목으로 준다(`GL.recsToItems` — 낱개는 그 품목의 열량 · 나이는 레코드째). 문이 정하는 개수 · 단위(정본 함수)는 그대로 · econ 칸 값 무변.
 const GL = T732_MOMENT ? require('./granary-lots') : null;
+if (GL) GL.setAt(zoneGameMsAt);   // ★[T803] 벽시계 순간 → 존 게임 ms(같은 산수 — 얼림 · 얼었던 날수까지) · 마을이 econ 마감 머리를 이 시계로 옮긴다(켬 T789 만 읽는다)
 function _t732DoorBegin(player, giveItems) {
   if (!GL || !player || !player.inventory) return null;
   const today = zoneGameDay(), map = SimVillages.playerVillageDepositMap() || {}, inv = player.inventory;

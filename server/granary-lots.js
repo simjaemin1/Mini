@@ -90,7 +90,9 @@ function _gran() { return _gpf || (_gpf = Spoil.placeFields('granary')); }
 function _carry() { return _cpf || (_cpf = Spoil.placeFields('carry')); }
 function _now() { return Lots.nowMs(); }
 function _kNow() { return _tickK != null ? _tickK : _now(); }   // 새 로트의 열쇠 — 마감 중이면 마감의 순간
-function _dayHeadK() { return _tickK != null ? _tickK : Math.floor(_now() / _day()) * _day(); }   // ★[T803] 켬 · 마감 밖 씨앗 — 지금 날의 머리(재현 · 붙는 때의 벽시계 늦음이 안 들어온다)
+let _atFn = null;   // ★[T803] 벽시계 순간 → 존 게임 ms(존이 `zoneGameMsAt` 을 꽂는다 · 없으면 `msAt` = null — 랩 · CLI · 하네스 시계)
+function setAt(fn) { _atFn = (typeof fn === 'function') ? fn : null; }
+function msAt(realMs) { return (_atFn !== null && Lots.momentOn() && Number.isFinite(realMs)) ? Math.floor(Number(_atFn(realMs)) || 0) : null; }
 function _day() { return Lots.dayMs() || 1; }
 function _nowFrac() { return _now() / _day(); }
 function _rec(k, u) { const g = _gran(); return { k, u, f0: 1, e: 0, t: k / _day(), m: g.m, w: g.w }; }
@@ -274,7 +276,7 @@ function attach(v, saved, seedK) {
   if (!ON || !v || !v.storage || typeof v.storage !== 'object' || !Lots.momentOn()) return false;
   if (!LED.has(v)) { LED.set(v, {}); ST.attached++; }
   const L = LED.get(v);
-  const k = Number.isFinite(seedK) ? seedK : (T789 ? _dayHeadK() : _kNow());   // ★[T803] 켬 = 씨앗의 순간도 그 날 머리(마감 중이면 마감의 순간 — 같은 값)
+  const k = Number.isFinite(seedK) ? seedK : _kNow();   // ★[T803] 존 부팅 씨앗은 부르는 쪽(마을 `_t732Boot`)이 켬이면 그 econ 날의 마감 머리를 넘긴다
   if (saved && saved.L && typeof saved.L === 'object') {
     for (const [res, recs] of Object.entries(saved.L)) if (Array.isArray(recs) && recs.length && !L[res]) { L[res] = recs.filter((r) => r && r.u > EPS).map((r) => Object.assign({}, r)); for (const r of L[res]) _itIn(v, r.it, r.u); }   // ★[T768] 저장된 품목 칸째 · 셈은 붙은 그 순간부터(든 것 = 복원한 것)
     if (saved.D && typeof saved.D === 'object') DEBT.set(v, Object.assign({}, saved.D));
@@ -384,14 +386,15 @@ function txEnd(v, commit) {
 }
 // 하루 마감 — 그 동안 econ 이 얻은 것은 그 순간 하나(villages.js 가 마감을 열 때 · 다 비웠을 때 부른다)
 //   ★[T789] 켬이면 그 순간(econ 이 그날 먹기 전) 상한 레코드를 버린다 — 부르는 쪽이 econ 마을 목록을 넘긴다(끄면 인자는 안 읽힌다)
-//   ★[T803] 켬이면 마감의 순간 = **econ 날의 머리**(부르는 쪽이 넘긴 econ 날 × 하루 길이 — 존 시계 `zoneGameMs` 의 그 날 0시) — 마감이 열린
-//     벽시계 순간(틱 늦음 · 밀린 마감)이 판정 · 마감 동안 얻은 것의 열쇠에 안 들어온다(같은 트리 두 판이 같은 날 같은 레코드를 버린다 · 재현).
-//     날을 안 넘기면(랩 자 — 시계가 이미 econ 날) 종전 그대로 지금 순간 · 끄면 날은 안 읽힌다.
-function tickBegin(econVillages, day) {
+//   ★[T803] 켬이면 마감의 순간 = **econ 날의 마감 머리**(`headK` — 부르는 쪽이 존 시계 `zoneGameMs` 로 옮긴 그 날 머리 · 마을 `_t803HeadK`) — 마감이
+//     열린 벽시계 순간(틱 늦음 · 밀린 마감)이 판정 · 마감 동안 얻은 것의 열쇠에 안 들어온다(같은 트리 두 판이 같은 날 같은 레코드를 버린다 · 재현).
+//     `head === false`(T731 창 가운데 조각) = 열쇠만 그 머리 · 버림은 머리 조각에서 한 번(조각 나눔은 벽시계다).
+//     머리를 안 넘기면(랩 자 — 시계가 이미 econ 날 · 종전 호출 꼴) 종전 그대로 지금 순간 · 끄면 둘 다 안 읽힌다.
+function tickBegin(econVillages, headK, head) {
   if (_door) _doorStale();
   if (ON && Lots.momentOn()) {
-    _tickK = (T789 && Number.isFinite(day)) ? Math.floor(day) * _day() : _now();
-    if (T789 && econVillages) { _vw = null; _rot(econVillages, _tickK / _day()); }   // 마감엔 사람의 눈이 없다(남은 눈은 닫는다)
+    _tickK = (T789 && Number.isFinite(headK)) ? headK : _now();
+    if (T789 && econVillages) { _vw = null; for (const v of econVillages) if (v) ROTW.add(v); if (head !== false) _rot(econVillages, _tickK / _day()); }   // 마감엔 사람의 눈이 없다(남은 눈은 닫는다) · ★[T803] 이 마을들은 장부 버림이 닿는다(부패 한 길)
   }
 }
 function tickEnd() { _tickK = null; }
@@ -713,8 +716,11 @@ function xzIn(c, saved) { if (c && saved && typeof saved === 'object') { cargoLo
 // ★★[T803] 부패는 한 길 — 켬이면 감싼 칸의 부패를 이 장부가 쥔다(상한 레코드를 마감에 버림 · spoil 정본 곡선 하나) ⇒ econ 일일 부패(`tickDecay`)는
 //   그 칸에서 안 돈다(econ 이 이 훅을 묻는다 · 장부가 정본 · econ 율은 그 사본이었다 — T789 회부 ①②). 장부 밖 몫은 없다 — 감싼 칸은 붙는 순간
 //   지금 값을 씨앗 레코드로 덮고(T732 씨앗 규약) 그 뒤 늘고 준 것을 다 적는다(장부 합 − 빚 = 곳간). 안 감싼 칸 · 끔 · 시계 없음 = false(종전 그대로).
+//   ★그 마을에 장부 버림이 닿을 때만(마감 머리가 econ 마을 목록을 넘겨 받은 마을 — `ROTW`) — 버림이 안 붙은 세계(마감 목록을 안 넘기는 하네스 ·
+//   CLI)에서 econ 부패만 멎어 아무 길도 없게 되는 일 0(길은 늘 하나).
+const ROTW = new WeakSet();
 function decayOwned(v, res) {
-  if (!T789 || !Lots.momentOn()) return false;
+  if (!T789 || !Lots.momentOn() || !ROTW.has(v)) return false;
   const W = WRAPPED.get(v);
   return !!(W && W.has(res) && LED.has(v));
 }
@@ -809,7 +815,7 @@ module.exports = { ON, attach, sync, pushIn, clearIn, capBegin, capEnd, suspend,
   recsFromPlayer, recsToPlayer, recsToItems, hooks, cargo, unload, bounce, cargoDump, cargoLoad, packFrom, packKeep, giveBegin, giveEnd,
   itemSums, checkItems, itemFlow, eaten,   // ★[T768] 품목 칸 · 품목 불변식 · 마을이 먹은 품목
   T789, viewBegin, viewEnd, rotOf,         // ★[T789] 손잡이 · 사람의 눈(시세 · 견적) · 썩어 없어진 품목
-  decayOwned,                               // ★[T803] 부패 한 길(이 장부가 쥔 칸 — econ 일일 부패가 안 돈다)
+  decayOwned, setAt, msAt,                  // ★[T803] 부패 한 길(이 장부가 쥔 칸 — econ 일일 부패가 안 돈다) · 마감 머리를 존 시계로(벽시계 순간 → 존 게임 ms)
   dump, ledger, attached, freshOf, stats, check,
   // ★[T748] 켬 전용 일곱 길
   POCK_KEYS, handRecs, doorOpen, doorShut, pockPut, pockTake, pendIn, pendOut, pock: (v, key, res) => _pock(v, key, res, false),
