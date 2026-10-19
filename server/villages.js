@@ -4966,6 +4966,8 @@ function init(deps) {
       //   손잡이 `T423_RATION_ACT` 끔이면 war-core 가 이 둘을 부르지 않는다(종전 장부 = 비트 동일).
       rationEat: (w, day) => { try { return _warRationEat(w, day); } catch (e) { console.error(`[${state.zoneId}] 🍙 [T423] 먹기 실패(그날은 장부로):`, e.message); return null; } },
       rationCollect: (w) => _warRationCollect(w),
+      // ★[T811] 무기 몸 짐 — 장부 도착(귀환)에 몸 짐을 거둔다(손잡이 끔이면 `_armsOnBodies` 가 안 서 war-core 가 안 부른다)
+      armsCollect: (w) => _warArmsCollect(w),
       // ★[T466] 약탈 곳간 몫을 몸이 받는다(몸이 있을 때만 true — 아니면 war-core 가 종전대로 즉시 옮긴다) · 손잡이 끔이면 안 불린다
       lootCarry: (w, items, kind, lots) => { try { return _warLootAccept(w, items, kind, lots); } catch (e) { console.error(`[${state.zoneId}] 💰 [T466] 노획 받기 실패(즉시 정산으로):`, e.message); return false; } },
       onEngage: (w, day, why) => {
@@ -5642,6 +5644,7 @@ function _warInstantiateAttackers(body) {
   if (!g) return; g.cmd = { cx: body.cmd.cx, cy: body.cmd.cy }; g.heading = body.heading; g.detour = _warDetourFor(body);
   body.atkGroup = g; body.pids = d.pids; _warSnapToSlots(g);
   _warRationLoad(body);   // ★[T423] 팩을 몸의 짐으로(끔이면 아무것도 안 한다)
+  _warArmsLoad(body);     // ★[T811] 원정 짐의 무기를 몸 짐으로(끔이면 아무것도 안 한다)
   _warEnsureFight(body); _warEnlistGroup(body, g, 'A');
   _warSyncMeta(g, 0, false);
 }
@@ -5791,6 +5794,7 @@ function _warEndFight(body, why, winner) {
   const atkSurv = [], defSurv = [], deadA = [], deadB = [];
   if (f) for (const u of f.ctx.units) { const pid = u.agent; if (pid == null || !players.has(pid)) continue;
     if (u.hp <= 0) (u.side === 'A' ? deadA : deadB).push(pid); else (u.side === 'A' ? atkSurv : defSurv).push(pid); }
+  const _t811 = _t811Plan(w, deadA);   // ★[T811] 쓰러진 공격 몸 짐 — 결판이 장부에서 뺀 몫까지만 땅에(끔 · 몸 짐 없으면 null)
   const escort = [];
   if (w._capResolve && w._capResolve.npcs && w._capResolve.npcs.length) {
     const loserDead = (w._capResolve.side === 'A') ? deadA : deadB;
@@ -5799,6 +5803,7 @@ function _warEndFight(body, why, winner) {
     for (let k = 0; k < n; k++) {
       const pid = loserDead.pop(); const p = players.get(pid); if (!p) continue;
       if (w._capResolve.side === 'A') _warBagDrop(w, p);   // ★[T423] 끌려가는 병사의 짐은 전장에 남는다(드랍)
+      if (_t811) _t811Off(w, p, _t811, false);   // ★[T811] 끌려가는 병사의 무기는 몸에서 내린다(땅 0 · 장부가 이미 셈했다)
       p.simCaptive = 1; p._brout = false; p.hp = Math.max(1, Math.round((p.maxHp || 100) * 0.4));
       const oldVil = (p.simVillageId != null) ? state.byDbId.get(p.simVillageId) : null;
       if (oldVil) { const kk = oldVil.npcPids.indexOf(pid); if (kk >= 0) oldVil.npcPids.splice(kk, 1); }
@@ -5808,6 +5813,7 @@ function _warEndFight(body, why, winner) {
     w._capResolve = null;
   }
   for (const pid of deadA) _warBagDrop(w, players.get(pid));   // ★[T423] 전사자의 짐은 몸과 함께 떨어진다(드랍 — 궤주 규칙 자리)
+  if (_t811) { for (const pid of deadA) _t811Off(w, players.get(pid), _t811, true); _t811Sync(w, 'settle'); }   // ★[T811] 전사자 무기 = 죽음 캐논 낙하 · 산 몸 짐 = 장부
   if (_lootActOn()) _warLootPickup(w, winner === 'A' ? atkSurv : defSurv, winner === 'A' ? 'A' : 'B');   // ★[T466] 이긴 쪽 산 몸이 곳간 몫 + 전장 더미를 싣는다(끔이면 안 돈다)
   for (const pid of deadA) _warDespawnPid(pid);
   for (const pid of deadB) _warDespawnPid(pid);
@@ -6086,6 +6092,81 @@ function _warRationCollect(w) {
   if (w._rationBook && w._rationBook.lootDay != null && w._rationBook.homeDay == null) { w._rationBook.homeDay = state.world.day; w._rationBook.homeAt = state._warTickAt || 0; }   // ★[T466] 노획이 집에 닿은 날
   return Object.keys(items).length ? items : null;
 }
+// ════════════════════════════════════════════════════════════════
+// ★★[T811 2026-10-19 · 2층 — 몸이 무기를 든다 · T764 회부 2 · T781 · T790 §3] 손잡이 `T811_ARMS_BODY`('1' 만 켬 · 끔 = main 바이트).
+//   T403 무기 반출(`T403_ARMS_LEDGER=1`)이면 원정 짐(`w._arms.weapon`)에 무기가 있지만 몸 손은 비었다. 켬이면 그 짐을 **병사 몸 짐 칸**
+//   (T423 그 칸 = `inventory` · 곳간 통칭 `weapon` 한 칸 — 품목은 재민 칸 · 새 몸 필드 0)에 나눠 싣는다.
+//   ★정본은 장부다(ⓐ 장부 도착 · PM 10-18 T790 카드): 곳간에 서는 수 · 결판 흐름(`warWeaponFlow`) · 거울(`_warArmsOut`)은 **한 글자도 안 바뀐다**.
+//     몸 짐은 장부의 거울이다 — 장부가 움직이는 세 자리(반출 · 결판 · 귀환)마다 산 몸 짐 합 = 장부(= 거울)로 맞춘다(몫 = 장부 ÷ 산 짐꾼 · 새 수 0).
+//   ① 싣기 — 징발 몸이 서는 그 자리(`_warInstantiateAttackers` · T423 팩 옆). 몸마다 실은 양은 **전쟁 객체**의 표(`w._armsPack` — Map pid → 양)에 적는다
+//     (몸이 원래 들던 `weapon` 은 안 건드린다 · 몸 필드 0 · 영속 0 — 진행 중 전쟁은 재기동에 안 실린다 T742 회부 1 · 다시 뜨면 거울이 곳간으로 T764 ⓕ).
+//   ② 결판 — 쓰러진 공격 몸의 무기는 **죽음 캐논 낙하 그 문**(zone `_deathDrop` = `deps.deathDrop` · 짐 kg 절반 · 무거운 것부터)으로 땅에.
+//     ⚠땅에 갈 수 있는 몫은 결판이 장부에서 뺀 몫(Δ = 싣던 합 − 결판 뒤 장부)까지다 — 공격이 이기면 Δ = 0(종전에도 승자는 제 무기를 안 잃었다)
+//     ⇒ 땅의 무기는 장부가 잃은 무기를 넘지 않는다(XOR · 새로 생기는 무기 0). Δ 는 쓰러진 몸 짐에 몫대로 나눈다. 끌려간 몸(포로)은 몸에서만 내린다.
+//     쓰러진 몸에 남은 무기(낙하가 안 고른 것 · Δ 넘는 몫)는 몸과 같이 사라지고 · 산 몸 짐은 결판 뒤 장부로 다시 맞춘다.
+//   ③ 귀환 — war-core 장부 도착(`daily` 귀환 갈래 · 무기 반납 앞)이 `armsCollect` 를 부른다 → 몸 짐을 내리고(합을 돌려준다) · 곳간엔 장부가 선다.
+//     몸이 장부보다 먼저 끝나면(`_warCleanupBody` · 몸 없음 · 고아) 몸 짐만 내리고 장부가 혼자 간다(`_armsOnBodies` 0).
+//   셈 — `state._warStat.t811` { load 실은 원정 · sync 맞춘 번 · fall 땅에 간 양 · gone 몸과 사라진 양 · off 포로 몸에서 내린 양 · back 귀환에 거둔 양 · gap 맞춘 뒤 |몸 합 − 장부| 최대 }.
+const T811_ARMS_BODY = process.env.T811_ARMS_BODY === '1';
+const T811_KEY = 'weapon';
+function _t811Stat() { const S = state._warStat || (state._warStat = {}); return S.t811 || (S.t811 = { load: 0, sync: 0, fall: 0, gone: 0, off: 0, back: 0, gap: 0 }); }
+function _t811Inv(p) { return (p && p.inventory && p.inventory[T811_KEY]) || 0; }
+function _t811Put(p, q) { if (!p.inventory) p.inventory = {}; if (q > 1e-9) p.inventory[T811_KEY] = q; else delete p.inventory[T811_KEY]; }
+function _t811Sum(w) { let s = 0; const M = w && w._armsPack; if (M) for (const q of M.values()) s += q || 0; return s; }
+// 산 짐꾼 몸 짐 합 = 장부(`w._arms.weapon`) — 몫 = 장부 ÷ 산 짐꾼(몸이 원래 든 것은 그대로 · 실은 몫만 갈아 끼운다)
+function _t811Sync(w, why) {
+  const a = w && w._arms, M = w && w._armsPack; if (!a || !M) return 0;
+  const players = state.deps.players, live = [];
+  for (const k of [...M.keys()]) { const p = players.get(k); if (p && !p.simCaptive && (p.hp == null || p.hp > 0)) live.push([k, p]); else M.delete(k); }
+  const ledger = a.done ? 0 : Math.max(0, a.weapon || 0), share = live.length ? ledger / live.length : 0;
+  for (const [k, p] of live) { _t811Put(p, Math.max(0, _t811Inv(p) - (M.get(k) || 0)) + share); M.set(k, share); }
+  const st = _t811Stat(); st.sync++; if (live.length) st.gap = Math.max(st.gap, Math.abs(_t811Sum(w) - ledger));
+  if (!live.length) w._armsOnBodies = 0;
+  return live.length;
+}
+function _warArmsLoad(body) {
+  const w = body && body.w; if (!T811_ARMS_BODY || !w || !w._arms || w._arms.done || w._armsPack) return 0;
+  const players = state.deps.players, bearers = (body.pids || []).map((pid) => players.get(pid)).filter((p) => p && (p.hp == null || p.hp > 0));
+  if (!bearers.length) return 0;
+  w._armsPack = new Map(); for (const p of bearers) w._armsPack.set(p.pid, 0);
+  w._armsOnBodies = bearers.length;
+  _t811Stat().load++;
+  _t811Sync(w, 'load');
+  return bearers.length;
+}
+// 결판 계획 — 쓰러진 공격 몸 짐 합(D)과 결판이 장부에서 뺀 몫(Δ) · 땅에 갈 수 있는 몫 = min(Δ, D) 를 몸 짐 몫대로
+function _t811Plan(w, deadA) {
+  const M = w && w._armsPack; if (!T811_ARMS_BODY || !M || !w._arms) return null;
+  const ledger = w._arms.done ? 0 : Math.max(0, w._arms.weapon || 0), carried = _t811Sum(w);
+  let D = 0; for (const pid of deadA || []) D += M.get(pid) || 0;
+  const g = Math.min(Math.max(0, carried - ledger), D);
+  return { frac: D > 0 ? g / D : 0 };
+}
+// 몸 하나에서 무기 몸 짐을 내린다 — dead 면 장부가 잃은 몫(plan)만 남겨 죽음 캐논 낙하 문으로 땅에 · 아니면(포로) 몸에서만
+function _t811Off(w, p, plan, dead) {
+  const M = w && w._armsPack; if (!M || !p || !M.has(p.pid)) return 0;
+  const mine = M.get(p.pid) || 0, own = Math.max(0, _t811Inv(p) - mine), st = _t811Stat();
+  M.delete(p.pid);
+  if (!dead) { _t811Put(p, own); st.off += mine; return 0; }
+  const fallable = mine * (plan ? plan.frac : 0);
+  _t811Put(p, own + fallable);
+  const before = _t811Inv(p);
+  if (fallable > 0) { try { if (state.deps.deathDrop) state.deps.deathDrop(p); } catch (e) { } }   // 낙하 — 플레이어 죽음 캐논의 그 문(짐 kg 절반 · 무거운 것부터 · `_bxDie` 와 같은 자리)
+  const fell = Math.max(0, Math.min(fallable, before - _t811Inv(p)));
+  st.fall += fell; st.gone += mine - fell;
+  return fell;
+}
+// 장부 도착(귀환) — war-core 가 무기 반납 앞에서 부른다: 몸 짐을 내리고 그 합을 돌려준다(곳간엔 장부가 선다)
+function _warArmsCollect(w) {
+  const M = w && w._armsPack; if (!M) return null;
+  const players = state.deps.players; let s = 0;
+  for (const [k, mine0] of M) { const p = players.get(k), mine = mine0 || 0; if (p) _t811Put(p, Math.max(0, _t811Inv(p) - mine)); s += mine; }
+  w._armsPack = null; w._armsOnBodies = 0;
+  _t811Stat().back += s;
+  return s;
+}
+// 몸이 장부보다 먼저 끝났다(고아 · 몸 없음) — 몸 짐만 내린다(장부는 war-core 가 혼자 들고 간다)
+function _warArmsUnload(body) { const w = body && body.w; if (w && w._armsPack) _warArmsCollect(w); }
 function _warBagDrop(w, p) {
   if (!w || !p || !w._packOnBodies || p._warPackOf !== w.id || !state.war || !state.war.bagFE) return 0;
   const keys = w._packKeys || [], bag = _warBagView(p, keys), fe = state.war.bagFE(bag, _warPackCtx(w));
@@ -6320,6 +6401,7 @@ function _t476DenBattle(body) {
 function _warCleanupBody(body, releaseRemaining) {
   if (body && body.w && (body.w._lootPend || body.w._lootPile)) _warLootPickup(body.w, [], 'A');   // ★[T466] 싣지 못한 채 몸이 끝나면: 곳간 몫은 그 곳간에 · 더미는 버림(맡긴 것이 사라지지 않게)
   if (releaseRemaining) _warRationLayDownBody(body);   // ★[T423] 집에 닿은 몸이 짐을 내려놓는다(풀려나기 전에 · 끔이면 0)
+  _warArmsUnload(body);   // ★[T811] 몸이 끝나면 무기 몸 짐을 내린다(장부만 남는다 · 귀환 도착이 먼저면 이미 0 · 끔이면 무동작)
   if (releaseRemaining) { for (const pid of (body.pids || [])) _warReleasePid(pid); for (const pid of (body.defPids || [])) _warReleasePid(pid); }
   state.warBodies.delete(body.w.id);
 }
@@ -7379,6 +7461,7 @@ function __p3Bind(mock) {
     _t765Depart, _t765Join,   // ★[T765] 후보 걷기 몸 문 둘(하네스 `test-cand-walk` 가 운영과 같은 문을 부른다)
     _t681Day, _t681Flush, T681_ON, T703_MARCH,   // ★[T703] T681 켬(기본) 판의 하루 경계 두 자리 — 하네스가 운영 하루 마감과 같은 차례(econ 앞 `_t681Flush` · 캐러밴 앞 `_t681Day`)로 부른다(값 무변 · 내보내기만)
     _warEngage, _warAfterDaily, _warEndFight, _warBuildRectIndex, _warBlockedCell, _warWorld, warPerf, _warOrderFallback, _warToStandoff,
+    T811_ARMS_BODY, _warArmsLoad, _warArmsCollect, _warArmsUnload, _t811Plan, _t811Off, _t811Sync, _t811Stat,   // ★[T811] 무기 몸 짐 — 하네스(`test-arms-body`)가 운영과 같은 문을 부른다(내보내기만)
     T790_NO_SNAP, _t790Stat, _t790Mark, _t790Lag, _warSetupReturn, _warPaceReturn,   // ★[T790] 하네스(`test-war-nosnap`)가 운영과 같은 문을 부른다(내보내기만)
     _warDraftPids, _warReleasePid, econDayToMs, _warEnsureBody, _warSampleComp, _vbFootprint,
     threatOf, _warWriteThreats, _warOutMul, _lifeJobSites, _lifeJobSiteOK, _warRoutePts, _warTreeCell, computeRoutePts,

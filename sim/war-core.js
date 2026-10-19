@@ -1164,12 +1164,15 @@ function createWar(opts) {
         if (day < w.eta) { _packTick(w, day); continue; }
         const e = w.atk.econ;
         const _back = w._packOnBodies ? _rationLayDownAll(w) : warRationRefund(w, 'return');   // ★[T423] 짐이면 몸이 내려놓는다(같은 `_warFoodGive` 문)
+        //   ★[T811] 무기가 몸 짐에 실렸으면(호스트가 `_armsOnBodies` 를 단 원정만 · 끔이면 칸이 없다 = 이 줄 무동작) 장부 도착에 몸 짐을 거둔다 —
+        //     곳간에 서는 수는 장부(`w._arms.weapon`) 그대로다(몸 짐은 그 거울 · 결정론 — 몸 자리와 무관).
+        const _armsBody = (w._armsOnBodies && typeof opts.armsCollect === 'function') ? (() => { try { return opts.armsCollect(w); } catch (_) { return null; } })() : null;
         const _armsBack = warArmsReturn(w);   // ★[T403] 무기 반납(끔이면 0)
         const _rel = warDraftReleaseWar(w);
         if (e) { e._warMobUntil = 0; e._warMobFrac = 0; }
         if (_back > 0 || _rel > 0) log(day, w.atk.name + ' 귀환 — 군량 잔량 ' + _back.toFixed(0) + ' 곳간 복귀 · 징발 해제 ' + _rel + '명');
         if (w._rationBook) { const b = w._rationBook; log(day, w.atk.name + ' 짐 장부 — 적재 ' + b.load.toFixed(1) + (b.pickFE ? ' + 길에서 딴 ' + b.pickFE.toFixed(1) : '') + ((b.lootG || b.lootP) ? ' + 노획 ' + ((b.lootG || 0) + (b.lootP || 0)).toFixed(1) : '') + ' = 장부 ' + b.ledgerEaten.toFixed(1) + ' + 몸이 먹음 ' + b.eaten.toFixed(1) + ' + 내려놓음 ' + b.back.toFixed(1) + ' + 드랍 ' + b.drop.toFixed(1)); }
-        if (w._arms) log(day, w.atk.name + ' 귀환 — 무기 반납 ' + _armsBack + '/' + w._arms.out + '(민병 ' + w._arms.militia + ')');
+        if (w._arms) log(day, w.atk.name + ' 귀환 — 무기 반납 ' + _armsBack + '/' + w._arms.out + '(민병 ' + w._arms.militia + ')' + (_armsBody != null ? ' · 몸 짐 ' + (+_armsBody).toFixed(3) : ''));
         WARS.splice(i, 1);
         if (w._arms) _syncArmsToEcon(w.atk);   // ★[T764] 반납 뒤 거울(그 마을의 다른 원정 짐만 남는다)
       }
