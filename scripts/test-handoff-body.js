@@ -203,6 +203,7 @@ async function roundTrip(tag) {
   const tX = Date.now();   // ★[T751] 넘는 순간 몸을 읽은 때 — ② HP 허용치가 이 사이 실제 걸린 시간에서 나온다
   try { a.ws.close(); } catch (e) {}
   const b = await open(`${nip.wsUrl}/?handoff_token=${encodeURIComponent(handoffMsg.token)}`);
+  const hpW = ((b.welcome || {}).self || {}).hp;   // ★[T802] 도착 존이 받은 HP = 넘긴 몸의 HP(페이로드 스냅숏 · welcome 은 몸을 세운 그 자리에서 나간다 — 도착 존의 첫 회복 틱 전)
   await sleep(900);
   const after = pick(await jget(`http://localhost:${NPORT}/bodydbg`));
   const tA = Date.now();   // ★[T751] 도착한 몸을 읽은 때
@@ -213,7 +214,7 @@ async function roundTrip(tag) {
   await sleep(900);
   const again = pick(await jget(`http://localhost:${HPORT}/bodydbg`));
   try { c.ws.close(); } catch (e) {}
-  return { crossed: true, before, beforeCross, after, again, welcomeTools: b.tools, SET_HP, SET_COLD, crossMs: tA - tX };
+  return { crossed: true, before, beforeCross, after, again, welcomeTools: b.tools, SET_HP, SET_COLD, crossMs: tA - tX, hpW };
 }
 
 (async () => {
@@ -279,6 +280,22 @@ async function roundTrip(tag) {
   ok(hpA >= hpX - 1 && hpA - hpX <= hpTol, '② ★★HP 가 존을 넘어 **이어진다**(풀피로 안 튄다)',
     `${hpX} → ${hpA} · 넘는 시간 ${R.crossMs}ms × ${REGEN_PS}/초 + 1 = 허용 ${hpTol.toFixed(1)}`);
   ok(hpA < 100 || hpX + hpTol >= 100, '②b ★풀피(100)가 아니다 — 허용치가 100 에 닿지 않는 한', `${hpA}`);
+  // ★★[T802] 넘긴 몫과 회복 몫을 **따로** 잰다(느슨하게 0). 위 ② 한 줄은 둘을 한 창에 섞는다 — 넘는 순간 읽은 몸(`beforeCross`)과
+  //   도착한 몸 사이에 (가) 넘긴 HP(페이로드 스냅숏 — 떠나는 존이 `serializeBody` 한 그 순간) (나) 도착 존의 자연 회복이 있다.
+  //   T778(T732 켬 기본) 뒤로 도착 존의 몸은 **페이로드**다(`/handoff_prepare` 가 켬에서만 몸을 쥔다 · 끔 판은 central 행 폴백 —
+  //   떠난 껍데기의 마지막 저장이라 넘긴 뒤 껍데기 변화도 실렸다). 그래서 넘긴 뒤 껍데기를 하네스가 고치면(종전 검사 문 — 위 ① T802 줄)
+  //   그 몫은 도착 존에 안 가고, "넘는 순간의 몸"만 낮아져 ②가 넘기 전 정당한 회복(마지막 세움 뒤 ~380ms · +4)을 도착의 덤으로 셌다.
+  //   ⇒ (가) 도착 존이 받은 HP(welcome · 첫 회복 틱 전)는 넘는 순간 읽은 몸보다 클 수 없다 — 떠난 껍데기는 넘긴 뒤 회복만 한다.
+  //     크면 그건 도착에서 생긴 HP 다(풀피로 튐 · 덤). 그리고 세운 값(SET_HP)보다 작을 수 없다(이 하네스엔 피해가 없다).
+  //   ⇒ (나) 도착 존에서 오른 몫(받은 HP → 도착 몸)은 넘는 순간 뒤 흐른 시간 × 제품의 자연 회복률 + 1(반올림 · 위 ② 와 같은 자) 안.
+  //     창의 머리는 `tX`(떠나는 존의 몸을 읽고 소켓을 닫은 때)다 — 도착 존은 클라가 그 뒤에 붙어야 몸을 세운다. welcome 이 닿은 때는
+  //     머리가 못 된다: 도착 존은 몸을 세운 뒤 수백 ms 막혔다가(접속 처리) 밀린 틱이 그 시간만큼 회복을 몰아 준다(dt 합 = 흐른 시간 · 실측).
+  const hpW = R.hpW;
+  ok(Number.isFinite(hpW), '★[상황·T802] 도착 존이 받은 HP 를 읽었다(welcome — 도착 존의 첫 회복 틱 전)', `${hpW}`);
+  ok(hpW <= hpX + 1e-6 && hpW >= R.SET_HP - 1e-6, '② ★★[T802] 넘긴 몫 — 도착 존이 받은 HP 가 넘는 순간의 몸을 안 넘는다(도착에서 생긴 HP 0 · 깎인 HP 0)',
+    `세운 ${R.SET_HP} ≤ 받은 ${hpW} ≤ 넘는 순간 ${hpX}`);
+  ok(hpA - hpW >= -1e-6 && hpA - hpW <= hpTol, '② ★★[T802] 회복 몫 — 도착 존에서 오른 HP 가 넘는 순간 뒤 흐른 시간 × 자연 회복률 안(넘긴 몫을 뺀 자리에서)',
+    `${hpW} → ${hpA} · ${R.crossMs}ms × ${REGEN_PS}/초 + 1 = 허용 ${hpTol.toFixed(1)}`);
   // ★★[T43 2026-09-02 재민 확정 · §12] **뒤집었다.** 이 줄은 종전 *"재접속은 여전히 풀피다 —
   //   정책 무변(T8 소관)"* 이었고, 그 T8 소관이 T43 이다. §12: *"로그아웃 ≠ 부활."*
   //   ⇒ 재접속도 이제 **HP 를 잇는다**(`_acceptConnection` 의 `parseBody(.., {vitals:true})`).
