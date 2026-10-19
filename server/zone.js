@@ -3129,7 +3129,7 @@ function _t671Shape(p) {
   p._lifeActAt = undefined; p._pathAt = undefined; p._pathFor = undefined; p._rdK = undefined; p._rdMul = undefined; p._sh = undefined; p._simCloth = undefined;
   p._stCx = undefined; p._stCy = undefined; p._stMul = undefined; p._stuckN = undefined; p._stuckPos = undefined; p._t540DecAt = undefined; p._t540StepAt = undefined;
   p._t670Tk = undefined; p._t670TkX = undefined; p._t670TkY = undefined; p._workT = undefined; p._wornAt = undefined; p.gatherTarget = undefined; p.npcBedX = undefined;
-  p.npcBedY = undefined; p.path = undefined; p.pathIndex = undefined; p.simLonOff = undefined; p.simVillageId = undefined; p._jobT = undefined; p._esk = undefined;
+  p.npcBedY = undefined; p.path = undefined; p.pathIndex = undefined; p._t791P = undefined; p._t791Pn = undefined; p._t791Px = undefined; p._t791Py = undefined; p.simLonOff = undefined; p.simVillageId = undefined; p._jobT = undefined; p._esk = undefined;
   p._fOutD = undefined; p._workSite = undefined; p._jobN = undefined; p._vgDay = undefined; p._vgGiveUp = undefined; p._vgSince = undefined; p._vgX = undefined;
   p._vgY = undefined; p._t400Leg = undefined; p._lastAStarAt = undefined; p._arm = undefined; p._fgl = undefined; p._huntBud = undefined; p._huntKil = undefined;
   p._huntWk = undefined; p._fishSpotX = undefined; p._fishSpotY = undefined; p._fishT = undefined; p._t312Ei = undefined; p._t340 = undefined; p._t340N = undefined;
@@ -3962,7 +3962,8 @@ function computeNpcPath(npc, now) {
     // ★[T670 ①] 도착한 사람은 틱마다 여기로 온다(A* 부름의 98 % — T646 §3). 이미 같은 한 점짜리 길을 들고 있으면 그 배열을 돌려준다
     //   (내용 같음 · 부른 쪽이 `pathIndex = 0` · `_pathAt = now` 를 종전대로 다시 쓴다 — 새 배열 할당만 0).
     const P = npc.path;
-    if (P && P.length === 1 && Object.is(P[0].x, npc.targetX) && Object.is(P[0].y, npc.targetY)) return P;
+    if (P && P === npc._t791P) { if (npc._t791Pn === 1 && Object.is(npc._t791Px, npc.targetX) && Object.is(npc._t791Py, npc.targetY)) return P; }   // ★[T791 ②] 거울(같은 수)
+    else if (P && P.length === 1 && Object.is(P[0].x, npc.targetX) && Object.is(P[0].y, npc.targetY)) return P;
     return [{ x: npc.targetX, y: npc.targetY }];
   }
   const isVil = !!npc.simVillageId;   // 마을 주민 = 랩 이동 정본 대상
@@ -4042,13 +4043,17 @@ function computeNpcPath(npc, now) {
 // npc.path를 따라 다음 waypoint 향해 vx/vy 설정. 도착했으면 다음 waypoint로.
 // 반환: true면 path 완료 (목표 도달), false면 진행 중
 function followNpcPath(npc, speedMult) {
-  if (!npc.path || npc.pathIndex >= npc.path.length) return true;
-  const wp = npc.path[npc.pathIndex];
-  const dx = wp.x - npc.x, dy = wp.y - npc.y;
+  //   ★[T791 ②] 길 거울(`_t791Mir`) — 이 몸의 길이 거울에 비친 그 배열이면 길이 · 첫 점을 몸 칸에서 읽는다(같은 수 · 길 배열은 짓고 나면 안 바뀐다).
+  //     끔이면 거울 칸이 늘 `undefined` 라 `M` 이 거짓(길이 있을 때) — 종전 그대로 배열을 읽는다.
+  const P = npc.path, M = P === npc._t791P;
+  if (!P || npc.pathIndex >= (M ? npc._t791Pn : P.length)) return true;
+  let wx, wy;
+  if (M && npc.pathIndex === 0) { wx = npc._t791Px; wy = npc._t791Py; } else { const wp = P[npc.pathIndex]; wx = wp.x; wy = wp.y; }
+  const dx = wx - npc.x, dy = wy - npc.y;
   // ★[T671 ②] 도착(< 10)은 hypot 없이 가른다(`_t671Lt` = 같은 답) — 안 닿았을 때만 나눗셈에 쓸 `dd` 를 종전 그대로 hypot 으로 짓는다.
   if (_t671Lt(dx, dy, 10)) {
     npc.pathIndex++;
-    if (npc.pathIndex >= npc.path.length) {
+    if (npc.pathIndex >= (M ? npc._t791Pn : P.length)) {
       npc.vx = 0; npc.vy = 0;
       return true;
     }
@@ -4076,7 +4081,7 @@ function followNpcPath(npc, speedMult) {
 function _t670Stuck(npc, now) { const S = npc._stuckPos; if (S) { S.x = npc.x; S.y = npc.y; S.at = now; } else npc._stuckPos = { x: npc.x, y: npc.y, at: now }; }
 function detectStuck(npc, now) {
   if (npc.targetX != null && npc.targetY != null
-      && (!npc.path || npc.pathIndex >= npc.path.length)
+      && (!npc.path || npc.pathIndex >= (npc.path === npc._t791P ? npc._t791Pn : npc.path.length))   // ★[T791 ②] 길 거울(끔 = 배열 길이 그대로)
       && _t671Lt(npc.x - npc.targetX, npc.y - npc.targetY, 12)) {   // ★[T671 ②] = `Math.hypot(…) < 12`
     _t670Stuck(npc, now);   // 서 있는 동안 타이머를 계속 리셋 — 떠날 때 즉시 오판 금지
     npc._stuckN = 0;
@@ -4221,6 +4226,32 @@ const T670_SKIP_IDLE = process.env.T670_SKIP_IDLE !== '0';   // ★PM 10-07 켬 
 //   **한 글자도 안 바뀐 채** 열을 본다(이중 쓰기 0 · 한쪽만). Float64Array 는 binary64 그대로(−0 · NaN 보존 · 수가 아닌 값은 NaN 이 된다 — 주민 x · y 는 늘 수다).
 //   슬롯 = 들어온 차례(조밀 · T356 계약 §2 의 swap-remove 는 증인 밖 — 몸이 사라져도 슬롯은 남는다 · 열은 두 배씩 큰다). 새 몸 필드 0(슬롯은 접근자 클로저가 든다).
 const T738_SOA_XY = process.env.T738_SOA_XY === '1';
+// ★★[T791 ② 2026-10-18 · 선 몸의 길 거울] 손잡이 `T791_PATH_MIR`(기본 끔 = 종전 그대로 · `1` 켬 · `verify` = 켬 + 거울을 진짜 배열과 견줘 센다).
+//   T791 ① 이 잰 것(V8 표본 · 감싸기 0): 걸음 몸통에서 가장 무거운 줄은 셈이 아니라 **몸 밖 객체를 처음 짚는 줄**이다 —
+//   `detectStuck` 의 `npc.path.length`(길 배열 머리) · `computeNpcPath` 의 `P[0].x`(배열 칸 → 점 객체) · `followNpcPath` 의 `wp.x`.
+//   도착해 선 몸은 틱마다 같은 한 점짜리 길(T670 — 같은 배열을 돌려받는다)의 길이와 첫 점을 세 번 읽는다(값은 늘 같다).
+//   ⇒ 길을 넣는 자리 하나(`npcStep` 길 넣기)에서 **새 배열일 때만** 길이 · 첫 점을 몸 칸 넷(`_t791P` 배열 · `_t791Pn` · `_t791Px` · `_t791Py`)에 비추고,
+//     읽는 자리 넷(막힘 서 있음 판정 · 되묻기 판정 · 도착 길 되돌림 · 따라가기)은 **그 배열이 거울의 배열일 때만** 몸 칸을 읽는다.
+//   ★같은 수인 까닭: 길 배열과 그 점은 짓고 나면 아무도 안 고친다(서버 전체 `.path` 넣기 = 이 자리 + `null` 둘 · 배열 · 점 제자리 쓰기 0 — 보고/T791 §2).
+//     배열이 바뀌면(`npc.path` 다른 객체) 읽는 자리가 거울을 안 믿고 배열을 읽는다. 끔이면 거울 칸이 늘 `undefined` ⇒ 종전 글자와 같은 답.
+//   새 수 0 · 판정 0 · 몸 칸 넷은 `_t671Shape` 목록에(모양 하나 유지).
+const T791_PATH_MIR = process.env.T791_PATH_MIR === '1' || process.env.T791_PATH_MIR === 'verify', T791_VERIFY = process.env.T791_PATH_MIR === 'verify';
+function _t791Mir(npc) {
+  const P = npc.path; if (P === npc._t791P) return;
+  const n = P.length; npc._t791P = P; npc._t791Pn = n;
+  if (n) { npc._t791Px = P[0].x; npc._t791Py = P[0].y; } else { npc._t791Px = undefined; npc._t791Py = undefined; }
+}
+const _t791V = { n: 0, bad: 0, ex: [] };
+function _t791Check(npc) {
+  const P = npc.path; if (!P || P !== npc._t791P) return;
+  _t791V.n++; const n = P.length;
+  if (npc._t791Pn !== n || (n && (!Object.is(npc._t791Px, P[0].x) || !Object.is(npc._t791Py, P[0].y)))) { _t791V.bad++; if (_t791V.ex.length < 5) _t791V.ex.push([npc.pid, npc._t791Pn, n]); }
+}
+if (T791_VERIFY) {   // 견줌 셈을 내보낸다 — `T791_VERIFY_OUT` 이면 그 이름.<pid>.json(60초마다 · 끝날 때) · 아니면 로그 한 줄
+  const _out = () => { const o = process.env.T791_VERIFY_OUT; if (o) { try { require('fs').writeFileSync(`${o}.${process.pid}.json`, JSON.stringify(_t791V)); } catch (e) {} }
+    else console.log(`[T791 견줌] 길 거울 ${_t791V.n} 번 · 다름 ${_t791V.bad}` + (_t791V.ex.length ? ' ' + JSON.stringify(_t791V.ex) : '')); };
+  setInterval(_out, 60000).unref(); process.on('exit', _out);
+}
 const _t738 = { X: new Float64Array(T738_SOA_XY ? 1024 : 0), Y: new Float64Array(T738_SOA_XY ? 1024 : 0), n: 0, seen: new WeakSet() };
 function _t738Adopt(p) {
   if (_t738.seen.has(p)) return;
@@ -4238,6 +4269,7 @@ function npcStep(npc, dt, now) {
   if (T738_SOA_XY) _t738Adopt(npc);   // ★[T738] 끔 = 종전 그대로
   npc._t540StepAt = now;   // ★[T540 관측] 이 몸이 마지막으로 걸음 문을 받은 때(`/walkdbg stepAge` — 새벽 멎음을 이것으로 잡았다)
   if (!(T670_SKIP_IDLE && !npc.canadiaVillage && now < npc.nextDecisionAt)) decideNpcBehavior(npc, now);   // ★[T670 ②] 끔 = 종전 그대로
+  if (T791_VERIFY) _t791Check(npc);   // ★[T791 견줌] 거울 = 진짜 배열인가(읽기만 · 세계 0)
 
   // ★[§15 2파·비전투원 대피] 전투·긴급 소집 중 마을 주민(villages.js가 simEvacUntil 소프트 TTL 설정) —
   //   행동 목표를 자택으로 고정(취침·출근 대신 '대피'). TTL 만료(전투 종결)면 자동 해제. fight(교전)는 예외.
@@ -4327,7 +4359,7 @@ function npcStep(npc, dt, now) {
   // ★[T670 ①] 목표 키 문자열은 목표가 바뀔 때만 짓는다 — 같은 두 수면 같은 글자다(`===` 가 참이면 `|0` 의 입력이 같다 · NaN 은 늘 다시 짓는다).
   if (npc.targetX !== npc._t670TkX || npc.targetY !== npc._t670TkY) { npc._t670TkX = npc.targetX; npc._t670TkY = npc.targetY; npc._t670Tk = `${npc.targetX|0}_${npc.targetY|0}`; }
   const targetKey = npc._t670Tk;
-  const needPath = !npc.path || npc.pathIndex >= npc.path.length ||
+  const needPath = !npc.path || npc.pathIndex >= (npc.path === npc._t791P ? npc._t791Pn : npc.path.length) ||   // ★[T791 ②] 길 거울(끔 = 배열 길이 그대로)
                    npc._pathFor !== targetKey ||
                    (npc._pathAt && now - npc._pathAt > 5000);
   // ★★★[T370 ② 2026-09-23 · 경로를 두 번 묻지 않는다] `T370_PATH_REUSE=1` 일 때만.
@@ -4349,6 +4381,7 @@ function npcStep(npc, dt, now) {
     npc.pathIndex = 0;
     npc._pathFor = targetKey;
     npc._pathAt = now;
+    if (T791_PATH_MIR) _t791Mir(npc);   // ★[T791 ②] 길 거울 — 새 배열이면 길이 · 첫 점을 몸 칸에 비춘다(같은 배열이면 안 읽는다)
   }
   const arrived = followNpcPath(npc, speedMult);
   if (!arrived) return;
