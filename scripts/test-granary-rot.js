@@ -270,7 +270,7 @@ say('\n⑤ 글자 — 손잡이 한 자리 · 마감이 목록을 넘긴다 · �
   const G = fs.readFileSync(SV('granary-lots.js'), 'utf8'), VS = fs.readFileSync(SV('villages.js'), 'utf8');
   const all = ['granary-lots.js', 'villages.js', 'zone.js', 'trade.js', 'lots.js', 'spoil.js'].map((f) => fs.readFileSync(SV(f), 'utf8')).join('\n');
   ok((all.match(/process\.env\.T789_DISCARD/g) || []).length === 1 && /const T789 = ON && process\.env\.T789_DISCARD === '1';/.test(G), "⑤ 손잡이는 곳간 장부 한 자리(`=== '1'` · T732 켬 안)");
-  ok(/G\.tickBegin\(state\.world && state\.world\.villages\)/.test(VS), '⑤ 마을 하루 마감 머리가 econ 마을 목록을 넘긴다(그 순간 버린다)');
+  ok(/G\.tickBegin\(state\.world && state\.world\.villages[,)]/.test(VS), '⑤ 마을 하루 마감 머리가 econ 마을 목록을 넘긴다(그 순간 버린다 · ★[T803] 뒤에 여는 econ 날이 붙는다)');
   ok(/return _t789View\(\(\) => Object\.assign\(\{ ok: true \}, _T732_ON \? Trade\.board\(/.test(VS) && /const q = _t789View\(\(\) => Trade\.quote\(/.test(VS),
     '⑤ 시세표 · 견적이 사람의 문과 같은 눈(견적 = 실행)');
   ok(/function doorOpen\(v\) \{ return !!\(ON && LED\.has\(v\) && doorBegin\(true\)\); \}/.test(G) && /if \(T789 && !hands && _viewOpen\(\)\) _door\.view = true;/.test(G), '⑤ 몸 손 문은 눈을 안 연다 · 사람의 문만');

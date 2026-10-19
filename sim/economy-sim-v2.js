@@ -1910,6 +1910,9 @@ function tickDecay(v) {
   for (const [r, baseRate] of Object.entries(DECAY_V2)) {
     const s = v.storage[r] || 0;
     if (s <= 0) continue;
+    // ★[T803] 부패는 한 길 — 곳간 장부가 그 칸의 썩음을 맡으면(호스트 훅 `decaySkip` · 서버 `T789_DISCARD` 켬일 때만 선다) 일일 부패는 그 칸을 건너뛴다.
+    //   훅이 없으면(랩 · CLI · 끈 서버 · `T789` 끔) 이 줄은 무동작(비트 동일).
+    if (_LOTH !== null && _LOTH.decaySkip && _LOTH.decaySkip(v, r)) continue;
     let target;
     if (_t726) target = _targetV2(v, r, _t726).target;
     else {
