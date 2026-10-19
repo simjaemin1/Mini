@@ -3123,6 +3123,7 @@ const NPC_CLAIM_SIZE = 192;
 //      직렬화는 `serializeBody` 가 이름으로 골라 읽는다).
 //   ★이름 붙은 쓰기 줄이다(계산된 키 루프 금지 — V8 은 계산 키로 바깥 필드가 12 를 넘으면 몸을 사전 모드로 내린다).
 //   목록 = T671 ① 판의 실제 필드 합집합(리터럴 밖 60 · 빈도 차례). 목록 밖 필드는 종전대로 나중에 붙는다(드문 몸만 갈라진다).
+const T806_HOT_INOBJ = process.env.T806_HOT_INOBJ === '1';   // ★[T806 ③] 걸음 몸통 칸을 객체 안에(NPC 리터럴 · '1' 만 켬)
 const T671_SHAPE = process.env.T671_SHAPE !== '0';   // ★PM 10-07 켬 기본(바이트 같음 · 되돌림 =0)
 function _t671Shape(p) {
   p.simJob = undefined; p._dOff = undefined; p._half = undefined; p._hd = undefined; p._huntOn = undefined; p._huntSpd = undefined; p._lifeAct = undefined;
@@ -3178,7 +3179,33 @@ function spawnNpc(opts = {}) {
   const npcId = `npc_${ZONE_ID}_${nextNpcSerial++}_${Math.random().toString(36).slice(2,6)}`;
   const name = (opts.name || NPC_NAMES[Math.floor(_dt()*NPC_NAMES.length)]) + '🤖';
   const color = opts.color || NPC_COLORS[Math.floor(_dt()*NPC_COLORS.length)];
-  const player = {
+  // ★★[T806 ③ 2026-10-19 · 손잡이 `T806_HOT_INOBJ`('1' 만 켬 · 끔 = 아래 둘째 리터럴 = 종전 글자 그대로)] **막힘 서 있음 줄 — 몸 바깥 속성 칸.**
+  //   T791 ①: 선 몸의 가장 무거운 줄은 `detectStuck` 머리(`npc.path` …)였고 길 거울 뒤에도 남았다 — 리터럴 밖에서 붙은 칸(`path` · `pathIndex` · `_stuckPos` …)은
+  //   객체 밖 속성 배열에 살아, 틱마다 그 배열을 처음 짚는 몫이 줄 하나 ≈0.13 µs 였다. 켬이면 그 칸들을 리터럴에 미리 둔다(값 `undefined` = 없을 때와 같은 읽기 ·
+  //   몸 키를 차례로 도는 · `in` · `delete` · 펼침 자리 0 — 보고/T806 §3) — 값 · 판정 무변 · 키 차례만 다르다(넷째 줄 아래 · `_t671Shape` 가 세우는 칸은 같은 값 그대로 ·
+  //   켬에서 키가 늘어나는 것은 다섯 — `simEvacUntil` · `canadiaVillage` · `canadiaTask` · `harvestTarget` · `fightTarget`(값 `undefined` · 없는 칸 읽기와 같은 답)).
+  const player = T806_HOT_INOBJ ? {
+    pid, playerId: npcId, ws: null,
+    name, color,
+    x: cx, y: cy, vx: 0, vy: 0,
+    inventory: { wood: 0, stone: 0, berry: 0, fiber: 0, meat_raw: 0, hide: 0, seed_berry: 2 },
+    tools: {}, equipped: null,
+    equipment: [], equipSlots: {}, craftSkill: {}, // 플레이어 아이템: NPC는 빈 컨테이너(인스턴스 미생성 — econ 스칼라 유지)
+
+    hp: PLAYER_MAX_HP, maxHp: PLAYER_MAX_HP,
+    hunger: HUNGER_MAX, thirst: THIRST_MAX, vp: 0,
+    // NPC끼리 같은 마을 = 같은 길드 (zone 안 메모리 길드 — central 등록 X, 시각상만)
+    tribeId: opts.villageId || null,
+    tribeName: opts.villageName || null,
+    pvpEnabled: false,
+    isNpc: true,
+    behavior: 'wander', targetX: cx, targetY: cy,
+    nextDecisionAt: 0,
+    lastAttackAt: 0, lastDamagedAt: 0,
+    handingOff: false, lastSeen: Date.now(),
+    // ★[T806 ③] 걸음 몸통이 틱마다 짚는 칸을 **객체 안**에(값은 다 `undefined` — 종전엔 뒤에 붙어 바깥 속성 배열에 살았다 · 아래 줄들 · `_t671Shape` 가 같은 값을 그대로 쓴다)
+    path: undefined, pathIndex: undefined, _pathFor: undefined, _pathAt: undefined, _t670Tk: undefined, _t670TkX: undefined, _t670TkY: undefined, _t791P: undefined, _t791Pn: undefined, _t791Px: undefined, _t791Py: undefined, _stuckPos: undefined, _stuckN: undefined, _t540StepAt: undefined, simEvacUntil: undefined, canadiaVillage: undefined, canadiaTask: undefined, simLonOff: undefined, _t720: undefined, gatherTarget: undefined, harvestTarget: undefined, fightTarget: undefined, npcJob: undefined, npcHomeX: undefined, npcHomeY: undefined, npcBedX: undefined, npcBedY: undefined, _lifeAct: undefined, _lifeActAt: undefined, _huntSpd: undefined, myClaim: undefined, simVillageId: undefined, simJob: undefined,
+  } : {
     pid, playerId: npcId, ws: null,
     name, color,
     x: cx, y: cy, vx: 0, vy: 0,
@@ -4226,7 +4253,7 @@ const T670_SKIP_IDLE = process.env.T670_SKIP_IDLE !== '0';   // ★PM 10-07 켬 
 //   **한 글자도 안 바뀐 채** 열을 본다(이중 쓰기 0 · 한쪽만). Float64Array 는 binary64 그대로(−0 · NaN 보존 · 수가 아닌 값은 NaN 이 된다 — 주민 x · y 는 늘 수다).
 //   슬롯 = 들어온 차례(조밀 · T356 계약 §2 의 swap-remove 는 증인 밖 — 몸이 사라져도 슬롯은 남는다 · 열은 두 배씩 큰다). 새 몸 필드 0(슬롯은 접근자 클로저가 든다).
 const T738_SOA_XY = process.env.T738_SOA_XY === '1';
-// ★★[T791 ② 2026-10-18 · 선 몸의 길 거울] 손잡이 `T791_PATH_MIR`(기본 끔 = 종전 그대로 · `1` 켬 · `verify` = 켬 + 거울을 진짜 배열과 견줘 센다).
+// ★★[T791 ② 2026-10-18 · 선 몸의 길 거울] 손잡이 `T791_PATH_MIR`(★[T806] 켬 기본 · `=0` 끔 = 종전 그대로 · `verify` = 켬 + 거울을 진짜 배열과 견줘 센다).
 //   T791 ① 이 잰 것(V8 표본 · 감싸기 0): 걸음 몸통에서 가장 무거운 줄은 셈이 아니라 **몸 밖 객체를 처음 짚는 줄**이다 —
 //   `detectStuck` 의 `npc.path.length`(길 배열 머리) · `computeNpcPath` 의 `P[0].x`(배열 칸 → 점 객체) · `followNpcPath` 의 `wp.x`.
 //   도착해 선 몸은 틱마다 같은 한 점짜리 길(T670 — 같은 배열을 돌려받는다)의 길이와 첫 점을 세 번 읽는다(값은 늘 같다).
@@ -4235,7 +4262,7 @@ const T738_SOA_XY = process.env.T738_SOA_XY === '1';
 //   ★같은 수인 까닭: 길 배열과 그 점은 짓고 나면 아무도 안 고친다(서버 전체 `.path` 넣기 = 이 자리 + `null` 둘 · 배열 · 점 제자리 쓰기 0 — 보고/T791 §2).
 //     배열이 바뀌면(`npc.path` 다른 객체) 읽는 자리가 거울을 안 믿고 배열을 읽는다. 끔이면 거울 칸이 늘 `undefined` ⇒ 종전 글자와 같은 답.
 //   새 수 0 · 판정 0 · 몸 칸 넷은 `_t671Shape` 목록에(모양 하나 유지).
-const T791_PATH_MIR = process.env.T791_PATH_MIR === '1' || process.env.T791_PATH_MIR === 'verify', T791_VERIFY = process.env.T791_PATH_MIR === 'verify';
+const T791_PATH_MIR = process.env.T791_PATH_MIR !== '0', T791_VERIFY = process.env.T791_PATH_MIR === 'verify';   // ★[T806 ①] 켬 기본(PM 10-19) · 끔 탐침 `=0`
 function _t791Mir(npc) {
   const P = npc.path; if (P === npc._t791P) return;
   const n = P.length; npc._t791P = P; npc._t791Pn = n;

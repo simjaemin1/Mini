@@ -13464,7 +13464,6 @@ module.exports = { t750CastPre, t750Stat: () => _t750Stat, t719ReachPre, t719Sta
   waterVillageAt, refreshFishSustain, refreshAllFishSustain,
   npcFishDraw,   // ★[T60 ②] NPC 어획 → 낚시 v2 재고 차감(양방향)
   __e2eForceShortage, __e2eForceDeed, __e2eDayFreeze,   // ★테스트 전용 — zone.js 가 E2E_GIVE 로 게이트한다(기본 부팅에선 도달 불가)
-  get eventLedger() { return state.ledger; },
   // 플레이어 구매/판매 경계계약(읽기전용 마을 품질 EMA — econ 무접촉)
   villageQualityAt,
   lifeSellIronRelic,   // ★철제 위세품 판매(플레이어→마을) — econ 접점은 이 함수 하나뿐
@@ -13679,3 +13678,8 @@ module.exports = { t750CastPre, t750Stat: () => _t750Stat, t719ReachPre, t719Sta
     },
   },
 };
+// ★★[T806 ② 2026-10-19] **내보내기 객체를 빠른 꼴로.** 이 리터럴(키 147)에 접근자(`get eventLedger()`)가 하나 있으면 V8 이 리터럴을 통째로
+//   사전 모드로 짓는다(`%HasFastProperties` 거짓 — 키 수가 아니라 접근자 하나가 까닭이다 · 보고/T806 §2) — zone 의 `SimVillages.xxx` 자리마다 해시 찾기였다.
+//   ⇒ 접근자만 리터럴 밖에서 같은 이름 · 같은 꼴(열거 · 고칠 수 있음 · 같은 몸통)로 단다(값 · 함수 · 이름 무변 · 사본 0 · 키 차례만 이 하나가 끝으로).
+Object.defineProperty(module.exports, 'eventLedger', { get() { return state.ledger; }, enumerable: true, configurable: true });
+
