@@ -16,6 +16,7 @@
 //   ⓕ 점 고치기 — 끌기 · 선분 위 삽입(폭 보간) · Del 점 삭제 · 점 폭 슬라이더 · 전부 undo
 //   ⓖ 잇기 — 끝점을 끝점에 끌어 놓으면 하나(점 = 합 − 1 · 넓은 폭으로 맞춤 · 긴 쪽 이름) · 삼거리 · 고리는 안 잇는다 · undo
 //   ⓗ [T601 추신2] 바다 위 피처 — 해안 바다 띠 셀 위 마을·광맥·숲(중심)·강(꼭짓점 · 끝) · 수 = 서버 정본 마스크로 센 수 · 빨간 테두리 · 목록 칸 · export 무변
+//   ⓘ [T793] 보기 층 — 광맥 종류별 · 자잘 광맥 · 개울 · 갯벌 줄(셈 = 지형 json ores · 끄면 그리기·목록·고르기에서 빠짐 · 개울·갯벌 화소 켬/끔) · 층 데이터 낡음 0 · export 무변
 'use strict';
 const path = require('path');
 const fs = require('fs');
@@ -276,6 +277,69 @@ const _seen = {};
     ok(ex === (_UPD ? _seen.single : pin.single), '표시를 켜고 끄고 눌러도 단일 export sha256 = 고정값(읽기 전용)', ex.slice(0, 16));
     ok(pc._errs.length === 0, '바다 위 표시 — 페이지 오류 0', pc._errs.join(' | '));
     await pc.close();
+  }
+  console.log('\n[ⓘ 보기 층(T793) — 광맥 종류별 · 자잘 광맥 · 개울 · 갯벌]');
+  {
+    const LJ = JSON.parse(fs.readFileSync(path.join(LAB, 'map-editor-layers.json'), 'utf8'));
+    let fresh = 0; try { execFileSync('python3', [path.join(__dirname, 'editor-layers-bake.py'), '--check'], { stdio: 'ignore' }); fresh = 1; } catch (e) { fresh = 0; }
+    ok(fresh === 1, '층 데이터(lab/map-editor-layers.json) = 정본에서 지금 다시 구운 것과 같다(editor-layers-bake.py --check)');
+    const lines = fs.readFileSync(inline, 'utf8').split('\n').filter((l) => /\/\/ @inline-layers/.test(l));
+    ok(lines.length === 1 && lines[0].startsWith('let LAYERS_BAKED = {'), '맥 사본에 보기 층 박음 줄 하나(`@inline-layers`)', lines.length + '줄');
+    // 기대 셈 = 지형 json(정본) 한반도 ores 를 직접 센 것
+    const TJ = JSON.parse(fs.readFileSync(path.join(ROOT, 'server', 'hanbando-terrain.json'), 'utf8')).hanbando.ores;
+    const want = {}; let wMinor = 0; for (const o of TJ) { want[o.mineral || '-'] = (want[o.mineral || '-'] || 0) + 1; if (o.minor) wMinor++; }
+    const pv = await open(`http://127.0.0.1:${PORT}/map-editor.html`);
+    await pv.evaluate(() => { try { localStorage.removeItem('durango_editor_view'); } catch (e) {} S.multi = false; S.zone = 'hanbando'; [S.ZW, S.ZH] = ZONES.hanbando; S.features = WORK_BAKED.features.slice(); S.mf = WORK_BAKED.mf.slice();
+      for (const k in S.vis) S.vis[k] = true; S.oreMin = {}; S.oreMinor = true; S.showStreams = false; S.showTidal = false; buildViewGrid(); fitView(); refresh(); });
+    let r = await pv.evaluate(() => { const rows = [...document.querySelectorAll('#oreGrid input[type=checkbox]')].map((b) => b.id); const got = {}; let minor = 0;
+      for (const f of feats()) if (f.type === 'ore') { const i = oreInfo(f); const k = (i && i[0]) || ORE_NONE; got[k] = (got[k] || 0) + 1; if (i && i[1]) minor++; }
+      return { rows, got, minor, ko: [...document.querySelectorAll('#oreGrid div')].map((d) => d.textContent).join('|') }; });
+    const sameCnt = JSON.stringify(Object.entries(r.got).sort()) === JSON.stringify(Object.entries(want).sort());
+    ok(sameCnt && r.minor === wMinor && r.rows.length === Object.keys(want).length + 1, '광맥 종류 줄 = 정본 ores 종류 수 + 자잘 한 줄 · 종류별 셈 · 자잘 셈 = 정본', JSON.stringify({ rows: r.rows.length, minor: r.minor, want: wMinor }));
+    ok(!/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(await pv.evaluate(() => document.getElementById('viewBox').textContent)), '보기 칸 글자에 이모지 0(먹선)');
+    const nVis = () => pv.evaluate(() => ({ ore: feats().filter((f) => f.type === 'ore' && featOK(f)).length, list: document.querySelectorAll('#flist .fitem').length }));
+    const v0 = await nVis();
+    await pv.click('#oreMinorToggle'); const v1 = await nVis();
+    ok(v0.ore === TJ.length && v1.ore === TJ.length - wMinor && v0.list - v1.list === wMinor, '자잘 광맥 끔 = 그리기·목록에서 자잘만 빠진다(나머지 광맥 그대로)', JSON.stringify({ v0, v1 }));
+    await pv.click('#oreMinorToggle');
+    const top = Object.keys(want).filter((k) => k !== '-').sort((a, b) => want[b] - want[a])[0];
+    await pv.click('#oreMin_' + top); const v2 = await nVis();
+    ok(v2.ore === TJ.length - want[top], `종류 하나(${top}) 끔 = 그 종류만 빠진다`, JSON.stringify({ n: v2.ore, want: TJ.length - want[top] }));
+    // 숨긴 광맥은 고를 수 없다(선택 도구로 그 중심을 눌러도 안 잡힌다)
+    r = await pv.evaluate((top) => { const f = feats().find((x) => x.type === 'ore' && (oreInfo(x) || [])[0] === top); setTool('select'); S.view.scale = 0.05; S.view.ox = cv.width / 2 - f.center.x * 0.05; S.view.oy = cv.height / 2 - f.center.y * 0.05; render();
+      const rc = cv.getBoundingClientRect(); return { x: rc.left + cv.width / 2, y: rc.top + cv.height / 2, name: f.name }; }, top);
+    await pv.mouse.move(r.x, r.y); await pv.mouse.down(); await pv.mouse.up();
+    const selHidden = await pv.evaluate(() => S.sel && S.sel.type === 'ore' && !featOK(S.sel));
+    await pv.click('#oreMin_' + top);
+    await pv.mouse.move(r.x, r.y); await pv.mouse.down(); await pv.mouse.up();
+    const selShown = await pv.evaluate(() => S.sel && S.sel.type === 'ore' ? S.sel.name : null);
+    ok(!selHidden && !!selShown, '숨긴 광맥은 눌러도 안 잡힌다 · 다시 켜면 잡힌다', JSON.stringify({ selHidden, selShown }));
+    await pv.evaluate(() => { S.sel = null; S.selPt = null; S.drag = null; });
+    // 개울 · 갯벌 화소 — 처음 끔(종전 화면) · 켜면 화면이 바뀐 화소가 생긴다 · 다시 끄면 처음과 화소 하나까지 같다
+    await pv.evaluate(() => { S.view.scale = 0.03; S.view.ox = 20; S.view.oy = cv.height - 130016 * 0.03 - 20; render(); });
+    const snap = () => pv.evaluate(() => { render(); window._t793 = window._t793 || []; window._t793.push(Array.from(ctx.getImageData(0, 0, cv.width, cv.height).data)); return window._t793.length - 1; });
+    const dpx = (a, b) => pv.evaluate(([a, b]) => { const A = window._t793[a], B = window._t793[b]; let n = 0; for (let i = 0; i < A.length; i += 4) if (A[i] !== B[i] || A[i + 1] !== B[i + 1] || A[i + 2] !== B[i + 2]) n++; return n; }, [a, b]);
+    const k0 = await snap();
+    await pv.click('#streamToggle'); await pv.waitForFunction(() => !!layImg('streams', 'hanbando'), null, { timeout: 15000 }); const k1 = await snap();
+    await pv.click('#streamToggle'); const k2 = await snap();
+    await pv.click('#tidalToggle'); await pv.waitForFunction(() => !!layImg('tidal', 'hanbando'), null, { timeout: 15000 }); const k3 = await snap();
+    await pv.click('#tidalToggle'); const k4 = await snap();
+    const ds = await dpx(k0, k1), ds0 = await dpx(k0, k2), dt = await dpx(k0, k3), dt0 = await dpx(k0, k4);
+    ok(ds > 1000 && ds0 === 0, '개울 — 처음 끔 · 켜면 개울 화소 · 다시 끄면 처음과 같다', JSON.stringify({ on: ds, back: ds0 }));
+    ok(dt > 200 && dt0 === 0, '갯벌 — 처음 끔 · 켜면 갯벌 화소 · 다시 끄면 처음과 같다', JSON.stringify({ on: dt, back: dt0 }));
+    await pv.evaluate(() => { window._t793 = null; });
+    const cells = Object.fromEntries(['hanbando', 'nippon', 'jungwon_n'].map((z) => [z, [LJ.streams[z].cells, LJ.tidal[z].cells]]));
+    ok(cells.hanbando[0] > 0 && cells.hanbando[1] > 0, '층 데이터 셀 수(개울 · 갯벌 — 존마다)', JSON.stringify(cells));
+    // 보기 저장(localStorage) — 다시 열어도 같은 줄
+    await pv.click('#oreMinorToggle'); await pv.click('#tidalToggle');
+    const ex = sha(await exportText(pv));
+    ok(ex === (_UPD ? _seen.single : pin.single), '보기 줄을 켜고 꺼도 단일 export sha256 = 고정값(그리기만 바뀐다)', ex.slice(0, 16));
+    const pv2 = pv; await pv2.reload(); await pv2.waitForFunction(() => typeof S !== 'undefined' && S.booted === true, null, { timeout: 30000 });
+    r = await pv2.evaluate(() => ({ m: document.getElementById('oreMinorToggle').checked, t: document.getElementById('tidalToggle').checked, s: S.oreMinor, st: S.showTidal }));
+    ok(r.m === false && r.t === true && r.s === false && r.st === true, '보기 줄은 저장된다(다시 열어도 자잘 끔 · 갯벌 켬)', JSON.stringify(r));
+    await pv2.evaluate(() => { try { localStorage.removeItem('durango_editor_view'); } catch (e) {} });
+    ok(pv._errs.length === 0, '보기 층 — 페이지 오류 0', pv._errs.join(' | '));
+    await pv.close();
   }
   ok(pg._errs.length === 0, '페이지 오류 0', pg._errs.join(' | '));
   await pg.close(); await browser.close(); srv.close();

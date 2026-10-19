@@ -27,6 +27,15 @@
   .btn.primary { background:var(--accent); color:#06121c; border-color:var(--accent); font-weight:600; }
   .btn.warn { color:#ff9b9b; }
   .chk { display:flex; align-items:center; gap:5px; color:var(--mut); margin:3px 0; }
+  /* ★[T793] 보기 칸 = 먹선(검은 판 · 흰 선 · 이모지 0 · 강조 호박색 하나 = var(--accent2)) */
+  #viewBox { margin:6px 0 4px; padding:6px; background:#000; border:1px solid #fff; border-radius:0; color:#fff; }
+  #viewBox .chk, #viewBox #viewGrid, #viewBox #oreGrid { color:#fff; }
+  #viewBox .mut { color:#9a9a9a; }
+  #viewBox .sec { margin-top:6px; padding-top:4px; border-top:1px solid #fff; font-size:11px; color:#9a9a9a; }
+  #viewBox input[type=checkbox] { accent-color:var(--accent2); }
+  #viewBox .btn { flex:1; width:auto; background:#000; color:#fff; border:1px solid #fff; border-radius:0; margin-top:0; }
+  #viewBox .chk { align-items:flex-start; } #viewBox .chk input { margin-top:2px; flex:none; }
+  #viewBox .btn:hover { border-color:var(--accent2); color:var(--accent2); }
   #flist { display:flex; flex-direction:column; gap:3px; }
   .fitem { display:flex; align-items:center; gap:6px; padding:5px 6px; background:var(--panel2); border:1px solid var(--line); border-radius:5px; cursor:pointer; }
   .fitem.sel { border-color:var(--accent); }
@@ -64,14 +73,21 @@
       <button data-t="select">✋ 선택/이동</button>
     </div>
     <div class="hint" id="toolHint"></div>
-    <div id="viewBox" style="margin:6px 0 4px;padding:6px;border:1px solid #2a3540;border-radius:6px">
-      <div style="font-size:11px;color:var(--mut);margin-bottom:4px">보기 — 종류마다 보임 · 이름 (작업 저장에는 영향 없음)</div>
+    <div id="viewBox">
+      <div class="mut" style="font-size:11px;margin-bottom:4px">보기 — 층마다 보임 · 이름 (작업 저장 · Export 에는 영향 없음)</div>
       <div id="viewGrid" style="display:grid;grid-template-columns:1fr auto auto;gap:2px 8px;font-size:12px;align-items:center"></div>
-      <label class="chk" style="margin-top:4px"><input type="checkbox" id="autoLabToggle" checked> 작게 보이는 것은 이름 자동 숨김(화면 14px 미만)</label>
+      <div class="sec">광맥 종류 — 셈 · 보임</div>
+      <div id="oreGrid" style="display:grid;grid-template-columns:1fr auto auto;gap:2px 8px;font-size:12px;align-items:center"></div>
+      <div class="sec">읽기 전용 층</div>
+      <label class="chk"><input type="checkbox" id="bridgeToggle" checked><span>다리(셀 단위) — 축 직선 아니면 빨강 경고</span></label>
+      <label class="chk"><input type="checkbox" id="coastToggle" checked><span>해안 바다 띠(1셀) — <span id="coastStamp" class="mut">없음</span></span></label>
+      <label class="chk"><input type="checkbox" id="streamToggle"><span>개울(1셀)</span></label>
+      <label class="chk"><input type="checkbox" id="tidalToggle"><span>갯벌(바다에 닿은 뭍 1셀)</span></label>
+      <label class="chk" style="margin-top:4px"><input type="checkbox" id="autoLabToggle" checked><span>작게 보이는 것은 이름 자동 숨김(화면 14px 미만)</span></label>
       <div style="display:flex;gap:4px;margin-top:4px"><button class="btn" id="viewAllBtn" style="padding:3px 6px">전부 보임</button><button class="btn" id="viewTerrBtn" style="padding:3px 6px">지형만(광맥·마을 숨김)</button></div>
     </div>
     <label class="chk"><input type="checkbox" id="smoothToggle" checked> 곡선 미리보기(스무딩)</label>
-    <label class="chk"><input type="checkbox" id="cellToggle"> 🔳 셀 미리보기 (인게임 실제 셀 — 호수 wobble·경계 연속)</label>
+    <label class="chk"><input type="checkbox" id="cellToggle"> 셀 미리보기 (인게임 실제 셀 — 호수 wobble·경계 연속)</label>
     <div class="row" style="display:flex;gap:6px;align-items:center;margin-top:2px">
       <label style="white-space:nowrap;font-size:11px;color:var(--mut)">셀 원본</label>
       <select id="cellSrc" style="flex:1;min-width:0">
@@ -111,8 +127,6 @@
     <button class="btn" id="loadRefBtn">참조 지형 불러오기(JSON)</button>
     <input type="file" id="refFile" accept=".json" style="display:none">
     <label class="chk"><input type="checkbox" id="refToggle" checked> 참조 지형 표시</label>
-    <label class="chk"><input type="checkbox" id="bridgeToggle" checked> 🌉 다리 표시(읽기 전용 · 셀 단위) — 축 직선 아니면 빨강 경고</label>
-    <label class="chk"><input type="checkbox" id="coastToggle" checked> 🌊 해안 바다 띠(읽기 전용 · 1셀) — <span id="coastStamp">없음</span></label>
     <div class="row" style="display:flex;gap:6px;align-items:center;margin-top:2px">
       <select id="bridgeJump" style="flex:1;min-width:0"><option value="">🌉 다리로 이동…</option></select>
       <button class="btn" id="bridgeJumpBtn" style="width:auto;padding:4px 10px">이동</button>
@@ -184,6 +198,8 @@ const S = {
   vis:{ river:true, ridge:true, valley:true, forest:true, lake:true, pass:true, ore:true, village:true },
   lab:{ river:true, ridge:true, valley:true, forest:true, lake:true, pass:true, ore:false, village:true },
   autoLab:true,
+  // ★[T793 2026-10-18 · 재민 10-03] 광맥 종류별 · 자잘 광맥 · 개울 · 갯벌 — 같은 규약(그리기·고르기만 · 작업 데이터 무변 · 개울·갯벌은 처음 끔 = 종전 화면 그대로)
+  oreMin:{}, oreMinor:true, showStreams:false, showTidal:false,
 };
 
 // ===== 좌표 변환 (모델좌표→화면. 단일=존로컬, 멀티=월드) =====
@@ -239,7 +255,7 @@ function updHistBtns(){ const u=document.getElementById('undoOpBtn'),r=document.
 function saveLocal(){ try{ localStorage.setItem('durango_editor_v1', JSON.stringify({features:S.features, mf:S.mf, zone:S.zone, multi:S.multi, stamp:S.stamp||''})); }catch(e){} }
 function loadLocal(){ try{ const s=localStorage.getItem('durango_editor_v1'); if(!s) return false; const d=JSON.parse(s); S.features=d.features||[]; S.mf=d.mf||[]; S.stamp=d.stamp||''; return (S.features.length||S.mf.length)>0; }catch(e){ return false; } }
 function saveWork(){ const blob=new Blob([JSON.stringify({editorWork:true, features:S.features, mf:S.mf, zone:S.zone})],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='editor-work.json'; a.click(); toast('작업 파일 저장됨'); }
-function loadWork(json){ if(json && json.editorWork){ S.features=json.features||[]; S.mf=json.mf||[]; S.stamp=json.stamp||''; if(json.zone && ZONES[json.zone]){ S.zone=json.zone; [S.ZW,S.ZH]=ZONES[json.zone]; const zs=document.getElementById('zoneSel'); if(zs) zs.value=json.zone; } S.sel=null; S.selPt=null; S.draft=null; S.cont=null; resetHist(); fitView(); refresh(); const nv=S.features.filter(f=>f.type==='village').length; toast('작업 불러옴'+(nv?(' · 마을 '+nv+'개'):'')); if(typeof showStamp==='function') showStamp(); saveLocal(); } else { loadEditable(json); resetHist(); } }
+function loadWork(json){ if(json && json.editorWork){ S.features=json.features||[]; S.mf=json.mf||[]; S.stamp=json.stamp||''; if(json.zone && ZONES[json.zone]){ S.zone=json.zone; [S.ZW,S.ZH]=ZONES[json.zone]; const zs=document.getElementById('zoneSel'); if(zs) zs.value=json.zone; } S.sel=null; S.selPt=null; S.draft=null; S.cont=null; resetHist(); fitView(); buildOreGrid(); refresh(); const nv=S.features.filter(f=>f.type==='village').length; toast('작업 불러옴'+(nv?(' · 마을 '+nv+'개'):'')); if(typeof showStamp==='function') showStamp(); saveLocal(); } else { loadEditable(json); resetHist(); } }
 
 function resize(){ const r = document.getElementById('center').getBoundingClientRect(); cv.width = r.width; cv.height = r.height; render(); }
 function fitView(){
@@ -356,6 +372,7 @@ function render(){
   ctx.clearRect(0,0,cv.width,cv.height);
   if(S.multi) drawBgMulti(); else drawBgSingle();
   drawCoast();
+  drawLayers();                           // [T793] 갯벌 · 개울(끔이 기본)
   if(S.showRef && S.ref){ if(S.multi) drawRefMulti(); else drawSet((S.ref[S.zone]||S.ref), true); }
   const _sea = seaMarks();                // [T601 추신2] 바다 위 피처 — 강 구간은 밑에 빨간 테두리 · 점·원·강 끝은 위에 고리
   if(_sea) drawSeaMarks(_sea, true);
@@ -447,6 +464,7 @@ let WORK_BAKED = null; // @inline-work — 레포 판은 비어 있다(아래 bo
 //   에디터는 작업을 localStorage 에 자동저장하고 **시작할 때 되살린다**. 그래서 파일을 새로 받아도
 //   새로고침만 해서는 옛 작업이 그대로 뜬다 — 재민이 두 번 당한 함정이 정확히 이것이다.
 //   내장해 두면 버튼 한 번으로 최신이 되고, 되살린 작업이 낡았으면 배너로 알린다.
+let LAYERS_BAKED = null; // @inline-layers — [T793] 보기 층(광맥 종류·자잘 · 개울 · 갯벌 · 맥 사본은 build-map-editor 가 박는다 · 레포 판은 map-editor-layers.json 을 fetch)
 let COAST_BAKED = null; // @inline-coast — 해안 바다 띠(맥 사본은 build-map-editor 가 박는다 · 레포 판은 map-editor-coast.json 을 fetch)
 let BR_BAKED = {}; // @inline-bridges — 위와 같다(다리 셀 스냅샷)
 function brCellsOf(zoneKey, zd){
@@ -543,6 +561,30 @@ function drawCoast(){
   if(S.multi){ for(const z of MZ){ if(WZONES[z]) drawCoastZone(z, WZONES[z].off); } }
   else drawCoastZone(S.zone, [0,0]);
 }
+// ★[T793 2026-10-18 · 재민 10-03 "광맥·숲 등 종류별로 보이기/숨기기 — 자잘 광맥 글자가 빽빽"] 그리기 전용 층(작업 · 굽기 무접촉).
+//   데이터 = `lab/map-editor-layers.json`(굽기 `scripts/editor-layers-bake.py` — 정본을 읽기만):
+//     광맥 종류·자잘 = 지형 json ores 의 mineral·minor(존 안 이름으로 짝) · 개울 = server/streams/<존>.bin · 갯벌 = salt.isTidalFlat(바다 = 해안 띠 − 강·호수) · 1px = 1셀.
+//   끄면 그 종류는 그리기 · 고르기 · 바다 위 목록에서만 빠진다(Export · 자동저장 무변).
+const _layImg = {};
+function layImg(k, z){
+  const d = LAYERS_BAKED && LAYERS_BAKED[k] && LAYERS_BAKED[k][z]; if(!d) return null; const key = k+'|'+z;
+  if(!_layImg[key]){ const im=new Image(); im.onload=()=>render(); im.src=d.png; _layImg[key]=im; }
+  return _layImg[key].complete ? _layImg[key] : null;
+}
+function drawLayerKind(k){
+  const one=(z, off)=>{ const im=layImg(k, z); if(!im) return; const d=LAYERS_BAKED[k][z];
+    ctx.save(); ctx.imageSmoothingEnabled=false; ctx.globalAlpha=0.9; ctx.drawImage(im, w2sx(off[0]), w2sy(off[1]), d.nx*32*S.view.scale, d.ny*32*S.view.scale); ctx.restore(); };
+  if(S.multi){ for(const z of MZ){ if(WZONES[z]) one(z, WZONES[z].off); } } else one(S.zone, [0,0]);
+}
+function drawLayers(){ if(!LAYERS_BAKED) return; if(S.showTidal) drawLayerKind('tidal'); if(S.showStreams) drawLayerKind('streams'); }
+const ORE_NONE = '-';   // 종류 표 없음(새로 그린 광맥 · 이름이 표에 없는 광맥 · 종류가 비어 있는 존)
+function oreInfo(f){
+  if(!LAYERS_BAKED || !LAYERS_BAKED.ores || !f || !f.name) return null;
+  let z = S.zone; if(S.multi){ z = f.center ? zoneAt(f.center.x, f.center.y) : null; if(!z) return null; }
+  const t = LAYERS_BAKED.ores[z]; return (t && t[f.name]) || null;
+}
+function oreOK(f){ const i=oreInfo(f); if(i && i[1] && !S.oreMinor) return false; return S.oreMin[(i && i[0]) || ORE_NONE] !== false; }
+function featOK(f){ return visOK(f.type) && (f.type !== 'ore' || oreOK(f)); }
 // ★[T601 추신2] **바다 위 피처** — 해안 바다 띠 셀(위 층과 같은 PNG · 1px = 1셀) 위에 놓인 마을·광맥·숲(중심)과 강(줄기 점 · 끝)을 빨갛게.
 //   재민이 이 층을 보며 지형을 고친다(족보 563·564 — 바다 위 정본은 지우거나 옮기지 않는다 · 목록만). 읽기 전용 — 작업 데이터 무변.
 //   강: 꼭짓점이 바다 셀 위면 "바다 위 점"(T604 추신3 셈과 같은 자 — 강 n줄 m점) · 줄기를 32px(1셀)마다 짚어 바다 위 구간은 빨간 테두리 · 끝점이 바다면 끝에 빨간 고리.
@@ -587,7 +629,7 @@ function seaOf(f){
 }
 function seaMarks(){
   if(!S.showCoast || !COAST_BAKED) return null;
-  const out = []; for(const f of feats()){ if(!visOK(f.type)) continue; const v = seaOf(f); if(v) out.push([f, v]); }
+  const out = []; for(const f of feats()){ if(!featOK(f)) continue; const v = seaOf(f); if(v) out.push([f, v]); }
   return out;
 }
 function drawSeaMarks(list, under){
@@ -644,11 +686,11 @@ function labOn(f){
   else if(f.type==='forest'||f.type==='lake') px = Math.max(f.rx??f.radius??0, f.ry??f.radius??0)*2*S.view.scale;
   return px >= 14;
 }
-function saveView(){ try{ localStorage.setItem('durango_editor_view', JSON.stringify({vis:S.vis, lab:S.lab, autoLab:S.autoLab})); }catch(e){} }
-function loadView(){ try{ const v=JSON.parse(localStorage.getItem('durango_editor_view')||'null'); if(v){ Object.assign(S.vis, v.vis||{}); Object.assign(S.lab, v.lab||{}); if(typeof v.autoLab==='boolean') S.autoLab=v.autoLab; } }catch(e){} }
+function saveView(){ try{ localStorage.setItem('durango_editor_view', JSON.stringify({vis:S.vis, lab:S.lab, autoLab:S.autoLab, oreMin:S.oreMin, oreMinor:S.oreMinor, showStreams:S.showStreams, showTidal:S.showTidal})); }catch(e){} }
+function loadView(){ try{ const v=JSON.parse(localStorage.getItem('durango_editor_view')||'null'); if(v){ Object.assign(S.vis, v.vis||{}); Object.assign(S.lab, v.lab||{}); if(typeof v.autoLab==='boolean') S.autoLab=v.autoLab; Object.assign(S.oreMin, v.oreMin||{}); for(const k of ['oreMinor','showStreams','showTidal']) if(typeof v[k]==='boolean') S[k]=v[k]; } }catch(e){} }
 function buildViewGrid(){
   const g=document.getElementById('viewGrid'); if(!g) return; g.innerHTML='';
-  const head=(t)=>{ const d=document.createElement('div'); d.textContent=t; d.style.color='var(--mut)'; d.style.fontSize='10px'; return d; };
+  const head=(t)=>{ const d=document.createElement('div'); d.textContent=t; d.className='mut'; d.style.fontSize='10px'; return d; };
   g.appendChild(head('')); g.appendChild(head('보임')); g.appendChild(head('이름'));
   for(const t of Object.keys(VIEW_KO)){
     const nmEl=document.createElement('div'); nmEl.innerHTML=`<span class="dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${TYPE_COLOR[t]};margin-right:5px"></span>${VIEW_KO[t]}`;
@@ -656,9 +698,25 @@ function buildViewGrid(){
     const b=document.createElement('input'); b.type='checkbox'; b.checked=!!S.lab[t]; b.onchange=()=>{ S.lab[t]=b.checked; saveView(); render(); };
     g.appendChild(nmEl); g.appendChild(a); g.appendChild(b);
   }
+  buildOreGrid();
+  const lay=[['streamToggle','showStreams'],['tidalToggle','showTidal']];
+  for(const [id,k] of lay){ const e=document.getElementById(id); if(e){ e.checked=!!S[k]; e.onchange=()=>{ S[k]=e.checked; saveView(); render(); }; } }
   const al=document.getElementById('autoLabToggle'); if(al){ al.checked=S.autoLab; al.onchange=()=>{ S.autoLab=al.checked; saveView(); render(); }; }
-  const all=document.getElementById('viewAllBtn'); if(all) all.onclick=()=>{ for(const t in S.vis) S.vis[t]=true; saveView(); buildViewGrid(); refresh(); };
+  const all=document.getElementById('viewAllBtn'); if(all) all.onclick=()=>{ for(const t in S.vis) S.vis[t]=true; for(const m in S.oreMin) S.oreMin[m]=true; S.oreMinor=true; saveView(); buildViewGrid(); refresh(); };
   const tr=document.getElementById('viewTerrBtn'); if(tr) tr.onclick=()=>{ for(const t in S.vis) S.vis[t]=true; S.vis.ore=false; S.vis.village=false; saveView(); buildViewGrid(); refresh(); };
+}
+// ★[T793] 광맥 종류 줄 — 지금 보이는 작업(단일 존 · 전체 월드)의 광맥을 종류마다 센다 · 자잘 광맥은 한 줄로 따로(종류와 겹쳐 건다: 둘 다 켜져야 보인다)
+function buildOreGrid(){
+  const g=document.getElementById('oreGrid'); if(!g) return; g.innerHTML='';
+  const KO=(LAYERS_BAKED && LAYERS_BAKED.mineralKo) || {}, n={}, nm={}; let minor=0;
+  for(const f of feats()){ if(f.type!=='ore') continue; const i=oreInfo(f), k=(i && i[0]) || ORE_NONE; n[k]=(n[k]||0)+1; if(i && i[1]){ nm[k]=(nm[k]||0)+1; minor++; } }
+  const keys=Object.keys(n).sort((a,b)=>(a===ORE_NONE)-(b===ORE_NONE) || n[b]-n[a]);
+  const row=(label, cnt, on, set, id)=>{ const a=document.createElement('div'); a.textContent=label; const c=document.createElement('div'); c.className='mut'; c.textContent=cnt; c.style.textAlign='right';
+    const b=document.createElement('input'); b.type='checkbox'; b.checked=on; if(id) b.id=id; b.onchange=()=>{ set(b.checked); if(S.sel && S.sel.type==='ore' && !featOK(S.sel)){ S.sel=null; S.selPt=null; } saveView(); refresh(); };
+    g.appendChild(a); g.appendChild(c); g.appendChild(b); };
+  row('자잘 광맥', String(minor), S.oreMinor!==false, v=>{ S.oreMinor=v; }, 'oreMinorToggle');
+  for(const k of keys) row(k===ORE_NONE ? '종류 없음' : (KO[k]||k), nm[k] ? n[k]+' (자잘 '+nm[k]+')' : String(n[k]), S.oreMin[k]!==false, v=>{ S.oreMin[k]=v; }, 'oreMin_'+k);
+  if(!keys.length){ const e=document.createElement('div'); e.className='mut'; e.textContent=LAYERS_BAKED ? '광맥 없음' : '종류 표 없음(map-editor-layers.json 을 못 읽었다)'; e.style.gridColumn='1 / -1'; g.appendChild(e); }
 }
 function drawSetOff(zd, off){
   const ox=off[0], oy=off[1];
@@ -685,7 +743,7 @@ function drawPathFeature(r, type, faint){
   drawPoly(pts, type, faint, false);
 }
 function drawFeature(f, faint, draft){
-  if(!draft && !visOK(f.type)) return;
+  if(!draft && !featOK(f)) return;
   if(f.type==='river'||f.type==='ridge'||f.type==='valley'){ drawPoly(f.path, f.type, faint, draft && false);
     if(f.name && !faint && labOn(f) && f.path && f.path.length){ const mid=f.path[Math.floor(f.path.length/2)]; ctx.fillStyle=f.type==='river'?'#bfe6ff':(f.type==='valley'?'#d6f0d2':'#e8c79a'); ctx.font='10px sans-serif'; ctx.textAlign='center'; ctx.lineWidth=2.5; ctx.strokeStyle='#0d1217'; ctx.strokeText(f.name,w2sx(mid.x),w2sy(mid.y)-3); ctx.fillText(f.name,w2sx(mid.x),w2sy(mid.y)-3); } }
   else if(f.type==='forest') drawEllipse(f.center.x,f.center.y,f.rx,f.ry,faint,labOn(f)?f.name:null);
@@ -889,14 +947,14 @@ function pickForDrag(p){
   }
   // ★[T553 ③] 점 고치기 — 잡힌 지형의 점을 먼저 본다(겹친 지형 사이에서 손에 쥔 것을 놓치지 않게) → 그 선분 위 = 점 삽입 → 나머지 지형
   const isLine = f => f.type==='river'||f.type==='ridge'||f.type==='valley';
-  const order = (S.sel && isLine(S.sel) ? [S.sel, ...feats().filter(f=>f!==S.sel)] : feats()).filter(f=>visOK(f.type));
+  const order = (S.sel && isLine(S.sel) ? [S.sel, ...feats().filter(f=>f!==S.sel)] : feats()).filter(f=>featOK(f));
   for(const f of order){
     if(isLine(f)){ for(let i=0;i<f.path.length;i++){ if(Math.hypot(f.path[i].x-p.x,f.path[i].y-p.y)<tol){ S.sel=f; S.selPt=i; S.drag={kind:'vertex',f,i}; syncSel(f); syncPtWidth(); refresh(); return; } }
       if(f===S.sel){ const ins=segmentAt(f,p,tol); if(ins){ insertPt(f,ins.i,ins.x,ins.y); S.selPt=ins.i+1; S.drag={kind:'vertex',f,i:ins.i+1,creating:true}; S.dragMoved=false; syncPtWidth(); refresh(); return; } } }
     else { if(Math.hypot(f.center.x-p.x,f.center.y-p.y)<(f.radius||f.rx||3000)){ S.sel=f; S.selPt=null; S.drag={kind:'center',f}; syncSel(f); refresh(); return; } }
   }
   // 잡힌 게 없을 때 선분 위(어느 지형이든) = 그 지형을 잡는다(점은 아직 안 넣는다 — 한 번 더 누르면 넣는다)
-  for(const f of feats()){ if(visOK(f.type) && isLine(f) && segmentAt(f,p,tol)){ S.sel=f; S.selPt=null; syncSel(f); refresh(); return; } }
+  for(const f of feats()){ if(featOK(f) && isLine(f) && segmentAt(f,p,tol)){ S.sel=f; S.selPt=null; syncSel(f); refresh(); return; } }
   S.sel=null; S.selPt=null; refresh();
 }
 function finishDraft(){
@@ -1012,7 +1070,7 @@ function refresh(){ renderList(); render(); }
 function renderList(){
   const el=document.getElementById('flist'); el.innerHTML='';
   document.getElementById('fcount').textContent=feats().length;
-  feats().filter(f=>visOK(f.type)).forEach(f=>{
+  feats().filter(f=>featOK(f)).forEach(f=>{
     const d=document.createElement('div'); d.className='fitem'+(S.sel===f?' sel':'');
     d.innerHTML=`<span class="dot" style="background:${TYPE_COLOR[f.type]}"></span><span class="nm">${f.name||'(이름)'}</span><span class="x">✕</span>`;
     d.onclick=ev=>{ if(ev.target.classList.contains('x')){ setFeats(feats().filter(x=>x!==f)); if(S.sel===f){S.sel=null;S.selPt=null;} pushHist(); refresh(); } else { S.sel=f; S.selPt=null; document.getElementById('nameIn').value=f.name||''; syncSel(f); refresh(); } };
@@ -1088,13 +1146,13 @@ document.getElementById('bridgeJump').onchange=e=>{ if(e.target.value) jumpToBri
 document.getElementById('bridgeJumpBtn').onclick=()=>{ const v=document.getElementById('bridgeJump').value; if(v) jumpToBridge(+v); else toast('이동할 다리를 고르세요'); };
 document.getElementById('smoothToggle').onchange=e=>{ S.smooth=e.target.checked; render(); };
 document.getElementById('cellToggle').onchange=e=>{ S.cellPreview=e.target.checked; render(); };
-document.getElementById('multiToggle').onchange=e=>{ S.multi=e.target.checked; S.draft=null; S.cont=null; S.sel=null; S.selPt=null; document.getElementById('zoneSel').disabled=S.multi; document.getElementById('zoneInfo').textContent = S.multi ? '전체 월드(26존) 월드좌표. 휠=줌, 우클릭드래그=이동. 경계 넘는 강/산맥 한 번에 → Export 시 존별 자동 분할.' : ('크기 '+S.ZW+' × '+S.ZH+' px (로컬좌표)'); fitView(); refresh(); resetHist(); };
+document.getElementById('multiToggle').onchange=e=>{ S.multi=e.target.checked; S.draft=null; S.cont=null; S.sel=null; S.selPt=null; document.getElementById('zoneSel').disabled=S.multi; document.getElementById('zoneInfo').textContent = S.multi ? '전체 월드(26존) 월드좌표. 휠=줌, 우클릭드래그=이동. 경계 넘는 강/산맥 한 번에 → Export 시 존별 자동 분할.' : ('크기 '+S.ZW+' × '+S.ZH+' px (로컬좌표)'); fitView(); buildOreGrid(); refresh(); resetHist(); };
 
 // 존 선택
 const zoneSel=document.getElementById('zoneSel');
 Object.keys(ZONES).forEach(z=>{ const o=document.createElement('option'); o.value=z; o.textContent=z+'  ('+ZONES[z][0]+'×'+ZONES[z][1]+')'; zoneSel.appendChild(o); });
 zoneSel.value='hanbando';
-zoneSel.onchange=()=>{ S.zone=zoneSel.value; [S.ZW,S.ZH]=ZONES[S.zone]; document.getElementById('zoneInfo').textContent='크기 '+S.ZW+' × '+S.ZH+' px (로컬좌표)'; fitView(); refreshBridgeJump(); render(); };
+zoneSel.onchange=()=>{ S.zone=zoneSel.value; [S.ZW,S.ZH]=ZONES[S.zone]; document.getElementById('zoneInfo').textContent='크기 '+S.ZW+' × '+S.ZH+' px (로컬좌표)'; fitView(); refreshBridgeJump(); buildOreGrid(); render(); };
 
 // 참조 불러오기
 document.getElementById('loadRefBtn').onclick=()=>document.getElementById('refFile').click();
@@ -1187,6 +1245,11 @@ function bootCoast(){
   let p; try{ p = fetch('map-editor-coast.json'); }catch(e){ return Promise.resolve(); }
   return p.then(r=>{ if(!r.ok) throw new Error(r.status); return r.json(); }).then(j=>{ COAST_BAKED=j; }).catch(()=>{});
 }
+function bootLayers(){   // ★[T793] 보기 층 — 못 읽으면 종류 줄만 비고 나머지는 종전 그대로
+  if(LAYERS_BAKED) return Promise.resolve();
+  let p; try{ p = fetch('map-editor-layers.json'); }catch(e){ return Promise.resolve(); }
+  return p.then(r=>{ if(!r.ok) throw new Error(r.status); return r.json(); }).then(j=>{ LAYERS_BAKED=j; }).catch(()=>{});
+}
 function showCoastStamp(){ const el=document.getElementById('coastStamp'); if(el) el.textContent = COAST_BAKED ? (COAST_BAKED.stamp||'?') : '없음(map-editor-coast.json 을 못 읽었다)'; }
 function bootBaked(){
   if(WORK_BAKED) return Promise.resolve('inline');
@@ -1198,7 +1261,7 @@ function bootBaked(){
 function bootEditor(src){
   S.bakedSrc = src;
   loadView(); buildViewGrid();
-  const _restored=loadLocal(); if(!_restored && WORK_BAKED){ S.features=WORK_BAKED.features.slice(); S.mf=WORK_BAKED.mf.slice(); S.stamp=WORK_BAKED.stamp; } setTool('river'); resize(); fitView(); refreshBridgeJump(); render(); renderList(); resetHist(); if(_restored) toast('이전 작업 복원됨');
+  const _restored=loadLocal(); if(!_restored && WORK_BAKED){ S.features=WORK_BAKED.features.slice(); S.mf=WORK_BAKED.mf.slice(); S.stamp=WORK_BAKED.stamp; } setTool('river'); resize(); fitView(); refreshBridgeJump(); buildOreGrid(); render(); renderList(); resetHist(); if(_restored) toast('이전 작업 복원됨');
   showStamp();
   S.booted = true;
 }
@@ -1222,7 +1285,7 @@ function showStamp(){
   } else if(b) b.remove();
 }
 document.getElementById('loadBakedBtn').onclick=()=>{ if(!WORK_BAKED){ toast('내장 작업 없음 — map-editor-baked.json 을 못 읽었다'); return; } loadWork(WORK_BAKED); toast('내장 최신 작업 불러옴 · '+WORK_BAKED.stamp); };
-bootCoast().then(showCoastStamp).then(bootBaked).then(bootEditor);
+bootCoast().then(showCoastStamp).then(bootLayers).then(bootBaked).then(bootEditor);
 
 </script>
 </body>
