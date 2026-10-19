@@ -1,0 +1,1241 @@
+{
+ "ruler": "t577-server-run 50 · VILLAGE_DAY_MS=10000 · WAR_FIXTURE=assault*3 · WAR_FIXTURE_DAY=5 · WAR_FIXTURE_REPEAT=1 · VILLAGE_WAR_LOG=1 · VILLAGE_CARAVAN_MAX=0 · T400_BUILD_ACT=0 · T403_ARMS_LEDGER=1 · 몸 상한 1",
+ "N1": {
+  "7": {
+   "t811": {
+    "load": 24,
+    "sync": 45,
+    "fall": 13,
+    "gone": 133,
+    "off": 0,
+    "back": 73,
+    "gap": 0
+   },
+   "samples": 1156,
+   "packed": 1156,
+   "gapMax": 0,
+   "mirrorGapMax": 0,
+   "handMax": 23,
+   "ws": {
+    "decl": 24,
+    "battle": 21,
+    "atkWin": 8,
+    "defWin": 13,
+    "weaponLoot": 21
+   },
+   "wars": [
+    {
+     "id": 1,
+     "atk": "농촌4",
+     "def": "어촌16",
+     "out": 5,
+     "first": "d6",
+     "packedSamples": 32,
+     "gapMax": 0,
+     "handMax": 5,
+     "bearersMax": 1,
+     "phases": {
+      "march": 32
+     },
+     "last": "t1792396227",
+     "ledgerLast": 5
+    },
+    {
+     "id": 2,
+     "atk": "어촌2",
+     "def": "임업6",
+     "out": 5,
+     "first": "d6",
+     "packedSamples": 33,
+     "gapMax": 0,
+     "handMax": 5,
+     "bearersMax": 1,
+     "phases": {
+      "march": 26,
+      "return": 7
+     },
+     "last": "t1792396228",
+     "ledgerLast": 5
+    },
+    {
+     "id": 3,
+     "atk": "광산5",
+     "def": "임업2",
+     "out": 5,
+     "first": "d6",
+     "packedSamples": 32,
+     "gapMax": 0,
+     "handMax": 5,
+     "bearersMax": 1,
+     "phases": {
+      "march": 32
+     },
+     "last": "t1792396227",
+     "ledgerLast": 5
+    },
+    {
+     "id": 4,
+     "atk": "어촌16",
+     "def": "농촌4",
+     "out": 7,
+     "first": "d10",
+     "packedSamples": 35,
+     "gapMax": 0,
+     "handMax": 7,
+     "bearersMax": 1,
+     "phases": {
+      "march": 35
+     },
+     "last": "t1792396269",
+     "ledgerLast": 7
+    },
+    {
+     "id": 5,
+     "atk": "어촌2",
+     "def": "임업6",
+     "out": 6,
+     "first": "d10",
+     "packedSamples": 33,
+     "gapMax": 0,
+     "handMax": 6,
+     "bearersMax": 1,
+     "phases": {
+      "march": 25,
+      "return": 8
+     },
+     "last": "t1792396268",
+     "ledgerLast": 6
+    },
+    {
+     "id": 6,
+     "atk": "임업2",
+     "def": "광산5",
+     "out": 6,
+     "first": "d10",
+     "packedSamples": 220,
+     "gapMax": 0,
+     "handMax": 6,
+     "bearersMax": 1,
+     "phases": {
+      "march": 215,
+      "return": 5
+     },
+     "last": "t1792396438",
+     "ledgerLast": 6
+    },
+    {
+     "id": 7,
+     "atk": "어촌2",
+     "def": "임업6",
+     "out": 7,
+     "first": "d14",
+     "packedSamples": 44,
+     "gapMax": 0,
+     "handMax": 7,
+     "bearersMax": 1,
+     "phases": {
+      "march": 37,
+      "return": 7
+     },
+     "last": "t1792396318",
+     "ledgerLast": 7
+    },
+    {
+     "id": 8,
+     "atk": "어촌16",
+     "def": "농촌4",
+     "out": 7,
+     "first": "d15",
+     "packedSamples": 33,
+     "gapMax": 0,
+     "handMax": 7,
+     "bearersMax": 1,
+     "phases": {
+      "march": 29,
+      "return": 4
+     },
+     "last": "t1792396318",
+     "ledgerLast": 7
+    },
+    {
+     "id": 9,
+     "atk": "어촌16",
+     "def": "농촌4",
+     "out": 9,
+     "first": "d19",
+     "packedSamples": 55,
+     "gapMax": 0,
+     "handMax": 9,
+     "bearersMax": 1,
+     "phases": {
+      "march": 47,
+      "return": 8
+     },
+     "last": "t1792396378",
+     "ledgerLast": 9
+    },
+    {
+     "id": 10,
+     "atk": "어촌2",
+     "def": "임업6",
+     "out": 10,
+     "first": "d19",
+     "packedSamples": 30,
+     "gapMax": 0,
+     "handMax": 10,
+     "bearersMax": 1,
+     "phases": {
+      "march": 30
+     },
+     "last": "t1792396355",
+     "ledgerLast": 10
+    },
+    {
+     "id": 11,
+     "atk": "어촌2",
+     "def": "임업6",
+     "out": 11,
+     "first": "d23",
+     "packedSamples": 31,
+     "gapMax": 0,
+     "handMax": 11,
+     "bearersMax": 1,
+     "phases": {
+      "march": 31
+     },
+     "last": "t1792396396",
+     "ledgerLast": 11
+    },
+    {
+     "id": 12,
+     "atk": "어촌16",
+     "def": "농촌4",
+     "out": 12,
+     "first": "d25",
+     "packedSamples": 37,
+     "gapMax": 0,
+     "handMax": 12,
+     "bearersMax": 1,
+     "phases": {
+      "march": 37
+     },
+     "last": "t1792396421",
+     "ledgerLast": 12
+    },
+    {
+     "id": 13,
+     "atk": "어촌2",
+     "def": "임업6",
+     "out": 13,
+     "first": "d27",
+     "packedSamples": 35,
+     "gapMax": 0,
+     "handMax": 13,
+     "bearersMax": 1,
+     "phases": {
+      "march": 35
+     },
+     "last": "t1792396439",
+     "ledgerLast": 13
+    },
+    {
+     "id": 14,
+     "atk": "어촌16",
+     "def": "농촌4",
+     "out": 13,
+     "first": "d30",
+     "packedSamples": 39,
+     "gapMax": 0,
+     "handMax": 13,
+     "bearersMax": 1,
+     "phases": {
+      "march": 39
+     },
+     "last": "t1792396473",
+     "ledgerLast": 13
+    },
+    {
+     "id": 15,
+     "atk": "임업2",
+     "def": "광산5",
+     "out": 15,
+     "first": "t1792396449",
+     "packedSamples": 68,
+     "gapMax": 0,
+     "handMax": 15,
+     "bearersMax": 1,
+     "phases": {
+      "march": 68
+     },
+     "last": "t1792396509",
+     "ledgerLast": 15
+    },
+    {
+     "id": 16,
+     "atk": "어촌2",
+     "def": "임업6",
+     "out": 13,
+     "first": "d32",
+     "packedSamples": 65,
+     "gapMax": 0,
+     "handMax": 13,
+     "bearersMax": 1,
+     "phases": {
+      "march": 65
+     },
+     "last": "t1792396517",
+     "ledgerLast": 13
+    },
+    {
+     "id": 17,
+     "atk": "농촌4",
+     "def": "어촌16",
+     "out": 14,
+     "first": "d35",
+     "packedSamples": 55,
+     "gapMax": 0,
+     "handMax": 14,
+     "bearersMax": 1,
+     "phases": {
+      "march": 52,
+      "return": 3
+     },
+     "last": "t1792396538",
+     "ledgerLast": 14
+    },
+    {
+     "id": 18,
+     "atk": "어촌2",
+     "def": "임업6",
+     "out": 13,
+     "first": "t1792396529",
+     "packedSamples": 29,
+     "gapMax": 0,
+     "handMax": 13,
+     "bearersMax": 1,
+     "phases": {
+      "march": 29
+     },
+     "last": "t1792396554",
+     "ledgerLast": 13
+    },
+    {
+     "id": 19,
+     "atk": "임업2",
+     "def": "광산5",
+     "out": 19,
+     "first": "t1792396529",
+     "packedSamples": 55,
+     "gapMax": 0,
+     "handMax": 19,
+     "bearersMax": 1,
+     "phases": {
+      "march": 54,
+      "return": 1
+     },
+     "last": "t1792396578",
+     "ledgerLast": 19
+    },
+    {
+     "id": 20,
+     "atk": "어촌16",
+     "def": "농촌4",
+     "out": 15,
+     "first": "d41",
+     "packedSamples": 35,
+     "gapMax": 0,
+     "handMax": 15,
+     "bearersMax": 1,
+     "phases": {
+      "march": 35
+     },
+     "last": "t1792396579",
+     "ledgerLast": 15
+    },
+    {
+     "id": 21,
+     "atk": "어촌2",
+     "def": "임업6",
+     "out": 14,
+     "first": "d43",
+     "packedSamples": 78,
+     "gapMax": 0,
+     "handMax": 14,
+     "bearersMax": 1,
+     "phases": {
+      "march": 78
+     },
+     "last": "d50",
+     "ledgerLast": 14
+    },
+    {
+     "id": 22,
+     "atk": "임업2",
+     "def": "광산5",
+     "out": 23,
+     "first": "d45",
+     "packedSamples": 56,
+     "gapMax": 0,
+     "handMax": 23,
+     "bearersMax": 1,
+     "phases": {
+      "march": 56
+     },
+     "last": "d50",
+     "ledgerLast": 23
+    },
+    {
+     "id": 23,
+     "atk": "농촌4",
+     "def": "어촌16",
+     "out": 14,
+     "first": "d46",
+     "packedSamples": 25,
+     "gapMax": 0,
+     "handMax": 14,
+     "bearersMax": 1,
+     "phases": {
+      "march": 25
+     },
+     "last": "t1792396620",
+     "ledgerLast": 14
+    },
+    {
+     "id": 24,
+     "atk": "어촌16",
+     "def": "농촌4",
+     "out": 15,
+     "first": "d50",
+     "packedSamples": 1,
+     "gapMax": 0,
+     "handMax": 15,
+     "bearersMax": 1,
+     "phases": {
+      "march": 1
+     },
+     "last": "d50",
+     "ledgerLast": 15
+    }
+   ]
+  },
+  "42": {
+   "t811": {
+    "load": 24,
+    "sync": 45,
+    "fall": 14,
+    "gone": 126,
+    "off": 0,
+    "back": 67,
+    "gap": 0
+   },
+   "samples": 1140,
+   "packed": 1140,
+   "gapMax": 0,
+   "mirrorGapMax": 0,
+   "handMax": 22,
+   "ws": {
+    "decl": 24,
+    "battle": 21,
+    "atkWin": 7,
+    "defWin": 14,
+    "weaponLoot": 21
+   },
+   "wars": [
+    {
+     "id": 1,
+     "atk": "농촌4",
+     "def": "어촌16",
+     "out": 5,
+     "first": "d6",
+     "packedSamples": 32,
+     "gapMax": 0,
+     "handMax": 5,
+     "bearersMax": 1,
+     "phases": {
+      "march": 32
+     },
+     "last": "t1792396227",
+     "ledgerLast": 5
+    },
+    {
+     "id": 2,
+     "atk": "어촌2",
+     "def": "임업6",
+     "out": 5,
+     "first": "d6",
+     "packedSamples": 33,
+     "gapMax": 0,
+     "handMax": 5,
+     "bearersMax": 1,
+     "phases": {
+      "march": 26,
+      "return": 7
+     },
+     "last": "t1792396228",
+     "ledgerLast": 5
+    },
+    {
+     "id": 3,
+     "atk": "광산5",
+     "def": "임업2",
+     "out": 5,
+     "first": "d6",
+     "packedSamples": 32,
+     "gapMax": 0,
+     "handMax": 5,
+     "bearersMax": 1,
+     "phases": {
+      "march": 32
+     },
+     "last": "t1792396227",
+     "ledgerLast": 5
+    },
+    {
+     "id": 4,
+     "atk": "어촌16",
+     "def": "농촌4",
+     "out": 7,
+     "first": "d10",
+     "packedSamples": 35,
+     "gapMax": 0,
+     "handMax": 7,
+     "bearersMax": 1,
+     "phases": {
+      "march": 35
+     },
+     "last": "t1792396269",
+     "ledgerLast": 7
+    },
+    {
+     "id": 5,
+     "atk": "어촌2",
+     "def": "임업6",
+     "out": 6,
+     "first": "d10",
+     "packedSamples": 26,
+     "gapMax": 0,
+     "handMax": 6,
+     "bearersMax": 1,
+     "phases": {
+      "march": 26
+     },
+     "last": "t1792396261",
+     "ledgerLast": 6
+    },
+    {
+     "id": 6,
+     "atk": "임업2",
+     "def": "광산5",
+     "out": 6,
+     "first": "d10",
+     "packedSamples": 220,
+     "gapMax": 0,
+     "handMax": 6,
+     "bearersMax": 1,
+     "phases": {
+      "march": 215,
+      "return": 5
+     },
+     "last": "t1792396438",
+     "ledgerLast": 6
+    },
+    {
+     "id": 7,
+     "atk": "어촌2",
+     "def": "임업6",
+     "out": 6,
+     "first": "d14",
+     "packedSamples": 26,
+     "gapMax": 0,
+     "handMax": 6,
+     "bearersMax": 1,
+     "phases": {
+      "march": 26
+     },
+     "last": "t1792396301",
+     "ledgerLast": 6
+    },
+    {
+     "id": 8,
+     "atk": "어촌16",
+     "def": "농촌4",
+     "out": 7,
+     "first": "d15",
+     "packedSamples": 33,
+     "gapMax": 0,
+     "handMax": 7,
+     "bearersMax": 1,
+     "phases": {
+      "march": 29,
+      "return": 4
+     },
+     "last": "t1792396318",
+     "ledgerLast": 7
+    },
+    {
+     "id": 9,
+     "atk": "어촌2",
+     "def": "임업6",
+     "out": 7,
+     "first": "d18",
+     "packedSamples": 33,
+     "gapMax": 0,
+     "handMax": 7,
+     "bearersMax": 1,
+     "phases": {
+      "march": 30,
+      "return": 3
+     },
+     "last": "t1792396348",
+     "ledgerLast": 7
+    },
+    {
+     "id": 10,
+     "atk": "어촌16",
+     "def": "농촌4",
+     "out": 9,
+     "first": "d19",
+     "packedSamples": 35,
+     "gapMax": 0,
+     "handMax": 9,
+     "bearersMax": 1,
+     "phases": {
+      "march": 35
+     },
+     "last": "t1792396359",
+     "ledgerLast": 9
+    },
+    {
+     "id": 11,
+     "atk": "어촌2",
+     "def": "임업6",
+     "out": 9,
+     "first": "d22",
+     "packedSamples": 44,
+     "gapMax": 0,
+     "handMax": 9,
+     "bearersMax": 1,
+     "phases": {
+      "march": 39,
+      "return": 5
+     },
+     "last": "t1792396398",
+     "ledgerLast": 9
+    },
+    {
+     "id": 12,
+     "atk": "어촌16",
+     "def": "농촌4",
+     "out": 11,
+     "first": "d24",
+     "packedSamples": 39,
+     "gapMax": 0,
+     "handMax": 11,
+     "bearersMax": 1,
+     "phases": {
+      "march": 39
+     },
+     "last": "t1792396413",
+     "ledgerLast": 11
+    },
+    {
+     "id": 13,
+     "atk": "어촌2",
+     "def": "임업6",
+     "out": 11,
+     "first": "d27",
+     "packedSamples": 35,
+     "gapMax": 0,
+     "handMax": 11,
+     "bearersMax": 1,
+     "phases": {
+      "march": 35
+     },
+     "last": "t1792396439",
+     "ledgerLast": 11
+    },
+    {
+     "id": 14,
+     "atk": "농촌4",
+     "def": "어촌16",
+     "out": 13,
+     "first": "d29",
+     "packedSamples": 49,
+     "gapMax": 0,
+     "handMax": 13,
+     "bearersMax": 1,
+     "phases": {
+      "march": 49
+     },
+     "last": "t1792396472",
+     "ledgerLast": 13
+    },
+    {
+     "id": 15,
+     "atk": "임업2",
+     "def": "광산5",
+     "out": 15,
+     "first": "t1792396449",
+     "packedSamples": 68,
+     "gapMax": 0,
+     "handMax": 15,
+     "bearersMax": 1,
+     "phases": {
+      "march": 68
+     },
+     "last": "t1792396509",
+     "ledgerLast": 15
+    },
+    {
+     "id": 16,
+     "atk": "어촌2",
+     "def": "임업6",
+     "out": 13,
+     "first": "d32",
+     "packedSamples": 65,
+     "gapMax": 0,
+     "handMax": 13,
+     "bearersMax": 1,
+     "phases": {
+      "march": 65
+     },
+     "last": "t1792396517",
+     "ledgerLast": 13
+    },
+    {
+     "id": 17,
+     "atk": "어촌16",
+     "def": "농촌4",
+     "out": 14,
+     "first": "d35",
+     "packedSamples": 66,
+     "gapMax": 0,
+     "handMax": 14,
+     "bearersMax": 1,
+     "phases": {
+      "march": 56,
+      "return": 10
+     },
+     "last": "t1792396548",
+     "ledgerLast": 14
+    },
+    {
+     "id": 18,
+     "atk": "어촌2",
+     "def": "임업6",
+     "out": 16,
+     "first": "d39",
+     "packedSamples": 29,
+     "gapMax": 0,
+     "handMax": 16,
+     "bearersMax": 1,
+     "phases": {
+      "march": 29
+     },
+     "last": "t1792396554",
+     "ledgerLast": 16
+    },
+    {
+     "id": 19,
+     "atk": "임업2",
+     "def": "광산5",
+     "out": 19,
+     "first": "d39",
+     "packedSamples": 55,
+     "gapMax": 0,
+     "handMax": 19,
+     "bearersMax": 1,
+     "phases": {
+      "march": 54,
+      "return": 1
+     },
+     "last": "t1792396578",
+     "ledgerLast": 19
+    },
+    {
+     "id": 20,
+     "atk": "농촌4",
+     "def": "어촌16",
+     "out": 14,
+     "first": "d42",
+     "packedSamples": 25,
+     "gapMax": 0,
+     "handMax": 14,
+     "bearersMax": 1,
+     "phases": {
+      "march": 25
+     },
+     "last": "t1792396580",
+     "ledgerLast": 14
+    },
+    {
+     "id": 21,
+     "atk": "어촌2",
+     "def": "임업6",
+     "out": 17,
+     "first": "d43",
+     "packedSamples": 78,
+     "gapMax": 0,
+     "handMax": 17,
+     "bearersMax": 1,
+     "phases": {
+      "march": 78
+     },
+     "last": "d50",
+     "ledgerLast": 17
+    },
+    {
+     "id": 22,
+     "atk": "임업2",
+     "def": "광산5",
+     "out": 22,
+     "first": "d45",
+     "packedSamples": 56,
+     "gapMax": 0,
+     "handMax": 22,
+     "bearersMax": 1,
+     "phases": {
+      "march": 56
+     },
+     "last": "d50",
+     "ledgerLast": 22
+    },
+    {
+     "id": 23,
+     "atk": "농촌4",
+     "def": "어촌16",
+     "out": 9,
+     "first": "d46",
+     "packedSamples": 25,
+     "gapMax": 0,
+     "handMax": 9,
+     "bearersMax": 1,
+     "phases": {
+      "march": 25
+     },
+     "last": "t1792396620",
+     "ledgerLast": 9
+    },
+    {
+     "id": 24,
+     "atk": "농촌4",
+     "def": "어촌16",
+     "out": 16,
+     "first": "d50",
+     "packedSamples": 1,
+     "gapMax": 0,
+     "handMax": 16,
+     "bearersMax": 1,
+     "phases": {
+      "march": 1
+     },
+     "last": "d50",
+     "ledgerLast": 16
+    }
+   ]
+  },
+  "1020": {
+   "t811": {
+    "load": 23,
+    "sync": 44,
+    "fall": 11,
+    "gone": 93,
+    "off": 0,
+    "back": 109,
+    "gap": 0
+   },
+   "samples": 1167,
+   "packed": 1167,
+   "gapMax": 0,
+   "mirrorGapMax": 0,
+   "handMax": 22,
+   "ws": {
+    "decl": 23,
+    "battle": 21,
+    "atkWin": 10,
+    "defWin": 11,
+    "weaponLoot": 21
+   },
+   "wars": [
+    {
+     "id": 1,
+     "atk": "농촌4",
+     "def": "어촌16",
+     "out": 5,
+     "first": "d6",
+     "packedSamples": 32,
+     "gapMax": 0,
+     "handMax": 5,
+     "bearersMax": 1,
+     "phases": {
+      "march": 32
+     },
+     "last": "t1792396227",
+     "ledgerLast": 5
+    },
+    {
+     "id": 2,
+     "atk": "어촌2",
+     "def": "임업6",
+     "out": 5,
+     "first": "d6",
+     "packedSamples": 33,
+     "gapMax": 0,
+     "handMax": 5,
+     "bearersMax": 1,
+     "phases": {
+      "march": 26,
+      "return": 7
+     },
+     "last": "t1792396228",
+     "ledgerLast": 5
+    },
+    {
+     "id": 3,
+     "atk": "광산5",
+     "def": "임업2",
+     "out": 5,
+     "first": "d6",
+     "packedSamples": 32,
+     "gapMax": 0,
+     "handMax": 5,
+     "bearersMax": 1,
+     "phases": {
+      "march": 32
+     },
+     "last": "t1792396227",
+     "ledgerLast": 5
+    },
+    {
+     "id": 4,
+     "atk": "어촌16",
+     "def": "농촌4",
+     "out": 7,
+     "first": "d10",
+     "packedSamples": 35,
+     "gapMax": 0,
+     "handMax": 7,
+     "bearersMax": 1,
+     "phases": {
+      "march": 35
+     },
+     "last": "t1792396269",
+     "ledgerLast": 7
+    },
+    {
+     "id": 5,
+     "atk": "어촌2",
+     "def": "임업6",
+     "out": 6,
+     "first": "d10",
+     "packedSamples": 26,
+     "gapMax": 0,
+     "handMax": 6,
+     "bearersMax": 1,
+     "phases": {
+      "march": 26
+     },
+     "last": "t1792396261",
+     "ledgerLast": 6
+    },
+    {
+     "id": 6,
+     "atk": "임업2",
+     "def": "광산5",
+     "out": 6,
+     "first": "d10",
+     "packedSamples": 220,
+     "gapMax": 0,
+     "handMax": 6,
+     "bearersMax": 1,
+     "phases": {
+      "march": 215,
+      "return": 5
+     },
+     "last": "t1792396438",
+     "ledgerLast": 6
+    },
+    {
+     "id": 7,
+     "atk": "어촌2",
+     "def": "임업6",
+     "out": 6,
+     "first": "d14",
+     "packedSamples": 26,
+     "gapMax": 0,
+     "handMax": 6,
+     "bearersMax": 1,
+     "phases": {
+      "march": 26
+     },
+     "last": "t1792396301",
+     "ledgerLast": 6
+    },
+    {
+     "id": 8,
+     "atk": "어촌16",
+     "def": "농촌4",
+     "out": 7,
+     "first": "d15",
+     "packedSamples": 33,
+     "gapMax": 0,
+     "handMax": 7,
+     "bearersMax": 1,
+     "phases": {
+      "march": 29,
+      "return": 4
+     },
+     "last": "t1792396318",
+     "ledgerLast": 7
+    },
+    {
+     "id": 9,
+     "atk": "어촌2",
+     "def": "임업6",
+     "out": 7,
+     "first": "d18",
+     "packedSamples": 33,
+     "gapMax": 0,
+     "handMax": 7,
+     "bearersMax": 1,
+     "phases": {
+      "march": 30,
+      "return": 3
+     },
+     "last": "t1792396348",
+     "ledgerLast": 7
+    },
+    {
+     "id": 10,
+     "atk": "어촌16",
+     "def": "농촌4",
+     "out": 9,
+     "first": "d19",
+     "packedSamples": 35,
+     "gapMax": 0,
+     "handMax": 9,
+     "bearersMax": 1,
+     "phases": {
+      "march": 35
+     },
+     "last": "t1792396359",
+     "ledgerLast": 9
+    },
+    {
+     "id": 11,
+     "atk": "어촌2",
+     "def": "임업6",
+     "out": 9,
+     "first": "d22",
+     "packedSamples": 44,
+     "gapMax": 0,
+     "handMax": 9,
+     "bearersMax": 1,
+     "phases": {
+      "march": 39,
+      "return": 5
+     },
+     "last": "t1792396398",
+     "ledgerLast": 9
+    },
+    {
+     "id": 12,
+     "atk": "어촌16",
+     "def": "농촌4",
+     "out": 11,
+     "first": "d24",
+     "packedSamples": 39,
+     "gapMax": 0,
+     "handMax": 11,
+     "bearersMax": 1,
+     "phases": {
+      "march": 39
+     },
+     "last": "t1792396413",
+     "ledgerLast": 11
+    },
+    {
+     "id": 13,
+     "atk": "어촌2",
+     "def": "임업6",
+     "out": 11,
+     "first": "d27",
+     "packedSamples": 35,
+     "gapMax": 0,
+     "handMax": 11,
+     "bearersMax": 1,
+     "phases": {
+      "march": 35
+     },
+     "last": "t1792396439",
+     "ledgerLast": 11
+    },
+    {
+     "id": 14,
+     "atk": "농촌4",
+     "def": "어촌16",
+     "out": 13,
+     "first": "d29",
+     "packedSamples": 49,
+     "gapMax": 0,
+     "handMax": 13,
+     "bearersMax": 1,
+     "phases": {
+      "march": 49
+     },
+     "last": "t1792396472",
+     "ledgerLast": 13
+    },
+    {
+     "id": 15,
+     "atk": "임업2",
+     "def": "광산5",
+     "out": 15,
+     "first": "t1792396449",
+     "packedSamples": 68,
+     "gapMax": 0,
+     "handMax": 15,
+     "bearersMax": 1,
+     "phases": {
+      "march": 68
+     },
+     "last": "t1792396509",
+     "ledgerLast": 15
+    },
+    {
+     "id": 16,
+     "atk": "어촌2",
+     "def": "임업6",
+     "out": 13,
+     "first": "d32",
+     "packedSamples": 55,
+     "gapMax": 0,
+     "handMax": 13,
+     "bearersMax": 1,
+     "phases": {
+      "march": 54,
+      "return": 1
+     },
+     "last": "t1792396508",
+     "ledgerLast": 13
+    },
+    {
+     "id": 17,
+     "atk": "어촌16",
+     "def": "농촌4",
+     "out": 14,
+     "first": "d35",
+     "packedSamples": 66,
+     "gapMax": 0,
+     "handMax": 14,
+     "bearersMax": 1,
+     "phases": {
+      "march": 56,
+      "return": 10
+     },
+     "last": "t1792396548",
+     "ledgerLast": 14
+    },
+    {
+     "id": 18,
+     "atk": "어촌2",
+     "def": "임업6",
+     "out": 16,
+     "first": "d38",
+     "packedSamples": 29,
+     "gapMax": 0,
+     "handMax": 16,
+     "bearersMax": 1,
+     "phases": {
+      "march": 29
+     },
+     "last": "t1792396544",
+     "ledgerLast": 16
+    },
+    {
+     "id": 19,
+     "atk": "임업2",
+     "def": "광산5",
+     "out": 19,
+     "first": "t1792396529",
+     "packedSamples": 55,
+     "gapMax": 0,
+     "handMax": 19,
+     "bearersMax": 1,
+     "phases": {
+      "march": 54,
+      "return": 1
+     },
+     "last": "t1792396578",
+     "ledgerLast": 19
+    },
+    {
+     "id": 20,
+     "atk": "어촌16",
+     "def": "농촌4",
+     "out": 14,
+     "first": "d42",
+     "packedSamples": 44,
+     "gapMax": 0,
+     "handMax": 14,
+     "bearersMax": 1,
+     "phases": {
+      "march": 43,
+      "return": 1
+     },
+     "last": "t1792396598",
+     "ledgerLast": 14
+    },
+    {
+     "id": 21,
+     "atk": "어촌2",
+     "def": "임업6",
+     "out": 17,
+     "first": "d42",
+     "packedSamples": 89,
+     "gapMax": 0,
+     "handMax": 17,
+     "bearersMax": 1,
+     "phases": {
+      "march": 89
+     },
+     "last": "d50",
+     "ledgerLast": 17
+    },
+    {
+     "id": 22,
+     "atk": "임업2",
+     "def": "광산5",
+     "out": 22,
+     "first": "t1792396589",
+     "packedSamples": 56,
+     "gapMax": 0,
+     "handMax": 22,
+     "bearersMax": 1,
+     "phases": {
+      "march": 56
+     },
+     "last": "d50",
+     "ledgerLast": 22
+    },
+    {
+     "id": 23,
+     "atk": "농촌4",
+     "def": "어촌16",
+     "out": 15,
+     "first": "d47",
+     "packedSamples": 33,
+     "gapMax": 0,
+     "handMax": 15,
+     "bearersMax": 1,
+     "phases": {
+      "march": 31,
+      "return": 2
+     },
+     "last": "t1792396638",
+     "ledgerLast": 15
+    }
+   ]
+  }
+ }
+}
