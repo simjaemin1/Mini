@@ -122,5 +122,40 @@ const child = (knob) => {
   ok(on.lagBattle === 0, 'ⓒ 켬 — 교전에 풀린 몸(battle-core 가 모는 몸)만 남은 대형은 안 센다', String(on.lagBattle));
 }
 
+// ── ⓓ ★[T804] 걷는 몸 — 슬롯까지 길(막힐 때만 묻고 끝까지 따른다) · 전진 풀기도 걸음으로 ─────────────────
+console.log('\n[ⓓ] ★[T804] 걷는 몸 — 길 묻기 · 전진 풀기 걸음(켬 · 끔)');
+const child804 = (knob) => {
+  const env = Object.assign({}, process.env); if (knob) env.T790_NO_SNAP = '1'; else delete env.T790_NO_SNAP;
+  const js = `const V=require(${JSON.stringify(path.join(ROOT, 'server', 'villages.js'))}),WLM=require(${JSON.stringify(path.join(ROOT, 'server', 'war-live.js'))});`
+    + `let H=null;const live=WLM.createWarLive({cellPx:32,pxPerM:32,tickHz:30,blockedCell:(x,y)=>H._warBlockedCell(x,y)});`
+    //   벽 — 셀 x 120~121 · y 70~130 (그 밖은 열림) · 설 칸 나선은 하네스 목(호스트 몫 · 셀 단위 사각 고리)
+    + `const wall=(ix,iy)=>ix>=120&&ix<=121&&iy>=70&&iy<=130;`
+    + `const stand=(x,y,blk)=>{for(let r=0;r<40;r++)for(let dx=-r;dx<=r;dx++)for(let dy=-r;dy<=r;dy++){if(Math.max(Math.abs(dx),Math.abs(dy))!==r)continue;const px=x+dx*32,py=y+dy*32;if(!blk(px,py))return{x:Math.floor(px/32)*32+16,y:Math.floor(py/32)*32+16};}return null;};`
+    + `H=V.__p3Bind({warLive:live,world:{day:12},dayMs:10000,deps:{players:new Map(),moveSpeed:64,npcs:new Set(),broadcast(){},isTerrainBlockedLocal:(px,py)=>wall(Math.floor(px/32),Math.floor(py/32)),standCellNear:stand},_warStat:{standoff:0}});`
+    + `const out={};`
+    //   ① 슬롯이 벽 너머(130,100) · 몸은 벽 앞(110,100) — 곧은 줄이 막혔다
+    + `{const g=live.buildGroup([{type:'champion',pid:'a'}],'line',{cx:130.5,cy:100.5},0,7);g.units[0].x=110.5;g.units[0].y=100.5;H._t790Mark(g);`
+    + `let mx=0,n=0,inWall=0;const a0=H._t804Stat.ask;for(;n<20000;n++){const a=[g.units[0].x,g.units[0].y];live._muStepFollow(g,live.MU.FOLLOW_CAP);mx=Math.max(mx,Math.hypot(g.units[0].x-a[0],g.units[0].y-a[1]));if(wall(Math.floor(g.units[0].x),Math.floor(g.units[0].y)))inWall++;if(Math.hypot(g.units[0].x-130.5,g.units[0].y-100.5)<1e-9)break;}`
+    + `out.walk={walk:g._t790Walk==null?null:g._t790Walk,hasTo:typeof g.walkTo==='function',mx,n:n+1,asks:H._t804Stat.ask-a0,inWall,end:[g.units[0].x,g.units[0].y]};}`
+    //   ② 전진 풀기 — 벽 안(120.5,100.5)에 선 병사 · 지휘 몸은 열린 칸
+    + `{const g=live.buildGroup([{type:'champion',pid:'c'},{type:'spear',pid:'d'}],'line',{cx:110.5,cy:100.5},0,7);g.units[0].x=110.5;g.units[0].y=100.5;g.units[1].x=120.5;g.units[1].y=100.5;H._t790Mark(g);`
+    + `const f={ctx:{units:[]},adv:null},A={side:'A'};let calls=0,mx=0,outAt=-1;for(;calls<2000&&!A.released;calls++){const a=[g.units[1].x,g.units[1].y];H._warReleaseAdv(f,A,g);mx=Math.max(mx,Math.hypot(g.units[1].x-a[0],g.units[1].y-a[1]));if(outAt<0&&!wall(Math.floor(g.units[1].x),Math.floor(g.units[1].y)))outAt=calls;}`
+    + `out.rel={calls,mx,outAt,released:!!A.released,inWall:wall(Math.floor(g.units[1].x),Math.floor(g.units[1].y)),relWalk:H._t804Stat.relWalk};}`
+    + `process.stdout.write(JSON.stringify(out));`;
+  const o = execFileSync(process.execPath, ['-e', js], { cwd: ROOT, env, stdio: ['ignore', 'pipe', 'ignore'] }).toString();
+  return JSON.parse(o.slice(o.indexOf('{')));
+};
+{
+  const off = child804(false), on = child804(true);
+  ok(off.walk.walk === null && !off.walk.hasTo && off.rel.calls === 1 && off.rel.mx >= 1 && off.rel.released,
+    'ⓓ 끔 — 길 문 없음 · 전진 풀기는 한 번에 벽 밖 설 칸으로 옮기고 푼다(종전 · 세 번째 튐)', `옮김 ${off.rel.mx.toFixed(2)}칸 · 부름 ${off.rel.calls}`);
+  ok(on.walk.hasTo && on.walk.end[0] === 130.5 && on.walk.end[1] === 100.5 && on.walk.inWall === 0,
+    '★ⓓ 켬 — 벽 너머 슬롯까지 걸어서 닿는다(벽 칸에 한 번도 안 선다)', `${on.walk.n} 걸음 · ${(on.walk.n * WL.STEP_DT).toFixed(1)}초`);
+  ok(on.walk.mx <= WALK + 1e-12, 'ⓓ 켬 — 길을 따라도 스텝마다 ≤ 몸 걸음', `${(on.walk.mx / WL.STEP_DT).toFixed(3)} 칸/초`);
+  ok(on.walk.asks >= 1 && on.walk.asks <= 2, '★ⓓ 켬 — 길은 막힐 때만 묻고 그 길을 끝까지 따른다(묻기 1~2 · 곧은/우회 오락가락 0)', `묻기 ${on.walk.asks}`);
+  ok(on.rel.mx <= WALK + 1e-12 && on.rel.outAt > 1 && on.rel.released && !on.rel.inWall && on.rel.relWalk > 0,
+    '★ⓓ 켬 — 전진 풀기: 벽 안 병사는 설 칸까지 걷고(스텝마다 ≤ 몸 걸음) 다 나온 뒤에 푼다', `나옴 ${on.rel.outAt} 걸음 · 풂 ${on.rel.calls} · 최대 ${on.rel.mx.toFixed(3)}칸`);
+}
+
 console.log(`\n=== 결과: ${pass} PASS / ${fail} FAIL ===`);
 process.exit(fail ? 1 : 0);

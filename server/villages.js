@@ -5279,7 +5279,56 @@ function _warDraftPids(vil, comp, seed, warId) {
 //     메우기 0(순간이동으로 따라잡지 않는다). 교전에 풀린 몸(battle-core 가 모는 몸)은 안 센다. 새 수 0.
 const T790_NO_SNAP = process.env.T790_NO_SNAP === '1';
 const _t790Stat = { walk: 0, late: 0, lateMaxM: 0, lateSumM: 0 };
-function _t790Mark(g) { const sp = state.deps && state.deps.moveSpeed; if (T790_NO_SNAP && g && sp > 0 && state.warLive) g._t790Walk = sp / SZ * state.warLive.STEP_DT; return g; }   // 셀/스텝 = (px/s ÷ px/셀) × s/스텝
+function _t790Mark(g) { const sp = state.deps && state.deps.moveSpeed; if (T790_NO_SNAP && g && sp > 0 && state.warLive) { g._t790Walk = sp / SZ * state.warLive.STEP_DT; g.walkTo = _t804WalkTo; } return g; }   // 셀/스텝 = (px/s ÷ px/셀) × s/스텝 · ★[T804] 걷는 대형엔 길 묻는 문도 단다
+// ★★[T804 ① 2026-10-19 · T790 손잡이 안 · 새 손잡이 0 · 새 수 0] **걷는 몸 — 슬롯까지 길을 묻고 따라간다.**
+//   T790 회부 2: 켬이면 대형 추종은 곧은 걸음 · 축 미끄럼 · T541 ⓐ 우회(행군로 투영점) 뿐이라, 진이 140~400 m 밖이면 슬롯까지 곧은 줄의 열림이
+//   걸음마다 참 · 거짓을 오가 3 m 고리를 돌았다(W3 · 45날 못 닿음 · test-war-world ⓖ). 스냅이 몸을 슬롯 곁에 두던 동안 안 보이던 틈이다.
+//   ⇒ 걷는 몸(war-live `_muStepFollow` 가 대형의 `walkTo` 를 부른다 — `_t790Walk` 이 선 대형만):
+//     · 곧은 줄(`_warClearLine`)이 열렸으면 묻지 않는다(종전 걸음 그대로) — **묻기는 막힐 때만**.
+//     · 막혔으면 경로 정본(`sim/path-core` `localPath` — 걸음 프리셋 · `_warPathNext` 와 같은 술어 · 사본 0)으로 지금 칸 → 슬롯 곁 설 칸 길을 한 번 묻고
+//       몸에 든다(`u._t804`). 그 뒤로는 곧은 줄을 다시 묻지 않고 **길 끝까지** 따른다(곧은/우회 오락가락 0) — 길 위 지난 칸을 지우고, 대형 한 걸음 상한
+//       (`FOLLOW_CAP`) 안에서 곧은 줄이 열린 가장 먼 길 점을 겨눈다(`_warPathNext` 꼴).
+//     · 캐시는 T370 꼴 — 같은 목표면 다시 안 묻는다: 슬롯이 길 끝에서 `FOLLOW_CAP` 안에 있는 동안은 그 길(밖으로 나가면 다시 묻는다) · 길 끝 = 곧은 걸음.
+//     · 걸음 탐색이 길을 못 내면(슬롯이 수백 m 밖 — 탐색 상한) 행군로(T541 ⓐ 우회 훅 — 몸의 길 정본 점)를 슬롯 곁까지 놓지 않고 따른다(곧은/우회 오락가락 0).
+//   걸음 크기 · 막힘 술어는 war-live 가 쥔다(한 걸음 ≤ `_t790Walk` · 막힌 칸엔 안 들어간다) — 여긴 다음 점만 낸다.
+const _t804Stat = { ask: 0, fail: 0, reuse: 0, done: 0, route: 0, relWalk: 0, pathNext: 0, pathNextFail: 0 };
+function _t804WalkTo(u, tx, ty, g) {
+  const WL = state.warLive, MPC = WL.M_PER_CELL, CAP = WL.MU.FOLLOW_CAP;
+  if (u._t804R && Math.hypot(tx - u.x, ty - u.y) <= CAP) u._t804R = false;   // 길 따라 걸어 슬롯 곁(대형 한 걸음 상한 안)에 왔다 — 다시 곧은 걸음 · 짧은 길
+  let P = u._t804;
+  if (P && Math.hypot(tx - P.gx, ty - P.gy) > CAP) P = u._t804 = null;
+  if (!P) {
+    if (!u._t804R && _warClearLine(u.x * MPC, u.y * MPC, tx * MPC, ty * MPC)) return null;
+    //   못 찾은 물음도 몸에 든다 — 목표 · 몸이 둘 다 그 물음에서 `FOLLOW_CAP` 안이면 다시 안 묻는다(탐색 상한까지 도는 헛물음을 틱마다 되풀이하지 않게)
+    const N = u._t804N, cached = !!(N && Math.hypot(tx - N.gx, ty - N.gy) <= CAP && Math.hypot(u.x - N.ux, u.y - N.uy) <= CAP);
+    let pts = null;
+    if (!cached) {
+      let sx = Math.floor(u.x), sy = Math.floor(u.y), gl = null;
+      if (_warBlockedCell(sx, sy)) { const o = _warStandNear(sx + 0.5, sy + 0.5); if (o) { sx = Math.floor(o.cx); sy = Math.floor(o.cy); } else sx = null; }
+      if (sx != null) gl = _warStandNear(tx, ty);
+      if (gl) {
+        if (!PathCore) PathCore = require('../sim/path-core.js');
+        const blk = (x, y) => _warBlockedCell(x, y);
+        try { pts = PathCore.localPath(sx, sy, Math.floor(gl.cx), Math.floor(gl.cy), { blocked: blk, blockedStep: (fx, fy, x2, y2) => blk(x2, y2) }); } catch (_) { pts = null; }
+        _t804Stat.ask++;
+      }
+      if (!pts || pts.length < 2) { pts = null; u._t804N = { gx: tx, gy: ty, ux: u.x, uy: u.y }; _t804Stat.fail++; }
+    } else _t804Stat.reuse++;
+    if (!pts) {
+      //   걸음 정본 길이 안 나왔다(슬롯이 걸음 탐색 상한 밖 — 진이 수백 m) — 행군로(대형의 T541 ⓐ 우회 훅 · 몸의 길 정본 점)를 **슬롯 곁까지 놓지 않고** 따른다.
+      //   곧은 줄이 잠깐 열려도 곧게 안 간다(T790 회부 2 ⓐ 의 3 m 고리 = 곧은/우회를 걸음마다 오간 것) — 슬롯이 `FOLLOW_CAP` 안에 들면 놓는다(위 첫 줄).
+      if (g && g.detour) { u._t804R = true; const w = g.detour(u, tx, ty); if (w) { _t804Stat.route++; return w; } }
+      return null;
+    }
+    u._t804N = null; u._t804R = false; P = u._t804 = { pts, i: 0, gx: tx, gy: ty };
+  } else _t804Stat.reuse++;
+  const cx = Math.floor(u.x), cy = Math.floor(u.y), K = Math.floor(CAP);
+  for (let j = Math.min(P.pts.length - 1, P.i + K + 2); j >= P.i; j--) if (P.pts[j].x === cx && P.pts[j].y === cy) { P.i = j; break; }
+  if (P.i >= P.pts.length - 1) { u._t804 = null; _t804Stat.done++; return null; }   // 길 끝(슬롯 곁 설 칸) — 남은 몫은 곧은 걸음
+  let j = P.i + 1; const jMax = Math.min(P.pts.length - 1, P.i + Math.max(1, K));
+  for (let k = jMax; k > j; k--) { const q = P.pts[k]; if (_warClearLine(u.x * MPC, u.y * MPC, (q.x + 0.5) * MPC, (q.y + 0.5) * MPC)) { j = k; break; } }
+  const n = P.pts[j]; return { x: n.x + 0.5, y: n.y + 0.5 };
+}
 function _t790Lag(g) {   // 하루 경계 — 대형 몸이 제 자리 밖인가(걸음 셈 · 상태 무변)
   if (!g || !g.units || !(g._t790Walk > 0)) return 0;
   const WL = state.warLive; let m = 0;
@@ -5325,11 +5374,15 @@ function _warPathNext(u, tx, ty) {
     if (k < 0 || k >= P.pts.length - 1) P = u._wpth = null; else P.i = k; }
   if (!P) {
     if (_warBlockedCell(sx, sy)) { const o = _warStandNear(sx + 0.5, sy + 0.5); return o ? { x: o.cx * MPC, y: o.cy * MPC } : null; }
+    //   ★[T804] 켬(걷는 몸) — 못 낸 물음은 몸에 든다(목표 · 몸이 둘 다 그 물음에서 `FOLLOW_CAP` 안이면 다시 안 묻는다 · 탐색 상한까지 도는 헛물음을 걸음마다 되풀이하지 않게) · 끔 = 종전 그대로
+    const _cap = state.warLive.MU.FOLLOW_CAP, _N = T790_NO_SNAP ? u._wpthN : null;
+    if (_N && Math.hypot(tx / MPC - _N.tx, ty / MPC - _N.ty) <= _cap && Math.hypot(u.x / MPC - _N.ux, u.y / MPC - _N.uy) <= _cap) return null;
     const gl = _warStandNear(tx / MPC, ty / MPC); if (!gl) return null;
     if (!PathCore) PathCore = require('../sim/path-core.js');
     const blk = (x, y) => _warBlockedCell(x, y);
     let pts = null; try { pts = PathCore.localPath(sx, sy, Math.floor(gl.cx), Math.floor(gl.cy), { blocked: blk, blockedStep: (fx, fy, x2, y2) => blk(x2, y2) }); } catch (_) { pts = null; }
-    if (!pts || pts.length < 2) return null;
+    if (T790_NO_SNAP) _t804Stat.pathNext++;
+    if (!pts || pts.length < 2) { if (T790_NO_SNAP) { u._wpthN = { tx: tx / MPC, ty: ty / MPC, ux: u.x / MPC, uy: u.y / MPC }; _t804Stat.pathNextFail++; } return null; }
     P = u._wpth = { pts, i: 0 };
   }
   // 곧은 줄이 열린 데까지 몇 칸 앞을 겨눈다(대형 추종 한 걸음 상한 FOLLOW_CAP 칸까지 — 새 수 0) — 칸 하나씩 가면 추종 걸음이 1칸/틱으로 묶인다
@@ -5425,9 +5478,11 @@ function _warDetourFor(body) {
     const s2 = su + Math.sign(st - su) * Math.min(ahead, Math.abs(st - su));
     const q = _polyAt(poly, s2);
     // 길 밖이면 먼저 길로(투영점)
-    const pr = _polyAt(poly, su); const w = Math.hypot(pr.x - pu.x, pr.y - pu.y) > 2 ? pr : q;
+    //   ★[T804] 걷는 몸(T790 켬 — 길 문이 이 훅을 슬롯 곁까지 놓지 않고 부른다)은 투영점에 먼저 모이지 않고 앞 점(q)을 겨눈다 — 몸 여럿이 한 투영점에 모이면
+    //     떨어뜨리기(`_muSeparate`)가 2 m 안으로 못 들게 밀어 그 자리를 돌았다(ⓖ 실측 · 길 머리 1647,394). 앞 점까지 곧은 줄이 막혔으면 아래 걸음 경로(짧은 길). 끔 = 종전 그대로.
+    const pr = _polyAt(poly, su); const w = (!T790_NO_SNAP || !u._t804R) && Math.hypot(pr.x - pu.x, pr.y - pu.y) > 2 ? pr : q;
     // ★[T541 ⓐ] 이 훅은 슬롯까지 곧은 줄이 막혔거나(`det.clear`) 곧은 걸음·축 미끄럼이 다 막혔을 때 불린다 — 길까지 곧은 줄도 막혔으면 걸어서 돌아간다
-    if (u._wpth || !_warClearLine(pu.x, pu.y, w.x, w.y)) { const pm = { x: pu.x, y: pu.y, _wpth: u._wpth || null }; const n = _warPathNext(pm, w.x, w.y); u._wpth = pm._wpth; if (n) return { x: n.x / MPC, y: n.y / MPC }; }
+    if (u._wpth || !_warClearLine(pu.x, pu.y, w.x, w.y)) { const pm = T790_NO_SNAP ? { x: pu.x, y: pu.y, _wpth: u._wpth || null, _wpthN: u._wpthN || null } : { x: pu.x, y: pu.y, _wpth: u._wpth || null }; const n = _warPathNext(pm, w.x, w.y); u._wpth = pm._wpth; if (T790_NO_SNAP) u._wpthN = pm._wpthN; if (n) return { x: n.x / MPC, y: n.y / MPC }; }
     return { x: w.x / MPC, y: w.y / MPC };
   };
   // ★[T541 ⓐ] 대형 추종이 먼저 묻는 술어 — 슬롯까지 곧은 줄이 열려 있나(`_warClearLine` 그대로 · 셀 = m × M_PER_CELL)
@@ -5752,6 +5807,15 @@ function _warOrderFallback(body) {
 // 대형 원점을 목표로 한 걸음(cap 셀) 옮기고 슬롯을 따른다 — 지휘관 순간이동 없음.
 function _warWalkGroupTo(g, tgt, cap) {
   const dx = tgt.cx - g.cmd.cx, dy = tgt.cy - g.cmd.cy, d = Math.hypot(dx, dy);
+  //   ★[T804 ①] 걷는 대형(T790 켬)이면 원점(주둔 · 포진 복귀 문)도 같은 길 문으로 — 곧은 줄이 막혔을 때만 걸음 정본 길을 묻고 끝까지 따른다
+  //     (종전 = 곧게 · 막히면 축 미끄럼 — T790 회부 2 ⓑ: 원점이 막힌 자리에 서면 대형 몸 전부가 그 원점 슬롯에 선 채 교착).
+  //     원점은 몸이 아니라 점이라 길 기억은 대형에 든다(`g._t804O`) · 길 못 내면 아래 종전 걸음.
+  if (T790_NO_SNAP && g._t790Walk > 0 && d > cap) {
+    const o = g._t804O || (g._t804O = {}); o.x = g.cmd.cx; o.y = g.cmd.cy;
+    const w = _t804WalkTo(o, tgt.cx, tgt.cy, null);
+    if (w) { const ex = w.x - o.x, ey = w.y - o.y, ed = Math.hypot(ex, ey);
+      if (ed > 1e-6) { const s2 = Math.min(cap, ed), nx = o.x + ex / ed * s2, ny = o.y + ey / ed * s2; if (!_warBlockedCell(nx, ny)) { g.cmd.cx = nx; g.cmd.cy = ny; state.warLive._muStepFollow(g, cap); return; } } }
+  }
   if (d > cap) { const nx = g.cmd.cx + dx / d * cap, ny = g.cmd.cy + dy / d * cap; if (!_warBlockedCell(nx, ny)) { g.cmd.cx = nx; g.cmd.cy = ny; } else if (!_warBlockedCell(nx, g.cmd.cy)) g.cmd.cx = nx; else if (!_warBlockedCell(g.cmd.cx, ny)) g.cmd.cy = ny; }
   else { g.cmd.cx = tgt.cx; g.cmd.cy = tgt.cy; }
   state.warLive._muStepFollow(g, cap);
@@ -6546,6 +6610,20 @@ function _warSideCtl(f, side) { for (const u of f.ctx.units) if (u.side === side
 //   "이전 자리도 막힘" 이면 제자리라 그 칸에서 **영원히 못 나온다**(T295 후속 주석의 그 판 · 실서버 T530 W1 76셀 `_blk` 1 · 재생 D6~).
 //   나선·술어는 `_warSnapToSlots` 와 같은 것(`_warStandNear`) · 못 찾으면 그대로.
 function _warReleaseAdv(f, A, g) {
+  // ★★[T804 ②] T790 켬(걷는 대형) — 막힌 칸 안 몸을 가장 가까운 설 칸으로 **옮기지 않는다**(종전 한 걸음 1.0 m · 세 번째 튐 · T790 회부 3).
+  //   그 칸(`_warStandNear` · 종전과 같은 나선)까지 몸 걸음(`_t790Walk`)으로 걷게 하고, 다 나올 때까지는 풀지 않는다(이 스텝은 대형이 쥔 채 · 다음 스텝 다시 본다).
+  //   못 찾은 몸(나선 24칸 안이 다 막힘)은 종전처럼 그대로 둔다. 끔(칸 없음) = 아래 종전 글자 그대로.
+  if (T790_NO_SNAP && g && g.units && g._t790Walk > 0) {
+    const wc = g._t790Walk; let left = 0;
+    for (const u of g.units) {
+      if (u.dead || !_warBlockedCell(u.x, u.y)) { u._t804Out = null; continue; }
+      const c = u._t804Out || (u._t804Out = _warStandNear(u.x, u.y)); if (!c) continue;
+      const ex = c.cx - u.x, ey = c.cy - u.y, ed = Math.hypot(ex, ey);
+      if (ed <= wc) { u.x = c.cx; u.y = c.cy; u._t804Out = null; } else { u.x += ex / ed * wc; u.y += ey / ed * wc; left++; }
+    }
+    if (left) { _t804Stat.relWalk++; return; }
+    A.released = true; state.warLive.setSideCtl(f, A.side, false); return;
+  }
   if (g && g.units) for (const u of g.units) { if (u.dead || !_warBlockedCell(u.x, u.y)) continue; const c = _warStandNear(u.x, u.y); if (c) { u.x = c.cx; u.y = c.cy; } }
   A.released = true; state.warLive.setSideCtl(f, A.side, false);
 }
@@ -6603,7 +6681,7 @@ function warPerf() {
   const e = P.eng ? P.eng.slice(0, Math.min(P.en, P.eng.length)).sort((x, y) => x - y) : [];
   let bodies = 0, fights = 0, engaged = 0; if (state.warBodies) for (const b of state.warBodies.values()) { bodies++; if (b.fight) { fights++; if (b.fight.state === 'engaged') engaged++; } }
   return { n: P.n, p50: q(0.5), p95: q(0.95), max: +P.max.toFixed(3), engN: P.en || 0, engP50: q(0.5, e), engP95: q(0.95, e), engMax: e.length ? +e[e.length - 1].toFixed(3) : 0, soldiers: P.soldiers, soldiersMax: P.soldiersMax, fighting: P.fighting,
-    bodies, fights, engaged, wars: state.war ? state.war.WARS.length : 0, stat: Object.assign({}, state._warStat) };
+    bodies, fights, engaged, wars: state.war ? state.war.WARS.length : 0, stat: Object.assign({}, state._warStat), ...(T790_NO_SNAP ? { t804: Object.assign({}, _t804Stat) } : {}) };   // ★[T804] 켬만 — 길 묻기 셈
 }
 function warPerfReset() { const P = state._warPerf; if (P) { P.i = 0; P.n = 0; P.max = 0; P.soldiersMax = 0; P.ei = 0; P.en = 0; } }
 // ★[2파·비전투원 대피 _evac 최소판] 전투·긴급 소집 중 방어 마을의 비징발 주민 = 귀가·자택 대기(소프트 TTL 5초).
@@ -7379,7 +7457,7 @@ function __p3Bind(mock) {
     _t765Depart, _t765Join,   // ★[T765] 후보 걷기 몸 문 둘(하네스 `test-cand-walk` 가 운영과 같은 문을 부른다)
     _t681Day, _t681Flush, T681_ON, T703_MARCH,   // ★[T703] T681 켬(기본) 판의 하루 경계 두 자리 — 하네스가 운영 하루 마감과 같은 차례(econ 앞 `_t681Flush` · 캐러밴 앞 `_t681Day`)로 부른다(값 무변 · 내보내기만)
     _warEngage, _warAfterDaily, _warEndFight, _warBuildRectIndex, _warBlockedCell, _warWorld, warPerf, _warOrderFallback, _warToStandoff,
-    T790_NO_SNAP, _t790Stat, _t790Mark, _t790Lag, _warSetupReturn, _warPaceReturn,   // ★[T790] 하네스(`test-war-nosnap`)가 운영과 같은 문을 부른다(내보내기만)
+    T790_NO_SNAP, _t790Stat, _t790Mark, _t790Lag, _warSetupReturn, _warPaceReturn, _t804Stat, _t804WalkTo,   // ★[T804] 걷는 몸 길 문 · 셈   // ★[T790] 하네스(`test-war-nosnap`)가 운영과 같은 문을 부른다(내보내기만)
     _warDraftPids, _warReleasePid, econDayToMs, _warEnsureBody, _warSampleComp, _vbFootprint,
     threatOf, _warWriteThreats, _warOutMul, _lifeJobSites, _lifeJobSiteOK, _warRoutePts, _warTreeCell, computeRoutePts,
     _t619Region, _t619RedigKeep,   // ★[T619] 쌍 둘레 · 다시 파기 거르개 — 자(`t619-h-audit`)가 **이 함수**로 센다(사본 0)

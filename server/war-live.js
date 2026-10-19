@@ -135,6 +135,14 @@ function createWarLive(opts) {
       const dx = tx - u.x, dy = ty - u.y, dd = Math.hypot(dx, dy);
       if (dd > (u.cmd ? 0 : MU.FOLLOW_SNAP)) { const st = Math.min(cap != null ? cap : MU.FOLLOW_CAP, dd, wc || dd);
         const inBlk = wc && blockedCell ? blockedCell(u.x, u.y) : false;   // ★[T790] 걷는 몸이 막힌 칸 안에 섰으면(발자국 색인이 뒤에 섰다 등) 곧은 걸음으로 걸어 나온다 — 한 걸음이 작아 칸 안 다음 점은 늘 막힘이라 종전 문으론 못 나온다
+        // ★[T804 ①] 걷는 대형(`wc`)에 호스트 길 문(`g.walkTo` — 막힐 때만 경로 정본으로 슬롯까지 길을 묻고 끝까지 따른다)이 있으면 그 다음 점으로 한 걸음.
+        //   다음 점이 없으면(곧은 줄이 열렸다 · 길 끝 · 못 찾음) 아래 종전 걸음 그대로. 칸 · 문이 없으면(끔 · 랩) 이 줄은 안 탄다.
+        //   다음 점이 있으면 그 점으로만 간다(막힌 걸음이면 축 미끄럼 · 그래도 막히면 이 스텝은 선다) — 슬롯 쪽 곧은 걸음으로 떨어지지 않는다(오락가락 0).
+        if (wc && g.walkTo) { const w = g.walkTo(u, tx, ty, g);
+          if (w) { const ex = w.x - u.x, ey = w.y - u.y, ed = Math.hypot(ex, ey);
+            if (ed > 1e-6) { const s2 = Math.min(st, ed), mx = u.x + ex / ed * s2, my = u.y + ey / ed * s2;
+              if (!blockedCell || inBlk || !blockedCell(mx, my)) { u.x = mx; u.y = my; } else if (!blockedCell(mx, u.y)) u.x = mx; else if (!blockedCell(u.x, my)) u.y = my; }
+            continue; } }
         // ★[T541 ⓐ] 슬롯까지 곧은 줄이 막혔으면(호스트 술어 `detour.clear`) 곧게 가지 않고 우회를 따른다. 종전은 다음 한 걸음만 봐서,
         //   한 걸음이 열려 있으면 막다른 벽 앞으로 들어갔다가 우회로 길에 돌아오기를 되풀이하며 그 자리에 섰다(실측 T541 임업2 — 964,1854
         //   에서 행군 내내 · 지휘관은 400칸 앞). 술어가 없는 호스트(랩)는 종전 그대로.
