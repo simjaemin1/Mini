@@ -225,6 +225,10 @@ async function roundTrip(tag) {
   ok(/body: E2E_HANDOFF_NO_BODY \? undefined : serializeBody\(player\)/.test(src), '① 핸드오프 페이로드가 **같은 함수**를 쓴다');
   ok((src.match(/parseBody\(/g) || []).length >= 3, '① 복원이 `parseBody` 한 곳에서 온다(정의 + 접속 + 핸드오프)', `${(src.match(/parseBody\(/g) || []).length}회`);
   ok(!/tools_json: JSON\.stringify\(\{/.test(src), '① 저장 경로에 **손으로 쓴 두 번째 직렬화가 없다**');
+  // ★[T802] ② HP 기준점(`beforeCross` = 떠난 존의 껍데기)이 **찍힌 값**이려면 걷는 내내 hp 를 세우는 픽스처(`poke`)가 찍은 뒤 껍데기에 쓰면 안 된다.
+  //   종전엔 썼다 — 400 ms 마다 오는 한 번이 찍은 뒤 닿으면 껍데기만 42 로 내려가 기준이 찍힌 값보다 3~4 낮았다(T802 · 단독 세 판 빨강).
+  //   이 하네스가 그 문을 같이 지킨다(문이 풀리면 ② 가 다시 위상에 따라 깜빡인다).
+  ok(/msg\.type === '__e2e_body'\) \{[\s\S]{0,1600}?if \(player\.handingOff\) return;/.test(src), '① ★[T802] 픽스처가 떠난 몸(껍데기)에는 안 쓴다 — ② 기준점 = 찍힌 값');
 
   if (!await startZones()) { console.log('  ✗ 2존 기동 실패'); process.exit(1); }
   const R = await roundTrip('A');
