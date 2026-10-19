@@ -1,0 +1,3493 @@
+{
+ "card": "T801",
+ "made": "2026-10-18",
+ "head": "main 8c46e9c2(코드 = d3a0678b)",
+ "ruler": {
+  "how": "node scripts/server-baseline-check.js --make <out> --vclock --par 2 (T650 자 · 400날 · 3시드) + 손잡이 env · 관측 훅(레포 밖 · 읽기만 · 끔 판 견주기 3/3 같음)",
+  "off": {
+   "7": {
+    "eight": {
+     "pop": 2551,
+     "dead": 0,
+     "ever": 51,
+     "weapQ": 226,
+     "expand": 1028,
+     "board": 973,
+     "toolQ": 2713.2,
+     "preserve": 63,
+     "grain": 9686.9
+    },
+    "dissolved": 1,
+    "empty": 0,
+    "econEnd": {
+     "pop": 2551,
+     "jobs": {
+      "farmer": 785,
+      "fisher": 450,
+      "lumberjack": 254,
+      "forager": 441
+     },
+     "farmAnchor": 1227.03
+    },
+    "farmBaseSum": 456158.7
+   },
+   "42": {
+    "eight": {
+     "pop": 3306,
+     "dead": 0,
+     "ever": 51,
+     "weapQ": 316,
+     "expand": 1309,
+     "board": 940,
+     "toolQ": 3805.4,
+     "preserve": 52,
+     "grain": 15089.2
+    },
+    "dissolved": 0,
+    "empty": 0,
+    "econEnd": {
+     "pop": 3306,
+     "jobs": {
+      "farmer": 1082,
+      "fisher": 483,
+      "lumberjack": 316,
+      "forager": 516
+     },
+     "farmAnchor": 1682.475
+    },
+    "farmBaseSum": 500375.4
+   },
+   "1020": {
+    "eight": {
+     "pop": 2786,
+     "dead": 0,
+     "ever": 51,
+     "weapQ": 158,
+     "expand": 463,
+     "board": 952,
+     "toolQ": 3276.8,
+     "preserve": 35.8,
+     "grain": 9449
+    },
+    "dissolved": 0,
+    "empty": 0,
+    "econEnd": {
+     "pop": 2786,
+     "jobs": {
+      "farmer": 957,
+      "fisher": 539,
+      "lumberjack": 229,
+      "forager": 457
+     },
+     "farmAnchor": 1467.45
+    },
+    "farmBaseSum": 512818
+   }
+  },
+  "arms": {
+   "A1": {
+    "7": {
+     "eight": {
+      "pop": 495,
+      "dead": 4,
+      "ever": 51,
+      "weapQ": 24,
+      "expand": 0,
+      "board": 853,
+      "toolQ": 522.6,
+      "preserve": 0,
+      "grain": 385.3
+     },
+     "dissolved": 4,
+     "empty": 4,
+     "firstDiffDay": 1,
+     "popPct": -80.6,
+     "arm": {
+      "farm": {
+       "last": {
+        "on": 1,
+        "items": 1,
+        "villages": 51,
+        "hands": 0,
+        "handU": 0,
+        "delivered": 0,
+        "gran": {
+         "barley": 77.617,
+         "rice": 126.5305,
+         "wheat": 181.162
+        },
+        "pop": 495,
+        "farmers": 24,
+        "working": 8,
+        "trips": 0,
+        "harvestN": 0,
+        "hlBody": 20338,
+        "hlBatch": 0,
+        "credUnits": 0,
+        "credFoodEq": 0,
+        "pendUnits": 0,
+        "t100K": 5.341659330985916,
+        "t100Eq": 0,
+        "food": 3229.17,
+        "foodEq": 8859.02,
+        "granSum": 385.31
+       },
+       "formulaSum": 0,
+       "formulaActSum": 0,
+       "walkersMax": 0
+      }
+     },
+     "econEnd": null
+    },
+    "42": {
+     "eight": {
+      "pop": 458,
+      "dead": 6,
+      "ever": 51,
+      "weapQ": 23,
+      "expand": 0,
+      "board": 768,
+      "toolQ": 482.1,
+      "preserve": 0,
+      "grain": 200
+     },
+     "dissolved": 5,
+     "empty": 6,
+     "firstDiffDay": 1,
+     "popPct": -86.1,
+     "arm": {
+      "farm": {
+       "last": {
+        "on": 1,
+        "items": 1,
+        "villages": 51,
+        "hands": 0,
+        "handU": 0,
+        "delivered": 0,
+        "gran": {
+         "barley": 30.463,
+         "rice": 76.7417,
+         "wheat": 92.8058
+        },
+        "pop": 458,
+        "farmers": 26,
+        "working": 11,
+        "trips": 0,
+        "harvestN": 0,
+        "hlBody": 20329,
+        "hlBatch": 0,
+        "credUnits": 0,
+        "credFoodEq": 0,
+        "pendUnits": 0,
+        "t100K": 5.341659330985916,
+        "t100Eq": 0,
+        "food": 2429.27,
+        "foodEq": 6443.08,
+        "granSum": 200.011
+       },
+       "formulaSum": 0,
+       "formulaActSum": 0,
+       "walkersMax": 0
+      }
+     },
+     "econEnd": null
+    },
+    "1020": {
+     "eight": {
+      "pop": 438,
+      "dead": 1,
+      "ever": 51,
+      "weapQ": 12,
+      "expand": 0,
+      "board": 864,
+      "toolQ": 468.3,
+      "preserve": 0,
+      "grain": 405.4
+     },
+     "dissolved": 4,
+     "empty": 1,
+     "firstDiffDay": 1,
+     "popPct": -84.3,
+     "arm": {
+      "farm": {
+       "last": {
+        "on": 1,
+        "items": 1,
+        "villages": 51,
+        "hands": 0,
+        "handU": 0,
+        "delivered": 0,
+        "gran": {
+         "rice": 110.1402,
+         "wheat": 135.7513,
+         "barley": 159.5333
+        },
+        "pop": 438,
+        "farmers": 28,
+        "working": 11,
+        "trips": 0,
+        "harvestN": 0,
+        "hlBody": 20343,
+        "hlBatch": 0,
+        "credUnits": 0,
+        "credFoodEq": 0,
+        "pendUnits": 0,
+        "t100K": 5.341659330985916,
+        "t100Eq": 0,
+        "food": 2754.4,
+        "foodEq": 6918.99,
+        "granSum": 405.425
+       },
+       "formulaSum": 0,
+       "formulaActSum": 0,
+       "walkersMax": 0
+      }
+     },
+     "econEnd": null
+    }
+   },
+   "A2": {
+    "7": {
+     "eight": {
+      "pop": 2497,
+      "dead": 0,
+      "ever": 51,
+      "weapQ": 177,
+      "expand": 385,
+      "board": 1031,
+      "toolQ": 2520.1,
+      "preserve": 10.4,
+      "grain": 8624.8
+     },
+     "dissolved": 1,
+     "empty": 0,
+     "firstDiffDay": 1,
+     "popPct": -2.1,
+     "arm": {
+      "fish": {
+       "last": {
+        "actVillages": 18,
+        "villages": 51,
+        "cells": 2527,
+        "walkers": 3,
+        "hands": 0,
+        "handU": 0,
+        "handKg": 0,
+        "delivered": 0,
+        "formulaPerDay": 159.9596,
+        "formulaAll": 361.3344,
+        "thinN": 15,
+        "t340": {
+         "cast": 123,
+         "hook": 0,
+         "miss": 0,
+         "abort": 120,
+         "hookPct": 0,
+         "waitAvgMs": 6045,
+         "winAvgMs": 900,
+         "budgetLeftVillages": 0
+        }
+       },
+       "formulaSum": 52867.6,
+       "formulaActSum": 0,
+       "walkersMax": 3
+      }
+     },
+     "econEnd": null
+    },
+    "42": {
+     "eight": {
+      "pop": 2089,
+      "dead": 0,
+      "ever": 51,
+      "weapQ": 160,
+      "expand": 328,
+      "board": 842,
+      "toolQ": 2320.9,
+      "preserve": 2.2,
+      "grain": 7048.3
+     },
+     "dissolved": 0,
+     "empty": 0,
+     "firstDiffDay": 1,
+     "popPct": -36.8,
+     "arm": {
+      "fish": {
+       "last": {
+        "actVillages": 14,
+        "villages": 51,
+        "cells": 2129,
+        "walkers": 1,
+        "hands": 0,
+        "handU": 0,
+        "handKg": 0,
+        "delivered": 0,
+        "formulaPerDay": 140.1128,
+        "formulaAll": 334.646,
+        "thinN": 15,
+        "t340": {
+         "cast": 105,
+         "hook": 0,
+         "miss": 0,
+         "abort": 102,
+         "hookPct": 0,
+         "waitAvgMs": 5678,
+         "winAvgMs": 900,
+         "budgetLeftVillages": 0
+        }
+       },
+       "formulaSum": 41616.1,
+       "formulaActSum": 0,
+       "walkersMax": 2
+      }
+     },
+     "econEnd": null
+    },
+    "1020": {
+     "eight": {
+      "pop": 2077,
+      "dead": 0,
+      "ever": 51,
+      "weapQ": 140,
+      "expand": 292,
+      "board": 1224,
+      "toolQ": 2102.5,
+      "preserve": 0.1,
+      "grain": 6560
+     },
+     "dissolved": 1,
+     "empty": 0,
+     "firstDiffDay": 1,
+     "popPct": -25.4,
+     "arm": {
+      "fish": {
+       "last": {
+        "actVillages": 15,
+        "villages": 51,
+        "cells": 2365,
+        "walkers": 2,
+        "hands": 0,
+        "handU": 0,
+        "handKg": 0,
+        "delivered": 0,
+        "formulaPerDay": 123.8324,
+        "formulaAll": 324.3294,
+        "thinN": 15,
+        "t340": {
+         "cast": 172,
+         "hook": 0,
+         "miss": 0,
+         "abort": 167,
+         "hookPct": 0,
+         "waitAvgMs": 5750,
+         "winAvgMs": 900,
+         "budgetLeftVillages": 0
+        }
+       },
+       "formulaSum": 49330.1,
+       "formulaActSum": 0,
+       "walkersMax": 4
+      }
+     },
+     "econEnd": null
+    }
+   },
+   "A3": {
+    "7": {
+     "eight": {
+      "pop": 1040,
+      "dead": 1,
+      "ever": 51,
+      "weapQ": 30,
+      "expand": 0,
+      "board": 881,
+      "toolQ": 1241.3,
+      "preserve": 0,
+      "grain": 2771.1
+     },
+     "dissolved": 1,
+     "empty": 1,
+     "firstDiffDay": 15,
+     "popPct": -59.2,
+     "arm": {
+      "wood": {
+       "last": {
+        "actVillages": 51,
+        "villages": 51,
+        "cells": 10336,
+        "walkers": 0,
+        "hands": 0,
+        "handU": 0,
+        "handKg": 0,
+        "delivered": 0,
+        "formulaPerDay": 149.9824,
+        "formulaAll": 149.9824,
+        "cutDay": 0,
+        "cap": 0,
+        "trees": 10668,
+        "noTreeVillages": 0,
+        "popAll": 1040
+       },
+       "formulaSum": 70216.7,
+       "formulaActSum": 0,
+       "walkersMax": 0
+      }
+     },
+     "econEnd": null
+    },
+    "42": {
+     "eight": {
+      "pop": 1048,
+      "dead": 0,
+      "ever": 51,
+      "weapQ": 16,
+      "expand": 0,
+      "board": 934,
+      "toolQ": 1246,
+      "preserve": 0,
+      "grain": 2577.3
+     },
+     "dissolved": 1,
+     "empty": 0,
+     "firstDiffDay": 15,
+     "popPct": -68.3,
+     "arm": {
+      "wood": {
+       "last": {
+        "actVillages": 51,
+        "villages": 51,
+        "cells": 10156,
+        "walkers": 0,
+        "hands": 0,
+        "handU": 0,
+        "handKg": 0,
+        "delivered": 0,
+        "formulaPerDay": 133.0614,
+        "formulaAll": 133.0614,
+        "cutDay": 0,
+        "cap": 0,
+        "trees": 10495,
+        "noTreeVillages": 0,
+        "popAll": 1048
+       },
+       "formulaSum": 53379.8,
+       "formulaActSum": 0,
+       "walkersMax": 0
+      }
+     },
+     "econEnd": null
+    },
+    "1020": {
+     "eight": {
+      "pop": 1080,
+      "dead": 0,
+      "ever": 51,
+      "weapQ": 40,
+      "expand": 0,
+      "board": 863,
+      "toolQ": 1415.9,
+      "preserve": 0.7,
+      "grain": 3072.3
+     },
+     "dissolved": 1,
+     "empty": 0,
+     "firstDiffDay": 15,
+     "popPct": -61.2,
+     "arm": {
+      "wood": {
+       "last": {
+        "actVillages": 51,
+        "villages": 51,
+        "cells": 10199,
+        "walkers": 0,
+        "hands": 0,
+        "handU": 0,
+        "handKg": 0,
+        "delivered": 0,
+        "formulaPerDay": 102.8465,
+        "formulaAll": 102.8465,
+        "cutDay": 0,
+        "cap": 0,
+        "trees": 10541,
+        "noTreeVillages": 0,
+        "popAll": 1080
+       },
+       "formulaSum": 54592,
+       "formulaActSum": 0,
+       "walkersMax": 0
+      }
+     },
+     "econEnd": null
+    }
+   },
+   "A4": {
+    "7": {
+     "eight": {
+      "pop": 2446,
+      "dead": 1,
+      "ever": 51,
+      "weapQ": 130,
+      "expand": 362,
+      "board": 1476,
+      "toolQ": 3034.4,
+      "preserve": 0,
+      "grain": 12454.6
+     },
+     "dissolved": 1,
+     "empty": 1,
+     "firstDiffDay": 10,
+     "popPct": -4.1,
+     "arm": {
+      "forage": {
+       "last": {
+        "items": [
+         "fruit",
+         "twig",
+         "herb"
+        ],
+        "actVillages": 50,
+        "villages": 51,
+        "cells": 237,
+        "walkers": 0,
+        "hands": 0,
+        "handU": 0,
+        "delivered": 0,
+        "formulaPerDay": 392.1108,
+        "formulaAll": 411.3208,
+        "gran": 0,
+        "pickDay": 0,
+        "cap": 0,
+        "groves": 238,
+        "noGroveVillages": 1,
+        "popAll": 2446
+       },
+       "formulaSum": 106184.6,
+       "formulaActSum": 0,
+       "walkersMax": 0
+      }
+     },
+     "econEnd": null
+    },
+    "42": {
+     "eight": {
+      "pop": 2505,
+      "dead": 0,
+      "ever": 51,
+      "weapQ": 223,
+      "expand": 756,
+      "board": 1152,
+      "toolQ": 2947.3,
+      "preserve": 6.8,
+      "grain": 13135.3
+     },
+     "dissolved": 0,
+     "empty": 0,
+     "firstDiffDay": 10,
+     "popPct": -24.2,
+     "arm": {
+      "forage": {
+       "last": {
+        "items": [
+         "fruit",
+         "twig",
+         "herb"
+        ],
+        "actVillages": 50,
+        "villages": 51,
+        "cells": 237,
+        "walkers": 0,
+        "hands": 0,
+        "handU": 0,
+        "delivered": 0,
+        "formulaPerDay": 359.636,
+        "formulaAll": 375.004,
+        "gran": 0,
+        "pickDay": 0,
+        "cap": 0,
+        "groves": 238,
+        "noGroveVillages": 1,
+        "popAll": 2505
+       },
+       "formulaSum": 106577.6,
+       "formulaActSum": 0,
+       "walkersMax": 0
+      }
+     },
+     "econEnd": {
+      "pop": 2505,
+      "jobs": {
+       "farmer": 879,
+       "fisher": 338,
+       "lumberjack": 158,
+       "forager": 438
+      },
+      "farmAnchor": 1346.355
+     }
+    },
+    "1020": {
+     "eight": {
+      "pop": 2437,
+      "dead": 1,
+      "ever": 51,
+      "weapQ": 240,
+      "expand": 347,
+      "board": 1358,
+      "toolQ": 2831.6,
+      "preserve": 39.1,
+      "grain": 7549.9
+     },
+     "dissolved": 2,
+     "empty": 1,
+     "firstDiffDay": 10,
+     "popPct": -12.5,
+     "arm": {
+      "forage": {
+       "last": {
+        "items": [
+         "fruit",
+         "twig",
+         "herb"
+        ],
+        "actVillages": 50,
+        "villages": 51,
+        "cells": 237,
+        "walkers": 0,
+        "hands": 0,
+        "handU": 0,
+        "delivered": 0,
+        "formulaPerDay": 361.1905,
+        "formulaAll": 366.3132,
+        "gran": 0,
+        "pickDay": 0,
+        "cap": 0,
+        "groves": 238,
+        "noGroveVillages": 1,
+        "popAll": 2437
+       },
+       "formulaSum": 100862.9,
+       "formulaActSum": 0,
+       "walkersMax": 0
+      }
+     },
+     "econEnd": null
+    }
+   },
+   "ALL": {
+    "7": {
+     "eight": {
+      "pop": 266,
+      "dead": 4,
+      "ever": 51,
+      "weapQ": 7,
+      "expand": 0,
+      "board": 918,
+      "toolQ": 407.8,
+      "preserve": 0,
+      "grain": 196.7
+     },
+     "dissolved": 5,
+     "empty": 4,
+     "firstDiffDay": 1,
+     "popPct": -89.6,
+     "arm": {
+      "fish": {
+       "last": {
+        "actVillages": 17,
+        "villages": 51,
+        "cells": 2226,
+        "walkers": 2,
+        "hands": 0,
+        "handU": 0,
+        "handKg": 0,
+        "delivered": 0,
+        "formulaPerDay": 30.3705,
+        "formulaAll": 160.7547,
+        "thinN": 15,
+        "t340": {
+         "cast": 122,
+         "hook": 0,
+         "miss": 0,
+         "abort": 112,
+         "hookPct": 0,
+         "waitAvgMs": 5723,
+         "winAvgMs": 900,
+         "budgetLeftVillages": 0
+        }
+       },
+       "formulaSum": 37652.5,
+       "formulaActSum": 0,
+       "walkersMax": 9
+      },
+      "wood": {
+       "last": {
+        "actVillages": 51,
+        "villages": 51,
+        "cells": 9855,
+        "walkers": 0,
+        "hands": 0,
+        "handU": 0,
+        "handKg": 0,
+        "delivered": 0,
+        "formulaPerDay": 0,
+        "formulaAll": 0,
+        "cutDay": 0,
+        "cap": 0,
+        "trees": 10160,
+        "noTreeVillages": 0,
+        "popAll": 266
+       },
+       "formulaSum": 2960.7,
+       "formulaActSum": 0,
+       "walkersMax": 0
+      },
+      "forage": {
+       "last": {
+        "items": [
+         "fruit",
+         "twig",
+         "herb"
+        ],
+        "actVillages": 50,
+        "villages": 51,
+        "cells": 237,
+        "walkers": 0,
+        "hands": 0,
+        "handU": 0,
+        "delivered": 0,
+        "formulaPerDay": 33.3427,
+        "formulaAll": 33.3427,
+        "gran": 0,
+        "pickDay": 0,
+        "cap": 0,
+        "groves": 238,
+        "noGroveVillages": 1,
+        "popAll": 266
+       },
+       "formulaSum": 30654.1,
+       "formulaActSum": 0,
+       "walkersMax": 0
+      },
+      "farm": {
+       "last": {
+        "on": 1,
+        "items": 1,
+        "villages": 51,
+        "hands": 0,
+        "handU": 0,
+        "delivered": 0,
+        "gran": {
+         "wheat": 56.0682,
+         "barley": 71.0313,
+         "rice": 69.601
+        },
+        "pop": 266,
+        "farmers": 27,
+        "working": 11,
+        "trips": 0,
+        "harvestN": 0,
+        "hlBody": 20335,
+        "hlBatch": 0,
+        "credUnits": 0,
+        "credFoodEq": 0,
+        "pendUnits": 0,
+        "t100K": 5.341659330985916,
+        "t100Eq": 0,
+        "food": 1453.18,
+        "foodEq": 3403.5,
+        "granSum": 196.701
+       },
+       "formulaSum": 0,
+       "formulaActSum": 0,
+       "walkersMax": 0
+      }
+     },
+     "econEnd": {
+      "pop": 266,
+      "jobs": {
+       "farmer": 65,
+       "fisher": 100,
+       "lumberjack": 0,
+       "forager": 37
+      },
+      "farmAnchor": 86.45
+     }
+    },
+    "42": {
+     "eight": {
+      "pop": 260,
+      "dead": 2,
+      "ever": 51,
+      "weapQ": 8,
+      "expand": 0,
+      "board": 838,
+      "toolQ": 338.5,
+      "preserve": 0,
+      "grain": 36.2
+     },
+     "dissolved": 4,
+     "empty": 2,
+     "firstDiffDay": 1,
+     "popPct": -92.1,
+     "arm": {
+      "fish": {
+       "last": {
+        "actVillages": 17,
+        "villages": 51,
+        "cells": 2250,
+        "walkers": 2,
+        "hands": 0,
+        "handU": 0,
+        "handKg": 0,
+        "delivered": 0,
+        "formulaPerDay": 14.1441,
+        "formulaAll": 132.9978,
+        "thinN": 15,
+        "t340": {
+         "cast": 138,
+         "hook": 0,
+         "miss": 0,
+         "abort": 130,
+         "hookPct": 0,
+         "waitAvgMs": 5073,
+         "winAvgMs": 900,
+         "budgetLeftVillages": 0
+        }
+       },
+       "formulaSum": 37823.3,
+       "formulaActSum": 0,
+       "walkersMax": 7
+      },
+      "wood": {
+       "last": {
+        "actVillages": 51,
+        "villages": 51,
+        "cells": 9885,
+        "walkers": 0,
+        "hands": 0,
+        "handU": 0,
+        "handKg": 0,
+        "delivered": 0,
+        "formulaPerDay": 0,
+        "formulaAll": 0,
+        "cutDay": 0,
+        "cap": 0,
+        "trees": 10192,
+        "noTreeVillages": 0,
+        "popAll": 260,
+        "K": 10192,
+        "back": 0
+       },
+       "formulaSum": 4998.3,
+       "formulaActSum": 0,
+       "walkersMax": 0
+      },
+      "forage": {
+       "last": {
+        "items": [
+         "fruit",
+         "twig",
+         "herb"
+        ],
+        "actVillages": 50,
+        "villages": 51,
+        "cells": 237,
+        "walkers": 0,
+        "hands": 0,
+        "handU": 0,
+        "delivered": 0,
+        "formulaPerDay": 24.42,
+        "formulaAll": 25.7007,
+        "gran": 0,
+        "pickDay": 0,
+        "cap": 0,
+        "groves": 238,
+        "noGroveVillages": 1,
+        "popAll": 260,
+        "formulaActPerDay": 8.07,
+        "K": 238,
+        "back": 0,
+        "reach": 0
+       },
+       "formulaSum": 30893.4,
+       "formulaActSum": 12623.6,
+       "walkersMax": 0
+      },
+      "farm": {
+       "last": {
+        "on": 1,
+        "items": 1,
+        "villages": 51,
+        "hands": 0,
+        "handU": 0,
+        "delivered": 0,
+        "gran": {
+         "wheat": 16.1036,
+         "barley": 8.9929,
+         "rice": 11.0692
+        },
+        "pop": 260,
+        "farmers": 28,
+        "working": 10,
+        "trips": 0,
+        "harvestN": 0,
+        "hlBody": 20345,
+        "hlBatch": 0,
+        "credUnits": 0,
+        "credFoodEq": 0,
+        "pendUnits": 0,
+        "t100K": 5.341659330985916,
+        "t100Eq": 0,
+        "food": 1193.72,
+        "foodEq": 3123.09,
+        "granSum": 36.166
+       },
+       "formulaSum": 0,
+       "formulaActSum": 0,
+       "walkersMax": 0
+      }
+     },
+     "econEnd": {
+      "pop": 260,
+      "jobs": {
+       "farmer": 54,
+       "fisher": 80,
+       "lumberjack": 0,
+       "forager": 26
+      },
+      "farmAnchor": 71.82
+     }
+    },
+    "1020": {
+     "eight": {
+      "pop": 211,
+      "dead": 4,
+      "ever": 51,
+      "weapQ": 7,
+      "expand": 0,
+      "board": 953,
+      "toolQ": 359.7,
+      "preserve": 0,
+      "grain": 15.5
+     },
+     "dissolved": 5,
+     "empty": 4,
+     "firstDiffDay": 1,
+     "popPct": -92.4,
+     "arm": {
+      "fish": {
+       "last": {
+        "actVillages": 17,
+        "villages": 51,
+        "cells": 2233,
+        "walkers": 2,
+        "hands": 0,
+        "handU": 0,
+        "handKg": 0,
+        "delivered": 0,
+        "formulaPerDay": 12.0232,
+        "formulaAll": 98.2722,
+        "thinN": 15,
+        "t340": {
+         "cast": 153,
+         "hook": 0,
+         "miss": 0,
+         "abort": 145,
+         "hookPct": 0,
+         "waitAvgMs": 5777,
+         "winAvgMs": 900,
+         "budgetLeftVillages": 0
+        }
+       },
+       "formulaSum": 40667.5,
+       "formulaActSum": 0,
+       "walkersMax": 8
+      },
+      "wood": {
+       "last": {
+        "actVillages": 51,
+        "villages": 51,
+        "cells": 9864,
+        "walkers": 0,
+        "hands": 0,
+        "handU": 0,
+        "handKg": 0,
+        "delivered": 0,
+        "formulaPerDay": 0.9512,
+        "formulaAll": 0.9512,
+        "cutDay": 0,
+        "cap": 0,
+        "trees": 10174,
+        "noTreeVillages": 0,
+        "popAll": 211
+       },
+       "formulaSum": 5458.3,
+       "formulaActSum": 0,
+       "walkersMax": 0
+      },
+      "forage": {
+       "last": {
+        "items": [
+         "fruit",
+         "twig",
+         "herb"
+        ],
+        "actVillages": 50,
+        "villages": 51,
+        "cells": 237,
+        "walkers": 0,
+        "hands": 0,
+        "handU": 0,
+        "delivered": 0,
+        "formulaPerDay": 19.2366,
+        "formulaAll": 19.2366,
+        "gran": 0,
+        "pickDay": 0,
+        "cap": 0,
+        "groves": 238,
+        "noGroveVillages": 1,
+        "popAll": 211
+       },
+       "formulaSum": 29829.6,
+       "formulaActSum": 0,
+       "walkersMax": 0
+      },
+      "farm": {
+       "last": {
+        "on": 1,
+        "items": 1,
+        "villages": 51,
+        "hands": 0,
+        "handU": 0,
+        "delivered": 0,
+        "gran": {
+         "barley": 1.9473,
+         "rice": 6.7803,
+         "wheat": 6.781
+        },
+        "pop": 211,
+        "farmers": 26,
+        "working": 9,
+        "trips": 0,
+        "harvestN": 0,
+        "hlBody": 20335,
+        "hlBatch": 0,
+        "credUnits": 0,
+        "credFoodEq": 0,
+        "pendUnits": 0,
+        "t100K": 5.341659330985916,
+        "t100Eq": 0,
+        "food": 787.48,
+        "foodEq": 1934.34,
+        "granSum": 15.509
+       },
+       "formulaSum": 0,
+       "formulaActSum": 0,
+       "walkersMax": 0
+      }
+     },
+     "econEnd": {
+      "pop": 211,
+      "jobs": {
+       "farmer": 62,
+       "fisher": 64,
+       "lumberjack": 3,
+       "forager": 20
+      },
+      "farmAnchor": 82.46
+     }
+    }
+   },
+   "W_A3": {
+    "7": {
+     "eight": {
+      "pop": 2507,
+      "dead": 0,
+      "ever": 51,
+      "weapQ": 219,
+      "expand": 583,
+      "board": 1084,
+      "toolQ": 3041,
+      "preserve": 28,
+      "grain": 8686.3
+     },
+     "dissolved": 0,
+     "empty": 0,
+     "firstDiffDay": 15,
+     "popPct": -1.7,
+     "arm": {
+      "wood": {
+       "last": {
+        "actVillages": 48,
+        "villages": 51,
+        "cells": 10540,
+        "walkers": 0,
+        "hands": 0,
+        "handU": 0,
+        "handKg": 0,
+        "delivered": 48002,
+        "formulaPerDay": 188.2899,
+        "formulaAll": 206.363,
+        "cutDay": 29,
+        "cap": 6244,
+        "trees": 10882,
+        "noTreeVillages": 3,
+        "popAll": 2507,
+        "K": 12797,
+        "back": 4143
+       },
+       "formulaSum": 51001.2,
+       "formulaActSum": 0,
+       "walkersMax": 0
+      }
+     },
+     "econEnd": {
+      "pop": 2507,
+      "jobs": {
+       "farmer": 869,
+       "fisher": 436,
+       "lumberjack": 200,
+       "forager": 400
+      },
+      "farmAnchor": 1347.72
+     }
+    },
+    "42": {
+     "eight": {
+      "pop": 2424,
+      "dead": 0,
+      "ever": 51,
+      "weapQ": 172,
+      "expand": 838,
+      "board": 1127,
+      "toolQ": 2836.2,
+      "preserve": 30.4,
+      "grain": 9831.7
+     },
+     "dissolved": 1,
+     "empty": 0,
+     "firstDiffDay": 15,
+     "popPct": -26.7,
+     "arm": {
+      "wood": {
+       "last": {
+        "actVillages": 49,
+        "villages": 51,
+        "cells": 10847,
+        "walkers": 0,
+        "hands": 0,
+        "handU": 0,
+        "handKg": 0,
+        "delivered": 49312,
+        "formulaPerDay": 123.8011,
+        "formulaAll": 123.8011,
+        "cutDay": 15,
+        "cap": 3430,
+        "trees": 11214,
+        "noTreeVillages": 2,
+        "popAll": 2424,
+        "K": 13214,
+        "back": 4225
+       },
+       "formulaSum": 52037.3,
+       "formulaActSum": 0,
+       "walkersMax": 0
+      }
+     },
+     "econEnd": {
+      "pop": 2424,
+      "jobs": {
+       "farmer": 935,
+       "fisher": 412,
+       "lumberjack": 86,
+       "forager": 415
+      },
+      "farmAnchor": 1490.085
+     }
+    },
+    "1020": {
+     "eight": {
+      "pop": 2852,
+      "dead": 0,
+      "ever": 51,
+      "weapQ": 161,
+      "expand": 815,
+      "board": 1242,
+      "toolQ": 3525.7,
+      "preserve": 2.5,
+      "grain": 11915.7
+     },
+     "dissolved": 0,
+     "empty": 0,
+     "firstDiffDay": 15,
+     "popPct": 2.4,
+     "arm": {
+      "wood": {
+       "last": {
+        "actVillages": 47,
+        "villages": 51,
+        "cells": 9794,
+        "walkers": 0,
+        "hands": 0,
+        "handU": 0,
+        "handKg": 0,
+        "delivered": 72016,
+        "formulaPerDay": 301.9024,
+        "formulaAll": 313.9633,
+        "cutDay": 47,
+        "cap": 8429,
+        "trees": 10140,
+        "noTreeVillages": 4,
+        "popAll": 2852,
+        "K": 12791,
+        "back": 6414
+       },
+       "formulaSum": 74501.2,
+       "formulaActSum": 0,
+       "walkersMax": 0
+      }
+     },
+     "econEnd": {
+      "pop": 2852,
+      "jobs": {
+       "farmer": 1078,
+       "fisher": 369,
+       "lumberjack": 247,
+       "forager": 510
+      },
+      "farmAnchor": 1675.035
+     }
+    }
+   },
+   "W_A4": {
+    "7": {
+     "eight": {
+      "pop": 2706,
+      "dead": 0,
+      "ever": 51,
+      "weapQ": 171,
+      "expand": 734,
+      "board": 1048,
+      "toolQ": 2649.1,
+      "preserve": 3.7,
+      "grain": 11291.2
+     },
+     "dissolved": 0,
+     "empty": 0,
+     "firstDiffDay": 10,
+     "popPct": 6.1,
+     "arm": {
+      "forage": {
+       "last": {
+        "items": [
+         "fruit",
+         "twig",
+         "herb"
+        ],
+        "actVillages": 42,
+        "villages": 51,
+        "cells": 175,
+        "walkers": 0,
+        "hands": 0,
+        "handU": 0,
+        "delivered": 25095,
+        "formulaPerDay": 348.8271,
+        "formulaAll": 439.1032,
+        "gran": 27249.1231,
+        "pickDay": 49,
+        "cap": 1075734,
+        "groves": 172,
+        "noGroveVillages": 9,
+        "popAll": 2706,
+        "formulaActPerDay": 138.6267,
+        "K": 219,
+        "back": 9117,
+        "reach": 3
+       },
+       "formulaSum": 102274.3,
+       "formulaActSum": 39098.3,
+       "walkersMax": 0
+      }
+     },
+     "econEnd": {
+      "pop": 2706,
+      "jobs": {
+       "farmer": 947,
+       "fisher": 445,
+       "lumberjack": 219,
+       "forager": 505
+      },
+      "farmAnchor": 1402.815
+     }
+    },
+    "42": {
+     "eight": {
+      "pop": 2797,
+      "dead": 0,
+      "ever": 51,
+      "weapQ": 233,
+      "expand": 480,
+      "board": 1104,
+      "toolQ": 3247.5,
+      "preserve": 113,
+      "grain": 18304.9
+     },
+     "dissolved": 0,
+     "empty": 0,
+     "firstDiffDay": 10,
+     "popPct": -15.4,
+     "arm": {
+      "forage": {
+       "last": {
+        "items": [
+         "fruit",
+         "twig",
+         "herb"
+        ],
+        "actVillages": 45,
+        "villages": 51,
+        "cells": 175,
+        "walkers": 0,
+        "hands": 0,
+        "handU": 0,
+        "delivered": 25384,
+        "formulaPerDay": 365.5694,
+        "formulaAll": 431.9121,
+        "gran": 26595.1211,
+        "pickDay": 50,
+        "cap": 1120517,
+        "groves": 172,
+        "noGroveVillages": 6,
+        "popAll": 2797,
+        "formulaActPerDay": 134.8141,
+        "K": 227,
+        "back": 9165,
+        "reach": 3
+       },
+       "formulaSum": 91116.6,
+       "formulaActSum": 36049.1,
+       "walkersMax": 0
+      }
+     },
+     "econEnd": {
+      "pop": 2797,
+      "jobs": {
+       "farmer": 971,
+       "fisher": 384,
+       "lumberjack": 184,
+       "forager": 500
+      },
+      "farmAnchor": 1504.245
+     }
+    },
+    "1020": {
+     "eight": {
+      "pop": 2355,
+      "dead": 1,
+      "ever": 51,
+      "weapQ": 153,
+      "expand": 884,
+      "board": 1108,
+      "toolQ": 2366.7,
+      "preserve": 0,
+      "grain": 7867.6
+     },
+     "dissolved": 1,
+     "empty": 1,
+     "firstDiffDay": 10,
+     "popPct": -15.5,
+     "arm": {
+      "forage": {
+       "last": {
+        "items": [
+         "fruit",
+         "twig",
+         "herb"
+        ],
+        "actVillages": 44,
+        "villages": 51,
+        "cells": 178,
+        "walkers": 0,
+        "hands": 0,
+        "handU": 0,
+        "delivered": 22328,
+        "formulaPerDay": 253.8164,
+        "formulaAll": 351.3086,
+        "gran": 24291.2337,
+        "pickDay": 43,
+        "cap": 972384,
+        "groves": 175,
+        "noGroveVillages": 7,
+        "popAll": 2355,
+        "formulaActPerDay": 101.0235,
+        "K": 225,
+        "back": 8131,
+        "reach": 3
+       },
+       "formulaSum": 84899.4,
+       "formulaActSum": 32445.7,
+       "walkersMax": 0
+      }
+     },
+     "econEnd": {
+      "pop": 2355,
+      "jobs": {
+       "farmer": 929,
+       "fisher": 330,
+       "lumberjack": 173,
+       "forager": 406
+      },
+      "farmAnchor": 1481.205
+     }
+    }
+   }
+  },
+  "rerun": {
+   "A1": "✗ 시드 1020: econ 날 지문 400일 같음 · 마을 칸 첫 갈림 = 날 8 · 칸 1 — _buildCrew",
+   "A2": "✗ 시드 1020: econ 날 지문 날 4 갈림 · 마을 칸 첫 갈림 = 날 3 · 칸 1 — _buildCrew",
+   "A3": "○ 시드 1020: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 1080) · 마을 칸 지문 400일 같음",
+   "A4": "○ 시드 1020: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2437) · 마을 칸 지문 400일 같음",
+   "ALL": "✗ 시드 1020: econ 날 지문 날 7 갈림 · 마을 칸 첫 갈림 = 날 3 · 칸 1 — _buildCrew"
+  },
+  "hookCheck": {
+   "result": "=== 같음 3/3 · 판 512초 ===",
+   "seeds": [
+    "○ 시드 1020: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2786) · 마을 칸 지문 400일 같음",
+    "○ 시드 7: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2551) · 마을 칸 지문 400일 같음",
+    "○ 시드 42: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 3306) · 마을 칸 지문 400일 같음"
+   ]
+  }
+ },
+ "realday": {
+  "how": "node scripts/t686-spike.js run <tag> --ref HEAD (T686_BOUNDS=2 · 틀 tpl-t100 200일 · 관측자 1 · 한 판 혼자) + T686_PRELOAD(어부 손잡이 팔 값 · 관측 훅)",
+  "arms": [
+   {
+    "tag": "off",
+    "tick": {
+     "n": 54276,
+     "p50": 0.8,
+     "p90": 1.2,
+     "p99": 16.5,
+     "p999": 18.9,
+     "max": 127,
+     "over30": 27,
+     "over16": 1366,
+     "near": 24
+    },
+    "owners": [
+     [
+      "마을 하루 조각(늦은) · life:쉼표",
+      {
+       "n": 14,
+       "max": 49.9,
+       "close": 14
+      }
+     ],
+     [
+      "마을 하루 조각(늦은) · caravan",
+      {
+       "n": 3,
+       "max": 63.5,
+       "close": 3
+      }
+     ],
+     [
+      "마을 하루 조각 · econ:vil",
+      {
+       "n": 2,
+       "max": 34.2,
+       "close": 0
+      }
+     ],
+     [
+      "마을 하루 조각(늦은) · econ:trade",
+      {
+       "n": 2,
+       "max": 44,
+       "close": 2
+      }
+     ],
+     [
+      "마을 하루 조각(늦은) · events",
+      {
+       "n": 2,
+       "max": 61.6,
+       "close": 2
+      }
+     ],
+     [
+      "늦은 마감(T695)·밭 그림",
+      {
+       "n": 1,
+       "max": 35.5,
+       "close": 0
+      }
+     ]
+    ],
+    "rows": [
+     {
+      "d": 202,
+      "wd": 202,
+      "fish": null,
+      "wood": null,
+      "forage": null,
+      "farm": null,
+      "econ": {
+       "pop": 612,
+       "jobs": {
+        "farmer": 167,
+        "fisher": 125,
+        "lumberjack": 50,
+        "forager": 87
+       },
+       "farmAnchor": 213.66
+      }
+     },
+     {
+      "d": 203,
+      "wd": 203,
+      "fish": null,
+      "wood": null,
+      "forage": null,
+      "farm": null,
+      "econ": {
+       "pop": 612,
+       "jobs": {
+        "farmer": 167,
+        "fisher": 125,
+        "lumberjack": 50,
+        "forager": 87
+       },
+       "farmAnchor": 213.66
+      }
+     }
+    ]
+   },
+   {
+    "tag": "a1",
+    "tick": {
+     "n": 54260,
+     "p50": 1.1,
+     "p90": 1.7,
+     "p99": 16.5,
+     "p999": 18.2,
+     "max": 104.8,
+     "over30": 15,
+     "over16": 1350,
+     "near": 9
+    },
+    "owners": [
+     [
+      "결정 문(순회)",
+      {
+       "n": 4,
+       "max": 104.8,
+       "close": 0
+      }
+     ],
+     [
+      "마을 하루 조각 · econ:vil",
+      {
+       "n": 2,
+       "max": 38.7,
+       "close": 0
+      }
+     ],
+     [
+      "마을 하루 조각(늦은) · caravan",
+      {
+       "n": 2,
+       "max": 58,
+       "close": 2
+      }
+     ],
+     [
+      "마을 하루 조각(늦은) · events",
+      {
+       "n": 2,
+       "max": 51.6,
+       "close": 2
+      }
+     ],
+     [
+      "마을 하루 조각(늦은) · life:쉼표",
+      {
+       "n": 2,
+       "max": 36.7,
+       "close": 2
+      }
+     ],
+     [
+      "마을 하루 조각(늦은) · econ:trade",
+      {
+       "n": 1,
+       "max": 30.6,
+       "close": 1
+      }
+     ]
+    ],
+    "rows": [
+     {
+      "d": 202,
+      "wd": 202,
+      "fish": null,
+      "wood": null,
+      "forage": null,
+      "farm": {
+       "on": 1,
+       "items": 1,
+       "villages": 51,
+       "hands": 0,
+       "handU": 0,
+       "delivered": 0,
+       "gran": {
+        "barley": 188.8438,
+        "rice": 369.388,
+        "wheat": 295.9367
+       },
+       "pop": 612,
+       "farmers": 167,
+       "working": 8,
+       "trips": 0,
+       "harvestN": 3073,
+       "hlBody": 0,
+       "hlBatch": 0,
+       "credUnits": 0,
+       "credFoodEq": 0,
+       "pendUnits": 0,
+       "t100K": 5.341659330985916,
+       "t100Eq": 0,
+       "food": 18041.64,
+       "foodEq": 19072.68,
+       "granSum": 854.168
+      },
+      "econ": {
+       "pop": 612,
+       "jobs": {
+        "farmer": 167,
+        "fisher": 125,
+        "lumberjack": 50,
+        "forager": 87
+       },
+       "farmAnchor": 222.11
+      }
+     },
+     {
+      "d": 203,
+      "wd": 203,
+      "fish": null,
+      "wood": null,
+      "forage": null,
+      "farm": {
+       "on": 1,
+       "items": 1,
+       "villages": 51,
+       "hands": 0,
+       "handU": 0,
+       "delivered": 0,
+       "gran": {
+        "barley": 139.2881,
+        "rice": 370.6548,
+        "wheat": 322.3224
+       },
+       "pop": 612,
+       "farmers": 167,
+       "working": 9,
+       "trips": 0,
+       "harvestN": 3073,
+       "hlBody": 51,
+       "hlBatch": 0,
+       "credUnits": 0,
+       "credFoodEq": 0,
+       "pendUnits": 0,
+       "t100K": 5.341659330985916,
+       "t100Eq": 0,
+       "food": 17977.55,
+       "foodEq": 18982.82,
+       "granSum": 832.265
+      },
+      "econ": {
+       "pop": 612,
+       "jobs": {
+        "farmer": 167,
+        "fisher": 125,
+        "lumberjack": 50,
+        "forager": 87
+       },
+       "farmAnchor": 222.11
+      }
+     }
+    ]
+   },
+   {
+    "tag": "a2",
+    "tick": {
+     "n": 54194,
+     "p50": 1.4,
+     "p90": 2.3,
+     "p99": 16.5,
+     "p999": 18.8,
+     "max": 172.3,
+     "over30": 19,
+     "over16": 1444,
+     "near": 10
+    },
+    "owners": [
+     [
+      "마을 하루 조각(늦은) · caravan",
+      {
+       "n": 3,
+       "max": 75.1,
+       "close": 3
+      }
+     ],
+     [
+      "늦은 마감(T695)·밭 그림",
+      {
+       "n": 2,
+       "max": 65.3,
+       "close": 0
+      }
+     ],
+     [
+      "마을 하루 조각(늦은) · events",
+      {
+       "n": 2,
+       "max": 75.8,
+       "close": 2
+      }
+     ],
+     [
+      "마을 하루 조각(늦은) · life:쉼표",
+      {
+       "n": 2,
+       "max": 52.6,
+       "close": 2
+      }
+     ],
+     [
+      "GC",
+      {
+       "n": 2,
+       "max": 57,
+       "close": 0
+      }
+     ],
+     [
+      "마을 하루 조각(늦은) · econ:vil",
+      {
+       "n": 1,
+       "max": 44.2,
+       "close": 1
+      }
+     ]
+    ],
+    "rows": [
+     {
+      "d": 202,
+      "wd": 202,
+      "fish": {
+       "actVillages": 3,
+       "villages": 51,
+       "cells": 332,
+       "walkers": 0,
+       "hands": 0,
+       "handU": 0,
+       "handKg": 0,
+       "delivered": 0,
+       "formulaPerDay": 16.5396,
+       "formulaAll": 155.2505,
+       "thinN": 15,
+       "t340": {
+        "cast": 0,
+        "hook": 0,
+        "miss": 0,
+        "abort": 0,
+        "hookPct": null,
+        "waitAvgMs": null,
+        "winAvgMs": null,
+        "budgetLeftVillages": 0
+       }
+      },
+      "wood": null,
+      "forage": null,
+      "farm": null,
+      "econ": {
+       "pop": 612,
+       "jobs": {
+        "farmer": 167,
+        "fisher": 125,
+        "lumberjack": 50,
+        "forager": 87
+       },
+       "farmAnchor": 213.66
+      }
+     },
+     {
+      "d": 203,
+      "wd": 203,
+      "fish": {
+       "actVillages": 29,
+       "villages": 51,
+       "cells": 3308,
+       "walkers": 0,
+       "hands": 0,
+       "handU": 0,
+       "handKg": 0,
+       "delivered": 13.7587,
+       "formulaPerDay": 129.6958,
+       "formulaAll": 153.3434,
+       "thinN": 15,
+       "t340": {
+        "cast": 8316,
+        "hook": 4949,
+        "miss": 745,
+        "abort": 2575,
+        "hookPct": 59.5,
+        "waitAvgMs": 5931,
+        "winAvgMs": 900,
+        "budgetLeftVillages": 15
+       }
+      },
+      "wood": null,
+      "forage": null,
+      "farm": null,
+      "econ": {
+       "pop": 612,
+       "jobs": {
+        "farmer": 167,
+        "fisher": 125,
+        "lumberjack": 50,
+        "forager": 87
+       },
+       "farmAnchor": 213.66
+      }
+     }
+    ]
+   },
+   {
+    "tag": "a3",
+    "tick": {
+     "n": 54224,
+     "p50": 0.8,
+     "p90": 1.2,
+     "p99": 16.5,
+     "p999": 24.9,
+     "max": 157.5,
+     "over30": 48,
+     "over16": 1244,
+     "near": 40
+    },
+    "owners": [
+     [
+      "마을 하루 조각(늦은) · life:쉼표",
+      {
+       "n": 30,
+       "max": 110.9,
+       "close": 30
+      }
+     ],
+     [
+      "마을 하루 조각(늦은) · caravan",
+      {
+       "n": 5,
+       "max": 119.4,
+       "close": 5
+      }
+     ],
+     [
+      "늦은 마감(T695)·밭 그림",
+      {
+       "n": 4,
+       "max": 157.5,
+       "close": 0
+      }
+     ],
+     [
+      "마을 하루 조각(늦은) · econ:trade",
+      {
+       "n": 2,
+       "max": 43.1,
+       "close": 2
+      }
+     ],
+     [
+      "마을 하루 조각(늦은) · events",
+      {
+       "n": 2,
+       "max": 48.9,
+       "close": 2
+      }
+     ],
+     [
+      "결정 문(순회)",
+      {
+       "n": 1,
+       "max": 37.4,
+       "close": 0
+      }
+     ]
+    ],
+    "rows": [
+     {
+      "d": 202,
+      "wd": 202,
+      "fish": null,
+      "wood": {
+       "actVillages": 0,
+       "villages": 51,
+       "cells": 0,
+       "walkers": 0,
+       "hands": 0,
+       "handU": 0,
+       "handKg": 0,
+       "delivered": 0,
+       "formulaPerDay": 0,
+       "formulaAll": 41.9154,
+       "cutDay": 0,
+       "cap": 0,
+       "trees": 0,
+       "noTreeVillages": 51,
+       "popAll": 612,
+       "K": 0,
+       "back": 0
+      },
+      "forage": null,
+      "farm": null,
+      "econ": {
+       "pop": 612,
+       "jobs": {
+        "farmer": 167,
+        "fisher": 125,
+        "lumberjack": 50,
+        "forager": 87
+       },
+       "farmAnchor": 213.66
+      }
+     },
+     {
+      "d": 203,
+      "wd": 203,
+      "fish": null,
+      "wood": {
+       "actVillages": 51,
+       "villages": 51,
+       "cells": 9203,
+       "walkers": 0,
+       "hands": 0,
+       "handU": 0,
+       "handKg": 0,
+       "delivered": 139,
+       "formulaPerDay": 41.9163,
+       "formulaAll": 41.9163,
+       "cutDay": 24,
+       "cap": 1904,
+       "trees": 9490,
+       "noTreeVillages": 0,
+       "popAll": 612,
+       "K": 9490,
+       "back": 0
+      },
+      "forage": null,
+      "farm": null,
+      "econ": {
+       "pop": 612,
+       "jobs": {
+        "farmer": 167,
+        "fisher": 125,
+        "lumberjack": 50,
+        "forager": 87
+       },
+       "farmAnchor": 213.66
+      }
+     }
+    ]
+   },
+   {
+    "tag": "a4",
+    "tick": {
+     "n": 54237,
+     "p50": 0.8,
+     "p90": 1.2,
+     "p99": 16.6,
+     "p999": 22.2,
+     "max": 121.8,
+     "over30": 34,
+     "over16": 1442,
+     "near": 30
+    },
+    "owners": [
+     [
+      "마을 하루 조각(늦은) · life:쉼표",
+      {
+       "n": 20,
+       "max": 57.9,
+       "close": 20
+      }
+     ],
+     [
+      "마을 하루 조각(늦은) · caravan",
+      {
+       "n": 4,
+       "max": 62,
+       "close": 4
+      }
+     ],
+     [
+      "마을 하루 조각 · econ:vil",
+      {
+       "n": 2,
+       "max": 36.7,
+       "close": 0
+      }
+     ],
+     [
+      "마을 하루 조각(늦은) · events",
+      {
+       "n": 2,
+       "max": 81.5,
+       "close": 2
+      }
+     ],
+     [
+      "꼬리(쓰러짐·계측)",
+      {
+       "n": 2,
+       "max": 41.8,
+       "close": 0
+      }
+     ],
+     [
+      "마을 하루 조각(늦은) · econ:vil",
+      {
+       "n": 1,
+       "max": 34.7,
+       "close": 1
+      }
+     ]
+    ],
+    "rows": [
+     {
+      "d": 202,
+      "wd": 202,
+      "fish": null,
+      "wood": null,
+      "forage": {
+       "items": [
+        "fruit",
+        "twig",
+        "herb"
+       ],
+       "actVillages": 0,
+       "villages": 51,
+       "cells": 0,
+       "walkers": 0,
+       "hands": 0,
+       "handU": 0,
+       "delivered": 0,
+       "formulaPerDay": 0,
+       "formulaAll": 72.089,
+       "gran": 0,
+       "pickDay": 0,
+       "cap": 0,
+       "groves": 0,
+       "noGroveVillages": 51,
+       "popAll": 612,
+       "formulaActPerDay": 0,
+       "K": 0,
+       "back": 0,
+       "reach": 0
+      },
+      "farm": null,
+      "econ": {
+       "pop": 612,
+       "jobs": {
+        "farmer": 167,
+        "fisher": 125,
+        "lumberjack": 50,
+        "forager": 87
+       },
+       "farmAnchor": 213.66
+      }
+     },
+     {
+      "d": 203,
+      "wd": 203,
+      "fish": null,
+      "wood": null,
+      "forage": {
+       "items": [
+        "fruit",
+        "twig",
+        "herb"
+       ],
+       "actVillages": 51,
+       "villages": 51,
+       "cells": 236,
+       "walkers": 0,
+       "hands": 1,
+       "handU": 10,
+       "delivered": 0,
+       "formulaPerDay": 71.4703,
+       "formulaAll": 71.4703,
+       "gran": 0,
+       "pickDay": 0,
+       "cap": 276854,
+       "groves": 236,
+       "noGroveVillages": 0,
+       "popAll": 612,
+       "formulaActPerDay": 26.3877,
+       "K": 238,
+       "back": 0,
+       "reach": 1
+      },
+      "farm": null,
+      "econ": {
+       "pop": 612,
+       "jobs": {
+        "farmer": 167,
+        "fisher": 125,
+        "lumberjack": 50,
+        "forager": 87
+       },
+       "farmAnchor": 213.66
+      }
+     }
+    ]
+   },
+   {
+    "tag": "all",
+    "tick": {
+     "n": 54258,
+     "p50": 1.6,
+     "p90": 2.4,
+     "p99": 16.6,
+     "p999": 25.8,
+     "max": 148.7,
+     "over30": 41,
+     "over16": 1537,
+     "near": 36
+    },
+    "owners": [
+     [
+      "마을 하루 조각(늦은) · life:쉼표",
+      {
+       "n": 26,
+       "max": 148.7,
+       "close": 26
+      }
+     ],
+     [
+      "결정 문(순회)",
+      {
+       "n": 4,
+       "max": 87.9,
+       "close": 1
+      }
+     ],
+     [
+      "마을 하루 조각 · econ:vil",
+      {
+       "n": 2,
+       "max": 39.3,
+       "close": 0
+      }
+     ],
+     [
+      "마을 하루 조각(늦은) · econ:trade",
+      {
+       "n": 2,
+       "max": 39.4,
+       "close": 2
+      }
+     ],
+     [
+      "마을 하루 조각(늦은) · events",
+      {
+       "n": 2,
+       "max": 54.5,
+       "close": 2
+      }
+     ],
+     [
+      "마을 하루 조각(늦은) · caravan",
+      {
+       "n": 2,
+       "max": 93.6,
+       "close": 2
+      }
+     ]
+    ],
+    "rows": [
+     {
+      "d": 202,
+      "wd": 202,
+      "fish": {
+       "actVillages": 4,
+       "villages": 51,
+       "cells": 480,
+       "walkers": 0,
+       "hands": 0,
+       "handU": 0,
+       "handKg": 0,
+       "delivered": 0,
+       "formulaPerDay": 20.9874,
+       "formulaAll": 155.2505,
+       "thinN": 15,
+       "t340": {
+        "cast": 0,
+        "hook": 0,
+        "miss": 0,
+        "abort": 0,
+        "hookPct": null,
+        "waitAvgMs": null,
+        "winAvgMs": null,
+        "budgetLeftVillages": 0
+       }
+      },
+      "wood": {
+       "actVillages": 7,
+       "villages": 51,
+       "cells": 1079,
+       "walkers": 1,
+       "hands": 2,
+       "handU": 11,
+       "handKg": 33,
+       "delivered": 0,
+       "formulaPerDay": 5.9175,
+       "formulaAll": 41.9154,
+       "cutDay": 0,
+       "cap": 0,
+       "trees": 1125,
+       "noTreeVillages": 44,
+       "popAll": 612,
+       "K": 1125,
+       "back": 0
+      },
+      "forage": {
+       "items": [
+        "fruit",
+        "twig",
+        "herb"
+       ],
+       "actVillages": 0,
+       "villages": 51,
+       "cells": 0,
+       "walkers": 0,
+       "hands": 0,
+       "handU": 0,
+       "delivered": 0,
+       "formulaPerDay": 0,
+       "formulaAll": 72.089,
+       "gran": 0,
+       "pickDay": 0,
+       "cap": 0,
+       "groves": 0,
+       "noGroveVillages": 51,
+       "popAll": 612,
+       "formulaActPerDay": 0,
+       "K": 0,
+       "back": 0,
+       "reach": 0
+      },
+      "farm": {
+       "on": 1,
+       "items": 1,
+       "villages": 51,
+       "hands": 0,
+       "handU": 0,
+       "delivered": 0,
+       "gran": {
+        "barley": 188.8438,
+        "rice": 369.388,
+        "wheat": 295.9367
+       },
+       "pop": 612,
+       "farmers": 167,
+       "working": 10,
+       "trips": 0,
+       "harvestN": 3073,
+       "hlBody": 0,
+       "hlBatch": 0,
+       "credUnits": 0,
+       "credFoodEq": 0,
+       "pendUnits": 0,
+       "t100K": 5.341659330985916,
+       "t100Eq": 0,
+       "food": 18023.21,
+       "foodEq": 19054.46,
+       "granSum": 854.168
+      },
+      "econ": {
+       "pop": 612,
+       "jobs": {
+        "farmer": 167,
+        "fisher": 125,
+        "lumberjack": 50,
+        "forager": 87
+       },
+       "farmAnchor": 222.11
+      }
+     },
+     {
+      "d": 203,
+      "wd": 203,
+      "fish": {
+       "actVillages": 25,
+       "villages": 51,
+       "cells": 2957,
+       "walkers": 0,
+       "hands": 0,
+       "handU": 0,
+       "handKg": 0,
+       "delivered": 13.5444,
+       "formulaPerDay": 121.2598,
+       "formulaAll": 153.3434,
+       "thinN": 15,
+       "t340": {
+        "cast": 8351,
+        "hook": 5049,
+        "miss": 704,
+        "abort": 2553,
+        "hookPct": 60.5,
+        "waitAvgMs": 5915,
+        "winAvgMs": 900,
+        "budgetLeftVillages": 15
+       }
+      },
+      "wood": {
+       "actVillages": 51,
+       "villages": 51,
+       "cells": 9201,
+       "walkers": 0,
+       "hands": 2,
+       "handU": 7.895,
+       "handKg": 23.68,
+       "delivered": 131.105,
+       "formulaPerDay": 41.9163,
+       "formulaAll": 41.9163,
+       "cutDay": 22,
+       "cap": 1676,
+       "trees": 9488,
+       "noTreeVillages": 0,
+       "popAll": 612,
+       "K": 9490,
+       "back": 0
+      },
+      "forage": {
+       "items": [
+        "fruit",
+        "twig",
+        "herb"
+       ],
+       "actVillages": 51,
+       "villages": 51,
+       "cells": 236,
+       "walkers": 0,
+       "hands": 1,
+       "handU": 10,
+       "delivered": 0,
+       "formulaPerDay": 71.4703,
+       "formulaAll": 71.4703,
+       "gran": 0,
+       "pickDay": 0,
+       "cap": 255929,
+       "groves": 236,
+       "noGroveVillages": 0,
+       "popAll": 612,
+       "formulaActPerDay": 26.3877,
+       "K": 238,
+       "back": 0,
+       "reach": 1
+      },
+      "farm": {
+       "on": 1,
+       "items": 1,
+       "villages": 51,
+       "hands": 0,
+       "handU": 0,
+       "delivered": 0,
+       "gran": {
+        "barley": 138.028,
+        "rice": 394.7665,
+        "wheat": 277.5487
+       },
+       "pop": 612,
+       "farmers": 167,
+       "working": 9,
+       "trips": 0,
+       "harvestN": 3073,
+       "hlBody": 51,
+       "hlBatch": 0,
+       "credUnits": 0,
+       "credFoodEq": 0,
+       "pendUnits": 0,
+       "t100K": 5.341659330985916,
+       "t100Eq": 0,
+       "food": 17878.37,
+       "foodEq": 18851.12,
+       "granSum": 810.343
+      },
+      "econ": {
+       "pop": 612,
+       "jobs": {
+        "farmer": 167,
+        "fisher": 125,
+        "lumberjack": 50,
+        "forager": 87
+       },
+       "farmAnchor": 222.11
+      }
+     }
+    ]
+   }
+  ],
+  "a2b": [
+   {
+    "tag": "a2b",
+    "tick": {
+     "n": 97665,
+     "p50": 1.4,
+     "p90": 2,
+     "p99": 16.4,
+     "p999": 18,
+     "max": 145.1,
+     "over30": 29,
+     "over16": 1590,
+     "near": 16
+    },
+    "rows": [
+     {
+      "d": 202,
+      "wd": 202,
+      "fish": {
+       "actVillages": 3,
+       "villages": 51,
+       "cells": 332,
+       "walkers": 0,
+       "hands": 0,
+       "handU": 0,
+       "handKg": 0,
+       "delivered": 0,
+       "formulaPerDay": 16.5396,
+       "formulaAll": 155.2505,
+       "thinN": 15,
+       "t340": {
+        "cast": 0,
+        "hook": 0,
+        "miss": 0,
+        "abort": 0,
+        "hookPct": null,
+        "waitAvgMs": null,
+        "winAvgMs": null,
+        "budgetLeftVillages": 0
+       }
+      },
+      "wood": null,
+      "forage": null,
+      "farm": null,
+      "econ": {
+       "pop": 612,
+       "jobs": {
+        "farmer": 167,
+        "fisher": 125,
+        "lumberjack": 50,
+        "forager": 87
+       },
+       "farmAnchor": 213.66
+      }
+     },
+     {
+      "d": 203,
+      "wd": 203,
+      "fish": {
+       "actVillages": 29,
+       "villages": 51,
+       "cells": 3308,
+       "walkers": 0,
+       "hands": 0,
+       "handU": 0,
+       "handKg": 0,
+       "delivered": 13.6873,
+       "formulaPerDay": 129.6958,
+       "formulaAll": 153.3434,
+       "thinN": 15,
+       "t340": {
+        "cast": 8348,
+        "hook": 4996,
+        "miss": 727,
+        "abort": 2577,
+        "hookPct": 59.8,
+        "waitAvgMs": 5906,
+        "winAvgMs": 900,
+        "budgetLeftVillages": 15
+       }
+      },
+      "wood": null,
+      "forage": null,
+      "farm": null,
+      "econ": {
+       "pop": 612,
+       "jobs": {
+        "farmer": 167,
+        "fisher": 125,
+        "lumberjack": 50,
+        "forager": 87
+       },
+       "farmAnchor": 213.66
+      }
+     },
+     {
+      "d": 204,
+      "wd": 204,
+      "fish": {
+       "actVillages": 29,
+       "villages": 51,
+       "cells": 3308,
+       "walkers": 0,
+       "hands": 0,
+       "handU": 0,
+       "handKg": 0,
+       "delivered": 24.1306,
+       "formulaPerDay": 129.7045,
+       "formulaAll": 153.3466,
+       "thinN": 15,
+       "t340": {
+        "cast": 18802,
+        "hook": 11350,
+        "miss": 1610,
+        "abort": 5788,
+        "hookPct": 60.4,
+        "waitAvgMs": 5913,
+        "winAvgMs": 899,
+        "budgetLeftVillages": 20
+       }
+      },
+      "wood": null,
+      "forage": null,
+      "farm": null,
+      "econ": {
+       "pop": 612,
+       "jobs": {
+        "farmer": 167,
+        "fisher": 125,
+        "lumberjack": 50,
+        "forager": 87
+       },
+       "farmAnchor": 213.66
+      }
+     }
+    ]
+   }
+  ]
+ },
+ "landed": {
+  "head": "main 02a62e66(착지 10-18 98c9a942 · T778~T784)",
+  "how": "같은 자 · 같은 손잡이 · 같은 훅 — 서버 자는 `server-baseline-check.js <옛 판 JSON> --vclock --seeds 1020`(견주기) · 실제 하루는 같은 틀 · 경계 둘",
+  "ruler1020": {
+   "OFF": {
+    "old": {
+     "eight": {
+      "pop": 2786,
+      "dead": 0,
+      "ever": 51,
+      "weapQ": 158,
+      "expand": 463,
+      "board": 952,
+      "toolQ": 3276.8,
+      "preserve": 35.8,
+      "grain": 9449
+     },
+     "dissolved": 0,
+     "empty": 0
+    },
+    "now": {
+     "eight": {
+      "pop": 2786,
+      "dead": 0,
+      "ever": 51,
+      "weapQ": 158,
+      "expand": 463,
+      "board": 952,
+      "toolQ": 3276.8,
+      "preserve": 35.8,
+      "grain": 9449
+     },
+     "dissolved": 0,
+     "empty": 0
+    },
+    "check": "○ 시드 1020: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2786) · 마을 칸 지문 400일 같음",
+    "arm": {}
+   },
+   "A1": {
+    "old": {
+     "eight": {
+      "pop": 438,
+      "dead": 1,
+      "ever": 51,
+      "weapQ": 12,
+      "expand": 0,
+      "board": 864,
+      "toolQ": 468.3,
+      "preserve": 0,
+      "grain": 405.4
+     },
+     "dissolved": 4,
+     "empty": 1
+    },
+    "now": {
+     "eight": {
+      "pop": 438,
+      "dead": 1,
+      "ever": 51,
+      "weapQ": 12,
+      "expand": 0,
+      "board": 864,
+      "toolQ": 468.3,
+      "preserve": 0,
+      "grain": 405.4
+     },
+     "dissolved": 4,
+     "empty": 1
+    },
+    "check": "✗ 시드 1020: econ 날 지문 400일 같음 · 마을 칸 첫 갈림 = 날 3 · 칸 1 — _buildCrew",
+    "arm": {
+     "farm": {
+      "delivered": 0,
+      "gran": {
+       "rice": 110.1402,
+       "wheat": 135.7513,
+       "barley": 159.5333
+      },
+      "harvestN": 0,
+      "credFoodEq": 0,
+      "formulaSum": 0,
+      "walkersMax": 0
+     }
+    }
+   },
+   "A2": {
+    "old": {
+     "eight": {
+      "pop": 2077,
+      "dead": 0,
+      "ever": 51,
+      "weapQ": 140,
+      "expand": 292,
+      "board": 1224,
+      "toolQ": 2102.5,
+      "preserve": 0.1,
+      "grain": 6560
+     },
+     "dissolved": 1,
+     "empty": 0
+    },
+    "now": {
+     "eight": {
+      "pop": 1957,
+      "dead": 1,
+      "ever": 51,
+      "weapQ": 126,
+      "expand": 289,
+      "board": 1014,
+      "toolQ": 2054.7,
+      "preserve": 0.4,
+      "grain": 6008.8
+     },
+     "dissolved": 1,
+     "empty": 1
+    },
+    "check": "✗ 시드 1020: econ 날 지문 날 4 갈림 · 마을 칸 첫 갈림 = 날 3 · 칸 1 — _buildCrew",
+    "arm": {
+     "fish": {
+      "delivered": 0,
+      "t340": {
+       "cast": 123,
+       "hook": 0,
+       "miss": 0,
+       "abort": 118,
+       "hookPct": 0,
+       "waitAvgMs": 5933,
+       "winAvgMs": 900,
+       "budgetLeftVillages": 0
+      },
+      "formulaSum": 50228.8,
+      "walkersMax": 4
+     }
+    }
+   },
+   "A3": {
+    "old": {
+     "eight": {
+      "pop": 1080,
+      "dead": 0,
+      "ever": 51,
+      "weapQ": 40,
+      "expand": 0,
+      "board": 863,
+      "toolQ": 1415.9,
+      "preserve": 0.7,
+      "grain": 3072.3
+     },
+     "dissolved": 1,
+     "empty": 0
+    },
+    "now": {
+     "eight": {
+      "pop": 1080,
+      "dead": 0,
+      "ever": 51,
+      "weapQ": 40,
+      "expand": 0,
+      "board": 863,
+      "toolQ": 1415.9,
+      "preserve": 0.7,
+      "grain": 3072.3
+     },
+     "dissolved": 1,
+     "empty": 0
+    },
+    "check": "○ 시드 1020: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 1080) · 마을 칸 지문 400일 같음",
+    "arm": {
+     "wood": {
+      "delivered": 0,
+      "cap": 0,
+      "cutDay": 0,
+      "formulaSum": 54592,
+      "walkersMax": 0
+     }
+    }
+   },
+   "A4": {
+    "old": {
+     "eight": {
+      "pop": 2437,
+      "dead": 1,
+      "ever": 51,
+      "weapQ": 240,
+      "expand": 347,
+      "board": 1358,
+      "toolQ": 2831.6,
+      "preserve": 39.1,
+      "grain": 7549.9
+     },
+     "dissolved": 2,
+     "empty": 1
+    },
+    "now": {
+     "eight": {
+      "pop": 2437,
+      "dead": 1,
+      "ever": 51,
+      "weapQ": 240,
+      "expand": 347,
+      "board": 1358,
+      "toolQ": 2831.6,
+      "preserve": 39.1,
+      "grain": 7549.9
+     },
+     "dissolved": 2,
+     "empty": 1
+    },
+    "check": "○ 시드 1020: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2437) · 마을 칸 지문 400일 같음",
+    "arm": {
+     "forage": {
+      "delivered": 0,
+      "gran": 0,
+      "cap": 0,
+      "pickDay": 0,
+      "formulaSum": 100862.9,
+      "walkersMax": 0
+     }
+    }
+   },
+   "ALL": {
+    "old": {
+     "eight": {
+      "pop": 211,
+      "dead": 4,
+      "ever": 51,
+      "weapQ": 7,
+      "expand": 0,
+      "board": 953,
+      "toolQ": 359.7,
+      "preserve": 0,
+      "grain": 15.5
+     },
+     "dissolved": 5,
+     "empty": 4
+    },
+    "now": {
+     "eight": {
+      "pop": 297,
+      "dead": 5,
+      "ever": 51,
+      "weapQ": 14,
+      "expand": 0,
+      "board": 1060,
+      "toolQ": 341.9,
+      "preserve": 0,
+      "grain": 45.5
+     },
+     "dissolved": 5,
+     "empty": 5
+    },
+    "check": "✗ 시드 1020: econ 날 지문 날 4 갈림 · 마을 칸 첫 갈림 = 날 3 · 칸 1 — _buildCrew",
+    "arm": {
+     "fish": {
+      "delivered": 0,
+      "t340": {
+       "cast": 110,
+       "hook": 0,
+       "miss": 0,
+       "abort": 102,
+       "hookPct": 0,
+       "waitAvgMs": 5566,
+       "winAvgMs": 900,
+       "budgetLeftVillages": 0
+      },
+      "formulaSum": 37691.4,
+      "walkersMax": 7
+     },
+     "wood": {
+      "delivered": 0,
+      "cap": 0,
+      "cutDay": 0,
+      "formulaSum": 2787,
+      "walkersMax": 0
+     },
+     "forage": {
+      "delivered": 0,
+      "gran": 0,
+      "cap": 0,
+      "pickDay": 0,
+      "formulaSum": 29002.9,
+      "walkersMax": 0
+     },
+     "farm": {
+      "delivered": 0,
+      "gran": {
+       "wheat": 18.4189,
+       "rice": 15.8824,
+       "barley": 11.1525
+      },
+      "harvestN": 0,
+      "credFoodEq": 0,
+      "formulaSum": 0,
+      "walkersMax": 0
+     }
+    }
+   }
+  },
+  "realday": [
+   {
+    "tag": "offn",
+    "tick": {
+     "n": 51385,
+     "p50": 0.8,
+     "p90": 15.6,
+     "p99": 58.1,
+     "p999": 69.6,
+     "max": 108,
+     "over30": 3696,
+     "over16": 4549,
+     "near": 24
+    },
+    "owners": [
+     [
+      "econ · v:몸(캐러밴·떠나는 몸·전투)",
+      {
+       "n": 3667,
+       "max": 92.5,
+       "close": 0
+      }
+     ],
+     [
+      "마을 하루 조각(늦은) · life:쉼표",
+      {
+       "n": 15,
+       "max": 51,
+       "close": 15
+      }
+     ],
+     [
+      "마을 하루 조각(늦은) · caravan",
+      {
+       "n": 4,
+       "max": 44,
+       "close": 4
+      }
+     ],
+     [
+      "마을 하루 조각(늦은) · events",
+      {
+       "n": 2,
+       "max": 92.1,
+       "close": 2
+      }
+     ],
+     [
+      "결정 문(순회)",
+      {
+       "n": 2,
+       "max": 82.5,
+       "close": 0
+      }
+     ],
+     [
+      "마을 하루 조각(늦은) · econ:head",
+      {
+       "n": 1,
+       "max": 108,
+       "close": 1
+      }
+     ]
+    ],
+    "rows": [
+     {
+      "d": 202,
+      "wd": 202,
+      "fish": null,
+      "wood": null,
+      "forage": null,
+      "farm": null,
+      "econ": {
+       "pop": 612,
+       "jobs": {
+        "farmer": 167,
+        "fisher": 125,
+        "lumberjack": 50,
+        "forager": 87
+       },
+       "farmAnchor": 213.66
+      }
+     },
+     {
+      "d": 203,
+      "wd": 203,
+      "fish": null,
+      "wood": null,
+      "forage": null,
+      "farm": null,
+      "econ": {
+       "pop": 612,
+       "jobs": {
+        "farmer": 167,
+        "fisher": 125,
+        "lumberjack": 50,
+        "forager": 87
+       },
+       "farmAnchor": 213.66
+      }
+     }
+    ]
+   },
+   {
+    "tag": "a2n",
+    "tick": {
+     "n": 52643,
+     "p50": 1.6,
+     "p90": 16.9,
+     "p99": 43.4,
+     "p999": 54.9,
+     "max": 376.4,
+     "over30": 4945,
+     "over16": 6803,
+     "near": 10
+    },
+    "owners": [
+     [
+      "econ · v:몸(캐러밴·떠나는 몸·전투)",
+      {
+       "n": 4919,
+       "max": 105.2,
+       "close": 0
+      }
+     ],
+     [
+      "마을 하루 조각(늦은) · caravan",
+      {
+       "n": 6,
+       "max": 68.8,
+       "close": 6
+      }
+     ],
+     [
+      "결정 문(순회)",
+      {
+       "n": 4,
+       "max": 72.4,
+       "close": 1
+      }
+     ],
+     [
+      "GC",
+      {
+       "n": 3,
+       "max": 42.5,
+       "close": 0
+      }
+     ],
+     [
+      "마을 하루 조각(늦은) · econ:trade",
+      {
+       "n": 2,
+       "max": 40.1,
+       "close": 2
+      }
+     ],
+     [
+      "마을 하루 조각(늦은) · events",
+      {
+       "n": 2,
+       "max": 35.6,
+       "close": 2
+      }
+     ]
+    ],
+    "rows": [
+     {
+      "d": 202,
+      "wd": 202,
+      "fish": {
+       "actVillages": 8,
+       "villages": 51,
+       "cells": 1078,
+       "walkers": 4,
+       "hands": 1,
+       "handU": 0.004,
+       "handKg": 0.01,
+       "delivered": 0,
+       "formulaPerDay": 35.6961,
+       "formulaAll": 155.2505,
+       "thinN": 15,
+       "t340": {
+        "cast": 10,
+        "hook": 2,
+        "miss": 0,
+        "abort": 4,
+        "hookPct": 20,
+        "waitAvgMs": 7599,
+        "winAvgMs": 900,
+        "budgetLeftVillages": 1
+       }
+      },
+      "wood": null,
+      "forage": null,
+      "farm": null,
+      "econ": {
+       "pop": 612,
+       "jobs": {
+        "farmer": 167,
+        "fisher": 125,
+        "lumberjack": 50,
+        "forager": 87
+       },
+       "farmAnchor": 213.66
+      }
+     },
+     {
+      "d": 203,
+      "wd": 203,
+      "fish": {
+       "actVillages": 29,
+       "villages": 51,
+       "cells": 3308,
+       "walkers": 0,
+       "hands": 0,
+       "handU": 0,
+       "handKg": 0,
+       "delivered": 13.7734,
+       "formulaPerDay": 129.6958,
+       "formulaAll": 153.3434,
+       "thinN": 15,
+       "t340": {
+        "cast": 8407,
+        "hook": 5074,
+        "miss": 698,
+        "abort": 2587,
+        "hookPct": 60.4,
+        "waitAvgMs": 5925,
+        "winAvgMs": 900,
+        "budgetLeftVillages": 15
+       }
+      },
+      "wood": null,
+      "forage": null,
+      "farm": null,
+      "econ": {
+       "pop": 612,
+       "jobs": {
+        "farmer": 167,
+        "fisher": 125,
+        "lumberjack": 50,
+        "forager": 87
+       },
+       "farmAnchor": 213.66
+      }
+     }
+    ]
+   },
+   {
+    "tag": "offn775",
+    "env": "T775_CARAVAN_RESUME=0 · T686_BOUNDS=1",
+    "tick": {
+     "n": 10853,
+     "p50": 0.9,
+     "p90": 16.1,
+     "p99": 17.2,
+     "p999": 23.3,
+     "max": 124.8,
+     "over30": 6,
+     "over16": 1254,
+     "near": 5
+    },
+    "owners": [
+     [
+      "늦은 마감(T695)·밭 그림",
+      {
+       "n": 1,
+       "max": 44.8,
+       "close": 0
+      }
+     ],
+     [
+      "마을 하루 조각 · econ:head",
+      {
+       "n": 1,
+       "max": 124.8,
+       "close": 0
+      }
+     ],
+     [
+      "마을 하루 조각(늦은) · econ:trade",
+      {
+       "n": 1,
+       "max": 33.5,
+       "close": 1
+      }
+     ],
+     [
+      "마을 하루 조각(늦은) · caravan",
+      {
+       "n": 1,
+       "max": 31.1,
+       "close": 1
+      }
+     ],
+     [
+      "마을 하루 조각(늦은) · events",
+      {
+       "n": 1,
+       "max": 53.4,
+       "close": 1
+      }
+     ],
+     [
+      "마을 하루 조각(늦은) · life:쉼표",
+      {
+       "n": 1,
+       "max": 52.6,
+       "close": 1
+      }
+     ]
+    ],
+    "rows": [
+     {
+      "d": 202,
+      "wd": 202,
+      "fish": null,
+      "wood": null,
+      "forage": null,
+      "farm": null,
+      "econ": {
+       "pop": 612,
+       "jobs": {
+        "farmer": 167,
+        "fisher": 125,
+        "lumberjack": 50,
+        "forager": 87
+       },
+       "farmAnchor": 213.66
+      }
+     }
+    ]
+   }
+  ]
+ },
+ "windows": {
+  "how": "창 줄(win) — 앞 = reset 뒤 ~ 첫 경계를 넘는 창(포함) · 뒤 = 그다음 창부터 · steady = 뒤 창 여섯째부터",
+  "split": [
+   {
+    "tag": "off",
+    "before": {
+     "n": 4,
+     "ticks": 6905,
+     "tot": 40322,
+     "over30": 6,
+     "over16": 1272,
+     "max": 49.9,
+     "avg": 5.84,
+     "topSeg": [
+      [
+       "늦은 마감(T695)·밭 그림",
+       33854
+      ],
+      [
+       "델타·방송(AOI)",
+       1051
+      ]
+     ]
+    },
+    "after": {
+     "n": 26,
+     "ticks": 47026,
+     "tot": 48192,
+     "over30": 21,
+     "over16": 94,
+     "max": 127,
+     "avg": 1.02,
+     "topSeg": [
+      [
+       "결정 문(순회)",
+       7706
+      ],
+      [
+       "델타·방송(AOI)",
+       6719
+      ]
+     ]
+    }
+   },
+   {
+    "tag": "a2",
+    "before": {
+     "n": 4,
+     "ticks": 6904,
+     "tot": 42848,
+     "over30": 7,
+     "over16": 1347,
+     "max": 65.3,
+     "avg": 6.21,
+     "topSeg": [
+      [
+       "늦은 마감(T695)·밭 그림",
+       34183
+      ],
+      [
+       "결정 문(순회)",
+       2496
+      ]
+     ]
+    },
+    "after": {
+     "n": 26,
+     "ticks": 46945,
+     "tot": 76690,
+     "over30": 12,
+     "over16": 97,
+     "max": 172.3,
+     "avg": 1.63,
+     "topSeg": [
+      [
+       "결정 문(순회)",
+       28346
+      ],
+      [
+       "화살·걸음 커널 준비",
+       8906
+      ]
+     ]
+    }
+   },
+   {
+    "tag": "offn",
+    "before": {
+     "n": 4,
+     "ticks": 4038,
+     "tot": 218841,
+     "over30": 3670,
+     "over16": 3932,
+     "max": 108,
+     "avg": 54.2,
+     "topSeg": [
+      [
+       "econ(마을 onGameTick)",
+       209483
+      ],
+      [
+       "늦은 마감(T695)·밭 그림",
+       6058
+      ]
+     ]
+    },
+    "after": {
+     "n": 26,
+     "ticks": 47001,
+     "tot": 68554,
+     "over30": 26,
+     "over16": 617,
+     "max": 92.1,
+     "avg": 1.46,
+     "topSeg": [
+      [
+       "늦은 마감(T695)·밭 그림",
+       27120
+      ],
+      [
+       "델타·방송(AOI)",
+       6070
+      ]
+     ]
+    }
+   },
+   {
+    "tag": "a2n",
+    "before": {
+     "n": 4,
+     "ticks": 5294,
+     "tot": 217898,
+     "over30": 4925,
+     "over16": 5255,
+     "max": 165.7,
+     "avg": 41.16,
+     "topSeg": [
+      [
+       "econ(마을 onGameTick)",
+       207758
+      ],
+      [
+       "늦은 마감(T695)·밭 그림",
+       5301
+      ]
+     ]
+    },
+    "after": {
+     "n": 26,
+     "ticks": 47007,
+     "tot": 112857,
+     "over30": 20,
+     "over16": 1548,
+     "max": 376.4,
+     "avg": 2.4,
+     "topSeg": [
+      [
+       "늦은 마감(T695)·밭 그림",
+       32577
+      ],
+      [
+       "결정 문(순회)",
+       31770
+      ]
+     ]
+    }
+   },
+   {
+    "tag": "offn775",
+    "before": {
+     "n": 4,
+     "ticks": 6911,
+     "tot": 40904,
+     "over30": 6,
+     "over16": 1218,
+     "max": 124.8,
+     "avg": 5.92,
+     "topSeg": [
+      [
+       "늦은 마감(T695)·밭 그림",
+       34479
+      ],
+      [
+       "델타·방송(AOI)",
+       1023
+      ]
+     ]
+    },
+    "after": {
+     "n": 2,
+     "ticks": 3618,
+     "tot": 4595,
+     "over30": 0,
+     "over16": 36,
+     "max": 19.2,
+     "avg": 1.27,
+     "topSeg": [
+      [
+       "늦은 마감(T695)·밭 그림",
+       1178
+      ],
+      [
+       "결정 문(순회)",
+       575
+      ]
+     ]
+    }
+   }
+  ],
+  "steady": {
+   "off": {
+    "n": 21,
+    "ticks": 37978,
+    "avg": 1.017,
+    "over16": 71,
+    "over30": 21,
+    "max": 127
+   },
+   "a1": {
+    "n": 21,
+    "ticks": 37973,
+    "avg": 1.252,
+    "over16": 41,
+    "over30": 5,
+    "max": 57.9
+   },
+   "a2": {
+    "n": 21,
+    "ticks": 37916,
+    "avg": 1.562,
+    "over16": 42,
+    "over30": 8,
+    "max": 75.8
+   },
+   "a3": {
+    "n": 21,
+    "ticks": 37965,
+    "avg": 0.986,
+    "over16": 95,
+    "over30": 25,
+    "max": 119.4
+   },
+   "a4": {
+    "n": 21,
+    "ticks": 37952,
+    "avg": 1.023,
+    "over16": 83,
+    "over30": 19,
+    "max": 121.8
+   },
+   "all": {
+    "n": 21,
+    "ticks": 37973,
+    "avg": 1.789,
+    "over16": 76,
+    "over30": 19,
+    "max": 93.6
+   },
+   "offn": {
+    "n": 21,
+    "ticks": 37958,
+    "avg": 0.953,
+    "over16": 51,
+    "over30": 22,
+    "max": 92.1
+   },
+   "a2n": {
+    "n": 21,
+    "ticks": 37981,
+    "avg": 1.661,
+    "over16": 56,
+    "over30": 8,
+    "max": 68.8
+   }
+  }
+ }
+}
