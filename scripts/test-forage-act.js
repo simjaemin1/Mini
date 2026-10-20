@@ -614,7 +614,8 @@ console.log('\n⑮ [T450] 야생 군락 — 서식이 낳는다 (T415 표 · 손
     for (let dy = -R30; dy <= R30; dy++) for (let dx = -R30; dx <= R30; dx++) { if (dx * dx + dy * dy > R30 * R30) continue;
       const k = (vx + dx) * 65536 + (vy + dy); if (seen.has(k)) continue; seen.add(k); const c = cls((vx + dx) * 32 + 16, (vy + dy) * 32 + 16) || 'x'; cByC[c] = (cByC[c] || 0) + 1; } }
   const same = Object.keys(W.D).every((c) => W.D[c][0] === (gByC[c] || 0) && W.D[c][1] === (cByC[c] || 0));
-  ok(G53.length === 53 && same, 'ⓐ ★★밀도가 **유도값**이다 — 수동 군락 53 × 51마을 채집 원판(반경 = 걸음 × 도보 초 ÷ 셀)을 지형 함수로 다시 세면 `WILD.D` 그대로',
+  // ★[T816] 수동 군락은 **뒤에만** 붙는다(seedKey = 배열 인덱스 · `plan-village-forage --apply` 접두 검사) — 53(T14) → 56(T816 어촌6 C2 자리 셋). 수는 줄지 않는다.
+  ok(G53.length >= 53 && same, `ⓐ ★★밀도가 **유도값**이다 — 수동 군락 ${G53.length} × 51마을 채집 원판(반경 = 걸음 × 도보 초 ÷ 셀)을 지형 함수로 다시 세면 \`WILD.D\` 그대로`,
     `${JSON.stringify(W.D)} · 다시 센 것 ${JSON.stringify(Object.fromEntries(Object.keys(W.D).map((c) => [c, [gByC[c] || 0, cByC[c] || 0]])))} · 반경 ${R30}셀`);
   const nr = G53.filter((g) => g.kind !== 'water_pool'); const med = (a) => a.slice().sort((x, y) => x - y)[Math.floor(a.length / 2)];
   ok(W.N === med(nr.map((g) => g.n)) && W.R === med(nr.map((g) => g.r)), 'ⓐ 군락 모양 = 수동 군락(돌·덤불)의 점 수·반경 그대로', `${W.N} · ${W.R}px`);
