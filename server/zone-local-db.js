@@ -683,6 +683,13 @@ function insertVillageBuilding(b) {
   return r.lastInsertRowid;
 }
 function getVillageBuildings(villageId) { return stmtGetVillageBuildings.all(villageId); }
+// ★[T785] 회관 행 `data` 갈아 끼우기 — 마을 칸(촌장 · 곳간 문 · 가입 문 · 소개 · 전쟁)이 사는 자리(새 표 0 · 새 열 0).
+//   문장은 처음 부를 때 만든다(끔 = 아무도 안 부른다 = 준비 0 · main 바이트).
+let stmtUpdVbData = null;
+function updateVillageBuildingData(id, data) {
+  if (!stmtUpdVbData) stmtUpdVbData = db.prepare('UPDATE village_buildings SET data = ? WHERE id = ?');
+  return stmtUpdVbData.run(data == null ? null : String(data), id | 0).changes;
+}
 function getVillageStructRows(villageId) { return stmtGetVillageStructRows.all(villageId); }
 // ★[T538] 부팅 로드 — 좌표만 한 줄씩(`fn(cx, cy[, type])` · 배열 행 · 쥐지 않는다) · 구조물 행 · 가장 먼 행
 function eachVillageCell(villageId, kind, fn) {
@@ -715,7 +722,7 @@ module.exports = {
   upsertPickedSeed, getAllPickedSeeds, deletePickedSeed,   // ★[T495] 부분 수확 — 개체에 남은 단위(켠 팔만 · 표는 처음 쓸 때)
   // §4-4 마을 시뮬 (villages.js)
   getWorldMeta, upsertWorldMeta, saveVillagesAndMeta,   // ★[T728]
-  getVillagesByZone, insertVillage, updateVillageState, insertVillageBuilding, getVillageBuildings,
+  getVillagesByZone, insertVillage, updateVillageState, insertVillageBuilding, getVillageBuildings, updateVillageBuildingData,
   getVillageFarmInCellRect, getVillageStructRows,
   eachVillageCell, getVillageStructAll, getVillageFarthest, getTerrContestOwners,   // ★[T538] 경계 있는 부팅 로드
   // [2026-08-25 사건 레이어] 사건 장부·게시판 (events.js / villages.js)

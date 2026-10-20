@@ -903,13 +903,38 @@ const isWildSpot = (x, y) =>
       H.tryClaim(p, kind || 'personal');
     };
     const CX = 964, CY = 1871;   // 마을에서 떨어진 빈 자리(아래에서 자리 자체는 안 쓴다)
-    // ⓐ 길드 + 개인 둘 다
+    // ★[T787] 켬 기본 — 길드 사유지 = **내 마을 땅**(T786 C19: ① = 내 마을 문간 · 개인 사유지 = 내 마을 땅 안).
+    //   켬 판은 진짜 마을 하나의 사람으로 앉혀(몸 `member`) 그 마을 땅 한 칸에 개인 사유지를 세운다 — 같은 순서 계약을 같은 정본 경로로 잰다.
+    const _KIN787 = require(path.join(__dirname, '..', 'server', 'village-kin.js')).ON;
+    const _kinSetup = async (p) => {
+      for (let k = 0; k < 12; k++) { const r = H._shelterBackfill(); if (!(r.left > 0)) break; await sleep(800); }
+      for (const v of (SimVillages.clientVillages() || [])) {
+        let sh = null; try { sh = SimVillages.shelterOf(v.id); } catch (e) { sh = null; }
+        const g = SimVillages.villageByDbId(v.id);
+        if (!sh || !g || !g._terrSet || !g._terrSet.size) continue;
+        p.member = { vid: v.id | 0, zone: process.env.ZONE_ID };
+        for (const key of g._terrSet) {
+          const [cx, cy] = key.split(',').map(Number);
+          if (Math.hypot(cx - v.cx, cy - v.cy) < 4) continue;
+          claimAt(p, cx, cy, 'personal');
+          if ([...H.claims.values()].some((c) => c.kind === 'personal' && c.ownerPid === p.playerId)) return v;
+        }
+        p.member = null;
+      }
+      return null;
+    };
+    // ⓐ 길드(켬 = 내 마을 문간) + 개인 둘 다
     {
       wipeClaims(); clearPlayers();
       const p = mkPlayer('both', CX * SZc, CY * SZc);
-      p.tribeId = 'tribe_t83'; p.tribeName = 'T83길드';
-      guildLand(CX, CY, 6, 'tribe_t83');
-      claimAt(p, CX + 1, CY + 1, 'personal');
+      if (!_KIN787) {
+        p.tribeId = 'tribe_t83'; p.tribeName = 'T83길드';
+        guildLand(CX, CY, 6, 'tribe_t83');
+        claimAt(p, CX + 1, CY + 1, 'personal');
+      } else {
+        const v = await _kinSetup(p);
+        pre(!!v, '[켬] 마을 하나의 사람으로 앉아 그 마을 땅에 개인 사유지를 세웠다', v ? v.name : '—');
+      }
       const opts = H.listRespawnOptions(p);
       const kinds = opts.map((o) => o.kind);
       pre(kinds.includes('personal') && kinds.includes('guild'),
@@ -929,12 +954,17 @@ const isWildSpot = (x, y) =>
     {
       wipeClaims(); clearPlayers();
       const p = mkPlayer('solo', CX * SZc, CY * SZc);
-      p.tribeId = 'tribe_t83'; p.tribeName = 'T83길드';
-      guildLand(CX, CY, 6, 'tribe_t83');
-      claimAt(p, CX + 1, CY + 1, 'personal');
-      // ★개인 사유지는 **길드 영토 안에만** 선다(T45 종전 규칙) — 그래서 땅을 깔 때만 소속이 필요했다.
-      //   재는 것은 "**길드 사유지가 없는 몸**"이므로 여기서 소속을 뗀다(길드를 나간 사람 · 실제로 있는 상태).
-      p.tribeId = null; p.tribeName = null;
+      if (!_KIN787) {
+        p.tribeId = 'tribe_t83'; p.tribeName = 'T83길드';
+        guildLand(CX, CY, 6, 'tribe_t83');
+        claimAt(p, CX + 1, CY + 1, 'personal');
+      } else {
+        const v = await _kinSetup(p);
+        pre(!!v, '[켬] 개인 사유지를 세웠다(그 마을 땅)', v ? v.name : '—');
+      }
+      // ★개인 사유지는 **길드 영토 안에만** 선다(T45 종전 규칙 · 켬 = 내 마을 땅) — 그래서 땅을 깔 때만 소속이 필요했다.
+      //   재는 것은 "**길드 사유지가 없는 몸**"이므로 여기서 소속을 뗀다(길드를 나간 사람 · 켬 = 마을을 나간 사람 · 실제로 있는 상태).
+      p.tribeId = null; p.tribeName = null; p.member = null;
       const opts = H.listRespawnOptions(p);
       pre(!opts.some((o) => o.kind === 'guild'), '길드 사유지가 목록에 없다', opts.map((o) => o.kind).join(','));
       ok(opts[0] && (opts[0].kind === 'personal' || opts[0].kind === 'temporary'),

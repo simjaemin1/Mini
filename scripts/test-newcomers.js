@@ -255,7 +255,7 @@ console.log('\n⑤ 권한 — 재고 열람과 **같은 술어**다');
   players.set(me.pid, me);
   H.tryVillageWelcome(me, hall.id, true);
   const last = msgs.filter((m) => m.type === 'notice').slice(-1)[0];
-  ok(!Newcomers.isOn(3) && last && /관리자가 아닙니다/.test(last.text),
+  ok(!Newcomers.isOn(3) && last && (require('../server/village-kin').ON ? /촌장만 할 수 있다/ : /관리자가 아닙니다/).test(last.text),   // ★[T787] 켬 기본 — 이방인 받기는 촌장 문(T786 C18)
     '⑤ 남의 마을 회관은 못 켠다 — 거절이 말뿐이 아니다', JSON.stringify(last && last.text));
 }
 
@@ -279,6 +279,9 @@ console.log('\n⑥-b ★배치가 central 을 실제로 읽는 길 — `scan()` 
   //   ⇒ 여기서 가짜 central 로 그 길을 직접 밟는다.
   const NOW = Date.now();
   const seen = NOW - 3 * DAY;
+  //   ★[T787] 켬 기본 — "촌장이 N일째"의 촌장은 마을 칸(`VillageKin.chiefOf` · T786 C18) ⇒ 랩 마을에 촌장 칸을 앉힌다(창설자 그 사람 · 이행 뒤 모양).
+  const _KIN787 = require(path.join(ROOT, 'server', 'village-kin.js')).ON;
+  { const v1 = _vils.get(1); if (_KIN787 && v1 && v1.econ && v1.econ.founder && !v1._kin) v1._kin = { chief: String(v1.econ.founder), wars: new Map(), granaryOpen: true, joinMode: 'open', intro: '' }; }
   Newcomers.init({
     buildings, players, ZONE_ID: 'hanbando',
     econ: require(path.join(ROOT, 'sim', 'economy-sim')),
@@ -298,7 +301,8 @@ console.log('\n⑥-b ★배치가 central 을 실제로 읽는 길 — `scan()` 
     ok(r && Math.abs(r.idleDays - 3) < 0.01,
       '⑥-b ★`last_seen` 이 **날 수로 바르게** 온다 — `| 0` 절단이 없다(1차 판은 20679일이 나왔다)',
       `idleDays=${r ? r.idleDays.toFixed(3) : '?'} (기대 3)`);
-    ok(r && r.vp === 7.5, '⑥-b 길드 벌점도 central 정본에서 온다', `vp=${r && r.vp}`);
+    if (!_KIN787) ok(r && r.vp === 7.5, '⑥-b [끔] 길드 벌점도 central 정본에서 온다', `vp=${r && r.vp}`);
+    else ok(r && r.vp === null, '⑥-b ★[켬 · T787] 길드 벌점은 **안 묻는다**(길드 = 마을 · VP 는 없앨 추상 — central 이 7.5 를 줘도 안 읽는다)', `vp=${r && r.vp}`);
     // ★통제: epoch ms 를 `| 0` 하면 실제로 말도 안 되는 수가 나온다(이 검사가 무엇을 막는지)
     const bad = (NOW - (seen | 0)) / DAY;
     ok(bad > 1000, `⑥-b′ 통제 실험: \`| 0\` 을 쓰면 ${Math.round(bad)}일이 나온다 — 이 검사가 막는 것이 그것이다`);

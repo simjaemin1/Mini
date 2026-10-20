@@ -121,7 +121,7 @@
       for (const [k, v] of stoEntries) stoHtml += `<div style="padding:4px 6px;background:var(--pane-solid);border-radius: 0">${ITEM_KR(k)} <b>${Math.floor(v)}</b></div>`;
       stoHtml += '</div>';
     }
-    stoHtml += `<div class="dim" style="margin-top:6px;font-size:11px">길드 금고 자원: ${treasuryRes || '(비어있음)'}</div>`;
+    stoHtml += `<div class="dim" style="margin-top:6px;font-size:11px">마을 금고 자원: ${treasuryRes || '(비어있음)'}</div>`;
     if (cash > 0) stoHtml += `<div class="dim" style="font-size:11px">거래 회계 (cash): <b style="color:var(--accent-hi)">${Math.floor(cash)}</b></div>`;
     const sto = sumEl.querySelector('[data-vmp-storage]');
     if (sto && sto.innerHTML !== stoHtml) sto.innerHTML = stoHtml;

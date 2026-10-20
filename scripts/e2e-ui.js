@@ -888,7 +888,7 @@ async function waitHttp(url, tries = 600) {
     await snap('ui-16a-ground-menu');
     if (gl) { await clickMenu('살피기'); for (let i = 0; i < 30 && !/^살피기 — /.test(await lastNotice()); i++) await sleep(100); }
     const lookLine = await lastNotice();
-    ok(/^살피기 — .+ · (임자 없음|내 땅|.+의 (사유지|길드 영토))$/.test(lookLine), '★★⑯ⓑ 살피기 — 서버가 그 칸의 **지형·주울 것·임자**를 한 줄로 답한다', lookLine);
+    ok(/^살피기 — .+ · (임자 없음|내 땅|.+의 (사유지|마을 땅))$/.test(lookLine), '★★⑯ⓑ 살피기 — 서버가 그 칸의 **지형·주울 것·임자**를 한 줄로 답한다', lookLine);
     // ⓒ 걷기 — 키 없이 그 자리로 간다
     if (spot) {
       const d0 = await me();

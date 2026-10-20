@@ -27,6 +27,7 @@
 //   이 파일은 **이미 선 마을을 지도에 올릴지**만 정한다.
 
 const path = require('path');
+const VillageKin = require(path.join(__dirname, 'village-kin'));   // ★[T785] 켬이면 길드 벌점을 안 묻는다(마을엔 길드가 없다)
 const _num = (k, d) => { const v = parseFloat(process.env[k]); return Number.isFinite(v) ? v : d; };
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -97,7 +98,7 @@ function eligibility(vid) {
   else if (out.foodDays < CFG.MIN_FOOD_DAYS) why.push(`곳간이 얇다 (자립 ${out.foodDays}일)`);
   // ② 길드 벌점 — 길드가 없으면 벌점도 없다(무길드를 죄로 삼지 않는다)
   const r = _remote.get(vid | 0) || null;
-  if (r && r.vp != null) { out.vp = +r.vp.toFixed(1); if (r.vp >= CFG.MAX_GUILD_VP) why.push(`길드 벌점이 높다 (${out.vp})`); }
+  if (r && r.vp != null) { out.vp = +r.vp.toFixed(1); if (r.vp >= CFG.MAX_GUILD_VP) why.push(`명성 벌점이 높다 (${out.vp})`); }
   // ③ 최근 활동 — 창설자가 얼마나 안 왔나
   if (r && r.idleDays != null) {
     out.idleDays = +r.idleDays.toFixed(1);
@@ -138,7 +139,9 @@ async function scan() {
     for (const vil of vils) {
       const vid = vil.dbId | 0;
       const rec = { vp: null, idleDays: null, at: now };
-      const founder = vil.econ && vil.econ.founder;
+      //   ★[T786 C18] T785 켬 — "촌장이 N일째 안 온다"의 촌장은 **마을 칸의 촌장**(`VillageKin.chiefOf` · 승계되면 그 사람) · 끔 = 창설자.
+      const _ch = VillageKin.ON ? VillageKin.chiefOf(vil) : null;
+      const founder = VillageKin.ON ? (_ch && !_ch.npc ? _ch.id : null) : (vil.econ && vil.econ.founder);
       if (founder) {
         try {
           const p = await H.central.getPlayer(founder);
@@ -148,7 +151,8 @@ async function scan() {
           //   ⚠0·음수는 **측정이 아니다** — 모르는 것으로 둔다(막지 않는다).
           const _ls = Number(p && p.last_seen);
           if (Number.isFinite(_ls) && _ls > 0) rec.idleDays = (now - _ls) / DAY_MS;
-          const tid = (vil._tribeId != null) ? vil._tribeId : (p && p.tribe_id);
+          //   ★[T785] 켬 — 마을엔 길드가 없다(길드 = 마을) ⇒ 길드 벌점을 central 에 안 묻는다(무길드 마을과 같다 · VP 를 마을로 옮길지는 T787 표).
+          const tid = VillageKin.ON ? null : ((vil._tribeId != null) ? vil._tribeId : (p && p.tribe_id));
           if (tid) { const t = await H.central.getTribe(tid); if (t && t.tribe && Number.isFinite(t.tribe.vp)) rec.vp = +t.tribe.vp; }
         } catch (e) { /* central down — 이번 판은 모른 채로 둔다(막지 않는다) */ }
       }
@@ -188,7 +192,7 @@ function handleChat(player, text) {
   const e = listable(vid);
   say(`🏘️ 이방인 받기 ${e.on ? '켬' : '끔'}${e.listed ? ' · 시작 지도에 올라 있다' : ''}`
     + ` — 인구 ${e.pop} · 자립 ${e.foodDays}일`
-    + (e.vp != null ? ` · 길드 벌점 ${e.vp}` : '')
+    + (e.vp != null ? ` · 명성 벌점 ${e.vp}` : '')
     + (e.idleDays != null ? ` · 촌장 ${Math.round(e.idleDays)}일 전` : '')
     + (e.ok ? '' : ` · 아직: ${e.why.join(' · ')}`));
   return true;

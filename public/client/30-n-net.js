@@ -1674,10 +1674,10 @@
       }
     } else if (msg.type === 'chat') {
       // 같은 zone(또는 observer zone)에서 온 채팅. 길드 채팅이면 prefix 표시.
-      const prefix = msg.tribe ? `[길드:${msg.tribe}] ` : '';
+      const prefix = msg.tribe ? `[마을:${msg.tribe}] ` : '';
       chatLog.push({ name: prefix + msg.name, color: msg.color || 'var(--thirst)', text: msg.text, t: msg.t, isTribe: !!msg.tribe });
       if (chatLog.length > 20) chatLog.shift();
-      speechBubbles.set(msg.pid, { text: (msg.tribe ? '[길드] ' : '') + msg.text, until: performance.now() + 4000 });
+      speechBubbles.set(msg.pid, { text: (msg.tribe ? '[마을] ' : '') + msg.text, until: performance.now() + 4000 });
       renderChatLog();
     } else if (msg.type === 'central_result') {
       //   ★[T235] 다섯 문의 답 — 한 종류다. 기다리던 자리에 그대로 건네고 끝(새 화면 0).

@@ -398,7 +398,7 @@ async function waitHttp(url, tries = 900) {
       //     그런데 이 자리엔 촌장 브리핑(근접만으로 나간다)이 먼저 도착할 수 있고, 그러면 거절이
       //     오기 **전에** 판정해서 빨개진다(실제로 그랬다: 마지막 알림이 "10일 만이군…" 이었다).
       //     제품은 정상이다 — 거절은 그 뒤에 온다. ⇒ **찾는 것이 올 때까지** 기다린다(읽기는 무해).
-      const _denied = (t) => /관리자가 아닙니다|길드의 마을이 아닙니다|너무 멀리/.test(t);
+      const _denied = (t) => /관리자가 아닙니다|우리 마을이 아닙니다|너무 멀리/.test(t);
       let nt3 = [];
       for (let i = 0; i < 25; i++) {
         await page2.evaluate((id) => window.__sendPrimary({ type: 'village_inventory', buildingId: id }), hall.id);

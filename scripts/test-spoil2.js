@@ -38,6 +38,7 @@ console.log = () => {}; console.warn = () => {}; console.error = () => {};
 const Zone = require(path.join(ROOT, 'server', 'zone.js'));
 console.log = _l; console.warn = _w; console.error = _e;
 const H = Zone.__testBind();
+const _KIN787 = require(path.join(__dirname, '..', 'server', 'village-kin.js')).ON;   // ★[T787] 켬 기본
 // ★[T778] 순간 로트 켬 기본 — 순간 열쇠는 "같은 날 = 나이 0"을 깬다(옛 `{d,n}` 나이가 그 날 0시부터 · `t` 가 소수 날).
 //   값 단언은 그대로 두고 지난 시간만 뺀다 — 존 날을 얼린다(제품의 테스트 문 · 날 문법(`T732_MOMENT_LOT=0`)엔 같은 날).
 H.__e2eFreezeZoneDay(true);
@@ -250,7 +251,17 @@ const SUMMER = Math.round(A.summerMid), WINTER = Math.round(A.winterMid);
       H.players.set(p.pid, p);
       Lots.note(p, item, 5, today - 1, 'carry');
       const b = chest('b_' + item, p.playerId, cx + 20, 9000, ko === '곳간' ? 'guild_granary' : 'chest');
-      if (ko === '곳간') { b.data.tribe_id = 'T1'; p.tribeId = 'T1'; }
+      if (ko === '곳간') {
+        b.data.tribe_id = 'T1'; p.tribeId = 'T1';
+        //   ★[T787] 켬 기본 — 옛 길드 곳간은 **선 땅의 마을 사람**이 쓴다(T786 C10) ⇒ 그 칸을 랩 마을 땅으로 깔고 이 사람을 그 마을 사람으로 앉힌다
+        //     (`test-furnace` 와 같은 꼴 · 재는 것은 그릇의 시계라 무리 칸은 문만 연다). 끔이면 종전 판 그대로(옛 길드 칸).
+        if (_KIN787) {
+          const SZ = H.BUILDING_SIZE, cell = Math.floor(b.x / SZ) + ',' + Math.floor(b.y / SZ);
+          const lv = { name: '랩마을9101', dbId: 9101, econ: { founder: 'lab_f9101' }, _terrSet: new Set([cell]) };
+          H.SimVillages.__labProbe._t740Probe.setup({ villages: [lv], byDbId: new Map([[lv.dbId, lv]]) });
+          p.member = { vid: 9101, zone: process.env.ZONE_ID };
+        }
+      }
       const f0 = Spoil.bestOf(item, Lots.of(p, item), today);
       pre(f0 < 1, `★${ko} — 넣기 전에 이미 안 신선하다(1.00 이면 리셋을 못 잰다)`, f0.toFixed(4));
       H.tryChestPut(p, b.id, item, 5);

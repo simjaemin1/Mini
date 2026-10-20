@@ -32,6 +32,7 @@ const path = require('path');
 const Events = require(path.join(__dirname, 'events'));
 const Onb = require(path.join(__dirname, 'onboarding'));
 const ItemLabel = require(path.join(__dirname, 'itemlabel'));   // ★[T159] 재화의 우리말 — 표는 여기 하나(사본 0)
+const VillageKin = require(path.join(__dirname, 'village-kin'));   // ★[T785] 마을 칸(촌장) — 켬에서만 읽는다(끔 = 이 줄들 무동작) · ★[T809] 곳간 문은 T779 가 걷었다
 
 const _num = (k, d) => { const v = parseFloat(process.env[k]); return Number.isFinite(v) ? v : d; };
 const CFG = {
@@ -163,6 +164,15 @@ function seatGuildMember(player) {
   _seat(player, best.dbId | 0);
   return player.member;
 }
+// ★[T785] 켬 — 부름(`/초대` → `/수락` · `village-kin.js`)으로 드는 문. 옛 길드 부름은 기여 문턱 없이 길드에 들었고(그 뒤 T202 가 길드 마을에 앉혔다)
+//   마을이 곧 길드이니 같은 사람이 같은 문턱 없이 마을에 든다 · 이미 어느 마을 사람이면 안 앉힌다(한 사람은 한 마을 · K-1).
+function seatByInvite(player, vid) {
+  if (!ready() || !player || vid == null) return { ok: false, err: '아직 준비되지 않았다' };
+  if (memberOf(player)) return { ok: false, err: '이미 소속이 있다' };
+  _seat(player, vid | 0);
+  player._memberOfferVid = null;
+  return { ok: true, member: player.member };
+}
 function seatFounder(player, vid) {
   if (!ready() || !player || vid == null) return { ok: false, err: '아직 준비되지 않았다' };
   const was = memberOf(player);
@@ -240,6 +250,8 @@ const _NOT_CHIEF = '곳간은 촌장만 꺼낸다';
 /** 그 자리에서 서는 판정 — `{ ok, err }` · 모르면 `null`(길드 촌장 캐시가 비었다 — central 을 물어야 한다). */
 function _chiefNow(player, vil) {
   if (!vil || !vil.econ || !vil.econ.founder) return { ok: false, err: '이 마을 곳간은 사람이 꺼내지 않는다' };
+  //   ★[T786 ②] T785 켬 = 촌장은 마을 칸 하나(`VillageKin.isChief`) — central `leader_id` 조회 · 캐시 창(①)을 안 탄다(늘 그 자리에서 선다).
+  if (VillageKin.ON) return VillageKin.isChief(player, vil) ? { ok: true } : { ok: false, err: _NOT_CHIEF };
   const pid = String(player && player.playerId);
   const tid = vil._tribeId | 0;
   if (!tid) return String(vil.econ.founder) === pid ? { ok: true } : { ok: false, err: _NOT_CHIEF };
@@ -470,7 +482,7 @@ function publicState(player, vil) {
 
 module.exports = {
   CFG, init, ready, contribOf, memberOf, isMemberHere,   // ★[T779] 한도 둘(`limitOf` · `remainOf`)은 걷었다
-  onDeliver, accept, seatFounder, seatGuildMember, leave, expel, withdraw, orderBrief, handleChat, publicState,   // ★[T197] 창설 = 소속 · ★[T202] 길드원도
+  onDeliver, accept, seatFounder, seatGuildMember, seatByInvite, leave, expel, withdraw, orderBrief, handleChat, publicState,   // ★[T197] 창설 = 소속 · ★[T202] 길드원도 · ★[T785] 부름으로 드는 문
   resolveRes, resKo,   // ★[T159] 품목 해석 · ★[T779] 길드 곳간 잠금 둘(`granaryOpen` · `granaryBust`)은 걷었다
   T769, withdrawChief, chiefCheck, chiefCached, resolveItem,   // ★[T769] 기부 · 촌장 꺼내기
 };

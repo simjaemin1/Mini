@@ -650,6 +650,10 @@ async function waitHttp(url, tries = 900) {
     //     그 뒤가 못 버틴다: 건립을 부르면 하네스가 예외 없이 죽고(3판), 건립을 꺼도 곧 죽는다.
     //     ⇒ **기본은 끈다**(대본이 늘 돌아야 한다) · 메모리가 넉넉한 판에서 `ARC_FIRST=1` 로 켠다.
     let A = null, NEWVID = null, HALL = null, TID = null, V = null, NPC = [];
+    //   ★★[T787 2026-10-18 · 길드 = 마을 · 켬 기본] 이 호의 "길드 팔"은 켬에서 **마을 팔**이다 — 길드를 central 에 세우지 않는다.
+    //     ⓪d 소개 = 세운 사람(촌장)이 창설 **뒤에** 적는다 · ⑨b 잠금 = 촌장 · ⑪ 길드원 도착 = **부름**(`/초대` → `/수락`) ·
+    //     ⑫b 재접속 = 다시 안 앉는다(길드 → 마을 다리 0) · ⑫c·⑫d 길드 탈퇴·해체 = 옛 문이 닫혔다(존이 안 연다). 끔(`T785_VILLAGE_ONLY=0`)은 종전 호 그대로.
+    const KIN787 = process.env.T785_VILLAGE_ONLY !== '0';
     const INTRO = '돌칼 사람들은 강가에 산다';
     if (process.env.ARC_FIRST !== '1') {
       step('⓪b~② 젊은 판 걷기', false, '★`ARC_FIRST=1 ARC_FOUND=1` 로 켠다 — 켜면 **전수 초록**(T197 실측 · 한 판 ~6분 · 대본은 그대로 67/0)');
@@ -834,6 +838,7 @@ async function waitHttp(url, tries = 900) {
 
         // ── ⓪d 길드 하나 — **종전 경로 그대로**(central `/tribe/create` → `tribe_set` → `/소개`) ──
         //   ★[T197] 이 줄이 있어야 ⑧ 이 잴 것이 생긴다. 픽스처가 아니라 `e2e-guild` 가 쓰는 그 문이다.
+        if (!KIN787) {
         try {
           const r = await fetch(`http://localhost:${CPORT}/tribe/create`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -845,6 +850,11 @@ async function waitHttp(url, tries = 900) {
         A.notices.length = 0; chat(A, `/소개 ${INTRO}`); await sleep(1500);
         step('⓪d 길드를 세우고 소개를 적었다', !!(TID && A.notices.some((t) => /소개를 적었다/.test(t))),
           `tribe ${TID} · ${lastN(A, 1)}`);
+        } else {
+          //   ★[T787] 켬 — 마을 사람이 아니면 소개를 못 쓴다(촌장 문) · 대조: 지금 쓰면 거절된다(아래 ③d 가 창설 뒤에 적는다)
+          A.notices.length = 0; chat(A, `/소개 ${INTRO}`); await sleep(1300);
+          step('⓪d [켬] 아직 마을 사람이 아니면 소개를 못 쓴다(촌장 문 · 창설 뒤에 적는다)', A.notices.some((t) => /마을 사람이 아니다/.test(t)), lastN(A, 1));
+        }
 
         await warp(A, (V.cx | 0) * 32 + 16, (V.cy | 0) * 32 + 16);
 
@@ -888,6 +898,11 @@ async function waitHttp(url, tries = 900) {
           A.msgs.length = 0; snd(A, { type: 'onboarding_state' }); await sleep(600);
           const memLine = await memberLine(A);   // ★[T779] 소속은 `/소속` 으로 잰다(위 `memberLine`)
           step('③c ★창설 = 소속(픽스처 0 — 기여 12 를 지어내지 않는다)', isMember(memLine), memLine);
+          if (KIN787) {
+            //   ★[T787] 켬 — 세운 사람 = 촌장(마을 칸) · 소개는 촌장이 적는다(central 무접촉)
+            A.notices.length = 0; chat(A, `/소개 ${INTRO}`); await sleep(1500);
+            step('③d [켬] 촌장(세운 사람)이 소개를 적었다', A.notices.some((t) => /소개를 적었다/.test(t)), lastN(A, 1));
+          }
 
           await fillGranary(A, HALL);
           let elig = null;
@@ -998,6 +1013,16 @@ async function waitHttp(url, tries = 900) {
         const HX2 = Math.round(HALL.x), HY2 = Math.round(HALL.y);
         const joinAndReconnect = async (name, seatFirstVid) => {
           let C = await wsConnect(name, 'arcpw', NEWVID | 0); await sleep(1200);
+          if (KIN787) {
+            //   ★[T787] 켬 — 길드에 드는 길이 없다 · 마을 사람이 **부르면** 든다(`/초대` → `/수락` · 기여 문턱 없이 · K-1: 이미 소속이면 안 든다)
+            if (seatFirstVid != null) {
+              snd(C, { type: '__e2e_body', member: { zone: 'hanbando', vid: seatFirstVid | 0, name: 'NPC마을', since: 0, wdDay: -1, wdUsed: 0 }, quiet: true });
+              await sleep(700);
+            }
+            A.notices.length = 0; chat(A, `/초대 ${name}`); await sleep(1300);
+            C.notices.length = 0; chat(C, '/수락'); await sleep(1500);
+            return { C, joined: C.notices.some((t) => /에 들었다/.test(t)), said: C.notices.slice(-1)[0] || A.notices.slice(-1)[0] || '' };
+          }
           if (seatFirstVid != null) {
             //   ★선행 조건만 픽스처로 세운다(T11 `__e2e_body` — `test-handoff-body` 가 쓰는 그 문).
             //     재는 것은 **그 뒤에 도착 훅이 무엇을 하는가**다.
@@ -1012,19 +1037,19 @@ async function waitHttp(url, tries = 900) {
         };
         //   ⑪a 길드원 — 도착만으로 제 길드 마을 사람이다 · ★[T779] 곳간은 촌장(길드장)만 꺼낸다
         const E = await joinAndReconnect('arcmate', null);
-        step('⑪a 길드원이 길드에 들었다(종전 경로 · central `/tribe/join`)', E.joined, `tribe ${TID}`);
+        step(KIN787 ? '⑪a [켬] 마을 사람이 불러서 들었다(`/초대` → `/수락`)' : '⑪a 길드원이 길드에 들었다(종전 경로 · central `/tribe/join`)', E.joined, KIN787 ? E.said : `tribe ${TID}`);
         await warp(E.C, HX2 + 40, HY2 + 40);
         const mateLine = await memberLine(E.C);
         //   ★★[T235] **기근은 촌장 거절이 아니다** — 거절 까닭을 갈라 잰다(⑩ 이 배운 그 한 줄).
         const w5 = await withdrawUntil(E.C, HALL, 'refuse');
-        step('⑪ ★길드원은 **도착만으로** 제 길드 마을 사람이다(픽스처 0) · 그래도 꺼내기는 촌장(길드장)만 — 등짐 그대로',
+        step(KIN787 ? '⑪ ★[켬] 부름으로 든 사람은 그 마을 사람이다(픽스처 0) · 그래도 꺼내기는 촌장만 — 등짐 그대로' : '⑪ ★길드원은 **도착만으로** 제 길드 마을 사람이다(픽스처 0) · 그래도 꺼내기는 촌장(길드장)만 — 등짐 그대로',
           isMember(mateLine) && /곳간은 촌장만 꺼낸다/.test(w5.notes || '') && !w5.gave,
           `/소속 → ${mateLine} · 꺼내기 → ${w5.notes} · 등짐 밥 ${w5.p0} → ${w5.p1}`);
         //   ⑪b 대조 — 비길드원은 **기여 문** 그대로다(자명 통과 금지 — 권함이 없다)
         const F = await wsConnect('arcstranger', 'arcpw', NEWVID | 0); await sleep(1500);
         await warp(F, HX2 + 40, HY2 + 40);
         const strLine = await memberLine(F);
-        step('⑪b 대조 — 비길드원에겐 **기여 문**이 그대로 있다(촌장이 아직 권하지 않았다)',
+        step(KIN787 ? '⑪b 대조 — 안 불린 사람에겐 **기여 문**이 그대로 있다(촌장이 아직 권하지 않았다)' : '⑪b 대조 — 비길드원에겐 **기여 문**이 그대로 있다(촌장이 아직 권하지 않았다)',
           !isMember(strLine) && /촌장이 아직 권하지 않았다/.test(strLine), strLine);
         shut(F);
         //   ⑪c ★이미 남의 마을 사람이던 길드원은 **안 끌려온다**(카드의 "옮긴다"를 안 했다 — 회부 1)
@@ -1034,8 +1059,8 @@ async function waitHttp(url, tries = 900) {
         const G = await joinAndReconnect('arcbound', (V.vid | 0));
         const si3 = await jget2(`http://localhost:${ZPORT}/startinfo?as=${encodeURIComponent('arcbound')}`);
         const rowNpc = si3 && si3.ok && (si3.villages || []).find((v) => (v.vid | 0) === (V.vid | 0));
-        step('⑪c ★이미 소속이 있던 길드원은 **그대로다**(배경 규칙이 사람의 선택을 안 되돌린다 · 회부 1)',
-          !!(rowNpc && rowNpc.member === 1),
+        step(KIN787 ? '⑪c ★[켬] 이미 소속이 있던 사람은 불러도 **그대로다**(K-1 · 한 사람 한 마을)' : '⑪c ★이미 소속이 있던 길드원은 **그대로다**(배경 규칙이 사람의 선택을 안 되돌린다 · 회부 1)',
+          !!(rowNpc && rowNpc.member === 1) && (!KIN787 || !G.joined),
           `${V.name} 소속 칸 = ${rowNpc && rowNpc.member} (옮겨졌다면 0 이 된다)`);
 
         // ── ⑫ ★[T202 §0-ⓑ] **탈퇴·이적·해체 때 마을 소속은?** — 표를 만들 뿐, 아무것도 안 바꾼다 ──
@@ -1052,6 +1077,16 @@ async function waitHttp(url, tries = 900) {
         shut(E.C); await sleep(900);
         const E2 = await wsConnect('arcmate', 'arcpw', NEWVID | 0); await sleep(1600);
         const l2 = await granaryLine(E2);
+        if (KIN787) {
+          //   ★[T787] 켬 — 길드 → 마을 다리 0: 나간 사람은 다시 붙어도 **안 앉는다**(소속을 바꾸는 문은 마을 문뿐)
+          step('⑫b [켬] 재접속해도 **다시 안 앉는다**(길드원 앉히기 다리 0)', !isMember(l2) && /촌장이 아직 권하지 않았/.test(l2), l2);   // ★[T809] 말은 T779 의 `/소속` 문장
+          //   ⑫c · ⑫d — 옛 길드 문(탈퇴 · 해체)은 존이 안 연다(닫힌 답 하나) · 마을 소속은 그 문과 무관하다
+          const cr = await new Promise((res) => { const h = (raw) => { let m = null; try { m = JSON.parse(String(raw)); } catch (e) { return; } if (m && m.type === 'central_result' && m.door === 'tribe/leave') { E2.ws.off('message', h); res(m); } }; E2.ws.on('message', h); snd(E2, { type: 'central_call', door: 'tribe/leave' }); setTimeout(() => { E2.ws.off('message', h); res(null); }, 5000); });
+          step('⑫c [켬] 옛 길드 탈퇴 문은 닫혔다(존이 central 을 안 부른다 · 한 줄 안내)', !!(cr && cr.ok === false && /마을/.test(String(cr.data && cr.data.error || ''))), JSON.stringify(cr && cr.data));
+          shut(E2); shut(G.C); await sleep(600);
+          const l4k = await granaryLine(A);
+          step('⑫d [켬] 촌장(세운 사람)의 소속은 그대로다', isMember(l4k), l4k);
+        } else {
         step('⑫b 재접속하면 **제 길드 마을로 돌아온다**(도착 훅이 빈자리를 앉힌다)', isMember(l2), l2);
         //   ⑫c **길드 탈퇴** — central 이 `players.tribe_id` 를 지운다. 마을 소속은 **안 건드린다**(코드 무접촉).
         await jpost2(`http://localhost:${CPORT}/tribe/leave`, { player_id: E2.playerId });
@@ -1072,6 +1107,7 @@ async function waitHttp(url, tries = 900) {
         const l4 = await granaryLine(A);
         step('⑫d ★**길드가 해체돼도 마을 소속은 그대로다**(지금 코드 — 재민 판정 자리)',
           !stillThere && isMember(l4), `길드 행 남음=${stillThere} · ${l4}`);
+        }
         //   ★★호가 끝나면 **세계를 원래대로 돌려 놓는다** — 받기를 다시 끈다.
         //     안 그러면 뒤따르는 실클라 대본의 로비에 마을이 더 뜨고(`시작 화면이 마을 목록을 받았다`),
         //     그건 대본이 깨진 게 아니라 **이 절이 남긴 자국**이다(T192 실측 · 5곳/4곳).

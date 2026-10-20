@@ -45,6 +45,15 @@ console.log = _l; console.warn = _w; console.error = _e;
 const H = Zone.__testBind();
 const { claims, buildings, players, BUILDING_SIZE: SZ, Claims, db } = H;
 const DAY = 24 * 60 * 60 * 1000;
+// ★[T786] T785 켬(`T785_VILLAGE_ONLY=1`) — 길드 사유지는 **마을 땅**으로 접혔다(개인 사유지 자리 = 내 마을 땅 · 술어 = 몸 `member`).
+//   그래서 켬 판에선 같은 땅을 **마을 땅으로도** 깐다(랩 마을 · `_terrSet` 정본 칸 · 끔이면 아무것도 안 깐다 = 종전 판 그대로).
+const KIN = require(path.join(ROOT, 'server', 'village-kin.js')).ON;
+const _labVils = [];
+const LABV = (tribeId) => 8000 + (tribeId | 0);
+function join(p, tribeId) {   // 그 땅의 무리에 든다 — 끔 = 길드(`tribeId`) · 켬 = 그 땅의 랩 마을 사람(몸 `member`)
+  p.tribeId = tribeId;
+  if (KIN) p.member = { vid: LABV(tribeId), zone: 'hanbando' };
+}
 
 function mkPlayer(name, inv) {
   const msgs = [];
@@ -83,6 +92,12 @@ function guildLand(cx, cy, half, tribeId) {
   claims.set(id, { id, dbId: null, ownerPid: `village_lab${_gn}`, ownerName: '랩 길드 영토',
     x: (cx - half) * SZ, y: (cy - half) * SZ, w: (half * 2 + 1) * SZ, h: (half * 2 + 1) * SZ,
     kind: 'guild', cells, guildTribeId: tribeId, guildTribeName: '랩길드', state: 'active' });
+  if (KIN) {   // ★[T786] 켬 — 같은 칸을 랩 마을 땅으로(마을 정본 칸 `_terrSet` · 그 마을은 사람 마을 = 창설자 있음)
+    const vid = LABV(tribeId);
+    const v = _labVils.find((x) => x.dbId === vid) || (() => { const n = { name: `랩마을${tribeId}`, dbId: vid, econ: { founder: `lab_f${tribeId}` }, _terrSet: new Set() }; _labVils.push(n); return n; })();
+    for (const [x, y] of cells) v._terrSet.add(x + ',' + y);
+    H.SimVillages.__labProbe._t740Probe.setup({ villages: _labVils.slice(), byDbId: new Map(_labVils.map((x) => [x.dbId, x])) });
+  }
   return id;
 }
 
@@ -184,12 +199,13 @@ console.log('\n② 부활 지점 — ★실측이 문서보다 나빴다');
 console.log('\n③ 인접 — 변은 되고 모서리는 안 된다');
 {
   const p = mkPlayer('adj');
-  p.tribeId = 900; p.tribeName = '랩길드';
+  join(p, 900); p.tribeName = '랩길드';
   const BX = 4000, BY = 4000;
   const gl = guildLand(BX + 20, BY, 40, 900);
   wipe(p);
-  ok(!!H.findGuildClaimContaining(BX * SZ + SZ / 2, BY * SZ + SZ / 2, 900),
-    '③ 상황 assert — 검사 자리가 내 길드 영토 안이다(아니면 아래가 전부 "길드 영토 밖"으로 죽는다)');
+  ok(KIN ? ((H.SimVillages.villageOfCell(BX, BY) || {}).dbId === LABV(900)) : !!H.findGuildClaimContaining(BX * SZ + SZ / 2, BY * SZ + SZ / 2, 900),
+    KIN ? '③ 상황 assert(켬) — 검사 자리가 내 마을 땅 안이다(아니면 아래가 전부 "마을 땅 밖"으로 죽는다)'
+        : '③ 상황 assert — 검사 자리가 내 길드 영토 안이다(아니면 아래가 전부 "길드 영토 밖"으로 죽는다)');
   ok(/사유지 설치/.test(claimAt(p, BX, BY)), '③ 첫 셀은 어디든 된다(내 셀 0개 — 예외)', `${myCells(p).length}칸`);
   ok(/붙여서만/.test(claimAt(p, BX + 5, BY)), '③ 떨어진 자리는 거절', '');
   ok(/모서리로만/.test(claimAt(p, BX + 1, BY + 1)), '③ **대각은 거절** — 모서리로만 닿는 땅은 걸어서 안 이어진다');
@@ -207,7 +223,7 @@ console.log('\n③ 인접 — 변은 되고 모서리는 안 된다');
 console.log('\n④ 연결성 — ㄷ 자의 목을 빼면 갈라진다');
 {
   const p = mkPlayer('bfs');
-  p.tribeId = 901;
+  join(p, 901);
   //  (0,0) (1,0) (2,0)      ← 가로 막대. (1,0) 이 **목**이고 (0,0)·(2,0) 이 **끝**이다.
   const BX = 5000, BY = 5000;
   const gl = guildLand(BX + 15, BY, 40, 901);
@@ -246,7 +262,8 @@ console.log('\n⑤ 부재 상태기 — 3분기 · 임시는 더 짧다 · held_
     `⑤ L-3: 같은 ${Claims.CFG.HOLD_DAYS_TEMP + 1}일 부재에 임시는 held · 개인은 아직 active`,
     `${Claims.stageFor(tmp, at)} vs ${Claims.stageFor(per, at)}`);
   // held_by 3갈래 — **각각 다른 픽스처**에서 나온다
-  ok(Claims.heldByOf({ tribe_id: 12, tools_json: '{}' }) === 'guild:12', '⑤ 길드원 → `guild:<id>`');
+  ok(KIN ? Claims.heldByOf({ tribe_id: 12, tools_json: '{}' }) === null : Claims.heldByOf({ tribe_id: 12, tools_json: '{}' }) === 'guild:12',
+    KIN ? '⑤ 켬 — 길드원 줄은 안 선다(길드 = 마을 · 맡는 쪽은 몸 `member` 하나)' : '⑤ 길드원 → `guild:<id>`');
   ok(Claims.heldByOf({ tribe_id: null, tools_json: JSON.stringify({ member: { zone: 'hanbando', vid: 5 } }) }) === 'village:5',
     '⑤ 마을 소속자(T11 이 몸에 실어 둔 그 필드) → `village:<vid>`');
   ok(Claims.heldByOf({ tribe_id: null, tools_json: '{}' }) === null, '⑤ 무소속 → 무주(null)');
@@ -262,7 +279,8 @@ console.log('\n⑤ 부재 상태기 — 3분기 · 임시는 더 짧다 · held_
   const vill = { playerId: 'y', tribeId: null, member: { vid: 5 } };
   const nobody = { playerId: 'y', tribeId: null, member: null };
   ok(!Claims.takeableBy(nobody, held).ok, '⑤ `held` 는 아무도 못 가져간다 — 보관이 보관이다');
-  ok(Claims.takeableBy(mate, prefG).ok && !Claims.takeableBy(nobody, prefG).ok, '⑤ 길드 우선권은 그 길드원만');
+  ok(KIN ? (!Claims.takeableBy(mate, prefG).ok && !Claims.takeableBy(nobody, prefG).ok) : (Claims.takeableBy(mate, prefG).ok && !Claims.takeableBy(nobody, prefG).ok),
+    KIN ? '⑤ 켬 — 옛 길드 보관 줄은 우선권이 아니다(맡은 길드가 없다 · 개방을 기다린다)' : '⑤ 길드 우선권은 그 길드원만');
   ok(Claims.takeableBy(vill, prefV).ok && !Claims.takeableBy(mate, prefV).ok, '⑤ 마을 우선권은 그 마을 사람만');
   ok(!Claims.takeableBy(nobody, prefN).ok, '⑤ 무주는 창 동안 아무도 못 가져간다(개방을 기다린다)');
   ok(Claims.takeableBy(nobody, free).ok, '⑤ 개방된 땅은 아무나');
@@ -279,7 +297,7 @@ console.log('\n⑥ 승계 — 셀을 이어받으면 그 위 시설도 따라온
     '⑥ ★`claims.js` 에 **권한 술어를 다시 적지 않았다** — 승계는 주인 필드를 바꿀 뿐이다');
 
   const owner = mkPlayer('own'), heir = mkPlayer('heir');
-  owner.tribeId = 902; heir.tribeId = 902;
+  join(owner, 902); join(heir, 902);
   const CX = 6000, CY = 6000;
   const gl = guildLand(CX + 10, CY, 40, 902);
   wipe(owner); wipe(heir);
@@ -303,9 +321,9 @@ console.log('\n⑥ 승계 — 셀을 이어받으면 그 위 시설도 따라온
   const c2id = (() => { wipe(owner); claimAt(owner, CX + 20, CY); return claimIdAt(owner.playerId, CX + 20, CY); })();
   Claims.setState(c2id, claims.get(c2id), 'pref', 'guild:99', Date.now());
   const stranger = mkPlayer('stranger');
-  stranger.tribeId = 902;                       // 길드 영토 요건은 통과시키되(자리 문제 아님)
+  join(stranger, 902);                          // 길드 영토(켬 = 마을 땅) 요건은 통과시키되(자리 문제 아님)
   const note2 = claimAt(stranger, CX + 20, CY); // 우선권은 `guild:99` 라 이 사람에겐 없다
-  ok(/길드 사람만/.test(note2), '⑥ 우선권이 없으면 거절', JSON.stringify(note2));
+  ok(KIN ? /옛 보관 줄은 이제 없다/.test(note2) : /마을 사람만/.test(note2), '⑥ 우선권이 없으면 거절', JSON.stringify(note2));
   ok(claims.get(c2id).ownerPid === owner.playerId, '⑥ 거절이 말뿐이 아니다 — 주인이 안 바뀌었다');
   buildings.delete('bf1'); wipe(owner); wipe(heir); wipe(stranger); claims.delete(gl);
 }
@@ -314,7 +332,7 @@ console.log('\n⑥ 승계 — 셀을 이어받으면 그 위 시설도 따라온
 console.log('\n⑦ 복귀 · 상자 잠김 · econ 무접촉');
 {
   const p = mkPlayer('back');
-  p.tribeId = 903;
+  join(p, 903);
   const gl = guildLand(7000, 7000, 10, 903);
   wipe(p);
   claimAt(p, 7000, 7000);
@@ -351,7 +369,7 @@ console.log('\n⑧ ★이 하네스가 실패할 줄 아는가 — 일부러 틀
     const q = mkPlayer('ctl');
     const CX = 8000, CY = 8000;
     const gl = guildLand(CX, CY, 6, 904);
-    q.tribeId = 904; wipe(q);
+    join(q, 904); wipe(q);
     claimAt(q, CX, CY);
     ok(Claims.mySet(q.playerId).size === 1, '⑧-a 상황 assert — 실제로 한 칸을 세웠다(빈 집합이면 아래가 자명 통과다)');
     const side = Claims.adjacencyOf(q.playerId, CX + 1, CY), diag = Claims.adjacencyOf(q.playerId, CX + 1, CY + 1);

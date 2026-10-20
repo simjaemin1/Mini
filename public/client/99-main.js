@@ -246,7 +246,7 @@
     //   ⚠새 단축키는 0이다. 아래 Shift 절은 종전에 `&& e.shiftKey` 로 적혀 있던 것 그대로 옮긴 것뿐이고,
     //     `Shift+G`(게시판)만 **닿지 못하던 것이 닿게** 됐다(그게 이 항목의 뜻이다).
     if (e.shiftKey) {
-      if (k === 'c') sendPrimary({ type: 'claim', kind: 'guild' });          // Shift+C 길드 영토
+      if (k === 'c') sendPrimary({ type: 'claim', kind: 'guild' });          // Shift+C 마을 땅
       else if (k === 'f') sendPrimary({ type: 'fish_cast' });                // Shift+F 낚시 던지기/챔질(서버가 상태로 가른다)
       else if (k === 'r') sendPrimary({ type: 'repair_building' });          // Shift+R 수리
       else if (k === 'n') {                                                  // Shift+N 납품
@@ -385,13 +385,13 @@
       else if (a === 'furnace_start') {   // ★노 건설(재민 확정 — 움집 동형). kind=도가니로/괴련로(시대가 정한다)
         const kind = btn.dataset.kind || 'crucible';
         buildMode = true; placementMode = { special: 'furnace_site', kind };
-        showNotice(`${kind === 'bloomery' ? '괴련로' : '노(爐)'} 터 배치 — 내 사유지/길드 사유지 안 2×2 (B=취소)`);
+        showNotice(`${kind === 'bloomery' ? '괴련로' : '노(爐)'} 터 배치 — 내 사유지/마을 땅 안 2×2 (B=취소)`);
       }
       else if (a === 'well_start') { buildMode = true; placementMode = { special: 'well_site' }; showNotice('우물 터 배치 — 내 사유지 2×2 (곡괭이 · 자갈 20·20 · 임업4·농촌10·광산1·임업1 마을 땅 · B=취소)'); }   // ★[T557] 우물(노·숯가마와 같은 계약)
-      else if (a === 'kiln_start') { buildMode = true; placementMode = { special: 'kiln_site' }; showNotice('숯가마 터 배치 — 내 사유지/길드 사유지 안 2×2 (돌 4·곡괭이 · B=취소)'); }   // ★숯가마(노와 같은 계약)
+      else if (a === 'kiln_start') { buildMode = true; placementMode = { special: 'kiln_site' }; showNotice('숯가마 터 배치 — 내 사유지/마을 땅 안 2×2 (돌 4·곡괭이 · B=취소)'); }   // ★숯가마(노와 같은 계약)
       // ★★[2026-08-03e 배치 12 ①] 마을 회관 — 노·숯가마와 **완전히 같은 배치 계약**(2×2·사유지·단계).
       //   다른 건 완공이 곧 마을 등록이라는 것뿐이다. 자리 가능 여부는 서버가 착공 전에 판정한다.
-      else if (a === 'village_start') { buildMode = true; placementMode = { special: 'village_site' }; showNotice('마을 회관 터 배치 — 내 사유지/길드 사유지 안 2×2 (터 다지기 → 환호 → 굴립주 · B=취소)'); }
+      else if (a === 'village_start') { buildMode = true; placementMode = { special: 'village_site' }; showNotice('마을 회관 터 배치 — 내 사유지/마을 땅 안 2×2 (터 다지기 → 환호 → 굴립주 · B=취소)'); }
       // ★[11차 T4] 마을 크루에게 집 의뢰 — placementMode.special 재사용(발명 0). 검증·재료·배치는 서버 권위.
       else if (a === 'psite_request') { buildMode = true; placementMode = { special: 'psite' }; showNotice('집 의뢰 모드 — 마을 영토 안을 클릭 (기둥6·서까래8·이엉8 선납 · B=취소)'); }
       else if (a === 'harvest') sendPrimary({ type: 'harvest' });

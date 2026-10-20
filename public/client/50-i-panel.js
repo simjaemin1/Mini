@@ -495,12 +495,12 @@ function itemKo(k) {
     // ★[T563] 순서는 서버 사다리(T83 캐논) 그대로 — 길드 → 개인·임시 → 처음 고른 마을 → 귀향점 → 마을 쉼터.
     //   종전 표는 개인을 길드 앞에 세웠고 `start`·`shelter` 가 없어 날말("shelter")이 떴다.
     const KIND_ORDER = { guild: 0, personal: 1, temporary: 2, start: 3, home: 4, shelter: 5 };
-    const KIND_LABEL = { guild: '길드', personal: '개인', temporary: '임시', start: '처음 마을', home: '마을광장', shelter: '마을 쉼터' };
+    const KIND_LABEL = { guild: '마을 땅', personal: '개인', temporary: '임시', start: '처음 마을', home: '마을광장', shelter: '마을 쉼터' };
     const sorted = [...myRespawnOptions].sort((a, b) => (KIND_ORDER[a.kind] ?? 9) - (KIND_ORDER[b.kind] ?? 9));
     if (sorted.length === 0) {
       const none = document.createElement('div');
       none.className = 'down-opt-none';
-      none.innerHTML = '부활 가능한 지점이 없습니다.<br/>사유지를 만들거나 길드에 가입하세요.<br/><span style="font-size:10px;opacity:0.7">길드원이 R 키로 구조해줄 수 있음</span>';
+      none.innerHTML = '부활 가능한 지점이 없습니다.<br/>사유지를 만들거나 마을에 드세요.<br/><span style="font-size:10px;opacity:0.7">다른 사람이 R 키로 구조해줄 수 있음</span>';
       optBox.appendChild(none);
     } else {
       for (const o of sorted) {
@@ -559,7 +559,28 @@ function itemKo(k) {
     if (!body) return;
     body.innerHTML = '<div class="hint">로딩 중...</div>';
     if (!myUsername || myUsername.startsWith('anon_')) {
-      body.innerHTML = '<div class="hint">게스트 모드는 길드 사용 불가 — 로그인 필요</div>';
+      body.innerHTML = '<div class="hint">게스트 모드는 마을 일 불가 — 로그인 필요</div>';
+      return;
+    }
+    // ★★[T787 2026-10-18 · 길드 = 마을] 서버가 켬(`uiCfg.villageOnly`)이면 이 패널은 **마을 패널**이다 —
+    //   central 길드 문(`tribe/info` · `create` · `join` · `leave`) · `/tribes` · `/wars/active` 를 안 부른다.
+    //   마을 일은 채팅 문이 정본이다(`server/village-kin.js` — 답은 서버가 알림으로 낸다 · 새 메시지 0). 단추는 그 줄을 보낼 뿐이다.
+    if (uiCfg && uiCfg.villageOnly) {
+      const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+      const ROWS = [
+        ['/마을', '내 마을 보기 — 촌장 · 곳간 문 · 가입 문 · 소개'],
+        ['/소속', '마을 곳간에 보탠 뒤 그 마을에 든다'],
+        ['/초대 이름', '마을 사람이 사람을 부른다'], ['/수락', '부름을 받아 든다'],
+        ['/촌장', '촌장 보기 · 촌장은 `/촌장 이름` 으로 자리를 넘긴다'],
+        ['/곳간 열기 · /곳간 잠금', '촌장 — 곳간 문'], ['/소개 한 줄', '촌장 — 마을 소개'],
+        ['/마을 초대제 · /마을 공개', '촌장 — 가입 문'], ['/전쟁 마을 · /종전 마을', '촌장 — 마을 사이 전쟁'],
+        ['/t 메시지', '마을 채팅'], ['/탈퇴', '마을에서 나온다'],
+      ];
+      body.innerHTML = `<div class="hint">소속 마을: <b>${myTribeName ? `[${esc(myTribeName)}]` : '(아직 없음)'}</b></div>`
+        + `<button class="craft-btn" id="villageLookBtn" style="margin:6px 0 8px">내 마을 보기</button>`
+        + ROWS.map(([c, d]) => `<div class="craft-row"><div class="craft-info"><div class="craft-name">${esc(c)}</div><div class="craft-cost">${esc(d)}</div></div></div>`).join('');
+      const lb = document.getElementById('villageLookBtn');
+      if (lb) lb.onclick = () => sendPrimary({ type: 'chat', text: '/마을' });
       return;
     }
     if (myTribeId) {
@@ -580,7 +601,7 @@ function itemKo(k) {
         const trItems = Object.entries(treasury).filter(([k,v]) => v > 0)
           .map(([k,v]) => `${itemIconHtml(k, 18, itemKo(k))} ${v}`).join(' · ') || '(비어있음)';
         const isNpc = data.tribe.is_npc;
-        const tierBadge = isNpc ? `<span class="badge" style="background:var(--thirst)">NPC길드 (${data.tribe.behavior_tier})</span>` : '';
+        const tierBadge = isNpc ? `<span class="badge" style="background:var(--thirst)">NPC 마을 (${data.tribe.behavior_tier})</span>` : '';
         // Phase 14.9 — 전쟁 선포 대상 목록 (내 길드 X, 이미 전쟁중 X)
         let warsHtml = '';
         let declareHtml = '';
@@ -611,19 +632,19 @@ function itemKo(k) {
           }
         } catch (e) {}
         body.innerHTML = `
-          <div class="hint">소속 길드: <b>[${myTribeName}]</b> (멤버 ${data.members.length}명) ${tierBadge}</div>
-          <div class="hint" style="margin-top:6px">길드 명성: <b style="color:${tierColor}">${vp.toFixed(0)}/200 · ${tierLabel}</b></div>
+          <div class="hint">소속 마을: <b>[${myTribeName}]</b> (사람 ${data.members.length}명) ${tierBadge}</div>
+          <div class="hint" style="margin-top:6px">마을 명성: <b style="color:${tierColor}">${vp.toFixed(0)}/200 · ${tierLabel}</b></div>
           <div class="hint" style="font-size:11px;opacity:0.7">청정=침략 시 약함·침략자 +대량적대감 / 악성=토벌 대상</div>
-          <div class="hint" style="margin-top:6px">길드 금고: <b>${trItems}</b></div>
-          <div class="hint" style="margin-top:6px">사유지 슬롯 (Phase 14.18): <b>${countMyClaimsClient()}</b><br/><span style="font-size:10px;opacity:0.7">C=개인 (길드영토 안만) · T=임시 (어디든) · Shift+C=길드영토 (멤버만)</span></div>
-          <button class="craft-btn" id="tribeGranaryBtn" style="margin-top:8px;background:var(--accent)">길드 곳간 건설 (판자12·돌8 — 길드영토 안, 리더)</button>
-          <div class="hint" style="font-size:10px;opacity:0.7">내 위치 북쪽 3칸에 5×3 밀폐 곳간 — 멤버 공유 창고, 전쟁 시 약탈 목표</div>
+          <div class="hint" style="margin-top:6px">마을 금고: <b>${trItems}</b></div>
+          <div class="hint" style="margin-top:6px">사유지 슬롯 (Phase 14.18): <b>${countMyClaimsClient()}</b><br/><span style="font-size:10px;opacity:0.7">C=개인 (마을 땅 안만) · T=임시 (어디든) · Shift+C=마을 땅 (마을 사람만)</span></div>
+          <button class="craft-btn" id="tribeGranaryBtn" style="margin-top:8px;background:var(--accent)">마을 곳간 건설 (판자12·돌8 — 마을 땅 안, 촌장)</button>
+          <div class="hint" style="font-size:10px;opacity:0.7">내 위치 북쪽 3칸에 5×3 밀폐 곳간 — 마을 사람 공유 창고, 전쟁 시 약탈 목표</div>
           ${warsHtml}
           ${declareHtml}
-          <div class="hint" style="margin-top:8px">멤버 목록:</div>
+          <div class="hint" style="margin-top:8px">마을 사람:</div>
           ${members}
-          <div class="hint" style="margin-top:8px">길드 채팅: <b>Enter /t 메시지</b></div>
-          <button class="craft-btn" id="tribeLeaveBtn" style="margin-top:12px;background:var(--hp)">길드 탈퇴</button>
+          <div class="hint" style="margin-top:8px">마을 채팅: <b>Enter /t 메시지</b></div>
+          <button class="craft-btn" id="tribeLeaveBtn" style="margin-top:12px;background:var(--hp)">마을에서 나오기</button>
         `;
         // 선포 버튼 핸들러
         body.querySelectorAll('[data-declare]').forEach(b => b.onclick = async () => {
@@ -641,7 +662,7 @@ function itemKo(k) {
           else alert(d.error || '종전 실패');
         });
         const grBtn = document.getElementById('tribeGranaryBtn');
-        if (grBtn) grBtn.onclick = () => { buildMode = true; placementMode = { special: 'guild_granary' }; toggleTribePanel(); showNotice('길드 곳간 배치 모드 — 길드영토 안 클릭 (5×3 밀폐 · 밖에서 지으세요 · B=취소)'); };
+        if (grBtn) grBtn.onclick = () => { buildMode = true; placementMode = { special: 'guild_granary' }; toggleTribePanel(); showNotice('마을 곳간 배치 모드 — 마을 땅 안 클릭 (5×3 밀폐 · 밖에서 지으세요 · B=취소)'); };
         document.getElementById('tribeLeaveBtn').onclick = async () => {
           if (!confirm('정말 탈퇴하시겠습니까?')) return;
           const d = await window.__centralCall('tribe/leave', {});   // ★[T235] 존 경유 — 남을 못 뺀다
@@ -676,13 +697,13 @@ function itemKo(k) {
           }
         } catch (e) {}
         body.innerHTML = `
-          <div class="hint">새 길드 만들기:</div>
+          <div class="hint">새 마을 만들기:</div>
           <div style="display:flex;gap:6px;margin:4px 0 12px">
-            <input id="tribeNameInput" maxlength="20" placeholder="길드 이름" style="flex:1;padding:4px 6px"/>
+            <input id="tribeNameInput" maxlength="20" placeholder="마을 이름" style="flex:1;padding:4px 6px"/>
             <button class="craft-btn" id="tribeCreateBtn">만들기</button>
           </div>
-          <div class="hint">또는 기존 길드 가입:</div>
-          ${list || '<div class="hint">(길드 없음)</div>'}
+          <div class="hint">또는 있는 마을에 들기:</div>
+          ${list || '<div class="hint">(마을 없음)</div>'}
           ${warsHtml}
         `;
         document.getElementById('tribeCreateBtn').onclick = async () => {
@@ -700,7 +721,7 @@ function itemKo(k) {
           if (d.ok) {
             myTribeId = d.tribe_id; myTribeName = d.name;
             sendPrimary({ type: 'tribe_set', tribeId: d.tribe_id, tribeName: d.name });
-            if (d.promoted) showNotice(`[${d.name}] 길드 운영권 인수! 당신이 새 리더입니다`);
+            if (d.promoted) showNotice(`[${d.name}] 마을을 넘겨받았다 — 이제 자네가 촌장이다`);
             renderTribePanel();
           }
           else alert(d.error || '가입 실패');
@@ -805,7 +826,7 @@ function itemKo(k) {
     document.getElementById('sidePanel').classList.add('open');
     document.querySelectorAll('.sb-icon').forEach(t => t.classList.toggle('active', t.dataset.side === name));
     document.getElementById('spTitle').textContent = ({
-      craft: '제작', build: '건축', tribe: '길드', market: '시세',
+      craft: '제작', build: '건축', tribe: '마을', market: '시세',
       skills: '스킬', claims: '사유지', body: '상태', trade: '거래소',
       facility: (myFacility && myFacility.near) ? `${myFacility.near.ko}` : '제작창',
       chronicle: '연대기',   // [T18] §8.2 3단계 중 — 이 표에 없으면 영문 키가 제목에 뜬다

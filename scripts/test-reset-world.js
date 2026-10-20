@@ -234,7 +234,9 @@ r = run(['hanbando', '--open']);
 ok(r.rc !== 0, '이미 연 판에 --open 은 거부');
 
 console.log('\n⑧ --restore');
-const newSums = (() => { zoneDb(z.vol, 'world-hanbando.db').exec("INSERT INTO villages VALUES (9,'hanbando','새',0,0,1,'{}',0,0)"); return dbFiles(z.vol); })();
+//   ★[T809] 핸들을 **쥔다** — 안 쥐면 GC 가 닫으며 WAL 을 체크포인트해 -wal · -shm 이 사라진다(옮긴 파일 1 ↔ 센 파일 3 · T786 · main 둘 다 그 빨강이었다).
+let _keepH8 = null;
+const newSums = (() => { (_keepH8 = zoneDb(z.vol, 'world-hanbando.db')).exec("INSERT INTO villages VALUES (9,'hanbando','새',0,0,1,'{}',0,0)"); return dbFiles(z.vol); })();
 st(); const Sx = st(); Sx.containers['durango-zone-hanbando'].state = 'running'; fs.writeFileSync(STATE, JSON.stringify(Sx));
 r = run(['hanbando', '--restore', B], 'hanbando\n');
 c = st().containers['durango-zone-hanbando'];

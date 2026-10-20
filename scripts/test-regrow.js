@@ -23,6 +23,7 @@ const ok = (c, m, x) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  �
 const pre = (c, m, x) => { if (!c) { fail++; console.log('  ✗ [상황] ' + m + (x !== undefined ? `  ${x}` : '')); } else console.log('  · [상황] ' + m + (x !== undefined ? `  ${x}` : '')); };
 const say = (m) => console.log(m);
 // ★주석을 빼고 본다 — 소스 계약은 **코드**를 물어야 한다(주석은 설명할 자유가 있다).
+const _KIN787 = require(path.join(__dirname, '..', 'server', 'village-kin.js')).ON;   // ★[T787] 켬 기본 — 길드 = 마을(옛 길드 영토 절은 두 갈래로 잰다)
 const codeOnly = require('./code-only.js');   // ★[T171] 주석 제거기 **정본**(acorn onComment · 사본 0). 옛 정규식 판은 `villages.js:20` 의 `// … sim/* …` 에 걸려 파일의 67.9% 를 삼켰다
 
 const C = require(path.join(ROOT, 'server', 'chunk.js'));
@@ -463,14 +464,24 @@ const Y = E.yearDaysOf();
           const n5 = H.db.getResources().length;
           at(far2);
           H.tryPlantTree(me, far2.x, far2.y, 'acorn');
-          ok(H.db.getResources().length === n5 && /길드 영토/.test(lastN()),
-            '★★⑦ⓒ5 **남의 길드 영토엔 못 심는다** — 사유가 거리가 아니라 그 땅이다', lastN());
-          me.tribeId = 'tribe_other';            // 내가 그 길드원이 되면
-          ok(!H.foreignClaimAt(me, far2.x, far2.y), '★⑦ⓒ6 **내 길드 영토는 남의 땅이 아니다**');
-          at(far2);
-          const r3 = H.tryPlantTree(me, far2.x, far2.y, 'acorn');
-          ok(!!r3 && H.db.getResources().length === n5 + 1,
-            '★★⑦ⓒ7 그래서 **내 길드 영토엔 심어진다**(같은 칸 · 소속만 달라졌다)');
+          ok(H.db.getResources().length === n5 && /마을 땅이다/.test(lastN()),
+            '★★⑦ⓒ5 **남의 마을 땅(옛 길드 영토)엔 못 심는다** — 사유가 거리가 아니라 그 땅이다', lastN());
+          me.tribeId = 'tribe_other';            // 옛 몸 칸이 그 길드와 같아지면
+          if (!_KIN787) {
+            //   끔(되돌림 길) — 옛 길드원은 그 영토를 제 땅으로 쓴다(종전 계약 그대로)
+            ok(!H.foreignClaimAt(me, far2.x, far2.y), '★⑦ⓒ6 [끔] **내 길드 영토는 남의 땅이 아니다**');
+            at(far2);
+            const r3 = H.tryPlantTree(me, far2.x, far2.y, 'acorn');
+            ok(!!r3 && H.db.getResources().length === n5 + 1,
+              '★★⑦ⓒ7 [끔] 그래서 **내 길드 영토엔 심어진다**(같은 칸 · 소속만 달라졌다)');
+          } else {
+            //   ★[T787] 켬(기본) — 길드 = 마을: 옛 길드 칸은 땅을 주지 않는다(땅은 **그 마을 사람**의 것 · T786 C13) — 같은 칸 · 같은 옛 칸 · 반대 답
+            ok(!!H.foreignClaimAt(me, far2.x, far2.y), '★⑦ⓒ6′ [켬] 옛 길드 칸이 같아도 **남의 땅이다**(옛 칸은 땅을 주지 않는다)');
+            at(far2);
+            const r3 = H.tryPlantTree(me, far2.x, far2.y, 'acorn');
+            ok(!r3 && H.db.getResources().length === n5,
+              '★★⑦ⓒ7′ [켬] 그래서 **여전히 못 심는다** — 마을 사람이 아니면 마을 땅은 남의 땅', lastN());
+          }
           H.claims.delete(gid);
         }
       }

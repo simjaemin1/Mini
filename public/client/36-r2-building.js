@@ -323,7 +323,7 @@
     if (type === 'guild_granary' || type === 'granary') {
       // ★고상곳간 앵커 — 몸체는 _granC 통짜 스프라이트(에셋 2차)가 대체: 표석 폐지, 라벨만(지붕 위)
       ctx.font = 'bold 10px sans-serif'; ctx.fillStyle = '#ffe9b0'; ctx.textAlign = 'center';
-      ctx.fillText(type === 'guild_granary' ? '길드 곳간' : '곳간', x, y - 56);
+      ctx.fillText(type === 'guild_granary' ? '마을 곳간' : '곳간', x, y - 56);
       ctx.textAlign = 'left';
       return;
     }

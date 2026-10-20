@@ -56,6 +56,11 @@ if (process.env.T769_SUB === 'zone') {
     vils[0].econ.founder = CHIEF;
     vils[1].econ.founder = 'anon_t769_f1'; vils[1]._tribeId = 77;
     vils[2].econ.founder = 'anon_t769_f2'; vils[2]._tribeId = 78;
+    //   ★[T786] T785 켬 — 사람 마을의 촌장은 **마을 칸**(부팅 복원 · 창설이 붙이는 칸 `VillageKin.attach` · 촌장 = 창설자). 랩은 `Villages.init` 을
+    //     안 불러 칸이 비어 있다 ⇒ 정본 함수로 같은 칸을 붙인다(회관 행 data 없음 = 기본값 · 끔이면 안 붙인다 = 종전 판 그대로).
+    const VK = require(SV('village-kin.js'));
+    out.kin = VK.ON;
+    if (VK.ON) for (const v of vils) VK.attach(v, {}, null);
     const AT = vils.map((v) => P.anchorPx(v));
     for (const v of vils) { v.econ.storage.food = 4000; v.econ.storage.wood = 500; }
     const HALL = 'b_t769_hall';
@@ -133,6 +138,7 @@ if (process.env.T769_SUB === 'zone') {
     out.wdG = { took: await wd(pG, 1, 2), note: last(pG), prom: lastProm };
     out.wdX = { took: await wd(pX, 1, 2), note: last(pX), prom: lastProm };
     out.wdG2 = { took: await wd(pG, 1, 1), prom: lastProm };   // 캐시 창 안 — 다시 안 묻는다
+    if (out.kin) { const pF1 = mkP('anon_t769_f1', 1); out.wdF1 = { took: await wd(pF1, 1, 2), note: last(pF1), prom: lastProm }; }   // ★[T786] 켬 = 촌장은 창설자(마을 칸)
     // central 불가
     const pH = mkP('anon_t769_f2', 2);
     out.wdH = { took: await wd(pH, 2, 2), note: last(pH) };
@@ -214,11 +220,22 @@ ok(ON.wdC1.took === 5 && ON.wdC2.took === 5 && /한도 없음/.test(ON.wdC1.note
 ok(ON.sync.prom === false && ON.sync.took > 0, '창설자 촌장 판정은 그 자리에서 선다(동기 — 기다림 0)', JSON.stringify(ON.sync));
 ok(ON.accept.ok && ON.wdM.member && ON.wdM.took === 0 && /촌장/.test(ON.wdM.note), '★마을 사람(촌장 아님) 꺼내기 거절 — 소속은 그대로', ON.wdM.note);
 ok(ON.acceptNote.r === true && /오늘부터 자네는/.test(ON.acceptNote.note) && !/곳간을 열어|\/인출/.test(ON.acceptNote.note), '마을 사람에게 "곳간을 열어 두겠네(/인출)" 말이 안 간다(걷음)', ON.acceptNote.note);
+//   ★[T786 ②] T785 켬 — 촌장은 **마을 칸 하나**(이행 뒤 촌장 = 창설자 · 넘기기는 `/촌장`) · central `leader_id` 조회 · 캐시 창이 없다.
+//   ★[T809] T779(main) 의 단정과 T785~T787 의 켬 갈래를 같이 산다 — 길드 · central 갈래는 끔(`T785_VILLAGE_ONLY=0`)에서만.
+if (ON.kin) {
+  ok(ON.wdG.took === 0 && /촌장/.test(ON.wdG.note) && ON.wdX.took === 0 && ON.wdF1 && ON.wdF1.took > 0,
+    '★[켬 T785] 옛 길드 마을 — 촌장 = 마을 칸(창설자) · 옛 길드장(central `leader_id`)은 촌장이 아니다', `길드장 ${ON.wdG.took} · 남 ${ON.wdX.took} · 창설자 ${ON.wdF1 && ON.wdF1.took}`);
+  ok(ON.wdH.took > 0, '★[켬 T785] central 불가여도 촌장(창설자)은 꺼낸다 — 촌장 판정이 central 을 안 묻는다', `${ON.wdH.took} · ${ON.wdH.note}`);
+} else {
 ok(ON.wdG.took > 0 && ON.wdX.took === 0 && /촌장/.test(ON.wdX.note), '★길드 마을 — central `leader_id` 가 촌장(맞으면 ok · 아니면 거절)', `${ON.wdG.took} · ${ON.wdX.note}`);
-ok(ON.wdG.prom === true && ON.wdX.prom === false && ON.wdG2.prom === false && ON.wdG2.took > 0 && ON.cAsk === 2,
+ok(ON.wdH.took === 0 && /확인하지 못했다/.test(ON.wdH.note), '★central 불가 = 거절(빼는 문은 닫힌 쪽)', ON.wdH.note);
+}
+if (ON.kin) ok(ON.wdG.prom === false && ON.wdX.prom === false && ON.wdG2.prom === false && ON.wdF1 && ON.wdF1.prom === false && ON.cAsk === 0,
+  '★[켬 T785] 촌장 판정은 늘 그 자리에서(동기) — central 묻기 0 · 캐시 창 없음',
+  `묻기 ${ON.cAsk} · ${[ON.wdG, ON.wdX, ON.wdG2, ON.wdF1].map((x) => x && x.prom).join('/')}`);
+else ok(ON.wdG.prom === true && ON.wdX.prom === false && ON.wdG2.prom === false && ON.wdG2.took > 0 && ON.cAsk === 2,
   '길드 촌장 — 캐시가 비면 central 을 묻고 그 뒤(비동기) · 캐시 창(`GRAN_TTL_MS`) 안이면 그 자리에서 · 묻는 수 = 빈 캐시 둘(77 · 78)',
   `묻기 ${ON.cAsk} · 첫 ${ON.wdG.prom} · 남 ${ON.wdX.prom} · 둘째 ${ON.wdG2.prom}/${ON.wdG2.took}`);
-ok(ON.wdH.took === 0 && /확인하지 못했다/.test(ON.wdH.note), '★central 불가 = 거절(빼는 문은 닫힌 쪽)', ON.wdH.note);
 ok(ON.wdN.took === 0 && /사람이 꺼내지 않는다/.test(ON.wdN.note), 'NPC 마을 = 사람 꺼내기 0', ON.wdN.note);
 ok(ON.lock.r === true && /촌장만 꺼낸다/.test(ON.lock.note), '`/곳간 잠금` 은 한 줄로 답한다(길드 곳간 잠금 걷음)', ON.lock.note);
 ok(/꺼내기는 촌장만/.test(ON.look.note) && /기부는 누구나/.test(ON.look.note) && !/남은 몫|누적 기여/.test(ON.look.note), '`/곳간` 형편 한 줄 — 한도 말 없음 · 기부 꼬리', ON.look.note);
@@ -249,7 +266,7 @@ ok(OFF.panel.stockUp === 0, '`village_donate` 문이 닫혀 있다', String(OFF.
 ok(OFF.wdP1.took === 0 && OFF.wdM.took === 0 && OFF.wdC1.took === 5 && OFF.chatWd2.took === 3 && OFF.wdN.took === 0,
   '★꺼내기는 손잡이 밖 — 끔에서도 촌장만(비관리자 · 마을 사람 거절 · 창설자 5 · `/인출 3` · NPC 0)', `${OFF.wdP1.note} · ${OFF.wdM.note} · ${OFF.wdC1.took}`);
 ok(/꺼내기는 촌장만/.test(OFF.look.note) && !/기부/.test(OFF.look.note), '`/곳간` 형편 줄 — 기부 꼬리만 빠진다', OFF.look.note);
-ok(OFF.lock.r === true && /촌장만 꺼낸다/.test(OFF.lock.note) && OFF.cAsk === 2, '`/곳간 잠금` 한 줄 · central 묻기도 같은 둘(꺼내기 판정은 손잡이 밖)', `${OFF.lock.note} · 묻기 ${OFF.cAsk}`);
+ok(OFF.lock.r === true && /촌장만 꺼낸다/.test(OFF.lock.note) && OFF.cAsk === (OFF.kin ? ON.cAsk : 2), `\`/곳간 잠금\` 한 줄 · central 묻기도 켬 판과 같은 수(꺼내기 판정은 손잡이 밖${OFF.kin ? ' · ★[T809] 마을 한 무리 = 묻기 0' : ''})`, `${OFF.lock.note} · 묻기 ${OFF.cAsk} / 켬 ${ON.cAsk}`);
 ok(!/곳간을 열어|\/인출/.test(OFF.acceptNote.note) && /오늘부터 자네는/.test(OFF.acceptNote.note), '수락 말에 곳간 말 없음(걷음 — 끔에서도)', OFF.acceptNote.note);
 
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===`);
