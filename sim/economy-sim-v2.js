@@ -562,7 +562,7 @@ function _t784Mods() {
   }
   return _t784M;
 }
-// ★★[T812 2026-10-19 · T795 회부 2 · 손잡이 `T812_CARGO_TEMP`('1' 만 켬 · 끔 = 아래 두 함수가 날 수 그대로 = main 바이트)] **짐은 장부 시계로 늙는다.**
+// ★★[T812 2026-10-19 · T795 회부 2 · 손잡이 `T812_CARGO_TEMP`(T820 켬 기본 · `=0` 끔 = 아래 두 함수가 날 수 그대로 = T820 앞 바이트)] **짐은 장부 시계로 늙는다.**
 //   T784 는 길 위 **달력 날 수**를 곡선에 넣었다 — 장부(T732)는 같은 짐을 **기온 가중 노출**(`spoil` · 몸에 지님 seal 1 · damp 0)로 늙힌다.
 //   한 해 평균은 같고 철 · 빨리 상하는 짐에서 갈렸다(T795 §3 — 여름 1.76배 · 겨울 0.41배 · 생선 −0.28).
 //   켬이면 다리의 나이 = 그 다리 날들의 **하루 노출 합**(`spoil.dayExposure` — `cumExposure` 가 쌓는 그 하루치 · 기온은 날씨 정본 `server/weather.js`).
@@ -570,7 +570,8 @@ function _t784Mods() {
 //   ⚠공유 누적표(`cumExposure` 의 `_cum`)는 안 건드린다 — 장부는 순간 날(벽시계)로, econ 은 econ 날로 같은 표를 물어 창이 앞뒤로 뛰지 않게(T795 §3 · 벤치 시계 비 5~8).
 //     같은 하루치의 합이라 값은 `cumExposure(d0 + n) − cumExposure(d0)` 와 같다(test-cargo-age ⑦).
 //   랩: 번들이 날씨 정본을 싣는다(없으면 하루 노출 1 = 날 수 — 서버와 갈린다).
-const T812_CARGO_TEMP = (typeof process !== 'undefined' && process.env && process.env.T812_CARGO_TEMP === '1');
+//   ★[T820 2026-10-20 · PM 결정 — 곡선 하나 · 장부와 econ 이 같은 노출을 읽는다] 켬 기본 · 되돌림 `T812_CARGO_TEMP=0`(= T820 앞 바이트).
+const T812_CARGO_TEMP = !(typeof process !== 'undefined' && process.env && process.env.T812_CARGO_TEMP === '0');
 const _t812Pre = new Map();   // 떠난 날 → [0, 첫날 노출, 둘째 날까지 …] (그 날부터의 누적 · 날마다 한 번만 센다)
 function _t812Exp(day0, days) {   // 떠난 날 · 날 수 → 길 위 노출(소수 날이면 그 몫만큼 다음 날 하루치)
   const M = _t784Mods(), S = M && M.S;
