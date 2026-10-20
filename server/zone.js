@@ -6807,6 +6807,13 @@ function handlePlayerInput(player, raw) {
   // ★[신체 상태] 테스트 픽스처 — 몸 상태를 **직접 세운다**. `E2E_GIVE` 게이트라 기본 부팅에선 도달 불가.
   //   ⚠이 픽스처는 **저장을 부르지 않는다**(오프라인 불변 검사를 오염시키지 않게 — 족보 ㊻).
   else if (E2E_GIVE && msg.type === '__e2e_body') {
+    // ★★[T802 2026-10-19] **떠난 몸(껍데기)에는 픽스처가 안 쓴다.** 핸드오프는 `fireHandoff` 에서 몸을 `serializeBody` 로 찍어 보내고,
+    //   ACK 까지 남은 것은 페이로드로 이미 떠난 **안 보이는 껍데기**다(T518 — 피해 · 판정 · 시야가 다 `handingOff` 를 거른다).
+    //   그런데 이 픽스처만 껍데기에 계속 썼다 — `test-handoff-body` 가 걷는 내내 400 ms 마다 hp 를 42 로 세우는데, 그 한 번이
+    //   찍은 **뒤** 에 닿으면 껍데기 hp 만 42 로 내려가고(도착 존은 찍힌 45.98 을 받는다) 하네스가 "넘는 순간"으로 읽는 값이 찍힌 값보다 낮아진다
+    //   (실측 · 보고/T802 §1: 찍음 45.98 → 껍데기 42.00 → 도착 45.98 + 회복 = 59.09 · 하네스 기준 42.99 ⇒ +16.1 빨강).
+    //   ⇒ 껍데기엔 쓰지 않는다(쓴 값은 어차피 아무 데도 안 간다). `E2E_GIVE` 문 안 — 운영 부팅엔 도달 0(새 수 0 · 판정 0).
+    if (player.handingOff) return;
     const b = Body.ensure(player);
     if (typeof msg.hunger === 'number') player.hunger = Math.max(0, Math.min(100, msg.hunger));
     if (typeof msg.thirst === 'number') player.thirst = Math.max(0, Math.min(100, msg.thirst));
