@@ -5904,6 +5904,14 @@ const T512_GHOST_EXTRAP = process.env.T512_GHOST_EXTRAP !== '0';
 // ★[T518] 한 몸 한 판정 — 핸드오프 중인 몸(`handingOff` · 몸은 이미 페이로드로 떠났고 남은 것은 얼어 있는 **안 보이는** 껍데기 · `zone.js` 14.47 틱 거름)을
 //   떠나는 존이 화살·`/cross_damage` 로 **또 재지 않는다**. 되돌림 `T518_ONE_JUDGE=0` = 종전 바이트 동일.
 const T518_ONE_JUDGE = process.env.T518_ONE_JUDGE !== '0';
+// ★★[T823 2026-10-20 · 손잡이 `T823_FREEZE_SHELL` — '1' 만 켬 · 끔 = main 바이트] **떠난 몸 껍데기를 얼린다**(PM 10-20 결정 — 정본 한 몸: 넘긴 순간 몸은 도착 존의 것).
+//   `fireHandoff` 가 `handingOff = true` 를 세운 순간부터 ACK(최대 3초)까지 남는 껍데기는 이동 · 계단 · 낙하 · 입력 타임아웃 · 화살 판정(T518) ·
+//   보이기가 이미 거른다 — 회복 · 게이지(허기 · 갈증 · 추위 · 피로 · 게이지 전송과 그 장부 맞대기) · 입력(사람 메시지 전부) · 행동(낚시 입질 · 손에 듦)
+//   네 걸음만 안 걸렀다(T802 회부 1 — 넘긴 뒤 125ms 회복 틱 넷). 켜면 그 넷도 `handingOff`(이미 있는 칸 하나)를 거른다 — 껍데기에서
+//   HP 가 오르거나 · 게이지가 흐르거나 · 물건을 내려놓거나(땅과 도착 몸 둘 다에 남는 복제) · 물고기가 손에 드는(아무 데도 안 가는 소멸) 일 0.
+//   직렬화(`serializeBody`)는 `handingOff` 를 세운 뒤에 돈다 — 켜면 그 사이(저장 왕복)에도 몸이 안 변해 페이로드 = 세운 순간의 몸 = 껍데기.
+//   넘기기가 실패하면(`_t564HandoffFail` — `handingOff = false`) 그 순간부터 다시 걷는다(언 동안은 시간이 안 흐른 몸 — 최대 5초 · 새 수 0).
+const T823_FREEZE_SHELL = process.env.T823_FREEZE_SHELL === '1';
 const E2E_CONN_FAIL = (process.env.E2E_GIVE === '1') ? (process.env.E2E_CONN_FAIL || '') : '';
 const E2E_CONN_HANG = (process.env.E2E_GIVE === '1') ? (process.env.E2E_CONN_HANG || '') : '';
 function _connFailPoint(stage) {
@@ -6066,6 +6074,11 @@ async function _acceptConnection(ws, req, C) {
     //     행에 저장(await)하고 페이로드에도 실으므로 둘은 정의상 같다 — 중재할 경합이 없다.
     //     행 폴백이 필요한 경우는 **몸을 안 싣는 옛 존에서 넘어올 때**(롤링 배포 창) 하나뿐이고,
     //     그때는 출발 존이 떠나기 직전 저장한 행이 유일한 진실이다.
+    //   ★★[T823 · T802 회부 2 — 주석만 바로] 위 규칙은 **T732 켬(기본)의 말**이다. `/handoff_prepare` 가 페이로드 몸을 쥐는 줄이
+    //     T732 켬 갈래 안이라(`if (T732_MOMENT && data.body …)`) **끄면(`T732_MOMENT_LOT=0`) 몸이 실려 와도 버리고 늘 아래 central 행 폴백**을 탄다
+    //     (`E2E_HANDOFF_NO_BODY` 픽스처 · 옛 존 창만이 아니다). 그 행은 하나가 아니다 — 넘기기 전 저장(`fireHandoff` · 넘긴 순간 몸 ·
+    //     `T498_HANDOFF_PAYLOAD` 켬이면 ACK 가 안 올 때만)과 떠난 몸 껍데기가 닫힐 때 저장(소켓 `close` · 껍데기의 마지막 몸) 중 이 줄이 읽기 전에
+    //     닿은 쪽이다(경합 · "정의상 같다"는 그 둘 사이에 껍데기가 안 변할 때만 참 — `T823_FREEZE_SHELL` 켬이면 껍데기가 얼어 둘이 같은 몸이다).
     let _pendBody = pending.body || null, _bodySrc = 'payload';
     if (!_pendBody) {
       try {
@@ -6676,6 +6689,7 @@ const VILLAGE_BOOK_MSG = new Set([
 
 // === 외부 player 핸들러 (observer promotion에서 재사용) ===
 function handlePlayerInput(player, raw) {
+  if (T823_FREEZE_SHELL && player.handingOff) return;   // ★[T823] 켬 — 떠난 몸 껍데기는 사람 메시지를 안 받는다(몸은 이미 도착 존의 것 · 위 손잡이 주석)
   const _t486In = T486_PONG_SPLIT ? _t486Now() : 0;   // ★[T486] 이 메시지를 집은 순간(끔이면 0 · 안 읽힌다)
   let msg;
   try { msg = JSON.parse(raw.toString()); } catch (e) { return; }
@@ -14976,6 +14990,7 @@ setInterval(() => {
   // === 생존 게이지: hunger/thirst 감소 + 0이면 HP 페널티 + vp decay ===
   // ★[T385] 몸통을 함수 하나로(끔·켬이 같은 함수를 부른다 · `continue` → `return` 둘뿐)
   function _gaugeStep(p) {
+    if (T823_FREEZE_SHELL && p.handingOff) return;   // ★[T823] 켬 — 떠난 몸 껍데기는 게이지가 안 흐른다
     if (p.hp <= 0 || p.isDown) return;
     // ★NPC 전면 면제(랩 100% 동형 — 사용자 확정): 랩 NPC에는 개체 허기·갈증이 없다 — 식량은 econ 소유(기근=econ 인구감소가
     //   유일한 식량 사망 경로). 기존엔 canadia만 면제라 활성 청크의 마을 NPC가 게이지 드레인→기아 hp 드레인을 맞았고,
@@ -15046,6 +15061,7 @@ setInterval(() => {
   // === HP 회복 (out-of-combat 1초 후) — 단 hunger/thirst 모두 0이상일 때만 ===
   // ★[T385] 몸통을 함수 하나로 — `act` 를 받으면 술어를 다시 안 부른다(`continue` → `return`)
   function _hpRegenStep(p, act) {
+    if (T823_FREEZE_SHELL && p.handingOff) return;   // ★[T823] 켬 — 떠난 몸 껍데기는 안 아문다
     if (p.isNpc && !p.canadiaVillage && !(act !== undefined ? act : isPositionActive(p.x, p.y))) return;  // dormant NPC HP회복 스킵
     // ★마을 NPC = 랩 일일 회복만(villages.js _lifeDaily: 요양18·근무6/일 ×건강·행복·식량 — 랩 7585 verbatim).
     //   초당 회복은 랩에 없음: 부상=수일 노동손실이 요양·약재 수요의 실체라 초당 10hp면 그 경제가 통째로 사라진다.
@@ -15069,6 +15085,7 @@ setInterval(() => {
   // === 게이지 변화 주기 broadcast (1초 간격, self에만) ===
   // ★[T385] 몸통을 함수 하나로(`continue` → `return`)
   function _gaugeNetStep(p) {
+    if (T823_FREEZE_SHELL && p.handingOff) return;   // ★[T823] 켬 — 떠난 몸 껍데기엔 게이지를 안 보내고 장부도 안 맞댄다
     if (p.isNpc) return;  // NPC는 클라(ws) 없음 — 게이지 전송 불필요. 600명 순회·메시지 생성 절약
     if (!p._lastGaugeSentAt || now - p._lastGaugeSentAt > 1000) {
       p._lastGaugeSentAt = now;
@@ -15480,6 +15497,7 @@ function _fishPoll(now) {
 }
 function _fishPollOne(p, now) {   // 종전 `_fishPoll` 고리 몸통 글자 그대로(`continue` → `return`)
   if (typeof now !== 'number') now = _fishNow;   // forEach 는 (값, 키, 지도)를 넘긴다 — 둘째 인자는 키라 버린다
+  if (T823_FREEZE_SHELL && p.handingOff) return;   // ★[T823] 켬 — 떠난 몸 껍데기의 낚시는 입질도 손에 듦도 없다
   {
     const f = p._fish;
     if (f && f.state === 'fight') { if (now >= f.landAt) _fishLand(p, f, now); return; }   // ★[T609 ②] 싸움 끝 = 손에 든다(켬만 생긴다)
