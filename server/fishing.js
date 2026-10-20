@@ -497,5 +497,6 @@ module.exports = {
   regen, rec, stockRatioAt, drawStock, deficitStock, deficitBy, stockToEcon, diffuse,
   plan, windowMsFor, _lognormal,
   T609_BIG_WINDOW, windowFor, fightMsFor,   // ★[T609 ②] 큰 종 창 안 셋 — 표 기계(`t602-windows.js`)가 같은 함수로 잰다
-  get DAY_MS() { return DAY_MS; },
 };
+// ★[T818 ②] 접근자 하나가 리터럴에 있으면 V8 이 내보내기 객체를 통째로 사전 모드로 짓는다(T806 ② 와 같은 까닭) — 같은 이름 · 같은 몸통 · 열거 · 고칠 수 있음으로 리터럴 밖에 단다(값 무변 · 키 차례만 이 하나가 끝)
+Object.defineProperty(module.exports, 'DAY_MS', { get() { return DAY_MS; }, enumerable: true, configurable: true });

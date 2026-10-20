@@ -471,7 +471,6 @@ const BattleCore={
   SUP_ARROW, SUP_DEATH, SUP_R, FORM_SPD, FORM_KO, DEPLOY_W, DEPLOY_H,
   // ── 다중 인스턴스 API ──
   createContext, createBattle,
-  get _defaultCtx(){return _defaultCtx;},
   // raw(ctx 인자) 함수 — 인스턴스 직접 구동/디버깅용
   _buildArmies:buildArmies, _stepBattle:stepBattle, _trackVel:trackVel, _updateMorale:updateMorale,
   _hurt:hurt, _shoot:shoot, _buildGrid:buildGrid, _nearestEnemy:nearestEnemy, _sep:sep,
@@ -496,15 +495,12 @@ const BattleCore={
   sep(u,dt){return sep(_defaultCtx,u,dt);},
   // 핵심 인터페이스
   buildArmies(spec){return buildArmies(_defaultCtx,spec);},
-  // 상태 컨테이너 접근 (_defaultCtx 위임)
-  get units(){return _defaultCtx.units;}, get arrows(){return _defaultCtx.arrows;}, get corpses(){return _defaultCtx.corpses;},
-  get sides(){return _defaultCtx.sides;},
-  get _grid(){return _defaultCtx._grid;}, get _cen(){return _defaultCtx._cen;}, get tick(){return _defaultCtx.tick;},
-  get result(){return _defaultCtx.result;}, get commander(){return _defaultCtx.commander;}, get cmdHeading(){return _defaultCtx.cmdHeading;},
-  get keys(){return _defaultCtx.keys;}, get playerMode(){return _defaultCtx.playerMode;}, get terrain(){return _defaultCtx.terrain;},
+  // 상태 컨테이너 접근 (_defaultCtx 위임) — ★[T818 ②] 접근자 칸은 리터럴 밖(바로 아래 끝)에서 단다
   // 지휘 입력(전쟁실험실이 씀) — _defaultCtx에
   setKeys(k){_defaultCtx.keys=k||{};}, setPlayerMode(v){_defaultCtx.playerMode=!!v;}, setCmdHeading(h){_defaultCtx.cmdHeading=h;},
 };
+// ★[T818 ②] 접근자 14개를 리터럴 밖으로(T806 ② 꼴 — 리터럴 안 접근자 = 사전 모드 · 같은 이름 · 같은 몸통 · 열거 · 고칠 수 있음 · 값 무변 · 키 차례만 이 칸들이 끝으로)
+for(const [k,g] of [['_defaultCtx',function(){return _defaultCtx;}],['units',function(){return _defaultCtx.units;}],['arrows',function(){return _defaultCtx.arrows;}],['corpses',function(){return _defaultCtx.corpses;}],['sides',function(){return _defaultCtx.sides;}],['_grid',function(){return _defaultCtx._grid;}],['_cen',function(){return _defaultCtx._cen;}],['tick',function(){return _defaultCtx.tick;}],['result',function(){return _defaultCtx.result;}],['commander',function(){return _defaultCtx.commander;}],['cmdHeading',function(){return _defaultCtx.cmdHeading;}],['keys',function(){return _defaultCtx.keys;}],['playerMode',function(){return _defaultCtx.playerMode;}],['terrain',function(){return _defaultCtx.terrain;}]])Object.defineProperty(BattleCore,k,{get:g,enumerable:true,configurable:true});
 root.BattleCore=BattleCore;
 if(typeof module!=='undefined'&&module.exports)module.exports=BattleCore;
 

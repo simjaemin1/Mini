@@ -832,4 +832,6 @@ function tick(now) {
   }
 }
 
-module.exports = { init, tick, onMobHit, get enabled() { return ENABLED; }, _debug: { S, stats: _stats, get lifeGM() { return lifeGM; } } };
+module.exports = { init, tick, onMobHit, _debug: { S, stats: _stats, get lifeGM() { return lifeGM; } } };
+// ★[T818 ②] 접근자 `enabled` 를 리터럴 밖으로(T806 ② 꼴 — 리터럴 안 접근자 하나 = 사전 모드 · 값 무변 · 키 차례만 이 하나가 끝 · `_debug` 안 접근자는 그 안쪽 객체 몫이라 그대로)
+Object.defineProperty(module.exports, 'enabled', { get() { return ENABLED; }, enumerable: true, configurable: true });

@@ -8630,10 +8630,28 @@ function cropAfterHarvest(e, day) {
   e.p = day; e.td = day; e.wd = 0;                      // 그루터기에서 다시 (q·ps·w 는 그대로)
   return true;
 }
+// ★★[T818 ③ 2026-10-20 · 손잡이 `T818_CELL_MEMO`('1' 만 켬 · 끔 = 아래 종전 줄 그대로)] **빈 셀 파종 판정 — 같은 날 · 같은 갈래는 한 번만 잰다.**
+//   T806 ABBA 표본(t646 `--lines`): 생활 층 결정(`decideNpcBehavior → npcLifeTick`)의 줄 상위에 `_cellTask` 빈 셀 갈래가 있었다 — 셀마다
+//   날 → 달(`monthOf`) · 열쇠 문자열(`field_mo_par_seed`) 짓기 · 사전 찾기(`_vcfCache`)를 부를 때마다 되풀이한다.
+//   그 값은 (마을 · 그날 · 논/밭 · 구획 홀짝) 넷만으로 정해진다(`_villageCropFor` 는 그 넷의 순수 함수 — 시드 · 달 · 구획 · 고르는 산수 · 결정론).
+//   ⇒ 켬이면 마을마다(모듈 WeakMap — 마을 칸 0) 그날의 달과 갈래 넷의 답을 들고, 날이 바뀌면 다시 잰다. 같은 함수 · 같은 값 · 새 수 0.
+const T818_CELL_MEMO = process.env.T818_CELL_MEMO === '1';
+const _t818Ct = new WeakMap();   // vil → { day, seed, mo, r: [밭·짝, 밭·홀, 논·짝, 논·홀] }
 function _cellTask(vil, k, day) {   // 우선순위: 5수확 4방제 3물대기(논만) 2파종 1김매기 0없음
   const e = vil._crop.get(k);
   const nong = !vil._drySet.has(k);
-  if (!e) { const ci = k.indexOf(','), par = (+k.slice(0, ci) + +k.slice(ci + 1)) & 1; return _villageCropFor(vil, nong ? '논' : '밭', _Crops().monthOf(day), par) ? 2 : 0; }
+  if (!e) {
+    const ci = k.indexOf(','), par = (+k.slice(0, ci) + +k.slice(ci + 1)) & 1;
+    if (T818_CELL_MEMO) {
+      let M = _t818Ct.get(vil);
+      if (!M || M.day !== day || M.seed !== (vil.dbId | 0)) { M = { day, seed: vil.dbId | 0, mo: _Crops().monthOf(day), r: [-1, -1, -1, -1] }; _t818Ct.set(vil, M); }   // 시드(`dbId`)도 열쇠 — `_villageCropFor` 가 읽는 넷 그대로
+      const j = (nong ? 2 : 0) | par;
+      let v = M.r[j];
+      if (v < 0) v = M.r[j] = _villageCropFor(vil, nong ? '논' : '밭', M.mo, par) ? 2 : 0;
+      return v;
+    }
+    return _villageCropFor(vil, nong ? '논' : '밭', _Crops().monthOf(day), par) ? 2 : 0;
+  }
   return cropTaskOf(e, nong, day);
 }
 function _lifeDoTask(vil, npc, k, day) {   // 도착한 셀 처리(랩 doTask 동형 — econ storage 불변·스킬은 서버 생략). npc=null=헤드리스(라벨 생략)

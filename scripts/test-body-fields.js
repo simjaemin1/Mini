@@ -25,8 +25,9 @@ const ok = (c, m, x) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  �
 // 이 린트가 생길 때(2026-10-07) 이미 있던 목록 밖 이름 — 늘리면 까닭을 적는다
 const FROZEN = {
   // 드문 몸 필드 — 그 사건을 겪은 몸만 갈라진다(캐나디아 캐러밴 · 싸움 · 수확 · 어로 옛 갈래). 매 틱 읽어도 없음은 같은 모양에서 싸다.
-  rare: ['_canadiaSubAt', '_caughtFish', '_lastFishAt', 'canadiaCaravanKey', 'canadiaCaravanSpeed', 'canadiaTask', 'canadiaTaskAt', 'canadiaTaskEndAt',
-    'canadiaWorkX', 'canadiaWorkY', 'farmClaimId', 'fightTarget', 'harvestTarget'],
+  //   ★[T818 ①] `canadiaTask` · `fightTarget` · `harvestTarget` 은 켬 기본 리터럴에 들었다(T806 ③ 의 정한 다섯) — 아래 위생 줄 규약대로 여기서 뺐다
+  rare: ['_canadiaSubAt', '_caughtFish', '_lastFishAt', 'canadiaCaravanKey', 'canadiaCaravanSpeed', 'canadiaTaskAt', 'canadiaTaskEndAt',
+    'canadiaWorkX', 'canadiaWorkY', 'farmClaimId'],
   // `server/villages.js` 의 `npc` 가 econ 사람(장부)이거나 생활층 드문 갈래인 자리 — 존 몸 모양과 무관하거나 드물다
   econ: ['_carryOn', '_granD', '_granTask', '_rest', '_t325Ei', '_t325Site', '_t325U', '_t368H', '_t368N', '_t529Since', '_t529StepAt', '_t529X', '_t529Y',
     '_t561Hall', '_t561Wd', 'currentJob'],
@@ -35,8 +36,9 @@ const FROZEN = {
 function known(Z) {
   const i = Z.indexOf('function _t671Shape(p) {'), j = Z.indexOf('\n}\n', i);
   const shape = new Set([...Z.slice(i, j).matchAll(/p\.([A-Za-z_$][\w$]*) = undefined/g)].map((m) => m[1]));
-  // ★[T806 ③] 스폰 리터럴이 둘이 됐다(`T806_HOT_INOBJ` 켬 = 걸음 몸통 칸을 객체 안에) — 규약은 **끔 리터럴(종전 글자)** 로 뜬다 · 둘의 차는 아래 따로 잰다
-  const k0 = Z.indexOf('  } : {\n    pid, playerId');
+  // ★[T806 ③] 스폰 리터럴이 둘이 됐다(`T806_HOT_INOBJ` 켬 = 걸음 몸통 칸을 객체 안에) — 둘의 차는 아래 따로 잰다
+  //   ★[T818 ①] 켬 기본 — 규약은 **기본 리터럴(켬 · 첫째)** 로 뜬다(끔 리터럴은 켬 리터럴의 부분집합이라 — 아래 ③ 이 잰다 — 끔 판의 쓰기 자리도 같이 덮인다)
+  const k0 = Z.indexOf('  const player = T806_HOT_INOBJ ? {\n');
   const k = k0 > 0 ? k0 : Z.indexOf('  const player = {\n    pid, playerId'), l = Z.indexOf('  if (T671_SHAPE) _t671Shape(player);', k);
   const lit = new Set([...Z.slice(k, l).matchAll(/(?:^|[\s{,])([A-Za-z_$][\w$]*)\s*[:,]/g)].map((m) => m[1]));
   for (const m of Z.slice(k, l).matchAll(/player\.([A-Za-z_$][\w$]*)\s*=/g)) lit.add(m[1]);
