@@ -151,20 +151,28 @@ function zoneRun() {
 
     // ── C. 시세표 · 거래소 받기(문 감싸개 · 정본 교환) ─────────────
     out.Cfill = fill(RES, 3, shelfG + 0.5, 10);   // 성한 10(마을이 한 번에 내줄 수 있는 몫 = 재고의 일부 — 정본 `payableQty`)
-    const c = mkP(); c.inventory.food = 40;
+    const c = mkP(); c.inventory.food = 400;
     const _uo = H._unitsOfFor(c);
     //   시세표 · 견적 — 마을의 그 두 문(`villageTradeBoard` · `villageTradeQuote`)이 여는 그 눈(`_t789View` = `GL.viewBegin`)으로 정본 두 함수를 부른다
     //   (랩 프로브는 econ 모듈 칸을 안 세워 마을 문은 시세에서 던진다 — T732 §7 ⑥ · 마을 배선은 ⑤ 글자가 본다)
-    const uGive = Number(_uo('food', 2)) || 2;   // 곡식 2(상한에 안 걸리는 양 — 걸리면 실행이 낼 양을 줄여 다시 센다 · 견적과 실행이 같은 양을 재게)
+    //   ★[T803 추신] 줄 곡식은 **그 세계의 값**으로 고른다 — 상한에 안 걸리면서 한 낱개 이상 받는 가장 작은 양(값 사다리 · 견적 그 문).
+    //     종전 "곡식 2" 는 그 판 세계 값에 건 수였다: 랩 econ(시드 7 · 200일)의 고기/곡식 값이 T792(현지 시계 — 마을 조각 날씨) 뒤로
+    //     ~15배 뛰어 곡식 2 · 20 은 0 낱개 · 30 이면 1 낱개다(실측 사다리 — 보고 T803). 단언(성한 것 · 견적 = 실행 · 상한 안)은 그대로.
+    let giveQ = 0, uGive = 0, qv = null;
+    for (const q of [2, 5, 10, 20, 30, 40, 60, 80, 100, 150, 200, 300, 400]) {
+      const u = Number(_uo('food', q)) || q;
+      GL.viewBegin(); const t = Trade.quote(Lg, econV2, VIL, VID, 'food', RES, u, { want: 0, perItem: u / q, takeKcal: H.Kcal }); GL.viewEnd();
+      if (t && t.ok && t.take > 0 && !t.capped) { giveQ = q; uGive = u; qv = t; break; }
+    }
+    out.CgiveQ = giveQ;
     GL.viewBegin();
-    const qv = Trade.quote(Lg, econV2, VIL, VID, 'food', RES, uGive, { want: 0, perItem: uGive / 2, takeKcal: H.Kcal });
     const brd = Trade.board(Lg, econV2, VIL, VID, c.inventory, null, H.Kcal);
     GL.viewEnd();
     const row = brd && brd.rows && brd.rows.find((x) => x.res === RES);
     out.Cboard = row ? { stock: row.stock, sell: row.sell } : null;
     out.Cquote = qv && { ok: qv.ok, err: qv.err, take: qv.take, stock: qv.stock, capped: qv.capped };
     const ctx = H._t732DoorBegin(c, null);
-    const r = Trade.exchange({ ledger: Lg, econV2, vil: VIL, vid: VID, inventory: c.inventory, giveRes: 'food', takeRes: RES, giveQty: 2, want: 0, unitsOf: _uo, deposit: V.playerVillageDeposit, takeKcal: H.Kcal });
+    const r = Trade.exchange({ ledger: Lg, econV2, vil: VIL, vid: VID, inventory: c.inventory, giveRes: 'food', takeRes: RES, giveQty: giveQ || 2, want: 0, unitsOf: _uo, deposit: V.playerVillageDeposit, takeKcal: H.Kcal });
     H._t732DoorEnd(ctx, c, !!(r && r.ok), VIL, _uo);
     out.C = { r: r && { ok: r.ok, err: r.err, take: r.take }, f: fmin(c, RES), inv: +c.inventory[RES] || 0 };
 
@@ -246,6 +254,7 @@ say('\n③ 존(진짜 문) — 꺼내기 · 거래소 받기 · 시세표 · 마
   ok(z.A && z.A.inv === 2 && z.A.f != null && z.A.f > 0, '★★③ 꺼내기 — 성한 몫 안이면 성한 것만 나온다(1 단위 = 낱개 2 · 가장 늙은 몫 신선도 > 0)', J(z.A));
   ok(z.B && z.B.inv === 0 && near(z.B.du, 0) && /그만큼 없다/.test(z.B.note), '★★③ 남은 성한 몫(≈1)을 넘게(3) 청하면 거절 — 상한 것을 안 내준다(정본 문의 그 거절 · 곳간 그대로)', J({ du: z.B && z.B.du, note: z.B && z.B.note }));
   ok(z.Cboard && near(z.Cboard.stock, 10, 1e-2) && z.Cquote && near(z.Cquote.stock, 10, 1e-2), '★③ 시세표 · 견적(사람의 눈) — 그 칸 재고가 성한 10 으로 보인다(상한 3 빼고)', J({ board: z.Cboard, quote: z.Cquote }));
+  pre(z.CgiveQ > 0, '[T803 추신] 줄 곡식 = 그 세계 값으로 고른 가장 작은 양(상한 안 · 한 낱개 이상 — 값 사다리)', `${z.CgiveQ}`);
   ok(z.C && z.C.r && z.C.r.ok && z.C.inv > 0 && z.C.f != null && z.C.f > 0, '★★③ 거래소 받기 — 받은 것은 성한 것(가장 늙은 몫 신선도 > 0)', J(z.C));
   ok(z.C && z.C.r && z.Cquote && !z.Cquote.capped && z.Cquote.take > 0 && z.C.r.take === z.Cquote.take, '★③ 견적 = 실행 — 같은 눈이라 받을 낱개가 같다(상한에 안 걸리는 양)', J({ quote: z.Cquote && z.Cquote.take, exec: z.C && z.C.r && z.C.r.take }));
   ok(z.D && z.D.meal && !z.D.meal.fed && z.D.inv === 0, '★★③ 마을 밥 — 곳간 곡식이 다 상했으면 한 끼를 못 준다(상한 것을 안 먹인다)', J(z.D));
