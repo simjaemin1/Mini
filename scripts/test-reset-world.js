@@ -109,6 +109,14 @@ fs.writeFileSync(path.join(BIN, 'sleep'), '#!/bin/sh\nexit 0\n', { mode: 0o755 }
 
 // ── 판 하나: 존 볼륨(진짜 SQLite 3파일) + 컨테이너 상태 ─────────────────────────────────────────────────
 const SRV = path.join(TMP, 'srv'); fs.mkdirSync(SRV);
+// ★★[T813 2026-10-19] **연 손은 판 끝까지 붙잡는다** — 아래 주석 "열어 둔 채 둔다"를 글자 그대로 지킨다.
+//   종전 ⑧ 은 `zoneDb(…).exec(…)` 로 손을 버렸다. 버린 손은 GC 가 언제든 거둔다 — 거두면 `DatabaseSync` 가 닫히고 SQLite 가 WAL 을
+//   본 파일에 접어 넣으며 -wal · -shm 을 지운다(마지막 연결이 닫힐 때의 정본 동작). 그 GC 가 "새 판 세 파일" 을 센 뒤 · 되돌리기 스크립트가
+//   DB 파일을 세기 전에 오면 스크립트는 본 파일 하나만 옆(-replaced)으로 옮기고 "새 세계 DB 는 … 옆으로 치웠다" 가 3 ≠ 1 로 빨갛다
+//   (T786 · T787 가지 57/1 — 같은 줄). 실측(T813): 그 자리에 `gc()` 를 부르면 늘 빨강 · `--gc-global --gc-interval` 로 GC 를 자주 돌리면
+//   그 줄 그대로 빨강(-replaced 안 본 파일 하나) · 손을 붙잡으면 둘 다 초록. 제품(reset-world.sh)은 그때 있던 파일을 그대로 옮겼다.
+//   ⇒ 판정 무변 · 이 배열은 판 끝(맨 아래 `HELD`)까지 손을 쥔다(닫지 않는다 — 닫으면 같은 경로의 다음 판 -wal 을 이름으로 지울 수 있다).
+const HELD = [];
 function zoneDb(dir, name) {
   fs.mkdirSync(dir, { recursive: true });
   const { DatabaseSync } = require('node:sqlite');
@@ -118,6 +126,7 @@ function zoneDb(dir, name) {
   d.exec("CREATE TABLE village_buildings (id INTEGER PRIMARY KEY AUTOINCREMENT, village_id INT, type TEXT, cx INT, cy INT)");
   d.exec("INSERT INTO villages VALUES (1,'hanbando','가',0,0,10,'{}',3341,0),(2,'hanbando','나',5,5,10,'{}',3341,0)");
   d.exec("INSERT INTO village_buildings (village_id,type,cx,cy) VALUES (1,'terr',1,1),(2,'terr',1,1),(2,'terr',2,2)");
+  HELD.push(d);   // ★[T813] 손을 버리지 않는다(위 주석)
   return d;   // 열어 둔 채 둔다 — -wal · -shm 이 살아 있는 판(라이브의 멈춘 존과 같은 세 파일)
 }
 function fresh() {
@@ -336,6 +345,7 @@ const CV = path.join(SRV, 'central'); fs.mkdirSync(CV, { recursive: true });
   r = run(['hanbando', '--apply'], 'x\ny\n', {}, bait2);
   ok(dbFiles(path.join(SRV, 'hanbando')).length === 0, '프롬프트를 뺀 미끼는 틀린 글자에도 지운다 — ②③ 의 자가 그걸 본다', '원본은 ②③에서 그대로');
 
+  void HELD.length;   // ★[T813] 판 끝까지 손을 쥐었다(위 `HELD` 주석) — 닫지 않고 판째 지운다
   fs.rmSync(TMP, { recursive: true, force: true });
   console.log(`\n=== PASS ${pass} / FAIL ${fail} ===`);
   process.exit(fail ? 1 : 0);
