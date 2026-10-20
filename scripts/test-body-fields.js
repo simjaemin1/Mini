@@ -35,7 +35,9 @@ const FROZEN = {
 function known(Z) {
   const i = Z.indexOf('function _t671Shape(p) {'), j = Z.indexOf('\n}\n', i);
   const shape = new Set([...Z.slice(i, j).matchAll(/p\.([A-Za-z_$][\w$]*) = undefined/g)].map((m) => m[1]));
-  const k = Z.indexOf('  const player = {\n    pid, playerId'), l = Z.indexOf('  if (T671_SHAPE) _t671Shape(player);', k);
+  // ★[T806 ③] 스폰 리터럴이 둘이 됐다(`T806_HOT_INOBJ` 켬 = 걸음 몸통 칸을 객체 안에) — 규약은 **끔 리터럴(종전 글자)** 로 뜬다 · 둘의 차는 아래 따로 잰다
+  const k0 = Z.indexOf('  } : {\n    pid, playerId');
+  const k = k0 > 0 ? k0 : Z.indexOf('  const player = {\n    pid, playerId'), l = Z.indexOf('  if (T671_SHAPE) _t671Shape(player);', k);
   const lit = new Set([...Z.slice(k, l).matchAll(/(?:^|[\s{,])([A-Za-z_$][\w$]*)\s*[:,]/g)].map((m) => m[1]));
   for (const m of Z.slice(k, l).matchAll(/player\.([A-Za-z_$][\w$]*)\s*=/g)) lit.add(m[1]);
   return { shape, lit, ok: i > 0 && j > i && k > 0 && l > k };
@@ -70,6 +72,21 @@ ok(bad.length === 0, '★몸 필드 규약 — `npc.` 에 쓰는 이름이 전�
 {
   const dup = [...FROZEN.rare, ...FROZEN.econ].filter((n) => K.shape.has(n) || K.lit.has(n));
   ok(dup.length === 0, 'FROZEN 과 `_t671Shape`·스폰이 안 겹친다(겹치면 FROZEN 에서 지운다)', dup.join(','));
+}
+// ★[T806 ③] 켬 리터럴 = 끔 리터럴 + 걸음 몸통 칸(값 `undefined`) — 끔 리터럴에 없는 이름은 전부 `_t671Shape` · 스폰 대입 · 정한 다섯 안
+{
+  const a = Z.indexOf('  const player = T806_HOT_INOBJ ? {\n'), b = Z.indexOf('  } : {\n    pid, playerId', a);
+  if (a > 0 && b > a) {
+    const keysOf = (t) => new Set([...t.replace(/\/\/.*$/gm, '').matchAll(/(?:^|[\s{,])([A-Za-z_$][\w$]*)\s*[:,]/g)].map((m) => m[1]));
+    const on = keysOf(Z.slice(a + '  const player = T806_HOT_INOBJ ? {\n'.length, b)), off = keysOf(Z.slice(b + 6, Z.indexOf('\n  };\n', b)));
+    on.delete('undefined');
+    const extra = [...on].filter((x) => !off.has(x)), miss = [...off].filter((x) => !on.has(x));
+    const FIVE = new Set(['simEvacUntil', 'canadiaVillage', 'canadiaTask', 'harvestTarget', 'fightTarget']);
+    const stray = extra.filter((x) => !K.shape.has(x) && !K.lit.has(x) && !FIVE.has(x));
+    const undef = (Z.slice(a, b).match(/: undefined/g) || []).length;
+    ok(miss.length === 0 && extra.length > 20 && stray.length === 0 && undef === extra.length, '★[T806 ③] 켬 리터럴 = 끔 리터럴 + 걸음 몸통 칸(전부 `undefined` · 모양 · 대입 · 정한 다섯 안)',
+      `더한 칸 ${extra.length} · 빠진 칸 ${miss.length} · 목록 밖 ${stray.join(',') || 0}`);
+  } else ok(true, '[T806 ③] 리터럴 하나(손잡이 없는 판)');
 }
 console.log(`\n=== ${pass} 통과 / ${fail} 실패 ===\n`);
 process.exit(fail ? 1 : 0);

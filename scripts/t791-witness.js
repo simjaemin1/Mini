@@ -131,8 +131,8 @@ function sim(MIR, bait, label) {
 // ⓕ 손잡이 · 모양
 {
   const C = NEW.replace(/\/\/.*$/gm, '').split('\n').filter((l) => !/^const T791_PATH_MIR = /.test(l)).join('\n');
-  ok(/const T791_PATH_MIR = process\.env\.T791_PATH_MIR === '1' \|\| process\.env\.T791_PATH_MIR === 'verify'/.test(NEW) && (C.match(/\bT791_PATH_MIR\b/g) || []).length === 1,
-     'ⓕ 손잡이 `T791_PATH_MIR` 한 자리 · **기본 끔**(선언 + 거울 비추는 자리 하나)');
+  ok(/const T791_PATH_MIR = process\.env\.T791_PATH_MIR !== '0'/.test(NEW) && (C.match(/\bT791_PATH_MIR\b/g) || []).length === 1,
+     'ⓕ 손잡이 `T791_PATH_MIR` 한 자리 · ★[T806] **켬 기본**(`=0` 끔 탐침 · 선언 + 거울 비추는 자리 하나)');
   const sh = fnSrc(NEW, '_t671Shape') || '';
   ok(['_t791P', '_t791Pn', '_t791Px', '_t791Py'].every((k) => sh.includes(`p.${k} = undefined;`)), 'ⓕ 몸 칸 넷이 `_t671Shape` 목록에(모양 하나 · test-body-fields 규약)');
 }
