@@ -386,5 +386,93 @@ console.log('[T697] 알뜰 판 — 끔 ↔ 켬 같은 답');
   PC.setLean(LEAN0);
 }
 
+// ── ★★[T821 2026-10-20] 걸음 프리셋 재개형 문 `localPathBegin` — 동기 문 `localPath` 와 **한 프리셋**(`_localOpts`) · 답 비트 동일 ─────
+//   T85 절(routePathBegin)과 같은 다섯을 걸음 프리셋에 건다 + 전쟁 걷는 몸의 첫 몫 꼴(T821): 재개형 상한으로 열고
+//   "꺼낸 수가 걸음 프리셋 정본 상한 이하인 동안 한 꺼냄씩" 민 결과가 정본 상한 동기 문과 같다(찾은 쌍은 같은 길 · 못 찾은 쌍은 아직 안 끝남).
+console.log('\n[T821] localPathBegin — 걸음 프리셋 재개형 문(동기 문과 한 프리셋 · 비트 동일)');
+{
+  const src = require('fs').readFileSync(require('path').join(__dirname, 'path-core.js'), 'utf8');
+  const body = (name) => { const i = src.indexOf('function ' + name + '('); if (i < 0) return ''; let d = 0; for (let k = src.indexOf('{', i); k < src.length; k++) { if (src[k] === '{') d++; else if (src[k] === '}') { d--; if (!d) return src.slice(i, k + 1); } } return ''; };
+  const FIRST = "const blocked = opts.blocked || (() => false);\n  if (blocked(sx, sy) || blocked(gx, gy)) return null;";
+  ok(body('localPath').includes('_search(sx, sy, gx, gy, _localOpts(opts))') && body('localPathBegin').includes('_searchBegin(sx, sy, gx, gy, _localOpts(opts))')
+    && body('localPath').includes(FIRST) && body('localPathBegin').includes(FIRST) && !/dirs: DIRS4/.test(body('localPath') + body('localPathBegin')),
+    '[T821] ⓐ 두 문이 같은 프리셋 함수(`_localOpts`)와 같은 첫 줄(끝점 막힘 = null)을 쓴다 — 프리셋 사본 0');
+  ok(PC.LOCAL_MAX_NODES === 16384 && PC.ROUTE_MAX_POPS === 250000, '[T821] ⓐ 정본 상한 이름 = 종전 글자(16384 · 250000)');
+  let sd = 821; const rnd = () => (sd = (Math.imul(sd, 1103515245) + 12345) >>> 0) / 4294967296;
+  const W = 120, wall = new Uint8Array(W * W); for (let i = 0; i < W * W; i++) wall[i] = rnd() < 0.27 ? 1 : 0;
+  const node = (x, y) => x < 0 || y < 0 || x >= W || y >= W || wall[y * W + x] === 1;
+  const step = (fx, fy, tx, ty) => node(tx, ty);
+  const J = (p) => JSON.stringify(p);
+  let n = 0, eq0 = 0, eq1 = 0, eqMix = 0, found = 0, popsEq = 0, big = 0;
+  const budgets = [1, 7, 113, 2, 999, 3, 32];
+  for (let k = 0; n < 60 && k < 20000; k++) {
+    const a = [(rnd() * W) | 0, (rnd() * W) | 0], b = [(rnd() * W) | 0, (rnd() * W) | 0];
+    if (node(a[0], a[1]) || node(b[0], b[1]) || Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) < 30) continue;
+    n++;
+    const o = { blocked: node, blockedStep: step, prefer: n % 3 ? null : (x, y) => (x % 9 === 0 ? 1 : 0), costMul: n % 4 ? null : (x, y) => ((x + y) % 5 === 0 ? 2 : 1), radius: n % 5 ? 0 : 30, maxNodes: n % 7 ? undefined : 3000 };
+    const sync = PC.localPath(a[0], a[1], b[0], b[1], o);
+    let S = PC.localPathBegin(a[0], a[1], b[0], b[1], o); const r0 = PC.pathStep(S, 0); const p0 = S.pops;
+    if (J(r0.path) === J(sync)) eq0++;
+    S = PC.localPathBegin(a[0], a[1], b[0], b[1], o); let r; do { r = PC.pathStep(S, 1); } while (!r.done);
+    if (J(r.path) === J(sync)) eq1++; if (S.pops === p0) popsEq++;
+    S = PC.localPathBegin(a[0], a[1], b[0], b[1], o); let i2 = 0; do { r = PC.pathStep(S, budgets[i2++ % budgets.length]); } while (!r.done);
+    if (J(r.path) === J(sync)) eqMix++;
+    if (sync) found++; if (p0 > 500) big++;
+  }
+  ok(n === 60 && found >= 30 && big >= 20, `[T821] [상황] 무작위 판 60쌍 — 길이 난 쌍 ${found} · 꺼냄 500 넘는 쌍 ${big}(자명 통과 아님)`);
+  ok(eq0 === 60 && eq1 === 60 && eqMix === 60 && popsEq === 60, `[T821] ⓑ ★★재개형(완주 · 예산 1 · 들쭉날쭉) = 동기 문 — 길 비트 동일 ${eq0} · ${eq1} · ${eqMix}/60 · 꺼낸 수 같음 ${popsEq}/60`);
+  console.log(`  [표] 무작위 60쌍 — 길 ${found} · 꺼냄 500 넘음 ${big} · 같음(완주 · 1 · 들쭉날쭉) ${eq0} · ${eq1} · ${eqMix}`);
+  // ⓒ 끝점 막힘 — 두 문이 같이 null(재개형은 시작조차 안 한다)
+  { let bad = 0, cnt = 0; for (let k = 0; cnt < 20 && k < 5000; k++) { const a = [(rnd() * W) | 0, (rnd() * W) | 0], b = [(rnd() * W) | 0, (rnd() * W) | 0]; if (!node(b[0], b[1]) || node(a[0], a[1])) continue; cnt++;
+      if (PC.localPath(a[0], a[1], b[0], b[1], { blocked: node, blockedStep: step }) !== null || PC.localPathBegin(a[0], a[1], b[0], b[1], { blocked: node, blockedStep: step }) !== null) bad++; }
+    ok(cnt === 20 && bad === 0, `[T821] ⓒ 막힌 끝점 — 동기 · 재개형 둘 다 null(${cnt}쌍 · 어긋남 ${bad})`); }
+  // ⓓ 왕복 대칭 — 재개형(b→a) 뒤집기 == 동기(a→b)
+  { let bad = 0, cnt = 0; for (let k = 0; cnt < 20 && k < 5000; k++) { const a = [(rnd() * W) | 0, (rnd() * W) | 0], b = [(rnd() * W) | 0, (rnd() * W) | 0]; if (node(a[0], a[1]) || node(b[0], b[1])) continue;
+      const f = PC.localPath(a[0], a[1], b[0], b[1], { blocked: node, blockedStep: step }); if (!f) continue; cnt++;
+      const S = PC.localPathBegin(b[0], b[1], a[0], a[1], { blocked: node, blockedStep: step }); let r; do { r = PC.pathStep(S, 11); } while (!r.done);
+      if (J(r.path.slice().reverse()) !== J(f)) bad++; }
+    ok(cnt === 20 && bad === 0, `[T821] ⓓ 재개형도 왕복 대칭 — reverse(b→a) == a→b (${cnt}쌍 · 어긋남 ${bad})`); }
+  // ⓔ 번갈아(Map 저장) — 두 탐색을 5꺼냄씩 번갈아 밀어도 둘 다 동기 문과 같다
+  { const q = []; for (let k = 0; q.length < 2 && k < 5000; k++) { const a = [(rnd() * W) | 0, (rnd() * W) | 0], b = [(rnd() * W) | 0, (rnd() * W) | 0]; if (node(a[0], a[1]) || node(b[0], b[1]) || Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) < 60) continue; if (PC.localPath(a[0], a[1], b[0], b[1], { blocked: node, blockedStep: step })) q.push([a, b]); }
+    const o = { blocked: node, blockedStep: step }, s = q.map(([a, b]) => PC.localPath(a[0], a[1], b[0], b[1], o)), A = q.map(([a, b]) => PC.localPathBegin(a[0], a[1], b[0], b[1], o)), R = [null, null];
+    while (!R[0] || !R[1]) for (let i = 0; i < 2; i++) if (!R[i]) { const t = PC.pathStep(A[i], 5); if (t.done) R[i] = t; }
+    ok(q.length === 2 && J(R[0].path) === J(s[0]) && J(R[1].path) === J(s[1]), '[T821] ⓔ ★Map 저장 — 두 탐색을 번갈아 밀어도 둘 다 동기 문과 같다(전쟁 걷는 몸 여럿이 같은 걸음에 민다)'); }
+  // ⓕ 전쟁 걷는 몸의 첫 몫 꼴(T821) — 재개형 상한으로 열고, 꺼낸 수 ≤ 걸음 정본 상한 동안 한 꺼냄씩 → 정본 상한 동기 문과 같다 · 이어 밀면 재개형 상한 동기 문과 같다
+  { const first = (a, b, o) => { const S = PC.localPathBegin(a[0], a[1], b[0], b[1], Object.assign({ maxNodes: PC.ROUTE_MAX_POPS }, o)); let r; do { r = PC.pathStep(S, 1); } while (!r.done && S.pops <= PC.LOCAL_MAX_NODES); return { S, r }; };
+    let same = 0, cnt = 0; const W2 = 300, wall2 = new Uint8Array(W2 * W2); for (let i = 0; i < W2 * W2; i++) wall2[i] = rnd() < 0.3 ? 1 : 0;
+    const node2 = (x, y) => x < 0 || y < 0 || x >= W2 || y >= W2 || wall2[y * W2 + x] === 1, o2 = { blocked: node2, blockedStep: (fx, fy, tx, ty) => node2(tx, ty) };
+    let capHit = 0, capPend = 0;
+    for (let k = 0; cnt < 40 && k < 20000; k++) { const a = [(rnd() * W2) | 0, (rnd() * W2) | 0], b = [(rnd() * W2) | 0, (rnd() * W2) | 0]; if (node2(a[0], a[1]) || node2(b[0], b[1]) || Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) < 80) continue; cnt++;
+      const sync = PC.localPath(a[0], a[1], b[0], b[1], o2), { S, r } = first(a, b, o2);
+      if (sync) { if (r.done && J(r.path) === J(sync)) same++; }
+      else { const Sx = PC.localPathBegin(a[0], a[1], b[0], b[1], o2); PC.pathStep(Sx, 0); if (Sx.pops > Sx.maxPops) { capHit++; if (!r.done) capPend++; } else if (r.done && r.path === null) same++; } }
+    //   컵 열다섯(안 너비 40~160 · 깊이 40~120 · 위가 열림 · 출발 = 컵 가운데 · 목표 = 바닥 너머) — 정본 상한 문턱 앞뒤(꺼냄 2,175~16,385)를 고르게 채운다
+    let cupN = 0, cupSame = 0, cupCap = 0, cupPend = 0, cupFar = 0;
+    for (const CW of [40, 70, 100, 130, 160]) for (const CH of [40, 80, 120]) { cupN++;
+      const cup = (x, y) => (y >= 0 && y <= CH && (x === -1 || x === CW)) || (y === CH && x >= -1 && x <= CW), oc = { blocked: cup, blockedStep: (fx, fy, tx, ty) => cup(tx, ty) };
+      const a = [CW >> 1, CH >> 1], b = [CW >> 1, CH + 30], sync = PC.localPath(a[0], a[1], b[0], b[1], oc), { S, r } = first(a, b, oc);
+      if (sync) { if (r.done && J(r.path) === J(sync)) cupSame++; continue; }
+      cupCap++; if (r.done) continue; cupPend++;
+      let z = r; while (!z.done) z = PC.pathStep(S, 32);
+      if (J(z.path) === J(PC.localPath(a[0], a[1], b[0], b[1], Object.assign({ maxNodes: PC.ROUTE_MAX_POPS }, oc)))) cupFar++; }
+    const found = cnt - capHit;
+    ok(cnt === 40 && same === found && capPend === capHit && found > 0 && cupN === 15 && cupSame === cupN - cupCap && cupCap >= 3 && cupPend === cupCap && cupFar === cupCap,
+      `[T821] ⓕ ★★첫 몫 = 정본 상한 동기 문: 무작위 쌍 같은 답 ${same}/${found} · 컵 같은 답 ${cupSame}/${cupN - cupCap} · 정본 상한에 걸린 물음은 아직 안 끝났다(${capPend + cupPend}/${capHit + cupCap}) · 이어 밀면 재개형 상한 동기 문과 같다(${cupFar}/${cupCap})`);
+    console.log(`  [표] 첫 몫 꼴 — 무작위 40쌍 같은 답 ${same}/${found} · 상한 걸림 ${capHit} · 컵 15 같은 답 ${cupSame} · 상한 걸림 ${cupCap}(이어 밀어 같은 길 ${cupFar})`);
+    // 컵 — 정본 상한 안에선 못 찾고 이어 밀면 찾는다(그 길 = 재개형 상한을 준 동기 문)
+    const CW = 160, CH = 120, cup = (x, y) => (y >= 0 && y <= CH && (x === -1 || x === CW)) || (y === CH && x >= -1 && x <= CW), oc = { blocked: cup, blockedStep: (fx, fy, tx, ty) => cup(tx, ty) };
+    const a = [CW >> 1, CH >> 1], b = [CW >> 1, CH + 60], { S, r } = first(a, b, oc);
+    let r2 = r, k2 = 0; while (!r2.done) { r2 = PC.pathStep(S, 32); k2++; }
+    const farSync = PC.localPath(a[0], a[1], b[0], b[1], Object.assign({ maxNodes: PC.ROUTE_MAX_POPS }, oc));
+    ok(PC.localPath(a[0], a[1], b[0], b[1], oc) === null && !r.done && r2.path && J(r2.path) === J(farSync) && k2 >= Math.floor((S.pops - PC.LOCAL_MAX_NODES - 1) / 32),
+      `[T821] ⓕ 컵 — 정본 상한 동기 문 = null · 첫 몫 뒤 아직 · 32꺼냄씩 ${k2}번 이어 밀어 찾은 길 = 재개형 상한 동기 문(${r2.path ? r2.path.length : 0}칸 · 꺼냄 ${S.pops})`); }
+  // ⓖ 자명 통과 금지 — 재개 사이에 힙 한 칸을 빼면 답이 갈린다(대부분)
+  { let diff = 0, poked = 0, cnt = 0; for (let k = 0; cnt < 30 && k < 20000; k++) { const a = [(rnd() * W) | 0, (rnd() * W) | 0], b = [(rnd() * W) | 0, (rnd() * W) | 0]; if (node(a[0], a[1]) || node(b[0], b[1]) || Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) < 50) continue;
+      const o = { blocked: node, blockedStep: step }, sync = PC.localPath(a[0], a[1], b[0], b[1], o); if (!sync) continue; cnt++;
+      const S = PC.localPathBegin(a[0], a[1], b[0], b[1], o); let r; do { r = PC.pathStep(S, 9); if (!r.done && S.open.size > 2) { S.open.pop(); poked++; } } while (!r.done);
+      if (J(r.path) !== J(sync)) diff++; }
+    ok(poked > 0 && diff >= 20, `[T821] ⓖ 자명 통과 금지 — 양보가 반복을 먹으면 답이 달라진다(${diff}/${cnt} · 돌연변이 ${poked}회) ⇒ ⓑ 의 같음은 진짜다`); }
+}
+
 console.log(fail === 0 ? `PASS ${pass}/${pass + fail}` : `FAIL ${fail}/${pass + fail}`);
 process.exit(fail === 0 ? 0 : 1);

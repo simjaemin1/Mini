@@ -5366,19 +5366,23 @@ function _warPathNext(u, tx, ty) {
 //     길이 없던 목표 칸(path-core 탐색 상한 안에서 못 찾음)은 되묻지 않는다(T381 꼴 — 목표 칸이 바뀌면 다시) · 그 대신 그 몸의 행군로 점을 하나씩 밟는다(`_t804Road`).
 //   ⚠한계(회부): 행군로는 거친 격자(DIST_STEP)라 고운 칸의 마을 환호 · 도랑을 가로지를 수 있다 — 그러면 길 점 사이 다리도 못 찾아 그 앞에 선다
 //     (test-war-world ⓖ — 어촌2 바로 북쪽을 가로지르는 막힘 띠(지형 · 행군로 점은 그 위) · 진까지 걸음 길 1,245칸 = 탐색 65,536~250,000칸 · 한 번 1~1.6초).
-//     먼 길을 찾는 문(재개형 걸음 탐색 · 존 문 그래프 T678)은 이 카드 밖.
+//     ★[T821] 그 먼 길은 이제 재개형 걸음 탐색이 잇는다(아래 `_t821Push` 머리 주석).
 //   새 수 0 · 시한 0 · 주사위 0. 셈(`_t804Stat`): ask 물음 · fail 길 없음 · follow 길 걸음 · out 막힌 칸 걸어 나옴 · release 풀기 미룬 걸음(②).
 const _t804Stat = { ask: 0, fail: 0, follow: 0, road: 0, out: 0, release: 0 };
 function _t804Way(mem, x, y, tx, ty, st, body) {   // (x,y) 걷는 것의 자리 · (tx,ty) 목표 · st 이번 한 걸음(셀) · body 그 대형의 전쟁 몸(행군로) — 반환 = 겨눌 점(셀) · null = 호출측 종전 걸음
-  if (_warBlockedCell(x, y)) { mem._t804p = null; const o = _warStandNear(x, y); if (o) _t804Stat.out++; return o ? { x: o.cx, y: o.cy } : null; }
+  if (_warBlockedCell(x, y)) { mem._t804p = null; mem._t821s = null; const o = _warStandNear(x, y); if (o) _t804Stat.out++; return o ? { x: o.cx, y: o.cy } : null; }
   if (mem._t804r) { const w = _t804Road(mem, x, y, tx, ty, st, body); if (w) return w; }   // 행군로 길 위 — 끝(슬롯에 가장 가까운 길 점)까지 따른다
   const w = _t804Local(mem, x, y, tx, ty, st);
   if (w !== false) return w;
   return body ? _t804Road(mem, x, y, tx, ty, st, body) : null;   // 걸음 프리셋이 탐색 상한 안에서 못 찾았다 — 행군로로
 }
-function _t804Local(mem, x, y, tx, ty, st) {   // 걸음 프리셋 길 — 반환 = 겨눌 점 · null = 곧게(열렸다 · 끝) · false = 길 없음(물었는데 못 찾음 · 그 목표 칸 기억)
+function _t804Local(mem, x, y, tx, ty, st) {   // 걸음 프리셋 길 — 반환 = 겨눌 점 · null = 곧게(열렸다 · 끝) · false = 길 없음(물었는데 못 찾음 · 그 목표 칸 기억) · ★[T821] 제 자리 = 찾는 중(선다)
   const WL = state.warLive, MPC = WL.M_PER_CELL, CAP = Math.max(1, Math.floor(WL.MU.FOLLOW_CAP));
   let P = mem._t804p;
+  if (!P && mem._t821s) {   // ★[T821] 먼 길을 찾는 중 — 이 걸음 몫(T85 알갱이)만 밀고 그동안 선다
+    if (!_t821Push(mem, PATH_STEP_NODES)) return { x, y };
+    P = mem._t804p; if (!P) return false;   // 재개형 상한 안에서도 못 찾았다 — 그 목표 칸 기억(T381) · 행군로로
+  }
   if (P) {
     const sx = Math.floor(x), sy = Math.floor(y);
     for (let j = Math.min(P.pts.length, P.i + CAP + 2) - 1; j >= P.i; j--) if (P.pts[j].x === sx && P.pts[j].y === sy) { P.i = j; break; }
@@ -5393,10 +5397,16 @@ function _t804Local(mem, x, y, tx, ty, st) {   // 걸음 프리셋 길 — 반�
     if (mem._t804f === key) return false;      // 이 목표 칸은 길이 없었다 — 되묻지 않는다(T381 꼴 · 목표 칸이 바뀌면 다시 묻는다)
     if (!PathCore) PathCore = require('../sim/path-core.js');
     const blk = (cx, cy) => _warBlockedCell(cx, cy);
-    let pts = null; try { pts = PathCore.localPath(sx, sy, gx, gy, { blocked: blk, blockedStep: (fx, fy, x2, y2) => blk(x2, y2) }); } catch (_) { pts = null; }
+    //   ★[T821] 재개형 문(같은 걸음 프리셋 · 상한 = 재개형 문 정본 `ROUTE_MAX_POPS`). 첫 몫은 종전 동기 물음 그대로 — 한 꺼냄씩 밀어
+    //     걸음 프리셋 정본 상한(`LOCAL_MAX_NODES`)을 넘는 꺼냄에서 멈춘다(그 안이면 종전과 같은 차례 · 같은 답 · 같은 걸음에 닿는다).
+    let S = null; try { S = PathCore.localPathBegin(sx, sy, gx, gy, { blocked: blk, blockedStep: (fx, fy, x2, y2) => blk(x2, y2), maxNodes: PathCore.ROUTE_MAX_POPS }); } catch (_) { S = null; }
     _t804Stat.ask++;
-    if (!pts || pts.length < 2) { _t804Stat.fail++; mem._t804f = key; return false; }
-    mem._t804f = null; P = mem._t804p = { pts, i: 0 };
+    if (!S) { _t804Stat.fail++; mem._t804f = key; return false; }   // 끝점이 막혔다(동기 문과 같은 첫 줄)
+    mem._t821s = { S, key, n: 0 };
+    let r; try { do { r = PathCore.pathStep(S, 1); } while (!r.done && S.pops <= PathCore.LOCAL_MAX_NODES); } catch (_) { r = { done: true, path: null }; }
+    if (!r.done) { _t821Stat.far++; return { x, y }; }   // 종전이면 여기서 "길 없음" — 버리지 않고 다음 걸음부터 이어 민다 · 그동안 선다
+    _t821Done(mem, r.path, false);
+    P = mem._t804p; if (!P) return false;
   }
   for (let k = Math.min(P.pts.length - 1, P.i + CAP); k > P.i; k--) { const q = P.pts[k];
     if (_warClearLine(x * MPC, y * MPC, (q.x + 0.5) * MPC, (q.y + 0.5) * MPC)) { _t804Stat.follow++; return { x: q.x + 0.5, y: q.y + 0.5 }; } }
@@ -5415,12 +5425,39 @@ function _t804Road(mem, x, y, tx, ty, st, body) {
     const dir = Math.sign(kt - R.k), q = pts[R.k];
     if (Math.hypot(q.x - x, q.y - y) > CAP) break;
     if (!dir) { mem._t804r = null; mem._t804f = null; return null; }   // 슬롯에 가장 가까운 길 점 — 놓는다(거기서 슬롯은 걸음 프리셋)
-    R.k += dir; R._t804p = null; R._t804f = null;
+    R.k += dir; R._t804p = null; R._t804f = null; R._t821s = null;
   }
   const q = pts[R.k], g = _warStandNear(q.x, q.y) || { cx: q.x, cy: q.y };
   const w = _t804Local(R, x, y, g.cx, g.cy, st);
   _t804Stat.road++;
   return w || { x: g.cx, y: g.cy };   // 열렸으면(null) · 이 다리도 못 찾으면(false) 그 점으로 곧게(호출측이 막힘을 본다)
+}
+// ★★[T821 2026-10-20] **먼 진 걷기 — 재개형 걸음 탐색**(T804 회부 1 ㉠ · PM 10-20 고름 · T790 손잡이 `T790_NO_SNAP` 안 · 끔 = 무동작 · 새 손잡이 0).
+//   ★왜: 진이 막힘 띠 너머면 걸음 길이 1,245칸(test-war-world ⓖ)이다 — 걸음 프리셋 정본 상한 16,384칸으론 못 찾고 250,000칸에서 찾는다(한 번 1~1.6초 · 틱에 못 든다).
+//     T804 는 그 목표를 "길 없음"으로 기억하고 행군로 점을 밟았는데, 행군로(거친 격자)가 그 띠 위를 지나 몸이 띠 앞에 섰다.
+//   ⇒ 같은 걸음 프리셋을 **재개형 문**(path-core `localPathBegin` · T85 `routePathBegin` · `pathStep` 꼴 — 예산은 언제 쉬는가만 정한다 · 답은 비트 동일)으로 묻는다:
+//     · 첫 몫 = 종전 동기 물음 그대로(걸음 프리셋 정본 상한 `LOCAL_MAX_NODES` 를 넘는 꺼냄까지 한 번에 — 그 안이면 T804 와 같은 답 · 같은 걸음).
+//     · 그 안에 못 찾았으면 버리지 않고 **걸음마다 T85 알갱이(`PATH_STEP_NODES`)만큼** 이어 민다 — 그동안 몸은 선다(제 자리를 겨눈다 · 걸음 0).
+//       상한 = 재개형 문 정본(`ROUTE_MAX_POPS` — T85 `routePathBegin` 의 그 상한 그대로).
+//     · 틱 예산은 시간이 아니라 꺼냄 수다 — 결정론(T681 캐논): 걸음 수(econ 하루 몫)가 정해져 있으니 길이 서는 걸음도 정해진다(벽시계 · 상자 빠르기 무관).
+//     · 찾으면 T804 와 같이 그 길을 끝까지(T370) · 못 찾으면(상한 · 닿을 수 없음) 그 목표 칸 기억(T381) · 행군로로(T804).
+//     · 탐색은 몸마다 하나(그 몸 · 원점 · 행군로 다리의 기억에 `_t821s` — 영속 아님 · 저장은 Map 이라 여럿을 번갈아 밀어도 안전 · path-core ④).
+//   셈(`_t821Stat`): far 첫 몫 안에 못 찾아 이어 민 물음 · found 이어 밀어 찾음 · fail 이어 밀어도 못 찾음 · steps 이어 민 걸음(= 선 걸음) · maxSteps 한 물음에 가장 오래 선 걸음.
+const _t821Stat = { far: 0, found: 0, fail: 0, steps: 0, maxSteps: 0 };
+function _t821Push(mem, budget) {   // 찾는 중인 탐색을 budget(꺼냄 수)만큼 민다 — 끝났으면 true(길 → `mem._t804p` · 못 찾음 → `mem._t804f`) · 아직이면 false
+  const J = mem._t821s;
+  let r; try { r = PathCore.pathStep(J.S, budget); } catch (_) { r = { done: true, path: null }; }
+  J.n++; _t821Stat.steps++;
+  if (!r.done) return false;
+  if (J.n > _t821Stat.maxSteps) _t821Stat.maxSteps = J.n;
+  _t821Done(mem, r.path, true);
+  return true;
+}
+function _t821Done(mem, pts, far) {   // 물음이 끝났다 — 길이면 그 몸의 길(T370) · 없으면 그 목표 칸 기억(T381)
+  const J = mem._t821s; mem._t821s = null;
+  if (!pts || pts.length < 2) { _t804Stat.fail++; if (far) _t821Stat.fail++; mem._t804f = J.key; return; }
+  if (far) _t821Stat.found++;
+  mem._t804f = null; mem._t804p = { pts, i: 0 };
 }
 function _t804RoadPts(body) {   // 행군로(px) → 셀 점열(몸에 기억 · 길이 바뀌면 다시)
   if (!body || !body.pts || body.pts.length < 2) return null;
@@ -7575,6 +7612,7 @@ function __p3Bind(mock) {
     T811_ARMS_BODY, _warArmsLoad, _warArmsCollect, _warArmsUnload, _t811Plan, _t811Off, _t811Sync, _t811Stat,   // ★[T811] 무기 몸 짐 — 하네스(`test-arms-body`)가 운영과 같은 문을 부른다(내보내기만)
     T790_NO_SNAP, _t790Stat, _t790Mark, _t790Lag, _warSetupReturn, _warPaceReturn,   // ★[T790] 하네스(`test-war-nosnap`)가 운영과 같은 문을 부른다(내보내기만)
     _t804Way, _t804WalkOut, _t804Stat, _warWalkGroupTo,   // ★[T804] 걷는 몸의 길 · 전진 풀기 걸음 — 하네스가 운영과 같은 문을 부른다(내보내기만)
+    _t821Stat,   // ★[T821] 재개형 걸음 탐색 셈(내보내기만 — 관찰자 · 하네스)
     _warDraftPids, _warReleasePid, econDayToMs, _warEnsureBody, _warSampleComp, _vbFootprint,
     threatOf, _warWriteThreats, _warOutMul, _lifeJobSites, _lifeJobSiteOK, _warRoutePts, _warTreeCell, computeRoutePts,
     _t619Region, _t619RedigKeep,   // ★[T619] 쌍 둘레 · 다시 파기 거르개 — 자(`t619-h-audit`)가 **이 함수**로 센다(사본 0)
