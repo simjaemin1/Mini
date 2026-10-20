@@ -1213,6 +1213,21 @@ function bedSlotOf(npc) {
   }
   return { slot: -1, hk: vil.housesPx.length ? 'house?' : 'fallback?' };
 }
+// ★★[T822 2026-10-20 · 세션3 · T805 회부 1] **마을 몸 주사위 씨 — 판 씨 + 그 몸의 결정론 열쇠**(손잡이 `T822_BODY_SEED` · '1' 만 켬 · 끔 = main 바이트).
+//   종전: 존 `_shOf(npc)` 가 `playerId`(`npc_<존>_<연번>_<Math.random 네 자>` — 표시 · 소켓 꼬리)를 해시해 몸의 신원 해시 `_sh` 를 굽는다 ⇒
+//   같은 씨 · 같은 시계 두 판에서 몸 주사위(`_diceNpc` 결정 · 막힘 회피)가 첫 결정부터 갈린다(T805 §1 — 몸 408 의 `nextDecisionAt` 다 다름).
+//   마을 쪽 `_shOfNpc` 는 같은 칸을 `pid` 로 굽는다 — 둘 중 먼저 부른 쪽이 그 몸의 주사위 신원이 된다(부르는 차례에 기댄다).
+//   켬: 태어날 때(출생 정본 = 이 함수 · T765 로 옮겨 붙는 몸도 여기를 지난다) `_sh` 를 **판 씨 + (마을 · 몸 번호)** 의 해시로 굽는다 —
+//     판 씨 = econ 세계 씨(`rngState().s0` — T731 · T744 마을 흐름의 그 재료 · 하네스 시드가 바꾸는 칸 · 다시 뜨면 메타가 되살린다) · 그 칸이 없으면(T731 끔) 마을 씨 `state.villageSeed`.
+//     마을 = 이름표 `simvil_<dbId>`(존 `tribeId` 그 글자) · 몸 번호 = `pid`(`p<연번>` — 마을 쪽 T350 이 이미 몸 신원으로 쓰는 칸).
+//     해시 = 종전 그 함수(`pidHash`) — 글자에서 무작위 꼬리 대신 판 씨가 든다. 새 수 0 · 새 칸 0(`_sh` 는 있던 신원 캐시 · T747 이 다시 뜬 몸에 되살리는 그 칸).
+//   `playerId`(표시 · 소켓 · 주인 칸)는 무접촉.
+const T822_BODY_SEED = process.env.T822_BODY_SEED === '1';
+function _t822Sh(vil, p) {
+  const r = (state.econ && state.econ.rngState) ? state.econ.rngState() : null;
+  const s0 = (r && r.s0 != null) ? r.s0 : state.villageSeed;
+  return _pidHash(`${s0}_simvil_${vil.dbId}_${p.pid}`);
+}
 function spawnOneNpc(vil) {
   const houses = vil.housesPx.length ? vil.housesPx : [{ x: vil.ccx * SZ + SZ / 2, y: (vil.ccy + 6) * SZ + SZ / 2 }];   // ★폴백도 큰집 벽 안(중심 셀) 금지 — 남문 앞 마당
   const home = houses[vil.npcPids.length % houses.length];
@@ -1244,6 +1259,7 @@ function spawnOneNpc(vil) {
     skipHouse: true, // 집은 village_buildings(레이아웃)가 진실 — NPC별 5×5 자동집 금지
   });
   p.simVillageId = vil.dbId; // NPC↔마을 연결(메모리 — players 컬럼 추가보다 저침습)
+  if (T822_BODY_SEED) p._sh = _t822Sh(vil, p);   // ★[T822] 몸 주사위 신원 = 판 씨 + (마을 · 몸 번호) — 끔 = 이 줄 0
   p.simLonOff = vil._lonOff || 0; // §19 경도: 이 마을 로컬 태양시(zone.js npcStep 야간 귀가 게이트가 소비)
   p.npcBedX = home.x + bed[0] * SZ; p.npcBedY = home.y + bed[1] * SZ;   // ★침대(실내) — 취침·요양 목표(_lifeGoHome·§19 게이트 소비)
   vil.npcPids.push(p.pid);
