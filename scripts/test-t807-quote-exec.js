@@ -4,12 +4,12 @@
 //
 // ★왜 [T792 회부 2] 상한(곳간 재고 × `STOCK_FRAC`)에 닿으면 견적은 소수 give(상한에 닿는 그 몫)로 받을 양을 냈고,
 //   실행은 낼 양을 낱개로 내려(`⌊maxGive ÷ 평균 단위/개⌋`) 그 give 로 받았다 — 화면 "6 내면 44" · 실제 4 내고 36.
-//   손잡이 하나 `T807_QUOTE_TRIM`('1' 만 켬 · 끔 = main 바이트) — 켜면 견적과 실행이 같은 절삭 함수(`_trimToCap`)를 지난다.
+//   손잡이 하나 `T807_QUOTE_TRIM`(★T817 켬 기본 · `=0` = 종전 견적) — 켜면 견적과 실행이 같은 절삭 함수(`_trimToCap`)를 지난다.
 //
 // 재는 것:
-//   ① 술어 — `=== '1'` 만 켬 · 읽는 자리 = `server/trade.js` 하나
+//   ① 술어 — ★[T817] 켬 기본(`=0` 만 끔) · 끔 탐침 · 읽는 자리 = `server/trade.js` 하나
 //   ② 끔 = 종전 글자 — 견적의 절삭 · 실행의 절삭 둘 다 손잡이 뒤 · 종전 실행 글자가 끔 갈래에 그대로
-//   ③ 같은 곳간 · 같은 순간(곳간 재고를 판마다 되돌린다) — 마을 다섯 · 짝 여섯 · 낼 양 1~12 · 열량 짝 끔/켬:
+//   ③ 같은 곳간 · 같은 순간(곳간 재고를 판마다 되돌린다) — 마을 다섯 · 짝 아홉 · 낼 양 1~12 · 열량 짝 끔/켬:
 //      ⓐ 미끼(끔) — 상한에 닿은 판에서 견적 ≠ 실행이 있다(자명 통과 금지)
 //      ⓑ ★켬 — 견적의 받을 양 = 실행이 준 양 · 견적의 `giveUsed` = 실행이 낸 낱개 · 실행이 못 하면 견적도 0
 //      ⓒ 켬 — 상한에 닿은 판이 실제로 있다 · 실행 결과(낸 · 받은 · 곳간)는 끔과 한 자리도 안 다르다(고친 것은 견적뿐)
@@ -35,7 +35,8 @@ if (process.env.T807_SUB === '1') {   // ── 아이 판: 세계 하나 · 판
   const D = L.deliverable, rows = [];
   const PER = +process.env.T807_PER || 1;   // 낼 물건 1개의 단위(무거운 물건 판)
   const unitsOf = PER !== 1 ? (it, n) => n * PER : undefined;
-  for (let vi = 0; vi < 5; vi++) for (const tk of [null, K]) for (const [give, take] of [['wood', 'meat'], ['wood', 'stone'], ['food', 'wood'], ['wood', 'food'], ['stone', 'wood'], ['food', 'fish']]) {
+  for (let vi = 0; vi < 5; vi++) for (const tk of [null, K]) for (const [give, take] of [['wood', 'meat'], ['wood', 'stone'], ['food', 'wood'], ['wood', 'food'], ['stone', 'wood'], ['food', 'fish'],
+    ['salt', 'food'], ['meat_game', 'food'], ['fruit', 'wood']]   /* ★[T817] 값진 것 → 흔한 것 짝 셋 — 낱개 하나가 상한의 큰 몫을 사는 판(깎음이 나는 쪽 · 켬 기본 세계에서 깎음 0 이던 표본) */) {
     const gItem = D.toEcon.get(give), tItem = D.toEcon.get(take); if (!gItem || !tItem) continue;
     const vil = { name: '랩마을' + vi, ccx: 100, ccy: 100, dbId: vi, econ: world.villages[vi] }, v = vil.econ;
     for (let qty = 1; qty <= 12; qty++) {
@@ -61,8 +62,12 @@ const C = codeOnly(T);
 
 console.log('\n=== 거래소 견적 = 실행(상한에 닿을 때) (T807) ===');
 console.log('\n① 술어 · 읽는 자리');
-{ const decl = T.match(/const T807_ON = \(typeof process !== 'undefined' && process\.env && process\.env\.T807_QUOTE_TRIM === '1'\);/g) || [];
-  ok(decl.length === 1, '① 선언 하나 · `=== \'1\'` 만 켬(기본 끔)', `선언 ${decl.length}`);
+{ const decl = T.match(/const T807_ON = !\(typeof process !== 'undefined' && process\.env && process\.env\.T807_QUOTE_TRIM === '0'\);/g) || [];
+  ok(decl.length === 1, '① 선언 하나 · ★[T817] 켬 기본(`=0` 만 끔)', `선언 ${decl.length}`);
+  //   ★[T817] 끔 탐침 — 모듈을 그대로 불러 손잡이 값을 본다(env 없음 = 켬 · `=0` = 끔)
+  const probe = (v) => { const e = Object.assign({}, process.env); delete e.T807_QUOTE_TRIM; if (v != null) e.T807_QUOTE_TRIM = v;
+    return execFileSync(process.execPath, ['-e', `console.log(require(${JSON.stringify(path.join(ROOT, 'server', 'trade.js'))}).T807_ON)`], { env: e, encoding: 'utf8' }).trim().split('\n').pop(); };
+  ok(probe(null) === 'true' && probe('0') === 'false' && probe('1') === 'true', '① ★끔 탐침 — env 없음 = 켬 · `=0` = 끔', `${probe(null)} · ${probe('0')}`);
   const files = []; const walk = (d) => { for (const f of fs.readdirSync(d)) { const p = path.join(d, f); const st = fs.statSync(p); if (st.isDirectory()) walk(p); else if (/\.js$/.test(f)) files.push(p); } };
   for (const d of ['server', 'sim']) walk(path.join(ROOT, d));
   const readers = files.filter((p) => codeOnly(fs.readFileSync(p, 'utf8')).includes('T807_QUOTE_TRIM')).map((p) => path.relative(ROOT, p));
@@ -76,7 +81,7 @@ console.log('\n② 끔 = 종전 글자');
   ok(uses === 3, '② 절삭 함수 — 정의 하나 · 부름 둘(견적 · 실행) · 사본 0', `${uses}`); }
 
 const sub = (env) => JSON.parse(execFileSync(process.execPath, [__filename], { env: Object.assign({}, process.env, env, { T807_SUB: '1' }), stdio: 'pipe', maxBuffer: 64 << 20 }).toString().trim().split('\n').pop());
-console.log('\n③ 같은 곳간 · 같은 순간 — 마을 다섯 · 짝 여섯 · 낼 양 1~12 · 열량 짝 끔/켬');
+console.log('\n③ 같은 곳간 · 같은 순간 — 마을 다섯 · 짝 아홉 · 낼 양 1~12 · 열량 짝 끔/켬');
 { const off = sub({ T807_QUOTE_TRIM: '0' }), on = sub({ T807_QUOTE_TRIM: '1' });
   //   행 = [마을 · 열량짝 · 짝 · 낼 양 · 견적 받을 · 견적 상한 · 견적 giveUsed · 실행 됨 · 실행 낸 · 실행 받은 · 곳간 나감]
   const lie = (r) => (r[4] == null ? false : (r[7] ? (r[4] !== r[9] || (r[6] != null && r[6] !== r[8])) : r[4] > 0));
