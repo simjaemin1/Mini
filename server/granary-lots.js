@@ -75,7 +75,7 @@ const ST = { attached: 0, seeded: 0, seededU: 0, restored: 0, t716In: 0, newLots
   // ★[T768] 품목 실은 레코드 — 싣기(문 · 손) · 장부에 든/난 단위 · 마을이 먹은(econ 줄이기) · 사람에게 그 품목으로 준 · 대표 품목과 달라 바꿔 준 · 짐에 실린
   itemTag: 0, itemTagU: 0, itemInU: 0, itemOutU: 0, itemEatU: 0, itemGiveU: 0, itemSwapU: 0, itemSwapRecs: 0, itemCargoU: 0 };
 // ★[T789] 켬일 때만 칸이 선다(끄면 `stats()` 꼴 그대로) — 버린 레코드 · 단위 · 그중 품목 실은 단위 · 버린 마감 · 사람의 눈이 숨긴 칸 · 단위 · 문이 건너뛴 레코드
-if (T789) Object.assign(ST, { t789Rot: 0, t789RotU: 0, t789RotItemU: 0, t789RotDays: 0, t789Hid: 0, t789HidU: 0, t789Skip: 0, t789Views: 0 });
+if (T789) Object.assign(ST, { t803Skip: 0, t803Seed: 0, t789Rot: 0, t789RotU: 0, t789RotItemU: 0, t789RotDays: 0, t789Hid: 0, t789HidU: 0, t789Skip: 0, t789Views: 0 });
 // ★★[T768] 품목 셈 — econ 마을 → { in: {품목: 단위}, out: {품목: 단위} }(그 장부에 든 · 난 품목 실은 레코드의 단위) · 되돌림 스냅숏
 const ITM = new WeakMap();
 const TXI = new WeakMap();
@@ -91,7 +91,7 @@ function _carry() { return _cpf || (_cpf = Spoil.placeFields('carry')); }
 function _now() { return Lots.nowMs(); }
 function _kNow() { return _tickK != null ? _tickK : _now(); }   // 새 로트의 열쇠 — 마감 중이면 마감의 순간
 function _day() { return Lots.dayMs() || 1; }
-function _nowFrac() { return _now() / _day(); }
+function _nowFrac() { return (T789 && _tickK != null ? _tickK : _now()) / _day(); }   // ★[T803] 켬(T789)이면 마감 동안의 "지금" = 마감의 순간 하나(정산 · 옮김 도장까지 — 벽시계가 판마다 다른 몫 0)
 function _rec(k, u) { const g = _gran(); return { k, u, f0: 1, e: 0, t: k / _day(), m: g.m, w: g.w }; }
 // 정산 — 그 레코드의 자리 배율로 지금까지(소수 날 · `spoil.exposureAt` 정본)
 function _settle(r, nf) { const t0 = (r.t == null) ? r.k / _day() : +r.t; if (t0 < nf) { r.e = +Spoil.exposureAt(r, nf, 0).toFixed(6); r.t = nf; } return r; }
@@ -383,10 +383,13 @@ function txEnd(v, commit) {
 }
 // 하루 마감 — 그 동안 econ 이 얻은 것은 그 순간 하나(villages.js 가 마감을 열 때 · 다 비웠을 때 부른다)
 //   ★[T789] 켬이면 그 순간(econ 이 그날 먹기 전) 상한 레코드를 버린다 — 부르는 쪽이 econ 마을 목록을 넘긴다(끄면 인자는 안 읽힌다)
-function tickBegin(econVillages) {
+function tickBegin(econVillages, econDay) {
   if (_door) _doorStale();
   if (ON && Lots.momentOn()) {
-    _tickK = _now();
+    // ★[T803 ②] 켬(T789)이면 마감의 순간 = **econ 날의 머리**(`econDay` × 하루 — 부르는 쪽이 여는 econ 날을 넘긴다 · 랩 자 시계와 같은 꼴).
+    //   종전(벽시계 `_now()`)은 마감이 열린 벽시계 순간이라 같은 트리 두 판이 econ 날 3~4 에 갈렸다(T789 §4-3′ — 빠른 시계에선 마감이 경계보다 늦게 열린다 · 그 늦음이 판마다 다르다).
+    //   끔 · 날을 안 넘긴 부름(랩 자 · 옛 부름 꼴) = 종전 그대로.
+    _tickK = (T789 && Number.isFinite(econDay)) ? econDay * _day() : _now();
     if (T789 && econVillages) { _vw = null; _rot(econVillages, _tickK / _day()); }   // 마감엔 사람의 눈이 없다(남은 눈은 닫는다)
   }
 }
@@ -656,7 +659,7 @@ function bagPut(p, byRes) {
 function bagNote(p, res, u) {   // 길에서 딴 것(T441) — 그 순간 얻은 것
   if (!ON || !p || !(u > EPS) || !Lots.isLot(res)) return;
   let B = BAG.get(p); if (!B) { B = {}; BAG.set(p, B); }
-  (B[res] || (B[res] = [])).push(_recAt(_now(), u, _carry())); _sortK(B[res]); ST.bagNew++;
+  (B[res] || (B[res] = [])).push(_recAt(T789 ? _kNow() : _now(), u, _carry())); _sortK(B[res]); ST.bagNew++;
 }
 function bagOut(p, res, u) { const B = BAG.get(p), arr = B && B[res]; if (!arr || !(u > EPS)) return []; const out = _fifo(arr, u); if (!arr.length) delete B[res]; if (out.length) ST.bagOut++; return out; }
 function bagTake(p, keys) {   // 짐을 다 내린다 — { 재화: rec[] }(내려놓기 · 전사 더미 · 노획 운반 끝)
@@ -708,6 +711,19 @@ function xzOut(c) { const K = cargoDump(c); if (K) ST.xzOut++; return K; }
 function xzIn(c, saved) { if (c && saved && typeof saved === 'object') { cargoLoad(c, saved); ST.xzIn++; } }
 const hooks = { capBegin, capEnd, cargo, unload, bounce, pushIn, clearIn, packFrom, packKeep, giveBegin, giveEnd, giveNoRec,
   pendIn, pendOut, xzOut, xzIn };   // ★[T748] 대기 칸(econ 고르게) · 존 경계 기록
+// ★★[T803 ① 2026-10-19 · T789 손잡이 안 · 새 손잡이 0] **부패는 한 길.** 켬이면 장부 버림(`_rot` · spoil 정본 보관일)이 곳간 로트 칸의 썩음을 맡는다 —
+//   econ 일일 부패(`tickDecay` · 품목별 일일률)가 같은 칸을 또 깎으면 이중 셈이다(T789 §4-2: 장부가 FIFO 로 econ 부패 몫을 떼고 그 위에 보관일 버림이 또 뗐다).
+//   ⇒ econ 은 감싼 마을의 로트 칸에서 일일 부패를 건너뛴다(훅 한 줄 — `sim/economy-sim-v2.js` `tickDecay`). 로트가 아닌 칸(옹기 진흙 흐름 등)은 econ 그대로.
+//   아직 안 감싼 로트 칸(그날 econ 이 처음 만든 칸 — 레코드 없는 몫)은 여기서 감싸 그 순간의 씨앗 레코드로 덮는다(T732 씨앗 규약 = `sync` 가 하루 뒤 하던 그 감싸기 · 같은 `_wrap`).
+//   끄면 이 칸이 훅에 없다 = econ 훅 줄 무동작(비트 동일).
+function decaySkip(v, r) {
+  if (!T789 || !Lots.momentOn() || !v || !LED.has(v) || !Lots.isLot(r)) return false;
+  const W = WRAPPED.get(v);
+  if (W && W.has(r)) { ST.t803Skip++; return true; }
+  if (_wrap(v, r, _kNow())) { ST.t803Skip++; ST.t803Seed++; return true; }
+  return false;
+}
+if (T789) hooks.decaySkip = decaySkip;
 
 // ══ 영속 · 보기 · 자 ═════════════════════════════════════════════════════════════════════════════
 function dump(v) {
