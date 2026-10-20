@@ -1123,14 +1123,15 @@ async function waitHttp(url, tries = 600) {
       const _r13 = await tapUntilMenu(_nearNpc);
       const lab = _r13.labels;
       const lastPt = _r13.labels ? _r13.pt : null;  // 메뉴가 뜬 그 사람이 주인공이다
-      // ★[T819] 끝내 아무도 못 고르면 **그 판은 이 `[상황]`** 이다 — 아래 동사 · 말 단정은 메뉴가 뜬 판에서만 잰다
-      //   (위 `pre(!!npc)` · `if (npc)` 와 같은 꼴 · `[상황]` 은 그대로 빨강으로 센다).
+      // ★[T819] 끝내 **아무도 못 고르면**(화면에 사람이 없어 한 번도 못 두드림) **그 판은 이 `[상황]`** 이다 —
+      //   아래 동사 · 말 단정은 **고른 사람을 두드린 판**에서 잰다(위 `pre(!!npc)` · `if (npc)` 와 같은 꼴 · `[상황]` 은 그대로 빨강으로 센다).
+      //   ⚠두드렸는데 메뉴가 안 뜬 판은 **제품 쪽 단정이 그대로 빨갛다**(가린다면 느슨함 — 예: 손잡이를 `=0` 으로 되돌린 판의 빗김).
       pre(!!lastPt, '화면 안의 그 사람에게 메뉴가 열렸다',
-          lastPt ? `${lastPt.name} · ${Math.round(lastPt.d)}px` : '아무도 안 눌렸다');
+          lastPt ? `${lastPt.name} · ${Math.round(lastPt.d)}px` : (_r13.taps ? `아무도 안 눌렸다(${_r13.taps}번 두드림)` : '아무도 안 눌렸다(화면에 고를 사람이 없었다 · 0번)'));
       if (lastPt) npc = { ...npc, pid: lastPt.pid, name: lastPt.name };
       // ★라벨은 **서버 표**에서 온다 — 클라에 사본이 없다(T90 규약).
       const SRV = require(path.join(ROOT, 'server', 'itemlabel.js')).NPC_VERBS;
-      if (lastPt) {
+      if (_r13.taps > 0) {
         ok(!!lab && lab.length === 2, '★★⑬ NPC 위 우클릭에 **동사 둘**이 뜬다(T82 의 빈 배열 자리)', JSON.stringify(lab));
         ok(!!lab && lab[0] === SRV.talk && lab[1] === SRV.trade,
            '★★⑬ 그 말이 **서버 정본과 글자까지 같다**(사본 0)', `${JSON.stringify(lab)} vs ${JSON.stringify(SRV)}`);
@@ -1156,7 +1157,7 @@ async function waitHttp(url, tries = 600) {
         // ★사건이 없는 마을이면 그 문장은 서버의 정본 한 줄이다(둘 중 어느 갈래든 서버가 냈다).
         console.log(`  · [상황] 그 마을이 아는 소식 ${said.brief && said.brief.lines ? said.brief.lines.length : 0}줄 ·`
           + ` 첫 줄 ${JSON.stringify(said.bubble)}`);
-      }   // ★[T819] if (lastPt)
+      }   // ★[T819] if (_r13.taps > 0)
 
       // ── 거래 → **이미 있는 거래소 탭**이 열린다(새 패널 0)
       // ⚠사람들이 걸어 나가면 화면에 아무도 없는 구간이 생긴다 — 그 구간을 **기다린다**
