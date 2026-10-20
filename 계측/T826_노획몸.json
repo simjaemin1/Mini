@@ -1,0 +1,726 @@
+{
+ "ruler": "t577-server-run 50 · VILLAGE_DAY_MS=10000 · WAR_FIXTURE=assault*3 · WAR_FIXTURE_DAY=5 · WAR_FIXTURE_REPEAT=1 · VILLAGE_WAR_LOG=1 · VILLAGE_CARAVAN_MAX=0 · T400_BUILD_ACT=0 · T403_ARMS_LEDGER=1 · T811_ARMS_BODY=1 · 몸 상한 1",
+ "runs": {
+  "7": {
+   "N1": {
+    "ws": {
+     "decl": 24,
+     "battle": 21,
+     "atkWin": 8,
+     "defWin": 13,
+     "weaponLoot": 21,
+     "lootBody": 5.6
+    },
+    "t811": {
+     "load": 24,
+     "sync": 45,
+     "fall": 13,
+     "gone": 133,
+     "off": 0,
+     "back": 78.60000000000001,
+     "gap": 0
+    },
+    "gapMax": 0,
+    "mirrorGapMax": 0,
+    "kgMax": 34.54,
+    "overCap": 111,
+    "bodySamples": 1157,
+    "cap": 25,
+    "inTransitLoot": 0,
+    "wars": [
+     {
+      "id": 1,
+      "atk": "농촌4",
+      "def": "어촌16",
+      "out": 5,
+      "loot": 0,
+      "kgMax": 7.54
+     },
+     {
+      "id": 2,
+      "atk": "어촌2",
+      "def": "임업6",
+      "out": 5,
+      "loot": 0.7,
+      "kgMax": 8.59
+     },
+     {
+      "id": 3,
+      "atk": "광산5",
+      "def": "임업2",
+      "out": 5,
+      "loot": 0,
+      "kgMax": 7.54
+     },
+     {
+      "id": 4,
+      "atk": "어촌16",
+      "def": "농촌4",
+      "out": 7,
+      "loot": 0,
+      "kgMax": 10.54
+     },
+     {
+      "id": 5,
+      "atk": "어촌2",
+      "def": "임업6",
+      "out": 6,
+      "loot": 0.7,
+      "kgMax": 10.09
+     },
+     {
+      "id": 6,
+      "atk": "임업2",
+      "def": "광산5",
+      "out": 6,
+      "loot": 0.7,
+      "kgMax": 10.09
+     },
+     {
+      "id": 7,
+      "atk": "어촌2",
+      "def": "임업6",
+      "out": 7,
+      "loot": 0.7,
+      "kgMax": 11.59
+     },
+     {
+      "id": 8,
+      "atk": "어촌16",
+      "def": "농촌4",
+      "out": 7,
+      "loot": 0.7,
+      "kgMax": 11.59
+     },
+     {
+      "id": 9,
+      "atk": "어촌16",
+      "def": "농촌4",
+      "out": 9,
+      "loot": 0.7,
+      "kgMax": 14.589999999999998
+     },
+     {
+      "id": 10,
+      "atk": "어촌2",
+      "def": "임업6",
+      "out": 10,
+      "loot": 0,
+      "kgMax": 15.04
+     },
+     {
+      "id": 11,
+      "atk": "어촌2",
+      "def": "임업6",
+      "out": 11,
+      "loot": 0,
+      "kgMax": 16.54
+     },
+     {
+      "id": 12,
+      "atk": "어촌16",
+      "def": "농촌4",
+      "out": 12,
+      "loot": 0,
+      "kgMax": 18.04
+     },
+     {
+      "id": 13,
+      "atk": "어촌2",
+      "def": "임업6",
+      "out": 13,
+      "loot": 0,
+      "kgMax": 19.54
+     },
+     {
+      "id": 14,
+      "atk": "어촌16",
+      "def": "농촌4",
+      "out": 13,
+      "loot": 0,
+      "kgMax": 19.54
+     },
+     {
+      "id": 15,
+      "atk": "임업2",
+      "def": "광산5",
+      "out": 15,
+      "loot": 0,
+      "kgMax": 22.54
+     },
+     {
+      "id": 16,
+      "atk": "어촌2",
+      "def": "임업6",
+      "out": 13,
+      "loot": 0,
+      "kgMax": 19.54
+     },
+     {
+      "id": 17,
+      "atk": "농촌4",
+      "def": "어촌16",
+      "out": 14,
+      "loot": 0.7,
+      "kgMax": 22.089999999999996
+     },
+     {
+      "id": 18,
+      "atk": "어촌2",
+      "def": "임업6",
+      "out": 13,
+      "loot": 0,
+      "kgMax": 19.54
+     },
+     {
+      "id": 19,
+      "atk": "임업2",
+      "def": "광산5",
+      "out": 19,
+      "loot": 0.7,
+      "kgMax": 29.589999999999996
+     },
+     {
+      "id": 20,
+      "atk": "어촌16",
+      "def": "농촌4",
+      "out": 15,
+      "loot": 0,
+      "kgMax": 22.54
+     },
+     {
+      "id": 21,
+      "atk": "어촌2",
+      "def": "임업6",
+      "out": 14,
+      "loot": 0,
+      "kgMax": 21.04
+     },
+     {
+      "id": 22,
+      "atk": "임업2",
+      "def": "광산5",
+      "out": 23,
+      "loot": 0,
+      "kgMax": 34.54
+     },
+     {
+      "id": 23,
+      "atk": "농촌4",
+      "def": "어촌16",
+      "out": 14,
+      "loot": 0,
+      "kgMax": 21.04
+     },
+     {
+      "id": 24,
+      "atk": "어촌16",
+      "def": "농촌4",
+      "out": 15,
+      "loot": 0,
+      "kgMax": 22.54
+     }
+    ]
+   },
+   "N0": {
+    "ws": {
+     "decl": 24,
+     "battle": 21,
+     "atkWin": 8,
+     "defWin": 13,
+     "weaponLoot": 21,
+     "lootBody": null
+    },
+    "t811": {
+     "load": 24,
+     "sync": 45,
+     "fall": 13,
+     "gone": 133,
+     "off": 0,
+     "back": 73,
+     "gap": 0
+    },
+    "kgMax": 34.54,
+    "overCap": 111
+   }
+  },
+  "42": {
+   "N1": {
+    "ws": {
+     "decl": 24,
+     "battle": 21,
+     "atkWin": 7,
+     "defWin": 14,
+     "weaponLoot": 21,
+     "lootBody": 4.9
+    },
+    "t811": {
+     "load": 24,
+     "sync": 45,
+     "fall": 14,
+     "gone": 126,
+     "off": 0,
+     "back": 71.9,
+     "gap": 0
+    },
+    "gapMax": 0,
+    "mirrorGapMax": 0,
+    "kgMax": 33.04,
+    "overCap": 189,
+    "bodySamples": 1136,
+    "cap": 25,
+    "inTransitLoot": 0,
+    "wars": [
+     {
+      "id": 1,
+      "atk": "농촌4",
+      "def": "어촌16",
+      "out": 5,
+      "loot": 0,
+      "kgMax": 7.54
+     },
+     {
+      "id": 2,
+      "atk": "어촌2",
+      "def": "임업6",
+      "out": 5,
+      "loot": 0.7,
+      "kgMax": 8.59
+     },
+     {
+      "id": 3,
+      "atk": "광산5",
+      "def": "임업2",
+      "out": 5,
+      "loot": 0,
+      "kgMax": 7.54
+     },
+     {
+      "id": 4,
+      "atk": "어촌16",
+      "def": "농촌4",
+      "out": 7,
+      "loot": 0,
+      "kgMax": 10.54
+     },
+     {
+      "id": 5,
+      "atk": "어촌2",
+      "def": "임업6",
+      "out": 6,
+      "loot": 0,
+      "kgMax": 9.04
+     },
+     {
+      "id": 6,
+      "atk": "임업2",
+      "def": "광산5",
+      "out": 6,
+      "loot": 0.7,
+      "kgMax": 10.09
+     },
+     {
+      "id": 7,
+      "atk": "어촌2",
+      "def": "임업6",
+      "out": 6,
+      "loot": 0,
+      "kgMax": 9.04
+     },
+     {
+      "id": 8,
+      "atk": "어촌16",
+      "def": "농촌4",
+      "out": 7,
+      "loot": 0.7,
+      "kgMax": 11.59
+     },
+     {
+      "id": 9,
+      "atk": "어촌2",
+      "def": "임업6",
+      "out": 7,
+      "loot": 0.7,
+      "kgMax": 11.59
+     },
+     {
+      "id": 10,
+      "atk": "어촌16",
+      "def": "농촌4",
+      "out": 9,
+      "loot": 0,
+      "kgMax": 13.54
+     },
+     {
+      "id": 11,
+      "atk": "어촌2",
+      "def": "임업6",
+      "out": 9,
+      "loot": 0.7,
+      "kgMax": 14.589999999999998
+     },
+     {
+      "id": 12,
+      "atk": "어촌16",
+      "def": "농촌4",
+      "out": 11,
+      "loot": 0,
+      "kgMax": 16.54
+     },
+     {
+      "id": 13,
+      "atk": "어촌2",
+      "def": "임업6",
+      "out": 11,
+      "loot": 0,
+      "kgMax": 16.54
+     },
+     {
+      "id": 14,
+      "atk": "농촌4",
+      "def": "어촌16",
+      "out": 13,
+      "loot": 0,
+      "kgMax": 19.54
+     },
+     {
+      "id": 15,
+      "atk": "임업2",
+      "def": "광산5",
+      "out": 15,
+      "loot": 0,
+      "kgMax": 22.54
+     },
+     {
+      "id": 16,
+      "atk": "어촌2",
+      "def": "임업6",
+      "out": 13,
+      "loot": 0,
+      "kgMax": 19.54
+     },
+     {
+      "id": 17,
+      "atk": "어촌16",
+      "def": "농촌4",
+      "out": 14,
+      "loot": 0.7,
+      "kgMax": 22.089999999999996
+     },
+     {
+      "id": 18,
+      "atk": "어촌2",
+      "def": "임업6",
+      "out": 16,
+      "loot": 0,
+      "kgMax": 24.04
+     },
+     {
+      "id": 19,
+      "atk": "임업2",
+      "def": "광산5",
+      "out": 19,
+      "loot": 0.7,
+      "kgMax": 29.589999999999996
+     },
+     {
+      "id": 20,
+      "atk": "농촌4",
+      "def": "어촌16",
+      "out": 14,
+      "loot": 0,
+      "kgMax": 21.04
+     },
+     {
+      "id": 21,
+      "atk": "어촌2",
+      "def": "임업6",
+      "out": 17,
+      "loot": 0,
+      "kgMax": 25.54
+     },
+     {
+      "id": 22,
+      "atk": "임업2",
+      "def": "광산5",
+      "out": 22,
+      "loot": 0,
+      "kgMax": 33.04
+     },
+     {
+      "id": 23,
+      "atk": "농촌4",
+      "def": "어촌16",
+      "out": 9,
+      "loot": 0,
+      "kgMax": 13.54
+     },
+     {
+      "id": 24,
+      "atk": "농촌4",
+      "def": "어촌16",
+      "out": 16,
+      "loot": 0,
+      "kgMax": 24.04
+     }
+    ]
+   },
+   "N0": {
+    "ws": {
+     "decl": 24,
+     "battle": 21,
+     "atkWin": 7,
+     "defWin": 14,
+     "weaponLoot": 21,
+     "lootBody": null
+    },
+    "t811": {
+     "load": 24,
+     "sync": 45,
+     "fall": 14,
+     "gone": 126,
+     "off": 0,
+     "back": 67,
+     "gap": 0
+    },
+    "kgMax": 33.04,
+    "overCap": 189
+   }
+  },
+  "1020": {
+   "N1": {
+    "ws": {
+     "decl": 23,
+     "battle": 21,
+     "atkWin": 10,
+     "defWin": 11,
+     "weaponLoot": 21,
+     "lootBody": 7
+    },
+    "t811": {
+     "load": 23,
+     "sync": 44,
+     "fall": 11,
+     "gone": 93,
+     "off": 0,
+     "back": 116.00000000000001,
+     "gap": 0
+    },
+    "gapMax": 0,
+    "mirrorGapMax": 0,
+    "kgMax": 33.04,
+    "overCap": 200,
+    "bodySamples": 1167,
+    "cap": 25,
+    "inTransitLoot": 0,
+    "wars": [
+     {
+      "id": 1,
+      "atk": "농촌4",
+      "def": "어촌16",
+      "out": 5,
+      "loot": 0,
+      "kgMax": 7.54
+     },
+     {
+      "id": 2,
+      "atk": "어촌2",
+      "def": "임업6",
+      "out": 5,
+      "loot": 0.7,
+      "kgMax": 8.59
+     },
+     {
+      "id": 3,
+      "atk": "광산5",
+      "def": "임업2",
+      "out": 5,
+      "loot": 0,
+      "kgMax": 7.54
+     },
+     {
+      "id": 4,
+      "atk": "어촌16",
+      "def": "농촌4",
+      "out": 7,
+      "loot": 0,
+      "kgMax": 10.54
+     },
+     {
+      "id": 5,
+      "atk": "어촌2",
+      "def": "임업6",
+      "out": 6,
+      "loot": 0,
+      "kgMax": 9.04
+     },
+     {
+      "id": 6,
+      "atk": "임업2",
+      "def": "광산5",
+      "out": 6,
+      "loot": 0.7,
+      "kgMax": 10.09
+     },
+     {
+      "id": 7,
+      "atk": "어촌2",
+      "def": "임업6",
+      "out": 6,
+      "loot": 0,
+      "kgMax": 9.04
+     },
+     {
+      "id": 8,
+      "atk": "어촌16",
+      "def": "농촌4",
+      "out": 7,
+      "loot": 0.7,
+      "kgMax": 11.59
+     },
+     {
+      "id": 9,
+      "atk": "어촌2",
+      "def": "임업6",
+      "out": 7,
+      "loot": 0.7,
+      "kgMax": 11.59
+     },
+     {
+      "id": 10,
+      "atk": "어촌16",
+      "def": "농촌4",
+      "out": 9,
+      "loot": 0,
+      "kgMax": 13.54
+     },
+     {
+      "id": 11,
+      "atk": "어촌2",
+      "def": "임업6",
+      "out": 9,
+      "loot": 0.7,
+      "kgMax": 14.589999999999998
+     },
+     {
+      "id": 12,
+      "atk": "어촌16",
+      "def": "농촌4",
+      "out": 11,
+      "loot": 0,
+      "kgMax": 16.54
+     },
+     {
+      "id": 13,
+      "atk": "어촌2",
+      "def": "임업6",
+      "out": 11,
+      "loot": 0,
+      "kgMax": 16.54
+     },
+     {
+      "id": 14,
+      "atk": "농촌4",
+      "def": "어촌16",
+      "out": 13,
+      "loot": 0,
+      "kgMax": 19.54
+     },
+     {
+      "id": 15,
+      "atk": "임업2",
+      "def": "광산5",
+      "out": 15,
+      "loot": 0,
+      "kgMax": 22.54
+     },
+     {
+      "id": 16,
+      "atk": "어촌2",
+      "def": "임업6",
+      "out": 13,
+      "loot": 0.7,
+      "kgMax": 20.589999999999996
+     },
+     {
+      "id": 17,
+      "atk": "어촌16",
+      "def": "농촌4",
+      "out": 14,
+      "loot": 0.7,
+      "kgMax": 22.089999999999996
+     },
+     {
+      "id": 18,
+      "atk": "어촌2",
+      "def": "임업6",
+      "out": 16,
+      "loot": 0,
+      "kgMax": 24.04
+     },
+     {
+      "id": 19,
+      "atk": "임업2",
+      "def": "광산5",
+      "out": 19,
+      "loot": 0.7,
+      "kgMax": 29.589999999999996
+     },
+     {
+      "id": 20,
+      "atk": "어촌16",
+      "def": "농촌4",
+      "out": 14,
+      "loot": 0.7,
+      "kgMax": 22.089999999999996
+     },
+     {
+      "id": 21,
+      "atk": "어촌2",
+      "def": "임업6",
+      "out": 17,
+      "loot": 0,
+      "kgMax": 25.54
+     },
+     {
+      "id": 22,
+      "atk": "임업2",
+      "def": "광산5",
+      "out": 22,
+      "loot": 0,
+      "kgMax": 33.04
+     },
+     {
+      "id": 23,
+      "atk": "농촌4",
+      "def": "어촌16",
+      "out": 15,
+      "loot": 0.7,
+      "kgMax": 23.589999999999996
+     }
+    ]
+   },
+   "N0": {
+    "ws": {
+     "decl": 23,
+     "battle": 21,
+     "atkWin": 10,
+     "defWin": 11,
+     "weaponLoot": 21,
+     "lootBody": null
+    },
+    "t811": {
+     "load": 23,
+     "sync": 44,
+     "fall": 11,
+     "gone": 93,
+     "off": 0,
+     "back": 109,
+     "gap": 0
+    },
+    "kgMax": 33.04,
+    "overCap": 200
+   }
+  }
+ }
+}
