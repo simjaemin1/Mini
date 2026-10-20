@@ -7,25 +7,30 @@
 //   ⓒ `computeNpcPath` 의 `d<48` 갈래 — 돌려준 길의 내용(배열 재사용이 내용·좌표 비트를 안 바꾼다)
 //   ⓓ 밤 귀가 토막(국면 메모 + 같은 값 안 쓰기) — `worldPhase` 를 틱의 now 로 · 같은 틱 여러 사람
 //   ⓔ ② 타이머 문 앞 — `decideNpcBehavior` 머리에서 타이머 문까지 **부수효과 0**(글자 표 — 대입·부름 0)
-// 실행: node scripts/t670-witness.js [ref=origin/main]
+// ★[T814 · 2026-10-19] 기준 글자 고정 — 종전 = **그 깎기 직전 커밋 `23b2fcc4`**(T670 `7867c405` 의 부모). 예전 기본 `origin/main` 은 main 이 앞서
+//   가면 "종전" 이 지금과 같아져(깎기 자체가 사라진 글자) 증인이 제 전제(ⓐ [전제] 두 글자가 다르다)에서 멈춘다. 지금 글자(NEW)는 여전히 작업본 `server/zone.js`.
+//   대역: 지금 main 의 `detectStuck` 는 `_t671Lt`/`_t671Gt` 술어를 부르므로 그 두 줄을 같이 싣는다(T671 이 같은 답으로 바꾼 것 — 아래 ⓐ 가 그 위에서도 같음을 본다).
+// 실행: node scripts/t670-witness.js [ref=23b2fcc4]
 'use strict';
 const path = require('path');
 const { execFileSync } = require('child_process');
 const fs = require('fs');
 const ROOT = path.join(__dirname, '..');
-const REF = process.argv[2] || 'origin/main';
+const REF = process.argv[2] || '23b2fcc4';   // ★[T814] 깎기 직전 커밋(T670 `7867c405`^)
 const OLD = execFileSync('git', ['show', `${REF}:server/zone.js`], { cwd: ROOT, encoding: 'utf8', maxBuffer: 1 << 28 });
 const NEW = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
 let pass = 0, fail = 0;
 const ok = (c, m, x) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (x != null ? '  ' + x : '')); };
 const fnSrc = (S, name) => { const i = S.indexOf(`function ${name}(`); if (i < 0) return null; const j = S.indexOf('\n}\n', i); return S.slice(i, j + 2); };
+const lineSrc = (S, name) => { const i = S.indexOf(`function ${name}(`); if (i < 0) return ''; return S.slice(i, S.indexOf('\n', i) + 1); };
+const HELP = lineSrc(NEW, '_t671Lt') + lineSrc(NEW, '_t671Gt');   // ★[T814] 지금 글자의 술어 둘(대역에 지금 이름을 싣는다)
 let x = 0x9e3779b9; const rnd = () => { x ^= x << 13; x >>>= 0; x ^= x >>> 17; x ^= x << 5; x >>>= 0; return x / 4294967296; };
 const same = (a, b) => { const ka = Object.keys(a).sort(), kb = Object.keys(b).sort(); if (ka.join() !== kb.join()) return 'keys ' + ka + ' / ' + kb;
   for (const k of ka) { const va = a[k], vb = b[k]; if (va && typeof va === 'object') { const r = same(va, vb); if (r !== true) return k + '.' + r; } else if (!Object.is(va, vb)) return k + ' ' + va + ' ≠ ' + vb; } return true; };
 
 // ⓐ detectStuck
 {
-  const so = fnSrc(OLD, 'detectStuck'), sn = (fnSrc(NEW, '_t670Stuck') || '') + '\n' + fnSrc(NEW, 'detectStuck');
+  const so = fnSrc(OLD, 'detectStuck'), sn = HELP + (lineSrc(NEW, '_t670Stuck') || '') + '\n' + fnSrc(NEW, 'detectStuck');
   const Fo = new Function(so + '\nreturn detectStuck;')(), Fn = new Function(sn + '\nreturn detectStuck;')();
   ok(/_t670Stuck/.test(sn) && !/_t670Stuck/.test(so), 'ⓐ [전제] 두 글자가 실제로 다르다(종전 새 객체 ↔ 지금 제자리 덮어쓰기)');
   let n = 0, d = -1, kinds = { stand: 0, move: 0, stuck: 0 };
@@ -70,8 +75,9 @@ const same = (a, b) => { const ka = Object.keys(a).sort(), kb = Object.keys(b).s
 }
 // ⓒ d<48 갈래 — 내용
 {
-  const cut = (S) => { const i = S.indexOf('  const d = Math.hypot(npc.targetX - npc.x, npc.targetY - npc.y);', S.indexOf('function computeNpcPath(')); const j = S.indexOf('\n  const isVil', i); return S.slice(i, j); };
-  const Fo = new Function('npc', cut(OLD) + '\nreturn undefined;'), Fn = new Function('npc', cut(NEW) + '\nreturn undefined;');
+  // ★[T814] 머리 줄이 둘: 종전 `const d = Math.hypot(…); if (d < 48) {` · 지금 `if (_t671Lt(…, 48)) {`(T671 — 같은 답). 둘 다 `\n  const isVil` 앞까지 뜬다.
+  const cut = (S) => { const f = S.indexOf('function computeNpcPath('); let i = S.indexOf('  const d = Math.hypot(npc.targetX - npc.x, npc.targetY - npc.y);', f); if (i < 0) i = S.indexOf('  if (_t671Lt(npc.targetX - npc.x, npc.targetY - npc.y, 48)) {', f); const j = S.indexOf('\n  const isVil', i); return S.slice(i, j); };
+  const Fo = new Function('npc', cut(OLD) + '\nreturn undefined;'), Fn = new Function('npc', HELP + cut(NEW) + '\nreturn undefined;');
   let n = 0, d = 0, reused = 0;
   const A = { x: 0, y: 0 }, B = { x: 0, y: 0 };
   for (let i = 0; i < 100000; i++) {
@@ -96,7 +102,11 @@ const same = (a, b) => { const ka = Object.keys(a).sort(), kb = Object.keys(b).s
   const Fo = new Function('npc', 'now', 'SIM_LON_ON', 'WORLD', 'worldPhase', cutH(OLD));
   const env = { _t670PhNow: NaN, _t670Ph: 0 };
   const bodyN = cutH(NEW).replace(/_t670PhNow/g, 'E._t670PhNow').replace(/_t670Ph\b/g, 'E._t670Ph');
-  const Fn = new Function('npc', 'now', 'SIM_LON_ON', 'WORLD', 'worldPhase', 'E', bodyN);
+  // ★[T814] 지금 밤 귀가 토막은 제품 기본 손잡이 `T720_LON_DAY`(켬) · `phaseAdd` 를 읽는다 — 제품 모듈(`zone-config`)의 그 값을 그대로 싣는다
+  //   (몫 하나뿐 달라진다: 경도 몫 합이 음수일 때. 이 증인의 경도 몫은 0 이상이라 종전 `% 1` 과 같은 답 — 아래 ⓓ 가 그 위에서도 같음을 본다).
+  const ZC = require(path.join(ROOT, 'server', 'zone-config.js'));
+  const Fn0 = new Function('npc', 'now', 'SIM_LON_ON', 'WORLD', 'worldPhase', 'E', 'T720_LON_DAY', 'phaseAdd', bodyN);
+  const Fn = (npc, now, on, W, wp, E) => Fn0(npc, now, on, W, wp, E, ZC.T720_LON_DAY, ZC.phaseAdd);
   let n = 0, d = 0, night = 0;
   const P = [];
   for (let i = 0; i < 200; i++) { const base = { simLonOff: rnd() * 0.06, npcHomeX: 100 + i, npcHomeY: 200, npcBedX: rnd() < 0.5 ? 300 + i : undefined, npcBedY: rnd() < 0.5 ? 400 : undefined, behavior: rnd() < 0.5 ? 'wander' : 'gather', targetX: 5, targetY: rnd() < 0.1 ? -0 : 6, gatherTarget: rnd() < 0.5 ? 'g' : (rnd() < 0.5 ? null : undefined), path: [] }; P.push([{ ...base }, { ...base }]); }
