@@ -241,6 +241,21 @@ function planSliced(econV2, v, giveRes, takeRes, giveQty, cap) {
 // ★★걸음의 정의: **한 칸 아래에서 출발해, 받을 양에 닿는 첫 정수까지 올라간다.** 그 첫 정수가
 //   정의상 최소이고, 그것이 캐논 ②의 올림이다. ⚠이 걸음을 빼면 그대로 **내림**이 된다.
 //   판정은 새 수식이 아니라 `planSliced` 재호출뿐이다(머리 제1 규약 — 가격 사본 0).
+// ★★[T807 2026-10-19 · 세션5 · T792 회부 2] **견적 ≠ 실행(상한에 닿을 때)** — 손잡이 하나 `T807_QUOTE_TRIM`('1' 만 켬 · 끔 = main 바이트).
+//   결함: 상한(곳간 재고 × `STOCK_FRAC` — `payableQty`)에 닿으면 견적은 **소수 give**(상한에 닿는 그 몫)로 받을 양을 냈고(`take` = 상한),
+//     실행은 낼 양을 **낱개로 내려**(`⌊maxGive ÷ 평균 단위/개⌋`) 그 give 로 받았다 — 화면이 "6 내면 44" 라 하고 실제로 4 를 받아 36 을 줬다
+//     (받을 게 1 칸뿐이면 견적 1 · 실행 "한 개도 못 바꾼다").
+//   켜면 견적과 실행이 **이 한 함수**(`_trimToCap`)로 상한 절삭을 한다(사본 0 · 같은 `planSliced`) — 견적의 `take` = 실행이 줄 양 ·
+//     `giveUsed`(실제로 받을 낱개) 칸 하나를 더 싣는다. 새 수 0.
+const T807_ON = (typeof process !== 'undefined' && process.env && process.env.T807_QUOTE_TRIM === '1');
+//   n0 = 낸다고 한 낱개 · unitsAt(c) = c 개의 단위(견적 = 한 개짜리 어림 × c · 실행 = 고른 그 개체들의 실제 무게) ·
+//   perItem = 평균 단위/개(절삭의 자 — 종전 실행 글자 그대로) · capped 가 아니면 n0 그대로.
+function _trimToCap(econV2, v, giveRes, takeRes, n0, unitsAt, capped, maxGive, perItem, cap) {
+  const n = (capped && perItem > 0) ? Math.min(n0, Math.floor(maxGive / perItem)) : n0;
+  const u = unitsAt(n);
+  const pl = u > 0 ? planSliced(econV2, v, giveRes, takeRes, u, cap) : { took: 0 };
+  return { n, u, took: pl.took };
+}
 function _climbToWant(n0, want, unitsAt, takeAt, maxN) {
   let n = Math.max(CFG.MIN_GIVE, n0);
   for (let k = 0; k < CFG.CLIMB_MAX && n < maxN && takeAt(unitsAt(n)) < want; k++) n++;
@@ -312,6 +327,12 @@ function quote(ledger, econV2, vil, vid, giveRes, takeRes, giveQty, opts) {
     numTake: (+prices[CFG.NUMERAIRE] || 0) > 0 ? sig(pB / prices[CFG.NUMERAIRE]) : null,
   };
   if (conv) out.capU = cap;   // ★[T748] 단위 상한(실행이 조각 계획에 쓴다 · 화면 `cap` 은 받을 낱개)
+  if (T807_ON && out.capped) {   // ★[T807] 상한에 닿았다 — 실행과 같은 절삭(`_trimToCap`)으로 받을 양을 다시 낸다(끔 = 이 줄 무동작)
+    const per = (opts && Number(opts.perItem) > 0) ? Number(opts.perItem) : 1;
+    const tr = _trimToCap(econV2, v, giveRes, takeRes, Math.floor(q / per + 1e-9), (c) => c * per, true, maxGive, per, cap);
+    out.take = conv ? conv.items(tr.took).items : Math.floor(tr.took);
+    out.giveUsed = tr.n; out.giveUsedUnits = +tr.u.toFixed(3);
+  }
 
   // ── ★받을 양으로 물었다면: 내야 할 양(올림) ───────────────────────────────
   const o = opts || {};
@@ -414,11 +435,16 @@ function exchange(a) {
   // 물리 상한 — 넘치면 **거절이 아니라 절삭**이다(살 수 있는 만큼은 산다).
   //   ★수량은 견적과 **같은 조각 계획**에서 나온다(견적과 실행이 다른 수를 쓰면 그게 보이지 않는 손이다).
   //   ★상한은 **단위**로 걸리므로 개수로 되돌린다(평균 단위/개로 나눈 뒤 내림 — 넘치게 주지 않는다).
-  let give = q0;
+  let give = q0, wantW, giveUnits, pl;
+  if (T807_ON) {   // ★[T807] 견적과 같은 절삭 함수(실행은 고른 그 개체들의 실제 무게로 — `unitsAt`)
+    const tr = _trimToCap(econV2, v, giveRes, takeRes, q0, (c) => _units(_pick(c)), qt.capped, qt.maxGive, perItem, capU);
+    give = tr.n; wantW = _pick(give); giveUnits = tr.u; pl = { took: tr.took };
+  } else {
   if (qt.capped && perItem > 0) give = Math.min(q0, Math.floor(qt.maxGive / perItem));
-  const wantW = _pick(give);
-  const giveUnits = _units(wantW);                // ★실행은 **고른 그 개체들의 실제 무게**로 다시 잰다
-  const pl = giveUnits > 0 ? planSliced(econV2, v, giveRes, takeRes, giveUnits, capU) : { took: 0 };
+  wantW = _pick(give);
+  giveUnits = _units(wantW);                // ★실행은 **고른 그 개체들의 실제 무게**로 다시 잰다
+  pl = giveUnits > 0 ? planSliced(econV2, v, giveRes, takeRes, giveUnits, capU) : { took: 0 };
+  }
   let take = _takeN(pl.took);
   //   ★[T748] 곳간에서 실제로 나가는 단위 — 켬이면 낱개에 든 열량만(낱개로 안 떨어지는 몫은 곳간에 남는다) · 끔 = 받는 개수 그대로(1개 = 1단위)
   const spend = conv ? +(pl.took - (conv.items(pl.took).leftUnits || 0)).toFixed(4) : take;
@@ -458,4 +484,4 @@ function exchange(a) {
            stockAfter: +v.storage[takeRes].toFixed(3), ...(conv ? { takeUnits: spend } : {}) };   // ★[T748] 켬이면 나간 단위도
 }
 
-module.exports = { CFG, KO_NUM, board, quote, exchange, tradableIn, tradableOut, lockedRewards };
+module.exports = { CFG, KO_NUM, board, quote, exchange, tradableIn, tradableOut, lockedRewards, T807_ON };

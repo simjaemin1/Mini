@@ -354,7 +354,8 @@ async function waitHttp(url, tries = 900) {
   const nn = (await notices()).slice(n1).filter(_isTrade);
   ok(nn.length > 0 && /거래소/.test(nn[0]), '★④ 알림이 무엇을 주고 무엇을 받았는지 말한다', (nn[0] || '없음').slice(0, 80));
   // 견적이 약속한 수와 실제로 받은 수가 같아야 한다(화면과 실제가 갈리면 그게 보이지 않는 손이다)
-  ok(dTake === quote.take || quote.capped,
+  //   ★[T807] 켬(`T807_QUOTE_TRIM=1`)이면 상한에 닿아도 견적 = 실행이다(종전은 상한 판을 봐줬다 — 그게 T792 회부 2 의 거짓말)
+  ok(dTake === quote.take || (quote.capped && process.env.T807_QUOTE_TRIM !== '1'),
     '★★④ **견적이 약속한 수 그대로** 받았다(견적과 실행이 같은 계획을 쓴다)', `견적 ${quote.take} · 실제 ${dTake}`);
   await snap('tr-04-after');
 
