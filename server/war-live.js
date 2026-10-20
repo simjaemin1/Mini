@@ -124,6 +124,7 @@ function createWarLive(opts) {
   // 슬롯 추종 — ★[T284] 한 걸음이 막힌 칸(물·바위·건물 행)이면 그 축을 버린다(대형도 존 콜라이더를 본다).
   //   ★[T790] 호스트가 대형에 몸 걸음(`g._t790Walk` 셀/스텝 — 존 손잡이 `T790_NO_SNAP` 켬에서만 선다)을 달면 지휘 몸도 원점까지 **걸어서** 가고(종전 = 바로 놓기)
   //     병사 한 걸음도 그 걸음을 안 넘는다. 칸이 없으면(끔 · 랩) 종전 글자 그대로.
+  //   ★[T804] 걷는 몸은 호스트 훅(`g.detour.walk`)이 주는 점을 먼저 겨눈다 — 막혔을 때만 슬롯까지 길을 묻고(호스트 · path-core 걸음 프리셋) 그 길은 끝까지 따른다.
   function _muStepFollow(g, cap) {
     if (!g || !g.units) return;
     const cs = Math.cos(g.heading), sn = Math.sin(g.heading);
@@ -135,6 +136,17 @@ function createWarLive(opts) {
       const dx = tx - u.x, dy = ty - u.y, dd = Math.hypot(dx, dy);
       if (dd > (u.cmd ? 0 : MU.FOLLOW_SNAP)) { const st = Math.min(cap != null ? cap : MU.FOLLOW_CAP, dd, wc || dd);
         const inBlk = wc && blockedCell ? blockedCell(u.x, u.y) : false;   // ★[T790] 걷는 몸이 막힌 칸 안에 섰으면(발자국 색인이 뒤에 섰다 등) 곧은 걸음으로 걸어 나온다 — 한 걸음이 작아 칸 안 다음 점은 늘 막힘이라 종전 문으론 못 나온다
+        // ★[T804 ①] 걷는 몸의 길 — 호스트 훅(`g.detour.walk`)이 있으면 그 몸의 걸음은 훅이 낸다(≤ 몸 걸음): 훅이 준 점(길 위면 그 길 · 막혔을 때만
+        //   슬롯까지 길을 묻는다 — 호스트 = 경로 정본 path-core 걸음 프리셋) · 없으면(null — 곧은 줄이 열렸다 · 길 끝) 슬롯으로 곧게 · 막히면 축 미끄럼까지.
+        //   아래 T541 ⓐ 우회(행군로 투영점 · 그 길 탐색)는 걷는 몸에 안 부른다 — 길은 훅이 이미 냈고, 못 가는 점으로 걸음마다 다시 찾는 탐색이 틱을 먹는다.
+        //   훅이 없으면(끔 · 랩) 아래 종전 걸음 그대로.
+        if (wc && g.detour && g.detour.walk) { const w = g.detour.walk(u, tx, ty, st);
+          const ax = w ? w.x : tx, ay = w ? w.y : ty, ex = ax - u.x, ey = ay - u.y, ed = Math.hypot(ex, ey);
+          if (ed > 0) { const s2 = Math.min(st, ed), mx = u.x + ex / ed * s2, my = u.y + ey / ed * s2;
+            if (!blockedCell || inBlk || !blockedCell(mx, my)) { u.x = mx; u.y = my; }
+            else if (!blockedCell(mx, u.y)) u.x = mx;
+            else if (!blockedCell(u.x, my)) u.y = my; }
+          continue; }
         // ★[T541 ⓐ] 슬롯까지 곧은 줄이 막혔으면(호스트 술어 `detour.clear`) 곧게 가지 않고 우회를 따른다. 종전은 다음 한 걸음만 봐서,
         //   한 걸음이 열려 있으면 막다른 벽 앞으로 들어갔다가 우회로 길에 돌아오기를 되풀이하며 그 자리에 섰다(실측 T541 임업2 — 964,1854
         //   에서 행군 내내 · 지휘관은 400칸 앞). 술어가 없는 호스트(랩)는 종전 그대로.

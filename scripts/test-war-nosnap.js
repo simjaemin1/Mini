@@ -122,5 +122,81 @@ const child = (knob) => {
   ok(on.lagBattle === 0, 'ⓒ 켬 — 교전에 풀린 몸(battle-core 가 모는 몸)만 남은 대형은 안 센다', String(on.lagBattle));
 }
 
+// ── ⓓ T804 — 걷는 몸의 길(막혔을 때만 슬롯까지 길 · 그 길은 끝까지) · 전진 풀기 걸음(T790 손잡이 안) ─────────────
+//   무대: 가로벽(x 70..130 · y 140..144)과 양끝에서 위로 꺾인 갈고리(x 70..74 · 126..130 · y 120..144 — 주머니) — 몸(100.5, 90.5) → 슬롯(100.5, 200.5).
+//   곧은 줄은 첫 40 m 만 보니 y 100 까지는 "열림" · 그 아래는 "막힘" — T790 W3 의 3 m 고리가 바로 그 띠에서 났다(곧게 ↔ 우회 갈아타기).
+//   전진 풀기 무대는 따로(회관 발자국 300..304 · 98..102).
+//   존 술어는 운영 그대로(`_warBlockedCell` ← 주입 지형 술어) · 나선은 존 정본 `_standCellNear` 를 소스에서 꺼내 그대로(사본 0).
+console.log('\n[ⓓ] T804 — 걷는 몸의 길 · 전진 풀기 걸음(아이 프로세스 켬/끔)');
+{
+  const fol = fnBody(CL, '_muStepFollow'), way = fnBody(CV, '_t804Way'), loc = fnBody(CV, '_t804Local'), road = fnBody(CV, '_t804Road'), wout = fnBody(CV, '_t804WalkOut'), det = fnBody(CV, '_warDetourFor'), wgt = fnBody(CV, '_warWalkGroupTo'), rel = fnBody(CV, '_warReleaseAdv');
+  ok(/if \(wc && g\.detour && g\.detour\.walk\)/.test(fol) && fol.indexOf('g.detour.walk') < fol.indexOf('g.detour.clear') && /if \(T790_NO_SNAP\) \{ det\.walk = /.test(det),
+    'ⓓ 정적 — war-live 는 걷는 몸(칸 있음)일 때만 호스트 길 훅을 먼저 겨눈다 · 훅은 켬에서만 선다(끔 = 무동작)');
+  ok(/PathCore\.localPath\(/.test(loc) && !/PathCore\.|_search|new Map|new Set/.test(way + road) && !/routePath|_search/.test(loc) && loc.indexOf('_warClearLine') < loc.indexOf('PathCore.localPath(') && loc.indexOf('mem._t804f === key') < loc.indexOf('PathCore.localPath(')
+    && way.indexOf('_t804Local(') < way.lastIndexOf('_t804Road(') && /_t804Local\(R, /.test(road),
+    'ⓓ 정적 — 길은 경로 정본 path-core `localPath`(걸음 프리셋 · 탐색 사본 0) · 묻기 앞에 곧은 줄 · 곧은 한 걸음이 열렸나를 본다(막혔을 때만 묻는다) · 길이 없던 목표 칸은 되묻지 않는다 · 못 찾으면 행군로 점을 하나씩(점 사이도 같은 걸음 프리셋 · 새 탐색 0)');
+  ok(/T790_NO_SNAP && d > cap && g\._t790Walk > 0/.test(wgt) && /T790_NO_SNAP && g && g\.units && g\._t790Walk > 0 && _t804WalkOut\(g\)\) return;/.test(rel) && /Math\.min\(g\._t790Walk, d\)/.test(wout),
+    'ⓓ 정적 — 주둔 원점 · 전진 풀기도 켬 · 몸 걸음 칸이 있을 때만(끔 = 종전 글자) · 풀기 걸음 = 몸 걸음');
+  const added = [way, loc, road, fnBody(CV, '_t804RoadPts'), fnBody(CV, '_t804Nearest'), wout].join(' ').replace(/\[[01]\]/g, '[]');
+  ok(!/[^\w.'D](?:[2-9]|\d{2,})(?:\.\d+)?(?![\w'])/.test(added.replace(/\+ 2\)/g, '+ _)').replace(/0\.5/g, '_').replace(/length < 2\)/g, 'length < _)').replace(/\* 65536 \+/g, '* _ +')) && !/Date\.now|setTimeout|Math\.random/.test(added),
+    'ⓓ 정적 — 새 수 0(창 `FOLLOW_CAP + 2` · 칸 가운데 0.5 · 길 길이 `< 2` 는 `_warPathNext` 와 같은 글자 · 칸 열쇠 `× 65536 +` 는 villages 칸 열쇠 관례) · 시한 0 · 주사위 0', added.length + '자');
+}
+const child804 = (knob) => {
+  const env = Object.assign({}, process.env); if (knob) env.T790_NO_SNAP = '1'; else delete env.T790_NO_SNAP;
+  const js = `const path=require('path'),fs=require('fs'),ROOT=${JSON.stringify(ROOT)};const V=require(path.join(ROOT,'server','villages.js')),WLM=require(path.join(ROOT,'server','war-live.js'));`
+    + `const ZS=fs.readFileSync(path.join(ROOT,'server/zone.js'),'utf8');const mm=/function _standCellNear\\(x0, y0, blocked\\) \\{[\\s\\S]*?\\n\\}/.exec(ZS);`
+    + `const stand=new Function('ZONE','_BLOCKED_STAND',mm[0]+'\\nreturn _standCellNear;')({zoneWidth:1e7,zoneHeight:1e7},()=>false);const SZ=32;`
+    + `const W=new Set();const add=(x0,x1,y0,y1)=>{for(let x=x0;x<=x1;x++)for(let y=y0;y<=y1;y++)W.add(x*65536+y);};add(70,130,140,144);add(70,74,120,144);add(126,130,120,144);add(300,304,98,102);`
+    + `const wallAt=(cx,cy)=>W.has(Math.floor(cx)*65536+Math.floor(cy));let H=null;const live=WLM.createWarLive({cellPx:32,pxPerM:32,tickHz:30,blockedCell:(x,y)=>H._warBlockedCell(x,y)});`
+    + `H=V.__p3Bind({warLive:live,world:{day:12},dayMs:10000,deps:{players:new Map(),moveSpeed:64,npcs:new Set(),broadcast(){},isTerrainBlockedLocal:(px,py)=>wallAt(px/SZ,py/SZ),treeCellBlocked:()=>false,standCellNear:stand},_warStat:{standoff:0}});`
+    + `H.state._warTerrMemo=new Map();H.state._warRectCells=new Set();H.state._warRects=[];const out={};`
+    + `const body={pts:[{x:100.5*SZ,y:90.5*SZ},{x:60.5*SZ,y:90.5*SZ},{x:60.5*SZ,y:200.5*SZ},{x:100.5*SZ,y:200.5*SZ}]};`
+    //   ① 몸 — 긴 벽 너머 슬롯(지휘 몸 하나 · 원점 = 슬롯) · 훅 있음 / 훅 없음(T790 만)
+    + `const walk=(hook,sx,sy,n0)=>{const g=live.buildGroup([{type:'champion',pid:'w'+hook+sx}],'line',{cx:100.5,cy:200.5},0,7);g.units[0].x=sx;g.units[0].y=sy;H._t790Mark(g);g.detour=H._warDetourFor(body);if(!hook)delete g.detour.walk;`
+    + `const a0=H._t804Stat.ask;let n=0,blk=0,mx=0,arr=-1,pl=0;for(;n<(n0||30000);n++){const p=[g.units[0].x,g.units[0].y];live._muStepFollow(g,live.MU.FOLLOW_CAP);const d=Math.hypot(g.units[0].x-p[0],g.units[0].y-p[1]);mx=Math.max(mx,d);pl+=d;if(wallAt(g.units[0].x,g.units[0].y))blk++;`
+    + `if(arr<0&&Math.hypot(g.units[0].x-100.5,g.units[0].y-200.5)<=live.MU.FOLLOW_SNAP)arr=n+1;}return{walk:g._t790Walk==null?null:g._t790Walk,arr,left:Math.hypot(g.units[0].x-100.5,g.units[0].y-200.5),blk,mx,pl,asks:H._t804Stat.ask-a0,at:[g.units[0].x,g.units[0].y]};};`
+    + `out.hook=walk(true,100.5,90.5);out.bare=walk(false,100.5,90.5);out.open=walk(true,100.5,150.5,2000);out.stay=walk(true,100.5,90.5,8000);`
+    //   ①' 걸음 프리셋이 못 찾은 목표(탐색 상한 — 먼 진) — 그 기억을 미리 세워 두면 몸의 행군로를 길 투영점까지 따라 닿는다
+    + `{const g=live.buildGroup([{type:'champion',pid:'rd'}],'line',{cx:100.5,cy:200.5},0,7);g.units[0].x=100.5;g.units[0].y=90.5;H._t790Mark(g);g.detour=H._warDetourFor(body);g.units[0]._t804f=100*65536+200;`
+    + `const a0=H._t804Stat.ask,r0=H._t804Stat.road;let n=0,arr=-1,blk=0,mx=0,minX=1e9;for(;n<30000;n++){const p=[g.units[0].x,g.units[0].y];live._muStepFollow(g,live.MU.FOLLOW_CAP);mx=Math.max(mx,Math.hypot(g.units[0].x-p[0],g.units[0].y-p[1]));minX=Math.min(minX,g.units[0].x);if(wallAt(g.units[0].x,g.units[0].y))blk++;`
+    + `if(Math.hypot(g.units[0].x-100.5,g.units[0].y-200.5)<=live.MU.FOLLOW_SNAP){arr=n+1;break;}}out.road={arr,blk,mx,minX,asks:H._t804Stat.ask-a0,road:H._t804Stat.road-r0};}`
+    //   ② 주둔 원점 — 원점이 벽 너머 진으로 걷는다(\`_warWalkGroupTo\` 운영 문 · 걸음 상한 = 몸 걸음)
+    + `{const g=live.buildGroup([{type:'champion',pid:'o'}],'line',{cx:100.5,cy:90.5},0,7);g.units[0].x=100.5;g.units[0].y=90.5;H._t790Mark(g);g.detour=H._warDetourFor(body);const cap=64/32*live.STEP_DT;const a0=H._t804Stat.ask;let n=0,arr=-1,blk=0;`
+    + `for(;n<30000;n++){H._warWalkGroupTo(g,{cx:100.5,cy:200.5},cap);if(wallAt(g.cmd.cx,g.cmd.cy)||wallAt(g.units[0].x,g.units[0].y))blk++;if(arr<0&&Math.hypot(g.units[0].x-100.5,g.units[0].y-200.5)<=live.MU.FOLLOW_SNAP){arr=n+1;break;}}`
+    + `out.origin={arr,blk,asks:H._t804Stat.ask-a0,cmd:[g.cmd.cx,g.cmd.cy]};}`
+    //   ③ 전진 풀기 — 회관 발자국(98..102) 한가운데 선 몸 · 열린 칸 몸
+    + `{const g=live.buildGroup([{type:'spear',pid:'r1'},{type:'spear',pid:'r2'}],'line',{cx:310.5,cy:100.5},0,9);g.units[0].x=302.5;g.units[0].y=100.5;g.units[1].x=290.5;g.units[1].y=100.5;H._t790Mark(g);`
+    + `const A={side:'A',released:false},f={ctx:{units:[]}};let n=0,mx=0;for(;n<200&&!A.released;n++){const p=[g.units[0].x,g.units[0].y];H._warReleaseAdv(f,A,g);mx=Math.max(mx,Math.hypot(g.units[0].x-p[0],g.units[0].y-p[1]));}`
+    + `out.rel={calls:n,released:A.released,mx,at:[g.units[0].x,g.units[0].y],blkEnd:wallAt(g.units[0].x,g.units[0].y),other:[g.units[1].x,g.units[1].y],walk:g._t790Walk==null?null:g._t790Walk};}`
+    + `out.stat=Object.assign({},H._t804Stat);process.stdout.write(JSON.stringify(out));`;
+  const o = execFileSync(process.execPath, ['-e', js], { cwd: ROOT, env, stdio: ['ignore', 'pipe', 'ignore'] }).toString();
+  return JSON.parse(o.slice(o.indexOf('{')));
+};
+{
+  const on = child804(true), off = child804(false);
+  const h = on.hook, b = on.bare;
+  ok(h.arr > 0 && h.blk === 0 && h.mx <= WALK + 1e-12 && h.asks === 1,
+    'ⓓ 켬 — 긴 벽 너머 슬롯: 막힌 띠에서 한 번 묻고(path-core 걸음 프리셋) 그 길을 끝까지 따라 닿는다 · 막힌 칸 0 · 스텝마다 ≤ 몸 걸음',
+    `${h.arr}걸음(${(h.arr * WL.STEP_DT).toFixed(0)}초) · 걸은 길 ${h.pl.toFixed(0)} m · 물음 ${h.asks}`);
+  ok(b.arr < 0 && b.left > 50 && b.pl > 10 * b.left && b.asks === 0,
+    'ⓓ ★미끼(훅 없음 = T790 만) — 같은 몸이 곧게 ↔ 우회를 갈아타며 40 m 띠에서 고리를 돈다(못 닿는다)',
+    `30,000걸음 뒤 슬롯까지 ${b.left.toFixed(0)} m · 걸은 길 ${b.pl.toFixed(0)} m · 자리 ${b.at.map((v) => v.toFixed(1))}`);
+  ok(on.open.arr > 0 && on.open.asks === 0 && Math.abs(on.open.arr - (50 - WL.MU.FOLLOW_SNAP) / WALK) <= 1,
+    'ⓓ 켬 — 곧은 줄이 열렸으면 묻지 않는다(묻기는 막혔을 때만) · 걸음 수 = (거리 − 닿음 반경) ÷ 걸음', `${on.open.arr}걸음 · 물음 ${on.open.asks}`);
+  ok(on.road.arr > 0 && on.road.blk === 0 && on.road.mx <= WALK + 1e-12 && on.road.road > 0 && on.road.minX < 70,
+    'ⓓ 켬 — 걸음 프리셋이 못 찾은 목표(탐색 상한 · 먼 진)는 되묻지 않고 몸의 행군로(T541 ⓐ 우회와 같은 문)를 길 투영점까지 끝까지 따라 닿는다(곧은 줄로 갈아타지 않는다)',
+    `${on.road.arr}걸음 · 행군로 걸음 ${on.road.road} · 물음 ${on.road.asks} · 가장 서쪽 x ${on.road.minX.toFixed(1)}(길이 벽 서쪽 끝을 돈다)`);
+  ok(on.stay.arr > 0 && on.stay.asks === 1 && on.stay.left <= 0.35,
+    'ⓓ 켬 — 닿은 뒤(같은 목표) 다시 묻지 않는다(T370 ② 꼴 — 길 끝에서 놓고, 그다음은 막혔을 때만)', `8,000걸음 · 물음 ${on.stay.asks}`);
+  ok(on.origin.arr > 0 && on.origin.blk === 0 && on.origin.asks >= 1 && off.origin.arr < 0,
+    'ⓓ 켬 — 주둔 원점(`_warWalkGroupTo`)도 막히면 길 — 원점 · 지휘 몸이 벽을 돌아 진에 닿는다 · ★미끼: 끔(곧게 + 축 미끄럼)은 벽 앞에 선다',
+    `켬 ${on.origin.arr}걸음 · 물음 ${on.origin.asks} · 끔 원점 ${off.origin.cmd.map((v) => v.toFixed(1))}`);
+  ok(on.rel.released && on.rel.calls > 1 && on.rel.mx <= WALK + 1e-12 && !on.rel.blkEnd && on.rel.other[0] === 290.5,
+    'ⓓ 켬 — 전진 풀기: 막힌 칸(회관 발자국) 안의 몸은 가장 가까운 설 칸까지 몸 걸음으로 걸어 나온 뒤에 풀린다(한 칸 옮기기 0) · 열린 칸 몸은 그대로',
+    `${on.rel.calls}번(${on.rel.calls - 1}걸음) · 한 번 최대 ${on.rel.mx.toFixed(4)}칸 · 끝 ${on.rel.at.map((v) => v.toFixed(2))}`);
+  ok(off.rel.released && off.rel.calls === 1 && off.rel.mx > 1 && !off.rel.blkEnd && off.rel.walk === null,
+    'ⓓ 끔 — 전진 풀기는 종전(가장 가까운 설 칸으로 한 번에 · T541 ⓑ) · 칸 0', `한 번에 ${off.rel.mx.toFixed(2)}칸`);
+}
+
 console.log(`\n=== 결과: ${pass} PASS / ${fail} FAIL ===`);
 process.exit(fail ? 1 : 0);
