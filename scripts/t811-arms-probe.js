@@ -4,6 +4,7 @@
 //   ★잰다 — 1초마다 · econ 날마다(하루 마감 장부 `scanDay` 앞):
 //     · 전쟁 몸(`state.warBodies`)마다 원정 무기 장부(`w._arms.weapon` · 끝났으면 0) · 몸 짐 표 합(`w._armsPack`) · 짐꾼 수 · 짐꾼 손 무기 합(`inventory.weapon`)
 //     · 차 = |몸 짐 합 − 장부| 최대(표가 선 원정만) · 마을 거울(`_warArmsOut`) − 그 마을 원정 장부 합 최대
+//   ★[T826] 짐꾼 몸 무게(`weights.kgOfOrDefault` × 손 전부 · `carry.js CAP_KG` 넘은 표본) · 노획(war-core 셈 `lootBody` · 원정 장부 `loot`)
 //   ★판 끝: `state._warStat.t811`(싣기 · 맞춤 · 땅 · 사라짐 · 포로 · 거둠 · 차) · 전쟁 셈 · war-core 로그의 무기 줄
 //   ★관찰만 한다 — 세계에 아무것도 안 쓴다.
 'use strict';
@@ -15,7 +16,9 @@ if (OUT && MAIN) {
   let EV = null, VIL = null;
   const r3 = (x) => (Number.isFinite(x) ? +x.toFixed(3) : null);
   const st = () => { try { return VIL && VIL.__p3Bind ? VIL.__p3Bind({}).state : null; } catch (e) { return null; } };
-  const R = { samples: 0, packed: 0, gapMax: 0, gapAt: null, mirrorGapMax: 0, handMax: 0, wars: {} };
+  const R = { samples: 0, packed: 0, gapMax: 0, gapAt: null, mirrorGapMax: 0, handMax: 0, kgMax: 0, overCap: 0, bodySamples: 0, wars: {} };
+  let W8 = null, CAP = null; try { W8 = require(require('path').join(__dirname, '..', 'server', 'weights.js')); } catch (e) {} try { CAP = require(require('path').join(__dirname, '..', 'server', 'carry.js')).CFG.CAP_KG; } catch (e) {}
+  const kgOf = (inv) => { let kg = 0; if (W8 && inv) for (const k in inv) { const q = +inv[k] || 0; if (q > 0) kg += q * (W8.kgOfOrDefault ? W8.kgOfOrDefault(k) : 0); } return kg; };
   const sample = (tag) => {
     const S = st(); if (!S || !S.warBodies) return;
     const P = S.deps && S.deps.players;
@@ -27,7 +30,8 @@ if (OUT && MAIN) {
       o.phases[b.phase || '-'] = (o.phases[b.phase || '-'] || 0) + 1; o.last = tag; o.ledgerLast = r3(ledger);
       const M = w._armsPack; if (!M) continue;
       R.packed++; o.packedSamples++;
-      let pack = 0, hand = 0, n = 0; for (const [pid, q] of M) { pack += q || 0; const p = P && P.get(pid); if (p) { n++; hand += (p.inventory && p.inventory.weapon) || 0; } }
+      let pack = 0, hand = 0, n = 0; for (const [pid, q] of M) { pack += q || 0; const p = P && P.get(pid); if (p) { n++; hand += (p.inventory && p.inventory.weapon) || 0; const kg = kgOf(p.inventory); R.bodySamples++; if (kg > R.kgMax) R.kgMax = kg; if (CAP != null && kg > CAP) R.overCap++; o.kgMax = Math.max(o.kgMax || 0, kg); } }
+      if (w._arms.loot) o.loot = r3(w._arms.loot);
       const gap = Math.abs(pack - ledger);
       o.gapMax = Math.max(o.gapMax, gap); o.handMax = Math.max(o.handMax, hand); o.bearersMax = Math.max(o.bearersMax, n);
       if (gap > R.gapMax) { R.gapMax = gap; R.gapAt = [tag, id, r3(pack), r3(ledger)]; }
@@ -41,8 +45,9 @@ if (OUT && MAIN) {
       const S = st();
       const log = (() => { try { return ((S && S.world && S.world._warStats && S.world._warStats.log) || []).filter((m) => /무기|몸 짐/.test(m)); } catch (e) { return null; } })();
       const ws = S && S.world && S.world._warStats;
-      fs.writeFileSync(OUT, JSON.stringify({ knobs: { T811_ARMS_BODY: process.env.T811_ARMS_BODY || null, T403_ARMS_LEDGER: process.env.T403_ARMS_LEDGER || null, WAR_FIXTURE: process.env.WAR_FIXTURE || null },
-        t811: (S && S._warStat && S._warStat.t811) || null, ws: ws ? { decl: ws.decl, battle: ws.battle, atkWin: ws.atkWin, defWin: ws.defWin, weaponLoot: ws.weaponLoot } : null,
+      fs.writeFileSync(OUT, JSON.stringify({ knobs: { T811_ARMS_BODY: process.env.T811_ARMS_BODY || null, T403_ARMS_LEDGER: process.env.T403_ARMS_LEDGER || null, T826_LOOT_BODY: process.env.T826_LOOT_BODY || null, WAR_FIXTURE: process.env.WAR_FIXTURE || null },
+        t811: (S && S._warStat && S._warStat.t811) || null, ws: ws ? { decl: ws.decl, battle: ws.battle, atkWin: ws.atkWin, defWin: ws.defWin, weaponLoot: ws.weaponLoot, lootBody: ws.lootBody == null ? null : r3(ws.lootBody) } : null,
+        kgMax: r3(R.kgMax), overCap: R.overCap, bodySamples: R.bodySamples, cap: CAP, inTransitLoot: (() => { try { let s = 0; for (const w of (S && S.war && S.war.WARS) || []) if (w._arms && !w._arms.done && w._arms.loot) s += w._arms.loot; return r3(s); } catch (e) { return null; } })(),
         samples: R.samples, packed: R.packed, gapMax: R.gapMax, gapAt: R.gapAt, mirrorGapMax: R.mirrorGapMax, handMax: r3(R.handMax), wars: Object.values(R.wars).map((o) => Object.assign({}, o, { gapMax: r3(o.gapMax), handMax: r3(o.handMax) })), log }));
     } catch (e) {}
   };

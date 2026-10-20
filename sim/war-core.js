@@ -408,6 +408,13 @@ function _rationActOn() { return typeof process !== 'undefined' && !!process.env
 // ★★[T466] 약탈 = 행위(군량 행위 ⓒ · PM #68 · 재민 "즉시 판정이 아니라 물리 노획 → 운반 → 귀가 저장") — 손잡이 끔.
 function _lootActOn() { return typeof process !== 'undefined' && !!process.env && process.env.T466_LOOT_ACT === '1'; }
 function _armsLedgerOn() { return typeof process !== 'undefined' && !!process.env && process.env.T403_ARMS_LEDGER === '1'; }
+// ★★[T826 2026-10-20 · T811 회부 2] 노획을 몸이 옮긴다 — 손잡이 `T826_LOOT_BODY`('1' 만 켬 · T811 몸 짐 위에서만 돈다 · 끔 = main 바이트).
+//   공격이 이기면 결판 흐름(`warWeaponFlow` — 사망 드랍 × 회수 · 투기 × 회수)의 회수 몫이 결판 순간 공격 마을 곳간에 섰다.
+//   켬 ∧ 그 원정 무기가 몸 짐에 실렸으면(`w._armsOnBodies` — 호스트 T811) 그 몫을 곳간이 아니라 **원정 장부**(`w._arms.weapon`)에 얹는다 —
+//   정본은 장부(ⓐ T811 꼴): 거울(`_warArmsOut`)이 그 몫까지 세고 · 호스트가 산 몸 짐으로 맞추고 · 귀환 장부 도착(`warArmsReturn`)에 곳간에 선다.
+//   ★새 수 0 — 옮기는 양 = 결판 흐름이 낸 `gain` 그대로 · 곳간은 결판 앞 값으로 되돌린다(더하고 빼지 않는다 — 소멸 · 생성 0).
+//   ⚠품질(`_weapQ`)은 결판 흐름이 이미 섞었다(마을 칸 · 종전 그대로) — 무기 수만 길 위에 있다.
+function _lootBodyOn() { return typeof process !== 'undefined' && !!process.env && process.env.T826_LOOT_BODY === '1'; }
 // ★★[T732 2026-10-14] **군량 짐에도 로트가 실려 다닌다** — 호스트(존 서버 · 손잡이 `T732_MOMENT_LOT=1`)가 곳간 장부 훅을 꽂을 때만.
 //   랩 · CLI · 브라우저 · 끈 서버는 안 꽂는다 = `_LOTH` null = 아래 훅 줄이 전부 무동작(비트 동일). 훅은 **관측자**다(값 무변):
 //   곳간에서 뗄 때(`_warFoodTake`) 나간 레코드를 모으고 · 줄 때(`_warFoodGive`) 그 레코드째 받는 곳간에 넣는다(약탈 · 공납 · 몸값 · 팩 환급).
@@ -1103,7 +1110,7 @@ function createWar(opts) {
       if (J < WAR_REP_TH) { A._warFatigue = (A._warFatigue || 0) + (WAR_REP_TH - J) * WAR_J_FAT; outcome += ' [불의전 피로]'; }
     } else { st.defWin++; warAddTrauma(A, w.def.name, WAR_TRAUMA_UP); A._warCaution = Math.min(1, (A._warCaution || 0) + 0.5); }
     if (!_den) warThirdPartyRep(w.atk, w.def, J, day);   // ★[T476] 소굴 토벌엔 관전 마을의 평판 소문이 없다
-    { const _ls = atkWin ? _res.defStart : _res.atkStart, _ld = atkWin ? _defDead : _atkDead; const _rn = atkWin ? (_res.routB || 0) : (_res.routA || 0), _rm = atkWin ? _res.routMrlB : _res.routMrlA; const _wf = warWeaponFlow(winnerE, loserE, _ls, _ld, _rn, _rm, st, (!atkWin && w._arms) ? w._arms : undefined); if (_wf) outcome += ' +노획' + _wf.gain.toFixed(1) + (_wf.qUp ? '·품질↑' + _wf.newQ.toFixed(2) : ''); if (w._arms) _syncArmsToEcon(w.atk); }   // ★[T764] 짐에서 빠진 몫을 거울에(끔 = 칸 없음)
+    { const _ls = atkWin ? _res.defStart : _res.atkStart, _ld = atkWin ? _defDead : _atkDead; const _rn = atkWin ? (_res.routB || 0) : (_res.routA || 0), _rm = atkWin ? _res.routMrlB : _res.routMrlA; const _w0 = winnerE.storage.weapon; const _wf = warWeaponFlow(winnerE, loserE, _ls, _ld, _rn, _rm, st, (!atkWin && w._arms) ? w._arms : undefined); if (_wf && atkWin && _wf.gain > 0 && w._arms && !w._arms.done && w._armsOnBodies && _lootBodyOn()) { winnerE.storage.weapon = _w0 || 0; w._arms.weapon += _wf.gain; w._arms.loot = (w._arms.loot || 0) + _wf.gain; st.lootBody = (st.lootBody || 0) + _wf.gain; } if (_wf) outcome += ' +노획' + _wf.gain.toFixed(1) + (_wf.qUp ? '·품질↑' + _wf.newQ.toFixed(2) : ''); if (w._arms) _syncArmsToEcon(w.atk); }   // ★[T764] 짐에서 빠진 몫을 거울에(끔 = 칸 없음)
     // ★[3파 포로] 화면 층 인계 스태시 — villages._warOnResolved가 패자측 사상 표본 pid 일부를 호송 실체로 전환(승자 마을 이관).
     if (_cap.take.length || _cap.freed) {
       w._capResolve = { side: atkWin ? 'B' : 'A', npcs: _cap.take.slice(), freedN: _cap.freed, day };
@@ -1172,7 +1179,7 @@ function createWar(opts) {
         if (e) { e._warMobUntil = 0; e._warMobFrac = 0; }
         if (_back > 0 || _rel > 0) log(day, w.atk.name + ' 귀환 — 군량 잔량 ' + _back.toFixed(0) + ' 곳간 복귀 · 징발 해제 ' + _rel + '명');
         if (w._rationBook) { const b = w._rationBook; log(day, w.atk.name + ' 짐 장부 — 적재 ' + b.load.toFixed(1) + (b.pickFE ? ' + 길에서 딴 ' + b.pickFE.toFixed(1) : '') + ((b.lootG || b.lootP) ? ' + 노획 ' + ((b.lootG || 0) + (b.lootP || 0)).toFixed(1) : '') + ' = 장부 ' + b.ledgerEaten.toFixed(1) + ' + 몸이 먹음 ' + b.eaten.toFixed(1) + ' + 내려놓음 ' + b.back.toFixed(1) + ' + 드랍 ' + b.drop.toFixed(1)); }
-        if (w._arms) log(day, w.atk.name + ' 귀환 — 무기 반납 ' + _armsBack + '/' + w._arms.out + '(민병 ' + w._arms.militia + ')' + (_armsBody != null ? ' · 몸 짐 ' + (+_armsBody).toFixed(3) : ''));
+        if (w._arms) log(day, w.atk.name + ' 귀환 — 무기 반납 ' + _armsBack + '/' + w._arms.out + '(민병 ' + w._arms.militia + ')' + (_armsBody != null ? ' · 몸 짐 ' + (+_armsBody).toFixed(3) : '') + (w._arms.loot ? ' · 노획 ' + w._arms.loot.toFixed(3) : ''));
         WARS.splice(i, 1);
         if (w._arms) _syncArmsToEcon(w.atk);   // ★[T764] 반납 뒤 거울(그 마을의 다른 원정 짐만 남는다)
       }
