@@ -287,7 +287,8 @@ async function waitHttp(url, tries = 900) {
   {
     const k0 = await contrib(), iv0 = await inv();
     await clearNotices();
-    if (dnBtn) await dnBtn.click();
+    //   [PM 착지 10-20] 패널이 다시 그려지면 앞서 쥔 손잡이가 떨어진다(DOM detached) — 누르기 직전에 다시 찾는다(단언 무변)
+    if (dnBtn) { const b = await page.$('[data-dn="wood"]'); await (b || dnBtn).click(); }
     let iv1 = iv0;
     for (let i = 0; i < 20; i++) { await sleep(300); iv1 = await inv(); if ((iv1.wood | 0) < (iv0.wood | 0)) break; }
     const k1 = await contrib();
