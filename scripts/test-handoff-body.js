@@ -157,7 +157,7 @@ async function startZones(extraH, extraBoth) {   // ★[T778] extraBoth = 두 �
 }
 
 // 한 판: 지급 → 경계 넘기 → 도착 → 재접속. 몸 셋(출발·도착·재접속)을 돌려준다.
-async function roundTrip(tag) {
+async function roundTrip(tag, opt) {   // ★[T823] opt.probe = 넘긴 뒤 떠난 몸 껍데기를 두 번 읽고 그 사이 사람 문(내려놓기) 하나를 보낸다
   const Z = (await jget(`http://localhost:${CPORT}/zones`)).zones;
   const han = Z.hanbando, nip = Z.nippon;
   // ⚠접속 URL 의 `name=` 은 서버가 안 읽는다(이름은 계정 행에서 온다) — 그래서 **사람 플레이어 하나**를
@@ -200,6 +200,15 @@ async function roundTrip(tag) {
   if (!handoffMsg) return { crossed: false };
   // ★넘는 순간의 몸(출발 존은 ACK 까지 몸을 들고 있다) — 생명값·신체 비교의 기준점이다.
   const beforeCross = pick(await jget(`http://localhost:${HPORT}/bodydbg`));
+  // ★[T823] 껍데기 탐침 — 넘긴 뒤(ACK 전 · 출발 존이 껍데기를 3초까지 들고 있다) 사람 문 하나(생선 한 마리 내려놓기)를 보내고
+  //   600ms 뒤 껍데기를 다시 읽는다. 켬이면 두 읽음이 **비트 같다**(회복 · 게이지 · 입력이 다 언다) · 끔이면 회복이 오르고 생선이 땅으로 간다
+  //   (도착 몸엔 그 생선이 그대로 있다 — 복제). 끔 판이 바뀌어야 켬 판의 "같다"가 뜻이 있다(자명 통과 금지).
+  let probe = null;
+  if (opt && opt.probe) {
+    try { a.ws.send(JSON.stringify({ type: 'drop_item', item: 'fish', amount: 1 })); } catch (e) {}
+    await sleep(600);
+    probe = { s0: beforeCross, s1: pick(await jget(`http://localhost:${HPORT}/bodydbg`)) };
+  }
   const tX = Date.now();   // ★[T751] 넘는 순간 몸을 읽은 때 — ② HP 허용치가 이 사이 실제 걸린 시간에서 나온다
   try { a.ws.close(); } catch (e) {}
   const b = await open(`${nip.wsUrl}/?handoff_token=${encodeURIComponent(handoffMsg.token)}`);
@@ -214,7 +223,7 @@ async function roundTrip(tag) {
   await sleep(900);
   const again = pick(await jget(`http://localhost:${HPORT}/bodydbg`));
   try { c.ws.close(); } catch (e) {}
-  return { crossed: true, before, beforeCross, after, again, welcomeTools: b.tools, SET_HP, SET_COLD, crossMs: tA - tX, hpW };
+  return { crossed: true, before, beforeCross, after, again, welcomeTools: b.tools, SET_HP, SET_COLD, crossMs: tA - tX, hpW, probe };
 }
 
 (async () => {
@@ -230,6 +239,15 @@ async function roundTrip(tag) {
   //   종전엔 썼다 — 400 ms 마다 오는 한 번이 찍은 뒤 닿으면 껍데기만 42 로 내려가 기준이 찍힌 값보다 3~4 낮았다(T802 · 단독 세 판 빨강).
   //   이 하네스가 그 문을 같이 지킨다(문이 풀리면 ② 가 다시 위상에 따라 깜빡인다).
   ok(/msg\.type === '__e2e_body'\) \{[\s\S]{0,1600}?if \(player\.handingOff\) return;/.test(src), '① ★[T802] 픽스처가 떠난 몸(껍데기)에는 안 쓴다 — ② 기준점 = 찍힌 값');
+  // ★[T823] 손잡이 한 자리('1' 만 켬) · 네 걸음(입력 · 게이지 · 회복 · 게이지 전송) + 행동(낚시)이 이미 있는 칸 `handingOff` 를 거른다
+  const T823G = '\\(T823_FREEZE_SHELL && (?:p|player)\\.handingOff\\) return;';
+  ok((src.match(/process\.env\.T823_FREEZE_SHELL/g) || []).length === 1 && /const T823_FREEZE_SHELL = process\.env\.T823_FREEZE_SHELL === '1';/.test(src)
+    && new RegExp('function handlePlayerInput\\(player, raw\\) \\{\\s*if ' + T823G).test(src)
+    && new RegExp('function _gaugeStep\\(p\\) \\{\\s*if ' + T823G).test(src)
+    && new RegExp('function _hpRegenStep\\(p, act\\) \\{\\s*if ' + T823G).test(src)
+    && new RegExp('function _gaugeNetStep\\(p\\) \\{\\s*if ' + T823G).test(src)
+    && new RegExp('function _fishPollOne\\(p, now\\) \\{[^\\n]*\\n[^\\n]*\\n\\s*if ' + T823G).test(src),
+    "① ★[T823] 손잡이 한 자리(`=== '1'`) · 떠난 몸 껍데기를 입력 · 게이지 · 회복 · 게이지 전송 · 낚시 걸음이 거른다(이미 있는 칸 `handingOff`)");
 
   if (!await startZones()) { console.log('  ✗ 2존 기동 실패'); process.exit(1); }
   const R = await roundTrip('A');
@@ -341,6 +359,33 @@ async function roundTrip(tag) {
   const cEq = !!C.crossed && recsC.length > 0 && !recsC.some((l) => l.k !== undefined) && durableKey(C.after, true) === durableKey(C.before, true);
   ok(cEq, "★[T778 끔 탐침 '0'] 날 로트 세계 — 도착한 몸이 로트 **통째(`e·t` 까지)** 비트 동일 · 레코드에 `k` 없음(종전 단언 그대로)",
     cEq ? `${recsC.length}개` : `\n      넘음 ${!!C.crossed} · 로트 ${recsC.length} · k ${recsC.filter((l) => l.k !== undefined).length}\n      출발 ${durableKey(C.before, true)}\n      도착 ${durableKey(C.after, true)}`);
+  killAll(); await sleep(4000);
+
+  // ★★[T823] 떠난 몸 껍데기를 얼린다 — 켬 판(D · 두 존 `T823_FREEZE_SHELL=1`) · 끔 탐침(E · 같은 탐침 · 손잡이 없음)
+  //   D: 넘긴 뒤 껍데기를 두 번 읽은 사이(600ms · 사람 문 하나) **비트 같다** · 도착 존이 받은 HP = 껍데기 HP(세운 순간 = 직렬화 = 껍데기) ·
+  //      도착 몸의 내구 부분 = 출발(내려놓기가 껍데기에 안 닿았다 — 복제 0)
+  //   E: 같은 탐침이 껍데기를 바꾼다(회복이 오르고 · 생선이 땅으로 — 끔은 종전 그대로) — D 의 "같다"가 자명하지 않다는 증인
+  const fishN = (b) => ((((b || {}).kgLedger || {}).fish) || []).length;
+  if (!await startZones(null, { T823_FREEZE_SHELL: '1' })) { console.log('  ✗ T823 켬 기동 실패'); process.exit(1); }
+  const D = await roundTrip('D', { probe: true });
+  ok(D.crossed && !!D.probe && !!D.probe.s0 && !!D.probe.s1, '★[상황 · T823 켬] 넘었고 껍데기를 두 번 읽었다(ACK 전)', D.probe ? `생선 ${fishN(D.probe.s0)} · HP ${((D.probe.s0 || {}).vital || {}).hp}` : '');
+  if (D.crossed && D.probe && D.probe.s0 && D.probe.s1) {
+    const same = JSON.stringify(D.probe.s0) === JSON.stringify(D.probe.s1);
+    ok(same, '★★[T823 켬] 떠난 몸 껍데기가 **언다** — 넘긴 뒤 600ms · 사람 문(내려놓기) 하나에도 몸이 비트 같다(HP · 게이지 · 생선 장부 · 로트)',
+      same ? `HP ${D.probe.s0.vital.hp} · 생선 ${fishN(D.probe.s0)}` : `\n      앞 ${JSON.stringify({ hp: D.probe.s0.vital.hp, body: D.probe.s0.body, fish: fishN(D.probe.s0) })}\n      뒤 ${JSON.stringify({ hp: D.probe.s1.vital.hp, body: D.probe.s1.body, fish: fishN(D.probe.s1) })}`);
+    ok(D.hpW === D.probe.s0.vital.hp, '★[T823 켬] 도착 존이 받은 HP = 껍데기 HP(세운 순간 = 직렬화 = 껍데기 — 그 사이 안 변했다)', `받은 ${D.hpW} · 껍데기 ${D.probe.s0.vital.hp}`);
+    const dEq = durableKey(D.after) === durableKey(D.before) && fishN(D.after) === fishN(D.before);
+    ok(dEq, '★[T823 켬] 도착 몸의 내구 부분 = 출발(생선 그대로 — 껍데기 내려놓기가 없었으니 복제 0)', dEq ? `생선 ${fishN(D.after)}` : `\n      출발 ${durableKey(D.before)}\n      도착 ${durableKey(D.after)}`);
+  }
+  killAll(); await sleep(4000);
+  if (!await startZones()) { console.log('  ✗ T823 끔 탐침 기동 실패'); process.exit(1); }
+  const E = await roundTrip('E', { probe: true });
+  ok(E.crossed && !!E.probe && !!E.probe.s0 && !!E.probe.s1, '[상황 · T823 끔 탐침] 넘었고 껍데기를 두 번 읽었다', E.probe ? `생선 ${fishN(E.probe.s0)}` : '');
+  if (E.crossed && E.probe && E.probe.s0 && E.probe.s1) {
+    const hp0 = E.probe.s0.vital.hp, hp1 = E.probe.s1.vital.hp, f0 = fishN(E.probe.s0), f1 = fishN(E.probe.s1);
+    ok(hp1 > hp0 && f1 === f0 - 1, '★[T823 끔 탐침] 같은 탐침이 껍데기를 바꾼다 — 넘긴 뒤에도 아물고(HP ↑) · 내려놓기가 껍데기에 닿는다(생선 −1 · 도착 몸엔 그대로 — 종전 그대로의 구멍)',
+      `HP ${hp0} → ${hp1} · 생선 ${f0} → ${f1} · 도착 ${fishN(E.after)}`);
+  }
   killAll();
 
   console.log(`\n=== ${pass} 통과 / ${fail} 실패 ===\n`);
