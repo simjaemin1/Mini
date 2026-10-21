@@ -289,23 +289,23 @@ const child821 = (knob) => {
 console.log('\n[ⓕ] T832 — 켬 판 결정론: 귀환 몸도 그날 몫(아이 프로세스 켬/끔)');
 {
   const tk = fnBody(CV, 'tickWarBodies'), fl = fnBody(CV, '_t681Flush');
-  ok(/if \(body\.phase === 'return'\) \{ if \(T790_NO_SNAP && T681_ON && body\._t681 && !_t681Take\(body\)\) continue; _warPaceReturn\(body, now, dtMs\); continue; \}/.test(tk)
-    && /if \(T790_NO_SNAP && state\.warBodies\) for \(const body of state\.warBodies\.values\(\)\) \{/.test(fl) && fl.indexOf('_warPaceReturn(body, now, dtMs);') > fl.indexOf('T790_NO_SNAP && state.warBodies')
+  ok(/if \(body\.phase === 'return'\) \{ if \(_RET_QUOTA && T681_ON && body\._t681 && !_t681Take\(body\)\) continue; _warPaceReturn\(body, now, dtMs\); continue; \}/.test(tk)
+    && /if \(_RET_QUOTA && state\.warBodies\) for \(const body of state\.warBodies\.values\(\)\) \{/.test(fl) && fl.indexOf('_warPaceReturn(body, now, dtMs);') > fl.indexOf('_RET_QUOTA && state.warBodies')
     && /body\._t681q\.left--;\s*_warPaceReturn\(body, now, dtMs\);/.test(fl),
-    'ⓕ 정적 — 켬이면 귀환 몸도 틱에서 그날 몫(`_t681Take`)만큼만 걷고 · 남은 몫은 하루 마감 첫 자리(`_t681Flush`)가 채운다 · 끔 = 두 자리 다 종전 글자(틱마다 · 마감 고리 무동작)');
-  const blk = fl.slice(fl.indexOf('T790_NO_SNAP && state.warBodies'));
+    'ⓕ 정적 — 켬이면 귀환 몸도 틱에서 그날 몫(`_t681Take`)만큼만 걷고 · 남은 몫은 하루 마감 첫 자리(`_t681Flush`)가 채운다 · 두 자리 술어 = `_RET_QUOTA`(T844 — 켬 · 끔 + 손잡이) · 끔 = 두 자리 다 종전 글자(틱마다 · 마감 고리 무동작)');
+  const blk = fl.slice(fl.indexOf('_RET_QUOTA && state.warBodies'));
   ok(!/[^\w.'D](?:[2-9]|\d{2,})(?:\.\d+)?(?![\w'])/.test(blk) && !/Math\.random/.test(blk), 'ⓕ 정적 — 새 수 0(몫 = 종전 `_t681Quota` · 시간 예산은 종전 마감 예산 그대로 — 끊겨도 몫이 남아 다음 조각에 잇는다)');
 }
-const child832 = (knob) => {
-  const env = Object.assign({}, process.env); if (knob) env.T790_NO_SNAP = '1'; else delete env.T790_NO_SNAP;
+const child832 = (knob, t844) => {   // knob = T790_NO_SNAP · t844 = T844_RET_QUOTA(끔 판 귀환 몫)
+  const env = Object.assign({}, process.env); if (knob) env.T790_NO_SNAP = '1'; else delete env.T790_NO_SNAP; if (t844) env.T844_RET_QUOTA = '1'; else delete env.T844_RET_QUOTA;
   const js = `const V=require(${JSON.stringify(path.join(ROOT, 'server', 'villages.js'))}),WLM=require(${JSON.stringify(path.join(ROOT, 'server', 'war-live.js'))});`
     + `const players=new Map(),live=WLM.createWarLive({cellPx:32,pxPerM:32,tickHz:30});let calls=0;const sf=live._muStepFollow;live._muStepFollow=function(){calls++;return sf.apply(this,arguments);};`
     + `const H=V.__p3Bind({warLive:live,world:{day:12},dayMs:10000,deps:{players,moveSpeed:64,npcs:new Set(),broadcast(){}},_warStat:{standoff:0},war:{WARS:[]}});`
-    + `const run=(nTick,flush,cut)=>{players.clear();const p={pid:'s1',x:1000*32,y:1000*32,_muType:'champion'};players.set('s1',p);const atk={name:'A',ccx:900,ccy:1000,dbId:1},def={name:'B',ccx:1100,ccy:1000,dbId:2};`
-    + `const body={w:{id:6,atk,def,marchDays:1,phase:'return'},pts:[{x:900*32,y:1000*32},{x:1100*32,y:1000*32}],prog:0};H.state.warBodies=new Map([[6,body]]);H._warSetupReturn(body,['s1'],false);calls=0;`
+    + `const run=(nTick,flush,cut,two)=>{players.clear();const p={pid:'s1',x:1000*32,y:1000*32,_muType:'champion'};players.set('s1',p);const p2={pid:'s2',x:700*32,y:1000*32,_muType:'spear'};if(two)players.set('s2',p2);const atk={name:'A',ccx:900,ccy:1000,dbId:1},def={name:'B',ccx:1100,ccy:1000,dbId:2};`
+    + `const body={w:{id:6,atk,def,marchDays:1,phase:'return'},pts:[{x:900*32,y:1000*32},{x:1100*32,y:1000*32}],prog:0};H.state.warBodies=new Map([[6,body]]);H._warSetupReturn(body,two?['s1','s2']:['s1'],false);calls=0;`
     + `for(let i=0;i<nTick;i++)H.tickWarBodies(1000+i*33);let fr=0;if(flush){const dn=Date.now;let t=dn();if(cut)Date.now=()=>(t+=1000);try{while(H._t681Flush()==='retry'&&fr<1000)fr++;}finally{Date.now=dn;}}`
-    + `return{x:p.x/32,y:p.y/32,calls,fr,left:body._t681q?body._t681q.left:null,walk:body.retGroup&&body.retGroup._t790Walk!=null?body.retGroup._t790Walk:null};};`
-    + `const out={q:Math.round(10000*30/1000),a:run(10,true),b:run(200,true),c:run(0,true),e:run(400,true),r:run(10,true,true),d10:run(10,false),d200:run(200,false)};process.stdout.write(JSON.stringify(out));`;
+    + `return{x:p.x/32,y:p.y/32,x2:p2.x/32,y2:p2.y/32,calls,fr,left:body._t681q?body._t681q.left:null,walk:body.retGroup&&body.retGroup._t790Walk!=null?body.retGroup._t790Walk:null};};`
+    + `const out={q:Math.round(10000*30/1000),a:run(10,true),b:run(200,true),c:run(0,true),e:run(400,true),r:run(10,true,true),d10:run(10,false),d200:run(200,false),t10:run(10,true,false,true),t200:run(200,true,false,true),t0:run(0,true,false,true),u10:run(10,false,false,true),u200:run(200,false,false,true)};process.stdout.write(JSON.stringify(out));`;
   const o = execFileSync(process.execPath, ['-e', js], { cwd: ROOT, env, stdio: ['ignore', 'pipe', 'ignore'] }).toString();
   return JSON.parse(o.slice(o.indexOf('{')));
 };
@@ -321,6 +321,30 @@ const child832 = (knob) => {
     'ⓕ [자명 통과 금지] 마감 채우기를 빼면(틱만) 틱 수가 몸 자리를 가른다 — 종전(틱마다 걷기)이 갈린 그 꼴', `틱만 10 → x ${on.d10.x.toFixed(4)} · 200 → x ${on.d200.x.toFixed(4)}`);
   ok(off.a.calls === 10 && off.b.calls === 200 && off.c.calls === 0 && off.a.walk === null && off.a.x === 1100 && off.b.x === 1100,
     'ⓕ 끔 — 종전 글자: 귀환은 틱마다(마감 고리 무동작 · 몫 안 씀) · 칸 없음 = 지휘 몸이 길 머리에 놓인다', `틱 10 · 200 · 0 → 걸음 ${off.a.calls} · ${off.b.calls} · ${off.c.calls}`);
+}
+
+// ── ⓖ T844 — 끔 판 귀환도 그날 몫(손잡이 `T844_RET_QUOTA` · '1' 만 켬 · T832 회부 3) ─────────────
+//   끔 판은 귀환이 틱마다 걸어, 결판이 마감 안에서 나면 그날 귀환이 0걸음 → 몸이 결판 자리에서 풀렸다(T832 §3-2 · 부하 다른 끔 두 판 D40).
+//   손잡이를 켜면 끔 판 귀환도 T832 와 같은 두 자리(같은 함수 · 술어 `_RET_QUOTA` 하나)로 그날 몫을 걷는다. 끔 판 걸음 꼴(지휘 몸 놓기 · 병사 5칸 붙기)은 그대로 — 바뀌는 것은 걸음 수뿐.
+//   무대: ⓕ 와 같은 귀환 · 몸 둘 판은 병사 하나(s2)를 결판 자리 서쪽 700,1000 에 둔다(슬롯까지 ~400칸 — 끔 걸음 5칸이면 ~80걸음).
+console.log('\n[ⓖ] T844 — 끔 판 귀환도 그날 몫(아이 프로세스 · 손잡이 T844_RET_QUOTA 켬/끔)');
+{
+  const n = (CV.split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n').match(/\b_RET_QUOTA\b/g) || []).length;   // 주석 밖 글자만
+  ok(/const T844_RET_QUOTA = process\.env\.T844_RET_QUOTA === '1';/.test(CV) && /const _RET_QUOTA = T790_NO_SNAP \|\| T844_RET_QUOTA;/.test(CV) && n === 3,
+    'ⓖ 정적 — 손잡이 하나(\'1\' 만 켬) · 술어 하나 `_RET_QUOTA = T790_NO_SNAP || T844_RET_QUOTA` 를 두 자리(틱 귀환 줄 · 마감 귀환 고리)가 같이 쓴다(사본 0)', `_RET_QUOTA ${n}번(정의 1 · 자리 2)`);
+}
+{
+  const k = child832(false, true), off = child832(false), Q = k.q;
+  ok(k.a.calls === Q && k.b.calls === Q && k.c.calls === Q && k.e.calls === Q && k.a.left === 0 && k.a.walk === null,
+    'ⓖ 끔 + 손잡이 — 그날 귀환 걸음 = 하루 몫: 틱 10 · 200 · 0 · 400 번 뒤 마감 첫 자리까지 늘 같다 · 몸 걸음 칸 없음(끔 걸음 꼴 그대로)', `몫 ${Q} · 걸음 ${k.a.calls} · ${k.b.calls} · ${k.c.calls} · ${k.e.calls}`);
+  ok(k.c.x === 1100 && k.a.x === 1100 && off.c.calls === 0 && off.c.x === 1000,
+    'ⓖ ★끔 + 손잡이 — 결판이 마감 안에서 나 그날 틱이 0 이어도 귀환이 그날 몫을 걷는다(지휘 몸 = 길 머리 1100) · [자명 통과 금지] 손잡이 끔(종전)은 0걸음 · 결판 자리 1000 에서 풀린다(T832 회부 3 의 그 꼴)', `틱 0 → 켬 x ${k.c.x} · 끔 x ${off.c.x}(걸음 ${off.c.calls})`);
+  ok(k.t10.calls === Q && k.t200.calls === Q && k.t0.calls === Q && k.t10.x2 === k.t200.x2 && k.t200.x2 === k.t0.x2 && k.t10.y2 === k.t200.y2 && k.t200.y2 === k.t0.y2 && k.t10.x2 > 1000,
+    'ⓖ ★끔 + 손잡이 — 결정론(몸 둘): 틱 10 · 200 · 0 번 뒤 그날 끝 병사 자리가 비트까지 같다(슬롯에 붙었다)', `병사 x ${k.t10.x2.toFixed(4)} · ${k.t200.x2.toFixed(4)} · ${k.t0.x2.toFixed(4)}`);
+  ok(off.u10.x2 !== off.u200.x2 && off.t0.calls === 0 && off.t0.x2 === 700 && off.u10.calls === 10 && off.u200.calls === 200,
+    'ⓖ [자명 통과 금지] 손잡이 끔(종전 · 틱마다)이면 틱 수가 병사 자리를 가른다 · 틱 0 판은 병사가 결판 자리(700)에 남는다', `틱 10 → x ${off.u10.x2.toFixed(4)} · 200 → x ${off.u200.x2.toFixed(4)} · 0 → x ${off.t0.x2}`);
+  ok(k.r.fr === Q - 10 && k.r.calls === Q && k.r.left === 0 && k.r.x === k.a.x,
+    'ⓖ 끔 + 손잡이 — 마감 시간 예산이 걸음마다 끊어도 그날 걸음 수가 같다(남은 몫은 몸에 남는다)', `틱 10 · 끊김 ${k.r.fr} · 걸음 ${k.r.calls}`);
 }
 
 console.log(`\n=== 결과: ${pass} PASS / ${fail} FAIL ===`);
