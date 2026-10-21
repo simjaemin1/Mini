@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다) · ★[T830 2026-10-21] 칠하기 끔(T799) 뒤 다시 넣음 — 상한은 `TIMEOUT_OF` 3,600초 그대로
 // === 11차 채광 재설계 — 랩 헤드리스 검증 하네스 ===
 //
 // 검증 항목(전부 실측 — 주장하려면 여기서 돌아야 한다):
@@ -11,7 +12,8 @@
 //   ⑥ 광부 정원 되먹임: land.ore 하락 → jobCapacity.miner 하락
 //   ⑦ pageerror·console error 0
 //   ⚠[T684 ← T660 회부 ②] ③④ 는 **창 길이에 기댄다** — 이 씨(7)·시계에선 첫 광부가 41~50일에 선다(T660: 40일 0 → 50일 1) · `RUN_DAYS` 를 그보다 짧게 주면(종전 `RUN_DAYS=8` 판들) 광부 0 이라 ③④ 가 빨갛다 — 제품이 아니라 창이다.
-//   ⚠[T684 ← T660 회부 ③] ③ "2인 1조" 는 기본 판(60일 · dt 16.667)에서 광부 1명 · 셀 1개 · 0/0 이라 **짝 규칙을 안 잰다**(`③ⓜ` 미끼가 자가 살아 있음만 보인다 · 종전 dt 33.334 계측 판은 광부 2 · 1/1 로 쟀다).
+//   ⚠[T684 ← T660 회부 ③ · ★T830 2026-10-21 지금 판 실측으로 고침] ③ "2인 1조" 는 기본 판(60일 · dt 16.667 · T707 끔 세계)에서 **광부 2명 · 점유 셀 1개 · 셀당 분포 {"2":1} · 같은 조 1/1** — 짝 규칙을 한 조로 잰다(T799 판 넷 실측 같음 · 40일 광부 0 → 50일 2).
+//     (종전 이 줄: "광부 1명 · 셀 1개 · 0/0 이라 짝 규칙을 안 잰다" — T684 때 판. `③ⓜ` 미끼는 그대로 자가 살아 있음을 보인다 · 미끼 판 0/1)
 //
 // 결정론: Math.random 시드 고정 + performance.now 가상시계 — ★[T660] 시계 정본 `fixture-lab-clock`(T649 꼴)
 //   · rAF 는 줄로 받고 프레임은 하네스가 민다 · ①② 를 재는 동안에도 프레임은 안 돈다(토글 전 0 프레임 = 시계 원점 0)
@@ -38,35 +40,7 @@ const RUN_DAYS = parseInt(process.env.RUN_DAYS || '60', 10);
 
 const INIT = LC.init;
 
-// ★[T799 2026-10-19] 헤드리스 렌더 끄기 — 한 판 3,417~3,651초(러너 상한 3,600초의 95%)를 상한 안으로.
-//   실측(CDP 프로파일 · 하루 726 프레임 ≈ 35~39초): `lifeLoop → draw()` 가 92.6% · 그중 캔버스 **그리기 호출**(fillRect 57.1% 외)이 과반.
-//   ★끄는 것 = 캔버스 2D 의 **그리기 호출만**(픽셀을 칠하는 네이티브 메서드 → 빈 함수). draw() 의 JS 는 그대로 돈다 —
-//     draw 가 상태를 건드리는 곳(`roadLevel` 렌더 조회 = 게으른 감쇠·Set 프룬 · `life/V` 초점 복원 · 마을 렌더 순회)이 있어서
-//     draw 를 통째로 빼면 궤적이 갈릴 수 있다. 랩은 캔버스를 **읽지 않는다**(getImageData·toDataURL·isPointInPath·measureText 0곳)
-//     → 픽셀을 안 칠해도 JS 가 보는 값은 같다. 증명은 아래 `FP`(날마다 프레임 지문) — `LAB_RENDER=1`(칠함) 판과 바이트 같음.
-//   랩 파일 무접촉 · 시계 정본(`fixture-lab-clock`) 무접촉 · 새 수 0. `LAB_RENDER=1` = 종전 판(칠함) 그대로.
-const RENDER = process.env.LAB_RENDER === '1';
-const NO_PAINT = `
-(() => {
-  const P = CanvasRenderingContext2D.prototype, nop = function () {};
-  for (const k of ['fillRect', 'strokeRect', 'clearRect', 'fill', 'stroke', 'fillText', 'strokeText', 'drawImage', 'putImageData', 'clip'])
-    if (typeof P[k] === 'function') P[k] = nop;
-})();
-`;
-// ★[T799] 프레임 지문 — 랩 날마다 첫 프레임에서 세계를 글로 펴 FNV-1a 32비트. 숫자는 String() 전 자리(부동소수 끝자리까지).
-//   마을 전부: 날 · 인구 · 주민(px·py·job·state·_mp·work) · 광맥 재고(셀별) · econ.land(ore·stone·size)·counts + 가상시계 · 프레임 번호.
-const FP = () => {
-  let h = 0x811c9dc5;
-  const add = (x) => { const t = String(x); for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } h ^= 124; h = Math.imul(h, 0x01000193) >>> 0; };
-  add(window.__frame()); add(window.__vt());
-  for (const v of VILS) {
-    add(v.day); add(v.pop); add(v.agents.length);
-    for (const a of v.agents) { add(a.px); add(a.py); add(a.job); add(a.state); add(a._mp); add(a.work ? a.work.cx + ',' + a.work.cy : '-'); }
-    if (v.oreRich) for (const [k, r] of v.oreRich) { add(k); add(r); }
-    if (v.econ) { add(v.econ.land.ore); add(v.econ.land.stone); add(v.econ.land.size); add(JSON.stringify(v.econ.counts || {})); }
-  }
-  return ('00000000' + h.toString(16)).slice(-8);
-};
+// ★[T799 → T830] 칠하기 끔 · 프레임 지문 = 시계 정본 `fixture-lab-clock`(`LC.noPaint` · `LC.fp` · `LC.fold` — 까닭·증명은 거기 머리말 · 사본 금지).
 
 const SNAP = () => {
   const v = VILS.find((q) => q.role === 'mining') || VILS[0];
@@ -98,7 +72,7 @@ const SNAP = () => {
   page.on('pageerror', (e) => errs.push(String((e && e.message) || e)));
   page.on('console', (m) => { if (m.type() === 'error') cerrs.push(m.text()); });
   await page.addInitScript(INIT('0x9e3779b9'));
-  if (!RENDER) await page.addInitScript(NO_PAINT);   // ★[T799] 칠하기만 끈다(위 머리말)
+  await LC.noPaint(page);   // ★[T799 → T830] 칠하기만 끈다(`LAB_RENDER=1` 이면 칠함)
   await page.goto(LAB);
   await page.waitForFunction(() => typeof window.lifeToggle === 'function' && typeof VILS !== 'undefined', null, { timeout: 60000 });
 
@@ -174,7 +148,7 @@ const SNAP = () => {
   let frame = 0;
   for (;;) {
     const s = await take();
-    if (s.day !== series[series.length - 1].day || fps.length === 0) fps.push(s.day + ':' + await page.evaluate(FP));
+    if (s.day !== series[series.length - 1].day || fps.length === 0) fps.push(s.day + ':' + await LC.fp(page));
     if (s.day !== series[series.length - 1].day) { series.push(s); if ((s.day - startDay) % 10 === 0) console.log('    …day ' + (s.day - startDay) + '/' + RUN_DAYS + ' 재고 ' + s.oreSum + ' 광부 ' + s.miners + ' land.ore ' + s.landOre + ' (프레임 ' + frame + ')'); }
     if (s.day >= startDay + RUN_DAYS) break;
     frame = await LC.untilDay(page, s.day + 1);   // ★[T660] 다음 랩 날의 첫 프레임까지 민다(종전: 300ms 잠 · 1,500초 벽시계)
@@ -182,8 +156,7 @@ const SNAP = () => {
   const sN = series[series.length - 1];
   {
     // ★[T799] 궤적 지문 — 날별 지문 전부를 다시 한 번 접은 값 · 끝 날 지문 · 걸린 벽시계. 칠함(LAB_RENDER=1) 판과 이 줄이 바이트 같아야 한다.
-    let h = 0x811c9dc5; for (const c of fps.join('/')) { h ^= c.charCodeAt(0); h = Math.imul(h, 0x01000193) >>> 0; }
-    console.log('    지문 [' + (RENDER ? '칠함' : '칠하기 끔') + '] 날 ' + fps.length + '개 · 접은 값 ' + ('00000000' + h.toString(16)).slice(-8) + ' · 끝 ' + fps[fps.length - 1] + ' · 프레임 ' + frame + ' · 벽시계 ' + Math.round((Date.now() - tWall) / 1000) + '초');
+    console.log('    지문 [' + LC.paintTag() + '] 날 ' + fps.length + '개 · 접은 값 ' + LC.fold(fps) + ' · 끝 ' + fps[fps.length - 1] + ' · 프레임 ' + frame + ' · 벽시계 ' + Math.round((Date.now() - tWall) / 1000) + '초');
     if (process.env.LAB_FP_OUT) require('fs').writeFileSync(process.env.LAB_FP_OUT, fps.join('\n') + '\n');
   }
 
