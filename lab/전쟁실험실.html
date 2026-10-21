@@ -17342,17 +17342,17 @@ function stepBattle(ctx,dt){
     sep(ctx,u,dt);
   }
   // ── 화살 ──
-  for(let i=ctx.arrows.length-1;i>=0;i--){const ar=ctx.arrows[i]; ar.px=ar.x; ar.py=ar.y; const mx=ar.vx*dt,my=ar.vy*dt; ar.x+=mx; ar.y+=my; ar.trav+=Math.hypot(mx,my); let done=false;
+  for(let i=ctx.arrows.length-1;i>=0;i--){const ar=ctx.arrows[i]; ar.px=ar.x; ar.py=ar.y; const mx=ar.vx*dt,my=ar.vy*dt; ar.x+=mx; ar.y+=my; ar.trav+=Math.hypot(mx,my); let done=false, hitU=null;
     if(ctx.world&&treeBlocks(ctx,ar.px,ar.py,ar.x,ar.y))done=true;
     if(!done){const dx=ar.x-ar.px,dy=ar.y-ar.py,L=Math.hypot(dx,dy)||1,ux=dx/L,uy=dy/L; const bx=Math.floor(ar.x/BK),by=Math.floor(ar.y/BK); let hu=null,hd=1e9;
       for(let ix=bx-1;ix<=bx+1;ix++)for(let iy=by-1;iy<=by+1;iy++){const c=ctx._grid.get(((ix+256)*8192)+(iy+256));if(!c)continue;
         for(const o of c){if(o.hp<=0||o===ar.sh)continue; const ox=o.x-ar.px,oy=o.y-ar.py,t=ox*ux+oy*uy; if(t<-0.25||t>L+0.35)continue; const perp=Math.abs(ox*uy-oy*ux); const rr=UNITS[o.type].r+0.22; if(perp<rr&&t<hd&&(o.side!==ar.side||ar.trav>6.0)){hd=t;hu=o;}}}
-      if(hu){ if(hu.side!==ar.side){ hurt(ctx,hu,ar.dmg,hu.x,hu.y,'arrow',0);
+      if(hu){ if(hu.side!==ar.side){ hurt(ctx,hu,ar.dmg,hu.x,hu.y,'arrow',0); hitU=hu;
           const hbx=Math.floor(hu.x/BK),hby=Math.floor(hu.y/BK);
           for(let ix=hbx-1;ix<=hbx+1;ix++)for(let iy=hby-1;iy<=hby+1;iy++){const c=ctx._grid.get(((ix+256)*8192)+(iy+256));if(!c)continue;for(const en of c){if(en.side!==ar.side&&en.hp>0){const ex=en.x-hu.x,ey=en.y-hu.y;if(ex*ex+ey*ey<SUP_R*SUP_R)en.mrl=Math.max(0,(en.mrl||1)-SUP_ARROW);}}}
         } done=true; }
     }
-    if(done||ar.trav>=ar.range)ctx.arrows.splice(i,1);
+    if(done||ar.trav>=ar.range){ if(ctx.onArrow)ctx.onArrow(hitU?'hit':'end',ar,hitU); ctx.arrows.splice(i,1); }   // ★[T458] 화살 사건 — 보기만 하는 훅(상태 무변 · 없으면 종전)
   }
   // ── 종료 판정 ──
   const la=ctx.units.filter(u=>u.side==='A'&&u.hp>0).length, lb=ctx.units.filter(u=>u.side==='B'&&u.hp>0).length;
@@ -17371,7 +17371,8 @@ function shoot(ctx,u,e){const D=UNITS[u.type]; const dist=Math.hypot(e.x-u.x,e.y
   const scatter=(0.015+dist*0.0022)*(D.spread||1);   // 투석병 spread>1=명중 낮음(궁수는 spread 없음→동일)
   const ang=Math.atan2(ly-u.y,lx-u.x)+(ctx.rng()-0.5)*2*scatter;
   const aDmg=u.atk!=null?u.atk:D.atk;   // ★궁수 품질: u.atk 설정 시 화살 피해 반영, 미설정이면 D.atk(전투실험실 동일)
-  ctx.arrows.push({x:u.x,y:u.y,px:u.x,py:u.y,vx:Math.cos(ang)*D.arrowV,vy:Math.sin(ang)*D.arrowV,dmg:aDmg,side:u.side,range:D.ranged*1.5,trav:0,sh:u});}
+  ctx.arrows.push({x:u.x,y:u.y,px:u.x,py:u.y,vx:Math.cos(ang)*D.arrowV,vy:Math.sin(ang)*D.arrowV,dmg:aDmg,side:u.side,range:D.ranged*1.5,trav:0,sh:u});
+  if(ctx.onArrow)ctx.onArrow('fire',ctx.arrows[ctx.arrows.length-1],u);}   // ★[T458] 쏜 순간(보기만 · 상태 무변)
 function sep(ctx,u,dt){let sx=0,sy=0,n=0,hxx=0,hyy=0,hn=0; const bx=Math.floor(u.x/BK),by=Math.floor(u.y/BK);
   for(let ix=bx-1;ix<=bx+1;ix++)for(let iy=by-1;iy<=by+1;iy++){const c=ctx._grid.get(((ix+256)*8192)+(iy+256)); if(!c)continue;
     for(const o of c){if(o===u||o.hp<=0)continue; const dx=u.x-o.x,dy=u.y-o.y,d2=dx*dx+dy*dy; if(d2<1.0*1.0&&d2>1e-4){const d=Math.sqrt(d2);sx+=dx/d;sy+=dy/d;n++;
@@ -17491,7 +17492,6 @@ const BattleCore={
   SUP_ARROW, SUP_DEATH, SUP_R, FORM_SPD, FORM_KO, DEPLOY_W, DEPLOY_H,
   // ── 다중 인스턴스 API ──
   createContext, createBattle,
-  get _defaultCtx(){return _defaultCtx;},
   // raw(ctx 인자) 함수 — 인스턴스 직접 구동/디버깅용
   _buildArmies:buildArmies, _stepBattle:stepBattle, _trackVel:trackVel, _updateMorale:updateMorale,
   _hurt:hurt, _shoot:shoot, _buildGrid:buildGrid, _nearestEnemy:nearestEnemy, _sep:sep,
@@ -17516,15 +17516,12 @@ const BattleCore={
   sep(u,dt){return sep(_defaultCtx,u,dt);},
   // 핵심 인터페이스
   buildArmies(spec){return buildArmies(_defaultCtx,spec);},
-  // 상태 컨테이너 접근 (_defaultCtx 위임)
-  get units(){return _defaultCtx.units;}, get arrows(){return _defaultCtx.arrows;}, get corpses(){return _defaultCtx.corpses;},
-  get sides(){return _defaultCtx.sides;},
-  get _grid(){return _defaultCtx._grid;}, get _cen(){return _defaultCtx._cen;}, get tick(){return _defaultCtx.tick;},
-  get result(){return _defaultCtx.result;}, get commander(){return _defaultCtx.commander;}, get cmdHeading(){return _defaultCtx.cmdHeading;},
-  get keys(){return _defaultCtx.keys;}, get playerMode(){return _defaultCtx.playerMode;}, get terrain(){return _defaultCtx.terrain;},
+  // 상태 컨테이너 접근 (_defaultCtx 위임) — ★[T818 ②] 접근자 칸은 리터럴 밖(바로 아래 끝)에서 단다
   // 지휘 입력(전쟁실험실이 씀) — _defaultCtx에
   setKeys(k){_defaultCtx.keys=k||{};}, setPlayerMode(v){_defaultCtx.playerMode=!!v;}, setCmdHeading(h){_defaultCtx.cmdHeading=h;},
 };
+// ★[T818 ②] 접근자 14개를 리터럴 밖으로(T806 ② 꼴 — 리터럴 안 접근자 = 사전 모드 · 같은 이름 · 같은 몸통 · 열거 · 고칠 수 있음 · 값 무변 · 키 차례만 이 칸들이 끝으로)
+for(const [k,g] of [['_defaultCtx',function(){return _defaultCtx;}],['units',function(){return _defaultCtx.units;}],['arrows',function(){return _defaultCtx.arrows;}],['corpses',function(){return _defaultCtx.corpses;}],['sides',function(){return _defaultCtx.sides;}],['_grid',function(){return _defaultCtx._grid;}],['_cen',function(){return _defaultCtx._cen;}],['tick',function(){return _defaultCtx.tick;}],['result',function(){return _defaultCtx.result;}],['commander',function(){return _defaultCtx.commander;}],['cmdHeading',function(){return _defaultCtx.cmdHeading;}],['keys',function(){return _defaultCtx.keys;}],['playerMode',function(){return _defaultCtx.playerMode;}],['terrain',function(){return _defaultCtx.terrain;}]])Object.defineProperty(BattleCore,k,{get:g,enumerable:true,configurable:true});
 root.BattleCore=BattleCore;
 if(typeof module!=='undefined'&&module.exports)module.exports=BattleCore;
 

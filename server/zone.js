@@ -3133,7 +3133,7 @@ const NPC_CLAIM_SIZE = 192;
 //      직렬화는 `serializeBody` 가 이름으로 골라 읽는다).
 //   ★이름 붙은 쓰기 줄이다(계산된 키 루프 금지 — V8 은 계산 키로 바깥 필드가 12 를 넘으면 몸을 사전 모드로 내린다).
 //   목록 = T671 ① 판의 실제 필드 합집합(리터럴 밖 60 · 빈도 차례). 목록 밖 필드는 종전대로 나중에 붙는다(드문 몸만 갈라진다).
-const T806_HOT_INOBJ = process.env.T806_HOT_INOBJ === '1';   // ★[T806 ③] 걸음 몸통 칸을 객체 안에(NPC 리터럴 · '1' 만 켬)
+const T806_HOT_INOBJ = process.env.T806_HOT_INOBJ !== '0';   // ★[T806 ③] 걸음 몸통 칸을 객체 안에(NPC 리터럴) · ★[T818 ①] 켬 기본(PM 10-20) · 끔 탐침 `=0`
 const T671_SHAPE = process.env.T671_SHAPE !== '0';   // ★PM 10-07 켬 기본(바이트 같음 · 되돌림 =0)
 function _t671Shape(p) {
   p.simJob = undefined; p._dOff = undefined; p._half = undefined; p._hd = undefined; p._huntOn = undefined; p._huntSpd = undefined; p._lifeAct = undefined;
@@ -3189,7 +3189,7 @@ function spawnNpc(opts = {}) {
   const npcId = `npc_${ZONE_ID}_${nextNpcSerial++}_${Math.random().toString(36).slice(2,6)}`;
   const name = (opts.name || NPC_NAMES[Math.floor(_dt()*NPC_NAMES.length)]) + '🤖';
   const color = opts.color || NPC_COLORS[Math.floor(_dt()*NPC_COLORS.length)];
-  // ★★[T806 ③ 2026-10-19 · 손잡이 `T806_HOT_INOBJ`('1' 만 켬 · 끔 = 아래 둘째 리터럴 = 종전 글자 그대로)] **막힘 서 있음 줄 — 몸 바깥 속성 칸.**
+  // ★★[T806 ③ 2026-10-19 · 손잡이 `T806_HOT_INOBJ`(★[T818] 켬 기본 · `=0` 끔 = 아래 둘째 리터럴 = 종전 글자 그대로)] **막힘 서 있음 줄 — 몸 바깥 속성 칸.**
   //   T791 ①: 선 몸의 가장 무거운 줄은 `detectStuck` 머리(`npc.path` …)였고 길 거울 뒤에도 남았다 — 리터럴 밖에서 붙은 칸(`path` · `pathIndex` · `_stuckPos` …)은
   //   객체 밖 속성 배열에 살아, 틱마다 그 배열을 처음 짚는 몫이 줄 하나 ≈0.13 µs 였다. 켬이면 그 칸들을 리터럴에 미리 둔다(값 `undefined` = 없을 때와 같은 읽기 ·
   //   몸 키를 차례로 도는 · `in` · `delete` · 펼침 자리 0 — 보고/T806 §3) — 값 · 판정 무변 · 키 차례만 다르다(넷째 줄 아래 · `_t671Shape` 가 세우는 칸은 같은 값 그대로 ·
