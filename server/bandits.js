@@ -749,6 +749,7 @@ function syncBodies() {
       } catch (_) { break; }
       if (!p) break;
       p.simJob = 'bandit';   // 클라 이모지·구분(마을 simJob 경로 재사용 — npcPids 밖이라 마을 로직 무접촉)
+      if (S.host.bodySh) p._sh = S.host.bodySh(`bandit_${g.id}_${p.pid}`);   // ★[T841] 몸 주사위 신원 = 판 씨 + (단 · 몸 번호) — T822 켬에서만(끔 = 호스트가 null · 이 줄 0)
       pids.push(p.pid);
     }
     if (pids.length) S.bodies.set(g.id, pids);
@@ -895,5 +896,6 @@ module.exports = { init, onGameTick, clientCamps, stats: () => S.stats, incoming
   t765: () => ({ on: T577_WALK, road: S.WALK.length, rows: (S.t765Rows || []).map((r) => Object.assign({}, r)) }),   // ★[T765] 길 위 장부 증인(관측 자 `t765-obs` · 하네스)
   // ★[T765] 하네스 문 — 운영 함수 그대로(사본 0): 호스트 · 저장소를 꽂고 해체 걷기 · 닿기 · 저장 · 복원을 부른다
   _t765Probe: { setHost: (h, db) => { const k = { host: S.host, db: S.db }; S.host = h; if (db !== undefined) S.db = db; return k; }, walk: (vil, day) => _t577Walk(vil, day), arrive: (day) => _t765Arrive(day),
-    ledger: () => S.WALK, reset: () => { S.WALK = []; S.t765Rows = []; }, save: (day) => save(day), restore: (row) => restore(row), get ON() { return T577_WALK; } },
+    ledger: () => S.WALK, reset: () => { S.WALK = []; S.t765Rows = []; }, save: (day) => save(day), restore: (row) => restore(row), get ON() { return T577_WALK; },
+    syncBodies: () => syncBodies(), bodies: () => S.bodies },   // ★[T841] 도적 몸 실체화 문 그대로(하네스 `test-body-seed-other` — 운영 함수 · 사본 0)
   bootSlice: () => (S._boot ? { running: true, pairs: S._boot.pairs, slices: S._boot.slices, i: S._boot.i } : (S.bootSlice || null)) };   // ★[T521] 손 규칙 하나(villages 소굴 어댑터가 같은 함수를 읽는다)
