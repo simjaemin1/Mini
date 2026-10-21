@@ -155,16 +155,24 @@ function zoneRun() {
     const _uo = H._unitsOfFor(c);
     //   시세표 · 견적 — 마을의 그 두 문(`villageTradeBoard` · `villageTradeQuote`)이 여는 그 눈(`_t789View` = `GL.viewBegin`)으로 정본 두 함수를 부른다
     //   (랩 프로브는 econ 모듈 칸을 안 세워 마을 문은 시세에서 던진다 — T732 §7 ⑥ · 마을 배선은 ⑤ 글자가 본다)
-    const uGive = Number(_uo('food', 2)) || 2;   // 곡식 2(상한에 안 걸리는 양 — 걸리면 실행이 낼 양을 줄여 다시 센다 · 견적과 실행이 같은 양을 재게)
+    //   ★[T817] 낼 곡식 = 견적이 **낱개 하나 이상을 받고 상한에 안 걸리는** 가장 작은 수(2 부터 · 든 40 까지) — 상황이다.
+    //     종전 "곡식 2" 는 그 세계의 값에 맞춰져 있었다(켬 기본 세계 · 고기 한 낱개 = 곡식 34 어치 — 2 로는 0개 · 견적 · 실행 둘 다 0).
+    //     단언(받은 것은 성한 것 · 견적 = 실행)은 그대로다.
+    let nGive = 2, uGive = Number(_uo('food', 2)) || 2, qv = null;
     GL.viewBegin();
-    const qv = Trade.quote(Lg, econV2, VIL, VID, 'food', RES, uGive, { want: 0, perItem: uGive / 2, takeKcal: H.Kcal });
+    for (let n = 2; n <= 40; n++) {
+      const u = Number(_uo('food', n)) || n;
+      const q = Trade.quote(Lg, econV2, VIL, VID, 'food', RES, u, { want: 0, perItem: u / n, takeKcal: H.Kcal });
+      nGive = n; uGive = u; qv = q;
+      if (q && q.ok && q.take >= 1 && !q.capped) break;
+    }
     const brd = Trade.board(Lg, econV2, VIL, VID, c.inventory, null, H.Kcal);
     GL.viewEnd();
     const row = brd && brd.rows && brd.rows.find((x) => x.res === RES);
     out.Cboard = row ? { stock: row.stock, sell: row.sell } : null;
-    out.Cquote = qv && { ok: qv.ok, err: qv.err, take: qv.take, stock: qv.stock, capped: qv.capped };
+    out.Cquote = qv && { ok: qv.ok, err: qv.err, take: qv.take, stock: qv.stock, capped: qv.capped, give: nGive };
     const ctx = H._t732DoorBegin(c, null);
-    const r = Trade.exchange({ ledger: Lg, econV2, vil: VIL, vid: VID, inventory: c.inventory, giveRes: 'food', takeRes: RES, giveQty: 2, want: 0, unitsOf: _uo, deposit: V.playerVillageDeposit, takeKcal: H.Kcal });
+    const r = Trade.exchange({ ledger: Lg, econV2, vil: VIL, vid: VID, inventory: c.inventory, giveRes: 'food', takeRes: RES, giveQty: nGive, want: 0, unitsOf: _uo, deposit: V.playerVillageDeposit, takeKcal: H.Kcal });
     H._t732DoorEnd(ctx, c, !!(r && r.ok), VIL, _uo);
     out.C = { r: r && { ok: r.ok, err: r.err, take: r.take }, f: fmin(c, RES), inv: +c.inventory[RES] || 0 };
 

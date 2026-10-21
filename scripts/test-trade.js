@@ -150,7 +150,7 @@ const itemOf = (res) => { const r = rowOf(res); return r ? (r.give[0] || r.item)
     ok(!ex.err, '★전제 — 그래도 거래 자체는 성립한다(거절이 아니라 절삭)', ex.err || '');
     ok(ex.capped === true && ex.give < 100000, '★★③ **거절이 아니라 절삭**이다 — 살 수 있는 만큼은 산다',
       `요구 ${ex.wanted} → 실제 ${ex.give}`);
-    if (process.env.T807_QUOTE_TRIM === '1') {   // ★[T807] 켬 — 상한 판에서도 견적(같은 곳간 · 같은 순간)이 실행과 같은 수를 말한다
+    if (process.env.T807_QUOTE_TRIM !== '0') {   // ★[T817] 켬 기본 · ★[T807] 켬 — 상한 판에서도 견적(같은 곳간 · 같은 순간)이 실행과 같은 수를 말한다
       ok(q.take === ex.take && q.giveUsed === ex.give, '★★③ [T807] 상한 판 — 견적의 받을 양 · 낼 낱개 = 실행', `견적 ${q.giveUsed} → ${q.take} · 실행 ${ex.give} → ${ex.take}`);
     }
     ok(ex.take <= before * (T.CFG.STOCK_FRAC + 1e-9), `★★③ 한 거래가 재고의 ${T.CFG.STOCK_FRAC} 를 못 넘는다`,
