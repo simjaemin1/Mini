@@ -9674,6 +9674,7 @@ const T347_FORAGE_ACT = process.env.T347_FORAGE_ACT === '1';
 //     ⓑ 몸이 캔 kg 를 econ 단위로 바꾸는 것은 부르는 쪽(`server/villages.js`)이다 — `weights.kgOf('ore')` 정본(5.00 · 옮겨 적지 않는다).
 //   켜기는 재민 — 이 카드는 값을 안 정한다.
 const T724_MINE_ACT = (typeof process !== 'undefined' && process.env && process.env.T724_MINE_ACT !== '0');   // ★[PM 10-14] 켬 기본(몸이 치는 판에서만 갈림 · 헤드리스 바이트 같음) · 되돌림 `=0`
+const T815_DRAFT_FAMINE = (typeof process !== 'undefined' && process.env && process.env.T815_DRAFT_FAMINE === '1');   // ★[T815] 기본 끔(켜는 값 `'1'` 하나뿐) — 켜면 기근 죽음은 **죽일 몸을 고른 뒤에** 센다(전부 징발 중이면 `break` 앞에서 안 센다). 끔 = 종전 바이트
 // ★★★[T400 2026-09-26] **집도 행위다 — 기본 끔.** 끄면 이 파일은 **넷째 판과 비트 동일**이다
 //   (아래 두 자리가 전부 이 상수 뒤에 있다: 주거 증축의 자재 단가 · 곳간 출구 `actFromGranary`).
 //   ① 자재의 정본은 **하나**다 — `server/hut-stages.js`(서버 움집 공정 · PM 권고 #61 · 재민 거부권).
@@ -12666,7 +12667,7 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
     }
   }
   while (v._dPAccum <= -1 && v.npcs.length > POP_MIN) {
-    v._deathsToday++; v._deadTot = (v._deadTot || 0) + 1;
+    if (!T815_DRAFT_FAMINE) { v._deathsToday++; v._deadTot = (v._deadTot || 0) + 1; }   // ★[T815] 끔 = 종전(몸을 고르기 **전에** 센다 — 전부 징발 중이면 죽은 몸 없이 셈만 는다)
     // ★[T295 ①] 원정 나간 사람은 마을 기근으로 죽지 않는다(그 사람의 죽음은 전쟁 정산이 소유한다 — 사본 0).
     let oldestIdx = -1;
     for (let i = 0; i < v.npcs.length; i++) {
@@ -12674,6 +12675,7 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
       if (oldestIdx < 0 || v.npcs[i].age > v.npcs[oldestIdx].age) oldestIdx = i;
     }
     if (oldestIdx < 0) break;   // 전부 징발 중(있을 수 없다 — 동원 상한이 N−2) — 그래도 장부는 안 건드린다
+    if (T815_DRAFT_FAMINE) { v._deathsToday++; v._deadTot = (v._deadTot || 0) + 1; }   // ★[T815] 켬 = 죽일 몸을 고른 **뒤에** 센다(몸이 죽을 때만 죽음 — 소멸·생성 금지의 장부 쪽)
     const dead = v.npcs.splice(oldestIdx, 1)[0];
     v.counts[dead.currentJob] = (v.counts[dead.currentJob] || 0) - 1;
     v._dPAccum += 1;
