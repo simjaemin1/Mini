@@ -1256,6 +1256,7 @@ function createWar(opts) {
     packSplit, bodyEat, bagFE, rationLayDown, rationActOn: _rationActOn,
     lootGive, lootActOn: _lootActOn, warLog: (day, m) => log(day, m),   // ★[T466] 약탈 = 행위(손잡이 끔 · 끔이면 호스트 훅을 안 부른다)   // ★[T423] 짐이 먹는다(손잡이 끔이면 packSplit 이 null)
     syncArmsMirror: (vil) => _syncArmsToEcon(vil),   // ★[T857] 호스트가 결판 자리에서 장부를 움직인 뒤 거울을 다시 센다(같은 함수 · 사본 0)
+    weaponGive,   // ★[T857] 이긴 방어 몸이 결판 자리 더미를 주워 곳간에(결판 흐름의 그 문 · 사본 0)
     _rationLayDownAll,   // ★[T748] 귀환 도착 내려놓기 — 하네스(`test-moment-lot` ⑨)가 **이 함수**를 그대로 부른다(몸 짐 레코드째 · 사본 0)
     // ★[3파 포로] 접점
     CAP_ON: WAR_CAP_ON, warCaptiveDaily,

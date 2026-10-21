@@ -61,7 +61,7 @@ const child = (knob) => {
     + `const players=new Map();let drops=0;`
     //   낙하 목 — 죽음 캐논의 자리(짐 kg 절반 · 낱개 · 무거운 것부터 — 여기선 손 무기 낱개의 절반(적어도 하나)만 본다 · 부른 수를 센다)
     + `const deathDrop=(p)=>{drops++;const q=(p.inventory&&p.inventory.weapon)||0;const c=Math.floor(q);if(c<1)return;const d=Math.max(1,Math.floor(c/2));p.inventory.weapon=q-d;};`
-    + `const H=V.__p3Bind({deps:{players,npcs:new Set(),broadcast(){},deathDrop},_warStat:{},war:{weaponGive:WC.weaponGive,syncArmsMirror(){}}});`
+    + `const H=V.__p3Bind({deps:{players,npcs:new Set(),broadcast(){},deathDrop},_warStat:{},war:WC.createWar({villages:[],world:{day:1,_warWars:[],_warTributes:[],_warSeq:1},seed:7})});`
     + `const mk=(own)=>{const out=[];for(let i=0;i<3;i++){const p={pid:'p'+i,hp:100,inventory:{}};if(own&&i===0)p.inventory.weapon=own;players.set(p.pid,p);out.push(p);}return out;};`
     + `const inv=(p)=>(p.inventory&&p.inventory.weapon)||0,sum=(w)=>w._armsPack?[...w._armsPack.values()].reduce((a,x)=>a+x,0):null;`
     + `const def=()=>({econ:{storage:{weapon:10},_weapQ:0.5}});const D=(ds)=>ds.map(k=>{const p={pid:k,hp:100};players.set(k,p);return k;});`
@@ -157,6 +157,8 @@ console.log('\n[ⓒ] war-core 장부 도착 — 몸 짐 표가 선 원정만 거
     return { defWin: ((world._warStats || {}).defWin | 0) > 0, l0, l1: w._arms.weapon, d0, d1: def.econ.storage.weapon, mirror: atk.econ._warArmsOut };
   };
   const bl = battle(true), hl = battle(false);
+  { const inst = WarCore.createWar({ villages: [], world: { day: 1, _warWars: [], _warTributes: [], _warSeq: 1 }, seed: 7 });
+    ok(inst.weaponGive === WarCore.weaponGive && typeof inst.syncArmsMirror === 'function', 'ⓒ ★T857 전쟁 인스턴스(호스트 `state.war`)가 줍기 문 `weaponGive` · 거울 문 `syncArmsMirror` 를 내준다(모듈 문과 같은 함수)'); }
   ok(hl.defWin && hl.l1 < hl.l0 && hl.d1 > hl.d0, 'ⓒ 몸 짐 없는 공격 패(헤드리스 · 끔) — 결판 흐름이 짐에서 빼고 방어 곳간에 회수(종전)', JSON.stringify(hl));
   ok(bl.defWin && bl.l1 === bl.l0 && bl.d1 === bl.d0 && bl.mirror === bl.l0, 'ⓒ ★T857 몸 짐 판의 공격 패 — 결판 흐름이 짐 · 방어 곳간을 안 건드린다(몸이 정한다 · 거울 = 장부)', JSON.stringify(bl));
 }
