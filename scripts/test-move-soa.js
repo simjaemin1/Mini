@@ -656,6 +656,7 @@ let RUN9 = null;
       T385_ONE_SWEEP: on, T689_GC: GC9, BUILDING_SIZE: BS, FLOOR_HEIGHT: FH, HUNGER_MAX: 100, THIRST_MAX: 100,
       T774_ACTIVE_COL: false, _t774I: 0, _t774Act: null,   // ★[T774] 활성 열 — 한 바퀴(`_sweepOne`)가 읽는 손잡이 · 이 판은 끔 갈래(열 증인은 `T774_ACTIVE_COL=1 node scripts/t738-witness.js`)
       T761_CLOCKS: { on: false, wx: false, mob: false, temp: false },   // ★[T761 · PM 착지 10-15] 몸 기온 · 몹 밤 현지 시계 갈래 — 제품 기본(끔) 그대로
+      T823_FREEZE_SHELL: false,   // ★[T823 · PM 착지 10-21] 떠난 몸 껍데기 거르기 — 제품 기본(끔) 그대로
 
       COLD_CLOTH_WEAR_MS: 60000, CARRIER_WEAR_MS: 60000, VP_DECAY_PER_SEC: 0.5,
       send: (ws, m) => log.push('S' + ws.id + ':' + m.type + ':' + (m.hp ?? m.floor ?? '') + (m.follow ? ':' + JSON.stringify(m.follow) : '')),
