@@ -149,7 +149,22 @@ function meanLum(p, box) {
   const feed = async (flat) => { const n = await page.evaluate((f) => window.__tileStateFeed(f), flat); await sleep(1200); return n; };
   const feedRoad = async (flat) => { const n = await page.evaluate((f) => window.__roadFeed(f), flat); await sleep(1200); return n; };
   const at = (lcx, lcy) => page.evaluate(([a, b]) => window.__tileStateAt(a, b), [lcx, lcy]);
-  const pulse = async (key, ms) => { await page.keyboard.down(key); await sleep(ms); await page.keyboard.up(key); await sleep(120); };
+  // ★★[T824] 자리는 **걸어서가 아니라 자리로** 옮긴다(이미 있는 `teleport_debug` 문 · 존 로컬 px).
+  //   종전은 키를 1.7초씩 눌러 걸었다 — 한 번 누름의 걸음 폭이 판마다 23~32px 로 흔들려 끝점이 몇십 px 갈리고,
+  //   카메라 셀이 974,1898 ↔ 974,1896 으로 갈리면 고르는 뙈기가 바뀌어 ⓖ stateOff 차가 9.19 ↔ 2.5~3.5 로 갈렸다(T809 회부 3).
+  //   ⇒ 이 하네스가 재는 건 **지면 타일 색**이지 걷기가 아니다. 셀을 정해 놓고 그 셀로 간다(문턱 · 단정 무변).
+  //   도착은 **서버 권위**(`__getSrvAbs`)와 **카메라 셀**(`__camCellLocal` — 트윈이 끝났다) 둘 다로 확인한다.
+  const warpCell = async (lcx, lcy) => {
+    const z = await page.evaluate(() => (window.__getZonesMeta()[window.__getPrimaryZoneId()] || {}));
+    const lx = lcx * 32 + 16, ly = lcy * 32 + 16, ax = (z.worldOffsetX || 0) + lx, ay = (z.worldOffsetY || 0) + ly;
+    await page.evaluate(([x, y]) => window.__sendPrimary({ type: 'teleport_debug', x, y }), [lx, ly]);
+    for (let i = 0; i < 60; i++) {
+      await sleep(250);
+      const r = await page.evaluate(() => ({ s: window.__getSrvAbs ? window.__getSrvAbs() : null, c: window.__camCellLocal() }));
+      if (r.s && Math.hypot(r.s.x - ax, r.s.y - ay) < 24 && r.c && r.c[0] === lcx && r.c[1] === lcy) return true;
+    }
+    return false;
+  };
 
   // ── ⓐ 계약 ────────────────────────────────────────────────────────────────
   say('\n[ⓐ 계약 — 상태계가 실제로 붙었나]');
@@ -204,15 +219,19 @@ function meanLum(p, box) {
           return true;
         }
       }
-      for (let i = 0; i < 8; i++) await pulse(round % 2 ? 'a' : 's', 1700);
+      //   ★[T824] 못 찾으면 자리를 옮겨 다시 — 종전 걸음(8 누름 ≈ 7셀)과 같은 쪽 · 같은 폭을 **셀로**(s = +7,+7 · a = −7,+7).
+      const _c0 = await page.evaluate(() => window.__camCellLocal());
+      await warpCell(_c0[0] + (round % 2 ? -7 : 7), _c0[1] + 7);
     }
     return false;
   }
   // ★스폰이 NPC 마을 한복판이다(영토 3,450셀). 마당 타일·지붕이 지면을 덮어 거기서 재면 전부 0 —
   //   먼저 마을 밖으로 걸어 나간다.
-  say('    마을 밖으로 이동 중…');
-  for (let i = 0; i < 22; i++) await pulse('s', 1700);
-  for (let i = 0; i < 10; i++) await pulse('a', 1700);
+  //   ★[T824] 마을 밖 자리 = **셀 974,1898**(존 로컬) — 종전 걸음(남동 22 · 남서 10)이 초록 판에서 선 그 자리
+  //     (main `de4950d4` · T787 베이스 판 5번 모두 · 시험 offset 7,1 → wx 1,7 · stateOff 9.19). 맨 초원인지는 아래 단정이 잰다.
+  const OUT = [974, 1898];
+  say(`    마을 밖으로 이동 중… → 셀 ${OUT}`);
+  ok(await warpCell(OUT[0], OUT[1]), `[상황] 마을 밖 셀 ${OUT} 에 섰다(서버 권위 · 카메라 셀 둘 다)`);
   await pickPatches('init');
   ok(PATCH !== null, '맨 초원에 시험/대조 뙈기를 잡았다');
   if (!PATCH) { await browser.close(); try { _zone.kill('SIGKILL'); } catch (e) {} for (const p2 of procs) { try { p2.kill(); } catch (e) {} } say(`\n=== 타일 상태계: 통과 ${pass} · 실패 ${fail} ===`); process.exit(1); }
@@ -344,15 +363,15 @@ function meanLum(p, box) {
     inR = near.d < near.R * 0.72;
     say(`    ${tryN}차 — 가장 가까운 마을까지 ${near.d}px (반경 ${near.R}) · 반경 안 ${inR}`);
     if (inR) break;
-    //   ★[T795] 마을 쪽으로 — 네 방향을 한 번씩 디뎌 보고 그 마을까지 거리를 가장 줄이는 쪽으로 간다. 종전 'w' 고정은 마을이 북쪽이고
-    //     북쪽이 트였을 때만 닿았다(T784 켬 기본 세계 — 시험 뙈기가 다른 자리에 잡혀 북쪽 1,701px 에서 막혔다 · 4차 다 그 자리).
-    const dTo = async () => { const L = (await page.evaluate(() => window.__wxDbg())).nearest; const o = L.find((v) => v.id === near.id); return o ? o.d : Infinity; };
-    let bestK = 'w', bestD = Infinity;
-    for (const k of ['w', 'a', 's', 'd']) {
-      await pulse(k, 1600); const d1 = await dTo(); if (d1 < bestD) { bestD = d1; bestK = k; }
-      await pulse({ w: 's', s: 'w', a: 'd', d: 'a' }[k], 1600);   // 되짚기(막혔으면 덜 돌아온다 — 다음 차에서 다시 잰다)
+    //   ★[T795] 마을 쪽으로 — 종전 'w' 고정은 마을이 북쪽이고 북쪽이 트였을 때만 닿았다(T784 켬 기본 세계 · 북쪽 1,701px 에서 막혔다).
+    //   ★[T824] 걷지 않고 **자리로** — 그 마을 중심(`cx,cy` 셀)에서 지금 자리 쪽으로 반경의 0.5 만큼 떨어진 셀로 간다
+    //     (반경 안 0.72 문턱 무변 · 마을 한복판 지붕은 피한다). 그 셀이 물이면 서버가 거절하니 0.4 · 0.6 도 차례로 본다.
+    const cam0 = await page.evaluate(() => window.__camCellLocal());
+    const vx = cam0[0] - near.cx, vy = cam0[1] - near.cy, vl = Math.hypot(vx, vy) || 1;
+    for (const f of [0.5, 0.4, 0.6]) {
+      const k = (near.R * f) / 32 / vl;
+      if (await warpCell(Math.round(near.cx + vx * k), Math.round(near.cy + vy * k))) break;
     }
-    for (let i = 0; i < 6; i++) await pulse(bestK, 1600);
   }
   ok(inR, '★시험 자리가 어느 마을의 날씨 반경 안이다 — 밖에서 재면 아무 변화도 안 나서 자명 통과가 된다');
   ok(await pickPatches('wx'), '★걸어간 자리에서 뙈기를 **다시 골랐다** — 옛 절대 셀을 그대로 쓰면 상자가 화면 밖으로 나가 |Δ| 가 NaN 이 된다');

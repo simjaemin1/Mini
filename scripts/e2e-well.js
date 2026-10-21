@@ -69,23 +69,35 @@ process.on('exit', shutdown);
   const buildings = () => page.evaluate(() => (window.__getAllBuildings ? window.__getAllBuildings() : []));
   const claimCells = () => page.evaluate(() => { const o = []; for (const c of (window.__getClaims ? window.__getClaims() : [])) if (c.kind === 'temporary') o.push(`${Math.floor(c.wx / 32)},${Math.floor(c.wy / 32)}`); return o; });
   const toScreen = (wx, wy) => page.evaluate(([x, y]) => { const s = window.__w2s(x, y); const cv = document.getElementById('canvas'); const r = cv.getBoundingClientRect(); return { x: r.left + s.px * (r.width / cv.width), y: r.top + s.py * (r.height / cv.height) }; }, [wx, wy]);
-  const pulse = async (key, ms) => { await page.keyboard.down(key); await sleep(ms); await page.keyboard.up(key); await sleep(130); };
-  const gotoCell = async (tx, ty) => {
-    for (let i = 0; i < 80; i++) { const a = await absOf(); const dx = tx * 32 + 16 - a.x, dy = ty * 32 + 16 - a.y;
-      if (Math.abs(dx) <= 11 && Math.abs(dy) <= 11) return true;
-      const ms = (d) => Math.max(45, Math.min(90, Math.round(Math.abs(d) * 1.2)));
-      if (Math.abs(dx) > Math.abs(dy)) await pulse(dx > 0 ? 'd' : 'a', ms(dx)); else await pulse(dy > 0 ? 's' : 'w', ms(dy)); }
-    return false;
+  // ★★[T824] 자리 옮기기는 **걸음이 아니라 `teleport_debug`(픽스처 문 · 존 로컬 px)** 로만 한다 · 도착은 **서버 권위**(`__getSrvAbs`)로 잰다.
+  //   종전 두 흔들림(T809 회부 4 — "이미 같은 종류의 사유지" 7/8):
+  //   ⓐ 마을 땅 옮기기가 "예측 자리(`__getMyAbs`)가 200px 넘게 움직였나"로 끝났다 — 예측이 0.9초 안에 못 따라오면 **다음 후보**로 또 쏴서
+  //      설 자리가 판마다 갈렸다(10,325 ↔ 10,517 · 존 로컬 x).
+  //   ⓑ 2×2 의 다음 칸은 **키 누름 걸음**(`gotoCell`)으로 갔다 — 10,517 쪽에서는 남쪽 칸(abs 13140,2866)으로 못 들어가 **내 사유지 c2 위에 선 채**
+  //      또 `claim` 을 쏴서 열네 번 "이미 같은 종류"(서버 로그로 확인 · 남은 사유지 · 앞 판 DB · 벽시계와 무관).
+  //   ⇒ 이 하네스가 재는 건 **우물 UI**(버튼 · 캔버스 클릭 · 좌클릭 · 우클릭 · 마시기)다. 걷기는 재지 않는다 — 자리는 셀로 정하고 서버가 섰다고 할 때까지 기다린다.
+  const zoneOff = async () => page.evaluate(() => { const z = (window.__getZonesMeta()[window.__getPrimaryZoneId()] || {}); return { x: z.worldOffsetX || 0, y: z.worldOffsetY || 0 }; });
+  const warpLocal = async (lx, ly) => {
+    const o = await zoneOff(); lx = Math.round(lx); ly = Math.round(ly);
+    await send({ type: 'teleport_debug', x: lx, y: ly });
+    for (let i = 0; i < 24; i++) {
+      await sleep(250);
+      const s2 = await page.evaluate(() => (window.__getSrvAbs ? window.__getSrvAbs() : null));
+      if (s2 && Math.hypot(s2.x - (o.x + lx), s2.y - (o.y + ly)) < 4) return true;
+    }
+    return false;   // 물 위면 서버가 거절한다(자리 그대로)
   };
+  const gotoCell = async (tx, ty) => { const o = await zoneOff(); return warpLocal(tx * 32 + 16 - o.x, ty * 32 + 16 - o.y); };   // abs 셀 → 그 셀 한가운데
 
   // ── 픽스처 — 재료·곡괭이·물병 · 우물 마을 땅으로 ──
   await send({ type: '__e2e_give', items: { pebble: 60, water_bottle: 1, wood: 40, stone: 40 }, tools: ['pickaxe'] });
   await sleep(800);
-  const a0 = await absOf();
   let moved = false;
-  for (const [ox, oy] of [[0, 0], [96, 0], [-96, 0], [0, 96], [0, -96], [160, 160], [-160, 160], [160, -160], [-160, -160], [256, 0], [0, 256]]) {
-    await send({ type: 'teleport_debug', x: Math.round(home.x + ox), y: Math.round(home.y + oy) }); await sleep(900);
-    const a = await absOf(); if (Math.hypot(a.x - a0.x, a.y - a0.y) > 200) { moved = true; break; }
+  //   ★[T824] 넘어가는 건 **서버가 거절했을 때(물)** 뿐이다 — 그래서 늘 같은 후보에 선다.
+  //     맨 앞은 **(−96,0)** — 종전 초록 판(15/0)이 전부 실제로 선 자리다(앞 두 후보는 예측이 못 따라와 지나쳤다). 아래 ③ 의 "북서 칸을 짚는다"
+  //     (나무 그림이 터 중심에 겹친다)도 그 자리를 보고 쓴 것이다 — 후보 (0,0) 에 서면 북서 칸도 나무가 앞서 ③ 메뉴가 "벌목"이 된다(이 카드가 쟀다).
+  for (const [ox, oy] of [[-96, 0], [0, 0], [96, 0], [0, 96], [0, -96], [160, 160], [-160, 160], [160, -160], [-160, -160], [256, 0], [0, 256]]) {
+    if (await warpLocal(home.x + ox, home.y + oy)) { moved = true; console.log(`    섰다 — 후보 (${ox},${oy})`); break; }
   }
   ok(moved, `[상황] ${WS.WELL_VILLAGES[0]} 마을 땅으로 옮겼다`, JSON.stringify(await absOf()));
   const btnState = await page.evaluate(() => { const b = document.querySelector('[data-action="well_start"]'); return b ? b.style.display : 'none-el'; });
@@ -101,7 +113,7 @@ process.on('exit', shutdown);
     if (!cells.length) { await send({ type: 'claim', kind: 'temporary' }); await sleep(700); continue; }
     const [x, y] = cells[0].split(',').map(Number);
     const need = [[1, 0], [0, 1], [1, 1]].map(([dx, dy]) => [x + dx, y + dy]).find(([cx, cy]) => !set.has(`${cx},${cy}`));
-    if (need) { await gotoCell(need[0], need[1]); await sleep(400); await send({ type: 'claim', kind: 'temporary' }); await sleep(700); }
+    if (need) { if (!(await gotoCell(need[0], need[1]))) break; await sleep(400); await send({ type: 'claim', kind: 'temporary' }); await sleep(700); }   // ★[T824] 그 칸에 못 섰으면 또 쏘지 않는다(내 땅 위 `claim` = "이미 같은 종류")
   }
   ok(!!spot, '[상황] 2×2 임시 사유지', spot ? spot.join(',') : '실패');
   if (spot) await gotoCell(spot[0] - 1, spot[1]);
@@ -118,6 +130,12 @@ process.on('exit', shutdown);
   await snap('01-site');
 
   // ── ② 터 좌클릭 = 1단(쌓는 중) ──
+  //   ★[T824] 착공 뒤에도 **건축 모드는 켜져 있다**(`well_start` 가 `buildMode = true` · 배치 뒤 `placementMode` 만 걷힌다 — 노 · 숯가마와 같은 계약).
+  //     건축 모드에서 커서 밑에 건물이 잡히면(`hoverBuildingId`) 좌클릭은 **3초 분해**가 먼저다(14.51 · `30-n-net.js`).
+  //     종전 초록 판은 그 자리(후보 −96,0)에서 마침 터가 커서에 안 잡혀 `pickAt` → `well_advance` 로 흘렀다 — 자리가 바뀌면(후보 0,0) "well_site 분해".
+  //   ⇒ 사람이 하듯 **B 로 건축 모드를 끈 뒤** 터를 누른다(배치 알림의 "B=취소" 그 키). 끈 것을 단정으로 확인한다.
+  await page.keyboard.press('b'); await sleep(200);
+  ok(await page.evaluate(() => (typeof buildMode !== 'undefined') && buildMode === false), '[상황] B — 건축 모드를 껐다(터 좌클릭이 분해로 안 샌다)');
   if (site) { const p = await toScreen(site.wx, site.wy); await page.mouse.click(p.x, p.y); }
   let s2 = null;
   for (let i = 0; i < 20; i++) { await sleep(300); s2 = (await buildings()).find((b) => b.type === 'well_site'); if (s2 && s2.stage === 2) break; }
