@@ -325,8 +325,15 @@ console.log('\n⑨ [T529] 촌장 몸의 인사 = 근접 인사와 같은 한 통
 // ── ⑩ [T540 추신2] 빈 판 날 쉼터 안에 선 사람에게는 근황 한 줄 ─────────────────
 console.log('\n⑩ [T540 추신2 · 재민] 빈 판 · 쉼터 안이면 "쉼터에서 쉬게" 대신 근황 한 줄(시작 화면 근황과 같은 줄)');
 {
-  const v = list.find((x) => !Onb.pickFirstQuest(x.id));
-  ok(!!v, '⑩ (상황) 첫 의뢰가 빈 판인 마을이 있다', v ? v.name : '');
+  let v = list.find((x) => !Onb.pickFirstQuest(x.id)), extra = 0;
+  //   ★[T820] 빈 판 마을이 econ ${DAYS}일 판 끝에 없으면(짐 늙기 두 시계 켬 기본 세계 — 마을마다 의뢰가 섰다) 같은 세계를 하루씩 더 굴려
+  //     처음 빈 판이 서는 날을 쓴다(결정론 · 상한 120일 · 빈 판이 이미 있으면 종전 그대로 0일). 아래 판정은 그대로다.
+  if (!v) {
+    const _log = console.log; console.log = () => {};
+    for (; extra < 120 && !v; extra++) { econV2.tickWorldV2(world); L.scanDay(world, world.day, {}); v = list.find((x) => !Onb.pickFirstQuest(x.id)); }
+    console.log = _log;
+  }
+  ok(!!v, '⑩ (상황) 첫 의뢰가 빈 판인 마을이 있다', v ? `${v.name}${extra ? ` (econ ${DAYS} + ${extra}일)` : ''}` : '');
   if (v) {
     _t540Sh.set(v.id, { cx: v.cx, cy: v.cy });
     const inside = { x: (v.cx - 2.5) * 32, y: (v.cy - 1.5) * 32 }, outside = { x: (v.cx - 2.5) * 32, y: (v.cy + 3.5) * 32 };

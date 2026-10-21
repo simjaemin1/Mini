@@ -15,8 +15,9 @@
 //       세계에 기댄다: T784 만(T792 와 같이 착지한 main) 시드 7 0.8214 → 0.8131 · T812 켬 시드 7 0.8214 → 0.8728 인데 시드 42 0.9930 → 0.9928(보고/T812 §3).
 //       세계에 안 기대는 몫(f = 0 짐 출발 0 · 기대 값의 곱 = 도착 값의 곱 · 곡선 정본)은 위아래 줄이 잰다.
 //  ⑥ 랩 번들 — 브라우저 꼴(vm · require 없음 · process 덧대기)로 띄운 번들이 정본과 같은 세계(끔 · 켬 두 판) · 두 랩 HTML 이 지금 번들을 싣는다
-//  ⑦ [T812 · 손잡이 T812_CARGO_TEMP='1'] 장부 시계 — 다리 나이 = 그 날들의 기온 가중 노출(`spoil.dayExposure` 합 = `cumExposure` 차) · '1' 하나만 켬 ·
+//  ⑦ [T812 · 손잡이 T812_CARGO_TEMP · T820 켬 기본 · '0' 하나만 끔] 장부 시계 — 다리 나이 = 그 날들의 기온 가중 노출(`spoil.dayExposure` 합 = `cumExposure` 차) ·
 //     끔이면 떠난 날을 받아도 날 수 그대로(바이트) · 켬이면 출발 결정 · 도착 매도 둘 다 같은 노출 · 번들(날씨 정본 실음) = 정본
+//  ★[T820] 부모 판은 늘 기본(켬 · 켬)으로 돈다 — 손잡이 env 를 지우고 정본을 부른다. 끔 쪽은 아이 판이 잰다.
 //
 // 실행: node scripts/test-cargo-age.js
 'use strict';
@@ -62,6 +63,7 @@ if (process.env.T784_SUB === 'probe') {
   process.exit(0);
 }
 const KEEP = (() => { const e = Object.assign({}, process.env); delete e.T784_CARGO_AGE; delete e.T812_CARGO_TEMP; delete e.T784_SUB; return e; })();
+delete process.env.T784_CARGO_AGE; delete process.env.T812_CARGO_TEMP;   // ★[T820] 부모 판 = 기본(아래 `require(V2P)` 앞)
 const sub = (knob, seed, days, extra, part) => {
   const env = Object.assign({}, KEEP, extra || {}, { T784_SUB: part || 'world', T784_SEED: String(seed), T784_DAYS: String(days) });
   if (knob !== undefined) env.T784_CARGO_AGE = knob;
@@ -104,9 +106,9 @@ ok(lot.includes('fish') && F('fish', 2) < 1 && F('fish', 30) === 0 && non.includ
 // ③ 도착 날 셈
 say('\n③ 도착 날 셈 — 떠난 날부터 도착 날까지');
 const r0 = lot.find((r) => Spoil.shelfOf(r) >= 10 && Spoil.shelfOf(r) <= 60) || 'vegetable';   // 7일에도 0 이 아닌 품목(생선 2.5일은 4일에 이미 0)
-ok(AR({ departDay: 10 }, r0, 14) === F(r0, 4) && F(r0, 4) < 1, `③ 떠난 날 10 · 도착 14 → 4일 곡선(${r0} · 보관일 ${Spoil.shelfOf(r0)})`, `${AR({ departDay: 10 }, r0, 14)}`);
-ok(AR({ departDay: 10 }, r0, 17) === F(r0, 7) && F(r0, 7) < F(r0, 4), '③ 우회로 늘어난 날까지 늙는다(7일 < 4일)', `${F(r0, 7)} < ${F(r0, 4)}`);
-ok(AR({ departDay: 20, travelDays: 6, _xzHome: { zone: 'x', id: 1 } }, r0, 20) === F(r0, 6) && AR({ departDay: 20, travelDays: 2, _xzHome: {} }, r0, 25) === F(r0, 5),
+ok(AR({ departDay: 10 }, r0, 14) === F(r0, 4, 10) && F(r0, 4, 10) < 1, `③ 떠난 날 10 · 도착 14 → 4일 곡선(${r0} · 보관일 ${Spoil.shelfOf(r0)})`, `${AR({ departDay: 10 }, r0, 14)}`);
+ok(AR({ departDay: 10 }, r0, 17) === F(r0, 7, 10) && F(r0, 7, 10) < F(r0, 4, 10), '③ 우회로 늘어난 날까지 늙는다(7일 < 4일 · 같은 날 떠남)', `${F(r0, 7, 10)} < ${F(r0, 4, 10)}`);
+ok(AR({ departDay: 20, travelDays: 6, _xzHome: { zone: 'x', id: 1 } }, r0, 20) === F(r0, 6, 14) && AR({ departDay: 20, travelDays: 2, _xzHome: {} }, r0, 25) === F(r0, 5, 20),
   '③ 이웃 존에서 넘어온 짐 — 넘어온 날이 departDay 라 길 날 수 이상으로 센다');
 ok(AR({ departDay: 10 }, 'stone', 99) === 1 && AR({ departDay: 10 }, r0, 9) === 1, '③ 안 늙는 품목 1 · 날이 거꾸로면 0일(1)');
 
@@ -132,20 +134,24 @@ ok(!/granary-lots|_LOTH\.cargoFresh/.test(src.slice(src.indexOf('const T784_CARG
 // ⑤ 켬 세계
 say('\n⑤ 켬 세계 — 다 상한 짐을 싣고 떠나지 않는다');
 const stat = (X) => {
-  let rot = 0, U = 0, W = 0, n = 0;
+  let rot = 0, U = 0, W = 0, WX = 0, n = 0;
   for (const d of X.dep || []) {
     for (const [r, q] of [[d.r, d.n], [d.r2, d.n2]]) {
       if (!r || !(q > 0) || !Lots.isLot(r)) continue;
-      const f = F(r, d.t); n++; U += q; W += q * f; if (f === 0) rot++;
+      const f = F(r, d.t), fx = F(r, d.t, d.d0); n++; U += q; W += q * f; WX += q * fx; if (fx === 0) rot++;   // ★[T820] f 달력 날 · fx 장부 시계(켬 기본 세계의 결정이 쓰는 곱)
     }
   }
-  return { rot, n, f: U > 0 ? +(W / U).toFixed(4) : null, all: (X.dep || []).length };
+  return { rot, n, f: U > 0 ? +(W / U).toFixed(4) : null, fx: U > 0 ? +(WX / U).toFixed(4) : null, all: (X.dep || []).length };
 };
 const S7 = [stat(U), stat(O)];
 const U42 = sub('0', 42, 200), O42 = sub(undefined, 42, 200);
 const S42 = [stat(U42), stat(O42)];
 ok(S7[1].rot === 0 && S42[1].rot === 0, '⑤ 켬 — 도착 때 f = 0 인 짐을 실은 출발 0(시드 7 · 42 · 200일)', `끔 ${S7[0].rot} · ${S42[0].rot} → 켬 ${S7[1].rot} · ${S42[1].rot}`);
 say(`  · [재기만 · T812] 늙는 짐의 도착 신선도(단위 가중 · 달력 날) 끔 → 켬 — 시드 7 ${S7[0].f} → ${S7[1].f}(짐 ${S7[0].n} → ${S7[1].n}) · 시드 42 ${S42[0].f} → ${S42[1].f}(짐 ${S42[0].n} → ${S42[1].n}) — 서로 다른 출발 묶음(세계에 기댄다)`);
+//   ★[T820] 켬 기본 세계(T784 · T812 둘 다 켬)는 결정이 장부 시계 곱(fx)을 쓴다 — 같은 꼴(재기만)로 두 시계 다 · 끔 쪽 둘(T784 끔 · T812 끔) 다 찍는다.
+const Q7 = stat(sub(undefined, 7, 200, { T812_CARGO_TEMP: '0' })), Q42 = stat(sub(undefined, 42, 200, { T812_CARGO_TEMP: '0' }));
+say(`  · [재기만 · T820] 장부 시계 f(단위 가중) — T784 끔 → T812 끔 → 켬 기본: 시드 7 ${S7[0].fx} → ${Q7.fx} → ${S7[1].fx}(짐 ${S7[0].n} → ${Q7.n} → ${S7[1].n}) · 시드 42 ${S42[0].fx} → ${Q42.fx} → ${S42[1].fx}(짐 ${S42[0].n} → ${Q42.n} → ${S42[1].n})`);
+say(`  · [재기만 · T820] 달력 날 f — T784 끔 → T812 끔 → 켬 기본: 시드 7 ${S7[0].f} → ${Q7.f} → ${S7[1].f} · 시드 42 ${S42[0].f} → ${Q42.f} → ${S42[1].f}`);
 
 // ⑥ 랩 번들
 say('\n⑥ 랩 번들 — 브라우저 꼴로 띄워도 정본과 같은 세계');
@@ -169,9 +175,9 @@ ok(labs.every((h) => h.includes(body.slice(0, 2000)) && h.includes(body.slice(-2
 
 // ⑦ T812 — 장부 시계
 say('\n⑦ [T812] 장부 시계 — 다리 나이 = 그 날들의 기온 가중 노출');
-ok(/const T812_CARGO_TEMP = \(typeof process !== 'undefined' && process\.env && process\.env\.T812_CARGO_TEMP === '1'\);/.test(src), '⑦ 손잡이는 `=== \'1\'` 하나(끔 기본)');
+ok(/const T812_CARGO_TEMP = !\(typeof process !== 'undefined' && process\.env && process\.env\.T812_CARGO_TEMP === '0'\);/.test(src), '⑦ 손잡이는 켬 기본 · 되돌림 `=== \'0\'` 하나(T820 · 채택 꼴)');
 const X = E._t812Probe && E._t812Probe.exp;
-ok(typeof X === 'function' && E.T812_CARGO_TEMP === false, '⑦ 하네스 문(`_t812Probe.exp`) · 이 판은 끔');
+ok(typeof X === 'function' && E.T812_CARGO_TEMP === true, '⑦ 하네스 문(`_t812Probe.exp`) · 이 판은 켬(기본)');
 let xbad = [];
 for (const d0 of [0, 45, 100, 200, 300, 333]) for (const n of [0, 1, 3, 7, 12]) {
   const a = X(d0, n), b = Spoil.cumExposure(d0 + n, 0, Spoil.placeFields('carry').w) - Spoil.cumExposure(d0, 0, Spoil.placeFields('carry').w);
@@ -182,16 +188,17 @@ ok(xbad.length === 0 && Math.abs(xh - (xl + 0.5 * (xu - xl))) < 1e-12, '⑦ 다�
 const sx = [0, 1, 2, 3, 5, 8].map((n) => X(170, n)), sw = [0, 1, 2, 3, 5, 8].map((n) => X(260, n));
 ok(sx.every((v, i) => i === 0 || v >= sx[i - 1]) && Math.abs(X(170, 8) - X(260, 8)) > 0.5,
   '⑦ 길이가 늘면 안 준다 · 철마다 다르다(같은 8일이 날에 따라 다른 나이 — 날 수 셈이면 둘 다 8)', `8일 = 노출 ${X(170, 8).toFixed(3)}(170일 떠남) · ${X(260, 8).toFixed(3)}(260일 떠남)`);
-ok(F('fish', 2, 120) === F('fish', 2) && F('millet', 7, 200) === F('millet', 7), '⑦ 끔 — 떠난 날을 받아도 날 수 그대로(T784 바이트)');
+const P0 = sub(undefined, 0, 0, { T812_CARGO_TEMP: '0' }, 'probe');
+ok(!P0.err && P0.t812 === false && P0.out.length === 7 && P0.out.every((o) => o.F === o.F0), '⑦ 끔(`=0` 아이 판) — 떠난 날을 받아도 날 수 그대로(T820 앞 바이트)', P0.err || '');
 const P1 = sub(undefined, 0, 0, { T812_CARGO_TEMP: '1' }, 'probe');
 const pbad = (P1.out || []).filter((o) => Math.abs(o.F - o.ref) > 1e-12 || Math.abs(o.arr - o.refA) > 1e-12 || Math.abs(o.xz - o.refX) > 1e-12);
 ok(!P1.err && P1.t812 === true && P1.out.length === 7 && pbad.length === 0 && P1.out.some((o) => o.F !== o.F0),
   '⑦ 켬 — 출발 결정의 곱(`F(품목, 날, 떠난 날)`) = 도착 매도의 곱(`arrive` · 이웃 존 짐도) = `freshnessOf(품목, 그 다리 노출)` · 날 수 셈과 실제로 갈린다', P1.err || JSON.stringify(pbad.slice(0, 2)));
 const W1 = sub(undefined, 7, 200, { T812_CARGO_TEMP: '1' }), W0 = sub(undefined, 7, 200, { T812_CARGO_TEMP: '0' }), WT = sub(undefined, 7, 200, { T812_CARGO_TEMP: 'true' });
-ok(!W1.err && W1.t812 === true && W0.t812 === false && WT.t812 === false && W0.fp === O.fp && WT.fp === O.fp && W1.fp !== O.fp,
-  '⑦ \'0\' · \'true\' · 없음 = 끔(T784 켬 세계 그대로) · \'1\' = 켬은 세계를 바꾼다', W1.fp);
+ok(!W1.err && W1.t812 === true && WT.t812 === true && O.t812 === true && W0.t812 === false && W1.fp === O.fp && WT.fp === O.fp && W0.fp !== O.fp,
+  '⑦ 없음 · \'1\' · \'true\' = 켬(T820 기본 · 켬끼리 세계 같다) · \'0\' = 끔은 세계를 바꾼다(T812 앞 세계)', W0.fp);
 const S7t = stat(W1);
-ok(S7t.rot === 0, '⑦ 켬 세계 — 도착 때 f = 0 인 짐을 실은 출발 0(시드 7 · 달력 날로 잰 f)', `짐 ${S7t.n} · f ${S7t.f}`);
+ok(S7t.rot === 0, '⑦ 켬 세계 — 도착 때 f = 0 인 짐을 실은 출발 0(시드 7 · 장부 시계로 잰 f)', `짐 ${S7t.n} · f ${S7t.f}`);
 ok(src.includes('pTo * _t784F(cand.res, travelDaysForDistance(dist), day) : pTo,') && src.includes('* _t784F(c2.res, travelDaysForDistance(best.dist), day) :')
   && src.includes('return _t784F(res, n, day - n);'), '⑦ 배선 — 첫째 · 둘째 기대 값은 오늘 떠나는 다리 · 도착은 도착 날 − 길 날 수에서 떠난 다리');
 const bs = fs.readFileSync(BUNDLE, 'utf8');
