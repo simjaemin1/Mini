@@ -14553,6 +14553,22 @@ module.exports = {
 const v1 = require('./economy-sim');
 // ★[T180] 되돌림 — 끄면 종전(굶는 마을도 돌을 판다) **비트 동일**. 채택값은 ON(한 줄 결함 수리).
 const T180_STONE_EXPORT = !(typeof process !== 'undefined' && process.env && process.env.T180_STONE_EXPORT === '0');
+// ★★[T825 2026-10-20 · T796 회부 4] **곳간이 바닥인 마을은 먹을 것을 내다 팔지 않는다** — 손잡이 `T825_FOOD_KEEP`('1' 만 켬 · 없음 · 다른 값 = 끔 = main 바이트).
+//   아래 잉여 셈은 식량류 넷(`FOODR` — food · fish · meat · cooked_food)만 식량 하한(36일치 = `target × 1.2`)으로 본다.
+//   생곡(쌀 · 밀 · 보리 — 도정 수율 0.72) · 채집 · 보존식 · 작물은 **식량 환산에 드는데**(`v1.totalFoodEquivalent` — 곳간 · K · 사다리가 먹는다)
+//   "그 외: 15일치" 줄로 잡혀, 하루치도 안 남은 마을이 쌀을 실어 보냈다(T796 · 3시드 800일 굶는 날 수출 식량 환산 1,700 ~ 2,500).
+//   켬: 그런 품목의 잉여 = 곳간 식량 환산이 **같은 하한**(식량류 `keep` 식 그대로)을 넘는 몫까지(그 품목 단위로) · 넘는 몫이 없으면 후보가 아니다.
+//   품목 하나의 식량 값은 `v1.totalFoodEquivalent` 를 그 품목 1 만 든 곳간에 물어 얻는다(사본 0 · 새 수 0).
+const T825_FOOD_KEEP = (typeof process !== 'undefined' && process.env && process.env.T825_FOOD_KEEP === '1');
+const _t825FW = new Map();
+function _t825FoodPer(v, r) {   // 품목 1 단위의 식량 환산(정본 `totalFoodEquivalent` 그대로 · 세계가 주입한 작물 표는 그 마을의 `_world` 로)
+  const k = r + '|' + ((v && v._world) ? 'w' : '-');
+  if (_t825FW.has(k)) return _t825FW.get(k);
+  let f = 0;
+  try { const st = { food: 0, fish: 0, meat: 0, cooked_food: 0 }; st[r] = (st[r] || 0) + 1; f = +v1.totalFoodEquivalent({ storage: st, npcs: [], _world: v ? v._world : undefined }) || 0; } catch (e) { f = 0; }
+  _t825FW.set(k, f);
+  return f;
+}
 
 // === 새 상수 — v1과 분리 ===
 // v2 round 2: 가격 완화 + weapon/tool BASE 낮춤 + 외곽 살리기 + cargo↑
@@ -15544,6 +15560,16 @@ function* tickTradeV2Steps(world, day) {
         //   ⇒ 돌 수출 후보는 **안전망 문턱 위**일 때만. 수는 v1 정본에서 읽는다(사본 0 · 새 수 0).
         //   되돌림 `T180_STONE_EXPORT=0` → 종전 비트 동일.
         if (r === 'stone' && T180_STONE_EXPORT && stock < v1.STONE_NET_STOCK) continue;
+        if (T825_FOOD_KEEP && !FOODR[r] && stock > thresh) {   // ★[T825] 켬 — 먹을 것은 곳간 식량이 하한을 넘는 몫까지만(식량류 `keep` 식 그대로)
+          const _f = _t825FoodPer(a.v, r);
+          if (_f > 0) {
+            const _fKeep = Math.max((SUBSISTENCE_PER_NPC.food || 0) * N * 30, buffer) * 1.2;
+            const _room = (v1.totalFoodEquivalent(a.v) - _fKeep) / _f;
+            if (!(_room > 0)) continue;
+            candidates.push({ res: r, surplus: Math.min(Math.max(1, stock - keep), _room) });
+            continue;
+          }
+        }
         if (stock > thresh) candidates.push({ res: r, surplus: Math.max(1, stock - keep) });
       }
       if (!candidates.length) break;
