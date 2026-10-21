@@ -603,7 +603,19 @@
                     : (_sp === 'shelter_site' ? 'shelter_start'                                        // ★[T62] 공용 쉼터 착공
                     : (_sp === 'psite' ? 'request_village_house' : 'build_guild_granary'))))));
           sendPrimaryAt({ type: _mt, atX: clickWx, atY: clickWy, kind: placementMode.kind || undefined });
-          if (!e.shiftKey) { placementMode = null; showNotice('배치 요청'); }
+          if (!e.shiftKey) {
+            placementMode = null; showNotice('배치 요청');
+            // ★[T839 · 손잡이 `T839_SITE_EXIT` '1' 만 켬 — 서버 env 가 정본 · welcome `uiCfg.siteExit`] **터를 놓았으면 건축 모드를 끈다.**
+            //   다섯 터(움집 · 노 · 숯가마 · 우물 · 회관)는 `*_start` 가 `buildMode = true` 로 들어오고 여기서 `placementMode` 만 걷혔다 —
+            //   건축 모드가 남아 커서가 터를 잡으면 아래 14.51 갈래가 좌클릭을 **3초 분해**로 먼저 가져갔다(안내 "다음: ② … (터 클릭)"대로 누른 사람이 제 터를 부순다 · T824 회부 1).
+            //   끄는 문은 **B 키 그 문**(`99-main.js` — 끄고 · 알림 '건축 모드 꺼짐' · 인벤이 열려 있으면 다시 그림)이다. 새 갈래 0.
+            //   ⚠Shift 배치(이어 놓기)는 종전 그대로 모드를 지킨다. 집 의뢰(`psite`) · 마을 곳간은 다섯 터가 아니다(손대지 않는다).
+            if (uiCfg && uiCfg.siteExit && (_sp === 'hut_site' || _sp === 'furnace_site' || _sp === 'kiln_site' || _sp === 'well_site' || _sp === 'village_site')) {
+              buildMode = false;
+              showNotice('건축 모드 꺼짐');
+              if (invOpen) renderInvPanel(document.getElementById('invBody'));
+            }
+          }
           return;
         }
         if (placementMode.itemType) {
