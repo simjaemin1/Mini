@@ -78,7 +78,7 @@ console.log('\n② 끔 = 종전 글자');
   ok(/if \(T807_ON\) \{[^]*?_trimToCap\(econV2, v, giveRes, takeRes, q0, \(c\) => _units\(_pick\(c\)\), qt\.capped, qt\.maxGive, perItem, capU\)/.test(C), '② 실행의 절삭 = 같은 함수(`_trimToCap`) · 고른 그 개체들의 실제 무게');
   ok(/\} else \{\s*if \(qt\.capped && perItem > 0\) give = Math\.min\(q0, Math\.floor\(qt\.maxGive \/ perItem\)\);\s*wantW = _pick\(give\);/.test(C), '② 끔 갈래 = 종전 실행 글자 그대로');
   const uses = (C.match(/_trimToCap\(/g) || []).length;
-  ok(uses === 3, '② 절삭 함수 — 정의 하나 · 부름 둘(견적 · 실행) · 사본 0', `${uses}`); }
+  ok(uses === 4, '② 절삭 함수 — 정의 하나 · 부름 셋(견적 · 실행 · ★T835 받을 양 견적) · 사본 0', `${uses}`); }
 
 const sub = (env) => JSON.parse(execFileSync(process.execPath, [__filename], { env: Object.assign({}, process.env, env, { T807_SUB: '1' }), stdio: 'pipe', maxBuffer: 64 << 20 }).toString().trim().split('\n').pop());
 console.log('\n③ 같은 곳간 · 같은 순간 — 마을 다섯 · 짝 아홉 · 낼 양 1~12 · 열량 짝 끔/켬');

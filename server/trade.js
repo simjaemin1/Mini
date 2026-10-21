@@ -354,8 +354,7 @@ function quote(ledger, econV2, vil, vid, giveRes, takeRes, giveQty, opts) {
   if (_gN) out.giveUnitsPicked = +q.toFixed(3);   // ★[T835] 켬 = 견적이 잰 낼 단위(고른 그 개체들)
   if (T807_ON && out.capped) {   // ★[T807] 상한에 닿았다 — 실행과 같은 절삭(`_trimToCap`)으로 받을 양을 다시 낸다(끔 = 이 줄 무동작)
     const per = _gN ? q / _gN : ((opts && Number(opts.perItem) > 0) ? Number(opts.perItem) : 1);   // ★[T835] 켬 = 실행의 평균 단위/개(고른 그 개체들 ÷ 개수)
-    const tr = _gN ? _trimToCap(econV2, v, giveRes, takeRes, _gN, _gAt, true, maxGive, per, cap)
-      : _trimToCap(econV2, v, giveRes, takeRes, Math.floor(q / per + 1e-9), (c) => c * per, true, maxGive, per, cap);
+    const tr = _trimToCap(econV2, v, giveRes, takeRes, _gN || Math.floor(q / per + 1e-9), _gN ? _gAt : ((c) => c * per), true, maxGive, per, cap);
     out.take = conv ? conv.items(tr.took).items : Math.floor(tr.took);
     out.giveUsed = tr.n; out.giveUsedUnits = +tr.u.toFixed(3);
   }
