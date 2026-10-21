@@ -28,7 +28,8 @@ console.log('\n[ⓐ] 정적 — T822 안 · 호스트 문 · 도적 줄 · 마�
 {
   ok(/bodySh: T822_BODY_SEED \? _t841Sh : null,/.test(CV), '호스트 문 — `banditHost().bodySh` 는 T822 켬에서만(끔 = null · 새 손잡이 0)');
   ok(/function _t841Sh\(key\) \{ return _pidHash\(`\$\{_t822S0\(\)\}_\$\{key\}`\); \}/.test(CV), '열쇠 = 판 씨(T822 그 칸 `_t822S0`) + 키 · 해시 = `pidHash`(종전 그 함수)');
-  ok(/function _t822Sh\(vil, p\) \{ return _pidHash\(`\$\{_t822S0\(\)\}_simvil_\$\{vil\.dbId\}_\$\{p\.pid\}`\); \}/.test(CV), '마을 몸 열쇠 글자 그대로(T822 — `<판 씨>_simvil_<마을>_<몸 번호>`)');
+  //   [PM 착지 10-22] T833 이 마을 몸 열쇠를 몸 번호(pid) → 명부 자리(i)로 바꿨다(켬 기본) — 같은 꼴 `<판 씨>_simvil_<마을>_<번호>` 의 글자를 그 판으로 본다.
+  ok(/b\._sh = _pidHash\(`\$\{s0\}_simvil_\$\{vil\.dbId\}_\$\{i\}`\)/.test(CV), '마을 몸 열쇠 글자 그대로(T822 · T833 — `<판 씨>_simvil_<마을>_<명부 자리>`)');
   ok(/if \(S\.host\.bodySh\) p\._sh = S\.host\.bodySh\(`bandit_\$\{g\.id\}_\$\{p\.pid\}`\);/.test(CB), '도적 줄 — 호스트 문이 있을 때만 · 열쇠 `bandit_<단 번호>_<몸 번호>`');
   const i = CB.indexOf('if (S.host.bodySh)'), j = CB.indexOf("p.simJob = 'bandit';");
   ok(i > j && j > 0 && CB.indexOf('name: \'도적\'') < j, '자리 — 존 `spawnNpc` 뒤 · 표시 이름(`도적`) · `playerId` 무접촉');
@@ -38,7 +39,7 @@ console.log('\n[ⓐ] 정적 — T822 안 · 호스트 문 · 도적 줄 · 마�
 // ── ⓑ 도적 실체화 — 아이 프로세스(손잡이는 모듈을 싣는 순간 읽는다) ──────────────────────
 console.log('\n[ⓑ] 도적 실체화(운영 `syncBodies`) — 같은 씨 두 판 · 다른 씨 · 끔');
 const child = (knob, seed) => {
-  const env = Object.assign({}, process.env); if (knob) env.T822_BODY_SEED = '1'; else delete env.T822_BODY_SEED;
+  const env = Object.assign({}, process.env); env.T822_BODY_SEED = knob ? '1' : '0';   // [PM 착지 10-22] T833 켬 기본 — 끔은 `=0` 으로
   const js = `const V=require(${JSON.stringify(path.join(ROOT, 'server', 'villages.js'))}),B=require(${JSON.stringify(path.join(ROOT, 'server', 'bandits.js'))}),SR=require(${JSON.stringify(path.join(ROOT, 'server', 'seed-rand.js'))});`
     + `const players=new Map(),npcs=new Set();let serial=0,pid=0;`
     //   존 `spawnNpc` 의 몸 꼴(신원 글자에 무작위 꼬리 · zone.js npc playerId) — 여기선 그 글자만 흉내 낸다
