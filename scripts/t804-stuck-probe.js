@@ -73,6 +73,7 @@ if (OUT && MAIN) {
       tot, stuckUnits: stuckUnits.length, maxStreak: us.reduce((m, o) => Math.max(m, o.maxStreak), 0), maxLagM: r1(us.reduce((m, o) => Math.max(m, o.maxLagM), 0)),
       worst: stuckUnits.sort((a, z) => z.stuck - a.stuck).slice(0, 10).map((o) => [o.war, o.g, o.pid, o.stuck, o.maxStreak, o.late, o.noPath, r1(o.maxLagM)]),
       top, wars: [...wars.values()], t804: H && H._t804Stat ? Object.assign({}, H._t804Stat) : null, t790: H && H._t790Stat ? Object.assign({}, H._t790Stat) : null,
+      t821: H && H._t821Stat ? Object.assign({}, H._t821Stat) : null,   // ★[T821] 재개형 걸음 탐색 셈(없는 판 = null)
       warStat: s && s._warStat ? Object.assign({}, s._warStat) : null }));
   } catch (e) {} };
   const _load = Module._load;
