@@ -513,12 +513,30 @@ function cargo(c, slot, recs) {
   ST.cargoOut++;
   for (const r of recs) if (r && r.it != null) ST.itemCargoU += +r.u || 0;   // ★[T768] 짐에 실린 품목 레코드(품목째 길을 간다)
 }
+// ★★[T840 2026-10-21 · 손잡이 `T840_LEG_ELEV`('1' 만 켬 · sim v2 와 같은 env · 끔 = 이 줄이 안 탄다 = main 바이트)] **몸에 지님 구간을 그 마을 고도로 정산한다.**
+//   짐이 받는 곳간(도착 마을 · 빈손 귀환이면 집)에 내려지는 이 자리가 그 다리의 정산 자리다 — 고도 = econ 이 같은 다리에 쓰는 그 값
+//   (`economy-sim-v2.elevKmOf` · 한 함수). 정산 꼴은 `_settle` 그대로(정본 `spoil.exposureAt` · 구간 하나에 고도 하나) — 고도만 0 대신 그 마을.
+//   그 뒤 곳간에 들 때(`_in` → `_restamp`)는 같은 순간이라 구간이 비어 있다(두 번 안 센다).
+const T840 = process.env.T840_LEG_ELEV === '1';
+let _t840E;
+function _t840Elev(v) {
+  if (_t840E === undefined) { try { const m = require('../sim/economy-sim-v2.js'); _t840E = (m && typeof m.elevKmOf === 'function') ? m.elevKmOf : null; } catch (e) { _t840E = null; } }
+  return _t840E ? (+_t840E(v) || 0) : 0;
+}
+function _legSettle(recs, v) {
+  if (!T840) return recs;
+  const e = _t840Elev(v);
+  if (!e) return recs;   // 고도 0 — 곳간에 들 때 `_settle`(고도 0)이 같은 구간을 같은 값으로 센다(종전 그대로)
+  const nf = _nowFrac();
+  for (const r of recs) { const t0 = (r.t == null) ? r.k / _day() : +r.t; if (t0 < nf) { r.e = +Spoil.exposureAt(r, nf, e).toFixed(6); r.t = nf; } }
+  return recs;
+}
 function unload(c, slot, v, res, amt) {
   const K = c && CARGO.get(c), recs = K && K[slot];
   if (!recs || !recs.length || !(amt > 0)) { if (K) delete K[slot]; return; }
   const U = recs.reduce((a, r) => a + r.u, 0);
   const frac = U > EPS ? Math.min(1, amt / U) : 0;
-  if (frac > 0) pushIn(v, res, recs.map((r) => _copy(r, r.u * frac)));   // 약탈 · 우회로 준 몫은 비율대로(주사위 0)
+  if (frac > 0) pushIn(v, res, _legSettle(recs.map((r) => _copy(r, r.u * frac)), v));   // 약탈 · 우회로 준 몫은 비율대로(주사위 0) · ★[T840] 몸에 지님 구간을 그 마을 고도로
   delete K[slot];
   ST.cargoIn++;
 }
@@ -807,7 +825,7 @@ function eaten(reset) { const o = Object.assign({}, EAT); if (reset) for (const 
 // ★[T789] 썩어 없어진 품목(econ 하루 마감에 버린 단위 — 하네스 · 자가 읽는다) · 끄면 늘 빈 묶음
 function rotOf(reset) { const o = Object.assign({}, ROT); if (reset) for (const k of Object.keys(ROT)) delete ROT[k]; return o; }
 
-module.exports = { ON, attach, sync, pushIn, clearIn, capBegin, capEnd, suspend, txBegin, txEnd, isWrapped,
+module.exports = { ON, T840, legSettle: _legSettle, attach, sync, pushIn, clearIn, capBegin, capEnd, suspend, txBegin, txEnd, isWrapped,
   tickBegin, tickEnd, doorBegin, doorEnd, doorIn, doorRest, doorCap,
   recsFromPlayer, recsToPlayer, recsToItems, hooks, cargo, unload, bounce, cargoDump, cargoLoad, packFrom, packKeep, giveBegin, giveEnd,
   itemSums, checkItems, itemFlow, eaten,   // ★[T768] 품목 칸 · 품목 불변식 · 마을이 먹은 품목
