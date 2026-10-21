@@ -6619,6 +6619,13 @@ function _t681Take(body) {
   return true;
 }
 // 하루 마감 첫 자리 — 지난 econ 날 몫 중 틱이 못 쓴 걸음을 채운다(차례 = `WARS` 차례 · 조각 예산이 차면 'retry' 로 다음 조각에 이어 간다).
+// ★★[T832 2026-10-21] **켬 판 결정론 — 귀환 몸도 그날 몫**(T821 회부 3 · T790 손잡이 `T790_NO_SNAP` 안 · 끔 = 무동작 · 새 손잡이 0 · 새 수 0).
+//   ★갈림 첫 자리(같은 씨 두 판 · 옆에 바쁜 고리 둘): 시드 1020 D15 W4 귀환 대형 — 그날 걸음이 259 ↔ 252(그때까지 전쟁 걸음 · 교전 스텝 · 하루 경계 존 몸 해시 전부 같음).
+//     행군 · 교전 몸은 T681 하루 몫(`_t681Take` · 남으면 여기서 채움)이라 걸음 수가 econ 날에 묶였는데, **귀환 몸만 틱마다**(`tickWarBodies` → `_warPaceReturn`) 걸었다.
+//     틱 수는 벽시계를 따른다(부하 · 마감 동안 쉼 · T755 창 동안 쉼) — 끔 판은 귀환 몸이 칸 없이 길 머리(지휘관 장부 자리)에 붙어 걸음 수가 자리를 안 바꿨고,
+//     켬 판은 몸 걸음(0.067칸/걸음)이라 걸은 수만큼 자리가 갈렸다 → 다음 날 장부가 그 자리에서 풀어 주고(`_warCleanupBody`) 생활층이 그 자리에서 잇는다 → D16 존 몸 해시부터 갈림.
+//   ⇒ 켬이면 귀환 몸도 틱에서 그날 몫만큼만 걷고(틱 고리 `_t681Take`), 틱이 못 쓴 몫은 여기서 채운다 — 한 econ 날의 귀환 걸음 = 하루 몫(행군 · 교전과 같은 자).
+//     시간 예산(`B` — 종전 마감 조각 예산)으로 끊기면 몫이 몸에 남아 다음 조각이 잇는다(걸음 수 무변). 고친 뒤 같은 씨 두 판: 갈림 0.
 function _t681Flush() {
   if (!state.war || !state.warLive || !state.war.WARS) return;
   const t0 = Date.now(), B = TB.slice(TICK_SLICE_MS || 0), now = state._warTickAt || Date.now(), dtMs = 1000 / ((state.warLive && state.warLive.TICK_HZ) || 30);
@@ -6632,6 +6639,17 @@ function _t681Flush() {
       const C = { fighting: 0 };
       _warTickOne(w, body, now, dtMs, C);
       if (w.phase !== 'march' && w.phase !== 'battle') break;   // 이 걸음에 끝났다(궤주 · 함락 · 대치)
+      if (B > 0 && Date.now() - t0 >= B) return 'retry';
+    }
+  }
+  //   ★★[T832 2026-10-21] 켬(T790 걷는 몸) — **귀환 몸도 그날 몫**(T832 머리 주석). 틱이 못 쓴 몫을 여기서 채운다 — 차례 = `warBodies` 차례(틱 고리와 같은 차례) · 끔 = 이 고리 무동작.
+  if (T790_NO_SNAP && state.warBodies) for (const body of state.warBodies.values()) {
+    if (body.phase !== 'return' || !body._t681 || !body.retGroup) continue;
+    const d = state.world.day | 0;
+    if (!body._t681q || body._t681q.day !== d) body._t681q = { day: d, left: _t681Quota() };   // 그날 틱이 한 번도 안 걸었다 — 몫 전부
+    while (body._t681q.left > 0) {
+      body._t681q.left--;
+      _warPaceReturn(body, now, dtMs);
       if (B > 0 && Date.now() - t0 >= B) return 'retry';
     }
   }
@@ -6773,7 +6791,7 @@ function tickWarBodies(now) {
   }
   // 귀환 페이싱 + 고아 정리
   for (const body of [...state.warBodies.values()]) {
-    if (body.phase === 'return') { _warPaceReturn(body, now, dtMs); continue; }
+    if (body.phase === 'return') { if (T790_NO_SNAP && T681_ON && body._t681 && !_t681Take(body)) continue; _warPaceReturn(body, now, dtMs); continue; }   // ★[T832] 켬 — 귀환 몸도 그날 몫(`_t681Take`)만큼만 틱에서 걷는다(남은 몫은 하루 마감 첫 자리 `_t681Flush` · 끔 = 틱마다 종전 그대로)
     if (body.w.id != null && !liveWid.has(body.w.id)) _warCleanupBody(body, true);
   }
   const ms = _perfNow() - t0;
