@@ -1223,11 +1223,15 @@ function bedSlotOf(npc) {
 //     해시 = 종전 그 함수(`pidHash`) — 글자에서 무작위 꼬리 대신 판 씨가 든다. 새 수 0 · 새 칸 0(`_sh` 는 있던 신원 캐시 · T747 이 다시 뜬 몸에 되살리는 그 칸).
 //   `playerId`(표시 · 소켓 · 주인 칸)는 무접촉.
 const T822_BODY_SEED = process.env.T822_BODY_SEED === '1';
-function _t822Sh(vil, p) {
+function _t822S0() {   // 판 씨(econ 세계 씨 · 없으면 마을 씨) — 마을 몸 · 도적 몸이 같은 칸을 읽는다(T841)
   const r = (state.econ && state.econ.rngState) ? state.econ.rngState() : null;
-  const s0 = (r && r.s0 != null) ? r.s0 : state.villageSeed;
-  return _pidHash(`${s0}_simvil_${vil.dbId}_${p.pid}`);
+  return (r && r.s0 != null) ? r.s0 : state.villageSeed;
 }
+function _t822Sh(vil, p) { return _pidHash(`${_t822S0()}_simvil_${vil.dbId}_${p.pid}`); }
+//   ★★[T841 2026-10-21 · T822 회부 3] 결정 문(존 `_shOf`)을 지나는 **마을 밖 몸**도 같은 꼴 — 판 씨 + 그 몸의 결정론 열쇠(새 손잡이 0 · 같은 `T822_BODY_SEED` 안).
+//     도적 몸(`bandits.js syncBodies` — 존 `spawnNpc` · AI 켬 · 관측자 곁이면 `decideNpcBehavior` 가 `_shOf` 로 굴린다)이 여기를 부른다:
+//     열쇠 = `bandit_<단 번호>_<몸 번호>`(단 번호 `g.id` = 도적 층 결정론 연번 · 몸 번호 = `pid`). 끔이면 이 문이 null 이라 도적 쪽 줄이 안 돈다.
+function _t841Sh(key) { return _pidHash(`${_t822S0()}_${key}`); }
 function spawnOneNpc(vil) {
   const houses = vil.housesPx.length ? vil.housesPx : [{ x: vil.ccx * SZ + SZ / 2, y: (vil.ccy + 6) * SZ + SZ / 2 }];   // ★폴백도 큰집 벽 안(중심 셀) 금지 — 남문 앞 마당
   const home = houses[vil.npcPids.length % houses.length];
@@ -7625,6 +7629,7 @@ function __p3Bind(mock) {
     _t765Depart, _t765Join,   // ★[T765] 후보 걷기 몸 문 둘(하네스 `test-cand-walk` 가 운영과 같은 문을 부른다)
     _t681Day, _t681Flush, T681_ON, T703_MARCH,   // ★[T703] T681 켬(기본) 판의 하루 경계 두 자리 — 하네스가 운영 하루 마감과 같은 차례(econ 앞 `_t681Flush` · 캐러밴 앞 `_t681Day`)로 부른다(값 무변 · 내보내기만)
     _warEngage, _warAfterDaily, _warEndFight, _warBuildRectIndex, _warBlockedCell, _warWorld, warPerf, _warOrderFallback, _warToStandoff,
+    banditHost, _t841Sh,   // ★[T841] 도적 몸 신원 문(호스트 `bodySh`) — 하네스(`test-body-seed-other`)가 운영과 같은 호스트를 도적 층에 꽂는다(내보내기만)
     T811_ARMS_BODY, _warArmsLoad, _warArmsCollect, _warArmsUnload, _t811Plan, _t811Off, _t811Sync, _t811Stat,   // ★[T811] 무기 몸 짐 — 하네스(`test-arms-body`)가 운영과 같은 문을 부른다(내보내기만)
     T790_NO_SNAP, _t790Stat, _t790Mark, _t790Lag, _warSetupReturn, _warPaceReturn,   // ★[T790] 하네스(`test-war-nosnap`)가 운영과 같은 문을 부른다(내보내기만)
     _t804Way, _t804WalkOut, _t804Stat, _warWalkGroupTo,   // ★[T804] 걷는 몸의 길 · 전진 풀기 걸음 — 하네스가 운영과 같은 문을 부른다(내보내기만)
@@ -7676,6 +7681,7 @@ function banditHost() {
     ta: state._distCtx && state._distCtx.ta,         // 지형 어댑터(isBlocked/forestMult — 셀 단위)
     getRoute,                                        // 마을쌍 경로 pts(px) — 캐러밴 A*·캐시 재사용(랩 getTradePath 동형)
     routeSampleStep, routeBootFreeze, sliceMs: TICK_SLICE_MS,   // ★[T640] 부팅 표본 조각 · 얼린 길 · 조각 예산(슬라이서 그 예산)
+    bodySh: T822_BODY_SEED ? _t841Sh : null,          // ★[T841] 도적 몸 주사위 신원 = 판 씨 + 열쇠(T822 켬에서만 · 끔 = null → 도적 쪽 줄 무동작)
     routeCacheLoad, routeCacheSave,                  // ★[T699] 교역로 디스크 캐시(손잡이 `T699_ROUTE_CACHE` · 끔이면 null 을 돌려주고 아무것도 안 한다)
     dayMs: state.dayMs,
     broadcast: state.deps && state.deps.broadcast,
