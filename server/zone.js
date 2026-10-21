@@ -6601,6 +6601,7 @@ async function _acceptConnection(ws, req, C) {
       ...(process.env.T813_RMB_PRESS !== '0' ? { rmbPress: true } : {}),   // [T813 · ★T819 켬 기본 — PM 10-20] 우클릭 탭 메뉴는 **누른 순간의 화면**으로 짚는다(46-h-verbs) · 되돌림 `T813_RMB_PRESS=0` 이면 칸이 없다(옛 welcome · 뗄 때의 화면)
       ...(_streamOn() ? { streams: Streams.wireOf(ZONE_ID) ? Streams.wireOf(ZONE_ID).ver : true, streamSlow: Streams.STREAM_SLOW0 } : {}),   // [T585] 개울 — 클라가 `/streams.bin` 을 받아 그리고 걸음 예측에 쓴다(배율도 서버 정본 수)
       ...(VillageKin.ON ? { villageOnly: true } : {}),   // [T787] 길드 = 마을(켬 기본) — 클라 무리 패널이 마을 패널이 된다 · `T785_VILLAGE_ONLY=0` 이면 칸이 없다(옛 길드 패널)
+      ...(process.env.T839_SITE_EXIT === '1' ? { siteExit: true } : {}),   // [T839] 터를 놓으면 건축 모드를 끈다(다섯 터 · 클라 `30-n-net.js`) — '1' 만 켬 · 끄면 칸이 없다(welcome 바이트 동일)
       ...(T509_WELL ? { wellAct: true } : {}),   // [T557] 우물 터 잡기 버튼 — 기본 켬 · `T509_WELL=0` 이면 칸이 없어 버튼이 숨는다   // [T507] 첫 30분의 문법(우클릭·이름표·회색) — 기본 켬 · `T507_VERBS=0` 이면 칸이 없다(옛 화면)
       coast588: ((v) => (v === '0' ? '0' : (v === 'a' ? 'a' : 'b')))(process.env.T588_COAST),   // [T588 · ★T604 추신3 기본 b] 해안 — 클라가 같은 파일(`public/coast-shape.js`)로 굽는다 · 칸은 늘 실린다('0' = 지금 식 · 클라 `uiCfg` 기본도 'b' — 다르면 welcome 에서 다시 굽는다)
     },
