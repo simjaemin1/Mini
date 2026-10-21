@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다) · ★[T830 2026-10-21] 칠하기 끔(T799) 뒤 다시 넣음 — 상한은 `TIMEOUT_OF` 3,600초 그대로
 // === 10차 T3 — 랩 "플레이어 의뢰 집 건설(B안)" 헤드리스 검증 하네스 ===
 //
 // 검증 항목(전부 실측 — 주장하려면 여기서 돌아야 한다):
@@ -88,6 +89,7 @@ async function runOnce(withPlayerSite, prng, decoy) {
   page.on('pageerror', (e) => errs.push(String((e && e.message) || e)));
   page.on('console', (m) => { if (m.type() === 'error') cerrs.push(m.text()); });
   await page.addInitScript(INIT(prng));
+  await LC.noPaint(page);   // ★[T830] 칠하기만 끈다(T799 꼴 · 까닭·증명은 `fixture-lab-clock` 머리말 · `LAB_RENDER=1` 이면 칠함)
   await page.goto(LAB);
   await page.waitForFunction(() => typeof window.lifeToggle === 'function' && typeof VILS !== 'undefined', null, { timeout: 60000 });
   await page.evaluate(`window.__SNAP = ${SNAP}; true`);   // ★[T649] 표본 자를 페이지 안에 둔다 — 프레임 사이에서 바로 잰다(같은 함수 하나)
@@ -149,10 +151,11 @@ async function runOnce(withPlayerSite, prng, decoy) {
   //    마감은 1,500초 벽시계였다 — 이제 마감은 `__untilDay` 의 "시계가 섰나" 하나)
   const startDay = (await take()).day;
   const series = new Map();
+  const fps = [];   // ★[T830] 날마다 지문(그날 첫 프레임 = 표본 프레임)
   let doneDay = null, last = null;
   for (;;) {
     const s = await take(); last = s;
-    if (!series.has(s.day)) series.set(s.day, s);
+    if (!series.has(s.day)) { series.set(s.day, s); fps.push(s.day + ':' + await LC.fp(page)); }
     if (withPlayerSite && s.pDone && doneDay === null) doneDay = s.day;
     if (s.day - startDay >= RUN_DAYS) break;
     await LC.untilDay(page, s.day + 1);   // 다음 랩 날의 첫 프레임까지 민다(종전: 400ms 잠)
@@ -160,7 +163,7 @@ async function runOnce(withPlayerSite, prng, decoy) {
   const endFrame = await page.evaluate(() => window.__frame());
   await page.evaluate(() => { if (window.lifeOn) lifeToggle(); });
   await browser.close();
-  return { placed, placeFrame, endFrame, startDay, doneDay, last, series: [...series.entries()].map(([d, s]) => [d, s]), errs, cerrs };
+  return { placed, placeFrame, endFrame, startDay, doneDay, last, series: [...series.entries()].map(([d, s]) => [d, s]), errs, cerrs, fps };
 }
 
 (async () => {
@@ -251,6 +254,10 @@ async function runOnce(withPlayerSite, prng, decoy) {
   chk(Math.abs(lastD) <= Math.max(1, Math.abs(maxN)),
     `⑨ B−A 편차(${lastD})가 순수 잡음 편차(A′−A 최대 ${maxN}) 범위 안 — 층수 차이는 계통 손실이 아니라 카오스 갈라짐`);
 
+  // ★[T830] 궤적 지문 — 판마다 날별 지문을 접은 값 · 끝 날 지문 · 끝 프레임. 칠함(LAB_RENDER=1) 판과 이 줄들이 바이트 같아야 한다.
+  for (const [nm, r] of [['B', B], ['A', A], ['A′', A2], ['B′', D]])
+    console.log(`  지문 [${LC.paintTag()}] ${nm} 날 ${r.fps.length}개 · 접은 값 ${LC.fold(r.fps)} · 끝 ${r.fps[r.fps.length - 1]} · 프레임 ${r.endFrame}`);
+  if (process.env.LAB_FP_OUT) require('fs').writeFileSync(process.env.LAB_FP_OUT, [['B', B], ['A', A], ['A′', A2], ['B′', D]].map(([nm, r]) => r.fps.map((x) => nm + ' ' + x).join('\n')).join('\n') + '\n');
   console.log('\n' + (fail === 0 ? '결과: PASS' : `결과: FAIL (${fail}건)`));
   process.exit(fail === 0 ? 0 : 1);
 })().catch((e) => { console.error('하네스 오류:', e && e.stack || e); process.exit(2); });

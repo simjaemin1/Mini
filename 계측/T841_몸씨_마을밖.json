@@ -1,0 +1,3345 @@
+{
+ "bandit": {
+  "7": {
+   "on1": {
+    "knob": "1",
+    "gangs": 3,
+    "bodies": [
+     [
+      4,
+      "p61",
+      4128041104,
+      1
+     ],
+     [
+      4,
+      "p62",
+      4128041105,
+      1
+     ],
+     [
+      4,
+      "p63",
+      4128041106,
+      1
+     ],
+     [
+      5,
+      "p64",
+      4128964628,
+      1
+     ],
+     [
+      5,
+      "p65",
+      4128964629,
+      1
+     ],
+     [
+      5,
+      "p66",
+      4128964630,
+      1
+     ],
+     [
+      6,
+      "p67",
+      4129888152,
+      1
+     ],
+     [
+      6,
+      "p68",
+      4129888153,
+      1
+     ],
+     [
+      6,
+      "p69",
+      4129888154,
+      1
+     ]
+    ]
+   },
+   "on2": {
+    "knob": "1",
+    "gangs": 3,
+    "bodies": [
+     [
+      4,
+      "p61",
+      4128041104,
+      1
+     ],
+     [
+      4,
+      "p62",
+      4128041105,
+      1
+     ],
+     [
+      4,
+      "p63",
+      4128041106,
+      1
+     ],
+     [
+      5,
+      "p64",
+      4128964628,
+      1
+     ],
+     [
+      5,
+      "p65",
+      4128964629,
+      1
+     ],
+     [
+      5,
+      "p66",
+      4128964630,
+      1
+     ],
+     [
+      6,
+      "p67",
+      4129888152,
+      1
+     ],
+     [
+      6,
+      "p68",
+      4129888153,
+      1
+     ],
+     [
+      6,
+      "p69",
+      4129888154,
+      1
+     ]
+    ]
+   },
+   "off1": {
+    "knob": null,
+    "gangs": 3,
+    "bodies": [
+     [
+      4,
+      "p61",
+      2175559663,
+      0
+     ],
+     [
+      4,
+      "p62",
+      2204037443,
+      0
+     ],
+     [
+      4,
+      "p63",
+      2233054946,
+      0
+     ],
+     [
+      5,
+      "p64",
+      2261565250,
+      0
+     ],
+     [
+      5,
+      "p65",
+      2289818285,
+      0
+     ],
+     [
+      5,
+      "p66",
+      2319012277,
+      0
+     ],
+     [
+      6,
+      "p67",
+      2345875575,
+      0
+     ],
+     [
+      6,
+      "p68",
+      2375931871,
+      0
+     ],
+     [
+      6,
+      "p69",
+      2404811886,
+      0
+     ]
+    ]
+   },
+   "off2": {
+    "knob": null,
+    "gangs": 3,
+    "bodies": [
+     [
+      4,
+      "p61",
+      2175648475,
+      0
+     ],
+     [
+      4,
+      "p62",
+      2204645995,
+      0
+     ],
+     [
+      4,
+      "p63",
+      2233061124,
+      0
+     ],
+     [
+      5,
+      "p64",
+      2259924987,
+      0
+     ],
+     [
+      5,
+      "p65",
+      2290084628,
+      0
+     ],
+     [
+      5,
+      "p66",
+      2318945253,
+      0
+     ],
+     [
+      6,
+      "p67",
+      2347586680,
+      0
+     ],
+     [
+      6,
+      "p68",
+      2376271115,
+      0
+     ],
+     [
+      6,
+      "p69",
+      2404897788,
+      0
+     ]
+    ]
+   }
+  },
+  "42": {
+   "on1": {
+    "knob": "1",
+    "gangs": 3,
+    "bodies": [
+     [
+      4,
+      "p61",
+      2202449659,
+      1
+     ],
+     [
+      4,
+      "p62",
+      2202449660,
+      1
+     ],
+     [
+      4,
+      "p63",
+      2202449661,
+      1
+     ],
+     [
+      5,
+      "p64",
+      2203373183,
+      1
+     ],
+     [
+      5,
+      "p65",
+      2203373184,
+      1
+     ],
+     [
+      5,
+      "p66",
+      2203373185,
+      1
+     ],
+     [
+      6,
+      "p67",
+      2204296707,
+      1
+     ],
+     [
+      6,
+      "p68",
+      2204296708,
+      1
+     ],
+     [
+      6,
+      "p69",
+      2204296709,
+      1
+     ]
+    ]
+   },
+   "on2": {
+    "knob": "1",
+    "gangs": 3,
+    "bodies": [
+     [
+      4,
+      "p61",
+      2202449659,
+      1
+     ],
+     [
+      4,
+      "p62",
+      2202449660,
+      1
+     ],
+     [
+      4,
+      "p63",
+      2202449661,
+      1
+     ],
+     [
+      5,
+      "p64",
+      2203373183,
+      1
+     ],
+     [
+      5,
+      "p65",
+      2203373184,
+      1
+     ],
+     [
+      5,
+      "p66",
+      2203373185,
+      1
+     ],
+     [
+      6,
+      "p67",
+      2204296707,
+      1
+     ],
+     [
+      6,
+      "p68",
+      2204296708,
+      1
+     ],
+     [
+      6,
+      "p69",
+      2204296709,
+      1
+     ]
+    ]
+   },
+   "off1": {
+    "knob": null,
+    "gangs": 3,
+    "bodies": [
+     [
+      4,
+      "p61",
+      2175806231,
+      0
+     ],
+     [
+      4,
+      "p62",
+      2204456750,
+      0
+     ],
+     [
+      4,
+      "p63",
+      2232946732,
+      0
+     ],
+     [
+      5,
+      "p64",
+      2259723161,
+      0
+     ],
+     [
+      5,
+      "p65",
+      2290327758,
+      0
+     ],
+     [
+      5,
+      "p66",
+      2317088781,
+      0
+     ],
+     [
+      6,
+      "p67",
+      2347187996,
+      0
+     ],
+     [
+      6,
+      "p68",
+      2375726446,
+      0
+     ],
+     [
+      6,
+      "p69",
+      2403165695,
+      0
+     ]
+    ]
+   },
+   "off2": {
+    "knob": null,
+    "gangs": 3,
+    "bodies": [
+     [
+      4,
+      "p61",
+      2174021035,
+      0
+     ],
+     [
+      4,
+      "p62",
+      2202668451,
+      0
+     ],
+     [
+      4,
+      "p63",
+      2232868363,
+      0
+     ],
+     [
+      5,
+      "p64",
+      2259871598,
+      0
+     ],
+     [
+      5,
+      "p65",
+      2289867064,
+      0
+     ],
+     [
+      5,
+      "p66",
+      2317190536,
+      0
+     ],
+     [
+      6,
+      "p67",
+      2345649933,
+      0
+     ],
+     [
+      6,
+      "p68",
+      2374337112,
+      0
+     ],
+     [
+      6,
+      "p69",
+      2404631554,
+      0
+     ]
+    ]
+   }
+  },
+  "1020": {
+   "on1": {
+    "knob": "1",
+    "gangs": 2,
+    "bodies": [
+     [
+      4,
+      "p61",
+      4239492348,
+      1
+     ],
+     [
+      4,
+      "p62",
+      4239492349,
+      1
+     ],
+     [
+      4,
+      "p63",
+      4239492350,
+      1
+     ],
+     [
+      5,
+      "p64",
+      4240415872,
+      1
+     ],
+     [
+      5,
+      "p65",
+      4240415873,
+      1
+     ],
+     [
+      5,
+      "p66",
+      4240415874,
+      1
+     ]
+    ]
+   },
+   "on2": {
+    "knob": "1",
+    "gangs": 2,
+    "bodies": [
+     [
+      4,
+      "p61",
+      4239492348,
+      1
+     ],
+     [
+      4,
+      "p62",
+      4239492349,
+      1
+     ],
+     [
+      4,
+      "p63",
+      4239492350,
+      1
+     ],
+     [
+      5,
+      "p64",
+      4240415872,
+      1
+     ],
+     [
+      5,
+      "p65",
+      4240415873,
+      1
+     ],
+     [
+      5,
+      "p66",
+      4240415874,
+      1
+     ]
+    ]
+   },
+   "off1": {
+    "knob": null,
+    "gangs": 2,
+    "bodies": [
+     [
+      4,
+      "p61",
+      2174046768,
+      0
+     ],
+     [
+      4,
+      "p62",
+      2203984908,
+      0
+     ],
+     [
+      4,
+      "p63",
+      2231173179,
+      0
+     ],
+     [
+      5,
+      "p64",
+      2261904949,
+      0
+     ],
+     [
+      5,
+      "p65",
+      2290232077,
+      0
+     ],
+     [
+      5,
+      "p66",
+      2319015197,
+      0
+     ]
+    ]
+   },
+   "off2": {
+    "knob": null,
+    "gangs": 2,
+    "bodies": [
+     [
+      4,
+      "p61",
+      2175801581,
+      0
+     ],
+     [
+      4,
+      "p62",
+      2202650951,
+      0
+     ],
+     [
+      4,
+      "p63",
+      2233095560,
+      0
+     ],
+     [
+      5,
+      "p64",
+      2260023815,
+      0
+     ],
+     [
+      5,
+      "p65",
+      2289873300,
+      0
+     ],
+     [
+      5,
+      "p66",
+      2318537089,
+      0
+     ]
+    ]
+   }
+  }
+ },
+ "baseline": {
+  "off": "같음 3/3 (495초)",
+  "on": "첫 판 다름 1/3(시드 42 날 375 · 광산6 곳간·금고) → 시드 42 따로 main 켬 같음 1/1 · 가지 켬 같음 1/1 → 3시드 다시 같음 3/3(370초)"
+ },
+ "t805": {
+  "made": "2026-10-21",
+  "head": "2a2033f0",
+  "days": 3,
+  "seed": 1020,
+  "d0": 2,
+  "arms": [
+   "off",
+   "A1",
+   "A2",
+   "A3",
+   "A4",
+   "ALL"
+  ],
+  "rep": 2,
+  "par": 2,
+  "dir": "/tmp/claude-0/t841/t805",
+  "how": "node scripts/t805-body-ruler.js --arms off,A1,A2,A3,A4,ALL --days 3 --seed 1020 --rep 2 --par 2",
+  "runs": [
+   {
+    "tag": "off-1020-r1",
+    "arm": "off",
+    "seed": 1020,
+    "rep": 1,
+    "sec": 153,
+    "code": 0,
+    "sig": null,
+    "cut": false,
+    "ok": true,
+    "days": 3,
+    "eight": {
+     "pop": 429,
+     "dead": 0,
+     "ever": 51,
+     "weapQ": 66,
+     "expand": 0,
+     "board": 0,
+     "toolQ": 3716.2,
+     "preserve": 0,
+     "grain": 346.2
+    },
+    "dissolved": 0,
+    "empty": 0,
+    "runHash": "6bff0a3bbc6050fa",
+    "tick": {
+     "n": 122041,
+     "mean": 0.9777,
+     "p50": 0.185,
+     "p90": 0.315,
+     "p99": 1.335,
+     "p999": 17.585,
+     "max": 85207.481,
+     "over16": 132,
+     "over30": 33
+    },
+    "tickWin": {
+     "n": 86401,
+     "mean": 0.2618,
+     "p50": 0.195,
+     "p90": 0.305,
+     "p99": 1.325,
+     "p999": 7.185,
+     "max": 1031.139,
+     "over16": 35,
+     "over30": 4
+    },
+    "tickWho": "zone.js:14347",
+    "tickOver": [
+     85207.481,
+     1031.139,
+     533.724,
+     284.814
+    ],
+    "vclock": {
+     "V": 1767229668056.7349,
+     "V0": 1767225600000,
+     "fired": 190833,
+     "timers": 25250,
+     "intervals": 13,
+     "started": true,
+     "startAt": 1767225600000,
+     "paused": false,
+     "yields": 477,
+     "maxQ": 19,
+     "errs": 0,
+     "q": 13
+    },
+    "wallPerDay": 14.21,
+    "lastDay": 3,
+    "bootSec": 124.2,
+    "days_": [
+     {
+      "d": 1,
+      "wd": 1,
+      "wall": 124220,
+      "econ": {
+       "pop": 408,
+       "jobs": {
+        "farmer": 152,
+        "fisher": 208,
+        "lumberjack": 0,
+        "forager": 0
+       },
+       "farmAnchor": 177.6
+      },
+      "tick": {
+       "n": 35640,
+       "mean": 2.7132,
+       "p50": 0.185,
+       "p90": 0.335,
+       "p99": 1.355,
+       "p999": 27.965,
+       "max": 85207.481,
+       "over16": 97,
+       "over30": 29,
+       "maxTick": 85207.481
+      },
+      "inDay": {
+       "n": 6
+      },
+      "act": {
+       "fish": null,
+       "wood": null,
+       "forage": null
+      }
+     },
+     {
+      "d": 2,
+      "wd": 2,
+      "wall": 138864,
+      "econ": {
+       "pop": 408,
+       "jobs": {
+        "farmer": 152,
+        "fisher": 208,
+        "lumberjack": 0,
+        "forager": 0
+       },
+       "farmAnchor": 177.6
+      },
+      "tick": {
+       "n": 43200,
+       "mean": 0.2597,
+       "p50": 0.185,
+       "p90": 0.305,
+       "p99": 1.315,
+       "p999": 9.915,
+       "max": 533.724,
+       "over16": 29,
+       "over30": 3,
+       "maxTick": 533.724
+      },
+      "inDay": {
+       "n": 8
+      },
+      "act": {
+       "fish": null,
+       "wood": null,
+       "forage": null
+      }
+     },
+     {
+      "d": 3,
+      "wd": 3,
+      "wall": 152648,
+      "econ": {
+       "pop": 429,
+       "jobs": {
+        "farmer": 152,
+        "fisher": 208,
+        "lumberjack": 0,
+        "forager": 0
+       },
+       "farmAnchor": 177.6
+      },
+      "tick": {
+       "n": 43201,
+       "mean": 0.2639,
+       "p50": 0.195,
+       "p90": 0.315,
+       "p99": 1.335,
+       "p999": 4.535,
+       "max": 1031.139,
+       "over16": 6,
+       "over30": 1,
+       "maxTick": 1031.139
+      },
+      "inDay": {
+       "n": 8
+      },
+      "act": {
+       "fish": null,
+       "wood": null,
+       "forage": null
+      }
+     }
+    ],
+    "arms": {
+     "anchor": 355.2
+    }
+   },
+   {
+    "tag": "off-1020-r2",
+    "arm": "off",
+    "seed": 1020,
+    "rep": 2,
+    "sec": 158,
+    "code": 0,
+    "sig": null,
+    "cut": false,
+    "ok": true,
+    "days": 3,
+    "eight": {
+     "pop": 429,
+     "dead": 0,
+     "ever": 51,
+     "weapQ": 66,
+     "expand": 0,
+     "board": 0,
+     "toolQ": 3716.2,
+     "preserve": 0,
+     "grain": 346.2
+    },
+    "dissolved": 0,
+    "empty": 0,
+    "runHash": "6bff0a3bbc6050fa",
+    "tick": {
+     "n": 122041,
+     "mean": 1.0195,
+     "p50": 0.195,
+     "p90": 0.335,
+     "p99": 1.595,
+     "p999": 16.615,
+     "max": 88204.874,
+     "over16": 132,
+     "over30": 42
+    },
+    "tickWin": {
+     "n": 86401,
+     "mean": 0.279,
+     "p50": 0.195,
+     "p90": 0.335,
+     "p99": 1.635,
+     "p999": 7.175,
+     "max": 1052.764,
+     "over16": 39,
+     "over30": 13
+    },
+    "tickWho": "zone.js:14347",
+    "tickOver": [
+     88204.874,
+     1052.764,
+     622.534,
+     324.066,
+     226.684
+    ],
+    "vclock": {
+     "V": 1767229668056.7349,
+     "V0": 1767225600000,
+     "fired": 190833,
+     "timers": 25250,
+     "intervals": 13,
+     "started": true,
+     "startAt": 1767225600000,
+     "paused": false,
+     "yields": 477,
+     "maxQ": 19,
+     "errs": 0,
+     "q": 13
+    },
+    "wallPerDay": 15.12,
+    "lastDay": 3,
+    "bootSec": 127.5,
+    "days_": [
+     {
+      "d": 1,
+      "wd": 1,
+      "wall": 127511,
+      "econ": {
+       "pop": 408,
+       "jobs": {
+        "farmer": 152,
+        "fisher": 208,
+        "lumberjack": 0,
+        "forager": 0
+       },
+       "farmAnchor": 177.6
+      },
+      "tick": {
+       "n": 35640,
+       "mean": 2.8149,
+       "p50": 0.205,
+       "p90": 0.335,
+       "p99": 1.495,
+       "p999": 25.515,
+       "max": 88204.874,
+       "over16": 93,
+       "over30": 29,
+       "maxTick": 88204.874
+      },
+      "inDay": {
+       "n": 6
+      },
+      "act": {
+       "fish": null,
+       "wood": null,
+       "forage": null
+      }
+     },
+     {
+      "d": 2,
+      "wd": 2,
+      "wall": 142391,
+      "econ": {
+       "pop": 408,
+       "jobs": {
+        "farmer": 152,
+        "fisher": 208,
+        "lumberjack": 0,
+        "forager": 0
+       },
+       "farmAnchor": 177.6
+      },
+      "tick": {
+       "n": 43200,
+       "mean": 0.2671,
+       "p50": 0.175,
+       "p90": 0.305,
+       "p99": 1.505,
+       "p999": 10.275,
+       "max": 622.534,
+       "over16": 32,
+       "over30": 12,
+       "maxTick": 622.534
+      },
+      "inDay": {
+       "n": 8
+      },
+      "act": {
+       "fish": null,
+       "wood": null,
+       "forage": null
+      }
+     },
+     {
+      "d": 3,
+      "wd": 3,
+      "wall": 157759,
+      "econ": {
+       "pop": 429,
+       "jobs": {
+        "farmer": 152,
+        "fisher": 208,
+        "lumberjack": 0,
+        "forager": 0
+       },
+       "farmAnchor": 177.6
+      },
+      "tick": {
+       "n": 43201,
+       "mean": 0.2908,
+       "p50": 0.205,
+       "p90": 0.355,
+       "p99": 1.715,
+       "p999": 4.635,
+       "max": 1052.764,
+       "over16": 7,
+       "over30": 1,
+       "maxTick": 1052.764
+      },
+      "inDay": {
+       "n": 8
+      },
+      "act": {
+       "fish": null,
+       "wood": null,
+       "forage": null
+      }
+     }
+    ],
+    "arms": {
+     "anchor": 355.2
+    }
+   },
+   {
+    "tag": "A1-1020-r1",
+    "arm": "A1",
+    "seed": 1020,
+    "rep": 1,
+    "sec": 179,
+    "code": 0,
+    "sig": null,
+    "cut": false,
+    "ok": true,
+    "days": 3,
+    "eight": {
+     "pop": 429,
+     "dead": 0,
+     "ever": 51,
+     "weapQ": 66,
+     "expand": 0,
+     "board": 0,
+     "toolQ": 3716.2,
+     "preserve": 0,
+     "grain": 346.2
+    },
+    "dissolved": 0,
+    "empty": 0,
+    "runHash": "6bff0a3bbc6050fa",
+    "tick": {
+     "n": 122041,
+     "mean": 1.1758,
+     "p50": 0.355,
+     "p90": 0.625,
+     "p99": 1.835,
+     "p999": 17.815,
+     "max": 85991.227,
+     "over16": 139,
+     "over30": 40
+    },
+    "tickWin": {
+     "n": 86401,
+     "mean": 0.4692,
+     "p50": 0.365,
+     "p90": 0.645,
+     "p99": 1.905,
+     "p999": 7.555,
+     "max": 958.02,
+     "over16": 41,
+     "over30": 11
+    },
+    "tickWho": "zone.js:14347",
+    "tickOver": [
+     85991.227,
+     958.02,
+     538.062,
+     348.215
+    ],
+    "vclock": {
+     "V": 1767229668056.7349,
+     "V0": 1767225600000,
+     "fired": 190833,
+     "timers": 25250,
+     "intervals": 13,
+     "started": true,
+     "startAt": 1767225600000,
+     "paused": false,
+     "yields": 477,
+     "maxQ": 19,
+     "errs": 0,
+     "q": 13
+    },
+    "wallPerDay": 23.86,
+    "lastDay": 3,
+    "bootSec": 130.7,
+    "days_": [
+     {
+      "d": 1,
+      "wd": 1,
+      "wall": 130676,
+      "econ": {
+       "pop": 408,
+       "jobs": {
+        "farmer": 152,
+        "fisher": 208,
+        "lumberjack": 0,
+        "forager": 0
+       },
+       "farmAnchor": 202.16
+      },
+      "tick": {
+       "n": 35640,
+       "mean": 2.8888,
+       "p50": 0.325,
+       "p90": 0.545,
+       "p99": 1.635,
+       "p999": 27.285,
+       "max": 85991.227,
+       "over16": 98,
+       "over30": 29,
+       "maxTick": 85991.227
+      },
+      "inDay": {
+       "n": 6,
+       "farm": {
+        "working": 152,
+        "hands": 0,
+        "handU": 0
+       }
+      },
+      "act": {
+       "fish": null,
+       "wood": null,
+       "forage": null
+      }
+     },
+     {
+      "d": 2,
+      "wd": 2,
+      "wall": 152450,
+      "econ": {
+       "pop": 408,
+       "jobs": {
+        "farmer": 152,
+        "fisher": 208,
+        "lumberjack": 0,
+        "forager": 0
+       },
+       "farmAnchor": 202.16
+      },
+      "tick": {
+       "n": 43200,
+       "mean": 0.4179,
+       "p50": 0.325,
+       "p90": 0.565,
+       "p99": 1.595,
+       "p999": 9.325,
+       "max": 538.062,
+       "over16": 32,
+       "over30": 7,
+       "maxTick": 538.062
+      },
+      "inDay": {
+       "n": 8,
+       "farm": {
+        "working": 134,
+        "hands": 0,
+        "handU": 0
+       }
+      },
+      "act": {
+       "fish": null,
+       "wood": null,
+       "forage": null
+      }
+     },
+     {
+      "d": 3,
+      "wd": 3,
+      "wall": 178399,
+      "econ": {
+       "pop": 429,
+       "jobs": {
+        "farmer": 152,
+        "fisher": 208,
+        "lumberjack": 0,
+        "forager": 0
+       },
+       "farmAnchor": 202.16
+      },
+      "tick": {
+       "n": 43201,
+       "mean": 0.5205,
+       "p50": 0.425,
+       "p90": 0.725,
+       "p99": 2.215,
+       "p999": 6.135,
+       "max": 958.02,
+       "over16": 9,
+       "over30": 4,
+       "maxTick": 958.02
+      },
+      "inDay": {
+       "n": 8,
+       "farm": {
+        "working": 152,
+        "hands": 0,
+        "handU": 0
+       }
+      },
+      "act": {
+       "fish": null,
+       "wood": null,
+       "forage": null
+      }
+     }
+    ],
+    "arms": {
+     "farm": {
+      "farmers": 152,
+      "workingMax": 152,
+      "harvestN": 0,
+      "credFoodEq": 0,
+      "t100Eq": 0,
+      "hlBody": 153,
+      "hlBatch": 0,
+      "firstHarvestDay": null
+     },
+     "anchor": 404.32
+    }
+   },
+   {
+    "tag": "A1-1020-r2",
+    "arm": "A1",
+    "seed": 1020,
+    "rep": 2,
+    "sec": 184,
+    "code": 0,
+    "sig": null,
+    "cut": false,
+    "ok": true,
+    "days": 3,
+    "eight": {
+     "pop": 429,
+     "dead": 0,
+     "ever": 51,
+     "weapQ": 66,
+     "expand": 0,
+     "board": 0,
+     "toolQ": 3716.2,
+     "preserve": 0,
+     "grain": 346.2
+    },
+    "dissolved": 0,
+    "empty": 0,
+    "runHash": "6bff0a3bbc6050fa",
+    "tick": {
+     "n": 122041,
+     "mean": 1.2213,
+     "p50": 0.385,
+     "p90": 0.665,
+     "p99": 1.975,
+     "p999": 18.535,
+     "max": 87911.043,
+     "over16": 144,
+     "over30": 31
+    },
+    "tickWin": {
+     "n": 86401,
+     "mean": 0.5071,
+     "p50": 0.415,
+     "p90": 0.685,
+     "p99": 2.065,
+     "p999": 7.765,
+     "max": 1248.819,
+     "over16": 46,
+     "over30": 10
+    },
+    "tickWho": "zone.js:14347",
+    "tickOver": [
+     87911.043,
+     1248.819,
+     667.647,
+     251.437
+    ],
+    "vclock": {
+     "V": 1767229668056.7349,
+     "V0": 1767225600000,
+     "fired": 190833,
+     "timers": 25250,
+     "intervals": 13,
+     "started": true,
+     "startAt": 1767225600000,
+     "paused": false,
+     "yields": 477,
+     "maxQ": 19,
+     "errs": 0,
+     "q": 13
+    },
+    "wallPerDay": 25.56,
+    "lastDay": 3,
+    "bootSec": 133,
+    "days_": [
+     {
+      "d": 1,
+      "wd": 1,
+      "wall": 133016,
+      "econ": {
+       "pop": 408,
+       "jobs": {
+        "farmer": 152,
+        "fisher": 208,
+        "lumberjack": 0,
+        "forager": 0
+       },
+       "farmAnchor": 202.16
+      },
+      "tick": {
+       "n": 35640,
+       "mean": 2.9526,
+       "p50": 0.335,
+       "p90": 0.595,
+       "p99": 1.665,
+       "p999": 25.105,
+       "max": 87911.043,
+       "over16": 98,
+       "over30": 21,
+       "maxTick": 87911.043
+      },
+      "inDay": {
+       "n": 6,
+       "farm": {
+        "working": 152,
+        "hands": 0,
+        "handU": 0
+       }
+      },
+      "act": {
+       "fish": null,
+       "wood": null,
+       "forage": null
+      }
+     },
+     {
+      "d": 2,
+      "wd": 2,
+      "wall": 158199,
+      "econ": {
+       "pop": 408,
+       "jobs": {
+        "farmer": 152,
+        "fisher": 208,
+        "lumberjack": 0,
+        "forager": 0
+       },
+       "farmAnchor": 202.16
+      },
+      "tick": {
+       "n": 43200,
+       "mean": 0.4842,
+       "p50": 0.385,
+       "p90": 0.625,
+       "p99": 2.045,
+       "p999": 10.665,
+       "max": 667.647,
+       "over16": 36,
+       "over30": 8,
+       "maxTick": 667.647
+      },
+      "inDay": {
+       "n": 8,
+       "farm": {
+        "working": 134,
+        "hands": 0,
+        "handU": 0
+       }
+      },
+      "act": {
+       "fish": null,
+       "wood": null,
+       "forage": null
+      }
+     },
+     {
+      "d": 3,
+      "wd": 3,
+      "wall": 184136,
+      "econ": {
+       "pop": 429,
+       "jobs": {
+        "farmer": 152,
+        "fisher": 208,
+        "lumberjack": 0,
+        "forager": 0
+       },
+       "farmAnchor": 202.16
+      },
+      "tick": {
+       "n": 43201,
+       "mean": 0.5301,
+       "p50": 0.435,
+       "p90": 0.735,
+       "p99": 2.085,
+       "p999": 5.795,
+       "max": 1248.819,
+       "over16": 10,
+       "over30": 2,
+       "maxTick": 1248.819
+      },
+      "inDay": {
+       "n": 8,
+       "farm": {
+        "working": 152,
+        "hands": 0,
+        "handU": 0
+       }
+      },
+      "act": {
+       "fish": null,
+       "wood": null,
+       "forage": null
+      }
+     }
+    ],
+    "arms": {
+     "farm": {
+      "farmers": 152,
+      "workingMax": 152,
+      "harvestN": 0,
+      "credFoodEq": 0,
+      "t100Eq": 0,
+      "hlBody": 153,
+      "hlBatch": 0,
+      "firstHarvestDay": null
+     },
+     "anchor": 404.32
+    }
+   },
+   {
+    "tag": "A2-1020-r1",
+    "arm": "A2",
+    "seed": 1020,
+    "rep": 1,
+    "sec": 209,
+    "code": 0,
+    "sig": null,
+    "cut": false,
+    "ok": true,
+    "days": 3,
+    "eight": {
+     "pop": 408,
+     "dead": 0,
+     "ever": 51,
+     "weapQ": 66,
+     "expand": 0,
+     "board": 0,
+     "toolQ": 3715.9,
+     "preserve": 0,
+     "grain": 346.3
+    },
+    "dissolved": 0,
+    "empty": 0,
+    "runHash": "8a0f47cd8e8713f3",
+    "tick": {
+     "n": 122041,
+     "mean": 1.4046,
+     "p50": 0.585,
+     "p90": 0.985,
+     "p99": 2.435,
+     "p999": 19.255,
+     "max": 84583.759,
+     "over16": 139,
+     "over30": 39
+    },
+    "tickWin": {
+     "n": 86401,
+     "mean": 0.6979,
+     "p50": 0.585,
+     "p90": 0.995,
+     "p99": 2.435,
+     "p999": 8.505,
+     "max": 778.448,
+     "over16": 44,
+     "over30": 14
+    },
+    "tickWho": "zone.js:14347",
+    "tickOver": [
+     84583.759,
+     778.448,
+     668.007,
+     300.917
+    ],
+    "vclock": {
+     "V": 1767229668056.7349,
+     "V0": 1767225600000,
+     "fired": 190833,
+     "timers": 25250,
+     "intervals": 13,
+     "started": true,
+     "startAt": 1767225600000,
+     "paused": false,
+     "yields": 477,
+     "maxQ": 19,
+     "errs": 0,
+     "q": 13
+    },
+    "wallPerDay": 33.81,
+    "lastDay": 3,
+    "bootSec": 141.7,
+    "days_": [
+     {
+      "d": 1,
+      "wd": 1,
+      "wall": 141718,
+      "econ": {
+       "pop": 408,
+       "jobs": {
+        "farmer": 152,
+        "fisher": 208,
+        "lumberjack": 0,
+        "forager": 0
+       },
+       "farmAnchor": 177.6
+      },
+      "tick": {
+       "n": 35640,
+       "mean": 3.1179,
+       "p50": 0.565,
+       "p90": 0.965,
+       "p99": 2.435,
+       "p999": 26.955,
+       "max": 84583.759,
+       "over16": 95,
+       "over30": 25,
+       "maxTick": 84583.759
+      },
+      "inDay": {
+       "n": 6,
+       "fish": {
+        "walkers": 190,
+        "hands": 0,
+        "handU": 0
+       }
+      },
+      "act": {
+       "fish": 24,
+       "wood": null,
+       "forage": null
+      }
+     },
+     {
+      "d": 2,
+      "wd": 2,
+      "wall": 176637,
+      "econ": {
+       "pop": 408,
+       "jobs": {
+        "farmer": 152,
+        "fisher": 208,
+        "lumberjack": 0,
+        "forager": 0
+       },
+       "farmAnchor": 177.6
+      },
+      "tick": {
+       "n": 43200,
+       "mean": 0.7179,
+       "p50": 0.595,
+       "p90": 1.025,
+       "p99": 2.505,
+       "p999": 11.325,
+       "max": 668.007,
+       "over16": 35,
+       "over30": 9,
+       "maxTick": 668.007
+      },
+      "inDay": {
+       "n": 8,
+       "fish": {
+        "walkers": 142,
+        "hands": 144,
+        "handU": 80.151
+       }
+      },
+      "act": {
+       "fish": 24,
+       "wood": null,
+       "forage": null
+      }
+     },
+     {
+      "d": 3,
+      "wd": 3,
+      "wall": 209345,
+      "econ": {
+       "pop": 408,
+       "jobs": {
+        "farmer": 152,
+        "fisher": 208,
+        "lumberjack": 0,
+        "forager": 0
+       },
+       "farmAnchor": 177.6
+      },
+      "tick": {
+       "n": 43201,
+       "mean": 0.6779,
+       "p50": 0.575,
+       "p90": 0.945,
+       "p99": 2.355,
+       "p999": 7.125,
+       "max": 778.448,
+       "over16": 9,
+       "over30": 5,
+       "maxTick": 778.448
+      },
+      "inDay": {
+       "n": 8,
+       "fish": {
+        "walkers": 189,
+        "hands": 192,
+        "handU": 67.5527
+       }
+      },
+      "act": {
+       "fish": 24,
+       "wood": null,
+       "forage": null
+      }
+     }
+    ],
+    "arms": {
+     "fish": {
+      "act": 24,
+      "cells": 3012,
+      "delivered": 153.013,
+      "formula": 846.166,
+      "walkersMax": 190,
+      "t340": {
+       "cast": 54352,
+       "hook": 32692,
+       "abort": 17029,
+       "miss": 4641
+      }
+     },
+     "anchor": 355.2
+    }
+   },
+   {
+    "tag": "A2-1020-r2",
+    "arm": "A2",
+    "seed": 1020,
+    "rep": 2,
+    "sec": 212,
+    "code": 0,
+    "sig": null,
+    "cut": false,
+    "ok": true,
+    "days": 3,
+    "eight": {
+     "pop": 408,
+     "dead": 0,
+     "ever": 51,
+     "weapQ": 66,
+     "expand": 0,
+     "board": 0,
+     "toolQ": 3715.9,
+     "preserve": 0,
+     "grain": 346.3
+    },
+    "dissolved": 0,
+    "empty": 0,
+    "runHash": "8a0f47cd8e8713f3",
+    "tick": {
+     "n": 122041,
+     "mean": 1.4437,
+     "p50": 0.585,
+     "p90": 0.985,
+     "p99": 2.425,
+     "p999": 18.895,
+     "max": 88645.152,
+     "over16": 143,
+     "over30": 37
+    },
+    "tickWin": {
+     "n": 86401,
+     "mean": 0.7008,
+     "p50": 0.585,
+     "p90": 0.985,
+     "p99": 2.425,
+     "p999": 8.685,
+     "max": 791.33,
+     "over16": 44,
+     "over30": 12
+    },
+    "tickWho": "zone.js:14347",
+    "tickOver": [
+     88645.152,
+     791.33,
+     603.118,
+     262.72
+    ],
+    "vclock": {
+     "V": 1767229668056.7349,
+     "V0": 1767225600000,
+     "fired": 190833,
+     "timers": 25250,
+     "intervals": 13,
+     "started": true,
+     "startAt": 1767225600000,
+     "paused": false,
+     "yields": 477,
+     "maxQ": 19,
+     "errs": 0,
+     "q": 13
+    },
+    "wallPerDay": 34.01,
+    "lastDay": 3,
+    "bootSec": 143.7,
+    "days_": [
+     {
+      "d": 1,
+      "wd": 1,
+      "wall": 143656,
+      "econ": {
+       "pop": 408,
+       "jobs": {
+        "farmer": 152,
+        "fisher": 208,
+        "lumberjack": 0,
+        "forager": 0
+       },
+       "farmAnchor": 177.6
+      },
+      "tick": {
+       "n": 35640,
+       "mean": 3.2445,
+       "p50": 0.585,
+       "p90": 0.975,
+       "p99": 2.445,
+       "p999": 25.575,
+       "max": 88645.152,
+       "over16": 99,
+       "over30": 25,
+       "maxTick": 88645.152
+      },
+      "inDay": {
+       "n": 6,
+       "fish": {
+        "walkers": 190,
+        "hands": 0,
+        "handU": 0
+       }
+      },
+      "act": {
+       "fish": 24,
+       "wood": null,
+       "forage": null
+      }
+     },
+     {
+      "d": 2,
+      "wd": 2,
+      "wall": 177307,
+      "econ": {
+       "pop": 408,
+       "jobs": {
+        "farmer": 152,
+        "fisher": 208,
+        "lumberjack": 0,
+        "forager": 0
+       },
+       "farmAnchor": 177.6
+      },
+      "tick": {
+       "n": 43200,
+       "mean": 0.6897,
+       "p50": 0.575,
+       "p90": 0.935,
+       "p99": 2.435,
+       "p999": 13.755,
+       "max": 603.118,
+       "over16": 37,
+       "over30": 10,
+       "maxTick": 603.118
+      },
+      "inDay": {
+       "n": 8,
+       "fish": {
+        "walkers": 142,
+        "hands": 144,
+        "handU": 80.151
+       }
+      },
+      "act": {
+       "fish": 24,
+       "wood": null,
+       "forage": null
+      }
+     },
+     {
+      "d": 3,
+      "wd": 3,
+      "wall": 211680,
+      "econ": {
+       "pop": 408,
+       "jobs": {
+        "farmer": 152,
+        "fisher": 208,
+        "lumberjack": 0,
+        "forager": 0
+       },
+       "farmAnchor": 177.6
+      },
+      "tick": {
+       "n": 43201,
+       "mean": 0.712,
+       "p50": 0.605,
+       "p90": 1.035,
+       "p99": 2.415,
+       "p999": 6.215,
+       "max": 791.33,
+       "over16": 7,
+       "over30": 2,
+       "maxTick": 791.33
+      },
+      "inDay": {
+       "n": 8,
+       "fish": {
+        "walkers": 189,
+        "hands": 192,
+        "handU": 67.5527
+       }
+      },
+      "act": {
+       "fish": 24,
+       "wood": null,
+       "forage": null
+      }
+     }
+    ],
+    "arms": {
+     "fish": {
+      "act": 24,
+      "cells": 3012,
+      "delivered": 153.013,
+      "formula": 846.166,
+      "walkersMax": 190,
+      "t340": {
+       "cast": 54352,
+       "hook": 32692,
+       "abort": 17029,
+       "miss": 4641
+      }
+     },
+     "anchor": 355.2
+    }
+   },
+   {
+    "tag": "A3-1020-r1",
+    "arm": "A3",
+    "seed": 1020,
+    "rep": 1,
+    "sec": 158,
+    "code": 0,
+    "sig": null,
+    "cut": false,
+    "ok": true,
+    "days": 3,
+    "eight": {
+     "pop": 429,
+     "dead": 0,
+     "ever": 51,
+     "weapQ": 66,
+     "expand": 0,
+     "board": 0,
+     "toolQ": 3716.2,
+     "preserve": 0,
+     "grain": 346.2
+    },
+    "dissolved": 0,
+    "empty": 0,
+    "runHash": "6bff0a3bbc6050fa",
+    "tick": {
+     "n": 122041,
+     "mean": 1.0352,
+     "p50": 0.195,
+     "p90": 0.345,
+     "p99": 1.515,
+     "p999": 20.715,
+     "max": 87347.613,
+     "over16": 158,
+     "over30": 63
+    },
+    "tickWin": {
+     "n": 86401,
+     "mean": 0.3061,
+     "p50": 0.205,
+     "p90": 0.355,
+     "p99": 1.575,
+     "p999": 10.815,
+     "max": 1200.132,
+     "over16": 61,
+     "over30": 33
+    },
+    "tickWho": "zone.js:14347",
+    "tickOver": [
+     87347.613,
+     1200.132,
+     731.198,
+     318.868,
+     249.071,
+     239.369
+    ],
+    "vclock": {
+     "V": 1767229668056.7349,
+     "V0": 1767225600000,
+     "fired": 190833,
+     "timers": 25250,
+     "intervals": 13,
+     "started": true,
+     "startAt": 1767225600000,
+     "paused": false,
+     "yields": 477,
+     "maxQ": 19,
+     "errs": 0,
+     "q": 13
+    },
+    "wallPerDay": 16.38,
+    "lastDay": 3,
+    "bootSec": 125.2,
+    "days_": [
+     {
+      "d": 1,
+      "wd": 1,
+      "wall": 125218,
+      "econ": {
+       "pop": 408,
+       "jobs": {
+        "farmer": 152,
+        "fisher": 208,
+        "lumberjack": 0,
+        "forager": 0
+       },
+       "farmAnchor": 177.6
+      },
+      "tick": {
+       "n": 35640,
+       "mean": 2.8027,
+       "p50": 0.185,
+       "p90": 0.335,
+       "p99": 1.305,
+       "p999": 28.015,
+       "max": 87347.613,
+       "over16": 97,
+       "over30": 30,
+       "maxTick": 87347.613
+      },
+      "inDay": {
+       "n": 6,
+       "wood": {
+        "walkers": 0,
+        "hands": 0,
+        "handU": 0
+       }
+      },
+      "act": {
+       "fish": null,
+       "wood": 51,
+       "forage": null
+      }
+     },
+     {
+      "d": 2,
+      "wd": 2,
+      "wall": 142278,
+      "econ": {
+       "pop": 408,
+       "jobs": {
+        "farmer": 152,
+        "fisher": 208,
+        "lumberjack": 0,
+        "forager": 0
+       },
+       "farmAnchor": 177.6
+      },
+      "tick": {
+       "n": 43200,
+       "mean": 0.3077,
+       "p50": 0.205,
+       "p90": 0.345,
+       "p99": 1.585,
+       "p999": 15.215,
+       "max": 731.198,
+       "over16": 41,
+       "over30": 18,
+       "maxTick": 731.198
+      },
+      "inDay": {
+       "n": 8,
+       "wood": {
+        "walkers": 0,
+        "hands": 0,
+        "handU": 0
+       }
+      },
+      "act": {
+       "fish": null,
+       "wood": 51,
+       "forage": null
+      }
+     },
+     {
+      "d": 3,
+      "wd": 3,
+      "wall": 157986,
+      "econ": {
+       "pop": 429,
+       "jobs": {
+        "farmer": 152,
+        "fisher": 208,
+        "lumberjack": 0,
+        "forager": 0
+       },
+       "farmAnchor": 177.6
+      },
+      "tick": {
+       "n": 43201,
+       "mean": 0.3044,
+       "p50": 0.205,
+       "p90": 0.365,
+       "p99": 1.565,
+       "p999": 6.645,
+       "max": 1200.132,
+       "over16": 20,
+       "over30": 15,
+       "maxTick": 1200.132
+      },
+      "inDay": {
+       "n": 8,
+       "wood": {
+        "walkers": 0,
+        "hands": 0,
+        "handU": 0
+       }
+      },
+      "act": {
+       "fish": null,
+       "wood": 51,
+       "forage": null
+      }
+     }
+    ],
+    "arms": {
+     "wood": {
+      "act": 51,
+      "delivered": 0,
+      "formula": 0,
+      "walkersMax": 0,
+      "cutSum": 0,
+      "capMax": 0,
+      "trees0": 9495,
+      "trees1": 9495
+     },
+     "anchor": 355.2
+    }
+   },
+   {
+    "tag": "A3-1020-r2",
+    "arm": "A3",
+    "seed": 1020,
+    "rep": 2,
+    "sec": 161,
+    "code": 0,
+    "sig": null,
+    "cut": false,
+    "ok": true,
+    "days": 3,
+    "eight": {
+     "pop": 429,
+     "dead": 0,
+     "ever": 51,
+     "weapQ": 66,
+     "expand": 0,
+     "board": 0,
+     "toolQ": 3716.2,
+     "preserve": 0,
+     "grain": 346.2
+    },
+    "dissolved": 0,
+    "empty": 0,
+    "runHash": "6bff0a3bbc6050fa",
+    "tick": {
+     "n": 122041,
+     "mean": 1.0389,
+     "p50": 0.205,
+     "p90": 0.355,
+     "p99": 1.725,
+     "p999": 21.135,
+     "max": 87214.938,
+     "over16": 159,
+     "over30": 69
+    },
+    "tickWin": {
+     "n": 86401,
+     "mean": 0.2985,
+     "p50": 0.195,
+     "p90": 0.345,
+     "p99": 1.765,
+     "p999": 10.965,
+     "max": 992.956,
+     "over16": 60,
+     "over30": 30
+    },
+    "tickWho": "zone.js:14347",
+    "tickOver": [
+     87214.938,
+     992.956,
+     646.514,
+     305.413,
+     256.697,
+     236.931
+    ],
+    "vclock": {
+     "V": 1767229668056.7349,
+     "V0": 1767225600000,
+     "fired": 190833,
+     "timers": 25250,
+     "intervals": 13,
+     "started": true,
+     "startAt": 1767225600000,
+     "paused": false,
+     "yields": 477,
+     "maxQ": 19,
+     "errs": 0,
+     "q": 13
+    },
+    "wallPerDay": 16.08,
+    "lastDay": 3,
+    "bootSec": 128.8,
+    "days_": [
+     {
+      "d": 1,
+      "wd": 1,
+      "wall": 128840,
+      "econ": {
+       "pop": 408,
+       "jobs": {
+        "farmer": 152,
+        "fisher": 208,
+        "lumberjack": 0,
+        "forager": 0
+       },
+       "farmAnchor": 177.6
+      },
+      "tick": {
+       "n": 35640,
+       "mean": 2.8338,
+       "p50": 0.215,
+       "p90": 0.365,
+       "p99": 1.645,
+       "p999": 34.805,
+       "max": 87214.938,
+       "over16": 99,
+       "over30": 39,
+       "maxTick": 87214.938
+      },
+      "inDay": {
+       "n": 6,
+       "wood": {
+        "walkers": 0,
+        "hands": 0,
+        "handU": 0
+       }
+      },
+      "act": {
+       "fish": null,
+       "wood": 51,
+       "forage": null
+      }
+     },
+     {
+      "d": 2,
+      "wd": 2,
+      "wall": 144988,
+      "econ": {
+       "pop": 408,
+       "jobs": {
+        "farmer": 152,
+        "fisher": 208,
+        "lumberjack": 0,
+        "forager": 0
+       },
+       "farmAnchor": 177.6
+      },
+      "tick": {
+       "n": 43200,
+       "mean": 0.2923,
+       "p50": 0.195,
+       "p90": 0.335,
+       "p99": 1.595,
+       "p999": 15.075,
+       "max": 646.514,
+       "over16": 39,
+       "over30": 14,
+       "maxTick": 646.514
+      },
+      "inDay": {
+       "n": 8,
+       "wood": {
+        "walkers": 0,
+        "hands": 0,
+        "handU": 0
+       }
+      },
+      "act": {
+       "fish": null,
+       "wood": 51,
+       "forage": null
+      }
+     },
+     {
+      "d": 3,
+      "wd": 3,
+      "wall": 160998,
+      "econ": {
+       "pop": 429,
+       "jobs": {
+        "farmer": 152,
+        "fisher": 208,
+        "lumberjack": 0,
+        "forager": 0
+       },
+       "farmAnchor": 177.6
+      },
+      "tick": {
+       "n": 43201,
+       "mean": 0.3048,
+       "p50": 0.205,
+       "p90": 0.355,
+       "p99": 1.915,
+       "p999": 7.245,
+       "max": 992.956,
+       "over16": 21,
+       "over30": 16,
+       "maxTick": 992.956
+      },
+      "inDay": {
+       "n": 8,
+       "wood": {
+        "walkers": 0,
+        "hands": 0,
+        "handU": 0
+       }
+      },
+      "act": {
+       "fish": null,
+       "wood": 51,
+       "forage": null
+      }
+     }
+    ],
+    "arms": {
+     "wood": {
+      "act": 51,
+      "delivered": 0,
+      "formula": 0,
+      "walkersMax": 0,
+      "cutSum": 0,
+      "capMax": 0,
+      "trees0": 9495,
+      "trees1": 9495
+     },
+     "anchor": 355.2
+    }
+   },
+   {
+    "tag": "A4-1020-r1",
+    "arm": "A4",
+    "seed": 1020,
+    "rep": 1,
+    "sec": 154,
+    "code": 0,
+    "sig": null,
+    "cut": false,
+    "ok": true,
+    "days": 3,
+    "eight": {
+     "pop": 429,
+     "dead": 0,
+     "ever": 51,
+     "weapQ": 66,
+     "expand": 0,
+     "board": 0,
+     "toolQ": 3716.2,
+     "preserve": 0,
+     "grain": 346.2
+    },
+    "dissolved": 0,
+    "empty": 0,
+    "runHash": "6bff0a3bbc6050fa",
+    "tick": {
+     "n": 122041,
+     "mean": 0.987,
+     "p50": 0.185,
+     "p90": 0.315,
+     "p99": 1.435,
+     "p999": 20.425,
+     "max": 84391.261,
+     "over16": 161,
+     "over30": 60
+    },
+    "tickWin": {
+     "n": 86401,
+     "mean": 0.2762,
+     "p50": 0.185,
+     "p90": 0.315,
+     "p99": 1.465,
+     "p999": 11.565,
+     "max": 1037.209,
+     "over16": 63,
+     "over30": 28
+    },
+    "tickWho": "zone.js:14347",
+    "tickOver": [
+     84391.261,
+     1037.209,
+     629.248,
+     310.223,
+     232.739
+    ],
+    "vclock": {
+     "V": 1767229668056.7349,
+     "V0": 1767225600000,
+     "fired": 190833,
+     "timers": 25250,
+     "intervals": 13,
+     "started": true,
+     "startAt": 1767225600000,
+     "paused": false,
+     "yields": 477,
+     "maxQ": 19,
+     "errs": 0,
+     "q": 13
+    },
+    "wallPerDay": 14.89,
+    "lastDay": 3,
+    "bootSec": 124.4,
+    "days_": [
+     {
+      "d": 1,
+      "wd": 1,
+      "wall": 124354,
+      "econ": {
+       "pop": 408,
+       "jobs": {
+        "farmer": 152,
+        "fisher": 208,
+        "lumberjack": 0,
+        "forager": 0
+       },
+       "farmAnchor": 177.6
+      },
+      "tick": {
+       "n": 35640,
+       "mean": 2.7103,
+       "p50": 0.195,
+       "p90": 0.325,
+       "p99": 1.325,
+       "p999": 28.955,
+       "max": 84391.261,
+       "over16": 98,
+       "over30": 32,
+       "maxTick": 84391.261
+      },
+      "inDay": {
+       "n": 6,
+       "forage": {
+        "walkers": 0,
+        "hands": 0,
+        "handU": 0
+       }
+      },
+      "act": {
+       "fish": null,
+       "wood": null,
+       "forage": 51
+      }
+     },
+     {
+      "d": 2,
+      "wd": 2,
+      "wall": 139010,
+      "econ": {
+       "pop": 408,
+       "jobs": {
+        "farmer": 152,
+        "fisher": 208,
+        "lumberjack": 0,
+        "forager": 0
+       },
+       "farmAnchor": 177.6
+      },
+      "tick": {
+       "n": 43200,
+       "mean": 0.2638,
+       "p50": 0.175,
+       "p90": 0.285,
+       "p99": 1.525,
+       "p999": 15.025,
+       "max": 629.248,
+       "over16": 40,
+       "over30": 17,
+       "maxTick": 629.248
+      },
+      "inDay": {
+       "n": 8,
+       "forage": {
+        "walkers": 0,
+        "hands": 0,
+        "handU": 0
+       }
+      },
+      "act": {
+       "fish": null,
+       "wood": null,
+       "forage": 51
+      }
+     },
+     {
+      "d": 3,
+      "wd": 3,
+      "wall": 154130,
+      "econ": {
+       "pop": 429,
+       "jobs": {
+        "farmer": 152,
+        "fisher": 208,
+        "lumberjack": 0,
+        "forager": 0
+       },
+       "farmAnchor": 177.6
+      },
+      "tick": {
+       "n": 43201,
+       "mean": 0.2885,
+       "p50": 0.205,
+       "p90": 0.335,
+       "p99": 1.385,
+       "p999": 7.375,
+       "max": 1037.209,
+       "over16": 23,
+       "over30": 11,
+       "maxTick": 1037.209
+      },
+      "inDay": {
+       "n": 8,
+       "forage": {
+        "walkers": 0,
+        "hands": 0,
+        "handU": 0
+       }
+      },
+      "act": {
+       "fish": null,
+       "wood": null,
+       "forage": 51
+      }
+     }
+    ],
+    "arms": {
+     "forage": {
+      "act": 51,
+      "gran": 0,
+      "delivered": 0,
+      "formulaAct": 0,
+      "formula": 0,
+      "walkersMax": 0,
+      "pickSum": 0,
+      "groves0": 242,
+      "groves1": 242
+     },
+     "anchor": 355.2
+    }
+   },
+   {
+    "tag": "A4-1020-r2",
+    "arm": "A4",
+    "seed": 1020,
+    "rep": 2,
+    "sec": 158,
+    "code": 0,
+    "sig": null,
+    "cut": false,
+    "ok": true,
+    "days": 3,
+    "eight": {
+     "pop": 429,
+     "dead": 0,
+     "ever": 51,
+     "weapQ": 66,
+     "expand": 0,
+     "board": 0,
+     "toolQ": 3716.2,
+     "preserve": 0,
+     "grain": 346.2
+    },
+    "dissolved": 0,
+    "empty": 0,
+    "runHash": "6bff0a3bbc6050fa",
+    "tick": {
+     "n": 122041,
+     "mean": 0.9988,
+     "p50": 0.195,
+     "p90": 0.325,
+     "p99": 1.565,
+     "p999": 20.605,
+     "max": 85030.218,
+     "over16": 159,
+     "over30": 64
+    },
+    "tickWin": {
+     "n": 86401,
+     "mean": 0.2769,
+     "p50": 0.185,
+     "p90": 0.305,
+     "p99": 1.625,
+     "p999": 10.845,
+     "max": 942.883,
+     "over16": 59,
+     "over30": 23
+    },
+    "tickWho": "zone.js:14347",
+    "tickOver": [
+     85030.218,
+     942.883,
+     661.086,
+     246.092,
+     219.593,
+     204.128
+    ],
+    "vclock": {
+     "V": 1767229668056.7349,
+     "V0": 1767225600000,
+     "fired": 190833,
+     "timers": 25250,
+     "intervals": 13,
+     "started": true,
+     "startAt": 1767225600000,
+     "paused": false,
+     "yields": 477,
+     "maxQ": 19,
+     "errs": 0,
+     "q": 13
+    },
+    "wallPerDay": 14.83,
+    "lastDay": 3,
+    "bootSec": 127.9,
+    "days_": [
+     {
+      "d": 1,
+      "wd": 1,
+      "wall": 127922,
+      "econ": {
+       "pop": 408,
+       "jobs": {
+        "farmer": 152,
+        "fisher": 208,
+        "lumberjack": 0,
+        "forager": 0
+       },
+       "farmAnchor": 177.6
+      },
+      "tick": {
+       "n": 35640,
+       "mean": 2.7488,
+       "p50": 0.205,
+       "p90": 0.345,
+       "p99": 1.385,
+       "p999": 34.015,
+       "max": 85030.218,
+       "over16": 100,
+       "over30": 41,
+       "maxTick": 85030.218
+      },
+      "inDay": {
+       "n": 6,
+       "forage": {
+        "walkers": 0,
+        "hands": 0,
+        "handU": 0
+       }
+      },
+      "act": {
+       "fish": null,
+       "wood": null,
+       "forage": 51
+      }
+     },
+     {
+      "d": 2,
+      "wd": 2,
+      "wall": 142635,
+      "econ": {
+       "pop": 408,
+       "jobs": {
+        "farmer": 152,
+        "fisher": 208,
+        "lumberjack": 0,
+        "forager": 0
+       },
+       "farmAnchor": 177.6
+      },
+      "tick": {
+       "n": 43200,
+       "mean": 0.2683,
+       "p50": 0.175,
+       "p90": 0.285,
+       "p99": 1.505,
+       "p999": 14.105,
+       "max": 661.086,
+       "over16": 41,
+       "over30": 13,
+       "maxTick": 661.086
+      },
+      "inDay": {
+       "n": 8,
+       "forage": {
+        "walkers": 0,
+        "hands": 0,
+        "handU": 0
+       }
+      },
+      "act": {
+       "fish": null,
+       "wood": null,
+       "forage": 51
+      }
+     },
+     {
+      "d": 3,
+      "wd": 3,
+      "wall": 157587,
+      "econ": {
+       "pop": 429,
+       "jobs": {
+        "farmer": 152,
+        "fisher": 208,
+        "lumberjack": 0,
+        "forager": 0
+       },
+       "farmAnchor": 177.6
+      },
+      "tick": {
+       "n": 43201,
+       "mean": 0.2855,
+       "p50": 0.195,
+       "p90": 0.325,
+       "p99": 1.725,
+       "p999": 7.365,
+       "max": 942.883,
+       "over16": 18,
+       "over30": 10,
+       "maxTick": 942.883
+      },
+      "inDay": {
+       "n": 8,
+       "forage": {
+        "walkers": 0,
+        "hands": 0,
+        "handU": 0
+       }
+      },
+      "act": {
+       "fish": null,
+       "wood": null,
+       "forage": 51
+      }
+     }
+    ],
+    "arms": {
+     "forage": {
+      "act": 51,
+      "gran": 0,
+      "delivered": 0,
+      "formulaAct": 0,
+      "formula": 0,
+      "walkersMax": 0,
+      "pickSum": 0,
+      "groves0": 242,
+      "groves1": 242
+     },
+     "anchor": 355.2
+    }
+   },
+   {
+    "tag": "ALL-1020-r1",
+    "arm": "ALL",
+    "seed": 1020,
+    "rep": 1,
+    "sec": 212,
+    "code": 0,
+    "sig": null,
+    "cut": false,
+    "ok": true,
+    "days": 3,
+    "eight": {
+     "pop": 408,
+     "dead": 0,
+     "ever": 51,
+     "weapQ": 66,
+     "expand": 0,
+     "board": 0,
+     "toolQ": 3715.9,
+     "preserve": 0,
+     "grain": 346.3
+    },
+    "dissolved": 0,
+    "empty": 0,
+    "runHash": "8a0f47cd8e8713f3",
+    "tick": {
+     "n": 122041,
+     "mean": 1.4415,
+     "p50": 0.585,
+     "p90": 0.985,
+     "p99": 2.615,
+     "p999": 25.305,
+     "max": 85122.211,
+     "over16": 197,
+     "over30": 98
+    },
+    "tickWin": {
+     "n": 86401,
+     "mean": 0.7128,
+     "p50": 0.575,
+     "p90": 0.975,
+     "p99": 2.635,
+     "p999": 17.015,
+     "max": 827.503,
+     "over16": 90,
+     "over30": 44
+    },
+    "tickWho": "zone.js:14347",
+    "tickOver": [
+     85122.211,
+     827.503,
+     582.802,
+     269.911,
+     251.834
+    ],
+    "vclock": {
+     "V": 1767229668056.7349,
+     "V0": 1767225600000,
+     "fired": 190833,
+     "timers": 25250,
+     "intervals": 13,
+     "started": true,
+     "startAt": 1767225600000,
+     "paused": false,
+     "yields": 477,
+     "maxQ": 19,
+     "errs": 0,
+     "q": 13
+    },
+    "wallPerDay": 34.7,
+    "lastDay": 3,
+    "bootSec": 142.4,
+    "days_": [
+     {
+      "d": 1,
+      "wd": 1,
+      "wall": 142417,
+      "econ": {
+       "pop": 408,
+       "jobs": {
+        "farmer": 152,
+        "fisher": 208,
+        "lumberjack": 0,
+        "forager": 0
+       },
+       "farmAnchor": 202.16
+      },
+      "tick": {
+       "n": 35640,
+       "mean": 3.208,
+       "p50": 0.595,
+       "p90": 0.995,
+       "p99": 2.465,
+       "p999": 41.635,
+       "max": 85122.211,
+       "over16": 107,
+       "over30": 54,
+       "maxTick": 85122.211
+      },
+      "inDay": {
+       "n": 6,
+       "fish": {
+        "walkers": 190,
+        "hands": 0,
+        "handU": 0
+       },
+       "wood": {
+        "walkers": 0,
+        "hands": 0,
+        "handU": 0
+       },
+       "forage": {
+        "walkers": 0,
+        "hands": 0,
+        "handU": 0
+       },
+       "farm": {
+        "working": 152,
+        "hands": 0,
+        "handU": 0
+       }
+      },
+      "act": {
+       "fish": 24,
+       "wood": 51,
+       "forage": 51
+      }
+     },
+     {
+      "d": 2,
+      "wd": 2,
+      "wall": 178760,
+      "econ": {
+       "pop": 408,
+       "jobs": {
+        "farmer": 152,
+        "fisher": 208,
+        "lumberjack": 0,
+        "forager": 0
+       },
+       "farmAnchor": 202.16
+      },
+      "tick": {
+       "n": 43200,
+       "mean": 0.7447,
+       "p50": 0.605,
+       "p90": 1.045,
+       "p99": 2.675,
+       "p999": 21.325,
+       "max": 582.802,
+       "over16": 56,
+       "over30": 25,
+       "maxTick": 582.802
+      },
+      "inDay": {
+       "n": 8,
+       "fish": {
+        "walkers": 142,
+        "hands": 144,
+        "handU": 80.151
+       },
+       "wood": {
+        "walkers": 0,
+        "hands": 0,
+        "handU": 0
+       },
+       "forage": {
+        "walkers": 0,
+        "hands": 0,
+        "handU": 0
+       },
+       "farm": {
+        "working": 134,
+        "hands": 0,
+        "handU": 0
+       }
+      },
+      "act": {
+       "fish": 24,
+       "wood": 51,
+       "forage": 51
+      }
+     },
+     {
+      "d": 3,
+      "wd": 3,
+      "wall": 211816,
+      "econ": {
+       "pop": 408,
+       "jobs": {
+        "farmer": 152,
+        "fisher": 208,
+        "lumberjack": 0,
+        "forager": 0
+       },
+       "farmAnchor": 202.16
+      },
+      "tick": {
+       "n": 43201,
+       "mean": 0.681,
+       "p50": 0.555,
+       "p90": 0.895,
+       "p99": 2.615,
+       "p999": 11.175,
+       "max": 827.503,
+       "over16": 34,
+       "over30": 19,
+       "maxTick": 827.503
+      },
+      "inDay": {
+       "n": 8,
+       "fish": {
+        "walkers": 189,
+        "hands": 192,
+        "handU": 67.5527
+       },
+       "wood": {
+        "walkers": 0,
+        "hands": 0,
+        "handU": 0
+       },
+       "forage": {
+        "walkers": 0,
+        "hands": 0,
+        "handU": 0
+       },
+       "farm": {
+        "working": 152,
+        "hands": 0,
+        "handU": 0
+       }
+      },
+      "act": {
+       "fish": 24,
+       "wood": 51,
+       "forage": 51
+      }
+     }
+    ],
+    "arms": {
+     "fish": {
+      "act": 24,
+      "cells": 3012,
+      "delivered": 153.013,
+      "formula": 846.166,
+      "walkersMax": 190,
+      "t340": {
+       "cast": 54352,
+       "hook": 32692,
+       "abort": 17029,
+       "miss": 4641
+      }
+     },
+     "wood": {
+      "act": 51,
+      "delivered": 0,
+      "formula": 0,
+      "walkersMax": 0,
+      "cutSum": 0,
+      "capMax": 0,
+      "trees0": 9495,
+      "trees1": 9494
+     },
+     "forage": {
+      "act": 51,
+      "gran": 0,
+      "delivered": 0,
+      "formulaAct": 0,
+      "formula": 0,
+      "walkersMax": 0,
+      "pickSum": 0,
+      "groves0": 242,
+      "groves1": 242
+     },
+     "farm": {
+      "farmers": 152,
+      "workingMax": 152,
+      "harvestN": 0,
+      "credFoodEq": 0,
+      "t100Eq": 0,
+      "hlBody": 153,
+      "hlBatch": 0,
+      "firstHarvestDay": null
+     },
+     "anchor": 404.32
+    }
+   },
+   {
+    "tag": "ALL-1020-r2",
+    "arm": "ALL",
+    "seed": 1020,
+    "rep": 2,
+    "sec": 212,
+    "code": 0,
+    "sig": null,
+    "cut": false,
+    "ok": true,
+    "days": 3,
+    "eight": {
+     "pop": 408,
+     "dead": 0,
+     "ever": 51,
+     "weapQ": 66,
+     "expand": 0,
+     "board": 0,
+     "toolQ": 3715.9,
+     "preserve": 0,
+     "grain": 346.3
+    },
+    "dissolved": 0,
+    "empty": 0,
+    "runHash": "8a0f47cd8e8713f3",
+    "tick": {
+     "n": 122041,
+     "mean": 1.4578,
+     "p50": 0.595,
+     "p90": 0.985,
+     "p99": 2.705,
+     "p999": 24.825,
+     "max": 85690.69,
+     "over16": 193,
+     "over30": 87
+    },
+    "tickWin": {
+     "n": 86401,
+     "mean": 0.7224,
+     "p50": 0.585,
+     "p90": 0.965,
+     "p99": 2.695,
+     "p999": 15.655,
+     "max": 909.678,
+     "over16": 83,
+     "over30": 37
+    },
+    "tickWho": "zone.js:14347",
+    "tickOver": [
+     85690.69,
+     909.678,
+     614.384,
+     234.598,
+     221.096,
+     213.003,
+     202.368
+    ],
+    "vclock": {
+     "V": 1767229668056.7349,
+     "V0": 1767225600000,
+     "fired": 190833,
+     "timers": 25250,
+     "intervals": 13,
+     "started": true,
+     "startAt": 1767225600000,
+     "paused": false,
+     "yields": 477,
+     "maxQ": 19,
+     "errs": 0,
+     "q": 13
+    },
+    "wallPerDay": 34.93,
+    "lastDay": 3,
+    "bootSec": 142.5,
+    "days_": [
+     {
+      "d": 1,
+      "wd": 1,
+      "wall": 142451,
+      "econ": {
+       "pop": 408,
+       "jobs": {
+        "farmer": 152,
+        "fisher": 208,
+        "lumberjack": 0,
+        "forager": 0
+       },
+       "farmAnchor": 202.16
+      },
+      "tick": {
+       "n": 35640,
+       "mean": 3.2407,
+       "p50": 0.595,
+       "p90": 1.055,
+       "p99": 2.845,
+       "p999": 34.935,
+       "max": 85690.69,
+       "over16": 110,
+       "over30": 50,
+       "maxTick": 85690.69
+      },
+      "inDay": {
+       "n": 6,
+       "fish": {
+        "walkers": 190,
+        "hands": 0,
+        "handU": 0
+       },
+       "wood": {
+        "walkers": 0,
+        "hands": 0,
+        "handU": 0
+       },
+       "forage": {
+        "walkers": 0,
+        "hands": 0,
+        "handU": 0
+       },
+       "farm": {
+        "working": 152,
+        "hands": 0,
+        "handU": 0
+       }
+      },
+      "act": {
+       "fish": 24,
+       "wood": 51,
+       "forage": 51
+      }
+     },
+     {
+      "d": 2,
+      "wd": 2,
+      "wall": 177497,
+      "econ": {
+       "pop": 408,
+       "jobs": {
+        "farmer": 152,
+        "fisher": 208,
+        "lumberjack": 0,
+        "forager": 0
+       },
+       "farmAnchor": 202.16
+      },
+      "tick": {
+       "n": 43200,
+       "mean": 0.7183,
+       "p50": 0.585,
+       "p90": 0.975,
+       "p99": 2.655,
+       "p999": 18.855,
+       "max": 614.384,
+       "over16": 51,
+       "over30": 19,
+       "maxTick": 614.384
+      },
+      "inDay": {
+       "n": 8,
+       "fish": {
+        "walkers": 142,
+        "hands": 144,
+        "handU": 80.151
+       },
+       "wood": {
+        "walkers": 0,
+        "hands": 0,
+        "handU": 0
+       },
+       "forage": {
+        "walkers": 0,
+        "hands": 0,
+        "handU": 0
+       },
+       "farm": {
+        "working": 134,
+        "hands": 0,
+        "handU": 0
+       }
+      },
+      "act": {
+       "fish": 24,
+       "wood": 51,
+       "forage": 51
+      }
+     },
+     {
+      "d": 3,
+      "wd": 3,
+      "wall": 212305,
+      "econ": {
+       "pop": 408,
+       "jobs": {
+        "farmer": 152,
+        "fisher": 208,
+        "lumberjack": 0,
+        "forager": 0
+       },
+       "farmAnchor": 202.16
+      },
+      "tick": {
+       "n": 43201,
+       "mean": 0.7266,
+       "p50": 0.595,
+       "p90": 0.955,
+       "p99": 2.715,
+       "p999": 12.115,
+       "max": 909.678,
+       "over16": 32,
+       "over30": 18,
+       "maxTick": 909.678
+      },
+      "inDay": {
+       "n": 8,
+       "fish": {
+        "walkers": 189,
+        "hands": 192,
+        "handU": 67.5527
+       },
+       "wood": {
+        "walkers": 0,
+        "hands": 0,
+        "handU": 0
+       },
+       "forage": {
+        "walkers": 0,
+        "hands": 0,
+        "handU": 0
+       },
+       "farm": {
+        "working": 152,
+        "hands": 0,
+        "handU": 0
+       }
+      },
+      "act": {
+       "fish": 24,
+       "wood": 51,
+       "forage": 51
+      }
+     }
+    ],
+    "arms": {
+     "fish": {
+      "act": 24,
+      "cells": 3012,
+      "delivered": 153.013,
+      "formula": 846.166,
+      "walkersMax": 190,
+      "t340": {
+       "cast": 54352,
+       "hook": 32692,
+       "abort": 17029,
+       "miss": 4641
+      }
+     },
+     "wood": {
+      "act": 51,
+      "delivered": 0,
+      "formula": 0,
+      "walkersMax": 0,
+      "cutSum": 0,
+      "capMax": 0,
+      "trees0": 9495,
+      "trees1": 9494
+     },
+     "forage": {
+      "act": 51,
+      "gran": 0,
+      "delivered": 0,
+      "formulaAct": 0,
+      "formula": 0,
+      "walkersMax": 0,
+      "pickSum": 0,
+      "groves0": 242,
+      "groves1": 242
+     },
+     "farm": {
+      "farmers": 152,
+      "workingMax": 152,
+      "harvestN": 0,
+      "credFoodEq": 0,
+      "t100Eq": 0,
+      "hlBody": 153,
+      "hlBatch": 0,
+      "firstHarvestDay": null
+     },
+     "anchor": 404.32
+    }
+   }
+  ],
+  "pairs": [
+   {
+    "arm": "off",
+    "econ": null,
+    "side": null,
+    "sideFields": [],
+    "body": null,
+    "end": true
+   },
+   {
+    "arm": "A1",
+    "econ": null,
+    "side": null,
+    "sideFields": [],
+    "body": null,
+    "end": true
+   },
+   {
+    "arm": "A2",
+    "econ": null,
+    "side": null,
+    "sideFields": [],
+    "body": null,
+    "end": true
+   },
+   {
+    "arm": "A3",
+    "econ": null,
+    "side": null,
+    "sideFields": [],
+    "body": null,
+    "end": true
+   },
+   {
+    "arm": "A4",
+    "econ": null,
+    "side": null,
+    "sideFields": [],
+    "body": null,
+    "end": true
+   },
+   {
+    "arm": "ALL",
+    "econ": null,
+    "side": null,
+    "sideFields": [],
+    "body": null,
+    "end": true
+   }
+  ]
+ }
+}

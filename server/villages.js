@@ -1213,21 +1213,35 @@ function bedSlotOf(npc) {
   }
   return { slot: -1, hk: vil.housesPx.length ? 'house?' : 'fallback?' };
 }
-// ★★[T822 2026-10-20 · 세션3 · T805 회부 1] **마을 몸 주사위 씨 — 판 씨 + 그 몸의 결정론 열쇠**(손잡이 `T822_BODY_SEED` · '1' 만 켬 · 끔 = main 바이트).
+// ★★[T822 2026-10-20 · 세션3 · T805 회부 1] **마을 몸 주사위 씨 — 판 씨 + 그 몸의 결정론 열쇠**(손잡이 `T822_BODY_SEED` · ★[T833 · PM 10-21] 켬 기본 · 되돌림 `=0` = 종전 글자 길).
 //   종전: 존 `_shOf(npc)` 가 `playerId`(`npc_<존>_<연번>_<Math.random 네 자>` — 표시 · 소켓 꼬리)를 해시해 몸의 신원 해시 `_sh` 를 굽는다 ⇒
 //   같은 씨 · 같은 시계 두 판에서 몸 주사위(`_diceNpc` 결정 · 막힘 회피)가 첫 결정부터 갈린다(T805 §1 — 몸 408 의 `nextDecisionAt` 다 다름).
 //   마을 쪽 `_shOfNpc` 는 같은 칸을 `pid` 로 굽는다 — 둘 중 먼저 부른 쪽이 그 몸의 주사위 신원이 된다(부르는 차례에 기댄다).
-//   켬: 태어날 때(출생 정본 = 이 함수 · T765 로 옮겨 붙는 몸도 여기를 지난다) `_sh` 를 **판 씨 + (마을 · 몸 번호)** 의 해시로 굽는다 —
+//   켬: `_sh` = **판 씨 + (마을 · 몸 번호)** 의 해시 —
 //     판 씨 = econ 세계 씨(`rngState().s0` — T731 · T744 마을 흐름의 그 재료 · 하네스 시드가 바꾸는 칸 · 다시 뜨면 메타가 되살린다) · 그 칸이 없으면(T731 끔) 마을 씨 `state.villageSeed`.
-//     마을 = 이름표 `simvil_<dbId>`(존 `tribeId` 그 글자) · 몸 번호 = `pid`(`p<연번>` — 마을 쪽 T350 이 이미 몸 신원으로 쓰는 칸).
-//     해시 = 종전 그 함수(`pidHash`) — 글자에서 무작위 꼬리 대신 판 씨가 든다. 새 수 0 · 새 칸 0(`_sh` 는 있던 신원 캐시 · T747 이 다시 뜬 몸에 되살리는 그 칸).
-//   `playerId`(표시 · 소켓 · 주인 칸)는 무접촉.
-const T822_BODY_SEED = process.env.T822_BODY_SEED === '1';
-function _t822Sh(vil, p) {
+//     마을 = 이름표 `simvil_<dbId>`(존 `tribeId` 그 글자) · 해시 = 종전 그 함수(`pidHash`) — 글자에서 무작위 꼬리 대신 판 씨가 든다.
+//     ★[T833 ② · T822 회부 1] 몸 번호 = **명부 자리**(마을 `npcPids` 의 차례 — T747 이 다시 뜬 몸을 짚는 그 열쇠). T822 의 `pid` 는 존 연번이라 다시 뜨면 1 부터
+//       다시 센다 — T747 이 되살린 몸의 옛 `pid` 열쇠와 다시 뜬 뒤 선 몸의 열쇠가 같은 마을에서 겹쳤다(같은 `_sh`). 명부 자리는 한 순간에 마을 안에서 하나뿐이고
+//       (배열 차례) 다시 뜬 몸은 같은 자리에 선다(T747) ⇒ 다시 떠도 같은 열쇠 · 겹침 0. 명부가 바뀌는 자리(출생 · 떠남 · 죽음 · 포로 · 전사 · 정리)마다
+//       바뀐 자리부터 끝까지 다시 굽는다(`_t822Rekey` — 늘 지금 자리) · 부팅은 되살림 뒤 한 번 더(`_t833Boot` — 판 씨 되살림 · 끔으로 적은 행의 `_sh`).
+//   새 수 0 · 새 칸 0(`_sh` 는 있던 신원 캐시 · T747 이 다시 뜬 몸에 되살리는 그 칸). `playerId`(표시 · 소켓 · 주인 칸)는 무접촉.
+const T822_BODY_SEED = process.env.T822_BODY_SEED !== '0';   // ★[T833 · PM 10-21] 켬 기본 · 되돌림 `=0`
+function _t822Rekey(vil, from) {   // 명부 자리 `from` 부터 끝까지 — 그 자리의 열쇠로 다시 굽는다
+  const P = state.deps && state.deps.players; if (!P || !vil || !vil.npcPids) return;
   const r = (state.econ && state.econ.rngState) ? state.econ.rngState() : null;
   const s0 = (r && r.s0 != null) ? r.s0 : state.villageSeed;
-  return _pidHash(`${s0}_simvil_${vil.dbId}_${p.pid}`);
+  for (let i = Math.max(0, from | 0); i < vil.npcPids.length; i++) { const b = P.get(vil.npcPids[i]); if (b) b._sh = _pidHash(`${s0}_simvil_${vil.dbId}_${i}`); }
 }
+function _t833Boot() { for (const vil of state.villages) _t822Rekey(vil, 0); }   // ★[T833] 부팅 — 되살림(T728 메타 · T747 몸 칸) 뒤 한 번(같은 판 씨 · 같은 자리면 되살린 값 그대로)
+//   [PM 착지 10-22] T833(명부 자리 열쇠 · 켬 기본)과 T841(도적 몸 같은 판 씨) 합침 — 판 씨 한 함수.
+function _t822S0() {   // 판 씨(econ 세계 씨 · 없으면 마을 씨) — 마을 몸 · 도적 몸이 같은 칸을 읽는다(T841)
+  const r = (state.econ && state.econ.rngState) ? state.econ.rngState() : null;
+  return (r && r.s0 != null) ? r.s0 : state.villageSeed;
+}
+//   ★★[T841 2026-10-21 · T822 회부 3] 결정 문(존 `_shOf`)을 지나는 **마을 밖 몸**도 같은 꼴 — 판 씨 + 그 몸의 결정론 열쇠(새 손잡이 0 · 같은 `T822_BODY_SEED` 안).
+//     도적 몸(`bandits.js syncBodies` — 존 `spawnNpc` · AI 켬 · 관측자 곁이면 `decideNpcBehavior` 가 `_shOf` 로 굴린다)이 여기를 부른다:
+//     열쇠 = `bandit_<단 번호>_<몸 번호>`(단 번호 `g.id` = 도적 층 결정론 연번 · 몸 번호 = `pid`). 끔이면 이 문이 null 이라 도적 쪽 줄이 안 돈다.
+function _t841Sh(key) { return _pidHash(`${_t822S0()}_${key}`); }
 function spawnOneNpc(vil) {
   const houses = vil.housesPx.length ? vil.housesPx : [{ x: vil.ccx * SZ + SZ / 2, y: (vil.ccy + 6) * SZ + SZ / 2 }];   // ★폴백도 큰집 벽 안(중심 셀) 금지 — 남문 앞 마당
   const home = houses[vil.npcPids.length % houses.length];
@@ -1259,10 +1273,10 @@ function spawnOneNpc(vil) {
     skipHouse: true, // 집은 village_buildings(레이아웃)가 진실 — NPC별 5×5 자동집 금지
   });
   p.simVillageId = vil.dbId; // NPC↔마을 연결(메모리 — players 컬럼 추가보다 저침습)
-  if (T822_BODY_SEED) p._sh = _t822Sh(vil, p);   // ★[T822] 몸 주사위 신원 = 판 씨 + (마을 · 몸 번호) — 끔 = 이 줄 0
   p.simLonOff = vil._lonOff || 0; // §19 경도: 이 마을 로컬 태양시(zone.js npcStep 야간 귀가 게이트가 소비)
   p.npcBedX = home.x + bed[0] * SZ; p.npcBedY = home.y + bed[1] * SZ;   // ★침대(실내) — 취침·요양 목표(_lifeGoHome·§19 게이트 소비)
   vil.npcPids.push(p.pid);
+  if (T822_BODY_SEED) _t822Rekey(vil, vil.npcPids.length - 1);   // ★[T822 · T833] 몸 주사위 신원 = 판 씨 + (마을 · 명부 자리) — 끔 = 이 줄 0
   return p;
 }
 // ═══ ★★★[T590 2026-10-03 · 세션3 · 일관성 캐논 "순간 소멸·추상 금지"] **몸이 econ 수의 그림자가 아니다** ═══════════════
@@ -1433,7 +1447,7 @@ function _t765Depart(vil, best, n) {
   const pick = [];
   for (let j = vil.npcPids.length - 1; j >= 0 && pick.length < take; j--) { const p = players.get(vil.npcPids[j]); if (p && !p._muster && !p._bxExit) pick.push(vil.npcPids[j]); }
   for (const pid of pick) {
-    const i = vil.npcPids.indexOf(pid); if (i >= 0) vil.npcPids.splice(i, 1);
+    const i = vil.npcPids.indexOf(pid); if (i >= 0) { vil.npcPids.splice(i, 1); if (T822_BODY_SEED) _t822Rekey(vil, i); }   // ★[T833] 명부가 줄면 그 자리부터 다시 굽는다
     _bxWalk(vil, players.get(pid), { k: 'move', vil: best });
     const r = state.bodyExits && state.bodyExits.get(pid); if (r) r.t765 = 1;
   }
@@ -1470,9 +1484,10 @@ function removeOneNpc(vil, why) {
     if (!p || p._muster || p._bxExit) continue;
     idx = i; break;
   }
-  if (idx < 0) { vil.npcPids = vil.npcPids.filter((pid) => players.has(pid)); return false; }   // 남은 게 전부 출정 — 종전처럼 멈춘다(stale 청소 포함)
+  if (idx < 0) { vil.npcPids = vil.npcPids.filter((pid) => players.has(pid)); if (T822_BODY_SEED) _t822Rekey(vil, 0); return false; }   // 남은 게 전부 출정 — 종전처럼 멈춘다(stale 청소 포함)
   const pid = vil.npcPids[idx];
   vil.npcPids.splice(idx, 1);
+  if (T822_BODY_SEED) _t822Rekey(vil, idx);   // ★[T833] 명부가 줄면 그 자리부터 다시 굽는다
   const p = players.get(pid);
   if (BX_CAT[w.k] === 'died') _bxDie(vil, p, w); else _bxWalk(vil, p, w);
   return true;
@@ -1481,6 +1496,7 @@ function syncVillagePop(vil, maxDelta) {
   // stale 청소 — ★_muster(출정 중) pid는 players 에 남아 있어 필터 통과(제외 안 됨). 감소(removeOneNpc)도 _muster 스킵.
   //   목표 인구는 econ.npcs.length(진실) 추종: 출정 병사도 npcPids 에 남아 카운트되므로 전쟁 중 스폰 폭주 없음.
   vil.npcPids = vil.npcPids.filter(pid => state.deps.players.has(pid));
+  if (T822_BODY_SEED) _t822Rekey(vil, 0);   // ★[T833] 정리 뒤 명부 자리 열쇠(빠진 자리가 없으면 같은 값)
   _bxObserve(vil);   // ★[T590] econ 이 줄인 까닭(읽기만)
   const target = Math.min(vil.econ.npcs.length, NPC_CAP_PER_VILLAGE);
   let delta = target - vil.npcPids.length;
@@ -5115,6 +5131,7 @@ function init(deps) {
     else for (const v of state.villages) if (v.econ && '_t740Side' in v.econ) delete v.econ._t740Side;   // ★[T740] 끔 — 켬으로 적은 행의 곁 칸을 econ 에 남기지 않는다(다음 켬이 묵은 칸을 되돌리지 않게 · main 행엔 이 칸이 없어 무동작)
     if (T747_BODY) { try { _t747Restore(); } catch (e) { console.error(`[${ZONE_ID}] 🏘️ [T747] 몸 칸 복원 실패(종전대로 계속):`, e.message); } }
     else for (const v of state.villages) if (v.econ && '_t747Body' in v.econ) delete v.econ._t747Body;   // ★[T747] 끔 — 켬으로 적은 행의 곁 칸을 econ 에 남기지 않는다(main 행엔 이 칸이 없어 무동작)
+    if (T822_BODY_SEED) _t833Boot();   // ★[T833] 되살림(T728 메타 · T747 몸 칸) 뒤 — 명부 자리 열쇠로 한 번(같은 판 씨 · 같은 자리면 되살린 값 그대로)
     if (_T732_ON) { try { _t732Boot(); } catch (e) { console.error(`[${ZONE_ID}] 🧺 [T732] 곳간 로트 장부 붙이기 실패(장부 없이 계속):`, e.message); } }
     // ★★[T533] 존 경계 호스트 — 팔 `T525_CROSS_ZONE`(econ 정본) 켬 + 존이 미는 문을 줬을 때만(끔 = 이 줄 무동작 · 조각 목록·몸 층 무변).
     //   실패해도 존 부팅은 계속한다(경계가 닫힌 채 = 끔과 같다).
@@ -5969,8 +5986,9 @@ function _warEndFight(body, why, winner) {
       if (_t811) _t811.field += _t811Fall(w, p);   // ★[T857] 끌려가는 병사의 무기는 결판 자리에 떨어진다(장부 −같은 몫 · 이긴 쪽이 줍는다)
       p.simCaptive = 1; p._brout = false; p.hp = Math.max(1, Math.round((p.maxHp || 100) * 0.4));
       const oldVil = (p.simVillageId != null) ? state.byDbId.get(p.simVillageId) : null;
-      if (oldVil) { const kk = oldVil.npcPids.indexOf(pid); if (kk >= 0) oldVil.npcPids.splice(kk, 1); }
+      if (oldVil) { const kk = oldVil.npcPids.indexOf(pid); if (kk >= 0) { oldVil.npcPids.splice(kk, 1); if (T822_BODY_SEED) _t822Rekey(oldVil, kk); } }
       p.simVillageId = winnerVil.dbId; winnerVil.npcPids.push(pid);
+      if (T822_BODY_SEED) _t822Rekey(winnerVil, winnerVil.npcPids.length - 1);   // ★[T833] 포로 — 옛 마을은 빠진 자리부터 · 새 마을은 든 자리
       escort.push(pid);
     }
     w._capResolve = null;
@@ -6041,7 +6059,7 @@ function _warDespawnPid(pid) {
   // ★[T295 ①] 전사 표본 — 결속만 푼다. econ 사망은 `war-core.warKill`(정산) 하나가 정본이다(사본 0 · 이중 사망 금지).
   try { const vil = (p && p.simVillageId != null) ? state.byDbId.get(p.simVillageId) : null; if (vil && state.war && state.war.warDraftReleasePid) state.war.warDraftReleasePid(vil, pid); } catch (_) { }
   players.delete(pid); npcs.delete(pid);
-  if (p && p.simVillageId != null) { const vil = state.byDbId.get(p.simVillageId); if (vil) { const k = vil.npcPids.indexOf(pid); if (k >= 0) vil.npcPids.splice(k, 1); } }
+  if (p && p.simVillageId != null) { const vil = state.byDbId.get(p.simVillageId); if (vil) { const k = vil.npcPids.indexOf(pid); if (k >= 0) { vil.npcPids.splice(k, 1); if (T822_BODY_SEED) _t822Rekey(vil, k); } } }   // ★[T833] 전사 — 빠진 자리부터
   broadcast({ type: 'player_left', pid });
 }
 // 출정 해제 — _muster/simWar 해제 + npcs.add(AI 복귀) + hp 회복. pid 는 npcPids 유지(syncVillagePop 재수렴).
@@ -6634,6 +6652,13 @@ function _t681Take(body) {
   return true;
 }
 // 하루 마감 첫 자리 — 지난 econ 날 몫 중 틱이 못 쓴 걸음을 채운다(차례 = `WARS` 차례 · 조각 예산이 차면 'retry' 로 다음 조각에 이어 간다).
+// ★★[T832 2026-10-21] **켬 판 결정론 — 귀환 몸도 그날 몫**(T821 회부 3 · T790 손잡이 `T790_NO_SNAP` 안 · 끔 = 무동작 · 새 손잡이 0 · 새 수 0).
+//   ★갈림 첫 자리(같은 씨 두 판 · 옆에 바쁜 고리 둘): 시드 1020 D15 W4 귀환 대형 — 그날 걸음이 259 ↔ 252(그때까지 전쟁 걸음 · 교전 스텝 · 하루 경계 존 몸 해시 전부 같음).
+//     행군 · 교전 몸은 T681 하루 몫(`_t681Take` · 남으면 여기서 채움)이라 걸음 수가 econ 날에 묶였는데, **귀환 몸만 틱마다**(`tickWarBodies` → `_warPaceReturn`) 걸었다.
+//     틱 수는 벽시계를 따른다(부하 · 마감 동안 쉼 · T755 창 동안 쉼) — 끔 판은 귀환 몸이 칸 없이 길 머리(지휘관 장부 자리)에 붙어 걸음 수가 자리를 안 바꿨고,
+//     켬 판은 몸 걸음(0.067칸/걸음)이라 걸은 수만큼 자리가 갈렸다 → 다음 날 장부가 그 자리에서 풀어 주고(`_warCleanupBody`) 생활층이 그 자리에서 잇는다 → D16 존 몸 해시부터 갈림.
+//   ⇒ 켬이면 귀환 몸도 틱에서 그날 몫만큼만 걷고(틱 고리 `_t681Take`), 틱이 못 쓴 몫은 여기서 채운다 — 한 econ 날의 귀환 걸음 = 하루 몫(행군 · 교전과 같은 자).
+//     시간 예산(`B` — 종전 마감 조각 예산)으로 끊기면 몫이 몸에 남아 다음 조각이 잇는다(걸음 수 무변). 고친 뒤 같은 씨 두 판: 갈림 0.
 function _t681Flush() {
   if (!state.war || !state.warLive || !state.war.WARS) return;
   const t0 = Date.now(), B = TB.slice(TICK_SLICE_MS || 0), now = state._warTickAt || Date.now(), dtMs = 1000 / ((state.warLive && state.warLive.TICK_HZ) || 30);
@@ -6647,6 +6672,17 @@ function _t681Flush() {
       const C = { fighting: 0 };
       _warTickOne(w, body, now, dtMs, C);
       if (w.phase !== 'march' && w.phase !== 'battle') break;   // 이 걸음에 끝났다(궤주 · 함락 · 대치)
+      if (B > 0 && Date.now() - t0 >= B) return 'retry';
+    }
+  }
+  //   ★★[T832 2026-10-21] 켬(T790 걷는 몸) — **귀환 몸도 그날 몫**(T832 머리 주석). 틱이 못 쓴 몫을 여기서 채운다 — 차례 = `warBodies` 차례(틱 고리와 같은 차례) · 끔 = 이 고리 무동작.
+  if (T790_NO_SNAP && state.warBodies) for (const body of state.warBodies.values()) {
+    if (body.phase !== 'return' || !body._t681 || !body.retGroup) continue;
+    const d = state.world.day | 0;
+    if (!body._t681q || body._t681q.day !== d) body._t681q = { day: d, left: _t681Quota() };   // 그날 틱이 한 번도 안 걸었다 — 몫 전부
+    while (body._t681q.left > 0) {
+      body._t681q.left--;
+      _warPaceReturn(body, now, dtMs);
       if (B > 0 && Date.now() - t0 >= B) return 'retry';
     }
   }
@@ -6788,7 +6824,7 @@ function tickWarBodies(now) {
   }
   // 귀환 페이싱 + 고아 정리
   for (const body of [...state.warBodies.values()]) {
-    if (body.phase === 'return') { _warPaceReturn(body, now, dtMs); continue; }
+    if (body.phase === 'return') { if (T790_NO_SNAP && T681_ON && body._t681 && !_t681Take(body)) continue; _warPaceReturn(body, now, dtMs); continue; }   // ★[T832] 켬 — 귀환 몸도 그날 몫(`_t681Take`)만큼만 틱에서 걷는다(남은 몫은 하루 마감 첫 자리 `_t681Flush` · 끔 = 틱마다 종전 그대로)
     if (body.w.id != null && !liveWid.has(body.w.id)) _warCleanupBody(body, true);
   }
   const ms = _perfNow() - t0;
@@ -7207,12 +7243,12 @@ function _t731Jobs(now, T) {
       state.deps.broadcast(_cn ? Object.assign({ type: 'sim_village_day', day: state.world.day, jobs: C.jobChanges, pops: C.pops, terr: C.terr, wx: C.wx, calendar: _cal }, _cn)
         : { type: 'sim_village_day', day: state.world.day, jobs: C.jobChanges, pops: C.pops, terr: C.terr, wx: C.wx, calendar: _cal });
     });
-    if (T681_ON) add('caravan', () => _t681Day(C.now));
-    if (T661_ON) add('caravan', () => refreshAllFishSustain(Date.now(), true));
+    if (T681_ON) add('caravan', () => _t681Day(C.now), 'caravan_body');
+    if (T661_ON) add('caravan', () => refreshAllFishSustain(Date.now(), true), 'caravan_fish');
     { const _cl = state.world.caravans.slice();
-      for (const c of _cl) add('caravan', () => _caravanSyncOne(C.now, c, C.car));
-      if (T762_CARAVAN_BODY) { add('caravan', () => { _caravanSyncSweep(C.car); }); add('caravan', _t762SyncNewJob(C, new Set(_cl))); }   // ★[T762] 켬 = 쓸기 먼저 → 그날 econ 이 띄운 캐러밴(위 손잡이 주석 ③)
-      else add('caravan', () => { _caravanSyncSweep(C.car); }); }
+      for (const c of _cl) add('caravan', () => _caravanSyncOne(C.now, c, C.car), 'caravan_sync');
+      if (T762_CARAVAN_BODY) { add('caravan', () => { _caravanSyncSweep(C.car); }, 'caravan_sync'); add('caravan', _t762SyncNewJob(C, new Set(_cl)), 'caravan_sync'); }   // ★[T762] 켬 = 쓸기 먼저 → 그날 econ 이 띄운 캐러밴(위 손잡이 주석 ③)
+      else add('caravan', () => { _caravanSyncSweep(C.car); }, 'caravan_sync'); }
     if (T698_BOUNDARY_SLICE) {
       let g = null;
       add('events', () => { try { if (!g) g = _scanEventsSteps(); if (!g.next().done) return 'retry'; } catch (e) { console.error(`[${state.zoneId}] 📜 사건 장부 실패(틱은 계속):`, e.message); } });
@@ -7443,12 +7479,14 @@ function _openDayJobs(now, T) {
 
   // ⑦ 캐러밴 실체 동기 — 중앙 17ms 인데 **p95 989ms**(안이 전부 A*). 캐러밴 한 대씩 쪼갠다.
   //   쓸기(회수)만 `seen` 전량이 필요해 원자다.
-  if (T681_ON) add('caravan', () => _t681Day(C.now));   // ★[T681] 몸 장부 하루(전쟁 행군·귀환 · 위협 · 줄어드는 몸) — 캐러밴 동기 바로 앞 정한 자리
-  if (T661_ON) add('caravan', () => refreshAllFishSustain(Date.now(), true));   // ★[T661] 어장 상한 매기기 — 종전 존 60초 주기(벽시계)를 하루 마감의 정한 자리로(캐러밴 동기 바로 앞 · 재고 회복 시각은 낚시 정본 그대로)
+  //   ★[T828] 단계 이름은 `caravan` 그대로(차례 · 단계 합 무변) — 조각 속 이름만 셋으로 가른다(`/perf` 가장 큰 조각 · `stages` 칸 · 세는 이름만 · 값 0):
+  //     `caravan_body` 몸 장부(T681) · `caravan_fish` 어장 상한(T661) · `caravan_sync` 캐러밴 동기(한 대씩 · 쓸기 · T762 덧). 위 창 갈래(T731)도 같은 셋.
+  if (T681_ON) add('caravan', () => _t681Day(C.now), 'caravan_body');   // ★[T681] 몸 장부 하루(전쟁 행군·귀환 · 위협 · 줄어드는 몸) — 캐러밴 동기 바로 앞 정한 자리
+  if (T661_ON) add('caravan', () => refreshAllFishSustain(Date.now(), true), 'caravan_fish');   // ★[T661] 어장 상한 매기기 — 종전 존 60초 주기(벽시계)를 하루 마감의 정한 자리로(캐러밴 동기 바로 앞 · 재고 회복 시각은 낚시 정본 그대로)
   { const _cl = state.world.caravans.slice();
-    for (const c of _cl) add('caravan', () => _caravanSyncOne(C.now, c, C.car));   // ★[T85] 반환('retry')을 드레인이 본다
-    if (T762_CARAVAN_BODY) { add('caravan', () => { _caravanSyncSweep(C.car); }); add('caravan', _t762SyncNewJob(C, new Set(_cl))); }   // ★[T762] 켬 = 쓸기 먼저 → 그날 econ 틱이 띄운 캐러밴(위 손잡이 주석 ③ · 끔 = 아래 종전 한 줄)
-    else add('caravan', () => { _caravanSyncSweep(C.car); }); }
+    for (const c of _cl) add('caravan', () => _caravanSyncOne(C.now, c, C.car), 'caravan_sync');   // ★[T85] 반환('retry')을 드레인이 본다
+    if (T762_CARAVAN_BODY) { add('caravan', () => { _caravanSyncSweep(C.car); }, 'caravan_sync'); add('caravan', _t762SyncNewJob(C, new Set(_cl)), 'caravan_sync'); }   // ★[T762] 켬 = 쓸기 먼저 → 그날 econ 틱이 띄운 캐러밴(위 손잡이 주석 ③ · 끔 = 아래 종전 한 줄)
+    else add('caravan', () => { _caravanSyncSweep(C.car); }, 'caravan_sync'); }
 
   // ⑧ 사건 장부 — econ·캐러밴이 오늘 값이 된 **바로 이 지점**(종전 위치 그대로). 실측 6ms.
   if (T698_BOUNDARY_SLICE) {   // ★[T698] 켬 — 사건 장부를 마을 하나씩(`_scanEventsSteps` — 같은 앞·뒤 · 같은 장부 발생기)
@@ -7640,10 +7678,12 @@ function __p3Bind(mock) {
     _t765Depart, _t765Join,   // ★[T765] 후보 걷기 몸 문 둘(하네스 `test-cand-walk` 가 운영과 같은 문을 부른다)
     _t681Day, _t681Flush, T681_ON, T703_MARCH,   // ★[T703] T681 켬(기본) 판의 하루 경계 두 자리 — 하네스가 운영 하루 마감과 같은 차례(econ 앞 `_t681Flush` · 캐러밴 앞 `_t681Day`)로 부른다(값 무변 · 내보내기만)
     _warEngage, _warAfterDaily, _warEndFight, _warBuildRectIndex, _warBlockedCell, _warWorld, warPerf, _warOrderFallback, _warToStandoff,
+    banditHost, _t841Sh,   // ★[T841] 도적 몸 신원 문(호스트 `bodySh`) — 하네스(`test-body-seed-other`)가 운영과 같은 호스트를 도적 층에 꽂는다(내보내기만)
     T811_ARMS_BODY, _warArmsLoad, _warArmsCollect, _warArmsUnload, _t811Fall, _t857Pick, _t811Sync, _t811Stat,   // ★[T811] 무기 몸 짐 — 하네스(`test-arms-body`)가 운영과 같은 문을 부른다(내보내기만)
     T790_NO_SNAP, _t790Stat, _t790Mark, _t790Lag, _warSetupReturn, _warPaceReturn,   // ★[T790] 하네스(`test-war-nosnap`)가 운영과 같은 문을 부른다(내보내기만)
     _t804Way, _t804WalkOut, _t804Stat, _warWalkGroupTo,   // ★[T804] 걷는 몸의 길 · 전진 풀기 걸음 — 하네스가 운영과 같은 문을 부른다(내보내기만)
     _t821Stat,   // ★[T821] 재개형 걸음 탐색 셈(내보내기만 — 관찰자 · 하네스)
+    T822_BODY_SEED, _t822Rekey, _t833Boot, _t747Pack, _t747Restore, _warDespawnPid, serializeEcon, restoreEcon,   // ★[T833] 몸 주사위 신원 · 다시 뜬 판 — 하네스(`test-body-seed-restart`)가 운영과 같은 문을 부른다(내보내기만)
     _warDraftPids, _warReleasePid, econDayToMs, _warEnsureBody, _warSampleComp, _vbFootprint,
     threatOf, _warWriteThreats, _warOutMul, _lifeJobSites, _lifeJobSiteOK, _warRoutePts, _warTreeCell, computeRoutePts,
     _t619Region, _t619RedigKeep,   // ★[T619] 쌍 둘레 · 다시 파기 거르개 — 자(`t619-h-audit`)가 **이 함수**로 센다(사본 0)
@@ -7691,6 +7731,7 @@ function banditHost() {
     ta: state._distCtx && state._distCtx.ta,         // 지형 어댑터(isBlocked/forestMult — 셀 단위)
     getRoute,                                        // 마을쌍 경로 pts(px) — 캐러밴 A*·캐시 재사용(랩 getTradePath 동형)
     routeSampleStep, routeBootFreeze, sliceMs: TICK_SLICE_MS,   // ★[T640] 부팅 표본 조각 · 얼린 길 · 조각 예산(슬라이서 그 예산)
+    bodySh: T822_BODY_SEED ? _t841Sh : null,          // ★[T841] 도적 몸 주사위 신원 = 판 씨 + 열쇠(T822 켬에서만 · 끔 = null → 도적 쪽 줄 무동작)
     routeCacheLoad, routeCacheSave,                  // ★[T699] 교역로 디스크 캐시(손잡이 `T699_ROUTE_CACHE` · 끔이면 null 을 돌려주고 아무것도 안 한다)
     dayMs: state.dayMs,
     broadcast: state.deps && state.deps.broadcast,
@@ -8699,12 +8740,12 @@ function cropAfterHarvest(e, day) {
   e.p = day; e.td = day; e.wd = 0;                      // 그루터기에서 다시 (q·ps·w 는 그대로)
   return true;
 }
-// ★★[T818 ③ 2026-10-20 · 손잡이 `T818_CELL_MEMO`('1' 만 켬 · 끔 = 아래 종전 줄 그대로)] **빈 셀 파종 판정 — 같은 날 · 같은 갈래는 한 번만 잰다.**
+// ★★[T818 ③ 2026-10-20 · 손잡이 `T818_CELL_MEMO`(★[T834] 켬 기본 · `=0` 끔 = 아래 종전 줄 그대로)] **빈 셀 파종 판정 — 같은 날 · 같은 갈래는 한 번만 잰다.**
 //   T806 ABBA 표본(t646 `--lines`): 생활 층 결정(`decideNpcBehavior → npcLifeTick`)의 줄 상위에 `_cellTask` 빈 셀 갈래가 있었다 — 셀마다
 //   날 → 달(`monthOf`) · 열쇠 문자열(`field_mo_par_seed`) 짓기 · 사전 찾기(`_vcfCache`)를 부를 때마다 되풀이한다.
 //   그 값은 (마을 · 그날 · 논/밭 · 구획 홀짝) 넷만으로 정해진다(`_villageCropFor` 는 그 넷의 순수 함수 — 시드 · 달 · 구획 · 고르는 산수 · 결정론).
 //   ⇒ 켬이면 마을마다(모듈 WeakMap — 마을 칸 0) 그날의 달과 갈래 넷의 답을 들고, 날이 바뀌면 다시 잰다. 같은 함수 · 같은 값 · 새 수 0.
-const T818_CELL_MEMO = process.env.T818_CELL_MEMO === '1';
+const T818_CELL_MEMO = process.env.T818_CELL_MEMO !== '0';   // ★[T834 ①] 켬 기본(PM 10-21) · 끔 탐침 `=0`
 const _t818Ct = new WeakMap();   // vil → { day, seed, mo, r: [밭·짝, 밭·홀, 논·짝, 논·홀] }
 function _cellTask(vil, k, day) {   // 우선순위: 5수확 4방제 3물대기(논만) 2파종 1김매기 0없음
   const e = vil._crop.get(k);
@@ -13153,8 +13194,9 @@ function villageTradeQuote(vid, px, py, giveRes, takeRes, qty, unitsOf, opts) { 
   const _n = Math.max(0, Number(qty) || 0);
   const per = (_n > 0 && u > 0) ? (u / _n) : 1;
   const q = _t789View(() => Trade.quote(state.ledger, state.econV2, g.vil, vid | 0, String(giveRes || ''), String(takeRes || ''), u,
-    _T732_ON ? { want: (opts && opts.want) || 0, perItem: per, takeKcal: _kcal() } : { want: (opts && opts.want) || 0, perItem: per }));   // ★[T748] 켬 = 받는 쪽 열량 짝 · ★[T789] 사람의 눈(견적 = 실행 · 끄면 그대로)
-  if (q && !q.err) { q.giveItems = Math.max(0, Math.floor(Number(qty) || 0)); q.giveUnits = +u.toFixed(3); }
+    Object.assign(_T732_ON ? { want: (opts && opts.want) || 0, perItem: per, takeKcal: _kcal() } : { want: (opts && opts.want) || 0, perItem: per },
+      (opts && opts.inventory) ? { inventory: opts.inventory, unitsOf: (typeof unitsOf === 'function') ? unitsOf : undefined, giveCount: _n } : null)));   // ★[T748] 켬 = 받는 쪽 열량 짝 · ★[T789] 사람의 눈(견적 = 실행 · 끄면 그대로) · ★[T835] 낼 사람 인벤(전달만 — `trade.js` 손잡이가 켜졌을 때만 읽는다)
+  if (q && !q.err) { q.giveItems = Math.max(0, Math.floor(Number(qty) || 0)); q.giveUnits = (q.giveUnitsPicked != null) ? q.giveUnitsPicked : +u.toFixed(3); }   // ★[T835] 켬 = 고른 그 개체들의 단위
   return q;
 }
 

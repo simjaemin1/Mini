@@ -1468,7 +1468,16 @@ function _lastSeenDayToSave(player) {
 }
 function savePlayer(player, extra = {}) {
   if (!canPersist(player)) return;
-  return _saveSend(player.playerId, _savePatch(player, extra));
+  const pt = _savePatch(player, extra);
+  // ★★[T831 2026-10-21 · T823 회부 3 · 손잡이 `T823_FREEZE_SHELL` 켬 갈래] **넘긴 몸 껍데기의 저장은 이 존의 자리를 안 쓴다.**
+  //   껍데기(`handingOff` — 이미 있는 칸)는 ACK(최대 3초)까지 이 존 `players` 에 남는다. 그동안 닫힐 때 저장(소켓 `close` · ACK 시한이 닫을 때도) ·
+  //   주기 저장 · 종료 flush 가 `last_zone: 이 존` 과 껍데기 좌표로 행을 썼다(맨 저장은 좌표 둘을). 그 쓰기가 도착 존의 접속 저장
+  //   (`last_zone: 도착 존`)보다 늦게 닿으면 행이 출발 존을 가리킨다 — 로비 자동 라우팅(`30-n-net.js` · `/auth` 의 `last_zone`)이 다시 접속을
+  //   출발 존 · 껍데기 자리로 보낸다(승격 경로는 도착 존이 접속 저장을 안 해 순서와 무관하게 출발 존이 남는다). 켜면 그 쓰기에서 자리 칸 셋만 뺀다
+  //   (새 칸 0 · 몸 칸은 그대로 — 언 몸 = 페이로드). 넘기기 전 저장(`fireHandoff` — `last_zone: 도착 존` · 입구 좌표)은 다른 존을 가리키므로 그대로 지나간다.
+  //   넘기기가 실패하면(`_t564HandoffFail`) `handingOff = false` 라 그 뒤 저장은 종전대로 이 존 자리를 쓴다. 끔(`=0`) = 이 줄이 첫 비교에서 빠진다(종전 바이트).
+  if (T823_FREEZE_SHELL && player.handingOff && (pt.last_zone == null || pt.last_zone === ZONE_ID)) { delete pt.last_zone; delete pt.last_x; delete pt.last_y; }
+  return _saveSend(player.playerId, pt);
 }
 // ★[T498] 저장 = **행 만들기**(`_savePatch` · 그 순간의 몸 스냅샷) + **보내기**(`_saveSend`). 몸통은 종전 `savePlayer` 그대로 둘로 갈랐을 뿐이다 —
 //   핸드오프가 **떠나는 순간의 행**을 쥐고 있다가 실패했을 때만 보내려면 둘이 따로 불려야 한다(`fireHandoff`).
@@ -5904,14 +5913,15 @@ const T512_GHOST_EXTRAP = process.env.T512_GHOST_EXTRAP !== '0';
 // ★[T518] 한 몸 한 판정 — 핸드오프 중인 몸(`handingOff` · 몸은 이미 페이로드로 떠났고 남은 것은 얼어 있는 **안 보이는** 껍데기 · `zone.js` 14.47 틱 거름)을
 //   떠나는 존이 화살·`/cross_damage` 로 **또 재지 않는다**. 되돌림 `T518_ONE_JUDGE=0` = 종전 바이트 동일.
 const T518_ONE_JUDGE = process.env.T518_ONE_JUDGE !== '0';
-// ★★[T823 2026-10-20 · 손잡이 `T823_FREEZE_SHELL` — '1' 만 켬 · 끔 = main 바이트] **떠난 몸 껍데기를 얼린다**(PM 10-20 결정 — 정본 한 몸: 넘긴 순간 몸은 도착 존의 것).
+// ★★[T823 2026-10-20 · 손잡이 `T823_FREEZE_SHELL` — ★T831 켬 기본(PM 10-21) · 되돌림 `=0` = T823 전 바이트] **떠난 몸 껍데기를 얼린다**(PM 10-20 결정 — 정본 한 몸: 넘긴 순간 몸은 도착 존의 것).
 //   `fireHandoff` 가 `handingOff = true` 를 세운 순간부터 ACK(최대 3초)까지 남는 껍데기는 이동 · 계단 · 낙하 · 입력 타임아웃 · 화살 판정(T518) ·
 //   보이기가 이미 거른다 — 회복 · 게이지(허기 · 갈증 · 추위 · 피로 · 게이지 전송과 그 장부 맞대기) · 입력(사람 메시지 전부) · 행동(낚시 입질 · 손에 듦)
 //   네 걸음만 안 걸렀다(T802 회부 1 — 넘긴 뒤 125ms 회복 틱 넷). 켜면 그 넷도 `handingOff`(이미 있는 칸 하나)를 거른다 — 껍데기에서
 //   HP 가 오르거나 · 게이지가 흐르거나 · 물건을 내려놓거나(땅과 도착 몸 둘 다에 남는 복제) · 물고기가 손에 드는(아무 데도 안 가는 소멸) 일 0.
 //   직렬화(`serializeBody`)는 `handingOff` 를 세운 뒤에 돈다 — 켜면 그 사이(저장 왕복)에도 몸이 안 변해 페이로드 = 세운 순간의 몸 = 껍데기.
 //   넘기기가 실패하면(`_t564HandoffFail` — `handingOff = false`) 그 순간부터 다시 걷는다(언 동안은 시간이 안 흐른 몸 — 최대 5초 · 새 수 0).
-const T823_FREEZE_SHELL = process.env.T823_FREEZE_SHELL === '1';
+//   ★[T831] 켬 갈래는 껍데기의 **저장**도 이 존의 자리 칸(`last_zone · last_x · last_y`)을 안 쓴다 — 닫힐 때 저장 자리 경합(`savePlayer` 머리 주석).
+const T823_FREEZE_SHELL = process.env.T823_FREEZE_SHELL !== '0';
 const E2E_CONN_FAIL = (process.env.E2E_GIVE === '1') ? (process.env.E2E_CONN_FAIL || '') : '';
 const E2E_CONN_HANG = (process.env.E2E_GIVE === '1') ? (process.env.E2E_CONN_HANG || '') : '';
 function _connFailPoint(stage) {
@@ -6598,9 +6608,11 @@ async function _acceptConnection(ws, req, C) {
       charRunMin: parseFloat(process.env.CHAR_RUN_MIN || '') || 102,
       ...(process.env.T492_SEASON_AMB === 'on' ? { seasonAmb: true } : {}),   // [T492] 계절 환경음 손잡이 — 끔이면 칸이 없다(welcome 바이트 동일)
       ...(_t507On() ? { t507Verbs: true } : {}),
+      ...(process.env.T838_WD_AWAKE === '1' ? { wdAwake: true } : {}),   // [T838] 클라 두 감시(pong · 서버 틱)가 **클라가 멈춰 있던 시간**을 서버 침묵으로 안 센다(30-n-net) — 기본 끔 · 끔이면 칸이 없다(welcome 바이트 동일) · `1` 켬
       ...(process.env.T813_RMB_PRESS !== '0' ? { rmbPress: true } : {}),   // [T813 · ★T819 켬 기본 — PM 10-20] 우클릭 탭 메뉴는 **누른 순간의 화면**으로 짚는다(46-h-verbs) · 되돌림 `T813_RMB_PRESS=0` 이면 칸이 없다(옛 welcome · 뗄 때의 화면)
       ...(_streamOn() ? { streams: Streams.wireOf(ZONE_ID) ? Streams.wireOf(ZONE_ID).ver : true, streamSlow: Streams.STREAM_SLOW0 } : {}),   // [T585] 개울 — 클라가 `/streams.bin` 을 받아 그리고 걸음 예측에 쓴다(배율도 서버 정본 수)
       ...(VillageKin.ON ? { villageOnly: true } : {}),   // [T787] 길드 = 마을(켬 기본) — 클라 무리 패널이 마을 패널이 된다 · `T785_VILLAGE_ONLY=0` 이면 칸이 없다(옛 길드 패널)
+      ...(process.env.T839_SITE_EXIT === '1' ? { siteExit: true } : {}),   // [T839] 터를 놓으면 건축 모드를 끈다(다섯 터 · 클라 `30-n-net.js`) — '1' 만 켬 · 끄면 칸이 없다(welcome 바이트 동일)
       ...(T509_WELL ? { wellAct: true } : {}),   // [T557] 우물 터 잡기 버튼 — 기본 켬 · `T509_WELL=0` 이면 칸이 없어 버튼이 숨는다   // [T507] 첫 30분의 문법(우클릭·이름표·회색) — 기본 켬 · `T507_VERBS=0` 이면 칸이 없다(옛 화면)
       coast588: ((v) => (v === '0' ? '0' : (v === 'a' ? 'a' : 'b')))(process.env.T588_COAST),   // [T588 · ★T604 추신3 기본 b] 해안 — 클라가 같은 파일(`public/coast-shape.js`)로 굽는다 · 칸은 늘 실린다('0' = 지금 식 · 클라 `uiCfg` 기본도 'b' — 다르면 welcome 에서 다시 굽는다)
     },
@@ -6875,7 +6887,7 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'village_trade_exec') tryVillageTradeExec(player, msg.vid, msg.give, msg.take, msg.qty, msg.want, msg.numeraire);  // ★[거래소] 교환(T69 받을 양)
   else if (msg.type === 'village_trade_quote') {                                                            // ★[거래소] 견적(확정 전 표시)
     if (SimVillages.villageTradeQuote) {
-      const q = SimVillages.villageTradeQuote(msg.vid | 0, player.x, player.y, msg.give, msg.take, msg.qty, _unitsOfFor(player), { want: msg.want });
+      const q = SimVillages.villageTradeQuote(msg.vid | 0, player.x, player.y, msg.give, msg.take, msg.qty, _unitsOfFor(player), { want: msg.want, inventory: player.inventory });   // ★[T835] 낼 사람 인벤(견적이 실행과 같은 개체를 고르게 — 손잡이 끔이면 안 읽힌다)
       send(player.ws, { type: 'village_trade_quote', quote: q, vid: msg.vid | 0 });
     }
   }
@@ -7992,6 +8004,7 @@ function attachPlayerHandlers(ws, player) {
     player.lastSeenDay = _lastSeenDayToSave(player);
     if (player._farT) { clearTimeout(player._farT); player._farT = null; player._farQ = null; }   // ★[T380] 원경 조각 예약 정리
     player._returnBriefDone = false;   // 다음 세션은 다시 받을 자격이 있다(승계되면 그대로 따라간다)
+    //   ★[T831] 넘긴 몸 껍데기(`handingOff`)가 ACK 전에 닫히면 켬 갈래의 `savePlayer` 가 아래 자리 칸 셋을 뺀다(도착 존 자리를 안 덮는다 — `savePlayer` 머리 주석).
     savePlayer(player, { last_zone: ZONE_ID, last_x: player.x, last_y: player.y });
     players.delete(player.pid);
     console.log(`[${ZONE_ID}] - ${player.name} (${player.pid})  total=${players.size}`);

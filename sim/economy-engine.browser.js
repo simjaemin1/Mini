@@ -4181,9 +4181,20 @@ function _vernalCompute(id, p) {
 }
 // 익음 시계가 0 이 되는 날. 월동이 아니거나 되돌리면 **심은 날 그대로**(1년생 무접촉).
 //   ★겨울에 심었으면 그 겨울의 남은 몫이 춘화가 된다(파종창엔 겨울이 0종이라 실제로는 안 온다).
+// ★★[T834 ② 2026-10-21 · 손잡이 `T834_VERN_NUM`('1' 만 켬 · 끔 = 아래 종전 줄 그대로)] **춘화일 사전 — 열쇠를 날 하나(수)로.**
+//   T818 표본: 생활 층 결정 줄 상위에 이 함수(낮 ≈0.03 µs/사람)가 있다 — 월동 작물 셀을 돌볼 때마다 열쇠 문자열(`id + ',' + p`)을 짓고 문자열로 찾는다.
+//   그 답 `_vernalCompute(id, p)` 는 **id 를 안 읽는다**(심은 날 p 와 달력 정본만 — 위 몸통) ⇒ 같은 날이면 작물이 달라도 같은 값이다.
+//   켬이면 사전 열쇠 = 심은 날(수) 하나 · 비우는 문턱 그대로(4096). 같은 함수 · 같은 값 · 새 수 0.
+const T834_VERN_NUM = typeof process !== 'undefined' && process.env && process.env.T834_VERN_NUM === '1';
+const _vernByP = new Map();   // 심은 날 → 춘화일
 function vernalDay(id, plantedDay) {
   const p = _day(plantedDay);
   if (!VERNAL || !isWinterCrop(id)) return p;
+  if (T834_VERN_NUM) {
+    let w = _vernByP.get(p);
+    if (w === undefined) { if (_vernByP.size > 4096) _vernByP.clear(); w = _vernalCompute(id, p); _vernByP.set(p, w); }
+    return w;
+  }
   const k = id + ',' + p;
   let v = _vernCache.get(k);
   if (v === undefined) { if (_vernCache.size > 4096) _vernCache.clear(); v = _vernalCompute(id, p); _vernCache.set(k, v); }
@@ -9663,6 +9674,7 @@ const T347_FORAGE_ACT = process.env.T347_FORAGE_ACT === '1';
 //     ⓑ 몸이 캔 kg 를 econ 단위로 바꾸는 것은 부르는 쪽(`server/villages.js`)이다 — `weights.kgOf('ore')` 정본(5.00 · 옮겨 적지 않는다).
 //   켜기는 재민 — 이 카드는 값을 안 정한다.
 const T724_MINE_ACT = (typeof process !== 'undefined' && process.env && process.env.T724_MINE_ACT !== '0');   // ★[PM 10-14] 켬 기본(몸이 치는 판에서만 갈림 · 헤드리스 바이트 같음) · 되돌림 `=0`
+const T815_DRAFT_FAMINE = (typeof process !== 'undefined' && process.env && process.env.T815_DRAFT_FAMINE === '1');   // ★[T815] 기본 끔(켜는 값 `'1'` 하나뿐) — 켜면 기근 죽음은 **죽일 몸을 고른 뒤에** 센다(전부 징발 중이면 `break` 앞에서 안 센다). 끔 = 종전 바이트
 // ★★★[T400 2026-09-26] **집도 행위다 — 기본 끔.** 끄면 이 파일은 **넷째 판과 비트 동일**이다
 //   (아래 두 자리가 전부 이 상수 뒤에 있다: 주거 증축의 자재 단가 · 곳간 출구 `actFromGranary`).
 //   ① 자재의 정본은 **하나**다 — `server/hut-stages.js`(서버 움집 공정 · PM 권고 #61 · 재민 거부권).
@@ -12655,7 +12667,7 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
     }
   }
   while (v._dPAccum <= -1 && v.npcs.length > POP_MIN) {
-    v._deathsToday++; v._deadTot = (v._deadTot || 0) + 1;
+    if (!T815_DRAFT_FAMINE) { v._deathsToday++; v._deadTot = (v._deadTot || 0) + 1; }   // ★[T815] 끔 = 종전(몸을 고르기 **전에** 센다 — 전부 징발 중이면 죽은 몸 없이 셈만 는다)
     // ★[T295 ①] 원정 나간 사람은 마을 기근으로 죽지 않는다(그 사람의 죽음은 전쟁 정산이 소유한다 — 사본 0).
     let oldestIdx = -1;
     for (let i = 0; i < v.npcs.length; i++) {
@@ -12663,6 +12675,7 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
       if (oldestIdx < 0 || v.npcs[i].age > v.npcs[oldestIdx].age) oldestIdx = i;
     }
     if (oldestIdx < 0) break;   // 전부 징발 중(있을 수 없다 — 동원 상한이 N−2) — 그래도 장부는 안 건드린다
+    if (T815_DRAFT_FAMINE) { v._deathsToday++; v._deadTot = (v._deadTot || 0) + 1; }   // ★[T815] 켬 = 죽일 몸을 고른 **뒤에** 센다(몸이 죽을 때만 죽음 — 소멸·생성 금지의 장부 쪽)
     const dead = v.npcs.splice(oldestIdx, 1)[0];
     v.counts[dead.currentJob] = (v.counts[dead.currentJob] || 0) - 1;
     v._dPAccum += 1;
@@ -15021,28 +15034,36 @@ function _t784Mods() {
 //   랩: 번들이 날씨 정본을 싣는다(없으면 하루 노출 1 = 날 수 — 서버와 갈린다).
 //   ★[T820 2026-10-20 · PM 결정 — 곡선 하나 · 장부와 econ 이 같은 노출을 읽는다] 켬 기본 · 되돌림 `T812_CARGO_TEMP=0`(= T820 앞 바이트).
 const T812_CARGO_TEMP = !(typeof process !== 'undefined' && process.env && process.env.T812_CARGO_TEMP === '0');
-const _t812Pre = new Map();   // 떠난 날 → [0, 첫날 노출, 둘째 날까지 …] (그 날부터의 누적 · 날마다 한 번만 센다)
-function _t812Exp(day0, days) {   // 떠난 날 · 날 수 → 길 위 노출(소수 날이면 그 몫만큼 다음 날 하루치)
+// ★★[T840 2026-10-21 · T812 회부 4 · 손잡이 `T840_LEG_ELEV`('1' 만 켬 · 끔 = 다리 고도 0 = main 바이트)] **다리 노출에 마을 고도를 — 장부와 같이.**
+//   다리의 고도 = 그 다리를 **장부가 정산하는 자리**의 고도 = 도착 마을(짐이 받는 곳간에 내려질 때 장부가 몸에 지님 구간을 정산한다 —
+//   장부의 `unload` · 같은 손잡이). 정산 정본(`spoil.exposureAt` · `dayExposure`)은 구간 하나에 고도 하나다 — 섞는 꼴을 새로 안 짓는다.
+//   고도 값 = econ 기온이 이미 쓰는 그 값(`_elevKmOf` — 호스트 지형층 주입 훅 · 미설치 0). ⚠지금 어떤 호스트도 넣지 않는다(산 높이 35m 캐논 ·
+//   존 `elevKmAt` 도 0) ⇒ 오늘의 세계에선 켜도 값이 같다(보고/T840 §0).
+const T840_LEG_ELEV = (typeof process !== 'undefined' && process.env && process.env.T840_LEG_ELEV === '1');
+function _elevKmOf(v) { return (v && v.land && v.land.elev) || 0; }   // 호스트(지형층) 고도 주입 훅 — 미설치=0(해수면) 무해
+const _t812Pre = new Map();   // 떠난 날 · 고도 → [0, 첫날 노출, 둘째 날까지 …] (그 날부터의 누적 · 날마다 한 번만 센다)
+function _t812Exp(day0, days, elevKm) {   // 떠난 날 · 날 수(· 고도 km — T840) → 길 위 노출(소수 날이면 그 몫만큼 다음 날 하루치)
   const M = _t784Mods(), S = M && M.S;
   if (!S || typeof S.dayExposure !== 'function') return days;
   const d0 = Math.floor(Number(day0) || 0), x = Math.max(0, Number(days) || 0), n = Math.floor(x), fr = x - n;
-  let P = _t812Pre.get(d0);
-  if (!P) { P = [0]; _t812Pre.set(d0, P); if (_t812Pre.size > 64) _t812Pre.delete(_t812Pre.keys().next().value); }
+  const e = +(elevKm || 0), key = e ? `${d0}|${e}` : d0;   // 고도 0 은 종전 열쇠 그대로
+  let P = _t812Pre.get(key);
+  if (!P) { P = [0]; _t812Pre.set(key, P); if (_t812Pre.size > 64) _t812Pre.delete(_t812Pre.keys().next().value); }
   const pf = S.placeFields('carry');
   const need = fr > 0 ? n + 1 : n;
-  while (P.length <= need) P.push(P[P.length - 1] + S.dayExposure(d0 + P.length - 1, 0, pf.w) * pf.m);
+  while (P.length <= need) P.push(P[P.length - 1] + S.dayExposure(d0 + P.length - 1, e, pf.w) * pf.m);
   return fr > 0 ? P[n] + fr * (P[n + 1] - P[n]) : P[n];
 }
-function _t784F(res, days, day0) {   // 품목 · 길 위 날 수(· 떠난 날 — T812 켬이면 그 날부터의 노출) → 신선도(늙지 않는 품목 1)
+function _t784F(res, days, day0, elevKm) {   // 품목 · 길 위 날 수(· 떠난 날 — T812 켬이면 그 날부터의 노출 · 고도 — T840 켬이면 그 다리의 고도) → 신선도(늙지 않는 품목 1)
   const M = _t784Mods();
   if (!M || !M.L.isLot(res)) return 1;
-  const f = M.S.freshnessOf(res, (T812_CARGO_TEMP && day0 != null) ? _t812Exp(day0, days) : days);
+  const f = M.S.freshnessOf(res, (T812_CARGO_TEMP && day0 != null) ? _t812Exp(day0, days, T840_LEG_ELEV ? elevKm : 0) : days);
   return f > 0 ? f : 0;
 }
 function _t784Arrive(c, res, day) {   // 도착 순간 그 짐의 신선도 — 길 위 날 수(출발 결정과 같은 곡선 · 같은 날 셈)
   const d0 = day - c.departDay;
   const n = Math.max(0, c._xzHome ? Math.max(d0, +c.travelDays || 0) : d0);   // 이웃 존에서 넘어온 짐은 departDay 가 넘어온 날이다
-  return _t784F(res, n, day - n);   // ★[T812] 떠난 날 = 도착 날 − 길 날 수(이웃 존 짐도 같은 셈)
+  return _t784F(res, n, day - n, _elevKmOf(c.to));   // ★[T812] 떠난 날 = 도착 날 − 길 날 수(이웃 존 짐도 같은 셈) · ★[T840] 도착 마을 고도
 }
 // 마을 하나의 문맥 — 자본재 커버리지(결정층 식 그대로).
 function _targetCtxV2(v) {
@@ -15531,7 +15552,7 @@ function* tickTradeV2Steps(world, day) {
           //   진짜 정합은 '귀환 leg 기대가치 모델링'과 세트(후속 설계 후보) — 그 전까지 기대는 근사, 정산은 진실.
           //   ★[T233] 세 줄을 `_legProfitPerUnit` 으로 **이름만 올렸다** — 곱·뺄셈 순서 그대로라 비트 동일.
           //     첫째와 둘째가 **같은 함수**를 부르게 하려면 식이 이름을 가져야 한다(사본 금지 · T200 문법).
-          const profitPerUnit = _legProfitPerUnit(pFrom, T784_CARGO_AGE ? pTo * _t784F(cand.res, travelDaysForDistance(dist), day) : pTo, transportCostPerUnit, expectedLossRatio);   // ★[T784] 켬 = 도착 날 신선도 곱
+          const profitPerUnit = _legProfitPerUnit(pFrom, T784_CARGO_AGE ? pTo * _t784F(cand.res, travelDaysForDistance(dist), day, _elevKmOf(b.v)) : pTo, transportCostPerUnit, expectedLossRatio);   // ★[T784] 켬 = 도착 날 신선도 곱
           const totalProfit = profitPerUnit * N_units;
           if (totalProfit <= 0) continue;
           if (!best || totalProfit > best.profit) {
@@ -15607,7 +15628,7 @@ function* tickTradeV2Steps(world, day) {
             //     목적지·거리·운반비·손실률은 **첫째가 정한 그대로**(같은 수레다) — 새 수 0 · 사본 0.
             //     왜: T231 §ⓐ — 첫째는 `totalProfit<=0` 관문을 지나는데 둘째는 관문이 **아예 없어서**
             //     `TRADABLE` 선언 순서상 첫 품목을 적자로도 싣는다(단위의 62~74%가 단위당 적자).
-            const _pu2 = _legProfitPerUnit(a.prices[c2.res] || 0, T784_CARGO_AGE ? ((b.prices && b.prices[c2.res]) || 0) * _t784F(c2.res, travelDaysForDistance(best.dist), day) : ((b.prices && b.prices[c2.res]) || 0),   // ★[T784]
+            const _pu2 = _legProfitPerUnit(a.prices[c2.res] || 0, T784_CARGO_AGE ? ((b.prices && b.prices[c2.res]) || 0) * _t784F(c2.res, travelDaysForDistance(best.dist), day, _elevKmOf(best.b.v)) : ((b.prices && b.prices[c2.res]) || 0),   // ★[T784]
                                            best.transportCostPerUnit, best.expectedLossRatio);
             if (_c2gate && !(_pu2 * _q > 0)) { if (!_picked) _gateBlocked++; continue; }   // ★걸리면 **다음 후보**로 · ★[T299] 기본 끔
             if (!_picked) {                           // ★선언 순서상 첫 개 — T206~T233 이 싣던 그것
@@ -16513,7 +16534,7 @@ function tickWorldV2Parts(world) {
   function _villageBody(v) {
       if (world._dbg?.climate !== false) {
         // ★기온(2026-07-12): 야간최저 기준 한랭 스트레스(0~1) — 의복 커버리지 페널티·연료 가중·마모 가중이 소비(v1).
-        const _elev = (v.land && v.land.elev) || 0;   // 호스트(지형층) 고도 주입 훅 — 미설치=0(해수면) 무해
+        const _elev = _elevKmOf(v);   // 호스트(지형층) 고도 주입 훅 — 미설치=0(해수면) 무해 · ★[T840] 다리 고도와 한 함수
         v._tempDay = temperatureAt(world.day, null, _elev);
         v._tempNight = v._tempDay - CLIMATE.diurnalAmp;
         v._coldStress = Math.max(0, Math.min(1, (CLIMATE.coldRef - v._tempNight) / 15));
@@ -16932,7 +16953,8 @@ module.exports = {
   _xzProbe: { handOff: _xzHandOff, arrive: _xzArrive, arriveLoop: _xzArriveLoop, handBack: _xzHandBack, ret: _xzReturn },   // ★[T748] 존 경계 짐 레코드 — 하네스가 **이 함수들**을 그대로 부른다(사본 0 · 값 무변)
   setLotHook,   // ★[T732] 곳간 로트 장부 훅(서버 켬일 때만 꽂는다 · 랩·CLI 는 안 꽂는다 = 무동작)
   T784_CARGO_AGE, _t784Probe: { F: _t784F, arrive: _t784Arrive },
-  T812_CARGO_TEMP, _t812Probe: { exp: _t812Exp },   // ★[T812] 길 위 노출 — 하네스가 이 함수를 그대로 부른다(사본 0)   // ★[T784] 짐 늙음 — 하네스가 **이 두 함수**를 그대로 부른다(사본 0 · 값 무변)
+  T812_CARGO_TEMP, _t812Probe: { exp: _t812Exp },
+  T840_LEG_ELEV, elevKmOf: _elevKmOf,   // ★[T840] 다리 고도 — 장부(`granary-lots.unload`)가 같은 함수를 부른다(사본 0)   // ★[T812] 길 위 노출 — 하네스가 이 함수를 그대로 부른다(사본 0)   // ★[T784] 짐 늙음 — 하네스가 **이 두 함수**를 그대로 부른다(사본 0 · 값 무변)
 };
 
 ;return module.exports;})();

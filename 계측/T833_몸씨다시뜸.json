@@ -1,0 +1,1381 @@
+{
+ "card": "T833",
+ "made": "2026-10-21",
+ "head": "가지 batch/body-seed-on-1021 — main f4592f10 + 손잡이 켬 기본 · 몸 번호 = 명부 자리(server/villages.js) · 하네스 test-body-seed-restart · 탐침 t833-restart-probe + t833-probe-hook",
+ "knob": "T822_BODY_SEED !== '0'(켬 기본 · 되돌림 =0) — _sh = pidHash(`${판 씨}_simvil_${dbId}_${명부 자리}`) · 명부가 바뀌는 여덟 자리마다 _t822Rekey(바뀐 자리부터) · 부팅 되살림 뒤 _t833Boot",
+ "probe": {
+  "how": "node scripts/t833-restart-probe.js --dir <판> [--tree <main 작업 트리>] --stop 40 --after 40(T400_BUILD_ACT=0 · VILLAGE_DAY_MS=250 · 가상 시계 · 몸 상한 없음 · 시드 1020 · PORT=0) — main 판은 T822_BODY_SEED=1(T822 열쇠 = pid)",
+  "main": {
+   "tree": "main 작업 트리(f4592f10)",
+   "seed": 1020,
+   "stop": 40,
+   "after": 40,
+   "dayMs": 250,
+   "cap": null,
+   "knob": "1",
+   "p1": {
+    "sec": 164,
+    "code": 0,
+    "lastDay": 40,
+    "last": {
+     "d": 40,
+     "V": 1767225609966.6423,
+     "n": 1232,
+     "undef": 0,
+     "dupKeys": 0,
+     "dupBodies": 0,
+     "sameVil": 0,
+     "crossVil": 0
+    },
+    "save": {
+     "n": 1232,
+     "undef": 0,
+     "dupKeys": 0,
+     "dupBodies": 0,
+     "sameVil": 0,
+     "crossVil": 0
+    },
+    "maxPid": 1718
+   },
+   "p2": {
+    "sec": 225,
+    "code": 0,
+    "boot": {
+     "day": 40,
+     "n": 1232,
+     "undef": 0,
+     "dupKeys": 0,
+     "dupBodies": 0,
+     "sameVil": 0,
+     "crossVil": 0
+    },
+    "days": 40,
+    "firstDay": 41,
+    "lastDay": 80,
+    "end": {
+     "d": 80,
+     "V": 1767225620216.9756,
+     "n": 1842,
+     "undef": 0,
+     "dupKeys": 8,
+     "dupBodies": 16,
+     "sameVil": 8,
+     "crossVil": 0
+    },
+    "worstDay": {
+     "d": 53,
+     "V": 1767225613483.6587,
+     "n": 1446,
+     "undef": 0,
+     "dupKeys": 8,
+     "dupBodies": 16,
+     "sameVil": 8,
+     "crossVil": 0
+    },
+    "maxSameVil": 8,
+    "maxDupBodies": 16,
+    "save": {
+     "n": 1842,
+     "undef": 0,
+     "dupKeys": 8,
+     "dupBodies": 16,
+     "sameVil": 8,
+     "crossVil": 0
+    },
+    "maxPid": 2349
+   },
+   "wouldPairsT822": {
+    "boot": 0,
+    "end": 8
+   },
+   "p2days": [
+    [
+     41,
+     1247,
+     0,
+     0
+    ],
+    [
+     42,
+     1257,
+     0,
+     0
+    ],
+    [
+     43,
+     1275,
+     0,
+     0
+    ],
+    [
+     44,
+     1293,
+     0,
+     0
+    ],
+    [
+     45,
+     1314,
+     0,
+     0
+    ],
+    [
+     46,
+     1330,
+     0,
+     0
+    ],
+    [
+     47,
+     1341,
+     0,
+     0
+    ],
+    [
+     48,
+     1349,
+     3,
+     6
+    ],
+    [
+     49,
+     1371,
+     4,
+     8
+    ],
+    [
+     50,
+     1393,
+     4,
+     8
+    ],
+    [
+     51,
+     1413,
+     4,
+     8
+    ],
+    [
+     52,
+     1428,
+     4,
+     8
+    ],
+    [
+     53,
+     1446,
+     8,
+     16
+    ],
+    [
+     54,
+     1459,
+     8,
+     16
+    ],
+    [
+     55,
+     1476,
+     8,
+     16
+    ],
+    [
+     56,
+     1499,
+     8,
+     16
+    ],
+    [
+     57,
+     1517,
+     8,
+     16
+    ],
+    [
+     58,
+     1534,
+     8,
+     16
+    ],
+    [
+     59,
+     1547,
+     8,
+     16
+    ],
+    [
+     60,
+     1561,
+     8,
+     16
+    ],
+    [
+     61,
+     1580,
+     8,
+     16
+    ],
+    [
+     62,
+     1597,
+     8,
+     16
+    ],
+    [
+     63,
+     1611,
+     8,
+     16
+    ],
+    [
+     64,
+     1625,
+     8,
+     16
+    ],
+    [
+     65,
+     1644,
+     8,
+     16
+    ],
+    [
+     66,
+     1662,
+     8,
+     16
+    ],
+    [
+     67,
+     1674,
+     8,
+     16
+    ],
+    [
+     68,
+     1685,
+     8,
+     16
+    ],
+    [
+     69,
+     1697,
+     8,
+     16
+    ],
+    [
+     70,
+     1712,
+     8,
+     16
+    ],
+    [
+     71,
+     1726,
+     8,
+     16
+    ],
+    [
+     72,
+     1739,
+     8,
+     16
+    ],
+    [
+     73,
+     1753,
+     8,
+     16
+    ],
+    [
+     74,
+     1761,
+     8,
+     16
+    ],
+    [
+     75,
+     1772,
+     8,
+     16
+    ],
+    [
+     76,
+     1788,
+     8,
+     16
+    ],
+    [
+     77,
+     1806,
+     8,
+     16
+    ],
+    [
+     78,
+     1818,
+     8,
+     16
+    ],
+    [
+     79,
+     1831,
+     8,
+     16
+    ],
+    [
+     80,
+     1842,
+     8,
+     16
+    ]
+   ],
+   "keepKey": {
+    "same": 1232,
+    "n": 1232
+   }
+  },
+  "branch": {
+   "tree": "이 가지",
+   "seed": 1020,
+   "stop": 40,
+   "after": 40,
+   "dayMs": 250,
+   "cap": null,
+   "knob": null,
+   "p1": {
+    "sec": 167,
+    "code": 0,
+    "lastDay": 40,
+    "last": {
+     "d": 40,
+     "V": 1767225609966.6423,
+     "n": 1232,
+     "undef": 0,
+     "dupKeys": 0,
+     "dupBodies": 0,
+     "sameVil": 0,
+     "crossVil": 0
+    },
+    "save": {
+     "n": 1232,
+     "undef": 0,
+     "dupKeys": 0,
+     "dupBodies": 0,
+     "sameVil": 0,
+     "crossVil": 0
+    },
+    "maxPid": 1718
+   },
+   "p2": {
+    "sec": 228,
+    "code": 0,
+    "boot": {
+     "day": 40,
+     "n": 1232,
+     "undef": 0,
+     "dupKeys": 0,
+     "dupBodies": 0,
+     "sameVil": 0,
+     "crossVil": 0
+    },
+    "days": 40,
+    "firstDay": 41,
+    "lastDay": 80,
+    "end": {
+     "d": 80,
+     "V": 1767225620216.9756,
+     "n": 1842,
+     "undef": 0,
+     "dupKeys": 0,
+     "dupBodies": 0,
+     "sameVil": 0,
+     "crossVil": 0
+    },
+    "worstDay": null,
+    "maxSameVil": 0,
+    "maxDupBodies": 0,
+    "save": {
+     "n": 1842,
+     "undef": 0,
+     "dupKeys": 0,
+     "dupBodies": 0,
+     "sameVil": 0,
+     "crossVil": 0
+    },
+    "maxPid": 2349
+   },
+   "wouldPairsT822": {
+    "boot": 0,
+    "end": 8
+   },
+   "p2days": [
+    [
+     41,
+     1247,
+     0,
+     0
+    ],
+    [
+     42,
+     1257,
+     0,
+     0
+    ],
+    [
+     43,
+     1275,
+     0,
+     0
+    ],
+    [
+     44,
+     1293,
+     0,
+     0
+    ],
+    [
+     45,
+     1314,
+     0,
+     0
+    ],
+    [
+     46,
+     1330,
+     0,
+     0
+    ],
+    [
+     47,
+     1341,
+     0,
+     0
+    ],
+    [
+     48,
+     1349,
+     0,
+     0
+    ],
+    [
+     49,
+     1371,
+     0,
+     0
+    ],
+    [
+     50,
+     1393,
+     0,
+     0
+    ],
+    [
+     51,
+     1413,
+     0,
+     0
+    ],
+    [
+     52,
+     1428,
+     0,
+     0
+    ],
+    [
+     53,
+     1446,
+     0,
+     0
+    ],
+    [
+     54,
+     1459,
+     0,
+     0
+    ],
+    [
+     55,
+     1476,
+     0,
+     0
+    ],
+    [
+     56,
+     1499,
+     0,
+     0
+    ],
+    [
+     57,
+     1517,
+     0,
+     0
+    ],
+    [
+     58,
+     1534,
+     0,
+     0
+    ],
+    [
+     59,
+     1547,
+     0,
+     0
+    ],
+    [
+     60,
+     1561,
+     0,
+     0
+    ],
+    [
+     61,
+     1580,
+     0,
+     0
+    ],
+    [
+     62,
+     1597,
+     0,
+     0
+    ],
+    [
+     63,
+     1611,
+     0,
+     0
+    ],
+    [
+     64,
+     1625,
+     0,
+     0
+    ],
+    [
+     65,
+     1644,
+     0,
+     0
+    ],
+    [
+     66,
+     1662,
+     0,
+     0
+    ],
+    [
+     67,
+     1674,
+     0,
+     0
+    ],
+    [
+     68,
+     1685,
+     0,
+     0
+    ],
+    [
+     69,
+     1697,
+     0,
+     0
+    ],
+    [
+     70,
+     1712,
+     0,
+     0
+    ],
+    [
+     71,
+     1726,
+     0,
+     0
+    ],
+    [
+     72,
+     1739,
+     0,
+     0
+    ],
+    [
+     73,
+     1753,
+     0,
+     0
+    ],
+    [
+     74,
+     1761,
+     0,
+     0
+    ],
+    [
+     75,
+     1772,
+     0,
+     0
+    ],
+    [
+     76,
+     1788,
+     0,
+     0
+    ],
+    [
+     77,
+     1806,
+     0,
+     0
+    ],
+    [
+     78,
+     1818,
+     0,
+     0
+    ],
+    [
+     79,
+     1831,
+     0,
+     0
+    ],
+    [
+     80,
+     1842,
+     0,
+     0
+    ]
+   ],
+   "keepKey": {
+    "same": 1232,
+    "n": 1232
+   }
+  },
+  "first": {
+   "what": "첫 탐침(T400 집 켬 기본 · 멈춤 60 → 신호가 77 날에 닿음 · 인구 612 에서 멈춰 다시 뜬 뒤 출생 0 — 겹칠 몸이 없었다)",
+   "main": {
+    "tree": "main 작업 트리(f4592f10)",
+    "seed": 1020,
+    "stop": 60,
+    "after": 30,
+    "dayMs": 250,
+    "cap": null,
+    "knob": "1",
+    "p1": {
+     "sec": 171,
+     "code": 0,
+     "lastDay": 77,
+     "last": {
+      "d": 77,
+      "V": 1767225619233.2864,
+      "n": 612,
+      "undef": 0,
+      "dupKeys": 0,
+      "dupBodies": 0,
+      "sameVil": 0,
+      "crossVil": 0
+     },
+     "save": {
+      "n": 612,
+      "undef": 0,
+      "dupKeys": 0,
+      "dupBodies": 0,
+      "sameVil": 0,
+      "crossVil": 0
+     },
+     "maxPid": 1457
+    },
+    "p2": {
+     "sec": 123,
+     "code": 0,
+     "boot": {
+      "day": 77,
+      "n": 612,
+      "undef": 0,
+      "dupKeys": 0,
+      "dupBodies": 0,
+      "sameVil": 0,
+      "crossVil": 0
+     },
+     "days": 14,
+     "firstDay": 78,
+     "lastDay": 91,
+     "end": {
+      "d": 91,
+      "V": 1767225618716.9915,
+      "n": 612,
+      "undef": 0,
+      "dupKeys": 0,
+      "dupBodies": 0,
+      "sameVil": 0,
+      "crossVil": 0
+     },
+     "worstDay": null,
+     "maxSameVil": 0,
+     "maxDupBodies": 0,
+     "save": {
+      "n": 612,
+      "undef": 0,
+      "dupKeys": 0,
+      "dupBodies": 0,
+      "sameVil": 0,
+      "crossVil": 0
+     },
+     "maxPid": 612
+    },
+    "wouldPairsT822": {
+     "boot": 0,
+     "end": 0
+    },
+    "p2days": [
+     [
+      78,
+      612,
+      0,
+      0
+     ],
+     [
+      79,
+      612,
+      0,
+      0
+     ],
+     [
+      80,
+      612,
+      0,
+      0
+     ],
+     [
+      81,
+      612,
+      0,
+      0
+     ],
+     [
+      82,
+      612,
+      0,
+      0
+     ],
+     [
+      83,
+      612,
+      0,
+      0
+     ],
+     [
+      84,
+      612,
+      0,
+      0
+     ],
+     [
+      85,
+      612,
+      0,
+      0
+     ],
+     [
+      86,
+      612,
+      0,
+      0
+     ],
+     [
+      87,
+      612,
+      0,
+      0
+     ],
+     [
+      88,
+      612,
+      0,
+      0
+     ],
+     [
+      89,
+      612,
+      0,
+      0
+     ],
+     [
+      90,
+      612,
+      0,
+      0
+     ],
+     [
+      91,
+      612,
+      0,
+      0
+     ]
+    ],
+    "keepKey": {
+     "same": 612,
+     "n": 612
+    }
+   },
+   "branch": {
+    "tree": "이 가지",
+    "seed": 1020,
+    "stop": 60,
+    "after": 30,
+    "dayMs": 250,
+    "cap": null,
+    "knob": null,
+    "p1": {
+     "sec": 171,
+     "code": 0,
+     "lastDay": 77,
+     "last": {
+      "d": 77,
+      "V": 1767225619233.2864,
+      "n": 612,
+      "undef": 0,
+      "dupKeys": 0,
+      "dupBodies": 0,
+      "sameVil": 0,
+      "crossVil": 0
+     },
+     "save": {
+      "n": 612,
+      "undef": 0,
+      "dupKeys": 0,
+      "dupBodies": 0,
+      "sameVil": 0,
+      "crossVil": 0
+     },
+     "maxPid": 1457
+    },
+    "p2": {
+     "sec": 121,
+     "code": 0,
+     "boot": {
+      "day": 77,
+      "n": 612,
+      "undef": 0,
+      "dupKeys": 0,
+      "dupBodies": 0,
+      "sameVil": 0,
+      "crossVil": 0
+     },
+     "days": 14,
+     "firstDay": 78,
+     "lastDay": 91,
+     "end": {
+      "d": 91,
+      "V": 1767225618716.9915,
+      "n": 612,
+      "undef": 0,
+      "dupKeys": 0,
+      "dupBodies": 0,
+      "sameVil": 0,
+      "crossVil": 0
+     },
+     "worstDay": null,
+     "maxSameVil": 0,
+     "maxDupBodies": 0,
+     "save": {
+      "n": 612,
+      "undef": 0,
+      "dupKeys": 0,
+      "dupBodies": 0,
+      "sameVil": 0,
+      "crossVil": 0
+     },
+     "maxPid": 612
+    },
+    "wouldPairsT822": {
+     "boot": 0,
+     "end": 0
+    },
+    "p2days": [
+     [
+      78,
+      612,
+      0,
+      0
+     ],
+     [
+      79,
+      612,
+      0,
+      0
+     ],
+     [
+      80,
+      612,
+      0,
+      0
+     ],
+     [
+      81,
+      612,
+      0,
+      0
+     ],
+     [
+      82,
+      612,
+      0,
+      0
+     ],
+     [
+      83,
+      612,
+      0,
+      0
+     ],
+     [
+      84,
+      612,
+      0,
+      0
+     ],
+     [
+      85,
+      612,
+      0,
+      0
+     ],
+     [
+      86,
+      612,
+      0,
+      0
+     ],
+     [
+      87,
+      612,
+      0,
+      0
+     ],
+     [
+      88,
+      612,
+      0,
+      0
+     ],
+     [
+      89,
+      612,
+      0,
+      0
+     ],
+     [
+      90,
+      612,
+      0,
+      0
+     ],
+     [
+      91,
+      612,
+      0,
+      0
+     ]
+    ],
+    "keepKey": {
+     "same": 612,
+     "n": 612
+    }
+   }
+  }
+ },
+ "harness": {
+  "file": "scripts/test-body-seed-restart.js",
+  "result": [
+   "=== 16 통과 / 0 실패 ===",
+   "=== 16 통과 / 0 실패 ===",
+   "  ✓ RC=0"
+  ]
+ },
+ "regress": {
+  "list": [
+   "test-arms-body.js",
+   "test-body-exit.js",
+   "test-body-fields.js",
+   "test-body-seed-restart.js",
+   "test-bridge-act.js",
+   "test-build-act.js",
+   "test-cand-walk.js",
+   "test-dusk-stamp.js",
+   "test-econ-fieldyield.js",
+   "test-farm-act.js",
+   "test-fell-loot.js",
+   "test-forage-act.js",
+   "test-harness-lint.js",
+   "test-hunt-port.js",
+   "test-hunt-vis.js",
+   "test-loot-body.js",
+   "test-moment-lot.js",
+   "test-move-soa.js",
+   "test-npc-clothes.js",
+   "test-regrow-block.js",
+   "test-server-market.js",
+   "test-sortie-miss.js",
+   "test-t740-side.js",
+   "test-terr-backfill.js",
+   "test-terr-overlap.js",
+   "test-war-nosnap.js",
+   "test-war-world.js",
+   "test-wood-act.js",
+   "test-wood-step1.js"
+  ],
+  "sec": 781,
+  "tail": [
+   "=== 러너 요약 ===",
+   "  통과 29: test-arms-body.js test-body-exit.js test-body-fields.js test-body-seed-restart.js test-bridge-act.js test-build-act.js test-cand-walk.js test-dusk-stamp.js test-econ-fieldyield.js test-farm-act.js test-fell-loot.js test-forage-act.js test-harness-lint.js test-hunt-port.js test-hunt-vis.js test-loot-body.js test-moment-lot.js test-move-soa.js test-npc-clothes.js test-regrow-block.js test-server-market.js test-sortie-miss.js test-t740-side.js test-terr-backfill.js test-terr-overlap.js test-war-nosnap.js test-war-world.js test-wood-act.js test-wood-step1.js",
+   "  실패 0: 없음"
+  ]
+ },
+ "mutation": {
+  "what": "고친 것을 하나씩 뺀 판(레포 밖 작업 트리 · 하네스 16 칸)",
+  "M1": "줄이기 다시 굽기 한 줄 — ✗ 2(② 어긋남 최대 5 · ⑥)",
+  "M2": "열쇠 = pid(T822) · 부팅 다시 굽기 없음 — ✗ 8",
+  "M3": "부팅 다시 굽기만 — ✗ 2(③′ 24 → 24 · ⑥)",
+  "M4": "출생 때만 굽기 — ✗ 6(② 겹침 최대 12 · 어긋남 61 · ③ · ④ · ③′ · ⑥)"
+ },
+ "baseline": {
+  "file": "계측/서버기준선_2026-10-21.json(main 최신 · 실제 시계 · 3시드 400날)",
+  "on": {
+   "env": "없음(켬 기본)",
+   "lines": [
+    "=== 서버 판 기준선 견주기 — 1020:400일 · 7:400일 · 42:400일 · 동시 3 · 교역로 캐시 <tmp>/durango-route-cache · 판 <tmp>/sbc-Hnu4dq ===",
+    "  판 모두 645초",
+    "  ○ 시드 1020: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2688)",
+    "  ○ 시드 7: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 3008)",
+    "  ○ 시드 42: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2952)",
+    "=== 같음 3/3 · 판 645초 ==="
+   ]
+  },
+  "off": {
+   "env": "T822_BODY_SEED=0",
+   "lines": [
+    "=== 서버 판 기준선 견주기 — 1020:400일 · 7:400일 · 42:400일 · 동시 3 · 교역로 캐시 <tmp>/durango-route-cache · 판 <tmp>/sbc-f1vyfn ===",
+    "  판 모두 511초",
+    "  ○ 시드 1020: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2688)",
+    "  ○ 시드 7: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 3008)",
+    "  ○ 시드 42: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2952)",
+    "=== 같음 3/3 · 판 511초 ==="
+   ]
+  },
+  "runs": [
+   {
+    "mtime": "2026-10-21T15:26:35.752Z",
+    "sec": 645,
+    "res": {
+     "7": {
+      "same": true,
+      "days": 400
+     },
+     "42": {
+      "same": true,
+      "days": 400
+     },
+     "1020": {
+      "same": true,
+      "days": 400
+     }
+    },
+    "end": {
+     "7": {
+      "pop": 3008,
+      "days": 400
+     },
+     "42": {
+      "pop": 2952,
+      "days": 400
+     },
+     "1020": {
+      "pop": 2688,
+      "days": 400
+     }
+    }
+   },
+   {
+    "mtime": "2026-10-21T15:35:06.964Z",
+    "sec": 511,
+    "res": {
+     "7": {
+      "same": true,
+      "days": 400
+     },
+     "42": {
+      "same": true,
+      "days": 400
+     },
+     "1020": {
+      "same": true,
+      "days": 400
+     }
+    },
+    "end": {
+     "7": {
+      "pop": 3008,
+      "days": 400
+     },
+     "42": {
+      "pop": 2952,
+      "days": 400
+     },
+     "1020": {
+      "pop": 2688,
+      "days": 400
+     }
+    }
+   }
+  ]
+ },
+ "ruler": {
+  "what": "T805 자 여섯 팔 3날 두 판(같은 씨 · 동시 2)",
+  "bound": [
+   {
+    "arm": "off",
+    "days": [
+     3,
+     3
+    ],
+    "econ": null,
+    "side": null,
+    "sideFields": [],
+    "body": null,
+    "eight": true,
+    "runHash": true,
+    "sec": [
+     173,
+     173
+    ]
+   },
+   {
+    "arm": "A1",
+    "days": [
+     3,
+     3
+    ],
+    "econ": null,
+    "side": null,
+    "sideFields": [],
+    "body": null,
+    "eight": true,
+    "runHash": true,
+    "sec": [
+     201,
+     194
+    ]
+   },
+   {
+    "arm": "A2",
+    "days": [
+     3,
+     3
+    ],
+    "econ": null,
+    "side": null,
+    "sideFields": [],
+    "body": null,
+    "eight": true,
+    "runHash": true,
+    "sec": [
+     227,
+     219
+    ]
+   },
+   {
+    "arm": "A3",
+    "days": [
+     3,
+     3
+    ],
+    "econ": null,
+    "side": null,
+    "sideFields": [],
+    "body": null,
+    "eight": true,
+    "runHash": true,
+    "sec": [
+     174,
+     171
+    ]
+   },
+   {
+    "arm": "A4",
+    "days": [
+     3,
+     3
+    ],
+    "econ": null,
+    "side": null,
+    "sideFields": [],
+    "body": null,
+    "eight": true,
+    "runHash": true,
+    "sec": [
+     169,
+     168
+    ]
+   },
+   {
+    "arm": "ALL",
+    "days": [
+     3,
+     3
+    ],
+    "econ": null,
+    "side": null,
+    "sideFields": [],
+    "body": null,
+    "eight": true,
+    "runHash": true,
+    "sec": [
+     226,
+     216
+    ]
+   }
+  ],
+  "unbound": [
+   {
+    "arm": "off",
+    "days": [
+     3,
+     3
+    ],
+    "econ": null,
+    "side": null,
+    "sideFields": [],
+    "body": null,
+    "eight": true,
+    "runHash": true,
+    "sec": [
+     170,
+     170
+    ]
+   },
+   {
+    "arm": "A1",
+    "days": [
+     3,
+     3
+    ],
+    "econ": null,
+    "side": null,
+    "sideFields": [],
+    "body": null,
+    "eight": true,
+    "runHash": true,
+    "sec": [
+     187,
+     191
+    ]
+   },
+   {
+    "arm": "A2",
+    "days": [
+     3,
+     3
+    ],
+    "econ": null,
+    "side": null,
+    "sideFields": [],
+    "body": null,
+    "eight": true,
+    "runHash": true,
+    "sec": [
+     220,
+     228
+    ]
+   },
+   {
+    "arm": "A3",
+    "days": [
+     3,
+     3
+    ],
+    "econ": null,
+    "side": null,
+    "sideFields": [],
+    "body": null,
+    "eight": true,
+    "runHash": true,
+    "sec": [
+     171,
+     179
+    ]
+   },
+   {
+    "arm": "A4",
+    "days": [
+     3,
+     3
+    ],
+    "econ": null,
+    "side": null,
+    "sideFields": [],
+    "body": null,
+    "eight": true,
+    "runHash": true,
+    "sec": [
+     171,
+     178
+    ]
+   },
+   {
+    "arm": "ALL",
+    "days": [
+     3,
+     3
+    ],
+    "econ": null,
+    "side": null,
+    "sideFields": [],
+    "body": null,
+    "eight": true,
+    "runHash": true,
+    "sec": [
+     227,
+     214
+    ]
+   }
+  ]
+ },
+ "t650": {
+  "what": "어부 켬 400날 두 판(T650 자 · 가상 시계 · 안 묶음 · 켬 기본)",
+  "make": [
+   "  판 모두 248초",
+   "  시드 1020: 인구 1946 · 소멸 1/51 · 무기Q 194 · 확장 605 · 게시 892 · 도구Q 2325.6 · 보존 19.1 · 곡물 6502.5 · 해체 1 · 빈 1 · 날 400",
+   "→ <tmp>/t833/t650A2.json (775,334 B)"
+  ],
+  "check": [
+   "=== 서버 판 기준선 견주기 — 1020:400일 · 동시 1 · 교역로 캐시 <tmp>/durango-route-cache · 판 <tmp>/sbc-CmNZIN ===",
+   "  판 모두 253초",
+   "  ○ 시드 1020: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 1946) · 마을 칸 지문 400일 같음",
+   "=== 같음 1/1 · 판 253초 ==="
+  ],
+  "runs": [
+   {
+    "mtime": "2026-10-21T16:23:41.968Z",
+    "sec": 253,
+    "res": {
+     "1020": {
+      "same": true,
+      "days": 400
+     }
+    },
+    "end": {
+     "1020": {
+      "pop": 1946,
+      "days": 400
+     }
+    }
+   }
+  ]
+ }
+}

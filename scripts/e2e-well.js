@@ -134,8 +134,14 @@ process.on('exit', shutdown);
   //     건축 모드에서 커서 밑에 건물이 잡히면(`hoverBuildingId`) 좌클릭은 **3초 분해**가 먼저다(14.51 · `30-n-net.js`).
   //     종전 초록 판은 그 자리(후보 −96,0)에서 마침 터가 커서에 안 잡혀 `pickAt` → `well_advance` 로 흘렀다 — 자리가 바뀌면(후보 0,0) "well_site 분해".
   //   ⇒ 사람이 하듯 **B 로 건축 모드를 끈 뒤** 터를 누른다(배치 알림의 "B=취소" 그 키). 끈 것을 단정으로 확인한다.
-  await page.keyboard.press('b'); await sleep(200);
-  ok(await page.evaluate(() => (typeof buildMode !== 'undefined') && buildMode === false), '[상황] B — 건축 모드를 껐다(터 좌클릭이 분해로 안 샌다)');
+  //   ★[T839] 손잡이 `T839_SITE_EXIT=1` 이면 **제품이 착공 순간 건축 모드를 끈다** — 그때는 B 를 누르지 않는다(누르면 도로 켜진다).
+  //     안내("다음: ② … (우물 터 클릭)") 그대로 터만 누르는 사람의 손짓이 시공으로 이어지는지를 켬 판이 잰다.
+  if (await page.evaluate(() => !!(uiCfg && uiCfg.siteExit))) {
+    ok(await page.evaluate(() => (typeof buildMode !== 'undefined') && buildMode === false), '[상황] ★[T839 켬] 착공하자 건축 모드가 **저절로** 꺼졌다 — B 없이 터를 누른다');
+  } else {
+    await page.keyboard.press('b'); await sleep(200);
+    ok(await page.evaluate(() => (typeof buildMode !== 'undefined') && buildMode === false), '[상황] B — 건축 모드를 껐다(터 좌클릭이 분해로 안 샌다)');
+  }
   if (site) { const p = await toScreen(site.wx, site.wy); await page.mouse.click(p.x, p.y); }
   let s2 = null;
   for (let i = 0; i < 20; i++) { await sleep(300); s2 = (await buildings()).find((b) => b.type === 'well_site'); if (s2 && s2.stage === 2) break; }
