@@ -36,7 +36,8 @@ DRAIN_SEC="${DRAIN_SEC:-8}"
 TIMEOUT_SEC="${TIMEOUT_SEC:-2400}"
 # ★[T760 · T751 회부 4] 하네스별 상한 표 — 표에 있는 것만 그 수(기본보다 클 때만) · 나머지는 `TIMEOUT_SEC` 그대로.
 #   랩 둘은 단독 판이 2,042초(mining) · 1,468초(psite)라 기본 2,400초와 여유가 적다(다른 판과 같이 돌면 넘는다 · T735 회부 4).
-#   `@regress` 표식은 안 붙인다 — 야간 목록은 그대로고, 이름을 주고 돌릴 때만 이 표가 쓰인다.
+#   ~~`@regress` 표식은 안 붙인다 — 야간 목록은 그대로고, 이름을 주고 돌릴 때만 이 표가 쓰인다.~~
+#   ★[T830 2026-10-21 · PM 10-20 결정] 칠하기 끔(T799 · `fixture-lab-clock` `noPaint`) 뒤 두 판에 `@regress` 를 다시 붙였다 — 전수·야간 단위에 든다 · 이 표(3,600초)는 그대로.
 declare -A TIMEOUT_OF=( [test-lab-mining.js]=3600 [test-lab-psite.js]=3600 )
 FAILED=()
 PASSED=()
