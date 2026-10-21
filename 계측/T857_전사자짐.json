@@ -1,0 +1,392 @@
+{
+ "ruler": "t577-server-run 50 · VILLAGE_DAY_MS=10000 · WAR_FIXTURE=assault*3 · WAR_FIXTURE_DAY=5 · WAR_FIXTURE_REPEAT=1 · VILLAGE_WAR_LOG=1 · VILLAGE_CARAVAN_MAX=0 · T400_BUILD_ACT=0 · T403_ARMS_LEDGER=1 · 몸 상한 1",
+ "legend": {
+  "M0": "main · 끔",
+  "N0": "가지 · 끔",
+  "M1": "main · T811_ARMS_BODY=1",
+  "N1": "가지 · T811_ARMS_BODY=1",
+  "N2": "가지 · T811_ARMS_BODY=1 T826_LOOT_BODY=1"
+ },
+ "invariant": "fall = pickA + pickB + ground (판마다)",
+ "baseline": {
+  "file": "계측/서버기준선_2026-10-21.json",
+  "result": "같음 3/3 · 판 341초"
+ },
+ "runs": {
+  "7": {
+   "M1": {
+    "ws": {
+     "decl": 23,
+     "battle": 20,
+     "atkWin": 9,
+     "defWin": 11,
+     "weaponLoot": 20,
+     "lootBody": null
+    },
+    "t811": {
+     "load": 23,
+     "sync": 43,
+     "fall": 11,
+     "gone": 110,
+     "off": 0,
+     "back": 82,
+     "gap": 0
+    },
+    "gapMax": 0,
+    "mirrorGapMax": 0,
+    "kgMax": 30.04,
+    "overCap": 144,
+    "samples": 1179,
+    "eight": {
+     "pop": 1320,
+     "dead": 0,
+     "ever": 51,
+     "weapQ": 175,
+     "expand": 0,
+     "board": 170,
+     "toolQ": 2782.6,
+     "preserve": 0,
+     "grain": 3976.8
+    }
+   },
+   "N1": {
+    "ws": {
+     "decl": 23,
+     "battle": 20,
+     "atkWin": 9,
+     "defWin": 11,
+     "weaponLoot": 9,
+     "lootBody": null
+    },
+    "t811": {
+     "load": 23,
+     "sync": 43,
+     "fall": 123,
+     "pickA": 0,
+     "pickB": 123,
+     "pickKg": 184.5,
+     "ground": 0,
+     "groundItems": 0,
+     "back": 82,
+     "gap": 0
+    },
+    "gapMax": 0,
+    "mirrorGapMax": 0,
+    "kgMax": 30.04,
+    "overCap": 146,
+    "samples": 1180,
+    "eight": {
+     "pop": 1323,
+     "dead": 0,
+     "ever": 51,
+     "weapQ": 206,
+     "expand": 0,
+     "board": 169,
+     "toolQ": 2785.7,
+     "preserve": 0,
+     "grain": 3867.9
+    }
+   },
+   "N2": {
+    "ws": {
+     "decl": 23,
+     "battle": 20,
+     "atkWin": 9,
+     "defWin": 11,
+     "weaponLoot": 9,
+     "lootBody": 6.3
+    },
+    "t811": {
+     "load": 23,
+     "sync": 43,
+     "fall": 123,
+     "pickA": 0,
+     "pickB": 123,
+     "pickKg": 184.5,
+     "ground": 0,
+     "groundItems": 0,
+     "back": 88.30000000000001,
+     "gap": 0
+    },
+    "gapMax": 0,
+    "mirrorGapMax": 0,
+    "kgMax": 30.04,
+    "overCap": 145,
+    "samples": 1178,
+    "eight": {
+     "pop": 1327,
+     "dead": 0,
+     "ever": 51,
+     "weapQ": 206,
+     "expand": 0,
+     "board": 168,
+     "toolQ": 2785.5,
+     "preserve": 0,
+     "grain": 3951.9
+    }
+   },
+   "off": {
+    "json": "M0=N0 같음",
+    "warLog": "같음",
+    "ws": {
+     "decl": 23,
+     "battle": 20,
+     "atkWin": 9,
+     "defWin": 11,
+     "weaponLoot": 20,
+     "lootBody": null
+    }
+   }
+  },
+  "42": {
+   "M1": {
+    "ws": {
+     "decl": 24,
+     "battle": 21,
+     "atkWin": 8,
+     "defWin": 13,
+     "weaponLoot": 21,
+     "lootBody": null
+    },
+    "t811": {
+     "load": 24,
+     "sync": 45,
+     "fall": 13,
+     "gone": 129,
+     "off": 0,
+     "back": 77,
+     "gap": 0
+    },
+    "gapMax": 0,
+    "mirrorGapMax": 0,
+    "kgMax": 34.54,
+    "overCap": 113,
+    "samples": 1139,
+    "eight": {
+     "pop": 1321,
+     "dead": 0,
+     "ever": 51,
+     "weapQ": 204,
+     "expand": 0,
+     "board": 174,
+     "toolQ": 2782,
+     "preserve": 0,
+     "grain": 4073.2
+    }
+   },
+   "N1": {
+    "ws": {
+     "decl": 24,
+     "battle": 21,
+     "atkWin": 9,
+     "defWin": 12,
+     "weaponLoot": 9,
+     "lootBody": null
+    },
+    "t811": {
+     "load": 24,
+     "sync": 45,
+     "fall": 119,
+     "pickA": 0,
+     "pickB": 119,
+     "pickKg": 178.5,
+     "ground": 0,
+     "groundItems": 0,
+     "back": 91,
+     "gap": 0
+    },
+    "gapMax": 0,
+    "mirrorGapMax": 0,
+    "kgMax": 34.54,
+    "overCap": 111,
+    "samples": 1163,
+    "eight": {
+     "pop": 1326,
+     "dead": 0,
+     "ever": 51,
+     "weapQ": 219,
+     "expand": 0,
+     "board": 170,
+     "toolQ": 2780.5,
+     "preserve": 0,
+     "grain": 4170
+    }
+   },
+   "N2": {
+    "ws": {
+     "decl": 24,
+     "battle": 21,
+     "atkWin": 9,
+     "defWin": 12,
+     "weaponLoot": 9,
+     "lootBody": 6.3
+    },
+    "t811": {
+     "load": 24,
+     "sync": 45,
+     "fall": 119,
+     "pickA": 0,
+     "pickB": 119,
+     "pickKg": 178.5,
+     "ground": 0,
+     "groundItems": 0,
+     "back": 97.30000000000001,
+     "gap": 0
+    },
+    "gapMax": 0,
+    "mirrorGapMax": 0,
+    "kgMax": 34.54,
+    "overCap": 111,
+    "samples": 1163,
+    "eight": {
+     "pop": 1326,
+     "dead": 0,
+     "ever": 51,
+     "weapQ": 219,
+     "expand": 0,
+     "board": 170,
+     "toolQ": 2780.6,
+     "preserve": 0,
+     "grain": 4170
+    }
+   },
+   "off": {
+    "json": "M0=N0 같음",
+    "warLog": "같음",
+    "ws": {
+     "decl": 24,
+     "battle": 21,
+     "atkWin": 8,
+     "defWin": 13,
+     "weaponLoot": 21,
+     "lootBody": null
+    }
+   }
+  },
+  "1020": {
+   "M1": {
+    "ws": {
+     "decl": 25,
+     "battle": 22,
+     "atkWin": 11,
+     "defWin": 11,
+     "weaponLoot": 22,
+     "lootBody": null
+    },
+    "t811": {
+     "load": 25,
+     "sync": 47,
+     "fall": 11,
+     "gone": 93,
+     "off": 0,
+     "back": 132,
+     "gap": 0
+    },
+    "gapMax": 0,
+    "mirrorGapMax": 0,
+    "kgMax": 39.04,
+    "overCap": 100,
+    "samples": 1156,
+    "eight": {
+     "pop": 1340,
+     "dead": 0,
+     "ever": 51,
+     "weapQ": 224,
+     "expand": 0,
+     "board": 169,
+     "toolQ": 2772.2,
+     "preserve": 0,
+     "grain": 3880.5
+    }
+   },
+   "N1": {
+    "ws": {
+     "decl": 22,
+     "battle": 19,
+     "atkWin": 9,
+     "defWin": 10,
+     "weaponLoot": 9,
+     "lootBody": null
+    },
+    "t811": {
+     "load": 22,
+     "sync": 41,
+     "fall": 91,
+     "pickA": 0,
+     "pickB": 91,
+     "pickKg": 136.5,
+     "ground": 0,
+     "groundItems": 0,
+     "back": 92,
+     "gap": 0
+    },
+    "gapMax": 0,
+    "mirrorGapMax": 0,
+    "kgMax": 40.54,
+    "overCap": 111,
+    "samples": 1195,
+    "eight": {
+     "pop": 1348,
+     "dead": 0,
+     "ever": 51,
+     "weapQ": 191,
+     "expand": 0,
+     "board": 163,
+     "toolQ": 2768.6,
+     "preserve": 0,
+     "grain": 3924.2
+    }
+   },
+   "N2": {
+    "ws": {
+     "decl": 22,
+     "battle": 19,
+     "atkWin": 9,
+     "defWin": 10,
+     "weaponLoot": 9,
+     "lootBody": 6.3
+    },
+    "t811": {
+     "load": 22,
+     "sync": 41,
+     "fall": 91,
+     "pickA": 0,
+     "pickB": 91,
+     "pickKg": 136.5,
+     "ground": 0,
+     "groundItems": 0,
+     "back": 98.30000000000001,
+     "gap": 0
+    },
+    "gapMax": 0,
+    "mirrorGapMax": 0,
+    "kgMax": 40.54,
+    "overCap": 111,
+    "samples": 1194,
+    "eight": {
+     "pop": 1348,
+     "dead": 0,
+     "ever": 51,
+     "weapQ": 191,
+     "expand": 0,
+     "board": 163,
+     "toolQ": 2768.6,
+     "preserve": 0,
+     "grain": 3924.2
+    }
+   },
+   "off": {
+    "json": "M0=N0 같음",
+    "warLog": "같음",
+    "ws": {
+     "decl": 25,
+     "battle": 22,
+     "atkWin": 11,
+     "defWin": 11,
+     "weaponLoot": 22,
+     "lootBody": null
+    }
+   }
+  }
+ }
+}
