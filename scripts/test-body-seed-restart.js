@@ -102,9 +102,9 @@ for (let r = 0; r < 20; r++) {
   for (const vil of T.vils) {
     const e = vil.econ, k = (r + vil.dbId) % 4;
     if (k === 0) { econBirths(e, 3); tally.births += 3; }
-    else if (k === 1) { econDeaths(e, 2); tally.died += 2; econBirths(e, 1); }
-    else if (k === 2) { T.H.noteBodyExit(vil, 'desert', 1); econLeave(e, 1); tally.walked += 1; econBirths(e, 2); }
-    else { const mid = vil.npcPids[Math.floor(vil.npcPids.length / 2)]; if (mid) { T.H._warDespawnPid(mid); e.npcs.splice(Math.floor(e.npcs.length / 2), 1); tally.killed += 1; } econBirths(e, 2); }
+    else if (k === 1) { econDeaths(e, 2); tally.died += 2; econBirths(e, 1); tally.births += 1; }
+    else if (k === 2) { T.H.noteBodyExit(vil, 'desert', 1); econLeave(e, 1); tally.walked += 1; econBirths(e, 2); tally.births += 2; }
+    else { const mid = vil.npcPids[Math.floor(vil.npcPids.length / 2)]; if (mid) { T.H._warDespawnPid(mid); e.npcs.splice(Math.floor(e.npcs.length / 2), 1); tally.killed += 1; } econBirths(e, 2); tally.births += 2; }
     T.deps.bump(1 + (r % 3));
     T.H.syncVillagePop(vil, 2);
     const c = census(T, SEED, PH); worstOff = Math.max(worstOff, c.off + c.undef); worstDup = Math.max(worstDup, c.dup); bodiesMax = Math.max(bodiesMax, c.n);
@@ -169,6 +169,25 @@ T.H._t833Boot();                                                // init — 되�
   const c = census(T, SEED, PH);
   ok(worst === 0 && c.dup === 0, '④ 다시 뜬 뒤 출생 · 죽음 동기마다 겹침 0 · 어긋남 0', `몸 ${c.n}`);
   ok(wouldPairs > 0, '④ ★자명 통과 아님 — 같은 판을 T822 열쇠(`pid`)로 셌다면 겹쳤을 짝(같은 마을 · 되살린 몸의 옛 번호 = 새 몸 번호)', `${wouldPairs} 짝`);
+}
+
+// ── ③′ 끔으로 적은 행을 켬으로 되살림 — `_t833Boot` 가 그 행의 `_sh`(꼬리 해시)를 자리 열쇠로 ─────────────────
+{
+  const M0 = load({ T822_BODY_SEED: '0' });
+  const T0 = world(M0);
+  for (const vil of T0.vils) T0.H.syncVillagePop(vil, Infinity);
+  //   끔 판의 몸은 존 `_shOf` 가 첫 결정에서 `pidHash(playerId)`(꼬리)로 굽는다 — 그 값을 그대로 얹는다(존 zone.js:48 글자)
+  for (const vil of T0.vils) for (const pid of vil.npcPids) { const b = T0.players.get(pid); b._sh = PH(b.playerId || b.pid); }
+  const sv = T0.vils.map((vil) => T0.H.serializeEcon(vil.econ));
+  const M1 = load({ T822_BODY_SEED: null });
+  const T1 = world(M1, sv.map((s) => M1.V.__p3Bind({}).restoreEcon(s, M1.econ)));
+  for (const vil of T1.vils) T1.H.syncVillagePop(vil, Infinity);
+  T1.H._t747Restore();
+  const mid = census(T1, SEED, PH);
+  T1.H._t833Boot();
+  const end = census(T1, SEED, PH);
+  ok(mid.off > 0 && end.off === 0 && end.dup === 0 && end.undef === 0, '③′ 끔으로 적은 행 — 되살린 꼬리 해시를 `_t833Boot` 가 자리 열쇠로 바꾼다(되살림 직후 어긋남 > 0 → 0)', `${mid.off} → ${end.off}`);
+  M = load({ T822_BODY_SEED: null });
 }
 
 // ── ⑤ 끔 — 이 문들은 `_sh` 를 안 굽는다(종전 글자 길) ───────────────────────────────────────
