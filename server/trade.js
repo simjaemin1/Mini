@@ -250,6 +250,26 @@ function planSliced(econV2, v, giveRes, takeRes, giveQty, cap) {
 const T807_ON = !(typeof process !== 'undefined' && process.env && process.env.T807_QUOTE_TRIM === '0');   // ★[T817 · PM 10-20] 켬 기본(견적은 실제로 받을 양을 보인다 · 실행은 켬 · 끔 같다) · 되돌림 `=0`
 //   n0 = 낸다고 한 낱개 · unitsAt(c) = c 개의 단위(견적 = 한 개짜리 어림 × c · 실행 = 고른 그 개체들의 실제 무게) ·
 //   perItem = 평균 단위/개(절삭의 자 — 종전 실행 글자 그대로) · capped 가 아니면 n0 그대로.
+// ★★[T835 2026-10-21 · 세션5 · T807 [정보]] **무거운 물건 견적도 고른 그 개체들의 무게로** — 손잡이 하나 `T835_QUOTE_WEIGHT`('1' 만 켬 · 끔 = main 바이트).
+//   결함: 견적은 낼 물건의 단위를 **한 개짜리 어림**(첫 아이템 1개 단위 × 개수 · 호스트 `villageTradeQuote`)으로 잡았고,
+//     실행은 **고른 그 개체들**(`_pick` — 정본 순서로 어느 아이템에서 몇 개 · `_units` — 개체 무게 · 로트 신선도)로 잰다 — 무게가 다른 짐이면 견적 ≠ 실행.
+//   켜면 견적이 실행과 **같은 고르기 · 같은 단위 셈**(`_giver` — 아래 · 실행도 이 함수다 · 사본 0)을 지난다: 낼 단위 · 평균 단위/개 · 상한 절삭의 자 ·
+//     받을 양 주문의 올림 걸음이 전부 고른 개체로. 마른 실행이다(곳간 · 몸 · 인벤 무변 — `_pick` 은 읽기만 한다).
+const T835_ON = (typeof process !== 'undefined' && process.env && process.env.T835_QUOTE_WEIGHT === '1');
+//   낼 물건 고르기 · 단위 셈 — 실행(`exchange`)의 그 몸통 그대로(이름만 올렸다 · 견적이 켬일 때 같은 함수를 부른다).
+function _giver(D, inventory, giveRes, unitsOf) {
+  const playerItems = D.items.get(giveRes) || [];
+  let have = 0;
+  for (const it of playerItems) have += Math.floor(Number(inventory[it]) || 0);
+  const pick = (cnt) => {                        // 개수 cnt 를 어느 아이템에서 몇 개씩 뺄지(정본 순서)
+    const w = {}; let left = cnt;
+    for (const it of playerItems) { if (left <= 0) break;
+      const n = Math.min(left, Math.floor(Number(inventory[it]) || 0)); if (n > 0) { w[it] = n; left -= n; } }
+    return w;
+  };
+  const units = (w) => { let u = 0; for (const [it, n] of Object.entries(w)) u += unitsOf ? Number(unitsOf(it, n)) || n : n; return u; };
+  return { playerItems, have, pick, units };
+}
 function _trimToCap(econV2, v, giveRes, takeRes, n0, unitsAt, capped, maxGive, perItem, cap) {
   const n = (capped && perItem > 0) ? Math.min(n0, Math.floor(maxGive / perItem)) : n0;
   const u = unitsAt(n);
@@ -295,7 +315,11 @@ function quote(ledger, econV2, vil, vid, giveRes, takeRes, giveQty, opts) {
   const cap = Events.payableQty(stock, CFG.STOCK_FRAC);
   // ★[무게 배치] **분수 수량을 허용한다** — 2kg 물고기 한 마리는 표준 0.9kg 짜리 2.22 '단위'다.
   //   개수는 정수지만 **재화 단위는 개체 무게에 비례**하므로 여기서 자르면 큰 물고기가 손해를 본다.
-  const q = Math.max(0, Number(giveQty) || 0);
+  //   ★[T835] 켬 + 호스트가 낼 사람 인벤(`opts.inventory`)을 넘겼으면 낼 단위 = **고른 그 개체들**(`_giver` · 실행과 같은 함수) — 개수는 `opts.giveCount`.
+  const _G = (T835_ON && opts && opts.inventory) ? _giver(ledger.deliverable, opts.inventory, giveRes, (typeof opts.unitsOf === 'function') ? opts.unitsOf : null) : null;
+  const _gN = (_G && Number(opts.giveCount) >= 1 && _G.have >= Math.floor(Number(opts.giveCount))) ? Math.floor(Number(opts.giveCount)) : 0;
+  const _gAt = _G ? ((c) => (c <= _G.have ? _G.units(_G.pick(c)) : _G.units(_G.pick(_G.have)) + (c - _G.have) * ((_G.have >= 1 ? _G.units(_G.pick(1)) : 0) || 1))) : null;   // c 개의 단위(가진 것 너머는 첫 개체 단위로 잇는다 — 실행은 거기서 "없다")
+  const q = _gN ? _gAt(_gN) : Math.max(0, Number(giveQty) || 0);
   // 한계비율(첫 조각) — 표시용. 실제 수령량은 아래 planSliced 가 곡선을 따라 낸다.
   const ratio = (pA * (1 - s)) / (pB * (1 + s));
   const plan = q > 0 ? planSliced(econV2, v, giveRes, takeRes, q, cap) : { gave: 0, took: 0 };
@@ -327,9 +351,10 @@ function quote(ledger, econV2, vil, vid, giveRes, takeRes, giveQty, opts) {
     numTake: (+prices[CFG.NUMERAIRE] || 0) > 0 ? sig(pB / prices[CFG.NUMERAIRE]) : null,
   };
   if (conv) out.capU = cap;   // ★[T748] 단위 상한(실행이 조각 계획에 쓴다 · 화면 `cap` 은 받을 낱개)
+  if (_gN) out.giveUnitsPicked = +q.toFixed(3);   // ★[T835] 켬 = 견적이 잰 낼 단위(고른 그 개체들)
   if (T807_ON && out.capped) {   // ★[T807] 상한에 닿았다 — 실행과 같은 절삭(`_trimToCap`)으로 받을 양을 다시 낸다(끔 = 이 줄 무동작)
-    const per = (opts && Number(opts.perItem) > 0) ? Number(opts.perItem) : 1;
-    const tr = _trimToCap(econV2, v, giveRes, takeRes, Math.floor(q / per + 1e-9), (c) => c * per, true, maxGive, per, cap);
+    const per = _gN ? q / _gN : ((opts && Number(opts.perItem) > 0) ? Number(opts.perItem) : 1);   // ★[T835] 켬 = 실행의 평균 단위/개(고른 그 개체들 ÷ 개수)
+    const tr = _trimToCap(econV2, v, giveRes, takeRes, _gN || Math.floor(q / per + 1e-9), _gN ? _gAt : ((c) => c * per), true, maxGive, per, cap);
     out.take = conv ? conv.items(tr.took).items : Math.floor(tr.took);
     out.giveUsed = tr.n; out.giveUsedUnits = +tr.u.toFixed(3);
   }
@@ -342,7 +367,7 @@ function quote(ledger, econV2, vil, vid, giveRes, takeRes, giveQty, opts) {
     //   ★캐논 ②의 올림은 **낱개로만 존재하는 물건**의 규약이라 **개수 자리**에서 건다.
     //     단위 자리(`giveNeededUnits`)는 소수 그대로 같이 실어 보낸다 — kg 물건(로트)이
     //     들어올 자리이고, 그때는 이 수를 그대로 쓰면 된다.
-    const perItem = (Number(o.perItem) > 0) ? Number(o.perItem) : 1;
+    const perItem = (_G && _G.have >= 1) ? (_gAt(1) || 1) : ((Number(o.perItem) > 0) ? Number(o.perItem) : 1);   // ★[T835] 켬 = 고른 첫 개체의 단위(실행의 `per1` 과 같은 값)
     out.want = want;
     const wantU = conv ? conv.units(want) : want;   // ★[T748] 받을 낱개 → 단위(열량 짝 · 끔 = 그대로)
     if (!(wantU <= cap + 1e-9)) {
@@ -354,10 +379,19 @@ function quote(ledger, econV2, vil, vid, giveRes, takeRes, giveQty, opts) {
       //   끝나므로, 참값이 마침 정수면 `ceil` 이 **한 칸 더** 올라가 올림이 최소가 아니게 된다
       //   (엡실론 눈대중은 답이 아니다). ⇒ **한 칸 아래에서 출발해 위 `_climbToWant` 로 올라간다.**
       const _takeAt = (u) => { const t = planSliced(econV2, v, giveRes, takeRes, Math.max(0, u), cap).took; return conv ? conv.items(t).items : Math.floor(t); };
-      const n = _climbToWant(Math.floor(gu / perItem), want, (c) => c * perItem, _takeAt, Infinity);
+      const _uAt = _G ? _gAt : ((c) => c * perItem);   // ★[T835] 켬 = 올림 걸음의 자도 고른 그 개체들(실행의 `_climbToWant` 와 같은 자)
+      const n = _climbToWant(Math.floor(gu / perItem), want, _uAt, _takeAt, Infinity);
       out.giveNeeded = n;
       out.giveNeededUnits = +gu.toFixed(6);
-      out.takeAtNeeded = _takeAt(n * perItem);
+      out.takeAtNeeded = _takeAt(_uAt(n));
+      if (T835_ON) {   // ★[T835] 받을 양 주문도 실행과 같은 상한 절삭 — 낱개 n 이 상한에 닿으면 실행은 낼 양을 깎는다(`_trimToCap` · 끔 = 이 줄 무동작)
+        const un = _uAt(n), pn = un > 0 ? planSliced(econV2, v, giveRes, takeRes, un, cap) : { gave: 0 };
+        if (pn.gave < un - 1e-9) {
+          const tr = _trimToCap(econV2, v, giveRes, takeRes, n, _uAt, true, maxGive, un / n, cap);
+          out.giveNeeded = tr.n; out.takeAtNeeded = conv ? conv.items(tr.took).items : Math.floor(tr.took); out.wantTrimmed = true;
+          if (!(tr.n > 0) || !(out.takeAtNeeded > 0)) { out.giveNeeded = null; out.takeAtNeeded = null; out.wantCapped = true; }   // 낱개 하나 값이 내줄 수 있는 몫보다 크다 — 실행은 못 한다
+        }
+      }
       out.wantCapped = false;
     }
   }
@@ -374,20 +408,12 @@ function exchange(a) {
   const D = ledger.deliverable;
 
   // 내가 실제로 들고 있는가 — 한 재화에 여러 아이템이 매핑된다(익힌 음식 등)
-  const playerItems = D.items.get(giveRes) || [];
-  let have = 0;
-  for (const it of playerItems) have += Math.floor(Number(inventory[it]) || 0);
-
   // ★★[무게 배치 2026-08-27] **개수 → 재화 단위** 환산. 큰 물고기는 여러 단위어치다.
   //   `unitsOf(item, n)` 이 없으면 1개=1단위(종전 그대로) — 이 배치 이전 경로는 안 달라진다.
+  //   ★[T835] 고르기 · 단위 셈은 `_giver` 하나다(견적도 켬이면 그 함수 — 몸통은 종전 글자 그대로 옮겼다).
   const unitsOf = (typeof a.unitsOf === 'function') ? a.unitsOf : null;
-  const _pick = (cnt) => {                        // 개수 cnt 를 어느 아이템에서 몇 개씩 뺄지(정본 순서)
-    const w = {}; let left = cnt;
-    for (const it of playerItems) { if (left <= 0) break;
-      const n = Math.min(left, Math.floor(Number(inventory[it]) || 0)); if (n > 0) { w[it] = n; left -= n; } }
-    return w;
-  };
-  const _units = (w) => { let u = 0; for (const [it, n] of Object.entries(w)) u += unitsOf ? Number(unitsOf(it, n)) || n : n; return u; };
+  const G = _giver(D, inventory, giveRes, unitsOf);
+  const have = G.have, _pick = G.pick, _units = G.units;
   //   ★[T748] 받는 쪽 열량 짝 — 호스트가 `takeKcal` 을 넘길 때만(켬 · 끔/랩 = null = 종전 `Math.floor` 그대로)
   const conv = a.takeKcal ? _takeConv(a.takeKcal, D.toEcon.get(takeRes)) : null;
   const _qo = conv ? { takeKcal: a.takeKcal } : undefined;
@@ -403,7 +429,8 @@ function exchange(a) {
   let q0;
   if (wantTake > 0) {
     const per1 = _units(_pick(1)) || 1;
-    const qw = quote(ledger, econV2, vil, vid, giveRes, takeRes, per1, conv ? { want: wantTake, perItem: per1, takeKcal: a.takeKcal } : { want: wantTake, perItem: per1 });
+    const _gw = T835_ON ? { inventory, unitsOf: unitsOf || undefined } : null;   // ★[T835] 켬 = 견적의 올림 걸음도 고른 그 개체로(끔 = 종전 글자)
+    const qw = quote(ledger, econV2, vil, vid, giveRes, takeRes, per1, Object.assign(conv ? { want: wantTake, perItem: per1, takeKcal: a.takeKcal } : { want: wantTake, perItem: per1 }, _gw));
     if (qw.err) return { ok: false, err: qw.err };
     if (!(qw.giveNeeded > 0)) {
       return { ok: false, err: `마을이 ${Events.koRes(takeRes)} ${wantTake}개를 못 내준다`
@@ -484,4 +511,4 @@ function exchange(a) {
            stockAfter: +v.storage[takeRes].toFixed(3), ...(conv ? { takeUnits: spend } : {}) };   // ★[T748] 켬이면 나간 단위도
 }
 
-module.exports = { CFG, KO_NUM, board, quote, exchange, tradableIn, tradableOut, lockedRewards, T807_ON };
+module.exports = { CFG, KO_NUM, board, quote, exchange, tradableIn, tradableOut, lockedRewards, T807_ON, T835_ON };
