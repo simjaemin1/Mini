@@ -46,26 +46,26 @@ function child() {
       for (const [k, e] of v._crop) F.cropDayTick ? F.cropDayTick(e, !v._drySet.has(k), day, k) : null;
     }
   }
-  return { hash: h.digest('hex').slice(0, 16), n, crops: vils.reduce((s, v) => s + v._crop.size, 0), memo: process.env.T818_CELL_MEMO === '1' };
+  return { hash: h.digest('hex').slice(0, 16), n, crops: vils.reduce((s, v) => s + v._crop.size, 0), memo: process.env.T818_CELL_MEMO !== '0' };
 }
 
 if (process.argv[2] === '--child') { const o = child(); process.stdout.write('\n@@JSON@@' + JSON.stringify(o)); process.exit(0); }
 
 let pass = 0, fail = 0;
 const ok = (c, m, d) => { if (c) pass++; else fail++; console.log(`  ${c ? '✓' : '✗'} ${m}${d !== undefined ? '  ' + d : ''}`); };
-const run = (env) => JSON.parse(String(execFileSync(process.execPath, [__filename, '--child'], { env: Object.assign({}, process.env, { T818_CELL_MEMO: '', T818_BAIT: '' }, env), encoding: 'utf8', maxBuffer: 1 << 26 })).split('@@JSON@@').pop());
+const run = (env) => JSON.parse(String(execFileSync(process.execPath, [__filename, '--child'], { env: Object.assign({}, process.env, { T818_BAIT: '' }, env), encoding: 'utf8', maxBuffer: 1 << 26 })).split('@@JSON@@').pop());
 
 console.log('\n=== T818 ③ 빈 셀 파종 판정 기억 = 종전 값 ===');
-const OFF = run({}), ON = run({ T818_CELL_MEMO: '1' });
+const OFF = run({ T818_CELL_MEMO: '0' }), ON = run({ T818_CELL_MEMO: '' }), ON1 = run({ T818_CELL_MEMO: '1' });   // ★[T834] 켬 기본 — 끔 탐침 `=0` · 기본(빈 값) · '1' 둘 다 켬
 console.log('\n① 같은 값');
 ok(OFF.n > 100000 && OFF.crops > 0, '[상황] 판 — 마을 다섯 · 셀 252 씩 · 730날 · 파종 · 수확이 돈다', `판정 ${OFF.n} · 끝 날 작물 ${OFF.crops}`);
-ok(ON.hash === OFF.hash && ON.crops === OFF.crops, '★★켬 = 끔 — `_cellTask` 줄 730날이 한 글자 같다(작물 상태기 같이)', `${ON.hash} / ${OFF.hash}`);
+ok(ON.memo && ON1.memo && !OFF.memo, '[상황] 켬 기본 — 빈 값 · 1 은 켬 · 0 은 끔'); ok(ON.hash === OFF.hash && ON1.hash === OFF.hash && ON.crops === OFF.crops, '★★켬 = 끔 — `_cellTask` 줄 730날이 한 글자 같다(작물 상태기 같이)', `${ON.hash} / ${OFF.hash}`);
 console.log('\n③ 미끼');
-const BAIT = run({ T818_CELL_MEMO: '1', T818_BAIT: '1' });
+const BAIT = run({ T818_CELL_MEMO: '', T818_BAIT: '1' });
 ok(BAIT.hash !== OFF.hash, '★미끼 — 날을 열쇠에서 뺀 사본은 끔과 갈린다(위 같음은 자명 통과가 아니다)', `${BAIT.hash} / ${OFF.hash}`);
 console.log('\n④ 글자');
 const V = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8');
-ok(/const T818_CELL_MEMO = process\.env\.T818_CELL_MEMO === '1';/.test(V), "손잡이 — '1' 만 켬");
+ok(/const T818_CELL_MEMO = process\.env\.T818_CELL_MEMO !== '0';/.test(V), "손잡이 — 켬 기본 · `=0` 만 끔");
 ok(V.includes("    return _villageCropFor(vil, nong ? '논' : '밭', _Crops().monthOf(day), par) ? 2 : 0;\n  }\n  return cropTaskOf(e, nong, day);"), '끔 갈래 = 종전 줄 그대로');
 console.log(`\n=== ${pass} 통과 / ${fail} 실패 ===\n`);
 process.exit(fail ? 1 : 0);
