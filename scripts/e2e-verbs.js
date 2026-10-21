@@ -844,7 +844,9 @@ async function waitHttp(url, tries = 600) {
       for (let round = 0; round < 3 && !nz.some((t2) => /안에서 캔다/.test(t2)); round++) {
         await clearNotices(R);
         m = null;
-        for (let i = 0; i < 3 && !m; i++) { await rightTap(await ptNow()); m = await menuWithin(2500); await sleep(200); }
+        // ★[T819 2026-10-20] **탭도 표본처럼** 자연물 맵이 찰 때까지 기다린다(`snapN` — 위 표본과 같은 문 · 같은 상한).
+        //   T813 §2 C: 갱신 찰나에 맵이 비면(`nRes 0`) 그 탭은 땅을 짚는다(땅 메뉴 = "못 짚었다") — 아홉 번이 다 그 찰나에 걸린 판이 빨갰다.
+        for (let i = 0; i < 3 && !m; i++) { await snapN(); await rightTap(await ptNow()); m = await menuWithin(2500); await sleep(200); }
         if (m) await R.evaluate(() => { const _m = document.getElementById('ctxMenu'); if (_m && _m.children[0]) _m.children[0].click(); });
         await sleep(1600);
         await R.evaluate(() => { if (window.__eRepeat) { clearInterval(window.__eRepeat); window.__eRepeat = null; } });
@@ -1039,6 +1041,8 @@ async function waitHttp(url, tries = 600) {
     //   270~424px 이면 스무 번 두드려도 안 열린다. 아이소메트릭 화면에서 월드→화면→월드 왕복이
     //   멀어질수록 어긋나 `pickAt` 의 ±18 상자를 벗어나는 것으로 보인다(제품 쪽은 회부에 적었다).
     //   ⇒ 하네스는 **가까이 오는 사람을 기다린다** — 마을 한복판에 서면 사람들이 지나다닌다.
+    //   ★[T819 2026-10-20] 그 어긋남은 왕복이 아니라 **탭 동안의 원점 밀림**이었다(보고/T813 §2 — 두 변환은 서로 역).
+    //     `T813_RMB_PRESS` 켬 기본으로 탭 자리의 220px 문턱은 걷었다(아래 `_nearNpc`). 여기 마을 고르기의 200px 는 그대로다(어디 설지 — 자리 규칙 무변).
     let npc = null, vsel = null;
     for (const v of vrows.slice(0, 8)) {
       if (npc) break;
@@ -1110,40 +1114,50 @@ async function waitHttp(url, tries = 600) {
       });
 
       // ★[T214] 시도 20회(벽시계) → **증인**. 가까운 사람이 없으면 기다렸다가 다시 고른다.
-      const _nearNpc = async () => { const p0 = await ptNpc(); return (p0 && p0.d <= 220) ? p0 : null; };
+      // ★★[T819 2026-10-20] 기다릴 사람 = **그 순간 화면 안 가장 가까운 사람**(`ptNpc` 그대로 · 거리 문턱 0 · 새 자리 규칙 0).
+      //   종전 220px 문턱은 위 ⚠"멀리 있는 사람은 두드려도 안 눌린다"를 비키던 것이다 — 그 까닭은 탭 동안의 원점 밀림이었고
+      //   (보고/T813 §2 A) 손잡이 `T813_RMB_PRESS` 켬 기본(T819)으로 탭이 누른 순간의 화면을 짚는다.
+      //   문턱이 남아 있으면 마을 사람들이 걸어 나간 뒤(가장 가까운 사람 261 → 730px · 보고/T813 §2 B) 화면에 사람이 있어도
+      //   60초를 그냥 기다렸다("아무도 안 눌렸다"). 화면에 아무도 없으면 종전처럼 기다린다(`tapUntilMenu` 안전망 그대로).
+      const _nearNpc = ptNpc;
       const _r13 = await tapUntilMenu(_nearNpc);
       const lab = _r13.labels;
       const lastPt = _r13.labels ? _r13.pt : null;  // 메뉴가 뜬 그 사람이 주인공이다
+      // ★[T819] 끝내 **아무도 못 고르면**(화면에 사람이 없어 한 번도 못 두드림) **그 판은 이 `[상황]`** 이다 —
+      //   아래 동사 · 말 단정은 **고른 사람을 두드린 판**에서 잰다(위 `pre(!!npc)` · `if (npc)` 와 같은 꼴 · `[상황]` 은 그대로 빨강으로 센다).
+      //   ⚠두드렸는데 메뉴가 안 뜬 판은 **제품 쪽 단정이 그대로 빨갛다**(가린다면 느슨함 — 예: 손잡이를 `=0` 으로 되돌린 판의 빗김).
       pre(!!lastPt, '화면 안의 그 사람에게 메뉴가 열렸다',
-          lastPt ? `${lastPt.name} · ${Math.round(lastPt.d)}px` : '아무도 안 눌렸다');
+          lastPt ? `${lastPt.name} · ${Math.round(lastPt.d)}px` : (_r13.taps ? `아무도 안 눌렸다(${_r13.taps}번 두드림)` : '아무도 안 눌렸다(화면에 고를 사람이 없었다 · 0번)'));
       if (lastPt) npc = { ...npc, pid: lastPt.pid, name: lastPt.name };
-      ok(!!lab && lab.length === 2, '★★⑬ NPC 위 우클릭에 **동사 둘**이 뜬다(T82 의 빈 배열 자리)', JSON.stringify(lab));
       // ★라벨은 **서버 표**에서 온다 — 클라에 사본이 없다(T90 규약).
       const SRV = require(path.join(ROOT, 'server', 'itemlabel.js')).NPC_VERBS;
-      ok(!!lab && lab[0] === SRV.talk && lab[1] === SRV.trade,
-         '★★⑬ 그 말이 **서버 정본과 글자까지 같다**(사본 0)', `${JSON.stringify(lab)} vs ${JSON.stringify(SRV)}`);
-      ok(!!lab && !/\p{Extended_Pictographic}/u.test(lab.join('')), '★⑬ 메뉴 글자에 이모지 0');
+      if (_r13.taps > 0) {
+        ok(!!lab && lab.length === 2, '★★⑬ NPC 위 우클릭에 **동사 둘**이 뜬다(T82 의 빈 배열 자리)', JSON.stringify(lab));
+        ok(!!lab && lab[0] === SRV.talk && lab[1] === SRV.trade,
+           '★★⑬ 그 말이 **서버 정본과 글자까지 같다**(사본 0)', `${JSON.stringify(lab)} vs ${JSON.stringify(SRV)}`);
+        ok(!!lab && !/\p{Extended_Pictographic}/u.test(lab.join('')), '★⑬ 메뉴 글자에 이모지 0');
 
-      // ── 말 걸기 → 그 사람 입에서 **마을이 아는 소식**이 나온다
-      await clearNotices(R);
-      await R.evaluate(() => { const m = document.getElementById('ctxMenu'); if (m) m.children[0].click(); });
-      await sleep(2500);
-      const said = await R.evaluate((pid) => {
-        const b = speechBubbles.get(pid);
-        return { bubble: b ? b.text : null, brief: window.__evLastBrief || null,
-                 notices: (window.__notices || []).slice(-3) };
-      }, npc.pid);
-      ok(!!said.bubble, '★★⑬ **그 사람 머리 위에 말풍선**이 떴다(채팅이 쓰는 그 통로 · 새 UI 0)',
-         JSON.stringify(said.bubble));
-      // ★★문장이 **서버 장부에서 왔는가** — 클라가 지은 글자가 아니라는 증거다.
-      ok(!!said.brief && Array.isArray(said.brief.lines) && said.bubble === said.brief.lines[0],
-         '★★⑬ 그 말은 **서버 `village_brief` 의 첫 줄과 같다**(새 문장 0 · `events.briefLine` 정본)',
-         `${JSON.stringify(said.bubble)} vs ${JSON.stringify(said.brief && said.brief.lines && said.brief.lines[0])}`);
-      ok(said.notices.some((t2) => t2.includes(npc.name) && t2.includes(said.bubble)),
-         '★⑬ 알림에도 **그 사람 이름과 함께** 남는다(놓쳐도 보인다)', JSON.stringify(said.notices.slice(-1)));
-      // ★사건이 없는 마을이면 그 문장은 서버의 정본 한 줄이다(둘 중 어느 갈래든 서버가 냈다).
-      console.log(`  · [상황] 그 마을이 아는 소식 ${said.brief && said.brief.lines ? said.brief.lines.length : 0}줄 ·`
-        + ` 첫 줄 ${JSON.stringify(said.bubble)}`);
+        // ── 말 걸기 → 그 사람 입에서 **마을이 아는 소식**이 나온다
+        await clearNotices(R);
+        await R.evaluate(() => { const m = document.getElementById('ctxMenu'); if (m) m.children[0].click(); });
+        await sleep(2500);
+        const said = await R.evaluate((pid) => {
+          const b = speechBubbles.get(pid);
+          return { bubble: b ? b.text : null, brief: window.__evLastBrief || null,
+                   notices: (window.__notices || []).slice(-3) };
+        }, npc.pid);
+        ok(!!said.bubble, '★★⑬ **그 사람 머리 위에 말풍선**이 떴다(채팅이 쓰는 그 통로 · 새 UI 0)',
+           JSON.stringify(said.bubble));
+        // ★★문장이 **서버 장부에서 왔는가** — 클라가 지은 글자가 아니라는 증거다.
+        ok(!!said.brief && Array.isArray(said.brief.lines) && said.bubble === said.brief.lines[0],
+           '★★⑬ 그 말은 **서버 `village_brief` 의 첫 줄과 같다**(새 문장 0 · `events.briefLine` 정본)',
+           `${JSON.stringify(said.bubble)} vs ${JSON.stringify(said.brief && said.brief.lines && said.brief.lines[0])}`);
+        ok(said.notices.some((t2) => t2.includes(npc.name) && t2.includes(said.bubble)),
+           '★⑬ 알림에도 **그 사람 이름과 함께** 남는다(놓쳐도 보인다)', JSON.stringify(said.notices.slice(-1)));
+        // ★사건이 없는 마을이면 그 문장은 서버의 정본 한 줄이다(둘 중 어느 갈래든 서버가 냈다).
+        console.log(`  · [상황] 그 마을이 아는 소식 ${said.brief && said.brief.lines ? said.brief.lines.length : 0}줄 ·`
+          + ` 첫 줄 ${JSON.stringify(said.bubble)}`);
+      }   // ★[T819] if (_r13.taps > 0)
 
       // ── 거래 → **이미 있는 거래소 탭**이 열린다(새 패널 0)
       // ⚠사람들이 걸어 나가면 화면에 아무도 없는 구간이 생긴다 — 그 구간을 **기다린다**
