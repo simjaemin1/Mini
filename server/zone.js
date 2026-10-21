@@ -6875,7 +6875,7 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'village_trade_exec') tryVillageTradeExec(player, msg.vid, msg.give, msg.take, msg.qty, msg.want, msg.numeraire);  // ★[거래소] 교환(T69 받을 양)
   else if (msg.type === 'village_trade_quote') {                                                            // ★[거래소] 견적(확정 전 표시)
     if (SimVillages.villageTradeQuote) {
-      const q = SimVillages.villageTradeQuote(msg.vid | 0, player.x, player.y, msg.give, msg.take, msg.qty, _unitsOfFor(player), { want: msg.want });
+      const q = SimVillages.villageTradeQuote(msg.vid | 0, player.x, player.y, msg.give, msg.take, msg.qty, _unitsOfFor(player), { want: msg.want, inventory: player.inventory });   // ★[T835] 낼 사람 인벤(견적이 실행과 같은 개체를 고르게 — 손잡이 끔이면 안 읽힌다)
       send(player.ws, { type: 'village_trade_quote', quote: q, vid: msg.vid | 0 });
     }
   }

@@ -13138,8 +13138,9 @@ function villageTradeQuote(vid, px, py, giveRes, takeRes, qty, unitsOf, opts) { 
   const _n = Math.max(0, Number(qty) || 0);
   const per = (_n > 0 && u > 0) ? (u / _n) : 1;
   const q = _t789View(() => Trade.quote(state.ledger, state.econV2, g.vil, vid | 0, String(giveRes || ''), String(takeRes || ''), u,
-    _T732_ON ? { want: (opts && opts.want) || 0, perItem: per, takeKcal: _kcal() } : { want: (opts && opts.want) || 0, perItem: per }));   // ★[T748] 켬 = 받는 쪽 열량 짝 · ★[T789] 사람의 눈(견적 = 실행 · 끄면 그대로)
-  if (q && !q.err) { q.giveItems = Math.max(0, Math.floor(Number(qty) || 0)); q.giveUnits = +u.toFixed(3); }
+    Object.assign(_T732_ON ? { want: (opts && opts.want) || 0, perItem: per, takeKcal: _kcal() } : { want: (opts && opts.want) || 0, perItem: per },
+      (opts && opts.inventory) ? { inventory: opts.inventory, unitsOf: (typeof unitsOf === 'function') ? unitsOf : undefined, giveCount: _n } : null)));   // ★[T748] 켬 = 받는 쪽 열량 짝 · ★[T789] 사람의 눈(견적 = 실행 · 끄면 그대로) · ★[T835] 낼 사람 인벤(전달만 — `trade.js` 손잡이가 켜졌을 때만 읽는다)
+  if (q && !q.err) { q.giveItems = Math.max(0, Math.floor(Number(qty) || 0)); q.giveUnits = (q.giveUnitsPicked != null) ? q.giveUnitsPicked : +u.toFixed(3); }   // ★[T835] 켬 = 고른 그 개체들의 단위
   return q;
 }
 
