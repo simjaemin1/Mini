@@ -7192,12 +7192,12 @@ function _t731Jobs(now, T) {
       state.deps.broadcast(_cn ? Object.assign({ type: 'sim_village_day', day: state.world.day, jobs: C.jobChanges, pops: C.pops, terr: C.terr, wx: C.wx, calendar: _cal }, _cn)
         : { type: 'sim_village_day', day: state.world.day, jobs: C.jobChanges, pops: C.pops, terr: C.terr, wx: C.wx, calendar: _cal });
     });
-    if (T681_ON) add('caravan', () => _t681Day(C.now));
-    if (T661_ON) add('caravan', () => refreshAllFishSustain(Date.now(), true));
+    if (T681_ON) add('caravan', () => _t681Day(C.now), 'caravan_body');
+    if (T661_ON) add('caravan', () => refreshAllFishSustain(Date.now(), true), 'caravan_fish');
     { const _cl = state.world.caravans.slice();
-      for (const c of _cl) add('caravan', () => _caravanSyncOne(C.now, c, C.car));
-      if (T762_CARAVAN_BODY) { add('caravan', () => { _caravanSyncSweep(C.car); }); add('caravan', _t762SyncNewJob(C, new Set(_cl))); }   // ★[T762] 켬 = 쓸기 먼저 → 그날 econ 이 띄운 캐러밴(위 손잡이 주석 ③)
-      else add('caravan', () => { _caravanSyncSweep(C.car); }); }
+      for (const c of _cl) add('caravan', () => _caravanSyncOne(C.now, c, C.car), 'caravan_sync');
+      if (T762_CARAVAN_BODY) { add('caravan', () => { _caravanSyncSweep(C.car); }, 'caravan_sync'); add('caravan', _t762SyncNewJob(C, new Set(_cl)), 'caravan_sync'); }   // ★[T762] 켬 = 쓸기 먼저 → 그날 econ 이 띄운 캐러밴(위 손잡이 주석 ③)
+      else add('caravan', () => { _caravanSyncSweep(C.car); }, 'caravan_sync'); }
     if (T698_BOUNDARY_SLICE) {
       let g = null;
       add('events', () => { try { if (!g) g = _scanEventsSteps(); if (!g.next().done) return 'retry'; } catch (e) { console.error(`[${state.zoneId}] 📜 사건 장부 실패(틱은 계속):`, e.message); } });
@@ -7428,12 +7428,14 @@ function _openDayJobs(now, T) {
 
   // ⑦ 캐러밴 실체 동기 — 중앙 17ms 인데 **p95 989ms**(안이 전부 A*). 캐러밴 한 대씩 쪼갠다.
   //   쓸기(회수)만 `seen` 전량이 필요해 원자다.
-  if (T681_ON) add('caravan', () => _t681Day(C.now));   // ★[T681] 몸 장부 하루(전쟁 행군·귀환 · 위협 · 줄어드는 몸) — 캐러밴 동기 바로 앞 정한 자리
-  if (T661_ON) add('caravan', () => refreshAllFishSustain(Date.now(), true));   // ★[T661] 어장 상한 매기기 — 종전 존 60초 주기(벽시계)를 하루 마감의 정한 자리로(캐러밴 동기 바로 앞 · 재고 회복 시각은 낚시 정본 그대로)
+  //   ★[T828] 단계 이름은 `caravan` 그대로(차례 · 단계 합 무변) — 조각 속 이름만 셋으로 가른다(`/perf` 가장 큰 조각 · `stages` 칸 · 세는 이름만 · 값 0):
+  //     `caravan_body` 몸 장부(T681) · `caravan_fish` 어장 상한(T661) · `caravan_sync` 캐러밴 동기(한 대씩 · 쓸기 · T762 덧). 위 창 갈래(T731)도 같은 셋.
+  if (T681_ON) add('caravan', () => _t681Day(C.now), 'caravan_body');   // ★[T681] 몸 장부 하루(전쟁 행군·귀환 · 위협 · 줄어드는 몸) — 캐러밴 동기 바로 앞 정한 자리
+  if (T661_ON) add('caravan', () => refreshAllFishSustain(Date.now(), true), 'caravan_fish');   // ★[T661] 어장 상한 매기기 — 종전 존 60초 주기(벽시계)를 하루 마감의 정한 자리로(캐러밴 동기 바로 앞 · 재고 회복 시각은 낚시 정본 그대로)
   { const _cl = state.world.caravans.slice();
-    for (const c of _cl) add('caravan', () => _caravanSyncOne(C.now, c, C.car));   // ★[T85] 반환('retry')을 드레인이 본다
-    if (T762_CARAVAN_BODY) { add('caravan', () => { _caravanSyncSweep(C.car); }); add('caravan', _t762SyncNewJob(C, new Set(_cl))); }   // ★[T762] 켬 = 쓸기 먼저 → 그날 econ 틱이 띄운 캐러밴(위 손잡이 주석 ③ · 끔 = 아래 종전 한 줄)
-    else add('caravan', () => { _caravanSyncSweep(C.car); }); }
+    for (const c of _cl) add('caravan', () => _caravanSyncOne(C.now, c, C.car), 'caravan_sync');   // ★[T85] 반환('retry')을 드레인이 본다
+    if (T762_CARAVAN_BODY) { add('caravan', () => { _caravanSyncSweep(C.car); }, 'caravan_sync'); add('caravan', _t762SyncNewJob(C, new Set(_cl)), 'caravan_sync'); }   // ★[T762] 켬 = 쓸기 먼저 → 그날 econ 틱이 띄운 캐러밴(위 손잡이 주석 ③ · 끔 = 아래 종전 한 줄)
+    else add('caravan', () => { _caravanSyncSweep(C.car); }, 'caravan_sync'); }
 
   // ⑧ 사건 장부 — econ·캐러밴이 오늘 값이 된 **바로 이 지점**(종전 위치 그대로). 실측 6ms.
   if (T698_BOUNDARY_SLICE) {   // ★[T698] 켬 — 사건 장부를 마을 하나씩(`_scanEventsSteps` — 같은 앞·뒤 · 같은 장부 발생기)
