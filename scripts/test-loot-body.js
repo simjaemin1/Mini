@@ -7,7 +7,7 @@
 //   지키는 것: ⓐ 정적(손잡이 문 · 조건 다섯 · 곳간은 결판 앞 값으로 · 새 수 0) ·
 //             ⓑ war-core 판(같은 씨) — 끔 = 결판 순간 곳간 · 켬(몸 짐 없음) = 끔 · 켬(몸 짐) = 곳간 그대로 · 장부 + 회수 · 거울 = 장부 ·
 //                귀환 뒤 곳간 = 끔 귀환 뒤 곳간(소멸 · 생성 0) · 품질 = 끔 · 다시 뜸 — 길 위 노획도 곳간으로 ·
-//             ⓒ 호스트 문 — T811 결판 계획: 장부가 늘었으니 땅 0 · 산 몸 짐 합 = 장부(노획 포함)
+//             ⓒ 호스트 문 — T857 결판 자리: 전사자 짐은 떨어지고 공격 산 몸이 주워 장부(노획 포함)로 · 산 몸 짐 합 = 장부
 // ⚠존을 부팅하지 않는다 — war-core 정본(`createWar`)과 호스트 정본(`__p3Bind`)을 그대로 부른다(규칙 사본 0).
 // 실행: node scripts/test-loot-body.js
 'use strict';
@@ -98,17 +98,17 @@ console.log('\n[ⓑ] war-core 판 — 같은 씨 · 공격 승 · 끔 / 켬(몸 
 }
 
 // ── ⓒ 호스트 문 — T811 결판 계획 ──────────────────────────────────────────────────
-console.log('\n[ⓒ] 호스트 문 — 장부가 늘면 땅 0 · 산 몸 짐 = 장부(노획 포함)');
+console.log('\n[ⓒ] 호스트 문 — 전사자 짐 → 결판 자리 → 공격 산 몸이 줍는다 · 산 몸 짐 = 장부(노획 포함)');
 {
   const env = Object.assign({}, process.env, { T811_ARMS_BODY: '1' });
   const js = `const V=require(${JSON.stringify(path.join(ROOT, 'server', 'villages.js'))});const players=new Map();let drops=0;`
     + `const H=V.__p3Bind({deps:{players,npcs:new Set(),broadcast(){},deathDrop:()=>{drops++;}},_warStat:{}});`
     + `const B=[0,1,2].map(i=>{const p={pid:'q'+i,hp:100,inventory:{}};players.set(p.pid,p);return p;});const w={id:1,_arms:{weapon:12,out:12,done:false}};H._warArmsLoad({w,pids:B.map(p=>p.pid)});`
     //   결판(공격 승 · 노획 6) — 장부 12 → 18 · 셋째 몸 쓰러짐 → 땅 0 · 산 몸 둘 = 9 씩
-    + `w._arms.weapon=18;w._arms.loot=6;B[2].hp=0;const pl=H._t811Plan(w,['q2']);H._t811Off(w,B[2],pl,true);H._t811Sync(w,'settle');`
-    + `const inv=p=>(p.inventory&&p.inventory.weapon)||0;process.stdout.write(JSON.stringify({frac:pl.frac,drops,hand:B.map(inv),sum:[...w._armsPack.values()].reduce((a,x)=>a+x,0)}));`;
+    + `w._arms.weapon=18;w._arms.loot=6;B[2].hp=0;const f=H._t811Fall(w,B[2]);H._t857Pick(w,'A',['q0','q1'],[],f,B[2]);H._t811Sync(w,'settle');`
+    + `const inv=p=>(p.inventory&&p.inventory.weapon)||0;process.stdout.write(JSON.stringify({field:f,drops,ledger:w._arms.weapon,hand:B.map(inv),sum:[...w._armsPack.values()].reduce((a,x)=>a+x,0)}));`;
   const o = JSON.parse(execFileSync(process.execPath, ['-e', js], { cwd: ROOT, env, stdio: ['ignore', 'pipe', 'ignore'] }).toString());
-  ok(o.frac === 0 && o.drops === 0 && near(o.sum, 18) && near(o.hand[0], 9) && near(o.hand[1], 9), 'ⓒ 노획으로 장부가 늘었다 → 땅 0(Δ ≤ 0) · 산 몸 둘이 장부 18(노획 6 포함)을 나눠 진다', JSON.stringify(o));
+  ok(near(o.field, 4) && o.drops === 0 && near(o.ledger, 18) && near(o.sum, 18) && near(o.hand[0], 9) && near(o.hand[1], 9), 'ⓒ 공격 승(노획 6) — 전사자 짐 4 는 결판 자리에 떨어지고(★T857) 공격 산 몸이 주워 장부 18(노획 포함)로 · 산 몸 둘이 나눠 진다 · 낙하 0', JSON.stringify(o));
 }
 
 console.log(`\n=== 결과: ${pass} PASS / ${fail} FAIL ===`);
