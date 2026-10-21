@@ -1213,21 +1213,26 @@ function bedSlotOf(npc) {
   }
   return { slot: -1, hk: vil.housesPx.length ? 'house?' : 'fallback?' };
 }
-// ★★[T822 2026-10-20 · 세션3 · T805 회부 1] **마을 몸 주사위 씨 — 판 씨 + 그 몸의 결정론 열쇠**(손잡이 `T822_BODY_SEED` · '1' 만 켬 · 끔 = main 바이트).
+// ★★[T822 2026-10-20 · 세션3 · T805 회부 1] **마을 몸 주사위 씨 — 판 씨 + 그 몸의 결정론 열쇠**(손잡이 `T822_BODY_SEED` · ★[T833 · PM 10-21] 켬 기본 · 되돌림 `=0` = 종전 글자 길).
 //   종전: 존 `_shOf(npc)` 가 `playerId`(`npc_<존>_<연번>_<Math.random 네 자>` — 표시 · 소켓 꼬리)를 해시해 몸의 신원 해시 `_sh` 를 굽는다 ⇒
 //   같은 씨 · 같은 시계 두 판에서 몸 주사위(`_diceNpc` 결정 · 막힘 회피)가 첫 결정부터 갈린다(T805 §1 — 몸 408 의 `nextDecisionAt` 다 다름).
 //   마을 쪽 `_shOfNpc` 는 같은 칸을 `pid` 로 굽는다 — 둘 중 먼저 부른 쪽이 그 몸의 주사위 신원이 된다(부르는 차례에 기댄다).
-//   켬: 태어날 때(출생 정본 = 이 함수 · T765 로 옮겨 붙는 몸도 여기를 지난다) `_sh` 를 **판 씨 + (마을 · 몸 번호)** 의 해시로 굽는다 —
+//   켬: `_sh` = **판 씨 + (마을 · 몸 번호)** 의 해시 —
 //     판 씨 = econ 세계 씨(`rngState().s0` — T731 · T744 마을 흐름의 그 재료 · 하네스 시드가 바꾸는 칸 · 다시 뜨면 메타가 되살린다) · 그 칸이 없으면(T731 끔) 마을 씨 `state.villageSeed`.
-//     마을 = 이름표 `simvil_<dbId>`(존 `tribeId` 그 글자) · 몸 번호 = `pid`(`p<연번>` — 마을 쪽 T350 이 이미 몸 신원으로 쓰는 칸).
-//     해시 = 종전 그 함수(`pidHash`) — 글자에서 무작위 꼬리 대신 판 씨가 든다. 새 수 0 · 새 칸 0(`_sh` 는 있던 신원 캐시 · T747 이 다시 뜬 몸에 되살리는 그 칸).
-//   `playerId`(표시 · 소켓 · 주인 칸)는 무접촉.
-const T822_BODY_SEED = process.env.T822_BODY_SEED === '1';
-function _t822Sh(vil, p) {
+//     마을 = 이름표 `simvil_<dbId>`(존 `tribeId` 그 글자) · 해시 = 종전 그 함수(`pidHash`) — 글자에서 무작위 꼬리 대신 판 씨가 든다.
+//     ★[T833 ② · T822 회부 1] 몸 번호 = **명부 자리**(마을 `npcPids` 의 차례 — T747 이 다시 뜬 몸을 짚는 그 열쇠). T822 의 `pid` 는 존 연번이라 다시 뜨면 1 부터
+//       다시 센다 — T747 이 되살린 몸의 옛 `pid` 열쇠와 다시 뜬 뒤 선 몸의 열쇠가 같은 마을에서 겹쳤다(같은 `_sh`). 명부 자리는 한 순간에 마을 안에서 하나뿐이고
+//       (배열 차례) 다시 뜬 몸은 같은 자리에 선다(T747) ⇒ 다시 떠도 같은 열쇠 · 겹침 0. 명부가 바뀌는 자리(출생 · 떠남 · 죽음 · 포로 · 전사 · 정리)마다
+//       바뀐 자리부터 끝까지 다시 굽는다(`_t822Rekey` — 늘 지금 자리) · 부팅은 되살림 뒤 한 번 더(`_t833Boot` — 판 씨 되살림 · 끔으로 적은 행의 `_sh`).
+//   새 수 0 · 새 칸 0(`_sh` 는 있던 신원 캐시 · T747 이 다시 뜬 몸에 되살리는 그 칸). `playerId`(표시 · 소켓 · 주인 칸)는 무접촉.
+const T822_BODY_SEED = process.env.T822_BODY_SEED !== '0';   // ★[T833 · PM 10-21] 켬 기본 · 되돌림 `=0`
+function _t822Rekey(vil, from) {   // 명부 자리 `from` 부터 끝까지 — 그 자리의 열쇠로 다시 굽는다
+  const P = state.deps && state.deps.players; if (!P || !vil || !vil.npcPids) return;
   const r = (state.econ && state.econ.rngState) ? state.econ.rngState() : null;
   const s0 = (r && r.s0 != null) ? r.s0 : state.villageSeed;
-  return _pidHash(`${s0}_simvil_${vil.dbId}_${p.pid}`);
+  for (let i = Math.max(0, from | 0); i < vil.npcPids.length; i++) { const b = P.get(vil.npcPids[i]); if (b) b._sh = _pidHash(`${s0}_simvil_${vil.dbId}_${i}`); }
 }
+function _t833Boot() { for (const vil of state.villages) _t822Rekey(vil, 0); }   // ★[T833] 부팅 — 되살림(T728 메타 · T747 몸 칸) 뒤 한 번(같은 판 씨 · 같은 자리면 되살린 값 그대로)
 function spawnOneNpc(vil) {
   const houses = vil.housesPx.length ? vil.housesPx : [{ x: vil.ccx * SZ + SZ / 2, y: (vil.ccy + 6) * SZ + SZ / 2 }];   // ★폴백도 큰집 벽 안(중심 셀) 금지 — 남문 앞 마당
   const home = houses[vil.npcPids.length % houses.length];
@@ -1259,10 +1264,10 @@ function spawnOneNpc(vil) {
     skipHouse: true, // 집은 village_buildings(레이아웃)가 진실 — NPC별 5×5 자동집 금지
   });
   p.simVillageId = vil.dbId; // NPC↔마을 연결(메모리 — players 컬럼 추가보다 저침습)
-  if (T822_BODY_SEED) p._sh = _t822Sh(vil, p);   // ★[T822] 몸 주사위 신원 = 판 씨 + (마을 · 몸 번호) — 끔 = 이 줄 0
   p.simLonOff = vil._lonOff || 0; // §19 경도: 이 마을 로컬 태양시(zone.js npcStep 야간 귀가 게이트가 소비)
   p.npcBedX = home.x + bed[0] * SZ; p.npcBedY = home.y + bed[1] * SZ;   // ★침대(실내) — 취침·요양 목표(_lifeGoHome·§19 게이트 소비)
   vil.npcPids.push(p.pid);
+  if (T822_BODY_SEED) _t822Rekey(vil, vil.npcPids.length - 1);   // ★[T822 · T833] 몸 주사위 신원 = 판 씨 + (마을 · 명부 자리) — 끔 = 이 줄 0
   return p;
 }
 // ═══ ★★★[T590 2026-10-03 · 세션3 · 일관성 캐논 "순간 소멸·추상 금지"] **몸이 econ 수의 그림자가 아니다** ═══════════════
@@ -1433,7 +1438,7 @@ function _t765Depart(vil, best, n) {
   const pick = [];
   for (let j = vil.npcPids.length - 1; j >= 0 && pick.length < take; j--) { const p = players.get(vil.npcPids[j]); if (p && !p._muster && !p._bxExit) pick.push(vil.npcPids[j]); }
   for (const pid of pick) {
-    const i = vil.npcPids.indexOf(pid); if (i >= 0) vil.npcPids.splice(i, 1);
+    const i = vil.npcPids.indexOf(pid); if (i >= 0) { vil.npcPids.splice(i, 1); if (T822_BODY_SEED) _t822Rekey(vil, i); }   // ★[T833] 명부가 줄면 그 자리부터 다시 굽는다
     _bxWalk(vil, players.get(pid), { k: 'move', vil: best });
     const r = state.bodyExits && state.bodyExits.get(pid); if (r) r.t765 = 1;
   }
@@ -1470,9 +1475,10 @@ function removeOneNpc(vil, why) {
     if (!p || p._muster || p._bxExit) continue;
     idx = i; break;
   }
-  if (idx < 0) { vil.npcPids = vil.npcPids.filter((pid) => players.has(pid)); return false; }   // 남은 게 전부 출정 — 종전처럼 멈춘다(stale 청소 포함)
+  if (idx < 0) { vil.npcPids = vil.npcPids.filter((pid) => players.has(pid)); if (T822_BODY_SEED) _t822Rekey(vil, 0); return false; }   // 남은 게 전부 출정 — 종전처럼 멈춘다(stale 청소 포함)
   const pid = vil.npcPids[idx];
   vil.npcPids.splice(idx, 1);
+  if (T822_BODY_SEED) _t822Rekey(vil, idx);   // ★[T833] 명부가 줄면 그 자리부터 다시 굽는다
   const p = players.get(pid);
   if (BX_CAT[w.k] === 'died') _bxDie(vil, p, w); else _bxWalk(vil, p, w);
   return true;
@@ -1481,6 +1487,7 @@ function syncVillagePop(vil, maxDelta) {
   // stale 청소 — ★_muster(출정 중) pid는 players 에 남아 있어 필터 통과(제외 안 됨). 감소(removeOneNpc)도 _muster 스킵.
   //   목표 인구는 econ.npcs.length(진실) 추종: 출정 병사도 npcPids 에 남아 카운트되므로 전쟁 중 스폰 폭주 없음.
   vil.npcPids = vil.npcPids.filter(pid => state.deps.players.has(pid));
+  if (T822_BODY_SEED) _t822Rekey(vil, 0);   // ★[T833] 정리 뒤 명부 자리 열쇠(빠진 자리가 없으면 같은 값)
   _bxObserve(vil);   // ★[T590] econ 이 줄인 까닭(읽기만)
   const target = Math.min(vil.econ.npcs.length, NPC_CAP_PER_VILLAGE);
   let delta = target - vil.npcPids.length;
@@ -5115,6 +5122,7 @@ function init(deps) {
     else for (const v of state.villages) if (v.econ && '_t740Side' in v.econ) delete v.econ._t740Side;   // ★[T740] 끔 — 켬으로 적은 행의 곁 칸을 econ 에 남기지 않는다(다음 켬이 묵은 칸을 되돌리지 않게 · main 행엔 이 칸이 없어 무동작)
     if (T747_BODY) { try { _t747Restore(); } catch (e) { console.error(`[${ZONE_ID}] 🏘️ [T747] 몸 칸 복원 실패(종전대로 계속):`, e.message); } }
     else for (const v of state.villages) if (v.econ && '_t747Body' in v.econ) delete v.econ._t747Body;   // ★[T747] 끔 — 켬으로 적은 행의 곁 칸을 econ 에 남기지 않는다(main 행엔 이 칸이 없어 무동작)
+    if (T822_BODY_SEED) _t833Boot();   // ★[T833] 되살림(T728 메타 · T747 몸 칸) 뒤 — 명부 자리 열쇠로 한 번(같은 판 씨 · 같은 자리면 되살린 값 그대로)
     if (_T732_ON) { try { _t732Boot(); } catch (e) { console.error(`[${ZONE_ID}] 🧺 [T732] 곳간 로트 장부 붙이기 실패(장부 없이 계속):`, e.message); } }
     // ★★[T533] 존 경계 호스트 — 팔 `T525_CROSS_ZONE`(econ 정본) 켬 + 존이 미는 문을 줬을 때만(끔 = 이 줄 무동작 · 조각 목록·몸 층 무변).
     //   실패해도 존 부팅은 계속한다(경계가 닫힌 채 = 끔과 같다).
@@ -5969,8 +5977,9 @@ function _warEndFight(body, why, winner) {
       if (_t811) _t811Off(w, p, _t811, false);   // ★[T811] 끌려가는 병사의 무기는 몸에서 내린다(땅 0 · 장부가 이미 셈했다)
       p.simCaptive = 1; p._brout = false; p.hp = Math.max(1, Math.round((p.maxHp || 100) * 0.4));
       const oldVil = (p.simVillageId != null) ? state.byDbId.get(p.simVillageId) : null;
-      if (oldVil) { const kk = oldVil.npcPids.indexOf(pid); if (kk >= 0) oldVil.npcPids.splice(kk, 1); }
+      if (oldVil) { const kk = oldVil.npcPids.indexOf(pid); if (kk >= 0) { oldVil.npcPids.splice(kk, 1); if (T822_BODY_SEED) _t822Rekey(oldVil, kk); } }
       p.simVillageId = winnerVil.dbId; winnerVil.npcPids.push(pid);
+      if (T822_BODY_SEED) _t822Rekey(winnerVil, winnerVil.npcPids.length - 1);   // ★[T833] 포로 — 옛 마을은 빠진 자리부터 · 새 마을은 든 자리
       escort.push(pid);
     }
     w._capResolve = null;
@@ -6036,7 +6045,7 @@ function _warDespawnPid(pid) {
   // ★[T295 ①] 전사 표본 — 결속만 푼다. econ 사망은 `war-core.warKill`(정산) 하나가 정본이다(사본 0 · 이중 사망 금지).
   try { const vil = (p && p.simVillageId != null) ? state.byDbId.get(p.simVillageId) : null; if (vil && state.war && state.war.warDraftReleasePid) state.war.warDraftReleasePid(vil, pid); } catch (_) { }
   players.delete(pid); npcs.delete(pid);
-  if (p && p.simVillageId != null) { const vil = state.byDbId.get(p.simVillageId); if (vil) { const k = vil.npcPids.indexOf(pid); if (k >= 0) vil.npcPids.splice(k, 1); } }
+  if (p && p.simVillageId != null) { const vil = state.byDbId.get(p.simVillageId); if (vil) { const k = vil.npcPids.indexOf(pid); if (k >= 0) { vil.npcPids.splice(k, 1); if (T822_BODY_SEED) _t822Rekey(vil, k); } } }   // ★[T833] 전사 — 빠진 자리부터
   broadcast({ type: 'player_left', pid });
 }
 // 출정 해제 — _muster/simWar 해제 + npcs.add(AI 복귀) + hp 회복. pid 는 npcPids 유지(syncVillagePop 재수렴).
@@ -7649,6 +7658,7 @@ function __p3Bind(mock) {
     T790_NO_SNAP, _t790Stat, _t790Mark, _t790Lag, _warSetupReturn, _warPaceReturn,   // ★[T790] 하네스(`test-war-nosnap`)가 운영과 같은 문을 부른다(내보내기만)
     _t804Way, _t804WalkOut, _t804Stat, _warWalkGroupTo,   // ★[T804] 걷는 몸의 길 · 전진 풀기 걸음 — 하네스가 운영과 같은 문을 부른다(내보내기만)
     _t821Stat,   // ★[T821] 재개형 걸음 탐색 셈(내보내기만 — 관찰자 · 하네스)
+    T822_BODY_SEED, _t822Rekey, _t833Boot, _t747Pack, _t747Restore, _warDespawnPid, serializeEcon, restoreEcon,   // ★[T833] 몸 주사위 신원 · 다시 뜬 판 — 하네스(`test-body-seed-restart`)가 운영과 같은 문을 부른다(내보내기만)
     _warDraftPids, _warReleasePid, econDayToMs, _warEnsureBody, _warSampleComp, _vbFootprint,
     threatOf, _warWriteThreats, _warOutMul, _lifeJobSites, _lifeJobSiteOK, _warRoutePts, _warTreeCell, computeRoutePts,
     _t619Region, _t619RedigKeep,   // ★[T619] 쌍 둘레 · 다시 파기 거르개 — 자(`t619-h-audit`)가 **이 함수**로 센다(사본 0)
