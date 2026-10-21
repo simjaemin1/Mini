@@ -279,26 +279,48 @@
       if (!loopStarted) { loopStarted = true; loop(); }
     };
 
+    // ★★[T838 2026-10-21] 손잡이 `T838_WD_AWAKE`(서버 env → welcome `uiCfg.wdAwake` · `'1'` 만 켬 · 끔 = 종전 그대로).
+    //   아래 두 감시(pong · 서버 틱)는 "마지막으로 받은 뒤 몇 초"를 잰다 — 그 몇 초에 **클라 자신이 멈춰 있던 시간**이 섞인다.
+    //   멈춘 동안엔 ping 이 안 나가고 와 있는 pong · 틱을 못 집는다 ⇒ 풀리자마자 감시가 서버를 좀비로 보고 멀쩡한 소켓을 끊는다
+    //   (보고/T838 §1: 끊음 판정 43건 모두 그 창 7.0~37.1초 가운데 클라가 깨어 있던 시간 ≤1.3초 · 서버는 ping 을 집은 뒤 ≤8ms 에
+    //   pong · 그 창의 서버 루프 막힘 ≤2.8초). 끊으면 다시 붙어 welcome 을 또 받고, 그걸 푸느라 또 멈추고 또 끊는 고리가 된다.
+    //   켬 = 감시가 제 주기보다 **늦게 돈 몫**(= 클라가 멈춘 시간)을 쌓아 두고 판정의 경과에서 뺀다 · 기준(마지막 pong · 첫 ping ·
+    //   마지막 틱)이 새로 서면 그 기준 **뒤**의 늦은 몫만 남긴다. 창(7초 · 15초 · `ghostStallMs` · `ghostReconnectMs`) · 알림 글자 ·
+    //   서버 쪽 그대로 · 새 수 0.
+    function t838On() { return !!(typeof uiCfg !== 'undefined' && uiCfg && uiCfg.wdAwake === true); }
+    const _WD_MS = 1000;   // 두 감시의 주기(종전 그 글자) — 늦은 몫을 이 주기로 잰다
+    function _t838Late(st, now) { const l = st.at ? Math.max(0, now - st.at - _WD_MS) : 0; st.at = now; return l; }
+    const _t838P = { at: 0 }, _t838T = { at: 0, ref: 0, frz: 0 };
+
     // RTT 측정 — 1초마다 primary에 ping
     // 14.43: pong watchdog — 5초 이상 pong 못 받으면 ws 좀비로 간주, 강제 close → 자동 재연결
     setInterval(() => {
+      const _late = _t838Late(_t838P, performance.now());   // ★[T838] 늘 잰다(끔이면 안 쓴다)
       const c = conns.get(primaryZoneId);
       if (!c || c.ws.readyState !== 1) return;
       const now = performance.now();
+      // ★[T838] 켬 — 기준(마지막 pong · 아직 없으면 첫 ping)이 그대로면 멈춘 몫을 쌓는다. 바뀌었으면 이번 늦은 몫 가운데 **기준 뒤** 몫만 —
+      //   늦은 창 = [지난 돎 + 주기, 지금] · 그 앞에 기준이 섰으면(pong 받고 멈춤 = 흔한 경우) 통째 · 창 안에 섰으면 그 뒤만.
+      let _frz = 0;
+      if (t838On()) {
+        const ref = c.lastPongAt || c.firstPingAt || 0;
+        if (c._t838Ref !== ref) { c._t838Ref = ref; c._t838Frz = ref ? Math.min(_late, Math.max(0, now - ref)) : 0; } else c._t838Frz = (c._t838Frz || 0) + _late;
+        _frz = c._t838Frz;
+      }
       // 초기엔 lastPongAt 없으니까 첫 ping부터 기록 시작
-      if (!c.lastPongAt && c.firstPingAt && now - c.firstPingAt > 15000) {
+      if (!c.lastPongAt && c.firstPingAt && now - c.firstPingAt - _frz > 15000) {
         console.warn('[recover] ping 후 15초간 pong 한 번도 못 받음 — ws 좀비, 강제 close');
         try { c.ws.close(); } catch (e) {}
         return;
       }
-      if (c.lastPongAt && now - c.lastPongAt > 7000) {
+      if (c.lastPongAt && now - c.lastPongAt - _frz > 7000) {
         console.warn(`[recover] pong 마지막 ${((now - c.lastPongAt)/1000).toFixed(1)}초 전 — ws 좀비, 강제 close`);
         try { c.ws.close(); } catch (e) {}
         return;
       }
       if (!c.firstPingAt) c.firstPingAt = now;
       c.ws.send(JSON.stringify({ type: 'ping', t: now }));
-    }, 1000);
+    }, _WD_MS);
 
     // ★★[정비 배치 2026-08-30 재민 확정 §4] **유령 클라 감시 — 서버 틱 미수신.**
     //
@@ -315,11 +337,18 @@
     //     ③ 기존 재연결 경로 재사용(`ensurePrimaryConnection` — 같은 토큰이면 같은 몸 · B-6 규약).
     //   틱이 다시 오면 자동 해제된다(`welcome`/`tick` 이 `lastTickAt` 을 갱신한다).
     setInterval(() => {
+      const _late = _t838Late(_t838T, performance.now());   // ★[T838] 늘 잰다 — 아래 일찍 나가는 갈래보다 앞(끔이면 안 쓴다)
       if (kicked || !primaryZoneId) return;
       if (document.visibilityState !== 'visible') return;   // 백그라운드는 ⓑ 경로가 맡는다(rAF 가 멈춘다)
       const c = conns.get(primaryZoneId);
       const now = performance.now();
-      const gap = lastTickAt ? (now - lastTickAt) : 0;
+      let gap = lastTickAt ? (now - lastTickAt) : 0;
+      // ★[T838] 켬 — 마지막 틱이 그대로면 멈춘 몫을 쌓아 경과에서 뺀다 · 새 틱이면 이번 늦은 몫 가운데 그 틱 뒤 몫만(위 pong 감시와 같은 셈)
+      //   · 표시 · 끊기 둘 다 이 경과를 쓴다.
+      if (t838On()) {
+        if (_t838T.ref !== lastTickAt) { _t838T.ref = lastTickAt; _t838T.frz = lastTickAt ? Math.min(_late, Math.max(0, now - lastTickAt)) : 0; } else _t838T.frz += _late;
+        gap = Math.max(0, gap - _t838T.frz);
+      }
       // ★★문턱을 **둘로 가른다**(표시 ≠ 재연결). 하나로 두면 서버가 잠깐 느린 것만으로
       //   멀쩡한 소켓을 끊게 되고, 부하가 걸린 판에서는 그게 **재연결 폭풍**이 된다
       //   (실측: 2코어에 브라우저 둘 띄운 회귀에서 옆 하네스의 요청이 그 창에 삼켜졌다).
@@ -341,7 +370,7 @@
         if (c) { try { c.ws.close(); } catch (e) {} }        // ensurePrimaryConnection 이 다음 프레임에 재연결
       }
       if (!stalled) _ghostCutAt = 0;
-    }, 1000);
+    }, _WD_MS);
 
     // 14.43: 탭이 다시 보이면 — 백그라운드 동안 RAF 멈춰서 watchdog/checkOrphan 안 돌았을 수 있음.
     // 마지막 tick 5초 넘으면 primary 좀비로 간주, 강제 끊고 즉시 재연결 트리거.
