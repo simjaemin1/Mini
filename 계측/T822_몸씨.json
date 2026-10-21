@@ -1,0 +1,713 @@
+{
+ "card": "T822",
+ "made": "2026-10-20",
+ "head": "가지 batch/body-seed-1020 — main f42693f1 + 손잡이 줄(server/villages.js · T822_BODY_SEED) · 판 띄운 트리 = d0b2b5de",
+ "knob": "T822_BODY_SEED('1' 만 켬 · 끔 = main 바이트) — 태어날 때(spawnOneNpc) 몸 신원 캐시 _sh = pidHash(`${판 씨}_simvil_${dbId}_${pid}`) · 판 씨 = econ rngState().s0(없으면 state.villageSeed)",
+ "cond": {
+  "ruler": "T805 자(scripts/t805-body-ruler.js) — 정본 하루 24분 · 가상 시계 · 몸 상한 운영 기본 · 새 세계 · 시드 1020 · 손님 0 · 판마다 두 번(같은 씨) · 동시 2",
+  "unbound": "T805_RANDOM=0 — 훅이 Math.random 을 안 묶는다(T805 판은 묶었다) = 제품 주사위 그대로",
+  "t650": "T650 자(server-baseline-check · VILLAGE_DAY_MS=250 · VILLAGE_NPC_CAP=1 · 캐러밴 0 · T400 집 끔 · --vclock = 마을 칸 지문도) · T312_FISH_ACT=1(어부 켬 = 마을 몸 다 걷는다) · 시드 1020 · 400날 · 만들기 ↔ 견주기",
+  "baseline": "서버 기준선(server-baseline-check · 실제 시계 · 3시드 1020 · 7 · 42 · 400날) — main 최신 판 계측/서버기준선_2026-10-19.json"
+ },
+ "determinism": {
+  "smoke": {
+   "what": "A2 3날 두 판 — 끔 ↔ 켬",
+   "off": [
+    {
+     "arm": "A2",
+     "days": [
+      3,
+      3
+     ],
+     "sec": [
+      244,
+      244
+     ],
+     "econ": 2,
+     "side": 1,
+     "sideFields": [
+      "_crop",
+      "_t340Abort",
+      "_t340Cast",
+      "_t340Hook",
+      "_t340Miss",
+      "_t340WaitSum",
+      "_t340WinSum",
+      "_t427R"
+     ],
+     "body": 1,
+     "bodyN": 414,
+     "eight": true,
+     "runHash": true,
+     "econDays": 3,
+     "sideDays": 3,
+     "bodyDays": 3,
+     "pop": 408,
+     "popB": 408
+    }
+   ],
+   "on": [
+    {
+     "arm": "A2",
+     "days": [
+      3,
+      3
+     ],
+     "sec": [
+      204,
+      204
+     ],
+     "econ": null,
+     "side": null,
+     "sideFields": [],
+     "body": null,
+     "bodyN": 414,
+     "eight": true,
+     "runHash": true,
+     "econDays": 3,
+     "sideDays": 3,
+     "bodyDays": 3,
+     "pop": 408,
+     "popB": 408
+    }
+   ]
+  },
+  "six3": {
+   "what": "여섯 팔 3날 두 판(같은 씨 · 주사위 안 묶음)",
+   "off": [
+    {
+     "arm": "off",
+     "days": [
+      3,
+      3
+     ],
+     "sec": [
+      160,
+      155
+     ],
+     "econ": null,
+     "side": null,
+     "sideFields": [],
+     "body": null,
+     "bodyN": 442,
+     "eight": true,
+     "runHash": true,
+     "econDays": 3,
+     "sideDays": 3,
+     "bodyDays": 3,
+     "pop": 429,
+     "popB": 429
+    },
+    {
+     "arm": "A1",
+     "days": [
+      3,
+      3
+     ],
+     "sec": [
+      181,
+      171
+     ],
+     "econ": null,
+     "side": 1,
+     "sideFields": [
+      "_crop"
+     ],
+     "body": 1,
+     "bodyN": 442,
+     "eight": true,
+     "runHash": true,
+     "econDays": 3,
+     "sideDays": 3,
+     "bodyDays": 3,
+     "pop": 429,
+     "popB": 429
+    },
+    {
+     "arm": "A2",
+     "days": [
+      3,
+      3
+     ],
+     "sec": [
+      204,
+      198
+     ],
+     "econ": 2,
+     "side": 1,
+     "sideFields": [
+      "_crop",
+      "_t340Abort",
+      "_t340Cast",
+      "_t340Hook",
+      "_t340Miss",
+      "_t340WaitSum",
+      "_t340WinSum",
+      "_t427R"
+     ],
+     "body": 1,
+     "bodyN": 414,
+     "eight": true,
+     "runHash": true,
+     "econDays": 3,
+     "sideDays": 3,
+     "bodyDays": 3,
+     "pop": 408,
+     "popB": 408
+    },
+    {
+     "arm": "A3",
+     "days": [
+      3,
+      3
+     ],
+     "sec": [
+      157,
+      158
+     ],
+     "econ": null,
+     "side": null,
+     "sideFields": [],
+     "body": null,
+     "bodyN": 442,
+     "eight": true,
+     "runHash": true,
+     "econDays": 3,
+     "sideDays": 3,
+     "bodyDays": 3,
+     "pop": 429,
+     "popB": 429
+    },
+    {
+     "arm": "A4",
+     "days": [
+      3,
+      3
+     ],
+     "sec": [
+      156,
+      156
+     ],
+     "econ": null,
+     "side": null,
+     "sideFields": [],
+     "body": null,
+     "bodyN": 442,
+     "eight": true,
+     "runHash": true,
+     "econDays": 3,
+     "sideDays": 3,
+     "bodyDays": 3,
+     "pop": 429,
+     "popB": 429
+    },
+    {
+     "arm": "ALL",
+     "days": [
+      3,
+      3
+     ],
+     "sec": [
+      205,
+      190
+     ],
+     "econ": 2,
+     "side": 1,
+     "sideFields": [
+      "_crop",
+      "_t340Abort",
+      "_t340Cast",
+      "_t340Hook",
+      "_t340Miss",
+      "_t340WaitSum",
+      "_t340WinSum",
+      "_t427R"
+     ],
+     "body": 1,
+     "bodyN": 414,
+     "eight": true,
+     "runHash": true,
+     "econDays": 3,
+     "sideDays": 3,
+     "bodyDays": 3,
+     "pop": 408,
+     "popB": 408
+    }
+   ],
+   "on": [
+    {
+     "arm": "off",
+     "days": [
+      3,
+      3
+     ],
+     "sec": [
+      164,
+      156
+     ],
+     "econ": null,
+     "side": null,
+     "sideFields": [],
+     "body": null,
+     "bodyN": 442,
+     "eight": true,
+     "runHash": true,
+     "econDays": 3,
+     "sideDays": 3,
+     "bodyDays": 3,
+     "pop": 429,
+     "popB": 429
+    },
+    {
+     "arm": "A1",
+     "days": [
+      3,
+      3
+     ],
+     "sec": [
+      212,
+      173
+     ],
+     "econ": null,
+     "side": null,
+     "sideFields": [],
+     "body": null,
+     "bodyN": 442,
+     "eight": true,
+     "runHash": true,
+     "econDays": 3,
+     "sideDays": 3,
+     "bodyDays": 3,
+     "pop": 429,
+     "popB": 429
+    },
+    {
+     "arm": "A2",
+     "days": [
+      3,
+      3
+     ],
+     "sec": [
+      232,
+      201
+     ],
+     "econ": null,
+     "side": null,
+     "sideFields": [],
+     "body": null,
+     "bodyN": 414,
+     "eight": true,
+     "runHash": true,
+     "econDays": 3,
+     "sideDays": 3,
+     "bodyDays": 3,
+     "pop": 408,
+     "popB": 408
+    },
+    {
+     "arm": "A3",
+     "days": [
+      3,
+      3
+     ],
+     "sec": [
+      164,
+      162
+     ],
+     "econ": null,
+     "side": null,
+     "sideFields": [],
+     "body": null,
+     "bodyN": 442,
+     "eight": true,
+     "runHash": true,
+     "econDays": 3,
+     "sideDays": 3,
+     "bodyDays": 3,
+     "pop": 429,
+     "popB": 429
+    },
+    {
+     "arm": "A4",
+     "days": [
+      3,
+      3
+     ],
+     "sec": [
+      155,
+      163
+     ],
+     "econ": null,
+     "side": null,
+     "sideFields": [],
+     "body": null,
+     "bodyN": 442,
+     "eight": true,
+     "runHash": true,
+     "econDays": 3,
+     "sideDays": 3,
+     "bodyDays": 3,
+     "pop": 429,
+     "popB": 429
+    },
+    {
+     "arm": "ALL",
+     "days": [
+      3,
+      3
+     ],
+     "sec": [
+      208,
+      202
+     ],
+     "econ": null,
+     "side": null,
+     "sideFields": [],
+     "body": null,
+     "bodyN": 414,
+     "eight": true,
+     "runHash": true,
+     "econDays": 3,
+     "sideDays": 3,
+     "bodyDays": 3,
+     "pop": 408,
+     "popB": 408
+    }
+   ]
+  },
+  "all46": {
+   "what": "다 같이 46날 두 판(켬 · 주사위 안 묶음 · 혼자 차례로 — 한 판 1시간 안)",
+   "on": [
+    {
+     "arm": "ALL",
+     "days": [
+      46,
+      46
+     ],
+     "sec": [
+      3320,
+      3402
+     ],
+     "econ": null,
+     "side": null,
+     "sideFields": [],
+     "body": null,
+     "bodyN": 1204,
+     "eight": true,
+     "runHash": true,
+     "econDays": 46,
+     "sideDays": 46,
+     "bodyDays": 46,
+     "pop": 1137,
+     "popB": 1137
+    }
+   ]
+  }
+ },
+ "t650": {
+  "on": {
+   "make": [
+    "=== 서버 판 기준선 만들기 — 1020:400일 · 동시 1 · 교역로 캐시 <tmp>/durango-route-cache · 판 <tmp>/sbc-NVoKgN ===",
+    "  판 모두 289초",
+    "  시드 1020: 인구 2273 · 소멸 2/51 · 무기Q 216 · 확장 428 · 게시 1110 · 도구Q 2309.3 · 보존 0 · 곡물 6501.2 · 해체 1 · 빈 2 · 날 400"
+   ],
+   "check": [
+    "=== 서버 판 기준선 견주기 — 1020:400일 · 동시 1 · 교역로 캐시 <tmp>/durango-route-cache · 판 <tmp>/sbc-0IUfKu ===",
+    "  판 모두 290초",
+    "  ○ 시드 1020: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2273) · 마을 칸 지문 400일 같음",
+    "=== 같음 1/1 · 판 290초 ==="
+   ],
+   "checkRun": [
+    {
+     "sec": 290,
+     "res": {
+      "1020": {
+       "same": true,
+       "days": 400
+      }
+     },
+     "end": {
+      "1020": {
+       "eight": {
+        "pop": 2273,
+        "dead": 2,
+        "ever": 51,
+        "weapQ": 216,
+        "expand": 428,
+        "board": 1110,
+        "toolQ": 2309.3,
+        "preserve": 0,
+        "grain": 6501.2
+       },
+       "days": 400,
+       "dissolved": 1,
+       "empty": 2
+      }
+     }
+    }
+   ]
+  },
+  "off": {
+   "make": [
+    "=== 서버 판 기준선 만들기 — 1020:400일 · 동시 1 · 교역로 캐시 <tmp>/durango-route-cache · 판 <tmp>/sbc-YsOnXm ===",
+    "  판 모두 292초",
+    "  시드 1020: 인구 2576 · 소멸 0/51 · 무기Q 142 · 확장 616 · 게시 1160 · 도구Q 2857.2 · 보존 0 · 곡물 12062.7 · 해체 0 · 빈 0 · 날 400"
+   ],
+   "check": [
+    "=== 서버 판 기준선 견주기 — 1020:400일 · 동시 1 · 교역로 캐시 <tmp>/durango-route-cache · 판 <tmp>/sbc-cmuAoJ ===",
+    "  판 모두 276초",
+    "  ✗ 시드 1020: econ 날 지문 날 96 갈림 · 마을 칸 첫 갈림 = 날 3 · 칸 3 — _jobSites · _t325Trees · _t427R",
+    "=== 다름 1/1 · 판 276초 ==="
+   ],
+   "checkRun": [
+    {
+     "sec": 276,
+     "res": {
+      "1020": {
+       "same": false,
+       "sideDay": 3,
+       "sideFields": [
+        "_jobSites",
+        "_t325Trees",
+        "_t427R"
+       ],
+       "econDay": 96
+      }
+     },
+     "end": {
+      "1020": {
+       "eight": {
+        "pop": 2054,
+        "dead": 0,
+        "ever": 51,
+        "weapQ": 138,
+        "expand": 611,
+        "board": 1138,
+        "toolQ": 2273.6,
+        "preserve": 0,
+        "grain": 6664.4
+       },
+       "days": 400,
+       "dissolved": 0,
+       "empty": 0
+      }
+     }
+    }
+   ]
+  }
+ },
+ "baseline": {
+  "off": {
+   "file": "계측/서버기준선_2026-10-19.json",
+   "env": "없음(끔)",
+   "lines": [
+    "=== 서버 판 기준선 견주기 — 1020:400일 · 7:400일 · 42:400일 · 동시 3 · 교역로 캐시 <tmp>/durango-route-cache · 판 <tmp>/sbc-6iapVS ===",
+    "  판 모두 461초",
+    "  ○ 시드 1020: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 3025)",
+    "  ○ 시드 7: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2583)",
+    "  ○ 시드 42: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2985)",
+    "=== 같음 3/3 · 판 461초 ==="
+   ],
+   "checkRun": [
+    {
+     "sec": 461,
+     "res": {
+      "7": {
+       "same": true,
+       "days": 400
+      },
+      "42": {
+       "same": true,
+       "days": 400
+      },
+      "1020": {
+       "same": true,
+       "days": 400
+      }
+     },
+     "end": {
+      "7": {
+       "eight": {
+        "pop": 2583,
+        "dead": 1,
+        "ever": 51,
+        "weapQ": 195,
+        "expand": 906,
+        "board": 854,
+        "toolQ": 3902.4,
+        "preserve": 8.3,
+        "grain": 14041.5
+       },
+       "days": 400,
+       "dissolved": 1,
+       "empty": 1
+      },
+      "42": {
+       "eight": {
+        "pop": 2985,
+        "dead": 0,
+        "ever": 51,
+        "weapQ": 227,
+        "expand": 463,
+        "board": 998,
+        "toolQ": 3477.5,
+        "preserve": 11.9,
+        "grain": 14732.8
+       },
+       "days": 400,
+       "dissolved": 1,
+       "empty": 0
+      },
+      "1020": {
+       "eight": {
+        "pop": 3025,
+        "dead": 0,
+        "ever": 51,
+        "weapQ": 190,
+        "expand": 572,
+        "board": 933,
+        "toolQ": 3768.5,
+        "preserve": 2.6,
+        "grain": 12296.4
+       },
+       "days": 400,
+       "dissolved": 0,
+       "empty": 0
+      }
+     }
+    }
+   ]
+  },
+  "onMake": {
+   "file": "계측/서버기준선_T822켬_2026-10-20.json",
+   "env": "T822_BODY_SEED=1",
+   "lines": [
+    "=== 서버 판 기준선 만들기 — 1020:400일 · 7:400일 · 42:400일 · 동시 3 · 교역로 캐시 <tmp>/durango-route-cache · 판 <tmp>/sbc-FuEuK9 ===",
+    "  판 모두 460초",
+    "  시드 1020: 인구 3025 · 소멸 0/51 · 무기Q 190 · 확장 572 · 게시 933 · 도구Q 3768.5 · 보존 2.6 · 곡물 12296.4 · 해체 0 · 빈 0 · 날 400",
+    "  시드 7: 인구 2583 · 소멸 1/51 · 무기Q 195 · 확장 906 · 게시 854 · 도구Q 3902.4 · 보존 8.3 · 곡물 14041.5 · 해체 1 · 빈 1 · 날 400",
+    "  시드 42: 인구 2985 · 소멸 0/51 · 무기Q 227 · 확장 463 · 게시 998 · 도구Q 3477.5 · 보존 11.9 · 곡물 14732.8 · 해체 1 · 빈 0 · 날 400"
+   ]
+  },
+  "onCheck": {
+   "file": "계측/서버기준선_T822켬_2026-10-20.json",
+   "env": "T822_BODY_SEED=1",
+   "lines": [
+    "=== 서버 판 기준선 견주기 — 1020:400일 · 7:400일 · 42:400일 · 동시 3 · 교역로 캐시 <tmp>/durango-route-cache · 판 <tmp>/sbc-AhzhIJ ===",
+    "  판 모두 466초",
+    "  ○ 시드 1020: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 3025)",
+    "  ○ 시드 7: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2583)",
+    "  ○ 시드 42: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 2985)",
+    "=== 같음 3/3 · 판 466초 ==="
+   ],
+   "checkRun": [
+    {
+     "sec": 466,
+     "res": {
+      "7": {
+       "same": true,
+       "days": 400
+      },
+      "42": {
+       "same": true,
+       "days": 400
+      },
+      "1020": {
+       "same": true,
+       "days": 400
+      }
+     },
+     "end": {
+      "7": {
+       "eight": {
+        "pop": 2583,
+        "dead": 1,
+        "ever": 51,
+        "weapQ": 195,
+        "expand": 906,
+        "board": 854,
+        "toolQ": 3902.4,
+        "preserve": 8.3,
+        "grain": 14041.5
+       },
+       "days": 400,
+       "dissolved": 1,
+       "empty": 1
+      },
+      "42": {
+       "eight": {
+        "pop": 2985,
+        "dead": 0,
+        "ever": 51,
+        "weapQ": 227,
+        "expand": 463,
+        "board": 998,
+        "toolQ": 3477.5,
+        "preserve": 11.9,
+        "grain": 14732.8
+       },
+       "days": 400,
+       "dissolved": 1,
+       "empty": 0
+      },
+      "1020": {
+       "eight": {
+        "pop": 3025,
+        "dead": 0,
+        "ever": 51,
+        "weapQ": 190,
+        "expand": 572,
+        "board": 933,
+        "toolQ": 3768.5,
+        "preserve": 2.6,
+        "grain": 12296.4
+       },
+       "days": 400,
+       "dissolved": 0,
+       "empty": 0
+      }
+     }
+    }
+   ]
+  },
+  "onVsOff": {
+   "what": "파일끼리 — 켬 후보 ↔ 10-19(시드마다 날 지문 · 여덟 수 · 판 JSON)",
+   "bySeed": {
+    "7": {
+     "days": 400,
+     "firstDiff": null,
+     "eight": true,
+     "runHash": true,
+     "pop": [
+      2583,
+      2583
+     ]
+    },
+    "42": {
+     "days": 400,
+     "firstDiff": null,
+     "eight": true,
+     "runHash": true,
+     "pop": [
+      2985,
+      2985
+     ]
+    },
+    "1020": {
+     "days": 400,
+     "firstDiff": null,
+     "eight": true,
+     "runHash": true,
+     "pop": [
+      3025,
+      3025
+     ]
+    }
+   }
+  }
+ },
+ "tests": {
+  "test-body-fields": "8 통과 / 0 실패",
+  "test-move-soa": "286 PASS / 0 FAIL"
+ }
+}
