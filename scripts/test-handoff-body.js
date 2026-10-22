@@ -21,6 +21,8 @@
 //     ACK 를 잃게 해(출발 존에만 안 문 비밀) 껍데기의 늦은 저장이 도착 존 접속 저장 **뒤에** 닿게 순서를 강제하고, central 행과 로비 `/auth` 를 읽는다(F 켬 · G 끔).
 //   ★[T843 2026-10-22] 받는 존이 몸을 받은 뒤의 껍데기 저장은 **몸 칸도** 안 쓴다(통째로 안 나감) — F 켬 = 행 몸 · 자리 · `last_seen` 그대로(되돌림 0) ·
 //     G 끔 = 종전대로 되돌아감(증인) · I 켬 = 받는 존이 몸을 안 받은 판(준비 응답 전 — 받는 존을 세워 둔다)은 종전대로 나간다(갈래 둘).
+//   ★[T867 2026-10-22] ⑥ T498 켬(`T498_HANDOFF_PAYLOAD=1` · 끔 기본)에서 같은 탐침 — ACK 시한에 떠나는 순간 쥔 행도 T843 술어를 지난다(J 켬 = 안 나감 ·
+//     몸 되돌림 0) · K(T823 끔 `=0`) = 종전대로 쥔 행 · 닫힐 때 저장이 몸 칸을 되돌린다(증인).
 //   ★상황 선행 assert: 왕복이 **실제로 존 경계를 넘었는지**(handoff 메시지를 받았는지) 먼저 본다.
 //     안 넘었으면 이 하네스는 아무것도 재고 있지 않다.
 //
@@ -193,7 +195,7 @@ async function crossEast(a, han, crossed, pollMs = 500) {
 //   껍데기의 주기 저장 문도 같은 창에서 열리게 한다(켬 판은 그 문까지 막았나 · 끔 판에선 정보로 센다).
 //   도착 존에서 생선 한 마리를 내려놓는다(행동 저장 하나 — 몸 칸이 늦은 껍데기 저장에 되돌아가나를 **정보로** 센다 · 이 카드는 자리 칸만).
 const rowOf = async (pid) => ((await jget(`http://localhost:${CPORT}/player/${encodeURIComponent(pid)}`)) || {}).player || null;
-async function closeRace(tag) {
+async function closeRace(tag, opt) {   // ★[T867] opt.rowAtMsg = 넘기 메시지 때(도착 존에 붙기 전) 행을 한 번 읽는다 — T498 켬이 먹었나(넘기기 전 저장 없음)
   const Z = (await jget(`http://localhost:${CPORT}/zones`)).zones;
   const han = Z.hanbando, nip = Z.nippon;
   const NAME = 't831' + tag, PW = 'pw831' + tag;
@@ -205,6 +207,7 @@ async function closeRace(tag) {
   await sleep(900);
   await crossEast(a, han, () => !!handoffMsg, 100);
   if (!handoffMsg) { try { a.ws.close(); } catch (e) {} return { crossed: false, pid }; }
+  const r0 = (opt && opt.rowAtMsg) ? await rowOf(pid) : null;
   const b = await open(`${nip.wsUrl}/?handoff_token=${encodeURIComponent(handoffMsg.token)}`);
   const tJ = Date.now();
   try { b.ws.send(JSON.stringify({ type: 'drop_item', item: 'fish', amount: 1 })); } catch (e) {}
@@ -218,7 +221,7 @@ async function closeRace(tag) {
   const live = pick0(await jget(`http://localhost:${NPORT}/bodydbg?name=${encodeURIComponent(NAME)}`));
   try { b.ws.close(); } catch (e) {}
   try { a.ws.close(); } catch (e) {}
-  return { crossed: true, pid, tMsg, tJ, tR1, r1, aOpenAtR1, aClosedAt, r2, auth, live, hanW: han.zoneWidth, joined: !!b.welcome };
+  return { crossed: true, pid, tMsg, tJ, tR1, r0, r1, aOpenAtR1, aClosedAt, r2, auth, live, hanW: han.zoneWidth, joined: !!b.welcome };
 }
 const pick0 = (o) => { const v = Object.values((o && o.bodies) || {}); return v[v.length - 1]; };
 // ★★[T843 2026-10-22] 갈래 (나) 탐침 — 받는 존이 몸을 **안** 받은 판(넘기기 준비 응답 전)에 껍데기 소켓이 닫힌다. 받는 존 프로세스를 세워 둔다(SIGSTOP):
@@ -334,9 +337,14 @@ async function roundTrip(tag, opt) {   // ★[T823] opt.probe = 넘긴 뒤 떠�
   ok(/function savePlayer\(player, extra = \{\}\) \{\s*if \(!canPersist\(player\)\) return;[\s\S]{0,3000}?\n\s*const pt = _savePatch\(player, extra\);[\s\S]{0,2000}?\n\s*if \(T823_FREEZE_SHELL && player\.handingOff && \(pt\.last_zone == null \|\| pt\.last_zone === ZONE_ID\)\) \{ delete pt\.last_zone; delete pt\.last_x; delete pt\.last_y; \}\s*return _saveSend\(player\.playerId, pt\);\s*\}/.test(src),
     '① ★[T831] 넘긴 몸 껍데기의 저장(닫힐 때 · 주기 · 종료 flush · 맨 저장)은 이 존의 자리 칸(`last_zone · last_x · last_y`)을 안 쓴다 — `savePlayer` 한 자리 · 켬 갈래');
   // ★[T843] 받는 존이 몸을 받은 뒤(ACK 기다림 표에 이 몸 · 또는 ACK · ACK 시한이 이미 `players` 에서 내림)의 껍데기 저장은 통째로 안 나간다 — `savePlayer` 머리 한 줄 · 이미 있는 칸만
-  ok(/function savePlayer\(player, extra = \{\}\) \{\s*if \(!canPersist\(player\)\) return;[\s\S]{0,3000}?\n\s*if \(T823_FREEZE_SHELL && player\.handingOff && _t843Handed\(player\)\) return;\s*const pt = _savePatch\(player, extra\);/.test(src)
-    && /function _t843Handed\(p\) \{\s*if \(players\.get\(p\.pid\) !== p\) return true;\s*for \(const e of outgoingHandoffs\.values\(\)\) if \(e\.pid === p\.pid\) return true;\s*return false;\s*\}/.test(src),
+  ok(/function savePlayer\(player, extra = \{\}\) \{\s*if \(!canPersist\(player\)\) return;[\s\S]{0,3000}?\n\s*if \(_t843Skip\(player\)\) return;[^\n]*\n\s*const pt = _savePatch\(player, extra\);/.test(src)
+    && /function _t843Handed\(p\) \{\s*if \(players\.get\(p\.pid\) !== p\) return true;\s*for \(const e of outgoingHandoffs\.values\(\)\) if \(e\.pid === p\.pid\) return true;\s*return false;\s*\}/.test(src)
+    && /function _t843Skip\(p\) \{ return T823_FREEZE_SHELL && !!p\.handingOff && _t843Handed\(p\); \}/.test(src),
     '① ★[T843] 받는 존이 몸을 받은 뒤의 껍데기 저장은 몸 칸도 안 쓴다(통째로 안 나감) — `savePlayer` 머리 · 갈래 판단은 이미 있는 칸 둘(`outgoingHandoffs` · `players`)');
+  // ★[T867] T498 ACK 시한의 쥔 행도 같은 술어(`_t843Skip` — 사본 0)를 지난다 · 그 줄 하나만 `_saveSend` 를 직접 부른다(술어 안 지나는 몸 쓰기 0)
+  ok(/if \(_t498Held && !_t843Skip\(player\)\) \{ _saveSend\(_t498Held\.playerId, _t498Held\.patch\);/.test(src)
+    && (src.match(/_saveSend\(_t498Held\./g) || []).length === 1 && (src.match(/_t843Skip\(/g) || []).length === 3,
+    '① ★[T867] T498 ACK 시한의 쥔 행도 T843 술어 한 자리(`_t843Skip`)를 지난다 — 부르는 곳 둘(`savePlayer` 머리 · 시한) · 정의 하나');
 
   if (!await startZones()) { console.log('  ✗ 2존 기동 실패'); process.exit(1); }
   const R = await roundTrip('A');
@@ -538,6 +546,37 @@ async function roundTrip(tag, opt) {   // ★[T823] opt.probe = 넘긴 뒤 떠�
     ok(RI.r1.last_seen > RI.pre.last_seen && RI.r1.last_zone === 'nippon' && sameXY(RI.pre, RI.r1) && rowFish(RI.r1) === 3,
       '★★[T843 (나)] 받는 존이 몸을 안 받은 판(준비 응답 전 닫힘)은 껍데기의 닫힐 때 저장이 종전대로 나간다 — 행이 또 쓰였고(몸 칸) · 자리는 T831 대로 넘기기 전 저장 그대로',
       `${at(RI.pre)} → ${at(RI.r1)} · last_seen +${RI.r1.last_seen - RI.pre.last_seen}ms · 행 생선 ${rowFish(RI.r1)}`);
+  }
+  killAll(); await sleep(4000);
+
+  // ★★[T867] ⑥ T498 켬(`T498_HANDOFF_PAYLOAD=1` · 끔 기본)에서 같은 순서 강제 탐침(`closeRace`). 켬이면 넘기기 전 저장이 없고(넘기 메시지 때 행 = 출발 존)
+  //   ACK 시한에 떠나는 순간 쥔 행(넘긴 순간 몸 + 도착 존 입구 · `_saveSend` 직접)을 보낸다 — 받는 존이 몸을 받고 ACK 만 잃은 판(F 꼴)에선 그 행이 몸 칸을
+  //   되돌렸다(T843 회부 1). J = T498 켬 · T823 켬(기본 — 쥔 행도 T843 술어 `_t843Skip` 를 지난다 → 안 나감) · K = T498 켬 · T823 끔(`=0` — 종전 증인).
+  //   출발 존 주기 저장: J 1초(F 와 같은 창) · K 10분(G 와 같은 — 첫 읽음은 도착 존 행동 저장 그대로).
+  if (!await startZones(SECRET_H, { SAVE_INTERVAL_MS: '600000', T498_HANDOFF_PAYLOAD: '1' })) { console.log('  ✗ T867 T498 켬 기동 실패'); process.exit(1); }
+  const RJ = await closeRace('J', { rowAtMsg: true });
+  ok(RJ.crossed && RJ.joined && !!RJ.live && !!RJ.r0 && !!RJ.r1 && !!RJ.r2 && RJ.r0.last_zone === 'hanbando',
+    '★[상황 · T867 T498 켬] 넘었고 · 도착 존에 붙어 몸이 산다 · 넘기 메시지 때 행 = 출발 존(넘기기 전 저장 없음 — T498 켬이 먹었다)', RJ.r0 ? `넘기 메시지 때 ${at(RJ.r0)} · 도착 존 생선 ${fishN(RJ.live)}` : '');
+  if (RJ.crossed && RJ.joined && RJ.r1 && RJ.r2) {
+    ok(RJ.aOpenAtR1 && RJ.aClosedAt > 0 && RJ.aClosedAt - RJ.tMsg >= 2500, '★[상황 · T867] ACK 를 잃었다 — 출발 존이 ACK 시한에 껍데기를 닫았다(쥔 행을 보내는 그 시각)',
+      `붙음 ${RJ.tJ - RJ.tMsg}ms · 첫 읽음 ${RJ.tR1 - RJ.tMsg}ms · 껍데기 닫힘 ${RJ.aClosedAt - RJ.tMsg}ms`);
+    ok(RJ.r2.last_seen === RJ.r1.last_seen && fishN(RJ.live) === 2 && rowFish(RJ.r1) === 2 && rowFish(RJ.r2) === 2,
+      '★★[T867 T498 켬 · T823 켬] ACK 시한의 쥔 행도 안 나간다 — 시한 뒤 행이 안 쓰였고(`last_seen` 그대로) 몸 칸이 안 되돌아간다(행 생선 2 = 산 몸 2)',
+      `행 생선 ${rowFish(RJ.r1)} → ${rowFish(RJ.r2)} · 산 몸 ${fishN(RJ.live)} · last_seen Δ ${RJ.r2.last_seen - RJ.r1.last_seen}ms`);
+    ok(RJ.r1.last_zone === 'nippon' && RJ.r2.last_zone === 'nippon' && sameXY(RJ.r1, RJ.r2) && lobby(RJ) === 'nippon',
+      '★[T867 T498 켬] 자리도 도착 존 접속 저장 그대로 · 다시 접속(로비)이 도착 존으로', `${at(RJ.r1)} → ${at(RJ.r2)} · 로비 ${lobby(RJ)}`);
+  }
+  killAll(); await sleep(4000);
+  if (!await startZones(SECRET_H_CLOSE, { SAVE_INTERVAL_MS: '600000', T498_HANDOFF_PAYLOAD: '1', T823_FREEZE_SHELL: '0' })) { console.log('  ✗ T867 T498 켬 · 끔 탐침 기동 실패'); process.exit(1); }
+  const RK = await closeRace('K', { rowAtMsg: true });
+  ok(RK.crossed && RK.joined && !!RK.live && !!RK.r0 && !!RK.r1 && !!RK.r2 && RK.r0.last_zone === 'hanbando',
+    '[상황 · T867 T498 켬 · T823 끔 탐침] 넘었고 · 도착 존에 붙었고 · 넘기 메시지 때 행 = 출발 존(T498 켬)', RK.r0 ? `넘기 메시지 때 ${at(RK.r0)}` : '');
+  if (RK.crossed && RK.joined && RK.r1 && RK.r2) {
+    ok(RK.aOpenAtR1 && RK.aClosedAt > 0 && RK.aClosedAt - RK.tMsg >= 2500, '[상황 · T867 끔 탐침] ACK 를 잃었다 — 출발 존이 ACK 시한에 껍데기를 닫았다',
+      `붙음 ${RK.tJ - RK.tMsg}ms · 껍데기 닫힘 ${RK.aClosedAt - RK.tMsg}ms`);
+    ok(RK.r2.last_seen > RK.r1.last_seen && rowFish(RK.r1) === 2 && rowFish(RK.r2) === 3 && fishN(RK.live) === 2,
+      '★[T867 끔 탐침] T823 끔이면 ACK 시한의 쥔 행 · 닫힐 때 저장이 종전대로 몸 칸을 되돌린다(행 생선 2 → 3 · 산 몸 2 — 켬 J 의 "0"이 자명하지 않다는 증인)',
+      `행 생선 ${rowFish(RK.r1)} → ${rowFish(RK.r2)} · 산 몸 ${fishN(RK.live)} · ${at(RK.r1)} → ${at(RK.r2)} · last_seen +${RK.r2.last_seen - RK.r1.last_seen}ms`);
   }
   killAll();
 
