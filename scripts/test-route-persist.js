@@ -18,7 +18,7 @@
 //   ③ ★★감사 — 캐시 경로가 재계산과 **비트 동일**
 //   ④ 무효화가 **메모리와 DB 를 둘 다** 비운다(한쪽만 지우면 다음 부팅에 썩은 길이 살아난다)
 //   ⑤ 세계 서명 = 교역로 입력 내용 해시(T619) — mtime·다른 칸은 남고 · 서명이 다르면 통째로 버린다
-//   ⑥ 선계산이 사람 없을 때 완주하고, 그 뒤 경계에서 거의 안 판다
+//   ⑥ 선계산이 사람 없을 때 완주하고, 그 뒤 경계에서 거의 안 판다 · ★[T854] 그 뒤 캐러밴 조각(속 이름 셋 각각)이 한 조각 상한(⑦d 자) 안이다
 //   ⑦ ★★[T42-b] 선계산이 **루프를 놓아 준다** — 유예(사람이 나간 뒤)와 간격(걸음 사이)이 실제로 지켜진다
 //
 // ★★⑦ 이 왜 생겼나 [T42-b 2026-09-01]
@@ -130,10 +130,12 @@ async function up(warm, extra) {
   return (await _zp).ok;
 }
 async function down() { killAll(); await sleep(4000); }
-async function runDays(n) {
+// ★[T854] `sink`(있으면) — 폴링마다 본 **그 하루**(`econTick.last`)를 날 번호로 모은다(⑥ 한 조각 상한 · 날을 빠뜨렸는지도 이 표가 말한다).
+async function runDays(n, sink) {
   for (let i = 0; i < 400; i++) {
     await sleep(2000);
     const j = await jget(`http://localhost:${ZPORT}/perf`);
+    if (sink && j.econTick && j.econTick.last) sink.set(j.econTick.last.day, j.econTick.last);
     if (j.econTick && j.econTick.days >= n) return j;
   }
   return null;
@@ -461,29 +463,51 @@ async function runDays(n) {
   const P6a = await jget(`http://localhost:${ZPORT}/perf`);
   const cold0 = (P6a.econTick && P6a.econTick.probe) ? P6a.econTick.probe.routeCold : 0;
   const day0 = (P6a.econTick && P6a.econTick.days) ? P6a.econTick.days : 0;
-  const P6 = await runDays(day0 + 3);
+  const _seen6 = new Map();   // ★[T854] 선계산 뒤 날마다의 `last`(아래 ⑥ 한 조각 상한)
+  const lastDay0 = (P6a.econTick && P6a.econTick.last) ? P6a.econTick.last.day : null;
+  const P6 = await runDays(day0 + 3, _seen6);
   const pr6 = P6 && P6.econTick ? P6.econTick.probe : {};
   const dCold = (pr6.routeCold || 0) - cold0;
   console.log(`  5판(선계산 뒤 3일)  콜드 증분 **${dCold}** (누계 ${cold0} → ${pr6.routeCold}) · 적중 ${pr6.routeHit}`
     + ` · 조각 최대 ${P6 && P6.econTick.last ? P6.econTick.last.maxChunk + 'ms(' + P6.econTick.last.maxChunkAt + ')' : '?'}`);
   ok(dCold <= 5, '⑥ ★★선계산 뒤 경계에서 **거의 안 판다**', `3일 동안 새로 판 길 ${dCold}쌍`);
-  // ★★[T797 2026-10-18] 이 줄은 **콜드 A\* 가 가장 큰 조각이던 시절**(T42 — 캐러밴 조각 242~482ms)의 증인이었다.
-  //   지금은 선계산 뒤 조각이 모두 예산 근처(16~67ms)이고 '캐러밴' 꼬리표 아래엔 A* 말고도 일이 있다
-  //   (몸 장부 `_t681Day` · 어장 상한 `refreshAllFishSustain` · 캐러밴 동기). 그래서 **꼬리표가 무엇이냐**는 벽시계 경주다 —
-  //   단독 판 착지 앞(`1e22aa3b`) 2/7 · 뒤(`1d10c0cf`) 3/7 · 머지 점마다 0~1/3~4 · T661·T681 을 꺼도 빨강(16ms caravan · 보고/T797).
-  //   ⇒ 뜻(캐러밴 조각이 크다 = 그 조각이 A* 를 팠다)을 **벽시계 아닌 셈**으로 잰다: 하루를 더 돌려 그 하루가 낀 창의
-  //     콜드 증분(`routeCold` — 위 줄과 같은 셈)을 읽고, 그날 가장 큰 조각이 캐러밴이면 그 창의 콜드가 0 이어야 한다
-  //     (A* 를 안 팠으면 그 조각은 A* 가 아니다). 창은 앞 읽기 뒤 ~ 이 읽기까지라 그날을 반드시 덮는다 — 콜드가 다른 날에 났어도
-  //     빨강 쪽으로 센다(무르게 만들지 않는다). 새 수 0 — 날 하나 · `routeCold` · `maxChunkAt` 는 이 하네스가 이미 읽는 값.
+  // ★★[T854 2026-10-22 · ★PM 10-22 결정] ⑥ 캐러밴 줄 = **한 조각 상한**(⑦d 와 같은 자).
+  //   종전 줄(T42 → T797 → T828: "가장 큰 조각이 캐러밴이 아니다 / 캐러밴이면 그 창 콜드 0")은 선계산 뒤 조각이 모두
+  //   예산 근처라 **꼬리표 경주**였다(T797 §2 — 어느 카드 탓도 아님). 그 줄의 뜻은 "캐러밴 조각이 루프를 크게 막지 않는다"였다
+  //   (T42 콜드 A* 조각 242~482ms). ⇒ 꼬리표 대신 **크기**를 잰다: 선계산 뒤 날마다 캐러밴 조각 속 이름 셋
+  //   (`caravan_body` · `caravan_fish` · `caravan_sync` — T828) **각각**의 가장 큰 조각이 ⑦d 상한
+  //   `예산(sliceMs) + 알갱이(pathChunkMax) + 20ms` 안이다. 새 수 0 — 셋 다 ⑦d 가 이미 읽는 그 값 · 그 식이다.
+  //   창 = 선계산 완주 뒤 읽기(`P6a`) 다음 날 ~ 하루 더(`P6L`) 날. 폴링이 날을 빠뜨리면 그 날은 못 잰 것이다 — 빨강 쪽으로 센다.
   const _d6 = P6 && P6.econTick ? P6.econTick.days : 0;
-  const P6L = await runDays(_d6 + 1);
+  const P6L = await runDays(_d6 + 1, _seen6);
+  if (P6L && P6L.econTick && P6L.econTick.last) _seen6.set(P6L.econTick.last.day, P6L.econTick.last);
   const _prL = P6L && P6L.econTick ? P6L.econTick.probe : {};
   const dLast = (_prL.routeCold || 0) - (pr6.routeCold || 0);
-  const _mAt = P6L && P6L.econTick.last ? P6L.econTick.last.maxChunkAt : null;
-  //   ★[T828] 캐러밴 조각은 속 이름 셋(`caravan_body` · `caravan_fish` · `caravan_sync`)으로 갈렸다 — 셋 = 종전 `caravan`(단언 무변).
-  const _isCar = (s) => s === 'caravan' || s === 'caravan_body' || s === 'caravan_fish' || s === 'caravan_sync';
-  ok(!!_mAt && (!_isCar(_mAt) || dLast === 0), '⑥ ★★가장 큰 조각이 더는 **캐러밴 A\*가 아니다**(캐러밴 꼬리표면 그날 낀 창의 콜드 0)',
-    P6L && P6L.econTick.last ? `${P6L.econTick.last.maxChunk}ms(${_mAt}) · 그 창 콜드 ${dLast}` : '?');
+  const _CAR = ['caravan_body', 'caravan_fish', 'caravan_sync'];
+  const _cap6 = ((P6L && P6L.sliceMs) | 0) + (_prL.pathChunkMax | 0) + 20;
+  const lastDayL = P6L && P6L.econTick.last ? P6L.econTick.last.day : null;
+  const _days6 = [], _miss6 = [];
+  if (lastDay0 != null && lastDayL != null) for (let d = lastDay0 + 1; d <= lastDayL; d++) (_seen6.has(d) ? _days6 : _miss6).push(d);
+  let _carN = 0, _worst = null;
+  const _over = [];
+  for (const d of _days6) {
+    const st = _seen6.get(d).stages || {};
+    for (const s of _CAR) {
+      const v = st[s + '·max'];
+      if (v == null) continue;
+      _carN++;
+      if (!_worst || v > _worst.v) _worst = { d, s, v };
+      if (v > _cap6) _over.push(`day ${d} ${s} ${v}ms`);
+    }
+  }
+  console.log(`  5판(선계산 뒤 ${_days6.length}일 · 못 본 날 ${_miss6.length})  캐러밴 조각 최대 ${_worst ? _worst.v + 'ms(' + _worst.s + ' · day ' + _worst.d + ')' : '?'}`
+    + ` · 상한 ${_cap6}ms · 그날 최대 ${P6L && P6L.econTick.last ? P6L.econTick.last.maxChunk + 'ms(' + P6L.econTick.last.maxChunkAt + ')' : '?'} · 마지막 날 창 콜드 ${dLast}`);
+  ok(_days6.length > 0 && _carN > 0, '⑥ [상황] 선계산 뒤 날들의 캐러밴 조각을 **실제로** 읽었다(0이면 아래가 자명 통과다)',
+    `${_days6.length}일 · 캐러밴 조각 칸 ${_carN}`);
+  ok(_miss6.length === 0 && _over.length === 0,
+    '⑥ ★★선계산 뒤 **캐러밴 조각(속 이름 셋 각각)이 한 조각 상한 안**이다(⑦d 와 같은 자 · 콜드 A* 조각 242~482ms 를 잡는 줄)',
+    `최대 ${_worst ? _worst.v : '?'}ms ≤ 예산 ${(P6L && P6L.sliceMs) | 0}ms + 알갱이 ${_prL.pathChunkMax | 0}ms + 20ms`
+    + (_over.length ? ` · 넘은 것 ${_over.join(', ')}` : '') + (_miss6.length ? ` · 못 본 날 ${_miss6.join(',')}` : ''));
 
   // ── ★★[T85 2026-09-03] ⑧ 재개 가능 A* — **정본 시드 세계 전 쌍이 비트 동일** ──────────────
   //   ★왜 여기인가: 579쌍은 **이 세계가 실제로 쓰는 쌍**이다(선계산 큐가 세운 그것).
