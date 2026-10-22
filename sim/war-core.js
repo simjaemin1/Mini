@@ -403,8 +403,9 @@ function _capComplete(fromVil, toVil, npc) {
 //     종전에도 승자는 제 무기를 잃지 않았다). 그래서 **귀환 뒤 곳간은 끔과 같다** — 다른 것은 원정 **동안**뿐이다.
 //   ★방어 소집은 안 건다 — 마을 안에서 들고 마을 안에서 내려놓는다(같은 날 · 장부 무변).
 //   손잡이: `T403_ARMS_LEDGER=1` 일 때만. 끔이면 `w._arms` 가 안 생기고 아래 두 함수는 0 을 낸다 = 비트 동일.
-// ★[T423] 짐이 먹는다(군량 = 행위 ⓐ) — 손잡이 `T423_RATION_ACT=1` 일 때만. 끔이면 아래 문들이 한 글자도 안 돈다.
-function _rationActOn() { return typeof process !== 'undefined' && !!process.env && process.env.T423_RATION_ACT === '1'; }
+// ★[T423] 짐이 먹는다(군량 = 행위 ⓐ) — 손잡이 `T423_RATION_ACT`. 끔이면 아래 문들이 한 글자도 안 돈다.
+//   ★★[T861 2026-10-22] **켬 기본**(★PM 10-22 · T845 — 징발 묶임 · 몰사 0 · 재민 09-26 캐논 ⓐ 군량은 짐이 먹는다) — `!== '0'` · 되돌림 `T423_RATION_ACT=0`(= T861 전 바이트).
+function _rationActOn() { return typeof process !== 'undefined' && !!process.env && process.env.T423_RATION_ACT !== '0'; }
 // ★★[T466] 약탈 = 행위(군량 행위 ⓒ · PM #68 · 재민 "즉시 판정이 아니라 물리 노획 → 운반 → 귀가 저장") — 손잡이 끔.
 function _lootActOn() { return typeof process !== 'undefined' && !!process.env && process.env.T466_LOOT_ACT === '1'; }
 function _armsLedgerOn() { return typeof process !== 'undefined' && !!process.env && process.env.T403_ARMS_LEDGER === '1'; }
