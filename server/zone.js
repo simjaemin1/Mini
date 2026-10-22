@@ -1476,7 +1476,7 @@ function savePlayer(player, extra = {}) {
   //   (나) 받는 존이 몸을 안 받았다 — 준비 응답 전(받는 존 응답 기다림)에 닫힘 · 준비 실패(`_t564HandoffFail` — `handingOff = false` · 몸이 출발 존에 남는 판)
   //       → 종전대로 보낸다(몸 칸 · 자리 칸은 아래 T831 대로).
   //   끔(`=0`) = 이 줄이 첫 비교에서 빠진다(종전 바이트). T498 켬(끔 기본)이 ACK 시한에 보내는 쥔 행(`_saveSend` 직접)은 이 문 밖이다(보고 회부).
-  if (T823_FREEZE_SHELL && player.handingOff && _t843Handed(player)) return;
+  if (_t843Skip(player)) return;   // ★[T843 · T867] 술어 한 자리(`_t843Skip` — 이 저장과 T498 ACK 시한의 쥔 행이 같이 부른다)
   const pt = _savePatch(player, extra);
   // ★★[T831 2026-10-21 · T823 회부 3 · 손잡이 `T823_FREEZE_SHELL` 켬 갈래] **넘긴 몸 껍데기의 저장은 이 존의 자리를 안 쓴다.**
   //   껍데기(`handingOff` — 이미 있는 칸)는 ACK(최대 3초)까지 이 존 `players` 에 남는다. 그동안 닫힐 때 저장(소켓 `close` · ACK 시한이 닫을 때도) ·
@@ -1495,6 +1495,9 @@ function _t843Handed(p) {
   for (const e of outgoingHandoffs.values()) if (e.pid === p.pid) return true;
   return false;
 }
+// ★★[T843 · T867 2026-10-22] 껍데기의 저장을 거를 때인가 — **술어 하나 · 부르는 곳 둘**(사본 0): `savePlayer` 머리(T843 — 닫힐 때 · 주기 · 종료 flush · 맨 저장)와
+//   `fireHandoff` ACK 시한의 T498 쥔 행(T867 — `_saveSend` 직접이라 `savePlayer` 를 안 지난다). 켬 갈래(`T823_FREEZE_SHELL`) · 껍데기(`handingOff`) · 받는 존이 몸을 받았다.
+function _t843Skip(p) { return T823_FREEZE_SHELL && !!p.handingOff && _t843Handed(p); }
 // ★[T498] 저장 = **행 만들기**(`_savePatch` · 그 순간의 몸 스냅샷) + **보내기**(`_saveSend`). 몸통은 종전 `savePlayer` 그대로 둘로 갈랐을 뿐이다 —
 //   핸드오프가 **떠나는 순간의 행**을 쥐고 있다가 실패했을 때만 보내려면 둘이 따로 불려야 한다(`fireHandoff`).
 function _savePatch(player, extra = {}) {
@@ -15642,6 +15645,7 @@ async function fireHandoff(player, targetZoneId, newX, newY) {
   //   켜면: 떠나는 순간의 행을 **쥐고만** 있다가 — 인계가 실패한 쪽(ACK 가 3초 안에 안 옴)에서만 보낸다(종전 경로와 같은 행 · 같은 뜻).
   //     성공 쪽에서 보내지 않는 까닭: ACK 뒤에 보내면 도착 존이 그 사이 쓴 새 행을 옛 행으로 덮을 창이 생긴다.
   //   ⚠몸을 안 싣는 판(`E2E_HANDOFF_NO_BODY` 픽스처 — 도착이 행을 읽는다)은 종전대로 기다린다.
+  //   ★[T867] T823 켬이면 ACK 시한의 쥔 행도 T843 술어를 지나 안 나간다(아래 시한 주석) — 켬 · 켬 판의 실패 쪽 행은 넘기기 전 마지막 저장이다.
   let _t498Held = null;
   if (T498_HANDOFF_PAYLOAD && !E2E_HANDOFF_NO_BODY) {
     if (canPersist(player)) _t498Held = { playerId: player.playerId, patch: _savePatch(player, { last_zone: targetZoneId, last_x: newX, last_y: newY }) };
@@ -15705,7 +15709,12 @@ async function fireHandoff(player, targetZoneId, newX, newY) {
         console.warn(`[${ZONE_ID}] ⚠ ACK timeout token=${token.slice(0,8)} — fallback 정리`);
       }
       // ★[T498] 인계가 확인되지 않았다 — 떠나는 순간 쥔 행을 이제 보낸다(끔 판이 떠나기 전에 써 둔 그 행과 같다)
-      if (_t498Held) { _saveSend(_t498Held.playerId, _t498Held.patch); console.warn(`[${ZONE_ID}] ⚠ [T498] ACK 없음 — 떠나는 순간의 행 저장`); }
+      // ★★[T867 2026-10-22 · T843 회부 1] 그 쥔 행도 T843 술어(`_t843Skip` — 같은 함수 · 사본 0)를 지난다. 시한은 받는 존 준비 응답 OK 뒤(토큰을 준 뒤)에만 돌므로
+      //   T823 켬이면 술어가 늘 참이다 → 쥔 행은 안 나간다. 받는 존이 몸을 받고 ACK 만 잃은 판에서 그 행(넘긴 순간 몸)이 도착 존의 새 저장을 되돌렸다
+      //   (T831 순서 강제 탐침 · T498 켬 J 판 10/10 — 행 생선 2 → 3). 사람이 받는 존에 끝내 안 붙은 판은 행이 넘기기 전 마지막 저장(행동 저장은 그 자리에서 ·
+      //   주기 30초)에 머문다 — 받는 존 대기 몸은 5초 뒤 지워진다. T823 끔(`=0`)이면 종전대로 보낸다. T498 끔(기본)이면 `_t498Held` 가 없어 이 줄은 안 돈다.
+      if (_t498Held && !_t843Skip(player)) { _saveSend(_t498Held.playerId, _t498Held.patch); console.warn(`[${ZONE_ID}] ⚠ [T498] ACK 없음 — 떠나는 순간의 행 저장`); }
+      else if (_t498Held) console.warn(`[${ZONE_ID}] · [T498 · T867] ACK 없음 — 받는 존이 몸을 받은 판이라 쥔 행은 안 보낸다(몸은 도착 존 것 · T843 술어)`);
     }
   }, 3000);
   outgoingHandoffs.set(token, { pid, timeoutHandle });
