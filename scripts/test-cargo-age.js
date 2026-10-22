@@ -249,7 +249,7 @@ say('\n⑧ [T840] 다리 노출에 마을 고도 — 장부와 같이(손잡이 
 const GLS = fs.readFileSync(path.join(ROOT, 'server', 'granary-lots.js'), 'utf8');
 ok(/const T840_LEG_ELEV = \(typeof process !== 'undefined' && process\.env && process\.env\.T840_LEG_ELEV === '1'\);/.test(src) && /const T840 = process\.env\.T840_LEG_ELEV === '1';/.test(GLS),
   '⑧ 손잡이 하나(`=== \'1\'` · econ v2 · 장부 둘이 같은 env)');
-ok(typeof E.elevKmOf === 'function' && src.includes('const _elev = _elevKmOf(v);') && /require\('\.\.\/sim\/economy-sim-v2\.js'\); _t840E = \(m && typeof m\.elevKmOf === 'function'\)/.test(GLS),
+ok(typeof E.elevKmOf === 'function' && src.includes('const _elev = _elevKmOf(v);') && /require\('\.\.\/sim\/economy-sim-v2\.js'\); _elevFn = \(m && typeof m\.elevKmOf === 'function'\)/.test(GLS) && GLS.includes('const e = _elevOf(v);'),
   '⑧ 고도 값은 한 함수(`elevKmOf` — econ 기온이 쓰는 그 값 · 장부가 그것을 부른다 · 사본 0)');
 ok(src.includes('_t784F(cand.res, travelDaysForDistance(dist), day, _elevKmOf(b.v))') && src.includes('_t784F(c2.res, travelDaysForDistance(best.dist), day, _elevKmOf(best.b.v))') && src.includes('_t784F(res, n, day - n, _elevKmOf(c.to))')
   && GLS.includes('pushIn(v, res, _legSettle(recs.map((r) => _copy(r, r.u * frac)), v))'), '⑧ 배선 — 출발 결정 둘 · 도착 매도 = 도착 마을 고도 · 장부는 짐을 내리는 그 마을 고도로 몸에 지님 구간을 정산');

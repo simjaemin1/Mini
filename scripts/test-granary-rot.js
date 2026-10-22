@@ -282,7 +282,7 @@ say('\n⑤ 글자 — 손잡이 한 자리 · 마감이 목록을 넘긴다 · �
   ok(/return _t789View\(\(\) => Object\.assign\(\{ ok: true \}, _T732_ON \? Trade\.board\(/.test(VS) && /const q = _t789View\(\(\) => Trade\.quote\(/.test(VS),
     '⑤ 시세표 · 견적이 사람의 문과 같은 눈(견적 = 실행)');
   ok(/function doorOpen\(v\) \{ return !!\(ON && LED\.has\(v\) && doorBegin\(true\)\); \}/.test(G) && /if \(T789 && !hands && _viewOpen\(\)\) _door\.view = true;/.test(G), '⑤ 몸 손 문은 눈을 안 연다 · 사람의 문만');
-  ok(/Spoil\.isSpoiled\(r\.it != null \? r\.it : res, Spoil\.exposureAt\(r, nf, 0\)\)/.test(G), '⑤ 상한 판정 = spoil 정본 하나(`isSpoiled` · 품목 = 레코드의 품목 · 노출 = 그 순간까지 · 새 수 0)');
+  ok(/Spoil\.isSpoiled\(r\.it != null \? r\.it : res, Spoil\.exposureAt\(r, nf, e \|\| 0\)\)/.test(G), '⑤ 상한 판정 = spoil 정본 하나(`isSpoiled` · 품목 = 레코드의 품목 · 노출 = 그 순간까지 · 새 수 0 · ★[T856] 고도 = 그 곳간 · 끔 0)');
 }
 
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===`);
