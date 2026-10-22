@@ -481,7 +481,8 @@ async function runDays(n) {
   const dLast = (_prL.routeCold || 0) - (pr6.routeCold || 0);
   const _mAt = P6L && P6L.econTick.last ? P6L.econTick.last.maxChunkAt : null;
   //   ★[T828] 캐러밴 조각은 속 이름 셋(`caravan_body` · `caravan_fish` · `caravan_sync`)으로 갈렸다 — 셋 = 종전 `caravan`(단언 무변).
-  const _isCar = (s) => s === 'caravan' || s === 'caravan_body' || s === 'caravan_fish' || s === 'caravan_sync';
+  //   ★[T851] `caravan_sync` 안은 다시 셋(`caravan_sync:cold` · `:resume` · `:spawn`) — 넷 다 종전 `caravan_sync`(단언 무변).
+  const _isCar = (s) => s === 'caravan' || s === 'caravan_body' || s === 'caravan_fish' || s === 'caravan_sync' || /^caravan_sync:/.test(s || '');
   ok(!!_mAt && (!_isCar(_mAt) || dLast === 0), '⑥ ★★가장 큰 조각이 더는 **캐러밴 A\*가 아니다**(캐러밴 꼬리표면 그날 낀 창의 콜드 0)',
     P6L && P6L.econTick.last ? `${P6L.econTick.last.maxChunk}ms(${_mAt}) · 그 창 콜드 ${dLast}` : '?');
 
