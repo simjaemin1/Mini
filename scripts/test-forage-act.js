@@ -680,7 +680,13 @@ console.log('\n⑮ [T450] 야생 군락 — 서식이 낳는다 (T415 표 · 손
   const PICK0 = pickOf(false), PICK1 = pickOf(true);
   ok(PICK0.size > 0 && !kinds.some((k) => PICK0.has(k)), 'ⓕ ★끔 — 채집꾼·원정군이 따는 종(정본 `forageKinds`)엔 야생 군락 종이 **없다** — 끔 판 마을 채집 비트 동일의 근거', `{${[...PICK0].join(', ')}}`);
   ok([...PICK0].every((k) => PICK1.has(k)) && kinds.some((k) => PICK1.has(k)), 'ⓕ ★★[T462] 켬 — 야생 군락 종이 **든다**(덤불·풀은 그대로)', `{${[...PICK1].join(', ')}}`);
-  const vv = (TT.getZoneVillages(Z) || []).find((v) => { const c = cls(v.x, v.y); return c === 'forest' || c === 'edge'; }) || (TT.getZoneVillages(Z) || [])[0];
+  // ★[T808] 마을 고르기 — 숲·가장자리 마을 중 원판 안에 야생 개체가 **하나라도 서는** 첫 마을(초기화 판 31곳 자리 옮김 뒤 첫 숲 마을(어촌2) 원판엔 야생이 0 이었다 —
+  //   야생은 셀 해시로 서는 지형 산물이라 어느 마을 원판에 드는지는 자리 운이다 · 이 줄이 무는 것은 "선 야생을 채집꾼 종 집합이 본다"이다). 그런 마을이 없으면 종전 고르기.
+  const _vs = (TT.getZoneVillages(Z) || []).filter((v) => { const c = cls(v.x, v.y); return c === 'forest' || c === 'edge'; });
+  const _wildIn = (v) => { process.env.T450_WILD_GROVES = '1'; let k = 0; const vx = Math.floor(v.x / 32), vy = Math.floor(v.y / 32);
+    for (let dy = -R30; dy <= R30 && !k; dy++) for (let dx = -R30; dx <= R30; dx++) { if (dx * dx + dy * dy > R30 * R30) continue; if (CH.resourcesAtCell(Z, vx + dx, vy + dy, { biome: ZN.biome, chunkSize: cs }).some(isW)) { k = 1; break; } }
+    delete process.env.T450_WILD_GROVES; return k; };
+  const vv = _vs.find(_wildIn) || _vs[0] || (TT.getZoneVillages(Z) || [])[0];
   const viewOf = (on) => { const P = on ? PICK1 : PICK0; if (on) process.env.T450_WILD_GROVES = '1'; else delete process.env.T450_WILD_GROVES; let s = '', n = 0, w = 0, other = 0;
     const vx = Math.floor(vv.x / 32), vy = Math.floor(vv.y / 32);
     for (let dy = -R30; dy <= R30; dy++) for (let dx = -R30; dx <= R30; dx++) { if (dx * dx + dy * dy > R30 * R30) continue;

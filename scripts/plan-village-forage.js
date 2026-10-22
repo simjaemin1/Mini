@@ -36,7 +36,7 @@
 // ★데이터 손편집 금지 — 이 스크립트가 `server/<zone>-terrain.json` 의 `groves` 를 통째로 다시 쓴다
 //   (`--apply`). 다시 돌리면 같은 결과가 나온다(결정론 · 재현 가능).
 //
-// 실행: node scripts/plan-village-forage.js [--zone hanbando] [--apply]
+// 실행: node scripts/plan-village-forage.js [--zone hanbando] [--apply] [--reset(초기화 판 전용 · T848)]
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -52,6 +52,11 @@ const APPLY = has('--apply');
 //   `fits`·`RING_IN/OUT`·`GROVE_R`·`GROVE_N`·`SCENE_GUARD` 그대로 쓰고, 나무와 겹치는 자리만 **더 뺀다**
 //   (카드 ③ — 숲 격자와 군락이 같은 셀을 쓰면 둘 중 하나가 못 선다 · 개체는 `chunk` 정본에 묻는다).
 const DRY = has('--dry');
+// ★★[T848 2026-10-22 · PM 10-22 결정 B] `--reset` — **초기화 판 전용 문 하나.** 처방 결과를 **처방 순서 그대로 통째** 쓴다(접두 검사 대신 머리 표지).
+//   왜: 마을 자리를 옮기면(T808 · 한반도 31 · 닛폰 13) 옮긴 마을 링의 처방 자리도 옮겨, 옛 군락이 새 계획에 없다 → `keepOrder` · 접두 검사가 멈춘다(T836 §2).
+//   접두 불변이 지키는 것은 존 DB 의 "이미 캤다" 기록(seedKey = 배열 인덱스)인데, **초기화 판은 존 DB 를 지운다**(`reset-world.sh`) — 그 기록이 없다.
+//   그 밖 길은 그대로다: 측정 · 처방 · 줄어듦 안전장치(`--allow-shrink` 없이는 수가 줄면 멈춘다) · 결정론. 산 세계(존 DB 가 남는 판)에 쓰지 마라.
+const RESET = has('--reset');
 
 const ROOT = path.join(__dirname, '..');
 process.env.ZONE_ID = process.env.ZONE_ID || ZID;
@@ -193,6 +198,7 @@ function pickSite(v, kind, taken) {
 // ── 실행 ────────────────────────────────────────────────────────────────────
 const villages = T.getZoneVillages(ZID) || [];
 console.log(`\n=== 마을 어귀 채집 군락 배치 · ${ZID} · 마을 ${villages.length}곳 ===`);
+if (RESET) console.log('  ★초기화 판 전용(--reset) — 접두 검사 없음 · 군락 배열을 처방 순서로 통째 다시 쓴다 · seedKey 인덱스가 바뀐다 → 존 DB 를 지우는 초기화 판에만');
 console.log(`  링 ${RING_IN}~${RING_OUT}px(감사 반경 ${R_AUDIT}px 안 · 골목 400px·회관 여유 528px 밖) · 군락 반경 ${GROVE_R}px · 점 ${GROVE_N}개`);
 console.log(`  회귀 장면 보호구 ${SCENE_GUARD.length}곳 반경 ${GUARD_R}px (e2e-nature·e2e-terrain 반례 자리)\n`);
 
@@ -318,6 +324,16 @@ if (APPLY) {
     console.error(`\n  ✗ 중단: 군락이 ${before}개 → ${groves.length}개로 **줄어든다**. 측정이 틀렸을 가능성이 크다.`);
     console.error(`    정말 줄이려면 --allow-shrink 를 붙여라(그럴 이유를 보고서에 적어라).\n`);
     process.exit(1);
+  }
+  if (RESET) {   // ★[T848] 초기화 판 문 — 처방 결과 통째(접두 검사 대신 위 머리 표지)
+    d.groves = groves;
+    fs.writeFileSync(GAMEJSON, JSON.stringify(doc));
+    const key = (g) => `${g.vil}|${g.kind}|${g.center[0]}|${g.center[1]}`, E = new Set(existing.map(key)), P = new Set(groves.map(key));
+    let same = 0; for (let i = 0; i < Math.min(before, groves.length); i++) if (key(existing[i]) === key(groves[i])) same++;
+    console.log(`  → 적용(초기화 판): ${path.relative(ROOT, GAMEJSON)} 의 groves = ${groves.length}개(옛 ${before}개) · 같은 인덱스 같은 군락 ${same} · ` +
+                `옛 자리 사라짐 ${existing.filter((g) => !P.has(key(g))).length} · 새 자리 ${groves.filter((g) => !E.has(key(g))).length} — seedKey 가 바뀐다(초기화 판 전용)`);
+    console.log('');
+    process.exit(0);
   }
   const ord = keepOrder(groves, existing);
   if (!ord.ok && !has('--allow-shrink')) {

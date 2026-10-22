@@ -437,6 +437,12 @@ function warArmsReturn(w) {
   a.back = n; a.weapon = 0; a.done = true;
   return n;
 }
+// 무기를 곳간에 들인다 — 품질 가중평균(결판 흐름의 회수 · ★[T857] 전장 더미를 이긴 몸이 주워 곳간에 · 같은 문 하나 · 사본 0)
+function weaponGive(winnerE, qL, gain) {
+  const wOld = winnerE.storage.weapon || 0, qW = (winnerE._weapQ != null ? winnerE._weapQ : _warWEAP_Q_STONE);
+  winnerE.storage.weapon = wOld + gain;
+  winnerE._weapQ = (wOld + gain) > 0 ? ((qW * wOld + qL * gain) / (wOld + gain)) : qW;
+}
 // 무기 드랍·궤주 투기(econ) — 사망자 드랍 승자 0.7 회수 + 궤주 기대 투기 승자 0.5 회수. 품질 가중평균.
 //   ★[T403] `loserHold` — 패자의 무기가 **곳간이 아니라 원정 짐**에 있을 때(반출 장부 켬 · 공격이 졌을 때) 그 짐.
 //     규칙(드랍 = 전사 × 무장비 · 투기 = 궤주 × p × 무장비 · 회수 0.7/0.5)은 **한 글자도 안 바뀐다** — 빼는 자리만 바뀐다.
@@ -453,9 +459,8 @@ function warWeaponFlow(winnerE, loserE, loserStart, loserDead, routN, routMrl, s
   const loss = drop + desert; if (loss <= 0.01) return null;
   _src.weapon = lw0 - loss;
   const gain = drop * WAR_SALV_DEAD + desert * WAR_SALV_DESERT;
-  const wOld = winnerE.storage.weapon || 0, qW = (winnerE._weapQ != null ? winnerE._weapQ : _warWEAP_Q_STONE), qL = (loserE._weapQ != null ? loserE._weapQ : _warWEAP_Q_STONE);
-  winnerE.storage.weapon = wOld + gain;
-  winnerE._weapQ = (wOld + gain) > 0 ? ((qW * wOld + qL * gain) / (wOld + gain)) : qW;
+  const qW = (winnerE._weapQ != null ? winnerE._weapQ : _warWEAP_Q_STONE), qL = (loserE._weapQ != null ? loserE._weapQ : _warWEAP_Q_STONE);
+  weaponGive(winnerE, qL, gain);
   if (st) st.weaponLoot = (st.weaponLoot || 0) + 1;
   return { drop, desert, loss, gain, pDesert: pDes, newQ: winnerE._weapQ, qUp: qL > qW + 0.02 };
 }
@@ -1111,7 +1116,7 @@ function createWar(opts) {
       if (J < WAR_REP_TH) { A._warFatigue = (A._warFatigue || 0) + (WAR_REP_TH - J) * WAR_J_FAT; outcome += ' [불의전 피로]'; }
     } else { st.defWin++; warAddTrauma(A, w.def.name, WAR_TRAUMA_UP); A._warCaution = Math.min(1, (A._warCaution || 0) + 0.5); }
     if (!_den) warThirdPartyRep(w.atk, w.def, J, day);   // ★[T476] 소굴 토벌엔 관전 마을의 평판 소문이 없다
-    { const _ls = atkWin ? _res.defStart : _res.atkStart, _ld = atkWin ? _defDead : _atkDead; const _rn = atkWin ? (_res.routB || 0) : (_res.routA || 0), _rm = atkWin ? _res.routMrlB : _res.routMrlA; const _w0 = winnerE.storage.weapon; const _wf = warWeaponFlow(winnerE, loserE, _ls, _ld, _rn, _rm, st, (!atkWin && w._arms) ? w._arms : undefined); if (_wf && atkWin && _wf.gain > 0 && w._arms && !w._arms.done && w._armsOnBodies && _lootBodyOn()) { winnerE.storage.weapon = _w0 || 0; w._arms.weapon += _wf.gain; w._arms.loot = (w._arms.loot || 0) + _wf.gain; st.lootBody = (st.lootBody || 0) + _wf.gain; } if (_wf) outcome += ' +노획' + _wf.gain.toFixed(1) + (_wf.qUp ? '·품질↑' + _wf.newQ.toFixed(2) : ''); if (w._arms) _syncArmsToEcon(w.atk); }   // ★[T764] 짐에서 빠진 몫을 거울에(끔 = 칸 없음)
+    { const _ls = atkWin ? _res.defStart : _res.atkStart, _ld = atkWin ? _defDead : _atkDead; const _rn = atkWin ? (_res.routB || 0) : (_res.routA || 0), _rm = atkWin ? _res.routMrlB : _res.routMrlA; const _w0 = winnerE.storage.weapon; const _bodyLose = !atkWin && w._arms && !w._arms.done && w._armsOnBodies; const _wf = _bodyLose ? null : warWeaponFlow(winnerE, loserE, _ls, _ld, _rn, _rm, st, (!atkWin && w._arms) ? w._arms : undefined); if (_bodyLose) outcome += ' +전장 더미(몸 짐)'; if (_wf && atkWin && _wf.gain > 0 && w._arms && !w._arms.done && w._armsOnBodies && _lootBodyOn()) { winnerE.storage.weapon = _w0 || 0; w._arms.weapon += _wf.gain; w._arms.loot = (w._arms.loot || 0) + _wf.gain; st.lootBody = (st.lootBody || 0) + _wf.gain; } if (_wf) outcome += ' +노획' + _wf.gain.toFixed(1) + (_wf.qUp ? '·품질↑' + _wf.newQ.toFixed(2) : ''); if (w._arms) _syncArmsToEcon(w.atk); }   // ★[T764] 짐에서 빠진 몫을 거울에(끔 = 칸 없음)
     // ★[3파 포로] 화면 층 인계 스태시 — villages._warOnResolved가 패자측 사상 표본 pid 일부를 호송 실체로 전환(승자 마을 이관).
     if (_cap.take.length || _cap.freed) {
       w._capResolve = { side: atkWin ? 'B' : 'A', npcs: _cap.take.slice(), freedN: _cap.freed, day };
@@ -1251,6 +1256,8 @@ function createWar(opts) {
     warDraftBind, warDraftFill, warDraftReleasePid, warDraftReleaseWar, warDraftCount, warRationRefund,
     packSplit, bodyEat, bagFE, rationLayDown, rationActOn: _rationActOn,
     lootGive, lootActOn: _lootActOn, warLog: (day, m) => log(day, m),   // ★[T466] 약탈 = 행위(손잡이 끔 · 끔이면 호스트 훅을 안 부른다)   // ★[T423] 짐이 먹는다(손잡이 끔이면 packSplit 이 null)
+    syncArmsMirror: (vil) => _syncArmsToEcon(vil),   // ★[T857] 호스트가 결판 자리에서 장부를 움직인 뒤 거울을 다시 센다(같은 함수 · 사본 0)
+    weaponGive,   // ★[T857] 이긴 방어 몸이 결판 자리 더미를 주워 곳간에(결판 흐름의 그 문 · 사본 0)
     _rationLayDownAll,   // ★[T748] 귀환 도착 내려놓기 — 하네스(`test-moment-lot` ⑨)가 **이 함수**를 그대로 부른다(몸 짐 레코드째 · 사본 0)
     // ★[3파 포로] 접점
     CAP_ON: WAR_CAP_ON, warCaptiveDaily,
@@ -1287,7 +1294,7 @@ const WarCore = {
   // 원한·명분·노획(pure — econ 입력)
   warFE, warGrudge, warAddGrudge, warTrauma, warAddTrauma, warJustice, warWeaponFlow,
   // ★[T403] 무기 반출/반납 장부(손잡이 `T403_ARMS_LEDGER` · 끔 = null/0)
-  warArmsOut, warArmsReturn,
+  warArmsOut, warArmsReturn, weaponGive,
   // ★[T732] 곳간 로트 장부 훅(서버 켬일 때만 꽂는다 · 랩·CLI·브라우저는 안 꽂는다 = 무동작)
   setLotHook,
   // 팩토리

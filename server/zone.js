@@ -1468,6 +1468,15 @@ function _lastSeenDayToSave(player) {
 }
 function savePlayer(player, extra = {}) {
   if (!canPersist(player)) return;
+  // ★★[T843 2026-10-22 · T831 회부 1 · ★PM 10-22 결함 — 정본 한 몸: 넘긴 뒤 몸은 도착 존 것 · 손잡이 `T823_FREEZE_SHELL` 켬 갈래] **받는 존이 몸을 받은 뒤의
+  //   껍데기 저장은 몸 칸도 안 쓴다 — 통째로 안 보낸다.** 자리 칸만 빼던(T831 · 아래) 늦은 저장이 몸 칸(언 몸 = 넘긴 순간)으로 도착 존의 새 행동 저장을
+  //   덮어 행의 몸이 넘긴 순간으로 되돌아갔다(T831 순서 강제 탐침 스무 판 모두 — 그 사이 도착 존이 죽으면 복제). 갈래 둘(이미 있는 칸만 · `_t843Handed`):
+  //   (가) 받는 존 준비 응답 OK 뒤 — ACK 기다림 표(`outgoingHandoffs`)에 이 몸이 있다 · 또는 ACK · ACK 시한이 이미 이 존 `players` 에서 내렸다 → 안 보냄.
+  //       행엔 넘기기 전 저장(`fireHandoff` · 켬이면 언 몸 = 페이로드)이 같은 몸을 이미 썼다 — 안 보내도 잃는 칸 0.
+  //   (나) 받는 존이 몸을 안 받았다 — 준비 응답 전(받는 존 응답 기다림)에 닫힘 · 준비 실패(`_t564HandoffFail` — `handingOff = false` · 몸이 출발 존에 남는 판)
+  //       → 종전대로 보낸다(몸 칸 · 자리 칸은 아래 T831 대로).
+  //   끔(`=0`) = 이 줄이 첫 비교에서 빠진다(종전 바이트). T498 켬(끔 기본)이 ACK 시한에 보내는 쥔 행(`_saveSend` 직접)은 이 문 밖이다(보고 회부).
+  if (T823_FREEZE_SHELL && player.handingOff && _t843Handed(player)) return;
   const pt = _savePatch(player, extra);
   // ★★[T831 2026-10-21 · T823 회부 3 · 손잡이 `T823_FREEZE_SHELL` 켬 갈래] **넘긴 몸 껍데기의 저장은 이 존의 자리를 안 쓴다.**
   //   껍데기(`handingOff` — 이미 있는 칸)는 ACK(최대 3초)까지 이 존 `players` 에 남는다. 그동안 닫힐 때 저장(소켓 `close` · ACK 시한이 닫을 때도) ·
@@ -1478,6 +1487,13 @@ function savePlayer(player, extra = {}) {
   //   넘기기가 실패하면(`_t564HandoffFail`) `handingOff = false` 라 그 뒤 저장은 종전대로 이 존 자리를 쓴다. 끔(`=0`) = 이 줄이 첫 비교에서 빠진다(종전 바이트).
   if (T823_FREEZE_SHELL && player.handingOff && (pt.last_zone == null || pt.last_zone === ZONE_ID)) { delete pt.last_zone; delete pt.last_x; delete pt.last_y; }
   return _saveSend(player.playerId, pt);
+}
+// ★[T843] 받는 존이 이 몸을 받았나 — 이미 있는 칸 둘로만 안다(새 칸 0). ACK 기다림 표(`outgoingHandoffs` — 받는 존 준비 응답이 OK 여야 토큰을 주며 선다)에
+//   이 몸이 있거나(ACK 를 기다린다), 이 객체가 더는 이 존의 몸이 아니다(`players` 에서 ACK · ACK 시한이 내렸다 — 남은 것은 껍데기 객체뿐).
+function _t843Handed(p) {
+  if (players.get(p.pid) !== p) return true;
+  for (const e of outgoingHandoffs.values()) if (e.pid === p.pid) return true;
+  return false;
 }
 // ★[T498] 저장 = **행 만들기**(`_savePatch` · 그 순간의 몸 스냅샷) + **보내기**(`_saveSend`). 몸통은 종전 `savePlayer` 그대로 둘로 갈랐을 뿐이다 —
 //   핸드오프가 **떠나는 순간의 행**을 쥐고 있다가 실패했을 때만 보내려면 둘이 따로 불려야 한다(`fireHandoff`).
@@ -5921,6 +5937,7 @@ const T518_ONE_JUDGE = process.env.T518_ONE_JUDGE !== '0';
 //   직렬화(`serializeBody`)는 `handingOff` 를 세운 뒤에 돈다 — 켜면 그 사이(저장 왕복)에도 몸이 안 변해 페이로드 = 세운 순간의 몸 = 껍데기.
 //   넘기기가 실패하면(`_t564HandoffFail` — `handingOff = false`) 그 순간부터 다시 걷는다(언 동안은 시간이 안 흐른 몸 — 최대 5초 · 새 수 0).
 //   ★[T831] 켬 갈래는 껍데기의 **저장**도 이 존의 자리 칸(`last_zone · last_x · last_y`)을 안 쓴다 — 닫힐 때 저장 자리 경합(`savePlayer` 머리 주석).
+//   ★[T843] 받는 존이 몸을 받은 뒤의 껍데기 저장은 몸 칸도 안 쓴다 — 통째로 안 보낸다(`savePlayer` 머리 · 갈래 둘 `_t843Handed`).
 const T823_FREEZE_SHELL = process.env.T823_FREEZE_SHELL !== '0';
 const E2E_CONN_FAIL = (process.env.E2E_GIVE === '1') ? (process.env.E2E_CONN_FAIL || '') : '';
 const E2E_CONN_HANG = (process.env.E2E_GIVE === '1') ? (process.env.E2E_CONN_HANG || '') : '';
@@ -6089,6 +6106,7 @@ async function _acceptConnection(ws, req, C) {
     //     (`E2E_HANDOFF_NO_BODY` 픽스처 · 옛 존 창만이 아니다). 그 행은 하나가 아니다 — 넘기기 전 저장(`fireHandoff` · 넘긴 순간 몸 ·
     //     `T498_HANDOFF_PAYLOAD` 켬이면 ACK 가 안 올 때만)과 떠난 몸 껍데기가 닫힐 때 저장(소켓 `close` · 껍데기의 마지막 몸) 중 이 줄이 읽기 전에
     //     닿은 쪽이다(경합 · "정의상 같다"는 그 둘 사이에 껍데기가 안 변할 때만 참 — `T823_FREEZE_SHELL` 켬이면 껍데기가 얼어 둘이 같은 몸이다).
+    //   ★[T843] 켬이면 받는 존이 몸을 받은 뒤(이 줄에 닿았다면 늘 그렇다)의 껍데기 저장은 안 나간다(`savePlayer` 머리) — 그 행은 넘기기 전 저장 하나다.
     let _pendBody = pending.body || null, _bodySrc = 'payload';
     if (!_pendBody) {
       try {
@@ -6608,11 +6626,11 @@ async function _acceptConnection(ws, req, C) {
       charRunMin: parseFloat(process.env.CHAR_RUN_MIN || '') || 102,
       ...(process.env.T492_SEASON_AMB === 'on' ? { seasonAmb: true } : {}),   // [T492] 계절 환경음 손잡이 — 끔이면 칸이 없다(welcome 바이트 동일)
       ...(_t507On() ? { t507Verbs: true } : {}),
-      ...(process.env.T838_WD_AWAKE === '1' ? { wdAwake: true } : {}),   // [T838] 클라 두 감시(pong · 서버 틱)가 **클라가 멈춰 있던 시간**을 서버 침묵으로 안 센다(30-n-net) — 기본 끔 · 끔이면 칸이 없다(welcome 바이트 동일) · `1` 켬
+      ...(process.env.T838_WD_AWAKE !== '0' ? { wdAwake: true } : {}),   // [T838 · ★T849 켬 기본 — PM 10-22] 클라 두 감시(pong · 서버 틱)가 **클라가 멈춰 있던 시간**을 서버 침묵으로 안 센다(30-n-net) · 되돌림 `T838_WD_AWAKE=0` 이면 칸이 없다(옛 welcome · 종전 감시)
       ...(process.env.T813_RMB_PRESS !== '0' ? { rmbPress: true } : {}),   // [T813 · ★T819 켬 기본 — PM 10-20] 우클릭 탭 메뉴는 **누른 순간의 화면**으로 짚는다(46-h-verbs) · 되돌림 `T813_RMB_PRESS=0` 이면 칸이 없다(옛 welcome · 뗄 때의 화면)
       ...(_streamOn() ? { streams: Streams.wireOf(ZONE_ID) ? Streams.wireOf(ZONE_ID).ver : true, streamSlow: Streams.STREAM_SLOW0 } : {}),   // [T585] 개울 — 클라가 `/streams.bin` 을 받아 그리고 걸음 예측에 쓴다(배율도 서버 정본 수)
       ...(VillageKin.ON ? { villageOnly: true } : {}),   // [T787] 길드 = 마을(켬 기본) — 클라 무리 패널이 마을 패널이 된다 · `T785_VILLAGE_ONLY=0` 이면 칸이 없다(옛 길드 패널)
-      ...(process.env.T839_SITE_EXIT === '1' ? { siteExit: true } : {}),   // [T839] 터를 놓으면 건축 모드를 끈다(다섯 터 · 클라 `30-n-net.js`) — '1' 만 켬 · 끄면 칸이 없다(welcome 바이트 동일)
+      ...(process.env.T839_SITE_EXIT !== '0' ? { siteExit: true } : {}),   // [T839 · ★T850 켬 기본 — PM 10-22] 터를 놓으면 건축 모드를 끈다(다섯 터 · 클라 `30-n-net.js`) — 되돌림 `T839_SITE_EXIT=0` 이면 칸이 없다(옛 welcome · 건축 모드가 남는다)
       ...(T509_WELL ? { wellAct: true } : {}),   // [T557] 우물 터 잡기 버튼 — 기본 켬 · `T509_WELL=0` 이면 칸이 없어 버튼이 숨는다   // [T507] 첫 30분의 문법(우클릭·이름표·회색) — 기본 켬 · `T507_VERBS=0` 이면 칸이 없다(옛 화면)
       coast588: ((v) => (v === '0' ? '0' : (v === 'a' ? 'a' : 'b')))(process.env.T588_COAST),   // [T588 · ★T604 추신3 기본 b] 해안 — 클라가 같은 파일(`public/coast-shape.js`)로 굽는다 · 칸은 늘 실린다('0' = 지금 식 · 클라 `uiCfg` 기본도 'b' — 다르면 welcome 에서 다시 굽는다)
     },
@@ -8005,6 +8023,7 @@ function attachPlayerHandlers(ws, player) {
     if (player._farT) { clearTimeout(player._farT); player._farT = null; player._farQ = null; }   // ★[T380] 원경 조각 예약 정리
     player._returnBriefDone = false;   // 다음 세션은 다시 받을 자격이 있다(승계되면 그대로 따라간다)
     //   ★[T831] 넘긴 몸 껍데기(`handingOff`)가 ACK 전에 닫히면 켬 갈래의 `savePlayer` 가 아래 자리 칸 셋을 뺀다(도착 존 자리를 안 덮는다 — `savePlayer` 머리 주석).
+    //   ★[T843] 받는 존이 몸을 받은 뒤(ACK 기다림 · ACK · ACK 시한이 닫음)면 그 저장은 통째로 안 나간다(몸 칸도 — 도착 존 몸을 안 되돌린다).
     savePlayer(player, { last_zone: ZONE_ID, last_x: player.x, last_y: player.y });
     players.delete(player.pid);
     console.log(`[${ZONE_ID}] - ${player.name} (${player.pid})  total=${players.size}`);

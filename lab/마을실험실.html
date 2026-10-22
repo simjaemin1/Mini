@@ -4284,11 +4284,11 @@ function _vernalCompute(id, p) {
 }
 // 익음 시계가 0 이 되는 날. 월동이 아니거나 되돌리면 **심은 날 그대로**(1년생 무접촉).
 //   ★겨울에 심었으면 그 겨울의 남은 몫이 춘화가 된다(파종창엔 겨울이 0종이라 실제로는 안 온다).
-// ★★[T834 ② 2026-10-21 · 손잡이 `T834_VERN_NUM`('1' 만 켬 · 끔 = 아래 종전 줄 그대로)] **춘화일 사전 — 열쇠를 날 하나(수)로.**
+// ★★[T834 ② 2026-10-21 · 손잡이 `T834_VERN_NUM`(★[T846] 켬 기본 · `=0` 끔 = 아래 종전 줄 그대로)] **춘화일 사전 — 열쇠를 날 하나(수)로.**
 //   T818 표본: 생활 층 결정 줄 상위에 이 함수(낮 ≈0.03 µs/사람)가 있다 — 월동 작물 셀을 돌볼 때마다 열쇠 문자열(`id + ',' + p`)을 짓고 문자열로 찾는다.
 //   그 답 `_vernalCompute(id, p)` 는 **id 를 안 읽는다**(심은 날 p 와 달력 정본만 — 위 몸통) ⇒ 같은 날이면 작물이 달라도 같은 값이다.
 //   켬이면 사전 열쇠 = 심은 날(수) 하나 · 비우는 문턱 그대로(4096). 같은 함수 · 같은 값 · 새 수 0.
-const T834_VERN_NUM = typeof process !== 'undefined' && process.env && process.env.T834_VERN_NUM === '1';
+const T834_VERN_NUM = !(typeof process !== 'undefined' && process.env && process.env.T834_VERN_NUM === '0');   // ★[T846 ①] 켬 기본(PM 10-22) · 끔 탐침 `=0` · 브라우저 판(번들 · `process.env` 없음)도 켬
 const _vernByP = new Map();   // 심은 날 → 춘화일
 function vernalDay(id, plantedDay) {
   const p = _day(plantedDay);
@@ -12777,7 +12777,7 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
       if (v.npcs[i]._warDraft) continue;
       if (oldestIdx < 0 || v.npcs[i].age > v.npcs[oldestIdx].age) oldestIdx = i;
     }
-    if (oldestIdx < 0) break;   // 전부 징발 중(있을 수 없다 — 동원 상한이 N−2) — 그래도 장부는 안 건드린다
+    if (oldestIdx < 0) break;   // 전부 징발 중 — ★[T845 · T815 회부 4] 징발은 자유민 1명 이상을 남긴다(war-core `_warDraftPick` — 남는 자유민 ≤ 1 이면 안 뽑는다 = 동원 상한 N−1) · 그 뒤 기근 · 이탈이 마지막 자유민을 데려가면 여기 닿는다(T815 §5) — 그래도 장부는 안 건드린다
     if (T815_DRAFT_FAMINE) { v._deathsToday++; v._deadTot = (v._deadTot || 0) + 1; }   // ★[T815] 켬 = 죽일 몸을 고른 **뒤에** 센다(몸이 죽을 때만 죽음 — 소멸·생성 금지의 장부 쪽)
     const dead = v.npcs.splice(oldestIdx, 1)[0];
     v.counts[dead.currentJob] = (v.counts[dead.currentJob] || 0) - 1;
@@ -14583,6 +14583,24 @@ function _t825FoodPer(v, r) {   // 품목 1 단위의 식량 환산(정본 `tota
   _t825FW.set(k, f);
   return f;
 }
+// ★★[T842 2026-10-21 · 재민 10-21 "굶는 상황이면 식량 가치가 미친듯이 높아야 하는 거 아냐?"] **먹을 것의 값은 식량 값 밑으로 안 내려간다** —
+//   손잡이 `T842_FOOD_FLOOR`('1' 만 켬 · 없음 · 다른 값 = 끔 = main 바이트).
+//   그림자가격은 품목마다 목표 ÷ 재고이고, 굶주림 신호(`surplusEMA.food < 0` → 30일 선반영)는 `food` 한 품목에만 걸린다.
+//   생계 소비가 0 인 쌀 · 밀 · 보리 · 바다 종 · 채집은 그 마을이 굶어도 값이 평소대로라, 곳간 식량이 쌀뿐인 마을이 쌀을 내다 팔았다(T796 회부 4 · T825).
+//   켬: 먹을 수 있는 품목 r 의 그 마을 값 ≥ (r 1단위의 식량 환산 — `_t825FoodPer` · 정본 `totalFoodEquivalent`) × (그 마을 `food` 값).
+//   값이 서는 자리 전부가 이 하한 하나를 부른다 — 결정층 값표(`computeShadowPrices` · 도착 매도 · 거래소 · 견적이 이 표를 읽는다) ·
+//   출발 직후 값(`_priceNowV2` · 종전 축약식 둘) · 정산 곡선(`_priceParamsV2` · `_settleParamsV2` — 곡선 바닥을 그 하한으로 올린다). 새 수 0.
+const T842_FOOD_FLOOR = (typeof process !== 'undefined' && process.env && process.env.T842_FOOD_FLOOR === '1');
+function _t842FloorOf(v, r, pFood) {   // 먹을 것 r 의 값 하한(그 마을 food 값 기준) — food 자신 · 먹을 것 아님 · 끔 = 0
+  if (!T842_FOOD_FLOOR || r === 'food' || !(pFood > 0)) return 0;
+  const f = _t825FoodPer(v, r);
+  return f > 0 ? f * pFood : 0;
+}
+function _t842FloorTable(v, prices) {   // 값표 하나에 하한을 건다(그 표의 food 값 기준 · 제자리)
+  if (!T842_FOOD_FLOOR || !prices || !(prices.food > 0)) return prices;
+  for (const r in prices) { const fl = _t842FloorOf(v, r, prices.food); if (fl > prices[r]) prices[r] = fl; }
+  return prices;
+}
 
 // === 새 상수 — v1과 분리 ===
 // v2 round 2: 가격 완화 + weapon/tool BASE 낮춤 + 외곽 살리기 + cargo↑
@@ -15295,6 +15313,7 @@ function _priceNowV2(v, r) {
   const ctx = _targetCtxV2(v);
   let p = _priceOfV2(v, r, ctx);
   if (r === 'ore') { const cap = _oreCapV2(v, (k) => _priceOfV2(v, k, ctx)); if (cap != null) p = Math.min(p, cap); }
+  if (T842_FOOD_FLOOR && r !== 'food') { const fl = _t842FloorOf(v, r, _priceOfV2(v, 'food', ctx)); if (fl > p) p = fl; }   // ★[T842]
   return p;
 }
 function computeShadowPrices(v) {
@@ -15305,6 +15324,7 @@ function computeShadowPrices(v) {
     const cap = _oreCapV2(v, (k) => prices[k]);
     if (cap != null) prices.ore = Math.min(prices.ore, cap);
   }
+  if (T842_FOOD_FLOOR) _t842FloorTable(v, prices);   // ★[T842] 켬 — 먹을 것 ≥ 식량 환산 × 그 마을 food 값
   return prices;
 }
 
@@ -15349,7 +15369,8 @@ function _priceParamsV2(v, r) {
     if (r === 'food' && v.surplusEMA && v.surplusEMA.food < 0) stock = Math.max(0.1, stock + v.surplusEMA.food * 30);
   }
   const maxAdj = Math.min(PRICE_ADJ_MAX, 10 * Math.pow(10, util * 2));
-  return { base, e, target, sEff: stock, physical: Math.max(0, v.storage[r] || 0), maxAdj };
+  const _P = { base, e, target, sEff: stock, physical: Math.max(0, v.storage[r] || 0), maxAdj };
+  return T842_FOOD_FLOOR ? _t842Curve(v, r, _P) : _P;   // ★[T842] 켬 — 곡선 바닥 = 먹을 것 하한(끔 = 종전 객체 그대로)
 }
 // ★★[T726] 정산 곡선 = 결정층 값 곡선 — p(s) = base × clamp(바닥 0.01, 천장, (목표/s)^e) 에 원석 상한(값 ≤ cap)까지 같이.
 //   결정층은 원석 값을 min(·, cap) 으로 깎는다 ⇒ 곡선 천장을 cap/base 로 낮춘 것과 같다(cap 이 바닥 밑이면 곡선 전체가 cap 에서 평평).
@@ -15363,13 +15384,25 @@ function _settleParamsV2(v, r) {
     if (cap != null) P.maxAdj = Math.min(P.maxAdj, cap / P.base);
   }
   if (!(P.target > 0) || !(P.maxAdj > PRICE_ADJ_MIN)) P.flat = P.base * Math.min(PRICE_ADJ_MIN, P.maxAdj);
+  return T842_FOOD_FLOOR ? _t842Curve(v, r, P) : P;   // ★[T842] 켬 — 곡선 바닥 = 먹을 것 하한
+}
+// ★[T842] 정산 곡선에 먹을 것 하한을 건다 — p'(s) = max(p(s), F): 바닥 clamp 를 F/base 로 올린다(천장 넘으면 곡선 전체가 F 에서 평평).
+//   유효 재고 sEff 에서 이 곡선의 값 = 결정층 값표의 그 값(같은 하한 · 같은 food 값 함수).
+function _t842Curve(v, r, P) {
+  const F = _t842FloorOf(v, r, _priceOfV2(v, 'food', _targetCtxV2(v)));
+  if (!(F > 0)) return P;
+  if (P.flat != null) { if (F > P.flat) P.flat = F; return P; }
+  const m = F / P.base;
+  if (m >= P.maxAdj) { P.flat = F; return P; }
+  if (m > PRICE_ADJ_MIN) P.minAdj = m;
   return P;
 }
 // 가격 3구간 경계(유효재고 좌표): s≤sLo 천장 flat(base·maxAdj) · [sLo,sHi] 멱법칙 k·s^−e · s≥sHi 바닥 flat(base·ADJ_MIN)
 function _impactSegs(P) {
   if (P.flat != null) return { flat: P.flat };   // ★[T726] 평평한 곡선(켬에서만 — 목표 0 · 원석 상한이 바닥 밑)
-  return { sLo: P.target * Math.pow(P.maxAdj, -1 / P.e), sHi: P.target * Math.pow(PRICE_ADJ_MIN, -1 / P.e),
-    pLo: P.base * P.maxAdj, pHi: P.base * PRICE_ADJ_MIN, k: P.base * Math.pow(P.target, P.e) };
+  const _mn = P.minAdj != null ? P.minAdj : PRICE_ADJ_MIN;   // ★[T842] 켬이면 먹을 것 하한으로 올린 바닥(끔 = 언제나 PRICE_ADJ_MIN)
+  return { sLo: P.target * Math.pow(P.maxAdj, -1 / P.e), sHi: P.target * Math.pow(_mn, -1 / P.e),
+    pLo: P.base * P.maxAdj, pHi: P.base * _mn, k: P.base * Math.pow(P.target, P.e) };
 }
 // 부정적분 F(s)=∫[0→s]p(u)du — 연속·순증(구간 경계에서 가격 일치: k·sLo^−e=base·maxAdj, k·sHi^−e=base·ADJ_MIN)
 function _impactF(P, S, s) {
@@ -15704,6 +15737,7 @@ function* tickTradeV2Steps(world, day) {
           subs = (SUBSISTENCE_PER_NPC[r] || 0) * N, buf = N * Math.max(0.5, (UTILITY_WEIGHT[r] || 0.1) * 1.2),
           tg = Math.max(subs * 30, buf), st = Math.max(0.1, a.v.storage[r] || 0);
         a.prices[r] = base * Math.max(PRICE_ADJ_MIN, Math.min(PRICE_ADJ_MAX, Math.pow(tg / st, elast))); }
+      if (T842_FOOD_FLOOR) _t842FloorTable(a.v, a.prices);   // ★[T842] 켬 — 바뀐 값(food 면 하한 전부)에 같은 하한
 
       // ★★★[T206 2026-09-12 · 이 파일의 접점 ①/② 중 ①] **남는 용량에 둘째 후보.**
       //   §0-ⓐ 실측(시드 1020 · 8,152 leg): 적재율 중앙 92%(바닥 마을 82.8%) · 만재는 46.6% 뿐이고
@@ -15760,6 +15794,7 @@ function* tickTradeV2Steps(world, day) {
             subs = (SUBSISTENCE_PER_NPC[r] || 0) * N, buf = N * Math.max(0.5, (UTILITY_WEIGHT[r] || 0.1) * 1.2),
             tg = Math.max(subs * 30, buf), st = Math.max(0.1, a.v.storage[r] || 0);
           a.prices[r] = base * Math.max(PRICE_ADJ_MIN, Math.min(PRICE_ADJ_MAX, Math.pow(tg / st, elast))); }
+        if (T842_FOOD_FLOOR) _t842FloorTable(a.v, a.prices);   // ★[T842]
       }
 
       // 가져갈 자원 결정
