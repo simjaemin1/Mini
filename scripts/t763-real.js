@@ -3,7 +3,7 @@
 // === scripts/t763-real.js — **실제 시계 전쟁 판**: T686 자 틀(`t368-farm-day a` t100 팔 200일 끝 DB)을 띄우고 `WAR_FIXTURE` 로 원정 하나를 세워
 //     병사 몸(짐꾼)이 실제로 걷나 · 짐 kg · 하루 몫 · 노획을 `t763-war-hook` 으로 적는다 ==========================================
 //   node scripts/t763-real.js <판> [--min 50] [--day-ms 1440000] [--fixture assault]
-//   손잡이(`T423_RATION_ACT` · `T466_LOOT_ACT`)는 부르는 쪽 env 그대로 존에 간다(끔 판 = env 없음).
+//   손잡이(`T423_RATION_ACT` · `T466_LOOT_ACT`)는 부르는 쪽 env 그대로 존에 간다(끔 판 = env 없음 · ★[T861] `T423_RATION_ACT` 는 켬 기본 — 끈 판은 명시 `=0`).
 //   ⇒ $T763_DIR/<판>/ war.json(전쟁마다 마지막 꼴 · 짐꾼 몸 걸음) · z.log(존 로그 · 전쟁 로그 켬) · real.json(요약)
 'use strict';
 const path = require('path');
@@ -23,7 +23,7 @@ const CP = 4170 + (process.pid % 400) * 2, ZP = CP + 1, SECRET = 't763-' + TAG;
 const getj = async (p) => { try { const r = await fetch(`http://localhost:${ZP}${p}`, { headers: { 'x-zone-secret': SECRET } }); return await r.json(); } catch (e) { return null; } };
 const health = async () => { try { return (await fetch(`http://localhost:${ZP}/health`)).ok; } catch (e) { return false; } };
 (async () => {
-  console.log(`=== T763 실제 시계 전쟁 판 ${TAG} — 하루 ${DAYMS} ms · ${MIN} 분 · 픽스처 ${FIX} · T423=${process.env.T423_RATION_ACT || '끔'} · T466=${process.env.T466_LOOT_ACT || '끔'} ===`);
+  console.log(`=== T763 실제 시계 전쟁 판 ${TAG} — 하루 ${DAYMS} ms · ${MIN} 분 · 픽스처 ${FIX} · T423=${process.env.T423_RATION_ACT || '켬(기본 · T861)'} · T466=${process.env.T466_LOOT_ACT || '끔'} ===`);
   const C = spawn(process.execPath, [path.join(ROOT, 'server/central.js')], { cwd: ROOT, stdio: 'ignore',
     env: Object.assign({}, process.env, { PORT: String(CP), DB_PATH: path.join(DIR, 'c.db'), PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando', CENTRAL_SECRET: SECRET, NODE_OPTIONS: '' }) });
   const lf = fs.openSync(path.join(DIR, 'z.log'), 'w');
