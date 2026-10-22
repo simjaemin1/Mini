@@ -4783,6 +4783,7 @@ Roads.init({ zoneId: ZONE_ID, cellsW: Math.ceil(ZONE.zoneWidth / 32), cellsH: Ma
   // ★[T566 추신2] 다져진 길의 오름·내림 — 존이 나무를 걷고(그 셀) 리젠을 막고(둘레) 푼다(끔이면 안 넘긴다 = 길은 종전 그대로)
   onPaved: _T566_ON ? _t566OnPaved : null, onUnpaved: _T566_ON ? _t566OnUnpaved : null });
 SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, isWaterTileLocal, isPositionActive, isBlockedByWall, anyViewerNear, perfMark,
+  elevKmAt,   // ★[T856] 지형 정본 고도(몸 기온이 쓰는 그 함수) — 생활층이 econ 마을 `land.elev` 를 이것으로 채운다(손잡이 `T856_LAND_ELEV` 끔이면 안 읽는다)
   ...(Streams.ON && Streams.load(ZONE_ID) ? { isStreamLocal } : {}),   // ★★[T585] 개울 술어 — 생활층 지형 어댑터가 `ta.isStream` 으로 묻는다(집터·밭·곳간·큰집 마당 · 시딩 `generate`). 끔이면 키 자체가 없다(종전 그대로)
   chiefGreet: (p, vid, by) => { try { Onboarding.sendGreet(p, vid, by); } catch (err) {} },   // ★[T529] 촌장 몸이 곁에 와서 하는 인사 — 문장·메시지는 온보딩 정본
   waterTiles: WATER_TILES,   // ★[T480] 해안선 물타일 정본(위 1155줄) — 마을 세울 때 `seaDistPx` 가 이것을 읽는다(villages 쪽 사본 0)

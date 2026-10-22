@@ -94,7 +94,19 @@ function _day() { return Lots.dayMs() || 1; }
 function _nowFrac() { return (T789 && _tickK != null ? _tickK : _now()) / _day(); }   // ★[T803] 켬(T789)이면 마감 동안의 "지금" = 마감의 순간 하나(정산 · 옮김 도장까지 — 벽시계가 판마다 다른 몫 0)
 function _rec(k, u) { const g = _gran(); return { k, u, f0: 1, e: 0, t: k / _day(), m: g.m, w: g.w }; }
 // 정산 — 그 레코드의 자리 배율로 지금까지(소수 날 · `spoil.exposureAt` 정본)
-function _settle(r, nf) { const t0 = (r.t == null) ? r.k / _day() : +r.t; if (t0 < nf) { r.e = +Spoil.exposureAt(r, nf, 0).toFixed(6); r.t = nf; } return r; }
+function _settle(r, nf, e) { const t0 = (r.t == null) ? r.k / _day() : +r.t; if (t0 < nf) { r.e = +Spoil.exposureAt(r, nf, e || 0).toFixed(6); r.t = nf; } return r; }   // ★[T856] e = 그 구간 자리의 고도(km · 없으면 0 = 종전)
+// ★★[T856 2026-10-22 · 손잡이 `T856_LAND_ELEV`('1' 만 켬 · 끔 = 곳간 구간 고도 0 = main 바이트)] **곳간 구간도 마을 고도로.**
+//   마을 고도는 한 함수 — econ `elevKmOf`(econ 기온 · 다리 노출 T840 이 읽는 `land.elev` · 존이 `elevKmAt` 으로 채운다 · villages `_t856LandElev`).
+//   곳간 레코드의 구간은 **곳간을 떠날 때**(`_out` — 문 · 싣기가 뗀 몫) 그 마을 고도로 정산하고, 곳간 안에서 읽을 때(상함 판정 `_rotten` · 신선도 `freshOf`)도 같은 고도다.
+//   들어올 때(`_in` · `_adopt`)는 앞 구간(사람 몸 · 짐)의 자리 고도 그대로다 — 사람 몸은 존 `elevKmAt`(오늘 0) · 짐은 T840 이 내릴 때 정산.
+//   고도 0 이면 아무 데도 손대지 않는다(정산 꼴 · 값이 종전과 같다).
+const T856 = process.env.T856_LAND_ELEV === '1';
+let _elevFn;
+function _elevOf(v) {   // 그 마을 고도(km) — econ 정본 한 함수
+  if (_elevFn === undefined) { try { const m = require('../sim/economy-sim-v2.js'); _elevFn = (m && typeof m.elevKmOf === 'function') ? m.elevKmOf : null; } catch (e) { _elevFn = null; } }
+  return _elevFn ? (+_elevFn(v) || 0) : 0;
+}
+function _gElev(v) { return T856 ? _elevOf(v) : 0; }   // 곳간 구간의 고도
 // 자리를 바꾼다 — 정산 먼저(지난 구간에 새 배율이 소급되지 않게)
 function _restamp(r, pf, nf) { _settle(r, nf); r.m = pf.m; r.w = pf.w; return r; }
 function _copy(r, u) { const o = { k: r.k, u, f0: r.f0 == null ? 1 : r.f0, e: r.e, t: r.t, m: r.m, w: r.w }; if (r.it != null) o.it = r.it; return o; }   // ★[T768] 품목은 따라간다(없으면 칸도 없다 — 옛 꼴 그대로)
@@ -102,14 +114,15 @@ function _sortK(arr) { arr.sort((a, b) => (a.k - b.k) || ((+b.e || 0) - (+a.e ||
 
 // ══ ★[T789] 상한 레코드 — 판정 · 사람의 눈 · 하루 마감 버림 ═══════════════════════════════════════════════
 //   판정은 spoil 정본 하나(`isSpoiled` — f ≤ 0) · 품목 = 레코드의 품목(넣은 그 물건) · 없으면 칸의 재화 · 노출 = 그 순간까지(레코드의 자리 배율 · `_settle` 과 같은 함수)
-function _rotten(r, res, nf) { return Spoil.isSpoiled(r.it != null ? r.it : res, Spoil.exposureAt(r, nf, 0)); }
+function _rotten(r, res, nf, e) { return Spoil.isSpoiled(r.it != null ? r.it : res, Spoil.exposureAt(r, nf, e || 0)); }   // ★[T856] e = 그 곳간의 고도
 //   사람의 눈이 그 칸에서 숨기는 몫 — 그 눈이 처음 그 칸을 볼 때 한 번 센다(눈 동안 상한 레코드는 안 움직인다 · 문은 성한 것만 뗀다) · 칸 값 바닥
 function _hid(v, res, val) {
   let H = _vw.hid.get(v); if (!H) { H = {}; _vw.hid.set(v, H); }
   if (H[res] !== undefined) return H[res];
   const L = LED.get(v), arr = L && L[res];
   let s = 0;
-  if (arr) for (const r of arr) if ((+r.u || 0) > EPS && _rotten(r, res, _vw.nf)) { s += r.u; _vw.bad.add(r); }
+  const ge = _gElev(v);
+  if (arr) for (const r of arr) if ((+r.u || 0) > EPS && _rotten(r, res, _vw.nf, ge)) { s += r.u; _vw.bad.add(r); }
   const cap = Math.max(0, Number(val) || 0);
   H[res] = s > cap ? cap : s;
   if (H[res] > EPS) { ST.t789Hid++; ST.t789HidU += H[res]; }
@@ -134,9 +147,10 @@ function _rot(econVillages, nf) {
     for (const res of W) {
       const arr = L[res]; if (!arr || !arr.length) continue;
       let room = Math.max(0, Number(v.storage[res]) || 0), gone = 0;
+      const ge = _gElev(v);   // ★[T856]
       for (let i = 0; i < arr.length && room > EPS; ) {
         const r = arr[i];
-        if (!((+r.u || 0) > EPS) || !_rotten(r, res, nf)) { i++; continue; }
+        if (!((+r.u || 0) > EPS) || !_rotten(r, res, nf, ge)) { i++; continue; }
         const x = Math.min(r.u, room);
         room -= x; gone += x;
         const key = r.it != null ? r.it : res;
@@ -222,13 +236,14 @@ function _out(v, res, du) {
   let left = du;
   const C = CAP.get(v), cap = C && (C[res] || C['*']);
   const taken = (cap || _door) ? [] : null;
+  const ge = taken ? _gElev(v) : 0, gnf = ge ? _nowFrac() : 0;   // ★[T856] 떠나는 몫은 곳간 구간을 그 마을 고도로 정산(고도 0 = 종전)
   if (T789 && _vw) {   // ★[T789] 사람의 눈 — 상한 레코드는 건너뛴다(오래된 것부터 · 성한 것만 · 상한 것은 그 자리에 남아 다음 마감에 버려진다)
     let i = 0;
     while (left > EPS && i < arr.length) {
       const r = arr[i];
       if (_vw.bad.has(r)) { i++; ST.t789Skip++; continue; }
       const take = Math.min(left, r.u);
-      if (taken) taken.push(_copy(r, take));
+      if (taken) taken.push(ge ? _settle(_copy(r, take), gnf, ge) : _copy(r, take));
       if (r.it != null) { _itOut(v, r.it, take); if (!taken) { ST.itemEatU += take; EAT[r.it] = (EAT[r.it] || 0) + take; } }
       r.u -= take; left -= take;
       if (r.u <= EPS) arr.splice(i, 1); else i++;
@@ -236,7 +251,7 @@ function _out(v, res, du) {
   } else
   while (left > EPS && arr.length) {
     const r = arr[0], take = Math.min(left, r.u);
-    if (taken) taken.push(_copy(r, take));
+    if (taken) taken.push(ge ? _settle(_copy(r, take), gnf, ge) : _copy(r, take));
     if (r.it != null) { _itOut(v, r.it, take); if (!taken) { ST.itemEatU += take; EAT[r.it] = (EAT[r.it] || 0) + take; } }   // ★[T768] 난 품목 셈 · 문 · 싣기 밖이면 마을이 먹은 것(그 품목 그대로)
     r.u -= take; left -= take;
     if (r.u <= EPS) arr.shift();
@@ -518,17 +533,12 @@ function cargo(c, slot, recs) {
 //   (`economy-sim-v2.elevKmOf` · 한 함수). 정산 꼴은 `_settle` 그대로(정본 `spoil.exposureAt` · 구간 하나에 고도 하나) — 고도만 0 대신 그 마을.
 //   그 뒤 곳간에 들 때(`_in` → `_restamp`)는 같은 순간이라 구간이 비어 있다(두 번 안 센다).
 const T840 = process.env.T840_LEG_ELEV === '1';
-let _t840E;
-function _t840Elev(v) {
-  if (_t840E === undefined) { try { const m = require('../sim/economy-sim-v2.js'); _t840E = (m && typeof m.elevKmOf === 'function') ? m.elevKmOf : null; } catch (e) { _t840E = null; } }
-  return _t840E ? (+_t840E(v) || 0) : 0;
-}
 function _legSettle(recs, v) {
   if (!T840) return recs;
-  const e = _t840Elev(v);
+  const e = _elevOf(v);   // ★[T856] 마을 고도 한 함수(곳간 구간과 같은 것)
   if (!e) return recs;   // 고도 0 — 곳간에 들 때 `_settle`(고도 0)이 같은 구간을 같은 값으로 센다(종전 그대로)
   const nf = _nowFrac();
-  for (const r of recs) { const t0 = (r.t == null) ? r.k / _day() : +r.t; if (t0 < nf) { r.e = +Spoil.exposureAt(r, nf, e).toFixed(6); r.t = nf; } }
+  for (const r of recs) _settle(r, nf, e);
   return recs;
 }
 function unload(c, slot, v, res, amt) {
@@ -761,7 +771,8 @@ function freshOf(v, res) {
   const L = LED.get(v), arr = L && L[res]; if (!arr || !arr.length) return null;
   const today = Math.floor(_nowFrac());
   let U = 0, wf = 0, bad = 0;
-  for (const r of arr) { const f = Spoil.freshnessOf(res, Spoil.exposureOf(Object.assign({}, r, { k: r.k }), today)); U += r.u; wf += f * r.u; if (f <= 0) bad += r.u; }
+  const ge = _gElev(v);   // ★[T856] 그 곳간의 고도
+  for (const r of arr) { const f = Spoil.freshnessOf(res, Spoil.exposureOf(Object.assign({}, r, { k: r.k }), today, ge)); U += r.u; wf += f * r.u; if (f <= 0) bad += r.u; }
   return { u: +U.toFixed(6), fresh: U > 0 ? +(wf / U).toFixed(6) : 1, spoiledU: +bad.toFixed(6), lots: arr.length };
 }
 function stats(reset) { const o = Object.assign({}, ST); if (reset) for (const k of Object.keys(ST)) ST[k] = 0; return o; }
@@ -825,7 +836,7 @@ function eaten(reset) { const o = Object.assign({}, EAT); if (reset) for (const 
 // ★[T789] 썩어 없어진 품목(econ 하루 마감에 버린 단위 — 하네스 · 자가 읽는다) · 끄면 늘 빈 묶음
 function rotOf(reset) { const o = Object.assign({}, ROT); if (reset) for (const k of Object.keys(ROT)) delete ROT[k]; return o; }
 
-module.exports = { ON, T840, legSettle: _legSettle, attach, sync, pushIn, clearIn, capBegin, capEnd, suspend, txBegin, txEnd, isWrapped,
+module.exports = { ON, T840, T856, legSettle: _legSettle, elevOf: _elevOf, attach, sync, pushIn, clearIn, capBegin, capEnd, suspend, txBegin, txEnd, isWrapped,
   tickBegin, tickEnd, doorBegin, doorEnd, doorIn, doorRest, doorCap,
   recsFromPlayer, recsToPlayer, recsToItems, hooks, cargo, unload, bounce, cargoDump, cargoLoad, packFrom, packKeep, giveBegin, giveEnd,
   itemSums, checkItems, itemFlow, eaten,   // ★[T768] 품목 칸 · 품목 불변식 · 마을이 먹은 품목
