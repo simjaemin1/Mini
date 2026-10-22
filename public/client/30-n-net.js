@@ -279,7 +279,7 @@
       if (!loopStarted) { loopStarted = true; loop(); }
     };
 
-    // ★★[T838 2026-10-21] 손잡이 `T838_WD_AWAKE`(서버 env → welcome `uiCfg.wdAwake` · `'1'` 만 켬 · 끔 = 종전 그대로).
+    // ★★[T838 2026-10-21] 손잡이 `T838_WD_AWAKE`(서버 env → welcome `uiCfg.wdAwake` · ★[T849 2026-10-22 · PM] 기본 **켬** · 되돌림 `=0` = 종전 그대로).
     //   아래 두 감시(pong · 서버 틱)는 "마지막으로 받은 뒤 몇 초"를 잰다 — 그 몇 초에 **클라 자신이 멈춰 있던 시간**이 섞인다.
     //   멈춘 동안엔 ping 이 안 나가고 와 있는 pong · 틱을 못 집는다 ⇒ 풀리자마자 감시가 서버를 좀비로 보고 멀쩡한 소켓을 끊는다
     //   (보고/T838 §1: 끊음 판정 43건 모두 그 창 7.0~37.1초 가운데 클라가 깨어 있던 시간 ≤1.3초 · 서버는 ping 을 집은 뒤 ≤8ms 에
@@ -605,7 +605,7 @@
           sendPrimaryAt({ type: _mt, atX: clickWx, atY: clickWy, kind: placementMode.kind || undefined });
           if (!e.shiftKey) {
             placementMode = null; showNotice('배치 요청');
-            // ★[T839 · 손잡이 `T839_SITE_EXIT` '1' 만 켬 — 서버 env 가 정본 · welcome `uiCfg.siteExit`] **터를 놓았으면 건축 모드를 끈다.**
+            // ★[T839 · ★T850 켬 기본 — 손잡이 `T839_SITE_EXIT`(되돌림 `=0`) · 서버 env 가 정본 · welcome `uiCfg.siteExit`] **터를 놓았으면 건축 모드를 끈다.**
             //   다섯 터(움집 · 노 · 숯가마 · 우물 · 회관)는 `*_start` 가 `buildMode = true` 로 들어오고 여기서 `placementMode` 만 걷혔다 —
             //   건축 모드가 남아 커서가 터를 잡으면 아래 14.51 갈래가 좌클릭을 **3초 분해**로 먼저 가져갔다(안내 "다음: ② … (터 클릭)"대로 누른 사람이 제 터를 부순다 · T824 회부 1).
             //   끄는 문은 **B 키 그 문**(`99-main.js` — 끄고 · 알림 '건축 모드 꺼짐' · 인벤이 열려 있으면 다시 그림)이다. 새 갈래 0.

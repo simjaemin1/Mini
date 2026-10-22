@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다
 // @nightly C   ← 야간 세 밤 분할(T238)
-// === scripts/e2e-site-exit.js — **터를 놓으면 건축 모드가 꺼진다** 실클라 E2E (T839 · 손잡이 `T839_SITE_EXIT`) ==========
+// === scripts/e2e-site-exit.js — **터를 놓으면 건축 모드가 꺼진다** 실클라 E2E (T839 · ★T850 켬 기본 · 되돌림 `T839_SITE_EXIT=0`) ==========
 //
 //   다섯 터(움집 · 노 · 숯가마 · 우물 · 회관)는 버튼(`*_start`)이 `buildMode = true` 로 배치 모드에 들어간다.
 //   종전에는 캔버스를 눌러 터를 놓아도 `placementMode` 만 걷히고 **건축 모드가 남았다** — 그 상태에서 커서가 터를 잡으면
 //   좌클릭이 시공이 아니라 **3초 분해**로 샜다(T824 회부 1 · PM 10-21 결함 판정).
-//   이 판은 존을 **두 번** 띄운다: 켬(`T839_SITE_EXIT=1`) · 끔(손잡이 없음 = main). 같은 손짓(버튼 → 캔버스 클릭)을 다섯 터에 다 하고
+//   이 판은 존을 **두 번** 띄운다: 켬(손잡이 안 줌 = 기본 · ★T850) · 끔(`T839_SITE_EXIT=0` = 되돌림 · 옛 main). 같은 손짓(버튼 → 캔버스 클릭)을 다섯 터에 다 하고
 //     켬 = 건축 모드 꺼짐 · 배치 모드 걷힘 · 알림 "건축 모드 꺼짐" / 끔 = 건축 모드 남음(종전 그대로 — 대조군이 실재한다).
 //   곁 단정(켬): Shift 배치(이어 놓기)는 모드를 지킨다 · 다섯 터가 아닌 집 의뢰(`psite_request`)는 손대지 않는다.
 //   서버로 직접 쏘는 것은 픽스처뿐이다(곡괭이 · 재료 `__e2e_give`). 터가 서버에서 서는지는 이 판이 재지 않는다 — 모드는 클라가 정한다
@@ -25,7 +25,8 @@ const ok = (c, m, x) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  �
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let procs = [];
 function boot(name, file, env) {
-  const p = spawn(process.execPath, [path.join(ROOT, 'server', file)], { cwd: ROOT, env: Object.assign({}, process.env, env), stdio: ['ignore', 'pipe', 'pipe'] });
+  const E = Object.assign({}, process.env, env); for (const k of Object.keys(E)) if (E[k] === undefined) delete E[k];   // undefined = 그 손잡이를 **안 준다**(바깥 env 도 지운다)
+  const p = spawn(process.execPath, [path.join(ROOT, 'server', file)], { cwd: ROOT, env: E, stdio: ['ignore', 'pipe', 'pipe'] });
   p.stdout.on('data', (b) => { const s = String(b); if (/up on/.test(s)) process.stdout.write(`  [${name}] ${s.trim().slice(0, 140)}\n`); });
   p.stderr.on('data', () => {});
   procs.push(p); return p;
@@ -78,7 +79,7 @@ async function round(label, env) {
 
   const st = () => page.evaluate(() => ({ bm: buildMode, pm: placementMode ? (placementMode.special || placementMode.itemType || 'on') : null, n: (window.__notices || []).slice(-2) }));
   const siteExit = await page.evaluate(() => !!(uiCfg && uiCfg.siteExit));
-  ok(siteExit === (label === '켬'), `[${label}] ★welcome \`uiCfg.siteExit\` = ${label === '켬'}(서버 env 가 정본 · 끄면 칸이 없다)`, String(siteExit));
+  ok(siteExit === (label === '켬'), `[${label}] ★welcome \`uiCfg.siteExit\` = ${label === '켬'}(★T850 기본 켬 · 서버 env 가 정본 · \`=0\` 이면 칸이 없다)`, String(siteExit));
   // 캔버스 위 · 내 자리에서 오른쪽 40px(배치 거리 160px 안 · HUD 밖)
   const spotScreen = () => page.evaluate(() => {
     const a = window.__getMyAbs(); const s = window.__w2s(a.x + 40, a.y); const cv = document.getElementById('canvas'); const r = cv.getBoundingClientRect();
@@ -140,9 +141,9 @@ async function round(label, env) {
 }
 
 (async () => {
-  console.log('\n=== 터를 놓으면 건축 모드가 꺼진다 (T839 · `T839_SITE_EXIT`) ===');
-  await round('켬', { T839_SITE_EXIT: '1' });
-  await round('끔', { T839_SITE_EXIT: '' });
+  console.log('\n=== 터를 놓으면 건축 모드가 꺼진다 (T839 · ★T850 켬 기본 · 되돌림 `T839_SITE_EXIT=0`) ===');
+  await round('켬', { T839_SITE_EXIT: undefined });   // ★[T850] 기본 = 켬 — 손잡이를 **안 준** 판(키 자체가 없다)이 켬이어야 한다
+  await round('끔', { T839_SITE_EXIT: '0' });   // 되돌림 — 대조군(건축 모드가 남고 움집터 클릭이 3초 분해)
   console.log(`\n=== 터 · 건축 모드 E2E: ${pass} 통과 / ${fail} 실패 ${fail ? '✗' : '✅'} ===`);
   shutdown();
   process.exit(fail ? 1 : 0);
