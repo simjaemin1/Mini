@@ -250,12 +250,12 @@ function planSliced(econV2, v, giveRes, takeRes, giveQty, cap) {
 const T807_ON = !(typeof process !== 'undefined' && process.env && process.env.T807_QUOTE_TRIM === '0');   // ★[T817 · PM 10-20] 켬 기본(견적은 실제로 받을 양을 보인다 · 실행은 켬 · 끔 같다) · 되돌림 `=0`
 //   n0 = 낸다고 한 낱개 · unitsAt(c) = c 개의 단위(견적 = 한 개짜리 어림 × c · 실행 = 고른 그 개체들의 실제 무게) ·
 //   perItem = 평균 단위/개(절삭의 자 — 종전 실행 글자 그대로) · capped 가 아니면 n0 그대로.
-// ★★[T835 2026-10-21 · 세션5 · T807 [정보]] **무거운 물건 견적도 고른 그 개체들의 무게로** — 손잡이 하나 `T835_QUOTE_WEIGHT`('1' 만 켬 · 끔 = main 바이트).
+// ★★[T835 2026-10-21 · 세션5 · T807 [정보]] **무거운 물건 견적도 고른 그 개체들의 무게로** — 손잡이 하나 `T835_QUOTE_WEIGHT`(★T847 켬 기본 · `=0` = 종전 견적).
 //   결함: 견적은 낼 물건의 단위를 **한 개짜리 어림**(첫 아이템 1개 단위 × 개수 · 호스트 `villageTradeQuote`)으로 잡았고,
 //     실행은 **고른 그 개체들**(`_pick` — 정본 순서로 어느 아이템에서 몇 개 · `_units` — 개체 무게 · 로트 신선도)로 잰다 — 무게가 다른 짐이면 견적 ≠ 실행.
 //   켜면 견적이 실행과 **같은 고르기 · 같은 단위 셈**(`_giver` — 아래 · 실행도 이 함수다 · 사본 0)을 지난다: 낼 단위 · 평균 단위/개 · 상한 절삭의 자 ·
 //     받을 양 주문의 올림 걸음이 전부 고른 개체로. 마른 실행이다(곳간 · 몸 · 인벤 무변 — `_pick` 은 읽기만 한다).
-const T835_ON = (typeof process !== 'undefined' && process.env && process.env.T835_QUOTE_WEIGHT === '1');
+const T835_ON = !(typeof process !== 'undefined' && process.env && process.env.T835_QUOTE_WEIGHT === '0');   // ★[T847 · PM 10-22] 켬 기본(견적 = 실행 — 고른 그 개체들의 무게) · 되돌림 `=0`
 //   낼 물건 고르기 · 단위 셈 — 실행(`exchange`)의 그 몸통 그대로(이름만 올렸다 · 견적이 켬일 때 같은 함수를 부른다).
 function _giver(D, inventory, giveRes, unitsOf) {
   const playerItems = D.items.get(giveRes) || [];
