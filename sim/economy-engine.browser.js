@@ -4181,11 +4181,11 @@ function _vernalCompute(id, p) {
 }
 // 익음 시계가 0 이 되는 날. 월동이 아니거나 되돌리면 **심은 날 그대로**(1년생 무접촉).
 //   ★겨울에 심었으면 그 겨울의 남은 몫이 춘화가 된다(파종창엔 겨울이 0종이라 실제로는 안 온다).
-// ★★[T834 ② 2026-10-21 · 손잡이 `T834_VERN_NUM`('1' 만 켬 · 끔 = 아래 종전 줄 그대로)] **춘화일 사전 — 열쇠를 날 하나(수)로.**
+// ★★[T834 ② 2026-10-21 · 손잡이 `T834_VERN_NUM`(★[T846] 켬 기본 · `=0` 끔 = 아래 종전 줄 그대로)] **춘화일 사전 — 열쇠를 날 하나(수)로.**
 //   T818 표본: 생활 층 결정 줄 상위에 이 함수(낮 ≈0.03 µs/사람)가 있다 — 월동 작물 셀을 돌볼 때마다 열쇠 문자열(`id + ',' + p`)을 짓고 문자열로 찾는다.
 //   그 답 `_vernalCompute(id, p)` 는 **id 를 안 읽는다**(심은 날 p 와 달력 정본만 — 위 몸통) ⇒ 같은 날이면 작물이 달라도 같은 값이다.
 //   켬이면 사전 열쇠 = 심은 날(수) 하나 · 비우는 문턱 그대로(4096). 같은 함수 · 같은 값 · 새 수 0.
-const T834_VERN_NUM = typeof process !== 'undefined' && process.env && process.env.T834_VERN_NUM === '1';
+const T834_VERN_NUM = !(typeof process !== 'undefined' && process.env && process.env.T834_VERN_NUM === '0');   // ★[T846 ①] 켬 기본(PM 10-22) · 끔 탐침 `=0` · 브라우저 판(번들 · `process.env` 없음)도 켬
 const _vernByP = new Map();   // 심은 날 → 춘화일
 function vernalDay(id, plantedDay) {
   const p = _day(plantedDay);

@@ -172,6 +172,7 @@ const VILLAGE_MAX = Math.max(1, parseInt(process.env.VILLAGE_MAX || '20', 10)); 
 // ★★[T538 추신3 ⓑ 2026-09-30 · 재민 캐논 #54] **몸 수 상한 무제한** — econ 인구가 곧 몸이다(추상 없애기).
 //   T376(답 예 · 몸 2,515 = econ 전부) → T433 켬 팔(규약 다섯 · 낮 p50 22.0 · p95 28.5ms · 36/36 조각 예산 안 · drop 0 · 소멸 0)을 **기본으로** 올린다.
 //   되돌림 = `VILLAGE_NPC_CAP=40`(종전 기본값 그대로 · 테스트 훅은 종전처럼 수를 준다).
+const T846_VIL_FAST = process.env.T846_VIL_FAST === '1';   // ★[T846 ②] 마을 객체 빠른 꼴(부팅 뒤 `_bRows` 를 지우지 않고 `null`) · '1' 만 켬 — 아래 부팅 줄
 const NPC_CAP_PER_VILLAGE = process.env.VILLAGE_NPC_CAP ? Math.max(1, parseInt(process.env.VILLAGE_NPC_CAP, 10) || 40) : Infinity;
 const POP_SYNC_PER_DAY = 2; // 인구 반영은 완만: 게임일당 마을당 ±2명까지 (증가=스폰, 감소=최근 NPC부터)
 // ★★[T559 ② 2026-09-30 · 재민 #78] **마을 간 최소 간격을 존마다 유도하는 식** — 손잡이 `T559_SPACING_DERIVE=1`(★기본 **끔** = 종전 12,000 그대로).
@@ -5095,7 +5096,13 @@ function init(deps) {
       console.log(`[${ZONE_ID}] 🏘️ Stage4A 영토: 경계 ${bndN}/${state.villages.length}곳(셀 ${cells}, ≈${(JSON.stringify(state.clientPayload).length / 1024).toFixed(0)}KB — welcome 1회) · 원근사 폴백 ${state.villages.length - bndN}곳`);
     }
     if (T598_ROUTE_COST) _t598FootBuild();   // ★[T598] 집채 발자국 칸(교역로·거리행렬 비용 — 손잡이 켬에서만 · 끔이면 이 줄 무동작)
-    for (const vil of state.villages) delete vil._bRows; // 수만 행 재참조 방지(메모리)
+    // ★★[T846 ② 2026-10-22 · 손잡이 `T846_VIL_FAST`('1' 만 켬 · 끔 = 아래 종전 줄 그대로)] **마을 객체를 사전 모드로 내리지 않는다.**
+    //   이 `delete` 한 줄이 51 마을 객체를 통째로 사전 모드로 내린다(`%HasFastProperties` 거짓 · 키 66~71 — 보고/T846 §2) — 생활 층이 결정마다 읽는
+    //   `vil._terrSet` · `vil._farmSet` · `vil.econ` … 가 다 해시 찾기였다(T834 표본: `npcLifeTick` 머리 줄 · `_lifeNeedClear`).
+    //   ⇒ 켬이면 지우지 않고 `null` 로 놓는다(읽는 자리는 전부 참거짓만 본다 — `vil._bRows || []` · `if (vil._bRows && …)` · 수만 행 참조는 같이 놓인다).
+    //   값 무변 · 새 수 0 · 칸 이름은 그대로 남는다(값 `null` — 마을 칸을 키 이름으로 도는 자는 그 칸 하나를 더 본다 · 보고/T846 §2).
+    if (T846_VIL_FAST) { for (const vil of state.villages) vil._bRows = null; }
+    else for (const vil of state.villages) delete vil._bRows; // 수만 행 재참조 방지(메모리)
 
     // --- 교역 거리 행렬(BFS·지형) 계산·주입 — 시딩·복원 공통(지형 정적, 부팅 1회. 소요는 로그에) ---
     state._distCtx = { ta, ZONE };
