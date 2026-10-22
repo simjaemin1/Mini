@@ -1006,9 +1006,10 @@ async function waitHttp(url, tries = 600) {
     //        주민들은 중심에서 400~615px 떨어져 밭·광산에서 일한다(중심에 서 있지 않다).
     //     ⇒ 게이트는 **내가** 넘는 것이다(그 사람이 아니라). 나는 **마을 중심에 서고**,
     //       화면 안에 보이는 사람을 누른다 — `pickAt` 도 `verbsFor` 도 거리 게이트가 없다.
+    // ★[T849] `n` = 그 순간 **화면 안 사람 수**(아래 같은 화면 시험을 지난 NPC 수 · 마을 고르기가 쓴다) — 고르는 사람(`best`)은 그대로.
     const findNpc = () => R.evaluate(() => {
       const cv = document.getElementById('canvas');
-      let best = null;
+      let best = null, n = 0;
       for (const c of conns.values()) {
         if (!c.meta || !c.others) continue;
         const ox = c.meta.worldOffsetX || 0, oy = c.meta.worldOffsetY || 0;
@@ -1018,11 +1019,12 @@ async function waitHttp(url, tries = 600) {
           const sc = window.__w2s(x, y);
           // ★화면 **안**에 있어야 두드릴 수 있다(가장자리 24px 은 뺀다).
           if (!(sc.px > 24 && sc.py > 24 && sc.px < cv.width - 24 && sc.py < cv.height - 24)) continue;
+          n++;
           const d = Math.hypot(x - myAbsPredicted.x, y - myAbsPredicted.y);
           if (!best || d < best.d) best = { pid: o.pid, name: o.name || '', tribe: o.tribeName || null, x, y, d };
         }
       }
-      return best;
+      return best ? Object.assign(best, { n }) : null;
     });
     // 마을 하나를 DB 에서 골라 그 중심으로 간다 — 거기 NPC 가 산다(게이트 안이라 거래도 뜬다).
     const vrows = (() => { try {
@@ -1043,8 +1045,25 @@ async function waitHttp(url, tries = 600) {
     //   ⇒ 하네스는 **가까이 오는 사람을 기다린다** — 마을 한복판에 서면 사람들이 지나다닌다.
     //   ★[T819 2026-10-20] 그 어긋남은 왕복이 아니라 **탭 동안의 원점 밀림**이었다(보고/T813 §2 — 두 변환은 서로 역).
     //     `T813_RMB_PRESS` 켬 기본으로 탭 자리의 220px 문턱은 걷었다(아래 `_nearNpc`). 여기 마을 고르기의 200px 는 그대로다(어디 설지 — 자리 규칙 무변).
-    let npc = null, vsel = null;
+    // ★★[T849 2026-10-22] **기다릴 마을 = 그 순간 화면 안 사람이 가장 많은 마을**(위 `findNpc` 의 같은 화면 셈 `n` · 새 수 0 · 하네스만).
+    //   종전은 DB 순서대로 마을마다 아래 "최대 ~40초"를 기다리며 건넜다 — 광산1 · 2 에서 200px 안 사람을 못 찾으면 광산3 을 넘어
+    //   광산4 · 5 까지 갔고, 그런 판은 빨강 10/11 이었다(보고/T838 §4 — 워프마다 R 한 판이 수 초라 고리 40번이 곳마다 수십~수백 초 ·
+    //   그 끝의 탭 창은 R 주 스레드 94% 멈춤 · 광산1 · 2 에서 잡은 판은 20/20 초록).
+    //   ⇒ 같은 여덟 곳에 한 번씩 서서(같은 `warp` · 1.5초 · 게이트 물음) **그 순간** 화면 안 사람 수만 세고(기다리지 않는다),
+    //     **많은 곳부터**(같으면 DB 순서 · 못 선 곳은 뺀다) 종전 기다리기를 돈다. 기다리기 · 200px · 40번 · 게이트 · 판정은 그대로.
+    const _seen = [];
     for (const v of vrows.slice(0, 8)) {
+      await warp(R, v.cx * 32 + 16, v.cy * 32 + 16, 6, 120);
+      await sleep(1500);
+      const gate = await R.evaluate(() => window.__evNearVid);
+      if (gate == null) { _seen.push({ v, n: null }); continue; }   // 중심에 못 섰다 — 차례에서 뺀다
+      const cand = await findNpc();
+      _seen.push({ v, n: cand ? cand.n : 0 });
+    }
+    const _order = _seen.filter((x) => x.n != null).sort((a, b) => b.n - a.n).map((x) => x.v);   // 안정 정렬 — 같으면 DB 순서
+    console.log(`  · [상황] 마을마다 그 순간 화면 안 사람  ${_seen.map((x) => `${x.v.name} ${x.n == null ? '못 섬' : x.n}`).join(' · ')}`);
+    let npc = null, vsel = null;
+    for (const v of _order) {
       if (npc) break;
       await warp(R, v.cx * 32 + 16, v.cy * 32 + 16, 6, 120);
       await sleep(1500);
