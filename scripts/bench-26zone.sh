@@ -30,9 +30,10 @@ start() {
   echo "❌ 600초 안에 27개가 다 안 떴다 — 지금 ${ok}/27"; return 1
 }
 
-stop() { pkill -f "launch-al[l].js" 2>/dev/null; pkill -f "server/zon[e].js" 2>/dev/null
-         pkill -f "server/centra[l].js" 2>/dev/null; pkill -f "server/dispatche[r].js" 2>/dev/null
-         sleep 3; echo "남은 프로세스 $(pgrep -cf 'server/zon[e].js' 2>/dev/null || echo 0)개"; }
+source "$(dirname "${BASH_SOURCE[0]}")/_mine.sh"   # ★[T853] 이름으로 죽이되 내 netns 의 것만
+stop() { kill_mine 'launch-al[l].js'; kill_mine 'server/zon[e].js'
+         kill_mine 'server/centra[l].js'; kill_mine 'server/dispatche[r].js'
+         sleep 3; echo "남은 프로세스 $(count_mine 'server/zon[e].js')개"; }
 
 ps_() { pgrep -f "server/zon[e].js" | wc -l; }
 

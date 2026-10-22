@@ -47,11 +47,12 @@ start() {
   echo "❌ 180초 안에 셋 다 안 떴다"; tail -5 "$RUN"/*.log; exit 1
 }
 
+source "$(dirname "${BASH_SOURCE[0]}")/_mine.sh"   # ★[T853] 이름으로 죽이되 내 netns 의 것만
 stop() {
-  pkill -f "server/zon[e].js" 2>/dev/null
-  pkill -f "server/centra[l].js" 2>/dev/null
+  kill_mine 'server/zon[e].js'
+  kill_mine 'server/centra[l].js'
   sleep 2
-  echo "정지 — 남은 프로세스 $(pgrep -cf 'server/zon[e].js|server/centra[l].js' 2>/dev/null || echo 0)개"
+  echo "정지 — 남은 프로세스 $(count_mine 'server/zon[e].js|server/centra[l].js')개"
 }
 
 status() {
