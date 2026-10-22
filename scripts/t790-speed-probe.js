@@ -6,7 +6,7 @@
 //     그래서 빠르기 = 표본 사이 자리 차 ÷ (그 사이 그 몸이 쓴 걸음 × 스텝 초). 걸음 = 행군 · 교전 몸은 `_t681q.left` 가 줄어든 만큼(날이 바뀌면 몫을 더한다) ·
 //     귀환 몸은 전쟁 틱 수(`_warPerf.n` — 귀환은 몫을 안 쓰고 틱마다 걷는다).
 //     ★[T832] 켬(`T790_NO_SNAP=1`) 판에서 트리가 귀환 몸도 그날 몫을 쓰면(T832 — 틱은 `_t681Take` 몫만큼 · 남은 몫은 `_t681Flush` 가 채운다) 귀환도 `_t681q` 로 센다.
-//       그 트리인지는 `_t681Flush` 글자로 안다(읽기만 · 한 번) — T832 앞 트리 · 끔 판은 종전 셈(틱 수) 그대로. 종전 셈으로 T832 켬 판을 재면 마감이 채운 걸음을 0 으로 세어 튐으로 보인다.
+//       그 트리인지는 `_t681Flush` 글자로 안다(읽기만 · 한 번) — T832 앞 트리 · 끔 판은 종전 셈(틱 수) 그대로. ★[T844] 끔 + `T844_RET_QUOTA=1` 판도 몫으로 센다. 종전 셈으로 T832 켬 판을 재면 마감이 채운 걸음을 0 으로 세어 튐으로 보인다.
 //   ★잰다(1초 표본 · 존 NPC 몸 전부 — 징발 순간 마을 → 진 놓기까지 잡으려고 전쟁 밖 몸도 앞 표본으로 둔다):
 //     · 칸 — 대형(그 병사의 교전 몸이 없거나 `ctl` 참) | 교전(battle-core 가 모는 몸 — `ctl` 거짓 · 두 표본 중 하나라도) ·
 //       표본 수 · 최대 빠르기(px/s) · 몸 걸음(존 `moveSpeed`) 넘은 수 · 튐 수(`JUMP_PXS` 320 px/s — T764 · T781 관찰자와 같은 문턱) · 가장 빠른 표본 다섯
@@ -27,7 +27,7 @@ if (OUT && MAIN) {
   const put = (c, v, row) => { c.n++; if (v > c.max) c.max = v; if (walkPxs && v > walkPxs * (1 + 1e-9)) c.overWalk++; if (v > JUMP_PXS) c.jump++;
     if (c.top.length < 5 || v > c.top[c.top.length - 1][5]) { c.top.push(row.concat([r1(v)])); c.top.sort((a, z) => z[5] - a[5]); if (c.top.length > 5) c.top.length = 5; } };
   let RET_Q = null;   // ★[T832] 이 트리 켬 판의 귀환 몸이 그날 몫을 쓰나(처음 한 번 읽는다)
-  const retQ = () => { if (RET_Q == null) { try { RET_Q = process.env.T790_NO_SNAP === '1' && !!H && typeof H._t681Flush === 'function' && /body\.phase !== 'return' \|\| !body\._t681/.test(String(H._t681Flush)); } catch (e) { RET_Q = false; } } return RET_Q; };
+  const retQ = () => { if (RET_Q == null) { try { RET_Q = (process.env.T790_NO_SNAP === '1' || process.env.T844_RET_QUOTA === '1') && !!H && typeof H._t681Flush === 'function' && /body\.phase !== 'return' \|\| !body\._t681/.test(String(H._t681Flush)); } catch (e) { RET_Q = false; } } return RET_Q; };
   const stepsOf = (s, id, b, nCalls) => {   // 그 몸이 지금까지 쓴 걸음(관찰자 쪽 누계)
     const quota = Math.max(1, Math.round((s.dayMs || 0) * ((s.warLive && s.warLive.TICK_HZ) || 30) / 1000)), day = s.world ? s.world.day | 0 : 0;
     let o = bodySteps.get(id);

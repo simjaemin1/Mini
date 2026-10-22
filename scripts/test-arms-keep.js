@@ -71,9 +71,10 @@ console.log('\n① 정적');
   ok(/for \(const w of WARS\) if \(w\.atk === vil && w\._arms && !w\._arms\.done\) s \+= Math\.max\(0, w\._arms\.weapon \|\| 0\);/.test(sync) && /if \(s > 0\) e\._warArmsOut = s; else if \(e\._warArmsOut != null\) delete e\._warArmsOut;/.test(sync),
     'ⓑ 거울은 늘 짐에서 다시 센다(`_syncTribToEcon` 꼴 · 두 번째 장부 0) · 0 이면 칸을 지운다');
   const calls = (C.match(/_syncArmsToEcon\(/g) || []).length - 1;
-  ok(calls === 3 && /WARS\.push\(_war\);\s*if \(_war\._arms\) _syncArmsToEcon\(V\);/.test(C) && /if \(w\._arms\) _syncArmsToEcon\(w\.atk\); \}/.test(C)
-     && /WARS\.splice\(i, 1\);\s*if \(w\._arms\) _syncArmsToEcon\(w\.atk\);/.test(C),
-    'ⓑ 부르는 자리 셋 — 반출(동원) · 결판(짐에서 빠진 몫) · 귀환(반납 뒤) — 모두 `_arms` 가 있을 때만(끔 = 안 부른다)', `자리 ${calls}`);
+  ok(calls === 4 && /WARS\.push\(_war\);\s*if \(_war\._arms\) _syncArmsToEcon\(V\);/.test(C) && /if \(w\._arms\) _syncArmsToEcon\(w\.atk\); \}/.test(C)
+     && /WARS\.splice\(i, 1\);\s*if \(w\._arms\) _syncArmsToEcon\(w\.atk\);/.test(C)
+     && (C.match(/syncArmsMirror: \(vil\) => _syncArmsToEcon\(vil\),/g) || []).length === 1,
+    'ⓑ 부르는 자리 셋 — 반출(동원) · 결판(짐에서 빠진 몫) · 귀환(반납 뒤) — 모두 `_arms` 가 있을 때만(끔 = 안 부른다) · 넷째는 호스트 문 하나(★[T857] `syncArmsMirror` — 결판 자리 몸 짐 뒤 · 같은 함수)', `자리 ${calls}`);
   ok(/if \(!e \|\| !\(e\._warArmsOut > 0\)\) continue;/.test(reb) && /held \+= Math\.max\(0, w\._arms\.weapon \|\| 0\)/.test(reb) && /e\.storage\.weapon = \(e\.storage\.weapon \|\| 0\) \+ back;/.test(reb) && !/_armsLedgerOn/.test(reb),
     'ⓒⓔ 다시 뜨면 — 거울 − 실린 짐 = 곳간에 · **칸을 본다**(손잡이 아님)');
   const added = sync + reb.slice(reb.indexOf('T764'));

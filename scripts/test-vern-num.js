@@ -35,7 +35,7 @@ function child() {
     const r = C.isReady ? C.isReady(id, d, d + 200) : null;
     h.update(`${id}:${d}:${v}:${g}:${r};`); n++;
   }
-  return { hash: h.digest('hex').slice(0, 16), n, win: win.length, on: process.env.T834_VERN_NUM === '1' };
+  return { hash: h.digest('hex').slice(0, 16), n, win: win.length, on: process.env.T834_VERN_NUM !== '0' };
 }
 if (process.argv[2] === '--child') { const o = child(); process.stdout.write('\n@@JSON@@' + JSON.stringify(o)); process.exit(0); }
 
@@ -44,16 +44,16 @@ const ok = (c, m, d) => { if (c) pass++; else fail++; console.log(`  ${c ? '✓'
 const run = (env) => JSON.parse(String(execFileSync(process.execPath, [__filename, '--child'], { env: Object.assign({}, process.env, { T834_VERN_NUM: '', T834_BAIT: '' }, env), encoding: 'utf8', maxBuffer: 1 << 26 })).split('@@JSON@@').pop());
 
 console.log('\n=== T834 ② 춘화일 사전 열쇠 = 날 하나 · 종전 값 ===');
-const OFF = run({}), ON = run({ T834_VERN_NUM: '1' });
+const OFF = run({ T834_VERN_NUM: '0' }), ON = run({}), ON1 = run({ T834_VERN_NUM: '1' });   // ★[T846] 켬 기본 — 끔 탐침 `=0` · 기본(빈 값) · '1' 둘 다 켬
 console.log('\n① 같은 값');
 ok(OFF.win >= 2 && OFF.n > 100000, '[상황] 월동 작물 둘 이상 · 물음 수(끔 사전은 비우기 문턱 4096 을 넘는다 — 월동 셋 × 날 3,005)', `월동 ${OFF.win} · 물음 ${OFF.n}`);
-ok(ON.on && !OFF.on && ON.hash === OFF.hash, '★★켬 = 끔 — `vernalDay` · `grownDays` · `isReady` 줄이 한 글자 같다', `${ON.hash} / ${OFF.hash}`);
+ok(ON.on && ON1.on && !OFF.on && ON.hash === OFF.hash && ON1.hash === OFF.hash, '★★켬 = 끔 — `vernalDay` · `grownDays` · `isReady` 줄이 한 글자 같다', `${ON.hash} / ${OFF.hash}`);
 console.log('\n② 미끼');
 const BAIT = run({ T834_VERN_NUM: '1', T834_BAIT: '1' });
 ok(BAIT.hash !== OFF.hash, '★미끼 — 열쇠를 해 나머지로 접은 사본은 끔과 갈린다', `${BAIT.hash} / ${OFF.hash}`);
 console.log('\n③ 글자');
 const S = fs.readFileSync(CP, 'utf8');
-ok(/const T834_VERN_NUM = typeof process !== 'undefined' && process\.env && process\.env\.T834_VERN_NUM === '1';/.test(S), "손잡이 — '1' 만 켬");
+ok(/const T834_VERN_NUM = !\(typeof process !== 'undefined' && process\.env && process\.env\.T834_VERN_NUM === '0'\);/.test(S), "손잡이 — 켬 기본 · `=0` 만 끔");
 ok(S.includes("  const k = id + ',' + p;\n  let v = _vernCache.get(k);\n  if (v === undefined) { if (_vernCache.size > 4096) _vernCache.clear(); v = _vernalCompute(id, p); _vernCache.set(k, v); }\n  return v;"), '끔 갈래 = 종전 줄 그대로');
 console.log(`\n=== ${pass} 통과 / ${fail} 실패 ===\n`);
 process.exit(fail ? 1 : 0);
