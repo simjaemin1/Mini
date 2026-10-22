@@ -172,7 +172,19 @@ const VILLAGE_MAX = Math.max(1, parseInt(process.env.VILLAGE_MAX || '20', 10)); 
 // ★★[T538 추신3 ⓑ 2026-09-30 · 재민 캐논 #54] **몸 수 상한 무제한** — econ 인구가 곧 몸이다(추상 없애기).
 //   T376(답 예 · 몸 2,515 = econ 전부) → T433 켬 팔(규약 다섯 · 낮 p50 22.0 · p95 28.5ms · 36/36 조각 예산 안 · drop 0 · 소멸 0)을 **기본으로** 올린다.
 //   되돌림 = `VILLAGE_NPC_CAP=40`(종전 기본값 그대로 · 테스트 훅은 종전처럼 수를 준다).
-const T846_VIL_FAST = process.env.T846_VIL_FAST === '1';   // ★[T846 ②] 마을 객체 빠른 꼴(부팅 뒤 `_bRows` 를 지우지 않고 `null`) · '1' 만 켬 — 아래 부팅 줄
+const T846_VIL_FAST = process.env.T846_VIL_FAST !== '0';   // ★[T862 ①] 켬 기본(PM 10-22) · 끔 탐침 `=0` · ★[T846 ②] 마을 객체 빠른 꼴(부팅 뒤 `_bRows` 를 지우지 않고 `null`) — 아래 부팅 줄
+const T862_ECON_FAST = process.env.T862_ECON_FAST === '1';   // ★[T862 ②] 마을 econ 객체 빠른 꼴(곁 칸 · 위협 자국을 `delete` 대신 `undefined`) · '1' 만 켬 — 아래 `_T862_SIDE`
+// ★★[T862 ② 2026-10-22] **마을 econ 객체(`vil.econ` — 생활층과 econ 하루가 가장 많이 읽는 객체 · 칸 110~135)를 V8 사전 모드로 내리지 않는다.**
+//   전수 표(보고/T862 §2): 실서버에서 econ 객체를 사전 모드로 내리는 `delete` 는 두 무리다 —
+//     ⓐ 다시 뜬 판의 부팅 복원: 저장 줄에 실린 곁 칸(`_t728*` · `_t740Side` · `_t747Body` · `_t732Lots`)을 제자리로 돌려놓고 `delete` —
+//        ⇒ 저장된 세계에서 다시 뜨면 **51 마을 전부**가 그 판 내내 사전 모드(운영 서버는 배포마다 다시 뜬다)
+//     ⓑ 전쟁이 서면 `_warWriteThreats` 가 걸음마다 지난 위협 자국을 `delete e._warThreat`(새 세계 400날: 날 370 부터 2 → 12/51)
+//   켬이면 지우지 않고 `undefined` 를 놓는다. 읽는 자리가 전부 참거짓 · `|| 0` · `!= null` · `in`(부팅 한 번 문 — 값이 `undefined` 면 곧장 넘어간다) 꼴이라
+//   지운 칸과 같은 답이고, 저장(`serializeEcon`)은 이 칸들이 `undefined` 면 싣지 않는다(종전 저장 줄과 같은 칸 · 같은 차례) — 같은 값 · 새 수 0.
+const _T862_SIDE = new Set(['_t728BaseOre', '_t728Game', '_t728HuntWk', '_t728LtdOwn', '_t728LtdSrv', '_t740Side', '_t747Body', '_t732Lots', '_warThreat']);
+function _t862Drop(o, k) { if (T862_ECON_FAST) o[k] = undefined; else delete o[k]; }
+//   `in` 문(부팅 복원) — 켬이면 `undefined` 칸 = 지운 칸(저장 줄은 JSON 이라 실린 칸이 `undefined` 일 수 없다 ⇒ 끔의 `k in o` 와 같은 답 · 두 번 불러도 같다)
+function _t862Has(o, k) { return (k in o) && !(T862_ECON_FAST && o[k] === undefined); }
 const NPC_CAP_PER_VILLAGE = process.env.VILLAGE_NPC_CAP ? Math.max(1, parseInt(process.env.VILLAGE_NPC_CAP, 10) || 40) : Infinity;
 const POP_SYNC_PER_DAY = 2; // 인구 반영은 완만: 게임일당 마을당 ±2명까지 (증가=스폰, 감소=최근 NPC부터)
 // ★★[T559 ② 2026-09-30 · 재민 #78] **마을 간 최소 간격을 존마다 유도하는 식** — 손잡이 `T559_SPACING_DERIVE=1`(★기본 **끔** = 종전 12,000 그대로).
@@ -1001,8 +1013,8 @@ function _t747Restore() {
   const R = { villages: 0, bodies: 0, jobMiss: 0, hands: 0, extraHands: 0, task: 0, taskDrop: 0, moved: 0, hpLow: 0 };
   if (!P) return R;
   for (const vil of state.villages) {
-    const e = vil.econ; if (!e || !('_t747Body' in e)) continue;
-    const B = e._t747Body; delete e._t747Body;
+    const e = vil.econ; if (!e || !_t862Has(e, '_t747Body')) continue;
+    const B = e._t747Body; _t862Drop(e, '_t747Body');
     const rows = B && B.rows, SH = B && B.sh;
     if (!Array.isArray(rows)) continue;
     const dropped = [];
@@ -1059,8 +1071,8 @@ function _t740SavedPsite(vil, r) {
 function _t740Restore() {
   const R = { villages: 0, keys: {}, crop: 0, mkt: 0, site: 0, psite: 0 };
   for (const vil of state.villages) {
-    const e = vil.econ; if (!e || !('_t740Side' in e)) continue;
-    const S = e._t740Side; delete e._t740Side;
+    const e = vil.econ; if (!e || !_t862Has(e, '_t740Side')) continue;
+    const S = e._t740Side; _t862Drop(e, '_t740Side');
     if (!S || typeof S !== 'object') continue;
     R.villages++;
     for (const k of _T740_KEYS) if (k in S) { vil[k] = _t740Dec(S[k]); R.keys[k] = (R.keys[k] || 0) + 1; }
@@ -1095,6 +1107,7 @@ function serializeEcon(v) {
   const out = {};
   for (const k of Object.keys(v)) {
     if ((SERIALIZE_SKIP.has(k) && !(T728_KEEP && _T728_KEEP_KEYS.has(k))) || typeof v[k] === 'function') continue;
+    if (T862_ECON_FAST && v[k] === undefined && _T862_SIDE.has(k)) continue;   // ★[T862 ②] 지운 칸 자리(`undefined`)는 종전처럼 칸이 없다 — 아래 곁 칸이 종전 차례로 붙는다
     out[k] = v[k];
   }
   if (T728_KEEP) {   // ★[T728 ⓑ ⓒ] 곁 칸 — 복원 문(`_t728Restore`)이 제자리로 돌려놓고 지운다
@@ -1140,7 +1153,7 @@ function serializeEcon(v) {
 }
 function restoreEcon(json, econ) {
   const v = JSON.parse(json);
-  if (v._t732Lots !== undefined) { if (_T732_ON && v._t732Lots) _t732Saved.set(v, v._t732Lots); delete v._t732Lots; }   // ★[T732] 곳간 장부는 econ 칸이 아니다(떼어 두고 붙이기가 읽는다 · 끄면 버린다)
+  if (v._t732Lots !== undefined) { if (_T732_ON && v._t732Lots) _t732Saved.set(v, v._t732Lots); _t862Drop(v, '_t732Lots'); }   // ★[T732] 곳간 장부는 econ 칸이 아니다(떼어 두고 붙이기가 읽는다 · 끄면 버린다)
   v._world = null; // 호출부에서 재부착
   v.history = Array.isArray(v.history) ? v.history : [];
   if (!(T728_KEEP && v.dailyProductionBuf && typeof v.dailyProductionBuf === 'object')) v.dailyProductionBuf = Object.fromEntries(econ.RESOURCES.map(r => [r, 0]));   // ★[T728 ⓐ] 켬 = 저장된 어제 생산 그대로
@@ -5135,9 +5148,9 @@ function init(deps) {
     if (T731_ON) _t731Boot(Date.now());   // ★[T731] 마을마다 현지 자정 날을 시계에서 바로(증인 한 줄)
     if (T728_KEEP) { try { _t728Restore(); } catch (e) { console.error(`[${ZONE_ID}] 🏘️ [T728] 재기동 영속 복원 실패(종전대로 계속):`, e.message); } }
     if (T740_SIDE) { try { _t740Restore(); } catch (e) { console.error(`[${ZONE_ID}] 🏘️ [T740] 마을 칸 복원 실패(종전대로 계속):`, e.message); } }
-    else for (const v of state.villages) if (v.econ && '_t740Side' in v.econ) delete v.econ._t740Side;   // ★[T740] 끔 — 켬으로 적은 행의 곁 칸을 econ 에 남기지 않는다(다음 켬이 묵은 칸을 되돌리지 않게 · main 행엔 이 칸이 없어 무동작)
+    else for (const v of state.villages) if (v.econ && _t862Has(v.econ, '_t740Side')) _t862Drop(v.econ, '_t740Side');   // ★[T740] 끔 — 켬으로 적은 행의 곁 칸을 econ 에 남기지 않는다(다음 켬이 묵은 칸을 되돌리지 않게 · main 행엔 이 칸이 없어 무동작)
     if (T747_BODY) { try { _t747Restore(); } catch (e) { console.error(`[${ZONE_ID}] 🏘️ [T747] 몸 칸 복원 실패(종전대로 계속):`, e.message); } }
-    else for (const v of state.villages) if (v.econ && '_t747Body' in v.econ) delete v.econ._t747Body;   // ★[T747] 끔 — 켬으로 적은 행의 곁 칸을 econ 에 남기지 않는다(main 행엔 이 칸이 없어 무동작)
+    else for (const v of state.villages) if (v.econ && _t862Has(v.econ, '_t747Body')) _t862Drop(v.econ, '_t747Body');   // ★[T747] 끔 — 켬으로 적은 행의 곁 칸을 econ 에 남기지 않는다(main 행엔 이 칸이 없어 무동작)
     if (T822_BODY_SEED) _t833Boot();   // ★[T833] 되살림(T728 메타 · T747 몸 칸) 뒤 — 명부 자리 열쇠로 한 번(같은 판 씨 · 같은 자리면 되살린 값 그대로)
     if (_T732_ON) { try { _t732Boot(); } catch (e) { console.error(`[${ZONE_ID}] 🧺 [T732] 곳간 로트 장부 붙이기 실패(장부 없이 계속):`, e.message); } }
     // ★★[T533] 존 경계 호스트 — 팔 `T525_CROSS_ZONE`(econ 정본) 켬 + 존이 미는 문을 줬을 때만(끔 = 이 줄 무동작 · 조각 목록·몸 층 무변).
@@ -5250,7 +5263,12 @@ function _warWriteThreats(now) {
   const WARS = state.war.WARS;
   const prev = state._warThreatOn;                     // 지난번에 값이 붙어 있던 마을들(대개 0~몇 개)
   if (!WARS.length && !(prev && prev.length)) return 0;   // 전쟁도 없고 지운 자국도 없다 — 한 걸음도 안 돈다(평시 O(1))
-  if (prev) for (const e of prev) { if (e) delete e._warThreat; }   // ★지나간 군대의 자국은 남지 않는다(잔류 0)
+  // ★★[T862 ② 2026-10-22 · 손잡이 `T862_ECON_FAST`('1' 만 켬 · 끔 = 아래 종전 줄 그대로)] **마을 econ 객체를 사전 모드로 내리지 않는다.**
+  //   전쟁이 서면 이 줄이 걸음마다 `delete e._warThreat` 로 위협 자국을 지웠고, 그 `delete` 한 번이 econ 객체(칸 110~135)를 V8 사전 모드로 내렸다
+  //   (실서버 400날 표본: 첫 전쟁 날 370 부터 마을 econ 2 → 12/51 이 사전 모드 · 다시 안 돌아온다). 켬이면 지우지 않고 `undefined` 를 놓는다.
+  //   읽는 자리가 전부 참거짓 · `|| 0` · `> 0` 꼴이라(`_warOutMul` · 아래 `t > (e._warThreat || 0)` · econ v2 캐러밴 기대손실 `a.v._warThreat || 0`)
+  //   `undefined` = 지운 칸과 같은 답이고, 저장(`serializeEcon` → `JSON.stringify`)은 `undefined` 칸을 안 싣는다 — 같은 값 · 새 수 0.
+  if (prev) for (const e of prev) { if (e) _t862Drop(e, '_warThreat'); }   // ★지나간 군대의 자국은 남지 않는다(잔류 0)
   const on = [];
   let n = 0;
   const WL = state.warLive, R = WL ? WL.WAR_ALERT_R : 0;
@@ -13630,20 +13648,20 @@ function _t728Restore() {
   for (const vil of state.villages) {
     const e = vil.econ; if (!e) continue;
     let hit = false;
-    if ('_t728BaseOre' in e) { if (e._t728BaseOre != null) vil._baseOre = e._t728BaseOre; delete e._t728BaseOre; hit = true; }
-    if ('_t728Game' in e) {
+    if (_t862Has(e, '_t728BaseOre')) { if (e._t728BaseOre != null) vil._baseOre = e._t728BaseOre; _t862Drop(e, '_t728BaseOre'); hit = true; }
+    if (_t862Has(e, '_t728Game')) {
       const G = e._t728Game, unflat = (a) => { const m = new Map(); for (let i = 0; i + 1 < a.length; i += 2) m.set(a[i], a[i + 1]); return m; };
       if (G && G.m && !G.scan) { vil._gameRich = unflat(G.m); vil._gameTot0 = G.tot0; vil._baseGame = G.base; if (G.floorN != null) vil._gameFloorN = G.floorN; }
       else if (G && G.none) vil._gameNone = G.none;
       else if (G && G.scan) vil._gameScan = { dy: G.scan.dy, n: G.scan.n, g: G.scan.g, m: unflat(G.scan.m) };
-      delete e._t728Game; hit = true;
+      _t862Drop(e, '_t728Game'); hit = true;
     }
-    if ('_t728HuntWk' in e) {
+    if (_t862Has(e, '_t728HuntWk')) {
       const hw = e._t728HuntWk, P = state.deps && state.deps.players;
       if (Array.isArray(hw) && P) for (let i = 0; i + 3 < hw.length; i += 4) { const b = P.get(vil.npcPids[hw[i]]); if (b && (b.simJob || null) === hw[i + 1]) b._huntWk = { cx: hw[i + 2], cy: hw[i + 3] }; }
-      delete e._t728HuntWk; hit = true;
+      _t862Drop(e, '_t728HuntWk'); hit = true;
     }
-    if ('_t728LtdOwn' in e) { if (e._t728LtdSrv != null) _ltd.set(e, e._t728LtdSrv); e.lastTradeDay = e._t728LtdOwn; delete e._t728LtdOwn; delete e._t728LtdSrv; hit = true; }
+    if (_t862Has(e, '_t728LtdOwn')) { if (e._t728LtdSrv != null) _ltd.set(e, e._t728LtdSrv); e.lastTradeDay = e._t728LtdOwn; _t862Drop(e, '_t728LtdOwn'); _t862Drop(e, '_t728LtdSrv'); hit = true; }
     if (hit) R.side++;
   }
   const row = state.db && state.db.getWorldMeta ? state.db.getWorldMeta(state.zoneId) : null;
