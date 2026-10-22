@@ -4,10 +4,10 @@
 //
 // ★왜 [T807 정보] 견적은 낼 물건의 단위를 한 개짜리 어림(첫 아이템 1개 단위 × 개수 — 호스트 `villageTradeQuote`)으로 잡고,
 //   실행은 고른 그 개체들(`_pick` · `_units`)로 잰다 — 무게가 다른 짐이면 견적 ≠ 실행.
-//   손잡이 하나 `T835_QUOTE_WEIGHT`('1' 만 켬 · 끔 = main 바이트) — 켜면 견적이 실행과 같은 고르기 · 단위 셈(`_giver`)을 지난다.
+//   손잡이 하나 `T835_QUOTE_WEIGHT`(★T847 켬 기본 · `=0` = 종전 견적) — 켜면 견적이 실행과 같은 고르기 · 단위 셈(`_giver`)을 지난다.
 //
 // 재는 것:
-//   ① 술어 — `=== '1'` 만 켬 · 읽는 자리 = `server/trade.js` 하나 · 끔 탐침
+//   ① 술어 — ★[T847] `=== '0'` 만 끔(켬 기본) · 읽는 자리 = `server/trade.js` 하나 · 끔 탐침
 //   ② 글자 — 실행의 고르기 · 단위 셈이 `_giver` 하나(사본 0) · 견적의 켬 갈래가 그 함수 · 호스트가 인벤을 넘긴다(전달만)
 //   ③ 같은 곳간 · 같은 순간 — 마을 다섯 · 낼 것(무게 다른 아이템 여럿) 둘 × 받을 것 여섯 · 낼 양 1~12 · 열량 짝 끔/켬 · 무게 다른 짐(아이템마다 · 낱개마다):
 //      ⓐ 미끼(끔) — 견적 ≠ 실행이 있다(자명 통과 금지)
@@ -82,15 +82,15 @@ const C = codeOnly(T);
 
 console.log('\n=== 무거운 물건 견적도 고른 그 개체들의 무게로 (T835) ===');
 console.log('\n① 술어 · 읽는 자리 · 끔 탐침');
-{ const decl = T.match(/const T835_ON = \(typeof process !== 'undefined' && process\.env && process\.env\.T835_QUOTE_WEIGHT === '1'\);/g) || [];
-  ok(decl.length === 1, '① 선언 하나 · `=== \'1\'` 만 켬(기본 끔)', `선언 ${decl.length}`);
+{ const decl = T.match(/const T835_ON = !\(typeof process !== 'undefined' && process\.env && process\.env\.T835_QUOTE_WEIGHT === '0'\);/g) || [];
+  ok(decl.length === 1, '① 선언 하나 · ★[T847] `=== \'0\'` 만 끔(켬 기본)', `선언 ${decl.length}`);
   const files = []; const walk = (d) => { for (const f of fs.readdirSync(d)) { const p = path.join(d, f); const st = fs.statSync(p); if (st.isDirectory()) walk(p); else if (/\.js$/.test(f)) files.push(p); } };
   for (const d of ['server', 'sim', 'public']) walk(path.join(ROOT, d));
   const readers = files.filter((p) => codeOnly(fs.readFileSync(p, 'utf8')).includes('T835_QUOTE_WEIGHT')).map((p) => path.relative(ROOT, p));
   ok(readers.length === 1 && readers[0] === path.join('server', 'trade.js'), '① 읽는 자리 = server/trade.js 하나', readers.join(','));
   const probe = (v) => { const e = Object.assign({}, process.env); delete e.T835_QUOTE_WEIGHT; if (v != null) e.T835_QUOTE_WEIGHT = v;
     return execFileSync(process.execPath, ['-e', `console.log(require(${JSON.stringify(path.join(ROOT, 'server', 'trade.js'))}).T835_ON)`], { env: e, encoding: 'utf8' }).trim().split('\n').pop(); };
-  ok(probe(null) === 'false' && probe('0') === 'false' && probe('1') === 'true', '① 끔 탐침 — env 없음 · `=0` = 끔 · `=1` = 켬', `${probe(null)} · ${probe('1')}`); }
+  ok(probe(null) === 'true' && probe('0') === 'false' && probe('1') === 'true', '① ★끔 탐침 — env 없음 = 켬 · `=0` = 끔 · `=1` = 켬', `${probe(null)} · ${probe('0')}`); }
 
 console.log('\n② 글자 — 고르기 · 단위 셈 하나');
 { const defs = (C.match(/function _giver\(/g) || []).length, pickers = (C.match(/const pick = \(cnt\) =>/g) || []).length;
