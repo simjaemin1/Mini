@@ -15,15 +15,15 @@
 //     ③ **행 폴백 픽스처** — 페이로드에 몸을 일부러 안 실어(`E2E_HANDOFF_NO_BODY=1`) central 행
 //        경로를 실제로 밟는다. 밟아 보지 않은 폴백은 "있다고 적혀만 있는 코드"다.
 //     ④ 재접속 후에도 같다 — 도착 존이 빈 몸으로 계정을 덮지 않는다(N.6 의 '영구 소실' 부분)
+//   ★[T868 2026-10-22] 승격 경로(`promote_to_primary` — 실제 클라의 보통 넘기)도 **몸 전부**를 잇는다(손잡이 `T868_PROMOTE_BODY` · '1' 만 켬) —
+//     ① 글자: 두 갈래(토큰 · 승격)가 같은 몸 한 자리(`_handoffBody`)를 부르나 + 미끼(몸 잇는 줄 없는 승격 갈래 = 스칼라만 쓰는 사본)가 문다 ·
+//     ⑦ P 켬 = 승격으로 넘은 몸 · 클라 끊긴 판 행 · 다시 접속이 넘기 전과 비트 같다 · Q 끔 = 도구 2 → 0 → 행 0(종전 결함 증인).
 //   ★[T778 2026-10-18] 순간 로트 켬 기본 — 로트의 정산 칸 `e·t` 는 흐른 시간만큼 자라므로 ⓑ(이어졌나)로 옮겼다 ·
 //     `d·k·n·m·w` 는 ⓐ(비트 동일) 그대로 · 끔 탐침(`T732_MOMENT_LOT=0`) 한 판이 로트 통째 비트 동일(종전 단언)을 잰다.
 //   ★[T823 → T831 2026-10-21] 떠난 몸 껍데기 얼림 **켬 기본**(되돌림 `T823_FREEZE_SHELL=0` — 끔 탐침 E · G) · ⑤ 닫힐 때 저장 자리 경합 —
 //     ACK 를 잃게 해(출발 존에만 안 문 비밀) 껍데기의 늦은 저장이 도착 존 접속 저장 **뒤에** 닿게 순서를 강제하고, central 행과 로비 `/auth` 를 읽는다(F 켬 · G 끔).
 //   ★[T843 2026-10-22] 받는 존이 몸을 받은 뒤의 껍데기 저장은 **몸 칸도** 안 쓴다(통째로 안 나감) — F 켬 = 행 몸 · 자리 · `last_seen` 그대로(되돌림 0) ·
 //     G 끔 = 종전대로 되돌아감(증인) · I 켬 = 받는 존이 몸을 안 받은 판(준비 응답 전 — 받는 존을 세워 둔다)은 종전대로 나간다(갈래 둘).
-//   ★[T868 2026-10-22] 승격 경로(`promote_to_primary` — 실제 클라의 보통 넘기)도 **몸 전부**를 잇는다(손잡이 `T868_PROMOTE_BODY` · '1' 만 켬) —
-//     ① 글자: 두 갈래(토큰 · 승격)가 같은 몸 한 자리(`_handoffBody`)를 부르나 + 미끼(몸 잇는 줄 없는 승격 갈래 = 스칼라만 쓰는 사본)가 문다 ·
-//     ⑦ P 켬 = 승격으로 넘은 몸 · 클라 끊긴 판 행 · 다시 접속이 넘기 전과 비트 같다 · Q 끔 = 도구 2 → 0 → 행 0(종전 결함 증인).
 //   ★상황 선행 assert: 왕복이 **실제로 존 경계를 넘었는지**(handoff 메시지를 받았는지) 먼저 본다.
 //     안 넘었으면 이 하네스는 아무것도 재고 있지 않다.
 //
@@ -369,6 +369,20 @@ async function promoteTrip(tag) {
   ok(/body: E2E_HANDOFF_NO_BODY \? undefined : serializeBody\(player\)/.test(src), '① 핸드오프 페이로드가 **같은 함수**를 쓴다');
   ok((src.match(/parseBody\(/g) || []).length >= 3, '① 복원이 `parseBody` 한 곳에서 온다(정의 + 접속 + 핸드오프)', `${(src.match(/parseBody\(/g) || []).length}회`);
   ok(!/tools_json: JSON\.stringify\(\{/.test(src), '① 저장 경로에 **손으로 쓴 두 번째 직렬화가 없다**');
+  // ★★[T868] 두 갈래(토큰 · 승격)가 같은 몸 한 자리(`_handoffBody` — 출처 순서 페이로드 → central 행 · 복원 `parseBody`)를 부르나.
+  //   승격 갈래 글자를 떼어 본다. 미끼 = 같은 갈래에서 몸 잇는 두 줄만 뺀 사본(스칼라만 쓰는 승격 — main 의 그 꼴) — 그 사본에 검사가 물어야 검사가 뜻이 있다.
+  const cutSrc = (s, a, b) => { const i = s.indexOf(a); if (i < 0) return ''; const j = s.indexOf(b, i + a.length); return s.slice(i, j > i ? j : s.length); };
+  const promoteOf = (s) => cutSrc(s, "msg.type === 'promote_to_primary' && msg.token && pendingHandoffs.has(msg.token)", '\nfunction attachObserverHandlers');
+  const tokenOf = (s) => cutSrc(s, 'if (handoffToken && pendingHandoffs.has(handoffToken)) {', '// source zone에 ACK 전송');
+  const sameBody = (s) => /_handoffBody\(pending, pending\.player_id\)/.test(promoteOf(s)) && /_t868BodyInto\(player, _t868hb\.B\)/.test(promoteOf(s))
+    && /_handoffBody\(pending, playerId\)/.test(tokenOf(s)) && !/parseBody\(/.test(tokenOf(s))
+    && /function _handoffBody\(pending, playerId\) \{\s*const done = \(raw, src\) => \(\{ B: parseBody\(raw \|\| \{\}, \{ vitals: true \}\), src \}\);\s*if \(pending\.body\) return done\(pending\.body, 'payload'\);\s*return central\.getPlayer\(playerId\)/.test(s);
+  ok(sameBody(src) && (src.match(/process\.env\.T868_PROMOTE_BODY/g) || []).length === 1 && /const T868_PROMOTE_BODY = process\.env\.T868_PROMOTE_BODY === '1';/.test(src),
+    '① ★★[T868] 두 갈래(토큰 · 승격)가 같은 몸 한 자리(`_handoffBody` — 페이로드 → central 행 · `parseBody`)를 부른다 · 손잡이 한 자리(`=== \'1\'`)');
+  const decoyPromote = promoteOf(src).replace(/_handoffBody\(pending, pending\.player_id\)/g, 'null').replace(/^.*_t868BodyInto\(player, _t868hb\.B\).*$/m, '');
+  const decoySrc = src.replace(promoteOf(src), decoyPromote);
+  ok(promoteOf(src).length > 2000 && decoySrc !== src && !sameBody(decoySrc) && /equipment: \[\], equipSlots: \{\}, craftSkill: \{\}/.test(decoyPromote),
+    '① ★[T868] 미끼 — 몸 잇는 두 줄을 뺀 승격 갈래(스칼라만 쓰는 사본 · main 의 그 꼴)에는 위 검사가 문다(자명 통과 0)', `승격 갈래 ${promoteOf(src).length}자`);
   // ★[T802] ② HP 기준점(`beforeCross` = 떠난 존의 껍데기)이 **찍힌 값**이려면 걷는 내내 hp 를 세우는 픽스처(`poke`)가 찍은 뒤 껍데기에 쓰면 안 된다.
   //   종전엔 썼다 — 400 ms 마다 오는 한 번이 찍은 뒤 닿으면 껍데기만 42 로 내려가 기준이 찍힌 값보다 3~4 낮았다(T802 · 단독 세 판 빨강).
   //   이 하네스가 그 문을 같이 지킨다(문이 풀리면 ② 가 다시 위상에 따라 깜빡인다).
@@ -389,20 +403,6 @@ async function promoteTrip(tag) {
   ok(/function savePlayer\(player, extra = \{\}\) \{\s*if \(!canPersist\(player\)\) return;[\s\S]{0,3000}?\n\s*if \(T823_FREEZE_SHELL && player\.handingOff && _t843Handed\(player\)\) return;\s*const pt = _savePatch\(player, extra\);/.test(src)
     && /function _t843Handed\(p\) \{\s*if \(players\.get\(p\.pid\) !== p\) return true;\s*for \(const e of outgoingHandoffs\.values\(\)\) if \(e\.pid === p\.pid\) return true;\s*return false;\s*\}/.test(src),
     '① ★[T843] 받는 존이 몸을 받은 뒤의 껍데기 저장은 몸 칸도 안 쓴다(통째로 안 나감) — `savePlayer` 머리 · 갈래 판단은 이미 있는 칸 둘(`outgoingHandoffs` · `players`)');
-  // ★★[T868] 두 갈래(토큰 · 승격)가 같은 몸 한 자리(`_handoffBody` — 출처 순서 페이로드 → central 행 · 복원 `parseBody`)를 부르나.
-  //   승격 갈래 글자를 떼어 본다. 미끼 = 같은 갈래에서 몸 잇는 두 줄만 뺀 사본(스칼라만 쓰는 승격 — main 의 그 꼴) — 그 사본에 검사가 물어야 검사가 뜻이 있다.
-  const cutSrc = (s, a, b) => { const i = s.indexOf(a); if (i < 0) return ''; const j = s.indexOf(b, i + a.length); return s.slice(i, j > i ? j : s.length); };
-  const promoteOf = (s) => cutSrc(s, "msg.type === 'promote_to_primary' && msg.token && pendingHandoffs.has(msg.token)", '\nfunction attachObserverHandlers');
-  const tokenOf = (s) => cutSrc(s, 'if (handoffToken && pendingHandoffs.has(handoffToken)) {', '// source zone에 ACK 전송');
-  const sameBody = (s) => /_handoffBody\(pending, pending\.player_id\)/.test(promoteOf(s)) && /_t868BodyInto\(player, _t868hb\.B\)/.test(promoteOf(s))
-    && /_handoffBody\(pending, playerId\)/.test(tokenOf(s)) && !/parseBody\(/.test(tokenOf(s))
-    && /function _handoffBody\(pending, playerId\) \{\s*const done = \(raw, src\) => \(\{ B: parseBody\(raw \|\| \{\}, \{ vitals: true \}\), src \}\);\s*if \(pending\.body\) return done\(pending\.body, 'payload'\);\s*return central\.getPlayer\(playerId\)/.test(s);
-  ok(sameBody(src) && (src.match(/process\.env\.T868_PROMOTE_BODY/g) || []).length === 1 && /const T868_PROMOTE_BODY = process\.env\.T868_PROMOTE_BODY === '1';/.test(src),
-    '① ★★[T868] 두 갈래(토큰 · 승격)가 같은 몸 한 자리(`_handoffBody` — 페이로드 → central 행 · `parseBody`)를 부른다 · 손잡이 한 자리(`=== \'1\'`)');
-  const decoyPromote = promoteOf(src).replace(/_handoffBody\(pending, pending\.player_id\)/g, 'null').replace(/^.*_t868BodyInto\(player, _t868hb\.B\).*$/m, '');
-  const decoySrc = src.replace(promoteOf(src), decoyPromote);
-  ok(promoteOf(src).length > 2000 && decoySrc !== src && !sameBody(decoySrc) && /equipment: \[\], equipSlots: \{\}, craftSkill: \{\}/.test(decoyPromote),
-    '① ★[T868] 미끼 — 몸 잇는 두 줄을 뺀 승격 갈래(스칼라만 쓰는 사본 · main 의 그 꼴)에는 위 검사가 문다(자명 통과 0)', `승격 갈래 ${promoteOf(src).length}자`);
 
   if (!await startZones()) { console.log('  ✗ 2존 기동 실패'); process.exit(1); }
   const R = await roundTrip('A');

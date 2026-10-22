@@ -65,6 +65,8 @@ const durableKey = (b) => b ? JSON.stringify({
   toolItems: (b.toolItems || []).map((t) => `${t.type}/${t.d}/${t.max}`).sort(), equipment: (b.equipment || []).map((e) => `${e.type}/${e.q}`).sort(),
   equipSlots: b.equipSlots || {}, craftSkill: b.craftSkill || {}, craftLog: b.craftLog || {}, oreLedger: b.oreLedger || {}, oreCarry: b.oreCarry || {},
   fishStats: b.fishStats || null, kgLedger: b.kgLedger || null, lots: lotsKey(b.lots), member: b.member || null }) : '(없음)';
+// 내구 칸마다 어느 것이 갈렸나(행이 넘기 전과 다를 때 — 진단 · 판정 0)
+const durableDiff = (a, b) => { if (!a || !b) return ['(몸 없음)']; const A = JSON.parse(durableKey(a)), B = JSON.parse(durableKey(b)); return Object.keys(A).filter((k) => JSON.stringify(A[k]) !== JSON.stringify(B[k])); };
 const softOf = (b) => (b && b.body) ? { cold: +(b.body.cold || 0), fatigue: +(b.body.fatigue || 0), injury: +(b.body.injury || 0) } : null;
 const softNear = (x, y, tol) => !!x && !!y && Math.abs(x.cold - y.cold) <= tol && Math.abs(x.fatigue - y.fatigue) <= tol && Math.abs(x.injury - y.injury) <= tol;
 const MEMBER_FIX = { zone: 'hanbando', vid: 7, name: '검사마을', since: 33, wdDay: 33, wdUsed: 2 };
@@ -114,7 +116,7 @@ async function one(tag, kill) {
   const hpShell = ((shell || {}).vital || {}).hp, hpW = ((promoted || {}).self || {}).hp;
   return { tag, kind: kill ? 'B' : 'A', crossed: true, promoted: !!promoted,
     bodySame: !!live && durableKey(live) === durableKey(before), softSame: softNear(softOf(live), softOf(shell), 0.15), hpSame: Number.isFinite(hpShell) && hpW === hpShell,
-    rowSame: !!rowBody && durableKey(rowBody) === durableKey(before),
+    rowSame: !!rowBody && durableKey(rowBody) === durableKey(before), rowDiff: durableDiff(before, rowBody),
     tools: [((before || {}).toolItems || []).length, live ? (live.toolItems || []).length : null, rowBody ? (rowBody.toolItems || []).length : null],
     equip: [((before || {}).equipment || []).length, live ? (live.equipment || []).length : null],
     skill: [JSON.stringify((before || {}).craftSkill || {}), live ? JSON.stringify(live.craftSkill || {}) : null],
