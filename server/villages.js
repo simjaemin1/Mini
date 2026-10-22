@@ -5987,7 +5987,7 @@ function _warEndFight(body, why, winner) {
   const atkSurv = [], defSurv = [], deadA = [], deadB = [];
   if (f) for (const u of f.ctx.units) { const pid = u.agent; if (pid == null || !players.has(pid)) continue;
     if (u.hp <= 0) (u.side === 'A' ? deadA : deadB).push(pid); else (u.side === 'A' ? atkSurv : defSurv).push(pid); }
-  const _t811 = _t811Plan(w, deadA);   // ★[T811] 쓰러진 공격 몸 짐 — 결판이 장부에서 뺀 몫까지만 땅에(끔 · 몸 짐 없으면 null)
+  const _t811 = T811_ARMS_BODY && w._armsPack ? { field: 0, dead: null } : null;   // ★[T811 · T857] 쓰러진 · 끌려간 공격 몸 짐 → 결판 자리 더미(끔 · 몸 짐 없으면 null)
   const escort = [];
   if (w._capResolve && w._capResolve.npcs && w._capResolve.npcs.length) {
     const loserDead = (w._capResolve.side === 'A') ? deadA : deadB;
@@ -5996,7 +5996,7 @@ function _warEndFight(body, why, winner) {
     for (let k = 0; k < n; k++) {
       const pid = loserDead.pop(); const p = players.get(pid); if (!p) continue;
       if (w._capResolve.side === 'A') _warBagDrop(w, p);   // ★[T423] 끌려가는 병사의 짐은 전장에 남는다(드랍)
-      if (_t811) _t811Off(w, p, _t811, false);   // ★[T811] 끌려가는 병사의 무기는 몸에서 내린다(땅 0 · 장부가 이미 셈했다)
+      if (_t811) _t811.field += _t811Fall(w, p);   // ★[T857] 끌려가는 병사의 무기는 결판 자리에 떨어진다(장부 −같은 몫 · 이긴 쪽이 줍는다)
       p.simCaptive = 1; p._brout = false; p.hp = Math.max(1, Math.round((p.maxHp || 100) * 0.4));
       const oldVil = (p.simVillageId != null) ? state.byDbId.get(p.simVillageId) : null;
       if (oldVil) { const kk = oldVil.npcPids.indexOf(pid); if (kk >= 0) { oldVil.npcPids.splice(kk, 1); if (T822_BODY_SEED) _t822Rekey(oldVil, kk); } }
@@ -6007,7 +6007,12 @@ function _warEndFight(body, why, winner) {
     w._capResolve = null;
   }
   for (const pid of deadA) _warBagDrop(w, players.get(pid));   // ★[T423] 전사자의 짐은 몸과 함께 떨어진다(드랍 — 궤주 규칙 자리)
-  if (_t811) { for (const pid of deadA) _t811Off(w, players.get(pid), _t811, true); _t811Sync(w, 'settle'); }   // ★[T811] 전사자 무기 = 죽음 캐논 낙하 · 산 몸 짐 = 장부
+  if (_t811) {   // ★[T811 · T857] 전사자 몸 짐 = 결판 자리 더미(장부 −같은 몫) → 이긴 쪽 산 몸이 줍는다 · 주울 몸이 없으면 죽음 캐논 낙하 · 산 몸 짐 = 장부 · 거울
+    for (const pid of deadA) { const p = players.get(pid); const q = _t811Fall(w, p); _t811.field += q; if (p && !_t811.dead) _t811.dead = p; }
+    _t857Pick(w, winner, atkSurv, defSurv, _t811.field, _t811.dead);
+    _t811Sync(w, 'settle');
+    if (state.war && state.war.syncArmsMirror) state.war.syncArmsMirror(w.atk);
+  }
   if (_lootActOn()) _warLootPickup(w, winner === 'A' ? atkSurv : defSurv, winner === 'A' ? 'A' : 'B');   // ★[T466] 이긴 쪽 산 몸이 곳간 몫 + 전장 더미를 싣는다(끔이면 안 돈다)
   for (const pid of deadA) _warDespawnPid(pid);
   for (const pid of deadB) _warDespawnPid(pid);
@@ -6294,16 +6299,14 @@ function _warRationCollect(w) {
 //     몸 짐은 장부의 거울이다 — 장부가 움직이는 세 자리(반출 · 결판 · 귀환)마다 산 몸 짐 합 = 장부(= 거울)로 맞춘다(몫 = 장부 ÷ 산 짐꾼 · 새 수 0).
 //   ① 싣기 — 징발 몸이 서는 그 자리(`_warInstantiateAttackers` · T423 팩 옆). 몸마다 실은 양은 **전쟁 객체**의 표(`w._armsPack` — Map pid → 양)에 적는다
 //     (몸이 원래 들던 `weapon` 은 안 건드린다 · 몸 필드 0 · 영속 0 — 진행 중 전쟁은 재기동에 안 실린다 T742 회부 1 · 다시 뜨면 거울이 곳간으로 T764 ⓕ).
-//   ② 결판 — 쓰러진 공격 몸의 무기는 **죽음 캐논 낙하 그 문**(zone `_deathDrop` = `deps.deathDrop` · 짐 kg 절반 · 무거운 것부터)으로 땅에.
-//     ⚠땅에 갈 수 있는 몫은 결판이 장부에서 뺀 몫(Δ = 싣던 합 − 결판 뒤 장부)까지다 — 공격이 이기면 Δ = 0(종전에도 승자는 제 무기를 안 잃었다)
-//     ⇒ 땅의 무기는 장부가 잃은 무기를 넘지 않는다(XOR · 새로 생기는 무기 0). Δ 는 쓰러진 몸 짐에 몫대로 나눈다. 끌려간 몸(포로)은 몸에서만 내린다.
-//     쓰러진 몸에 남은 무기(낙하가 안 고른 것 · Δ 넘는 몫)는 몸과 같이 사라지고 · 산 몸 짐은 결판 뒤 장부로 다시 맞춘다.
+//   ② 결판 — ★[T857] 쓰러진 · 끌려간 공격 몸 짐은 통째로 결판 자리 더미(땅) · 장부 −같은 몫 · 이긴 쪽 산 몸이 줍는다(아래 `_t811Fall` · `_t857Pick` 머리글).
+//     산 몸 짐은 결판 뒤 장부로 다시 맞춘다 · 거울도 다시 센다.
 //   ③ 귀환 — war-core 장부 도착(`daily` 귀환 갈래 · 무기 반납 앞)이 `armsCollect` 를 부른다 → 몸 짐을 내리고(합을 돌려준다) · 곳간엔 장부가 선다.
 //     몸이 장부보다 먼저 끝나면(`_warCleanupBody` · 몸 없음 · 고아) 몸 짐만 내리고 장부가 혼자 간다(`_armsOnBodies` 0).
-//   셈 — `state._warStat.t811` { load 실은 원정 · sync 맞춘 번 · fall 땅에 간 양 · gone 몸과 사라진 양 · off 포로 몸에서 내린 양 · back 귀환에 거둔 양 · gap 맞춘 뒤 |몸 합 − 장부| 최대 }.
+//   셈 — `state._warStat.t811` { load 실은 원정 · sync 맞춘 번 · fall 결판 자리에 떨어진 양 · pickA · pickB 이긴 쪽이 주운 양 · pickKg 주운 무게 · ground 땅에 남은 양 · groundItems 그중 낱개 땅 꾸러미 · back 귀환에 거둔 양 · gap 맞춘 뒤 |몸 합 − 장부| 최대 }.
 const T811_ARMS_BODY = process.env.T811_ARMS_BODY === '1';
 const T811_KEY = 'weapon';
-function _t811Stat() { const S = state._warStat || (state._warStat = {}); return S.t811 || (S.t811 = { load: 0, sync: 0, fall: 0, gone: 0, off: 0, back: 0, gap: 0 }); }
+function _t811Stat() { const S = state._warStat || (state._warStat = {}); return S.t811 || (S.t811 = { load: 0, sync: 0, fall: 0, pickA: 0, pickB: 0, pickKg: 0, ground: 0, groundItems: 0, back: 0, gap: 0 }); }
 function _t811Inv(p) { return (p && p.inventory && p.inventory[T811_KEY]) || 0; }
 function _t811Put(p, q) { if (!p.inventory) p.inventory = {}; if (q > 1e-9) p.inventory[T811_KEY] = q; else delete p.inventory[T811_KEY]; }
 function _t811Sum(w) { let s = 0; const M = w && w._armsPack; if (M) for (const q of M.values()) s += q || 0; return s; }
@@ -6328,27 +6331,39 @@ function _warArmsLoad(body) {
   _t811Sync(w, 'load');
   return bearers.length;
 }
-// 결판 계획 — 쓰러진 공격 몸 짐 합(D)과 결판이 장부에서 뺀 몫(Δ) · 땅에 갈 수 있는 몫 = min(Δ, D) 를 몸 짐 몫대로
-function _t811Plan(w, deadA) {
-  const M = w && w._armsPack; if (!T811_ARMS_BODY || !M || !w._arms) return null;
-  const ledger = w._arms.done ? 0 : Math.max(0, w._arms.weapon || 0), carried = _t811Sum(w);
-  let D = 0; for (const pid of deadA || []) D += M.get(pid) || 0;
-  const g = Math.min(Math.max(0, carried - ledger), D);
-  return { frac: D > 0 ? g / D : 0 };
-}
-// 몸 하나에서 무기 몸 짐을 내린다 — dead 면 장부가 잃은 몫(plan)만 남겨 죽음 캐논 낙하 문으로 땅에 · 아니면(포로) 몸에서만
-function _t811Off(w, p, plan, dead) {
+// ★★[T857 2026-10-22 · T811 회부 1 · T826 회부 1 · PM 10-22 결정 ㄴ] **전사자 짐은 땅에 떨어진다** — T811 켬 안(새 손잡이 0 · 새 수 0).
+//   종전(T811): 땅 ≤ 결판이 장부에서 뺀 몫 — 공격이 이긴 전투의 전사자 무기는 땅에 안 가고 장부가 들고 귀환했다(몸이 죽었는데 짐이 집으로 = 순간이동).
+//   이제: 쓰러진(· 끌려간) 공격 몸의 몸 짐은 **통째로 결판 자리 더미**(땅)에 가고 · 원정 장부에서 **같은 몫**을 뺀다(`_t811Fall`).
+//     이긴 쪽 산 몸이 그 자리에서 줍는다(`_t857Pick` — T826 노획 몸 짐 문 그대로): 공격 승 → 원정 장부(→ 산 몸 짐 · 귀환에 곳간) · 방어 승 → 방어 곳간(제 마을 안 · 결판 흐름의 그 문 `weaponGive`).
+//     주울 산 몸이 없으면 더미는 **죽음 캐논 낙하 그 문**(`deps.deathDrop` = zone `_deathDrop`)으로 쓰러진 몸 자리에 땅 꾸러미가 된다(낱개 — 땅 꾸러미는 안 사라진다 `keep`) ·
+//     낱개로 못 떨군 몫(1 자루 밑 · 낙하가 안 고른 몫)은 땅 장부(`t811.ground`)에 남는다.
+//   ★묶음 하나(T826 회부 1): 몸 짐 판에서 공격이 지면 war-core 결판 흐름이 공격 짐을 안 건드린다(`_bodyLose` — 회수 몫 즉시 곳간 0) — 잃는 몫 = 쓰러진 몸 짐 · 회수 = 주운 몫.
+//     불변식(결판 한 번): 땅에 간 몫 = 공격이 주운 몫 + 방어가 주운 몫 + 땅에 남은 몫(셈 `fall = pickA + pickB + ground`).
+//   ⚠짐 무게 상한(T52 · `carry.js CAP_KG`)은 안 건다 — 주운 무게는 표로만(`pickKg`).
+function _t811Fall(w, p) {
   const M = w && w._armsPack; if (!M || !p || !M.has(p.pid)) return 0;
   const mine = M.get(p.pid) || 0, own = Math.max(0, _t811Inv(p) - mine), st = _t811Stat();
-  M.delete(p.pid);
-  if (!dead) { _t811Put(p, own); st.off += mine; return 0; }
-  const fallable = mine * (plan ? plan.frac : 0);
-  _t811Put(p, own + fallable);
-  const before = _t811Inv(p);
-  if (fallable > 0) { try { if (state.deps.deathDrop) state.deps.deathDrop(p); } catch (e) { } }   // 낙하 — 플레이어 죽음 캐논의 그 문(짐 kg 절반 · 무거운 것부터 · `_bxDie` 와 같은 자리)
-  const fell = Math.max(0, Math.min(fallable, before - _t811Inv(p)));
-  st.fall += fell; st.gone += mine - fell;
-  return fell;
+  M.delete(p.pid); _t811Put(p, own);
+  if (w._arms && !w._arms.done) w._arms.weapon = Math.max(0, (w._arms.weapon || 0) - mine);
+  st.fall += mine;
+  return mine;
+}
+// 이긴 쪽 산 몸이 결판 자리 더미를 줍는다 — 주울 몸이 없으면 쓰러진 몸 자리에 죽음 캐논 낙하(낱개) · 남은 몫은 땅 장부
+function _t857Pick(w, winner, atkSurv, defSurv, field, deadP) {
+  if (!(field > 0)) return;
+  const players = state.deps.players, st = _t811Stat(), M = w._armsPack, WC = state.war, W = _weights();
+  const alive = (pids) => (pids || []).map((k) => players.get(k)).filter((p) => p && !p.simCaptive && (p.hp == null || p.hp > 0));
+  const kg = (q) => q * ((W && W.kgOfOrDefault) ? W.kgOfOrDefault(T811_KEY) : 0);
+  if (winner === 'A' && w._arms && !w._arms.done && M && alive(atkSurv).some((p) => M.has(p.pid))) { w._arms.weapon = (w._arms.weapon || 0) + field; st.pickA += field; st.pickKg += kg(field); return; }
+  if (winner === 'B' && w.def && w.def.econ && WC && WC.weaponGive && alive(defSurv).length) { const A = w.atk && w.atk.econ; WC.weaponGive(w.def.econ, w.weapQ != null ? w.weapQ : ((A && A._weapQ != null) ? A._weapQ : 0), field); st.pickB += field; st.pickKg += kg(field); return; }
+  //   주울 산 몸이 없다 — 쓰러진 몸 자리에 낙하(죽음 캐논 그 문 · 낱개만 · 몸이 든 다른 것은 잠깐 비켜 둔다)
+  let fell = 0;
+  if (deadP && state.deps.deathDrop) {
+    const keep = deadP.inventory || {}; deadP.inventory = { [T811_KEY]: field };
+    while (Math.floor(_t811Inv(deadP)) > 0) { const b = _t811Inv(deadP); try { state.deps.deathDrop(deadP); } catch (e) { break; } if (!(_t811Inv(deadP) < b)) break; }   // 낱개가 남는 동안(낙하가 하나도 못 고르면 멈춘다)
+    fell = field - _t811Inv(deadP); deadP.inventory = keep;
+  }
+  st.ground += field; st.groundItems += fell;
 }
 // 장부 도착(귀환) — war-core 가 무기 반납 앞에서 부른다: 몸 짐을 내리고 그 합을 돌려준다(곳간엔 장부가 선다)
 function _warArmsCollect(w) {
@@ -7677,7 +7692,7 @@ function __p3Bind(mock) {
     _t681Day, _t681Flush, T681_ON, T703_MARCH,   // ★[T703] T681 켬(기본) 판의 하루 경계 두 자리 — 하네스가 운영 하루 마감과 같은 차례(econ 앞 `_t681Flush` · 캐러밴 앞 `_t681Day`)로 부른다(값 무변 · 내보내기만)
     _warEngage, _warAfterDaily, _warEndFight, _warBuildRectIndex, _warBlockedCell, _warWorld, warPerf, _warOrderFallback, _warToStandoff,
     banditHost, _t841Sh,   // ★[T841] 도적 몸 신원 문(호스트 `bodySh`) — 하네스(`test-body-seed-other`)가 운영과 같은 호스트를 도적 층에 꽂는다(내보내기만)
-    T811_ARMS_BODY, _warArmsLoad, _warArmsCollect, _warArmsUnload, _t811Plan, _t811Off, _t811Sync, _t811Stat,   // ★[T811] 무기 몸 짐 — 하네스(`test-arms-body`)가 운영과 같은 문을 부른다(내보내기만)
+    T811_ARMS_BODY, _warArmsLoad, _warArmsCollect, _warArmsUnload, _t811Fall, _t857Pick, _t811Sync, _t811Stat,   // ★[T811] 무기 몸 짐 — 하네스(`test-arms-body`)가 운영과 같은 문을 부른다(내보내기만)
     T790_NO_SNAP, _t790Stat, _t790Mark, _t790Lag, _warSetupReturn, _warPaceReturn,   // ★[T790] 하네스(`test-war-nosnap`)가 운영과 같은 문을 부른다(내보내기만)
     _t804Way, _t804WalkOut, _t804Stat, _warWalkGroupTo,   // ★[T804] 걷는 몸의 길 · 전진 풀기 걸음 — 하네스가 운영과 같은 문을 부른다(내보내기만)
     _t821Stat,   // ★[T821] 재개형 걸음 탐색 셈(내보내기만 — 관찰자 · 하네스)
