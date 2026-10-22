@@ -4059,7 +4059,7 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
       if (v.npcs[i]._warDraft) continue;
       if (oldestIdx < 0 || v.npcs[i].age > v.npcs[oldestIdx].age) oldestIdx = i;
     }
-    if (oldestIdx < 0) break;   // 전부 징발 중(있을 수 없다 — 동원 상한이 N−2) — 그래도 장부는 안 건드린다
+    if (oldestIdx < 0) break;   // 전부 징발 중 — ★[T845 · T815 회부 4] 징발은 자유민 1명 이상을 남긴다(war-core `_warDraftPick` — 남는 자유민 ≤ 1 이면 안 뽑는다 = 동원 상한 N−1) · 그 뒤 기근 · 이탈이 마지막 자유민을 데려가면 여기 닿는다(T815 §5) — 그래도 장부는 안 건드린다
     if (T815_DRAFT_FAMINE) { v._deathsToday++; v._deadTot = (v._deadTot || 0) + 1; }   // ★[T815] 켬 = 죽일 몸을 고른 **뒤에** 센다(몸이 죽을 때만 죽음 — 소멸·생성 금지의 장부 쪽)
     const dead = v.npcs.splice(oldestIdx, 1)[0];
     v.counts[dead.currentJob] = (v.counts[dead.currentJob] || 0) - 1;
