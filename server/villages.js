@@ -5325,6 +5325,12 @@ function _warDraftPids(vil, comp, seed, warId) {
 //   늦음 셈(`state._warStat.t790Late` · `_t790Stat`): 하루 경계(`_t681Day`)에 대형 몸이 아직 제 자리(지휘 = 원점 · 병사 = 슬롯 · 반경 `FOLLOW_SNAP`) 밖이면 하나 —
 //     메우기 0(순간이동으로 따라잡지 않는다). 교전에 풀린 몸(battle-core 가 모는 몸)은 안 센다. 새 수 0.
 const T790_NO_SNAP = process.env.T790_NO_SNAP === '1';
+// ★★[T844 2026-10-22] **끔 판 귀환도 그날 몫** — 손잡이 `T844_RET_QUOTA`('1' 만 켬 · 끔 = main 바이트) · T832 회부 3.
+//   T832 는 켬(T790) 판 귀환 몸을 T681 하루 몫으로 걷게 했다(`tickWarBodies` 귀환 줄 · `_t681Flush` 끝 귀환 고리). 끔 판은 틱마다 걸어,
+//   결판이 마감 안에서 나면 그날 귀환이 0걸음 → 몸이 결판 자리에서 풀린다(부하 다른 끔 두 판 D40 존 몸 해시 한 날 · T832 §3-2).
+//   켜면 끔 판 귀환도 같은 두 자리(같은 함수 · 사본 0)로 그날 몫을 걷는다 — 술어는 아래 `_RET_QUOTA` 하나(켬 판 = T832 그대로 · 새 수 0).
+const T844_RET_QUOTA = process.env.T844_RET_QUOTA === '1';
+const _RET_QUOTA = T790_NO_SNAP || T844_RET_QUOTA;   // 귀환 몸이 그날 몫(`_t681Take` · `_t681Flush`)으로 걷나 — 켬(T832) · 끔 + T844 손잡이
 const _t790Stat = { walk: 0, late: 0, lateMaxM: 0, lateSumM: 0 };
 function _t790Mark(g) { const sp = state.deps && state.deps.moveSpeed; if (T790_NO_SNAP && g && sp > 0 && state.warLive) g._t790Walk = sp / SZ * state.warLive.STEP_DT; return g; }   // 셀/스텝 = (px/s ÷ px/셀) × s/스텝
 function _t790Lag(g) {   // 하루 경계 — 대형 몸이 제 자리 밖인가(걸음 셈 · 상태 무변)
@@ -6660,8 +6666,8 @@ function _t681Flush() {
       if (B > 0 && Date.now() - t0 >= B) return 'retry';
     }
   }
-  //   ★★[T832 2026-10-21] 켬(T790 걷는 몸) — **귀환 몸도 그날 몫**(T832 머리 주석). 틱이 못 쓴 몫을 여기서 채운다 — 차례 = `warBodies` 차례(틱 고리와 같은 차례) · 끔 = 이 고리 무동작.
-  if (T790_NO_SNAP && state.warBodies) for (const body of state.warBodies.values()) {
+  //   ★★[T832 2026-10-21] 켬(T790 걷는 몸) — **귀환 몸도 그날 몫**(T832 머리 주석). 틱이 못 쓴 몫을 여기서 채운다 — 차례 = `warBodies` 차례(틱 고리와 같은 차례) · 끔 = 이 고리 무동작(★[T844] 끔 + `T844_RET_QUOTA` 면 끔 판도 돈다).
+  if (_RET_QUOTA && state.warBodies) for (const body of state.warBodies.values()) {   // ★[T844] 끔 + `T844_RET_QUOTA` 도 이 고리(같은 함수)
     if (body.phase !== 'return' || !body._t681 || !body.retGroup) continue;
     const d = state.world.day | 0;
     if (!body._t681q || body._t681q.day !== d) body._t681q = { day: d, left: _t681Quota() };   // 그날 틱이 한 번도 안 걸었다 — 몫 전부
@@ -6809,7 +6815,7 @@ function tickWarBodies(now) {
   }
   // 귀환 페이싱 + 고아 정리
   for (const body of [...state.warBodies.values()]) {
-    if (body.phase === 'return') { if (T790_NO_SNAP && T681_ON && body._t681 && !_t681Take(body)) continue; _warPaceReturn(body, now, dtMs); continue; }   // ★[T832] 켬 — 귀환 몸도 그날 몫(`_t681Take`)만큼만 틱에서 걷는다(남은 몫은 하루 마감 첫 자리 `_t681Flush` · 끔 = 틱마다 종전 그대로)
+    if (body.phase === 'return') { if (_RET_QUOTA && T681_ON && body._t681 && !_t681Take(body)) continue; _warPaceReturn(body, now, dtMs); continue; }   // ★[T832 · T844] 켬(· 끔 + `T844_RET_QUOTA`) — 귀환 몸도 그날 몫(`_t681Take`)만큼만 틱에서 걷는다(남은 몫은 하루 마감 첫 자리 `_t681Flush` · 끔 = 틱마다 종전 그대로)
     if (body.w.id != null && !liveWid.has(body.w.id)) _warCleanupBody(body, true);
   }
   const ms = _perfNow() - t0;
