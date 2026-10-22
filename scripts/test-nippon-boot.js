@@ -146,11 +146,40 @@ async function waitUp(p, url, tries = 300) {
     'ⓚ 계획기가 **플러드 0셀 후보를 섬에서 뺀다**(0셀은 섬이 아니라 설 자리가 없는 곳)');
   ok(/drySkip\.length \? /.test(PBV), 'ⓚ2 그 수를 **따로 센다**(조용히 지우지 않는다 — 없앤 게 아니라 이름이 다른 것이다)');
   // ★말만 보지 않는다 — 그런 자리가 **실재하는지** 정본 술어로 직접 잰다(자명 통과 방지).
-  const noStand = (npCand || []).filter((v) => {
+  // ★★[T865 2026-10-22] 전제가 **세계의 두 후보**(노라마 물 · 타카쿠 바위)에 기대 있었다 — 초기화 판(T848)이 둘을 뭍으로 옮기자 0곳이 됐다.
+  //   ⇒ 세계 후보에 기대지 않는 **합성 미끼** 하나를 세운다: 민물·바위 셀이면서 사방 25셀이 다 막힌(바다 띠 · 민물 · 바위 — 계획기 `kind` 와 같은 조합) 첫 자리.
+  //   단언(ⓚ3)은 그대로 — 같은 술어로 센다. 그리고 ⓚ4 가 **계획기를 실제로 돌려** 그 미끼가 `drySkip` 줄에 드는지 본다(말이 아니라 행동).
+  const decoy = (() => {
+    const SZ = 32, Z = ZONES0[ZID], NX = Math.floor(Z.zoneWidth / SZ), NY = Math.floor(Z.zoneHeight / SZ);
+    const zc = require(path.join(ROOT, 'server', 'zone-config'));
+    const OR = Object.values(zc.ZONES).filter((z) => z.isOcean).map((z) => ({ x0: z.worldOffsetX, y0: z.worldOffsetY, x1: z.worldOffsetX + z.zoneWidth, y1: z.worldOffsetY + z.zoneHeight }));
+    const WT = require(path.join(ROOT, 'server', 'chunk')).generateCoastlineWaterTiles(Object.assign({ id: ZID }, Z), SZ, zc.findZoneAt, OR);
+    const fresh = (cx, cy) => T.isWaterCellLocal(ZID, cx * SZ + SZ / 2, cy * SZ + SZ / 2), rock = (cx, cy) => T.isRockCellLocal(ZID, cx * SZ + SZ / 2, cy * SZ + SZ / 2);
+    const blk = (cx, cy) => cx < 0 || cy < 0 || cx >= NX || cy >= NY || WT.has(cx + '_' + cy) || fresh(cx, cy) || rock(cx, cy);
+    for (let cy = 30; cy < NY - 30; cy += 7) for (let cx = 30; cx < NX - 30; cx += 7) {
+      if (!(fresh(cx, cy) || rock(cx, cy))) continue;
+      let all = true; for (let dy = -25; dy <= 25 && all; dy++) for (let dx = -25; dx <= 25; dx++) if (!blk(cx + dx, cy + dy)) { all = false; break; }
+      if (all) return { name: 'ⓚ미끼', x: cx * SZ + SZ / 2, y: cy * SZ + SZ / 2, type: 'plain', synthetic: true };
+    }
+    return null;
+  })();
+  const noStand = (npCand || []).concat(decoy ? [decoy] : []).filter((v) => {
     try { return T.isWaterCellLocal(ZID, v.x, v.y) || T.isRockCellLocal(ZID, v.x, v.y); } catch (e) { return false; }
   });
   ok(noStand.length > 0, 'ⓚ3 전제: 닛폰에 **설 자리가 없는 후보가 실제로 있다**(0이면 위가 자명 통과다)',
-    `${noStand.length}곳 — ${noStand.map((v) => v.name).join(', ')}`);
+    `${noStand.length}곳 — ${noStand.map((v) => v.name + (v.synthetic ? `(합성 · 셀 ${Math.floor(v.x / 32)},${Math.floor(v.y / 32)})` : '')).join(', ')}`);
+  {   // ⓚ4 — 계획기를 그대로 돌리되 후보 문(`siteCandidates`)에 미끼 하나를 얹는다(아이 프로세스 · 정본 무접촉)
+    let out = '';
+    if (decoy) {
+      const pre = path.join(require('os').tmpdir(), `t865-decoy-${process.pid}.js`);
+      fs.writeFileSync(pre, `const T=require(${JSON.stringify(path.join(ROOT, 'server', 'terrain'))});const D=JSON.parse(process.env.T865_DECOY);const f0=T.siteCandidates;T.siteCandidates=function(z){const r=f0.apply(this,arguments);return z===${JSON.stringify(ZID)}?(r||[]).concat([D]):r;};`);
+      try { out = require('child_process').execFileSync(process.execPath, ['-r', pre, path.join(ROOT, 'scripts', 'plan-bridges-v2.js'), ZID], { env: Object.assign({}, process.env, { T865_DECOY: JSON.stringify(decoy) }), encoding: 'utf8', timeout: 300000 }); } catch (e) { out = String((e && e.stdout) || ''); }
+      try { fs.unlinkSync(pre); } catch (e) {}
+    }
+    const m = /설 자리 없는 후보 (\d+): ([^)]*)\)/.exec(out);
+    ok(!!m && m[2].split(', ').includes('ⓚ미끼'), 'ⓚ4 ★계획기가 그 미끼를 **섬이 아니라 설 자리 없는 후보로** 센다(`drySkip` · 실제로 돌린 판)',
+      m ? `drySkip ${m[1]}: ${m[2]}` : (decoy ? '줄 없음' : '미끼 자리 못 찾음'));
+  }
 
   console.log('\n[ⓒ 바다 존은 스스로 빠진다 — 새 게이트 0]');
   const ZONES = ZONES0;
